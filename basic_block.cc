@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <iostream>
 
 #include "basic_block.hh"
 
@@ -94,7 +95,7 @@ pair<basic_block::in_iterator,basic_block::in_iterator> basic_block::incoming(vo
 
 void basic_block::append_mnemonic(mne_cptr m)
 { 
-	assert(m_mnemonics.empty() || m_mnemonics.back()->addresses.end == m->addresses.begin);
+	assert(m && (m_mnemonics.empty() || m_mnemonics.back()->addresses.end == m->addresses.begin));
 
 	m_mnemonics.push_back(m);
 	
@@ -105,33 +106,47 @@ void basic_block::append_mnemonic(mne_cptr m)
 }
 
 void basic_block::insert_incoming(guard_cptr g, bblock_ptr m)
-	{	m_incoming.push_back(make_pair(g,m)); };
+	{	assert(g && m); m_incoming.push_back(make_pair(g,m)); };
 void basic_block::insert_outgoing(guard_cptr g, bblock_ptr m)
-	{	m_outgoing.push_back(make_pair(g,m)); };
+	{	assert(g && m); m_outgoing.push_back(make_pair(g,m)); };
 	
 void basic_block::remove_incoming(bblock_ptr m)
-	{ remove_if(m_incoming.begin(),m_incoming.end(),[&m](pair<guard_cptr,bblock_ptr> p) { return p.second == m; }); }
+	{ assert(m); remove_if(m_incoming.begin(),m_incoming.end(),[&m](pair<guard_cptr,bblock_ptr> p) { return p.second == m; }); }
 void basic_block::remove_outgoing(bblock_ptr m)
-	{ remove_if(m_outgoing.begin(),m_outgoing.end(),[&m](pair<guard_cptr,bblock_ptr> p) { return p.second == m; }); }
+	{ assert(m); remove_if(m_outgoing.begin(),m_outgoing.end(),[&m](pair<guard_cptr,bblock_ptr> p) { return p.second == m; }); }
 
 void basic_block::replace_incoming(bblock_ptr a, bblock_ptr b)
 {
+	assert(a && b);
+
 	auto i = m_incoming.begin();
 	while(i != m_incoming.end())
+	{
 		if(i->second == a)
-			*i++ = make_pair(i->first,b);
-		else
-			++i;
+		{
+			auto p = make_pair(i->first,b);
+			i = m_incoming.erase(i);
+			i = m_incoming.insert(i,p);
+		}
+		++i;
+	}
 }
 
 void basic_block::replace_outgoing(bblock_ptr a, bblock_ptr b)
 {
+	assert(a && b);
+
 	auto i = m_outgoing.begin();
 	while(i != m_outgoing.end())
+	{
 		if(i->second == a)
-			*i++ = make_pair(i->first,b);
-		else
-			++i;
+		{
+			auto p = make_pair(i->first,b);
+			i = m_outgoing.erase(i);
+			i = m_outgoing.insert(i,p);
+		}
+		++i;
+	}
 }
 
 const area &basic_block::addresses(void) const
@@ -139,7 +154,7 @@ const area &basic_block::addresses(void) const
 
 pair<bblock_ptr,bblock_ptr> conditional(bblock_ptr bb, guard_ptr g, bblock_ptr trueb, bblock_ptr falseb)
 {
-	assert(bb);
+	assert(bb && g);
 	bblock_ptr tret(trueb), fret(falseb);
 
 	if(!tret) tret = bblock_ptr(new basic_block());
@@ -167,12 +182,16 @@ void unconditional(bblock_ptr bb_from, bblock_ptr bb_to)
 // last == true -> pos is last in `up', last == false -> pos is first in `down'
 pair<bblock_ptr,bblock_ptr> split(bblock_ptr bb, addr_t pos, bool last)
 {
+	assert(bb);
+
 	bblock_ptr up(new basic_block()), down(new basic_block());
 	bool sw = false;
 	basic_block::iterator i,iend;
+	basic_block::out_iterator j,jend;
+	basic_block::in_iterator k,kend;
 
+	// distribute mnemonics under `up' and `down'
 	tie(i,iend) = bb->mnemonics();
-
 	for_each(i,iend,[&](mne_cptr m)
 	{	
 		if(!last)
@@ -188,51 +207,48 @@ pair<bblock_ptr,bblock_ptr> split(bblock_ptr bb, addr_t pos, bool last)
 	});
 	assert(sw);
 
-	// connect self references (loops) to `up'
-	reroute_out(bb,bb,up);
-
-	// connect outgoing to `down'
-	basic_block::out_iterator j,jend;
-
+	// copy outgoing edges to down
 	tie(j,jend) = bb->outgoing();
-
 	for_each(j,jend,[&](pair<guard_cptr,bblock_ptr> t)
 	{
-		bblock_ptr p = t.second;
-		basic_block::pred_iterator k,kend;
+		guard_cptr g;
+		bblock_ptr b;
 
-		p->replace_incoming(bb,down);
-		down->insert_outgoing(t.first,t.second);
+		tie(g,b) = t;
+
+		if(b == bb)
+		{
+			down->insert_outgoing(g,up);
+			up->insert_incoming(g,down);
+		}
+		else
+		{
+			down->insert_outgoing(g,b);
+			b->insert_incoming(g,down);
+		}
 	});
-
-	// connect incoming to `up'
-	basic_block::pred_iterator k,kend;
-	tie(k,kend) = bb->predecessors();
 	
-	for_each(k,kend,[&](bblock_ptr pred) { reroute_out(pred,bb,up); });
+	// copy incoming edges to up
+	tie(k,kend) = bb->incoming();
+	for_each(k,kend,[&](pair<guard_cptr,bblock_ptr> t)
+	{
+		guard_cptr g;
+		bblock_ptr b;
+
+		tie(g,b) = t;
+
+		if(b == bb)
+		{
+			up->insert_incoming(g,down);
+			down->insert_outgoing(g,up);
+		}
+		else
+		{
+			up->insert_incoming(g,b);
+			b->insert_outgoing(g,up);
+		}
+	});
 
 	unconditional(up,down);
 	return make_pair(up,down);
 }		
-
-void reroute_out(bblock_ptr from, bblock_ptr old_to, bblock_ptr new_to)
-{
-	basic_block::out_iterator i,iend;
-
-	tie(i,iend) = from->outgoing();
-	
-	while(i != iend)
-	{
-		pair<guard_cptr,bblock_ptr> &t(*i);
-
-		if(t.second == old_to)
-		{
-			from->replace_outgoing(old_to,new_to);
-			from->insert_outgoing(t.first,old_to);
-
-			new_to->insert_incoming(t.first,from);
-			old_to->remove_incoming(from);
-		}
-		++i;
-	}
-}

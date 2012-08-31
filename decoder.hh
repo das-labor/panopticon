@@ -355,9 +355,9 @@ private:
 };
 
 template<typename token,typename tokiter>
-void disassemble(const decoder<token,tokiter> &main, vector<token> tokens, addr_t offset = 0, bool cf_sensitive = true)
+proc_ptr disassemble(const decoder<token,tokiter> &main, vector<token> tokens, addr_t offset = 0, bool cf_sensitive = true)
 {
-	procedure proc;
+	proc_ptr proc(new procedure());
 	list<tuple<addr_t,mne_cptr,bblock_ptr>> todo;
 	bblock_ptr entry(new basic_block());
 
@@ -368,19 +368,27 @@ void disassemble(const decoder<token,tokiter> &main, vector<token> tokens, addr_
 		sem_state<token,tokiter> state;
 		tuple<addr_t,mne_cptr,bblock_ptr> subject = todo.back();
 		bool ret;
-		tokiter i;
+		tokiter i = tokens.begin();
 
 		todo.pop_back();
-		cout << "disassemble at addr " << hex << get<0>(subject) << dec << endl;
+
+		if(get<0>(subject) >= tokens.size())
+			continue;
+
+		advance(i,get<0>(subject));
 
 		state.address = get<0>(subject);
-		tie(ret,i) = main.match(tokens.begin(),tokens.end(),state);
+		tie(ret,i) = main.match(i,tokens.end(),state);
+		
+		cout << "disassemble at addr " << hex << get<0>(subject) << dec << endl;
 		
 		for_each(state.mnemonics.begin(),state.mnemonics.end(),[&](pair<addr_t,mne_ptr> p)
 		{
 			list<pair<addr_t,guard_ptr>> ct;
 			bool prev_known;
 			bblock_ptr prev_bb;
+
+			cout << p.second->name << endl;
 
 			for_each(state.control_transfers.begin(),state.control_transfers.end(),[&](pair<const mne_ptr,pair<addr_t,guard_ptr>> q)
 			{ 
@@ -409,7 +417,7 @@ void disassemble(const decoder<token,tokiter> &main, vector<token> tokens, addr_
 		});
 	}
 
-	// dump procedure
+	return proc;
 };
 
 }; // namespace dframe

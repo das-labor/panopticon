@@ -12,7 +12,7 @@
 using namespace std;
 
 typedef shared_ptr<struct domtree> dtree_ptr;
-typedef shared_ptr<struct procedure> procedure_ptr;
+typedef shared_ptr<struct procedure> proc_ptr;
 
 struct domtree
 {
@@ -50,7 +50,7 @@ protected:
 	//map<name,set<bblock_ptr>> usage;	// maps names to blocks that use them
 };
 
-bblock_ptr find_bblock(procedure &proc, addr_t a);
-pair<bool,bblock_ptr> extend_procedure(procedure &proc, const mne_cptr cur_mne, const mne_cptr prev_mne, bblock_ptr prev_bb);
+bblock_ptr find_bblock(proc_ptr proc, addr_t a);
+pair<bool,bblock_ptr> extend_procedure(proc_ptr proc, const mne_cptr cur_mne, const mne_cptr prev_mne, bblock_ptr prev_bb);
 
 #endif

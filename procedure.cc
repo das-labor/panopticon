@@ -50,33 +50,28 @@ void procedure::insert_bblock(bblock_ptr m)
 	{ basic_blocks.push_back(m); };
 
 void procedure::remove_bblock(bblock_ptr m)
-	{ remove(basic_blocks.begin(),basic_blocks.end(),m); };
+ { basic_blocks.remove(m); };
 
 pair<procedure::iterator,procedure::iterator> procedure::all(void) 
 	{ return make_pair(basic_blocks.begin(),basic_blocks.end()); };
 
-bblock_ptr find_bblock(procedure &proc, addr_t a)
+bblock_ptr find_bblock(proc_ptr proc, addr_t a)
 {
 	procedure::iterator i,e;
 	
-	tie(i,e) = proc.all();
+	tie(i,e) = proc->all();
 
 	while(i != e)
 	{
 		bblock_ptr bb = *i++;
-		basic_block::iterator j,jend;
-		
-		tie(j,jend) = bb->mnemonics();
-
-		while(j != jend)
-			if((*j++)->addresses.includes(a))
-				return bb;
+		if(bb->addresses().includes(a))
+			return bb;
 	}
 
 	return bblock_ptr(0);
 }
 
-pair<bool,bblock_ptr> extend_procedure(procedure &proc, const mne_cptr cur_mne, const mne_cptr prev_mne, bblock_ptr prev_bb)
+pair<bool,bblock_ptr> extend_procedure(proc_ptr proc, const mne_cptr cur_mne, const mne_cptr prev_mne, bblock_ptr prev_bb)
 {
 	// if `prev_mne' isn't the last statement in its basic block, split the bb.
 	if(prev_bb)
@@ -93,9 +88,9 @@ pair<bool,bblock_ptr> extend_procedure(procedure &proc, const mne_cptr cur_mne, 
 			//cout << " into " <<  shreds.first.start << ":" << shreds.first.end;
 			//cout << " and " <<  shreds.second.start << ":" << shreds.second.end << endl;
 			
-			proc.insert_bblock(shreds.second);
-			proc.insert_bblock(shreds.first);
-			proc.remove_bblock(prev_bb);
+			proc->insert_bblock(shreds.second);
+			proc->insert_bblock(shreds.first);
+			proc->remove_bblock(prev_bb);
 			
 			prev_bb = shreds.first;
 			//cout << " new src_bb is " << src_bb->start << ":" << src_bb->end << dec << endl;
@@ -103,7 +98,7 @@ pair<bool,bblock_ptr> extend_procedure(procedure &proc, const mne_cptr cur_mne, 
 	}
 
 	// procedure and basic block occupying `cur_mne'
-	bblock_ptr cur_bb = find_bblock(proc,cur_mne->addresses.end);
+	bblock_ptr cur_bb = find_bblock(proc,cur_mne->addresses.begin);
 	
 	// `cur_mne' was disassembled previously 
 	if(cur_bb)
@@ -118,7 +113,7 @@ pair<bool,bblock_ptr> extend_procedure(procedure &proc, const mne_cptr cur_mne, 
 		else 													// referes into the `target'. split target into two bb
 		{
 			cout << " split basic block " << cur_bb.get() << endl;
-			auto shreds = split(cur_bb,cur_mne->addresses.end,false);
+			auto shreds = split(cur_bb,cur_mne->addresses.begin,false);
 			
 
 			if(prev_bb == cur_bb)
@@ -126,9 +121,9 @@ pair<bool,bblock_ptr> extend_procedure(procedure &proc, const mne_cptr cur_mne, 
 			else
 				unconditional(cur_bb,shreds.second);
 			
-			proc.insert_bblock(shreds.second);
-			proc.insert_bblock(shreds.first);
-			proc.remove_bblock(cur_bb);
+			proc->insert_bblock(shreds.second);
+			proc->insert_bblock(shreds.first);
+			proc->remove_bblock(cur_bb);
 		}
 		cout << endl;
 		return make_pair(true,cur_bb);
@@ -163,7 +158,7 @@ pair<bool,bblock_ptr> extend_procedure(procedure &proc, const mne_cptr cur_mne, 
 			cout << " new basic block " << bb.get() << endl;
 				
 			bb->append_mnemonic(cur_mne);
-			proc.insert_bblock(bb);
+			proc->insert_bblock(bb);
 			unconditional(prev_bb,bb);
 			
 			cout << endl;

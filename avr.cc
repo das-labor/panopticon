@@ -87,7 +87,7 @@ typedef vector<uint16_t>::iterator tokiter;
 		st.unconditional(st.mnemonics.begin()->second,st.address + st.tokens.size());\
 	};
 
-void avr_decode(vector<token> &bytes, addr_t entry)
+proc_ptr avr_decode(vector<token> &bytes, addr_t entry)
 {
 	decoder<token,vector<token>::iterator> main;
 
@@ -402,5 +402,5 @@ void avr_decode(vector<token> &bytes, addr_t entry)
 	// catch all
 	main = simple("unk");
 
-	disassemble<token,tokiter>(main,bytes);
+	return disassemble<token,tokiter>(main,bytes);
 }

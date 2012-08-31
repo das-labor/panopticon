@@ -123,6 +123,6 @@ private:
 	int ioRegister;
 };
 
-void avr_decode(vector<uint16_t> &bytes,addr_t entry);
+proc_ptr avr_decode(vector<uint16_t> &bytes,addr_t entry);
 
 #endif

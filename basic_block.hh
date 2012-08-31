@@ -160,6 +160,4 @@ void unconditional(bblock_ptr bb_from, bblock_ptr bb_to);
 
 pair<bblock_ptr,bblock_ptr> split(bblock_ptr bb, addr_t pos, bool last);
 
-void reroute_out(bblock_ptr from, bblock_ptr old_to, bblock_ptr new_to); 
-
 #endif
