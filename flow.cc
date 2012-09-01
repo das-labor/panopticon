@@ -52,13 +52,22 @@ void decode(vector<uint16_t> &bytes)
 
 			cout << "\"];" << endl;
 
-			basic_block::succ_iterator k,kend;
-			tie(k,kend) = bb->successors();
-			for_each(k,kend,[&bb](const bblock_ptr s) 
+			basic_block::out_iterator k,kend;
+			tie(k,kend) = bb->outgoing();
+			for_each(k,kend,[&bb](const pair<guard_cptr,bblock_ptr> s) 
 			{ 
 				cout << "  bb_" << /*proc.name << "_" <<*/ bb->addresses().begin << 
-								" -> bb_" << /*proc.name << "_" <<*/ s->addresses().begin << ";" << endl; 
-			});
+								" -> bb_" << /*proc.name << "_" <<*/ s.second->addresses().begin << " [label=\"" << s.first.get() << "\"];" << endl; 
+			});	
+			
+	/*		basic_block::in_iterator l,lend;
+			tie(l,lend) = bb->incoming();
+			for_each(l,lend,[&bb](const pair<guard_cptr,bblock_ptr> s) 
+			{ 
+				cout << "  bb_" << /*proc.name << "_" <<*/ bb->addresses().begin << 
+								" -> bb_" << /*proc.name << "_" <<*/ s.second->addresses().begin << " [arrowhead=\"crow\",label=\"" << s.first.get() << "\"];" << endl; 
+			});*/
+
 		});
 /*		cout << " }" << endl;
 

@@ -124,6 +124,7 @@ pair<bool,bblock_ptr> extend_procedure(proc_ptr proc, const mne_cptr cur_mne, co
 			proc->insert_bblock(shreds.second);
 			proc->insert_bblock(shreds.first);
 			proc->remove_bblock(cur_bb);
+			cur_bb = shreds.second;
 		}
 		cout << endl;
 		return make_pair(true,cur_bb);
@@ -142,8 +143,6 @@ pair<bool,bblock_ptr> extend_procedure(proc_ptr proc, const mne_cptr cur_mne, co
 		 * is right after it (in terms of memory addresses), extend `prev_bb' to
 		 * include this instruction. Otherwise start new basic block.
 		 */
-		
-		// TODO: include proper length
 		if(j == jend && (i == iend || (*--iend)->addresses.end == cur_mne->addresses.begin)) 
 		{
 			prev_bb->append_mnemonic(cur_mne);

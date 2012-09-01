@@ -20,30 +20,27 @@ struct sem_state
 		copy(begin,end,inserter(tokens,tokens.begin()));
 	};
 
-	mne_ptr add_mnemonic(string n)
+	mne_ptr add_mnemonic(area a, string n)
 	{
-		addr_t a = mnemonics.end() != mnemonics.begin() ? (--mnemonics.end())->first + 1 : address;
-		mne_ptr m(new mnemonic(area(a,a+1),n));
+		mne_ptr m(new mnemonic(a,n));
 		
-		mnemonics.insert(make_pair(a,m));
+		mnemonics.insert(make_pair(a.begin,m));
 		return m;
 	};
 	
-	mne_ptr add_mnemonic(string n, valproxy v1)
+	mne_ptr add_mnemonic(area a, string n, valproxy v1)
 	{
-		addr_t a = mnemonics.end() != mnemonics.begin() ? (--mnemonics.end())->first + 1 : address;
-		mne_ptr m(new mnemonic(area(a,a+1),n,{v1.value}));
+		mne_ptr m(new mnemonic(a,n,{v1.value}));
 		
-		mnemonics.insert(make_pair(a,m));
+		mnemonics.insert(make_pair(a.begin,m));
 		return m;
 	};
 	
-	mne_ptr add_mnemonic(string n, valproxy v1, valproxy v2)
+	mne_ptr add_mnemonic(area a, string n, valproxy v1, valproxy v2)
 	{
-		addr_t a = mnemonics.end() != mnemonics.begin() ? (--mnemonics.end())->first + 1 : address;
-		mne_ptr m(new mnemonic(area(a,a+1),n,{v1.value,v2.value}));
+		mne_ptr m(new mnemonic(a,n,{v1.value,v2.value}));
 		
-		mnemonics.insert(make_pair(a,m));
+		mnemonics.insert(make_pair(a.begin,m));
 		return m;
 	};
 
@@ -361,6 +358,8 @@ proc_ptr disassemble(const decoder<token,tokiter> &main, vector<token> tokens, a
 	list<tuple<addr_t,mne_cptr,bblock_ptr>> todo;
 	bblock_ptr entry(new basic_block());
 
+	proc->insert_bblock(entry);
+	proc->entry = entry;
 	todo.emplace_back(make_tuple(0,mne_cptr(0),entry));
 
 	while(!todo.empty())

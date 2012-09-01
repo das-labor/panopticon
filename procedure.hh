@@ -38,7 +38,7 @@ public:
 	
 	pair<iterator,iterator> all(void);
 	//pair<iter,iter> rev_postorder(void) const;
-	bblock_ptr entry(void);
+	bblock_ptr entry;
 
 protected:
 	list<bblock_ptr> basic_blocks;	// in rpo

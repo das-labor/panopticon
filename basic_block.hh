@@ -134,6 +134,7 @@ public:
 	void replace_outgoing(bblock_ptr from, bblock_ptr to);
 
 	const area &addresses(void) const;
+	void clear(void);
 
 protected:
 	area m_addresses;
