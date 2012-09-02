@@ -7,7 +7,6 @@
 #include "decoder.hh"
 #include "avr.hh"
 
-using namespace dframe;
 using namespace std;
 
 typedef uint16_t token;
@@ -88,7 +87,7 @@ typedef vector<uint16_t>::iterator tokiter;
 		st.unconditional(st.mnemonics.begin()->second,st.address + st.tokens.size());\
 	};
 
-proc_ptr avr_decode(vector<token> &bytes, addr_t entry)
+flow_ptr avr_decode(vector<token> &bytes, addr_t entry)
 {
 	decoder<token,vector<token>::iterator> main;
 

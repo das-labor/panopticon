@@ -2,7 +2,7 @@
 #define AVR_HH
 
 #include "mnemonic.hh"
-#include "procedure.hh"
+#include "flowgraph.hh"
 
 class reg : public variable
 {
@@ -123,6 +123,6 @@ private:
 	int ioRegister;
 };
 
-proc_ptr avr_decode(vector<uint16_t> &bytes,addr_t entry);
+flow_ptr avr_decode(vector<uint16_t> &bytes,addr_t entry);
 
 #endif

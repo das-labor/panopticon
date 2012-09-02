@@ -6,6 +6,7 @@
 #include <vector>
 #include <memory>
 #include <cassert>
+#include <sstream>
 
 using namespace std;
 
@@ -179,6 +180,21 @@ public:
 	list<value_ptr> arguments;
 
 	instr_ptr accept_instr(instr_ptr i)	{ instructions.push_back(i); return i; };
+	string inspect(void) const 
+	{ 
+		auto i = arguments.cbegin();
+		stringstream ret;
+		
+		ret << name;
+		while(i != arguments.cend())
+		{
+			ret << " " << (*i)->inspect();
+			if(++i != arguments.cend())
+				ret << ",";
+		}
+
+		return ret.str();
+	};
 };
 
 #endif

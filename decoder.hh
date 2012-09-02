@@ -1,3 +1,6 @@
+#ifndef DECODER_HH
+#define DECODER_HH
+
 #include <functional>
 #include <list>
 #include <map>
@@ -8,8 +11,6 @@
 #include "procedure.hh"
 
 using namespace std;
-
-namespace dframe {
 
 template<typename token,typename tokiter>
 struct sem_state
@@ -352,7 +353,7 @@ private:
 };
 
 template<typename token,typename tokiter>
-proc_ptr disassemble(const decoder<token,tokiter> &main, vector<token> tokens, addr_t offset = 0, bool cf_sensitive = true)
+proc_ptr disassemble_procedure(const decoder<token,tokiter> &main, vector<token> tokens, addr_t offset = 0, bool cf_sensitive = true)
 {
 	proc_ptr proc(new procedure());
 	list<tuple<addr_t,mne_cptr,bblock_ptr>> todo;
@@ -419,4 +420,4 @@ proc_ptr disassemble(const decoder<token,tokiter> &main, vector<token> tokens, a
 	return proc;
 };
 
-}; // namespace dframe
+#endif
