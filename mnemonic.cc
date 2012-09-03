@@ -33,7 +33,7 @@ string instr::inspect(void) const
 		return opname;
 	if(operands.size() == 1)
 		return opname + operands[0]->inspect();
-	if(opcode == Phi)
+	if(opcode == Phi || opcode == Call)
 		return opname + "(" + operands[0]->inspect() + "," + operands[1]->inspect() + ")";
 	if(operands.size() == 3)
 		return operands[0]->inspect() + "[" + operands[1]->inspect() + ":" + operands[2]->inspect() + "]";

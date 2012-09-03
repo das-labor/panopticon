@@ -87,6 +87,9 @@ pair<basic_block::succ_iterator,basic_block::succ_iterator> basic_block::success
 pair<basic_block::iterator,basic_block::iterator> basic_block::mnemonics(void)
 	{ return make_pair(m_mnemonics.begin(),m_mnemonics.end()); }
 
+pair<instr_iterator,instr_iterator> basic_block::instructions(void)
+	{ return make_pair(instr_iterator(m_mnemonics,m_mnemonics.begin()),instr_iterator(m_mnemonics,m_mnemonics.end())); }
+
 pair<basic_block::out_iterator,basic_block::out_iterator> basic_block::outgoing(void)
 	{ return make_pair(m_outgoing.begin(),m_outgoing.end()); }
 

@@ -105,6 +105,91 @@ private:
 	bool first;
 	list<tuple<guard_cptr,bblock_ptr,bblock_ptr>>::iterator adaptee;
 };*/
+class instr_iterator : public iterator_facade<
+			instr_iterator,
+			instr_cptr,
+			bidirectional_traversal_tag,
+			instr_cptr>
+{
+public:
+	instr_iterator(void) : mnemonics(nullptr), instr_set(false) {};
+	explicit instr_iterator(list<mne_cptr> &l, list<mne_cptr>::iterator i) : mnemonics(&l), mnemonic(i), instr_set(false)
+	{
+		if(i != l.end())
+		{
+			next_mnemonic();
+			instr_set = true;
+		}
+	};
+
+	instr_iterator &increment(void) 
+	{ 
+		if(!instr_set || next(instr) == (*mnemonic)->instructions.end())
+			next_mnemonic();
+		else
+			++instr;
+
+		instr_set = true;	
+		return *this;
+	};
+
+	instr_iterator &decrement(void)
+	{ 
+		if(!instr_set || instr == (*mnemonic)->instructions.begin())
+			prev_mnemonic();
+		else
+			--instr;
+		
+		instr_set = true;
+		return *this;
+	};
+
+	instr_cptr dereference(void) const
+	{ 
+		return *instr; 
+	};
+
+	bool equal(const instr_iterator &a) const 
+	{ 
+		return (instr_set == a.instr_set && 
+					  instr == a.instr && 
+					  mnemonic == a.mnemonic) ||
+					 (instr_set != a.instr_set &&
+					  mnemonic == a.mnemonic);
+	};
+
+private:
+	list<mne_cptr> *mnemonics;
+	list<mne_cptr>::iterator mnemonic;
+	list<instr_cptr>::const_iterator instr;
+	bool instr_set;
+
+	void next_mnemonic(void)
+	{
+		if(mnemonic == mnemonics->end())
+			return;
+
+		if(instr_set)
+			++mnemonic;
+		
+		while(mnemonic != mnemonics->end() && (*mnemonic)->instructions.empty())
+			++mnemonic;
+		instr = (*mnemonic)->instructions.begin();
+	}
+	
+	void prev_mnemonic(void)
+	{
+		if(mnemonic == mnemonics->begin())
+			return;
+
+		if(instr_set)
+			--mnemonic;
+		
+		while(mnemonic != mnemonics->begin() && (*mnemonic)->instructions.empty())
+			--mnemonic;
+		instr = --(*mnemonic)->instructions.end();
+	}		
+};
 
 class basic_block
 {
@@ -114,10 +199,11 @@ public:
 	typedef bblock_iterator<list<pair<guard_cptr,bblock_ptr>>> succ_iterator;
 	typedef list<pair<guard_cptr,bblock_ptr>>::iterator out_iterator;
 	typedef list<pair<guard_cptr,bblock_ptr>>::iterator in_iterator;
+	//typedef instr_iterator instr_iterator;
 
 	pair<pred_iterator,pred_iterator> predecessors(void);
 	pair<succ_iterator,succ_iterator> successors(void);
-	//pair<iter,iter> instructions(void) const;
+	pair<instr_iterator,instr_iterator> instructions(void);
 	pair<iterator,iterator> mnemonics(void);
 	pair<out_iterator,out_iterator> outgoing(void);
 	pair<in_iterator,in_iterator> incoming(void);

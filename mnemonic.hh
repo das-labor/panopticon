@@ -15,6 +15,7 @@ typedef uint32_t addr_t;
 typedef shared_ptr<struct value> value_ptr;
 typedef shared_ptr<struct variable> var_ptr;
 typedef shared_ptr<struct instr> instr_ptr;
+typedef shared_ptr<const struct instr> instr_cptr;
 typedef shared_ptr<class mnemonic> mne_ptr;
 typedef shared_ptr<const class mnemonic> mne_cptr;
 
@@ -113,6 +114,7 @@ public:
 		UDiv,			// Unsigned Division
  		SMod,			// Unsigned Modulo reduction
 		UMod,			// Signed Modulo reduction
+		Call,			// Procedure call
 		// Floating point
 	};
 
@@ -164,6 +166,7 @@ struct instr_builder
 	T mod_iu(name a, valproxy op1, valproxy op2)	{ return accept_instr(instr_ptr(new instr(instr::UMod,	" modᵤ ",	a,{op1.value,op2.value}))); };
 	T leq_is(name a, valproxy op1, valproxy op2)	{ return accept_instr(instr_ptr(new instr(instr::SLeq,	" ≤ₛ ",	a,{op1.value,op2.value}))); };
 	T leq_iu(name a, valproxy op1, valproxy op2)	{ return accept_instr(instr_ptr(new instr(instr::ULeq,	" ≤ᵤ ",	a,{op1.value,op2.value}))); };
+	T call(name a, valproxy op)										{ return accept_instr(instr_ptr(new instr(instr::Call,	"call",	a,{op.value}))); };
 
 protected:
 	virtual T accept_instr(instr_ptr i) = 0;
@@ -176,7 +179,7 @@ public:
 
 	area addresses;
 	string name;
-	list<instr_ptr> instructions;
+	list<instr_cptr> instructions;
 	list<value_ptr> arguments;
 
 	instr_ptr accept_instr(instr_ptr i)	{ instructions.push_back(i); return i; };

@@ -325,7 +325,8 @@ flow_ptr avr_decode(vector<token> &bytes, addr_t entry)
 	{
 		int k = st.capture_groups["k"];
 		
-		st.add_mnemonic(area(st.address,st.address+st.tokens.size()),"call",k);
+		st.add_mnemonic(area(st.address,st.address+st.tokens.size()),"call",k)
+			->call("t",k);
 		st.unconditional(st.mnemonics.begin()->second,st.address + st.tokens.size());
 	//	st.unconditional(st.mnemonics.begin()->second,k);
 		//st.is_call = true;
@@ -344,7 +345,8 @@ flow_ptr avr_decode(vector<token> &bytes, addr_t entry)
 
 		k = (k <= 2047 ? k : k - 4096);
 		
-		st.add_mnemonic(area(st.address,st.address+st.tokens.size()),"rcall",k);
+		st.add_mnemonic(area(st.address,st.address+st.tokens.size()),"rcall",k)
+			->call("t",k + 1 + st.address);
 		st.unconditional(st.mnemonics.begin()->second,st.address + 1);
 		//st.unconditional(st.mnemonics.begin()->second,k + 1 + st.address);
 		//st.is_call = true;
