@@ -175,6 +175,7 @@ protected:
 class mnemonic : public instr_builder<instr_ptr>
 {
 public:
+	typedef list<instr_cptr>::const_iterator iterator;
 	mnemonic(area a, string n, list<value_ptr> v = list<value_ptr>()) : addresses(a), name(n), arguments(v) {};
 
 	area addresses;

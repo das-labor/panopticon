@@ -49,6 +49,11 @@ struct sem_state
 	{ 
 		control_transfers.insert(make_pair(m,make_pair(a,guard_ptr(new guard()))));
 	};
+	
+	void branch(mne_ptr m, addr_t a, guard_ptr g) 
+	{ 
+		control_transfers.insert(make_pair(m,make_pair(a,g)));
+	};
 
 	// in
 	addr_t address;
@@ -356,17 +361,17 @@ template<typename token,typename tokiter>
 proc_ptr disassemble_procedure(const decoder<token,tokiter> &main, vector<token> tokens, addr_t offset = 0, bool cf_sensitive = true)
 {
 	proc_ptr proc(new procedure());
-	list<tuple<addr_t,mne_cptr,bblock_ptr>> todo;
+	list<tuple<addr_t,mne_cptr,bblock_ptr,guard_ptr>> todo;
 	bblock_ptr entry(new basic_block());
 
 	proc->insert_bblock(entry);
 	proc->entry = entry;
-	todo.emplace_back(make_tuple(0,mne_cptr(0),entry));
+	todo.emplace_back(make_tuple(offset,mne_cptr(0),entry,guard_ptr(new guard())));
 
 	while(!todo.empty())
 	{
 		sem_state<token,tokiter> state;
-		tuple<addr_t,mne_cptr,bblock_ptr> subject = todo.back();
+		tuple<addr_t,mne_cptr,bblock_ptr,guard_ptr> subject = todo.back();
 		bool ret;
 		tokiter i = tokens.begin();
 
@@ -397,7 +402,7 @@ proc_ptr disassemble_procedure(const decoder<token,tokiter> &main, vector<token>
 			});
 
 			// if mnemonic is right after the previous bb, add it 
-			tie(prev_known,prev_bb) = extend_procedure(proc,p.second,get<1>(subject),get<2>(subject));
+			tie(prev_known,prev_bb) = extend_procedure(proc,p.second,get<1>(subject),get<2>(subject),get<3>(subject));
 				
 			/* if procedure call, recrusive decode call, remember call for call graph
 			if(next.is_call)
@@ -413,7 +418,7 @@ proc_ptr disassemble_procedure(const decoder<token,tokiter> &main, vector<token>
 			// next addresses to disassemble
 			if(!prev_known && !ct.empty())
 				for_each(ct.begin(),ct.end(),[&](pair<addr_t,guard_ptr> q)
-					{ todo.push_back(make_tuple(q.first,p.second,prev_bb)); });
+					{ todo.push_back(make_tuple(q.first,p.second,prev_bb,q.second)); });
 		});
 	}
 

@@ -66,8 +66,8 @@ string guard::inspect(void) const
 			case relation::SLess: ret += " <ₛ "; break;
 			case relation::UGrtr: ret += " >ᵤ "; break;
 			case relation::SGrtr: ret += " >ₛ "; break;
-			case relation::Eq: ret += " =ᵤ "; break;
-			case relation::Neq: ret += " ≠ₛ "; break;
+			case relation::Eq: ret += " = "; break;
+			case relation::Neq: ret += " ≠ "; break;
 			default: assert(false);
 		}
 		ret += rel.operand2->inspect();
@@ -189,7 +189,7 @@ void basic_block::clear(void)
 const area &basic_block::addresses(void) const
 	{ return m_addresses; }
 
-pair<bblock_ptr,bblock_ptr> conditional(bblock_ptr bb, guard_ptr g, bblock_ptr trueb, bblock_ptr falseb)
+/*pair<bblock_ptr,bblock_ptr> branch(bblock_ptr bb, guard_ptr g, bblock_ptr trueb, bblock_ptr falseb)
 {
 	assert(bb && g);
 	bblock_ptr tret(trueb), fret(falseb);
@@ -204,6 +204,14 @@ pair<bblock_ptr,bblock_ptr> conditional(bblock_ptr bb, guard_ptr g, bblock_ptr t
 	bb->insert_outgoing(g->negation(),fret);
 
 	return make_pair(tret,fret);
+}*/
+
+void branch(bblock_ptr from, bblock_ptr to, guard_ptr g)
+{
+	assert(from && to && g);
+
+	to->insert_incoming(g,from);
+	from->insert_outgoing(g,to);
 }
 
 void unconditional(bblock_ptr bb_from, bblock_ptr bb_to)

@@ -71,7 +71,7 @@ bblock_ptr find_bblock(proc_ptr proc, addr_t a)
 	return bblock_ptr(0);
 }
 
-pair<bool,bblock_ptr> extend_procedure(proc_ptr proc, const mne_cptr cur_mne, const mne_cptr prev_mne, bblock_ptr prev_bb)
+pair<bool,bblock_ptr> extend_procedure(proc_ptr proc, const mne_cptr cur_mne, const mne_cptr prev_mne, bblock_ptr prev_bb, guard_ptr g)
 {
 	// if `prev_mne' isn't the last statement in its basic block, split the bb.
 	if(prev_bb)
@@ -108,7 +108,7 @@ pair<bool,bblock_ptr> extend_procedure(proc_ptr proc, const mne_cptr cur_mne, co
 		{
 			cout << " connect to existing basic block" << endl;
 			// TODO add guards
-			unconditional(prev_bb,cur_bb);
+			branch(prev_bb,cur_bb,g);
 		}
 		else 													// referes into the `target'. split target into two bb
 		{
@@ -117,9 +117,9 @@ pair<bool,bblock_ptr> extend_procedure(proc_ptr proc, const mne_cptr cur_mne, co
 			
 
 			if(prev_bb == cur_bb)
-				unconditional(shreds.second,shreds.second);
+				branch(shreds.second,shreds.second,g);
 			else
-				unconditional(cur_bb,shreds.second);
+				branch(cur_bb,shreds.second,g);
 			
 			proc->insert_bblock(shreds.second);
 			proc->insert_bblock(shreds.first);
@@ -158,7 +158,7 @@ pair<bool,bblock_ptr> extend_procedure(proc_ptr proc, const mne_cptr cur_mne, co
 				
 			bb->append_mnemonic(cur_mne);
 			proc->insert_bblock(bb);
-			unconditional(prev_bb,bb);
+			branch(prev_bb,bb,g);
 			
 			cout << endl;
 			return make_pair(false,bb);

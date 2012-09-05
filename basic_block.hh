@@ -242,7 +242,8 @@ protected:
 	//virtual void accept_instr(instr_ptr i);
 };
 
-pair<bblock_ptr,bblock_ptr> conditional(bblock_ptr bb, guard_ptr g, bblock_ptr trueb = bblock_ptr(), bblock_ptr falseb = bblock_ptr() );
+//pair<bblock_ptr,bblock_ptr> branch(bblock_ptr bb, guard_ptr g, bblock_ptr trueb = bblock_ptr(), bblock_ptr falseb = bblock_ptr());
+void branch(bblock_ptr from, bblock_ptr to, guard_ptr g);
 void unconditional(bblock_ptr bb_from, bblock_ptr bb_to);
 
 pair<bblock_ptr,bblock_ptr> split(bblock_ptr bb, addr_t pos, bool last);

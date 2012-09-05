@@ -1,3 +1,5 @@
+#include <sstream>
+
 #include "mnemonic.hh"
 
 bool operator==(const area &a, const area &b) { return a.isset == b.isset && (!a.isset || (a.begin == b.begin && a.end == b.end)); }
@@ -29,14 +31,20 @@ instr::instr(Opcode code, string opname, name var, vector<value_ptr> ops)
 	
 string instr::inspect(void) const 
 {
+	stringstream ss;
+
+	ss << assigns->inspect() << " ≔ ";
 	if(operands.size() == 0)
-		return opname;
-	if(operands.size() == 1)
-		return opname + operands[0]->inspect();
-	if(opcode == Phi || opcode == Call)
-		return opname + "(" + operands[0]->inspect() + "," + operands[1]->inspect() + ")";
-	if(operands.size() == 3)
-		return operands[0]->inspect() + "[" + operands[1]->inspect() + ":" + operands[2]->inspect() + "]";
+		ss << opname;
+	else if(opcode == Call)
+		ss << opname << "(" << operands[0]->inspect() << ")";
+	else if(operands.size() == 1)
+		ss << opname << operands[0]->inspect();
+	else if(opcode == Phi)
+		ss << opname << "(" << operands[0]->inspect() << "," << operands[1]->inspect() << ")";
+	else if(operands.size() == 3)
+		ss << operands[0]->inspect() << "[" << operands[1]->inspect() << ":" << operands[2]->inspect() << "]";
 	else
-		return operands[0]->inspect() + opname + operands[1]->inspect();
+		ss << operands[0]->inspect() << opname << operands[1]->inspect();
+	return ss.str();
 }

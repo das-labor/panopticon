@@ -34,21 +34,26 @@ typedef vector<uint16_t>::iterator tokiter;
 		st.unconditional(st.mnemonics.begin()->second,st.address + st.tokens.size());\
 	};
 
-#define branch(x) \
+#define branch(mnemonic,flag,set) \
 	[](sem_state<token,tokiter> &st) \
 	{	\
 		int k = st.capture_groups["k"];\
-		k = k <= 63 ? k : k - 128;\
+		guard_ptr g(new guard(flag,relation::Eq,set ? 1 : 0));\
 		\
-		st.add_mnemonic(area(st.address,st.address+st.tokens.size()),x,k);\
-		st.unconditional(st.mnemonics.begin()->second,st.address + 1);\
-		st.unconditional(st.mnemonics.begin()->second,st.address + k + 1);\
+		k = k <= 63 ? k : k - 128;\
+		st.add_mnemonic(area(st.address,st.address+st.tokens.size()),mnemonic,k);\
+		st.branch(st.mnemonics.begin()->second,st.address + 1,g->negation());\
+		st.branch(st.mnemonics.begin()->second,st.address + k + 1,g);\
 	};
 
-#define binary_regconst(x)\
+#define binary_regconst(x,func,...)\
 	[](sem_state<token,tokiter> &st)\
 	{\
-		st.add_mnemonic(area(st.address,st.address+st.tokens.size()),x,value_ptr(new reg(st.capture_groups["d"] + 16)),st.capture_groups["K"]);\
+		value_ptr r(new reg(st.capture_groups["d"] + 16));\
+		name r_name = reg(st.capture_groups["d"] + 16).nam;\
+		int K = st.capture_groups["K"];\
+		st.add_mnemonic(area(st.address,st.address+st.tokens.size()),x,r,K)\
+			->func(__VA_ARGS__);\
 		st.unconditional(st.mnemonics.begin()->second,st.address + st.tokens.size());\
 	};
 
@@ -118,7 +123,7 @@ flow_ptr avr_decode(vector<token> &bytes, addr_t entry)
 	main | "1001001 d@..... 1111" 			= unary_reg("push");
 	main | "1001010 d@..... 0010" 			= unary_reg("swap");
 	main | "1001001 r@..... 0100" 			= unary_reg("xch");
-	main | "1110 K@.... d@.... K@...."	= binary_regconst("ldi");
+	main | "1110 K@.... d@.... K@...."	= binary_regconst("ldi",assign,r_name,K);
 	main | "11101111 d@.... 1111" 			= unary_reg("ser");
 	main | "1001001 r@..... 0110" 			= unary_reg("lac");
 	main | "1001001 r@..... 0101" 			= unary_reg("las");
@@ -202,11 +207,11 @@ flow_ptr avr_decode(vector<token> &bytes, addr_t entry)
 	main | 0x9498 = simple("clz");
 	main | "000101 r@. d@..... r@...." 	= binary_reg("cp");
 	main | "000001 r@. d@..... r@...." 	= binary_reg("cpc");
-	main | "0011 K@.... d@.... K@...." 	= binary_regconst("cpi");
+	main | "0011 K@.... d@.... K@...." 	= binary_regconst("cpi",sub_i,"tmp",r,K);
 	main | "001000 d@.........." 				= unary_reg("tst");
 	
 	// bit-level logic
-	main | "0110 K@.... d@.... K@...." 	= binary_regconst("sbr");
+	//main | "0110 K@.... d@.... K@...." 	= binary_regconst("sbr",or_b,r,r,K);
 	main | "000011 d@.........."				= unary_reg("lsl");
 	main | "1001010 d@..... 0110"				= unary_reg("lsr");
 
@@ -214,7 +219,7 @@ flow_ptr avr_decode(vector<token> &bytes, addr_t entry)
 	main | "000111 r@. d@..... r@...."	= binary_reg("adc");
 	main | "000011 r@. d@..... r@...." 	= binary_reg("add");
 	main | "001000 r@. d@..... r@...." 	= binary_reg("and");
-	main | "0111 K@.... d@.... K@...." 	= binary_regconst("andi");
+	main | "0111 K@.... d@.... K@...." 	= binary_regconst("andi",and_b,r_name,r,K);
 	main | "001001 r@. d@..... r@...." 	= [](sem_state<token,tokiter> &st)
 	{
 		int d = st.capture_groups["d"];
@@ -233,16 +238,16 @@ flow_ptr avr_decode(vector<token> &bytes, addr_t entry)
 	};
 	main | "1001010 d@..... 0001"				= unary_reg("neg");
 	main | "001010 r@. d@..... r@...." 	= binary_reg("or");
-	main | "0110 K@.... d@.... K@...." 	= binary_regconst("ori");
+	main | "0110 K@.... d@.... K@...." 	= binary_regconst("ori",or_b,r_name,r,K);
 	main | "000110 r@. d@..... r@...." 	= binary_reg("sub");
-	main | "0101 K@.... d@.... K@...." 	= binary_regconst("subi");
+	main | "0101 K@.... d@.... K@...." 	= binary_regconst("subi",sub_i,r_name,r,K);
 	main | "1001010 d@..... 0101" 			= unary_reg("asr");
 	main | "000111 d@.........." 				= unary_reg("rol");
 	main | "1001010 d@..... 0111" 			= unary_reg("ror");
 	main | "1001010 d@..... 1010" 			= unary_reg("dec");
 	main | "1001010 d@..... 0011" 			= unary_reg("inc");
 	main | "000010 r@. d@..... r@...." 	= binary_reg("sbc");
-	main | "0100 K@.... d@.... K@...." 	= binary_regconst("sbci");
+	main | "0100 K@.... d@.... K@...." 	= binary_regconst("sbci",sub_i,r_name,r,K); // TODO: add carry
 	main | "1001010 d@..... 0000" 			= unary_reg("com");
 
 	// word-level arithmetic and logic
@@ -268,27 +273,27 @@ flow_ptr avr_decode(vector<token> &bytes, addr_t entry)
 	main | "000000110 d@... 0 r@..." 		= binary_reg("muls");
 	
 	
-	// conditional branches
+	// branch branches
 	// main | "111101 k@....... s@..." = simple("brbc");
 	// main | "111100 k@....... s@..." = [](sem_state<token,tokiter> &st)  { st.add_mnemonic(area(st.address,st.address+st.tokens.size()),"brbs"; });
-	main | "111101 k@....... 000" 			= branch("brcc");
-	main | "111100 k@....... 000" 			= branch("brcs");
-	main | "111100 k@....... 001" 			= branch("breq");
-	main | "111101 k@....... 100" 			= branch("brge");
-	main | "111101 k@....... 101" 			= branch("brhc");
-	main | "111100 k@....... 101" 			= branch("brhs");
-	main | "111101 k@....... 111" 			= branch("brid");
-	main | "111100 k@....... 111" 			= branch("brie");
-	main | "111100 k@....... 000" 			= branch("brlo");
-	main | "111100 k@....... 100" 			= branch("brlt");
-	main | "111100 k@....... 010" 			= branch("brmi");
-	main | "111101 k@....... 001"		 		= branch("brne");
-	main | "111101 k@....... 010" 			= branch("brpl");
-	main | "111101 k@....... 000" 			= branch("brsh");
-	main | "111101 k@....... 110" 			= branch("brtc");
-	main | "111100 k@....... 110" 			= branch("brts");
-	main | "111101 k@....... 011" 			= branch("brvc");
-	main | "111100 k@....... 011" 			= branch("brvs");
+	main | "111101 k@....... 000" 			= branch("brcc","C",false);
+	main | "111100 k@....... 000" 			= branch("brcs","C",true);
+	main | "111100 k@....... 001" 			= branch("breq","Z",true);
+	main | "111101 k@....... 100" 			= branch("brge","S",false);
+	main | "111101 k@....... 101" 			= branch("brhc","H",false);
+	main | "111100 k@....... 101" 			= branch("brhs","H",true);
+	main | "111101 k@....... 111" 			= branch("brid","I",false);
+	main | "111100 k@....... 111" 			= branch("brie","I",true);
+	main | "111100 k@....... 000" 			= branch("brlo","C",true); 	// XXX
+	main | "111100 k@....... 100" 			= branch("brlt","S",true); 	// XXX
+	main | "111100 k@....... 010" 			= branch("brmi","N",true);
+	main | "111101 k@....... 001"		 		= branch("brne","Z",false); // XXX
+	main | "111101 k@....... 010" 			= branch("brpl","N",false);
+	main | "111101 k@....... 000" 			= branch("brsh","C",false); // XXX
+	main | "111101 k@....... 110" 			= branch("brtc","T",false);
+	main | "111100 k@....... 110" 			= branch("brts","T",true);
+	main | "111101 k@....... 011" 			= branch("brvc","V",false);
+	main | "111100 k@....... 011" 			= branch("brvs","V",true);
 	main | "1111 110r@..... 0 b@..." 		= [](sem_state<token,tokiter> &st)
 	{
 		st.add_mnemonic(area(st.address,st.address+st.tokens.size()),"sbrc",value_ptr(new reg(st.capture_groups["r"])),st.capture_groups["b"]);

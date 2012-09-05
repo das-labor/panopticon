@@ -18,6 +18,12 @@ proc_ptr find_procedure(flow_ptr fg, addr_t a)
 	return proc_ptr(0);
 }
 
+bool has_procedure(flow_ptr flow, addr_t entry)
+{
+	return any_of(flow->procedures.begin(),flow->procedures.end(),[&](const proc_ptr p) 
+								{ cerr<<p->entry->addresses().begin << endl;return p->entry->addresses().includes(entry); });
+}
+
 string graphviz(flow_ptr fg)
 {
 	stringstream ss;
@@ -35,7 +41,7 @@ string graphviz(flow_ptr fg)
 
 		ss << "\tsubgraph cluster_" << procname << endl
 			 << "\t{" << endl
-			 << "\t\tlabel = \"procedure at 0x" << hex << procname << dec << "\";" << endl
+			 << "\t\tlabel = \"procedure at " << procname << "\";" << endl
 			 << "\t\tcolor = black;" << endl
 			 << "\t\tfontname = \"Monospace\";" << endl;
 
@@ -45,13 +51,36 @@ string graphviz(flow_ptr fg)
 		{
 			basic_block::iterator j,jend;
 
-			ss << "\t\tbb_" << procname << "_" << bb->addresses().begin << " [label=\"";
+			ss << "\t\tbb_" << procname 
+				 << "_" << bb->addresses().begin 
+				 << " [label=<<table BORDER=\"0\" CELLBORDER=\"0\" CELLSPACING=\"0\" ALIGN=\"LEFT\">";
 			
 			// mnemonics
 			tie(j,jend) = bb->mnemonics();
-			for_each(j,jend,[&ss](const mne_cptr m)
-				{ ss << "0x" << hex << m->addresses.begin << dec << ": " << m->inspect() << "\\l"; });
-			ss << "\"];" << endl;
+			while(j != jend)
+			{
+				const mne_cptr m = *j++;
+				mnemonic::iterator l;
+
+				ss << "<tr ALIGN=\"LEFT\"><td ALIGN=\"LEFT\">0x" << hex << m->addresses.begin << dec << "</td><td ALIGN=\"LEFT\">" << m->inspect();
+				
+				if(!m->instructions.empty())
+				{
+					ss << "</td><td ALIGN=\"LEFT\"><table BORDER=\"0\" CELLBORDER=\"0\" CELLSPACING=\"0\" ALIGN=\"LEFT\">";
+					l = m->instructions.begin();
+					while(l != m->instructions.end())
+					{
+						instr_cptr in = *l++;
+						ss << "<tr ALIGN=\"LEFT\"><td ALIGN=\"LEFT\">" 
+							 << in->inspect()
+							 << "</td></tr>";
+					}
+					ss << "</table>";
+				}
+				ss << "</td></tr>";
+			}
+
+			ss << "</table>>];" << endl;
 
 			basic_block::out_iterator k,kend;
 

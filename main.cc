@@ -10,6 +10,8 @@ using namespace std;
 
 /*
  * TODO
+ * - complete IL
+ * - sym. exec to infer guards
  * - cfg reconstr
  * main | <skip> | <2tok instr> = add to control_trans and instr
  * main | <skip> = 1 tok instr
