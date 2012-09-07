@@ -53,15 +53,15 @@ struct guard
 };
 
 template<>
-class bblock_iterator<list<pair<guard_cptr,bblock_ptr>>> : public iterator_facade<
-			bblock_iterator<list<pair<guard_cptr,bblock_ptr>>>,
+class bblock_iterator<list<pair<guard_ptr,bblock_ptr>>> : public iterator_facade<
+			bblock_iterator<list<pair<guard_ptr,bblock_ptr>>>,
 			bblock_ptr,
 			bidirectional_traversal_tag,
 			bblock_ptr>
 {
 public:
 	bblock_iterator(void) {};
-	explicit bblock_iterator(list<pair<guard_cptr,bblock_ptr>>::iterator i) : adaptee(i) {};
+	explicit bblock_iterator(list<pair<guard_ptr,bblock_ptr>>::iterator i) : adaptee(i) {};
 	bblock_iterator &increment(void) { ++adaptee; return *this; };
 	bblock_iterator &decrement(void) { --adaptee; return *this; };
 
@@ -69,11 +69,11 @@ public:
 	bool equal(const bblock_iterator &a) const { return adaptee == a.adaptee; }
 
 private:
-	list<pair<guard_cptr,bblock_ptr>>::iterator adaptee;
+	list<pair<guard_ptr,bblock_ptr>>::iterator adaptee;
 };
 /*
 template<>
-class bblock_iterator<list<tuple<guard_cptr,bblock_ptr,bblock_ptr>>> : public iterator_facade<
+class bblock_iterator<list<tuple<guard_ptr,bblock_ptr,bblock_ptr>>> : public iterator_facade<
 			bblock_iterator,
 			bblock_ptr,
 			bidirectional_traversal_tag,
@@ -81,7 +81,7 @@ class bblock_iterator<list<tuple<guard_cptr,bblock_ptr,bblock_ptr>>> : public it
 {
 public:
 	bblock_iterator(void) {};
-	explicit bblock_iterator(list<tuple<guard_cptr,bblock_ptr,bblock_ptr>>::iterator &i) : adaptee(i), first(true) {};
+	explicit bblock_iterator(list<tuple<guard_ptr,bblock_ptr,bblock_ptr>>::iterator &i) : adaptee(i), first(true) {};
 	bblock_iterator &increment(void) 
 	{ 
 		first = !first;
@@ -103,7 +103,7 @@ public:
 
 private:
 	bool first;
-	list<tuple<guard_cptr,bblock_ptr,bblock_ptr>>::iterator adaptee;
+	list<tuple<guard_ptr,bblock_ptr,bblock_ptr>>::iterator adaptee;
 };*/
 class instr_iterator : public iterator_facade<
 			instr_iterator,
@@ -174,7 +174,9 @@ private:
 		
 		while(mnemonic != mnemonics->end() && (*mnemonic)->instructions.empty())
 			++mnemonic;
-		instr = (*mnemonic)->instructions.begin();
+		
+		if(mnemonic != mnemonics->end())
+			instr = (*mnemonic)->instructions.begin();
 	}
 	
 	void prev_mnemonic(void)
@@ -195,10 +197,10 @@ class basic_block
 {
 public:
 	typedef list<mne_cptr>::iterator iterator;
-	typedef bblock_iterator<list<pair<guard_cptr,bblock_ptr>>> pred_iterator;
-	typedef bblock_iterator<list<pair<guard_cptr,bblock_ptr>>> succ_iterator;
-	typedef list<pair<guard_cptr,bblock_ptr>>::iterator out_iterator;
-	typedef list<pair<guard_cptr,bblock_ptr>>::iterator in_iterator;
+	typedef bblock_iterator<list<pair<guard_ptr,bblock_ptr>>> pred_iterator;
+	typedef bblock_iterator<list<pair<guard_ptr,bblock_ptr>>> succ_iterator;
+	typedef list<pair<guard_ptr,bblock_ptr>>::iterator out_iterator;
+	typedef list<pair<guard_ptr,bblock_ptr>>::iterator in_iterator;
 	//typedef instr_iterator instr_iterator;
 
 	pair<pred_iterator,pred_iterator> predecessors(void);
@@ -209,8 +211,8 @@ public:
 	pair<in_iterator,in_iterator> incoming(void);
 	
 	void append_mnemonic(mne_cptr m);
-	void insert_incoming(guard_cptr, bblock_ptr m);
-	void insert_outgoing(guard_cptr, bblock_ptr m);
+	void insert_incoming(guard_ptr, bblock_ptr m);
+	void insert_outgoing(guard_ptr, bblock_ptr m);
 	
 	void remove_mnemonic(mne_cptr m);
 	void remove_incoming(bblock_ptr m);
@@ -222,22 +224,15 @@ public:
 	const area &addresses(void) const;
 	void clear(void);
 
+	void prepend_instr(instr_ptr i);
+
 protected:
 	area m_addresses;
 	list<mne_cptr> m_mnemonics;
 	
-	list<pair<guard_cptr,bblock_ptr>> m_incoming;
-	list<pair<guard_cptr,bblock_ptr>> m_outgoing;
-//	list<tuple<guard_cptr,bblock_ptr,bblock_ptr>> m_outgoing;
-	
-	// dflow::dominance
-	//dtree_ptr dominance;	// node in the dominance tree
-
-	// dflow::liveness
-	//set<name> uevar;		// up exposed variables
-	//set<name> varkill;	// overwritten vars
-	//set<name> liveout;
-	
+	list<pair<guard_ptr,bblock_ptr>> m_incoming;
+	list<pair<guard_ptr,bblock_ptr>> m_outgoing;
+		
 //protected:
 	//virtual void accept_instr(instr_ptr i);
 };

@@ -46,14 +46,13 @@ typedef vector<uint16_t>::iterator tokiter;
 		st.branch(st.mnemonics.begin()->second,st.address + k + 1,g);\
 	};
 
-#define binary_regconst(x,func,...)\
+#define binary_regconst(x,func)\
 	[](sem_state<token,tokiter> &st)\
 	{\
-		value_ptr r(new reg(st.capture_groups["d"] + 16));\
-		name r_name = reg(st.capture_groups["d"] + 16).nam;\
+		name Rd = reg(st.capture_groups["d"] + 16).nam;\
 		int K = st.capture_groups["K"];\
-		st.add_mnemonic(area(st.address,st.address+st.tokens.size()),x,r,K)\
-			->func(__VA_ARGS__);\
+		mne_ptr m = st.add_mnemonic(area(st.address,st.address+st.tokens.size()),x,Rd,K);\
+		func(Rd,K,m);\
 		st.unconditional(st.mnemonics.begin()->second,st.address + st.tokens.size());\
 	};
 
@@ -123,7 +122,11 @@ flow_ptr avr_decode(vector<token> &bytes, addr_t entry)
 	main | "1001001 d@..... 1111" 			= unary_reg("push");
 	main | "1001010 d@..... 0010" 			= unary_reg("swap");
 	main | "1001001 r@..... 0100" 			= unary_reg("xch");
-	main | "1110 K@.... d@.... K@...."	= binary_regconst("ldi",assign,r_name,K);
+	main | "1110 K@.... d@.... K@...."	= binary_regconst("ldi",[&](const name &Rd, int K, mne_ptr m)
+	{
+		m->assign(Rd,K);
+	});
+
 	main | "11101111 d@.... 1111" 			= unary_reg("ser");
 	main | "1001001 r@..... 0110" 			= unary_reg("lac");
 	main | "1001001 r@..... 0101" 			= unary_reg("las");
@@ -207,7 +210,61 @@ flow_ptr avr_decode(vector<token> &bytes, addr_t entry)
 	main | 0x9498 = simple("clz");
 	main | "000101 r@. d@..... r@...." 	= binary_reg("cp");
 	main | "000001 r@. d@..... r@...." 	= binary_reg("cpc");
-	main | "0011 K@.... d@.... K@...." 	= binary_regconst("cpi",sub_i,"tmp",r,K);
+	main | "0011 K@.... d@.... K@...." 	= binary_regconst("cpi",[&](const name &Rd, int K, mne_ptr m)
+	{
+		value_ptr R = m->sub_i("R",Rd,K);
+		
+		// H: !Rd3•K3 + K3•R3 + R3•!Rd3
+		m->or_b("H",m->or_b(
+			m->and_b(
+				m->not_b(m->slice(Rd,3,3)),
+				m->slice(K,3,3)),
+			m->and_b(
+				m->slice(R,3,3),
+				m->slice(K,3,3))),
+			m->and_b(
+				m->not_b(m->slice(Rd,3,3)),
+				m->slice(R,3,3)));
+		
+		// V: Rd7•!K7•!R7 + !Rd7•K7•R7
+		m->or_b("V",
+			m->and_b(m->and_b(
+				m->slice(Rd,7,7),
+				m->not_b(m->slice(K,7,7))),
+				m->not_b(m->slice(R,7,7))),
+			m->and_b(m->and_b(
+				m->not_b(m->slice(Rd,7,7)),
+				m->slice(K,7,7)),
+				m->slice(R,7,7)));
+
+		// N: R7
+		m->assign("N",m->slice(R,7,7));
+
+		// Z: !R7•!R6•!R5•!R4•!R3•!R2•!R1•!R0
+		m->and_b("Z",m->not_b(m->slice(R,0,0)),
+			m->and_b(m->not_b(m->slice(R,1,1)),
+				m->and_b(m->not_b(m->slice(R,2,2)),
+					m->and_b(m->not_b(m->slice(R,3,3)),
+						m->and_b(m->not_b(m->slice(R,4,4)),
+							m->and_b(m->not_b(m->slice(R,5,5)),
+								m->and_b(m->not_b(m->slice(R,6,6)),m->not_b(m->slice(R,7,7)))))))));
+
+		// C: !Rd7•K7 + K7•R7 + R7•!Rd7
+		m->or_b("C",m->or_b(
+			m->and_b(
+				m->not_b(m->slice(Rd,7,7)),
+				m->slice(K,7,7)),
+			m->and_b(
+				m->slice(R,7,7),
+				m->slice(K,7,7))),
+			m->and_b(
+				m->not_b(m->slice(Rd,7,7)),
+				m->slice(R,7,7)));
+
+		// S: N ⊕ V 
+		m->xor_b("S","N","V");
+	});
+
 	main | "001000 d@.........." 				= unary_reg("tst");
 	
 	// bit-level logic
@@ -219,7 +276,11 @@ flow_ptr avr_decode(vector<token> &bytes, addr_t entry)
 	main | "000111 r@. d@..... r@...."	= binary_reg("adc");
 	main | "000011 r@. d@..... r@...." 	= binary_reg("add");
 	main | "001000 r@. d@..... r@...." 	= binary_reg("and");
-	main | "0111 K@.... d@.... K@...." 	= binary_regconst("andi",and_b,r_name,r,K);
+	main | "0111 K@.... d@.... K@...." 	= binary_regconst("andi",[&](const name &Rd, int K, mne_ptr m)
+	{
+		m->add_i(Rd,Rd,K);
+	});
+
 	main | "001001 r@. d@..... r@...." 	= [](sem_state<token,tokiter> &st)
 	{
 		int d = st.capture_groups["d"];
@@ -238,16 +299,34 @@ flow_ptr avr_decode(vector<token> &bytes, addr_t entry)
 	};
 	main | "1001010 d@..... 0001"				= unary_reg("neg");
 	main | "001010 r@. d@..... r@...." 	= binary_reg("or");
-	main | "0110 K@.... d@.... K@...." 	= binary_regconst("ori",or_b,r_name,r,K);
+	main | "0110 K@.... d@.... K@...." 	= binary_regconst("ori",[&](const name &Rd, int K, mne_ptr m)
+	{
+		m->or_b(Rd,Rd,K);
+	});
+
 	main | "000110 r@. d@..... r@...." 	= binary_reg("sub");
-	main | "0101 K@.... d@.... K@...." 	= binary_regconst("subi",sub_i,r_name,r,K);
+	main | "0101 K@.... d@.... K@...." 	= binary_regconst("subi",[&](const name &Rd, int K, mne_ptr m)
+	{ 
+		m->sub_i("R",Rd,K);
+		m->and_b("h1",Rd,K);
+		m->and_b("h2","R",K);
+		m->and_b("h3",Rd,"R");
+		m->or_b("h4","h1","h2");
+		m->or_b("h4","h4","h3");
+		m->slice("H","h4",3,3);
+	});
+
 	main | "1001010 d@..... 0101" 			= unary_reg("asr");
 	main | "000111 d@.........." 				= unary_reg("rol");
 	main | "1001010 d@..... 0111" 			= unary_reg("ror");
 	main | "1001010 d@..... 1010" 			= unary_reg("dec");
 	main | "1001010 d@..... 0011" 			= unary_reg("inc");
 	main | "000010 r@. d@..... r@...." 	= binary_reg("sbc");
-	main | "0100 K@.... d@.... K@...." 	= binary_regconst("sbci",sub_i,r_name,r,K); // TODO: add carry
+	main | "0100 K@.... d@.... K@...." 	= binary_regconst("sbci",[&](const name &Rd, int K, mne_ptr m)
+	{
+		m->sub_i(Rd,Rd,K);
+	});
+
 	main | "1001010 d@..... 0000" 			= unary_reg("com");
 
 	// word-level arithmetic and logic

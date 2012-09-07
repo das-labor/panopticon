@@ -8,49 +8,42 @@
 domtree::domtree(bblock_ptr b) : intermediate(0), basic_block(b) {}
 
 procedure::procedure(void) {}
-/*procedure::procedure(list<bblock_ptr> &e)
+
+pair<procedure::iterator,procedure::iterator> procedure::rev_postorder(void) 
 { 
-	if(e.size())
+	if(basic_blocks.size() != rpo.size())
 	{
 		set<bblock_ptr> known;
-		vector<bblock_ptr> po;
+		list<bblock_ptr> postorder;
 
-		entry = e[0]; 
-		basic_blocks.reserve(e.size());
-		po.reserve(e.size());
+		rpo.clear();
 
 		function<void(bblock_ptr)> visit = [&,this](bblock_ptr bb)
 		{
-			for_each(bb->successors.begin(),bb->successors.end(),[&](bblock_ptr s)
+			basic_block::succ_iterator i,iend;
+
+			tie(i,iend) = bb->successors();
+			for_each(i,iend,[&](bblock_ptr s)
 			{	
 				if(known.insert(s).second)
 					visit(s);
 			});
-			po.push_back(bb);
-
-			for_each(bb->instructions.begin(),bb->instructions.end(),[this](pair<instr_ptr,addr_t> ip)
-			{	
-				names.insert(ip.first->assigns->nam);
-				for_each(ip.first->operands.begin(),ip.first->operands.end(),[this](value_ptr v)
-				{
-					shared_ptr<variable> w;
-					if((w = dynamic_pointer_cast<variable>(v)))
-						names.insert(w->nam);
-				});
-			});
+			postorder.push_back(bb);
 		};
 		visit(entry);
 
-		copy(po.rbegin(),po.rend(),inserter(basic_blocks,basic_blocks.begin()));
-		assert(basic_blocks.size() == e.size());
+		copy(postorder.rbegin(),postorder.rend(),inserter(rpo,rpo.begin()));
+		assert(basic_blocks.size() == rpo.size());
 	}
-}*/
+
+	return make_pair(rpo.begin(),rpo.end());
+}
 
 void procedure::insert_bblock(bblock_ptr m)
 	{ basic_blocks.push_back(m); };
 
 void procedure::remove_bblock(bblock_ptr m)
- { basic_blocks.remove(m); };
+	{ basic_blocks.remove(m); };
 
 pair<procedure::iterator,procedure::iterator> procedure::all(void) 
 	{ return make_pair(basic_blocks.begin(),basic_blocks.end()); };

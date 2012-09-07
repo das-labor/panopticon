@@ -10,8 +10,10 @@ using namespace std;
 
 /*
  * TODO
+ * - ssa()
  * - complete IL
  * - sym. exec to infer guards
+ *   - construct transfer function for bb, ask SAT solver if f_bb(X) <=> x0 = x1 OR ... OR x0 > x1 OR ... OR x0 >= x1 OR ... 
  * - cfg reconstr
  * main | <skip> | <2tok instr> = add to control_trans and instr
  * main | <skip> = 1 tok instr

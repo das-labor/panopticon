@@ -62,22 +62,25 @@ string graphviz(flow_ptr fg)
 				const mne_cptr m = *j++;
 				mnemonic::iterator l;
 
-				ss << "<tr ALIGN=\"LEFT\"><td ALIGN=\"LEFT\">0x" << hex << m->addresses.begin << dec << "</td><td ALIGN=\"LEFT\">" << m->inspect();
+				ss << "<tr ALIGN=\"LEFT\"><td ALIGN=\"LEFT\">0x" 
+					 << hex << m->addresses.begin << dec 
+					 << "</td><td ALIGN=\"LEFT\">" << m->inspect()
+					 << "</td></tr>";
 				
 				if(!m->instructions.empty())
 				{
-					ss << "</td><td ALIGN=\"LEFT\"><table BORDER=\"0\" CELLBORDER=\"0\" CELLSPACING=\"0\" ALIGN=\"LEFT\">";
+					ss << "<tr><td COLSPAN=\"2\"><table BORDER=\"0\" CELLBORDER=\"0\" CELLSPACING=\"0\" ALIGN=\"LEFT\">";
 					l = m->instructions.begin();
 					while(l != m->instructions.end())
 					{
 						instr_cptr in = *l++;
 						ss << "<tr ALIGN=\"LEFT\"><td ALIGN=\"LEFT\">" 
-							 << in->inspect()
+							 << "<font POINT-SIZE=\"11\">" << in->inspect() << "</font>"
 							 << "</td></tr>";
 					}
-					ss << "</table>";
+					ss << "</table></td></tr>";
 				}
-				ss << "</td></tr>";
+//				ss << "</td></tr>";
 			}
 
 			ss << "</table>>];" << endl;
@@ -86,7 +89,7 @@ string graphviz(flow_ptr fg)
 
 			// outgoing edges
 			tie(k,kend) = bb->outgoing();
-			for_each(k,kend,[&bb,&ss,&procname](const pair<guard_cptr,bblock_ptr> s) 
+			for_each(k,kend,[&bb,&ss,&procname](const pair<guard_ptr,bblock_ptr> s) 
 			{ 
 				ss << "\t\tbb_" << procname << "_" << bb->addresses().begin 
 					 << " -> bb_" << procname << "_" << s.second->addresses().begin
@@ -97,7 +100,7 @@ string graphviz(flow_ptr fg)
 
 			// incoming edges
 			tie(l,lend) = bb->incoming();
-			for_each(l,lend,[&bb](const pair<guard_cptr,bblock_ptr> s) 
+			for_each(l,lend,[&bb](const pair<guard_ptr,bblock_ptr> s) 
 			{ 
 				ss << "\t\tbb_" << procname << "_" << bb->addresses().begin 
 					 << " -> bb_" << procname << "_" << s.second->addresses().begin 

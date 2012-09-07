@@ -6,6 +6,7 @@
 
 #include "procedure.hh"
 #include "decoder.hh"
+#include "dflow.hh"
 
 using namespace std;
 
@@ -14,6 +15,8 @@ typedef shared_ptr<struct flowgraph> flow_ptr;
 struct flowgraph
 {
 	set<proc_ptr> procedures;
+	map<proc_ptr,dom_ptr> dominance;
+	map<proc_ptr,live_ptr> liveness;
 };
 
 bool has_procedure(flow_ptr flow, addr_t entry);
@@ -38,10 +41,10 @@ flow_ptr disassemble(const decoder<token,tokiter> &main, vector<token> tokens, a
 		if(has_procedure(ret,tgt))
 			continue;
 
-		cerr << "dissass " << tgt << endl;
 		proc = disassemble_procedure(main,tokens,tgt,cf_sensitive);
 		ret->procedures.insert(proc);
 
+		// look for call instructions to find new procedures to disassemble
 		tie(i,iend) = proc->all();
 		while(i != iend)
 		{	
@@ -58,13 +61,21 @@ flow_ptr disassemble(const decoder<token,tokiter> &main, vector<token> tokens, a
 					shared_ptr<const constant> c = dynamic_pointer_cast<const constant>(in->operands[0]);
 
 					if(c && !has_procedure(ret,(unsigned int)c->val))
-					{
-						cerr << "add " << c->val << endl;
 						call_targets.insert(c->val);
-					}
 				}
 			}
 		}
+
+		// compute dominance tree
+		dom_ptr dom = dominance_tree(proc);
+		ret->dominance.insert(make_pair(proc,dom));
+
+		// compute liveness information
+		live_ptr live = liveness(proc);
+		ret->liveness.insert(make_pair(proc,live));
+
+		// rename variables and compute semi-pruned SSA form
+		ssa(proc,dom,live);
 	}
 
 	return ret;

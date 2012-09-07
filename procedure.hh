@@ -37,17 +37,12 @@ public:
 	void remove_bblock(bblock_ptr m);
 	
 	pair<iterator,iterator> all(void);
-	//pair<iter,iter> rev_postorder(void) const;
+	pair<iterator,iterator> rev_postorder(void);
 	bblock_ptr entry;
 
 protected:
-	list<bblock_ptr> basic_blocks;	// in rpo
-
-	//stash<bblock_ptr> bblock_map;
-
-	// dflow::liveness
-	//set<name> names;									// global (procedure-wide) names
-	//map<name,set<bblock_ptr>> usage;	// maps names to blocks that use them
+	list<bblock_ptr> basic_blocks;	
+	list<bblock_ptr> rpo;
 };
 
 bblock_ptr find_bblock(proc_ptr proc, addr_t a);

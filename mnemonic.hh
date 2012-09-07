@@ -133,46 +133,76 @@ struct valproxy
 {
 	valproxy(value_ptr v) : value(v) {};
 	valproxy(const char *a) : value(new variable(name(a))) {};
+	valproxy(const name &a) : value(new variable(name(a))) {};
 	valproxy(int a) : value(new constant(a)) {};
 	valproxy(void *a) : value(new undefined()) {};
 
 	value_ptr value;
 };
 
-template<typename T>
-struct instr_builder
+class instr_builder
 {
-	T and_b(name a, valproxy op1, valproxy op2)	{ return accept_instr(instr_ptr(new instr(instr::And,		" ∨ ",		a,{op1.value,op2.value}))); };
-	T or_b(name a, valproxy op1, valproxy op2)	{ return accept_instr(instr_ptr(new instr(instr::Or,		" ∧ ",		a,{op1.value,op2.value}))); };
-	T xor_b(name a, valproxy op1, valproxy op2)	{ return accept_instr(instr_ptr(new instr(instr::Xor,		" ⊕ ",		a,{op1.value,op2.value}))); };
-	T phi(name a, valproxy op1, valproxy op2)		{ return accept_instr(instr_ptr(new instr(instr::Phi,		"ϕ",			a,{op1.value,op2.value}))); };
-	T not_b(name a, valproxy op) 								{ return accept_instr(instr_ptr(new instr(instr::Not,		"¬",			a,{op.value}))); };
-	T assign(name a, valproxy op)								{ return accept_instr(instr_ptr(new instr(instr::Assign,"",				a,{op.value}))); };
-	T undef(name a)															{ return accept_instr(instr_ptr(new instr(instr::Assign,"",				a,{value_ptr(new undefined)}))); };
-	T shiftr_u(name a, valproxy cnt, valproxy op)	{ return accept_instr(instr_ptr(new instr(instr::UShr,	" ≫ ",		a,{cnt.value,op.value}))); };
-	T shiftl_u(name a, valproxy cnt, valproxy op)	{ return accept_instr(instr_ptr(new instr(instr::UShl,	" ≪ ",		a,{cnt.value,op.value}))); };
-	T shiftr_s(name a, valproxy cnt, valproxy op)	{ return accept_instr(instr_ptr(new instr(instr::SShr,	" ≫ₛ ",		a,{cnt.value,op.value}))); };
-	T shiftl_s(name a, valproxy cnt, valproxy op)	{ return accept_instr(instr_ptr(new instr(instr::SShl,	" ≪ₛ ",		a,{cnt.value,op.value}))); };
-	T ext_u(name a, valproxy cnt, valproxy op)		{ return accept_instr(instr_ptr(new instr(instr::UExt,	" ↤ᵤ ",		a,{cnt.value,op.value}))); };
-	T ext_s(name a, valproxy cnt, valproxy op)		{ return accept_instr(instr_ptr(new instr(instr::SExt,	" ↤ₛ ",		a,{cnt.value,op.value}))); };
-	T slice(name a, valproxy op, valproxy from, valproxy to)	{ return accept_instr(instr_ptr(new instr(instr::Slice,	":",a,{op.value,from.value,to.value}))); };
-	T concat(name a, valproxy op1, valproxy op2)	{ return accept_instr(instr_ptr(new instr(instr::Concat," ∷ ",		a,{op1.value,op2.value}))); };
-	T add_i(name a, valproxy op1, valproxy op2)		{ return accept_instr(instr_ptr(new instr(instr::Add,		" + ",		a,{op1.value,op2.value}))); };
-	T sub_i(name a, valproxy op1, valproxy op2)		{ return accept_instr(instr_ptr(new instr(instr::Sub,		" - ",		a,{op1.value,op2.value}))); };
-	T mul_i(name a, valproxy op1, valproxy op2)		{ return accept_instr(instr_ptr(new instr(instr::Mul,		" × ",		a,{op1.value,op2.value}))); };
-	T div_is(name a, valproxy op1, valproxy op2)	{ return accept_instr(instr_ptr(new instr(instr::SDiv,	" ÷ₛ ",		a,{op1.value,op2.value}))); };
-	T div_iu(name a, valproxy op1, valproxy op2)	{ return accept_instr(instr_ptr(new instr(instr::UDiv,	" ÷ᵤ ",		a,{op1.value,op2.value}))); };
-	T mod_is(name a, valproxy op1, valproxy op2)	{ return accept_instr(instr_ptr(new instr(instr::SMod,	" modₛ ",	a,{op1.value,op2.value}))); };
-	T mod_iu(name a, valproxy op1, valproxy op2)	{ return accept_instr(instr_ptr(new instr(instr::UMod,	" modᵤ ",	a,{op1.value,op2.value}))); };
-	T leq_is(name a, valproxy op1, valproxy op2)	{ return accept_instr(instr_ptr(new instr(instr::SLeq,	" ≤ₛ ",	a,{op1.value,op2.value}))); };
-	T leq_iu(name a, valproxy op1, valproxy op2)	{ return accept_instr(instr_ptr(new instr(instr::ULeq,	" ≤ᵤ ",	a,{op1.value,op2.value}))); };
-	T call(name a, valproxy op)										{ return accept_instr(instr_ptr(new instr(instr::Call,	"call",	a,{op.value}))); };
+public:
+	// named
+	value_ptr and_b(name a, valproxy op1, valproxy op2);
+	value_ptr or_b(name a, valproxy op1, valproxy op2);
+	value_ptr xor_b(name a, valproxy op1, valproxy op2);
+	value_ptr phi(name a, valproxy op1, valproxy op2);
+	value_ptr not_b(name a, valproxy op);
+	value_ptr assign(name a, valproxy op);
+	value_ptr undef(name a);
+	value_ptr shiftr_u(name a, valproxy cnt, valproxy op);
+	value_ptr shiftl_u(name a, valproxy cnt, valproxy op);
+	value_ptr shiftr_s(name a, valproxy cnt, valproxy op);
+	value_ptr shiftl_s(name a, valproxy cnt, valproxy op);
+	value_ptr ext_u(name a, valproxy cnt, valproxy op);
+	value_ptr ext_s(name a, valproxy cnt, valproxy op);
+	value_ptr slice(name a, valproxy op, valproxy from, valproxy to);
+	value_ptr concat(name a, valproxy op1, valproxy op2);
+	value_ptr add_i(name a, valproxy op1, valproxy op2);
+	value_ptr sub_i(name a, valproxy op1, valproxy op2);
+	value_ptr mul_i(name a, valproxy op1, valproxy op2);
+	value_ptr div_is(name a, valproxy op1, valproxy op2);
+	value_ptr div_iu(name a, valproxy op1, valproxy op2);
+	value_ptr mod_is(name a, valproxy op1, valproxy op2);
+	value_ptr mod_iu(name a, valproxy op1, valproxy op2);
+	value_ptr leq_is(name a, valproxy op1, valproxy op2);
+	value_ptr leq_iu(name a, valproxy op1, valproxy op2);
+	value_ptr call(name a, valproxy op);
+	
+	// anonymous
+	value_ptr and_b(valproxy op1, valproxy op2);
+	value_ptr or_b(valproxy op1, valproxy op2);
+	value_ptr xor_b(valproxy op1, valproxy op2);
+	value_ptr phi(valproxy op1, valproxy op2);
+	value_ptr not_b(valproxy op);
+	value_ptr assign(valproxy op);
+	value_ptr undef(void);
+	value_ptr shiftr_u(valproxy cnt, valproxy op);
+	value_ptr shiftl_u(valproxy cnt, valproxy op);
+	value_ptr shiftr_s(valproxy cnt, valproxy op);
+	value_ptr shiftl_s(valproxy cnt, valproxy op);
+	value_ptr ext_u(valproxy cnt, valproxy op);
+	value_ptr ext_s(valproxy cnt, valproxy op);
+	value_ptr slice(valproxy op, valproxy from, valproxy to);
+	value_ptr concat(valproxy op1, valproxy op2);
+	value_ptr add_i(valproxy op1, valproxy op2);
+	value_ptr sub_i(valproxy op1, valproxy op2);
+	value_ptr mul_i(valproxy op1, valproxy op2);
+	value_ptr div_is(valproxy op1, valproxy op2);
+	value_ptr div_iu(valproxy op1, valproxy op2);
+	value_ptr mod_is(valproxy op1, valproxy op2);
+	value_ptr mod_iu(valproxy op1, valproxy op2);
+	value_ptr leq_is(valproxy op1, valproxy op2);
+	value_ptr leq_iu(valproxy op1, valproxy op2);
+	value_ptr call(valproxy op);
 
 protected:
-	virtual T accept_instr(instr_ptr i) = 0;
+	virtual value_ptr accept_instr(instr_ptr i) = 0;
+	static unsigned int next;
 };
 
-class mnemonic : public instr_builder<instr_ptr>
+class mnemonic : public instr_builder
 {
 public:
 	typedef list<instr_cptr>::const_iterator iterator;
@@ -183,7 +213,7 @@ public:
 	list<instr_cptr> instructions;
 	list<value_ptr> arguments;
 
-	instr_ptr accept_instr(instr_ptr i)	{ instructions.push_back(i); return i; };
+	value_ptr accept_instr(instr_ptr i)	{ instructions.push_back(i); return i->assigns; };
 	string inspect(void) const 
 	{ 
 		auto i = arguments.cbegin();

@@ -108,9 +108,9 @@ void basic_block::append_mnemonic(mne_cptr m)
 		m_addresses = m->addresses;
 }
 
-void basic_block::insert_incoming(guard_cptr g, bblock_ptr m)
+void basic_block::insert_incoming(guard_ptr g, bblock_ptr m)
 	{	assert(g && m); remove_incoming(m); m_incoming.push_back(make_pair(g,m)); };
-void basic_block::insert_outgoing(guard_cptr g, bblock_ptr m)
+void basic_block::insert_outgoing(guard_ptr g, bblock_ptr m)
 	{	assert(g && m); remove_outgoing(m); m_outgoing.push_back(make_pair(g,m)); };
 	
 void basic_block::remove_incoming(bblock_ptr m)
@@ -189,6 +189,15 @@ void basic_block::clear(void)
 const area &basic_block::addresses(void) const
 	{ return m_addresses; }
 
+void basic_block::prepend_instr(instr_ptr i)
+{
+	assert(!m_mnemonics.empty());
+
+	mne_ptr m(new mnemonic(area(0,0),"nop"));
+	m->instructions.push_back(i);
+	m_mnemonics.insert(m_mnemonics.begin(),m);
+}
+
 /*pair<bblock_ptr,bblock_ptr> branch(bblock_ptr bb, guard_ptr g, bblock_ptr trueb, bblock_ptr falseb)
 {
 	assert(bb && g);
@@ -257,9 +266,9 @@ pair<bblock_ptr,bblock_ptr> split(bblock_ptr bb, addr_t pos, bool last)
 
 	// move outgoing edges to down
 	tie(j,jend) = bb->outgoing();
-	for_each(j,jend,[&](pair<guard_cptr,bblock_ptr> t)
+	for_each(j,jend,[&](pair<guard_ptr,bblock_ptr> t)
 	{
-		guard_cptr g;
+		guard_ptr g;
 		bblock_ptr b;
 
 		tie(g,b) = t;
@@ -281,9 +290,9 @@ pair<bblock_ptr,bblock_ptr> split(bblock_ptr bb, addr_t pos, bool last)
 	
 	// move incoming edges to up
 	tie(k,kend) = bb->incoming();
-	for_each(k,kend,[&](pair<guard_cptr,bblock_ptr> t)
+	for_each(k,kend,[&](pair<guard_ptr,bblock_ptr> t)
 	{
-		guard_cptr g;
+		guard_ptr g;
 		bblock_ptr b;
 
 		tie(g,b) = t;
