@@ -79,11 +79,11 @@ string graphviz(flow_ptr fg)
 						ss << "<tr ALIGN=\"LEFT\"><td ALIGN=\"LEFT\">" 
 							 << "<font POINT-SIZE=\"11\">" << in->inspect();
 
-						if(tl->count(in->assigns->nam.base))
-							ss << accumulate(tl->at(in->assigns->nam.base).begin(),
-															 tl->at(in->assigns->nam.base).end(),
+						if(tl->count(in->assigns->nam))
+							ss << accumulate(tl->at(in->assigns->nam).begin(),
+															 tl->at(in->assigns->nam).end(),
 															 string(" ("),
-															 [](const string &acc, const string &s) { return acc + " " + s; })
+															 [](const string &acc, const name &s) { return acc + (s.base.front() == 't' ? "" : " " + s.inspect()); })
 								 << " )";
 						else
 							ss << " ( )";

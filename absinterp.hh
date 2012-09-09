@@ -42,7 +42,7 @@ map<bblock_ptr,L> *abstract_interpretation(proc_ptr proc)
 			// supremum of all predecessor states
 			tie(k,kend) = bb->predecessors();
 			L lat = accumulate(k,kend,bottom(tag),[&](const L l, bblock_ptr pred) { return supremum(tag,l,last_states->at(pred)); });
-
+			
 			// accumulate semantics of the basic block
 			tie(j,jend) = bb->instructions();
 			lat = accumulate(j,jend,lat,[&](const L l, instr_cptr i) { return abstraction(tag,l,i); });
@@ -60,10 +60,10 @@ map<bblock_ptr,L> *abstract_interpretation(proc_ptr proc)
 
 // taint domain
 struct taint_domain {};
-typedef shared_ptr<map<string,set<string>>> taint_lattice;
+typedef shared_ptr<map<name,set<name>>> taint_lattice;
 taint_lattice bottom(taint_domain);
 bool equal(taint_domain,const taint_lattice a, const taint_lattice b);
 taint_lattice supremum(taint_domain,const taint_lattice a, const taint_lattice b);
 taint_lattice abstraction(taint_domain,const taint_lattice a, instr_cptr i);
-	
+ostream& operator<<(ostream &os, const taint_lattice l);
 #endif
