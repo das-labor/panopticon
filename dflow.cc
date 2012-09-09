@@ -170,27 +170,6 @@ live_ptr liveness(proc_ptr proc)
 	return ret;
 }
 
-set<name> set_difference(set<name> a, set<name> b)
-{
-	set<name> ret;
-	set_difference(a.begin(),a.end(),b.begin(),b.end(),inserter(ret,ret.begin()));
-	return ret;
-}
-
-set<name> set_union(set<name> a, set<name> b)
-{
-	set<name> ret;
-	set_union(a.begin(),a.end(),b.begin(),b.end(),inserter(ret,ret.begin()));
-	return ret;
-}
-
-set<name> set_intersection(set<name> a, set<name> b)
-{
-	set<name> ret;
-	set_intersection(a.begin(),a.end(),b.begin(),b.end(),inserter(ret,ret.begin()));
-	return ret;
-}
-
 void ssa(proc_ptr proc, dom_ptr dominance, live_ptr live)
 {
 	// insert phi

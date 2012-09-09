@@ -6,7 +6,7 @@ LIBS=
 INCLUDES=
 
 HEADERS=$(wildcard *.hh)
-OBJECTS=avr.o mnemonic.o basic_block.o procedure.o main.o flowgraph.o dflow.o
+OBJECTS=avr.o mnemonic.o basic_block.o procedure.o main.o flowgraph.o dflow.o absinterp.o
 
 .PHONY: clean
 

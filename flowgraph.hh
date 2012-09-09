@@ -7,6 +7,7 @@
 #include "procedure.hh"
 #include "decoder.hh"
 #include "dflow.hh"
+#include "absinterp.hh"
 
 using namespace std;
 
@@ -17,6 +18,7 @@ struct flowgraph
 	set<proc_ptr> procedures;
 	map<proc_ptr,dom_ptr> dominance;
 	map<proc_ptr,live_ptr> liveness;
+	map<proc_ptr,shared_ptr<map<bblock_ptr,taint_lattice>>> taint;
 };
 
 bool has_procedure(flow_ptr flow, addr_t entry);
@@ -76,6 +78,9 @@ flow_ptr disassemble(const decoder<token,tokiter> &main, vector<token> tokens, a
 
 		// rename variables and compute semi-pruned SSA form
 		ssa(proc,dom,live);
+
+		// abi
+		ret->taint.insert(make_pair(proc,shared_ptr<map<bblock_ptr,taint_lattice>>(abstract_interpretation<taint_domain,taint_lattice>(proc))));
 	}
 
 	return ret;

@@ -33,11 +33,12 @@ string graphviz(flow_ptr fg)
 		 << "\tnode [shape=record,style=filled,color=lightgray,fontsize=13,fontname=\"Monospace\"];" << endl;
 	
 	// procedures
-	for_each(fg->procedures.begin(),fg->procedures.end(),[&ss](const proc_ptr proc)
+	for_each(fg->procedures.begin(),fg->procedures.end(),[&](const proc_ptr proc)
 	{
 		assert(proc && proc->entry);
 		procedure::iterator i,iend;
 		string procname(to_string(proc->entry->addresses().begin));
+		shared_ptr<map<bblock_ptr,taint_lattice>> taint_bblock(fg->taint[proc]);
 
 		ss << "\tsubgraph cluster_" << procname << endl
 			 << "\t{" << endl
@@ -47,9 +48,10 @@ string graphviz(flow_ptr fg)
 
 		// basic blocks
 		tie(i,iend) = proc->all();
-		for_each(i,iend,[&proc,&ss,&procname](const bblock_ptr bb)
+		for_each(i,iend,[&](const bblock_ptr bb)
 		{
 			basic_block::iterator j,jend;
+			taint_lattice tl(taint_bblock->at(bb));
 
 			ss << "\t\tbb_" << procname 
 				 << "_" << bb->addresses().begin 
@@ -75,7 +77,18 @@ string graphviz(flow_ptr fg)
 					{
 						instr_cptr in = *l++;
 						ss << "<tr ALIGN=\"LEFT\"><td ALIGN=\"LEFT\">" 
-							 << "<font POINT-SIZE=\"11\">" << in->inspect() << "</font>"
+							 << "<font POINT-SIZE=\"11\">" << in->inspect();
+
+						if(tl->count(in->assigns->nam.base))
+							ss << accumulate(tl->at(in->assigns->nam.base).begin(),
+															 tl->at(in->assigns->nam.base).end(),
+															 string(" ("),
+															 [](const string &acc, const string &s) { return acc + " " + s; })
+								 << " )";
+						else
+							ss << " ( )";
+
+						ss << "</font>"
 							 << "</td></tr>";
 					}
 					ss << "</table></td></tr>";

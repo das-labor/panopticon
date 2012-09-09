@@ -10,7 +10,7 @@ using namespace std;
 
 /*
  * TODO
- * - ssa()
+ * - Abstract Interpretation Framework and K-set domain
  * - complete IL
  * - sym. exec to infer guards
  *   - construct transfer function for bb, ask SAT solver if f_bb(X) <=> x0 = x1 OR ... OR x0 > x1 OR ... OR x0 >= x1 OR ... 

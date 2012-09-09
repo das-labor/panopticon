@@ -29,9 +29,39 @@ struct live
 	map<bblock_ptr,set<name>> liveout;
 };
 
-set<name> set_difference(set<name> a, set<name> b);
-set<name> set_union(set<name> a, set<name> b);
-set<name> set_intersection(set<name> a, set<name> b);
+template<typename T>
+set<T> set_difference(set<T> a, set<T> b)
+{
+	set<T> ret;
+	set_difference(a.begin(),a.end(),b.begin(),b.end(),inserter(ret,ret.begin()));
+	return ret;
+}
+
+template<typename T>
+set<T> set_union(set<T> a, set<T> b)
+{
+	set<T> ret;
+	//set_union(a.begin(),a.end(),b.begin(),b.end(),inserter(ret,ret.begin()));
+	merge(a.begin(),a.end(),b.begin(),b.end(),inserter(ret,ret.begin()));
+	return ret;
+}
+
+template<typename T>
+set<T> sset_union(set<T> a, set<T> b)
+{
+	set<T> ret;
+	set_union(a.begin(),a.end(),b.begin(),b.end(),inserter(ret,ret.begin()));
+	return ret;
+}
+
+
+template<typename T>
+set<T> set_intersection(set<T> a, set<T> b)
+{
+	set<T> ret;
+	set_intersection(a.begin(),a.end(),b.begin(),b.end(),inserter(ret,ret.begin()));
+	return ret;
+}
 
 dom_ptr dominance_tree(proc_ptr proc);
 void ssa(proc_ptr proc, dom_ptr dominance, live_ptr live);

@@ -27,10 +27,13 @@ typedef vector<uint16_t>::iterator tokiter;
 		}\
 	};
 
-#define binary_reg(x) \
+#define binary_reg(x,func) \
 	[](sem_state<token,tokiter> &st)\
 	{\
-		st.add_mnemonic(area(st.address,st.address+st.tokens.size()),x,value_ptr(new reg(st.capture_groups["d"])),value_ptr(new reg(st.capture_groups["r"])));\
+		name Rd = reg(st.capture_groups["d"]).nam;\
+		name Rr = reg(st.capture_groups["r"]).nam;\
+		mne_ptr m = st.add_mnemonic(area(st.address,st.address+st.tokens.size()),x,Rd,Rr);\
+		func(Rd,Rr,m);\
 		st.unconditional(st.mnemonics.begin()->second,st.address + st.tokens.size());\
 	};
 
@@ -84,10 +87,11 @@ typedef vector<uint16_t>::iterator tokiter;
 		st.unconditional(st.mnemonics.begin()->second,st.address + st.tokens.size());\
 	};
 
-#define simple(x)\
+#define simple(x,func)\
 	[](sem_state<token,tokiter> &st)\
 	{\
-		st.add_mnemonic(area(st.address,st.address+st.tokens.size()),x);\
+		mne_ptr m = st.add_mnemonic(area(st.address,st.address+st.tokens.size()),x);\
+		func(m);\
 		st.unconditional(st.mnemonics.begin()->second,st.address + st.tokens.size());\
 	};
 
@@ -96,7 +100,11 @@ flow_ptr avr_decode(vector<token> &bytes, addr_t entry)
 	decoder<token,vector<token>::iterator> main;
 
 	// memory operations
-	main | "001011 r@. d@..... r@...." 	= binary_reg("mov");
+	main | "001011 r@. d@..... r@...." 	= binary_reg("mov",[](const name &Rd, const name &Rr,mne_ptr m)
+	{
+		// TODO
+	});
+
 	main | "00000001 d@.... r@...." 		= [](sem_state<token,tokiter> &st)
 	{ 
 		st.add_mnemonic(area(st.address,st.address+st.tokens.size()),"movw",
@@ -192,24 +200,30 @@ flow_ptr avr_decode(vector<token> &bytes, addr_t entry)
 	// SREG operations
 	//main | "100101001 s@... 1000" = simple("bclr");
 	//main | "100101000 s@... 1000" = simple("bset");
-	main | 0x9408 = simple("sec");
-	main | 0x9458 = simple("seh");
-	main | 0x9478 = simple("sei");
-	main | 0x9428 = simple("sen");
-	main | 0x9448 = simple("ses");
-	main | 0x9468 = simple("set");
-	main | 0x9438 = simple("sev");
-	main | 0x9418 = simple("sez");
-	main | 0x9488 = simple("clc");
-	main | 0x94d8 = simple("clh");
-	main | 0x94f8 = simple("cli");
-	main | 0x94a8 = simple("cln");
-	main | 0x94c8 = simple("cls");
-	main | 0x94e8 = simple("clt");
-	main | 0x94b8 = simple("clv");
-	main | 0x9498 = simple("clz");
-	main | "000101 r@. d@..... r@...." 	= binary_reg("cp");
-	main | "000001 r@. d@..... r@...." 	= binary_reg("cpc");
+	main | 0x9408 = simple("sec",[](mne_ptr m) { m->assign("C",1); });
+	main | 0x9458 = simple("seh",[](mne_ptr m) { m->assign("H",1); });
+	main | 0x9478 = simple("sei",[](mne_ptr m) { m->assign("I",1); });
+	main | 0x9428 = simple("sen",[](mne_ptr m) { m->assign("N",1); });
+	main | 0x9448 = simple("ses",[](mne_ptr m) { m->assign("S",1); });
+	main | 0x9468 = simple("set",[](mne_ptr m) { m->assign("T",1); });
+	main | 0x9438 = simple("sev",[](mne_ptr m) { m->assign("V",1); });
+	main | 0x9418 = simple("sez",[](mne_ptr m) { m->assign("Z",1); });
+	main | 0x9488 = simple("clc",[](mne_ptr m) { m->assign("C",0); });
+	main | 0x94d8 = simple("clh",[](mne_ptr m) { m->assign("H",0); });
+	main | 0x94f8 = simple("cli",[](mne_ptr m) { m->assign("I",0); });
+	main | 0x94a8 = simple("cln",[](mne_ptr m) { m->assign("N",0); });
+	main | 0x94c8 = simple("cls",[](mne_ptr m) { m->assign("S",0); });
+	main | 0x94e8 = simple("clt",[](mne_ptr m) { m->assign("T",0); });
+	main | 0x94b8 = simple("clv",[](mne_ptr m) { m->assign("V",0); });
+	main | 0x9498 = simple("clz",[](mne_ptr m) { m->assign("Z",0); });
+	main | "000101 r@. d@..... r@...." 	= binary_reg("cp",[](const name &Rd, const name &Rr,mne_ptr m)
+	{
+		// TODO
+	});
+	main | "000001 r@. d@..... r@...." 	= binary_reg("cpc",[](const name &Rd, const name &Rr,mne_ptr m)
+	{
+		// TODO
+	});
 	main | "0011 K@.... d@.... K@...." 	= binary_regconst("cpi",[&](const name &Rd, int K, mne_ptr m)
 	{
 		value_ptr R = m->sub_i("R",Rd,K);
@@ -273,9 +287,18 @@ flow_ptr avr_decode(vector<token> &bytes, addr_t entry)
 	main | "1001010 d@..... 0110"				= unary_reg("lsr");
 
 	// byte-level arithmetic and logic
-	main | "000111 r@. d@..... r@...."	= binary_reg("adc");
-	main | "000011 r@. d@..... r@...." 	= binary_reg("add");
-	main | "001000 r@. d@..... r@...." 	= binary_reg("and");
+	main | "000111 r@. d@..... r@...."	= binary_reg("adc",[](const name &Rd, const name &Rr,mne_ptr m)
+	{
+		// TODO
+	});
+	main | "000011 r@. d@..... r@...." 	= binary_reg("add",[](const name &Rd, const name &Rr,mne_ptr m)
+	{
+		// TODO
+	});
+	main | "001000 r@. d@..... r@...." 	= binary_reg("and",[](const name &Rd, const name &Rr,mne_ptr m)
+	{
+		// TODO
+	});
 	main | "0111 K@.... d@.... K@...." 	= binary_regconst("andi",[&](const name &Rd, int K, mne_ptr m)
 	{
 		m->add_i(Rd,Rd,K);
@@ -298,13 +321,70 @@ flow_ptr avr_decode(vector<token> &bytes, addr_t entry)
 		}
 	};
 	main | "1001010 d@..... 0001"				= unary_reg("neg");
-	main | "001010 r@. d@..... r@...." 	= binary_reg("or");
+	main | "001010 r@. d@..... r@...." 	= binary_reg("or",[](const name &Rd, const name &Rr,mne_ptr m)
+	{
+		// TODO
+	});
 	main | "0110 K@.... d@.... K@...." 	= binary_regconst("ori",[&](const name &Rd, int K, mne_ptr m)
 	{
 		m->or_b(Rd,Rd,K);
 	});
 
-	main | "000110 r@. d@..... r@...." 	= binary_reg("sub");
+	main | "000110 r@. d@..... r@...." 	= binary_reg("sub",[&](const name &Rd, const name &Rr, mne_ptr m)
+	{
+		value_ptr R = m->sub_i("R",Rd,Rr);
+		
+		// H: !Rd3•Rr3 + Rr3•R3 + R3•!Rd3
+		m->or_b("H",m->or_b(
+			m->and_b(
+				m->not_b(m->slice(Rd,3,3)),
+				m->slice(Rr,3,3)),
+			m->and_b(
+				m->slice(R,3,3),
+				m->slice(Rr,3,3))),
+			m->and_b(
+				m->not_b(m->slice(Rd,3,3)),
+				m->slice(R,3,3)));
+		
+		// V: Rd7•!Rr7•!R7 + !Rd7•Rr7•R7
+		m->or_b("V",
+			m->and_b(m->and_b(
+				m->slice(Rd,7,7),
+				m->not_b(m->slice(Rr,7,7))),
+				m->not_b(m->slice(R,7,7))),
+			m->and_b(m->and_b(
+				m->not_b(m->slice(Rd,7,7)),
+				m->slice(Rr,7,7)),
+				m->slice(R,7,7)));
+
+		// N: R7
+		m->assign("N",m->slice(R,7,7));
+
+		// Z: !R7•!R6•!R5•!R4•!R3•!R2•!R1•!R0
+		m->and_b("Z",m->not_b(m->slice(R,0,0)),
+			m->and_b(m->not_b(m->slice(R,1,1)),
+				m->and_b(m->not_b(m->slice(R,2,2)),
+					m->and_b(m->not_b(m->slice(R,3,3)),
+						m->and_b(m->not_b(m->slice(R,4,4)),
+							m->and_b(m->not_b(m->slice(R,5,5)),
+								m->and_b(m->not_b(m->slice(R,6,6)),m->not_b(m->slice(R,7,7)))))))));
+
+		// C: !Rd7•Rr7 + Rr7•R7 + R7•!Rd7
+		m->or_b("C",m->or_b(
+			m->and_b(
+				m->not_b(m->slice(Rd,7,7)),
+				m->slice(Rr,7,7)),
+			m->and_b(
+				m->slice(R,7,7),
+				m->slice(Rr,7,7))),
+			m->and_b(
+				m->not_b(m->slice(Rd,7,7)),
+				m->slice(R,7,7)));
+
+		// S: N ⊕ V 
+		m->xor_b("S","N","V");
+		m->assign(Rr,R);
+	});
 	main | "0101 K@.... d@.... K@...." 	= binary_regconst("subi",[&](const name &Rd, int K, mne_ptr m)
 	{ 
 		m->sub_i("R",Rd,K);
@@ -321,10 +401,115 @@ flow_ptr avr_decode(vector<token> &bytes, addr_t entry)
 	main | "1001010 d@..... 0111" 			= unary_reg("ror");
 	main | "1001010 d@..... 1010" 			= unary_reg("dec");
 	main | "1001010 d@..... 0011" 			= unary_reg("inc");
-	main | "000010 r@. d@..... r@...." 	= binary_reg("sbc");
+	main | "000010 r@. d@..... r@...." 	= binary_reg("sbc",[](const name &Rd, const name &Rr,mne_ptr m)
+	{
+		value_ptr R = m->sub_i("R",Rd,m->sub_i(Rr,"C"));
+		
+		// H: !Rd3•Rr3 + Rr3•R3 + R3•!Rd3
+		m->or_b("H",m->or_b(
+			m->and_b(
+				m->not_b(m->slice(Rd,3,3)),
+				m->slice(Rr,3,3)),
+			m->and_b(
+				m->slice(R,3,3),
+				m->slice(Rr,3,3))),
+			m->and_b(
+				m->not_b(m->slice(Rd,3,3)),
+				m->slice(R,3,3)));
+		
+		// V: Rd7•!Rr7•!R7 + !Rd7•Rr7•R7
+		m->or_b("V",
+			m->and_b(m->and_b(
+				m->slice(Rd,7,7),
+				m->not_b(m->slice(Rr,7,7))),
+				m->not_b(m->slice(R,7,7))),
+			m->and_b(m->and_b(
+				m->not_b(m->slice(Rd,7,7)),
+				m->slice(Rr,7,7)),
+				m->slice(R,7,7)));
+
+		// N: R7
+		m->assign("N",m->slice(R,7,7));
+
+		// Z: !R7•!R6•!R5•!R4•!R3•!R2•!R1•!R0
+		m->and_b("Z",m->not_b(m->slice(R,0,0)),
+			m->and_b(m->not_b(m->slice(R,1,1)),
+				m->and_b(m->not_b(m->slice(R,2,2)),
+					m->and_b(m->not_b(m->slice(R,3,3)),
+						m->and_b(m->not_b(m->slice(R,4,4)),
+							m->and_b(m->not_b(m->slice(R,5,5)),
+								m->and_b(m->not_b(m->slice(R,6,6)),m->not_b(m->slice(R,7,7)))))))));
+
+		// C: !Rd7•Rr7 + Rr7•R7 + R7•!Rd7
+		m->or_b("C",m->or_b(
+			m->and_b(
+				m->not_b(m->slice(Rd,7,7)),
+				m->slice(Rr,7,7)),
+			m->and_b(
+				m->slice(R,7,7),
+				m->slice(Rr,7,7))),
+			m->and_b(
+				m->not_b(m->slice(Rd,7,7)),
+				m->slice(R,7,7)));
+
+		// S: N ⊕ V 
+		m->xor_b("S","N","V");
+		m->assign(Rr,R);
+	});
 	main | "0100 K@.... d@.... K@...." 	= binary_regconst("sbci",[&](const name &Rd, int K, mne_ptr m)
 	{
-		m->sub_i(Rd,Rd,K);
+		value_ptr R = m->sub_i("R",Rd,K);
+		
+		// H: !Rd3•K3 + K3•R3 + R3•!Rd3
+		m->or_b("H",m->or_b(
+			m->and_b(
+				m->not_b(m->slice(Rd,3,3)),
+				m->slice(K,3,3)),
+			m->and_b(
+				m->slice(R,3,3),
+				m->slice(K,3,3))),
+			m->and_b(
+				m->not_b(m->slice(Rd,3,3)),
+				m->slice(R,3,3)));
+		
+		// V: Rd7•!K7•!R7 + !Rd7•K7•R7
+		m->or_b("V",
+			m->and_b(m->and_b(
+				m->slice(Rd,7,7),
+				m->not_b(m->slice(K,7,7))),
+				m->not_b(m->slice(R,7,7))),
+			m->and_b(m->and_b(
+				m->not_b(m->slice(Rd,7,7)),
+				m->slice(K,7,7)),
+				m->slice(R,7,7)));
+
+		// N: R7
+		m->assign("N",m->slice(R,7,7));
+
+		// Z: !R7•!R6•!R5•!R4•!R3•!R2•!R1•!R0
+		m->and_b("Z",m->not_b(m->slice(R,0,0)),
+			m->and_b(m->not_b(m->slice(R,1,1)),
+				m->and_b(m->not_b(m->slice(R,2,2)),
+					m->and_b(m->not_b(m->slice(R,3,3)),
+						m->and_b(m->not_b(m->slice(R,4,4)),
+							m->and_b(m->not_b(m->slice(R,5,5)),
+								m->and_b(m->not_b(m->slice(R,6,6)),m->not_b(m->slice(R,7,7)))))))));
+
+		// C: !Rd7•K7 + K7•R7 + R7•!Rd7
+		m->or_b("C",m->or_b(
+			m->and_b(
+				m->not_b(m->slice(Rd,7,7)),
+				m->slice(K,7,7)),
+			m->and_b(
+				m->slice(R,7,7),
+				m->slice(K,7,7))),
+			m->and_b(
+				m->not_b(m->slice(Rd,7,7)),
+				m->slice(R,7,7)));
+
+		// S: N ⊕ V 
+		m->xor_b("S","N","V");
+		m->assign(Rd,R);
 	});
 
 	main | "1001010 d@..... 0000" 			= unary_reg("com");
@@ -344,12 +529,30 @@ flow_ptr avr_decode(vector<token> &bytes, addr_t entry)
 		st.add_mnemonic(area(st.address,st.address+st.tokens.size()),"sbiw",value_ptr(new reg(d,d+1)),st.capture_groups["K"]);
 		st.unconditional(st.mnemonics.begin()->second,st.address + st.tokens.size());
 	};
-	main | "0000 0011 0 d@... 1 r@..."	= binary_reg("fmul");
-	main | "000000111 d@... 0 r@..."		= binary_reg("fmuls");
-	main | "000000111 d@... 1 r@..." 		= binary_reg("fmulsu");
-	main | "100111 r@. d@..... r@...." 	= binary_reg("mul");
-	main | "00000010 d@.... r@...." 		= binary_reg("muls");
-	main | "000000110 d@... 0 r@..." 		= binary_reg("muls");
+	main | "0000 0011 0 d@... 1 r@..."	= binary_reg("fmul",[](const name &Rd, const name &Rr,mne_ptr m)
+	{
+		// TODO
+	});
+	main | "000000111 d@... 0 r@..."		= binary_reg("fmuls",[](const name &Rd, const name &Rr,mne_ptr m)
+	{
+		// TODO
+	});
+	main | "000000111 d@... 1 r@..." 		= binary_reg("fmulsu",[](const name &Rd, const name &Rr,mne_ptr m)
+	{
+		// TODO
+	});
+	main | "100111 r@. d@..... r@...." 	= binary_reg("mul",[](const name &Rd, const name &Rr,mne_ptr m)
+	{
+		// TODO
+	});
+	main | "00000010 d@.... r@...." 		= binary_reg("muls",[](const name &Rd, const name &Rr,mne_ptr m)
+	{
+		// TODO
+	});
+	main | "000000110 d@... 0 r@..." 		= binary_reg("muls",[](const name &Rd, const name &Rr,mne_ptr m)
+	{
+		// TODO
+	});
 	
 	
 	// branch branches
@@ -363,12 +566,12 @@ flow_ptr avr_decode(vector<token> &bytes, addr_t entry)
 	main | "111100 k@....... 101" 			= branch("brhs","H",true);
 	main | "111101 k@....... 111" 			= branch("brid","I",false);
 	main | "111100 k@....... 111" 			= branch("brie","I",true);
-	main | "111100 k@....... 000" 			= branch("brlo","C",true); 	// XXX
-	main | "111100 k@....... 100" 			= branch("brlt","S",true); 	// XXX
+	main | "111100 k@....... 000" 			= branch("brlo","C",true);
+	main | "111100 k@....... 100" 			= branch("brlt","S",true);
 	main | "111100 k@....... 010" 			= branch("brmi","N",true);
-	main | "111101 k@....... 001"		 		= branch("brne","Z",false); // XXX
+	main | "111101 k@....... 001"		 		= branch("brne","Z",false);
 	main | "111101 k@....... 010" 			= branch("brpl","N",false);
-	main | "111101 k@....... 000" 			= branch("brsh","C",false); // XXX
+	main | "111101 k@....... 000" 			= branch("brsh","C",false);
 	main | "111101 k@....... 110" 			= branch("brtc","T",false);
 	main | "111100 k@....... 110" 			= branch("brts","T",true);
 	main | "111101 k@....... 011" 			= branch("brvc","V",false);
@@ -474,19 +677,19 @@ flow_ptr avr_decode(vector<token> &bytes, addr_t entry)
 	main | "10q@.0 q@..0d@. d@.... 0q@..." = binary_ldq(reg::Z);
 
 	// misc
-	main | 0x9598 = simple("break");
+	main | 0x9598 = simple("break",[](mne_ptr m) { /* TODO */ });
 	main | "10010100 K@.... 1011" = [](sem_state<token,tokiter> &st) 
 	{
 		st.add_mnemonic(area(st.address,st.address+st.tokens.size()),"des",st.capture_groups["K"]);
 		st.unconditional(st.mnemonics.begin()->second,st.tokens.size() + st.address);
 	};
 
-	main | (token)0x0 = simple("nop");
-	main | 0x9588 = simple("sleep");
-	main | 0x95a8 = simple("wdr");
+	main | (token)0x0 = simple("nop",[](mne_ptr m) { /* TODO */ });
+	main | 0x9588 = simple("sleep",[](mne_ptr m) { /* TODO */ });
+	main | 0x95a8 = simple("wdr",[](mne_ptr m) { /* TODO */ });
 
 	// catch all
-	main = simple("unk");
+	main = simple("unk",[](mne_ptr m) { /* TODO */ });
 
 	return disassemble<token,tokiter>(main,bytes);
 }
