@@ -51,14 +51,18 @@ bool operator<(const name &a, const name &b)
 		return a.subscript < b.subscript;
 };
 
-bool operator==(const name &a, const name &b) { return a.base == b.base && a.subscript == b.subscript; };
-bool operator!=(const name &a, const name &b) { return !(a == b); };
+bool operator==(const name &a, const name &b) { return a.base == b.base && a.subscript == b.subscript; }
+bool operator!=(const name &a, const name &b) { return !(a == b); }
 
 value::value(void) {}
 value::~value(void) {}
 
 constant::constant(int v) : val(v) {}
 string constant::inspect(void) const { return to_string(val); }
+
+bool operator<(const constant &a, const constant &b) { return a.val < b.val; }
+bool operator==(const constant &a, const constant &b) { return a.val == b.val; }
+bool operator!=(const constant &a, const constant &b) { return !(a == b); }
 
 undefined::undefined(void) {}
 string undefined::inspect(void) const { return "⊥"; }

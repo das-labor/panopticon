@@ -39,6 +39,7 @@ string graphviz(flow_ptr fg)
 		procedure::iterator i,iend;
 		string procname(to_string(proc->entry->addresses().begin));
 		shared_ptr<map<bblock_ptr,taint_lattice>> taint_bblock(fg->taint[proc]);
+		shared_ptr<map<bblock_ptr,cprop_lattice>> cprop_bblock(fg->cprop[proc]);
 
 		ss << "\tsubgraph cluster_" << procname << endl
 			 << "\t{" << endl
@@ -52,6 +53,7 @@ string graphviz(flow_ptr fg)
 		{
 			basic_block::iterator j,jend;
 			taint_lattice tl(taint_bblock->at(bb));
+			cprop_lattice cp(cprop_bblock->at(bb));
 
 			ss << "\t\tbb_" << procname 
 				 << "_" << bb->addresses().begin 
@@ -78,13 +80,20 @@ string graphviz(flow_ptr fg)
 						instr_cptr in = *l++;
 						ss << "<tr ALIGN=\"LEFT\"><td ALIGN=\"LEFT\">" 
 							 << "<font POINT-SIZE=\"11\">" << in->inspect();
-
+						
+						// taint
 						if(tl->count(in->assigns->nam))
 							ss << accumulate(tl->at(in->assigns->nam).begin(),
 															 tl->at(in->assigns->nam).end(),
 															 string(" ("),
 															 [](const string &acc, const name &s) { return acc + (s.base.front() == 't' ? "" : " " + s.inspect()); })
 								 << " )";
+						else
+							ss << " ( )";
+						
+						// constant prop
+						if(cp->count(in->assigns->nam))
+							ss << "(" << cp->at(in->assigns->nam) << ")";
 						else
 							ss << " ( )";
 

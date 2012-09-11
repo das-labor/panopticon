@@ -30,7 +30,7 @@ struct live
 };
 
 template<typename T>
-set<T> set_difference(set<T> a, set<T> b)
+set<T> set_difference(const set<T> &a, const set<T> &b)
 {
 	set<T> ret;
 	set_difference(a.begin(),a.end(),b.begin(),b.end(),inserter(ret,ret.begin()));
@@ -38,7 +38,7 @@ set<T> set_difference(set<T> a, set<T> b)
 }
 
 template<typename T>
-set<T> set_union(set<T> a, set<T> b)
+set<T> set_union(const set<T> &a, const set<T> &b)
 {
 	set<T> ret;
 	//set_union(a.begin(),a.end(),b.begin(),b.end(),inserter(ret,ret.begin()));
@@ -47,7 +47,7 @@ set<T> set_union(set<T> a, set<T> b)
 }
 
 template<typename T>
-set<T> sset_union(set<T> a, set<T> b)
+set<T> sset_union(const set<T> &a, const set<T> &b)
 {
 	set<T> ret;
 	set_union(a.begin(),a.end(),b.begin(),b.end(),inserter(ret,ret.begin()));
@@ -56,7 +56,7 @@ set<T> sset_union(set<T> a, set<T> b)
 
 
 template<typename T>
-set<T> set_intersection(set<T> a, set<T> b)
+set<T> set_intersection(const set<T> &a, const set<T> &b)
 {
 	set<T> ret;
 	set_intersection(a.begin(),a.end(),b.begin(),b.end(),inserter(ret,ret.begin()));

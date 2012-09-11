@@ -71,6 +71,10 @@ struct constant : public value
 	int val;
 };
 
+bool operator<(const constant &a, const constant &b);
+bool operator==(const constant &a, const constant &b);
+bool operator!=(const constant &a, const constant &b);
+
 struct undefined : public value
 {
 	undefined(void);

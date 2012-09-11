@@ -19,6 +19,7 @@ struct flowgraph
 	map<proc_ptr,dom_ptr> dominance;
 	map<proc_ptr,live_ptr> liveness;
 	map<proc_ptr,shared_ptr<map<bblock_ptr,taint_lattice>>> taint;
+	map<proc_ptr,shared_ptr<map<bblock_ptr,cprop_lattice>>> cprop;
 };
 
 bool has_procedure(flow_ptr flow, addr_t entry);
@@ -81,6 +82,7 @@ flow_ptr disassemble(const decoder<token,tokiter> &main, vector<token> tokens, a
 
 		// abi
 		ret->taint.insert(make_pair(proc,shared_ptr<map<bblock_ptr,taint_lattice>>(abstract_interpretation<taint_domain,taint_lattice>(proc))));
+		ret->cprop.insert(make_pair(proc,shared_ptr<map<bblock_ptr,cprop_lattice>>(abstract_interpretation<cprop_domain,cprop_lattice>(proc))));
 	}
 
 	return ret;

@@ -66,4 +66,33 @@ bool equal(taint_domain,const taint_lattice a, const taint_lattice b);
 taint_lattice supremum(taint_domain,const taint_lattice a, const taint_lattice b);
 taint_lattice abstraction(taint_domain,const taint_lattice a, instr_cptr i);
 ostream& operator<<(ostream &os, const taint_lattice l);
+
+// cprop domain
+struct cprop_domain {};
+struct cprop_element
+{
+	enum Type
+	{
+		Bottom,
+		NonConst,
+		Const
+	};
+
+	cprop_element(void) : type(Bottom), value(0) {};
+	cprop_element(Type t) : type(t), value(0) {};
+	cprop_element(unsigned int v) : type(Const), value(v) {};
+	
+	Type type;
+	unsigned int value;
+};
+bool operator==(const cprop_element &a, const cprop_element &b);
+typedef shared_ptr<map<name,cprop_element>> cprop_lattice;
+cprop_lattice bottom(cprop_domain);
+bool equal(cprop_domain,const cprop_lattice a, const cprop_lattice b);
+cprop_lattice supremum(cprop_domain,const cprop_lattice a, const cprop_lattice b);
+cprop_element supremum(const cprop_element a, const cprop_element b);
+cprop_lattice abstraction(cprop_domain,const cprop_lattice a, instr_cptr i);
+ostream& operator<<(ostream &os, const cprop_lattice l);
+ostream& operator<<(ostream &os, const cprop_element &e);
+
 #endif
