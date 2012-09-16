@@ -2,6 +2,7 @@
 #include <cassert>
 #include <list>
 #include <map>
+#include <iostream>
 
 #include "dflow.hh"
 
@@ -28,7 +29,6 @@ dom_ptr dominance_tree(proc_ptr proc)
 			dtree_ptr newidom(0);
 			basic_block::pred_iterator j,jend;
 
-			// TODO: assumes no previous run of dominance_tree()
 			tie(j,jend) = bb->predecessors();
 			for_each(j,jend,[&](bblock_ptr p)
 			{
@@ -116,10 +116,7 @@ live_ptr liveness(proc_ptr proc)
 	tie(i,iend) = proc->rev_postorder();
 	for_each(i,iend,[&](bblock_ptr bb)
 	{
-		instr_iterator j,jend;
-
-		tie(j,jend) = bb->instructions();
-		for_each(j,jend,[&](instr_cptr i)
+		for_each(bb->instructions().begin(),bb->instructions().end(),[&](instr_cptr i)
 		{
 			if(i->opcode != instr::Phi)
 			{
@@ -173,7 +170,7 @@ live_ptr liveness(proc_ptr proc)
 void ssa(proc_ptr proc, dom_ptr dominance, live_ptr live)
 {
 	// insert phi
-	for_each(live->names.begin(),live->names.end(),[&](name name)
+	for_each(live->names.begin(),live->names.end(),[&](const name &name)
 	{
 		set<bblock_ptr> &worklist(live->usage[name]);
 
@@ -184,14 +181,10 @@ void ssa(proc_ptr proc, dom_ptr dominance, live_ptr live)
 			worklist.erase(worklist.begin());
 			for_each(dominance->tree[bb]->frontiers.begin(),dominance->tree[bb]->frontiers.end(),[&](dtree_ptr df)
 			{
-				instr_iterator i,iend;
-
-				tie(i,iend) = df->basic_block->instructions();
-				if(none_of(i,iend,[&](instr_cptr i)
-					{	return i->opcode == instr::Phi && i->assigns->nam == name; }))
+				if(none_of(df->basic_block->instructions().begin(),df->basic_block->instructions().end(),[&](instr_cptr i)
+					{	return i->opcode == instr::Phi && i->assigns->nam.base == name.base; }))
 				{
-					df->basic_block->prepend_instr(instr_ptr(new instr(instr::Phi,"ϕ",name,
-						{value_ptr(new variable(name)),value_ptr(new variable(name))})));
+					df->basic_block->prepend_instr(instr_ptr(new instr(instr::Phi,"ϕ",name,{})));
 					worklist.insert(df->basic_block);
 				}
 			});
@@ -199,16 +192,16 @@ void ssa(proc_ptr proc, dom_ptr dominance, live_ptr live)
 	});
 
 	// rename variables
-	map<string,unsigned int> counter;
-	map<string,list<unsigned int>> stack;
+	map<string,int> counter;
+	map<string,list<int>> stack;
 
 	for_each(live->names.begin(),live->names.end(),[&](name n) 
 	{ 
 		counter.insert(make_pair(n.base,1));
-		stack.insert(make_pair(n.base,list<unsigned int>({0})));
+		stack.insert(make_pair(n.base,list<int>({0})));
 	});
 	
-	auto new_name = [&](name n) -> unsigned int
+	auto new_name = [&](name n) -> int
 	{
 		int i = counter[n.base]++;
 		
@@ -218,14 +211,27 @@ void ssa(proc_ptr proc, dom_ptr dominance, live_ptr live)
 
 	function<void(bblock_ptr bb)> rename = [&](bblock_ptr bb)
 	{
-		instr_iterator i,iend;
-		
-		tie(i,iend) = bb->instructions();
-		for_each(i,iend,[&](instr_cptr i)
+		size_t sz = bb->instructions().size(), pos = 0;
+		const instr_ptr *i = bb->instructions().data();
+		basic_block::indir_iterator m,mend;
+		basic_block::out_iterator j,jend;
+		function<void(relation &)> rename_guard = [&](relation &rel)
 		{
-			if(i->opcode != instr::Phi)
+			shared_ptr<variable> w;
+			
+			if((w = dynamic_pointer_cast<variable>(rel.operand1)))
+				w->nam.subscript = stack[w->nam.base].back();
+					
+			if((w = dynamic_pointer_cast<variable>(rel.operand2)))
+				w->nam.subscript = stack[w->nam.base].back();
+		};
+		
+		// rename operands
+		while(pos < sz)
+		{
+			if(i[pos]->opcode != instr::Phi)
 			{
-				for_each(i->operands.begin(),i->operands.end(),[&](value_ptr v)
+				for_each(i[pos]->operands.begin(),i[pos]->operands.end(),[&](value_ptr v)
 				{
 					shared_ptr<variable> w;
 
@@ -233,54 +239,57 @@ void ssa(proc_ptr proc, dom_ptr dominance, live_ptr live)
 						w->nam.subscript = stack[w->nam.base].back();
 				});
 			}	
-			i->assigns->nam.subscript = new_name(i->assigns->nam);
-		});
+			i[pos]->assigns->nam.subscript = new_name(i[pos]->assigns->nam);
+			++pos;
+		}
+		
+		// rename variables in from indirect jumps
+		tie(m,mend) = bb->indirect();
+		for_each(m,mend,[&](pair<guard_ptr,value_ptr> &p)
+		{
+			guard_ptr g;
+			value_ptr v;
+			shared_ptr<variable> w;
 
-		basic_block::out_iterator j,jend;
+			tie(g,v) = p;
+			for_each(g->relations.begin(),g->relations.end(),rename_guard);
+	
+			if((w = dynamic_pointer_cast<variable>(v)) && w->nam.subscript == -1)
+				w->nam.subscript = stack[w->nam.base].back();
+		});
 
 		tie(j,jend) = bb->outgoing();
 		for_each(j,jend,[&](pair<guard_ptr,bblock_ptr> s)
 		{
 			guard_ptr g = s.first;
-			basic_block::pred_iterator l,lend;
-			int pos;
-			instr_iterator k,kend;
-			
-			tie(l,lend) = s.second->predecessors();
-			pos = distance(l,find(l,lend,bb));
+			basic_block::pred_iterator l,lend,ll;
+			size_t sz = s.second->instructions().size(), pos = 0;
+			const instr_ptr *i = s.second->instructions().data();
 
-			for_each(g->relations.begin(),g->relations.end(),[&](relation &rel)
+			// rename incoming guards
+			for_each(g->relations.begin(),g->relations.end(),rename_guard);
+		
+			while(pos < sz)
 			{
-				shared_ptr<variable> w;
-
-				if((w = dynamic_pointer_cast<variable>(rel.operand1)))
-					w->nam.subscript = stack[w->nam.base].back();
-					
-				if((w = dynamic_pointer_cast<variable>(rel.operand2)))
-					w->nam.subscript = stack[w->nam.base].back();
-			});
-
-			tie(k,kend) = s.second->instructions();
-			for_each(k,kend,[&](instr_cptr i)
-			{
-				if(i->opcode == instr::Phi)
+				if(i[pos]->opcode == instr::Phi)
 				{
-					shared_ptr<variable> w;
-	
-					if((w = dynamic_pointer_cast<variable>(i->operands[pos])))
-						w->nam.subscript = stack[w->nam.base].back();
+					bool add = none_of(i[pos]->operands.begin(),i[pos]->operands.end(),[&](value_ptr v)
+						{ var_ptr w; return (w = dynamic_pointer_cast<variable>(v)) && w->nam.subscript == stack[w->nam.base].back(); });
+
+					if(add)
+						i[pos]->operands.push_back(value_ptr(new variable(name(i[pos]->assigns->nam.base,stack[i[pos]->assigns->nam.base].back()))));
 				}
-			});
+				++pos;
+			}
 		});
 
-		instr_iterator l,lend;
 		for_each(dominance->tree[bb]->successors.begin(),dominance->tree[bb]->successors.end(),[&](dtree_ptr dom)
 			{ rename(dom->basic_block); });
 		
-		tie(l,lend) = bb->instructions();
-		for_each(l,lend,[&](instr_cptr p)
-			{	stack[p->assigns->nam.base].pop_back(); });
-	
+		sz = bb->instructions().size(); pos = 0;
+		i = bb->instructions().data();
+		while(pos < sz)
+			stack[i[pos++]->assigns->nam.base].pop_back();
 	};
 
 	rename(proc->entry);

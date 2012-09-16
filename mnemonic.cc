@@ -5,11 +5,25 @@
 
 unsigned int instr_builder::next = 0;
 
-bool operator==(const area &a, const area &b) { return a.isset == b.isset && (!a.isset || (a.begin == b.begin && a.end == b.end)); }
+bool operator==(const area &a, const area &b) { return a.size() == b.size() && (!a.size() || (a.begin == b.begin && a.end == b.end)); }
 bool operator!=(const area &a, const area &b) { return !(a == b); }
 bool operator<(const area &a, const area &b) { return a.begin < b.begin; }
+ostream& operator<<(ostream &os, const area &a) 
+{ 
+	if(a.size())
+	{
+		os << hex << a.begin;
+		if(a.size() > 1)
+			os << "-" << a.end-1;
+		os << dec;
+	}
+	else
+		os << "NIL";
+	return os; 
+}
 
 name::name(string b) : base(b), subscript(-1) {};
+name::name(string b, int i) : base(b), subscript(i) {};
 name::name(const char *a) : base(string(a)), subscript(-1) {};
 string name::inspect(void) const 
 { 
@@ -70,6 +84,10 @@ string undefined::inspect(void) const { return "⊥"; }
 variable::variable(name n) : nam(n) {}
 variable::variable(string n) : nam(n) {}
 string variable::inspect(void) const { return nam.inspect(); }
+
+address::address(unsigned int o, unsigned int w, string n) : offset(o), width(w), name(n) {};
+address::address(unsigned int w, string n) : offset(0), width(w), name(n) {};
+string address::inspect(void) const { return name + "[" + to_string(offset) + "]"; };
 
 // named
 value_ptr instr_builder::and_b(name a, valproxy op1, valproxy op2)

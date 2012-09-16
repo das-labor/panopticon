@@ -3,17 +3,6 @@
 
 #include "basic_block.hh"
 
-/*
-void basic_block::accept_instr(instr_ptr i) 
-{ 
-	instructions.push_back(make_pair(i,0)); 
-	
-	if(addresses.isset)
-		addresses = area(min(addresses.begin,i->addresses.begin),max(addresses.end,i->addresses.end));
-	else
-		addresses = i->addresses;
-}*/
-
 relation::relation(valproxy a, Relcode c, valproxy b) : relcode(c), operand1(a.value), operand2(b.value) {}
 
 guard::guard(void) {}
@@ -84,11 +73,8 @@ pair<basic_block::pred_iterator,basic_block::pred_iterator> basic_block::predece
 pair<basic_block::succ_iterator,basic_block::succ_iterator> basic_block::successors(void)
 	{ return make_pair(succ_iterator(m_outgoing.begin()),succ_iterator(m_outgoing.end())); }
 
-pair<basic_block::iterator,basic_block::iterator> basic_block::mnemonics(void)
-	{ return make_pair(m_mnemonics.begin(),m_mnemonics.end()); }
-
-pair<instr_iterator,instr_iterator> basic_block::instructions(void)
-	{ return make_pair(instr_iterator(m_mnemonics,m_mnemonics.begin()),instr_iterator(m_mnemonics,m_mnemonics.end())); }
+const vector<mne_cptr> &basic_block::mnemonics(void) const { return m_mnemonics; }
+const vector<instr_ptr> &basic_block::instructions(void) const { return m_instructions; }
 
 pair<basic_block::out_iterator,basic_block::out_iterator> basic_block::outgoing(void)
 	{ return make_pair(m_outgoing.begin(),m_outgoing.end()); }
@@ -96,13 +82,17 @@ pair<basic_block::out_iterator,basic_block::out_iterator> basic_block::outgoing(
 pair<basic_block::in_iterator,basic_block::in_iterator> basic_block::incoming(void)
 	{ return make_pair(m_incoming.begin(),m_incoming.end()); }
 
+pair<basic_block::indir_iterator,basic_block::indir_iterator> basic_block::indirect(void)
+	{ return make_pair(m_indirect.begin(),m_indirect.end()); }
+
 void basic_block::append_mnemonic(mne_cptr m)
 { 
 	assert(m && (m_mnemonics.empty() || m_mnemonics.back()->addresses.end == m->addresses.begin));
 
 	m_mnemonics.push_back(m);
+	copy(m->instructions.begin(),m->instructions.end(),inserter(m_instructions,m_instructions.end()));
 	
-	if(m_addresses.isset)
+	if(m_addresses.size())
 		m_addresses = area(min(m_addresses.begin,m->addresses.begin),max(m_addresses.end,m->addresses.end));
 	else
 		m_addresses = m->addresses;
@@ -112,6 +102,8 @@ void basic_block::insert_incoming(guard_ptr g, bblock_ptr m)
 	{	assert(g && m); remove_incoming(m); m_incoming.push_back(make_pair(g,m)); };
 void basic_block::insert_outgoing(guard_ptr g, bblock_ptr m)
 	{	assert(g && m); remove_outgoing(m); m_outgoing.push_back(make_pair(g,m)); };
+void basic_block::insert_indirect(guard_ptr g, value_ptr m)
+	{	assert(g && m); remove_indirect(m); m_indirect.push_back(make_pair(g,m)); };
 	
 void basic_block::remove_incoming(bblock_ptr m)
 { 
@@ -139,6 +131,22 @@ void basic_block::remove_outgoing(bblock_ptr m)
 		if(i->second == m)
 		{
 			m_outgoing.erase(i);
+			return;
+		}
+		else
+			++i;
+}
+
+void basic_block::remove_indirect(value_ptr m)
+{ 
+	assert(m); 
+	
+	auto i = m_indirect.begin();
+
+	while(i != m_indirect.end())
+		if(i->second == m)
+		{
+			m_indirect.erase(i);
 			return;
 		}
 		else
@@ -184,6 +192,8 @@ void basic_block::clear(void)
 	m_incoming.clear();
 	m_outgoing.clear();
 	m_mnemonics.clear();
+	m_instructions.clear();
+	m_indirect.clear();
 }
 
 const area &basic_block::addresses(void) const
@@ -191,31 +201,10 @@ const area &basic_block::addresses(void) const
 
 void basic_block::prepend_instr(instr_ptr i)
 {
-	assert(!m_mnemonics.empty());
-
-	mne_ptr m(new mnemonic(area(0,0),"nop"));
-	m->instructions.push_back(i);
-	m_mnemonics.insert(m_mnemonics.begin(),m);
+	m_instructions.insert(m_instructions.begin(),i);
 }
 
-/*pair<bblock_ptr,bblock_ptr> branch(bblock_ptr bb, guard_ptr g, bblock_ptr trueb, bblock_ptr falseb)
-{
-	assert(bb && g);
-	bblock_ptr tret(trueb), fret(falseb);
-
-	if(!tret) tret = bblock_ptr(new basic_block());
-	if(!fret) fret = bblock_ptr(new basic_block());
-
-	tret->insert_incoming(g,bb);
-	fret->insert_incoming(g->negation(),bb);
-
-	bb->insert_outgoing(	g,tret);
-	bb->insert_outgoing(g->negation(),fret);
-
-	return make_pair(tret,fret);
-}*/
-
-void branch(bblock_ptr from, bblock_ptr to, guard_ptr g)
+void conditional_jump(bblock_ptr from, bblock_ptr to, guard_ptr g)
 {
 	assert(from && to && g);
 
@@ -223,15 +212,20 @@ void branch(bblock_ptr from, bblock_ptr to, guard_ptr g)
 	from->insert_outgoing(g,to);
 }
 
-void unconditional(bblock_ptr bb_from, bblock_ptr bb_to)
+void unconditional_jump(bblock_ptr bb_from, bblock_ptr bb_to)
 {
 	assert(bb_from && bb_to); 
-
 	guard_ptr g(new guard());
-	cout << "uncond " << g.get() << " from " << bb_from.get() << " to " << bb_to.get() << endl;
 
 	bb_from->insert_outgoing(g,bb_to);
 	bb_to->insert_incoming(g,bb_from);
+}
+
+void indirect_jump(bblock_ptr from, value_ptr v, guard_ptr g)
+{
+	assert(from && g && v);
+
+	from->insert_indirect(g,v);
 }
 
 // last == true -> pos is last in `up', last == false -> pos is first in `down'
@@ -241,15 +235,12 @@ pair<bblock_ptr,bblock_ptr> split(bblock_ptr bb, addr_t pos, bool last)
 
 	bblock_ptr up(new basic_block()), down(new basic_block());
 	bool sw = false;
-	basic_block::iterator i,iend;
 	basic_block::out_iterator j,jend;
 	basic_block::in_iterator k,kend;
-
-	cout << "split " << bb.get() << " into " << up.get() << " and " << down.get() << endl;
+	basic_block::indir_iterator l,lend;
 
 	// distribute mnemonics under `up' and `down'
-	tie(i,iend) = bb->mnemonics();
-	for_each(i,iend,[&](mne_cptr m)
+	for_each(bb->mnemonics().begin(),bb->mnemonics().end(),[&](mne_cptr m)
 	{	
 		if(!last)
 			sw |= m->addresses.includes(pos);
@@ -275,17 +266,26 @@ pair<bblock_ptr,bblock_ptr> split(bblock_ptr bb, addr_t pos, bool last)
 
 		if(b == bb)
 		{
-			cout << "reroute " << g.get() << " out to up" << endl;
 			down->insert_outgoing(g,up);
 			up->insert_incoming(g,down);
 		}
 		else
 		{
-			cout << "reroute " << g.get() << " out" << endl;
 			down->insert_outgoing(g,b);
 			b->insert_incoming(g,down);
 			b->remove_incoming(bb);
 		}
+	});
+	
+	// ...indirect jumps too
+	tie(l,lend) = bb->indirect();
+	for_each(l,lend,[&](pair<guard_ptr,value_ptr> t)
+	{
+		guard_ptr g;
+		value_ptr b;
+
+		tie(g,b) = t;
+		down->insert_indirect(g,b);
 	});
 	
 	// move incoming edges to up
@@ -299,13 +299,11 @@ pair<bblock_ptr,bblock_ptr> split(bblock_ptr bb, addr_t pos, bool last)
 
 		if(b == bb)
 		{
-			cout << "reroute " << g.get() << " in to down" << endl;
 			up->insert_incoming(g,down);
 			down->insert_outgoing(g,up);
 		}
 		else
 		{
-			cout << "reroute " << g.get() << " in" << endl;
 			up->insert_incoming(g,b);
 			b->insert_outgoing(g,up);
 			b->remove_outgoing(bb);
@@ -313,6 +311,6 @@ pair<bblock_ptr,bblock_ptr> split(bblock_ptr bb, addr_t pos, bool last)
 	});
 
 	bb->clear();
-	unconditional(up,down);
+	unconditional_jump(up,down);
 	return make_pair(up,down);
 }		

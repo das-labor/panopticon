@@ -37,20 +37,26 @@ map<bblock_ptr,L> *abstract_interpretation(proc_ptr proc)
 		for_each(i,iend,[&](bblock_ptr bb)
 		{
 			basic_block::pred_iterator k,kend;
-			instr_iterator j,jend;
+			size_t sz = bb->instructions().size(), pos = 0;
+			const instr_ptr *j = bb->instructions().data();
 
 			// supremum of all predecessor states
 			tie(k,kend) = bb->predecessors();
 			L lat = accumulate(k,kend,bottom(tag),[&](const L l, bblock_ptr pred) { return supremum(tag,l,last_states->at(pred)); });
 			
 			// accumulate semantics of the basic block
-			tie(j,jend) = bb->instructions();
-			lat = accumulate(j,jend,lat,[&](const L l, instr_cptr i) { return abstraction(tag,l,i); });
+			while(pos < sz)
+				lat = abstraction(tag,lat,j[pos++]);
 
 			states->insert(make_pair(bb,lat));
 		});
 
 		modified = !all_of(states->begin(),states->end(),[&](const pair<bblock_ptr,L> p) { return equal(tag,last_states->at(p.first),p.second); });
+		cout << "modified" << endl;
+	
+		for_each(states->begin(),states->end(),[](const pair<bblock_ptr,L> &l) { cout << l.first->addresses() << " => " << l.second << endl; });
+		cout << endl;
+
 		delete last_states;
 		last_states = states;
 	}

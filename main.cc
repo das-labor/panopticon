@@ -11,7 +11,7 @@ using namespace std;
 /*
  * TODO
  * - Constant propagation and folding superfluous IL
- * - guards w/ indirect target
+ * - guards w/ indirect target <- m_unresolved access funcs
  * - K-set domain
  * - complete IL
  * - sym. exec to infer guards
@@ -26,7 +26,7 @@ using namespace std;
 
 void decode(vector<uint16_t> &bytes)
 {
-	flow_ptr flow = avr_decode(bytes,6310);
+	flow_ptr flow = avr_decode(bytes,0);
 	
 	cout << graphviz(flow);
 }

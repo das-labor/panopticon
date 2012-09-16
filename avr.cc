@@ -18,12 +18,12 @@ typedef vector<uint16_t>::iterator tokiter;
 		if(st.capture_groups.count("d"))\
 		{\
 			st.add_mnemonic(area(st.address,st.address+st.tokens.size()),x,value_ptr(new reg((unsigned int)st.capture_groups["d"])));\
-			st.unconditional(st.mnemonics.begin()->second,st.address + st.tokens.size());\
+			st.unconditional_jump(st.mnemonics.begin()->second,st.address + st.tokens.size());\
 		}\
 		else\
 		{\
 			st.add_mnemonic(area(st.address,st.address+st.tokens.size()),x,value_ptr(new reg((unsigned int)st.capture_groups["r"])));\
-			st.unconditional(st.mnemonics.begin()->second,st.address + st.tokens.size());\
+			st.unconditional_jump(st.mnemonics.begin()->second,st.address + st.tokens.size());\
 		}\
 	};
 
@@ -34,7 +34,7 @@ typedef vector<uint16_t>::iterator tokiter;
 		name Rr = reg(st.capture_groups["r"]).nam;\
 		mne_ptr m = st.add_mnemonic(area(st.address,st.address+st.tokens.size()),x,Rd,Rr);\
 		func(Rd,Rr,m);\
-		st.unconditional(st.mnemonics.begin()->second,st.address + st.tokens.size());\
+		st.unconditional_jump(st.mnemonics.begin()->second,st.address + st.tokens.size());\
 	};
 
 #define branch(mnemonic,flag,set) \
@@ -45,8 +45,8 @@ typedef vector<uint16_t>::iterator tokiter;
 		\
 		k = k <= 63 ? k : k - 128;\
 		st.add_mnemonic(area(st.address,st.address+st.tokens.size()),mnemonic,k);\
-		st.branch(st.mnemonics.begin()->second,st.address + 1,g->negation());\
-		st.branch(st.mnemonics.begin()->second,st.address + k + 1,g);\
+		st.conditional_jump(st.mnemonics.begin()->second,st.address + 1,g->negation());\
+		st.conditional_jump(st.mnemonics.begin()->second,st.address + k + 1,g);\
 	};
 
 #define binary_regconst(x,func)\
@@ -56,35 +56,35 @@ typedef vector<uint16_t>::iterator tokiter;
 		int K = st.capture_groups["K"];\
 		mne_ptr m = st.add_mnemonic(area(st.address,st.address+st.tokens.size()),x,Rd,K);\
 		func(Rd,K,m);\
-		st.unconditional(st.mnemonics.begin()->second,st.address + st.tokens.size());\
+		st.unconditional_jump(st.mnemonics.begin()->second,st.address + st.tokens.size());\
 	};
 
 #define binary_st(r)\
 	[](sem_state<token,tokiter> &st)\
 	{\
 		st.add_mnemonic(area(st.address,st.address+st.tokens.size()),"st",value_ptr(r),value_ptr(new reg(st.capture_groups["r"])));\
-		st.unconditional(st.mnemonics.begin()->second,st.address + st.tokens.size());\
+		st.unconditional_jump(st.mnemonics.begin()->second,st.address + st.tokens.size());\
 	};
 
 #define binary_stq(r)\
 	[](sem_state<token,tokiter> &st)\
 	{\
 		st.add_mnemonic(area(st.address,st.address+st.tokens.size()),"st",value_ptr(new reg(r,reg::PostDisplace,st.capture_groups["q"])),value_ptr(new reg(st.capture_groups["r"])));\
-		st.unconditional(st.mnemonics.begin()->second,st.address + st.tokens.size());\
+		st.unconditional_jump(st.mnemonics.begin()->second,st.address + st.tokens.size());\
 	};
 
 #define binary_ld(r)\
 	[](sem_state<token,tokiter> &st)\
 	{\
 		st.add_mnemonic(area(st.address,st.address+st.tokens.size()),"ld",value_ptr(new reg(st.capture_groups["r"])),value_ptr(r));\
-		st.unconditional(st.mnemonics.begin()->second,st.address + st.tokens.size());\
+		st.unconditional_jump(st.mnemonics.begin()->second,st.address + st.tokens.size());\
 	};
 
 #define binary_ldq(r)\
 	[](sem_state<token,tokiter> &st)\
 	{\
 		st.add_mnemonic(area(st.address,st.address+st.tokens.size()),"ld",value_ptr(new reg(st.capture_groups["r"])),value_ptr(new reg(r,reg::PostDisplace,st.capture_groups["q"])));\
-		st.unconditional(st.mnemonics.begin()->second,st.address + st.tokens.size());\
+		st.unconditional_jump(st.mnemonics.begin()->second,st.address + st.tokens.size());\
 	};
 
 #define simple(x,func)\
@@ -92,7 +92,7 @@ typedef vector<uint16_t>::iterator tokiter;
 	{\
 		mne_ptr m = st.add_mnemonic(area(st.address,st.address+st.tokens.size()),x);\
 		func(m);\
-		st.unconditional(st.mnemonics.begin()->second,st.address + st.tokens.size());\
+		st.unconditional_jump(st.mnemonics.begin()->second,st.address + st.tokens.size());\
 	};
 
 flow_ptr avr_decode(vector<token> &bytes, addr_t entry)
@@ -110,21 +110,21 @@ flow_ptr avr_decode(vector<token> &bytes, addr_t entry)
 		st.add_mnemonic(area(st.address,st.address+st.tokens.size()),"movw",
 										value_ptr(new reg(st.capture_groups["d"],st.capture_groups["d"] + 1)),
 										value_ptr(new reg(st.capture_groups["r"],st.capture_groups["r"] + 1)));
-		st.unconditional(st.mnemonics.begin()->second,st.address + st.tokens.size());
+		st.unconditional_jump(st.mnemonics.begin()->second,st.address + st.tokens.size());
 	};
 	main | "10110 A@.. d@..... A@...." 	= [](sem_state<token,tokiter> &st)
 	{
 		st.add_mnemonic(area(st.address,st.address+st.tokens.size()),"in",
 										value_ptr(new reg(st.capture_groups["d"])),
 										value_ptr(new ioreg(st.capture_groups["A"])));
-		st.unconditional(st.mnemonics.begin()->second,st.address + st.tokens.size());
+		st.unconditional_jump(st.mnemonics.begin()->second,st.address + st.tokens.size());
 	};
 	main | "10111 A@.. r@..... A@...." 	= [](sem_state<token,tokiter> &st) 	
 	{
 		st.add_mnemonic(area(st.address,st.address+st.tokens.size()),"out",
 										value_ptr(new ioreg(st.capture_groups["A"])),
 										value_ptr(new reg(st.capture_groups["r"])));
-		st.unconditional(st.mnemonics.begin()->second,st.address + st.tokens.size());
+		st.unconditional_jump(st.mnemonics.begin()->second,st.address + st.tokens.size());
 	};
 	main | "1001000 d@..... 1111"				= unary_reg("pop");
 	main | "1001001 d@..... 1111" 			= unary_reg("push");
@@ -142,7 +142,7 @@ flow_ptr avr_decode(vector<token> &bytes, addr_t entry)
 	main | "1001000 d@..... 0000" | "k@................" = [](sem_state<token,tokiter> &st)
 	{
 		st.add_mnemonic(area(st.address,st.address+st.tokens.size()),"lds",value_ptr(new reg(st.capture_groups["d"])),st.capture_groups["k"]);
-		st.unconditional(st.mnemonics.begin()->second,st.address + st.tokens.size());
+		st.unconditional_jump(st.mnemonics.begin()->second,st.address + st.tokens.size());
 	};
 
 	main | "10100 k@... d@.... k@...." 	= [](sem_state<token,tokiter> &st)
@@ -150,31 +150,31 @@ flow_ptr avr_decode(vector<token> &bytes, addr_t entry)
 		unsigned int k = st.capture_groups["k"];
 
 		st.add_mnemonic(area(st.address,st.address+st.tokens.size()),"lds",value_ptr(new reg(st.capture_groups["d"] + 16)),(~k & 16) | (k & 16) | (k & 64) | (k & 32) | (k & 15));
-		st.unconditional(st.mnemonics.begin()->second,st.address + st.tokens.size());
+		st.unconditional_jump(st.mnemonics.begin()->second,st.address + st.tokens.size());
 	};
 
 	main | 0x95c8 											= 	[](sem_state<token,tokiter> &st)
 	{
 		st.add_mnemonic(area(st.address,st.address+st.tokens.size()),"lpm",value_ptr(new reg(0)),value_ptr(new reg(reg::Z)));
-		st.unconditional(st.mnemonics.begin()->second,st.address + st.tokens.size());
+		st.unconditional_jump(st.mnemonics.begin()->second,st.address + st.tokens.size());
 	};
 
 	main | 0x95e8 											= [](sem_state<token,tokiter> &st)
 	{
 		st.add_mnemonic(area(st.address,st.address+st.tokens.size()),"spm");
-		st.unconditional(st.mnemonics.begin()->second,st.address + st.tokens.size());
+		st.unconditional_jump(st.mnemonics.begin()->second,st.address + st.tokens.size());
 	};
 
 	main | 0x95f8 											= [](sem_state<token,tokiter> &st)
 	{
 		st.add_mnemonic(area(st.address,st.address+st.tokens.size()),"spm",value_ptr(new reg(reg::Z,reg::PostInc)));
-		st.unconditional(st.mnemonics.begin()->second,st.address + st.tokens.size());
+		st.unconditional_jump(st.mnemonics.begin()->second,st.address + st.tokens.size());
 	};
 
 	main | "1001001 d@..... 0000" | "k@................" = [](sem_state<token,tokiter> &st)
 	{
 		st.add_mnemonic(area(st.address,st.address+st.tokens.size()),"sts",st.capture_groups["k"],value_ptr(new reg(st.capture_groups["r"])));
-		st.unconditional(st.mnemonics.begin()->second,st.address + st.tokens.size());
+		st.unconditional_jump(st.mnemonics.begin()->second,st.address + st.tokens.size());
 	};
 
 	main | "10101 k@... d@.... k@...." 	= [](sem_state<token,tokiter> &st)
@@ -182,19 +182,19 @@ flow_ptr avr_decode(vector<token> &bytes, addr_t entry)
 		unsigned int k = st.capture_groups["k"];
 
 		st.add_mnemonic(area(st.address,st.address+st.tokens.size()),"sts",(~k & 16) | (k & 16) | (k & 64) | (k & 32) | (k & 15),value_ptr(new reg(st.capture_groups["r"])));
-		st.unconditional(st.mnemonics.begin()->second,st.address + st.tokens.size());
+		st.unconditional_jump(st.mnemonics.begin()->second,st.address + st.tokens.size());
 	};
 
 	main | "10011010 A@..... b@..." 			= [](sem_state<token,tokiter> &st)
 	{
 		st.add_mnemonic(area(st.address,st.address+st.tokens.size()),"sbi",value_ptr(new ioreg(st.capture_groups["A"])),st.capture_groups["b"]);
-		st.unconditional(st.mnemonics.begin()->second,st.address + st.tokens.size());
+		st.unconditional_jump(st.mnemonics.begin()->second,st.address + st.tokens.size());
 	};
 
 	main | "10011000 A@..... b@..." 			= [](sem_state<token,tokiter> &st)
 	{
 		st.add_mnemonic(area(st.address,st.address+st.tokens.size()),"cbi",value_ptr(new ioreg(st.capture_groups["A"])),st.capture_groups["b"]);
-		st.unconditional(st.mnemonics.begin()->second,st.address + st.tokens.size());
+		st.unconditional_jump(st.mnemonics.begin()->second,st.address + st.tokens.size());
 	};
 
 	// SREG operations
@@ -279,7 +279,7 @@ flow_ptr avr_decode(vector<token> &bytes, addr_t entry)
 		m->xor_b("S","N","V");
 	});
 
-	main | "001000 d@.........." 				= unary_reg("tst");
+	main | "001000 d@.........." 				= unary_reg("tst");	// TODO: d w/o offset
 	
 	// bit-level logic
 	//main | "0110 K@.... d@.... K@...." 	= binary_regconst("sbr",or_b,r,r,K);
@@ -312,12 +312,12 @@ flow_ptr avr_decode(vector<token> &bytes, addr_t entry)
 		if(d == r)
 		{
 			st.add_mnemonic(area(st.address,st.address+st.tokens.size()),"clr",value_ptr(new reg(st.capture_groups["d"])));
-			st.unconditional(st.mnemonics.begin()->second,st.address + st.tokens.size());
+			st.unconditional_jump(st.mnemonics.begin()->second,st.address + st.tokens.size());
 		}
 		else
 		{
 			st.add_mnemonic(area(st.address,st.address+st.tokens.size()),"eor",value_ptr(new reg(st.capture_groups["d"])),value_ptr(new reg(st.capture_groups["d"])));
-			st.unconditional(st.mnemonics.begin()->second,st.address + st.tokens.size());
+			st.unconditional_jump(st.mnemonics.begin()->second,st.address + st.tokens.size());
 		}
 	};
 	main | "1001010 d@..... 0001"				= unary_reg("neg");
@@ -520,14 +520,14 @@ flow_ptr avr_decode(vector<token> &bytes, addr_t entry)
 		unsigned int d = (unsigned int)st.capture_groups["d"] * 2 + 24;
 		
 		st.add_mnemonic(area(st.address,st.address+st.tokens.size()),"adiw",value_ptr(new reg(d,d+1)),st.capture_groups["K"]);
-		st.unconditional(st.mnemonics.begin()->second,st.address + st.tokens.size());
+		st.unconditional_jump(st.mnemonics.begin()->second,st.address + st.tokens.size());
 	};
 	main | "10010111 K@.. d@.. K@...." = [](sem_state<token,tokiter> &st) 
 	{
 		unsigned int d = (unsigned int)st.capture_groups["d"] * 2 + 24;
 		
 		st.add_mnemonic(area(st.address,st.address+st.tokens.size()),"sbiw",value_ptr(new reg(d,d+1)),st.capture_groups["K"]);
-		st.unconditional(st.mnemonics.begin()->second,st.address + st.tokens.size());
+		st.unconditional_jump(st.mnemonics.begin()->second,st.address + st.tokens.size());
 	};
 	main | "0000 0011 0 d@... 1 r@..."	= binary_reg("fmul",[](const name &Rd, const name &Rr,mne_ptr m)
 	{
@@ -579,43 +579,43 @@ flow_ptr avr_decode(vector<token> &bytes, addr_t entry)
 	main | "1111 110r@..... 0 b@..." 		= [](sem_state<token,tokiter> &st)
 	{
 		st.add_mnemonic(area(st.address,st.address+st.tokens.size()),"sbrc",value_ptr(new reg(st.capture_groups["r"])),st.capture_groups["b"]);
-		st.unconditional(st.mnemonics.begin()->second,st.address + st.tokens.size());
+		st.unconditional_jump(st.mnemonics.begin()->second,st.address + st.tokens.size());
 		//st.skip_next = true;
 	};
 	main | "1111 111 r@..... 0 b@..." 		= [](sem_state<token,tokiter> &st)
 	{
 		st.add_mnemonic(area(st.address,st.address+st.tokens.size()),"sbrs",value_ptr(new reg(st.capture_groups["r"])),st.capture_groups["b"]);
-		st.unconditional(st.mnemonics.begin()->second,st.address + st.tokens.size());
+		st.unconditional_jump(st.mnemonics.begin()->second,st.address + st.tokens.size());
 		//st.skip_next = true;
 	};
 	main | "000100 r@. d@..... r@...."	= [](sem_state<token,tokiter> &st)
 	{
 		st.add_mnemonic(area(st.address,st.address+st.tokens.size()),"cpse",value_ptr(new reg(st.capture_groups["d"])),value_ptr(new reg(st.capture_groups["r"])));
-		st.unconditional(st.mnemonics.begin()->second,st.address + st.tokens.size());
+		st.unconditional_jump(st.mnemonics.begin()->second,st.address + st.tokens.size());
 		//st.skip_next = true;
 	};
 	main | "1001 1001 A@..... b@..." 		= [](sem_state<token,tokiter> &st)
 	{
 		st.add_mnemonic(area(st.address,st.address+st.tokens.size()),"sbic",value_ptr(new ioreg(st.capture_groups["A"])),st.capture_groups["b"]);
-		st.unconditional(st.mnemonics.begin()->second,st.address + st.tokens.size());
+		st.unconditional_jump(st.mnemonics.begin()->second,st.address + st.tokens.size());
 		//st.skip_next = true;
 	};
 	main | "1001 1011 A@..... b@..." 		= [](sem_state<token,tokiter> &st)
 	{
 		st.add_mnemonic(area(st.address,st.address+st.tokens.size()),"sbis",value_ptr(new ioreg(st.capture_groups["A"])),st.capture_groups["b"]);
-		st.unconditional(st.mnemonics.begin()->second,st.address + st.tokens.size());
+		st.unconditional_jump(st.mnemonics.begin()->second,st.address + st.tokens.size());
 		//st.skip_next = true;
 	};
 
-	// unconditional branches
+	// unconditional_jump branches
 	main | "1001010 k@..... 111 k@." | "k@................"	= [](sem_state<token,tokiter> &st) 
 	{
 		int k = st.capture_groups["k"];
 		
 		st.add_mnemonic(area(st.address,st.address+st.tokens.size()),"call",k)
 			->call("t",k);
-		st.unconditional(st.mnemonics.begin()->second,st.address + st.tokens.size());
-	//	st.unconditional(st.mnemonics.begin()->second,k);
+		st.unconditional_jump(st.mnemonics.begin()->second,st.address + st.tokens.size());
+	//	st.unconditional_jump(st.mnemonics.begin()->second,k);
 		//st.is_call = true;
 	};
 	main | "1001010 k@..... 110 k@." | "k@................"	= [](sem_state<token,tokiter> &st) 
@@ -623,7 +623,7 @@ flow_ptr avr_decode(vector<token> &bytes, addr_t entry)
 		int k = st.capture_groups["k"];
 		
 		st.add_mnemonic(area(st.address,st.address+st.tokens.size()),"jmp",k);
-		st.unconditional(st.mnemonics.begin()->second,k);
+		st.unconditional_jump(st.mnemonics.begin()->second,k);
 	};
 
 	main | "1101 k@............" 														= [](sem_state<token,tokiter> &st) 
@@ -634,8 +634,8 @@ flow_ptr avr_decode(vector<token> &bytes, addr_t entry)
 		
 		st.add_mnemonic(area(st.address,st.address+st.tokens.size()),"rcall",k)
 			->call("t",k + 1 + st.address);
-		st.unconditional(st.mnemonics.begin()->second,st.address + 1);
-		//st.unconditional(st.mnemonics.begin()->second,k + 1 + st.address);
+		st.unconditional_jump(st.mnemonics.begin()->second,st.address + 1);
+		//st.unconditional_jump(st.mnemonics.begin()->second,k + 1 + st.address);
 		//st.is_call = true;
 	};
 	main | "1100 k@............" 														= [](sem_state<token,tokiter> &st) 
@@ -644,11 +644,17 @@ flow_ptr avr_decode(vector<token> &bytes, addr_t entry)
 
 		k = (k <= 2047 ? k : k - 4096);
 		st.add_mnemonic(area(st.address,st.address+st.tokens.size()),"rjmp",k);
-		st.unconditional(st.mnemonics.begin()->second,k + 1 + st.address);
+		st.unconditional_jump(st.mnemonics.begin()->second,k + 1 + st.address);
 	};
 	main | 0x9508 = [](sem_state<token,tokiter> &st) { st.add_mnemonic(area(st.address,st.address+st.tokens.size()),"ret"); };
 	main | 0x9518 = [](sem_state<token,tokiter> &st) { st.add_mnemonic(area(st.address,st.address+st.tokens.size()),"reti"); };
-	main | 0x9409 = [](sem_state<token,tokiter> &st) { st.add_mnemonic(area(st.address,st.address+st.tokens.size()),"ijmp"); };
+	main | 0x9409 = [](sem_state<token,tokiter> &st) 
+	{ 
+		mne_ptr m = st.add_mnemonic(area(st.address,st.address+st.tokens.size()),"ijmp");
+		m->concat("J","r31","r30");
+		st.indirect_jump(m,"J");
+	};
+
 	main | 0x9509 = [](sem_state<token,tokiter> &st) { st.add_mnemonic(area(st.address,st.address+st.tokens.size()),"icall"); };
 	// icall
 	
@@ -681,7 +687,7 @@ flow_ptr avr_decode(vector<token> &bytes, addr_t entry)
 	main | "10010100 K@.... 1011" = [](sem_state<token,tokiter> &st) 
 	{
 		st.add_mnemonic(area(st.address,st.address+st.tokens.size()),"des",st.capture_groups["K"]);
-		st.unconditional(st.mnemonics.begin()->second,st.tokens.size() + st.address);
+		st.unconditional_jump(st.mnemonics.begin()->second,st.tokens.size() + st.address);
 	};
 
 	main | (token)0x0 = simple("nop",[](mne_ptr m) { /* TODO */ });

@@ -25,7 +25,7 @@ struct flowgraph
 bool has_procedure(flow_ptr flow, addr_t entry);
 
 template<typename token,typename tokiter>
-flow_ptr disassemble(const decoder<token,tokiter> &main, vector<token> tokens, addr_t offset = 0, bool cf_sensitive = true)
+flow_ptr disassemble(const decoder<token,tokiter> &main, vector<token> tokens, addr_t offset = 0xdfe, bool cf_sensitive = true)
 {
 	flow_ptr ret(new flowgraph());
 	set<addr_t> call_targets;
@@ -36,53 +36,108 @@ flow_ptr disassemble(const decoder<token,tokiter> &main, vector<token> tokens, a
 	{
 		auto h = call_targets.begin();
 		addr_t tgt = *h;
-		proc_ptr proc;
+		dom_ptr dom;
+		live_ptr live;
+		shared_ptr<map<bblock_ptr,taint_lattice>> taint;
+		shared_ptr<map<bblock_ptr,cprop_lattice>> cprop;
+		
+		if(has_procedure(ret,tgt))
+			continue;
+		
+		proc_ptr proc(new procedure());
+		bblock_ptr entry(new basic_block());
 		procedure::iterator i,iend;
 
 		call_targets.erase(h);
+		proc->insert_bblock(entry);
+		proc->entry = entry;
 
-		if(has_procedure(ret,tgt))
-			continue;
+		// iterate until no more indirect jump targets are known
+		while(true)
+		{
+			cout << "disassemble" << endl;
+			disassemble_procedure(proc,main,tokens,tgt,entry);
+	
+			// compute dominance tree
+			cout << "dominance tree" << endl;
+			dom = dominance_tree(proc);
 
-		proc = disassemble_procedure(main,tokens,tgt,cf_sensitive);
+			// compute liveness information
+			cout << "liveness" << endl;
+			live = liveness(proc);
+
+			// rename variables and compute semi-pruned SSA form
+			cout << "ssa" << endl;
+			ssa(proc,dom,live);
+			
+			// abi
+			//cout << "taint" << endl;
+			//taint = shared_ptr<map<bblock_ptr,taint_lattice>>(abstract_interpretation<taint_domain,taint_lattice>(proc));
+			cout << "cprop" << endl;
+			cprop = shared_ptr<map<bblock_ptr,cprop_lattice>>(abstract_interpretation<cprop_domain,cprop_lattice>(proc));
+			cout << "resolve" << endl;
+			procedure::iterator j,jend;
+			tie(j,jend) = proc->all();
+
+			while(j != jend)
+			{
+				bblock_ptr bb = *j++;
+				const cprop_lattice &cp(cprop->at(bb));
+				basic_block::indir_iterator k,kend;
+
+				tie(k,kend) = bb->indirect();
+				while(k != kend)
+				{
+					pair<guard_ptr,value_ptr> p = *k++;
+					var_ptr w;
+					
+					if((w = dynamic_pointer_cast<variable>(p.second)) && cp->count(w->nam))
+					{
+						const cprop_element &cm(cp->at(w->nam));
+
+						if(cm.type == cprop_element::Const)
+						{
+							bb->remove_indirect(p.second);
+							tgt = cm.value;
+							entry = bb;
+							goto out;
+						}
+					}
+				}
+			}
+			break; out: cout << "new round" << endl;
+		}	
+		
+		// finish procedure
 		ret->procedures.insert(proc);
+		ret->dominance.insert(make_pair(proc,dom));
+		ret->liveness.insert(make_pair(proc,live));
+		ret->taint.insert(make_pair(proc,taint));
+		ret->cprop.insert(make_pair(proc,cprop));
 
 		// look for call instructions to find new procedures to disassemble
 		tie(i,iend) = proc->all();
 		while(i != iend)
 		{	
-			instr_iterator j,jend;
 			bblock_ptr bb = *i++;
+			size_t sz = bb->instructions().size(), pos = 0;
+			const instr_ptr *j = bb->instructions().data();
 
-			tie(j,jend) = bb->instructions();
-			while(j != jend)
+			while(pos < sz)
 			{
-				instr_cptr in = *j++;
-				if(in->opcode == instr::Call)
+				if(j[pos]->opcode == instr::Call)
 				{
-					assert(in->operands.size() == 1);
-					shared_ptr<const constant> c = dynamic_pointer_cast<const constant>(in->operands[0]);
+					assert(j[pos]->operands.size() == 1);
+					shared_ptr<const constant> c = dynamic_pointer_cast<const constant>(j[pos]->operands[0]);
 
 					if(c && !has_procedure(ret,(unsigned int)c->val))
-						call_targets.insert(c->val);
+						;//call_targets.insert(c->val);
 				}
+				++pos;
 			}
 		}
 
-		// compute dominance tree
-		dom_ptr dom = dominance_tree(proc);
-		ret->dominance.insert(make_pair(proc,dom));
-
-		// compute liveness information
-		live_ptr live = liveness(proc);
-		ret->liveness.insert(make_pair(proc,live));
-
-		// rename variables and compute semi-pruned SSA form
-		ssa(proc,dom,live);
-
-		// abi
-		ret->taint.insert(make_pair(proc,shared_ptr<map<bblock_ptr,taint_lattice>>(abstract_interpretation<taint_domain,taint_lattice>(proc))));
-		ret->cprop.insert(make_pair(proc,shared_ptr<map<bblock_ptr,cprop_lattice>>(abstract_interpretation<cprop_domain,cprop_lattice>(proc))));
+		//cout << "procedure done" << endl;
 	}
 
 	return ret;

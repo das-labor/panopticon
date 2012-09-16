@@ -21,7 +21,7 @@ proc_ptr find_procedure(flow_ptr fg, addr_t a)
 bool has_procedure(flow_ptr flow, addr_t entry)
 {
 	return any_of(flow->procedures.begin(),flow->procedures.end(),[&](const proc_ptr p) 
-								{ cerr<<p->entry->addresses().begin << endl;return p->entry->addresses().includes(entry); });
+								{ return p->entry->addresses().includes(entry); });
 }
 
 string graphviz(flow_ptr fg)
@@ -51,19 +51,41 @@ string graphviz(flow_ptr fg)
 		tie(i,iend) = proc->all();
 		for_each(i,iend,[&](const bblock_ptr bb)
 		{
-			basic_block::iterator j,jend;
-			taint_lattice tl(taint_bblock->at(bb));
+			size_t sz = bb->mnemonics().size(), pos = 0;
+			const mne_cptr *j = bb->mnemonics().data();
+			//taint_lattice tl(taint_bblock->at(bb));
 			cprop_lattice cp(cprop_bblock->at(bb));
 
 			ss << "\t\tbb_" << procname 
 				 << "_" << bb->addresses().begin 
 				 << " [label=<<table BORDER=\"0\" CELLBORDER=\"0\" CELLSPACING=\"0\" ALIGN=\"LEFT\">";
-			
+		
+			// PHI nodes
+			{ 
+				mnemonic::iterator l = bb->instructions().begin();
+				
+				if(!bb->instructions().empty() && (*l)->opcode == instr::Phi)
+				{
+					ss << "<tr ALIGN=\"LEFT\"><td ALIGN=\"LEFT\">0x" 
+						 << hex << bb->addresses().begin << dec 
+						 << "</td><td ALIGN=\"LEFT\"> </td></tr>"
+						 << "<tr><td COLSPAN=\"2\"><table BORDER=\"0\" CELLBORDER=\"0\" CELLSPACING=\"0\" ALIGN=\"LEFT\">";
+					
+					while(l != bb->instructions().end() && (*l)->opcode == instr::Phi)
+					{
+						instr_cptr in = *l++;
+						ss << "<tr ALIGN=\"LEFT\"><td ALIGN=\"LEFT\">" 
+							 << "<font POINT-SIZE=\"11\">" << in->inspect()
+							 << "</font></td></tr>";
+					}
+					ss << "</table></td></tr>";
+				}
+			}
+	
 			// mnemonics
-			tie(j,jend) = bb->mnemonics();
-			while(j != jend)
+			while(pos < sz)
 			{
-				const mne_cptr m = *j++;
+				const mne_cptr m = j[pos++];
 				mnemonic::iterator l;
 
 				ss << "<tr ALIGN=\"LEFT\"><td ALIGN=\"LEFT\">0x" 
@@ -81,7 +103,7 @@ string graphviz(flow_ptr fg)
 						ss << "<tr ALIGN=\"LEFT\"><td ALIGN=\"LEFT\">" 
 							 << "<font POINT-SIZE=\"11\">" << in->inspect();
 						
-						// taint
+						/* taint
 						if(tl->count(in->assigns->nam))
 							ss << accumulate(tl->at(in->assigns->nam).begin(),
 															 tl->at(in->assigns->nam).end(),
@@ -89,7 +111,7 @@ string graphviz(flow_ptr fg)
 															 [](const string &acc, const name &s) { return acc + (s.base.front() == 't' ? "" : " " + s.inspect()); })
 								 << " )";
 						else
-							ss << " ( )";
+							ss << " ( )";*/
 						
 						// constant prop
 						if(cp->count(in->assigns->nam))
@@ -102,12 +124,12 @@ string graphviz(flow_ptr fg)
 					}
 					ss << "</table></td></tr>";
 				}
-//				ss << "</td></tr>";
 			}
 
 			ss << "</table>>];" << endl;
 
 			basic_block::out_iterator k,kend;
+			basic_block::indir_iterator m,mend;
 
 			// outgoing edges
 			tie(k,kend) = bb->outgoing();
@@ -118,6 +140,17 @@ string graphviz(flow_ptr fg)
 					 << " [label=\" " << s.first->inspect() << " \"];" << endl; 
 			});	
 			
+			// indirect jumps
+			tie(m,mend) = bb->indirect();
+			for_each(m,mend,[&bb,&ss,&procname](const pair<guard_ptr,value_ptr> s) 
+			{ 
+				ss << "\t\tbb_" << procname << "_indir" << s.second.get() 
+					 << " [label=\"" << s.second->inspect() << "\"];" << endl
+					 << "\t\tbb_" << procname << "_" << bb->addresses().begin 
+					 << " -> bb_" << procname << "_indir" << s.second.get()
+					 << " [label=\"" << s.first->inspect() << "\"];" << endl;
+			});	
+
 			/*basic_block::in_iterator l,lend;
 
 			// incoming edges

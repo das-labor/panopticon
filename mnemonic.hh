@@ -21,15 +21,15 @@ typedef shared_ptr<const class mnemonic> mne_cptr;
 
 struct area
 {
-	area(void) : isset(false) {};
-	area(addr_t b, addr_t e) : isset(true), begin(b), end(e) { assert(begin <= end); };
+	area(void) : begin(0), end(0) {};
+	area(addr_t b, addr_t e) : begin(b), end(e) { assert(begin <= end); };
 
 	size_t size(void) const { return end - begin; };
-	bool includes(const area &a) const { return isset && a.isset && begin <= a.begin && end > a.end; };
-	bool includes(addr_t a) const { return isset && begin <= a && end > a; };
-	bool overlap(const area &a) const { return isset && a.isset && !(begin >= a.end || end <= a.begin); };
+	bool includes(const area &a) const { return size() && a.size() && begin <= a.begin && end > a.end; };
+	bool includes(addr_t a) const { return size() && begin <= a && end > a; };
+	bool overlap(const area &a) const { return size() && a.size() && !(begin >= a.end || end <= a.begin); };
+	addr_t last(void) const { return size() ? end - 1 : begin; };
 
-	bool isset;
 	addr_t begin;
 	addr_t end;
 };
@@ -37,10 +37,12 @@ struct area
 bool operator==(const area &a, const area &b);
 bool operator!=(const area &a, const area &b);
 bool operator<(const area &a, const area &b);
+ostream& operator<<(ostream &os, const area &);
 
 struct name
 {
 	name(string n);
+	name(string n, int i);
 	name(const char *a);
 	string inspect(void) const;	
 	
@@ -88,6 +90,17 @@ struct variable : public value
 	virtual string inspect(void) const;
 	
 	name nam;
+};
+
+struct address : public value
+{
+	address(unsigned int o, unsigned int w, string n);
+	address(unsigned int w, string n);
+	virtual string inspect(void) const;
+
+	unsigned int offset;	// from start of the memory space
+	unsigned int width;		// word size in bytes
+	string name;					// descriptive name of the memory space (stack, flash, ...)
 };
 
 class instr
@@ -209,12 +222,12 @@ protected:
 class mnemonic : public instr_builder
 {
 public:
-	typedef list<instr_cptr>::const_iterator iterator;
+	typedef vector<instr_ptr>::const_iterator iterator;
 	mnemonic(area a, string n, list<value_ptr> v = list<value_ptr>()) : addresses(a), name(n), arguments(v) {};
 
 	area addresses;
 	string name;
-	list<instr_cptr> instructions;
+	vector<instr_ptr> instructions;
 	list<value_ptr> arguments;
 
 	value_ptr accept_instr(instr_ptr i)	{ instructions.push_back(i); return i->assigns; };

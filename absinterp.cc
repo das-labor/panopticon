@@ -11,7 +11,6 @@ taint_lattice bottom(taint_domain)
 
 bool equal(taint_domain,const taint_lattice a, const taint_lattice b)
 {
-	cout << "equal? " << (*a == *b) << endl;
 	return *a == *b;
 }
 
@@ -91,9 +90,8 @@ cprop_lattice bottom(cprop_domain)
 
 bool equal(cprop_domain,const cprop_lattice a, const cprop_lattice b)
 {
-	cout << a << endl << b << endl;
-	cout << "equal? " << (*a == *b) << endl;
-	return *a == *b;
+	return a->size() == b->size() && all_of(a->begin(),a->end(),[&](const pair<name,cprop_element> &p)
+		{ return b->count(p.first) && b->at(p.first) == a->at(p.first); });
 }
 
 cprop_element supremum(const cprop_element a, const cprop_element b)
@@ -122,8 +120,7 @@ cprop_lattice supremum(cprop_domain,const cprop_lattice a, const cprop_lattice b
 			cprop_element c = supremum(a,b);
 
 			ret->erase(x.first);
-			cout << "join(" << a << ", " << b << ") = " << c << endl;
-			ret->insert(make_pair(x.first,supremum(a,b)));
+			ret->insert(make_pair(x.first,c));
 		}
 		else
 			ret->insert(x);
@@ -134,11 +131,16 @@ cprop_lattice supremum(cprop_domain,const cprop_lattice a, const cprop_lattice b
 
 bool operator==(const cprop_element &a, const cprop_element &b) 
 { 
+	if(a.type != b.type)
+		cout << "type " << a.type << " != type " << b.type << endl;
+	else if(b.type == cprop_element::Const && a.value != b.value)
+		cout << a.value << " != " << b.value << endl;
 	return a.type == b.type && (b.type != cprop_element::Const || a.value == b.value); 
 }
 
 cprop_lattice abstraction(cprop_domain,const cprop_lattice a, instr_cptr i)
 {
+	// 99%
 	cprop_lattice ret(new map<name,cprop_element>(*a));
 	vector<cprop_element> ops;
 
@@ -204,7 +206,9 @@ cprop_lattice abstraction(cprop_domain,const cprop_lattice a, instr_cptr i)
 			++i;
 		}
 		val = val >> ops[1].value; break;
-	}
+	}	
+	case instr::Concat:
+		val = (ops[0].value << 8) | ops[1].value; break;
 	default:
 			;
 	}
@@ -238,23 +242,28 @@ ostream& operator<<(ostream &os, const cprop_lattice l)
 
 		while(i != l->cend())
 		{
-			os << i->first.inspect() << ": ";
-			
-			switch(i->second.type)
+			if(i->second.type != cprop_element::Bottom)
 			{
-			case cprop_element::Bottom:
-				os << "Bot"; break;
-			case cprop_element::NonConst:
-				os << "NonConst"; break;
-			case cprop_element::Const:
-				os << i->second.value; break;
-			default:
-				os << "Err"; break;
+				os << i->first.inspect() << ": ";
+			
+				switch(i->second.type)
+				{
+				case cprop_element::Bottom:
+					os << "Bot"; break;
+				case cprop_element::NonConst:
+					os << "NonConst"; break;
+				case cprop_element::Const:
+					os << i->second.value; break;
+				default:
+					os << "Err"; break;
+				}
+		
+				++i;
+				if(i != l->cend())
+					os << ", ";
 			}
-
-			++i;
-			if(i != l->cend())
-				os << ", ";
+			else	
+				++i;
 		}
 	}
 	else

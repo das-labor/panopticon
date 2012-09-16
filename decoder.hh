@@ -45,14 +45,19 @@ struct sem_state
 		return m;
 	};
 
-	void unconditional(mne_ptr m, addr_t a) 
+	void unconditional_jump(mne_ptr m, addr_t a) 
 	{ 
-		control_transfers.insert(make_pair(m,make_pair(a,guard_ptr(new guard()))));
+		direct_jumps.insert(make_pair(m,make_pair(a,guard_ptr(new guard()))));
 	};
 	
-	void branch(mne_ptr m, addr_t a, guard_ptr g) 
+	void conditional_jump(mne_ptr m, addr_t a, guard_ptr g) 
 	{ 
-		control_transfers.insert(make_pair(m,make_pair(a,g)));
+		direct_jumps.insert(make_pair(m,make_pair(a,g)));
+	};
+
+	void indirect_jump(mne_ptr m, valproxy a)
+	{
+		indirect_jumps.insert(make_pair(m,a.value));
 	};
 
 	// in
@@ -62,7 +67,8 @@ struct sem_state
 	
 	// out
 	map<addr_t,mne_ptr> mnemonics;
-	multimap<mne_ptr,pair<addr_t,guard_ptr>> control_transfers;
+	multimap<mne_ptr,pair<addr_t,guard_ptr>> direct_jumps;
+	multimap<mne_ptr,value_ptr> indirect_jumps;
 };
 
 template<typename token,typename tokiter>
@@ -358,20 +364,20 @@ private:
 };
 
 template<typename token,typename tokiter>
-proc_ptr disassemble_procedure(const decoder<token,tokiter> &main, vector<token> tokens, addr_t offset = 0, bool cf_sensitive = true)
+void disassemble_procedure(proc_ptr proc, const decoder<token,tokiter> &main, vector<token> tokens, addr_t start, bblock_ptr entry)
 {
-	proc_ptr proc(new procedure());
-	list<tuple<addr_t,mne_cptr,bblock_ptr,guard_ptr>> todo;
-	bblock_ptr entry(new basic_block());
+	// target, source mnemonic, guard
+	list<tuple<addr_t,mne_cptr,guard_ptr>> todo;
 
-	proc->insert_bblock(entry);
-	proc->entry = entry;
-	todo.emplace_back(make_tuple(offset,mne_cptr(0),entry,guard_ptr(new guard())));
-
+	if(entry->mnemonics().empty())
+		todo.emplace_back(make_tuple(start,mne_cptr(0),guard_ptr(new guard())));
+	else
+		todo.emplace_back(make_tuple(start,entry->mnemonics().back(),guard_ptr(new guard())));
+		
 	while(!todo.empty())
 	{
 		sem_state<token,tokiter> state;
-		tuple<addr_t,mne_cptr,bblock_ptr,guard_ptr> subject = todo.back();
+		tuple<addr_t,mne_cptr,guard_ptr> subject = todo.back();
 		bool ret;
 		tokiter i = tokens.begin();
 
@@ -385,44 +391,41 @@ proc_ptr disassemble_procedure(const decoder<token,tokiter> &main, vector<token>
 		state.address = get<0>(subject);
 		tie(ret,i) = main.match(i,tokens.end(),state);
 		
-		cout << "disassemble at addr " << hex << get<0>(subject) << dec << endl;
-		
 		for_each(state.mnemonics.begin(),state.mnemonics.end(),[&](pair<addr_t,mne_ptr> p)
 		{
 			list<pair<addr_t,guard_ptr>> ct;
-			bool prev_known;
-			bblock_ptr prev_bb;
+			bool prev_known, nil;
+			bblock_ptr cur_bb;
+			bblock_ptr prev_bb = get<1>(subject) ? find_bblock(proc,get<1>(subject)->addresses.last()) : entry;
 
-			cout << p.second->name << endl;
-
-			for_each(state.control_transfers.begin(),state.control_transfers.end(),[&](pair<const mne_ptr,pair<addr_t,guard_ptr>> q)
+			assert(prev_bb);
+			for_each(state.direct_jumps.begin(),state.direct_jumps.end(),[&](pair<const mne_ptr,pair<addr_t,guard_ptr>> q)
 			{ 
 				if(q.first == p.second)
 					ct.push_back(q.second);
 			});
 
-			// if mnemonic is right after the previous bb, add it 
-			tie(prev_known,prev_bb) = extend_procedure(proc,p.second,get<1>(subject),get<2>(subject),get<3>(subject));
-				
-			/* if procedure call, recrusive decode call, remember call for call graph
-			if(next.is_call)
+			// insert mnemonic into procedure, add (un)conditional control flow edge
+			tie(prev_known,cur_bb) = extend_procedure(proc,p.second,get<1>(subject),prev_bb,get<2>(subject));
+			
+			// add unresolved indirect jumps. may cause to `cur_bb' basic block to be split
+			for_each(state.indirect_jumps.begin(),state.indirect_jumps.end(),[&](pair<const mne_ptr,value_ptr> q)
 			{
-				proc->calls.insert(next.call_address);
-				typename list<procedure<tok_t>>::iterator f = find_if(cfg.begin(),cfg.end(),[&next](const procedure<tok_t> &p)
-					{ return p.entry_point == next.call_address; });
-					
-				if(f == cfg.end())
-					decode_procedure(bytes,next.call_address,cfg);
-			}*/
-
+				if(q.first == p.second)
+					tie(nil,cur_bb) = extend_procedure(proc,p.second,cur_bb,q.second,guard_ptr(new guard()));
+			});
+				
 			// next addresses to disassemble
 			if(!prev_known && !ct.empty())
 				for_each(ct.begin(),ct.end(),[&](pair<addr_t,guard_ptr> q)
-					{ todo.push_back(make_tuple(q.first,p.second,prev_bb,q.second)); });
+					{ todo.push_back(make_tuple(q.first,p.second,q.second)); });
 		});
 	}
 
-	return proc;
+	// entry may have been split
+	if(!proc->entry->mnemonics().empty())
+		proc->entry = find_bblock(proc,proc->entry->mnemonics().front()->addresses.begin);
+	assert(proc->entry);
 };
 
 #endif
