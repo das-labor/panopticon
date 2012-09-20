@@ -54,6 +54,18 @@ bool operator<(const name &a, const name &b);
 bool operator==(const name &a, const name &b);
 bool operator!=(const name &a, const name &b);
 
+namespace std {
+template<>
+struct hash<name>
+{
+	size_t operator()(const name &n) const 
+	{
+		hash<std::string> hsh1;
+		hash<int> hsh2;
+		return hsh1(n.base) ^ hsh2(n.subscript); 
+	};
+};
+}
 class value 
 {
 public: 

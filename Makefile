@@ -1,22 +1,13 @@
-CXX=g++
-CXXARGS=-Wall -g -std=c++0x -fPIC -pipe
-LD=g++
-LDFLAGS=
-LIBS=
-INCLUDES=
+.PHONY: clean src test
 
-HEADERS=$(wildcard *.hh)
-OBJECTS=avr.o mnemonic.o basic_block.o procedure.o main.o flowgraph.o dflow.o absinterp.o
+all: src test
 
-.PHONY: clean
+src:
+	$(MAKE) -C $@ all
 
-all: flow
-
-flow: $(foreach i,$(OBJECTS),obj/$i)
-	$(LD) -o $@ $^
-
-obj/%.o: %.cc $(HEADERS)
-	$(CXX) $(CXXARGS) -c $(INCLUDES) -o $@ $<
+test: src
+	$(MAKE) -C $@ all
 
 clean:
-	rm -f flow obj/*
+	$(MAKE) -C src clean
+	$(MAKE) -C test clean

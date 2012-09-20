@@ -91,9 +91,9 @@ flow_ptr disassemble(const decoder<token,tokiter> &main, vector<token> tokens, a
 					pair<guard_ptr,value_ptr> p = *k++;
 					var_ptr w;
 					
-					if((w = dynamic_pointer_cast<variable>(p.second)) && cp->count(w->nam))
+					if((w = dynamic_pointer_cast<variable>(p.second)) && cp->has(w->nam))
 					{
-						const cprop_element &cm(cp->at(w->nam));
+						const cprop_element &cm(cp->get(w->nam));
 
 						if(cm.type == cprop_element::Const)
 						{

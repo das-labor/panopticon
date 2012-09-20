@@ -10,8 +10,7 @@ using namespace std;
 
 /*
  * TODO
- * - Constant propagation and folding superfluous IL
- * - guards w/ indirect target <- m_unresolved access funcs
+ * - Constant propagation, typechecks and folding superfluous IL in instr_builder
  * - K-set domain
  * - complete IL
  * - sym. exec to infer guards

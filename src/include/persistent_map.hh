@@ -20,15 +20,23 @@ public:
 	class iterator : public boost::iterator_facade<
 				iterator,
 				const pair<K,V>,
-				boost::bidirectional_traversal_tag,
-				const pair<K,V>&>
+				boost::forward_traversal_tag,
+				const pair<K,V>>
 	{
 	public:
 		iterator(void) {};
 		explicit iterator(typename unordered_map<K,fatnode>::iterator i, 
 											typename unordered_map<K,fatnode>::iterator b, 
 											typename unordered_map<K,fatnode>::iterator e, int v)
-		: version(v), adaptee(i), begin(b), end(e) {};
+		: version(v), adaptee(i), begin(b), end(e)
+		{
+			while(adaptee != end)
+			{
+				if(any_of(adaptee->second.begin(),adaptee->second.end(),[&](const pair<unsigned int, V> &p) { return p.first <= version; }))
+					break;
+				++adaptee;
+			}
+		}
 
 		iterator &increment(void) 
 		{ 
@@ -40,23 +48,17 @@ public:
 				if(any_of(adaptee->second.begin(),adaptee->second.end(),[&](const pair<unsigned int, V> &p) { return p.first <= version; }))
 					break;
 			}
-			return *this; 
+			return *this;
 		};
 
 		iterator &decrement(void)
 		{ 
-			typename fatnode::iterator i;
-			while(adaptee != begin)
-			{
-				--adaptee;
-				if(any_of(adaptee->second.begin(),adaptee->second.end(),[&](const pair<unsigned int, V> &p) { return p.first <= version; }))
-					break;
-			}
-			return *this; 
+			return *this;
 		};
 
 		const pair<K,V> dereference(void) const 
 		{ 
+			assert(adaptee != end);
 			auto i = adaptee->second.lower_bound(version);
 
 			if(i == adaptee->second.end() || i->first > version) --i;
@@ -89,7 +91,7 @@ public:
 		else
 		{
 			p.child = this;
-			cout << this << ": attach to " << &p << endl;
+			//cout << this << ": attach to " << &p << endl;
 		}
 	};
 
@@ -120,134 +122,68 @@ public:
 		}
 	};
 
-	~persistent_map(void) 
+	virtual ~persistent_map(void) 
 	{ 
-		if(shared())
-			alienate();
-		
-		if(parent) 
-			parent->child = 0; 
+		if(shared()) alienate(true);
+		if(parent) parent->child = 0;
 	};
 	
-	bool mutate(K &k, V &v)
+	bool mutate(const K &k,const V &v)
 	{
-		if(shared()) alienate();
-
 		auto i = data->find(k);
 		typename fatnode::iterator j;
 		
-		if(i == data->end())		
+		if(i == data->end())		// no such key in `data'
 		{
-			data->insert(make_pair(k,fatnode({make_pair(version,v)})));
+			// the new kv-pair would show up on `child'
+			if(shared()) alienate();
+
+			data->insert(make_pair(K(k),fatnode({make_pair(version,V(v))})));
 			mod = true;
 			return true;
 		} 
-		else if((j = max_version(i)) == i->second.end())
+		else if((j = max_version(i)) == i->second.end())	// key found but wrong (higher) version
 		{
-			i->second.insert(make_pair(version,v));
+			i->second.insert(make_pair(version,V(v)));
 			mod = true;
 			return true;
 		}
-		else if(j->second != v)
+		else		// key w/ version <= our version
 		{
+			// reinsert old value w/ child's versions if `child' doesn't redefine it
+			if(shared() && (next(j) == i->second.end() || next(j)->first != child->version))
+			{
+				child->mutate(k,j->second);
+				i = data->find(k);
+				j = max_version(i);
+			}
+
 			if(j->first == version)
 				j->second = v;
 			else
-				i->second.insert(make_pair(version,v));
+				i->second.insert(make_pair(version,V(v)));
 			mod = true;
 			return true;
 		}
-		else
-			return false;
-	}
-
-	bool mutate(K k, V v)
-	{
-		if(shared()) alienate();
-		
-		auto i = data->find(k);
-		typename fatnode::iterator j;
-
-		if(i == data->end())		
-		{
-			data->insert(make_pair(k,fatnode({make_pair(version,v)})));
-			mod = true;
-			return true;
-		} 
-		else if((j = max_version(i)) == i->second.end())
-		{
-			i->second.insert(make_pair(version,v));
-			mod = true;
-			return true;
-		}
-		else if(j->second != v)
-		{
-			if(j->first == version)
-				j->second = v;
-			else
-				i->second.insert(make_pair(version,v));
-			mod = true;
-			return true;
-		}
-		else
-			return false;
 	}
 
 	bool has(const K &k) const
 	{
-		auto i = data->find(k);
-
+		auto i = data->find(k); 
+		
 		if(i == data->end())
 			return false;
 
-		auto j = i->second.lower_bound(version);
-
-		if(j == i->second.end())
-			return false;
-
-		if(j->first > version && j == i->second.begin())
-				return false;
-		return true;
-	};
-	
-	bool has(const K k) const
-	{
-		auto i = data->find(k);
-
-		if(i == data->end())
-			return false;
-
-		auto j = i->second.lower_bound(version);
-
-		if(j == i->second.end())
-			return false;
-
-		if(j->first > version && j == i->second.begin())
-				return false;
-		return true;
+		return max_version(i) != i->second.end();
 	};
 		
 	const V &get(const K &k) const
-	{
-		auto i = data->find(k);
-		auto j = i->second.lower_bound(version);
-
-		if(j->first > version)
-			--j;
+	{	
+		auto i = data->find(k); assert(i != data->end());
+		auto j = max_version(i);
 
 		return j->second;
 	};	
-	
-	const V &get(const K k) const
-	{
-		auto i = data->find(k);
-		auto j = i->second.lower_bound(version);
-
-		if(j->first > version)
-			--j;
-
-		return j->second;
-	};
 
 	bool modified(void) const { return mod; };
 
@@ -259,40 +195,66 @@ public:
 private:
 	bool shared(void) const { return child; };
 
+	// returns fatnode element with version <= our version
 	typename fatnode::iterator max_version(typename unordered_map<K,fatnode>::iterator i) const
 	{
 		typename fatnode::iterator ret = i->second.lower_bound(version);
 
-		if(ret->first > version && ret == i->second.begin())
+		if(ret == i->second.end() || ret->first > version)
+		{
+			if(ret == i->second.begin())
+				return i->second.end();
+			else
+				--ret;
+		}
+
+		if(ret->first > version)
 			return i->second.end();
-		else
-			return --ret;
+		else 
+			return ret;
 	};
 
-	// detach from parent
+	// detach from `parent', copy whole `data' container
 	void emancipate(void)
 	{
 		assert(parent && parent->shared() && parent->child == this);
 		shared_ptr<unordered_map<K,fatnode>> new_data(new unordered_map<K,fatnode>());
 
-		for_each(begin(),end(),[&](const pair<K,V> p)
-			{ new_data->insert(make_pair(p.first,fatnode({make_pair(0,p.second)}))); });
-		parent->child = 0;
+		for_each(data->begin(),data->end(),[&](const pair<K,fatnode> p)
+			{ new_data->insert(make_pair(p.first,fatnode({make_pair(0,this->get(p.first))}))); });
 
+		parent->child = 0;
 		cout << this << ": emancipate from " << parent << endl;
 		parent = 0;
 		data = new_data;
 		version = 0;
 	};
 
+	// take ownership of `data' from `parent'
+	void inherit(void)
+	{		
+		assert(parent && parent->shared() && parent->child == this);
+
+		//cout << this << ": inherit from " << parent << endl;
+		parent->child = 0;
+		parent = 0;
+	};
+
 	// detach client
-	void alienate(void)
+	void alienate(bool dying = false)
 	{
 		assert(shared());
 
-		cout << this << ": alienating " << child << endl;
-		child->emancipate();
+		//cout << this << ": alienating " << child << endl;
+		if(!dying || parent)
+			child->emancipate();
+		else
+			child->inherit();
+		
 		child = 0;
+
+		if(dying)
+			return;
 
 		// delete everything that can't be read w/ this version
 		typename unordered_map<K,fatnode>::iterator i = data->begin();
@@ -311,7 +273,7 @@ private:
 	};
 
 	unsigned int version;
-	bool mod;
+	bool mod, dying;
 	shared_ptr<unordered_map<K,fatnode>> data;	// parent.data
 	persistent_map<K,V> *parent, *child;
 };

@@ -114,8 +114,8 @@ string graphviz(flow_ptr fg)
 							ss << " ( )";*/
 						
 						// constant prop
-						if(cp->count(in->assigns->nam))
-							ss << "(" << cp->at(in->assigns->nam) << ")";
+						if(cp->has(in->assigns->nam))
+							ss << "(" << cp->get(in->assigns->nam) << ")";
 						else
 							ss << " ( )";
 
