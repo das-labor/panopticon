@@ -1,0 +1,33 @@
+2012-10-8
+
+==> Implement new basic_block interface **DONE**
+	--> Member functions **DONE**
+	--> (un)conditional_jump **DONE**
+	--> split **DONE**
+
+==> Procedure extension with non-overlapping blocks **DONE**
+	--> connect to unresolved ctrans edges **DONE**
+	--> merge if new edges allow it **DONE**
+
+==> Add way to find instructions of a mnemonic in a basic block **DONE**
+
+==> Procedure refinement
+	--> refine larger mnemonics with smaller
+	--> split old block if inner mnemonics are target of ctrans **DONE**
+
+==> code_generator
+	--> test type inference
+	--> typechecks **DONE**
+	--> fold superfluous IL
+	--> ensure all value_ptr are only definied once
+
+==> K-set domain for sparse constant propagation
+
+==> Finish AVR disassembler
+	--> compare into extra function
+	--> use constant instances w/ right width
+
+==> ``Range and Set Abstraction using SAT'' to improve guards
+
+==> Data flow
+	--> Phi-node arguments w/ right widths

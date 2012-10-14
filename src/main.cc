@@ -8,26 +8,12 @@
 
 using namespace std;
 
-/*
- * TODO
- * - Constant propagation, typechecks and folding superfluous IL in instr_builder
- * - K-set domain
- * - complete IL
- * - sym. exec to infer guards
- *   - construct transfer function for bb, ask SAT solver if f_bb(X) <=> x0 = x1 OR ... OR x0 > x1 OR ... OR x0 >= x1 OR ... 
- * - cfg reconstr
- * main | <skip> | <2tok instr> = add to control_trans and instr
- * main | <skip> = 1 tok instr
- * avr.cc/hh instr_ptr/guard_ptr generieren lassen
- * cfg von instr_ptr/guard_ptr
- * call instr
- */
 
 void decode(vector<uint16_t> &bytes)
 {
 	flow_ptr flow = avr_decode(bytes,0);
 	
-	cout << graphviz(flow);
+	cout << turtle(flow);
 }
 
 int main(int argc, char *argv[])

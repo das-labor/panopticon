@@ -70,6 +70,7 @@ bool equal(taint_domain,const taint_lattice a, const taint_lattice b);
 taint_lattice supremum(taint_domain,const taint_lattice a, const taint_lattice b);
 taint_lattice abstraction(taint_domain,const taint_lattice a, instr_cptr i);
 ostream& operator<<(ostream &os, const taint_lattice l);
+ostream& operator<<(ostream &os, const set<name> &e);
 
 // cprop domain
 struct cprop_domain {};

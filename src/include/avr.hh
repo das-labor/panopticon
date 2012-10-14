@@ -1,8 +1,23 @@
 #ifndef AVR_HH
 #define AVR_HH
 
+#include <cassert>
+
 #include "mnemonic.hh"
 #include "flowgraph.hh"
+#include "architecture.hh"
+
+struct avr_tag {};
+
+template<>
+struct architecture_traits<avr_tag>
+{
+	typedef uint16_t token_type;
+};
+
+template<> bool valid(avr_tag,const name &n);
+template<> unsigned int width(avr_tag t,const name &n);
+template<> name unused(avr_tag);
 
 class reg : public variable
 {
@@ -10,13 +25,13 @@ public:
 	enum IndirectReg { X = 26, Y = 28, Z = 30 };
 	enum IndirectRegOp { PostInc, PreDec, PostDisplace, Nop };
 
-	reg(IndirectReg r, IndirectRegOp op = Nop, int d = 0) : variable(string("")), registerA(r)
+	reg(IndirectReg r, IndirectRegOp op = Nop, int d = 0) : variable(string(""),8), registerA(r)
 	{
 		switch(r)
 		{
-			case X: nam.base = "X"; break;
-			case Y: nam.base = "Y"; break;
-			case Z: nam.base = "Z"; break;
+			case X: nam.base = "X"; width = 16; break;
+			case Y: nam.base = "Y"; width = 16; break;
+			case Z: nam.base = "Z"; width = 16; break;
 			default: nam.base = "INVALID: " + to_string(r);
 		}
 
@@ -30,8 +45,8 @@ public:
 		}
 	}
 
-	reg(int r) : variable("r" + to_string(r)), registerA(r) {};
-	reg(int rb, int ra) : variable("r" + to_string(ra) + ":r" + to_string(rb)), registerA(ra) {};
+	reg(int r) : variable("r" + to_string(r),8), registerA(r) {};
+	reg(int rb, int ra) : variable("r" + to_string(ra) + ":r" + to_string(rb),16), registerA(ra) {};
 	
 	int number(void) { return registerA; };
 
@@ -42,7 +57,7 @@ private:
 class ioreg : public variable
 {
 public:
-	ioreg(int r) : variable(string("")), ioRegister(r)
+	ioreg(int r) : variable(string(""),8), ioRegister(r)
 	{
 		switch(r)
 		{

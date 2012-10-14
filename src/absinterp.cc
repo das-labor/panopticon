@@ -41,7 +41,7 @@ taint_lattice abstraction(taint_domain,const taint_lattice a, instr_cptr i)
 	taint_lattice ret(new persistent_map<name,set<name>>(*a));
 	set<name> r(ret->has(i->assigns->nam) ? ret->get(i->assigns->nam) : set<name>());
 
-	for_each(i->operands.begin(),i->operands.end(),[&](value_ptr v)
+	for_each(i->arguments.begin(),i->arguments.end(),[&](value_ptr v)
 	{
 		shared_ptr<variable> w;
 
@@ -63,20 +63,27 @@ ostream& operator<<(ostream &os, const taint_lattice l)
 	{
 		for_each(l->begin(),l->end(),[&](const pair<name,set<name>> &p)
 		{
-			set<name>::const_iterator i = p.second.cbegin();
-
 			os << p.first.inspect() << ": ";
-			while(i != p.second.cend())
-			{
-				os << (i++)->inspect();
-				if(i != p.second.cend())
-					os << ", ";
-			}
+			os << p.second;
 			os << " ";
 		});
 	}
 	else
 		os << "NULL lattice";
+	return os;
+}
+
+ostream& operator<<(ostream &os, const set<name> &e)
+{
+	set<name>::const_iterator i = e.cbegin();
+	
+	while(i != e.cend())
+	{
+		os << (i++)->inspect();
+		if(i != e.cend())
+			os << ", ";
+	}
+
 	return os;
 }
 
@@ -150,7 +157,7 @@ cprop_lattice abstraction(cprop_domain,const cprop_lattice a, instr_cptr i)
 
 	vector<unsigned int> ops;
 	cprop_element::Type type = cprop_element::Const;
-	auto j = i->operands.cbegin(), jend = i->operands.cend();
+	auto j = i->arguments.cbegin(), jend = i->arguments.cend();
 
 	// read operand values
 	while(j != jend)
@@ -167,14 +174,14 @@ cprop_lattice abstraction(cprop_domain,const cprop_lattice a, instr_cptr i)
 			ops.insert(ops.end(),ce->value);
 			if((type = ce->type) != cprop_element::Const)
 			{
-				//cout << "operator " << distance(i->operands.cbegin(),j) - 1 << " is " << type << endl;
+				//cout << "operator " << distance(i->arguments.cbegin(),j) - 1 << " is " << type << endl;
 				break;
 			}
 		}
 		else
 		{
 			// undefined
-			//cout << "operator " << distance(i->operands.cbegin(),j) - 1 << " is undef" << endl;
+			//cout << "operator " << distance(i->arguments.cbegin(),j) - 1 << " is undef" << endl;
 			type = cprop_element::Bottom;
 			break;
 		}
@@ -191,7 +198,7 @@ cprop_lattice abstraction(cprop_domain,const cprop_lattice a, instr_cptr i)
 		// is const, calc concrete value
 		unsigned int val;
 
-		switch(i->opcode)
+		switch(i->function)
 		{
 		case instr::Assign:
 			val = ops[0]; break;

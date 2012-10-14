@@ -1,10 +1,17 @@
 #include <algorithm>
+#include <functional>
 #include <iostream>
 
 #include "basic_block.hh"
 
+/*
+ * relation
+ */
 relation::relation(valproxy a, Relcode c, valproxy b) : relcode(c), operand1(a.value), operand2(b.value) {}
 
+/*
+ * guard
+ */
 guard::guard(void) {}
 guard::guard(vector<relation> rels) : relations(rels) {}
 guard::guard(valproxy a, relation::Relcode r, valproxy b) : relations({relation(a,r,b)}) {}
@@ -67,14 +74,26 @@ string guard::inspect(void) const
 	return ret;
 }
 
+/*
+ * ctrans
+ */
+ctrans::ctrans(guard_ptr g, value_ptr v) : guard(g), value(v) {}
+ctrans::ctrans(guard_ptr g, bblock_ptr b) : guard(g), bblock(b) {}
+
+var_cptr ctrans::variable(void) const { return std::dynamic_pointer_cast< ::variable>(value); };
+const_cptr ctrans::constant(void) const { return dynamic_pointer_cast< ::constant>(value); };
+
+var_ptr ctrans::variable(void) { return dynamic_pointer_cast< ::variable>(value); };
+const_ptr ctrans::constant(void) { return dynamic_pointer_cast< ::constant>(value); };
+
+/*
+ * basic_block
+ */
 pair<basic_block::pred_iterator,basic_block::pred_iterator> basic_block::predecessors(void)
-	{ return make_pair(pred_iterator(m_incoming.begin()),pred_iterator(m_incoming.end())); }
+	{ return make_pair(pred_iterator(m_incoming.begin(),m_incoming.end()),pred_iterator(m_incoming.end(),m_incoming.end())); }
 
 pair<basic_block::succ_iterator,basic_block::succ_iterator> basic_block::successors(void)
-	{ return make_pair(succ_iterator(m_outgoing.begin()),succ_iterator(m_outgoing.end())); }
-
-const vector<mne_cptr> &basic_block::mnemonics(void) const { return m_mnemonics; }
-const vector<instr_ptr> &basic_block::instructions(void) const { return m_instructions; }
+	{ return make_pair(succ_iterator(m_outgoing.begin(),m_outgoing.end()),succ_iterator(m_outgoing.end(),m_outgoing.end())); }
 
 pair<basic_block::out_iterator,basic_block::out_iterator> basic_block::outgoing(void)
 	{ return make_pair(m_outgoing.begin(),m_outgoing.end()); }
@@ -82,110 +101,32 @@ pair<basic_block::out_iterator,basic_block::out_iterator> basic_block::outgoing(
 pair<basic_block::in_iterator,basic_block::in_iterator> basic_block::incoming(void)
 	{ return make_pair(m_incoming.begin(),m_incoming.end()); }
 
-pair<basic_block::indir_iterator,basic_block::indir_iterator> basic_block::indirect(void)
-	{ return make_pair(m_indirect.begin(),m_indirect.end()); }
-
-void basic_block::append_mnemonic(mne_cptr m)
+const vector<mne_cptr> &basic_block::mnemonics(void) const { return m_mnemonics; }
+const vector<instr_ptr> &basic_block::instructions(void) const { return m_instructions; }
+std::pair<instr_citerator,instr_citerator> basic_block::instructions(mne_cptr m) const 
 { 
-	assert(m && (m_mnemonics.empty() || m_mnemonics.back()->addresses.end == m->addresses.begin));
-
-	m_mnemonics.push_back(m);
-	copy(m->instructions.begin(),m->instructions.end(),inserter(m_instructions,m_instructions.end()));
-	
-	if(m_addresses.size())
-		m_addresses = area(min(m_addresses.begin,m->addresses.begin),max(m_addresses.end,m->addresses.end));
-	else
-		m_addresses = m->addresses;
+	auto p = m_map.equal_range(m); 
+	return make_pair(instr_citerator(p.first),instr_citerator(p.second));
 }
 
-void basic_block::insert_incoming(guard_ptr g, bblock_ptr m)
-	{	assert(g && m); remove_incoming(m); m_incoming.push_back(make_pair(g,m)); };
-void basic_block::insert_outgoing(guard_ptr g, bblock_ptr m)
-	{	assert(g && m); remove_outgoing(m); m_outgoing.push_back(make_pair(g,m)); };
-void basic_block::insert_indirect(guard_ptr g, value_ptr m)
-	{	assert(g && m); remove_indirect(m); m_indirect.push_back(make_pair(g,m)); };
-	
-void basic_block::remove_incoming(bblock_ptr m)
-{ 
-	assert(m); 
-	
-	auto i = m_incoming.begin();
+void basic_block::prepend_instr(instr_ptr i) { m_instructions.insert(m_instructions.begin(),i); }
 
-	while(i != m_incoming.end())
-		if(i->second == m)
-		{
-			m_incoming.erase(i);
-			return;
-		}
-		else
-			++i;
-}
+void basic_block::insert_incoming(guard_ptr g, bblock_ptr bb) { ctrans ct(g,bb); insert(m_incoming,ct); }
+void basic_block::insert_incoming(guard_ptr g, value_ptr v) { ctrans ct(g,v); insert(m_incoming,ct); }
+void basic_block::insert_outgoing(guard_ptr g, bblock_ptr bb) { ctrans ct(g,bb); insert(m_outgoing,ct); }
+void basic_block::insert_outgoing(guard_ptr g, value_ptr v) { ctrans ct(g,v); insert(m_outgoing,ct); }
+void basic_block::insert_incoming(const ctrans &ct) { insert(m_incoming,ct); }
+void basic_block::insert_outgoing(const ctrans &ct) { insert(m_outgoing,ct); }
 
-void basic_block::remove_outgoing(bblock_ptr m)
-{ 
-	assert(m); 
-	
-	auto i = m_outgoing.begin();
+void basic_block::remove_incoming(bblock_ptr m) { remove(m_incoming,[&m](const ctrans &ct) { return ct.bblock == m; }); }
+void basic_block::remove_incoming(value_ptr v) { remove(m_incoming,[&v](const ctrans &ct) { return ct.value == v; }); }
+void basic_block::remove_outgoing(bblock_ptr m) { remove(m_outgoing,[&m](const ctrans &ct) { return ct.bblock == m; }); }
+void basic_block::remove_outgoing(value_ptr v) { remove(m_outgoing,[&v](const ctrans &ct) { return ct.value == v; }); }
+void basic_block::replace_incoming(bblock_ptr a, bblock_ptr b) { replace(m_incoming,a,b); }
+void basic_block::replace_outgoing(bblock_ptr a, bblock_ptr b) { replace(m_outgoing,a,b); }
 
-	while(i != m_outgoing.end())
-		if(i->second == m)
-		{
-			m_outgoing.erase(i);
-			return;
-		}
-		else
-			++i;
-}
-
-void basic_block::remove_indirect(value_ptr m)
-{ 
-	assert(m); 
-	
-	auto i = m_indirect.begin();
-
-	while(i != m_indirect.end())
-		if(i->second == m)
-		{
-			m_indirect.erase(i);
-			return;
-		}
-		else
-			++i;
-}
-
-void basic_block::replace_incoming(bblock_ptr a, bblock_ptr b)
-{
-	assert(a && b);
-
-	auto i = m_incoming.begin();
-	while(i != m_incoming.end())
-	{
-		if(i->second == a)
-		{
-			auto p = make_pair(i->first,b);
-			i = m_incoming.erase(i);
-			i = m_incoming.insert(i,p);
-		}
-		++i;
-	}
-}
-
-void basic_block::replace_outgoing(bblock_ptr a, bblock_ptr b)
-{
-	assert(a && b);
-
-	auto i = m_outgoing.begin();
-	while(i != m_outgoing.end())
-	{
-		if(i->second == a)
-		{
-			auto p = make_pair(i->first,b);
-			i = m_outgoing.erase(i);
-			i = m_outgoing.insert(i,p);
-		}
-		++i;
-	}
-}
+void basic_block::resolve_incoming(value_ptr v, bblock_ptr bb) { resolve(m_incoming,v,bb); }
+void basic_block::resolve_outgoing(value_ptr v, bblock_ptr bb) { resolve(m_outgoing,v,bb); }
 
 void basic_block::clear(void)
 {
@@ -193,40 +134,70 @@ void basic_block::clear(void)
 	m_outgoing.clear();
 	m_mnemonics.clear();
 	m_instructions.clear();
-	m_indirect.clear();
 }
 
-const area &basic_block::addresses(void) const
-	{ return m_addresses; }
+const area &basic_block::addresses(void) const { return m_addresses; }
 
-void basic_block::prepend_instr(instr_ptr i)
+void basic_block::insert(std::list<ctrans> &lst, const ctrans &ct)
+{	
+	if(ct.bblock)
+		remove(lst,[&ct](const ctrans &c) { return c.bblock == ct.bblock; });
+	if(ct.value)
+		remove(lst,[&ct](const ctrans &c) { return c.value == ct.value; });
+	lst.push_back(ctrans(ct));
+}
+
+void basic_block::remove(std::list<ctrans> &lst, std::function<bool(const ctrans &)> p)
+{ 
+	auto i = lst.begin();
+
+	while(i != lst.end())
+		if(p(*i))
+			i = lst.erase(i);
+		else
+			++i;
+}
+
+void basic_block::replace(std::list<ctrans> &lst, bblock_ptr from, bblock_ptr to)
 {
-	m_instructions.insert(m_instructions.begin(),i);
+	assert(from && to);
+
+	auto i = lst.begin();
+	while(i != lst.end())
+	{
+		if(i->bblock == from)
+			i->bblock = to;
+		++i;
+	}
 }
 
-void conditional_jump(bblock_ptr from, bblock_ptr to, guard_ptr g)
+void basic_block::resolve(std::list<ctrans> &lst, value_ptr v, bblock_ptr bb)
 {
-	assert(from && to && g);
+	assert(v && bb);
 
-	to->insert_incoming(g,from);
-	from->insert_outgoing(g,to);
+	auto i = lst.begin();
+	while(i != lst.end())
+	{
+		if(i->value == v)
+			i->bblock = bb;
+		++i;
+	}
 }
 
-void unconditional_jump(bblock_ptr bb_from, bblock_ptr bb_to)
+void conditional_jump(bblock_ptr from, bblock_ptr to, guard_ptr g) { ctrans ct_from(g,from), ct_to(g,to); conditional_jump(ct_from,ct_to); }
+void conditional_jump(value_ptr from, bblock_ptr to, guard_ptr g) { ctrans ct_from(g,from), ct_to(g,to); conditional_jump(ct_from,ct_to); }
+void conditional_jump(bblock_ptr from, value_ptr to, guard_ptr g) { ctrans ct_from(g,from), ct_to(g,to); conditional_jump(ct_from,ct_to); }
+void conditional_jump(ctrans &from, ctrans &to)
 {
-	assert(bb_from && bb_to); 
-	guard_ptr g(new guard());
-
-	bb_from->insert_outgoing(g,bb_to);
-	bb_to->insert_incoming(g,bb_from);
+	if(from.bblock)
+		from.bblock->insert_outgoing(to);
+	if(to.bblock)
+		to.bblock->insert_incoming(from);
 }
 
-void indirect_jump(bblock_ptr from, value_ptr v, guard_ptr g)
-{
-	assert(from && g && v);
-
-	from->insert_indirect(g,v);
-}
+void unconditional_jump(bblock_ptr from, bblock_ptr to) { conditional_jump(from,to,guard_ptr(new guard())); }
+void unconditional_jump(value_ptr from, bblock_ptr to) { conditional_jump(from,to,guard_ptr(new guard())); }
+void unconditional_jump(bblock_ptr from, value_ptr to) { conditional_jump(from,to,guard_ptr(new guard())); }
 
 // last == true -> pos is last in `up', last == false -> pos is first in `down'
 pair<bblock_ptr,bblock_ptr> split(bblock_ptr bb, addr_t pos, bool last)
@@ -237,80 +208,105 @@ pair<bblock_ptr,bblock_ptr> split(bblock_ptr bb, addr_t pos, bool last)
 	bool sw = false;
 	basic_block::out_iterator j,jend;
 	basic_block::in_iterator k,kend;
-	basic_block::indir_iterator l,lend;
 
 	// distribute mnemonics under `up' and `down'
 	for_each(bb->mnemonics().begin(),bb->mnemonics().end(),[&](mne_cptr m)
 	{	
+		assert(!m->addresses.includes(pos) || m->addresses.begin == pos);
+
 		if(!last)
 			sw |= m->addresses.includes(pos);
 		
 		if(sw)
-			down->append_mnemonic(m);
+			down->append_mnemonic(m,bb->instructions(m));
 		else	
-			up->append_mnemonic(m);
+			up->append_mnemonic(m,bb->instructions(m));
 		
 		if(last)
 			sw |= m->addresses.includes(pos);
 	});
 	assert(sw);
 
-	// move outgoing edges to down
+	// move outgoing ctranss to down
 	tie(j,jend) = bb->outgoing();
-	for_each(j,jend,[&](pair<guard_ptr,bblock_ptr> t)
+	for_each(j,jend,[&](const ctrans &ct)
 	{
-		guard_ptr g;
-		bblock_ptr b;
-
-		tie(g,b) = t;
-
-		if(b == bb)
+		if(ct.bblock == bb)
 		{
-			down->insert_outgoing(g,up);
-			up->insert_incoming(g,down);
+			down->insert_outgoing(ct.guard,up);
+			up->insert_incoming(ct.guard,down);
 		}
 		else
 		{
-			down->insert_outgoing(g,b);
-			b->insert_incoming(g,down);
-			b->remove_incoming(bb);
+			if(ct.bblock)
+			{
+				down->insert_outgoing(ct.guard,ct.bblock);
+				ct.bblock->insert_incoming(ct.guard,down);
+				ct.bblock->remove_incoming(bb);
+			}
+			else
+				down->insert_outgoing(ct.guard,ct.value);
 		}
-	});
-	
-	// ...indirect jumps too
-	tie(l,lend) = bb->indirect();
-	for_each(l,lend,[&](pair<guard_ptr,value_ptr> t)
-	{
-		guard_ptr g;
-		value_ptr b;
-
-		tie(g,b) = t;
-		down->insert_indirect(g,b);
 	});
 	
 	// move incoming edges to up
 	tie(k,kend) = bb->incoming();
-	for_each(k,kend,[&](pair<guard_ptr,bblock_ptr> t)
+	for_each(k,kend,[&](const ctrans &ct)
 	{
-		guard_ptr g;
-		bblock_ptr b;
-
-		tie(g,b) = t;
-
-		if(b == bb)
+		if(ct.bblock == bb)
 		{
-			up->insert_incoming(g,down);
-			down->insert_outgoing(g,up);
+			up->insert_incoming(ct.guard,down);
+			down->insert_outgoing(ct.guard,up);
 		}
 		else
 		{
-			up->insert_incoming(g,b);
-			b->insert_outgoing(g,up);
-			b->remove_outgoing(bb);
+			if(ct.bblock)
+			{
+				up->insert_incoming(ct.guard,ct.bblock);
+				ct.bblock->insert_outgoing(ct.guard,up);
+				ct.bblock->remove_outgoing(bb);
+			}
+			else
+				up->insert_incoming(ct.guard,ct.value);
 		}
 	});
 
 	bb->clear();
 	unconditional_jump(up,down);
 	return make_pair(up,down);
-}		
+}
+
+bblock_ptr merge(bblock_ptr up, bblock_ptr down)
+{
+	assert(up && down);
+	if(up->addresses().begin == down->addresses().end) tie(up,down) = make_pair(down,up);
+	assert(up->addresses().end == down->addresses().begin);
+
+	bblock_ptr ret(new basic_block());
+	auto fn = [&ret](const bblock_ptr &bb, const mne_cptr &m) { ret->append_mnemonic(m,bb->instructions(m)); };
+
+	for_each(up->mnemonics().begin(),up->mnemonics().end(),std::bind(fn,up,std::placeholders::_1));
+	for_each(down->mnemonics().begin(),down->mnemonics().end(),std::bind(fn,down,std::placeholders::_1));
+
+	basic_block::in_iterator i,iend;
+	tie(i,iend) = up->incoming();
+	for_each(i,iend,[&](const ctrans &ct)
+	{
+		if(ct.bblock)
+			ct.bblock->replace_outgoing(up,ret);
+		ret->insert_incoming(ct);
+	});
+			
+	basic_block::out_iterator j,jend;
+	tie(j,jend) = down->outgoing();
+	for_each(j,jend,[&](const ctrans &ct)
+	{
+		if(ct.bblock)
+			ct.bblock->replace_incoming(down,ret);
+		ret->insert_outgoing(ct);
+	});
+	
+	up->clear();
+	down->clear();
+	return ret;
+}

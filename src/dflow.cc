@@ -118,9 +118,9 @@ live_ptr liveness(proc_ptr proc)
 	{
 		for_each(bb->instructions().begin(),bb->instructions().end(),[&](instr_cptr i)
 		{
-			if(i->opcode != instr::Phi)
+			if(i->function != instr::Phi)
 			{
-				for_each(i->operands.begin(),i->operands.end(),[&](value_ptr v)
+				for_each(i->arguments.begin(),i->arguments.end(),[&](value_ptr v)
 				{
 					shared_ptr<variable> w;
 
@@ -182,9 +182,9 @@ void ssa(proc_ptr proc, dom_ptr dominance, live_ptr live)
 			for_each(dominance->tree[bb]->frontiers.begin(),dominance->tree[bb]->frontiers.end(),[&](dtree_ptr df)
 			{
 				if(none_of(df->basic_block->instructions().begin(),df->basic_block->instructions().end(),[&](instr_cptr i)
-					{	return i->opcode == instr::Phi && i->assigns->nam.base == name.base; }))
+					{	return i->function == instr::Phi && i->assigns->nam.base == name.base; }))
 				{
-					df->basic_block->prepend_instr(instr_ptr(new instr(instr::Phi,"ϕ",name,{})));
+					df->basic_block->prepend_instr(instr_ptr(new instr(instr::Phi,"ϕ",var_ptr(new variable(name,0)),{})));
 					worklist.insert(df->basic_block);
 				}
 			});
@@ -213,7 +213,6 @@ void ssa(proc_ptr proc, dom_ptr dominance, live_ptr live)
 	{
 		size_t sz = bb->instructions().size(), pos = 0;
 		const instr_ptr *i = bb->instructions().data();
-		basic_block::indir_iterator m,mend;
 		basic_block::out_iterator j,jend;
 		function<void(relation &)> rename_guard = [&](relation &rel)
 		{
@@ -226,12 +225,12 @@ void ssa(proc_ptr proc, dom_ptr dominance, live_ptr live)
 				w->nam.subscript = stack[w->nam.base].back();
 		};
 		
-		// rename operands
+		// rename arguments
 		while(pos < sz)
 		{
-			if(i[pos]->opcode != instr::Phi)
+			if(i[pos]->function != instr::Phi)
 			{
-				for_each(i[pos]->operands.begin(),i[pos]->operands.end(),[&](value_ptr v)
+				for_each(i[pos]->arguments.begin(),i[pos]->arguments.end(),[&](value_ptr v)
 				{
 					shared_ptr<variable> w;
 
@@ -242,44 +241,33 @@ void ssa(proc_ptr proc, dom_ptr dominance, live_ptr live)
 			i[pos]->assigns->nam.subscript = new_name(i[pos]->assigns->nam);
 			++pos;
 		}
-		
-		// rename variables in from indirect jumps
-		tie(m,mend) = bb->indirect();
-		for_each(m,mend,[&](pair<guard_ptr,value_ptr> &p)
-		{
-			guard_ptr g;
-			value_ptr v;
-			shared_ptr<variable> w;
-
-			tie(g,v) = p;
-			for_each(g->relations.begin(),g->relations.end(),rename_guard);
-	
-			if((w = dynamic_pointer_cast<variable>(v)) && w->nam.subscript == -1)
-				w->nam.subscript = stack[w->nam.base].back();
-		});
 
 		tie(j,jend) = bb->outgoing();
-		for_each(j,jend,[&](pair<guard_ptr,bblock_ptr> s)
+		for_each(j,jend,[&](ctrans s)
 		{
-			guard_ptr g = s.first;
-			basic_block::pred_iterator l,lend,ll;
-			size_t sz = s.second->instructions().size(), pos = 0;
-			const instr_ptr *i = s.second->instructions().data();
-
 			// rename incoming guards
-			for_each(g->relations.begin(),g->relations.end(),rename_guard);
+			for_each(s.guard->relations.begin(),s.guard->relations.end(),rename_guard);
 		
-			while(pos < sz)
-			{
-				if(i[pos]->opcode == instr::Phi)
-				{
-					bool add = none_of(i[pos]->operands.begin(),i[pos]->operands.end(),[&](value_ptr v)
-						{ var_ptr w; return (w = dynamic_pointer_cast<variable>(v)) && w->nam.subscript == stack[w->nam.base].back(); });
+			if(s.variable() && s.variable()->nam.subscript == -1)
+				s.variable()->nam.subscript = stack[s.variable()->nam.base].back();
 
-					if(add)
-						i[pos]->operands.push_back(value_ptr(new variable(name(i[pos]->assigns->nam.base,stack[i[pos]->assigns->nam.base].back()))));
+			if(s.bblock)
+			{
+				size_t sz = s.bblock->instructions().size(), pos = 0;
+				const instr_ptr *i = s.bblock->instructions().data();
+
+				while(pos < sz)
+				{
+					if(i[pos]->function == instr::Phi)
+					{
+						bool add = none_of(i[pos]->arguments.begin(),i[pos]->arguments.end(),[&](value_ptr v)
+							{ var_ptr w; return (w = dynamic_pointer_cast<variable>(v)) && w->nam.subscript == stack[w->nam.base].back(); });
+
+						if(add)
+							i[pos]->arguments.push_back(value_ptr(new variable(name(i[pos]->assigns->nam.base,stack[i[pos]->assigns->nam.base].back()),0)));
+					}
+					++pos;
 				}
-				++pos;
 			}
 		});
 

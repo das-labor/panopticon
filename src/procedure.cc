@@ -8,7 +8,7 @@
 
 domtree::domtree(bblock_ptr b) : intermediate(0), basic_block(b) {}
 
-procedure::procedure(void) {}
+procedure::procedure(void) : name("unnamed") {}
 
 pair<procedure::iterator,procedure::iterator> procedure::rev_postorder(void) 
 {
@@ -21,16 +21,20 @@ pair<procedure::iterator,procedure::iterator> procedure::rev_postorder(void)
 
 		function<void(bblock_ptr)> visit = [&](bblock_ptr bb)
 		{
+			//cout << "visit " << bb->addresses() << endl;
 			basic_block::succ_iterator i,iend;
 			
 			tie(i,iend) = bb->successors();
 			for_each(i,iend,[&](bblock_ptr s)
 			{	
+				//cout << "check " << s->addresses() << endl;
 				if(known.insert(s).second)
 					visit(s);
 			});
 			postorder.push_back(bb);
 		};
+
+		known.insert(entry);
 		visit(entry);
 
 		copy(postorder.rbegin(),postorder.rend(),inserter(rpo,rpo.begin()));
@@ -58,6 +62,7 @@ bblock_ptr find_bblock(proc_ptr proc, addr_t a)
 	while(i != e)
 	{
 		bblock_ptr bb = *i++;
+		
 		if(bb->addresses().includes(a))
 			return bb;
 	}
@@ -65,93 +70,175 @@ bblock_ptr find_bblock(proc_ptr proc, addr_t a)
 	return bblock_ptr(0);
 }
 
-pair<bool,bblock_ptr> extend_procedure(proc_ptr proc, const mne_cptr cur_mne, const mne_cptr prev_mne, bblock_ptr prev_bb, guard_ptr g)
+void extend(proc_ptr proc, bblock_ptr block)
 {
-	// if `prev_mne' isn't the last statement in its basic block, split the bb.
-	if(prev_bb && !prev_bb->mnemonics().empty() && prev_bb->mnemonics().back()->addresses != prev_mne->addresses)
+	procedure::iterator ibegin,i,iend;
+
+	tie(ibegin,iend) = proc->all();
+	i = find_if(ibegin,iend,[&block](const bblock_ptr &p) { return p->addresses().overlap(block->addresses()); });
+
+	if(i != iend)
 	{
-		auto shreds = split(prev_bb,prev_mne->addresses.end,true);
-
-		proc->insert_bblock(shreds.second);
-		proc->insert_bblock(shreds.first);
-		proc->remove_bblock(prev_bb);
-		
-		prev_bb = shreds.first;
-	}
-
-	// procedure and basic block occupying `cur_mne'
-	bblock_ptr cur_bb = find_bblock(proc,cur_mne->addresses.begin);
-	
-	// `cur_mne' was disassembled previously 
-	if(cur_bb)
-	{
-		if(cur_bb->addresses().begin == cur_mne->addresses.begin)			// refers to the start, connect `source' to `target' in the CFG
-		{
-			conditional_jump(prev_bb,cur_bb,g);
-		}
-		else 																																	// referes into the `target'. split target into two bb
-		{
-			auto shreds = split(cur_bb,cur_mne->addresses.begin,false);
-
-			if(prev_bb == cur_bb)
-				conditional_jump(shreds.second,shreds.second,g);
-			else
-				conditional_jump(prev_bb,shreds.second,g);
-			
-			proc->insert_bblock(shreds.second);
-			proc->insert_bblock(shreds.first);
-			proc->remove_bblock(cur_bb);
-			cur_bb = shreds.second;
-		}
-		return make_pair(true,cur_bb);
-	}
-	else 																																		// fresh (unoccupyed) bytes. disassemble!
-	{
-		basic_block::succ_iterator j,jend;
-		basic_block::indir_iterator k,kend;
-
-		tie(j,jend) = prev_bb->successors();
-		tie(k,kend) = prev_bb->indirect();
-
 		/*
-		 * if `prev_bb' has no succeeding basic blocks yet and this instruction 
-		 * is right after it (in terms of memory addresses), extend `prev_bb' to
-		 * include this instruction. Otherwise start new basic block.
+		 * Overlap:
+		 *
+		 *  block
+		 * +-----+
+		 * | pre |    tgt
+		 * +- - -+  +-----+
+		 * | mid |  |     |
+		 * |     |  |     |
+		 * +- - -+  +-----+
+		 * |post |
+		 * +-----+
 		 */
-		if(j == jend && k == kend && (prev_bb->mnemonics().empty() || prev_bb->mnemonics().back()->addresses.end == cur_mne->addresses.begin)) 
+		bblock_ptr tgt = *i;
+		bblock_ptr pre, post;
+
+		// pre
+		if(tgt->addresses().begin > block->addresses().begin)
 		{
-			prev_bb->append_mnemonic(cur_mne);
-			return make_pair(false,prev_bb);
+			tie(pre,block) = split(block,tgt->addresses().begin,false);
+			unconditional_jump(pre,tgt);
+		}
+
+		// post
+		if(tgt->addresses().end < block->addresses().end)
+		{
+			tie(block,post) = split(block,(*find_if(block->mnemonics().begin(),block->mnemonics().end(),[&tgt](const mne_cptr &m)
+																	 { return m->addresses.includes(tgt->addresses().begin); }))->addresses.begin,false);
+			unconditional_jump(tgt,post);
+		}
+
+		// mid
+		// TODO refine mnemonics
+			
+		if(pre) merge(proc,pre);
+		if(post) merge(proc,post);
+	}
+	else
+		merge(proc,block);
+}
+
+void merge(proc_ptr proc, bblock_ptr block)
+{
+	// Try to connect in/out edge from/to bb to/from addr. Returns true if bb was split
+	auto connect = [&proc](bblock_ptr bb, ctrans &ct, bool out) -> bool
+	{
+		procedure::iterator ibegin,i,iend;
+		addr_t addr = ct.constant()->val;
+		guard_ptr g = ct.guard;
+		bool ret = false;
+
+		tie(ibegin,iend) = proc->all();
+		i = find_if(ibegin,iend,[&](const bblock_ptr p) { return p->addresses().includes(addr); });
+
+		if(i == iend) return ret;
+		bblock_ptr tgt = *i, old = *i;
+		ctrans cs(g,bb);
+
+		if((out ? tgt->addresses().begin : tgt->mnemonics().back()->addresses.begin) != addr)
+		{
+			bblock_ptr up;
+			
+			proc->remove_bblock(tgt);
+			tie(up,tgt) = split(tgt,addr,!out);
+			conditional_jump(up,tgt,!out ? g->negation() : guard_ptr(new guard()));
+			proc->insert_bblock(up);
+			proc->insert_bblock(tgt);
+			
+			ret = true;
+		}
+
+		if(out)
+		{
+			if(bb == old)
+				conditional_jump(bb,tgt,g);
+			else
+				tgt->insert_incoming(cs);
 		}
 		else
 		{
-			bblock_ptr bb(new basic_block());
-				
-			bb->append_mnemonic(cur_mne);
-			proc->insert_bblock(bb);
-			conditional_jump(prev_bb,bb,g);
+			if(bb == old)
+				conditional_jump(tgt,bb,g);
+			else
+				tgt->insert_outgoing(cs);
+		}
+
+		if(bb != old)
+			ct.bblock = tgt;
+		else
+			old->clear();
+		
+		return ret;
+	};
+	
+	std::set<bblock_ptr> done;
+	basic_block::in_iterator j,jend;
+	basic_block::out_iterator k,kend;
+
+	proc->insert_bblock(block);
+	while(true)
+	{
+		procedure::iterator ibegin,i,iend;
+		bblock_ptr bb;
+		
+		tie(ibegin,iend) = proc->all();
+		i = find_if(ibegin,iend,[&done](const bblock_ptr p) { return done.count(p) == 0; });
+
+		if(i != iend)
+		{
+			bb = *i;
+
+			tie(j,jend) = bb->incoming();
+			while(j != jend) 
+			{ 
+				ctrans &ct(*j++);
+				if(!ct.bblock && ct.constant())
+					if(connect(bb,ct,false))
+						continue;
+			}
 			
-			return make_pair(false,bb);
+			tie(k,kend) = bb->outgoing();
+			while(k != kend)
+			{
+				ctrans &ct(*k++);
+				if(!ct.bblock && ct.constant())
+					if(connect(bb,ct,true))
+						continue;
+			}
+
+			done.insert(bb);
+		}
+		else
+			break;
+	}
+
+	tie(j,jend) = block->incoming();
+	if(distance(j,jend) == 1 && j->guard->relations.empty() && j->bblock && j->bblock->addresses().end == block->addresses().begin)
+	{
+		tie(k,kend) = j->bblock->outgoing();
+		if(distance(k,kend) == 1)
+		{
+			proc->remove_bblock(block);
+			proc->remove_bblock(j->bblock);
+			block = merge(j->bblock,block);
+			proc->insert_bblock(block);
 		}
 	}
-}
 
-pair<bool,bblock_ptr> extend_procedure(proc_ptr proc, const mne_cptr cur_mne, bblock_ptr cur_bb, value_ptr v, guard_ptr g)
-{
-	// if `cur_mne' isn't the last statement in its basic block, split the bb.
-	if(cur_bb && !cur_bb->mnemonics().empty() && cur_bb->mnemonics().back()->addresses != cur_mne->addresses)
+	tie(k,kend) = block->outgoing();
+	if(distance(k,kend) == 1 && k->guard->relations.empty() && k->bblock && block->addresses().end == k->bblock->addresses().begin)
 	{
-		auto shreds = split(cur_bb,cur_mne->addresses.end,true);
-
-		proc->insert_bblock(shreds.second);
-		proc->insert_bblock(shreds.first);
-		proc->remove_bblock(cur_bb);
-		
-		cur_bb = shreds.first;
+		tie(j,jend) = k->bblock->incoming();
+		if(distance(j,jend) == 1)
+		{
+			proc->remove_bblock(block);
+			proc->remove_bblock(j->bblock);
+			block = merge(block,k->bblock);
+			proc->insert_bblock(block);
+		}
 	}
-
-	indirect_jump(cur_bb,v,g);
-	return make_pair(false,cur_bb); // TODO return actual prev_known
 }
 
 string graphviz(proc_ptr proc)

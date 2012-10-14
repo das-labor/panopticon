@@ -24,30 +24,181 @@ bool has_procedure(flow_ptr flow, addr_t entry)
 								{ return p->entry->addresses().includes(entry); });
 }
 
-string graphviz(flow_ptr fg)
+string turtle(flow_ptr fg)
 {
 	stringstream ss;
 
-	ss << "digraph G" << endl
-		 << "{" << endl
-		 << "\tnode [shape=record,style=filled,color=lightgray,fontsize=13,fontname=\"Monospace\"];" << endl;
+	ss << "@prefix : <http://localhost/>." << endl;
+
+	if(fg->taint.size())
+		ss << ":approx_taint rdf:type po:Approximation;" << endl
+			 << "\tpo:title \"Taint analysis\"^^xsd:string." << endl;
+	
+	if(fg->cprop.size())
+		ss << ":approx_cprop rdf:type po:Approximation;" << endl
+			 << "\tpo:title \"Constant propagation\"^^xsd:string." << endl;
 	
 	// procedures
 	for_each(fg->procedures.begin(),fg->procedures.end(),[&](const proc_ptr proc)
 	{
 		assert(proc && proc->entry);
+		
 		procedure::iterator i,iend;
 		string procname(to_string(proc->entry->addresses().begin));
-		shared_ptr<map<bblock_ptr,taint_lattice>> taint_bblock(fg->taint[proc]);
-		shared_ptr<map<bblock_ptr,cprop_lattice>> cprop_bblock(fg->cprop[proc]);
+		stringstream ss_bblocks;
+		shared_ptr<map<bblock_ptr,taint_lattice>> taint_bblock(fg->taint.count(proc) ? fg->taint[proc] : nullptr);
+		shared_ptr<map<bblock_ptr,cprop_lattice>> cprop_bblock(fg->cprop.count(proc) ? fg->cprop[proc] : nullptr);
 
-		ss << "\tsubgraph cluster_" << procname << endl
-			 << "\t{" << endl
-			 << "\t\tlabel = \"procedure at " << procname << "\";" << endl
-			 << "\t\tcolor = black;" << endl
-			 << "\t\tfontname = \"Monospace\";" << endl;
+		ss << ":proc_" 	<< procname << " rdf:type po:Procedure;" << endl
+																<< "\tpo:name \"" << proc->name << "\";" << endl
+			 													<< "\tpo:entry_point :bblock_" << procname << "_" << to_string(proc->entry->addresses().begin) << "." << endl;
+
+		for_each(proc->callees.begin(),proc->callees.end(),[&](const proc_ptr c) 
+			{ ss << ":proc_" << procname << " po:callees :proc_" << to_string(c->entry->addresses().begin) << "." << endl; });
 
 		// basic blocks
+		tie(i,iend) = proc->all();
+		for_each(i,iend,[&](const bblock_ptr bb)
+		{
+			assert(bb);
+			
+			basic_block::succ_iterator j,jend;
+			size_t k = 0, kend = bb->mnemonics().size();
+			const mne_cptr *kp = bb->mnemonics().data();
+			size_t l = 0, lend = bb->instructions().size();
+			const instr_ptr *lp = bb->instructions().data();
+			string bbname = to_string(bb->addresses().begin);
+			stringstream ss_mne;
+			stringstream ss_instr;
+			taint_lattice *taint = taint_bblock && taint_bblock->count(bb) ? &taint_bblock->at(bb) : 0;
+			cprop_lattice *cprop = cprop_bblock && cprop_bblock->count(bb) ? &cprop_bblock->at(bb) : 0;
+
+			ss << ":bblock_" << procname << "_" << bbname << " rdf:type po:BasicBlock;" << endl
+																										<< "\tpo:begin \"" << bb->addresses().begin << "\"^^xsd:integer;" << endl
+																										<< "\tpo:end \"" << bb->addresses().end << "\"^^xsd:integer." << endl;
+			// mnemonics
+			while(k < kend)
+			{
+				string mnename = to_string(kp[k]->addresses.begin);
+				stringstream ss_ops;
+
+				for_each(kp[k]->operands.begin(),kp[k]->operands.end(),[&](const value_ptr v)
+					{ ss_ops << "\"" << v->inspect() << "\"^^xsd:string "; });
+
+				ss << ":mne_" << procname << "_" << bbname << "_" << mnename << " rdf:type po:Mnemonic;" << endl
+																																		 << " po:opcode \"" << kp[k]->opcode << "\"^^xsd:string;" << endl
+																																		 << " po:operands (" << ss_ops.str() << ")." << endl;
+				ss_mne << " :mne_" << procname << "_" << bbname << "_" << mnename;
+
+				++k;
+			};
+			ss << ":bblock_" << procname << "_" << bbname << " po:mnemonics (" << ss_mne.str() << ")." << endl;
+			
+			// instructions
+			while(l < lend)
+			{
+				string instrname = to_string(l);
+				stringstream ss_args;
+				string instr_type = "po:Instruction";
+				string asname = lp[l]->assigns->nam.base + "_" + (lp[l]->assigns->nam.subscript >= 0 ? to_string(lp[l]->assigns->nam.subscript) : "");
+
+				switch(lp[l]->function)
+				{
+					case instr::Phi: instr_type = "po:Phi"; break;
+					case instr::Not: instr_type = "po:Not"; break;
+					case instr::And: instr_type = "po:And"; break;
+					case instr::Or: instr_type = "po:Or"; break;
+					case instr::Xor: instr_type = "po:Xor"; break;
+					case instr::Assign: instr_type = "po:Assign"; break;
+					case instr::ULeq: instr_type = "po:ULeq"; break;
+					case instr::SLeq: instr_type = "po:SLeq"; break;
+					case instr::UShr: instr_type = "po:UShr"; break;
+					case instr::UShl: instr_type = "po:UShl"; break;
+					case instr::SShr: instr_type = "po:SShr"; break;
+					case instr::SShl: instr_type = "po:SShl"; break;
+					case instr::SExt: instr_type = "po:SExt"; break;
+					case instr::UExt: instr_type = "po:UExt"; break;
+					case instr::Slice: instr_type = "po:Slice"; break;
+					case instr::Concat: instr_type = "po:Concat"; break;
+					case instr::Add: instr_type = "po:Add"; break;
+					case instr::Sub: instr_type = "po:Sub"; break;
+					case instr::Mul: instr_type = "po:Mul"; break;
+					case instr::SDiv: instr_type = "po:SDiv"; break;
+					case instr::UDiv: instr_type = "po:UDiv"; break;
+					case instr::SMod: instr_type = "po:SMod"; break;
+					case instr::UMod: instr_type = "po:UMod"; break;
+					case instr::Call: instr_type = "po:Call"; break;
+					default: ;
+				}
+				
+				for_each(lp[l]->arguments.begin(),lp[l]->arguments.end(),[&](value_ptr v)
+				{ 
+					var_ptr w;
+					shared_ptr<constant> c;
+
+					if((w = dynamic_pointer_cast<variable>(v)))
+					{
+						string argname = procname + "_" + w->nam.base + "_" + (w->nam.subscript >= 0 ? to_string(w->nam.subscript) : "");
+												
+						ss << ":var_" << argname << " rdf:type po:Variable;" << endl 
+							 << "\tpo:width \"0\";" << endl 
+							 << "\tpo:subscript \"" << w->nam.subscript << "\";" << endl
+							 << "\tpo:base \"" << w->nam.base << "\"." << endl;
+						ss_args << ":var_" << argname << " ";
+					}
+					else if((c = dynamic_pointer_cast<constant>(v)))
+					{
+						ss << ":val_" << procname << "_" << c->val << " rdf:type po:Constant;" << endl 
+							 << "\tpo:width \"0\";" << endl 
+							 << "\tpo:value \"" << c->val << "\"." << endl;
+						ss_args << ":val_" << procname << "_" << c->val << " ";
+					}
+					else
+					{
+						ss << ":null rdf:type po:Value; po:width \"0\".";
+						ss_args << ":null ";
+					}
+				});
+				
+				ss << ":var_" << procname << "_" << asname << " rdf:type po:Variable;" << endl	 
+					 << "\tpo:width \"0\";" << endl 
+					 << "\tpo:subscript \"" << lp[l]->assigns->nam.subscript << "\";" << endl
+					 << "\tpo:base \"" << lp[l]->assigns->nam.base << "\"." << endl;
+
+				ss << ":instr_" << procname << "_" << bbname << "_" << instrname << " rdf:type " << instr_type << ";" << endl
+																																		 		 << " po:arguments (" << ss_args.str() << ");" << endl
+																																				 << " po:assigns " << ":var_" << procname << "_" << asname << "." << endl;
+				if(taint)
+					ss << ":var_" << procname << "_" << asname << " po:approx " << "\"" << (*taint)->get(lp[l]->assigns->nam) << "\"" << "." << endl;
+				if(cprop)
+				{
+					ss << ":approx_cprop po:defines :cporp_" << (*cprop)->get(lp[l]->assigns->nam) << "." << endl
+						 << ":cprop_" << (*cprop)->get(lp[l]->assigns->nam) << " po:approximates :var_" << procname << "_" << asname << ";" << endl
+						 << "\tpo:display \"" << (*cprop)->get(lp[l]->assigns->nam) << "\"^^xsd:string." << endl;
+				}
+
+				ss_instr << " :instr_" << procname << "_" << bbname << "_" << instrname;
+
+				++l;
+			}
+			ss << ":bblock_" << procname << "_" << bbname << " po:instructions (" << ss_instr.str() << ")." << endl;
+			
+			// successors
+			tie(j,jend) = bb->successors();
+			for_each(j,jend,[&](const bblock_ptr s)
+			{ 
+				ss << ":bblock_" << procname << "_" << bbname 
+					 << " po:successor :bblock_" << procname << "_" << to_string(s->addresses().begin) << "." << endl; 
+			});
+
+			
+			ss_bblocks << ":bblock_" << procname << "_" << bbname << " ";
+		});
+
+		ss << ":proc_" 	<< procname << " po:basic_blocks (" << ss_bblocks.str() << ")." << endl;
+	});
+
+		/* basic blocks
 		tie(i,iend) = proc->all();
 		for_each(i,iend,[&](const bblock_ptr bb)
 		{
@@ -60,7 +211,7 @@ string graphviz(flow_ptr fg)
 				 << "_" << bb->addresses().begin 
 				 << " [label=<<table BORDER=\"0\" CELLBORDER=\"0\" CELLSPACING=\"0\" ALIGN=\"LEFT\">";
 		
-			// PHI nodes
+			* PHI nodes
 			{ 
 				mnemonic::iterator l = bb->instructions().begin();
 				
@@ -80,9 +231,9 @@ string graphviz(flow_ptr fg)
 					}
 					ss << "</table></td></tr>";
 				}
-			}
+			}*
 	
-			// mnemonics
+			* mnemonics
 			while(pos < sz)
 			{
 				const mne_cptr m = j[pos++];
@@ -100,10 +251,11 @@ string graphviz(flow_ptr fg)
 					while(l != m->instructions.end())
 					{
 						instr_cptr in = *l++;
+
 						ss << "<tr ALIGN=\"LEFT\"><td ALIGN=\"LEFT\">" 
 							 << "<font POINT-SIZE=\"11\">" << in->inspect();
 						
-						/* taint
+						* taint
 						if(tl->count(in->assigns->nam))
 							ss << accumulate(tl->at(in->assigns->nam).begin(),
 															 tl->at(in->assigns->nam).end(),
@@ -111,7 +263,7 @@ string graphviz(flow_ptr fg)
 															 [](const string &acc, const name &s) { return acc + (s.base.front() == 't' ? "" : " " + s.inspect()); })
 								 << " )";
 						else
-							ss << " ( )";*/
+							ss << " ( )";*
 						
 						// constant prop
 						if(cp->has(in->assigns->nam))
@@ -151,6 +303,153 @@ string graphviz(flow_ptr fg)
 					 << " [label=\"" << s.first->inspect() << "\"];" << endl;
 			});	
 
+			*basic_block::in_iterator l,lend;
+
+			// incoming edges
+			tie(l,lend) = bb->incoming();
+			for_each(l,lend,[&bb](const pair<guard_ptr,bblock_ptr> s) 
+			{ 
+				ss << "\t\tbb_" << procname << "_" << bb->addresses().begin 
+					 << " -> bb_" << procname << "_" << s.second->addresses().begin 
+					 << " [arrowhead=\"crow\",label=\"" << s.first.get() << "\"];" << endl; 
+			});*
+
+		});*
+		
+		ss << "\t}"  << endl;
+	});*/
+
+	
+	return ss.str();
+}	
+string graphviz(flow_ptr fg)
+{
+	stringstream ss;
+
+	ss << "digraph G" << endl
+		 << "{" << endl
+		 << "\tnode [shape=record,style=filled,color=lightgray,fontsize=13,fontname=\"Monospace\"];" << endl;
+	
+	// procedures
+	for_each(fg->procedures.begin(),fg->procedures.end(),[&](const proc_ptr proc)
+	{
+		assert(proc && proc->entry);
+		procedure::iterator i,iend;
+		string procname(to_string(proc->entry->addresses().begin));
+		shared_ptr<map<bblock_ptr,taint_lattice>> taint_bblock(fg->taint[proc]);
+		shared_ptr<map<bblock_ptr,cprop_lattice>> cprop_bblock(fg->cprop[proc]);
+
+		ss << "\tsubgraph cluster_" << procname << endl
+			 << "\t{" << endl
+			 << "\t\tlabel = \"procedure at " << procname << "\";" << endl
+			 << "\t\tcolor = black;" << endl
+			 << "\t\tfontname = \"Monospace\";" << endl;
+
+		// basic blocks
+		tie(i,iend) = proc->all();
+		for_each(i,iend,[&](const bblock_ptr bb)
+		{
+			size_t sz = bb->mnemonics().size(), pos = 0;
+			const mne_cptr *j = bb->mnemonics().data();
+			taint_lattice *tl = taint_bblock && taint_bblock->count(bb) ? &taint_bblock->at(bb) : 0;
+			cprop_lattice *cp = cprop_bblock && cprop_bblock->count(bb) ? &cprop_bblock->at(bb) : 0;
+
+			ss << "\t\tbb_" << procname 
+				 << "_" << bb->addresses().begin 
+				 << " [label=<<table BORDER=\"0\" CELLBORDER=\"0\" CELLSPACING=\"0\" ALIGN=\"LEFT\">";
+		
+			/* PHI nodes
+			{ 
+				mnemonic::iterator l = bb->instructions().begin();
+				
+				if(!bb->instructions().empty() && (*l)->opcode == instr::Phi)
+				{
+					ss << "<tr ALIGN=\"LEFT\"><td ALIGN=\"LEFT\">0x" 
+						 << hex << bb->addresses().begin << dec 
+						 << "</td><td ALIGN=\"LEFT\"> </td></tr>"
+						 << "<tr><td COLSPAN=\"2\"><table BORDER=\"0\" CELLBORDER=\"0\" CELLSPACING=\"0\" ALIGN=\"LEFT\">";
+					
+					while(l != bb->instructions().end() && (*l)->opcode == instr::Phi)
+					{
+						instr_cptr in = *l++;
+						ss << "<tr ALIGN=\"LEFT\"><td ALIGN=\"LEFT\">" 
+							 << "<font POINT-SIZE=\"11\">" << in->inspect()
+							 << "</font></td></tr>";
+					}
+					ss << "</table></td></tr>";
+				}
+			}*/
+	
+			// mnemonics
+			while(pos < sz)
+			{
+				const mne_cptr m = j[pos++];
+				mnemonic::iterator l;
+				instr_citerator n,nend;
+
+				tie(n,nend) = bb->instructions(m);
+				ss << "<tr ALIGN=\"LEFT\"><td ALIGN=\"LEFT\">0x" 
+					 << hex << m->addresses.begin << dec 
+					 << "</td><td ALIGN=\"LEFT\">" << m->inspect()
+					 << "</td></tr>";
+				
+				if(n != nend)
+				{
+					ss << "<tr><td COLSPAN=\"2\"><table BORDER=\"0\" CELLBORDER=\"0\" CELLSPACING=\"0\" ALIGN=\"LEFT\">";
+					while(n != nend)
+					{
+						instr_cptr in = *n++;
+
+						ss << "<tr ALIGN=\"LEFT\"><td ALIGN=\"LEFT\">" 
+							 << "<font POINT-SIZE=\"11\">" << in->inspect();
+						
+						// taint
+						if(tl && (*tl)->has(in->assigns->nam))
+							ss << accumulate((*tl)->get(in->assigns->nam).begin(),
+															 (*tl)->get(in->assigns->nam).end(),
+															 string(" ("),
+															 [](const string &acc, const name &s) { return acc + (s.base.front() == 't' ? "" : " " + s.inspect()); })
+								 << " )";
+						else
+							ss << " ( )";
+						
+						// constant prop
+						if(cp && (*cp)->has(in->assigns->nam))
+							ss << "(" << (*cp)->get(in->assigns->nam) << ")";
+						else
+							ss << " ( )";
+
+						ss << "</font>"
+							 << "</td></tr>";
+					}
+					ss << "</table></td></tr>";
+				}
+			}
+
+			ss << "</table>>];" << endl;
+
+			basic_block::out_iterator k,kend;
+
+			// outgoing edges
+			tie(k,kend) = bb->outgoing();
+			for_each(k,kend,[&bb,&ss,&procname](const ctrans &ct) 
+			{ 
+				if(ct.bblock)
+				{
+					ss << "\t\tbb_" << procname << "_" << bb->addresses().begin 
+						 << " -> bb_" << procname << "_" << ct.bblock->addresses().begin
+					 	 << " [label=\" " << ct.guard->inspect() << " \"];" << endl; 
+				}
+				else
+				{
+					ss << "\t\tbb_" << procname << "_indir" << ct.value.get() 
+					 << " [shape = circle, label=\"" << ct.value->inspect() << "\"];" << endl
+					 << "\t\tbb_" << procname << "_" << bb->addresses().begin 
+					 << " -> bb_" << procname << "_indir" << ct.value.get()
+					 << " [label=\" " << ct.guard->inspect() << " \"];" << endl;
+				}		
+			});	
+			
 			/*basic_block::in_iterator l,lend;
 
 			// incoming edges
