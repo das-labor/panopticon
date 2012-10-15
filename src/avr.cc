@@ -7,11 +7,57 @@
 #include "decoder.hh"
 #include "avr.hh"
 
+// memory bank ids for store/load
+#define flash 0
+#define sram 1
+
 typedef sem_state<avr_tag> sm;
 typedef std::function<void(sm &)> sem_action;
 typedef code_generator<avr_tag> cg;
 
 unsigned int next_unused = 0;
+
+template<>
+bool valid(avr_tag,const name &n)
+{
+	return (n.base.size() >= 2 && n.base.size() <= 3 && n.base[0] == 'r' && isdigit(n.base[1]) && (n.base.size() == 2 || isdigit(n.base[2]))) ||
+				 (n.base.size() == 1 && (n.base[0] == 'I' || n.base[0] == 'T' || n.base[0] == 'H' || n.base[0] == 'S' || n.base[0] == 'V' ||
+				 												 n.base[0] == 'N' || n.base[0] == 'Z' || n.base[0] == 'C' || n.base[0] == 'X' || n.base[0] == 'Y' || 
+																 n.base[0] == 'Z'));
+}
+
+template<>
+unsigned int width(avr_tag t,const value_ptr &v)
+{
+	var_ptr w;
+	const_ptr c;
+
+	if((w = dynamic_pointer_cast<variable>(v)))
+	{
+		const name &n(w->nam);
+		assert(valid(t,n));
+	
+		if(n.base.size() >= 2 && n.base.size() <= 3 && n.base[0] == 'r' && isdigit(n.base[1]) && (n.base.size() == 2 || isdigit(n.base[2])))
+			return 8;
+		else if(n.base.size() == 1 && (n.base[0] == 'I' || n.base[0] == 'T' || n.base[0] == 'H' || n.base[0] == 'S' || n.base[0] == 'V' ||
+																	 n.base[0] == 'N' || n.base[0] == 'Z' || n.base[0] == 'C'))
+			return 1;
+		else if(n.base.size() == 1 && (n.base[0] == 'X' || n.base[0] == 'Y' || n.base[0] == 'Z'))
+			return 16;
+		else
+			return 0;
+	}
+	else if((c = dynamic_pointer_cast<constant>(v)))
+		return 8;
+	else
+		return 0;
+}
+
+template<> 
+name unused(avr_tag)
+{
+	return name("tmp" + to_string(next_unused++));
+}
 
 sem_action unary_reg(string x)
 {
@@ -112,36 +158,62 @@ sem_action simple(string x, std::function<void(cg &c)> fn)
 	};
 }
 
-template<>
-bool valid(avr_tag,const name &n)
+value_ptr subtract(cg &m, name R, valproxy A, valproxy B)
 {
-	return (n.base.size() >= 2 && n.base.size() <= 3 && n.base[0] == 'r' && isdigit(n.base[1]) && isdigit(n.base[2])) ||
-				 (n.base.size() == 1 && (n.base[0] == 'I' || n.base[0] == 'T' || n.base[0] == 'H' || n.base[0] == 'S' || n.base[0] == 'V' ||
-				 												 n.base[0] == 'N' || n.base[0] == 'Z' || n.base[0] == 'C' || n.base[0] == 'X' || n.base[0] == 'Y' || 
-																 n.base[0] == 'Z'));
-}
-
-template<>
-unsigned int width(avr_tag t,const name &n)
-{
-	assert(valid(t,n));
+	value_ptr a = A.value, b = B.value, r = m.sub_i(R,a,b);
+		
+	// H: !a3•b3 + b3•r3 + r3•!a3
+	m.or_b("H",m.or_b(
+		m.and_b(
+			m.not_b(m.slice(a,3,3)),
+			m.slice(b,3,3)),
+		m.and_b(
+			m.slice(r,3,3),
+			m.slice(b,3,3))),
+		m.and_b(
+			m.not_b(m.slice(a,3,3)),
+			m.slice(r,3,3)));
 	
-	if(n.base.size() >= 2 && n.base.size() <= 3 && n.base[0] == 'r' && isdigit(n.base[1]) && isdigit(n.base[2]))
-		return 8;
-	else if(n.base.size() == 1 && (n.base[0] == 'I' || n.base[0] == 'T' || n.base[0] == 'H' || n.base[0] == 'S' || n.base[0] == 'V' ||
-				 												 n.base[0] == 'N' || n.base[0] == 'Z' || n.base[0] == 'C'))
-		return 1;
-	else if(n.base.size() == 1 && (n.base[0] == 'X' || n.base[0] == 'Y' || n.base[0] == 'Z'))
-		return 16;
-	else
-		return 0;
-}
+	// V: a7•!b7•!r7 + !a7•b7•r7
+	m.or_b("V",
+		m.and_b(m.and_b(
+			m.slice(a,7,7),
+			m.not_b(m.slice(b,7,7))),
+			m.not_b(m.slice(r,7,7))),
+		m.and_b(m.and_b(
+			m.not_b(m.slice(a,7,7)),
+			m.slice(b,7,7)),
+			m.slice(r,7,7)));
 
-template<> 
-name unused(avr_tag)
-{
-	return name("tmp" + to_string(next_unused++));
-}
+	// N: r7
+	m.assign("N",m.slice(r,7,7));
+
+	// Z: !r7•!r6•!r5•!r4•!r3•!r2•!r1•!r0
+	m.and_b("Z",m.not_b(m.slice(r,0,0)),
+		m.and_b(m.not_b(m.slice(r,1,1)),
+			m.and_b(m.not_b(m.slice(r,2,2)),
+				m.and_b(m.not_b(m.slice(r,3,3)),
+					m.and_b(m.not_b(m.slice(r,4,4)),
+						m.and_b(m.not_b(m.slice(r,5,5)),
+							m.and_b(m.not_b(m.slice(r,6,6)),m.not_b(m.slice(r,7,7)))))))));
+
+	// C: !a7•b7 + b7•r7 + r7•!a7
+	m.or_b("C",m.or_b(
+		m.and_b(
+			m.not_b(m.slice(a,7,7)),
+			m.slice(b,7,7)),
+		m.and_b(
+			m.slice(r,7,7),
+			m.slice(b,7,7))),
+		m.and_b(
+			m.not_b(m.slice(a,7,7)),
+			m.slice(r,7,7)));
+
+	// S: N ⊕ V 
+	m.xor_b("S","N","V");
+
+	return r;
+}	
 
 flow_ptr avr_decode(vector<typename architecture_traits<avr_tag>::token_type> &bytes, addr_t entry)
 {
@@ -150,54 +222,127 @@ flow_ptr avr_decode(vector<typename architecture_traits<avr_tag>::token_type> &b
 	// memory operations
 	main | "001011 r@. d@..... r@...." 	= binary_reg("mov",[](cg &m, const name &Rd, const name &Rr)
 	{
-		// TODO
+		c.assign(Rd,Rr);
 	});
 
 	main | "00000001 d@.... r@...." 		= [](sm &st)
 	{ 
-		st.mnemonic(st.tokens.size(),"movw",
-								value_ptr(new reg(st.capture_groups["d"],st.capture_groups["d"] + 1)),
-								value_ptr(new reg(st.capture_groups["r"],st.capture_groups["r"] + 1)),std::function<void(cg &c)>());
+		value_ptr Rd1(new reg(st.capture_groups["d"])), Rd2(new reg(st.capture_groups["d"] + 1));
+		value_ptr Rr1(new reg(st.capture_groups["r"])), Rr2(new reg(st.capture_groups["r"] + 1));
+
+		st.mnemonic(st.tokens.size(),"movw",{Rd1,Rd2,Rr1,Rr2},[&](cg &c)
+		{
+			c.assign(Rd1->nam,Rr1);
+			c.assign(Rd2->nam,Rr2);
+		});
 		st.jump(st.address + st.tokens.size());
 	};
 	main | "10110 A@.. d@..... A@...." 	= [](sm &st)
 	{
-		st.mnemonic(st.tokens.size(),"in",
-										value_ptr(new reg(st.capture_groups["d"])),
-										value_ptr(new ioreg(st.capture_groups["A"])),std::function<void(cg &c)>());
+		value_ptr Rd(new reg(st.capture_groups["d"])), A(new ioreg(st.capture_groups["A"]));
+
+		st.mnemonic(st.tokens.size(),"in",Rd,A,[&](cg &c)
+		{
+			c.load(Rd->nam,A,io);
+		});
 		st.jump(st.address + st.tokens.size());
 	};
 	main | "10111 A@.. r@..... A@...." 	= [](sm &st) 	
 	{
-		st.mnemonic(st.tokens.size(),"out",
-										value_ptr(new ioreg(st.capture_groups["A"])),
-										value_ptr(new reg(st.capture_groups["r"])),std::function<void(cg &c)>());
+		value_ptr A(new ioreg(st.capture_groups["A"])), Rr(new reg(st.capture_groups["r"]));
+
+		st.mnemonic(st.tokens.size(),"out",A,Rr,[&](cg &c)
+		{
+			c.store(A,io,Rr);
+		});
 		st.jump(st.address + st.tokens.size());
 	};
-	main | "1001000 d@..... 1111"				= unary_reg("pop");
-	main | "1001001 d@..... 1111" 			= unary_reg("push");
-	main | "1001010 d@..... 0010" 			= unary_reg("swap");
-	main | "1001001 r@..... 0100" 			= unary_reg("xch");
+	main | "1001000 d@..... 1111"				= unary_reg("pop",[](cg &c, const name &R) 
+	{ 
+		c.load(R,"stack",sram);
+		c.add("stack","stack",value_ptr(new constant(1,8)));
+	});
+	main | "1001001 d@..... 1111" 			= unary_reg("push",[](cg &c, const name &R) 
+	{ 
+		c.add("stack","stack",value_ptr(new constant(1,8)));
+		c.store("stack",sram,R); 
+	});
+	main | "1001010 d@..... 0010" 			= unary_reg("swap",[](cg &c, const name &R)
+	{
+		m.concat(R,m.slice(R,4,7),m.slice(R,0,3));
+	});
+	main | "1001001 r@..... 0100" 			= unary_reg("xch",[](cg &c, const name &R)
+	{
+		value_ptr Z = m.concat("r30","r31");
+		value_ptr tmp = m.load(Z,sram);
+
+		m.store(Z,sram,R);
+		m.assign(R,tmp);
+	});
+	main | "11101111 d@.... 1111" 			= unary_reg("ser",[](cg &c, const name &R)
+	{
+		m.assign(R,0xff);
+	});
 	main | "1110 K@.... d@.... K@...."	= binary_regconst("ldi",[&](cg &m, const name &Rd, int K)
 	{
 		m.assign(Rd,K);
 	});
 
-	main | "11101111 d@.... 1111" 			= unary_reg("ser");
-	main | "1001001 r@..... 0110" 			= unary_reg("lac");
-	main | "1001001 r@..... 0101" 			= unary_reg("las");
-	main | "1001001 r@..... 0111" 			= unary_reg("lat");
+	main | "1001001 r@..... 0110" 			= unary_reg("lac",[](cg &c, const name &R)
+	{
+		// TODO: flags?
+		value_ptr Z = m.concat("r30","r31");
+		
+		// (Z) ← Rd • ($FF – (Z))
+		m.store(Z,sram,
+			m.and_u(Rd,
+				m.sub_i(value_ptr(new constant(0xff,8)),
+					m.load(Z,sram))));
+	});
+	main | "1001001 r@..... 0101" 			= unary_reg("las",[](cg &c, const name &R)
+	{
+		// TODO: flags?
+		value_ptr Z = m.concat("r30","r31");
+		
+		// (Z) ← Rd v (Z), Rd ← (Z)
+		value_ptr tmp = m.load(Z,sram);
+		m.store(Z,sram,
+			m.or_u(R,tmp));
+		m.assign(R,tmp);
+	});
+	main | "1001001 r@..... 0111" 			= unary_reg("lat",[](cg &c, const name &R)
+	{
+		// TODO: flags?
+		value_ptr Z = m.concat("r30","r31");
+		
+		// (Z) ← Rd ⊕ (Z), Rd ← (Z)
+		value_ptr tmp = m.load(Z,sram);
+		m.store(Z,sram,
+			m.xor_u(R,tmp));
+		m.assign(R,tmp);
+	});
 	main | "1001000 d@..... 0000" | "k@................" = [](sm &st)
 	{
-		st.mnemonic(st.tokens.size(),"lds",value_ptr(new reg(st.capture_groups["d"])),st.capture_groups["k"],std::function<void(cg &c)>());
+		unsigned int k = st.capture_groups["k"];
+		value_ptr Rd(new reg(st.capture_groups["d"]));
+
+		st.mnemonic(st.tokens.size(),"lds",Rd,k,[&](cg &c)
+		{
+			m.load(Rd->nam,value_ptr(new constant(k,16)));
+		});
 		st.jump(st.address + st.tokens.size());
 	};
 
 	main | "10100 k@... d@.... k@...." 	= [](sm &st)
 	{
 		unsigned int k = st.capture_groups["k"];
+		value_ptr Rd(new reg(st.capture_groups["d"] + 16));
 
-		st.mnemonic(st.tokens.size(),"lds",value_ptr(new reg(st.capture_groups["d"] + 16)),(~k & 16) | (k & 16) | (k & 64) | (k & 32) | (k & 15),std::function<void(cg &c)>());
+		k = (~k & 16) | (k & 16) | (k & 64) | (k & 32) | (k & 15);
+		st.mnemonic(st.tokens.size(),"lds",Rd,k,[&](cg &c)
+		{
+			m.load(Rd->nam,value_ptr(new constant(k,8)));
+		});
 		st.jump(st.address + st.tokens.size());
 	};
 
@@ -248,22 +393,22 @@ flow_ptr avr_decode(vector<typename architecture_traits<avr_tag>::token_type> &b
 	// SREG operations
 	//main | "100101001 s@... 1000" = simple("bclr");
 	//main | "100101000 s@... 1000" = simple("bset");
-	main | 0x9408 = simple("sec",[](cg &m) { m.assign("C",1); });
-	main | 0x9458 = simple("seh",[](cg &m) { m.assign("H",1); });
-	main | 0x9478 = simple("sei",[](cg &m) { m.assign("I",1); });
-	main | 0x9428 = simple("sen",[](cg &m) { m.assign("N",1); });
-	main | 0x9448 = simple("ses",[](cg &m) { m.assign("S",1); });
-	main | 0x9468 = simple("set",[](cg &m) { m.assign("T",1); });
-	main | 0x9438 = simple("sev",[](cg &m) { m.assign("V",1); });
-	main | 0x9418 = simple("sez",[](cg &m) { m.assign("Z",1); });
-	main | 0x9488 = simple("clc",[](cg &m) { m.assign("C",0); });
-	main | 0x94d8 = simple("clh",[](cg &m) { m.assign("H",0); });
-	main | 0x94f8 = simple("cli",[](cg &m) { m.assign("I",0); });
-	main | 0x94a8 = simple("cln",[](cg &m) { m.assign("N",0); });
-	main | 0x94c8 = simple("cls",[](cg &m) { m.assign("S",0); });
-	main | 0x94e8 = simple("clt",[](cg &m) { m.assign("T",0); });
-	main | 0x94b8 = simple("clv",[](cg &m) { m.assign("V",0); });
-	main | 0x9498 = simple("clz",[](cg &m) { m.assign("Z",0); });
+	main | 0x9408 = simple("sec",[](cg &m) { m.assign("C",value_ptr(new constant(1,1))); });
+	main | 0x9458 = simple("seh",[](cg &m) { m.assign("H",value_ptr(new constant(1,1))); });
+	main | 0x9478 = simple("sei",[](cg &m) { m.assign("I",value_ptr(new constant(1,1))); });
+	main | 0x9428 = simple("sen",[](cg &m) { m.assign("N",value_ptr(new constant(1,1))); });
+	main | 0x9448 = simple("ses",[](cg &m) { m.assign("S",value_ptr(new constant(1,1))); });
+	main | 0x9468 = simple("set",[](cg &m) { m.assign("T",value_ptr(new constant(1,1))); });
+	main | 0x9438 = simple("sev",[](cg &m) { m.assign("V",value_ptr(new constant(1,1))); });
+	main | 0x9418 = simple("sez",[](cg &m) { m.assign("Z",value_ptr(new constant(1,1))); });
+	main | 0x9488 = simple("clc",[](cg &m) { m.assign("C",value_ptr(new constant(0,1))); });
+	main | 0x94d8 = simple("clh",[](cg &m) { m.assign("H",value_ptr(new constant(0,1))); });
+	main | 0x94f8 = simple("cli",[](cg &m) { m.assign("I",value_ptr(new constant(0,1))); });
+	main | 0x94a8 = simple("cln",[](cg &m) { m.assign("N",value_ptr(new constant(0,1))); });
+	main | 0x94c8 = simple("cls",[](cg &m) { m.assign("S",value_ptr(new constant(0,1))); });
+	main | 0x94e8 = simple("clt",[](cg &m) { m.assign("T",value_ptr(new constant(0,1))); });
+	main | 0x94b8 = simple("clv",[](cg &m) { m.assign("V",value_ptr(new constant(0,1))); });
+	main | 0x9498 = simple("clz",[](cg &m) { m.assign("Z",value_ptr(new constant(0,1))); });
 	main | "000101 r@. d@..... r@...." 	= binary_reg("cp",[](cg &m, const name &Rd, const name &Rr)
 	{
 		// TODO
@@ -274,57 +419,7 @@ flow_ptr avr_decode(vector<typename architecture_traits<avr_tag>::token_type> &b
 	});
 	main | "0011 K@.... d@.... K@...." 	= binary_regconst("cpi",[&](cg &m, const name &Rd, int K)
 	{
-		value_ptr R = m.sub_i("R",Rd,K);
-		
-		// H: !Rd3•K3 + K3•R3 + R3•!Rd3
-		m.or_b("H",m.or_b(
-			m.and_b(
-				m.not_b(m.slice(Rd,3,3)),
-				m.slice(K,3,3)),
-			m.and_b(
-				m.slice(R,3,3),
-				m.slice(K,3,3))),
-			m.and_b(
-				m.not_b(m.slice(Rd,3,3)),
-				m.slice(R,3,3)));
-		
-		// V: Rd7•!K7•!R7 + !Rd7•K7•R7
-		m.or_b("V",
-			m.and_b(m.and_b(
-				m.slice(Rd,7,7),
-				m.not_b(m.slice(K,7,7))),
-				m.not_b(m.slice(R,7,7))),
-			m.and_b(m.and_b(
-				m.not_b(m.slice(Rd,7,7)),
-				m.slice(K,7,7)),
-				m.slice(R,7,7)));
-
-		// N: R7
-		m.assign("N",m.slice(R,7,7));
-
-		// Z: !R7•!R6•!R5•!R4•!R3•!R2•!R1•!R0
-		m.and_b("Z",m.not_b(m.slice(R,0,0)),
-			m.and_b(m.not_b(m.slice(R,1,1)),
-				m.and_b(m.not_b(m.slice(R,2,2)),
-					m.and_b(m.not_b(m.slice(R,3,3)),
-						m.and_b(m.not_b(m.slice(R,4,4)),
-							m.and_b(m.not_b(m.slice(R,5,5)),
-								m.and_b(m.not_b(m.slice(R,6,6)),m.not_b(m.slice(R,7,7)))))))));
-
-		// C: !Rd7•K7 + K7•R7 + R7•!Rd7
-		m.or_b("C",m.or_b(
-			m.and_b(
-				m.not_b(m.slice(Rd,7,7)),
-				m.slice(K,7,7)),
-			m.and_b(
-				m.slice(R,7,7),
-				m.slice(K,7,7))),
-			m.and_b(
-				m.not_b(m.slice(Rd,7,7)),
-				m.slice(R,7,7)));
-
-		// S: N ⊕ V 
-		m.xor_b("S","N","V");
+		subtract(m,"R",Rd,K);
 	});
 
 	main | "001000 d@.........." 				= unary_reg("tst");	// TODO: d w/o offset
@@ -380,68 +475,11 @@ flow_ptr avr_decode(vector<typename architecture_traits<avr_tag>::token_type> &b
 
 	main | "000110 r@. d@..... r@...." 	= binary_reg("sub",[&](cg &m, const name &Rd, const name &Rr)
 	{
-		value_ptr R = m.sub_i("R",Rd,Rr);
-		
-		// H: !Rd3•Rr3 + Rr3•R3 + R3•!Rd3
-		m.or_b("H",m.or_b(
-			m.and_b(
-				m.not_b(m.slice(Rd,3,3)),
-				m.slice(Rr,3,3)),
-			m.and_b(
-				m.slice(R,3,3),
-				m.slice(Rr,3,3))),
-			m.and_b(
-				m.not_b(m.slice(Rd,3,3)),
-				m.slice(R,3,3)));
-		
-		// V: Rd7•!Rr7•!R7 + !Rd7•Rr7•R7
-		m.or_b("V",
-			m.and_b(m.and_b(
-				m.slice(Rd,7,7),
-				m.not_b(m.slice(Rr,7,7))),
-				m.not_b(m.slice(R,7,7))),
-			m.and_b(m.and_b(
-				m.not_b(m.slice(Rd,7,7)),
-				m.slice(Rr,7,7)),
-				m.slice(R,7,7)));
-
-		// N: R7
-		m.assign("N",m.slice(R,7,7));
-
-		// Z: !R7•!R6•!R5•!R4•!R3•!R2•!R1•!R0
-		m.and_b("Z",m.not_b(m.slice(R,0,0)),
-			m.and_b(m.not_b(m.slice(R,1,1)),
-				m.and_b(m.not_b(m.slice(R,2,2)),
-					m.and_b(m.not_b(m.slice(R,3,3)),
-						m.and_b(m.not_b(m.slice(R,4,4)),
-							m.and_b(m.not_b(m.slice(R,5,5)),
-								m.and_b(m.not_b(m.slice(R,6,6)),m.not_b(m.slice(R,7,7)))))))));
-
-		// C: !Rd7•Rr7 + Rr7•R7 + R7•!Rd7
-		m.or_b("C",m.or_b(
-			m.and_b(
-				m.not_b(m.slice(Rd,7,7)),
-				m.slice(Rr,7,7)),
-			m.and_b(
-				m.slice(R,7,7),
-				m.slice(Rr,7,7))),
-			m.and_b(
-				m.not_b(m.slice(Rd,7,7)),
-				m.slice(R,7,7)));
-
-		// S: N ⊕ V 
-		m.xor_b("S","N","V");
-		m.assign(Rr,R);
+		m.assign(Rr,subtract(m,"R",Rd,Rr));
 	});
 	main | "0101 K@.... d@.... K@...." 	= binary_regconst("subi",[&](cg &m, const name &Rd, int K)
 	{ 
-		m.sub_i("R",Rd,K);
-		m.and_b("h1",Rd,K);
-		m.and_b("h2","R",K);
-		m.and_b("h3",Rd,"R");
-		m.or_b("h4","h1","h2");
-		m.or_b("h4","h4","h3");
-		m.slice("H","h4",3,3);
+		m.assign(Rd,subtract(m,"R",Rd,K));
 	});
 
 	main | "1001010 d@..... 0101" 			= unary_reg("asr");
@@ -451,113 +489,12 @@ flow_ptr avr_decode(vector<typename architecture_traits<avr_tag>::token_type> &b
 	main | "1001010 d@..... 0011" 			= unary_reg("inc");
 	main | "000010 r@. d@..... r@...." 	= binary_reg("sbc",[](cg &m, const name &Rd, const name &Rr)
 	{
-		value_ptr R = m.sub_i("R",Rd,m.sub_i(Rr,"C"));
-		
-		// H: !Rd3•Rr3 + Rr3•R3 + R3•!Rd3
-		m.or_b("H",m.or_b(
-			m.and_b(
-				m.not_b(m.slice(Rd,3,3)),
-				m.slice(Rr,3,3)),
-			m.and_b(
-				m.slice(R,3,3),
-				m.slice(Rr,3,3))),
-			m.and_b(
-				m.not_b(m.slice(Rd,3,3)),
-				m.slice(R,3,3)));
-		
-		// V: Rd7•!Rr7•!R7 + !Rd7•Rr7•R7
-		m.or_b("V",
-			m.and_b(m.and_b(
-				m.slice(Rd,7,7),
-				m.not_b(m.slice(Rr,7,7))),
-				m.not_b(m.slice(R,7,7))),
-			m.and_b(m.and_b(
-				m.not_b(m.slice(Rd,7,7)),
-				m.slice(Rr,7,7)),
-				m.slice(R,7,7)));
-
-		// N: R7
-		m.assign("N",m.slice(R,7,7));
-
-		// Z: !R7•!R6•!R5•!R4•!R3•!R2•!R1•!R0
-		m.and_b("Z",m.not_b(m.slice(R,0,0)),
-			m.and_b(m.not_b(m.slice(R,1,1)),
-				m.and_b(m.not_b(m.slice(R,2,2)),
-					m.and_b(m.not_b(m.slice(R,3,3)),
-						m.and_b(m.not_b(m.slice(R,4,4)),
-							m.and_b(m.not_b(m.slice(R,5,5)),
-								m.and_b(m.not_b(m.slice(R,6,6)),m.not_b(m.slice(R,7,7)))))))));
-
-		// C: !Rd7•Rr7 + Rr7•R7 + R7•!Rd7
-		m.or_b("C",m.or_b(
-			m.and_b(
-				m.not_b(m.slice(Rd,7,7)),
-				m.slice(Rr,7,7)),
-			m.and_b(
-				m.slice(R,7,7),
-				m.slice(Rr,7,7))),
-			m.and_b(
-				m.not_b(m.slice(Rd,7,7)),
-				m.slice(R,7,7)));
-
-		// S: N ⊕ V 
-		m.xor_b("S","N","V");
-		m.assign(Rr,R);
+		m.assign(Rr,subtract(m,"R",Rd,m.sub_i(Rr,m.concat(value_ptr(new constant(0,7)),"C"))));
 	});
+
 	main | "0100 K@.... d@.... K@...." 	= binary_regconst("sbci",[&](cg &m, const name &Rd, int K)
 	{
-		value_ptr R = m.sub_i("R",Rd,K);
-		
-		// H: !Rd3•K3 + K3•R3 + R3•!Rd3
-		m.or_b("H",m.or_b(
-			m.and_b(
-				m.not_b(m.slice(Rd,3,3)),
-				m.slice(K,3,3)),
-			m.and_b(
-				m.slice(R,3,3),
-				m.slice(K,3,3))),
-			m.and_b(
-				m.not_b(m.slice(Rd,3,3)),
-				m.slice(R,3,3)));
-		
-		// V: Rd7•!K7•!R7 + !Rd7•K7•R7
-		m.or_b("V",
-			m.and_b(m.and_b(
-				m.slice(Rd,7,7),
-				m.not_b(m.slice(K,7,7))),
-				m.not_b(m.slice(R,7,7))),
-			m.and_b(m.and_b(
-				m.not_b(m.slice(Rd,7,7)),
-				m.slice(K,7,7)),
-				m.slice(R,7,7)));
-
-		// N: R7
-		m.assign("N",m.slice(R,7,7));
-
-		// Z: !R7•!R6•!R5•!R4•!R3•!R2•!R1•!R0
-		m.and_b("Z",m.not_b(m.slice(R,0,0)),
-			m.and_b(m.not_b(m.slice(R,1,1)),
-				m.and_b(m.not_b(m.slice(R,2,2)),
-					m.and_b(m.not_b(m.slice(R,3,3)),
-						m.and_b(m.not_b(m.slice(R,4,4)),
-							m.and_b(m.not_b(m.slice(R,5,5)),
-								m.and_b(m.not_b(m.slice(R,6,6)),m.not_b(m.slice(R,7,7)))))))));
-
-		// C: !Rd7•K7 + K7•R7 + R7•!Rd7
-		m.or_b("C",m.or_b(
-			m.and_b(
-				m.not_b(m.slice(Rd,7,7)),
-				m.slice(K,7,7)),
-			m.and_b(
-				m.slice(R,7,7),
-				m.slice(K,7,7))),
-			m.and_b(
-				m.not_b(m.slice(Rd,7,7)),
-				m.slice(R,7,7)));
-
-		// S: N ⊕ V 
-		m.xor_b("S","N","V");
-		m.assign(Rd,R);
+		m.assign(Rd,subtract(m,"R",Rd,m.sub_i(K,m.concat(value_ptr(new constant(0,7)),"C"))));
 	});
 
 	main | "1001010 d@..... 0000" 			= unary_reg("com");

@@ -13,7 +13,7 @@ template<typename T>
 bool valid(T,const name &);
 
 template<typename T>
-unsigned int width(T,const name &);
+unsigned int width(T,const value_ptr &);
 
 template<typename T>
 name unused(T);

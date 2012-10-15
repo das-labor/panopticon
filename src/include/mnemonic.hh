@@ -160,6 +160,8 @@ public:
  		SMod,			// Unsigned Modulo reduction
 		UMod,			// Signed Modulo reduction
 		Call,			// Procedure call
+		Store,		// Write bits to memory
+		Load,			// Read bits from memory
 		// Floating point
 	};
 

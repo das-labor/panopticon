@@ -17,7 +17,11 @@ pair<procedure::iterator,procedure::iterator> procedure::rev_postorder(void)
 		set<bblock_ptr> known;
 		list<bblock_ptr> postorder;
 
+		assert(entry);
 		rpo.clear();
+
+		//cout << "rpo: " << basic_blocks.size() << ", entry: " << entry->addresses() << endl;
+		//for_each(basic_blocks.begin(),basic_blocks.end(),[](const bblock_ptr bb) { cout << bb->addresses() << endl; });
 
 		function<void(bblock_ptr)> visit = [&](bblock_ptr bb)
 		{

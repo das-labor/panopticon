@@ -35,7 +35,10 @@ struct sem_state
 		// generate instr_ptr list
 		if(fn) fn(cg);
 
-		cout << "cg: " << instr.size() << endl;
+		// sanity check
+		std::set<var_ptr> defs;
+		assert(all_of(instr.begin(),instr.end(),[&](const instr_ptr &i) { return defs.insert(i->assigns).second; }));
+
 		last = bblock_ptr(new basic_block());
 		last->append_mnemonic(m,make_pair(instr.begin(),instr.end()));
 		basic_blocks.insert(last);
@@ -414,66 +417,19 @@ void disassemble_procedure(proc_ptr proc, const decoder<Tag> &main, vector<typen
 			for_each(i,iend,[&](const ctrans &ct)
 			{ 
 				if(!ct.bblock && ct.constant()) 
-				{
-					cout << "#new target: " << ct.constant()->val << endl;
 					todo.insert(ct.constant()->val);
-				}
 			});
 		});
-		/*
-		j = state.mnemonics.begin();
-		jend = state.mnemonics.end();
-		
-
-		while(j != jend)
-		{			
-			pair<mne_ptr,vector<instr_ptr>> &p = *j++;
-			list<pair<addr_t,guard_ptr>> ct;
-			bool prev_known, nil;
-			bblock_ptr cur_bb;
-			//bblock_ptr prev_bb = prev_mne ? find_bblock(proc,prev_mne->addresses.last()) : entry;
-	
-
-			
-	//		cout << "[mne] " << p.first->opcode << " (" << p.first->addresses << "); next: ";
-			// XXX
-			assert(prev_bb);
-			for_each(state.direct_jumps.begin(),state.direct_jumps.end(),[&](pair<const mne_ptr,pair<addr_t,guard_ptr>> q)
-			{ 
-				if(q.first == p.first)
-					ct.push_back(q.second);
-			});
-
-			// insert mnemonic into procedure, add (un)conditional control flow edge
-			tie(prev_known,cur_bb) = extend_procedure(proc,p.first,prev_mne,prev_bb,prev_guard);
-			
-			// add unresolved indirect jumps. may cause to `cur_bb' basic block to be split
-			for_each(state.indirect_jumps.begin(),state.indirect_jumps.end(),[&](pair<const mne_ptr,value_ptr> q)
-			{
-				if(q.first == p.first)
-					tie(nil,cur_bb) = extend_procedure(proc,p.first,cur_bb,q.second,guard_ptr(new guard()));
-			});
-				
-			// next addresses to disassemble
-			if(!prev_known && !ct.empty())
-				for_each(ct.begin(),ct.end(),[&](pair<addr_t,guard_ptr> q)
-					{ todo.push_back(make_tuple(q.first,p.first,q.second)); });
-			
-			prev_mne = p.first;
-			prev_guard = 
-		}*/
 	}
 
 	// entry may have been split
-	if(!proc->entry)
-		proc->entry = *proc->all().first;
-	else if(!proc->entry->mnemonics().empty())
-		proc->entry = find_bblock(proc,proc->entry->mnemonics().front()->addresses.begin);
-	assert(proc->entry);
-	cout << "entry " << proc->entry->instructions().size() << endl;
-	proc->name = "proc_" + to_string(proc->entry->addresses().begin);
-	
-	cout << graphviz(proc);
+	if(proc->entry)
+	{
+		if(!proc->entry->mnemonics().empty())
+			proc->entry = find_bblock(proc,proc->entry->mnemonics().front()->addresses.begin);
+		assert(proc->entry);
+		proc->name = "proc_" + to_string(proc->entry->addresses().begin);
+	}
 };
 
 #endif

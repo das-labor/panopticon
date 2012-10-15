@@ -46,19 +46,19 @@ flow_ptr disassemble(const decoder<Tag> &main, std::vector<typename rule<Tag>::t
 		live_ptr live;
 		std::shared_ptr<std::map<bblock_ptr,taint_lattice>> taint;
 		std::shared_ptr<std::map<bblock_ptr,cprop_lattice>> cprop;
-		//bblock_ptr entry(new basic_block());
 		procedure::iterator i,iend;
 
 		call_targets.erase(h);
-		//proc->insert_bblock(entry);
-		//proc->entry = entry;
 
 		// iterate until no more indirect jump targets are known
 		while(true)
 		{
 			std::cout << "disassemble" << endl;
 			disassemble_procedure(proc,main,tokens,tgt);
-	
+
+			if(!proc->entry)
+				proc->entry = find_bblock(proc,tgt);
+
 			// compute dominance tree
 			std::cout << "dominance tree" << endl;
 			dom = dominance_tree(proc);
@@ -97,7 +97,7 @@ flow_ptr disassemble(const decoder<Tag> &main, std::vector<typename rule<Tag>::t
 
 						if(cm.type == cprop_element::Const)
 						{
-							bb->remove_outgoing(p.value);
+							p.value = value_ptr(new constant(cm.value,p.value->width));
 							tgt = cm.value;
 							goto out;
 						}
@@ -160,6 +160,7 @@ flow_ptr disassemble(const decoder<Tag> &main, std::vector<typename rule<Tag>::t
 		std::cout << "procedure done" << endl;
 	}
 
+	
 	return ret;
 }
 

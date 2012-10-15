@@ -104,9 +104,15 @@ string instr::inspect(void) const
 	else if(arguments.size() == 1)
 		ss << fnname << arguments[0]->inspect();
 	else if(function == Phi)
-		ss << fnname << "(" << arguments[0]->inspect() << "," << arguments[1]->inspect() << ")";
-	else if(arguments.size() == 3)
+		ss << fnname << "(" << arguments[0]->inspect() << ", " << arguments[1]->inspect() << ")";
+	else if(function == Slice)
 		ss << arguments[0]->inspect() << "[" << arguments[1]->inspect() << ":" << arguments[2]->inspect() << "]";
+	else if(function == Store)
+		ss << "(M_" << arguments[1]->inspect() << "[" << arguments[0]->inspect() << "] ← " << arguments[2]->inspect() << ")";
+	else if(function == Load)
+		ss << "M_" << arguments[1]->inspect() << "[" << arguments[0]->inspect() << "]";
+	else if(arguments.size() == 3)
+		ss << fnname << "(" << arguments[0]->inspect() << ", " << arguments[1]->inspect() << ", " << arguments[2]->inspect() << ")";
 	else
 		ss << arguments[0]->inspect() << fnname << arguments[1]->inspect();
 	return ss.str();

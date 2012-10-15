@@ -355,8 +355,12 @@ string graphviz(flow_ptr fg)
 			cprop_lattice *cp = cprop_bblock && cprop_bblock->count(bb) ? &cprop_bblock->at(bb) : 0;
 
 			ss << "\t\tbb_" << procname 
-				 << "_" << bb->addresses().begin 
-				 << " [label=<<table BORDER=\"0\" CELLBORDER=\"0\" CELLSPACING=\"0\" ALIGN=\"LEFT\">";
+				 << "_" << bb->addresses().begin;
+
+			if(pos < sz)
+				ss << " [label=<<table BORDER=\"0\" CELLBORDER=\"0\" CELLSPACING=\"0\" ALIGN=\"LEFT\">";
+			else
+				ss << " [label=\"" << bb->addresses().begin << "\"];" << endl;
 		
 			/* PHI nodes
 			{ 
@@ -426,7 +430,8 @@ string graphviz(flow_ptr fg)
 				}
 			}
 
-			ss << "</table>>];" << endl;
+			if(pos)
+				ss << "</table>>];" << endl;
 
 			basic_block::out_iterator k,kend;
 

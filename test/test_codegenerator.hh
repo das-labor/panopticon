@@ -22,9 +22,11 @@ bool valid(test_tag,const name &)
 }
 
 template<>
-unsigned int width(test_tag,const name &n)
+unsigned int width(test_tag,const value_ptr &v)
 {
-	if(n.base.size() == 1)
+	var_ptr w;
+
+	if((w = dynamic_pointer_cast<variable>(v)) && w->nam.base.size() == 1)
 		return 1;
 	else
 		return 8;

@@ -16,7 +16,7 @@ struct architecture_traits<avr_tag>
 };
 
 template<> bool valid(avr_tag,const name &n);
-template<> unsigned int width(avr_tag t,const name &n);
+template<> unsigned int width(avr_tag t,const value_ptr &v);
 template<> name unused(avr_tag);
 
 class reg : public variable

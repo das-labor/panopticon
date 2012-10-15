@@ -15,17 +15,24 @@
 	--> refine larger mnemonics with smaller
 	--> split old block if inner mnemonics are target of ctrans **DONE**
 
+==> memory support
+	--> memory value (zone name, endianess)
+	--> assignment class for instructions that specs slice of target (Bincoa)
+
+==> replace width with slice in value, remove width from others
+
 ==> code_generator
-	--> test type inference
+	--> test type inference **DONE**
 	--> typechecks **DONE**
 	--> fold superfluous IL
-	--> ensure all value_ptr are only definied once
+	--> ensure all value_ptr are only definied once **DONE**
 
 ==> K-set domain for sparse constant propagation
 
 ==> Finish AVR disassembler
-	--> compare into extra function
-	--> use constant instances w/ right width
+	--> compare into extra function **DONE**
+	--> use constant instances w/ right width **DONE**
+	--> missing instructions
 
 ==> ``Range and Set Abstraction using SAT'' to improve guards
 
