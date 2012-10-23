@@ -28,7 +28,7 @@ struct sem_state
 		assert(len);
 
 		bblock_ptr new_bb, adj;
-		mne_ptr m(new ::mnemonic(area(next_address,next_address + len),n,ops));
+		mne_ptr m(new ::mnemonic(range<addr_t>(next_address,next_address + len),n,ops));
 		std::list<instr_ptr> instr;
 		code_generator<Tag> cg(inserter(instr,instr.end()));
 
@@ -36,7 +36,7 @@ struct sem_state
 		if(fn) fn(cg);
 
 		// sanity check
-		std::set<var_ptr> defs;
+		std::set<lvalue_ptr> defs;
 		assert(all_of(instr.begin(),instr.end(),[&](const instr_ptr &i) { return defs.insert(i->assigns).second; }));
 
 		last = bblock_ptr(new basic_block());
@@ -393,7 +393,10 @@ void disassemble_procedure(proc_ptr proc, const decoder<Tag> &main, vector<typen
 		todo.erase(todo.begin());
 
 		if(cur_addr >= tokens.size())
+		{
+			cout << "boundary err" << endl;
 			continue;
+		}
 
 		advance(i,cur_addr);
 		tie(ret,i) = main.match(i,tokens.end(),state);
@@ -401,8 +404,7 @@ void disassemble_procedure(proc_ptr proc, const decoder<Tag> &main, vector<typen
 		for_each(state.basic_blocks.begin(),state.basic_blocks.end(),[&](const bblock_ptr &p)
 		{
 			basic_block::out_iterator i,iend;
-			
-			if(p->addresses().size())
+			if(p->mnemonics().size())
 				extend(proc,p);	
 		});
 
@@ -426,9 +428,9 @@ void disassemble_procedure(proc_ptr proc, const decoder<Tag> &main, vector<typen
 	if(proc->entry)
 	{
 		if(!proc->entry->mnemonics().empty())
-			proc->entry = find_bblock(proc,proc->entry->mnemonics().front()->addresses.begin);
+			proc->entry = find_bblock(proc,proc->entry->mnemonics().front()->area.begin);
 		assert(proc->entry);
-		proc->name = "proc_" + to_string(proc->entry->addresses().begin);
+		proc->name = "proc_" + to_string(proc->entry->area().begin);
 	}
 };
 

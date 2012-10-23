@@ -15,9 +15,7 @@ struct architecture_traits<avr_tag>
 	typedef uint16_t token_type;
 };
 
-template<> bool valid(avr_tag,const name &n);
-template<> unsigned int width(avr_tag t,const value_ptr &v);
-template<> name unused(avr_tag);
+template<> var_ptr temporary(avr_tag);
 
 class reg : public variable
 {
@@ -29,9 +27,9 @@ public:
 	{
 		switch(r)
 		{
-			case X: nam.base = "X"; width = 16; break;
-			case Y: nam.base = "Y"; width = 16; break;
-			case Z: nam.base = "Z"; width = 16; break;
+			case X: nam.base = "X"; slice = range<unsigned int>(0,16); break;
+			case Y: nam.base = "Y"; slice = range<unsigned int>(0,16); break;
+			case Z: nam.base = "Z"; slice = range<unsigned int>(0,16); break;
 			default: nam.base = "INVALID: " + to_string(r);
 		}
 

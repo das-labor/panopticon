@@ -12,6 +12,7 @@ using namespace std;
 void decode(vector<uint16_t> &bytes)
 {
 	flow_ptr flow = avr_decode(bytes,0);
+	cout << graphviz(flow) << endl;
 }
 
 int main(int argc, char *argv[])

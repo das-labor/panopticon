@@ -118,7 +118,8 @@ live_ptr liveness(proc_ptr proc)
 	{
 		for_each(bb->instructions().begin(),bb->instructions().end(),[&](instr_cptr i)
 		{
-			if(i->function != instr::Phi)
+			var_ptr v;
+			if(i->function != instr::Phi && (v = dynamic_pointer_cast<variable>(i->assigns)))
 			{
 				for_each(i->arguments.begin(),i->arguments.end(),[&](value_ptr v)
 				{
@@ -132,9 +133,9 @@ live_ptr liveness(proc_ptr proc)
 					}
 				});
 	
-				ret->varkill[bb].insert(i->assigns->nam);
-				ret->names.insert(i->assigns->nam);
-				ret->usage[i->assigns->nam].insert(bb);
+				ret->varkill[bb].insert(v->nam);
+				ret->names.insert(v->nam);
+				ret->usage[v->nam].insert(bb);
 			}
 		});
 	});
@@ -182,7 +183,7 @@ void ssa(proc_ptr proc, dom_ptr dominance, live_ptr live)
 			for_each(dominance->tree[bb]->frontiers.begin(),dominance->tree[bb]->frontiers.end(),[&](dtree_ptr df)
 			{
 				if(none_of(df->basic_block->instructions().begin(),df->basic_block->instructions().end(),[&](instr_cptr i)
-					{	return i->function == instr::Phi && i->assigns->nam.base == name.base; }))
+					{	var_ptr w; return i->function == instr::Phi && (w = dynamic_pointer_cast<variable>(i->assigns)) && w->nam.base == name.base; }))
 				{
 					df->basic_block->prepend_instr(instr_ptr(new instr(instr::Phi,"ϕ",var_ptr(new variable(name,0)),{})));
 					worklist.insert(df->basic_block);
@@ -238,7 +239,10 @@ void ssa(proc_ptr proc, dom_ptr dominance, live_ptr live)
 						w->nam.subscript = stack[w->nam.base].back();
 				});
 			}	
-			i[pos]->assigns->nam.subscript = new_name(i[pos]->assigns->nam);
+
+			var_ptr w = dynamic_pointer_cast<variable>(i[pos]->assigns);
+			if(w)
+				w->nam.subscript = new_name(w->nam);
 			++pos;
 		}
 
@@ -263,8 +267,9 @@ void ssa(proc_ptr proc, dom_ptr dominance, live_ptr live)
 						bool add = none_of(i[pos]->arguments.begin(),i[pos]->arguments.end(),[&](value_ptr v)
 							{ var_ptr w; return (w = dynamic_pointer_cast<variable>(v)) && w->nam.subscript == stack[w->nam.base].back(); });
 
-						if(add)
-							i[pos]->arguments.push_back(value_ptr(new variable(name(i[pos]->assigns->nam.base,stack[i[pos]->assigns->nam.base].back()),0)));
+						var_ptr w;
+						if(add && (w = dynamic_pointer_cast<variable>(i[pos]->assigns)))
+							i[pos]->arguments.push_back(value_ptr(new variable(name(w->nam.base,stack[w->nam.base].back()),0)));
 					}
 					++pos;
 				}
@@ -276,8 +281,11 @@ void ssa(proc_ptr proc, dom_ptr dominance, live_ptr live)
 		
 		sz = bb->instructions().size(); pos = 0;
 		i = bb->instructions().data();
+		
+		var_ptr w;
 		while(pos < sz)
-			stack[i[pos++]->assigns->nam.base].pop_back();
+			if((w = dynamic_pointer_cast<variable>(i[pos++]->assigns))) 
+				stack[w->nam.base].pop_back();
 	};
 
 	rename(proc->entry);

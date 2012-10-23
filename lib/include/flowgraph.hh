@@ -90,14 +90,15 @@ flow_ptr disassemble(const decoder<Tag> &main, std::vector<typename rule<Tag>::t
 				while(k != kend)
 				{
 					ctrans &p(*k++);
+					var_cptr w = p.variable();
 					
-					if(!p.bblock && p.variable() && cp->has(p.variable()->nam))
+					if(!p.bblock && w && cp->has(w->nam))
 					{
-						const cprop_element &cm(cp->get(p.variable()->nam));
+						const cprop_element &cm(cp->get(w->nam));
 
 						if(cm.type == cprop_element::Const)
 						{
-							p.value = value_ptr(new constant(cm.value,p.value->width));
+							p.value = value_ptr(new constant(w->mask() & cm.value));
 							tgt = cm.value;
 							goto out;
 						}

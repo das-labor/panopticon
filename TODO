@@ -15,11 +15,16 @@
 	--> refine larger mnemonics with smaller
 	--> split old block if inner mnemonics are target of ctrans **DONE**
 
-==> memory support
-	--> memory value (zone name, endianess)
-	--> assignment class for instructions that specs slice of target (Bincoa)
+==> memory support **DONE**
+	--> memory value (zone name, endianess) **DONE**
+	--> assignment class for instructions that specs slice of target (Bincoa) **DONE**
+	--> code_generator.hh lvalue **DONE**
+	--> avr.hh lvalue (var_decl in cg functions) **DONE**
 
-==> replace width with slice in value, remove width from others
+==> replace width with slice in value, remove width from others **DONE**
+
+==> remove implicit definitions of all varaibles
+	--> explicit initialization of UEVar's with ``undefinied''
 
 ==> code_generator
 	--> test type inference **DONE**
@@ -38,3 +43,5 @@
 
 ==> Data flow
 	--> Phi-node arguments w/ right widths
+
+==> include lib into gui

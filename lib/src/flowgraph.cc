@@ -21,7 +21,7 @@ proc_ptr find_procedure(flow_ptr fg, addr_t a)
 bool has_procedure(flow_ptr flow, addr_t entry)
 {
 	return any_of(flow->procedures.begin(),flow->procedures.end(),[&](const proc_ptr p) 
-								{ return p->entry->addresses().includes(entry); });
+								{ return p->entry->area().includes(entry); });
 }
 
 string turtle(flow_ptr fg)
@@ -44,17 +44,17 @@ string turtle(flow_ptr fg)
 		assert(proc && proc->entry);
 		
 		procedure::iterator i,iend;
-		string procname(to_string(proc->entry->addresses().begin));
+		string procname(to_string(proc->entry->area().begin));
 		stringstream ss_bblocks;
 		shared_ptr<map<bblock_ptr,taint_lattice>> taint_bblock(fg->taint.count(proc) ? fg->taint[proc] : nullptr);
 		shared_ptr<map<bblock_ptr,cprop_lattice>> cprop_bblock(fg->cprop.count(proc) ? fg->cprop[proc] : nullptr);
 
 		ss << ":proc_" 	<< procname << " rdf:type po:Procedure;" << endl
 																<< "\tpo:name \"" << proc->name << "\";" << endl
-			 													<< "\tpo:entry_point :bblock_" << procname << "_" << to_string(proc->entry->addresses().begin) << "." << endl;
+			 													<< "\tpo:entry_point :bblock_" << procname << "_" << to_string(proc->entry->area().begin) << "." << endl;
 
 		for_each(proc->callees.begin(),proc->callees.end(),[&](const proc_ptr c) 
-			{ ss << ":proc_" << procname << " po:callees :proc_" << to_string(c->entry->addresses().begin) << "." << endl; });
+			{ ss << ":proc_" << procname << " po:callees :proc_" << to_string(c->entry->area().begin) << "." << endl; });
 
 		// basic blocks
 		tie(i,iend) = proc->all();
@@ -67,19 +67,19 @@ string turtle(flow_ptr fg)
 			const mne_cptr *kp = bb->mnemonics().data();
 			size_t l = 0, lend = bb->instructions().size();
 			const instr_ptr *lp = bb->instructions().data();
-			string bbname = to_string(bb->addresses().begin);
+			string bbname = to_string(bb->area().begin);
 			stringstream ss_mne;
 			stringstream ss_instr;
 			taint_lattice *taint = taint_bblock && taint_bblock->count(bb) ? &taint_bblock->at(bb) : 0;
 			cprop_lattice *cprop = cprop_bblock && cprop_bblock->count(bb) ? &cprop_bblock->at(bb) : 0;
 
 			ss << ":bblock_" << procname << "_" << bbname << " rdf:type po:BasicBlock;" << endl
-																										<< "\tpo:begin \"" << bb->addresses().begin << "\"^^xsd:integer;" << endl
-																										<< "\tpo:end \"" << bb->addresses().end << "\"^^xsd:integer." << endl;
+																										<< "\tpo:begin \"" << bb->area().begin << "\"^^xsd:integer;" << endl
+																										<< "\tpo:end \"" << bb->area().end << "\"^^xsd:integer." << endl;
 			// mnemonics
 			while(k < kend)
 			{
-				string mnename = to_string(kp[k]->addresses.begin);
+				string mnename = to_string(kp[k]->area.begin);
 				stringstream ss_ops;
 
 				for_each(kp[k]->operands.begin(),kp[k]->operands.end(),[&](const value_ptr v)
@@ -100,7 +100,7 @@ string turtle(flow_ptr fg)
 				string instrname = to_string(l);
 				stringstream ss_args;
 				string instr_type = "po:Instruction";
-				string asname = lp[l]->assigns->nam.base + "_" + (lp[l]->assigns->nam.subscript >= 0 ? to_string(lp[l]->assigns->nam.subscript) : "");
+			//	string asname = lp[l]->assigns->nam.base + "_" + (lp[l]->assigns->nam.subscript >= 0 ? to_string(lp[l]->assigns->nam.subscript) : "");
 
 				switch(lp[l]->function)
 				{
@@ -160,12 +160,12 @@ string turtle(flow_ptr fg)
 					}
 				});
 				
-				ss << ":var_" << procname << "_" << asname << " rdf:type po:Variable;" << endl	 
+	/*			ss << ":var_" << procname << "_" << asname << " rdf:type po:Variable;" << endl	 
 					 << "\tpo:width \"0\";" << endl 
 					 << "\tpo:subscript \"" << lp[l]->assigns->nam.subscript << "\";" << endl
-					 << "\tpo:base \"" << lp[l]->assigns->nam.base << "\"." << endl;
+					 << "\tpo:base \"" << lp[l]->assigns->nam.base << "\"." << endl;*/
 
-				ss << ":instr_" << procname << "_" << bbname << "_" << instrname << " rdf:type " << instr_type << ";" << endl
+				/*ss << ":instr_" << procname << "_" << bbname << "_" << instrname << " rdf:type " << instr_type << ";" << endl
 																																		 		 << " po:arguments (" << ss_args.str() << ");" << endl
 																																				 << " po:assigns " << ":var_" << procname << "_" << asname << "." << endl;
 				if(taint)
@@ -175,7 +175,7 @@ string turtle(flow_ptr fg)
 					ss << ":approx_cprop po:defines :cporp_" << (*cprop)->get(lp[l]->assigns->nam) << "." << endl
 						 << ":cprop_" << (*cprop)->get(lp[l]->assigns->nam) << " po:approximates :var_" << procname << "_" << asname << ";" << endl
 						 << "\tpo:display \"" << (*cprop)->get(lp[l]->assigns->nam) << "\"^^xsd:string." << endl;
-				}
+				}*/
 
 				ss_instr << " :instr_" << procname << "_" << bbname << "_" << instrname;
 
@@ -188,7 +188,7 @@ string turtle(flow_ptr fg)
 			for_each(j,jend,[&](const bblock_ptr s)
 			{ 
 				ss << ":bblock_" << procname << "_" << bbname 
-					 << " po:successor :bblock_" << procname << "_" << to_string(s->addresses().begin) << "." << endl; 
+					 << " po:successor :bblock_" << procname << "_" << to_string(s->area().begin) << "." << endl; 
 			});
 
 			
@@ -208,7 +208,7 @@ string turtle(flow_ptr fg)
 			cprop_lattice cp(cprop_bblock->at(bb));
 
 			ss << "\t\tbb_" << procname 
-				 << "_" << bb->addresses().begin 
+				 << "_" << bb->area().begin 
 				 << " [label=<<table BORDER=\"0\" CELLBORDER=\"0\" CELLSPACING=\"0\" ALIGN=\"LEFT\">";
 		
 			* PHI nodes
@@ -218,7 +218,7 @@ string turtle(flow_ptr fg)
 				if(!bb->instructions().empty() && (*l)->opcode == instr::Phi)
 				{
 					ss << "<tr ALIGN=\"LEFT\"><td ALIGN=\"LEFT\">0x" 
-						 << hex << bb->addresses().begin << dec 
+						 << hex << bb->area().begin << dec 
 						 << "</td><td ALIGN=\"LEFT\"> </td></tr>"
 						 << "<tr><td COLSPAN=\"2\"><table BORDER=\"0\" CELLBORDER=\"0\" CELLSPACING=\"0\" ALIGN=\"LEFT\">";
 					
@@ -240,7 +240,7 @@ string turtle(flow_ptr fg)
 				mnemonic::iterator l;
 
 				ss << "<tr ALIGN=\"LEFT\"><td ALIGN=\"LEFT\">0x" 
-					 << hex << m->addresses.begin << dec 
+					 << hex << m->area.begin << dec 
 					 << "</td><td ALIGN=\"LEFT\">" << m->inspect()
 					 << "</td></tr>";
 				
@@ -287,8 +287,8 @@ string turtle(flow_ptr fg)
 			tie(k,kend) = bb->outgoing();
 			for_each(k,kend,[&bb,&ss,&procname](const pair<guard_ptr,bblock_ptr> s) 
 			{ 
-				ss << "\t\tbb_" << procname << "_" << bb->addresses().begin 
-					 << " -> bb_" << procname << "_" << s.second->addresses().begin
+				ss << "\t\tbb_" << procname << "_" << bb->area().begin 
+					 << " -> bb_" << procname << "_" << s.second->area().begin
 					 << " [label=\" " << s.first->inspect() << " \"];" << endl; 
 			});	
 			
@@ -298,7 +298,7 @@ string turtle(flow_ptr fg)
 			{ 
 				ss << "\t\tbb_" << procname << "_indir" << s.second.get() 
 					 << " [label=\"" << s.second->inspect() << "\"];" << endl
-					 << "\t\tbb_" << procname << "_" << bb->addresses().begin 
+					 << "\t\tbb_" << procname << "_" << bb->area().begin 
 					 << " -> bb_" << procname << "_indir" << s.second.get()
 					 << " [label=\"" << s.first->inspect() << "\"];" << endl;
 			});	
@@ -309,8 +309,8 @@ string turtle(flow_ptr fg)
 			tie(l,lend) = bb->incoming();
 			for_each(l,lend,[&bb](const pair<guard_ptr,bblock_ptr> s) 
 			{ 
-				ss << "\t\tbb_" << procname << "_" << bb->addresses().begin 
-					 << " -> bb_" << procname << "_" << s.second->addresses().begin 
+				ss << "\t\tbb_" << procname << "_" << bb->area().begin 
+					 << " -> bb_" << procname << "_" << s.second->area().begin 
 					 << " [arrowhead=\"crow\",label=\"" << s.first.get() << "\"];" << endl; 
 			});*
 
@@ -335,7 +335,7 @@ string graphviz(flow_ptr fg)
 	{
 		assert(proc && proc->entry);
 		procedure::iterator i,iend;
-		string procname(to_string(proc->entry->addresses().begin));
+		string procname(to_string(proc->entry->area().begin));
 		shared_ptr<map<bblock_ptr,taint_lattice>> taint_bblock(fg->taint[proc]);
 		shared_ptr<map<bblock_ptr,cprop_lattice>> cprop_bblock(fg->cprop[proc]);
 
@@ -355,12 +355,12 @@ string graphviz(flow_ptr fg)
 			cprop_lattice *cp = cprop_bblock && cprop_bblock->count(bb) ? &cprop_bblock->at(bb) : 0;
 
 			ss << "\t\tbb_" << procname 
-				 << "_" << bb->addresses().begin;
+				 << "_" << bb->area().begin;
 
 			if(pos < sz)
 				ss << " [label=<<table BORDER=\"0\" CELLBORDER=\"0\" CELLSPACING=\"0\" ALIGN=\"LEFT\">";
 			else
-				ss << " [label=\"" << bb->addresses().begin << "\"];" << endl;
+				ss << " [label=\"" << bb->area().begin << "\"];" << endl;
 		
 			/* PHI nodes
 			{ 
@@ -369,7 +369,7 @@ string graphviz(flow_ptr fg)
 				if(!bb->instructions().empty() && (*l)->opcode == instr::Phi)
 				{
 					ss << "<tr ALIGN=\"LEFT\"><td ALIGN=\"LEFT\">0x" 
-						 << hex << bb->addresses().begin << dec 
+						 << hex << bb->area().begin << dec 
 						 << "</td><td ALIGN=\"LEFT\"> </td></tr>"
 						 << "<tr><td COLSPAN=\"2\"><table BORDER=\"0\" CELLBORDER=\"0\" CELLSPACING=\"0\" ALIGN=\"LEFT\">";
 					
@@ -393,7 +393,7 @@ string graphviz(flow_ptr fg)
 
 				tie(n,nend) = bb->instructions(m);
 				ss << "<tr ALIGN=\"LEFT\"><td ALIGN=\"LEFT\">0x" 
-					 << hex << m->addresses.begin << dec 
+					 << hex << m->area.begin << dec 
 					 << "</td><td ALIGN=\"LEFT\">" << m->inspect()
 					 << "</td></tr>";
 				
@@ -403,28 +403,31 @@ string graphviz(flow_ptr fg)
 					while(n != nend)
 					{
 						instr_cptr in = *n++;
+						var_ptr v = dynamic_pointer_cast<variable>(in->assigns);
 
 						ss << "<tr ALIGN=\"LEFT\"><td ALIGN=\"LEFT\">" 
-							 << "<font POINT-SIZE=\"11\">" << in->inspect();
-						
+							 << "<font POINT-SIZE=\"11\">" << in->inspect()
+							 << "</font></td><td><font POINT-SIZE=\"11\">";
+
 						// taint
-						if(tl && (*tl)->has(in->assigns->nam))
-							ss << accumulate((*tl)->get(in->assigns->nam).begin(),
-															 (*tl)->get(in->assigns->nam).end(),
+						if(v && tl && (*tl)->has(v->nam))
+							ss << accumulate((*tl)->get(v->nam).begin(),
+															 (*tl)->get(v->nam).end(),
 															 string(" ("),
 															 [](const string &acc, const name &s) { return acc + (s.base.front() == 't' ? "" : " " + s.inspect()); })
 								 << " )";
 						else
 							ss << " ( )";
 						
+						ss << "</font></td><td><font POINT-SIZE=\"11\">";
+						
 						// constant prop
-						if(cp && (*cp)->has(in->assigns->nam))
-							ss << "(" << (*cp)->get(in->assigns->nam) << ")";
+						if(v && cp && (*cp)->has(v->nam))
+							ss << "(" << (*cp)->get(v->nam) << ")";
 						else
 							ss << " ( )";
 
-						ss << "</font>"
-							 << "</td></tr>";
+						ss << "</font></td></tr>";
 					}
 					ss << "</table></td></tr>";
 				}
@@ -441,15 +444,15 @@ string graphviz(flow_ptr fg)
 			{ 
 				if(ct.bblock)
 				{
-					ss << "\t\tbb_" << procname << "_" << bb->addresses().begin 
-						 << " -> bb_" << procname << "_" << ct.bblock->addresses().begin
+					ss << "\t\tbb_" << procname << "_" << bb->area().begin 
+						 << " -> bb_" << procname << "_" << ct.bblock->area().begin
 					 	 << " [label=\" " << ct.guard->inspect() << " \"];" << endl; 
 				}
 				else
 				{
 					ss << "\t\tbb_" << procname << "_indir" << ct.value.get() 
 					 << " [shape = circle, label=\"" << ct.value->inspect() << "\"];" << endl
-					 << "\t\tbb_" << procname << "_" << bb->addresses().begin 
+					 << "\t\tbb_" << procname << "_" << bb->area().begin 
 					 << " -> bb_" << procname << "_indir" << ct.value.get()
 					 << " [label=\" " << ct.guard->inspect() << " \"];" << endl;
 				}		
@@ -461,8 +464,8 @@ string graphviz(flow_ptr fg)
 			tie(l,lend) = bb->incoming();
 			for_each(l,lend,[&bb](const pair<guard_ptr,bblock_ptr> s) 
 			{ 
-				ss << "\t\tbb_" << procname << "_" << bb->addresses().begin 
-					 << " -> bb_" << procname << "_" << s.second->addresses().begin 
+				ss << "\t\tbb_" << procname << "_" << bb->area().begin 
+					 << " -> bb_" << procname << "_" << s.second->area().begin 
 					 << " [arrowhead=\"crow\",label=\"" << s.first.get() << "\"];" << endl; 
 			});*/
 

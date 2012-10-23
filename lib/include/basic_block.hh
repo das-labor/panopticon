@@ -127,16 +127,16 @@ public:
 	// mnemonic/instruction write
 	template<class T> void append_mnemonic(mne_cptr m, std::pair<T,T> iters)
 	{
-		assert(m && (m_mnemonics.empty() || m_mnemonics.back()->addresses.end == m->addresses.begin));
+		assert(m && (m_mnemonics.empty() || m_mnemonics.back()->area.end == m->area.begin));
 
 		m_mnemonics.push_back(m);
 		copy(iters.first,iters.second,inserter(m_instructions,m_instructions.end()));
 		for_each(iters.first,iters.second,[&](const instr_ptr &ii) { m_map.insert(make_pair(m,ii)); });
 
-		if(m_addresses.size())
-			m_addresses = area(min(m_addresses.begin,m->addresses.begin),max(m_addresses.end,m->addresses.end));
+		if(m_area.size())
+			m_area = range<addr_t>(min(m_area.begin,m->area.begin),max(m_area.end,m->area.end));
 		else
-			m_addresses = m->addresses;
+			m_area = m->area;
 	}
 	
 	void prepend_instr(instr_ptr i);
@@ -158,11 +158,11 @@ public:
 	void resolve_outgoing(value_ptr v, bblock_ptr bb);
 
 	// misc
-	const area &addresses(void) const;
+	const range<addr_t> &area(void) const;
 	void clear(void);
 
 protected:
-	area m_addresses;
+	range<addr_t> m_area;
 	std::vector<mne_cptr> m_mnemonics;
 	std::vector<instr_ptr> m_instructions;
 	std::multimap<mne_cptr,instr_ptr> m_map;

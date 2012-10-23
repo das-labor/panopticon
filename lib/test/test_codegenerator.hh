@@ -16,26 +16,9 @@ struct architecture_traits<test_tag>
 };
 
 template<>
-bool valid(test_tag,const name &)
+var_ptr temporary(test_tag)
 {
-	return false;
-}
-
-template<>
-unsigned int width(test_tag,const value_ptr &v)
-{
-	var_ptr w;
-
-	if((w = dynamic_pointer_cast<variable>(v)) && w->nam.base.size() == 1)
-		return 1;
-	else
-		return 8;
-}
-
-template<>
-name unused(test_tag)
-{
-	return name("t" + to_string(ununsed++));
+	return var_ptr(new variable("t" + to_string(ununsed++),16));
 }
 
 class CodeGeneratorTest : public CppUnit::TestFixture
@@ -68,10 +51,7 @@ public:
 		sub | 'B' = [](ss st)
 		{
 			std::cout << "#sub::BA" << endl;
-			st.mnemonic(2,"BA",{},[](cg c)
-			{
-				c.assign("a","r1");
-			});
+			st.mnemonic(2,"BA");
 			st.jump(st.address + 2);
 		};
 

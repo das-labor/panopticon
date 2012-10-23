@@ -136,7 +136,7 @@ void basic_block::clear(void)
 	m_instructions.clear();
 }
 
-const area &basic_block::addresses(void) const { return m_addresses; }
+const range<addr_t> &basic_block::area(void) const { return m_area; }
 
 void basic_block::insert(std::list<ctrans> &lst, const ctrans &ct)
 {	
@@ -212,10 +212,10 @@ pair<bblock_ptr,bblock_ptr> split(bblock_ptr bb, addr_t pos, bool last)
 	// distribute mnemonics under `up' and `down'
 	for_each(bb->mnemonics().begin(),bb->mnemonics().end(),[&](mne_cptr m)
 	{	
-		assert(!m->addresses.includes(pos) || m->addresses.begin == pos);
+		assert(!m->area.includes(pos) || m->area.begin == pos);
 
 		if(!last)
-			sw |= m->addresses.includes(pos);
+			sw |= m->area.includes(pos);
 		
 		if(sw)
 			down->append_mnemonic(m,bb->instructions(m));
@@ -223,7 +223,7 @@ pair<bblock_ptr,bblock_ptr> split(bblock_ptr bb, addr_t pos, bool last)
 			up->append_mnemonic(m,bb->instructions(m));
 		
 		if(last)
-			sw |= m->addresses.includes(pos);
+			sw |= m->area.includes(pos);
 	});
 	assert(sw);
 
@@ -279,8 +279,8 @@ pair<bblock_ptr,bblock_ptr> split(bblock_ptr bb, addr_t pos, bool last)
 bblock_ptr merge(bblock_ptr up, bblock_ptr down)
 {
 	assert(up && down);
-	if(up->addresses().begin == down->addresses().end) tie(up,down) = make_pair(down,up);
-	assert(up->addresses().end == down->addresses().begin);
+	if(up->area().begin == down->area().end) tie(up,down) = make_pair(down,up);
+	assert(up->area().end == down->area().begin);
 
 	bblock_ptr ret(new basic_block());
 	auto fn = [&ret](const bblock_ptr &bb, const mne_cptr &m) { ret->append_mnemonic(m,bb->instructions(m)); };

@@ -20,18 +20,18 @@ pair<procedure::iterator,procedure::iterator> procedure::rev_postorder(void)
 		assert(entry);
 		rpo.clear();
 
-		//cout << "rpo: " << basic_blocks.size() << ", entry: " << entry->addresses() << endl;
-		//for_each(basic_blocks.begin(),basic_blocks.end(),[](const bblock_ptr bb) { cout << bb->addresses() << endl; });
+		//cout << "rpo: " << basic_blocks.size() << ", entry: " << entry->area() << endl;
+		//for_each(basic_blocks.begin(),basic_blocks.end(),[](const bblock_ptr bb) { cout << bb->area() << endl; });
 
 		function<void(bblock_ptr)> visit = [&](bblock_ptr bb)
 		{
-			//cout << "visit " << bb->addresses() << endl;
+			//cout << "visit " << bb->area() << endl;
 			basic_block::succ_iterator i,iend;
 			
 			tie(i,iend) = bb->successors();
 			for_each(i,iend,[&](bblock_ptr s)
 			{	
-				//cout << "check " << s->addresses() << endl;
+				//cout << "check " << s->area() << endl;
 				if(known.insert(s).second)
 					visit(s);
 			});
@@ -67,7 +67,7 @@ bblock_ptr find_bblock(proc_ptr proc, addr_t a)
 	{
 		bblock_ptr bb = *i++;
 		
-		if(bb->addresses().includes(a))
+		if(bb->area().includes(a))
 			return bb;
 	}
 
@@ -79,7 +79,7 @@ void extend(proc_ptr proc, bblock_ptr block)
 	procedure::iterator ibegin,i,iend;
 
 	tie(ibegin,iend) = proc->all();
-	i = find_if(ibegin,iend,[&block](const bblock_ptr &p) { return p->addresses().overlap(block->addresses()); });
+	i = find_if(ibegin,iend,[&block](const bblock_ptr &p) { return p->area().overlap(block->area()); });
 
 	if(i != iend)
 	{
@@ -100,17 +100,17 @@ void extend(proc_ptr proc, bblock_ptr block)
 		bblock_ptr pre, post;
 
 		// pre
-		if(tgt->addresses().begin > block->addresses().begin)
+		if(tgt->area().begin > block->area().begin)
 		{
-			tie(pre,block) = split(block,tgt->addresses().begin,false);
+			tie(pre,block) = split(block,tgt->area().begin,false);
 			unconditional_jump(pre,tgt);
 		}
 
 		// post
-		if(tgt->addresses().end < block->addresses().end)
+		if(tgt->area().end < block->area().end)
 		{
 			tie(block,post) = split(block,(*find_if(block->mnemonics().begin(),block->mnemonics().end(),[&tgt](const mne_cptr &m)
-																	 { return m->addresses.includes(tgt->addresses().begin); }))->addresses.begin,false);
+																	 { return m->area.includes(tgt->area().begin); }))->area.begin,false);
 			unconditional_jump(tgt,post);
 		}
 
@@ -135,13 +135,14 @@ void merge(proc_ptr proc, bblock_ptr block)
 		bool ret = false;
 
 		tie(ibegin,iend) = proc->all();
-		i = find_if(ibegin,iend,[&](const bblock_ptr p) { return p->addresses().includes(addr); });
+		i = find_if(ibegin,iend,[&](const bblock_ptr p) { return p->area().includes(addr); });
 
 		if(i == iend) return ret;
 		bblock_ptr tgt = *i, old = *i;
 		ctrans cs(g,bb);
 
-		if((out ? tgt->addresses().begin : tgt->mnemonics().back()->addresses.begin) != addr)
+		// split tgt if needed
+		if((out ? tgt->area().begin : tgt->mnemonics().back()->area.begin) != addr)
 		{
 			bblock_ptr up;
 			
@@ -151,7 +152,7 @@ void merge(proc_ptr proc, bblock_ptr block)
 			proc->insert_bblock(up);
 			proc->insert_bblock(tgt);
 			
-			ret = true;
+			ret = old == bb;
 		}
 
 		if(out)
@@ -172,8 +173,13 @@ void merge(proc_ptr proc, bblock_ptr block)
 		if(bb != old)
 			ct.bblock = tgt;
 		else
-			old->clear();
-		
+		{
+			if(out)
+				old->remove_outgoing(ct.value);
+			else
+				old->remove_incoming(ct.value);
+		}
+
 		return ret;
 	};
 	
@@ -219,7 +225,7 @@ void merge(proc_ptr proc, bblock_ptr block)
 	}
 
 	tie(j,jend) = block->incoming();
-	if(distance(j,jend) == 1 && j->guard->relations.empty() && j->bblock && j->bblock->addresses().end == block->addresses().begin)
+	if(distance(j,jend) == 1 && j->guard->relations.empty() && j->bblock && j->bblock->area().end == block->area().begin)
 	{
 		tie(k,kend) = j->bblock->outgoing();
 		if(distance(k,kend) == 1)
@@ -232,7 +238,7 @@ void merge(proc_ptr proc, bblock_ptr block)
 	}
 
 	tie(k,kend) = block->outgoing();
-	if(distance(k,kend) == 1 && k->guard->relations.empty() && k->bblock && block->addresses().end == k->bblock->addresses().begin)
+	if(distance(k,kend) == 1 && k->guard->relations.empty() && k->bblock && block->area().end == k->bblock->area().begin)
 	{
 		tie(j,jend) = k->bblock->incoming();
 		if(distance(j,jend) == 1)

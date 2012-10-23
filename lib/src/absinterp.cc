@@ -39,7 +39,8 @@ taint_lattice supremum(taint_domain,const taint_lattice a, const taint_lattice b
 taint_lattice abstraction(taint_domain,const taint_lattice a, instr_cptr i)
 {
 	taint_lattice ret(new persistent_map<name,set<name>>(*a));
-	set<name> r(ret->has(i->assigns->nam) ? ret->get(i->assigns->nam) : set<name>());
+	var_ptr v = dynamic_pointer_cast<variable>(i->assigns);
+	set<name> r(v && ret->has(v->nam) ? ret->get(v->nam) : set<name>());
 
 	for_each(i->arguments.begin(),i->arguments.end(),[&](value_ptr v)
 	{
@@ -150,9 +151,10 @@ cprop_lattice abstraction(cprop_domain,const cprop_lattice a, instr_cptr i)
 {
 	// 99%
 	cprop_lattice ret(new persistent_map<name,cprop_element>(*a));
+	var_ptr v = dynamic_pointer_cast<variable>(i->assigns);
 
 	// ssa variable is aready at Top
-	if(ret->has(i->assigns->nam) && ret->get(i->assigns->nam).type == cprop_element::NonConst)
+	if(!v || (ret->has(v->nam) && ret->get(v->nam).type == cprop_element::NonConst))
 		return ret;
 
 	vector<unsigned int> ops;
@@ -190,7 +192,7 @@ cprop_lattice abstraction(cprop_domain,const cprop_lattice a, instr_cptr i)
 	if(type != cprop_element::Const)
 	{
 		//cout << i->assigns->nam.inspect() << " is not const" << endl;
-		ret->mutate(i->assigns->nam,cprop_element(type));
+		ret->mutate(v->nam,cprop_element(type));
 		return ret;
 	}
 	else
@@ -207,7 +209,7 @@ cprop_lattice abstraction(cprop_domain,const cprop_lattice a, instr_cptr i)
 		case instr::Phi:
 			if(ops[0] != ops[1])
 			{
-				ret->mutate(i->assigns->nam,cprop_element(cprop_element::NonConst));
+				ret->mutate(v->nam,cprop_element(cprop_element::NonConst));
 				return ret;
 			}
 			else
@@ -238,7 +240,7 @@ cprop_lattice abstraction(cprop_domain,const cprop_lattice a, instr_cptr i)
 		}
 		
 		//cout << i->assigns->nam.inspect() << " is const" << endl;
-		ret->mutate(i->assigns->nam,cprop_element(val));
+		ret->mutate(v->nam,cprop_element(v->mask() & val));
 		return ret;
 	}
 }

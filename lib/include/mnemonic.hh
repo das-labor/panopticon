@@ -13,34 +13,49 @@ using namespace std;
 typedef uint32_t addr_t;
 
 typedef shared_ptr<struct value> value_ptr;
+typedef shared_ptr<struct lvalue> lvalue_ptr;
 typedef shared_ptr<struct variable> var_ptr;
 typedef shared_ptr<const struct variable> var_cptr;
 typedef shared_ptr<struct constant> const_ptr;
 typedef shared_ptr<const struct constant> const_cptr;
+typedef shared_ptr<struct memory> mem_ptr;
+typedef shared_ptr<const struct memory> mem_cptr;
 typedef shared_ptr<struct instr> instr_ptr;
 typedef shared_ptr<const struct instr> instr_cptr;
 typedef shared_ptr<class mnemonic> mne_ptr;
 typedef shared_ptr<const class mnemonic> mne_cptr;
 
-struct area
+template<typename T>
+struct range
 {
-	area(void) : begin(0), end(0) {};
-	area(addr_t b, addr_t e) : begin(b), end(e) { assert(begin <= end); };
+	range(void) { begin = end; };
+	range(T b, T e) : begin(b), end(e) { assert(begin <= end); };
 
 	size_t size(void) const { return end - begin; };
-	bool includes(const area &a) const { return size() && a.size() && begin <= a.begin && end > a.end; };
-	bool includes(addr_t a) const { return size() && begin <= a && end > a; };
-	bool overlap(const area &a) const { return size() && a.size() && !(begin >= a.end || end <= a.begin); };
-	addr_t last(void) const { return size() ? end - 1 : begin; };
+	bool includes(const range<T> &a) const { return size() && a.size() && begin <= a.begin && end > a.end; };
+	bool includes(T a) const { return size() && begin <= a && end > a; };
+	bool overlap(const range<T> &a) const { return size() && a.size() && !(begin >= a.end || end <= a.begin); };
+	T last(void) const { return size() ? end - 1 : begin; };
+	
+	bool operator==(const range<T> &b) const { return size() == b.size() && (!size() || (begin == b.begin && end == b.end)); };
+	bool operator!=(const range<T> &b) const { return !(*this == b); };
+	bool operator<(const range<T> &b) const { return begin < b.begin; };
+	ostream& operator<<(ostream &os) const 
+	{ 
+		if(size())
+		{
+			os << begin;
+			if(size() > 1)
+				os << "," << end-1;
+		}
+		else
+			os << "nil";
+		return os; 
+	};
 
-	addr_t begin;
-	addr_t end;
+	T begin;
+	T end;
 };
-
-bool operator==(const area &a, const area &b);
-bool operator!=(const area &a, const area &b);
-bool operator<(const area &a, const area &b);
-ostream& operator<<(ostream &os, const area &);
 
 struct name
 {
@@ -69,25 +84,19 @@ struct hash<name>
 	};
 };
 }
-class value 
+struct value 
 {
-public: 
-	value(unsigned int w);
-	virtual ~value(void);
 	virtual string inspect(void) const = 0;
-	
-	unsigned int width;
-
 protected: 
 	value(void);
 };
 
 struct constant : public value
 {
-	constant(int v, unsigned int w);
+	constant(int v);
 	virtual string inspect(void) const;
 
-	unsigned int val;
+ 	int val;
 };
 
 bool operator<(const constant &a, const constant &b);
@@ -96,39 +105,91 @@ bool operator!=(const constant &a, const constant &b);
 
 struct undefined : public value
 {
-	undefined(unsigned int w);
 	virtual string inspect(void) const;
 };
 
-struct variable : public value
+struct lvalue : public value
+{
+protected:
+	lvalue(void);
+};
+
+struct variable : public lvalue
 {
 	variable(name nam, unsigned int w);
-	variable(string nam, unsigned int w);
+	variable(name nam, unsigned int f, unsigned int l);
+	unsigned int mask(void) const;
 	virtual string inspect(void) const;
 	
 	name nam;
+	range<unsigned int> slice;
 };
 
-/*struct address : public value
+struct memory : public lvalue
 {
-	address(unsigned int o, unsigned int w, string n);
-	address(unsigned int w, string n);
+	enum Endianess
+	{
+		None = 0,
+		Little = 1,
+		Big = 2,
+	};
+
+	memory(value_ptr o, unsigned int w, Endianess e, string n);
 	virtual string inspect(void) const;
 
-	unsigned int offset;	// from start of the memory space
-	unsigned int width;		// word size in bytes
+	value_ptr offset;			// from start of the memory space
+	unsigned int bytes;		// # bytes to read from offset
+	Endianess endianess;	// byte order
 	string name;					// descriptive name of the memory space (stack, flash, ...)
-};*/
+};
+
+struct declaration
+{
+	virtual lvalue_ptr instantiate(void) const = 0;
+};
+
+struct lvalproxy
+{
+	lvalproxy(const declaration &d);
+	lvalproxy(var_ptr v);
+	lvalproxy(mem_ptr m);
+	
+	lvalue_ptr value;
+};
 
 struct valproxy
 {
-	valproxy(value_ptr v) : value(v) {};
-	valproxy(const char *a) : value(value_ptr(new variable(string(a),0))) {};
-	valproxy(const name &a) : value(value_ptr(new variable(a,0))) {};
-	valproxy(int a) : value(value_ptr(new constant(a,0))) {};
-	valproxy(void *a) : value(value_ptr(new undefined(0))) {};
+	valproxy(int i);
+	valproxy(nullptr_t i);
+	valproxy(value_ptr v);	
+	valproxy(const declaration &d);
+	valproxy(var_ptr v);
+	valproxy(mem_ptr m);
+	valproxy(lvalue_ptr v);
+	valproxy(lvalproxy v);
 
 	value_ptr value;
+};
+
+struct variable_decl : public declaration
+{
+	variable_decl(string n, unsigned int w);
+	var_ptr operator()(unsigned int b = 0, unsigned int e = 0) const;
+	virtual lvalue_ptr instantiate(void) const;
+
+	string name;
+	unsigned int width;
+};
+
+struct memory_decl
+{
+	memory_decl(string n, memory::Endianess e, unsigned int b);
+	mem_ptr operator()(valproxy v, unsigned int b = 0, memory::Endianess e = memory::None) const;
+	virtual lvalue_ptr instantiate(void) const;
+
+	string name;
+	memory::Endianess endianess;
+	unsigned int bytes;
 };
 
 class instr
@@ -160,18 +221,16 @@ public:
  		SMod,			// Unsigned Modulo reduction
 		UMod,			// Signed Modulo reduction
 		Call,			// Procedure call
-		Store,		// Write bits to memory
-		Load,			// Read bits from memory
 		// Floating point
 	};
 
-	instr(Function fn, string fnname, var_ptr var, vector<value_ptr> args);
+	instr(Function fn, string fnname, lvalue_ptr a, vector<value_ptr> args);
 	
 	string inspect(void) const;
 		
 	Function function;
 	string fnname;
-	shared_ptr<variable> assigns;
+	lvalue_ptr assigns;
 	vector<value_ptr> arguments;
 };
 
@@ -179,27 +238,12 @@ class mnemonic
 {
 public:
 	typedef vector<instr_ptr>::const_iterator iterator;
+	
+	mnemonic(range<addr_t> a, string n, list<value_ptr> v = list<value_ptr>());
+	virtual string inspect(void) const;
 
-	mnemonic(area a, string n, list<value_ptr> v = list<value_ptr>()) : addresses(a), opcode(n), operands(v) {};
-
-	area addresses;
+	range<addr_t> area;
 	string opcode;
 	list<value_ptr> operands;
-
-	string inspect(void) const 
-	{ 
-		auto i = operands.cbegin();
-		stringstream ret;
-		
-		ret << opcode;
-		while(i != operands.cend())
-		{
-			ret << " " << (*i)->inspect();
-			if(++i != operands.cend())
-				ret << ",";
-		}
-
-		return ret.str();
-	};
 };
 #endif

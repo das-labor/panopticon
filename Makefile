@@ -1,13 +1,14 @@
-.PHONY: clean src test
+MAKE=make
 
-all: src test
+COMPONENTS=lib qt
 
-src:
-	$(MAKE) -C $@ all
+.PHONY: clean $(COMPONENTS)
 
-test: src
-	$(MAKE) -C $@ all
+all: $(COMPONENTS)
+
+$(COMPONENTS):
+	$(MAKE) -C $@
 
 clean:
-	$(MAKE) -C src clean
-	$(MAKE) -C test clean
+	$(MAKE) -C lib
+	$(MAKE) -C qt
