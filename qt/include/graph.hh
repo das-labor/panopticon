@@ -30,6 +30,7 @@ public:
 	virtual void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget = 0);
 	
 	void smoothSetPos(QPointF ptn);
+	void setTitle(QString s);
 
 protected:
 	virtual QVariant itemChange(GraphicsItemChange change, const QVariant &value);

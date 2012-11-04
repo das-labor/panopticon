@@ -140,6 +140,7 @@ proc_ptr database::procedure(librdf_node *proc)
 	
 	librdf_free_node(entry);
 	librdf_free_node(name);
+	librdf_free_iterator(bblocks);
 	
 	return ret;
 }

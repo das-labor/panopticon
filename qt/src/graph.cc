@@ -72,6 +72,12 @@ void Node::smoothSetPos(QPointF ptn)
 		m_animation->start();
 }
 
+void Node::setTitle(QString s)
+{
+	m_text.setPlainText(s);
+	m_rect.setRect(m_text.boundingRect().adjusted(-5,-5,5,5));
+}
+
 Arrow::Arrow(Node *f, Node *t)
 : m_from(f), m_to(t), m_highlighted(false)
 {
@@ -207,24 +213,19 @@ QRectF Graph::graphLayout(void)
 	int temp = 10;
 
 	//boost::random_graph_layout(this,adapter,topo);
-	//boost::circle_graph_layout(this,pos_adapter,u/3.14f);
-	boost::fruchterman_reingold_force_directed_layout(this,pos_adapter,topo,boost::vertex_index_map(idx_adapter).force_pairs(boost::all_force_pairs()).cooling(std::function<int(void)>([&]
-	{ 
-		qDebug() << "temp: " << temp;
-		
-		QListIterator<Node *> k(nodes());
-		while(k.hasNext())
-		{
-			Node *n = k.next();
-			QPointF p(pos_map[n][0]*2000,pos_map[n][1]*2000);
+	boost::circle_graph_layout(this,pos_adapter,u/3.14f);
+	//boost::fruchterman_reingold_force_directed_layout(this,pos_adapter,topo,boost::vertex_index_map(idx_adapter).force_pairs(boost::all_force_pairs()));
+
+	QListIterator<Node *> k(nodes());
+	while(k.hasNext())
+	{
+		Node *n = k.next();
+		QPointF p(pos_map[n][0],pos_map[n][1]);
 //			bb = bb.united(QRectF(p,QSizeF(1,1)));
 
-			n->smoothSetPos(p);
-		}
+		n->smoothSetPos(p);
 		QCoreApplication::processEvents();
-
-		return temp--;
-	})));
+	}
 
 	return QRectF();
 }
