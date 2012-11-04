@@ -108,6 +108,10 @@ private:
 class basic_block
 {
 public:
+	// TODO: remove
+	basic_block(range<addr_t> a);
+	basic_block(void);
+
 	// iterators
 	typedef bblock_iterator<std::list<ctrans>> pred_iterator;
 	typedef bblock_iterator<std::list<ctrans>> succ_iterator;

@@ -30,13 +30,13 @@ string turtle(flow_ptr fg)
 
 	ss << "@prefix : <http://localhost/>." << endl;
 
-	if(fg->taint.size())
+	/*if(fg->taint.size())
 		ss << ":approx_taint rdf:type po:Approximation;" << endl
 			 << "\tpo:title \"Taint analysis\"^^xsd:string." << endl;
 	
 	if(fg->cprop.size())
 		ss << ":approx_cprop rdf:type po:Approximation;" << endl
-			 << "\tpo:title \"Constant propagation\"^^xsd:string." << endl;
+			 << "\tpo:title \"Constant propagation\"^^xsd:string." << endl;*/
 	
 	// procedures
 	for_each(fg->procedures.begin(),fg->procedures.end(),[&](const proc_ptr proc)
@@ -54,12 +54,13 @@ string turtle(flow_ptr fg)
 			 													<< "\tpo:entry_point :bblock_" << procname << "_" << to_string(proc->entry->area().begin) << "." << endl;
 
 		for_each(proc->callees.begin(),proc->callees.end(),[&](const proc_ptr c) 
-			{ ss << ":proc_" << procname << " po:callees :proc_" << to_string(c->entry->area().begin) << "." << endl; });
+			{ ss << ":proc_" << procname << " po:calls :proc_" << to_string(c->entry->area().begin) << "." << endl; });
 
 		// basic blocks
 		tie(i,iend) = proc->all();
-		for_each(i,iend,[&](const bblock_ptr bb)
+		while(i != iend)
 		{
+			bblock_ptr bb = *i++;
 			assert(bb);
 			
 			basic_block::succ_iterator j,jend;
@@ -76,7 +77,7 @@ string turtle(flow_ptr fg)
 			ss << ":bblock_" << procname << "_" << bbname << " rdf:type po:BasicBlock;" << endl
 																										<< "\tpo:begin \"" << bb->area().begin << "\"^^xsd:integer;" << endl
 																										<< "\tpo:end \"" << bb->area().end << "\"^^xsd:integer." << endl;
-			// mnemonics
+			/* mnemonics
 			while(k < kend)
 			{
 				string mnename = to_string(kp[k]->area.begin);
@@ -163,7 +164,7 @@ string turtle(flow_ptr fg)
 	/*			ss << ":var_" << procname << "_" << asname << " rdf:type po:Variable;" << endl	 
 					 << "\tpo:width \"0\";" << endl 
 					 << "\tpo:subscript \"" << lp[l]->assigns->nam.subscript << "\";" << endl
-					 << "\tpo:base \"" << lp[l]->assigns->nam.base << "\"." << endl;*/
+					 << "\tpo:base \"" << lp[l]->assigns->nam.base << "\"." << endl;
 
 				/*ss << ":instr_" << procname << "_" << bbname << "_" << instrname << " rdf:type " << instr_type << ";" << endl
 																																		 		 << " po:arguments (" << ss_args.str() << ");" << endl
@@ -175,27 +176,29 @@ string turtle(flow_ptr fg)
 					ss << ":approx_cprop po:defines :cporp_" << (*cprop)->get(lp[l]->assigns->nam) << "." << endl
 						 << ":cprop_" << (*cprop)->get(lp[l]->assigns->nam) << " po:approximates :var_" << procname << "_" << asname << ";" << endl
 						 << "\tpo:display \"" << (*cprop)->get(lp[l]->assigns->nam) << "\"^^xsd:string." << endl;
-				}*/
+				}
 
 				ss_instr << " :instr_" << procname << "_" << bbname << "_" << instrname;
 
 				++l;
-			}
-			ss << ":bblock_" << procname << "_" << bbname << " po:instructions (" << ss_instr.str() << ")." << endl;
+			}*/
+			//ss << ":bblock_" << procname << "_" << bbname << " po:instructions (" << ss_instr.str() << ")." << endl;
 			
 			// successors
 			tie(j,jend) = bb->successors();
 			for_each(j,jend,[&](const bblock_ptr s)
 			{ 
 				ss << ":bblock_" << procname << "_" << bbname 
-					 << " po:successor :bblock_" << procname << "_" << to_string(s->area().begin) << "." << endl; 
+					 << " po:precedes :bblock_" << procname << "_" << to_string(s->area().begin) << "." << endl; 
 			});
 
 			
 			ss_bblocks << ":bblock_" << procname << "_" << bbname << " ";
-		});
+			if(i != iend)
+				ss_bblocks << ", ";
+		}
 
-		ss << ":proc_" 	<< procname << " po:basic_blocks (" << ss_bblocks.str() << ")." << endl;
+		ss << ":proc_" 	<< procname << " po:contains " << ss_bblocks.str() << "." << endl;
 	});
 
 		/* basic blocks

@@ -1,4 +1,5 @@
 #include <QDebug>
+#include <QCoreApplication>
 
 #include <boost/graph/random_layout.hpp>
 #include <boost/graph/fruchterman_reingold.hpp>
@@ -15,11 +16,13 @@
 Node::Node(QString name, QPoint ptn)
 : m_text(name,this), m_rect(m_text.boundingRect().adjusted(-5,-5,5,5),this), m_animation(0)
 {
-	m_rect.setBrush(QBrush(QColor(44,77,22)));
 	m_rect.setPen(QPen(QBrush(Qt::black),2,Qt::SolidLine,Qt::RoundCap,Qt::RoundJoin));
-	
 	m_text.setZValue(1);
+
 	setPos(ptn);
+	setFlag(QGraphicsItem::ItemIsSelectable);
+
+	itemChange(QGraphicsItem::ItemSelectedHasChanged,QVariant(false));
 }
 
 QRectF Node::boundingRect(void) const
@@ -41,6 +44,17 @@ void Node::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWid
 	return;
 }
 
+QVariant Node::itemChange(GraphicsItemChange change, const QVariant &value)
+{
+	switch(change)
+	{
+	case QGraphicsItem::ItemSelectedHasChanged:
+		m_rect.setBrush(QBrush(value.toBool() ? QColor(200,11,11) : QColor(11,200,11)));
+	default:
+		return value;
+	}
+}
+
 void Node::smoothSetPos(QPointF ptn)
 {
 	if(!m_animation)
@@ -59,13 +73,14 @@ void Node::smoothSetPos(QPointF ptn)
 }
 
 Arrow::Arrow(Node *f, Node *t)
-: m_from(f), m_to(t)
+: m_from(f), m_to(t), m_highlighted(false)
 {
-	connect(m_from,SIGNAL(xChanged()),this,SLOT(refresh()));
-	connect(m_from,SIGNAL(yChanged()),this,SLOT(refresh()));
-	connect(m_to,SIGNAL(xChanged()),this,SLOT(refresh()));
-	connect(m_to,SIGNAL(yChanged()),this,SLOT(refresh()));
+	connect(m_from,SIGNAL(xChanged()),this,SLOT(updated()));
+	connect(m_from,SIGNAL(yChanged()),this,SLOT(updated()));
+	connect(m_to,SIGNAL(xChanged()),this,SLOT(updated()));
+	connect(m_to,SIGNAL(yChanged()),this,SLOT(updated()));
 
+	setZValue(-1);
 	m_head << QPointF(0,0) << QPointF(3*-1.3,3*3) << QPointF(0,3*2.5) << QPointF(3*1.3,3*3) << QPointF(0,0);
 }
 
@@ -106,9 +121,9 @@ void Arrow::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWi
 	QLineF body(collide(con_a,cent_a),collide(con_b,cent_b));
 	
 	painter->save();
-	painter->setPen(QPen(Qt::red,2));
+	painter->setPen(QPen(m_highlighted ? Qt::blue : Qt::red,2));
 	painter->setRenderHint(QPainter::Antialiasing);
-	painter->setBrush(QBrush(Qt::red));
+	painter->setBrush(QBrush(m_highlighted ? Qt::blue : Qt::red));
 	painter->drawLine(body);
 	painter->translate(body.p1());
 	painter->rotate(270 - body.angle());
@@ -126,7 +141,13 @@ Node *Arrow::to(void)
 	return m_to;
 }
 
-void Arrow::refresh(void)
+void Arrow::setHighlighted(bool t)
+{
+	m_highlighted = t;
+	updated();
+}
+
+void Arrow::updated(void)
 {
 	prepareGeometryChange();
 }
@@ -162,29 +183,50 @@ std::pair<QMultiMap<Node *,Arrow *>::iterator,QMultiMap<Node *,Arrow *>::iterato
 	return std::make_pair(m_incidence.lowerBound(n),m_incidence.upperBound(n));
 }
 
-void Graph::graphLayout(void)
+QRectF Graph::graphLayout(void)
 {
+	if(nodes().empty())
+		return QRectF();
+
 	boost::square_topology<> topo;
 	std::map<Node *,typename boost::square_topology<>::point_type> pos_map;
 	std::map<Node *,int> idx_map;
 	boost::associative_property_map<std::map<Node *,typename boost::square_topology<>::point_type>> pos_adapter(pos_map);
 	boost::associative_property_map<std::map<Node *,int>> idx_adapter(idx_map);
-
+	/*PropertyMap<Node *, typename boost::square_topology<>::point_type> pos_pmap(
+		[&](const Node *n) { return pos_map.value(n); },
+		[&](const Node *n, const boost::square_topology<>::point_type &p) { pos_map.insert(n,p); qDebug() << p[0] << "-" << p[1]; });*/
+																					
 	unsigned int i = 0;
 	QListIterator<Node *> j(nodes());
 	while(j.hasNext())
 		idx_map.insert(std::make_pair(j.next(),i++));
+	
+	const QRectF &r = (*m_nodes.begin())->boundingRect();
+	double u = m_nodes.size() * (double)(r.width() + r.height()) / 2.0f;
+	int temp = 10;
 
 	//boost::random_graph_layout(this,adapter,topo);
-	//boost::circle_graph_layout(this,adapter,0.5f);
-	boost::fruchterman_reingold_force_directed_layout(this,pos_adapter,topo,boost::vertex_index_map(idx_adapter));
+	//boost::circle_graph_layout(this,pos_adapter,u/3.14f);
+	boost::fruchterman_reingold_force_directed_layout(this,pos_adapter,topo,boost::vertex_index_map(idx_adapter).force_pairs(boost::all_force_pairs()).cooling(std::function<int(void)>([&]
+	{ 
+		qDebug() << "temp: " << temp;
+		
+		QListIterator<Node *> k(nodes());
+		while(k.hasNext())
+		{
+			Node *n = k.next();
+			QPointF p(pos_map[n][0]*2000,pos_map[n][1]*2000);
+//			bb = bb.united(QRectF(p,QSizeF(1,1)));
 
-	QListIterator<Node *> k(nodes());
-	while(k.hasNext())
-	{
-		Node *n = k.next();
-		n->smoothSetPos(QPointF(pos_map[n][0] * 350.0,pos_map[n][1] * 350.0));
-	}
+			n->smoothSetPos(p);
+		}
+		QCoreApplication::processEvents();
+
+		return temp--;
+	})));
+
+	return QRectF();
 }
 
 void Graph::insert(Node *n)

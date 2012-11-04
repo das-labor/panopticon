@@ -32,6 +32,9 @@ public:
 	void smoothSetPos(QPointF ptn);
 
 protected:
+	virtual QVariant itemChange(GraphicsItemChange change, const QVariant &value);
+
+private:
 	QGraphicsTextItem m_text;
 	QGraphicsRectItem m_rect;
 	Animation *m_animation;
@@ -50,13 +53,16 @@ public:
 	Node *from(void);
 	Node *to(void);
 
-public slots:
-	void refresh(void);
+	void setHighlighted(bool tp);
 
-protected:
+private slots:
+	void updated(void);
+
+private:
 	Node *m_from;
 	Node *m_to;
 	QPolygonF m_head;
+	bool m_highlighted;
 };
 
 class Animation : public QVariantAnimation
@@ -83,10 +89,12 @@ public:
 	QList<Node *> &nodes(void);
 	QList<Arrow *> &edges(void);
 	std::pair<QMultiMap<Node *,Arrow *>::iterator,QMultiMap<Node *,Arrow *>::iterator> out_edges(Node *n);
-	void graphLayout(void);
 
 	void insert(Node *n);
 	void connect(Node *a, Node *b);
+
+public slots:
+	QRectF graphLayout(void);
 
 private:
 	QList<Node *> m_nodes;

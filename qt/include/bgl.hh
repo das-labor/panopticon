@@ -2,7 +2,17 @@
 #define BGL_HH
 
 #include <boost/graph/graph_traits.hpp>
+#include <boost/property_map/property_map.hpp>
 #include <graph.hh>
+
+template<typename K, typename V>
+struct PropertyMap
+{
+	PropertyMap(std::function<V(const K&)> g, std::function<void(const K&, const V&)> p) : get(g), put(p) {};
+	
+	const std::function<V(const K&)> get;
+	const std::function<void(const K&, const V&)> put;
+};
 
 namespace boost {
 template<>
@@ -31,6 +41,19 @@ struct graph_traits<Graph *>
 	typedef unsigned int edges_size_type;
 
 	Node *null_vertex(void) { return 0; }
+
+};
+
+template<typename K, typename V>
+struct property_traits<PropertyMap<K,V> *>
+{
+	struct cat : public readable_property_map_tag,
+											writable_property_map_tag {};
+
+	typedef V value_type;
+	typedef V& reference_type;
+	typedef K key_type;
+	typedef cat category;
 };
 };
 
@@ -47,5 +70,27 @@ unsigned int num_vertices(Graph *);
 // EdgeListGraph
 std::pair<QList<Arrow *>::iterator,QList<Arrow *>::iterator> edges(Graph *);
 unsigned int num_edges(Graph *);
+
+// ReadablePropertyMap
+template<typename K, typename V>
+V get(const PropertyMap<K,V> *pmap, const K &key)
+{
+	assert(pmap);
+	return pmap->get(key);
+}
+
+// WriteablePropetyMap
+template<typename K, typename V>
+void put(PropertyMap<K,V> *pmap, const K &key, const V &val)
+{
+	assert(pmap);
+	pmap->put(key,val);
+}
+
+template<typename K, typename V>
+void set(PropertyMap<K,V> *pmap, K &key, const V &val)
+{
+	put(pmap,key,val);
+}
 
 #endif

@@ -89,6 +89,8 @@ const_ptr ctrans::constant(void) { return dynamic_pointer_cast< ::constant>(valu
 /*
  * basic_block
  */
+basic_block::basic_block(range<addr_t> a) : m_area(a) {}
+basic_block::basic_block(void) {}
 pair<basic_block::pred_iterator,basic_block::pred_iterator> basic_block::predecessors(void)
 	{ return make_pair(pred_iterator(m_incoming.begin(),m_incoming.end()),pred_iterator(m_incoming.end(),m_incoming.end())); }
 

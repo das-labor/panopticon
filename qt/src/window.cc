@@ -1,44 +1,91 @@
+#include <functional>
+#include <QVBoxLayout>
+#include <QHeaderView>
+#include <QDebug>
+
 #include <window.hh>
+#include <database.hh>
+
+AddressSortProxy::AddressSortProxy(Model *m, QObject *parent)
+: QSortFilterProxyModel(parent)
+{
+	setSourceModel(m);
+}
+
+bool AddressSortProxy::lessThan(const QModelIndex &left, const QModelIndex &right) const
+{
+	return sourceModel()->data(left,Qt::DisplayRole).toString().toULongLong(0,0) < 
+				 sourceModel()->data(right,Qt::DisplayRole).toString().toULongLong(0,0);
+}
+
+ProcedureView::ProcedureView(Model *m, QWidget *parent)
+: QDockWidget("Procedures",parent), m_list(new QTableView(this)), m_combo(new QComboBox(this)), m_proxy(new AddressSortProxy(m,this))
+{
+	QWidget *w = new QWidget(this);
+	QVBoxLayout *l = new QVBoxLayout(w);
+	l->addWidget(m_combo);
+	l->addWidget(m_list);
+	w->setLayout(l);
+	setWidget(w);
+
+	m_combo->setModel(m_proxy);
+	m_list->setModel(m_proxy);
+
+	m_list->horizontalHeader()->hideSection(2);
+	m_list->horizontalHeader()->moveSection(0,1);
+	m_list->horizontalHeader()->hide();
+	m_list->horizontalHeader()->setStretchLastSection(true);
+	m_list->setShowGrid(false);
+	m_list->verticalHeader()->hide();
+	m_list->setSelectionBehavior(QAbstractItemView::SelectRows);
+	m_list->setSortingEnabled(true);
+
+	connect(m_combo,SIGNAL(currentIndexChanged(int)),this,SLOT(rebase(int)));
+	rebase(0);
+}
+
+QModelIndex ProcedureView::currentFlowgraph(int column) const
+{
+	return m_proxy->index(m_combo->currentIndex(),column);
+}
+
+QItemSelectionModel *ProcedureView::selectionModel(void)
+{
+	return m_list->selectionModel();
+}
+
+void ProcedureView::rebase(int i)
+{
+	m_list->setRootIndex(currentFlowgraph(Model::ProceduresColumn));
+	m_list->resizeRowsToContents();
+	m_list->resizeColumnsToContents();
+	m_list->sortByColumn(1,Qt::AscendingOrder);
+}
+
+QAbstractItemModel *ProcedureView::model(void)
+{
+	return m_proxy;
+}
 
 Window::Window(void)
-: m_viewport(&m_graph,this)
 {
 	setWindowTitle("Panopticum v0.8");
 	resize(1000,800);
 	move(500,200);
-	setCentralWidget(&m_viewport);	
 
-	Node *n_a = new Node("A",QPoint(0,0));
-	Node *n_b = new Node("B",QPoint(0,0));
-	Node *n_c = new Node("C",QPoint(0,0));
-	Node *n_d = new Node("D",QPoint(0,0));
-	Node *n_e = new Node("E",QPoint(0,0));
-	Node *n_f = new Node("F",QPoint(0,0));
-	Node *n_g = new Node("G",QPoint(0,0));
-	Node *n_h = new Node("H",QPoint(0,0));
-	Node *n_i = new Node("I",QPoint(0,0));
-	Node *n_j = new Node("J",QPoint(0,0));
-	
-	m_graph.insert(n_a);
-	m_graph.insert(n_b);
-	m_graph.insert(n_c);
-	m_graph.insert(n_d);
-	m_graph.insert(n_e);
-	m_graph.insert(n_f);
-	m_graph.insert(n_g);
-	m_graph.insert(n_h);
-	m_graph.insert(n_i);
-	m_graph.insert(n_j);
+	std::string path("test.ttl");
 
-	m_graph.connect(n_a,n_b);
-	m_graph.connect(n_a,n_c);
-	m_graph.connect(n_c,n_d);
-	m_graph.connect(n_c,n_e);
-	m_graph.connect(n_e,n_f);
-	m_graph.connect(n_f,n_h);
-	m_graph.connect(n_f,n_g);
-	m_graph.connect(n_f,n_i);
-	m_graph.connect(n_i,n_j);
+	m_model = new Model(new database(path),this);
+	m_procView = new ProcedureView(m_model,this);
+	m_viewport = new Viewport(m_procView->model(),m_procView->currentFlowgraph(),m_procView->selectionModel(),this);
 
-	m_graph.graphLayout();
+	setCentralWidget(m_viewport);
+	addDockWidget(Qt::LeftDockWidgetArea,m_procView);
+}
+
+Window::~Window(void)
+{
+	// pervents null dereference if m_procView still has selections
+	m_procView->selectionModel()->clear();
+	delete m_viewport;
 }

@@ -19,6 +19,7 @@ struct flowgraph
 	std::map<proc_ptr,live_ptr> liveness;
 	std::map<proc_ptr,std::shared_ptr<std::map<bblock_ptr,taint_lattice>>> taint;
 	std::map<proc_ptr,std::shared_ptr<std::map<bblock_ptr,cprop_lattice>>> cprop;
+	std::string name;
 };
 
 bool has_procedure(flow_ptr flow, addr_t entry);
@@ -30,6 +31,7 @@ flow_ptr disassemble(const decoder<Tag> &main, std::vector<typename rule<Tag>::t
 	flow_ptr ret(new flowgraph());
 	set<pair<addr_t,proc_ptr>> call_targets;
 
+	ret->name = "unnamed flowgraph";
 	call_targets.insert(make_pair(offset,proc_ptr(new procedure())));
 
 	while(!call_targets.empty())
