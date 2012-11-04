@@ -188,10 +188,9 @@ void Viewport::mouseMoveEvent(QMouseEvent *event)
 	if(event->buttons() & Qt::MiddleButton)
 	{
 		QPointF p = m_lastDragPos - event->pos();
+
 		horizontalScrollBar()->setValue(horizontalScrollBar()->value() + p.x());
 		verticalScrollBar()->setValue(verticalScrollBar()->value() + p.y());
-		//setSceneRect(sceneRect().translated(p));
-
 		m_lastDragPos = event->pos();
 	}
 	else
@@ -203,7 +202,7 @@ void Viewport::mousePressEvent(QMouseEvent *event)
 	if(event->button() == Qt::MiddleButton)
 	{
 		m_lastDragPos = event->pos();
-		viewport()->cursor().setShape(Qt::ClosedHandCursor);
+		viewport()->setCursor(Qt::ClosedHandCursor);
 	}
 	else
 		QGraphicsView::mousePressEvent(event);
@@ -212,7 +211,7 @@ void Viewport::mousePressEvent(QMouseEvent *event)
 void Viewport::mouseReleaseEvent(QMouseEvent *event)
 {	
 	if(event->button() == Qt::MiddleButton)
-		cursor().setShape(Qt::ArrowCursor);
+		viewport()->setCursor(Qt::ArrowCursor);
 	else
 		QGraphicsView::mouseReleaseEvent(event);
 }
