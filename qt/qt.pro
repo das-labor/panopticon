@@ -13,13 +13,15 @@ PKGCONFIG += raptor2 redland
 HEADERS += include/graph.hh \
 					 include/window.hh \
 					 include/bgl.hh \
-					 include/viewport.hh \
-					 include/calllist.hh \
+					 include/callgraph.hh \
+					 include/cflowgraph.hh \
+					 include/scene.hh \
 					 include/model.hh
 SOURCES += src/main.cc \
 					 src/graph.cc \
 					 src/bgl.cc \
 					 src/window.cc \
-					 src/viewport.cc \
-					 src/calllist.cc \
+					 src/callgraph.cc \
+					 src/cflowgraph.cc \
+					 src/scene.cc \
 					 src/model.cc

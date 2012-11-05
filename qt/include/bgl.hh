@@ -16,7 +16,7 @@ struct PropertyMap
 
 namespace boost {
 template<>
-struct graph_traits<Graph *>
+struct graph_traits<Scene *>
 {
 	struct traversal : public incidence_graph_tag,
 														vertex_list_graph_tag,
@@ -28,15 +28,15 @@ struct graph_traits<Graph *>
 	typedef allow_parallel_edge_tag edge_parallel_category;
 	typedef traversal traversal_category;
 	
-	// Incidence Graph
+	// Incidence Scene
 	typedef QMultiMap<Node *,Arrow *>::iterator out_edge_iterator;
 	typedef unsigned int degree_size_type;
 
-	// VertexListGraph
+	// VertexListScene
 	typedef QList<Node *>::iterator vertex_iterator;
 	typedef unsigned int vertices_size_type;
 
-	// EdgeListGraph
+	// EdgeListScene
 	typedef QList<Arrow *>::iterator edge_iterator;
 	typedef unsigned int edges_size_type;
 
@@ -57,19 +57,19 @@ struct property_traits<PropertyMap<K,V> *>
 };
 };
 
-// Incidence Graph
-Node *source(Arrow *, Graph *);
-Node *target(Arrow *, Graph *);
-std::pair<QMultiMap<Node *,Arrow *>::iterator,QMultiMap<Node *,Arrow *>::iterator> out_edges(Node *, Graph *);
-unsigned int out_degree(Node *, Graph *);
+// Incidence Scene
+Node *source(Arrow *, Scene *);
+Node *target(Arrow *, Scene *);
+std::pair<QMultiMap<Node *,Arrow *>::iterator,QMultiMap<Node *,Arrow *>::iterator> out_edges(Node *, Scene *);
+unsigned int out_degree(Node *, Scene *);
 
-// VertexListGraph
-std::pair<QList<Node *>::iterator,QList<Node *>::iterator> vertices(Graph *);
-unsigned int num_vertices(Graph *);
+// VertexListScene
+std::pair<QList<Node *>::iterator,QList<Node *>::iterator> vertices(Scene *);
+unsigned int num_vertices(Scene *);
 
-// EdgeListGraph
-std::pair<QList<Arrow *>::iterator,QList<Arrow *>::iterator> edges(Graph *);
-unsigned int num_edges(Graph *);
+// EdgeListScene
+std::pair<QList<Arrow *>::iterator,QList<Arrow *>::iterator> edges(Scene *);
+unsigned int num_edges(Scene *);
 
 // ReadablePropertyMap
 template<typename K, typename V>

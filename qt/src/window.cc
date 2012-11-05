@@ -6,6 +6,17 @@
 #include <window.hh>
 #include <database.hh>
 
+DisplayProcedureAction::DisplayProcedureAction(QObject *parent)
+: QAction("Display",parent) {}
+
+void DisplayProcedureAction::activate(const QModelIndex &idx)
+{
+	assert(idx.isValid());
+	const QAbstractItemModel *model = idx.model();
+
+	qDebug() << model->data(idx.sibling(idx.row(),Model::NameColumn)).toString() << "activated!";
+}
+
 AddressSortProxy::AddressSortProxy(Model *m, QObject *parent)
 : QSortFilterProxyModel(parent)
 {
@@ -40,6 +51,8 @@ ProcedureView::ProcedureView(Model *m, QWidget *parent)
 	m_list->setSelectionBehavior(QAbstractItemView::SelectRows);
 	m_list->setSortingEnabled(true);
 
+
+	connect(m_list,SIGNAL(activated(const QModelIndex&)),this,SIGNAL(activated(const QModelIndex&)));
 	connect(m_combo,SIGNAL(currentIndexChanged(int)),this,SLOT(rebase(int)));
 	rebase(0);
 }
@@ -77,15 +90,19 @@ Window::Window(void)
 
 	m_model = new Model(new database(path),this);
 	m_procView = new ProcedureView(m_model,this);
-	m_viewport = new Viewport(m_procView->model(),m_procView->currentFlowgraph(),m_procView->selectionModel(),this);
+	m_callgraph = new Callgraph(m_procView->model(),m_procView->currentFlowgraph(),m_procView->selectionModel(),this);
+	DisplayProcedureAction *disp = new DisplayProcedureAction(this);
 
-	setCentralWidget(m_viewport);
+	setCentralWidget(m_callgraph);
 	addDockWidget(Qt::LeftDockWidgetArea,m_procView);
+
+	connect(m_procView,SIGNAL(activated(const QModelIndex&)),disp,SLOT(activate(const QModelIndex&)));
+	connect(m_callgraph,SIGNAL(activated(const QModelIndex&)),disp,SLOT(activate(const QModelIndex&)));
 }
 
 Window::~Window(void)
 {
 	// pervents null dereference if m_procView still has selections
 	m_procView->selectionModel()->clear();
-	delete m_viewport;
+	delete m_callgraph;
 }

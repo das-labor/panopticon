@@ -1,106 +1,38 @@
-#ifndef GRAPH_HH
-#define GRAPH_HH
+#ifndef VIEWPORT_HH
+#define VIEWPORT_HH
 
-#include <functional>
+#include <QGraphicsView>
+#include <QWheelEvent>
+#include <QItemSelectionModel>
 
-#include <QGraphicsScene>
-#include <QGraphicsObject>
-#include <QGraphicsTextItem>
-#include <QGraphicsRectItem>
-#include <QVariant>
-#include <QVariantAnimation>
-#include <QPoint>
-#include <QWidget>
-#include <QPainter>
-#include <QStyleOptionGraphicsItem>
+#include <scene.hh>
+#include <model.hh>
 
-class Node;
-class Arrow;
-class Animation;
-class Graph;
-
-class Node : public QGraphicsObject
+class Graph : public QGraphicsView
 {
 	Q_OBJECT
 
 public:
-	Node(QString name, QPoint ptn = QPoint(0,0));
+	Graph(QAbstractItemModel *m, QModelIndex i, QWidget *parent = 0);
+	virtual ~Graph(void);
 
-	virtual QRectF boundingRect(void) const;
-	virtual void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget = 0);
-	
-	void smoothSetPos(QPointF ptn);
-	void setTitle(QString s);
+	void setRootIndex(QModelIndex i);
 
 protected:
-	virtual QVariant itemChange(GraphicsItemChange change, const QVariant &value);
+	virtual void wheelEvent(QWheelEvent *event);
+	virtual void mouseMoveEvent(QMouseEvent *event);
+	virtual void mousePressEvent(QMouseEvent *event);
+	virtual void mouseReleaseEvent(QMouseEvent *event);
 
-private:
-	QGraphicsTextItem m_text;
-	QGraphicsRectItem m_rect;
-	Animation *m_animation;
-};
+	virtual void populate(void) = 0;
 
-class Arrow : public QGraphicsObject
-{
-	Q_OBJECT
-
-public:
-	Arrow(Node *f, Node *t);
-
-	virtual QRectF boundingRect(void) const;
-	virtual void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget = 0);
-	
-	Node *from(void);
-	Node *to(void);
-
-	void setHighlighted(bool tp);
+	QAbstractItemModel *m_model;
+	Scene m_scene;
+	QPersistentModelIndex m_root;
+	QPointF m_lastDragPos;
 
 private slots:
-	void updated(void);
-
-private:
-	Node *m_from;
-	Node *m_to;
-	QPolygonF m_head;
-	bool m_highlighted;
-};
-
-class Animation : public QVariantAnimation
-{
-	Q_OBJECT
-
-public:
-	Animation(std::function<void(const QVariant &)> func, QObject *parent = 0);
-
-protected:
-	virtual void updateCurrentValue(const QVariant &value);
-	
-private:
-	std::function<void(const QVariant &)> m_function;
-};
-
-class Graph : public QGraphicsScene
-{
-	Q_OBJECT
-
-public:
-	Graph(void);
-	
-	QList<Node *> &nodes(void);
-	QList<Arrow *> &edges(void);
-	std::pair<QMultiMap<Node *,Arrow *>::iterator,QMultiMap<Node *,Arrow *>::iterator> out_edges(Node *n);
-
-	void insert(Node *n);
-	void connect(Node *a, Node *b);
-
-public slots:
-	QRectF graphLayout(void);
-
-private:
-	QList<Node *> m_nodes;
-	QList<Arrow *> m_edges;
-	QMultiMap<Node *,Arrow *> m_incidence;
+	void sceneRectChanged(const QRectF &r);
 };
 
 #endif

@@ -6,9 +6,21 @@
 #include <QTableView>
 #include <QComboBox>
 #include <QSortFilterProxyModel>
+#include <QAction>
 
-#include <viewport.hh>
+#include <callgraph.hh>
 #include <model.hh>
+
+class DisplayProcedureAction : public QAction
+{
+	Q_OBJECT
+
+public:
+	DisplayProcedureAction(QObject *parent = 0);
+
+public slots:
+	void activate(const QModelIndex &idx);
+};
 
 class AddressSortProxy : public QSortFilterProxyModel
 {
@@ -32,6 +44,9 @@ public:
 	QItemSelectionModel *selectionModel(void);
 	QAbstractItemModel *model(void);
 
+signals:
+	void activated(const QModelIndex &idx);
+
 private slots:
 	void rebase(int i);
 
@@ -51,7 +66,7 @@ public:
 
 private:
 	Model *m_model;
-	Viewport *m_viewport;
+	Callgraph *m_callgraph;
 	ProcedureView *m_procView;
 };
 
