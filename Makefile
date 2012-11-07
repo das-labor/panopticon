@@ -10,5 +10,5 @@ $(COMPONENTS):
 	$(MAKE) -C $@
 
 clean:
-	$(MAKE) -C lib
-	$(MAKE) -C qt
+	$(MAKE) -C lib clean
+	$(MAKE) -C qt clean

@@ -1,7 +1,5 @@
 #include <model.hh>
 
-// TODO: custom "Selection" role: None, Hover, Selected
-
 Model::Model(database *db, QObject *parent)
 : QAbstractItemModel(parent), m_database(db)
 {
@@ -55,13 +53,19 @@ QModelIndex Model::index(int row, int column, const QModelIndex &parent) const
 	case ProcedureTag:
 		proc = (procedure *)ptr;
 
-		if(parent.column() == CalleesColumn)
+		switch(parent.column())
 		{
+		case CalleesColumn:
 			assert(row >= 0 && proc->callees.size() > (unsigned int)row);
 			return createIndex(row,column,tag(proc->callees[row].get(),ProcedureTag));
-		}
-		else
+		
+		case BasicBlocksColumn:
+			assert(row >= 0 && proc->basic_blocks.size() > (unsigned int)row);
+			return createIndex(row,column,tag(next(proc->basic_blocks.begin(),row)->get(),BasicBlockTag));
+		
+		default:
 			assert(false);
+		}
 
 	default:
 		assert(false);
@@ -81,6 +85,15 @@ QModelIndex Model::parent(const QModelIndex &index) const
 		return QModelIndex();
 	case ProcedureTag:
 		return createIndex(0,ProceduresColumn,tag(m_flowgraphs.front().get(),FlowgraphTag));
+	case BasicBlockTag:
+	{
+		flow_ptr f = m_flowgraphs.front();
+		auto i = find_if(f->procedures.begin(),f->procedures.end(),[&](const proc_ptr &p) 
+			{ return any_of(p->basic_blocks.begin(),p->basic_blocks.end(),[&](const bblock_ptr &bb) { return bb.get() == (basic_block *)ptr; }); });
+		
+		assert(i != f->procedures.end());
+		return createIndex(distance(f->procedures.begin(),i),BasicBlocksColumn,tag(i->get(),ProcedureTag));
+	}
 	default:
 		assert(false);
 	}
@@ -113,10 +126,18 @@ int Model::rowCount(const QModelIndex &parent) const
 	case ProcedureTag:
 		proc = (procedure *)ptr;
 
-		if(parent.column() == CalleesColumn)
+		switch(parent.column())
+		{
+		case CalleesColumn:
 			return proc->callees.size();
-		else
+		case BasicBlocksColumn:
+			return proc->basic_blocks.size();
+		default:
 			return 0;
+		}
+	
+	case BasicBlockTag:
+		return 0;
 
 	default:
 		assert(false);
@@ -148,6 +169,9 @@ int Model::columnCount(const QModelIndex &parent) const
 			return LastProcedureColumn;
 		else
 			return 0;
+	
+	case BasicBlockTag:
+			return 0;
 
 	default:
 		assert(false);
@@ -163,10 +187,6 @@ QVariant Model::data(const QModelIndex &index, int role) const
 	case Qt::DisplayRole:
 	case Qt::EditRole:
 		return QVariant(displayData(index));
-	/*case Qt::FontRole:
-		return QVariant(fontData(index));	
-	case SelectionRole:
-		return QVariant(selectionData(index));*/
 	default:
 		return QVariant();
 	}
@@ -207,9 +227,6 @@ bool Model::setData(const QModelIndex &index, const QVariant &value, int role)
 		ret = setDisplayData(index,s);
 		break;
 	}
-/*	case SelectionRole:
-		ret = setSelectionRole(index,value.toUInt());
-		break;*/
 	default:
 		ret = false;
 	}
@@ -222,6 +239,7 @@ QString Model::displayData(const QModelIndex &index) const
 {
 	flowgraph *flow;
 	procedure *proc;
+	basic_block *bblock;
 	ptrdiff_t t;
 	void *ptr;
 	
@@ -233,10 +251,14 @@ QString Model::displayData(const QModelIndex &index) const
 		flow = (flowgraph *)ptr;
 		switch((Column)index.column())
 		{
-			case NameColumn: 			return QString::fromStdString(flow->name);
-			case ProceduresColumn: return QString("%1 procedures").arg(flow->procedures.size());
-			default: return QString();
+		case NameColumn:
+			return QString::fromStdString(flow->name);
+		case ProceduresColumn: 
+			return QString("%1 procedures").arg(flow->procedures.size());
+		default: 
+			assert(false);
 		}
+
 	case ProcedureTag:
 		proc = (procedure *)ptr;
 		switch((Column)index.column())
@@ -252,72 +274,41 @@ QString Model::displayData(const QModelIndex &index) const
 			else
 				return QString("(no entry)");
 		case BasicBlocksColumn: 
-		{
-			auto p = proc->all();
-			return QString("%1 basic blocks").arg(distance(p.first,p.second));
-		}
+			return QString("%1 basic blocks").arg(distance(proc->basic_blocks.begin(),proc->basic_blocks.end()));
 		case CalleesColumn:
 			return QString("%1 callees").arg(proc->callees.size());
 		case UniqueIdColumn:
 			return QString("%1").arg((ptrdiff_t)proc);
-		default: 
-			return QString();
+		default:
+			assert(false);
 		}
-	
+
+	case BasicBlockTag:
+		bblock = (basic_block *)ptr;
+		switch((Column)index.column())
+		{
+		case AreaColumn:
+			return QString("%1:%2").arg(bblock->area().begin).arg(bblock->area().end);
+		case MnemonicsColumn:
+			return QString("%1 mnemonics").arg(bblock->mnemonics().size());
+		case PredecessorsColumn:
+		{
+			auto p = bblock->predecessors();
+			return QString("%1 predecessors").arg(distance(p.first,p.second));
+		}
+		case SuccessorsColumn:
+		{
+			auto p = bblock->successors();
+			return QString("%1 successors").arg(distance(p.first,p.second));
+		}
+		default:
+			assert(false);
+		}
+
 	default:
-		return QString();
+		assert(false);
 	}
 }
-/*
-QFont Model::fontData(const QModelIndex &index) const
-{
-	procedure *proc;
-	ptrdiff_t t;
-	void *ptr;
-	QFont ret;
-	
-	tie(ptr,t) = extract(index.internalId());
-
-	switch(t)
-	{
-	case ProcedureTag:
-		proc = (procedure *)ptr;
-		
-		if(m_hovered == proc) 
-			ret.setItalic(true);
-		if(m_selected == proc)
-			ret.setBold(true);
-	
-	// fall through
-	default:
-		return ret;
-	}
-}
-
-unsigned int Model::selectionData(const QModelIndex &index) const
-{
-	procedure *proc;
-	ptrdiff_t t;
-	void *ptr;
-	unsigned int ret = NoSelection;
-	
-	tie(ptr,t) = extract(index.internalId());
-
-	switch(t)
-	{
-	case ProcedureTag:
-		proc = (procedure *)ptr;
-		
-		if(m_hovered == proc) 
-			ret |= WeakSelection;
-		if(m_selected == proc)
-			ret |= StrongSelection;
-	
-	// fall through
-	default:
-		return ret;
-	}
-}*/
 
 bool Model::setDisplayData(const QModelIndex &index, const std::string &value)
 {
@@ -362,37 +353,6 @@ bool Model::setDisplayData(const QModelIndex &index, const std::string &value)
 		return false;
 	}
 }
-
-/*
-bool Model::setSelectionData(const QModelIndex &index, Selection value)
-{
-	ptrdiff_t t;
-	void *ptr;
-
-	tie(ptr,t) = extract(index.internalId());
-	switch(t)
-	{
-	case ProcedureTag:
-		if(value 
-		assert(index.column() == NameColumn);
-		procedure *proc = (procedure *)ptr;
-		auto i = find_if(m_flowgraphs.begin(),m_flowgraphs.end(),[&](const flow_ptr &f) 
-							{ return any_of(f->procedures.begin(),f->procedures.end(),[&](const proc_ptr &p) 
-								{ return p.get() == proc; }); });
-
-		if(i == m_flowgraphs.end())
-			return false;
-
-		if(any_of((*i)->procedures.begin(),(*i)->procedures.end(),[&](const proc_ptr &p) { return p.get() != proc && p->name == value.toString().toStdString(); }))
-			return false;
-
-		proc->name = value;
-		return true;
-	}
-	default:
-		return false;
-	}
-}*/
 
 ptrdiff_t Model::tag(void *ptr, Tag t) const
 {

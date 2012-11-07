@@ -21,13 +21,11 @@ map<bblock_ptr,L> *abstract_interpretation(proc_ptr proc)
 	// Worklist algo
 	map<bblock_ptr,L> *states = new map<bblock_ptr,L>();
 	D tag;
-	procedure::iterator i,iend;
 	set<bblock_ptr> worklist;
 
 	// initialize all abstract states to bottom(), fill worklist
-	tie(i,iend) = proc->all();
-	copy(i,iend,inserter(worklist,worklist.begin()));
-	for_each(i,iend,[&](bblock_ptr bb) { states->insert(make_pair(bb,bottom(tag))); });
+	copy(proc->basic_blocks.begin(),proc->basic_blocks.end(),inserter(worklist,worklist.begin()));
+	for_each(proc->basic_blocks.begin(),proc->basic_blocks.end(),[&](bblock_ptr bb) { states->insert(make_pair(bb,bottom(tag))); });
 
 	while(!worklist.empty())
 	{

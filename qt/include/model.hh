@@ -61,8 +61,9 @@ private:
 	{
 		FlowgraphTag = 0,
 		ProcedureTag = 1,
+		BasicBlockTag = 2,
 		
-		LastTag = 2,
+		LastTag = 3,
 		MaskTag = 3,
 	};
 

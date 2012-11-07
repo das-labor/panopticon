@@ -24,6 +24,9 @@ void Callgraph::populate(void)
 	QModelIndex procs = m_root.sibling(m_root.row(),Model::ProceduresColumn);
 
 	m_scene.clear();
+	m_uid2procedure.clear();
+	m_procedure2row.clear();
+
 	// TODO: edges, signals when updated
 	while(row < m_model->rowCount(procs))
 	{

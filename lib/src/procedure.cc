@@ -54,16 +54,11 @@ void procedure::insert_bblock(bblock_ptr m)
 void procedure::remove_bblock(bblock_ptr m)
 	{ rpo.clear(); basic_blocks.remove(m); };
 
-pair<procedure::iterator,procedure::iterator> procedure::all(void) 
-	{ return make_pair(basic_blocks.begin(),basic_blocks.end()); };
-
 bblock_ptr find_bblock(proc_ptr proc, addr_t a)
 {
-	procedure::iterator i,e;
-	
-	tie(i,e) = proc->all();
+	procedure::iterator i = proc->basic_blocks.begin();
 
-	while(i != e)
+	while(i != proc->basic_blocks.end())
 	{
 		bblock_ptr bb = *i++;
 		
@@ -76,12 +71,10 @@ bblock_ptr find_bblock(proc_ptr proc, addr_t a)
 
 void extend(proc_ptr proc, bblock_ptr block)
 {
-	procedure::iterator ibegin,i,iend;
+	procedure::iterator i = find_if(proc->basic_blocks.begin(),proc->basic_blocks.end(),[&block](const bblock_ptr &p) 
+		{ return p->area().overlap(block->area()); });
 
-	tie(ibegin,iend) = proc->all();
-	i = find_if(ibegin,iend,[&block](const bblock_ptr &p) { return p->area().overlap(block->area()); });
-
-	if(i != iend)
+	if(i !=  proc->basic_blocks.end())
 	{
 		/*
 		 * Overlap:
@@ -129,15 +122,14 @@ void merge(proc_ptr proc, bblock_ptr block)
 	// Try to connect in/out edge from/to bb to/from addr. Returns true if bb was split
 	auto connect = [&proc](bblock_ptr bb, ctrans &ct, bool out) -> bool
 	{
-		procedure::iterator ibegin,i,iend;
+		procedure::iterator i;
 		addr_t addr = ct.constant()->val;
 		guard_ptr g = ct.guard;
 		bool ret = false;
 
-		tie(ibegin,iend) = proc->all();
-		i = find_if(ibegin,iend,[&](const bblock_ptr p) { return p->area().includes(addr); });
+		i = find_if(proc->basic_blocks.begin(),proc->basic_blocks.end(),[&](const bblock_ptr p) { return p->area().includes(addr); });
 
-		if(i == iend) return ret;
+		if(i == proc->basic_blocks.end()) return ret;
 		bblock_ptr tgt = *i, old = *i;
 		ctrans cs(g,bb);
 
@@ -190,13 +182,12 @@ void merge(proc_ptr proc, bblock_ptr block)
 	proc->insert_bblock(block);
 	while(true)
 	{
-		procedure::iterator ibegin,i,iend;
+		procedure::iterator i;
 		bblock_ptr bb;
 		
-		tie(ibegin,iend) = proc->all();
-		i = find_if(ibegin,iend,[&done](const bblock_ptr p) { return done.count(p) == 0; });
+		i = find_if(proc->basic_blocks.begin(),proc->basic_blocks.end(),[&done](const bblock_ptr p) { return done.count(p) == 0; });
 
-		if(i != iend)
+		if(i != proc->basic_blocks.end())
 		{
 			bb = *i;
 

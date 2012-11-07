@@ -5,22 +5,12 @@
 #include <QDockWidget>
 #include <QTableView>
 #include <QComboBox>
+#include <QTabWidget>
 #include <QSortFilterProxyModel>
-#include <QAction>
 
 #include <callgraph.hh>
+#include <cflowgraph.hh>
 #include <model.hh>
-
-class DisplayProcedureAction : public QAction
-{
-	Q_OBJECT
-
-public:
-	DisplayProcedureAction(QObject *parent = 0);
-
-public slots:
-	void activate(const QModelIndex &idx);
-};
 
 class AddressSortProxy : public QSortFilterProxyModel
 {
@@ -42,7 +32,7 @@ public:
 	
 	QModelIndex currentFlowgraph(int column = 0) const;
 	QItemSelectionModel *selectionModel(void);
-	QAbstractItemModel *model(void);
+	QAbstractProxyModel *model(void);
 
 signals:
 	void activated(const QModelIndex &idx);
@@ -64,9 +54,14 @@ public:
 	Window(void);
 	virtual ~Window(void);
 
+private slots:
+	void activate(const QModelIndex &idx);
+
 private:
 	Model *m_model;
+	QTabWidget *m_tabs;
 	Callgraph *m_callgraph;
+	CFlowgraph *m_cflowgraph;
 	ProcedureView *m_procView;
 };
 

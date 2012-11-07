@@ -7,7 +7,7 @@ CONFIG += debug link_pkgconfig
 OBJECTS_DIR = obj
 MOC_DIR = obj
 LIBS += -L../lib -lpanopticum
-PKGCONFIG += raptor2 redland
+PKGCONFIG += raptor2 redland libgvc
 
 # Input
 HEADERS += include/graph.hh \

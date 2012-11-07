@@ -408,10 +408,7 @@ void disassemble_procedure(proc_ptr proc, const decoder<Tag> &main, vector<typen
 				extend(proc,p);	
 		});
 
-		procedure::iterator j,jend;
-
-		tie(j,jend) = proc->all();
-		for_each(j,jend,[&](const bblock_ptr &bb)
+		for_each(proc->basic_blocks.begin(),proc->basic_blocks.end(),[&](const bblock_ptr &bb)
 		{
 			basic_block::out_iterator i,iend;
 			

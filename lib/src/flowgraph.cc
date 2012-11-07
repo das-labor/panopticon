@@ -43,7 +43,7 @@ string turtle(flow_ptr fg)
 	{
 		assert(proc && proc->entry);
 		
-		procedure::iterator i,iend;
+		procedure::iterator i;
 		string procname(to_string(proc->entry->area().begin));
 		stringstream ss_bblocks;
 		shared_ptr<map<bblock_ptr,taint_lattice>> taint_bblock(fg->taint.count(proc) ? fg->taint[proc] : nullptr);
@@ -57,8 +57,8 @@ string turtle(flow_ptr fg)
 			{ ss << ":proc_" << procname << " po:calls :proc_" << to_string(c->entry->area().begin) << "." << endl; });
 
 		// basic blocks
-		tie(i,iend) = proc->all();
-		while(i != iend)
+		i = proc->basic_blocks.begin();
+		while(i != proc->basic_blocks.end())
 		{
 			bblock_ptr bb = *i++;
 			assert(bb);
@@ -194,7 +194,7 @@ string turtle(flow_ptr fg)
 
 			
 			ss_bblocks << ":bblock_" << procname << "_" << bbname << " ";
-			if(i != iend)
+			if(i != proc->basic_blocks.end())
 				ss_bblocks << ", ";
 		}
 
@@ -337,7 +337,6 @@ string graphviz(flow_ptr fg)
 	for_each(fg->procedures.begin(),fg->procedures.end(),[&](const proc_ptr proc)
 	{
 		assert(proc && proc->entry);
-		procedure::iterator i,iend;
 		string procname(to_string(proc->entry->area().begin));
 		shared_ptr<map<bblock_ptr,taint_lattice>> taint_bblock(fg->taint[proc]);
 		shared_ptr<map<bblock_ptr,cprop_lattice>> cprop_bblock(fg->cprop[proc]);
@@ -349,8 +348,7 @@ string graphviz(flow_ptr fg)
 			 << "\t\tfontname = \"Monospace\";" << endl;
 
 		// basic blocks
-		tie(i,iend) = proc->all();
-		for_each(i,iend,[&](const bblock_ptr bb)
+		for_each(proc->basic_blocks.begin(),proc->basic_blocks.end(),[&](const bblock_ptr bb)
 		{
 			size_t sz = bb->mnemonics().size(), pos = 0;
 			const mne_cptr *j = bb->mnemonics().data();

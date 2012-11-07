@@ -48,7 +48,7 @@ flow_ptr disassemble(const decoder<Tag> &main, std::vector<typename rule<Tag>::t
 		live_ptr live;
 		std::shared_ptr<std::map<bblock_ptr,taint_lattice>> taint;
 		std::shared_ptr<std::map<bblock_ptr,cprop_lattice>> cprop;
-		procedure::iterator i,iend;
+		procedure::iterator i;
 
 		call_targets.erase(h);
 
@@ -79,10 +79,9 @@ flow_ptr disassemble(const decoder<Tag> &main, std::vector<typename rule<Tag>::t
 			std::cout << "cprop" << endl;
 			cprop = std::shared_ptr<std::map<bblock_ptr,cprop_lattice>>(abstract_interpretation<cprop_domain,cprop_lattice>(proc));
 			std::cout << "resolve" << endl;
-			procedure::iterator j,jend;
-			tie(j,jend) = proc->all();
+			procedure::iterator j = proc->basic_blocks.begin();
 
-			while(j != jend)
+			while(j != proc->basic_blocks.end())
 			{
 				bblock_ptr bb = *j++;
 				const cprop_lattice &cp(cprop->at(bb));
@@ -118,8 +117,8 @@ flow_ptr disassemble(const decoder<Tag> &main, std::vector<typename rule<Tag>::t
 		ret->cprop.insert(make_pair(proc,cprop));
 
 		// look for call instructions to find new procedures to disassemble
-		tie(i,iend) = proc->all();
-		while(i != iend)
+		i = proc->basic_blocks.begin();
+		while(i != proc->basic_blocks.end())
 		{	
 			bblock_ptr bb = *i++;
 			size_t sz = bb->instructions().size(), pos = 0;

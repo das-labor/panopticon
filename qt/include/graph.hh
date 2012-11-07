@@ -16,7 +16,7 @@ public:
 	Graph(QAbstractItemModel *m, QModelIndex i, QWidget *parent = 0);
 	virtual ~Graph(void);
 
-	void setRootIndex(QModelIndex i);
+	void setRootIndex(const QModelIndex &i);
 
 protected:
 	virtual void wheelEvent(QWheelEvent *event);

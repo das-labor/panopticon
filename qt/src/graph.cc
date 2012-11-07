@@ -19,6 +19,12 @@ Graph::~Graph(void)
 	return;
 }
 
+void Graph::setRootIndex(const QModelIndex &i)
+{
+	m_root = i;
+	populate();
+}
+
 void Graph::sceneRectChanged(const QRectF &r)
 {
 	fitInView(r,Qt::KeepAspectRatio);

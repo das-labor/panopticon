@@ -36,15 +36,14 @@ public:
 	void insert_bblock(bblock_ptr m);
 	void remove_bblock(bblock_ptr m);
 	
-	pair<iterator,iterator> all(void);
 	pair<iterator,iterator> rev_postorder(void);
 	
 	bblock_ptr entry;
 	string name;
 	vector<proc_ptr> callees;
+	list<bblock_ptr> basic_blocks;	
 
 protected:
-	list<bblock_ptr> basic_blocks;	
 	list<bblock_ptr> rpo;
 };
 

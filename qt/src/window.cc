@@ -6,17 +6,6 @@
 #include <window.hh>
 #include <database.hh>
 
-DisplayProcedureAction::DisplayProcedureAction(QObject *parent)
-: QAction("Display",parent) {}
-
-void DisplayProcedureAction::activate(const QModelIndex &idx)
-{
-	assert(idx.isValid());
-	const QAbstractItemModel *model = idx.model();
-
-	qDebug() << model->data(idx.sibling(idx.row(),Model::NameColumn)).toString() << "activated!";
-}
-
 AddressSortProxy::AddressSortProxy(Model *m, QObject *parent)
 : QSortFilterProxyModel(parent)
 {
@@ -75,7 +64,7 @@ void ProcedureView::rebase(int i)
 	m_list->sortByColumn(1,Qt::AscendingOrder);
 }
 
-QAbstractItemModel *ProcedureView::model(void)
+QAbstractProxyModel *ProcedureView::model(void)
 {
 	return m_proxy;
 }
@@ -88,16 +77,19 @@ Window::Window(void)
 
 	std::string path("test.ttl");
 
+	m_tabs = new QTabWidget(this);
 	m_model = new Model(new database(path),this);
 	m_procView = new ProcedureView(m_model,this);
 	m_callgraph = new Callgraph(m_procView->model(),m_procView->currentFlowgraph(),m_procView->selectionModel(),this);
-	DisplayProcedureAction *disp = new DisplayProcedureAction(this);
+	m_cflowgraph = 0;
 
-	setCentralWidget(m_callgraph);
+	m_tabs->addTab(m_callgraph,"Callgraph");
+
+	setCentralWidget(m_tabs);
 	addDockWidget(Qt::LeftDockWidgetArea,m_procView);
 
-	connect(m_procView,SIGNAL(activated(const QModelIndex&)),disp,SLOT(activate(const QModelIndex&)));
-	connect(m_callgraph,SIGNAL(activated(const QModelIndex&)),disp,SLOT(activate(const QModelIndex&)));
+	connect(m_procView,SIGNAL(activated(const QModelIndex&)),this,SLOT(activate(const QModelIndex&)));
+	connect(m_callgraph,SIGNAL(activated(const QModelIndex&)),this,SLOT(activate(const QModelIndex&)));
 }
 
 Window::~Window(void)
@@ -105,4 +97,20 @@ Window::~Window(void)
 	// pervents null dereference if m_procView still has selections
 	m_procView->selectionModel()->clear();
 	delete m_callgraph;
+}
+
+void Window::activate(const QModelIndex &idx)
+{
+	assert(idx.isValid());
+	const QAbstractItemModel *model = idx.model();
+
+	qDebug() << model->data(idx.sibling(idx.row(),Model::NameColumn)).toString() << "activated!";
+	if(!m_cflowgraph)
+	{
+		m_cflowgraph = new CFlowgraph(m_model,m_procView->model()->mapToSource(idx),this);
+		m_tabs->addTab(m_cflowgraph,"Control Flow Graph");
+	}
+	else
+		m_cflowgraph->setRootIndex(m_procView->model()->mapToSource(idx));
+	m_tabs->setCurrentWidget(m_cflowgraph);
 }

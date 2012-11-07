@@ -11,6 +11,7 @@
 class basic_block;
 template<class T> class bblock_iterator;
 typedef std::shared_ptr<struct basic_block> bblock_ptr;
+typedef std::shared_ptr<const struct basic_block> bblock_cptr;
 typedef std::shared_ptr<struct guard> guard_ptr;
 typedef std::shared_ptr<const struct guard> guard_cptr;
 
