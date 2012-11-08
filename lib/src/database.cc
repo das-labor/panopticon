@@ -113,10 +113,13 @@ proc_ptr database::procedure(librdf_node *proc)
 	librdf_node *name = librdf_model_get_target(model,proc,po_name);
 	librdf_iterator *bblocks = librdf_model_get_targets(model,proc,po_contains);
 	proc_ptr ret(new ::procedure());
+	std::list<std::pair<librdf_node *,bblock_ptr>> bblock_list;
 
+	// deserialize procedure properties: name
 	assert(bblocks && entry && name && librdf_node_is_literal(name));
 	ret->name = std::string((const char *)librdf_node_get_literal_value(name));
 
+	// deserialize bblocks
 	while(!librdf_iterator_end(bblocks))
 	{
 		librdf_node *bblock = (librdf_node *)librdf_iterator_get_object(bblocks);
@@ -135,13 +138,50 @@ proc_ptr database::procedure(librdf_node *proc)
 		if(librdf_node_equals(bblock,entry))
 			ret->entry = bb;
 
+		bblock_list.push_back(std::make_pair(librdf_new_node_from_node(bblock),bb));
 		librdf_iterator_next(bblocks);
 	}
 	
 	librdf_free_node(entry);
 	librdf_free_node(name);
 	librdf_free_iterator(bblocks);
-	
+
+	// resolve po:precedes
+	bblocks = librdf_model_get_targets(model,proc,po_contains);
+
+	while(!librdf_iterator_end(bblocks))
+	{
+		librdf_node *bblock = (librdf_node *)librdf_iterator_get_object(bblocks);
+		librdf_iterator *predecessors = librdf_model_get_targets(model,bblock,po_precedes);
+		bblock_ptr bb;
+		auto i = find_if(bblock_list.begin(),bblock_list.end(),[&](const std::pair<librdf_node *,bblock_ptr> &p)
+			{ return librdf_node_equals(p.first,bblock); });
+		
+		assert(i != bblock_list.end());
+		bb = i->second;
+
+		while(!librdf_iterator_end(predecessors))
+		{
+			librdf_node *pred = (librdf_node *)librdf_iterator_get_object(predecessors);
+			bblock_ptr o;
+			auto j = find_if(bblock_list.begin(),bblock_list.end(),[&](const std::pair<librdf_node *,bblock_ptr> &p)
+				{ return librdf_node_equals(p.first,pred); });
+		
+			assert(j != bblock_list.end());
+			o = j->second;
+
+			unconditional_jump(bb,o);
+			librdf_iterator_next(predecessors);
+		}
+
+		librdf_free_iterator(predecessors);
+		librdf_iterator_next(bblocks);
+	}
+		
+	librdf_free_iterator(bblocks);
+	for_each(bblock_list.begin(),bblock_list.end(),[&](const std::pair<librdf_node *,bblock_ptr> &p)
+		{ librdf_free_node(p.first); });
+
 	return ret;
 }
 

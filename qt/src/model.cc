@@ -23,6 +23,7 @@ QModelIndex Model::index(int row, int column, const QModelIndex &parent) const
 {
 	flowgraph *flow;
 	procedure *proc;
+	basic_block *bblock;
 	Tag t;
 	void *ptr;
 
@@ -66,6 +67,29 @@ QModelIndex Model::index(int row, int column, const QModelIndex &parent) const
 		default:
 			assert(false);
 		}
+	
+	case BasicBlockTag:
+		bblock = (basic_block *)ptr;
+
+		switch(parent.column())
+		{
+		case SuccessorsColumn:
+		{
+			auto p = bblock->successors();
+			assert(row >= 0 && distance(p.first,p.second) > (unsigned int)row);
+			return createIndex(row,column,tag(next(p.first,row)->get(),BasicBlockTag));
+		}
+
+		case PredecessorsColumn:
+		{
+			auto p = bblock->predecessors();
+			assert(row >= 0 && distance(p.first,p.second) > (unsigned int)row);
+			return createIndex(row,column,tag(next(p.first,row)->get(),BasicBlockTag));
+		}
+
+		default:
+			assert(false);
+		}
 
 	default:
 		assert(false);
@@ -103,6 +127,7 @@ int Model::rowCount(const QModelIndex &parent) const
 {
 	flowgraph *flow;
 	procedure *proc;
+	basic_block *bblock;
 	ptrdiff_t t;
 	void *ptr;
 	
@@ -137,7 +162,23 @@ int Model::rowCount(const QModelIndex &parent) const
 		}
 	
 	case BasicBlockTag:
-		return 0;
+		bblock = (basic_block *)ptr;
+
+		switch(parent.column())
+		{		
+		case SuccessorsColumn:
+		{
+			auto p = bblock->successors();
+			return distance(p.first,p.second);
+		}
+		case PredecessorsColumn:
+		{
+			auto p = bblock->predecessors();
+			return distance(p.first,p.second);
+		}
+		default:
+			return 0;
+		}
 
 	default:
 		assert(false);
@@ -171,6 +212,9 @@ int Model::columnCount(const QModelIndex &parent) const
 			return 0;
 	
 	case BasicBlockTag:
+		if(parent.column() == PredecessorsColumn || parent.column() == SuccessorsColumn)
+			return LastBasicBlockColumn;
+		else
 			return 0;
 
 	default:
@@ -300,7 +344,9 @@ QString Model::displayData(const QModelIndex &index) const
 		{
 			auto p = bblock->successors();
 			return QString("%1 successors").arg(distance(p.first,p.second));
-		}
+		}	
+		case UniqueIdColumn:
+			return QString("%1").arg((ptrdiff_t)bblock);
 		default:
 			assert(false);
 		}

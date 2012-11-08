@@ -48,6 +48,8 @@ public:
 		MnemonicsColumn = 1,
 		PredecessorsColumn = 2,
 		SuccessorsColumn = 3,
+		//UniqueIdColumn = 4,
+		LastBasicBlockColumn = 5,
 
 		// MnemonicTag
 		//AreaColumn = 0,
