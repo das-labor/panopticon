@@ -8,8 +8,8 @@
 #include <QTabWidget>
 #include <QSortFilterProxyModel>
 
-#include <callgraph.hh>
-#include <cflowgraph.hh>
+#include <flowgraphwidget.hh>
+#include <procedurewidget.hh>
 #include <model.hh>
 
 class AddressSortProxy : public QSortFilterProxyModel
@@ -23,12 +23,12 @@ protected:
 	virtual bool lessThan(const QModelIndex &left, const QModelIndex &right) const;
 };
 
-class ProcedureView : public QDockWidget
+class ProcedureList : public QDockWidget
 {
 	Q_OBJECT
 
 public:
-	ProcedureView(Model *m, QWidget *parent = 0);
+	ProcedureList(Model *m, QWidget *parent = 0);
 	
 	QModelIndex currentFlowgraph(int column = 0) const;
 	QItemSelectionModel *selectionModel(void);
@@ -60,9 +60,9 @@ private slots:
 private:
 	Model *m_model;
 	QTabWidget *m_tabs;
-	Callgraph *m_callgraph;
-	CFlowgraph *m_cflowgraph;
-	ProcedureView *m_procView;
+	FlowgraphWidget *m_flowView;
+	ProcedureWidget *m_procView;
+	ProcedureList *m_procList;
 };
 
 #endif

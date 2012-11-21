@@ -1,15 +1,15 @@
-#ifndef CALLGRAPH_HH
-#define CALLGRAPH_HH
+#ifndef FLOWGRAPHWIDGET_HH
+#define FLOWGRAPHWIDGET_HH
 
-#include <graph.hh>
+#include <graphwidget.hh>
 
-class Callgraph : public Graph
+class FlowgraphWidget : public GraphWidget
 {
 	Q_OBJECT
 
 public:
-	Callgraph(QAbstractItemModel *m, QModelIndex i, QItemSelectionModel *s, QWidget *parent = 0);
-	virtual ~Callgraph(void);
+	FlowgraphWidget(QAbstractItemModel *m, QModelIndex i, QItemSelectionModel *s, QWidget *parent = 0);
+	virtual ~FlowgraphWidget(void);
 
 signals:
 	void activated(const QModelIndex &idx);

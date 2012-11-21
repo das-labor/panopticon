@@ -3,15 +3,14 @@
 #include <vector>
 #include <algorithm>
 
-#include "avr.hh"
-#include "flowgraph.hh"
+#include <avr/avr.hh>
+#include <flowgraph.hh>
 
-using namespace std;
-
+using namespace po;
 
 void decode(vector<uint16_t> &bytes)
 {
-	flow_ptr flow = avr_decode(bytes,0);
+	flow_ptr flow = avr::disassemble(bytes,0);
 	cout << graphviz(flow) << endl;
 }
 
@@ -26,13 +25,13 @@ int main(int argc, char *argv[])
 	int fn = 1;
 	while(fn < argc)
 	{
-		ifstream f(argv[fn]);
-		vector<uint16_t> bytes;
+		std::ifstream f(argv[fn]);
+		std::vector<uint16_t> bytes;
 
 		if (f.bad())
-        cout << "I/O error while reading" << endl;
+        std::cout << "I/O error while reading" << std::endl;
     else if (f.fail())
-        cout << "Non-integer data encountered" << endl;
+        std::cout << "Non-integer data encountered" << std::endl;
 		else 
 		{
 			while(f.good() && !f.eof())

@@ -6,6 +6,8 @@ COMPONENTS=lib qt
 
 all: $(COMPONENTS)
 
+qt: lib
+
 $(COMPONENTS):
 	$(MAKE) -C $@
 

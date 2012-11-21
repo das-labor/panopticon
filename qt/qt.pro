@@ -10,18 +10,8 @@ LIBS += -L../lib -lpanopticum
 PKGCONFIG += raptor2 redland libgvc
 
 # Input
-HEADERS += include/graph.hh \
-					 include/window.hh \
-					 include/bgl.hh \
-					 include/callgraph.hh \
-					 include/cflowgraph.hh \
-					 include/scene.hh \
-					 include/model.hh
-SOURCES += src/main.cc \
-					 src/graph.cc \
-					 src/bgl.cc \
-					 src/window.cc \
-					 src/callgraph.cc \
-					 src/cflowgraph.cc \
-					 src/scene.cc \
-					 src/model.cc
+HEADERS += $$files(include/*.hh) \
+					 $$files(../lib/include/*.hh) \
+					 $$files(../include/lib/avr/*.hh)
+SOURCES += $$files(src/*.cc)
+

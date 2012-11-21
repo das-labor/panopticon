@@ -4,11 +4,13 @@
 #include <map>
 #include <iostream>
 
-#include "dflow.hh"
+#include <dflow.hh>
+#include <value.hh>
 
-dom_ptr dominance_tree(proc_ptr proc)
+using namespace po;
+
+dom_ptr po::dominance_tree(proc_ptr proc)
 {
-	procedure::iterator i,iend;
 	dom_ptr ret(new dom);
 	
 	if(!proc || !proc->entry)
@@ -18,14 +20,23 @@ dom_ptr dominance_tree(proc_ptr proc)
 	ret->root = ret->tree[proc->entry] = dtree_ptr(new domtree(proc->entry));
 	ret->root->intermediate = ret->root;
 
+	std::list<bblock_ptr> rpo_lst;
+	proc->rev_postorder([&](bblock_ptr bb) { rpo_lst.push_back(bb); });
+
 	bool mod;
 	do
 	{	
+		bool skip = true;
 		mod = false;
-		tie(i,iend) = proc->rev_postorder();
-
-		for_each(next(i),iend,[&](bblock_ptr bb)
+		for(bblock_ptr bb: rpo_lst)
 		{
+			// skip the first
+			if(skip)
+			{
+				skip = false;
+				continue;
+			}
+
 			dtree_ptr newidom(0);
 			basic_block::pred_iterator j,jend;
 
@@ -44,10 +55,7 @@ dom_ptr dominance_tree(proc_ptr proc)
 						dtree_ptr f1 = ret->tree[p], f2 = newidom;
 						auto rpo = [&](dtree_ptr d) 
 						{ 
-							procedure::iterator k,kend;
-							tie(k,kend) = proc->rev_postorder();
-							
-							return distance(k,find(k,kend,d->basic_block)); 
+							return distance(rpo_lst.begin(),find(rpo_lst.begin(),rpo_lst.end(),d->basic_block));
 						};
 
 						while(f1 != f2)
@@ -77,14 +85,13 @@ dom_ptr dominance_tree(proc_ptr proc)
 				ret->tree[bb]->intermediate	= newidom;
 				mod = true;
 			}
-		});
+		}
 	} while(mod);
 
 	ret->root->intermediate = dtree_ptr();
 
 	// dominance frontiers
-	tie(i,iend) = proc->rev_postorder();
-	for_each(i,iend,[&](bblock_ptr bb)
+	proc->rev_postorder([&](bblock_ptr bb)
 	{
 		basic_block::pred_iterator j,jend;
 		tie(j,jend) = bb->predecessors();
@@ -107,38 +114,47 @@ dom_ptr dominance_tree(proc_ptr proc)
 	return ret;
 }
 
-live_ptr liveness(proc_ptr proc)
+live_ptr po::liveness(proc_cptr proc)
 {	
-	procedure::iterator i,iend;
 	live_ptr ret(new live());
 
-	// build global names and blocks that use them
-	tie(i,iend) = proc->rev_postorder();
-	for_each(i,iend,[&](bblock_ptr bb)
+	auto collect = [&](const rvalue &v, bblock_ptr bb)
 	{
-		for_each(bb->instructions().begin(),bb->instructions().end(),[&](instr_cptr i)
+		if(v.is_variable())
 		{
-			var_ptr v;
-			if(i->function != instr::Phi && (v = dynamic_pointer_cast<variable>(i->assigns)))
-			{
-				for_each(i->arguments.begin(),i->arguments.end(),[&](value_ptr v)
-				{
-					shared_ptr<variable> w;
+			ret->names.insert(v.variable().name());
+			if(!ret->varkill[bb].count(v.variable().name()))
+				ret->uevar[bb].insert(v.variable().name());
+		}
+	};
 
-					if((w = dynamic_pointer_cast<variable>(v)))
-					{
-						ret->names.insert(w->nam);
-						if(!ret->varkill[bb].count(w->nam))
-							ret->uevar[bb].insert(w->nam);
-					}
-				});
+	// build global names and blocks that use them
+	for(bblock_ptr bb: proc->basic_blocks)
+	{
+		execute(bb,[&](const lvalue &left, instr::Function fn, const std::vector<rvalue> &right)
+		{
+			for(const rvalue &v: right)
+				collect(v,bb);
 	
-				ret->varkill[bb].insert(v->nam);
-				ret->names.insert(v->nam);
-				ret->usage[v->nam].insert(bb);
+			if(left.is_variable())
+			{
+				ret->varkill[bb].insert(left.variable().name());
+				ret->names.insert(left.variable().name());
+				ret->usage[left.variable().name()].insert(bb);
 			}
 		});
-	});
+
+		for(const ctrans &ct: bb->outgoing())
+		{
+			collect(ct.value,bb);
+
+			for(const relation &rel: ct.guard->relations)
+			{
+				collect(rel.operand1,bb);
+				collect(rel.operand2,bb);
+			}
+		}
+	}
 
 	bool mod;
 
@@ -146,10 +162,9 @@ live_ptr liveness(proc_ptr proc)
 	{
 		mod = false;
 
-		tie(i,iend) = proc->rev_postorder();
-		for_each(i,iend,[&](bblock_ptr bb)
+		for(bblock_ptr bb: proc->basic_blocks)
 		{
-			set<name> old_liveout = ret->liveout[bb];
+			std::set<std::string> old_liveout = ret->liveout[bb];
 			basic_block::succ_iterator j,jend;
 			
 			ret->liveout[bb].clear();
@@ -161,131 +176,205 @@ live_ptr liveness(proc_ptr proc)
 				{	ret->liveout[bb] = set_union(ret->liveout[bb],set_union(ret->uevar[s],set_intersection(ret->liveout[s],set_difference(ret->names,ret->varkill[s])))); });
 
 			mod |= old_liveout != ret->liveout[bb];
-		});
+		}
 	} 
 	while(mod);
 
 	return ret;
 }
 
-void ssa(proc_ptr proc, dom_ptr dominance, live_ptr live)
+void po::ssa(proc_ptr proc, dom_ptr dominance, live_ptr live)
 {
-	// insert phi
-	for_each(live->names.begin(),live->names.end(),[&](const name &name)
+	std::set<std::string> globals;
+
+	for(const std::pair<bblock_cptr,std::set<std::string>> &s: live->uevar)
+		globals = set_union(globals,s.second);
+
+	if(live->liveout[proc->entry].size())
 	{
-		set<bblock_ptr> &worklist(live->usage[name]);
+		std::cout << "uninitialized vars: ";
+		for(const std::string &n: live->liveout[proc->entry])
+			std::cout << n << " ";
+		std::cout << std::endl;
+	}
+
+	// insert phi
+	for(const std::string &name: globals)
+	{
+		std::set<bblock_cptr> &worklist(live->usage[name]);
 
 		while(!worklist.empty())
 		{
-			bblock_ptr bb = *worklist.begin();
+			bblock_cptr bb = *worklist.begin();
 
 			worklist.erase(worklist.begin());
-			for_each(dominance->tree[bb]->frontiers.begin(),dominance->tree[bb]->frontiers.end(),[&](dtree_ptr df)
+			for(dtree_ptr df: dominance->tree[bb]->frontiers)
 			{
-				if(none_of(df->basic_block->instructions().begin(),df->basic_block->instructions().end(),[&](instr_cptr i)
-					{	var_ptr w; return i->function == instr::Phi && (w = dynamic_pointer_cast<variable>(i->assigns)) && w->nam.base == name.base; }))
+				bool has_phi = false;
+				execute(df->basic_block,[&](lvalue left, instr::Function fn, const std::vector<rvalue> &right)
+				{	
+					has_phi = has_phi || (fn == instr::Phi && left.is_variable() && left.variable().name() == name); 
+				});
+
+				if(!has_phi)
 				{
-					df->basic_block->prepend_instr(instr_ptr(new instr(instr::Phi,"ϕ",var_ptr(new variable(name,0)),{})));
+					df->basic_block->mutate_mnemonics([&](std::vector<mnemonic> &ms)
+					{
+						assert(ms.size());
+
+						if(ms[0].opcode == "internal-phis")
+							ms[0].instructions.emplace_back(instr(instr::Phi,variable(name)));
+						else
+							ms.emplace(ms.begin(),mnemonic(range<addr_t>(ms.front().area.begin,ms.front().area.begin),"internal-phis",{},{instr(instr::Phi,variable(name))}));
+					});
 					worklist.insert(df->basic_block);
 				}
-			});
+			}
 		}
-	});
+	}
 
 	// rename variables
-	map<string,int> counter;
-	map<string,list<int>> stack;
+	std::map<std::string,int> counter;
+	std::map<std::string,std::list<int>> stack;
 
-	for_each(live->names.begin(),live->names.end(),[&](name n) 
+	for(const std::string &n: live->names) 
 	{ 
-		counter.insert(make_pair(n.base,1));
-		stack.insert(make_pair(n.base,list<int>({0})));
-	});
+		counter.insert(std::make_pair(n,0));
+		stack.insert(std::make_pair(n,std::list<int>({})));
+	}
 	
-	auto new_name = [&](name n) -> int
+	auto new_name = [&](const std::string &n) -> int
 	{
-		int i = counter[n.base]++;
-		
-		stack[n.base].push_back(i);
+		assert(stack.count(n));
+		int i = counter[n]++;
+
+		stack[n].push_back(i);
 		return i;
 	};
 
-	function<void(bblock_ptr bb)> rename = [&](bblock_ptr bb)
+	// rename ssa vars in a bblock
+	std::function<void(bblock_ptr bb)> rename = [&](bblock_ptr bb)
 	{
-		size_t sz = bb->instructions().size(), pos = 0;
-		const instr_ptr *i = bb->instructions().data();
-		basic_block::out_iterator j,jend;
-		function<void(relation &)> rename_guard = [&](relation &rel)
+		// for each φ-function in b, ‘‘x ← φ(· · · )’‘
+		//     rewrite x as new_name(x)
+		rewrite(bb,[&](lvalue &left, instr::Function fn, std::vector<rvalue> &right)
 		{
-			shared_ptr<variable> w;
-			
-			if((w = dynamic_pointer_cast<variable>(rel.operand1)))
-				w->nam.subscript = stack[w->nam.base].back();
-					
-			if((w = dynamic_pointer_cast<variable>(rel.operand2)))
-				w->nam.subscript = stack[w->nam.base].back();
-		};
-		
-		// rename arguments
-		while(pos < sz)
-		{
-			if(i[pos]->function != instr::Phi)
+			if(fn == instr::Phi)
 			{
-				for_each(i[pos]->arguments.begin(),i[pos]->arguments.end(),[&](value_ptr v)
-				{
-					shared_ptr<variable> w;
+				assert(left.is_variable());
+				left = variable(left.variable().name(),new_name(left.variable().name()));
+			}
+		});
 
-					if((w = dynamic_pointer_cast<variable>(v)))
-						w->nam.subscript = stack[w->nam.base].back();
-				});
-			}	
-
-			var_ptr w = dynamic_pointer_cast<variable>(i[pos]->assigns);
-			if(w)
-				w->nam.subscript = new_name(w->nam);
-			++pos;
-		}
-
-		tie(j,jend) = bb->outgoing();
-		for_each(j,jend,[&](ctrans s)
-		{
-			// rename incoming guards
-			for_each(s.guard->relations.begin(),s.guard->relations.end(),rename_guard);
-		
-			if(s.variable() && s.variable()->nam.subscript == -1)
-				s.variable()->nam.subscript = stack[s.variable()->nam.base].back();
-
-			if(s.bblock)
+		// for each operation ‘‘x ← y op z’’ in bb
+		//     rewrite y with subscript top(stack[y])
+		//     rewrite z with subscript top(stack[z])
+		//     rewrite x as new_name(x)
+		rewrite(bb,[&](lvalue &left, instr::Function fn, std::vector<rvalue> &right)
+		{	
+			if(fn != instr::Phi)
 			{
-				size_t sz = s.bblock->instructions().size(), pos = 0;
-				const instr_ptr *i = s.bblock->instructions().data();
+				unsigned int ri = 0;
 
-				while(pos < sz)
+				while(ri < right.size())
 				{
-					if(i[pos]->function == instr::Phi)
+					const rvalue &v = right[ri];
+
+					if(v.is_variable())
 					{
-						bool add = none_of(i[pos]->arguments.begin(),i[pos]->arguments.end(),[&](value_ptr v)
-							{ var_ptr w; return (w = dynamic_pointer_cast<variable>(v)) && w->nam.subscript == stack[w->nam.base].back(); });
-
-						var_ptr w;
-						if(add && (w = dynamic_pointer_cast<variable>(i[pos]->assigns)))
-							i[pos]->arguments.push_back(value_ptr(new variable(name(w->nam.base,stack[w->nam.base].back()),0)));
+						assert(stack.count(v.variable().name()));
+						right[ri] = variable(v.variable().name(),stack[v.variable().name()].back());
 					}
-					++pos;
+					++ri;
+				}
+			
+				if(left.is_variable())
+					left = variable(left.variable().name(),new_name(left.variable().name()));
+			}
+		});
+
+		// for each successor of b in the cfg
+		// 		 rewrite variables in ctrans
+		//     fill in φ-function parameters
+		bb->mutate_outgoing([&](std::list<ctrans> &out)
+		{
+				std::list<ctrans> new_out;
+
+				for(ctrans &s: out)
+				{
+					// rewrite vars in relations
+					for(relation &rel: s.guard->relations)
+					{
+						if(rel.operand1.is_variable())
+						{
+							std::cout << rel.operand1.variable() << std::endl;
+							assert(stack.count(rel.operand1.variable().name()));
+							rel.operand1 = variable(rel.operand1.variable().name(),stack[rel.operand1.variable().name()].back());
+						}
+						if(rel.operand2.is_variable())
+						{
+							assert(stack.count(rel.operand2.variable().name()));
+							rel.operand2 = variable(rel.operand2.variable().name(),stack[rel.operand2.variable().name()].back());
+						}
+					}
+
+					// rewrite symbolic target in ctrans
+					if(s.value.is_variable())
+					{
+						assert(stack.count(s.value.variable().name()));
+						s.value = variable(s.value.variable().name(),stack[s.value.variable().name()].back());
+					}
+
+					// fill in φ-function parameters in successor
+					if(s.bblock)
+					{
+						bblock_ptr succ = s.bblock;
+
+						succ->mutate_mnemonics([&](std::vector<mnemonic> &ms)
+					{
+						auto iord = std::find_if(succ->incoming().begin(),succ->incoming().end(),[&](const ctrans &ct) { return ct.bblock == bb; });
+						assert(iord != succ->incoming().end());
+						unsigned int ord = distance(succ->incoming().begin(),iord);
+						
+						if(ms.size() && ms.front().opcode == "internal-phis")
+						{
+							mnemonic &mne = ms.front();
+
+							for(instr &i: mne.instructions)
+							{
+								assert(i.function == instr::Phi && i.left.is_variable());
+								int missing = ord - i.right.size() + 1;
+
+								while(missing > 0)
+								{
+									i.right.emplace_back(undefined());
+									--missing;
+								}
+								assert(stack.count(i.left.variable().name()));
+								i.right[ord] = variable(i.left.variable().name(),stack[i.left.variable().name()].back());
+							}
+						}
+					});
 				}
 			}
 		});
 
-		for_each(dominance->tree[bb]->successors.begin(),dominance->tree[bb]->successors.end(),[&](dtree_ptr dom)
-			{ rename(dom->basic_block); });
+		// for each successor s of b in the dominator tree
+		//     rename(s)
+		for(dtree_ptr dom: dominance->tree[bb]->successors)
+			rename(dom->basic_block);
 		
-		sz = bb->instructions().size(); pos = 0;
-		i = bb->instructions().data();
-		
-		var_ptr w;
-		while(pos < sz)
-			if((w = dynamic_pointer_cast<variable>(i[pos++]->assigns))) 
-				stack[w->nam.base].pop_back();
+		// for each operation ‘‘x ← y op z’’ in bb
+		//     and each φ-function ‘‘x ← φ(· · · )’’
+		//     pop(stack[x])
+		execute(bb,[&](const lvalue &left, instr::Function fn, const std::vector<rvalue> &right)
+		{
+			if(left.is_variable()) 
+			{
+				assert(stack.count(left.variable().name()));
+				stack[left.variable().name()].pop_back();
+			}
+		});
 	};
 
 	rename(proc->entry);

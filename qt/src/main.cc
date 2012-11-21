@@ -4,16 +4,17 @@
 #include <vector>
 #include <algorithm>
 
-#include <database.hh>
-#include <avr.hh>
+#include <deflate.hh>
+#include <avr/avr.hh>
 #include <flowgraph.hh>
 
 #include <window.hh>
 
-void decode(vector<uint16_t> &bytes)
+void decode(std::vector<uint16_t> &bytes)
 {
-	flow_ptr flow = avr_decode(bytes,0);
-	cout << turtle(flow) << endl;
+	po::flow_ptr flow = po::avr::disassemble(bytes,0);
+	//cout << graphviz(flow) << endl;
+	std::cout << po::turtle(flow) << std::endl;
 }
 
 int main(int argc, char *argv[])
@@ -31,13 +32,13 @@ int main(int argc, char *argv[])
 	int fn = 1;
 	while(fn < argc)
 	{
-		ifstream f(argv[fn]);
-		vector<uint16_t> bytes;
+		std::ifstream f(argv[fn]);
+		std::vector<uint16_t> bytes;
 
 		if (f.bad())
-        cout << "I/O error while reading" << endl;
+        std::cout << "I/O error while reading" << std::endl;
     else if (f.fail())
-        cout << "Non-integer data encountered" << endl;
+        std::cout << "Non-integer data encountered" << std::endl;
 		else 
 		{
 			while(f.good() && !f.eof())

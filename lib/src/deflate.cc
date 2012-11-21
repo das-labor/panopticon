@@ -1,25 +1,29 @@
 #include <functional>
 #include <map>
 
-#include <database.hh>
+#include <deflate.hh>
+
+using namespace po;
 
 #define RDF_NS(x) (const unsigned char *)"http://www.w3.org/1999/02/22-rdf-syntax-ns#" x
 #define PANOPTICUM_NS(x) (const unsigned char *)"http://panopticum.io/rdf/v1/rdf#" x
 
-librdf_world *database::rdf_world = 0;
-raptor_world *database::rap_world = 0;
-librdf_node *database::rdf_type = 0;
-librdf_node *database::po_Procedure = 0;
-librdf_node *database::po_BasicBlock = 0;
-librdf_node *database::po_name = 0;
-librdf_node *database::po_calls = 0;
-librdf_node *database::po_contains = 0;
-librdf_node *database::po_entry_point = 0;
-librdf_node *database::po_begin = 0;
-librdf_node *database::po_end = 0;
-librdf_node *database::po_precedes = 0;
+librdf_world *deflate::rdf_world = 0;
+raptor_world *deflate::rap_world = 0;
+librdf_node *deflate::rdf_type = 0;
+librdf_node *deflate::po_Procedure = 0;
+librdf_node *deflate::po_BasicBlock = 0;
+librdf_node *deflate::po_name = 0;
+librdf_node *deflate::po_calls = 0;
+librdf_node *deflate::po_contains = 0;
+librdf_node *deflate::po_entry_point = 0;
+librdf_node *deflate::po_begin = 0;
+librdf_node *deflate::po_end = 0;
+librdf_node *deflate::po_precedes = 0;
+librdf_node *deflate::po_executes = 0;
+librdf_node *deflate::po_opcode = 0;
 
-database::database(std::string &path)
+deflate::deflate(std::string &path)
 {
 	if(!rdf_world || !rap_world)
 	{
@@ -37,6 +41,8 @@ database::database(std::string &path)
 		po_begin = librdf_new_node_from_uri_string(rdf_world,PANOPTICUM_NS("begin"));
 		po_end = librdf_new_node_from_uri_string(rdf_world,PANOPTICUM_NS("end"));
 		po_precedes = librdf_new_node_from_uri_string(rdf_world,PANOPTICUM_NS("precedes"));
+		po_executes = librdf_new_node_from_uri_string(rdf_world,PANOPTICUM_NS("executes"));
+		po_opcode = librdf_new_node_from_uri_string(rdf_world,PANOPTICUM_NS("opcode"));
 	}
 
 	assert(storage = librdf_new_storage(rdf_world,"memory",NULL,NULL));
@@ -55,7 +61,7 @@ database::database(std::string &path)
 	librdf_free_parser(parser);
 }
 
-flow_ptr database::flowgraph(void)
+flow_ptr deflate::flowgraph(void)
 {
 	librdf_iterator *i;
 	std::map<librdf_node *,proc_ptr> procedures;
@@ -88,7 +94,7 @@ flow_ptr database::flowgraph(void)
 
 				assert(j != procedures.end());
 				proc_ptr other = j->second;
-				p.second->callees.push_back(other);
+				call(p.second,other);
 			}
 			
 			librdf_iterator_next(i);
@@ -107,7 +113,7 @@ flow_ptr database::flowgraph(void)
 	return flow;
 }
 
-proc_ptr database::procedure(librdf_node *proc)
+proc_ptr deflate::procedure(librdf_node *proc)
 {
 	librdf_node *entry = librdf_model_get_target(model,proc,po_entry_point);
 	librdf_node *name = librdf_model_get_target(model,proc,po_name);
@@ -123,23 +129,37 @@ proc_ptr database::procedure(librdf_node *proc)
 	while(!librdf_iterator_end(bblocks))
 	{
 		librdf_node *bblock = (librdf_node *)librdf_iterator_get_object(bblocks);
-		librdf_node *begin = librdf_model_get_target(model,bblock,po_begin);
-		librdf_node *end = librdf_model_get_target(model,bblock,po_end);
+		librdf_iterator *mnemonics = librdf_model_get_targets(model,bblock,po_executes);
+		std::list< ::mnemonic> ms;
+		bblock_ptr bb(new ::basic_block());
 
-		assert(begin && end && librdf_node_is_literal(begin) && librdf_node_is_literal(end));
-		addr_t b = strtoull((const char *)librdf_node_get_literal_value(begin),NULL,10);
-		addr_t e = strtoull((const char *)librdf_node_get_literal_value(end),NULL,10);
+		assert(mnemonics);
 		
-		librdf_free_node(begin);
-		librdf_free_node(end);
-
-		bblock_ptr bb(new ::basic_block(range<addr_t>(b,e)));
-		ret->insert_bblock(bb);
+		ret->basic_blocks.insert(bb);
 		if(librdf_node_equals(bblock,entry))
 			ret->entry = bb;
 
+		while(!librdf_iterator_end(mnemonics))
+		{
+			librdf_node *mne = (librdf_node *)librdf_iterator_get_object(mnemonics);
+
+			mnemonic(mne,ms);
+			librdf_iterator_next(mnemonics);
+		}
+
+		ms.sort([](const ::mnemonic &a, const ::mnemonic &b)
+			{ return a.area < b.area; });
+
+		for(const ::mnemonic &n: ms)
+			std::cout << n.area << " ";
+		std::cout << std::endl;
+
+		bb->mutate_mnemonics([&](std::vector< ::mnemonic> &m)
+			{ move(ms.begin(),ms.end(),std::inserter(m,m.end())); });
+
 		bblock_list.push_back(std::make_pair(librdf_new_node_from_node(bblock),bb));
 		librdf_iterator_next(bblocks);
+		librdf_free_iterator(mnemonics);
 	}
 	
 	librdf_free_node(entry);
@@ -179,13 +199,31 @@ proc_ptr database::procedure(librdf_node *proc)
 	}
 		
 	librdf_free_iterator(bblocks);
-	for_each(bblock_list.begin(),bblock_list.end(),[&](const std::pair<librdf_node *,bblock_ptr> &p)
-		{ librdf_free_node(p.first); });
+	for(const std::pair<librdf_node *,bblock_ptr> &p: bblock_list)
+		librdf_free_node(p.first);
 
 	return ret;
 }
 
-database::~database(void)
+void deflate::mnemonic(librdf_node *mne, std::list< ::mnemonic> &ms)
+{
+	librdf_node *begin = librdf_model_get_target(model,mne,po_begin);
+	librdf_node *end = librdf_model_get_target(model,mne,po_end);
+	librdf_node *opcode = librdf_model_get_target(model,mne,po_opcode);
+
+	assert(begin && end && opcode && librdf_node_is_literal(begin) && librdf_node_is_literal(end) && librdf_node_is_literal(opcode));
+	addr_t b = strtoull((const char *)librdf_node_get_literal_value(begin),NULL,10);
+	addr_t e = strtoull((const char *)librdf_node_get_literal_value(end),NULL,10);
+	std::string oc((const char *)librdf_node_get_literal_value(opcode));
+
+	ms.emplace_back(::mnemonic(range<addr_t>(b,e),oc,{},{}));
+	
+	librdf_free_node(begin);
+	librdf_free_node(end);
+	librdf_free_node(opcode);
+}
+
+deflate::~deflate(void)
 {
 	librdf_free_model(model);
 	librdf_free_storage(storage);

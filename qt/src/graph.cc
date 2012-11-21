@@ -1,71 +1,272 @@
 #include <QDebug>
-#include <QCoreApplication>
-#include <QScrollBar>
+#include <QApplication>
+#include <QDesktopWidget>
+
+#include <string>
+#include <cassert>
 
 #include <graph.hh>
 
-Graph::Graph(QAbstractItemModel *m, QModelIndex i, QWidget *parent)
-: QGraphicsView(parent), m_model(m), m_root(i)
-{
-	setScene(&m_scene);
-	setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform | QPainter::TextAntialiasing | QPainter::HighQualityAntialiasing);
-	setDragMode(QGraphicsView::RubberBandDrag);//QGraphicsView::ScrollHandDrag);
-
-	connect(&m_scene,SIGNAL(sceneRectChanged(const QRectF&)),this,SLOT(sceneRectChanged(const QRectF&)));
+extern "C" {
+#include <gvc.h>
 }
 
-Graph::~Graph(void)
+Node::Node(QString name, QPoint ptn)
+: m_text(name,this), m_rect(m_text.boundingRect().adjusted(-5,-5,5,5),this), m_animation(0)
+{
+	m_rect.setPen(QPen(QBrush(Qt::black),2,Qt::SolidLine,Qt::RoundCap,Qt::RoundJoin));
+	m_text.setZValue(1);
+
+	setPos(ptn);
+	setFlag(QGraphicsItem::ItemIsSelectable);
+
+	itemChange(QGraphicsItem::ItemSelectedHasChanged,QVariant(false));
+}
+
+QRectF Node::boundingRect(void) const
+{
+	QListIterator<QGraphicsItem *> i(childItems());
+	QRectF ret;
+
+	while(i.hasNext())
+	{
+		QGraphicsItem *itm = i.next();
+		ret = ret.united(itm->boundingRect());
+	}
+	
+	return ret;
+}
+
+void Node::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget)
 {
 	return;
 }
 
-void Graph::setRootIndex(const QModelIndex &i)
+QVariant Node::itemChange(GraphicsItemChange change, const QVariant &value)
 {
-	m_root = i;
-	populate();
-}
-
-void Graph::sceneRectChanged(const QRectF &r)
-{
-	fitInView(r,Qt::KeepAspectRatio);
-}
-
-void Graph::wheelEvent(QWheelEvent *event)
-{
-	double fac = (double)(event->delta()) / 150.f;
-	fac = fac > 0.0f ? 1 / fac : -fac;
-	scale(fac,fac);
-}
-
-void Graph::mouseMoveEvent(QMouseEvent *event)
-{
-	if(event->buttons() & Qt::MiddleButton)
+	switch(change)
 	{
-		QPointF p = m_lastDragPos - event->pos();
-
-		horizontalScrollBar()->setValue(horizontalScrollBar()->value() + p.x());
-		verticalScrollBar()->setValue(verticalScrollBar()->value() + p.y());
-		m_lastDragPos = event->pos();
+	case QGraphicsItem::ItemSelectedHasChanged:
+		m_rect.setBrush(QBrush(value.toBool() ? QColor(200,11,11) : QColor(11,200,11)));
+	default:
+		return value;
 	}
-	else
-		QGraphicsView::mouseMoveEvent(event);
 }
 
-void Graph::mousePressEvent(QMouseEvent *event)
+void Node::smoothSetPos(QPointF ptn)
 {
-	if(event->button() == Qt::MiddleButton)
+	if(!m_animation)
 	{
-		m_lastDragPos = event->pos();
-		viewport()->setCursor(Qt::ClosedHandCursor);
+		m_animation = new Animation([this](const QVariant &v) { setPos(v.toPointF()); },this);
+		m_animation->setStartValue(pos());
+		m_animation->setDuration(3000);
+		m_animation->setEasingCurve(QEasingCurve::OutCubic);
 	}
-	else
-		QGraphicsView::mousePressEvent(event);
+	else if(m_animation->state() == QAbstractAnimation::Stopped)
+		m_animation->setStartValue(pos());
+	m_animation->setEndValue(ptn);
+
+	if(m_animation->state() == QAbstractAnimation::Stopped)
+		m_animation->start();
 }
 
-void Graph::mouseReleaseEvent(QMouseEvent *event)
+void Node::setTitle(QString s)
+{
+	m_text.setPlainText(s);
+	m_rect.setRect(m_text.boundingRect().adjusted(-5,-5,5,5));
+}
+
+Arrow::Arrow(Node *f, Node *t)
+: m_from(f), m_to(t), m_highlighted(false)
+{
+	connect(m_from,SIGNAL(xChanged()),this,SLOT(updated()));
+	connect(m_from,SIGNAL(yChanged()),this,SLOT(updated()));
+	connect(m_to,SIGNAL(xChanged()),this,SLOT(updated()));
+	connect(m_to,SIGNAL(yChanged()),this,SLOT(updated()));
+
+	setZValue(-1);
+	m_head << QPointF(0,0) << QPointF(3*-1.3,3*3) << QPointF(0,3*2.5) << QPointF(3*1.3,3*3) << QPointF(0,0);
+}
+
+QRectF Arrow::boundingRect(void) const
+{
+	QRectF a = mapFromItem(m_from,m_from->boundingRect().adjusted(-2,-2,2,2)).boundingRect();
+	QRectF b = mapFromItem(m_to,m_to->boundingRect().adjusted(-2,-2,2,2)).boundingRect();
+
+	return a | b;
+}
+
+void Arrow::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget)
 {	
-	if(event->button() == Qt::MiddleButton)
-		viewport()->setCursor(Qt::ArrowCursor);
-	else
-		QGraphicsView::mouseReleaseEvent(event);
+	QPolygonF con_a = mapFromItem(m_from,m_from->boundingRect().adjusted(-2,-2,2,2));
+	QPolygonF con_b = mapFromItem(m_to,m_to->boundingRect().adjusted(-2,-2,2,2));
+	QPointF cent_a = con_a.boundingRect().center();
+	QPointF cent_b = con_b.boundingRect().center();
+	QLineF los(cent_a,cent_b);
+	std::function<QPointF(QPolygonF &, QPointF &)> collide = [&los](QPolygonF &contour, QPointF &backup) -> QPointF
+	{
+		if(contour.size() < 2) return backup;
+		int idx = 1;
+		QPointF prev = contour[0];
+
+		while(idx < contour.size())
+		{
+			QLineF cand(prev,contour[idx]);
+			QPointF inters;
+
+			if(los.intersect(cand,&inters) == QLineF::BoundedIntersection)
+				return inters;
+			prev = contour[idx++];
+		}
+
+		return backup;
+	};
+	
+	QLineF body(collide(con_a,cent_a),collide(con_b,cent_b));
+	
+	painter->save();
+	painter->setPen(QPen(m_highlighted ? Qt::blue : Qt::red,2));
+	painter->setRenderHint(QPainter::Antialiasing);
+	painter->setBrush(QBrush(m_highlighted ? Qt::blue : Qt::red));
+	painter->drawLine(body);
+	painter->translate(body.p1());
+	painter->rotate(270 - body.angle());
+	painter->drawConvexPolygon(m_head);
+	painter->restore();
 }
+
+Node *Arrow::from(void)
+{
+	return m_from;
+}
+
+Node *Arrow::to(void)
+{
+	return m_to;
+}
+
+void Arrow::setHighlighted(bool t)
+{
+	m_highlighted = t;
+	updated();
+}
+
+void Arrow::updated(void)
+{
+	prepareGeometryChange();
+}
+
+Animation::Animation(std::function<void(const QVariant &)> func, QObject *parent)
+: QVariantAnimation(parent), m_function(func)
+{
+	return;
+}
+
+void Animation::updateCurrentValue(const QVariant &value)
+{
+	m_function(value);
+}
+
+Graph::Graph(void)
+{
+	return;
+}
+
+QList<QGraphicsObject *> &Graph::nodes(void)
+{
+	return m_nodes;
+}
+
+QList<Arrow *> &Graph::edges(void)
+{
+	return m_edges;
+}
+
+std::pair<QMultiMap<QGraphicsObject *,Arrow *>::iterator,QMultiMap<QGraphicsObject *,Arrow *>::iterator> Graph::out_edges(QGraphicsObject *n) 
+{
+	return std::make_pair(m_incidence.lowerBound(n),m_incidence.upperBound(n));
+}
+
+QRectF Graph::graphLayout(QString algorithm)
+{
+	if(nodes().empty())
+		return QRectF();
+
+	GVC_t *gvc = gvContext();
+	Agraph_t *graph = agopen((char *)std::string("g").c_str(),AGDIGRAPH);
+	QMap<QGraphicsObject *,Agnode_t *> proxies;
+
+	// allocate Graphviz nodes shadowing the Nodes in the scene
+	QListIterator<QGraphicsObject *> i(nodes());
+	while(i.hasNext())
+	{
+		QGraphicsObject *n = i.next();
+		std::string name = std::to_string((ptrdiff_t)n);
+		QRectF bb = n->boundingRect();
+		Agnode_t *p = agnode(graph,(char *)name.c_str());
+		QDesktopWidget *desk = QApplication::desktop();
+	
+		agsafeset(p,(char *)std::string("width").c_str(),(char *)std::to_string(bb.width()/desk->logicalDpiX()).c_str(),(char *)std::string("0").c_str());
+		agsafeset(p,(char *)std::string("height").c_str(),(char *)std::to_string(bb.height()/desk->logicalDpiY()).c_str(),(char *)std::string("0").c_str());
+		proxies.insert(n,p);
+	}
+
+	// add Graphviz edges 
+	QMapIterator<QGraphicsObject *, Arrow *> j(m_incidence);
+	while(j.hasNext())
+	{
+		j.next();
+		Arrow *a = j.value();
+		Agnode_t *from = proxies[a->from()], *to = proxies[a->to()];
+
+		agedge(graph,from,to);
+	}
+
+	gvLayout(gvc,graph,(char *)algorithm.toStdString().c_str());
+
+	// move Nodes accoring to Graphviz proxies
+	QMapIterator<QGraphicsObject *,Agnode_t *> k(proxies);
+	while(k.hasNext())
+	{
+		k.next();
+		QGraphicsObject *n = k.key();
+		Agnode_t *p = k.value();
+		unsigned long x = p->u.coord.x, y = p->u.coord.y;
+
+		//n->smoothSetPos(QPoint(x,y));
+		n->setPos(QPoint(x,y));
+	}
+
+	agclose(graph);
+	gvFreeContext(gvc);
+	
+	return QRectF();
+}
+
+void Graph::insert(QGraphicsObject *n)
+{
+	assert(!m_nodes.contains(n));
+	
+	addItem(n);
+	m_nodes.append(n);
+}
+
+void Graph::connect(QGraphicsObject *a, QGraphicsObject *b)
+{
+	assert(m_nodes.contains(a) && m_nodes.contains(b));
+	
+	/*Arrow *e = new Arrow(a,b);
+
+	addItem(e);
+	m_edges.append(e);
+	m_incidence.insert(a,e);*/
+}
+
+void Graph::clear(void)
+{
+	QGraphicsScene::clear();
+	m_incidence.clear();
+	m_edges.clear();
+	m_nodes.clear();
+}
+

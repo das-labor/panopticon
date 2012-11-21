@@ -1,7 +1,7 @@
 #ifndef MODEL_HH
 #define MODEL_HH
 
-#include <database.hh>
+#include <deflate.hh>
 #include <QAbstractItemModel>
 #include <QFont>
 
@@ -14,7 +14,7 @@ class Model : public QAbstractItemModel
 	Q_OBJECT
 
 public:
-	Model(database *db, QObject *parent = 0);
+	Model(po::deflate *d, QObject *parent = 0);
 	~Model(void);
 
 	// reading
@@ -56,6 +56,7 @@ public:
 		OpcodeColumn = 1,
 		OperandsColumn = 2,
 		InstructionsColumn = 3,
+		LastMnemonicColumn = 4,
 	};
 
 private:	
@@ -64,34 +65,21 @@ private:
 		FlowgraphTag = 0,
 		ProcedureTag = 1,
 		BasicBlockTag = 2,
+		MnemonicTag = 3,
 		
-		LastTag = 3,
-		MaskTag = 3,
+		LastTag = 4,
+		MaskTag = 7,
 	};
-
-/*	enum Role
-	{
-		SelectionRole = Qt::UserRole + 1,
-	};
-
-	enum Selection
-	{
-		NoSelection = 0,
-		WeakSelection = 1,
-		StringSelection = 2,
-	};*/
 
 	QString displayData(const QModelIndex &index) const;
-//	QFont fontData(const QModelIndex &index) const;
-
 	bool setDisplayData(const QModelIndex &index, const std::string &value);
 	
 	// pointer tagging
 	ptrdiff_t tag(void *ptr, Tag t) const;
 	std::pair<void*,Tag> extract(ptrdiff_t p) const;
 
-	database *m_database;
-	std::vector<flow_ptr> m_flowgraphs;
+	po::deflate *m_deflate;
+	std::vector<po::flow_ptr> m_flowgraphs;
 	std::set<void *> m_selected;
 };
 

@@ -4,67 +4,71 @@
 #include <memory>
 #include <set>
 #include <map>
+#include <algorithm>
 
-using namespace std;
-
-typedef shared_ptr<struct dom> dom_ptr;
-typedef shared_ptr<struct live> live_ptr;
-
-#include "procedure.hh"
-#include "basic_block.hh"
-
-struct dom
+namespace po
 {
-	dtree_ptr root;
-	map<bblock_ptr,dtree_ptr> tree;
-};
-
-struct live
-{
-	set<name> names;									// global (procedure-wide) names
-	map<name,set<bblock_ptr>> usage;	// maps names to blocks that use them
-
-	map<bblock_ptr,set<name>> uevar;		// up exposed variables
-	map<bblock_ptr,set<name>> varkill;	// overwritten vars
-	map<bblock_ptr,set<name>> liveout;
-};
-
-template<typename T>
-set<T> set_difference(const set<T> &a, const set<T> &b)
-{
-	set<T> ret;
-	set_difference(a.begin(),a.end(),b.begin(),b.end(),inserter(ret,ret.begin()));
-	return ret;
+	typedef ::std::shared_ptr<struct dom> dom_ptr;
+	typedef ::std::shared_ptr<struct live> live_ptr;
 }
 
-template<typename T>
-set<T> set_union(const set<T> &a, const set<T> &b)
+#include <procedure.hh>
+#include <basic_block.hh>
+
+namespace po
 {
-	set<T> ret;
-	//set_union(a.begin(),a.end(),b.begin(),b.end(),inserter(ret,ret.begin()));
-	merge(a.begin(),a.end(),b.begin(),b.end(),inserter(ret,ret.begin()));
-	return ret;
+	struct dom
+	{
+		dtree_ptr root;
+		::std::map<bblock_cptr,dtree_ptr> tree;
+	};
+
+	struct live
+	{
+		::std::set< ::std::string> names;									// global (procedure-wide) names
+		::std::map< ::std::string,::std::set<bblock_cptr>> usage;	// maps names to blocks that use them
+
+		::std::map<bblock_cptr,::std::set< ::std::string>> uevar;		// up exposed variables
+		::std::map<bblock_cptr,::std::set< ::std::string>> varkill;	// overwritten vars
+		::std::map<bblock_cptr,::std::set< ::std::string>> liveout;
+	};
+
+	template<typename T>
+	::std::set<T> set_difference(const ::std::set<T> &a, const ::std::set<T> &b)
+	{
+		::std::set<T> ret;
+		::std::set_difference(a.begin(),a.end(),b.begin(),b.end(),::std::inserter(ret,ret.begin()));
+		return ret;
+	}
+
+	template<typename T>
+	::std::set<T> set_union(const ::std::set<T> &a, const ::std::set<T> &b)
+	{
+		::std::set<T> ret;
+		//set_union(a.begin(),a.end(),b.begin(),b.end(),inserter(ret,ret.begin()));
+		::std::merge(a.begin(),a.end(),b.begin(),b.end(),::std::inserter(ret,ret.begin()));
+		return ret;
+	}
+
+	template<typename T>
+	::std::set<T> sset_union(const ::std::set<T> &a, const ::std::set<T> &b)
+	{
+		::std::set<T> ret;
+		::std::set_union(a.begin(),a.end(),b.begin(),b.end(),::std::inserter(ret,ret.begin()));
+		return ret;
+	}
+
+	template<typename T>
+	::std::set<T> set_intersection(const ::std::set<T> &a, const ::std::set<T> &b)
+	{
+		::std::set<T> ret;
+		::std::set_intersection(a.begin(),a.end(),b.begin(),b.end(),::std::inserter(ret,ret.begin()));
+		return ret;
+	}
+
+	dom_ptr dominance_tree(proc_ptr proc);
+	void ssa(proc_ptr proc, dom_ptr dominance, live_ptr live);
+	live_ptr liveness(proc_cptr proc);
 }
-
-template<typename T>
-set<T> sset_union(const set<T> &a, const set<T> &b)
-{
-	set<T> ret;
-	set_union(a.begin(),a.end(),b.begin(),b.end(),inserter(ret,ret.begin()));
-	return ret;
-}
-
-
-template<typename T>
-set<T> set_intersection(const set<T> &a, const set<T> &b)
-{
-	set<T> ret;
-	set_intersection(a.begin(),a.end(),b.begin(),b.end(),inserter(ret,ret.begin()));
-	return ret;
-}
-
-dom_ptr dominance_tree(proc_ptr proc);
-void ssa(proc_ptr proc, dom_ptr dominance, live_ptr live);
-live_ptr liveness(proc_ptr proc);
 
 #endif

@@ -3,60 +3,49 @@
 #include <cassert>
 #include <iostream>
 
-#include "procedure.hh"
-#include "flowgraph.hh"
+#include <procedure.hh>
+#include <flowgraph.hh>
+
+using namespace po;
 
 domtree::domtree(bblock_ptr b) : intermediate(0), basic_block(b) {}
 
 procedure::procedure(void) : name("unnamed") {}
 
-pair<procedure::iterator,procedure::iterator> procedure::rev_postorder(void) 
+void procedure::rev_postorder(std::function<void(bblock_ptr bb)> fn) const
 {
-	if(basic_blocks.size() != rpo.size())
+	std::set<bblock_ptr> known;
+	std::list<bblock_ptr> postorder;
+
+	assert(entry);
+
+	//cout << "rpo: " << basic_blocks.size() << ", entry: " << entry->area() << endl;
+	//for_each(basic_blocks.begin(),basic_blocks.end(),[](const bblock_ptr bb) { cout << bb->area() << endl; });
+
+	std::function<void(bblock_ptr)> visit = [&](bblock_ptr bb)
 	{
-		set<bblock_ptr> known;
-		list<bblock_ptr> postorder;
+	//	cout << "visit " << bb->area() << endl;
+		basic_block::succ_iterator i,iend;
+		
+		tie(i,iend) = bb->successors();
+		for_each(i,iend,[&](bblock_ptr s)
+		{	
+		//	cout << "check " << s->area() << endl;
+			if(known.insert(s).second)
+				visit(s);
+		});
+		postorder.push_back(bb);
+	};
 
-		assert(entry);
-		rpo.clear();
-
-		//cout << "rpo: " << basic_blocks.size() << ", entry: " << entry->area() << endl;
-		//for_each(basic_blocks.begin(),basic_blocks.end(),[](const bblock_ptr bb) { cout << bb->area() << endl; });
-
-		function<void(bblock_ptr)> visit = [&](bblock_ptr bb)
-		{
-			//cout << "visit " << bb->area() << endl;
-			basic_block::succ_iterator i,iend;
-			
-			tie(i,iend) = bb->successors();
-			for_each(i,iend,[&](bblock_ptr s)
-			{	
-				//cout << "check " << s->area() << endl;
-				if(known.insert(s).second)
-					visit(s);
-			});
-			postorder.push_back(bb);
-		};
-
-		known.insert(entry);
-		visit(entry);
-
-		copy(postorder.rbegin(),postorder.rend(),inserter(rpo,rpo.begin()));
-		assert(basic_blocks.size() == rpo.size());
-	}
-
-	return make_pair(rpo.begin(),rpo.end());
+	known.insert(entry);
+	visit(entry);
+	assert(basic_blocks.size() == postorder.size());
+	for_each(postorder.rbegin(),postorder.rend(),fn);
 }
 
-void procedure::insert_bblock(bblock_ptr m)
-	{ rpo.clear(); basic_blocks.push_back(m); };
-
-void procedure::remove_bblock(bblock_ptr m)
-	{ rpo.clear(); basic_blocks.remove(m); };
-
-bblock_ptr find_bblock(proc_ptr proc, addr_t a)
+bblock_ptr po::find_bblock(proc_ptr proc, addr_t a)
 {
-	procedure::iterator i = proc->basic_blocks.begin();
+	auto i = proc->basic_blocks.begin();
 
 	while(i != proc->basic_blocks.end())
 	{
@@ -69,9 +58,9 @@ bblock_ptr find_bblock(proc_ptr proc, addr_t a)
 	return bblock_ptr(0);
 }
 
-void extend(proc_ptr proc, bblock_ptr block)
+void po::extend(proc_ptr proc, bblock_ptr block)
 {
-	procedure::iterator i = find_if(proc->basic_blocks.begin(),proc->basic_blocks.end(),[&block](const bblock_ptr &p) 
+	auto i = std::find_if(proc->basic_blocks.begin(),proc->basic_blocks.end(),[&block](const bblock_ptr &p) 
 		{ return p->area().overlap(block->area()); });
 
 	if(i !=  proc->basic_blocks.end())
@@ -102,8 +91,8 @@ void extend(proc_ptr proc, bblock_ptr block)
 		// post
 		if(tgt->area().end < block->area().end)
 		{
-			tie(block,post) = split(block,(*find_if(block->mnemonics().begin(),block->mnemonics().end(),[&tgt](const mne_cptr &m)
-																	 { return m->area.includes(tgt->area().begin); }))->area.begin,false);
+			tie(block,post) = split(block,std::find_if(block->mnemonics().begin(),block->mnemonics().end(),[&tgt](const mnemonic &m)
+																	 { return m.area.includes(tgt->area().begin); })->area.begin,false);
 			unconditional_jump(tgt,post);
 		}
 
@@ -117,32 +106,49 @@ void extend(proc_ptr proc, bblock_ptr block)
 		merge(proc,block);
 }
 
-void merge(proc_ptr proc, bblock_ptr block)
+void po::merge(proc_ptr proc, bblock_ptr block)
 {
+	assert(proc && block);
+
 	// Try to connect in/out edge from/to bb to/from addr. Returns true if bb was split
 	auto connect = [&proc](bblock_ptr bb, ctrans &ct, bool out) -> bool
 	{
-		procedure::iterator i;
-		addr_t addr = ct.constant()->val;
+		assert(bb && ct.value.is_constant() && !ct.bblock);
+
+		addr_t addr = ct.value.constant().value();
 		guard_ptr g = ct.guard;
 		bool ret = false;
 
-		i = find_if(proc->basic_blocks.begin(),proc->basic_blocks.end(),[&](const bblock_ptr p) { return p->area().includes(addr); });
+		auto i = std::find_if(proc->basic_blocks.begin(),proc->basic_blocks.end(),[&](const bblock_ptr p) { return p->area().includes(addr); });
 
 		if(i == proc->basic_blocks.end()) return ret;
 		bblock_ptr tgt = *i, old = *i;
 		ctrans cs(g,bb);
 
 		// split tgt if needed
-		if((out ? tgt->area().begin : tgt->mnemonics().back()->area.begin) != addr)
+		if((out ? tgt->area().begin : tgt->mnemonics().back().area.begin) != addr)
 		{
 			bblock_ptr up;
 			
-			proc->remove_bblock(tgt);
+			proc->basic_blocks.erase(tgt);
 			tie(up,tgt) = split(tgt,addr,!out);
-			conditional_jump(up,tgt,!out ? g->negation() : guard_ptr(new guard()));
-			proc->insert_bblock(up);
-			proc->insert_bblock(tgt);
+
+			if(!out)
+			{
+				up->mutate_outgoing([&](std::list<ctrans> o)
+				{
+					o.erase(std::find_if(o.begin(),o.end(),[&](const ctrans &c) { return c.bblock == tgt; }));
+				});
+				
+				tgt->mutate_incoming([&](std::list<ctrans> o)
+				{
+					o.erase(std::find_if(o.begin(),o.end(),[&](const ctrans &c) { return c.bblock == up; }));
+				});
+
+				conditional_jump(up,tgt,g->negation());
+			}
+			proc->basic_blocks.insert(up);
+			proc->basic_blocks.insert(tgt);
 			
 			ret = old == bb;
 		}
@@ -152,62 +158,73 @@ void merge(proc_ptr proc, bblock_ptr block)
 			if(bb == old)
 				conditional_jump(bb,tgt,g);
 			else
-				tgt->insert_incoming(cs);
+				tgt->mutate_incoming([&](std::list<ctrans> &in) { in.push_back(cs); });
 		}
 		else
 		{
 			if(bb == old)
 				conditional_jump(tgt,bb,g);
 			else
-				tgt->insert_outgoing(cs);
+				tgt->mutate_outgoing([&](std::list<ctrans> &out) { out.push_back(cs); });
 		}
 
 		if(bb != old)
-			ct.bblock = tgt;
-		else
 		{
 			if(out)
-				old->remove_outgoing(ct.value);
+				resolve_outgoing(bb,ct.value,tgt);
 			else
-				old->remove_incoming(ct.value);
+				resolve_incoming(bb,ct.value,tgt);
+		}
+		else
+		{
+			if(old)
+				old->mutate_outgoing([&](std::list<ctrans> &out)
+					{ out.erase(std::find_if(out.begin(),out.end(),[&](const ctrans &p) 
+						{ return p.value == ct.value; })); });
+			else
+				old->mutate_incoming([&](std::list<ctrans> &in)
+					{ in.erase(std::find_if(in.begin(),in.end(),[&](const ctrans &p) 
+						{ return p.value == ct.value; })); });
 		}
 
 		return ret;
 	};
 	
 	std::set<bblock_ptr> done;
-	basic_block::in_iterator j,jend;
-	basic_block::out_iterator k,kend;
-
-	proc->insert_bblock(block);
+	
+	proc->basic_blocks.insert(block);
 	while(true)
 	{
-		procedure::iterator i;
 		bblock_ptr bb;
-		
-		i = find_if(proc->basic_blocks.begin(),proc->basic_blocks.end(),[&done](const bblock_ptr p) { return done.count(p) == 0; });
+		auto i = std::find_if(proc->basic_blocks.begin(),proc->basic_blocks.end(),[&done](const bblock_ptr p) { return done.count(p) == 0; });
 
 		if(i != proc->basic_blocks.end())
 		{
 			bb = *i;
 
-			tie(j,jend) = bb->incoming();
-			while(j != jend) 
-			{ 
-				ctrans &ct(*j++);
-				if(!ct.bblock && ct.constant())
-					if(connect(bb,ct,false))
-						continue;
-			}
-			
-			tie(k,kend) = bb->outgoing();
-			while(k != kend)
+			bb->mutate_incoming([&](std::list<ctrans> &in)
 			{
-				ctrans &ct(*k++);
-				if(!ct.bblock && ct.constant())
-					if(connect(bb,ct,true))
-						continue;
-			}
+				auto j = in.begin();
+				while(j != in.end()) 
+				{ 
+					ctrans &ct(*j++);
+					if(!ct.bblock && ct.value.is_constant())
+						if(connect(bb,ct,false))
+							continue;
+				}
+			});
+			
+			bb->mutate_outgoing([&](std::list<ctrans> &out)
+			{
+				auto k = out.begin();
+				while(k != out.end())
+				{
+					ctrans &ct(*k++);
+					if(!ct.bblock && ct.value.is_constant())
+						if(connect(bb,ct,true))
+							continue;
+				}
+			});
 
 			done.insert(bb);
 		}
@@ -215,37 +232,66 @@ void merge(proc_ptr proc, bblock_ptr block)
 			break;
 	}
 
-	tie(j,jend) = block->incoming();
-	if(distance(j,jend) == 1 && j->guard->relations.empty() && j->bblock && j->bblock->area().end == block->area().begin)
+	auto j = block->incoming().begin();
+	if(block->incoming().size() == 1 && j->guard->relations.empty() && j->bblock && j->bblock->area().end == block->area().begin)
 	{
-		tie(k,kend) = j->bblock->outgoing();
-		if(distance(k,kend) == 1)
+		if(j->bblock->outgoing().size() == 1)
 		{
-			proc->remove_bblock(block);
-			proc->remove_bblock(j->bblock);
+			proc->basic_blocks.erase(block);
+			proc->basic_blocks.erase(j->bblock);
 			block = merge(j->bblock,block);
-			proc->insert_bblock(block);
+			proc->basic_blocks.insert(block);
 		}
 	}
 
-	tie(k,kend) = block->outgoing();
-	if(distance(k,kend) == 1 && k->guard->relations.empty() && k->bblock && block->area().end == k->bblock->area().begin)
+	auto k = block->outgoing().begin();
+	if(block->outgoing().size() && k->guard->relations.empty() && k->bblock && block->area().end == k->bblock->area().begin)
 	{
-		tie(j,jend) = k->bblock->incoming();
-		if(distance(j,jend) == 1)
+		if(k->bblock->incoming().size() == 1)
 		{
-			proc->remove_bblock(block);
-			proc->remove_bblock(j->bblock);
+			proc->basic_blocks.erase(block);
+			proc->basic_blocks.erase(j->bblock);
 			block = merge(block,k->bblock);
-			proc->insert_bblock(block);
+			proc->basic_blocks.insert(block);
 		}
 	}
 }
 
-string graphviz(proc_ptr proc)
+std::string po::graphviz(proc_ptr proc)
 {
 	flow_ptr f(new flowgraph());
 
 	f->procedures.insert(proc);
 	return graphviz(f);
+}
+
+void po::call(proc_ptr from, proc_ptr to)
+{
+	assert(from && to);
+
+	from->callees.insert(to);
+	to->callers.insert(from);
+}
+
+void po::execute(proc_cptr proc,std::function<void(const lvalue &left, instr::Function fn, const std::vector<rvalue> &right)> f)
+{
+	for(const bblock_ptr &bb: proc->basic_blocks)
+	{
+		size_t sz_mne = bb->mnemonics().size(), i_mne = 0;
+		const mnemonic *ary_mne = bb->mnemonics().data();
+
+		while(i_mne < sz_mne)
+		{
+			const mnemonic &mne = ary_mne[i_mne++];
+			size_t sz_instr = mne.instructions.size(), i_instr = 0;
+			const instr *ary_instr = mne.instructions.data();
+
+			while(i_instr < sz_instr)
+			{
+				const instr &instr = ary_instr[i_instr++];
+
+				f(instr.left,instr.function,instr.right);
+			}
+		}
+	}
 }

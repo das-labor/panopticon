@@ -4,7 +4,7 @@
 #include <QDebug>
 
 #include <window.hh>
-#include <database.hh>
+#include <deflate.hh>
 
 AddressSortProxy::AddressSortProxy(Model *m, QObject *parent)
 : QSortFilterProxyModel(parent)
@@ -18,7 +18,7 @@ bool AddressSortProxy::lessThan(const QModelIndex &left, const QModelIndex &righ
 				 sourceModel()->data(right,Qt::DisplayRole).toString().toULongLong(0,0);
 }
 
-ProcedureView::ProcedureView(Model *m, QWidget *parent)
+ProcedureList::ProcedureList(Model *m, QWidget *parent)
 : QDockWidget("Procedures",parent), m_list(new QTableView(this)), m_combo(new QComboBox(this)), m_proxy(new AddressSortProxy(m,this))
 {
 	QWidget *w = new QWidget(this);
@@ -46,17 +46,17 @@ ProcedureView::ProcedureView(Model *m, QWidget *parent)
 	rebase(0);
 }
 
-QModelIndex ProcedureView::currentFlowgraph(int column) const
+QModelIndex ProcedureList::currentFlowgraph(int column) const
 {
 	return m_proxy->index(m_combo->currentIndex(),column);
 }
 
-QItemSelectionModel *ProcedureView::selectionModel(void)
+QItemSelectionModel *ProcedureList::selectionModel(void)
 {
 	return m_list->selectionModel();
 }
 
-void ProcedureView::rebase(int i)
+void ProcedureList::rebase(int i)
 {
 	m_list->setRootIndex(currentFlowgraph(Model::ProceduresColumn));
 	m_list->resizeRowsToContents();
@@ -64,7 +64,7 @@ void ProcedureView::rebase(int i)
 	m_list->sortByColumn(1,Qt::AscendingOrder);
 }
 
-QAbstractProxyModel *ProcedureView::model(void)
+QAbstractProxyModel *ProcedureList::model(void)
 {
 	return m_proxy;
 }
@@ -78,25 +78,25 @@ Window::Window(void)
 	std::string path("test.ttl");
 
 	m_tabs = new QTabWidget(this);
-	m_model = new Model(new database(path),this);
-	m_procView = new ProcedureView(m_model,this);
-	m_callgraph = new Callgraph(m_procView->model(),m_procView->currentFlowgraph(),m_procView->selectionModel(),this);
-	m_cflowgraph = 0;
+	m_model = new Model(new po::deflate(path),this);
+	m_procList = new ProcedureList(m_model,this);
+	m_flowView = new FlowgraphWidget(m_procList->model(),m_procList->currentFlowgraph(),m_procList->selectionModel(),this);
+	m_procView = 0;
 
-	m_tabs->addTab(m_callgraph,"Callgraph");
+	m_tabs->addTab(m_flowView,"Callgraph");
 
 	setCentralWidget(m_tabs);
-	addDockWidget(Qt::LeftDockWidgetArea,m_procView);
+	addDockWidget(Qt::LeftDockWidgetArea,m_procList);
 
-	connect(m_procView,SIGNAL(activated(const QModelIndex&)),this,SLOT(activate(const QModelIndex&)));
-	connect(m_callgraph,SIGNAL(activated(const QModelIndex&)),this,SLOT(activate(const QModelIndex&)));
+	connect(m_procList,SIGNAL(activated(const QModelIndex&)),this,SLOT(activate(const QModelIndex&)));
+	connect(m_flowView,SIGNAL(activated(const QModelIndex&)),this,SLOT(activate(const QModelIndex&)));
 }
 
 Window::~Window(void)
 {
 	// pervents null dereference if m_procView still has selections
-	m_procView->selectionModel()->clear();
-	delete m_callgraph;
+	m_procList->selectionModel()->clear();
+	delete m_flowView;
 }
 
 void Window::activate(const QModelIndex &idx)
@@ -105,12 +105,12 @@ void Window::activate(const QModelIndex &idx)
 	const QAbstractItemModel *model = idx.model();
 
 	qDebug() << model->data(idx.sibling(idx.row(),Model::NameColumn)).toString() << "activated!";
-	if(!m_cflowgraph)
+	if(!m_procView)
 	{
-		m_cflowgraph = new CFlowgraph(m_model,m_procView->model()->mapToSource(idx),this);
-		m_tabs->addTab(m_cflowgraph,"Control Flow Graph");
+		m_procView = new ProcedureWidget(m_model,m_procList->model()->mapToSource(idx),this);
+		m_tabs->addTab(m_procView,"Control Flow Graph");
 	}
 	else
-		m_cflowgraph->setRootIndex(m_procView->model()->mapToSource(idx));
-	m_tabs->setCurrentWidget(m_cflowgraph);
+		m_procView->setRootIndex(m_procList->model()->mapToSource(idx));
+	m_tabs->setCurrentWidget(m_procView);
 }

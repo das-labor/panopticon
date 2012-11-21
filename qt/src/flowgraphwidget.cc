@@ -1,8 +1,8 @@
 #include <QTimer>
-#include <callgraph.hh>
+#include <flowgraphwidget.hh>
 
-Callgraph::Callgraph(QAbstractItemModel *m, QModelIndex i, QItemSelectionModel *s, QWidget *parent)
-: Graph(m,i,parent), m_selection(s)
+FlowgraphWidget::FlowgraphWidget(QAbstractItemModel *m, QModelIndex i, QItemSelectionModel *s, QWidget *parent)
+: GraphWidget(m,i,parent), m_selection(s)
 {
 	populate();
 
@@ -11,14 +11,14 @@ Callgraph::Callgraph(QAbstractItemModel *m, QModelIndex i, QItemSelectionModel *
 	connect(m_model,SIGNAL(dataChanged(const QModelIndex&,const QModelIndex&)),this,SLOT(dataChanged(const QModelIndex&,const QModelIndex&)));
 }
 
-Callgraph::~Callgraph(void)
+FlowgraphWidget::~FlowgraphWidget(void)
 {
 	disconnect(&m_scene,SIGNAL(sceneRectChanged(const QRectF&)),this,SLOT(sceneRectChanged(const QRectF&)));
 	disconnect(&m_scene,SIGNAL(selectionChanged()),this,SLOT(sceneSelectionChanged()));
 	disconnect(m_selection,SIGNAL(selectionChanged(const QItemSelection&,const QItemSelection&)),this,SLOT(modelSelectionChanged(const QItemSelection&,const QItemSelection&)));
 }
 
-void Callgraph::populate(void)
+void FlowgraphWidget::populate(void)
 {
 	int row = 0;
 	QModelIndex procs = m_root.sibling(m_root.row(),Model::ProceduresColumn);
@@ -37,8 +37,8 @@ void Callgraph::populate(void)
 		ptrdiff_t u = m_model->data(uid,Qt::DisplayRole).toULongLong();
 
 		m_scene.insert(n);
-		m_uid2procedure.insert(make_pair(u,n));
-		m_procedure2row.insert(make_pair(n,row));
+		m_uid2procedure.insert(std::make_pair(u,n));
+		m_procedure2row.insert(std::make_pair(n,row));
 		++row;
 	}
 
@@ -71,11 +71,10 @@ void Callgraph::populate(void)
 		++row;
 	}
 
-	QTimer::singleShot(1,&m_scene,SLOT(graphLayout()));
-//	setSceneRect(r);
+	m_scene.graphLayout("circo");
 }
 
-void Callgraph::sceneSelectionChanged(void)
+void FlowgraphWidget::sceneSelectionChanged(void)
 {
 	disconnect(&m_scene,SIGNAL(selectionChanged()),this,SLOT(sceneSelectionChanged()));
 	disconnect(m_selection,SIGNAL(selectionChanged(const QItemSelection&,const QItemSelection&)),this,SLOT(modelSelectionChanged(const QItemSelection&,const QItemSelection&)));
@@ -92,7 +91,7 @@ void Callgraph::sceneSelectionChanged(void)
 		if(n)
 		{
 			auto e = m_scene.out_edges(n);
-			for_each(e.first,e.second,[&](Arrow *a) { a->setHighlighted(false); });
+			std::for_each(e.first,e.second,[&](Arrow *a) { a->setHighlighted(false); });
 		}
 	}
 
@@ -112,7 +111,7 @@ void Callgraph::sceneSelectionChanged(void)
 			assert(j != m_procedure2row.end());
 			m_selection->select(procs.child(j->second,0),QItemSelectionModel::Select | QItemSelectionModel::Rows);
 
-			for_each(e.first,e.second,[&](Arrow *a) { a->setHighlighted(true); });
+			std::for_each(e.first,e.second,[&](Arrow *a) { a->setHighlighted(true); });
 		}
 	}
 	
@@ -120,7 +119,7 @@ void Callgraph::sceneSelectionChanged(void)
 	connect(m_selection,SIGNAL(selectionChanged(const QItemSelection&,const QItemSelection&)),this,SLOT(modelSelectionChanged(const QItemSelection&,const QItemSelection&)));
 }
 
-void Callgraph::modelSelectionChanged(const QItemSelection &selected, const QItemSelection &deselected)
+void FlowgraphWidget::modelSelectionChanged(const QItemSelection &selected, const QItemSelection &deselected)
 {	
 	disconnect(&m_scene,SIGNAL(selectionChanged()),this,SLOT(sceneSelectionChanged()));
 	disconnect(m_selection,SIGNAL(selectionChanged(const QItemSelection&,const QItemSelection&)),this,SLOT(modelSelectionChanged(const QItemSelection&,const QItemSelection&)));
@@ -135,7 +134,7 @@ void Callgraph::modelSelectionChanged(const QItemSelection &selected, const QIte
 		auto e = m_scene.out_edges(j->second);
 		
 		j->second->setSelected(true);
-		for_each(e.first,e.second,[&](Arrow *a) { a->setHighlighted(true); });
+		std::for_each(e.first,e.second,[&](Arrow *a) { a->setHighlighted(true); });
 	}
 	
 	i = QListIterator<QModelIndex>(deselected.indexes());
@@ -148,14 +147,14 @@ void Callgraph::modelSelectionChanged(const QItemSelection &selected, const QIte
 		auto e = m_scene.out_edges(j->second);
 
 		j->second->setSelected(false);
-		for_each(e.first,e.second,[&](Arrow *a) { a->setHighlighted(false); });
+		std::for_each(e.first,e.second,[&](Arrow *a) { a->setHighlighted(false); });
 	}
 
 	connect(&m_scene,SIGNAL(selectionChanged()),this,SLOT(sceneSelectionChanged()));
 	connect(m_selection,SIGNAL(selectionChanged(const QItemSelection&,const QItemSelection&)),this,SLOT(modelSelectionChanged(const QItemSelection&,const QItemSelection&)));
 }
 
-void Callgraph::mouseDoubleClickEvent(QMouseEvent *event)
+void FlowgraphWidget::mouseDoubleClickEvent(QMouseEvent *event)
 {
 	QListIterator<QGraphicsItem *> i(items(event->pos()));
 	while(i.hasNext())
@@ -172,7 +171,7 @@ void Callgraph::mouseDoubleClickEvent(QMouseEvent *event)
 	}
 }
 
-void Callgraph::dataChanged(const QModelIndex &topLeft, const QModelIndex &bottomRight)
+void FlowgraphWidget::dataChanged(const QModelIndex &topLeft, const QModelIndex &bottomRight)
 {
 	int row = topLeft.row();
 

@@ -6,52 +6,52 @@
 #include <map>
 #include <list>
 
-#include "basic_block.hh"
-#include "mnemonic.hh"
+#include <basic_block.hh>
+#include <mnemonic.hh>
 
-using namespace std;
-
-typedef shared_ptr<struct domtree> dtree_ptr;
-typedef shared_ptr<struct procedure> proc_ptr;
-
-struct domtree
+namespace po
 {
-	domtree(bblock_ptr b);
+	typedef ::std::shared_ptr<struct domtree> dtree_ptr;
+	typedef ::std::shared_ptr<struct procedure> proc_ptr;
+	typedef ::std::shared_ptr<const struct procedure> proc_cptr;
 
-	dtree_ptr intermediate;			// e.g. parent
-	set<dtree_ptr> successors;
-	set<dtree_ptr> frontiers;
-	
-	bblock_ptr basic_block;
-};
+	void call(proc_ptr from, proc_ptr to);
+	void execute(proc_cptr proc,::std::function<void(const lvalue &left, instr::Function fn, const ::std::vector<rvalue> &right)> f);
+	void merge(proc_ptr proc, bblock_ptr block);
+	void extend(proc_ptr proc, bblock_ptr block);
+	bblock_ptr find_bblock(proc_ptr proc, addr_t a);
+	std::pair<bool,bblock_ptr> extend_procedure(proc_ptr proc, mnemonic &cur_mne, mnemonic &prev_mne, bblock_ptr prev_bb, guard_ptr g);
+	std::pair<bool,bblock_ptr> extend_procedure(proc_ptr proc, mnemonic &cur_mne, bblock_ptr cur_bb, rvalue v, guard_ptr g);
+	std::string graphviz(proc_ptr proc);
 
-class procedure
-{
-public:
-	typedef list<bblock_ptr>::iterator iterator;
+	struct domtree
+	{
+		domtree(bblock_ptr b);
 
-	procedure(void);
-	procedure(list<bblock_ptr> &e);
+		dtree_ptr intermediate;			// e.g. parent
+		::std::set<dtree_ptr> successors;
+		::std::set<dtree_ptr> frontiers;
+		
+		bblock_ptr basic_block;
+	};
 
-	void insert_bblock(bblock_ptr m);
-	void remove_bblock(bblock_ptr m);
-	
-	pair<iterator,iterator> rev_postorder(void);
-	
-	bblock_ptr entry;
-	string name;
-	vector<proc_ptr> callees;
-	list<bblock_ptr> basic_blocks;	
+	class procedure
+	{
+	public:
+		procedure(void);
+		template<typename FW> procedure(FW begin, FW end) : procedure() { copy(begin,end,inserter(basic_blocks,basic_blocks.begin())); }
 
-protected:
-	list<bblock_ptr> rpo;
-};
+		void rev_postorder(::std::function<void(bblock_ptr bb)> fn) const;
 
-void merge(proc_ptr proc, bblock_ptr block);
-void extend(proc_ptr proc, bblock_ptr block);
-bblock_ptr find_bblock(proc_ptr proc, addr_t a);
-pair<bool,bblock_ptr> extend_procedure(proc_ptr proc, const mne_cptr cur_mne, const mne_cptr prev_mne, bblock_ptr prev_bb, guard_ptr g);
-pair<bool,bblock_ptr> extend_procedure(proc_ptr proc, const mne_cptr cur_mne, bblock_ptr cur_bb, value_ptr v, guard_ptr g);
-string graphviz(proc_ptr proc);
+		// public fields
+		std::string name;
+		bblock_ptr entry;
+		::std::set<bblock_ptr> basic_blocks;
+		
+		// modified via call()
+		::std::set<proc_ptr> callers;	// procedures calling this procedure
+		::std::set<proc_ptr> callees;	// procedures called by this procedure
+	};
+}
 
 #endif
