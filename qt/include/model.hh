@@ -4,10 +4,42 @@
 #include <deflate.hh>
 #include <QAbstractItemModel>
 #include <QFont>
+#include <QCache>
+#include <QDebug>
+#include <QHash>
 
 #include <unordered_map>
 #include <functional> 
 #include <vector>
+
+struct Path
+{
+	enum Type
+	{
+		FlowgraphType = 0,
+		ProcedureType = 1,
+		BasicBlockType = 2,
+		MnemonicType = 3,
+		OperandType = 4,
+	};
+
+	Path(void);
+
+	bool operator==(const Path &) const;
+	bool operator!=(const Path &) const;
+
+	Type type;
+	po::flowgraph *flow;
+	po::procedure *proc;
+	po::basic_block *bblock;
+	const po::mnemonic *mne;
+	unsigned int op;
+};
+
+inline uint qHash(const Path &key)
+{
+	return key.type ^ (uint)key.flow ^ (uint)key.proc ^ (uint)key.bblock ^ (uint)key.mne ^ key.op;
+}
 
 class Model : public QAbstractItemModel
 {
@@ -57,30 +89,23 @@ public:
 		OperandsColumn = 2,
 		InstructionsColumn = 3,
 		LastMnemonicColumn = 4,
+
+		// OperandTag
+		ValueColumn = 0,
+		LastOperandColumn = 1,
 	};
 
-private:	
-	enum Tag
-	{
-		FlowgraphTag = 0,
-		ProcedureTag = 1,
-		BasicBlockTag = 2,
-		MnemonicTag = 3,
-		
-		LastTag = 4,
-		MaskTag = 7,
-	};
-
+private:
 	QString displayData(const QModelIndex &index) const;
 	bool setDisplayData(const QModelIndex &index, const std::string &value);
-	
-	// pointer tagging
-	ptrdiff_t tag(void *ptr, Tag t) const;
-	std::pair<void*,Tag> extract(ptrdiff_t p) const;
+	QModelIndex createIndex(int row, int col, po::flowgraph *flow, po::procedure *proc = nullptr, po::basic_block *bblock = nullptr, const po::mnemonic *mne = 0, int op = -1) const;
+	const Path &path(uint p) const;
 
+	mutable ptrdiff_t m_nextId;
+	mutable QHash<uint,const Path *> m_idToPath;
+	mutable QHash<const Path,uint> m_pathToId;
 	po::deflate *m_deflate;
 	std::vector<po::flow_ptr> m_flowgraphs;
-	std::set<void *> m_selected;
 };
 
 #endif

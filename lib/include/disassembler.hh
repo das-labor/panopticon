@@ -25,7 +25,7 @@ namespace po
 
 		sem_state(addr_t a) : address(a), next_address(a) {};
 
-		void mnemonic(size_t len, ::std::string n, ::std::list<rvalue> ops = ::std::list<rvalue>(), ::std::function<void(code_generator<Tag>&)> fn = ::std::function<void(code_generator<Tag>&)>())
+		void mnemonic(size_t len, ::std::string n, ::std::string fmt = ::std::string(""), ::std::list<rvalue> ops = ::std::list<rvalue>(), ::std::function<void(code_generator<Tag>&)> fn = ::std::function<void(code_generator<Tag>&)>())
 		{
 			assert(len);
 
@@ -33,28 +33,31 @@ namespace po
 			::std::list<instr> instrs;
 			code_generator<Tag> cg(inserter(instrs,instrs.end()));
 
+			if(fmt.empty())
+				fmt = accumulate(ops.begin(),ops.end(),fmt,[](const ::std::string &acc, const rvalue &x) { return acc + (acc.empty() ? "%8u" : ", %8u"); });
+
 			// generate instr list
 			if(fn) fn(cg);
 
 			last = bblock_ptr(new basic_block());
 			last->mutate_mnemonics([&](::std::vector<po::mnemonic> &ms) 
 			{ 
-				ms.emplace_back(po::mnemonic(range<addr_t>(next_address,next_address + len),n,ops.begin(),ops.end(),instrs.begin(),instrs.end())); 
+				ms.emplace_back(po::mnemonic(range<addr_t>(next_address,next_address + len),n,fmt,ops.begin(),ops.end(),instrs.begin(),instrs.end())); 
 			});
 			basic_blocks.insert(last);
 		
 			next_address += len;
 		};
 
-		void mnemonic(size_t len, ::std::string n, rvalue a, ::std::function<void(code_generator<Tag>&)> fn = ::std::function<void(code_generator<Tag>&)>())
+		void mnemonic(size_t len, ::std::string n, ::std::string fmt, rvalue a, ::std::function<void(code_generator<Tag>&)> fn = ::std::function<void(code_generator<Tag>&)>())
 		{
 			::std::list<rvalue> lst({a});
-			return this->mnemonic(len,n,lst,fn);
+			return this->mnemonic(len,n,fmt,lst,fn);
 		}
 		
-		void mnemonic(size_t len, ::std::string n, rvalue a, rvalue b, ::std::function<void(code_generator<Tag>&)> fn = ::std::function<void(code_generator<Tag>&)>())
+		void mnemonic(size_t len, ::std::string n, ::std::string fmt, rvalue a, rvalue b, ::std::function<void(code_generator<Tag>&)> fn = ::std::function<void(code_generator<Tag>&)>())
 		{
-			return mnemonic(len,n,{a,b},fn);
+			return mnemonic(len,n,fmt,{a,b},fn);
 		}
 
 		void jump(rvalue a, guard_ptr g = guard_ptr(new guard()))

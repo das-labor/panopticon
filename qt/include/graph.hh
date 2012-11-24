@@ -46,13 +46,13 @@ class Arrow : public QGraphicsObject
 	Q_OBJECT
 
 public:
-	Arrow(Node *f, Node *t);
+	Arrow(QGraphicsObject *f, QGraphicsObject *t);
 
 	virtual QRectF boundingRect(void) const;
 	virtual void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget = 0);
 	
-	Node *from(void);
-	Node *to(void);
+	QGraphicsObject *from(void);
+	QGraphicsObject *to(void);
 
 	void setHighlighted(bool tp);
 
@@ -60,8 +60,8 @@ private slots:
 	void updated(void);
 
 private:
-	Node *m_from;
-	Node *m_to;
+	QGraphicsObject *m_from;
+	QGraphicsObject *m_to;
 	QPolygonF m_head;
 	bool m_highlighted;
 };

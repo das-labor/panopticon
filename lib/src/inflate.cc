@@ -54,19 +54,62 @@ std::string po::turtle(flow_ptr fg)
 			for(const mnemonic &mne: bb->mnemonics())
 			{
 				std::string mnename = blank();
-				//stringstream ss_ops;
-
-				//for(const rvalue &v: mne.operands)
-				//{
+				std::stringstream ss_ops;
+				std::function<std::string(const rvalue &)> inflate_value = [&](const rvalue &v) -> std::string
+				{
+					std::string opname = blank();
 					
-					//{ ss_ops << "\"" << v->inspect() << "\"^^xsd:string "; });
+					if(v.is_variable())
+					{
+						ss << ":" << opname << " rdf:type po:Variable;" << std::endl
+												 				<< "\tpo:base \"" << v.variable().name() << "\"^^xsd:string;" << std::endl
+												 				<< "\tpo:subscript \"" << v.variable().subscript() << "\"^^xsd:decimal." << std::endl;
+					}
+					else if(v.is_undefined())
+					{
+						ss << ":" << opname << " rdf:type po:Undefined." << std::endl;
+					}
+					else if(v.is_constant())
+					{
+						ss << ":" << opname << " rdf:type po:Constant;" << std::endl
+												 				<< "\tpo:value \"" << v.constant().value() << "\"^^xsd:decimal." << std::endl;
+					}
+					else if(v.is_memory())
+					{	
+						std::string offname = inflate_value(v.memory().offset());
+						ss << ":" << opname << " rdf:type po:Memory;" << std::endl
+																<< "\tpo:offset :" << offname << ";" << std::endl
+																<< "\tpo:bytes \"" << v.memory().bytes() << "\"^^xsd:decimal;" << std::endl
+																<< "\tpo:endianess \"" << (int)v.memory().endianess() << "\"^^xsd:decimal." << std::endl;
+					}
+					else
+						assert(false);
+
+					return opname;
+				};
+
+
+				for(const rvalue &v: mne.operands)
+					ss_ops << ":" << inflate_value(v) << " ";
 
 				ss << ":" << mnename << " rdf:type po:Mnemonic;" << std::endl
 														 << "\tpo:opcode \"" << mne.opcode << "\"^^xsd:string;" << std::endl
 														 << "\tpo:begin \"" << mne.area.begin << "\"^^xsd:integer;" << std::endl
-														 << "\tpo:end \"" << mne.area.end << "\"^^xsd:integer." << std::endl;
+														 << "\tpo:end \"" << mne.area.end << "\"^^xsd:integer;" << std::endl
+														 << "\tpo:operands (" << ss_ops.str() << ");" << std::endl
+														 << "\tpo:format \"";
 
-//																																		 << " po:operands (" << ss_ops.str() << ")." << endl;
+				for(const mnemonic::token &tok: mne.format)
+					switch(tok.type)
+					{
+					case mnemonic::token::Literal: ss << tok.literal; break;
+					case mnemonic::token::Signed: ss << "%" << tok.width << "s"; break;
+					case mnemonic::token::Unsigned: ss << "%" << tok.width << "u"; break;
+					default: assert(false);
+					}
+
+				ss << "\"^^xsd:string." << std::endl;
+				
 				ss_mnes << ":" << mnename;
 				if(mne.area != bb->mnemonics().back().area)
 					ss_mnes << ", ";

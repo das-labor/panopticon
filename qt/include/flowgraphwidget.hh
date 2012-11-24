@@ -22,6 +22,7 @@ private slots:
 	void sceneSelectionChanged(void);
 	void modelSelectionChanged(const QItemSelection &selected, const QItemSelection &deselected);
 	void dataChanged(const QModelIndex &topLeft, const QModelIndex &bottomRight);
+	void sceneRectChanged(const QRectF &r);
 
 private:
 	std::map<ptrdiff_t,Node *> m_uid2procedure;

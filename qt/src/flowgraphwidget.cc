@@ -6,6 +6,7 @@ FlowgraphWidget::FlowgraphWidget(QAbstractItemModel *m, QModelIndex i, QItemSele
 {
 	populate();
 
+	connect(&m_scene,SIGNAL(sceneRectChanged(const QRectF&)),this,SLOT(sceneRectChanged(const QRectF&)));
 	connect(&m_scene,SIGNAL(selectionChanged()),this,SLOT(sceneSelectionChanged()));
 	connect(m_selection,SIGNAL(selectionChanged(const QItemSelection&,const QItemSelection&)),this,SLOT(modelSelectionChanged(const QItemSelection&,const QItemSelection&)));
 	connect(m_model,SIGNAL(dataChanged(const QModelIndex&,const QModelIndex&)),this,SLOT(dataChanged(const QModelIndex&,const QModelIndex&)));
@@ -72,6 +73,11 @@ void FlowgraphWidget::populate(void)
 	}
 
 	m_scene.graphLayout("circo");
+}
+
+void FlowgraphWidget::sceneRectChanged(const QRectF &r)
+{
+	fitInView(r,Qt::KeepAspectRatio);
 }
 
 void FlowgraphWidget::sceneSelectionChanged(void)

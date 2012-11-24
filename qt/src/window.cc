@@ -58,6 +58,7 @@ QItemSelectionModel *ProcedureList::selectionModel(void)
 
 void ProcedureList::rebase(int i)
 {
+	qDebug() << "rebase:" << i;
 	m_list->setRootIndex(currentFlowgraph(Model::ProceduresColumn));
 	m_list->resizeRowsToContents();
 	m_list->resizeColumnsToContents();

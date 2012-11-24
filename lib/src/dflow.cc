@@ -225,7 +225,7 @@ void po::ssa(proc_ptr proc, dom_ptr dominance, live_ptr live)
 						if(ms[0].opcode == "internal-phis")
 							ms[0].instructions.emplace_back(instr(instr::Phi,variable(name)));
 						else
-							ms.emplace(ms.begin(),mnemonic(range<addr_t>(ms.front().area.begin,ms.front().area.begin),"internal-phis",{},{instr(instr::Phi,variable(name))}));
+							ms.emplace(ms.begin(),mnemonic(range<addr_t>(ms.front().area.begin,ms.front().area.begin),"internal-phis","",{},{instr(instr::Phi,variable(name))}));
 					});
 					worklist.insert(df->basic_block);
 				}

@@ -11,6 +11,8 @@ using namespace po;
 librdf_world *deflate::rdf_world = 0;
 raptor_world *deflate::rap_world = 0;
 librdf_node *deflate::rdf_type = 0;
+librdf_node *deflate::rdf_first = 0;
+librdf_node *deflate::rdf_rest = 0;
 librdf_node *deflate::po_Procedure = 0;
 librdf_node *deflate::po_BasicBlock = 0;
 librdf_node *deflate::po_name = 0;
@@ -22,6 +24,18 @@ librdf_node *deflate::po_end = 0;
 librdf_node *deflate::po_precedes = 0;
 librdf_node *deflate::po_executes = 0;
 librdf_node *deflate::po_opcode = 0;
+librdf_node *deflate::po_operands = 0;
+librdf_node *deflate::po_format = 0;
+librdf_node *deflate::po_base = 0;
+librdf_node *deflate::po_subscript = 0;
+librdf_node *deflate::po_bytes = 0;
+librdf_node *deflate::po_endianess = 0;
+librdf_node *deflate::po_value = 0;
+librdf_node *deflate::po_offset = 0;
+librdf_node *deflate::po_Constant = 0;
+librdf_node *deflate::po_Memory = 0;
+librdf_node *deflate::po_Variable = 0;
+librdf_node *deflate::po_Undefined = 0;
 
 deflate::deflate(std::string &path)
 {
@@ -32,6 +46,8 @@ deflate::deflate(std::string &path)
 		
 		rap_world = librdf_world_get_raptor(rdf_world);
 		rdf_type = librdf_new_node_from_uri_string(rdf_world,RDF_NS("type"));
+		rdf_first = librdf_new_node_from_uri_string(rdf_world,RDF_NS("first"));
+		rdf_rest = librdf_new_node_from_uri_string(rdf_world,RDF_NS("rest"));
 		po_Procedure = librdf_new_node_from_uri_string(rdf_world,PANOPTICUM_NS("Procedure"));
 		po_BasicBlock = librdf_new_node_from_uri_string(rdf_world,PANOPTICUM_NS("BasicBlock"));
 		po_name = librdf_new_node_from_uri_string(rdf_world,PANOPTICUM_NS("name"));
@@ -43,6 +59,18 @@ deflate::deflate(std::string &path)
 		po_precedes = librdf_new_node_from_uri_string(rdf_world,PANOPTICUM_NS("precedes"));
 		po_executes = librdf_new_node_from_uri_string(rdf_world,PANOPTICUM_NS("executes"));
 		po_opcode = librdf_new_node_from_uri_string(rdf_world,PANOPTICUM_NS("opcode"));
+		po_operands = librdf_new_node_from_uri_string(rdf_world,PANOPTICUM_NS("operands"));
+		po_format = librdf_new_node_from_uri_string(rdf_world,PANOPTICUM_NS("format"));
+		po_base = librdf_new_node_from_uri_string(rdf_world,PANOPTICUM_NS("base"));
+		po_subscript = librdf_new_node_from_uri_string(rdf_world,PANOPTICUM_NS("subscript"));
+		po_offset = librdf_new_node_from_uri_string(rdf_world,PANOPTICUM_NS("offset"));
+		po_bytes = librdf_new_node_from_uri_string(rdf_world,PANOPTICUM_NS("bytes"));
+		po_value = librdf_new_node_from_uri_string(rdf_world,PANOPTICUM_NS("value"));
+		po_endianess = librdf_new_node_from_uri_string(rdf_world,PANOPTICUM_NS("endianess"));
+		po_Constant = librdf_new_node_from_uri_string(rdf_world,PANOPTICUM_NS("Constant"));
+		po_Memory = librdf_new_node_from_uri_string(rdf_world,PANOPTICUM_NS("Memory"));
+		po_Variable = librdf_new_node_from_uri_string(rdf_world,PANOPTICUM_NS("Variable"));
+		po_Undefined = librdf_new_node_from_uri_string(rdf_world,PANOPTICUM_NS("Undefined"));
 	}
 
 	assert(storage = librdf_new_storage(rdf_world,"memory",NULL,NULL));
@@ -150,10 +178,6 @@ proc_ptr deflate::procedure(librdf_node *proc)
 		ms.sort([](const ::mnemonic &a, const ::mnemonic &b)
 			{ return a.area < b.area; });
 
-		for(const ::mnemonic &n: ms)
-			std::cout << n.area << " ";
-		std::cout << std::endl;
-
 		bb->mutate_mnemonics([&](std::vector< ::mnemonic> &m)
 			{ move(ms.begin(),ms.end(),std::inserter(m,m.end())); });
 
@@ -210,17 +234,78 @@ void deflate::mnemonic(librdf_node *mne, std::list< ::mnemonic> &ms)
 	librdf_node *begin = librdf_model_get_target(model,mne,po_begin);
 	librdf_node *end = librdf_model_get_target(model,mne,po_end);
 	librdf_node *opcode = librdf_model_get_target(model,mne,po_opcode);
+	librdf_node *ops = librdf_model_get_target(model,mne,po_operands);
+	librdf_node *fmt = librdf_model_get_target(model,mne,po_format);
 
 	assert(begin && end && opcode && librdf_node_is_literal(begin) && librdf_node_is_literal(end) && librdf_node_is_literal(opcode));
 	addr_t b = strtoull((const char *)librdf_node_get_literal_value(begin),NULL,10);
 	addr_t e = strtoull((const char *)librdf_node_get_literal_value(end),NULL,10);
 	std::string oc((const char *)librdf_node_get_literal_value(opcode));
+	std::string f((const char *)librdf_node_get_literal_value(fmt));
 
-	ms.emplace_back(::mnemonic(range<addr_t>(b,e),oc,{},{}));
-	
+	ms.emplace_back(::mnemonic(range<addr_t>(b,e),oc,f,{},{}));
+	while(ops)
+	{
+		librdf_node *val = librdf_model_get_target(model,ops,rdf_first);
+		librdf_node *tmp = librdf_model_get_target(model,ops,rdf_rest);
+
+		if(val)
+		{
+			ms.back().operands.emplace_back(value(val));
+			librdf_free_node(val);
+		}
+
+		librdf_free_node(ops);
+		ops = tmp;
+	}
+
 	librdf_free_node(begin);
 	librdf_free_node(end);
 	librdf_free_node(opcode);
+	librdf_free_node(fmt);
+}
+
+rvalue deflate::value(librdf_node *val) const
+{
+	librdf_node *type = librdf_model_get_target(model,val,rdf_type);
+
+	if(librdf_node_equals(type,po_Undefined))	
+	{
+		return undefined();
+	}
+	else if(librdf_node_equals(type,po_Variable))
+	{
+		librdf_node *base = librdf_model_get_target(model,val,po_base);
+		librdf_node *subscript = librdf_model_get_target(model,val,po_subscript);
+		
+		assert(base && subscript);
+		return variable((const char *)librdf_node_get_literal_value(base),strtoull((const char *)librdf_node_get_literal_value(subscript),NULL,10));
+	}
+	else if(librdf_node_equals(type,po_Constant))
+	{
+		librdf_node *value = librdf_model_get_target(model,val,po_value);
+
+		assert(value);
+		return constant(strtoull((const char *)librdf_node_get_literal_value(value),NULL,10));
+	}
+	else if(librdf_node_equals(type,po_Memory))
+	{
+		librdf_node *offset = librdf_model_get_target(model,val,po_offset);
+		librdf_node *bytes = librdf_model_get_target(model,val,po_bytes);
+		librdf_node *name = librdf_model_get_target(model,val,po_name);
+		librdf_node *endianess = librdf_model_get_target(model,val,po_endianess);
+
+		assert(offset && bytes && name && endianess);
+		rvalue o = value(offset);
+		std::string n((const char *)librdf_node_get_literal_value(name));
+		std::string e((const char *)librdf_node_get_literal_value(endianess));
+		unsigned long long b = strtoull((const char *)librdf_node_get_literal_value(bytes),NULL,10);
+
+		assert((e == "little" || e == "big") && b && n.size());
+		return memory(o,b,e == "little" ? memory::LittleEndian : memory::BigEndian,n);
+	}
+	else
+		assert(false);
 }
 
 deflate::~deflate(void)

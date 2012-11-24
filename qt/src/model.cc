@@ -1,3 +1,6 @@
+#include <QDebug>
+#include <sstream>
+
 #include <model.hh>
 
 #include <flowgraph.hh>
@@ -5,17 +8,12 @@
 #include <mnemonic.hh>
 
 Model::Model(po::deflate *d, QObject *parent)
-: QAbstractItemModel(parent), m_deflate(d)
+: QAbstractItemModel(parent), m_nextId(0), m_deflate(d)
 {
-	// pointer tagging
-	static_assert(alignof(po::flowgraph*) >= Model::LastTag,"Pointer alignment of >= Model::LastTag needed for tagging");
-	assert(alignof(po::flowgraph*) >= Model::LastTag);
-	
 	po::flow_ptr flow = m_deflate->flowgraph();
 	if(flow->name.empty())
 		flow->name = "flowgraph #1";
 	m_flowgraphs.push_back(flow);
-	m_selected.insert(flow->procedures.begin()->get());
 }
 
 Model::~Model(void)
@@ -25,78 +23,68 @@ Model::~Model(void)
 
 QModelIndex Model::index(int row, int column, const QModelIndex &parent) const
 {
-	po::flowgraph *flow;
-	po::procedure *proc;
-	po::basic_block *bblock;
-	Tag t;
-	void *ptr;
-
 	if(!parent.isValid())
 	{
 		// root
 		assert(row >= 0 && (unsigned int)row < m_flowgraphs.size());
-		return createIndex(row,column,tag(m_flowgraphs[row].get(),FlowgraphTag));
+		return createIndex(row,column,m_flowgraphs[row].get());
 	}
 
-	std::tie(ptr,t) = extract(parent.internalId());
+	const Path &e = path(parent.internalId());
 
-	switch(t)
+	switch(e.type)
 	{
-	case FlowgraphTag:
-		flow = (po::flowgraph *)ptr;
-		
+	case Path::FlowgraphType:
 		if(parent.column() == ProceduresColumn)
 		{
-			auto i = flow->procedures.begin();
-			assert(row >= 0 && flow->procedures.size() > (unsigned int)row);
+			auto i = e.flow->procedures.begin();
+			assert(row >= 0 && e.flow->procedures.size() > (unsigned int)row);
 			advance(i,row);
-			return createIndex(row,column,tag(i->get(),ProcedureTag));
+			return createIndex(row,column,e.flow,i->get());
 		}
 		else
 			assert(false);
 
-	case ProcedureTag:
-		proc = (po::procedure *)ptr;
-
+	case Path::ProcedureType:
 		switch(parent.column())
 		{
 		case CalleesColumn:
-			assert(row >= 0 && proc->callees.size() > (unsigned int)row);
-			return createIndex(row,column,tag(next(proc->callees.begin(),row)->get(),ProcedureTag));
+			assert(row >= 0 && e.proc->callees.size() > (unsigned int)row);
+			return createIndex(row,column,e.flow,next(e.proc->callees.begin(),row)->get());
 		
 		case BasicBlocksColumn:
-			assert(row >= 0 && proc->basic_blocks.size() > (unsigned int)row);
-			return createIndex(row,column,tag(next(proc->basic_blocks.begin(),row)->get(),BasicBlockTag));
+			assert(row >= 0 && e.proc->basic_blocks.size() > (unsigned int)row);
+			return createIndex(row,column,e.flow,e.proc,next(e.proc->basic_blocks.begin(),row)->get());
 		
 		default:
 			assert(false);
 		}
 	
-	case BasicBlockTag:
-		bblock = (po::basic_block *)ptr;
-
+	case Path::BasicBlockType:
 		switch(parent.column())
 		{
 		case SuccessorsColumn:
-		{
-			auto p = bblock->successors();
-			assert(row >= 0 && bblock->outgoing().size() > (unsigned int)row);
-			return createIndex(row,column,tag(next(p.first,row)->get(),BasicBlockTag));
-		}
+			assert(row >= 0 && e.bblock->outgoing().size() > (unsigned int)row);
+			return createIndex(row,column,e.flow,e.proc,next(e.bblock->successors().first,row)->get());
 
 		case PredecessorsColumn:
-		{
-			auto p = bblock->predecessors();
-			assert(row >= 0 && bblock->incoming().size() > (unsigned int)row);
-			return createIndex(row,column,tag(next(p.first,row)->get(),BasicBlockTag));
-		}
+			assert(row >= 0 && e.bblock->incoming().size() > (unsigned int)row);
+			return createIndex(row,column,e.flow,e.proc,next(e.bblock->predecessors().first,row)->get());
 
 		case MnemonicsColumn:
-		{
-			assert(row >= 0 && bblock->mnemonics().size() > (unsigned int)row);
-			return createIndex(row,column,tag((void *)&bblock->mnemonics()[row],MnemonicTag));
+			assert(row >= 0 && e.bblock->mnemonics().size() > (unsigned int)row);
+			return createIndex(row,column,e.flow,e.proc,e.bblock,&e.bblock->mnemonics()[row]);
+			
+		default:
+			assert(false);
 		}
-
+	
+	case Path::MnemonicType:
+		switch(parent.column())
+		{
+		case OperandsColumn:
+			assert(row >= 0 && e.mne->operands.size() > (unsigned int)row);
+			return createIndex(row,column,e.flow,e.proc,e.bblock,e.mne,row);
 		default:
 			assert(false);
 		}
@@ -108,41 +96,22 @@ QModelIndex Model::index(int row, int column, const QModelIndex &parent) const
 
 QModelIndex Model::parent(const QModelIndex &index) const
 {
-	ptrdiff_t t;
-	void *ptr;
 	assert(index.isValid());
+	const Path &e = path(index.internalId());
 	
-	std::tie(ptr,t) = extract(index.internalId());
-	switch(t)
+	switch(e.type)
 	{
-	case FlowgraphTag:
+	case Path::FlowgraphType:
 		return QModelIndex();
-	case ProcedureTag:
-		return createIndex(0,ProceduresColumn,tag(m_flowgraphs.front().get(),FlowgraphTag));
-	case BasicBlockTag:
-	{
-		po::flow_ptr f = m_flowgraphs.front();
-		auto i = std::find_if(f->procedures.begin(),f->procedures.end(),[&](const po::proc_ptr &p) 
-			{ return std::any_of(p->basic_blocks.begin(),p->basic_blocks.end(),[&](const po::bblock_ptr &bb) { return bb.get() == (po::basic_block *)ptr; }); });
-		
-		assert(i != f->procedures.end());
-		return createIndex(distance(f->procedures.begin(),i),BasicBlocksColumn,tag(i->get(),ProcedureTag));
-	}
-	case MnemonicTag:
-	{
-		const po::mnemonic *mne = (const po::mnemonic *)ptr;
-		for(po::flow_ptr flow: m_flowgraphs)
-			for(po::proc_ptr proc: flow->procedures)
-			{
-				int i = 0;
-				for(po::bblock_ptr bb: proc->basic_blocks)
-					if(bb->area().includes(mne->area))
-						return createIndex(i,MnemonicsColumn,tag(bb.get(),BasicBlockTag));
-					else
-						++i;
-			}
-		assert(false);
-	}
+	case Path::ProcedureType:
+		return createIndex(0,ProceduresColumn,e.flow);
+	case Path::BasicBlockType:
+		return createIndex(std::distance(e.flow->procedures.begin(),find_if(e.flow->procedures.begin(),e.flow->procedures.end(),[&](const po::proc_ptr p) { return p.get() == e.proc; })),BasicBlocksColumn,e.flow,e.proc);
+	case Path::MnemonicType:
+		return createIndex(std::distance(e.proc->basic_blocks.begin(),find_if(e.proc->basic_blocks.begin(),e.proc->basic_blocks.end(),[&](const po::bblock_ptr bb) { return bb.get() == e.bblock; })),MnemonicsColumn,e.flow,e.proc,e.bblock);
+	case Path::OperandType:
+		return createIndex(std::distance(e.bblock->mnemonics().begin(),std::find_if(e.bblock->mnemonics().begin(),e.bblock->mnemonics().end(),[&](const po::mnemonic &m) 
+											 { return &m == e.mne; })),OperandsColumn,e.flow,e.proc,e.bblock,e.mne);
 
 	default:
 		assert(false);
@@ -151,63 +120,50 @@ QModelIndex Model::parent(const QModelIndex &index) const
 
 int Model::rowCount(const QModelIndex &parent) const
 {
-	po::flowgraph *flow;
-	po::procedure *proc;
-	po::basic_block *bblock;
-	//const mnemonic *mne;
-	ptrdiff_t t;
-	void *ptr;
-	
-	std::tie(ptr,t) = extract(parent.internalId());
-	
 	if(!parent.isValid())
 	{
 		return m_flowgraphs.size();
 	}
 
-	switch(t)
+	const Path &e = path(parent.internalId());
+	
+	switch(e.type)
 	{
-	case FlowgraphTag:
-		flow = (po::flowgraph *)ptr;
-
+	case Path::FlowgraphType:
 		if(parent.column() == ProceduresColumn)
-			return flow->procedures.size();
+			return e.flow->procedures.size();
 		else
 			return 0;
 	
-	case ProcedureTag:
-		proc = (po::procedure *)ptr;
-
+	case Path::ProcedureType:
 		switch(parent.column())
 		{
 		case CalleesColumn:
-			return proc->callees.size();
+			return e.proc->callees.size();
 		case BasicBlocksColumn:
-			return proc->basic_blocks.size();
+			return e.proc->basic_blocks.size();
 		default:
 			return 0;
 		}
 	
-	case BasicBlockTag:
-		bblock = (po::basic_block *)ptr;
-
+	case Path::BasicBlockType:
 		switch(parent.column())
 		{		
 		case SuccessorsColumn:
-			return bblock->outgoing().size();
+			return e.bblock->outgoing().size();
 		case PredecessorsColumn:
-			return bblock->incoming().size();
+			return e.bblock->incoming().size();
 		case MnemonicsColumn:
-			return bblock->mnemonics().size();
+			return e.bblock->mnemonics().size();
 		default:
 			return 0;
 		}
 
-	case MnemonicTag:
-		//mne = (const mnemonic *)ptr;
-
+	case Path::MnemonicType:
 		switch(parent.column())
 		{
+		case OperandsColumn:
+			return e.mne->operands.size();
 		default:
 			return 0;
 		}
@@ -219,31 +175,28 @@ int Model::rowCount(const QModelIndex &parent) const
 
 int Model::columnCount(const QModelIndex &parent) const
 {
-	ptrdiff_t t;
-	void *ptr;
-	
-	std::tie(ptr,t) = extract(parent.internalId());
-	
 	if(!parent.isValid())
 	{
 		return LastFlowgraphColumn;
 	}
+	
+	const Path &e = path(parent.internalId());
 
-	switch(t)
+	switch(e.type)
 	{
-	case FlowgraphTag:
+	case Path::FlowgraphType:
 		if(parent.column() == ProceduresColumn)
 			return LastProcedureColumn;
 		else
 			return 0;
 
-	case ProcedureTag:
+	case Path::ProcedureType:
 		if(parent.column() == CalleesColumn)
 			return LastProcedureColumn;
 		else
 			return 0;
 	
-	case BasicBlockTag:
+	case Path::BasicBlockType:
 		switch(parent.column())
 		{
 		case PredecessorsColumn:
@@ -255,8 +208,14 @@ int Model::columnCount(const QModelIndex &parent) const
 			return 0;
 		}
 	
-	case MnemonicTag:
-		return 0;
+	case Path::MnemonicType:
+		switch(parent.column())
+		{
+		case OperandsColumn:
+			return 1;
+		default:
+			return 0;
+		}
 
 	default:
 		assert(false);
@@ -279,19 +238,17 @@ QVariant Model::data(const QModelIndex &index, int role) const
 
 Qt::ItemFlags Model::flags(const QModelIndex &index) const
 {
-	ptrdiff_t t;
-	void *ptr;
 	Qt::ItemFlags ret = Qt::ItemIsEnabled | Qt::ItemIsSelectable;
 
 	if(!index.isValid())
 		return ret;
-	else
-		std::tie(ptr,t) = extract(index.internalId());
 	
-	switch(t)
+	const Path &e = path(index.internalId());
+	
+	switch(e.type)
 	{
-	case FlowgraphTag:
-	case ProcedureTag:
+	case Path::FlowgraphType:
+	case Path::ProcedureType:
 		return (index.column() == NameColumn ? ret | Qt::ItemIsEditable : ret);
 	default:
 		return ret;
@@ -322,83 +279,116 @@ bool Model::setData(const QModelIndex &index, const QVariant &value, int role)
 
 QString Model::displayData(const QModelIndex &index) const
 {
-	po::flowgraph *flow;
-	po::procedure *proc;
-	po::basic_block *bblock;
-	const po::mnemonic *mne;
-	ptrdiff_t t;
-	void *ptr;
-	
-	std::tie(ptr,t) = extract(index.internalId());
+	const Path &e = path(index.internalId());
 
-	switch(t)
+	switch(e.type)
 	{
-	case FlowgraphTag:
-		flow = (po::flowgraph *)ptr;
+	case Path::FlowgraphType:
 		switch((Column)index.column())
 		{
 		case NameColumn:
-			return QString::fromStdString(flow->name);
+			return QString::fromStdString(e.flow->name);
 		case ProceduresColumn: 
-			return QString("%1 procedures").arg(flow->procedures.size());
+			return QString("%1 procedures").arg(e.flow->procedures.size());
 		default: 
 			assert(false);
 		}
 
-	case ProcedureTag:
-		proc = (po::procedure *)ptr;
+	case Path::ProcedureType:
 		switch((Column)index.column())
 		{
 		case NameColumn:
-			if(proc->name.size())
-				return QString::fromStdString(proc->name);
+			if(e.proc->name.size())
+				return QString::fromStdString(e.proc->name);
 			else
 				return QString("(unnamed)");
 		case EntryPointColumn:
-			if(proc->entry)
-				return QString("0x%1").arg(proc->entry->area().begin);
+			if(e.proc->entry)
+				return QString("0x%1").arg(e.proc->entry->area().begin);
 			else
 				return QString("(no entry)");
 		case BasicBlocksColumn: 
-			return QString("%1 basic blocks").arg(proc->basic_blocks.size());
+			return QString("%1 basic blocks").arg(e.proc->basic_blocks.size());
 		case CalleesColumn:
-			return QString("%1 callees").arg(proc->callees.size());
+			return QString("%1 callees").arg(e.proc->callees.size());
 		case UniqueIdColumn:
-			return QString("%1").arg((ptrdiff_t)proc);
+			return QString("%1").arg((ptrdiff_t)e.proc);
 		default:
 			assert(false);
 		}
 
-	case BasicBlockTag:
-		bblock = (po::basic_block *)ptr;
+	case Path::BasicBlockType:
 		switch((Column)index.column())
 		{
 		case AreaColumn:
-			return QString("%1:%2").arg(bblock->area().begin).arg(bblock->area().end);
+			return QString("%1:%2").arg(e.bblock->area().begin).arg(e.bblock->area().end);
 		case MnemonicsColumn:
-			return QString("%1 mnemonics").arg(bblock->mnemonics().size());
+			return QString("%1 mnemonics").arg(e.bblock->mnemonics().size());
 		case PredecessorsColumn:
-			return QString("%1 predecessors").arg(bblock->incoming().size());
+			return QString("%1 predecessors").arg(e.bblock->incoming().size());
 		case SuccessorsColumn:
-			return QString("%1 successors").arg(bblock->outgoing().size());
+			return QString("%1 successors").arg(e.bblock->outgoing().size());
 		case UniqueIdColumn:
-			return QString("%1").arg((ptrdiff_t)bblock);
+			return QString("%1").arg((ptrdiff_t)e.bblock);
 		default:
 			assert(false);
 		}
 
-	case MnemonicTag:
-		mne = (const po::mnemonic *)ptr;
+	case Path::MnemonicType:
 		switch((Column)index.column())
 		{
 		case AreaColumn:
-			return QString("%1:%2").arg(mne->area.begin).arg(mne->area.end);
+			return QString("%1:%2").arg(e.mne->area.begin).arg(e.mne->area.end);
 		case OpcodeColumn:
-			return QString::fromStdString(mne->opcode);
+			return QString::fromStdString(e.mne->opcode);
 		case OperandsColumn:
-			return QString("%1 operands").arg(mne->operands.size());
+		{
+			QString ret;
+			for(const po::mnemonic::token &tok: e.mne->format)
+				switch(tok.type)
+				{
+				case po::mnemonic::token::Literal: ret += QString::fromStdString(tok.literal); break;
+				case po::mnemonic::token::Signed:
+				{
+					assert(e.mne->operands.size() > tok.index);
+					if(e.mne->operands[tok.index].is_constant())
+						ret += QString("%1").arg((int)e.mne->operands[tok.index].constant().value());
+					else
+					{
+						std::stringstream ss;
+						ss << e.mne->operands[tok.index];
+						ret += QString::fromStdString(ss.str());
+					}
+					break;
+				}
+				case po::mnemonic::token::Unsigned:
+				{
+					assert(e.mne->operands.size() > tok.index);
+					std::stringstream ss;
+					ss << e.mne->operands[tok.index];
+					ret += QString::fromStdString(ss.str());
+					break;
+				}
+				default:
+					assert(false);
+				}
+			return ret;//QString("%1 operands").arg(e.mne->operands.size());
+		}
 		case InstructionsColumn:
-			return QString("%1 instructions").arg(mne->instructions.size());
+			return QString("%1 instructions").arg(e.mne->instructions.size());
+		default:
+			assert(false);
+		}
+	
+	case Path::OperandType:
+		switch((Column)index.column())
+		{
+		case ValueColumn:
+		{
+			std::stringstream ss;
+			ss << *next(e.mne->operands.begin(),e.op);
+			return QString::fromStdString(ss.str());
+		}
 		default:
 			assert(false);
 		}
@@ -410,41 +400,29 @@ QString Model::displayData(const QModelIndex &index) const
 
 bool Model::setDisplayData(const QModelIndex &index, const std::string &value)
 {
-	ptrdiff_t t;
-	void *ptr;
-	po::flowgraph *flow;
+	const Path &e = path(index.internalId());
 
 	if(!value.size())
 		return false;
 
-	std::tie(ptr,t) = extract(index.internalId());
-	switch(t)
+	switch(e.type)
 	{
-	case FlowgraphTag:
+	case Path::FlowgraphType:
 		assert(index.column() == NameColumn);
-		flow = (po::flowgraph *)ptr;
 
 		if(std::any_of(m_flowgraphs.begin(),m_flowgraphs.end(),[&](const po::flow_ptr &f) { return f->name == value; }))
 			return false;
 
-		flow->name = value;
+		e.flow->name = value;
 		return true;
 	
-	case ProcedureTag:
+	case Path::ProcedureType:
 	{
 		assert(index.column() == NameColumn);
-		po::procedure *proc = (po::procedure *)ptr;
-		auto i = std::find_if(m_flowgraphs.begin(),m_flowgraphs.end(),[&](const po::flow_ptr &f) 
-							{ return std::any_of(f->procedures.begin(),f->procedures.end(),[&](const po::proc_ptr &p) 
-								{ return p.get() == proc; }); });
-
-		if(i == m_flowgraphs.end())
+		if(std::any_of(e.flow->procedures.begin(),e.flow->procedures.end(),[&](const po::proc_ptr &p) { return p.get() != e.proc && p->name == value; }))
 			return false;
 
-		if(std::any_of((*i)->procedures.begin(),(*i)->procedures.end(),[&](const po::proc_ptr &p) { return p.get() != proc && p->name == value; }))
-			return false;
-
-		proc->name = value;
+		e.proc->name = value;
 		return true;
 	}
 	default:
@@ -452,12 +430,57 @@ bool Model::setDisplayData(const QModelIndex &index, const std::string &value)
 	}
 }
 
-ptrdiff_t Model::tag(void *ptr, Tag t) const
+QModelIndex Model::createIndex(int row, int col, po::flowgraph *flow, po::procedure *proc, po::basic_block *bblock, const po::mnemonic *mne, int op) const
 {
-	return (ptrdiff_t)ptr | (ptrdiff_t)t;
+	Path *e = new Path();
+	uint key = 0;
+
+	e->flow = flow;
+	e->proc = proc;
+	e->bblock = bblock;
+	e->mne = mne;
+	e->op = op;
+	
+	if(!proc)
+		e->type = Path::FlowgraphType;
+	else if(!bblock)
+		e->type = Path::ProcedureType;
+	else if(!mne)
+		e->type = Path::BasicBlockType;
+	else if(op == -1)
+		e->type = Path::MnemonicType;
+	else
+		e->type = Path::OperandType;
+
+	if(!m_pathToId.contains(*e))
+	{
+		key = m_nextId++;
+		m_idToPath.insert(key,e);
+		m_pathToId.insert(*e,key);
+	}
+	else
+	{
+		key = m_pathToId[*e];
+		delete e;
+	}
+
+	return QAbstractItemModel::createIndex(row,col,key);
 }
 
-std::pair<void*,Model::Tag> Model::extract(ptrdiff_t p) const
+const Path &Model::path(uint k) const
 {
-	return std::make_pair((void *)(p & ~(ptrdiff_t)MaskTag),(Tag)(p & (ptrdiff_t)MaskTag));
+	assert(m_idToPath.contains(k));
+	return *m_idToPath[k];
+}
+
+Path::Path(void) : flow(0), proc(0), bblock(0), mne(0), op(-1) {}
+
+bool Path::operator==(const Path &e) const
+{
+	return e.type == type && e.flow == flow && e.proc == proc && e.bblock == bblock && e.mne == mne && e.op == op;
+}
+
+bool Path::operator!=(const Path &e) const
+{
+	return !(e == *this);
 }

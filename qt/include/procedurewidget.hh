@@ -12,9 +12,6 @@ public:
 
 protected:
 	void populate(void);
-
-private slots:
-	void sceneRectChanged(const QRectF &r);
 };
 
 #endif

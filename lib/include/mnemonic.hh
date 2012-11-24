@@ -124,26 +124,43 @@ namespace po
 		::std::vector<rvalue> right;
 	};
 
-
 	class mnemonic
 	{
 	public:
 		typedef ::std::vector<instr>::const_iterator iterator;
-		
+		struct token
+		{
+			enum Type
+			{
+				Literal,
+				Signed,
+				Unsigned,
+			};
+
+			token(std::string n);
+			token(unsigned int idx, unsigned int w, Type t);
+	
+			Type type;
+			unsigned int index;
+			unsigned int width;
+			std::string literal;
+		};
+
 		template <typename F1, typename F2>
-		mnemonic(range<addr_t> a, ::std::string n, F1 ops_begin, F1 ops_end, F2 instr_begin, F2 instr_end)
-		: area(a), opcode(n)
+		mnemonic(range<addr_t> a, ::std::string n, ::std::string fmt, F1 ops_begin, F1 ops_end, F2 instr_begin, F2 instr_end)
+		: mnemonic(a,n,fmt,{},{})
 		{
 			::std::copy(ops_begin,ops_end,inserter(operands,operands.begin()));
 			::std::copy(instr_begin,instr_end,inserter(instructions,instructions.begin()));
 		}
 
-		mnemonic(range<addr_t> a, ::std::string n, ::std::initializer_list<rvalue> ops, ::std::initializer_list<instr> instrs);
+		mnemonic(range<addr_t> a, ::std::string n, ::std::string fmt, ::std::initializer_list<rvalue> ops, ::std::initializer_list<instr> instrs);
 
 		range<addr_t> area;
 		::std::string opcode;
-		::std::list<rvalue> operands;
+		::std::vector<rvalue> operands;
 		::std::vector<instr> instructions;
+		::std::list<token> format;
 	};
 	
 	::std::ostream& operator<<(::std::ostream &os, const instr &i);

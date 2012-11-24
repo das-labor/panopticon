@@ -11,7 +11,6 @@ GraphWidget::GraphWidget(QAbstractItemModel *m, QModelIndex i, QWidget *parent)
 	setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform | QPainter::TextAntialiasing | QPainter::HighQualityAntialiasing);
 	setDragMode(QGraphicsView::RubberBandDrag);//QGraphicsView::ScrollHandDrag);
 
-	connect(&m_scene,SIGNAL(sceneRectChanged(const QRectF&)),this,SLOT(sceneRectChanged(const QRectF&)));
 }
 
 GraphWidget::~GraphWidget(void)
@@ -23,11 +22,6 @@ void GraphWidget::setRootIndex(const QModelIndex &i)
 {
 	m_root = i;
 	populate();
-}
-
-void GraphWidget::sceneRectChanged(const QRectF &r)
-{
-	fitInView(r,Qt::KeepAspectRatio);
 }
 
 void GraphWidget::wheelEvent(QWheelEvent *event)

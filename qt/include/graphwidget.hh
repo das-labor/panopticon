@@ -30,9 +30,6 @@ protected:
 	Graph m_scene;
 	QPersistentModelIndex m_root;
 	QPointF m_lastDragPos;
-
-private slots:
-	void sceneRectChanged(const QRectF &r);
 };
 
 #endif

@@ -76,7 +76,7 @@ void Node::setTitle(QString s)
 	m_rect.setRect(m_text.boundingRect().adjusted(-5,-5,5,5));
 }
 
-Arrow::Arrow(Node *f, Node *t)
+Arrow::Arrow(QGraphicsObject *f, QGraphicsObject *t)
 : m_from(f), m_to(t), m_highlighted(false)
 {
 	connect(m_from,SIGNAL(xChanged()),this,SLOT(updated()));
@@ -135,12 +135,12 @@ void Arrow::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWi
 	painter->restore();
 }
 
-Node *Arrow::from(void)
+QGraphicsObject *Arrow::from(void)
 {
 	return m_from;
 }
 
-Node *Arrow::to(void)
+QGraphicsObject *Arrow::to(void)
 {
 	return m_to;
 }
@@ -195,6 +195,7 @@ QRectF Graph::graphLayout(QString algorithm)
 	GVC_t *gvc = gvContext();
 	Agraph_t *graph = agopen((char *)std::string("g").c_str(),AGDIGRAPH);
 	QMap<QGraphicsObject *,Agnode_t *> proxies;
+	const QDesktopWidget *desk = QApplication::desktop();
 
 	// allocate Graphviz nodes shadowing the Nodes in the scene
 	QListIterator<QGraphicsObject *> i(nodes());
@@ -204,10 +205,10 @@ QRectF Graph::graphLayout(QString algorithm)
 		std::string name = std::to_string((ptrdiff_t)n);
 		QRectF bb = n->boundingRect();
 		Agnode_t *p = agnode(graph,(char *)name.c_str());
-		QDesktopWidget *desk = QApplication::desktop();
 	
-		agsafeset(p,(char *)std::string("width").c_str(),(char *)std::to_string(bb.width()/desk->logicalDpiX()).c_str(),(char *)std::string("0").c_str());
-		agsafeset(p,(char *)std::string("height").c_str(),(char *)std::to_string(bb.height()/desk->logicalDpiY()).c_str(),(char *)std::string("0").c_str());
+		agsafeset(p,(char *)std::string("width").c_str(),(char *)std::to_string(ceil(bb.width()/96.0)).c_str(),(char *)std::string("1").c_str());
+		agsafeset(p,(char *)std::string("height").c_str(),(char *)std::to_string(ceil(bb.height()/96.0)).c_str(),(char *)std::string("1").c_str());
+
 		proxies.insert(n,p);
 	}
 
@@ -223,6 +224,7 @@ QRectF Graph::graphLayout(QString algorithm)
 	}
 
 	gvLayout(gvc,graph,(char *)algorithm.toStdString().c_str());
+	gvRender(gvc,graph,"dot",NULL);
 
 	// move Nodes accoring to Graphviz proxies
 	QMapIterator<QGraphicsObject *,Agnode_t *> k(proxies);
@@ -231,7 +233,8 @@ QRectF Graph::graphLayout(QString algorithm)
 		k.next();
 		QGraphicsObject *n = k.key();
 		Agnode_t *p = k.value();
-		unsigned long x = p->u.coord.x, y = p->u.coord.y;
+		QRectF bb = n->boundingRect();
+		unsigned long x = ND_coord(p).x - (bb.width() / 2.0), y = ND_coord(p).y - (bb.height() / 2.0);
 
 		//n->smoothSetPos(QPoint(x,y));
 		n->setPos(QPoint(x,y));
@@ -255,11 +258,11 @@ void Graph::connect(QGraphicsObject *a, QGraphicsObject *b)
 {
 	assert(m_nodes.contains(a) && m_nodes.contains(b));
 	
-	/*Arrow *e = new Arrow(a,b);
+	Arrow *e = new Arrow(a,b);
 
 	addItem(e);
 	m_edges.append(e);
-	m_incidence.insert(a,e);*/
+	m_incidence.insert(a,e);
 }
 
 void Graph::clear(void)

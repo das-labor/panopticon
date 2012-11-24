@@ -130,9 +130,9 @@ sem_action po::avr::unary_reg(std::string x, std::function<void(cg &c, const var
 		variable op = st.capture_groups.count("d") ? decode_reg((unsigned int)st.capture_groups["d"]) : 
 																								 decode_reg((unsigned int)st.capture_groups["r"]);
 		if(func)
-			st.mnemonic(st.tokens.size(),x,op,std::bind(func,std::placeholders::_1,op));
+			st.mnemonic(st.tokens.size(),x,"",op,std::bind(func,std::placeholders::_1,op));
 		else
-			st.mnemonic(st.tokens.size(),x,op);
+			st.mnemonic(st.tokens.size(),x,"",op);
 		st.jump(st.address + st.tokens.size());
 	};
 }
@@ -144,7 +144,7 @@ sem_action po::avr::binary_reg(std::string x, std::function<void(cg &,const vari
 		variable Rd = decode_reg(st.capture_groups["d"]);
 		variable Rr = decode_reg(st.capture_groups["d"]);
 
-		st.mnemonic(st.tokens.size(),x,Rd,Rr,bind(func,std::placeholders::_1,Rd,Rr));
+		st.mnemonic(st.tokens.size(),x,"",Rd,Rr,bind(func,std::placeholders::_1,Rd,Rr));
 		st.jump(st.address + st.tokens.size());
 	};
 }
@@ -157,7 +157,7 @@ sem_action po::avr::branch(std::string m, rvalue flag, bool set)
 		guard_ptr g(new guard(flag,relation::Eq,set ? 1_val : 0_val));
 		constant k = _k <= 63 ? _k : _k - 128;
 
-		st.mnemonic(st.tokens.size(),m,k);
+		st.mnemonic(st.tokens.size(),m,"",k);
 		st.jump(st.address + 1,g->negation());
 		st.jump(st.address + k.value() + 1,g);
 	};
@@ -170,7 +170,7 @@ sem_action po::avr::binary_regconst(std::string x, std::function<void(cg &,const
 		variable Rd = decode_reg(st.capture_groups["d"] + 16);
 		constant K = st.capture_groups["K"];
 
-		st.mnemonic(st.tokens.size(),x,{Rd,K},bind(func,std::placeholders::_1,Rd,K));
+		st.mnemonic(st.tokens.size(),x,"",{Rd,K},bind(func,std::placeholders::_1,Rd,K));
 		st.jump(st.address + st.tokens.size());
 	};
 }
@@ -181,7 +181,7 @@ sem_action po::avr::binary_st(const variable &Rd1, const variable &Rd2, bool pre
 	{
 		variable Rr = decode_reg(st.capture_groups["r"]);
 
-		st.mnemonic(st.tokens.size(),"st",{Rd2,Rd1,Rr},[&](cg &c)
+		st.mnemonic(st.tokens.size(),"st","",{Rd2,Rd1,Rr},[&](cg &c)
 		{
 			variable X("ptr");
 			
@@ -205,7 +205,7 @@ sem_action po::avr::binary_ld(const variable &Rr1, const variable &Rr2, bool pre
 	{
 		variable Rd = decode_reg(st.capture_groups["d"]);
 
-		st.mnemonic(st.tokens.size(),"ld",{Rd,Rr2,Rr1},[&](cg &c)
+		st.mnemonic(st.tokens.size(),"ld","",{Rd,Rr2,Rr1},[&](cg &c)
 		{
 			variable X("ptr");
 
@@ -248,7 +248,7 @@ sem_action po::avr::simple(std::string x, std::function<void(cg&)> fn)
 	return [x,fn](sm &st)
 	{
 		std::list<rvalue> nop;
-		st.mnemonic(st.tokens.size(),x,nop,fn);
+		st.mnemonic(st.tokens.size(),x,"",nop,fn);
 		st.jump(st.address + st.tokens.size());
 	};
 }
