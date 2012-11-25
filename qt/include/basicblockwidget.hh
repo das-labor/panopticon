@@ -2,9 +2,13 @@
 #define BASICBLOCK_WIDGET_HH
 
 #include <QGraphicsObject>
-#include <QGraphicsTextItem>
+#include <QGraphicsSimpleTextItem>
 #include <QModelIndex>
 #include <QAbstractItemModel>
+
+class BasicBlockWidget;
+class MnemonicWidget;
+class ControlTransferWidget;
 
 class BasicBlockWidget : public QGraphicsObject
 {
@@ -16,11 +20,32 @@ public:
 	virtual QRectF boundingRect(void) const;
 	virtual void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget = 0);
 
+protected:
+//	virtual void mouseMoveEvent(QGraphicsSceneMouseEvent *event);
+
 private:
-	QGraphicsTextItem m_text;
+	QVector<MnemonicWidget *> m_mnemonics;
 	const QAbstractItemModel *m_model;
 	QPersistentModelIndex m_root;
 };
+
+class MnemonicWidget : public QGraphicsItem
+{
+public:
+	MnemonicWidget(QModelIndex i, QGraphicsItem *parent = 0);
+	
+	void setIdent(double s);
+	double ident(void) const;
+
+	virtual QRectF boundingRect(void) const;
+	virtual void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget = 0);
+
+private:
+	QGraphicsSimpleTextItem m_mnemonic;
+	QVector<QGraphicsSimpleTextItem *> m_operands;
+	double m_ident;
+};
+
 
 class ControlTransferWidget : public QGraphicsObject
 {
