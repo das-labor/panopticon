@@ -11,7 +11,7 @@ ProcedureWidget::ProcedureWidget(QAbstractItemModel *m, QModelIndex i, QWidget *
 
 void ProcedureWidget::populate(void)
 {
-	QModelIndex bblocks = m_root.sibling(m_root.row(),Model::BasicBlocksColumn);
+	const QModelIndex bblocks = m_root.sibling(m_root.row(),Model::BasicBlocksColumn);
 	int row = 0;
 	QMap<ptrdiff_t,QGraphicsObject *> nodes;
 
@@ -30,16 +30,14 @@ void ProcedureWidget::populate(void)
 	row = 0;
 	while(row < m_model->rowCount(bblocks))
 	{
-		QModelIndex succ = bblocks.child(row,Model::SuccessorsColumn);
-		ptrdiff_t uid = bblocks.child(row,Model::UniqueIdColumn).data().toULongLong();
-		QGraphicsObject *from = nodes[uid];
+		const QModelIndex succ = bblocks.child(row,Model::SuccessorsColumn);
+		QGraphicsObject *from = nodes[bblocks.child(row,Model::UniqueIdColumn).data().toULongLong()];
 		int s = 0;
 		
 		while(s < m_model->rowCount(succ))
 		{
-			uid = succ.child(s,Model::UniqueIdColumn).data().toULongLong();
-			QGraphicsObject *to = nodes[uid];
-
+			QGraphicsObject *to = nodes[succ.child(s,Model::UniqueIdColumn).data().toULongLong()];
+	
 			m_scene.connect(from,to);
 			++s;
 		}

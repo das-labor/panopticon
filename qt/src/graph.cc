@@ -129,8 +129,8 @@ void Arrow::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWi
 	painter->setRenderHint(QPainter::Antialiasing);
 	painter->setBrush(QBrush(m_highlighted ? Qt::blue : Qt::red));
 	painter->drawLine(body);
-	painter->translate(body.p1());
-	painter->rotate(270 - body.angle());
+	painter->translate(body.p2());
+	painter->rotate(90 - body.angle());
 	painter->drawConvexPolygon(m_head);
 	painter->restore();
 }
@@ -220,7 +220,7 @@ QRectF Graph::graphLayout(QString algorithm)
 		Arrow *a = j.value();
 		Agnode_t *from = proxies[a->from()], *to = proxies[a->to()];
 
-		agedge(graph,from,to);
+		agedge(graph,to,from);
 	}
 
 	gvLayout(gvc,graph,(char *)algorithm.toStdString().c_str());
@@ -254,15 +254,15 @@ void Graph::insert(QGraphicsObject *n)
 	m_nodes.append(n);
 }
 
-void Graph::connect(QGraphicsObject *a, QGraphicsObject *b)
+void Graph::connect(QGraphicsObject *from, QGraphicsObject *to)
 {
-	assert(m_nodes.contains(a) && m_nodes.contains(b));
+	assert(m_nodes.contains(from) && m_nodes.contains(to));
 	
-	Arrow *e = new Arrow(a,b);
+	Arrow *e = new Arrow(from,to);
 
 	addItem(e);
 	m_edges.append(e);
-	m_incidence.insert(a,e);
+	m_incidence.insert(from,e);
 }
 
 void Graph::clear(void)
