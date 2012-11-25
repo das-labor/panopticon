@@ -15,7 +15,7 @@ signals:
 	void activated(const QModelIndex &idx);
 
 protected:
-	void populate(void);
+	virtual QPointF populate(void);
 	virtual void mouseDoubleClickEvent(QMouseEvent *event);
 
 private slots:

@@ -11,7 +11,7 @@ public:
 	ProcedureWidget(QAbstractItemModel *m, QModelIndex i, QWidget *parent = 0);
 
 protected:
-	void populate(void);
+	virtual QPointF populate(void);
 };
 
 #endif

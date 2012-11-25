@@ -6,12 +6,13 @@
 ProcedureWidget::ProcedureWidget(QAbstractItemModel *m, QModelIndex i, QWidget *parent)
 : GraphWidget(m,i,parent)
 {
-	populate();
+	setRootIndex(i);
 }
 
-void ProcedureWidget::populate(void)
+QPointF ProcedureWidget::populate(void)
 {
 	const QModelIndex bblocks = m_root.sibling(m_root.row(),Model::BasicBlocksColumn);
+	const QModelIndex entry = m_root.sibling(m_root.row(),Model::EntryPointColumn);
 	int row = 0;
 	QMap<ptrdiff_t,QGraphicsObject *> nodes;
 
@@ -46,4 +47,8 @@ void ProcedureWidget::populate(void)
 	}
 
 	m_scene.graphLayout("dot");
+	QGraphicsObject *e = nodes[entry.child(0,Model::UniqueIdColumn).data().toULongLong()];
+
+	assert(e);
+	return e->pos() + e->boundingRect().center();
 }

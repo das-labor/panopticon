@@ -24,8 +24,8 @@ namespace po
 		sem_action binary_reg(::std::string x, ::std::function<void(cg &,const variable&,const variable&)> func);
 		sem_action branch(::std::string m, rvalue flag, bool set);
 		sem_action binary_regconst(::std::string x, ::std::function<void(cg &,const variable&,const constant&)> func);
-		sem_action binary_st(const variable &Rd1, const variable &Rd2, bool pre_dec = false, bool post_inc = false);
-		sem_action binary_ld(const variable &Rr1, const variable &Rr2, bool pre_dec = false, bool post_inc = false);
+		sem_action binary_st(variable Rd1, variable Rd2, bool pre_dec = false, bool post_inc = false);
+		sem_action binary_ld(variable Rr1, variable Rr2, bool pre_dec = false, bool post_inc = false);
 		sem_action binary_stq(variable r);
 		sem_action binary_ldq(variable r);
 		sem_action simple(::std::string x, ::std::function<void(cg&)> fn);

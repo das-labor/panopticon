@@ -19,7 +19,7 @@ FlowgraphWidget::~FlowgraphWidget(void)
 	disconnect(m_selection,SIGNAL(selectionChanged(const QItemSelection&,const QItemSelection&)),this,SLOT(modelSelectionChanged(const QItemSelection&,const QItemSelection&)));
 }
 
-void FlowgraphWidget::populate(void)
+QPointF FlowgraphWidget::populate(void)
 {
 	int row = 0;
 	QModelIndex procs = m_root.sibling(m_root.row(),Model::ProceduresColumn);
@@ -73,6 +73,7 @@ void FlowgraphWidget::populate(void)
 	}
 
 	m_scene.graphLayout("circo");
+	return QPointF();
 }
 
 void FlowgraphWidget::sceneRectChanged(const QRectF &r)

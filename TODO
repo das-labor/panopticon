@@ -23,8 +23,8 @@
 
 ==> replace width with slice in value, remove width from others **DONE**
 
-==> remove implicit definitions of all varaibles
-	--> explicit initialization of UEVar's with ``undefinied''
+==> remove implicit definitions of all varaibles **DONE**
+	--> explicit initialization of UEVar's with ``undefinied'' **DONE**
 
 ==> code_generator
 	--> test type inference **DONE**
@@ -41,7 +41,7 @@
 
 ==> ``Range and Set Abstraction using SAT'' to improve guards
 
-==> Data flow
-	--> Phi-node arguments w/ right widths
+==> Data flow **DONE**
+	--> Phi-node arguments w/ right widths **DONE**
 
 ==> include lib into gui **DONE**

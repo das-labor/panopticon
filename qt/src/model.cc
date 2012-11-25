@@ -56,6 +56,10 @@ QModelIndex Model::index(int row, int column, const QModelIndex &parent) const
 			assert(row >= 0 && e.proc->basic_blocks.size() > (unsigned int)row);
 			return createIndex(row,column,e.flow,e.proc,next(e.proc->basic_blocks.begin(),row)->get());
 		
+		case EntryPointColumn:
+			assert(row == 0 && e.proc->entry);
+			return createIndex(0,column,e.flow,e.proc,e.proc->entry.get());
+		
 		default:
 			assert(false);
 		}
@@ -140,6 +144,8 @@ int Model::rowCount(const QModelIndex &parent) const
 		{
 		case CalleesColumn:
 			return e.proc->callees.size();
+		case EntryPointColumn:
+			return (e.proc->entry ? 1 : 0);
 		case BasicBlocksColumn:
 			return e.proc->basic_blocks.size();
 		default:
@@ -191,10 +197,16 @@ int Model::columnCount(const QModelIndex &parent) const
 			return 0;
 
 	case Path::ProcedureType:
-		if(parent.column() == CalleesColumn)
+		switch(parent.column())
+		{
+		case CalleesColumn:
 			return LastProcedureColumn;
-		else
+		case EntryPointColumn:
+		case BasicBlocksColumn:
+			return LastBasicBlockColumn;
+		default:
 			return 0;
+		}
 	
 	case Path::BasicBlockType:
 		switch(parent.column())

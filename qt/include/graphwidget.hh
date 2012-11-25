@@ -24,7 +24,7 @@ protected:
 	virtual void mousePressEvent(QMouseEvent *event);
 	virtual void mouseReleaseEvent(QMouseEvent *event);
 
-	virtual void populate(void) = 0;
+	virtual QPointF populate(void) = 0;
 
 	QAbstractItemModel *m_model;
 	Graph m_scene;

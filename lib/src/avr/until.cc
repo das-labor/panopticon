@@ -175,19 +175,17 @@ sem_action po::avr::binary_regconst(std::string x, std::function<void(cg &,const
 	};
 }
 
-sem_action po::avr::binary_st(const variable &Rd1, const variable &Rd2, bool pre_dec, bool post_inc)
+sem_action po::avr::binary_st(variable Rd1, variable Rd2, bool pre_dec, bool post_inc)
 {
 	assert(!(pre_dec == true && post_inc == true));
 
-	return [&](sm &st)
+	return [=](sm &st)
 	{
 		variable Rr = decode_reg(st.capture_groups["r"]);
 		std::string fmt("");
 
 		if(pre_dec)
-		{
 			fmt += "-";
-		}
 		
 		fmt += "{8::";
 
@@ -203,9 +201,7 @@ sem_action po::avr::binary_st(const variable &Rd1, const variable &Rd2, bool pre
 		fmt += ":2}";
 
 		if(post_inc)
-		{
 			fmt += "+";
-		}
 
 		fmt += ",{8}";
 
@@ -227,9 +223,9 @@ sem_action po::avr::binary_st(const variable &Rd1, const variable &Rd2, bool pre
 	};
 }
 
-sem_action po::avr::binary_ld(const variable &Rr1, const variable &Rr2, bool pre_dec, bool post_inc)
+sem_action po::avr::binary_ld(variable Rr1, variable Rr2, bool pre_dec, bool post_inc)
 {
-	return [&](sm &st)
+	return [=](sm &st)
 	{
 		variable Rd = decode_reg(st.capture_groups["d"]);
 
