@@ -87,7 +87,6 @@ ctrans::ctrans(guard_ptr g, bblock_ptr b) : guard(g), bblock(b) {}
 /*
  * basic_block
  */
-basic_block::basic_block(range<addr_t> a) : m_area(a) {}
 basic_block::basic_block(void) {}
 std::pair<basic_block::pred_citerator,basic_block::pred_citerator> basic_block::predecessors(void) const
 	{ return std::make_pair(pred_citerator(m_incoming.cbegin(),m_incoming.cend()),pred_citerator(m_incoming.cend(),m_incoming.cend())); }

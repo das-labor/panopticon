@@ -128,24 +128,16 @@ namespace po
 	{
 	public:
 		typedef ::std::vector<instr>::const_iterator iterator;
+		
 		struct token
 		{
-			enum Type
-			{
-				Literal,
-				Signed,
-				Unsigned,
-			};
-
-			token(std::string n);
-			token(unsigned int idx, unsigned int w, Type t);
-	
-			Type type;
-			unsigned int index;
+			token(void) : has_sign(false), width(0), alias(""), group_size(0) {}
+			bool has_sign;
 			unsigned int width;
-			std::string literal;
+			std::string alias;
+			unsigned int group_size;
 		};
-
+		
 		template <typename F1, typename F2>
 		mnemonic(range<addr_t> a, ::std::string n, ::std::string fmt, F1 ops_begin, F1 ops_end, F2 instr_begin, F2 instr_end)
 		: mnemonic(a,n,fmt,{},{})
@@ -166,6 +158,5 @@ namespace po
 	::std::ostream& operator<<(::std::ostream &os, const instr &i);
 	::std::ostream& operator<<(::std::ostream &os, const mnemonic &m);
 }
-
 
 #endif

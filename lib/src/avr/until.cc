@@ -130,9 +130,9 @@ sem_action po::avr::unary_reg(std::string x, std::function<void(cg &c, const var
 		variable op = st.capture_groups.count("d") ? decode_reg((unsigned int)st.capture_groups["d"]) : 
 																								 decode_reg((unsigned int)st.capture_groups["r"]);
 		if(func)
-			st.mnemonic(st.tokens.size(),x,"",op,std::bind(func,std::placeholders::_1,op));
+			st.mnemonic(st.tokens.size(),x,"{8}",op,std::bind(func,std::placeholders::_1,op));
 		else
-			st.mnemonic(st.tokens.size(),x,"",op);
+			st.mnemonic(st.tokens.size(),x,"{8}",op);
 		st.jump(st.address + st.tokens.size());
 	};
 }
@@ -144,7 +144,7 @@ sem_action po::avr::binary_reg(std::string x, std::function<void(cg &,const vari
 		variable Rd = decode_reg(st.capture_groups["d"]);
 		variable Rr = decode_reg(st.capture_groups["d"]);
 
-		st.mnemonic(st.tokens.size(),x,"",Rd,Rr,bind(func,std::placeholders::_1,Rd,Rr));
+		st.mnemonic(st.tokens.size(),x,"{8},{8}",Rd,Rr,bind(func,std::placeholders::_1,Rd,Rr));
 		st.jump(st.address + st.tokens.size());
 	};
 }
@@ -153,11 +153,11 @@ sem_action po::avr::branch(std::string m, rvalue flag, bool set)
 {
 	return [m,flag,set](sm &st)
 	{
-		int _k = st.capture_groups["k"];
+		int8_t _k = st.capture_groups["k"];
 		guard_ptr g(new guard(flag,relation::Eq,set ? 1_val : 0_val));
 		constant k = _k <= 63 ? _k : _k - 128;
 
-		st.mnemonic(st.tokens.size(),m,"",k);
+		st.mnemonic(st.tokens.size(),m,"{8:-}",k);
 		st.jump(st.address + 1,g->negation());
 		st.jump(st.address + k.value() + 1,g);
 	};
@@ -170,18 +170,46 @@ sem_action po::avr::binary_regconst(std::string x, std::function<void(cg &,const
 		variable Rd = decode_reg(st.capture_groups["d"] + 16);
 		constant K = st.capture_groups["K"];
 
-		st.mnemonic(st.tokens.size(),x,"",{Rd,K},bind(func,std::placeholders::_1,Rd,K));
+		st.mnemonic(st.tokens.size(),x,"{8},{8}",{Rd,K},bind(func,std::placeholders::_1,Rd,K));
 		st.jump(st.address + st.tokens.size());
 	};
 }
 
 sem_action po::avr::binary_st(const variable &Rd1, const variable &Rd2, bool pre_dec, bool post_inc)
 {
+	assert(!(pre_dec == true && post_inc == true));
+
 	return [&](sm &st)
 	{
 		variable Rr = decode_reg(st.capture_groups["r"]);
+		std::string fmt("");
 
-		st.mnemonic(st.tokens.size(),"st","",{Rd2,Rd1,Rr},[&](cg &c)
+		if(pre_dec)
+		{
+			fmt += "-";
+		}
+		
+		fmt += "{8::";
+
+		if(Rd1.name() == "r26")
+			fmt += "X";
+		else if(Rd1.name() == "r28")
+			fmt += "Y";
+		else if(Rd1.name() == "r30")
+			fmt += "Z";
+		else
+			assert(false);
+
+		fmt += ":2}";
+
+		if(post_inc)
+		{
+			fmt += "+";
+		}
+
+		fmt += ",{8}";
+
+		st.mnemonic(st.tokens.size(),"st",fmt,{Rd2,Rd1,Rr},[&](cg &c)
 		{
 			variable X("ptr");
 			

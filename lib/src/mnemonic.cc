@@ -29,63 +29,104 @@ std::ostream &po::operator<<(std::ostream &os, const instr &i)
 mnemonic::mnemonic(range<addr_t> a, std::string n, std::string fmt, std::initializer_list<rvalue> ops, std::initializer_list<instr> instrs)
 : area(a), opcode(n), operands(ops), instructions(instrs)
 {
-	// shared state of the parser
-	unsigned int cur_bitwidth = 0;
-	unsigned int cur_validx = 0;
+	std::function<std::string::const_iterator(std::string::const_iterator,std::string::const_iterator)> plain_or_meta;
+	std::function<std::string::const_iterator(std::string::const_iterator,std::string::const_iterator,token &)> escape_seq, modifiers, alias;
+	std::function<std::string::const_iterator(std::string::const_iterator,std::string::const_iterator,unsigned int &)> digits;
 
-	std::function<void(std::string::const_iterator,std::string::const_iterator)> plain_or_meta, escape_seq, data_type;
-
-	// FormatString -> ('%' EscapeSequence) | PlainAscii
+	// FormatString -> ('{' EscapeSequence '}') | PlainAscii
 	plain_or_meta = [&](std::string::const_iterator cur, std::string::const_iterator end)
 	{
 		if(cur == end)
-			return;
-		else if(*cur == '%')
-			return escape_seq(next(cur),end);
+			return cur;
+		else if(*cur == '{')
+		{
+			token tok;
+			cur = escape_seq(std::next(cur),end,tok);
+			assert(cur != end && *cur == '}');
+			format.push_back(tok);
+
+			return plain_or_meta(std::next(cur),end);
+		}
 		else
 		{
-			if(format.empty() || format.back().type != token::Literal)
-				format.emplace_back(token(std::string(1,*cur)));
+			if(format.empty() || format.back().group_size > 0)
+			{
+				token tok;
+				tok.group_size = 0;
+				tok.alias = std::string(1,*cur);
+				format.push_back(tok);
+			}
 			else
-				format.back().literal += std::string(1,*cur);
-			return plain_or_meta(next(cur),end);
+				format.back().alias += std::string(1,*cur);
+			return plain_or_meta(std::next(cur),end);
 		}
 	};
 
-	// EscapeSequence -> Digit+ DataType
-	escape_seq = [&](std::string::const_iterator cur, std::string::const_iterator end)
+	// EscapeSequence -> Digit+ (':' Modifiers (':' Alias (':' GroupSize)?)?)?
+	escape_seq = [&](std::string::const_iterator cur, std::string::const_iterator end,token &tok)
+	{
+		assert(cur != end && isdigit(*cur));
+		cur = digits(cur,end,tok.width);
+	
+		tok.group_size = 1;
+		tok.alias = "";
+		tok.has_sign = false;
+
+		if(cur != end && *cur == ':')
+		{
+			cur = modifiers(std::next(cur),end,tok);
+			if(cur != end && *cur == ':')
+			{
+				cur = alias(std::next(cur),end,tok);
+				if(cur != end && *cur == ':')
+				{
+					tok.group_size = 0;
+					return digits(std::next(cur),end,tok.group_size);
+				}
+			}
+		}
+
+		return cur;
+	};
+
+	// Modifers -> '-'?
+	modifiers = [&](std::string::const_iterator cur, std::string::const_iterator end,token &tok)
 	{
 		assert(cur != end);
-		
-		if(isdigit(*cur))
+
+		if(*cur == '-')
 		{
-			cur_bitwidth = cur_bitwidth * 10 + (*cur - '0');
-			return escape_seq(next(cur),end);
+			tok.has_sign = true;
+			return std::next(cur);
+		}
+
+		return cur;
+	};
+
+	// Alias -> PlainAscii*
+	alias = [&](std::string::const_iterator cur,std::string::const_iterator end,token &tok)
+	{
+		assert(cur != end);
+
+		if(isalpha(*cur))
+		{
+			tok.alias += std::string(1,*cur);
+			return alias(std::next(cur),end,tok);
+		}
+
+		return cur;
+	};
+	
+	// Digit
+	digits = [&](std::string::const_iterator cur,std::string::const_iterator end,unsigned int &i)
+	{
+		if(cur != end && isdigit(*cur))
+		{
+			i = i * 10 + *cur - '0';
+			return digits(std::next(cur),end,i);
 		}
 		else
-			return data_type(cur,end);
-	};
-		
-	// DataType -> 's' | 'u'
-	data_type = [&](std::string::const_iterator cur, std::string::const_iterator end)
-	{
-		assert(cur != end);
-		assert(cur_bitwidth > 0);
-		switch(*cur)
-		{
-		case 's':
-			format.emplace_back(token(cur_validx,cur_bitwidth,token::Signed));
-			break;
-		case 'u':
-			format.emplace_back(token(cur_validx,cur_bitwidth,token::Unsigned));
-			break;
-		default:
-			assert(false);
-		}
-
-		cur_bitwidth = 0;
-		++cur_validx;
-		return plain_or_meta(next(cur),end);
+			return cur;
 	};
 	
 	plain_or_meta(fmt.cbegin(),fmt.cend());
@@ -98,27 +139,26 @@ std::ostream &po::operator<<(std::ostream &os, const mnemonic &m)
 	if(m.operands.size())
 		os << " ";
 
+	unsigned int idx = 0;
 	for(const mnemonic::token &tok: m.format)
-		switch(tok.type)
+	{
+		if(tok.alias.empty() && tok.group_size)
 		{
-		case mnemonic::token::Literal:	os << tok.literal; break;
-		case mnemonic::token::Signed:	
-			assert(m.operands.size() > tok.index);
-			if(m.operands[tok.index].is_constant())
-				os << (int)m.operands[tok.index].constant().value();
+			assert(idx < m.operands.size());
+			if(m.operands[idx].is_constant())
+			{
+				if(tok.has_sign)
+					os << (int)m.operands[idx].constant().value();
+				else
+					os << m.operands[idx].constant().value();
+			}
 			else
-				os << m.operands[tok.index];
-			break;
-		case mnemonic::token::Unsigned:
-			assert(m.operands.size() > tok.index);
-			os << m.operands[tok.index];
-			break;
-		default:
-			assert(false);
+				os << m.operands[idx];
 		}
+		else
+			os << tok.alias;
+		idx += tok.group_size;
+	}
 	
 	return os;
 }
-
-mnemonic::token::token(std::string l) : type(Literal), literal(l) {}
-mnemonic::token::token(unsigned int idx, unsigned int w, Type t) : type(t), index(idx), width(w) {}

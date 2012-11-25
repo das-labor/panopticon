@@ -46,7 +46,7 @@ class Model : public QAbstractItemModel
 	Q_OBJECT
 
 public:
-	Model(po::deflate *d, QObject *parent = 0);
+	Model(po::flow_ptr f, QObject *parent = 0);
 	~Model(void);
 
 	// reading

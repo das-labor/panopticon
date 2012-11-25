@@ -78,7 +78,7 @@ namespace po
 	public:
 		bblock_iterator(void) {};
 		explicit bblock_iterator(::std::list<ctrans>::iterator i, ::std::list<ctrans>::iterator iend)
-		: adaptee([](const ctrans &ct) -> bool { return !!ct.bblock; },i,iend) {};
+		: adaptee([](const ctrans &ct) -> bool { return ct.bblock.get() != nullptr; },i,iend) {};
 		bblock_iterator &increment(void) { ++adaptee; return *this; };
 		bblock_iterator &decrement(void) { return *this; };
 
@@ -99,7 +99,7 @@ namespace po
 	public:
 		bblock_citerator(void) {};
 		explicit bblock_citerator(::std::list<ctrans>::const_iterator i, ::std::list<ctrans>::const_iterator iend)
-		: adaptee([](const ctrans &ct) -> bool { return !!ct.bblock; },i,iend) {};
+		: adaptee([](const ctrans &ct) -> bool { return ct.bblock.get() != nullptr; },i,iend) {};
 		bblock_citerator &increment(void) { ++adaptee; return *this; };
 		bblock_citerator &decrement(void) { return *this; };
 
@@ -113,8 +113,6 @@ namespace po
 	class basic_block
 	{
 	public:
-		// TODO: remove
-		basic_block(range<addr_t> a);
 		basic_block(void);
 
 		// iterators

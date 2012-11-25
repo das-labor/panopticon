@@ -70,7 +70,7 @@ QAbstractProxyModel *ProcedureList::model(void)
 	return m_proxy;
 }
 
-Window::Window(void)
+Window::Window(po::flow_ptr f)
 {
 	setWindowTitle("Panopticum v0.8");
 	resize(1000,800);
@@ -79,7 +79,7 @@ Window::Window(void)
 	std::string path("test.ttl");
 
 	m_tabs = new QTabWidget(this);
-	m_model = new Model(new po::deflate(path),this);
+	m_model = new Model(f,this);
 	m_procList = new ProcedureList(m_model,this);
 	m_flowView = new FlowgraphWidget(m_procList->model(),m_procList->currentFlowgraph(),m_procList->selectionModel(),this);
 	m_procView = 0;

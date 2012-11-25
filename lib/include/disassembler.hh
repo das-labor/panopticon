@@ -34,7 +34,7 @@ namespace po
 			code_generator<Tag> cg(inserter(instrs,instrs.end()));
 
 			if(fmt.empty())
-				fmt = accumulate(ops.begin(),ops.end(),fmt,[](const ::std::string &acc, const rvalue &x) { return acc + (acc.empty() ? "%8u" : ", %8u"); });
+				fmt = accumulate(ops.begin(),ops.end(),fmt,[](const ::std::string &acc, const rvalue &x) { return acc + (acc.empty() ? "{8}" : ", {8}"); });
 
 			// generate instr list
 			if(fn) fn(cg);

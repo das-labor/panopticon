@@ -123,7 +123,6 @@ void po::merge(proc_ptr proc, bblock_ptr block)
 
 		if(i == proc->basic_blocks.end()) return ret;
 		bblock_ptr tgt = *i, old = *i;
-		ctrans cs(g,bb);
 
 		// split tgt if needed
 		if((out ? tgt->area().begin : tgt->mnemonics().back().area.begin) != addr)
@@ -153,38 +152,45 @@ void po::merge(proc_ptr proc, bblock_ptr block)
 			ret = old == bb;
 		}
 
-		if(out)
-		{
-			if(bb == old)
-				conditional_jump(bb,tgt,g);
-			else
-				tgt->mutate_incoming([&](std::list<ctrans> &in) { in.push_back(cs); });
-		}
-		else
-		{
-			if(bb == old)
-				conditional_jump(tgt,bb,g);
-			else
-				tgt->mutate_outgoing([&](std::list<ctrans> &out) { out.push_back(cs); });
-		}
-
+		// no loop
 		if(bb != old)
 		{
 			if(out)
-				resolve_outgoing(bb,ct.value,tgt);
+			{
+				bb->mutate_outgoing([&](std::list<ctrans> &outs)
+				{
+					outs.erase(std::find_if(outs.begin(),outs.end(),[&](const ctrans &c) { return c.value == ct.value; }));
+				});
+
+				conditional_jump(bb,tgt,ct.guard);
+			}
 			else
-				resolve_incoming(bb,ct.value,tgt);
+			{
+				bb->mutate_incoming([&](std::list<ctrans> &ins)
+				{
+					ins.erase(std::find_if(ins.begin(),ins.end(),[&](const ctrans &c) { return c.value == ct.value; }));
+				});
+
+				conditional_jump(tgt,bb,ct.guard);
+			}
 		}
-		else
+		else // loop
 		{
-			if(old)
-				old->mutate_outgoing([&](std::list<ctrans> &out)
-					{ out.erase(std::find_if(out.begin(),out.end(),[&](const ctrans &p) 
-						{ return p.value == ct.value; })); });
+			if(out)
+			{
+				tgt->mutate_outgoing([&](std::list<ctrans> &outs)
+				{
+					outs.erase(std::find_if(outs.begin(),outs.end(),[&](const ctrans &c) { return c.value == ct.value; }));
+				});
+			}
 			else
-				old->mutate_incoming([&](std::list<ctrans> &in)
-					{ in.erase(std::find_if(in.begin(),in.end(),[&](const ctrans &p) 
-						{ return p.value == ct.value; })); });
+			{
+				tgt->mutate_incoming([&](std::list<ctrans> &ins)
+				{
+					ins.erase(std::find_if(ins.begin(),ins.end(),[&](const ctrans &c) { return c.value == ct.value; }));
+				});
+			}
+			conditional_jump(tgt,tgt,ct.guard);
 		}
 
 		return ret;

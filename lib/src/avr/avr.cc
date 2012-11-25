@@ -42,7 +42,7 @@ flow_ptr po::avr::disassemble(std::vector<typename architecture_traits<avr_tag>:
 		variable Rd1 = decode_reg(st.capture_groups["d"]), Rd2 = decode_reg(st.capture_groups["d"] + 1);
 		variable Rr1 = decode_reg(st.capture_groups["r"]), Rr2 = decode_reg(st.capture_groups["r"] + 1);
 
-		st.mnemonic(st.tokens.size(),"movw","",{Rd1,Rd2,Rr1,Rr2},[&](cg &c)
+		st.mnemonic(st.tokens.size(),"movw","{8}:{8}, {8}:{8}",{Rd1,Rd2,Rr1,Rr2},[&](cg &c)
 		{
 			c.assign(Rd1,Rr1);
 			c.assign(Rd2,Rr2);
@@ -414,7 +414,7 @@ flow_ptr po::avr::disassemble(std::vector<typename architecture_traits<avr_tag>:
 		variable Rd1 = decode_reg(d);
 		variable Rd2 = decode_reg(d+1);
 		
-		st.mnemonic(st.tokens.size(),"adiw","",{Rd2,Rd1,K},[&](cg &c)
+		st.mnemonic(st.tokens.size(),"adiw","{8}:{8},{16}",{Rd2,Rd1,K},[&](cg &c)
 		{
 			rvalue R = c.add_i(c.or_b(c.shiftl_u(Rd2,8_val),Rd1),K);
 
@@ -444,7 +444,7 @@ flow_ptr po::avr::disassemble(std::vector<typename architecture_traits<avr_tag>:
 		
 		// value_ptr(new reg(d,d+1)),st.capture_groups["K"]
 		// TODO
-		st.mnemonic(st.tokens.size(),"sbiw");
+		st.mnemonic(st.tokens.size(),"sbiw","{8}:{8},{16}");
 		st.jump(st.address + st.tokens.size());
 	};
 	main | "0000 0011 0 d@... 1 r@..."	= binary_reg("fmul",[](cg &m, const variable &Rd, const variable &Rr)
@@ -598,10 +598,12 @@ flow_ptr po::avr::disassemble(std::vector<typename architecture_traits<avr_tag>:
 	main | "1001 001r@. r@.... 1100" = binary_st("r26"_var,"r27"_var,false,false);
 	main | "1001 001r@. r@.... 1101" = binary_st("r26"_var,"r27"_var,false,true);
 	main | "1001 001r@. r@.... 1110" = binary_st("r26"_var,"r27"_var,true,false);
+
 	main | "1000 001r@. r@.... 1000" = binary_st("r28"_var,"r29"_var,false,false);
 	main | "1001 001r@. r@.... 1001" = binary_st("r28"_var,"r29"_var,false,true);
 	main | "1001 001r@. r@.... 1010" = binary_st("r28"_var,"r29"_var,true,false);
 	main | "10q@.0 q@..1r@. r@.... 1q@..." = binary_stq("r28"_var);
+	
 	main | "1000 001r@. r@.... 0000" = binary_st("r30"_var,"r31"_var,false,false);
 	main | "1001 001r@. r@.... 0001" = binary_st("r30"_var,"r31"_var,false,true);
 	main | "1001 001r@. r@.... 0010" = binary_st("r30"_var,"r31"_var,true,false);
@@ -610,10 +612,12 @@ flow_ptr po::avr::disassemble(std::vector<typename architecture_traits<avr_tag>:
 	main | "1001 000d@. d@.... 1100" = binary_ld("r26"_var,"r27"_var,false,false);
 	main | "1001 000d@. d@.... 1101" = binary_ld("r26"_var,"r27"_var,false,true);
 	main | "1001 000d@. d@.... 1110" = binary_ld("r26"_var,"r27"_var,true,false);
+	
 	main | "1000 000d@. d@.... 1000" = binary_ld("r28"_var,"r29"_var,false,false);
 	main | "1001 000d@. d@.... 1001" = binary_ld("r28"_var,"r29"_var,false,true);
 	main | "1001 000d@. d@.... 1010" = binary_ld("r28"_var,"r29"_var,true,false);
 	main | "10 q@. 0 q@.. 0 d@..... 1 q@..." = binary_ldq("r28"_var);
+	
 	main | "1000 000d@. d@.... 0000" = binary_ld("r30"_var,"r31"_var,false,false);
 	main | "1001 000 d@..... 0001" = binary_ld("r30"_var,"r31"_var,false,true);
 	main | "1001 000d@. d@.... 0010" = binary_ld("r30"_var,"r31"_var,true,false);

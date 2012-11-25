@@ -51,7 +51,7 @@ class Window : public QMainWindow
 	Q_OBJECT
 
 public:
-	Window(void);
+	Window(po::flow_ptr f);
 	virtual ~Window(void);
 
 private slots:

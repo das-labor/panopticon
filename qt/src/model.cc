@@ -7,10 +7,10 @@
 #include <procedure.hh>
 #include <mnemonic.hh>
 
-Model::Model(po::deflate *d, QObject *parent)
-: QAbstractItemModel(parent), m_nextId(0), m_deflate(d)
+Model::Model(po::flow_ptr flow, QObject *parent)
+: QAbstractItemModel(parent), m_nextId(0), m_deflate(0)
 {
-	po::flow_ptr flow = m_deflate->flowgraph();
+	//po::flow_ptr flow = m_deflate->flowgraph();
 	if(flow->name.empty())
 		flow->name = "flowgraph #1";
 	m_flowgraphs.push_back(flow);
@@ -18,7 +18,7 @@ Model::Model(po::deflate *d, QObject *parent)
 
 Model::~Model(void)
 {
-	delete m_deflate;
+	//delete m_deflate;
 }
 
 QModelIndex Model::index(int row, int column, const QModelIndex &parent) const
@@ -150,9 +150,9 @@ int Model::rowCount(const QModelIndex &parent) const
 		switch(parent.column())
 		{		
 		case SuccessorsColumn:
-			return e.bblock->outgoing().size();
+			return distance(e.bblock->successors().first,e.bblock->successors().second);
 		case PredecessorsColumn:
-			return e.bblock->incoming().size();
+			return distance(e.bblock->predecessors().first,e.bblock->predecessors().second);
 		case MnemonicsColumn:
 			return e.bblock->mnemonics().size();
 		default:
@@ -344,35 +344,30 @@ QString Model::displayData(const QModelIndex &index) const
 		case OperandsColumn:
 		{
 			QString ret;
+			unsigned int idx = 0;
+			std::stringstream os;
+
 			for(const po::mnemonic::token &tok: e.mne->format)
-				switch(tok.type)
+			{
+				if(tok.alias.empty())
 				{
-				case po::mnemonic::token::Literal: ret += QString::fromStdString(tok.literal); break;
-				case po::mnemonic::token::Signed:
-				{
-					assert(e.mne->operands.size() > tok.index);
-					if(e.mne->operands[tok.index].is_constant())
-						ret += QString("%1").arg((int)e.mne->operands[tok.index].constant().value());
-					else
+					assert(idx < e.mne->operands.size());
+					if(e.mne->operands[idx].is_constant())
 					{
-						std::stringstream ss;
-						ss << e.mne->operands[tok.index];
-						ret += QString::fromStdString(ss.str());
+						if(tok.has_sign)
+							os << (int)e.mne->operands[idx].constant().value();
+						else
+							os << e.mne->operands[idx].constant().value();
 					}
-					break;
+					else
+						os << e.mne->operands[idx];
 				}
-				case po::mnemonic::token::Unsigned:
-				{
-					assert(e.mne->operands.size() > tok.index);
-					std::stringstream ss;
-					ss << e.mne->operands[tok.index];
-					ret += QString::fromStdString(ss.str());
-					break;
-				}
-				default:
-					assert(false);
-				}
-			return ret;//QString("%1 operands").arg(e.mne->operands.size());
+				else
+					os << tok.alias;
+				idx += tok.group_size;
+			}
+
+			return QString::fromStdString(os.str());
 		}
 		case InstructionsColumn:
 			return QString("%1 instructions").arg(e.mne->instructions.size());

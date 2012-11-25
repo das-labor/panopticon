@@ -100,13 +100,10 @@ std::string po::turtle(flow_ptr fg)
 														 << "\tpo:format \"";
 
 				for(const mnemonic::token &tok: mne.format)
-					switch(tok.type)
-					{
-					case mnemonic::token::Literal: ss << tok.literal; break;
-					case mnemonic::token::Signed: ss << "%" << tok.width << "s"; break;
-					case mnemonic::token::Unsigned: ss << "%" << tok.width << "u"; break;
-					default: assert(false);
-					}
+					if(tok.width)
+						ss << "{" << tok.width << ":" << (tok.has_sign ? "-" : "") << ":" << tok.alias << ":" << tok.group_size << "}";
+					else
+						ss << tok.alias;
 
 				ss << "\"^^xsd:string." << std::endl;
 				
