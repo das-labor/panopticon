@@ -14,6 +14,8 @@ Model::Model(po::flow_ptr flow, QObject *parent)
 	if(flow->name.empty())
 		flow->name = "flowgraph #1";
 	m_flowgraphs.push_back(flow);
+
+	std::cout << po::graphviz(flow) << std::endl;
 }
 
 Model::~Model(void)
@@ -64,11 +66,11 @@ QModelIndex Model::index(int row, int column, const QModelIndex &parent) const
 		switch(parent.column())
 		{
 		case SuccessorsColumn:
-			assert(row >= 0 && e.bblock->outgoing().size() > (unsigned int)row);
+			assert(row >= 0 && distance(e.bblock->successors().first,e.bblock->successors().second) > (unsigned int)row);
 			return createIndex(row,column,e.flow,e.proc,next(e.bblock->successors().first,row)->get());
 
 		case PredecessorsColumn:
-			assert(row >= 0 && e.bblock->incoming().size() > (unsigned int)row);
+			assert(row >= 0 && distance(e.bblock->predecessors().first,e.bblock->predecessors().second) > (unsigned int)row);
 			return createIndex(row,column,e.flow,e.proc,next(e.bblock->predecessors().first,row)->get());
 
 		case MnemonicsColumn:
@@ -325,9 +327,9 @@ QString Model::displayData(const QModelIndex &index) const
 		case MnemonicsColumn:
 			return QString("%1 mnemonics").arg(e.bblock->mnemonics().size());
 		case PredecessorsColumn:
-			return QString("%1 predecessors").arg(e.bblock->incoming().size());
+			return QString("%1 predecessors").arg(distance(e.bblock->predecessors().first,e.bblock->predecessors().second));
 		case SuccessorsColumn:
-			return QString("%1 successors").arg(e.bblock->outgoing().size());
+			return QString("%1 successors").arg(distance(e.bblock->successors().first,e.bblock->successors().second));
 		case UniqueIdColumn:
 			return QString("%1").arg((ptrdiff_t)e.bblock);
 		default:
