@@ -20,7 +20,7 @@ struct Path
 		ProcedureType = 1,
 		BasicBlockType = 2,
 		MnemonicType = 3,
-		OperandType = 4,
+		ValueType = 4,
 	};
 
 	Path(void);
@@ -33,12 +33,12 @@ struct Path
 	po::procedure *proc;
 	po::basic_block *bblock;
 	const po::mnemonic *mne;
-	unsigned int op;
+	const po::rvalue *value;
 };
 
 inline uint qHash(const Path &key)
 {
-	return key.type ^ (uint)key.flow ^ (uint)key.proc ^ (uint)key.bblock ^ (uint)key.mne ^ key.op;
+	return key.type ^ (uint)key.flow ^ (uint)key.proc ^ (uint)key.bblock ^ (uint)key.mne ^ (uint)key.value;
 }
 
 class Model : public QAbstractItemModel
@@ -62,43 +62,45 @@ public:
 
 	enum Column
 	{
-		// FlowgraphTag
+		// FlowgraphType
 		//NameColumn = 0,
-		ProceduresColumn = 1,
+		ProceduresColumn = 1,			// ProcedureType
 		LastFlowgraphColumn = 2,
 
-		// ProcedureTag
+		// ProcedureType
 		NameColumn = 0,
-		EntryPointColumn = 1,
-		BasicBlocksColumn = 2,
-		CalleesColumn = 3,
+		EntryPointColumn = 1,			// BasicBlockType
+		BasicBlocksColumn = 2,		// BasicBlockType
+		CalleesColumn = 3,				// ProcedureType
 		UniqueIdColumn = 4,
 		LastProcedureColumn = 5,
 
-		// BasicBlockTag
+		// BasicBlockType
 		AreaColumn = 0,
-		MnemonicsColumn = 1,
-		PredecessorsColumn = 2,
-		SuccessorsColumn = 3,
+		MnemonicsColumn = 1,			// MnemonicType,
+		PredecessorsColumn = 2,		// BasicBlockType
+		SuccessorsColumn = 3,			// BasicBlockType
 		//UniqueIdColumn = 4,
 		LastBasicBlockColumn = 5,
 
-		// MnemonicTag
+		// MnemonicType
 		//AreaColumn = 0,
 		OpcodeColumn = 1,
-		OperandsColumn = 2,
-		InstructionsColumn = 3,
-		LastMnemonicColumn = 4,
+		OperandsColumn = 2,				// ValueType
+		FormatsColumn = 3,				// QString parallel to OperandsColumn
+		InstructionsColumn = 4,		// TODO
+		LastMnemonicColumn = 5,
 
-		// OperandTag
+		// ValueType
 		ValueColumn = 0,
-		LastOperandColumn = 1,
+		PositionColumn = 1, 			// QPoint
+		LastValueColumn = 2
 	};
 
 private:
-	QString displayData(const QModelIndex &index) const;
+	QVariant displayData(const QModelIndex &index) const;
 	bool setDisplayData(const QModelIndex &index, const std::string &value);
-	QModelIndex createIndex(int row, int col, po::flowgraph *flow, po::procedure *proc = nullptr, po::basic_block *bblock = nullptr, const po::mnemonic *mne = 0, int op = -1) const;
+	QModelIndex createIndex(int row, int col, po::flowgraph *flow, po::procedure *proc = 0, po::basic_block *bblock = 0, const po::mnemonic *mne = 0, const po::rvalue *val = 0) const;
 	const Path &path(uint p) const;
 
 	mutable ptrdiff_t m_nextId;

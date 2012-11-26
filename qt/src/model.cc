@@ -1,4 +1,6 @@
 #include <QDebug>
+#include <QPoint>
+
 #include <sstream>
 
 #include <model.hh>
@@ -88,7 +90,7 @@ QModelIndex Model::index(int row, int column, const QModelIndex &parent) const
 		{
 		case OperandsColumn:
 			assert(row >= 0 && e.mne->operands.size() > (unsigned int)row);
-			return createIndex(row,column,e.flow,e.proc,e.bblock,e.mne,row);
+			return createIndex(row,column,e.flow,e.proc,e.bblock,e.mne,&e.mne->operands[row]);
 		default:
 			assert(false);
 		}
@@ -113,7 +115,7 @@ QModelIndex Model::parent(const QModelIndex &index) const
 		return createIndex(std::distance(e.flow->procedures.begin(),find_if(e.flow->procedures.begin(),e.flow->procedures.end(),[&](const po::proc_ptr p) { return p.get() == e.proc; })),BasicBlocksColumn,e.flow,e.proc);
 	case Path::MnemonicType:
 		return createIndex(std::distance(e.proc->basic_blocks.begin(),find_if(e.proc->basic_blocks.begin(),e.proc->basic_blocks.end(),[&](const po::bblock_ptr bb) { return bb.get() == e.bblock; })),MnemonicsColumn,e.flow,e.proc,e.bblock);
-	case Path::OperandType:
+	case Path::ValueType:
 		return createIndex(std::distance(e.bblock->mnemonics().begin(),std::find_if(e.bblock->mnemonics().begin(),e.bblock->mnemonics().end(),[&](const po::mnemonic &m) 
 											 { return &m == e.mne; })),OperandsColumn,e.flow,e.proc,e.bblock,e.mne);
 
@@ -224,7 +226,7 @@ int Model::columnCount(const QModelIndex &parent) const
 		switch(parent.column())
 		{
 		case OperandsColumn:
-			return 1;
+			return LastValueColumn;
 		default:
 			return 0;
 		}
@@ -289,7 +291,7 @@ bool Model::setData(const QModelIndex &index, const QVariant &value, int role)
 	return ret;
 }
 
-QString Model::displayData(const QModelIndex &index) const
+QVariant Model::displayData(const QModelIndex &index) const
 {
 	const Path &e = path(index.internalId());
 
@@ -387,14 +389,48 @@ QString Model::displayData(const QModelIndex &index) const
 			assert(false);
 		}
 	
-	case Path::OperandType:
+	case Path::ValueType:
 		switch((Column)index.column())
 		{
 		case ValueColumn:
 		{
 			std::stringstream ss;
-			ss << *next(e.mne->operands.begin(),e.op);
+			ss << *e.value;
 			return QString::fromStdString(ss.str());
+		}
+		case PositionColumn:
+		{
+			QString tmp;
+			unsigned int idx = 0, val_idx = distance(e.mne->operands.begin(),find(e.mne->operands.begin(),e.mne->operands.end(),*e.value));
+			std::stringstream os;
+
+			for(const po::mnemonic::token &tok: e.mne->format)
+			{
+				if(tok.alias.empty())
+				{
+					assert(idx < e.mne->operands.size());
+					
+					if(e.mne->operands[idx].is_constant())
+					{
+						if(tok.has_sign)
+							os << (int)e.mne->operands[idx].constant().value();
+						else
+							os << e.mne->operands[idx].constant().value();
+					}
+					else
+						os << e.mne->operands[idx];
+				}
+				else
+					os << tok.alias;
+				
+				if(tok.group_size && idx <= val_idx && idx + tok.group_size - 1 >= val_idx)
+					return QPoint(tmp.length(),tmp.length() + os.str().size());
+				
+				tmp += QString::fromStdString(os.str());
+				os.str("");
+				idx += tok.group_size;
+			}
+			assert(false);
 		}
 		default:
 			assert(false);
@@ -437,7 +473,7 @@ bool Model::setDisplayData(const QModelIndex &index, const std::string &value)
 	}
 }
 
-QModelIndex Model::createIndex(int row, int col, po::flowgraph *flow, po::procedure *proc, po::basic_block *bblock, const po::mnemonic *mne, int op) const
+QModelIndex Model::createIndex(int row, int col, po::flowgraph *flow, po::procedure *proc, po::basic_block *bblock, const po::mnemonic *mne, const po::rvalue *val) const
 {
 	Path *e = new Path();
 	uint key = 0;
@@ -446,7 +482,7 @@ QModelIndex Model::createIndex(int row, int col, po::flowgraph *flow, po::proced
 	e->proc = proc;
 	e->bblock = bblock;
 	e->mne = mne;
-	e->op = op;
+	e->value = val;
 	
 	if(!proc)
 		e->type = Path::FlowgraphType;
@@ -454,10 +490,10 @@ QModelIndex Model::createIndex(int row, int col, po::flowgraph *flow, po::proced
 		e->type = Path::ProcedureType;
 	else if(!mne)
 		e->type = Path::BasicBlockType;
-	else if(op == -1)
+	else if(!val)
 		e->type = Path::MnemonicType;
 	else
-		e->type = Path::OperandType;
+		e->type = Path::ValueType;
 
 	if(!m_pathToId.contains(*e))
 	{
@@ -480,11 +516,11 @@ const Path &Model::path(uint k) const
 	return *m_idToPath[k];
 }
 
-Path::Path(void) : flow(0), proc(0), bblock(0), mne(0), op(-1) {}
+Path::Path(void) : flow(0), proc(0), bblock(0), mne(0), value(0) {}
 
 bool Path::operator==(const Path &e) const
 {
-	return e.type == type && e.flow == flow && e.proc == proc && e.bblock == bblock && e.mne == mne && e.op == op;
+	return e.type == type && e.flow == flow && e.proc == proc && e.bblock == bblock && e.mne == mne && e.value == value;
 }
 
 bool Path::operator!=(const Path &e) const
