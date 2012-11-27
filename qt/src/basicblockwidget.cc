@@ -57,17 +57,28 @@ MnemonicWidget::MnemonicWidget(QModelIndex i, QGraphicsItem *parent)
 	QModelIndex opcode = i.sibling(i.row(),Model::OpcodeColumn);
 	QModelIndex ops = i.sibling(i.row(),Model::OperandsColumn);
 	int op_row = 0;
+	int op_idx = 0;
+	QString op_str = ops.data().toString();
 
 	m_mnemonic.setFont(QFont("Monospace",11));
 	m_mnemonic.setText(opcode.data().toString());
 
-	qDebug() << ops.data();
 	while(op_row < ops.model()->rowCount(ops))
 	{
 		QModelIndex op = ops.child(op_row,Model::PositionColumn);
-		qDebug() << op.data();
+		QPoint ptn = op.data().toPoint();
+
+		assert(ptn.x() >= op_idx && ptn.x() <= ptn.y() && ptn.x() < op_str.length());
+		if(ptn.x() > op_idx)
+			qDebug() << op_str.left(ptn.x()).right(ptn.x() - op_idx);
+		qDebug() << op_str.left(ptn.y()).right(ptn.y() - ptn.x());
+
+		op_idx = ptn.y();
 		++op_row;
 	}
+
+	if(op_idx < op_str.length())
+	qDebug() << op_str.right(op_str.length() - op_idx);
 	
 	m_operands.append(new QGraphicsSimpleTextItem(this));
 	m_operands.last()->setFont(QFont("Monospace",11));

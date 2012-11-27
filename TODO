@@ -45,3 +45,7 @@
 	--> Phi-node arguments w/ right widths **DONE**
 
 ==> include lib into gui **DONE**
+
+==> Display analysis results in gui
+	--> rvalue can be hovered/clicked/modifed
+	--> remove group_size from mnemonic::token, X/Y/Z are set in an ``internal'' mnemonic before st/ld

@@ -27,8 +27,6 @@ namespace po
 
 		void mnemonic(size_t len, ::std::string n, ::std::string fmt = ::std::string(""), ::std::list<rvalue> ops = ::std::list<rvalue>(), ::std::function<void(code_generator<Tag>&)> fn = ::std::function<void(code_generator<Tag>&)>())
 		{
-			assert(len);
-
 			bblock_ptr new_bb, adj;
 			::std::list<instr> instrs;
 			code_generator<Tag> cg(inserter(instrs,instrs.end()));
@@ -39,7 +37,8 @@ namespace po
 			// generate instr list
 			if(fn) fn(cg);
 
-			last = bblock_ptr(new basic_block());
+			if(!last)
+				last = bblock_ptr(new basic_block());
 			last->mutate_mnemonics([&](::std::vector<po::mnemonic> &ms) 
 			{ 
 				ms.emplace_back(po::mnemonic(range<addr_t>(next_address,next_address + len),n,fmt,ops.begin(),ops.end(),instrs.begin(),instrs.end())); 

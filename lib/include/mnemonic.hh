@@ -131,11 +131,11 @@ namespace po
 		
 		struct token
 		{
-			token(void) : has_sign(false), width(0), alias(""), group_size(0) {}
+			token(void) : has_sign(false), width(0), alias(""), is_literal(false) {}
 			bool has_sign;
 			unsigned int width;
 			std::string alias;
-			unsigned int group_size;
+			bool is_literal;
 		};
 		
 		template <typename F1, typename F2>

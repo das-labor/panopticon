@@ -181,6 +181,13 @@ sem_action po::avr::binary_st(variable Rd1, variable Rd2, bool pre_dec, bool pos
 
 	return [=](sm &st)
 	{
+		variable X = "ptr"_var;
+		
+		st.mnemonic(0,"internal-ptr","",std::list<rvalue>(),[=](cg &c)
+		{
+			c.or_b(X,c.shiftl_u(Rd2,8_val),Rd1);
+		});
+
 		variable Rr = decode_reg(st.capture_groups["r"]);
 		std::string fmt("");
 
@@ -198,19 +205,15 @@ sem_action po::avr::binary_st(variable Rd1, variable Rd2, bool pre_dec, bool pos
 		else
 			assert(false);
 
-		fmt += ":2}";
+		fmt += "}";
 
 		if(post_inc)
 			fmt += "+";
 
 		fmt += ",{8}";
 
-		st.mnemonic(st.tokens.size(),"st",fmt,{Rd2,Rd1,Rr},[&](cg &c)
+		st.mnemonic(st.tokens.size(),"st",fmt,{X,Rr},[=](cg &c)
 		{
-			variable X("ptr");
-			
-			c.or_b(X,c.shiftl_u(Rd2,8_val),Rd1);
-
 			if(pre_dec) 
 				c.sub_i(X,X,1_val);
 			

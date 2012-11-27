@@ -100,8 +100,8 @@ std::string po::turtle(flow_ptr fg)
 														 << "\tpo:format \"";
 
 				for(const mnemonic::token &tok: mne.format)
-					if(tok.width)
-						ss << "{" << tok.width << ":" << (tok.has_sign ? "-" : "") << ":" << tok.alias << ":" << tok.group_size << "}";
+					if(!tok.is_literal)
+						ss << "{" << tok.width << ":" << (tok.has_sign ? "-" : "") << ":" << tok.alias << "}";
 					else
 						ss << tok.alias;
 

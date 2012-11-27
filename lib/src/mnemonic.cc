@@ -49,10 +49,10 @@ mnemonic::mnemonic(range<addr_t> a, std::string n, std::string fmt, std::initial
 		}
 		else
 		{
-			if(format.empty() || format.back().group_size > 0)
+			if(format.empty() || !format.back().is_literal)
 			{
 				token tok;
-				tok.group_size = 0;
+				tok.is_literal = true;
 				tok.alias = std::string(1,*cur);
 				format.push_back(tok);
 			}
@@ -62,13 +62,13 @@ mnemonic::mnemonic(range<addr_t> a, std::string n, std::string fmt, std::initial
 		}
 	};
 
-	// EscapeSequence -> Digit+ (':' Modifiers (':' Alias (':' GroupSize)?)?)?
+	// EscapeSequence -> Digit+ (':' Modifiers (':' Alias)?)?
 	escape_seq = [&](std::string::const_iterator cur, std::string::const_iterator end,token &tok)
 	{
 		assert(cur != end && isdigit(*cur));
 		cur = digits(cur,end,tok.width);
 	
-		tok.group_size = 1;
+		tok.is_literal = false;
 		tok.alias = "";
 		tok.has_sign = false;
 
@@ -76,14 +76,7 @@ mnemonic::mnemonic(range<addr_t> a, std::string n, std::string fmt, std::initial
 		{
 			cur = modifiers(std::next(cur),end,tok);
 			if(cur != end && *cur == ':')
-			{
-				cur = alias(std::next(cur),end,tok);
-				if(cur != end && *cur == ':')
-				{
-					tok.group_size = 0;
-					return digits(std::next(cur),end,tok.group_size);
-				}
-			}
+				return alias(std::next(cur),end,tok);
 		}
 
 		return cur;
@@ -142,7 +135,7 @@ std::ostream &po::operator<<(std::ostream &os, const mnemonic &m)
 	unsigned int idx = 0;
 	for(const mnemonic::token &tok: m.format)
 	{
-		if(tok.alias.empty() && tok.group_size)
+		if(tok.alias.empty() && !tok.is_literal)
 		{
 			assert(idx < m.operands.size());
 			if(m.operands[idx].is_constant())
@@ -157,7 +150,7 @@ std::ostream &po::operator<<(std::ostream &os, const mnemonic &m)
 		}
 		else
 			os << tok.alias;
-		idx += tok.group_size;
+		idx += !tok.is_literal;
 	}
 	
 	return os;

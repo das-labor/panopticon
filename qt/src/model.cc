@@ -378,7 +378,7 @@ QVariant Model::displayData(const QModelIndex &index) const
 				}
 				else
 					os << tok.alias;
-				idx += tok.group_size;
+				idx += !tok.is_literal;
 			}
 
 			return QString::fromStdString(os.str());
@@ -401,7 +401,8 @@ QVariant Model::displayData(const QModelIndex &index) const
 		case PositionColumn:
 		{
 			QString tmp;
-			unsigned int idx = 0, val_idx = distance(e.mne->operands.begin(),find(e.mne->operands.begin(),e.mne->operands.end(),*e.value));
+			unsigned int idx = 0, val_idx = distance(e.mne->operands.begin(),find_if(e.mne->operands.begin(),e.mne->operands.end(),[&](const po::rvalue &v) 
+																				{ return &v == e.value;}));
 			std::stringstream os;
 
 			for(const po::mnemonic::token &tok: e.mne->format)
@@ -423,12 +424,13 @@ QVariant Model::displayData(const QModelIndex &index) const
 				else
 					os << tok.alias;
 				
-				if(tok.group_size && idx <= val_idx && idx + tok.group_size - 1 >= val_idx)
+				if(!tok.is_literal && idx == val_idx)
 					return QPoint(tmp.length(),tmp.length() + os.str().size());
 				
 				tmp += QString::fromStdString(os.str());
 				os.str("");
-				idx += tok.group_size;
+				if(!tok.is_literal)
+					++idx;
 			}
 			assert(false);
 		}
