@@ -414,7 +414,7 @@ flow_ptr po::avr::disassemble(std::vector<typename architecture_traits<avr_tag>:
 		variable Rd1 = decode_reg(d);
 		variable Rd2 = decode_reg(d+1);
 		
-		st.mnemonic(st.tokens.size(),"adiw","{8}:{8},{16}",{Rd2,Rd1,K},[&](cg &c)
+		st.mnemonic(st.tokens.size(),"adiw","{8}:{8}, {16}",{Rd2,Rd1,K},[&](cg &c)
 		{
 			rvalue R = c.add_i(c.or_b(c.shiftl_u(Rd2,8_val),Rd1),K);
 
@@ -444,7 +444,7 @@ flow_ptr po::avr::disassemble(std::vector<typename architecture_traits<avr_tag>:
 		
 		// value_ptr(new reg(d,d+1)),st.capture_groups["K"]
 		// TODO
-		st.mnemonic(st.tokens.size(),"sbiw","{8}:{8},{16}");
+		st.mnemonic(st.tokens.size(),"sbiw","{8}:{8}, {16}");
 		st.jump(st.address + st.tokens.size());
 	};
 	main | "0000 0011 0 d@... 1 r@..."	= binary_reg("fmul",[](cg &m, const variable &Rd, const variable &Rr)

@@ -18,7 +18,9 @@ BasicBlockWidget::BasicBlockWidget(QModelIndex i, QGraphicsItem *parent)
 		{
 			m_mnemonics.append(new MnemonicWidget(mne,this));
 			m_mnemonics.last()->setPos(0,y);
-			y += f.lineSpacing();
+			if(!row)
+				m_mnemonics.last()->setSelected(true);
+			y += f.lineSpacing()*1.25;
 			ident = std::max(ident,m_mnemonics.last()->ident());
 		}
 		++row;
@@ -59,6 +61,19 @@ MnemonicWidget::MnemonicWidget(QModelIndex i, QGraphicsItem *parent)
 	int op_row = 0;
 	int op_idx = 0;
 	QString op_str = ops.data().toString();
+	std::function<void(QString,bool)> add = [&](QString str, bool is_op)
+	{
+		if(is_op)
+		{
+			m_operands.append(new OperandWidget(str,this));
+		}
+		else
+		{
+			m_operands.append(new QGraphicsSimpleTextItem(this));
+			m_operands.last()->setFont(QFont("Monospace",11));
+			m_operands.last()->setText(str);
+		}
+	};
 
 	m_mnemonic.setFont(QFont("Monospace",11));
 	m_mnemonic.setText(opcode.data().toString());
@@ -70,21 +85,22 @@ MnemonicWidget::MnemonicWidget(QModelIndex i, QGraphicsItem *parent)
 
 		assert(ptn.x() >= op_idx && ptn.x() <= ptn.y() && ptn.x() < op_str.length());
 		if(ptn.x() > op_idx)
-			qDebug() << op_str.left(ptn.x()).right(ptn.x() - op_idx);
-		qDebug() << op_str.left(ptn.y()).right(ptn.y() - ptn.x());
+			add(op_str.left(ptn.x()).right(ptn.x() - op_idx),false);
+		add(op_str.left(ptn.y()).right(ptn.y() - ptn.x()),true);
 
 		op_idx = ptn.y();
 		++op_row;
 	}
 
 	if(op_idx < op_str.length())
-	qDebug() << op_str.right(op_str.length() - op_idx);
+		add(op_str.right(op_str.length() - op_idx),false);
 	
-	m_operands.append(new QGraphicsSimpleTextItem(this));
+	/*m_operands.append(new QGraphicsSimpleTextItem(this));
 	m_operands.last()->setFont(QFont("Monospace",11));
-	m_operands.last()->setText(ops.data().toString());
+	m_operands.last()->setText(ops.data().toString());*/
 	
 	setIdent(m_mnemonic.boundingRect().width() + 10);
+	setFlag(QGraphicsItem::ItemIsSelectable);
 }
 
 void MnemonicWidget::setIdent(double i)
@@ -122,6 +138,52 @@ QRectF MnemonicWidget::boundingRect(void) const
 }
 
 void MnemonicWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget)
-{
+{	
+	if(isSelected())
+	{
+		painter->save();
+		painter->setPen(QPen(Qt::blue,1));
+		painter->setBrush(QBrush(QColor(0,0,255,60)));
+	//	painter->fillRect(boundingRect());
+		painter->drawRect(boundingRect());
+		painter->restore();
+	}
 	return;
 }
+
+OperandWidget::OperandWidget(QString op, QGraphicsItem *parent)
+: QGraphicsSimpleTextItem(parent), m_marked(isUnderMouse())
+{
+	setText(op);
+	setFont(QFont("Monospace",11));
+	setAcceptHoverEvents(true);
+	setCacheMode(NoCache);
+}
+
+void OperandWidget::hoverEnterEvent(QGraphicsSceneHoverEvent *event)
+{
+	m_marked = true;
+	update();
+}
+
+void OperandWidget::hoverLeaveEvent(QGraphicsSceneHoverEvent *event)
+{
+	m_marked = false;
+	update();
+}
+
+void OperandWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget)
+{
+	QGraphicsSimpleTextItem::paint(painter,option,widget);
+	if(m_marked)
+	{
+		painter->save();
+		painter->setPen(QPen(Qt::transparent,0));
+		painter->setBrush(QBrush(QColor(0,120,120,60)));
+	//	painter->fillRect(boundingRect());
+		painter->drawRect(boundingRect());
+		painter->restore();
+	}
+}
+
+

@@ -46,6 +46,20 @@ private:
 	double m_ident;
 };
 
+class OperandWidget : public QGraphicsSimpleTextItem
+{
+public:
+	OperandWidget(QString op, QGraphicsItem *parent = 0);
+
+	virtual void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
+
+protected:
+	virtual void hoverEnterEvent(QGraphicsSceneHoverEvent *event);
+	virtual void hoverLeaveEvent(QGraphicsSceneHoverEvent *event);
+
+private:
+	bool m_marked;
+};
 
 class ControlTransferWidget : public QGraphicsObject
 {

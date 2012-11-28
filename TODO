@@ -47,5 +47,12 @@
 ==> include lib into gui **DONE**
 
 ==> Display analysis results in gui
-	--> rvalue can be hovered/clicked/modifed
-	--> remove group_size from mnemonic::token, X/Y/Z are set in an ``internal'' mnemonic before st/ld
+	--> rvalue can be hovered/clicked/modifed **INPROGRESS: later**
+	--> remove group_size from mnemonic::token, X/Y/Z are set in an ``internal'' mnemonic before st/ld **DONE**
+	--> display sscp inline italic
+
+==> Improve edges
+	--> space ctrans more than one connects a pair of bblocks
+	--> label ctrans with conditions
+
+==> Display Taint analysis/def-use chains

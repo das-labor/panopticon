@@ -144,7 +144,7 @@ sem_action po::avr::binary_reg(std::string x, std::function<void(cg &,const vari
 		variable Rd = decode_reg(st.capture_groups["d"]);
 		variable Rr = decode_reg(st.capture_groups["d"]);
 
-		st.mnemonic(st.tokens.size(),x,"{8},{8}",Rd,Rr,bind(func,std::placeholders::_1,Rd,Rr));
+		st.mnemonic(st.tokens.size(),x,"{8}, {8}",Rd,Rr,bind(func,std::placeholders::_1,Rd,Rr));
 		st.jump(st.address + st.tokens.size());
 	};
 }
@@ -170,7 +170,7 @@ sem_action po::avr::binary_regconst(std::string x, std::function<void(cg &,const
 		variable Rd = decode_reg(st.capture_groups["d"] + 16);
 		constant K = st.capture_groups["K"];
 
-		st.mnemonic(st.tokens.size(),x,"{8},{8}",{Rd,K},bind(func,std::placeholders::_1,Rd,K));
+		st.mnemonic(st.tokens.size(),x,"{8}, {8}",{Rd,K},bind(func,std::placeholders::_1,Rd,K));
 		st.jump(st.address + st.tokens.size());
 	};
 }
@@ -210,7 +210,7 @@ sem_action po::avr::binary_st(variable Rd1, variable Rd2, bool pre_dec, bool pos
 		if(post_inc)
 			fmt += "+";
 
-		fmt += ",{8}";
+		fmt += ", {8}";
 
 		st.mnemonic(st.tokens.size(),"st",fmt,{X,Rr},[=](cg &c)
 		{

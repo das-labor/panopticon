@@ -9,7 +9,7 @@ GraphWidget::GraphWidget(QAbstractItemModel *m, QModelIndex i, QWidget *parent)
 {
 	setScene(&m_scene);
 	setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform | QPainter::TextAntialiasing | QPainter::HighQualityAntialiasing);
-	setDragMode(QGraphicsView::ScrollHandDrag);
+	//setDragMode(QGraphicsView::ScrollHandDrag);
 	setSceneRect(QRectF());
 }
 
