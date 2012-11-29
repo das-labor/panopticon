@@ -29,16 +29,16 @@ struct Path
 	bool operator!=(const Path &) const;
 
 	Type type;
-	po::flowgraph *flow;
-	po::procedure *proc;
-	po::basic_block *bblock;
+	po::flow_ptr flow;
+	po::proc_ptr proc;
+	po::bblock_ptr bblock;
 	const po::mnemonic *mne;
 	const po::rvalue *value;
 };
 
 inline uint qHash(const Path &key)
 {
-	return key.type ^ (uint)key.flow ^ (uint)key.proc ^ (uint)key.bblock ^ (uint)key.mne ^ (uint)key.value;
+	return key.type ^ (uint)key.flow.get() ^ (uint)key.proc.get() ^ (uint)key.bblock.get() ^ (uint)key.mne ^ (uint)key.value;
 }
 
 class Model : public QAbstractItemModel
@@ -93,14 +93,15 @@ public:
 
 		// ValueType
 		ValueColumn = 0,
-		PositionColumn = 1, 			// QPoint
-		LastValueColumn = 2
+		DecorationColumn = 1, 		// QStringList len == 2
+		SscpColumn = 2,
+		LastValueColumn = 3
 	};
 
 private:
 	QVariant displayData(const QModelIndex &index) const;
 	bool setDisplayData(const QModelIndex &index, const std::string &value);
-	QModelIndex createIndex(int row, int col, po::flowgraph *flow, po::procedure *proc = 0, po::basic_block *bblock = 0, const po::mnemonic *mne = 0, const po::rvalue *val = 0) const;
+	QModelIndex createIndex(int row, int col, po::flow_ptr flow, po::proc_ptr proc = 0, po::bblock_ptr bblock = 0, const po::mnemonic *mne = 0, const po::rvalue *val = 0) const;
 	const Path &path(uint p) const;
 
 	mutable ptrdiff_t m_nextId;

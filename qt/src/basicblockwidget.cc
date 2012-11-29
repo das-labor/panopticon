@@ -1,5 +1,6 @@
 #include <basicblockwidget.hh>
 #include <QPainter>
+#include <QTextDocument>
 #include <model.hh>
 
 BasicBlockWidget::BasicBlockWidget(QModelIndex i, QGraphicsItem *parent)
@@ -59,20 +60,13 @@ MnemonicWidget::MnemonicWidget(QModelIndex i, QGraphicsItem *parent)
 	QModelIndex opcode = i.sibling(i.row(),Model::OpcodeColumn);
 	QModelIndex ops = i.sibling(i.row(),Model::OperandsColumn);
 	int op_row = 0;
-	int op_idx = 0;
-	QString op_str = ops.data().toString();
-	std::function<void(QString,bool)> add = [&](QString str, bool is_op)
+	bool left_used = false;
+	std::function<void(QString)> add = [&](QString str)
 	{
-		if(is_op)
-		{
-			m_operands.append(new OperandWidget(str,this));
-		}
-		else
-		{
-			m_operands.append(new QGraphicsSimpleTextItem(this));
-			m_operands.last()->setFont(QFont("Monospace",11));
-			m_operands.last()->setText(str);
-		}
+		QGraphicsSimpleTextItem *a = new QGraphicsSimpleTextItem(this);
+		m_operands.append(a);
+		a->setFont(QFont("Monospace",11));
+		a->setText(str);
 	};
 
 	m_mnemonic.setFont(QFont("Monospace",11));
@@ -80,24 +74,23 @@ MnemonicWidget::MnemonicWidget(QModelIndex i, QGraphicsItem *parent)
 
 	while(op_row < ops.model()->rowCount(ops))
 	{
-		QModelIndex op = ops.child(op_row,Model::PositionColumn);
-		QPoint ptn = op.data().toPoint();
+		QModelIndex d = ops.child(op_row,Model::DecorationColumn);
+		QStringList deco = d.data().toStringList();
 
-		assert(ptn.x() >= op_idx && ptn.x() <= ptn.y() && ptn.x() < op_str.length());
-		if(ptn.x() > op_idx)
-			add(op_str.left(ptn.x()).right(ptn.x() - op_idx),false);
-		add(op_str.left(ptn.y()).right(ptn.y() - ptn.x()),true);
+		assert(deco.size() == 2);
+		if(deco[0].size() && !left_used)
+			add(deco[0]);
 
-		op_idx = ptn.y();
+		m_operands.append(new OperandWidget(d,this));
+		
+		if(deco[1].size())
+		{
+			add(deco[1]);
+			left_used = true;
+		}
+
 		++op_row;
 	}
-
-	if(op_idx < op_str.length())
-		add(op_str.right(op_str.length() - op_idx),false);
-	
-	/*m_operands.append(new QGraphicsSimpleTextItem(this));
-	m_operands.last()->setFont(QFont("Monospace",11));
-	m_operands.last()->setText(ops.data().toString());*/
 	
 	setIdent(m_mnemonic.boundingRect().width() + 10);
 	setFlag(QGraphicsItem::ItemIsSelectable);
@@ -109,10 +102,10 @@ void MnemonicWidget::setIdent(double i)
 	m_mnemonic.setPos(0,0);
 
 	double x = m_ident;
-	QVectorIterator<QGraphicsSimpleTextItem *> j(m_operands);
+	QVectorIterator<QGraphicsItem *> j(m_operands);
 	while(j.hasNext())
 	{
-		QGraphicsSimpleTextItem *s = j.next();
+		QGraphicsItem *s = j.next();
 		s->setPos(x,0);
 		x += s->boundingRect().width();
 	}
@@ -126,11 +119,11 @@ double MnemonicWidget::ident(void) const
 QRectF MnemonicWidget::boundingRect(void) const
 {
 	QRectF ret = m_mnemonic.boundingRect().translated(m_mnemonic.pos());
-	QVectorIterator<QGraphicsSimpleTextItem *> j(m_operands);
+	QVectorIterator<QGraphicsItem *> j(m_operands);
 	
 	while(j.hasNext())
 	{
-		QGraphicsSimpleTextItem *s = j.next();
+		QGraphicsItem *s = j.next();
 		ret = ret.united(s->boundingRect().translated(s->pos()));
 	}
 
@@ -151,13 +144,21 @@ void MnemonicWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *op
 	return;
 }
 
-OperandWidget::OperandWidget(QString op, QGraphicsItem *parent)
-: QGraphicsSimpleTextItem(parent), m_marked(isUnderMouse())
+OperandWidget::OperandWidget(QModelIndex i, QGraphicsItem *parent)
+: QGraphicsTextItem(parent), m_marked(isUnderMouse())
 {
-	setText(op);
+	QModelIndex value = i.sibling(i.row(),Model::ValueColumn);
+	QModelIndex sscp = i.sibling(i.row(),Model::SscpColumn);
+
+	document()->setDocumentMargin(0);
+
+	if(sscp.data().toString().size())
+		setHtml(value.data().toString() + " <i>(" + sscp.data().toString() + ")</i>");
+	else
+		setPlainText(value.data().toString());
+
 	setFont(QFont("Monospace",11));
 	setAcceptHoverEvents(true);
-	setCacheMode(NoCache);
 }
 
 void OperandWidget::hoverEnterEvent(QGraphicsSceneHoverEvent *event)
@@ -174,7 +175,7 @@ void OperandWidget::hoverLeaveEvent(QGraphicsSceneHoverEvent *event)
 
 void OperandWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget)
 {
-	QGraphicsSimpleTextItem::paint(painter,option,widget);
+	QGraphicsTextItem::paint(painter,option,widget);
 	if(m_marked)
 	{
 		painter->save();

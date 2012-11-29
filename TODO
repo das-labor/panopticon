@@ -32,14 +32,10 @@
 	--> fold superfluous IL
 	--> ensure all value_ptr are only definied once **DONE**
 
-==> K-set domain for sparse constant propagation
-
 ==> Finish AVR disassembler
 	--> compare into extra function **DONE**
 	--> use constant instances w/ right width **DONE**
-	--> missing instructions
-
-==> ``Range and Set Abstraction using SAT'' to improve guards
+	--> missing instructions **INPROGRESS**
 
 ==> Data flow **DONE**
 	--> Phi-node arguments w/ right widths **DONE**
@@ -49,10 +45,31 @@
 ==> Display analysis results in gui
 	--> rvalue can be hovered/clicked/modifed **INPROGRESS: later**
 	--> remove group_size from mnemonic::token, X/Y/Z are set in an ``internal'' mnemonic before st/ld **DONE**
-	--> display sscp inline italic
+	--> display sscp inline italic **DONE**
 
 ==> Improve edges
 	--> space ctrans more than one connects a pair of bblocks
 	--> label ctrans with conditions
 
+==> Publish
+
+==> 0.9
+
+==> K-set domain for sparse constant propagation
+
 ==> Display Taint analysis/def-use chains
+
+==> ``Range and Set Abstraction using SAT'' to improve guards
+
+==> 1.0
+
+==> File loader
+	--> ELF
+	--> PE
+	--> more?
+
+==> Hexview
+
+==> Structs
+
+==> Scripting

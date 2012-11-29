@@ -3,6 +3,7 @@
 
 #include <QGraphicsObject>
 #include <QGraphicsSimpleTextItem>
+#include <QGraphicsTextItem>
 #include <QModelIndex>
 #include <QAbstractItemModel>
 
@@ -42,14 +43,14 @@ public:
 
 private:
 	QGraphicsSimpleTextItem m_mnemonic;
-	QVector<QGraphicsSimpleTextItem *> m_operands;
+	QVector<QGraphicsItem *> m_operands;
 	double m_ident;
 };
 
-class OperandWidget : public QGraphicsSimpleTextItem
+class OperandWidget : public QGraphicsTextItem
 {
 public:
-	OperandWidget(QString op, QGraphicsItem *parent = 0);
+	OperandWidget(QModelIndex op, QGraphicsItem *parent = 0);
 
 	virtual void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
 

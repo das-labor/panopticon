@@ -1,6 +1,5 @@
 #include <QDebug>
-#include <QPoint>
-
+#include <QStringList>
 #include <sstream>
 
 #include <model.hh>
@@ -29,7 +28,7 @@ QModelIndex Model::index(int row, int column, const QModelIndex &parent) const
 	{
 		// root
 		assert(row >= 0 && (unsigned int)row < m_flowgraphs.size());
-		return createIndex(row,column,m_flowgraphs[row].get());
+		return createIndex(row,column,m_flowgraphs[row]);
 	}
 
 	const Path &e = path(parent.internalId());
@@ -42,7 +41,7 @@ QModelIndex Model::index(int row, int column, const QModelIndex &parent) const
 			auto i = e.flow->procedures.begin();
 			assert(row >= 0 && e.flow->procedures.size() > (unsigned int)row);
 			advance(i,row);
-			return createIndex(row,column,e.flow,i->get());
+			return createIndex(row,column,e.flow,*i);
 		}
 		else
 			assert(false);
@@ -52,15 +51,15 @@ QModelIndex Model::index(int row, int column, const QModelIndex &parent) const
 		{
 		case CalleesColumn:
 			assert(row >= 0 && e.proc->callees.size() > (unsigned int)row);
-			return createIndex(row,column,e.flow,next(e.proc->callees.begin(),row)->get());
+			return createIndex(row,column,e.flow,*next(e.proc->callees.begin(),row));
 		
 		case BasicBlocksColumn:
 			assert(row >= 0 && e.proc->basic_blocks.size() > (unsigned int)row);
-			return createIndex(row,column,e.flow,e.proc,next(e.proc->basic_blocks.begin(),row)->get());
+			return createIndex(row,column,e.flow,e.proc,*next(e.proc->basic_blocks.begin(),row));
 		
 		case EntryPointColumn:
 			assert(row == 0 && e.proc->entry);
-			return createIndex(0,column,e.flow,e.proc,e.proc->entry.get());
+			return createIndex(0,column,e.flow,e.proc,e.proc->entry);
 		
 		default:
 			assert(false);
@@ -71,11 +70,11 @@ QModelIndex Model::index(int row, int column, const QModelIndex &parent) const
 		{
 		case SuccessorsColumn:
 			assert(row >= 0 && distance(e.bblock->successors().first,e.bblock->successors().second) > row);
-			return createIndex(row,column,e.flow,e.proc,next(e.bblock->successors().first,row)->get());
+			return createIndex(row,column,e.flow,e.proc,*next(e.bblock->successors().first,row));
 
 		case PredecessorsColumn:
 			assert(row >= 0 && distance(e.bblock->predecessors().first,e.bblock->predecessors().second) > row);
-			return createIndex(row,column,e.flow,e.proc,next(e.bblock->predecessors().first,row)->get());
+			return createIndex(row,column,e.flow,e.proc,*next(e.bblock->predecessors().first,row));
 
 		case MnemonicsColumn:
 			assert(row >= 0 && e.bblock->mnemonics().size() > (unsigned int)row);
@@ -112,9 +111,9 @@ QModelIndex Model::parent(const QModelIndex &index) const
 	case Path::ProcedureType:
 		return createIndex(0,ProceduresColumn,e.flow);
 	case Path::BasicBlockType:
-		return createIndex(std::distance(e.flow->procedures.begin(),find_if(e.flow->procedures.begin(),e.flow->procedures.end(),[&](const po::proc_ptr p) { return p.get() == e.proc; })),BasicBlocksColumn,e.flow,e.proc);
+		return createIndex(std::distance(e.flow->procedures.begin(),find_if(e.flow->procedures.begin(),e.flow->procedures.end(),[&](const po::proc_ptr p) { return p == e.proc; })),BasicBlocksColumn,e.flow,e.proc);
 	case Path::MnemonicType:
-		return createIndex(std::distance(e.proc->basic_blocks.begin(),find_if(e.proc->basic_blocks.begin(),e.proc->basic_blocks.end(),[&](const po::bblock_ptr bb) { return bb.get() == e.bblock; })),MnemonicsColumn,e.flow,e.proc,e.bblock);
+		return createIndex(std::distance(e.proc->basic_blocks.begin(),find_if(e.proc->basic_blocks.begin(),e.proc->basic_blocks.end(),[&](const po::bblock_ptr bb) { return bb == e.bblock; })),MnemonicsColumn,e.flow,e.proc,e.bblock);
 	case Path::ValueType:
 		return createIndex(std::distance(e.bblock->mnemonics().begin(),std::find_if(e.bblock->mnemonics().begin(),e.bblock->mnemonics().end(),[&](const po::mnemonic &m) 
 											 { return &m == e.mne; })),OperandsColumn,e.flow,e.proc,e.bblock,e.mne);
@@ -326,7 +325,7 @@ QVariant Model::displayData(const QModelIndex &index) const
 		case CalleesColumn:
 			return QString("%1 callees").arg(e.proc->callees.size());
 		case UniqueIdColumn:
-			return QString("%1").arg((ptrdiff_t)e.proc);
+			return QString("%1").arg((ptrdiff_t)e.proc.get());
 		default:
 			assert(false);
 		}
@@ -343,7 +342,7 @@ QVariant Model::displayData(const QModelIndex &index) const
 		case SuccessorsColumn:
 			return QString("%1 successors").arg(distance(e.bblock->successors().first,e.bblock->successors().second));
 		case UniqueIdColumn:
-			return QString("%1").arg((ptrdiff_t)e.bblock);
+			return QString("%1").arg((ptrdiff_t)e.bblock.get());
 		default:
 			assert(false);
 		}
@@ -356,33 +355,7 @@ QVariant Model::displayData(const QModelIndex &index) const
 		case OpcodeColumn:
 			return QString::fromStdString(e.mne->opcode);
 		case OperandsColumn:
-		{
-			QString ret;
-			unsigned int idx = 0;
-			std::stringstream os;
-
-			for(const po::mnemonic::token &tok: e.mne->format)
-			{
-				if(tok.alias.empty())
-				{
-					assert(idx < e.mne->operands.size());
-					if(e.mne->operands[idx].is_constant())
-					{
-						if(tok.has_sign)
-							os << (int)e.mne->operands[idx].constant().value();
-						else
-							os << e.mne->operands[idx].constant().value();
-					}
-					else
-						os << e.mne->operands[idx];
-				}
-				else
-					os << tok.alias;
-				idx += !tok.is_literal;
-			}
-
-			return QString::fromStdString(os.str());
-		}
+			return QString::fromStdString(std::to_string(e.mne->operands.size()));
 		case InstructionsColumn:
 			return QString("%1 instructions").arg(e.mne->instructions.size());
 		default:
@@ -394,45 +367,75 @@ QVariant Model::displayData(const QModelIndex &index) const
 		{
 		case ValueColumn:
 		{
-			std::stringstream ss;
-			ss << *e.value;
-			return QString::fromStdString(ss.str());
-		}
-		case PositionColumn:
-		{
-			QString tmp;
-			unsigned int idx = 0, val_idx = distance(e.mne->operands.begin(),find_if(e.mne->operands.begin(),e.mne->operands.end(),[&](const po::rvalue &v) 
-																				{ return &v == e.value;}));
-			std::stringstream os;
+			unsigned int idx = 0;
 
-			for(const po::mnemonic::token &tok: e.mne->format)
+			unsigned int i = operand_format(*e.mne,distance(e.mne->operands.begin(),find_if(e.mne->operands.begin(),e.mne->operands.end(),[&](const po::rvalue &v){return &v==e.value;})));
+			const po::mnemonic::token &tok = e.mne->format[i];
+			
+			if(tok.alias.size())
+				return QString::fromStdString(tok.alias);
+			else
 			{
-				if(tok.alias.empty())
+				if(e.value->is_constant())
 				{
-					assert(idx < e.mne->operands.size());
-					
-					if(e.mne->operands[idx].is_constant())
-					{
-						if(tok.has_sign)
-							os << (int)e.mne->operands[idx].constant().value();
-						else
-							os << e.mne->operands[idx].constant().value();
-					}
+					if(tok.has_sign)
+						return QString::fromStdString(std::to_string((int)e.value->constant().value()));
 					else
-						os << e.mne->operands[idx];
+						return QString::fromStdString(std::to_string((unsigned int)e.value->constant().value()));
+				}
+				else if(e.value->is_variable())
+				{
+					return QString::fromStdString(e.value->variable().name());
 				}
 				else
-					os << tok.alias;
-				
-				if(!tok.is_literal && idx == val_idx)
-					return QPoint(tmp.length(),tmp.length() + os.str().size());
-				
-				tmp += QString::fromStdString(os.str());
-				os.str("");
-				if(!tok.is_literal)
-					++idx;
+				{
+					std::stringstream ss;
+					ss << *e.value;
+					return QString::fromStdString(ss.str());
+				}
 			}
-			assert(false);
+		}
+		case DecorationColumn:
+		{
+			QStringList ret;
+			unsigned int i = operand_format(*e.mne,distance(e.mne->operands.begin(),find_if(e.mne->operands.begin(),e.mne->operands.end(),[&](const po::rvalue &v){return &v==e.value;})));
+			std::stringstream os;
+
+			if(i > 0 && e.mne->format[i-1].is_literal)
+				ret << QString::fromStdString(e.mne->format[i-1].alias);
+			else
+				ret << QString();
+
+			if(i < e.mne->format.size() - 1 && e.mne->format[i+1].is_literal)
+				ret << QString::fromStdString(e.mne->format[i+1].alias);
+			else
+				ret << QString();
+
+			return ret;
+		}
+		case SscpColumn:
+		{
+			if(!e.value->is_variable())
+				return QString();
+			else if(e.flow->simple_sparse_constprop.count(e.proc) && e.flow->simple_sparse_constprop[e.proc] && e.flow->simple_sparse_constprop[e.proc]->count(*e.value))
+			{
+				std::stringstream ss;
+				po::sscp_lattice l = e.flow->simple_sparse_constprop[e.proc]->at(*e.value);
+				unsigned int i = operand_format(*e.mne,distance(e.mne->operands.begin(),find_if(e.mne->operands.begin(),e.mne->operands.end(),[&](const po::rvalue &v){return &v==e.value;})));
+				const po::mnemonic::token &tok = e.mne->format[i];
+
+				if(l.type == po::sscp_lattice::Const)	
+				{
+					if(tok.has_sign)
+						return QString::fromStdString(std::to_string((int)l.value));
+					else
+						return QString::fromStdString(std::to_string((unsigned int)l.value));
+				}
+				else
+					return QString();
+			}
+			else
+				return QString();
 		}
 		default:
 			assert(false);
@@ -464,7 +467,7 @@ bool Model::setDisplayData(const QModelIndex &index, const std::string &value)
 	case Path::ProcedureType:
 	{
 		assert(index.column() == NameColumn);
-		if(std::any_of(e.flow->procedures.begin(),e.flow->procedures.end(),[&](const po::proc_ptr &p) { return p.get() != e.proc && p->name == value; }))
+		if(std::any_of(e.flow->procedures.begin(),e.flow->procedures.end(),[&](const po::proc_ptr &p) { return p != e.proc && p->name == value; }))
 			return false;
 
 		e.proc->name = value;
@@ -475,7 +478,7 @@ bool Model::setDisplayData(const QModelIndex &index, const std::string &value)
 	}
 }
 
-QModelIndex Model::createIndex(int row, int col, po::flowgraph *flow, po::procedure *proc, po::basic_block *bblock, const po::mnemonic *mne, const po::rvalue *val) const
+QModelIndex Model::createIndex(int row, int col, po::flow_ptr flow, po::proc_ptr proc, po::bblock_ptr bblock, const po::mnemonic *mne, const po::rvalue *val) const
 {
 	Path *e = new Path();
 	uint key = 0;

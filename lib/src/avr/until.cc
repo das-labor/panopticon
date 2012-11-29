@@ -205,12 +205,11 @@ sem_action po::avr::binary_st(variable Rd1, variable Rd2, bool pre_dec, bool pos
 		else
 			assert(false);
 
-		fmt += "}";
 
 		if(post_inc)
 			fmt += "+";
 
-		fmt += ", {8}";
+		fmt += "}, {8}";
 
 		st.mnemonic(st.tokens.size(),"st",fmt,{X,Rr},[=](cg &c)
 		{
@@ -221,6 +220,12 @@ sem_action po::avr::binary_st(variable Rd1, variable Rd2, bool pre_dec, bool pos
 			
 			if(post_inc) 
 				c.add_i(X,X,1_val);
+
+			if(post_inc || pre_dec)
+			{
+				c.and_b(Rd1,X,0xff_val);
+				c.shiftr_u(Rd2,X,8_val);
+			}
 		});
 		st.jump(st.address + st.tokens.size());
 	};

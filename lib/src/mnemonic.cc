@@ -101,7 +101,7 @@ mnemonic::mnemonic(range<addr_t> a, std::string n, std::string fmt, std::initial
 	{
 		assert(cur != end);
 
-		if(isalpha(*cur))
+		if(*cur != '}' && *cur != ':')
 		{
 			tok.alias += std::string(1,*cur);
 			return alias(std::next(cur),end,tok);
@@ -154,4 +154,27 @@ std::ostream &po::operator<<(std::ostream &os, const mnemonic &m)
 	}
 	
 	return os;
+}
+
+unsigned int operand_format(const po::mnemonic &m, unsigned int op)
+{
+	assert(m.operands.size() > op && m.format.size() > op);
+
+	unsigned int i = 0, cur_op = 0;
+
+	while(m.format.size() > i)
+	{
+		const po::mnemonic::token &tok = m.format[i];
+
+		if(!tok.is_literal)
+		{
+			if(cur_op == op)
+				return i;
+		}
+		else
+			++cur_op;
+		++i;
+	}
+
+	assert(false);
 }

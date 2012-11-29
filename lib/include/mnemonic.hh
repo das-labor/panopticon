@@ -152,11 +152,13 @@ namespace po
 		::std::string opcode;
 		::std::vector<rvalue> operands;
 		::std::vector<instr> instructions;
-		::std::list<token> format;
+		::std::vector<token> format;
 	};
 	
 	::std::ostream& operator<<(::std::ostream &os, const instr &i);
 	::std::ostream& operator<<(::std::ostream &os, const mnemonic &m);
 }
+
+unsigned int operand_format(const po::mnemonic &m, unsigned int op);
 
 #endif

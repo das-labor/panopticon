@@ -76,8 +76,8 @@ namespace po
 				
 				// simple sparse constant propagation
 				::std::cout << "sscp" << ::std::endl;
-				/*sscp = interpret<simple_sparse_constprop>(proc);
-
+				sscp = interpret<simple_sparse_constprop>(proc);
+/*
 				::std::cout << "resolve" << ::std::endl;
 				bool resolved_targets = false;
 				for(bblock_ptr bb: proc->basic_blocks)

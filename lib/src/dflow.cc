@@ -144,6 +144,12 @@ live_ptr po::liveness(proc_cptr proc)
 			}
 		});
 
+		for(const mnemonic &m: bb->mnemonics())
+		{
+			for(const rvalue &v: m.operands)
+				collect(v,bb);
+		}
+
 		for(const ctrans &ct: bb->outgoing())
 		{
 			collect(ct.value,bb);
@@ -266,30 +272,58 @@ void po::ssa(proc_ptr proc, dom_ptr dominance, live_ptr live)
 			}
 		});
 
+		// for each mnemonic ‘‘opcode y, z’’ in bb and
 		// for each operation ‘‘x ← y op z’’ in bb
 		//     rewrite y with subscript top(stack[y])
 		//     rewrite z with subscript top(stack[z])
 		//     rewrite x as new_name(x)
-		rewrite(bb,[&](lvalue &left, instr::Function fn, std::vector<rvalue> &right)
-		{	
-			if(fn != instr::Phi)
+		bb->mutate_mnemonics([&](std::vector<mnemonic> &ms)
+		{
+			size_t sz_mne = ms.size(), i_mne = 0;
+			mnemonic *ary_mne = ms.data();
+
+			while(i_mne < sz_mne)
 			{
-				unsigned int ri = 0;
+				mnemonic &mne = ary_mne[i_mne++];
+				size_t sz_instr = mne.instructions.size(), i_instr = 0;
+				instr *ary_instr = mne.instructions.data();
 
-				while(ri < right.size())
+				for(rvalue &v: mne.operands)
 				{
-					const rvalue &v = right[ri];
-
 					if(v.is_variable())
 					{
 						assert(stack.count(v.variable().name()));
-						right[ri] = variable(v.variable().name(),stack[v.variable().name()].back());
+						v = variable(v.variable().name(),stack[v.variable().name()].back());
 					}
-					++ri;
 				}
-			
-				if(left.is_variable())
-					left = variable(left.variable().name(),new_name(left.variable().name()));
+
+				while(i_instr < sz_instr)
+				{
+					instr &instr = ary_instr[i_instr++];
+					lvalue &left = instr.left;
+					po::instr::Function fn = instr.function;
+					std::vector<rvalue> &right = instr.right;
+
+					if(fn != instr::Phi)
+					{
+						unsigned int ri = 0;
+
+						while(ri < right.size())
+						{
+							const rvalue &v = right[ri];
+
+							if(v.is_variable())
+							{
+								assert(stack.count(v.variable().name()));
+								right[ri] = variable(v.variable().name(),stack[v.variable().name()].back());
+							}
+							++ri;
+						}
+					
+						if(left.is_variable())
+							left = variable(left.variable().name(),new_name(left.variable().name()));
+					}
+				}
 			}
 		});
 
