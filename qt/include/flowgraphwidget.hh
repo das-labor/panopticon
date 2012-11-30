@@ -25,9 +25,29 @@ private slots:
 	void sceneRectChanged(const QRectF &r);
 
 private:
-	std::map<ptrdiff_t,Node *> m_uid2procedure;
-	std::map<Node *,int> m_procedure2row;
+	std::map<ptrdiff_t,FlowgraphNode *> m_uid2procedure;
+	std::map<FlowgraphNode *,int> m_procedure2row;
 	QItemSelectionModel *m_selection;
+};
+
+class FlowgraphNode : public QGraphicsObject
+{
+	Q_OBJECT
+
+public:
+	FlowgraphNode(QString name, QPoint ptn = QPoint(0,0));
+
+	virtual QRectF boundingRect(void) const;
+	virtual void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget = 0);
+	
+	void setTitle(QString s);
+
+protected:
+	virtual QVariant itemChange(GraphicsItemChange change, const QVariant &value);
+
+private:
+	QGraphicsTextItem m_text;
+	QGraphicsRectItem m_rect;
 };
 
 #endif

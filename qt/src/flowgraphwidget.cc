@@ -34,7 +34,7 @@ QPointF FlowgraphWidget::populate(void)
 		QModelIndex name = procs.child(row,Model::NameColumn);
 		QModelIndex addr = procs.child(row,Model::EntryPointColumn);
 		QModelIndex uid = procs.child(row,Model::UniqueIdColumn);
-		Node *n = new Node(QString("%1: %2").arg(m_model->data(addr,Qt::DisplayRole).toString()).arg(m_model->data(name,Qt::DisplayRole).toString()));
+		FlowgraphNode *n = new FlowgraphNode(QString("%1: %2").arg(m_model->data(addr,Qt::DisplayRole).toString()).arg(m_model->data(name,Qt::DisplayRole).toString()));
 		ptrdiff_t u = m_model->data(uid,Qt::DisplayRole).toULongLong();
 
 		m_scene.insert(n);
@@ -50,7 +50,7 @@ QPointF FlowgraphWidget::populate(void)
 		QModelIndex uid = procs.child(row,Model::UniqueIdColumn);
 		ptrdiff_t u = m_model->data(uid,Qt::DisplayRole).toULongLong();
 		int sow = 0;
-		Node *from;
+		FlowgraphNode *from;
 		auto i = m_uid2procedure.find(u);
 		
 		assert(i != m_uid2procedure.end());
@@ -58,7 +58,7 @@ QPointF FlowgraphWidget::populate(void)
 
 		while(sow < m_model->rowCount(callees))
 		{
-			Node *to;
+			FlowgraphNode *to;
 			u = m_model->data(callees.child(sow,Model::UniqueIdColumn),Qt::DisplayRole).toULongLong();
 			auto j = m_uid2procedure.find(u);
 			
@@ -93,7 +93,7 @@ void FlowgraphWidget::sceneSelectionChanged(void)
 		ptrdiff_t u = m_model->data(idx,Qt::DisplayRole).toULongLong();
 		auto k = m_uid2procedure.find(u);
 		assert(k != m_uid2procedure.end());
-		Node *n = k->second;
+		FlowgraphNode *n = k->second;
 		
 		if(n)
 		{
@@ -108,7 +108,7 @@ void FlowgraphWidget::sceneSelectionChanged(void)
 
 	while(i.hasNext())
 	{
-		Node *n = dynamic_cast<Node *>(i.next());
+		FlowgraphNode *n = dynamic_cast<FlowgraphNode *>(i.next());
 		
 		if(n)
 		{
@@ -166,7 +166,7 @@ void FlowgraphWidget::mouseDoubleClickEvent(QMouseEvent *event)
 	QListIterator<QGraphicsItem *> i(items(event->pos()));
 	while(i.hasNext())
 	{
-		Node *n = dynamic_cast<Node *>(i.next());
+		FlowgraphNode *n = dynamic_cast<FlowgraphNode *>(i.next());
 		if(n)
 		{
 			auto i = m_procedure2row.find(n);
@@ -189,7 +189,7 @@ void FlowgraphWidget::dataChanged(const QModelIndex &topLeft, const QModelIndex 
 		QModelIndex uid = topLeft.sibling(row,Model::UniqueIdColumn);
 		ptrdiff_t u = m_model->data(uid,Qt::DisplayRole).toULongLong();
 		auto i = m_uid2procedure.find(u);
-		Node *n;
+		FlowgraphNode *n;
 
 		if(i != m_uid2procedure.end())
 		{
@@ -197,5 +197,40 @@ void FlowgraphWidget::dataChanged(const QModelIndex &topLeft, const QModelIndex 
 			n->setTitle(QString("%1: %2").arg(m_model->data(addr,Qt::DisplayRole).toString()).arg(m_model->data(name,Qt::DisplayRole).toString()));
 		}
 		++row;
+	}
+}
+
+FlowgraphNode::FlowgraphNode(QString name, QPoint ptn)
+: m_text(name,this), m_rect(m_text.boundingRect().adjusted(0,0,10,10),this)
+{
+	m_rect.setPen(QPen(QBrush(Qt::black),2,Qt::SolidLine,Qt::RoundCap,Qt::RoundJoin));
+	m_text.setZValue(1);
+
+	setPos(ptn);
+	setFlag(QGraphicsItem::ItemIsSelectable);
+
+	m_text.setPos(5,5);
+
+	itemChange(QGraphicsItem::ItemSelectedHasChanged,QVariant(false));
+}
+
+QRectF FlowgraphNode::boundingRect(void) const
+{
+	return m_rect.boundingRect();
+}
+
+void Node::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget)
+{
+	return;
+}
+
+QVariant Node::itemChange(GraphicsItemChange change, const QVariant &value)
+{
+	switch(change)
+	{
+	case QGraphicsItem::ItemSelectedHasChanged:
+		m_rect.setBrush(QBrush(value.toBool() ? QColor(200,11,11) : QColor(11,200,11)));
+	default:
+		return value;
 	}
 }

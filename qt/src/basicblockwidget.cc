@@ -180,7 +180,7 @@ void OperandWidget::hoverLeaveEvent(QGraphicsSceneHoverEvent *event)
 
 void OperandWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget)
 {
-	//QGraphicsTextItem::paint(painter,option,widget);
+	QGraphicsTextItem::paint(painter,option,widget);
 	if(m_marked)
 	{
 		painter->save();

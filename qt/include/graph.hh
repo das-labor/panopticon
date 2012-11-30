@@ -7,6 +7,7 @@
 #include <QGraphicsObject>
 #include <QGraphicsTextItem>
 #include <QGraphicsRectItem>
+#include <QGraphicsPathItem>
 #include <QVariant>
 #include <QVariantAnimation>
 #include <QPoint>
@@ -14,39 +15,17 @@
 #include <QPainter>
 #include <QStyleOptionGraphicsItem>
 
-class Node;
+#include <boost/iterator/filter_iterator.hpp>
+
 class Arrow;
-class Animation;
 class Graph;
-
-class Node : public QGraphicsObject
-{
-	Q_OBJECT
-
-public:
-	Node(QString name, QPoint ptn = QPoint(0,0));
-
-	virtual QRectF boundingRect(void) const;
-	virtual void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget = 0);
-	
-	void smoothSetPos(QPointF ptn);
-	void setTitle(QString s);
-
-protected:
-	virtual QVariant itemChange(GraphicsItemChange change, const QVariant &value);
-
-private:
-	QGraphicsTextItem m_text;
-	QGraphicsRectItem m_rect;
-	Animation *m_animation;
-};
 
 class Arrow : public QGraphicsObject
 {
 	Q_OBJECT
 
 public:
-	Arrow(QGraphicsObject *f, QGraphicsObject *t);
+	Arrow(QPainterPath &pp, QGraphicsObject *f, QGraphicsObject *t);
 
 	virtual QRectF boundingRect(void) const;
 	virtual void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget = 0);
@@ -56,28 +35,12 @@ public:
 
 	void setHighlighted(bool tp);
 
-private slots:
-	void updated(void);
-
 private:
+	QGraphicsPathItem m_path;
 	QGraphicsObject *m_from;
 	QGraphicsObject *m_to;
 	QPolygonF m_head;
 	bool m_highlighted;
-};
-
-class Animation : public QVariantAnimation
-{
-	Q_OBJECT
-
-public:
-	Animation(std::function<void(const QVariant &)> func, QObject *parent = 0);
-
-protected:
-	virtual void updateCurrentValue(const QVariant &value);
-	
-private:
-	std::function<void(const QVariant &)> m_function;
 };
 
 class Graph : public QGraphicsScene
@@ -85,11 +48,14 @@ class Graph : public QGraphicsScene
 	Q_OBJECT
 
 public:
+	typedef boost::filter_iterator<std::function<bool(Arrow *)>,QMultiMap<QGraphicsObject *,Arrow *>::iterator> iterator;
+
 	Graph(void);
 	
 	QList<QGraphicsObject *> &nodes(void);
 	QList<Arrow *> &edges(void);
-	std::pair<QMultiMap<QGraphicsObject *,Arrow *>::iterator,QMultiMap<QGraphicsObject *,Arrow *>::iterator> out_edges(QGraphicsObject *n);
+	std::pair<iterator,iterator> out_edges(QGraphicsObject *n);
+	std::pair<iterator,iterator> in_edges(QGraphicsObject *n);
 
 	void insert(QGraphicsObject *n);
 	void connect(QGraphicsObject *a, QGraphicsObject *b);
