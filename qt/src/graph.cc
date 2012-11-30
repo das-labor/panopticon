@@ -79,7 +79,12 @@ QGraphicsObject *Arrow::to(void)
 void Arrow::setHighlighted(bool t)
 {
 	m_highlighted = t;
-	updated();
+}
+
+void Arrow::setPath(QPainterPath &pp)
+{
+	prepareGeometryChange();
+	m_path.setPath(pp);
 }
 
 Graph::Graph(void)
@@ -97,16 +102,16 @@ QList<Arrow *> &Graph::edges(void)
 	return m_edges;
 }
 
-std::pair<iterator,iterator> Graph::out_edges(QGraphicsObject *n) 
+std::pair<Graph::iterator,Graph::iterator> Graph::out_edges(QGraphicsObject *n) 
 {
-	std::function<bool(Arrow *)> pred = [=](Arrow *a) { return a->from() == n; };
-	return std::make_pair(iterator(pred,m_incidence.lowerBound(n)),iterator(pred,m_incidence.upperBound(n)));
+	std::function<bool(Arrow *)> pred = [=](Arrow *a) { return a && a->from() == n; };
+	return std::make_pair(iterator(pred,m_incidence.lowerBound(n),m_incidence.end()),iterator(pred,m_incidence.upperBound(n),m_incidence.end()));
 }
 
-std::pair<iterator,iterator> Graph::in_edges(QGraphicsObject *n) 
+std::pair<Graph::iterator,Graph::iterator> Graph::in_edges(QGraphicsObject *n) 
 {
-	std::function<bool(Arrow *)> pred = [=](Arrow *a) { return a->to() == n; };
-	return std::make_pair(iterator(pred,m_incidence.lowerBound(n)),iterator(pred,m_incidence.upperBound(n)));
+	std::function<bool(Arrow *)> pred = [=](Arrow *a) { return a &&  a->to() == n; };
+	return std::make_pair(iterator(pred,m_incidence.lowerBound(n),m_incidence.end()),iterator(pred,m_incidence.upperBound(n),m_incidence.end()));
 }
 
 QRectF Graph::graphLayout(QString algorithm)
@@ -116,8 +121,8 @@ QRectF Graph::graphLayout(QString algorithm)
 
 	GVC_t *gvc = gvContext();
 	Agraph_t *graph = agopen((char *)std::string("g").c_str(),AGDIGRAPH);
-	QMap<QGraphicsObject *,Agnode_t *> proxies;
-	QList<Agedge_t *> edges;
+	QMap<QGraphicsObject *,Agnode_t *> node_proxies;
+	QMap<Agedge_t *,Arrow *> edge_proxies;
 
 	// allocate Graphviz nodes shadowing the Nodes in the scene
 	QListIterator<QGraphicsObject *> i(nodes());
@@ -127,14 +132,14 @@ QRectF Graph::graphLayout(QString algorithm)
 		std::string name = std::to_string((ptrdiff_t)n);
 		QRectF bb = n->boundingRect();
 		Agnode_t *p = agnode(graph,(char *)name.c_str());
-	
+
 		agsafeset(p,(char *)std::string("width").c_str(),(char *)std::to_string(bb.width()/72.0).c_str(),(char *)std::string("1").c_str());
 		agsafeset(p,(char *)std::string("height").c_str(),(char *)std::to_string(bb.height()/72.0).c_str(),(char *)std::string("1").c_str());
 		agsafeset(p,(char *)std::string("fixedsize").c_str(),(char *)std::string("true").c_str(),(char *)std::string("1").c_str());
 		agsafeset(p,(char *)std::string("shape").c_str(),(char *)std::string("record").c_str(),(char *)std::string("1").c_str());
-		agsafeset(p,(char *)std::string("label").c_str(),(char *)std::string("{<a>|<b>|<c>}").c_str(),(char *)std::string("1").c_str());
+		agsafeset(p,(char *)std::string("label").c_str(),(char *)std::string("").c_str(),(char *)std::string("1").c_str());
 
-		proxies.insert(n,p);
+		node_proxies.insert(n,p);
 	}
 
 	// add Graphviz edges 
@@ -143,41 +148,41 @@ QRectF Graph::graphLayout(QString algorithm)
 	{
 		j.next();
 		Arrow *a = j.value();
-		Agnode_t *from = proxies[a->from()], *to = proxies[a->to()];
+		Agnode_t *from = node_proxies[a->from()], *to = node_proxies[a->to()];
 		Agedge_t *e = agedge(graph,from,to);
 
-		agsafeset(e,(char *)std::string("headport").c_str(),(char *)std::string("a:n").c_str(),(char *)std::string("a(n)").c_str());
-		agsafeset(e,(char *)std::string("tailport").c_str(),(char *)std::string("c:s").c_str(),(char *)std::string("a(n)").c_str());
+		agsafeset(e,(char *)std::string("headport").c_str(),(char *)std::string("n").c_str(),(char *)std::string("n)").c_str());
+		agsafeset(e,(char *)std::string("tailport").c_str(),(char *)std::string("s").c_str(),(char *)std::string("s)").c_str());
 		agsafeset(e,(char *)std::string("arrowhead").c_str(),(char *)std::string("none").c_str(),(char *)std::string("none").c_str());
 		agsafeset(e,(char *)std::string("arrowtail").c_str(),(char *)std::string("none").c_str(),(char *)std::string("none").c_str());
-		edges.append(e);
+		edge_proxies.insert(e,a);
 	}
 
 	gvLayout(gvc,graph,(char *)algorithm.toStdString().c_str());
-	gvRender(gvc,graph,"xdot",stdout);
+	//gvRender(gvc,graph,"xdot",stdout);
 
 	QPointF off(GD_bb(graph).UR.x,GD_bb(graph).UR.y);
-	qDebug() << off;
 
-	// move Nodes accoring to Graphviz proxies
-	QMapIterator<QGraphicsObject *,Agnode_t *> k(proxies);
+	// move Nodes accoring to Graphviz node_proxies
+	QMapIterator<QGraphicsObject *,Agnode_t *> k(node_proxies);
 	while(k.hasNext())
 	{
 		k.next();
 		QGraphicsObject *n = k.key();
 		Agnode_t *p = k.value();
-		QRectF bb = n->boundingRect();
 		QSizeF sz(ND_width(p)*72,ND_height(p)*72);
 		QPointF orig(ND_coord(p).x,off.y()-ND_coord(p).y);
 
-		addItem(new QGraphicsRectItem(QRectF(orig - QPointF(sz.width() / 2.0,sz.height() / 2.0),sz),0));
 		n->setPos(orig - QPointF(sz.width() / 2.0,sz.height() / 2.0));
 	}
 
-	QListIterator<Agedge_t *> m(edges);
+	QMapIterator<Agedge_t *,Arrow *> m(edge_proxies);
 	while(m.hasNext())
 	{
-		Agedge_t *e = m.next();
+		m.next();
+
+		Arrow *a = m.value();
+		Agedge_t *e = m.key();
 		QPainterPath pp;
 		int i = 1;
 		const pointf *p = ED_spl(e)->list[0].list;
@@ -195,7 +200,8 @@ QRectF Graph::graphLayout(QString algorithm)
 			pp.cubicTo(p1,p2,p3);
 			i += 3;
 		}
-		addItem(new QGraphicsPathItem(pp,0));
+
+		a->setPath(pp);
 	}
 
 	agclose(graph);
@@ -216,7 +222,8 @@ void Graph::connect(QGraphicsObject *from, QGraphicsObject *to)
 {
 	assert(m_nodes.contains(from) && m_nodes.contains(to));
 	
-	Arrow *e = new Arrow(QPainterPath(),from,to);
+	QPainterPath pp;
+	Arrow *e = new Arrow(pp,from,to);
 
 	addItem(e);
 	m_edges.append(e);

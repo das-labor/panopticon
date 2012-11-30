@@ -34,6 +34,7 @@ public:
 	QGraphicsObject *to(void);
 
 	void setHighlighted(bool tp);
+	void setPath(QPainterPath &pp);
 
 private:
 	QGraphicsPathItem m_path;

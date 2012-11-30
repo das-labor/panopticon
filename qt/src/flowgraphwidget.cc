@@ -219,12 +219,12 @@ QRectF FlowgraphNode::boundingRect(void) const
 	return m_rect.boundingRect();
 }
 
-void Node::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget)
+void FlowgraphNode::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget)
 {
 	return;
 }
 
-QVariant Node::itemChange(GraphicsItemChange change, const QVariant &value)
+QVariant FlowgraphNode::itemChange(GraphicsItemChange change, const QVariant &value)
 {
 	switch(change)
 	{
@@ -234,3 +234,9 @@ QVariant Node::itemChange(GraphicsItemChange change, const QVariant &value)
 		return value;
 	}
 }
+
+void FlowgraphNode::setTitle(QString str)
+{
+	m_text.setPlainText(str);
+}
+
