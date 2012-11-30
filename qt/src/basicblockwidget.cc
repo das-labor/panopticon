@@ -46,12 +46,15 @@ QRectF BasicBlockWidget::boundingRect(void) const
 		ret = ret.united(s->boundingRect().translated(s->pos()));
 	}
 
-	return ret.adjusted(-5,-5,8,8);
+	return ret;//.adjusted(-5,-5,8,8);
 }
 
 void BasicBlockWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget)
-{
+{	
+	painter->save();
+	painter->setPen(QPen(Qt::green,1));
 	painter->drawRect(boundingRect());
+	painter->restore();
 }
 
 MnemonicWidget::MnemonicWidget(QModelIndex i, QGraphicsItem *parent)
@@ -67,10 +70,12 @@ MnemonicWidget::MnemonicWidget(QModelIndex i, QGraphicsItem *parent)
 		m_operands.append(a);
 		a->setFont(QFont("Monospace",11));
 		a->setText(str);
+	//	a->hide();
 	};
 
 	m_mnemonic.setFont(QFont("Monospace",11));
 	m_mnemonic.setText(opcode.data().toString());
+	//m_mnemonic.hide();
 
 	while(op_row < ops.model()->rowCount(ops))
 	{
@@ -137,7 +142,7 @@ void MnemonicWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *op
 		painter->save();
 		painter->setPen(QPen(Qt::blue,1));
 		painter->setBrush(QBrush(QColor(0,0,255,60)));
-	//	painter->fillRect(boundingRect());
+		//painter->fillRect(boundingRect());
 		painter->drawRect(boundingRect());
 		painter->restore();
 	}
@@ -175,7 +180,7 @@ void OperandWidget::hoverLeaveEvent(QGraphicsSceneHoverEvent *event)
 
 void OperandWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget)
 {
-	QGraphicsTextItem::paint(painter,option,widget);
+	//QGraphicsTextItem::paint(painter,option,widget);
 	if(m_marked)
 	{
 		painter->save();

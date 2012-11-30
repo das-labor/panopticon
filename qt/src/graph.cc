@@ -98,7 +98,7 @@ QRectF Arrow::boundingRect(void) const
 
 void Arrow::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget)
 {	
-	QPolygonF con_a = mapFromItem(m_from,m_from->boundingRect().adjusted(-2,-2,2,2));
+/*	QPolygonF con_a = mapFromItem(m_from,m_from->boundingRect().adjusted(-2,-2,2,2));
 	QPolygonF con_b = mapFromItem(m_to,m_to->boundingRect().adjusted(-2,-2,2,2));
 	QPointF cent_a = con_a.boundingRect().center();
 	QPointF cent_b = con_b.boundingRect().center();
@@ -132,7 +132,7 @@ void Arrow::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWi
 	painter->translate(body.p2());
 	painter->rotate(90 - body.angle());
 	painter->drawConvexPolygon(m_head);
-	painter->restore();
+	painter->restore();*/
 }
 
 QGraphicsObject *Arrow::from(void)
@@ -195,7 +195,7 @@ QRectF Graph::graphLayout(QString algorithm)
 	GVC_t *gvc = gvContext();
 	Agraph_t *graph = agopen((char *)std::string("g").c_str(),AGDIGRAPH);
 	QMap<QGraphicsObject *,Agnode_t *> proxies;
-	const QDesktopWidget *desk = QApplication::desktop();
+	QList<Agedge_t *> edges;
 
 	// allocate Graphviz nodes shadowing the Nodes in the scene
 	QListIterator<QGraphicsObject *> i(nodes());
@@ -206,8 +206,13 @@ QRectF Graph::graphLayout(QString algorithm)
 		QRectF bb = n->boundingRect();
 		Agnode_t *p = agnode(graph,(char *)name.c_str());
 	
-		agsafeset(p,(char *)std::string("width").c_str(),(char *)std::to_string(ceil(bb.width()/96.0)).c_str(),(char *)std::string("1").c_str());
-		agsafeset(p,(char *)std::string("height").c_str(),(char *)std::to_string(ceil(bb.height()/96.0)).c_str(),(char *)std::string("1").c_str());
+		agsafeset(p,(char *)std::string("width").c_str(),(char *)std::to_string(bb.width()/72.0).c_str(),(char *)std::string("1").c_str());
+		agsafeset(p,(char *)std::string("height").c_str(),(char *)std::to_string(bb.height()/72.0).c_str(),(char *)std::string("1").c_str());
+		agsafeset(p,(char *)std::string("fixedsize").c_str(),(char *)std::string("true").c_str(),(char *)std::string("1").c_str());
+		agsafeset(p,(char *)std::string("shape").c_str(),(char *)std::string("record").c_str(),(char *)std::string("1").c_str());
+		agsafeset(p,(char *)std::string("label").c_str(),(char *)std::string("{<a>|<b>|<c>}").c_str(),(char *)std::string("1").c_str());
+
+		qDebug() << bb.size();
 
 		proxies.insert(n,p);
 	}
@@ -219,12 +224,20 @@ QRectF Graph::graphLayout(QString algorithm)
 		j.next();
 		Arrow *a = j.value();
 		Agnode_t *from = proxies[a->from()], *to = proxies[a->to()];
+		Agedge_t *e = agedge(graph,from,to);
 
-		agedge(graph,to,from);
+		agsafeset(e,(char *)std::string("headport").c_str(),(char *)std::string("a:n").c_str(),(char *)std::string("a(n)").c_str());
+		agsafeset(e,(char *)std::string("tailport").c_str(),(char *)std::string("c:s").c_str(),(char *)std::string("a(n)").c_str());
+		agsafeset(e,(char *)std::string("arrowhead").c_str(),(char *)std::string("none").c_str(),(char *)std::string("none").c_str());
+		agsafeset(e,(char *)std::string("arrowtail").c_str(),(char *)std::string("none").c_str(),(char *)std::string("none").c_str());
+		edges.append(e);
 	}
 
 	gvLayout(gvc,graph,(char *)algorithm.toStdString().c_str());
-	gvRender(gvc,graph,"dot",NULL);
+	gvRender(gvc,graph,"xdot",stdout);
+
+	QPointF off(GD_bb(graph).UR.x,GD_bb(graph).UR.y);
+	qDebug() << off;
 
 	// move Nodes accoring to Graphviz proxies
 	QMapIterator<QGraphicsObject *,Agnode_t *> k(proxies);
@@ -235,9 +248,42 @@ QRectF Graph::graphLayout(QString algorithm)
 		Agnode_t *p = k.value();
 		QRectF bb = n->boundingRect();
 		unsigned long x = ND_coord(p).x - (bb.width() / 2.0), y = ND_coord(p).y - (bb.height() / 2.0);
+	//	QSizeF sz(ND_width(p),ND_height(p));	// points
+		QSizeF sz(ND_width(p)*72,ND_height(p)*72);	// test
+	//	QPointF orig(ND_coord(p).x/72.0,ND_coord(p).y/72.0); // points
+		QPointF orig(ND_coord(p).x,off.y()-ND_coord(p).y); // test
 
+		addItem(new QGraphicsRectItem(QRectF(orig - QPointF(sz.width() / 2.0,sz.height() / 2.0),sz),0));
 		//n->smoothSetPos(QPoint(x,y));
-		n->setPos(QPoint(x,y));
+		n->setPos(orig - QPointF(sz.width() / 2.0,sz.height() / 2.0));
+	}
+
+	QListIterator<Agedge_t *> m(edges);
+	while(m.hasNext())
+	{
+		Agedge_t *e = m.next();
+		QPainterPath pp;
+		int i = 1;
+		const pointf *p = ED_spl(e)->list[0].list;
+		//QPointF p0(p[0].x/72.0,p[0].y/72.0); // points
+		QPointF p0(p[0].x,off.y()-p[0].y); // test
+
+		assert(((ED_spl(e)->list[0].size - 1) % 3) == 0);
+		pp.moveTo(p0);
+
+		while(i < ED_spl(e)->list[0].size)
+		{
+		/*	QPointF p1(p[i].x/72.0,p[i].y/72.0), 
+							p2(p[i+1].x/72.0,p[i+1].y/72.0), 
+							p3(p[i+2].x/72.0,p[i+2].y/72.0);	// points*/
+			QPointF p1(p[i].x,off.y()-p[i].y), 
+							p2(p[i+1].x,off.y()-p[i+1].y), 
+							p3(p[i+2].x,off.y()-p[i+2].y);	// points
+
+			pp.cubicTo(p1,p2,p3);
+			i += 3;
+		}
+		addItem(new QGraphicsPathItem(pp,0));
 	}
 
 	agclose(graph);
