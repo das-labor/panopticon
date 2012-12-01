@@ -7,6 +7,8 @@
 #include <QModelIndex>
 #include <QAbstractItemModel>
 
+#include <graph.hh>
+
 class BasicBlockWidget;
 class MnemonicWidget;
 class ControlTransferWidget;
@@ -60,14 +62,6 @@ protected:
 
 private:
 	bool m_marked;
-};
-
-class ControlTransferWidget : public QGraphicsObject
-{
-	Q_OBJECT
-
-public:
-	ControlTransferWidget(const BasicBlockWidget &from, const BasicBlockWidget &to, QGraphicsItem *parent = 0);
 };
 
 #endif

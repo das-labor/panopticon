@@ -27,6 +27,27 @@ private:
 	QGraphicsRectItem m_rect;
 };
 
+class ProcedureCallWidget : public QGraphicsItem, public Arrow
+{
+public:
+	ProcedureCallWidget(FlowgraphNode *from, FlowgraphNode *to, QGraphicsItem *parent = 0);
+	
+	virtual QGraphicsObject *from(void);
+	virtual QGraphicsObject *to(void);
+	virtual QPainterPath path(void) const;
+	virtual void setPath(QPainterPath pp);
+
+	void setHighlighted(bool l);
+	
+	virtual QRectF boundingRect(void) const;
+	virtual void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget = 0);
+
+private:
+	FlowgraphNode *m_from;
+	FlowgraphNode *m_to;
+	QGraphicsPathItem m_path;
+	bool m_highlighted;
+};
 
 class FlowgraphWidget : public GraphWidget
 {

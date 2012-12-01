@@ -191,5 +191,3 @@ void OperandWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *opt
 		painter->restore();
 	}
 }
-
-

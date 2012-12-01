@@ -65,7 +65,7 @@ QPointF FlowgraphWidget::populate(void)
 			assert(j != m_uid2procedure.end());
 			to = j->second;
 
-			m_scene.connect(from,to);
+			m_scene.connect(new ProcedureCallWidget(from,to));
 			++sow;
 		}
 
@@ -98,7 +98,7 @@ void FlowgraphWidget::sceneSelectionChanged(void)
 		if(n)
 		{
 			auto e = m_scene.out_edges(n);
-			std::for_each(e.first,e.second,[&](Arrow *a) { a->setHighlighted(false); });
+			std::for_each(e.first,e.second,[&](Arrow *a) { dynamic_cast<ProcedureCallWidget *>(a)->setHighlighted(false); });
 		}
 	}
 
@@ -118,7 +118,7 @@ void FlowgraphWidget::sceneSelectionChanged(void)
 			assert(j != m_procedure2row.end());
 			m_selection->select(procs.child(j->second,0),QItemSelectionModel::Select | QItemSelectionModel::Rows);
 
-			std::for_each(e.first,e.second,[&](Arrow *a) { a->setHighlighted(true); });
+			std::for_each(e.first,e.second,[&](Arrow *a) { dynamic_cast<ProcedureCallWidget *>(a)->setHighlighted(true); });
 		}
 	}
 	
@@ -141,7 +141,7 @@ void FlowgraphWidget::modelSelectionChanged(const QItemSelection &selected, cons
 		auto e = m_scene.out_edges(j->second);
 		
 		j->second->setSelected(true);
-		std::for_each(e.first,e.second,[&](Arrow *a) { a->setHighlighted(true); });
+		std::for_each(e.first,e.second,[&](Arrow *a) { dynamic_cast<ProcedureCallWidget *>(a)->setHighlighted(true); });
 	}
 	
 	i = QListIterator<QModelIndex>(deselected.indexes());
@@ -154,7 +154,7 @@ void FlowgraphWidget::modelSelectionChanged(const QItemSelection &selected, cons
 		auto e = m_scene.out_edges(j->second);
 
 		j->second->setSelected(false);
-		std::for_each(e.first,e.second,[&](Arrow *a) { a->setHighlighted(false); });
+		std::for_each(e.first,e.second,[&](Arrow *a) { dynamic_cast<ProcedureCallWidget *>(a)->setHighlighted(false); });
 	}
 
 	connect(&m_scene,SIGNAL(selectionChanged()),this,SLOT(sceneSelectionChanged()));
@@ -240,3 +240,45 @@ void FlowgraphNode::setTitle(QString str)
 	m_text.setPlainText(str);
 }
 
+ProcedureCallWidget::ProcedureCallWidget(FlowgraphNode *from, FlowgraphNode *to, QGraphicsItem *parent)
+: QGraphicsItem(parent), m_from(from), m_to(to), m_path(QPainterPath(),this), m_highlighted(false)
+{
+	setPath(QPainterPath());
+}
+
+void ProcedureCallWidget::setPath(QPainterPath pp)
+{
+	m_path.setPath(pp);
+	m_path.setPos(0,0);
+}
+
+QGraphicsObject *ProcedureCallWidget::from(void)
+{
+	return m_from;
+}
+
+QGraphicsObject *ProcedureCallWidget::to(void)
+{
+	return m_to;
+}
+
+QPainterPath ProcedureCallWidget::path(void) const
+{
+	return m_path.path();
+}
+
+void ProcedureCallWidget::setHighlighted(bool b)
+{
+	m_highlighted = b;
+	m_path.setPen(QPen(b ? Qt::red : Qt::green,2));
+}
+
+QRectF ProcedureCallWidget::boundingRect(void) const
+{
+	return QRectF();
+}
+
+void ProcedureCallWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget)
+{
+	return;
+}

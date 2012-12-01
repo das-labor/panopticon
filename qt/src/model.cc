@@ -80,7 +80,8 @@ QModelIndex Model::index(int row, int column, const QModelIndex &parent) const
 		{
 			assert(row >= 0 && distance(e.bblock->successors().first,e.bblock->successors().second) > row);
 			po::bblock_ptr tgt = *next(e.bblock->successors().first,row);
-			auto i = find_if(e.bblock->incoming().begin(),e.bblock->incoming().end(),[&](const po::ctrans &ct) { return ct.bblock == tgt; });
+			auto i = find_if(e.bblock->outgoing().begin(),e.bblock->outgoing().end(),[&](const po::ctrans &ct) { return ct.bblock == tgt; });
+			assert(i != e.bblock->outgoing().end());
 			return createIndex2(row,column,e.flow,e.proc,e.bblock,i->guard);
 		}
 
@@ -88,7 +89,8 @@ QModelIndex Model::index(int row, int column, const QModelIndex &parent) const
 		{	
 			assert(row >= 0 && distance(e.bblock->predecessors().first,e.bblock->predecessors().second) > row);
 			po::bblock_ptr tgt = *next(e.bblock->predecessors().first,row);
-			auto i = find_if(e.bblock->outgoing().begin(),e.bblock->outgoing().end(),[&](const po::ctrans &ct) { return ct.bblock == tgt; });
+			auto i = find_if(e.bblock->incoming().begin(),e.bblock->incoming().end(),[&](const po::ctrans &ct) { return ct.bblock == tgt; });
+			assert(i != e.bblock->incoming().end());
 			return createIndex2(row,column,e.flow,e.proc,e.bblock,i->guard);
 		}
 		
@@ -389,7 +391,7 @@ QVariant Model::displayData(const QModelIndex &index) const
 		{
 			std::stringstream ss;
 			ss << *e.guard.get();
-			return QString::fromStdString(ss.str());
+			return QString::fromUtf8(ss.str().c_str());
 		}
 		else
 			assert(false);

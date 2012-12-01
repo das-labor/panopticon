@@ -21,29 +21,13 @@
 class Arrow;
 class Graph;
 
-class Arrow : public QGraphicsObject
+class Arrow
 {
-	Q_OBJECT
-
 public:
-	Arrow(QPainterPath &pp, QGraphicsObject *f, QGraphicsObject *t);
-
-	virtual QRectF boundingRect(void) const;
-	virtual void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget = 0);
-	
-	QGraphicsObject *from(void);
-	QGraphicsObject *to(void);
-
-	void setHighlighted(bool tp);
-	void setPath(QPainterPath &pp);
-
-private:
-	QGraphicsPathItem m_path;
-	QGraphicsObject *m_from;
-	QGraphicsObject *m_to;
-	QPolygonF m_head;
-	bool m_highlighted;
-	QGraphicsSimpleTextItem m_label;
+	virtual QGraphicsObject *from(void) = 0;
+	virtual QGraphicsObject *to(void) = 0;
+	virtual QPainterPath path(void) const = 0;
+	virtual void setPath(QPainterPath pp) = 0;
 };
 
 class Graph : public QGraphicsScene
@@ -61,7 +45,7 @@ public:
 	std::pair<iterator,iterator> in_edges(QGraphicsObject *n);
 
 	void insert(QGraphicsObject *n);
-	void connect(QGraphicsObject *a, QGraphicsObject *b);
+	void connect(Arrow *a);
 	void clear(void);
 	QRectF graphLayout(QString algo);
 
