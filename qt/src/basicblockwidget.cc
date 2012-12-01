@@ -8,7 +8,7 @@ BasicBlockWidget::BasicBlockWidget(QModelIndex i, QGraphicsItem *parent)
 {
 	int row = 0;
 	QModelIndex mne_idx = m_root.sibling(m_root.row(),Model::MnemonicsColumn);
-	double y = 0, ident = 0;
+	double y = 8, ident = 0;
 	QFontMetrics f(QFont("Monospace",11));
 
 	while(row < m_model->rowCount(mne_idx))
@@ -18,7 +18,7 @@ BasicBlockWidget::BasicBlockWidget(QModelIndex i, QGraphicsItem *parent)
 		if(!mne.data().toString().startsWith("internal"))
 		{
 			m_mnemonics.append(new MnemonicWidget(mne,this));
-			m_mnemonics.last()->setPos(0,y);
+			m_mnemonics.last()->setPos(8,y);
 			if(!row)
 				m_mnemonics.last()->setSelected(true);
 			y += f.lineSpacing()*1.25;
@@ -46,14 +46,14 @@ QRectF BasicBlockWidget::boundingRect(void) const
 		ret = ret.united(s->boundingRect().translated(s->pos()));
 	}
 
-	return ret;//.adjusted(-5,-5,8,8);
+	return QRectF(QPointF(0,0),ret.bottomRight() + QPoint(8,8));
 }
 
 void BasicBlockWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget)
 {	
 	painter->save();
 	painter->setPen(QPen(Qt::green,1));
-	painter->drawRect(boundingRect());
+	painter->drawRect(boundingRect().adjusted(2,2,-4,-4));
 	painter->restore();
 }
 

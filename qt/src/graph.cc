@@ -12,10 +12,12 @@ extern "C" {
 }
 
 Arrow::Arrow(QPainterPath &pp, QGraphicsObject *f, QGraphicsObject *t)
-: m_path(pp,this), m_from(f), m_to(t), m_highlighted(false)
+: m_path(pp,this), m_from(f), m_to(t), m_highlighted(false), m_label("Test",this)
 {
 	setZValue(-1);
 	m_head << QPointF(0,0) << QPointF(3*-1.3,3*3) << QPointF(0,3*2.5) << QPointF(3*1.3,3*3) << QPointF(0,0);
+	setPath(pp);
+	m_label.setBrush(QBrush(Qt::red));
 }
 
 QRectF Arrow::boundingRect(void) const
@@ -23,47 +25,24 @@ QRectF Arrow::boundingRect(void) const
 	QRectF a = mapFromItem(m_from,m_from->boundingRect().adjusted(-2,-2,2,2)).boundingRect();
 	QRectF b = mapFromItem(m_to,m_to->boundingRect().adjusted(-2,-2,2,2)).boundingRect();
 	QRectF c = mapFromItem(&m_path,m_path.boundingRect().adjusted(-2,-2,2,2)).boundingRect();
+	QRectF d = mapFromItem(&m_label,m_label.boundingRect().adjusted(-2,-2,2,2)).boundingRect();
 
-	return a | b | c;
+	return a | b | c | d;
 }
 
 void Arrow::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget)
 {	
-/*	QPolygonF con_a = mapFromItem(m_from,m_from->boundingRect().adjusted(-2,-2,2,2));
-	QPolygonF con_b = mapFromItem(m_to,m_to->boundingRect().adjusted(-2,-2,2,2));
-	QPointF cent_a = con_a.boundingRect().center();
-	QPointF cent_b = con_b.boundingRect().center();
-	QLineF los(cent_a,cent_b);
-	std::function<QPointF(QPolygonF &, QPointF &)> collide = [&los](QPolygonF &contour, QPointF &backup) -> QPointF
-	{
-		if(contour.size() < 2) return backup;
-		int idx = 1;
-		QPointF prev = contour[0];
+	QPen p(m_highlighted ? Qt::blue : Qt::red,1);
 
-		while(idx < contour.size())
-		{
-			QLineF cand(prev,contour[idx]);
-			QPointF inters;
+	m_path.setPen(p);
 
-			if(los.intersect(cand,&inters) == QLineF::BoundedIntersection)
-				return inters;
-			prev = contour[idx++];
-		}
-
-		return backup;
-	};
-	
-	QLineF body(collide(con_a,cent_a),collide(con_b,cent_b));
-	
 	painter->save();
-	painter->setPen(QPen(m_highlighted ? Qt::blue : Qt::red,2));
-	painter->setRenderHint(QPainter::Antialiasing);
+	painter->setPen(p);
 	painter->setBrush(QBrush(m_highlighted ? Qt::blue : Qt::red));
-	painter->drawLine(body);
-	painter->translate(body.p2());
-	painter->rotate(90 - body.angle());
+	painter->translate(m_path.path().pointAtPercent(1));
+	painter->rotate(90 - m_path.path().angleAtPercent(1));
 	painter->drawConvexPolygon(m_head);
-	painter->restore();*/
+	painter->restore();
 }
 
 QGraphicsObject *Arrow::from(void)
@@ -85,6 +64,9 @@ void Arrow::setPath(QPainterPath &pp)
 {
 	prepareGeometryChange();
 	m_path.setPath(pp);
+
+	QSizeF sz = m_label.boundingRect().size();
+	m_label.setPos(m_path.path().pointAtPercent(0.5) - QPointF(sz.width() / 2.0,sz.height() / 2.0));
 }
 
 Graph::Graph(void)
@@ -124,6 +106,9 @@ QRectF Graph::graphLayout(QString algorithm)
 	QMap<QGraphicsObject *,Agnode_t *> node_proxies;
 	QMap<Agedge_t *,Arrow *> edge_proxies;
 
+	agsafeset(graph,(char *)std::string("sep").c_str(),(char *)std::string("0").c_str(),(char *)std::string("0").c_str());
+	agsafeset(graph,(char *)std::string("esep").c_str(),(char *)std::string("1").c_str(),(char *)std::string("1").c_str());
+
 	// allocate Graphviz nodes shadowing the Nodes in the scene
 	QListIterator<QGraphicsObject *> i(nodes());
 	while(i.hasNext())
@@ -151,8 +136,8 @@ QRectF Graph::graphLayout(QString algorithm)
 		Agnode_t *from = node_proxies[a->from()], *to = node_proxies[a->to()];
 		Agedge_t *e = agedge(graph,from,to);
 
-		agsafeset(e,(char *)std::string("headport").c_str(),(char *)std::string("n").c_str(),(char *)std::string("n)").c_str());
-		agsafeset(e,(char *)std::string("tailport").c_str(),(char *)std::string("s").c_str(),(char *)std::string("s)").c_str());
+		agsafeset(e,(char *)std::string("headport").c_str(),(char *)std::string("n").c_str(),(char *)std::string("n").c_str());
+		agsafeset(e,(char *)std::string("tailport").c_str(),(char *)std::string("s").c_str(),(char *)std::string("s").c_str());
 		agsafeset(e,(char *)std::string("arrowhead").c_str(),(char *)std::string("none").c_str(),(char *)std::string("none").c_str());
 		agsafeset(e,(char *)std::string("arrowtail").c_str(),(char *)std::string("none").c_str(),(char *)std::string("none").c_str());
 		edge_proxies.insert(e,a);

@@ -21,6 +21,7 @@ struct Path
 		BasicBlockType = 2,
 		MnemonicType = 3,
 		ValueType = 4,
+		GuardType = 5,
 	};
 
 	Path(void);
@@ -34,11 +35,12 @@ struct Path
 	po::bblock_ptr bblock;
 	const po::mnemonic *mne;
 	const po::rvalue *value;
+	po::guard_ptr guard;
 };
 
 inline uint qHash(const Path &key)
 {
-	return key.type ^ (uint)key.flow.get() ^ (uint)key.proc.get() ^ (uint)key.bblock.get() ^ (uint)key.mne ^ (uint)key.value;
+	return key.type ^ (uint)key.flow.get() ^ (uint)key.proc.get() ^ (uint)key.bblock.get() ^ (uint)key.mne ^ (uint)key.value ^ (uint)key.guard.get();
 }
 
 class Model : public QAbstractItemModel
@@ -77,11 +79,13 @@ public:
 
 		// BasicBlockType
 		AreaColumn = 0,
-		MnemonicsColumn = 1,			// MnemonicType,
-		PredecessorsColumn = 2,		// BasicBlockType
-		SuccessorsColumn = 3,			// BasicBlockType
+		MnemonicsColumn = 1,					// MnemonicType,
+		PredecessorsColumn = 2,				// BasicBlockType
+		PredecessorGuardsColumn = 3,	// GuardType
 		//UniqueIdColumn = 4,
-		LastBasicBlockColumn = 5,
+		SuccessorsColumn = 5,					// BasicBlockType
+		SuccessorGuardsColumn = 6,		// GuardType
+		LastBasicBlockColumn = 7,
 
 		// MnemonicType
 		//AreaColumn = 0,
@@ -95,13 +99,18 @@ public:
 		ValueColumn = 0,
 		DecorationColumn = 1, 		// QStringList len == 2
 		SscpColumn = 2,
-		LastValueColumn = 3
+		LastValueColumn = 3,
+
+		// GuardType
+		ValuesColumn = 0,					// ValueType
+		LastGuardColumn = 1,
 	};
 
 private:
 	QVariant displayData(const QModelIndex &index) const;
 	bool setDisplayData(const QModelIndex &index, const std::string &value);
 	QModelIndex createIndex(int row, int col, po::flow_ptr flow, po::proc_ptr proc = 0, po::bblock_ptr bblock = 0, const po::mnemonic *mne = 0, const po::rvalue *val = 0) const;
+	QModelIndex createIndex2(int row, int col, po::flow_ptr flow, po::proc_ptr proc = 0, po::bblock_ptr bblock = 0, po::guard_ptr guard = 0) const;
 	const Path &path(uint p) const;
 
 	mutable ptrdiff_t m_nextId;

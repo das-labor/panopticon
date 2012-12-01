@@ -76,6 +76,22 @@ QModelIndex Model::index(int row, int column, const QModelIndex &parent) const
 			assert(row >= 0 && distance(e.bblock->predecessors().first,e.bblock->predecessors().second) > row);
 			return createIndex(row,column,e.flow,e.proc,*next(e.bblock->predecessors().first,row));
 
+		case SuccessorGuardsColumn:
+		{
+			assert(row >= 0 && distance(e.bblock->successors().first,e.bblock->successors().second) > row);
+			po::bblock_ptr tgt = *next(e.bblock->successors().first,row);
+			auto i = find_if(e.bblock->incoming().begin(),e.bblock->incoming().end(),[&](const po::ctrans &ct) { return ct.bblock == tgt; });
+			return createIndex2(row,column,e.flow,e.proc,e.bblock,i->guard);
+		}
+
+		case PredecessorGuardsColumn:
+		{	
+			assert(row >= 0 && distance(e.bblock->predecessors().first,e.bblock->predecessors().second) > row);
+			po::bblock_ptr tgt = *next(e.bblock->predecessors().first,row);
+			auto i = find_if(e.bblock->outgoing().begin(),e.bblock->outgoing().end(),[&](const po::ctrans &ct) { return ct.bblock == tgt; });
+			return createIndex2(row,column,e.flow,e.proc,e.bblock,i->guard);
+		}
+		
 		case MnemonicsColumn:
 			assert(row >= 0 && e.bblock->mnemonics().size() > (unsigned int)row);
 			return createIndex(row,column,e.flow,e.proc,e.bblock,&e.bblock->mnemonics()[row]);
@@ -117,7 +133,8 @@ QModelIndex Model::parent(const QModelIndex &index) const
 	case Path::ValueType:
 		return createIndex(std::distance(e.bblock->mnemonics().begin(),std::find_if(e.bblock->mnemonics().begin(),e.bblock->mnemonics().end(),[&](const po::mnemonic &m) 
 											 { return &m == e.mne; })),OperandsColumn,e.flow,e.proc,e.bblock,e.mne);
-
+	case Path::GuardType:
+		return createIndex(std::distance(e.proc->basic_blocks.begin(),find_if(e.proc->basic_blocks.begin(),e.proc->basic_blocks.end(),[&](const po::bblock_ptr bb) { return bb == e.bblock; })),SuccessorGuardsColumn,e.flow,e.proc,e.bblock);
 	default:
 		assert(false);
 	}
@@ -157,8 +174,10 @@ int Model::rowCount(const QModelIndex &parent) const
 		switch(parent.column())
 		{		
 		case SuccessorsColumn:
+		case SuccessorGuardsColumn:
 			return distance(e.bblock->successors().first,e.bblock->successors().second);
 		case PredecessorsColumn:
+		case PredecessorGuardsColumn:
 			return distance(e.bblock->predecessors().first,e.bblock->predecessors().second);
 		case MnemonicsColumn:
 			return e.bblock->mnemonics().size();
@@ -217,6 +236,9 @@ int Model::columnCount(const QModelIndex &parent) const
 			return LastBasicBlockColumn;
 		case MnemonicsColumn:
 			return LastMnemonicColumn;
+		case SuccessorGuardsColumn:
+		case PredecessorGuardsColumn:
+			return LastGuardColumn;
 		default:
 			return 0;
 		}
@@ -361,14 +383,22 @@ QVariant Model::displayData(const QModelIndex &index) const
 		default:
 			assert(false);
 		}
+
+	case Path::GuardType:
+		if(index.column() == ValuesColumn)
+		{
+			std::stringstream ss;
+			ss << *e.guard.get();
+			return QString::fromStdString(ss.str());
+		}
+		else
+			assert(false);
 	
 	case Path::ValueType:
 		switch((Column)index.column())
 		{
 		case ValueColumn:
 		{
-			unsigned int idx = 0;
-
 			unsigned int i = operand_format(*e.mne,distance(e.mne->operands.begin(),find_if(e.mne->operands.begin(),e.mne->operands.end(),[&](const po::rvalue &v){return &v==e.value;})));
 			const po::mnemonic::token &tok = e.mne->format[i];
 			
@@ -499,6 +529,40 @@ QModelIndex Model::createIndex(int row, int col, po::flow_ptr flow, po::proc_ptr
 		e->type = Path::MnemonicType;
 	else
 		e->type = Path::ValueType;
+
+	if(!m_pathToId.contains(*e))
+	{
+		key = m_nextId++;
+		m_idToPath.insert(key,e);
+		m_pathToId.insert(*e,key);
+	}
+	else
+	{
+		key = m_pathToId[*e];
+		delete e;
+	}
+
+	return QAbstractItemModel::createIndex(row,col,key);
+}
+
+QModelIndex Model::createIndex2(int row, int col, po::flow_ptr flow, po::proc_ptr proc, po::bblock_ptr bblock, po::guard_ptr guard) const
+{
+	Path *e = new Path();
+	uint key = 0;
+
+	e->flow = flow;
+	e->proc = proc;
+	e->bblock = bblock;
+	e->guard = guard;
+	
+	if(!proc)
+		e->type = Path::FlowgraphType;
+	else if(!bblock)
+		e->type = Path::ProcedureType;
+	else if(!guard)
+		e->type = Path::BasicBlockType;
+	else
+		e->type = Path::GuardType;
 
 	if(!m_pathToId.contains(*e))
 	{

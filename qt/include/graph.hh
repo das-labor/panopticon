@@ -6,6 +6,7 @@
 #include <QGraphicsScene>
 #include <QGraphicsObject>
 #include <QGraphicsTextItem>
+#include <QGraphicsSimpleTextItem>
 #include <QGraphicsRectItem>
 #include <QGraphicsPathItem>
 #include <QVariant>
@@ -42,6 +43,7 @@ private:
 	QGraphicsObject *m_to;
 	QPolygonF m_head;
 	bool m_highlighted;
+	QGraphicsSimpleTextItem m_label;
 };
 
 class Graph : public QGraphicsScene
