@@ -72,7 +72,7 @@ QPointF FlowgraphWidget::populate(void)
 		++row;
 	}
 
-	m_scene.graphLayout("circo");
+	m_scene.layoutCustom("circo");
 	return QPointF();
 }
 

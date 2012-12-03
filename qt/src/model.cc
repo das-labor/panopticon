@@ -389,9 +389,14 @@ QVariant Model::displayData(const QModelIndex &index) const
 	case Path::GuardType:
 		if(index.column() == ValuesColumn)
 		{
-			std::stringstream ss;
-			ss << *e.guard.get();
-			return QString::fromUtf8(ss.str().c_str());
+			if(e.guard->relations.empty())
+				return QString();
+			else
+			{
+				std::stringstream ss;
+				ss << *e.guard.get();
+				return QString::fromUtf8(ss.str().c_str());
+			}
 		}
 		else
 			assert(false);

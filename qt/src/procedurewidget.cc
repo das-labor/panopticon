@@ -49,7 +49,7 @@ QPointF ProcedureWidget::populate(void)
 		++row;
 	}
 
-	m_scene.graphLayout("dot");
+	m_scene.layoutHierarchically();
 	BasicBlockWidget *e = nodes[entry.child(0,Model::UniqueIdColumn).data().toULongLong()];
 
 	assert(e);

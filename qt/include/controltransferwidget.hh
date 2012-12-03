@@ -5,6 +5,7 @@
 #include <QGraphicsRectItem>
 #include <QGraphicsPathItem>
 #include <QGraphicsObject>
+#include <QPolygonF>
 #include <QModelIndex>
 #include <QAbstractItemModel>
 
@@ -30,6 +31,7 @@ private:
 	QGraphicsSimpleTextItem m_text;
 	QGraphicsRectItem m_rect;
 	QGraphicsPathItem m_path;
+	QPolygonF m_head;
 };
 
 #endif

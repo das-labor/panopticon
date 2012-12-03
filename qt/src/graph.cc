@@ -4,16 +4,20 @@
 
 #include <string>
 #include <cassert>
+#include <sstream>
 
 #include <graph.hh>
 
-extern "C" {
-#include <gvc.h>
-}
-
 Graph::Graph(void)
+: m_gvContext(gvContext()), m_graph(0)	
 {
 	return;
+}
+
+Graph::~Graph(void)
+{
+	deleteGraph();
+	gvFreeContext(m_gvContext);
 }
 
 QList<QGraphicsObject *> &Graph::nodes(void)
@@ -38,61 +42,130 @@ std::pair<Graph::iterator,Graph::iterator> Graph::in_edges(QGraphicsObject *n)
 	return std::make_pair(iterator(pred,m_incidence.lowerBound(n),m_incidence.end()),iterator(pred,m_incidence.upperBound(n),m_incidence.end()));
 }
 
-QRectF Graph::graphLayout(QString algorithm)
+QRectF Graph::layoutCustom(QString algorithm)
 {
 	if(nodes().empty())
 		return QRectF();
 
-	GVC_t *gvc = gvContext();
-	Agraph_t *graph = agopen((char *)std::string("g").c_str(),AGDIGRAPH);
-	QMap<QGraphicsObject *,Agnode_t *> node_proxies;
-	QMap<Agedge_t *,Arrow *> edge_proxies;
+	// first run
+	if(m_graph)
+		deleteGraph();
+	allocateGraph();
 
-	agsafeset(graph,(char *)std::string("nodesep").c_str(),(char *)std::string("1.25").c_str(),(char *)std::string("3").c_str());
-	agsafeset(graph,(char *)std::string("ranksep").c_str(),(char *)std::string("1.25").c_str(),(char *)std::string("3").c_str());
-	agsafeset(graph,(char *)std::string("esep").c_str(),(char *)std::string("1").c_str(),(char *)std::string("1").c_str());
+	gvLayout(m_gvContext,m_graph,(char *)algorithm.toStdString().c_str());
+	materializeGraph();
 
-	// allocate Graphviz nodes shadowing the Nodes in the scene
-	QListIterator<QGraphicsObject *> i(nodes());
+	return QRectF();
+}
+
+QRectF Graph::layoutHierarchically(void)
+{
+	if(nodes().empty())
+		return QRectF();
+
+	// first run
+	if(m_graph)
+		deleteGraph();
+	allocateGraph();
+
+	gvLayout(m_gvContext,m_graph,(char *)std::string("dot").c_str());
+	QPointF off(GD_bb(m_graph).UR.x,GD_bb(m_graph).UR.y);
+
+	// now that the nodes are laid out arrange the ports to avoid edges overlapping
+	QMapIterator<QGraphicsObject *,Agnode_t *> i(m_nodeProxies);
 	while(i.hasNext())
 	{
-		QGraphicsObject *n = i.next();
-		std::string name = std::to_string((ptrdiff_t)n);
-		QRectF bb = n->boundingRect();
-		Agnode_t *p = agnode(graph,(char *)name.c_str());
+		i.next();
+		QGraphicsObject *obj = i.key();
+		Agnode_t *node = i.value();
+		QMap<int,Agedge_t *> incoming, outgoing;
+	
+		// incoming
+		auto p = in_edges(obj);
+		while(p.first != p.second)
+		{
+			Arrow *arrow = *p.first;
+			Agedge_t *edge = m_edgeProxies[arrow];
+			QGraphicsObject *src_obj = arrow->from();
+			Agnode_t *src_node = m_nodeProxies[src_obj];
+			int k = ND_coord(node).y >= ND_coord(src_node).y ? ND_coord(src_node).x * 100 : ND_coord(src_node).x;
 
-		agsafeset(p,(char *)std::string("width").c_str(),(char *)std::to_string(bb.width()/72.0).c_str(),(char *)std::string("1").c_str());
-		agsafeset(p,(char *)std::string("height").c_str(),(char *)std::to_string(bb.height()/72.0).c_str(),(char *)std::string("1").c_str());
-		agsafeset(p,(char *)std::string("fixedsize").c_str(),(char *)std::string("true").c_str(),(char *)std::string("1").c_str());
-		agsafeset(p,(char *)std::string("shape").c_str(),(char *)std::string("record").c_str(),(char *)std::string("1").c_str());
-		agsafeset(p,(char *)std::string("label").c_str(),(char *)std::string("").c_str(),(char *)std::string("1").c_str());
+			while(incoming.contains(k)) ++k;
+			incoming.insert(k,edge);
+			++p.first;
+		}
 
-		node_proxies.insert(n,p);
+		// outgoing
+		p = out_edges(obj);
+		while(p.first != p.second)
+		{
+			Arrow *arrow = *p.first;
+			Agedge_t *edge = m_edgeProxies[arrow];
+			QGraphicsObject *dst_obj = arrow->to();
+			Agnode_t *dst_node = m_nodeProxies[dst_obj];
+			int k = ND_coord(node).y < ND_coord(dst_node).y ? ND_coord(dst_node).x * 100 : ND_coord(dst_node).x;
+
+			while(outgoing.contains(k)) ++k;
+			outgoing.insert(k,edge);
+			++p.first;
+		}
+
+		std::stringstream ss;
+		int j = std::max(incoming.size() - 1,0);
+
+		qDebug() << "insz" << j+1;
+		ss << "{{<in0>";
+		while(j) ss << "|<in" << j-- << ">";
+		ss << "}|{<out0>";
+		
+		j = std::max(outgoing.size() - 1,0);
+		while(j) ss << "|<out" << j-- << ">";
+		ss << "}}";
+	
+		safeset(node,"label",ss.str());
+
+		// arrange incoming
+		QMapIterator<int,Agedge_t *> k(incoming);
+		int ord = 0;
+		while(k.hasNext())
+		{
+			k.next();
+			Agedge_t *edge = k.value();
+
+			safeset(edge,"headport","in" + std::to_string(ord++) + ":n");
+			safeset(edge,"arrowhead","none");
+		}
+			
+		// arrange outgoing
+		QMapIterator<int,Agedge_t *> l(outgoing);
+		ord = 0;
+		while(l.hasNext())
+		{
+			l.next();
+			Agedge_t *edge = l.value();
+
+			safeset(edge,"tailport","out" + std::to_string(ord++) + ":s");
+			safeset(edge,"arrowtail","none");
+		}
 	}
 
-	// add Graphviz edges 
-	QMapIterator<QGraphicsObject *, Arrow *> j(m_incidence);
-	while(j.hasNext())
-	{
-		j.next();
-		Arrow *a = j.value();
-		Agnode_t *from = node_proxies[a->from()], *to = node_proxies[a->to()];
-		Agedge_t *e = agedge(graph,from,to);
+	// second run, now with proper ports
+	gvFreeLayout(m_gvContext,m_graph);	
+	gvLayout(m_gvContext,m_graph,(char *)std::string("dot").c_str());	
+	//gvRender(m_gvContext,m_graph,(char *)std::string("xdot").c_str(),stdout);
+	materializeGraph();
 
-		agsafeset(e,(char *)std::string("headport").c_str(),(char *)std::string("n").c_str(),(char *)std::string("n").c_str());
-		agsafeset(e,(char *)std::string("tailport").c_str(),(char *)std::string("s").c_str(),(char *)std::string("s").c_str());
-		agsafeset(e,(char *)std::string("arrowhead").c_str(),(char *)std::string("none").c_str(),(char *)std::string("none").c_str());
-		agsafeset(e,(char *)std::string("arrowtail").c_str(),(char *)std::string("none").c_str(),(char *)std::string("none").c_str());
-		edge_proxies.insert(e,a);
-	}
+	return QRectF();
+}
 
-	gvLayout(gvc,graph,(char *)algorithm.toStdString().c_str());
-	//gvRender(gvc,graph,"xdot",stdout);
+void Graph::materializeGraph(void)
+{
+	assert(m_graph);
 
-	QPointF off(GD_bb(graph).UR.x,GD_bb(graph).UR.y);
+	QPointF off(GD_bb(m_graph).UR.x,GD_bb(m_graph).UR.y);
 
-	// move Nodes accoring to Graphviz node_proxies
-	QMapIterator<QGraphicsObject *,Agnode_t *> k(node_proxies);
+	// move QGraphicsObject's according to Graphviz node proxies
+	QMapIterator<QGraphicsObject *,Agnode_t *> k(m_nodeProxies);
 	while(k.hasNext())
 	{
 		k.next();
@@ -104,13 +177,13 @@ QRectF Graph::graphLayout(QString algorithm)
 		n->setPos(orig - QPointF(sz.width() / 2.0,sz.height() / 2.0));
 	}
 
-	QMapIterator<Agedge_t *,Arrow *> m(edge_proxies);
+	QMapIterator<Arrow *,Agedge_t *> m(m_edgeProxies);
 	while(m.hasNext())
 	{
 		m.next();
 
-		Arrow *a = m.value();
-		Agedge_t *e = m.key();
+		Arrow *a = m.key();
+		Agedge_t *e = m.value();
 		QPainterPath pp;
 		int i = 1;
 		const pointf *p = ED_spl(e)->list[0].list;
@@ -131,11 +204,76 @@ QRectF Graph::graphLayout(QString algorithm)
 
 		a->setPath(pp);
 	}
+}
 
-	agclose(graph);
-	gvFreeContext(gvc);
+void Graph::deleteGraph(void)
+{
+	if(!m_graph)
+		return;
+
+	// edges
+	QMapIterator<Arrow *,Agedge_t *> i(m_edgeProxies);
+	while(i.hasNext())
+	{
+		i.next();
+		agdelete(m_graph,i.value());
+	}
+
+	QMapIterator<QGraphicsObject *,Agnode_t *> j(m_nodeProxies);
+	while(j.hasNext())
+	{
+		j.next();
+		agdelete(m_graph,j.value());
+	}	
 	
-	return QRectF();
+	agclose(m_graph);
+}
+
+void Graph::allocateGraph(void)
+{
+	if(m_graph)
+		deleteGraph();
+	
+	m_graph = agopen((char *)std::string("g").c_str(),AGDIGRAPH);
+
+	safeset(m_graph,"nodesep","1.2");
+	safeset(m_graph,"ranksep","1.2");
+	safeset(m_graph,"esep","1");
+
+	// allocate Graphviz nodes shadowing the Nodes in the scene
+	QListIterator<QGraphicsObject *> i(nodes());
+	while(i.hasNext())
+	{
+		QGraphicsObject *n = i.next();
+		std::string name = std::to_string((ptrdiff_t)n);
+		QRectF bb = n->boundingRect();
+		Agnode_t *p = agnode(m_graph,(char *)name.c_str());
+
+		safeset(p,"width",std::to_string(bb.width()/72.0));
+		safeset(p,"height",std::to_string(bb.height()/72.0));
+		safeset(p,"fixedsize","true");
+		safeset(p,"shape","record");
+		safeset(p,"label","");
+
+		m_nodeProxies.insert(n,p);
+	}
+
+	// add Graphviz edges 
+	QMapIterator<QGraphicsObject *, Arrow *> j(m_incidence);
+	while(j.hasNext())
+	{
+		j.next();
+		Arrow *a = j.value();
+		Agnode_t *from = m_nodeProxies[a->from()], *to = m_nodeProxies[a->to()];
+		Agedge_t *e = agedge(m_graph,from,to);
+
+		m_edgeProxies.insert(a,e);
+	}
+}
+
+void Graph::safeset(void *obj, std::string key, std::string value) const
+{
+	agsafeset(obj,(char *)key.c_str(),(char *)value.c_str(),(char *)value.c_str());
 }
 
 void Graph::insert(QGraphicsObject *n)
@@ -153,6 +291,7 @@ void Graph::connect(Arrow *a)
 	addItem(dynamic_cast<QGraphicsItem *>(a));
 	m_edges.append(a);
 	m_incidence.insert(a->from(),a);
+	m_incidence.insert(a->to(),a);
 }
 
 void Graph::clear(void)

@@ -11,33 +11,33 @@ ControlTransferWidget::ControlTransferWidget(QModelIndex i, BasicBlockWidget *fr
 {
 	setPath(QPainterPath());
 	m_path.setZValue(-2);
+	m_path.setPen(QPen(Qt::red,2));
+	m_head << QPointF(0,0) << QPointF(3*-1.3,3*3) << QPointF(0,3*2.5) << QPointF(3*1.3,3*3) << QPointF(0,0);
 	
-	m_text.setFont(QFont("Monospace",8));
-	
-	m_rect.setBrush(QBrush(Qt::red));
-	m_rect.setZValue(-1);
-	m_rect.setRect(m_text.boundingRect().adjusted(0,0,4,4));
+	if(m_text.text().size() == 0)
+	{
+		m_text.hide();
+		m_rect.hide();
+	}
+	else
+	{
+		m_text.setFont(QFont("Monospace",8));
+		m_rect.setBrush(QBrush(Qt::red));
+		m_rect.setZValue(-1);
+		m_rect.setRect(m_text.boundingRect().adjusted(0,0,4,4));
+	}
 }
 
 void ControlTransferWidget::setPath(QPainterPath pp)
 {
-	if(false && !pp.isEmpty())
-	{
-		QPolygonF head;
-		QTransform t;
-		QPointF ptn = pp.pointAtPercent(1);
-
-		t.rotate(90 - m_path.path().angleAtPercent(1));
-		t.translate(ptn.x(),ptn.y());
-		head << QPointF(0,0) << QPointF(3*-1.3,3*3) << QPointF(0,3*2.5) << QPointF(3*1.3,3*3) << QPointF(0,0);
-
-		pp.addPolygon(t.map(head));
-	}
-		
 	m_path.setPath(pp);
 	m_path.setPos(0,0);
-	m_text.setPos(path().pointAtPercent(0.5) - QPointF(m_text.boundingRect().width() / 2.0,m_text.boundingRect().height() / 2.0));
-	m_rect.setPos(m_text.pos() - QPointF(2,2));
+	
+	if(m_text.isVisible())
+	{
+		m_text.setPos(path().pointAtPercent(0.5) - QPointF(m_text.boundingRect().width() / 2.0,m_text.boundingRect().height() / 2.0));
+		m_rect.setPos(m_text.pos() - QPointF(2,2));
+	}
 }
 
 QGraphicsObject *ControlTransferWidget::from(void)
@@ -62,5 +62,14 @@ QRectF ControlTransferWidget::boundingRect(void) const
 
 void ControlTransferWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget)
 {
-	return;
+	qreal p = std::max(0.0,path().percentAtLength(path().length() - 3*2.5));
+
+	painter->save();
+	painter->setPen(QPen(Qt::red,2,Qt::SolidLine,Qt::SquareCap,Qt::MiterJoin));
+	painter->setBrush(QBrush(Qt::red));
+	painter->translate(path().pointAtPercent(1));
+	painter->rotate(90 - path().angleAtPercent(p));
+	painter->translate(QPointF(0,-0.55));
+	painter->drawConvexPolygon(m_head);
+	painter->restore();
 }
