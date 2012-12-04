@@ -5,8 +5,8 @@
 #include <actions.hh>
 #include <avr/avr.hh>
 
-Disassemble::Disassemble(QString path, Model &m, po::flow_ptr f, QObject *parent)
-: QAction(parent), m_path(path), m_model(m), m_flowgraph(f)
+Disassemble::Disassemble(QString path, po::flow_ptr f, std::function<void(void)> sig, QObject *parent)
+: QAction(parent), m_path(path), m_flowgraph(f), m_signal(sig)
 {
 	setText("Disassemble");
 	connect(this,SIGNAL(triggered(bool)),this,SLOT(fire(bool)));
@@ -34,5 +34,5 @@ void Disassemble::disassemble(void)
 	}
 	fd.close();
 
-	po::avr::disassemble(bytes,0,m_flowgraph,m_model.flowgraphSocket());
+	po::avr::disassemble(bytes,0,m_flowgraph,m_signal);
 }

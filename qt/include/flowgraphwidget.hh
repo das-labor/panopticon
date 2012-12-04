@@ -54,26 +54,24 @@ class FlowgraphWidget : public GraphWidget
 	Q_OBJECT
 
 public:
-	FlowgraphWidget(QAbstractItemModel *m, QModelIndex i, QItemSelectionModel *s, QWidget *parent = 0);
+	FlowgraphWidget(po::flow_ptr f, QItemSelectionModel *s, QWidget *parent = 0);
 	virtual ~FlowgraphWidget(void);
 
-signals:
-	void activated(const QModelIndex &idx);
+public slots:
+	void snapshot(void);
 
 protected:
-	virtual QPointF populate(void);
 	virtual void mouseDoubleClickEvent(QMouseEvent *event);
 
 private slots:
 	void sceneSelectionChanged(void);
 	void modelSelectionChanged(const QItemSelection &selected, const QItemSelection &deselected);
-	void dataChanged(const QModelIndex &topLeft, const QModelIndex &bottomRight);
 	void sceneRectChanged(const QRectF &r);
 
 private:
-	std::map<qulonglong,FlowgraphNode *> m_uid2procedure;
-	std::map<FlowgraphNode *,int> m_procedure2row;
+	po::flow_ptr m_flowgraph;
 	QItemSelectionModel *m_selection;
+	std::map<po::proc_ptr,FlowgraphNode *> m_procedureToNode;
 };
 
 #endif

@@ -27,7 +27,7 @@ lvalue po::temporary(avr_tag)
 	return variable("t" + std::to_string(po::avr::next_unused++));
 }
 
-flow_ptr po::avr::disassemble(std::vector<typename architecture_traits<avr_tag>::token_type> &bytes, addr_t entry, flow_ptr flow, std::function<void(proc_ptr,unsigned int)> signal)
+flow_ptr po::avr::disassemble(std::vector<typename architecture_traits<avr_tag>::token_type> &bytes, addr_t entry, flow_ptr flow, std::function<void(void)> signal)
 {
 	disassembler<avr_tag> main;
 

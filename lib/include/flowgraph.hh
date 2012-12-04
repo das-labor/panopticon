@@ -30,7 +30,7 @@ namespace po
 	proc_ptr find_procedure(flow_ptr flow, addr_t entry);
 
 	template<typename Tag>
-	flow_ptr disassemble(const disassembler<Tag> &main, ::std::vector<typename rule<Tag>::token> tokens, addr_t offset = 0, flow_ptr flow = 0, std::function<void(proc_ptr,unsigned int)> signal = std::function<void(proc_ptr,unsigned int)>())
+	flow_ptr disassemble(const disassembler<Tag> &main, ::std::vector<typename rule<Tag>::token> tokens, addr_t offset = 0, flow_ptr flow = 0, std::function<void(void)> signal = std::function<void(void)>())
 	{
 		flow_ptr ret = (flow ? flow : flow_ptr(new flowgraph()));
 		::std::set< ::std::pair<addr_t,proc_ptr>> call_targets;
@@ -45,6 +45,8 @@ namespace po
 			addr_t tgt;
 			::std::tie(tgt,proc) = *h;
 			
+			call_targets.erase(call_targets.begin());
+
 			{
 				std::lock_guard<std::mutex> guard(ret->mutex);
 				if(has_procedure(ret,tgt))
@@ -55,8 +57,6 @@ namespace po
 			live_ptr live;
 			::std::shared_ptr< ::std::map<rvalue,sscp_lattice>> sscp;
 			//::std::shared_ptr< ::std::map<bblock_ptr,taint_lattice>> taint;
-
-			call_targets.erase(h);
 
 			// iterate until no more indirect jump targets are known
 			while(true)
@@ -117,9 +117,6 @@ namespace po
 			}	
 			
 			// finish procedure
-			if(signal) 
-				signal(nullptr,::std::distance(ret->procedures.begin(),ret->procedures.upper_bound(proc)));
-			
 			{	
 				std::lock_guard<std::mutex> guard(ret->mutex);
 
@@ -158,18 +155,20 @@ namespace po
 									callee = proc_ptr(new procedure());
 								call_targets.insert(make_pair(c.value(),callee));
 							}
-							//call(proc,callee);
+							call(proc,callee);
 						}
 					}
 				});
 
+				proc->name = "proc_" + ::std::to_string(proc->entry->area().begin);
 				::std::cout << "procedure done" << ::std::endl;
 			}
+			
 			if(signal)
-				signal(proc,::std::distance(ret->procedures.begin(),ret->procedures.find(proc)));
+				signal();
 		}
-
 		
+		::std::cout << "disassembly done" << ::std::endl;
 		return ret;
 	}
 

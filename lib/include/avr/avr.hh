@@ -24,7 +24,7 @@ namespace po
 		typedef ::std::function<void(sm &)> sem_action;
 		typedef code_generator<avr_tag> cg;
 
-		flow_ptr disassemble(::std::vector<uint16_t> &bytes,addr_t entry, flow_ptr flow = 0, std::function<void(proc_ptr,unsigned int)> signal = std::function<void(proc_ptr,unsigned int)>());
+		flow_ptr disassemble(::std::vector<uint16_t> &bytes,addr_t entry, flow_ptr flow = 0, std::function<void(void)> signal = std::function<void(void)>());
 	}
 }
 

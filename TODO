@@ -58,8 +58,9 @@
 ==> 0.9
 
 ==> Concurrentcy
-	--> insert signals in Model
-	--> add signals for pending procs
+	--> insert signals in Model **DONE**
+	--> add signals for pending procs **DONE**
+	--> defer gvLayout (layoutHierarchically/Custom)
 
 ==> Interactivity
 

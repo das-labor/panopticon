@@ -1,4 +1,6 @@
 #include <functional>
+#include <thread>
+#include <fstream>
 #include <QVBoxLayout>
 #include <QHeaderView>
 #include <QDebug>
@@ -6,6 +8,8 @@
 #include <window.hh>
 #include <deflate.hh>
 
+#include <avr/avr.hh>
+/*
 AddressSortProxy::AddressSortProxy(Model *m, QObject *parent)
 : QSortFilterProxyModel(parent)
 {
@@ -69,6 +73,44 @@ void ProcedureList::rebase(int i)
 QAbstractProxyModel *ProcedureList::model(void)
 {
 	return m_proxy;
+}*/
+
+ProcedureList::ProcedureList(po::flow_ptr f, QWidget *parent)
+: QDockWidget("Procedures",parent), m_flowgraph(f)
+{
+	m_list.horizontalHeader()->hide();
+	m_list.horizontalHeader()->setStretchLastSection(true);
+	m_list.setShowGrid(false);
+	m_list.verticalHeader()->hide();
+	m_list.setSelectionBehavior(QAbstractItemView::SelectRows);
+	setWidget(&m_list);
+	
+	snapshot();
+}
+
+void ProcedureList::snapshot(void)
+{
+	std::lock_guard<std::mutex> guard(m_flowgraph->mutex);
+
+	m_list.clear();
+	m_list.setColumnCount(2);
+	m_list.setRowCount(m_flowgraph->procedures.size());
+
+	unsigned int row = 0;
+	for(po::proc_ptr p: m_flowgraph->procedures)
+	{
+		if(!p)
+			continue;
+		m_list.setItem(row,0,new QTableWidgetItem(p->entry ? QString("%1").arg(p->entry->area().begin) : "(no entry)"));
+		m_list.setItem(row,1,new QTableWidgetItem(p->name.size() ? QString::fromStdString(p->name) : "(unnamed)"));
+		++row;
+	}
+	
+	m_list.resizeRowsToContents();
+	m_list.resizeColumnsToContents();
+	m_list.sortItems(1,Qt::AscendingOrder);
+	//m_list.update();
+	//update();
 }
 
 Window::Window(void)
@@ -79,28 +121,53 @@ Window::Window(void)
 
 	po::flow_ptr flow(new po::flowgraph());
 	m_tabs = new QTabWidget(this);
-	m_model = new Model(flow,this);
-	m_procList = new ProcedureList(m_model,this);
-	m_flowView = new FlowgraphWidget(m_procList->model(),m_procList->currentFlowgraph(),m_procList->selectionModel(),this);
-	m_procView = 0;
-	m_action = new Disassemble("../sosse",*m_model,flow,this);
+	//m_model = new Model(flow,this);
+	m_procList = new ProcedureList(flow,this);
+	m_flowView = new FlowgraphWidget(flow,0/*m_procList->selectionModel()*/,this);
+	//m_procView = 0;
+	//m_action = new Disassemble("../sosse",flow,[&](po::proc_ptr p, unsigned int i) { if(p) m_procList->snapshot(); },this);
 
 	m_tabs->addTab(m_flowView,"Callgraph");
 
 	setCentralWidget(m_tabs);
 	addDockWidget(Qt::LeftDockWidgetArea,m_procList);
 
-	connect(m_procList,SIGNAL(activated(const QModelIndex&)),this,SLOT(activate(const QModelIndex&)));
-	connect(m_flowView,SIGNAL(activated(const QModelIndex&)),this,SLOT(activate(const QModelIndex&)));
+	//connect(m_procList,SIGNAL(activated(const QModelIndex&)),this,SLOT(activate(const QModelIndex&)));
+	//connect(m_flowView,SIGNAL(activated(const QModelIndex&)),this,SLOT(activate(const QModelIndex&)));
 
-	m_action->trigger();
+	//m_action->trigger(
+	new std::thread([](po::flow_ptr f, ProcedureList *pl, FlowgraphWidget *fw)
+	{
+		std::ifstream fs("../sosse");
+		std::vector<uint16_t> bytes;
+
+		if (fs.bad())
+        std::cout << "I/O error while reading" << std::endl;
+    else if (fs.fail())
+        std::cout << "Non-integer data encountered" << std::endl;
+		else 
+		{
+			while(fs.good() && !fs.eof())
+			{
+				uint16_t c;
+				fs.read((char *)&c,sizeof(c));
+				bytes.push_back(c);
+			}
+
+			po::avr::disassemble(bytes,0,f,[&](void)
+			{
+				QMetaObject::invokeMethod(pl,"snapshot",Qt::QueuedConnection);
+				QMetaObject::invokeMethod(fw,"snapshot",Qt::QueuedConnection);
+			});
+		}
+	},flow,m_procList,m_flowView);
 }
 
 Window::~Window(void)
 {
 	// pervents null dereference if m_procView still has selections
-	m_procList->selectionModel()->clear();
-	delete m_flowView;
+	//m_procList->selectionModel()->clear();
+	//delete m_flowView;
 }
 
 Model *Window::model(void)
@@ -110,7 +177,7 @@ Model *Window::model(void)
 
 void Window::activate(const QModelIndex &idx)
 {
-	assert(idx.isValid());
+	/*assert(idx.isValid());
 	const QAbstractItemModel *model = idx.model();
 
 	qDebug() << model->data(idx.sibling(idx.row(),Model::NameColumn)).toString() << "activated!";
@@ -121,5 +188,5 @@ void Window::activate(const QModelIndex &idx)
 	}
 	else
 		m_procView->setRootIndex(m_procList->model()->mapToSource(idx));
-	m_tabs->setCurrentWidget(m_procView);
+	m_tabs->setCurrentWidget(m_procView);*/
 }

@@ -4,8 +4,8 @@
 
 #include <graphwidget.hh>
 
-GraphWidget::GraphWidget(QAbstractItemModel *m, QModelIndex i, QWidget *parent)
-: QGraphicsView(parent), m_model(m), m_root(i)
+GraphWidget::GraphWidget(QWidget *parent)
+: QGraphicsView(parent)
 {
 	setScene(&m_scene);
 	setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform | QPainter::TextAntialiasing | QPainter::HighQualityAntialiasing);
@@ -20,7 +20,7 @@ GraphWidget::~GraphWidget(void)
 	return;
 }
 
-void GraphWidget::setRootIndex(const QModelIndex &i)
+/*(void GraphWidget::setRootIndex(const QModelIndex &i)
 {
 	m_root = i;
 	QPointF p = populate();
@@ -31,7 +31,7 @@ void GraphWidget::setRootIndex(const QModelIndex &i)
 		centerOn(p);
 	else
 		centerOn(sceneRect().center());
-}
+}*/
 
 void GraphWidget::wheelEvent(QWheelEvent *event)
 {

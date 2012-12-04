@@ -3,18 +3,18 @@
 
 #include <QMainWindow>
 #include <QDockWidget>
-#include <QTableView>
-#include <QComboBox>
-#include <QTabWidget>
-#include <QSortFilterProxyModel>
+#include <QTableWidget>
+//#include <QComboBox>
+//#include <QTabWidget>
+//#include <QSortFilterProxyModel>
 
-class Model;
+//class Model;
 
 #include <flowgraphwidget.hh>
 #include <procedurewidget.hh>
 #include <actions.hh>
 #include <model.hh>
-
+/*
 class AddressSortProxy : public QSortFilterProxyModel
 {
 	Q_OBJECT
@@ -47,6 +47,21 @@ private:
 	QTableView *m_list;
 	QComboBox *m_combo;
 	AddressSortProxy *m_proxy;
+};*/
+
+class ProcedureList : public QDockWidget
+{
+	Q_OBJECT
+
+public:
+	ProcedureList(po::flow_ptr flow, QWidget *parent = 0);
+	
+public slots:
+	void snapshot(void);
+
+private:
+	po::flow_ptr m_flowgraph;
+	QTableWidget m_list;
 };
 
 class Window : public QMainWindow

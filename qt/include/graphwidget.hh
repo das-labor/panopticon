@@ -13,10 +13,10 @@ class GraphWidget : public QGraphicsView
 	Q_OBJECT
 
 public:
-	GraphWidget(QAbstractItemModel *m, QModelIndex i, QWidget *parent = 0);
+	GraphWidget(QWidget *parent = 0);
 	virtual ~GraphWidget(void);
 
-	void setRootIndex(const QModelIndex &i);
+	//void setRootIndex(const QModelIndex &i);
 
 protected:
 	virtual void wheelEvent(QWheelEvent *event);
@@ -24,11 +24,11 @@ protected:
 	//virtual void mousePressEvent(QMouseEvent *event);
 	//virtual void mouseReleaseEvent(QMouseEvent *event);
 
-	virtual QPointF populate(void) = 0;
+//	virtual QPointF populate(void) = 0;
 
-	QAbstractItemModel *m_model;
+//	QAbstractItemModel *m_model;
 	Graph m_scene;
-	QPersistentModelIndex m_root;
+	//QPersistentModelIndex m_root;
 	//QPointF m_lastDragPos;
 };
 

@@ -5,6 +5,7 @@
 #include <set>
 #include <map>
 #include <list>
+#include <mutex>
 
 #include <basic_block.hh>
 #include <mnemonic.hh>
@@ -47,6 +48,7 @@ namespace po
 		std::string name;
 		bblock_ptr entry;
 		::std::set<bblock_ptr> basic_blocks;
+		std::mutex mutex;
 		
 		// modified via call()
 		::std::set<proc_ptr> callers;	// procedures calling this procedure

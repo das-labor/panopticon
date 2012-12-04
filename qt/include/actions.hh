@@ -13,7 +13,7 @@ class Disassemble : public QAction
 	Q_OBJECT
 
 public:
-	Disassemble(QString path, Model &m, po::flow_ptr f, QObject *parent = 0);
+	Disassemble(QString path, po::flow_ptr f, std::function<void(void)> sig, QObject *parent = 0);
 
 public slots:
 	void disassemble(void);
@@ -21,8 +21,8 @@ public slots:
 
 private:
 	QString m_path;
-	Model &m_model;
 	po::flow_ptr m_flowgraph;
+	std::function<void(void)> m_signal;
 };
 
 #endif

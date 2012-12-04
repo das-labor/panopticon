@@ -5,14 +5,14 @@
 #include <controltransferwidget.hh>
 
 ProcedureWidget::ProcedureWidget(QAbstractItemModel *m, QModelIndex i, QWidget *parent)
-: GraphWidget(m,i,parent)
+: GraphWidget(parent)
 {
-	setRootIndex(i);
+//	setRootIndex(i);
 }
 
 QPointF ProcedureWidget::populate(void)
 {
-	const QModelIndex bblocks = m_root.sibling(m_root.row(),Model::BasicBlocksColumn);
+	/*const QModelIndex bblocks = m_root.sibling(m_root.row(),Model::BasicBlocksColumn);
 	const QModelIndex entry = m_root.sibling(m_root.row(),Model::EntryPointColumn);
 	int row = 0;
 	QMap<ptrdiff_t,BasicBlockWidget *> nodes;
@@ -54,5 +54,6 @@ QPointF ProcedureWidget::populate(void)
 	BasicBlockWidget *e = nodes[entry.child(0,Model::UniqueIdColumn).data().toULongLong()];
 
 	assert(e);
-	return e->pos() + e->boundingRect().center();
+	return e->pos() + e->boundingRect().center();*/
+	return QPointF();
 }
