@@ -113,7 +113,6 @@ QRectF Graph::layoutHierarchically(void)
 		std::stringstream ss;
 		int j = std::max(incoming.size() - 1,0);
 
-		qDebug() << "insz" << j+1;
 		ss << "{{<in0>";
 		while(j) ss << "|<in" << j-- << ">";
 		ss << "}|{<out0>";
@@ -226,6 +225,8 @@ void Graph::deleteGraph(void)
 		agdelete(m_graph,j.value());
 	}	
 	
+	m_edgeProxies.clear();
+	m_nodeProxies.clear();
 	agclose(m_graph);
 }
 
@@ -257,7 +258,7 @@ void Graph::allocateGraph(void)
 
 		m_nodeProxies.insert(n,p);
 	}
-
+	
 	// add Graphviz edges 
 	QMapIterator<QGraphicsObject *, Arrow *> j(m_incidence);
 	while(j.hasNext())
@@ -296,6 +297,8 @@ void Graph::connect(Arrow *a)
 
 void Graph::clear(void)
 {
+	if(m_graph)
+		deleteGraph();
 	QGraphicsScene::clear();
 	m_incidence.clear();
 	m_edges.clear();

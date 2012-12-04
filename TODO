@@ -47,13 +47,21 @@
 	--> remove group_size from mnemonic::token, X/Y/Z are set in an ``internal'' mnemonic before st/ld **DONE**
 	--> display sscp inline italic **DONE**
 
-==> Improve edges
-	--> space ctrans more than one connects a pair of bblocks
-	--> label ctrans with conditions
+==> Improve edges  **DONE**
+	--> space ctrans more than one connects a pair of bblocks **DONE**
+	--> label ctrans with conditions **DONE**
 
 ==> Publish
+	--> bug when changing procedures **DONE**
+	--> build system
 
 ==> 0.9
+
+==> Concurrentcy
+	--> insert signals in Model
+	--> add signals for pending procs
+
+==> Interactivity
 
 ==> K-set domain for sparse constant propagation
 

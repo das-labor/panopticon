@@ -4,6 +4,7 @@
 #include <iostream>
 #include <memory>
 #include <set>
+#include <mutex>
 
 #include <procedure.hh>
 #include <disassembler.hh>
@@ -22,15 +23,16 @@ namespace po
 		//::std::map<proc_ptr,::std::shared_ptr< ::std::map<bblock_ptr,taint_lattice>>> taint;
 		::std::map<proc_ptr,::std::shared_ptr< ::std::map<rvalue,sscp_lattice>>> simple_sparse_constprop;
 		::std::string name;
+		::std::mutex mutex;
 	};
 
 	bool has_procedure(flow_ptr flow, addr_t entry);
 	proc_ptr find_procedure(flow_ptr flow, addr_t entry);
 
 	template<typename Tag>
-	flow_ptr disassemble(const disassembler<Tag> &main, ::std::vector<typename rule<Tag>::token> tokens, addr_t offset = 0, bool cf_sensitive = true)
+	flow_ptr disassemble(const disassembler<Tag> &main, ::std::vector<typename rule<Tag>::token> tokens, addr_t offset = 0, flow_ptr flow = 0, std::function<void(proc_ptr,unsigned int)> signal = std::function<void(proc_ptr,unsigned int)>())
 	{
-		flow_ptr ret(new flowgraph());
+		flow_ptr ret = (flow ? flow : flow_ptr(new flowgraph()));
 		::std::set< ::std::pair<addr_t,proc_ptr>> call_targets;
 
 		ret->name = "unnamed flowgraph";
@@ -43,8 +45,11 @@ namespace po
 			addr_t tgt;
 			::std::tie(tgt,proc) = *h;
 			
-			if(has_procedure(ret,tgt))
-				continue;
+			{
+				std::lock_guard<std::mutex> guard(ret->mutex);
+				if(has_procedure(ret,tgt))
+					continue;
+			}
 
 			dom_ptr dom;
 			live_ptr live;
@@ -113,47 +118,57 @@ namespace po
 			}	
 			
 			// finish procedure
-			ret->procedures.insert(proc);
-			ret->dominance.insert(make_pair(proc,dom));
-			ret->liveness.insert(make_pair(proc,live));
-			//ret->taint.insert(make_pair(proc,taint));
-			ret->simple_sparse_constprop.insert(make_pair(proc,sscp));
+			if(signal) 
+				signal(nullptr,::std::distance(ret->procedures.begin(),ret->procedures.upper_bound(proc)));
+			
+			{	
+				std::lock_guard<std::mutex> guard(ret->mutex);
 
-			// look for call instructions to find new procedures to disassemble
-			execute(proc,[&](const lvalue &legt, instr::Function fn, const ::std::vector<rvalue> &right)
-			{
-				if(fn == instr::Call)
+				ret->procedures.insert(proc);
+				ret->dominance.insert(make_pair(proc,dom));
+				ret->liveness.insert(make_pair(proc,live));
+				//ret->taint.insert(make_pair(proc,taint));
+				ret->simple_sparse_constprop.insert(make_pair(proc,sscp));
+
+				// look for call instructions to find new procedures to disassemble
+				execute(proc,[&](const lvalue &legt, instr::Function fn, const ::std::vector<rvalue> &right)
 				{
-					assert(right.size() == 1);
-
-					if(right[0].is_constant())
+					if(fn == instr::Call)
 					{
-						const constant &c = right[0].constant();
-						proc_ptr callee = find_procedure(ret,(unsigned int)c.value());
+						assert(right.size() == 1);
 
-						if(!callee)
+						if(right[0].is_constant())
 						{
-							auto k = call_targets.begin(), kend = call_targets.end();
-							while(k != kend)
-							{
-								if(k->first != (unsigned int)c.value())
-									++k;
-								else
-								{
-									callee = k->second;
-									break;
-								}
-							}
-							if(!callee)
-								callee = proc_ptr(new procedure());
-							call_targets.insert(make_pair(c.value(),callee));
-						}
-						call(proc,callee);
-					}
-				}
-			});
+							const constant &c = right[0].constant();
+							proc_ptr callee = find_procedure(ret,(unsigned int)c.value());
 
-			::std::cout << "procedure done" << ::std::endl;
+							if(!callee)
+							{
+								auto k = call_targets.begin(), kend = call_targets.end();
+								while(k != kend)
+								{
+									if(k->first != (unsigned int)c.value())
+										++k;
+									else
+									{
+										callee = k->second;
+										break;
+									}
+								}
+								if(!callee)
+									callee = proc_ptr(new procedure());
+								call_targets.insert(make_pair(c.value(),callee));
+							}
+							call(proc,callee);
+						}
+					}
+				});
+
+				::std::cout << "procedure done" << ::std::endl;
+			}
+			
+			if(signal)
+				signal(proc,::std::distance(ret->procedures.begin(),ret->procedures.find(proc)));
 		}
 
 		

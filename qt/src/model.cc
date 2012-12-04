@@ -32,6 +32,7 @@ QModelIndex Model::index(int row, int column, const QModelIndex &parent) const
 	}
 
 	const Path &e = path(parent.internalId());
+	std::lock_guard<std::mutex> guard(e.flow->mutex);
 
 	switch(e.type)
 	{
@@ -40,8 +41,7 @@ QModelIndex Model::index(int row, int column, const QModelIndex &parent) const
 		{
 			auto i = e.flow->procedures.begin();
 			assert(row >= 0 && e.flow->procedures.size() > (unsigned int)row);
-			advance(i,row);
-			return createIndex(row,column,e.flow,*i);
+			return createIndex(row,column,e.flow,*next(i,row));
 		}
 		else
 			assert(false);
@@ -121,6 +121,7 @@ QModelIndex Model::parent(const QModelIndex &index) const
 {
 	assert(index.isValid());
 	const Path &e = path(index.internalId());
+	std::lock_guard<std::mutex> guard(e.flow->mutex);
 	
 	switch(e.type)
 	{
@@ -150,6 +151,7 @@ int Model::rowCount(const QModelIndex &parent) const
 	}
 
 	const Path &e = path(parent.internalId());
+	std::lock_guard<std::mutex> guard(e.flow->mutex);
 	
 	switch(e.type)
 	{
@@ -209,6 +211,7 @@ int Model::columnCount(const QModelIndex &parent) const
 	}
 	
 	const Path &e = path(parent.internalId());
+	std::lock_guard<std::mutex> guard(e.flow->mutex);
 
 	switch(e.type)
 	{
@@ -317,6 +320,7 @@ bool Model::setData(const QModelIndex &index, const QVariant &value, int role)
 QVariant Model::displayData(const QModelIndex &index) const
 {
 	const Path &e = path(index.internalId());
+	std::lock_guard<std::mutex> guard(e.flow->mutex);
 
 	switch(e.type)
 	{
@@ -349,7 +353,7 @@ QVariant Model::displayData(const QModelIndex &index) const
 		case CalleesColumn:
 			return QString("%1 callees").arg(e.proc->callees.size());
 		case UniqueIdColumn:
-			return QString("%1").arg((ptrdiff_t)e.proc.get());
+			return QString("%1").arg((qulonglong)e.proc.get());
 		default:
 			assert(false);
 		}
@@ -366,7 +370,7 @@ QVariant Model::displayData(const QModelIndex &index) const
 		case SuccessorsColumn:
 			return QString("%1 successors").arg(distance(e.bblock->successors().first,e.bblock->successors().second));
 		case UniqueIdColumn:
-			return QString("%1").arg((ptrdiff_t)e.bblock.get());
+			return QString("%1").arg((qulonglong)e.bblock.get());
 		default:
 			assert(false);
 		}
@@ -486,6 +490,7 @@ QVariant Model::displayData(const QModelIndex &index) const
 bool Model::setDisplayData(const QModelIndex &index, const std::string &value)
 {
 	const Path &e = path(index.internalId());
+	std::lock_guard<std::mutex> guard(e.flow->mutex);
 
 	if(!value.size())
 		return false;

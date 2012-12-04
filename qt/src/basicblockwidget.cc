@@ -19,8 +19,8 @@ BasicBlockWidget::BasicBlockWidget(QModelIndex i, QGraphicsItem *parent)
 		{
 			m_mnemonics.append(new MnemonicWidget(mne,this));
 			m_mnemonics.last()->setPos(8,y);
-			if(!row)
-				m_mnemonics.last()->setSelected(true);
+			//if(!row)
+			//	m_mnemonics.last()->setSelected(true);
 			y += f.lineSpacing()*1.25;
 			ident = std::max(ident,m_mnemonics.last()->ident());
 		}
@@ -98,7 +98,7 @@ MnemonicWidget::MnemonicWidget(QModelIndex i, QGraphicsItem *parent)
 	}
 	
 	setIdent(m_mnemonic.boundingRect().width() + 10);
-	setFlag(QGraphicsItem::ItemIsSelectable);
+	//setFlag(QGraphicsItem::ItemIsSelectable);
 }
 
 void MnemonicWidget::setIdent(double i)

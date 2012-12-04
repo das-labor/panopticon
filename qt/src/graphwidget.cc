@@ -9,8 +9,10 @@ GraphWidget::GraphWidget(QAbstractItemModel *m, QModelIndex i, QWidget *parent)
 {
 	setScene(&m_scene);
 	setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform | QPainter::TextAntialiasing | QPainter::HighQualityAntialiasing);
-	//setDragMode(QGraphicsView::ScrollHandDrag);
+	setDragMode(QGraphicsView::ScrollHandDrag);
 	setSceneRect(QRectF());
+	setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+	setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 }
 
 GraphWidget::~GraphWidget(void)
@@ -33,11 +35,20 @@ void GraphWidget::setRootIndex(const QModelIndex &i)
 
 void GraphWidget::wheelEvent(QWheelEvent *event)
 {
-	double fac = (double)(event->delta()) / 150.f;
-	fac = fac > 0.0f ? 1 / fac : -fac;
-	scale(fac,fac);
+	switch(event->modifiers())
+	{
+	case Qt::CTRL:
+	{
+		double fac = (double)(event->delta()) / 150.f;
+		fac = fac > 0.0f ? 1 / fac : -fac;
+		scale(fac,fac);
+		break;
+	}
+	default:
+		verticalScrollBar()->setValue(verticalScrollBar()->value() - event->delta());
+	}
 }
-
+/*
 void GraphWidget::mouseMoveEvent(QMouseEvent *event)
 {
 	if(event->buttons() & Qt::MiddleButton)
@@ -69,4 +80,4 @@ void GraphWidget::mouseReleaseEvent(QMouseEvent *event)
 		viewport()->setCursor(Qt::ArrowCursor);
 	else
 		QGraphicsView::mouseReleaseEvent(event);
-}
+}*/

@@ -42,6 +42,7 @@ QPointF ProcedureWidget::populate(void)
 		{
 			BasicBlockWidget *to = nodes[succ.child(s,Model::UniqueIdColumn).data().toULongLong()];
 	
+			qDebug() << "connect" << bblocks.child(row,Model::UniqueIdColumn).data().toULongLong() << "to" << succ.child(s,Model::UniqueIdColumn).data().toULongLong();
 			m_scene.connect(new ControlTransferWidget(guard.child(s,Model::ValuesColumn),from,to));
 			++s;
 		}
