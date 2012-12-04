@@ -8,8 +8,11 @@
 #include <QTabWidget>
 #include <QSortFilterProxyModel>
 
+class Model;
+
 #include <flowgraphwidget.hh>
 #include <procedurewidget.hh>
+#include <actions.hh>
 #include <model.hh>
 
 class AddressSortProxy : public QSortFilterProxyModel
@@ -51,8 +54,10 @@ class Window : public QMainWindow
 	Q_OBJECT
 
 public:
-	Window(po::flow_ptr f);
+	Window(void);
 	virtual ~Window(void);
+
+	Model *model(void);
 
 private slots:
 	void activate(const QModelIndex &idx);
@@ -63,6 +68,7 @@ private:
 	FlowgraphWidget *m_flowView;
 	ProcedureWidget *m_procView;
 	ProcedureList *m_procList;
+	Disassemble *m_action;
 };
 
 #endif

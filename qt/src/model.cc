@@ -1,4 +1,5 @@
 #include <QDebug>
+#include <QCoreApplication>
 #include <QStringList>
 #include <sstream>
 
@@ -9,17 +10,56 @@
 #include <mnemonic.hh>
 
 Model::Model(po::flow_ptr flow, QObject *parent)
-: QAbstractItemModel(parent), m_nextId(0), m_deflate(0)
+: QAbstractItemModel(parent), m_nextId(0), m_flowgraphSocket([this](po::proc_ptr proc, unsigned int pos)
+																															{
+																														  	if(proc)
+																																{
+																															 		qDebug() << "insert" << QString::fromStdString(proc->name) << "at" << pos;
+																																	endInsertProcedure(pos);
+																															    //QMetaObject::invokeMethod(this,"endInsertProcedure",
+																																	//													Qt::QueuedConnection,Q_ARG(unsigned int,pos));
+																																	QCoreApplication::processEvents();
+																																}
+																															 	else
+																																{
+																																	qDebug() << "about to insert a procedure at" << pos;
+																																	beginInsertProcedure(pos);
+																																  //QMetaObject::invokeMethod(this,"beginInsertProcedure",
+																																	//													Qt::QueuedConnection,Q_ARG(unsigned int,pos));
+																																}
+																															})
 {
-	//po::flow_ptr flow = m_deflate->flowgraph();
 	if(flow->name.empty())
 		flow->name = "flowgraph #1";
 	m_flowgraphs.push_back(flow);
 }
 
-Model::~Model(void)
+const std::function<void(po::proc_ptr,unsigned int)> &Model::flowgraphSocket(void) const
 {
-	//delete m_deflate;
+	return m_flowgraphSocket;
+}
+
+void Model::beginInsertProcedure(unsigned int pos)
+{
+	qDebug() << "emit beginInsertRows" << pos;
+	beginInsertRows(createIndex(0,0,m_flowgraphs[0]),pos,pos);
+}
+
+void Model::endInsertProcedure(unsigned int pos)
+{
+	qDebug() << "emit endInsertRows" << pos;
+	QMutableHashIterator<const Path,uint> i(m_pathToId);
+	while(i.hasNext())
+	{
+		i.next();
+		if(i.key().proc)
+		{
+			m_idToPath.remove(i.value());
+			m_pathToId.remove(i.key());
+		}
+	}
+	endInsertRows();
+	emit dataChanged(createIndex(0,ProceduresColumn,m_flowgraphs[0]),createIndex(0,ProceduresColumn,m_flowgraphs[0]));
 }
 
 QModelIndex Model::index(int row, int column, const QModelIndex &parent) const
@@ -44,7 +84,8 @@ QModelIndex Model::index(int row, int column, const QModelIndex &parent) const
 			return createIndex(row,column,e.flow,*next(i,row));
 		}
 		else
-			assert(false);
+			return QModelIndex();
+//			assert(false);
 
 	case Path::ProcedureType:
 		switch(parent.column())
@@ -264,7 +305,8 @@ int Model::columnCount(const QModelIndex &parent) const
 
 QVariant Model::data(const QModelIndex &index, int role) const
 {
-	assert(index.isValid());
+	if(!index.isValid())
+		return QVariant(QString("<root>"));
 	
 	switch(role)
 	{

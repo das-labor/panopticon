@@ -71,7 +71,7 @@ private slots:
 	void sceneRectChanged(const QRectF &r);
 
 private:
-	std::map<ptrdiff_t,FlowgraphNode *> m_uid2procedure;
+	std::map<qulonglong,FlowgraphNode *> m_uid2procedure;
 	std::map<FlowgraphNode *,int> m_procedure2row;
 	QItemSelectionModel *m_selection;
 };

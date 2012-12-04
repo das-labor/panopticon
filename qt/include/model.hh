@@ -2,6 +2,9 @@
 #define MODEL_HH
 
 #include <deflate.hh>
+#include <flowgraph.hh>
+#include <procedure.hh>
+
 #include <QAbstractItemModel>
 #include <QFont>
 #include <QCache>
@@ -49,7 +52,9 @@ class Model : public QAbstractItemModel
 
 public:
 	Model(po::flow_ptr f, QObject *parent = 0);
-	~Model(void);
+
+	// signaling
+	const std::function<void(po::proc_ptr,unsigned int)> &flowgraphSocket(void) const;
 
 	// reading
 	virtual QModelIndex index (int row, int column, const QModelIndex &parent = QModelIndex()) const;
@@ -65,21 +70,21 @@ public:
 	enum Column
 	{
 		// FlowgraphType
-		//NameColumn = 0,
-		ProceduresColumn = 1,			// ProcedureType
+		ProceduresColumn = 0,			// ProcedureType
+		NameColumn = 1,
 		LastFlowgraphColumn = 2,
 
 		// ProcedureType
-		NameColumn = 0,
-		EntryPointColumn = 1,			// BasicBlockType
-		BasicBlocksColumn = 2,		// BasicBlockType
+		BasicBlocksColumn = 0,		// BasicBlockType
+		//NameColumn = 1,
+		EntryPointColumn = 2,			// BasicBlockType
 		CalleesColumn = 3,				// ProcedureType
 		UniqueIdColumn = 4,
 		LastProcedureColumn = 5,
 
 		// BasicBlockType
-		AreaColumn = 0,
-		MnemonicsColumn = 1,					// MnemonicType,
+		MnemonicsColumn = 0,					// MnemonicType,
+		AreaColumn = 1,
 		PredecessorsColumn = 2,				// BasicBlockType
 		PredecessorGuardsColumn = 3,	// GuardType
 		//UniqueIdColumn = 4,
@@ -88,8 +93,8 @@ public:
 		LastBasicBlockColumn = 7,
 
 		// MnemonicType
-		//AreaColumn = 0,
-		OpcodeColumn = 1,
+		OpcodeColumn = 0,
+		//AreaColumn = 1,
 		OperandsColumn = 2,				// ValueType
 		FormatsColumn = 3,				// QString parallel to OperandsColumn
 		InstructionsColumn = 4,		// TODO
@@ -116,8 +121,12 @@ private:
 	mutable ptrdiff_t m_nextId;
 	mutable QHash<uint,const Path *> m_idToPath;
 	mutable QHash<const Path,uint> m_pathToId;
-	po::deflate *m_deflate;
 	std::vector<po::flow_ptr> m_flowgraphs;
+	std::function<void(po::proc_ptr,unsigned int)> m_flowgraphSocket;
+
+private slots:
+	void beginInsertProcedure(unsigned int pos);
+	void endInsertProcedure(unsigned int pos);
 };
 
 #endif

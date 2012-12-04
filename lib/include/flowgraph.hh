@@ -50,7 +50,7 @@ namespace po
 				if(has_procedure(ret,tgt))
 					continue;
 			}
-
+			
 			dom_ptr dom;
 			live_ptr live;
 			::std::shared_ptr< ::std::map<rvalue,sscp_lattice>> sscp;
@@ -82,7 +82,7 @@ namespace po
 				// simple sparse constant propagation
 				::std::cout << "sscp" << ::std::endl;
 				sscp = interpret<simple_sparse_constprop>(proc);
-/*
+
 				::std::cout << "resolve" << ::std::endl;
 				bool resolved_targets = false;
 				for(bblock_ptr bb: proc->basic_blocks)
@@ -104,8 +104,7 @@ namespace po
 									p = ctrans(p.guard,constant(l.value & 0xffff));
 									tgt = l.value & 0xffff;
 									::std::cout << "resolve to " << (l.value & 0xffff) << ::std::endl;
-									//resolved_targets = true;
-									return;
+									resolved_targets = true;
 								}
 							}
 						}
@@ -114,7 +113,7 @@ namespace po
 					if(resolved_targets)
 						goto out;
 				}
-				*/break; //out: ::std::cout << "new round" << ::std::endl;
+				break; out: ::std::cout << "new round" << ::std::endl;
 			}	
 			
 			// finish procedure
@@ -159,14 +158,13 @@ namespace po
 									callee = proc_ptr(new procedure());
 								call_targets.insert(make_pair(c.value(),callee));
 							}
-							call(proc,callee);
+							//call(proc,callee);
 						}
 					}
 				});
 
 				::std::cout << "procedure done" << ::std::endl;
 			}
-			
 			if(signal)
 				signal(proc,::std::distance(ret->procedures.begin(),ret->procedures.find(proc)));
 		}

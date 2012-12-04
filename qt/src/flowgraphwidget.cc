@@ -27,6 +27,8 @@ QPointF FlowgraphWidget::populate(void)
 	m_scene.clear();
 	m_uid2procedure.clear();
 	m_procedure2row.clear();
+	
+	qDebug() << "populate FlowgraphWidget with" << m_model->rowCount(procs);
 
 	// TODO: edges, signals when updated
 	while(row < m_model->rowCount(procs))
@@ -35,7 +37,7 @@ QPointF FlowgraphWidget::populate(void)
 		QModelIndex addr = procs.child(row,Model::EntryPointColumn);
 		QModelIndex uid = procs.child(row,Model::UniqueIdColumn);
 		FlowgraphNode *n = new FlowgraphNode(QString("%1: %2").arg(m_model->data(addr,Qt::DisplayRole).toString()).arg(m_model->data(name,Qt::DisplayRole).toString()));
-		ptrdiff_t u = m_model->data(uid,Qt::DisplayRole).toULongLong();
+		qulonglong u = m_model->data(uid,Qt::DisplayRole).toULongLong();
 
 		m_scene.insert(n);
 		m_uid2procedure.insert(std::make_pair(u,n));
@@ -48,7 +50,7 @@ QPointF FlowgraphWidget::populate(void)
 	{
 		QModelIndex callees = procs.child(row,Model::CalleesColumn);
 		QModelIndex uid = procs.child(row,Model::UniqueIdColumn);
-		ptrdiff_t u = m_model->data(uid,Qt::DisplayRole).toULongLong();
+		qulonglong u = m_model->data(uid,Qt::DisplayRole).toULongLong();
 		int sow = 0;
 		FlowgraphNode *from;
 		auto i = m_uid2procedure.find(u);
@@ -63,9 +65,11 @@ QPointF FlowgraphWidget::populate(void)
 			auto j = m_uid2procedure.find(u);
 			
 			assert(j != m_uid2procedure.end());
+			
 			to = j->second;
-
 			m_scene.connect(new ProcedureCallWidget(from,to));
+			
+
 			++sow;
 		}
 
@@ -90,7 +94,7 @@ void FlowgraphWidget::sceneSelectionChanged(void)
 	while(j.hasNext())
 	{
 		QModelIndex idx = j.next();
-		ptrdiff_t u = m_model->data(idx,Qt::DisplayRole).toULongLong();
+		qulonglong u = m_model->data(idx,Qt::DisplayRole).toULongLong();
 		auto k = m_uid2procedure.find(u);
 		assert(k != m_uid2procedure.end());
 		FlowgraphNode *n = k->second;
@@ -135,7 +139,7 @@ void FlowgraphWidget::modelSelectionChanged(const QItemSelection &selected, cons
 	while(i.hasNext())
 	{
 		QModelIndex idx = i.next();
-		ptrdiff_t u = m_model->data(idx.sibling(idx.row(),Model::UniqueIdColumn),Qt::DisplayRole).toULongLong();
+		qulonglong u = m_model->data(idx.sibling(idx.row(),Model::UniqueIdColumn),Qt::DisplayRole).toULongLong();
 		auto j = m_uid2procedure.find(u);
 		assert(j != m_uid2procedure.end());
 		auto e = m_scene.out_edges(j->second);
@@ -148,7 +152,7 @@ void FlowgraphWidget::modelSelectionChanged(const QItemSelection &selected, cons
 	while(i.hasNext())
 	{
 		QModelIndex idx = i.next();
-		ptrdiff_t u = m_model->data(idx.sibling(idx.row(),Model::UniqueIdColumn),Qt::DisplayRole).toULongLong();
+		qulonglong u = m_model->data(idx.sibling(idx.row(),Model::UniqueIdColumn),Qt::DisplayRole).toULongLong();
 		auto j = m_uid2procedure.find(u);
 		assert(j != m_uid2procedure.end());
 		auto e = m_scene.out_edges(j->second);
@@ -180,6 +184,8 @@ void FlowgraphWidget::mouseDoubleClickEvent(QMouseEvent *event)
 
 void FlowgraphWidget::dataChanged(const QModelIndex &topLeft, const QModelIndex &bottomRight)
 {
+	populate();
+	return;
 	int row = topLeft.row();
 
 	while(row <= bottomRight.row())
@@ -187,7 +193,7 @@ void FlowgraphWidget::dataChanged(const QModelIndex &topLeft, const QModelIndex 
 		QModelIndex name = topLeft.sibling(row,Model::NameColumn);
 		QModelIndex addr = topLeft.sibling(row,Model::EntryPointColumn);
 		QModelIndex uid = topLeft.sibling(row,Model::UniqueIdColumn);
-		ptrdiff_t u = m_model->data(uid,Qt::DisplayRole).toULongLong();
+		qulonglong u = m_model->data(uid,Qt::DisplayRole).toULongLong();
 		auto i = m_uid2procedure.find(u);
 		FlowgraphNode *n;
 

@@ -10,6 +10,7 @@ AddressSortProxy::AddressSortProxy(Model *m, QObject *parent)
 : QSortFilterProxyModel(parent)
 {
 	setSourceModel(m);
+	setDynamicSortFilter(true);
 }
 
 bool AddressSortProxy::lessThan(const QModelIndex &left, const QModelIndex &right) const
@@ -31,8 +32,8 @@ ProcedureList::ProcedureList(Model *m, QWidget *parent)
 	m_combo->setModel(m_proxy);
 	m_list->setModel(m_proxy);
 
-	m_list->horizontalHeader()->hideSection(2);
-	m_list->horizontalHeader()->moveSection(0,1);
+	m_list->horizontalHeader()->hideSection(Model::UniqueIdColumn);
+	m_list->horizontalHeader()->moveSection(Model::BasicBlocksColumn,Model::AreaColumn);
 	m_list->horizontalHeader()->hide();
 	m_list->horizontalHeader()->setStretchLastSection(true);
 	m_list->setShowGrid(false);
@@ -70,19 +71,19 @@ QAbstractProxyModel *ProcedureList::model(void)
 	return m_proxy;
 }
 
-Window::Window(po::flow_ptr f)
+Window::Window(void)
 {
 	setWindowTitle("Panopticum v0.8");
 	resize(1000,800);
 	move(500,200);
 
-	std::string path("test.ttl");
-
+	po::flow_ptr flow(new po::flowgraph());
 	m_tabs = new QTabWidget(this);
-	m_model = new Model(f,this);
+	m_model = new Model(flow,this);
 	m_procList = new ProcedureList(m_model,this);
 	m_flowView = new FlowgraphWidget(m_procList->model(),m_procList->currentFlowgraph(),m_procList->selectionModel(),this);
 	m_procView = 0;
+	m_action = new Disassemble("../sosse",*m_model,flow,this);
 
 	m_tabs->addTab(m_flowView,"Callgraph");
 
@@ -91,6 +92,8 @@ Window::Window(po::flow_ptr f)
 
 	connect(m_procList,SIGNAL(activated(const QModelIndex&)),this,SLOT(activate(const QModelIndex&)));
 	connect(m_flowView,SIGNAL(activated(const QModelIndex&)),this,SLOT(activate(const QModelIndex&)));
+
+	m_action->trigger();
 }
 
 Window::~Window(void)
@@ -98,6 +101,11 @@ Window::~Window(void)
 	// pervents null dereference if m_procView still has selections
 	m_procList->selectionModel()->clear();
 	delete m_flowView;
+}
+
+Model *Window::model(void)
+{
+	return m_model;
 }
 
 void Window::activate(const QModelIndex &idx)
