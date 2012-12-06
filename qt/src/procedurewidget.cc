@@ -4,14 +4,22 @@
 #include <basicblockwidget.hh>
 #include <controltransferwidget.hh>
 
-ProcedureWidget::ProcedureWidget(QAbstractItemModel *m, QModelIndex i, QWidget *parent)
-: GraphWidget(parent)
+ProcedureWidget::ProcedureWidget(po::flow_ptr f, po::proc_ptr p, QWidget *parent)
+: GraphWidget(parent), m_flowgraph(f), m_procedure(0)
 {
-//	setRootIndex(i);
+	assert(f);
+	setProcedure(p);
 }
 
-QPointF ProcedureWidget::populate(void)
+void ProcedureWidget::setProcedure(po::proc_ptr p)
 {
+	m_procedure = p;
+	snapshot();
+}
+
+void ProcedureWidget::snapshot(void)
+{
+	qDebug() << "snapshot" << QString::fromStdString(m_procedure->name) << "of" << QString::fromStdString(m_flowgraph->name);
 	/*const QModelIndex bblocks = m_root.sibling(m_root.row(),Model::BasicBlocksColumn);
 	const QModelIndex entry = m_root.sibling(m_root.row(),Model::EntryPointColumn);
 	int row = 0;
@@ -55,5 +63,5 @@ QPointF ProcedureWidget::populate(void)
 
 	assert(e);
 	return e->pos() + e->boundingRect().center();*/
-	return QPointF();
+	return;
 }

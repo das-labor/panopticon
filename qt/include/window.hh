@@ -59,9 +59,15 @@ public:
 public slots:
 	void snapshot(void);
 
+signals:
+	void activated(po::proc_ptr proc);
+
 private:
 	po::flow_ptr m_flowgraph;
 	QTableWidget m_list;
+
+private slots:
+	void activateItem(QTableWidgetItem *tw);
 };
 
 class Window : public QMainWindow
@@ -72,18 +78,16 @@ public:
 	Window(void);
 	virtual ~Window(void);
 
-	Model *model(void);
-
 private slots:
-	void activate(const QModelIndex &idx);
+	void ensureFlowgraphWidget(void);
+	void activate(po::proc_ptr proc);
 
 private:
-	Model *m_model;
 	QTabWidget *m_tabs;
 	FlowgraphWidget *m_flowView;
 	ProcedureWidget *m_procView;
 	ProcedureList *m_procList;
-	Disassemble *m_action;
+	po::flow_ptr m_flowgraph;
 };
 
 #endif

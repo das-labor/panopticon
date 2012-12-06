@@ -8,10 +8,16 @@ class ProcedureWidget : public GraphWidget
 	Q_OBJECT
 
 public:
-	ProcedureWidget(QAbstractItemModel *m, QModelIndex i, QWidget *parent = 0);
+	ProcedureWidget(po::flow_ptr f, po::proc_ptr p, QWidget *parent = 0);
+	
+	void setProcedure(po::proc_ptr p);
 
 protected:
-	virtual QPointF populate(void);
+	void snapshot(void);
+
+private:
+	po::flow_ptr m_flowgraph;
+	po::proc_ptr m_procedure;
 };
 
 #endif

@@ -60,7 +60,10 @@
 ==> Concurrentcy
 	--> insert signals in Model **DONE**
 	--> add signals for pending procs **DONE**
-	--> defer gvLayout (layoutHierarchically/Custom)
+	--> defer gvLayout (layoutHierarchically/Custom), show spinner
+	--> callback done/todo proc count
+	--> Proclist insert instead of clear
+	--> Enable CFG view
 
 ==> Interactivity
 

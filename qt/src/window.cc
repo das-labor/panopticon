@@ -4,7 +4,7 @@
 #include <QVBoxLayout>
 #include <QHeaderView>
 #include <QDebug>
-
+#include <QStatusBar>
 #include <window.hh>
 #include <deflate.hh>
 
@@ -85,6 +85,7 @@ ProcedureList::ProcedureList(po::flow_ptr f, QWidget *parent)
 	m_list.setSelectionBehavior(QAbstractItemView::SelectRows);
 	setWidget(&m_list);
 	
+	connect(&m_list,SIGNAL(itemActivated(QTableWidgetItem *)),this,SLOT(activateItem(QTableWidgetItem*)));
 	snapshot();
 }
 
@@ -99,10 +100,15 @@ void ProcedureList::snapshot(void)
 	unsigned int row = 0;
 	for(po::proc_ptr p: m_flowgraph->procedures)
 	{
-		if(!p)
-			continue;
-		m_list.setItem(row,0,new QTableWidgetItem(p->entry ? QString("%1").arg(p->entry->area().begin) : "(no entry)"));
-		m_list.setItem(row,1,new QTableWidgetItem(p->name.size() ? QString::fromStdString(p->name) : "(unnamed)"));
+		if(!p) continue;
+
+		QTableWidgetItem *col0 = new QTableWidgetItem(p->entry ? QString("%1").arg(p->entry->area().begin) : "(no entry)");
+		QTableWidgetItem *col1 = new QTableWidgetItem(p->name.size() ? QString::fromStdString(p->name) : "(unnamed)");
+
+		col0->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled);
+		col1->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled);
+		m_list.setItem(row,0,col0);
+		m_list.setItem(row,1,col1);
 		++row;
 	}
 	
@@ -113,30 +119,41 @@ void ProcedureList::snapshot(void)
 	//update();
 }
 
+void ProcedureList::activateItem(QTableWidgetItem *tw)
+{
+	assert(tw);
+	
+	QString name = tw->text();
+	std::lock_guard<std::mutex> guard(m_flowgraph->mutex);
+
+	for(po::proc_ptr p: m_flowgraph->procedures)
+		if(QString::fromStdString(p->name) == name)
+		{
+			emit activated(p);
+			return;
+		}
+	
+	assert(false);
+}
+
 Window::Window(void)
+: m_flowView(0), m_procView(0), m_flowgraph(new po::flowgraph())
 {
 	setWindowTitle("Panopticum v0.8");
 	resize(1000,800);
 	move(500,200);
 
-	po::flow_ptr flow(new po::flowgraph());
 	m_tabs = new QTabWidget(this);
-	//m_model = new Model(flow,this);
-	m_procList = new ProcedureList(flow,this);
-	m_flowView = new FlowgraphWidget(flow,0/*m_procList->selectionModel()*/,this);
-	//m_procView = 0;
+	m_procList = new ProcedureList(m_flowgraph,this);
 	//m_action = new Disassemble("../sosse",flow,[&](po::proc_ptr p, unsigned int i) { if(p) m_procList->snapshot(); },this);
-
-	m_tabs->addTab(m_flowView,"Callgraph");
 
 	setCentralWidget(m_tabs);
 	addDockWidget(Qt::LeftDockWidgetArea,m_procList);
 
-	//connect(m_procList,SIGNAL(activated(const QModelIndex&)),this,SLOT(activate(const QModelIndex&)));
-	//connect(m_flowView,SIGNAL(activated(const QModelIndex&)),this,SLOT(activate(const QModelIndex&)));
+	connect(m_procList,SIGNAL(activated(po::proc_ptr)),this,SLOT(activate(po::proc_ptr)));
 
 	//m_action->trigger(
-	new std::thread([](po::flow_ptr f, ProcedureList *pl, FlowgraphWidget *fw)
+	new std::thread([this](QStatusBar *st)
 	{
 		std::ifstream fs("../sosse");
 		std::vector<uint16_t> bytes;
@@ -147,6 +164,7 @@ Window::Window(void)
         std::cout << "Non-integer data encountered" << std::endl;
 		else 
 		{
+			QMetaObject::invokeMethod(st,"showMessage",Qt::QueuedConnection,Q_ARG(QString,"Reading..."));
 			while(fs.good() && !fs.eof())
 			{
 				uint16_t c;
@@ -154,13 +172,16 @@ Window::Window(void)
 				bytes.push_back(c);
 			}
 
-			po::avr::disassemble(bytes,0,f,[&](void)
+			QMetaObject::invokeMethod(st,"showMessage",Qt::QueuedConnection,Q_ARG(QString,"Disassembling..."));
+			po::avr::disassemble(bytes,0,m_flowgraph,[&](void)
 			{
-				QMetaObject::invokeMethod(pl,"snapshot",Qt::QueuedConnection);
-				QMetaObject::invokeMethod(fw,"snapshot",Qt::QueuedConnection);
+				QMetaObject::invokeMethod(m_procList,"snapshot",Qt::QueuedConnection);
+	//			QMetaObject::invokeMethod(fw,"snapshot",Qt::QueuedConnection);
 			});
+			QMetaObject::invokeMethod(st,"showMessage",Qt::QueuedConnection,Q_ARG(QString,"Done"),Q_ARG(int,10));
+			QMetaObject::invokeMethod(this,"ensureFlowgraphWidget",Qt::QueuedConnection);
 		}
-	},flow,m_procList,m_flowView);
+	},statusBar());
 }
 
 Window::~Window(void)
@@ -170,23 +191,26 @@ Window::~Window(void)
 	//delete m_flowView;
 }
 
-Model *Window::model(void)
+void Window::activate(po::proc_ptr proc)
 {
-	return m_model;
-}
+	assert(proc);
 
-void Window::activate(const QModelIndex &idx)
-{
-	/*assert(idx.isValid());
-	const QAbstractItemModel *model = idx.model();
-
-	qDebug() << model->data(idx.sibling(idx.row(),Model::NameColumn)).toString() << "activated!";
+	qDebug() << QString::fromStdString(proc->name) << "activated!";
 	if(!m_procView)
 	{
-		m_procView = new ProcedureWidget(m_model,m_procList->model()->mapToSource(idx),this);
+		m_procView = new ProcedureWidget(m_flowgraph,proc,this);
 		m_tabs->addTab(m_procView,"Control Flow Graph");
 	}
 	else
-		m_procView->setRootIndex(m_procList->model()->mapToSource(idx));
-	m_tabs->setCurrentWidget(m_procView);*/
+		m_procView->setProcedure(proc);
+	m_tabs->setCurrentWidget(m_procView);
+}
+
+void Window::ensureFlowgraphWidget(void)
+{
+	if(!m_flowView)
+		m_flowView = new FlowgraphWidget(m_flowgraph,0/*m_procList->selectionModel()*/,this);
+	
+	if(m_tabs->indexOf(m_flowView) == -1)
+		m_tabs->addTab(m_flowView,"Callgraph");
 }
