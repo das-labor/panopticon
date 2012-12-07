@@ -58,13 +58,18 @@ public:
 	
 public slots:
 	void snapshot(void);
+	void select(po::proc_ptr proc);
+	void currentChanged(const QModelIndex &, const QModelIndex &);
 
 signals:
 	void activated(po::proc_ptr proc);
+	void selected(po::proc_ptr proc);
 
 private:
 	po::flow_ptr m_flowgraph;
 	QTableWidget m_list;
+	std::map<po::proc_ptr,QTableWidgetItem *> m_procedureToItem;
+	std::map<QTableWidgetItem *,po::proc_ptr> m_itemToProcedure;
 
 private slots:
 	void activateItem(QTableWidgetItem *tw);

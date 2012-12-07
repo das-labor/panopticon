@@ -9,71 +9,6 @@
 #include <deflate.hh>
 
 #include <avr/avr.hh>
-/*
-AddressSortProxy::AddressSortProxy(Model *m, QObject *parent)
-: QSortFilterProxyModel(parent)
-{
-	setSourceModel(m);
-	setDynamicSortFilter(true);
-}
-
-bool AddressSortProxy::lessThan(const QModelIndex &left, const QModelIndex &right) const
-{
-	return sourceModel()->data(left,Qt::DisplayRole).toString().toULongLong(0,0) < 
-				 sourceModel()->data(right,Qt::DisplayRole).toString().toULongLong(0,0);
-}
-
-ProcedureList::ProcedureList(Model *m, QWidget *parent)
-: QDockWidget("Procedures",parent), m_list(new QTableView(this)), m_combo(new QComboBox(this)), m_proxy(new AddressSortProxy(m,this))
-{
-	QWidget *w = new QWidget(this);
-	QVBoxLayout *l = new QVBoxLayout(w);
-	l->addWidget(m_combo);
-	l->addWidget(m_list);
-	w->setLayout(l);
-	setWidget(w);
-
-	m_combo->setModel(m_proxy);
-	m_list->setModel(m_proxy);
-
-	m_list->horizontalHeader()->hideSection(Model::UniqueIdColumn);
-	m_list->horizontalHeader()->moveSection(Model::BasicBlocksColumn,Model::AreaColumn);
-	m_list->horizontalHeader()->hide();
-	m_list->horizontalHeader()->setStretchLastSection(true);
-	m_list->setShowGrid(false);
-	m_list->verticalHeader()->hide();
-	m_list->setSelectionBehavior(QAbstractItemView::SelectRows);
-	m_list->setSortingEnabled(true);
-
-
-	connect(m_list,SIGNAL(activated(const QModelIndex&)),this,SIGNAL(activated(const QModelIndex&)));
-	connect(m_combo,SIGNAL(currentIndexChanged(int)),this,SLOT(rebase(int)));
-	rebase(0);
-}
-
-QModelIndex ProcedureList::currentFlowgraph(int column) const
-{
-	return m_proxy->index(m_combo->currentIndex(),column);
-}
-
-QItemSelectionModel *ProcedureList::selectionModel(void)
-{
-	return m_list->selectionModel();
-}
-
-void ProcedureList::rebase(int i)
-{
-	qDebug() << "rebase:" << i;
-	m_list->setRootIndex(currentFlowgraph(Model::ProceduresColumn));
-	m_list->resizeRowsToContents();
-	m_list->resizeColumnsToContents();
-	m_list->sortByColumn(1,Qt::AscendingOrder);
-}
-
-QAbstractProxyModel *ProcedureList::model(void)
-{
-	return m_proxy;
-}*/
 
 ProcedureList::ProcedureList(po::flow_ptr f, QWidget *parent)
 : QDockWidget("Procedures",parent), m_flowgraph(f)
@@ -83,9 +18,11 @@ ProcedureList::ProcedureList(po::flow_ptr f, QWidget *parent)
 	m_list.setShowGrid(false);
 	m_list.verticalHeader()->hide();
 	m_list.setSelectionBehavior(QAbstractItemView::SelectRows);
+	m_list.setSelectionMode(QAbstractItemView::SingleSelection);
 	setWidget(&m_list);
 	
 	connect(&m_list,SIGNAL(itemActivated(QTableWidgetItem *)),this,SLOT(activateItem(QTableWidgetItem*)));
+	connect(m_list.selectionModel(),SIGNAL(currentChanged(const QModelIndex&,const QModelIndex &)),this,SLOT(currentChanged(const QModelIndex&,const QModelIndex &)));
 	snapshot();
 }
 
@@ -106,17 +43,61 @@ void ProcedureList::snapshot(void)
 		QTableWidgetItem *col1 = new QTableWidgetItem(p->name.size() ? QString::fromStdString(p->name) : "(unnamed)");
 
 		col0->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled);
+		col0->setData(Qt::UserRole,QVariant((qulonglong)p.get()));
 		col1->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled);
+		col1->setData(Qt::UserRole,QVariant((qulonglong)p.get()));
+
 		m_list.setItem(row,0,col0);
 		m_list.setItem(row,1,col1);
+
 		++row;
 	}
 	
 	m_list.resizeRowsToContents();
 	m_list.resizeColumnsToContents();
 	m_list.sortItems(1,Qt::AscendingOrder);
-	//m_list.update();
-	//update();
+}
+
+void ProcedureList::select(po::proc_ptr proc)
+{
+	int row = 0;
+
+	if(!proc)
+	{
+		m_list.setCurrentItem(0);
+		emit selected(nullptr);
+		return;
+	}
+
+	while(row < m_list.rowCount())
+	{
+		QTableWidgetItem *item = m_list.item(row++,0);
+		
+		if(item->data(Qt::UserRole).toULongLong() == (qulonglong)proc.get())
+		{
+			if(m_list.currentItem() != item)
+			{
+				m_list.setCurrentItem(item);
+				emit selected(proc);
+			}
+			return;
+		}
+	}
+}
+
+void ProcedureList::currentChanged(const QModelIndex &current, const QModelIndex &previous)
+{
+	QTableWidgetItem *i = m_list.currentItem();
+	
+	if(!i) 
+	{
+		emit selected(nullptr);
+		return;
+	}
+	
+	for(po::proc_ptr p: m_flowgraph->procedures)
+		if((qulonglong)p.get() == i->data(Qt::UserRole).toULongLong())
+			emit selected(p);
 }
 
 void ProcedureList::activateItem(QTableWidgetItem *tw)
@@ -209,7 +190,11 @@ void Window::activate(po::proc_ptr proc)
 void Window::ensureFlowgraphWidget(void)
 {
 	if(!m_flowView)
-		m_flowView = new FlowgraphWidget(m_flowgraph,0/*m_procList->selectionModel()*/,this);
+	{
+		m_flowView = new FlowgraphWidget(m_flowgraph,this);
+		connect(m_flowView,SIGNAL(selected(po::proc_ptr)),m_procList,SLOT(select(po::proc_ptr)));
+		connect(m_procList,SIGNAL(selected(po::proc_ptr)),m_flowView,SLOT(select(po::proc_ptr)));
+	}
 	
 	if(m_tabs->indexOf(m_flowView) == -1)
 		m_tabs->addTab(m_flowView,"Callgraph");

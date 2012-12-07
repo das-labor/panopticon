@@ -61,11 +61,13 @@
 	--> insert signals in Model **DONE**
 	--> add signals for pending procs **DONE**
 	--> defer gvLayout (layoutHierarchically/Custom), show spinner
+
+==> Interactivity
+	--> share selection of proclist with flowview **DONE**
+		--> tap "activate" signal from flowview **DONE**
 	--> callback done/todo proc count
 	--> Proclist insert instead of clear
 	--> Enable CFG view
-
-==> Interactivity
 
 ==> K-set domain for sparse constant propagation
 

@@ -32,6 +32,7 @@ public:
 	virtual QGraphicsObject *to(void) = 0;
 	virtual QPainterPath path(void) const = 0;
 	virtual void setPath(QPainterPath pp) = 0;
+	virtual QRectF boundingRect(void) const = 0;
 };
 
 class Graph : public QGraphicsScene

@@ -240,6 +240,7 @@ void Graph::allocateGraph(void)
 	safeset(m_graph,"nodesep","1.2");
 	safeset(m_graph,"ranksep","1.2");
 	safeset(m_graph,"esep","1");
+	safeset(m_graph,"root",std::to_string((unsigned long long)nodes().first()));
 
 	// allocate Graphviz nodes shadowing the Nodes in the scene
 	QListIterator<QGraphicsObject *> i(nodes());

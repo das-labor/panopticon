@@ -1,33 +1,22 @@
 #include <QTimer>
 #include <flowgraphwidget.hh>
 
-FlowgraphWidget::FlowgraphWidget(po::flow_ptr f, QItemSelectionModel *s, QWidget *parent)
-: GraphWidget(parent), m_flowgraph(f), m_selection(s)
+FlowgraphWidget::FlowgraphWidget(po::flow_ptr f, QWidget *parent)
+: GraphWidget(parent), m_flowgraph(f), m_selection(0)
 {
 	snapshot();
 
-	//connect(&m_scene,SIGNAL(sceneRectChanged(const QRectF&)),this,SLOT(sceneRectChanged(const QRectF&)));
-	//connect(&m_scene,SIGNAL(selectionChanged()),this,SLOT(sceneSelectionChanged()));
-	//connect(m_selection,SIGNAL(selectionChanged(const QItemSelection&,const QItemSelection&)),this,SLOT(modelSelectionChanged(const QItemSelection&,const QItemSelection&)));
-	//connect(m_model,SIGNAL(dataChanged(const QModelIndex&,const QModelIndex&)),this,SLOT(dataChanged(const QModelIndex&,const QModelIndex&)));
-}
-
-FlowgraphWidget::~FlowgraphWidget(void)
-{
-	//disconnect(&m_scene,SIGNAL(sceneRectChanged(const QRectF&)),this,SLOT(sceneRectChanged(const QRectF&)));
-	//disconnect(&m_scene,SIGNAL(selectionChanged()),this,SLOT(sceneSelectionChanged()));
-	//disconnect(m_selection,SIGNAL(selectionChanged(const QItemSelection&,const QItemSelection&)),this,SLOT(modelSelectionChanged(const QItemSelection&,const QItemSelection&)));
+	connect(&m_scene,SIGNAL(sceneRectChanged(const QRectF&)),this,SLOT(sceneRectChanged(const QRectF&)));
+	connect(&m_scene,SIGNAL(selectionChanged()),this,SLOT(sceneSelectionChanged()));
 }
 
 void FlowgraphWidget::snapshot(void)
 {
 	std::lock_guard<std::mutex> guard(m_flowgraph->mutex);
+	std::set<po::proc_ptr> new_procs;
 
 	if(m_flowgraph->procedures.size() == m_procedureToNode.size())
 		return;
-	
-	qDebug() << "snapshot";
-	std::set<po::proc_ptr> new_procs;
 
 	for(po::proc_ptr p: m_flowgraph->procedures)
 	{
@@ -38,6 +27,7 @@ void FlowgraphWidget::snapshot(void)
 
 		m_scene.insert(n);
 		m_procedureToNode.insert(std::make_pair(p,n));
+		m_nodeToProcedure.insert(std::make_pair(n,p));
 		new_procs.insert(p);
 	}
 
@@ -68,8 +58,6 @@ void FlowgraphWidget::snapshot(void)
 	}
 	
 	m_scene.layoutCustom("circo");
-	fitInView(m_scene.sceneRect(),Qt::KeepAspectRatio);
-	qDebug() << "snapshot done";
 }
 
 void FlowgraphWidget::sceneRectChanged(const QRectF &r)
@@ -79,99 +67,35 @@ void FlowgraphWidget::sceneRectChanged(const QRectF &r)
 
 void FlowgraphWidget::sceneSelectionChanged(void)
 {
-	/*disconnect(&m_scene,SIGNAL(selectionChanged()),this,SLOT(sceneSelectionChanged()));
-	disconnect(m_selection,SIGNAL(selectionChanged(const QItemSelection&,const QItemSelection&)),this,SLOT(modelSelectionChanged(const QItemSelection&,const QItemSelection&)));
-	
-	QListIterator<QModelIndex> j(m_selection->selectedRows(Model::UniqueIdColumn));
-	while(j.hasNext())
-	{
-		QModelIndex idx = j.next();
-		qulonglong u = m_model->data(idx,Qt::DisplayRole).toULongLong();
-		auto k = m_uid2procedure.find(u);
-		assert(k != m_uid2procedure.end());
-		FlowgraphNode *n = k->second;
-		
-		if(n)
-		{
-			auto e = m_scene.out_edges(n);
-			std::for_each(e.first,e.second,[&](Arrow *a) { dynamic_cast<ProcedureCallWidget *>(a)->setHighlighted(false); });
-		}
-	}
-
-	m_selection->clearSelection();
-	QListIterator<QGraphicsItem *> i(m_scene.selectedItems());
-	QModelIndex procs = m_root.sibling(m_root.row(),Model::ProceduresColumn);
-
-	while(i.hasNext())
-	{
-		FlowgraphNode *n = dynamic_cast<FlowgraphNode *>(i.next());
-		
-		if(n)
-		{
-			auto j = m_procedure2row.find(n);
-			auto e = m_scene.out_edges(n);
-
-			assert(j != m_procedure2row.end());
-			m_selection->select(procs.child(j->second,0),QItemSelectionModel::Select | QItemSelectionModel::Rows);
-
-			std::for_each(e.first,e.second,[&](Arrow *a) { dynamic_cast<ProcedureCallWidget *>(a)->setHighlighted(true); });
-		}
-	}
-	
-	connect(&m_scene,SIGNAL(selectionChanged()),this,SLOT(sceneSelectionChanged()));
-	connect(m_selection,SIGNAL(selectionChanged(const QItemSelection&,const QItemSelection&)),this,SLOT(modelSelectionChanged(const QItemSelection&,const QItemSelection&)));*/
+	select(m_scene.selectedItems().size() > 0 ? m_nodeToProcedure[dynamic_cast<FlowgraphNode *>(m_scene.selectedItems().first())] : nullptr);
 }
 
-void FlowgraphWidget::modelSelectionChanged(const QItemSelection &selected, const QItemSelection &deselected)
-{	
-	/*disconnect(&m_scene,SIGNAL(selectionChanged()),this,SLOT(sceneSelectionChanged()));
-	disconnect(m_selection,SIGNAL(selectionChanged(const QItemSelection&,const QItemSelection&)),this,SLOT(modelSelectionChanged(const QItemSelection&,const QItemSelection&)));
+void FlowgraphWidget::select(po::proc_ptr proc)
+{
+	if(m_selection == proc)
+		return;
 
-	QListIterator<QModelIndex> i(selected.indexes());
-	while(i.hasNext())
+	if(m_selection)
 	{
-		QModelIndex idx = i.next();
-		qulonglong u = m_model->data(idx.sibling(idx.row(),Model::UniqueIdColumn),Qt::DisplayRole).toULongLong();
-		auto j = m_uid2procedure.find(u);
-		assert(j != m_uid2procedure.end());
-		auto e = m_scene.out_edges(j->second);
+		FlowgraphNode *n = m_procedureToNode[m_selection];
+		auto e = m_scene.out_edges(n);
 		
-		j->second->setSelected(true);
-		std::for_each(e.first,e.second,[&](Arrow *a) { dynamic_cast<ProcedureCallWidget *>(a)->setHighlighted(true); });
-	}
-	
-	i = QListIterator<QModelIndex>(deselected.indexes());
-	while(i.hasNext())
-	{
-		QModelIndex idx = i.next();
-		qulonglong u = m_model->data(idx.sibling(idx.row(),Model::UniqueIdColumn),Qt::DisplayRole).toULongLong();
-		auto j = m_uid2procedure.find(u);
-		assert(j != m_uid2procedure.end());
-		auto e = m_scene.out_edges(j->second);
-
-		j->second->setSelected(false);
+		n->setSelected(false);
 		std::for_each(e.first,e.second,[&](Arrow *a) { dynamic_cast<ProcedureCallWidget *>(a)->setHighlighted(false); });
 	}
+	
 
-	connect(&m_scene,SIGNAL(selectionChanged()),this,SLOT(sceneSelectionChanged()));
-	connect(m_selection,SIGNAL(selectionChanged(const QItemSelection&,const QItemSelection&)),this,SLOT(modelSelectionChanged(const QItemSelection&,const QItemSelection&)));*/
-}
-
-void FlowgraphWidget::mouseDoubleClickEvent(QMouseEvent *event)
-{
-/*	QListIterator<QGraphicsItem *> i(items(event->pos()));
-	while(i.hasNext())
+	m_selection = proc;
+	emit selected(m_selection);
+	
+	if(m_selection)
 	{
-		FlowgraphNode *n = dynamic_cast<FlowgraphNode *>(i.next());
-		if(n)
-		{
-			auto i = m_procedure2row.find(n);
-			QModelIndex procs = m_root.sibling(m_root.row(),Model::ProceduresColumn);
-
-			assert(i != m_procedure2row.end());
-			emit activated(procs.child(i->second,0));
-		}
-	}*/
+		FlowgraphNode *n = m_procedureToNode[m_selection];	
+		auto e = m_scene.out_edges(n);
+		
+		n->setSelected(true);
+		std::for_each(e.first,e.second,[&](Arrow *a) { dynamic_cast<ProcedureCallWidget *>(a)->setHighlighted(true); });
+	}
 }
 
 FlowgraphNode::FlowgraphNode(QString name, QPoint ptn)
@@ -218,6 +142,8 @@ ProcedureCallWidget::ProcedureCallWidget(FlowgraphNode *from, FlowgraphNode *to,
 : QGraphicsItem(parent), m_from(from), m_to(to), m_path(QPainterPath(),this), m_highlighted(false)
 {
 	setPath(QPainterPath());
+	setHighlighted(false);
+	setZValue(-1);
 }
 
 void ProcedureCallWidget::setPath(QPainterPath pp)
@@ -244,7 +170,7 @@ QPainterPath ProcedureCallWidget::path(void) const
 void ProcedureCallWidget::setHighlighted(bool b)
 {
 	m_highlighted = b;
-	m_path.setPen(QPen(b ? Qt::red : Qt::green,2));
+	m_path.setPen(QPen(b ? Qt::red : Qt::black,0));
 }
 
 QRectF ProcedureCallWidget::boundingRect(void) const
