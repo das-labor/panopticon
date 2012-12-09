@@ -202,6 +202,7 @@ void po::ssa(proc_ptr proc, dom_ptr dominance, live_ptr live)
 		for(const std::string &n: live->liveout[proc->entry])
 			std::cout << n << " ";
 		std::cout << std::endl;
+		assert(false);
 	}
 
 	// insert phi
@@ -341,7 +342,6 @@ void po::ssa(proc_ptr proc, dom_ptr dominance, live_ptr live)
 					{
 						if(rel.operand1.is_variable())
 						{
-							std::cout << rel.operand1.variable() << std::endl;
 							assert(stack.count(rel.operand1.variable().name()));
 							rel.operand1 = variable(rel.operand1.variable().name(),stack[rel.operand1.variable().name()].back());
 						}

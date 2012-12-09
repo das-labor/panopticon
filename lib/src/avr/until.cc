@@ -142,7 +142,7 @@ sem_action po::avr::binary_reg(std::string x, std::function<void(cg &,const vari
 	return [x,func](sm &st)
 	{
 		variable Rd = decode_reg(st.capture_groups["d"]);
-		variable Rr = decode_reg(st.capture_groups["d"]);
+		variable Rr = decode_reg(st.capture_groups["r"]);
 
 		st.mnemonic(st.tokens.size(),x,"{8}, {8}",Rd,Rr,bind(func,std::placeholders::_1,Rd,Rr));
 		st.jump(st.address + st.tokens.size());
@@ -153,9 +153,9 @@ sem_action po::avr::branch(std::string m, rvalue flag, bool set)
 {
 	return [m,flag,set](sm &st)
 	{
-		int8_t _k = st.capture_groups["k"];
+		int64_t _k = st.capture_groups["k"];
 		guard_ptr g(new guard(flag,relation::Eq,set ? 1_val : 0_val));
-		constant k = _k <= 63 ? _k : _k - 128;
+		constant k = (int8_t)(_k <= 63 ? _k : _k - 128);
 
 		st.mnemonic(st.tokens.size(),m,"{8:-}",k);
 		st.jump(st.address + 1,g->negation());
@@ -233,16 +233,42 @@ sem_action po::avr::binary_st(variable Rd1, variable Rd2, bool pre_dec, bool pos
 
 sem_action po::avr::binary_ld(variable Rr1, variable Rr2, bool pre_dec, bool post_inc)
 {
+	assert(!(pre_dec == true && post_inc == true));
+
 	return [=](sm &st)
 	{
-		variable Rd = decode_reg(st.capture_groups["d"]);
-
-		st.mnemonic(st.tokens.size(),"ld","",{Rd,Rr2,Rr1},[&](cg &c)
+		variable X = "ptr"_var;
+		
+		st.mnemonic(0,"internal-ptr","",std::list<rvalue>(),[=](cg &c)
 		{
-			variable X("ptr");
-
 			c.or_b(X,c.shiftl_u(Rr2,8_val),Rr1);
+		});
 
+		variable Rd = decode_reg(st.capture_groups["r"]);
+		std::string fmt("");
+
+		if(pre_dec)
+			fmt += "-";
+		
+		fmt += "{8::";
+
+		if(Rr1.name() == "r26")
+			fmt += "X";
+		else if(Rr1.name() == "r28")
+			fmt += "Y";
+		else if(Rr1.name() == "r30")
+			fmt += "Z";
+		else
+			assert(false);
+
+
+		if(post_inc)
+			fmt += "+";
+
+		fmt += "}, {8}";
+
+		st.mnemonic(st.tokens.size(),"ld",fmt,{X,Rd},[=](cg &c)
+		{
 			if(pre_dec) 
 				c.sub_i(X,X,1_val);
 			
@@ -250,27 +276,83 @@ sem_action po::avr::binary_ld(variable Rr1, variable Rr2, bool pre_dec, bool pos
 			
 			if(post_inc) 
 				c.add_i(X,X,1_val);
+
+			if(post_inc || pre_dec)
+			{
+				c.and_b(Rr1,X,0xff_val);
+				c.shiftr_u(Rr2,X,8_val);
+			}
 		});
 		st.jump(st.address + st.tokens.size());
 	};
 }
 
-sem_action po::avr::binary_stq(variable r)
+sem_action po::avr::binary_stq(variable Rd1, variable Rd2)
 {
-	return [r](sm &st)
+	return [=](sm &st)
 	{
-		//variable R = decode_preg(r,reg::PostDisplace,st.capture_groups["q"]),decode_preg(st.capture_groups["r"])
-		st.mnemonic(st.tokens.size(),"st");
+		unsigned int q = st.capture_groups["q"];
+		variable X = "ptr"_var;
+		
+		st.mnemonic(0,"internal-ptr","",std::list<rvalue>(),[=](cg &c)
+		{
+			c.or_b(X,c.shiftl_u(Rd2,8_val),Rd1);
+		});
+
+		variable Rr = decode_reg(st.capture_groups["r"]);
+		std::string fmt("{8::");
+
+		if(Rd1.name() == "r28")
+			fmt += "Y";
+		else if(Rd1.name() == "r30")
+			fmt += "Z";
+		else
+			assert(false);
+
+		fmt += "+" + std::to_string(q);
+
+		fmt += "}, {8}";
+
+		st.mnemonic(st.tokens.size(),"st",fmt,{X,Rr},[=](cg &c)
+		{
+			c.add_i(X,X,constant(q));
+			c.assign(sram(X),Rr);
+		});
 		st.jump(st.address + st.tokens.size());
 	};
 }
 
-sem_action po::avr::binary_ldq(variable r)
+sem_action po::avr::binary_ldq(variable Rr1, variable Rr2)
 {
-	return [r](sm &st)
+		return [=](sm &st)
 	{
-//		variable R = decode_preg(st.capture_groups["r"]),decode_preg(r,reg::PostDisplace,st.capture_groups["q"])
-		st.mnemonic(st.tokens.size(),"ld");
+		unsigned int q = st.capture_groups["q"];
+		variable X = "ptr"_var;
+		
+		st.mnemonic(0,"internal-ptr","",std::list<rvalue>(),[=](cg &c)
+		{
+			c.or_b(X,c.shiftl_u(Rr2,8_val),Rr1);
+		});
+
+		variable Rd = decode_reg(st.capture_groups["r"]);
+		std::string fmt("{8::");
+
+		if(Rr1.name() == "r28")
+			fmt += "Y";
+		else if(Rr1.name() == "r30")
+			fmt += "Z";
+		else
+			assert(false);
+
+		fmt += "+" + std::to_string(q);
+
+		fmt += "}, {8}";
+
+		st.mnemonic(st.tokens.size(),"ld",fmt,{X,Rd},[=](cg &c)
+		{
+			c.add_i(X,X,constant(q));
+			c.assign(Rd,sram(X));
+		});
 		st.jump(st.address + st.tokens.size());
 	};
 }

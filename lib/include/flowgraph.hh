@@ -26,11 +26,13 @@ namespace po
 		::std::mutex mutex;
 	};
 
+	typedef std::function<void(unsigned int done, unsigned int todo)> disassemble_cb;
+
 	bool has_procedure(flow_ptr flow, addr_t entry);
 	proc_ptr find_procedure(flow_ptr flow, addr_t entry);
 
 	template<typename Tag>
-	flow_ptr disassemble(const disassembler<Tag> &main, ::std::vector<typename rule<Tag>::token> tokens, addr_t offset = 0, flow_ptr flow = 0, std::function<void(void)> signal = std::function<void(void)>())
+	flow_ptr disassemble(const disassembler<Tag> &main, ::std::vector<typename rule<Tag>::token> tokens, addr_t offset = 0, flow_ptr flow = 0, disassemble_cb signal = disassemble_cb())
 	{
 		flow_ptr ret = (flow ? flow : flow_ptr(new flowgraph()));
 		::std::set< ::std::pair<addr_t,proc_ptr>> call_targets;
@@ -165,7 +167,7 @@ namespace po
 			}
 			
 			if(signal)
-				signal();
+				signal(flow->procedures.size(),call_targets.size());
 		}
 		
 		::std::cout << "disassembly done" << ::std::endl;

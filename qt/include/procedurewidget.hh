@@ -1,6 +1,9 @@
 #ifndef PROCEDURE_WIDGET_HH
 #define PROCEDURE_WIDGET_HH
 
+#include <flowgraph.hh>
+#include <procedure.hh>
+
 #include <graphwidget.hh>
 
 class ProcedureWidget : public GraphWidget

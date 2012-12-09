@@ -65,9 +65,9 @@
 ==> Interactivity
 	--> share selection of proclist with flowview **DONE**
 		--> tap "activate" signal from flowview **DONE**
-	--> callback done/todo proc count
-	--> Proclist insert instead of clear
-	--> Enable CFG view
+	--> callback done/todo proc count **DONE**
+	--> Proclist insert instead of clear **DONE**
+	--> Enable CFG view **DONE**
 
 ==> K-set domain for sparse constant propagation
 

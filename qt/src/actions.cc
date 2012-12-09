@@ -5,7 +5,7 @@
 #include <actions.hh>
 #include <avr/avr.hh>
 
-Disassemble::Disassemble(QString path, po::flow_ptr f, std::function<void(void)> sig, QObject *parent)
+Disassemble::Disassemble(QString path, po::flow_ptr f, po::disassemble_cb sig, QObject *parent)
 : QAction(parent), m_path(path), m_flowgraph(f), m_signal(sig)
 {
 	setText("Disassemble");

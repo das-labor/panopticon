@@ -18,6 +18,7 @@ namespace po
 	namespace avr
 	{
 		unsigned int next_unused = 0;
+		std::vector<std::string> registers({"r0","r1","r2","r3","r4","r5","r6","r7","r8","r9","r10","r11","r12","r13","r14","r15","r16","r17","r18","r19","r20","r21","r22","r23","r24","r25","r26","r27","r28","r29","r30","r31","I","T","H","S","V","N","Z","C"});
 	}
 }
 
@@ -27,7 +28,13 @@ lvalue po::temporary(avr_tag)
 	return variable("t" + std::to_string(po::avr::next_unused++));
 }
 
-flow_ptr po::avr::disassemble(std::vector<typename architecture_traits<avr_tag>::token_type> &bytes, addr_t entry, flow_ptr flow, std::function<void(void)> signal)
+template<>
+const std::vector<std::string> &po::registers(avr_tag)
+{
+	return po::avr::registers;
+}
+
+flow_ptr po::avr::disassemble(std::vector<typename architecture_traits<avr_tag>::token_type> &bytes, addr_t entry, flow_ptr flow, disassemble_cb signal)
 {
 	disassembler<avr_tag> main;
 
@@ -39,8 +46,8 @@ flow_ptr po::avr::disassemble(std::vector<typename architecture_traits<avr_tag>:
 
 	main | "00000001 d@.... r@...." 		= [](sm &st)
 	{ 
-		variable Rd1 = decode_reg(st.capture_groups["d"]), Rd2 = decode_reg(st.capture_groups["d"] + 1);
-		variable Rr1 = decode_reg(st.capture_groups["r"]), Rr2 = decode_reg(st.capture_groups["r"] + 1);
+		variable Rd1 = decode_reg(st.capture_groups["d"] * 2), Rd2 = decode_reg(st.capture_groups["d"] * 2 + 1);
+		variable Rr1 = decode_reg(st.capture_groups["r"] * 2), Rr2 = decode_reg(st.capture_groups["r"] * 2 + 1);
 
 		st.mnemonic(st.tokens.size(),"movw","{8}:{8}, {8}:{8}",{Rd1,Rd2,Rr1,Rr2},[&](cg &c)
 		{
@@ -52,9 +59,10 @@ flow_ptr po::avr::disassemble(std::vector<typename architecture_traits<avr_tag>:
 	main | "10110 A@.. d@..... A@...." 	= [](sm &st)
 	{
 		variable Rd = decode_reg(st.capture_groups["d"]);
+		variable io = decode_ioreg(st.capture_groups["A"]);
 		constant off(st.capture_groups["A"]);
 
-		st.mnemonic(st.tokens.size(),"in","",Rd,off,[&](cg &c)
+		st.mnemonic(st.tokens.size(),"in","{8}, {8::" + io.name() + "}",Rd,off,[&](cg &c)
 		{
 			c.assign(Rd,sram(off));
 		});
@@ -63,9 +71,10 @@ flow_ptr po::avr::disassemble(std::vector<typename architecture_traits<avr_tag>:
 	main | "10111 A@.. r@..... A@...." 	= [](sm &st) 	
 	{
 		constant off = st.capture_groups["A"];
+		variable io = decode_ioreg(st.capture_groups["A"]);
 		variable Rr = decode_reg(st.capture_groups["r"]);
 
-		st.mnemonic(st.tokens.size(),"out","",off,Rr,[&](cg &c)
+		st.mnemonic(st.tokens.size(),"out","{8::" + io.name() + "}, {8}",off,Rr,[&](cg &c)
 		{
 			c.assign(sram(off),Rr);
 		});
@@ -73,18 +82,18 @@ flow_ptr po::avr::disassemble(std::vector<typename architecture_traits<avr_tag>:
 	};
 	main | "1001000 d@..... 1111"				= unary_reg("pop",[](cg &c, const variable &r) 
 	{
-		rvalue sp = c.sub_i(c.or_b(c.shiftl_u("sph"_var,8_val),"spl"_var),1_val);
+		rvalue sp = c.sub_i(c.or_b(c.shiftl_u(sram(0x3e_val),8_val),sram(0x3d_val)),1_val);
 		c.assign(r,sram(sp));
-		c.assign(sram("spl"_var),sp);
-		c.assign(sram("sph"_var),c.shiftr_u(sp,8_val));
+		c.assign(sram(0x3d_val),sp);
+		c.assign(sram(0x3e_val),c.shiftr_u(sp,8_val));
 	});
 	main | "1001001 d@..... 1111" 			= unary_reg("push",[](cg &c, const variable &r) 
 	{ 
-		rvalue sp = c.or_b(c.shiftl_u("sph"_var,8_val),"spl"_var);
+		rvalue sp = c.or_b(c.shiftl_u(sram(0x3e_val),8_val),sram(0x3d_val));
 		c.assign(sram(sp),r);
 		sp = c.add_i(sp,1_val);
-		c.assign(sram("spl"_var),sp);
-		c.assign(sram("sph"_var),c.shiftr_u(sp,8_val));
+		c.assign(sram(0x3d_val),sp);
+		c.assign(sram(0x3e_val),c.shiftr_u(sp,8_val));
 	});
 	main | "1001010 d@..... 0010" 			= unary_reg("swap",[](cg &c, const variable &r)
 	{
@@ -130,22 +139,22 @@ flow_ptr po::avr::disassemble(std::vector<typename architecture_traits<avr_tag>:
 		constant k = st.capture_groups["k"];
 		variable Rd = decode_reg(st.capture_groups["d"]);
 
-		st.mnemonic(st.tokens.size(),"lds","",Rd,k,[&](cg &c)
+		st.mnemonic(st.tokens.size(),"lds","{8}, {8}",Rd,k,[&](cg &c)
 		{
-			// TODO
+			c.assign(Rd,sram(k));
 		});
 		st.jump(st.address + st.tokens.size());
 	};
 
 	main | "10100 k@... d@.... k@...." 	= [](sm &st)
 	{
-		unsigned int k = st.capture_groups["k"];
+		unsigned int k_ = st.capture_groups["k"];
 		variable Rd = decode_reg(st.capture_groups["d"] + 16);
+		constant k = k_ = (~k_ & 16) | (k_ & 16) | (k_ & 64) | (k_ & 32) | (k_ & 15);
 
-		k = (~k & 16) | (k & 16) | (k & 64) | (k & 32) | (k & 15);
-		st.mnemonic(st.tokens.size(),"lds","",Rd,constant(k),[&](cg &c)
+		st.mnemonic(st.tokens.size(),"lds","{8}, {16}",Rd,k,[&](cg &c)
 		{
-			// TODO
+			c.assign(Rd,sram(k));
 		});
 		st.jump(st.address + st.tokens.size());
 	};
@@ -163,20 +172,27 @@ flow_ptr po::avr::disassemble(std::vector<typename architecture_traits<avr_tag>:
 
 	main | 0x95e8 											= [](sm &st)
 	{
+		// TODO
 		st.mnemonic(st.tokens.size(),"spm");
 		st.jump(st.address + st.tokens.size());
 	};
 
 	main | 0x95f8 											= [](sm &st)
 	{
+		// TODO
 		st.mnemonic(st.tokens.size(),"spm","",decode_preg(30,PostInc),std::function<void(cg &c)>());
 		st.jump(st.address + st.tokens.size());
 	};
 
 	main | "1001001 d@..... 0000" | "k@................" = [](sm &st)
 	{
-		st.mnemonic(st.tokens.size(),"sts","",constant(st.capture_groups["k"]),
-																			 decode_reg(st.capture_groups["r"]),std::function<void(cg &c)>());
+		constant k(st.capture_groups["k"]);
+		variable Rr = decode_reg(st.capture_groups["r"]);
+
+		st.mnemonic(st.tokens.size(),"sts","{8}, {8}",{k,Rr},[&](cg &c)
+		{
+			c.assign(sram(k),Rr);
+		});
 		st.jump(st.address + st.tokens.size());
 	};
 
@@ -184,26 +200,36 @@ flow_ptr po::avr::disassemble(std::vector<typename architecture_traits<avr_tag>:
 	{
 		unsigned int _k = st.capture_groups["k"];
 		constant k = (~_k & 16) | (_k & 16) | (_k & 64) | (_k & 32) | (_k & 15);
+		variable Rr = decode_reg(st.capture_groups["r"]);
 
-		st.mnemonic(st.tokens.size(),"sts","",k,decode_reg(st.capture_groups["r"]),std::function<void(cg &c)>());
+		st.mnemonic(st.tokens.size(),"sts","{16}, {8}",{k,Rr},[&](cg &c)
+		{
+			c.assign(sram(k),Rr);
+		});
 		st.jump(st.address + st.tokens.size());
 	};
 
 	main | "10011010 A@..... b@..." 			= [](sm &st)
 	{
-		variable A = decode_ioreg(st.capture_groups["A"]);
-		constant b = st.capture_groups["b"];
+		constant k = st.capture_groups["A"];
+		constant b = 1 << (st.capture_groups["b"] - 1);
 
-		st.mnemonic(st.tokens.size(),"sbi","",A,b,std::function<void(cg &c)>());
+		st.mnemonic(st.tokens.size(),"sbi","{8}, {8}",k,b,[&](cg &c)
+		{
+			c.assign(sram(k),c.or_b(sram(k),b));
+		});
 		st.jump(st.address + st.tokens.size());
 	};
 
 	main | "10011000 A@..... b@..." 			= [](sm &st)
 	{
-		variable A = decode_ioreg(st.capture_groups["A"]);
-		constant b = st.capture_groups["b"];
+		constant k = st.capture_groups["A"];
+		constant b = (~(1 << (st.capture_groups["b"] - 1))) & 0xff;
 
-		st.mnemonic(st.tokens.size(),"cbi","",A,b,std::function<void(cg &c)>());
+		st.mnemonic(st.tokens.size(),"cbi","{8}, {8}",k,b,[&](cg &c)
+		{
+			c.assign(sram(k),c.and_b(sram(k),b));
+		});
 		st.jump(st.address + st.tokens.size());
 	};
 
@@ -440,11 +466,12 @@ flow_ptr po::avr::disassemble(std::vector<typename architecture_traits<avr_tag>:
 	};
 	main | "10010111 K@.. d@.. K@...." = [](sm &st) 
 	{
-	//	unsigned int d = (unsigned int)st.capture_groups["d"] * 2 + 24;
+		unsigned int d = (unsigned int)st.capture_groups["d"] * 2 + 24;
+		constant K = (unsigned int)st.capture_groups["K"];
+		variable Rd1 = decode_reg(d);
+		variable Rd2 = decode_reg(d+1);
 		
-		// value_ptr(new reg(d,d+1)),st.capture_groups["K"]
-		// TODO
-		st.mnemonic(st.tokens.size(),"sbiw","{8}:{8}, {16}");
+		st.mnemonic(st.tokens.size(),"sbiw","{8}:{8}, {16}",{Rd1,Rd2,K});
 		st.jump(st.address + st.tokens.size());
 	};
 	main | "0000 0011 0 d@... 1 r@..."	= binary_reg("fmul",[](cg &m, const variable &Rd, const variable &Rr)
@@ -602,12 +629,12 @@ flow_ptr po::avr::disassemble(std::vector<typename architecture_traits<avr_tag>:
 	main | "1000 001r@. r@.... 1000" = binary_st("r28"_var,"r29"_var,false,false);
 	main | "1001 001r@. r@.... 1001" = binary_st("r28"_var,"r29"_var,false,true);
 	main | "1001 001r@. r@.... 1010" = binary_st("r28"_var,"r29"_var,true,false);
-	main | "10q@.0 q@..1r@. r@.... 1q@..." = binary_stq("r28"_var);
+	main | "10q@.0 q@..1r@. r@.... 1q@..." = binary_stq("r28"_var,"r29"_var);
 	
 	main | "1000 001r@. r@.... 0000" = binary_st("r30"_var,"r31"_var,false,false);
 	main | "1001 001r@. r@.... 0001" = binary_st("r30"_var,"r31"_var,false,true);
 	main | "1001 001r@. r@.... 0010" = binary_st("r30"_var,"r31"_var,true,false);
-	main | "10q@.0 q@..1r@. r@.... 0q@..." = binary_stq("r30"_var);
+	main | "10q@.0 q@..1r@. r@.... 0q@..." = binary_stq("r30"_var,"r31"_var);
 	
 	main | "1001 000d@. d@.... 1100" = binary_ld("r26"_var,"r27"_var,false,false);
 	main | "1001 000d@. d@.... 1101" = binary_ld("r26"_var,"r27"_var,false,true);
@@ -616,12 +643,12 @@ flow_ptr po::avr::disassemble(std::vector<typename architecture_traits<avr_tag>:
 	main | "1000 000d@. d@.... 1000" = binary_ld("r28"_var,"r29"_var,false,false);
 	main | "1001 000d@. d@.... 1001" = binary_ld("r28"_var,"r29"_var,false,true);
 	main | "1001 000d@. d@.... 1010" = binary_ld("r28"_var,"r29"_var,true,false);
-	main | "10 q@. 0 q@.. 0 d@..... 1 q@..." = binary_ldq("r28"_var);
+	main | "10 q@. 0 q@.. 0 d@..... 1 q@..." = binary_ldq("r28"_var,"r29"_var);
 	
 	main | "1000 000d@. d@.... 0000" = binary_ld("r30"_var,"r31"_var,false,false);
 	main | "1001 000 d@..... 0001" = binary_ld("r30"_var,"r31"_var,false,true);
 	main | "1001 000d@. d@.... 0010" = binary_ld("r30"_var,"r31"_var,true,false);
-	main | "10q@.0 q@..0d@. d@.... 0q@..." = binary_ldq("r30"_var);
+	main | "10q@.0 q@..0d@. d@.... 0q@..." = binary_ldq("r30"_var,"r31"_var);
 
 	// misc
 	main | 0x9598 = simple("break",[](cg &m) { /* TODO */ });

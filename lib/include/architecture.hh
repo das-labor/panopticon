@@ -1,6 +1,9 @@
 #ifndef ARCHITECTURE_HH
 #define ARCHITECTURE_HH
 
+#include <string>
+#include <vector>
+
 #include <mnemonic.hh>
 
 namespace po
@@ -12,7 +15,10 @@ namespace po
 	};
 
 	template<typename T>
-lvalue temporary(T);
+	lvalue temporary(T);
+
+	template<typename T>
+	const std::vector<std::string> &registers(T);
 }
 
 #endif

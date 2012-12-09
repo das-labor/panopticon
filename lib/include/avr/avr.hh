@@ -18,13 +18,16 @@ namespace po
 	template<>
 	lvalue temporary(avr_tag);
 
+	template<>
+	const std::vector<std::string> &registers(avr_tag);
+
 	namespace avr
 	{
 		typedef sem_state<avr_tag> sm;
 		typedef ::std::function<void(sm &)> sem_action;
 		typedef code_generator<avr_tag> cg;
 
-		flow_ptr disassemble(::std::vector<uint16_t> &bytes,addr_t entry, flow_ptr flow = 0, std::function<void(void)> signal = std::function<void(void)>());
+		flow_ptr disassemble(::std::vector<uint16_t> &bytes,addr_t entry, flow_ptr flow = 0, disassemble_cb signal = disassemble_cb());
 	}
 }
 

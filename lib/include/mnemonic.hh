@@ -157,8 +157,8 @@ namespace po
 	
 	::std::ostream& operator<<(::std::ostream &os, const instr &i);
 	::std::ostream& operator<<(::std::ostream &os, const mnemonic &m);
-}
 
-unsigned int operand_format(const po::mnemonic &m, unsigned int op);
+	int64_t format_constant(const mnemonic::token &tok, uint64_t v);
+}
 
 #endif

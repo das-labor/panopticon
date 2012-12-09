@@ -63,7 +63,6 @@ namespace po
 		lvalue call(rvalue op)									{ return anonymous(instr::Call,op); };	
 
 	protected:
-		// width infered by architecure::width(name)
 		template<class... Values>
 		lvalue named(instr::Function fn, lvalue assign, Values&&... args)
 		{
@@ -85,6 +84,11 @@ namespace po
 					
 			instr ret(fn,assign,arguments);
 			inserter = ret;
+
+			if(fn == instr::Call)
+				for(const std::string &reg: registers(tag))
+					inserter = instr(instr::Assign,variable(reg),undefined());
+
 			return assign;
 		}
 

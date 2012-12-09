@@ -16,6 +16,7 @@ sscp_lattice po::execute(const lvalue &left, instr::Function fn, const std::vect
 		return ret;
 	}
 
+	// all arguments must be constants of variables with Const abstract type
 	while(i < concrete.size() && ret.type != sscp_lattice::NonConst)
 	{
 		const rvalue &c = concrete[i];
@@ -32,7 +33,10 @@ sscp_lattice po::execute(const lvalue &left, instr::Function fn, const std::vect
 			ret.type = sscp_lattice::Const;
 		}
 		else
+		{
 			ret.type = a.type;
+			break;
+		}
 		
 		++i;
 	}

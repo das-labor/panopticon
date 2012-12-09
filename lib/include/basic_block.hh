@@ -156,6 +156,7 @@ namespace po
 
 	// readin
 	void execute(bblock_cptr bb,::std::function<void(const lvalue&,instr::Function,const ::std::vector<rvalue>&)> f);
+	void execute2(bblock_cptr bb,::std::function<void(const instr&)> f);
 	void rewrite(bblock_ptr bb,::std::function<void(lvalue&,instr::Function,::std::vector<rvalue>&)> f);
 
 	// adding (un)conditional jumps between basic blocks

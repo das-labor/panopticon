@@ -171,7 +171,7 @@ const range<addr_t> &basic_block::area(void) const { return m_area; }
 /*
  * free functions
  */
-void po::execute(bblock_cptr bb,std::function<void(const lvalue &left, instr::Function fn, const std::vector<rvalue> &right)> f)
+void po::execute2(bblock_cptr bb,std::function<void(const instr&)> f)
 {
 	size_t sz_mne = bb->mnemonics().size(), i_mne = 0;
 	const mnemonic *ary_mne = bb->mnemonics().data();
@@ -183,12 +183,16 @@ void po::execute(bblock_cptr bb,std::function<void(const lvalue &left, instr::Fu
 		const instr *ary_instr = mne.instructions.data();
 
 		while(i_instr < sz_instr)
-		{
-			const instr &instr = ary_instr[i_instr++];
-
-			f(instr.left,instr.function,instr.right);
-		}
+			f(ary_instr[i_instr++]);
 	}
+}
+
+void po::execute(bblock_cptr bb,std::function<void(const lvalue &left, instr::Function fn, const std::vector<rvalue> &right)> f)
+{
+	execute2(bb,[&](const instr &i)
+	{
+		f(i.left,i.function,i.right);
+	});
 }
 
 void po::rewrite(bblock_ptr bb,std::function<void(lvalue &,instr::Function,std::vector<rvalue>&)> f)

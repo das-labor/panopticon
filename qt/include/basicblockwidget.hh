@@ -4,38 +4,41 @@
 #include <QGraphicsObject>
 #include <QGraphicsSimpleTextItem>
 #include <QGraphicsTextItem>
-#include <QModelIndex>
-#include <QAbstractItemModel>
+
+#include <flowgraph.hh>
+#include <procedure.hh>
+#include <basic_block.hh>
+#include <mnemonic.hh>
 
 #include <graph.hh>
 
 class BasicBlockWidget;
 class MnemonicWidget;
-class ControlTransferWidget;
 
 class BasicBlockWidget : public QGraphicsObject
 {
 	Q_OBJECT
 
 public:
-	BasicBlockWidget(QModelIndex i, QGraphicsItem *parent = 0);
+	BasicBlockWidget(po::flow_ptr flow, po::proc_ptr proc, po::bblock_ptr bb, QGraphicsItem *parent = 0);
 	
 	virtual QRectF boundingRect(void) const;
 	virtual void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget = 0);
 
 protected:
+	virtual void mousePressEvent(QGraphicsSceneMouseEvent *event);
 //	virtual void mouseMoveEvent(QGraphicsSceneMouseEvent *event);
 
 private:
 	QVector<MnemonicWidget *> m_mnemonics;
-	const QAbstractItemModel *m_model;
-	QPersistentModelIndex m_root;
+	po::bblock_ptr m_basic_block;
+	QGraphicsSimpleTextItem m_instructions;
 };
 
 class MnemonicWidget : public QGraphicsItem
 {
 public:
-	MnemonicWidget(QModelIndex i, QGraphicsItem *parent = 0);
+	MnemonicWidget(po::flow_ptr flow, po::proc_ptr proc, const po::mnemonic &mne, QGraphicsItem *parent = 0);
 	
 	void setIdent(double s);
 	double ident(void) const;
@@ -52,7 +55,7 @@ private:
 class OperandWidget : public QGraphicsTextItem
 {
 public:
-	OperandWidget(QModelIndex op, QGraphicsItem *parent = 0);
+	OperandWidget(po::flow_ptr flow, po::proc_ptr proc, po::rvalue v, const po::mnemonic::token &tok, QGraphicsItem *parent = 0);
 
 	virtual void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
 

@@ -452,7 +452,7 @@ QVariant Model::displayData(const QModelIndex &index) const
 		{
 		case ValueColumn:
 		{
-			unsigned int i = operand_format(*e.mne,distance(e.mne->operands.begin(),find_if(e.mne->operands.begin(),e.mne->operands.end(),[&](const po::rvalue &v){return &v==e.value;})));
+			unsigned int i = 0;//operand_format(*e.mne,distance(e.mne->operands.begin(),find_if(e.mne->operands.begin(),e.mne->operands.end(),[&](const po::rvalue &v){return &v==e.value;})));
 			const po::mnemonic::token &tok = e.mne->format[i];
 			
 			if(tok.alias.size())
@@ -481,7 +481,7 @@ QVariant Model::displayData(const QModelIndex &index) const
 		case DecorationColumn:
 		{
 			QStringList ret;
-			unsigned int i = operand_format(*e.mne,distance(e.mne->operands.begin(),find_if(e.mne->operands.begin(),e.mne->operands.end(),[&](const po::rvalue &v){return &v==e.value;})));
+			unsigned int i = 0;//operand_format(*e.mne,distance(e.mne->operands.begin(),find_if(e.mne->operands.begin(),e.mne->operands.end(),[&](const po::rvalue &v){return &v==e.value;})));
 			std::stringstream os;
 
 			if(i > 0 && e.mne->format[i-1].is_literal)
@@ -504,7 +504,7 @@ QVariant Model::displayData(const QModelIndex &index) const
 			{
 				std::stringstream ss;
 				po::sscp_lattice l = e.flow->simple_sparse_constprop[e.proc]->at(*e.value);
-				unsigned int i = operand_format(*e.mne,distance(e.mne->operands.begin(),find_if(e.mne->operands.begin(),e.mne->operands.end(),[&](const po::rvalue &v){return &v==e.value;})));
+				unsigned int i = 0;//operand_format(*e.mne,distance(e.mne->operands.begin(),find_if(e.mne->operands.begin(),e.mne->operands.end(),[&](const po::rvalue &v){return &v==e.value;})));
 				const po::mnemonic::token &tok = e.mne->format[i];
 
 				if(l.type == po::sscp_lattice::Const)	

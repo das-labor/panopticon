@@ -156,25 +156,14 @@ std::ostream &po::operator<<(std::ostream &os, const mnemonic &m)
 	return os;
 }
 
-unsigned int operand_format(const po::mnemonic &m, unsigned int op)
+int64_t po::format_constant(const po::mnemonic::token &tok, uint64_t v)
 {
-	assert(m.operands.size() > op && m.format.size() > op);
+	assert(tok.width <= 64);
+	uint64_t bitmask = 0;
+	bitmask = (~bitmask) >> (64 - tok.width);
 
-	unsigned int i = 0, cur_op = 0;
-
-	while(m.format.size() > i)
-	{
-		const po::mnemonic::token &tok = m.format[i];
-
-		if(!tok.is_literal)
-		{
-			if(cur_op == op)
-				return i;
-		}
-		else
-			++cur_op;
-		++i;
-	}
-
-	assert(false);
+	if(tok.has_sign)
+		return (int64_t)((v & (bitmask >> 1)) & ((v & (1 << (tok.width - 1))) << (64 - tok.width)));
+	else
+		return v & bitmask;
 }

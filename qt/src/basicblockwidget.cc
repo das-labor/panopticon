@@ -1,30 +1,27 @@
-#include <basicblockwidget.hh>
+#include <sstream>
+
 #include <QPainter>
 #include <QTextDocument>
-#include <model.hh>
 
-BasicBlockWidget::BasicBlockWidget(QModelIndex i, QGraphicsItem *parent)
-: QGraphicsObject(parent), m_model(i.model()), m_root(i)
+#include <basicblockwidget.hh>
+
+BasicBlockWidget::BasicBlockWidget(po::flow_ptr flow, po::proc_ptr proc, po::bblock_ptr bb, QGraphicsItem *parent)
+: QGraphicsObject(parent), m_basic_block(bb), m_instructions(this)
 {
-	int row = 0;
-	QModelIndex mne_idx = m_root.sibling(m_root.row(),Model::MnemonicsColumn);
 	double y = 8, ident = 0;
 	QFontMetrics f(QFont("Monospace",11));
 
-	while(row < m_model->rowCount(mne_idx))
+	for(const po::mnemonic &mne: bb->mnemonics())
 	{
-		QModelIndex mne = mne_idx.child(row,Model::OpcodeColumn);
-		
-		if(!mne.data().toString().startsWith("internal"))
+		if(!QString::fromStdString(mne.opcode).startsWith("internal"))
 		{
-			m_mnemonics.append(new MnemonicWidget(mne,this));
+			m_mnemonics.append(new MnemonicWidget(flow,proc,mne,this));
 			m_mnemonics.last()->setPos(8,y);
 			//if(!row)
 			//	m_mnemonics.last()->setSelected(true);
 			y += f.lineSpacing()*1.25;
 			ident = std::max(ident,m_mnemonics.last()->ident());
 		}
-		++row;
 	}
 
 	QVectorIterator<MnemonicWidget *> j(m_mnemonics);
@@ -33,6 +30,25 @@ BasicBlockWidget::BasicBlockWidget(QModelIndex i, QGraphicsItem *parent)
 		MnemonicWidget *s = j.next();
 		s->setIdent(ident);
 	}
+
+	const std::map<po::proc_ptr,std::shared_ptr<std::map<po::rvalue,po::sscp_lattice>>> &sscp = flow->simple_sparse_constprop;
+	execute2(bb,[&](const po::instr &i)
+	{
+		std::stringstream ss;
+		
+		ss << i;
+		if(sscp.count(proc) && sscp.at(proc)->count(i.left))
+			ss << " | " <<  sscp.at(proc)->at(i.left);
+
+		m_instructions.setText(m_instructions.text() + (m_instructions.text().size() ? "\n" : "") + QString::fromUtf8(ss.str().c_str()));
+	});
+
+	m_instructions.hide();
+	m_instructions.setZValue(1);
+	m_instructions.setBrush(QBrush(Qt::blue));
+	m_instructions.setPos(QPoint(-m_instructions.boundingRect().width(),0));
+
+	setCursor(Qt::ArrowCursor);
 }
 
 QRectF BasicBlockWidget::boundingRect(void) const
@@ -46,6 +62,9 @@ QRectF BasicBlockWidget::boundingRect(void) const
 		ret = ret.united(s->boundingRect().translated(s->pos()));
 	}
 
+	if(m_instructions.isVisible())
+		ret = ret.united(m_instructions.boundingRect().translated(m_instructions.pos()));
+
 	return QRectF(QPointF(0,0),ret.bottomRight() + QPoint(8,8));
 }
 
@@ -57,46 +76,42 @@ void BasicBlockWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *
 	painter->restore();
 }
 
-MnemonicWidget::MnemonicWidget(QModelIndex i, QGraphicsItem *parent)
+void BasicBlockWidget::mousePressEvent(QGraphicsSceneMouseEvent *event)
+{
+	prepareGeometryChange();
+
+	if(m_instructions.isVisible())
+		m_instructions.hide();
+	else
+		m_instructions.show();
+}
+
+MnemonicWidget::MnemonicWidget(po::flow_ptr flow, po::proc_ptr proc, const po::mnemonic &mne, QGraphicsItem *parent)
 : QGraphicsItem(parent), m_mnemonic(this)
 {
-	QModelIndex opcode = i.sibling(i.row(),Model::OpcodeColumn);
-	QModelIndex ops = i.sibling(i.row(),Model::OperandsColumn);
-	int op_row = 0;
-	bool left_used = false;
-	std::function<void(QString)> add = [&](QString str)
+	unsigned int ops = 0;
+
+	for(const po::mnemonic::token &tok: mne.format)
 	{
-		QGraphicsSimpleTextItem *a = new QGraphicsSimpleTextItem(this);
-		m_operands.append(a);
-		a->setFont(QFont("Monospace",11));
-		a->setText(str);
-	//	a->hide();
-	};
+		if(tok.is_literal)
+		{
+			QGraphicsSimpleTextItem *a = new QGraphicsSimpleTextItem(this);
+			m_operands.append(a);
+			a->setFont(QFont("Monospace",11));
+			a->setText(QString::fromStdString(tok.alias));
+			//a->hide();
+		}
+		else
+		{
+			assert(ops < mne.operands.size());
+			m_operands.append(new OperandWidget(flow,proc,mne.operands[ops++],tok,this));
+		}
+	}
 
 	m_mnemonic.setFont(QFont("Monospace",11));
-	m_mnemonic.setText(opcode.data().toString());
+	m_mnemonic.setText(QString::fromStdString(mne.opcode));
 	//m_mnemonic.hide();
 
-	while(op_row < ops.model()->rowCount(ops))
-	{
-		QModelIndex d = ops.child(op_row,Model::DecorationColumn);
-		QStringList deco = d.data().toStringList();
-
-		assert(deco.size() == 2);
-		if(deco[0].size() && !left_used)
-			add(deco[0]);
-
-		m_operands.append(new OperandWidget(d,this));
-		
-		if(deco[1].size())
-		{
-			add(deco[1]);
-			left_used = true;
-		}
-
-		++op_row;
-	}
-	
 	setIdent(m_mnemonic.boundingRect().width() + 10);
 	//setFlag(QGraphicsItem::ItemIsSelectable);
 }
@@ -149,18 +164,30 @@ void MnemonicWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *op
 	return;
 }
 
-OperandWidget::OperandWidget(QModelIndex i, QGraphicsItem *parent)
+OperandWidget::OperandWidget(po::flow_ptr flow, po::proc_ptr proc, po::rvalue v, const po::mnemonic::token &tok, QGraphicsItem *parent)
 : QGraphicsTextItem(parent), m_marked(isUnderMouse())
 {
-	QModelIndex value = i.sibling(i.row(),Model::ValueColumn);
-	QModelIndex sscp = i.sibling(i.row(),Model::SscpColumn);
-
 	document()->setDocumentMargin(0);
 
-	if(sscp.data().toString().size())
-		setHtml(value.data().toString() + " <i>(" + sscp.data().toString() + ")</i>");
+	if(tok.alias.empty())
+	{
+		if(v.is_variable())
+			setPlainText(QString::fromStdString(v.variable().name()));
+		else if(v.is_constant())
+			setPlainText(QString::fromStdString(std::to_string(format_constant(tok,v.constant().value()))));
+		else
+		{
+			std::stringstream ss;
+			ss << v;
+			setPlainText(QString::fromUtf8(ss.str().c_str()));
+		}
+	}
 	else
-		setPlainText(value.data().toString());
+		setPlainText(QString::fromStdString(tok.alias));
+
+	const std::map<po::proc_ptr,std::shared_ptr<std::map<po::rvalue,po::sscp_lattice>>> &sscp = flow->simple_sparse_constprop;
+	if(sscp.count(proc) && sscp.at(proc)->count(v) && sscp.at(proc)->at(v).type == po::sscp_lattice::Const)
+		setHtml(toPlainText() + " <i>(" + QString::fromStdString(std::to_string(format_constant(tok,sscp.at(proc)->at(v).value))) + ")</i>");
 
 	setFont(QFont("Monospace",11));
 	setAcceptHoverEvents(true);

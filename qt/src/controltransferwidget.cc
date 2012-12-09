@@ -1,11 +1,12 @@
+#include <sstream>
+
 #include <QTransform>
 
 #include <controltransferwidget.hh>
-#include <model.hh>
 
-ControlTransferWidget::ControlTransferWidget(QModelIndex i, BasicBlockWidget *from, BasicBlockWidget *to, QGraphicsItem *parent)
+ControlTransferWidget::ControlTransferWidget(po::guard_ptr g, BasicBlockWidget *from, BasicBlockWidget *to, QGraphicsItem *parent)
 : QGraphicsItem(parent), m_from(from), m_to(to), 
-												 m_text(i.sibling(i.row(),Model::ValuesColumn).data().toString(),this), 
+												 m_text("",this), 
 												 m_rect(QRectF(),this),
 												 m_path(QPainterPath(),this)
 {
@@ -14,13 +15,17 @@ ControlTransferWidget::ControlTransferWidget(QModelIndex i, BasicBlockWidget *fr
 	m_path.setPen(QPen(Qt::red,2));
 	m_head << QPointF(0,0) << QPointF(3*-1.3,3*3) << QPointF(0,3*2.5) << QPointF(3*1.3,3*3) << QPointF(0,0);
 	
-	if(m_text.text().size() == 0)
+	if(g->relations.empty())
 	{
 		m_text.hide();
 		m_rect.hide();
 	}
 	else
 	{
+		std::stringstream ss;
+		
+		ss << *g;
+		m_text.setText(QString::fromUtf8(ss.str().c_str()));
 		m_text.setFont(QFont("Monospace",8));
 		m_rect.setBrush(QBrush(Qt::red));
 		m_rect.setZValue(-1);

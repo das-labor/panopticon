@@ -402,7 +402,7 @@ namespace po
 			if(cur_addr >= tokens.size())
 			{
 				::std::cout << "boundary err" << ::std::endl;
-				continue;
+				assert(false);
 			}
 
 			advance(i,cur_addr);
