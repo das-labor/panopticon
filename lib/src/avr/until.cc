@@ -181,7 +181,7 @@ sem_action po::avr::binary_st(variable Rd1, variable Rd2, bool pre_dec, bool pos
 
 	return [=](sm &st)
 	{
-		variable X = "ptr"_var;
+		lvalue X = po::temporary(po::avr_tag());
 		
 		st.mnemonic(0,"internal-ptr","",std::list<rvalue>(),[=](cg &c)
 		{
@@ -237,7 +237,7 @@ sem_action po::avr::binary_ld(variable Rr1, variable Rr2, bool pre_dec, bool pos
 
 	return [=](sm &st)
 	{
-		variable X = "ptr"_var;
+		lvalue X = po::temporary(po::avr_tag());
 		
 		st.mnemonic(0,"internal-ptr","",std::list<rvalue>(),[=](cg &c)
 		{
@@ -292,8 +292,8 @@ sem_action po::avr::binary_stq(variable Rd1, variable Rd2)
 	return [=](sm &st)
 	{
 		unsigned int q = st.capture_groups["q"];
-		variable X = "ptr"_var;
-		
+		lvalue X = po::temporary(po::avr_tag());
+
 		st.mnemonic(0,"internal-ptr","",std::list<rvalue>(),[=](cg &c)
 		{
 			c.or_b(X,c.shiftl_u(Rd2,8_val),Rd1);
@@ -327,7 +327,7 @@ sem_action po::avr::binary_ldq(variable Rr1, variable Rr2)
 		return [=](sm &st)
 	{
 		unsigned int q = st.capture_groups["q"];
-		variable X = "ptr"_var;
+		lvalue X = po::temporary(po::avr_tag());
 		
 		st.mnemonic(0,"internal-ptr","",std::list<rvalue>(),[=](cg &c)
 		{

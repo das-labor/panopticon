@@ -21,6 +21,9 @@ namespace po
 	template<>
 	const std::vector<std::string> &registers(avr_tag);
 
+	template<>
+	uint8_t width(std::string n, avr_tag);
+
 	namespace avr
 	{
 		typedef sem_state<avr_tag> sm;

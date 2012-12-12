@@ -10,6 +10,7 @@
 #include <disassembler.hh>
 #include <dflow.hh>
 #include <interpreter.hh>
+#include <sat.hh>
 
 namespace po
 {
@@ -85,6 +86,8 @@ namespace po
 				::std::cout << "sscp" << ::std::endl;
 				sscp = interpret<simple_sparse_constprop>(proc);
 
+				sat(proc);
+
 				::std::cout << "resolve" << ::std::endl;
 				bool resolved_targets = false;
 				for(bblock_ptr bb: proc->basic_blocks)
@@ -155,7 +158,7 @@ namespace po
 								}
 								if(!callee)
 									callee = proc_ptr(new procedure());
-								call_targets.insert(make_pair(c.value(),callee));
+								//call_targets.insert(make_pair(c.value(),callee));
 							}
 							call(proc,callee);
 						}

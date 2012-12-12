@@ -122,9 +122,9 @@ live_ptr po::liveness(proc_cptr proc)
 	{
 		if(v.is_variable())
 		{
-			ret->names.insert(v.variable().name());
-			if(!ret->varkill[bb].count(v.variable().name()))
-				ret->uevar[bb].insert(v.variable().name());
+			ret->names.insert(v.variable());
+			if(!ret->varkill[bb].count(v.variable()))
+				ret->uevar[bb].insert(v.variable());
 		}
 	};
 
@@ -138,9 +138,9 @@ live_ptr po::liveness(proc_cptr proc)
 	
 			if(left.is_variable())
 			{
-				ret->varkill[bb].insert(left.variable().name());
-				ret->names.insert(left.variable().name());
-				ret->usage[left.variable().name()].insert(bb);
+				ret->varkill[bb].insert(left.variable());
+				ret->names.insert(left.variable());
+				ret->usage[left.variable()].insert(bb);
 			}
 		});
 
@@ -170,7 +170,7 @@ live_ptr po::liveness(proc_cptr proc)
 
 		for(bblock_ptr bb: proc->basic_blocks)
 		{
-			std::set<std::string> old_liveout = ret->liveout[bb];
+			std::set<name> old_liveout = ret->liveout[bb];
 			basic_block::succ_iterator j,jend;
 			
 			ret->liveout[bb].clear();
@@ -191,24 +191,24 @@ live_ptr po::liveness(proc_cptr proc)
 
 void po::ssa(proc_ptr proc, dom_ptr dominance, live_ptr live)
 {
-	std::set<std::string> globals;
+	std::set<name> globals;
 
-	for(const std::pair<bblock_cptr,std::set<std::string>> &s: live->uevar)
+	for(const std::pair<bblock_cptr,std::set<name>> &s: live->uevar)
 		globals = set_union(globals,s.second);
 
 	if(live->liveout[proc->entry].size())
 	{
 		std::cout << "uninitialized vars: ";
-		for(const std::string &n: live->liveout[proc->entry])
-			std::cout << n << " ";
+		for(const name &n: live->liveout[proc->entry])
+			std::cout << n.base << " ";
 		std::cout << std::endl;
 		assert(false);
 	}
 
 	// insert phi
-	for(const std::string &name: globals)
+	for(const name &n: globals)
 	{
-		std::set<bblock_cptr> &worklist(live->usage[name]);
+		std::set<bblock_cptr> &worklist(live->usage[n]);
 
 		while(!worklist.empty())
 		{
@@ -220,7 +220,7 @@ void po::ssa(proc_ptr proc, dom_ptr dominance, live_ptr live)
 				bool has_phi = false;
 				execute(df->basic_block,[&](lvalue left, instr::Function fn, const std::vector<rvalue> &right)
 				{	
-					has_phi = has_phi || (fn == instr::Phi && left.is_variable() && left.variable().name() == name); 
+					has_phi = has_phi || (fn == instr::Phi && left.is_variable() && left.variable().name() == n.base); 
 				});
 
 				if(!has_phi)
@@ -230,9 +230,9 @@ void po::ssa(proc_ptr proc, dom_ptr dominance, live_ptr live)
 						assert(ms.size());
 
 						if(ms[0].opcode == "internal-phis")
-							ms[0].instructions.emplace_back(instr(instr::Phi,variable(name)));
+							ms[0].instructions.emplace_back(instr(instr::Phi,variable(n.base,-1,n.width)));
 						else
-							ms.emplace(ms.begin(),mnemonic(range<addr_t>(ms.front().area.begin,ms.front().area.begin),"internal-phis","",{},{instr(instr::Phi,variable(name))}));
+							ms.emplace(ms.begin(),mnemonic(range<addr_t>(ms.front().area.begin,ms.front().area.begin),"internal-phis","",{},{instr(instr::Phi,variable(n.base,-1,n.width))}));
 					});
 					worklist.insert(df->basic_block);
 				}
@@ -269,7 +269,7 @@ void po::ssa(proc_ptr proc, dom_ptr dominance, live_ptr live)
 			if(fn == instr::Phi)
 			{
 				assert(left.is_variable());
-				left = variable(left.variable().name(),new_name(left.variable().name()));
+				left = variable(left.variable().name(),new_name(left.variable().name()),left.variable().width());
 			}
 		});
 
@@ -294,7 +294,7 @@ void po::ssa(proc_ptr proc, dom_ptr dominance, live_ptr live)
 					if(v.is_variable())
 					{
 						assert(stack.count(v.variable().name()));
-						v = variable(v.variable().name(),stack[v.variable().name()].back());
+						v = variable(v.variable().name(),stack[v.variable().name()].back(),v.variable().width());
 					}
 				}
 
@@ -316,13 +316,13 @@ void po::ssa(proc_ptr proc, dom_ptr dominance, live_ptr live)
 							if(v.is_variable())
 							{
 								assert(stack.count(v.variable().name()));
-								right[ri] = variable(v.variable().name(),stack[v.variable().name()].back());
+								right[ri] = variable(v.variable().name(),stack[v.variable().name()].back(),v.variable().width());
 							}
 							++ri;
 						}
 					
 						if(left.is_variable())
-							left = variable(left.variable().name(),new_name(left.variable().name()));
+							left = variable(left.variable().name(),new_name(left.variable().name()),left.variable().width());
 					}
 				}
 			}
@@ -342,21 +342,24 @@ void po::ssa(proc_ptr proc, dom_ptr dominance, live_ptr live)
 					{
 						if(rel.operand1.is_variable())
 						{
-							assert(stack.count(rel.operand1.variable().name()));
-							rel.operand1 = variable(rel.operand1.variable().name(),stack[rel.operand1.variable().name()].back());
+							const variable o1 = rel.operand1.variable();
+							assert(stack.count(o1.name()));
+							rel.operand1 = variable(o1.name(),stack[o1.name()].back(),o1.width());
 						}
 						if(rel.operand2.is_variable())
 						{
-							assert(stack.count(rel.operand2.variable().name()));
-							rel.operand2 = variable(rel.operand2.variable().name(),stack[rel.operand2.variable().name()].back());
+							const variable o2 = rel.operand2.variable();
+							assert(stack.count(o2.name()));
+							rel.operand2 = variable(o2.name(),stack[o2.name()].back(),o2.width());
 						}
 					}
 
 					// rewrite symbolic target in ctrans
 					if(s.value.is_variable())
 					{
-						assert(stack.count(s.value.variable().name()));
-						s.value = variable(s.value.variable().name(),stack[s.value.variable().name()].back());
+						const variable v = s.value.variable();
+						assert(stack.count(v.name()));
+						s.value = variable(v.name(),stack[v.name()].back(),v.width());
 					}
 
 					// fill in φ-function parameters in successor
@@ -385,7 +388,7 @@ void po::ssa(proc_ptr proc, dom_ptr dominance, live_ptr live)
 									--missing;
 								}
 								assert(stack.count(i.left.variable().name()));
-								i.right[ord] = variable(i.left.variable().name(),stack[i.left.variable().name()].back());
+								i.right[ord] = variable(i.left.variable().name(),stack[i.left.variable().name()].back(),i.left.variable().width());
 							}
 						}
 					});

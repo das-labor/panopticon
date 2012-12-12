@@ -68,10 +68,17 @@ namespace po
 		{
 			::std::vector<rvalue> arguments({args...});
 
+			for(rvalue &r: arguments)
+				if(r.is_variable())
+					r = variable(r.variable().name(),-1,width(r.variable().name(),tag));
+	
+			if(assign.is_variable())
+				assign = variable(assign.variable().name(),-1,width(assign.variable().name(),tag));
+
 			auto sanity_check = [](const rvalue &v)
 			{
 				if(v.is_variable())
-					return v.variable().name().size() && v.variable().subscript() == -1;
+					return v.variable().name().size() && v.variable().subscript() == -1 && v.variable().width();
 				else if(v.is_memory())
 					return v.memory().name().size() && v.memory().bytes() && 
 								 (v.memory().endianess() == memory::BigEndian || v.memory().endianess() == memory::LittleEndian) && 
@@ -87,7 +94,7 @@ namespace po
 
 			if(fn == instr::Call)
 				for(const std::string &reg: registers(tag))
-					inserter = instr(instr::Assign,variable(reg),undefined());
+					inserter = instr(instr::Assign,variable(reg,-1,width(reg,tag)),undefined());
 
 			return assign;
 		}

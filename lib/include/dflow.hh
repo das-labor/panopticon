@@ -23,14 +23,29 @@ namespace po
 		::std::map<bblock_cptr,dtree_ptr> tree;
 	};
 
+	struct name
+	{
+		name(void) : base(""), width(0) {};
+		name(::std::string n, uint8_t w) : base(n), width(w) {};
+		name(variable v) : base(v.name()), width(v.width()) {};
+
+		bool operator==(const name &n) const { return base == n.base && width == n.width; };
+		bool operator!=(const name &n) const { return !(*this == n); };
+		bool operator<(const name &n) const { return base < n.base; };
+		operator ::std::string(void) const { return base; };
+
+		::std::string base;
+		uint8_t width;
+	};
+
 	struct live
 	{
-		::std::set< ::std::string> names;									// global (procedure-wide) names
-		::std::map< ::std::string,::std::set<bblock_cptr>> usage;	// maps names to blocks that use them
+		::std::set<name> names;	// global (procedure-wide) names w/ width
+		::std::map<name,::std::set<bblock_cptr>> usage;	// maps names to blocks that use them
 
-		::std::map<bblock_cptr,::std::set< ::std::string>> uevar;		// up exposed variables
-		::std::map<bblock_cptr,::std::set< ::std::string>> varkill;	// overwritten vars
-		::std::map<bblock_cptr,::std::set< ::std::string>> liveout;
+		::std::map<bblock_cptr,::std::set<name>> uevar;		// up exposed variables
+		::std::map<bblock_cptr,::std::set<name>> varkill;	// overwritten vars
+		::std::map<bblock_cptr,::std::set<name>> liveout;
 	};
 
 	template<typename T>

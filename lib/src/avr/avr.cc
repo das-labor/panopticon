@@ -34,6 +34,19 @@ const std::vector<std::string> &po::registers(avr_tag)
 	return po::avr::registers;
 }
 
+template<>
+uint8_t po::width(std::string n, avr_tag)
+{
+	if(n.c_str()[0] == 'r')
+		return 8;
+	else if(n.size() == 1)
+		return 1;
+	else if(n.c_str()[0] == 't')
+		return 16;
+	else
+		assert(false);
+}
+
 flow_ptr po::avr::disassemble(std::vector<typename architecture_traits<avr_tag>::token_type> &bytes, addr_t entry, flow_ptr flow, disassemble_cb signal)
 {
 	disassembler<avr_tag> main;

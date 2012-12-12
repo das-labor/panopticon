@@ -54,13 +54,14 @@ namespace po
 		{
 			uint64_t all;
 			struct { uint64_t rest:62, tag:2; } simple;
-			struct { uint64_t sub:16, n1:7, n2:7, n3:7, n4:7, n5:7, n6:7, rest:4, tag:2; } name; // variable
+			struct { uint64_t sub:16, n1:7, n2:7, n3:7, n4:7, n5:7, width:8, rest:3, tag:2; } name; // variable
 		} d;
 	};
 
 	::std::ostream& operator<<(::std::ostream &os, const po::rvalue &r);
 	
 	static_assert(alignof(class rvalue) >= 4,"need class alignment of 4 for pointer tagging");
+	static_assert(sizeof(class rvalue) == 8,"rvalue should not be larger than one machine word");
 
 	class constant : public rvalue
 	{
@@ -75,10 +76,11 @@ namespace po
 	class variable : public lvalue
 	{
 	public:
-		variable(::std::string n, int s = -1);
+		variable(::std::string n, int s = -1, uint8_t w = 0);
 
 		::std::string name(void) const;
 		int subscript(void) const;
+		uint8_t width(void) const;
 	};
 
 	class memory : public lvalue

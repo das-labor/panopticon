@@ -17,12 +17,11 @@ namespace po
 	struct domain_traits {};
 
 	template<typename T>
-	::std::shared_ptr< ::std::map<rvalue,typename domain_traits<T>::lattice>> interpret(const proc_ptr proc)
+	::std::shared_ptr< ::std::map<rvalue,typename domain_traits<T>::lattice>> interpret(const proc_ptr proc, T tag = T())
 	{
 		typedef typename domain_traits<T>::lattice L;
 		::std::shared_ptr< ::std::map<rvalue,typename domain_traits<T>::lattice>>	ret(new ::std::map<rvalue,typename domain_traits<T>::lattice>());
 		::std::set<bblock_ptr> worklist(proc->basic_blocks);
-		T tag;
 
 		while(!worklist.empty())
 		{

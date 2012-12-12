@@ -185,7 +185,7 @@ uint64_t constant::value(void) const
 	return d.simple.rest;
 }
 
-variable::variable(std::string b, int s)
+variable::variable(std::string b, int s, uint8_t w)
 {
 	assert(b.size() <= 6 && all_of(b.begin(),b.end(),[&](const char &c) { return c <= 0x7f; }));
 	
@@ -195,8 +195,9 @@ variable::variable(std::string b, int s)
 	d.name.n3 = b.size() >= 3 ? b.data()[2] : 0;
 	d.name.n4 = b.size() >= 4 ? b.data()[3] : 0;
 	d.name.n5 = b.size() >= 5 ? b.data()[4] : 0;
-	d.name.n6 = b.size() >= 6 ? b.data()[5] : 0;
+	//d.name.n6 = b.size() >= 6 ? b.data()[5] : 0;
 	d.name.sub = (s < 0 ? 0xffff : (unsigned int)s);
+	d.name.width = w;
 }
 
 std::string variable::name(void) const
@@ -207,14 +208,19 @@ std::string variable::name(void) const
 		 << (d.name.n2 ? std::string(1,(char)d.name.n2) : "") 
 		 << (d.name.n3 ? std::string(1,(char)d.name.n3) : "") 
 		 << (d.name.n4 ? std::string(1,(char)d.name.n4) : "") 
-		 << (d.name.n5 ? std::string(1,(char)d.name.n5) : "") 
-		 << (d.name.n6 ? std::string(1,(char)d.name.n6) : "");
+		 << (d.name.n5 ? std::string(1,(char)d.name.n5) : "");
+		// << (d.name.n6 ? std::string(1,(char)d.name.n6) : "");
 	return ss.str();
 }
 
 int variable::subscript(void) const
 {
 	return d.name.sub != 0xffff ? d.name.sub : -1;
+}
+
+uint8_t variable::width(void) const
+{
+	return d.name.width;
 }
 
 memory::memory(rvalue o, unsigned int w, Endianess e, std::string n)
@@ -249,5 +255,3 @@ const std::string &memory::name(void) const
 { 
 	return ((memory_priv *)(d.all & (((uint64_t)-1) << 2)))->name; 
 }
-
-
