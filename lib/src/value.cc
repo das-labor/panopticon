@@ -20,9 +20,9 @@ rvalue::rvalue(const rvalue &r)
 {
 	if(r.is_memory())
 	{
-		memory_priv *p = (memory_priv *)(r.d.all & (((uint64_t)-1) << 2));
+		memory_priv *p = (memory_priv *)(r.d.simple.rest << 2);
 		++p->usage;
-		d.all = (uint64_t)(p);
+		d.simple.rest = (uint64_t)(p) >> 2;
 		d.simple.tag = MemoryValueTag;
 	}
 	else
@@ -33,14 +33,14 @@ rvalue &rvalue::operator=(const rvalue &r)
 {
 	if(is_memory())
 	{
-		memory_priv *p = (memory_priv *)(d.all & (((uint64_t)-1) << 2));
+		memory_priv *p = (memory_priv *)(d.simple.rest << 2);
 		if(!--p->usage)
 			delete p;
 	}
 		
 	if(r.is_memory())
 	{
-		memory_priv *p = (memory_priv *)(r.d.all & (((uint64_t)-1) << 2));
+		memory_priv *p = (memory_priv *)(r.d.simple.rest << 2);
 		
 		++p->usage;
 		d.all = (uint64_t)(p);
@@ -56,7 +56,7 @@ rvalue::~rvalue(void)
 {
 	if(is_memory())
 	{
-		memory_priv *p = (memory_priv *)(d.all & (((uint64_t)-1) << 2));
+		memory_priv *p = (memory_priv *)(d.simple.rest << 2);
 		if(!--p->usage)
 			delete p;
 	}
@@ -232,26 +232,26 @@ memory::memory(rvalue o, unsigned int w, Endianess e, std::string n)
 	p->name = n;
 	p->usage = 1;
 
-	d.all = (uint64_t)p;
+	d.simple.rest = (uint64_t)(p) >> 2;
 	d.simple.tag = MemoryValueTag;
 }	
 
 const rvalue &memory::offset(void) const 
 { 
-	return ((memory_priv *)(d.all & (((uint64_t)-1) << 2)))->offset; 
+	return ((memory_priv *)(d.simple.rest << 2))->offset; 
 }
 
 unsigned int memory::bytes(void) const 
 { 
-	return ((memory_priv *)(d.all & (((uint64_t)-1) << 2)))->bytes; 
+	return ((memory_priv *)(d.simple.rest << 2))->bytes; 
 }
 
 memory::Endianess memory::endianess(void) const 
 { 
-	return ((memory_priv *)(d.all & (((uint64_t)-1) << 2)))->endianess; 
+	return ((memory_priv *)(d.simple.rest << 2))->endianess; 
 }
 
 const std::string &memory::name(void) const 
 { 
-	return ((memory_priv *)(d.all & (((uint64_t)-1) << 2)))->name; 
+	return ((memory_priv *)(d.simple.rest << 2))->name; 
 }

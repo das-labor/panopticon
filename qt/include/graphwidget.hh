@@ -6,7 +6,6 @@
 #include <QItemSelectionModel>
 
 #include <graph.hh>
-#include <model.hh>
 
 class GraphWidget : public QGraphicsView
 {

@@ -9,9 +9,12 @@ INCLUDES=-Iinclude `pkg-config $(PKGCONFIG) --cflags`
 HEADERS=$(wildcard include/*.hh) $(wildcard include/avr/*.hh)
 OBJECTS=avr/until.o avr/avr.o mnemonic.o basic_block.o procedure.o flowgraph.o dflow.o value.o interpreter.o inflate.o deflate.o sat.o
 
-.PHONY: clean
+.PHONY: clean dirs
 
-all: libpanopticum.so
+all: dirs libpanopticum.so
+
+dirs:
+	mkdir -p obj obj/avr
 
 libpanopticum.so: $(foreach i,$(OBJECTS),obj/$i)
 	$(LD) $(LDFLAGS) -o $@ $^

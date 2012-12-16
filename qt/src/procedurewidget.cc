@@ -1,5 +1,7 @@
 #include <map>
 
+#include <QDebug>
+
 #include <basic_block.hh>
 
 #include <basicblockwidget.hh>

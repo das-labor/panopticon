@@ -61,7 +61,8 @@ namespace po
 	::std::ostream& operator<<(::std::ostream &os, const po::rvalue &r);
 	
 	static_assert(alignof(class rvalue) >= 4,"need class alignment of 4 for pointer tagging");
-	static_assert(sizeof(class rvalue) == 8,"rvalue should not be larger than one machine word");
+	static_assert(sizeof(class rvalue) == 8,"rvalue should not be larger than one register");
+	static_assert(sizeof(uintptr_t) <= sizeof(class rvalue),"rvalue must be able to hold a pointer value");
 
 	class constant : public rvalue
 	{
@@ -139,7 +140,7 @@ namespace std
 	};
 }
 
-inline po::constant operator"" _val(uint64_t n)
+inline po::constant operator"" _val(unsigned long long n)
 {
 	return po::constant(n);
 }

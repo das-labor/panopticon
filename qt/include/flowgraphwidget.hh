@@ -7,6 +7,8 @@
 #include <QGraphicsTextItem>
 #include <QGraphicsRectItem>
 
+#include <flowgraph.hh>
+
 class FlowgraphNode : public QGraphicsObject
 {
 	Q_OBJECT

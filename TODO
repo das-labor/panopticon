@@ -69,6 +69,11 @@
 	--> Proclist insert instead of clear **DONE**
 	--> Enable CFG view **DONE**
 
+==> Merge operation
+	--> explode() function that splits a bb into single-mnemonic bb's
+	--> simplify() function groups the the true bb's again
+	--> merge() first calls explode on all bb's that are hit by ctrans, simplify is responsible of the callee 
+
 ==> K-set domain for sparse constant propagation
 
 ==> Display Taint analysis/def-use chains

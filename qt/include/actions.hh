@@ -6,8 +6,6 @@
 
 class Disassemble;
 
-#include <model.hh>
-
 class Disassemble : public QAction
 {
 	Q_OBJECT
