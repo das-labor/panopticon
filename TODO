@@ -74,6 +74,19 @@
 	--> simplify() function groups the the true bb's again
 	--> merge() first calls explode on all bb's that are hit by ctrans, simplify is responsible of the callee 
 
+==> Program points (Branch programpoint)
+	--> identify a single instr globally
+	--> construct from bblock, mne_ptr, instr_ptr, proc or indices of mnemonic and instr
+	--> argument to execute() and rewrite() (constructed on-the-fly)
+	--> primary index in liveness, sat, cprop (more?)
+	--> implement all comparison ops and std::hash
+	--> string stream output
+	--> not serialized
+
+==> Datalog (Branch datalog)
+	--> support point and value
+	--> implement liveness, dominance, dependency/taint and simple alias analysis
+
 ==> K-set domain for sparse constant propagation
 
 ==> Display Taint analysis/def-use chains
