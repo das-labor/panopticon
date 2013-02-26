@@ -184,5 +184,4 @@ namespace po
 	void conditional_jump(const ctrans &from, const ctrans &to);
 }
 
-
 #endif
