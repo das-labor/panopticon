@@ -13,8 +13,8 @@ namespace po
 	class basic_block;
 	template<class T> class bblock_iterator;
 	template<class T> class bblock_citerator;
-	typedef ::std::shared_ptr<struct basic_block> bblock_ptr;
-	typedef ::std::shared_ptr<const struct basic_block> bblock_cptr;
+	typedef ::std::shared_ptr<class basic_block> bblock_ptr;
+	typedef ::std::shared_ptr<const class basic_block> bblock_cptr;
 	typedef ::std::shared_ptr<struct guard> guard_ptr;
 }
 

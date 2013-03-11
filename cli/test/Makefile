@@ -5,12 +5,12 @@ LIBS+=-lcppunit -lpanopticum
 API=$(wildcard ../include/*.hh)
 TESTS=$(wildcard *.hh)
 
-.PHONY: clean
+#.PHONY: clean
 
-all: test
+#all: test
 
-test: test.cc $(HEADERS) $(TESTS)
-	$(CXX) $(CXXARGS) $(INCLUDES) $(LIBS) -o $@ $<
+#test: test.cc $(HEADERS) $(TESTS)
+#	$(CXX) $(CXXARGS) $(INCLUDES) $(LIBS) -o $@ $<
 
-clean:
+#clean:
 	rm -f runtests

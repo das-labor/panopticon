@@ -1,6 +1,5 @@
 MAKE=make
-
-COMPONENTS=lib qt
+COMPONENTS=lib qt cli
 
 .PHONY: clean $(COMPONENTS)
 

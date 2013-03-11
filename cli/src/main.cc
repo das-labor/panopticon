@@ -7,6 +7,7 @@
 #include <flowgraph.hh>
 
 using namespace po;
+using namespace std;
 
 void decode(vector<uint16_t> &bytes)
 {
@@ -25,13 +26,13 @@ int main(int argc, char *argv[])
 	int fn = 1;
 	while(fn < argc)
 	{
-		std::ifstream f(argv[fn]);
-		std::vector<uint16_t> bytes;
+		ifstream f(argv[fn]);
+		vector<uint16_t> bytes;
 
 		if (f.bad())
-        std::cout << "I/O error while reading" << std::endl;
+        cout << "I/O error while reading" << endl;
     else if (f.fail())
-        std::cout << "Non-integer data encountered" << std::endl;
+        cout << "Non-integer data encountered" << endl;
 		else 
 		{
 			while(f.good() && !f.eof())
