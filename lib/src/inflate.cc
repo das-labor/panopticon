@@ -55,7 +55,8 @@ std::string po::turtle(flow_ptr fg)
 			{
 				std::string mnename = blank();
 				std::stringstream ss_ops;
-				std::function<std::string(const rvalue &)> inflate_value = [&](const rvalue &v) -> std::string
+				std::function<std::string(const rvalue &)> inflate_value;
+				inflate_value = [&](const rvalue &v) -> std::string
 				{
 					std::string opname = blank();
 					

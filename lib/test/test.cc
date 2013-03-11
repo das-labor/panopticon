@@ -1,9 +1,7 @@
-#include "test_persistentmap.hh"
 #include "test_codegenerator.hh"
 #include <cppunit/extensions/HelperMacros.h>
 #include <cppunit/ui/text/TestRunner.h>
 
-CPPUNIT_TEST_SUITE_REGISTRATION(PersistentMapTest);
 CPPUNIT_TEST_SUITE_REGISTRATION(CodeGeneratorTest);
 
 int main(int argc,char **argv)

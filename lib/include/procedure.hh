@@ -13,8 +13,8 @@
 namespace po
 {
 	typedef ::std::shared_ptr<struct domtree> dtree_ptr;
-	typedef ::std::shared_ptr<struct procedure> proc_ptr;
-	typedef ::std::shared_ptr<const struct procedure> proc_cptr;
+	typedef ::std::shared_ptr<class procedure> proc_ptr;
+	typedef ::std::shared_ptr<const class procedure> proc_cptr;
 
 	void call(proc_ptr from, proc_ptr to);
 	void execute(proc_cptr proc,::std::function<void(const lvalue &left, instr::Function fn, const ::std::vector<rvalue> &right)> f);

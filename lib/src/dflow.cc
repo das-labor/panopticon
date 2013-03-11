@@ -260,7 +260,8 @@ void po::ssa(proc_ptr proc, dom_ptr dominance, live_ptr live)
 	};
 
 	// rename ssa vars in a bblock
-	std::function<void(bblock_ptr bb)> rename = [&](bblock_ptr bb)
+	std::function<void(bblock_ptr bb)> rename;
+	rename = [&](bblock_ptr bb)
 	{
 		// for each φ-function in b, ‘‘x ← φ(· · · )’‘
 		//     rewrite x as new_name(x)

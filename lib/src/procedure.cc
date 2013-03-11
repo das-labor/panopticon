@@ -22,7 +22,8 @@ void procedure::rev_postorder(std::function<void(bblock_ptr bb)> fn) const
 	//cout << "rpo: " << basic_blocks.size() << ", entry: " << entry->area() << endl;
 	//for_each(basic_blocks.begin(),basic_blocks.end(),[](const bblock_ptr bb) { cout << bb->area() << endl; });
 
-	std::function<void(bblock_ptr)> visit = [&](bblock_ptr bb)
+	std::function<void(bblock_ptr)> visit;
+	visit = [&](bblock_ptr bb)
 	{
 	//	cout << "visit " << bb->area() << endl;
 		basic_block::succ_iterator i,iend;
