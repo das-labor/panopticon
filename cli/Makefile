@@ -1,9 +1,9 @@
 include ../defaults.mk
 
-LIBS+=-lpanopticum
-
+LIBS+=-lpanopticum -lboost_program_options
+INCLUDES+=-Iinclude
 HEADERS=$(wildcard include/*.hh)
-OBJECTS=main.o
+OBJECTS=main.o avr.o turtle.o gv.o ric.o
 
 .PHONY: clean test
 

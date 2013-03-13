@@ -1,51 +1,110 @@
 #include <iostream>
-#include <fstream>
 #include <vector>
+#include <functional>
 #include <algorithm>
+#include <tuple>
 
-#include <avr/avr.hh>
+#include <boost/program_options/value_semantic.hpp>
+#include <boost/program_options/variables_map.hpp>
+#include <boost/program_options/options_description.hpp>
+#include <boost/program_options/parsers.hpp>
+
 #include <flowgraph.hh>
+
+#include <input.hh>
+#include <filter.hh>
+#include <output.hh>
 
 using namespace po;
 using namespace std;
+using namespace boost::program_options;
 
-void decode(vector<uint16_t> &bytes)
+const list<tuple<string,string,string,function<flow_ptr(const string &)>>> input =
 {
-	flow_ptr flow = avr::disassemble(bytes,0);
-	cout << graphviz(flow) << endl;
-}
+	make_tuple("in-avr","a","AVR opcodes",in_avr),
+	make_tuple("in-ttl","t","Flowgraph encoded in Turtle triples",in_turtle),
+};
+
+const list<tuple<string,string,string,function<void(flow_ptr)>>> filter =
+{
+	make_tuple("ric","r","RIC constant propagation",filter_ric),
+};
+
+const list<tuple<string,string,string,function<void(const flow_ptr, const string &)>>> output =
+{
+	make_tuple("out-ttl", "T", "Flowgraph encoded in Turtle triples", out_turtle),
+	make_tuple("out-gv", "G", "Dump flowgraph in dot", out_gv),
+};
 
 int main(int argc, char *argv[])
 {
-	if(argc <= 1)
+	// Declare the supported options.
+	options_description input_opts("Input files");
+	options_description filter_opts("Filter");
+	options_description output_opts("Output files");
+	options_description general_opts("General");
+	options_description all_opts("Panopticum terminal interface");
+
+	general_opts.add_options()
+		("help", "This help message")
+	;
+
+	for(const tuple<string,string,string,function<flow_ptr(const string &)>> &i: input)
+		input_opts.add_options()(string(get<0>(i) + "," + get<1>(i)).c_str(), value<string>(), get<2>(i).c_str());
+	
+	for(const tuple<string,string,string,function<void(flow_ptr)>> &i: filter)
+		filter_opts.add_options()(string(get<0>(i) + "," + get<1>(i)).c_str(), get<2>(i).c_str());
+	
+	for(const tuple<string,string,string,function<void(const flow_ptr, const string &)>> &i: output)
+		output_opts.add_options()(string(get<0>(i) + "," + get<1>(i)).c_str(), value<string>(), get<2>(i).c_str());
+
+	all_opts.add(general_opts).add(input_opts).add(filter_opts).add(output_opts);
+	vector<option> opts = parse_command_line(argc, argv, all_opts).options;
+
+	if(opts.empty() || count_if(opts.begin(),opts.end(),[&](const option &o) { return o.string_key == "help"; }))
 	{
-		printf("AVR disasembler\n%s <files>\n",argv[0]);
-		return 1;
+			cout << all_opts << "\n";
+			return 1;
 	}
+	
+	list<flow_ptr> flowgraphs;
 
-	int fn = 1;
-	while(fn < argc)
+	for(const option &opt: opts)
 	{
-		ifstream f(argv[fn]);
-		vector<uint16_t> bytes;
+		cout << opt.string_key << " = " << (opt.value.size() ? opt.value[0] : "(nil)") << endl;
+		
+		auto iter_i = find_if(input.begin(),input.end(),[&](const tuple<string,string,string,function<flow_ptr(const string &)>> &t)
+			{ return get<0>(t) == opt.string_key || get<1>(t) == opt.string_key; });
 
-		if (f.bad())
-        cout << "I/O error while reading" << endl;
-    else if (f.fail())
-        cout << "Non-integer data encountered" << endl;
-		else 
+		if(iter_i != input.end())
 		{
-			while(f.good() && !f.eof())
-			{
-				uint16_t c;
-				f.read((char *)&c,sizeof(c));
-				bytes.push_back(c);
-			}
-			decode(bytes);
+			flowgraphs.push_back(get<3>(*iter_i)(opt.value[0]));
+			continue;
 		}
 
-		++fn;
-	}
+		auto iter_f = find_if(filter.begin(),filter.end(),[&](const tuple<string,string,string,function<void(flow_ptr)>> &t)
+			{ return get<0>(t) == opt.string_key || get<1>(t) == opt.string_key; });
 
+		if(iter_f != filter.end())
+		{
+			for(flow_ptr f: flowgraphs)
+				get<3>(*iter_f)(f);
+			continue;
+		}
+		
+		auto iter_o = find_if(output.begin(),output.end(),[&](const tuple<string,string,string,function<void(const flow_ptr, const string &)>> &t)
+			{ return get<0>(t) == opt.string_key || get<1>(t) == opt.string_key; });
+
+		if(iter_o != output.end())
+		{
+			for(flow_ptr f: flowgraphs)
+				get<3>(*iter_o)(f,opt.value[0]);
+			continue;
+		}
+
+		cerr << "unknown option!" << endl;
+		return 1;
+	}		
+	
 	return 0;
 }
