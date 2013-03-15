@@ -84,11 +84,11 @@ namespace po
 				
 				// simple sparse constant propagation
 				::std::cout << "sscp" << ::std::endl;
-				sscp = interpret<simple_sparse_constprop>(proc);
+				//sscp = interpret<simple_sparse_constprop>(proc);
 
-				sat(proc);
+				//sat(proc);
 
-				::std::cout << "resolve" << ::std::endl;
+				/*::std::cout << "resolve" << ::std::endl;
 				bool resolved_targets = false;
 				for(bblock_ptr bb: proc->basic_blocks)
 				{
@@ -117,8 +117,8 @@ namespace po
 					
 					if(resolved_targets)
 						goto out;
-				}
-				break; out: ::std::cout << "new round" << ::std::endl;
+				}*/
+				break;// out: ::std::cout << "new round" << ::std::endl;
 			}	
 			
 			// finish procedure
@@ -129,7 +129,7 @@ namespace po
 				ret->dominance.insert(make_pair(proc,dom));
 				ret->liveness.insert(make_pair(proc,live));
 				//ret->taint.insert(make_pair(proc,taint));
-				ret->simple_sparse_constprop.insert(make_pair(proc,sscp));
+				//ret->simple_sparse_constprop.insert(make_pair(proc,sscp));
 
 				// look for call instructions to find new procedures to disassemble
 				execute(proc,[&](const lvalue &legt, instr::Function fn, const ::std::vector<rvalue> &right)

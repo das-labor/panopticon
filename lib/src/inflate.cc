@@ -31,14 +31,14 @@ std::string po::turtle(flow_ptr fg)
 		std::string procname(std::to_string(proc->entry->area().begin));
 		std::stringstream ss_bblocks;
 		//shared_ptr<map<bblock_ptr,taint_lattice>> taint_bblock(fg->taint.count(proc) ? fg->taint[proc] : nullptr);
-		std::shared_ptr<std::map<rvalue,sscp_lattice>> sscp(fg->simple_sparse_constprop.count(proc) ? fg->simple_sparse_constprop[proc] : nullptr);
+		//std::shared_ptr<std::map<rvalue,sscp_lattice>> sscp(fg->simple_sparse_constprop.count(proc) ? fg->simple_sparse_constprop[proc] : nullptr);
 
 		ss << ":proc_" 	<< procname << " rdf:type po:Procedure;" << std::endl
 																<< "\tpo:name \"" << proc->name << "\";" << std::endl
 																<< "\tpo:entry_point :bblock_" << procname << "_" << std::to_string(proc->entry->area().begin) << "." << std::endl;
 
-		for(const proc_ptr &c: proc->callees) 
-			ss << ":proc_" << procname << " po:calls :proc_" << std::to_string(c->entry->area().begin) << "." << std::endl;
+		//for(const proc_ptr &c: proc->callees) 
+		//	ss << ":proc_" << procname << " po:calls :proc_" << std::to_string(c->entry->area().begin) << "." << std::endl;
 
 		// basic blocks
 		for(const bblock_ptr &bb: proc->basic_blocks)

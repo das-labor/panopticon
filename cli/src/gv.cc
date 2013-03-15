@@ -6,5 +6,11 @@ using namespace po;
 
 void out_gv(const flow_ptr f, const string &path)
 {
-	cerr << "Dot:" << path << endl;
+	ofstream o(path);
+	vector<uint16_t> bytes;
+
+	if (o.bad() || o.fail())
+		cerr << path << ": I/O error while writing" << endl;
+	else 
+		o << graphviz(f);
 }
