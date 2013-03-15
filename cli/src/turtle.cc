@@ -1,5 +1,7 @@
 #include <input.hh>
 
+	#include <inflate.hh>
+
 using namespace po;
 using namespace std;
 
@@ -11,5 +13,11 @@ flow_ptr in_turtle(const string &path)
 
 void out_turtle(const flow_ptr f, const string &path)
 {
-	cerr << "Turtle-out: " << path << endl;
+	ofstream o(path);
+	vector<uint16_t> bytes;
+
+	if (o.bad() || o.fail())
+		cerr << path << ": I/O error while writing" << endl;
+	else 
+		o << turtle(f);
 }
