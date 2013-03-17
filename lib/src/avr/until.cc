@@ -183,11 +183,6 @@ sem_action po::avr::binary_st(variable Rd1, variable Rd2, bool pre_dec, bool pos
 	{
 		lvalue X = po::temporary(po::avr_tag());
 		
-		st.mnemonic(0,"internal-ptr","",std::list<rvalue>(),[=](cg &c)
-		{
-			c.or_b(X,c.shiftl_u(Rd2,8_val),Rd1);
-		});
-
 		variable Rr = decode_reg(st.capture_groups["r"]);
 		std::string fmt("");
 
@@ -213,6 +208,8 @@ sem_action po::avr::binary_st(variable Rd1, variable Rd2, bool pre_dec, bool pos
 
 		st.mnemonic(st.tokens.size(),"st",fmt,{X,Rr},[=](cg &c)
 		{
+			c.or_b(X,c.shiftl_u(Rd2,8_val),Rd1);
+			
 			if(pre_dec) 
 				c.sub_i(X,X,1_val);
 			
@@ -239,11 +236,6 @@ sem_action po::avr::binary_ld(variable Rr1, variable Rr2, bool pre_dec, bool pos
 	{
 		lvalue X = po::temporary(po::avr_tag());
 		
-		st.mnemonic(0,"internal-ptr","",std::list<rvalue>(),[=](cg &c)
-		{
-			c.or_b(X,c.shiftl_u(Rr2,8_val),Rr1);
-		});
-
 		variable Rd = decode_reg(st.capture_groups["r"]);
 		std::string fmt("");
 
@@ -269,6 +261,8 @@ sem_action po::avr::binary_ld(variable Rr1, variable Rr2, bool pre_dec, bool pos
 
 		st.mnemonic(st.tokens.size(),"ld",fmt,{X,Rd},[=](cg &c)
 		{
+			c.or_b(X,c.shiftl_u(Rr2,8_val),Rr1);
+			
 			if(pre_dec) 
 				c.sub_i(X,X,1_val);
 			
@@ -294,11 +288,6 @@ sem_action po::avr::binary_stq(variable Rd1, variable Rd2)
 		unsigned int q = st.capture_groups["q"];
 		lvalue X = po::temporary(po::avr_tag());
 
-		st.mnemonic(0,"internal-ptr","",std::list<rvalue>(),[=](cg &c)
-		{
-			c.or_b(X,c.shiftl_u(Rd2,8_val),Rd1);
-		});
-
 		variable Rr = decode_reg(st.capture_groups["r"]);
 		std::string fmt("{8::");
 
@@ -315,6 +304,7 @@ sem_action po::avr::binary_stq(variable Rd1, variable Rd2)
 
 		st.mnemonic(st.tokens.size(),"st",fmt,{X,Rr},[=](cg &c)
 		{
+			c.or_b(X,c.shiftl_u(Rd2,8_val),Rd1);
 			c.add_i(X,X,constant(q));
 			c.assign(sram(X),Rr);
 		});
@@ -329,11 +319,6 @@ sem_action po::avr::binary_ldq(variable Rr1, variable Rr2)
 		unsigned int q = st.capture_groups["q"];
 		lvalue X = po::temporary(po::avr_tag());
 		
-		st.mnemonic(0,"internal-ptr","",std::list<rvalue>(),[=](cg &c)
-		{
-			c.or_b(X,c.shiftl_u(Rr2,8_val),Rr1);
-		});
-
 		variable Rd = decode_reg(st.capture_groups["r"]);
 		std::string fmt("{8::");
 
@@ -350,6 +335,7 @@ sem_action po::avr::binary_ldq(variable Rr1, variable Rr2)
 
 		st.mnemonic(st.tokens.size(),"ld",fmt,{X,Rd},[=](cg &c)
 		{
+			c.or_b(X,c.shiftl_u(Rr2,8_val),Rr1);
 			c.add_i(X,X,constant(q));
 			c.assign(Rd,sram(X));
 		});
