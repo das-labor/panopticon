@@ -71,7 +71,7 @@ namespace po
 		
 		// out
 		::std::list<po::mnemonic> mnemonics;
-		::std::list<::std::pair<rvalue,guard_ptr>> jumps;
+		::std::list< ::std::pair<rvalue,guard_ptr>> jumps;
 		
 	private:
 		addr_t next_address;
@@ -383,7 +383,7 @@ namespace po
 
 		::std::set<addr_t> todo;
 		::std::map<addr_t,mnemonic> mnemonics;
-		::std::multimap<addr_t,addr_t> source, destination;
+		::std::multimap<addr_t,::std::pair<addr_t,guard_ptr>> source, destination;
 
 		// copy exsisting mnemonics and jumps into tables. TODO: cache tables in proc
 		for(const bblock_ptr bb: proc->basic_blocks)
@@ -398,8 +398,8 @@ namespace po
 
 			for(const ctrans &ct: bb->outgoing())
 			{
-				source.insert(::std::make_pair(bb->area().last(),ct.value.constant().value()));
-				destination.insert(::std::make_pair(ct.value.constant().value(),bb->area().last()));
+				source.insert(::std::make_pair(bb->area().last(),::std::make_pair(ct.value.constant().value(),ct.guard)));
+				destination.insert(::std::make_pair(ct.value.constant().value(),::std::make_pair(bb->area().last(),ct.guard)));
 			}
 		}
 
@@ -442,13 +442,13 @@ namespace po
 						{
 							addr_t target = p.first.constant().value();
 
-							source.insert(::std::make_pair(last,target));
-							destination.insert(::std::make_pair(target,last));
+							source.insert(::std::make_pair(last,::std::make_pair(target,p.second)));
+							destination.insert(::std::make_pair(target,::std::make_pair(last,p.second)));
 							todo.insert(target);
 						}
 						else
 						{
-							source.insert(::std::make_pair(last,naddr));
+							source.insert(::std::make_pair(last,::std::make_pair(naddr,p.second)));
 						}
 					}
 				}
@@ -464,28 +464,8 @@ namespace po
 					::std::cerr << "Overlapping mnemonics at " << cur_addr << " with \"" << "[" << j->second.area << "] " << j->second << "\"" << ::std::endl;
 				}
 			}
-
-			
-			/*
-			for_each(state.basic_blocks.begin(),state.basic_blocks.end(),[&](const bblock_ptr &p)
-			{
-				basic_block::out_iterator i,iend;
-				if(p->mnemonics().size())
-					extend(proc,p);	
-			});
-
-			for_each(proc->basic_blocks.begin(),proc->basic_blocks.end(),[&](const bblock_ptr &bb)
-			{
-				for_each(bb->outgoing().begin(),bb->outgoing().end(),[&](const ctrans &ct)
-				{ 
-					if(!ct.bblock && ct.value.is_constant()) 
-						todo.insert(ct.value.constant().value());
-				});
-			});*/
 		}
 		
-		::std::cout << "------ new basic block ------" << ::std::endl;
-
 		auto cur_mne = mnemonics.begin(), first_mne = cur_mne;
 		::std::map<addr_t,bblock_ptr> bblocks;
 		::std::function<void(::std::map<addr_t,mnemonic>::iterator,::std::map<addr_t,mnemonic>::iterator)> make_bblock;
@@ -514,8 +494,6 @@ namespace po
 			auto sources = source.equal_range(mne.area.last());
 			auto destinations = destination.equal_range(div);
 			
-			::std::cout << mne.area << ": " << mne << ::std::endl;
-
 			if(next_mne != mnemonics.end() && mne.area.size())
 			{
 				bool new_bb;
@@ -524,15 +502,15 @@ namespace po
 				new_bb = next_mne->first != div;
 
 				// or any following jumps aren't to adjacent mnemonics
-				new_bb |= ::std::any_of(sources.first,sources.second,[&](const ::std::pair<addr_t,addr_t> &p) 
+				new_bb |= ::std::any_of(sources.first,sources.second,[&](const ::std::pair<addr_t,::std::pair<addr_t,guard_ptr>> &p) 
 				{ 
-					return p.second != div; 
+					return p.second.first != div; 
 				});
 				
 				// or any jumps pointing to the next that aren't from here
-				new_bb |= ::std::any_of(destinations.first,destinations.second,[&](const ::std::pair<addr_t,addr_t> &p) 
+				new_bb |= ::std::any_of(destinations.first,destinations.second,[&](const ::std::pair<addr_t,::std::pair<addr_t,guard_ptr>> &p) 
 				{ 
-					return p.second != mne.area.last();
+					return p.second.first != mne.area.last();
 				});
 			
 				// construct a new basic block
@@ -541,7 +519,6 @@ namespace po
 					make_bblock(first_mne,next_mne);
 					
 					first_mne = next_mne;
-					::std::cout << "------ new basic block ------" << ::std::endl;
 				}
 				else
 				{
@@ -559,30 +536,39 @@ namespace po
 		make_bblock(first_mne,cur_mne);
 				
 		// connect basic blocks
-		for(const ::std::pair<addr_t,addr_t> &p: source)
+		for(const ::std::pair<addr_t,::std::pair<addr_t,guard_ptr>> &p: source)
 		{
-			if(p.second != naddr)
+			if(p.second.first != naddr)
 			{
-				auto from = bblocks.find(p.first), to = bblocks.lower_bound(p.second);
-
-				::std::cout << p.first << " to " << p.second << ::std::endl;
+				auto from = bblocks.find(p.first), to = bblocks.lower_bound(p.second.first);
 
 				assert(from != bblocks.end());
 				assert(to != bblocks.end());
-				assert(to->second->area().begin == p.second);
-				unconditional_jump(from->second,to->second);
+				assert(to->second->area().begin == p.second.first);
+				conditional_jump(from->second,to->second,p.second.second);
 			}
 		}
 
-		// pack into bb
-
+		
 		// entry may have been split
-		if(proc->entry)
+		if(proc && proc->entry)
 		{
-			if(!proc->entry->mnemonics().empty())
-				proc->entry = find_bblock(proc,proc->entry->mnemonics().front().area.begin);
-			assert(proc->entry);
-			proc->name = "proc_" + ::std::to_string(proc->entry->area().begin);
+			if(proc->basic_blocks.size())
+			{
+				addr_t entry = proc->entry->area().begin;
+				auto i = bblocks.lower_bound(entry);
+
+				if(i != bblocks.end() && i->second->area().begin == entry)
+					proc->entry = i->second;
+				else
+					proc->entry = bblocks.lower_bound(start)->second;
+				
+				proc->name = "proc_" + ::std::to_string(proc->entry->area().begin);
+			}
+			else
+			{
+				proc->entry = bblock_ptr(0);
+			}
 		}
 	}
 }
