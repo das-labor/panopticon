@@ -8,8 +8,9 @@
 #include <value.hh>
 
 using namespace po;
+using namespace std;
 
-dom_ptr po::dominance_tree(proc_ptr proc)
+dom_ptr dominance_tree(proc_ptr proc)
 {
 	dom_ptr ret(new dom);
 	
@@ -20,7 +21,7 @@ dom_ptr po::dominance_tree(proc_ptr proc)
 	ret->root = ret->tree[proc->entry] = dtree_ptr(new domtree(proc->entry));
 	ret->root->intermediate = ret->root;
 
-	std::list<bblock_ptr> rpo_lst;
+	list<bblock_ptr> rpo_lst;
 	proc->rev_postorder([&](bblock_ptr bb) { rpo_lst.push_back(bb); });
 
 	bool mod;
@@ -114,7 +115,7 @@ dom_ptr po::dominance_tree(proc_ptr proc)
 	return ret;
 }
 
-live_ptr po::liveness(proc_cptr proc)
+live_ptr liveness(proc_cptr proc)
 {	
 	live_ptr ret(new live());
 
@@ -131,7 +132,7 @@ live_ptr po::liveness(proc_cptr proc)
 	// build global names and blocks that use them
 	for(bblock_ptr bb: proc->basic_blocks)
 	{
-		execute(bb,[&](const lvalue &left, instr::Function fn, const std::vector<rvalue> &right)
+		execute(bb,[&](const lvalue &left, instr::Function fn, const vector<rvalue> &right)
 		{
 			for(const rvalue &v: right)
 				collect(v,bb);
@@ -170,7 +171,7 @@ live_ptr po::liveness(proc_cptr proc)
 
 		for(bblock_ptr bb: proc->basic_blocks)
 		{
-			std::set<name> old_liveout = ret->liveout[bb];
+			set<name> old_liveout = ret->liveout[bb];
 			basic_block::succ_iterator j,jend;
 			
 			ret->liveout[bb].clear();
@@ -189,26 +190,26 @@ live_ptr po::liveness(proc_cptr proc)
 	return ret;
 }
 
-void po::ssa(proc_ptr proc, dom_ptr dominance, live_ptr live)
+void ssa(proc_ptr proc, dom_ptr dominance, live_ptr live)
 {
-	std::set<name> globals;
+	set<name> globals;
 
-	for(const std::pair<bblock_cptr,std::set<name>> &s: live->uevar)
+	for(const pair<bblock_cptr,set<name>> &s: live->uevar)
 		globals = set_union(globals,s.second);
 
 	if(live->liveout[proc->entry].size())
 	{
-		std::cout << "uninitialized vars: ";
+		cout << "uninitialized vars: ";
 		for(const name &n: live->liveout[proc->entry])
-			std::cout << n.base << " ";
-		std::cout << std::endl;
+			cout << n.base << " ";
+		cout << endl;
 		assert(false);
 	}
 
 	// insert phi
 	for(const name &n: globals)
 	{
-		std::set<bblock_cptr> &worklist(live->usage[n]);
+		set<bblock_cptr> &worklist(live->usage[n]);
 
 		while(!worklist.empty())
 		{
@@ -218,14 +219,14 @@ void po::ssa(proc_ptr proc, dom_ptr dominance, live_ptr live)
 			for(dtree_ptr df: dominance->tree[bb]->frontiers)
 			{
 				bool has_phi = false;
-				execute(df->basic_block,[&](lvalue left, instr::Function fn, const std::vector<rvalue> &right)
+				execute(df->basic_block,[&](lvalue left, instr::Function fn, const vector<rvalue> &right)
 				{	
 					has_phi = has_phi || (fn == instr::Phi && left.is_variable() && left.variable().name() == n.base); 
 				});
 
 				if(!has_phi)
 				{
-					df->basic_block->mutate_mnemonics([&](std::vector<mnemonic> &ms)
+					df->basic_block->mutate_mnemonics([&](vector<mnemonic> &ms)
 					{
 						assert(ms.size());
 
@@ -241,16 +242,16 @@ void po::ssa(proc_ptr proc, dom_ptr dominance, live_ptr live)
 	}
 
 	// rename variables
-	std::map<std::string,int> counter;
-	std::map<std::string,std::list<int>> stack;
+	map<string,int> counter;
+	map<string,list<int>> stack;
 
-	for(const std::string &n: live->names) 
+	for(const string &n: live->names) 
 	{ 
-		counter.insert(std::make_pair(n,0));
-		stack.insert(std::make_pair(n,std::list<int>({})));
+		counter.insert(make_pair(n,0));
+		stack.insert(make_pair(n,list<int>({})));
 	}
 	
-	auto new_name = [&](const std::string &n) -> int
+	auto new_name = [&](const string &n) -> int
 	{
 		assert(stack.count(n));
 		int i = counter[n]++;
@@ -260,12 +261,12 @@ void po::ssa(proc_ptr proc, dom_ptr dominance, live_ptr live)
 	};
 
 	// rename ssa vars in a bblock
-	std::function<void(bblock_ptr bb)> rename;
+	function<void(bblock_ptr bb)> rename;
 	rename = [&](bblock_ptr bb)
 	{
 		// for each φ-function in b, ‘‘x ← φ(· · · )’‘
 		//     rewrite x as new_name(x)
-		rewrite(bb,[&](lvalue &left, instr::Function fn, std::vector<rvalue> &right)
+		rewrite(bb,[&](lvalue &left, instr::Function fn, vector<rvalue> &right)
 		{
 			if(fn == instr::Phi)
 			{
@@ -279,7 +280,7 @@ void po::ssa(proc_ptr proc, dom_ptr dominance, live_ptr live)
 		//     rewrite y with subscript top(stack[y])
 		//     rewrite z with subscript top(stack[z])
 		//     rewrite x as new_name(x)
-		bb->mutate_mnemonics([&](std::vector<mnemonic> &ms)
+		bb->mutate_mnemonics([&](vector<mnemonic> &ms)
 		{
 			size_t sz_mne = ms.size(), i_mne = 0;
 			mnemonic *ary_mne = ms.data();
@@ -303,8 +304,8 @@ void po::ssa(proc_ptr proc, dom_ptr dominance, live_ptr live)
 				{
 					instr &instr = ary_instr[i_instr++];
 					lvalue &left = instr.left;
-					po::instr::Function fn = instr.function;
-					std::vector<rvalue> &right = instr.right;
+					instr::Function fn = instr.function;
+					vector<rvalue> &right = instr.right;
 
 					if(fn != instr::Phi)
 					{
@@ -332,9 +333,9 @@ void po::ssa(proc_ptr proc, dom_ptr dominance, live_ptr live)
 		// for each successor of b in the cfg
 		// 		 rewrite variables in ctrans
 		//     fill in φ-function parameters
-		bb->mutate_outgoing([&](std::list<ctrans> &out)
+		bb->mutate_outgoing([&](list<ctrans> &out)
 		{
-				std::list<ctrans> new_out;
+				list<ctrans> new_out;
 
 				for(ctrans &s: out)
 				{
@@ -368,9 +369,9 @@ void po::ssa(proc_ptr proc, dom_ptr dominance, live_ptr live)
 					{
 						bblock_ptr succ = s.bblock;
 
-						succ->mutate_mnemonics([&](std::vector<mnemonic> &ms)
+						succ->mutate_mnemonics([&](vector<mnemonic> &ms)
 					{
-						auto iord = std::find_if(succ->incoming().begin(),succ->incoming().end(),[&](const ctrans &ct) { return ct.bblock == bb; });
+						auto iord = find_if(succ->incoming().begin(),succ->incoming().end(),[&](const ctrans &ct) { return ct.bblock == bb; });
 						assert(iord != succ->incoming().end());
 						unsigned int ord = distance(succ->incoming().begin(),iord);
 						
@@ -405,7 +406,7 @@ void po::ssa(proc_ptr proc, dom_ptr dominance, live_ptr live)
 		// for each operation ‘‘x ← y op z’’ in bb
 		//     and each φ-function ‘‘x ← φ(· · · )’’
 		//     pop(stack[x])
-		execute(bb,[&](const lvalue &left, instr::Function fn, const std::vector<rvalue> &right)
+		execute(bb,[&](const lvalue &left, instr::Function fn, const vector<rvalue> &right)
 		{
 			if(left.is_variable()) 
 			{
