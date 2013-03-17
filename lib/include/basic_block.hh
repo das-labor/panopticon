@@ -154,7 +154,7 @@ namespace po
 		::std::list<ctrans> m_outgoing;
 	};
 
-	// readin
+	// reading
 	void execute(bblock_cptr bb,::std::function<void(const lvalue&,instr::Function,const ::std::vector<rvalue>&)> f);
 	void execute2(bblock_cptr bb,::std::function<void(const instr&)> f);
 	void rewrite(bblock_ptr bb,::std::function<void(lvalue&,instr::Function,::std::vector<rvalue>&)> f);
@@ -163,7 +163,6 @@ namespace po
 	void conditional_jump(bblock_ptr from, bblock_ptr to, guard_ptr g);
 	void conditional_jump(rvalue from, bblock_ptr to, guard_ptr g);
 	void conditional_jump(bblock_ptr from, rvalue to, guard_ptr g);
-
 
 	void unconditional_jump(bblock_ptr from, bblock_ptr to);
 	void unconditional_jump(rvalue from, bblock_ptr to);

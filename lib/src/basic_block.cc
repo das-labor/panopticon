@@ -112,21 +112,28 @@ void basic_block::mutate_mnemonics(std::function<void(std::vector<mnemonic>&)> f
 	// check invariants:
 	// 	- mnemonics span a consecutive area
 
-	int next = -1;
+	addr_t first = naddr, last = naddr;
 	assert(all_of(m_mnemonics.begin(),m_mnemonics.end(),[&](mnemonic &m)
 	{
 		bool ret = true;
-		if(next >= 0)
-			ret = !m.area.size() || (unsigned int)next == m.area.begin;
-		next = m.area.end;
+
+		if(first == naddr) 
+			first = m.area.begin;
+		else
+			ret &= first < m.area.begin;
+
+		if(last != naddr)
+			ret &= last == m.area.begin;
+
+		last = m.area.end;
 		return ret;
 	}));
 
 	// update m_area
 	if(m_mnemonics.empty())
-		m_area = range<unsigned int>();
+		m_area = range<addr_t>();
 	else
-		m_area = range<unsigned int>(m_mnemonics.front().area.begin,m_mnemonics.back().area.end);
+		m_area = range<addr_t>(first,last);
 }
 
 void basic_block::mutate_incoming(std::function<void(std::list<ctrans>&)> fn)

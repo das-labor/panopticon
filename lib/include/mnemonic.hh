@@ -16,6 +16,7 @@ namespace po
 	class mnemonic;
 
 	typedef uint32_t addr_t;
+	extern const addr_t naddr;
 
 	template<typename T>
 	struct range

@@ -6,6 +6,8 @@
 
 using namespace po;
 
+const addr_t po::naddr = -1;
+
 std::ostream &po::operator<<(std::ostream &os, const instr &i)
 {
 	os << i.left << " ≔ ";
