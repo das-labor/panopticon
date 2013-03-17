@@ -65,7 +65,7 @@ namespace po
 			while(true)
 			{
 				::std::cout << "disassemble at " << tgt << ::std::endl;
-				disassemble_procedure(proc,main,tokens,tgt);
+				proc = procedure::disassemble(proc,main,tokens,tgt);
 
 				if(!proc->entry)
 					proc->entry = find_bblock(proc,tgt);
