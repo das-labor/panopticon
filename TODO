@@ -92,6 +92,13 @@
 	--> unit test
 	--> document
 
+==> Overall code improvements
+	--> API documentation
+	--> code review
+	--> ditch assert() for exceptions
+	--> move semantics for mnemonic, basic_block, value and guard
+	--> ditch guard_ptr
+
 ==> K-set domain for sparse constant propagation
 
 ==> Display Taint analysis/def-use chains

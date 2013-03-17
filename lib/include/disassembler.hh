@@ -56,7 +56,7 @@ namespace po
 
 		void jump(rvalue a, guard_ptr g = guard_ptr(new guard()))
 		{
-			jumps.emplace_back(ctrans(g,a));
+			jumps.emplace_back(::std::make_pair(a,g));
 		}
 		
 		void jump(addr_t a, guard_ptr g = guard_ptr(new guard()))
@@ -71,7 +71,7 @@ namespace po
 		
 		// out
 		::std::list<po::mnemonic> mnemonics;
-		::std::list<ctrans> jumps;
+		::std::list<::std::pair<rvalue,guard_ptr>> jumps;
 		
 	private:
 		addr_t next_address;
@@ -379,11 +379,29 @@ namespace po
 	template<typename Tag>
 	void disassemble_procedure(proc_ptr proc, const disassembler<Tag> &main, ::std::vector<typename rule<Tag>::token> tokens, addr_t start)
 	{
+		assert(proc && start != naddr);
+
 		::std::set<addr_t> todo;
 		::std::map<addr_t,mnemonic> mnemonics;
 		::std::multimap<addr_t,addr_t> source, destination;
 
-		// TODO copy proc into mnemonics, source and destination
+		// copy exsisting mnemonics and jumps into tables. TODO: cache tables in proc
+		for(const bblock_ptr bb: proc->basic_blocks)
+		{
+			assert(bb);
+
+			for(const mnemonic &m: bb->mnemonics())
+			{
+				assert(m.area.size());
+				mnemonics.insert(::std::make_pair(m.area.last(),m));
+			}
+
+			for(const ctrans &ct: bb->outgoing())
+			{
+				source.insert(::std::make_pair(bb->area().last(),ct.value.constant().value()));
+				destination.insert(::std::make_pair(ct.value.constant().value(),bb->area().last()));
+			}
+		}
 
 		todo.insert(start);
 
@@ -418,11 +436,20 @@ namespace po
 						assert(mnemonics.insert(::std::make_pair(m.area.begin,m)).second);
 					}
 							
-					for(const ctrans &ct: state.jumps)
+					for(const ::std::pair<rvalue,guard_ptr> &p: state.jumps)
 					{
-						source.insert(::std::make_pair(last,ct.value.constant().value()));
-						destination.insert(::std::make_pair(ct.value.constant().value(),last));
-						todo.insert(ct.value.constant().value());
+						if(p.first.is_constant())
+						{
+							addr_t target = p.first.constant().value();
+
+							source.insert(::std::make_pair(last,target));
+							destination.insert(::std::make_pair(target,last));
+							todo.insert(target);
+						}
+						else
+						{
+							source.insert(::std::make_pair(last,naddr));
+						}
 					}
 				}
 				else
@@ -459,7 +486,26 @@ namespace po
 		
 		::std::cout << "------ new basic block ------" << ::std::endl;
 
-		auto cur_mne = mnemonics.begin();
+		auto cur_mne = mnemonics.begin(), first_mne = cur_mne;
+		::std::map<addr_t,bblock_ptr> bblocks;
+		::std::function<void(::std::map<addr_t,mnemonic>::iterator,::std::map<addr_t,mnemonic>::iterator)> make_bblock;
+		make_bblock = [&](::std::map<addr_t,mnemonic>::iterator begin,::std::map<addr_t,mnemonic>::iterator end)
+		{
+			bblock_ptr bb(new basic_block());
+
+			// copy mnemonics
+			bb->mutate_mnemonics([&](::std::vector<mnemonic> &ms) 
+			{
+				::std::for_each(begin,end,[&](const ::std::pair<addr_t,mnemonic> &p)
+				{ 
+					ms.push_back(p.second); 
+				}); 
+			});
+
+			proc->basic_blocks.insert(bb);
+			assert(bblocks.insert(::std::make_pair(bb->area().last(),bb)).second);
+		};
+
 		while(cur_mne != mnemonics.end())
 		{
 			auto next_mne = ::std::next(cur_mne);
@@ -489,11 +535,43 @@ namespace po
 					return p.second != mne.area.last();
 				});
 			
+				// construct a new basic block
 				if(new_bb)
+				{
+					make_bblock(first_mne,next_mne);
+					
+					first_mne = next_mne;
 					::std::cout << "------ new basic block ------" << ::std::endl;
+				}
+				else
+				{
+					while(sources.first != sources.second)
+						source.erase(sources.first++);
+					while(destinations.first != destinations.second)
+						destination.erase(destinations.first++);
+				}
 			}
 
 			cur_mne = next_mne;
+		}
+	
+		// last bblock
+		make_bblock(first_mne,cur_mne);
+				
+		// connect basic blocks
+		for(const ::std::pair<addr_t,addr_t> &p: source)
+		{
+			if(p.second != naddr)
+			{
+				auto from = bblocks.find(p.first), to = bblocks.lower_bound(p.second);
+
+				::std::cout << p.first << " to " << p.second << ::std::endl;
+
+				assert(from != bblocks.end());
+				assert(to != bblocks.end());
+				assert(to->second->area().begin == p.second);
+				unconditional_jump(from->second,to->second);
+			}
 		}
 
 		// pack into bb

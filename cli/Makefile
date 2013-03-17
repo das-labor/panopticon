@@ -3,7 +3,7 @@ include ../defaults.mk
 LIBS+=-lpanopticum -lboost_program_options
 INCLUDES+=-Iinclude
 HEADERS=$(wildcard include/*.hh)
-API=$(wildcard ../lib/include/*.hh)
+API=$(wildcard ../lib/include/*.hh) $(wildcard ../lib/include/avr/*.hh)
 OBJECTS=main.o avr.o turtle.o gv.o ric.o
 
 .PHONY: clean test

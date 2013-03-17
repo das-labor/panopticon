@@ -80,7 +80,7 @@ namespace po
 
 				// rename variables and compute semi-pruned SSA form
 				::std::cout << "ssa" << ::std::endl;
-				ssa(proc,dom,live);
+				//ssa(proc,dom,live);
 				
 				// simple sparse constant propagation
 				::std::cout << "sscp" << ::std::endl;
