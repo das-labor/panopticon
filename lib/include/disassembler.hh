@@ -8,6 +8,7 @@
 #include <iostream>
 #include <cassert>
 #include <vector>
+#include <algorithm>
 
 #include <architecture.hh>
 #include <code_generator.hh>
@@ -23,30 +24,24 @@ namespace po
 		typedef typename architecture_traits<Tag>::token_type token;
 		typedef typename ::std::vector<typename architecture_traits<Tag>::token_type>::iterator tokiter;
 
-		sem_state(addr_t a) : address(a), next_address(a) {};
+		sem_state(addr_t a) : address(a), next_address(a) {}
 
 		void mnemonic(size_t len, ::std::string n, ::std::string fmt = ::std::string(""), ::std::list<rvalue> ops = ::std::list<rvalue>(), ::std::function<void(code_generator<Tag>&)> fn = ::std::function<void(code_generator<Tag>&)>())
 		{
-			bblock_ptr new_bb, adj;
 			::std::list<instr> instrs;
 			code_generator<Tag> cg(inserter(instrs,instrs.end()));
 
 			if(fmt.empty())
-				fmt = accumulate(ops.begin(),ops.end(),fmt,[](const ::std::string &acc, const rvalue &x) { return acc + (acc.empty() ? "{8}" : ", {8}"); });
+				fmt = accumulate(ops.begin(),ops.end(),fmt,[](const ::std::string &acc, const rvalue &x) 
+					{ return acc + (acc.empty() ? "{8}" : ", {8}"); });
 
 			// generate instr list
-			if(fn) fn(cg);
+			if(fn) 
+				fn(cg);
 
-			if(!last)
-				last = bblock_ptr(new basic_block());
-			last->mutate_mnemonics([&](::std::vector<po::mnemonic> &ms) 
-			{ 
-				ms.emplace_back(po::mnemonic(range<addr_t>(next_address,next_address + len),n,fmt,ops.begin(),ops.end(),instrs.begin(),instrs.end())); 
-			});
-			basic_blocks.insert(last);
-		
+			mnemonics.emplace_back(po::mnemonic(range<addr_t>(next_address,next_address + len),n,fmt,ops.begin(),ops.end(),instrs.begin(),instrs.end())); 
 			next_address += len;
-		};
+		}
 
 		void mnemonic(size_t len, ::std::string n, ::std::string fmt, rvalue a, ::std::function<void(code_generator<Tag>&)> fn = ::std::function<void(code_generator<Tag>&)>())
 		{
@@ -61,14 +56,13 @@ namespace po
 
 		void jump(rvalue a, guard_ptr g = guard_ptr(new guard()))
 		{
-			assert(last && !basic_blocks.empty());
-			last->mutate_outgoing([&](::std::list<ctrans> &out) { out.emplace_back(ctrans(g,a)); });
-		};
+			jumps.emplace_back(ctrans(g,a));
+		}
 		
 		void jump(addr_t a, guard_ptr g = guard_ptr(new guard()))
 		{
 			jump(constant(a),g);
-		};
+		}
 
 		// in
 		addr_t address;
@@ -76,10 +70,10 @@ namespace po
 		::std::map< ::std::string,unsigned int> capture_groups;
 		
 		// out
-		::std::set<bblock_ptr> basic_blocks;
+		::std::list<po::mnemonic> mnemonics;
+		::std::list<ctrans> jumps;
 		
 	private:
-		bblock_ptr last;
 		addr_t next_address;
 	};
 
@@ -385,8 +379,11 @@ namespace po
 	template<typename Tag>
 	void disassemble_procedure(proc_ptr proc, const disassembler<Tag> &main, ::std::vector<typename rule<Tag>::token> tokens, addr_t start)
 	{
-		// target, source mnemonic, guard
 		::std::set<addr_t> todo;
+		::std::map<addr_t,mnemonic> mnemonics;
+		::std::multimap<addr_t,addr_t> source, destination;
+
+		// TODO copy proc into mnemonics, source and destination
 
 		todo.insert(start);
 
@@ -396,6 +393,7 @@ namespace po
 			sem_state<Tag> state(cur_addr);
 			bool ret;
 			typename rule<Tag>::tokiter i = tokens.begin();
+			auto j = mnemonics.lower_bound(cur_addr);
 		
 			todo.erase(todo.begin());
 
@@ -405,9 +403,43 @@ namespace po
 				assert(false);
 			}
 
-			advance(i,cur_addr);
-			tie(ret,i) = main.match(i,tokens.end(),state);
+			if(j == mnemonics.end() || !j->second.area.includes(cur_addr))
+			{
+				advance(i,cur_addr);
+				tie(ret,i) = main.match(i,tokens.end(),state);
 			
+				if(ret)
+				{
+					addr_t last = 0;
+
+					for(const mnemonic &m: state.mnemonics)
+					{
+						last = ::std::max(last,m.area.last());
+						assert(mnemonics.insert(::std::make_pair(m.area.begin,m)).second);
+					}
+							
+					for(const ctrans &ct: state.jumps)
+					{
+						source.insert(::std::make_pair(last,ct.value.constant().value()));
+						destination.insert(::std::make_pair(ct.value.constant().value(),last));
+						todo.insert(ct.value.constant().value());
+					}
+				}
+				else
+				{
+					::std::cerr << "Failed to match anything at " << cur_addr << ::std::endl;
+				}
+			}
+			else
+			{
+				if(j->first != cur_addr)
+				{
+					::std::cerr << "Overlapping mnemonics at " << cur_addr << " with \"" << "[" << j->second.area << "] " << j->second << "\"" << ::std::endl;
+				}
+			}
+
+			
+			/*
 			for_each(state.basic_blocks.begin(),state.basic_blocks.end(),[&](const bblock_ptr &p)
 			{
 				basic_block::out_iterator i,iend;
@@ -422,8 +454,49 @@ namespace po
 					if(!ct.bblock && ct.value.is_constant()) 
 						todo.insert(ct.value.constant().value());
 				});
-			});
+			});*/
 		}
+		
+		::std::cout << "------ new basic block ------" << ::std::endl;
+
+		auto cur_mne = mnemonics.begin();
+		while(cur_mne != mnemonics.end())
+		{
+			auto next_mne = ::std::next(cur_mne);
+			const mnemonic &mne = cur_mne->second;
+			addr_t div = mne.area.end;
+			auto sources = source.equal_range(mne.area.last());
+			auto destinations = destination.equal_range(div);
+			
+			::std::cout << mne.area << ": " << mne << ::std::endl;
+
+			if(next_mne != mnemonics.end() && mne.area.size())
+			{
+				bool new_bb;
+
+				// if next mnemonic is adjacent
+				new_bb = next_mne->first != div;
+
+				// or any following jumps aren't to adjacent mnemonics
+				new_bb |= ::std::any_of(sources.first,sources.second,[&](const ::std::pair<addr_t,addr_t> &p) 
+				{ 
+					return p.second != div; 
+				});
+				
+				// or any jumps pointing to the next that aren't from here
+				new_bb |= ::std::any_of(destinations.first,destinations.second,[&](const ::std::pair<addr_t,addr_t> &p) 
+				{ 
+					return p.second != mne.area.last();
+				});
+			
+				if(new_bb)
+					::std::cout << "------ new basic block ------" << ::std::endl;
+			}
+
+			cur_mne = next_mne;
+		}
+
+		// pack into bb
 
 		// entry may have been split
 		if(proc->entry)

@@ -69,7 +69,7 @@
 	--> Proclist insert instead of clear **DONE**
 	--> Enable CFG view **DONE**
 
-==> Merge operation
+==> Merge operation **DONE: [ABANDONED] Came up with a better algorithm**
 	--> explode() function that splits a bb into single-mnemonic bb's
 	--> simplify() function groups the the true bb's again
 	--> merge() first calls explode on all bb's that are hit by ctrans, simplify is responsible of the callee 
@@ -86,6 +86,11 @@
 ==> Datalog (Branch datalog)
 	--> support point and value
 	--> implement liveness, dominance, dependency/taint and simple alias analysis
+
+==> Finish new disassembly logic
+	--> disassemble_procedure
+	--> unit test
+	--> document
 
 ==> K-set domain for sparse constant propagation
 
