@@ -45,7 +45,7 @@ void procedure::rev_postorder(function<void(bblock_ptr bb)> fn) const
 	for_each(postorder.rbegin(),postorder.rend(),fn);
 }
 
-bblock_ptr find_bblock(proc_ptr proc, addr_t a)
+bblock_ptr po::find_bblock(proc_ptr proc, addr_t a)
 {
 	auto i = proc->basic_blocks.begin();
 
@@ -60,7 +60,7 @@ bblock_ptr find_bblock(proc_ptr proc, addr_t a)
 	return bblock_ptr(0);
 }
 
-string graphviz(proc_ptr proc)
+string po::graphviz(proc_ptr proc)
 {
 	flow_ptr f(new flowgraph());
 
@@ -68,7 +68,7 @@ string graphviz(proc_ptr proc)
 	return graphviz(f);
 }
 
-void call(proc_ptr from, proc_ptr to)
+void po::call(proc_ptr from, proc_ptr to)
 {
 	assert(from && to);
 
@@ -76,7 +76,7 @@ void call(proc_ptr from, proc_ptr to)
 	to->callers.insert(from);
 }
 
-void execute(proc_cptr proc,function<void(const lvalue &left, instr::Function fn, const vector<rvalue> &right)> f)
+void po::execute(proc_cptr proc,function<void(const lvalue &left, instr::Function fn, const vector<rvalue> &right)> f)
 {
 	for(const bblock_ptr &bb: proc->basic_blocks)
 	{

@@ -10,7 +10,7 @@
 using namespace po;
 using namespace std;
 
-dom_ptr dominance_tree(proc_ptr proc)
+dom_ptr po::dominance_tree(proc_ptr proc)
 {
 	dom_ptr ret(new dom);
 	
@@ -115,7 +115,7 @@ dom_ptr dominance_tree(proc_ptr proc)
 	return ret;
 }
 
-live_ptr liveness(proc_cptr proc)
+live_ptr po::liveness(proc_cptr proc)
 {	
 	live_ptr ret(new live());
 
@@ -190,7 +190,7 @@ live_ptr liveness(proc_cptr proc)
 	return ret;
 }
 
-void ssa(proc_ptr proc, dom_ptr dominance, live_ptr live)
+void po::ssa(proc_ptr proc, dom_ptr dominance, live_ptr live)
 {
 	set<name> globals;
 
