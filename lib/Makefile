@@ -8,7 +8,7 @@ OBJECTS=avr/until.o avr/avr.o mnemonic.o basic_block.o procedure.o flowgraph.o d
 
 .PHONY: clean test
 
-all: libpanopticum.so
+all: libpanopticum.so test
 
 libpanopticum.so: $(foreach i,$(OBJECTS),obj/$i)
 	$(LD) $(LDFLAGS) -o $@ $^
