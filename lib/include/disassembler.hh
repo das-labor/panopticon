@@ -315,6 +315,29 @@ namespace po
 		return *this;
 	}
 
+	/**
+	 * @brief Adds a token pattern.
+	 * A token pattern is a string describing a token as a seqence of bits. Simple patters
+	 * consist of "0" and "1". The pattern "01101100" matches a token with value 108 decimal.
+	 * Token patterns can include "." which match both 0 and 1 bits. The pattern "00.." matches
+	 * 0, 1, 2 and 3 decimal. 
+	 * To get the concrete values of the bits matched with "." a capture group can be used. 
+	 * Each group has a name and an associated range of "." signs. The pattern "a@..." definies
+	 * the capture group "a" holding the value of the three lower bits the @ sign divides group
+	 * name and sub pattern. If a capture group occurs more than once in a pattern, its bits 
+	 * are concatenated in the order the show up in the pattern. The pattern "a@..0a@.." matches
+	 * all tokens with the 3rd bit set to zero. The contents of a for token with value 01011 
+	 * would be 0111. The name of a capture group can only include upper and lower case letters.
+	 * Empty capture groups ("a@") are allowed.
+	 * Token patterns that are shorter than the token are left-extended with zeros. If the pattern
+	 * is too wide a tokpat_error is thrown.
+	 *
+	 * @param c Token pattern formatted as above
+	 * @returns self
+	 * @throws tokpat_error On invalid token pattern
+	 *
+	 * @todo Make sure an exception is thrown if an invalid token pattern is feed into the function.
+	 */
 	template<typename Tag>
 	disassembler<Tag> &disassembler<Tag>::operator|(const char *c)
 	{
