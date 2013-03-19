@@ -1,0 +1,13 @@
+*.o
+cli/panop
+lib/libpanopticum.so
+lib/obj/*.o
+lib/obj/avr/*.o
+qt/obj
+cli/obj/*.o
+*.swp
+lib/test/test
+qt/Makefile
+lib/.ycm_extra_conf.pyc
+doc/api
+qt/panopticum
