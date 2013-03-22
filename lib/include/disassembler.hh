@@ -41,6 +41,8 @@
  * The disassembler interprets a token stream. A token is a instance of a unsigned integer us arbitrary width. To
  * define it a specialization of the architecture_traits<> template is needed. All subclasses of rule are
  * parameterized with a type tag for architecture_traits.
+ *
+ * @todo The whole file leaks memory as fuck. Switch to shared_ptr.
  */
 
 namespace po
@@ -128,6 +130,8 @@ namespace po
 		typedef typename architecture_traits<Tag>::token_type token;
 		typedef typename std::vector<typename architecture_traits<Tag>::token_type>::iterator tokiter;
 
+		virtual ~rule(void);
+
 		// returns pair<is successful?,next token to consume>
 		virtual std::pair<bool,tokiter> match(tokiter begin, tokiter end, sem_state<Tag> &state) const = 0;
 	};
@@ -137,7 +141,6 @@ namespace po
 	{
 	public:
 		action(std::function<void(sem_state<Tag>&)> &f);
-		virtual ~action(void);
 
 		// returns pair<is successful?,next token to consume>
 		virtual std::pair<bool,typename rule<Tag>::tokiter> match(typename rule<Tag>::tokiter begin, typename rule<Tag>::tokiter end, sem_state<Tag> &state) const;
@@ -278,10 +281,6 @@ namespace po
 	: semantic_action(f) 
 	{}
 
-	template<typename Tag>
-	action<Tag>::~action(void)
-	{}
-
 	// returns pair<is successful?,next token to consume>
 	template<typename Tag>
 	std::pair<bool,typename rule<Tag>::tokiter> action<Tag>::match(typename rule<Tag>::tokiter begin, typename rule<Tag>::tokiter end, sem_state<Tag> &state) const
@@ -290,6 +289,10 @@ namespace po
 			semantic_action(state);
 		return std::make_pair(true,begin);
 	}
+
+	template<typename Tag>
+	rule<Tag>::~rule<Tag>(void)
+	{}
 
 	template<typename Tag>
 	tokpat<Tag>::tokpat(typename rule<Tag>::token m, typename rule<Tag>::token pat, std::map< std::string,typename rule<Tag>::token> &cg)
