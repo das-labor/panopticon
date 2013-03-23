@@ -10,6 +10,7 @@
 #include <vector>
 #include <algorithm>
 #include <stdexcept>
+#include <memory>
 
 #include <architecture.hh>
 #include <code_generator.hh>
@@ -123,6 +124,12 @@ namespace po
 		addr_t next_address;
 	};
 
+	/**
+	 * @brief Base of all parsing rules in a disassembler instance.
+	 *
+	 * Subclasses are required to implement @c match that consumes a part of
+	 * the token stream.
+	 */
 	template<typename Tag>
 	class rule
 	{ 
@@ -132,27 +139,61 @@ namespace po
 
 		virtual ~rule(void);
 
-		// returns pair<is successful?,next token to consume>
+		/**
+		 * Apply this rule on the token stream delimited by @c begin and @c end, 
+		 * using @c state to pass information to subsequent rules.
+		 * @returns A pair with the first field true if the rule was successful and the second set to an iterator pointing to the next token to read by the next rules.
+		 */
 		virtual std::pair<bool,tokiter> match(tokiter begin, tokiter end, sem_state<Tag> &state) const = 0;
 	};
 
 	template<typename Tag>
+	using rule_ptr = std::shared_ptr<rule<Tag>>;
+
+	/**
+	 * @brief Semantic action
+	 *
+	 * This class finished a rule sequence by calling a user-definied 
+	 * function to carry out the translation of a matched token range to mnemonics.
+	 */ 
+	template<typename Tag>
 	class action : public rule<Tag>
 	{
 	public:
+		/// @param f Function to be called if this rule is tried to match.
 		action(std::function<void(sem_state<Tag>&)> &f);
 
-		// returns pair<is successful?,next token to consume>
+		virtual ~action(void);
+
+		/**
+		 * Calls the user-definied function.
+		 * @returns Always success, iterator pointing to @c end.
+		 */
 		virtual std::pair<bool,typename rule<Tag>::tokiter> match(typename rule<Tag>::tokiter begin, typename rule<Tag>::tokiter end, sem_state<Tag> &state) const;
 
 		std::function<void(sem_state<Tag>&)> semantic_action;
 	};
 
+	/**
+	 * @brief Matches a pattern of bits in a token
+	 *
+	 * This rule implements token patterns build either with strings or literal integers
+	 */
 	template<typename Tag>
 	class tokpat : public rule<Tag>
 	{
 	public: 	
+		/**
+		 * Constructs a new tokpa rule.
+		 * @param m Token value to match.
+		 * @param pat Bits to mask before comparing a candidate token to @c m. Used to realize match-all sequences like "10...".
+		 * @param cg Capture groups. Key is the group name, value a bit mask describing the bits to save in the group.
+		 */
 		tokpat(typename rule<Tag>::token m, typename rule<Tag>::token pat, std::map< std::string,typename rule<Tag>::token> &cg);
+
+		virtual ~tokpat(void);
+
+		/// Matches one or no token.
 		virtual std::pair<bool,typename rule<Tag>::tokiter> match(typename rule<Tag>::tokiter begin, typename rule<Tag>::tokiter end, sem_state<Tag> &state) const;
 
 	private:
@@ -161,32 +202,62 @@ namespace po
 		std::map< std::string,typename rule<Tag>::token> capture_patterns;
 	};
 
+	/**
+	 * @brief OR rule
+	 * 
+	 * Tries a number of rules until one matches and returns its result.
+	 */
 	template<typename Tag>
 	class disjunction : public rule<Tag>
 	{
 	public:
+		virtual ~disjunction(void);
+
+		/// Runs all rules with the supplied arguments and returns the result of the first successful rule.
 		virtual std::pair<bool,typename rule<Tag>::tokiter> match(typename rule<Tag>::tokiter begin, typename rule<Tag>::tokiter end, sem_state<Tag> &state) const;
-		void chain(rule<Tag> *r);
+
+		/// Append the rule @c r to the end of the list of rules to run if @c match is called.
+		void chain(rule_ptr<Tag> r);
 						
 	private:
-		std::list<rule<Tag> *> patterns;
+		std::list<rule_ptr<Tag> > patterns;
 	};
 
+	/**
+	 * @brief AND rule
+	 *
+	 * An instance of this class is constructed from two other rules. 
+	 * The result of the first is put in the second on if the first is 
+	 * successful. The result of the second is returned.
+	 */
 	template<typename Tag>
 	class conjunction : public rule<Tag>
 	{
 	public:
-		conjunction(rule<Tag> *a, rule<Tag> *b);
+		/// Construct a new instance using @c a and @c b as first and second rule to run.
+		conjunction(rule_ptr<Tag> a, rule_ptr<Tag> b);
+		
+		virtual ~conjunction(void);
+
+		/**
+		 * Runs the first rule with the supplied arguments if it is successful the second 
+		 * rule is run with that result of the first as arguments. The result of this 
+		 * second rule is returned. If the first rule fails its result is returned.
+		 */
 		virtual std::pair<bool,typename rule<Tag>::tokiter> match(typename rule<Tag>::tokiter begin, typename rule<Tag>::tokiter end, sem_state<Tag> &state) const;
 		
 	private:
-		rule<Tag> *first, *second;
+		rule_ptr<Tag> first, second;
 	};
 
 	/**
 	 * @brief Thrown by disassembler to signal an invalid token pattern
 	 */
-	class tokpat_error : public std::invalid_argument {};
+	class tokpat_error : public std::invalid_argument
+	{
+	public:
+		tokpat_error(void);
+	};
 
 	/**
 	 * @brief Disassembles byte sequences into a stream of mnemonics.
@@ -213,6 +284,8 @@ namespace po
 	public:
 		/// Constructs a disassembler with empty ruleset matching nothing.
 		disassembler(void);
+
+		virtual ~disassembler(void);
 
 		/**
 		 * Sets the function of the rule constructed last to @c f and starts a new rule.
@@ -269,16 +342,20 @@ namespace po
 		virtual std::pair<bool,typename rule<Tag>::tokiter> match(typename rule<Tag>::tokiter begin, typename rule<Tag>::tokiter end, sem_state<Tag> &state) const;
 	
 	protected:
-		void append(rule<Tag> *r);
+		void append(rule_ptr<Tag> r);
 
 	private:
-		rule<Tag> *current;
-		action<Tag> *failsafe;
+		rule_ptr<Tag> current;
+		std::shared_ptr<action<Tag>> failsafe;
 	};
 
 	template<typename Tag>
 	action<Tag>::action(std::function<void(sem_state<Tag>&)> &f)
 	: semantic_action(f) 
+	{}
+
+	template<typename Tag>
+	action<Tag>::~action(void)
 	{}
 
 	// returns pair<is successful?,next token to consume>
@@ -292,6 +369,10 @@ namespace po
 
 	template<typename Tag>
 	rule<Tag>::~rule<Tag>(void)
+	{}
+
+	template<typename Tag>
+	tokpat<Tag>::~tokpat(void)
 	{}
 
 	template<typename Tag>
@@ -389,6 +470,10 @@ namespace po
 	{
 		jump(constant(a),g);
 	}
+	
+	template<typename Tag>
+	disjunction<Tag>::~disjunction(void)
+	{}
 
 	template<typename Tag>
 	std::pair<bool,typename rule<Tag>::tokiter> disjunction<Tag>::match(typename rule<Tag>::tokiter begin, typename rule<Tag>::tokiter end, sem_state<Tag> &state) const
@@ -409,17 +494,21 @@ namespace po
 	}
 
 	template<typename Tag>
-	void disjunction<Tag>::chain(rule<Tag> *r)
+	void disjunction<Tag>::chain(rule_ptr<Tag> r)
 	{
 		patterns.push_back(r);
 	}
 
 	template<typename Tag>
-	conjunction<Tag>::conjunction(rule<Tag> *a, rule<Tag> *b)
+	conjunction<Tag>::conjunction(rule_ptr<Tag> a, rule_ptr<Tag> b)
 	: first(a), second(b) 
 	{ 
 		assert(a && b);	
 	}
+	
+	template<typename Tag>
+	conjunction<Tag>::~conjunction(void)
+	{}
 
 	template<typename Tag>
 	std::pair<bool,typename rule<Tag>::tokiter> conjunction<Tag>::match(typename rule<Tag>::tokiter begin, typename rule<Tag>::tokiter end, sem_state<Tag> &state) const
@@ -439,20 +528,22 @@ namespace po
 	disassembler<Tag>::disassembler(void)
 	: current(0), failsafe(0)
 	{}
+	
+	template<typename Tag>
+	disassembler<Tag>::~disassembler(void)
+	{}
 
 	template<typename Tag>
 	disassembler<Tag> &disassembler<Tag>::operator=(std::function<void(sem_state<Tag>&)> f)
 	{
 		if(this->current)
 		{
-			this->chain(new conjunction<Tag>(current,new action<Tag>(f)));
+			this->chain(rule_ptr<Tag>(new conjunction<Tag>(current,rule_ptr<Tag>(new action<Tag>(f)))));
 			this->current = 0;
 		}
 		else
 		{
-			if(this->failsafe)
-				delete this->failsafe;
-			this->failsafe = new action<Tag>(f);
+			this->failsafe = std::shared_ptr<action<Tag>>(new action<Tag>(f));
 		}
 			
 		return *this;
@@ -462,7 +553,7 @@ namespace po
 	disassembler<Tag> &disassembler<Tag>::operator|(typename rule<Tag>::token i)
 	{
 		std::map< std::string,typename rule<Tag>::token> cgs;
-		append(new tokpat<Tag>(~((typename rule<Tag>::token)0),i,cgs));
+		append(rule_ptr<Tag>(new tokpat<Tag>(~((typename rule<Tag>::token)0),i,cgs)));
 		return *this;
 	}
 
@@ -563,24 +654,24 @@ namespace po
 		if(bit < -1)
 			throw tokpat_error();
 
-		append(new tokpat<Tag>(mask,pattern,cgs));
+		append(rule_ptr<Tag>(new tokpat<Tag>(mask,pattern,cgs)));
 		return *this;
 	}
 
 	template<typename Tag>
 	disassembler<Tag> &disassembler<Tag>::operator|(disassembler<Tag> &dec)
 	{
-		append(&dec);
+		append(rule_ptr<Tag>(&dec,[](disassembler *) {}));
 		return *this;
 	}
 
 	template<typename Tag>
-	void disassembler<Tag>::append(rule<Tag> *r)
+	void disassembler<Tag>::append(rule_ptr<Tag> r)
 	{
 		if(!current)
 			current = r;
 		else
-			current = new conjunction<Tag>(current,r);
+			current = rule_ptr<Tag>(new conjunction<Tag>(current,r));
 	}
 	
 	template<typename Tag>
