@@ -21,18 +21,19 @@ namespace po
 	template<typename T>
 	struct range
 	{
-		range(void) { begin = end; };
-		range(T b, T e) : begin(b), end(e) { assert(begin <= end); };
+		range(void) { begin = end = 0; }
+		range(T b) : begin(b), end(b) {}
+		range(T b, T e) : begin(b), end(e) { assert(begin <= end); }
 
-		size_t size(void) const { return end - begin; };
-		bool includes(const range<T> &a) const { return size() && a.size() && begin <= a.begin && end > a.end; };
-		bool includes(T a) const { return size() && begin <= a && end > a; };
-		bool overlap(const range<T> &a) const { return size() && a.size() && !(begin >= a.end || end <= a.begin); };
-		T last(void) const { return size() ? end - 1 : begin; };
+		size_t size(void) const { return end - begin; }
+		bool includes(const range<T> &a) const { return size() && a.size() && begin <= a.begin && end > a.end; }
+		bool includes(T a) const { return size() && begin <= a && end > a; }
+		bool overlap(const range<T> &a) const { return size() && a.size() && !(begin >= a.end || end <= a.begin); }
+		T last(void) const { return size() ? end - 1 : begin; }
 		
-		bool operator==(const range<T> &b) const { return size() == b.size() && (!size() || (begin == b.begin && end == b.end)); };
-		bool operator!=(const range<T> &b) const { return !(*this == b); };
-		bool operator<(const range<T> &b) const { return begin < b.begin; };
+		bool operator==(const range<T> &b) const { return size() == b.size() && (!size() || (begin == b.begin && end == b.end)); }
+		bool operator!=(const range<T> &b) const { return !(*this == b); }
+		bool operator<(const range<T> &b) const { return begin < b.begin; }
 
 		T begin;
 		T end;
