@@ -3,14 +3,13 @@ include ../../defaults.mk
 LIBS+=-lcppunit -lpanopticum
 
 API=$(wildcard ../include/*.hh) $(wildcard ../include/avr/*.hh)
-TESTS=$(wildcard *.hh)
-TESTS=test_codegenerator.hh
+TESTS=$(wildcard test_*.hh)
 
 .PHONY: clean
 
-all: test
+all: runtests
 
-test: test.cc $(API) $(TESTS)
+runtests: runtests.cc $(API) $(TESTS)
 	$(CXX) $(CXXARGS) $(INCLUDES) $(LDFLAGS) $(LIBS) -o $@ $<
 
 clean:
