@@ -8,9 +8,9 @@
 
 #include "test_architecture.hh"
 
-class CodeGeneratorTest : public CppUnit::TestFixture
+class DisassemblerTest : public CppUnit::TestFixture
 {
-	CPPUNIT_TEST_SUITE(CodeGeneratorTest);
+	CPPUNIT_TEST_SUITE(DisassemblerTest);
 	CPPUNIT_TEST(testSingle);
 	CPPUNIT_TEST(testSub);
 	CPPUNIT_TEST(testSlice);
