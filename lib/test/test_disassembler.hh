@@ -3,41 +3,10 @@
 #include <iterator>
 
 #include <cppunit/extensions/HelperMacros.h>
+
 #include <disassembler.hh>
 
-using namespace po;
-using namespace std;
-
-struct test_tag {};
-unsigned int ununsed = 0;
-vector<string> regs({"a","b","c","d"});
-
-template<>
-struct architecture_traits<test_tag>
-{
-	typedef char token_type;
-};
-
-namespace po
-{
-	template<>
-	lvalue temporary(test_tag)
-	{
-		return variable("t" + to_string(ununsed++),16);
-	}
-
-	template<>
-	const vector<string> &registers(test_tag)
-	{
-		return regs;
-	}
-
-	template<>
-	uint8_t width(string n, test_tag)
-	{
-		return 8;
-	}
-};
+#include "test_architecture.hh"
 
 class CodeGeneratorTest : public CppUnit::TestFixture
 {
@@ -56,8 +25,8 @@ class CodeGeneratorTest : public CppUnit::TestFixture
 	CPPUNIT_TEST_SUITE_END();
 
 public:
-	typedef sem_state<test_tag>& ss;
-	typedef code_generator<test_tag>& cg;
+	typedef po::sem_state<test_tag>& ss;
+	typedef po::code_generator<test_tag>& cg;
 
 	void setUp(void)
 	{
@@ -93,15 +62,10 @@ public:
 		bytes = {'A','A','B','A','C','X'};
 	}
 
-	void tearDown(void)
-	{
-		return;
-	}
-
 	void testSingle(void)
 	{
-		sem_state<test_tag> st(0);
-		vector<char>::iterator i;
+		po::sem_state<test_tag> st(0);
+		std::vector<unsigned char>::iterator i;
 		bool ret;
 
 		tie(ret,i) = main.match(bytes.begin(),bytes.end(),st);
@@ -113,8 +77,8 @@ public:
 		CPPUNIT_ASSERT(st.tokens[0] == 'A');
 		CPPUNIT_ASSERT(st.capture_groups.size() == 0);
 		CPPUNIT_ASSERT(st.mnemonics.size() == 1);	
-		CPPUNIT_ASSERT(st.mnemonics.front().opcode == string("A"));	
-		CPPUNIT_ASSERT(st.mnemonics.front().area == range<addr_t>(0,1));	
+		CPPUNIT_ASSERT(st.mnemonics.front().opcode == std::string("A"));	
+		CPPUNIT_ASSERT(st.mnemonics.front().area == po::range<po::addr_t>(0,1));	
 		CPPUNIT_ASSERT(st.mnemonics.front().instructions.empty());	
 		CPPUNIT_ASSERT(st.jumps.size() == 1);
 		CPPUNIT_ASSERT(st.jumps.front().first.is_constant());
@@ -124,8 +88,8 @@ public:
 
 	void testSub(void)
 	{
-		sem_state<test_tag> st(1);
-		vector<char>::iterator i;
+		po::sem_state<test_tag> st(1);
+		std::vector<unsigned char>::iterator i;
 		bool ret;
 
 		tie(ret,i) = main.match(next(bytes.begin()),bytes.end(),st);
@@ -138,8 +102,8 @@ public:
 		CPPUNIT_ASSERT(st.tokens[1] == 'B');
 		CPPUNIT_ASSERT(st.capture_groups.size() == 0);
 		CPPUNIT_ASSERT(st.mnemonics.size() == 1);	
-		CPPUNIT_ASSERT(st.mnemonics.front().opcode == string("BA"));	
-		CPPUNIT_ASSERT(st.mnemonics.front().area == range<addr_t>(1,3));	
+		CPPUNIT_ASSERT(st.mnemonics.front().opcode == std::string("BA"));	
+		CPPUNIT_ASSERT(st.mnemonics.front().area == po::range<po::addr_t>(1,3));	
 		CPPUNIT_ASSERT(st.mnemonics.front().instructions.empty());	
 		CPPUNIT_ASSERT(st.jumps.size() == 1);
 		CPPUNIT_ASSERT(st.jumps.front().first.is_constant());
@@ -149,8 +113,8 @@ public:
 
 	void testDefault(void)
 	{
-		sem_state<test_tag> st(5);
-		vector<char>::iterator i;
+		po::sem_state<test_tag> st(5);
+		std::vector<unsigned char>::iterator i;
 		bool ret;
 
 		tie(ret,i) = main.match(next(bytes.begin(),5),bytes.end(),st);
@@ -162,8 +126,8 @@ public:
 		CPPUNIT_ASSERT(st.tokens[0] == 'X');
 		CPPUNIT_ASSERT(st.capture_groups.size() == 0);
 		CPPUNIT_ASSERT(st.mnemonics.size() == 1);	
-		CPPUNIT_ASSERT(st.mnemonics.front().opcode == string("UNK"));	
-		CPPUNIT_ASSERT(st.mnemonics.front().area == range<addr_t>(5,6));	
+		CPPUNIT_ASSERT(st.mnemonics.front().opcode == std::string("UNK"));	
+		CPPUNIT_ASSERT(st.mnemonics.front().area == po::range<po::addr_t>(5,6));	
 		CPPUNIT_ASSERT(st.mnemonics.front().instructions.empty());	
 		CPPUNIT_ASSERT(st.jumps.size() == 1);
 		CPPUNIT_ASSERT(st.jumps.front().first.is_constant());
@@ -173,8 +137,8 @@ public:
 
 	void testSlice(void)
 	{
-		sem_state<test_tag> st(1);
-		vector<char>::iterator i;
+		po::sem_state<test_tag> st(1);
+		std::vector<unsigned char>::iterator i;
 		bool ret;
 
 		tie(ret,i) = main.match(next(bytes.begin()),next(bytes.begin(),2),st);
@@ -186,8 +150,8 @@ public:
 		CPPUNIT_ASSERT(st.tokens[0] == 'A');
 		CPPUNIT_ASSERT(st.capture_groups.size() == 0);
 		CPPUNIT_ASSERT(st.mnemonics.size() == 1);	
-		CPPUNIT_ASSERT(st.mnemonics.front().opcode == string("A"));	
-		CPPUNIT_ASSERT(st.mnemonics.front().area == range<addr_t>(1,2));	
+		CPPUNIT_ASSERT(st.mnemonics.front().opcode == std::string("A"));	
+		CPPUNIT_ASSERT(st.mnemonics.front().area == po::range<po::addr_t>(1,2));	
 		CPPUNIT_ASSERT(st.mnemonics.front().instructions.empty());	
 		CPPUNIT_ASSERT(st.jumps.size() == 1);
 		CPPUNIT_ASSERT(st.jumps.front().first.is_constant());
@@ -197,8 +161,8 @@ public:
 
 	void testEmpty(void)
 	{
-		sem_state<test_tag> st(0);
-		vector<char>::iterator i;
+		po::sem_state<test_tag> st(0);
+		std::vector<unsigned char>::iterator i;
 		bool ret;
 
 		tie(ret,i) = main.match(bytes.begin(),bytes.begin(),st);
@@ -214,8 +178,8 @@ public:
 
 	void testCapGroup(void)
 	{
-		sem_state<test_tag> st(4);
-		vector<char>::iterator i;
+		po::sem_state<test_tag> st(4);
+		std::vector<unsigned char>::iterator i;
 		bool ret;
 
 		tie(ret,i) = main.match(next(bytes.begin(),4),bytes.end(),st);
@@ -229,8 +193,8 @@ public:
 		CPPUNIT_ASSERT(st.capture_groups.count("k") == 1);
 		CPPUNIT_ASSERT(st.capture_groups["k"] == 16);
 		CPPUNIT_ASSERT(st.mnemonics.size() == 1);
-		CPPUNIT_ASSERT(st.mnemonics.front().opcode == string("C"));	
-		CPPUNIT_ASSERT(st.mnemonics.front().area == range<addr_t>(4,5));	
+		CPPUNIT_ASSERT(st.mnemonics.front().opcode == std::string("C"));	
+		CPPUNIT_ASSERT(st.mnemonics.front().area == po::range<po::addr_t>(4,5));	
 		CPPUNIT_ASSERT(st.mnemonics.front().instructions.empty());	
 		CPPUNIT_ASSERT(st.jumps.size() == 1);
 		CPPUNIT_ASSERT(st.jumps.front().first.is_constant());
@@ -240,11 +204,11 @@ public:
 	
 	void testEmptyCapGroup(void)
 	{
-		sem_state<test_tag> st(0);
-		vector<char> buf({127});
-		vector<char>::iterator i;
+		po::sem_state<test_tag> st(0);
+		std::vector<unsigned char> buf({127});
+		std::vector<unsigned char>::iterator i;
 		bool ret;
-		disassembler<test_tag> dec;
+		po::disassembler<test_tag> dec;
 
 		dec | "01 a@.. 1 b@ c@..." = [](ss s) { s.mnemonic(1,"1"); };
 
@@ -263,39 +227,35 @@ public:
 		CPPUNIT_ASSERT(st.capture_groups["b"] == 0);
 		CPPUNIT_ASSERT(st.capture_groups["c"] == 7);
 		CPPUNIT_ASSERT(st.mnemonics.size() == 1);
-		CPPUNIT_ASSERT(st.mnemonics.front().opcode == string("1"));	
-		CPPUNIT_ASSERT(st.mnemonics.front().area == range<addr_t>(0,1));	
+		CPPUNIT_ASSERT(st.mnemonics.front().opcode == std::string("1"));	
+		CPPUNIT_ASSERT(st.mnemonics.front().area == po::range<po::addr_t>(0,1));	
 		CPPUNIT_ASSERT(st.mnemonics.front().instructions.empty());	
 		CPPUNIT_ASSERT(st.jumps.size() == 0);
 	}
 
 	void testTooLongCapGroup(void)
 	{
-		sem_state<test_tag> st(0);
-		vector<char> buf({127});
-		disassembler<test_tag> dec;
+		po::sem_state<test_tag> st(0);
+		std::vector<unsigned char> buf({127});
+		po::disassembler<test_tag> dec;
 
-		dec | "k@........." = [](ss s) {};
-
-		CPPUNIT_ASSERT(!dec.match(buf.begin(),buf.end(),st).first);
+		CPPUNIT_ASSERT_THROW(dec | "k@........." = [](ss s) {};,po::tokpat_error);
 	}
 
 	void testTooLongTokPat(void)
 	{
-		sem_state<test_tag> st(0);
-		vector<char> buf({127});
-		disassembler<test_tag> dec;
+		po::sem_state<test_tag> st(0);
+		std::vector<unsigned char> buf({127});
+		po::disassembler<test_tag> dec;
 
-		dec | "111111111" = [](ss s) {};
-
-		CPPUNIT_ASSERT(dec.match(buf.begin(),buf.end(),st).first);
+		CPPUNIT_ASSERT_THROW(dec | "111111111" = [](ss s) {};,po::tokpat_error);
 	}
 
 	void testTooShortTokPat(void)
 	{
-		sem_state<test_tag> st(0);
-		vector<char> buf({127});
-		disassembler<test_tag> dec;
+		po::sem_state<test_tag> st(0);
+		std::vector<unsigned char> buf({127});
+		po::disassembler<test_tag> dec;
 
 		dec | "1111111" = [](ss s) {};
 
@@ -304,16 +264,14 @@ public:
 
 	void testInvalidTokPat(void)
 	{
-		sem_state<test_tag> st(0);
-		vector<char> buf({127});
-		disassembler<test_tag> dec;
+		po::sem_state<test_tag> st(0);
+		std::vector<unsigned char> buf({127});
+		po::disassembler<test_tag> dec;
 
-		dec | "a111111" = [](ss s) {};
-
-		CPPUNIT_ASSERT(dec.match(buf.begin(),buf.end(),st).first);
+		CPPUNIT_ASSERT_THROW(dec | "a111111" = [](ss s) {};,po::tokpat_error);
 	}
 
 private:
-	disassembler<test_tag> main, sub;
-	vector<char> bytes;
+	po::disassembler<test_tag> main, sub;
+	std::vector<unsigned char> bytes;
 };

@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <stdexcept>
 #include <memory>
+#include <type_traits>
 
 #include <architecture.hh>
 #include <code_generator.hh>
@@ -256,7 +257,7 @@ namespace po
 	class tokpat_error : public std::invalid_argument
 	{
 	public:
-		tokpat_error(void);
+		tokpat_error(std::string w = std::string("invalid token pattern"));
 	};
 
 	/**
@@ -281,6 +282,8 @@ namespace po
 	template<typename Tag>
 	class disassembler : public disjunction<Tag>
 	{
+		static_assert(std::is_unsigned<typename architecture_traits<Tag>::token_type>::value,"token_type type in architecture_traits must be an unsigned integer");
+	
 	public:
 		/// Constructs a disassembler with empty ruleset matching nothing.
 		disassembler(void);
@@ -594,8 +597,7 @@ namespace po
 					}
 					else
 					{
-						std::cout << "invalid pattern at column " << (int)(p - c) << " '" << c << "'" << std::endl;
-						assert(false);
+						throw tokpat_error("invalid pattern at column " + std::to_string(p - c) + " '" + std::string(c) + "'");
 					}
 
 					break;
@@ -619,8 +621,7 @@ namespace po
 					}
 					else
 					{
-						std::cout << "invalid pattern at column " << (int)(p-c) << " '" << c << "'" << std::endl;
-						assert(false);
+						throw tokpat_error("invalid pattern at column " + std::to_string(p - c) + " '" + std::string(c) + "'");
 					}
 					break;
 				}
@@ -630,7 +631,8 @@ namespace po
 				{
 					if(*p == '.')
 					{
-						assert(cg_mask);
+						if(!cg_mask)
+							throw tokpat_error();
 						
 						*cg_mask |= 1 << bit;
 						--bit;
@@ -645,14 +647,26 @@ namespace po
 
 				default:
 				{
-					std::cout << "invalid pattern at column " << (int)(p-c) << " '" << c << "'" << std::endl;
-					assert(false);
+					throw tokpat_error("invalid pattern at column " + std::to_string(p-c) + " '" + std::string(c) + "'");
 				}
 			}
 		}
 		
-		if(bit < -1)
+		if(*p != 0)
 			throw tokpat_error();
+
+		// left extend a too short token pattern with zeros
+		if(bit > -1)
+		{
+			int tshift = sizeof(typename rule<Tag>::token) * 8 - bit - 1, mshift = bit + 1;
+			typename rule<Tag>::token t = 0;
+			
+			while(bit-- > -1)
+				t = (t << 1) | 1;
+			
+			mask = (mask >> mshift) | (t << tshift);
+			pattern = pattern >> mshift;
+		}
 
 		append(rule_ptr<Tag>(new tokpat<Tag>(mask,pattern,cgs)));
 		return *this;
