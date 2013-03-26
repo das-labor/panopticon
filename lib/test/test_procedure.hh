@@ -130,7 +130,7 @@ public:
 		CPPUNIT_ASSERT(bb->outgoing().front().bblock == 0);
 		CPPUNIT_ASSERT(bb->outgoing().front().guard->relations.empty());
 		CPPUNIT_ASSERT(bb->outgoing().front().value.is_constant());
-		CPPUNIT_ASSERT(bb->outgoing().front().value.constant().value() == 6);
+		CPPUNIT_ASSERT(bb->outgoing().front().value.constant().content() == 6);
 		CPPUNIT_ASSERT(bb->area() == po::range<po::addr_t>(0,6));
 		CPPUNIT_ASSERT(bb == proc->entry);
 		CPPUNIT_ASSERT(proc->callees.size() == 0);
@@ -337,12 +337,12 @@ public:
 
 		bb0->mutate_incoming([&](std::list<po::ctrans> &in)
 		{
-			in.push_back(po::ctrans(po::guard_ptr(new po::guard()),po::constant(42)));
+			in.push_back(po::ctrans(po::guard_ptr(new po::guard()),po::constant(42,32)));
 		});
 
 		bb2->mutate_outgoing([&](std::list<po::ctrans> &out)
 		{
-			out.push_back(po::ctrans(po::guard_ptr(new po::guard()),po::constant(40)));
+			out.push_back(po::ctrans(po::guard_ptr(new po::guard()),po::constant(40,32)));
 		});
 
 		po::unconditional_jump(bb0,bb1);
@@ -433,8 +433,8 @@ public:
 		check(bbo3->mnemonics()[1],"test41",41);
 		check(bbo3->mnemonics()[2],"test42",42);
 		CPPUNIT_ASSERT(bbo3->outgoing().size() == 2);
-		CPPUNIT_ASSERT(bbo3->outgoing().begin()->bblock == bbo0 || bbo3->outgoing().begin()->value.constant().value() == 55);
-		CPPUNIT_ASSERT(std::next(bbo3->outgoing().begin())->bblock == bbo0 || std::next(bbo3->outgoing().begin())->value.constant().value() == 55);
+		CPPUNIT_ASSERT(bbo3->outgoing().begin()->bblock == bbo0 || bbo3->outgoing().begin()->value.constant().content() == 55);
+		CPPUNIT_ASSERT(std::next(bbo3->outgoing().begin())->bblock == bbo0 || std::next(bbo3->outgoing().begin())->value.constant().content() == 55);
 
 		CPPUNIT_ASSERT(proc->entry == bbo0);
 	}
@@ -454,7 +454,7 @@ public:
 		
 		bb0->mutate_outgoing([&](std::list<po::ctrans> &out)
 		{
-			out.push_back(po::ctrans(po::guard_ptr(new po::guard()),po::constant(2)));
+			out.push_back(po::ctrans(po::guard_ptr(new po::guard()),po::constant(2,32)));
 		});
 
 		proc->basic_blocks.insert(bb0);

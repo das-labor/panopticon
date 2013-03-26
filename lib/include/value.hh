@@ -6,11 +6,14 @@
 #include <cstdint>
 #include <cassert>
 
+#include <string.h>
+
 namespace po
 {
 	class rvalue;
 	class constant;
 	class undefined;
+	class lvalue;
 	class variable;
 	class memory;
 
@@ -47,7 +50,7 @@ namespace po
 		const class variable &variable(void) const;
 		const class memory &memory(void) const;
 
-		template<class> friend struct ::std::hash;
+		template<class> friend struct std::hash;
 
 	protected:
 		union
@@ -58,7 +61,7 @@ namespace po
 		} d;
 	};
 
-	::std::ostream& operator<<(::std::ostream &os, const po::rvalue &r);
+	std::ostream& operator<<(std::ostream &os, const po::rvalue &r);
 	
 	static_assert(alignof(class rvalue) >= 4,"need class alignment of 4 for pointer tagging");
 	static_assert(sizeof(class rvalue) == 8,"rvalue should not be larger than one register");
@@ -67,8 +70,18 @@ namespace po
 	class constant : public rvalue
 	{
 	public:
-		constant(uint32_t v);
-		uint64_t value(void) const;
+		constant(uint64_t v, uint16_t w);
+		
+		uint16_t width(void) const;
+		uint64_t content(void) const;
+	};
+
+	// internal
+	struct constant_priv
+	{
+		unsigned int usage;
+		uint64_t content;
+		uint16_t width;
 	};
 
 	class lvalue : public rvalue {};
@@ -77,11 +90,11 @@ namespace po
 	class variable : public lvalue
 	{
 	public:
-		variable(::std::string n, int s = -1, uint8_t w = 0);
+		variable(std::string n, uint16_t w, int s = -1);
 
-		::std::string name(void) const;
+		uint16_t width(void) const;
+		std::string name(void) const;
 		int subscript(void) const;
-		uint8_t width(void) const;
 	};
 
 	class memory : public lvalue
@@ -94,12 +107,12 @@ namespace po
 			BigEndian = 2
 		};
 
-		memory(rvalue o, unsigned int w, Endianess e, ::std::string n);
+		memory(rvalue o, uint16_t b, Endianess e, std::string n);
 
+		uint16_t bytes(void) const;
 		const rvalue &offset(void) const;
-		unsigned int bytes(void) const;
 		Endianess endianess(void) const;
-		const ::std::string &name(void) const;
+		const std::string &name(void) const;
 	};
 
 	// internal
@@ -107,9 +120,9 @@ namespace po
 	{
 		unsigned int usage;
 		rvalue offset;
-		unsigned int bytes;
+		uint16_t bytes;
 		memory::Endianess endianess;
-		::std::string name;
+		std::string name;
 	};
 }
 
@@ -140,15 +153,59 @@ namespace std
 	};
 }
 
-inline po::constant operator"" _val(unsigned long long n)
+inline po::constant operator"" _i1(unsigned long long n)
 {
-	return po::constant(n);
+	return po::constant(n,std::max(1,8));
 }
 
-inline po::variable operator"" _var(const char *n, size_t l)
+inline po::constant operator"" _i8(unsigned long long n)
+{
+	return po::constant(n,std::max(1,8));
+}
+
+inline po::constant operator"" _i16(unsigned long long n)
+{
+	return po::constant(n,std::max(1,16));
+}
+
+inline po::constant operator"" _i32(unsigned long long n)
+{
+	return po::constant(n,std::max(1,32));
+}
+
+inline po::constant operator"" _i64(unsigned long long n)
+{
+	return po::constant(n,std::max(1,64));
+}
+
+inline po::variable operator"" _v1(const char *n, size_t l)
 {
 	std::string base(n,l);
-	return po::variable(base);
+	return po::variable(base,1);
+}
+
+inline po::variable operator"" _v8(const char *n, size_t l)
+{
+	std::string base(n,l);
+	return po::variable(base,8);
+}
+
+inline po::variable operator"" _v16(const char *n, size_t l)
+{
+	std::string base(n,l);
+	return po::variable(base,16);
+}
+
+inline po::variable operator"" _v32(const char *n, size_t l)
+{
+	std::string base(n,l);
+	return po::variable(base,32);
+}
+
+inline po::variable operator"" _v64(const char *n, size_t l)
+{
+	std::string base(n,l);
+	return po::variable(base,64);
 }
 
 #endif

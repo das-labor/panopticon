@@ -9,10 +9,18 @@
 using namespace po;
 using namespace po::avr;
 
+// registers
+const variable r0 = "r0"_v8, r1 = "r1"_v8, r2 = "r2"_v8, r3 = "r3"_v8, r4 = "r4"_v8, r5 = "r5"_v8, r6 = "r6"_v8, 
+							 r7 = "r7"_v8, r8 = "r8"_v8, r9 = "r9"_v8, r10 = "r10"_v8, r11 = "r11"_v8, r12 = "r12"_v8,
+							 r13 = "r13"_v8, r14 = "r14"_v8, r15 = "r15"_v8, r16 = "r16"_v8, r17 = "r17"_v8, r18 = "r18"_v8,
+							 r19 = "r19"_v8, r20 = "r20"_v8, r21 = "r21"_v8, r22 = "r22"_v8, r23 = "r23"_v8, r24 = "r24"_v8,
+							 r25 = "r25"_v8, r26 = "r26"_v8, r27 = "r27"_v8, r28 = "r28"_v8, r29 = "r29"_v8, r30 = "r30"_v8,
+							 r31 = "r31"_v1, I = "I"_v1, T = "T"_v1, H = "H"_v1, S = "S"_v1, V = "V"_v1, N = "N"_v1, Z = "Z"_v1, C = "C"_v1;
+
 variable po::avr::decode_reg(unsigned int r)
 {
 	assert(r >= 0 && r <= 31);
-	return variable("r" + std::to_string(r));
+	return variable("r" + std::to_string(r),8);
 }
 
 variable po::avr::decode_preg(unsigned int r, IndirectRegOp op, int d)
@@ -36,7 +44,7 @@ variable po::avr::decode_preg(unsigned int r, IndirectRegOp op, int d)
 		default: assert(false);
 	}
 
-	return variable(name);
+	return variable(name,8);
 }
 
 variable po::avr::decode_ioreg(unsigned int r)
@@ -110,7 +118,7 @@ variable po::avr::decode_ioreg(unsigned int r)
 		case 0x3F: name = "sreg"; break;
 	}
 
-	return variable(name);
+	return variable(name,8);
 }
 
 memory po::avr::sram(rvalue o) 
@@ -154,12 +162,12 @@ sem_action po::avr::branch(std::string m, rvalue flag, bool set)
 	return [m,flag,set](sm &st)
 	{
 		int64_t _k = st.capture_groups["k"];
-		guard_ptr g(new guard(flag,relation::Eq,set ? 1_val : 0_val));
-		constant k = (int8_t)(_k <= 63 ? _k : _k - 128);
+		guard_ptr g(new guard(flag,relation::Eq,set ? 1_i8 : 0_i8));
+		constant k = constant((int8_t)(_k <= 63 ? _k : _k - 128),8);
 
 		st.mnemonic(st.tokens.size(),m,"{8:-}",k);
 		st.jump(st.address + 1,g->negation());
-		st.jump(st.address + k.value() + 1,g);
+		st.jump(st.address + k.content() + 1,g);
 	};
 }
 
@@ -168,7 +176,7 @@ sem_action po::avr::binary_regconst(std::string x, std::function<void(cg &,const
 	return [x,func](sm &st)
 	{
 		variable Rd = decode_reg(st.capture_groups["d"] + 16);
-		constant K = st.capture_groups["K"];
+		constant K = constant(st.capture_groups["K"],16);
 
 		st.mnemonic(st.tokens.size(),x,"{8}, {8}",{Rd,K},bind(func,std::placeholders::_1,Rd,K));
 		st.jump(st.address + st.tokens.size());
@@ -208,20 +216,20 @@ sem_action po::avr::binary_st(variable Rd1, variable Rd2, bool pre_dec, bool pos
 
 		st.mnemonic(st.tokens.size(),"st",fmt,{X,Rr},[=](cg &c)
 		{
-			c.or_b(X,c.shiftl_u(Rd2,8_val),Rd1);
+			c.or_b(X,c.shiftl_u(Rd2,8_i8),Rd1);
 			
 			if(pre_dec) 
-				c.sub_i(X,X,1_val);
+				c.sub_i(X,X,1_i8);
 			
 			c.assign(sram(X),Rr);
 			
 			if(post_inc) 
-				c.add_i(X,X,1_val);
+				c.add_i(X,X,1_i8);
 
 			if(post_inc || pre_dec)
 			{
-				c.and_b(Rd1,X,0xff_val);
-				c.shiftr_u(Rd2,X,8_val);
+				c.and_b(Rd1,X,0xff_i8);
+				c.shiftr_u(Rd2,X,8_i8);
 			}
 		});
 		st.jump(st.address + st.tokens.size());
@@ -261,20 +269,20 @@ sem_action po::avr::binary_ld(variable Rr1, variable Rr2, bool pre_dec, bool pos
 
 		st.mnemonic(st.tokens.size(),"ld",fmt,{X,Rd},[=](cg &c)
 		{
-			c.or_b(X,c.shiftl_u(Rr2,8_val),Rr1);
+			c.or_b(X,c.shiftl_u(Rr2,8_i8),Rr1);
 			
 			if(pre_dec) 
-				c.sub_i(X,X,1_val);
+				c.sub_i(X,X,1_i8);
 			
 			c.assign(Rd,sram(X));
 			
 			if(post_inc) 
-				c.add_i(X,X,1_val);
+				c.add_i(X,X,1_i8);
 
 			if(post_inc || pre_dec)
 			{
-				c.and_b(Rr1,X,0xff_val);
-				c.shiftr_u(Rr2,X,8_val);
+				c.and_b(Rr1,X,0xff_i8);
+				c.shiftr_u(Rr2,X,8_i8);
 			}
 		});
 		st.jump(st.address + st.tokens.size());
@@ -304,8 +312,8 @@ sem_action po::avr::binary_stq(variable Rd1, variable Rd2)
 
 		st.mnemonic(st.tokens.size(),"st",fmt,{X,Rr},[=](cg &c)
 		{
-			c.or_b(X,c.shiftl_u(Rd2,8_val),Rd1);
-			c.add_i(X,X,constant(q));
+			c.or_b(X,c.shiftl_u(Rd2,8_i8),Rd1);
+			c.add_i(X,X,constant(q,16));
 			c.assign(sram(X),Rr);
 		});
 		st.jump(st.address + st.tokens.size());
@@ -335,8 +343,8 @@ sem_action po::avr::binary_ldq(variable Rr1, variable Rr2)
 
 		st.mnemonic(st.tokens.size(),"ld",fmt,{X,Rd},[=](cg &c)
 		{
-			c.or_b(X,c.shiftl_u(Rr2,8_val),Rr1);
-			c.add_i(X,X,constant(q));
+			c.or_b(X,c.shiftl_u(Rr2,8_i8),Rr1);
+			c.add_i(X,X,constant(q,16));
 			c.assign(Rd,sram(X));
 		});
 		st.jump(st.address + st.tokens.size());
@@ -359,42 +367,42 @@ void po::avr::half_carry(const rvalue &a, const rvalue &b, const rvalue &c, cg &
 {
 	rvalue a_not = m.not_b(a);
 
-	m.slice("H"_var,m.or_b(m.or_b(
+	m.slice(H,m.or_b(m.or_b(
 		m.and_b(a_not,b),
 		m.and_b(b,c)),
 		m.and_b(a_not,c)),
-	3_val,3_val);
+	3_i8,3_i8);
 }
 
 // V: a7•!b7•!c7 + !a7•b7•c7
 // Two's complements overflow for c = a - b or a = b + c
 void po::avr::two_complement_overflow(const rvalue &a, const rvalue &b, const rvalue &c, cg &m)
 {
-	m.slice("V"_var,
+	m.slice(V,
 		m.or_b(
 			m.and_b(m.and_b(a,m.not_b(b)),c),
 			m.and_b(m.and_b(m.not_b(a),b),c)),
-		7_val,7_val);
+		7_i8,7_i8);
 }
 
 // !a7•!a6•!a5•!a4•!a3•!a2•!a1•!a0
 rvalue po::avr::zero(const rvalue &a, cg &m)
 {
 	rvalue not_a = m.not_b(a);
-	return m.and_b(m.slice(not_a,0_val,0_val),
-					m.and_b(m.slice(not_a,1_val,1_val),
-						m.and_b(m.slice(not_a,2_val,2_val),
-							m.and_b(m.slice(not_a,3_val,3_val),
-								m.and_b(m.slice(not_a,4_val,4_val),
-									m.and_b(m.slice(not_a,5_val,5_val),
-										m.and_b(m.slice(not_a,6_val,6_val),
-											m.slice(not_a,7_val,7_val))))))));
+	return m.and_b(m.slice(not_a,0_i8,0_i8),
+					m.and_b(m.slice(not_a,1_i8,1_i8),
+						m.and_b(m.slice(not_a,2_i8,2_i8),
+							m.and_b(m.slice(not_a,3_i8,3_i8),
+								m.and_b(m.slice(not_a,4_i8,4_i8),
+									m.and_b(m.slice(not_a,5_i8,5_i8),
+										m.and_b(m.slice(not_a,6_i8,6_i8),
+											m.slice(not_a,7_i8,7_i8))))))));
 }
 
 // Zero flag for result a
 void po::avr::is_zero(const rvalue &a, cg &m)
 {
-	m.assign("Z"_var,zero(a,m));
+	m.assign(Z,zero(a,m));
 }
 
 // C: !a7•b7 + b7•c7 + c7•!a7
@@ -403,9 +411,9 @@ void po::avr::carry(const rvalue &a, const rvalue &b, const rvalue &c, cg &m)
 {
 	rvalue a_not = m.not_b(a);
 
-	m.slice("C"_var,m.or_b(m.or_b(
+	m.slice(C,m.or_b(m.or_b(
 		m.and_b(a_not,b),
 		m.and_b(b,c)),
 		m.and_b(a_not,c)),
-	7_val,7_val);
+	7_i8,7_i8);
 }

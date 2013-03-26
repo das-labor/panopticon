@@ -47,7 +47,7 @@ po::formula_ptr po::sat(proc_ptr proc)
 			else if(r.is_memory() || r.is_undefined())
 				args.push_back(ret->manager.mkVar(ret->manager.mkBitVectorType(1)));
 			else if(r.is_constant())
-				args.push_back(ret->manager.mkConst(CVC4::BitVector(8,(unsigned int)r.constant().value())));
+				args.push_back(ret->manager.mkConst(CVC4::BitVector(8,(unsigned int)r.constant().content())));
 			else
 				assert(false);
 
@@ -101,16 +101,16 @@ po::formula_ptr po::sat(proc_ptr proc)
 		
 		// Unsigned right shift	*
 		case po::instr::UShr:
-			e = ret->manager.mkExpr(CVC4::kind::BITVECTOR_LSHR,args[0].bitvector,ret->manager.mkConst(CVC4::BitVector(args[0].width,(unsigned int)right[1].constant().value()))); 
+			e = ret->manager.mkExpr(CVC4::kind::BITVECTOR_LSHR,args[0].bitvector,ret->manager.mkConst(CVC4::BitVector(args[0].width,(unsigned int)right[1].constant().content()))); 
 			break;
 		
 		// Unsigned left shift *
 		case po::instr::UShl:
-			e = ret->manager.mkExpr(CVC4::kind::BITVECTOR_SHL,args[0].bitvector,ret->manager.mkConst(CVC4::BitVector(args[0].width,(unsigned int)right[1].constant().value())));
+			e = ret->manager.mkExpr(CVC4::kind::BITVECTOR_SHL,args[0].bitvector,ret->manager.mkConst(CVC4::BitVector(args[0].width,(unsigned int)right[1].constant().content())));
 			break;
 		
 		// Slice
-		case po::instr::Slice: e = ret->manager.mkExpr(CVC4::kind::BITVECTOR_EXTRACT,ret->manager.mkConst(CVC4::BitVectorExtract(right[2].constant().value(),right[1].constant().value())),args[0].bitvector); break;
+		case po::instr::Slice: e = ret->manager.mkExpr(CVC4::kind::BITVECTOR_EXTRACT,ret->manager.mkConst(CVC4::BitVectorExtract(right[2].constant().content(),right[1].constant().content())),args[0].bitvector); break;
 		
 		// Addition
 		case po::instr::Add:	e = ret->manager.mkExpr(CVC4::kind::BITVECTOR_PLUS,args[0].bitvector,args[1].bitvector); break;
