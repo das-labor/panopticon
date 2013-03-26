@@ -2,9 +2,6 @@
 #include <algorithm>
 #include <sstream>
 #include <cctype>	// isalnum
-#include <cstring> // ffs
-
-#include <strings.h>
 
 #include <value.hh>
 
@@ -25,6 +22,13 @@ rvalue::rvalue(const rvalue &r)
 		d.simple.rest = (uint64_t)(p) >> 2;
 		d.simple.tag = MemoryValueTag;
 	}
+	else if(r.is_constant())
+	{
+		constant_priv *p = (constant_priv *)(r.d.simple.rest << 2);
+		++p->usage;
+		d.simple.rest = (uint64_t)(p) >> 2;
+		d.simple.tag = ConstantValueTag;
+	}
 	else
 		d.all = r.d.all;
 }
@@ -36,6 +40,12 @@ rvalue &rvalue::operator=(const rvalue &r)
 		memory_priv *p = (memory_priv *)(d.simple.rest << 2);
 		if(!--p->usage)
 			delete p;
+	}	
+	else if(r.is_constant())
+	{
+		constant_priv *p = (constant_priv *)(r.d.simple.rest << 2);
+		if(!--p->usage)
+			delete p;	++p->usage;
 	}
 		
 	if(r.is_memory())
@@ -45,6 +55,14 @@ rvalue &rvalue::operator=(const rvalue &r)
 		++p->usage;
 		d.all = (uint64_t)(p);
 		d.simple.tag = MemoryValueTag;
+	}
+	else if(r.is_constant())
+	{
+		constant_priv *p = (constant_priv *)(r.d.simple.rest << 2);
+		
+		++p->usage;
+		d.all = (uint64_t)(p);
+		d.simple.tag = ConstantValueTag;
 	}
 	else
 		d.all = r.d.all;
@@ -60,6 +78,12 @@ rvalue::~rvalue(void)
 		if(!--p->usage)
 			delete p;
 	}
+	else if(is_constant())
+	{
+		constant_priv *p = (constant_priv *)(d.simple.rest << 2);
+		if(!--p->usage)
+			delete p;	++p->usage;
+	}
 }
 
 std::ostream &po::operator<<(std::ostream &os, const rvalue &r)
@@ -67,7 +91,7 @@ std::ostream &po::operator<<(std::ostream &os, const rvalue &r)
 	switch(r.tag())
 	{
 	case rvalue::UndefinedValueTag: os << std::string("⊥"); return os;
-	case rvalue::ConstantValueTag: 	os << r.constant().value(); return os;
+	case rvalue::ConstantValueTag: 	os << r.constant().content(); return os;
 	case rvalue::VariableValueTag:
 	{
 		const variable &v = r.variable();
@@ -138,6 +162,16 @@ bool rvalue::operator<(const rvalue &b) const
 		else
 			return am.bytes() < bm.bytes();
 	}
+	else if(is_constant() && b.is_constant())
+	{
+		const po::constant &ac = constant();
+		const po::constant &bc = b.constant();
+
+		if(ac.content() != bc.content())
+			return ac.content() < bc.content();
+		else 
+			return ac.width() < bc.width();
+	}
 	else
 		return d.all < b.d.all;
 }
@@ -153,6 +187,13 @@ bool rvalue::operator==(const rvalue &b) const
 					 am.offset() == bm.offset() &&
 					 am.endianess() == bm.endianess() &&
 					 am.bytes() == bm.bytes();
+	}
+	if(is_constant() && b.is_constant())
+	{
+		const po::constant &ac = constant();
+		const po::constant &bc = b.constant();
+
+		return ac.content() == bc.content();
 	}
 	else
 		return d.all == b.d.all;
@@ -174,20 +215,31 @@ const constant &rvalue::constant(void) const { assert(is_constant()); return *re
 const variable &rvalue::variable(void) const { assert(is_variable()); return *reinterpret_cast<const class variable *>(this); }
 const memory &rvalue::memory(void) const { assert(is_memory()); return *reinterpret_cast<const class memory *>(this); }
 
-constant::constant(uint32_t n)
+constant::constant(uint64_t n, uint16_t w)
 {
+	constant_priv *p = new constant_priv();
+	p->content = n;
+	p->width = w;
+	p->usage = 1;
+
+	d.simple.rest = (uintptr_t)(p) >> 2;
 	d.simple.tag = ConstantValueTag;
-	d.simple.rest = n;
 }
 
-uint64_t constant::value(void) const
+uint64_t constant::content(void) const
 {
-	return d.simple.rest;
+	return ((constant_priv *)(d.simple.rest << 2))->content;
 }
 
-variable::variable(std::string b, int s, uint8_t w)
+uint16_t constant::width(void) const
+{
+	return ((constant_priv *)(d.simple.rest << 2))->width;
+}
+
+variable::variable(std::string b, uint16_t w, int s)
 {
 	assert(b.size() <= 6 && all_of(b.begin(),b.end(),[&](const char &c) { return c <= 0x7f; }));
+	assert(w < 0x100);
 	
 	d.name.tag = VariableValueTag;
 	d.name.n1 = b.size() >= 1 ? b.data()[0] : 0;
@@ -218,12 +270,12 @@ int variable::subscript(void) const
 	return d.name.sub != 0xffff ? d.name.sub : -1;
 }
 
-uint8_t variable::width(void) const
+uint16_t variable::width(void) const
 {
 	return d.name.width;
 }
 
-memory::memory(rvalue o, unsigned int w, Endianess e, std::string n)
+memory::memory(rvalue o, uint16_t w, Endianess e, std::string n)
 {
 	memory_priv *p = new memory_priv();
 	p->offset = o;
@@ -241,7 +293,7 @@ const rvalue &memory::offset(void) const
 	return ((memory_priv *)(d.simple.rest << 2))->offset; 
 }
 
-unsigned int memory::bytes(void) const 
+uint16_t memory::bytes(void) const 
 { 
 	return ((memory_priv *)(d.simple.rest << 2))->bytes; 
 }

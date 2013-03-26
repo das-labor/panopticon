@@ -98,6 +98,7 @@
 	--> ditch assert() for exceptions
 	--> move semantics for mnemonic, basic_block, value and guard
 	--> ditch guard_ptr
+	--> add value width to rdf
 
 ==> K-set domain for sparse constant propagation
 

@@ -1,5 +1,6 @@
 #include <functional>
 #include <map>
+#include <cstring>
 
 #include <deflate.hh>
 
@@ -286,7 +287,8 @@ rvalue deflate::value(librdf_node *val) const
 		librdf_node *value = librdf_model_get_target(model,val,po_value);
 
 		assert(value);
-		return constant(strtoull((const char *)librdf_node_get_literal_value(value),NULL,10));
+		unsigned long long v = strtoull((const char *)librdf_node_get_literal_value(value),NULL,10);
+		return constant(v,ffs(v));
 	}
 	else if(librdf_node_equals(type,po_Memory))
 	{

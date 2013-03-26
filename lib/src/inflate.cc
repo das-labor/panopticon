@@ -73,7 +73,7 @@ std::string po::turtle(flow_ptr fg)
 					else if(v.is_constant())
 					{
 						ss << ":" << opname << " rdf:type po:Constant;" << std::endl
-												 				<< "\tpo:value \"" << v.constant().value() << "\"^^xsd:decimal." << std::endl;
+												 				<< "\tpo:value \"" << v.constant().content() << "\"^^xsd:decimal." << std::endl;
 					}
 					else if(v.is_memory())
 					{	
