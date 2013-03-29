@@ -20,7 +20,7 @@ guard::guard(void) {}
 guard::guard(std::list<relation> rels) : relations(rels) {}
 guard::guard(rvalue a, relation::Relcode r, rvalue b) : relations({relation(a,r,b)}) {}
 
-guard_ptr guard::negation(void) const
+guard guard::negation(void) const
 {
 	std::list<relation> rels;
 
@@ -42,7 +42,7 @@ guard_ptr guard::negation(void) const
 		}
 	});
 
-	return guard_ptr(new guard(rels));;
+	return guard(rels);
 }
 
 std::ostream& po::operator<<(std::ostream &os, const guard &g)
@@ -82,8 +82,8 @@ std::ostream& po::operator<<(std::ostream &os, const guard &g)
 /*
  * ctrans
  */
-ctrans::ctrans(guard_ptr g, rvalue v) : guard(g), value(v) {}
-ctrans::ctrans(guard_ptr g, bblock_ptr b) : guard(g), bblock(b) {}
+ctrans::ctrans(struct guard g, rvalue v) : guard(g), value(v) {}
+ctrans::ctrans(struct guard g, bblock_ptr b) : guard(g), bblock(b) {}
 
 /*
  * basic_block
@@ -147,7 +147,6 @@ void basic_block::mutate_incoming(std::function<void(std::list<ctrans>&)> fn)
 	std::set<bblock_ptr> bbs;
 	for(const ctrans &ct: incoming())
 	{
-		assert(ct.guard);
 		assert(!ct.bblock.lock() || bbs.insert(ct.bblock.lock()).second);
 	}
 }
@@ -162,7 +161,6 @@ void basic_block::mutate_outgoing(std::function<void(std::list<ctrans>&)> fn)
 	std::set<bblock_ptr> bbs;
 	for(const ctrans &ct: outgoing())
 	{
-		assert(ct.guard);
 		assert(!ct.bblock.lock() || bbs.insert(ct.bblock.lock()).second);
 	}
 }
@@ -236,13 +234,13 @@ void po::rewrite(bblock_ptr bb,std::function<void(lvalue &,instr::Function,std::
 	});
 }
 
-void po::conditional_jump(bblock_ptr from, bblock_ptr to, guard_ptr g) { ctrans ct_from(g,from), ct_to(g,to); conditional_jump(ct_from,ct_to); }
-void po::conditional_jump(rvalue from, bblock_ptr to, guard_ptr g) { ctrans ct_from(g,from), ct_to(g,to); conditional_jump(ct_from,ct_to); }
-void po::conditional_jump(bblock_ptr from, rvalue to, guard_ptr g) { ctrans ct_from(g,from), ct_to(g,to); conditional_jump(ct_from,ct_to); }
+void po::conditional_jump(bblock_ptr from, bblock_ptr to, guard g) { ctrans ct_from(g,from), ct_to(g,to); conditional_jump(ct_from,ct_to); }
+void po::conditional_jump(rvalue from, bblock_ptr to, guard g) { ctrans ct_from(g,from), ct_to(g,to); conditional_jump(ct_from,ct_to); }
+void po::conditional_jump(bblock_ptr from, rvalue to, guard g) { ctrans ct_from(g,from), ct_to(g,to); conditional_jump(ct_from,ct_to); }
 
-void po::unconditional_jump(bblock_ptr from, bblock_ptr to) { conditional_jump(from,to,guard_ptr(new guard())); }
-void po::unconditional_jump(rvalue from, bblock_ptr to) { conditional_jump(from,to,guard_ptr(new guard())); }
-void po::unconditional_jump(bblock_ptr from, rvalue to) { conditional_jump(from,to,guard_ptr(new guard())); }
+void po::unconditional_jump(bblock_ptr from, bblock_ptr to) { conditional_jump(from,to,guard()); }
+void po::unconditional_jump(rvalue from, bblock_ptr to) { conditional_jump(from,to,guard()); }
+void po::unconditional_jump(bblock_ptr from, rvalue to) { conditional_jump(from,to,guard()); }
 
 void po::replace_incoming(bblock_ptr to, bblock_ptr oldbb, bblock_ptr newbb)
 { 

@@ -17,7 +17,6 @@ namespace po
 	typedef std::shared_ptr<const class basic_block> bblock_cptr;
 	typedef std::weak_ptr<class basic_block> bblock_wptr;
 	typedef std::weak_ptr<const class basic_block> bblock_cwptr;
-	typedef std::shared_ptr<struct guard> guard_ptr;
 }
 
 #include <mnemonic.hh>
@@ -52,9 +51,8 @@ namespace po
 		guard(void); // true
 		guard(std::list<relation> rels);
 		guard(rvalue a, relation::Relcode, rvalue b);
-		guard_ptr negation(void) const;
+		guard negation(void) const;
 		
-
 		std::list<relation> relations;
 	};
 
@@ -62,10 +60,10 @@ namespace po
 	
 	struct ctrans
 	{
-		ctrans(guard_ptr g, rvalue v);
-		ctrans(guard_ptr g, bblock_ptr b);
+		ctrans(guard g, rvalue v);
+		ctrans(guard g, bblock_ptr b);
 		
-		guard_ptr guard;
+		guard guard;
 		rvalue value;
 		bblock_wptr bblock;
 	};
@@ -165,9 +163,9 @@ namespace po
 	void rewrite(bblock_ptr bb,std::function<void(lvalue&,instr::Function,std::vector<rvalue>&)> f);
 
 	// adding (un)conditional jumps between basic blocks
-	void conditional_jump(bblock_ptr from, bblock_ptr to, guard_ptr g);
-	void conditional_jump(rvalue from, bblock_ptr to, guard_ptr g);
-	void conditional_jump(bblock_ptr from, rvalue to, guard_ptr g);
+	void conditional_jump(bblock_ptr from, bblock_ptr to, guard g);
+	void conditional_jump(rvalue from, bblock_ptr to, guard g);
+	void conditional_jump(bblock_ptr from, rvalue to, guard g);
 
 	void unconditional_jump(bblock_ptr from, bblock_ptr to);
 	void unconditional_jump(rvalue from, bblock_ptr to);
