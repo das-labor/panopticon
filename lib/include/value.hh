@@ -33,7 +33,7 @@ namespace po
 		~rvalue(void);
 
 		rvalue &operator=(const rvalue &r);
-		
+	
 		bool operator<(const rvalue &b) const;
 		bool operator==(const rvalue &b) const;
 		bool operator!=(const rvalue &b) const;
@@ -59,7 +59,13 @@ namespace po
 			struct { uint64_t rest:62, tag:2; } simple;
 			struct { uint64_t sub:16, n1:7, n2:7, n3:7, n4:7, n5:7, width:8, rest:3, tag:2; } name; // variable
 		} d;
-	};
+
+		void destruct_memory(void);
+		void destruct_constant(void);
+		
+		void assign_memory(const class memory &r);
+		void assign_constant(const class constant &r);
+		};
 
 	std::ostream& operator<<(std::ostream &os, const po::rvalue &r);
 	

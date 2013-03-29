@@ -16,23 +16,10 @@ rvalue::rvalue(void)
 
 rvalue::rvalue(const rvalue &r)
 {
-	if(&r == this)
-		return;
-
 	if(r.is_memory())
-	{
-		memory_priv *p = (memory_priv *)(r.d.simple.rest << 2);
-		++p->usage;
-		d.simple.rest = (uint64_t)(p) >> 2;
-		d.simple.tag = MemoryValueTag;
-	}
+		assign_memory(r.memory());
 	else if(r.is_constant())
-	{
-		constant_priv *p = (constant_priv *)(r.d.simple.rest << 2);
-		++p->usage;
-		d.simple.rest = (uint64_t)(p) >> 2;
-		d.simple.tag = ConstantValueTag;
-	}
+		assign_constant(r.constant());
 	else
 		d.all = r.d.all;
 }
@@ -43,54 +30,58 @@ rvalue &rvalue::operator=(const rvalue &r)
 		return *this;
 
 	if(is_memory())
-	{
-		memory_priv *p = (memory_priv *)(d.simple.rest << 2);
-		if(!--p->usage)
-			delete p;
-	}	
+		destruct_memory();
 	else if(is_constant())
-	{
-		constant_priv *p = (constant_priv *)(r.d.simple.rest << 2);
-		if(!--p->usage)
-			delete p;
-	}
-		
+		destruct_constant();
+
 	if(r.is_memory())
-	{
-		memory_priv *p = (memory_priv *)(r.d.simple.rest << 2);
-		
-		++p->usage;
-		d.simple.rest = (uint64_t)(p) >> 2;
-		d.simple.tag = MemoryValueTag;
-	}
+		assign_memory(r.memory());
 	else if(r.is_constant())
-	{
-		constant_priv *p = (constant_priv *)(r.d.simple.rest << 2);
-		
-		++p->usage;
-		d.simple.rest = (uint64_t)(p) >> 2;
-		d.simple.tag = ConstantValueTag;
-	}
+		assign_constant(r.constant());
 	else
 		d.all = r.d.all;
 
 	return *this;
 }
 
+void rvalue::assign_memory(const class po::memory &r)
+{
+	memory_priv *p = (memory_priv *)(r.d.simple.rest << 2);
+	
+	++p->usage;
+	d.simple.rest = (uint64_t)(p) >> 2;
+	d.simple.tag = MemoryValueTag;
+}
+
+void rvalue::assign_constant(const class po::constant &r)
+{
+	constant_priv *p = (constant_priv *)(r.d.simple.rest << 2);
+	
+	++p->usage;
+	d.simple.rest = (uint64_t)(p) >> 2;
+	d.simple.tag = ConstantValueTag;
+}
+
 rvalue::~rvalue(void) 
 {
 	if(is_memory())
-	{
-		memory_priv *p = (memory_priv *)(d.simple.rest << 2);
-		if(!--p->usage)
-			delete p;
-	}
+		destruct_memory();
 	else if(is_constant())
-	{
-		constant_priv *p = (constant_priv *)(d.simple.rest << 2);
-		if(!--p->usage)
-			delete p;
-	}
+		destruct_constant();
+}
+
+void rvalue::destruct_memory(void)
+{
+	memory_priv *p = (memory_priv *)(d.simple.rest << 2);
+	if(!--p->usage)
+		delete p;
+}
+
+void rvalue::destruct_constant(void)
+{
+	constant_priv *p = (constant_priv *)(d.simple.rest << 2);
+	if(!--p->usage)
+		delete p;
 }
 
 ostream &po::operator<<(ostream &os, const rvalue &r)
