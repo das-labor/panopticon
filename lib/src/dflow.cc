@@ -56,7 +56,7 @@ dom_ptr po::dominance_tree(proc_ptr proc)
 						dtree_ptr f1 = ret->tree[p], f2 = newidom;
 						auto rpo = [&](dtree_ptr d) 
 						{ 
-							return distance(rpo_lst.begin(),find(rpo_lst.begin(),rpo_lst.end(),d->basic_block));
+							return distance(rpo_lst.begin(),find(rpo_lst.begin(),rpo_lst.end(),d->basic_block.lock()));
 						};
 
 						while(f1 != f2)
@@ -194,7 +194,7 @@ void po::ssa(proc_ptr proc, dom_ptr dominance, live_ptr live)
 {
 	set<name> globals;
 
-	for(const pair<bblock_cptr,set<name>> &s: live->uevar)
+	for(const pair<bblock_cwptr,set<name>> &s: live->uevar)
 		globals = set_union(globals,s.second);
 
 	if(live->liveout[proc->entry].size())
@@ -209,24 +209,24 @@ void po::ssa(proc_ptr proc, dom_ptr dominance, live_ptr live)
 	// insert phi
 	for(const name &n: globals)
 	{
-		set<bblock_cptr> &worklist(live->usage[n]);
+		set<bblock_cwptr> &worklist(live->usage[n]);
 
 		while(!worklist.empty())
 		{
-			bblock_cptr bb = *worklist.begin();
+			bblock_cptr bb = worklist.begin()->lock();
 
 			worklist.erase(worklist.begin());
 			for(dtree_ptr df: dominance->tree[bb]->frontiers)
 			{
 				bool has_phi = false;
-				execute(df->basic_block,[&](lvalue left, instr::Function fn, const vector<rvalue> &right)
+				execute(df->basic_block.lock(),[&](lvalue left, instr::Function fn, const vector<rvalue> &right)
 				{	
 					has_phi = has_phi || (fn == instr::Phi && left.is_variable() && left.variable().name() == n.base); 
 				});
 
 				if(!has_phi)
 				{
-					df->basic_block->mutate_mnemonics([&](vector<mnemonic> &ms)
+					df->basic_block.lock()->mutate_mnemonics([&](vector<mnemonic> &ms)
 					{
 						assert(ms.size());
 
@@ -365,13 +365,13 @@ void po::ssa(proc_ptr proc, dom_ptr dominance, live_ptr live)
 					}
 
 					// fill in φ-function parameters in successor
-					if(s.bblock)
+					if(s.bblock.lock())
 					{
-						bblock_ptr succ = s.bblock;
+						bblock_ptr succ = s.bblock.lock();
 
 						succ->mutate_mnemonics([&](vector<mnemonic> &ms)
 					{
-						auto iord = find_if(succ->incoming().begin(),succ->incoming().end(),[&](const ctrans &ct) { return ct.bblock == bb; });
+						auto iord = find_if(succ->incoming().begin(),succ->incoming().end(),[&](const ctrans &ct) { return ct.bblock.lock() == bb; });
 						assert(iord != succ->incoming().end());
 						unsigned int ord = distance(succ->incoming().begin(),iord);
 						
@@ -401,7 +401,7 @@ void po::ssa(proc_ptr proc, dom_ptr dominance, live_ptr live)
 		// for each successor s of b in the dominator tree
 		//     rename(s)
 		for(dtree_ptr dom: dominance->tree[bb]->successors)
-			rename(dom->basic_block);
+			rename(dom->basic_block.lock());
 		
 		// for each operation ‘‘x ← y op z’’ in bb
 		//     and each φ-function ‘‘x ← φ(· · · )’’

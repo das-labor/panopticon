@@ -127,7 +127,7 @@ public:
 
 		CPPUNIT_ASSERT(bb->incoming().size() == 0);
 		CPPUNIT_ASSERT(bb->outgoing().size() == 1);
-		CPPUNIT_ASSERT(bb->outgoing().front().bblock == 0);
+		CPPUNIT_ASSERT(bb->outgoing().front().bblock.lock() == 0);
 		CPPUNIT_ASSERT(bb->outgoing().front().guard->relations.empty());
 		CPPUNIT_ASSERT(bb->outgoing().front().value.is_constant());
 		CPPUNIT_ASSERT(bb->outgoing().front().value.constant().value() == 6);
@@ -405,36 +405,36 @@ public:
 		po::bblock_cptr bbo3 = *i3;
 
 		CPPUNIT_ASSERT(bbo0->incoming().size() == 1);
-		CPPUNIT_ASSERT(bbo0->incoming().begin()->bblock == bbo3);
+		CPPUNIT_ASSERT(bbo0->incoming().begin()->bblock.lock() == bbo3);
 		CPPUNIT_ASSERT(bbo0->mnemonics().size() == 2);
 		check(bbo0->mnemonics()[0],"test0",0);
 		check(bbo0->mnemonics()[1],"test1",1);
 		CPPUNIT_ASSERT(bbo0->outgoing().size() == 2);
-		CPPUNIT_ASSERT(bbo0->outgoing().begin()->bblock == bbo1 || bbo0->outgoing().begin()->bblock == bbo2);
-		CPPUNIT_ASSERT(std::next(bbo0->outgoing().begin())->bblock == bbo1 || std::next(bbo0->outgoing().begin())->bblock == bbo2);
+		CPPUNIT_ASSERT(bbo0->outgoing().begin()->bblock.lock() == bbo1 || bbo0->outgoing().begin()->bblock.lock() == bbo2);
+		CPPUNIT_ASSERT(std::next(bbo0->outgoing().begin())->bblock.lock() == bbo1 || std::next(bbo0->outgoing().begin())->bblock.lock() == bbo2);
 		
 		CPPUNIT_ASSERT(bbo1->incoming().size() == 1);
-		CPPUNIT_ASSERT(bbo1->incoming().begin()->bblock == bbo0);
+		CPPUNIT_ASSERT(bbo1->incoming().begin()->bblock.lock() == bbo0);
 		CPPUNIT_ASSERT(bbo1->mnemonics().size() == 1);
 		check(bbo1->mnemonics()[0],"test2",2);
 		CPPUNIT_ASSERT(bbo1->outgoing().size() == 0);
 		
 		CPPUNIT_ASSERT(bbo2->incoming().size() == 1);
-		CPPUNIT_ASSERT(bbo2->incoming().begin()->bblock == bbo0);
+		CPPUNIT_ASSERT(bbo2->incoming().begin()->bblock.lock() == bbo0);
 		CPPUNIT_ASSERT(bbo2->mnemonics().size() == 1);
 		check(bbo2->mnemonics()[0],"test6",6);
 		CPPUNIT_ASSERT(bbo2->outgoing().size() == 1);
-		CPPUNIT_ASSERT(bbo2->outgoing().begin()->bblock == bbo3);
+		CPPUNIT_ASSERT(bbo2->outgoing().begin()->bblock.lock() == bbo3);
 
 		CPPUNIT_ASSERT(bbo3->incoming().size() == 1);
-		CPPUNIT_ASSERT(bbo3->incoming().begin()->bblock == bbo2);
+		CPPUNIT_ASSERT(bbo3->incoming().begin()->bblock.lock() == bbo2);
 		CPPUNIT_ASSERT(bbo3->mnemonics().size() == 3);
 		check(bbo3->mnemonics()[0],"test40",40);
 		check(bbo3->mnemonics()[1],"test41",41);
 		check(bbo3->mnemonics()[2],"test42",42);
 		CPPUNIT_ASSERT(bbo3->outgoing().size() == 2);
-		CPPUNIT_ASSERT(bbo3->outgoing().begin()->bblock == bbo0 || bbo3->outgoing().begin()->value.constant().value() == 55);
-		CPPUNIT_ASSERT(std::next(bbo3->outgoing().begin())->bblock == bbo0 || std::next(bbo3->outgoing().begin())->value.constant().value() == 55);
+		CPPUNIT_ASSERT(bbo3->outgoing().begin()->bblock.lock() == bbo0 || bbo3->outgoing().begin()->value.constant().value() == 55);
+		CPPUNIT_ASSERT(std::next(bbo3->outgoing().begin())->bblock.lock() == bbo0 || std::next(bbo3->outgoing().begin())->value.constant().value() == 55);
 
 		CPPUNIT_ASSERT(proc->entry == bbo0);
 	}

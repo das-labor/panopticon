@@ -6,6 +6,7 @@
 #include <basic_block.hh>
 
 using namespace po;
+using namespace std;
 
 /*
  * relation
@@ -147,7 +148,7 @@ void basic_block::mutate_incoming(std::function<void(std::list<ctrans>&)> fn)
 	for(const ctrans &ct: incoming())
 	{
 		assert(ct.guard);
-		assert(!ct.bblock || bbs.insert(ct.bblock).second);
+		assert(!ct.bblock.lock() || bbs.insert(ct.bblock.lock()).second);
 	}
 }
 
@@ -162,7 +163,7 @@ void basic_block::mutate_outgoing(std::function<void(std::list<ctrans>&)> fn)
 	for(const ctrans &ct: outgoing())
 	{
 		assert(ct.guard);
-		assert(!ct.bblock || bbs.insert(ct.bblock).second);
+		assert(!ct.bblock.lock() || bbs.insert(ct.bblock.lock()).second);
 	}
 }
 
@@ -178,6 +179,16 @@ const range<addr_t> &basic_block::area(void) const { return m_area; }
 /*
  * free functions
  */
+bool po::operator<(const bblock_wptr &a, const bblock_wptr &b)
+{
+	return owner_less<bblock_wptr>()(a, b);
+}
+
+bool po::operator<(const bblock_cwptr &a, const bblock_cwptr &b)
+{
+	return owner_less<bblock_cwptr>()(a, b);
+}
+
 void po::execute2(bblock_cptr bb,std::function<void(const instr&)> f)
 {
 	size_t sz_mne = bb->mnemonics().size(), i_mne = 0;
@@ -307,21 +318,21 @@ std::pair<bblock_ptr,bblock_ptr> po::split(bblock_ptr bb, addr_t pos, bool last)
 	// move outgoing ctrans to down
 	for_each(bb->outgoing().begin(),bb->outgoing().end(),[&](const ctrans &ct)
 	{
-		if(ct.bblock == bb)
+		if(ct.bblock.lock() == bb)
 		{
 			append(false,down,ctrans(ct.guard,up));
 			append(true,up,ctrans(ct.guard,up));
 		}
 		else
 		{
-			if(ct.bblock)
+			if(ct.bblock.lock())
 			{
-				append(false,down,ctrans(ct.guard,ct.bblock));
-				ct.bblock->mutate_incoming([&](std::list<ctrans> &in)
+				append(false,down,ctrans(ct.guard,ct.bblock.lock()));
+				ct.bblock.lock()->mutate_incoming([&](std::list<ctrans> &in)
 				{
 					in.emplace_back(ctrans(ct.guard,down));
 					in.erase(find_if(in.begin(),in.end(),[&](const ctrans &ct)
-						{ return ct.bblock == bb; }));
+						{ return ct.bblock.lock() == bb; }));
 				});
 			}
 			else
@@ -332,21 +343,21 @@ std::pair<bblock_ptr,bblock_ptr> po::split(bblock_ptr bb, addr_t pos, bool last)
 	// move incoming edges to up
 	for_each(bb->incoming().begin(),bb->incoming().end(),[&](const ctrans &ct)
 	{
-		if(ct.bblock == bb)
+		if(ct.bblock.lock() == bb)
 		{
 			append(true,up,ctrans(ct.guard,down));
 			append(false,down,ctrans(ct.guard,up));
 		}
 		else
 		{
-			if(ct.bblock)
+			if(ct.bblock.lock())
 			{
-				append(true,up,ctrans(ct.guard,ct.bblock));
-				ct.bblock->mutate_outgoing([&](std::list<ctrans> &out)
+				append(true,up,ctrans(ct.guard,ct.bblock.lock()));
+				ct.bblock.lock()->mutate_outgoing([&](std::list<ctrans> &out)
 				{
 					out.emplace_back(ctrans(ct.guard,up));
 					out.erase(find_if(out.begin(),out.end(),[&](const ctrans &ct)
-						{ return ct.bblock == bb; }));
+						{ return ct.bblock.lock() == bb; }));
 				});
 			}
 			else
@@ -374,15 +385,15 @@ bblock_ptr po::merge(bblock_ptr up, bblock_ptr down)
 
 	for_each(up->incoming().begin(),up->incoming().end(),[&](const ctrans &ct)
 	{
-		if(ct.bblock)
-			replace_outgoing(ct.bblock,up,ret);
+		if(ct.bblock.lock())
+			replace_outgoing(ct.bblock.lock(),up,ret);
 		ret->mutate_incoming([&](std::list<ctrans> &in) { in.emplace_back(ct); });
 	});
 			
 	for_each(down->outgoing().begin(),down->outgoing().end(),[&](const ctrans &ct)
 	{
-		if(ct.bblock)
-			replace_incoming(ct.bblock,down,ret);
+		if(ct.bblock.lock())
+			replace_incoming(ct.bblock.lock(),down,ret);
 		ret->mutate_outgoing([&](std::list<ctrans> &out) { out.emplace_back(ct); });
 	});
 	
@@ -399,7 +410,7 @@ void po::replace(std::list<ctrans> &lst, bblock_ptr from, bblock_ptr to)
 	while(i != lst.end())
 	{
 		ctrans ct = *i;
-		if(ct.bblock == from)
+		if(ct.bblock.lock() == from)
 			i = lst.insert(lst.erase(i),ctrans(ct.guard,to));
 		++i;
 	}
@@ -421,8 +432,8 @@ void po::resolve(std::list<ctrans> &lst, rvalue v, bblock_ptr bb)
 
 void po::conditional_jump(const ctrans &from, const ctrans &to)
 {
-	if(from.bblock)
-		from.bblock->mutate_outgoing([&](std::list<ctrans> &out) { out.emplace_back(to); });
-	if(to.bblock)
-		to.bblock->mutate_incoming([&](std::list<ctrans> &in) { in.emplace_back(from); });
+	if(from.bblock.lock())
+		from.bblock.lock()->mutate_outgoing([&](std::list<ctrans> &out) { out.emplace_back(to); });
+	if(to.bblock.lock())
+		to.bblock.lock()->mutate_incoming([&](std::list<ctrans> &in) { in.emplace_back(from); });
 }

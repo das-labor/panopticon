@@ -438,10 +438,10 @@ std::string po::graphviz(flow_ptr fg)
 			// outgoing edges
 			for_each(bb->outgoing().begin(),bb->outgoing().end(),[&bb,&ss,&procname](const ctrans &ct) 
 			{ 
-				if(ct.bblock)
+				if(ct.bblock.lock())
 				{
 					ss << "\t\tbb_" << procname << "_" << bb->area().begin 
-						 << " -> bb_" << procname << "_" << ct.bblock->area().begin
+						 << " -> bb_" << procname << "_" << ct.bblock.lock()->area().begin
 						 << " [label=\" " << *ct.guard << " \"];" << std::endl; 
 				}
 				else
