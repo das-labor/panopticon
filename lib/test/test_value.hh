@@ -64,11 +64,11 @@ public:
 		CPPUNIT_ASSERT(c3.width() == 3);
 
 		CPPUNIT_ASSERT(c1 < c3);
-		CPPUNIT_ASSERT(po::rvalue(c1).constant() == c1);
+		CPPUNIT_ASSERT(po::rvalue(c1).to_constant() == c1);
 
 		po::rvalue rv;
 		rv = c3;
-		CPPUNIT_ASSERT(rv.constant() == c3);
+		CPPUNIT_ASSERT(rv.to_constant() == c3);
 	}
 
 	void testVariable(void)
@@ -98,8 +98,8 @@ public:
 		CPPUNIT_ASSERT(v1 != po::variable("a",1,0));
 		CPPUNIT_ASSERT(v1 != po::variable("a",2,1));
 
-		CPPUNIT_ASSERT(po::rvalue(v1).variable() == v1);
-		CPPUNIT_ASSERT(po::lvalue(v1).variable() == v1);
+		CPPUNIT_ASSERT(po::rvalue(v1).to_variable() == v1);
+		CPPUNIT_ASSERT(po::lvalue(v1).to_variable() == v1);
 
 		v1 = v2;
 		CPPUNIT_ASSERT(v1 == v2);	
@@ -109,11 +109,11 @@ public:
 		
 		po::rvalue rv;
 		rv = v3;
-		CPPUNIT_ASSERT(rv.variable() == v3);
+		CPPUNIT_ASSERT(rv.to_variable() == v3);
 
 		po::lvalue lv;
 		lv = v2;
-		CPPUNIT_ASSERT(lv.variable() == v2);
+		CPPUNIT_ASSERT(lv.to_variable() == v2);
 	}
 
 	void testMemory(void)
@@ -139,14 +139,14 @@ public:
 		CPPUNIT_ASSERT(m1.bytes() == 1);
 		CPPUNIT_ASSERT(m1.endianess() == po::memory::BigEndian);
 
-		CPPUNIT_ASSERT(po::lvalue(m1).memory() == m1);
+		CPPUNIT_ASSERT(po::lvalue(m1).to_memory() == m1);
 
 		po::rvalue rv;
 		rv = m3;
-		CPPUNIT_ASSERT(rv.memory() == m3);
+		CPPUNIT_ASSERT(rv.to_memory() == m3);
 
 		po::lvalue lv;
 		lv = m2;
-		CPPUNIT_ASSERT(lv.memory() == m2);
+		CPPUNIT_ASSERT(lv.to_memory() == m2);
 	}
 };

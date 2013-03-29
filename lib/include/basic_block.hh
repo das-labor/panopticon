@@ -76,8 +76,8 @@ namespace po
 	};
 
 	template<>
-	class bblock_iterator< std::list<ctrans>> : public boost::iterator_facade<
-				bblock_iterator< std::list<ctrans>>,
+	class bblock_iterator<std::list<ctrans>> : public boost::iterator_facade<
+				bblock_iterator<std::list<ctrans>>,
 				bblock_ptr,
 				boost::forward_traversal_tag,
 				bblock_ptr>
@@ -93,12 +93,12 @@ namespace po
 		bool equal(const bblock_iterator &a) const { return adaptee == a.adaptee; }
 
 	private:
-		boost::filter_iterator< std::function<bool(ctrans &ct)>,std::list<ctrans>::iterator> adaptee;
+		boost::filter_iterator<std::function<bool(ctrans &ct)>,std::list<ctrans>::iterator> adaptee;
 	};
 
 	template<>
-	class bblock_citerator< std::list<ctrans>> : public boost::iterator_facade<
-				bblock_citerator< std::list<ctrans>>,
+	class bblock_citerator<std::list<ctrans>> : public boost::iterator_facade<
+				bblock_citerator<std::list<ctrans>>,
 				bblock_cptr,
 				boost::forward_traversal_tag,
 				bblock_cptr>

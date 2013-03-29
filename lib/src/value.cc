@@ -17,9 +17,9 @@ rvalue::rvalue(void)
 rvalue::rvalue(const rvalue &r)
 {
 	if(r.is_memory())
-		assign_memory(r.memory());
+		assign_memory(r.to_memory());
 	else if(r.is_constant())
-		assign_constant(r.constant());
+		assign_constant(r.to_constant());
 	else
 		d.all = r.d.all;
 }
@@ -35,9 +35,9 @@ rvalue &rvalue::operator=(const rvalue &r)
 		destruct_constant();
 
 	if(r.is_memory())
-		assign_memory(r.memory());
+		assign_memory(r.to_memory());
 	else if(r.is_constant())
-		assign_constant(r.constant());
+		assign_constant(r.to_constant());
 	else
 		d.all = r.d.all;
 
@@ -89,10 +89,10 @@ ostream &po::operator<<(ostream &os, const rvalue &r)
 	switch(r.tag())
 	{
 	case rvalue::UndefinedValueTag: os << string("⊥"); return os;
-	case rvalue::ConstantValueTag: 	os << r.constant().content(); return os;
+	case rvalue::ConstantValueTag: 	os << r.to_constant().content(); return os;
 	case rvalue::VariableValueTag:
 	{
-		const variable &v = r.variable();
+		const variable &v = r.to_variable();
 
 		// base name
 		os << v.name();
@@ -124,7 +124,7 @@ ostream &po::operator<<(ostream &os, const rvalue &r)
 	}
 	case rvalue::MemoryValueTag:
 	{
-		const memory &m = r.memory();
+		const memory &m = r.to_memory();
 		
 		// name and offset
 		os << m.name() << "[" << m.offset() << ";" << m.bytes();
@@ -149,8 +149,8 @@ bool rvalue::operator<(const rvalue &b) const
 {
 	if(is_memory() && b.is_memory())
 	{
-		const po::memory &am = memory();
-		const po::memory &bm = b.memory();
+		const po::memory &am = to_memory();
+		const po::memory &bm = b.to_memory();
 
 		if(am.name() != bm.name())
 			return am.name() < bm.name();
@@ -163,8 +163,8 @@ bool rvalue::operator<(const rvalue &b) const
 	}
 	else if(is_constant() && b.is_constant())
 	{
-		const po::constant &ac = constant();
-		const po::constant &bc = b.constant();
+		const po::constant &ac = to_constant();
+		const po::constant &bc = b.to_constant();
 
 		if(ac.content() != bc.content())
 			return ac.content() < bc.content();
@@ -179,8 +179,8 @@ bool rvalue::operator==(const rvalue &b) const
 {	
 	if(is_memory() && b.is_memory())
 	{
-		const po::memory &am = memory();
-		const po::memory &bm = b.memory();
+		const po::memory &am = to_memory();
+		const po::memory &bm = b.to_memory();
 
 		return am.name() == bm.name() &&
 					 am.offset() == bm.offset() &&
@@ -189,7 +189,7 @@ bool rvalue::operator==(const rvalue &b) const
 	}
 	if(is_constant() && b.is_constant())
 	{
-		return constant().content() == b.constant().content();
+		return to_constant().content() == b.to_constant().content();
 	}
 	else
 		return d.all == b.d.all;
@@ -207,21 +207,21 @@ bool rvalue::is_variable(void) const { return d.simple.tag == VariableValueTag; 
 bool rvalue::is_memory(void) const { return d.simple.tag == MemoryValueTag; }
 bool rvalue::is_lvalue(void) const { return is_memory() || is_variable(); }
 
-const constant &rvalue::constant(void) const 
+const constant &rvalue::to_constant(void) const 
 { 
 	if(!is_constant())
 		throw value_exception("Cast to constant from invalid type");
 	return *reinterpret_cast<const class constant *>(this); 
 }
 
-const variable &rvalue::variable(void) const 
+const variable &rvalue::to_variable(void) const 
 {
 	if(!is_variable())
 		throw value_exception("Cast to variable from invalid type");
 	return *reinterpret_cast<const class variable *>(this); 
 }
 
-const memory &rvalue::memory(void) const 
+const memory &rvalue::to_memory(void) const 
 { 
 	if(!is_memory())
 		throw value_exception("Cast to memory from invalid type");

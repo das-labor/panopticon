@@ -82,7 +82,7 @@ public:
 		CPPUNIT_ASSERT(st.mnemonics.front().instructions.empty());	
 		CPPUNIT_ASSERT(st.jumps.size() == 1);
 		CPPUNIT_ASSERT(st.jumps.front().first.is_constant());
-		CPPUNIT_ASSERT(st.jumps.front().first.constant().content() == 1);
+		CPPUNIT_ASSERT(st.jumps.front().first.to_constant().content() == 1);
 		CPPUNIT_ASSERT(st.jumps.front().second.relations.empty());
 	}
 
@@ -107,7 +107,7 @@ public:
 		CPPUNIT_ASSERT(st.mnemonics.front().instructions.empty());	
 		CPPUNIT_ASSERT(st.jumps.size() == 1);
 		CPPUNIT_ASSERT(st.jumps.front().first.is_constant());
-		CPPUNIT_ASSERT(st.jumps.front().first.constant().content() == 3);
+		CPPUNIT_ASSERT(st.jumps.front().first.to_constant().content() == 3);
 		CPPUNIT_ASSERT(st.jumps.front().second.relations.empty());
 	}
 
@@ -132,7 +132,7 @@ public:
 		CPPUNIT_ASSERT(st.jumps.size() == 1);
 		CPPUNIT_ASSERT(st.jumps.front().first.is_constant());
 		CPPUNIT_ASSERT(st.jumps.front().second.relations.empty());
-		CPPUNIT_ASSERT(st.jumps.front().first.constant().content() == 6);
+		CPPUNIT_ASSERT(st.jumps.front().first.to_constant().content() == 6);
 	}
 
 	void testSlice(void)
@@ -156,7 +156,7 @@ public:
 		CPPUNIT_ASSERT(st.jumps.size() == 1);
 		CPPUNIT_ASSERT(st.jumps.front().first.is_constant());
 		CPPUNIT_ASSERT(st.jumps.front().second.relations.empty());
-		CPPUNIT_ASSERT(st.jumps.front().first.constant().content() == 2);
+		CPPUNIT_ASSERT(st.jumps.front().first.to_constant().content() == 2);
 	}
 
 	void testEmpty(void)
@@ -199,7 +199,7 @@ public:
 		CPPUNIT_ASSERT(st.jumps.size() == 1);
 		CPPUNIT_ASSERT(st.jumps.front().first.is_constant());
 		CPPUNIT_ASSERT(st.jumps.front().second.relations.empty());
-		CPPUNIT_ASSERT(st.jumps.front().first.constant().content() == 5);
+		CPPUNIT_ASSERT(st.jumps.front().first.to_constant().content() == 5);
 	}
 	
 	void testEmptyCapGroup(void)

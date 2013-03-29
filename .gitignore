@@ -6,7 +6,7 @@ lib/obj/avr/*.o
 qt/obj
 cli/obj/*.o
 *.swp
-lib/test/test
+lib/test/runtests
 qt/Makefile
 lib/.ycm_extra_conf.pyc
 doc/api

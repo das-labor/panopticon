@@ -123,9 +123,9 @@ live_ptr po::liveness(proc_cptr proc)
 	{
 		if(v.is_variable())
 		{
-			ret->names.insert(v.variable());
-			if(!ret->varkill[bb].count(v.variable()))
-				ret->uevar[bb].insert(v.variable());
+			ret->names.insert(v.to_variable());
+			if(!ret->varkill[bb].count(v.to_variable()))
+				ret->uevar[bb].insert(v.to_variable());
 		}
 	};
 
@@ -139,9 +139,9 @@ live_ptr po::liveness(proc_cptr proc)
 	
 			if(left.is_variable())
 			{
-				ret->varkill[bb].insert(left.variable());
-				ret->names.insert(left.variable());
-				ret->usage[left.variable()].insert(bb);
+				ret->varkill[bb].insert(left.to_variable());
+				ret->names.insert(left.to_variable());
+				ret->usage[left.to_variable()].insert(bb);
 			}
 		});
 
@@ -221,7 +221,7 @@ void po::ssa(proc_ptr proc, dom_ptr dominance, live_ptr live)
 				bool has_phi = false;
 				execute(df->basic_block.lock(),[&](lvalue left, instr::Function fn, const vector<rvalue> &right)
 				{	
-					has_phi = has_phi || (fn == instr::Phi && left.is_variable() && left.variable().name() == n.base); 
+					has_phi = has_phi || (fn == instr::Phi && left.is_variable() && left.to_variable().name() == n.base); 
 				});
 
 				if(!has_phi)
@@ -271,7 +271,7 @@ void po::ssa(proc_ptr proc, dom_ptr dominance, live_ptr live)
 			if(fn == instr::Phi)
 			{
 				assert(left.is_variable());
-				left = variable(left.variable().name(),new_name(left.variable().name()),left.variable().width());
+				left = variable(left.to_variable().name(),new_name(left.to_variable().name()),left.to_variable().width());
 			}
 		});
 
@@ -295,8 +295,8 @@ void po::ssa(proc_ptr proc, dom_ptr dominance, live_ptr live)
 				{
 					if(v.is_variable())
 					{
-						assert(stack.count(v.variable().name()));
-						v = variable(v.variable().name(),stack[v.variable().name()].back(),v.variable().width());
+						assert(stack.count(v.to_variable().name()));
+						v = variable(v.to_variable().name(),stack[v.to_variable().name()].back(),v.to_variable().width());
 					}
 				}
 
@@ -317,14 +317,14 @@ void po::ssa(proc_ptr proc, dom_ptr dominance, live_ptr live)
 
 							if(v.is_variable())
 							{
-								assert(stack.count(v.variable().name()));
-								right[ri] = variable(v.variable().name(),stack[v.variable().name()].back(),v.variable().width());
+								assert(stack.count(v.to_variable().name()));
+								right[ri] = variable(v.to_variable().name(),stack[v.to_variable().name()].back(),v.to_variable().width());
 							}
 							++ri;
 						}
 					
 						if(left.is_variable())
-							left = variable(left.variable().name(),new_name(left.variable().name()),left.variable().width());
+							left = variable(left.to_variable().name(),new_name(left.to_variable().name()),left.to_variable().width());
 					}
 				}
 			}
@@ -344,13 +344,13 @@ void po::ssa(proc_ptr proc, dom_ptr dominance, live_ptr live)
 					{
 						if(rel.operand1.is_variable())
 						{
-							const variable o1 = rel.operand1.variable();
+							const variable o1 = rel.operand1.to_variable();
 							assert(stack.count(o1.name()));
 							rel.operand1 = variable(o1.name(),stack[o1.name()].back(),o1.width());
 						}
 						if(rel.operand2.is_variable())
 						{
-							const variable o2 = rel.operand2.variable();
+							const variable o2 = rel.operand2.to_variable();
 							assert(stack.count(o2.name()));
 							rel.operand2 = variable(o2.name(),stack[o2.name()].back(),o2.width());
 						}
@@ -359,7 +359,7 @@ void po::ssa(proc_ptr proc, dom_ptr dominance, live_ptr live)
 					// rewrite symbolic target in ctrans
 					if(s.value.is_variable())
 					{
-						const variable v = s.value.variable();
+						const variable v = s.value.to_variable();
 						assert(stack.count(v.name()));
 						s.value = variable(v.name(),stack[v.name()].back(),v.width());
 					}
@@ -389,8 +389,8 @@ void po::ssa(proc_ptr proc, dom_ptr dominance, live_ptr live)
 									i.right.emplace_back(undefined());
 									--missing;
 								}
-								assert(stack.count(i.left.variable().name()));
-								i.right[ord] = variable(i.left.variable().name(),stack[i.left.variable().name()].back(),i.left.variable().width());
+								assert(stack.count(i.left.to_variable().name()));
+								i.right[ord] = variable(i.left.to_variable().name(),stack[i.left.to_variable().name()].back(),i.left.to_variable().width());
 							}
 						}
 					});
@@ -410,8 +410,8 @@ void po::ssa(proc_ptr proc, dom_ptr dominance, live_ptr live)
 		{
 			if(left.is_variable()) 
 			{
-				assert(stack.count(left.variable().name()));
-				stack[left.variable().name()].pop_back();
+				assert(stack.count(left.to_variable().name()));
+				stack[left.to_variable().name()].pop_back();
 			}
 		});
 	};

@@ -24,7 +24,7 @@ po::formula_ptr po::sat(proc_ptr proc)
 	{
 		if(left.is_variable())
 		{
-			po::variable v = left.variable();
+			po::variable v = left.to_variable();
 			proxies.insert(std::make_pair(v,expr(ret->manager.mkVar(v.name() + "-" + std::to_string(v.subscript()),ret->manager.mkBitVectorType(v.width())))));
 		}
 	});
@@ -40,14 +40,14 @@ po::formula_ptr po::sat(proc_ptr proc)
 		for(const po::rvalue &r: right)
 			if(r.is_variable())
 			{
-				po::variable v = r.variable();
+				po::variable v = r.to_variable();
 				assert(proxies.count(v));
 				args.push_back(proxies[v]);
 			}
 			else if(r.is_memory() || r.is_undefined())
 				args.push_back(ret->manager.mkVar(ret->manager.mkBitVectorType(1)));
 			else if(r.is_constant())
-				args.push_back(ret->manager.mkConst(CVC4::BitVector(8,(unsigned int)r.constant().content())));
+				args.push_back(ret->manager.mkConst(CVC4::BitVector(8,(unsigned int)r.to_constant().content())));
 			else
 				assert(false);
 
@@ -101,16 +101,16 @@ po::formula_ptr po::sat(proc_ptr proc)
 		
 		// Unsigned right shift	*
 		case po::instr::UShr:
-			e = ret->manager.mkExpr(CVC4::kind::BITVECTOR_LSHR,args[0].bitvector,ret->manager.mkConst(CVC4::BitVector(args[0].width,(unsigned int)right[1].constant().content()))); 
+			e = ret->manager.mkExpr(CVC4::kind::BITVECTOR_LSHR,args[0].bitvector,ret->manager.mkConst(CVC4::BitVector(args[0].width,(unsigned int)right[1].to_constant().content()))); 
 			break;
 		
 		// Unsigned left shift *
 		case po::instr::UShl:
-			e = ret->manager.mkExpr(CVC4::kind::BITVECTOR_SHL,args[0].bitvector,ret->manager.mkConst(CVC4::BitVector(args[0].width,(unsigned int)right[1].constant().content())));
+			e = ret->manager.mkExpr(CVC4::kind::BITVECTOR_SHL,args[0].bitvector,ret->manager.mkConst(CVC4::BitVector(args[0].width,(unsigned int)right[1].to_constant().content())));
 			break;
 		
 		// Slice
-		case po::instr::Slice: e = ret->manager.mkExpr(CVC4::kind::BITVECTOR_EXTRACT,ret->manager.mkConst(CVC4::BitVectorExtract(right[2].constant().content(),right[1].constant().content())),args[0].bitvector); break;
+		case po::instr::Slice: e = ret->manager.mkExpr(CVC4::kind::BITVECTOR_EXTRACT,ret->manager.mkConst(CVC4::BitVectorExtract(right[2].to_constant().content(),right[1].to_constant().content())),args[0].bitvector); break;
 		
 		// Addition
 		case po::instr::Add:	e = ret->manager.mkExpr(CVC4::kind::BITVECTOR_PLUS,args[0].bitvector,args[1].bitvector); break;
@@ -133,13 +133,13 @@ po::formula_ptr po::sat(proc_ptr proc)
 		}
 		std::cout << 3 << ": " << fn << std::endl;
 
-		assert(proxies.count(left.variable()));
+		assert(proxies.count(left.to_variable()));
 
 		std::cout << "e: " << e << std::endl;
-		std::cout << "l: " << proxies[left.variable()] << std::endl;
-		e = adjust_width(e,proxies[left.variable()].width);
+		std::cout << "l: " << proxies[left.to_variable()] << std::endl;
+		e = adjust_width(e,proxies[left.to_variable()].width);
 		std::cout << 4 << std::endl;
-		ret->expressions.insert(std::make_pair(left.variable(),ret->manager.mkExpr(CVC4::kind::EQUAL,proxies[left.variable()].bitvector,e.bitvector)));
+		ret->expressions.insert(std::make_pair(left.to_variable(),ret->manager.mkExpr(CVC4::kind::EQUAL,proxies[left.to_variable()].bitvector,e.bitvector)));
 
 		std::cout << e << std::endl;
 	});
