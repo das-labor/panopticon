@@ -49,8 +49,15 @@ namespace po
 	struct guard
 	{
 		guard(void); // true
-		guard(std::list<relation> rels);
+		guard(const guard &g);
+		guard(guard &&g);
+		guard(const std::list<relation> &rels);
+		guard(std::list<relation> &&rels);
 		guard(rvalue a, relation::Relcode, rvalue b);
+
+		guard &operator=(const guard &g);
+		guard &operator=(guard &&g);
+
 		guard negation(void) const;
 		
 		std::list<relation> relations;
