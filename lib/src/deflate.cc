@@ -288,7 +288,7 @@ rvalue deflate::value(librdf_node *val) const
 
 		assert(value);
 		unsigned long long v = strtoull((const char *)librdf_node_get_literal_value(value),NULL,10);
-		return constant(v,ffs(v));
+		return constant(v,flsll(v));
 	}
 	else if(librdf_node_equals(type,po_Memory))
 	{

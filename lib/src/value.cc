@@ -6,6 +6,7 @@
 #include <value.hh>
 
 using namespace po;
+using namespace std;
 
 rvalue::rvalue(void) 
 {
@@ -15,6 +16,9 @@ rvalue::rvalue(void)
 
 rvalue::rvalue(const rvalue &r)
 {
+	if(&r == this)
+		return;
+
 	if(r.is_memory())
 	{
 		memory_priv *p = (memory_priv *)(r.d.simple.rest << 2);
@@ -35,17 +39,20 @@ rvalue::rvalue(const rvalue &r)
 
 rvalue &rvalue::operator=(const rvalue &r)
 {
+	if(&r == this)
+		return *this;
+
 	if(is_memory())
 	{
 		memory_priv *p = (memory_priv *)(d.simple.rest << 2);
 		if(!--p->usage)
 			delete p;
 	}	
-	else if(r.is_constant())
+	else if(is_constant())
 	{
 		constant_priv *p = (constant_priv *)(r.d.simple.rest << 2);
 		if(!--p->usage)
-			delete p;	++p->usage;
+			delete p;
 	}
 		
 	if(r.is_memory())
@@ -53,7 +60,7 @@ rvalue &rvalue::operator=(const rvalue &r)
 		memory_priv *p = (memory_priv *)(r.d.simple.rest << 2);
 		
 		++p->usage;
-		d.all = (uint64_t)(p);
+		d.simple.rest = (uint64_t)(p) >> 2;
 		d.simple.tag = MemoryValueTag;
 	}
 	else if(r.is_constant())
@@ -61,7 +68,7 @@ rvalue &rvalue::operator=(const rvalue &r)
 		constant_priv *p = (constant_priv *)(r.d.simple.rest << 2);
 		
 		++p->usage;
-		d.all = (uint64_t)(p);
+		d.simple.rest = (uint64_t)(p) >> 2;
 		d.simple.tag = ConstantValueTag;
 	}
 	else
@@ -82,15 +89,15 @@ rvalue::~rvalue(void)
 	{
 		constant_priv *p = (constant_priv *)(d.simple.rest << 2);
 		if(!--p->usage)
-			delete p;	++p->usage;
+			delete p;
 	}
 }
 
-std::ostream &po::operator<<(std::ostream &os, const rvalue &r)
+ostream &po::operator<<(ostream &os, const rvalue &r)
 {
 	switch(r.tag())
 	{
-	case rvalue::UndefinedValueTag: os << std::string("⊥"); return os;
+	case rvalue::UndefinedValueTag: os << string("⊥"); return os;
 	case rvalue::ConstantValueTag: 	os << r.constant().content(); return os;
 	case rvalue::VariableValueTag:
 	{
@@ -102,9 +109,9 @@ std::ostream &po::operator<<(std::ostream &os, const rvalue &r)
 		// subscript
 		if(v.subscript() >= 0)
 		{
-			std::string t = std::to_string(v.subscript());
+			string t = to_string(v.subscript());
 
-			std::for_each(t.cbegin(),t.cend(),[&os](const char c)
+			for_each(t.cbegin(),t.cend(),[&os](const char c)
 			{
 				switch(c)
 				{
@@ -142,7 +149,8 @@ std::ostream &po::operator<<(std::ostream &os, const rvalue &r)
 		os << "]";
 		return os;
 	}
-	default: assert(false);
+	default:
+		throw value_exception("Unknown value tag " + to_string(r.tag()));
 	}
 }
 
@@ -190,10 +198,7 @@ bool rvalue::operator==(const rvalue &b) const
 	}
 	if(is_constant() && b.is_constant())
 	{
-		const po::constant &ac = constant();
-		const po::constant &bc = b.constant();
-
-		return ac.content() == bc.content();
+		return constant().content() == b.constant().content();
 	}
 	else
 		return d.all == b.d.all;
@@ -211,18 +216,41 @@ bool rvalue::is_variable(void) const { return d.simple.tag == VariableValueTag; 
 bool rvalue::is_memory(void) const { return d.simple.tag == MemoryValueTag; }
 bool rvalue::is_lvalue(void) const { return is_memory() || is_variable(); }
 
-const constant &rvalue::constant(void) const { assert(is_constant()); return *reinterpret_cast<const class constant *>(this); }
-const variable &rvalue::variable(void) const { assert(is_variable()); return *reinterpret_cast<const class variable *>(this); }
-const memory &rvalue::memory(void) const { assert(is_memory()); return *reinterpret_cast<const class memory *>(this); }
+const constant &rvalue::constant(void) const 
+{ 
+	if(!is_constant())
+		throw value_exception("Cast to constant from invalid type");
+	return *reinterpret_cast<const class constant *>(this); 
+}
+
+const variable &rvalue::variable(void) const 
+{
+	if(!is_variable())
+		throw value_exception("Cast to variable from invalid type");
+	return *reinterpret_cast<const class variable *>(this); 
+}
+
+const memory &rvalue::memory(void) const 
+{ 
+	if(!is_memory())
+		throw value_exception("Cast to memory from invalid type");
+	return *reinterpret_cast<const class memory *>(this); 
+}
 
 constant::constant(uint64_t n, uint16_t w)
 {
 	constant_priv *p = new constant_priv();
+	p->usage = 1;
+	p->width = 0;
 	p->content = n;
 	p->width = w;
-	p->usage = 1;
 
-	d.simple.rest = (uintptr_t)(p) >> 2;
+	if(w)
+		p->content &= ((uint64_t)1u << w) - 1u;
+	else
+		p->content = 0;
+
+	d.simple.rest = (uint64_t)(p) >> 2;
 	d.simple.tag = ConstantValueTag;
 }
 
@@ -236,10 +264,26 @@ uint16_t constant::width(void) const
 	return ((constant_priv *)(d.simple.rest << 2))->width;
 }
 
-variable::variable(std::string b, uint16_t w, int s)
+uint64_t po::flsll(uint64_t x)
 {
-	assert(b.size() <= 6 && all_of(b.begin(),b.end(),[&](const char &c) { return c <= 0x7f; }));
-	assert(w < 0x100);
+	uint64_t ret = 0;
+	
+	while(x)
+	{
+		x >>= 1;
+		++ret;
+	}
+	return ret;
+}
+
+variable::variable(string b, uint16_t w, int s)
+{
+	if(b.size() >= 6)
+		throw value_exception("Variable names are limited to five characters");
+	if(!all_of(b.begin(),b.end(),[&](const char &c) { return c <= 0x7f; }))
+		throw value_exception("Variable names are limited to ASCII characters");
+	if(w >= 0x100)
+		throw value_exception("Variable width is limited to 255 bits");
 	
 	d.name.tag = VariableValueTag;
 	d.name.n1 = b.size() >= 1 ? b.data()[0] : 0;
@@ -252,16 +296,16 @@ variable::variable(std::string b, uint16_t w, int s)
 	d.name.width = w;
 }
 
-std::string variable::name(void) const
+string variable::name(void) const
 {
-	std::stringstream ss;
+	stringstream ss;
 
-	ss << (d.name.n1 ? std::string(1,(char)d.name.n1) : "") 
-		 << (d.name.n2 ? std::string(1,(char)d.name.n2) : "") 
-		 << (d.name.n3 ? std::string(1,(char)d.name.n3) : "") 
-		 << (d.name.n4 ? std::string(1,(char)d.name.n4) : "") 
-		 << (d.name.n5 ? std::string(1,(char)d.name.n5) : "");
-		// << (d.name.n6 ? std::string(1,(char)d.name.n6) : "");
+	ss << (d.name.n1 ? string(1,(char)d.name.n1) : "") 
+		 << (d.name.n2 ? string(1,(char)d.name.n2) : "") 
+		 << (d.name.n3 ? string(1,(char)d.name.n3) : "") 
+		 << (d.name.n4 ? string(1,(char)d.name.n4) : "") 
+		 << (d.name.n5 ? string(1,(char)d.name.n5) : "");
+		// << (d.name.n6 ? string(1,(char)d.name.n6) : "");
 	return ss.str();
 }
 
@@ -275,8 +319,13 @@ uint16_t variable::width(void) const
 	return d.name.width;
 }
 
-memory::memory(rvalue o, uint16_t w, Endianess e, std::string n)
+memory::memory(rvalue o, uint16_t w, Endianess e, string n)
 {
+	if(n.empty())
+		throw value_exception("Memory bank name must not be empty");
+	if(!w)
+		throw value_exception("Memory bytes read must be non-zero");
+
 	memory_priv *p = new memory_priv();
 	p->offset = o;
 	p->bytes = w;
@@ -286,7 +335,7 @@ memory::memory(rvalue o, uint16_t w, Endianess e, std::string n)
 
 	d.simple.rest = (uint64_t)(p) >> 2;
 	d.simple.tag = MemoryValueTag;
-}	
+}
 
 const rvalue &memory::offset(void) const 
 { 
@@ -303,7 +352,9 @@ memory::Endianess memory::endianess(void) const
 	return ((memory_priv *)(d.simple.rest << 2))->endianess; 
 }
 
-const std::string &memory::name(void) const 
+const string &memory::name(void) const 
 { 
 	return ((memory_priv *)(d.simple.rest << 2))->name; 
 }
+
+value_exception::value_exception(const string &w) : runtime_error(w) {}

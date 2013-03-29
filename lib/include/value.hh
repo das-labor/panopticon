@@ -5,8 +5,7 @@
 #include <iostream>
 #include <cstdint>
 #include <cassert>
-
-#include <string.h>
+#include <stdexcept>
 
 namespace po
 {
@@ -16,6 +15,7 @@ namespace po
 	class lvalue;
 	class variable;
 	class memory;
+	class value_exception;
 
 	class rvalue
 	{
@@ -71,7 +71,7 @@ namespace po
 	{
 	public:
 		constant(uint64_t v, uint16_t w);
-		
+
 		uint16_t width(void) const;
 		uint64_t content(void) const;
 	};
@@ -83,6 +83,8 @@ namespace po
 		uint64_t content;
 		uint16_t width;
 	};
+
+	uint64_t flsll(uint64_t);
 
 	class lvalue : public rvalue {};
 	class undefined : public lvalue {};
@@ -123,6 +125,12 @@ namespace po
 		uint16_t bytes;
 		memory::Endianess endianess;
 		std::string name;
+	};
+
+	class value_exception : public std::runtime_error
+	{
+	public:
+		value_exception(const std::string &w);
 	};
 }
 

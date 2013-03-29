@@ -472,7 +472,7 @@ namespace po
 	template<typename Tag>
 	void sem_state<Tag>::jump(addr_t a, guard_ptr g)
 	{
-		jump(constant(a,ffs(a)),g);
+		jump(constant(a,flsll(a)),g);
 	}
 	
 	template<typename Tag>

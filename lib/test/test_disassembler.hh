@@ -107,6 +107,7 @@ public:
 		CPPUNIT_ASSERT(st.mnemonics.front().instructions.empty());	
 		CPPUNIT_ASSERT(st.jumps.size() == 1);
 		CPPUNIT_ASSERT(st.jumps.front().first.is_constant());
+
 		CPPUNIT_ASSERT(st.jumps.front().first.constant().content() == 3);
 		CPPUNIT_ASSERT(st.jumps.front().second->relations.empty());
 	}
