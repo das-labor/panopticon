@@ -96,13 +96,13 @@
 	--> API documentation
 	--> code review
 	--> ditch assert() for exceptions
-	--> move semantics for mnemonic, basic_block, value and guard
-	--> ditch guard_ptr
+	--> move semantics for mnemonic, basic_block, value and guard **DONE**
+	--> ditch guard_ptr **DONE**
 	--> add value width to rdf
-	--> unit tests for value
+	--> unit tests for value **DONE**
 	--> doc
-	--> proc::caller/callees weak proc ptr
-	--> ctrans weak bblock ptrs
+	--> proc::caller/callees weak proc ptr **DONE**
+	--> ctrans weak bblock ptrs **DONE**
 
 ==> K-set domain for sparse constant propagation
 
