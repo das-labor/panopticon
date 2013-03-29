@@ -9,6 +9,16 @@
 using namespace po;
 using namespace std;
 
+bool po::operator<(const proc_wptr &a, const proc_wptr &b)
+{
+	return owner_less<proc_wptr>()(a, b);
+}
+
+bool po::operator<(const proc_cwptr &a, const proc_cwptr &b)
+{
+	return owner_less<proc_cwptr>()(a, b);
+}
+
 domtree::domtree(bblock_ptr b) : intermediate(0), basic_block(b) {}
 
 procedure::procedure(void) : name("unnamed") {}

@@ -16,6 +16,11 @@ namespace po
 	typedef std::shared_ptr<struct domtree> dtree_ptr;
 	typedef std::shared_ptr<class procedure> proc_ptr;
 	typedef std::shared_ptr<const class procedure> proc_cptr;
+	typedef std::weak_ptr<class procedure> proc_wptr;
+	typedef std::weak_ptr<const class procedure> proc_cwptr;
+
+	bool operator<(const proc_wptr &a, const proc_wptr &b);
+	bool operator<(const proc_cwptr &a, const proc_cwptr &b);
 
 	void call(proc_ptr from, proc_ptr to);
 	void execute(proc_cptr proc,std::function<void(const lvalue &left, instr::Function fn, const std::vector<rvalue> &right)> f);
@@ -30,7 +35,7 @@ namespace po
 		std::set<dtree_ptr> successors;
 		std::set<dtree_ptr> frontiers;
 		
-		bblock_ptr basic_block;
+		bblock_wptr basic_block;
 	};
 
 	class procedure
@@ -48,8 +53,8 @@ namespace po
 		std::mutex mutex;
 		
 		// modified via call()
-		std::set<proc_ptr> callers;	// procedures calling this procedure
-		std::set<proc_ptr> callees;	// procedures called by this procedure
+		std::set<proc_wptr> callers;	// procedures calling this procedure
+		std::set<proc_wptr> callees;	// procedures called by this procedure
 
 		template<typename Tag>
 		static proc_ptr disassemble(const proc_ptr proc, const disassembler<Tag> &main, std::vector<typename rule<Tag>::token> tokens, addr_t start);	
@@ -80,10 +85,10 @@ namespace po
 
 				for(const ctrans &ct: bb->outgoing())
 				{
-					if(ct.bblock)
+					if(ct.bblock.lock())
 					{
-						source.insert(std::make_pair(bb->area().last(),std::make_pair(ct.bblock->area().begin,ct.guard)));
-						destination.insert(std::make_pair(ct.bblock->area().begin,std::make_pair(bb->area().last(),ct.guard)));
+						source.insert(std::make_pair(bb->area().last(),std::make_pair(ct.bblock.lock()->area().begin,ct.guard)));
+						destination.insert(std::make_pair(ct.bblock.lock()->area().begin,std::make_pair(bb->area().last(),ct.guard)));
 					}
 					else if(ct.value.is_constant())
 					{
