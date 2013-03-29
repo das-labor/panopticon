@@ -51,9 +51,9 @@
 	--> space ctrans more than one connects a pair of bblocks **DONE**
 	--> label ctrans with conditions **DONE**
 
-==> Publish
+==> Publish **DONE**
 	--> bug when changing procedures **DONE**
-	--> build system
+	--> build system **DONE**
 
 ==> 0.9
 
@@ -62,7 +62,7 @@
 	--> add signals for pending procs **DONE**
 	--> defer gvLayout (layoutHierarchically/Custom), show spinner
 
-==> Interactivity
+==> Interactivity **DONE**
 	--> share selection of proclist with flowview **DONE**
 		--> tap "activate" signal from flowview **DONE**
 	--> callback done/todo proc count **DONE**
@@ -74,7 +74,7 @@
 	--> simplify() function groups the the true bb's again
 	--> merge() first calls explode on all bb's that are hit by ctrans, simplify is responsible of the callee 
 
-==> Program points (Branch programpoint)
+==> Program points (Branch programpoint) **DONE: [POSTPONED] Merge when use case is clear**
 	--> identify a single instr globally
 	--> construct from bblock, mne_ptr, instr_ptr, proc or indices of mnemonic and instr
 	--> argument to execute() and rewrite() (constructed on-the-fly)
@@ -83,14 +83,14 @@
 	--> string stream output
 	--> not serialized
 
-==> Datalog (Branch datalog)
+==> Datalog (Branch datalog) **DONE: [POSTPONED] Merge when use case is clear**
 	--> support point and value
 	--> implement liveness, dominance, dependency/taint and simple alias analysis
 
-==> Finish new disassembly logic
-	--> disassemble_procedure
-	--> unit test
-	--> document
+==> Finish new disassembly logic **DONE**
+	--> disassemble_procedure **DONE**
+	--> unit test **DONE**
+	--> document **DONE**
 
 ==> Overall code improvements
 	--> API documentation
@@ -99,6 +99,8 @@
 	--> move semantics for mnemonic, basic_block, value and guard
 	--> ditch guard_ptr
 	--> add value width to rdf
+	--> unit tests for value
+	--> doc
 
 ==> K-set domain for sparse constant propagation
 

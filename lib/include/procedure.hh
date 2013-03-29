@@ -235,7 +235,7 @@ namespace po
 				if(to != bblocks.end() && to->second->area().begin == p.second.first)
 					conditional_jump(from->second,to->second,p.second.second);
 				else
-					conditional_jump(from->second,po::constant(p.second.first,ffs(p.second.first)),p.second.second);
+					conditional_jump(from->second,po::constant(p.second.first,flsll(p.second.first)),p.second.second);
 			}
 		}
 
