@@ -128,7 +128,7 @@ public:
 		CPPUNIT_ASSERT(bb->incoming().size() == 0);
 		CPPUNIT_ASSERT(bb->outgoing().size() == 1);
 		CPPUNIT_ASSERT(bb->outgoing().front().bblock.lock() == 0);
-		CPPUNIT_ASSERT(bb->outgoing().front().guard->relations.empty());
+		CPPUNIT_ASSERT(bb->outgoing().front().guard.relations.empty());
 		CPPUNIT_ASSERT(bb->outgoing().front().value.is_constant());
 		CPPUNIT_ASSERT(bb->outgoing().front().value.constant().value() == 6);
 		CPPUNIT_ASSERT(bb->area() == po::range<po::addr_t>(0,6));
@@ -337,12 +337,12 @@ public:
 
 		bb0->mutate_incoming([&](std::list<po::ctrans> &in)
 		{
-			in.push_back(po::ctrans(po::guard_ptr(new po::guard()),po::constant(42)));
+			in.push_back(po::ctrans(po::guard(),po::constant(42)));
 		});
 
 		bb2->mutate_outgoing([&](std::list<po::ctrans> &out)
 		{
-			out.push_back(po::ctrans(po::guard_ptr(new po::guard()),po::constant(40)));
+			out.push_back(po::ctrans(po::guard(),po::constant(40)));
 		});
 
 		po::unconditional_jump(bb0,bb1);
@@ -454,7 +454,7 @@ public:
 		
 		bb0->mutate_outgoing([&](std::list<po::ctrans> &out)
 		{
-			out.push_back(po::ctrans(po::guard_ptr(new po::guard()),po::constant(2)));
+			out.push_back(po::ctrans(po::guard(),po::constant(2)));
 		});
 
 		proc->basic_blocks.insert(bb0);

@@ -104,13 +104,13 @@ namespace po
 		 * This function add a new possible successor address @c a that is chosen if 
 		 * the condition in @c g is true. An empty guard is always true.
 		 */
-		void jump(rvalue a, guard_ptr g = guard_ptr(new guard()));
+		void jump(rvalue a, guard g = guard());
 
 		/**
 		 * Adds the address @c a to the set of possible successors.
-		 * @see jump(rvalue, guard_ptr)
+		 * @see jump(rvalue, guard)
 		 */
-		void jump(addr_t a, guard_ptr g = guard_ptr(new guard()));
+		void jump(addr_t a, guard g = guard());
 
 		// in
 		addr_t address;
@@ -119,7 +119,7 @@ namespace po
 		
 		// out
 		std::list<po::mnemonic> mnemonics;
-		std::list<std::pair<rvalue,guard_ptr>> jumps;
+		std::list<std::pair<rvalue,guard>> jumps;
 		
 	private:
 		addr_t next_address;
@@ -463,13 +463,13 @@ namespace po
 	}
 
 	template<typename Tag>
-	void sem_state<Tag>::jump(rvalue a, guard_ptr g)
+	void sem_state<Tag>::jump(rvalue a, guard g)
 	{
 		jumps.emplace_back(std::make_pair(a,g));
 	}
 	
 	template<typename Tag>
-	void sem_state<Tag>::jump(addr_t a, guard_ptr g)
+	void sem_state<Tag>::jump(addr_t a, guard g)
 	{
 		jump(constant(a),g);
 	}
