@@ -83,7 +83,7 @@ public:
 		CPPUNIT_ASSERT(st.jumps.size() == 1);
 		CPPUNIT_ASSERT(st.jumps.front().first.is_constant());
 		CPPUNIT_ASSERT(st.jumps.front().first.constant().value() == 1);
-		CPPUNIT_ASSERT(st.jumps.front().second->relations.empty());
+		CPPUNIT_ASSERT(st.jumps.front().second.relations.empty());
 	}
 
 	void testSub(void)
@@ -108,7 +108,7 @@ public:
 		CPPUNIT_ASSERT(st.jumps.size() == 1);
 		CPPUNIT_ASSERT(st.jumps.front().first.is_constant());
 		CPPUNIT_ASSERT(st.jumps.front().first.constant().value() == 3);
-		CPPUNIT_ASSERT(st.jumps.front().second->relations.empty());
+		CPPUNIT_ASSERT(st.jumps.front().second.relations.empty());
 	}
 
 	void testDefault(void)
@@ -132,7 +132,7 @@ public:
 		CPPUNIT_ASSERT(st.jumps.size() == 1);
 		CPPUNIT_ASSERT(st.jumps.front().first.is_constant());
 		CPPUNIT_ASSERT(st.jumps.front().first.constant().value() == 6);
-		CPPUNIT_ASSERT(st.jumps.front().second->relations.empty());
+		CPPUNIT_ASSERT(st.jumps.front().second.relations.empty());
 	}
 
 	void testSlice(void)
@@ -156,7 +156,7 @@ public:
 		CPPUNIT_ASSERT(st.jumps.size() == 1);
 		CPPUNIT_ASSERT(st.jumps.front().first.is_constant());
 		CPPUNIT_ASSERT(st.jumps.front().first.constant().value() == 2);
-		CPPUNIT_ASSERT(st.jumps.front().second->relations.empty());
+		CPPUNIT_ASSERT(st.jumps.front().second.relations.empty());
 	}
 
 	void testEmpty(void)
@@ -199,7 +199,7 @@ public:
 		CPPUNIT_ASSERT(st.jumps.size() == 1);
 		CPPUNIT_ASSERT(st.jumps.front().first.is_constant());
 		CPPUNIT_ASSERT(st.jumps.front().first.constant().value() == 5);
-		CPPUNIT_ASSERT(st.jumps.front().second->relations.empty());
+		CPPUNIT_ASSERT(st.jumps.front().second.relations.empty());
 	}
 	
 	void testEmptyCapGroup(void)

@@ -442,7 +442,7 @@ std::string po::graphviz(flow_ptr fg)
 				{
 					ss << "\t\tbb_" << procname << "_" << bb->area().begin 
 						 << " -> bb_" << procname << "_" << ct.bblock.lock()->area().begin
-						 << " [label=\" " << *ct.guard << " \"];" << std::endl; 
+						 << " [label=\" " << ct.guard << " \"];" << std::endl; 
 				}
 				else
 				{
@@ -450,7 +450,7 @@ std::string po::graphviz(flow_ptr fg)
 					 << " [shape = circle, label=\"" << ct.value << "\"];" << std::endl
 					 << "\t\tbb_" << procname << "_" << bb->area().begin 
 					 << " -> bb_" << procname << "_indir" << ct.value
-					 << " [label=\" " << *ct.guard << " \"];" << std::endl;
+					 << " [label=\" " << ct.guard << " \"];" << std::endl;
 				}		
 			});	
 			

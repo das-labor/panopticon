@@ -67,7 +67,7 @@ namespace po
 
 		std::set<addr_t> todo;
 		std::map<addr_t,mnemonic> mnemonics;
-		std::multimap<addr_t,std::pair<addr_t,guard_ptr>> source, destination;
+		std::multimap<addr_t,std::pair<addr_t,guard>> source, destination;
 		proc_ptr ret(new procedure());
 
 		// copy exsisting mnemonics and jumps into tables. TODO: cache tables in proc
@@ -132,7 +132,7 @@ namespace po
 						assert(mnemonics.insert(std::make_pair(m.area.begin,m)).second);
 					}
 							
-					for(const std::pair<rvalue,guard_ptr> &p: state.jumps)
+					for(const std::pair<rvalue,guard> &p: state.jumps)
 					{
 						if(p.first.is_constant())
 						{
@@ -195,13 +195,13 @@ namespace po
 				new_bb = next_mne->first != div;
 
 				// or any following jumps aren't to adjacent mnemonics
-				new_bb |= std::any_of(sources.first,sources.second,[&](const std::pair<addr_t,std::pair<addr_t,guard_ptr>> &p) 
+				new_bb |= std::any_of(sources.first,sources.second,[&](const std::pair<addr_t,std::pair<addr_t,guard>> &p) 
 				{ 
 					return p.second.first != div; 
 				});
 				
 				// or any jumps pointing to the next that aren't from here
-				new_bb |= std::any_of(destinations.first,destinations.second,[&](const std::pair<addr_t,std::pair<addr_t,guard_ptr>> &p) 
+				new_bb |= std::any_of(destinations.first,destinations.second,[&](const std::pair<addr_t,std::pair<addr_t,guard>> &p) 
 				{ 
 					return p.second.first != mne.area.last();
 				});
@@ -229,7 +229,7 @@ namespace po
 		make_bblock(first_mne,cur_mne);
 				
 		// connect basic blocks
-		for(const std::pair<addr_t,std::pair<addr_t,guard_ptr>> &p: source)
+		for(const std::pair<addr_t,std::pair<addr_t,guard>> &p: source)
 		{
 			if(p.second.first != naddr)
 			{
