@@ -12,7 +12,7 @@ namespace po
 	class code_generator
 	{
 	public:
-		code_generator(::std::insert_iterator< ::std::list<instr>> i) : inserter(i) {};
+		code_generator(std::insert_iterator< std::list<instr>> i) : inserter(i) {};
 
 		// named
 		lvalue and_b(lvalue a, rvalue op1, rvalue op2)	 	{ return named(instr::And,a,op1,op2); };
@@ -66,14 +66,7 @@ namespace po
 		template<class... Values>
 		lvalue named(instr::Function fn, lvalue assign, Values&&... args)
 		{
-			::std::vector<rvalue> arguments({args...});
-
-			for(rvalue &r: arguments)
-				if(r.is_variable())
-					r = variable(r.variable().name(),-1,width(r.variable().name(),tag));
-	
-			if(assign.is_variable())
-				assign = variable(assign.variable().name(),-1,width(assign.variable().name(),tag));
+			std::vector<rvalue> arguments({args...});
 
 			auto sanity_check = [](const rvalue &v)
 			{
@@ -83,18 +76,16 @@ namespace po
 					return v.memory().name().size() && v.memory().bytes() && 
 								 (v.memory().endianess() == memory::BigEndian || v.memory().endianess() == memory::LittleEndian) && 
 								 v.memory().offset() != v;
-				else 
-					return v.is_undefined() || v.is_constant();
+				else if(v.is_constant())
+					return v.constant().width() && 1 << v.constant().width() > v.constant().content(); 
+				else
+					return v.is_undefined();
 			};
 
 			assert(all_of(arguments.begin(),arguments.end(),sanity_check) && sanity_check(assign));
 					
 			instr ret(fn,assign,arguments);
 			inserter = ret;
-
-			if(fn == instr::Call)
-				for(const std::string &reg: registers(tag))
-					inserter = instr(instr::Assign,variable(reg,-1,width(reg,tag)),undefined());
 
 			return assign;
 		}
@@ -106,7 +97,7 @@ namespace po
 		}
 
 		static unsigned int next;
-		::std::insert_iterator< ::std::list<instr>> inserter;
+		std::insert_iterator< std::list<instr>> inserter;
 		T tag;
 	};
 }

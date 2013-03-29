@@ -6,6 +6,7 @@
 #include <map>
 #include <list>
 #include <mutex>
+#include <cstring>
 
 #include <basic_block.hh>
 #include <mnemonic.hh>
@@ -92,8 +93,8 @@ namespace po
 					}
 					else if(ct.value.is_constant())
 					{
-						source.insert(std::make_pair(bb->area().last(),std::make_pair(ct.value.constant().value(),ct.guard)));
-						destination.insert(std::make_pair(ct.value.constant().value(),std::make_pair(bb->area().last(),ct.guard)));
+						source.insert(std::make_pair(bb->area().last(),std::make_pair(ct.value.constant().content(),ct.guard)));
+						destination.insert(std::make_pair(ct.value.constant().content(),std::make_pair(bb->area().last(),ct.guard)));
 					}
 				}	
 			}
@@ -136,7 +137,7 @@ namespace po
 					{
 						if(p.first.is_constant())
 						{
-							addr_t target = p.first.constant().value();
+							addr_t target = p.first.constant().content();
 
 							source.insert(std::make_pair(last,std::make_pair(target,p.second)));
 							destination.insert(std::make_pair(target,std::make_pair(last,p.second)));
@@ -239,7 +240,7 @@ namespace po
 				if(to != bblocks.end() && to->second->area().begin == p.second.first)
 					conditional_jump(from->second,to->second,p.second.second);
 				else
-					conditional_jump(from->second,po::constant(p.second.first),p.second.second);
+					conditional_jump(from->second,po::constant(p.second.first,flsll(p.second.first)),p.second.second);
 			}
 		}
 

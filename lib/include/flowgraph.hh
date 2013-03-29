@@ -141,14 +141,14 @@ namespace po
 						if(right[0].is_constant())
 						{
 							const constant &c = right[0].constant();
-							proc_ptr callee = find_procedure(ret,(unsigned int)c.value());
+							proc_ptr callee = find_procedure(ret,(unsigned int)c.content());
 
 							if(!callee)
 							{
 								auto k = call_targets.begin(), kend = call_targets.end();
 								while(k != kend)
 								{
-									if(k->first != (unsigned int)c.value())
+									if(k->first != (unsigned int)c.content())
 										++k;
 									else
 									{
@@ -158,7 +158,7 @@ namespace po
 								}
 								if(!callee)
 									callee = proc_ptr(new procedure());
-								//call_targets.insert(make_pair(c.value(),callee));
+								//call_targets.insert(make_pair(c.content(),callee));
 							}
 							call(proc,callee);
 						}

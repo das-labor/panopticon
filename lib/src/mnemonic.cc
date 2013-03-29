@@ -185,9 +185,9 @@ ostream &po::operator<<(ostream &os, const mnemonic &m)
 			if(m.operands[idx].is_constant())
 			{
 				if(tok.has_sign)
-					os << (int)m.operands[idx].constant().value();
+					os << (int)m.operands[idx].constant().content();
 				else
-					os << m.operands[idx].constant().value();
+					os << m.operands[idx].constant().content();
 			}
 			else
 				os << m.operands[idx];
