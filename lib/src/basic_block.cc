@@ -17,8 +17,24 @@ relation::relation(rvalue a, Relcode c, rvalue b) : relcode(c), operand1(a), ope
  * guard
  */
 guard::guard(void) {}
-guard::guard(std::list<relation> rels) : relations(rels) {}
+guard::guard(const guard &g) : relations(g.relations) {}
+guard::guard(guard &&g) : relations(move(g.relations)) {}
+guard::guard(const std::list<relation> &rels) : relations(rels) {}
+guard::guard(std::list<relation> &&rels) : relations(move(rels)) {}
 guard::guard(rvalue a, relation::Relcode r, rvalue b) : relations({relation(a,r,b)}) {}
+
+guard &guard::operator=(const guard &g)
+{
+	if(&g != this)
+		relations = g.relations;
+	return *this;
+}
+
+guard &guard::operator=(guard &&g)
+{
+	relations = move(g.relations);
+	return *this;
+}
 
 guard guard::negation(void) const
 {
