@@ -93,8 +93,8 @@ namespace po
 					}
 					else if(ct.value.is_constant())
 					{
-						source.insert(std::make_pair(bb->area().last(),std::make_pair(ct.value.constant().content(),ct.guard)));
-						destination.insert(std::make_pair(ct.value.constant().content(),std::make_pair(bb->area().last(),ct.guard)));
+						source.insert(std::make_pair(bb->area().last(),std::make_pair(ct.value.to_constant().content(),ct.guard)));
+						destination.insert(std::make_pair(ct.value.to_constant().content(),std::make_pair(bb->area().last(),ct.guard)));
 					}
 				}	
 			}
@@ -137,7 +137,7 @@ namespace po
 					{
 						if(p.first.is_constant())
 						{
-							addr_t target = p.first.constant().content();
+							addr_t target = p.first.to_constant().content();
 
 							source.insert(std::make_pair(last,std::make_pair(target,p.second)));
 							destination.insert(std::make_pair(target,std::make_pair(last,p.second)));

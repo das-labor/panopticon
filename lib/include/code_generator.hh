@@ -71,13 +71,13 @@ namespace po
 			auto sanity_check = [](const rvalue &v)
 			{
 				if(v.is_variable())
-					return v.variable().name().size() && v.variable().subscript() == -1 && v.variable().width();
+					return v.to_variable().name().size() && v.to_variable().subscript() == -1 && v.to_variable().width();
 				else if(v.is_memory())
-					return v.memory().name().size() && v.memory().bytes() && 
-								 (v.memory().endianess() == memory::BigEndian || v.memory().endianess() == memory::LittleEndian) && 
-								 v.memory().offset() != v;
+					return v.to_memory().name().size() && v.to_memory().bytes() && 
+								 (v.to_memory().endianess() == memory::BigEndian || v.to_memory().endianess() == memory::LittleEndian) && 
+								 v.to_memory().offset() != v;
 				else if(v.is_constant())
-					return v.constant().width() && 1 << v.constant().width() > v.constant().content(); 
+					return v.to_constant().width() && 1 << v.to_constant().width() > v.to_constant().content(); 
 				else
 					return v.is_undefined();
 			};

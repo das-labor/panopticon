@@ -130,7 +130,7 @@ public:
 		CPPUNIT_ASSERT(bb->outgoing().front().bblock.lock() == 0);
 		CPPUNIT_ASSERT(bb->outgoing().front().guard.relations.empty());
 		CPPUNIT_ASSERT(bb->outgoing().front().value.is_constant());
-		CPPUNIT_ASSERT(bb->outgoing().front().value.constant().content() == 6);
+		CPPUNIT_ASSERT(bb->outgoing().front().value.to_constant().content() == 6);
 		CPPUNIT_ASSERT(bb->area() == po::range<po::addr_t>(0,6));
 		CPPUNIT_ASSERT(bb == proc->entry);
 		CPPUNIT_ASSERT(proc->callees.size() == 0);
@@ -433,8 +433,8 @@ public:
 		check(bbo3->mnemonics()[1],"test41",41);
 		check(bbo3->mnemonics()[2],"test42",42);
 		CPPUNIT_ASSERT(bbo3->outgoing().size() == 2);
-		CPPUNIT_ASSERT(bbo3->outgoing().begin()->bblock.lock() == bbo0 || bbo3->outgoing().begin()->value.constant().content() == 55);
-		CPPUNIT_ASSERT(std::next(bbo3->outgoing().begin())->bblock.lock() == bbo0 || std::next(bbo3->outgoing().begin())->value.constant().value() == 55);
+		CPPUNIT_ASSERT(bbo3->outgoing().begin()->bblock.lock() == bbo0 || bbo3->outgoing().begin()->value.to_constant().content() == 55);
+		CPPUNIT_ASSERT(std::next(bbo3->outgoing().begin())->bblock.lock() == bbo0 || std::next(bbo3->outgoing().begin())->value.to_constant().content() == 55);
 
 		CPPUNIT_ASSERT(proc->entry == bbo0);
 	}

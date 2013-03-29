@@ -162,7 +162,7 @@ sem_action po::avr::branch(std::string m, rvalue flag, bool set)
 	return [m,flag,set](sm &st)
 	{
 		int64_t _k = st.capture_groups["k"];
-		guard g(flag,relation::Eq,set ? 1_val : 0_val);
+		guard g(flag,relation::Eq,set ? 1_i1 : 0_i1);
 		constant k = constant((int8_t)(_k <= 63 ? _k : _k - 128),8);
 
 		st.mnemonic(st.tokens.size(),m,"{8:-}",k);

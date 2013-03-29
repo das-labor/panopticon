@@ -24,7 +24,7 @@ sscp_lattice po::execute(const lvalue &left, instr::Function fn, const std::vect
 
 		if(c.is_constant())
 		{
-			args[i] = c.constant().content();
+			args[i] = c.to_constant().content();
 			ret.type = sscp_lattice::Const;
 		}
 		else if(a.type == sscp_lattice::Const)

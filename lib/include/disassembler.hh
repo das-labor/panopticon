@@ -44,8 +44,6 @@
  * The disassembler interprets a token stream. A token is a instance of a unsigned integer us arbitrary width. To
  * define it a specialization of the architecture_traits<> template is needed. All subclasses of rule are
  * parameterized with a type tag for architecture_traits.
- *
- * @todo The whole file leaks memory as fuck. Switch to shared_ptr.
  */
 
 namespace po

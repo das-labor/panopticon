@@ -140,7 +140,7 @@ namespace po
 
 						if(right[0].is_constant())
 						{
-							const constant &c = right[0].constant();
+							const constant &c = right[0].to_constant();
 							proc_ptr callee = find_procedure(ret,(unsigned int)c.content());
 
 							if(!callee)

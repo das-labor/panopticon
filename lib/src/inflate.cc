@@ -63,8 +63,8 @@ std::string po::turtle(flow_ptr fg)
 					if(v.is_variable())
 					{
 						ss << ":" << opname << " rdf:type po:Variable;" << std::endl
-												 				<< "\tpo:base \"" << v.variable().name() << "\"^^xsd:string;" << std::endl
-												 				<< "\tpo:subscript \"" << v.variable().subscript() << "\"^^xsd:decimal." << std::endl;
+												 				<< "\tpo:base \"" << v.to_variable().name() << "\"^^xsd:string;" << std::endl
+												 				<< "\tpo:subscript \"" << v.to_variable().subscript() << "\"^^xsd:decimal." << std::endl;
 					}
 					else if(v.is_undefined())
 					{
@@ -73,15 +73,15 @@ std::string po::turtle(flow_ptr fg)
 					else if(v.is_constant())
 					{
 						ss << ":" << opname << " rdf:type po:Constant;" << std::endl
-												 				<< "\tpo:value \"" << v.constant().content() << "\"^^xsd:decimal." << std::endl;
+												 				<< "\tpo:value \"" << v.to_constant().content() << "\"^^xsd:decimal." << std::endl;
 					}
 					else if(v.is_memory())
 					{	
-						std::string offname = inflate_value(v.memory().offset());
+						std::string offname = inflate_value(v.to_memory().offset());
 						ss << ":" << opname << " rdf:type po:Memory;" << std::endl
 																<< "\tpo:offset :" << offname << ";" << std::endl
-																<< "\tpo:bytes \"" << v.memory().bytes() << "\"^^xsd:decimal;" << std::endl
-																<< "\tpo:endianess \"" << (int)v.memory().endianess() << "\"^^xsd:decimal." << std::endl;
+																<< "\tpo:bytes \"" << v.to_memory().bytes() << "\"^^xsd:decimal;" << std::endl
+																<< "\tpo:endianess \"" << (int)v.to_memory().endianess() << "\"^^xsd:decimal." << std::endl;
 					}
 					else
 						assert(false);
