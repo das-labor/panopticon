@@ -12,6 +12,7 @@
 #include <stdexcept>
 #include <memory>
 #include <type_traits>
+#include <cstring>
 
 #include <architecture.hh>
 #include <code_generator.hh>
@@ -471,7 +472,7 @@ namespace po
 	template<typename Tag>
 	void sem_state<Tag>::jump(addr_t a, guard g)
 	{
-		jump(constant(a),g);
+		jump(constant(a,flsll(a)),g);
 	}
 	
 	template<typename Tag>

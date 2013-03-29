@@ -5,14 +5,17 @@
 #include <iostream>
 #include <cstdint>
 #include <cassert>
+#include <stdexcept>
 
 namespace po
 {
 	class rvalue;
 	class constant;
 	class undefined;
+	class lvalue;
 	class variable;
 	class memory;
+	class value_exception;
 
 	class rvalue
 	{
@@ -30,7 +33,7 @@ namespace po
 		~rvalue(void);
 
 		rvalue &operator=(const rvalue &r);
-		
+	
 		bool operator<(const rvalue &b) const;
 		bool operator==(const rvalue &b) const;
 		bool operator!=(const rvalue &b) const;
@@ -47,7 +50,7 @@ namespace po
 		const class variable &variable(void) const;
 		const class memory &memory(void) const;
 
-		template<class> friend struct ::std::hash;
+		template<class> friend struct std::hash;
 
 	protected:
 		union
@@ -56,9 +59,15 @@ namespace po
 			struct { uint64_t rest:62, tag:2; } simple;
 			struct { uint64_t sub:16, n1:7, n2:7, n3:7, n4:7, n5:7, width:8, rest:3, tag:2; } name; // variable
 		} d;
-	};
 
-	::std::ostream& operator<<(::std::ostream &os, const po::rvalue &r);
+		void destruct_memory(void);
+		void destruct_constant(void);
+		
+		void assign_memory(const class memory &r);
+		void assign_constant(const class constant &r);
+		};
+
+	std::ostream& operator<<(std::ostream &os, const po::rvalue &r);
 	
 	static_assert(alignof(class rvalue) >= 4,"need class alignment of 4 for pointer tagging");
 	static_assert(sizeof(class rvalue) == 8,"rvalue should not be larger than one register");
@@ -67,9 +76,21 @@ namespace po
 	class constant : public rvalue
 	{
 	public:
-		constant(uint32_t v);
-		uint64_t value(void) const;
+		constant(uint64_t v, uint16_t w);
+
+		uint16_t width(void) const;
+		uint64_t content(void) const;
 	};
+
+	// internal
+	struct constant_priv
+	{
+		unsigned int usage;
+		uint64_t content;
+		uint16_t width;
+	};
+
+	uint64_t flsll(uint64_t);
 
 	class lvalue : public rvalue {};
 	class undefined : public lvalue {};
@@ -77,11 +98,11 @@ namespace po
 	class variable : public lvalue
 	{
 	public:
-		variable(::std::string n, int s = -1, uint8_t w = 0);
+		variable(std::string n, uint16_t w, int s = -1);
 
-		::std::string name(void) const;
+		uint16_t width(void) const;
+		std::string name(void) const;
 		int subscript(void) const;
-		uint8_t width(void) const;
 	};
 
 	class memory : public lvalue
@@ -94,12 +115,12 @@ namespace po
 			BigEndian = 2
 		};
 
-		memory(rvalue o, unsigned int w, Endianess e, ::std::string n);
+		memory(rvalue o, uint16_t b, Endianess e, std::string n);
 
+		uint16_t bytes(void) const;
 		const rvalue &offset(void) const;
-		unsigned int bytes(void) const;
 		Endianess endianess(void) const;
-		const ::std::string &name(void) const;
+		const std::string &name(void) const;
 	};
 
 	// internal
@@ -107,9 +128,15 @@ namespace po
 	{
 		unsigned int usage;
 		rvalue offset;
-		unsigned int bytes;
+		uint16_t bytes;
 		memory::Endianess endianess;
-		::std::string name;
+		std::string name;
+	};
+
+	class value_exception : public std::runtime_error
+	{
+	public:
+		value_exception(const std::string &w);
 	};
 }
 
@@ -140,15 +167,59 @@ namespace std
 	};
 }
 
-inline po::constant operator"" _val(unsigned long long n)
+inline po::constant operator"" _i1(unsigned long long n)
 {
-	return po::constant(n);
+	return po::constant(n,std::max(1,8));
 }
 
-inline po::variable operator"" _var(const char *n, size_t l)
+inline po::constant operator"" _i8(unsigned long long n)
+{
+	return po::constant(n,std::max(1,8));
+}
+
+inline po::constant operator"" _i16(unsigned long long n)
+{
+	return po::constant(n,std::max(1,16));
+}
+
+inline po::constant operator"" _i32(unsigned long long n)
+{
+	return po::constant(n,std::max(1,32));
+}
+
+inline po::constant operator"" _i64(unsigned long long n)
+{
+	return po::constant(n,std::max(1,64));
+}
+
+inline po::variable operator"" _v1(const char *n, size_t l)
 {
 	std::string base(n,l);
-	return po::variable(base);
+	return po::variable(base,1);
+}
+
+inline po::variable operator"" _v8(const char *n, size_t l)
+{
+	std::string base(n,l);
+	return po::variable(base,8);
+}
+
+inline po::variable operator"" _v16(const char *n, size_t l)
+{
+	std::string base(n,l);
+	return po::variable(base,16);
+}
+
+inline po::variable operator"" _v32(const char *n, size_t l)
+{
+	std::string base(n,l);
+	return po::variable(base,32);
+}
+
+inline po::variable operator"" _v64(const char *n, size_t l)
+{
+	std::string base(n,l);
+	return po::variable(base,64);
 }
 
 #endif
