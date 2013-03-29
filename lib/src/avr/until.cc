@@ -154,11 +154,11 @@ sem_action po::avr::branch(std::string m, rvalue flag, bool set)
 	return [m,flag,set](sm &st)
 	{
 		int64_t _k = st.capture_groups["k"];
-		guard_ptr g(new guard(flag,relation::Eq,set ? 1_val : 0_val));
+		guard g(flag,relation::Eq,set ? 1_val : 0_val);
 		constant k = (int8_t)(_k <= 63 ? _k : _k - 128);
 
 		st.mnemonic(st.tokens.size(),m,"{8:-}",k);
-		st.jump(st.address + 1,g->negation());
+		st.jump(st.address + 1,g.negation());
 		st.jump(st.address + k.value() + 1,g);
 	};
 }

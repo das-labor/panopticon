@@ -155,7 +155,7 @@ live_ptr po::liveness(proc_cptr proc)
 		{
 			collect(ct.value,bb);
 
-			for(const relation &rel: ct.guard->relations)
+			for(const relation &rel: ct.guard.relations)
 			{
 				collect(rel.operand1,bb);
 				collect(rel.operand2,bb);
@@ -340,7 +340,7 @@ void po::ssa(proc_ptr proc, dom_ptr dominance, live_ptr live)
 				for(ctrans &s: out)
 				{
 					// rewrite vars in relations
-					for(relation &rel: s.guard->relations)
+					for(relation &rel: s.guard.relations)
 					{
 						if(rel.operand1.is_variable())
 						{
