@@ -5,10 +5,11 @@
 #include <mnemonic.hh>
 
 using namespace po;
+using namespace std;
 
 const addr_t po::naddr = -1;
 
-std::ostream &po::operator<<(std::ostream &os, const instr &i)
+ostream &po::operator<<(ostream &os, const instr &i)
 {
 	os << i.left << " ≔ ";
 	if(i.right.size() == 0)
@@ -28,26 +29,26 @@ std::ostream &po::operator<<(std::ostream &os, const instr &i)
 	return os;
 }
 
-mnemonic::mnemonic(range<addr_t> a, std::string n, std::string fmt, std::initializer_list<rvalue> ops, std::initializer_list<instr> instrs)
+mnemonic::mnemonic(const range<addr_t> &a, const string &n, const string &fmt, initializer_list<rvalue> ops, initializer_list<instr> instrs)
 : area(a), opcode(n), operands(ops), instructions(instrs)
 {
-	std::function<std::string::const_iterator(std::string::const_iterator,std::string::const_iterator)> plain_or_meta;
-	std::function<std::string::const_iterator(std::string::const_iterator,std::string::const_iterator,token &)> escape_seq, modifiers, alias;
-	std::function<std::string::const_iterator(std::string::const_iterator,std::string::const_iterator,unsigned int &)> digits;
+	function<string::const_iterator(string::const_iterator,string::const_iterator)> plain_or_meta;
+	function<string::const_iterator(string::const_iterator,string::const_iterator,token &)> escape_seq, modifiers, alias;
+	function<string::const_iterator(string::const_iterator,string::const_iterator,unsigned int &)> digits;
 
 	// FormatString -> ('{' EscapeSequence '}') | PlainAscii
-	plain_or_meta = [&](std::string::const_iterator cur, std::string::const_iterator end)
+	plain_or_meta = [&](string::const_iterator cur, string::const_iterator end)
 	{
 		if(cur == end)
 			return cur;
 		else if(*cur == '{')
 		{
 			token tok;
-			cur = escape_seq(std::next(cur),end,tok);
+			cur = escape_seq(next(cur),end,tok);
 			assert(cur != end && *cur == '}');
 			format.push_back(tok);
 
-			return plain_or_meta(std::next(cur),end);
+			return plain_or_meta(next(cur),end);
 		}
 		else
 		{
@@ -55,17 +56,17 @@ mnemonic::mnemonic(range<addr_t> a, std::string n, std::string fmt, std::initial
 			{
 				token tok;
 				tok.is_literal = true;
-				tok.alias = std::string(1,*cur);
+				tok.alias = string(1,*cur);
 				format.push_back(tok);
 			}
 			else
-				format.back().alias += std::string(1,*cur);
-			return plain_or_meta(std::next(cur),end);
+				format.back().alias += string(1,*cur);
+			return plain_or_meta(next(cur),end);
 		}
 	};
 
 	// EscapeSequence -> Digit+ (':' Modifiers (':' Alias)?)?
-	escape_seq = [&](std::string::const_iterator cur, std::string::const_iterator end,token &tok)
+	escape_seq = [&](string::const_iterator cur, string::const_iterator end,token &tok)
 	{
 		assert(cur != end && isdigit(*cur));
 		cur = digits(cur,end,tok.width);
@@ -76,49 +77,49 @@ mnemonic::mnemonic(range<addr_t> a, std::string n, std::string fmt, std::initial
 
 		if(cur != end && *cur == ':')
 		{
-			cur = modifiers(std::next(cur),end,tok);
+			cur = modifiers(next(cur),end,tok);
 			if(cur != end && *cur == ':')
-				return alias(std::next(cur),end,tok);
+				return alias(next(cur),end,tok);
 		}
 
 		return cur;
 	};
 
 	// Modifers -> '-'?
-	modifiers = [&](std::string::const_iterator cur, std::string::const_iterator end,token &tok)
+	modifiers = [&](string::const_iterator cur, string::const_iterator end,token &tok)
 	{
 		assert(cur != end);
 
 		if(*cur == '-')
 		{
 			tok.has_sign = true;
-			return std::next(cur);
+			return next(cur);
 		}
 
 		return cur;
 	};
 
 	// Alias -> PlainAscii*
-	alias = [&](std::string::const_iterator cur,std::string::const_iterator end,token &tok)
+	alias = [&](string::const_iterator cur,string::const_iterator end,token &tok)
 	{
 		assert(cur != end);
 
 		if(*cur != '}' && *cur != ':')
 		{
-			tok.alias += std::string(1,*cur);
-			return alias(std::next(cur),end,tok);
+			tok.alias += string(1,*cur);
+			return alias(next(cur),end,tok);
 		}
 
 		return cur;
 	};
 	
 	// Digit
-	digits = [&](std::string::const_iterator cur,std::string::const_iterator end,unsigned int &i)
+	digits = [&](string::const_iterator cur,string::const_iterator end,unsigned int &i)
 	{
 		if(cur != end && isdigit(*cur))
 		{
 			i = i * 10 + *cur - '0';
-			return digits(std::next(cur),end,i);
+			return digits(next(cur),end,i);
 		}
 		else
 			return cur;
@@ -127,7 +128,48 @@ mnemonic::mnemonic(range<addr_t> a, std::string n, std::string fmt, std::initial
 	plain_or_meta(fmt.cbegin(),fmt.cend());
 }
 
-std::ostream &po::operator<<(std::ostream &os, const mnemonic &m)
+mnemonic::mnemonic(const mnemonic &m)
+: area(m.area), 
+	opcode(m.opcode), 
+	operands(m.operands), 
+	instructions(m.instructions), 
+	format(m.format)
+{}
+
+mnemonic::mnemonic(mnemonic &&m)
+: area(move(m.area)),
+	opcode(move(m.opcode)),
+	operands(move(m.operands)),
+	instructions(move(m.instructions)),
+	format(move(m.format))
+{}
+
+mnemonic &mnemonic::operator=(const mnemonic &m)
+{
+	if(&m != this)
+	{
+		area = m.area;
+		opcode = m.opcode;
+		operands = m.operands;
+		instructions = m.instructions;
+		format = m.format;
+	}
+
+	return *this;
+}
+
+mnemonic &mnemonic::operator=(mnemonic &&m)
+{
+	area = move(m.area);
+	opcode = move(m.opcode);
+	operands = move(m.operands);
+	instructions = move(m.instructions);
+	format = move(m.format);
+
+	return *this;
+}
+
+ostream &po::operator<<(ostream &os, const mnemonic &m)
 {
 	os << m.opcode;
 
@@ -158,7 +200,7 @@ std::ostream &po::operator<<(std::ostream &os, const mnemonic &m)
 	return os;
 }
 
-int64_t po::format_constant(const po::mnemonic::token &tok, uint64_t v)
+int64_t po::format_constant(const mnemonic::token &tok, uint64_t v)
 {
 	assert(tok.width <= 64);
 	uint64_t bitmask = 0;
