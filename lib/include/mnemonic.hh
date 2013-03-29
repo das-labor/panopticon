@@ -40,7 +40,7 @@ namespace po
 	};
 
 	template<typename T>
-	::std::ostream& operator<<(::std::ostream &os, const range<T> &r)
+	std::ostream& operator<<(std::ostream &os, const range<T> &r)
 	{ 
 		if(r.size())
 		{
@@ -121,15 +121,15 @@ namespace po
 			
 
 		Function function;
-		::std::string fnname;
+		std::string fnname;
 		lvalue left;
-		::std::vector<rvalue> right;
+		std::vector<rvalue> right;
 	};
 
 	class mnemonic
 	{
 	public:
-		typedef ::std::vector<instr>::const_iterator iterator;
+		typedef std::vector<instr>::const_iterator iterator;
 		
 		struct token
 		{
@@ -141,24 +141,30 @@ namespace po
 		};
 		
 		template <typename F1, typename F2>
-		mnemonic(range<addr_t> a, ::std::string n, ::std::string fmt, F1 ops_begin, F1 ops_end, F2 instr_begin, F2 instr_end)
+		mnemonic(const range<addr_t> &a, const std::string &n, const std::string &fmt, F1 ops_begin, F1 ops_end, F2 instr_begin, F2 instr_end)
 		: mnemonic(a,n,fmt,{},{})
 		{
-			::std::copy(ops_begin,ops_end,inserter(operands,operands.begin()));
-			::std::copy(instr_begin,instr_end,inserter(instructions,instructions.begin()));
+			std::copy(ops_begin,ops_end,inserter(operands,operands.begin()));
+			std::copy(instr_begin,instr_end,inserter(instructions,instructions.begin()));
 		}
 
-		mnemonic(range<addr_t> a, ::std::string n, ::std::string fmt, ::std::initializer_list<rvalue> ops, ::std::initializer_list<instr> instrs);
+		mnemonic(const range<addr_t> &a, const std::string &n, const std::string &fmt, std::initializer_list<rvalue> ops, std::initializer_list<instr> instrs);
+
+		mnemonic(const mnemonic &m);
+		mnemonic(mnemonic &&m);
+
+		mnemonic &operator=(const mnemonic &m);
+		mnemonic &operator=(mnemonic &&m);
 
 		range<addr_t> area;
-		::std::string opcode;
-		::std::vector<rvalue> operands;
-		::std::vector<instr> instructions;
-		::std::vector<token> format;
+		std::string opcode;
+		std::vector<rvalue> operands;
+		std::vector<instr> instructions;
+		std::vector<token> format;
 	};
 	
-	::std::ostream& operator<<(::std::ostream &os, const instr &i);
-	::std::ostream& operator<<(::std::ostream &os, const mnemonic &m);
+	std::ostream& operator<<(std::ostream &os, const instr &i);
+	std::ostream& operator<<(std::ostream &os, const mnemonic &m);
 
 	int64_t format_constant(const mnemonic::token &tok, uint64_t v);
 }
