@@ -77,7 +77,7 @@ namespace po
 								 (v.to_memory().endianess() == memory::BigEndian || v.to_memory().endianess() == memory::LittleEndian) && 
 								 v.to_memory().offset() != v;
 				else if(v.is_constant())
-					return v.to_constant().width() && 1 << v.to_constant().width() > v.to_constant().content(); 
+					return v.to_constant().width() > 0;
 				else
 					return v.is_undefined();
 			};

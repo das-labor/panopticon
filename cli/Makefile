@@ -1,7 +1,8 @@
 include ../defaults.mk
 
-LIBS+=-lpanopticum -lboost_program_options
-INCLUDES+=-Iinclude
+LIBS+=-lpanopticum -lboost_program_options `pkg-config $(PKGCONFIG) --libs`
+INCLUDES+=-Iinclude `pkg-config $(PKGCONFIG) --cflags`
+
 HEADERS=$(wildcard include/*.hh)
 API=$(wildcard ../lib/include/*.hh) $(wildcard ../lib/include/avr/*.hh)
 OBJECTS=main.o avr.o turtle.o gv.o ric.o

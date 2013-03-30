@@ -203,6 +203,27 @@ bool po::operator<(const bblock_cwptr &a, const bblock_cwptr &b)
 	return owner_less<bblock_cwptr>()(a, b);
 }
 
+odotstream &po::operator<<(odotstream &os, const basic_block &bb)
+{
+	os << unique_name(bb) << " [shape=record,label=<<table BORDER=\"0\" CELLBORDER=\"0\" CELLSPACING=\"0\" ALIGN=\"LEFT\">";
+
+	for(const mnemonic &m: bb.mnemonics())
+		os << m;
+
+	os << "</table>>];" << endl;
+
+	for(const ctrans &ct: bb.outgoing())
+		if(ct.bblock.lock())
+			os << unique_name(bb) << " -> " << unique_name(*ct.bblock.lock()) << endl;
+
+	return os;
+}
+
+std::string po::unique_name(const basic_block &bb)
+{
+	return "bblock_" + to_string(bb.area().begin) + "_" + to_string(bb.area().end);
+}
+
 void po::execute2(bblock_cptr bb,std::function<void(const instr&)> f)
 {
 	size_t sz_mne = bb->mnemonics().size(), i_mne = 0;

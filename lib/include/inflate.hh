@@ -12,6 +12,7 @@ namespace po
 
 		bool calls;
 		bool body;
+		bool subgraph;
 	};
 	
 	odotstream &operator<<(odotstream &os, odotstream &(*func)(odotstream &os));
@@ -25,6 +26,8 @@ namespace po
 	odotstream &nocalls(odotstream &os);
 	odotstream &body(odotstream &os);
 	odotstream &nobody(odotstream &os);
+	odotstream &subgraph(odotstream &os);
+	odotstream &nosubgraph(odotstream &os);
 
 	//std::string turtle(flow_ptr fg);
 	//std::string graphviz(flow_ptr fg);
@@ -33,6 +36,13 @@ namespace po
 	std::string unique_name(const T &t)
 	{
 		return std::string("generic_") + std::to_string((uintptr_t)&t);
+	}
+
+	template<typename T>
+	odotstream &operator<<(odotstream &os, const T &t)
+	{
+		static_cast<std::ostringstream &>(os) << t;
+		return os;
 	}
 }
 

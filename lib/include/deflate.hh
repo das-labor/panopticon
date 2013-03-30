@@ -18,7 +18,7 @@ namespace po
 	class deflate
 	{
 	public:
-		deflate(::std::string &path);
+		deflate(const std::string &path);
 		~deflate(void);
 
 		flow_ptr flowgraph(void);
@@ -26,7 +26,7 @@ namespace po
 	private:
 		proc_ptr procedure(librdf_node *proc);
 		bblock_ptr basic_block(librdf_node *bblock);
-		void mnemonic(librdf_node *mne, ::std::list<mnemonic> &ms);
+		void mnemonic(librdf_node *mne, std::list<mnemonic> &ms);
 		rvalue value(librdf_node *val) const;
 
 		static librdf_world *rdf_world;
