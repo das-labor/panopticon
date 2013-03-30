@@ -29,6 +29,12 @@ ostream &po::operator<<(ostream &os, const instr &i)
 	return os;
 }
 
+odotstream& po::operator<<(odotstream &os, const instr &i)
+{
+	static_cast<ostringstream &>(os) << "<tr><td> </td><td ALIGN=\"LEFT\" COLSPAN=\"2\">" << i << "</td></tr>";
+	return os;
+}
+
 mnemonic::mnemonic(const range<addr_t> &a, const string &n, const string &fmt, initializer_list<rvalue> ops, initializer_list<instr> instrs)
 : area(a), opcode(n), operands(ops), instructions(instrs)
 {
@@ -169,33 +175,40 @@ mnemonic &mnemonic::operator=(mnemonic &&m)
 	return *this;
 }
 
+string mnemonic::format_operands(void) const
+{
+	stringstream ss;
+	unsigned int idx = 0;
+
+	for(const mnemonic::token &tok: format)
+	{
+		if(tok.alias.empty() && !tok.is_literal)
+		{
+			assert(idx < operands.size());
+			if(operands[idx].is_constant())
+			{
+				if(tok.has_sign)
+					ss << (int)operands[idx].to_constant().content();
+				else
+					ss << operands[idx].to_constant().content();
+			}
+			else
+				ss << operands[idx];
+		}
+		else
+			ss << tok.alias;
+		idx += !tok.is_literal;
+	}
+
+	return ss.str();
+}
+
 ostream &po::operator<<(ostream &os, const mnemonic &m)
 {
 	os << m.opcode;
 
 	if(m.operands.size())
-		os << " ";
-
-	unsigned int idx = 0;
-	for(const mnemonic::token &tok: m.format)
-	{
-		if(tok.alias.empty() && !tok.is_literal)
-		{
-			assert(idx < m.operands.size());
-			if(m.operands[idx].is_constant())
-			{
-				if(tok.has_sign)
-					os << (int)m.operands[idx].to_constant().content();
-				else
-					os << m.operands[idx].to_constant().content();
-			}
-			else
-				os << m.operands[idx];
-		}
-		else
-			os << tok.alias;
-		idx += !tok.is_literal;
-	}
+		os << " " << m.format_operands();
 	
 	return os;
 }
@@ -206,7 +219,14 @@ odotstream& po::operator<<(odotstream &os, const mnemonic &m)
 		 << "<tr ALIGN=\"LEFT\"><td ALIGN=\"LEFT\">0x"
 		 << std::hex << m.area.begin << std::dec 
 		 << "</td><td ALIGN=\"LEFT\">" << m.opcode
+		 << "</td><td ALIGN=\"LEFT\">"
+		 << m.format_operands()
 		 << "</td></tr>";
+
+	if(os.instrs)
+		 for(const instr &i: m.instructions)
+			 os << i;
+
 	return os;
 }
 

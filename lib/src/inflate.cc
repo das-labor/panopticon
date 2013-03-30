@@ -11,7 +11,7 @@ using namespace po;
 using namespace std;
 
 odotstream::odotstream(void)
-: ostringstream(), calls(true), body(true), subgraph(false)
+: ostringstream(), calls(true), body(true), subgraph(false), instrs(false)
 {}
 
 odotstream &po::operator<<(odotstream &os, odotstream &(*func)(odotstream &os))
@@ -25,6 +25,8 @@ odotstream &po::body(odotstream &os) { os.body = true; return os; }
 odotstream &po::nobody(odotstream &os) { os.body = false; return os; }
 odotstream &po::subgraph(odotstream &os) { os.subgraph = true; return os; }
 odotstream &po::nosubgraph(odotstream &os) { os.subgraph = false; return os; }
+odotstream &po::instrs(odotstream &os) { os.instrs = true; return os; }
+odotstream &po::noinstrs(odotstream &os) { os.instrs = false; return os; }
 
 std::string po::turtle(flow_ptr fg)
 {
