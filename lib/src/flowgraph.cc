@@ -4,6 +4,35 @@
 #include <basic_block.hh>
 
 using namespace po;
+using namespace std;
+
+odotstream &po::operator<<(odotstream &os, const flowgraph &f)
+{
+	os << "digraph G" << endl
+		 << "{" << endl
+		 << "\tgraph [label=\"" << f.name << "\"];" << endl;
+
+	for(proc_cptr p: f.procedures)
+	{
+		os << *p << endl;
+
+		if(os.calls)
+			for(proc_cwptr q: p->callees)
+				os << "\t" 
+					 << (os.body ? "cluster_" : "") << unique_name(*p) 
+					 << " -> " 
+					 << (os.body ? "cluster_" : "") << unique_name(*q.lock())
+					 << ";" << endl;
+	}
+
+	os << "}" << endl;
+	return os;
+}
+
+string po::unique_name(const flowgraph &f)
+{
+	return f.name.empty() ? "flow_" + to_string((uintptr_t)&f) : f.name;
+}
 
 proc_ptr po::find_procedure(flow_ptr fg, addr_t a)
 {

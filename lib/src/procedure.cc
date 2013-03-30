@@ -55,6 +55,30 @@ void procedure::rev_postorder(function<void(bblock_ptr bb)> fn) const
 	for_each(postorder.rbegin(),postorder.rend(),fn);
 }
 
+odotstream &po::operator<<(odotstream &os, const procedure &p)
+{
+	os << "\t";
+	
+	if(os.body)
+		os << "subgraph cluster_" << unique_name(p) << endl
+			 << "\t{" << endl
+			 << "\t\tgraph [label=\"" << p.name << "\"];" << endl
+			 << "\t}" << endl;
+	else
+		os << unique_name(p) << " [label=\"" << p.name << "\"];" << endl;
+
+
+//	for(const mnemonic &m)
+//		os << m << endl;
+
+	return os;
+}
+
+string po::unique_name(const procedure &f)
+{
+	return f.name.empty() ? std::string("proc_") + (f.entry ? to_string(f.entry->area().begin) : to_string((uintptr_t)&f)) : f.name;
+}
+
 bblock_ptr po::find_bblock(proc_ptr proc, addr_t a)
 {
 	auto i = proc->basic_blocks.begin();

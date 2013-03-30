@@ -11,6 +11,7 @@
 #include <basic_block.hh>
 #include <mnemonic.hh>
 #include <disassembler.hh>
+#include <inflate.hh>
 
 namespace po
 {
@@ -60,6 +61,9 @@ namespace po
 		template<typename Tag>
 		static proc_ptr disassemble(const proc_ptr proc, const disassembler<Tag> &main, std::vector<typename rule<Tag>::token> tokens, addr_t start);	
 	};
+
+	odotstream &operator<<(odotstream &os, const procedure &p);
+	std::string unique_name(const procedure &f);
 	
 	template<typename Tag>
 	proc_ptr procedure::disassemble(const proc_ptr proc, const disassembler<Tag> &main, std::vector<typename rule<Tag>::token> tokens, addr_t start)

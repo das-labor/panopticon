@@ -101,6 +101,7 @@
 	--> proc::caller/callees weak proc ptr **DONE**
 	--> ctrans weak bblock ptrs **DONE**
 	--> constructors for flowgraph and procedure
+	--> on-demand constant_priv
 
 2013-03-29
 
