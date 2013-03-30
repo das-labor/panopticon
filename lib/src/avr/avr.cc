@@ -689,5 +689,5 @@ flow_ptr po::avr::disassemble(std::vector<typename architecture_traits<avr_tag>:
 		st.mnemonic(1,"unk");
 	};
 
-	return ::disassemble<avr_tag>(main,bytes,0,flow,signal);
+	return flowgraph::disassemble<avr_tag>(main,bytes,0,flow,signal);
 }

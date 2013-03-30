@@ -200,6 +200,16 @@ ostream &po::operator<<(ostream &os, const mnemonic &m)
 	return os;
 }
 
+odotstream& po::operator<<(odotstream &os, const mnemonic &m)
+{
+	os << "\t" << (os.subgraph ? "\t" : "")
+		 << "<tr ALIGN=\"LEFT\"><td ALIGN=\"LEFT\">0x"
+		 << std::hex << m.area.begin << std::dec 
+		 << "</td><td ALIGN=\"LEFT\">" << m.opcode
+		 << "</td></tr>";
+	return os;
+}
+
 int64_t po::format_constant(const mnemonic::token &tok, uint64_t v)
 {
 	assert(tok.width <= 64);

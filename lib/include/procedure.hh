@@ -44,6 +44,7 @@ namespace po
 	{
 	public:
 		procedure(void);
+		procedure(const std::string &n);
 		template<typename FW> procedure(FW begin, FW end) : procedure() { copy(begin,end,inserter(basic_blocks,basic_blocks.begin())); }
 
 		void rev_postorder(std::function<void(bblock_ptr bb)> fn) const;
@@ -73,7 +74,7 @@ namespace po
 		std::set<addr_t> todo;
 		std::map<addr_t,mnemonic> mnemonics;
 		std::multimap<addr_t,std::pair<addr_t,guard>> source, destination;
-		proc_ptr ret(new procedure());
+		proc_ptr ret = proc ? proc : proc_ptr(new procedure());
 
 		// copy exsisting mnemonics and jumps into tables. TODO: cache tables in proc
 		if(proc)
@@ -102,6 +103,8 @@ namespace po
 					}
 				}	
 			}
+
+			proc->basic_blocks.clear();
 		}
 
 		todo.insert(start);
@@ -122,7 +125,7 @@ namespace po
 				continue;
 			}
 
-			if(j == mnemonics.end() || j->second.area.begin != cur_addr)
+			if(j == mnemonics.end() || !j->second.area.includes(cur_addr))
 			{
 				advance(i,cur_addr);
 				tie(ret,i) = main.match(i,tokens.end(),state);
@@ -158,7 +161,7 @@ namespace po
 					std::cerr << "Failed to match anything at " << cur_addr << std::endl;
 				}
 			}
-			else
+			else if(j->second.area.begin != cur_addr)
 			{
 				std::cerr << "Overlapping mnemonics at " << cur_addr << " with \"" << "[" << j->second.area << "] " << j->second << "\"" << std::endl;
 			}
@@ -267,11 +270,9 @@ namespace po
 			ret->entry = bblock_ptr(0);
 		}
 
-		if(proc && proc->name.size() > 0)
-			ret->name = proc->name;
-		else if(ret->basic_blocks.size() > 0)
+		if(!proc && ret->basic_blocks.size() > 0)
 			ret->name = "proc_" + std::to_string(ret->entry->area().begin);
-		else
+		else if(ret->basic_blocks.size() > 0)
 			ret->name = "proc_(empty)";
 
 		return ret;

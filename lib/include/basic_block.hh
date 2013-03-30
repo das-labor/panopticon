@@ -164,6 +164,9 @@ namespace po
 	bool operator<(const bblock_wptr &a, const bblock_wptr &b);
 	bool operator<(const bblock_cwptr &a, const bblock_cwptr &b);
 
+	odotstream &operator<<(odotstream &os, const basic_block &bb);
+	std::string unique_name(const basic_block &bb);
+
 	// reading
 	void execute(bblock_cptr bb,std::function<void(const lvalue&,instr::Function,const std::vector<rvalue>&)> f);
 	void execute2(bblock_cptr bb,std::function<void(const instr&)> f);

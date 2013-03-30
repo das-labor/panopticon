@@ -22,6 +22,7 @@ bool po::operator<(const proc_cwptr &a, const proc_cwptr &b)
 domtree::domtree(bblock_ptr b) : intermediate(0), basic_block(b) {}
 
 procedure::procedure(void) : name("unnamed") {}
+procedure::procedure(const std::string &n) : name(n) {}
 
 void procedure::rev_postorder(function<void(bblock_ptr bb)> fn) const
 {
@@ -60,17 +61,22 @@ odotstream &po::operator<<(odotstream &os, const procedure &p)
 	os << "\t";
 	
 	if(os.body)
-		os << "subgraph cluster_" << unique_name(p) << endl
+	{
+		if(os.subgraph)
+			os << "subgraph cluster_";
+		
+		os << unique_name(p) << endl
 			 << "\t{" << endl
-			 << "\t\tgraph [label=\"" << p.name << "\"];" << endl
-			 << "\t}" << endl;
+			 << "\t\tgraph [label=\"" << p.name << "\"];" << endl;
+
+		for(bblock_cptr bb: p.basic_blocks)
+			os << "\t" << (os.subgraph ? "\t" : "") << *bb << endl;
+
+		os << "\t}" << endl;
+	}
 	else
 		os << unique_name(p) << " [label=\"" << p.name << "\"];" << endl;
-
-
-//	for(const mnemonic &m)
-//		os << m << endl;
-
+	
 	return os;
 }
 
