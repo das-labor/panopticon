@@ -4,41 +4,25 @@
 #include <inflate.hh>
 #include <basic_block.hh>
 #include <mnemonic.hh>
+#include <flowgraph.hh>
+#include <procedure.hh>
 
 using namespace po;
 using namespace std;
 
-odotstream::odotstream(void) : ostringstream() {}
+odotstream::odotstream(void)
+: ostringstream(), calls(true), body(true)
+{}
 
-odotstream &po::operator<<(odotstream &os, const flowgraph &f)
+odotstream &po::operator<<(odotstream &os, odotstream &(*func)(odotstream &os))
 {
-	os << "digraph G" << endl
-		 << "{" << endl
-		 << "\tgraph [label=\"" << f.name << "\"];" << endl;
-
-	for(proc_cptr p: f.procedures)
-		os << *p << endl;
-
-	os << "}" << endl;
-	return os;
+	return func(os);
 }
 
-odotstream &po::operator<<(odotstream &os, const procedure &p)
-{
-	os << "\tsubgraph cluster_" << p.name << endl
-		 << "\t{" << endl
-		 << "\t\tgraph [label=\"" << p.name << "\"];" << endl;
-
-//	for(const mnemonic &m)
-//		os << m << endl;
-
-	os << "\t}" << endl;
-	return os;
-}
-	
-//odotstream &operator<<(odotstream &os, const mnemonic &m);
-//odotstream &operator<<(odotstream &os, const instr &i);
-//odotstream &operator<<(odotstream &os, rvalue v);
+odotstream &po::calls(odotstream &os) { os.calls = true; return os; }
+odotstream &po::nocalls(odotstream &os) { os.calls = false; return os; }
+odotstream &po::body(odotstream &os) { os.body = true; return os; }
+odotstream &po::nobody(odotstream &os) { os.body = false; return os; }
 
 std::string po::turtle(flow_ptr fg)
 {

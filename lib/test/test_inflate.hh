@@ -24,9 +24,20 @@ public:
 		f->procedures.insert(p1);
 		f->procedures.insert(p2);
 
-		po::odotstream os;
+		po::call(p1,p2);
+		po::call(p2,p2);
 
-		os << f << std::endl;
-		std::cout << std::endl << os.str();
+		{
+			po::odotstream os;
+			os << po::nobody << *f << std::endl;
+			std::cout << std::endl << os.str();
+		}
+		
+		{
+			po::odotstream os;
+			os << po::nocalls << *f << std::endl;
+			std::cout << std::endl << os.str();
+		}
+
 	}
 };

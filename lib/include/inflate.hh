@@ -3,24 +3,37 @@
 
 #include <sstream>
 
-#include <flowgraph.hh>
-
 namespace po
 {
 	class odotstream : public std::ostringstream
 	{
 	public:
 		odotstream(void);
-	};
 
-	odotstream &operator<<(odotstream &os, const flowgraph &f);
-	odotstream &operator<<(odotstream &os, const procedure &p);
+		bool calls;
+		bool body;
+	};
+	
+	odotstream &operator<<(odotstream &os, odotstream &(*func)(odotstream &os));
+
+	/*odotstream &operator<<(odotstream &os, const procedure &p);
 	odotstream &operator<<(odotstream &os, const mnemonic &m);
 	odotstream &operator<<(odotstream &os, const instr &i);
-	odotstream &operator<<(odotstream &os, rvalue v);
+	odotstream &operator<<(odotstream &os, rvalue v);*/
 
-	std::string turtle(flow_ptr fg);
-	std::string graphviz(flow_ptr fg);
+	odotstream &calls(odotstream &os);
+	odotstream &nocalls(odotstream &os);
+	odotstream &body(odotstream &os);
+	odotstream &nobody(odotstream &os);
+
+	//std::string turtle(flow_ptr fg);
+	//std::string graphviz(flow_ptr fg);
+
+	template<typename T>
+	std::string unique_name(const T &t)
+	{
+		return std::string("generic_") + std::to_string((uintptr_t)&t);
+	}
 }
 
 #endif
