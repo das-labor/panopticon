@@ -6,6 +6,39 @@
 #include <mnemonic.hh>
 
 using namespace po;
+using namespace std;
+
+odotstream::odotstream(void) : ostringstream() {}
+
+odotstream &po::operator<<(odotstream &os, const flowgraph &f)
+{
+	os << "digraph G" << endl
+		 << "{" << endl
+		 << "\tgraph [label=\"" << f.name << "\"];" << endl;
+
+	for(proc_cptr p: f.procedures)
+		os << *p << endl;
+
+	os << "}" << endl;
+	return os;
+}
+
+odotstream &po::operator<<(odotstream &os, const procedure &p)
+{
+	os << "\tsubgraph cluster_" << p.name << endl
+		 << "\t{" << endl
+		 << "\t\tgraph [label=\"" << p.name << "\"];" << endl;
+
+//	for(const mnemonic &m)
+//		os << m << endl;
+
+	os << "\t}" << endl;
+	return os;
+}
+	
+//odotstream &operator<<(odotstream &os, const mnemonic &m);
+//odotstream &operator<<(odotstream &os, const instr &i);
+//odotstream &operator<<(odotstream &os, rvalue v);
 
 std::string po::turtle(flow_ptr fg)
 {
