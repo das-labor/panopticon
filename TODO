@@ -93,16 +93,56 @@
 	--> document **DONE**
 
 ==> Overall code improvements
-	--> API documentation
-	--> code review
 	--> ditch assert() for exceptions
 	--> move semantics for mnemonic, basic_block, value and guard **DONE**
 	--> ditch guard_ptr **DONE**
 	--> add value width to rdf
 	--> unit tests for value **DONE**
-	--> doc
 	--> proc::caller/callees weak proc ptr **DONE**
 	--> ctrans weak bblock ptrs **DONE**
+	--> constructors for flowgraph and procedure
+
+2013-03-29
+
+==> New inflate/deflate architecture
+	--> odotstream manip for procedure subgraph, callgraph, root graph
+	--> oturtlestream
+	--> iturtlestream
+
+==> Documentation
+	--> architecture.hh
+	--> basic_block.hh
+	--> code_generator.hh
+	--> deflate.hh
+	--> dflow.hh
+	--> disassembler.hh **DONE**
+	--> flowgraph.hh
+	--> inflate.hh
+	--> interpreter.hh
+	--> mnemonic.hh
+	--> procedure.hh
+	--> sat.hh
+	--> value.hh **DONE**
+
+==> Code review
+	--> architecture.hh
+	--> basic_block.hh
+	--> code_generator.hh
+	--> deflate.hh
+	--> dflow.hh
+	--> disassembler.hh **DONE**
+	--> flowgraph.hh
+	--> inflate.hh **INPROGRESS**
+	--> interpreter.hh
+	--> mnemonic.hh
+	--> procedure.hh
+	--> sat.hh
+	--> value.hh **DONE**
+
+==> Unit tests
+	--> disassembler **DONE**
+	--> rvalue and subclasses **DONE**
+	--> odotstream **INPROGRESS**
 
 ==> K-set domain for sparse constant propagation
 
