@@ -127,6 +127,8 @@ namespace po
 		std::vector<rvalue> right;
 	};
 
+	odotstream& operator<<(odotstream &os, const instr &i);
+
 	class mnemonic
 	{
 	public:
@@ -156,6 +158,8 @@ namespace po
 
 		mnemonic &operator=(const mnemonic &m);
 		mnemonic &operator=(mnemonic &&m);
+
+		std::string format_operands(void) const;
 
 		range<addr_t> area;
 		std::string opcode;

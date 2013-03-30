@@ -64,6 +64,7 @@ namespace po
 	};
 
 	std::ostream& operator<<(std::ostream &os, const guard &g);
+	odotstream &operator<<(odotstream &os, const guard &g);
 	
 	struct ctrans
 	{

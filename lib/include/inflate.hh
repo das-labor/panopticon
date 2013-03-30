@@ -13,14 +13,10 @@ namespace po
 		bool calls;
 		bool body;
 		bool subgraph;
+		bool instrs;
 	};
 	
 	odotstream &operator<<(odotstream &os, odotstream &(*func)(odotstream &os));
-
-	/*odotstream &operator<<(odotstream &os, const procedure &p);
-	odotstream &operator<<(odotstream &os, const mnemonic &m);
-	odotstream &operator<<(odotstream &os, const instr &i);
-	odotstream &operator<<(odotstream &os, rvalue v);*/
 
 	odotstream &calls(odotstream &os);
 	odotstream &nocalls(odotstream &os);
@@ -28,6 +24,8 @@ namespace po
 	odotstream &nobody(odotstream &os);
 	odotstream &subgraph(odotstream &os);
 	odotstream &nosubgraph(odotstream &os);
+	odotstream &instrs(odotstream &os);
+	odotstream &noinstrs(odotstream &os);
 
 	//std::string turtle(flow_ptr fg);
 	//std::string graphviz(flow_ptr fg);

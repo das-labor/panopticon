@@ -95,6 +95,12 @@ std::ostream& po::operator<<(std::ostream &os, const guard &g)
 	return os;
 }
 
+odotstream &po::operator<<(odotstream &os, const guard &g)
+{
+	static_cast<ostringstream &>(os) << g;
+	return os;
+}
+
 /*
  * ctrans
  */
@@ -214,7 +220,7 @@ odotstream &po::operator<<(odotstream &os, const basic_block &bb)
 
 	for(const ctrans &ct: bb.outgoing())
 		if(ct.bblock.lock())
-			os << unique_name(bb) << " -> " << unique_name(*ct.bblock.lock()) << endl;
+			os << unique_name(bb) << " -> " << unique_name(*ct.bblock.lock()) << " [label=\"" << ct.guard << "\"];" << endl;
 
 	return os;
 }
