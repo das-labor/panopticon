@@ -220,7 +220,14 @@ odotstream &po::operator<<(odotstream &os, const basic_block &bb)
 
 	for(const ctrans &ct: bb.outgoing())
 		if(ct.bblock.lock())
+		{
 			os << unique_name(bb) << " -> " << unique_name(*ct.bblock.lock()) << " [label=\"" << ct.guard << "\"];" << endl;
+		}
+		else
+		{
+			os << unique_name(bb) << " -> " << unique_name(ct.value) << " [label=\"" << ct.guard << "\"];" << endl;
+			os << unique_name(ct.value) << " [label=\"" << ct.value << "\"];" << endl;
+		}
 
 	return os;
 }

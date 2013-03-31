@@ -48,6 +48,7 @@ class ProcedureTest : public CppUnit::TestFixture
 	//CPPUNIT_TEST(testRefine);
 	CPPUNIT_TEST(testContinue);
 	CPPUNIT_TEST(testEntrySplit);
+	CPPUNIT_TEST(testVariable);
 	CPPUNIT_TEST_SUITE_END();
 
 public:

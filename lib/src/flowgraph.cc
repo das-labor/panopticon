@@ -66,6 +66,11 @@ string po::unique_name(const flowgraph &f)
 	return f.name.empty() ? "flow_" + to_string((uintptr_t)&f) : f.name;
 }
 
+oturtlestream& po::operator<<(oturtlestream &os, const flowgraph &f)
+{
+
+
+
 proc_ptr po::find_procedure(flow_ptr fg, addr_t a)
 {
 	std::set<proc_ptr>::iterator i = fg->procedures.begin();
