@@ -100,13 +100,13 @@
 	--> unit tests for value **DONE**
 	--> proc::caller/callees weak proc ptr **DONE**
 	--> ctrans weak bblock ptrs **DONE**
-	--> constructors for flowgraph and procedure
+	--> constructors for flowgraph and procedure **DONE**
 	--> on-demand constant_priv
 
 2013-03-29
 
 ==> New inflate/deflate architecture
-	--> odotstream manip for procedure subgraph, callgraph, root graph
+	--> odotstream manip for procedure subgraph, callgraph, root graph **DONE**
 	--> oturtlestream
 	--> iturtlestream
 
@@ -143,7 +143,6 @@
 ==> Unit tests
 	--> disassembler **DONE**
 	--> rvalue and subclasses **DONE**
-	--> odotstream **INPROGRESS**
 
 ==> K-set domain for sparse constant propagation
 

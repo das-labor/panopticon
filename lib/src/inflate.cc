@@ -28,6 +28,8 @@ odotstream &po::nosubgraph(odotstream &os) { os.subgraph = false; return os; }
 odotstream &po::instrs(odotstream &os) { os.instrs = true; return os; }
 odotstream &po::noinstrs(odotstream &os) { os.instrs = false; return os; }
 
+oturtlestream::oturtlestream(void) : ostringstream() {}
+
 std::string po::turtle(flow_ptr fg)
 {
 	std::stringstream ss;

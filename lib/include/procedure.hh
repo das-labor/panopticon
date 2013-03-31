@@ -43,8 +43,7 @@ namespace po
 	class procedure
 	{
 	public:
-		procedure(void);
-		procedure(const std::string &n);
+		procedure(const std::string &n = std::string("proc_noname"));
 		template<typename FW> procedure(FW begin, FW end) : procedure() { copy(begin,end,inserter(basic_blocks,basic_blocks.begin())); }
 
 		void rev_postorder(std::function<void(bblock_ptr bb)> fn) const;

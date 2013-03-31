@@ -27,9 +27,6 @@ namespace po
 	odotstream &instrs(odotstream &os);
 	odotstream &noinstrs(odotstream &os);
 
-	//std::string turtle(flow_ptr fg);
-	//std::string graphviz(flow_ptr fg);
-
 	template<typename T>
 	std::string unique_name(const T &t)
 	{
@@ -38,6 +35,19 @@ namespace po
 
 	template<typename T>
 	odotstream &operator<<(odotstream &os, const T &t)
+	{
+		static_cast<std::ostringstream &>(os) << t;
+		return os;
+	}
+
+	class oturtlestream : public std::ostringstream
+	{
+	public:
+		oturtlestream(void);
+	};
+	
+	template<typename T>
+	oturtlestream &operator<<(oturtlestream &os, const T &t)
 	{
 		static_cast<std::ostringstream &>(os) << t;
 		return os;

@@ -21,7 +21,6 @@ bool po::operator<(const proc_cwptr &a, const proc_cwptr &b)
 
 domtree::domtree(bblock_ptr b) : intermediate(0), basic_block(b) {}
 
-procedure::procedure(void) : name("unnamed") {}
 procedure::procedure(const std::string &n) : name(n) {}
 
 void procedure::rev_postorder(function<void(bblock_ptr bb)> fn) const
