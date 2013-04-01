@@ -87,47 +87,16 @@ namespace po
 		};
 
 		template<class... Values>
-		instr(Function fn, lvalue a, Values&&... args)
-		: function(fn), left(a), right({args...})
-		{
-			switch(fn)
-			{
-			case And: 	fnname = " ∨ "; break;
-			case Or: 		fnname = " ∧ "; break;
-			case Xor: 	fnname = " ⊕ "; break;
-			case Not: 	fnname = "¬"; break;
-			case Assign: fnname = ""; break;
-			case UShr: 	fnname = " ≫ "; break;
-			case UShl: 	fnname = " ≪ "; break;
-			case SShr: 	fnname = " ≫ₛ "; break;
-			case SShl: 	fnname = " ≪ₛ "; break;
-			case UExt: 	fnname = " ↤ᵤ "; break;
-			case SExt: 	fnname = " ↤ₛ "; break;
-			case Slice: fnname = ":"; break;
-			//case Concat: fnname = " ∷ "; break;
-			case Add: 	fnname = " + "; break;
-			case Sub: 	fnname = " - "; break;
-			case Mul: 	fnname = " × "; break;
-			case SDiv: 	fnname = " ÷ₛ "; break;
-			case UDiv: 	fnname = " ÷ᵤ "; break;
-			case SMod: 	fnname = " modₛ "; break;
-			case UMod: 	fnname = " modᵤ "; break;
-			case SLeq: 	fnname = " ≤ₛ "; break;
-			case ULeq: 	fnname = " ≤ᵤ "; break;
-			case Call: 	fnname = "call"; break;
-			case Phi: 	fnname = "ϕ"; break;
-			default: assert(false);
-			}
-		}
-			
-
+		instr(Function fn, lvalue a, Values&&... args) : function(fn), left(a), right({args...}) {}
+		
 		Function function;
-		std::string fnname;
 		lvalue left;
 		std::vector<rvalue> right;
 	};
 
 	odotstream& operator<<(odotstream &os, const instr &i);
+	std::string pretty(instr::Function fn);
+	std::string symbolic(instr::Function fn);
 
 	class mnemonic
 	{

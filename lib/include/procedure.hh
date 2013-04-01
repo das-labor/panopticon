@@ -27,8 +27,7 @@ namespace po
 	void call(proc_ptr from, proc_ptr to);
 	void execute(proc_cptr proc,std::function<void(const lvalue &left, instr::Function fn, const std::vector<rvalue> &right)> f);
 	bblock_ptr find_bblock(proc_ptr proc, addr_t a);
-	std::string graphviz(proc_ptr proc);
-
+	
 	struct domtree
 	{
 		domtree(bblock_ptr b);

@@ -353,19 +353,27 @@ oturtlestream &po::operator<<(oturtlestream &os, rvalue r)
 	switch(r.tag())
 	{
 	case rvalue::UndefinedValueTag: os << "po:undefined"; return os;
-	case rvalue::ConstantValueTag: 	os << "\"" << r.to_constant().content() << "\"^^po:Constant"; return os;
+	case rvalue::ConstantValueTag: 	os << (os.embed ? "" : "\"") << r.to_constant().content() << (os.embed ? "" : "\"") << "^^po:Constant"; return os;
 	case rvalue::VariableValueTag:
 	{
 		const variable &v = r.to_variable();
-		os << "\"" << v.name() << (v.subscript() >= 0 ? "_" + to_string(v.subscript()) : "") << "\"^^po:Variable";
+		os << (os.embed ? "" : "\"") << v.name() << (v.subscript() >= 0 ? "_" + to_string(v.subscript()) : "") << (os.embed ? "" : "\"") << "^^po:Variable";
 		return os;
 	}
 	case rvalue::MemoryValueTag:
 	{
 		const memory &m = r.to_memory();
 		
-		// name and offset
-		os << "\"" << m.name() << "[" << m.offset() << ";" << m.bytes();
+		// name
+		os << (os.embed ? "" : "\"") << m.name() << "[";
+		
+		// offset
+		if(!os.embed)
+			os << embed << m.offset() << noembed;
+		else
+			os << m.offset();
+
+		os << ";" << m.bytes() << ",";
 
 		// endianess
 		switch(m.endianess())
@@ -375,7 +383,7 @@ oturtlestream &po::operator<<(oturtlestream &os, rvalue r)
 			default: os << "un"; break;
 		}
 
-		os << "]\"^^po:Memory";
+		os << "]" << (os.embed ? "" : "\"") <<"^^po:Memory";
 		return os;
 	}
 	default:

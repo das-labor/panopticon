@@ -1,4 +1,3 @@
-MAKE=make
 COMPONENTS=lib qt cli
 
 .PHONY: clean $(COMPONENTS) doc

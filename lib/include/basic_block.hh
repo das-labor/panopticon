@@ -63,6 +63,8 @@ namespace po
 		std::list<relation> relations;
 	};
 
+	std::string symbolic(relation::Relcode r);
+	std::string pretty(relation::Relcode r);
 	std::ostream& operator<<(std::ostream &os, const guard &g);
 	odotstream &operator<<(odotstream &os, const guard &g);
 	

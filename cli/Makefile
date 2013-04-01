@@ -18,8 +18,8 @@ obj/%.o: src/%.cc $(HEADERS) $(API)
 	$(CXX) $(CXXARGS) -c $(INCLUDES) -o $@ $<
 
 test:
-	make -C test
-	
+	$(MAKE) -C test
+
 clean:
 	rm -f panop obj/*.o
-	make -C test clean
+	$(MAKE) -C test clean

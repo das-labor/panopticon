@@ -61,6 +61,42 @@ guard guard::negation(void) const
 	return guard(rels);
 }
 
+string po::pretty(relation::Relcode r)
+{
+	switch(r)
+	{
+		case relation::ULeq: 	return " ≤ᵤ ";
+		case relation::SLeq: 	return " ≤ₛ ";
+		case relation::UGeq: 	return " ≥ᵤ ";
+		case relation::SGeq: 	return " ≥ₛ ";
+		case relation::ULess: return " <ᵤ ";
+		case relation::SLess: return " <ₛ ";
+		case relation::UGrtr: return " >ᵤ ";
+		case relation::SGrtr: return " >ₛ ";
+		case relation::Eq: 		return " = ";
+		case relation::Neq: 	return " ≠ ";
+		default: assert(false);
+	}
+}
+
+string po::symbolic(relation::Relcode r)
+{
+	switch(r)
+	{
+		case relation::ULeq:	return "po:u-less-equal";
+		case relation::SLeq: 	return "po:s-less-equal";
+		case relation::UGeq: 	return "po:u-greater-equal";
+		case relation::SGeq: 	return "po:s-greater-equal";
+		case relation::ULess: return "po:u-less";
+		case relation::SLess: return "po:s-less";
+		case relation::UGrtr: return "po:u-greater";
+		case relation::SGrtr: return "po:s-greater";
+		case relation::Eq: 		return "po:equal";
+		case relation::Neq: 	return "po:not-equal";
+		default: assert(false);
+	}
+}
+
 ostream& po::operator<<(ostream &os, const guard &g)
 {
 	if(g.relations.empty())
@@ -72,22 +108,7 @@ ostream& po::operator<<(ostream &os, const guard &g)
 	{
 		const relation &rel(*i++);
 
-		os << rel.operand1;
-		switch(rel.relcode)
-		{
-			case relation::ULeq: os << " ≤ᵤ "; break;
-			case relation::SLeq: os << " ≤ₛ "; break;
-			case relation::UGeq: os << " ≥ᵤ "; break;
-			case relation::SGeq: os << " ≥ₛ "; break;
-			case relation::ULess: os << " <ᵤ "; break;
-			case relation::SLess: os << " <ₛ "; break;
-			case relation::UGrtr: os << " >ᵤ "; break;
-			case relation::SGrtr: os << " >ₛ "; break;
-			case relation::Eq: os << " = "; break;
-			case relation::Neq: os << " ≠ "; break;
-			default: assert(false);
-		}
-		os << rel.operand2;
+		os << rel.operand1 << pretty(rel.relcode) << rel.operand2;
 		if(i != g.relations.cend())
 			os << " ∧ ";
 	}
@@ -255,7 +276,7 @@ oturtlestream &po::operator<<(oturtlestream &os, const basic_block &bb)
 		for(const relation &rel: ct.guard.relations)
 			os << g << " po:condition [ po:left " << rel.operand1 
 													 << "; po:right " << rel.operand2 
-													 << "; po:relation " << rel.relcode
+													 << "; po:relation " << symbolic(rel.relcode)
 													 << "]." << endl;
 	}
 
