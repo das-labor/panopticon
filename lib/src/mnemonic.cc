@@ -9,23 +9,89 @@ using namespace std;
 
 const addr_t po::naddr = -1;
 
+string po::pretty(instr::Function fn)
+{
+	switch(fn)
+	{
+		case instr::And: 		return " ∨ ";
+		case instr::Or: 		return " ∧ ";
+		case instr::Xor: 		return " ⊕ ";
+		case instr::Not: 		return "¬";
+		case instr::Assign:	return "";
+		case instr::UShr: 	return " ≫ ";
+		case instr::UShl: 	return " ≪ ";
+		case instr::SShr: 	return " ≫ₛ ";
+		case instr::SShl: 	return " ≪ₛ ";
+		case instr::UExt: 	return " ↤ᵤ ";
+		case instr::SExt: 	return " ↤ₛ ";
+		case instr::Slice: 	return ":";
+		//case instr::Concat: return " ∷ ";
+		case instr::Add: 		return " + ";
+		case instr::Sub: 		return " - ";
+		case instr::Mul: 		return " × ";
+		case instr::SDiv: 	return " ÷ₛ ";
+		case instr::UDiv: 	return " ÷ᵤ ";
+		case instr::SMod: 	return " modₛ ";
+		case instr::UMod: 	return " modᵤ ";
+		case instr::SLeq: 	return " ≤ₛ ";
+		case instr::ULeq: 	return " ≤ᵤ ";
+		case instr::Call: 	return "call";
+		case instr::Phi: 		return "ϕ";
+		default: assert(false);
+	}
+}
+
+string po::symbolic(instr::Function fn)
+{
+	switch(fn)
+	{
+		case instr::And: 		return "po:and";
+		case instr::Or: 		return "po:or";
+		case instr::Xor:	 	return "po:xor";
+		case instr::Not: 		return "po:not";
+		case instr::Assign: return "po:assign";
+		case instr::UShr: 	return "po:u-shift-right";
+		case instr::UShl: 	return "po:i-shift-left";
+		case instr::SShr: 	return "po:s-shift-right";
+		case instr::SShl: 	return "po:s-shift-left";
+		case instr::UExt: 	return "po:u-extend";
+		case instr::SExt: 	return "po:s-extend";
+		case instr::Slice:	return "po:slice";
+		//case instr::Concat: return " ∷ ";
+		case instr::Add: 		return "po:add";
+		case instr::Sub: 		return "po:subtract";
+		case instr::Mul: 		return "po:multiply";
+		case instr::SDiv: 	return "po:s-divide";
+		case instr::UDiv: 	return "po:u-divide";
+		case instr::SMod: 	return "po:s-modulo";
+		case instr::UMod: 	return "po:u-modulo";
+		case instr::SLeq: 	return "po:s-less-equal";
+		case instr::ULeq: 	return "po:u-less-equal";
+		case instr::Call: 	return "po:call";
+		case instr::Phi: 		return "po:phi";
+		default: assert(false);
+	}
+}
+			
 ostream &po::operator<<(ostream &os, const instr &i)
 {
+	string fnname = pretty(i.function);
+
 	os << i.left << " ≔ ";
 	if(i.right.size() == 0)
-		os << i.fnname;
+		os << fnname;
 	else if(i.function == instr::Call)
-		os << i.fnname << "(" << i.right[0] << ")";
+		os << fnname << "(" << i.right[0] << ")";
 	else if(i.right.size() == 1)
-		os << i.fnname << i.right[0];
+		os << fnname << i.right[0];
 	else if(i.function == instr::Phi)
-		os << i.fnname << "(" << i.right[0] << ", " << i.right[1] << ")";
+		os << fnname << "(" << i.right[0] << ", " << i.right[1] << ")";
 	else if(i.function == instr::Slice)
-		os << i.right[0] << "[" << i.right[1] << i.fnname << i.right[2] << "]";
+		os << i.right[0] << "[" << i.right[1] << fnname << i.right[2] << "]";
 	else if(i.right.size() == 3)
-		os << i.fnname << "(" << i.right[0] << ", " << i.right[1] << ", " << i.right[2] << ")";
+		os << fnname << "(" << i.right[0] << ", " << i.right[1] << ", " << i.right[2] << ")";
 	else
-		os << i.right[0] << i.fnname << i.right[1];
+		os << i.right[0] << fnname << i.right[1];
 	return os;
 }
 
@@ -75,11 +141,8 @@ oturtlestream& po::operator<<(oturtlestream &os, const mnemonic &m)
 	for(const instr &i: m.instructions)
 	{
 		bl.push_back(os.blank());
-		rvalue l = i.left;
-
-		os << bl.front() << " po:function " << i.function << "." << endl
-			 << bl.front() << " po:left "
-			 << l << "." << endl
+		os << bl.front() << " po:function " << symbolic(i.function) << "." << endl
+			 << bl.front() << " po:left " << static_cast<rvalue>(i.left) << "." << endl
 			 << bl.front() << " po:right (";
 		for(rvalue v: i.right)
 			os << " " << v;

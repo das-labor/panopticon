@@ -117,14 +117,6 @@ bblock_ptr po::find_bblock(proc_ptr proc, addr_t a)
 	return bblock_ptr(0);
 }
 
-string po::graphviz(proc_ptr proc)
-{
-	flow_ptr f(new flowgraph());
-
-	f->procedures.insert(proc);
-	return graphviz(f);
-}
-
 void po::call(proc_ptr from, proc_ptr to)
 {
 	assert(from && to);

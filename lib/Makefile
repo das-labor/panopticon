@@ -17,9 +17,8 @@ obj/%.o: src/%.cc $(HEADERS)
 	$(CXX) $(CXXARGS) -c $(INCLUDES) -o $@ $<
 
 test:
-	make -C test
-	
+	$(MAKE) -C test
+
 clean:
 	rm -f libpanopticum.so obj/*.o obj/avr/*.o
-	make -C test clean
-
+	$(MAKE) -C test clean
