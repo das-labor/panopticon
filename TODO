@@ -120,7 +120,7 @@
 	--> dflow.hh
 	--> disassembler.hh **DONE**
 	--> flowgraph.hh
-	--> inflate.hh
+	--> inflate.hh **DONE**
 	--> interpreter.hh
 	--> mnemonic.hh
 	--> procedure.hh
@@ -135,7 +135,7 @@
 	--> dflow.hh
 	--> disassembler.hh **DONE**
 	--> flowgraph.hh
-	--> inflate.hh **INPROGRESS**
+	--> inflate.hh **DONE**
 	--> interpreter.hh
 	--> mnemonic.hh
 	--> procedure.hh
