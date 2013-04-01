@@ -79,6 +79,24 @@ odotstream &po::operator<<(odotstream &os, const procedure &p)
 	return os;
 }
 
+oturtlestream &po::operator<<(oturtlestream &os, const procedure &p)
+{
+	string n = unique_name(p);
+	
+	os << ":" << n << " po:name \"" << p.name << "\"^^xsd:string." << endl
+		 << ":" << n << " rdf:type po:Procedure." << endl;
+
+	for(bblock_cptr bb: p.basic_blocks)
+	{
+		os << *bb
+			 << ":" << n << " po:include :" << unique_name(*bb) << "." << endl;
+	}
+		
+	os << ":" << n << " po:entry :" << unique_name(*p.entry) << "." << endl;
+
+	return os;
+}
+
 string po::unique_name(const procedure &f)
 {
 	return f.name.empty() ? std::string("proc_") + (f.entry ? to_string(f.entry->area().begin) : to_string((uintptr_t)&f)) : f.name;

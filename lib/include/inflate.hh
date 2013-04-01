@@ -44,8 +44,15 @@ namespace po
 	{
 	public:
 		oturtlestream(void);
+
+		std::string blank(void);
+	
+	private:
+		unsigned long long m_blank;
 	};
 	
+	oturtlestream &operator<<(oturtlestream &os, std::ostream& (*func)(std::ostream&));
+
 	template<typename T>
 	oturtlestream &operator<<(oturtlestream &os, const T &t)
 	{

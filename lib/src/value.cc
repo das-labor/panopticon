@@ -348,4 +348,39 @@ const string &memory::name(void) const
 	return ((memory_priv *)(d.simple.rest << 2))->name; 
 }
 
+oturtlestream &po::operator<<(oturtlestream &os, rvalue r)
+{
+	switch(r.tag())
+	{
+	case rvalue::UndefinedValueTag: os << "po:undefined"; return os;
+	case rvalue::ConstantValueTag: 	os << "\"" << r.to_constant().content() << "\"^^po:Constant"; return os;
+	case rvalue::VariableValueTag:
+	{
+		const variable &v = r.to_variable();
+		os << "\"" << v.name() << (v.subscript() >= 0 ? "_" + to_string(v.subscript()) : "") << "\"^^po:Variable";
+		return os;
+	}
+	case rvalue::MemoryValueTag:
+	{
+		const memory &m = r.to_memory();
+		
+		// name and offset
+		os << "\"" << m.name() << "[" << m.offset() << ";" << m.bytes();
+
+		// endianess
+		switch(m.endianess())
+		{
+			case memory::LittleEndian: os << "le"; break;
+			case memory::BigEndian: os << "be"; break;
+			default: os << "un"; break;
+		}
+
+		os << "]\"^^po:Memory";
+		return os;
+	}
+	default:
+		throw value_exception("Unknown value tag " + to_string(r.tag()));
+	}
+}
+
 value_exception::value_exception(const string &w) : runtime_error(w) {}

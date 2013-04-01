@@ -35,6 +35,66 @@ odotstream& po::operator<<(odotstream &os, const instr &i)
 	return os;
 }
 
+oturtlestream& po::operator<<(oturtlestream &os, const mnemonic &m)
+{
+	string n = unique_name(m);
+
+	os << ":" << n << " po:opcode \"" << m.opcode << "\"^^xsd:string;" << endl
+								 << " po:format \"" << accumulate(m.format.begin(),m.format.end(),string(),[&](const string &a, const mnemonic::token &t)
+																									{
+																										string ret = a;
+
+																										if(t.is_literal)
+																											ret += t.alias;
+																										else
+																										{
+																											ret += "{" + to_string(t.width) + ":";
+																											if(t.has_sign)
+																												ret += "-";
+																											ret += ":" + t.alias + "}";
+																										}
+																										return ret;
+																									}) << "\"^^po:Format;" << endl
+		 						 << " po:begin " << m.area.begin << ";" << endl
+								 << " po:end " << m.area.end << ";" << endl
+								 << " po:operands (";
+	for(rvalue v: m.operands)
+		os << " " << v;
+	os << " );" << endl
+								 << " po:executes (";
+
+	list<string> bl;
+	size_t j = m.instructions.size();
+	while(j--)
+	{
+		bl.push_back(os.blank());
+		os << " " << bl.back();
+	}
+	os << ")." << endl;
+	
+	for(const instr &i: m.instructions)
+	{
+		bl.push_back(os.blank());
+		rvalue l = i.left;
+
+		os << bl.front() << " po:function " << i.function << "." << endl
+			 << bl.front() << " po:left "
+			 << l << "." << endl
+			 << bl.front() << " po:right (";
+		for(rvalue v: i.right)
+			os << " " << v;
+		os << " )." << endl;
+		bl.pop_front();
+	}
+
+	return os;
+}
+
+string po::unique_name(const mnemonic &mne)
+{
+	return "mne_" + to_string(mne.area.begin);
+}
+
 mnemonic::mnemonic(const range<addr_t> &a, const string &n, const string &fmt, initializer_list<rvalue> ops, initializer_list<instr> instrs)
 : area(a), opcode(n), operands(ops), instructions(instrs)
 {

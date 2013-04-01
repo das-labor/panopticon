@@ -23,7 +23,7 @@ void out_turtle(const flow_ptr f, const string &path)
 	else 
 		o << turtle(f);*/
 
-	odotstream os;
+	oturtlestream os;
 
 	os << *f;
 	cout << os.str() << endl;

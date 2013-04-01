@@ -63,13 +63,24 @@ odotstream &po::operator<<(odotstream &os, const flowgraph &f)
 
 string po::unique_name(const flowgraph &f)
 {
-	return f.name.empty() ? "flow_" + to_string((uintptr_t)&f) : f.name;
+	return "flow_" + to_string((uintptr_t)&f);
 }
 
 oturtlestream& po::operator<<(oturtlestream &os, const flowgraph &f)
 {
+	string n = unique_name(f);
 
+	os << ":" << n << " po:name \"" << f.name << "\"^^xsd:string." << endl;
+	os << ":" << n << " rdf:type po:Flowgraph." << endl;
+	
+	for(proc_cptr p: f.procedures)
+	{
+		os << *p;
+		os << ":" << n << " po:include :" << unique_name(*p) << "." << endl;
+	}
 
+	return os;
+}
 
 proc_ptr po::find_procedure(flow_ptr fg, addr_t a)
 {
