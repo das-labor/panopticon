@@ -6,6 +6,7 @@ COMPONENTS=lib qt cli
 all: $(COMPONENTS)
 
 qt: lib
+cli: lib
 
 $(COMPONENTS):
 	$(MAKE) -C $@
@@ -16,3 +17,4 @@ doc:
 clean:
 	$(MAKE) -C lib clean
 	$(MAKE) -C qt clean
+	$(MAKE) -C cli clean

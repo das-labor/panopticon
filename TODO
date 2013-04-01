@@ -107,7 +107,9 @@
 
 ==> New inflate/deflate architecture
 	--> odotstream manip for procedure subgraph, callgraph, root graph **DONE**
-	--> oturtlestream
+	--> oturtlestream **INPROGRESSP**
+	--> serialize relcode and function to symbolic names
+	--> serialize memory instances
 	--> iturtlestream
 
 ==> Documentation

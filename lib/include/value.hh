@@ -7,6 +7,8 @@
 #include <cassert>
 #include <stdexcept>
 
+#include <inflate.hh>
+
 /**
  * @file
  * @brief Basic datatype for IL arguments
@@ -264,7 +266,10 @@ namespace po
 		/// Conastructs a exception for error message @c w.
 		value_exception(const std::string &w);
 	};
-}
+
+	/// @returns a rvalue as typed literal
+	oturtlestream &operator<<(oturtlestream &os, rvalue r);
+	}
 
 namespace std 
 {

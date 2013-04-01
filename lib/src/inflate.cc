@@ -28,15 +28,33 @@ odotstream &po::nosubgraph(odotstream &os) { os.subgraph = false; return os; }
 odotstream &po::instrs(odotstream &os) { os.instrs = true; return os; }
 odotstream &po::noinstrs(odotstream &os) { os.instrs = false; return os; }
 
-oturtlestream::oturtlestream(void) : ostringstream() {}
-
-std::string po::turtle(flow_ptr fg)
+oturtlestream::oturtlestream(void)
+: ostringstream(), m_blank(0)
 {
-	std::stringstream ss;
-	unsigned long next_blank = 0;
-	auto blank = [&](void) { return "z" + std::to_string(next_blank++); };
+	*this << "@prefix : <http://localhost/>." << endl;
+	*this << "@prefix po: <http://panopticum.io/>." << endl;
+	*this << "@prefix xsd: <http://www.w3.org/2001/XMLSchema#>." << endl;
+	*this << "@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>." << endl;
+}
 
-	ss << "@prefix : <http://localhost/>." << std::endl;
+string oturtlestream::blank(void)
+{
+	return "_:z" + to_string(m_blank++);
+}
+
+oturtlestream &po::operator<<(oturtlestream &os, ostream& (*func)(ostream&))
+{
+	func(os);
+	return os;
+}
+
+string po::turtle(flow_ptr fg)
+{
+	stringstream ss;
+	unsigned long next_blank = 0;
+	auto blank = [&](void) { return "z" + to_string(next_blank++); };
+
+	ss << "@prefix : <http://localhost/>." << endl;
 
 	/*if(fg->taint.size())
 		ss << ":approx_taint rdf:type po:Approximation;" << endl
@@ -51,17 +69,17 @@ std::string po::turtle(flow_ptr fg)
 	{
 		assert(proc && proc->entry);
 		
-		std::string procname(std::to_string(proc->entry->area().begin));
-		std::stringstream ss_bblocks;
+		string procname(to_string(proc->entry->area().begin));
+		stringstream ss_bblocks;
 		//shared_ptr<map<bblock_ptr,taint_lattice>> taint_bblock(fg->taint.count(proc) ? fg->taint[proc] : nullptr);
-		//std::shared_ptr<std::map<rvalue,sscp_lattice>> sscp(fg->simple_sparse_constprop.count(proc) ? fg->simple_sparse_constprop[proc] : nullptr);
+		//shared_ptr<map<rvalue,sscp_lattice>> sscp(fg->simple_sparse_constprop.count(proc) ? fg->simple_sparse_constprop[proc] : nullptr);
 
-		ss << ":proc_" 	<< procname << " rdf:type po:Procedure;" << std::endl
-																<< "\tpo:name \"" << proc->name << "\";" << std::endl
-																<< "\tpo:entry_point :bblock_" << procname << "_" << std::to_string(proc->entry->area().begin) << "." << std::endl;
+		ss << ":proc_" 	<< procname << " rdf:type po:Procedure;" << endl
+																<< "\tpo:name \"" << proc->name << "\";" << endl
+																<< "\tpo:entry_point :bblock_" << procname << "_" << to_string(proc->entry->area().begin) << "." << endl;
 
 		//for(const proc_ptr &c: proc->callees) 
-		//	ss << ":proc_" << procname << " po:calls :proc_" << std::to_string(c->entry->area().begin) << "." << std::endl;
+		//	ss << ":proc_" << procname << " po:calls :proc_" << to_string(c->entry->area().begin) << "." << endl;
 
 		// basic blocks
 		for(const bblock_ptr &bb: proc->basic_blocks)
@@ -69,42 +87,42 @@ std::string po::turtle(flow_ptr fg)
 			assert(bb);
 			
 			basic_block::succ_iterator j,jend;
-			std::string bbname = std::to_string(bb->area().begin);
-			std::stringstream ss_mnes;
+			string bbname = to_string(bb->area().begin);
+			stringstream ss_mnes;
 
 			
 			// mnemonics
 			for(const mnemonic &mne: bb->mnemonics())
 			{
-				std::string mnename = blank();
-				std::stringstream ss_ops;
-				std::function<std::string(const rvalue &)> inflate_value;
-				inflate_value = [&](const rvalue &v) -> std::string
+				string mnename = blank();
+				stringstream ss_ops;
+				function<string(const rvalue &)> inflate_value;
+				inflate_value = [&](const rvalue &v) -> string
 				{
-					std::string opname = blank();
+					string opname = blank();
 					
 					if(v.is_variable())
 					{
-						ss << ":" << opname << " rdf:type po:Variable;" << std::endl
-												 				<< "\tpo:base \"" << v.to_variable().name() << "\"^^xsd:string;" << std::endl
-												 				<< "\tpo:subscript \"" << v.to_variable().subscript() << "\"^^xsd:decimal." << std::endl;
+						ss << ":" << opname << " rdf:type po:Variable;" << endl
+												 				<< "\tpo:base \"" << v.to_variable().name() << "\"^^xsd:string;" << endl
+												 				<< "\tpo:subscript \"" << v.to_variable().subscript() << "\"^^xsd:decimal." << endl;
 					}
 					else if(v.is_undefined())
 					{
-						ss << ":" << opname << " rdf:type po:Undefined." << std::endl;
+						ss << ":" << opname << " rdf:type po:Undefined." << endl;
 					}
 					else if(v.is_constant())
 					{
-						ss << ":" << opname << " rdf:type po:Constant;" << std::endl
-												 				<< "\tpo:value \"" << v.to_constant().content() << "\"^^xsd:decimal." << std::endl;
+						ss << ":" << opname << " rdf:type po:Constant;" << endl
+												 				<< "\tpo:value \"" << v.to_constant().content() << "\"^^xsd:decimal." << endl;
 					}
 					else if(v.is_memory())
 					{	
-						std::string offname = inflate_value(v.to_memory().offset());
-						ss << ":" << opname << " rdf:type po:Memory;" << std::endl
-																<< "\tpo:offset :" << offname << ";" << std::endl
-																<< "\tpo:bytes \"" << v.to_memory().bytes() << "\"^^xsd:decimal;" << std::endl
-																<< "\tpo:endianess \"" << (int)v.to_memory().endianess() << "\"^^xsd:decimal." << std::endl;
+						string offname = inflate_value(v.to_memory().offset());
+						ss << ":" << opname << " rdf:type po:Memory;" << endl
+																<< "\tpo:offset :" << offname << ";" << endl
+																<< "\tpo:bytes \"" << v.to_memory().bytes() << "\"^^xsd:decimal;" << endl
+																<< "\tpo:endianess \"" << (int)v.to_memory().endianess() << "\"^^xsd:decimal." << endl;
 					}
 					else
 						assert(false);
@@ -116,11 +134,11 @@ std::string po::turtle(flow_ptr fg)
 				for(const rvalue &v: mne.operands)
 					ss_ops << ":" << inflate_value(v) << " ";
 
-				ss << ":" << mnename << " rdf:type po:Mnemonic;" << std::endl
-														 << "\tpo:opcode \"" << mne.opcode << "\"^^xsd:string;" << std::endl
-														 << "\tpo:begin \"" << mne.area.begin << "\"^^xsd:integer;" << std::endl
-														 << "\tpo:end \"" << mne.area.end << "\"^^xsd:integer;" << std::endl
-														 << "\tpo:operands (" << ss_ops.str() << ");" << std::endl
+				ss << ":" << mnename << " rdf:type po:Mnemonic;" << endl
+														 << "\tpo:opcode \"" << mne.opcode << "\"^^xsd:string;" << endl
+														 << "\tpo:begin \"" << mne.area.begin << "\"^^xsd:integer;" << endl
+														 << "\tpo:end \"" << mne.area.end << "\"^^xsd:integer;" << endl
+														 << "\tpo:operands (" << ss_ops.str() << ");" << endl
 														 << "\tpo:format \"";
 
 				for(const mnemonic::token &tok: mne.format)
@@ -129,7 +147,7 @@ std::string po::turtle(flow_ptr fg)
 					else
 						ss << tok.alias;
 
-				ss << "\"^^xsd:string." << std::endl;
+				ss << "\"^^xsd:string." << endl;
 				
 				ss_mnes << ":" << mnename;
 				if(mne.area != bb->mnemonics().back().area)
@@ -137,8 +155,8 @@ std::string po::turtle(flow_ptr fg)
 
 			}
 
-			ss << ":bblock_" << procname << "_" << bbname << " rdf:type po:BasicBlock;" << std::endl
-																										<< " po:executes " << ss_mnes.str() << "." << std::endl;
+			ss << ":bblock_" << procname << "_" << bbname << " rdf:type po:BasicBlock;" << endl
+																										<< " po:executes " << ss_mnes.str() << "." << endl;
 			
 			/* instructions
 			while(l < lend)
@@ -234,7 +252,7 @@ std::string po::turtle(flow_ptr fg)
 			for_each(j,jend,[&](const bblock_ptr s)
 			{ 
 				ss << ":bblock_" << procname << "_" << bbname 
-					 << " po:precedes :bblock_" << procname << "_" << std::to_string(s->area().begin) << "." << std::endl; 
+					 << " po:precedes :bblock_" << procname << "_" << to_string(s->area().begin) << "." << endl; 
 			});
 
 			
@@ -243,7 +261,7 @@ std::string po::turtle(flow_ptr fg)
 				ss_bblocks << ", ";
 		}
 
-		ss << ":proc_" 	<< procname << " po:contains " << ss_bblocks.str() << "." << std::endl;
+		ss << ":proc_" 	<< procname << " po:contains " << ss_bblocks.str() << "." << endl;
 	}
 
 		/* basic blocks
@@ -370,27 +388,27 @@ std::string po::turtle(flow_ptr fg)
 	return ss.str();
 }	
 
-std::string po::graphviz(flow_ptr fg)
+string po::graphviz(flow_ptr fg)
 {
-	std::stringstream ss;
+	stringstream ss;
 
-	ss << "digraph G" << std::endl
-		 << "{" << std::endl
-		 << "\tnode [shape=record,style=filled,color=lightgray,fontsize=13,fontname=\"Monospace\"];" << std::endl;
+	ss << "digraph G" << endl
+		 << "{" << endl
+		 << "\tnode [shape=record,style=filled,color=lightgray,fontsize=13,fontname=\"Monospace\"];" << endl;
 	
 	// procedures
 	for(const proc_ptr &proc: fg->procedures)
 	{
 		assert(proc && proc->entry);
-		std::string procname(std::to_string(proc->entry->area().begin));
+		string procname(to_string(proc->entry->area().begin));
 		//shared_ptr<map<bblock_ptr,taint_lattice>> taint_bblock(fg->taint[proc]);
 		//shared_ptr<map<bblock_ptr,cprop_lattice>> cprop_bblock(fg->cprop[proc]);
 
-		ss << "\tsubgraph cluster_" << procname << std::endl
-			 << "\t{" << std::endl
-			 << "\t\tlabel = \"procedure at " << procname << "\";" << std::endl
-			 << "\t\tcolor = black;" << std::endl
-			 << "\t\tfontname = \"Monospace\";" << std::endl;
+		ss << "\tsubgraph cluster_" << procname << endl
+			 << "\t{" << endl
+			 << "\t\tlabel = \"procedure at " << procname << "\";" << endl
+			 << "\t\tcolor = black;" << endl
+			 << "\t\tfontname = \"Monospace\";" << endl;
 
 		// basic blocks
 		for(const bblock_ptr &bb: proc->basic_blocks)
@@ -406,7 +424,7 @@ std::string po::graphviz(flow_ptr fg)
 			if(mnemonic_sz)
 				ss << " [label=<<table BORDER=\"0\" CELLBORDER=\"0\" CELLSPACING=\"0\" ALIGN=\"LEFT\">";
 			else
-				ss << " [label=\"" << bb->area().begin << "\"];" << std::endl;
+				ss << " [label=\"" << bb->area().begin << "\"];" << endl;
 		
 			// mnemonics
 			while(mnemonic_pos < mnemonic_sz)
@@ -416,7 +434,7 @@ std::string po::graphviz(flow_ptr fg)
 				const instr *instr_vec = m.instructions.data();
 
 				ss << "<tr ALIGN=\"LEFT\"><td ALIGN=\"LEFT\">0x" 
-					 << std::hex << m.area.begin << std::dec 
+					 << hex << m.area.begin << dec 
 					 << "</td><td ALIGN=\"LEFT\">" << m
 					 << "</td></tr>";
 				
@@ -456,7 +474,7 @@ std::string po::graphviz(flow_ptr fg)
 			}
 
 			if(mnemonic_sz)
-				ss << "</table>>];" << std::endl;
+				ss << "</table>>];" << endl;
 
 			// outgoing edges
 			for_each(bb->outgoing().begin(),bb->outgoing().end(),[&bb,&ss,&procname](const ctrans &ct) 
@@ -465,15 +483,15 @@ std::string po::graphviz(flow_ptr fg)
 				{
 					ss << "\t\tbb_" << procname << "_" << bb->area().begin 
 						 << " -> bb_" << procname << "_" << ct.bblock.lock()->area().begin
-						 << " [label=\" " << ct.guard << " \"];" << std::endl; 
+						 << " [label=\" " << ct.guard << " \"];" << endl; 
 				}
 				else
 				{
 					ss << "\t\tbb_" << procname << "_indir" << ct.value
-					 << " [shape = circle, label=\"" << ct.value << "\"];" << std::endl
+					 << " [shape = circle, label=\"" << ct.value << "\"];" << endl
 					 << "\t\tbb_" << procname << "_" << bb->area().begin 
 					 << " -> bb_" << procname << "_indir" << ct.value
-					 << " [label=\" " << ct.guard << " \"];" << std::endl;
+					 << " [label=\" " << ct.guard << " \"];" << endl;
 				}		
 			});	
 			
@@ -490,19 +508,19 @@ std::string po::graphviz(flow_ptr fg)
 
 		}
 		
-		ss << "\t}"  << std::endl;
+		ss << "\t}"  << endl;
 	}
 
 	/*
 	// callgraph
-	ss << " subgraph cluster_calls" << std::endl
-		 << " {" << std::endl
+	ss << " subgraph cluster_calls" << endl
+		 << " {" << endl
 		 << " node [shape=circle,fontsize=15,fontname=\"Monospace\"];" << endl
 		 << "  func_" << proc.entry_point << dec << " [label=\"" << proc.name << "\"];" << endl;
 	for_each(proc.calls.begin(),proc.calls.end(),[&proc](const addr_t a) 
 		{ ss << "   func_" << proc.entry_point << " -> func_" << a << ";" << endl; });
 		ss << " }" << endl;*/
-	ss << "}" << std::endl;
+	ss << "}" << endl;
 	
 	return ss.str();
 }

@@ -171,6 +171,8 @@ namespace po
 	std::ostream& operator<<(std::ostream &os, const instr &i);
 	std::ostream& operator<<(std::ostream &os, const mnemonic &m);
 	odotstream& operator<<(odotstream &os, const mnemonic &m);
+	oturtlestream& operator<<(oturtlestream &os, const mnemonic &m);
+	std::string unique_name(const mnemonic &mne);
 
 	int64_t format_constant(const mnemonic::token &tok, uint64_t v);
 }

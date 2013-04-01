@@ -507,4 +507,9 @@ public:
 		check(bbo0->mnemonics()[0],"test0",0);
 		CPPUNIT_ASSERT(bbo1->mnemonics().size() == 2);
 	}
+
+	void testVariable(void)
+	{
+		CPPUNIT_ASSERT(false);
+	}
 };

@@ -63,6 +63,7 @@ namespace po
 	};
 
 	odotstream &operator<<(odotstream &os, const procedure &p);
+	oturtlestream &operator<<(oturtlestream &os, const procedure &p);
 	std::string unique_name(const procedure &f);
 	
 	template<typename Tag>

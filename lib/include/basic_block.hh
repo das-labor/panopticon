@@ -76,6 +76,9 @@ namespace po
 		bblock_wptr bblock;
 	};
 
+	oturtlestream& operator<<(oturtlestream &os, const ctrans &ct);
+	std::string unique_name(const ctrans &ct);
+
 	template<>
 	class bblock_iterator<std::list<ctrans>> : public boost::iterator_facade<
 				bblock_iterator<std::list<ctrans>>,
@@ -166,6 +169,7 @@ namespace po
 	bool operator<(const bblock_cwptr &a, const bblock_cwptr &b);
 
 	odotstream &operator<<(odotstream &os, const basic_block &bb);
+	oturtlestream &operator<<(oturtlestream &os, const basic_block &bb);
 	std::string unique_name(const basic_block &bb);
 
 	// reading

@@ -19,8 +19,8 @@ relation::relation(rvalue a, Relcode c, rvalue b) : relcode(c), operand1(a), ope
 guard::guard(void) {}
 guard::guard(const guard &g) : relations(g.relations) {}
 guard::guard(guard &&g) : relations(move(g.relations)) {}
-guard::guard(const std::list<relation> &rels) : relations(rels) {}
-guard::guard(std::list<relation> &&rels) : relations(move(rels)) {}
+guard::guard(const list<relation> &rels) : relations(rels) {}
+guard::guard(list<relation> &&rels) : relations(move(rels)) {}
 guard::guard(rvalue a, relation::Relcode r, rvalue b) : relations({relation(a,r,b)}) {}
 
 guard &guard::operator=(const guard &g)
@@ -38,7 +38,7 @@ guard &guard::operator=(guard &&g)
 
 guard guard::negation(void) const
 {
-	std::list<relation> rels;
+	list<relation> rels;
 
 	for_each(relations.cbegin(),relations.cend(),[&](const relation &rel)
 	{
@@ -61,7 +61,7 @@ guard guard::negation(void) const
 	return guard(rels);
 }
 
-std::ostream& po::operator<<(std::ostream &os, const guard &g)
+ostream& po::operator<<(ostream &os, const guard &g)
 {
 	if(g.relations.empty())
 		os << "true";
@@ -111,24 +111,24 @@ ctrans::ctrans(struct guard g, bblock_ptr b) : guard(g), bblock(b) {}
  * basic_block
  */
 basic_block::basic_block(void) {}
-std::pair<basic_block::pred_citerator,basic_block::pred_citerator> basic_block::predecessors(void) const
-	{ return std::make_pair(pred_citerator(m_incoming.cbegin(),m_incoming.cend()),pred_citerator(m_incoming.cend(),m_incoming.cend())); }
+pair<basic_block::pred_citerator,basic_block::pred_citerator> basic_block::predecessors(void) const
+	{ return make_pair(pred_citerator(m_incoming.cbegin(),m_incoming.cend()),pred_citerator(m_incoming.cend(),m_incoming.cend())); }
 
-std::pair<basic_block::pred_iterator,basic_block::pred_iterator> basic_block::predecessors(void)
-	{ return std::make_pair(pred_iterator(m_incoming.begin(),m_incoming.end()),pred_iterator(m_incoming.end(),m_incoming.end())); }
+pair<basic_block::pred_iterator,basic_block::pred_iterator> basic_block::predecessors(void)
+	{ return make_pair(pred_iterator(m_incoming.begin(),m_incoming.end()),pred_iterator(m_incoming.end(),m_incoming.end())); }
 
-std::pair<basic_block::succ_citerator,basic_block::succ_citerator> basic_block::successors(void) const
-	{ return std::make_pair(succ_citerator(m_outgoing.cbegin(),m_outgoing.cend()),succ_citerator(m_outgoing.cend(),m_outgoing.cend())); }
+pair<basic_block::succ_citerator,basic_block::succ_citerator> basic_block::successors(void) const
+	{ return make_pair(succ_citerator(m_outgoing.cbegin(),m_outgoing.cend()),succ_citerator(m_outgoing.cend(),m_outgoing.cend())); }
 
-std::pair<basic_block::succ_iterator,basic_block::succ_iterator> basic_block::successors(void)
-	{ return std::make_pair(succ_iterator(m_outgoing.begin(),m_outgoing.end()),succ_iterator(m_outgoing.end(),m_outgoing.end())); }
+pair<basic_block::succ_iterator,basic_block::succ_iterator> basic_block::successors(void)
+	{ return make_pair(succ_iterator(m_outgoing.begin(),m_outgoing.end()),succ_iterator(m_outgoing.end(),m_outgoing.end())); }
 
-const std::vector<mnemonic> &basic_block::mnemonics(void) const { return m_mnemonics; }
+const vector<mnemonic> &basic_block::mnemonics(void) const { return m_mnemonics; }
 
-const std::list<ctrans> &basic_block::incoming(void) const { return m_incoming; }
-const std::list<ctrans> &basic_block::outgoing(void) const { return m_outgoing; }
+const list<ctrans> &basic_block::incoming(void) const { return m_incoming; }
+const list<ctrans> &basic_block::outgoing(void) const { return m_outgoing; }
 
-void basic_block::mutate_mnemonics(std::function<void(std::vector<mnemonic>&)> fn)
+void basic_block::mutate_mnemonics(function<void(vector<mnemonic>&)> fn)
 {
 	fn(m_mnemonics);
 
@@ -159,28 +159,28 @@ void basic_block::mutate_mnemonics(std::function<void(std::vector<mnemonic>&)> f
 		m_area = range<addr_t>(first,last);
 }
 
-void basic_block::mutate_incoming(std::function<void(std::list<ctrans>&)> fn)
+void basic_block::mutate_incoming(function<void(list<ctrans>&)> fn)
 {
 	fn(m_incoming);
 
 	// check invariants:
 	// 	- guard non-null
 	// 	- no paralell edges
-	std::set<bblock_ptr> bbs;
+	set<bblock_ptr> bbs;
 	for(const ctrans &ct: incoming())
 	{
 		assert(!ct.bblock.lock() || bbs.insert(ct.bblock.lock()).second);
 	}
 }
 
-void basic_block::mutate_outgoing(std::function<void(std::list<ctrans>&)> fn)
+void basic_block::mutate_outgoing(function<void(list<ctrans>&)> fn)
 {
 	fn(m_outgoing);
 	
 	// check invariants:
 	// 	- guard non-null
 	// 	- no paralell edges
-	std::set<bblock_ptr> bbs;
+	set<bblock_ptr> bbs;
 	for(const ctrans &ct: outgoing())
 	{
 		assert(!ct.bblock.lock() || bbs.insert(ct.bblock.lock()).second);
@@ -232,12 +232,42 @@ odotstream &po::operator<<(odotstream &os, const basic_block &bb)
 	return os;
 }
 
-std::string po::unique_name(const basic_block &bb)
+oturtlestream &po::operator<<(oturtlestream &os, const basic_block &bb)
+{
+	string n = unique_name(bb);
+
+	os << ":" << n << " rdf:type po:BasicBlock." << endl;
+	for(const mnemonic &mne: bb.mnemonics())
+		os << mne
+			 << ":" << n << " po:include :" << unique_name(mne) << "." << endl;
+
+	for(const ctrans &ct: bb.outgoing())
+	{
+		string g = os.blank();
+
+		os << ":" << n << " po:preceds " << g << "." << endl;
+
+		if(ct.bblock.lock())
+			os << g << " po:target :" << unique_name(*ct.bblock.lock()) << "." << endl;
+		else
+			os << g << " po:target " << ct.value << "." << endl;
+
+		for(const relation &rel: ct.guard.relations)
+			os << g << " po:condition [ po:left " << rel.operand1 
+													 << "; po:right " << rel.operand2 
+													 << "; po:relation " << rel.relcode
+													 << "]." << endl;
+	}
+
+	return os;
+}
+
+string po::unique_name(const basic_block &bb)
 {
 	return "bblock_" + to_string(bb.area().begin) + "_" + to_string(bb.area().end);
 }
 
-void po::execute2(bblock_cptr bb,std::function<void(const instr&)> f)
+void po::execute2(bblock_cptr bb,function<void(const instr&)> f)
 {
 	size_t sz_mne = bb->mnemonics().size(), i_mne = 0;
 	const mnemonic *ary_mne = bb->mnemonics().data();
@@ -253,7 +283,7 @@ void po::execute2(bblock_cptr bb,std::function<void(const instr&)> f)
 	}
 }
 
-void po::execute(bblock_cptr bb,std::function<void(const lvalue &left, instr::Function fn, const std::vector<rvalue> &right)> f)
+void po::execute(bblock_cptr bb,function<void(const lvalue &left, instr::Function fn, const vector<rvalue> &right)> f)
 {
 	execute2(bb,[&](const instr &i)
 	{
@@ -261,9 +291,9 @@ void po::execute(bblock_cptr bb,std::function<void(const lvalue &left, instr::Fu
 	});
 }
 
-void po::rewrite(bblock_ptr bb,std::function<void(lvalue &,instr::Function,std::vector<rvalue>&)> f)
+void po::rewrite(bblock_ptr bb,function<void(lvalue &,instr::Function,vector<rvalue>&)> f)
 {
-	bb->mutate_mnemonics([&](std::vector<mnemonic> &ms)
+	bb->mutate_mnemonics([&](vector<mnemonic> &ms)
 	{
 		size_t sz_mne = ms.size(), i_mne = 0;
 		mnemonic *ary_mne = ms.data();
@@ -295,7 +325,7 @@ void po::unconditional_jump(bblock_ptr from, rvalue to) { conditional_jump(from,
 void po::replace_incoming(bblock_ptr to, bblock_ptr oldbb, bblock_ptr newbb)
 { 
 	assert(to && oldbb && newbb);
-	to->mutate_incoming([&](std::list<ctrans> &in)
+	to->mutate_incoming([&](list<ctrans> &in)
 	{ 
 		replace(in,oldbb,newbb); 
 	}); 
@@ -304,7 +334,7 @@ void po::replace_incoming(bblock_ptr to, bblock_ptr oldbb, bblock_ptr newbb)
 void po::replace_outgoing(bblock_ptr from, bblock_ptr oldbb, bblock_ptr newbb)
 {
 	assert(from && oldbb && newbb);
-	from->mutate_outgoing([&](std::list<ctrans> &out) 
+	from->mutate_outgoing([&](list<ctrans> &out) 
 	{ 
 		replace(out,oldbb,newbb); 
 	}); 
@@ -313,7 +343,7 @@ void po::replace_outgoing(bblock_ptr from, bblock_ptr oldbb, bblock_ptr newbb)
 void po::resolve_incoming(bblock_ptr to, rvalue v, bblock_ptr bb) 
 { 
 	assert(to && bb);
-	to->mutate_incoming([&](std::list<ctrans> &in)
+	to->mutate_incoming([&](list<ctrans> &in)
 	{ 
 		resolve(in,v,bb); 
 	}); 
@@ -322,14 +352,14 @@ void po::resolve_incoming(bblock_ptr to, rvalue v, bblock_ptr bb)
 void po::resolve_outgoing(bblock_ptr from, rvalue v, bblock_ptr bb)
 {
 	assert(from && bb);
-	from->mutate_outgoing([&](std::list<ctrans> &out) 
+	from->mutate_outgoing([&](list<ctrans> &out) 
 	{ 
 		resolve(out,v,bb); 
 	}); 
 }
 
 // last == true -> pos is last in `up', last == false -> pos is first in `down'
-std::pair<bblock_ptr,bblock_ptr> po::split(bblock_ptr bb, addr_t pos, bool last)
+pair<bblock_ptr,bblock_ptr> po::split(bblock_ptr bb, addr_t pos, bool last)
 {
 	assert(bb);
 
@@ -337,12 +367,12 @@ std::pair<bblock_ptr,bblock_ptr> po::split(bblock_ptr bb, addr_t pos, bool last)
 	bool sw = false;
 	basic_block::out_iterator j,jend;
 	basic_block::in_iterator k,kend;
-	std::function<void(bool,bblock_ptr,ctrans)> append = [](bool in, bblock_ptr bb, ctrans ct)
+	function<void(bool,bblock_ptr,ctrans)> append = [](bool in, bblock_ptr bb, ctrans ct)
 	{
 		if(in)
-			bb->mutate_incoming([&](std::list<ctrans> &l) { l.push_back(ct); });
+			bb->mutate_incoming([&](list<ctrans> &l) { l.push_back(ct); });
 		else
-			bb->mutate_outgoing([&](std::list<ctrans> &l) { l.push_back(ct); });
+			bb->mutate_outgoing([&](list<ctrans> &l) { l.push_back(ct); });
 	};
 
 	// distribute mnemonics under `up' and `down'
@@ -354,9 +384,9 @@ std::pair<bblock_ptr,bblock_ptr> po::split(bblock_ptr bb, addr_t pos, bool last)
 			sw |= m.area.includes(pos);
 		
 		if(sw)
-			down->mutate_mnemonics([&](std::vector<mnemonic> &ms) { ms.push_back(m); });
+			down->mutate_mnemonics([&](vector<mnemonic> &ms) { ms.push_back(m); });
 		else	
-			up->mutate_mnemonics([&](std::vector<mnemonic> &ms) { ms.push_back(m); });
+			up->mutate_mnemonics([&](vector<mnemonic> &ms) { ms.push_back(m); });
 		
 		if(last)
 			sw |= m.area.includes(pos);
@@ -376,7 +406,7 @@ std::pair<bblock_ptr,bblock_ptr> po::split(bblock_ptr bb, addr_t pos, bool last)
 			if(ct.bblock.lock())
 			{
 				append(false,down,ctrans(ct.guard,ct.bblock.lock()));
-				ct.bblock.lock()->mutate_incoming([&](std::list<ctrans> &in)
+				ct.bblock.lock()->mutate_incoming([&](list<ctrans> &in)
 				{
 					in.emplace_back(ctrans(ct.guard,down));
 					in.erase(find_if(in.begin(),in.end(),[&](const ctrans &ct)
@@ -401,7 +431,7 @@ std::pair<bblock_ptr,bblock_ptr> po::split(bblock_ptr bb, addr_t pos, bool last)
 			if(ct.bblock.lock())
 			{
 				append(true,up,ctrans(ct.guard,ct.bblock.lock()));
-				ct.bblock.lock()->mutate_outgoing([&](std::list<ctrans> &out)
+				ct.bblock.lock()->mutate_outgoing([&](list<ctrans> &out)
 				{
 					out.emplace_back(ctrans(ct.guard,up));
 					out.erase(find_if(out.begin(),out.end(),[&](const ctrans &ct)
@@ -415,34 +445,34 @@ std::pair<bblock_ptr,bblock_ptr> po::split(bblock_ptr bb, addr_t pos, bool last)
 
 	bb->clear();
 	unconditional_jump(up,down);
-	return std::make_pair(up,down);
+	return make_pair(up,down);
 }
 
 bblock_ptr po::merge(bblock_ptr up, bblock_ptr down)
 {
 	assert(up && down);
-	if(up->area().begin == down->area().end) tie(up,down) = std::make_pair(down,up);
+	if(up->area().begin == down->area().end) tie(up,down) = make_pair(down,up);
 	assert(up->area().end == down->area().begin);
 
 	bblock_ptr ret(new basic_block());
-	auto fn = [&ret](const bblock_ptr &bb, const mnemonic &m) { ret->mutate_mnemonics([&](std::vector<mnemonic> &ms)
+	auto fn = [&ret](const bblock_ptr &bb, const mnemonic &m) { ret->mutate_mnemonics([&](vector<mnemonic> &ms)
 		{ ms.push_back(m); }); };
 
-	for_each(up->mnemonics().begin(),up->mnemonics().end(),std::bind(fn,up,std::placeholders::_1));
-	for_each(down->mnemonics().begin(),down->mnemonics().end(),std::bind(fn,down,std::placeholders::_1));
+	for_each(up->mnemonics().begin(),up->mnemonics().end(),bind(fn,up,placeholders::_1));
+	for_each(down->mnemonics().begin(),down->mnemonics().end(),bind(fn,down,placeholders::_1));
 
 	for_each(up->incoming().begin(),up->incoming().end(),[&](const ctrans &ct)
 	{
 		if(ct.bblock.lock())
 			replace_outgoing(ct.bblock.lock(),up,ret);
-		ret->mutate_incoming([&](std::list<ctrans> &in) { in.emplace_back(ct); });
+		ret->mutate_incoming([&](list<ctrans> &in) { in.emplace_back(ct); });
 	});
 			
 	for_each(down->outgoing().begin(),down->outgoing().end(),[&](const ctrans &ct)
 	{
 		if(ct.bblock.lock())
 			replace_incoming(ct.bblock.lock(),down,ret);
-		ret->mutate_outgoing([&](std::list<ctrans> &out) { out.emplace_back(ct); });
+		ret->mutate_outgoing([&](list<ctrans> &out) { out.emplace_back(ct); });
 	});
 	
 	up->clear();
@@ -450,7 +480,7 @@ bblock_ptr po::merge(bblock_ptr up, bblock_ptr down)
 	return ret;
 }
 
-void po::replace(std::list<ctrans> &lst, bblock_ptr from, bblock_ptr to)
+void po::replace(list<ctrans> &lst, bblock_ptr from, bblock_ptr to)
 {
 	assert(from && to);
 
@@ -464,7 +494,7 @@ void po::replace(std::list<ctrans> &lst, bblock_ptr from, bblock_ptr to)
 	}
 }
 
-void po::resolve(std::list<ctrans> &lst, rvalue v, bblock_ptr bb)
+void po::resolve(list<ctrans> &lst, rvalue v, bblock_ptr bb)
 {
 	assert(bb);
 
@@ -481,7 +511,7 @@ void po::resolve(std::list<ctrans> &lst, rvalue v, bblock_ptr bb)
 void po::conditional_jump(const ctrans &from, const ctrans &to)
 {
 	if(from.bblock.lock())
-		from.bblock.lock()->mutate_outgoing([&](std::list<ctrans> &out) { out.emplace_back(to); });
+		from.bblock.lock()->mutate_outgoing([&](list<ctrans> &out) { out.emplace_back(to); });
 	if(to.bblock.lock())
-		to.bblock.lock()->mutate_incoming([&](std::list<ctrans> &in) { in.emplace_back(from); });
+		to.bblock.lock()->mutate_incoming([&](list<ctrans> &in) { in.emplace_back(from); });
 }
