@@ -11,7 +11,7 @@
 #include <dflow.hh>
 #include <interpreter.hh>
 #include <sat.hh>
-#include <inflate.hh>
+#include <marshal.hh>
 
 namespace po
 {

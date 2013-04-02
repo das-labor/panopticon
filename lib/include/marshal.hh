@@ -1,7 +1,16 @@
-#ifndef INFLATE_HH
-#define INFLATE_HH
+#ifndef MARSHAL_HH
+#define MARSHAL_HH
 
 #include <sstream>
+#include <string>
+#include <iostream>
+#include <cassert>
+#include <mutex>
+#include <unordered_map>
+
+extern "C" {
+#include <redland.h>
+}
 
 /**
  * @file
@@ -104,6 +113,27 @@ namespace po
 		static_cast<std::ostringstream &>(os) << t;
 		return os;
 	}
+	
+	class iturtlestream
+	{
+	public:
+		iturtlestream(const std::string &path);
+		~iturtlestream(void);
+
+	private:
+		static librdf_world *s_rdf_world;
+		static raptor_world *s_rap_world;
+		static std::mutex s_mutex;
+		static unsigned int s_usage;
+		static std::unordered_map<std::string,librdf_node *> s_nodes;
+
+		const librdf_node *po(const std::string &s);
+		const librdf_node *rdf(const std::string &s);
+		const librdf_node *node(const std::string &s);
+		
+		librdf_storage *m_storage;
+		librdf_model *m_model;
+	};
 }
 
 #endif
