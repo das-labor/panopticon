@@ -7,7 +7,7 @@
 #include <cassert>
 #include <stdexcept>
 
-#include <inflate.hh>
+#include <marshal.hh>
 
 /**
  * @file

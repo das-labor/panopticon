@@ -11,7 +11,7 @@
 #include <basic_block.hh>
 #include <mnemonic.hh>
 #include <disassembler.hh>
-#include <inflate.hh>
+#include <marshal.hh>
 
 namespace po
 {

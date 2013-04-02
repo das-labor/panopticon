@@ -9,7 +9,7 @@
 #include <initializer_list>
 
 #include <value.hh>
-#include <inflate.hh>
+#include <marshal.hh>
 
 namespace po
 {
