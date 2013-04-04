@@ -82,6 +82,12 @@ oturtlestream& po::operator<<(oturtlestream &os, const flowgraph &f)
 	return os;
 }
 
+iturtlestream &po::operator>>(iturtlestream &is, flowgraph *&flow)
+{
+	flow = new flowgraph();
+	return is;
+}
+
 proc_ptr po::find_procedure(flow_ptr fg, addr_t a)
 {
 	std::set<proc_ptr>::iterator i = fg->procedures.begin();

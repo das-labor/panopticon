@@ -123,6 +123,8 @@ namespace po
 	odotstream &operator<<(odotstream &os, const flowgraph &f);
 	oturtlestream& operator<<(oturtlestream &os, const flowgraph &f);
 	std::string unique_name(const flowgraph &f);
+	
+	iturtlestream &operator>>(iturtlestream &is, flowgraph *&flow);
 }
 
 #endif

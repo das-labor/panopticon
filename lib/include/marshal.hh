@@ -120,7 +120,14 @@ namespace po
 		iturtlestream(const std::string &path);
 		~iturtlestream(void);
 
+		const librdf_node *axis(void) const;
+
 	private:
+		struct axis_wrap
+		{
+			librdf_node *node;
+		};
+		
 		static librdf_world *s_rdf_world;
 		static raptor_world *s_rap_world;
 		static std::mutex s_mutex;
@@ -133,7 +140,14 @@ namespace po
 		
 		librdf_storage *m_storage;
 		librdf_model *m_model;
+		librdf_node *m_axis;
+
+		friend iturtlestream &operator>>(iturtlestream &is, axis_wrap &a);
+		friend axis_wrap setaxis(librdf_node *n);
 	};
+
+	iturtlestream::axis_wrap setaxis(librdf_node *n);
+	iturtlestream &operator>>(iturtlestream &is, iturtlestream::axis_wrap &a);
 }
 
 #endif
