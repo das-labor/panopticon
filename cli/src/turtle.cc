@@ -1,16 +1,21 @@
 #include <input.hh>
-#include <inflate.hh>
-#include <deflate.hh>
+#include <marshal.hh>
+#include <flowgraph.hh>
 
 using namespace po;
 using namespace std;
 
 flow_ptr in_turtle(const string &path)
 {
-	deflate df(path);
-
+	iturtlestream is(path);
 	cerr << "Turtle: " << path << endl;
-	return df.flowgraph();
+
+	flowgraph *flow = nullptr;
+	is >> flow;
+
+	cout << flow->name << endl;
+
+	return flow_ptr(flow);
 }
 
 void out_turtle(const flow_ptr f, const string &path)

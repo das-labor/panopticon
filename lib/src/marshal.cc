@@ -125,3 +125,22 @@ const librdf_node *iturtlestream::rdf(const string &s)
 {
 	return node("http://www.w3.org/1999/02/22-rdf-syntax-ns#" + s);
 }
+
+const librdf_node *iturtlestream::axis(void) const
+{
+	return m_axis;
+}
+
+iturtlestream::axis_wrap po::setaxis(librdf_node *n)
+{
+	iturtlestream::axis_wrap a;
+	a.node = n;
+
+	return a;
+}
+
+iturtlestream &po::operator>>(iturtlestream &is, iturtlestream::axis_wrap &a)
+{
+	is.m_axis = a.node;
+	return is;
+}
