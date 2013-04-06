@@ -12,6 +12,11 @@ extern "C" {
 #include <redland.h>
 }
 
+#define LOCAL "http://localhost/"
+#define PO "http://panopticum.io/"
+#define XSD	"http://www.w3.org/2001/XMLSchema#"
+#define RDF	"http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+
 /**
  * @file
  * @brief Serializing rotines
@@ -113,41 +118,118 @@ namespace po
 		static_cast<std::ostringstream &>(os) << t;
 		return os;
 	}
-	
-	class iturtlestream
+
+	class marshal_exception : public std::runtime_error
 	{
 	public:
-		iturtlestream(const std::string &path);
-		~iturtlestream(void);
-
-		const librdf_node *axis(void) const;
-
-	private:
-		struct axis_wrap
-		{
-			librdf_node *node;
-		};
-		
-		static librdf_world *s_rdf_world;
-		static raptor_world *s_rap_world;
-		static std::mutex s_mutex;
-		static unsigned int s_usage;
-		static std::unordered_map<std::string,librdf_node *> s_nodes;
-
-		const librdf_node *po(const std::string &s);
-		const librdf_node *rdf(const std::string &s);
-		const librdf_node *node(const std::string &s);
-		
-		librdf_storage *m_storage;
-		librdf_model *m_model;
-		librdf_node *m_axis;
-
-		friend iturtlestream &operator>>(iturtlestream &is, axis_wrap &a);
-		friend axis_wrap setaxis(librdf_node *n);
+		marshal_exception(const std::string &s = "");
 	};
 
-	iturtlestream::axis_wrap setaxis(librdf_node *n);
-	iturtlestream &operator>>(iturtlestream &is, iturtlestream::axis_wrap &a);
+	namespace rdf
+	{
+		class node;
+		class statement;
+		class stream;
+
+		class storage
+		{
+		public:
+			struct proxy
+			{
+				proxy(std::nullptr_t);
+				proxy(const std::string &s);
+				proxy(const char *s);
+				proxy(const node &n);
+
+				bool is_literal;
+				bool is_node;
+				std::string literal;
+				librdf_node *node;
+			};
+
+			storage(const std::string &path);
+			storage(const storage &) = delete;
+
+			~storage(void);
+
+			storage &operator=(const storage &) = delete;
+
+			rdf::stream select(proxy s, proxy p, proxy o) const;
+			rdf::statement first(proxy s, proxy p, proxy o) const;
+
+		private:
+			static librdf_world *s_rdf_world;
+			static raptor_world *s_rap_world;
+			static std::mutex s_mutex;
+			static unsigned int s_usage;
+			static std::unordered_map<std::string,librdf_node *> s_nodes;
+
+			const librdf_node *po(const std::string &s);
+			const librdf_node *rdf(const std::string &s);
+			const librdf_node *node(const std::string &s);
+			
+			librdf_storage *m_storage;
+			librdf_model *m_model;
+		};
+
+		class node
+		{
+		public:
+			node(librdf_node *n = 0);
+			node(const node &n);
+			node(node &&n);
+
+			~node(void);
+
+			node &operator=(const node &n);
+			node &operator=(node &&n);
+
+			std::string to_string(void) const;
+			librdf_node *inner(void) const;
+
+		private:
+			librdf_node *m_node;
+		};
+
+		class statement
+		{
+		public:
+			statement(librdf_statement *st = 0);
+			statement(const statement &st);
+			statement(statement &&st);
+
+			~statement(void);
+
+			statement &operator=(const statement &st);
+			statement &operator=(statement &&st);
+
+			node subject(void) const;
+			node predicate(void) const;
+			node object(void) const;
+
+		private:
+			librdf_statement *m_statement;
+		};
+
+		class stream
+		{
+		public:
+			stream(librdf_stream *s);
+			stream(const stream &s) = delete;
+			stream(stream &&s);
+
+			~stream(void);
+
+			stream &operator=(const stream &) = delete;
+			stream &operator=(stream &&st);
+
+			bool eof(void) const;
+			stream &operator>>(statement &st);
+
+		private:
+			librdf_stream *m_stream;
+		};
+	}
 }
 
 #endif

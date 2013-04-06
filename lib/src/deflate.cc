@@ -60,7 +60,7 @@ deflate::deflate(const string &path)
 		po_end = librdf_new_node_from_uri_string(rdf_world,PANOPTICUM_NS("end"));
 		po_precedes = librdf_new_node_from_uri_string(rdf_world,PANOPTICUM_NS("precedes"));
 		po_executes = librdf_new_node_from_uri_string(rdf_world,PANOPTICUM_NS("executes"));
-		po_opcode = librdf_new_node_from_uri_string(rdf_world,PANOPTICUM_NS("opcode"));
+		po_opcode = librdf_new_node_from_uri_string(rdf_world,PANOPTICUM_NS("opcode")o);
 		po_operands = librdf_new_node_from_uri_string(rdf_world,PANOPTICUM_NS("operands"));
 		po_format = librdf_new_node_from_uri_string(rdf_world,PANOPTICUM_NS("format"));
 		po_base = librdf_new_node_from_uri_string(rdf_world,PANOPTICUM_NS("base"));

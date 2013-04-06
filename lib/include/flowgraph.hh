@@ -29,6 +29,8 @@ namespace po
 
 	struct flowgraph
 	{
+		static flow_ptr unmarshal(const rdf::node &n, const rdf::storage &store);
+
 		flowgraph(const std::string &n = "unnamed flowgraph");
 
 		std::set<proc_ptr> procedures;
@@ -123,8 +125,6 @@ namespace po
 	odotstream &operator<<(odotstream &os, const flowgraph &f);
 	oturtlestream& operator<<(oturtlestream &os, const flowgraph &f);
 	std::string unique_name(const flowgraph &f);
-	
-	iturtlestream &operator>>(iturtlestream &is, flowgraph *&flow);
 }
 
 #endif
