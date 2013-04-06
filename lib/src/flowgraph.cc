@@ -61,6 +61,64 @@ odotstream &po::operator<<(odotstream &os, const flowgraph &f)
 	return os;
 }
 
+flow_ptr flowgraph::unmarshal(const rdf::node &n, const rdf::storage &store)
+{
+	rdf::statement type = store.first(n,"rdf:type","po:Flowgraph"),
+								 name = store.first(n,"po:name",nullptr);
+	rdf::stream bbs = store.select(n,"po:include",nullptr);
+
+	cout << n.to_string() << endl << name.object().to_string() << endl << bbs.eof() << endl;
+	return flow_ptr(0);
+}
+
+/*
+{
+	auto fgs = is.filter(nullptr,is.rdf("type"),is.po("Flowgraph"));
+	
+	while(!is.eof())
+	{
+		iturtlestream::statement fnode, name;
+		flow_ptr flow(new flowgraph());
+
+		is >> fnode 
+			 >> push(fnode.subject,is.po("name"),nullptr) >> name >> pop 
+			 >> push(fnode.subject,is.po("includes"),nullptr);
+
+
+
+{
+	triplestore ts("sosse.ttl");
+
+	iturtlestream st = ts.select(nullptr,"rdf:type","po:Flowgraph");
+
+	while(!st.eof())
+	{
+		statement r;
+
+		st >> r;
+		flow_ptr flow(new flowgraph(r.subject()));
+	}
+}
+
+flow_ptr flowgraph::unmarshal(const node &n)
+{
+	flow_ptr ret(new flowgraph());
+
+	// names
+	//
+	auto procs = n.store.filter(n,"po:includes",nullptr);
+
+	while(!procs.eof())
+	{
+		statement st;
+
+		procs >> st;
+		proc_ptr proc(new procedure(st.object(),ret));
+
+
+
+*/
+
 string po::unique_name(const flowgraph &f)
 {
 	return "flow_" + to_string((uintptr_t)&f);
@@ -80,12 +138,6 @@ oturtlestream& po::operator<<(oturtlestream &os, const flowgraph &f)
 	}
 
 	return os;
-}
-
-iturtlestream &po::operator>>(iturtlestream &is, flowgraph *&flow)
-{
-	flow = new flowgraph();
-	return is;
 }
 
 proc_ptr po::find_procedure(flow_ptr fg, addr_t a)
