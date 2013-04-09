@@ -16,6 +16,7 @@ extern "C" {
 #define PO "http://panopticum.io/"
 #define XSD	"http://www.w3.org/2001/XMLSchema#"
 #define RDF	"http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+#define TEMPDIR_TEMPLATE std::string("panopXXXXXX")
 
 /**
  * @file
@@ -147,7 +148,11 @@ namespace po
 				librdf_node *node;
 			};
 
-			storage(const std::string &path);
+			static storage turtle(const std::string &path);
+			static storage stream(const oturtlestream &os);
+
+			storage(void);
+			storage(storage &&);
 			storage(const storage &) = delete;
 
 			~storage(void);
@@ -156,6 +161,8 @@ namespace po
 
 			rdf::stream select(proxy s, proxy p, proxy o) const;
 			rdf::statement first(proxy s, proxy p, proxy o) const;
+			
+			void save(const std::string &path);
 
 		private:
 			static librdf_world *s_rdf_world;
@@ -170,6 +177,7 @@ namespace po
 			
 			librdf_storage *m_storage;
 			librdf_model *m_model;
+			std::string m_tempdir;
 		};
 
 		class node

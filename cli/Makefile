@@ -5,7 +5,7 @@ INCLUDES+=-Iinclude `pkg-config $(PKGCONFIG) --cflags`
 
 HEADERS=$(wildcard include/*.hh)
 API=$(wildcard ../lib/include/*.hh) $(wildcard ../lib/include/avr/*.hh)
-OBJECTS=main.o avr.o turtle.o gv.o ric.o
+OBJECTS=main.o avr.o turtle.o gv.o ric.o zip.o
 
 .PHONY: clean test
 

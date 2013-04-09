@@ -23,6 +23,7 @@ const list<tuple<string,string,string,function<flow_ptr(const string &)>>> input
 {
 	make_tuple("in-avr","a","AVR opcodes",in_avr),
 	make_tuple("in-ttl","t","Flowgraph encoded in Turtle triples",in_turtle),
+	make_tuple("in-zip","z","RDF triples save in a zipped Berkeley DB",in_zip),
 };
 
 const list<tuple<string,string,string,function<void(flow_ptr)>>> filter =
@@ -34,6 +35,7 @@ const list<tuple<string,string,string,function<void(const flow_ptr, const string
 {
 	make_tuple("out-ttl", "T", "Flowgraph encoded in Turtle triples", out_turtle),
 	make_tuple("out-gv", "G", "Dump flowgraph in dot", out_gv),
+	make_tuple("out-zip", "Z", "Dump flowgraph in zip", out_zip),
 };
 
 int main(int argc, char *argv[])
