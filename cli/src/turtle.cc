@@ -7,7 +7,7 @@ using namespace std;
 
 flow_ptr in_turtle(const string &path)
 {
-	rdf::storage store(path);
+	rdf::storage store = rdf::storage::turtle(path);
 	cerr << "Turtle: " << path << endl;
 
 	rdf::stream s = store.select(nullptr,"rdf:type","po:Flowgraph");

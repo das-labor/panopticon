@@ -1,6 +1,17 @@
 #include <sstream>
 #include <algorithm>
 
+extern "C" {
+#include <minizip/zip.h>
+#include <dirent.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+}
+
 #include <marshal.hh>
 
 using namespace po;
@@ -89,9 +100,51 @@ unsigned int rdf::storage::s_usage = 0;
 mutex rdf::storage::s_mutex;
 unordered_map<string,librdf_node *> rdf::storage::s_nodes;
 
-rdf::storage::storage(const string &path)
+rdf::storage rdf::storage::turtle(const string &path)
+{
+	storage ret; // initialize s_rdf_world and s_rap_world
+	librdf_parser *parser;
+	librdf_uri *uri;
+	
+	assert(parser = librdf_new_parser(s_rdf_world,"turtle",NULL,NULL));
+	assert(uri = librdf_new_uri_from_filename(s_rdf_world,path.c_str()));
+	assert(!librdf_parser_parse_into_model(parser,uri,uri,ret.m_model));
+
+	cout << librdf_model_size(ret.m_model) << " triples in " << path << endl;	
+	
+	librdf_free_uri(uri);
+	librdf_free_parser(parser);
+
+	return ret;
+}
+
+rdf::storage rdf::storage::stream(const oturtlestream &os)
+{
+	storage ret;
+	librdf_parser *parser;
+	librdf_uri *uri;
+	
+	assert(parser = librdf_new_parser(s_rdf_world,"turtle",NULL,NULL));
+	assert(uri = librdf_new_uri_from_filename(s_rdf_world,"http://localhost/"));
+	assert(!librdf_parser_parse_string_into_model(parser,reinterpret_cast<const unsigned char *>(os.str().c_str()),uri,ret.m_model));
+
+	librdf_free_uri(uri);
+	librdf_free_parser(parser);
+
+	return ret;
+}
+
+rdf::storage::storage(void)
 : m_storage(0), m_model(0)
 {
+	char *tmp = new char[TEMPDIR_TEMPLATE.size() + 1];
+
+	strncpy(tmp,TEMPDIR_TEMPLATE.c_str(),TEMPDIR_TEMPLATE.size() + 1);
+	mkdtemp(tmp);
+
+	m_tempdir = string(tmp);
+	delete[] tmp;
+
 	lock_guard<mutex> g(s_mutex);
 
 	if(!s_usage++)
@@ -103,21 +156,13 @@ rdf::storage::storage(const string &path)
 		s_rap_world = librdf_world_get_raptor(s_rdf_world);
 	}
 
-	assert(m_storage = librdf_new_storage(s_rdf_world,"memory",NULL,NULL));
+	assert(m_storage = librdf_new_storage(s_rdf_world,"hashes","graph",string("new='yes',hash-type='bdb',dir='" + m_tempdir + "'").c_str()));
 	assert(m_model = librdf_new_model(s_rdf_world,m_storage,NULL));
-
-	librdf_parser *parser;
-	librdf_uri *uri;
-	
-	assert(parser = librdf_new_parser(s_rdf_world,"turtle",NULL,NULL));
-	assert(uri = librdf_new_uri_from_filename(s_rdf_world,path.c_str()));
-	assert(!librdf_parser_parse_into_model(parser,uri,uri,m_model));
-
-	cout << librdf_model_size(m_model) << " triples in " << path << endl;	
-	
-	librdf_free_uri(uri);
-	librdf_free_parser(parser);
 }
+
+rdf::storage::storage(rdf::storage &&store)
+: m_storage(store.m_storage), m_model(store.m_model), m_tempdir(store.m_tempdir)
+{}
 
 rdf::storage::~storage(void)
 {
@@ -135,6 +180,74 @@ rdf::storage::~storage(void)
 		s_rdf_world = 0;
 		s_rap_world = 0;
 	}
+
+	/// XXX delete temp dir
+}
+
+void rdf::storage::save(const string &path)
+{
+	// delete existing `path'
+	unlink(path.c_str());
+
+	// sync bdb
+	/// XXX: lock store against modifications
+	if(librdf_storage_sync(m_storage))
+		throw marshal_exception("can't sync triple store");
+
+	// open temp dir
+	DIR *d = opendir(m_tempdir.c_str());
+	if(!d)
+		throw marshal_exception("can't save to " + path + ": " + strerror(errno));
+
+	// open target zip
+	zipFile zf = zipOpen(path.c_str(),0);
+	if(zf == NULL)
+		throw marshal_exception("can't save to " + path);
+
+	// save database files
+	struct dirent *ent;
+	char *buf = new char[4096];
+	
+	while((ent = readdir(d)))
+	{
+		string cur(ent->d_name);
+
+		if(cur == "." || cur == "..")
+			continue;
+
+		int fd = open(path.c_str(),O_RDONLY);
+		zip_fileinfo zif;
+
+		zif.dosDate = 0;
+		zif.tmz_date.tm_hour = 0;
+		zif.tmz_date.tm_mday = 0;
+		zif.tmz_date.tm_min = 0;
+		zif.tmz_date.tm_mon = 0;
+		zif.tmz_date.tm_sec = 0;
+		zif.tmz_date.tm_year = 0;
+
+		if(fd < 0)
+			throw marshal_exception("can't save to " + path + ": " + strerror(errno));
+
+		if(zipOpenNewFileInZip(zf,cur.c_str(),&zif,NULL,0,NULL,0,NULL,Z_DEFLATED,Z_DEFAULT_COMPRESSION) != ZIP_OK)
+			throw marshal_exception("can't save to " + path + ": " + strerror(errno));
+
+		size_t sz = 0;
+		while((sz = read(fd,buf,4096)) != 0)
+		{
+			size_t p = 0;
+			while((p += zipWriteInFileInZip(zf,buf + p,sz - p)))
+				;
+		}
+
+		if(close(fd) || zipCloseFileInZip(zf) != ZIP_OK)
+			throw marshal_exception("can't save to " + path);
+
+		cout << "written " << cur << " in " << path << endl;
+	}
+
+	if(closedir(d) || zipClose(zf,NULL) != ZIP_OK)
+		throw marshal_exception("can't save to " + path);
 }
 
 rdf::stream rdf::storage::select(rdf::storage::proxy s, rdf::storage::proxy p, rdf::storage::proxy o) const
@@ -151,7 +264,7 @@ rdf::stream rdf::storage::select(rdf::storage::proxy s, rdf::storage::proxy p, r
 	};
 
 	librdf_statement *partial = librdf_new_statement_from_nodes(s_rdf_world,fn(s),fn(p),fn(o));
-	stream st(librdf_model_find_statements(m_model,partial));
+	rdf::stream st(librdf_model_find_statements(m_model,partial));
 
 	librdf_free_statement(partial);
 
@@ -160,7 +273,7 @@ rdf::stream rdf::storage::select(rdf::storage::proxy s, rdf::storage::proxy p, r
 
 rdf::statement rdf::storage::first(rdf::storage::proxy s, rdf::storage::proxy p, rdf::storage::proxy o) const 
 {
-	stream st = select(s,p,o);
+	rdf::stream st = select(s,p,o);
 
 	if(st.eof())
 		throw marshal_exception();
