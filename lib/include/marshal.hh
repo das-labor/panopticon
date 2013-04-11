@@ -148,8 +148,9 @@ namespace po
 				librdf_node *node;
 			};
 
-			static storage turtle(const std::string &path);
-			static storage stream(const oturtlestream &os);
+			static storage from_archive(const std::string &panopPath);
+			static storage from_stream(const oturtlestream &os);
+			static storage from_turtle(const std::string &turtlePath);
 
 			storage(void);
 			storage(storage &&);
@@ -161,15 +162,17 @@ namespace po
 
 			rdf::stream select(proxy s, proxy p, proxy o) const;
 			rdf::statement first(proxy s, proxy p, proxy o) const;
-			
-			void save(const std::string &path);
 
+			void snapshot(const std::string &path);
+			
 		private:
 			static librdf_world *s_rdf_world;
 			static raptor_world *s_rap_world;
 			static std::mutex s_mutex;
 			static unsigned int s_usage;
 			static std::unordered_map<std::string,librdf_node *> s_nodes;
+
+			storage(bool openStore);
 
 			const librdf_node *po(const std::string &s);
 			const librdf_node *rdf(const std::string &s);

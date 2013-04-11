@@ -3,6 +3,7 @@
 
 extern "C" {
 #include <minizip/zip.h>
+#include <minizip/unzip.h>
 #include <dirent.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -100,25 +101,68 @@ unsigned int rdf::storage::s_usage = 0;
 mutex rdf::storage::s_mutex;
 unordered_map<string,librdf_node *> rdf::storage::s_nodes;
 
-rdf::storage rdf::storage::turtle(const string &path)
+rdf::storage rdf::storage::from_archive(const string &path)
 {
-	storage ret; // initialize s_rdf_world and s_rap_world
-	librdf_parser *parser;
-	librdf_uri *uri;
-	
-	assert(parser = librdf_new_parser(s_rdf_world,"turtle",NULL,NULL));
-	assert(uri = librdf_new_uri_from_filename(s_rdf_world,path.c_str()));
-	assert(!librdf_parser_parse_into_model(parser,uri,uri,ret.m_model));
+	storage ret(false);
+	const string &tempDir = ret.m_tempdir;
 
-	cout << librdf_model_size(ret.m_model) << " triples in " << path << endl;	
+	// open target zip
+	unzFile zf = unzOpen(path.c_str());
+	if(zf == NULL)
+		throw marshal_exception("can't open " + path);
+
+	if(unzLocateFile(zf,"graph-po2s.db",0) != UNZ_OK ||
+		 unzLocateFile(zf,"graph-so2p.db",0) != UNZ_OK ||
+		 unzLocateFile(zf,"graph-sp2o.db",0) != UNZ_OK)
+		throw marshal_exception("can't open " + path + ": no graph database in file");
+
+	if(unzGoToFirstFile(zf) != UNZ_OK)
+		throw marshal_exception("can't open " + path);
+
+	// copy database files to tempdir
+	char *buf = new char[4096];
 	
-	librdf_free_uri(uri);
-	librdf_free_parser(parser);
+	do
+	{
+		char fileName[256];
+
+		if(unzGetCurrentFileInfo(zf,NULL,fileName,256,NULL,0,NULL,0) != UNZ_OK)
+			throw marshal_exception("can't read files from " + path);
+
+		string tmpName = tempDir + "/" + string(fileName);
+		int fd = open(tmpName.c_str(),O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR);
+
+		if(fd < 0)
+			throw marshal_exception("can't open " + path + " into tempdir: " + strerror(errno));
+
+		if(unzOpenCurrentFile(zf) != UNZ_OK)
+			throw marshal_exception("can't open file in " + path);
+
+		size_t sz;
+		while((sz = unzReadCurrentFile(zf,buf,4096)) != 0)
+		{
+			size_t p = 0;
+			while(p < sz)
+				p += write(fd,buf + p,sz - p);
+		}
+
+		if(close(fd) || unzCloseCurrentFile(zf) != UNZ_OK)
+			throw marshal_exception("can't open " + path);
+
+		cout << "read " << tmpName << " from " << path << endl;
+	}
+	while(unzGoToNextFile(zf) == UNZ_OK);
+
+	if(unzClose(zf) != UNZ_OK)
+		throw marshal_exception("can't open " + path);
+
+	assert(ret.m_storage = librdf_new_storage(s_rdf_world,"hashes","graph",string("new='yes',hash-type='bdb',dir='" + ret.m_tempdir + "'").c_str()));
+	assert(ret.m_model = librdf_new_model(s_rdf_world,ret.m_storage,NULL));
 
 	return ret;
 }
 
-rdf::storage rdf::storage::stream(const oturtlestream &os)
+rdf::storage rdf::storage::from_stream(const oturtlestream &os)
 {
 	storage ret;
 	librdf_parser *parser;
@@ -134,7 +178,27 @@ rdf::storage rdf::storage::stream(const oturtlestream &os)
 	return ret;
 }
 
+rdf::storage rdf::storage::from_turtle(const string &path)
+{
+	storage ret;
+	librdf_parser *parser;
+	librdf_uri *uri;
+	
+	assert(parser = librdf_new_parser(s_rdf_world,"turtle",NULL,NULL));
+	assert(uri = librdf_new_uri_from_filename(s_rdf_world,path.c_str()));
+	assert(!librdf_parser_parse_into_model(parser,uri,uri,ret.m_model));
+
+	librdf_free_uri(uri);
+	librdf_free_parser(parser);
+
+	return ret;
+}
+
 rdf::storage::storage(void)
+: storage(true)
+{}
+
+rdf::storage::storage(bool openStore)
 : m_storage(0), m_model(0)
 {
 	char *tmp = new char[TEMPDIR_TEMPLATE.size() + 1];
@@ -156,8 +220,11 @@ rdf::storage::storage(void)
 		s_rap_world = librdf_world_get_raptor(s_rdf_world);
 	}
 
-	assert(m_storage = librdf_new_storage(s_rdf_world,"hashes","graph",string("new='yes',hash-type='bdb',dir='" + m_tempdir + "'").c_str()));
-	assert(m_model = librdf_new_model(s_rdf_world,m_storage,NULL));
+	if(openStore)
+	{
+		assert(m_storage = librdf_new_storage(s_rdf_world,"hashes","graph",string("new='yes',hash-type='bdb',dir='" + m_tempdir + "'").c_str()));
+		assert(m_model = librdf_new_model(s_rdf_world,m_storage,NULL));
+	}
 }
 
 rdf::storage::storage(rdf::storage &&store)
@@ -181,11 +248,60 @@ rdf::storage::~storage(void)
 		s_rap_world = 0;
 	}
 
-	/// XXX delete temp dir
+	std::function<void(const string &path)> rm_r;
+	rm_r = [&](const string &path)
+	{
+		// open dir
+		DIR *dirDesc = opendir(path.c_str());
+		if(!dirDesc)
+			throw marshal_exception("can't delete " + path + ": " + strerror(errno));
+
+		// delete contents
+		struct dirent *dirEnt;
+		struct stat st;
+	
+		while((dirEnt = readdir(dirDesc)))
+		{
+			string ent(dirEnt->d_name);
+			string cur = path + "/" + ent;
+
+			if(ent == "." || ent == "..")
+				continue;
+
+			if(stat(cur.c_str(),&st))
+				throw marshal_exception("can't stat " + path + "/" + cur + ": " + strerror(errno));
+
+			if(S_ISDIR(st.st_mode))
+				rm_r(cur);
+			else
+				if(unlink(cur.c_str()))
+					throw marshal_exception("can't unlink " + path + "/" + cur + ": " + strerror(errno));
+		}
+
+		if(closedir(dirDesc))
+			throw marshal_exception("can't close directory " + path);
+		
+		if(rmdir(path.c_str()))
+			throw marshal_exception("can't delete directory " + path);
+	};
+	
+	try
+	{
+		rm_r(m_tempdir);
+	}
+	catch(const marshal_exception &e)
+	{
+		cerr << "Exception in rdf::storage::~storage: " << e.what() << endl;
+	}
+
 }
 
-void rdf::storage::save(const string &path)
+
+void rdf::storage::snapshot(const string &path)
 {
+	if(path.empty())
+		return;
+
 	// delete existing `path'
 	unlink(path.c_str());
 
@@ -195,59 +311,59 @@ void rdf::storage::save(const string &path)
 		throw marshal_exception("can't sync triple store");
 
 	// open temp dir
-	DIR *d = opendir(m_tempdir.c_str());
-	if(!d)
+	DIR *dirDesc = opendir(m_tempdir.c_str());
+	if(!dirDesc)
 		throw marshal_exception("can't save to " + path + ": " + strerror(errno));
 
 	// open target zip
 	zipFile zf = zipOpen(path.c_str(),0);
 	if(zf == NULL)
-		throw marshal_exception("can't save to " + path);
+		throw marshal_exception("can't save to " + path + ": failed to open");
 
 	// save database files
-	struct dirent *ent;
-	char *buf = new char[4096];
+	struct dirent *dirEnt;
+	char buf[4096];
 	
-	while((ent = readdir(d)))
+	while((dirEnt = readdir(dirDesc)))
 	{
-		string cur(ent->d_name);
+		string entBase(dirEnt->d_name);
+		string entPath = m_tempdir + "/" + entBase;
 
-		if(cur == "." || cur == "..")
+		if(entBase == "." || entBase == "..")
 			continue;
 
-		int fd = open(path.c_str(),O_RDONLY);
+		int fd = open(entPath.c_str(),O_RDONLY);
 		zip_fileinfo zif;
 
-		zif.dosDate = 0;
-		zif.tmz_date.tm_hour = 0;
-		zif.tmz_date.tm_mday = 0;
-		zif.tmz_date.tm_min = 0;
-		zif.tmz_date.tm_mon = 0;
-		zif.tmz_date.tm_sec = 0;
-		zif.tmz_date.tm_year = 0;
+		memset(&zif,0,sizeof(zip_fileinfo));
 
 		if(fd < 0)
 			throw marshal_exception("can't save to " + path + ": " + strerror(errno));
 
-		if(zipOpenNewFileInZip(zf,cur.c_str(),&zif,NULL,0,NULL,0,NULL,Z_DEFLATED,Z_DEFAULT_COMPRESSION) != ZIP_OK)
+		if(zipOpenNewFileInZip(zf,entBase.c_str(),&zif,NULL,0,NULL,0,NULL,Z_DEFLATED,Z_DEFAULT_COMPRESSION) != ZIP_OK)
 			throw marshal_exception("can't save to " + path + ": " + strerror(errno));
 
-		size_t sz = 0;
-		while((sz = read(fd,buf,4096)) != 0)
+		int ret;
+		do
 		{
-			size_t p = 0;
-			while((p += zipWriteInFileInZip(zf,buf + p,sz - p)))
-				;
-		}
+			ret = read(fd,buf,4096);
+
+			if(ret < 0)
+				throw marshal_exception("can't save to " + path + ": error while reading " + entPath + "(" + strerror(errno) + ")");
+
+			if(ret > 0 && zipWriteInFileInZip(zf,buf,ret) != ZIP_OK)
+				throw marshal_exception("can't save to " + path + ": error while writing " + entPath);
+		} 
+		while(ret);
 
 		if(close(fd) || zipCloseFileInZip(zf) != ZIP_OK)
-			throw marshal_exception("can't save to " + path);
+			throw marshal_exception("can't save to " + path + ": failed to close file descriptor");
 
-		cout << "written " << cur << " in " << path << endl;
+		cout << "written " << entPath << " in " << path << endl;
 	}
 
-	if(closedir(d) || zipClose(zf,NULL) != ZIP_OK)
-		throw marshal_exception("can't save to " + path);
+	if(closedir(dirDesc) || zipClose(zf,NULL) != ZIP_OK)
+		throw marshal_exception("can't save to " + path + ": failed to close directory");
 }
 
 rdf::stream rdf::storage::select(rdf::storage::proxy s, rdf::storage::proxy p, rdf::storage::proxy o) const
