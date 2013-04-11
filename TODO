@@ -110,32 +110,32 @@
 	--> oturtlestream **DONE**
 	--> serialize relcode and function to symbolic names **DONE**
 	--> serialize memory instances **DONE**
-	--> iturtlestream
+	--> iturtlestream **DONE**
+	--> deserialize procedure
+	--> deserialize basic_block
+	--> deserialize mnemonic
 
 ==> Documentation
 	--> architecture.hh
 	--> basic_block.hh
 	--> code_generator.hh
-	--> deflate.hh
 	--> dflow.hh
 	--> disassembler.hh **DONE**
 	--> flowgraph.hh
-	--> inflate.hh **DONE**
 	--> interpreter.hh
 	--> mnemonic.hh
 	--> procedure.hh
 	--> sat.hh
 	--> value.hh **DONE**
+	--> marshal.hh
 
 ==> Code review
 	--> architecture.hh
 	--> basic_block.hh
 	--> code_generator.hh
-	--> deflate.hh
 	--> dflow.hh
 	--> disassembler.hh **DONE**
 	--> flowgraph.hh
-	--> inflate.hh **DONE**
 	--> interpreter.hh
 	--> mnemonic.hh
 	--> procedure.hh

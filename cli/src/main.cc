@@ -112,7 +112,7 @@ int main(int argc, char *argv[])
 	}
 	catch(runtime_error &e)
 	{
-		cerr << e.what() << endl;
+		cerr << "Caught exception:" << endl << e.what() << endl;
 	}
 	catch(...)
 	{

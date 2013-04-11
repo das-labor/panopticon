@@ -21,6 +21,16 @@ bool po::operator<(const proc_cwptr &a, const proc_cwptr &b)
 
 domtree::domtree(bblock_ptr b) : intermediate(0), basic_block(b) {}
 
+proc_ptr procedure::unmarshal(const rdf::node &node, flow_ptr flow, const rdf::storage &store)
+{
+	rdf::statement type = store.first(node,"rdf:type","po:Procedure"),
+								 name = store.first(node,"po:name",nullptr);
+	rdf::stream bbs = store.select(node,"po:include",nullptr);
+	proc_ptr ret(new procedure(name.object().to_string()));
+
+	return ret;
+}
+
 procedure::procedure(const std::string &n) : name(n) {}
 
 void procedure::rev_postorder(function<void(bblock_ptr bb)> fn) const
@@ -92,7 +102,8 @@ oturtlestream &po::operator<<(oturtlestream &os, const procedure &p)
 			 << ":" << n << " po:include :" << unique_name(*bb) << "." << endl;
 	}
 		
-	os << ":" << n << " po:entry :" << unique_name(*p.entry) << "." << endl;
+	if(p.entry)
+		os << ":" << n << " po:entry :" << unique_name(*p.entry) << "." << endl;
 
 	return os;
 }
