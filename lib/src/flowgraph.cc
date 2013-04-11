@@ -65,59 +65,19 @@ flow_ptr flowgraph::unmarshal(const rdf::node &n, const rdf::storage &store)
 {
 	rdf::statement type = store.first(n,"rdf:type","po:Flowgraph"),
 								 name = store.first(n,"po:name",nullptr);
-	rdf::stream bbs = store.select(n,"po:include",nullptr);
-
-	cout << n.to_string() << endl << name.object().to_string() << endl << bbs.eof() << endl;
-	return flow_ptr(0);
-}
-
-/*
-{
-	auto fgs = is.filter(nullptr,is.rdf("type"),is.po("Flowgraph"));
-	
-	while(!is.eof())
-	{
-		iturtlestream::statement fnode, name;
-		flow_ptr flow(new flowgraph());
-
-		is >> fnode 
-			 >> push(fnode.subject,is.po("name"),nullptr) >> name >> pop 
-			 >> push(fnode.subject,is.po("includes"),nullptr);
-
-
-
-{
-	triplestore ts("sosse.ttl");
-
-	iturtlestream st = ts.select(nullptr,"rdf:type","po:Flowgraph");
-
-	while(!st.eof())
-	{
-		statement r;
-
-		st >> r;
-		flow_ptr flow(new flowgraph(r.subject()));
-	}
-}
-
-flow_ptr flowgraph::unmarshal(const node &n)
-{
-	flow_ptr ret(new flowgraph());
-
-	// names
-	//
-	auto procs = n.store.filter(n,"po:includes",nullptr);
+	rdf::stream procs = store.select(n,"po:include",nullptr);
+	flow_ptr ret(new flowgraph(name.object().to_string()));
 
 	while(!procs.eof())
 	{
-		statement st;
+		rdf::statement proc_node;
 
-		procs >> st;
-		proc_ptr proc(new procedure(st.object(),ret));
+		procs >> proc_node;
+		ret->procedures.insert(procedure::unmarshal(proc_node.object(),ret,store));
+	}
 
-
-
-*/
+	return ret;
+}
 
 string po::unique_name(const flowgraph &f)
 {

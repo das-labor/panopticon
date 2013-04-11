@@ -20,6 +20,8 @@ namespace po
 	typedef std::shared_ptr<const class procedure> proc_cptr;
 	typedef std::weak_ptr<class procedure> proc_wptr;
 	typedef std::weak_ptr<const class procedure> proc_cwptr;
+	
+	typedef std::shared_ptr<struct flowgraph> flow_ptr;
 
 	bool operator<(const proc_wptr &a, const proc_wptr &b);
 	bool operator<(const proc_cwptr &a, const proc_cwptr &b);
@@ -42,6 +44,8 @@ namespace po
 	class procedure
 	{
 	public:
+		static proc_ptr unmarshal(const rdf::node &n, flow_ptr flow, const rdf::storage &store);
+
 		procedure(const std::string &n = std::string("proc_noname"));
 		template<typename FW> procedure(FW begin, FW end) : procedure() { copy(begin,end,inserter(basic_blocks,basic_blocks.begin())); }
 

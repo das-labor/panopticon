@@ -156,7 +156,7 @@ rdf::storage rdf::storage::from_archive(const string &path)
 	if(unzClose(zf) != UNZ_OK)
 		throw marshal_exception("can't open " + path);
 
-	assert(ret.m_storage = librdf_new_storage(s_rdf_world,"hashes","graph",string("new='yes',hash-type='bdb',dir='" + ret.m_tempdir + "'").c_str()));
+	assert(ret.m_storage = librdf_new_storage(s_rdf_world,"hashes","graph",string("hash-type='bdb',dir='" + ret.m_tempdir + "'").c_str()));
 	assert(ret.m_model = librdf_new_model(s_rdf_world,ret.m_storage,NULL));
 
 	return ret;
@@ -293,9 +293,7 @@ rdf::storage::~storage(void)
 	{
 		cerr << "Exception in rdf::storage::~storage: " << e.what() << endl;
 	}
-
 }
-
 
 void rdf::storage::snapshot(const string &path)
 {
@@ -392,7 +390,7 @@ rdf::statement rdf::storage::first(rdf::storage::proxy s, rdf::storage::proxy p,
 	rdf::stream st = select(s,p,o);
 
 	if(st.eof())
-		throw marshal_exception();
+		throw marshal_exception("no matching rdf statement");
 
 	statement ret;
 	st >> ret;

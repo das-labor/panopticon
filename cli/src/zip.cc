@@ -7,16 +7,11 @@ using namespace std;
 
 flow_ptr in_zip(const string &path)
 {
-	try
-	{
-		rdf::storage store = rdf::storage::from_archive(path);
-	}
-	catch(marshal_exception &e)
-	{
-		cerr << e.what() << endl;
-	}
+	rdf::storage store = rdf::storage::from_archive(path);
+	flow_ptr flow = flowgraph::unmarshal(store.first(nullptr,"rdf:type","po:Flowgraph").subject(),store);
 
-	return flow_ptr(0);
+	cout << "flow: " << flow << endl;
+	return flow;
 }
 
 void out_zip(const flow_ptr f, const string &path)
