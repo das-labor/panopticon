@@ -95,8 +95,10 @@ namespace po
 	};
 
 	odotstream& operator<<(odotstream &os, const instr &i);
+	oturtlestream& operator<<(oturtlestream &os, const instr &i);
 	std::string pretty(instr::Function fn);
 	std::string symbolic(instr::Function fn);
+	instr::Function numeric(const std::string &s);
 
 	class mnemonic
 	{
@@ -112,6 +114,8 @@ namespace po
 			bool is_literal;
 		};
 		
+		static mnemonic unmarshal(const rdf::node &n, const rdf::storage &store);
+
 		template <typename F1, typename F2>
 		mnemonic(const range<addr_t> &a, const std::string &n, const std::string &fmt, F1 ops_begin, F1 ops_end, F2 instr_begin, F2 instr_end)
 		: mnemonic(a,n,fmt,{},{})

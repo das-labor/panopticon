@@ -86,17 +86,14 @@ string po::unique_name(const flowgraph &f)
 
 oturtlestream& po::operator<<(oturtlestream &os, const flowgraph &f)
 {
-	string n = unique_name(f);
-
-	os << ":" << n << " po:name \"" << f.name << "\"^^xsd:string." << endl;
-	os << ":" << n << " rdf:type po:Flowgraph." << endl;
+	os << "[" << endl 
+		 << " po:name \"" << f.name << "\"^^xsd:string;" << endl
+		 << " rdf:type po:Flowgraph;" << endl;
 	
 	for(proc_cptr p: f.procedures)
-	{
-		os << *p;
-		os << ":" << n << " po:include :" << unique_name(*p) << "." << endl;
-	}
+		os << " po:include " << *p << endl;
 
+	os << "];";
 	return os;
 }
 

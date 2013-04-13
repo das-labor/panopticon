@@ -8,6 +8,8 @@
 #include <boost/iterator/iterator_facade.hpp>
 #include <boost/iterator/filter_iterator.hpp>
 
+#include <marshal.hh>
+
 namespace po
 {
 	class basic_block;
@@ -17,6 +19,8 @@ namespace po
 	typedef std::shared_ptr<const class basic_block> bblock_cptr;
 	typedef std::weak_ptr<class basic_block> bblock_wptr;
 	typedef std::weak_ptr<const class basic_block> bblock_cwptr;
+
+	typedef std::shared_ptr<const class procedure> proc_cptr;
 }
 
 #include <mnemonic.hh>
@@ -126,6 +130,8 @@ namespace po
 	class basic_block
 	{
 	public:
+		static bblock_ptr unmarshal(const rdf::node &n, proc_cptr proc, const rdf::storage &store);
+
 		basic_block(void);
 
 		// iterators

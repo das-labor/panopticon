@@ -352,43 +352,82 @@ oturtlestream &po::operator<<(oturtlestream &os, rvalue r)
 {
 	switch(r.tag())
 	{
-	case rvalue::UndefinedValueTag: os << "po:undefined"; return os;
-	case rvalue::ConstantValueTag: 	os << (os.embed ? "" : "\"") << r.to_constant().content() << (os.embed ? "" : "\"") << "^^po:Constant"; return os;
+		case rvalue::UndefinedValueTag: os << "[rdf:type po:Undefined];"; return os;
+		case rvalue::ConstantValueTag: 	os << "[rdf:type po:Constant; po:value " << r.to_constant().content() << "];"; return os;
 	case rvalue::VariableValueTag:
 	{
 		const variable &v = r.to_variable();
-		os << (os.embed ? "" : "\"") << v.name() << (v.subscript() >= 0 ? "_" + to_string(v.subscript()) : "") << (os.embed ? "" : "\"") << "^^po:Variable";
+		os << "[rdf:type po:Variable; po:name \"" << v.name() << "\"; " 
+			 << (v.subscript() >= 0 ? "po:subscript \"" + to_string(v.subscript()) + "\"^^rdf:integer; " : "") 
+			 << "po:width \"" << v.width() << "\"^^xsd:integer];";
 		return os;
 	}
 	case rvalue::MemoryValueTag:
 	{
 		const memory &m = r.to_memory();
 		
-		// name
-		os << (os.embed ? "" : "\"") << m.name() << "[";
-		
-		// offset
-		if(!os.embed)
-			os << embed << m.offset() << noembed;
-		else
-			os << m.offset();
-
-		os << ";" << m.bytes() << ",";
+		os << "[rdf:type po:Memory; " 
+			 << "po:name \"" << m.name() << "\"^^xsd:string; "
+			 << "po::offset " << m.offset()
+			 << "po:bytes \"" << m.bytes() << "\"^^xsd:integer; "
+			 << "po:endianess ";
 
 		// endianess
 		switch(m.endianess())
 		{
-			case memory::LittleEndian: os << "le"; break;
-			case memory::BigEndian: os << "be"; break;
-			default: os << "un"; break;
+			case memory::LittleEndian: os << "po:little-endian; "; break;
+			case memory::BigEndian: os << "po:big-endian; "; break;
+			default: assert(false);
 		}
 
-		os << "]" << (os.embed ? "" : "\"") <<"^^po:Memory";
+		os << "];";
 		return os;
 	}
 	default:
 		throw value_exception("Unknown value tag " + to_string(r.tag()));
 	}
+}
+
+rvalue rvalue::unmarshal(const rdf::node &node, const rdf::storage &store)
+{
+	/*
+	rdf::node undef = store.single("po:undefined"),
+						const_type = store.single("po:Constant"),
+						var_type = store.single("po:Variable"),
+						mem_type = store.single("po:Memory");
+
+	if(node == undef)
+	{
+		return undefined();
+	}
+	else
+	{
+		string str = node.to_string();
+		rdf::node type = node.type();
+		
+		if(type == const_type)
+		{
+			auto sub_idx = str.rfind('_');
+
+			if(sub_idx != string::npos)
+				return variable(str.substr(0,sub_idx),1,stoll(str.substr(sub_idx + 1)));
+			else
+				return variable(str,1);
+		}
+		else if(type == const_type)
+		{
+			return constant(stoull(str));
+		}
+		else if(type == mem_type)
+		{
+			auto sub_idx = str.find('[');
+			auto bytes_idx = str.find(';');
+			auto endianess_idx = str.find(',');
+
+			rvalue offr = rvalue::unmarshalstr.substr(sub_idx,bytes_idx - sub_idx);
+			unsigned long bytes = stoul(str.substr(bytes_idx,endianess_idx - bytes_idx));
+*/
+	return undefined();
 }
 
 value_exception::value_exception(const string &w) : runtime_error(w) {}
