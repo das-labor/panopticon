@@ -72,6 +72,67 @@ string po::symbolic(instr::Function fn)
 		default: assert(false);
 	}
 }
+
+instr::Function po::numeric(const std::string &s)
+{
+	if(s.substr(0,3) == "po:")
+	{
+		string t = s.substr(3);
+		if(t == "po:and") return instr::And;
+		if(t == "po:or") return instr::Or;
+		if(t == "po:xor") return instr::Xor;
+		if(t == "po:not") return instr::Not;
+		if(t == "po:assign") return instr::Assign;
+		if(t == "po:u-shift-right") return instr::UShr;
+		if(t == "po:i-shift-left") return instr::UShl;
+		if(t == "po:s-shift-right") return instr::SShr;
+		if(t == "po:s-shift-left") return instr::SShl;
+		if(t == "po:u-extend") return instr::UExt;
+		if(t == "po:s-extend") return instr::SExt;
+		if(t == "po:slice") return instr::Slice;
+		//if(t == " ∷ ") return instr::Concat;
+		if(t == "po:add") return instr::Add;
+		if(t == "po:subtract") return instr::Sub;
+		if(t == "po:multiply") return instr::Mul;
+		if(t == "po:s-divide") return instr::SDiv;
+		if(t == "po:u-divide") return instr::UDiv;
+		if(t == "po:s-modulo") return instr::SMod;
+		if(t == "po:u-modulo") return instr::UMod;
+		if(t == "po:s-less-equal") return instr::SLeq;
+		if(t == "po:u-less-equal") return instr::ULeq;
+		if(t == "po:call") return instr::Call;
+		if(t == "po:phi") return instr::Phi;
+		assert(false);
+	}
+	else
+	{
+		if(s == " ∨ ") return instr::And;
+		if(s == " ∧ ") return instr::Or;
+		if(s == " ⊕ ") return instr::Xor;
+		if(s == "¬") return instr::Not;
+		if(s == "") return instr::Assign;
+		if(s == " ≫ ") return instr::UShr;
+		if(s == " ≪ ") return instr::UShl;
+		if(s == " ≫ₛ ") return instr::SShr;
+		if(s == " ≪ₛ ") return instr::SShl;
+		if(s == " ↤ᵤ ") return instr::UExt;
+		if(s == " ↤ₛ ") return instr::SExt;
+		if(s == ":") return instr::Slice;
+		//if(s == " ∷ ") return instr::Concat;
+		if(s == " + ") return instr::Add;
+		if(s == " - ") return instr::Sub;
+		if(s == " × ") return instr::Mul;
+		if(s == " ÷ₛ ") return instr::SDiv;
+		if(s == " ÷ᵤ ") return instr::UDiv;
+		if(s == " modₛ ") return instr::SMod;
+		if(s == " modᵤ ") return instr::UMod;
+		if(s == " ≤ₛ ") return instr::SLeq;
+		if(s == " ≤ᵤ ") return instr::ULeq;
+		if(s == "call") return instr::Call;
+		if(s == "ϕ") return instr::Phi;
+		assert(false);
+	}
+}
 			
 ostream &po::operator<<(ostream &os, const instr &i)
 {
@@ -101,11 +162,20 @@ odotstream& po::operator<<(odotstream &os, const instr &i)
 	return os;
 }
 
+oturtlestream& po::operator<<(oturtlestream &os, const instr &i)
+{
+	os << "[ po:function " << symbolic(i.function) << "; "
+		 << " po:left " << static_cast<rvalue>(i.left) << "; "
+		 << " po:right (";
+		for(rvalue v: i.right)
+			os << " " << v;
+		os << " )];";
+	return os;
+}
+
 oturtlestream& po::operator<<(oturtlestream &os, const mnemonic &m)
 {
-	string n = unique_name(m);
-
-	os << ":" << n << " po:opcode \"" << m.opcode << "\"^^xsd:string;" << endl
+	os << "[ po:opcode \"" << m.opcode << "\"^^xsd:string;"
 								 << " po:format \"" << accumulate(m.format.begin(),m.format.end(),string(),[&](const string &a, const mnemonic::token &t)
 																									{
 																										string ret = a;
@@ -120,8 +190,8 @@ oturtlestream& po::operator<<(oturtlestream &os, const mnemonic &m)
 																											ret += ":" + t.alias + "}";
 																										}
 																										return ret;
-																									}) << "\"^^po:Format;" << endl
-		 						 << " po:begin " << m.area.begin << ";" << endl
+																									}) << "\"^^po:Format;"
+		 						 << " po:begin " << m.area.begin << ";"
 								 << " po:end " << m.area.end << ";" << endl
 								 << " po:operands (";
 	for(rvalue v: m.operands)
@@ -129,33 +199,47 @@ oturtlestream& po::operator<<(oturtlestream &os, const mnemonic &m)
 	os << " );" << endl
 								 << " po:executes (";
 
-	list<string> bl;
-	size_t j = m.instructions.size();
-	while(j--)
-	{
-		bl.push_back(os.blank());
-		os << " " << bl.back();
-	}
-	os << ")." << endl;
-	
 	for(const instr &i: m.instructions)
-	{
-		bl.push_back(os.blank());
-		os << bl.front() << " po:function " << symbolic(i.function) << "." << endl
-			 << bl.front() << " po:left " << static_cast<rvalue>(i.left) << "." << endl
-			 << bl.front() << " po:right (";
-		for(rvalue v: i.right)
-			os << " " << v;
-		os << " )." << endl;
-		bl.pop_front();
-	}
+		os << " " << i;
+	os << ");" << endl;
+	
 
+	os << "];" << endl;
 	return os;
 }
 
 string po::unique_name(const mnemonic &mne)
 {
 	return "mne_" + to_string(mne.area.begin);
+}
+
+mnemonic mnemonic::unmarshal(const rdf::node &node, const rdf::storage &store)
+{
+	rdf::node nil = store.single("rdf:nil");
+	rdf::statement opcode = store.first(node,"po:opcode",nullptr),
+								 format = store.first(node,"po:format",nullptr),
+								 begin = store.first(node,"po:begin",nullptr),
+								 end = store.first(node,"po:end",nullptr),
+								 op_head = store.first(node,"po:operands",nullptr),
+								 exec_head = store.first(node,"po:executes",nullptr);
+	list<instr> is;
+
+	while(exec_head.object() != nil)
+	{
+		rdf::statement i_root = store.first(exec_head.object(),"rdf:first",nullptr),
+									 func = store.first(i_root.object(),"po:function",nullptr),
+									 left = store.first(i_root.object(),"po:left",nullptr),
+									 right_head = store.first(i_root.object(),"po:right",nullptr);
+
+		exec_head = store.first(exec_head.object(),"rdf:rest",nullptr);
+	//	is.emplace_back(instr(numeric(func.object().to_string()),lvalue::unmarshal(left.object()),{}));
+	}
+
+	return mnemonic(range<addr_t>(stoull(begin.object().to_string()),stoull(end.object().to_string())),
+									opcode.object().to_string(),
+									format.object().to_string(),
+									{},{});
+//									initializer_list<instr>(is.begin(),is.end()));
 }
 
 mnemonic::mnemonic(const range<addr_t> &a, const string &n, const string &fmt, initializer_list<rvalue> ops, initializer_list<instr> instrs)

@@ -53,6 +53,8 @@ namespace po
 			MemoryValueTag = 3
 		};
 
+		static rvalue unmarshal(const rdf::node &n, const rdf::storage &store);
+
 		/// Constructs a undefined value.
 		rvalue(void);
 		rvalue(const rvalue &r);

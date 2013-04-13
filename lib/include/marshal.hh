@@ -162,6 +162,7 @@ namespace po
 
 			rdf::stream select(proxy s, proxy p, proxy o) const;
 			rdf::statement first(proxy s, proxy p, proxy o) const;
+			rdf::node single(proxy s) const;
 
 			void snapshot(const std::string &path);
 			
@@ -194,6 +195,9 @@ namespace po
 
 			node &operator=(const node &n);
 			node &operator=(node &&n);
+
+			bool operator==(const node &n) const;
+			bool operator!=(const node &n) const;
 
 			std::string to_string(void) const;
 			librdf_node *inner(void) const;

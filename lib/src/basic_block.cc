@@ -131,6 +131,40 @@ ctrans::ctrans(struct guard g, bblock_ptr b) : guard(g), bblock(b) {}
 /*
  * basic_block
  */
+bblock_ptr basic_block::unmarshal(const rdf::node &node, proc_cptr proc, const rdf::storage &store)
+{
+	rdf::statement type = store.first(node,"rdf:type","po:BasicBlock");
+	rdf::stream mnes = store.select(node,"po:include",nullptr);
+	rdf::stream cts = store.select(node,"po:preceds",nullptr);
+	bblock_ptr ret(new basic_block());
+	std::list<mnemonic> mne_lst;
+
+	// mnemoics
+	while(!mnes.eof())
+	{
+		rdf::statement st;
+
+		mnes >> st;
+		mne_lst.emplace_back(mnemonic::unmarshal(st.object(),store));
+	}
+
+	mne_lst.sort([](const mnemonic &a, const mnemonic &b)
+		{ return a.area.begin < b.area.begin; });
+
+	ret->mutate_mnemonics([&](vector<mnemonic> &ms)
+		{ move(mne_lst.begin(),mne_lst.end(),inserter(ms,ms.end())); });
+
+	// constrol transfers
+	while(!cts.eof())
+	{
+		rdf::statement st;
+
+		cts >> st;
+	}
+
+	return ret;
+}
+
 basic_block::basic_block(void) {}
 pair<basic_block::pred_citerator,basic_block::pred_citerator> basic_block::predecessors(void) const
 	{ return make_pair(pred_citerator(m_incoming.cbegin(),m_incoming.cend()),pred_citerator(m_incoming.cend(),m_incoming.cend())); }
@@ -255,19 +289,16 @@ odotstream &po::operator<<(odotstream &os, const basic_block &bb)
 
 oturtlestream &po::operator<<(oturtlestream &os, const basic_block &bb)
 {
-	string n = unique_name(bb);
-
-	os << ":" << n << " rdf:type po:BasicBlock." << endl;
+	os << "[" << " rdf:type po:BasicBlock;" << endl;
 	for(const mnemonic &mne: bb.mnemonics())
-		os << mne
-			 << ":" << n << " po:include :" << unique_name(mne) << "." << endl;
+		os << " po:include " << mne << endl;
 
+	/*
 	for(const ctrans &ct: bb.outgoing())
 	{
-		string g = os.blank();
-
-		os << ":" << n << " po:preceds " << g << "." << endl;
-
+		os << " po:preceds " << ct << endl;
+	}
+	/
 		if(ct.bblock.lock())
 			os << g << " po:target :" << unique_name(*ct.bblock.lock()) << "." << endl;
 		else
@@ -278,7 +309,9 @@ oturtlestream &po::operator<<(oturtlestream &os, const basic_block &bb)
 													 << "; po:right " << rel.operand2 
 													 << "; po:relation " << symbolic(rel.relcode)
 													 << "]." << endl;
-	}
+	}*/
+
+	os << "];";
 
 	return os;
 }

@@ -398,6 +398,17 @@ rdf::statement rdf::storage::first(rdf::storage::proxy s, rdf::storage::proxy p,
 	return ret;
 }
 
+rdf::node rdf::storage::single(rdf::storage::proxy p) const
+{
+	lock_guard<mutex> g(s_mutex);
+	if(p.is_node)
+		return rdf::node(p.node);
+	else if(p.is_literal)
+		return rdf::node(librdf_new_node_from_uri_string(s_rdf_world,reinterpret_cast<const unsigned char *>(p.literal.c_str())));
+	else
+		throw marshal_exception("can't construct NULL node");
+}
+
 rdf::node::node(librdf_node *n)
 : m_node(n)
 {}
@@ -433,6 +444,16 @@ rdf::node &rdf::node::operator=(rdf::node &&n)
 	n.m_node = 0;
 	
 	return *this;
+}
+
+bool rdf::node::operator==(const rdf::node &n) const
+{
+	return librdf_node_equals(inner(),n.inner());
+}
+
+bool rdf::node::operator!=(const rdf::node &n) const
+{
+	return !(*this == n);
 }
 
 string rdf::node::to_string(void) const

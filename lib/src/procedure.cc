@@ -28,6 +28,14 @@ proc_ptr procedure::unmarshal(const rdf::node &node, flow_ptr flow, const rdf::s
 	rdf::stream bbs = store.select(node,"po:include",nullptr);
 	proc_ptr ret(new procedure(name.object().to_string()));
 
+	while(!bbs.eof())
+	{
+		rdf::statement st;
+
+		bbs >> st;
+		ret->basic_blocks.insert(basic_block::unmarshal(st.object(),ret,store));
+	}
+
 	return ret;
 }
 
@@ -91,19 +99,17 @@ odotstream &po::operator<<(odotstream &os, const procedure &p)
 
 oturtlestream &po::operator<<(oturtlestream &os, const procedure &p)
 {
-	string n = unique_name(p);
-	
-	os << ":" << n << " po:name \"" << p.name << "\"^^xsd:string." << endl
-		 << ":" << n << " rdf:type po:Procedure." << endl;
+	os << "[" << endl
+		 << " po:name \"" << p.name << "\"^^xsd:string;" << endl
+		 << " rdf:type po:Procedure;" << endl;
 
 	for(bblock_cptr bb: p.basic_blocks)
-	{
-		os << *bb
-			 << ":" << n << " po:include :" << unique_name(*bb) << "." << endl;
-	}
+		os << " po:include " << *bb << endl;
 		
 	if(p.entry)
-		os << ":" << n << " po:entry :" << unique_name(*p.entry) << "." << endl;
+		os << " po:entry \"" << p.entry->area().begin << "\"^^xsd:integer;" << endl;
+
+	os << "];";
 
 	return os;
 }
