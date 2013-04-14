@@ -109,7 +109,7 @@ oturtlestream &po::operator<<(oturtlestream &os, const procedure &p)
 	if(p.entry)
 		os << " po:entry \"" << p.entry->area().begin << "\"^^xsd:integer;" << endl;
 
-	os << "];";
+	os << "]";
 
 	return os;
 }

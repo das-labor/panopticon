@@ -91,9 +91,9 @@ oturtlestream& po::operator<<(oturtlestream &os, const flowgraph &f)
 		 << " rdf:type po:Flowgraph;" << endl;
 	
 	for(proc_cptr p: f.procedures)
-		os << " po:include " << *p << endl;
+		os << " po:include " << *p << ";" << endl;
 
-	os << "];";
+	os << "]";
 	return os;
 }
 

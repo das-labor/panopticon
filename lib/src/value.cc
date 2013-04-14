@@ -352,14 +352,14 @@ oturtlestream &po::operator<<(oturtlestream &os, rvalue r)
 {
 	switch(r.tag())
 	{
-		case rvalue::UndefinedValueTag: os << "[rdf:type po:Undefined];"; return os;
-		case rvalue::ConstantValueTag: 	os << "[rdf:type po:Constant; po:value " << r.to_constant().content() << "];"; return os;
+		case rvalue::UndefinedValueTag: os << "[rdf:type po:Undefined]"; return os;
+		case rvalue::ConstantValueTag: 	os << "[rdf:type po:Constant; po:value " << r.to_constant().content() << "]"; return os;
 	case rvalue::VariableValueTag:
 	{
 		const variable &v = r.to_variable();
 		os << "[rdf:type po:Variable; po:name \"" << v.name() << "\"; " 
-			 << (v.subscript() >= 0 ? "po:subscript \"" + to_string(v.subscript()) + "\"^^rdf:integer; " : "") 
-			 << "po:width \"" << v.width() << "\"^^xsd:integer];";
+			 << (v.subscript() >= 0 ? "po:subscript " + to_string(v.subscript()) + "; " : "") 
+			 << "po:width " << v.width() << "]";
 		return os;
 	}
 	case rvalue::MemoryValueTag:
@@ -368,8 +368,8 @@ oturtlestream &po::operator<<(oturtlestream &os, rvalue r)
 		
 		os << "[rdf:type po:Memory; " 
 			 << "po:name \"" << m.name() << "\"^^xsd:string; "
-			 << "po::offset " << m.offset()
-			 << "po:bytes \"" << m.bytes() << "\"^^xsd:integer; "
+			 << "po:offset " << m.offset() << "; "
+			 << "po:bytes " << m.bytes() << "; "
 			 << "po:endianess ";
 
 		// endianess
@@ -380,7 +380,7 @@ oturtlestream &po::operator<<(oturtlestream &os, rvalue r)
 			default: assert(false);
 		}
 
-		os << "];";
+		os << "]";
 		return os;
 	}
 	default:

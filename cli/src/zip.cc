@@ -17,7 +17,7 @@ flow_ptr in_zip(const string &path)
 void out_zip(const flow_ptr f, const string &path)
 {
 	oturtlestream os;
-	os << *f;
+	os << "po:world po:include " << *f << ".";
 	cout << os.str() << endl;
 
 	try

@@ -291,7 +291,7 @@ oturtlestream &po::operator<<(oturtlestream &os, const basic_block &bb)
 {
 	os << "[" << " rdf:type po:BasicBlock;" << endl;
 	for(const mnemonic &mne: bb.mnemonics())
-		os << " po:include " << mne << endl;
+		os << " po:include " << mne << ";" << endl;
 
 	/*
 	for(const ctrans &ct: bb.outgoing())
