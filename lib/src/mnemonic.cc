@@ -215,23 +215,23 @@ string po::unique_name(const mnemonic &mne)
 
 mnemonic mnemonic::unmarshal(const rdf::node &node, const rdf::storage &store)
 {
-	rdf::node nil = store.single("rdf:nil");
-	rdf::statement opcode = store.first(node,"po:opcode",nullptr),
-								 format = store.first(node,"po:format",nullptr),
-								 begin = store.first(node,"po:begin",nullptr),
-								 end = store.first(node,"po:end",nullptr),
-								 op_head = store.first(node,"po:operands",nullptr),
-								 exec_head = store.first(node,"po:executes",nullptr);
+	rdf::node nil = "nil"_rdf;
+	rdf::statement opcode = store.first(node,"opcode"_po,nullptr),
+								 format = store.first(node,"format"_po,nullptr),
+								 begin = store.first(node,"begin"_po,nullptr),
+								 end = store.first(node,"end"_po,nullptr),
+								 op_head = store.first(node,"operands"_po,nullptr),
+								 exec_head = store.first(node,"executes"_po,nullptr);
 	list<instr> is;
 
 	while(exec_head.object() != nil)
 	{
-		rdf::statement i_root = store.first(exec_head.object(),"rdf:first",nullptr),
-									 func = store.first(i_root.object(),"po:function",nullptr),
-									 left = store.first(i_root.object(),"po:left",nullptr),
-									 right_head = store.first(i_root.object(),"po:right",nullptr);
+		rdf::statement i_root = store.first(exec_head.object(),"first"_rdf,nullptr),
+									 func = store.first(i_root.object(),"function"_po,nullptr),
+									 left = store.first(i_root.object(),"left"_po,nullptr),
+									 right_head = store.first(i_root.object(),"right"_po,nullptr);
 
-		exec_head = store.first(exec_head.object(),"rdf:rest",nullptr);
+		exec_head = store.first(exec_head.object(),"rest"_rdf,nullptr);
 	//	is.emplace_back(instr(numeric(func.object().to_string()),lvalue::unmarshal(left.object()),{}));
 	}
 

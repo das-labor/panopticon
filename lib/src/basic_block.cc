@@ -133,9 +133,9 @@ ctrans::ctrans(struct guard g, bblock_ptr b) : guard(g), bblock(b) {}
  */
 bblock_ptr basic_block::unmarshal(const rdf::node &node, proc_cptr proc, const rdf::storage &store)
 {
-	rdf::statement type = store.first(node,"rdf:type","po:BasicBlock");
-	rdf::stream mnes = store.select(node,"po:include",nullptr);
-	rdf::stream cts = store.select(node,"po:preceds",nullptr);
+	rdf::statement type = store.first(node,"type"_rdf,"BasicBlock"_po);
+	rdf::stream mnes = store.select(node,"include"_po,nullptr);
+	rdf::stream cts = store.select(node,"preceds"_po,nullptr);
 	bblock_ptr ret(new basic_block());
 	std::list<mnemonic> mne_lst;
 

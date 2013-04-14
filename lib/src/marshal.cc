@@ -72,6 +72,7 @@ marshal_exception::marshal_exception(const string &w)
 rdf::world *rdf::world::s_instance = 0;
 
 rdf::world::world(void)
+: enable_shared_from_this()
 {
 	assert(!s_instance);
 		
@@ -84,7 +85,7 @@ rdf::world_ptr rdf::world::instance(void)
 {
 	if(!s_instance)
 		s_instance = new world();
-	return s_instance->shared_from_this();
+	return s_instance;
 }
 
 librdf_world *rdf::world::rdf(void) const
@@ -373,6 +374,10 @@ void rdf::storage::insert(const rdf::node &s, const rdf::node &p, const rdf::nod
 		throw marshal_exception("failed to add statement");
 }
 
+rdf::node::node(void)
+: m_node(librdf_new_node_from_blank_identifier(world::instance()->rdf(),NULL))
+{}
+
 rdf::node::node(librdf_node *n)
 : m_node(n)
 {}
@@ -439,6 +444,51 @@ librdf_node *rdf::node::inner(void) const
 {
 	return m_node;
 }
+
+rdf::node po::rdf::lit(const std::string &s)
+{
+	rdf::world_ptr w = rdf::world::instance();
+	librdf_uri *type = librdf_new_uri(w->rdf(),reinterpret_cast<const unsigned char *>(XSD"string"));
+	rdf::node ret(librdf_new_node_from_typed_literal(w->rdf(),reinterpret_cast<const unsigned char *>(s.c_str()),NULL,type));
+
+	librdf_free_uri(type);
+	return ret;
+}
+
+rdf::node po::rdf::lit(unsigned long long n)
+{
+	rdf::world_ptr w = rdf::world::instance();
+	librdf_uri *type = librdf_new_uri(w->rdf(),reinterpret_cast<const unsigned char *>(XSD"nonNegativeInteger"));
+	rdf::node ret(librdf_new_node_from_typed_literal(w->rdf(),reinterpret_cast<const unsigned char *>(std::to_string(n).c_str()),NULL,type));
+
+	librdf_free_uri(type);
+	return ret;
+}
+
+rdf::node po::rdf::ns_po(const std::string &s)
+{			
+	return rdf::node(librdf_new_node_from_uri_string(rdf::world::instance()->rdf(),
+																									 reinterpret_cast<const unsigned char *>((std::string(PO) + s).c_str())));
+}
+
+rdf::node po::rdf::ns_rdf(const std::string &s)
+{			
+	return rdf::node(librdf_new_node_from_uri_string(rdf::world::instance()->rdf(),
+																									 reinterpret_cast<const unsigned char *>((std::string(RDF) + s).c_str())));
+}
+
+rdf::node po::rdf::ns_xsd(const std::string &s)
+{			
+	return rdf::node(librdf_new_node_from_uri_string(rdf::world::instance()->rdf(),
+																									 reinterpret_cast<const unsigned char *>((std::string(XSD) + s).c_str())));
+}
+
+rdf::statement::statement(const rdf::node &s, const rdf::node &p, const rdf::node &o)
+: m_statement(librdf_new_statement_from_nodes(world::instance()->rdf(),
+																							s.inner() ? librdf_new_node_from_node(s.inner()) : NULL,
+																							p.inner() ? librdf_new_node_from_node(p.inner()) : NULL,
+																							o.inner() ? librdf_new_node_from_node(o.inner()) : NULL))
+{}
 
 rdf::statement::statement(librdf_statement *n)
 : m_statement(n)
@@ -536,6 +586,26 @@ rdf::stream &rdf::stream::operator>>(rdf::statement &st)
 bool rdf::stream::eof(void) const
 {
 	return m_stream && librdf_stream_end(m_stream) != 0;
+}
+
+ordfstream::ordfstream(rdf::storage &store)
+: m_storage(store), m_context()
+{}
+
+std::stack<rdf::node> &ordfstream::context(void)
+{
+	return m_context;
+}
+
+rdf::storage &ordfstream::store(void) const
+{
+	return m_storage;
+}
+
+ordfstream& po::operator<<(ordfstream &os, const rdf::statement &st)
+{
+	os.store().insert(st);
+	return os;
 }
 
 /*
