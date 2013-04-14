@@ -63,9 +63,9 @@ odotstream &po::operator<<(odotstream &os, const flowgraph &f)
 
 flow_ptr flowgraph::unmarshal(const rdf::node &n, const rdf::storage &store)
 {
-	rdf::statement type = store.first(n,"rdf:type","po:Flowgraph"),
-								 name = store.first(n,"po:name",nullptr);
-	rdf::stream procs = store.select(n,"po:include",nullptr);
+	rdf::statement type = store.first(n,"type"_rdf,"Flowgraph"_po),
+								 name = store.first(n,"name"_po,nullptr);
+	rdf::stream procs = store.select(n,"include"_po,nullptr);
 	flow_ptr ret(new flowgraph(name.object().to_string()));
 
 	while(!procs.eof())
@@ -94,6 +94,17 @@ oturtlestream& po::operator<<(oturtlestream &os, const flowgraph &f)
 		os << " po:include " << *p << ";" << endl;
 
 	os << "]";
+	return os;
+}
+
+ordfstream& po::operator<<(ordfstream &os, const flowgraph &f)
+{
+	rdf::node root;
+
+	os.context().push(root);
+	os << rdf::statement(root,"name"_po,rdf::lit(f.name));
+	os << rdf::statement(root,"type"_rdf,"Flowgraph"_po);
+
 	return os;
 }
 
