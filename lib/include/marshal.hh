@@ -137,7 +137,7 @@ namespace po
 		class stream;
 		class list;
 
-		typedef std::shared_ptr<world> world_ptr;
+		typedef world* world_ptr;
 
 		class world : std::enable_shared_from_this<world>
 		{
@@ -211,43 +211,11 @@ namespace po
 			librdf_node *m_node;
 		};
 	
-		rdf::node lit(const std::string &s)
-		{
-			rdf::world_ptr w = rdf::world::instance();
-			librdf_uri *type = librdf_new_uri(w->rdf(),reinterpret_cast<const unsigned char *>(XSD"string"));
-			rdf::node ret(librdf_new_node_from_typed_literal(w->rdf(),reinterpret_cast<const unsigned char *>(s.c_str()),NULL,type));
-
-			librdf_free_uri(type);
-			return ret;
-		}
-		
-		rdf::node lit(unsigned long long n)
-		{
-			rdf::world_ptr w = rdf::world::instance();
-			librdf_uri *type = librdf_new_uri(w->rdf(),reinterpret_cast<const unsigned char *>(XSD"nonNegativeInteger"));
-			rdf::node ret(librdf_new_node_from_typed_literal(w->rdf(),reinterpret_cast<const unsigned char *>(std::to_string(n).c_str()),NULL,type));
-
-			librdf_free_uri(type);
-			return ret;
-		}
-
-		rdf::node ns_po(const std::string &s)
-		{			
-			return rdf::node(librdf_new_node_from_uri_string(rdf::world::instance()->rdf(),
-																											 reinterpret_cast<const unsigned char *>((std::string(PO) + s).c_str())));
-		}
-		
-		rdf::node ns_rdf(const std::string &s)
-		{			
-			return rdf::node(librdf_new_node_from_uri_string(rdf::world::instance()->rdf(),
-																											 reinterpret_cast<const unsigned char *>((std::string(RDF) + s).c_str())));
-		}
-		
-		rdf::node ns_xsd(const std::string &s)
-		{			
-			return rdf::node(librdf_new_node_from_uri_string(rdf::world::instance()->rdf(),
-																											 reinterpret_cast<const unsigned char *>((std::string(XSD) + s).c_str())));
-		}
+		node lit(const std::string &s);
+		node lit(unsigned long long n);
+		node ns_po(const std::string &s);
+		node ns_rdf(const std::string &s);
+		node ns_xsd(const std::string &s);
 
 		class statement
 		{
