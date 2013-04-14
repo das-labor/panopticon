@@ -169,7 +169,7 @@ oturtlestream& po::operator<<(oturtlestream &os, const instr &i)
 		 << " po:right (";
 		for(rvalue v: i.right)
 			os << " " << v;
-		os << " )];";
+		os << " )]";
 	return os;
 }
 
@@ -201,10 +201,10 @@ oturtlestream& po::operator<<(oturtlestream &os, const mnemonic &m)
 
 	for(const instr &i: m.instructions)
 		os << " " << i;
-	os << ");" << endl;
+	os << ")" << endl;
 	
 
-	os << "];" << endl;
+	os << "]" << endl;
 	return os;
 }
 

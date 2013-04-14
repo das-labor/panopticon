@@ -1,7 +1,7 @@
 SELF_DIR=$(dir $(lastword $(MAKEFILE_LIST)))
 
 CXX=clang++
-CXXARGS=-Wall -g -std=c++11 -fPIC -pipe -pedantic -Werror -Weffc++ -Wno-deprecated
+CXXARGS=-Wall -g -std=c++11 -fPIC -pipe -pedantic -Weffc++ -Wno-deprecated
 LD=clang++
 PKGCONFIG=redland raptor2 minizip
 LIBS=`pkg-config $(PKGCONFIG) --libs` -lcvc4

@@ -105,7 +105,7 @@ namespace po
 		 */
 		const class memory &to_memory(void) const;
 
-		template<class> friend struct std::hash;
+		template<typename> friend struct std::hash;
 
 	protected:
 		union
