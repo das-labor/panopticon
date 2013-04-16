@@ -42,8 +42,9 @@ void FlowgraphWidget::snapshot(void)
 		{
 			from = i->second;
 	
-			for(po::proc_ptr q: p->callees)
+			for(po::proc_wptr qq: p->callees)
 			{
+				po::proc_ptr q = qq.lock();
 				FlowgraphNode *to;
 				auto j = m_procedureToNode.find(q);
 				

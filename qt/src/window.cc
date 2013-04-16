@@ -1,5 +1,5 @@
 #include <functional>
-#include <thread>
+//#include <thread>
 #include <fstream>
 
 #include <QVBoxLayout>
@@ -27,8 +27,9 @@ Window::Window(void)
 
 	connect(m_procList,SIGNAL(activated(po::proc_ptr)),this,SLOT(activate(po::proc_ptr)));
 
-	new std::thread([this](QStatusBar *st)
-	{
+//	new std::thread([this](QStatusBar *st)
+//	{
+		QStatusBar *st = statusBar();
 		std::ifstream fs("../sosse");
 		std::vector<uint16_t> bytes;
 
@@ -55,7 +56,7 @@ Window::Window(void)
 			QMetaObject::invokeMethod(st,"showMessage",Qt::QueuedConnection,Q_ARG(QString,"Done"),Q_ARG(int,10));
 			QMetaObject::invokeMethod(this,"ensureFlowgraphWidget",Qt::QueuedConnection);
 		}
-	},statusBar());
+//	},statusBar());
 }
 
 Window::~Window(void)

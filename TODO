@@ -146,6 +146,17 @@
 	--> disassembler **DONE**
 	--> rvalue and subclasses **DONE**
 
+==> Bump QT version to 0.8
+
+==> BUG (QT) Open procedure -> Failed assertion when window closed
+
+==> Add libstdc++ 4.8 as minimum, use threads in window.cc (QT)
+
+==> reactivate sscp
+	--> Library
+	--> QT
+	--> Marshalling
+
 ==> K-set domain for sparse constant propagation
 
 ==> Display Taint analysis/def-use chains

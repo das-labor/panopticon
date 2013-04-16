@@ -1,5 +1,4 @@
 #include <cassert>
-#include <thread>
 #include <set>
 
 #include <QHeaderView>

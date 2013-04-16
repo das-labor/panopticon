@@ -7,3 +7,4 @@ PKGCONFIG=redland raptor2 minizip
 LIBS=`pkg-config $(PKGCONFIG) --libs` -lcvc4
 LDFLAGS=-L$(SELF_DIR)/lib
 INCLUDES=-I$(SELF_DIR)/lib/include
+QT_SPEC=unsupported/linux-clang
