@@ -152,6 +152,8 @@
 
 ==> Add libstdc++ 4.8 as minimum, use threads in window.cc (QT)
 
+==> File open dialog in QT
+
 ==> reactivate sscp
 	--> Library
 	--> QT

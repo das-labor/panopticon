@@ -30,7 +30,7 @@ Window::Window(void)
 //	new std::thread([this](QStatusBar *st)
 //	{
 		QStatusBar *st = statusBar();
-		std::ifstream fs("../sosse");
+		std::ifstream fs("sosse");
 		std::vector<uint16_t> bytes;
 
 		if (fs.bad())
