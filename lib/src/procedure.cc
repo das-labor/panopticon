@@ -23,9 +23,9 @@ domtree::domtree(bblock_ptr b) : intermediate(0), basic_block(b) {}
 
 proc_ptr procedure::unmarshal(const rdf::node &node, flow_ptr flow, const rdf::storage &store)
 {
-	rdf::statement type = store.first(node,"rdf:type","po:Procedure"),
-								 name = store.first(node,"po:name",nullptr);
-	rdf::stream bbs = store.select(node,"po:include",nullptr);
+	rdf::statement type = store.first(node,"type"_rdf,"Procedure"_po),
+								 name = store.first(node,"name"_po,nullptr);
+	rdf::stream bbs = store.select(node,"include"_po,nullptr);
 	proc_ptr ret(new procedure(name.object().to_string()));
 
 	while(!bbs.eof())

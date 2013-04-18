@@ -75,33 +75,34 @@ string po::symbolic(instr::Function fn)
 
 instr::Function po::numeric(const std::string &s)
 {
-	if(s.substr(0,3) == "po:")
+	if(s.substr(0,string(PO).size()) == string(PO))
 	{
-		string t = s.substr(3);
-		if(t == "po:and") return instr::And;
-		if(t == "po:or") return instr::Or;
-		if(t == "po:xor") return instr::Xor;
-		if(t == "po:not") return instr::Not;
-		if(t == "po:assign") return instr::Assign;
-		if(t == "po:u-shift-right") return instr::UShr;
-		if(t == "po:i-shift-left") return instr::UShl;
-		if(t == "po:s-shift-right") return instr::SShr;
-		if(t == "po:s-shift-left") return instr::SShl;
-		if(t == "po:u-extend") return instr::UExt;
-		if(t == "po:s-extend") return instr::SExt;
-		if(t == "po:slice") return instr::Slice;
+		string t = s.substr(string(PO).size());
+		
+		if(t == "and") return instr::And;
+		if(t == "or") return instr::Or;
+		if(t == "xor") return instr::Xor;
+		if(t == "not") return instr::Not;
+		if(t == "assign") return instr::Assign;
+		if(t == "u-shift-right") return instr::UShr;
+		if(t == "i-shift-left") return instr::UShl;
+		if(t == "s-shift-right") return instr::SShr;
+		if(t == "s-shift-left") return instr::SShl;
+		if(t == "u-extend") return instr::UExt;
+		if(t == "s-extend") return instr::SExt;
+		if(t == "slice") return instr::Slice;
 		//if(t == " ∷ ") return instr::Concat;
-		if(t == "po:add") return instr::Add;
-		if(t == "po:subtract") return instr::Sub;
-		if(t == "po:multiply") return instr::Mul;
-		if(t == "po:s-divide") return instr::SDiv;
-		if(t == "po:u-divide") return instr::UDiv;
-		if(t == "po:s-modulo") return instr::SMod;
-		if(t == "po:u-modulo") return instr::UMod;
-		if(t == "po:s-less-equal") return instr::SLeq;
-		if(t == "po:u-less-equal") return instr::ULeq;
-		if(t == "po:call") return instr::Call;
-		if(t == "po:phi") return instr::Phi;
+		if(t == "add") return instr::Add;
+		if(t == "subtract") return instr::Sub;
+		if(t == "multiply") return instr::Mul;
+		if(t == "s-divide") return instr::SDiv;
+		if(t == "u-divide") return instr::UDiv;
+		if(t == "s-modulo") return instr::SMod;
+		if(t == "u-modulo") return instr::UMod;
+		if(t == "s-less-equal") return instr::SLeq;
+		if(t == "u-less-equal") return instr::ULeq;
+		if(t == "call") return instr::Call;
+		if(t == "phi") return instr::Phi;
 		assert(false);
 	}
 	else
@@ -215,31 +216,32 @@ string po::unique_name(const mnemonic &mne)
 
 mnemonic mnemonic::unmarshal(const rdf::node &node, const rdf::storage &store)
 {
-	rdf::node nil = store.single("rdf:nil");
-	rdf::statement opcode = store.first(node,"po:opcode",nullptr),
-								 format = store.first(node,"po:format",nullptr),
-								 begin = store.first(node,"po:begin",nullptr),
-								 end = store.first(node,"po:end",nullptr),
-								 op_head = store.first(node,"po:operands",nullptr),
-								 exec_head = store.first(node,"po:executes",nullptr);
+	rdf::node nil = "nil"_rdf;
+	rdf::statement opcode = store.first(node,"opcode"_po,nullptr),
+								 format = store.first(node,"format"_po,nullptr),
+								 begin = store.first(node,"begin"_po,nullptr),
+								 end = store.first(node,"end"_po,nullptr),
+								 op_head = store.first(node,"operands"_po,nullptr),
+								 exec_head = store.first(node,"executes"_po,nullptr);
 	list<instr> is;
+	list<rvalue> as;
 
 	while(exec_head.object() != nil)
 	{
-		rdf::statement i_root = store.first(exec_head.object(),"rdf:first",nullptr),
-									 func = store.first(i_root.object(),"po:function",nullptr),
-									 left = store.first(i_root.object(),"po:left",nullptr),
-									 right_head = store.first(i_root.object(),"po:right",nullptr);
+		rdf::statement i_root = store.first(exec_head.object(),"first"_rdf,nullptr),
+									 func = store.first(i_root.object(),"function"_po,nullptr),
+									 left = store.first(i_root.object(),"left"_po,nullptr),
+									 right_head = store.first(i_root.object(),"right"_po,nullptr);
 
-		exec_head = store.first(exec_head.object(),"rdf:rest",nullptr);
-	//	is.emplace_back(instr(numeric(func.object().to_string()),lvalue::unmarshal(left.object()),{}));
+		exec_head = store.first(exec_head.object(),"rest"_rdf,nullptr);
+		is.emplace_back(instr(static_cast<instr::Function>(numeric(func.object().to_string())),lvalue::unmarshal(left.object(),store),{}));
 	}
 
 	return mnemonic(range<addr_t>(stoull(begin.object().to_string()),stoull(end.object().to_string())),
 									opcode.object().to_string(),
 									format.object().to_string(),
-									{},{});
-//									initializer_list<instr>(is.begin(),is.end()));
+									as.begin(),as.end(),
+									is.begin(),is.end());
 }
 
 mnemonic::mnemonic(const range<addr_t> &a, const string &n, const string &fmt, initializer_list<rvalue> ops, initializer_list<instr> instrs)

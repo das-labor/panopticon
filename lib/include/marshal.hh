@@ -7,6 +7,9 @@
 #include <cassert>
 #include <mutex>
 #include <unordered_map>
+#include <stack>
+#include <list>
+#include <memory>
 
 extern "C" {
 #include <redland.h>
@@ -128,26 +131,34 @@ namespace po
 
 	namespace rdf
 	{
+		class world;
 		class node;
 		class statement;
 		class stream;
+		class list;
+
+		typedef world* world_ptr;
+
+		class world : std::enable_shared_from_this<world>
+		{
+		public:
+			static world_ptr instance(void);
+
+			librdf_world *rdf(void) const;
+			raptor_world *raptor(void) const;
+
+		private:
+			world(void);
+			~world(void);
+
+			librdf_world *m_rdf_world;
+			raptor_world *m_rap_world;
+			static world *s_instance;
+		};
 
 		class storage
 		{
 		public:
-			struct proxy
-			{
-				proxy(std::nullptr_t);
-				proxy(const std::string &s);
-				proxy(const char *s);
-				proxy(const node &n);
-
-				bool is_literal;
-				bool is_node;
-				std::string literal;
-				librdf_node *node;
-			};
-
 			static storage from_archive(const std::string &panopPath);
 			static storage from_stream(const oturtlestream &os);
 			static storage from_turtle(const std::string &turtlePath);
@@ -160,25 +171,18 @@ namespace po
 
 			storage &operator=(const storage &) = delete;
 
-			rdf::stream select(proxy s, proxy p, proxy o) const;
-			rdf::statement first(proxy s, proxy p, proxy o) const;
-			rdf::node single(proxy s) const;
+			rdf::stream select(const rdf::node &s, const rdf::node &p, const rdf::node &o) const;
+			rdf::statement first(const rdf::node &s, const rdf::node &p, const rdf::node &o) const;
+
+			void insert(const rdf::statement &c);
+			void insert(const rdf::node &s, const rdf::node &p, const rdf::node &o);
 
 			void snapshot(const std::string &path);
 			
 		private:
-			static librdf_world *s_rdf_world;
-			static raptor_world *s_rap_world;
-			static std::mutex s_mutex;
-			static unsigned int s_usage;
-			static std::unordered_map<std::string,librdf_node *> s_nodes;
-
+		
 			storage(bool openStore);
 
-			const librdf_node *po(const std::string &s);
-			const librdf_node *rdf(const std::string &s);
-			const librdf_node *node(const std::string &s);
-			
 			librdf_storage *m_storage;
 			librdf_model *m_model;
 			std::string m_tempdir;
@@ -187,7 +191,8 @@ namespace po
 		class node
 		{
 		public:
-			node(librdf_node *n = 0);
+			node(void);
+			node(librdf_node *n);
 			node(const node &n);
 			node(node &&n);
 
@@ -205,11 +210,18 @@ namespace po
 		private:
 			librdf_node *m_node;
 		};
+	
+		node lit(const std::string &s);
+		node lit(unsigned long long n);
+		node ns_po(const std::string &s);
+		node ns_rdf(const std::string &s);
+		node ns_xsd(const std::string &s);
 
 		class statement
 		{
 		public:
 			statement(librdf_statement *st = 0);
+			statement(const rdf::node &s, const rdf::node &p, const rdf::node &o);
 			statement(const statement &st);
 			statement(statement &&st);
 
@@ -221,6 +233,7 @@ namespace po
 			node subject(void) const;
 			node predicate(void) const;
 			node object(void) const;
+			librdf_statement *inner(void) const;
 
 		private:
 			librdf_statement *m_statement;
@@ -244,6 +257,63 @@ namespace po
 		private:
 			librdf_stream *m_stream;
 		};
+
+		class list
+		{
+		public:
+			list(void);
+			
+			void insert(const rdf::node &s);
+			rdf::stream to_stream(const rdf::storage &store);
+
+		private:
+			std::list<rdf::node> m_list;
+		};
+	}
+
+	class ordfstream
+	{
+	public:
+		ordfstream(rdf::storage &store);
+
+		std::stack<rdf::node> &context(void);
+		rdf::storage &store(void) const;
+	
+	private:
+		rdf::storage &m_storage;
+		std::stack<rdf::node> m_context;
+	};
+
+	ordfstream& operator<<(ordfstream &os, const rdf::statement &st);
+	
+	inline rdf::node operator"" _lit(const char *s)
+	{
+		rdf::world_ptr w = rdf::world::instance();
+		librdf_uri *type = librdf_new_uri(w->rdf(),reinterpret_cast<const unsigned char *>(XSD"string"));
+		rdf::node ret(librdf_new_node_from_typed_literal(w->rdf(),reinterpret_cast<const unsigned char *>(s),NULL,type));
+
+		librdf_free_uri(type);
+		return ret;
+	}
+	
+	inline rdf::node operator"" _lit(unsigned long long n)
+	{
+		return rdf::lit(n);
+	}
+
+	inline rdf::node operator"" _po(const char *s, unsigned long l)
+	{			
+		return rdf::ns_po(std::string(s,l));
+	}
+	
+	inline rdf::node operator"" _rdf(const char *s, unsigned long l)
+	{			
+		return rdf::ns_rdf(std::string(s,l));
+	}
+	
+	inline rdf::node operator"" _xsd(const char *s, unsigned long l)
+	{			
+		return rdf::ns_xsd(std::string(s,l));
 	}
 }
 

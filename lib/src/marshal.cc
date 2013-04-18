@@ -64,42 +64,39 @@ oturtlestream &po::operator<<(oturtlestream &os, ostream& (*func)(ostream&))
 	return os;
 }
 
+
 marshal_exception::marshal_exception(const string &w)
 : runtime_error(w)
 {}
 
-rdf::storage::proxy::proxy(nullptr_t)
-: is_literal(false), is_node(false)
-{}
+rdf::world *rdf::world::s_instance = 0;
 
-rdf::storage::proxy::proxy(const string &s)
-: is_literal(true), is_node(false)
+rdf::world::world(void)
+: enable_shared_from_this()
 {
-	if(s.find_first_of(":") == 0)
-		literal = LOCAL + s.substr(1);
-	else if(s.find_first_of("po:") == 0)
-		literal = PO + s.substr(3);
-	else if(s.find_first_of("xsd:") == 0)
-		literal = XSD + s.substr(4);
-	else if(s.find_first_of("rdf:") == 0)
-		literal = RDF + s.substr(4);
-	else
-		literal = s;
+	assert(!s_instance);
+		
+	m_rdf_world = librdf_new_world();
+	librdf_world_open(m_rdf_world);
+	m_rap_world = librdf_world_get_raptor(m_rdf_world);
 }
 
-rdf::storage::proxy::proxy(const char *s)
-: proxy(string(s)) 
-{}
+rdf::world_ptr rdf::world::instance(void)
+{
+	if(!s_instance)
+		s_instance = new world();
+	return s_instance;
+}
 
-rdf::storage::proxy::proxy(const rdf::node &n)
-: is_literal(false), is_node(true), literal(""), node(n.inner() ? librdf_new_node_from_node(n.inner()) : 0)
-{}
+librdf_world *rdf::world::rdf(void) const
+{
+	return m_rdf_world;
+}
 
-librdf_world *rdf::storage::s_rdf_world = 0;
-raptor_world *rdf::storage::s_rap_world = 0;
-unsigned int rdf::storage::s_usage = 0;
-mutex rdf::storage::s_mutex;
-unordered_map<string,librdf_node *> rdf::storage::s_nodes;
+raptor_world *rdf::world::raptor(void) const
+{
+	return m_rap_world;
+}
 
 rdf::storage rdf::storage::from_archive(const string &path)
 {
@@ -156,20 +153,22 @@ rdf::storage rdf::storage::from_archive(const string &path)
 	if(unzClose(zf) != UNZ_OK)
 		throw marshal_exception("can't open " + path);
 
-	assert(ret.m_storage = librdf_new_storage(s_rdf_world,"hashes","graph",string("hash-type='bdb',dir='" + ret.m_tempdir + "'").c_str()));
-	assert(ret.m_model = librdf_new_model(s_rdf_world,ret.m_storage,NULL));
+	world_ptr w = world::instance();
+	assert(ret.m_storage = librdf_new_storage(w->rdf(),"hashes","graph",string("hash-type='bdb',dir='" + ret.m_tempdir + "'").c_str()));
+	assert(ret.m_model = librdf_new_model(w->rdf(),ret.m_storage,NULL));
 
 	return ret;
 }
 
 rdf::storage rdf::storage::from_stream(const oturtlestream &os)
 {
+	world_ptr w = world::instance();
 	storage ret;
 	librdf_parser *parser;
 	librdf_uri *uri;
 	
-	assert(parser = librdf_new_parser(s_rdf_world,"turtle",NULL,NULL));
-	assert(uri = librdf_new_uri_from_filename(s_rdf_world,"http://localhost/"));
+	assert(parser = librdf_new_parser(w->rdf(),"turtle",NULL,NULL));
+	assert(uri = librdf_new_uri_from_filename(w->rdf(),"http://localhost/"));
 	assert(!librdf_parser_parse_string_into_model(parser,reinterpret_cast<const unsigned char *>(os.str().c_str()),uri,ret.m_model));
 
 	librdf_free_uri(uri);
@@ -180,12 +179,13 @@ rdf::storage rdf::storage::from_stream(const oturtlestream &os)
 
 rdf::storage rdf::storage::from_turtle(const string &path)
 {
+	world_ptr w = world::instance();
 	storage ret;
 	librdf_parser *parser;
 	librdf_uri *uri;
 	
-	assert(parser = librdf_new_parser(s_rdf_world,"turtle",NULL,NULL));
-	assert(uri = librdf_new_uri_from_filename(s_rdf_world,path.c_str()));
+	assert(parser = librdf_new_parser(w->rdf(),"turtle",NULL,NULL));
+	assert(uri = librdf_new_uri_from_filename(w->rdf(),path.c_str()));
 	assert(!librdf_parser_parse_into_model(parser,uri,uri,ret.m_model));
 
 	librdf_free_uri(uri);
@@ -209,21 +209,11 @@ rdf::storage::storage(bool openStore)
 	m_tempdir = string(tmp);
 	delete[] tmp;
 
-	lock_guard<mutex> g(s_mutex);
-
-	if(!s_usage++)
-	{
-		assert(!s_rdf_world && !s_rap_world);
-		
-		s_rdf_world = librdf_new_world();
-		librdf_world_open(s_rdf_world);
-		s_rap_world = librdf_world_get_raptor(s_rdf_world);
-	}
-
 	if(openStore)
 	{
-		assert(m_storage = librdf_new_storage(s_rdf_world,"hashes","graph",string("new='yes',hash-type='bdb',dir='" + m_tempdir + "'").c_str()));
-		assert(m_model = librdf_new_model(s_rdf_world,m_storage,NULL));
+		world_ptr w = world::instance();
+		assert(m_storage = librdf_new_storage(w->rdf(),"hashes","graph",string("new='yes',hash-type='bdb',dir='" + m_tempdir + "'").c_str()));
+		assert(m_model = librdf_new_model(w->rdf(),m_storage,NULL));
 	}
 }
 
@@ -235,18 +225,6 @@ rdf::storage::~storage(void)
 {
 	librdf_free_model(m_model);
 	librdf_free_storage(m_storage);
-
-	lock_guard<mutex> g(s_mutex);
-	if(!--s_usage)
-	{
-		for(const pair<string,librdf_node *> &p: s_nodes)
-			librdf_free_node(p.second);
-		s_nodes.clear();
-
-		librdf_free_world(s_rdf_world);
-		s_rdf_world = 0;
-		s_rap_world = 0;
-	}
 
 	std::function<void(const string &path)> rm_r;
 	rm_r = [&](const string &path)
@@ -364,28 +342,12 @@ void rdf::storage::snapshot(const string &path)
 		throw marshal_exception("can't save to " + path + ": failed to close directory");
 }
 
-rdf::stream rdf::storage::select(rdf::storage::proxy s, rdf::storage::proxy p, rdf::storage::proxy o) const
+rdf::stream rdf::storage::select(const rdf::node &s,const rdf::node &p,const rdf::node &o) const
 {
-	lock_guard<mutex> g(s_mutex);
-	function<librdf_node *(const proxy &p)> fn = [&](const proxy &p) -> librdf_node*
-	{
-		if(p.is_node)
-			return p.node;
-		else if(p.is_literal)
-			return librdf_new_node_from_uri_string(s_rdf_world,reinterpret_cast<const unsigned char *>(p.literal.c_str()));
-		else
-			return NULL;
-	};
-
-	librdf_statement *partial = librdf_new_statement_from_nodes(s_rdf_world,fn(s),fn(p),fn(o));
-	rdf::stream st(librdf_model_find_statements(m_model,partial));
-
-	librdf_free_statement(partial);
-
-	return st;
+	return rdf::stream(librdf_model_find_statements(m_model,statement(s,p,o).inner()));
 }
 
-rdf::statement rdf::storage::first(rdf::storage::proxy s, rdf::storage::proxy p, rdf::storage::proxy o) const 
+rdf::statement rdf::storage::first(const rdf::node &s,const rdf::node &p,const rdf::node &o) const 
 {
 	rdf::stream st = select(s,p,o);
 
@@ -398,16 +360,23 @@ rdf::statement rdf::storage::first(rdf::storage::proxy s, rdf::storage::proxy p,
 	return ret;
 }
 
-rdf::node rdf::storage::single(rdf::storage::proxy p) const
+void rdf::storage::insert(const rdf::statement &st)
 {
-	lock_guard<mutex> g(s_mutex);
-	if(p.is_node)
-		return rdf::node(p.node);
-	else if(p.is_literal)
-		return rdf::node(librdf_new_node_from_uri_string(s_rdf_world,reinterpret_cast<const unsigned char *>(p.literal.c_str())));
-	else
-		throw marshal_exception("can't construct NULL node");
+	if(librdf_model_add_statement(m_model,st.inner()))
+		throw marshal_exception("failed to add statement");
 }
+
+void rdf::storage::insert(const rdf::node &s, const rdf::node &p, const rdf::node &o)
+{
+	if(librdf_model_add(m_model,librdf_new_node_from_node(s.inner()),
+															librdf_new_node_from_node(p.inner()),
+															librdf_new_node_from_node(o.inner())))
+		throw marshal_exception("failed to add statement");
+}
+
+rdf::node::node(void)
+: m_node(librdf_new_node_from_blank_identifier(world::instance()->rdf(),NULL))
+{}
 
 rdf::node::node(librdf_node *n)
 : m_node(n)
@@ -476,6 +445,51 @@ librdf_node *rdf::node::inner(void) const
 	return m_node;
 }
 
+rdf::node po::rdf::lit(const std::string &s)
+{
+	rdf::world_ptr w = rdf::world::instance();
+	librdf_uri *type = librdf_new_uri(w->rdf(),reinterpret_cast<const unsigned char *>(XSD"string"));
+	rdf::node ret(librdf_new_node_from_typed_literal(w->rdf(),reinterpret_cast<const unsigned char *>(s.c_str()),NULL,type));
+
+	librdf_free_uri(type);
+	return ret;
+}
+
+rdf::node po::rdf::lit(unsigned long long n)
+{
+	rdf::world_ptr w = rdf::world::instance();
+	librdf_uri *type = librdf_new_uri(w->rdf(),reinterpret_cast<const unsigned char *>(XSD"nonNegativeInteger"));
+	rdf::node ret(librdf_new_node_from_typed_literal(w->rdf(),reinterpret_cast<const unsigned char *>(std::to_string(n).c_str()),NULL,type));
+
+	librdf_free_uri(type);
+	return ret;
+}
+
+rdf::node po::rdf::ns_po(const std::string &s)
+{			
+	return rdf::node(librdf_new_node_from_uri_string(rdf::world::instance()->rdf(),
+																									 reinterpret_cast<const unsigned char *>((std::string(PO) + s).c_str())));
+}
+
+rdf::node po::rdf::ns_rdf(const std::string &s)
+{			
+	return rdf::node(librdf_new_node_from_uri_string(rdf::world::instance()->rdf(),
+																									 reinterpret_cast<const unsigned char *>((std::string(RDF) + s).c_str())));
+}
+
+rdf::node po::rdf::ns_xsd(const std::string &s)
+{			
+	return rdf::node(librdf_new_node_from_uri_string(rdf::world::instance()->rdf(),
+																									 reinterpret_cast<const unsigned char *>((std::string(XSD) + s).c_str())));
+}
+
+rdf::statement::statement(const rdf::node &s, const rdf::node &p, const rdf::node &o)
+: m_statement(librdf_new_statement_from_nodes(world::instance()->rdf(),
+																							s.inner() ? librdf_new_node_from_node(s.inner()) : NULL,
+																							p.inner() ? librdf_new_node_from_node(p.inner()) : NULL,
+																							o.inner() ? librdf_new_node_from_node(o.inner()) : NULL))
+{}
+
 rdf::statement::statement(librdf_statement *n)
 : m_statement(n)
 {}
@@ -537,6 +551,11 @@ rdf::node rdf::statement::object(void) const
 	return node(librdf_new_node_from_node(librdf_statement_get_object(m_statement)));
 }
 
+librdf_statement *rdf::statement::inner(void) const
+{
+	return m_statement;
+}
+
 rdf::stream::stream(librdf_stream *n)
 : m_stream(n)
 {}
@@ -567,6 +586,26 @@ rdf::stream &rdf::stream::operator>>(rdf::statement &st)
 bool rdf::stream::eof(void) const
 {
 	return m_stream && librdf_stream_end(m_stream) != 0;
+}
+
+ordfstream::ordfstream(rdf::storage &store)
+: m_storage(store), m_context()
+{}
+
+std::stack<rdf::node> &ordfstream::context(void)
+{
+	return m_context;
+}
+
+rdf::storage &ordfstream::store(void) const
+{
+	return m_storage;
+}
+
+ordfstream& po::operator<<(ordfstream &os, const rdf::statement &st)
+{
+	os.store().insert(st);
+	return os;
 }
 
 /*

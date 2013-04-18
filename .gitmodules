@@ -1,0 +1,3 @@
+[submodule "doc/wiki"]
+	path = doc/wiki
+	url = git@gitorious.org:panopticum/panopticum-gitorious-wiki.git

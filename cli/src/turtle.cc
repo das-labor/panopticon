@@ -10,14 +10,22 @@ flow_ptr in_turtle(const string &path)
 	rdf::storage store = rdf::storage::from_turtle(path);
 	cerr << "Turtle: " << path << endl;
 
-	rdf::stream s = store.select(nullptr,"rdf:type","po:Flowgraph");
+	rdf::stream s = store.select(nullptr,"type"_rdf,"Flowgraph"_po);
 
 	if(!s.eof())
 	{
 		rdf::statement st;
 
 		s >> st;
-		return flowgraph::unmarshal(st.subject(),store);
+		try
+		{
+			return flowgraph::unmarshal(st.subject(),store);
+		}
+		catch(marshal_exception &e)
+		{
+			cerr << "Caught exception:" << endl << e.what() << endl;
+			return flow_ptr(0);
+		}
 	}
 	else
 		return flow_ptr(0);

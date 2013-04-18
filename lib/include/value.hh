@@ -53,6 +53,9 @@ namespace po
 			MemoryValueTag = 3
 		};
 
+		/**
+	 	 * @brief Unmarshal a rvalue from a RDF node
+		 */
 		static rvalue unmarshal(const rdf::node &n, const rdf::storage &store);
 
 		/// Constructs a undefined value.
@@ -104,6 +107,13 @@ namespace po
 		 * @throws value_exception if not a memory.
 		 */
 		const class memory &to_memory(void) const;
+		
+		/**
+		 * Cast this instance to a lvalue
+		 * @returns Cast of 'this' to 'lvalue' type
+		 * @throws value_exception if not a lvalue.
+		 */
+		const class lvalue &to_lvalue(void) const;
 
 		template<typename> friend struct std::hash;
 
@@ -174,7 +184,14 @@ namespace po
 	 *
 	 * This is the parent of all valid targets of a assignment 'memory' and 'variable'.
 	 */
-	class lvalue : public rvalue {};
+	class lvalue : public rvalue
+	{
+	public:
+		/**
+		 * @brief Unmarshal a lvalue from a RDF node
+		 */
+		static lvalue unmarshal(const rdf::node &n, const rdf::storage &store);
+	};
 
 	/**
 	 * @brief Undefined value
