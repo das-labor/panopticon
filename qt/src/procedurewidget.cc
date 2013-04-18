@@ -46,9 +46,9 @@ void ProcedureWidget::snapshot(void)
 		
 		for(const po::ctrans &ct: bb->outgoing())
 		{
-			if(ct.bblock)
+			if(ct.bblock.lock())
 			{
-				BasicBlockWidget *to = nodes[ct.bblock];
+				BasicBlockWidget *to = nodes[ct.bblock.lock()];
 
 				m_scene.connect(new ControlTransferWidget(ct.guard,from,to));
 			}

@@ -31,14 +31,14 @@ BasicBlockWidget::BasicBlockWidget(po::flow_ptr flow, po::proc_ptr proc, po::bbl
 		s->setIdent(ident);
 	}
 
-	const std::map<po::proc_ptr,std::shared_ptr<std::map<po::rvalue,po::sscp_lattice>>> &sscp = flow->simple_sparse_constprop;
+	//const std::map<po::proc_ptr,std::shared_ptr<std::map<po::rvalue,po::sscp_lattice>>> &sscp = flow->simple_sparse_constprop;
 	execute2(bb,[&](const po::instr &i)
 	{
 		std::stringstream ss;
 		
 		ss << i;
-		if(sscp.count(proc) && sscp.at(proc)->count(i.left))
-			ss << " | " <<  sscp.at(proc)->at(i.left);
+		//if(sscp.count(proc) && sscp.at(proc)->count(i.left))
+		//	ss << " | " <<  sscp.at(proc)->at(i.left);
 
 		m_instructions.setText(m_instructions.text() + (m_instructions.text().size() ? "\n" : "") + QString::fromUtf8(ss.str().c_str()));
 	});
@@ -172,9 +172,9 @@ OperandWidget::OperandWidget(po::flow_ptr flow, po::proc_ptr proc, po::rvalue v,
 	if(tok.alias.empty())
 	{
 		if(v.is_variable())
-			setPlainText(QString::fromStdString(v.variable().name()));
+			setPlainText(QString::fromStdString(v.to_variable().name()));
 		else if(v.is_constant())
-			setPlainText(QString::fromStdString(std::to_string(format_constant(tok,v.constant().value()))));
+			setPlainText(QString::fromStdString(std::to_string(format_constant(tok,v.to_constant().content()))));
 		else
 		{
 			std::stringstream ss;
@@ -185,9 +185,11 @@ OperandWidget::OperandWidget(po::flow_ptr flow, po::proc_ptr proc, po::rvalue v,
 	else
 		setPlainText(QString::fromStdString(tok.alias));
 
+	/// @todo
+	/*
 	const std::map<po::proc_ptr,std::shared_ptr<std::map<po::rvalue,po::sscp_lattice>>> &sscp = flow->simple_sparse_constprop;
 	if(sscp.count(proc) && sscp.at(proc)->count(v) && sscp.at(proc)->at(v).type == po::sscp_lattice::Const)
-		setHtml(toPlainText() + " <i>(" + QString::fromStdString(std::to_string(format_constant(tok,sscp.at(proc)->at(v).value))) + ")</i>");
+		setHtml(toPlainText() + " <i>(" + QString::fromStdString(std::to_string(format_constant(tok,sscp.at(proc)->at(v).value))) + ")</i>");*/
 
 	setFont(QFont("Monospace",11));
 	setAcceptHoverEvents(true);

@@ -4,7 +4,7 @@
 
 #include <controltransferwidget.hh>
 
-ControlTransferWidget::ControlTransferWidget(po::guard_ptr g, BasicBlockWidget *from, BasicBlockWidget *to, QGraphicsItem *parent)
+ControlTransferWidget::ControlTransferWidget(po::guard g, BasicBlockWidget *from, BasicBlockWidget *to, QGraphicsItem *parent)
 : QGraphicsItem(parent), m_from(from), m_to(to), 
 												 m_text("",this), 
 												 m_rect(QRectF(),this),
@@ -15,7 +15,7 @@ ControlTransferWidget::ControlTransferWidget(po::guard_ptr g, BasicBlockWidget *
 	m_path.setPen(QPen(Qt::red,2));
 	m_head << QPointF(0,0) << QPointF(3*-1.3,3*3) << QPointF(0,3*2.5) << QPointF(3*1.3,3*3) << QPointF(0,0);
 	
-	if(g->relations.empty())
+	if(g.relations.empty())
 	{
 		m_text.hide();
 		m_rect.hide();
@@ -24,7 +24,7 @@ ControlTransferWidget::ControlTransferWidget(po::guard_ptr g, BasicBlockWidget *
 	{
 		std::stringstream ss;
 		
-		ss << *g;
+		ss << g;
 		m_text.setText(QString::fromUtf8(ss.str().c_str()));
 		m_text.setFont(QFont("Monospace",8));
 		m_rect.setBrush(QBrush(Qt::red));

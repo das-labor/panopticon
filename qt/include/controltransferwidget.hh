@@ -15,7 +15,7 @@
 class ControlTransferWidget : public QGraphicsItem, public Arrow
 {
 public:
-	ControlTransferWidget(po::guard_ptr g, BasicBlockWidget *from, BasicBlockWidget *to, QGraphicsItem *parent = 0);
+	ControlTransferWidget(po::guard g, BasicBlockWidget *from, BasicBlockWidget *to, QGraphicsItem *parent = 0);
 	
 	virtual QGraphicsObject *from(void);
 	virtual QGraphicsObject *to(void);
