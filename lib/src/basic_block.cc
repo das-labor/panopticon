@@ -125,8 +125,8 @@ odotstream &po::operator<<(odotstream &os, const guard &g)
 /*
  * ctrans
  */
-ctrans::ctrans(struct guard g, rvalue v) : guard(g), value(v) {}
-ctrans::ctrans(struct guard g, bblock_ptr b) : guard(g), bblock(b) {}
+ctrans::ctrans(struct guard g, rvalue v) : condition(g), value(v) {}
+ctrans::ctrans(struct guard g, bblock_ptr b) : condition(g), bblock(b) {}
 
 /*
  * basic_block
@@ -219,7 +219,7 @@ void basic_block::mutate_incoming(function<void(list<ctrans>&)> fn)
 	fn(m_incoming);
 
 	// check invariants:
-	// 	- guard non-null
+	// 	- condition non-null
 	// 	- no paralell edges
 	set<bblock_ptr> bbs;
 	for(const ctrans &ct: incoming())
@@ -233,7 +233,7 @@ void basic_block::mutate_outgoing(function<void(list<ctrans>&)> fn)
 	fn(m_outgoing);
 	
 	// check invariants:
-	// 	- guard non-null
+	// 	- condition non-null
 	// 	- no paralell edges
 	set<bblock_ptr> bbs;
 	for(const ctrans &ct: outgoing())
@@ -276,11 +276,11 @@ odotstream &po::operator<<(odotstream &os, const basic_block &bb)
 	for(const ctrans &ct: bb.outgoing())
 		if(ct.bblock.lock())
 		{
-			os << unique_name(bb) << " -> " << unique_name(*ct.bblock.lock()) << " [label=\"" << ct.guard << "\"];" << endl;
+			os << unique_name(bb) << " -> " << unique_name(*ct.bblock.lock()) << " [label=\"" << ct.condition << "\"];" << endl;
 		}
 		else
 		{
-			os << unique_name(bb) << " -> " << unique_name(ct.value) << " [label=\"" << ct.guard << "\"];" << endl;
+			os << unique_name(bb) << " -> " << unique_name(ct.value) << " [label=\"" << ct.condition << "\"];" << endl;
 			os << unique_name(ct.value) << " [label=\"" << ct.value << "\"];" << endl;
 		}
 
@@ -304,7 +304,7 @@ oturtlestream &po::operator<<(oturtlestream &os, const basic_block &bb)
 		else
 			os << g << " po:target " << ct.value << "." << endl;
 
-		for(const relation &rel: ct.guard.relations)
+		for(const relation &rel: ct.condition.relations)
 			os << g << " po:condition [ po:left " << rel.operand1 
 													 << "; po:right " << rel.operand2 
 													 << "; po:relation " << symbolic(rel.relcode)
@@ -452,23 +452,23 @@ pair<bblock_ptr,bblock_ptr> po::split(bblock_ptr bb, addr_t pos, bool last)
 	{
 		if(ct.bblock.lock() == bb)
 		{
-			append(false,down,ctrans(ct.guard,up));
-			append(true,up,ctrans(ct.guard,up));
+			append(false,down,ctrans(ct.condition,up));
+			append(true,up,ctrans(ct.condition,up));
 		}
 		else
 		{
 			if(ct.bblock.lock())
 			{
-				append(false,down,ctrans(ct.guard,ct.bblock.lock()));
+				append(false,down,ctrans(ct.condition,ct.bblock.lock()));
 				ct.bblock.lock()->mutate_incoming([&](list<ctrans> &in)
 				{
-					in.emplace_back(ctrans(ct.guard,down));
+					in.emplace_back(ctrans(ct.condition,down));
 					in.erase(find_if(in.begin(),in.end(),[&](const ctrans &ct)
 						{ return ct.bblock.lock() == bb; }));
 				});
 			}
 			else
-				append(false,down,ctrans(ct.guard,ct.value));
+				append(false,down,ctrans(ct.condition,ct.value));
 		}
 	});
 	
@@ -477,23 +477,23 @@ pair<bblock_ptr,bblock_ptr> po::split(bblock_ptr bb, addr_t pos, bool last)
 	{
 		if(ct.bblock.lock() == bb)
 		{
-			append(true,up,ctrans(ct.guard,down));
-			append(false,down,ctrans(ct.guard,up));
+			append(true,up,ctrans(ct.condition,down));
+			append(false,down,ctrans(ct.condition,up));
 		}
 		else
 		{
 			if(ct.bblock.lock())
 			{
-				append(true,up,ctrans(ct.guard,ct.bblock.lock()));
+				append(true,up,ctrans(ct.condition,ct.bblock.lock()));
 				ct.bblock.lock()->mutate_outgoing([&](list<ctrans> &out)
 				{
-					out.emplace_back(ctrans(ct.guard,up));
+					out.emplace_back(ctrans(ct.condition,up));
 					out.erase(find_if(out.begin(),out.end(),[&](const ctrans &ct)
 						{ return ct.bblock.lock() == bb; }));
 				});
 			}
 			else
-				append(true,up,ctrans(ct.guard,ct.value));
+				append(true,up,ctrans(ct.condition,ct.value));
 		}
 	});
 
@@ -543,7 +543,7 @@ void po::replace(list<ctrans> &lst, bblock_ptr from, bblock_ptr to)
 	{
 		ctrans ct = *i;
 		if(ct.bblock.lock() == from)
-			i = lst.insert(lst.erase(i),ctrans(ct.guard,to));
+			i = lst.insert(lst.erase(i),ctrans(ct.condition,to));
 		++i;
 	}
 }
@@ -557,7 +557,7 @@ void po::resolve(list<ctrans> &lst, rvalue v, bblock_ptr bb)
 	{
 		ctrans ct = *i;
 		if(ct.value == v)
-			i = lst.insert(lst.erase(i),ctrans(ct.guard,bb));
+			i = lst.insert(lst.erase(i),ctrans(ct.condition,bb));
 		++i;
 	}
 }

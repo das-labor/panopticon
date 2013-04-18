@@ -17,7 +17,15 @@ flow_ptr in_turtle(const string &path)
 		rdf::statement st;
 
 		s >> st;
-		return flowgraph::unmarshal(st.subject(),store);
+		try
+		{
+			return flowgraph::unmarshal(st.subject(),store);
+		}
+		catch(marshal_exception &e)
+		{
+			cerr << "Caught exception:" << endl << e.what() << endl;
+			return flow_ptr(0);
+		}
 	}
 	else
 		return flow_ptr(0);

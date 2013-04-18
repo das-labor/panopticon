@@ -88,6 +88,7 @@ namespace po
 
 		template<class... Values>
 		instr(Function fn, lvalue a, Values&&... args) : function(fn), left(a), right({args...}) {}
+		instr(Function fn, lvalue a, const std::initializer_list<rvalue> &r) : function(fn), left(a), right(r) {}
 		
 		Function function;
 		lvalue left;
