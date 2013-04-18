@@ -219,7 +219,11 @@ void basic_block::mutate_incoming(function<void(list<ctrans>&)> fn)
 	fn(m_incoming);
 
 	// check invariants:
+<<<<<<< HEAD
 	// 	- condition non-null
+=======
+	// 	- guard non-null
+>>>>>>> 310fef4f8fcf08ab232c2635b49cd41c4ce5fe0e
 	// 	- no paralell edges
 	set<bblock_ptr> bbs;
 	for(const ctrans &ct: incoming())
@@ -233,7 +237,11 @@ void basic_block::mutate_outgoing(function<void(list<ctrans>&)> fn)
 	fn(m_outgoing);
 	
 	// check invariants:
+<<<<<<< HEAD
 	// 	- condition non-null
+=======
+	// 	- guard non-null
+>>>>>>> 310fef4f8fcf08ab232c2635b49cd41c4ce5fe0e
 	// 	- no paralell edges
 	set<bblock_ptr> bbs;
 	for(const ctrans &ct: outgoing())
@@ -276,11 +284,19 @@ odotstream &po::operator<<(odotstream &os, const basic_block &bb)
 	for(const ctrans &ct: bb.outgoing())
 		if(ct.bblock.lock())
 		{
+<<<<<<< HEAD
 			os << unique_name(bb) << " -> " << unique_name(*ct.bblock.lock()) << " [label=\"" << ct.condition << "\"];" << endl;
 		}
 		else
 		{
 			os << unique_name(bb) << " -> " << unique_name(ct.value) << " [label=\"" << ct.condition << "\"];" << endl;
+=======
+			os << unique_name(bb) << " -> " << unique_name(*ct.bblock.lock()) << " [label=\"" << ct.guard << "\"];" << endl;
+		}
+		else
+		{
+			os << unique_name(bb) << " -> " << unique_name(ct.value) << " [label=\"" << ct.guard << "\"];" << endl;
+>>>>>>> 310fef4f8fcf08ab232c2635b49cd41c4ce5fe0e
 			os << unique_name(ct.value) << " [label=\"" << ct.value << "\"];" << endl;
 		}
 
@@ -304,7 +320,11 @@ oturtlestream &po::operator<<(oturtlestream &os, const basic_block &bb)
 		else
 			os << g << " po:target " << ct.value << "." << endl;
 
+<<<<<<< HEAD
 		for(const relation &rel: ct.condition.relations)
+=======
+		for(const relation &rel: ct.guard.relations)
+>>>>>>> 310fef4f8fcf08ab232c2635b49cd41c4ce5fe0e
 			os << g << " po:condition [ po:left " << rel.operand1 
 													 << "; po:right " << rel.operand2 
 													 << "; po:relation " << symbolic(rel.relcode)
@@ -452,23 +472,39 @@ pair<bblock_ptr,bblock_ptr> po::split(bblock_ptr bb, addr_t pos, bool last)
 	{
 		if(ct.bblock.lock() == bb)
 		{
+<<<<<<< HEAD
 			append(false,down,ctrans(ct.condition,up));
 			append(true,up,ctrans(ct.condition,up));
+=======
+			append(false,down,ctrans(ct.guard,up));
+			append(true,up,ctrans(ct.guard,up));
+>>>>>>> 310fef4f8fcf08ab232c2635b49cd41c4ce5fe0e
 		}
 		else
 		{
 			if(ct.bblock.lock())
 			{
+<<<<<<< HEAD
 				append(false,down,ctrans(ct.condition,ct.bblock.lock()));
 				ct.bblock.lock()->mutate_incoming([&](list<ctrans> &in)
 				{
 					in.emplace_back(ctrans(ct.condition,down));
+=======
+				append(false,down,ctrans(ct.guard,ct.bblock.lock()));
+				ct.bblock.lock()->mutate_incoming([&](list<ctrans> &in)
+				{
+					in.emplace_back(ctrans(ct.guard,down));
+>>>>>>> 310fef4f8fcf08ab232c2635b49cd41c4ce5fe0e
 					in.erase(find_if(in.begin(),in.end(),[&](const ctrans &ct)
 						{ return ct.bblock.lock() == bb; }));
 				});
 			}
 			else
+<<<<<<< HEAD
 				append(false,down,ctrans(ct.condition,ct.value));
+=======
+				append(false,down,ctrans(ct.guard,ct.value));
+>>>>>>> 310fef4f8fcf08ab232c2635b49cd41c4ce5fe0e
 		}
 	});
 	
@@ -477,23 +513,39 @@ pair<bblock_ptr,bblock_ptr> po::split(bblock_ptr bb, addr_t pos, bool last)
 	{
 		if(ct.bblock.lock() == bb)
 		{
+<<<<<<< HEAD
 			append(true,up,ctrans(ct.condition,down));
 			append(false,down,ctrans(ct.condition,up));
+=======
+			append(true,up,ctrans(ct.guard,down));
+			append(false,down,ctrans(ct.guard,up));
+>>>>>>> 310fef4f8fcf08ab232c2635b49cd41c4ce5fe0e
 		}
 		else
 		{
 			if(ct.bblock.lock())
 			{
+<<<<<<< HEAD
 				append(true,up,ctrans(ct.condition,ct.bblock.lock()));
 				ct.bblock.lock()->mutate_outgoing([&](list<ctrans> &out)
 				{
 					out.emplace_back(ctrans(ct.condition,up));
+=======
+				append(true,up,ctrans(ct.guard,ct.bblock.lock()));
+				ct.bblock.lock()->mutate_outgoing([&](list<ctrans> &out)
+				{
+					out.emplace_back(ctrans(ct.guard,up));
+>>>>>>> 310fef4f8fcf08ab232c2635b49cd41c4ce5fe0e
 					out.erase(find_if(out.begin(),out.end(),[&](const ctrans &ct)
 						{ return ct.bblock.lock() == bb; }));
 				});
 			}
 			else
+<<<<<<< HEAD
 				append(true,up,ctrans(ct.condition,ct.value));
+=======
+				append(true,up,ctrans(ct.guard,ct.value));
+>>>>>>> 310fef4f8fcf08ab232c2635b49cd41c4ce5fe0e
 		}
 	});
 
@@ -543,7 +595,11 @@ void po::replace(list<ctrans> &lst, bblock_ptr from, bblock_ptr to)
 	{
 		ctrans ct = *i;
 		if(ct.bblock.lock() == from)
+<<<<<<< HEAD
 			i = lst.insert(lst.erase(i),ctrans(ct.condition,to));
+=======
+			i = lst.insert(lst.erase(i),ctrans(ct.guard,to));
+>>>>>>> 310fef4f8fcf08ab232c2635b49cd41c4ce5fe0e
 		++i;
 	}
 }
@@ -557,7 +613,11 @@ void po::resolve(list<ctrans> &lst, rvalue v, bblock_ptr bb)
 	{
 		ctrans ct = *i;
 		if(ct.value == v)
+<<<<<<< HEAD
 			i = lst.insert(lst.erase(i),ctrans(ct.condition,bb));
+=======
+			i = lst.insert(lst.erase(i),ctrans(ct.guard,bb));
+>>>>>>> 310fef4f8fcf08ab232c2635b49cd41c4ce5fe0e
 		++i;
 	}
 }

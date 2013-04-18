@@ -129,7 +129,7 @@ public:
 		CPPUNIT_ASSERT(bb->incoming().size() == 0);
 		CPPUNIT_ASSERT(bb->outgoing().size() == 1);
 		CPPUNIT_ASSERT(bb->outgoing().front().bblock.lock() == 0);
-		CPPUNIT_ASSERT(bb->outgoing().front().condition.relations.empty());
+		CPPUNIT_ASSERT(bb->outgoing().front().guard.relations.empty());
 		CPPUNIT_ASSERT(bb->outgoing().front().value.is_constant());
 		CPPUNIT_ASSERT(bb->outgoing().front().value.to_constant().content() == 6);
 		CPPUNIT_ASSERT(bb->area() == po::range<po::addr_t>(0,6));
