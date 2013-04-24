@@ -11,3 +11,4 @@
 /lib/.ycm_extra_conf.pyc
 /doc/api
 /qt/panopticum
+*.panop

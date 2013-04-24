@@ -77,7 +77,7 @@ namespace po
 		std::set<addr_t> todo;
 		std::map<addr_t,mnemonic> mnemonics;
 		std::multimap<addr_t,std::pair<addr_t,guard>> source, destination;
-		proc_ptr ret = proc ? proc : proc_ptr(new procedure());
+		proc_ptr ret = (proc ? proc : proc_ptr(new procedure()));
 
 		// copy exsisting mnemonics and jumps into tables. TODO: cache tables in proc
 		if(proc)
