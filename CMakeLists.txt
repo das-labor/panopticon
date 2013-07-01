@@ -1,12 +1,12 @@
 cmake_minimum_required(VERSION 2.8)
-project(Panopticum)
+project(Panopticon)
 
 set(PROJECT_BINARY_DIR build)
-set(PANOPTICUM_MAJOR_VERSION 0)
-set(PANOPTICUM_MINOR_VERSION 0)
-set(PANOPTICUM_PATCH_VERSION 1)
-set(PANOPTICUM_VERSION
-  ${PANOPTICUM_MAJOR_VERSION}.${PANOPTICUM_MINOR_VERSION}.${PANOPTICUM_PATCH_VERSION})
+set(PANOPTICON_MAJOR_VERSION 0)
+set(PANOPTICON_MINOR_VERSION 8)
+set(PANOPTICON_PATCH_VERSION 0)
+set(PANOPTICON_VERSION
+  ${PANOPTICON_MAJOR_VERSION}.${PANOPTICON_MINOR_VERSION}.${PANOPTICON_PATCH_VERSION})
  
 # Offer the user the choice of overriding the installation directories
 set(INSTALL_LIB_DIR lib CACHE PATH "/usr/lib")
@@ -26,50 +26,22 @@ foreach(p LIB BIN INCLUDE CMAKE)
     set(${var} "${CMAKE_INSTALL_PREFIX}/${${var}}")
   endif()
 endforeach()
- 
-# set up include-directories
-include_directories(
-  "${PROJECT_SOURCE_DIR}"
-  "${PROJECT_BINARY_DIR}")
- 
-# Add sub-directories
-add_subdirectory(lib)
-add_subdirectory(cli)
-add_subdirectory(qt)
-add_subdirectory(doc)
- 
-# The interesting stuff goes here
-# ===============================
- 
-# Add all targets to the build-tree export set
-export(TARGETS lib cli qt doc
-  FILE "${PROJECT_BINARY_DIR}/build.cmake")
- 
-# Export the package for use from the build-tree
-# (this registers the build-tree with a global CMake-registry)
-export(PACKAGE Panopticum)
- 
-# Create the FooBarConfig.cmake and FooBarConfigVersion files
-file(RELATIVE_PATH REL_INCLUDE_DIR "${INSTALL_CMAKE_DIR}"
-   "${INSTALL_INCLUDE_DIR}")
-# ... for the build tree
-set(CONF_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}" "${PROJECT_BINARY_DIR}")
-configure_file(FooBarConfig.cmake.in
-  "${PROJECT_BINARY_DIR}/FooBarConfig.cmake" @ONLY)
-# ... for the install tree
-set(CONF_INCLUDE_DIRS "\${FOOBAR_CMAKE_DIR}/${REL_INCLUDE_DIR}")
-configure_file(FooBarConfig.cmake.in
-  "${PROJECT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/FooBarConfig.cmake" @ONLY)
-# ... for both
-configure_file(FooBarConfigVersion.cmake.in
-  "${PROJECT_BINARY_DIR}/FooBarConfigVersion.cmake" @ONLY)
- 
-# Install the FooBarConfig.cmake and FooBarConfigVersion.cmake
-install(FILES
-  "${PROJECT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/FooBarConfig.cmake"
-  "${PROJECT_BINARY_DIR}/FooBarConfigVersion.cmake"
-  DESTINATION "${INSTALL_CMAKE_DIR}" COMPONENT dev)
- 
-# Install the export set for use with the install-tree
-install(EXPORT FooBarTargets DESTINATION
-  "${INSTALL_CMAKE_DIR}" COMPONENT dev)
+
+add_definitions(${CMAKE_CXX_FLAGS} "-std=c++0x -Wall -pedantic")
+add_definitions(${CMAKE_CXX_FLAGS_DEBUG} "-ggdb")
+add_definitions(${CMAKE_CXX_FLAGS_RELEASE} "-Werror -O2")
+
+# lib
+#set(lib_SOURCES lib/src/*.cc lib/src/avr/*.cc)
+file(GLOB lib_SOURCES lib/src/*.cc lib/src/avr/*.cc)
+#set(lib_HEADERS lib/include/*.hh lib/include/avr/*.hh)
+file(GLOB lib_HEADERS lib/include/*.hh lib/include/avr/*.hh)
+
+find_package(PkgConfig)
+pkg_check_modules(redland REQUIRED redland)
+pkg_check_modules(raptor REQUIRED raptor2)
+pkg_check_modules(minizip REQUIRED minizip)
+include_directories(lib/include ${redland_INCLUDE_DIRS} ${raptor_INCLUDE_DIRS}
+	${minizip_INCLUDE_DIRS})
+
+add_library(panopticon ${lib_SOURCES} ${lib_HEADERS})
