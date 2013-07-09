@@ -165,8 +165,8 @@ rdf::storage rdf::storage::from_archive(const string &path)
 rdf::storage rdf::storage::from_stream(const oturtlestream &os)
 {
 	storage ret;
-	librdf_parser *parser;
-	librdf_uri *uri;
+	librdf_parser *parser = 0;
+	librdf_uri *uri = 0;
 	
 	assert(parser = librdf_new_parser(s_rdf_world,"turtle",NULL,NULL));
 	assert(uri = librdf_new_uri_from_filename(s_rdf_world,"http://localhost/"));
@@ -181,8 +181,8 @@ rdf::storage rdf::storage::from_stream(const oturtlestream &os)
 rdf::storage rdf::storage::from_turtle(const string &path)
 {
 	storage ret;
-	librdf_parser *parser;
-	librdf_uri *uri;
+	librdf_parser *parser = 0;
+	librdf_uri *uri = 0;
 	
 	assert(parser = librdf_new_parser(s_rdf_world,"turtle",NULL,NULL));
 	assert(uri = librdf_new_uri_from_filename(s_rdf_world,path.c_str()));
@@ -204,7 +204,7 @@ rdf::storage::storage(bool openStore)
 	char *tmp = new char[TEMPDIR_TEMPLATE.size() + 1];
 
 	strncpy(tmp,TEMPDIR_TEMPLATE.c_str(),TEMPDIR_TEMPLATE.size() + 1);
-	mkdtemp(tmp);
+	tmp = mkdtemp(tmp);
 
 	m_tempdir = string(tmp);
 	delete[] tmp;

@@ -96,13 +96,13 @@ namespace po
 				{
 					if(ct.bblock.lock())
 					{
-						source.insert(std::make_pair(bb->area().last(),std::make_pair(ct.bblock.lock()->area().begin,ct.guard)));
-						destination.insert(std::make_pair(ct.bblock.lock()->area().begin,std::make_pair(bb->area().last(),ct.guard)));
+						source.insert(std::make_pair(bb->area().last(),std::make_pair(ct.bblock.lock()->area().begin,ct.condition)));
+						destination.insert(std::make_pair(ct.bblock.lock()->area().begin,std::make_pair(bb->area().last(),ct.condition)));
 					}
 					else if(ct.value.is_constant())
 					{
-						source.insert(std::make_pair(bb->area().last(),std::make_pair(ct.value.to_constant().content(),ct.guard)));
-						destination.insert(std::make_pair(ct.value.to_constant().content(),std::make_pair(bb->area().last(),ct.guard)));
+						source.insert(std::make_pair(bb->area().last(),std::make_pair(ct.value.to_constant().content(),ct.condition)));
+						destination.insert(std::make_pair(ct.value.to_constant().content(),std::make_pair(bb->area().last(),ct.condition)));
 					}
 				}	
 			}

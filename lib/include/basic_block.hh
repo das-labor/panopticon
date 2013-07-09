@@ -77,7 +77,7 @@ namespace po
 		ctrans(guard g, rvalue v);
 		ctrans(guard g, bblock_ptr b);
 		
-		guard guard;
+		guard condition;
 		rvalue value;
 		bblock_wptr bblock;
 	};

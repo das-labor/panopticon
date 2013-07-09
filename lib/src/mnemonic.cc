@@ -39,6 +39,8 @@ string po::pretty(instr::Function fn)
 		case instr::Phi: 		return "ϕ";
 		default: assert(false);
 	}
+
+	return "";
 }
 
 string po::symbolic(instr::Function fn)
@@ -71,6 +73,8 @@ string po::symbolic(instr::Function fn)
 		case instr::Phi: 		return "po:phi";
 		default: assert(false);
 	}
+
+	return "";
 }
 
 instr::Function po::numeric(const std::string &s)
@@ -102,7 +106,6 @@ instr::Function po::numeric(const std::string &s)
 		if(t == "po:u-less-equal") return instr::ULeq;
 		if(t == "po:call") return instr::Call;
 		if(t == "po:phi") return instr::Phi;
-		assert(false);
 	}
 	else
 	{
@@ -130,8 +133,10 @@ instr::Function po::numeric(const std::string &s)
 		if(s == " ≤ᵤ ") return instr::ULeq;
 		if(s == "call") return instr::Call;
 		if(s == "ϕ") return instr::Phi;
-		assert(false);
 	}
+
+	assert(false);
+	return instr::Assign;
 }
 			
 ostream &po::operator<<(ostream &os, const instr &i)
