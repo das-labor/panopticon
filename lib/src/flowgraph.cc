@@ -6,7 +6,9 @@
 using namespace po;
 using namespace std;
 
-flowgraph::flowgraph(const string &n) : name(n) {}
+flowgraph::flowgraph(const string &n)
+: procedures(), dominance(), liveness(), name(n), mutex()
+{}
 
 odotstream &po::operator<<(odotstream &os, const flowgraph &f)
 {

@@ -19,7 +19,7 @@ relation::relation(rvalue a, Relcode c, rvalue b) : relcode(c), operand1(a), ope
 /*
  * guard
  */
-guard::guard(void) {}
+guard::guard(void) : relations() {}
 guard::guard(const guard &g) : relations(g.relations) {}
 guard::guard(guard &&g) : relations(move(g.relations)) {}
 guard::guard(const list<relation> &rels) : relations(rels) {}
@@ -128,8 +128,8 @@ odotstream &po::operator<<(odotstream &os, const guard &g)
 /*
  * ctrans
  */
-ctrans::ctrans(struct guard g, rvalue v) : condition(g), value(v) {}
-ctrans::ctrans(struct guard g, bblock_ptr b) : condition(g), bblock(b) {}
+ctrans::ctrans(struct guard g, rvalue v) : condition(g), value(v), bblock() {}
+ctrans::ctrans(struct guard g, bblock_ptr b) : condition(g), value(), bblock(b) {}
 
 /*
  * basic_block
@@ -168,7 +168,10 @@ bblock_ptr basic_block::unmarshal(const rdf::node &node, proc_cptr proc, const r
 	return ret;
 }
 
-basic_block::basic_block(void) {}
+basic_block::basic_block(void)
+: m_area(), m_mnemonics(), m_incoming(), m_outgoing()
+{}
+
 pair<basic_block::pred_citerator,basic_block::pred_citerator> basic_block::predecessors(void) const
 	{ return make_pair(pred_citerator(m_incoming.cbegin(),m_incoming.cend()),pred_citerator(m_incoming.cend(),m_incoming.cend())); }
 

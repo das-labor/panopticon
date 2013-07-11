@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8)
-project(PanopticonQt)
+project(PanopticonQt CXX)
 
 file(GLOB qtpanopticon_SOURCES src/*.cc)
 file(GLOB qtpanopticon_HEADERS include/*.hh)

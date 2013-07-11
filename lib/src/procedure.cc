@@ -19,7 +19,7 @@ bool po::operator<(const proc_cwptr &a, const proc_cwptr &b)
 	return owner_less<proc_cwptr>()(a, b);
 }
 
-domtree::domtree(bblock_ptr b) : intermediate(0), basic_block(b) {}
+domtree::domtree(bblock_ptr b) : intermediate(0), successors(), frontiers(), basic_block(b) {}
 
 proc_ptr procedure::unmarshal(const rdf::node &node, flow_ptr flow, const rdf::storage &store)
 {
@@ -39,7 +39,9 @@ proc_ptr procedure::unmarshal(const rdf::node &node, flow_ptr flow, const rdf::s
 	return ret;
 }
 
-procedure::procedure(const std::string &n) : name(n) {}
+procedure::procedure(const std::string &n)
+: name(n), entry(0), basic_blocks(), mutex(), callers(), callees()
+{}
 
 void procedure::rev_postorder(function<void(bblock_ptr bb)> fn) const
 {

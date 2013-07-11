@@ -211,6 +211,7 @@ namespace po
 	class disjunction : public rule<Tag>
 	{
 	public:
+		disjunction(void);
 		virtual ~disjunction(void);
 
 		/// Runs all rules with the supplied arguments and returns the result of the first successful rule.
@@ -427,7 +428,7 @@ namespace po
 
 	template<typename Tag>
 	sem_state<Tag>::sem_state(addr_t a)
-	: address(a), next_address(a) 
+	: address(a), tokens(), capture_groups(), mnemonics(), jumps(), next_address(a) 
 	{}
 
 	template<typename Tag>
@@ -473,6 +474,11 @@ namespace po
 		jump(constant(a,flsll(a)),g);
 	}
 	
+	template<typename Tag>
+	disjunction<Tag>::disjunction(void)
+	: patterns()
+	{}
+
 	template<typename Tag>
 	disjunction<Tag>::~disjunction(void)
 	{}

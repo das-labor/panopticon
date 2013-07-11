@@ -5,8 +5,12 @@
 #include <list>
 #include <map>
 #include <cassert>
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Weffc++"
 #include <boost/iterator/iterator_facade.hpp>
 #include <boost/iterator/filter_iterator.hpp>
+#pragma GCC diagnostic pop
 
 #include <marshal.hh>
 
@@ -85,6 +89,9 @@ namespace po
 	oturtlestream& operator<<(oturtlestream &os, const ctrans &ct);
 	std::string unique_name(const ctrans &ct);
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Weffc++"
+
 	template<>
 	class bblock_iterator<std::list<ctrans>> : public boost::iterator_facade<
 				bblock_iterator<std::list<ctrans>>,
@@ -93,7 +100,7 @@ namespace po
 				bblock_ptr>
 	{
 	public:
-		bblock_iterator(void) {};
+		bblock_iterator(void) : adaptee() {};
 		explicit bblock_iterator(std::list<ctrans>::iterator i, std::list<ctrans>::iterator iend)
 		: adaptee([](const ctrans &ct) -> bool { return ct.bblock.lock().get() != nullptr; },i,iend) {};
 		bblock_iterator &increment(void) { ++adaptee; return *this; };
@@ -114,7 +121,7 @@ namespace po
 				bblock_cptr>
 	{
 	public:
-		bblock_citerator(void) {};
+		bblock_citerator(void) : adaptee() {};
 		explicit bblock_citerator(std::list<ctrans>::const_iterator i, std::list<ctrans>::const_iterator iend)
 		: adaptee([](const ctrans &ct) -> bool { return ct.bblock.lock().get() != nullptr; },i,iend) {};
 		bblock_citerator &increment(void) { ++adaptee; return *this; };
@@ -126,6 +133,8 @@ namespace po
 	private:
 		boost::filter_iterator< std::function<bool(const ctrans &ct)>,std::list<ctrans>::const_iterator> adaptee;
 	};
+
+#pragma GCC diagnostic pop
 
 	class basic_block
 	{

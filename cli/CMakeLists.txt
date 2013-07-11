@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8)
-project(PanopticonCli)
+project(PanopticonCli CXX)
 
 file(GLOB cli_SOURCES src/*.cc)
 file(GLOB cli_HEADERS include/*.hh)

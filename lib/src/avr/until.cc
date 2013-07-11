@@ -19,7 +19,7 @@ const variable r0 = "r0"_v8, r1 = "r1"_v8, r2 = "r2"_v8, r3 = "r3"_v8, r4 = "r4"
 
 variable po::avr::decode_reg(unsigned int r)
 {
-	assert(r >= 0 && r <= 31);
+	assert(r <= 31);
 	return variable("r" + std::to_string(r),8);
 }
 

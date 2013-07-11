@@ -1,8 +1,8 @@
 #include <sat.hh>
 
-po::expr::expr(void) : width(0) {}
-po::expr::expr(CVC4::Expr e)
-: bitvector(e)
+po::expr::expr(void) : bitvector(), width(0) {}
+po::expr::expr(const CVC4::Expr &e)
+: bitvector(e), width(0)
 {
 	CVC4::Type t = e.getType(true);
 	
@@ -13,6 +13,23 @@ po::expr::expr(CVC4::Expr e)
 	}
 	else
 		width = 0;
+}
+
+po::expr &po::expr::operator=(const CVC4::Expr &e)
+{
+	CVC4::Type t = e.getType(true);
+
+	bitvector = e;
+	
+	if(t.isBitVector())
+	{
+		CVC4::BitVectorType bvt(t);
+		width = bvt.getSize();
+	}
+	else
+		width = 0;
+
+	return *this;
 }
 
 po::formula_ptr po::sat(proc_ptr proc)

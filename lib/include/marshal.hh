@@ -141,6 +141,10 @@ namespace po
 				proxy(const std::string &s);
 				proxy(const char *s);
 				proxy(const node &n);
+				~proxy(void);
+
+				proxy(const proxy &p);
+				proxy &operator=(const proxy &p);
 
 				bool is_literal;
 				bool is_node;

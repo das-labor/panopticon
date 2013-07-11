@@ -69,11 +69,11 @@ marshal_exception::marshal_exception(const string &w)
 {}
 
 rdf::storage::proxy::proxy(nullptr_t)
-: is_literal(false), is_node(false)
+: is_literal(false), is_node(false), literal(""), node(0)
 {}
 
 rdf::storage::proxy::proxy(const string &s)
-: is_literal(true), is_node(false)
+: is_literal(true), is_node(false), literal(""), node(0)
 {
 	if(s.find_first_of(":") == 0)
 		literal = LOCAL + s.substr(1);
@@ -94,6 +94,29 @@ rdf::storage::proxy::proxy(const char *s)
 rdf::storage::proxy::proxy(const rdf::node &n)
 : is_literal(false), is_node(true), literal(""), node(n.inner() ? librdf_new_node_from_node(n.inner()) : 0)
 {}
+
+rdf::storage::proxy::proxy(const rdf::storage::proxy &p)
+: is_literal(p.is_literal), is_node(p.is_node), literal(p.literal), node(p.node ? librdf_new_node_from_node(p.node) : 0)
+{}
+
+rdf::storage::proxy &rdf::storage::proxy::operator=(const rdf::storage::proxy &p)
+{
+	is_literal = p.is_literal;
+	is_node = p.is_node;
+	literal = p.literal;
+
+	if(node)
+		librdf_free_node(node);
+	node = p.node;
+
+	return *this;
+}
+
+rdf::storage::proxy::~proxy(void)
+{
+	if(node)
+		librdf_free_node(node);
+}
 
 librdf_world *rdf::storage::s_rdf_world = 0;
 raptor_world *rdf::storage::s_rap_world = 0;
@@ -199,7 +222,7 @@ rdf::storage::storage(void)
 {}
 
 rdf::storage::storage(bool openStore)
-: m_storage(0), m_model(0)
+: m_storage(0), m_model(0), m_tempdir("")
 {
 	char *tmp = new char[TEMPDIR_TEMPLATE.size() + 1];
 

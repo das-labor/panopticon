@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8)
-project(Panopticon)
+project(Panopticon CXX)
 
 set(PROJECT_BINARY_DIR build)
 set(PANOPTICON_MAJOR_VERSION 0)
@@ -28,7 +28,8 @@ foreach(p LIB BIN INCLUDE CMAKE)
 endforeach()
 
 # Compiler flags
-add_definitions("-std=c++11 -Wall -Wextra -Weffc++ -pedantic")
+add_definitions("-std=c++11 -Wall -Wextra -Weffc++ -pedantic
+-Wno-unused-parameter")
 # remove when fixed in CVC4
 add_definitions("-Wno-deprecated") 
 

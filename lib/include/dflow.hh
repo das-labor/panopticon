@@ -19,6 +19,7 @@ namespace po
 {
 	struct dom
 	{
+		dom(void) : root(0), tree() {}
 		dtree_ptr root;
 		std::map<bblock_cwptr,dtree_ptr> tree;
 	};
@@ -40,6 +41,7 @@ namespace po
 
 	struct live
 	{
+		live(void) : names(), usage(), uevar(), varkill(), liveout() {};
 		std::set<name> names;	// global (procedure-wide) names w/ width
 		std::map<name,std::set<bblock_cwptr>> usage;	// maps names to blocks that use them
 

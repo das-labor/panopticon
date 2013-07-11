@@ -12,7 +12,7 @@ namespace po
 	class code_generator
 	{
 	public:
-		code_generator(std::insert_iterator< std::list<instr>> i) : inserter(i) {};
+		code_generator(std::insert_iterator< std::list<instr>> i) : inserter(i), tag() {};
 
 		// named
 		lvalue and_b(lvalue a, rvalue op1, rvalue op2)	 	{ return named(instr::And,a,op1,op2); };

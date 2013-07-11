@@ -4,10 +4,13 @@
 #include <algorithm>
 #include <tuple>
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Weffc++"
 #include <boost/program_options/value_semantic.hpp>
 #include <boost/program_options/variables_map.hpp>
 #include <boost/program_options/options_description.hpp>
 #include <boost/program_options/parsers.hpp>
+#pragma GCC diagnostic pop
 
 #include <flowgraph.hh>
 
