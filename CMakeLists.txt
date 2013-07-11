@@ -27,7 +27,8 @@ foreach(p LIB BIN INCLUDE CMAKE)
   endif()
 endforeach()
 
-add_definitions("-std=c++11 -Wall -pedantic")
+# Compiler flags
+add_definitions("-std=c++11 -Wall -Wextra -Weffc++ -pedantic")
 # remove when fixed in CVC4
 add_definitions("-Wno-deprecated") 
 
@@ -35,19 +36,28 @@ if(${CMAKE_BUILD_TYPE} EQUAL "Release")
 	add_definitions("-Werror")
 endif(${CMAKE_BUILD_TYPE} EQUAL "Release")
 
-# lib
-file(GLOB lib_SOURCES lib/src/*.cc lib/src/avr/*.cc)
-file(GLOB lib_HEADERS lib/include/*.hh lib/include/avr/*.hh)
-
+# Dependencies
 find_package(PkgConfig)
 pkg_check_modules(redland REQUIRED redland)
 pkg_check_modules(raptor REQUIRED raptor2)
 pkg_check_modules(minizip REQUIRED minizip)
 find_path(cvc4_INCLUDE_DIRS cvc4/cvc4.h)
-find_library(cvc4_LIBRARY cvc4)
+find_library(cvc4_LIBRARIES cvc4)
 find_package_handle_standard_args(CVC4 REQUIRED_VARS
-	cvc4_LIBRARY cvc4_INCLUDE_DIRS)
-include_directories(lib/include ${redland_INCLUDE_DIRS} ${raptor_INCLUDE_DIRS}
-	${minizip_INCLUDE_DIRS} ${cvc4_INCLUDE_DIRS})
+	cvc4_LIBRARIES cvc4_INCLUDE_DIRS)
+find_package(Boost COMPONENTS program_options)
+find_package(Qt4 4.7 COMPONENTS QtCore QtDeclarative QtGui)
+pkg_check_modules(libgvc REQUIRED libgvc)
 
-add_library(panopticon SHARED ${lib_SOURCES} ${lib_HEADERS})
+# lib
+add_subdirectory("lib")
+
+if(${Boost_FOUND})
+	add_subdirectory("cli")
+	add_dependencies(panop panopticon)
+endif()
+
+if(${QT4_FOUND} AND ${libgvc_FOUND})
+	add_subdirectory("qt")
+	add_dependencies(qtpanopticon panopticon)
+endif()

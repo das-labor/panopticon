@@ -50,7 +50,7 @@ void ProcedureWidget::snapshot(void)
 			{
 				BasicBlockWidget *to = nodes[ct.bblock.lock()];
 
-				m_scene.connect(new ControlTransferWidget(ct.guard,from,to));
+				m_scene.connect(new ControlTransferWidget(ct.condition,from,to));
 			}
 		}
 	}

@@ -27,6 +27,6 @@ flow_ptr in_avr(const string &path)
 			bytes.push_back(c);
 		}
 		
-		return avr::disassemble(bytes,0);
+		return avr::disassemble(bytes,0,flow_ptr(),disassemble_cb());
 	}
 }
