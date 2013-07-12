@@ -1,6 +1,3 @@
-cmake_minimum_required(VERSION 2.8)
-project(PanopticonLibrary)
-
 file(GLOB panopticon_SOURCES src/*.cc src/avr/*.cc)
 file(GLOB panopticon_HEADERS include/*.hh include/avr/*.hh)
 
@@ -18,3 +15,7 @@ include_directories(${panopticon_INCLUDE_DIRS})
 link_directories(${panopticon_LIBRARY_DIRS})
 add_library(panopticon SHARED ${panopticon_SOURCES} ${panopticon_HEADERS})
 target_link_libraries(panopticon ${panopticon_LIBRARIES})
+
+if(${cppunit_FOUND})
+	add_subdirectory("test")
+endif()

@@ -33,9 +33,13 @@ add_definitions("-std=c++11 -Wall -Wextra -Weffc++ -pedantic
 # remove when fixed in CVC4
 add_definitions("-Wno-deprecated") 
 
-if(${CMAKE_BUILD_TYPE} EQUAL "Release")
+if(${CMAKE_BUILD_TYPE} STREQUAL "Release")
 	add_definitions("-Werror")
-endif(${CMAKE_BUILD_TYPE} EQUAL "Release")
+endif()
+
+if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
+	include(CTest)
+endif()
 
 # Dependencies
 find_package(PkgConfig)
@@ -48,7 +52,8 @@ find_package_handle_standard_args(CVC4 REQUIRED_VARS
 	cvc4_LIBRARIES cvc4_INCLUDE_DIRS)
 find_package(Boost COMPONENTS program_options)
 find_package(Qt4 4.7 COMPONENTS QtCore QtDeclarative QtGui)
-pkg_check_modules(libgvc REQUIRED libgvc)
+pkg_check_modules(libgvc libgvc)
+pkg_check_modules(cppunit cppunit)
 
 # lib
 add_subdirectory("lib")

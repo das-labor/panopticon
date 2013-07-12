@@ -1,6 +1,8 @@
 #ifndef ACTIONS_HH
 #define ACTIONS_HH
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Weffc++"
 #include <QAction>
 #include <flowgraph.hh>
 
