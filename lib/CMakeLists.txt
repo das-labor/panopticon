@@ -10,7 +10,10 @@ set(panopticon_LIBRARY_DIRS ${panopticon_LIBRARY_DIRS} PARENT_SCOPE)
 set(panopticon_LIBRARIES panopticon ${cvc4_LIBRARIES} ${redland_LIBRARIES}
 	${raptor_LIBRARIES} ${minizip_LIBRARIES})
 set(panopticon_LIBRARIES ${panopticon_LIBRARIES} PARENT_SCOPE)
+set(panopticon_FOUND 1)
+set(panopticon_FOUND ${panopticon_FOUND} PARENT_SCOPE)
 
+add_definitions("-Weffc++")
 include_directories(${panopticon_INCLUDE_DIRS})
 link_directories(${panopticon_LIBRARY_DIRS})
 

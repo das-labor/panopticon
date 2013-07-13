@@ -9,10 +9,12 @@ set(panopticon_VERSION
   ${panopticon_MAJOR}.${panopticon_MINOR}.${panopticon_PATCH})
  
 # Options
-# TODO
+option(panopticon_BUILD "Build Panopticon Library (libpabopticon)" ON)
+option(qtpanopticon_BUILD "Build Qt UI (qtpanopticon)" ON)
+option(panop_BUILD "Build cli tool (panop)" ON)
 
 # Compiler flags
-add_definitions("-std=c++11 -Wall -Wextra -Weffc++ -pedantic
+add_definitions("-std=c++11 -Wall -Wextra -pedantic
 -Wno-unused-parameter")
 # remove when fixed in CVC4
 add_definitions("-Wno-deprecated") 
@@ -38,16 +40,24 @@ find_package(Boost COMPONENTS program_options)
 find_package(Qt4 4.7 COMPONENTS QtCore QtDeclarative QtGui)
 pkg_check_modules(libgvc libgvc)
 pkg_check_modules(cppunit cppunit)
+pkg_check_modules(panopticon panopticon)
 
 # Targets
-add_subdirectory("lib")
+if(${panopticon_BUILD})
+	add_subdirectory("lib")
+else()
+	set(panopticon_FOUND FALSE)
+endif()
 
-if(${Boost_FOUND})
+find_package_handle_standard_args(Panopticon REQUIRED_VARS
+	panopticon_LIBRARIES panopticon_INCLUDE_DIRS)
+
+if(${panop_BUILD} AND ${Boost_FOUND} AND ${panopticon_FOUND})
 	add_subdirectory("cli")
 	add_dependencies(panop panopticon)
 endif()
 
-if(${QT4_FOUND} AND ${libgvc_FOUND})
+if(${qtpanopticon_BUILD} AND ${QT4_FOUND} AND ${libgvc_FOUND} AND ${panopticon_FOUND})
 	add_subdirectory("qt")
 	add_dependencies(qtpanopticon panopticon)
 endif()
