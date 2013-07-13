@@ -12,6 +12,9 @@ qt4_wrap_cpp(qtpanopticon_HEADERS_MOC ${qtpanopticon_HEADERS})
 include(${QT_USE_FILE})
 add_definitions(${QT_DEFINITIONS})
 
-# Targets
 add_executable(qtpanopticon ${qtpanopticon_SOURCES} ${qtpanopticon_HEADERS} ${qtpanopticon_HEADERS_MOC})
-target_link_libraries(qtpanopticon ${libgvc_LIBRARIES} ${QT_LIBRARIES} ${panopticon_LIBRARIES})
+target_link_libraries(qtpanopticon ${libgvc_LIBRARIES} ${QT_LIBRARIES}
+	${panopticon_LIBRARIES})
+set_target_properties(qtpanopticon PROPERTIES VERSION
+	${panopticon_MAJOR}.${panopticon_MINOR}.${panopticon_PATCH})
+install(TARGETS qtpanopticon RUNTIME DESTINATION bin)
