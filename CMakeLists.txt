@@ -8,7 +8,7 @@ set(panopticon_MINOR 8)
 set(panopticon_PATCH 0)
 set(panopticon_VERSION
   ${panopticon_MAJOR}.${panopticon_MINOR}.${panopticon_PATCH})
- 
+
 # Options
 option(panopticon_BUILD "Build Panopticon Library (libpabopticon)" ON)
 option(qtpanopticon_BUILD "Build Qt UI (qtpanopticon)" ON)
@@ -18,7 +18,7 @@ option(panop_BUILD "Build cli tool (panop)" ON)
 add_definitions("-Wall -Wextra -pedantic
 -Wno-unused-parameter")
 # remove when fixed in CVC4
-add_definitions("-Wno-deprecated") 
+add_definitions("-Wno-deprecated")
 
 # Release mode is default
 if(NOT DEFINED "CMAKE_BUILD_TYPE" OR "${CMAKE_BUILD_TYPE}" STREQUAL "Release")

@@ -1,11 +1,39 @@
-#include <sstream>
+import QtQuick 1.0
 
-#include <QPainter>
-#include <QTextDocument>
-#include <QCursor>
+Rectangle
+{
+	width: 120; height: 120
+	color: "#00000000"
 
-#include <basicblockwidget.hh>
+	Rectangle
+	{
+		id: rect
+		width: 120; height: 120;
+		color: "green"
+	}
 
+	states:
+	[
+		State
+		{
+			name: ""
+			PropertyChanges { target: rect; color: "green" }
+		},
+		State
+		{
+			name: "grabbed"
+			PropertyChanges { target: rect; color: "red" }
+		},
+		State
+		{
+			name: "hidden"
+			PropertyChanges { target: rect; visible: false }
+		}
+	]
+	transitions: [ Transition { to: "*"; ColorAnimation { target: rect; duration: 500 } } ]
+}
+
+/*
 BasicBlockWidget::BasicBlockWidget(po::flow_ptr flow, po::proc_ptr proc, po::bblock_ptr bb, QGraphicsItem *parent)
 : QGraphicsObject(parent), m_basic_block(bb), m_instructions(this)
 {
@@ -187,10 +215,9 @@ OperandWidget::OperandWidget(po::flow_ptr flow, po::proc_ptr proc, po::rvalue v,
 		setPlainText(QString::fromStdString(tok.alias));
 
 	/// @todo
-	/*
 	const std::map<po::proc_ptr,std::shared_ptr<std::map<po::rvalue,po::sscp_lattice>>> &sscp = flow->simple_sparse_constprop;
 	if(sscp.count(proc) && sscp.at(proc)->count(v) && sscp.at(proc)->at(v).type == po::sscp_lattice::Const)
-		setHtml(toPlainText() + " <i>(" + QString::fromStdString(std::to_string(format_constant(tok,sscp.at(proc)->at(v).value))) + ")</i>");*/
+		setHtml(toPlainText() + " <i>(" + QString::fromStdString(std::to_string(format_constant(tok,sscp.at(proc)->at(v).value))) + ")</i>");
 
 	setFont(QFont("Monospace",11));
 	setAcceptHoverEvents(true);
@@ -220,4 +247,4 @@ void OperandWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *opt
 		painter->drawRect(boundingRect());
 		painter->restore();
 	}
-}
+}*/

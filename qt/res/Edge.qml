@@ -1,10 +1,69 @@
-#include <sstream>
+import QtQuick 1.0
+import Panopticon 1.0
 
-#include <QTransform>
-#include <QPainter>
+Path
+{
+	id: path
+	direct: false
+	pen { width: 2; joinStyle: Pen.RoundJoin }
+	state: ""
+	z: -1
 
-#include <controltransferwidget.hh>
+	Image
+	{
+		source: "head.svg"
+		width: 20; height: 20
+		id: h
+	}
 
+	Image
+	{
+		z: 3
+		source: "tail.svg"
+		width: 20; height: 20
+		id: t
+	}
+
+	head: h
+	tail: t
+
+	states:
+	[
+		State
+		{
+			name: ""
+			PropertyChanges
+			{
+				target: path
+				direct: false
+				visible: true
+				pen { style: Pen.SolidLine; color: "#11111" }
+			}
+			PropertyChanges { target: h; visible: true }
+			PropertyChanges { target: t; visible: true }
+		},
+		State
+		{
+			name: "simple"
+			PropertyChanges
+			{
+				target: path
+				direct: true
+				visible: true
+				pen { style: Pen.DashLine; color: "gray" }
+			}
+			PropertyChanges { target: h; visible: false }
+			PropertyChanges { target: t; visible: false }
+		},
+		State
+		{
+			name: "hidden"
+			PropertyChanges { target: path; visible: false }
+		}
+	]
+}
+
+/*
 ControlTransferWidget::ControlTransferWidget(po::guard g, BasicBlockWidget *from, BasicBlockWidget *to, QGraphicsItem *parent)
 : QGraphicsItem(parent), m_from(from), m_to(to),
 												 m_text("",this),
@@ -78,4 +137,4 @@ void ControlTransferWidget::paint(QPainter *painter, const QStyleOptionGraphicsI
 	painter->translate(QPointF(0,-0.55));
 	painter->drawConvexPolygon(m_head);
 	painter->restore();
-}
+}*/

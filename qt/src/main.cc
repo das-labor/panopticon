@@ -1,15 +1,23 @@
-#include <QApplication>
+#include <QtCore>
+#include <QtDeclarative>
 
-#include <iostream>
+#include "graph.hh"
+#include "interface.hh"
 
-#include <window.hh>
+using namespace std;
 
 int main(int argc, char *argv[])
 {
-	QApplication app(argc,argv);
-	Window win;
+	qmlRegisterType<Path>("Panopticon",1,0,"Path");
+	qmlRegisterType<Graph>("Panopticon",1,0,"Graph");
+	qmlRegisterType<Pen>("Panopticon",1,0,"Pen");
 
-	win.show();
-	app.exec();
-	return 0;
+	QApplication app(argc, argv);
+	QScrollArea scroll;
+	QDeclarativeView view(QUrl::fromLocalFile("view.qml"));
+
+	scroll.setWidget(&view);
+	scroll.setWidgetResizable(true);
+	scroll.show();
+	return app.exec();
 }
