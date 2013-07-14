@@ -6,9 +6,18 @@
 /qt/obj
 /cli/obj/*.o
 *.swp
+<<<<<<< HEAD
 /lib/test/runtests
 /qt/Makefile
 /lib/.ycm_extra_conf.pyc
 /doc/api
 /qt/panopticum
 *.panop
+=======
+lib/test/runtests
+qt/Makefile
+lib/.ycm_extra_conf.pyc
+doc/api
+qt/panopticum
+build
+>>>>>>> integration

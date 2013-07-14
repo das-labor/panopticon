@@ -1,0 +1,11 @@
+prefix=@CMAKE_INSTALL_PREFIX@
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+
+Name: @CMAKE_PROJECT_NAME@
+Description: Cross platform disassembler.
+Requires: redland raptor2 minizip
+Version: @panopticon_VERSION@
+Libs: -L${libdir} @cvc4_pc_LIBRARIES@ @cvc4_pc_LIBRARY_DIRS@ -lpanopticon
+Cflags: -I${includedir}/panopticon @cvc4_pc_INCLUDE_DIRS@

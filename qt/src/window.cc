@@ -7,7 +7,7 @@
 #include <QStatusBar>
 
 #include <window.hh>
-#include <deflate.hh>
+//#include <deflate.hh>
 
 #include <avr/avr.hh>
 

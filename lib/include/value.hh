@@ -36,6 +36,9 @@ namespace po
 	class memory;
 	class value_exception;
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Weffc++"
+
 	/**
 	 * @brief Base of all data types the IL operates on.
 	 *
@@ -196,7 +199,8 @@ namespace po
 	/**
 	 * @brief Undefined value
 	 */
-	class undefined : public lvalue {};
+	class undefined : public lvalue
+	{};
 
 	/**
 	 * @brief A variable with fixed width.
@@ -260,12 +264,15 @@ namespace po
 		const std::string &name(void) const;
 	};
 
+#pragma GCC diagnostic pop
+	
 	/**
 	 * @brief Internal. Do not use.
 	 * @ingroup internal
 	 */
 	struct memory_priv
 	{
+		memory_priv(void);
 		unsigned int usage;
 		rvalue offset;
 		uint16_t bytes;

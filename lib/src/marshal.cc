@@ -98,6 +98,49 @@ raptor_world *rdf::world::raptor(void) const
 	return m_rap_world;
 }
 
+rdf::world::proxy::proxy(nullptr_t)
+: is_literal(false), is_node(false), literal(""), node(0)
+{}
+
+rdf::world::proxy::proxy(const string &s)
+: is_literal(true), is_node(false), literal(""), node(0)
+{
+	if(s.find_first_of(":") == 0)
+		literal = LOCAL + s.substr(1);
+	else if(s.find_first_of("po:") == 0)
+		literal = PO + s.substr(3);
+	else if(s.find_first_of("xsd:") == 0)
+		literal = XSD + s.substr(4);
+	else if(s.find_first_of("rdf:") == 0)
+		literal = RDF + s.substr(4);
+	else
+		literal = s;
+}
+
+rdf::world::proxy::proxy(const rdf::world::proxy &p)
+: is_literal(p.is_literal), is_node(p.is_node), literal(p.literal), node(p.node ? librdf_new_node_from_node(p.node) : 0)
+{}
+
+rdf::world::proxy &rdf::world::proxy::operator=(const rdf::world::proxy &p)
+{
+	is_literal = p.is_literal;
+	is_node = p.is_node;
+	literal = p.literal;
+
+	if(node)
+		librdf_free_node(node);
+	node = p.node;
+
+	return *this;
+}
+
+
+rdf::world::proxy::~proxy(void)
+{
+	if(node)
+		librdf_free_node(node);
+}
+
 rdf::storage rdf::storage::from_archive(const string &path)
 {
 	storage ret(false);
@@ -164,8 +207,8 @@ rdf::storage rdf::storage::from_stream(const oturtlestream &os)
 {
 	world_ptr w = world::instance();
 	storage ret;
-	librdf_parser *parser;
-	librdf_uri *uri;
+	librdf_parser *parser = 0;
+	librdf_uri *uri = 0;
 	
 	assert(parser = librdf_new_parser(w->rdf(),"turtle",NULL,NULL));
 	assert(uri = librdf_new_uri_from_filename(w->rdf(),"http://localhost/"));
@@ -181,8 +224,8 @@ rdf::storage rdf::storage::from_turtle(const string &path)
 {
 	world_ptr w = world::instance();
 	storage ret;
-	librdf_parser *parser;
-	librdf_uri *uri;
+	librdf_parser *parser = 0;
+	librdf_uri *uri = 0;
 	
 	assert(parser = librdf_new_parser(w->rdf(),"turtle",NULL,NULL));
 	assert(uri = librdf_new_uri_from_filename(w->rdf(),path.c_str()));
@@ -199,12 +242,12 @@ rdf::storage::storage(void)
 {}
 
 rdf::storage::storage(bool openStore)
-: m_storage(0), m_model(0)
+: m_storage(0), m_model(0), m_tempdir("")
 {
 	char *tmp = new char[TEMPDIR_TEMPLATE.size() + 1];
 
 	strncpy(tmp,TEMPDIR_TEMPLATE.c_str(),TEMPDIR_TEMPLATE.size() + 1);
-	mkdtemp(tmp);
+	tmp = mkdtemp(tmp);
 
 	m_tempdir = string(tmp);
 	delete[] tmp;

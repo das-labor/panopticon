@@ -7,14 +7,14 @@ struct test_tag {};
 unsigned int ununsed = 0;
 std::vector<std::string> regs({"a","b","c","d"});
 
-template<>
-struct po::architecture_traits<test_tag>
-{
-	typedef unsigned char token_type;
-};
-
 namespace po
 {
+	template<>
+	struct architecture_traits<test_tag>
+	{
+		typedef unsigned char token_type;
+	};
+
 	template<>
 	lvalue temporary(test_tag)
 	{
@@ -32,6 +32,6 @@ namespace po
 	{
 		return 8;
 	}
-};
+}
 
 #endif

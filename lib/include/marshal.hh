@@ -147,6 +147,23 @@ namespace po
 			librdf_world *rdf(void) const;
 			raptor_world *raptor(void) const;
 
+			struct proxy
+			{
+				proxy(std::nullptr_t);
+				proxy(const std::string &s);
+				proxy(const char *s);
+				proxy(const node &n);
+				~proxy(void);
+
+				proxy(const proxy &p);
+				proxy &operator=(const proxy &p);
+
+				bool is_literal;
+				bool is_node;
+				std::string literal;
+				librdf_node *node;
+			};
+
 		private:
 			world(void);
 			~world(void);

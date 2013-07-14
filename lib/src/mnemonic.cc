@@ -39,6 +39,8 @@ string po::pretty(instr::Function fn)
 		case instr::Phi: 		return "ϕ";
 		default: assert(false);
 	}
+
+	return "";
 }
 
 string po::symbolic(instr::Function fn)
@@ -71,6 +73,8 @@ string po::symbolic(instr::Function fn)
 		case instr::Phi: 		return "po:phi";
 		default: assert(false);
 	}
+
+	return "";
 }
 
 instr::Function po::numeric(const std::string &s)
@@ -103,7 +107,6 @@ instr::Function po::numeric(const std::string &s)
 		if(t == "u-less-equal") return instr::ULeq;
 		if(t == "call") return instr::Call;
 		if(t == "phi") return instr::Phi;
-		assert(false);
 	}
 	else
 	{
@@ -131,8 +134,10 @@ instr::Function po::numeric(const std::string &s)
 		if(s == " ≤ᵤ ") return instr::ULeq;
 		if(s == "call") return instr::Call;
 		if(s == "ϕ") return instr::Phi;
-		assert(false);
 	}
+
+	assert(false);
+	return instr::Assign;
 }
 			
 ostream &po::operator<<(ostream &os, const instr &i)
@@ -245,7 +250,7 @@ mnemonic mnemonic::unmarshal(const rdf::node &node, const rdf::storage &store)
 }
 
 mnemonic::mnemonic(const range<addr_t> &a, const string &n, const string &fmt, initializer_list<rvalue> ops, initializer_list<instr> instrs)
-: area(a), opcode(n), operands(ops), instructions(instrs)
+: area(a), opcode(n), operands(ops), instructions(instrs), format()
 {
 	function<string::const_iterator(string::const_iterator,string::const_iterator)> plain_or_meta;
 	function<string::const_iterator(string::const_iterator,string::const_iterator,token &)> escape_seq, modifiers, alias;

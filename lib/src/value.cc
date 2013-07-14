@@ -9,12 +9,14 @@ using namespace po;
 using namespace std;
 
 rvalue::rvalue(void) 
+: d{0}
 {
 	d.simple.tag = UndefinedValueTag;
 	d.simple.rest = 0;
 }
 
 rvalue::rvalue(const rvalue &r)
+: d{0}
 {
 	if(r.is_memory())
 		assign_memory(r.to_memory());
@@ -278,7 +280,7 @@ variable::variable(string b, uint16_t w, int s)
 {
 	if(b.size() >= 6)
 		throw value_exception("Variable names are limited to five characters");
-	if(!all_of(b.begin(),b.end(),[&](const char &c) { return c <= 0x7f; }))
+	if(!all_of(b.begin(),b.end(),[&](const char &c) { return !(c & 0x80); }))
 		throw value_exception("Variable names are limited to ASCII characters");
 	if(w >= 0x100)
 		throw value_exception("Variable width is limited to 255 bits");
@@ -316,6 +318,10 @@ uint16_t variable::width(void) const
 {
 	return d.name.width;
 }
+
+memory_priv::memory_priv(void)
+: usage(0), offset(), bytes(0), endianess(memory::NoEndian), name("")
+{}
 
 memory::memory(rvalue o, uint16_t w, Endianess e, string n)
 {

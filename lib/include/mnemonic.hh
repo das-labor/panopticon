@@ -22,7 +22,7 @@ namespace po
 	template<typename T>
 	struct range
 	{
-		range(void) { begin = end = 0; }
+		range(void) : begin(0), end(0) {}
 		range(T b) : begin(b), end(b) {}
 		range(T b, T e) : begin(b), end(e) { assert(begin <= end); }
 
