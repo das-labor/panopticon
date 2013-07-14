@@ -29,6 +29,7 @@ private:
 	ProcedureList *m_procList;
 	FilterWidget *m_filterWidget;
 	po::flow_ptr m_flowgraph;
+	QAction *m_action;
 };
 
 #endif

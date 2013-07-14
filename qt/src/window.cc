@@ -21,6 +21,7 @@ Window::Window(void)
 	m_procList = new ProcedureList(m_flowgraph,this);
 	m_filterWidget = new FilterWidget(this);
 	//m_action = new Disassemble("../sosse",flow,[&](po::proc_ptr p, unsigned int i) { if(p) m_procList->snapshot(); },this);
+	m_action = new Open("test.ttl",m_flowgraph,[&](void) { m_procList->snapshot(); },this);
 
 	setCentralWidget(m_tabs);
 	addDockWidget(Qt::LeftDockWidgetArea,m_procList);
@@ -30,6 +31,8 @@ Window::Window(void)
 
 	new std::thread([this](QStatusBar *st)
 	{
+		m_action->trigger();
+		}
 		//QStatusBar *st = statusBar();
 		std::ifstream fs("sosse");
 		std::vector<uint16_t> bytes;

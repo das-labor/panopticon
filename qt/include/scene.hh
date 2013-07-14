@@ -1,67 +1,85 @@
 #ifndef GRAPH_HH
 #define GRAPH_HH
 
-#include <functional>
-
-#include <QGraphicsScene>
-#include <QGraphicsObject>
-#include <QGraphicsTextItem>
-#include <QGraphicsSimpleTextItem>
-#include <QGraphicsRectItem>
-#include <QGraphicsPathItem>
-#include <QVariant>
-#include <QVariantAnimation>
-#include <QPoint>
-#include <QWidget>
+#include <QtDeclarative>
 #include <QPainter>
-#include <QStyleOptionGraphicsItem>
+#include <QList>
+#include <QDebug>
+#include <QStateMachine>
+#include <QEventTransition>
 
-#include <boost/iterator/filter_iterator.hpp>
+#include "path.hh"
+#include "stateMachine.hh"
 
-class Arrow;
-class Scene;
-
-class Arrow
+class Scene : public QDeclarativeItem
 {
-public:
-	virtual QGraphicsObject *from(void) = 0;
-	virtual QGraphicsObject *to(void) = 0;
-	virtual QPainterPath path(void) const = 0;
-	virtual void setPath(QPainterPath pp) = 0;
-	virtual QRectF boundingRect(void) const = 0;
-};
-
-class Scene : public QGraphicsScene
-{
-	Q_OBJECT
+	Q_OBJECT;
+	Q_PROPERTY(QDeclarativeListProperty<QDeclarativeItem> nodes READ nodes NOTIFY nodesChanged)
+	Q_PROPERTY(QDeclarativeListProperty<Path> paths READ paths NOTIFY pathsChanged)
 
 public:
-	typedef boost::filter_iterator<std::function<bool(Arrow *)>,QMultiMap<QGraphicsObject *,Arrow *>::iterator> iterator;
+	Scene(QDeclarativeItem *parent = 0);
+	virtual ~Scene(void);
 
-	Scene(void);
-	~Scene(void);
+	QDeclarativeListProperty<QDeclarativeItem> nodes(void);
+	QDeclarativeListProperty<Path> paths(void);
 
-	QList<QGraphicsObject *> &nodes(void);
-	QList<Arrow *> &edges(void);
-	std::pair<iterator,iterator> out_edges(QGraphicsObject *n);
-	std::pair<iterator,iterator> in_edges(QGraphicsObject *n);
+	const QList<QDeclarativeItem*> &nodeList(void) const;
+	const QList<Path*> &pathList(void) const;
+	const QList<Path*> &outEdges(QDeclarativeItem *i) const;
 
-	void insert(QGraphicsObject *n);
-	void connect(Arrow *a);
-	void clear(void);
+signals:
+	void nodesChanged(void);
+	void pathsChanged(void);
 
-	QRectF layoutCustom(QString algo);
-	QRectF layoutHierarchically(void);
+protected:
+	virtual void mousePressEvent(QGraphicsSceneMouseEvent *event);
+	virtual void mouseReleaseEvent(QGraphicsSceneMouseEvent *event);
+	virtual void mouseMoveEvent(QGraphicsSceneMouseEvent *event);
+  virtual bool eventFilter(QObject *obj, QEvent *event);
 
 private:
-	QList<QGraphicsObject *> m_nodes;
-	QList<Arrow *> m_edges;
-	QMultiMap<QGraphicsObject *,Arrow *> m_incidence;
+	QList<QDeclarativeItem*> m_nodes;
+	QList<Path*> m_paths;
+	QMap<QDeclarativeItem*,QList<Path*>> m_outEdges;
+	QMap<QDeclarativeItem*,NodeState*> m_nodeStates;
+	QMap<Path*,PathState*> m_pathStates;
+	StateMachine m_stateMachine;
+	QState *m_rootState;
+	QSet<QDeclarativeItem*> m_grabbedNodes;
 
-	void allocateScene(void);
-	void deleteScene(void);
-	void materializeScene(void);
-	void safeset(void *obj, std::string key, std::string value) const;
+	void layoutNodes(void);
+	void routePaths(void);
+
+	template<typename T>
+	static void appendCallback(QDeclarativeListProperty<T> *property, T *value);
+	template<typename T>
+	static int countCallback(QDeclarativeListProperty<T> *property);
+	template<typename T>
+	static T *atCallback(QDeclarativeListProperty<T> *property, int idx);
+	template<typename T>
+	static void clearCallback(QDeclarativeListProperty<T> *property);
+
+private slots:
+	void sent(const Event &n);
+	void updateOutEdges(void);
 };
+
+template<>
+void Scene::appendCallback(QDeclarativeListProperty<QDeclarativeItem> *property, QDeclarativeItem *value);
+template<>
+void Scene::appendCallback(QDeclarativeListProperty<Path> *property, Path *value);
+template<>
+int Scene::countCallback(QDeclarativeListProperty<QDeclarativeItem> *property);
+template<>
+int Scene::countCallback(QDeclarativeListProperty<Path> *property);
+template<>
+QDeclarativeItem *Scene::atCallback(QDeclarativeListProperty<QDeclarativeItem> *property, int idx);
+template<>
+Path *Scene::atCallback(QDeclarativeListProperty<Path> *property, int idx);
+template<>
+void Scene::clearCallback(QDeclarativeListProperty<QDeclarativeItem> *property);
+template<>
+void Scene::clearCallback(QDeclarativeListProperty<Path> *property);
 
 #endif

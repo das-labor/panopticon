@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 2.8)
 project(PanopticonQt CXX)
 
-file(GLOB qtpanopticon_SOURCES src/*.cc)
-file(GLOB qtpanopticon_HEADERS include/*.hh)
+file(GLOB qtpanopticon_SOURCES src/*.cc src/dot/*.cc)
+file(GLOB qtpanopticon_HEADERS include/*.hh include/dot/*.hh)
 
 include_directories(include ${Boost_INCLUDE_DIRS} ${libgvc_INCLUDE_DIRS} ${panopticon_INCLUDE_DIRS})
 link_directories(${Boost_LIBRARY_DIRS} ${libgvc_LIBRARY_DIRS} ${panopticon_LIBRARY_DIRS})

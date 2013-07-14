@@ -4,8 +4,6 @@
 #include <flowgraph.hh>
 #include <procedure.hh>
 
-#include <graphwidget.hh>
-
 class ProcedureWidget : public GraphWidget
 {
 	Q_OBJECT
