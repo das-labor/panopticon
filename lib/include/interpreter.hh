@@ -50,7 +50,7 @@ namespace po
 
 				//::std::cout << res << ::std::endl;
 
-				
+
 				if(!ret->count(left) || !(ret->at(left) == res))
 				{
 					//::std::cout << left << " changed!" << ::std::endl;
@@ -91,46 +91,46 @@ namespace po
 		{
 		// Bitwise Not
 		case instr::Not: return ~args[0];
-		
+
 		// Bitwise And
 		case instr::And:	return args[0] & args[1];
-		
+
 		// Bitwise Or
 		case instr::Or:	return args[0] | args[1];
-		
+
 		// Bitwize Xor
 		case instr::Xor:	return args[0] ^ args[1];
-		
+
 		// Assign Intermediate
 		case instr::Assign:	return args[0];
-		
+
 		// Unsigned right shift	*
 		case instr::UShr:	return args[0] >> args[1];
-		
+
 		// Unsigned left shift *
 		case instr::UShl:	return args[0] << args[1];
-		
+
 		// Slice
 		case instr::Slice: return (args[0] >> args[1]) % (I)::std::pow(2,args[2]+1);
-		
+
 		// Concatenation
 		//case instr::Concat: return args[0] << (sizeof(I) * 4) | args[1];
-		
+
 		// Addition
 		case instr::Add:	return args[0] + args[1];
-		
+
 		// Subtraction
 		case instr::Sub:	return args[0] - args[1];
-		
+
 		// Multiplication
 		case instr::Mul:	return args[0] * args[1];
-		
+
 		// Unsigned Division
 		case instr::UDiv:	return args[0] / args[1];
-		
+
 		// Unsigned Modulo reduction
 		case instr::UMod:	return args[0] % args[1];
-		
+
 		default: assert(false);
 		}
 	}
@@ -148,7 +148,7 @@ namespace po
 		sscp_lattice(void) : type(Bottom), value(0) {};
 		sscp_lattice(Type t) : type(t), value(0) {};
 		bool operator==(const sscp_lattice &a) const { return type == a.type && (type != Const || value == a.value); };
-		
+
 		Type type;
 		uint64_t value;
 	};

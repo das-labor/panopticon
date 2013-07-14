@@ -72,14 +72,16 @@ marshal_exception::marshal_exception(const string &w)
 rdf::world *rdf::world::s_instance = 0;
 
 rdf::world::world(void)
-: enable_shared_from_this()
+: enable_shared_from_this(), m_rdf_world(0), m_rap_world(0)
 {
 	assert(!s_instance);
-		
+
 	m_rdf_world = librdf_new_world();
 	librdf_world_open(m_rdf_world);
 	m_rap_world = librdf_world_get_raptor(m_rdf_world);
 }
+
+rdf::world::~world() {}
 
 rdf::world_ptr rdf::world::instance(void)
 {
@@ -161,7 +163,7 @@ rdf::storage rdf::storage::from_archive(const string &path)
 
 	// copy database files to tempdir
 	char *buf = new char[4096];
-	
+
 	do
 	{
 		char fileName[256];
@@ -209,7 +211,7 @@ rdf::storage rdf::storage::from_stream(const oturtlestream &os)
 	storage ret;
 	librdf_parser *parser = 0;
 	librdf_uri *uri = 0;
-	
+
 	assert(parser = librdf_new_parser(w->rdf(),"turtle",NULL,NULL));
 	assert(uri = librdf_new_uri_from_filename(w->rdf(),"http://localhost/"));
 	assert(!librdf_parser_parse_string_into_model(parser,reinterpret_cast<const unsigned char *>(os.str().c_str()),uri,ret.m_model));
@@ -226,7 +228,7 @@ rdf::storage rdf::storage::from_turtle(const string &path)
 	storage ret;
 	librdf_parser *parser = 0;
 	librdf_uri *uri = 0;
-	
+
 	assert(parser = librdf_new_parser(w->rdf(),"turtle",NULL,NULL));
 	assert(uri = librdf_new_uri_from_filename(w->rdf(),path.c_str()));
 	assert(!librdf_parser_parse_into_model(parser,uri,uri,ret.m_model));
@@ -280,7 +282,7 @@ rdf::storage::~storage(void)
 		// delete contents
 		struct dirent *dirEnt;
 		struct stat st;
-	
+
 		while((dirEnt = readdir(dirDesc)))
 		{
 			string ent(dirEnt->d_name);
@@ -301,11 +303,11 @@ rdf::storage::~storage(void)
 
 		if(closedir(dirDesc))
 			throw marshal_exception("can't close directory " + path);
-		
+
 		if(rmdir(path.c_str()))
 			throw marshal_exception("can't delete directory " + path);
 	};
-	
+
 	try
 	{
 		rm_r(m_tempdir);
@@ -342,7 +344,7 @@ void rdf::storage::snapshot(const string &path)
 	// save database files
 	struct dirent *dirEnt;
 	char buf[4096];
-	
+
 	while((dirEnt = readdir(dirDesc)))
 	{
 		string entBase(dirEnt->d_name);
@@ -372,7 +374,7 @@ void rdf::storage::snapshot(const string &path)
 
 			if(ret > 0 && zipWriteInFileInZip(zf,buf,ret) != ZIP_OK)
 				throw marshal_exception("can't save to " + path + ": error while writing " + entPath);
-		} 
+		}
 		while(ret);
 
 		if(close(fd) || zipCloseFileInZip(zf) != ZIP_OK)
@@ -390,7 +392,7 @@ rdf::stream rdf::storage::select(const rdf::node &s,const rdf::node &p,const rdf
 	return rdf::stream(librdf_model_find_statements(m_model,statement(s,p,o).inner()));
 }
 
-rdf::statement rdf::storage::first(const rdf::node &s,const rdf::node &p,const rdf::node &o) const 
+rdf::statement rdf::storage::first(const rdf::node &s,const rdf::node &p,const rdf::node &o) const
 {
 	rdf::stream st = select(s,p,o);
 
@@ -454,7 +456,7 @@ rdf::node &rdf::node::operator=(rdf::node &&n)
 {
 	m_node = n.m_node;
 	n.m_node = 0;
-	
+
 	return *this;
 }
 
@@ -509,19 +511,19 @@ rdf::node po::rdf::lit(unsigned long long n)
 }
 
 rdf::node po::rdf::ns_po(const std::string &s)
-{			
+{
 	return rdf::node(librdf_new_node_from_uri_string(rdf::world::instance()->rdf(),
 																									 reinterpret_cast<const unsigned char *>((std::string(PO) + s).c_str())));
 }
 
 rdf::node po::rdf::ns_rdf(const std::string &s)
-{			
+{
 	return rdf::node(librdf_new_node_from_uri_string(rdf::world::instance()->rdf(),
 																									 reinterpret_cast<const unsigned char *>((std::string(RDF) + s).c_str())));
 }
 
 rdf::node po::rdf::ns_xsd(const std::string &s)
-{			
+{
 	return rdf::node(librdf_new_node_from_uri_string(rdf::world::instance()->rdf(),
 																									 reinterpret_cast<const unsigned char *>((std::string(XSD) + s).c_str())));
 }
@@ -558,7 +560,7 @@ rdf::statement &rdf::statement::operator=(const rdf::statement &n)
 	if(m_statement)
 		librdf_free_statement(m_statement);
 	m_statement = n.m_statement ? librdf_new_statement_from_statement(n.m_statement) : 0;
-	
+
 	return *this;
 }
 
@@ -566,7 +568,7 @@ rdf::statement &rdf::statement::operator=(rdf::statement &&n)
 {
 	m_statement = n.m_statement;
 	n.m_statement = 0;
-	
+
 	return *this;
 }
 
@@ -577,7 +579,7 @@ rdf::node rdf::statement::subject(void) const
 
 	return node(librdf_new_node_from_node(librdf_statement_get_subject(m_statement)));
 }
-	
+
 rdf::node rdf::statement::predicate(void) const
 {
 	if(!m_statement || !librdf_statement_get_predicate(m_statement))
@@ -659,7 +661,7 @@ iturtlestream::iturtlestream(const string &path)
 	if(!s_usage++)
 	{
 		assert(!s_rdf_world && !s_rap_world);
-		
+
 		s_rdf_world = librdf_new_world();
 		librdf_world_open(s_rdf_world);
 		s_rap_world = librdf_world_get_raptor(s_rdf_world);
@@ -670,13 +672,13 @@ iturtlestream::iturtlestream(const string &path)
 
 	librdf_parser *parser;
 	librdf_uri *uri;
-	
+
 	assert(parser = librdf_new_parser(s_rdf_world,"turtle",NULL,NULL));
 	assert(uri = librdf_new_uri_from_filename(s_rdf_world,path.c_str()));
 	assert(!librdf_parser_parse_into_model(parser,uri,uri,m_model));
 
-	cout << librdf_model_size(m_model) << " triples in " << path << endl;	
-	
+	cout << librdf_model_size(m_model) << " triples in " << path << endl;
+
 	librdf_free_uri(uri);
 	librdf_free_parser(parser);
 }

@@ -18,10 +18,6 @@
 
 #include <boost/iterator/filter_iterator.hpp>
 
-extern "C" {
-#include <gvc.h>
-}
-
 class Arrow;
 class Graph;
 
@@ -44,7 +40,7 @@ public:
 
 	Graph(void);
 	~Graph(void);
-	
+
 	QList<QGraphicsObject *> &nodes(void);
 	QList<Arrow *> &edges(void);
 	std::pair<iterator,iterator> out_edges(QGraphicsObject *n);
@@ -61,12 +57,6 @@ private:
 	QList<QGraphicsObject *> m_nodes;
 	QList<Arrow *> m_edges;
 	QMultiMap<QGraphicsObject *,Arrow *> m_incidence;
-	
-	// Graphviz (libgraph)
-	GVC_t *m_gvContext;
-	Agraph_t *m_graph;
-	QMap<QGraphicsObject *,Agnode_t *> m_nodeProxies;
-	QMap<Arrow *,Agedge_t *> m_edgeProxies;
 
 	void allocateGraph(void);
 	void deleteGraph(void);

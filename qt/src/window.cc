@@ -1,5 +1,5 @@
 #include <functional>
-//#include <thread>
+#include <thread>
 #include <fstream>
 
 #include <QVBoxLayout>
@@ -7,7 +7,6 @@
 #include <QStatusBar>
 
 #include <window.hh>
-//#include <deflate.hh>
 
 #include <avr/avr.hh>
 
@@ -27,9 +26,9 @@ Window::Window(void)
 
 	connect(m_procList,SIGNAL(activated(po::proc_ptr)),this,SLOT(activate(po::proc_ptr)));
 
-//	new std::thread([this](QStatusBar *st)
-//	{
-		QStatusBar *st = statusBar();
+	new std::thread([this](QStatusBar *st)
+	{
+		//QStatusBar *st = statusBar();
 		std::ifstream fs("sosse");
 		std::vector<uint16_t> bytes;
 
@@ -37,7 +36,7 @@ Window::Window(void)
         std::cout << "I/O error while reading" << std::endl;
     else if (fs.fail())
         std::cout << "Non-integer data encountered" << std::endl;
-		else 
+		else
 		{
 			QMetaObject::invokeMethod(st,"showMessage",Qt::QueuedConnection,Q_ARG(QString,"Reading..."));
 			while(fs.good() && !fs.eof())
@@ -56,7 +55,7 @@ Window::Window(void)
 			QMetaObject::invokeMethod(st,"showMessage",Qt::QueuedConnection,Q_ARG(QString,"Done"),Q_ARG(int,10));
 			QMetaObject::invokeMethod(this,"ensureFlowgraphWidget",Qt::QueuedConnection);
 		}
-//	},statusBar());
+	},statusBar());
 }
 
 Window::~Window(void)
@@ -89,7 +88,7 @@ void Window::ensureFlowgraphWidget(void)
 		connect(m_flowView,SIGNAL(selected(po::proc_ptr)),m_procList,SLOT(select(po::proc_ptr)));
 		connect(m_procList,SIGNAL(selected(po::proc_ptr)),m_flowView,SLOT(select(po::proc_ptr)));
 	}
-	
+
 	if(m_tabs->indexOf(m_flowView) == -1)
 		m_tabs->addTab(m_flowView,"Callgraph");
 }

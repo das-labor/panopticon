@@ -34,7 +34,7 @@ namespace po
 	/**
 	 * @brief Output as graph in DOT language.
 	 *
-	 * This stream converts objects into a graph that can be drawn with 
+	 * This stream converts objects into a graph that can be drawn with
 	 * graphviz. Stream manipulators exists to enable/disable generation of
 	 * call edges, procedure bodies and IL dumps.
 	 *
@@ -58,7 +58,7 @@ namespace po
 		/// Dump IL code after mnemonic
 		bool instrs;
 	};
-	
+
 	odotstream &operator<<(odotstream &os, odotstream &(*func)(odotstream &os));
 
 	odotstream &calls(odotstream &os);
@@ -104,11 +104,11 @@ namespace po
 
 		/// Supresses double quotes around rvalue's
 		bool embed;
-	
+
 	private:
 		unsigned long long m_blank;
 	};
-	
+
 	oturtlestream &embed(oturtlestream &os);
 	oturtlestream &noembed(oturtlestream &os);
 
@@ -144,6 +144,9 @@ namespace po
 		public:
 			static world_ptr instance(void);
 
+			world(const world&) = delete;
+			world &operator=(const world&) = delete;
+
 			librdf_world *rdf(void) const;
 			raptor_world *raptor(void) const;
 
@@ -166,7 +169,7 @@ namespace po
 
 		private:
 			world(void);
-			~world(void);
+			virtual ~world(void);
 
 			librdf_world *m_rdf_world;
 			raptor_world *m_rap_world;
@@ -195,9 +198,9 @@ namespace po
 			void insert(const rdf::node &s, const rdf::node &p, const rdf::node &o);
 
 			void snapshot(const std::string &path);
-			
+
 		private:
-		
+
 			storage(bool openStore);
 
 			librdf_storage *m_storage;
@@ -227,7 +230,7 @@ namespace po
 		private:
 			librdf_node *m_node;
 		};
-	
+
 		node lit(const std::string &s);
 		node lit(unsigned long long n);
 		node ns_po(const std::string &s);
@@ -279,7 +282,7 @@ namespace po
 		{
 		public:
 			list(void);
-			
+
 			void insert(const rdf::node &s);
 			rdf::stream to_stream(const rdf::storage &store);
 
@@ -295,14 +298,14 @@ namespace po
 
 		std::stack<rdf::node> &context(void);
 		rdf::storage &store(void) const;
-	
+
 	private:
 		rdf::storage &m_storage;
 		std::stack<rdf::node> m_context;
 	};
 
 	ordfstream& operator<<(ordfstream &os, const rdf::statement &st);
-	
+
 	inline rdf::node operator"" _lit(const char *s)
 	{
 		rdf::world_ptr w = rdf::world::instance();
@@ -312,24 +315,24 @@ namespace po
 		librdf_free_uri(type);
 		return ret;
 	}
-	
+
 	inline rdf::node operator"" _lit(unsigned long long n)
 	{
 		return rdf::lit(n);
 	}
 
-	inline rdf::node operator"" _po(const char *s, unsigned long l)
-	{			
+	inline rdf::node operator"" _po(const char *s, std::size_t l)
+	{
 		return rdf::ns_po(std::string(s,l));
 	}
-	
-	inline rdf::node operator"" _rdf(const char *s, unsigned long l)
-	{			
+
+	inline rdf::node operator"" _rdf(const char *s, std::size_t l)
+	{
 		return rdf::ns_rdf(std::string(s,l));
 	}
-	
-	inline rdf::node operator"" _xsd(const char *s, unsigned long l)
-	{			
+
+	inline rdf::node operator"" _xsd(const char *s, std::size_t l)
+	{
 		return rdf::ns_xsd(std::string(s,l));
 	}
 }

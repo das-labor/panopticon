@@ -14,6 +14,7 @@ set(panopticon_FOUND 1)
 set(panopticon_FOUND ${panopticon_FOUND} PARENT_SCOPE)
 
 add_definitions("-Weffc++")
+remove_definitions("-Werror")
 include_directories(${panopticon_INCLUDE_DIRS})
 link_directories(${panopticon_LIBRARY_DIRS})
 
