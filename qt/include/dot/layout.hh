@@ -3,7 +3,7 @@
 
 #include <limits>
 
-#include "dot.hh"
+#include "dot/dot.hh"
 
 template<typename T>
 void dot::layout(T graph, unsigned int ranksep, unsigned int nodesep)
@@ -39,7 +39,7 @@ void dot::layout(T graph, unsigned int ranksep, unsigned int nodesep)
 		std::unordered_map<node_adaptor<T>,double> median = weighted_median(ph2,iter & 1);
 		unsigned int tmp = transpose(ph2);
 
-		if(cross < 0 || cross > tmp)
+		if(cross < 0 || static_cast<unsigned int>(cross) > tmp)
 		{
 			cross = tmp;
 			best = ph2;

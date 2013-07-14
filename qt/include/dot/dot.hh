@@ -8,9 +8,9 @@
 #include <functional>
 #include <algorithm>
 
-#include "traits.hh"
-#include "adaptor.hh"
-#include "types.hh"
+#include "dot/traits.hh"
+#include "dot/adaptor.hh"
+#include "dot/types.hh"
 
 namespace dot
 {

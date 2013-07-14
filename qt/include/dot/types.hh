@@ -1,7 +1,7 @@
 #ifndef TYPES_HH
 #define TYPES_HH
 
-#include "adaptor.hh"
+#include "dot/adaptor.hh"
 
 namespace dot
 {

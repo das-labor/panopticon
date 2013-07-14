@@ -11,7 +11,7 @@
 #include <avr/avr.hh>
 
 Window::Window(void)
-: m_flowView(0), m_procView(0), m_filterWidget(0), m_flowgraph(new po::flowgraph())
+: m_flowgraph(new po::flowgraph())
 {
 	setWindowTitle("Panopticum v0.8");
 	resize(1000,800);
@@ -31,8 +31,6 @@ Window::Window(void)
 
 	new std::thread([this](QStatusBar *st)
 	{
-		m_action->trigger();
-		}
 		//QStatusBar *st = statusBar();
 		std::ifstream fs("sosse");
 		std::vector<uint16_t> bytes;
@@ -75,19 +73,19 @@ void Window::activate(po::proc_ptr proc)
 	assert(proc);
 
 	qDebug() << QString::fromStdString(proc->name) << "activated!";
-	if(!m_procView)
+	/*if(!m_procView)
 	{
 		m_procView = new ProcedureWidget(m_flowgraph,proc,this);
 		m_tabs->addTab(m_procView,"Control Flow Graph");
 	}
 	else
 		m_procView->setProcedure(proc);
-	m_tabs->setCurrentWidget(m_procView);
+	m_tabs->setCurrentWidget(m_procView);*/
 }
 
 void Window::ensureFlowgraphWidget(void)
 {
-	if(!m_flowView)
+/*	if(!m_flowView)
 	{
 		m_flowView = new FlowgraphWidget(m_flowgraph,this);
 		connect(m_flowView,SIGNAL(selected(po::proc_ptr)),m_procList,SLOT(select(po::proc_ptr)));
@@ -95,5 +93,5 @@ void Window::ensureFlowgraphWidget(void)
 	}
 
 	if(m_tabs->indexOf(m_flowView) == -1)
-		m_tabs->addTab(m_flowView,"Callgraph");
+		m_tabs->addTab(m_flowView,"Callgraph");*/
 }

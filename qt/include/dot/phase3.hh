@@ -4,9 +4,9 @@
 #include <iterator>
 #include <memory>
 
-#include "dot.hh"
-#include "traits.hh"
-#include "net_flow.hh"
+#include "dot/dot.hh"
+#include "dot/traits.hh"
+#include "dot/net_flow.hh"
 
 template<typename T>
 dot::net_flow<dot::graph_adaptor<T>> dot::cook_phase3(T graph, const net_flow<T> &ph1, const phase2<T> &ph2, unsigned int nodesep)

@@ -3,8 +3,8 @@
 
 #include <algorithm>
 
-#include "dot.hh"
-#include "net_flow.hh"
+#include "dot/dot.hh"
+#include "dot/net_flow.hh"
 
 template<typename T>
 dot::net_flow<T> dot::cook_phase1(T graph)

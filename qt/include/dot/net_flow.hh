@@ -9,7 +9,7 @@
 #include <unordered_set>
 #include <map>
 
-#include "dot.hh"
+#include "dot/dot.hh"
 
 // tail,head components
 template<typename T>
@@ -208,7 +208,7 @@ void dot::balance(net_flow<T> &nf)
 					max_possible = std::max(max_possible,p.second);
 				}
 
-				if(max_possible - min_possible + 1 > rank_count.size())
+				if(max_possible - min_possible + 1 > static_cast<int>(rank_count.size()))
 				{
 					int i = min_possible;
 					while(i <= max_possible)
@@ -470,7 +470,7 @@ dot::net_flow<T> dot::preprocess(T graph, const std::unordered_map<typename grap
 	/*
 	 * 3. Rest of the nodes
 	 */
-	if(visited.size() != std::distance(i,iend))
+	if(static_cast<int>(visited.size()) != std::distance(i,iend))
 		std::for_each(i,iend,[&](const edge &m)
 		{
 			if(visited.count(source(m,graph)) == 0)

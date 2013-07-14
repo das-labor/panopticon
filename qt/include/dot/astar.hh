@@ -7,9 +7,9 @@
 #include <functional>
 #include <algorithm>
 
-#include "dot.hh"
-#include "traits.hh"
-#include "adaptor.hh"
+#include "dot/dot.hh"
+#include "dot/traits.hh"
+#include "dot/adaptor.hh"
 
 template<typename T>
 std::unordered_set<dot::vis_node<T>> dot::successors(dot::vis_node<T> cur, typename graph_traits<T>::edge_type e, const std::unordered_multimap<vis_node<T>,vis_node<T>> &vg, T graph)

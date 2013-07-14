@@ -14,7 +14,7 @@ int main(int argc, char *argv[])
 
 	QApplication app(argc, argv);
 	QScrollArea scroll;
-	QDeclarativeView view(QUrl::fromLocalFile("view.qml"));
+	QDeclarativeView view(QUrl("qrc:/Procedure.qml"));
 
 	scroll.setWidget(&view);
 	scroll.setWidgetResizable(true);

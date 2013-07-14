@@ -4,7 +4,7 @@
 Scene::Scene(QDeclarativeItem *parent)
 : QDeclarativeItem(parent), m_nodes(), m_paths(), m_stateMachine(), m_rootState(new QState()), m_grabbedNodes()
 {
-	SceneState *graphState = new SceneState(&m_stateMachine,m_rootState);
+	new GraphState(&m_stateMachine,m_rootState);
 
 	m_rootState->setChildMode(QState::ParallelStates);
 

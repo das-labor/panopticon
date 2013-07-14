@@ -1,7 +1,7 @@
 #ifndef INTERFACE_HH
 #define INTERFACE_HH
 
-#include <dot.hh>
+#include <dot/dot.hh>
 #include "graph.hh"
 
 struct GraphInterface

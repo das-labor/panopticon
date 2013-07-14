@@ -1,0 +1,10 @@
+<!DOCTYPE RCC><RCC version="1.0">
+<qresource>
+	<file>BasicBlock.qml</file>
+	<file>Edge.qml</file>
+	<file>graphStateMachine.scxml</file>
+	<file>head.svg</file>
+	<file>Procedure.qml</file>
+	<file>tail.svg</file>
+</qresource>
+</RCC>

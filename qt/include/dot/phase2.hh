@@ -3,7 +3,7 @@
 
 #include <algorithm>
 
-#include "dot.hh"
+#include "dot/dot.hh"
 
 namespace std
 {

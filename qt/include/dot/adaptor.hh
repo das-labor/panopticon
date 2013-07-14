@@ -14,7 +14,7 @@ namespace dot
 	template<typename T> struct node_adaptor;
 }
 
-#include "traits.hh"
+#include "dot/traits.hh"
 
 namespace dot
 {

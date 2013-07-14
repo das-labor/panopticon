@@ -3,10 +3,6 @@
 
 #include <QMainWindow>
 
-#include <flowgraphwidget.hh>
-#include <procedurewidget.hh>
-#include <filterwidget.hh>
-
 #include <actions.hh>
 #include <procedurelist.hh>
 
@@ -24,8 +20,6 @@ private slots:
 
 private:
 	QTabWidget *m_tabs;
-	FlowgraphWidget *m_flowView;
-	ProcedureWidget *m_procView;
 	ProcedureList *m_procList;
 	FilterWidget *m_filterWidget;
 	po::flow_ptr m_flowgraph;

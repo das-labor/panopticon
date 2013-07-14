@@ -13,7 +13,7 @@
 
 class Scene : public QDeclarativeItem
 {
-	Q_OBJECT;
+	Q_OBJECT
 	Q_PROPERTY(QDeclarativeListProperty<QDeclarativeItem> nodes READ nodes NOTIFY nodesChanged)
 	Q_PROPERTY(QDeclarativeListProperty<Path> paths READ paths NOTIFY pathsChanged)
 
