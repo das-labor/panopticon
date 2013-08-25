@@ -7,6 +7,8 @@
 class Disassemble;
 class Open;
 
+#include <window.hh>
+
 class Disassemble : public QAction
 {
 	Q_OBJECT
@@ -29,16 +31,14 @@ class Open : public QAction
 	Q_OBJECT
 
 public:
-	Open(QString path, po::flow_ptr f, std::function<void(void)> cb, QObject *parent = 0);
+	Open(QString path, Window *win);
 
 public slots:
-	void open(void);
 	void fire(bool b);
 
 private:
 	QString m_path;
-	po::flow_ptr m_flowgraph;
-	std::function<void(void)> m_signal;
+	Window *m_window;
 };
 
 #endif

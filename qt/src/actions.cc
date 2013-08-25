@@ -41,21 +41,19 @@ void Disassemble::disassemble(void)
 	po::avr::disassemble(bytes,0,m_flowgraph,m_signal);
 }
 
-Open::Open(QString path, po::flow_ptr f, std::function<void(void)> cb, QObject *parent)
-: QAction(parent), m_path(path), m_flowgraph(f), m_signal(cb)
+Open::Open(QString path, Window *w)
+: QAction(w), m_path(path), m_window(w)
 {
+	assert(w);
+
 	setText("Open");
 	connect(this,SIGNAL(triggered(bool)),this,SLOT(fire(bool)));
 }
 
 void Open::fire(bool)
 {
-	assert(QFile::exists(m_path) && m_flowgraph);
-	QTimer::singleShot(0,this,SLOT(open()));
-}
-
-void Open::open(void)
-{
+	assert(QFile::exists(m_path));
+	
 	rdf::storage store = rdf::storage::from_turtle(m_path.toStdString());
 	rdf::stream s = store.select(nullptr,"type"_rdf,"Flowgraph"_po);
 
@@ -66,13 +64,11 @@ void Open::open(void)
 		s >> st;
 		try
 		{
-			m_flowgraph = flowgraph::unmarshal(st.subject(),store);
+			m_window->setFlowgraph(flowgraph::unmarshal(st.subject(),store));
 		}
 		catch(marshal_exception &e)
 		{
 			cerr << "Caught exception:" << endl << e.what() << endl;
 		}
 	}
-
-	m_signal();
 }

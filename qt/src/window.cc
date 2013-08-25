@@ -5,23 +5,23 @@
 #include <QVBoxLayout>
 #include <QDebug>
 #include <QStatusBar>
+#include <QCoreApplication>
 
 #include <window.hh>
 
 #include <avr/avr.hh>
 
 Window::Window(void)
-: m_flowgraph(new po::flowgraph())
 {
 	setWindowTitle("Panopticum v0.8");
 	resize(1000,800);
 	move(500,200);
 
 	m_tabs = new QTabWidget(this);
-	m_procList = new ProcedureList(m_flowgraph,this);
-	m_filterWidget = new FilterWidget(this);
+	m_procList = new ProcedureList(this);
+
 	//m_action = new Disassemble("../sosse",flow,[&](po::proc_ptr p, unsigned int i) { if(p) m_procList->snapshot(); },this);
-	m_action = new Open("test.ttl",m_flowgraph,[&](void) { m_procList->snapshot(); },this);
+	m_action = new Open(QCoreApplication::arguments().at(1),this);
 
 	setCentralWidget(m_tabs);
 	addDockWidget(Qt::LeftDockWidgetArea,m_procList);
@@ -29,36 +29,7 @@ Window::Window(void)
 
 	connect(m_procList,SIGNAL(activated(po::proc_ptr)),this,SLOT(activate(po::proc_ptr)));
 
-	new std::thread([this](QStatusBar *st)
-	{
-		//QStatusBar *st = statusBar();
-		std::ifstream fs("sosse");
-		std::vector<uint16_t> bytes;
-
-		if (fs.bad())
-        std::cout << "I/O error while reading" << std::endl;
-    else if (fs.fail())
-        std::cout << "Non-integer data encountered" << std::endl;
-		else
-		{
-			QMetaObject::invokeMethod(st,"showMessage",Qt::QueuedConnection,Q_ARG(QString,"Reading..."));
-			while(fs.good() && !fs.eof())
-			{
-				uint16_t c;
-				fs.read((char *)&c,sizeof(c));
-				bytes.push_back(c);
-			}
-
-			QMetaObject::invokeMethod(st,"showMessage",Qt::QueuedConnection,Q_ARG(QString,"Disassembling..."));
-			po::avr::disassemble(bytes,0,m_flowgraph,[&](unsigned int done, unsigned int todo)
-			{
-				QMetaObject::invokeMethod(m_procList,"snapshot",Qt::QueuedConnection);
-				QMetaObject::invokeMethod(st,"showMessage",Qt::QueuedConnection,Q_ARG(QString,QString("Disassembling... (%1 of %2 pending)").arg(todo).arg(done)));
-			});
-			QMetaObject::invokeMethod(st,"showMessage",Qt::QueuedConnection,Q_ARG(QString,"Done"),Q_ARG(int,10));
-			QMetaObject::invokeMethod(this,"ensureFlowgraphWidget",Qt::QueuedConnection);
-		}
-	},statusBar());
+	m_action->trigger();
 }
 
 Window::~Window(void)
@@ -94,4 +65,15 @@ void Window::ensureFlowgraphWidget(void)
 
 	if(m_tabs->indexOf(m_flowView) == -1)
 		m_tabs->addTab(m_flowView,"Callgraph");*/
+}
+
+po::flow_ptr Window::flowgraph(void)
+{
+	return m_flowgraph;
+}
+
+void Window::setFlowgraph(po::flow_ptr f)
+{
+	m_flowgraph = f;
+	m_procList->setFlowgraph(f);
 }

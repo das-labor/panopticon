@@ -8,6 +8,8 @@
 #include <flowgraph.hh>
 #include <procedure.hh>
 
+Q_DECLARE_METATYPE(po::flow_ptr)
+
 class ProcedureListItem : public QTableWidgetItem
 {
 public:
@@ -33,12 +35,15 @@ protected:
 class ProcedureList : public QDockWidget
 {
 	Q_OBJECT
+	Q_PROPERTY(po::flow_ptr flowgraph READ flowgraph WRITE setFlowgraph)
 
 public:
-	ProcedureList(po::flow_ptr flow, QWidget *parent = 0);
+	ProcedureList(QWidget *parent = 0);
+
+	po::flow_ptr flowgraph(void);
+	void setFlowgraph(po::flow_ptr f);
 
 public slots:
-	void snapshot(void);
 	void select(po::proc_ptr proc);
 	void currentChanged(const QModelIndex &, const QModelIndex &);
 

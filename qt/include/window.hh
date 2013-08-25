@@ -3,16 +3,22 @@
 
 #include <QMainWindow>
 
+class Window;
+
 #include <actions.hh>
 #include <procedurelist.hh>
 
 class Window : public QMainWindow
 {
 	Q_OBJECT
+	Q_PROPERTY(po::flow_ptr flowgraph READ flowgraph WRITE setFlowgraph)
 
 public:
 	Window(void);
 	virtual ~Window(void);
+
+	po::flow_ptr flowgraph(void);
+	void setFlowgraph(po::flow_ptr f);
 
 private slots:
 	void ensureFlowgraphWidget(void);

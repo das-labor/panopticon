@@ -1,8 +1,9 @@
 #include <QtCore>
 #include <QtDeclarative>
 
-#include "graph.hh"
-#include "interface.hh"
+#include <graph.hh>
+#include <interface.hh>
+#include <window.hh>
 
 using namespace std;
 
@@ -13,11 +14,14 @@ int main(int argc, char *argv[])
 	qmlRegisterType<Pen>("Panopticon",1,0,"Pen");
 
 	QApplication app(argc, argv);
-	QScrollArea scroll;
+	Window win;
+
+	win.show();
+	/*QScrollArea scroll;
 	QDeclarativeView view(QUrl("qrc:/Procedure.qml"));
 
 	scroll.setWidget(&view);
 	scroll.setWidgetResizable(true);
-	scroll.show();
+	scroll.show();*/
 	return app.exec();
 }

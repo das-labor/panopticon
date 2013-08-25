@@ -54,8 +54,8 @@ QTableWidgetItem *ProcedureListItem::clone(void) const
 	return new ProcedureListItem(procedure(),field());
 }
 
-ProcedureList::ProcedureList(po::flow_ptr f, QWidget *parent)
-: QDockWidget("Procedures",parent), m_flowgraph(f)
+ProcedureList::ProcedureList(QWidget *parent)
+: QDockWidget("Procedures",parent)
 {
 	m_list.horizontalHeader()->hide();
 	m_list.horizontalHeader()->setStretchLastSection(true);
@@ -68,11 +68,12 @@ ProcedureList::ProcedureList(po::flow_ptr f, QWidget *parent)
 	
 	connect(&m_list,SIGNAL(itemActivated(QTableWidgetItem *)),this,SLOT(activateItem(QTableWidgetItem*)));
 	connect(m_list.selectionModel(),SIGNAL(currentChanged(const QModelIndex&,const QModelIndex &)),this,SLOT(currentChanged(const QModelIndex&,const QModelIndex &)));
-	snapshot();
 }
 
-void ProcedureList::snapshot(void)
+void ProcedureList::setFlowgraph(po::flow_ptr f)
 {
+	m_flowgraph = f;
+
 	std::lock_guard<std::mutex> guard(m_flowgraph->mutex);
 	std::set<po::proc_ptr> known;
 
@@ -82,7 +83,7 @@ void ProcedureList::snapshot(void)
 		ProcedureListItem *item = dynamic_cast<ProcedureListItem *>(m_list.item(row,0));
 		assert(item);
 
-		if(!m_flowgraph->procedures.count(item->procedure()))
+		if(m_flowgraph || !m_flowgraph->procedures.count(item->procedure()))
 		{
 			m_list.removeRow(row);
 		}
@@ -93,32 +94,40 @@ void ProcedureList::snapshot(void)
 		}
 	}
 	
-	m_list.setRowCount(m_flowgraph->procedures.size());
-	
-	assert(known.size() <= m_flowgraph->procedures.size());
-	if(known.size() < m_flowgraph->procedures.size())
+	if(m_flowgraph)
 	{
-		std::set<po::proc_ptr> todo;
-
-		std::set_difference(m_flowgraph->procedures.begin(),m_flowgraph->procedures.end(),
-												known.begin(),known.end(),
-												std::inserter(todo,todo.begin()));
-
-		for(po::proc_ptr p: todo)
+		m_list.setRowCount(m_flowgraph->procedures.size());
+		
+		assert(known.size() <= m_flowgraph->procedures.size());
+		if(known.size() < m_flowgraph->procedures.size())
 		{
-			ProcedureListItem *col0 = new ProcedureListItem(p,ProcedureListItem::EntryPoint);
-			ProcedureListItem *col1 = new ProcedureListItem(p,ProcedureListItem::Name);
+			std::set<po::proc_ptr> todo;
 
-			m_list.setItem(row,0,col0);
-			m_list.setItem(row,1,col1);
+			std::set_difference(m_flowgraph->procedures.begin(),m_flowgraph->procedures.end(),
+													known.begin(),known.end(),
+													std::inserter(todo,todo.begin()));
 
-			++row;
+			for(po::proc_ptr p: todo)
+			{
+				ProcedureListItem *col0 = new ProcedureListItem(p,ProcedureListItem::EntryPoint);
+				ProcedureListItem *col1 = new ProcedureListItem(p,ProcedureListItem::Name);
+
+				m_list.setItem(row,0,col0);
+				m_list.setItem(row,1,col1);
+
+				++row;
+			}
 		}
 	}
 	
 	m_list.resizeRowsToContents();
 	m_list.resizeColumnsToContents();
 	m_list.sortItems(0,Qt::AscendingOrder);
+}
+
+po::flow_ptr ProcedureList::flowgraph(void)
+{
+	return m_flowgraph;
 }
 
 void ProcedureList::select(po::proc_ptr proc)
