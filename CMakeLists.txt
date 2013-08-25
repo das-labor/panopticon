@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 2.8)
 project(Panopticon CXX)
+include(CheckCXXCompilerFlag)
 
 set(PROJECT_BINARY_DIR build)
 set(panopticon_MAJOR 0)
@@ -19,12 +20,13 @@ add_definitions("-Wall -Wextra -pedantic
 # remove when fixed in CVC4
 add_definitions("-Wno-deprecated") 
 
-if(${CMAKE_BUILD_TYPE} STREQUAL "Release")
+# Release mode is default
+if(NOT DEFINED "CMAKE_BUILD_TYPE" OR "${CMAKE_BUILD_TYPE}" STREQUAL "Release")
 	add_definitions("-Werror")
-endif()
-
-if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
+	message("Build release")
+elseif("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
 	include(CTest)
+	message("Build release")
 endif()
 
 # Dependencies
@@ -51,7 +53,7 @@ elseif(CXXFLAG_CPP0X)
 	add_definitions("-std=c++0x")
 else()
 	message(FATAL_ERROR "Your compiler does not support C++11. Please use clang
-	3.0 or GCC 4.8.")
+	3.0 or GCC 4.7.")
 endif()
 
 # Targets
