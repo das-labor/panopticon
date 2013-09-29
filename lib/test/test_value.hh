@@ -59,7 +59,7 @@ public:
 
 		CPPUNIT_ASSERT(c1.content() == 1);
 		CPPUNIT_ASSERT(c1.width() == 3);
-		
+
 		CPPUNIT_ASSERT(c3.content() == 7);
 		CPPUNIT_ASSERT(c3.width() == 3);
 
@@ -86,11 +86,11 @@ public:
 		CPPUNIT_ASSERT(v1.name() == std::string("a"));
 		CPPUNIT_ASSERT(v1.width() == 2);
 		CPPUNIT_ASSERT(v1.subscript() == 0);
-		
+
 		CPPUNIT_ASSERT(v2.name() == std::string("b"));
 		CPPUNIT_ASSERT(v2.width() == 3);
 		CPPUNIT_ASSERT(v2.subscript() == -1);
-		
+
 		CPPUNIT_ASSERT(v3.name() == std::string("a"));
 		CPPUNIT_ASSERT(v3.width() == 1);
 		CPPUNIT_ASSERT(v3.subscript() == 88);
@@ -102,11 +102,11 @@ public:
 		CPPUNIT_ASSERT(po::lvalue(v1).to_variable() == v1);
 
 		v1 = v2;
-		CPPUNIT_ASSERT(v1 == v2);	
+		CPPUNIT_ASSERT(v1 == v2);
 		CPPUNIT_ASSERT(v1.name() == std::string("b"));
 		CPPUNIT_ASSERT(v1.width() == 3);
-		CPPUNIT_ASSERT(v1.subscript() == -1);		
-		
+		CPPUNIT_ASSERT(v1.subscript() == -1);
+
 		po::rvalue rv;
 		rv = v3;
 		CPPUNIT_ASSERT(rv.to_variable() == v3);
@@ -118,8 +118,8 @@ public:
 
 	void testMemory(void)
 	{
-		po::memory m1(po::constant(1,1),2,po::memory::BigEndian,"n"), m2(po::constant(2,44),1,po::memory::BigEndian,"n"), m3(po::constant(3,3),2,po::memory::LittleEndian,"n");	
-		
+		po::memory m1(po::constant(1,1),2,po::memory::BigEndian,"n"), m2(po::constant(2,44),1,po::memory::BigEndian,"n"), m3(po::constant(3,3),2,po::memory::LittleEndian,"n");
+
 		CPPUNIT_ASSERT(m1 != m2);
 		CPPUNIT_ASSERT(m1 != m3);
 		CPPUNIT_ASSERT(m3 != m2);

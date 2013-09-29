@@ -20,7 +20,7 @@ namespace po
 	typedef std::shared_ptr<const class procedure> proc_cptr;
 	typedef std::weak_ptr<class procedure> proc_wptr;
 	typedef std::weak_ptr<const class procedure> proc_cwptr;
-	
+
 	typedef std::shared_ptr<struct flowgraph> flow_ptr;
 
 	bool operator<(const proc_wptr &a, const proc_wptr &b);
@@ -29,7 +29,7 @@ namespace po
 	void call(proc_ptr from, proc_ptr to);
 	void execute(proc_cptr proc,std::function<void(const lvalue &left, instr::Function fn, const std::vector<rvalue> &right)> f);
 	bblock_ptr find_bblock(proc_ptr proc, addr_t a);
-	
+
 	struct domtree
 	{
 		domtree(bblock_ptr b);
@@ -37,7 +37,7 @@ namespace po
 		dtree_ptr intermediate;			// e.g. parent
 		std::set<dtree_ptr> successors;
 		std::set<dtree_ptr> frontiers;
-		
+
 		bblock_wptr basic_block;
 	};
 
@@ -56,19 +56,19 @@ namespace po
 		bblock_ptr entry;
 		std::set<bblock_ptr> basic_blocks;
 		std::mutex mutex;
-		
+
 		// modified via call()
 		std::set<proc_wptr> callers;	// procedures calling this procedure
 		std::set<proc_wptr> callees;	// procedures called by this procedure
 
 		template<typename Tag>
-		static proc_ptr disassemble(const proc_ptr proc, const disassembler<Tag> &main, std::vector<typename rule<Tag>::token> tokens, addr_t start);	
+		static proc_ptr disassemble(const proc_ptr proc, const disassembler<Tag> &main, std::vector<typename rule<Tag>::token> tokens, addr_t start);
 	};
 
 	odotstream &operator<<(odotstream &os, const procedure &p);
 	oturtlestream &operator<<(oturtlestream &os, const procedure &p);
 	std::string unique_name(const procedure &f);
-	
+
 	template<typename Tag>
 	proc_ptr procedure::disassemble(const proc_ptr proc, const disassembler<Tag> &main, std::vector<typename rule<Tag>::token> tokens, addr_t start)
 	{
@@ -104,7 +104,7 @@ namespace po
 						source.insert(std::make_pair(bb->area().last(),std::make_pair(ct.value.to_constant().content(),ct.condition)));
 						destination.insert(std::make_pair(ct.value.to_constant().content(),std::make_pair(bb->area().last(),ct.condition)));
 					}
-				}	
+				}
 			}
 
 			proc->basic_blocks.clear();
@@ -119,7 +119,7 @@ namespace po
 			bool ret;
 			typename rule<Tag>::tokiter i = tokens.begin();
 			auto j = mnemonics.lower_bound(cur_addr);
-		
+
 			todo.erase(todo.begin());
 
 			if(cur_addr >= tokens.size())
@@ -132,17 +132,17 @@ namespace po
 			{
 				advance(i,cur_addr);
 				tie(ret,i) = main.match(i,tokens.end(),state);
-			
+
 				if(ret)
 				{
 					addr_t last = 0;
-					
+
 					for(const mnemonic &m: state.mnemonics)
 					{
 						last = std::max(last,m.area.last());
 						assert(mnemonics.insert(std::make_pair(m.area.begin,m)).second);
 					}
-							
+
 					for(const std::pair<rvalue,guard> &p: state.jumps)
 					{
 						if(p.first.is_constant())
@@ -169,7 +169,7 @@ namespace po
 				std::cerr << "Overlapping mnemonics at " << cur_addr << " with \"" << "[" << j->second.area << "] " << j->second << "\"" << std::endl;
 			}
 		}
-		
+
 		auto cur_mne = mnemonics.begin(), first_mne = cur_mne;
 		std::map<addr_t,bblock_ptr> bblocks;
 		std::function<void(std::map<addr_t,mnemonic>::iterator,std::map<addr_t,mnemonic>::iterator)> make_bblock;
@@ -178,12 +178,12 @@ namespace po
 			bblock_ptr bb(new basic_block());
 
 			// copy mnemonics
-			bb->mutate_mnemonics([&](std::vector<mnemonic> &ms) 
+			bb->mutate_mnemonics([&](std::vector<mnemonic> &ms)
 			{
 				std::for_each(begin,end,[&](const std::pair<addr_t,mnemonic> &p)
-				{ 
-					ms.push_back(p.second); 
-				}); 
+				{
+					ms.push_back(p.second);
+				});
 			});
 
 			ret->basic_blocks.insert(bb);
@@ -197,7 +197,7 @@ namespace po
 			addr_t div = mne.area.end;
 			auto sources = source.equal_range(mne.area.last());
 			auto destinations = destination.equal_range(div);
-			
+
 			if(next_mne != mnemonics.end() && mne.area.size())
 			{
 				bool new_bb;
@@ -206,22 +206,22 @@ namespace po
 				new_bb = next_mne->first != div;
 
 				// or any following jumps aren't to adjacent mnemonics
-				new_bb |= std::any_of(sources.first,sources.second,[&](const std::pair<addr_t,std::pair<addr_t,guard>> &p) 
-				{ 
-					return p.second.first != div; 
+				new_bb |= std::any_of(sources.first,sources.second,[&](const std::pair<addr_t,std::pair<addr_t,guard>> &p)
+				{
+					return p.second.first != div;
 				});
-				
+
 				// or any jumps pointing to the next that aren't from here
-				new_bb |= std::any_of(destinations.first,destinations.second,[&](const std::pair<addr_t,std::pair<addr_t,guard>> &p) 
-				{ 
+				new_bb |= std::any_of(destinations.first,destinations.second,[&](const std::pair<addr_t,std::pair<addr_t,guard>> &p)
+				{
 					return p.second.first != mne.area.last();
 				});
-			
+
 				// construct a new basic block
 				if(new_bb)
 				{
 					make_bblock(first_mne,next_mne);
-					
+
 					first_mne = next_mne;
 				}
 				else
@@ -235,10 +235,10 @@ namespace po
 
 			cur_mne = next_mne;
 		}
-	
+
 		// last bblock
 		make_bblock(first_mne,cur_mne);
-				
+
 		// connect basic blocks
 		for(const std::pair<addr_t,std::pair<addr_t,guard>> &p: source)
 		{
@@ -256,7 +256,7 @@ namespace po
 
 		if(ret->basic_blocks.size() == 1 && (*ret->basic_blocks.begin())->mnemonics().empty())
 			ret->basic_blocks.clear();
-		
+
 		// entry may have been split
 		if((proc && proc->entry) || ret->basic_blocks.size())
 		{

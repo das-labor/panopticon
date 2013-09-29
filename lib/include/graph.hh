@@ -23,13 +23,25 @@ namespace po
 
 		descriptor(void) : m_ptr(0) {}
 		descriptor(const descriptor &v) : m_ptr(v.m_ptr) {}
-		descriptor &operator=(const descriptor &v) { if(!(*this == v)) m_ptr = v.m_ptr; return *this; }
-		bool operator!=(const descriptor &v) const { return !(*this == v); }
-		bool operator==(const descriptor &v) const { return (m_ptr == 0 && v.m_ptr == 0) ||
-																												(m_ptr && v.m_ptr && *m_ptr == *v.m_ptr); }
+		descriptor &operator=(const descriptor &v)
+		{
+			if(m_ptr != v.m_ptr)
+				m_ptr = v.m_ptr;
+			return *this;
+		}
+
+		bool operator!=(const descriptor &v) const { return m_ptr != v.m_ptr; }
+		bool operator==(const descriptor &v) const { return m_ptr == v.m_ptr; }
 
 	private:
-		const X&operator*(void) const { return *m_ptr; }
+		const X&operator*(void) const
+		{
+			if(!m_ptr)
+				throw std::runtime_error("dereference NULL descriptor");
+			else
+				return *m_ptr;
+		}
+
 		const X *m_ptr;
 
 		template<typename,typename>
@@ -59,7 +71,7 @@ namespace boost
 		using vertex_descriptor = po::descriptor<N>;
 		using edge_descriptor = po::descriptor<E>;
 		using directed_category = directed_tag;
-		using edge_parallel_category = disallow_parallel_edge_tag;
+		using edge_parallel_category = allow_parallel_edge_tag;
 		struct traversal_category : public vertex_list_graph_tag, edge_list_graph_tag, bidirectional_graph_tag {};
 
 		// VertexListGraph concept
@@ -121,18 +133,37 @@ namespace po
 		po::descriptor<N>
 		source(const po::descriptor<E> &e) const
 		{
-			return m_neighbors.find(e)->second.first;
+			auto i = m_neighbors.find(e);
+
+			if(!has_edge(e))
+				throw std::out_of_range("unknown edge");
+
+			if(i == m_neighbors.end())
+				throw std::out_of_range("unknown edge");
+			else
+				return i->second.first;
 		}
 
 		po::descriptor<N>
 		target(const po::descriptor<E> &e) const
 		{
-			return m_neighbors.find(e)->second.second;
+			auto i = m_neighbors.find(e);
+
+			if(!has_edge(e))
+				throw std::out_of_range("unknown edge");
+
+			if(i == m_neighbors.end())
+				throw std::out_of_range("unknown edge");
+			else
+				return i->second.second;
 		}
 
 		std::pair<out_edge_iterator,out_edge_iterator>
-		out_edges(po::descriptor<N> d) const
+		out_edges(const po::descriptor<N> &d) const
 		{
+			if(!has_node(d))
+				throw std::out_of_range("unknown node");
+
 			auto p = m_forward.equal_range(d);
 			std::function<po::descriptor<E>(const std::pair<po::descriptor<N>,po::descriptor<E>>&)> fn = [](const std::pair<po::descriptor<N>,po::descriptor<E>> &e) { return e.second; };
 
@@ -141,8 +172,11 @@ namespace po
 		}
 
 		std::pair<in_edge_iterator,in_edge_iterator>
-		in_edges(po::descriptor<N> d) const
+		in_edges(const po::descriptor<N> &d) const
 		{
+			if(!has_node(d))
+				throw std::out_of_range("unknown node");
+
 			auto p = m_backward.equal_range(d);
 			std::function<po::descriptor<E>(const std::pair<po::descriptor<N>,po::descriptor<E>>&)> fn = [](const std::pair<po::descriptor<N>,po::descriptor<E>> &e) { return e.second; };
 
@@ -153,46 +187,64 @@ namespace po
 		po::descriptor<N>
 		insert_node(const N &n)
 		{
-			return po::descriptor<N>::construct(*m_nodes.insert(n).second);
+			return po::descriptor<N>::construct(*m_nodes.insert(n).first);
 		}
 
 		po::descriptor<E>
-		insert_edge(const E &e, po::descriptor<N> from, po::descriptor<N> to)
+		insert_edge(const E &e, const po::descriptor<N> &from, const po::descriptor<N> &to)
 		{
-			assert(m_nodes.count(*from) && m_nodes.count(*to));
+			if(!has_node(from) || !has_node(to))
+				throw std::out_of_range("unknown node");
 
-			m_edges.insert(e);
-			m_forward.insert(from,po::descriptor<E>::construct(e));
-			m_backward.insert(to,po::descriptor<E>::construct(e));
+			auto i = m_edges.insert(e).first;
+			m_forward.insert(std::make_pair(from,po::descriptor<E>::construct(*i)));
+			m_backward.insert(std::make_pair(to,po::descriptor<E>::construct(*i)));
+			m_neighbors.insert(std::make_pair(po::descriptor<E>::construct(*i),std::make_pair(from,to)));
+			return descriptor<E>::construct(*i);
 		}
 
-		void remove_edge(po::descriptor<E> e)
+		void remove_edge(const po::descriptor<E> &e)
 		{
-			auto del = [](std::pair<po::descriptor<N>,po::descriptor<E>> &p, std::unordered_multimap<po::descriptor<N>,po::descriptor<E>> &m)
+			if(!has_edge(e))
+				throw std::out_of_range("unknown edge");
+
+			auto del = [](const std::pair<po::descriptor<N>,po::descriptor<E>> &p, std::unordered_multimap<po::descriptor<N>,po::descriptor<E>> &m)
 			{
 				auto is = m.equal_range(p.first);
 				auto i = is.first;
 
 				while(i != is.second)
-					if(*i == p)
-						m.erase(i);
+				{
+					if(i->second == p.second)
+					{
+						i = m.erase(i);
+						return;
+					}
 					else
 						++i;
+				}
+				assert(false);
 			};
-			auto n = m_neighbors[e];
+			auto n = m_neighbors.find(e);
 
-			del(std::make_pair(e,n->second.first),m_backward);
-			del(std::make_pair(e,n->second.second),m_forward);
+			if(n == m_neighbors.end())
+				throw std::out_of_range("unknown edge");
+
+			del(std::make_pair(n->second.second,e),m_backward);
+			del(std::make_pair(n->second.first,e),m_forward);
 			m_neighbors.erase(n);
 			m_edges.erase(*e);
 		}
 
-		void remove_node(po::descriptor<N> n)
+		void remove_node(const po::descriptor<N> &n)
 		{
-			for(auto i = m_forward.find(n); i != m_forward.end();)
+			if(!has_node(n))
+				throw std::out_of_range("unknown node");
+
+			for(auto i = m_forward.find(n); i != m_forward.end(); i = m_forward.find(n))
 				remove_edge(i->second);
 
-			for(auto i = m_backward.find(n); i != m_backward.end();)
+			for(auto i = m_backward.find(n); i != m_backward.end(); i = m_backward.find(n))
 				remove_edge(i->second);
 
 			m_nodes.erase(*n);
@@ -210,28 +262,44 @@ namespace po
 			return boost::make_transform_iterator(m_edges.find(*e),std::function<po::descriptor<E>(const E&)>([](const E &n) { return po::descriptor<E>::construct(n); }));
 		}
 
-		const N &get_node(po::descriptor<N> &n) const
+		const N &get_node(const po::descriptor<N> &n) const
 		{
-			assert(m_nodes.count(*n));
+			if(!has_node(n))
+				throw std::out_of_range("unknown node");
 			return *n;
 		}
 
-		N &get_node(po::descriptor<N> &n)
+		N &get_node(const po::descriptor<N> &n)
 		{
-			assert(m_nodes.count(*n));
-			return *n;
+			if(!has_node(n))
+				throw std::out_of_range("unknown node");
+			return const_cast<N&>(*n);
 		}
 
-		const E &get_edge(po::descriptor<E> &e) const
+		const E &get_edge(const po::descriptor<E> &e) const
 		{
-			assert(m_edges.count(*e));
+			if(!has_edge(e))
+				throw std::out_of_range("unknown edge");
 			return *e;
 		}
 
-		E &get_edge(po::descriptor<E> &e)
+		E &get_edge(const po::descriptor<E> &e)
 		{
-			assert(m_edges.count(*e));
-			return *e;
+			if(!has_edge(e))
+				throw std::out_of_range("unknown edge");
+			return const_cast<E&>(*e);
+		}
+
+		bool has_node(const po::descriptor<N> &n) const
+		{
+			auto i = m_nodes.find(*n);
+			return i != m_nodes.end() && &(*i) == &(*n);
+		}
+
+		bool has_edge(const po::descriptor<E> &e) const
+		{
+			auto i = m_edges.find(*e);
+			return i != m_edges.end() && &(*i) == &(*e);
 		}
 
 	private:
