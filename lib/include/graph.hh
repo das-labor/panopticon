@@ -15,30 +15,27 @@ namespace po
 	template<typename N, typename E>
 	struct graph;
 
-	namespace
+	template<typename X>
+	class descriptor
 	{
-		template<typename X>
-		class descriptor
-		{
-		public:
-			static descriptor construct(const X &x) { descriptor ret; ret.m_ptr = &x; return ret; }
+	public:
+		static descriptor construct(const X &x) { descriptor ret; ret.m_ptr = &x; return ret; }
 
-			descriptor(void) : m_ptr(0) {}
-			descriptor(const descriptor &v) : m_ptr(v.m_ptr) {}
-			descriptor &operator=(const descriptor &v) { if(!(*this == v)) m_ptr = v.m_ptr; return *this; }
-			bool operator!=(const descriptor &v) const { return !(*this == v); }
-			bool operator==(const descriptor &v) const { return (m_ptr == 0 && v.m_ptr == 0) ||
-																													(m_ptr && v.m_ptr && *m_ptr == *v.m_ptr); }
+		descriptor(void) : m_ptr(0) {}
+		descriptor(const descriptor &v) : m_ptr(v.m_ptr) {}
+		descriptor &operator=(const descriptor &v) { if(!(*this == v)) m_ptr = v.m_ptr; return *this; }
+		bool operator!=(const descriptor &v) const { return !(*this == v); }
+		bool operator==(const descriptor &v) const { return (m_ptr == 0 && v.m_ptr == 0) ||
+																												(m_ptr && v.m_ptr && *m_ptr == *v.m_ptr); }
 
-		private:
-			const X&operator*(void) const { return *m_ptr; }
-			const X *m_ptr;
+	private:
+		const X&operator*(void) const { return *m_ptr; }
+		const X *m_ptr;
 
-			template<typename,typename>
-			friend struct po::graph;
-			friend struct std::hash<descriptor<X>>;
-		};
-	}
+		template<typename,typename>
+		friend struct po::graph;
+		friend struct std::hash<descriptor<X>>;
+	};
 }
 
 namespace std
@@ -48,7 +45,7 @@ namespace std
 	{
 		size_t operator()(const po::descriptor<X> &d) const
 		{
-			return hash<X*>()(d.m_ptr);
+			return reinterpret_cast<const size_t>(d.m_ptr);
 		}
 	};
 }
@@ -87,10 +84,11 @@ namespace po
 	template<typename N, typename E>
 	struct graph
 	{
-		using node_iterator = typename boost::graph_traits<graph<N,E>>::vertex_iterator;
-		using edge_iterator = typename boost::graph_traits<graph<N,E>>::edge_iterator;
+		using node_iterator = typename boost::transform_iterator<std::function<po::descriptor<N>(const N&)>, typename std::unordered_set<N>::const_iterator>;
+		using edge_iterator = typename boost::transform_iterator<std::function<po::descriptor<E>(const E&)>, typename std::unordered_set<E>::const_iterator>;
 		using out_edge_iterator = typename boost::graph_traits<graph<N,E>>::out_edge_iterator;
 		using in_edge_iterator = typename boost::graph_traits<graph<N,E>>::in_edge_iterator;
+		using size_type = size_t;
 
 		graph(void) : m_nodes(), m_edges(), m_neighbors(), m_forward(), m_backward() {}
 
