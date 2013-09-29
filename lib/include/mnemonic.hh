@@ -10,49 +10,12 @@
 
 #include <value.hh>
 #include <marshal.hh>
+#include <source.hh>
 
 namespace po
 {
 	class instr;
 	class mnemonic;
-
-	typedef uint32_t addr_t;
-	extern const addr_t naddr;
-
-	template<typename T>
-	struct range
-	{
-		range(void) : begin(0), end(0) {}
-		range(T b) : begin(b), end(b) {}
-		range(T b, T e) : begin(b), end(e) { assert(begin <= end); }
-
-		size_t size(void) const { return end - begin; }
-		bool includes(const range<T> &a) const { return size() && a.size() && begin <= a.begin && end > a.end; }
-		bool includes(T a) const { return size() && begin <= a && end > a; }
-		bool overlap(const range<T> &a) const { return size() && a.size() && !(begin >= a.end || end <= a.begin); }
-		T last(void) const { return size() ? end - 1 : begin; }
-		
-		bool operator==(const range<T> &b) const { return size() == b.size() && (!size() || (begin == b.begin && end == b.end)); }
-		bool operator!=(const range<T> &b) const { return !(*this == b); }
-		bool operator<(const range<T> &b) const { return begin < b.begin; }
-
-		T begin;
-		T end;
-	};
-
-	template<typename T>
-	std::ostream& operator<<(std::ostream &os, const range<T> &r)
-	{ 
-		if(r.size())
-		{
-			os << r.begin;
-			if(r.size() > 1)
-				os << "-" << r.end-1;
-		}
-		else
-			os << "nil";
-		return os; 
-	}
 
 	class instr
 	{
@@ -89,7 +52,7 @@ namespace po
 		template<class... Values>
 		instr(Function fn, lvalue a, Values&&... args) : function(fn), left(a), right({args...}) {}
 		instr(Function fn, lvalue a, const std::initializer_list<rvalue> &r) : function(fn), left(a), right(r) {}
-		
+
 		Function function;
 		lvalue left;
 		std::vector<rvalue> right;
@@ -105,7 +68,7 @@ namespace po
 	{
 	public:
 		typedef std::vector<instr>::const_iterator iterator;
-		
+
 		struct token
 		{
 			token(void) : has_sign(false), width(0), alias(""), is_literal(false) {}
@@ -114,7 +77,7 @@ namespace po
 			std::string alias;
 			bool is_literal;
 		};
-		
+
 		static mnemonic unmarshal(const rdf::node &n, const rdf::storage &store);
 
 		template <typename F1, typename F2>
@@ -141,7 +104,7 @@ namespace po
 		std::vector<instr> instructions;
 		std::vector<token> format;
 	};
-	
+
 	std::ostream& operator<<(std::ostream &os, const instr &i);
 	std::ostream& operator<<(std::ostream &os, const mnemonic &m);
 	odotstream& operator<<(odotstream &os, const mnemonic &m);
