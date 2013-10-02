@@ -45,7 +45,7 @@ class ProcedureTest : public CppUnit::TestFixture
 	CPPUNIT_TEST(testBranch);
 	CPPUNIT_TEST(testLoop);
 	CPPUNIT_TEST(testEmpty);
-	//CPPUNIT_TEST(testRefine);
+	CPPUNIT_TEST(testRefine);
 	CPPUNIT_TEST(testContinue);
 	CPPUNIT_TEST(testEntrySplit);
 	CPPUNIT_TEST(testVariable);
@@ -68,7 +68,7 @@ public:
 
 		CPPUNIT_ASSERT(proc);
 		CPPUNIT_ASSERT(proc->basic_blocks.size() == 1);
-		
+
 		po::bblock_cptr bb = *proc->basic_blocks.begin();
 
 		CPPUNIT_ASSERT(bb->mnemonics().size() == 1);
@@ -114,11 +114,11 @@ public:
 
 		CPPUNIT_ASSERT(proc);
 		CPPUNIT_ASSERT(proc->basic_blocks.size() == 1);
-		
+
 		po::bblock_cptr bb = *proc->basic_blocks.begin();
 
 		CPPUNIT_ASSERT(bb->mnemonics().size() == 6);
-		
+
 		check(bb->mnemonics()[0],"test0",0);
 		check(bb->mnemonics()[1],"test1",1);
 		check(bb->mnemonics()[2],"test2",2);
@@ -169,7 +169,7 @@ public:
 
 		CPPUNIT_ASSERT(proc);
 		CPPUNIT_ASSERT(proc->basic_blocks.size() == 3);
-		
+
 		auto i0 = std::find_if(proc->basic_blocks.begin(),proc->basic_blocks.end(),[&](po::bblock_ptr bb) { return bb->area().begin == 0; });
 		auto i1 = std::find_if(proc->basic_blocks.begin(),proc->basic_blocks.end(),[&](po::bblock_ptr bb) { return bb->area().begin == 1; });
 		auto i2 = std::find_if(proc->basic_blocks.begin(),proc->basic_blocks.end(),[&](po::bblock_ptr bb) { return bb->area().begin == 2; });
@@ -185,7 +185,7 @@ public:
 		CPPUNIT_ASSERT(bb0->mnemonics().size() == 1);
 		CPPUNIT_ASSERT(bb1->mnemonics().size() == 1);
 		CPPUNIT_ASSERT(bb2->mnemonics().size() == 1);
-		
+
 		CPPUNIT_ASSERT(bb0->incoming().size() == 0);
 		check(bb0->mnemonics()[0],"test0",0);
 		CPPUNIT_ASSERT(bb0->outgoing().size() == 2);
@@ -193,7 +193,7 @@ public:
 		CPPUNIT_ASSERT(bb1->incoming().size() == 2);
 		check(bb1->mnemonics()[0],"test1",1);
 		CPPUNIT_ASSERT(bb1->outgoing().size() == 1);
-		
+
 		CPPUNIT_ASSERT(bb2->incoming().size() == 1);
 		check(bb2->mnemonics()[0],"test2",2);
 		CPPUNIT_ASSERT(bb2->outgoing().size() == 1);
@@ -229,11 +229,11 @@ public:
 
 		CPPUNIT_ASSERT(proc);
 		CPPUNIT_ASSERT(proc->basic_blocks.size() == 1);
-		
+
 		po::bblock_cptr bb = *proc->basic_blocks.begin();
 
 		CPPUNIT_ASSERT(bb->mnemonics().size() == 3);
-		
+
 		check(bb->mnemonics()[0],"test0",0);
 		check(bb->mnemonics()[1],"test1",1);
 		check(bb->mnemonics()[2],"test2",2);
@@ -250,7 +250,7 @@ public:
 		po::proc_ptr proc = po::procedure::disassemble(0,mockup,bytes,0);
 
 		CPPUNIT_ASSERT(proc);
-		CPPUNIT_ASSERT(proc->basic_blocks.size() == 0);	
+		CPPUNIT_ASSERT(proc->basic_blocks.size() == 0);
 	}
 
 	void testRefine(void)
@@ -286,7 +286,7 @@ public:
 
 		CPPUNIT_ASSERT(proc);
 		CPPUNIT_ASSERT(proc->basic_blocks.size() == 2);
-		
+
 		auto i0 = std::find_if(proc->basic_blocks.begin(),proc->basic_blocks.end(),[&](po::bblock_ptr bb) { return bb->area().begin == 0; });
 		auto i1 = std::find_if(proc->basic_blocks.begin(),proc->basic_blocks.end(),[&](po::bblock_ptr bb) { return bb->area().begin == 1; });
 
@@ -298,7 +298,7 @@ public:
 
 		CPPUNIT_ASSERT(bb0->mnemonics().size() == 1);
 		CPPUNIT_ASSERT(bb1->mnemonics().size() == 2);
-		
+
 		CPPUNIT_ASSERT(bb0->incoming().size() == 0);
 		check(bb0->mnemonics()[0],"test0",0);
 		CPPUNIT_ASSERT(bb0->outgoing().size() == 1);
@@ -319,18 +319,18 @@ public:
 		po::bblock_ptr bb0(new po::basic_block());
 		po::bblock_ptr bb1(new po::basic_block());
 		po::bblock_ptr bb2(new po::basic_block());
-		
+
 		bb0->mutate_mnemonics([&](std::vector<po::mnemonic> &ms)
 		{
 			ms.push_back(mne0);
 			ms.push_back(mne1);
 		});
-		
+
 		bb1->mutate_mnemonics([&](std::vector<po::mnemonic> &ms)
 		{
 			ms.push_back(mne2);
 		});
-		
+
 		bb2->mutate_mnemonics([&](std::vector<po::mnemonic> &ms)
 		{
 			ms.push_back(mne3);
@@ -389,7 +389,7 @@ public:
 
 		CPPUNIT_ASSERT(proc);
 		CPPUNIT_ASSERT(proc->basic_blocks.size() == 4);
-		
+
 		auto i0 = std::find_if(proc->basic_blocks.begin(),proc->basic_blocks.end(),[&](po::bblock_ptr bb) { return bb->area().begin == 0; });
 		auto i1 = std::find_if(proc->basic_blocks.begin(),proc->basic_blocks.end(),[&](po::bblock_ptr bb) { return bb->area().begin == 2; });
 		auto i2 = std::find_if(proc->basic_blocks.begin(),proc->basic_blocks.end(),[&](po::bblock_ptr bb) { return bb->area().begin == 6; });
@@ -413,13 +413,13 @@ public:
 		CPPUNIT_ASSERT(bbo0->outgoing().size() == 2);
 		CPPUNIT_ASSERT(bbo0->outgoing().begin()->bblock.lock() == bbo1 || bbo0->outgoing().begin()->bblock.lock() == bbo2);
 		CPPUNIT_ASSERT(std::next(bbo0->outgoing().begin())->bblock.lock() == bbo1 || std::next(bbo0->outgoing().begin())->bblock.lock() == bbo2);
-		
+
 		CPPUNIT_ASSERT(bbo1->incoming().size() == 1);
 		CPPUNIT_ASSERT(bbo1->incoming().begin()->bblock.lock() == bbo0);
 		CPPUNIT_ASSERT(bbo1->mnemonics().size() == 1);
 		check(bbo1->mnemonics()[0],"test2",2);
 		CPPUNIT_ASSERT(bbo1->outgoing().size() == 0);
-		
+
 		CPPUNIT_ASSERT(bbo2->incoming().size() == 1);
 		CPPUNIT_ASSERT(bbo2->incoming().begin()->bblock.lock() == bbo0);
 		CPPUNIT_ASSERT(bbo2->mnemonics().size() == 1);
@@ -446,13 +446,13 @@ public:
 		po::mnemonic mne0(po::range<po::addr_t>(0,1),"test0","",{},{});
 		po::mnemonic mne1(po::range<po::addr_t>(1,2),"test1","",{},{});
 		po::bblock_ptr bb0(new po::basic_block());
-		
+
 		bb0->mutate_mnemonics([&](std::vector<po::mnemonic> &ms)
 		{
 			ms.push_back(mne0);
 			ms.push_back(mne1);
 		});
-		
+
 		bb0->mutate_outgoing([&](std::list<po::ctrans> &out)
 		{
 			out.push_back(po::ctrans(po::guard(),po::constant(2,32)));
@@ -484,7 +484,7 @@ public:
 
 		add(0,"test0",1,po::naddr);
 		add(1,"test1",2,po::naddr);
-		
+
 		add(2,"test2",1,po::naddr);
 
 		disassembler_mockup mockup(states);
@@ -492,7 +492,7 @@ public:
 
 		CPPUNIT_ASSERT(proc);
 		CPPUNIT_ASSERT(proc->basic_blocks.size() == 2);
-		
+
 		auto i0 = std::find_if(proc->basic_blocks.begin(),proc->basic_blocks.end(),[&](po::bblock_ptr bb) { return bb->area().begin == 0; });
 		auto i1 = std::find_if(proc->basic_blocks.begin(),proc->basic_blocks.end(),[&](po::bblock_ptr bb) { return bb->area().begin == 1; });
 

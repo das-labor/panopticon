@@ -2,6 +2,7 @@
 
 #include <QPainter>
 #include <QTextDocument>
+#include <QCursor>
 
 #include <basicblockwidget.hh>
 
@@ -35,7 +36,7 @@ BasicBlockWidget::BasicBlockWidget(po::flow_ptr flow, po::proc_ptr proc, po::bbl
 	execute2(bb,[&](const po::instr &i)
 	{
 		std::stringstream ss;
-		
+
 		ss << i;
 		//if(sscp.count(proc) && sscp.at(proc)->count(i.left))
 		//	ss << " | " <<  sscp.at(proc)->at(i.left);
@@ -48,14 +49,14 @@ BasicBlockWidget::BasicBlockWidget(po::flow_ptr flow, po::proc_ptr proc, po::bbl
 	m_instructions.setBrush(QBrush(Qt::blue));
 	m_instructions.setPos(QPoint(-m_instructions.boundingRect().width(),0));
 
-	setCursor(Qt::ArrowCursor);
+	setCursor(QCursor(Qt::ArrowCursor));
 }
 
 QRectF BasicBlockWidget::boundingRect(void) const
 {
 	QRectF ret;
 	QVectorIterator<MnemonicWidget *> j(m_mnemonics);
-	
+
 	while(j.hasNext())
 	{
 		MnemonicWidget *s = j.next();
@@ -69,7 +70,7 @@ QRectF BasicBlockWidget::boundingRect(void) const
 }
 
 void BasicBlockWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget)
-{	
+{
 	painter->save();
 	painter->setPen(QPen(Qt::green,1));
 	painter->drawRect(boundingRect().adjusted(2,2,-4,-4));
@@ -140,7 +141,7 @@ QRectF MnemonicWidget::boundingRect(void) const
 {
 	QRectF ret = m_mnemonic.boundingRect().translated(m_mnemonic.pos());
 	QVectorIterator<QGraphicsItem *> j(m_operands);
-	
+
 	while(j.hasNext())
 	{
 		QGraphicsItem *s = j.next();
@@ -151,7 +152,7 @@ QRectF MnemonicWidget::boundingRect(void) const
 }
 
 void MnemonicWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget)
-{	
+{
 	if(isSelected())
 	{
 		painter->save();

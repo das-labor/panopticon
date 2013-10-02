@@ -60,7 +60,7 @@ namespace po
 		lvalue mod_iu(rvalue op1, rvalue op2)		{ return anonymous(instr::UMod,op1,op2); };
 		lvalue leq_is(rvalue op1, rvalue op2)		{ return anonymous(instr::SLeq,op1,op2); };
 		lvalue leq_iu(rvalue op1, rvalue op2)		{ return anonymous(instr::ULeq,op1,op2); };
-		lvalue call(rvalue op)									{ return anonymous(instr::Call,op); };	
+		lvalue call(rvalue op)									{ return anonymous(instr::Call,op); };
 
 	protected:
 		template<class... Values>
@@ -73,8 +73,8 @@ namespace po
 				if(v.is_variable())
 					return v.to_variable().name().size() && v.to_variable().subscript() == -1 && v.to_variable().width();
 				else if(v.is_memory())
-					return v.to_memory().name().size() && v.to_memory().bytes() && 
-								 (v.to_memory().endianess() == memory::BigEndian || v.to_memory().endianess() == memory::LittleEndian) && 
+					return v.to_memory().name().size() && v.to_memory().bytes() &&
+								 (v.to_memory().endianess() == memory::BigEndian || v.to_memory().endianess() == memory::LittleEndian) &&
 								 v.to_memory().offset() != v;
 				else if(v.is_constant())
 					return v.to_constant().width() > 0;
@@ -83,7 +83,7 @@ namespace po
 			};
 
 			assert(all_of(arguments.begin(),arguments.end(),sanity_check) && sanity_check(assign));
-					
+
 			instr ret(fn,assign,arguments);
 			inserter = ret;
 

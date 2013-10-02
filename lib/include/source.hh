@@ -1,14 +1,24 @@
 #include <iostream>
 #include <vector>
 #include <functional>
+#include <cassert>
+
+#include <graph.hh>
+
+#include <boost/icl/discrete_interval.hpp>
+#include <boost/icl/right_open_interval.hpp>
+#include <boost/icl/interval_map.hpp>
 
 #pragma once
 
 namespace po
 {
+	using rrange = typename boost::icl::interval<uint32_t>::type;
+
 	typedef uint32_t addr_t;
 	extern const addr_t naddr;
 
+	// boost icl
 	template<typename T>
 	struct range
 	{
@@ -47,12 +57,12 @@ namespace po
 
 namespace std
 {
-	template<typename T>
-	struct hash<po::range<T>>
+	template<>
+	struct hash<po::rrange>
 	{
-		size_t operator()(const po::range<T> &r) const
+		size_t operator()(const po::rrange &r) const
 		{
-			return hash<T>()(r.begin) xor hash<T>()(r.end);
+			return hash<uint32_t>()(first(r)) xor hash<uint32_t>()(last(r));
 		}
 	};
 }
@@ -63,18 +73,21 @@ namespace po
 	{
 		using bytes = std::vector<uint8_t>;
 
-		address_space(const std::string &n, std::function<bytes(const bytes&)> fn);
-		bytes map(const bytes &bs, const range<addr_t> &a) const;
+		address_space(const std::string &n, const rrange &a, std::function<bytes(const bytes&)> fn);
+		bytes map(const bytes &bs, const rrange &a) const;
 
-		bool operator==(const address_space &as) const;
+		bool operator==(const address_space &as) const { return name == as.name && area == as.area; }
 
 		std::string name;
+		rrange area;
 
 	private:
 		std::function<bytes(const bytes&)> m_map;
 
 		friend struct std::hash<address_space>;
 	};
+
+	std::list<std::pair<rrange,address_space>> projection(const graph<address_space,rrange> &g);
 }
 
 namespace std

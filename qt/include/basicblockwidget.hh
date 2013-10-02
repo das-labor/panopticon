@@ -10,8 +10,6 @@
 #include <basic_block.hh>
 #include <mnemonic.hh>
 
-#include <graph.hh>
-
 class BasicBlockWidget;
 class MnemonicWidget;
 
@@ -21,7 +19,7 @@ class BasicBlockWidget : public QGraphicsObject
 
 public:
 	BasicBlockWidget(po::flow_ptr flow, po::proc_ptr proc, po::bblock_ptr bb, QGraphicsItem *parent = 0);
-	
+
 	virtual QRectF boundingRect(void) const;
 	virtual void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget = 0);
 
@@ -39,7 +37,7 @@ class MnemonicWidget : public QGraphicsItem
 {
 public:
 	MnemonicWidget(po::flow_ptr flow, po::proc_ptr proc, const po::mnemonic &mne, QGraphicsItem *parent = 0);
-	
+
 	void setIdent(double s);
 	double ident(void) const;
 

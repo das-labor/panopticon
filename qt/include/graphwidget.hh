@@ -5,7 +5,7 @@
 #include <QWheelEvent>
 #include <QItemSelectionModel>
 
-#include <graph.hh>
+#include <scene.hh>
 
 class GraphWidget : public QGraphicsView
 {
@@ -26,7 +26,7 @@ protected:
 //	virtual QPointF populate(void) = 0;
 
 //	QAbstractItemModel *m_model;
-	Graph m_scene;
+	Scene m_scene;
 	//QPersistentModelIndex m_root;
 	//QPointF m_lastDragPos;
 };

@@ -19,7 +19,7 @@
 #include <boost/iterator/filter_iterator.hpp>
 
 class Arrow;
-class Graph;
+class Scene;
 
 class Arrow
 {
@@ -31,15 +31,15 @@ public:
 	virtual QRectF boundingRect(void) const = 0;
 };
 
-class Graph : public QGraphicsScene
+class Scene : public QGraphicsScene
 {
 	Q_OBJECT
 
 public:
 	typedef boost::filter_iterator<std::function<bool(Arrow *)>,QMultiMap<QGraphicsObject *,Arrow *>::iterator> iterator;
 
-	Graph(void);
-	~Graph(void);
+	Scene(void);
+	~Scene(void);
 
 	QList<QGraphicsObject *> &nodes(void);
 	QList<Arrow *> &edges(void);
@@ -58,9 +58,9 @@ private:
 	QList<Arrow *> m_edges;
 	QMultiMap<QGraphicsObject *,Arrow *> m_incidence;
 
-	void allocateGraph(void);
-	void deleteGraph(void);
-	void materializeGraph(void);
+	void allocateScene(void);
+	void deleteScene(void);
+	void materializeScene(void);
 	void safeset(void *obj, std::string key, std::string value) const;
 };
 

@@ -45,7 +45,7 @@ namespace po
 		const X *m_ptr;
 
 		template<typename,typename>
-		friend struct po::graph;
+		friend struct graph;
 		friend struct std::hash<descriptor<X>>;
 	};
 }
