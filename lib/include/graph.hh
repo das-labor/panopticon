@@ -253,13 +253,13 @@ namespace po
 		node_iterator
 		find_node(const N& n) const
 		{
-			return boost::make_transform_iterator(m_nodes.find(*n),std::function<po::descriptor<N>(const N&)>([](const N &n) { return po::descriptor<N>::construct(n); }));
+			return boost::make_transform_iterator(m_nodes.find(n),std::function<po::descriptor<N>(const N&)>([](const N &n) { return po::descriptor<N>::construct(n); }));
 		}
 
 		edge_iterator
 		find_edge(const E &e) const
 		{
-			return boost::make_transform_iterator(m_edges.find(*e),std::function<po::descriptor<E>(const E&)>([](const E &n) { return po::descriptor<E>::construct(n); }));
+			return boost::make_transform_iterator(m_edges.find(e),std::function<po::descriptor<E>(const E&)>([](const E &n) { return po::descriptor<E>::construct(n); }));
 		}
 
 		const N &get_node(const po::descriptor<N> &n) const

@@ -2,37 +2,46 @@
 
 #include <map>
 
-std::list<std::pair<po::rrange,po::address_space>> po::projection(const po::graph<po::address_space,po::rrange> &g)
+std::list<std::pair<po::rrange,po::address_space>> po::projection(const po::address_space &root, const po::graph<po::address_space,po::rrange> &g)
 {
 	using vertex_descriptor = boost::graph_traits<graph<address_space,rrange>>::vertex_descriptor;
 	using edge_descriptor = boost::graph_traits<graph<address_space,rrange>>::edge_descriptor;
 	std::list<std::pair<rrange,address_space>> ret;
 	std::function<void(vertex_descriptor)> step;
+	std::unordered_set<vertex_descriptor> visited;
 
 	step = [&](vertex_descriptor v)
 	{
 		const address_space &as = g.get_node(v);
-		boost::icl::interval_map<typename rrange::domain_type,int> local;
+		boost::icl::split_interval_map<typename rrange::domain_type,int> local;
 		std::multimap<typename rrange::domain_type,vertex_descriptor> next;
 		auto p = in_edges(v,g);
 
-		local.add(std::make_pair(as.area,0));
+		local.add(std::make_pair(as.area,1));
 		std::for_each(p.first,p.second,[&](edge_descriptor e)
 		{
 			rrange r = g.get_edge(e);
-			local.add(std::make_pair(r,1));
+			local += std::make_pair(r,1);
 			next.insert(std::make_pair(first(r),source(e,g)));
 		});
 
 		for(const std::pair<rrange,int> &q: local)
-			if(!q.second)
+		{
+			//std::cerr << q.first << " => " << q.second << std::endl;
+			if(q.second == 1)
 				ret.push_back(std::make_pair(q.first,as));
+		}
+
+		visited.insert(v);
 
 		for(const auto &q: next)
-			step(q.second);
+			if(!visited.count(q.second))
+				step(q.second);
 	};
 
-	step(*g.nodes().first);
+	step(*g.find_node(root));
+
+	assert(visited.size() == g.num_nodes());
 	return ret;
 }
 /*

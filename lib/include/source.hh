@@ -8,6 +8,7 @@
 #include <boost/icl/discrete_interval.hpp>
 #include <boost/icl/right_open_interval.hpp>
 #include <boost/icl/interval_map.hpp>
+#include <boost/icl/split_interval_map.hpp>
 
 #pragma once
 
@@ -73,7 +74,7 @@ namespace po
 	{
 		using bytes = std::vector<uint8_t>;
 
-		address_space(const std::string &n, const rrange &a, std::function<bytes(const bytes&)> fn);
+		address_space(const std::string &n, const rrange &a, std::function<bytes(const bytes&)> fn) : name(n), area(a), m_map(fn) {}
 		bytes map(const bytes &bs, const rrange &a) const;
 
 		bool operator==(const address_space &as) const { return name == as.name && area == as.area; }
@@ -87,7 +88,7 @@ namespace po
 		friend struct std::hash<address_space>;
 	};
 
-	std::list<std::pair<rrange,address_space>> projection(const graph<address_space,rrange> &g);
+	std::list<std::pair<rrange,address_space>> projection(const address_space &as, const graph<address_space,rrange> &g);
 }
 
 namespace std
