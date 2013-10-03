@@ -8,6 +8,15 @@ class SourceTest : public CppUnit::TestFixture
 	CPPUNIT_TEST_SUITE_END();
 
 public:
+	/*
+	 * Graph:
+	 * [----------------- base ----------------]
+	 * [----xor----]            [-----zlib-----]
+	 *          [----add----]       [--aes--]
+	 *
+	 * Projection:
+	 * [--xor--][----add----][ba][z][--aes--][z]
+	 */
 	void testProjection(void)
 	{
 		using bytes = std::vector<uint8_t>;
@@ -32,7 +41,21 @@ public:
 		g.insert_edge(po::rrange(32,64),aes_vx,zlib_vx);
 
 		auto proj = po::projection(base_as,g);
+		auto expect = std::list<std::pair<po::rrange,po::address_space>>{
+			std::make_pair(po::rrange(0,45),xor_as),
+			std::make_pair(po::rrange(0,27),add_as),
+			std::make_pair(po::rrange(72,80),base_as),
+			std::make_pair(po::rrange(0,32),zlib_as),
+			std::make_pair(po::rrange(0,32),aes_as),
+			std::make_pair(po::rrange(64,128),zlib_as)
+		};
+
+		/*std::cerr << "proj:" << std::endl;
 		for(const std::pair<po::rrange,po::address_space> &p: proj)
 			std::cerr << p.first << " => " << p.second.name << std::endl;
+		std::cerr << "expect:" << std::endl;
+		for(const std::pair<po::rrange,po::address_space> &p: expect)
+			std::cerr << p.first << " => " << p.second.name << std::endl;*/
+		CPPUNIT_ASSERT(proj == expect);
 	}
 };

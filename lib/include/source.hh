@@ -74,6 +74,7 @@ namespace po
 	{
 		using bytes = std::vector<uint8_t>;
 
+		address_space(void) : name(), area(), m_map() {}
 		address_space(const std::string &n, const rrange &a, std::function<bytes(const bytes&)> fn) : name(n), area(a), m_map(fn) {}
 		bytes map(const bytes &bs, const rrange &a) const;
 
