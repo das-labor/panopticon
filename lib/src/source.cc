@@ -1,5 +1,11 @@
 #include <source.hh>
-
+#include <boost/graph/visitors.hpp>
+#include <boost/graph/adjacency_list.hpp>
+#include <boost/graph/breadth_first_search.hpp>
+#include <boost/property_map/property_map.hpp>
+#include <boost/graph/graph_utility.hpp>
+#include <boost/graph/reverse_graph.hpp>
+#include <boost/graph/dijkstra_shortest_paths.hpp>
 #include <map>
 
 namespace po
@@ -55,6 +61,106 @@ std::list<std::pair<po::rrange,po::address_space>> po::projection(const po::addr
 	assert(visited.size() == g.num_nodes());
 	return ret;
 }
+
+boost::graph_traits<po::graph<po::address_space,po::rrange>>::vertex_descriptor po::root(const po::graph<po::address_space,po::rrange> &g)
+{
+	auto p = g.nodes();
+	auto i = p.first;
+
+	while(i != p.second)
+		if(!out_degree(*i,g))
+			return *i;
+		else
+			++i;
+
+	throw std::runtime_error("no root node");
+}
+
+po::graph<po::address_space,po::rrange> po::tree(const po::graph<po::address_space,po::rrange> &g)
+{
+	using vertex_descriptor = typename boost::graph_traits<po::graph<po::address_space,po::rrange>>::vertex_descriptor;
+	using edge_descriptor = typename boost::graph_traits<po::graph<po::address_space,po::rrange>>::edge_descriptor;
+
+	auto r = root(g);
+	std::unordered_map<edge_descriptor,int> w_map;
+	boost::associative_property_map<std::unordered_map<edge_descriptor,int>> weight_adaptor(w_map);
+	auto common_parent = [&](vertex_descriptor v, vertex_descriptor u)
+	{
+		auto find_path = [&](vertex_descriptor x)
+		{
+			std::unordered_map<vertex_descriptor,int> d_map;
+			boost::associative_property_map<std::unordered_map<vertex_descriptor,int>> distance_adaptor(d_map);
+
+			std::unordered_map<vertex_descriptor,vertex_descriptor> p_map;
+			boost::associative_property_map<std::unordered_map<vertex_descriptor,vertex_descriptor>> pred_adaptor(p_map);
+
+			auto es = g.edges();
+			std::for_each(es.first,es.second,[&](const edge_descriptor e) { w_map[e] = 1; });
+			boost::dijkstra_shortest_paths(g,x,boost::weight_map(weight_adaptor).distance_map(distance_adaptor).predecessor_map(pred_adaptor));
+
+			auto i = r;
+			std::list<vertex_descriptor> path({i});
+			while(i != p_map[i])
+			{
+				i = p_map[i];
+				path.push_back(i);
+			}
+			return path;
+		};
+
+		auto l1 =	find_path(v);
+		auto l2 = find_path(u);
+
+		return *std::find_first_of(l1.begin(),l1.end(),l2.begin(),l2.end());
+	};
+	auto p = g.nodes();
+	graph<address_space,rrange> ret;
+
+	std::for_each(p.first,p.second,[&](vertex_descriptor v) { put(w_map,v,1); });
+
+	/*
+	 * for(n: nodes(G))
+	 * 	 for(e: in_edges(n))
+	 *     c = source(e)
+	 *     if(!in_tree(c))
+	 *       add_to_tree(n,c)
+	 *     else
+	 *       del_from_tree(c)
+	 *       add_to_tree(common_parent(n,c),c)
+	 */
+	boost::breadth_first_search(boost::make_reverse_graph(g),r,boost:visitor(boost::make_bfs_visitor(lambda_visitor<vertex_descriptor,const po::graph<address_space,rrange>&>(
+		[&](vertex_descriptor v, const po::graph<address_space,rrange> &g)
+		{
+///XXX: make_lambda_visitor
+
+	for(auto _n: iters(g.nodes()))
+	{
+		auto as = g.get_node(_n);
+		auto n = (ret.find_node(as) == ret.nodes().second ? ret.insert_node(as) : *ret.find_node(as));
+
+		for(auto e: iters(g.in_edges(_n)))
+		{
+			auto c = source(e);
+			auto j = ret.find_node(g.get_node(c));
+			if(j == ret.nodes().second)
+			{
+				auto v = ret.insert_node(g.get_node(c));
+				ret.insert_edge(g.get_edge(e),n,v);
+			}
+			else
+			{
+				ret.remove_node(*j);
+				auto v = ret.insert_node(g.get_node(c));
+				auto par = common_parent(c,_n);
+				auto as = g.get_node(_n);
+				auto n = (ret.find_node(as) == ret.nodes().second ? ret.insert_node(as) : *ret.find_node(as));
+
+				ret.insert_edge(g.get_edge(e),common_parent(c,_n);
+
+				auto _c = *ret.find_node(
+
+
+
 /*
 bytes po::read(const address_space &as, const range<addr_t> &a, const graph<address_space,range<addr_t>> &g)
 {

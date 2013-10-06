@@ -12,7 +12,7 @@ class ProcedureWidget : public GraphWidget
 
 public:
 	ProcedureWidget(po::flow_ptr f, po::proc_ptr p, QWidget *parent = 0);
-	
+
 	void setProcedure(po::proc_ptr p);
 
 protected:

@@ -90,6 +90,8 @@ namespace po
 	};
 
 	std::list<std::pair<rrange,address_space>> projection(const address_space &as, const graph<address_space,rrange> &g);
+	graph<address_space,rrange> tree(const graph<address_space,rrange> &g);
+	boost::graph_traits<po::graph<po::address_space,po::rrange>>::vertex_descriptor root(const graph<address_space,rrange> &g);
 }
 
 namespace std

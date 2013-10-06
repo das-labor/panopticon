@@ -2,11 +2,14 @@
 #include <unordered_set>
 #include <utility>
 #include <algorithm>
-#include <boost/graph/graph_traits.hpp>
-#include <boost/graph/adjacency_list.hpp>
+#include <type_traits>
 
 #define BOOST_RESULT_OF_USE_DECLTYPE
+#include <boost/graph/graph_traits.hpp>
+#include <boost/graph/adjacency_list.hpp>
+#include <boost/property_map/property_map.hpp>
 #include <boost/iterator/transform_iterator.hpp>
+#include <boost/mpl/if.hpp>
 
 #pragma once
 
@@ -48,6 +51,35 @@ namespace po
 		friend struct graph;
 		friend struct std::hash<descriptor<X>>;
 	};
+
+	template<typename K, typename V>
+	struct unordered_pmap
+	{
+		unordered_pmap(void) : container() {}
+		unordered_pmap(std::initializer_list<std::pair<K,V>> il) : container(il) {}
+		unordered_pmap(const unordered_pmap &m) : container(m.container) {}
+
+		V& operator[](const K &k)
+		{
+			return container[k];
+		}
+
+		typename std::unordered_map<K,V>::iterator begin(void) { return container.begin(); };
+		typename std::unordered_map<K,V>::iterator end(void) { return container.end(); };
+
+		typename std::unordered_map<K,V>::const_iterator begin(void) const { return container.begin(); };
+		typename std::unordered_map<K,V>::const_iterator end(void) const { return container.end(); };
+
+		std::unordered_map<K,V> container;
+	};
+
+	template<typename V, typename N,typename E>
+	void initialize_pmap(unordered_pmap<descriptor<N>,V> &pmap, const graph<N,E> &g, const V &v)
+	{
+		auto p = g.nodes();
+		std::for_each(p.first,p.second,[&](typename boost::graph_traits<po::graph<N,E>>::vertex_descriptor u)
+			{ pmap.container.insert(std::make_pair(u,v)); });
+	}
 }
 
 namespace std
@@ -88,6 +120,24 @@ namespace boost
 
 		// BidirectionalGraph concept
 		using in_edge_iterator = typename boost::transform_iterator<std::function<po::descriptor<E>(const std::pair<po::descriptor<N>,po::descriptor<E>>&)>, typename std::unordered_multimap<po::descriptor<N>,po::descriptor<E>>::const_iterator>;
+	};
+
+	// ReadablePropertyMap concept
+	template<typename K, typename V>
+	struct property_traits<po::unordered_pmap<K,V>>
+	{
+		using value_type = V;
+		using reference = const V&;
+		using key_type = K;
+		struct category : public lvalue_property_map_tag {};
+	};
+
+	// PropertyGraph concept for vertex_index_t
+	template<typename N,typename E>
+	struct property_map<po::graph<N,E>,vertex_index_t>
+	{
+		using type = po::unordered_pmap<po::descriptor<N>,int64_t>;
+		using const_type = po::unordered_pmap<po::descriptor<N>,int64_t>;
 	};
 }
 
@@ -392,4 +442,59 @@ namespace po
 	{
 		return out_degree(v,g) + in_degree(v,g);
 	}
+
+	template<typename K,typename V>
+	const V& get(const po::unordered_pmap<K,V> &m, const K &k)
+	{
+		return m.container.at(k);
+	}
+
+	template<typename K,typename V>
+	void put(po::unordered_pmap<K,V> &m, const K &k, const V &v)
+	{
+		m.container[k] = v;
+	}
+
+	template<typename N, typename E>
+	unordered_pmap<typename boost::graph_traits<graph<N,E>>::vertex_descriptor,int64_t>
+	get(boost::vertex_index_t, const graph<N,E> &g)
+	{
+		unordered_pmap<typename boost::graph_traits<graph<N,E>>::vertex_descriptor,int64_t> ret;
+		auto p = g.nodes();
+		auto i = p.first;
+
+		while(i != p.second)
+		{
+			put(ret,*i,std::distance(p.first,i));
+			++i;
+		}
+
+		return ret;
+	}
+
+	template<typename I>
+	struct iter_pair
+	{
+		iter_pair(const std::pair<I,I> &p) : _iters(p) {}
+
+		I begin(void) const { return _iters.first; }
+		I end(void) const { return _iters.second; }
+
+		std::pair<I,I> _iters;
+	};
+
+	template<typename I>
+	iter_pair<I> iters(std::pair<I,I> &p)
+	{
+		return iter_pair<I>(p);
+	}
+
+	template<typename X, typename G>
+	struct lambda_visitor
+	{
+		lambda_visitor(std::function<void(X,G)> fn) : m_function(fn) {}
+		void operator()(X x, G g) { m_function(x,g); }
+
+		std::function<void(X,G)> m_function;
+	};
 }

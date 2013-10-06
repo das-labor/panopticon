@@ -18,6 +18,11 @@ public:
 		BOOST_CONCEPT_ASSERT((boost::GraphConcept<po::graph<int,std::string>>));
   	BOOST_CONCEPT_ASSERT((boost::VertexAndEdgeListGraphConcept<po::graph<int,std::string>>));
   	BOOST_CONCEPT_ASSERT((boost::BidirectionalGraphConcept<po::graph<int,std::string>>));
+
+		BOOST_CONCEPT_ASSERT((boost::ReadablePropertyMapConcept<po::unordered_pmap<int,std::string>,int>));
+  	BOOST_CONCEPT_ASSERT((boost::WritablePropertyMapConcept<po::unordered_pmap<int,std::string>,int>));
+  	BOOST_CONCEPT_ASSERT((boost::ReadWritePropertyMapConcept<po::unordered_pmap<int,std::string>,int>));
+  	BOOST_CONCEPT_ASSERT((boost::LvaluePropertyMapConcept<po::unordered_pmap<int,std::string>,int>));
 	}
 
 	void testUsage(void)

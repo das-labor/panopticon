@@ -11,7 +11,7 @@
 #include <avr/avr.hh>
 
 Window::Window(void)
-: m_flowView(0), m_procView(0), m_flowgraph(new po::flowgraph())
+: m_flowView(0), m_procView(0), m_filterWidget(0), m_flowgraph(new po::flowgraph())
 {
 	setWindowTitle("Panopticum v0.8");
 	resize(1000,800);
@@ -19,10 +19,12 @@ Window::Window(void)
 
 	m_tabs = new QTabWidget(this);
 	m_procList = new ProcedureList(m_flowgraph,this);
+	m_filterWidget = new FilterWidget(this);
 	//m_action = new Disassemble("../sosse",flow,[&](po::proc_ptr p, unsigned int i) { if(p) m_procList->snapshot(); },this);
 
 	setCentralWidget(m_tabs);
-	addDockWidget(Qt::LeftDockWidgetArea,m_procList);
+	//addDockWidget(Qt::LeftDockWidgetArea,m_procList);
+	addDockWidget(Qt::LeftDockWidgetArea,m_filterWidget);
 
 	connect(m_procList,SIGNAL(activated(po::proc_ptr)),this,SLOT(activate(po::proc_ptr)));
 
