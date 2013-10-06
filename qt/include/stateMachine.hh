@@ -93,12 +93,12 @@ signals:
 	void sent(const Event &ev);
 };
 
-class SceneState : public State
+class GraphState : public State
 {
 	Q_OBJECT
 
 public:
-	SceneState(StateMachine *machine, QState *parent = 0);
+	GraphState(StateMachine *machine, QState *parent = 0);
 };
 
 class NodeState : public State

@@ -6,9 +6,11 @@
 #include <QDebug>
 #include <QStatusBar>
 #include <QCoreApplication>
+#include <QDeclarativeView>
 
 #include <window.hh>
 
+#include <linearscene.hh>
 #include <avr/avr.hh>
 
 Window::Window(void)
@@ -19,17 +21,19 @@ Window::Window(void)
 
 	m_tabs = new QTabWidget(this);
 	m_procList = new ProcedureList(this);
+	m_filterWidget = new FilterWidget(this);
 
 	//m_action = new Disassemble("../sosse",flow,[&](po::proc_ptr p, unsigned int i) { if(p) m_procList->snapshot(); },this);
-	m_action = new Open(QCoreApplication::arguments().at(1),this);
+	//m_action = new Open(QCoreApplication::arguments().at(1),this);
 
 	setCentralWidget(m_tabs);
 	addDockWidget(Qt::LeftDockWidgetArea,m_procList);
 	addDockWidget(Qt::LeftDockWidgetArea,m_filterWidget);
+	m_tabs->addTab(new QDeclarativeView(QUrl::fromLocalFile("Hexdump.qml")),"Hexdump");
 
 	connect(m_procList,SIGNAL(activated(po::proc_ptr)),this,SLOT(activate(po::proc_ptr)));
 
-	m_action->trigger();
+	//m_action->trigger();
 }
 
 Window::~Window(void)

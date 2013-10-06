@@ -134,7 +134,7 @@ StateMachine::StateMachine(QObject *parent)
 StateMachine::~StateMachine(void)
 {}
 
-SceneState::SceneState(StateMachine *m, QState *parent)
+GraphState::GraphState(StateMachine *m, QState *parent)
 : State("graph",m,parent)
 {
 	// States

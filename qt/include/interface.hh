@@ -2,13 +2,13 @@
 #define INTERFACE_HH
 
 #include <dot/dot.hh>
-#include "graph.hh"
+#include <scene.hh>
 
 struct GraphInterface
 {
-	GraphInterface(QGraphicsScene *s, Graph *g);
+	GraphInterface(QGraphicsScene *s, Scene *g);
 
-	Graph *graph;
+	Scene *graph;
 	QGraphicsScene *scene;
 };
 

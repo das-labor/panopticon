@@ -7,6 +7,7 @@ class Window;
 
 #include <actions.hh>
 #include <procedurelist.hh>
+#include <filterwidget.hh>
 
 class Window : public QMainWindow
 {

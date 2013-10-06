@@ -2,7 +2,7 @@
 
 #include "interface.hh"
 
-GraphInterface::GraphInterface(QGraphicsScene *s, Graph *g)
+GraphInterface::GraphInterface(QGraphicsScene *s, Scene *g)
 : graph(g), scene(s)
 {}
 
