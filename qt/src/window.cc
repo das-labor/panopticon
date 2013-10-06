@@ -23,7 +23,7 @@ Window::Window(void)
 	//m_action = new Disassemble("../sosse",flow,[&](po::proc_ptr p, unsigned int i) { if(p) m_procList->snapshot(); },this);
 
 	setCentralWidget(m_tabs);
-	//addDockWidget(Qt::LeftDockWidgetArea,m_procList);
+	addDockWidget(Qt::LeftDockWidgetArea,m_procList);
 	addDockWidget(Qt::LeftDockWidgetArea,m_filterWidget);
 
 	connect(m_procList,SIGNAL(activated(po::proc_ptr)),this,SLOT(activate(po::proc_ptr)));

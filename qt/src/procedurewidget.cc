@@ -24,7 +24,7 @@ void ProcedureWidget::setProcedure(po::proc_ptr p)
 void ProcedureWidget::snapshot(void)
 {
 	qDebug() << "snapshot" << QString::fromStdString(m_procedure->name) << "of" << QString::fromStdString(m_flowgraph->name);
-	
+
 	std::map<po::bblock_ptr,BasicBlockWidget *> nodes;
 	std::lock_guard<std::mutex> guard(m_flowgraph->mutex);
 
@@ -38,12 +38,12 @@ void ProcedureWidget::snapshot(void)
 		m_scene.insert(m);
 		nodes.insert(make_pair(bb,m));
 	}
-	
+
 	// edges
 	for(po::bblock_ptr bb: m_procedure->basic_blocks)
 	{
 		BasicBlockWidget *from = nodes[bb];
-		
+
 		for(const po::ctrans &ct: bb->outgoing())
 		{
 			if(ct.bblock.lock())
