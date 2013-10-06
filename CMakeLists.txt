@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 2.8)
 project(Panopticon CXX)
+include(CheckCXXCompilerFlag)
 
 set(PROJECT_BINARY_DIR build)
 set(panopticon_MAJOR 0)
@@ -14,20 +15,23 @@ option(qtpanopticon_BUILD "Build Qt UI (qtpanopticon)" ON)
 option(panop_BUILD "Build cli tool (panop)" ON)
 
 # Compiler flags
-add_definitions("-std=c++11 -Wall -Wextra -pedantic
+add_definitions("-Wall -Wextra -pedantic
 -Wno-unused-parameter")
 # remove when fixed in CVC4
 add_definitions("-Wno-deprecated") 
 
-if(${CMAKE_BUILD_TYPE} STREQUAL "Release")
+# Release mode is default
+if(NOT DEFINED "CMAKE_BUILD_TYPE" OR "${CMAKE_BUILD_TYPE}" STREQUAL "Release")
 	add_definitions("-Werror")
-endif()
-
-if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
+	message("Build release")
+elseif("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
 	include(CTest)
+	message("Build release")
 endif()
 
 # Dependencies
+CHECK_CXX_COMPILER_FLAG("-std=c++0x" CXXFLAG_CPP0X)
+CHECK_CXX_COMPILER_FLAG("-std=c++11" CXXFLAG_CPP11)
 find_package(PkgConfig)
 pkg_check_modules(redland REQUIRED redland)
 pkg_check_modules(raptor REQUIRED raptor2)
@@ -41,6 +45,16 @@ find_package(Qt4 4.7 COMPONENTS QtCore QtDeclarative QtGui)
 pkg_check_modules(libgvc libgvc)
 pkg_check_modules(cppunit cppunit)
 pkg_check_modules(panopticon panopticon)
+
+# C++11 flags
+if(CXXFLAG_CPP11)
+	add_definitions("-std=c++11")
+elseif(CXXFLAG_CPP0X)
+	add_definitions("-std=c++0x")
+else()
+	message(FATAL_ERROR "Your compiler does not support C++11. Please use clang
+	3.0 or GCC 4.7.")
+endif()
 
 # Targets
 if(${panopticon_BUILD})
