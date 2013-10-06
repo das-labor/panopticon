@@ -1,4 +1,5 @@
 #include <source.hh>
+
 #include <boost/graph/visitors.hpp>
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/graph/breadth_first_search.hpp>
@@ -6,6 +7,7 @@
 #include <boost/graph/graph_utility.hpp>
 #include <boost/graph/reverse_graph.hpp>
 #include <boost/graph/dijkstra_shortest_paths.hpp>
+
 #include <map>
 
 namespace po
@@ -76,7 +78,8 @@ boost::graph_traits<po::graph<po::address_space,po::rrange>>::vertex_descriptor 
 	throw std::runtime_error("no root node");
 }
 
-po::graph<po::address_space,po::rrange> po::tree(const po::graph<po::address_space,po::rrange> &g)
+po::unordered_pmap<boost::graph_traits<po::graph<po::address_space,po::rrange>>::vertex_descriptor,boost::graph_traits<po::graph<po::address_space,po::rrange>>::vertex_descriptor>
+po::tree(const po::graph<po::address_space,po::rrange> &g)
 {
 	using vertex_descriptor = typename boost::graph_traits<po::graph<po::address_space,po::rrange>>::vertex_descriptor;
 	using edge_descriptor = typename boost::graph_traits<po::graph<po::address_space,po::rrange>>::edge_descriptor;
@@ -88,15 +91,10 @@ po::graph<po::address_space,po::rrange> po::tree(const po::graph<po::address_spa
 	{
 		auto find_path = [&](vertex_descriptor x)
 		{
-			std::unordered_map<vertex_descriptor,int> d_map;
-			boost::associative_property_map<std::unordered_map<vertex_descriptor,int>> distance_adaptor(d_map);
-
 			std::unordered_map<vertex_descriptor,vertex_descriptor> p_map;
 			boost::associative_property_map<std::unordered_map<vertex_descriptor,vertex_descriptor>> pred_adaptor(p_map);
 
-			auto es = g.edges();
-			std::for_each(es.first,es.second,[&](const edge_descriptor e) { w_map[e] = 1; });
-			boost::dijkstra_shortest_paths(g,x,boost::weight_map(weight_adaptor).distance_map(distance_adaptor).predecessor_map(pred_adaptor));
+			boost::dijkstra_shortest_paths(g,x,boost::weight_map(weight_adaptor).predecessor_map(pred_adaptor));
 
 			auto i = r;
 			std::list<vertex_descriptor> path({i});
@@ -113,10 +111,10 @@ po::graph<po::address_space,po::rrange> po::tree(const po::graph<po::address_spa
 
 		return *std::find_first_of(l1.begin(),l1.end(),l2.begin(),l2.end());
 	};
-	auto p = g.nodes();
-	graph<address_space,rrange> ret;
+	unordered_pmap<vertex_descriptor,vertex_descriptor> ret;
 
-	std::for_each(p.first,p.second,[&](vertex_descriptor v) { put(w_map,v,1); });
+	for(auto v: iters(g.edges()))
+		put(weight_adaptor,v,1);
 
 	/*
 	 * for(n: nodes(G))
@@ -128,38 +126,22 @@ po::graph<po::address_space,po::rrange> po::tree(const po::graph<po::address_spa
 	 *       del_from_tree(c)
 	 *       add_to_tree(common_parent(n,c),c)
 	 */
-	boost::breadth_first_search(boost::make_reverse_graph(g),r,boost:visitor(boost::make_bfs_visitor(lambda_visitor<vertex_descriptor,const po::graph<address_space,rrange>&>(
-		[&](vertex_descriptor v, const po::graph<address_space,rrange> &g)
+	auto revgraph = boost::make_reverse_graph(g);
+	boost::breadth_first_search(revgraph,r,boost::visitor(boost::make_bfs_visitor(make_lambda_visitor(
+		std::function<void(vertex_descriptor v)>([&](vertex_descriptor v)
 		{
-///XXX: make_lambda_visitor
-
-	for(auto _n: iters(g.nodes()))
-	{
-		auto as = g.get_node(_n);
-		auto n = (ret.find_node(as) == ret.nodes().second ? ret.insert_node(as) : *ret.find_node(as));
-
-		for(auto e: iters(g.in_edges(_n)))
-		{
-			auto c = source(e);
-			auto j = ret.find_node(g.get_node(c));
-			if(j == ret.nodes().second)
+			for(auto e: iters(g.in_edges(v)))
 			{
-				auto v = ret.insert_node(g.get_node(c));
-				ret.insert_edge(g.get_edge(e),n,v);
+				auto c = source(e,g);
+				if(ret.count(c) == 0)
+					ret[c] = v;
+				else
+					ret[c] = common_parent(ret.at(c),v);
 			}
-			else
-			{
-				ret.remove_node(*j);
-				auto v = ret.insert_node(g.get_node(c));
-				auto par = common_parent(c,_n);
-				auto as = g.get_node(_n);
-				auto n = (ret.find_node(as) == ret.nodes().second ? ret.insert_node(as) : *ret.find_node(as));
+		}),revgraph,boost::on_discover_vertex()))));
 
-				ret.insert_edge(g.get_edge(e),common_parent(c,_n);
-
-				auto _c = *ret.find_node(
-
-
+	return ret;
+}
 
 /*
 bytes po::read(const address_space &as, const range<addr_t> &a, const graph<address_space,range<addr_t>> &g)

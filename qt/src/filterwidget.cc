@@ -80,39 +80,33 @@ FilterWidget::FilterWidget(QWidget *parent)
 	boost::associative_property_map<std::unordered_map<edge_descriptor,int>> weight_adaptor(w_map);
 
 	auto proj = po::projection(base_as,m_graph);
+	auto tree = po::tree(m_graph);
+	std::unordered_map<vertex_descriptor,QTreeWidgetItem*> items;
 
-	auto common_parent = [&](vertex_descriptor v, vertex_descriptor u)
+	m_view.clear();
+	for(auto p: iters(m_graph.nodes()))
 	{
-		auto find_path = [&](vertex_descriptor x)
-		{
-			std::unordered_map<vertex_descriptor,int> d_map;
-			boost::associative_property_map<std::unordered_map<vertex_descriptor,int>> distance_adaptor(d_map);
+		auto item = new QTreeWidgetItem();
 
-			std::unordered_map<vertex_descriptor,vertex_descriptor> p_map;
-			boost::associative_property_map<std::unordered_map<vertex_descriptor,vertex_descriptor>> pred_adaptor(p_map);
+		item->setText(0,QString::fromStdString(m_graph.get_node(p).name));
+		m_view.invisibleRootItem()->addChild(item);
+		items.insert(std::make_pair(p,item));
+	}
 
-			auto es = m_graph.edges();
-			std::for_each(es.first,es.second,[&](const edge_descriptor e) { w_map[e] = 1; });
-			boost::dijkstra_shortest_paths(m_graph,x,boost::weight_map(weight_adaptor).distance_map(distance_adaptor).predecessor_map(pred_adaptor));
+	for(auto p: tree)
+	{
+		auto par = items[p.second];
+		auto ch = items[p.first];
+		auto opar = ch->parent();
 
-			auto i = base_vx;
-			std::list<vertex_descriptor> path({i});
-			while(i != p_map[i])
-			{
-				i = p_map[i];
-				path.push_back(i);
-			}
-			return path;
-		};
+		if(opar)
+			opar->removeChild(ch);
+		else
+			m_view.takeTopLevelItem(m_view.indexOfTopLevelItem(ch));
+		par->addChild(ch);
 
-		auto l1 =	find_path(v);
-		auto l2 = find_path(u);
-
-		return *std::find_first_of(l1.begin(),l1.end(),l2.begin(),l2.end());
-	};
-
-
-	std::cout << m_graph.get_node(common_parent(add_vx,xor_vx)).name << std::endl;
+		std::cout << m_graph.get_node(p.second).name << " -> " << m_graph.get_node(p.first).name << std::endl;
+	}
 
 	/*m_list.horizontalHeader()->hide();
 	m_list.horizontalHeader()->setStretchLastSection(true);
@@ -125,8 +119,4 @@ FilterWidget::FilterWidget(QWidget *parent)
 
 	/*connect(&m_list,SIGNAL(itemActivated(QTableWidgetItem *)),this,SLOT(activateItem(QTableWidgetItem*)));
 	connect(m_list.selectionModel(),SIGNAL(currentChanged(const QModelIndex&,const QModelIndex &)),this,SLOT(currentChanged(const QModelIndex&,const QModelIndex &)));*/
-	m_view.clear();
-	m_view.insertTopLevelItem(0,new QTreeWidgetItem(QStringList({"Test","0","44"})));
-	m_view.insertTopLevelItem(0,new QTreeWidgetItem(QStringList({"Test2","5","54"})));
-	m_view.insertTopLevelItem(0,new QTreeWidgetItem(QStringList({"Test3","0","0"})));
 }

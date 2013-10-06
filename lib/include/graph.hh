@@ -59,10 +59,9 @@ namespace po
 		unordered_pmap(std::initializer_list<std::pair<K,V>> il) : container(il) {}
 		unordered_pmap(const unordered_pmap &m) : container(m.container) {}
 
-		V& operator[](const K &k)
-		{
-			return container[k];
-		}
+		V& operator[](const K &k) { return container[k]; }
+		V at(const K &k) { return container.at(k); }
+		size_t count(const K &k) { return container.count(k); }
 
 		typename std::unordered_map<K,V>::iterator begin(void) { return container.begin(); };
 		typename std::unordered_map<K,V>::iterator end(void) { return container.end(); };
@@ -484,17 +483,25 @@ namespace po
 	};
 
 	template<typename I>
-	iter_pair<I> iters(std::pair<I,I> &p)
+	iter_pair<I> iters(const std::pair<I,I> &p)
 	{
 		return iter_pair<I>(p);
 	}
 
-	template<typename X, typename G>
+	template<typename X, typename G,typename E>
 	struct lambda_visitor
 	{
-		lambda_visitor(std::function<void(X,G)> fn) : m_function(fn) {}
-		void operator()(X x, G g) { m_function(x,g); }
+		using event_filter = E;
 
-		std::function<void(X,G)> m_function;
+		lambda_visitor(std::function<void(X)> fn) : m_function(fn) {}
+		void operator()(X x, G g) { m_function(x); }
+
+		std::function<void(X)> m_function;
 	};
+
+	template<typename X, typename G, typename E>
+	lambda_visitor<X,G,E> make_lambda_visitor(std::function<void(X)> fn, G g, E)
+	{
+		return lambda_visitor<X,G,E>(fn);
+	}
 }

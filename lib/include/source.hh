@@ -2,6 +2,7 @@
 #include <vector>
 #include <functional>
 #include <cassert>
+#include <unordered_map>
 
 #include <graph.hh>
 
@@ -88,10 +89,6 @@ namespace po
 
 		friend struct std::hash<address_space>;
 	};
-
-	std::list<std::pair<rrange,address_space>> projection(const address_space &as, const graph<address_space,rrange> &g);
-	graph<address_space,rrange> tree(const graph<address_space,rrange> &g);
-	boost::graph_traits<po::graph<po::address_space,po::rrange>>::vertex_descriptor root(const graph<address_space,rrange> &g);
 }
 
 namespace std
@@ -113,4 +110,12 @@ namespace std
 			return std::hash<X>()(p.first) xor std::hash<Y>()(p.second);
 		}
 	};
+}
+
+namespace po
+{
+	std::list<std::pair<rrange,address_space>> projection(const address_space &as, const graph<address_space,rrange> &g);
+	po::unordered_pmap<boost::graph_traits<po::graph<po::address_space,po::rrange>>::vertex_descriptor,boost::graph_traits<po::graph<po::address_space,po::rrange>>::vertex_descriptor>
+	tree(const graph<address_space,rrange> &g);
+	boost::graph_traits<po::graph<po::address_space,po::rrange>>::vertex_descriptor root(const graph<address_space,rrange> &g);
 }
