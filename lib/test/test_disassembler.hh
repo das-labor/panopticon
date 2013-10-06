@@ -40,7 +40,7 @@ public:
 		{
 			;
 		};
-		
+
 		main | 'A' = [](ss st)
 		{
 			st.mnemonic(1,"A");
@@ -76,10 +76,10 @@ public:
 		CPPUNIT_ASSERT(st.tokens.size() >= 1);
 		CPPUNIT_ASSERT(st.tokens[0] == 'A');
 		CPPUNIT_ASSERT(st.capture_groups.size() == 0);
-		CPPUNIT_ASSERT(st.mnemonics.size() == 1);	
-		CPPUNIT_ASSERT(st.mnemonics.front().opcode == std::string("A"));	
-		CPPUNIT_ASSERT(st.mnemonics.front().area == po::range<po::addr_t>(0,1));	
-		CPPUNIT_ASSERT(st.mnemonics.front().instructions.empty());	
+		CPPUNIT_ASSERT(st.mnemonics.size() == 1);
+		CPPUNIT_ASSERT(st.mnemonics.front().opcode == std::string("A"));
+		CPPUNIT_ASSERT(st.mnemonics.front().area == po::range<po::addr_t>(0,1));
+		CPPUNIT_ASSERT(st.mnemonics.front().instructions.empty());
 		CPPUNIT_ASSERT(st.jumps.size() == 1);
 		CPPUNIT_ASSERT(st.jumps.front().first.is_constant());
 		CPPUNIT_ASSERT(st.jumps.front().first.to_constant().content() == 1);
@@ -101,10 +101,10 @@ public:
 		CPPUNIT_ASSERT(st.tokens[0] == 'A');
 		CPPUNIT_ASSERT(st.tokens[1] == 'B');
 		CPPUNIT_ASSERT(st.capture_groups.size() == 0);
-		CPPUNIT_ASSERT(st.mnemonics.size() == 1);	
-		CPPUNIT_ASSERT(st.mnemonics.front().opcode == std::string("BA"));	
-		CPPUNIT_ASSERT(st.mnemonics.front().area == po::range<po::addr_t>(1,3));	
-		CPPUNIT_ASSERT(st.mnemonics.front().instructions.empty());	
+		CPPUNIT_ASSERT(st.mnemonics.size() == 1);
+		CPPUNIT_ASSERT(st.mnemonics.front().opcode == std::string("BA"));
+		CPPUNIT_ASSERT(st.mnemonics.front().area == po::range<po::addr_t>(1,3));
+		CPPUNIT_ASSERT(st.mnemonics.front().instructions.empty());
 		CPPUNIT_ASSERT(st.jumps.size() == 1);
 		CPPUNIT_ASSERT(st.jumps.front().first.is_constant());
 		CPPUNIT_ASSERT(st.jumps.front().first.to_constant().content() == 3);
@@ -125,10 +125,10 @@ public:
 		CPPUNIT_ASSERT(st.tokens.size() == 1);
 		CPPUNIT_ASSERT(st.tokens[0] == 'X');
 		CPPUNIT_ASSERT(st.capture_groups.size() == 0);
-		CPPUNIT_ASSERT(st.mnemonics.size() == 1);	
-		CPPUNIT_ASSERT(st.mnemonics.front().opcode == std::string("UNK"));	
-		CPPUNIT_ASSERT(st.mnemonics.front().area == po::range<po::addr_t>(5,6));	
-		CPPUNIT_ASSERT(st.mnemonics.front().instructions.empty());	
+		CPPUNIT_ASSERT(st.mnemonics.size() == 1);
+		CPPUNIT_ASSERT(st.mnemonics.front().opcode == std::string("UNK"));
+		CPPUNIT_ASSERT(st.mnemonics.front().area == po::range<po::addr_t>(5,6));
+		CPPUNIT_ASSERT(st.mnemonics.front().instructions.empty());
 		CPPUNIT_ASSERT(st.jumps.size() == 1);
 		CPPUNIT_ASSERT(st.jumps.front().first.is_constant());
 		CPPUNIT_ASSERT(st.jumps.front().second.relations.empty());
@@ -149,10 +149,10 @@ public:
 		CPPUNIT_ASSERT(st.tokens.size() >= 1);
 		CPPUNIT_ASSERT(st.tokens[0] == 'A');
 		CPPUNIT_ASSERT(st.capture_groups.size() == 0);
-		CPPUNIT_ASSERT(st.mnemonics.size() == 1);	
-		CPPUNIT_ASSERT(st.mnemonics.front().opcode == std::string("A"));	
-		CPPUNIT_ASSERT(st.mnemonics.front().area == po::range<po::addr_t>(1,2));	
-		CPPUNIT_ASSERT(st.mnemonics.front().instructions.empty());	
+		CPPUNIT_ASSERT(st.mnemonics.size() == 1);
+		CPPUNIT_ASSERT(st.mnemonics.front().opcode == std::string("A"));
+		CPPUNIT_ASSERT(st.mnemonics.front().area == po::range<po::addr_t>(1,2));
+		CPPUNIT_ASSERT(st.mnemonics.front().instructions.empty());
 		CPPUNIT_ASSERT(st.jumps.size() == 1);
 		CPPUNIT_ASSERT(st.jumps.front().first.is_constant());
 		CPPUNIT_ASSERT(st.jumps.front().second.relations.empty());
@@ -172,7 +172,7 @@ public:
 		CPPUNIT_ASSERT(st.address == 0);
 		CPPUNIT_ASSERT(st.tokens.size() == 0);
 		CPPUNIT_ASSERT(st.capture_groups.size() == 0);
-		CPPUNIT_ASSERT(st.mnemonics.size() == 0);	
+		CPPUNIT_ASSERT(st.mnemonics.size() == 0);
 		CPPUNIT_ASSERT(st.jumps.size() == 0);
 	}
 
@@ -193,15 +193,15 @@ public:
 		CPPUNIT_ASSERT(st.capture_groups.count("k") == 1);
 		CPPUNIT_ASSERT(st.capture_groups["k"] == 16);
 		CPPUNIT_ASSERT(st.mnemonics.size() == 1);
-		CPPUNIT_ASSERT(st.mnemonics.front().opcode == std::string("C"));	
-		CPPUNIT_ASSERT(st.mnemonics.front().area == po::range<po::addr_t>(4,5));	
-		CPPUNIT_ASSERT(st.mnemonics.front().instructions.empty());	
+		CPPUNIT_ASSERT(st.mnemonics.front().opcode == std::string("C"));
+		CPPUNIT_ASSERT(st.mnemonics.front().area == po::range<po::addr_t>(4,5));
+		CPPUNIT_ASSERT(st.mnemonics.front().instructions.empty());
 		CPPUNIT_ASSERT(st.jumps.size() == 1);
 		CPPUNIT_ASSERT(st.jumps.front().first.is_constant());
 		CPPUNIT_ASSERT(st.jumps.front().second.relations.empty());
 		CPPUNIT_ASSERT(st.jumps.front().first.to_constant().content() == 5);
 	}
-	
+
 	void testEmptyCapGroup(void)
 	{
 		po::sem_state<test_tag> st(0);
@@ -227,9 +227,9 @@ public:
 		CPPUNIT_ASSERT(st.capture_groups["b"] == 0);
 		CPPUNIT_ASSERT(st.capture_groups["c"] == 7);
 		CPPUNIT_ASSERT(st.mnemonics.size() == 1);
-		CPPUNIT_ASSERT(st.mnemonics.front().opcode == std::string("1"));	
-		CPPUNIT_ASSERT(st.mnemonics.front().area == po::range<po::addr_t>(0,1));	
-		CPPUNIT_ASSERT(st.mnemonics.front().instructions.empty());	
+		CPPUNIT_ASSERT(st.mnemonics.front().opcode == std::string("1"));
+		CPPUNIT_ASSERT(st.mnemonics.front().area == po::range<po::addr_t>(0,1));
+		CPPUNIT_ASSERT(st.mnemonics.front().instructions.empty());
 		CPPUNIT_ASSERT(st.jumps.size() == 0);
 	}
 

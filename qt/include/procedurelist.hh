@@ -19,7 +19,7 @@ public:
 	};
 
 	ProcedureListItem(po::proc_ptr p, Field f);
-	
+
 	po::proc_ptr procedure(void) const;
 	Field field(void) const;
 
@@ -36,7 +36,7 @@ class ProcedureList : public QDockWidget
 
 public:
 	ProcedureList(po::flow_ptr flow, QWidget *parent = 0);
-	
+
 public slots:
 	void snapshot(void);
 	void select(po::proc_ptr proc);

@@ -10,18 +10,18 @@
 #include <basic_block.hh>
 
 #include <basicblockwidget.hh>
-#include <graph.hh>
+#include <scene.hh>
 
 class ControlTransferWidget : public QGraphicsItem, public Arrow
 {
 public:
 	ControlTransferWidget(po::guard g, BasicBlockWidget *from, BasicBlockWidget *to, QGraphicsItem *parent = 0);
-	
+
 	virtual QGraphicsObject *from(void);
 	virtual QGraphicsObject *to(void);
 	virtual QPainterPath path(void) const;
 	virtual void setPath(QPainterPath pp);
-	
+
 	virtual QRectF boundingRect(void) const;
 	virtual void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget = 0);
 

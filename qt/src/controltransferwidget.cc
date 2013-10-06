@@ -1,12 +1,13 @@
 #include <sstream>
 
 #include <QTransform>
+#include <QPainter>
 
 #include <controltransferwidget.hh>
 
 ControlTransferWidget::ControlTransferWidget(po::guard g, BasicBlockWidget *from, BasicBlockWidget *to, QGraphicsItem *parent)
-: QGraphicsItem(parent), m_from(from), m_to(to), 
-												 m_text("",this), 
+: QGraphicsItem(parent), m_from(from), m_to(to),
+												 m_text("",this),
 												 m_rect(QRectF(),this),
 												 m_path(QPainterPath(),this)
 {
@@ -14,7 +15,7 @@ ControlTransferWidget::ControlTransferWidget(po::guard g, BasicBlockWidget *from
 	m_path.setZValue(-2);
 	m_path.setPen(QPen(Qt::red,2));
 	m_head << QPointF(0,0) << QPointF(3*-1.3,3*3) << QPointF(0,3*2.5) << QPointF(3*1.3,3*3) << QPointF(0,0);
-	
+
 	if(g.relations.empty())
 	{
 		m_text.hide();
@@ -23,7 +24,7 @@ ControlTransferWidget::ControlTransferWidget(po::guard g, BasicBlockWidget *from
 	else
 	{
 		std::stringstream ss;
-		
+
 		ss << g;
 		m_text.setText(QString::fromUtf8(ss.str().c_str()));
 		m_text.setFont(QFont("Monospace",8));
@@ -37,7 +38,7 @@ void ControlTransferWidget::setPath(QPainterPath pp)
 {
 	m_path.setPath(pp);
 	m_path.setPos(0,0);
-	
+
 	if(m_text.isVisible())
 	{
 		m_text.setPos(path().pointAtPercent(0.5) - QPointF(m_text.boundingRect().width() / 2.0,m_text.boundingRect().height() / 2.0));
