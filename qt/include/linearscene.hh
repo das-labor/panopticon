@@ -1,5 +1,4 @@
-#include <QDeclarativeListProperty>
-#include <QDeclarativeItem>
+#include <QtQml>
 #include <QList>
 
 #include <graph.hh>
@@ -7,64 +6,46 @@
 
 #pragma once
 
-class Section : public QDeclarativeItem
+class LinearSceneRow : public QObject
 {
 	Q_OBJECT
-	Q_PROPERTY(QString name READ name NOTIFY nameChanged)
-	Q_PROPERTY(int rows READ rows NOTIFY rowsChanged)
+	Q_PROPERTY(QString data READ data NOTIFY dataChanged)
+	Q_PROPERTY(bool selected READ selected NOTIFY selectedChanged)
 
 public:
-	Section(void) : m_name("(noname)"), m_rows(0) {}
-	Section(const QString &n, int r) : m_name(n), m_rows(r) {}
+	LinearSceneRow(void);
+	LinearSceneRow(QString h, bool sel);
+	virtual ~LinearSceneRow(void);
 
-	QString name(void) const { return m_name; }
-	int rows(void) const { return m_rows; }
+	QString data(void) const;
+	bool selected(void) const;
 
 signals:
-	void nameChanged(void);
-	void rowsChanged(void);
+	void dataChanged(void);
+	void selectedChanged(void);
 
 private:
-	QString m_name;
-	int m_rows;
+	QString m_data;
+	bool m_selected;
 };
 
-class LinearScene : public QDeclarativeItem
+class LinearSceneModel : public QAbstractListModel
 {
 	Q_OBJECT
-	Q_PROPERTY(QDeclarativeListProperty<Section> nodes READ nodes NOTIFY nodesChanged)
 
 public:
-	LinearScene(QDeclarativeItem *parent = 0);
-	virtual ~LinearScene(void);
+	LinearSceneModel(void);
+	virtual ~LinearSceneModel(void);
 
-	QDeclarativeListProperty<Section> nodes(void);
-	const QList<Section*> &nodeList(void) const;
+	virtual int rowCount(const QModelIndex &parent = QModelIndex()) const;
+	virtual QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const;
+	virtual QHash<int, QByteArray> roleNames(void) const;
 
 public slots:
-	void graphChanged(const po::graph<po::address_space,po::rrange> &graph);
-
-signals:
-	void nodesChanged(void);
+	void select(int firstRow, int firstCol, int lastRow, int lastCol);
 
 private:
-	QList<Section*> m_nodes;
+	bool selected(int row, int col) const;
 
-	template<typename T>
-	static void appendCallback(QDeclarativeListProperty<T> *property, T *value);
-	template<typename T>
-	static int countCallback(QDeclarativeListProperty<T> *property);
-	template<typename T>
-	static T *atCallback(QDeclarativeListProperty<T> *property, int idx);
-	template<typename T>
-	static void clearCallback(QDeclarativeListProperty<T> *property);
+	int m_firstRow, m_lastRow, m_firstColumn, m_lastColumn;
 };
-
-template<>
-void LinearScene::appendCallback(QDeclarativeListProperty<Section> *property, Section *value);
-template<>
-int LinearScene::countCallback(QDeclarativeListProperty<Section> *property);
-template<>
-Section *LinearScene::atCallback(QDeclarativeListProperty<Section> *property, int idx);
-template<>
-void LinearScene::clearCallback(QDeclarativeListProperty<Section> *property);

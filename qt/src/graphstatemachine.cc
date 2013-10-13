@@ -2,7 +2,7 @@
 
 #include <QDebug>
 
-#include "stateMachine.hh"
+#include "graphstatemachine.hh"
 
 const QEvent::Type Event::eventType = static_cast<QEvent::Type>(QEvent::registerEventType());
 

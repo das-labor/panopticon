@@ -1,13 +1,9 @@
-#ifndef WINDOW_HH
-#define WINDOW_HH
-
 #include <QMainWindow>
 
-class Window;
-
-#include <actions.hh>
 #include <procedurelist.hh>
 #include <filterwidget.hh>
+
+#pragma once
 
 class Window : public QMainWindow
 {
@@ -30,7 +26,5 @@ private:
 	ProcedureList *m_procList;
 	FilterWidget *m_filterWidget;
 	po::flow_ptr m_flowgraph;
-	QAction *m_action;
+	//QAction *m_action;
 };
-
-#endif

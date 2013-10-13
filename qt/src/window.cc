@@ -6,11 +6,17 @@
 #include <QDebug>
 #include <QStatusBar>
 #include <QCoreApplication>
-#include <QDeclarativeView>
+#include <QQuickView>
+#include <QQuickItem>
+#include <QAbstractItemModel>
+#include <QDebug>
+#include <QQmlApplicationEngine>
+#include <QQmlComponent>
+#include <QQmlContext>
 
-#include <window.hh>
+#include "window.hh"
 
-#include <linearscene.hh>
+#include "linearscene.hh"
 #include <avr/avr.hh>
 
 Window::Window(void)
@@ -29,8 +35,17 @@ Window::Window(void)
 	setCentralWidget(m_tabs);
 	addDockWidget(Qt::LeftDockWidgetArea,m_procList);
 	addDockWidget(Qt::LeftDockWidgetArea,m_filterWidget);
-	m_tabs->addTab(new QDeclarativeView(QUrl::fromLocalFile("Hexdump.qml")),"Hexdump");
 
+	LinearSceneModel *lsm = new LinearSceneModel();
+	auto view = new QQuickView();
+  view->rootContext()->setContextProperty("linearModel", lsm);
+	view->setResizeMode(QQuickView::SizeRootObjectToView);
+	view->setSource(QUrl("qrc:/Hex.qml"));
+	QObject::connect(view->rootObject(),SIGNAL(select(int,int,int,int)),lsm,SLOT(select(int,int,int,int)));
+ 	QWidget *container = QWidget::createWindowContainer(view, this);
+  container->setMinimumSize(200, 200);
+  container->setMaximumSize(200, 200);
+	m_tabs->addTab(container,QString::fromStdString("Hexdump"));
 	connect(m_procList,SIGNAL(activated(po::proc_ptr)),this,SLOT(activate(po::proc_ptr)));
 
 	//m_action->trigger();

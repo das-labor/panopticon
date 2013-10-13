@@ -6,12 +6,22 @@ Rectangle {
 	property string name: "(noname)"
 
 	width: 450
-	height: { rows * 10 }
+	height: childrenRect.height
 
 	color: "#1155aa"
 	border.color: "black"
 	border.width: 2
 
+	Column {
+		Repeater {
+			model: rows
+
+			Text {
+				text: model.modelData
+			}
+		}
+	}
+/*
 	Text {
 		id: name_element
 		text: { parent.name }
@@ -24,5 +34,5 @@ Rectangle {
 		}
 		anchors.horizontalCenter: main.horizontalCenter
 		anchors.verticalCenter: main.verticalCenter
-	}
+	}*/
 }

@@ -1,8 +1,8 @@
 #include <QtCore>
-#include <QtDeclarative>
+#include <QApplication>
+#include <QQmlApplicationEngine>
 
-#include <scene.hh>
-#include <interface.hh>
+#include <graphscene.hh>
 #include <linearscene.hh>
 #include <window.hh>
 
@@ -10,11 +10,11 @@ using namespace std;
 
 int main(int argc, char *argv[])
 {
-	qmlRegisterType<Path>("Panopticon",1,0,"Path");
-	qmlRegisterType<Scene>("Panopticon",1,0,"Graph");
-	qmlRegisterType<LinearScene>("Panopticon",1,0,"LinearScene");
-	qmlRegisterType<Section>("Panopticon",1,0,"LinearSceneItem");
-	qmlRegisterType<Pen>("Panopticon",1,0,"Pen");
+	qmlRegisterType<GraphScenePath>("Panopticon",1,0,"Path");
+	qmlRegisterType<GraphSceneItem>("Panopticon",1,0,"Graph");
+	qmlRegisterType<LinearSceneModel>("Panopticon",1,0,"LinearSceneModel");
+	qmlRegisterType<LinearSceneRow>("Panopticon",1,0,"LinearSceneRow");
+	qmlRegisterType<GraphScenePen>("Panopticon",1,0,"Pen");
 
 	QApplication app(argc, argv);
 	Window win;

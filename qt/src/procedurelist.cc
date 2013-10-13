@@ -23,7 +23,10 @@ ProcedureListItem::ProcedureListItem(po::proc_ptr p, Field f)
 		setText("(unknown field type)");
 	}
 }
-	
+
+ProcedureListItem::~ProcedureListItem(void)
+{}
+
 po::proc_ptr ProcedureListItem::procedure(void) const
 {
 	assert(m_procedure);
@@ -65,10 +68,13 @@ ProcedureList::ProcedureList(QWidget *parent)
 	m_list.setSelectionMode(QAbstractItemView::SingleSelection);
 	m_list.setColumnCount(2);
 	setWidget(&m_list);
-	
+
 	connect(&m_list,SIGNAL(itemActivated(QTableWidgetItem *)),this,SLOT(activateItem(QTableWidgetItem*)));
 	connect(m_list.selectionModel(),SIGNAL(currentChanged(const QModelIndex&,const QModelIndex &)),this,SLOT(currentChanged(const QModelIndex&,const QModelIndex &)));
 }
+
+ProcedureList::~ProcedureList(void)
+{}
 
 void ProcedureList::setFlowgraph(po::flow_ptr f)
 {
@@ -93,11 +99,11 @@ void ProcedureList::setFlowgraph(po::flow_ptr f)
 			known.insert(item->procedure());
 		}
 	}
-	
+
 	if(m_flowgraph)
 	{
 		m_list.setRowCount(m_flowgraph->procedures.size());
-		
+
 		assert(known.size() <= m_flowgraph->procedures.size());
 		if(known.size() < m_flowgraph->procedures.size())
 		{
@@ -119,7 +125,7 @@ void ProcedureList::setFlowgraph(po::flow_ptr f)
 			}
 		}
 	}
-	
+
 	m_list.resizeRowsToContents();
 	m_list.resizeColumnsToContents();
 	m_list.sortItems(0,Qt::AscendingOrder);
@@ -144,7 +150,7 @@ void ProcedureList::select(po::proc_ptr proc)
 	while(row < m_list.rowCount())
 	{
 		ProcedureListItem *item = dynamic_cast<ProcedureListItem *>(m_list.item(row++,0));
-		
+
 		if(item->procedure() == proc)
 		{
 			if(m_list.currentItem() != item)
@@ -160,13 +166,13 @@ void ProcedureList::select(po::proc_ptr proc)
 void ProcedureList::currentChanged(const QModelIndex &current, const QModelIndex &previous)
 {
 	ProcedureListItem *i = dynamic_cast<ProcedureListItem *>(m_list.currentItem());
-	
-	if(!i) 
+
+	if(!i)
 	{
 		emit selected(nullptr);
 		return;
 	}
-	
+
 	for(po::proc_ptr p: m_flowgraph->procedures)
 		if(p == i->procedure())
 			emit selected(p);
@@ -175,7 +181,7 @@ void ProcedureList::currentChanged(const QModelIndex &current, const QModelIndex
 void ProcedureList::activateItem(QTableWidgetItem *i)
 {
 	ProcedureListItem *tw = dynamic_cast<ProcedureListItem *>(i);
-	
+
 	assert(tw);
 	emit activated(tw->procedure());
 }

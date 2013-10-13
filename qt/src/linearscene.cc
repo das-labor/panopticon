@@ -1,94 +1,81 @@
-#include <cassert>
-#include <linearscene.hh>
+#include <QApplication>
+#include <QQuickView>
+#include <QQuickItem>
+#include <QAbstractListModel>
+#include <QDebug>
+#include <QQmlApplicationEngine>
+#include <QQmlComponent>
+#include <QQmlContext>
+#include <limits>
 
-LinearScene::LinearScene(QDeclarativeItem *parent)
-: QDeclarativeItem(parent), m_nodes()
-{
-	using bytes = std::vector<uint8_t>;
-	using vertex_descriptor = typename boost::graph_traits<po::graph<po::address_space,po::rrange>>::vertex_descriptor;
-	using edge_descriptor = typename boost::graph_traits<po::graph<po::address_space,po::rrange>>::edge_descriptor;
+#include "linearscene.hh"
 
-	po::graph<po::address_space,po::rrange> m_graph;
+LinearSceneRow::LinearSceneRow(void) : QObject(), m_data(""), m_selected(false) {}
+LinearSceneRow::LinearSceneRow(QString h, bool sel) : QObject(), m_data(h), m_selected(sel) {}
+LinearSceneRow::~LinearSceneRow(void) {}
 
-	po::address_space base_as("base",po::rrange(0,128),std::function<bytes(const bytes&)>());
-	po::address_space xor_as("xor",po::rrange(0,64),std::function<bytes(const bytes&)>());
-	po::address_space add_as("add",po::rrange(0,27),std::function<bytes(const bytes&)>());
-	po::address_space zlib_as("zlib",po::rrange(0,128),std::function<bytes(const bytes&)>());
-	po::address_space aes_as("aes",po::rrange(0,32),std::function<bytes(const bytes&)>());
+QString LinearSceneRow::data(void) const { return m_data; }
+bool LinearSceneRow::selected(void) const { return m_selected; }
 
-	auto base_vx = m_graph.insert_node(base_as);
-	auto xor_vx = m_graph.insert_node(xor_as);
-	auto add_vx = m_graph.insert_node(add_as);
-	auto zlib_vx = m_graph.insert_node(zlib_as);
-	auto aes_vx = m_graph.insert_node(aes_as);
-
-	m_graph.insert_edge(po::rrange(0,64),xor_vx,base_vx);
-	m_graph.insert_edge(po::rrange(64,72),add_vx,base_vx);
-	m_graph.insert_edge(po::rrange(45,64),add_vx,xor_vx);
-	m_graph.insert_edge(po::rrange(80,128),zlib_vx,base_vx);
-	m_graph.insert_edge(po::rrange(32,64),aes_vx,zlib_vx);
-
-	graphChanged(m_graph);
-}
-
-LinearScene::~LinearScene(void)
+LinearSceneModel::LinearSceneModel(void)
+: QAbstractListModel(), m_firstRow(0), m_lastRow(1), m_firstColumn(0), m_lastColumn(3)
 {}
 
-QDeclarativeListProperty<Section> LinearScene::nodes(void)
+LinearSceneModel::~LinearSceneModel(void) {}
+
+int LinearSceneModel::rowCount(const QModelIndex &parent) const
 {
-	return QDeclarativeListProperty<Section>(this,this,&appendCallback<Section>,&countCallback<Section>,&atCallback<Section>,&clearCallback<Section>);
+	if(!parent.isValid())
+		return 100;
+	else
+		return 0;
 }
 
-const QList<Section*> &LinearScene::nodeList(void) const
+QVariant LinearSceneModel::data(const QModelIndex &index, int role) const
 {
-	return m_nodes;
-}
-
-void LinearScene::graphChanged(const po::graph<po::address_space,po::rrange> &graph)
-{
-	auto proj = po::projection(graph.get_node(po::root(graph)),graph);
-
-	m_nodes.clear();
-	for(auto i: proj)
-		m_nodes.append(new Section(QString::fromStdString(i.second.name),boost::icl::length(i.first)));
-	nodesChanged();
-}
-
-template<>
-void LinearScene::appendCallback(QDeclarativeListProperty<Section> *property, Section *value)
-{
-	LinearScene *graph = reinterpret_cast<LinearScene*>(property->data);
-
-	if(graph)
+	switch(role)
 	{
-		assert(!graph->m_nodes.contains(value));
-
-		graph->m_nodes.append(value);
-		graph->nodesChanged();
+		case Qt::DisplayRole: return QString("-- Display --");
+		case Qt::UserRole:
+		{
+			QList<QVariant> lst;
+			lst.append(QVariant::fromValue(new LinearSceneRow("0xaa",selected(index.row(),0))));
+			lst.append(QVariant::fromValue(new LinearSceneRow("0xbb",selected(index.row(),1))));
+			lst.append(QVariant::fromValue(new LinearSceneRow("0xcc",selected(index.row(),2))));
+			lst.append(QVariant::fromValue(new LinearSceneRow("0xdd",selected(index.row(),3))));
+			lst.append(QVariant::fromValue(new LinearSceneRow("0xff",selected(index.row(),4))));
+			return QVariant::fromValue(lst);
+		}
+		default: return QVariant();
 	}
 }
 
-template<>
-int LinearScene::countCallback(QDeclarativeListProperty<Section> *property)
+QHash<int, QByteArray> LinearSceneModel::roleNames(void) const
 {
-	LinearScene *graph = reinterpret_cast<LinearScene*>(property->data);
-	return graph ? graph->nodeList().count() : -1;
+	QHash<int, QByteArray> ret;
+
+	ret.insert(Qt::DisplayRole,QByteArray("display"));
+	ret.insert(Qt::UserRole,QByteArray("row"));
+	return ret;
 }
 
-template<>
-Section *LinearScene::atCallback(QDeclarativeListProperty<Section> *property, int idx)
+void LinearSceneModel::select(int firstRow, int firstCol, int lastRow, int lastCol)
 {
-	LinearScene *graph = reinterpret_cast<LinearScene*>(property->data);
-	return graph ? graph->nodeList().value(idx) : 0;
+	QModelIndex up = createIndex(std::min(firstRow,m_firstRow < 0 ? std::numeric_limits<int>::max() : m_firstRow),0);
+	QModelIndex down = createIndex(std::max(lastRow,m_lastRow < 0 ? 0 : m_lastRow),0);
+
+	m_firstRow = firstRow;
+	m_firstColumn = firstCol;
+	m_lastRow = lastRow;
+	m_lastColumn = lastCol;
+
+	emit dataChanged(up,down);
 }
 
-template<>
-void LinearScene::clearCallback(QDeclarativeListProperty<Section> *property)
+bool LinearSceneModel::selected(int row, int col) const
 {
-	LinearScene *graph = reinterpret_cast<LinearScene*>(property->data);
-	if(graph)
-	{
-		graph->m_nodes.clear();
-		graph->nodesChanged();
-	}
+	return (m_firstRow < row && m_lastRow > row) ||
+				 (m_firstRow == row && m_lastRow == row && m_firstColumn <= col && m_lastColumn >= col) ||
+				 (m_firstRow == row && m_firstColumn <= col) ||
+				 (m_lastRow == row && m_lastColumn >= col);
 }

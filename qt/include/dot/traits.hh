@@ -52,8 +52,8 @@ namespace dot
 	unsigned int weight(typename graph_traits<T>::edge_type e, T t);
 
 	// grid queries (A*)
-	template<typename T>
-	bool is_free(float x, float y, unsigned int w, unsigned int h, typename graph_traits<T>::edge_type e, T graph);
+	/*template<typename T>
+	bool is_free(float x, float y, unsigned int w, unsigned int h, typename graph_traits<T>::edge_type e, T graph);*/
 	template<typename T>
 	bool is_free(const vis_node<T> &a, const vis_node<T> &b, T graph);
 

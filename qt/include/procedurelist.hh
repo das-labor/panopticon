@@ -21,6 +21,7 @@ public:
 	};
 
 	ProcedureListItem(po::proc_ptr p, Field f);
+	virtual ~ProcedureListItem(void);
 
 	po::proc_ptr procedure(void) const;
 	Field field(void) const;
@@ -39,6 +40,7 @@ class ProcedureList : public QDockWidget
 
 public:
 	ProcedureList(QWidget *parent = 0);
+	virtual ~ProcedureList(void);
 
 	po::flow_ptr flowgraph(void);
 	void setFlowgraph(po::flow_ptr f);

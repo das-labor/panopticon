@@ -8,14 +8,16 @@ file(GLOB qtpanopticon_RESOURCES res/resources.qrc)
 include_directories(include ${Boost_INCLUDE_DIRS} ${libgvc_INCLUDE_DIRS} ${panopticon_INCLUDE_DIRS})
 link_directories(${Boost_LIBRARY_DIRS} ${libgvc_LIBRARY_DIRS} ${panopticon_LIBRARY_DIRS})
 
-SET(QT_USE_QTDECLARATIVE TRUE)
-qt4_wrap_cpp(qtpanopticon_HEADERS_MOC ${qtpanopticon_HEADERS})
-qt4_add_resources(qtpanopticon_RCCS ${qtpanopticon_RESOURCES})
-include(${QT_USE_FILE})
-add_definitions(${QT_DEFINITIONS})
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_INCLUDE_CURRENT_DIR ON)
+qt5_wrap_cpp(qtpanopticon_HEADERS_MOC ${qtpanopticon_HEADERS})
+qt5_add_resources(qtpanopticon_RCCS ${qtpanopticon_RESOURCES})
+#include_directories(${Qt5Widgets_INCLUDES})
+#add_definitions(${Qt5Widgets_DEFINITIONS})
 
 add_executable(qtpanopticon ${qtpanopticon_SOURCES} ${qtpanopticon_HEADERS}
 	${qtpanopticon_HEADERS_MOC} ${qtpanopticon_RCCS})
+qt5_use_modules(qtpanopticon Widgets Quick Qml)
 target_link_libraries(qtpanopticon ${libgvc_LIBRARIES} ${QT_LIBRARIES}
 	${panopticon_LIBRARIES})
 set_target_properties(qtpanopticon PROPERTIES VERSION
