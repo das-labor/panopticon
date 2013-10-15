@@ -41,6 +41,10 @@ public:
 signals:
 	void activated(po::proc_ptr proc);
 	void selected(po::proc_ptr proc);*/
+	std::list<std::pair<po::rrange,po::address_space>> projection(void) const;
+
+signals:
+	void projectionChanged(const std::list<std::pair<po::rrange,po::address_space>> &proj);
 
 private:
 	po::graph<po::address_space,po::rrange> m_graph;

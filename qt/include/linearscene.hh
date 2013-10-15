@@ -43,10 +43,12 @@ public:
 	virtual QHash<int, QByteArray> roleNames(void) const;
 
 public slots:
+	void setProjection(const std::list<std::pair<po::rrange,po::address_space>> &proj);
 	void select(int firstRow, int firstCol, int lastRow, int lastCol);
 
 private:
 	bool selected(int row, int col) const;
 
 	int m_firstRow, m_lastRow, m_firstColumn, m_lastColumn;
+	std::list<std::pair<po::rrange,po::address_space>> m_projection;
 };

@@ -37,6 +37,11 @@ Window::Window(void)
 	addDockWidget(Qt::LeftDockWidgetArea,m_filterWidget);
 
 	LinearSceneModel *lsm = new LinearSceneModel();
+
+	lsm->setProjection(m_filterWidget->projection());
+	connect(m_filterWidget,SIGNAL(projectionChanged(const std::list<std::pair<po::rrange,po::address_space>> &)),
+					lsm,SLOT(setProjection(const std::list<std::pair<po::rrange,po::address_space>> &)));
+
 	auto view = new QQuickView();
   view->rootContext()->setContextProperty("linearModel", lsm);
 	view->setResizeMode(QQuickView::SizeRootObjectToView);

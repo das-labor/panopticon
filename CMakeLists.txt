@@ -26,7 +26,7 @@ if(NOT DEFINED "CMAKE_BUILD_TYPE" OR "${CMAKE_BUILD_TYPE}" STREQUAL "Release")
 	message("Build release")
 elseif("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
 	include(CTest)
-	message("Build release")
+	message("Build debug")
 endif()
 
 # Dependencies

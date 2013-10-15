@@ -38,6 +38,18 @@ Item {
 		id: listView
 		anchors.fill: parent
 		model: linearModel
+		section.property: "block"
+		section.delegate: Rectangle {
+			width: listView.width
+			height: 40
+			color: "yellow"
+
+			Text {
+				anchors.centerIn: parent
+				text: section
+			}
+		}
+
 		delegate: Component {
 			Item {
 				height: childrenRect.height
