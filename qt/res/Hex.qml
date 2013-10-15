@@ -34,67 +34,25 @@ Item {
 		root.select(anchorRow,anchorCol,selectRow,selectCol)
 	}
 
-	Component {
-		id: comp
-
-		Item {
-			height: childrenRect.height
-			width: childrenRect.width
-
-			function indexAt(x,y)
-			{
-				var i = 0
-				while(i < column.count)
-				{
-					var item = column.itemAt(i)
-					if(item.x <= x && item.x + item.width >= x)
-						return i
-					else
-						++i
-				}
-				return null
-			}
-
-			Loader {
-				source: modelData.source
-				onLoaded: {
-					item.x = Qt.binding(function() {root.addressColumnWidth + root.addressDataMargin + (2 * root.xMargin + root.dataColumnWidth) * index})
-					item.hexData = Qt.binding(function() { modelData.data })
-					item.selected = Qt.binding(function() { modelData.selected })
-					item.globalAnchors = Qt.binding(function() { root })
-				}
-			}
-/*
-			Repeater {
-				id: column
-				model: meta
-				delegate: Element {
-					id: elem
-					x: root.addressColumnWidth + root.addressDataMargin + (2 * root.xMargin + root.dataColumnWidth) * index
-					hexData: modelData.data
-					selected: modelData.selected
-					globalAnchors: root
-				}
-			}*/
-
-			Text {
-				id: address
-				anchors.left: parent.left
-				anchors.leftMargin: root.xMargin
-				anchors.top: parent.top
-				anchors.topMargin: root.yMargin
-				text: index
-
-				Component.onCompleted: { root.addressColumnWidth = Math.max(root.addressColumnWidth,address.width) }
-			}
-		}
-	}
-
 	ListView {
 		id: listView
 		anchors.fill: parent
 		model: linearModel
-		delegate: comp
+		delegate: Component {
+			Item {
+				height: childrenRect.height
+				width: childrenRect.width
+
+				function indexAt(x,y) { return loader.item.indexAt(x,y) }
+
+				Loader {
+					id: loader
+					property var rowData: row
+					property var globalAnchors: root
+					source: delegate
+				}
+			}
+		}
 	}
 
 	MouseArea {

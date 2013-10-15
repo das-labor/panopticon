@@ -1,6 +1,8 @@
 <!DOCTYPE RCC><RCC version="1.0">
 <qresource>
 	<file>Hex.qml</file>
+	<file>Address.qml</file>
+	<file>Test.qml</file>
 	<file>Element.qml</file>
 	<file>BasicBlock.qml</file>
 	<file>Edge.qml</file>

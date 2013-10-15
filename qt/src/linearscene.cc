@@ -26,7 +26,7 @@ LinearSceneModel::~LinearSceneModel(void) {}
 int LinearSceneModel::rowCount(const QModelIndex &parent) const
 {
 	if(!parent.isValid())
-		return 100;
+		return 130;
 	else
 		return 0;
 }
@@ -46,6 +46,7 @@ QVariant LinearSceneModel::data(const QModelIndex &index, int role) const
 			lst.append(QVariant::fromValue(new LinearSceneRow("0xff",selected(index.row(),4))));
 			return QVariant::fromValue(lst);
 		}
+		case Qt::UserRole + 1: return index.row() < 80 ? "qrc:/Element.qml" : "qrc:/Test.qml";
 		default: return QVariant();
 	}
 }
@@ -55,6 +56,7 @@ QHash<int, QByteArray> LinearSceneModel::roleNames(void) const
 	QHash<int, QByteArray> ret;
 
 	ret.insert(Qt::DisplayRole,QByteArray("display"));
+	ret.insert(Qt::UserRole+1,QByteArray("delegate"));
 	ret.insert(Qt::UserRole,QByteArray("row"));
 	return ret;
 }

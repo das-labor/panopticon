@@ -27,6 +27,7 @@ signals:
 private:
 	QString m_data;
 	bool m_selected;
+	QString m_delegate;
 };
 
 class LinearSceneModel : public QAbstractListModel

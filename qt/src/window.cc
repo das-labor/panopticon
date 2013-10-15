@@ -42,9 +42,8 @@ Window::Window(void)
 	view->setResizeMode(QQuickView::SizeRootObjectToView);
 	view->setSource(QUrl("qrc:/Hex.qml"));
 	QObject::connect(view->rootObject(),SIGNAL(select(int,int,int,int)),lsm,SLOT(select(int,int,int,int)));
- 	QWidget *container = QWidget::createWindowContainer(view, this);
+ 	QWidget *container = QWidget::createWindowContainer(view);
   container->setMinimumSize(200, 200);
-  container->setMaximumSize(200, 200);
 	m_tabs->addTab(container,QString::fromStdString("Hexdump"));
 	connect(m_procList,SIGNAL(activated(po::proc_ptr)),this,SLOT(activate(po::proc_ptr)));
 

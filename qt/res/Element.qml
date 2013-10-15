@@ -2,65 +2,55 @@ import QtQuick 2.0
 import Panopticon 1.0
 
 Item {
-	width: childrenRect.width
+	id: element
 	height: childrenRect.height
-	id: hex
+	width: childrenRect.width
 
-	property string hexData: ""
-	property bool selected: false
-	property variant globalAnchors: null
-	property bool component: true
-
-	Loader {
-		id: loader
-		sourceComponent: component ? comp1 : comp2
+	Address {
+		id: address
+		address: index
+		globalAnchors: element.parent.globalAnchors
 	}
 
-	Component {
-		id: comp1
+
+	Repeater {
+		id: column
+		model: rowData
 
 		Item {
-			width: globalAnchors.dataColumnWidth + globalAnchors.xMargin * 2
-			height: text.height + 2 * globalAnchors.yMargin
+			width: childrenRect.width
+			height: childrenRect.height
+			x: globalAnchors.addressColumnWidth + addressDataMargin + index * ( globalAnchors.dataColumnWidth + 2 * globalAnchors.xMargin )
 
 			Rectangle {
-				anchors.fill: parent
-				color: selected ? "red" : "lightblue"
+				id: rect
+				color: modelData.selected ? "red" : "lightblue"
 				border.color: "black"
+				width: globalAnchors.dataColumnWidth + 2 * globalAnchors.xMargin
+				height: text.height + 2 * globalAnchors.yMargin
 			}
 
 			Text {
 				id: text
-				text: hex.hexData
-				anchors.centerIn: parent
+				text: modelData.data
+				anchors.centerIn: rect
 
-				Component.onCompleted: {
-					globalAnchors.dataColumnWidth = Math.max(globalAnchors.dataColumnWidth,width)
-				}
+				Component.onCompleted: { globalAnchors.dataColumnWidth = Math.max(globalAnchors.dataColumnWidth,width) }
 			}
 		}
 	}
 
-	Component {
-		id: comp2
-
-		Item {
-			Rectangle {
-				anchors.fill: parent
-				color: parent.selected ? "green" : "gray"
-				border.color: "black"
-			}
-
-			Text {
-				id: text
-				anchors.centerIn: parent
-				text: hex.hexData
-
-				Component.onCompleted: {
-					globalAnchors.dataColumnWidth = Math.max(globalAnchors.dataColumnWidth,width)
-					hex.height = Qt.binding(function() { text.height + 2 * globalAnchors.yMargin })
-				}
-			}
+	function indexAt(x,y)
+	{
+		var i = 0
+		while(i < column.count)
+		{
+			var item = column.itemAt(i)
+			if(item.x <= x && item.x + item.width >= x)
+				return i
+			else
+				++i
 		}
+		return null
 	}
 }
