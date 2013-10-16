@@ -79,7 +79,7 @@ FilterWidget::FilterWidget(QWidget *parent)
 
 	boost::associative_property_map<std::unordered_map<edge_descriptor,int>> weight_adaptor(w_map);
 
-	emit projectionChanged(po::projection(base_as,m_graph));
+	emit graphChanged(m_graph);
 	auto tree = po::tree(m_graph);
 	std::unordered_map<vertex_descriptor,QTreeWidgetItem*> items;
 
@@ -121,7 +121,7 @@ FilterWidget::FilterWidget(QWidget *parent)
 	connect(m_list.selectionModel(),SIGNAL(currentChanged(const QModelIndex&,const QModelIndex &)),this,SLOT(currentChanged(const QModelIndex&,const QModelIndex &)));*/
 }
 
-std::list<std::pair<po::rrange,po::address_space>> FilterWidget::projection(void) const
+const po::graph<po::address_space,po::rrange> &FilterWidget::graph(void) const
 {
-	return po::projection(m_graph.get_node(po::root(m_graph)),m_graph);
+	return m_graph;
 }

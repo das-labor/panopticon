@@ -38,9 +38,9 @@ Window::Window(void)
 
 	LinearSceneModel *lsm = new LinearSceneModel();
 
-	lsm->setProjection(m_filterWidget->projection());
-	connect(m_filterWidget,SIGNAL(projectionChanged(const std::list<std::pair<po::rrange,po::address_space>> &)),
-					lsm,SLOT(setProjection(const std::list<std::pair<po::rrange,po::address_space>> &)));
+	lsm->setGraph(m_filterWidget->graph());
+	connect(m_filterWidget,SIGNAL(graphChanged(const po::graph<po::address_space,po::rrange> &)),
+					lsm,SLOT(setGraph(const po::graph<po::address_space,po::rrange> &)));
 
 	auto view = new QQuickView();
   view->rootContext()->setContextProperty("linearModel", lsm);

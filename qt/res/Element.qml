@@ -8,7 +8,7 @@ Item {
 
 	Address {
 		id: address
-		address: index
+		address: element.parent.address
 		globalAnchors: element.parent.globalAnchors
 	}
 

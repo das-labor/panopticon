@@ -31,7 +31,25 @@ Item {
 			selectCol = anchorCol = col
 		}
 
-		root.select(anchorRow,anchorCol,selectRow,selectCol)
+		if(anchorRow < selectRow)
+		{
+			root.select(anchorRow,anchorCol,selectRow,selectCol)
+		}
+		else if(anchorRow > selectRow)
+		{
+			root.select(selectRow,selectCol,anchorRow,anchorCol)
+		}
+		else
+		{
+			if(anchorCol < selectCol)
+			{
+				root.select(anchorRow,anchorCol,selectRow,selectCol)
+			}
+			else
+			{
+				root.select(anchorRow,selectCol,selectRow,anchorCol)
+			}
+		}
 	}
 
 	ListView {
@@ -61,6 +79,7 @@ Item {
 					id: loader
 					property var rowData: row
 					property var globalAnchors: root
+					property var address: offset
 					source: delegate
 				}
 			}
@@ -72,12 +91,14 @@ Item {
 
 		onPressed: {
 			var item = listView.itemAt(mouse.x + listView.contentX,mouse.y + listView.contentY)
-			root.modifySelection(listView.indexAt(mouse.x + listView.contentX,mouse.y + listView.contentY),item.indexAt(mouse.x,mouse.y),false)
+			if(item != null)
+				root.modifySelection(listView.indexAt(mouse.x + listView.contentX,mouse.y + listView.contentY),item.indexAt(mouse.x,mouse.y),false)
 		}
 
 		onPositionChanged: {
 			var item = listView.itemAt(mouse.x + listView.contentX,mouse.y + listView.contentY)
-			root.modifySelection(listView.indexAt(mouse.x + listView.contentX,mouse.y + listView.contentY),item.indexAt(mouse.x,mouse.y),true)
+			if(item != null)
+				root.modifySelection(listView.indexAt(mouse.x + listView.contentX,mouse.y + listView.contentY),item.indexAt(mouse.x,mouse.y),true)
 		}
 	}
 }

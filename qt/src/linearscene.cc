@@ -10,15 +10,37 @@
 
 #include "linearscene.hh"
 
-LinearSceneRow::LinearSceneRow(void) : QObject(), m_data(""), m_selected(false) {}
-LinearSceneRow::LinearSceneRow(QString h, bool sel) : QObject(), m_data(h), m_selected(sel) {}
-LinearSceneRow::~LinearSceneRow(void) {}
+LinearSceneColumn::LinearSceneColumn(void) : QObject(), m_data(""), m_selected(false) {}
+LinearSceneColumn::LinearSceneColumn(QString h, bool sel) : QObject(), m_data(h), m_selected(sel) {}
+LinearSceneColumn::~LinearSceneColumn(void) {}
 
-QString LinearSceneRow::data(void) const { return m_data; }
-bool LinearSceneRow::selected(void) const { return m_selected; }
+QString LinearSceneColumn::data(void) const { return m_data; }
+bool LinearSceneColumn::selected(void) const { return m_selected; }
+
+LinearSceneModel::LinearSceneRow::LinearSceneRow(void)
+: type(Row), space()
+{}
+
+LinearSceneModel::LinearSceneRow::LinearSceneRow(LinearSceneModel::LinearSceneRow::Type t, const po::address_space &as)
+: type(t), space(as)
+{}
+
+LinearSceneModel::LinearSceneRow::LinearSceneRow(const LinearSceneModel::LinearSceneRow &o)
+: type(o.type), space(o.space)
+{}
+
+bool LinearSceneModel::LinearSceneRow::operator==(const LinearSceneModel::LinearSceneRow &r) const
+{
+	return type == r.type && space == r.space;
+}
+
+LinearSceneModel::LinearSceneRow &LinearSceneModel::LinearSceneRow::operator+=(const LinearSceneModel::LinearSceneRow &r)
+{
+	return *this;
+}
 
 LinearSceneModel::LinearSceneModel(void)
-: QAbstractListModel(), m_firstRow(0), m_lastRow(1), m_firstColumn(0), m_lastColumn(3)
+: QAbstractListModel(), m_firstRow(0), m_lastRow(1), m_firstColumn(0), m_lastColumn(3), m_rows()
 {}
 
 LinearSceneModel::~LinearSceneModel(void) {}
@@ -26,28 +48,17 @@ LinearSceneModel::~LinearSceneModel(void) {}
 int LinearSceneModel::rowCount(const QModelIndex &parent) const
 {
 	if(!parent.isValid())
-		return std::accumulate(m_projection.begin(),m_projection.end(),0,[](int i, const std::pair<po::rrange,po::address_space> &p) { return i + boost::icl::length(p.first); });
+		return boost::icl::length(m_rows);
 	else
 		return 0;
 }
 
 QVariant LinearSceneModel::data(const QModelIndex &index, int role) const
 {
-	int i = 0;
-	std::pair<po::rrange,po::address_space> sec;
+	auto iter = m_rows.find(index.row());
 
-	for(auto p: m_projection)
-	{
-		if(i <= index.row() && index.row() <= i + boost::icl::length(p.first))
-		{
-			sec = p;
-			break;
-		}
-		else
-		{
-			i += boost::icl::length(p.first);
-		}
-	}
+	if(iter == m_rows.end())
+		return QVariant();
 
 	switch(role)
 	{
@@ -55,15 +66,16 @@ QVariant LinearSceneModel::data(const QModelIndex &index, int role) const
 		case Qt::UserRole:
 		{
 			QList<QVariant> lst;
-			lst.append(QVariant::fromValue(new LinearSceneRow("0xaa",selected(index.row(),0))));
-			lst.append(QVariant::fromValue(new LinearSceneRow("0xbb",selected(index.row(),1))));
-			lst.append(QVariant::fromValue(new LinearSceneRow("0xcc",selected(index.row(),2))));
-			lst.append(QVariant::fromValue(new LinearSceneRow("0xdd",selected(index.row(),3))));
-			lst.append(QVariant::fromValue(new LinearSceneRow("0xff",selected(index.row(),4))));
+			lst.append(QVariant::fromValue(new LinearSceneColumn("0xaa",selected(index.row(),0))));
+			lst.append(QVariant::fromValue(new LinearSceneColumn("0xbb",selected(index.row(),1))));
+			lst.append(QVariant::fromValue(new LinearSceneColumn("0xcc",selected(index.row(),2))));
+			lst.append(QVariant::fromValue(new LinearSceneColumn("0xdd",selected(index.row(),3))));
+			lst.append(QVariant::fromValue(new LinearSceneColumn("0xff",selected(index.row(),4))));
 			return QVariant::fromValue(lst);
 		}
 		case Qt::UserRole + 1: return "qrc:/Element.qml";
-		case Qt::UserRole + 2: return QString::fromStdString(sec.second.name);
+		case Qt::UserRole + 2: return QString::fromStdString(iter->second.space.name);
+		case Qt::UserRole + 3: return QString("%1")/* + %2").arg(QString::fromStdString(sec.second.name))*/.arg(index.row());
 		default: return QVariant();
 	}
 }
@@ -75,6 +87,7 @@ QHash<int, QByteArray> LinearSceneModel::roleNames(void) const
 	ret.insert(Qt::DisplayRole,QByteArray("display"));
 	ret.insert(Qt::UserRole+1,QByteArray("delegate"));
 	ret.insert(Qt::UserRole+2,QByteArray("block"));
+	ret.insert(Qt::UserRole+3,QByteArray("offset"));
 	ret.insert(Qt::UserRole,QByteArray("row"));
 	return ret;
 }
@@ -96,13 +109,20 @@ bool LinearSceneModel::selected(int row, int col) const
 {
 	return (m_firstRow < row && m_lastRow > row) ||
 				 (m_firstRow == row && m_lastRow == row && m_firstColumn <= col && m_lastColumn >= col) ||
-				 (m_firstRow == row && m_firstColumn <= col) ||
-				 (m_lastRow == row && m_lastColumn >= col);
+				 (m_firstRow == row && m_lastRow != row && m_firstColumn <= col) ||
+				 (m_lastRow == row && m_firstRow != row && m_lastColumn >= col);
 }
 
-void LinearSceneModel::setProjection(const std::list<std::pair<po::rrange,po::address_space>> &proj)
+void LinearSceneModel::setGraph(const po::graph<po::address_space,po::rrange> &g)
 {
+	int i = 0;
 	beginResetModel();
-	m_projection = proj;
+	m_rows.clear();
+
+	for(auto p: po::projection(g.get_node(po::root(g)),g))
+	{
+		m_rows.add(std::make_pair(decltype(m_rows)::interval_type::right_open(i,i + boost::icl::length(p.first)),LinearSceneRow(LinearSceneRow::Row,p.second)));
+		i += boost::icl::length(p.first);
+	}
 	endResetModel();
 }
