@@ -17,6 +17,8 @@ Item {
 	property int selectCol: -1
 
 	signal select(int firstRow, int firstCol, int lastRow, int lastCol)
+	signal collapse(int sec)
+	signal expand(int sec)
 
 	function modifySelection(row, col, extend)
 	{
@@ -56,31 +58,24 @@ Item {
 		id: listView
 		anchors.fill: parent
 		model: linearModel
-		section.property: "block"
-		section.delegate: Rectangle {
-			width: listView.width
-			height: 40
-			color: "yellow"
-
-			Text {
-				anchors.centerIn: parent
-				text: section
-			}
-		}
-
 		delegate: Component {
 			Item {
 				height: childrenRect.height
 				width: childrenRect.width
 
-				function indexAt(x,y) { return loader.item.indexAt(x,y) }
+				function indexAt(x,y) {
+					if(loader.item.indexAt != undefined)
+						return loader.item.indexAt(x,y)
+					else
+						return -1
+				}
 
 				Loader {
 					id: loader
-					property var rowData: row
+					property var payload: model.payload
 					property var globalAnchors: root
-					property var address: offset
-					source: delegate
+					property var address: model.offset
+					source: model.delegate
 				}
 			}
 		}
@@ -92,13 +87,29 @@ Item {
 		onPressed: {
 			var item = listView.itemAt(mouse.x + listView.contentX,mouse.y + listView.contentY)
 			if(item != null)
-				root.modifySelection(listView.indexAt(mouse.x + listView.contentX,mouse.y + listView.contentY),item.indexAt(mouse.x,mouse.y),false)
+			{
+				var index = item.indexAt(mouse.x,mouse.y)
+				if(index >= 0)
+				{
+					root.modifySelection(listView.indexAt(mouse.x + listView.contentX,mouse.y + listView.contentY),index,false)
+					return
+				}
+			}
+			mouse.accepted = false
 		}
 
 		onPositionChanged: {
 			var item = listView.itemAt(mouse.x + listView.contentX,mouse.y + listView.contentY)
 			if(item != null)
-				root.modifySelection(listView.indexAt(mouse.x + listView.contentX,mouse.y + listView.contentY),item.indexAt(mouse.x,mouse.y),true)
+			{
+				var index = item.indexAt(mouse.x,mouse.y)
+				if(index >= 0)
+				{
+					root.modifySelection(listView.indexAt(mouse.x + listView.contentX,mouse.y + listView.contentY),index,true)
+					return
+				}
+			}
+			mouse.accepted = false
 		}
 	}
 }

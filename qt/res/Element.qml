@@ -8,14 +8,14 @@ Item {
 
 	Address {
 		id: address
-		address: element.parent.address
+		address: offset
 		globalAnchors: element.parent.globalAnchors
 	}
 
 
 	Repeater {
 		id: column
-		model: rowData
+		model: payload
 
 		Item {
 			width: childrenRect.width

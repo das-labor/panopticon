@@ -14,6 +14,7 @@ int main(int argc, char *argv[])
 	qmlRegisterType<GraphSceneItem>("Panopticon",1,0,"Graph");
 	qmlRegisterType<LinearSceneModel>("Panopticon",1,0,"LinearSceneModel");
 	qmlRegisterType<LinearSceneColumn>("Panopticon",1,0,"LinearSceneColumn");
+	qmlRegisterType<LinearSceneBlock>("Panopticon",1,0,"LinearSceneBlock");
 	qmlRegisterType<GraphScenePen>("Panopticon",1,0,"Pen");
 
 	QApplication app(argc, argv);
