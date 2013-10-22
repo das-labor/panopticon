@@ -68,8 +68,6 @@ QVariant LinearSceneModel::data(const QModelIndex &index, int role) const
 	if(iter == m_currentView.end())
 		return QVariant();
 
-	qDebug() << index.row();
-
 	if(iter->second.type == LinearSceneRow::Row)
 	{
 		switch(role)
@@ -86,7 +84,8 @@ QVariant LinearSceneModel::data(const QModelIndex &index, int role) const
 				return QVariant::fromValue(lst);
 			}
 			case Qt::UserRole + 1: return "qrc:/Element.qml";
-			case Qt::UserRole + 3: return QString("%1")/* + %2").arg(QString::fromStdString(sec.second.name))*/.arg(index.row());
+			case Qt::UserRole + 2: return QString("%1 + %2").arg(QString::fromStdString(iter->second.space.name))
+														 													.arg(index.row() - boost::icl::first(iter->first));
 			default: return QVariant();
 		}
 	}
@@ -100,7 +99,6 @@ QVariant LinearSceneModel::data(const QModelIndex &index, int role) const
 																	iter->second.type == LinearSceneRow::Collapsed,
 																	iter->second.id));
 			case Qt::UserRole + 1: return "qrc:/Block.qml";
-			case Qt::UserRole + 3: return QString("%1")/* + %2").arg(QString::fromStdString(sec.second.name))*/.arg(index.row());
 			default: return QVariant();
 		}
 	}
@@ -111,9 +109,9 @@ QHash<int, QByteArray> LinearSceneModel::roleNames(void) const
 	QHash<int, QByteArray> ret;
 
 	ret.insert(Qt::DisplayRole,QByteArray("display"));
-	ret.insert(Qt::UserRole+1,QByteArray("delegate"));
-	ret.insert(Qt::UserRole+3,QByteArray("offset"));
 	ret.insert(Qt::UserRole,QByteArray("payload"));
+	ret.insert(Qt::UserRole+1,QByteArray("delegate"));
+	ret.insert(Qt::UserRole+2,QByteArray("offset"));
 	return ret;
 }
 
@@ -183,14 +181,14 @@ void LinearSceneModel::toggleVisibility(int rowId, bool hide)
 		}
 	}
 
+	m_firstRow = m_lastRow = m_firstColumn = m_lastColumn = -1;
+
 	if(hide)
 		beginRemoveRows(QModelIndex(),modFirst,modLast);
 	else
 		beginInsertRows(QModelIndex(),modFirst,modLast);
 
-	//beginResetModel();
 	m_currentView = newRows;
-	//endResetModel();
 
 	if(hide)
 		endRemoveRows();
@@ -222,9 +220,12 @@ void LinearSceneModel::setGraph(const po::graph<po::address_space,po::rrange> &g
 {
 	int id = 0;
 	int i = 0;
+
 	beginResetModel();
+
 	m_currentView.clear();
 	m_hidden.clear();
+	m_firstRow = m_lastRow = m_firstColumn = m_lastColumn = -1;
 
 	for(auto p: po::projection(g.get_node(po::root(g)),g))
 	{

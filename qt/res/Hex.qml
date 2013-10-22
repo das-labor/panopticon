@@ -83,6 +83,7 @@ Item {
 
 	MouseArea {
 		anchors.fill: root
+		acceptedButtons: Qt.LeftButton | Qt.RightButton
 
 		onPressed: {
 			var item = listView.itemAt(mouse.x + listView.contentX,mouse.y + listView.contentY)

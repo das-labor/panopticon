@@ -12,7 +12,6 @@ Item {
 		globalAnchors: element.parent.globalAnchors
 	}
 
-
 	Repeater {
 		id: column
 		model: payload
