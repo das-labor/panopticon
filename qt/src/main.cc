@@ -13,8 +13,8 @@ int main(int argc, char *argv[])
 	qmlRegisterType<GraphScenePath>("Panopticon",1,0,"Path");
 	qmlRegisterType<GraphSceneItem>("Panopticon",1,0,"Graph");
 	qmlRegisterType<LinearSceneModel>("Panopticon",1,0,"LinearSceneModel");
-	qmlRegisterType<LinearSceneColumn>("Panopticon",1,0,"LinearSceneColumn");
-	qmlRegisterType<LinearSceneBlock>("Panopticon",1,0,"LinearSceneBlock");
+	qmlRegisterType<Element>("Panopticon",1,0,"Element");
+	qmlRegisterType<Header>("Panopticon",1,0,"Block");
 	qmlRegisterType<GraphScenePen>("Panopticon",1,0,"Pen");
 
 	QApplication app(argc, argv);

@@ -17,8 +17,7 @@ Item {
 	property int selectCol: -1
 
 	signal select(int firstRow, int firstCol, int lastRow, int lastCol)
-	signal collapse(int sec)
-	signal expand(int sec)
+	signal toggleVisibility(int blkid,bool vis)
 
 	function modifySelection(row, col, extend)
 	{
@@ -33,25 +32,7 @@ Item {
 			selectCol = anchorCol = col
 		}
 
-		if(anchorRow < selectRow)
-		{
-			root.select(anchorRow,anchorCol,selectRow,selectCol)
-		}
-		else if(anchorRow > selectRow)
-		{
-			root.select(selectRow,selectCol,anchorRow,anchorCol)
-		}
-		else
-		{
-			if(anchorCol < selectCol)
-			{
-				root.select(anchorRow,anchorCol,selectRow,selectCol)
-			}
-			else
-			{
-				root.select(anchorRow,selectCol,selectRow,anchorCol)
-			}
-		}
+		root.select(anchorRow,anchorCol,selectRow,selectCol)
 	}
 
 	ListView {

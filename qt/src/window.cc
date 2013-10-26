@@ -46,9 +46,8 @@ Window::Window(void)
   view->rootContext()->setContextProperty("linearModel", lsm);
 	view->setResizeMode(QQuickView::SizeRootObjectToView);
 	view->setSource(QUrl("qrc:/Hex.qml"));
-	QObject::connect(view->rootObject(),SIGNAL(select(int,int,int,int)),lsm,SLOT(select(int,int,int,int)));
-	QObject::connect(view->rootObject(),SIGNAL(collapse(int)),lsm,SLOT(collapse(int)));
-	QObject::connect(view->rootObject(),SIGNAL(expand(int)),lsm,SLOT(expand(int)));
+	QObject::connect(view->rootObject(),SIGNAL(select(int,int,int,int)),lsm,SLOT(setSelect(int,int,int,int)));
+	QObject::connect(view->rootObject(),SIGNAL(toggleVisibility(int,bool)),lsm,SLOT(setVisibility(int,bool)));
  	QWidget *container = QWidget::createWindowContainer(view);
   container->setMinimumSize(200, 200);
 	m_tabs->addTab(container,QString::fromStdString("Hexdump"));

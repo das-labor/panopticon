@@ -4,32 +4,12 @@
 #include <graph.hh>
 #include <source.hh>
 
+#include <elementselection.hh>
+#include <delegate.hh>
+
 #pragma once
 
-class LinearSceneColumn : public QObject
-{
-	Q_OBJECT
-	Q_PROPERTY(QString data READ data NOTIFY dataChanged)
-	Q_PROPERTY(bool selected READ selected NOTIFY selectedChanged)
-
-public:
-	LinearSceneColumn(void);
-	LinearSceneColumn(const QString &h, bool sel);
-	virtual ~LinearSceneColumn(void);
-
-	QString data(void) const;
-	bool selected(void) const;
-
-signals:
-	void dataChanged(void);
-	void selectedChanged(void);
-
-private:
-	QString m_data;
-	bool m_selected;
-};
-
-class LinearSceneBlock : public QObject
+class Header : public QObject
 {
 	Q_OBJECT
 	Q_PROPERTY(QString name READ name NOTIFY nameChanged)
@@ -37,9 +17,9 @@ class LinearSceneBlock : public QObject
 	Q_PROPERTY(int id READ id NOTIFY idChanged)
 
 public:
-	LinearSceneBlock(void);
-	LinearSceneBlock(const QString &n, bool col, int id);
-	virtual ~LinearSceneBlock(void);
+	Header(void);
+	Header(const QString &n, bool col, int id);
+	virtual ~Header(void);
 
 	QString name(void) const;
 	bool collapsed(void) const;
@@ -69,40 +49,43 @@ public:
 	virtual QHash<int, QByteArray> roleNames(void) const;
 
 public slots:
+	// From Window/Tree sidebar
 	void setGraph(const po::graph<po::address_space,po::rrange> &g);
-	void select(int firstRow, int firstCol, int lastRow, int lastCol);
-	void collapse(int id);
-	void expand(int id);
+
+	// From Hex.qml/Element.qml
+	void setSelect(int firstRow, int firstCol, int lastRow, int lastCol);
+	void setVisibility(int blkid, bool vis);
+
+	void delegateModified(const boost::optional<ElementSelection> &);
+
+signals:
+	void addAddressSpace(const po::rrange &);
 
 private:
-	bool selected(int row, int col) const;
-	void toggleVisibility(int rowId, bool hide);
-
-	int m_firstRow, m_lastRow, m_firstColumn, m_lastColumn;
+	boost::optional<ElementSelection> m_cursor;
 	po::graph<po::address_space,po::rrange> m_graph;
 
-	struct LinearSceneRow
+	struct LinearSceneBlock
 	{
 		enum Type
 		{
-			Row,
-			Block,
-			Collapsed,
+			Data,
+			Header,
+			HeaderCollapsed,
 		};
 
-		LinearSceneRow(void);
-		LinearSceneRow(Type t, const po::address_space&, const po::rrange&, int id);
-		LinearSceneRow(const LinearSceneRow &r);
+		LinearSceneBlock(void);
+		LinearSceneBlock(Type t, QSharedPointer<Delegate> d, int id);
+		LinearSceneBlock(const LinearSceneBlock &r);
 
-		bool operator==(const LinearSceneRow &r) const;
-		LinearSceneRow &operator+=(const LinearSceneRow &r);
+		bool operator==(const LinearSceneBlock &r) const;
+		LinearSceneBlock &operator+=(const LinearSceneBlock &r);
 
 		Type type;
-		po::address_space space;
-		po::rrange range; ///< Key when in m_currentView
+		QSharedPointer<Delegate> delegate;
 		int id;	///< Key when in m_hidden
 	};
 
-	boost::icl::split_interval_map<int,LinearSceneRow> m_currentView;
-	std::unordered_map<int,LinearSceneRow> m_hidden;
+	boost::icl::split_interval_map<int,LinearSceneBlock> m_currentView;
+	std::unordered_map<int,LinearSceneBlock> m_hidden;
 };

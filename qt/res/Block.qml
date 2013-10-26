@@ -20,10 +20,7 @@ Item {
 	MouseArea {
 		anchors.fill: rect
 		onClicked: {
-			if(!payload.collapsed)
-				root.collapse(payload.id)
-			else
-				root.expand(payload.id)
+			root.toggleVisibility(payload.id,payload.collapsed)
 		}
 	}
 }

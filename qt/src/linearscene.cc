@@ -10,45 +10,38 @@
 
 #include "linearscene.hh"
 
-LinearSceneColumn::LinearSceneColumn(void) : QObject(), m_data(""), m_selected(false) {}
-LinearSceneColumn::LinearSceneColumn(const QString &h, bool sel) : QObject(), m_data(h), m_selected(sel) {}
-LinearSceneColumn::~LinearSceneColumn(void) {}
+Header::Header(void) : QObject(), m_name(""), m_collapsed(false), m_id(-1) {}
+Header::Header(const QString &h, bool col, int id) : QObject(), m_name(h), m_collapsed(col), m_id(id) {}
+Header::~Header(void) {}
 
-QString LinearSceneColumn::data(void) const { return m_data; }
-bool LinearSceneColumn::selected(void) const { return m_selected; }
+QString Header::name(void) const { return m_name; }
+bool Header::collapsed(void) const { return m_collapsed; }
+int Header::id(void) const { return m_id; }
 
-LinearSceneBlock::LinearSceneBlock(void) : QObject(), m_name(""), m_collapsed(false), m_id(-1) {}
-LinearSceneBlock::LinearSceneBlock(const QString &h, bool col, int id) : QObject(), m_name(h), m_collapsed(col), m_id(id) {}
-LinearSceneBlock::~LinearSceneBlock(void) {}
-
-QString LinearSceneBlock::name(void) const { return m_name; }
-bool LinearSceneBlock::collapsed(void) const { return m_collapsed; }
-int LinearSceneBlock::id(void) const { return m_id; }
-
-LinearSceneModel::LinearSceneRow::LinearSceneRow(void)
-: type(Row), space(), range(), id(-1)
+LinearSceneModel::LinearSceneBlock::LinearSceneBlock(void)
+: type(Data), delegate(), id(-1)
 {}
 
-LinearSceneModel::LinearSceneRow::LinearSceneRow(LinearSceneModel::LinearSceneRow::Type t, const po::address_space &as, const po::rrange &r, int i)
-: type(t), space(as), range(r), id(i)
+LinearSceneModel::LinearSceneBlock::LinearSceneBlock(LinearSceneModel::LinearSceneBlock::Type t, QSharedPointer<Delegate> d, int i)
+: type(t), delegate(d), id(i)
 {}
 
-LinearSceneModel::LinearSceneRow::LinearSceneRow(const LinearSceneModel::LinearSceneRow &o)
-: type(o.type), space(o.space), range(o.range), id(o.id)
+LinearSceneModel::LinearSceneBlock::LinearSceneBlock(const LinearSceneModel::LinearSceneBlock &o)
+: type(o.type), delegate(o.delegate), id(o.id)
 {}
 
-bool LinearSceneModel::LinearSceneRow::operator==(const LinearSceneModel::LinearSceneRow &r) const
+bool LinearSceneModel::LinearSceneBlock::operator==(const LinearSceneModel::LinearSceneBlock &r) const
 {
-	return type == r.type && space == r.space && range == r.range && id == r.id;
+	return type == r.type && delegate == r.delegate && id == r.id;
 }
 
-LinearSceneModel::LinearSceneRow &LinearSceneModel::LinearSceneRow::operator+=(const LinearSceneModel::LinearSceneRow &r)
+LinearSceneModel::LinearSceneBlock &LinearSceneModel::LinearSceneBlock::operator+=(const LinearSceneModel::LinearSceneBlock &r)
 {
 	return *this;
 }
 
 LinearSceneModel::LinearSceneModel(void)
-: QAbstractListModel(), m_firstRow(0), m_lastRow(1), m_firstColumn(0), m_lastColumn(3), m_currentView()
+: QAbstractListModel()//, m_firstRow(0), m_lastRow(1), m_firstColumn(0), m_lastColumn(3), m_currentView()
 {}
 
 LinearSceneModel::~LinearSceneModel(void) {}
@@ -68,23 +61,14 @@ QVariant LinearSceneModel::data(const QModelIndex &index, int role) const
 	if(iter == m_currentView.end())
 		return QVariant();
 
-	if(iter->second.type == LinearSceneRow::Row)
+	if(iter->second.type == LinearSceneBlock::Data)
 	{
 		switch(role)
 		{
 			case Qt::DisplayRole: return QString("-- Row --");
-			case Qt::UserRole:
-			{
-				QList<QVariant> lst;
-				lst.append(QVariant::fromValue(new LinearSceneColumn("0xaa",selected(index.row(),0))));
-				lst.append(QVariant::fromValue(new LinearSceneColumn("0xbb",selected(index.row(),1))));
-				lst.append(QVariant::fromValue(new LinearSceneColumn("0xcc",selected(index.row(),2))));
-				lst.append(QVariant::fromValue(new LinearSceneColumn("0xdd",selected(index.row(),3))));
-				lst.append(QVariant::fromValue(new LinearSceneColumn("0xff",selected(index.row(),4))));
-				return QVariant::fromValue(lst);
-			}
+			case Qt::UserRole: return iter->second.delegate->line(index.row() - boost::icl::first(iter->first));
 			case Qt::UserRole + 1: return "qrc:/Element.qml";
-			case Qt::UserRole + 2: return QString("%1 + %2").arg(QString::fromStdString(iter->second.space.name))
+			case Qt::UserRole + 2: return QString("%1 + %2").arg(QString::fromStdString(iter->second.delegate->space().name))
 														 													.arg(index.row() - boost::icl::first(iter->first));
 			default: return QVariant();
 		}
@@ -94,10 +78,9 @@ QVariant LinearSceneModel::data(const QModelIndex &index, int role) const
 		switch(role)
 		{
 			case Qt::DisplayRole: return QString("-- Block head --");
-			case Qt::UserRole: return QVariant::fromValue(new LinearSceneBlock(
-																	QString::fromStdString(iter->second.space.name),
-																	iter->second.type == LinearSceneRow::Collapsed,
-																	iter->second.id));
+			case Qt::UserRole: return QVariant::fromValue(new Header(QString::fromStdString(iter->second.delegate->space().name),
+															 																 iter->second.type == LinearSceneBlock::HeaderCollapsed,
+																															 iter->second.id));
 			case Qt::UserRole + 1: return "qrc:/Block.qml";
 			default: return QVariant();
 		}
@@ -115,106 +98,116 @@ QHash<int, QByteArray> LinearSceneModel::roleNames(void) const
 	return ret;
 }
 
-void LinearSceneModel::select(int firstRow, int firstCol, int lastRow, int lastCol)
+void LinearSceneModel::setSelect(int anchorRow, int anchorCol, int cursorRow, int cursorCol)
 {
-	QModelIndex up = createIndex(std::min(firstRow,m_firstRow < 0 ? std::numeric_limits<int>::max() : m_firstRow),0);
-	QModelIndex down = createIndex(std::max(lastRow,m_lastRow < 0 ? 0 : m_lastRow),0);
+	if(anchorRow >= 0 && anchorCol >= 0 && cursorRow >= 0 && cursorCol >= 0)
+	{
+		ElementSelection sel(anchorRow,anchorCol,cursorRow,cursorCol);
+		auto iv = decltype(m_currentView)::interval_type(sel.firstLine(),sel.lastLine() + 1);
 
-	m_firstRow = firstRow;
-	m_firstColumn = firstCol;
-	m_lastRow = lastRow;
-	m_lastColumn = lastCol;
+		for(auto q: m_currentView)
+		{
+			auto del = q.second.delegate;
 
-	emit dataChanged(up,down);
+			if(boost::icl::intersects(q.first,iv) && q.second.type == LinearSceneBlock::Data)
+			{
+				int base = boost::icl::first(q.first);
+				int last = del->lines() - 1;
+
+				assert(last >= 0);
+				del->setCursor(ElementSelection(std::max<int>(sel.firstLine() - base,0),sel.firstLine() >= static_cast<unsigned int>(base) ? sel.firstColumn() : 0,
+																				std::min<int>(sel.lastLine() - base,last),sel.lastLine() <= static_cast<unsigned int>(base + last) ? sel.lastColumn() : del->width(last) - 1));
+			}
+			else
+			{
+				del->setCursor(boost::none);
+			}
+		}
+	}
+	else
+	{
+		for(auto q: m_currentView)
+			q.second.delegate->setCursor(boost::none);
+	}
 }
 
-void LinearSceneModel::toggleVisibility(int rowId, bool hide)
+void LinearSceneModel::setVisibility(int blkId, bool hide)
 {
-	int nextRow = 0;
-	auto newRows = decltype(m_currentView)();
+	int nextBlk = 0;
+	auto newBlks = decltype(m_currentView)();
 	int modFirst = 0, modLast = 0;
-	int changedRow = 0;
+	int changedBlk = 0;
 
 	for(auto p: m_currentView)
 	{
-		if(p.second.id == rowId)
+		if(p.second.id == blkId)
 		{
-			if(p.second.type == LinearSceneRow::Block || p.second.type == LinearSceneRow::Collapsed)
+			if(p.second.type == LinearSceneBlock::Header || p.second.type == LinearSceneBlock::HeaderCollapsed)
 			{
 				// Block (header)
-				newRows.add(std::make_pair(decltype(m_currentView)::interval_type::right_open(nextRow,nextRow + 1),
-																	 LinearSceneRow(hide ? LinearSceneRow::Collapsed : LinearSceneRow::Block,p.second.space,p.second.range,p.second.id)));
-				changedRow = nextRow;
-				nextRow += 1;
+				newBlks.add(std::make_pair(decltype(m_currentView)::interval_type::right_open(nextBlk,nextBlk + 1),
+																	 LinearSceneBlock(hide ? LinearSceneBlock::HeaderCollapsed : LinearSceneBlock::Header,p.second.delegate,p.second.id)));
+				changedBlk = nextBlk;
+				nextBlk += 1;
 
 				// Show Rows
 				if(!hide)
 				{
 					auto i = m_hidden.find(p.second.id);
 
-					assert(i != m_hidden.end() && i->second.type == LinearSceneRow::Row);
+					assert(i != m_hidden.end() && i->second.type == LinearSceneBlock::Data);
 
-					modFirst = nextRow;
-					modLast = nextRow + boost::icl::length(i->second.range) - 1;
-					newRows.add(std::make_pair(decltype(m_currentView)::interval_type::right_open(nextRow,nextRow + boost::icl::length(i->second.range)),i->second));
-					nextRow += boost::icl::length(i->second.range);
+					modFirst = nextBlk;
+					modLast = nextBlk + i->second.delegate->lines() - 1;
+					newBlks.add(std::make_pair(decltype(m_currentView)::interval_type::right_open(nextBlk,nextBlk + i->second.delegate->lines()),i->second));
+					nextBlk += i->second.delegate->lines();
 					m_hidden.erase(i);
 				}
 			}
 			else
 			{
-				assert(p.second.type == LinearSceneRow::Row);
+				assert(p.second.type == LinearSceneBlock::Data);
 
 				// Move Row into m_hidden
 				if(hide)
 				{
-					modFirst = nextRow;
-					modLast = nextRow + boost::icl::length(p.first) - 1;
+					modFirst = nextBlk;
+					modLast = nextBlk + boost::icl::length(p.first) - 1;
 					m_hidden.insert(std::make_pair(p.second.id,p.second));
 				}
 			}
 		}
 		else
 		{
-			newRows.add(std::make_pair(decltype(m_currentView)::interval_type::right_open(nextRow,nextRow + boost::icl::length(p.first)),p.second));
-			nextRow += boost::icl::length(p.first);
+			newBlks.add(std::make_pair(decltype(m_currentView)::interval_type::right_open(nextBlk,nextBlk + boost::icl::length(p.first)),p.second));
+			nextBlk += boost::icl::length(p.first);
 		}
 	}
 
-	m_firstRow = m_lastRow = m_firstColumn = m_lastColumn = -1;
+	//m_firstRow = m_lastRow = m_firstColumn = m_lastColumn = -1;
 
 	if(hide)
 		beginRemoveRows(QModelIndex(),modFirst,modLast);
 	else
 		beginInsertRows(QModelIndex(),modFirst,modLast);
 
-	m_currentView = newRows;
+	m_currentView = newBlks;
 
 	if(hide)
 		endRemoveRows();
 	else
 		endInsertRows();
 
-	emit dataChanged(index(changedRow),index(changedRow));
+	emit dataChanged(index(changedBlk),index(changedBlk));
 }
 
-void LinearSceneModel::collapse(int id)
-{
-	toggleVisibility(id,true);
-}
-
-void LinearSceneModel::expand(int id)
-{
-	toggleVisibility(id,false);
-}
-
-bool LinearSceneModel::selected(int row, int col) const
+/*bool LinearSceneModel::selected(int row, int col) const
 {
 	return (m_firstRow < row && m_lastRow > row) ||
 				 (m_firstRow == row && m_lastRow == row && m_firstColumn <= col && m_lastColumn >= col) ||
 				 (m_firstRow == row && m_lastRow != row && m_firstColumn <= col) ||
 				 (m_lastRow == row && m_firstRow != row && m_lastColumn >= col);
-}
+}*/
 
 void LinearSceneModel::setGraph(const po::graph<po::address_space,po::rrange> &g)
 {
@@ -225,14 +218,37 @@ void LinearSceneModel::setGraph(const po::graph<po::address_space,po::rrange> &g
 
 	m_currentView.clear();
 	m_hidden.clear();
-	m_firstRow = m_lastRow = m_firstColumn = m_lastColumn = -1;
+	//m_firstRow = m_lastRow = m_firstColumn = m_lastColumn = -1;
 
 	for(auto p: po::projection(g.get_node(po::root(g)),g))
 	{
-		m_currentView.add(std::make_pair(decltype(m_currentView)::interval_type::right_open(i,i + 1),LinearSceneRow(LinearSceneRow::Block,p.second,p.first,id)));
-		m_currentView.add(std::make_pair(decltype(m_currentView)::interval_type::right_open(i + 1,i + 1 + boost::icl::length(p.first)),LinearSceneRow(LinearSceneRow::Row,p.second,p.first,id)));
-		i += boost::icl::length(p.first) + 1;
+		QSharedPointer<Delegate> delegate(new TestDelegate(p.second,p.first,10));
+		auto len = delegate->lines();
+
+		m_currentView.add(std::make_pair(decltype(m_currentView)::interval_type::right_open(i,i + 1),LinearSceneBlock(LinearSceneBlock::Header,delegate,id)));
+		m_currentView.add(std::make_pair(decltype(m_currentView)::interval_type::right_open(i + 1,i + 1 + len),LinearSceneBlock(LinearSceneBlock::Data,delegate,id)));
+
+		connect(delegate.data(),SIGNAL(modified(const boost::optional<ElementSelection> &)),this,SLOT(delegateModified(const boost::optional<ElementSelection> &)));
+
+		i += len + 1;
 		id += 1;
 	}
 	endResetModel();
+}
+
+void LinearSceneModel::delegateModified(const boost::optional<ElementSelection> &sel)
+{
+	Delegate *del = dynamic_cast<Delegate*>(sender());
+
+	assert(del && sel);
+	for(auto p: m_currentView)
+	{
+		if(p.second.delegate.data() == del && p.second.type == LinearSceneBlock::Data)
+		{
+			int b = boost::icl::first(p.first);
+
+			emit dataChanged(index(b + sel->firstLine(),0),index(b + sel->lastLine(),0));
+			return;
+		}
+	}
 }
