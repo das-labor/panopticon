@@ -23,16 +23,19 @@ Item {
 	{
 		if(extend)
 		{
-			selectRow = row
-			selectCol = col
+			if(selectRow != row || selectCol != col)
+			{
+				selectRow = row
+				selectCol = col
+				root.select(anchorRow,anchorCol,selectRow,selectCol)
+			}
 		}
 		else
 		{
 			selectRow = anchorRow = row
 			selectCol = anchorCol = col
+			root.select(anchorRow,anchorCol,selectRow,selectCol)
 		}
-
-		root.select(anchorRow,anchorCol,selectRow,selectCol)
 	}
 
 	ListView {
