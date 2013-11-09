@@ -44,8 +44,8 @@ Item {
 		model: linearModel
 		delegate: Component {
 			Item {
-				height: childrenRect.height
-				width: childrenRect.width
+				//height: childrenRect.height
+				//height: loader.item.height
 
 				function indexAt(x,y) {
 					if(loader.item.indexAt != undefined)
@@ -60,6 +60,8 @@ Item {
 					property var globalAnchors: root
 					property var address: model.offset
 					source: model.delegate
+
+					onLoaded: { parent.height = item.height }
 				}
 			}
 		}

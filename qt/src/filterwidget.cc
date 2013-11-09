@@ -59,23 +59,23 @@ FilterWidget::FilterWidget(QWidget *parent)
 
 	std::unordered_map<edge_descriptor,int> w_map;
 
-	po::address_space base_as("base",po::rrange(0,128),std::function<bytes(const bytes&)>());
-	po::address_space xor_as("xor",po::rrange(0,64),std::function<bytes(const bytes&)>());
-	po::address_space add_as("add",po::rrange(0,27),std::function<bytes(const bytes&)>());
-	po::address_space zlib_as("zlib",po::rrange(0,128),std::function<bytes(const bytes&)>());
-	po::address_space aes_as("aes",po::rrange(0,32),std::function<bytes(const bytes&)>());
+	po::address_space base_as("base",po::rrange(0,1280),std::function<bytes(const bytes&)>());
+	/*po::address_space xor_as("xor",po::rrange(0,640),std::function<bytes(const bytes&)>());
+	po::address_space add_as("add",po::rrange(0,270),std::function<bytes(const bytes&)>());
+	po::address_space zlib_as("zlib",po::rrange(0,1280),std::function<bytes(const bytes&)>());
+	po::address_space aes_as("aes",po::rrange(0,320),std::function<bytes(const bytes&)>());*/
 
 	auto base_vx = m_graph.insert_node(base_as);
-	auto xor_vx = m_graph.insert_node(xor_as);
+	/*auto xor_vx = m_graph.insert_node(xor_as);
 	auto add_vx = m_graph.insert_node(add_as);
 	auto zlib_vx = m_graph.insert_node(zlib_as);
-	auto aes_vx = m_graph.insert_node(aes_as);
+	auto aes_vx = m_graph.insert_node(aes_as);*/
 
-	w_map.insert(std::make_pair(m_graph.insert_edge(po::rrange(0,64),xor_vx,base_vx),1));
-	w_map.insert(std::make_pair(m_graph.insert_edge(po::rrange(64,72),add_vx,base_vx),1));
-	w_map.insert(std::make_pair(m_graph.insert_edge(po::rrange(45,64),add_vx,xor_vx),1));
-	w_map.insert(std::make_pair(m_graph.insert_edge(po::rrange(80,128),zlib_vx,base_vx),1));
-	w_map.insert(std::make_pair(m_graph.insert_edge(po::rrange(32,64),aes_vx,zlib_vx),1));
+/*	w_map.insert(std::make_pair(m_graph.insert_edge(po::rrange(0,640),xor_vx,base_vx),1));
+	w_map.insert(std::make_pair(m_graph.insert_edge(po::rrange(640,720),add_vx,base_vx),1));
+	w_map.insert(std::make_pair(m_graph.insert_edge(po::rrange(450,640),add_vx,xor_vx),1));
+	w_map.insert(std::make_pair(m_graph.insert_edge(po::rrange(800,1280),zlib_vx,base_vx),1));
+	w_map.insert(std::make_pair(m_graph.insert_edge(po::rrange(320,640),aes_vx,zlib_vx),1));*/
 
 	boost::associative_property_map<std::unordered_map<edge_descriptor,int>> weight_adaptor(w_map);
 

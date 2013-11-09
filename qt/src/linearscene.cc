@@ -58,8 +58,7 @@ QVariant LinearSceneModel::data(const QModelIndex &index, int role) const
 {
 	auto iter = m_currentView.find(index.row());
 
-	if(iter == m_currentView.end())
-		return QVariant();
+	assert(iter != m_currentView.end());
 
 	if(iter->second.type == LinearSceneBlock::Data)
 	{
