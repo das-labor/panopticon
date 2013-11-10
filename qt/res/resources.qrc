@@ -1,5 +1,7 @@
 <!DOCTYPE RCC><RCC version="1.0">
 <qresource>
+	<file>Window.qml</file>
+	<file>Workspace.qml</file>
 	<file>Hex.qml</file>
 	<file>Block.qml</file>
 	<file>Address.qml</file>

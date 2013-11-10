@@ -2,6 +2,7 @@
 #include <QString>
 #include <QStringList>
 #include <QSharedPointer>
+#include <QtQuick>
 
 class Delegate;
 class Line;
@@ -87,7 +88,7 @@ public:
 	 * Returns a list of strings representing the columns
 	 * of a line. The length of the list can be less than \ref columns()!
 	 */
-	virtual QVariant line(unsigned int l) const = 0;
+	virtual QQuickItem *line(unsigned int l) const = 0;
 
 	/*!
 	 * Number of lines this delegate spans.
@@ -135,7 +136,7 @@ public:
 	TestDelegate(const po::address_space &as, const po::rrange &r, unsigned int width);
 	virtual ~TestDelegate(void);
 
-	virtual QVariant line(unsigned int l) const;
+	virtual QQuickItem *line(unsigned int l) const;
 	virtual unsigned int lines(void) const;
 	virtual unsigned int width(unsigned int l) const;
 

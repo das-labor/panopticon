@@ -125,8 +125,10 @@ unsigned int TestDelegate::width(unsigned int l) const
 	return m_width;
 }
 
-QVariant TestDelegate::line(unsigned int l) const
+QQuickItem *TestDelegate::line(unsigned int l) const
 {
+	return nullptr;
+	/*
 	QList<QVariant> ret;
 	unsigned int i = 0, w = (l == lines() - 1 && boost::icl::length(range()) % m_width ? boost::icl::length(range()) % m_width : m_width);
 
@@ -137,7 +139,7 @@ QVariant TestDelegate::line(unsigned int l) const
 		ret.append(QVariant::fromValue(new Element("??",m_cursor && m_cursor->includes(ElementSelection(l,i,l,i)))));
 		i++;
 	}
-	return QVariant::fromValue(ret);
+	return QVariant::fromValue(ret);*/
 }
 
 void TestDelegate::setCursor(const boost::optional<ElementSelection> &sel)

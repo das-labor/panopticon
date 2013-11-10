@@ -2,15 +2,35 @@ import QtQuick 2.0
 import Panopticon 1.0
 
 Item {
+	height: childrenRect.height
+	width: childrenRect.width
+
+	Rectangle {
+		height: 35
+		width: 120
+
+		color: "lightsteelblue"
+		border.color: "black"
+
+		Text {
+			anchors.fill: parent
+			text: index
+		}
+	}
+}
+
+/*
+Item {
 	id: element
-	//height: childrenRect.height
-	//width: childrenRect.width
+	height: childrenRect.height
+	width: childrenRect.width
+
 
 	height: 25
 	Address {
 		id: address
-		address: offset
-		globalAnchors: element.parent.globalAnchors
+		address: 42
+		linearViewContext: element.parent.linearViewContext
 	}
 
 	Repeater {
@@ -66,7 +86,7 @@ Item {
 			Component.onCompleted: { console.log("create") }
 			Component.onDestruction: { console.log("delete") }
 		}
-	}*/
+	}
 
 	function indexAt(x,y)
 	{
@@ -81,4 +101,4 @@ Item {
 		}
 		return null
 	}
-}
+}*/

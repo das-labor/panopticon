@@ -2,25 +2,35 @@
 #include <QApplication>
 #include <QQmlApplicationEngine>
 
-#include <graphscene.hh>
-#include <linearscene.hh>
-#include <window.hh>
+#include <linearview.hh>
+#include <session.hh>
 
 using namespace std;
 
 int main(int argc, char *argv[])
 {
-	qmlRegisterType<GraphScenePath>("Panopticon",1,0,"Path");
-	qmlRegisterType<GraphSceneItem>("Panopticon",1,0,"Graph");
-	qmlRegisterType<LinearSceneModel>("Panopticon",1,0,"LinearSceneModel");
+	//qmlRegisterType<GraphScenePath>("Panopticon",1,0,"Path");
+	//qmlRegisterType<GraphSceneItem>("Panopticon",1,0,"Graph");
+	//qmlRegisterType<LinearSceneModel>("Panopticon",1,0,"LinearSceneModel");
 	qmlRegisterType<Element>("Panopticon",1,0,"Element");
 	qmlRegisterType<Header>("Panopticon",1,0,"Block");
-	qmlRegisterType<GraphScenePen>("Panopticon",1,0,"Pen");
+	//qmlRegisterType<GraphScenePen>("Panopticon",1,0,"Pen");
+	qmlRegisterType<Session>("Panopticon",1,0,"Session");
+	qmlRegisterType<LinearView>("Panopticon",1,0,"LinearView");
 
 	QApplication app(argc, argv);
-	Window win;
+  QQmlApplicationEngine engine(QUrl("qrc:/Window.qml"));
 
-	win.show();
+	QListIterator<QObject*> iter(engine.rootObjects());
+	while(iter.hasNext())
+	{
+		QQuickWindow *window = qobject_cast<QQuickWindow *>(iter.next());
+
+		if(window)
+	  	window->show();
+	}
+
+	//win.show();
 	/*QScrollArea scroll;
 	QDeclarativeView view(QUrl("qrc:/Procedure.qml"));
 
