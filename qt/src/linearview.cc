@@ -53,12 +53,12 @@ LinearView::LinearView(QQuickItem *parent)
 : QQuickItem(parent), m_engine(), m_component(&m_engine), m_context(), m_session(nullptr), m_viewport(), m_viewportIndex(0)
 {
 	setFlags(QQuickItem::ItemHasContents);
+	setAcceptedMouseButtons(Qt::LeftButton);
 
 	m_engine.rootContext()->setContextProperty("linearViewContext",&m_context);
 	m_component.loadUrl(QUrl("qrc:/Element.qml"));
 
 	addRows();
-	m_context.setColumnWidth(100);
 	setClip(true);
 }
 
@@ -85,8 +85,8 @@ void LinearView::setSession(Session *s)
 
 		for(auto p: po::projection((*m_session)->graph().get_node(po::root((*m_session)->graph())),(*m_session)->graph()))
 		{
-			QSharedPointer<Delegate> delegate(new TestDelegate(p.second,p.first,10));
-			auto len = delegate->lines();
+			QSharedPointer<Delegate> delegate(new TestDelegate(p.second,p.first,10,&m_engine,this));
+			auto len = delegate->rows();
 
 			m_currentView.add(std::make_pair(decltype(m_currentView)::interval_type::right_open(i,i + 1),LinearViewBlock(LinearViewBlock::Header,delegate,id)));
 			m_currentView.add(std::make_pair(decltype(m_currentView)::interval_type::right_open(i + 1,i + 1 + len),LinearViewBlock(LinearViewBlock::Data,delegate,id)));
@@ -109,25 +109,28 @@ QQuickItem *LinearView::data(int idx)
 	if(iter == m_currentView.end())
 		return nullptr;
 
-	/*if(iter->second.type == LinearViewBlock::Data)
+	if(iter->second.type == LinearViewBlock::Data)
 	{
-		ret = iter->second.delegate->line(idx - boost::icl::first(iter->first));
+		ret = iter->second.delegate->data(idx - boost::icl::first(iter->first));
 	}
 	else
 	{
-		ret = new Header(QString::fromStdString(iter->second.delegate->space().name),
+		/*ret = new Header(QString::fromStdString(iter->second.delegate->space().name),
 				 						 iter->second.type == LinearViewBlock::HeaderCollapsed,
-										 iter->second.id);
-	}*/
-	auto ctx = new QQmlContext(&m_engine);
+										 iter->second.id);*/
+		auto ctx = new QQmlContext(&m_engine);
 
-	ctx->setContextProperty("index",QVariant::fromValue(idx));
-	ret = qobject_cast<QQuickItem*>(m_component.create(ctx));
+		ctx->setContextProperty("index",QVariant::fromValue(idx));
+		ret = qobject_cast<QQuickItem*>(m_component.create(ctx));
+		ctx->setParent(ret);
+	}
 
-
-	ret->setParentItem(this);
-	ret->setX(m_viewport.size());
-	connect(ret,SIGNAL(heightChanged()),this,SLOT(test()));
+	if(ret)
+	{
+		ret->setParentItem(this);
+		ret->setX(0);
+		connect(ret,SIGNAL(heightChanged()),this,SLOT(test()));
+	}
 
 	return ret;
 }
@@ -193,6 +196,32 @@ void LinearView::test(void)
 void LinearView::wheelEvent(QWheelEvent *event)
 {
 	scrollViewport(event->angleDelta().y() / 8);
+}
+
+void LinearView::mouseMoveEvent(QMouseEvent *event)
+{
+	QPointF ptn = event->localPos();
+	QQuickItem *itm = qobject_cast<QQuickItem*>(childAt(ptn.x(),ptn.y()));
+
+	if(event->buttons() & Qt::LeftButton && itm && std::find(m_viewport.begin(),m_viewport.end(),itm) != m_viewport.end())
+	{
+		QVariant ret;
+		QMetaObject::invokeMethod(itm,"mouseMoved",Q_RETURN_ARG(QVariant,ret),Q_ARG(QVariant,ptn.x() - itm->x()),Q_ARG(QVariant,ptn.y() - itm->y()));
+		event->accept();
+	}
+}
+
+void LinearView::mousePressEvent(QMouseEvent *event)
+{
+	QPointF ptn = event->localPos();
+	QQuickItem *itm = qobject_cast<QQuickItem*>(childAt(ptn.x(),ptn.y()));
+
+	if(event->buttons() & Qt::LeftButton && itm && std::find(m_viewport.begin(),m_viewport.end(),itm) != m_viewport.end())
+	{
+		QVariant ret;
+		QMetaObject::invokeMethod(itm,"mousePressed",Q_RETURN_ARG(QVariant,ret),Q_ARG(QVariant,ptn.x() - itm->x()),Q_ARG(QVariant,ptn.y() - itm->y()));
+		event->accept();
+	}
 }
 
 void LinearView::geometryChanged(const QRectF&, const QRectF&)

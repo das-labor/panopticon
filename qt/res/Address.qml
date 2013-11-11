@@ -3,20 +3,15 @@ import Panopticon 1.0
 
 Item {
 	property string address: "none"
-	property var globalAnchors: null
+	property var context: null
 
-	//width: globalAnchors.addressColumnWidth + globalAnchors.xMargin
-	width: text.width//globalAnchors.addressColumnWidth + globalAnchors.xMargin
-	height: text.height
+	width: childrenRect.width
+	height: childrenRect.height
 
 	Text {
 		id: text
 		text: address
-		Component.onCompleted: {
-			var acw = Math.max(globalAnchors.addressColumnWidth,text.width)
-
-			if(acw != globalAnchors.addressColumnWidth)
-				globalAnchors.addressColumnWidth = acw
-		}
 	}
+
+	Component.onCompleted: { context.columnWidth = Math.max(context.columnWidth,text.width) }
 }

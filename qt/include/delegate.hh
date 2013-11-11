@@ -19,7 +19,7 @@ typedef QSharedPointer<Line> LineRef;
  * \class QObject
  * \ingroup qt
  */
-
+/*
 class Element : public QObject
 {
 	Q_OBJECT
@@ -41,7 +41,7 @@ signals:
 private:
 	QString m_data;
 	bool m_selected;
-};
+};*/
 
 /*!
  * \brief Single line to display in a column.
@@ -51,14 +51,15 @@ private:
  * action.
  * Text is split into elements that are layout as columns.
  */
+/*
 class Line
 {
 public:
-	/*unsigned int identation;
-	bool align;*/
+	unsigned int identation;
+	bool align;
 	using Element = QString;
 	QList<Element> elements;
-};
+};*/
 
 /**
  * \brief Delegates connect Columns to a database.
@@ -88,14 +89,12 @@ public:
 	 * Returns a list of strings representing the columns
 	 * of a line. The length of the list can be less than \ref columns()!
 	 */
-	virtual QQuickItem *line(unsigned int l) const = 0;
+	virtual QQuickItem *data(unsigned int i) = 0;
 
 	/*!
 	 * Number of lines this delegate spans.
 	 */
-	virtual unsigned int lines(void) const = 0;
-
-	virtual unsigned int width(unsigned int l) const = 0;
+	virtual unsigned int rows(void) const = 0;
 
 	/*!
 	 * Current cursor selection or NULL if nothing is selected. Used to initialize Columns
@@ -116,16 +115,49 @@ public:
 	//virtual boost::optional<ElementSelection> elementSelection(const po::rrange &sel);
 	//virtual po::rrange byteSelection(const boost::optional<ElementSelection> &sel);
 
-public slots:
+//public slots:
 	//virtual void setMouse(const boost::optional<ElementSelection> &pos) = 0;
-	virtual void setCursor(const boost::optional<ElementSelection> &sel) = 0;
+	//virtual void setCursor(const boost::optional<ElementSelection> &sel) = 0;
 
-signals:
-	void modified(const boost::optional<ElementSelection> &pos);
+//signals:
+//	void modified(const boost::optional<ElementSelection> &pos);
 
 private:
 	po::address_space m_space;
 	po::rrange m_range;
+};
+
+class TestDelegateContext : public QObject
+{
+	Q_OBJECT
+	Q_PROPERTY(QString address READ address NOTIFY addressChanged)
+	Q_PROPERTY(QVariantList data READ data NOTIFY dataChanged)
+	Q_PROPERTY(QPoint anchor READ anchor WRITE setAnchor NOTIFY anchorChanged);
+	Q_PROPERTY(QPoint cursor READ cursor WRITE setCursor NOTIFY cursorChanged);
+
+public:
+	TestDelegateContext(QObject *parent = nullptr);
+	TestDelegateContext(const QString &a, const QVariantList &d, const boost::optional<ElementSelection>&, QObject *parent = nullptr);
+
+	QString address(void) const;
+	QVariantList data(void) const;
+	QPoint anchor(void) const;
+	QPoint cursor(void) const;
+	boost::optional<ElementSelection> selection(void) const;
+
+	void setAnchor(const QPoint&);
+	void setCursor(const QPoint&);
+
+signals:
+	void addressChanged(void);
+	void dataChanged(void);
+	void anchorChanged(void);
+	void cursorChanged(void);
+
+private:
+	QString m_address;
+	QVariantList m_data;
+	boost::optional<ElementSelection> m_selection;
 };
 
 class TestDelegate : public Delegate
@@ -133,16 +165,22 @@ class TestDelegate : public Delegate
 	Q_OBJECT
 
 public:
-	TestDelegate(const po::address_space &as, const po::rrange &r, unsigned int width);
+	TestDelegate(const po::address_space &as, const po::rrange &r, unsigned int width, QQmlEngine *, QObject *p = 0);
 	virtual ~TestDelegate(void);
 
-	virtual QQuickItem *line(unsigned int l) const;
-	virtual unsigned int lines(void) const;
-	virtual unsigned int width(unsigned int l) const;
+	virtual QQuickItem *data(unsigned int l);
+	virtual unsigned int rows(void) const;
+	//virtual unsigned int width(unsigned int l) const;
 
-	virtual void setCursor(const boost::optional<ElementSelection> &sel);
+	//virtual void setCursor(const boost::optional<ElementSelection> &sel);
+
+public slots:
+	void elementClicked(int);
+	void elementEntered(int);
 
 private:
 	unsigned int m_width;
-	boost::optional<ElementSelection> m_cursor;
+	QQmlEngine *m_engine;
+	QQmlComponent m_component;
+	//boost::optional<ElementSelection> m_cursor;
 };

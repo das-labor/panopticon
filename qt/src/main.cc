@@ -12,11 +12,12 @@ int main(int argc, char *argv[])
 	//qmlRegisterType<GraphScenePath>("Panopticon",1,0,"Path");
 	//qmlRegisterType<GraphSceneItem>("Panopticon",1,0,"Graph");
 	//qmlRegisterType<LinearSceneModel>("Panopticon",1,0,"LinearSceneModel");
-	qmlRegisterType<Element>("Panopticon",1,0,"Element");
-	qmlRegisterType<Header>("Panopticon",1,0,"Block");
+	//qmlRegisterType<Element>("Panopticon",1,0,"Element");
+	//qmlRegisterType<Header>("Panopticon",1,0,"Block");
 	//qmlRegisterType<GraphScenePen>("Panopticon",1,0,"Pen");
 	qmlRegisterType<Session>("Panopticon",1,0,"Session");
 	qmlRegisterType<LinearView>("Panopticon",1,0,"LinearView");
+	qmlRegisterType<TestDelegateContext>("Panopticon",1,0,"TestDelegateContext");
 
 	QApplication app(argc, argv);
   QQmlApplicationEngine engine(QUrl("qrc:/Window.qml"));
