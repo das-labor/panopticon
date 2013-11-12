@@ -107,71 +107,19 @@ po::rrange Delegate::byteSelection(const boost::optional<ElementSelection> &sel)
 }*/
 
 TestDelegateContext::TestDelegateContext(QObject *parent)
-: QObject(parent), m_address(), m_data(), m_selection(boost::none)
+: QObject(parent), m_address(), m_data(), m_row(-1)
 {}
 
-TestDelegateContext::TestDelegateContext(const QString &a, const QVariantList &d, const boost::optional<ElementSelection> &s, QObject *p)
-: QObject(p), m_address(a), m_data(d), m_selection(s)
+TestDelegateContext::TestDelegateContext(const QString &a, const QVariantList &d, int r, QObject *p)
+: QObject(p), m_address(a), m_data(d), m_row(r)
 {}
 
-QString TestDelegateContext::address(void) const				{ return m_address; }
-QVariantList TestDelegateContext::data(void) const			{ return m_data; }
-QPoint TestDelegateContext::anchor(void) const					{ return m_selection ? QPoint(m_selection->anchorColumn(),m_selection->anchorRow()) : QPoint(); }
-QPoint TestDelegateContext::cursor(void) const					{ return m_selection ? QPoint(m_selection->cursorColumn(),m_selection->cursorRow()) : QPoint(); }
-boost::optional<ElementSelection> selection(void) const	{ return m_selection; }
-
-void setAnchor(const QPoint &p)
-{
-	if(m_selection)
-	{
-		if(p)
-		{
-			if(anchor() != p)
-			{
-				m_selection->setAnchor(p.x(),p.y());
-				emit anchorChanged();
-			}
-		}
-		else
-		{
-			m_selection = boost::none;
-			emit anchorChanged();
-		}
-	}
-	else if(p)
-	{
-		m_selection = ElementSelection(p.x(),py());
-		emit anchorChanged();
-	}
-}
-
-void setCursor(const QPoint &p)
-{
-	if(m_selection)
-	{
-		if(p)
-		{
-			if(cursor() != p)
-			{
-				m_selection->setCursor(p.x(),p.y());
-				emit cursorChanged();
-			}
-		}
-		else
-		{
-			m_selection = boost::none;
-			emit cursorChanged();
-		}
-	}
-	else if(p)
-	{
-		m_selection = ElementSelection(p.x(),py());
-		emit cursorChanged();
-	}
-}
+QString TestDelegateContext::address(void) const		{ return m_address; }
+QVariantList TestDelegateContext::data(void) const	{ return m_data; }
+int TestDelegateContext::row(void) const						{ return m_row; }
 
 TestDelegate::TestDelegate(const po::address_space &as, const po::rrange &r, unsigned int w, QQmlEngine *e, QObject *p)
-: Delegate(as,r,p), m_width(w), m_engine(e), m_component(m_engine,QUrl("qrc:/Test.qml")), m_context
+: Delegate(as,r,p), m_width(w), m_engine(e), m_component(m_engine,QUrl("qrc:/Test.qml"))
 {
 	assert(w);
 	qDebug() << m_component.errors();
@@ -199,21 +147,37 @@ QQuickItem *TestDelegate::data(unsigned int l)
 		i++;
 	}
 
-	ctx->setContextProperty("testDelegateContext",new TestDelegateContext(QString("%1").arg(l * m_width),_data,ctx));
+	ctx->setContextProperty("testDelegateContext",new TestDelegateContext(QString("%1").arg(l * m_width),_data,l,ctx));
 
 	auto ret = qobject_cast<QQuickItem*>(m_component.create(ctx));
 
 	assert(ret);
+	connect(ret,SIGNAL(elementEntered(int,int)),this,SLOT(elementEntered(int,int)));
+	connect(ret,SIGNAL(elementClicked(int,int)),this,SLOT(elementClicked(int,int)));
 	ctx->setParent(ret);
 	return ret;
 }
 
-void TestDelegate::changeSelection(void)
+void TestDelegate::elementClicked(int col, int row)
 {
-	qDebug() << this << m_context.selection();
+	if(m_cursor)
+		setCursor(boost::none);
+	else
+		setCursor(ElementSelection(row,col,row,col));
 }
 
-/*
+void TestDelegate::elementEntered(int col, int row)
+{
+	if(m_cursor)
+	{
+		ElementSelection sel = *m_cursor;
+		sel.setCursor(row,col);
+		setCursor(sel);
+	}
+	else
+		setCursor(ElementSelection(row,col,row,col));
+}
+
 void TestDelegate::setCursor(const boost::optional<ElementSelection> &sel)
 {
 	if(sel != m_cursor)
@@ -246,7 +210,7 @@ void TestDelegate::setCursor(const boost::optional<ElementSelection> &sel)
 		}
 	}
 }
-
+/*
 Element::Element(void)
 : QObject(), m_data(""), m_selected(false)
 {}

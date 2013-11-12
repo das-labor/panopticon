@@ -91,7 +91,7 @@ void LinearView::setSession(Session *s)
 			m_currentView.add(std::make_pair(decltype(m_currentView)::interval_type::right_open(i,i + 1),LinearViewBlock(LinearViewBlock::Header,delegate,id)));
 			m_currentView.add(std::make_pair(decltype(m_currentView)::interval_type::right_open(i + 1,i + 1 + len),LinearViewBlock(LinearViewBlock::Data,delegate,id)));
 
-			//connect(delegate.data(),SIGNAL(modified(const boost::optional<ElementSelection> &)),this,SLOT(delegateModified(const boost::optional<ElementSelection> &)));
+			connect(delegate.data(),SIGNAL(modified(const boost::optional<ElementSelection> &)),this,SLOT(delegateModified(const boost::optional<ElementSelection> &)));
 
 			i += len + 1;
 			id += 1;
@@ -134,21 +134,6 @@ QQuickItem *LinearView::data(int idx)
 
 	return ret;
 }
-/*
-QQuickItem *LinearView::data(int idx)
-{
-	auto ctx = new QQmlContext(&m_engine);
-
-	ctx->setContextProperty("index",QVariant::fromValue(idx));
-	QQuickItem *ret = qobject_cast<QQuickItem*>(m_component.create(ctx));
-
-	ret->setParentItem(this);
-	ret->setX(m_viewport.size());
-	connect(ret,SIGNAL(heightChanged()),this,SLOT(test()));
-
-	qDebug() << idx;
-	return ret;
-}*/
 
 void LinearView::addRows(bool up)
 {
@@ -192,6 +177,15 @@ void LinearView::test(void)
 		prev = itm;
 	});
 }
+
+void LinearView::delegateModified(const boost::optional<ElementSelection> &sel)
+{
+	Delegate *delegate = qobject_cast<Delegate*>(sender());
+	assert(delegate);
+
+	// XXX: rename
+	// XXX: find delegate Data Block in m_availableBlocks
+	// XXX: replace rows in m_visibleRows if needed
 
 void LinearView::wheelEvent(QWheelEvent *event)
 {

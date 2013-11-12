@@ -84,10 +84,8 @@ public:
 
 public slots:
 	void scrollViewport(qreal);
-	void test(void);
 
 	// From QML
-	//void setSelect(int firstRow, int firstCol, int lastRow, int lastCol);
 	//void setVisibility(int blkid, bool vis);
 
 	//void delegateModified(const boost::optional<ElementSelection> &);
@@ -103,15 +101,19 @@ protected:
 
 private:
 	QQmlEngine m_engine;
-	QQmlComponent m_component;
 	LinearViewContext m_context;
-	boost::optional<Session*> m_session;
-	std::list<QQuickItem*> m_viewport;
-	int m_viewportIndex;
-	boost::icl::split_interval_map<int,LinearViewBlock> m_currentView;
-	std::unordered_map<int,LinearViewBlock> m_hidden;
+
+	Session* m_session;
+	std::list<QQuickItem*> m_visibleRows;
+	int m_visibleTopRow;
+
+	boost::icl::split_interval_map<int,LinearViewBlock> m_availableBlocks;
+	std::unordered_map<int,LinearViewBlock> m_hiddenBlocks;
 
 	void addRows(bool up = false);
-	QQuickItem *data(int);
-	unsigned int rows(void) const;
+	QQuickItem *createRow(int);
+	unsigned int rowCount(void) const;
+
+private slots:
+	void heightChanged(void);
 };

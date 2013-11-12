@@ -119,8 +119,8 @@ public:
 	//virtual void setMouse(const boost::optional<ElementSelection> &pos) = 0;
 	//virtual void setCursor(const boost::optional<ElementSelection> &sel) = 0;
 
-//signals:
-//	void modified(const boost::optional<ElementSelection> &pos);
+signals:
+	void modified(const boost::optional<ElementSelection> &pos);
 
 private:
 	po::address_space m_space;
@@ -132,32 +132,25 @@ class TestDelegateContext : public QObject
 	Q_OBJECT
 	Q_PROPERTY(QString address READ address NOTIFY addressChanged)
 	Q_PROPERTY(QVariantList data READ data NOTIFY dataChanged)
-	Q_PROPERTY(QPoint anchor READ anchor WRITE setAnchor NOTIFY anchorChanged);
-	Q_PROPERTY(QPoint cursor READ cursor WRITE setCursor NOTIFY cursorChanged);
+	Q_PROPERTY(int row READ row NOTIFY rowChanged)
 
 public:
 	TestDelegateContext(QObject *parent = nullptr);
-	TestDelegateContext(const QString &a, const QVariantList &d, const boost::optional<ElementSelection>&, QObject *parent = nullptr);
+	TestDelegateContext(const QString &a, const QVariantList &d, int row, QObject *parent = nullptr);
 
 	QString address(void) const;
 	QVariantList data(void) const;
-	QPoint anchor(void) const;
-	QPoint cursor(void) const;
-	boost::optional<ElementSelection> selection(void) const;
-
-	void setAnchor(const QPoint&);
-	void setCursor(const QPoint&);
+	int row(void) const;
 
 signals:
 	void addressChanged(void);
 	void dataChanged(void);
-	void anchorChanged(void);
-	void cursorChanged(void);
+	void rowChanged(void);
 
 private:
 	QString m_address;
 	QVariantList m_data;
-	boost::optional<ElementSelection> m_selection;
+	int m_row;
 };
 
 class TestDelegate : public Delegate
@@ -170,17 +163,17 @@ public:
 
 	virtual QQuickItem *data(unsigned int l);
 	virtual unsigned int rows(void) const;
-	//virtual unsigned int width(unsigned int l) const;
+	//unsigned int width(unsigned int l) const;
 
-	//virtual void setCursor(const boost::optional<ElementSelection> &sel);
+	void setCursor(const boost::optional<ElementSelection> &sel);
 
 public slots:
-	void elementClicked(int);
-	void elementEntered(int);
+	void elementClicked(int,int);
+	void elementEntered(int,int);
 
 private:
 	unsigned int m_width;
 	QQmlEngine *m_engine;
 	QQmlComponent m_component;
-	//boost::optional<ElementSelection> m_cursor;
+	boost::optional<ElementSelection> m_cursor;
 };

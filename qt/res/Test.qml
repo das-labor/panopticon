@@ -6,19 +6,19 @@ Item {
 	height: childrenRect.height
 
 	property int elementWidth: 0
-	signal elementClicked(int row, int col)
-	signal elementEntered(int row, int col)
+	signal elementClicked(int col, int row)
+	signal elementEntered(int col, int row)
 
 	function mousePressed(x,y)
 	{
 		if(x >= row.x && x < row.x + row.width)
-			elementClicked(Math.floor((x - row.x) / elementWidth))
+			elementClicked(Math.floor((x - row.x) / elementWidth),testDelegateContext.row)
 	}
 
 	function mouseMoved(x,y)
 	{
 		if(x >= row.x && x < row.x + row.width)
-			elementEntered(Math.floor((x - row.x) / elementWidth))
+			elementEntered(Math.floor((x - row.x) / elementWidth),testDelegateContext.row)
 	}
 
 	Address {
