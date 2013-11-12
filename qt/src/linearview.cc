@@ -50,13 +50,12 @@ void LinearViewContext::setColumnWidth(qreal r)
 }
 
 LinearView::LinearView(QQuickItem *parent)
-: QQuickItem(parent), m_engine(), m_component(&m_engine), m_context(), m_session(nullptr), m_viewport(), m_viewportIndex(0)
+: QQuickItem(parent), m_engine(), m_context(), m_session(nullptr), m_visibleRows(), m_visibleTopRow(0)
 {
 	setFlags(QQuickItem::ItemHasContents);
 	setAcceptedMouseButtons(Qt::LeftButton);
 
 	m_engine.rootContext()->setContextProperty("linearViewContext",&m_context);
-	m_component.loadUrl(QUrl("qrc:/Element.qml"));
 
 	addRows();
 	setClip(true);
@@ -79,19 +78,19 @@ void LinearView::setSession(Session *s)
 		int id = 0;
 		int i = 0;
 
-		m_currentView.clear();
-		m_hidden.clear();
+		m_availableBlocks.clear();
+		m_hiddenBlocks.clear();
 		//m_firstRow = m_lastRow = m_firstColumn = m_lastColumn = -1;
 
 		for(auto p: po::projection((*m_session)->graph().get_node(po::root((*m_session)->graph())),(*m_session)->graph()))
 		{
 			QSharedPointer<Delegate> delegate(new TestDelegate(p.second,p.first,10,&m_engine,this));
-			auto len = delegate->rows();
+			auto len = delegate->rowCount();
 
-			m_currentView.add(std::make_pair(decltype(m_currentView)::interval_type::right_open(i,i + 1),LinearViewBlock(LinearViewBlock::Header,delegate,id)));
-			m_currentView.add(std::make_pair(decltype(m_currentView)::interval_type::right_open(i + 1,i + 1 + len),LinearViewBlock(LinearViewBlock::Data,delegate,id)));
+			m_availableBlocks.add(std::make_pair(decltype(m_availableBlocks)::interval_type::right_open(i,i + 1),LinearViewBlock(LinearViewBlock::Header,delegate,id)));
+			m_availableBlocks.add(std::make_pair(decltype(m_availableBlocks)::interval_type::right_open(i + 1,i + 1 + len),LinearViewBlock(LinearViewBlock::Data,delegate,id)));
 
-			connect(delegate.data(),SIGNAL(modified(const boost::optional<ElementSelection> &)),this,SLOT(delegateModified(const boost::optional<ElementSelection> &)));
+			connect(delegate.createRow(),SIGNAL(modified(const boost::optional<ElementSelection> &)),this,SLOT(delegateModified(const boost::optional<ElementSelection> &)));
 
 			i += len + 1;
 			id += 1;
@@ -101,35 +100,24 @@ void LinearView::setSession(Session *s)
 	}
 }
 
-QQuickItem *LinearView::data(int idx)
+QQuickItem *LinearView::createRow(int idx)
 {
-	auto iter = m_currentView.find(idx);
+	auto iter = m_availableBlocks.find(idx);
 	QQuickItem *ret = nullptr;
 
-	if(iter == m_currentView.end())
+	if(iter == m_availableBlocks.end())
 		return nullptr;
 
 	if(iter->second.type == LinearViewBlock::Data)
-	{
 		ret = iter->second.delegate->data(idx - boost::icl::first(iter->first));
-	}
 	else
-	{
-		/*ret = new Header(QString::fromStdString(iter->second.delegate->space().name),
-				 						 iter->second.type == LinearViewBlock::HeaderCollapsed,
-										 iter->second.id);*/
-		auto ctx = new QQmlContext(&m_engine);
-
-		ctx->setContextProperty("index",QVariant::fromValue(idx));
-		ret = qobject_cast<QQuickItem*>(m_component.create(ctx));
-		ctx->setParent(ret);
-	}
+		ret = iter->second.delegate->head();
 
 	if(ret)
 	{
 		ret->setParentItem(this);
 		ret->setX(0);
-		connect(ret,SIGNAL(heightChanged()),this,SLOT(test()));
+		connect(ret,SIGNAL(heightChanged()),this,SLOT(rowHeightChanged()));
 	}
 
 	return ret;
@@ -137,29 +125,29 @@ QQuickItem *LinearView::data(int idx)
 
 void LinearView::addRows(bool up)
 {
-	assert(!(m_viewport.empty() && up));
+	assert(!(m_visibleRows.empty() && up));
 
-	qreal yy = (m_viewport.empty() ? 0 : (up ? m_viewport.front()->y() : m_viewport.back()->y() + m_viewport.back()->height()));
-	int idx = (m_viewport.empty() ? 0 : m_viewportIndex + (up ? -1 : m_viewport.size()));
+	qreal yy = (m_visibleRows.empty() ? 0 : (up ? m_visibleRows.front()->y() : m_visibleRows.back()->y() + m_visibleRows.back()->height()));
+	int idx = (m_visibleRows.empty() ? 0 : m_visibleTopRow + (up ? -1 : m_visibleRows.size()));
 
 	while(yy >= y() && yy < y() + height())
 	{
-		QQuickItem *itm = data(idx);
+		QQuickItem *itm = createRow(idx);
 
 		if(!itm)
 			return;
 
 		if(up)
 		{
-			m_viewport.push_front(itm);
+			m_visibleRows.push_front(itm);
 			--idx;
-			--m_viewportIndex;
+			--m_visibleTopRow;
 			itm->setY(yy - itm->height());
 			yy += 1 - itm->height();
 		}
 		else
 		{
-			m_viewport.push_back(itm);
+			m_visibleRows.push_back(itm);
 			++idx;
 			itm->setY(yy);
 			yy += itm->height();
@@ -167,10 +155,10 @@ void LinearView::addRows(bool up)
 	}
 }
 
-void LinearView::test(void)
+void LinearView::rowHeightChanged(void)
 {
 	QQuickItem *prev = 0;
-	std::for_each(std::find(m_viewport.begin(),m_viewport.end(),sender()),m_viewport.end(),[&](QQuickItem *itm)
+	std::for_each(std::find(m_visibleRows.begin(),m_visibleRows.end(),sender()),m_visibleRows.end(),[&](QQuickItem *itm)
 	{
 		if(prev)
 			itm->setY(prev->y() + prev->height());
@@ -197,7 +185,7 @@ void LinearView::mouseMoveEvent(QMouseEvent *event)
 	QPointF ptn = event->localPos();
 	QQuickItem *itm = qobject_cast<QQuickItem*>(childAt(ptn.x(),ptn.y()));
 
-	if(event->buttons() & Qt::LeftButton && itm && std::find(m_viewport.begin(),m_viewport.end(),itm) != m_viewport.end())
+	if(event->buttons() & Qt::LeftButton && itm && std::find(m_visibleRows.begin(),m_visibleRows.end(),itm) != m_visibleRows.end())
 	{
 		QVariant ret;
 		QMetaObject::invokeMethod(itm,"mouseMoved",Q_RETURN_ARG(QVariant,ret),Q_ARG(QVariant,ptn.x() - itm->x()),Q_ARG(QVariant,ptn.y() - itm->y()));
@@ -210,7 +198,7 @@ void LinearView::mousePressEvent(QMouseEvent *event)
 	QPointF ptn = event->localPos();
 	QQuickItem *itm = qobject_cast<QQuickItem*>(childAt(ptn.x(),ptn.y()));
 
-	if(event->buttons() & Qt::LeftButton && itm && std::find(m_viewport.begin(),m_viewport.end(),itm) != m_viewport.end())
+	if(event->buttons() & Qt::LeftButton && itm && std::find(m_visibleRows.begin(),m_visibleRows.end(),itm) != m_visibleRows.end())
 	{
 		QVariant ret;
 		QMetaObject::invokeMethod(itm,"mousePressed",Q_RETURN_ARG(QVariant,ret),Q_ARG(QVariant,ptn.x() - itm->x()),Q_ARG(QVariant,ptn.y() - itm->y()));
@@ -223,9 +211,9 @@ void LinearView::geometryChanged(const QRectF&, const QRectF&)
 	scrollViewport(0);
 }
 
-unsigned int LinearView::rows(void) const
+unsigned int LinearView::rowCount(void) const
 {
-	return boost::icl::length(m_currentView);
+	return boost::icl::length(m_availableBlocks);
 }
 
 void LinearView::scrollViewport(qreal d)
@@ -233,30 +221,30 @@ void LinearView::scrollViewport(qreal d)
 	QRectF bb(x(),y(),width(),height());
 
 	if(d &&
-		 !m_viewportIndex &&
-		 m_viewport.size() >= rows() &&
-		 m_viewport.front()->y() >= bb.top() &&
-		 m_viewport.back()->y() + m_viewport.back()->height() <= bb.bottom())
+		 !m_visibleTopRow &&
+		 m_visibleRows.size() >= rowCount() &&
+		 m_visibleRows.front()->y() >= bb.top() &&
+		 m_visibleRows.back()->y() + m_visibleRows.back()->height() <= bb.bottom())
 		return;
 
 	if(d)
 	{
 		// move elements
-		for(auto i: m_viewport)
+		for(auto i: m_visibleRows)
 			i->setY(i->y() + d);
 	}
 
 	// delete elements out of sight
-	auto i = m_viewport.begin();
-	while(i != m_viewport.end())
+	auto i = m_visibleRows.begin();
+	while(i != m_visibleRows.end())
 	{
 		if((bb & QRectF((*i)->x(),(*i)->y(),(*i)->width(),(*i)->height())).isNull())
 		{
 			delete *i;
 
-			if(i == m_viewport.begin())
-				++m_viewportIndex;
-			i = m_viewport.erase(i);
+			if(i == m_visibleRows.begin())
+				++m_visibleTopRow;
+			i = m_visibleRows.erase(i);
 		}
 		else
 		{
@@ -265,21 +253,21 @@ void LinearView::scrollViewport(qreal d)
 	}
 
 	// add new elements
-	if(m_viewport.empty())
+	if(m_visibleRows.empty())
 		addRows(false);
 	else
 	{
-		if(m_viewport.front()->y() > y())
+		if(m_visibleRows.front()->y() > y())
 			addRows(true);
-		if(m_viewport.back()->y() < y() + height())
+		if(m_visibleRows.back()->y() < y() + height())
 			addRows(false);
 
 		// Make sure we don't scroll past the first/last element
 		if(d)
 		{
-			if(!m_viewportIndex)
+			if(!m_visibleTopRow)
 			{
-				qreal delta = m_viewport.front()->y() - bb.top();
+				qreal delta = m_visibleRows.front()->y() - bb.top();
 
 				if(delta > 0)
 				{
@@ -288,9 +276,9 @@ void LinearView::scrollViewport(qreal d)
 				}
 			}
 
-			if(m_viewportIndex + m_viewport.size() >= rows())
+			if(m_visibleTopRow + m_visibleRows.size() >= rowCount())
 			{
-				qreal delta = bb.bottom() - (m_viewport.back()->y() + m_viewport.back()->height());
+				qreal delta = bb.bottom() - (m_visibleRows.back()->y() + m_visibleRows.back()->height());
 
 				if(delta > 0)
 					scrollViewport(delta);

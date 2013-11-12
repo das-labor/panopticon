@@ -115,5 +115,5 @@ private:
 	unsigned int rowCount(void) const;
 
 private slots:
-	void heightChanged(void);
+	void rowHeightChanged(void);
 };
