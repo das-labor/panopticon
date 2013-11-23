@@ -119,27 +119,28 @@ QVariantList TestDelegateContext::data(void) const	{ return m_data; }
 int TestDelegateContext::row(void) const						{ return m_row; }
 
 TestDelegate::TestDelegate(const po::address_space &as, const po::rrange &r, unsigned int w, QQmlEngine *e, QObject *p)
-: Delegate(as,r,p), m_width(w), m_engine(e), m_component(m_engine,QUrl("qrc:/Test.qml"))
+: Delegate(as,r,p), m_width(w), m_engine(e), m_rowComponent(m_engine,QUrl("qrc:/Test.qml")), m_headComponent(m_engine,QUrl("qrc:/Block.qml"))
 {
 	assert(w);
-	qDebug() << m_component.errors();
+	qDebug() << m_rowComponent.errors();
+	qDebug() << m_headComponent.errors();
 }
 
 TestDelegate::~TestDelegate(void) {}
 
-unsigned int TestDelegate::rows(void) const
+unsigned int TestDelegate::rowCount(void) const
 {
 	size_t l = boost::icl::length(range());
 	return l / m_width + !!(l % m_width);
 }
 
-QQuickItem *TestDelegate::data(unsigned int l)
+QQuickItem *TestDelegate::createRow(unsigned int l)
 {
 	auto ctx = new QQmlContext(m_engine->rootContext());
-	unsigned int i = 0, w = (l == rows() - 1 && boost::icl::length(range()) % m_width ? boost::icl::length(range()) % m_width : m_width);
+	unsigned int i = 0, w = (l == rowCount() - 1 && boost::icl::length(range()) % m_width ? boost::icl::length(range()) % m_width : m_width);
 	QVariantList _data;
 
-	assert(l < rows());
+	assert(l < rowCount());
 
 	while(i < w)
 	{
@@ -149,13 +150,34 @@ QQuickItem *TestDelegate::data(unsigned int l)
 
 	ctx->setContextProperty("testDelegateContext",new TestDelegateContext(QString("%1").arg(l * m_width),_data,l,ctx));
 
-	auto ret = qobject_cast<QQuickItem*>(m_component.create(ctx));
+	auto ret = qobject_cast<QQuickItem*>(m_rowComponent.create(ctx));
 
 	assert(ret);
 	connect(ret,SIGNAL(elementEntered(int,int)),this,SLOT(elementEntered(int,int)));
 	connect(ret,SIGNAL(elementClicked(int,int)),this,SLOT(elementClicked(int,int)));
 	ctx->setParent(ret);
+	ret->setParent(this);
 	return ret;
+}
+
+void TestDelegate::deleteRow(QQuickItem *i)
+{
+	assert(i);
+	i->deleteLater();
+}
+
+QQuickItem *TestDelegate::createHead(void)
+{
+	auto ret = qobject_cast<QQuickItem*>(m_headComponent.create());
+
+	ret->setParent(this);
+	return ret;
+}
+
+void TestDelegate::deleteHead(QQuickItem *i)
+{
+	assert(i);
+	i->deleteLater();
 }
 
 void TestDelegate::elementClicked(int col, int row)
@@ -185,7 +207,7 @@ void TestDelegate::setCursor(const boost::optional<ElementSelection> &sel)
 		auto old = m_cursor;
 
 		m_cursor = sel;
-
+/*
 		// one if NULL other !NULL: redraw only !NULL one
 		if((sel && !old) || (!sel && old))
 		{
@@ -207,7 +229,7 @@ void TestDelegate::setCursor(const boost::optional<ElementSelection> &sel)
 				emit modified(ElementSelection(std::min(sel->firstLine(),old->firstLine()),0,
 																			 std::max(sel->lastLine(),old->lastLine()),m_width-1));
 			}
-		}
+		}*/
 	}
 }
 /*

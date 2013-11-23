@@ -89,12 +89,16 @@ public:
 	 * Returns a list of strings representing the columns
 	 * of a line. The length of the list can be less than \ref columns()!
 	 */
-	virtual QQuickItem *data(unsigned int i) = 0;
+	virtual QQuickItem *createRow(unsigned int i) = 0;
+	virtual void deleteRow(QQuickItem*) = 0;
+
+	virtual QQuickItem *createHead(void) = 0;
+	virtual void deleteHead(QQuickItem *) = 0;
 
 	/*!
 	 * Number of lines this delegate spans.
 	 */
-	virtual unsigned int rows(void) const = 0;
+	virtual unsigned int rowCount(void) const = 0;
 
 	/*!
 	 * Current cursor selection or NULL if nothing is selected. Used to initialize Columns
@@ -120,7 +124,7 @@ public:
 	//virtual void setCursor(const boost::optional<ElementSelection> &sel) = 0;
 
 signals:
-	void modified(const boost::optional<ElementSelection> &pos);
+	void modified(void);
 
 private:
 	po::address_space m_space;
@@ -161,9 +165,13 @@ public:
 	TestDelegate(const po::address_space &as, const po::rrange &r, unsigned int width, QQmlEngine *, QObject *p = 0);
 	virtual ~TestDelegate(void);
 
-	virtual QQuickItem *data(unsigned int l);
-	virtual unsigned int rows(void) const;
-	//unsigned int width(unsigned int l) const;
+	virtual QQuickItem *createRow(unsigned int i);
+	virtual void deleteRow(QQuickItem*);
+
+	virtual QQuickItem *createHead(void);
+	virtual void deleteHead(QQuickItem *);
+
+	virtual unsigned int rowCount(void) const;
 
 	void setCursor(const boost::optional<ElementSelection> &sel);
 
@@ -174,6 +182,7 @@ public slots:
 private:
 	unsigned int m_width;
 	QQmlEngine *m_engine;
-	QQmlComponent m_component;
+	QQmlComponent m_rowComponent;
+	QQmlComponent m_headComponent;
 	boost::optional<ElementSelection> m_cursor;
 };

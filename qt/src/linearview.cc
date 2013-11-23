@@ -66,7 +66,7 @@ LinearView::~LinearView(void)
 
 Session *LinearView::session(void)
 {
-	return (m_session ? *m_session : nullptr);
+	return m_session;
 }
 
 void LinearView::setSession(Session *s)
@@ -82,7 +82,7 @@ void LinearView::setSession(Session *s)
 		m_hiddenBlocks.clear();
 		//m_firstRow = m_lastRow = m_firstColumn = m_lastColumn = -1;
 
-		for(auto p: po::projection((*m_session)->graph().get_node(po::root((*m_session)->graph())),(*m_session)->graph()))
+		for(auto p: po::projection(m_session->graph().get_node(po::root(m_session->graph())),m_session->graph()))
 		{
 			QSharedPointer<Delegate> delegate(new TestDelegate(p.second,p.first,10,&m_engine,this));
 			auto len = delegate->rowCount();
@@ -90,7 +90,7 @@ void LinearView::setSession(Session *s)
 			m_availableBlocks.add(std::make_pair(decltype(m_availableBlocks)::interval_type::right_open(i,i + 1),LinearViewBlock(LinearViewBlock::Header,delegate,id)));
 			m_availableBlocks.add(std::make_pair(decltype(m_availableBlocks)::interval_type::right_open(i + 1,i + 1 + len),LinearViewBlock(LinearViewBlock::Data,delegate,id)));
 
-			connect(delegate.createRow(),SIGNAL(modified(const boost::optional<ElementSelection> &)),this,SLOT(delegateModified(const boost::optional<ElementSelection> &)));
+			connect(delegate.data(),SIGNAL(modified(const boost::optional<ElementSelection> &)),this,SLOT(delegateModified(const boost::optional<ElementSelection> &)));
 
 			i += len + 1;
 			id += 1;
@@ -109,9 +109,9 @@ QQuickItem *LinearView::createRow(int idx)
 		return nullptr;
 
 	if(iter->second.type == LinearViewBlock::Data)
-		ret = iter->second.delegate->data(idx - boost::icl::first(iter->first));
+		ret = iter->second.delegate->createRow(idx - boost::icl::first(iter->first));
 	else
-		ret = iter->second.delegate->head();
+		ret = iter->second.delegate->createHead();
 
 	if(ret)
 	{
@@ -165,15 +165,6 @@ void LinearView::rowHeightChanged(void)
 		prev = itm;
 	});
 }
-
-void LinearView::delegateModified(const boost::optional<ElementSelection> &sel)
-{
-	Delegate *delegate = qobject_cast<Delegate*>(sender());
-	assert(delegate);
-
-	// XXX: rename
-	// XXX: find delegate Data Block in m_availableBlocks
-	// XXX: replace rows in m_visibleRows if needed
 
 void LinearView::wheelEvent(QWheelEvent *event)
 {
@@ -240,7 +231,14 @@ void LinearView::scrollViewport(qreal d)
 	{
 		if((bb & QRectF((*i)->x(),(*i)->y(),(*i)->width(),(*i)->height())).isNull())
 		{
-			delete *i;
+			auto row = std::distance(m_visibleRows.begin(),i) + m_visibleTopRow;
+			auto j = m_availableBlocks.find(row);
+
+			assert(j != m_availableBlocks.end());
+			if(j->second.type == LinearViewBlock::Header)
+				j->second.delegate->deleteHead(*i);
+			else
+				j->second.delegate->deleteRow(*i);
 
 			if(i == m_visibleRows.begin())
 				++m_visibleTopRow;

@@ -9,18 +9,11 @@ Item {
 		id: rect
 		width: 100
 		height: 40
-		color: payload.collapsed ? "green" : "yellow"
+		color: true ? "green" : "yellow"
 
 		Text {
 			anchors.centerIn: parent
-			text: payload.name
-		}
-	}
-
-	MouseArea {
-		anchors.fill: rect
-		onClicked: {
-			root.toggleVisibility(payload.id,payload.collapsed)
+			text: "name"
 		}
 	}
 }
