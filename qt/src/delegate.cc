@@ -118,12 +118,23 @@ QString TestDelegateContext::address(void) const		{ return m_address; }
 QVariantList TestDelegateContext::data(void) const	{ return m_data; }
 int TestDelegateContext::row(void) const						{ return m_row; }
 
-TestDelegate::TestDelegate(const po::address_space &as, const po::rrange &r, unsigned int w, QQmlEngine *e, QObject *p)
-: Delegate(as,r,p), m_width(w), m_engine(e), m_rowComponent(m_engine,QUrl("qrc:/Test.qml")), m_headComponent(m_engine,QUrl("qrc:/Block.qml"))
+TestDelegate::TestDelegate(const po::address_space &as, const po::rrange &r, unsigned int w, QQmlEngine *e, QQuickItem *p)
+: Delegate(as,r,p), m_width(w), m_engine(e),
+	m_rowComponent(m_engine,QUrl("qrc:/Test.qml")),
+	m_headComponent(m_engine,QUrl("qrc:/Block.qml")),
+	m_cursorComponent(m_engine,QUrl("qrc:/Cursor.qml")),
+	m_cursor(boost::none), m_visibleRows(), m_overlay(0)
 {
 	assert(w);
 	qDebug() << m_rowComponent.errors();
 	qDebug() << m_headComponent.errors();
+	qDebug() << m_cursorComponent.errors();
+
+	m_overlay = qobject_cast<QQuickItem*>(m_cursorComponent.create());
+	assert(m_overlay);
+	m_overlay->setParent(this);
+	m_overlay->setParentItem(p);
+	m_overlay->setVisible(false);
 }
 
 TestDelegate::~TestDelegate(void) {}
@@ -157,12 +168,21 @@ QQuickItem *TestDelegate::createRow(unsigned int l)
 	connect(ret,SIGNAL(elementClicked(int,int)),this,SLOT(elementClicked(int,int)));
 	ctx->setParent(ret);
 	ret->setParent(this);
+	ret->setParentItem(m_overlay->parentItem());
+
+	m_visibleRows.insert(std::make_pair(l,ret));
+	reattachCursor();
 	return ret;
 }
 
 void TestDelegate::deleteRow(QQuickItem *i)
 {
 	assert(i);
+	auto j = std::find_if(m_visibleRows.begin(),m_visibleRows.end(),[&](std::pair<int,QQuickItem*> p) { return p.second == i; });
+
+	assert(j != m_visibleRows.end());
+	m_visibleRows.erase(j);
+	reattachCursor();
 	i->deleteLater();
 }
 
@@ -178,6 +198,31 @@ void TestDelegate::deleteHead(QQuickItem *i)
 {
 	assert(i);
 	i->deleteLater();
+}
+
+void TestDelegate::reattachCursor(void)
+{
+	if(m_cursor)
+	{
+		auto fi = m_visibleRows.lower_bound(m_cursor->firstLine());
+		auto li = m_visibleRows.lower_bound(m_cursor->lastLine());
+
+		if(fi != m_visibleRows.end() && fi->first >= m_cursor->firstLine() && fi->first <= m_cursor->lastLine())
+		{
+			if(li == m_visibleRows.end() || li->first > m_cursor->lastLine())
+				--li;
+			if(li->first >= m_cursor->firstLine() && li->first <= m_cursor->lastLine())
+			{
+				QVariant ret, first = QVariant::fromValue(fi->second), last = QVariant::fromValue(li->second);
+				QMetaObject::invokeMethod(m_overlay,"attach",Q_RETURN_ARG(QVariant,ret),Q_ARG(QVariant,first),Q_ARG(QVariant,last));
+				m_overlay->setVisible(true);
+
+				return;
+			}
+		}
+	}
+
+	m_overlay->setVisible(false);
 }
 
 void TestDelegate::elementClicked(int col, int row)
@@ -207,7 +252,9 @@ void TestDelegate::setCursor(const boost::optional<ElementSelection> &sel)
 		auto old = m_cursor;
 
 		m_cursor = sel;
-/*
+		reattachCursor();
+
+	/*
 		// one if NULL other !NULL: redraw only !NULL one
 		if((sel && !old) || (!sel && old))
 		{

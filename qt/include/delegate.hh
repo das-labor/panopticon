@@ -162,7 +162,7 @@ class TestDelegate : public Delegate
 	Q_OBJECT
 
 public:
-	TestDelegate(const po::address_space &as, const po::rrange &r, unsigned int width, QQmlEngine *, QObject *p = 0);
+	TestDelegate(const po::address_space &as, const po::rrange &r, unsigned int width, QQmlEngine *, QQuickItem *p = 0);
 	virtual ~TestDelegate(void);
 
 	virtual QQuickItem *createRow(unsigned int i);
@@ -184,5 +184,10 @@ private:
 	QQmlEngine *m_engine;
 	QQmlComponent m_rowComponent;
 	QQmlComponent m_headComponent;
+	QQmlComponent m_cursorComponent;
 	boost::optional<ElementSelection> m_cursor;
+	std::map<int,QQuickItem*> m_visibleRows;
+	QQuickItem *m_overlay;
+
+	void reattachCursor(void);
 };
