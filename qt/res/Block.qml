@@ -2,6 +2,8 @@ import QtQuick 2.0
 import Panopticon 1.0
 
 Item {
+	signal collapse
+
 	width: childrenRect.width
 	height: childrenRect.height
 
@@ -14,6 +16,11 @@ Item {
 		Text {
 			anchors.centerIn: parent
 			text: "name"
+		}
+
+		MouseArea {
+			anchors.fill: parent
+			onPressed: { collapse() }
 		}
 	}
 }

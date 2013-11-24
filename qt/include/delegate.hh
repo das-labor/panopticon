@@ -15,52 +15,6 @@ typedef QSharedPointer<Line> LineRef;
 
 #pragma once
 
-/*!
- * \class QObject
- * \ingroup qt
- */
-/*
-class Element : public QObject
-{
-	Q_OBJECT
-	Q_PROPERTY(QString data READ data NOTIFY dataChanged)
-	Q_PROPERTY(bool selected READ selected NOTIFY selectedChanged)
-
-public:
-	Element(void);
-	Element(const QString &h, bool sel);
-	virtual ~Element(void);
-
-	QString data(void) const;
-	bool selected(void) const;
-
-signals:
-	void dataChanged(void);
-	void selectedChanged(void);
-
-private:
-	QString m_data;
-	bool m_selected;
-};*/
-
-/*!
- * \brief Single line to display in a column.
- *
- * This class transports rendered lines from the delegate
- * to the column. Includes text, color, indetation and optional
- * action.
- * Text is split into elements that are layout as columns.
- */
-/*
-class Line
-{
-public:
-	unsigned int identation;
-	bool align;
-	using Element = QString;
-	QList<Element> elements;
-};*/
-
 /**
  * \brief Delegates connect Columns to a database.
  *
@@ -181,6 +135,7 @@ public:
 public slots:
 	void elementClicked(int,int);
 	void elementEntered(int,int);
+	void collapseRows(void);
 
 private:
 	unsigned int m_width;
@@ -195,6 +150,7 @@ private:
 
 	boost::optional<ElementSelection> m_cursor;
 	QQuickItem *m_cursorOverlay;
+	bool m_collapsed;
 
 	void updateOverlays(const ElementSelection &sel);
 };

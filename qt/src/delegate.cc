@@ -125,7 +125,7 @@ TestDelegate::TestDelegate(const po::address_space &as, const po::rrange &r, uns
 	m_headComponent(m_engine,QUrl("qrc:/Block.qml")),
 	m_cursorComponent(m_engine,QUrl("qrc:/Cursor.qml")),
 	m_overlays(), m_visibleRows(),
-	m_cursor(boost::none), m_cursorOverlay(0)
+	m_cursor(boost::none), m_cursorOverlay(0), m_collapsed(false)
 {
 	assert(w);
 	qDebug() << m_rowComponent.errors();
@@ -137,8 +137,13 @@ TestDelegate::~TestDelegate(void) {}
 
 unsigned int TestDelegate::rowCount(void) const
 {
-	size_t l = boost::icl::length(range());
-	return l / m_width + !!(l % m_width);
+	if(m_collapsed)
+		return 0;
+	else
+	{
+		size_t l = boost::icl::length(range());
+		return l / m_width + !!(l % m_width);
+	}
 }
 
 QQuickItem *TestDelegate::createRow(unsigned int l)
@@ -188,6 +193,7 @@ void TestDelegate::deleteRow(QQuickItem *i)
 QQuickItem *TestDelegate::createHead(void)
 {
 	auto ret = qobject_cast<QQuickItem*>(m_headComponent.create());
+	connect(ret,SIGNAL(collapse()),this,SLOT(collapseRows()));
 
 	ret->setParent(this);
 	return ret;
@@ -272,6 +278,12 @@ void TestDelegate::elementEntered(int col, int row)
 	}
 	else
 		setCursor(ElementSelection(row,col,row,col));
+}
+
+void TestDelegate::collapseRows(void)
+{
+	m_collapsed = !m_collapsed;
+	emit modified();
 }
 
 void TestDelegate::setCursor(const boost::optional<ElementSelection> &sel)

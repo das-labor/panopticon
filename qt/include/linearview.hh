@@ -88,7 +88,7 @@ public slots:
 	// From QML
 	//void setVisibility(int blkid, bool vis);
 
-	//void delegateModified(const boost::optional<ElementSelection> &);
+	void delegateModified(void);
 
 signals:
 	void sessionChanged(void);

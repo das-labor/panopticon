@@ -90,7 +90,7 @@ void LinearView::setSession(Session *s)
 			m_availableBlocks.add(std::make_pair(decltype(m_availableBlocks)::interval_type::right_open(i,i + 1),LinearViewBlock(LinearViewBlock::Header,delegate,id)));
 			m_availableBlocks.add(std::make_pair(decltype(m_availableBlocks)::interval_type::right_open(i + 1,i + 1 + len),LinearViewBlock(LinearViewBlock::Data,delegate,id)));
 
-			connect(delegate.data(),SIGNAL(modified(const boost::optional<ElementSelection> &)),this,SLOT(delegateModified(const boost::optional<ElementSelection> &)));
+			connect(delegate.data(),SIGNAL(modified()),this,SLOT(delegateModified()));
 
 			i += len + 1;
 			id += 1;
@@ -123,12 +123,58 @@ QQuickItem *LinearView::createRow(int idx)
 	return ret;
 }
 
+void LinearView::delegateModified(void)
+{
+	auto del = qobject_cast<Delegate*>(sender());
+
+	assert(del);
+	auto i = m_visibleRows.begin();
+	qreal offset = (*i)->y();
+
+	while(i != m_visibleRows.end())
+	{
+		auto row = std::distance(m_visibleRows.begin(),i) + m_visibleTopRow;
+		auto j = m_availableBlocks.find(row);
+
+		assert(j != m_availableBlocks.end());
+		if(j->second.type == LinearViewBlock::Header)
+			j->second.delegate->deleteHead(*i);
+		else
+			j->second.delegate->deleteRow(*i);
+
+		++i;
+	}
+
+	auto bak = m_availableBlocks;
+	int id = 0, k = 0;
+
+	m_visibleRows.clear();
+	m_availableBlocks.clear();
+	for(auto j: bak)
+	{
+		if(j.second.type == LinearViewBlock::Header)
+		{
+			auto len = j.second.delegate->rowCount();
+
+			m_availableBlocks.add(std::make_pair(decltype(m_availableBlocks)::interval_type::right_open(k,k + 1),LinearViewBlock(LinearViewBlock::Header,j.second.delegate,id)));
+			m_availableBlocks.add(std::make_pair(decltype(m_availableBlocks)::interval_type::right_open(k + 1,k + 1 + len),LinearViewBlock(LinearViewBlock::Data,j.second.delegate,id)));
+
+			k += len + 1;
+			id += 1;
+		}
+	}
+
+	scrollViewport(0);
+	scrollViewport(offset);
+
+}
+
 void LinearView::addRows(bool up)
 {
 	assert(!(m_visibleRows.empty() && up));
 
 	qreal yy = (m_visibleRows.empty() ? 0 : (up ? m_visibleRows.front()->y() : m_visibleRows.back()->y() + m_visibleRows.back()->height()));
-	int idx = (m_visibleRows.empty() ? 0 : m_visibleTopRow + (up ? -1 : m_visibleRows.size()));
+	int idx = m_visibleTopRow + (up ? -1 : m_visibleRows.size());
 
 	while(yy >= y() && yy < y() + height())
 	{
