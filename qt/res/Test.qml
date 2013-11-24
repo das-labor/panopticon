@@ -24,6 +24,7 @@ Item {
 	Address {
 		address: testDelegateContext.address
 		context: linearViewContext
+		row: parent
 	}
 
 	Row {
@@ -35,7 +36,7 @@ Item {
 			delegate: Rectangle {
 				width: elementWidth
 				height: hex.height + 10
-				color: "red"
+				color: "white"
 
 				Text {
 					id: hex

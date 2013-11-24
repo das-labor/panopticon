@@ -173,27 +173,45 @@ void LinearView::wheelEvent(QWheelEvent *event)
 
 void LinearView::mouseMoveEvent(QMouseEvent *event)
 {
-	QPointF ptn = event->localPos();
-	QQuickItem *itm = qobject_cast<QQuickItem*>(childAt(ptn.x(),ptn.y()));
-
-	if(event->buttons() & Qt::LeftButton && itm && std::find(m_visibleRows.begin(),m_visibleRows.end(),itm) != m_visibleRows.end())
+	if(event->buttons() & Qt::LeftButton)
 	{
-		QVariant ret;
-		QMetaObject::invokeMethod(itm,"mouseMoved",Q_RETURN_ARG(QVariant,ret),Q_ARG(QVariant,ptn.x() - itm->x()),Q_ARG(QVariant,ptn.y() - itm->y()));
-		event->accept();
+		QPointF ptn = event->localPos();
+		auto i = std::find_if(m_visibleRows.begin(),m_visibleRows.end(),[&](QQuickItem *j)
+		{
+			QRectF bb(j->x(),j->y(),j->width(),j->height());
+			return bb.contains(ptn);
+		});
+
+		if(i != m_visibleRows.end())
+		{
+			QQuickItem *itm = *i;
+
+			QVariant ret;
+			QMetaObject::invokeMethod(itm,"mouseMoved",Q_RETURN_ARG(QVariant,ret),Q_ARG(QVariant,ptn.x() - itm->x()),Q_ARG(QVariant,ptn.y() - itm->y()));
+			event->accept();
+		}
 	}
 }
 
 void LinearView::mousePressEvent(QMouseEvent *event)
 {
-	QPointF ptn = event->localPos();
-	QQuickItem *itm = qobject_cast<QQuickItem*>(childAt(ptn.x(),ptn.y()));
-
-	if(event->buttons() & Qt::LeftButton && itm && std::find(m_visibleRows.begin(),m_visibleRows.end(),itm) != m_visibleRows.end())
+	if(event->buttons() & Qt::LeftButton)
 	{
-		QVariant ret;
-		QMetaObject::invokeMethod(itm,"mousePressed",Q_RETURN_ARG(QVariant,ret),Q_ARG(QVariant,ptn.x() - itm->x()),Q_ARG(QVariant,ptn.y() - itm->y()));
-		event->accept();
+		QPointF ptn = event->localPos();
+		auto i = std::find_if(m_visibleRows.begin(),m_visibleRows.end(),[&](QQuickItem *j)
+		{
+			QRectF bb(j->x(),j->y(),j->width(),j->height());
+			return bb.contains(ptn);
+		});
+
+		if(i != m_visibleRows.end())
+		{
+			QQuickItem *itm = *i;
+
+			QVariant ret;
+			QMetaObject::invokeMethod(itm,"mousePressed",Q_RETURN_ARG(QVariant,ret),Q_ARG(QVariant,ptn.x() - itm->x()),Q_ARG(QVariant,ptn.y() - itm->y()));
+			event->accept();
+		}
 	}
 }
 

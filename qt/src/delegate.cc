@@ -1,4 +1,5 @@
 #include <delegate.hh>
+#include <graph.hh>
 
 Delegate::Delegate(const po::address_space &as, const po::rrange &r, QObject *p)
 : QObject(p), m_space(as), m_range(r)
@@ -123,18 +124,13 @@ TestDelegate::TestDelegate(const po::address_space &as, const po::rrange &r, uns
 	m_rowComponent(m_engine,QUrl("qrc:/Test.qml")),
 	m_headComponent(m_engine,QUrl("qrc:/Block.qml")),
 	m_cursorComponent(m_engine,QUrl("qrc:/Cursor.qml")),
-	m_cursor(boost::none), m_visibleRows(), m_overlay(0)
+	m_overlays(), m_visibleRows(),
+	m_cursor(boost::none), m_cursorOverlay(0)
 {
 	assert(w);
 	qDebug() << m_rowComponent.errors();
 	qDebug() << m_headComponent.errors();
 	qDebug() << m_cursorComponent.errors();
-
-	m_overlay = qobject_cast<QQuickItem*>(m_cursorComponent.create());
-	assert(m_overlay);
-	m_overlay->setParent(this);
-	m_overlay->setParentItem(p);
-	m_overlay->setVisible(false);
 }
 
 TestDelegate::~TestDelegate(void) {}
@@ -155,7 +151,7 @@ QQuickItem *TestDelegate::createRow(unsigned int l)
 
 	while(i < w)
 	{
-		_data.append(QVariant::fromValue(QString("??")));//new Element("??",m_cursor && m_cursor->includes(ElementSelection(l,i,l,i)))));
+		_data.append(QVariant::fromValue(QString("??")));
 		i++;
 	}
 
@@ -168,10 +164,11 @@ QQuickItem *TestDelegate::createRow(unsigned int l)
 	connect(ret,SIGNAL(elementClicked(int,int)),this,SLOT(elementClicked(int,int)));
 	ctx->setParent(ret);
 	ret->setParent(this);
-	ret->setParentItem(m_overlay->parentItem());
+	ret->setParentItem(qobject_cast<QQuickItem*>(parent()));
 
 	m_visibleRows.insert(std::make_pair(l,ret));
-	reattachCursor();
+	updateOverlays(ElementSelection(l,0,l,m_width-1));
+
 	return ret;
 }
 
@@ -181,8 +178,10 @@ void TestDelegate::deleteRow(QQuickItem *i)
 	auto j = std::find_if(m_visibleRows.begin(),m_visibleRows.end(),[&](std::pair<int,QQuickItem*> p) { return p.second == i; });
 
 	assert(j != m_visibleRows.end());
+	int l = j->first;
+
 	m_visibleRows.erase(j);
-	reattachCursor();
+	updateOverlays(ElementSelection(l,0,l,m_width-1));
 	i->deleteLater();
 }
 
@@ -200,29 +199,59 @@ void TestDelegate::deleteHead(QQuickItem *i)
 	i->deleteLater();
 }
 
-void TestDelegate::reattachCursor(void)
+QQuickItem *TestDelegate::createOverlay(const ElementSelection &sel)
 {
-	if(m_cursor)
+	QQuickItem *ov = qobject_cast<QQuickItem*>(m_cursorComponent.create());
+
+	assert(ov);
+	ov->setParent(this);
+	ov->setParentItem(qobject_cast<QQuickItem*>(parent()));
+	ov->setVisible(false);
+
+	m_overlays.insert(std::make_pair(sel,ov));
+	updateOverlays(sel);
+
+	return ov;
+}
+
+void TestDelegate::deleteOverlay(QQuickItem *ov)
+{
+	assert(ov);
+	auto i = std::find_if(m_overlays.begin(),m_overlays.end(),[&](const std::pair<ElementSelection,QQuickItem*> &p) { return p.second == ov; });
+	assert(i != m_overlays.end());
+	auto key = i->first;
+
+	m_overlays.erase(i);
+	updateOverlays(key);
+	ov->deleteLater();
+}
+
+void TestDelegate::updateOverlays(const ElementSelection &sel)
+{
+	for(auto i: m_overlays)
 	{
-		auto fi = m_visibleRows.lower_bound(m_cursor->firstLine());
-		auto li = m_visibleRows.lower_bound(m_cursor->lastLine());
-
-		if(fi != m_visibleRows.end() && fi->first >= m_cursor->firstLine() && fi->first <= m_cursor->lastLine())
+		if(!i.first.disjoint(sel))
 		{
-			if(li == m_visibleRows.end() || li->first > m_cursor->lastLine())
-				--li;
-			if(li->first >= m_cursor->firstLine() && li->first <= m_cursor->lastLine())
-			{
-				QVariant ret, first = QVariant::fromValue(fi->second), last = QVariant::fromValue(li->second);
-				QMetaObject::invokeMethod(m_overlay,"attach",Q_RETURN_ARG(QVariant,ret),Q_ARG(QVariant,first),Q_ARG(QVariant,last));
-				m_overlay->setVisible(true);
+			auto fi = m_visibleRows.lower_bound(i.first.firstLine());
+			auto li = m_visibleRows.lower_bound(i.first.lastLine());
 
-				return;
+			if(fi != m_visibleRows.end() && fi->first >= i.first.firstLine() && fi->first <= i.first.lastLine())
+			{
+				if(li == m_visibleRows.end() || li->first > i.first.lastLine())
+					--li;
+				if(li->first >= i.first.firstLine() && li->first <= i.first.lastLine())
+				{
+					QVariant ret, first = QVariant::fromValue(fi->second), last = QVariant::fromValue(li->second);
+					QMetaObject::invokeMethod(i.second,"attach",Q_RETURN_ARG(QVariant,ret),Q_ARG(QVariant,first),Q_ARG(QVariant,last));
+					i.second->setVisible(true);
+
+					continue;
+				}
 			}
+
+			i.second->setVisible(false);
 		}
 	}
-
-	m_overlay->setVisible(false);
 }
 
 void TestDelegate::elementClicked(int col, int row)
@@ -251,44 +280,27 @@ void TestDelegate::setCursor(const boost::optional<ElementSelection> &sel)
 	{
 		auto old = m_cursor;
 
-		m_cursor = sel;
-		reattachCursor();
+		if(m_cursorOverlay)
+			deleteOverlay(m_cursorOverlay);
 
-	/*
+		m_cursor = sel;
+
+		if(m_cursor)
+			m_cursorOverlay = createOverlay(*m_cursor);
+		else
+			m_cursorOverlay = 0;
+
 		// one if NULL other !NULL: redraw only !NULL one
 		if((sel && !old) || (!sel && old))
 		{
 			auto t = sel ? sel : old;
-			emit modified(ElementSelection(t->firstLine(),0,t->lastLine(),m_width-1));
+			updateOverlays(ElementSelection(t->firstLine(),0,t->lastLine(),m_width-1));
 		}
 		// both selection smth: redraw difference
 		else
 		{
-			// moved only cursor
-			if(sel->anchorLine() == old->anchorLine())
-			{
-				emit modified(ElementSelection(std::min(sel->cursorLine(),old->cursorLine()),0,
-																			 std::max(sel->cursorLine(),old->cursorLine()),m_width-1));
-			}
-			// give up and repaint everything
-			else
-			{
-				emit modified(ElementSelection(std::min(sel->firstLine(),old->firstLine()),0,
-																			 std::max(sel->lastLine(),old->lastLine()),m_width-1));
-			}
-		}*/
+				updateOverlays(ElementSelection(std::min(sel->firstLine(),old->firstLine()),0,
+																				std::max(sel->lastLine(),old->lastLine()),m_width-1));
+		}
 	}
 }
-/*
-Element::Element(void)
-: QObject(), m_data(""), m_selected(false)
-{}
-
-Element::Element(const QString &h, bool sel)
-: QObject(), m_data(h), m_selected(sel) {}
-
-Element::~Element(void)
-{}
-
-QString Element::data(void) const { return m_data; }
-bool Element::selected(void) const { return m_selected; }*/

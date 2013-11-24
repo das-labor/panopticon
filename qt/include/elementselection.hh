@@ -97,3 +97,16 @@ private:
 uint qHash(const ElementSelection &s);
 bool operator==(const ElementSelection &s1,const ElementSelection &s2);
 QDebug operator<<(QDebug dbg, const ElementSelection &c);
+
+namespace std
+{
+	template<>
+	struct hash<ElementSelection>
+	{
+		size_t operator()(const ElementSelection &s) const
+		{
+			hash<quint64> h;
+			return h(s.firstLine()) ^ h(s.firstColumn()) ^ h(s.lastLine()) ^ h(s.lastColumn());
+		}
+	};
+}

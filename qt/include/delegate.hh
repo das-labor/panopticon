@@ -173,6 +173,9 @@ public:
 
 	virtual unsigned int rowCount(void) const;
 
+	QQuickItem *createOverlay(const ElementSelection &sel);
+	void deleteOverlay(QQuickItem *);
+
 	void setCursor(const boost::optional<ElementSelection> &sel);
 
 public slots:
@@ -181,13 +184,17 @@ public slots:
 
 private:
 	unsigned int m_width;
+
 	QQmlEngine *m_engine;
 	QQmlComponent m_rowComponent;
 	QQmlComponent m_headComponent;
 	QQmlComponent m_cursorComponent;
-	boost::optional<ElementSelection> m_cursor;
-	std::map<int,QQuickItem*> m_visibleRows;
-	QQuickItem *m_overlay;
 
-	void reattachCursor(void);
+	std::unordered_set<std::pair<ElementSelection,QQuickItem*>> m_overlays;
+	std::map<int,QQuickItem*> m_visibleRows;
+
+	boost::optional<ElementSelection> m_cursor;
+	QQuickItem *m_cursorOverlay;
+
+	void updateOverlays(const ElementSelection &sel);
 };
