@@ -102,7 +102,7 @@ namespace po
 		 * @todo Only works with guards that have a single relation
 		 */
 		guard negation(void) const;
-		
+
 		std::list<relation> relations; ///< Conjunction of relations
 	};
 
@@ -112,12 +112,12 @@ namespace po
 	std::string pretty(relation::Relcode r);
 	std::ostream& operator<<(std::ostream &os, const guard &g);
 	odotstream &operator<<(odotstream &os, const guard &g);
-	
+
 	/**
 	 * @brief A jump between two basic blocks.
 	 *
 	 * A control transfer is a jump from one address to another with
-	 * an optional condition. The address can be any value (constant, 
+	 * an optional condition. The address can be any value (constant,
 	 * memory, variables,...).
 	 *
 	 * If the target of the jump is known and has been disassembled
@@ -131,7 +131,7 @@ namespace po
 
 		/// Jump to basic block @ref b under condition @ref g
 		ctrans(guard g, bblock_ptr b);
-		
+
 		guard condition;
 		rvalue value;
 		bblock_wptr bblock;
@@ -208,7 +208,7 @@ namespace po
 		typedef bblock_citerator< std::list<ctrans>> succ_citerator;
 		typedef std::list<ctrans>::iterator out_iterator;
 		typedef std::list<ctrans>::iterator in_iterator;
-		
+
 		/// @returns a pair of iterators pointing to the beginning and the end of the list of predecessor basic blocks
 		std::pair<pred_citerator,pred_citerator> predecessors(void) const;
 		/// @returns a pair of iterators pointing to the beginning and the end of the list of successor basic blocks
@@ -217,15 +217,15 @@ namespace po
 		std::pair<pred_iterator,pred_iterator> predecessors(void);
 		/// @returns a pair of iterators pointing to the beginning and the end of the list of successor basic blocks
 		std::pair<succ_iterator,succ_iterator> successors(void);
-		
+
 		/// @returns mnemonics this basic block includes
 		const std::vector<mnemonic> &mnemonics(void) const;
-		
-		/// @returns all control transfer instances with this basic block as source 
+
+		/// @returns all control transfer instances with this basic block as source
 		const std::list<ctrans> &incoming(void) const;
 		/// @returns all control transfer instances with this basic block as destination
 		const std::list<ctrans> &outgoing(void) const;
-		
+
 		// mutates internal lists (mnemonics and incoming/outgoing) and updates m_area, checks invariants
 		//
 		/**
@@ -233,13 +233,13 @@ namespace po
 		 * The function sanity checks the list after the call and update @ref area.
 		 */
 		void mutate_mnemonics(std::function<void(std::vector<mnemonic>&)> fn);
-		
+
 		/**
 		 * Calls a given function, supplying a mutable reference to the list of incoming control transfers.
 		 * The function sanity checks the list after the call.
 		 */
 		void mutate_incoming(std::function<void(std::list<ctrans>&)> fn);
-		
+
 		/**
 		 * Calls a given function, supplying a mutable reference to the list of outgoing control transfers.
 		 * The function sanity checks the list after the call.
@@ -254,14 +254,14 @@ namespace po
 
 	private:
 		void mutate_controlflow(std::list<ctrans> &lst, std::function<void(std::list<ctrans>&)> fn);
-		
+
 		range<addr_t> m_area;
 		std::vector<mnemonic> m_mnemonics;
-		
+
 		std::list<ctrans> m_incoming;
 		std::list<ctrans> m_outgoing;
 	};
-	
+
 	bool operator<(const bblock_wptr &a, const bblock_wptr &b);
 	bool operator<(const bblock_cwptr &a, const bblock_cwptr &b);
 
@@ -274,7 +274,7 @@ namespace po
 
 	/// Iterates all mnemoics in @ref bb, calling @ref f for each instruction.
 	void execute2(bblock_cptr bb,std::function<void(const instr&)> f);
-	
+
 	/**
 	 * Iterates all mnemoics in @ref bb, calling @ref f for each instruction.
 	 * @note Allows modification of the instructions
@@ -305,7 +305,7 @@ namespace po
 	void resolve_outgoing(bblock_ptr from, rvalue v, bblock_ptr bb);
 
 	/**
-	 * Splits the @ref bb into two. If @ref last is true all mnemonics in @ref bb 
+	 * Splits the @ref bb into two. If @ref last is true all mnemonics in @ref bb
 	 * up to @ref pos are includes into the first. Otherwise the mnemonic at @ref pos
 	 * is the first in the second basic block.
 	 * @returns Pair of basic blocks.

@@ -23,7 +23,7 @@
  * @file
  * @brief Disassembler framework
  *
- * This is the lowest part of the analysis chain in Panopticum. The classes in this file turn raw 
+ * This is the lowest part of the analysis chain in Panopticon. The classes in this file turn raw
  * bytes into mnemonics and IL code. These are assembled into basic blocks, procedures and a flowgraph.
  *
  * The disassembler works as like a recursive decent parser for bit patterns. Internally instances of
@@ -51,7 +51,7 @@ namespace po
 	/**
 	 * @brief Semantic state passing information about the tokens.
 	 *
-	 * A sem_state instance is passed down the chain of rule subclasses while it matches a 
+	 * A sem_state instance is passed down the chain of rule subclasses while it matches a
 	 * token sequence. The state collects matched tokens and the values of capture groups defined
 	 * along the way. The action instances pass it to the used supplied std::function callback. These
 	 * add mnemonics and successor addresses to the sem_state. This information is used to construct
@@ -85,14 +85,14 @@ namespace po
 		 * @see mnemonic(size_t,std::string,std::string,std::list<rvalue>,std::function<void(code_generator<Tag>&)>)
 		 */
 		void mnemonic(size_t len, std::string n, std::string fmt, rvalue a, std::function<void(code_generator<Tag>&)> fn = std::function<void(code_generator<Tag>&)>());
-		
+
 		/**
 		 * Append a new mnemonic to this state. Overload for mnemonics with
 		 * only two operands.
 		 * @see mnemonic(size_t,std::string,std::string,std::list<rvalue>,std::function<void(code_generator<Tag>&)>)
 		 */
 		void mnemonic(size_t len, std::string n, std::string fmt, rvalue a, rvalue b, std::function<void(code_generator<Tag>&)> fn = std::function<void(code_generator<Tag>&)>());
-		
+
 		/**
 		 * Add a jump to this state. The class assumes that all mnemonics
 		 * are executed as a sequence. After the last the position of the next mnemonic to
@@ -100,7 +100,7 @@ namespace po
 		 * Each jump has a condition that is true in case the jump is taken. The jump
 		 * target can be any rvalue.
 		 *
-		 * This function add a new possible successor address @c a that is chosen if 
+		 * This function add a new possible successor address @c a that is chosen if
 		 * the condition in @c g is true. An empty guard is always true.
 		 */
 		void jump(rvalue a, guard g = guard());
@@ -115,11 +115,11 @@ namespace po
 		addr_t address;
 		std::vector<token> tokens;
 		std::map<std::string,unsigned int> capture_groups;
-		
+
 		// out
 		std::list<po::mnemonic> mnemonics;
 		std::list<std::pair<rvalue,guard>> jumps;
-		
+
 	private:
 		addr_t next_address;
 	};
@@ -132,15 +132,15 @@ namespace po
 	 */
 	template<typename Tag>
 	class rule
-	{ 
-	public: 
+	{
+	public:
 		typedef typename architecture_traits<Tag>::token_type token;
 		typedef typename std::vector<typename architecture_traits<Tag>::token_type>::iterator tokiter;
 
 		virtual ~rule(void);
 
 		/**
-		 * Apply this rule on the token stream delimited by @c begin and @c end, 
+		 * Apply this rule on the token stream delimited by @c begin and @c end,
 		 * using @c state to pass information to subsequent rules.
 		 * @returns A pair with the first field true if the rule was successful and the second set to an iterator pointing to the next token to read by the next rules.
 		 */
@@ -153,9 +153,9 @@ namespace po
 	/**
 	 * @brief Semantic action
 	 *
-	 * This class finished a rule sequence by calling a user-definied 
+	 * This class finished a rule sequence by calling a user-definied
 	 * function to carry out the translation of a matched token range to mnemonics.
-	 */ 
+	 */
 	template<typename Tag>
 	class action : public rule<Tag>
 	{
@@ -182,7 +182,7 @@ namespace po
 	template<typename Tag>
 	class tokpat : public rule<Tag>
 	{
-	public: 	
+	public:
 		/**
 		 * Constructs a new tokpa rule.
 		 * @param m Token value to match.
@@ -204,7 +204,7 @@ namespace po
 
 	/**
 	 * @brief OR rule
-	 * 
+	 *
 	 * Tries a number of rules until one matches and returns its result.
 	 */
 	template<typename Tag>
@@ -219,7 +219,7 @@ namespace po
 
 		/// Append the rule @c r to the end of the list of rules to run if @c match is called.
 		void chain(rule_ptr<Tag> r);
-						
+
 	private:
 		std::list<rule_ptr<Tag> > patterns;
 	};
@@ -227,8 +227,8 @@ namespace po
 	/**
 	 * @brief AND rule
 	 *
-	 * An instance of this class is constructed from two other rules. 
-	 * The result of the first is put in the second on if the first is 
+	 * An instance of this class is constructed from two other rules.
+	 * The result of the first is put in the second on if the first is
 	 * successful. The result of the second is returned.
 	 */
 	template<typename Tag>
@@ -237,16 +237,16 @@ namespace po
 	public:
 		/// Construct a new instance using @c a and @c b as first and second rule to run.
 		conjunction(rule_ptr<Tag> a, rule_ptr<Tag> b);
-		
+
 		virtual ~conjunction(void);
 
 		/**
-		 * Runs the first rule with the supplied arguments if it is successful the second 
-		 * rule is run with that result of the first as arguments. The result of this 
+		 * Runs the first rule with the supplied arguments if it is successful the second
+		 * rule is run with that result of the first as arguments. The result of this
 		 * second rule is returned. If the first rule fails its result is returned.
 		 */
 		virtual std::pair<bool,typename rule<Tag>::tokiter> match(typename rule<Tag>::tokiter begin, typename rule<Tag>::tokiter end, sem_state<Tag> &state) const;
-		
+
 	private:
 		rule_ptr<Tag> first, second;
 	};
@@ -263,9 +263,9 @@ namespace po
 	/**
 	 * @brief Disassembles byte sequences into a stream of mnemonics.
 	 *
-	 * In order to be analyzed, object code from binaries has to be translated into Panopticums IL.
-	 * This class scans an array of tokens (chunks of equal size) for patterns. If a match is found a 
-	 * function associated with this particular patters is called that returns a list of mnemonics 
+	 * In order to be analyzed, object code from binaries has to be translated into Panopticons IL.
+	 * This class scans an array of tokens (chunks of equal size) for patterns. If a match is found a
+	 * function associated with this particular patters is called that returns a list of mnemonics
 	 * and IL code that models the behaviour of the object code encoded in the matched token sequence.
 	 *
 	 * A user supplies patterns and functions that a disassembler instance uses to parse token streams.
@@ -273,7 +273,7 @@ namespace po
 	 * the rules.
 	 *
 	 * A single disassembler instance holds any number of rules. The first matching rule is selected and the
-	 * function associated with is is called. A rule is a sequence of token patterns and other disassembler 
+	 * function associated with is is called. A rule is a sequence of token patterns and other disassembler
 	 * instances. All patterns and disassemblers of a rule has to match in order for the function to be called.
 	 *
 	 * Each disassembler instance can have a default rule that has no token patterns or disassemblers and
@@ -283,7 +283,7 @@ namespace po
 	class disassembler : public disjunction<Tag>
 	{
 		static_assert(std::is_unsigned<typename architecture_traits<Tag>::token_type>::value,"token_type type in architecture_traits must be an unsigned integer");
-	
+
 	public:
 		/// Constructs a disassembler with empty ruleset matching nothing.
 		disassembler(void);
@@ -296,27 +296,27 @@ namespace po
 		 * @returns self
 		 */
 		disassembler &operator=(std::function<void(sem_state<Tag>&)> f);
-		
+
 		/**
 		 * Appends the token pattern @c i to the currently constructed rule.
 		 * @note This function does not behave like a bitwise OR!
 		 * @returns self to allow joining of | operations.
 		 */
 		disassembler &operator|(typename rule<Tag>::token i);
-		
+
 		/**
 		 * @brief Adds a token pattern.
 		 * A token pattern is a string describing a token as a sequence of bits. Simple patters
 		 * consist of "0" and "1". The pattern "01101100" matches a token with value 108 decimal.
 		 * Token patterns can include "." which match both 0 and 1 bits. The pattern "00.." matches
-		 * 0, 1, 2 and 3 decimal. Spaces are ignored: "0 0 0" matches the same tokens as "000". 
-		 * To get the concrete values of the bits matched with "." a capture group can be used. 
+		 * 0, 1, 2 and 3 decimal. Spaces are ignored: "0 0 0" matches the same tokens as "000".
+		 * To get the concrete values of the bits matched with "." a capture group can be used.
 		 * Each group has a name and an associated range of "." signs. The pattern "a@..." defines
 		 * the capture group "a" holding the value of the three lower bits the @ sign divides group
-		 * name and sub pattern. Capture groups extend to the next space. If a capture group occurs 
+		 * name and sub pattern. Capture groups extend to the next space. If a capture group occurs
 		 * more than once in a pattern, its bits are concatenated in the order the show up in the
 		 * pattern. The pattern "a@..0a@.." matches all tokens with the 3rd bit set to zero.
-		 * The contents of a for token with value 01011 would be 0111. The name of a capture 
+		 * The contents of a for token with value 01011 would be 0111. The name of a capture
 		 * group can only include upper and lower case letters. Empty capture groups ("a@") are allowed.
 		 * Token patterns that are shorter than the token are left-extended with zeros. If the pattern
 		 * is too wide a tokpat_error is thrown.
@@ -337,13 +337,13 @@ namespace po
 		 * @returns self to allow joining of | operations.
 		 */
 		disassembler &operator|(disassembler<Tag> &dec);
-		
+
 		/**
 		 * Tries to match a rule on the token sequence [begin,end), calling the associated function with @c state.
-		 * @returns a pair. The boolean if true if a match was found and the iterator points to the token after the match.
+		 * @returns An iterator pointint to the token after the match or nothing if not rule matched.
 		 */
-		virtual std::pair<bool,typename rule<Tag>::tokiter> match(typename rule<Tag>::tokiter begin, typename rule<Tag>::tokiter end, sem_state<Tag> &state) const;
-	
+		virtual boost::optional<typename rule<Tag>::tokiter> match(typename rule<Tag>::tokiter begin, typename rule<Tag>::tokiter end, sem_state<Tag> &state) const;
+
 	protected:
 		void append(rule_ptr<Tag> r);
 
@@ -354,7 +354,7 @@ namespace po
 
 	template<typename Tag>
 	action<Tag>::action(std::function<void(sem_state<Tag>&)> &f)
-	: semantic_action(f) 
+	: semantic_action(f)
 	{}
 
 	template<typename Tag>
@@ -380,7 +380,7 @@ namespace po
 
 	template<typename Tag>
 	tokpat<Tag>::tokpat(typename rule<Tag>::token m, typename rule<Tag>::token pat, std::map< std::string,typename rule<Tag>::token> &cg)
-	: mask(m), pattern(pat), capture_patterns(cg) 
+	: mask(m), pattern(pat), capture_patterns(cg)
 	{}
 
 	template<typename Tag>
@@ -428,7 +428,7 @@ namespace po
 
 	template<typename Tag>
 	sem_state<Tag>::sem_state(addr_t a)
-	: address(a), tokens(), capture_groups(), mnemonics(), jumps(), next_address(a) 
+	: address(a), tokens(), capture_groups(), mnemonics(), jumps(), next_address(a)
 	{}
 
 	template<typename Tag>
@@ -438,14 +438,14 @@ namespace po
 		code_generator<Tag> cg(inserter(instrs,instrs.end()));
 
 		if(fmt.empty())
-			fmt = accumulate(ops.begin(),ops.end(),fmt,[](const std::string &acc, const rvalue &x) 
+			fmt = accumulate(ops.begin(),ops.end(),fmt,[](const std::string &acc, const rvalue &x)
 				{ return acc + (acc.empty() ? "{8}" : ", {8}"); });
 
 		// generate instr list
-		if(fn) 
+		if(fn)
 			fn(cg);
 
-		mnemonics.emplace_back(po::mnemonic(range<addr_t>(next_address,next_address + len),n,fmt,ops.begin(),ops.end(),instrs.begin(),instrs.end())); 
+		mnemonics.emplace_back(po::mnemonic(range<addr_t>(next_address,next_address + len),n,fmt,ops.begin(),ops.end(),instrs.begin(),instrs.end()));
 		next_address += len;
 	}
 
@@ -455,7 +455,7 @@ namespace po
 		std::list<rvalue> lst({a});
 		return this->mnemonic(len,n,fmt,lst,fn);
 	}
-	
+
 	template<typename Tag>
 	void sem_state<Tag>::mnemonic(size_t len, std::string n, std::string fmt, rvalue a, rvalue b, std::function<void(code_generator<Tag>&)> fn)
 	{
@@ -467,13 +467,13 @@ namespace po
 	{
 		jumps.emplace_back(std::make_pair(a,g));
 	}
-	
+
 	template<typename Tag>
 	void sem_state<Tag>::jump(addr_t a, guard g)
 	{
 		jump(constant(a,flsll(a)),g);
 	}
-	
+
 	template<typename Tag>
 	disjunction<Tag>::disjunction(void)
 	: patterns()
@@ -509,11 +509,11 @@ namespace po
 
 	template<typename Tag>
 	conjunction<Tag>::conjunction(rule_ptr<Tag> a, rule_ptr<Tag> b)
-	: first(a), second(b) 
-	{ 
-		assert(a && b);	
+	: first(a), second(b)
+	{
+		assert(a && b);
 	}
-	
+
 	template<typename Tag>
 	conjunction<Tag>::~conjunction(void)
 	{}
@@ -536,7 +536,7 @@ namespace po
 	disassembler<Tag>::disassembler(void)
 	: current(0), failsafe(0)
 	{}
-	
+
 	template<typename Tag>
 	disassembler<Tag>::~disassembler(void)
 	{}
@@ -553,10 +553,10 @@ namespace po
 		{
 			this->failsafe = std::shared_ptr<action<Tag>>(new action<Tag>(f));
 		}
-			
+
 		return *this;
 	}
-	
+
 	template<typename Tag>
 	disassembler<Tag> &disassembler<Tag>::operator|(typename rule<Tag>::token i)
 	{
@@ -638,12 +638,12 @@ namespace po
 					{
 						if(!cg_mask)
 							throw tokpat_error();
-						
+
 						*cg_mask |= 1 << bit;
 						--bit;
 						++p;
 					}
-					else 
+					else
 					{
 						ps = ANY;
 					}
@@ -656,7 +656,7 @@ namespace po
 				}
 			}
 		}
-		
+
 		if(*p != 0)
 			throw tokpat_error();
 
@@ -665,10 +665,10 @@ namespace po
 		{
 			int tshift = sizeof(typename rule<Tag>::token) * 8 - bit - 1, mshift = bit + 1;
 			typename rule<Tag>::token t = 0;
-			
+
 			while(bit-- > -1)
 				t = (t << 1) | 1;
-			
+
 			mask = (mask >> mshift) | (t << tshift);
 			pattern = pattern >> mshift;
 		}
@@ -692,7 +692,7 @@ namespace po
 		else
 			current = rule_ptr<Tag>(new conjunction<Tag>(current,r));
 	}
-	
+
 	template<typename Tag>
 	std::pair<bool,typename rule<Tag>::tokiter> disassembler<Tag>::match(typename rule<Tag>::tokiter begin, typename rule<Tag>::tokiter end, sem_state<Tag> &state) const
 	{

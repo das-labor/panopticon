@@ -89,6 +89,8 @@ namespace po
 
 		friend struct std::hash<address_space>;
 	};
+
+	using as_ptr = std::shared_ptr<address_space>;
 }
 
 namespace std
@@ -114,6 +116,51 @@ namespace std
 
 namespace po
 {
+	struct structure
+	{
+		std::string name;
+		std::string value;
+
+		uint32_t reference;
+		std::list<structure> fields;
+	};
+
+	using struct_ptr = std::shared_ptr<structure>;
+
+	struct beacon
+	{
+		virtual ~beacon(void);
+		std::string type(void) const;
+	};
+
+	struct metadata
+	{
+		enum Type
+		{
+			BasicBlockType,
+			StructureType,
+			RawType
+		};
+
+		Type type;
+		union
+		{
+			bblock_ptr bb;
+			struct_ptr st;
+		};
+	};
+
+	struct datagraph
+	{
+		digraph<as_ptr,rrange> hierarchy;
+
+		// onto projection of 'hierarchy'
+		std::multimap<uint32_t,beacon> beacons;
+		boost::icl::interval_map<uint32_t,metadata> meta;
+	};
+
+	using data_ptr = std::shared_ptr<datagraph>;
+
 	std::list<std::pair<rrange,address_space>> projection(const address_space &as, const graph<address_space,rrange> &g);
 	po::unordered_pmap<boost::graph_traits<po::graph<po::address_space,po::rrange>>::vertex_descriptor,boost::graph_traits<po::graph<po::address_space,po::rrange>>::vertex_descriptor>
 	tree(const graph<address_space,rrange> &g);

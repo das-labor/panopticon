@@ -18,8 +18,8 @@ namespace po
 	lvalue temporary(T);
 
 	template<typename T>
-	const std::vector<std::string> &registers(T);	
-	
+	const std::vector<std::string> &registers(T);
+
 	template<typename T>
 	uint8_t width(::std::string n, T);
 }
