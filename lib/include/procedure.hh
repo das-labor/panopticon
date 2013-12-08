@@ -1,6 +1,3 @@
-#ifndef PROCEDURE_HH
-#define PROCEDURE_HH
-
 #include <memory>
 #include <set>
 #include <map>
@@ -8,61 +5,66 @@
 #include <mutex>
 #include <cstring>
 
-#include <basic_block.hh>
-#include <mnemonic.hh>
-#include <disassembler.hh>
-#include <marshal.hh>
+#include <panopticon/basic_block.hh>
+#include <panopticon/mnemonic.hh>
+#include <panopticon/disassembler.hh>
+#include <panopticon/marshal.hh>
+
+#pragma once
 
 namespace po
 {
-	typedef std::shared_ptr<struct domtree> dtree_ptr;
 	typedef std::shared_ptr<class procedure> proc_ptr;
-	typedef std::shared_ptr<const class procedure> proc_cptr;
 	typedef std::weak_ptr<class procedure> proc_wptr;
-	typedef std::weak_ptr<const class procedure> proc_cwptr;
 
-	typedef std::shared_ptr<struct flowgraph> flow_ptr;
+	typedef std::shared_ptr<struct program> prog_ptr;
 
 	bool operator<(const proc_wptr &a, const proc_wptr &b);
 	bool operator<(const proc_cwptr &a, const proc_cwptr &b);
 
+	/// Insert call graph edge from @arg from to @to
 	void call(proc_ptr from, proc_ptr to);
+
+	/// Run @arg f on all IL statements. Basic blocks a traversed in undefined order.
 	void execute(proc_cptr proc,std::function<void(const lvalue &left, instr::Function fn, const std::vector<rvalue> &right)> f);
-	bblock_ptr find_bblock(proc_ptr proc, addr_t a);
 
-	struct domtree
-	{
-		domtree(bblock_ptr b);
+	/// Returns basic block occuping address @arg a
+	bblock_ptr find_bblock(proc_ptr proc, offset_t a);
 
-		dtree_ptr intermediate;			// e.g. parent
-		std::set<dtree_ptr> successors;
-		std::set<dtree_ptr> frontiers;
-
-		bblock_wptr basic_block;
-	};
-
+	/**
+	 * @brief Function
+	 *
+	 * Panopticon groups basic blocks into procedures. Each basic
+	 * block belongs to exactly one procedure.
+	 *
+	 * The procedures itself are saved in the call graph structure
+	 * called @ref flowgraph.
+	 */
 	class procedure
 	{
 	public:
 		static proc_ptr unmarshal(const rdf::node &n, flow_ptr flow, const rdf::storage &store);
 
-		procedure(const std::string &n = std::string("proc_noname"));
+		/// Constructs an empty procedure with name @arg n
+		procedure(const std::string &n = std::string("proc_noname"));a
+
+		/// Construct a new procedure. Copies basic blocks betwee @arg begin and @arg end into the instance
 		template<typename FW> procedure(FW begin, FW end) : procedure() { copy(begin,end,inserter(basic_blocks,basic_blocks.begin())); }
 
+		/// Calls @arg fn for every basic block in the procedure in reverse postorder.
 		void rev_postorder(std::function<void(bblock_ptr bb)> fn) const;
 
+		digraph<boost::variant<bblock_wptr,rvalue>,guard> control_transfers;
+		std::vector<bblock_ptr> basic_blocks;
+
 		// public fields
-		std::string name;
-		bblock_ptr entry;
-		std::set<bblock_ptr> basic_blocks;
-		std::mutex mutex;
+		std::string name;	///< Human-readable name
+		bblock_wptr entry;	///< Entry point
+		prog_wptr parent;
 
-		// modified via call()
-		std::set<proc_wptr> callers;	// procedures calling this procedure
-		std::set<proc_wptr> callees;	// procedures called by this procedure
-
+		/// Create or extend a procedure by starting to disassemble using @arg main at offset @arg start in @arg tokens
 		template<typename Tag>
-		static proc_ptr disassemble(const proc_ptr proc, const disassembler<Tag> &main, std::vector<typename rule<Tag>::token> tokens, addr_t start);
+		static proc_ptr disassemble(const proc_ptr proc, const disassembler<Tag> &main, std::vector<typename rule<Tag>::token> tokens, offset_t start);
 	};
 
 	odotstream &operator<<(odotstream &os, const procedure &p);
@@ -70,13 +72,13 @@ namespace po
 	std::string unique_name(const procedure &f);
 
 	template<typename Tag>
-	proc_ptr procedure::disassemble(const proc_ptr proc, const disassembler<Tag> &main, std::vector<typename rule<Tag>::token> tokens, addr_t start)
+	proc_ptr procedure::disassemble(const proc_ptr proc, const disassembler<Tag> &main, std::vector<typename rule<Tag>::token> tokens, offset_t start)
 	{
 		assert(start != naddr);
 
-		std::set<addr_t> todo;
-		std::map<addr_t,mnemonic> mnemonics;
-		std::multimap<addr_t,std::pair<addr_t,guard>> source, destination;
+		std::unordered_set<offset_t> todo;
+		std::unordered_map<offset_t,mnemonic> mnemonics;
+		std::unordered_multimap<offset_t,std::pair<offset_t,guard>> source, destination;
 		proc_ptr ret = (proc ? proc : proc_ptr(new procedure()));
 
 		// copy exsisting mnemonics and jumps into tables. TODO: cache tables in proc
@@ -114,7 +116,7 @@ namespace po
 
 		while(!todo.empty())
 		{
-			addr_t cur_addr = *todo.begin();
+			offset_t cur_addr = *todo.begin();
 			sem_state<Tag> state(cur_addr);
 			bool ret;
 			typename rule<Tag>::tokiter i = tokens.begin();
@@ -135,7 +137,7 @@ namespace po
 
 				if(ret)
 				{
-					addr_t last = 0;
+					offset_t last = 0;
 
 					for(const mnemonic &m: state.mnemonics)
 					{
@@ -147,7 +149,7 @@ namespace po
 					{
 						if(p.first.is_constant())
 						{
-							addr_t target = p.first.to_constant().content();
+							offset_t target = p.first.to_constant().content();
 
 							source.insert(std::make_pair(last,std::make_pair(target,p.second)));
 							destination.insert(std::make_pair(target,std::make_pair(last,p.second)));
@@ -171,16 +173,16 @@ namespace po
 		}
 
 		auto cur_mne = mnemonics.begin(), first_mne = cur_mne;
-		std::map<addr_t,bblock_ptr> bblocks;
-		std::function<void(std::map<addr_t,mnemonic>::iterator,std::map<addr_t,mnemonic>::iterator)> make_bblock;
-		make_bblock = [&](std::map<addr_t,mnemonic>::iterator begin,std::map<addr_t,mnemonic>::iterator end)
+		std::unordered_map<offset_t,bblock_ptr> bblocks;
+		std::function<void(std::unordered_map<offset_t,mnemonic>::iterator,std::unordered_map<offset_t,mnemonic>::iterator)> make_bblock;
+		make_bblock = [&](std::unordered_map<offset_t,mnemonic>::iterator begin,std::unordered_map<offset_t,mnemonic>::iterator end)
 		{
 			bblock_ptr bb(new basic_block());
 
 			// copy mnemonics
 			bb->mutate_mnemonics([&](std::vector<mnemonic> &ms)
 			{
-				std::for_each(begin,end,[&](const std::pair<addr_t,mnemonic> &p)
+				std::for_each(begin,end,[&](const std::pair<offset_t,mnemonic> &p)
 				{
 					ms.push_back(p.second);
 				});
@@ -194,7 +196,7 @@ namespace po
 		{
 			auto next_mne = std::next(cur_mne);
 			const mnemonic &mne = cur_mne->second;
-			addr_t div = mne.area.end;
+			offset_t div = mne.area.end;
 			auto sources = source.equal_range(mne.area.last());
 			auto destinations = destination.equal_range(div);
 
@@ -206,13 +208,13 @@ namespace po
 				new_bb = next_mne->first != div;
 
 				// or any following jumps aren't to adjacent mnemonics
-				new_bb |= std::any_of(sources.first,sources.second,[&](const std::pair<addr_t,std::pair<addr_t,guard>> &p)
+				new_bb |= std::any_of(sources.first,sources.second,[&](const std::pair<offset_t,std::pair<offset_t,guard>> &p)
 				{
 					return p.second.first != div;
 				});
 
 				// or any jumps pointing to the next that aren't from here
-				new_bb |= std::any_of(destinations.first,destinations.second,[&](const std::pair<addr_t,std::pair<addr_t,guard>> &p)
+				new_bb |= std::any_of(destinations.first,destinations.second,[&](const std::pair<offset_t,std::pair<offset_t,guard>> &p)
 				{
 					return p.second.first != mne.area.last();
 				});
@@ -240,7 +242,7 @@ namespace po
 		make_bblock(first_mne,cur_mne);
 
 		// connect basic blocks
-		for(const std::pair<addr_t,std::pair<addr_t,guard>> &p: source)
+		for(const std::pair<offset_t,std::pair<offset_t,guard>> &p: source)
 		{
 			if(p.second.first != naddr)
 			{
@@ -260,7 +262,7 @@ namespace po
 		// entry may have been split
 		if((proc && proc->entry) || ret->basic_blocks.size())
 		{
-			addr_t entry = proc && proc->entry ? proc->entry->area().begin : start;
+			offset_t entry = proc && proc->entry ? proc->entry->area().begin : start;
 			auto i = bblocks.lower_bound(entry);
 
 			if(i != bblocks.end() && i->second->area().begin == entry)
@@ -281,5 +283,3 @@ namespace po
 		return ret;
 	}
 }
-
-#endif

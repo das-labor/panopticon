@@ -1,55 +1,60 @@
-#ifndef DFLOW_HH
-#define DFLOW_HH
-
 #include <memory>
 #include <set>
 #include <map>
 #include <algorithm>
 
+#include <panopticon/procedure.hh>
+#include <panopticon/basic_block.hh>
+#include <panopticon/digraph.hh>
+
+#pragma once
+
+/**
+ * @file
+ * @brief Dataflow algorithms for program analysis
+ *
+ * Panopticon implements various classic dataflow algorithms:
+ * - Basic Block dominance trees (\ref dominance_tree)
+ * - Liveness analysis (\ref liveness)
+ * - Static Single Assignment form (\ref ssa)
+ *
+ * All algorithms run on a per-procedure basis.
+ */
 namespace po
 {
-	typedef std::shared_ptr<struct dom> dom_ptr;
-	typedef std::shared_ptr<struct live> live_ptr;
-}
-
-#include <procedure.hh>
-#include <basic_block.hh>
-
-namespace po
-{
+   /**
+	* @brief Dominance tree of a procedure.
+	*
+	* The dominance tree is a tree of all basic blocks of a
+	* procedure where the parent basic block occurs on all possible
+	* paths from the entry point to this basic block.
+	* The root of the tree is the basic block that includes the
+	* entry point of a procedure.
+	*/
 	struct dom
 	{
-		dom(void) : root(0), tree() {}
-		dtree_ptr root;
-		std::map<bblock_cwptr,dtree_ptr> tree;
+		digraph<bblock_wptr,void> dominance;
+		std::unordered_multimap<bblock_wptr,bblock_wptr> frontiers;
 	};
 
-	struct name
-	{
-		name(void) : base(""), width(0) {};
-		name(std::string n, uint8_t w) : base(n), width(w) {};
-		name(variable v) : base(v.name()), width(v.width()) {};
-
-		bool operator==(const name &n) const { return base == n.base && width == n.width; };
-		bool operator!=(const name &n) const { return !(*this == n); };
-		bool operator<(const name &n) const { return base < n.base; };
-		operator std::string(void) const { return base; };
-
-		std::string base;
-		uint8_t width;
-	};
-
+	/**
+	 * @brief Liveness information
+	 *
+	 * Holds the UEVar, VarKill and LiveOut sets for each
+	 * basic block of a procedure, as well as global names
+	 * (variables) and which blocks use them.
+	 */
 	struct live
 	{
-		live(void) : names(), usage(), uevar(), varkill(), liveout() {};
-		std::set<name> names;	// global (procedure-wide) names w/ width
-		std::map<name,std::set<bblock_cwptr>> usage;	// maps names to blocks that use them
+		std::unordered_set<std::string> names;										///< global (procedure-wide) names (ssa names w/o version)
+		std::unordered_multimap<std::string,bblock_wptr> usage;		///< maps names to blocks that use them
 
-		std::map<bblock_cwptr,std::set<name>> uevar;		// up exposed variables
-		std::map<bblock_cwptr,std::set<name>> varkill;	// overwritten vars
-		std::map<bblock_cwptr,std::set<name>> liveout;
+		std::unordered_multimap<bblock_wptr,std::string> uevar;		///< up exposed variables
+		std::unordered_multimap<bblock_wptr,std::string> varkill;	///< overwritten vars
+		std::unordered_multimap<bblock_wptr,std::string> liveout;	///< live past the end
 	};
 
+	/// Computes a \ b
 	template<typename T>
 	std::set<T> set_difference(const std::set<T> &a, const std::set<T> &b)
 	{
@@ -58,6 +63,7 @@ namespace po
 		return ret;
 	}
 
+	/// Computes a ∪ b
 	template<typename T>
 	std::set<T> set_union(const std::set<T> &a, const std::set<T> &b)
 	{
@@ -67,14 +73,7 @@ namespace po
 		return ret;
 	}
 
-	template<typename T>
-	std::set<T> sset_union(const std::set<T> &a, const std::set<T> &b)
-	{
-		std::set<T> ret;
-		std::set_union(a.begin(),a.end(),b.begin(),b.end(),std::inserter(ret,ret.begin()));
-		return ret;
-	}
-
+	/// Computes a ∩ b
 	template<typename T>
 	std::set<T> set_intersection(const std::set<T> &a, const std::set<T> &b)
 	{
@@ -83,9 +82,12 @@ namespace po
 		return ret;
 	}
 
-	dom_ptr dominance_tree(proc_ptr proc);
-	void ssa(proc_ptr proc, dom_ptr dominance, live_ptr live);
-	live_ptr liveness(proc_cptr proc);
-}
+	/// @brief Computes the dominance tree
+	dom dominance_tree(proc_ptr proc);
 
-#endif
+	/// @brief Transform the IL statements to SSA form
+	void ssa(proc_ptr proc, const dom &dominance, const live &liveness);
+
+	/// @brief Computes liveness sets
+	live liveness(proc_ptr proc);
+}

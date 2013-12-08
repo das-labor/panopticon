@@ -13,7 +13,7 @@ using namespace std;
 dom_ptr po::dominance_tree(proc_ptr proc)
 {
 	dom_ptr ret(new dom);
-	
+
 	if(!proc || !proc->entry)
 		return ret;
 
@@ -26,7 +26,7 @@ dom_ptr po::dominance_tree(proc_ptr proc)
 
 	bool mod;
 	do
-	{	
+	{
 		bool skip = true;
 		mod = false;
 		for(bblock_ptr bb: rpo_lst)
@@ -54,8 +54,8 @@ dom_ptr po::dominance_tree(proc_ptr proc)
 					{
 						// Intersect
 						dtree_ptr f1 = ret->tree[p], f2 = newidom;
-						auto rpo = [&](dtree_ptr d) 
-						{ 
+						auto rpo = [&](dtree_ptr d)
+						{
 							return distance(rpo_lst.begin(),find(rpo_lst.begin(),rpo_lst.end(),d->basic_block.lock()));
 						};
 
@@ -116,7 +116,7 @@ dom_ptr po::dominance_tree(proc_ptr proc)
 }
 
 live_ptr po::liveness(proc_cptr proc)
-{	
+{
 	live_ptr ret(new live());
 
 	auto collect = [&](const rvalue &v, bblock_ptr bb)
@@ -136,7 +136,7 @@ live_ptr po::liveness(proc_cptr proc)
 		{
 			for(const rvalue &v: right)
 				collect(v,bb);
-	
+
 			if(left.is_variable())
 			{
 				ret->varkill[bb].insert(left.to_variable());
@@ -173,10 +173,10 @@ live_ptr po::liveness(proc_cptr proc)
 		{
 			set<name> old_liveout = ret->liveout[bb];
 			basic_block::succ_iterator j,jend;
-			
+
 			ret->liveout[bb].clear();
 			tie(j,jend) = bb->successors();
-			
+
 			// LiveOut = \_/ (UEVar \/ (LiveOut /\ !VarKill))
 			// 					 succ
 			for_each(j,j,[&](bblock_ptr s)
@@ -184,7 +184,7 @@ live_ptr po::liveness(proc_cptr proc)
 
 			mod |= old_liveout != ret->liveout[bb];
 		}
-	} 
+	}
 	while(mod);
 
 	return ret;
@@ -220,8 +220,8 @@ void po::ssa(proc_ptr proc, dom_ptr dominance, live_ptr live)
 			{
 				bool has_phi = false;
 				execute(df->basic_block.lock(),[&](lvalue left, instr::Function fn, const vector<rvalue> &right)
-				{	
-					has_phi = has_phi || (fn == instr::Phi && left.is_variable() && left.to_variable().name() == n.base); 
+				{
+					has_phi = has_phi || (fn == instr::Phi && left.is_variable() && left.to_variable().name() == n.base);
 				});
 
 				if(!has_phi)
@@ -245,12 +245,12 @@ void po::ssa(proc_ptr proc, dom_ptr dominance, live_ptr live)
 	map<string,int> counter;
 	map<string,list<int>> stack;
 
-	for(const string &n: live->names) 
-	{ 
+	for(const string &n: live->names)
+	{
 		counter.insert(make_pair(n,0));
 		stack.insert(make_pair(n,list<int>({})));
 	}
-	
+
 	auto new_name = [&](const string &n) -> int
 	{
 		assert(stack.count(n));
@@ -322,7 +322,7 @@ void po::ssa(proc_ptr proc, dom_ptr dominance, live_ptr live)
 							}
 							++ri;
 						}
-					
+
 						if(left.is_variable())
 							left = variable(left.to_variable().name(),new_name(left.to_variable().name()),left.to_variable().width());
 					}
@@ -374,7 +374,7 @@ void po::ssa(proc_ptr proc, dom_ptr dominance, live_ptr live)
 						auto iord = find_if(succ->incoming().begin(),succ->incoming().end(),[&](const ctrans &ct) { return ct.bblock.lock() == bb; });
 						assert(iord != succ->incoming().end());
 						unsigned int ord = distance(succ->incoming().begin(),iord);
-						
+
 						if(ms.size() && ms.front().opcode == "internal-phis")
 						{
 							mnemonic &mne = ms.front();
@@ -402,13 +402,13 @@ void po::ssa(proc_ptr proc, dom_ptr dominance, live_ptr live)
 		//     rename(s)
 		for(dtree_ptr dom: dominance->tree[bb]->successors)
 			rename(dom->basic_block.lock());
-		
+
 		// for each operation ‘‘x ← y op z’’ in bb
 		//     and each φ-function ‘‘x ← φ(· · · )’’
 		//     pop(stack[x])
 		execute(bb,[&](const lvalue &left, instr::Function fn, const vector<rvalue> &right)
 		{
-			if(left.is_variable()) 
+			if(left.is_variable())
 			{
 				assert(stack.count(left.to_variable().name()));
 				stack[left.to_variable().name()].pop_back();
