@@ -1,18 +1,13 @@
-#ifndef BASIC_BLOCK_HH
-#define BASIC_BLOCK_HH
-
 #include <memory>
 #include <list>
 #include <map>
 #include <cassert>
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Weffc++"
 #include <boost/iterator/iterator_facade.hpp>
 #include <boost/iterator/filter_iterator.hpp>
-#pragma GCC diagnostic pop
 
-#include <marshal.hh>
+#include <panopticon/marshal.hh>
+#include <panopticon/loc.hh>
 
 /**
  * @file
@@ -140,9 +135,6 @@ namespace po
 	oturtlestream& operator<<(oturtlestream &os, const ctrans &ct);
 	std::string unique_name(const ctrans &ct);
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Weffc++"
-
 	/// @internal
 	template<>
 	class bblock_iterator<std::list<ctrans>> : public boost::iterator_facade<
@@ -186,8 +178,6 @@ namespace po
 	private:
 		boost::filter_iterator< std::function<bool(const ctrans &ct)>,std::list<ctrans>::const_iterator> adaptee;
 	};
-
-#pragma GCC diagnostic pop
 
 	/**
 	 * @brief Sequence of mnemonics with no jumps inbetween.

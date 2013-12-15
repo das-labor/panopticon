@@ -16,7 +16,7 @@
 namespace po
 {
 	template<typename N, typename E>
-	struct graph;
+	struct digraph;
 
 	template<typename X>
 	class descriptor
@@ -48,7 +48,7 @@ namespace po
 		const X *m_ptr;
 
 		template<typename,typename>
-		friend struct graph;
+		friend struct digraph;
 		friend struct std::hash<descriptor<X>>;
 	};
 
@@ -73,10 +73,10 @@ namespace po
 	};
 
 	template<typename V, typename N,typename E>
-	void initialize_pmap(unordered_pmap<descriptor<N>,V> &pmap, const graph<N,E> &g, const V &v)
+	void initialize_pmap(unordered_pmap<descriptor<N>,V> &pmap, const digraph<N,E> &g, const V &v)
 	{
 		auto p = g.nodes();
-		std::for_each(p.first,p.second,[&](typename boost::graph_traits<po::graph<N,E>>::vertex_descriptor u)
+		std::for_each(p.first,p.second,[&](typename boost::graph_traits<po::digraph<N,E>>::vertex_descriptor u)
 			{ pmap.container.insert(std::make_pair(u,v)); });
 	}
 }
@@ -96,7 +96,7 @@ namespace std
 namespace boost
 {
 	template<typename N, typename E>
-	struct graph_traits<po::graph<N,E>>
+	struct graph_traits<po::digraph<N,E>>
 	{
 		// Graph concept
 		using vertex_descriptor = po::descriptor<N>;
@@ -133,7 +133,7 @@ namespace boost
 
 	// PropertyGraph concept for vertex_index_t
 	template<typename N,typename E>
-	struct property_map<po::graph<N,E>,vertex_index_t>
+	struct property_map<po::digraph<N,E>,vertex_index_t>
 	{
 		using type = po::unordered_pmap<po::descriptor<N>,int64_t>;
 		using const_type = po::unordered_pmap<po::descriptor<N>,int64_t>;
@@ -143,15 +143,15 @@ namespace boost
 namespace po
 {
 	template<typename N, typename E>
-	struct graph
+	struct digraph
 	{
 		using node_iterator = typename boost::transform_iterator<std::function<po::descriptor<N>(const N&)>, typename std::unordered_set<N>::const_iterator>;
 		using edge_iterator = typename boost::transform_iterator<std::function<po::descriptor<E>(const E&)>, typename std::unordered_set<E>::const_iterator>;
-		using out_edge_iterator = typename boost::graph_traits<graph<N,E>>::out_edge_iterator;
-		using in_edge_iterator = typename boost::graph_traits<graph<N,E>>::in_edge_iterator;
+		using out_edge_iterator = typename boost::graph_traits<digraph<N,E>>::out_edge_iterator;
+		using in_edge_iterator = typename boost::graph_traits<digraph<N,E>>::in_edge_iterator;
 		using size_type = size_t;
 
-		graph(void) : m_nodes(), m_edges(), m_neighbors(), m_forward(), m_backward() {}
+		digraph(void) : m_nodes(), m_edges(), m_neighbors(), m_forward(), m_backward() {}
 
 		std::pair<edge_iterator, edge_iterator>
 		edges(void) const
@@ -167,13 +167,13 @@ namespace po
 														boost::make_transform_iterator(m_nodes.end(),std::function<po::descriptor<N>(const N&)>([](const N &n) { return po::descriptor<N>::construct(n); })));
 		}
 
-		typename boost::graph_traits<graph<N,E>>::edges_size_type
+		typename boost::graph_traits<digraph<N,E>>::edges_size_type
 		num_edges(void) const
 		{
 			return m_edges.size();
 		}
 
-		typename boost::graph_traits<graph<N,E>>::vertices_size_type
+		typename boost::graph_traits<digraph<N,E>>::vertices_size_type
 		num_nodes(void) const
 		{
 			return m_nodes.size();
@@ -360,84 +360,84 @@ namespace po
 	};
 
 	template<typename N, typename E>
-	std::pair<typename boost::graph_traits<graph<N,E>>::vertex_iterator,
-						typename boost::graph_traits<graph<N,E>>::vertex_iterator>
-	vertices(const graph<N,E> &g)
+	std::pair<typename boost::graph_traits<digraph<N,E>>::vertex_iterator,
+						typename boost::graph_traits<digraph<N,E>>::vertex_iterator>
+	vertices(const digraph<N,E> &g)
 	{
 		return g.nodes();
 	}
 
 	template<typename N, typename E>
-	typename boost::graph_traits<graph<N,E>>::vertices_size_type
-	num_vertices(const graph<N,E> &g)
+	typename boost::graph_traits<digraph<N,E>>::vertices_size_type
+	num_vertices(const digraph<N,E> &g)
 	{
 		return g.num_nodes();
 	}
 
 	template<typename N, typename E>
-	std::pair<typename boost::graph_traits<graph<N,E>>::edge_iterator,
-						typename boost::graph_traits<graph<N,E>>::edge_iterator>
-	edges(const graph<N,E> &g)
+	std::pair<typename boost::graph_traits<digraph<N,E>>::edge_iterator,
+						typename boost::graph_traits<digraph<N,E>>::edge_iterator>
+	edges(const digraph<N,E> &g)
 	{
 		return g.edges();
 	}
 
 	template<typename N, typename E>
-	typename boost::graph_traits<graph<N,E>>::edges_size_type
-	num_edges(const graph<N,E> &g)
+	typename boost::graph_traits<digraph<N,E>>::edges_size_type
+	num_edges(const digraph<N,E> &g)
 	{
 		return g.num_edges();
 	}
 
 	template<typename N, typename E>
-	typename boost::graph_traits<graph<N,E>>::vertex_descriptor
-	source(const typename boost::graph_traits<graph<N,E>>::edge_descriptor &e, const graph<N,E> &g)
+	typename boost::graph_traits<digraph<N,E>>::vertex_descriptor
+	source(const typename boost::graph_traits<digraph<N,E>>::edge_descriptor &e, const digraph<N,E> &g)
 	{
 		return g.source(e);
 	}
 
 	template<typename N, typename E>
-	typename boost::graph_traits<graph<N,E>>::vertex_descriptor
-	target(const typename boost::graph_traits<graph<N,E>>::edge_descriptor &e, const graph<N,E> &g)
+	typename boost::graph_traits<digraph<N,E>>::vertex_descriptor
+	target(const typename boost::graph_traits<digraph<N,E>>::edge_descriptor &e, const digraph<N,E> &g)
 	{
 		return g.target(e);
 	}
 
 	template<typename N, typename E>
-	std::pair<typename boost::graph_traits<graph<N,E>>::out_edge_iterator,
-						typename boost::graph_traits<graph<N,E>>::out_edge_iterator>
-	out_edges(const typename boost::graph_traits<graph<N,E>>::vertex_descriptor &v, const graph<N,E> &g)
+	std::pair<typename boost::graph_traits<digraph<N,E>>::out_edge_iterator,
+						typename boost::graph_traits<digraph<N,E>>::out_edge_iterator>
+	out_edges(const typename boost::graph_traits<digraph<N,E>>::vertex_descriptor &v, const digraph<N,E> &g)
 	{
 		return g.out_edges(v);
 	}
 
 	template<typename N, typename E>
-	typename boost::graph_traits<graph<N,E>>::degree_size_type
-	out_degree(const typename boost::graph_traits<graph<N,E>>::vertex_descriptor &v, const graph<N,E> &g)
+	typename boost::graph_traits<digraph<N,E>>::degree_size_type
+	out_degree(const typename boost::graph_traits<digraph<N,E>>::vertex_descriptor &v, const digraph<N,E> &g)
 	{
 		auto p = g.out_edges(v);
 		return std::distance(p.first,p.second);
 	}
 
 	template<typename N, typename E>
-	std::pair<typename boost::graph_traits<graph<N,E>>::in_edge_iterator,
-						typename boost::graph_traits<graph<N,E>>::in_edge_iterator>
-	in_edges(const typename boost::graph_traits<graph<N,E>>::vertex_descriptor &v, const graph<N,E> &g)
+	std::pair<typename boost::graph_traits<digraph<N,E>>::in_edge_iterator,
+						typename boost::graph_traits<digraph<N,E>>::in_edge_iterator>
+	in_edges(const typename boost::graph_traits<digraph<N,E>>::vertex_descriptor &v, const digraph<N,E> &g)
 	{
 		return g.in_edges(v);
 	}
 
 	template<typename N, typename E>
-	typename boost::graph_traits<graph<N,E>>::degree_size_type
-	in_degree(const typename boost::graph_traits<graph<N,E>>::vertex_descriptor &v, const graph<N,E> &g)
+	typename boost::graph_traits<digraph<N,E>>::degree_size_type
+	in_degree(const typename boost::graph_traits<digraph<N,E>>::vertex_descriptor &v, const digraph<N,E> &g)
 	{
 		auto p = g.in_edges(v);
 		return std::distance(p.first,p.second);
 	}
 
 	template<typename N, typename E>
-	typename boost::graph_traits<graph<N,E>>::degree_size_type
-	degree(const typename boost::graph_traits<graph<N,E>>::vertex_descriptor &v, const graph<N,E> &g)
+	typename boost::graph_traits<digraph<N,E>>::degree_size_type
+	degree(const typename boost::graph_traits<digraph<N,E>>::vertex_descriptor &v, const digraph<N,E> &g)
 	{
 		return out_degree(v,g) + in_degree(v,g);
 	}
@@ -455,10 +455,10 @@ namespace po
 	}
 
 	template<typename N, typename E>
-	unordered_pmap<typename boost::graph_traits<graph<N,E>>::vertex_descriptor,int64_t>
-	get(boost::vertex_index_t, const graph<N,E> &g)
+	unordered_pmap<typename boost::graph_traits<digraph<N,E>>::vertex_descriptor,int64_t>
+	get(boost::vertex_index_t, const digraph<N,E> &g)
 	{
-		unordered_pmap<typename boost::graph_traits<graph<N,E>>::vertex_descriptor,int64_t> ret;
+		unordered_pmap<typename boost::graph_traits<digraph<N,E>>::vertex_descriptor,int64_t> ret;
 		auto p = g.nodes();
 		auto i = p.first;
 

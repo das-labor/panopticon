@@ -1,10 +1,9 @@
-#ifndef ARCHITECTURE_HH
-#define ARCHITECTURE_HH
-
 #include <string>
 #include <vector>
 
-#include <mnemonic.hh>
+#include <panopticon/mnemonic.hh>
+
+#pragma once
 
 namespace po
 {
@@ -23,5 +22,3 @@ namespace po
 	template<typename T>
 	uint8_t width(::std::string n, T);
 }
-
-#endif

@@ -1,13 +1,16 @@
-#ifndef VALUE_HH
-#define VALUE_HH
-
 #include <unordered_map>
 #include <iostream>
 #include <cstdint>
 #include <cassert>
 #include <stdexcept>
 
-#include <marshal.hh>
+#include <boost/variant.hpp>
+#include <boost/optional.hpp>
+#include <boost/operators.hpp>
+
+#include "marshal.hh"
+
+#pragma once
 
 /**
  * @file
@@ -22,7 +25,7 @@
  * Converting between classes can be done with constant(), variable(), memory(), ... in rvalue.
  *
  * Internally rvalue is a tagged union where the tag value is stored by tagging a pointers last 3 bits.
- * The sub classes of rvalue add functions to query one type of the union. Memory and constant use a 
+ * The sub classes of rvalue add functions to query one type of the union. Memory and constant use a
  * heap allocated structure to save its members. Variable fits into the 61 bits before the tag.
  */
 
@@ -31,204 +34,81 @@ namespace po
 	class rvalue;
 	class constant;
 	class undefined;
-	class lvalue;
 	class variable;
 	class memory;
 	class value_exception;
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Weffc++"
+	//std::ostream& operator<<(std::ostream &os, const po::rvalue &r);
 
 	/**
-	 * @brief Base of all data types the IL operates on.
-	 *
-	 * Aside from various support routines, rvalue implements
-	 * secure conversion to its sub classes.
-	 */
-	class rvalue
-	{
-	public:
-		enum Tag
-		{
-			UndefinedValueTag = 0,
-			ConstantValueTag = 1,
-			VariableValueTag = 2,
-			MemoryValueTag = 3
-		};
-
-		/**
-	 	 * @brief Unmarshal a rvalue from a RDF node
-		 */
-		static rvalue unmarshal(const rdf::node &n, const rdf::storage &store);
-
-		/// Constructs a undefined value.
-		rvalue(void);
-		rvalue(const rvalue &r);
-		~rvalue(void);
-
-		rvalue &operator=(const rvalue &r);
-	
-		bool operator<(const rvalue &b) const;
-		bool operator==(const rvalue &b) const;
-		bool operator!=(const rvalue &b) const;
-
-		/// @returns Tag of the union. Use is_* to query for specific values.
-		Tag tag(void) const;
-		
-		/// @returns true if this is a constant value. The to_constant() function will convert to a constant instance.
-		bool is_constant(void) const;
-		
-		/// @returns true if this is a undefined (default-constructed) value. 
-		bool is_undefined(void) const;
-		
-		/// @returns true if this is a variable. The to_variable() function will convert to a variable instance.
-		bool is_variable(void) const;
-		
-		/// @returns true if this is a constant value. The to_memory() function will convert to a memory instance.
-		bool is_memory(void) const;
-		
-		/// @returns true if this is a valid assignment target (left side of a intruction). The toLvalue() function will convert to a lvalue instance.
-		bool is_lvalue(void) const;
-
-		/**
-		 * Cast this instance to a constant
-		 * @returns Cast of 'this' to 'constant' type
-		 * @throws value_exception if not a constant.
-		 */
-		const class constant &to_constant(void) const;
-
-		/**
-		 * Cast this instance to a variable
-		 * @returns Cast of 'this' to 'variable' type
-		 * @throws value_exception if not a variable.
-		 */
-		const class variable &to_variable(void) const;
-		
-		/**
-		 * Cast this instance to a memory value
-		 * @returns Cast of 'this' to 'memory' type
-		 * @throws value_exception if not a memory.
-		 */
-		const class memory &to_memory(void) const;
-		
-		/**
-		 * Cast this instance to a lvalue
-		 * @returns Cast of 'this' to 'lvalue' type
-		 * @throws value_exception if not a lvalue.
-		 */
-		const class lvalue &to_lvalue(void) const;
-
-		template<typename> friend struct std::hash;
-
-	protected:
-		union
-		{
-			uint64_t all;
-			struct { uint64_t rest:62, tag:2; } simple;
-			struct { uint64_t sub:16, n1:7, n2:7, n3:7, n4:7, n5:7, width:8, rest:3, tag:2; } name; // variable
-		} d;
-
-		/// Releases its reference to a memory_priv instance if a memory value
-		void destruct_memory(void);
-		
-		/// Releases its reference to a constant_priv instance if a constant
-		void destruct_constant(void);
-		
-		/// Replaces this instance with @c r, getting ahold of the memory_priv instance of @c r.
-		void assign_memory(const class memory &r);
-		
-		/// Replaces this instance with @c r, getting ahold of the constant_priv instance of @c r.
-		void assign_constant(const class constant &r);
-	};
-
-	std::ostream& operator<<(std::ostream &os, const po::rvalue &r);
-	
-	// Make sure we don't introduce bug accedatially.
-	static_assert(alignof(class rvalue) >= 4,"need class alignment of 4 for pointer tagging");
-	static_assert(sizeof(class rvalue) == 8,"rvalue should not be larger than one register");
-	static_assert(sizeof(uintptr_t) <= sizeof(class rvalue),"rvalue must be able to hold a pointer value");
-
-	/**
-	 * @brief A constant value with fixed width
+	 * @brief A constant value
 	 *
 	 * This rvalue subclass models a constant value as a unsigned integer
-	 * of known width in bits. The user-defined literals _i8, _i16, _i32, _i64
-	 * are shortcuts for constucting constant of 8, 16, 32 or 64 bits.
 	 */
-	class constant : public rvalue
+	class constant
 	{
 	public:
-		/// Construct a new constant @c v with width of @c w. The @c v argument is trucated to @c w bits.
-		constant(uint64_t v, uint16_t w);
+		/// Construct a new constant @c v.
+		constant(uint64_t v);
 
-		/// @returns width of this constant in bits
-		uint16_t width(void) const;
+		bool operator==(const constant&) const;
+		bool operator<(const constant&) const;
 
 		/// @returns integer value of this constant. Never larger than 1 << width()
 		uint64_t content(void) const;
-	};
 
-	/**
-	 * @brief Internal. Do not use.
-	 * @ingroup internal
-	 */
-	struct constant_priv
-	{
-		unsigned int usage;
-		uint64_t content;
-		uint16_t width;
+	private:
+		uint64_t _content;
 	};
 
 	/// @returns floor(log2(x)), by looking for the last set bit.
 	uint64_t flsll(uint64_t);
 
 	/**
-	 * @brief A data type than can be written to.
-	 *
-	 * This is the parent of all valid targets of a assignment 'memory' and 'variable'.
-	 */
-	class lvalue : public rvalue
-	{
-	public:
-		/**
-		 * @brief Unmarshal a lvalue from a RDF node
-		 */
-		static lvalue unmarshal(const rdf::node &n, const rdf::storage &store);
-	};
-
-	/**
 	 * @brief Undefined value
 	 */
-	class undefined : public lvalue
-	{};
+	class undefined : boost::operators<undefined>
+	{
+	public:
+		bool operator==(const undefined&) const;
+		bool operator<(const undefined&) const;
+	};
 
 	/**
 	 * @brief A variable with fixed width.
 	 *
-	 * Variables loosely model registers with a fixed width in bits. 
+	 * Variables loosely model registers with a fixed width in bits.
 	 * Aside from a name of up to 5 ASCII characters, it also can have a
 	 * subscript integer that describes the version of the variable in the
 	 * SSA form of the procedure. User-defined literals _v1, _v8, _v16, _v32, _v64
-	 * are shortcuts for constructing 1, 8, 16, 32, and 64 bit wide, unversioned 
+	 * are shortcuts for constructing 1, 8, 16, 32, and 64 bit wide, unversioned
 	 * variables.
 	 */
-	class variable : public lvalue
+	class variable : boost::operators<variable>
 	{
 	public:
 		/**
 		 * Construct a variable with name @c n, width of @c w bits and version @c s.
 		 * @note @c n can only include ASCII characters (<= 0x7f) and can not be longer than 5 characters.
 		 */
-		variable(std::string n, uint16_t w, int s = -1);
+		variable(const std::string &n, uint16_t w, int s = -1);
+
+		bool operator==(const variable&) const;
+		bool operator<(const variable&) const;
 
 		/// @returns width of this varaible in bits
 		uint16_t width(void) const;
 
 		/// @return name of the variable
-		std::string name(void) const;
+		const std::string& name(void) const;
 
 		/// @returns version of the variable if in SSA form. -1 means no version (not yet in SSA form)
 		int subscript(void) const;
+
+	private:
+		uint16_t _width;
+		std::string _name;
+		int _subscript;
 	};
 
 	/**
@@ -238,18 +118,24 @@ namespace po
 	 * memory region, the number of bytes to read from this offset and the byte ordering
 	 * (endianess) to obey when saving it in a register.
 	 */
-	class memory : public lvalue
-	{	
+	class memory : boost::operators<memory>
+	{
 	public:
 		enum Endianess
 		{
-			NoEndian = 0,
 			LittleEndian = 1,
 			BigEndian = 2
 		};
 
+		memory(const memory &);
+
 		/// Construct a new reference to @c b bytes, starting at offset @c o, in memory region @c n, saved in @c e ordering.
-		memory(rvalue o, uint16_t b, Endianess e, std::string n);
+		memory(const rvalue &o, uint16_t b, Endianess e, const std::string &n);
+
+		memory& operator=(const memory&);
+
+		bool operator==(const memory&) const;
+		bool operator<(const memory&) const;
 
 		/// @returns number of bytes to read from offset().
 		uint16_t bytes(void) const;
@@ -262,23 +148,103 @@ namespace po
 
 		/// @returns name of the memory region this reference points into.
 		const std::string &name(void) const;
+
+	private:
+		std::unique_ptr<rvalue> _offset;
+		uint16_t _bytes;
+		Endianess _endianess;
+		std::string _name;
 	};
 
-#pragma GCC diagnostic pop
-	
 	/**
-	 * @brief Internal. Do not use.
-	 * @ingroup internal
+	 * @brief A data type than can be written to.
+	 *
+	 * This is the parent of all valid targets of a assignment 'memory' and 'variable'.
 	 */
-	struct memory_priv
+	using lvalue = boost::variant<undefined,variable,memory>;
+
+	/**
+	 * @brief Base of all data types the IL operates on.
+	 *
+	 * Aside from various support routines, rvalue implements
+	 * secure conversion to its sub classes.
+	 */
+	class rvalue
 	{
-		memory_priv(void);
-		unsigned int usage;
-		rvalue offset;
-		uint16_t bytes;
-		memory::Endianess endianess;
-		std::string name;
+	public:
+
+		/**
+	 	 * @brief Unmarshal a rvalue from a RDF node
+		 */
+		//static rvalue unmarshal(const rdf::node &n, const rdf::storage &store);
+
+		/// Constructs a undefined value.
+		rvalue(void);
+
+		template<typename T>
+		rvalue(const T &t) : _variant(t) {}
+
+	private:
+		boost::variant<undefined,constant,variable,memory> _variant;
+
+		friend bool operator==(const po::rvalue&, const po::rvalue&);
+		friend bool operator!=(const po::rvalue&, const po::rvalue&);
+		friend bool operator<(const po::rvalue&, const po::rvalue&);
+
+		friend bool is_constant(const rvalue &);
+		friend bool is_undefined(const rvalue &);
+		friend bool is_variable(const rvalue &);
+		friend bool is_memory(const rvalue &);
+
+		friend const constant& to_constant(const rvalue&);
+		friend const variable& to_variable(const rvalue&);
+		friend const memory& to_memory(const rvalue&);
+		template<typename> friend struct std::hash;
 	};
+
+	/// @returns true if this is a constant value. The to_constant() function will convert to a constant instance.
+	bool is_constant(const rvalue&);
+
+	/// @returns true if this is a undefined (default-constructed) value.
+	bool is_undefined(const rvalue&);
+
+	/// @returns true if this is a variable. The to_variable() function will convert to a variable instance.
+	bool is_variable(const rvalue&);
+
+	/// @returns true if this is a constant value. The to_memory() function will convert to a memory instance.
+	bool is_memory(const rvalue&);
+
+	/// @returns true if this is a valid assignment target (left side of a intruction). The toLvalue() function will convert to a lvalue instance.
+	bool is_lvalue(const rvalue&);
+
+	/**
+	 * Cast this instance to a constant
+	 * @throws value_exception if not a constant.
+	 */
+	const constant& to_constant(const rvalue&);
+
+	/**
+	 * Cast this instance to a variable
+	 * @throws value_exception if not a variable.
+	 */
+	const variable& to_variable(const rvalue&);
+
+	/**
+	 * Cast this instance to a memory value
+	 * @throws value_exception if not a memory.
+	 */
+	const memory& to_memory(const rvalue&);
+
+	/**
+	 * Cast this instance to a lvalue
+	 * @throws value_exception if not a lvalue.
+	 */
+	lvalue to_lvalue(const rvalue&);
+
+	bool operator==(const rvalue&, const rvalue&);
+	bool operator!=(const rvalue&, const rvalue&);
+	bool operator<(const rvalue&, const rvalue&);
+	std::ostream& operator<<(std::ostream&, const rvalue &);
 
 	/**
 	 * @brief Exception associated with rvalue subclasses
@@ -292,66 +258,67 @@ namespace po
 		/// Conastructs a exception for error message @c w.
 		value_exception(const std::string &w);
 	};
+}
 
-	/// @returns a rvalue as typed literal
-	oturtlestream &operator<<(oturtlestream &os, rvalue r);
-	}
-
-namespace std 
+size_t hash_struct(void)
 {
+	return 0;//std::hash<Car()(c);
+}
+
+template<typename Car, typename... Cdr>
+size_t hash_struct(const Car &c, const Cdr&... parameters)
+{
+	size_t seed = std::hash<Car>()(c);
+	return seed ^ (hash_struct(parameters...) + 0x9e3779b9 + (seed << 6) + (seed >> 2));
+}
+
+namespace std
+{
+	template<>
+	struct hash<po::memory::Endianess>
+	{
+		size_t operator()(po::memory::Endianess a) const
+		{
+			return hash<uint8_t>()(a);
+		}
+	};
+
 	template<>
 	struct hash<po::rvalue>
 	{
-		size_t operator()(const po::rvalue &a) const 
+		size_t operator()(const po::rvalue &a) const
 		{
-			if(a.is_memory())
+			if(is_memory(a))
 			{
-				hash<unsigned int> ui;
-				hash<po::rvalue> v;
-				hash<uint8_t> e;
-				hash<string> n;
-				const po::memory &m = a.to_memory();
-				
-				return v(m.offset()) ^ ui(m.bytes()) ^ e(m.endianess()) ^ n(m.name());
+				const po::memory &m = to_memory(a);
+				return hash_struct(m.name(),m.bytes(),m.endianess(),m.offset());
+			}
+			else if(is_constant(a))
+			{
+				const po::constant &c = to_constant(a);
+				return hash_struct(c.content());
+			}
+			else if(is_variable(a))
+			{
+				const po::variable &v = to_variable(a);
+				return hash_struct(v.name(),v.width(),v.subscript());
+			}
+			else if(is_undefined(a))
+			{
+				return hash_struct(0,1);
 			}
 			else
 			{
-				hash<uint64_t> ui64;
-
-				return ui64(a.d.all);
+				assert(false);
 			}
-		};
+		}
 	};
 }
 
 /// One bit wide constant
-inline po::constant operator"" _i1(unsigned long long n)
+inline po::constant operator"" _i(unsigned long long n)
 {
-	return po::constant(n,std::max(1,8));
-}
-
-/// Eight bit wide constant
-inline po::constant operator"" _i8(unsigned long long n)
-{
-	return po::constant(n,std::max(1,8));
-}
-
-/// Sixteen bit wide constant
-inline po::constant operator"" _i16(unsigned long long n)
-{
-	return po::constant(n,std::max(1,16));
-}
-
-/// Thirtytwo bit wide constant
-inline po::constant operator"" _i32(unsigned long long n)
-{
-	return po::constant(n,std::max(1,32));
-}
-
-/// Sixtyfour bit wide constant
-inline po::constant operator"" _i64(unsigned long long n)
-{
-	return po::constant(n,std::max(1,64));
+	return po::constant(n);
 }
 
 /// One bit wide variable
@@ -388,5 +355,3 @@ inline po::variable operator"" _v64(const char *n, size_t l)
 	std::string base(n,l);
 	return po::variable(base,64);
 }
-
-#endif
