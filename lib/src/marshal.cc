@@ -1,3 +1,4 @@
+#include <iostream>
 #include <sstream>
 #include <algorithm>
 
@@ -22,84 +23,41 @@ marshal_exception::marshal_exception(const string &w)
 : runtime_error(w)
 {}
 
-rdf::world *rdf::world::s_instance = 0;
+std::unique_ptr<rdf::world> rdf::world::_instance = nullptr;
 
 rdf::world::world(void)
-: enable_shared_from_this(), m_rdf_world(0), m_rap_world(0)
+: enable_shared_from_this(), _rdf_world(nullptr), _rap_world(nullptr)
 {
-	assert(!s_instance);
+	assert(!_instance);
 
-	m_rdf_world = librdf_new_world();
-	librdf_world_open(m_rdf_world);
-	m_rap_world = librdf_world_get_raptor(m_rdf_world);
+	_rdf_world = librdf_new_world();
+	librdf_world_open(_rdf_world);
+	_rap_world = librdf_world_get_raptor(_rdf_world);
 }
 
 rdf::world::~world() {}
 
-rdf::world_ptr rdf::world::instance(void)
+rdf::world& rdf::world::instance(void)
 {
-	if(!s_instance)
-		s_instance = new world();
-	return s_instance;
+	if(!_instance)
+		_instance.reset(new world());
+	return *_instance;
 }
 
 librdf_world *rdf::world::rdf(void) const
 {
-	return m_rdf_world;
+	return _rdf_world;
 }
 
 raptor_world *rdf::world::raptor(void) const
 {
-	return m_rap_world;
-}
-
-rdf::world::proxy::proxy(nullptr_t)
-: is_literal(false), is_node(false), literal(""), node(0)
-{}
-
-rdf::world::proxy::proxy(const string &s)
-: is_literal(true), is_node(false), literal(""), node(0)
-{
-	if(s.find_first_of(":") == 0)
-		literal = LOCAL + s.substr(1);
-	else if(s.find_first_of("po:") == 0)
-		literal = PO + s.substr(3);
-	else if(s.find_first_of("xsd:") == 0)
-		literal = XSD + s.substr(4);
-	else if(s.find_first_of("rdf:") == 0)
-		literal = RDF + s.substr(4);
-	else
-		literal = s;
-}
-
-rdf::world::proxy::proxy(const rdf::world::proxy &p)
-: is_literal(p.is_literal), is_node(p.is_node), literal(p.literal), node(p.node ? librdf_new_node_from_node(p.node) : 0)
-{}
-
-rdf::world::proxy &rdf::world::proxy::operator=(const rdf::world::proxy &p)
-{
-	is_literal = p.is_literal;
-	is_node = p.is_node;
-	literal = p.literal;
-
-	if(node)
-		librdf_free_node(node);
-	node = p.node;
-
-	return *this;
-}
-
-
-rdf::world::proxy::~proxy(void)
-{
-	if(node)
-		librdf_free_node(node);
+	return _rap_world;
 }
 
 rdf::storage rdf::storage::from_archive(const string &path)
 {
 	storage ret(false);
-	const string &tempDir = ret.m_tempdir;
+	const string &tempDir = ret._tempdir;
 
 	// open target zip
 	unzFile zf = unzOpen(path.c_str());
@@ -151,40 +109,23 @@ rdf::storage rdf::storage::from_archive(const string &path)
 	if(unzClose(zf) != UNZ_OK)
 		throw marshal_exception("can't open " + path);
 
-	world_ptr w = world::instance();
-	assert(ret.m_storage = librdf_new_storage(w->rdf(),"hashes","graph",string("hash-type='bdb',dir='" + ret.m_tempdir + "'").c_str()));
-	assert(ret.m_model = librdf_new_model(w->rdf(),ret.m_storage,NULL));
-
-	return ret;
-}
-
-rdf::storage rdf::storage::from_stream(const oturtlestream &os)
-{
-	world_ptr w = world::instance();
-	storage ret;
-	librdf_parser *parser = 0;
-	librdf_uri *uri = 0;
-
-	assert(parser = librdf_new_parser(w->rdf(),"turtle",NULL,NULL));
-	assert(uri = librdf_new_uri_from_filename(w->rdf(),"http://localhost/"));
-	assert(!librdf_parser_parse_string_into_model(parser,reinterpret_cast<const unsigned char *>(os.str().c_str()),uri,ret.m_model));
-
-	librdf_free_uri(uri);
-	librdf_free_parser(parser);
+	world &w = world::instance();
+	assert(ret._storage = librdf_new_storage(w.rdf(),"hashes","graph",string("hash-type='bdb',dir='" + ret._tempdir + "'").c_str()));
+	assert(ret._model = librdf_new_model(w.rdf(),ret._storage,NULL));
 
 	return ret;
 }
 
 rdf::storage rdf::storage::from_turtle(const string &path)
 {
-	world_ptr w = world::instance();
+	world &w = world::instance();
 	storage ret;
-	librdf_parser *parser = 0;
-	librdf_uri *uri = 0;
+	librdf_parser *parser = nullptr;
+	librdf_uri *uri = nullptr;
 
-	assert(parser = librdf_new_parser(w->rdf(),"turtle",NULL,NULL));
-	assert(uri = librdf_new_uri_from_filename(w->rdf(),path.c_str()));
-	assert(!librdf_parser_parse_into_model(parser,uri,uri,ret.m_model));
+	assert(parser = librdf_new_parser(w.rdf(),"turtle",NULL,NULL));
+	assert(uri = librdf_new_uri_from_filename(w.rdf(),path.c_str()));
+	assert(!librdf_parser_parse_into_model(parser,uri,uri,ret._model));
 
 	librdf_free_uri(uri);
 	librdf_free_parser(parser);
@@ -197,32 +138,32 @@ rdf::storage::storage(void)
 {}
 
 rdf::storage::storage(bool openStore)
-: m_storage(0), m_model(0), m_tempdir("")
+: _storage(nullptr), _model(nullptr), _tempdir("")
 {
 	char *tmp = new char[TEMPDIR_TEMPLATE.size() + 1];
 
 	strncpy(tmp,TEMPDIR_TEMPLATE.c_str(),TEMPDIR_TEMPLATE.size() + 1);
 	tmp = mkdtemp(tmp);
 
-	m_tempdir = string(tmp);
+	_tempdir = string(tmp);
 	delete[] tmp;
 
 	if(openStore)
 	{
-		world_ptr w = world::instance();
-		assert(m_storage = librdf_new_storage(w->rdf(),"hashes","graph",string("new='yes',hash-type='bdb',dir='" + m_tempdir + "'").c_str()));
-		assert(m_model = librdf_new_model(w->rdf(),m_storage,NULL));
+		world &w = world::instance();
+		assert(_storage = librdf_new_storage(w.rdf(),"hashes","graph",string("new='yes',hash-type='bdb',dir='" + _tempdir + "'").c_str()));
+		assert(_model = librdf_new_model(w.rdf(),_storage,NULL));
 	}
 }
 
 rdf::storage::storage(rdf::storage &&store)
-: m_storage(store.m_storage), m_model(store.m_model), m_tempdir(store.m_tempdir)
+: _storage(store._storage), _model(store._model), _tempdir(store._tempdir)
 {}
 
 rdf::storage::~storage(void)
 {
-	librdf_free_model(m_model);
-	librdf_free_storage(m_storage);
+	librdf_free_model(_model);
+	librdf_free_storage(_storage);
 
 	std::function<void(const string &path)> rm_r;
 	rm_r = [&](const string &path)
@@ -263,7 +204,7 @@ rdf::storage::~storage(void)
 
 	try
 	{
-		rm_r(m_tempdir);
+		rm_r(_tempdir);
 	}
 	catch(const marshal_exception &e)
 	{
@@ -281,11 +222,11 @@ void rdf::storage::snapshot(const string &path)
 
 	// sync bdb
 	/// XXX: lock store against modifications
-	if(librdf_storage_sync(m_storage))
+	if(librdf_storage_sync(_storage))
 		throw marshal_exception("can't sync triple store");
 
 	// open temp dir
-	DIR *dirDesc = opendir(m_tempdir.c_str());
+	DIR *dirDesc = opendir(_tempdir.c_str());
 	if(!dirDesc)
 		throw marshal_exception("can't save to " + path + ": " + strerror(errno));
 
@@ -301,7 +242,7 @@ void rdf::storage::snapshot(const string &path)
 	while((dirEnt = readdir(dirDesc)))
 	{
 		string entBase(dirEnt->d_name);
-		string entPath = m_tempdir + "/" + entBase;
+		string entPath = _tempdir + "/" + entBase;
 
 		if(entBase == "." || entBase == "..")
 			continue;
@@ -342,7 +283,7 @@ void rdf::storage::snapshot(const string &path)
 
 rdf::stream rdf::storage::select(const rdf::node &s,const rdf::node &p,const rdf::node &o) const
 {
-	return rdf::stream(librdf_model_find_statements(m_model,statement(s,p,o).inner()));
+	return rdf::stream(librdf_model_find_statements(_model,statement(s,p,o).inner()));
 }
 
 rdf::statement rdf::storage::first(const rdf::node &s,const rdf::node &p,const rdf::node &o) const
@@ -360,55 +301,61 @@ rdf::statement rdf::storage::first(const rdf::node &s,const rdf::node &p,const r
 
 void rdf::storage::insert(const rdf::statement &st)
 {
-	if(librdf_model_add_statement(m_model,st.inner()))
+	if(librdf_model_add_statement(_model,st.inner()))
 		throw marshal_exception("failed to add statement");
 }
 
 void rdf::storage::insert(const rdf::node &s, const rdf::node &p, const rdf::node &o)
 {
-	if(librdf_model_add(m_model,librdf_new_node_from_node(s.inner()),
+	if(librdf_model_add(_model,librdf_new_node_from_node(s.inner()),
 															librdf_new_node_from_node(p.inner()),
 															librdf_new_node_from_node(o.inner())))
 		throw marshal_exception("failed to add statement");
 }
 
+void rdf::storage::remove(const rdf::statement &st)
+{
+	if(librdf_model_remove_statement(_model,st.inner()))
+		throw marshal_exception("failed to add statement");
+}
+
 rdf::node::node(void)
-: m_node(librdf_new_node_from_blank_identifier(world::instance()->rdf(),NULL))
+: _node(librdf_new_node_from_blank_identifier(world::instance().rdf(),NULL))
 {}
 
 rdf::node::node(librdf_node *n)
-: m_node(n)
+: _node(n)
 {}
 
 rdf::node::node(const rdf::node &n)
-: m_node(librdf_new_node_from_node(n.m_node))
+: _node(librdf_new_node_from_node(n._node))
 {}
 
 rdf::node::node(rdf::node &&n)
-: m_node(n.m_node)
+: _node(n._node)
 {
-	n.m_node = 0;
+	n._node = nullptr;
 }
 
 rdf::node::~node(void)
 {
-	if(m_node)
-		librdf_free_node(m_node);
+	if(_node)
+		librdf_free_node(_node);
 }
 
 rdf::node &rdf::node::operator=(const rdf::node &n)
 {
-	if(m_node)
-		librdf_free_node(m_node);
-	m_node = n.m_node ? librdf_new_node_from_node(n.m_node) : 0;
+	if(_node)
+		librdf_free_node(_node);
+	_node = n._node ? librdf_new_node_from_node(n._node) : nullptr;
 
 	return *this;
 }
 
 rdf::node &rdf::node::operator=(rdf::node &&n)
 {
-	m_node = n.m_node;
-	n.m_node = 0;
+	_node = n._node;
+	n._node = nullptr;
 
 	return *this;
 }
@@ -425,29 +372,29 @@ bool rdf::node::operator!=(const rdf::node &n) const
 
 string rdf::node::to_string(void) const
 {
-	if(!m_node)
+	if(!_node)
 		throw marshal_exception();
 
-	if(librdf_node_is_literal(m_node))
-		return string((char *)librdf_node_get_literal_value(m_node));
-	else if(librdf_node_is_resource(m_node))
-		return string(reinterpret_cast<const char *>(librdf_uri_as_string(librdf_node_get_uri(m_node))));
-	else if(librdf_node_is_resource(m_node))
-		return string(reinterpret_cast<const char *>(librdf_node_get_blank_identifier(m_node)));
+	if(librdf_node_is_literal(_node))
+		return string((char *)librdf_node_get_literal_value(_node));
+	else if(librdf_node_is_resource(_node))
+		return string(reinterpret_cast<const char *>(librdf_uri_as_string(librdf_node_get_uri(_node))));
+	else if(librdf_node_is_resource(_node))
+		return string(reinterpret_cast<const char *>(librdf_node_get_blank_identifier(_node)));
 	else
 		throw marshal_exception("unknown node type");
 }
 
 librdf_node *rdf::node::inner(void) const
 {
-	return m_node;
+	return _node;
 }
 
 rdf::node po::rdf::lit(const std::string &s)
 {
-	rdf::world_ptr w = rdf::world::instance();
-	librdf_uri *type = librdf_new_uri(w->rdf(),reinterpret_cast<const unsigned char *>(XSD"string"));
-	rdf::node ret(librdf_new_node_from_typed_literal(w->rdf(),reinterpret_cast<const unsigned char *>(s.c_str()),NULL,type));
+	rdf::world &w = rdf::world::instance();
+	librdf_uri *type = librdf_new_uri(w.rdf(),reinterpret_cast<const unsigned char *>(XSD"string"));
+	rdf::node ret(librdf_new_node_from_typed_literal(w.rdf(),reinterpret_cast<const unsigned char *>(s.c_str()),NULL,type));
 
 	librdf_free_uri(type);
 	return ret;
@@ -455,9 +402,9 @@ rdf::node po::rdf::lit(const std::string &s)
 
 rdf::node po::rdf::lit(unsigned long long n)
 {
-	rdf::world_ptr w = rdf::world::instance();
-	librdf_uri *type = librdf_new_uri(w->rdf(),reinterpret_cast<const unsigned char *>(XSD"nonNegativeInteger"));
-	rdf::node ret(librdf_new_node_from_typed_literal(w->rdf(),reinterpret_cast<const unsigned char *>(std::to_string(n).c_str()),NULL,type));
+	rdf::world &w = rdf::world::instance();
+	librdf_uri *type = librdf_new_uri(w.rdf(),reinterpret_cast<const unsigned char *>(XSD"nonNegativeInteger"));
+	rdf::node ret(librdf_new_node_from_typed_literal(w.rdf(),reinterpret_cast<const unsigned char *>(std::to_string(n).c_str()),NULL,type));
 
 	librdf_free_uri(type);
 	return ret;
@@ -465,109 +412,109 @@ rdf::node po::rdf::lit(unsigned long long n)
 
 rdf::node po::rdf::ns_po(const std::string &s)
 {
-	return rdf::node(librdf_new_node_from_uri_string(rdf::world::instance()->rdf(),
+	return rdf::node(librdf_new_node_from_uri_string(rdf::world::instance().rdf(),
 																									 reinterpret_cast<const unsigned char *>((std::string(PO) + s).c_str())));
 }
 
 rdf::node po::rdf::ns_rdf(const std::string &s)
 {
-	return rdf::node(librdf_new_node_from_uri_string(rdf::world::instance()->rdf(),
+	return rdf::node(librdf_new_node_from_uri_string(rdf::world::instance().rdf(),
 																									 reinterpret_cast<const unsigned char *>((std::string(RDF) + s).c_str())));
 }
 
 rdf::node po::rdf::ns_xsd(const std::string &s)
 {
-	return rdf::node(librdf_new_node_from_uri_string(rdf::world::instance()->rdf(),
+	return rdf::node(librdf_new_node_from_uri_string(rdf::world::instance().rdf(),
 																									 reinterpret_cast<const unsigned char *>((std::string(XSD) + s).c_str())));
 }
 
 rdf::statement::statement(const rdf::node &s, const rdf::node &p, const rdf::node &o)
-: m_statement(librdf_new_statement_from_nodes(world::instance()->rdf(),
+: _statement(librdf_new_statement_from_nodes(world::instance().rdf(),
 																							s.inner() ? librdf_new_node_from_node(s.inner()) : NULL,
 																							p.inner() ? librdf_new_node_from_node(p.inner()) : NULL,
 																							o.inner() ? librdf_new_node_from_node(o.inner()) : NULL))
 {}
 
 rdf::statement::statement(librdf_statement *n)
-: m_statement(n)
+: _statement(n)
 {}
 
 rdf::statement::statement(const rdf::statement &n)
-: m_statement(librdf_new_statement_from_statement(n.m_statement))
+: _statement(librdf_new_statement_from_statement(n._statement))
 {}
 
 rdf::statement::statement(rdf::statement &&n)
-: m_statement(n.m_statement)
+: _statement(n._statement)
 {
-	n.m_statement = 0;
+	n._statement = nullptr;
 }
 
 rdf::statement::~statement(void)
 {
-	if(m_statement)
-		librdf_free_statement(m_statement);
+	if(_statement)
+		librdf_free_statement(_statement);
 }
 
 rdf::statement &rdf::statement::operator=(const rdf::statement &n)
 {
-	if(m_statement)
-		librdf_free_statement(m_statement);
-	m_statement = n.m_statement ? librdf_new_statement_from_statement(n.m_statement) : 0;
+	if(_statement)
+		librdf_free_statement(_statement);
+	_statement = n._statement ? librdf_new_statement_from_statement(n._statement) : nullptr;
 
 	return *this;
 }
 
 rdf::statement &rdf::statement::operator=(rdf::statement &&n)
 {
-	m_statement = n.m_statement;
-	n.m_statement = 0;
+	_statement = n._statement;
+	n._statement = nullptr;
 
 	return *this;
 }
 
 rdf::node rdf::statement::subject(void) const
 {
-	if(!m_statement || !librdf_statement_get_subject(m_statement))
+	if(!_statement || !librdf_statement_get_subject(_statement))
 		throw marshal_exception();
 
-	return node(librdf_new_node_from_node(librdf_statement_get_subject(m_statement)));
+	return node(librdf_new_node_from_node(librdf_statement_get_subject(_statement)));
 }
 
 rdf::node rdf::statement::predicate(void) const
 {
-	if(!m_statement || !librdf_statement_get_predicate(m_statement))
+	if(!_statement || !librdf_statement_get_predicate(_statement))
 		throw marshal_exception();
 
-	return node(librdf_new_node_from_node(librdf_statement_get_predicate(m_statement)));
+	return node(librdf_new_node_from_node(librdf_statement_get_predicate(_statement)));
 }
 
 rdf::node rdf::statement::object(void) const
 {
-	if(!m_statement || !librdf_statement_get_object(m_statement))
+	if(!_statement || !librdf_statement_get_object(_statement))
 		throw marshal_exception();
 
-	return node(librdf_new_node_from_node(librdf_statement_get_object(m_statement)));
+	return node(librdf_new_node_from_node(librdf_statement_get_object(_statement)));
 }
 
 librdf_statement *rdf::statement::inner(void) const
 {
-	return m_statement;
+	return _statement;
 }
 
 rdf::stream::stream(librdf_stream *n)
-: m_stream(n)
+: _stream(n)
 {}
 
 rdf::stream::stream(rdf::stream &&n)
-: m_stream(n.m_stream)
+: _stream(n._stream)
 {
-	n.m_stream = 0;
+	n._stream = nullptr;
 }
 
 rdf::stream::~stream(void)
 {
-	if(m_stream)
-		librdf_free_stream(m_stream);
+	if(_stream)
+		librdf_free_stream(_stream);
 }
 
 rdf::stream &rdf::stream::operator>>(rdf::statement &st)
@@ -575,13 +522,13 @@ rdf::stream &rdf::stream::operator>>(rdf::statement &st)
 	if(eof())
 		throw marshal_exception("stream at eof");
 
-	st = statement(librdf_new_statement_from_statement(librdf_stream_get_object(m_stream)));
-	librdf_stream_next(m_stream);
+	st = statement(librdf_new_statement_from_statement(librdf_stream_get_object(_stream)));
+	librdf_stream_next(_stream);
 
 	return *this;
 }
 
 bool rdf::stream::eof(void) const
 {
-	return m_stream && librdf_stream_end(m_stream) != 0;
+	return _stream && librdf_stream_end(_stream) != 0;
 }

@@ -8,7 +8,7 @@
 #include <boost/optional.hpp>
 #include <boost/operators.hpp>
 
-#include "marshal.hh"
+#include <panopticon/marshal.hh>
 
 #pragma once
 
@@ -22,11 +22,7 @@
  * Variable and memory values are grouped into lvalues. Both can be target or an assignment.
  * Memory, variable and constant values include the width of the value/variable. Variables and constants
  * are sized in bits, memory in bytes. Memory includes the endianess of the data.
- * Converting between classes can be done with constant(), variable(), memory(), ... in rvalue.
- *
- * Internally rvalue is a tagged union where the tag value is stored by tagging a pointers last 3 bits.
- * The sub classes of rvalue add functions to query one type of the union. Memory and constant use a
- * heap allocated structure to save its members. Variable fits into the 61 bits before the tag.
+ * Converting between classes can be done with to_constant(), to_variable(), to_memory(), etc.
  */
 
 namespace po
@@ -38,12 +34,10 @@ namespace po
 	class memory;
 	class value_exception;
 
-	//std::ostream& operator<<(std::ostream &os, const po::rvalue &r);
-
 	/**
 	 * @brief A constant value
 	 *
-	 * This rvalue subclass models a constant value as a unsigned integer
+	 * Models a constant value as a unsigned integer
 	 */
 	class constant
 	{
@@ -54,15 +48,14 @@ namespace po
 		bool operator==(const constant&) const;
 		bool operator<(const constant&) const;
 
-		/// @returns integer value of this constant. Never larger than 1 << width()
+		/// @returns integer value of this constant.
 		uint64_t content(void) const;
 
 	private:
 		uint64_t _content;
 	};
 
-	/// @returns floor(log2(x)), by looking for the last set bit.
-	uint64_t flsll(uint64_t);
+
 
 	/**
 	 * @brief Undefined value
@@ -78,7 +71,7 @@ namespace po
 	 * @brief A variable with fixed width.
 	 *
 	 * Variables loosely model registers with a fixed width in bits.
-	 * Aside from a name of up to 5 ASCII characters, it also can have a
+	 * Aside from a name of ASCII characters, it also can have a
 	 * subscript integer that describes the version of the variable in the
 	 * SSA form of the procedure. User-defined literals _v1, _v8, _v16, _v32, _v64
 	 * are shortcuts for constructing 1, 8, 16, 32, and 64 bit wide, unversioned
@@ -89,7 +82,6 @@ namespace po
 	public:
 		/**
 		 * Construct a variable with name @c n, width of @c w bits and version @c s.
-		 * @note @c n can only include ASCII characters (<= 0x7f) and can not be longer than 5 characters.
 		 */
 		variable(const std::string &n, uint16_t w, int s = -1);
 
@@ -159,15 +151,12 @@ namespace po
 	/**
 	 * @brief A data type than can be written to.
 	 *
-	 * This is the parent of all valid targets of a assignment 'memory' and 'variable'.
+	 * All valid targets of a assignment 'memory' and 'variable'.
 	 */
 	using lvalue = boost::variant<undefined,variable,memory>;
 
 	/**
 	 * @brief Base of all data types the IL operates on.
-	 *
-	 * Aside from various support routines, rvalue implements
-	 * secure conversion to its sub classes.
 	 */
 	class rvalue
 	{
@@ -265,6 +254,7 @@ size_t hash_struct(void)
 	return 0;//std::hash<Car()(c);
 }
 
+/// Hashes a sequence of fields and combines them.
 template<typename Car, typename... Cdr>
 size_t hash_struct(const Car &c, const Cdr&... parameters)
 {

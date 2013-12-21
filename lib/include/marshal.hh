@@ -1,19 +1,19 @@
-#ifndef MARSHAL_HH
-#define MARSHAL_HH
-
 #include <sstream>
 #include <string>
-#include <iostream>
 #include <cassert>
 #include <mutex>
 #include <unordered_map>
-#include <stack>
 #include <list>
 #include <memory>
 
 extern "C" {
 #include <redland.h>
 }
+
+#include <boost/uuid/uuid.hpp>
+#include <boost/uuid/uuid_generators.hpp>
+#include <boost/uuid/uuid_io.hpp>
+#include <boost/functional/hash.hpp>
 
 #define LOCAL "http://localhost/"
 #define PO "http://panopticum.io/"
@@ -24,105 +24,24 @@ extern "C" {
 /**
  * @file
  * @brief Serializing rotines
- *
- * Serializing flowgraphs is done with custom streams. Each class is responsible for
- * implementing its own stream out operators.
  */
 
 namespace po
 {
-	/**
-	 * @brief Output as graph in DOT language.
-	 *
-	 * This stream converts objects into a graph that can be drawn with
-	 * graphviz. Stream manipulators exists to enable/disable generation of
-	 * call edges, procedure bodies and IL dumps.
-	 *
-	 * The class derives from stringstream. The graph is read with str().
-	 * @note Output is large and only useful for debugging
-	 */
-	class odotstream : public std::ostringstream
+	using uuid = boost::uuids::uuid;
+}
+
+namespace std
+{
+	template<>
+	struct hash<po::uuid>
 	{
-	public:
-		odotstream(void);
-
-		/// Draw calls as edges between procedures
-		bool calls;
-
-		/// Draw procedure bodies as control flow graphs
-		bool body;
-
-		/// If body is true draw the prodecures as DOT cluster
-		bool subgraph;
-
-		/// Dump IL code after mnemonic
-		bool instrs;
+		size_t operator()(const po::uuid &u) const { return boost::hash<boost::uuids::uuid>()(u); }
 	};
+}
 
-	odotstream &operator<<(odotstream &os, odotstream &(*func)(odotstream &os));
-
-	odotstream &calls(odotstream &os);
-	odotstream &nocalls(odotstream &os);
-	odotstream &body(odotstream &os);
-	odotstream &nobody(odotstream &os);
-	odotstream &subgraph(odotstream &os);
-	odotstream &nosubgraph(odotstream &os);
-	odotstream &instrs(odotstream &os);
-	odotstream &noinstrs(odotstream &os);
-
-	/// @returns unique identifier for @c t that can be used in the DOT and Turtle output.
-	template<typename T>
-	std::string unique_name(const T &t)
-	{
-		return std::string("generic_") + std::to_string((uintptr_t)&t);
-	}
-
-	/// Makes all stream out operators defined for ostringstream usable for odotstream.
-	template<typename T>
-	odotstream &operator<<(odotstream &os, const T &t)
-	{
-		static_cast<std::ostringstream &>(os) << t;
-		return os;
-	}
-
-	/**
-	 * @brief Output as RDF graph in Turtle syntax
-	 *
-	 * Serializes to a collection of triples that describe a RDF graph.
-	 * This is the main serialization format of Panopticum and the only one
-	 * that can be deserialized.
-	 *
-	 * Access the Turtle syntax with str().
-	 */
-	class oturtlestream : public std::ostringstream
-	{
-	public:
-		oturtlestream(void);
-
-		/// @returns a new blank node to be used in the output. Guaranteed to be unique.
-		std::string blank(void);
-
-		/// Supresses double quotes around rvalue's
-		bool embed;
-
-	private:
-		unsigned long long m_blank;
-	};
-
-	oturtlestream &embed(oturtlestream &os);
-	oturtlestream &noembed(oturtlestream &os);
-
-	oturtlestream &operator<<(oturtlestream &os, oturtlestream &(*func)(oturtlestream &os));
-	oturtlestream &operator<<(oturtlestream &os, std::ostream& (*func)(std::ostream&));
-
-	/// Makes all stream out operators defined for ostringstream usable for oturtlestream.
-	template<typename T>
-	oturtlestream &operator<<(oturtlestream &os, const T &t)
-	{
-		static_cast<std::ostringstream &>(os) << t;
-		return os;
-	}
-
+namespace po
+{
 	class marshal_exception : public std::runtime_error
 	{
 	public:
@@ -137,50 +56,33 @@ namespace po
 		class stream;
 		class list;
 
-		typedef world* world_ptr;
+		using world_ptr = world*;
 
 		class world : std::enable_shared_from_this<world>
 		{
 		public:
-			static world_ptr instance(void);
+			static world& instance(void);
 
 			world(const world&) = delete;
 			world &operator=(const world&) = delete;
 
+			virtual ~world(void);
+
 			librdf_world *rdf(void) const;
 			raptor_world *raptor(void) const;
 
-			struct proxy
-			{
-				proxy(std::nullptr_t);
-				proxy(const std::string &s);
-				proxy(const char *s);
-				proxy(const node &n);
-				~proxy(void);
-
-				proxy(const proxy &p);
-				proxy &operator=(const proxy &p);
-
-				bool is_literal;
-				bool is_node;
-				std::string literal;
-				librdf_node *node;
-			};
-
 		private:
 			world(void);
-			virtual ~world(void);
 
-			librdf_world *m_rdf_world;
-			raptor_world *m_rap_world;
-			static world *s_instance;
+			librdf_world *_rdf_world;
+			raptor_world *_rap_world;
+			static std::unique_ptr<world> _instance;
 		};
 
 		class storage
 		{
 		public:
 			static storage from_archive(const std::string &panopPath);
-			static storage from_stream(const oturtlestream &os);
 			static storage from_turtle(const std::string &turtlePath);
 
 			storage(void);
@@ -197,15 +99,17 @@ namespace po
 			void insert(const rdf::statement &c);
 			void insert(const rdf::node &s, const rdf::node &p, const rdf::node &o);
 
+			void remove(const rdf::statement &);
+
 			void snapshot(const std::string &path);
 
 		private:
 
 			storage(bool openStore);
 
-			librdf_storage *m_storage;
-			librdf_model *m_model;
-			std::string m_tempdir;
+			librdf_storage *_storage;
+			librdf_model *_model;
+			std::string _tempdir;
 		};
 
 		class node
@@ -228,7 +132,7 @@ namespace po
 			librdf_node *inner(void) const;
 
 		private:
-			librdf_node *m_node;
+			librdf_node *_node;
 		};
 
 		node lit(const std::string &s);
@@ -256,8 +160,10 @@ namespace po
 			librdf_statement *inner(void) const;
 
 		private:
-			librdf_statement *m_statement;
+			librdf_statement *_statement;
 		};
+
+		using statements = std::list<statement>;
 
 		class stream
 		{
@@ -275,7 +181,7 @@ namespace po
 			stream &operator>>(statement &st);
 
 		private:
-			librdf_stream *m_stream;
+			librdf_stream *_stream;
 		};
 
 		class list
@@ -287,30 +193,15 @@ namespace po
 			rdf::stream to_stream(const rdf::storage &store);
 
 		private:
-			std::list<rdf::node> m_list;
+			std::list<rdf::node> _list;
 		};
 	}
 
-	class ordfstream
-	{
-	public:
-		ordfstream(rdf::storage &store);
-
-		std::stack<rdf::node> &context(void);
-		rdf::storage &store(void) const;
-
-	private:
-		rdf::storage &m_storage;
-		std::stack<rdf::node> m_context;
-	};
-
-	ordfstream& operator<<(ordfstream &os, const rdf::statement &st);
-
 	inline rdf::node operator"" _lit(const char *s)
 	{
-		rdf::world_ptr w = rdf::world::instance();
-		librdf_uri *type = librdf_new_uri(w->rdf(),reinterpret_cast<const unsigned char *>(XSD"string"));
-		rdf::node ret(librdf_new_node_from_typed_literal(w->rdf(),reinterpret_cast<const unsigned char *>(s),NULL,type));
+		rdf::world &w = rdf::world::instance();
+		librdf_uri *type = librdf_new_uri(w.rdf(),reinterpret_cast<const unsigned char *>(XSD"string"));
+		rdf::node ret(librdf_new_node_from_typed_literal(w.rdf(),reinterpret_cast<const unsigned char *>(s),NULL,type));
 
 		librdf_free_uri(type);
 		return ret;
@@ -335,6 +226,17 @@ namespace po
 	{
 		return rdf::ns_xsd(std::string(s,l));
 	}
-}
 
-#endif
+	/*
+	 * SerializableConcept
+	 *
+	 * std::unordered_set<rdf::statement> marshal(const T*, const uuid&);
+	 * T* unmarshall(const uuid&, const rdf::storage&);
+	 */
+
+	template<typename T>
+	T* unmarshal(const uuid&,const rdf::storage&);
+
+	template<typename T>
+	rdf::statements marshal(const T*, const uuid&);
+}

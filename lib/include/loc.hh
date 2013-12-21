@@ -1,130 +1,73 @@
 #include <unordered_map>
+#include <unordered_set>
 #include <mutex>
 #include <memory>
 #include <atomic>
 #include <stdexcept>
 #include <functional>
 
-#include <boost/uuid/uuid.hpp>
-#include <boost/uuid/uuid_generators.hpp>
-#include <boost/uuid/uuid_io.hpp>
 #include <boost/optional.hpp>
-#include <boost/functional/hash.hpp>
+#include <boost/type_erasure/any.hpp>
+#include <boost/type_erasure/any_cast.hpp>
+#include <boost/type_erasure/builtin.hpp>
+#include <boost/type_erasure/operators.hpp>
+#include <boost/type_erasure/member.hpp>
+#include <boost/type_erasure/free.hpp>
+#include <boost/mpl/vector.hpp>
+#include <boost/variant.hpp>
 
-#include <tbb/concurrent_hash_map.h>
+#include <panopticon/marshal.hh>
 
 #pragma once
 
-/**
- * SerializableConcept
- *
- * void marshal(const T*, const uuid &);
- * T* unmarshall(const uuid&);
- */
-
 namespace po
 {
-	using uuid = boost::uuids::uuid;
+	using marshal_poly = std::function<rdf::statements(void)>;
 
-	extern std::unordered_map<uuid,std::function<void(void)>> dirty_locations;
+	// pair<to delete,to write>
+	extern std::unordered_map<uuid,std::pair<marshal_poly,marshal_poly>> dirty_locations;
 	extern std::mutex dirty_locations_mutex;
-}
 
-namespace std
-{
-	template<>
-	struct hash<po::uuid>
+	template<typename T>
+	struct loc_control
 	{
-		size_t operator()(const po::uuid &u) const { return boost::hash<boost::uuids::uuid>()(u); }
-	};
-}
+		loc_control(void) = delete;
+		loc_control(T *t) : inner(t) {}
+		loc_control(const rdf::storage &s) : inner(&s) {}
 
-namespace po
-{
-	template<typename T>
-	T* unmarshal(const uuid&);
-
-	template<typename T>
-	void marshal(const T*, const uuid&);
-
-	template<typename T>
-	struct loc;
-
-	template<typename T>
-	struct wloc
-	{
-		wloc(loc<T> &l) : _pointed(&l)
+		~loc_control(void)
 		{
-			l._references.insert(std::make_pair(this,true));
+			T** t = boost::get<T*>(&inner);
+			if(t && *t)
+				delete *t;
 		}
 
-		~wloc(void)
-		{
-			loc<T> *t = _pointed.load();
-			if(t)
-				t->_references.erase(this);
-		}
+		bool has_object(void) const { return !!boost::get<T*>(&inner); }
 
-		const T* operator->(void) const { return read(); }
-		const T& operator*(void) const { return *read(); }
+		T* object(void) { return boost::get<T*>(inner); }
+		const rdf::storage &storage(void) { return *boost::get<const rdf::storage*>(inner); }
 
-		const T* read(void) const { return pointed()->read(); }
-		T& write(void) { return pointed()->write(); }
-		const uuid& tag(void) const { return pointed()->_uuid; }
-
-	private:
-		std::atomic<struct loc<T>*> _pointed;
-
-		loc<T> *pointed(void) const
-		{
-			loc<T> *t = _pointed.load();
-			if(!t)
-				throw std::runtime_error("expired wloc");
-			return t;
-		}
-
-		friend struct loc<T>;
+		boost::variant<T*,const rdf::storage*> inner;
 	};
 
 	template<typename T>
-	struct loc
+	marshal_poly make_marshal_poly(std::shared_ptr<loc_control<T>> t, const uuid u)
 	{
-		loc(void) = delete;
-		loc(const uuid &u) : _uuid(u), _current(boost::none) {}
-		loc(const uuid &u, T* t) : _uuid(u), _current(t) { write(); }
-		loc(const loc &) = delete;
-		loc(loc<T> &&l) : _uuid(l._uuid), _current(l._current) { l._uuid = boost::uuids::nil_generator()(); l._current.reset(); }
-
-		~loc(void)
+		std::function<rdf::statements(void)> ret = [t,u](void)
 		{
+			rdf::statements ret = marshal<T>(t->object(),u);
+			return ret;
+		};
 
-			for(std::pair< wloc<T>*,bool> p: _references)
-				p.first->_pointed.store(nullptr);
-			_references.clear();
-		}
+		return ret;
+	}
 
-		void remove(void)
-		{
-			std::lock_guard<std::mutex> g(dirty_locations_mutex);
-			dirty_locations.erase(_uuid);
-		}
-
-		loc<T>& operator=(const loc<T> &) = delete;
-		loc<T>& operator=(const loc<T> &&l)
-		{
-			{
-				std::lock_guard<std::mutex> g(dirty_locations_mutex);
-				dirty_locations.erase(_uuid);
-			}
-
-			_uuid = std::move(l._uuid);
-			_current = std::move(l._current);
-
-			for(std::pair<wloc<T>*,bool> p: _references)
-				p.first->_pointed.store(nullptr);
-			_references.clear();
-			return *this;
-		}
+	template<typename T,typename D>
+	struct basic_loc
+	{
+		basic_loc(void) = delete;
+		basic_loc(const basic_loc<T,D>&) = delete;
+		basic_loc(const uuid &u) : _uuid(u) {}
 
 		const T* operator->(void) const { return read(); }
 		const T& operator*(void) const { return *read(); }
@@ -133,33 +76,72 @@ namespace po
 
 		const T* read(void) const
 		{
-			if(!_current)
-				 _current.reset(unmarshal<T>(_uuid));
-			return _current.get();
+			std::shared_ptr<loc_control<T>> cb = static_cast<const D*>(this)->control();
+
+
+			if(!cb->has_object())
+				cb->inner = unmarshal<T>(_uuid,cb->storage());
+			return cb->object();
 		}
 
 		T& write(void)
 		{
-			if(!_current)
-				 _current.reset(unmarshal<T>(_uuid));
+			read();
+
+			std::shared_ptr<loc_control<T>> cb = static_cast<const D*>(this)->control();
+			std::shared_ptr<loc_control<T>> _old(new loc_control<T>(new T(*(cb->object()))));
 
 			{
-				std::lock_guard<std::mutex> g(dirty_locations_mutex);
-				dirty_locations.insert(make_pair(_uuid,std::bind(marshal<T>,_current.get(),_uuid)));
+				std::lock_guard<std::mutex> guard(dirty_locations_mutex);
+				dirty_locations.emplace(_uuid,std::make_pair(make_marshal_poly(_old,_uuid),make_marshal_poly(cb,_uuid)));
 			}
-
-			return *(_current.get());
+			return *cb->object();
 		}
 
 		const uuid& tag(void) const { return _uuid; }
 
 	private:
 		uuid _uuid;
-		mutable boost::optional<T*> _current;
-		tbb::interface5::concurrent_hash_map<wloc<T>*,bool> _references;
+	};
 
+	template<typename T>
+	struct wloc;
+
+	template<typename T>
+	struct loc : public basic_loc<T,loc<T>>
+	{
+	public:
+		loc(const loc<T> &l) : basic_loc<T,loc<T>>(l.tag()), _control(l._control) {}
+		loc(const uuid &u, T* t) : basic_loc<T,loc<T>>(u), _control(new loc_control<T>(t)) {}
+		loc(const uuid &u, const rdf::storage &s) : basic_loc<T,loc<T>>(u), _control(new loc_control<T>(s)) {}
+
+	protected:
+		std::shared_ptr<loc_control<T>> control(void) const { return _control; }
+
+		mutable std::shared_ptr<loc_control<T>> _control;
+
+		friend struct basic_loc<T,loc<T>>;
 		friend struct wloc<T>;
 	};
 
-	void save_point(void);
+	template<typename T>
+	struct wloc : public basic_loc<T,wloc<T>>
+	{
+	public:
+		wloc(loc<T> &l) : basic_loc<T,wloc<T>>(l.tag()), _control(l.control()) {}
+
+	protected:
+		std::shared_ptr<loc_control<T>> control(void) const
+		{
+			if(_control.expired())
+				throw std::runtime_error("expired wloc");
+			return _control.lock();
+		}
+
+		mutable std::weak_ptr<loc_control<T>> _control;
+
+		friend struct basic_loc<T,wloc<T>>;
+	};
+
+	void save_point(rdf::storage &);
 }

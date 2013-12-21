@@ -1,7 +1,5 @@
 #include <string>
 #include <algorithm>
-#include <sstream>
-#include <cctype>	// isalnum
 
 #include <panopticon/value.hh>
 
@@ -69,73 +67,6 @@ ostream &po::operator<<(ostream &os, const rvalue &r)
 
 	return os;
 }
-/*
-bool rvalue::operator<(const rvalue &a, const rvalue &b)
-{
-	if(is_memory(a) && is_memory(b))
-	{
-		return to_memory(a) < to_memory(b);
-	}
-	else if(is_constant() && b.is_constant())
-	{
-		return to_constant(a) < to_constant(b);
-	}
-		*const po::constant &ac = to_constant(a);
-		const po::constant &bc = to_constant(b);
-
-		if(ac.content() != bc.content())
-			return ac.content() < bc.content();
-		else
-			return ac.width() < bc.width();
-	}*
-	else if(is_variable(a) && is_variable(b))
-	{
-		return to_variable(a) < to_variable(b);
-	}
-		*const po::variable &av = to_variable(a);
-		const po::variable &bv = to_variable(b);
-
-		if(av.name() != bv.name())
-			return av.content() < bc.content();
-		else
-			return av.width() < bv.width();
-	}*
-	else if(is_undefined(a) && is_undefined(b))
-	{
-		return 0;
-	}
-	else
-	{
-		return (is_undefined(a) ? 0 : (is_constant(a) ? 1 : (is_variable(a) ? 2 : (is_memory(a) ? 3 : throw value_exception()))))
-						<
-					 (is_undefined(b) ? 0 : (is_constant(b) ? 1 : (is_variable(b) ? 2 : (is_memory(b) ? 3 : throw value_exception()))))
-	}
-}*/
-
-/*bool rvalue::operator==(const rvalue &b) const
-{
-	if(is_memory() && b.is_memory())
-	{
-		const po::memory &am = to_memory();
-		const po::memory &bm = b.to_memory();
-
-		return am.name() == bm.name() &&
-					 am.offset() == bm.offset() &&
-					 am.endianess() == bm.endianess() &&
-					 am.bytes() == bm.bytes();
-	}
-	if(is_constant() && b.is_constant())
-	{
-		return to_constant().content() == b.to_constant().content();
-	}
-	else
-		return d.all == b.d.all;
-}
-
-bool rvalue::operator!=(const rvalue &b) const
-{
-	return !(*this == b);
-}*/
 
 bool po::operator==(const po::rvalue &a, const po::rvalue &b) { return a._variant == b._variant; }
 bool po::operator!=(const po::rvalue &a, const po::rvalue &b) { return !(a._variant == b._variant); }
@@ -165,18 +96,6 @@ constant::constant(uint64_t n) : _content(n) {}
 uint64_t constant::content(void) const { return _content; }
 bool constant::operator==(const constant &c) const { return _content == c._content; }
 bool constant::operator<(const constant &c) const { return _content < c._content; }
-
-uint64_t po::flsll(uint64_t x)
-{
-	uint64_t ret = 0;
-
-	while(x)
-	{
-		x >>= 1;
-		++ret;
-	}
-	return ret;
-}
 
 variable::variable(const string &b, uint16_t w, int s)
 : _width(w), _name(b), _subscript(s)
@@ -230,61 +149,7 @@ bool memory::operator<(const memory &m) const
 {
 	return _name == m._name ? (*_offset == *m._offset ? (_bytes == m._bytes ? _endianess < m._endianess : _bytes < m._bytes) : *_offset < *m._offset) : _name < m._name;
 }
-
 /*
-bool operator<(const memory &a
-	const po::memory &am = to_memory(a);
-		const po::memory &bm = to_memory(b);
-
-		if(am.name() != bm.name())
-			return am.name() < bm.name();
-		else if(am.offset() != bm.offset())
-			return am.offset() < bm.offset();
-		else if(am.endianess() != bm.endianess())
-			return am.endianess() < bm.endianess();
-		else
-			return am.bytes() < bm.bytes();
-
-oturtlestream &po::operator<<(oturtlestream &os, rvalue r)
-{
-	switch(r.tag())
-	{
-		case rvalue::UndefinedValueTag: os << "[rdf:type po:Undefined]"; return os;
-		case rvalue::ConstantValueTag: 	os << "[rdf:type po:Constant; po:value " << r.to_constant().content() << " po:width \"" << r.to_constant().width() << "\"^^xsd:nonNegativeInteger]"; return os;
-		case rvalue::VariableValueTag:
-		{
-			const variable &v = r.to_variable();
-			os << "[rdf:type po:Variable; po:name \"" << v.name() << "\"; "
-				 << (v.subscript() >= 0 ? "po:subscript " + to_string(v.subscript()) + "; " : "")
-				 << "po:width " << v.width() << "]";
-			return os;
-		}
-		case rvalue::MemoryValueTag:
-		{
-			const memory &m = r.to_memory();
-
-			os << "[rdf:type po:Memory; "
-				 << "po:name \"" << m.name() << "\"^^xsd:string; "
-				 << "po:offset " << m.offset() << "; "
-				 << "po:bytes " << m.bytes() << "; "
-				 << "po:endianess ";
-
-			// endianess
-			switch(m.endianess())
-			{
-				case memory::LittleEndian: os << "po:little-endian; "; break;
-				case memory::BigEndian: os << "po:big-endian; "; break;
-				default: assert(false);
-			}
-
-			os << "]";
-			return os;
-		}
-		default:
-			throw value_exception("Unknown value tag " + to_string(r.tag()));
-	}
-}
-
 rvalue rvalue::unmarshal(const rdf::node &node, const rdf::storage &store)
 {
 	if(node == "undefined"_po)
