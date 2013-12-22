@@ -239,4 +239,52 @@ TEST(loc,marshal_twice)
 	ASSERT_EQ(i,3 + 8 + 4 * 2);
 }
 
-TEST(loc,marshal_delete){}
+TEST(loc,marshal_delete)
+{
+	std::shared_ptr<rdf::storage> store(new rdf::storage());
+	auto gen = string_generator();
+
+	loc<A> a(gen("{00000000-0000-0000-0000-000000000004}"),new A("Hello",{}));
+	loc<B> b1(gen("{00000000-0000-0000-0000-000000000001}"),new B(1));
+	loc<B> b2(gen("{00000000-0000-0000-0000-000000000002}"),new B(2));
+	loc<B> b3(gen("{00000000-0000-0000-0000-000000000003}"),new B(3));
+
+	a.write().bs.push_back(b1);
+	a.write().bs.push_back(b2);
+	a.write().bs.push_back(b3);
+
+	save_point(*store);
+
+	b3.write().length = 0;
+	a.write().bs.pop_back();
+	b3.remove();
+
+	save_point(*store);
+
+	ASSERT_THROW(*b3,std::runtime_error);
+	ASSERT_TRUE(store->has(rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000004}"))),"type"_rdf,"A"_po));
+	ASSERT_TRUE(store->has(rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000004}"))),"name"_po,"Hello"_lit));
+
+	rdf::nodes bs = rdf::read_list(store->first(rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000004}"))),"bs"_po,none).object(),*store);
+	ASSERT_EQ(bs.size(),2);
+	ASSERT_EQ(*bs.begin(),rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000001}"))));
+	ASSERT_EQ(*std::next(bs.begin()),rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000002}"))));
+
+	ASSERT_TRUE(store->has(rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000001}"))),"type"_rdf,"B"_po));
+	ASSERT_TRUE(store->has(rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000001}"))),"length"_po,1_lit));
+	ASSERT_TRUE(store->has(rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000002}"))),"type"_rdf,"B"_po));
+	ASSERT_TRUE(store->has(rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000002}"))),"length"_po,2_lit));
+
+	// A: 3 + 4
+	// B: 2 * 2
+	int i = 0;
+	rdf::stream all = store->select(none,none,none);
+	while(!all.eof())
+	{
+		rdf::statement s;
+		all >> s;
+		++i;
+	}
+
+	ASSERT_EQ(i,3 + 4 + 2 * 2);
+}

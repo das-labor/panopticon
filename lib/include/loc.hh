@@ -78,9 +78,12 @@ namespace po
 		{
 			std::shared_ptr<loc_control<T>> cb = static_cast<const D*>(this)->control();
 
-
 			if(!cb->has_object())
 				cb->inner = unmarshal<T>(_uuid,cb->storage());
+
+			if(!cb->object())
+				throw std::runtime_error("reading deleted loc");
+
 			return cb->object();
 		}
 
@@ -107,6 +110,32 @@ namespace po
 				assert(dirty_locations.emplace(_uuid,std::make_pair(prev,make_marshal_poly(cb,_uuid))).second);
 			}
 			return *cb->object();
+		}
+
+		void remove(void)
+		{
+			read();
+
+			std::shared_ptr<loc_control<T>> cb = static_cast<const D*>(this)->control();
+
+			{
+				std::lock_guard<std::mutex> guard(dirty_locations_mutex);
+				marshal_poly prev;
+
+				if(dirty_locations.count(_uuid))
+				{
+					prev = dirty_locations.at(_uuid).first;
+					dirty_locations.erase(_uuid);
+				}
+				else
+				{
+					prev = make_marshal_poly(std::make_shared<loc_control<T>>(new T(*(cb->object()))),_uuid);
+				}
+
+				assert(dirty_locations.emplace(_uuid,std::make_pair(prev,make_marshal_poly(std::shared_ptr<loc_control<T>>(),_uuid))).second);
+			}
+
+			cb->inner = static_cast<T*>(nullptr);
 		}
 
 		const uuid& tag(void) const { return _uuid; }
