@@ -14,6 +14,7 @@ extern "C" {
 #include <boost/uuid/uuid_generators.hpp>
 #include <boost/uuid/uuid_io.hpp>
 #include <boost/functional/hash.hpp>
+#include <boost/optional.hpp>
 
 #define LOCAL "http://localhost/"
 #define PO "http://panopticum.io/"
@@ -93,8 +94,9 @@ namespace po
 
 			storage &operator=(const storage &) = delete;
 
-			rdf::stream select(const rdf::node &s, const rdf::node &p, const rdf::node &o) const;
-			rdf::statement first(const rdf::node &s, const rdf::node &p, const rdf::node &o) const;
+			rdf::stream select(boost::optional<const rdf::node&> s, boost::optional<const rdf::node&> p, boost::optional<const rdf::node&> o) const;
+			rdf::statement first(boost::optional<const rdf::node&> s,boost::optional<const rdf::node&> p,boost::optional<const rdf::node&> o) const;
+			bool has(boost::optional<const rdf::node&> s,boost::optional<const rdf::node&> p,boost::optional<const rdf::node&> o) const;
 
 			void insert(const rdf::statement &c);
 			void insert(const rdf::node &s, const rdf::node &p, const rdf::node &o);
@@ -102,6 +104,8 @@ namespace po
 			void remove(const rdf::statement &);
 
 			void snapshot(const std::string &path);
+
+			std::string dump(const std::string &format) const;
 
 		private:
 
@@ -135,11 +139,14 @@ namespace po
 			librdf_node *_node;
 		};
 
+		std::ostream& operator<<(std::ostream&, const node&);
+
 		node lit(const std::string &s);
 		node lit(unsigned long long n);
 		node ns_po(const std::string &s);
 		node ns_rdf(const std::string &s);
 		node ns_xsd(const std::string &s);
+		node ns_local(const std::string &s);
 
 		class statement
 		{
@@ -163,12 +170,21 @@ namespace po
 			librdf_statement *_statement;
 		};
 
+		std::ostream& operator<<(std::ostream&, const statement&);
+
 		using statements = std::list<statement>;
+		using nodes = std::list<node>;
+
+		nodes read_list(const node &n, const storage&);
+
+		template<typename It>
+		std::pair<node,statements> write_list(It begin, It end);
 
 		class stream
 		{
 		public:
 			stream(librdf_stream *s);
+			stream(librdf_iterator *i, boost::optional<const rdf::node&> s, boost::optional<const rdf::node&> p, boost::optional<const rdf::node&> o);
 			stream(const stream &s) = delete;
 			stream(stream &&s);
 
@@ -183,25 +199,14 @@ namespace po
 		private:
 			librdf_stream *_stream;
 		};
-
-		class list
-		{
-		public:
-			list(void);
-
-			void insert(const rdf::node &s);
-			rdf::stream to_stream(const rdf::storage &store);
-
-		private:
-			std::list<rdf::node> _list;
-		};
 	}
 
-	inline rdf::node operator"" _lit(const char *s)
+	inline rdf::node operator"" _lit(const char *_s, std::size_t l)
 	{
+		std::string s(_s,l);
 		rdf::world &w = rdf::world::instance();
 		librdf_uri *type = librdf_new_uri(w.rdf(),reinterpret_cast<const unsigned char *>(XSD"string"));
-		rdf::node ret(librdf_new_node_from_typed_literal(w.rdf(),reinterpret_cast<const unsigned char *>(s),NULL,type));
+		rdf::node ret(librdf_new_node_from_typed_literal(w.rdf(),reinterpret_cast<const unsigned char *>(s.c_str()),NULL,type));
 
 		librdf_free_uri(type);
 		return ret;
@@ -225,6 +230,34 @@ namespace po
 	inline rdf::node operator"" _xsd(const char *s, std::size_t l)
 	{
 		return rdf::ns_xsd(std::string(s,l));
+	}
+
+	inline rdf::node operator"" _local(const char *s, std::size_t l)
+	{
+		return rdf::ns_local(std::string(s,l));
+	}
+
+	template<typename It>
+	std::pair<rdf::node,rdf::statements> rdf::write_list(It begin, It end)
+	{
+		rdf::statements ret;
+		rdf::node head = (std::distance(begin,end) ? rdf::node() : "nil"_rdf);
+
+		rdf::node last = head;
+		It i = begin;
+		while(i != end)
+		{
+			const rdf::node &n = *i;
+			rdf::node next = (std::next(i) == end ? "nil"_rdf : rdf::node());
+
+			ret.emplace_back(last,"first"_rdf,n);
+			ret.emplace_back(last,"rest"_rdf,next);
+
+			last = next;
+			++i;
+		}
+
+		return std::make_pair(head,ret);
 	}
 
 	/*

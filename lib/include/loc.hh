@@ -55,7 +55,7 @@ namespace po
 	{
 		std::function<rdf::statements(void)> ret = [t,u](void)
 		{
-			rdf::statements ret = marshal<T>(t->object(),u);
+			rdf::statements ret = (t ? marshal<T>(t->object(),u) : rdf::statements());
 			return ret;
 		};
 
@@ -89,11 +89,22 @@ namespace po
 			read();
 
 			std::shared_ptr<loc_control<T>> cb = static_cast<const D*>(this)->control();
-			std::shared_ptr<loc_control<T>> _old(new loc_control<T>(new T(*(cb->object()))));
 
 			{
 				std::lock_guard<std::mutex> guard(dirty_locations_mutex);
-				dirty_locations.emplace(_uuid,std::make_pair(make_marshal_poly(_old,_uuid),make_marshal_poly(cb,_uuid)));
+				marshal_poly prev;
+
+				if(dirty_locations.count(_uuid))
+				{
+					prev = dirty_locations.at(_uuid).first;
+					dirty_locations.erase(_uuid);
+				}
+				else
+				{
+					prev = make_marshal_poly(std::make_shared<loc_control<T>>(new T(*(cb->object()))),_uuid);
+				}
+
+				assert(dirty_locations.emplace(_uuid,std::make_pair(prev,make_marshal_poly(cb,_uuid))).second);
 			}
 			return *cb->object();
 		}
@@ -111,8 +122,15 @@ namespace po
 	struct loc : public basic_loc<T,loc<T>>
 	{
 	public:
+		using basic_loc<T,loc<T>>::tag;
+
 		loc(const loc<T> &l) : basic_loc<T,loc<T>>(l.tag()), _control(l._control) {}
-		loc(const uuid &u, T* t) : basic_loc<T,loc<T>>(u), _control(new loc_control<T>(t)) {}
+		loc(const uuid &u, T* t) : basic_loc<T,loc<T>>(u), _control(new loc_control<T>(t))
+		{
+			std::lock_guard<std::mutex> guard(dirty_locations_mutex);
+			assert(dirty_locations.emplace(tag(),std::make_pair(make_marshal_poly(std::shared_ptr<loc_control<T>>(),tag()),make_marshal_poly(_control,tag()))).second);
+		}
+
 		loc(const uuid &u, const rdf::storage &s) : basic_loc<T,loc<T>>(u), _control(new loc_control<T>(s)) {}
 
 	protected:

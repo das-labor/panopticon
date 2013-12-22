@@ -25,11 +25,13 @@ namespace po
 	template<>
 	rdf::statements marshal(const B *b, const uuid &u)
 	{
-		cerr << "save B w/ length " << b->length << endl;
-		cerr << "po:" << u << " rdf:type " << "po:B" << endl;
-		cerr << "po:" << u << " po:length " << "\"" << b->length << "\"^^xsd:integer" << endl;
+		rdf::statements ret;
+		rdf::node root = rdf::ns_local(to_string(u));
 
-		return rdf::statements();
+		ret.emplace_back(root,"type"_rdf,"B"_po);
+		ret.emplace_back(root,"length"_po,rdf::lit(b->length));
+
+		return ret;
 	}
 }
 
@@ -67,12 +69,21 @@ namespace po
 	template<>
 	rdf::statements marshal(const A* a, const uuid &u)
 	{
-		cerr << "save \"" << a->name << "\" w/ " << a->bs.size() << " B's" << endl;
-		cerr << ":" << u << " rdf:type " << "po:A" << endl;
-		cerr << ":" << u << " po:name " << "\"" << a->name << "\"^^xsd:string" << endl;
+		rdf::statements ret;
+		rdf::node root = rdf::ns_local(to_string(u));
+
+		ret.emplace_back(root,"type"_rdf,"A"_po);
+		ret.emplace_back(root,"name"_po,rdf::lit(a->name));
+
+		rdf::nodes tmp;
 		for(const loc<B> &b: a->bs)
-			cerr << ":" << u << " po:b " << ":" << b.tag() << endl;
-		return rdf::statements();
+			tmp.emplace_back(rdf::ns_local(to_string(b.tag())));
+
+		pair<rdf::node,rdf::statements> p = rdf::write_list(tmp.begin(),tmp.end());
+		ret.emplace_back(root,"bs"_po,p.first);
+		move(p.second.begin(),p.second.end(),back_inserter(ret));
+
+		return ret;
 	}
 }
 
@@ -129,6 +140,47 @@ TEST(loc,weak_save_point)
 	ASSERT_THROW(aw.write(), std::runtime_error);
 }
 
-TEST(loc,marshal_simple){}
+TEST(loc,marshal_simple)
+{
+	std::shared_ptr<rdf::storage> store(new rdf::storage());
+	auto gen = string_generator();
+
+	loc<A> a(gen("{00000000-0000-0000-0000-000000000004}"),new A("Hello",{}));
+	a.write().bs.push_back(loc<B>(gen("{00000000-0000-0000-0000-000000000001}"),new B(1)));
+	a.write().bs.push_back(loc<B>(gen("{00000000-0000-0000-0000-000000000002}"),new B(2)));
+	a.write().bs.push_back(loc<B>(gen("{00000000-0000-0000-0000-000000000003}"),new B(3)));
+
+	save_point(*store);
+
+	ASSERT_TRUE(store->has(rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000004}"))),"type"_rdf,"A"_po));
+	ASSERT_TRUE(store->has(rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000004}"))),"name"_po,"Hello"_lit));
+
+	rdf::nodes bs = rdf::read_list(store->first(rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000004}"))),"bs"_po,none).object(),*store);
+	ASSERT_EQ(bs.size(),3);
+	ASSERT_EQ(*bs.begin(),rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000001}"))));
+	ASSERT_EQ(*std::next(bs.begin()),rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000002}"))));
+	ASSERT_EQ(*std::next(bs.begin(),2),rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000003}"))));
+
+	ASSERT_TRUE(store->has(rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000001}"))),"type"_rdf,"B"_po));
+	ASSERT_TRUE(store->has(rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000001}"))),"length"_po,1_lit));
+	ASSERT_TRUE(store->has(rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000002}"))),"type"_rdf,"B"_po));
+	ASSERT_TRUE(store->has(rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000002}"))),"length"_po,2_lit));
+	ASSERT_TRUE(store->has(rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000003}"))),"type"_rdf,"B"_po));
+	ASSERT_TRUE(store->has(rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000003}"))),"length"_po,3_lit));
+
+	// A: 3 + 6
+	// B: 3 * 2
+	int i = 0;
+	rdf::stream all = store->select(none,none,none);
+	while(!all.eof())
+	{
+		rdf::statement s;
+		all >> s;
+		++i;
+	}
+
+	ASSERT_EQ(i,3 + 6 + 3 * 2);
+}
+
 TEST(loc,marshal_twice){}
 TEST(loc,marshal_delete){}

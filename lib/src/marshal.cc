@@ -18,6 +18,7 @@ extern "C" {
 
 using namespace po;
 using namespace std;
+using namespace boost;
 
 marshal_exception::marshal_exception(const string &w)
 : runtime_error(w)
@@ -281,12 +282,27 @@ void rdf::storage::snapshot(const string &path)
 		throw marshal_exception("can't save to " + path + ": failed to close directory");
 }
 
-rdf::stream rdf::storage::select(const rdf::node &s,const rdf::node &p,const rdf::node &o) const
+rdf::stream rdf::storage::select(optional<const rdf::node&> s, optional<const rdf::node&> p, optional<const rdf::node&> o) const
 {
-	return rdf::stream(librdf_model_find_statements(_model,statement(s,p,o).inner()));
+	if(s && p && o)
+		return rdf::stream(librdf_model_find_statements(_model,statement(*s,*p,*o).inner()));
+	else if(s && p && !o)
+		return rdf::stream(librdf_model_get_targets(_model,s->inner(),p->inner()),s,p,o);
+	else if(s && !p && o)
+		return rdf::stream(librdf_model_get_arcs(_model,s->inner(),o->inner()),s,p,o);
+	else if(s && !p && !o)
+		throw std::invalid_argument("invalid query");
+	else if(!s && p && o)
+		return rdf::stream(librdf_model_get_sources(_model,o->inner(),p->inner()),s,p,o);
+	else if(!s && p && !o)
+		throw std::invalid_argument("invalid query");
+	else if(!s && !p && o)
+		throw std::invalid_argument("invalid query");
+	else
+		return rdf::stream(librdf_model_as_stream(_model));
 }
 
-rdf::statement rdf::storage::first(const rdf::node &s,const rdf::node &p,const rdf::node &o) const
+rdf::statement rdf::storage::first(optional<const rdf::node&> s,optional<const rdf::node&> p,optional<const rdf::node&> o) const
 {
 	rdf::stream st = select(s,p,o);
 
@@ -299,13 +315,18 @@ rdf::statement rdf::storage::first(const rdf::node &s,const rdf::node &p,const r
 	return ret;
 }
 
+bool rdf::storage::has(optional<const rdf::node&> s,optional<const rdf::node&> p,optional<const rdf::node&> o) const
+{
+	return !select(s,p,o).eof();
+}
+
 void rdf::storage::insert(const rdf::statement &st)
 {
 	if(librdf_model_add_statement(_model,st.inner()))
 		throw marshal_exception("failed to add statement");
 }
 
-void rdf::storage::insert(const rdf::node &s, const rdf::node &p, const rdf::node &o)
+void rdf::storage::insert(const rdf::node& s, const rdf::node& p, const rdf::node& o)
 {
 	if(librdf_model_add(_model,librdf_new_node_from_node(s.inner()),
 															librdf_new_node_from_node(p.inner()),
@@ -316,7 +337,20 @@ void rdf::storage::insert(const rdf::node &s, const rdf::node &p, const rdf::nod
 void rdf::storage::remove(const rdf::statement &st)
 {
 	if(librdf_model_remove_statement(_model,st.inner()))
-		throw marshal_exception("failed to add statement");
+		throw marshal_exception("failed to remove statement");
+}
+
+string rdf::storage::dump(const std::string &format) const
+{
+	unsigned char *raw = librdf_model_to_string(_model,NULL,NULL,format.c_str(),NULL);
+
+	if(raw == NULL)
+		throw marshal_exception("failed to dump in '" + format + "' format");
+
+	string ret(reinterpret_cast<const char*>(raw));
+	free(raw);
+
+	return ret;
 }
 
 rdf::node::node(void)
@@ -373,13 +407,12 @@ bool rdf::node::operator!=(const rdf::node &n) const
 string rdf::node::to_string(void) const
 {
 	if(!_node)
-		throw marshal_exception();
-
-	if(librdf_node_is_literal(_node))
-		return string((char *)librdf_node_get_literal_value(_node));
+		return string("NULL");
+	else if(librdf_node_is_literal(_node))
+		return string(reinterpret_cast<const char *>((librdf_node_get_literal_value(_node))));
 	else if(librdf_node_is_resource(_node))
 		return string(reinterpret_cast<const char *>(librdf_uri_as_string(librdf_node_get_uri(_node))));
-	else if(librdf_node_is_resource(_node))
+	else if(librdf_node_is_blank(_node))
 		return string(reinterpret_cast<const char *>(librdf_node_get_blank_identifier(_node)));
 	else
 		throw marshal_exception("unknown node type");
@@ -388,6 +421,12 @@ string rdf::node::to_string(void) const
 librdf_node *rdf::node::inner(void) const
 {
 	return _node;
+}
+
+std::ostream& rdf::operator<<(std::ostream &os, const rdf::node &n)
+{
+	os << n.to_string();
+	return os;
 }
 
 rdf::node po::rdf::lit(const std::string &s)
@@ -426,6 +465,12 @@ rdf::node po::rdf::ns_xsd(const std::string &s)
 {
 	return rdf::node(librdf_new_node_from_uri_string(rdf::world::instance().rdf(),
 																									 reinterpret_cast<const unsigned char *>((std::string(XSD) + s).c_str())));
+}
+
+rdf::node po::rdf::ns_local(const std::string &s)
+{
+	return rdf::node(librdf_new_node_from_uri_string(rdf::world::instance().rdf(),
+																									 reinterpret_cast<const unsigned char *>((std::string(LOCAL) + s).c_str())));
 }
 
 rdf::statement::statement(const rdf::node &s, const rdf::node &p, const rdf::node &o)
@@ -475,7 +520,7 @@ rdf::statement &rdf::statement::operator=(rdf::statement &&n)
 rdf::node rdf::statement::subject(void) const
 {
 	if(!_statement || !librdf_statement_get_subject(_statement))
-		throw marshal_exception();
+		throw marshal_exception("can't get subject");
 
 	return node(librdf_new_node_from_node(librdf_statement_get_subject(_statement)));
 }
@@ -483,7 +528,7 @@ rdf::node rdf::statement::subject(void) const
 rdf::node rdf::statement::predicate(void) const
 {
 	if(!_statement || !librdf_statement_get_predicate(_statement))
-		throw marshal_exception();
+		throw marshal_exception("can't get predicate");
 
 	return node(librdf_new_node_from_node(librdf_statement_get_predicate(_statement)));
 }
@@ -491,7 +536,7 @@ rdf::node rdf::statement::predicate(void) const
 rdf::node rdf::statement::object(void) const
 {
 	if(!_statement || !librdf_statement_get_object(_statement))
-		throw marshal_exception();
+		throw marshal_exception("can't get object");
 
 	return node(librdf_new_node_from_node(librdf_statement_get_object(_statement)));
 }
@@ -501,9 +546,29 @@ librdf_statement *rdf::statement::inner(void) const
 	return _statement;
 }
 
+ostream& rdf::operator<<(ostream &os, const rdf::statement &s)
+{
+	os << "(" << s.subject() << ", " << s.predicate() << ", " << s.object() << ")";
+	return os;
+}
+
 rdf::stream::stream(librdf_stream *n)
 : _stream(n)
 {}
+
+rdf::stream::stream(librdf_iterator *i, boost::optional<const rdf::node&> s, boost::optional<const rdf::node&> p, boost::optional<const rdf::node&> o)
+: _stream(NULL)
+{
+	if(!s && p && o)
+		_stream = librdf_new_stream_from_node_iterator(i,statement(node(NULL),*p,*o).inner(),LIBRDF_STATEMENT_SUBJECT);
+	else if(s && !p && o)
+		_stream = librdf_new_stream_from_node_iterator(i,statement(*s,node(NULL),*o).inner(),LIBRDF_STATEMENT_PREDICATE);
+	else if(s && p && !o)
+		_stream = librdf_new_stream_from_node_iterator(i,statement(*s,*p,node(NULL)).inner(),LIBRDF_STATEMENT_OBJECT);
+	else
+		throw marshal_exception("invalid statement template");
+	//librdf_free_iterator(i);
+}
 
 rdf::stream::stream(rdf::stream &&n)
 : _stream(n._stream)
@@ -531,4 +596,20 @@ rdf::stream &rdf::stream::operator>>(rdf::statement &st)
 bool rdf::stream::eof(void) const
 {
 	return _stream && librdf_stream_end(_stream) != 0;
+}
+
+rdf::nodes rdf::read_list(const rdf::node &n, const rdf::storage &store)
+{
+	nodes ret;
+	node cur = n;
+
+	while(cur != "nil"_rdf)
+	{
+		statement s = store.first(cur,"first"_rdf,none);
+
+		ret.push_back(s.object());
+		cur = store.first(cur,"rest"_rdf,none).object();
+	}
+
+	return ret;
 }
