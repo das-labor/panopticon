@@ -357,6 +357,10 @@ rdf::node::node(void)
 : _node(librdf_new_node_from_blank_identifier(world::instance().rdf(),NULL))
 {}
 
+rdf::node::node(const std::string &blank_id)
+: _node(librdf_new_node_from_blank_identifier(world::instance().rdf(),reinterpret_cast<const unsigned char*>(blank_id.c_str())))
+{}
+
 rdf::node::node(librdf_node *n)
 : _node(n)
 {}
@@ -567,13 +571,12 @@ rdf::stream::stream(librdf_iterator *i, boost::optional<const rdf::node&> s, boo
 		_stream = librdf_new_stream_from_node_iterator(i,statement(*s,*p,node(NULL)).inner(),LIBRDF_STATEMENT_OBJECT);
 	else
 		throw marshal_exception("invalid statement template");
-	//librdf_free_iterator(i);
 }
 
 rdf::stream::stream(rdf::stream &&n)
 : _stream(n._stream)
 {
-	n._stream = nullptr;
+	n._stream = NULL;
 }
 
 rdf::stream::~stream(void)

@@ -120,6 +120,7 @@ namespace po
 		{
 		public:
 			node(void);
+			explicit node(const std::string &blank_id);
 			node(librdf_node *n);
 			node(const node &n);
 			node(node &&n);
@@ -178,7 +179,7 @@ namespace po
 		nodes read_list(const node &n, const storage&);
 
 		template<typename It>
-		std::pair<node,statements> write_list(It begin, It end);
+		std::pair<node,statements> write_list(It begin, It end, const std::string &ns = "");
 
 		class stream
 		{
@@ -238,17 +239,19 @@ namespace po
 	}
 
 	template<typename It>
-	std::pair<rdf::node,rdf::statements> rdf::write_list(It begin, It end)
+	std::pair<rdf::node,rdf::statements> rdf::write_list(It begin, It end, const std::string &ns)
 	{
 		rdf::statements ret;
-		rdf::node head = (std::distance(begin,end) ? rdf::node() : "nil"_rdf);
+		int counter = 0;
+		std::function<node(void)> blank = [&](void) { return ns.empty() ? node() : node(ns + std::to_string(counter++)); };
+		rdf::node head = (std::distance(begin,end) ? blank() : "nil"_rdf);
 
 		rdf::node last = head;
 		It i = begin;
 		while(i != end)
 		{
 			const rdf::node &n = *i;
-			rdf::node next = (std::next(i) == end ? "nil"_rdf : rdf::node());
+			rdf::node next = (std::next(i) == end ? "nil"_rdf : blank());
 
 			ret.emplace_back(last,"first"_rdf,n);
 			ret.emplace_back(last,"rest"_rdf,next);
