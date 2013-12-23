@@ -149,72 +149,121 @@ bool memory::operator<(const memory &m) const
 {
 	return _name == m._name ? (*_offset == *m._offset ? (_bytes == m._bytes ? _endianess < m._endianess : _bytes < m._bytes) : *_offset < *m._offset) : _name < m._name;
 }
-/*
-rvalue rvalue::unmarshal(const rdf::node &node, const rdf::storage &store)
+
+template<>
+rvalue *po::unmarshal(const uuid &u, const rdf::storage &store)
 {
-	if(node == "undefined"_po)
+	rdf::node root = rdf::ns_local(to_string(u));
+	rdf::node type = store.first(root,"type"_rdf,boost::none).object();
+
+	if(type == "Undefined"_po)
 	{
-		return undefined();
+		return new rvalue(undefined());
+	}
+	else if(type == "Variable"_po)
+	{
+		rdf::statement name = store.first(root,"name"_po,boost::none),
+									 width = store.first(root,"width"_po,boost::none);
+
+		try
+		{
+			rdf::statement subscript = store.first(root,"subscript"_po,boost::none);
+
+			return new rvalue(variable(name.object().to_string(),stoull(width.object().to_string()),stoull(subscript.object().to_string())));
+		}
+		catch(marshal_exception &e)
+		{
+			return new rvalue(variable(name.object().to_string(),stoull(width.object().to_string())));
+		}
+	}
+	else if(type == "Constant"_po)
+	{
+		rdf::statement value = store.first(root,"content"_po,boost::none);
+
+		return new rvalue(constant(stoull(value.object().to_string())));
+	}
+	else if(type == "Memory"_po)
+	{
+		rdf::statement name = store.first(root,"name"_po,boost::none),
+									 offset = store.first(root,"offset"_po,boost::none),
+									 bytes = store.first(root,"bytes"_po,boost::none),
+									 endianess = store.first(root,"endianess"_po,boost::none);
+
+		uuid ou = boost::uuids::string_generator()(offset.object().to_string());
+		std::shared_ptr<rvalue> off(unmarshal<rvalue>(ou,store));
+		memory::Endianess e;
+
+		if(endianess.object() == "big-endian"_po)
+			e = memory::BigEndian;
+		else if(endianess.object() == "little-endian"_po)
+			e = memory::LittleEndian;
+		else
+			throw marshal_exception("unknown endianess");
+
+		return new rvalue(memory(*off,stoull(bytes.object().to_string()),e,name.object().to_string()));
 	}
 	else
-	{
-		rdf::statement type = store.first(node,"type"_rdf,nullptr);
-
-		if(type.object() == "Variable"_po)
-		{
-			rdf::statement name = store.first(node,"name"_po,nullptr),
-										 width = store.first(node,"width"_po,nullptr);
-
-			try
-			{
-				rdf::statement subscript = store.first(node,"subscript"_po,nullptr);
-
-				return variable(name.object().to_string(),stoull(width.object().to_string()),stoull(subscript.object().to_string()));
-			}
-			catch(marshal_exception &e)
-			{
-				return variable(name.object().to_string(),stoull(width.object().to_string()));
-			}
-		}
-		else if(type.object() == "Constant"_po)
-		{
-			rdf::statement value = store.first(node,"value"_po,nullptr),
-										 width = store.first(node,"width"_po,nullptr);
-
-			return constant(stoull(value.object().to_string()),stoull(width.object().to_string()));
-		}
-		else if(type.object() == "Memory"_po)
-		{
-			rdf::statement name = store.first(node,"name"_po,nullptr),
-										 offset = store.first(node,"offset"_po,nullptr),
-										 bytes = store.first(node,"bytes"_po,nullptr),
-										 endianess = store.first(node,"endianess"_po,nullptr);
-
-			rvalue off = rvalue::unmarshal(offset.object(),store);
-			memory::Endianess e;
-
-			if(endianess.object() == "big-endian"_po)
-				e = memory::BigEndian;
-			else if(endianess.object() == "little-endian"_po)
-				e = memory::LittleEndian;
-			else
-				e = memory::NoEndian;
-
-			return memory(off,stoull(bytes.object().to_string()),e,name.object().to_string());
-		}
-		else
-			throw marshal_exception("unknown value type");
-	}
+		throw marshal_exception("unknown value type");
 }
 
-lvalue lvalue::unmarshal(const rdf::node &node, const rdf::storage &store)
+template<>
+rdf::statements po::marshal(const rvalue *rv, const uuid &u)
 {
-	rvalue ret = rvalue::unmarshal(node,store);
+	rdf::statements ret;
+	rdf::node root = rdf::ns_local(to_string(u));
 
-	if(ret.is_lvalue())
-		return ret.to_lvalue();
+	if(!rv)
+	{
+		return ret;
+	}
+	else if(is_undefined(*rv))
+	{
+		ret.emplace_back(root,"type"_rdf,"Undefined"_po);
+		return ret;
+	}
+	else if(is_constant(*rv))
+	{
+		constant c = to_constant(*rv);
+
+		ret.emplace_back(root,"type"_rdf,"Constant"_po);
+		ret.emplace_back(root,"content"_po,rdf::lit(to_string(c.content())));
+		return ret;
+	}
+	else if(is_variable(*rv))
+	{
+		variable v = to_variable(*rv);
+
+		ret.emplace_back(root,"type"_rdf,"Variable"_po);
+		ret.emplace_back(root,"name"_po,rdf::ns_po(v.name()));
+		ret.emplace_back(root,"width"_po,rdf::ns_po(to_string(v.width())));
+		if(v.subscript() >= 0)
+			ret.emplace_back(root,"subscript"_po,rdf::ns_po(to_string(v.subscript())));
+		return ret;
+	}
+	else if(is_memory(*rv))
+	{
+		memory m = to_memory(*rv);
+		uuid ou = boost::uuids::name_generator(u)("offset");
+
+		ret.emplace_back(root,"type"_rdf,"Memory"_po);
+		ret.emplace_back(root,"offset"_po,rdf::ns_po(to_string(ou)));
+		ret.emplace_back(root,"bytes"_po,rdf::ns_po(to_string(m.bytes())));
+
+		switch(m.endianess())
+		{
+			case memory::LittleEndian: ret.emplace_back(root,"endianess"_po,"little-endian"_po); break;
+			case memory::BigEndian: ret.emplace_back(root,"endianess"_po,"big-endian"_po); break;
+			default: throw marshal_exception("unknown endianess");
+		}
+
+		ret.emplace_back(root,"name"_po,rdf::ns_po(m.name()));
+		auto off_st = marshal(&m.offset(),ou);
+		move(off_st.begin(),off_st.end(),back_inserter(ret));
+
+		return ret;
+	}
 	else
-		throw marshal_exception("not a lvalue");
-}*/
+		throw marshal_exception("unknown rvalue type");
+}
 
 value_exception::value_exception(const string &w) : runtime_error(w) {}

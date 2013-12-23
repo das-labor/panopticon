@@ -337,7 +337,11 @@ void rdf::storage::insert(const rdf::node& s, const rdf::node& p, const rdf::nod
 void rdf::storage::remove(const rdf::statement &st)
 {
 	if(librdf_model_remove_statement(_model,st.inner()))
-		throw marshal_exception("failed to remove statement");
+	{
+		stringstream ss;
+		ss << st;
+		throw marshal_exception("failed to remove statement: " + ss.str());
+	}
 }
 
 string rdf::storage::dump(const std::string &format) const

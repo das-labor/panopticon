@@ -55,8 +55,6 @@ namespace po
 		uint64_t _content;
 	};
 
-
-
 	/**
 	 * @brief Undefined value
 	 */
@@ -235,6 +233,12 @@ namespace po
 	bool operator<(const rvalue&, const rvalue&);
 	std::ostream& operator<<(std::ostream&, const rvalue &);
 
+	template<>
+	rvalue* unmarshal(const uuid&, const rdf::storage&);
+
+	template<>
+	rdf::statements marshal(const rvalue*, const uuid&);
+
 	/**
 	 * @brief Exception associated with rvalue subclasses
 	 *
@@ -251,7 +255,7 @@ namespace po
 
 size_t hash_struct(void)
 {
-	return 0;//std::hash<Car()(c);
+	return 0;
 }
 
 /// Hashes a sequence of fields and combines them.

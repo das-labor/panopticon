@@ -1,8 +1,9 @@
 #file(GLOB panopticon_SOURCES src/*.cc src/avr/*.cc)
 #file(GLOB panopticon_HEADERS include/*.hh include/avr/*.hh)
 
-set(panopticon_SOURCES src/loc.cc src/value.cc src/marshal.cc)
-set(panopticon_HEADERS include/loc.hh include/value.hh include/marshal.hh)
+set(panopticon_SOURCES src/loc.cc src/value.cc src/marshal.cc src/layer.cc)
+set(panopticon_HEADERS include/loc.hh include/value.hh include/marshal.hh
+	include/layer.hh)
 
 set(panopticon_INCLUDE_DIRS . ${redland_INCLUDE_DIRS}
 	${raptor_INCLUDE_DIRS} ${minizip_INCLUDE_DIRS} ${tbb_INCLUDE_DIRS} ${cvc4_INCLUDE_DIRS})

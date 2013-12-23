@@ -22,6 +22,8 @@ extern "C" {
 #define RDF	"http://www.w3.org/1999/02/22-rdf-syntax-ns#"
 #define TEMPDIR_TEMPLATE std::string("panopXXXXXX")
 
+#pragma once
+
 /**
  * @file
  * @brief Serializing rotines
@@ -267,7 +269,7 @@ namespace po
 	 * SerializableConcept
 	 *
 	 * std::unordered_set<rdf::statement> marshal(const T*, const uuid&);
-	 * T* unmarshall(const uuid&, const rdf::storage&);
+	 * T* unmarshal(const uuid&, const rdf::storage&);
 	 */
 
 	template<typename T>
