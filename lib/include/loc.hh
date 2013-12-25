@@ -192,3 +192,24 @@ namespace po
 
 	void save_point(rdf::storage &);
 }
+
+namespace std
+{
+	template<typename T>
+	struct hash<po::loc<T>>
+	{
+		size_t operator()(const po::loc<T> &t) const
+		{
+			return hash<po::uuid>()(t.tag()) ^ hash<po::loc_control<T>*>()(t._control.get());
+		}
+	};
+
+	template<typename T>
+	struct hash<po::wloc<T>>
+	{
+		size_t operator()(const po::wloc<T> &t) const
+		{
+			return hash<po::uuid>()(t.tag()) ^ hash<po::loc_control<T>*>()(t._control.lock().get());
+		}
+	};
+}
