@@ -110,8 +110,7 @@ namespace po
 			std::string dump(const std::string &format) const;
 
 		private:
-
-			storage(bool openStore);
+			explicit storage(bool openStore);
 
 			librdf_storage *_storage;
 			librdf_model *_model;

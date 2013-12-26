@@ -120,6 +120,11 @@ TEST(loc,weak)
 	ASSERT_THROW(aw.write(), std::runtime_error);
 }
 
+TEST(loc,lock)
+{
+	ASSERT_EQ(true,false);
+}
+
 TEST(loc,weak_save_point)
 {
 	std::shared_ptr<rdf::storage> store(new rdf::storage());

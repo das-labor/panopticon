@@ -9,9 +9,11 @@
 #include <boost/type_erasure/operators.hpp>
 #include <boost/type_erasure/member.hpp>
 #include <boost/type_erasure/free.hpp>
+#include <boost/type_erasure/call.hpp>
 #include <boost/mpl/vector.hpp>
 #include <boost/icl/right_open_interval.hpp>
 #include <boost/optional.hpp>
+#include <boost/icl/split_interval_map.hpp>
 
 #include <panopticon/marshal.hh>
 #include <panopticon/loc.hh>
@@ -21,11 +23,13 @@
 
 BOOST_TYPE_ERASURE_MEMBER((has_filter), filter, 1)
 BOOST_TYPE_ERASURE_MEMBER((has_name), name, 0)
+BOOST_TYPE_ERASURE_MEMBER((has_address_space), address_space, 0)
+BOOST_TYPE_ERASURE_MEMBER((has_marshal), marshal, 1)
 
 namespace po
 {
-	template<typename T = boost::type_erasure::_self>
-	struct has_marshal { static rdf::statements apply(const T* t, const uuid& u) { return marshal<T>(t,u); } };
+/*	template<typename T = boost::type_erasure::_self>
+	struct has_marshal { static rdf::statements apply(const T* t, const uuid& u) { return marshal<T>(t,u); } };*/
 
 	template<typename T = boost::type_erasure::_self, typename U = T*>
 	struct has_unmarshal { static U apply(const uuid& u, const rdf::storage &s) { return reinterpret_cast<U>(unmarshal<T>(u,s)); } };
@@ -35,13 +39,14 @@ namespace po
 
 	using offset = uint64_t;
 	using byte = uint8_t;
-	using bound = boost::icl::right_open_interval<offset>;
+	using bound = boost::icl::discrete_interval<offset>;
 	using slab = boost::any_range<byte,boost::random_access_traversal_tag,byte,std::ptrdiff_t>;
 	using layer = boost::type_erasure::any<
 									boost::mpl::vector<
 										has_filter<slab(const slab&)>,
-										has_name<const std::string&(void)>,
-										has_marshal<>,
+										has_name<const std::string&(void),const boost::type_erasure::_self>,
+										//has_address_space<const bound&(void)>,
+										has_marshal<rdf::statements(const uuid&)>,
 										has_unmarshal<boost::type_erasure::_self,boost::type_erasure::_self*>,
 										has_hash<>,
 										boost::type_erasure::copy_constructible<>,
@@ -49,11 +54,16 @@ namespace po
 										boost::type_erasure::assignable<>,
 										boost::type_erasure::relaxed,
 										boost::type_erasure::typeid_<>
-									>,
-									boost::type_erasure::_self
+									>/*,
+									boost::type_erasure::_self*/
 								>;
 	using layer_loc = loc<layer>;
 	using layer_wloc = wloc<layer>;
+
+	layer_wloc operator+=(layer_wloc& a, const layer_wloc &b);
+
+	struct map_layer;
+	template<> rdf::statements marshal(const map_layer*, const uuid&);
 
 	struct map_layer
 	{
@@ -63,6 +73,7 @@ namespace po
 
 		slab filter(const slab&) const;
 		const std::string& name(void) const;
+		rdf::statements marshal(const uuid &u) const { return po::marshal<map_layer>(this,u); }
 	//	void invalidate_cache(void);
 
 	private:
@@ -82,13 +93,16 @@ namespace po
 
 	struct anonymous_layer
 	{
+		anonymous_layer(const anonymous_layer&);
 		anonymous_layer(std::initializer_list<byte> il, const std::string &n);
 		anonymous_layer(offset sz, const std::string &n);
 
+		anonymous_layer& operator=(const anonymous_layer&);
 		bool operator==(const anonymous_layer &a) const;
 
 		slab filter(const slab&) const;
 		const std::string& name(void) const;
+		rdf::statements marshal(const uuid &u) const { return po::marshal<anonymous_layer>(this,u); }
 
 		std::vector<byte> data;
 
@@ -102,8 +116,23 @@ namespace po
 
 		slab filter(const slab&) const;
 		const std::string& name(void) const;
+		rdf::statements marshal(const uuid &u) const { return po::marshal<mutable_layer>(this,u); }
 
 		std::map<offset,byte> data;
+
+	private:
+		std::string _name;
+	};
+
+	struct null_layer
+	{
+		null_layer(void);
+
+		bool operator==(const null_layer &a) const;
+
+		slab filter(const slab&) const;
+		const std::string& name(void) const;
+		rdf::statements marshal(const uuid &u) const { return po::marshal<null_layer>(this,u); }
 
 	private:
 		std::string _name;
@@ -140,6 +169,15 @@ namespace std
 	};
 
 	template<>
+	struct hash<po::null_layer>
+	{
+		size_t operator()(const po::null_layer &a) const
+		{
+			return hash<string>()(a.name());// ^ hash<std::map<po::offset,po::byte>>()(a.data);
+		}
+	};
+
+	template<>
 	struct hash<po::bound>
 	{
 		size_t operator()(const po::bound &a) const
@@ -161,11 +199,13 @@ namespace std
 namespace po
 {
 	template<>
-	rdf::statements marshal(const map_layer*, const uuid&) { return rdf::statements(); }
-	template<>
 	rdf::statements marshal(const anonymous_layer*, const uuid&) { return rdf::statements(); }
 	template<>
 	rdf::statements marshal(const mutable_layer*, const uuid&) { return rdf::statements(); }
+	template<>
+	rdf::statements marshal(const null_layer*, const uuid&) { return rdf::statements(); }
+	template<>
+	rdf::statements marshal(const layer *l, const uuid &u) { return boost::type_erasure::call(has_marshal<layer>(),l,u); }
 
 	template<>
 	map_layer* unmarshal(const uuid&, const rdf::storage&) { return nullptr; }
@@ -173,28 +213,29 @@ namespace po
 	mutable_layer* unmarshal(const uuid&, const rdf::storage&) { return nullptr; }
 	template<>
 	anonymous_layer* unmarshal(const uuid&, const rdf::storage&) { return nullptr; }
-
-	using layer_stack = digraph<layer_loc,bound>;
+	template<>
+	null_layer* unmarshal(const uuid&, const rdf::storage&) { return nullptr; }
 
 	struct stack
 	{
-		using image = std::list<std::pair<bound,layer_wloc>>;
+		using image = boost::icl::split_interval_map<offset,layer_wloc>;
 		using layers = digraph<layer_loc,bound>;
-		using tree = std::unordered_multimap<layer_wloc,layer_wloc>;
-		//unordered_pmap<boost::graph_traits<digraph<layer,bound>>::vertex_descriptor,boost::graph_traits<digraph<layer,bound>>::vertex_descriptor>;
+		using tree = std::unordered_map<layer_wloc,layer_wloc>;
 
-		void add(const bound&, layer*);
+		stack(void);
+		void add(const bound&, layer_loc);
 
 		const image& projection(void) const;
 		const layers& graph(void) const;
-		const tree& spanning_tree(void) const;
+		//const tree& spanning_tree(void) const;
+		//const boost::icl::split_interval_map<offset,std::pair<bound,layer_wloc>> &continuous(void) const;
 
 	private:
-		boost::graph_traits<digraph<layer,bound>>::vertex_descriptor root(const digraph<layer,bound> &g);
+		layers _graph;
+		boost::graph_traits<digraph<layer_loc,bound>>::vertex_descriptor _root;
 
-		image _projection;
-		boost::optional<boost::graph_traits<digraph<layer,bound>>::vertex_descriptor> _root;
-		mutable boost::optional<layers> _graph;
+		// caches
+		mutable boost::optional<image> _projection;
 		mutable boost::optional<tree> _spanning_tree;
 	};
 }

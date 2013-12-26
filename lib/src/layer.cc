@@ -8,6 +8,11 @@ using namespace po;
 using namespace std;
 using namespace boost;
 
+po::layer_wloc po::operator+=(po::layer_wloc& a, const po::layer_wloc &b)
+{
+	return a = b;
+}
+
 map_layer::map_layer(const string &n, function<uint8_t(uint8_t)> fn)
 : _name(n), _operation(fn)
 {}
@@ -49,3 +54,167 @@ slab mutable_layer::filter(const slab& in) const
 }
 
 const std::string& mutable_layer::name(void) const { return _name; }
+
+null_layer::null_layer(void) : _name("null") {}
+
+bool null_layer::operator==(const null_layer &a) const
+{
+	return a._name == _name;
+}
+
+slab null_layer::filter(const slab&) const { return slab(); }
+const std::string& null_layer::name(void) const { return _name; }
+
+stack::stack(void) : _graph(), _root(_graph.insert_node(layer_loc(uuids::random_generator()(),new layer(null_layer())))), _projection(none), _spanning_tree(none) {}
+void stack::add(const bound &b, layer_loc l)
+{
+	auto proj = projection();
+	auto i = proj.find(icl::first(b));
+	auto vx = _graph.insert_node(l);
+
+	while(i != proj.end() && icl::touches(bound(icl::first(i->first),icl::last(i->first) + 1),b))
+	{
+		bound n = bound(icl::first(i->first),icl::last(i->first) + 1) & b;
+		_graph.insert_edge(n,vx,*_graph.find_node(i->second.lock()));
+
+		++i;
+	}
+
+	_projection = none;
+	_spanning_tree = none;
+}
+
+const stack::image& stack::projection(void) const
+{
+	if(!_projection)
+	{
+		using vertex_descriptor = boost::graph_traits<digraph<layer_loc,bound>>::vertex_descriptor;
+		using edge_descriptor = boost::graph_traits<digraph<layer_loc,bound>>::edge_descriptor;
+		std::function<void(vertex_descriptor)> step;
+		std::unordered_set<vertex_descriptor> visited;
+		_projection = icl::split_interval_map<offset,layer_wloc>();
+
+		step = [&](vertex_descriptor v)
+		{
+			layer_loc as = _graph.get_node(v);
+			auto p = in_edges(v,_graph);
+
+			std::for_each(p.first,p.second,[&](edge_descriptor e)
+			{
+				bound b = _graph.get_edge(e);
+				layer_loc other = _graph.get_node(source(e,_graph));
+
+				*_projection += make_pair(b,layer_wloc(other));
+			});
+
+			std::for_each(p.first,p.second,[&](edge_descriptor e)
+			{
+				auto u = source(e,_graph);
+
+				if(u != *_graph.nodes().second && !visited.count(u))
+					step(u);
+			});
+		};
+
+		//_projection = list<pair<bound,layer_wloc>>();
+		step(_root);
+		assert(visited.size() == _graph.num_nodes());
+	}
+
+	return *_projection;
+}
+
+/*const icl::split_interval_map<offset,pair<bound,layer_wloc>> &stack::continuous(void) const
+{
+	if(!_continuous)
+	{
+		auto proj = projection();
+
+		_continuous = icl::split_interval_map<offset,layer_wloc>();
+
+		for(const pair<bound,layer_wloc> &p: *_projection)
+		{
+			offset b = icl::last(*_projection) + 1;
+			_continuous->add(make_pair(bound(b,b + icl::size(p.first)),make_pair(p.first,layer_wloc(p.second))));
+		}
+	}
+
+	return _continuous;
+}*/
+
+const stack::layers& stack::graph(void) const
+{
+	return _graph;
+}
+
+/*const stack::tree& stack::spanning_tree(void) const
+{
+	if(!_spanning_tree)
+	{
+		using vertex_descriptor = typename boost::graph_traits<digraph<po::layer_loc,po::bound>>::vertex_descriptor;
+		using edge_descriptor = typename boost::graph_traits<digraph<po::layer_loc,po::bound>>::edge_descriptor;
+
+		auto r = *_root;
+		std::unordered_map<edge_descriptor,int> w_map;
+		boost::associative_property_map<std::unordered_map<edge_descriptor,int>> weight_adaptor(w_map);
+		auto common_parent = [&](vertex_descriptor v, vertex_descriptor u)
+		{
+			auto find_path = [&](vertex_descriptor x)
+			{
+				std::unordered_map<vertex_descriptor,vertex_descriptor> p_map;
+				boost::associative_property_map<std::unordered_map<vertex_descriptor,vertex_descriptor>> pred_adaptor(p_map);
+
+				boost::dijkstra_shortest_paths(g,x,boost::weight_map(weight_adaptor).predecessor_map(pred_adaptor));
+
+				auto i = r;
+				std::list<vertex_descriptor> path({i});
+				while(i != p_map[i])
+				{
+					i = p_map[i];
+					path.push_back(i);
+				}
+				return path;
+			};
+
+			auto l1 =	find_path(v);
+			auto l2 = find_path(u);
+
+			return *std::find_first_of(l1.begin(),l1.end(),l2.begin(),l2.end());
+		};
+		unordered_pmap<vertex_descriptor,vertex_descriptor> ret;
+
+		for(auto v: iters(g.edges()))
+			put(weight_adaptor,v,1);
+
+		 *
+		 * for(n: nodes(G))
+		 * 	 for(e: in_edges(n))
+		 *     c = source(e)
+		 *     if(!in_tree(c))
+		 *       add_to_tree(n,c)
+		 *     else
+		 *       del_from_tree(c)
+		 *       add_to_tree(common_parent(n,c),c)
+		 *
+		auto revgraph = boost::make_reverse_graph(g);
+		boost::breadth_first_search(revgraph,r,boost::visitor(boost::make_bfs_visitor(make_lambda_visitor(
+			std::function<void(vertex_descriptor v)>([&](vertex_descriptor v)
+			{
+				for(auto e: iters(g.in_edges(v)))
+				{
+					auto c = source(e,g);
+					if(ret.count(c) == 0)
+						ret[c] = v;
+					else
+						ret[c] = common_parent(ret.at(c),v);
+				}
+			}),revgraph,boost::on_discover_vertex()))));
+
+		_tree = unordered_map<layer_wloc,layer_wloc>();
+
+		for(const pair<vertex_descriptor,vertex_descriptor> &p: ret)
+			_tree.emplace(layer_wloc(_graph.get_node(p.first)),layer_wloc(_graph.get_node(p.second)));
+	}
+
+	return _tree;
+}*/
