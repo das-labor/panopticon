@@ -20,21 +20,6 @@ namespace po
 	using bound = boost::icl::discrete_interval<offset>;
 	using slab = boost::any_range<byte,boost::random_access_traversal_tag,byte,std::ptrdiff_t>;
 
-	struct layer
-	{
-		virtual ~layer(void);
-
-		virtual string name(void) const = 0;
-		slab filter(const slab&) const;
-		virtua
-		using layer_loc = loc<layer>;
-	using layer_wloc = wloc<layer>;
-
-	layer_wloc operator+=(layer_wloc& a, const layer_wloc &b);
-
-	struct map_layer;
-	template<> rdf::statements marshal(const map_layer*, const uuid&);
-
 	struct map_layer
 	{
 		map_layer(const std::string &, std::function<byte(byte)> fn);
@@ -43,7 +28,6 @@ namespace po
 
 		slab filter(const slab&) const;
 		const std::string& name(void) const;
-		rdf::statements marshal(const uuid &u) const { return po::marshal<map_layer>(this,u); }
 	//	void invalidate_cache(void);
 
 	private:
@@ -72,7 +56,6 @@ namespace po
 
 		slab filter(const slab&) const;
 		const std::string& name(void) const;
-		rdf::statements marshal(const uuid &u) const { return po::marshal<anonymous_layer>(this,u); }
 
 		std::vector<byte> data;
 
@@ -86,7 +69,6 @@ namespace po
 
 		slab filter(const slab&) const;
 		const std::string& name(void) const;
-		rdf::statements marshal(const uuid &u) const { return po::marshal<mutable_layer>(this,u); }
 
 		std::map<offset,byte> data;
 
@@ -94,56 +76,28 @@ namespace po
 		std::string _name;
 	};
 
-	struct null_layer
-	{
-		null_layer(void);
+	using layer = boost::variant<mutable_layer,anonymous_layer,map_layer>;
+	using layer_loc = loc<layer>;
+	using layer_wloc = wloc<layer>;
 
-		bool operator==(const null_layer &a) const;
-
-		slab filter(const slab&) const;
-		const std::string& name(void) const;
-		rdf::statements marshal(const uuid &u) const { return po::marshal<null_layer>(this,u); }
-
-	private:
-		std::string _name;
-	};
+	layer_wloc operator+=(layer_wloc& a, const layer_wloc &b);
 }
 
 namespace std
 {
 	template<>
-	struct hash<po::map_layer>
+	struct hash<po::layer>
 	{
-		size_t operator()(const po::map_layer &a) const
+		size_t operator()(const po::layer &a) const
 		{
-			return hash<string>()(a.name());
-		}
-	};
-
-	template<>
-	struct hash<po::anonymous_layer>
-	{
-		size_t operator()(const po::anonymous_layer &a) const
-		{
-			return hash<string>()(a.name());// ^ hash<std::vector<po::byte>>()(a.data);
-		}
-	};
-
-	template<>
-	struct hash<po::mutable_layer>
-	{
-		size_t operator()(const po::mutable_layer &a) const
-		{
-			return hash<string>()(a.name());// ^ hash<std::map<po::offset,po::byte>>()(a.data);
-		}
-	};
-
-	template<>
-	struct hash<po::null_layer>
-	{
-		size_t operator()(const po::null_layer &a) const
-		{
-			return hash<string>()(a.name());// ^ hash<std::map<po::offset,po::byte>>()(a.data);
+			if(boost::get<map_layer>(&a))
+				return hash<string>()(boost::get<map_layer>(a).name());
+			if(boost::get<mutable_layer>(&a))
+				return hash<string>()(boost::get<mutable_layer>(a).name());
+			if(boost::get<anonymous_layer>(&a))
+				return hash<string>()(boost::get<anonymous_layer>(a).name());
+			else
+				throw invalid_argument("unknown layer type");
 		}
 	};
 
@@ -155,36 +109,15 @@ namespace std
 			return hash<po::offset>()(boost::icl::first(a)) + hash<po::offset>()(boost::icl::last(a));
 		}
 	};
-
-	template<>
-	struct hash<po::layer>
-	{
-		size_t operator()(const po::layer &a) const
-		{
-			return boost::type_erasure::call(po::has_hash<>(),a);;
-		}
-	};
 }
 
 namespace po
 {
 	template<>
-	rdf::statements marshal(const anonymous_layer*, const uuid&) { return rdf::statements(); }
-	template<>
-	rdf::statements marshal(const mutable_layer*, const uuid&) { return rdf::statements(); }
-	template<>
-	rdf::statements marshal(const null_layer*, const uuid&) { return rdf::statements(); }
-	template<>
-	rdf::statements marshal(const layer *l, const uuid &u) { return boost::type_erasure::call(has_marshal<layer>(),l,u); }
+	rdf::statements marshal(const layer*, const uuid&) { return rdf::statements(); }
 
 	template<>
-	map_layer* unmarshal(const uuid&, const rdf::storage&) { return nullptr; }
-	template<>
-	mutable_layer* unmarshal(const uuid&, const rdf::storage&) { return nullptr; }
-	template<>
-	anonymous_layer* unmarshal(const uuid&, const rdf::storage&) { return nullptr; }
-	template<>
-	null_layer* unmarshal(const uuid&, const rdf::storage&) { return nullptr; }
+	layer* unmarshal(const uuid&, const rdf::storage&) { return nullptr; }
 
 	struct stack
 	{
