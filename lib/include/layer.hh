@@ -3,14 +3,6 @@
 #include <boost/range/any_range.hpp>
 #include <boost/range/adaptor/transformed.hpp>
 #include <boost/range.hpp>
-#include <boost/type_erasure/any.hpp>
-#include <boost/type_erasure/any_cast.hpp>
-#include <boost/type_erasure/builtin.hpp>
-#include <boost/type_erasure/operators.hpp>
-#include <boost/type_erasure/member.hpp>
-#include <boost/type_erasure/free.hpp>
-#include <boost/type_erasure/call.hpp>
-#include <boost/mpl/vector.hpp>
 #include <boost/icl/right_open_interval.hpp>
 #include <boost/optional.hpp>
 #include <boost/icl/split_interval_map.hpp>
@@ -21,43 +13,21 @@
 
 #pragma once
 
-BOOST_TYPE_ERASURE_MEMBER((has_filter), filter, 1)
-BOOST_TYPE_ERASURE_MEMBER((has_name), name, 0)
-BOOST_TYPE_ERASURE_MEMBER((has_address_space), address_space, 0)
-BOOST_TYPE_ERASURE_MEMBER((has_marshal), marshal, 1)
-
 namespace po
 {
-/*	template<typename T = boost::type_erasure::_self>
-	struct has_marshal { static rdf::statements apply(const T* t, const uuid& u) { return marshal<T>(t,u); } };*/
-
-	template<typename T = boost::type_erasure::_self, typename U = T*>
-	struct has_unmarshal { static U apply(const uuid& u, const rdf::storage &s) { return reinterpret_cast<U>(unmarshal<T>(u,s)); } };
-
-	template<typename T = boost::type_erasure::_self>
-	struct has_hash { static size_t apply(const T& t) { return std::hash<T>()(t); } };
-
 	using offset = uint64_t;
 	using byte = uint8_t;
 	using bound = boost::icl::discrete_interval<offset>;
 	using slab = boost::any_range<byte,boost::random_access_traversal_tag,byte,std::ptrdiff_t>;
-	using layer = boost::type_erasure::any<
-									boost::mpl::vector<
-										has_filter<slab(const slab&)>,
-										has_name<const std::string&(void),const boost::type_erasure::_self>,
-										//has_address_space<const bound&(void)>,
-										has_marshal<rdf::statements(const uuid&)>,
-										has_unmarshal<boost::type_erasure::_self,boost::type_erasure::_self*>,
-										has_hash<>,
-										boost::type_erasure::copy_constructible<>,
-										boost::type_erasure::equality_comparable<>,
-										boost::type_erasure::assignable<>,
-										boost::type_erasure::relaxed,
-										boost::type_erasure::typeid_<>
-									>/*,
-									boost::type_erasure::_self*/
-								>;
-	using layer_loc = loc<layer>;
+
+	struct layer
+	{
+		virtual ~layer(void);
+
+		virtual string name(void) const = 0;
+		slab filter(const slab&) const;
+		virtua
+		using layer_loc = loc<layer>;
 	using layer_wloc = wloc<layer>;
 
 	layer_wloc operator+=(layer_wloc& a, const layer_wloc &b);
