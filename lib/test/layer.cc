@@ -47,6 +47,8 @@ TEST(layer,add)
 	stack st;
 
 	st.add(bound(0,6),layer_loc(boost::uuids::random_generator()(),new layer(anonymous_layer({1,2,3,4,5,6},"anon 2"))));
+	st.add(bound(10,40),layer_loc(boost::uuids::random_generator()(),new layer(anonymous_layer({1,2,3,4,5,6},"anon 3"))));
+	st.add(bound(4,12),layer_loc(boost::uuids::random_generator()(),new layer(anonymous_layer({1,2,3,4,5,6},"anon 4"))));
 	auto proj = st.projection();
 
 	for(const std::pair<bound,layer_wloc> &p: proj)

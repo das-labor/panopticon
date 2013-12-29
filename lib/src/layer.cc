@@ -83,21 +83,31 @@ stack::stack(void) : _graph(), _root(_graph.insert_node(layer_loc(uuids::random_
 void stack::add(const bound &b, layer_loc l)
 {
 	auto proj = projection();
-	auto i = proj.find(icl::first(b));
+	auto i = proj.find(b);
 	auto vx = _graph.insert_node(l);
-	bool t = false;
+	boost::optional<offset> last = none;
 
-	while(i != proj.end() && icl::touches(bound(icl::first(i->first),icl::last(i->first) + 1),b))
+	if(i == proj.end())
 	{
-		bound n = bound(icl::first(i->first),icl::last(i->first) + 1) & b;
-		_graph.insert_edge(n,vx,*_graph.find_node(i->second.lock()));
-
-		++i;
-		t = true;
-	}
-
-	if(!t)
 		_graph.insert_edge(b,vx,_root);
+	}
+	else
+	{
+		while(i != proj.end())
+		{
+			bound n = i->first & b;
+			_graph.insert_edge(n,vx,*_graph.find_node(i->second.lock()));
+
+			if(last && *last + 1 != icl::first(n))
+			{
+				bound m(*last + 1,icl::first(n));
+				_graph.insert_edge(m,vx,_root);
+			}
+			last = icl::last(n);
+
+			++i;
+		}
+	}
 
 	_projection = none;
 	_spanning_tree = none;
@@ -111,7 +121,7 @@ const stack::image& stack::projection(void) const
 		using edge_descriptor = boost::graph_traits<digraph<layer_loc,bound>>::edge_descriptor;
 		std::function<void(vertex_descriptor)> step;
 		std::unordered_set<vertex_descriptor> visited;
-		_projection = icl::split_interval_map<offset,layer_wloc>();
+		_projection = icl::interval_map<offset,layer_wloc>();
 
 		step = [&](vertex_descriptor v)
 		{
@@ -125,7 +135,7 @@ const stack::image& stack::projection(void) const
 				bound b = _graph.get_edge(e);
 				layer_loc other = _graph.get_node(source(e,_graph));
 
-				*_projection += make_pair(b,layer_wloc(other));
+				_projection->add(make_pair(b,layer_wloc(other)));
 			});
 
 			std::for_each(p.first,p.second,[&](edge_descriptor e)
@@ -139,7 +149,6 @@ const stack::image& stack::projection(void) const
 
 		//_projection = list<pair<bound,layer_wloc>>();
 		step(_root);
-		std::cerr << visited.size() << " " << _graph.num_nodes() << std::endl;
 		assert(visited.size() == _graph.num_nodes());
 	}
 

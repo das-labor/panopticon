@@ -115,7 +115,7 @@ namespace po
 {
 	struct stack
 	{
-		using image = boost::icl::split_interval_map<offset,layer_wloc>;
+		using image = boost::icl::interval_map<offset,layer_wloc>;
 		using layers = digraph<layer_loc,bound>;
 		using tree = std::unordered_map<layer_wloc,layer_wloc>;
 
