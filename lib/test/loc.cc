@@ -122,7 +122,16 @@ TEST(loc,weak)
 
 TEST(loc,lock)
 {
-	ASSERT_EQ(true,false);
+	std::shared_ptr<rdf::storage> store(new rdf::storage());
+	auto rand = random_generator();
+	loc<A> a(rand(),new A("Hello",{1,2,3}));
+	wloc<A> aw(a);
+
+	ASSERT_EQ(&(*a),&(*aw));
+
+	a = loc<A>(rand(),new A("Hello",{1,2,3}));
+	save_point(*store);
+	ASSERT_THROW(*aw,runtime_error);
 }
 
 TEST(loc,weak_save_point)
