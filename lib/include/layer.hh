@@ -47,11 +47,9 @@ namespace po
 
 	struct anonymous_layer
 	{
-		anonymous_layer(const anonymous_layer&);
 		anonymous_layer(std::initializer_list<byte> il, const std::string &n);
 		anonymous_layer(offset sz, const std::string &n);
 
-		anonymous_layer& operator=(const anonymous_layer&);
 		bool operator==(const anonymous_layer &a) const;
 
 		slab filter(const slab&) const;
@@ -81,6 +79,15 @@ namespace po
 	using layer_wloc = wloc<layer>;
 
 	layer_wloc operator+=(layer_wloc& a, const layer_wloc &b);
+
+	template<>
+	rdf::statements marshal(const layer*, const uuid&) { return rdf::statements(); }
+
+	template<>
+	layer* unmarshal(const uuid&, const rdf::storage&) { return nullptr; }
+
+	slab filter(const layer &l, const slab &s);
+	std::string name(const layer& l);
 }
 
 namespace std
@@ -90,14 +97,7 @@ namespace std
 	{
 		size_t operator()(const po::layer &a) const
 		{
-			if(boost::get<map_layer>(&a))
-				return hash<string>()(boost::get<map_layer>(a).name());
-			if(boost::get<mutable_layer>(&a))
-				return hash<string>()(boost::get<mutable_layer>(a).name());
-			if(boost::get<anonymous_layer>(&a))
-				return hash<string>()(boost::get<anonymous_layer>(a).name());
-			else
-				throw invalid_argument("unknown layer type");
+			return hash<string>()(name(a));
 		}
 	};
 
@@ -113,12 +113,6 @@ namespace std
 
 namespace po
 {
-	template<>
-	rdf::statements marshal(const layer*, const uuid&) { return rdf::statements(); }
-
-	template<>
-	layer* unmarshal(const uuid&, const rdf::storage&) { return nullptr; }
-
 	struct stack
 	{
 		using image = boost::icl::split_interval_map<offset,layer_wloc>;

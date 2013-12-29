@@ -10,7 +10,7 @@ using namespace po;
 using namespace po::avr;
 
 // registers
-const variable r0 = "r0"_v8, r1 = "r1"_v8, r2 = "r2"_v8, r3 = "r3"_v8, r4 = "r4"_v8, r5 = "r5"_v8, r6 = "r6"_v8, 
+const variable r0 = "r0"_v8, r1 = "r1"_v8, r2 = "r2"_v8, r3 = "r3"_v8, r4 = "r4"_v8, r5 = "r5"_v8, r6 = "r6"_v8,
 							 r7 = "r7"_v8, r8 = "r8"_v8, r9 = "r9"_v8, r10 = "r10"_v8, r11 = "r11"_v8, r12 = "r12"_v8,
 							 r13 = "r13"_v8, r14 = "r14"_v8, r15 = "r15"_v8, r16 = "r16"_v8, r17 = "r17"_v8, r18 = "r18"_v8,
 							 r19 = "r19"_v8, r20 = "r20"_v8, r21 = "r21"_v8, r22 = "r22"_v8, r23 = "r23"_v8, r24 = "r24"_v8,
@@ -26,7 +26,7 @@ variable po::avr::decode_reg(unsigned int r)
 variable po::avr::decode_preg(unsigned int r, IndirectRegOp op, int d)
 {
 	std::string name;
-	
+
 	switch(r)
 	{
 		case 26: name = "X"; break;
@@ -121,21 +121,21 @@ variable po::avr::decode_ioreg(unsigned int r)
 	return variable(name,8);
 }
 
-memory po::avr::sram(rvalue o) 
-{ 
-	return memory(o,1,memory::BigEndian,"sram"); 
+memory po::avr::sram(rvalue o)
+{
+	return memory(o,1,memory::BigEndian,"sram");
 }
 
-memory po::avr::flash(rvalue o) 
-{ 
-	return memory(o,1,memory::BigEndian,"flash"); 
+memory po::avr::flash(rvalue o)
+{
+	return memory(o,1,memory::BigEndian,"flash");
 }
 
 sem_action po::avr::unary_reg(std::string x, std::function<void(cg &c, const variable &v)> func)
 {
 	return [x,func](sm &st)
 	{
-		variable op = st.capture_groups.count("d") ? decode_reg((unsigned int)st.capture_groups["d"]) : 
+		variable op = st.capture_groups.count("d") ? decode_reg((unsigned int)st.capture_groups["d"]) :
 																								 decode_reg((unsigned int)st.capture_groups["r"]);
 		if(func)
 			st.mnemonic(st.tokens.size(),x,"{8}",op,std::bind(func,std::placeholders::_1,op));
@@ -190,13 +190,13 @@ sem_action po::avr::binary_st(variable Rd1, variable Rd2, bool pre_dec, bool pos
 	return [=](sm &st)
 	{
 		lvalue X = po::temporary(po::avr_tag());
-		
+
 		variable Rr = decode_reg(st.capture_groups["r"]);
 		std::string fmt("");
 
 		if(pre_dec)
 			fmt += "-";
-		
+
 		fmt += "{8::";
 
 		if(Rd1.name() == "r26")
@@ -217,13 +217,13 @@ sem_action po::avr::binary_st(variable Rd1, variable Rd2, bool pre_dec, bool pos
 		st.mnemonic(st.tokens.size(),"st",fmt,{X,Rr},[=](cg &c)
 		{
 			c.or_b(X,c.shiftl_u(Rd2,8_i8),Rd1);
-			
-			if(pre_dec) 
+
+			if(pre_dec)
 				c.sub_i(X,X,1_i8);
-			
+
 			c.assign(sram(X),Rr);
-			
-			if(post_inc) 
+
+			if(post_inc)
 				c.add_i(X,X,1_i8);
 
 			if(post_inc || pre_dec)
@@ -243,13 +243,13 @@ sem_action po::avr::binary_ld(variable Rr1, variable Rr2, bool pre_dec, bool pos
 	return [=](sm &st)
 	{
 		lvalue X = po::temporary(po::avr_tag());
-		
+
 		variable Rd = decode_reg(st.capture_groups["r"]);
 		std::string fmt("");
 
 		if(pre_dec)
 			fmt += "-";
-		
+
 		fmt += "{8::";
 
 		if(Rr1.name() == "r26")
@@ -270,13 +270,13 @@ sem_action po::avr::binary_ld(variable Rr1, variable Rr2, bool pre_dec, bool pos
 		st.mnemonic(st.tokens.size(),"ld",fmt,{X,Rd},[=](cg &c)
 		{
 			c.or_b(X,c.shiftl_u(Rr2,8_i8),Rr1);
-			
-			if(pre_dec) 
+
+			if(pre_dec)
 				c.sub_i(X,X,1_i8);
-			
+
 			c.assign(Rd,sram(X));
-			
-			if(post_inc) 
+
+			if(post_inc)
 				c.add_i(X,X,1_i8);
 
 			if(post_inc || pre_dec)
@@ -326,7 +326,7 @@ sem_action po::avr::binary_ldq(variable Rr1, variable Rr2)
 	{
 		unsigned int q = st.capture_groups["q"];
 		lvalue X = po::temporary(po::avr_tag());
-		
+
 		variable Rd = decode_reg(st.capture_groups["r"]);
 		std::string fmt("{8::");
 

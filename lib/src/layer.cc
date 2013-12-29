@@ -55,22 +55,37 @@ slab mutable_layer::filter(const slab& in) const
 
 const std::string& mutable_layer::name(void) const { return _name; }
 
-null_layer::null_layer(void) : _name("null") {}
-
-bool null_layer::operator==(const null_layer &a) const
+po::slab po::filter(const po::layer &a, const po::slab &s)
 {
-	return a._name == _name;
+	if(boost::get<po::map_layer>(&a))
+		return boost::get<po::map_layer>(a).filter(s);
+	if(boost::get<po::mutable_layer>(&a))
+		return boost::get<po::mutable_layer>(a).filter(s);
+	if(boost::get<po::anonymous_layer>(&a))
+		return boost::get<po::anonymous_layer>(a).filter(s);
+	else
+		throw invalid_argument("unknown layer type");
 }
 
-slab null_layer::filter(const slab&) const { return slab(); }
-const std::string& null_layer::name(void) const { return _name; }
+std::string po::name(const po::layer &a)
+{
+	if(boost::get<po::map_layer>(&a))
+		return boost::get<po::map_layer>(a).name();
+	if(boost::get<po::mutable_layer>(&a))
+		return boost::get<po::mutable_layer>(a).name();
+	if(boost::get<po::anonymous_layer>(&a))
+		return boost::get<po::anonymous_layer>(a).name();
+	else
+		throw invalid_argument("unknown layer type");
+}
 
-stack::stack(void) : _graph(), _root(_graph.insert_node(layer_loc(uuids::random_generator()(),new layer(null_layer())))), _projection(none), _spanning_tree(none) {}
+stack::stack(void) : _graph(), _root(_graph.insert_node(layer_loc(uuids::random_generator()(),new layer(anonymous_layer({},"root"))))), _projection(none), _spanning_tree(none) {}
 void stack::add(const bound &b, layer_loc l)
 {
 	auto proj = projection();
 	auto i = proj.find(icl::first(b));
 	auto vx = _graph.insert_node(l);
+	bool t = false;
 
 	while(i != proj.end() && icl::touches(bound(icl::first(i->first),icl::last(i->first) + 1),b))
 	{
@@ -78,7 +93,11 @@ void stack::add(const bound &b, layer_loc l)
 		_graph.insert_edge(n,vx,*_graph.find_node(i->second.lock()));
 
 		++i;
+		t = true;
 	}
+
+	if(!t)
+		_graph.insert_edge(b,vx,_root);
 
 	_projection = none;
 	_spanning_tree = none;
@@ -99,6 +118,8 @@ const stack::image& stack::projection(void) const
 			layer_loc as = _graph.get_node(v);
 			auto p = in_edges(v,_graph);
 
+			assert(visited.insert(v).second);
+
 			std::for_each(p.first,p.second,[&](edge_descriptor e)
 			{
 				bound b = _graph.get_edge(e);
@@ -118,6 +139,7 @@ const stack::image& stack::projection(void) const
 
 		//_projection = list<pair<bound,layer_wloc>>();
 		step(_root);
+		std::cerr << visited.size() << " " << _graph.num_nodes() << std::endl;
 		assert(visited.size() == _graph.num_nodes());
 	}
 

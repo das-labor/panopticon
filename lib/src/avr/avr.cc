@@ -48,7 +48,7 @@ uint8_t po::width(std::string n, avr_tag)
 }
 
 // registers
-const variable r0 = "r0"_v8, r1 = "r1"_v8, r2 = "r2"_v8, r3 = "r3"_v8, r4 = "r4"_v8, r5 = "r5"_v8, r6 = "r6"_v8, 
+const variable r0 = "r0"_v8, r1 = "r1"_v8, r2 = "r2"_v8, r3 = "r3"_v8, r4 = "r4"_v8, r5 = "r5"_v8, r6 = "r6"_v8,
 							 r7 = "r7"_v8, r8 = "r8"_v8, r9 = "r9"_v8, r10 = "r10"_v8, r11 = "r11"_v8, r12 = "r12"_v8,
 							 r13 = "r13"_v8, r14 = "r14"_v8, r15 = "r15"_v8, r16 = "r16"_v8, r17 = "r17"_v8, r18 = "r18"_v8,
 							 r19 = "r19"_v8, r20 = "r20"_v8, r21 = "r21"_v8, r22 = "r22"_v8, r23 = "r23"_v8, r24 = "r24"_v8,
@@ -66,7 +66,7 @@ flow_ptr po::avr::disassemble(std::vector<typename architecture_traits<avr_tag>:
 	});
 
 	main | "00000001 d@.... r@...." 		= [](sm &st)
-	{ 
+	{
 		variable Rd1 = decode_reg(st.capture_groups["d"] * 2), Rd2 = decode_reg(st.capture_groups["d"] * 2 + 1);
 		variable Rr1 = decode_reg(st.capture_groups["r"] * 2), Rr2 = decode_reg(st.capture_groups["r"] * 2 + 1);
 
@@ -89,7 +89,7 @@ flow_ptr po::avr::disassemble(std::vector<typename architecture_traits<avr_tag>:
 		});
 		st.jump(st.address + st.tokens.size());
 	};
-	main | "10111 A@.. r@..... A@...." 	= [](sm &st) 	
+	main | "10111 A@.. r@..... A@...." 	= [](sm &st)
 	{
 		constant off = constant(st.capture_groups["A"],8);
 		variable io = decode_ioreg(st.capture_groups["A"]);
@@ -101,15 +101,15 @@ flow_ptr po::avr::disassemble(std::vector<typename architecture_traits<avr_tag>:
 		});
 		st.jump(st.address + st.tokens.size());
 	};
-	main | "1001000 d@..... 1111"				= unary_reg("pop",[](cg &c, const variable &r) 
+	main | "1001000 d@..... 1111"				= unary_reg("pop",[](cg &c, const variable &r)
 	{
 		rvalue sp = c.sub_i(c.or_b(c.shiftl_u(sram(0x3e_i8),8_i8),sram(0x3d_i8)),1_i8);
 		c.assign(r,sram(sp));
 		c.assign(sram(0x3d_i8),sp);
 		c.assign(sram(0x3e_i8),c.shiftr_u(sp,8_i8));
 	});
-	main | "1001001 d@..... 1111" 			= unary_reg("push",[](cg &c, const variable &r) 
-	{ 
+	main | "1001001 d@..... 1111" 			= unary_reg("push",[](cg &c, const variable &r)
+	{
 		rvalue sp = c.or_b(c.shiftl_u(sram(0x3e_i8),8_i8),sram(0x3d_i8));
 		c.assign(sram(sp),r);
 		sp = c.add_i(sp,1_i8);
@@ -274,29 +274,29 @@ flow_ptr po::avr::disassemble(std::vector<typename architecture_traits<avr_tag>:
 	main | 0x94b8 = simple("clv",[](cg &m) { m.assign(V,0_i8); });
 	main | 0x9498 = simple("clz",[](cg &m) { m.assign(Z,0_i8); });
 	main | "000101 r@. d@..... r@...." 	= binary_reg("cp",[](cg &m, const variable &Rd, const variable &Rr)
-	{	
+	{
 		rvalue R = m.sub_i(Rd,Rr);
-			
+
 		half_carry(Rd,Rr,R,m);
 		two_complement_overflow(Rd,Rr,R,m);
 		m.assign(N,m.slice(R,7_i8,7_i8));	// N: R7
 		is_zero(R,m);
 		carry(Rd,Rr,R,m);
-		m.xor_b(S,N,V);					// S: N ⊕ V 
+		m.xor_b(S,N,V);					// S: N ⊕ V
 	});
 	main | "000001 r@. d@..... r@...." 	= binary_reg("cpc",[](cg &m, const variable &Rd, const variable &Rr)
-	{	
+	{
 		rvalue R = m.sub_i(Rd,m.sub_i(Rr,C));
-		
+
 		half_carry(Rd,Rr,R,m);
 		two_complement_overflow(Rd,Rr,R,m);
 		m.assign(N,m.slice(R,7_i8,7_i8));			// N: R7
 		m.assign(Z,m.or_b(zero(R,m),Z));
 		carry(Rd,Rr,R,m);
-		m.xor_b(S,N,V);							// S: N ⊕ V 
+		m.xor_b(S,N,V);							// S: N ⊕ V
 	});
 	main | "0011 K@.... d@.... K@...." 	= binary_regconst("cpi",[&](cg &m, const variable &Rd, const constant &K)
-	{	
+	{
 		rvalue R = m.sub_i(Rd,K);
 
 		half_carry(Rd,K,R,m);
@@ -304,11 +304,11 @@ flow_ptr po::avr::disassemble(std::vector<typename architecture_traits<avr_tag>:
 		m.assign(N,m.slice(R,7_i8,7_i8));	// N: R7
 		is_zero(R,m);
 		carry(Rd,K,R,m);
-		m.xor_b(S,N,V);					// S: N ⊕ V 
+		m.xor_b(S,N,V);					// S: N ⊕ V
 	});
 
 	// main | "001000 d@.........." 				= tst (alias for and)
-	
+
 	// bit-level logic
 	// main | "0110 K@.... d@.... K@...." = sbr (alias for ori)
 	// main | "000011 d@.........."				= lsl (alias for add X,X);
@@ -324,7 +324,7 @@ flow_ptr po::avr::disassemble(std::vector<typename architecture_traits<avr_tag>:
 		m.assign(N,m.slice(R,7_i8,7_i8));	// N: R7
 		is_zero(R,m);
 		carry(R,Rd,Rr,m);
-		m.xor_b(S,N,V);					// S: N ⊕ V 
+		m.xor_b(S,N,V);					// S: N ⊕ V
 		m.assign(Rd,R);
 	});
 	main | "000011 r@. d@..... r@...." 	= binary_reg("add",[](cg &m, const variable &Rd, const variable &Rr)
@@ -336,14 +336,14 @@ flow_ptr po::avr::disassemble(std::vector<typename architecture_traits<avr_tag>:
 		m.assign(N,m.slice(R,7_i8,7_i8));	// N: R7
 		is_zero(R,m);
 		carry(R,Rd,Rr,m);
-		m.xor_b(S,N,V);					// S: N ⊕ V 
+		m.xor_b(S,N,V);					// S: N ⊕ V
 
 		m.assign(Rd,R);
 	});
 	main | "001000 r@. d@..... r@...." 	= binary_reg("and",[](cg &m, const variable &Rd, const variable &Rr)
 	{
 		m.and_b(Rd,Rd,Rr);
-	
+
 		m.assign(V,0_i8);										// V: 0
 		m.assign(N,m.slice(Rd,7_i8,7_i8));	// N: Rd7
 		m.xor_b(S,N,V);						// S: N ⊕ V
@@ -352,7 +352,7 @@ flow_ptr po::avr::disassemble(std::vector<typename architecture_traits<avr_tag>:
 	main | "0111 K@.... d@.... K@...." 	= binary_regconst("andi",[&](cg &m, const variable &Rd, const constant &K)
 	{
 		m.and_b(Rd,Rd,K);
-	
+
 		m.assign(V,0_i8);										// V: 0
 		m.assign(N,m.slice(Rd,7_i8,7_i8));	// N: Rd7
 		m.xor_b(S,N,V);						// S: N ⊕ V
@@ -392,7 +392,7 @@ flow_ptr po::avr::disassemble(std::vector<typename architecture_traits<avr_tag>:
 	main | "1001010 d@..... 0001"				= unary_reg("neg",[](cg &m, const variable &Rd)
 	{
 	});
-		
+
 	main | "001010 r@. d@..... r@...." 	= binary_reg("or",[](cg &m, const variable &Rd, const variable &Rr)
 	{
 		// TODO
@@ -405,25 +405,25 @@ flow_ptr po::avr::disassemble(std::vector<typename architecture_traits<avr_tag>:
 	main | "000110 r@. d@..... r@...." 	= binary_reg("sub",[&](cg &m, const variable &Rd, const variable &Rr)
 	{
 		rvalue R = m.sub_i(Rd,Rr);
-			
+
 		half_carry(Rd,Rr,R,m);
 		two_complement_overflow(Rd,Rr,R,m);
 		m.assign(N,m.slice(R,7_i8,7_i8));	// N: R7
 		is_zero(R,m);
 		carry(Rd,Rr,R,m);
-		m.xor_b(S,N,V);					// S: N ⊕ V 
+		m.xor_b(S,N,V);					// S: N ⊕ V
 		m.assign(Rd,R);
 	});
 	main | "0101 K@.... d@.... K@...." 	= binary_regconst("subi",[&](cg &m, const variable &Rd, const constant &K)
-	{ 
+	{
 		rvalue R = m.sub_i(Rd,K);
-			
+
 		half_carry(Rd,K,R,m);
 		two_complement_overflow(Rd,K,R,m);
 		m.assign(N,m.slice(R,7_i8,7_i8));	// N: R7
 		is_zero(R,m);
 		carry(Rd,K,R,m);
-		m.xor_b(S,N,V);					// S: N ⊕ V 
+		m.xor_b(S,N,V);					// S: N ⊕ V
 		m.assign(Rd,R);
 	});
 
@@ -435,13 +435,13 @@ flow_ptr po::avr::disassemble(std::vector<typename architecture_traits<avr_tag>:
 	main | "000010 r@. d@..... r@...." 	= binary_reg("sbc",[](cg &m, const variable &Rd, const variable &Rr)
 	{
 		rvalue R = m.sub_i(Rd,m.sub_i(Rr,C));
-		
+
 		half_carry(Rd,Rr,R,m);
 		two_complement_overflow(Rd,Rr,R,m);
 		m.assign(N,m.slice(R,7_i8,7_i8));			// N: R7
 		m.assign(Z,m.or_b(zero(R,m),Z));
 		carry(Rd,Rr,R,m);
-		m.xor_b(S,N,V);							// S: N ⊕ V 
+		m.xor_b(S,N,V);							// S: N ⊕ V
 
 		m.assign(Rd,R);
 	});
@@ -460,20 +460,20 @@ flow_ptr po::avr::disassemble(std::vector<typename architecture_traits<avr_tag>:
 		unsigned int d = (unsigned int)st.capture_groups["d"] * 2 + 24;
 		variable Rd1 = decode_reg(d);
 		variable Rd2 = decode_reg(d+1);
-		
+
 		st.mnemonic(st.tokens.size(),"adiw","{8}:{8}, {16}",{Rd2,Rd1,K},[&](cg &c)
 		{
 			rvalue R = c.add_i(c.or_b(c.shiftl_u(Rd2,8_i8),Rd1),K);
 
 			// V: !Rdh7•R15
 			c.and_b(V,c.not_b(c.slice(Rd1,7_i8,7_i8)),c.slice(R,15_i8,15_i8));
-			
+
 			// N: R15
 			c.assign(N,c.slice(R,15_i8,15_i8));
 
 			// Z: !R15•!R14•!R13•!R12•!R11•!R10•!R9•!R8•!R7•R6•!R5•!R4•!R3•!R2•!R1•!R0
 			c.and_b(Z,zero(R,c),zero(c.shiftr_u(R,8_i8),c));
-			
+
 			// C: !R15•Rdh7
 			c.and_b(V,c.slice(Rd1,7_i8,7_i8),c.not_b(c.slice(R,15_i8,15_i8)));
 
@@ -485,13 +485,13 @@ flow_ptr po::avr::disassemble(std::vector<typename architecture_traits<avr_tag>:
 		});
 		st.jump(st.address + st.tokens.size());
 	};
-	main | "10010111 K@.. d@.. K@...." = [](sm &st) 
+	main | "10010111 K@.. d@.. K@...." = [](sm &st)
 	{
 		unsigned int d = (unsigned int)st.capture_groups["d"] * 2 + 24;
 		constant K = constant((unsigned int)st.capture_groups["K"],16);
 		variable Rd1 = decode_reg(d);
 		variable Rd2 = decode_reg(d+1);
-		
+
 		st.mnemonic(st.tokens.size(),"sbiw","{8}:{8}, {16}",{Rd1,Rd2,K});
 		st.jump(st.address + st.tokens.size());
 	};
@@ -519,7 +519,7 @@ flow_ptr po::avr::disassemble(std::vector<typename architecture_traits<avr_tag>:
 	{
 		// TODO
 	});
-	
+
 	// branches
 	// main | "111101 k@....... s@..." = simple("brbc");
 	// main | "111100 k@....... s@..." = [](sm &st)  { st.mnemonic(st.tokens.size(),"brbs"; });
@@ -588,36 +588,36 @@ flow_ptr po::avr::disassemble(std::vector<typename architecture_traits<avr_tag>:
 	};
 
 	// jump branches
-	main | "1001010 k@..... 111 k@." | "k@................"	= [](sm &st) 
+	main | "1001010 k@..... 111 k@." | "k@................"	= [](sm &st)
 	{
 		constant k = constant(st.capture_groups["k"],32);
-		
+
 		st.mnemonic(st.tokens.size(),"call","",k,[&](cg &c)
 		{
 			c.call(k);
 		});
 		st.jump(st.address + st.tokens.size());
 	};
-	main | "1001010 k@..... 110 k@." | "k@................"	= [](sm &st) 
-	{ 
+	main | "1001010 k@..... 110 k@." | "k@................"	= [](sm &st)
+	{
 		constant k = constant(st.capture_groups["k"],32);
-		
+
 		st.mnemonic(st.tokens.size(),"jmp","",k,std::function<void(cg &c)>());
 		st.jump(k);
 	};
 
-	main | "1101 k@............" 														= [](sm &st) 
+	main | "1101 k@............" 														= [](sm &st)
 	{
 		int _k = st.capture_groups["k"];
 		constant k = constant((_k <= 2047 ? _k : _k - 4096) + 1 + st.address,32);
-		
+
 		st.mnemonic(st.tokens.size(),"rcall","",k,[&](cg &c)
 		{
 			c.call(k);
 		});
 		st.jump(st.address + 1);
 	};
-	main | "1100 k@............" 														= [](sm &st) 
+	main | "1100 k@............" 														= [](sm &st)
 	{
 		int _k = st.capture_groups["k"];
 		constant k = constant((_k <= 2047 ? _k : _k - 4096) + 1 + st.address,16);
@@ -627,8 +627,8 @@ flow_ptr po::avr::disassemble(std::vector<typename architecture_traits<avr_tag>:
 	};
 	main | 0x9508 = [](sm &st) { st.mnemonic(st.tokens.size(),"ret"); };
 	main | 0x9518 = [](sm &st) { st.mnemonic(st.tokens.size(),"reti"); };
-	main | 0x9409 = [](sm &st) 
-	{ 
+	main | 0x9409 = [](sm &st)
+	{
 		variable J("J"_v16);
 		std::list<rvalue> nop;
 
@@ -641,7 +641,7 @@ flow_ptr po::avr::disassemble(std::vector<typename architecture_traits<avr_tag>:
 
 	main | 0x9509 = [](sm &st) { st.mnemonic(st.tokens.size(),"icall"); };
 	// icall
-	
+
 	// store and load with x,y,z
 	main | "1001 001r@. r@.... 1100" = binary_st(r26,r27,false,false);
 	main | "1001 001r@. r@.... 1101" = binary_st(r26,r27,false,true);
@@ -651,21 +651,21 @@ flow_ptr po::avr::disassemble(std::vector<typename architecture_traits<avr_tag>:
 	main | "1001 001r@. r@.... 1001" = binary_st(r28,r29,false,true);
 	main | "1001 001r@. r@.... 1010" = binary_st(r28,r29,true,false);
 	main | "10q@.0 q@..1r@. r@.... 1q@..." = binary_stq(r28,r29);
-	
+
 	main | "1000 001r@. r@.... 0000" = binary_st(r30,r31,false,false);
 	main | "1001 001r@. r@.... 0001" = binary_st(r30,r31,false,true);
 	main | "1001 001r@. r@.... 0010" = binary_st(r30,r31,true,false);
 	main | "10q@.0 q@..1r@. r@.... 0q@..." = binary_stq(r30,r31);
-	
+
 	main | "1001 000d@. d@.... 1100" = binary_ld(r26,r27,false,false);
 	main | "1001 000d@. d@.... 1101" = binary_ld(r26,r27,false,true);
 	main | "1001 000d@. d@.... 1110" = binary_ld(r26,r27,true,false);
-	
+
 	main | "1000 000d@. d@.... 1000" = binary_ld(r28,r29,false,false);
 	main | "1001 000d@. d@.... 1001" = binary_ld(r28,r29,false,true);
 	main | "1001 000d@. d@.... 1010" = binary_ld(r28,r29,true,false);
 	main | "10 q@. 0 q@.. 0 d@..... 1 q@..." = binary_ldq(r28,r29);
-	
+
 	main | "1000 000d@. d@.... 0000" = binary_ld(r30,r31,false,false);
 	main | "1001 000 d@..... 0001" = binary_ld(r30,r31,false,true);
 	main | "1001 000d@. d@.... 0010" = binary_ld(r30,r31,true,false);
@@ -673,7 +673,7 @@ flow_ptr po::avr::disassemble(std::vector<typename architecture_traits<avr_tag>:
 
 	// misc
 	main | 0x9598 = simple("break",[](cg &m) { /* TODO */ });
-	main | "10010100 K@.... 1011" = [](sm &st) 
+	main | "10010100 K@.... 1011" = [](sm &st)
 	{
 		st.mnemonic(st.tokens.size(),"des","",constant(st.capture_groups["K"],8),std::function<void(cg &c)>());
 		st.jump(st.tokens.size() + st.address);
