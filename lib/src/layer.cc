@@ -47,10 +47,14 @@ mutable_layer::mutable_layer(const std::string &n) : data(), _name(n) {}
 
 slab mutable_layer::filter(const slab& in) const
 {
-	auto b = make_zip_iterator(boost::make_tuple(counting_iterator<offset>(0),boost::begin(in)));
-	auto e = make_zip_iterator(boost::make_tuple(counting_iterator<offset>(size(in)),boost::end(in)));
-	auto fn = [this](const boost::tuples::tuple<offset,byte> &p) { return data.count(get<0>(p)) ? data.at(get<0>(p)) : get<1>(p); };
-	return slab(make_transform_iterator(b,fn),make_transform_iterator(e,fn));
+	using func = std::function<const byte&(const boost::tuples::tuple<offset,byte> &)>;
+	slab::const_iterator sb = boost::begin(in), se = boost::end(in);
+	func fn = [this](const boost::tuples::tuple<offset,byte> &p) { return data.count(boost::get<0>(p)) ? data.at(boost::get<0>(p)) : boost::get<1>(p); };
+	auto b = make_zip_iterator(boost::make_tuple(counting_iterator<offset,boost::random_access_traversal_tag>(0),sb));
+	auto e = make_zip_iterator(boost::make_tuple(counting_iterator<offset,boost::random_access_traversal_tag>(size(in)),se));
+	using transform_iter = boost::transform_iterator<func,decltype(b)>;
+
+	return slab(transform_iter(b,fn),transform_iter(e,fn));
 }
 
 const std::string& mutable_layer::name(void) const { return _name; }
@@ -107,6 +111,9 @@ void stack::add(const bound &b, layer_loc l)
 
 			++i;
 		}
+
+		if(*last != icl::last(b))
+			_graph.insert_edge(bound(*last + 1,icl::last(b) + 1),vx,_root);
 	}
 
 	_projection = none;

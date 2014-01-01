@@ -63,32 +63,19 @@ TEST(layer,add)
  *
  * Projection:
  * [--xor--][----add----][ba][z][--aes--][z]
- *
+ */
 TEST(layer,projection)
 {
-	using bytes = std::vector<uint8_t>;
+	stack st;
 
-	layer_loc base_as("base",bound(0,128),std::function<bytes(const bytes&)>());
-	layer_loc xor_as("xor",bound(0,64),std::function<bytes(const bytes&)>());
-	layer_loc add_as("add",bound(0,27),std::function<bytes(const bytes&)>());
-	layer_loc zlib_as("zlib",bound(0,128),std::function<bytes(const bytes&)>());
-	layer_loc aes_as("aes",bound(0,32),std::function<bytes(const bytes&)>());
-	po::graph<layer_loc,bound> g;
+	st.add(bound(0,128),layer_loc(boost::uuids::random_generator()(),new layer(anonymous_layer({},"base"))));
+	st.add(bound(0,64),layer_loc(boost::uuids::random_generator()(),new layer(anonymous_layer({},"xor"))));
+	st.add(bound(45,72),layer_loc(boost::uuids::random_generator()(),new layer(anonymous_layer({},"add"))));
+	st.add(bound(80,128),layer_loc(boost::uuids::random_generator()(),new layer(anonymous_layer({},"zlib"))));
+	st.add(bound(102,134),layer_loc(boost::uuids::random_generator()(),new layer(anonymous_layer({},"aes"))));
 
-	auto base_vx = g.insert_node(base_as);
-	auto xor_vx = g.insert_node(xor_as);
-	auto add_vx = g.insert_node(add_as);
-	auto zlib_vx = g.insert_node(zlib_as);
-	auto aes_vx = g.insert_node(aes_as);
-
-	g.insert_edge(bound(0,64),xor_vx,base_vx);
-	g.insert_edge(bound(64,72),add_vx,base_vx);
-	g.insert_edge(bound(45,64),add_vx,xor_vx);
-	g.insert_edge(bound(80,128),zlib_vx,base_vx);
-	g.insert_edge(bound(32,64),aes_vx,zlib_vx);
-
-	auto proj = po::projection(base_as,g);
-	auto expect = std::list<std::pair<bound,layer_loc>>{
+	auto proj = st.projection();
+	/*auto expect = std::list<std::pair<bound,layer_loc>>{
 		std::make_pair(bound(0,45),xor_as),
 		std::make_pair(bound(0,27),add_as),
 		std::make_pair(bound(72,80),base_as),
@@ -105,3 +92,7 @@ TEST(layer,projection)
 		std::cerr << p.first << " => " << p.second.name << std::endl;*
 	CPPUNIT_ASSERT(proj == expect);
 }*/
+
+	for(const std::pair<bound,layer_wloc> &p: proj)
+		std::cout << p.first << ": " << name(*p.second) << std::endl;
+}
