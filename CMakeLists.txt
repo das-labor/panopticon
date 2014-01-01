@@ -9,9 +9,11 @@ set(panopticon_VERSION
   ${panopticon_MAJOR}.${panopticon_MINOR}.${panopticon_PATCH})
 
 # Options
-option(panopticon_BUILD "Build Panopticon Library (libpabopticon)" ON)
-option(qtpanopticon_BUILD "Build Qt UI (qtpanopticon)" ON)
-option(panop_BUILD "Build cli tool (panop)" ON)
+option(panopticon_BUILD "Build Panopticon Library (libpanopticon)" ON)
+option(qtpanopticon_BUILD "Build Qt UI (qtpanopticon)" OFF)
+option(panop_BUILD "Build cli tool (panop)" OFF)
+
+set(CMAKE_BUILD_TYPE "Debug")
 
 # Compiler flags
 add_definitions("-Wall -Wextra -pedantic
@@ -26,7 +28,7 @@ if(NOT DEFINED "CMAKE_BUILD_TYPE" OR "${CMAKE_BUILD_TYPE}" STREQUAL "Release")
 elseif("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
 	include(CTest)
 	find_package(GTest REQUIRED)
-	message("Build debug")
+	message(STATUS "Debug build")
 endif()
 
 # Dependencies
@@ -40,9 +42,8 @@ find_path(cvc4_INCLUDE_DIRS cvc4/cvc4.h)
 find_library(cvc4_LIBRARIES cvc4)
 find_package_handle_standard_args(CVC4 REQUIRED_VARS
 	cvc4_LIBRARIES cvc4_INCLUDE_DIRS)
-find_package(Boost COMPONENTS program_options optional variant)
-find_package(Qt5 COMPONENTS Widgets Qml Quick)
-pkg_check_modules(tbb tbb)
+find_package(Boost COMPONENTS system REQUIRED)
+pkg_check_modules(tbb REQUIRED tbb)
 pkg_check_modules(panopticon panopticon)
 
 # C++11 flags
@@ -65,12 +66,16 @@ endif()
 find_package_handle_standard_args(Panopticon REQUIRED_VARS
 	panopticon_LIBRARIES panopticon_INCLUDE_DIRS)
 
-if(${panop_BUILD} AND ${Boost_FOUND} AND ${panopticon_FOUND})
+if(${panop_BUILD} AND ${panopticon_FOUND})
 	add_subdirectory("cli")
 	add_dependencies(panop panopticon)
 endif()
 
-if(${qtpanopticon_BUILD} AND ${Qt5_FOUND} AND ${panopticon_FOUND})
+if(${qtpanopticon_BUILD} AND ${panopticon_FOUND})
+	find_package(Qt5 COMPONENTS Widgets Qml Quick REQUIRED)
 	add_subdirectory("qt")
 	add_dependencies(qtpanopticon panopticon)
 endif()
+
+message(STATUS "Type 'make' to build.")
+message(STATUS "You can run the test suite with 'ctest'")
