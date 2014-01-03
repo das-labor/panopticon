@@ -113,26 +113,33 @@ namespace std
 
 namespace po
 {
-	struct stack
+	struct region
 	{
 		using image = boost::icl::interval_map<offset,layer_wloc>;
 		using layers = digraph<layer_loc,bound>;
-		using tree = std::unordered_map<layer_wloc,layer_wloc>;
 
-		stack(void);
+		region(const std::string&, size_t);
 		void add(const bound&, layer_loc);
 
 		const image& projection(void) const;
 		const layers& graph(void) const;
-		//const tree& spanning_tree(void) const;
-		//const boost::icl::split_interval_map<offset,std::pair<bound,layer_wloc>> &continuous(void) const;
+
+		size_t size(void) const;
+		const std::string& name(void) const;
 
 	private:
 		layers _graph;
 		boost::graph_traits<digraph<layer_loc,bound>>::vertex_descriptor _root;
+		std::string _name;
+		size_t _size;
 
 		// caches
 		mutable boost::optional<image> _projection;
-		mutable boost::optional<tree> _spanning_tree;
 	};
+
+	using region_loc = loc<region>;
+	using region_wloc = wloc<region>;
+	using regions = digraph<region_loc,bound>;
+
+	std::unordered_map<region_wloc,region_wloc> spanning_tree(const regions&);
 }

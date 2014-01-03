@@ -39,9 +39,8 @@ struct A
 {
 	A(const string &s, vector<int> il) : name(s)
 	{
-		auto rand = random_generator();
 		for(int i: il)
-			bs.emplace_back(rand(),new B(i));
+			bs.emplace_back(new B(i));
 	}
 
 	string name;
@@ -90,8 +89,7 @@ namespace po
 TEST(loc,shared)
 {
 	std::shared_ptr<rdf::storage> store(new rdf::storage());
-	auto rand = random_generator();
-	loc<A> a(rand(),new A("Hello",{1,2,3}));
+	loc<A> a(new A("Hello",{1,2,3}));
 
 	save_point(*store);
 
@@ -104,9 +102,8 @@ TEST(loc,shared)
 TEST(loc,weak)
 {
 	std::shared_ptr<rdf::storage> store(new rdf::storage());
-	auto rand = random_generator();
 
-	loc<A> a(rand(),new A("Hello",{1,2,3}));
+	loc<A> a(new A("Hello",{1,2,3}));
 	wloc<A> aw(a);
 
 	save_point(*store);
@@ -116,20 +113,19 @@ TEST(loc,weak)
 
 	save_point(*store);
 
-	a = loc<A>(rand(),*store);
+	a = loc<A>(new A("Hello",{1,2,3}));
 	ASSERT_THROW(aw.write(), std::runtime_error);
 }
 
 TEST(loc,lock)
 {
 	std::shared_ptr<rdf::storage> store(new rdf::storage());
-	auto rand = random_generator();
-	loc<A> a(rand(),new A("Hello",{1,2,3}));
+	loc<A> a(new A("Hello",{1,2,3}));
 	wloc<A> aw(a);
 
 	ASSERT_EQ(&(*a),&(*aw));
 
-	a = loc<A>(rand(),new A("Hello",{1,2,3}));
+	a = loc<A>(new A("Hello",{1,2,3}));
 	save_point(*store);
 	ASSERT_THROW(*aw,runtime_error);
 }
@@ -137,9 +133,8 @@ TEST(loc,lock)
 TEST(loc,weak_save_point)
 {
 	std::shared_ptr<rdf::storage> store(new rdf::storage());
-	auto rand = random_generator();
 
-	loc<A> a(rand(),new A("Hello",{1,2,3}));
+	loc<A> a(new A("Hello",{1,2,3}));
 	wloc<A> aw(a);
 
 	save_point(*store);
@@ -147,7 +142,7 @@ TEST(loc,weak_save_point)
 	cerr << *aw << endl;
 	aw.write().bs.front().write() = 66;
 
-	a = loc<A>(rand(),*store);
+	a = loc<A>(new A("Hello",{1,2,3}));
 	aw.write();
 
 	save_point(*store);

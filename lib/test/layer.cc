@@ -44,55 +44,51 @@ TEST(layer,mutable_layer)
 
 TEST(layer,add)
 {
-	stack st;
+	region st("",12);
 
-	st.add(bound(0,6),layer_loc(boost::uuids::random_generator()(),new layer(anonymous_layer({1,2,3,4,5,6},"anon 2"))));
-	st.add(bound(10,40),layer_loc(boost::uuids::random_generator()(),new layer(anonymous_layer({1,2,3,4,5,6},"anon 3"))));
-	st.add(bound(4,12),layer_loc(boost::uuids::random_generator()(),new layer(anonymous_layer({1,2,3,4,5,6},"anon 4"))));
+	st.add(bound(0,6),layer_loc(new layer(anonymous_layer({1,2,3,4,5,6},"anon 2"))));
+	st.add(bound(10,40),layer_loc(new layer(anonymous_layer({1,2,3,4,5,6},"anon 3"))));
+	st.add(bound(4,12),layer_loc(new layer(anonymous_layer({1,2,3,4,5,6},"anon 4"))));
 	auto proj = st.projection();
 
 	for(const std::pair<bound,layer_wloc> &p: proj)
 		std::cout << p.first << ": " << name(*p.second) << std::endl;
 }
 
-/*
- * Graph:
- * [----------------- base ----------------]
- * [----xor----]            [-----zlib-----]
- *          [----add----]       [--aes--]
- *
- * Projection:
- * [--xor--][----add----][ba][z][--aes--][z]
- */
 TEST(layer,projection)
 {
-	stack st;
+	region st("",134);
+	layer_loc base(new layer(anonymous_layer({},"base")));
+	layer_loc xor1(new layer(anonymous_layer({},"xor")));
+	layer_loc add(new layer(anonymous_layer({},"add")));
+	layer_loc zlib(new layer(anonymous_layer({},"zlib")));
+	layer_loc aes(new layer(anonymous_layer({},"aes")));
 
-	st.add(bound(0,128),layer_loc(boost::uuids::random_generator()(),new layer(anonymous_layer({},"base"))));
-	st.add(bound(0,64),layer_loc(boost::uuids::random_generator()(),new layer(anonymous_layer({},"xor"))));
-	st.add(bound(45,72),layer_loc(boost::uuids::random_generator()(),new layer(anonymous_layer({},"add"))));
-	st.add(bound(80,128),layer_loc(boost::uuids::random_generator()(),new layer(anonymous_layer({},"zlib"))));
-	st.add(bound(102,134),layer_loc(boost::uuids::random_generator()(),new layer(anonymous_layer({},"aes"))));
+	st.add(bound(0,128),base);
+	st.add(bound(0,64),xor1);
+	st.add(bound(45,72),add);
+	st.add(bound(80,128),zlib);
+	st.add(bound(102,134),aes);
 
 	auto proj = st.projection();
-	/*auto expect = std::list<std::pair<bound,layer_loc>>{
-		std::make_pair(bound(0,45),xor_as),
-		std::make_pair(bound(0,27),add_as),
-		std::make_pair(bound(72,80),base_as),
-		std::make_pair(bound(0,32),zlib_as),
-		std::make_pair(bound(0,32),aes_as),
-		std::make_pair(bound(64,128),zlib_as)
-	};
+	boost::icl::interval_map<offset,layer_wloc> expect;
 
-	*std::cerr << "proj:" << std::endl;
-	for(const std::pair<bound,layer_loc> &p: proj)
-		std::cerr << p.first << " => " << p.second.name << std::endl;
-	std::cerr << "expect:" << std::endl;
-	for(const std::pair<bound,layer_loc> &p: expect)
-		std::cerr << p.first << " => " << p.second.name << std::endl;*
-	CPPUNIT_ASSERT(proj == expect);
-}*/
+	expect += std::make_pair(bound(0,45),layer_wloc(xor1));
+	expect += std::make_pair(bound(45,72),layer_wloc(add));
+	expect += std::make_pair(bound(72,80),layer_wloc(base));
+	expect += std::make_pair(bound(80,102),layer_wloc(zlib));
+	expect += std::make_pair(bound(102,134),layer_wloc(aes));
 
+	std::cerr << "proj:" << std::endl;
 	for(const std::pair<bound,layer_wloc> &p: proj)
-		std::cout << p.first << ": " << name(*p.second) << std::endl;
+		std::cerr << p.first << " => " << name(*p.second) << std::endl;
+	std::cerr << "expect:" << std::endl;
+	for(const std::pair<bound,layer_wloc> &p: expect)
+		std::cerr << p.first << " => " << name(*p.second) << std::endl;
+	ASSERT_TRUE(proj == expect);
+}
+
+TEST(region,tree)
+{
+	ASSERT_TRUE(false);
 }

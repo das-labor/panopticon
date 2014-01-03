@@ -504,4 +504,24 @@ namespace po
 	{
 		return lambda_visitor<X,G,E>(fn);
 	}
+
+	template<typename N, typename E>
+	typename boost::graph_traits<digraph<N,E>>::vertex_descriptor
+	root (const digraph<N,E> &g)
+	{
+		auto p = g.nodes();
+		auto i = p.first;
+
+		while(i != p.second)
+		{
+			auto q = g.in_edges(*i);
+
+			if(!std::distance(q.first,q.second))
+				return *i;
+			else
+				++i;
+		}
+
+		throw std::runtime_error("no root found");
+	}
 }

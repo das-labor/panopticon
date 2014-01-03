@@ -155,6 +155,7 @@ namespace po
 		using basic_loc<T,loc<T>>::tag;
 
 		loc(const loc<T> &l) : basic_loc<T,loc<T>>(l.tag()), _control(l._control) {}
+		explicit loc(T* t) : loc(boost::uuids::random_generator()(),t) {}
 		loc(const uuid &u, T* t) : basic_loc<T,loc<T>>(u), _control(new loc_control<T>(t))
 		{
 			std::lock_guard<std::mutex> guard(dirty_locations_mutex);
@@ -182,7 +183,7 @@ namespace po
 		using basic_loc<T,wloc<T>>::tag;
 
 		wloc(void) : basic_loc<T,wloc<T>>(boost::uuids::nil_uuid()), _control() {}
-		wloc(loc<T> &l) : basic_loc<T,wloc<T>>(l.tag()), _control(l.control()) {}
+		wloc(loc<T> l) : basic_loc<T,wloc<T>>(l.tag()), _control(l.control()) {}
 		wloc(const wloc<T> &l) : basic_loc<T,wloc<T>>(l.tag()), _control(l.control()) {}
 
 		bool operator==(const wloc<T> &a) const { return tag() == a.tag(); }
