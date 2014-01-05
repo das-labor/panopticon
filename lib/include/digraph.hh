@@ -505,16 +505,16 @@ namespace po
 		return lambda_visitor<X,G,E>(fn);
 	}
 
-	template<typename N, typename E>
-	typename boost::graph_traits<digraph<N,E>>::vertex_descriptor
-	root (const digraph<N,E> &g)
+	template<typename G>
+	typename boost::graph_traits<G>::vertex_descriptor
+	root (const G &g)
 	{
-		auto p = g.nodes();
+		auto p = vertices(g);
 		auto i = p.first;
 
 		while(i != p.second)
 		{
-			auto q = g.in_edges(*i);
+			auto q = in_edges(*i,g);
 
 			if(!std::distance(q.first,q.second))
 				return *i;

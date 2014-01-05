@@ -182,7 +182,7 @@ std::unordered_map<region_wloc,region_wloc> po::spanning_tree(const regions &reg
 	using vertex_descriptor = typename boost::graph_traits<digraph<po::region_loc,po::bound>>::vertex_descriptor;
 	using edge_descriptor = typename boost::graph_traits<digraph<po::region_loc,po::bound>>::edge_descriptor;
 
-	auto r = root(regs);
+	auto r = root(make_reverse_graph(regs));
 	std::unordered_map<edge_descriptor,int> w_map;
 	boost::associative_property_map<std::unordered_map<edge_descriptor,int>> weight_adaptor(w_map);
 	auto common_parent = [&](vertex_descriptor v, vertex_descriptor u)
@@ -244,4 +244,41 @@ std::unordered_map<region_wloc,region_wloc> po::spanning_tree(const regions &reg
 		out.emplace(region_wloc(regs.get_node(p.first)),region_wloc(regs.get_node(p.second)));
 
 	return out;
+}
+
+std::list<std::pair<bound,region_wloc>> po::projection(const regions &regs)
+{
+	std::list<std::pair<bound,region_wloc>> ret;
+	std::function<void(graph_traits<regions>::vertex_descriptor)> step;
+	std::unordered_set<graph_traits<regions>::vertex_descriptor> visited;
+
+	step = [&](graph_traits<regions>::vertex_descriptor vx)
+	{
+		region_loc r = regs.get_node(vx);
+		auto p = regs.in_edges(vx);
+		offset last = 0;
+
+		std::for_each(p.first,p.second,[&](const graph_traits<regions>::edge_descriptor e)
+		{
+			bound b = regs.get_edge(e);
+			auto nx = regs.source(e);
+			bound free(last,b.lower());
+
+			if(last < b.lower())
+				ret.emplace_back(free,r);
+			last = b.upper();
+
+			if(visited.insert(nx).second)
+				step(nx);
+		});
+
+		if(last < r->size())
+		{
+			bound free(last,r->size());
+			ret.emplace_back(free,r);
+		}
+	};
+
+	step(root(make_reverse_graph(regs)));
+	return ret;
 }

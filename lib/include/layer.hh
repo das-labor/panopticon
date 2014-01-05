@@ -137,9 +137,16 @@ namespace po
 		mutable boost::optional<image> _projection;
 	};
 
+	template<>
+	rdf::statements marshal(const region*, const uuid&) { return rdf::statements(); }
+
+	template<>
+	region* unmarshal(const uuid&, const rdf::storage&) { return nullptr; }
+
 	using region_loc = loc<region>;
 	using region_wloc = wloc<region>;
 	using regions = digraph<region_loc,bound>;
 
 	std::unordered_map<region_wloc,region_wloc> spanning_tree(const regions&);
+	std::list<std::pair<bound,region_wloc>> projection(const regions&);
 }
