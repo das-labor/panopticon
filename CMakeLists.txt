@@ -10,7 +10,7 @@ set(panopticon_VERSION
 
 # Options
 option(panopticon_BUILD "Build Panopticon Library (libpanopticon)" ON)
-option(qtpanopticon_BUILD "Build Qt UI (qtpanopticon)" OFF)
+option(qtpanopticon_BUILD "Build Qt UI (qtpanopticon)" ON)
 option(panop_BUILD "Build cli tool (panop)" OFF)
 
 set(CMAKE_BUILD_TYPE "Debug")

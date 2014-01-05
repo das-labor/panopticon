@@ -2,8 +2,8 @@
 #include <QApplication>
 #include <QQmlApplicationEngine>
 
-#include <linearview.hh>
-#include <session.hh>
+#include "linearview.hh"
+#include "session.hh"
 
 using namespace std;
 

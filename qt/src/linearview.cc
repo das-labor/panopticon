@@ -1,5 +1,5 @@
 #include <cassert>
-#include <linearview.hh>
+#include "linearview.hh"
 
 Header::Header(void) : QObject(), m_name(""), m_collapsed(false), m_id(-1) {}
 Header::Header(const QString &h, bool col, int id) : QObject(), m_name(h), m_collapsed(col), m_id(id) {}
@@ -82,9 +82,9 @@ void LinearView::setSession(Session *s)
 		m_hiddenBlocks.clear();
 		//m_firstRow = m_lastRow = m_firstColumn = m_lastColumn = -1;
 
-		for(auto p: po::projection(m_session->graph().get_node(po::root(m_session->graph())),m_session->graph()))
+		for(auto p: po::projection(m_session->graph()))
 		{
-			QSharedPointer<Delegate> delegate(new TestDelegate(p.second,p.first,10,&m_engine,this));
+			QSharedPointer<Delegate> delegate(new TestDelegate(p.second,10,&m_engine,this));
 			auto len = delegate->rowCount();
 
 			m_availableBlocks.add(std::make_pair(decltype(m_availableBlocks)::interval_type::right_open(i,i + 1),LinearViewBlock(LinearViewBlock::Header,delegate,id)));

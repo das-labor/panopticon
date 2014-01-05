@@ -9,6 +9,7 @@
 #include <boost/operators.hpp>
 
 #include <panopticon/marshal.hh>
+#include <panopticon/hash.hh>
 
 #pragma once
 
@@ -253,19 +254,6 @@ namespace po
 	};
 }
 
-size_t hash_struct(void)
-{
-	return 0;
-}
-
-/// Hashes a sequence of fields and combines them.
-template<typename Car, typename... Cdr>
-size_t hash_struct(const Car &c, const Cdr&... parameters)
-{
-	size_t seed = std::hash<Car>()(c);
-	return seed ^ (hash_struct(parameters...) + 0x9e3779b9 + (seed << 6) + (seed >> 2));
-}
-
 namespace std
 {
 	template<>
@@ -285,21 +273,21 @@ namespace std
 			if(is_memory(a))
 			{
 				const po::memory &m = to_memory(a);
-				return hash_struct(m.name(),m.bytes(),m.endianess(),m.offset());
+				return po::hash_struct(m.name(),m.bytes(),m.endianess(),m.offset());
 			}
 			else if(is_constant(a))
 			{
 				const po::constant &c = to_constant(a);
-				return hash_struct(c.content());
+				return po::hash_struct(c.content());
 			}
 			else if(is_variable(a))
 			{
 				const po::variable &v = to_variable(a);
-				return hash_struct(v.name(),v.width(),v.subscript());
+				return po::hash_struct(v.name(),v.width(),v.subscript());
 			}
 			else if(is_undefined(a))
 			{
-				return hash_struct(0,1);
+				return po::hash_struct(0,1);
 			}
 			else
 			{

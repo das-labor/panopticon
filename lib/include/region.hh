@@ -28,7 +28,6 @@ namespace po
 
 		slab filter(const slab&) const;
 		const std::string& name(void) const;
-	//	void invalidate_cache(void);
 
 	private:
 		struct adaptor
@@ -81,10 +80,10 @@ namespace po
 	layer_wloc operator+=(layer_wloc& a, const layer_wloc &b);
 
 	template<>
-	rdf::statements marshal(const layer*, const uuid&) { return rdf::statements(); }
+	rdf::statements marshal(const layer*, const uuid&);
 
 	template<>
-	layer* unmarshal(const uuid&, const rdf::storage&) { return nullptr; }
+	layer* unmarshal(const uuid&, const rdf::storage&);
 
 	slab filter(const layer &l, const slab &s);
 	std::string name(const layer& l);
@@ -138,10 +137,10 @@ namespace po
 	};
 
 	template<>
-	rdf::statements marshal(const region*, const uuid&) { return rdf::statements(); }
+	rdf::statements marshal(const region*, const uuid&);
 
 	template<>
-	region* unmarshal(const uuid&, const rdf::storage&) { return nullptr; }
+	region* unmarshal(const uuid&, const rdf::storage&);
 
 	using region_loc = loc<region>;
 	using region_wloc = wloc<region>;

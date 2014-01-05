@@ -1,6 +1,6 @@
 #include <QtQuick>
-#include <session.hh>
-#include <delegate.hh>
+#include "session.hh"
+#include "delegate.hh"
 
 #pragma once
 

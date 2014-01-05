@@ -4,14 +4,10 @@
 #include <QSharedPointer>
 #include <QtQuick>
 
-class Delegate;
-class Line;
-
-typedef QSharedPointer<Line> LineRef;
-
-#include <source.hh>
-#include <elementselection.hh>
 #include <boost/optional.hpp>
+#include <panopticon/region.hh>
+#include <panopticon/hash.hh>
+#include "elementselection.hh"
 
 #pragma once
 
@@ -34,7 +30,7 @@ public:
 	 * The parent object is used if the database \e db is private. In this case the parent object
 	 * will recvieve the MouseSelection and CursorSelection events.
 	 */
-	Delegate(const po::address_space &as, const po::rrange &r, QObject *parent = 0);
+	Delegate(po::region_wloc r, QObject *parent = 0);
 
 	virtual ~Delegate(void);
 
@@ -67,8 +63,7 @@ public:
 	 *
 	virtual const boost::optional<ElementSelection>& mouse(void) const = 0;*/
 
-	const po::address_space &space(void) const;
-	const po::rrange &range(void) const;
+	po::region_wloc region(void) const;
 
 	//virtual boost::optional<ElementSelection> elementSelection(const po::rrange &sel);
 	//virtual po::rrange byteSelection(const boost::optional<ElementSelection> &sel);
@@ -81,8 +76,7 @@ signals:
 	void modified(void);
 
 private:
-	po::address_space m_space;
-	po::rrange m_range;
+	po::region_wloc _region;
 };
 
 class TestDelegateContext : public QObject
@@ -116,7 +110,7 @@ class TestDelegate : public Delegate
 	Q_OBJECT
 
 public:
-	TestDelegate(const po::address_space &as, const po::rrange &r, unsigned int width, QQmlEngine *, QQuickItem *p = 0);
+	TestDelegate(po::region_wloc r, unsigned int width, QQmlEngine *, QQuickItem *p = 0);
 	virtual ~TestDelegate(void);
 
 	virtual QQuickItem *createRow(unsigned int i);

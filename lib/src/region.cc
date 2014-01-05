@@ -2,14 +2,20 @@
 #include <boost/iterator/zip_iterator.hpp>
 #include <boost/iterator/transform_iterator.hpp>
 #include <boost/tuple/tuple.hpp>
-#include <panopticon/layer.hh>
-
 #include <boost/graph/dijkstra_shortest_paths.hpp>
 #include <boost/graph/reverse_graph.hpp>
+
+#include <panopticon/region.hh>
 
 using namespace po;
 using namespace std;
 using namespace boost;
+
+template<>
+rdf::statements po::marshal(const layer*, const uuid&) { return rdf::statements(); }
+
+template<>
+layer* po::unmarshal(const uuid&, const rdf::storage&) { return nullptr; }
 
 po::layer_wloc po::operator+=(po::layer_wloc& a, const po::layer_wloc &b)
 {
@@ -282,3 +288,9 @@ std::list<std::pair<bound,region_wloc>> po::projection(const regions &regs)
 	step(root(make_reverse_graph(regs)));
 	return ret;
 }
+
+template<>
+rdf::statements po::marshal(const region*, const uuid&) { return rdf::statements(); }
+
+template<>
+region* po::unmarshal(const uuid&, const rdf::storage&) { return nullptr; }

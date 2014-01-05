@@ -1,11 +1,8 @@
-#file(GLOB panopticon_SOURCES src/*.cc src/avr/*.cc)
-#file(GLOB panopticon_HEADERS include/*.hh include/avr/*.hh)
-
-set(panopticon_SOURCES src/loc.cc src/value.cc src/marshal.cc src/layer.cc)
+set(panopticon_SOURCES src/loc.cc src/value.cc src/marshal.cc src/region.cc)
 set(panopticon_HEADERS include/loc.hh include/value.hh include/marshal.hh
-	include/layer.hh)
+	include/region.hh include/hash.hh)
 
-set(panopticon_INCLUDE_DIRS . ${redland_INCLUDE_DIRS}
+set(panopticon_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR} ${redland_INCLUDE_DIRS}
 	${raptor_INCLUDE_DIRS} ${minizip_INCLUDE_DIRS} ${tbb_INCLUDE_DIRS} ${cvc4_INCLUDE_DIRS})
 set(panopticon_INCLUDE_DIRS ${panopticon_INCLUDE_DIRS} PARENT_SCOPE)
 set(panopticon_LIBRARY_DIRS ${redland_LIBRARY_DIRS}

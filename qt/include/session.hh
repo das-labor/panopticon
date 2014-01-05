@@ -1,5 +1,5 @@
 #include <QtQuick>
-#include <source.hh>
+#include <panopticon/region.hh>
 
 #pragma once
 
@@ -11,8 +11,8 @@ public:
 	Session(QObject *parent = nullptr);
 	virtual ~Session(void);
 
-	po::graph<po::address_space,po::rrange>& graph(void);
+	po::regions& graph(void);
 
 private:
-	po::graph<po::address_space,po::rrange> m_graph;
+	po::regions _regions;
 };

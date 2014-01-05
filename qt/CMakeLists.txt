@@ -1,12 +1,18 @@
 cmake_minimum_required(VERSION 2.8)
 project(PanopticonQt CXX)
 
-file(GLOB qtpanopticon_SOURCES src/*.cc src/dot/*.cc)
-file(GLOB qtpanopticon_HEADERS include/*.hh include/dot/*.hh)
-file(GLOB qtpanopticon_RESOURCES res/resources.qrc)
+set(qtpanopticon_SOURCES src/dot/dot.cc src/delegate.cc
+	src/elementselection.cc src/linearview.cc src/main.cc src/session.cc)
+set(qtpanopticon_HEADERS include/delegate.hh include/elementselection.hh
+	include/linearview.hh include/session.hh include/dot/adaptor.hh include/dot/astar.hh
+	include/dot/dot.hh include/dot/layout.hh include/dot/net_flow.hh
+	include/dot/phase1.hh include/dot/phase2.hh include/dot/phase3.hh
+	include/dot/traits.hh include/dot/types.hh)
+set(qtpanopticon_RESOURCES res/resources.qrc)
 
-include_directories(include ${Boost_INCLUDE_DIRS} ${libgvc_INCLUDE_DIRS} ${panopticon_INCLUDE_DIRS})
-link_directories(${Boost_LIBRARY_DIRS} ${libgvc_LIBRARY_DIRS} ${panopticon_LIBRARY_DIRS})
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -iquote ${CMAKE_CURRENT_SOURCE_DIR}/include")
+include_directories(${Boost_INCLUDE_DIRS} ${panopticon_INCLUDE_DIRS})
+link_directories(${Boost_LIBRARY_DIRS} ${panopticon_LIBRARY_DIRS})
 
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)

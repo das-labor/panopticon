@@ -1,14 +1,13 @@
-#include <delegate.hh>
-#include <graph.hh>
+#include "delegate.hh"
+#include <panopticon/digraph.hh>
 
-Delegate::Delegate(const po::address_space &as, const po::rrange &r, QObject *p)
-: QObject(p), m_space(as), m_range(r)
+Delegate::Delegate(po::region_wloc r, QObject *p)
+: QObject(p), _region(r)
 {}
 
 Delegate::~Delegate(void) {}
 
-const po::address_space &Delegate::space(void) const { return m_space; }
-const po::rrange &Delegate::range(void) const { return m_range; }
+po::region_wloc Delegate::region(void) const { return _region; }
 
 /*
 const boost::optional<ElementSelection> &Delegate::cursor(void)
@@ -119,8 +118,8 @@ QString TestDelegateContext::address(void) const		{ return m_address; }
 QVariantList TestDelegateContext::data(void) const	{ return m_data; }
 int TestDelegateContext::row(void) const						{ return m_row; }
 
-TestDelegate::TestDelegate(const po::address_space &as, const po::rrange &r, unsigned int w, QQmlEngine *e, QQuickItem *p)
-: Delegate(as,r,p), m_width(w), m_engine(e),
+TestDelegate::TestDelegate(po::region_wloc r, unsigned int w, QQmlEngine *e, QQuickItem *p)
+: Delegate(r,p), m_width(w), m_engine(e),
 	m_rowComponent(m_engine,QUrl("qrc:/Test.qml")),
 	m_headComponent(m_engine,QUrl("qrc:/Block.qml")),
 	m_cursorComponent(m_engine,QUrl("qrc:/Cursor.qml")),
@@ -141,7 +140,7 @@ unsigned int TestDelegate::rowCount(void) const
 		return 0;
 	else
 	{
-		size_t l = boost::icl::length(range());
+		size_t l = region()->size();
 		return l / m_width + !!(l % m_width);
 	}
 }
@@ -149,7 +148,7 @@ unsigned int TestDelegate::rowCount(void) const
 QQuickItem *TestDelegate::createRow(unsigned int l)
 {
 	auto ctx = new QQmlContext(m_engine->rootContext());
-	unsigned int i = 0, w = (l == rowCount() - 1 && boost::icl::length(range()) % m_width ? boost::icl::length(range()) % m_width : m_width);
+	unsigned int i = 0, w = (l == rowCount() - 1 && region()->size() % m_width ? region()->size() % m_width : m_width);
 	QVariantList _data;
 
 	assert(l < rowCount());
