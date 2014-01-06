@@ -9,115 +9,6 @@ Delegate::~Delegate(void) {}
 
 po::region_wloc Delegate::region(void) const { return _region; }
 
-/*
-const boost::optional<ElementSelection> &Delegate::cursor(void)
-{
-	if(database()->cursor() && section()->position().includes(*database()->cursor()))
-	{
-		ByteSelection *sel = new ByteSelection(*database()->cursor());
-		boost::optional<ElementSelection> ret = elementSelection(sel);
-
-		delete sel;
-		return ret;
-	}
-	else
-		return 0;
-}
-
-const boost::optional<ElementSelection> &Delegate::mouse(void)
-{
-	if(database()->mouse() && section()->position().includes(*database()->mouse()))
-	{
-		ByteSelection *sel = new ByteSelection(*database()->mouse());
-		boost::optional<ElementSelection> ret = elementSelection(sel);
-
-		delete sel;
-		return ret;
-	}
-	else
-		return 0;
-}
-
-boost::optional<ElementSelection> Delegate::elementSelection(const po::range &sel)
-{
-	if(!sel)
-		return 0;
-
-	quint64 line = 0;
-	quint64 anc_l = 0, cur_l = 0;
-	bool anc_set = false, cur_set = false, anc_freeze = false, cur_freeze = false;
-
-	MetadataSet::Zipper z = spans().zipper();
-	while(z.hasNext() && !(anc_freeze && cur_freeze))
-	{
-		SpanRef span = dynamic_pointer_cast<Span,Metadata>(z.next());
-
-		if(sel->includes(span->position()))
-		{
-			if(!anc_freeze && sel->anchorByte() < sel->cursorByte())
-			{
-				anc_l = line;
-				anc_set = anc_freeze = true;
-			}
-			else if(!cur_freeze && sel->anchorByte() >= sel->cursorByte())
-			{
-				cur_l = line;
-				cur_set = cur_freeze = true;
-			}
-		}
-
-		if(!anc_freeze && sel->anchorByte() >= span->position().firstByte() && sel->anchorByte() <= span->position().lastByte())
-		{
-			anc_l = line;
-			anc_set = true;
-		}
-
-		if(!cur_freeze && sel->cursorByte() >= span->position().firstByte() && sel->cursorByte() <= span->position().lastByte())
-		{
-			cur_l = line;
-			cur_set = true;
-		}
-
-		line++;
-	}
-
-	if(anc_set && cur_set)
-		return new ElementSelection(anc_l,0,cur_l,0);
-	else
-		return 0;
-}
-
-po::rrange Delegate::byteSelection(const boost::optional<ElementSelection> &sel)
-{
-	if(sel)
-	{
-		if(spans().size() <= std::max(sel->anchorLine(),sel->cursorLine()))
-			return 0;
-
-		const ByteSelection &anc(spans().zipper(sel->anchorLine()+1).current()->position());
-		const ByteSelection &cur(spans().zipper(sel->cursorLine()+1).current()->position());
-
-		if(sel->anchorLine() > sel->cursorLine())
-			return new ByteSelection(anc.lastByte(),cur.firstByte());
-		else
-			return new ByteSelection(anc.firstByte(),cur.lastByte());
-	}
-	else
-		return 0;
-}*/
-
-TestDelegateContext::TestDelegateContext(QObject *parent)
-: QObject(parent), m_address(), m_data(), m_row(-1)
-{}
-
-TestDelegateContext::TestDelegateContext(const QString &a, const QVariantList &d, int r, QObject *p)
-: QObject(p), m_address(a), m_data(d), m_row(r)
-{}
-
-QString TestDelegateContext::address(void) const		{ return m_address; }
-QVariantList TestDelegateContext::data(void) const	{ return m_data; }
-int TestDelegateContext::row(void) const						{ return m_row; }
-
 TestDelegate::TestDelegate(po::region_wloc r, unsigned int w, QQmlEngine *e, QQuickItem *p)
 : Delegate(r,p), m_width(w), m_engine(e),
 	m_rowComponent(m_engine,QUrl("qrc:/Test.qml")),
@@ -147,7 +38,6 @@ unsigned int TestDelegate::rowCount(void) const
 
 QQuickItem *TestDelegate::createRow(unsigned int l)
 {
-	//auto ctx = new QQmlContext(m_engine->rootContext());
 	unsigned int i = 0, w = (l == rowCount() - 1 && region()->size() % m_width ? region()->size() % m_width : m_width);
 	QVariantList _data;
 
@@ -161,25 +51,21 @@ QQuickItem *TestDelegate::createRow(unsigned int l)
 
 	assert(_data.size());
 
-	//ctx->setContextProperty("testDelegateContext",new TestDelegateContext(QString("%1").arg(l * m_width),_data,l,ctx));
-
 	auto ret = qobject_cast<QQuickItem*>(m_rowComponent.create(/*ctx*/));
+	assert(ret);
+
 	ret->setProperty("address",QVariant(l * m_width));
 	ret->setProperty("row",QVariant(l));
 	ret->setProperty("payload",QVariant(_data));
 
-	assert(ret);
 	connect(ret,SIGNAL(elementEntered(int,int)),this,SLOT(elementEntered(int,int)));
 	connect(ret,SIGNAL(elementClicked(int,int)),this,SLOT(elementClicked(int,int)));
-	//ctx->setParent(ret);
 	ret->setParent(this);
 	ret->setParentItem(qobject_cast<QQuickItem*>(parent()));
 
-	//assert(m_visibleRows.insert(std::make_pair(l,ret)).second);
-	m_visibleRows.insert(std::make_pair(l,ret));
+	assert(m_visibleRows.insert(std::make_pair(l,ret)).second);
 	updateOverlays(ElementSelection(l,0,l,m_width-1));
 
-	qDebug() << "add" << ret << l;
 	return ret;
 }
 
@@ -188,28 +74,25 @@ void TestDelegate::deleteRow(QQuickItem *i)
 	assert(i);
 	auto j = std::find_if(m_visibleRows.begin(),m_visibleRows.end(),[&](std::pair<int,QQuickItem*> p) { return p.second == i; });
 
-	if(j != m_visibleRows.end())
-	{
-		int l = j->first;
+	assert(j != m_visibleRows.end());
 
-		m_visibleRows.erase(j);
-		updateOverlays(ElementSelection(l,0,l,m_width-1));
-		i->deleteLater();
-	}
-	else
-	{
-		qWarning() << "Deleting unknown row" << i;
-	}
+	int l = j->first;
+
+	m_visibleRows.erase(j);
+	updateOverlays(ElementSelection(l,0,l,m_width-1));
+	i->deleteLater();
 }
 
 QQuickItem *TestDelegate::createHead(void)
 {
 	auto ret = qobject_cast<QQuickItem*>(m_headComponent.create());
+
+	assert(ret);
 	ret->setProperty("name",QString(QString::fromStdString(region()->name())));
+	ret->setParent(this);
 
 	connect(ret,SIGNAL(collapse()),this,SLOT(collapseRows()));
 
-	ret->setParent(this);
 	return ret;
 }
 
@@ -329,4 +212,7 @@ void TestDelegate::setCursor(const boost::optional<ElementSelection> &sel)
 																				std::max(sel->lastLine(),old->lastLine()),m_width-1));
 		}
 	}
+
+	if(m_cursor)
+		qDebug() << *m_cursor;
 }

@@ -4,6 +4,8 @@
 
 #include "linearview.hh"
 #include "session.hh"
+#include "pen.hh"
+#include "polygon.hh"
 
 using namespace std;
 
@@ -14,10 +16,11 @@ int main(int argc, char *argv[])
 	//qmlRegisterType<LinearSceneModel>("Panopticon",1,0,"LinearSceneModel");
 	//qmlRegisterType<Element>("Panopticon",1,0,"Element");
 	//qmlRegisterType<Header>("Panopticon",1,0,"Block");
-	//qmlRegisterType<GraphScenePen>("Panopticon",1,0,"Pen");
+	qmlRegisterType<Pen>("Panopticon",1,0,"Pen");
+	qmlRegisterType<Polygon>("Panopticon",1,0,"Polygon");
 	qmlRegisterType<Session>("Panopticon",1,0,"Session");
 	qmlRegisterType<LinearView>("Panopticon",1,0,"LinearView");
-	qmlRegisterType<TestDelegateContext>("Panopticon",1,0,"TestDelegateContext");
+	//qmlRegisterType<TestDelegateContext>("Panopticon",1,0,"TestDelegateContext");
 
 	QApplication app(argc, argv);
   QQmlApplicationEngine engine(QUrl("qrc:/Window.qml"));

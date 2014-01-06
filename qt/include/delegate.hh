@@ -79,32 +79,6 @@ private:
 	po::region_wloc _region;
 };
 
-class TestDelegateContext : public QObject
-{
-	Q_OBJECT
-	Q_PROPERTY(QString address READ address NOTIFY addressChanged)
-	Q_PROPERTY(QVariantList data READ data NOTIFY dataChanged)
-	Q_PROPERTY(int row READ row NOTIFY rowChanged)
-
-public:
-	TestDelegateContext(QObject *parent = nullptr);
-	TestDelegateContext(const QString &a, const QVariantList &d, int row, QObject *parent = nullptr);
-
-	QString address(void) const;
-	QVariantList data(void) const;
-	int row(void) const;
-
-signals:
-	void addressChanged(void);
-	void dataChanged(void);
-	void rowChanged(void);
-
-private:
-	QString m_address;
-	QVariantList m_data;
-	int m_row;
-};
-
 class TestDelegate : public Delegate
 {
 	Q_OBJECT

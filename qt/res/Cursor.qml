@@ -1,5 +1,5 @@
 import QtQuick 2.0
-import Panopticon 1.0
+import Panopticon 1.0 as Panopticon
 
 Item {
 	id: item
@@ -13,11 +13,23 @@ Item {
 		item.z = 1
 	}
 
-	Rectangle {
+	Panopticon.Polygon {
+		anchors.fill: parent
+		pen.color: "blue"
+		pen.width: 10
+		points: [
+			Qt.point(0,0),
+			Qt.point(0,100),
+			Qt.point(100,0),
+			Qt.point(100,100)
+		]
+	}
+
+	/*Rectangle {
 		id: rect
 		color: Qt.rgba(1,1,0,0.5)
 		border.width: 3
 		border.color: "#be9700"
 		anchors.fill: parent
-	}
+	}*/
 }
