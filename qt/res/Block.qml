@@ -4,6 +4,8 @@ import Panopticon 1.0
 Item {
 	signal collapse
 
+	property string name: "(no name)"
+
 	width: childrenRect.width
 	height: childrenRect.height
 
@@ -15,7 +17,7 @@ Item {
 
 		Text {
 			anchors.centerIn: parent
-			text: "name"
+			text: name
 		}
 
 		MouseArea {

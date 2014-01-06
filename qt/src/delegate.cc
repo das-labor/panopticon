@@ -147,7 +147,7 @@ unsigned int TestDelegate::rowCount(void) const
 
 QQuickItem *TestDelegate::createRow(unsigned int l)
 {
-	auto ctx = new QQmlContext(m_engine->rootContext());
+	//auto ctx = new QQmlContext(m_engine->rootContext());
 	unsigned int i = 0, w = (l == rowCount() - 1 && region()->size() % m_width ? region()->size() % m_width : m_width);
 	QVariantList _data;
 
@@ -159,20 +159,27 @@ QQuickItem *TestDelegate::createRow(unsigned int l)
 		i++;
 	}
 
-	ctx->setContextProperty("testDelegateContext",new TestDelegateContext(QString("%1").arg(l * m_width),_data,l,ctx));
+	assert(_data.size());
 
-	auto ret = qobject_cast<QQuickItem*>(m_rowComponent.create(ctx));
+	//ctx->setContextProperty("testDelegateContext",new TestDelegateContext(QString("%1").arg(l * m_width),_data,l,ctx));
+
+	auto ret = qobject_cast<QQuickItem*>(m_rowComponent.create(/*ctx*/));
+	ret->setProperty("address",QVariant(l * m_width));
+	ret->setProperty("row",QVariant(l));
+	ret->setProperty("payload",QVariant(_data));
 
 	assert(ret);
 	connect(ret,SIGNAL(elementEntered(int,int)),this,SLOT(elementEntered(int,int)));
 	connect(ret,SIGNAL(elementClicked(int,int)),this,SLOT(elementClicked(int,int)));
-	ctx->setParent(ret);
+	//ctx->setParent(ret);
 	ret->setParent(this);
 	ret->setParentItem(qobject_cast<QQuickItem*>(parent()));
 
+	//assert(m_visibleRows.insert(std::make_pair(l,ret)).second);
 	m_visibleRows.insert(std::make_pair(l,ret));
 	updateOverlays(ElementSelection(l,0,l,m_width-1));
 
+	qDebug() << "add" << ret << l;
 	return ret;
 }
 
@@ -181,17 +188,25 @@ void TestDelegate::deleteRow(QQuickItem *i)
 	assert(i);
 	auto j = std::find_if(m_visibleRows.begin(),m_visibleRows.end(),[&](std::pair<int,QQuickItem*> p) { return p.second == i; });
 
-	assert(j != m_visibleRows.end());
-	int l = j->first;
+	if(j != m_visibleRows.end())
+	{
+		int l = j->first;
 
-	m_visibleRows.erase(j);
-	updateOverlays(ElementSelection(l,0,l,m_width-1));
-	i->deleteLater();
+		m_visibleRows.erase(j);
+		updateOverlays(ElementSelection(l,0,l,m_width-1));
+		i->deleteLater();
+	}
+	else
+	{
+		qWarning() << "Deleting unknown row" << i;
+	}
 }
 
 QQuickItem *TestDelegate::createHead(void)
 {
 	auto ret = qobject_cast<QQuickItem*>(m_headComponent.create());
+	ret->setProperty("name",QString(QString::fromStdString(region()->name())));
+
 	connect(ret,SIGNAL(collapse()),this,SLOT(collapseRows()));
 
 	ret->setParent(this);
