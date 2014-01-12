@@ -94,6 +94,25 @@ private:
 	quint64 m_cursorColumn;
 };
 
+class ElementSelectionObject : public QObject, ElementSelection
+{
+	Q_OBJECT
+	Q_PROPERTY(int firstLine READ firstLine NOTIFY firstLineChanged)
+	Q_PROPERTY(int lastLine READ lastLine NOTIFY lastLineChanged)
+	Q_PROPERTY(int firstColumn READ firstColumn NOTIFY firstColumnChanged)
+	Q_PROPERTY(int lastColumn READ lastColumn NOTIFY lastColumnChanged)
+
+public:
+	ElementSelectionObject(QObject *parent = 0) : QObject(parent), ElementSelection(0,0,0,0) {}
+	ElementSelectionObject(const ElementSelection &s, QObject *parent = 0) : QObject(parent), ElementSelection(s) {}
+
+signals:
+	void firstLineChanged(void);
+	void lastLineChanged(void);
+	void firstColumnChanged(void);
+	void lastColumnChanged(void);
+};
+
 uint qHash(const ElementSelection &s);
 bool operator==(const ElementSelection &s1,const ElementSelection &s2);
 QDebug operator<<(QDebug dbg, const ElementSelection &c);

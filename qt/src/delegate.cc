@@ -1,3 +1,5 @@
+#include <cassert>
+
 #include "delegate.hh"
 #include <panopticon/digraph.hh>
 
@@ -110,6 +112,7 @@ QQuickItem *TestDelegate::createOverlay(const ElementSelection &sel)
 	ov->setParent(this);
 	ov->setParentItem(qobject_cast<QQuickItem*>(parent()));
 	ov->setVisible(false);
+	assert(QQmlProperty::write(ov,"cursor",QVariant::fromValue<QObject*>(new ElementSelectionObject(sel,ov))));
 
 	m_overlays.insert(std::make_pair(sel,ov));
 	updateOverlays(sel);
@@ -129,27 +132,42 @@ void TestDelegate::deleteOverlay(QQuickItem *ov)
 	ov->deleteLater();
 }
 
+boost::optional<std::pair<QQuickItem*,QQuickItem*>> TestDelegate::attachableRows(const ElementSelection &sel)
+{
+	auto fi = m_visibleRows.lower_bound(sel.firstLine());
+	auto li = m_visibleRows.lower_bound(sel.lastLine());
+
+	if(fi != m_visibleRows.end() && fi->first >= sel.firstLine() && fi->first <= sel.lastLine())
+	{
+		if(li == m_visibleRows.end() || li->first > sel.lastLine())
+			--li;
+		if(li->first >= sel.firstLine() && li->first <= sel.lastLine())
+		{
+			return std::make_pair(fi->second,li->second);
+		}
+	}
+
+	return boost::none;
+}
+
 void TestDelegate::updateOverlays(const ElementSelection &sel)
 {
 	for(auto i: m_overlays)
 	{
 		if(!i.first.disjoint(sel))
 		{
-			auto fi = m_visibleRows.lower_bound(i.first.firstLine());
-			auto li = m_visibleRows.lower_bound(i.first.lastLine());
+			auto rows = attachableRows(i.first);
 
-			if(fi != m_visibleRows.end() && fi->first >= i.first.firstLine() && fi->first <= i.first.lastLine())
+			if(rows)
 			{
-				if(li == m_visibleRows.end() || li->first > i.first.lastLine())
-					--li;
-				if(li->first >= i.first.firstLine() && li->first <= i.first.lastLine())
-				{
-					QVariant ret, first = QVariant::fromValue(fi->second), last = QVariant::fromValue(li->second);
-					QMetaObject::invokeMethod(i.second,"attach",Q_RETURN_ARG(QVariant,ret),Q_ARG(QVariant,first),Q_ARG(QVariant,last));
-					i.second->setVisible(true);
+				QVariant ret, first = QVariant::fromValue(rows->first), last = QVariant::fromValue(rows->second);
+				assert(QQmlProperty::write(i.second,"firstRow",first));
+				assert(QQmlProperty::write(i.second,"lastRow",last));
 
-					continue;
-				}
+				//QMetaObject::invokeMethod(i.second,"attach",Q_RETURN_ARG(QVariant,ret),Q_ARG(QVariant,first),Q_ARG(QVariant,last));
+				i.second->setVisible(true);
+
+				continue;
 			}
 
 			i.second->setVisible(false);
@@ -185,34 +203,38 @@ void TestDelegate::collapseRows(void)
 
 void TestDelegate::setCursor(const boost::optional<ElementSelection> &sel)
 {
-	if(sel != m_cursor)
+	if(!m_cursorOverlay)
 	{
-		auto old = m_cursor;
-
-		if(m_cursorOverlay)
-			deleteOverlay(m_cursorOverlay);
-
-		m_cursor = sel;
-
-		if(m_cursor)
-			m_cursorOverlay = createOverlay(*m_cursor);
-		else
-			m_cursorOverlay = 0;
-
-		// one if NULL other !NULL: redraw only !NULL one
-		if((sel && !old) || (!sel && old))
-		{
-			auto t = sel ? sel : old;
-			updateOverlays(ElementSelection(t->firstLine(),0,t->lastLine(),m_width-1));
-		}
-		// both selection smth: redraw difference
-		else
-		{
-				updateOverlays(ElementSelection(std::min(sel->firstLine(),old->firstLine()),0,
-																				std::max(sel->lastLine(),old->lastLine()),m_width-1));
-		}
+		m_cursorOverlay = createOverlay(ElementSelection(0,0,0,0));
+		m_cursorOverlay->setVisible(false);
 	}
 
-	if(m_cursor)
-		qDebug() << *m_cursor;
+	if(sel != m_cursor)
+	{
+		auto i = std::find_if(m_overlays.begin(),m_overlays.end(),[&](const std::pair<ElementSelection,QQuickItem*> &p) { return p.second == m_cursorOverlay; });
+
+		if(i != m_overlays.end())
+			m_overlays.erase(i);
+
+		if((m_cursor = sel))
+		{
+			auto p = attachableRows(*m_cursor);
+
+			assert(QQmlProperty::write(m_cursorOverlay,"cursor",QVariant::fromValue<QObject*>(new ElementSelectionObject(*sel,m_cursorOverlay))));
+
+			if(p)
+			{
+				assert(QQmlProperty::write(m_cursorOverlay,"firstRow",QVariant::fromValue<QObject*>(p->first)));
+				assert(QQmlProperty::write(m_cursorOverlay,"lastRow",QVariant::fromValue<QObject*>(p->second)));
+			}
+
+			m_overlays.insert(std::make_pair(*m_cursor,m_cursorOverlay));
+			m_cursorOverlay->setVisible(true);
+		}
+		else
+		{
+			m_cursorOverlay->setVisible(false);
+			assert(QQmlProperty::write(m_cursorOverlay,"cursor",QVariant()));
+		}
+	}
 }

@@ -120,5 +120,6 @@ private:
 	QQuickItem *m_cursorOverlay;
 	bool m_collapsed;
 
+	boost::optional<std::pair<QQuickItem*,QQuickItem*>> attachableRows(const ElementSelection &sel);
 	void updateOverlays(const ElementSelection &sel);
 };

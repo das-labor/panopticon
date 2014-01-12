@@ -5,7 +5,7 @@
 #include "linearview.hh"
 #include "session.hh"
 #include "pen.hh"
-#include "polygon.hh"
+#include "elementselection.hh"
 
 using namespace std;
 
@@ -17,7 +17,7 @@ int main(int argc, char *argv[])
 	//qmlRegisterType<Element>("Panopticon",1,0,"Element");
 	//qmlRegisterType<Header>("Panopticon",1,0,"Block");
 	qmlRegisterType<Pen>("Panopticon",1,0,"Pen");
-	qmlRegisterType<Polygon>("Panopticon",1,0,"Polygon");
+	qmlRegisterType<ElementSelectionObject>("Panopticon",1,0,"ElementSelection");
 	qmlRegisterType<Session>("Panopticon",1,0,"Session");
 	qmlRegisterType<LinearView>("Panopticon",1,0,"LinearView");
 	//qmlRegisterType<TestDelegateContext>("Panopticon",1,0,"TestDelegateContext");
