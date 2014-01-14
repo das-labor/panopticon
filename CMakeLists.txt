@@ -44,7 +44,6 @@ find_package_handle_standard_args(CVC4 REQUIRED_VARS
 	cvc4_LIBRARIES cvc4_INCLUDE_DIRS)
 find_package(Boost COMPONENTS system REQUIRED)
 pkg_check_modules(tbb REQUIRED tbb)
-find_package(OpenGL REQUIRED)
 pkg_check_modules(panopticon panopticon)
 
 # C++11 flags

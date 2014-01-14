@@ -1,3 +1,4 @@
+#include <map>
 #include <QtQuick>
 #include "session.hh"
 #include "delegate.hh"
@@ -76,6 +77,8 @@ class LinearView : public QQuickItem
 	Q_PROPERTY(Session* session READ session WRITE setSession NOTIFY sessionChanged)
 
 public:
+	using rowIndex = int;
+
 	LinearView(QQuickItem *parent = 0);
 	virtual ~LinearView(void);
 
@@ -83,11 +86,7 @@ public:
 	void setSession(Session *);
 
 public slots:
-	void scrollViewport(qreal);
-
-	// From QML
-	//void setVisibility(int blkid, bool vis);
-
+	void scrollViewport(float delta = 0);
 	void delegateModified(void);
 
 signals:
@@ -100,19 +99,19 @@ protected:
 	virtual void geometryChanged(const QRectF &newGeometry, const QRectF &oldGeometry);
 
 private:
-	QQmlEngine m_engine;
-	LinearViewContext m_context;
+	QQmlEngine _engine;
+	LinearViewContext _context;
+	Session* _session;
+	boost::icl::split_interval_map<rowIndex,std::shared_ptr<Delegate>> _delegates;
+	rowIndex _globalRowIndex;
+	int _yOffset;
+	std::map<rowIndex,QQuickItem*> _visibleRows;
+	std::map<rowIndex,std::tuple<rowIndex,bool>> _references;
 
-	Session* m_session;
-	std::list<QQuickItem*> m_visibleRows;
-	int m_visibleTopRow;
-
-	boost::icl::split_interval_map<int,LinearViewBlock> m_availableBlocks;
-	std::unordered_map<int,LinearViewBlock> m_hiddenBlocks;
-
-	void addRows(bool up = false);
-	QQuickItem *createRow(int);
-	unsigned int rowCount(void) const;
+	rowIndex newGlobalRowIndex(float delta) const;
+	QQuickItem *getRow(rowIndex gri);
+	void trimRowCache(rowIndex from, rowIndex to);
+	std::pair<std::shared_ptr<Delegate>,rowIndex> mapToDelegate(rowIndex gri);
 
 private slots:
 	void rowHeightChanged(void);
