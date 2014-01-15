@@ -108,10 +108,7 @@ private:
 	std::map<rowIndex,QQuickItem*> _visibleRows;
 	std::map<rowIndex,std::tuple<rowIndex,bool>> _references;
 
-	rowIndex newGlobalRowIndex(float delta) const;
-	QQuickItem *getRow(rowIndex gri);
-	void trimRowCache(rowIndex from, rowIndex to);
-	std::pair<std::shared_ptr<Delegate>,rowIndex> mapToDelegate(rowIndex gri);
+	void insertRows(float y, rowIndex gri, bool up);
 
 private slots:
 	void rowHeightChanged(void);
