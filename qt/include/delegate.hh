@@ -65,12 +65,14 @@ public:
 	//virtual boost::optional<ElementSelection> elementSelection(const po::rrange &sel);
 	//virtual po::rrange byteSelection(const boost::optional<ElementSelection> &sel);
 
-//public slots:
+public slots:
+	virtual void select(po::bound) = 0;
 	//virtual void setMouse(const boost::optional<ElementSelection> &pos) = 0;
 	//virtual void setCursor(const boost::optional<ElementSelection> &sel) = 0;
 
 signals:
 	void modified(void);
+	void selected(po::bound);
 
 private:
 	po::region_wloc _region;
@@ -101,6 +103,7 @@ public slots:
 	void elementClicked(int,int);
 	void elementEntered(int,int);
 	void collapseRows(void);
+	virtual void select(po::bound);
 
 private:
 	unsigned int m_width;

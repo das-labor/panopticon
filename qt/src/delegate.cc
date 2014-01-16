@@ -201,6 +201,11 @@ void TestDelegate::collapseRows(void)
 	emit modified();
 }
 
+void TestDelegate::select(po::bound b)
+{
+	qWarning() << "TestDelegate::select(po::bound b) not implemented";
+}
+
 void TestDelegate::setCursor(const boost::optional<ElementSelection> &sel)
 {
 	if(!m_cursorOverlay)
