@@ -98,62 +98,41 @@ void LinearView::setSession(Session *s)
 
 void LinearView::delegateModified(void)
 {
-	/*
-	auto del = qobject_cast<Delegate*>(sender());
+	Delegate *del = qobject_cast<Delegate*>(sender());
 
 	assert(del);
-	auto i = m_visibleRows.begin();
-	qreal offset = (*i)->y();
+	auto i = std::find_if(_delegates.begin(),_delegates.end(),[&](const std::pair<decltype(_delegates)::interval_type,std::shared_ptr<Delegate>> &p)
+			{ return p.second.get() == del; });
+	auto a = _visibleRows.lower_bound(boost::icl::first(i->first));
+	auto b = _visibleRows.upper_bound(boost::icl::last(i->first));
 
-	while(i != m_visibleRows.end())
+	while(a != b)
 	{
-		auto row = std::distance(m_visibleRows.begin(),i) + m_visibleTopRow;
-		auto j = m_availableBlocks.find(row);
-
-		assert(j != m_availableBlocks.end());
-		if(j->second.type == LinearViewBlock::Header)
-			j->second.delegate->deleteHead(*i);
-		else
-			j->second.delegate->deleteRow(*i);
-
-		++i;
+		del->deleteRow(a->second);
+		a = _visibleRows.erase(a);
 	}
 
-	auto bak = m_availableBlocks;
-	int id = 0, k = 0;
-
-	m_visibleRows.clear();
-	m_availableBlocks.clear();
-	for(auto j: bak)
-	{
-		if(j.second.type == LinearViewBlock::Header)
-		{
-			auto len = j.second.delegate->rowCount();
-
-			m_availableBlocks.add(std::make_pair(decltype(m_availableBlocks)::interval_type::right_open(k,k + 1),LinearViewBlock(LinearViewBlock::Header,j.second.delegate,id)));
-			m_availableBlocks.add(std::make_pair(decltype(m_availableBlocks)::interval_type::right_open(k + 1,k + 1 + len),LinearViewBlock(LinearViewBlock::Data,j.second.delegate,id)));
-
-			k += len + 1;
-			id += 1;
-		}
-	}
-
-	scrollViewport(0);
-	scrollViewport(offset);
-*/
-	qWarning() << "LinearView::delegateModified not implemented";
+	rowHeightChanged();
 }
 
 void LinearView::rowHeightChanged(void)
-{/*
+{
 	QQuickItem *prev = 0;
-	std::for_each(std::find(m_visibleRows.begin(),m_visibleRows.end(),sender()),m_visibleRows.end(),[&](QQuickItem *itm)
+	Delegate *del = qobject_cast<Delegate*>(sender());
+
+	assert(del);
+	auto i = std::find_if(_delegates.begin(),_delegates.end(),[&](const std::pair<decltype(_delegates)::interval_type,std::shared_ptr<Delegate>> &p)
+			{ return p.second.get() == del; });
+	auto a = _visibleRows.lower_bound(boost::icl::first(i->first));
+	auto b = _visibleRows.upper_bound(boost::icl::last(i->first));
+
+	std::for_each(a,b,[&](const std::pair<rowIndex,QQuickItem*> &p)
 	{
 		if(prev)
-			itm->setY(prev->y() + prev->height());
-		prev = itm;
-	});*/
-	qWarning() << "LinearView::rowHeightChanged not implemented";
+			p.second->setY(prev->y() + prev->height());
+		prev = p.second;
+	});
+	scrollViewport(0);
 }
 
 void LinearView::wheelEvent(QWheelEvent *event)

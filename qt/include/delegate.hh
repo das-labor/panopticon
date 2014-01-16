@@ -42,9 +42,6 @@ public:
 	virtual QQuickItem *createRow(unsigned int i) = 0;
 	virtual void deleteRow(QQuickItem*) = 0;
 
-	virtual QQuickItem *createHead(void) = 0;
-	virtual void deleteHead(QQuickItem *) = 0;
-
 	/*!
 	 * Number of lines this delegate spans.
 	 */
