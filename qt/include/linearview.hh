@@ -88,6 +88,7 @@ public:
 public slots:
 	void scrollViewport(float delta = 0);
 	void delegateModified(void);
+	void selected(po::bound b);
 
 signals:
 	void sessionChanged(void);

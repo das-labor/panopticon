@@ -175,12 +175,28 @@ void TestDelegate::updateOverlays(const ElementSelection &sel)
 	}
 }
 
+po::bound TestDelegate::map(const boost::optional<ElementSelection> &sel) const
+{
+	if(!sel)
+		return po::bound();
+	else
+		return po::bound(sel->firstLine() * m_width + sel->firstColumn(),sel->lastLine() * m_width + sel->lastColumn() + 1);
+}
+
 void TestDelegate::elementClicked(int col, int row)
 {
 	if(m_cursor)
-		setCursor(boost::none);
+	{
+		//setCursor(boost::none);
+		m_cursor = boost::none;
+		emit selected(po::bound());
+	}
 	else
-		setCursor(ElementSelection(row,col,row,col));
+	{
+		//setCursor(ElementSelection(row,col,row,col));
+		m_cursor = ElementSelection(row,col,row,col);
+		emit selected(map(ElementSelection(row,col,row,col)));
+	}
 }
 
 void TestDelegate::elementEntered(int col, int row)
@@ -189,10 +205,16 @@ void TestDelegate::elementEntered(int col, int row)
 	{
 		ElementSelection sel = *m_cursor;
 		sel.setCursor(row,col);
-		setCursor(sel);
+		m_cursor = sel;
+		emit selected(map(sel));
+		//setCursor(sel);
 	}
 	else
-		setCursor(ElementSelection(row,col,row,col));
+	{
+		//setCursor(ElementSelection(row,col,row,col));
+		m_cursor = ElementSelection(row,col,row,col);
+		emit selected(map(ElementSelection(row,col,row,col)));
+	}
 }
 
 void TestDelegate::collapseRows(void)

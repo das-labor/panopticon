@@ -122,4 +122,5 @@ private:
 
 	boost::optional<std::pair<QQuickItem*,QQuickItem*>> attachableRows(const ElementSelection &sel);
 	void updateOverlays(const ElementSelection &sel);
+	po::bound map(const boost::optional<ElementSelection> &sel) const;
 };

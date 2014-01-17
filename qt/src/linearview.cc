@@ -89,11 +89,20 @@ void LinearView::setSession(Session *s)
 
 			_delegates += std::make_pair(decltype(_delegates)::interval_type::right_open(gri,gri+len),del);
 			connect(del.get(),SIGNAL(modified()),this,SLOT(delegateModified()));
+			connect(del.get(),SIGNAL(selected(po::bound)),this,SLOT(selected(po::bound)));
 			gri += len;
 		}
 
 		emit sessionChanged();
 	}
+}
+
+void LinearView::selected(po::bound b)
+{
+	if(boost::icl::length(b))
+		qDebug() << boost::icl::first(b) << boost::icl::last(b);
+	else
+		qDebug() << "[]";
 }
 
 void LinearView::delegateModified(void)
@@ -114,6 +123,8 @@ void LinearView::delegateModified(void)
 
 	rowHeightChanged();
 }
+
+
 
 void LinearView::rowHeightChanged(void)
 {
