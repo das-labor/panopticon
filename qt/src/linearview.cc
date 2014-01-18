@@ -99,10 +99,46 @@ void LinearView::setSession(Session *s)
 
 void LinearView::selected(po::bound b)
 {
+	std::function<void(const std::pair<std::shared_ptr<Delegate>,po::bound> &)> fn =
+		[&](const std::pair<std::shared_ptr<Delegate>,po::bound> &p) { p.first->select(po::bound()); };
+
 	if(boost::icl::length(b))
+	{
+		Delegate *del = qobject_cast<Delegate*>(sender());
+
+		assert(del);
+		auto i = std::find_if(_selection.begin(),_selection.end(),[&](const std::pair<std::shared_ptr<Delegate>,po::bound> &p)
+				{ return p.first == del; });
+
+		if(i != _selection.end())
+		{
+			i.second = b;
+
+			if(boost::icl::first(b) != 0)
+			{
+				std::for_each(_selection.begin(),i,fn);
+				_selection.erase(_selection.begin(),i);
+			}
+
+			if(boost::icl::last(b) < del->region().size - 1)
+			{
+				std::for_each(std::next(i),_selection.end(),fn);
+				_selection.erase(std::next(i),_selection.end());
+			}
+		}
+		else
+		{
+			
+
 		qDebug() << boost::icl::first(b) << boost::icl::last(b);
+	}
 	else
+	{
+		for(const std::pair<std::shared_ptr<Delegate>,po::bound> &p: _selection)
+			p.first->select(po::bound());
+		_selection.clear();
 		qDebug() << "[]";
+	}
 }
 
 void LinearView::delegateModified(void)
