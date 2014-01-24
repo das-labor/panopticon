@@ -7,7 +7,7 @@
 #include <boost/optional.hpp>
 #include <panopticon/region.hh>
 #include <panopticon/hash.hh>
-#include "elementselection.hh"
+#include "selection.hh"
 
 #pragma once
 
@@ -66,13 +66,13 @@ public:
 	//virtual po::rrange byteSelection(const boost::optional<ElementSelection> &sel);
 
 public slots:
-	virtual void select(po::bound) = 0;
+	virtual void select(boost::optional<std::pair<po::offset,po::offset>>) = 0;
 	//virtual void setMouse(const boost::optional<ElementSelection> &pos) = 0;
 	//virtual void setCursor(const boost::optional<ElementSelection> &sel) = 0;
 
 signals:
 	void modified(void);
-	void selected(po::bound);
+	void selected(boost::optional<po::offset>,bool);
 
 private:
 	po::region_wloc _region;
@@ -103,7 +103,7 @@ public slots:
 	void elementClicked(int,int);
 	void elementEntered(int,int);
 	void collapseRows(void);
-	virtual void select(po::bound);
+	virtual void select(boost::optional<std::pair<po::offset,po::offset>>);
 
 private:
 	unsigned int m_width;
@@ -122,5 +122,4 @@ private:
 
 	boost::optional<std::pair<QQuickItem*,QQuickItem*>> attachableRows(const ElementSelection &sel);
 	void updateOverlays(const ElementSelection &sel);
-	po::bound map(const boost::optional<ElementSelection> &sel) const;
 };

@@ -31,9 +31,20 @@ elseif("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
 	message(STATUS "Debug build")
 endif()
 
-# Dependencies
-CHECK_CXX_COMPILER_FLAG("-std=c++0x" CXXFLAG_CPP0X)
+# Check for C++11
 CHECK_CXX_COMPILER_FLAG("-std=c++11" CXXFLAG_CPP11)
+if(NOT DEFINED "CXXFLAG_CPP11")
+	CHECK_CXX_COMPILER_FLAG("-std=c++0x" CXXFLAG_CPP0X)
+	if(NOT DEFINED "CXXFLAG_CPP0X")
+		message(FATAL_ERROR "Your compiler does not support C++11. Please use clang 3.0 or GCC 4.7.")
+	else()
+		add_definitions("-std=c++0x")
+	endif()
+else()
+	add_definitions("-std=c++11")
+endif()
+
+# Dependencies
 find_package(PkgConfig)
 pkg_check_modules(redland REQUIRED redland)
 pkg_check_modules(raptor REQUIRED raptor2)
@@ -46,36 +57,26 @@ find_package(Boost COMPONENTS system REQUIRED)
 pkg_check_modules(tbb REQUIRED tbb)
 pkg_check_modules(panopticon panopticon)
 
-# C++11 flags
-if(CXXFLAG_CPP11)
-	add_definitions("-std=c++11")
-elseif(CXXFLAG_CPP0X)
-	add_definitions("-std=c++0x")
-else()
-	message(FATAL_ERROR "Your compiler does not support C++11. Please use clang
-	3.0 or GCC 4.7.")
-endif()
-
 # Targets
 if(${panopticon_BUILD})
+	message("** Building Panopticon library")
 	add_subdirectory("lib")
 else()
 	set(panopticon_FOUND FALSE)
 endif()
 
-find_package_handle_standard_args(Panopticon REQUIRED_VARS
-	panopticon_LIBRARIES panopticon_INCLUDE_DIRS)
-
 if(${panop_BUILD} AND ${panopticon_FOUND})
+	message("** Building Panopticon command line tool")
 	add_subdirectory("cli")
 	add_dependencies(panop panopticon)
 endif()
 
 if(${qtpanopticon_BUILD} AND ${panopticon_FOUND})
+	message("** Building Panopticon Qt UI")
 	find_package(Qt5 COMPONENTS Widgets Qml Quick REQUIRED)
 	add_subdirectory("qt")
 	add_dependencies(qtpanopticon panopticon)
 endif()
 
-message(STATUS "Type 'make' to build.")
-message(STATUS "You can run the test suite with 'ctest'")
+message("** Type 'make' to build.")
+message("** You can run the test suite with 'ctest'")

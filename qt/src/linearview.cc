@@ -80,8 +80,10 @@ void LinearView::setSession(Session *s)
 		_session = s;
 		_references.clear();
 		_delegates.clear();
+		_ordinals.clear();
 
 		rowIndex gri = 0;
+		size_t ord = 0;
 		for(auto p: po::projection(_session->graph()))
 		{
 			std::shared_ptr<Delegate> del = std::make_shared<TestDelegate>(p.second,10,&_engine,this);
@@ -89,56 +91,87 @@ void LinearView::setSession(Session *s)
 
 			_delegates += std::make_pair(decltype(_delegates)::interval_type::right_open(gri,gri+len),del);
 			connect(del.get(),SIGNAL(modified()),this,SLOT(delegateModified()));
-			connect(del.get(),SIGNAL(selected(po::bound)),this,SLOT(selected(po::bound)));
+			connect(del.get(),SIGNAL(selected(boost::optional<po::offset>,bool)),this,SLOT(selected(boost::optional<po::offset>,bool)));
 			gri += len;
+
+			assert(_ordinals.emplace(del.get(),ord++).second);
 		}
 
 		emit sessionChanged();
 	}
 }
 
-void LinearView::selected(po::bound b)
+void LinearView::selected(boost::optional<po::offset> cur, bool start_new)
 {
-	std::function<void(const std::pair<std::shared_ptr<Delegate>,po::bound> &)> fn =
-		[&](const std::pair<std::shared_ptr<Delegate>,po::bound> &p) { p.first->select(po::bound()); };
+	Delegate *del = qobject_cast<Delegate*>(sender());
+	assert(del);
+	size_t regIdx = regionIndex(del);
+	boost::optional<DelegateSelection> sel = boost::none;
 
-	if(boost::icl::length(b))
+	if(cur)
 	{
-		Delegate *del = qobject_cast<Delegate*>(sender());
-
-		assert(del);
-		auto i = std::find_if(_selection.begin(),_selection.end(),[&](const std::pair<std::shared_ptr<Delegate>,po::bound> &p)
-				{ return p.first == del; });
-
-		if(i != _selection.end())
-		{
-			i.second = b;
-
-			if(boost::icl::first(b) != 0)
-			{
-				std::for_each(_selection.begin(),i,fn);
-				_selection.erase(_selection.begin(),i);
-			}
-
-			if(boost::icl::last(b) < del->region().size - 1)
-			{
-				std::for_each(std::next(i),_selection.end(),fn);
-				_selection.erase(std::next(i),_selection.end());
-			}
-		}
+		if(start_new || !_cursor)
+			sel = DelegateSelection(DelegatePoint(regIdx,*cur),DelegatePoint(regIdx,*cur));
 		else
-		{
-			
+			sel = DelegateSelection(_cursor->anchor(),DelegatePoint(regIdx,*cur));
+	}
 
-		qDebug() << boost::icl::first(b) << boost::icl::last(b);
-	}
-	else
+	if(sel != _cursor)
 	{
-		for(const std::pair<std::shared_ptr<Delegate>,po::bound> &p: _selection)
-			p.first->select(po::bound());
-		_selection.clear();
-		qDebug() << "[]";
+		size_t topReg = std::min(sel ? sel->minimum().first : std::numeric_limits<size_t>::max(),_cursor ? _cursor->minimum().first : std::numeric_limits<size_t>::max()),
+					 botReg = std::max(sel ? sel->maximum().first : std::numeric_limits<size_t>::min(),_cursor ? _cursor->maximum().first : std::numeric_limits<size_t>::min());
+		auto i = std::next(_delegates.begin(),topReg);
+
+		while(i != std::next(_delegates.begin(),botReg + 1))
+		{
+			Delegate *cur_del = i->second.get();
+			regIdx = regionIndex(cur_del);
+			const po::offset null = 0;
+
+			// in new selection?
+			if(sel && regIdx >= sel->minimum().first && regIdx <= sel->maximum().first)
+			{
+				if(regIdx == sel->minimum().first && regIdx == sel->maximum().first)
+					i->second->select(boost::make_optional(std::make_pair(sel->anchor().second,sel->cursor().second)));
+				else if(regIdx == sel->minimum().first)
+				{
+					if(regIdx == sel->anchor().first)
+						i->second->select(boost::make_optional(std::make_pair(sel->anchor().second,cur_del->region()->size() - 1)));
+					else
+						i->second->select(boost::make_optional(std::make_pair(cur_del->region()->size() - 1,sel->cursor().second)));
+				}
+				else if(regIdx == sel->maximum().first)
+				{
+					if(regIdx == sel->anchor().first)
+						i->second->select(boost::make_optional(std::make_pair(sel->anchor().second,null)));
+					else
+						i->second->select(boost::make_optional(std::make_pair(null,sel->cursor().second)));
+				}
+				else
+				{
+					if(sel->anchor().first < sel->cursor().first)
+						i->second->select(boost::make_optional(std::make_pair(null,cur_del->region()->size() - 1)));
+					else
+						i->second->select(boost::make_optional(std::make_pair(cur_del->region()->size() - 1,null)));
+				}
+			}
+			else
+				i->second->select(boost::none);
+
+			++i;
+		}
+
+		_cursor = sel;
 	}
+}
+
+size_t LinearView::regionIndex(const Delegate *del) const
+{
+	assert(del);
+	auto i = _ordinals.find(del);
+
+	assert(i != _ordinals.end());
+	return i->second;
 }
 
 void LinearView::delegateModified(void)

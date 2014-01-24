@@ -78,8 +78,6 @@ class LinearView : public QQuickItem
 
 public:
 	using rowIndex = int;
-	using globalSelector = std::pair<std::shared_ptr<Delegate>,po::bound>;
-	using GlobalSelection
 
 	LinearView(QQuickItem *parent = 0);
 	virtual ~LinearView(void);
@@ -90,7 +88,7 @@ public:
 public slots:
 	void scrollViewport(float delta = 0);
 	void delegateModified(void);
-	void selected(po::bound b);
+	void selected(boost::optional<po::offset>, bool);
 
 signals:
 	void sessionChanged(void);
@@ -105,15 +103,16 @@ private:
 	QQmlEngine _engine;
 	LinearViewContext _context;
 	Session* _session;
+	std::unordered_map<const Delegate*,size_t> _ordinals;
 	boost::icl::split_interval_map<rowIndex,std::shared_ptr<Delegate>> _delegates;
 	rowIndex _globalRowIndex;
 	int _yOffset;
 	std::map<rowIndex,QQuickItem*> _visibleRows;
 	std::map<rowIndex,std::tuple<rowIndex,bool>> _references;
-	std::pair<globalSelector,globalSelector> _cursor;
-	std::pair<globalSelector,globalSelector> _anchor;
+	boost::optional<DelegateSelection> _cursor;
 
 	void insertRows(float y, rowIndex gri, bool up);
+	size_t regionIndex(const Delegate *del) const;
 
 private slots:
 	void rowHeightChanged(void);

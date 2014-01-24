@@ -77,8 +77,19 @@ Item {
 
 			if(cursor && firstRow && lastRow)
 			{
-				var f = cursor.firstColumn * firstRow.elementWidth
-				var l = cursor.lastColumn * lastRow.elementWidth
+				var f,l;
+
+				if(cursor.firstLine != cursor.lastLine)
+				{
+					f = (cursor.firstLine == cursor.anchorLine ? cursor.anchorColumn : cursor.cursorColumn) * firstRow.elementWidth
+					l = (cursor.lastLine == cursor.anchorLine ? cursor.anchorColumn : cursor.cursorColumn) * lastRow.elementWidth
+				}
+				else
+				{
+					f = cursor.firstColumn * firstRow.elementWidth
+					l = cursor.lastColumn * firstRow.elementWidth
+				}
+
 				var firstRect = Qt.rect(f,outlineWidth / 2,firstRow.elementWidth,firstRow.height - outlineWidth)
 				var lastRect = Qt.rect(l,height - lastRow.height + outlineWidth / 2,lastRow.elementWidth,lastRow.height - outlineWidth)
 				var paths

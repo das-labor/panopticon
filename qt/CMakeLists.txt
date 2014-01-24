@@ -2,8 +2,8 @@ cmake_minimum_required(VERSION 2.8)
 project(PanopticonQt CXX C)
 
 set(qtpanopticon_SOURCES src/dot/dot.cc src/delegate.cc
-	src/elementselection.cc src/linearview.cc src/main.cc src/session.cc)
-set(qtpanopticon_HEADERS include/delegate.hh include/elementselection.hh
+	src/selection.cc src/linearview.cc src/main.cc src/session.cc)
+set(qtpanopticon_HEADERS include/delegate.hh include/selection.hh
 	include/pen.hh
 	include/linearview.hh include/session.hh include/dot/adaptor.hh include/dot/astar.hh
 	include/dot/dot.hh include/dot/layout.hh include/dot/net_flow.hh

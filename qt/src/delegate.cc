@@ -175,46 +175,14 @@ void TestDelegate::updateOverlays(const ElementSelection &sel)
 	}
 }
 
-po::bound TestDelegate::map(const boost::optional<ElementSelection> &sel) const
-{
-	if(!sel)
-		return po::bound();
-	else
-		return po::bound(sel->firstLine() * m_width + sel->firstColumn(),sel->lastLine() * m_width + sel->lastColumn() + 1);
-}
-
 void TestDelegate::elementClicked(int col, int row)
 {
-	if(m_cursor)
-	{
-		//setCursor(boost::none);
-		m_cursor = boost::none;
-		emit selected(po::bound());
-	}
-	else
-	{
-		//setCursor(ElementSelection(row,col,row,col));
-		m_cursor = ElementSelection(row,col,row,col);
-		emit selected(map(ElementSelection(row,col,row,col)));
-	}
+	emit selected(row * m_width + col,true);
 }
 
 void TestDelegate::elementEntered(int col, int row)
 {
-	if(m_cursor)
-	{
-		ElementSelection sel = *m_cursor;
-		sel.setCursor(row,col);
-		m_cursor = sel;
-		emit selected(map(sel));
-		//setCursor(sel);
-	}
-	else
-	{
-		//setCursor(ElementSelection(row,col,row,col));
-		m_cursor = ElementSelection(row,col,row,col);
-		emit selected(map(ElementSelection(row,col,row,col)));
-	}
+	emit selected(row * m_width + col,false);
 }
 
 void TestDelegate::collapseRows(void)
@@ -223,9 +191,12 @@ void TestDelegate::collapseRows(void)
 	emit modified();
 }
 
-void TestDelegate::select(po::bound b)
+void TestDelegate::select(boost::optional<std::pair<po::offset,po::offset>> p)
 {
-	qWarning() << "TestDelegate::select(po::bound b) not implemented";
+	if(p)
+		setCursor(ElementSelection(std::trunc(p->first / m_width),p->first % m_width,std::trunc(p->second / m_width),p->second % m_width));
+	else
+		setCursor(boost::none);
 }
 
 void TestDelegate::setCursor(const boost::optional<ElementSelection> &sel)
