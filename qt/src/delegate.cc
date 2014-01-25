@@ -11,102 +11,96 @@ Delegate::~Delegate(void) {}
 
 po::region_wloc Delegate::region(void) const { return _region; }
 
-TestDelegate::TestDelegate(po::region_wloc r, unsigned int w, QQmlEngine *e, QQuickItem *p)
-: Delegate(r,p), m_width(w), m_engine(e),
-	m_rowComponent(m_engine,QUrl("qrc:/Test.qml")),
-	m_headComponent(m_engine,QUrl("qrc:/Block.qml")),
-	m_cursorComponent(m_engine,QUrl("qrc:/Cursor.qml")),
-	m_overlays(), m_visibleRows(),
-	m_cursor(boost::none), m_cursorOverlay(0), m_collapsed(false)
+BinaryDelegate::BinaryDelegate(po::region_wloc r, unsigned int w, QQmlEngine *e, QQuickItem *p)
+: Delegate(r,p), _width(w), _engine(e),
+	_rowComponent(_engine,QUrl("qrc:/Binary.qml")),
+	_titleComponent(_engine,QUrl("qrc:/BinaryTitle.qml")),
+	_cursorComponent(_engine,QUrl("qrc:/Cursor.qml")),
+	_overlays(), _visibleRows(),
+	_cursor(boost::none), _cursorOverlay(0), _collapsed(false)
 {
 	assert(w);
-	qDebug() << m_rowComponent.errors();
-	qDebug() << m_headComponent.errors();
-	qDebug() << m_cursorComponent.errors();
+	qDebug() << _rowComponent.errors();
+	qDebug() << _titleComponent.errors();
+	qDebug() << _cursorComponent.errors();
 }
 
-TestDelegate::~TestDelegate(void) {}
+BinaryDelegate::~BinaryDelegate(void) {}
 
-unsigned int TestDelegate::rowCount(void) const
+unsigned int BinaryDelegate::rowCount(void) const
 {
-	if(m_collapsed)
-		return 0;
+	if(_collapsed)
+		return 1;
 	else
 	{
 		size_t l = region()->size();
-		return l / m_width + !!(l % m_width);
+		return l / _width + !!(l % _width) + 1;
 	}
 }
 
-QQuickItem *TestDelegate::createRow(unsigned int l)
+QQuickItem *BinaryDelegate::createRow(unsigned int l)
 {
-	unsigned int i = 0, w = (l == rowCount() - 1 && region()->size() % m_width ? region()->size() % m_width : m_width);
+	unsigned int i = 0, w = (l == rowCount() - 1 && region()->size() % _width ? region()->size() % _width : _width);
 	QVariantList _data;
+	QQuickItem *ret = 0;
 
 	assert(l < rowCount());
 
-	while(i < w)
+	if(l > 0)
 	{
-		_data.append(QVariant::fromValue(QString("??")));
-		i++;
+		while(i < w)
+		{
+			_data.append(QVariant::fromValue(QString("??")));
+			i++;
+		}
+
+		assert(_data.size());
+
+		ret = qobject_cast<QQuickItem*>(_rowComponent.create());
+		assert(ret);
+
+		ret->setProperty("address",QVariant((l-1) * _width));
+		ret->setProperty("row",QVariant(l));
+		ret->setProperty("payload",QVariant(_data));
+
+		connect(ret,SIGNAL(elementEntered(int,int)),this,SLOT(elementEntered(int,int)));
+		connect(ret,SIGNAL(elementClicked(int,int)),this,SLOT(elementClicked(int,int)));
+	}
+	else
+	{
+		ret = qobject_cast<QQuickItem*>(_titleComponent.create());
+
+		assert(ret);
+		ret->setProperty("title",QString(QString::fromStdString(region()->name())));
+		connect(ret,SIGNAL(collapse()),this,SLOT(collapseRows()));
 	}
 
-	assert(_data.size());
-
-	auto ret = qobject_cast<QQuickItem*>(m_rowComponent.create(/*ctx*/));
-	assert(ret);
-
-	ret->setProperty("address",QVariant(l * m_width));
-	ret->setProperty("row",QVariant(l));
-	ret->setProperty("payload",QVariant(_data));
-
-	connect(ret,SIGNAL(elementEntered(int,int)),this,SLOT(elementEntered(int,int)));
-	connect(ret,SIGNAL(elementClicked(int,int)),this,SLOT(elementClicked(int,int)));
 	ret->setParent(this);
 	ret->setParentItem(qobject_cast<QQuickItem*>(parent()));
 
-	assert(m_visibleRows.insert(std::make_pair(l,ret)).second);
-	updateOverlays(ElementSelection(l,0,l,m_width-1));
+	assert(_visibleRows.insert(std::make_pair(l,ret)).second);
+	updateOverlays(ElementSelection(l,0,l,_width-1));
 
 	return ret;
 }
 
-void TestDelegate::deleteRow(QQuickItem *i)
+void BinaryDelegate::deleteRow(QQuickItem *i)
 {
 	assert(i);
-	auto j = std::find_if(m_visibleRows.begin(),m_visibleRows.end(),[&](std::pair<int,QQuickItem*> p) { return p.second == i; });
+	auto j = std::find_if(_visibleRows.begin(),_visibleRows.end(),[&](std::pair<int,QQuickItem*> p) { return p.second == i; });
 
-	assert(j != m_visibleRows.end());
+	assert(j != _visibleRows.end());
 
 	int l = j->first;
 
-	m_visibleRows.erase(j);
-	updateOverlays(ElementSelection(l,0,l,m_width-1));
+	_visibleRows.erase(j);
+	updateOverlays(ElementSelection(l,0,l,_width-1));
 	i->deleteLater();
 }
 
-QQuickItem *TestDelegate::createHead(void)
+QQuickItem *BinaryDelegate::createOverlay(const ElementSelection &sel)
 {
-	auto ret = qobject_cast<QQuickItem*>(m_headComponent.create());
-
-	assert(ret);
-	ret->setProperty("name",QString(QString::fromStdString(region()->name())));
-	ret->setParent(this);
-
-	connect(ret,SIGNAL(collapse()),this,SLOT(collapseRows()));
-
-	return ret;
-}
-
-void TestDelegate::deleteHead(QQuickItem *i)
-{
-	assert(i);
-	i->deleteLater();
-}
-
-QQuickItem *TestDelegate::createOverlay(const ElementSelection &sel)
-{
-	QQuickItem *ov = qobject_cast<QQuickItem*>(m_cursorComponent.create());
+	QQuickItem *ov = qobject_cast<QQuickItem*>(_cursorComponent.create());
 
 	assert(ov);
 	ov->setParent(this);
@@ -114,32 +108,38 @@ QQuickItem *TestDelegate::createOverlay(const ElementSelection &sel)
 	ov->setVisible(false);
 	assert(QQmlProperty::write(ov,"cursor",QVariant::fromValue<QObject*>(new ElementSelectionObject(sel,ov))));
 
-	m_overlays.insert(std::make_pair(sel,ov));
+	_overlays.insert(std::make_pair(sel,ov));
 	updateOverlays(sel);
 
 	return ov;
 }
 
-void TestDelegate::deleteOverlay(QQuickItem *ov)
+void BinaryDelegate::deleteOverlay(QQuickItem *ov)
 {
 	assert(ov);
-	auto i = std::find_if(m_overlays.begin(),m_overlays.end(),[&](const std::pair<ElementSelection,QQuickItem*> &p) { return p.second == ov; });
-	assert(i != m_overlays.end());
+	auto i = std::find_if(_overlays.begin(),_overlays.end(),[&](const std::pair<ElementSelection,QQuickItem*> &p) { return p.second == ov; });
+	assert(i != _overlays.end());
 	auto key = i->first;
 
-	m_overlays.erase(i);
+	_overlays.erase(i);
 	updateOverlays(key);
 	ov->deleteLater();
 }
 
-boost::optional<std::pair<QQuickItem*,QQuickItem*>> TestDelegate::attachableRows(const ElementSelection &sel)
+void BinaryDelegate::collapseRows(void)
 {
-	auto fi = m_visibleRows.lower_bound(sel.firstLine());
-	auto li = m_visibleRows.lower_bound(sel.lastLine());
+	_collapsed = !_collapsed;
+	emit modified();
+}
 
-	if(fi != m_visibleRows.end() && fi->first >= sel.firstLine() && fi->first <= sel.lastLine())
+boost::optional<std::pair<QQuickItem*,QQuickItem*>> BinaryDelegate::attachableRows(const ElementSelection &sel)
+{
+	auto fi = _visibleRows.lower_bound(sel.firstLine());
+	auto li = _visibleRows.lower_bound(sel.lastLine());
+
+	if(fi != _visibleRows.end() && fi->first >= sel.firstLine() && fi->first <= sel.lastLine())
 	{
-		if(li == m_visibleRows.end() || li->first > sel.lastLine())
+		if(li == _visibleRows.end() || li->first > sel.lastLine())
 			--li;
 		if(li->first >= sel.firstLine() && li->first <= sel.lastLine())
 		{
@@ -150,9 +150,9 @@ boost::optional<std::pair<QQuickItem*,QQuickItem*>> TestDelegate::attachableRows
 	return boost::none;
 }
 
-void TestDelegate::updateOverlays(const ElementSelection &sel)
+void BinaryDelegate::updateOverlays(const ElementSelection &sel)
 {
-	for(auto i: m_overlays)
+	for(auto i: _overlays)
 	{
 		if(!i.first.disjoint(sel))
 		{
@@ -163,8 +163,6 @@ void TestDelegate::updateOverlays(const ElementSelection &sel)
 				QVariant ret, first = QVariant::fromValue(rows->first), last = QVariant::fromValue(rows->second);
 				assert(QQmlProperty::write(i.second,"firstRow",first));
 				assert(QQmlProperty::write(i.second,"lastRow",last));
-
-				//QMetaObject::invokeMethod(i.second,"attach",Q_RETURN_ARG(QVariant,ret),Q_ARG(QVariant,first),Q_ARG(QVariant,last));
 				i.second->setVisible(true);
 
 				continue;
@@ -175,64 +173,58 @@ void TestDelegate::updateOverlays(const ElementSelection &sel)
 	}
 }
 
-void TestDelegate::elementClicked(int col, int row)
+void BinaryDelegate::elementClicked(int col, int row)
 {
-	emit selected(row * m_width + col,true);
+	emit selected((row - 1) * _width + col,true);
 }
 
-void TestDelegate::elementEntered(int col, int row)
+void BinaryDelegate::elementEntered(int col, int row)
 {
-	emit selected(row * m_width + col,false);
+	emit selected((row - 1) * _width + col,false);
 }
 
-void TestDelegate::collapseRows(void)
-{
-	m_collapsed = !m_collapsed;
-	emit modified();
-}
-
-void TestDelegate::select(boost::optional<std::pair<po::offset,po::offset>> p)
+void BinaryDelegate::select(boost::optional<std::pair<po::offset,po::offset>> p)
 {
 	if(p)
-		setCursor(ElementSelection(std::trunc(p->first / m_width),p->first % m_width,std::trunc(p->second / m_width),p->second % m_width));
+		setCursor(ElementSelection(1 + std::trunc(p->first / _width),p->first % _width,1 + std::trunc(p->second / _width),p->second % _width));
 	else
 		setCursor(boost::none);
 }
 
-void TestDelegate::setCursor(const boost::optional<ElementSelection> &sel)
+void BinaryDelegate::setCursor(const boost::optional<ElementSelection> &sel)
 {
-	if(!m_cursorOverlay)
+	if(!_cursorOverlay)
 	{
-		m_cursorOverlay = createOverlay(ElementSelection(0,0,0,0));
-		m_cursorOverlay->setVisible(false);
+		_cursorOverlay = createOverlay(ElementSelection(0,0,0,0));
+		_cursorOverlay->setVisible(false);
 	}
 
-	if(sel != m_cursor)
+	if(sel != _cursor)
 	{
-		auto i = std::find_if(m_overlays.begin(),m_overlays.end(),[&](const std::pair<ElementSelection,QQuickItem*> &p) { return p.second == m_cursorOverlay; });
+		auto i = std::find_if(_overlays.begin(),_overlays.end(),[&](const std::pair<ElementSelection,QQuickItem*> &p) { return p.second == _cursorOverlay; });
 
-		if(i != m_overlays.end())
-			m_overlays.erase(i);
+		if(i != _overlays.end())
+			_overlays.erase(i);
 
-		if((m_cursor = sel))
+		if((_cursor = sel))
 		{
-			auto p = attachableRows(*m_cursor);
+			auto p = attachableRows(*_cursor);
 
-			assert(QQmlProperty::write(m_cursorOverlay,"cursor",QVariant::fromValue<QObject*>(new ElementSelectionObject(*sel,m_cursorOverlay))));
+			assert(QQmlProperty::write(_cursorOverlay,"cursor",QVariant::fromValue<QObject*>(new ElementSelectionObject(*sel,_cursorOverlay))));
 
 			if(p)
 			{
-				assert(QQmlProperty::write(m_cursorOverlay,"firstRow",QVariant::fromValue<QObject*>(p->first)));
-				assert(QQmlProperty::write(m_cursorOverlay,"lastRow",QVariant::fromValue<QObject*>(p->second)));
+				assert(QQmlProperty::write(_cursorOverlay,"firstRow",QVariant::fromValue<QObject*>(p->first)));
+				assert(QQmlProperty::write(_cursorOverlay,"lastRow",QVariant::fromValue<QObject*>(p->second)));
 			}
 
-			m_overlays.insert(std::make_pair(*m_cursor,m_cursorOverlay));
-			m_cursorOverlay->setVisible(true);
+			_overlays.insert(std::make_pair(*_cursor,_cursorOverlay));
+			_cursorOverlay->setVisible(true);
 		}
 		else
 		{
-			m_cursorOverlay->setVisible(false);
-			assert(QQmlProperty::write(m_cursorOverlay,"cursor",QVariant()));
+			_cursorOverlay->setVisible(false);
+			assert(QQmlProperty::write(_cursorOverlay,"cursor",QVariant()));
 		}
 	}
 }

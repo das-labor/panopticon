@@ -1,18 +1,15 @@
-<!DOCTYPE RCC><RCC version="1.0">
-<qresource>
-	<file>Window.qml</file>
-	<file>Cursor.qml</file>
-	<file>Workspace.qml</file>
-	<file>Hex.qml</file>
-	<file>Block.qml</file>
-	<file>Address.qml</file>
-	<file>Test.qml</file>
-	<file>Element.qml</file>
-	<file>BasicBlock.qml</file>
-	<file>Edge.qml</file>
-	<file>graphStateMachine.scxml</file>
-	<file>head.svg</file>
-	<file>Procedure.qml</file>
-	<file>tail.svg</file>
-</qresource>
+<!DOCTYPE RCC>
+<RCC version="1.0">
+	<qresource>
+		<file>Window.qml</file>
+		<file>Workspace.qml</file>
+
+		<!-- LinearView common -->
+		<file>Cursor.qml</file>
+		<file>Address.qml</file>
+
+		<!-- LinearView hexdump -->
+		<file>Binary.qml</file>
+		<file>BinaryTitle.qml</file>
+	</qresource>
 </RCC>

@@ -56,7 +56,7 @@ void LinearView::setSession(Session *s)
 		size_t ord = 0;
 		for(auto p: po::projection(_session->graph()))
 		{
-			std::shared_ptr<Delegate> del = std::make_shared<TestDelegate>(p.second,16,&_engine,this);
+			std::shared_ptr<Delegate> del = std::make_shared<BinaryDelegate>(p.second,16,&_engine,this);
 			auto len = del->rowCount();
 
 			_delegates += std::make_pair(decltype(_delegates)::interval_type::right_open(gri,gri+len),del);

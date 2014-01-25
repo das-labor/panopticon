@@ -78,19 +78,16 @@ private:
 	po::region_wloc _region;
 };
 
-class TestDelegate : public Delegate
+class BinaryDelegate : public Delegate
 {
 	Q_OBJECT
 
 public:
-	TestDelegate(po::region_wloc r, unsigned int width, QQmlEngine *, QQuickItem *p = 0);
-	virtual ~TestDelegate(void);
+	BinaryDelegate(po::region_wloc r, unsigned int width, QQmlEngine *, QQuickItem *p = 0);
+	virtual ~BinaryDelegate(void);
 
 	virtual QQuickItem *createRow(unsigned int i);
 	virtual void deleteRow(QQuickItem*);
-
-	virtual QQuickItem *createHead(void);
-	virtual void deleteHead(QQuickItem *);
 
 	virtual unsigned int rowCount(void) const;
 
@@ -106,19 +103,19 @@ public slots:
 	virtual void select(boost::optional<std::pair<po::offset,po::offset>>);
 
 private:
-	unsigned int m_width;
+	unsigned int _width;
 
-	QQmlEngine *m_engine;
-	QQmlComponent m_rowComponent;
-	QQmlComponent m_headComponent;
-	QQmlComponent m_cursorComponent;
+	QQmlEngine *_engine;
+	QQmlComponent _rowComponent;
+	QQmlComponent _titleComponent;
+	QQmlComponent _cursorComponent;
 
-	std::unordered_set<std::pair<ElementSelection,QQuickItem*>> m_overlays;
-	std::map<int,QQuickItem*> m_visibleRows;
+	std::unordered_set<std::pair<ElementSelection,QQuickItem*>> _overlays;
+	std::map<int,QQuickItem*> _visibleRows;
 
-	boost::optional<ElementSelection> m_cursor;
-	QQuickItem *m_cursorOverlay;
-	bool m_collapsed;
+	boost::optional<ElementSelection> _cursor;
+	QQuickItem *_cursorOverlay;
+	bool _collapsed;
 
 	boost::optional<std::pair<QQuickItem*,QQuickItem*>> attachableRows(const ElementSelection &sel);
 	void updateOverlays(const ElementSelection &sel);
