@@ -1,36 +1,6 @@
 #include <cassert>
 #include "linearview.hh"
 
-Header::Header(void) : QObject(), m_name(""), m_collapsed(false), m_id(-1) {}
-Header::Header(const QString &h, bool col, int id) : QObject(), m_name(h), m_collapsed(col), m_id(id) {}
-Header::~Header(void) {}
-
-QString Header::name(void) const { return m_name; }
-bool Header::collapsed(void) const { return m_collapsed; }
-int Header::id(void) const { return m_id; }
-
-LinearViewBlock::LinearViewBlock(void)
-: type(Data), delegate(), id(-1)
-{}
-
-LinearViewBlock::LinearViewBlock(LinearViewBlock::Type t, QSharedPointer<Delegate> d, int i)
-: type(t), delegate(d), id(i)
-{}
-
-LinearViewBlock::LinearViewBlock(const LinearViewBlock &o)
-: type(o.type), delegate(o.delegate), id(o.id)
-{}
-
-bool LinearViewBlock::operator==(const LinearViewBlock &r) const
-{
-	return type == r.type && delegate == r.delegate && id == r.id;
-}
-
-LinearViewBlock &LinearViewBlock::operator+=(const LinearViewBlock &r)
-{
-	return *this;
-}
-
 LinearViewContext::LinearViewContext(QObject *parent)
 : QObject(parent), m_columnWidth(0)
 {}
@@ -86,7 +56,7 @@ void LinearView::setSession(Session *s)
 		size_t ord = 0;
 		for(auto p: po::projection(_session->graph()))
 		{
-			std::shared_ptr<Delegate> del = std::make_shared<TestDelegate>(p.second,10,&_engine,this);
+			std::shared_ptr<Delegate> del = std::make_shared<TestDelegate>(p.second,16,&_engine,this);
 			auto len = del->rowCount();
 
 			_delegates += std::make_pair(decltype(_delegates)::interval_type::right_open(gri,gri+len),del);

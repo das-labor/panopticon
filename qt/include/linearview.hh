@@ -5,54 +5,6 @@
 
 #pragma once
 
-class Header : public QObject
-{
-	Q_OBJECT
-	Q_PROPERTY(QString name READ name NOTIFY nameChanged)
-	Q_PROPERTY(bool collapsed READ collapsed NOTIFY collapsedChanged)
-	Q_PROPERTY(int id READ id NOTIFY idChanged)
-
-public:
-	Header(void);
-	Header(const QString &n, bool col, int id);
-	virtual ~Header(void);
-
-	QString name(void) const;
-	bool collapsed(void) const;
-	int id(void) const;
-
-signals:
-	void nameChanged(void);
-	void collapsedChanged(void);
-	void idChanged(void);
-
-private:
-	QString m_name;
-	bool m_collapsed;
-	int m_id;
-};
-
-struct LinearViewBlock
-{
-	enum Type
-	{
-		Data,
-		Header,
-		HeaderCollapsed,
-	};
-
-	LinearViewBlock(void);
-	LinearViewBlock(Type t, QSharedPointer<Delegate> d, int id);
-	LinearViewBlock(const LinearViewBlock &r);
-
-	bool operator==(const LinearViewBlock &r) const;
-	LinearViewBlock &operator+=(const LinearViewBlock &r);
-
-	Type type;
-	QSharedPointer<Delegate> delegate;
-	int id;	///< Key when in m_hidden
-};
-
 class LinearViewContext : public QObject
 {
 	Q_OBJECT

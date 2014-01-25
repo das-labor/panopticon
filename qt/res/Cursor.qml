@@ -91,7 +91,7 @@ Item {
 				}
 
 				var firstRect = Qt.rect(f + outlineWidth / 2,outlineWidth / 2,firstRow.elementWidth,firstRow.height - outlineWidth)
-				var lastRect = Qt.rect(l - outlineWidth / 2,height - lastRow.height + outlineWidth / 2,lastRow.elementWidth,lastRow.height - outlineWidth)
+				var lastRect = Qt.rect(l,height - lastRow.height + outlineWidth / 2,lastRow.elementWidth - outlineWidth,lastRow.height - outlineWidth)
 				var paths
 
 				if(firstRow.row > cursor.firstLine)
