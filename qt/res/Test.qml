@@ -27,7 +27,7 @@ Item {
 	}
 
 	Address {
-		address: item.address
+		address: item.address.toString(16)
 		context: linearViewContext
 		row: parent
 	}

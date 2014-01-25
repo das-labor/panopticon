@@ -6,6 +6,7 @@ Item {
 	property var context: null
 	property var row: null
 
+	id: root
 	width: context.columnWidth
 	height: row.height
 
@@ -13,7 +14,8 @@ Item {
 		id: text
 		text: address
 		anchors.verticalCenter: parent.verticalCenter
-	}
+		x: parent.width - text.width
 
-	Component.onCompleted: { context.columnWidth = Math.max(context.columnWidth,text.width) }
+		onWidthChanged: { context.columnWidth = Math.max(context.columnWidth,text.width) }
+	}
 }
