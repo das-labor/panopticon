@@ -65,3 +65,41 @@ TEST(region,proj)
 
 	ASSERT_TRUE(proj == expect);
 }
+
+TEST(region,read_undef)
+{
+	region_loc r1(new region("test",128));
+	slab s = r1->read();
+
+	ASSERT_EQ(boost::size(s),128);
+
+	for(auto i: s)
+		ASSERT_EQ(i,boost::none);
+}
+
+TEST(region,read_one_layer)
+{
+	region_loc r1(new region("test",128));
+
+	r1.write().add(bound(1,7),layer_loc(new layer(anonymous_layer({1,2,3,4,5,6},"anon 2"))));
+	r1.write().add(bound(50,62),layer_loc(new layer(anonymous_layer({1,2,3,4,5,6,6,5,4,3,2,1},"anon 2"))));
+	r1.write().add(bound(62,63),layer_loc(new layer(anonymous_layer({1},"anon 2"))));
+
+	slab s = r1->read();
+	ASSERT_EQ(boost::size(s),128);
+	size_t idx = 0;
+
+	for(auto i: s)
+	{
+		if(idx >= 1 && idx < 7)
+			ASSERT_TRUE(*i == idx);
+		else if(idx >= 50 && idx < 56)
+			ASSERT_TRUE(*i == idx - 49);
+		else if(idx >= 56 && idx < 62)
+			ASSERT_TRUE(*i == 6 - (idx - 56));
+		else if(idx == 62)
+			ASSERT_TRUE(*i == 1);
+		else
+			ASSERT_TRUE(i == boost::none);
+	}
+}

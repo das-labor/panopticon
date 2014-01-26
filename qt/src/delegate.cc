@@ -17,7 +17,7 @@ BinaryDelegate::BinaryDelegate(po::region_wloc r, unsigned int w, QQmlEngine *e,
 	_titleComponent(_engine,QUrl("qrc:/BinaryTitle.qml")),
 	_cursorComponent(_engine,QUrl("qrc:/Cursor.qml")),
 	_overlays(), _visibleRows(),
-	_cursor(boost::none), _cursorOverlay(0), _collapsed(false)
+	_cursor(boost::none), _cursorOverlay(0), _collapsed(false), _cache(boost::none)
 {
 	assert(w);
 	qDebug() << _rowComponent.errors();
@@ -48,10 +48,15 @@ QQuickItem *BinaryDelegate::createRow(unsigned int l)
 
 	if(l > 0)
 	{
-		while(i < w)
+		if(!_cache)
+			_cache = region()->read();
+
+		auto j = std::next(boost::begin(*_cache),l);
+
+		while(i++ < w)
 		{
-			_data.append(QVariant::fromValue(QString("??")));
-			i++;
+			po::tryte t = *j++;
+			_data.append(QVariant::fromValue(t ? QString("%1").arg(static_cast<uint>(*t),2,16,QChar('0')) : QString("??")));
 		}
 
 		assert(_data.size());

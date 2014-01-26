@@ -17,13 +17,13 @@
 namespace po
 {
 	using offset = uint64_t;
-	using byte = uint8_t;
+	using tryte = boost::optional<uint8_t>;
 	using bound = boost::icl::discrete_interval<offset>;
-	using slab = boost::any_range<byte,boost::random_access_traversal_tag,byte,std::ptrdiff_t>;
+	using slab = boost::any_range<tryte,boost::random_access_traversal_tag,tryte,std::ptrdiff_t>;
 
 	struct map_layer
 	{
-		map_layer(const std::string &, std::function<byte(byte)> fn);
+		map_layer(const std::string &, std::function<tryte(tryte)> fn);
 
 		bool operator==(const map_layer&) const;
 
@@ -33,21 +33,21 @@ namespace po
 	private:
 		struct adaptor
 		{
-			using result_type = byte;
+			using result_type = tryte;
 
 			adaptor(const map_layer *p = nullptr);
-			byte operator()(byte) const;
+			tryte operator()(tryte) const;
 
 			const map_layer *parent;
 		};
 
 		std::string _name;
-		std::function<byte(byte)> _operation;
+		std::function<tryte(tryte)> _operation;
 	};
 
 	struct anonymous_layer
 	{
-		anonymous_layer(std::initializer_list<byte> il, const std::string &n);
+		anonymous_layer(std::initializer_list<tryte> il, const std::string &n);
 		anonymous_layer(offset sz, const std::string &n);
 
 		bool operator==(const anonymous_layer &a) const;
@@ -55,7 +55,7 @@ namespace po
 		slab filter(const slab&) const;
 		const std::string& name(void) const;
 
-		std::vector<byte> data;
+		std::vector<tryte> data;
 
 	private:
 		std::string _name;
@@ -68,7 +68,7 @@ namespace po
 		slab filter(const slab&) const;
 		const std::string& name(void) const;
 
-		std::map<offset,byte> data;
+		std::map<offset,tryte> data;
 
 	private:
 		std::string _name;
@@ -127,6 +127,7 @@ namespace po
 		const layers& graph(void) const;
 
 		size_t size(void) const;
+		slab read(void) const;
 		const std::string& name(void) const;
 
 	private:
@@ -137,6 +138,8 @@ namespace po
 
 		// caches
 		mutable boost::optional<image> _projection;
+
+		slab read(layer_loc l) const;
 	};
 
 	template<>

@@ -4,6 +4,7 @@
 #include <boost/tuple/tuple.hpp>
 #include <boost/graph/dijkstra_shortest_paths.hpp>
 #include <boost/graph/reverse_graph.hpp>
+#include <boost/range/join.hpp>
 
 #include <panopticon/region.hh>
 
@@ -28,7 +29,7 @@ po::layer_wloc po::operator+=(po::layer_wloc& a, const po::layer_wloc &b)
 	return a = b;
 }
 
-map_layer::map_layer(const string &n, function<uint8_t(uint8_t)> fn)
+map_layer::map_layer(const string &n, function<po::tryte(po::tryte)> fn)
 : _name(n), _operation(fn)
 {}
 
@@ -48,9 +49,9 @@ const string& map_layer::name(void) const
 }
 
 map_layer::adaptor::adaptor(const map_layer *p) : parent(p) {}
-uint8_t map_layer::adaptor::operator()(uint8_t i) const { return parent->_operation(i); }
+po::tryte map_layer::adaptor::operator()(po::tryte i) const { return parent->_operation(i); }
 
-anonymous_layer::anonymous_layer(std::initializer_list<byte> il, const std::string &n) : data(il), _name(n) {}
+anonymous_layer::anonymous_layer(std::initializer_list<po::tryte> il, const std::string &n) : data(il), _name(n) {}
 anonymous_layer::anonymous_layer(offset sz, const std::string &n) : data(sz), _name(n) {}
 
 bool anonymous_layer::operator==(const anonymous_layer &a) const { return a.name() == name() && a.data == data; }
@@ -62,9 +63,9 @@ mutable_layer::mutable_layer(const std::string &n) : data(), _name(n) {}
 
 slab mutable_layer::filter(const slab& in) const
 {
-	using func = std::function<const byte&(const boost::tuples::tuple<offset,byte> &)>;
+	using func = std::function<po::tryte(const boost::tuples::tuple<offset,po::tryte> &)>;
 	slab::const_iterator sb = boost::begin(in), se = boost::end(in);
-	func fn = [this](const boost::tuples::tuple<offset,byte> &p) { return data.count(boost::get<0>(p)) ? data.at(boost::get<0>(p)) : boost::get<1>(p); };
+	func fn = [this](const boost::tuples::tuple<offset,po::tryte> &p) { return data.count(boost::get<0>(p)) ? data.at(boost::get<0>(p)) : boost::get<1>(p); };
 	auto b = make_zip_iterator(boost::make_tuple(counting_iterator<offset,boost::random_access_traversal_tag>(0),sb));
 	auto e = make_zip_iterator(boost::make_tuple(counting_iterator<offset,boost::random_access_traversal_tag>(size(in)),se));
 	using transform_iter = boost::transform_iterator<func,decltype(b)>;
@@ -188,6 +189,43 @@ const region::image& region::projection(void) const
 const region::layers& region::graph(void) const { return _graph; }
 const std::string& region::name(void) const { return _name; }
 size_t region::size(void) const { return _size; }
+
+po::slab region::read(void) const
+{
+	const image &img = projection();
+	po::slab ret;
+
+	for(auto r: img)
+		ret = boost::range::join(ret,read(r.second.lock()));
+
+	return ret;
+}
+
+po::slab region::read(po::layer_loc l) const
+{
+	auto vx = _graph.find_node(l);
+	auto p = _graph.out_edges(*vx);
+	auto i = p.first;
+	std::list<std::pair<bound,layer_wloc>> src;
+	slab ret;
+
+	while(i != p.second)
+	{
+		src.emplace_back(_graph.get_edge(*i),layer_wloc(_graph.get_node(_graph.target(*i))));
+		++i;
+	}
+
+	src.sort([&](const std::pair<bound,layer_wloc> &a, const std::pair<bound,layer_wloc> &b) { return icl::first(a.first) < icl::first(b.first); });
+
+	for(auto s: src)
+	{
+		slab all = read(s.second.lock());
+		ret = boost::range::join(ret,slab(std::next(boost::begin(all),icl::first(s.first)),
+																		std::next(boost::begin(all),icl::upper(s.first))));
+	}
+
+	return ret;
+}
 
 std::unordered_map<region_wloc,region_wloc> po::spanning_tree(const regions &regs)
 {

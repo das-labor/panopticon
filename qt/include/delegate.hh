@@ -116,6 +116,7 @@ private:
 	boost::optional<ElementSelection> _cursor;
 	QQuickItem *_cursorOverlay;
 	bool _collapsed;
+	boost::optional<po::slab> _cache;
 
 	boost::optional<std::pair<QQuickItem*,QQuickItem*>> attachableRows(const ElementSelection &sel);
 	void updateOverlays(const ElementSelection &sel);
