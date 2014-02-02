@@ -219,7 +219,24 @@ po::slab region::read(po::layer_loc l) const
 
 	for(auto s: src)
 	{
-		slab all = read(s.second.lock());
+		slab all;
+
+		if(*_graph.find_node(s.second.lock()) == _root)
+		{
+			using func = std::function<po::tryte(unsigned int)>;
+			func fn = [](unsigned int) { return tryte(boost::none); };
+			counting_iterator<offset,boost::random_access_traversal_tag> a(0);
+			counting_iterator<offset,boost::random_access_traversal_tag> b(icl::length(s.first));
+			using transform_iter = boost::transform_iterator<func,decltype(b)>;
+
+			std::cout << icl::length(s.first) << std::endl;
+			all = slab(transform_iter(a,fn),transform_iter(b,fn));
+		}
+		else
+		{
+			all = read(s.second.lock());
+		}
+
 		ret = boost::range::join(ret,slab(std::next(boost::begin(all),icl::first(s.first)),
 																		std::next(boost::begin(all),icl::upper(s.first))));
 	}
