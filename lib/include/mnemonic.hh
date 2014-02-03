@@ -8,9 +8,9 @@
 #include <cassert>
 #include <initializer_list>
 
-#include <value.hh>
-#include <marshal.hh>
-#include <source.hh>
+#include <panopticon/value.hh>
+#include <panopticon/marshal.hh>
+#include <panopticon/region.hh>
 
 namespace po
 {

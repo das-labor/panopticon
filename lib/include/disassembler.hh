@@ -14,10 +14,10 @@
 #include <type_traits>
 #include <cstring>
 
-#include <architecture.hh>
-#include <code_generator.hh>
-#include <mnemonic.hh>
-#include <basic_block.hh>
+#include <panopticon/architecture.hh>
+#include <panopticon/code_generator.hh>
+#include <panopticon/mnemonic.hh>
+#include <panopticon/basic_block.hh>
 
 /**
  * @file
