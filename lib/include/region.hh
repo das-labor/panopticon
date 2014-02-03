@@ -7,6 +7,7 @@
 #include <boost/optional.hpp>
 #include <boost/icl/split_interval_map.hpp>
 #include <boost/variant.hpp>
+#include <boost/variant/static_visitor.hpp>
 
 #include <panopticon/marshal.hh>
 #include <panopticon/loc.hh>
@@ -38,14 +39,16 @@ namespace po
 		const std::string& name(void) const;
 
 	private:
-		struct adaptor
+		struct filter_visitor : public boost::static_visitor<slab>
 		{
-			using result_type = tryte;
+			filter_visitor(slab);
 
-			adaptor(const layer *p = nullptr);
-			result_type operator()(tryte) const;
+			slab operator()(std::function<tryte(tryte)> fn);
+			slab operator()(std::vector<const byte>& d);
+			slab operator()(std::unordered_map<offset,tryte>& m );
+			slab operator()(size_t sz);
 
-			const layer *parent;
+			slab in;
 		};
 
 		std::string _name;

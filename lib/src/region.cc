@@ -29,43 +29,52 @@ po::layer_wloc po::operator+=(po::layer_wloc& a, const po::layer_wloc &b)
 	return a = b;
 }
 
-map_layer::map_layer(const string &n, function<po::tryte(po::tryte)> fn)
-: _name(n), _operation(fn)
+layer::layer(const string &n, function<po::tryte(po::tryte)> fn)
+: _name(n), _data(fn)
 {}
 
-bool map_layer::operator==(const map_layer &a) const
+layer::layer(const std::string &n, std::initializer_list<const byte> il)
+: _name(n), _data(std::move(vector<const byte>(il)))
+{}
+
+layer::layer(const std::string &n, const std::vector<const byte> &d)
+: _name(n), _data(d)
+{}
+
+layer::layer(const std::string &n, const byte *d, size_t sz)
+: _name(n), _data(std::move(std::vector<const byte>(d,d + sz)))
+{}
+
+layer::layer(const std::string &n, const std::unordered_map<offset,tryte> &d)
+: _name(n), _data(d)
+{}
+
+layer::layer(const std::string &n, offset sz)
+: _name(n), _data(sz)
+{}
+
+slab layer::filter(const slab& in) const
 {
-	return a._name == _name;
+	return boost::apply_visitor(filter_visitor(in),_data);
 }
 
-slab map_layer::filter(const slab& in) const
+layer::filter_visitor::filter_visitor(slab s) : static_visitor(), in(s) {}
+
+slab layer::filter_visitor::operator()(std::function<tryte(tryte)> fn)
 {
-	return adaptors::transform(in,adaptor(this));
+	return adaptors::transform(in,fn/*adaptor(this)*/);
 }
 
-const string& map_layer::name(void) const
+slab layer::filter_visitor::operator()(std::vector<const byte>& d)
 {
-	return _name;
+	return slab(d.cbegin(),d.cend());
 }
 
-map_layer::adaptor::adaptor(const map_layer *p) : parent(p) {}
-po::tryte map_layer::adaptor::operator()(po::tryte i) const { return parent->_operation(i); }
-
-anonymous_layer::anonymous_layer(std::initializer_list<po::tryte> il, const std::string &n) : data(il), _name(n) {}
-anonymous_layer::anonymous_layer(offset sz, const std::string &n) : data(sz), _name(n) {}
-
-bool anonymous_layer::operator==(const anonymous_layer &a) const { return a.name() == name() && a.data == data; }
-
-slab anonymous_layer::filter(const slab&) const { return slab(data.cbegin(),data.cend()); }
-const std::string& anonymous_layer::name(void) const { return _name; }
-
-mutable_layer::mutable_layer(const std::string &n) : data(), _name(n) {}
-
-slab mutable_layer::filter(const slab& in) const
+slab layer::filter_visitor::operator()(std::unordered_map<offset,tryte>& data)
 {
 	using func = std::function<po::tryte(const boost::tuples::tuple<offset,po::tryte> &)>;
 	slab::const_iterator sb = boost::begin(in), se = boost::end(in);
-	func fn = [this](const boost::tuples::tuple<offset,po::tryte> &p) { return data.count(boost::get<0>(p)) ? data.at(boost::get<0>(p)) : boost::get<1>(p); };
+	func fn = [data](const boost::tuples::tuple<offset,po::tryte> &p) { return data.count(boost::get<0>(p)) ? data.at(boost::get<0>(p)) : boost::get<1>(p); };
 	auto b = make_zip_iterator(boost::make_tuple(counting_iterator<offset,boost::random_access_traversal_tag>(0),sb));
 	auto e = make_zip_iterator(boost::make_tuple(counting_iterator<offset,boost::random_access_traversal_tag>(size(in)),se));
 	using transform_iter = boost::transform_iterator<func,decltype(b)>;
@@ -73,35 +82,14 @@ slab mutable_layer::filter(const slab& in) const
 	return slab(transform_iter(b,fn),transform_iter(e,fn));
 }
 
-const std::string& mutable_layer::name(void) const { return _name; }
-
-po::slab po::filter(const po::layer &a, const po::slab &s)
+const string& layer::name(void) const
 {
-	if(boost::get<po::map_layer>(&a))
-		return boost::get<po::map_layer>(a).filter(s);
-	if(boost::get<po::mutable_layer>(&a))
-		return boost::get<po::mutable_layer>(a).filter(s);
-	if(boost::get<po::anonymous_layer>(&a))
-		return boost::get<po::anonymous_layer>(a).filter(s);
-	else
-		throw invalid_argument("unknown layer type");
-}
-
-std::string po::name(const po::layer &a)
-{
-	if(boost::get<po::map_layer>(&a))
-		return boost::get<po::map_layer>(a).name();
-	if(boost::get<po::mutable_layer>(&a))
-		return boost::get<po::mutable_layer>(a).name();
-	if(boost::get<po::anonymous_layer>(&a))
-		return boost::get<po::anonymous_layer>(a).name();
-	else
-		throw invalid_argument("unknown layer type");
+	return _name;
 }
 
 region::region(const std::string &n, size_t sz)
 : _graph(),
-	_root(_graph.insert_node(layer_loc(uuids::random_generator()(),new layer(anonymous_layer({},"root"))))),
+	_root(_graph.insert_node(layer_loc(uuids::random_generator()(),new layer("root",sz)))),
 	_name(n),
 	_size(sz),
 	_projection(none)
