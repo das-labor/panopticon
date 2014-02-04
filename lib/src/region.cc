@@ -33,16 +33,16 @@ layer::layer(const string &n, function<po::tryte(po::tryte)> fn)
 : _name(n), _data(fn)
 {}
 
-layer::layer(const std::string &n, std::initializer_list<const byte> il)
-: _name(n), _data(std::move(vector<const byte>(il)))
+layer::layer(const std::string &n, std::initializer_list<byte> il)
+: _name(n), _data(std::move(vector<byte>(il)))
 {}
 
-layer::layer(const std::string &n, const std::vector<const byte> &d)
+layer::layer(const std::string &n, const std::vector<byte> &d)
 : _name(n), _data(d)
 {}
 
 layer::layer(const std::string &n, const byte *d, size_t sz)
-: _name(n), _data(std::move(std::vector<const byte>(d,d + sz)))
+: _name(n), _data(std::move(std::vector<byte>(d,d + sz)))
 {}
 
 layer::layer(const std::string &n, const std::unordered_map<offset,tryte> &d)
@@ -60,17 +60,17 @@ slab layer::filter(const slab& in) const
 
 layer::filter_visitor::filter_visitor(slab s) : static_visitor(), in(s) {}
 
-slab layer::filter_visitor::operator()(std::function<tryte(tryte)> fn)
+slab layer::filter_visitor::operator()(std::function<tryte(tryte)> fn) const
 {
-	return adaptors::transform(in,fn/*adaptor(this)*/);
+	return adaptors::transform(in,fn);
 }
 
-slab layer::filter_visitor::operator()(std::vector<const byte>& d)
+slab layer::filter_visitor::operator()(const std::vector<byte>& d) const
 {
 	return slab(d.cbegin(),d.cend());
 }
 
-slab layer::filter_visitor::operator()(std::unordered_map<offset,tryte>& data)
+slab layer::filter_visitor::operator()(const std::unordered_map<offset,tryte>& data) const
 {
 	using func = std::function<po::tryte(const boost::tuples::tuple<offset,po::tryte> &)>;
 	slab::const_iterator sb = boost::begin(in), se = boost::end(in);
@@ -82,16 +82,27 @@ slab layer::filter_visitor::operator()(std::unordered_map<offset,tryte>& data)
 	return slab(transform_iter(b,fn),transform_iter(e,fn));
 }
 
+slab layer::filter_visitor::operator()(size_t sz) const
+{
+	using func = std::function<po::tryte(int)>;
+	func fn = [](int) { return boost::none; };
+	counting_iterator<offset,boost::random_access_traversal_tag> a(0);
+	counting_iterator<offset,boost::random_access_traversal_tag> b(sz);
+	using transform_iter = boost::transform_iterator<func,decltype(b)>;
+
+	return slab(transform_iter(a,fn),transform_iter(b,fn));
+}
+
 const string& layer::name(void) const
 {
 	return _name;
 }
 
-region::region(const std::string &n, size_t sz)
+region::region(const std::string &n, layer_loc r)
 : _graph(),
-	_root(_graph.insert_node(layer_loc(uuids::random_generator()(),new layer("root",sz)))),
+	_root(_graph.insert_node(r)),
 	_name(n),
-	_size(sz),
+	_size(boost::size(r->filter(slab()))),
 	_projection(none)
 {}
 
