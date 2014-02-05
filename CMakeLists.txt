@@ -26,8 +26,27 @@ if(NOT DEFINED "CMAKE_BUILD_TYPE" OR "${CMAKE_BUILD_TYPE}" STREQUAL "Release")
 	add_definitions("-Werror")
 	message("Build release")
 elseif("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
+
+	# enable tests
 	include(CTest)
 	find_package(GTest REQUIRED)
+
+	# cdash support
+	set(CTEST_PROJECT_NAME "Panopticon")
+	set(CTEST_NIGHTLY_START_TIME "01:00:00 UTC")
+
+	set(CTEST_DROP_METHOD "http")
+	set(CTEST_DROP_SITE "open.cdash.org")
+	set(CTEST_DROP_LOCATION "/submit.php?project=Panopticon")
+	set(CTEST_DROP_SITE_CDASH TRUE)
+
+	# compile and link with coverage info
+	if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+		message(WARNING "Coverage testing disabled when using clang")
+	else()
+		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --coverage")
+	endif()
+
 	message(STATUS "Debug build")
 endif()
 
