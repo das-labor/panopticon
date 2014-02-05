@@ -13,6 +13,19 @@ option(panopticon_BUILD "Build Panopticon Library (libpanopticon)" ON)
 option(qtpanopticon_BUILD "Build Qt UI (qtpanopticon)" ON)
 option(panop_BUILD "Build cli tool (panop)" OFF)
 
+# Packaging
+set(CPACK_PACKAGE_CONTACT "seu@panopticon.re")
+SET(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Cross platform disassembler")
+SET(CPACK_PACKAGE_VENDOR "http://panopticon.re")
+SET(CPACK_PACKAGE_DESCRIPTION_FILE "${CMAKE_CURRENT_SOURCE_DIR}/README")
+SET(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENCE")
+SET(CPACK_PACKAGE_VERSION_MAJOR ${panopticon_MAJOR})
+SET(CPACK_PACKAGE_VERSION_MINOR ${panopticon_MINOR})
+SET(CPACK_PACKAGE_VERSION_PATCH ${panopticon_PATCH})
+set(CPACK_GENERATOR "STGZ;TGZ;DEB;RPM")
+include(CPack)
+
+# Default to debug build
 set(CMAKE_BUILD_TYPE "Debug")
 
 # Compiler flags

@@ -35,7 +35,7 @@ if(UNIX AND NOT APPLE)
 		"${cvc4_INCLUDE_DIRS}")
   configure_file("panopticon.pc.in" "panopticon.pc" @ONLY)
   install(FILES "${CMAKE_CURRENT_BINARY_DIR}/panopticon.pc"
-		DESTINATION "${CMAKE_INSTALL_PREFIX}/lib/pkgconfig")
+		DESTINATION "lib/pkgconfig")
 endif()
 
 if(${GTEST_FOUND})
