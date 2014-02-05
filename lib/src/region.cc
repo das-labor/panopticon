@@ -53,6 +53,18 @@ layer::layer(const std::string &n, offset sz)
 : _name(n), _data(sz)
 {}
 
+void layer::write(offset pos, tryte t)
+{
+	try
+	{
+		boost::get<std::unordered_map<offset,tryte>>(_data)[pos] = t;
+	}
+	catch(const boost::bad_visit&)
+	{
+		throw std::invalid_argument("no mutable layer");
+	}
+}
+
 slab layer::filter(const slab& in) const
 {
 	return boost::apply_visitor(filter_visitor(in),_data);
@@ -96,6 +108,11 @@ slab layer::filter_visitor::operator()(size_t sz) const
 const string& layer::name(void) const
 {
 	return _name;
+}
+
+po::region_loc po::region::undefined(const std::string& n, size_t sz)
+{
+	return region_loc(new region(n,layer_loc(new layer("base",sz))));
 }
 
 region::region(const std::string &n, layer_loc r)

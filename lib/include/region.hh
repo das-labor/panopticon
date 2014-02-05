@@ -37,6 +37,7 @@ namespace po
 
 		slab filter(const slab&) const;
 		const std::string& name(void) const;
+		void write(offset pos, tryte t);
 
 	private:
 		struct filter_visitor : public boost::static_visitor<slab>
@@ -54,8 +55,8 @@ namespace po
 		std::string _name;
 		boost::variant<
 			std::function<tryte(tryte)>,			///< Function applied tryte-wise to layers below.
-			std::vector<byte>,					///< Constant data. Ignores Input.
-			std::unordered_map<offset,tryte>,///< Sparse constant data.
+			std::vector<byte>,								///< Constant data. Ignores Input.
+			std::unordered_map<offset,tryte>,	///< Sparse constant data.
 			size_t														///< Uninitialized (boost::none) data. Ignores input.
 		> _data;
 	};

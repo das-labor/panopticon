@@ -9,9 +9,9 @@ using namespace std;
 TEST(region,tree)
 {
 	regions regs;
-	region_loc r1(new region("base",128));
-	region_loc r2(new region("zlib",64));
-	region_loc r3(new region("aes",48));
+	region_loc r1 = region::undefined("base",128);
+	region_loc r2 = region::undefined("zlib",64);
+	region_loc r3 = region::undefined("aes",48);
 
 	auto vx1 = regs.insert_node(r1);
 	auto vx2 = regs.insert_node(r2);
@@ -38,9 +38,9 @@ TEST(region,tree)
 TEST(region,proj)
 {
 	regions regs;
-	region_loc r1(new region("base",128));
-	region_loc r2(new region("zlib",64));
-	region_loc r3(new region("aes",48));
+	region_loc r1 = region::undefined("base",128);
+	region_loc r2 = region::undefined("zlib",64);
+	region_loc r3 = region::undefined("aes",48);
 
 	auto vx1 = regs.insert_node(r1);
 	auto vx2 = regs.insert_node(r2);
@@ -68,7 +68,7 @@ TEST(region,proj)
 
 TEST(region,read_undef)
 {
-	region_loc r1(new region("test",128));
+	region_loc r1 = region::undefined("test",128);
 	slab s = r1->read();
 
 	ASSERT_EQ(boost::size(s),128);
@@ -79,11 +79,11 @@ TEST(region,read_undef)
 
 TEST(region,read_one_layer)
 {
-	region_loc r1(new region("test",128));
+	region_loc r1 = region::undefined("test",128);
 
-	r1.write().add(bound(1,7),layer_loc(new layer(anonymous_layer({1,2,3,4,5,6},"anon 2"))));
-	r1.write().add(bound(50,62),layer_loc(new layer(anonymous_layer({1,2,3,4,5,6,6,5,4,3,2,1},"anon 2"))));
-	r1.write().add(bound(62,63),layer_loc(new layer(anonymous_layer({1},"anon 2"))));
+	r1.write().add(bound(1,7),layer_loc(new layer("anon 2",{1,2,3,4,5,6})));
+	r1.write().add(bound(50,62),layer_loc(new layer("anon 2",{1,2,3,4,5,6,6,5,4,3,2,1})));
+	r1.write().add(bound(62,63),layer_loc(new layer("anon 2",{1})));
 
 	slab s = r1->read();
 	ASSERT_EQ(boost::size(s),128);
