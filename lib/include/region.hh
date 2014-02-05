@@ -13,6 +13,7 @@
 
 #pragma once
 
+
 namespace po
 {
 	using offset = uint64_t;
@@ -91,6 +92,8 @@ namespace po
 
 namespace std
 {
+	std::ostream& operator<<(std::ostream&, const po::bound&);
+
 	template<>
 	struct hash<po::layer>
 	{

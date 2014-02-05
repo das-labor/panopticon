@@ -69,7 +69,7 @@ namespace po
 		 * Construct a sem_state to analyze a token stream starting at address @c a
 		 * @note The address is arbitrary.
 		 */
-		sem_state(addr_t a);
+		sem_state(offset a);
 
 		/**
 		 * Appends a @c len token long mnemonic for opcode @c n and operands @c ops,
@@ -109,10 +109,10 @@ namespace po
 		 * Adds the address @c a to the set of possible successors.
 		 * @see jump(rvalue, guard)
 		 */
-		void jump(addr_t a, guard g = guard());
+		void jump(offset a, guard g = guard());
 
 		// in
-		addr_t address;
+		offset address;
 		std::vector<token> tokens;
 		std::map<std::string,unsigned int> capture_groups;
 
@@ -121,7 +121,7 @@ namespace po
 		std::list<std::pair<rvalue,guard>> jumps;
 
 	private:
-		addr_t next_address;
+		offset next_address;
 	};
 
 	/**
@@ -144,7 +144,7 @@ namespace po
 		 * using @c state to pass information to subsequent rules.
 		 * @returns A pair with the first field true if the rule was successful and the second set to an iterator pointing to the next token to read by the next rules.
 		 */
-		virtual std::pair<bool,tokiter> match(tokiter begin, tokiter end, sem_state<Tag> &state) const = 0;
+		virtual boost::optional<tokiter> match(tokiter begin, tokiter end, sem_state<Tag> &state) const = 0;
 	};
 
 	template<typename Tag>
@@ -169,7 +169,7 @@ namespace po
 		 * Calls the user-definied function.
 		 * @returns Always success, iterator pointing to @c end.
 		 */
-		virtual std::pair<bool,typename rule<Tag>::tokiter> match(typename rule<Tag>::tokiter begin, typename rule<Tag>::tokiter end, sem_state<Tag> &state) const;
+		virtual boost::optional<typename rule<Tag>::tokiter> match(typename rule<Tag>::tokiter begin, typename rule<Tag>::tokiter end, sem_state<Tag> &state) const;
 
 		std::function<void(sem_state<Tag>&)> semantic_action;
 	};
@@ -194,7 +194,7 @@ namespace po
 		virtual ~tokpat(void);
 
 		/// Matches one or no token.
-		virtual std::pair<bool,typename rule<Tag>::tokiter> match(typename rule<Tag>::tokiter begin, typename rule<Tag>::tokiter end, sem_state<Tag> &state) const;
+		virtual boost::optional<typename rule<Tag>::tokiter> match(typename rule<Tag>::tokiter begin, typename rule<Tag>::tokiter end, sem_state<Tag> &state) const;
 
 	private:
 		typename rule<Tag>::token mask;
@@ -215,7 +215,7 @@ namespace po
 		virtual ~disjunction(void);
 
 		/// Runs all rules with the supplied arguments and returns the result of the first successful rule.
-		virtual std::pair<bool,typename rule<Tag>::tokiter> match(typename rule<Tag>::tokiter begin, typename rule<Tag>::tokiter end, sem_state<Tag> &state) const;
+		virtual boost::optional<typename rule<Tag>::tokiter> match(typename rule<Tag>::tokiter begin, typename rule<Tag>::tokiter end, sem_state<Tag> &state) const;
 
 		/// Append the rule @c r to the end of the list of rules to run if @c match is called.
 		void chain(rule_ptr<Tag> r);
@@ -245,7 +245,7 @@ namespace po
 		 * rule is run with that result of the first as arguments. The result of this
 		 * second rule is returned. If the first rule fails its result is returned.
 		 */
-		virtual std::pair<bool,typename rule<Tag>::tokiter> match(typename rule<Tag>::tokiter begin, typename rule<Tag>::tokiter end, sem_state<Tag> &state) const;
+		virtual boost::optional<typename rule<Tag>::tokiter> match(typename rule<Tag>::tokiter begin, typename rule<Tag>::tokiter end, sem_state<Tag> &state) const;
 
 	private:
 		rule_ptr<Tag> first, second;
@@ -363,11 +363,11 @@ namespace po
 
 	// returns pair<is successful?,next token to consume>
 	template<typename Tag>
-	std::pair<bool,typename rule<Tag>::tokiter> action<Tag>::match(typename rule<Tag>::tokiter begin, typename rule<Tag>::tokiter end, sem_state<Tag> &state) const
+	boost::optional<typename rule<Tag>::tokiter> action<Tag>::match(typename rule<Tag>::tokiter begin, typename rule<Tag>::tokiter end, sem_state<Tag> &state) const
 	{
 		if(this->semantic_action)
 			semantic_action(state);
-		return std::make_pair(true,begin);
+		return boost::make_optional(begin);
 	}
 
 	template<typename Tag>
@@ -384,10 +384,10 @@ namespace po
 	{}
 
 	template<typename Tag>
-	std::pair<bool,typename rule<Tag>::tokiter> tokpat<Tag>::match(typename rule<Tag>::tokiter begin, typename rule<Tag>::tokiter end, sem_state<Tag> &state) const
+	boost::optional<typename rule<Tag>::tokiter> tokpat<Tag>::match(typename rule<Tag>::tokiter begin, typename rule<Tag>::tokiter end, sem_state<Tag> &state) const
 	{
 		if(begin == end)
-			return std::make_pair(false,begin);
+			return boost::none;
 
 		typename rule<Tag>::token t = *begin;
 
@@ -420,14 +420,14 @@ namespace po
 
 			state.tokens.push_back(t);
 
-			return std::make_pair(true,next(begin));
+			return boost::make_optional(next(begin));
 		}
 		else
-			return std::make_pair(false,begin);
+			return boost::none;
 	}
 
 	template<typename Tag>
-	sem_state<Tag>::sem_state(addr_t a)
+	sem_state<Tag>::sem_state(offset a)
 	: address(a), tokens(), capture_groups(), mnemonics(), jumps(), next_address(a)
 	{}
 
@@ -445,7 +445,7 @@ namespace po
 		if(fn)
 			fn(cg);
 
-		mnemonics.emplace_back(po::mnemonic(range<addr_t>(next_address,next_address + len),n,fmt,ops.begin(),ops.end(),instrs.begin(),instrs.end()));
+		mnemonics.emplace_back(po::mnemonic(bound(next_address,next_address + len),n,fmt,ops.begin(),ops.end(),instrs.begin(),instrs.end()));
 		next_address += len;
 	}
 
@@ -469,9 +469,9 @@ namespace po
 	}
 
 	template<typename Tag>
-	void sem_state<Tag>::jump(addr_t a, guard g)
+	void sem_state<Tag>::jump(offset a, guard g)
 	{
-		jump(constant(a,flsll(a)),g);
+		jump(constant(a),g);
 	}
 
 	template<typename Tag>
@@ -484,21 +484,21 @@ namespace po
 	{}
 
 	template<typename Tag>
-	std::pair<bool,typename rule<Tag>::tokiter> disjunction<Tag>::match(typename rule<Tag>::tokiter begin, typename rule<Tag>::tokiter end, sem_state<Tag> &state) const
+	boost::optional<typename rule<Tag>::tokiter> disjunction<Tag>::match(typename rule<Tag>::tokiter begin, typename rule<Tag>::tokiter end, sem_state<Tag> &state) const
 	{
 		auto i = patterns.cbegin();
-		typename rule<Tag>::tokiter j;
+		boost::optional<typename rule<Tag>::tokiter> j;
 
 		while(i != patterns.cend())
 		{
 			rule<Tag> &r(**i++);
-			std::pair<bool,typename rule<Tag>::tokiter> ret = r.match(begin,end,state);
+			boost::optional<typename rule<Tag>::tokiter> ret = r.match(begin,end,state);
 
-			if(ret.first)
+			if(ret)
 				return ret;
 		}
 
-		return std::make_pair(false,begin);
+		return boost::none;
 	}
 
 	template<typename Tag>
@@ -519,17 +519,14 @@ namespace po
 	{}
 
 	template<typename Tag>
-	std::pair<bool,typename rule<Tag>::tokiter> conjunction<Tag>::match(typename rule<Tag>::tokiter begin, typename rule<Tag>::tokiter end, sem_state<Tag> &state) const
+	boost::optional<typename rule<Tag>::tokiter> conjunction<Tag>::match(typename rule<Tag>::tokiter begin, typename rule<Tag>::tokiter end, sem_state<Tag> &state) const
 	{
-		bool cont;
-		typename rule<Tag>::tokiter i;
+		boost::optional<typename rule<Tag>::tokiter> i = first->match(begin,end,state);
 
-		tie(cont,i) = first->match(begin,end,state);
-
-		if(cont)
-			return second->match(i,end,state);
+		if(i)
+			return second->match(*i,end,state);
 		else
-			return std::make_pair(false,begin);
+			return boost::none;
 	}
 
 	template<typename Tag>
@@ -694,11 +691,11 @@ namespace po
 	}
 
 	template<typename Tag>
-	std::pair<bool,typename rule<Tag>::tokiter> disassembler<Tag>::match(typename rule<Tag>::tokiter begin, typename rule<Tag>::tokiter end, sem_state<Tag> &state) const
+	boost::optional<typename rule<Tag>::tokiter> disassembler<Tag>::match(typename rule<Tag>::tokiter begin, typename rule<Tag>::tokiter end, sem_state<Tag> &state) const
 	{
-		std::pair<bool,typename rule<Tag>::tokiter> ret = disjunction<Tag>::match(begin,end,state);
+		boost::optional<typename rule<Tag>::tokiter> ret = disjunction<Tag>::match(begin,end,state);
 
-		if(!ret.first && failsafe && begin != end)
+		if(!ret && failsafe && begin != end)
 		{
 			state.tokens.push_back(*begin);
 			return failsafe->match(next(begin),end,state);

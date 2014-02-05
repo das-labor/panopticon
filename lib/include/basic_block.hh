@@ -9,6 +9,8 @@
 #include <panopticon/marshal.hh>
 #include <panopticon/loc.hh>
 
+#pragma once
+
 /**
  * @file
  * @brief Basic block structure and related classes
@@ -37,7 +39,7 @@ namespace po
 	typedef std::shared_ptr<const class procedure> proc_cptr;
 }
 
-#include <mnemonic.hh>
+#include <panopticon/mnemonic.hh>
 
 namespace po
 {
@@ -106,7 +108,7 @@ namespace po
 	/// @returns The relation @ref r as UTF-8 string.
 	std::string pretty(relation::Relcode r);
 	std::ostream& operator<<(std::ostream &os, const guard &g);
-	odotstream &operator<<(odotstream &os, const guard &g);
+	//odotstream &operator<<(odotstream &os, const guard &g);
 
 	/**
 	 * @brief A jump between two basic blocks.
@@ -132,7 +134,7 @@ namespace po
 		bblock_wptr bblock;
 	};
 
-	oturtlestream& operator<<(oturtlestream &os, const ctrans &ct);
+	//oturtlestream& operator<<(oturtlestream &os, const ctrans &ct);
 	std::string unique_name(const ctrans &ct);
 
 	/// @internal
@@ -237,7 +239,7 @@ namespace po
 		void mutate_outgoing(std::function<void(std::list<ctrans>&)> fn);
 
 		/// @returns the address range this basic block spans
-		const range<addr_t> &area(void) const;
+		const bound &area(void) const;
 
 		/// Deletes all control transfers and mnemonics inside
 		void clear(void);
@@ -245,7 +247,7 @@ namespace po
 	private:
 		void mutate_controlflow(std::list<ctrans> &lst, std::function<void(std::list<ctrans>&)> fn);
 
-		range<addr_t> m_area;
+		bound m_area;
 		std::vector<mnemonic> m_mnemonics;
 
 		std::list<ctrans> m_incoming;
@@ -255,8 +257,8 @@ namespace po
 	bool operator<(const bblock_wptr &a, const bblock_wptr &b);
 	bool operator<(const bblock_cwptr &a, const bblock_cwptr &b);
 
-	odotstream &operator<<(odotstream &os, const basic_block &bb);
-	oturtlestream &operator<<(oturtlestream &os, const basic_block &bb);
+	//odotstream &operator<<(odotstream &os, const basic_block &bb);
+	//oturtlestream &operator<<(oturtlestream &os, const basic_block &bb);
 	std::string unique_name(const basic_block &bb);
 
 	/// Iterates all mnemoics in @ref bb, calling @ref f for each instruction.
@@ -300,7 +302,7 @@ namespace po
 	 * is the first in the second basic block.
 	 * @returns Pair of basic blocks.
 	 */
-	std::pair<bblock_ptr,bblock_ptr> split(bblock_ptr bb, addr_t pos, bool last);
+	std::pair<bblock_ptr,bblock_ptr> split(bblock_ptr bb, offset pos, bool last);
 
 	/// Merges two adjacent basic blocks into one.
 	bblock_ptr merge(bblock_ptr up, bblock_ptr down);
@@ -312,5 +314,3 @@ namespace po
 	/// @internal
 	void conditional_jump(const ctrans &from, const ctrans &to);
 }
-
-#endif

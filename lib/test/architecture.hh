@@ -1,7 +1,7 @@
 #ifndef TEST_ARCHITECTURE_HH
 #define TEST_ARCHITECTURE_HH
 
-#include <architecture.hh>
+#include <panopticon/architecture.hh>
 
 struct test_tag {};
 unsigned int ununsed = 0;

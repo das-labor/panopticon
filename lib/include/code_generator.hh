@@ -3,8 +3,8 @@
 
 #include <cstring>
 
-#include <mnemonic.hh>
-#include <architecture.hh>
+#include <panopticon/mnemonic.hh>
+#include <panopticon/architecture.hh>
 
 namespace po
 {
@@ -70,16 +70,16 @@ namespace po
 
 			auto sanity_check = [](const rvalue &v)
 			{
-				if(v.is_variable())
-					return v.to_variable().name().size() && v.to_variable().subscript() == -1 && v.to_variable().width();
-				else if(v.is_memory())
-					return v.to_memory().name().size() && v.to_memory().bytes() &&
-								 (v.to_memory().endianess() == memory::BigEndian || v.to_memory().endianess() == memory::LittleEndian) &&
-								 v.to_memory().offset() != v;
-				else if(v.is_constant())
-					return v.to_constant().width() > 0;
+				if(is_variable(v))
+					return to_variable(v).name().size() && to_variable(v).subscript() == -1 && to_variable(v).width();
+				else if(is_memory(v))
+					return to_memory(v).name().size() && to_memory(v).bytes() &&
+								 (to_memory(v).endianess() == memory::BigEndian || to_memory(v).endianess() == memory::LittleEndian) &&
+								 to_memory(v).offset() != v;
+				else if(is_constant(v))
+					return true;
 				else
-					return v.is_undefined();
+					return is_undefined(v);
 			};
 
 			assert(all_of(arguments.begin(),arguments.end(),sanity_check) && sanity_check(assign));

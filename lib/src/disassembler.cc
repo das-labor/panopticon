@@ -1,4 +1,4 @@
-#include <disassembler.hh>
+#include <panopticon/disassembler.hh>
 
 using namespace po;
 using namespace std;

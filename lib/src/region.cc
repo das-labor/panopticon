@@ -17,6 +17,12 @@ rdf::statements po::marshal(const layer*, const uuid&) { return rdf::statements(
 template<>
 layer* po::unmarshal(const uuid&, const rdf::storage&) { return nullptr; }
 
+std::ostream& std::operator<<(std::ostream& os, const po::bound& b)
+{
+	os << "[" << boost::icl::first(b) << ", " << boost::icl::last(b) << ")";
+	return os;
+}
+
 po::layer_wloc po::operator+=(po::layer_wloc& a, const po::layer_wloc &b)
 {
 	return a = b;

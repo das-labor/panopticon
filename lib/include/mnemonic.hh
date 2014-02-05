@@ -58,8 +58,8 @@ namespace po
 		std::vector<rvalue> right;
 	};
 
-	odotstream& operator<<(odotstream &os, const instr &i);
-	oturtlestream& operator<<(oturtlestream &os, const instr &i);
+	/*odotstream& operator<<(odotstream &os, const instr &i);
+	oturtlestream& operator<<(oturtlestream &os, const instr &i);*/
 	std::string pretty(instr::Function fn);
 	std::string symbolic(instr::Function fn);
 	instr::Function numeric(const std::string &s);
@@ -81,14 +81,14 @@ namespace po
 		static mnemonic unmarshal(const rdf::node &n, const rdf::storage &store);
 
 		template <typename F1, typename F2>
-		mnemonic(const range<addr_t> &a, const std::string &n, const std::string &fmt, F1 ops_begin, F1 ops_end, F2 instr_begin, F2 instr_end)
+		mnemonic(const bound &a, const std::string &n, const std::string &fmt, F1 ops_begin, F1 ops_end, F2 instr_begin, F2 instr_end)
 		: mnemonic(a,n,fmt,{},{})
 		{
 			std::copy(ops_begin,ops_end,inserter(operands,operands.begin()));
 			std::copy(instr_begin,instr_end,inserter(instructions,instructions.begin()));
 		}
 
-		mnemonic(const range<addr_t> &a, const std::string &n, const std::string &fmt, std::initializer_list<rvalue> ops, std::initializer_list<instr> instrs);
+		mnemonic(const bound &a, const std::string &n, const std::string &fmt, std::initializer_list<rvalue> ops, std::initializer_list<instr> instrs);
 
 		mnemonic(const mnemonic &m);
 		mnemonic(mnemonic &&m);
@@ -98,7 +98,7 @@ namespace po
 
 		std::string format_operands(void) const;
 
-		range<addr_t> area;
+		bound area;
 		std::string opcode;
 		std::vector<rvalue> operands;
 		std::vector<instr> instructions;
@@ -107,8 +107,8 @@ namespace po
 
 	std::ostream& operator<<(std::ostream &os, const instr &i);
 	std::ostream& operator<<(std::ostream &os, const mnemonic &m);
-	odotstream& operator<<(odotstream &os, const mnemonic &m);
-	oturtlestream& operator<<(oturtlestream &os, const mnemonic &m);
+	/*odotstream& operator<<(odotstream &os, const mnemonic &m);
+	oturtlestream& operator<<(oturtlestream &os, const mnemonic &m);*/
 	std::string unique_name(const mnemonic &mne);
 
 	int64_t format_constant(const mnemonic::token &tok, uint64_t v);

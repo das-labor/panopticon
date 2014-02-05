@@ -23,6 +23,9 @@ qt5_add_resources(qtpanopticon_RCCS ${qtpanopticon_RESOURCES})
 #include_directories(${Qt5Widgets_INCLUDES})
 #add_definitions(${Qt5Widgets_DEFINITIONS})
 
+# remove when fixed in Qt5
+add_definitions("-Wno-nested-anon-types")
+
 add_executable(qtpanopticon ${qtpanopticon_SOURCES} ${qtpanopticon_HEADERS}
 	${qtpanopticon_HEADERS_MOC} ${qtpanopticon_RCCS})
 qt5_use_modules(qtpanopticon Widgets Quick Qml)

@@ -201,7 +201,7 @@ void basic_block::mutate_mnemonics(function<void(vector<mnemonic>&)> fn)
 	{
 		bool ret = true;
 
-		if(first == naddr) 
+		if(first == naddr)
 			first = m.area.begin;
 		else
 			ret &= first < m.area.begin;
@@ -215,9 +215,9 @@ void basic_block::mutate_mnemonics(function<void(vector<mnemonic>&)> fn)
 
 	// update m_area
 	if(m_mnemonics.empty())
-		m_area = range<addr_t>();
+		m_area = bound();
 	else
-		m_area = range<addr_t>(first,last);
+		m_area = bound(first,last);
 }
 
 void basic_block::mutate_incoming(function<void(list<ctrans>&)> fn)
@@ -237,7 +237,7 @@ void basic_block::mutate_incoming(function<void(list<ctrans>&)> fn)
 void basic_block::mutate_outgoing(function<void(list<ctrans>&)> fn)
 {
 	fn(m_outgoing);
-	
+
 	// check invariants:
 	// 	- condition non-null
 	// 	- no paralell edges
@@ -255,7 +255,7 @@ void basic_block::clear(void)
 	m_mnemonics.clear();
 }
 
-const range<addr_t> &basic_block::area(void) const { return m_area; }
+const bound &basic_block::area(void) const { return m_area; }
 
 /*
  * free functions
@@ -311,8 +311,8 @@ oturtlestream &po::operator<<(oturtlestream &os, const basic_block &bb)
 			os << g << " po:target " << ct.value << "." << endl;
 
 		for(const relation &rel: ct.condition.relations)
-			os << g << " po:condition [ po:left " << rel.operand1 
-													 << "; po:right " << rel.operand2 
+			os << g << " po:condition [ po:left " << rel.operand1
+													 << "; po:right " << rel.operand2
 													 << "; po:relation " << symbolic(rel.relcode)
 													 << "]." << endl;
 	}*/
@@ -383,39 +383,39 @@ void po::unconditional_jump(rvalue from, bblock_ptr to) { conditional_jump(from,
 void po::unconditional_jump(bblock_ptr from, rvalue to) { conditional_jump(from,to,guard()); }
 
 void po::replace_incoming(bblock_ptr to, bblock_ptr oldbb, bblock_ptr newbb)
-{ 
+{
 	assert(to && oldbb && newbb);
 	to->mutate_incoming([&](list<ctrans> &in)
-	{ 
-		replace(in,oldbb,newbb); 
-	}); 
+	{
+		replace(in,oldbb,newbb);
+	});
 }
 
 void po::replace_outgoing(bblock_ptr from, bblock_ptr oldbb, bblock_ptr newbb)
 {
 	assert(from && oldbb && newbb);
-	from->mutate_outgoing([&](list<ctrans> &out) 
-	{ 
-		replace(out,oldbb,newbb); 
-	}); 
+	from->mutate_outgoing([&](list<ctrans> &out)
+	{
+		replace(out,oldbb,newbb);
+	});
 }
 
-void po::resolve_incoming(bblock_ptr to, rvalue v, bblock_ptr bb) 
-{ 
+void po::resolve_incoming(bblock_ptr to, rvalue v, bblock_ptr bb)
+{
 	assert(to && bb);
 	to->mutate_incoming([&](list<ctrans> &in)
-	{ 
-		resolve(in,v,bb); 
-	}); 
+	{
+		resolve(in,v,bb);
+	});
 }
 
 void po::resolve_outgoing(bblock_ptr from, rvalue v, bblock_ptr bb)
 {
 	assert(from && bb);
-	from->mutate_outgoing([&](list<ctrans> &out) 
-	{ 
-		resolve(out,v,bb); 
-	}); 
+	from->mutate_outgoing([&](list<ctrans> &out)
+	{
+		resolve(out,v,bb);
+	});
 }
 
 // last == true -> pos is last in `up', last == false -> pos is first in `down'
@@ -437,17 +437,17 @@ pair<bblock_ptr,bblock_ptr> po::split(bblock_ptr bb, addr_t pos, bool last)
 
 	// distribute mnemonics under `up' and `down'
 	for_each(bb->mnemonics().begin(),bb->mnemonics().end(),[&](const mnemonic &m)
-	{	
+	{
 		assert(!m.area.includes(pos) || m.area.begin == pos);
 
 		if(!last)
 			sw |= m.area.includes(pos);
-		
+
 		if(sw)
 			down->mutate_mnemonics([&](vector<mnemonic> &ms) { ms.push_back(m); });
-		else	
+		else
 			up->mutate_mnemonics([&](vector<mnemonic> &ms) { ms.push_back(m); });
-		
+
 		if(last)
 			sw |= m.area.includes(pos);
 	});
@@ -477,7 +477,7 @@ pair<bblock_ptr,bblock_ptr> po::split(bblock_ptr bb, addr_t pos, bool last)
 				append(false,down,ctrans(ct.condition,ct.value));
 		}
 	});
-	
+
 	// move incoming edges to up
 	for_each(bb->incoming().begin(),bb->incoming().end(),[&](const ctrans &ct)
 	{
@@ -527,14 +527,14 @@ bblock_ptr po::merge(bblock_ptr up, bblock_ptr down)
 			replace_outgoing(ct.bblock.lock(),up,ret);
 		ret->mutate_incoming([&](list<ctrans> &in) { in.emplace_back(ct); });
 	});
-			
+
 	for_each(down->outgoing().begin(),down->outgoing().end(),[&](const ctrans &ct)
 	{
 		if(ct.bblock.lock())
 			replace_incoming(ct.bblock.lock(),down,ret);
 		ret->mutate_outgoing([&](list<ctrans> &out) { out.emplace_back(ct); });
 	});
-	
+
 	up->clear();
 	down->clear();
 	return ret;
