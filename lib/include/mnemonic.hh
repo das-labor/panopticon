@@ -7,10 +7,7 @@
 
 #include <panopticon/value.hh>
 #include <panopticon/marshal.hh>
-<<<<<<< HEAD
 #include <panopticon/region.hh>
-=======
-#include <panopticon/source.hh>
 
 #pragma once
 
@@ -26,7 +23,6 @@
  * grouped into @ref mnemonic objects which in turn
  * are grouped into procedures.
  */
->>>>>>> Merge files from tracker
 
 namespace po
 {
