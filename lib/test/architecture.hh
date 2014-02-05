@@ -1,37 +1,25 @@
-#ifndef TEST_ARCHITECTURE_HH
-#define TEST_ARCHITECTURE_HH
-
 #include <panopticon/architecture.hh>
 
+#pragma once
+
 struct test_tag {};
-unsigned int ununsed = 0;
-std::vector<std::string> regs({"a","b","c","d"});
+extern unsigned int ununsed;
+extern std::vector<std::string> regs;
 
 namespace po
 {
 	template<>
 	struct architecture_traits<test_tag>
 	{
-		typedef unsigned char token_type;
+		using token_type = unsigned char;
 	};
 
 	template<>
-	lvalue temporary(test_tag)
-	{
-		return variable("t" + std::to_string(ununsed++),16);
-	}
+	lvalue temporary(test_tag);
 
 	template<>
-	const std::vector<std::string> &registers(test_tag)
-	{
-		return regs;
-	}
+	const std::vector<std::string> &registers(test_tag);
 
 	template<>
-	uint8_t width(std::string n, test_tag)
-	{
-		return 8;
-	}
+	uint8_t width(std::string n, test_tag);
 }
-
-#endif
