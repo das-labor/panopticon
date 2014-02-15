@@ -115,6 +115,16 @@ po::region_loc po::region::undefined(const std::string& n, size_t sz)
 	return region_loc(new region(n,layer_loc(new layer("base",sz))));
 }
 
+po::region_loc po::region::wrap(const std::string& n, const byte* p, size_t sz)
+{
+	return region_loc(new region(n,layer_loc(new layer("base",p,sz))));
+}
+
+po::region_loc po::region::wrap(const std::string& n, std::initializer_list<byte> il)
+{
+	return region_loc(new region(n,layer_loc(new layer("base",il))));
+}
+
 region::region(const std::string &n, layer_loc r)
 : _graph(),
 	_root(_graph.insert_node(r)),

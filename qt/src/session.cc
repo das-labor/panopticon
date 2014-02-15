@@ -9,7 +9,7 @@ Session::Session(QObject *p)
 
 	po::region_loc base_as = po::region::undefined("base",128);
 	po::region_loc xor_as = po::region::undefined("xor",64);
-	po::region_loc add_as = po::region::undefined("add",27);
+	po::region_loc add_as = po::region::wrap("add",std::initializer_list<po::byte>({0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26}));
 //	po::address_space zlib_as("zlib",po::rrange(0,1280),std::function<bytes(const bytes&)>());
 //	po::address_space aes_as("aes",po::rrange(0,320),std::function<bytes(const bytes&)>());
 

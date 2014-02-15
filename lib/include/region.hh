@@ -111,6 +111,7 @@ namespace po
 		static region_loc mmap(const std::string&, const std::string&);
 		static region_loc undefined(const std::string&, size_t);
 		static region_loc wrap(const std::string&, const byte*, size_t);
+		static region_loc wrap(const std::string&, std::initializer_list<byte>);
 
 		region(const std::string&, layer_loc root);
 		void add(const bound&, layer_loc);
