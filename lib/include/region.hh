@@ -115,7 +115,7 @@ namespace po
 		region(const std::string&, layer_loc root);
 		void add(const bound&, layer_loc);
 
-		slab read(void) const;
+		slab read(boost::optional<layer_loc> l = boost::none) const;
 
 		const image& projection(void) const;
 		const layers& graph(void) const;
@@ -131,8 +131,6 @@ namespace po
 
 		// caches
 		mutable boost::optional<image> _projection;
-
-		slab read(layer_loc l) const;
 	};
 
 	template<>

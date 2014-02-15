@@ -2,10 +2,39 @@
 
 #include <gtest/gtest.h>
 #include <boost/range/algorithm/copy.hpp>
+#include <boost/range/join.hpp>
 #include <panopticon/region.hh>
 
 using namespace po;
 using namespace std;
+
+TEST(slab,copy)
+{
+	layer_loc l1(new layer("anon 1",6));
+	layer_loc l2(new layer("anon 2",{1,2,3}));
+	layer_loc l3(new layer("anon 2",{1,2,3}));
+	layer_loc l4(new layer("anon 2",{13,23,33,6,7}));
+	std::list<std::pair<bound,layer_wloc>> src;
+
+	src.emplace_back(bound(2,4),layer_wloc(l1));
+	src.emplace_back(bound(0,3),layer_wloc(l2));
+	src.emplace_back(bound(1,3),layer_wloc(l3));
+	src.emplace_back(bound(0,5),layer_wloc(l4));
+
+	auto a = std::accumulate(src.begin(),src.end(),slab(),[&](slab acc, const pair<bound,layer_wloc>& s)
+	{
+		slab all = s.second.lock()->filter(slab());
+		cout << "add " << boost::icl::first(s.first) << "-" << boost::icl::upper(s.first) << endl;
+
+		cout << boost::size(acc) << endl;
+		auto r = boost::range::join(acc,slab(std::next(boost::begin(all),boost::icl::first(s.first)),
+																			 std::next(boost::begin(all),boost::icl::upper(s.first))));
+		cout << "new: " << boost::size(r) << endl;
+		return r;
+	});
+
+	cout << "res: " << boost::size(a) << endl;
+}
 
 TEST(layer,map_layer)
 {

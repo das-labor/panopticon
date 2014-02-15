@@ -206,58 +206,44 @@ const region::layers& region::graph(void) const { return _graph; }
 const std::string& region::name(void) const { return _name; }
 size_t region::size(void) const { return _size; }
 
-po::slab region::read(void) const
+po::slab region::read(boost::optional<po::layer_loc> l) const
 {
-	const image &img = projection();
-	po::slab ret;
-
-	for(auto r: img)
-		ret = boost::range::join(ret,read(r.second.lock()));
-
-	return ret;
-}
-
-po::slab region::read(po::layer_loc l) const
-{
-	auto vx = _graph.find_node(l);
-	auto p = _graph.out_edges(*vx);
-	auto i = p.first;
 	std::list<std::pair<bound,layer_wloc>> src;
 	slab ret;
 
-	while(i != p.second)
+	if(l)
 	{
-		src.emplace_back(_graph.get_edge(*i),layer_wloc(_graph.get_node(_graph.target(*i))));
-		++i;
+		auto vx = _graph.find_node(*l);
+		auto p = _graph.out_edges(*vx);
+		auto i = p.first;
+
+		if(i == p.second)
+		{
+			return _graph.get_node(*vx)->filter(slab());
+		}
+		else
+		{
+			while(i != p.second)
+			{
+				src.emplace_back(_graph.get_edge(*i),layer_wloc(_graph.get_node(_graph.target(*i))));
+				++i;
+			}
+		}
+	}
+	else
+	{
+		for(auto r: projection())
+			src.emplace_back(r);
 	}
 
 	src.sort([&](const std::pair<bound,layer_wloc> &a, const std::pair<bound,layer_wloc> &b) { return icl::first(a.first) < icl::first(b.first); });
 
-	for(auto s: src)
+	return std::accumulate(src.begin(),src.end(),slab(),[&](slab acc, const pair<bound,layer_wloc>& s)
 	{
-		slab all;
-
-		if(*_graph.find_node(s.second.lock()) == _root)
-		{
-			using func = std::function<po::tryte(unsigned int)>;
-			func fn = [](unsigned int) { return tryte(boost::none); };
-			counting_iterator<offset,boost::random_access_traversal_tag> a(0);
-			counting_iterator<offset,boost::random_access_traversal_tag> b(icl::length(s.first));
-			using transform_iter = boost::transform_iterator<func,decltype(b)>;
-
-			std::cout << icl::length(s.first) << std::endl;
-			all = slab(transform_iter(a,fn),transform_iter(b,fn));
-		}
-		else
-		{
-			all = read(s.second.lock());
-		}
-
-		ret = boost::range::join(ret,slab(std::next(boost::begin(all),icl::first(s.first)),
-																		std::next(boost::begin(all),icl::upper(s.first))));
-	}
-
-	return ret;
+		slab all = read(s.second.lock());
+		return boost::range::join(acc,slab(std::next(boost::begin(all),icl::first(s.first)),
+																			 std::next(boost::begin(all),icl::upper(s.first))));
+	});
 }
 
 std::unordered_map<region_wloc,region_wloc> po::spanning_tree(const regions &regs)
