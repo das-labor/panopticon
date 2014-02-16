@@ -3,8 +3,8 @@
 #include <algorithm>
 
 extern "C" {
-#include <minizip/zip.h>
-#include <minizip/unzip.h>
+#include <archive.h>
+#include <archive_entry.h>
 #include <dirent.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -61,53 +61,53 @@ rdf::storage rdf::storage::from_archive(const string &path)
 	const string &tempDir = ret._tempdir;
 
 	// open target zip
-	unzFile zf = unzOpen(path.c_str());
-	if(zf == NULL)
-		throw marshal_exception("can't open " + path);
+	archive *ar = archive_read_new();
+	if(ar == NULL)
+		throw marshal_exception("can't allocate archive struct");
 
-	if(unzLocateFile(zf,"graph-po2s.db",0) != UNZ_OK ||
-		 unzLocateFile(zf,"graph-so2p.db",0) != UNZ_OK ||
-		 unzLocateFile(zf,"graph-sp2o.db",0) != UNZ_OK)
-		throw marshal_exception("can't open " + path + ": no graph database in file");
+	if(archive_read_support_format_cpio(ar) != ARCHIVE_OK)
+		throw marshal_exception("can't set archive format");
 
-	if(unzGoToFirstFile(zf) != UNZ_OK)
-		throw marshal_exception("can't open " + path);
+	if(archive_read_support_filter_lzma(ar) != ARCHIVE_OK)
+		throw marshal_exception("can't set compression algorithm");
 
-	// copy database files to tempdir
-	char *buf = new char[4096];
-
-	do
+	try
 	{
-		char fileName[256];
-
-		if(unzGetCurrentFileInfo(zf,NULL,fileName,256,NULL,0,NULL,0) != UNZ_OK)
-			throw marshal_exception("can't read files from " + path);
-
-		string tmpName = tempDir + "/" + string(fileName);
-		int fd = open(tmpName.c_str(),O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR);
-
-		if(fd < 0)
-			throw marshal_exception("can't open " + path + " into tempdir: " + strerror(errno));
-
-		if(unzOpenCurrentFile(zf) != UNZ_OK)
-			throw marshal_exception("can't open file in " + path);
-
-		size_t sz;
-		while((sz = unzReadCurrentFile(zf,buf,4096)) != 0)
-		{
-			size_t p = 0;
-			while(p < sz)
-				p += write(fd,buf + p,sz - p);
-		}
-
-		if(close(fd) || unzCloseCurrentFile(zf) != UNZ_OK)
+		if(archive_read_open_filename(ar,path.c_str(),4096) != ARCHIVE_OK)
 			throw marshal_exception("can't open " + path);
 
-		cout << "read " << tmpName << " from " << path << endl;
-	}
-	while(unzGoToNextFile(zf) == UNZ_OK);
+		// XXX: depends on internals of the berkeley model of librdf
+		bool found_po2s = false, found_so2p = false, found_sp2o = false;
 
-	if(unzClose(zf) != UNZ_OK)
+		// copy database files to tempdir
+		struct archive_entry *ae;
+
+		while(archive_read_next_header(ar,&ae) == ARCHIVE_OK)
+		{
+			string pathName(archive_entry_pathname(ae));
+			string tmpName = tempDir + "/" + pathName;
+
+			found_po2s = found_po2s | (pathName.substr(pathName.size() - 13,std::string::npos) == "graph-po2s.db");
+			found_so2p = found_so2p | (pathName.substr(pathName.size() - 13,std::string::npos) == "graph-so2p.db");
+			found_sp2o = found_sp2o | (pathName.substr(pathName.size() - 13,std::string::npos) == "graph-sp2o.db");
+			int fd = open(tmpName.c_str(),O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR);
+
+			if(fd < 0 || archive_read_data_into_fd(ar,fd) != ARCHIVE_OK || close(fd))
+					throw marshal_exception("can't open " + path + " into tempdir: " + strerror(errno));
+
+			cout << "read " << tmpName << " from " << path << endl;
+		}
+
+		if(!(found_po2s && found_so2p && found_sp2o))
+			throw marshal_exception("can't open " + path + ": no graph database in file");
+	}
+	catch(...)
+	{
+		archive_read_free(ar);
+		throw;
+	}
+
+	if(archive_read_free(ar) != ARCHIVE_OK)
 		throw marshal_exception("can't open " + path);
 
 	world &w = world::instance();
@@ -232,53 +232,98 @@ void rdf::storage::snapshot(const string &path)
 		throw marshal_exception("can't save to " + path + ": " + strerror(errno));
 
 	// open target zip
-	zipFile zf = zipOpen(path.c_str(),0);
-	if(zf == NULL)
-		throw marshal_exception("can't save to " + path + ": failed to open");
+	struct archive *ar = archive_write_new();
+	if(ar == NULL)
+		throw marshal_exception("can't save to " + path + ": failed to allocate archive struct");
 
-	// save database files
-	struct dirent *dirEnt;
-	char buf[4096];
-
-	while((dirEnt = readdir(dirDesc)))
+	try
 	{
-		string entBase(dirEnt->d_name);
-		string entPath = _tempdir + "/" + entBase;
+		if(archive_write_add_filter_lzma(ar) != ARCHIVE_OK)
+			throw marshal_exception("can't save to " + path + ": failed setting compression algorithm");
 
-		if(entBase == "." || entBase == "..")
-			continue;
+		// save into *.cpio.lzma
+		if(archive_write_set_format_cpio(ar) != ARCHIVE_OK)
+			throw marshal_exception("can't save to " + path + ": failed setting archive format");
 
-		int fd = open(entPath.c_str(),O_RDONLY);
-		zip_fileinfo zif;
+		if(archive_write_open_filename(ar,path.c_str()) != ARCHIVE_OK)
+			throw marshal_exception("can't save to " + path + ": failed to open");
 
-		memset(&zif,0,sizeof(zip_fileinfo));
+		// save database files
+		struct dirent *dirEnt;
+		char buf[4096];
+		struct archive_entry *ae = archive_entry_new();
 
-		if(fd < 0)
-			throw marshal_exception("can't save to " + path + ": " + strerror(errno));
+		if(!ae)
+			throw marshal_exception("can't save to " + path + ": failed to allocate archive entry struct");
 
-		if(zipOpenNewFileInZip(zf,entBase.c_str(),&zif,NULL,0,NULL,0,NULL,Z_DEFLATED,Z_DEFAULT_COMPRESSION) != ZIP_OK)
-			throw marshal_exception("can't save to " + path + ": " + strerror(errno));
-
-		int ret;
-		do
+		try
 		{
-			ret = read(fd,buf,4096);
+			while((dirEnt = readdir(dirDesc)))
+			{
+				string entBase(dirEnt->d_name);
+				string entPath = _tempdir + "/" + entBase;
 
-			if(ret < 0)
-				throw marshal_exception("can't save to " + path + ": error while reading " + entPath + "(" + strerror(errno) + ")");
+				if(entBase == "." || entBase == "..")
+					continue;
 
-			if(ret > 0 && zipWriteInFileInZip(zf,buf,ret) != ZIP_OK)
-				throw marshal_exception("can't save to " + path + ": error while writing " + entPath);
+				int fd = open(entPath.c_str(),O_RDONLY);
+				if(fd < 0)
+					throw marshal_exception("can't save to " + path + ": " + strerror(errno));
+
+				try
+				{
+					struct stat st;
+
+					fstat(fd,&st);
+					archive_entry_clear(ae);
+					archive_entry_copy_pathname(ae,entBase.c_str());
+					archive_entry_copy_stat(ae,&st);
+
+					if(archive_write_header(ar,ae) != ARCHIVE_OK)
+						throw marshal_exception("can't save to " + path + ": failed to write header");
+
+					int ret;
+					do
+					{
+						ret = read(fd,buf,4096);
+
+						if(ret < 0)
+							throw marshal_exception("can't save to " + path + ": error while reading " + entPath + "(" + strerror(errno) + ")");
+
+						if(ret > 0 && archive_write_data(ar,buf,ret) != ARCHIVE_OK)
+							throw marshal_exception("can't save to " + path + ": error while writing " + entPath);
+					}
+					while(ret);
+				}
+				catch(...)
+				{
+					close(fd);
+					throw;
+				}
+
+				if(close(fd))
+					throw marshal_exception("can't save to " + path + ": failed to close file descriptor");
+
+				cout << "written " << entPath << " in " << path << endl;
+			}
 		}
-		while(ret);
+		catch(...)
+		{
+			archive_entry_free(ae);
+			throw;
+		}
 
-		if(close(fd) || zipCloseFileInZip(zf) != ZIP_OK)
-			throw marshal_exception("can't save to " + path + ": failed to close file descriptor");
+		archive_entry_free(ae);
+	}
+	catch(...)
+	{
+		closedir(dirDesc);
+		archive_write_free(ar);
 
-		cout << "written " << entPath << " in " << path << endl;
+		throw;
 	}
 
-	if(closedir(dirDesc) || zipClose(zf,NULL) != ZIP_OK)
+	if(closedir(dirDesc) || archive_write_free(ar) != ARCHIVE_OK)
 		throw marshal_exception("can't save to " + path + ": failed to close directory");
 }
 
