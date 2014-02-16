@@ -7,13 +7,6 @@
 #include <functional>
 
 #include <boost/optional.hpp>
-#include <boost/type_erasure/any.hpp>
-#include <boost/type_erasure/any_cast.hpp>
-#include <boost/type_erasure/builtin.hpp>
-#include <boost/type_erasure/operators.hpp>
-#include <boost/type_erasure/member.hpp>
-#include <boost/type_erasure/free.hpp>
-#include <boost/mpl/vector.hpp>
 #include <boost/variant.hpp>
 #include <boost/uuid/nil_generator.hpp>
 
