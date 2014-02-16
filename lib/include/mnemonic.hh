@@ -84,17 +84,15 @@ namespace po
 		instr(Function fn, lvalue a, Values&&... args) : function(fn), left(a), right({args...}) {}
 
 		/// Construct a statement applying function @arg fn to @arg r. Saves the result in @arg a
-		instr(Function fn, lvalue a, const std::initializer_list<rvalue> &r) : function(fn), left(a), right(r) {}
+		instr(Function fn, lvalue a, std::initializer_list<rvalue> r) : function(fn), left(a), right(r) {}
 
 		Function function;
 		lvalue left;
 		std::vector<rvalue> right;
 	};
 
-	/*odotstream& operator<<(odotstream &os, const instr &i);
-	oturtlestream& operator<<(oturtlestream &os, const instr &i);*/
-	std::string pretty(instr::Function fn); ///< Pretty print the function
-	std::string symbolic(instr::Function fn);	///< Returns a string suitable for describing the function in RDF
+	std::string pretty(instr::Function fn); 				///< Pretty print the function
+	std::string symbolic(instr::Function fn);				///< Returns a string suitable for describing the function in RDF
 	instr::Function numeric(const std::string &s);	///< Maps a string returned from @ref symbolic back the enum value
 
 	/**
