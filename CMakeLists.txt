@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8)
-project(Panopticon CXX C)
+project(Panopticon CXX)
 include(CheckCXXCompilerFlag)
 
 set(panopticon_MAJOR 0)
@@ -44,18 +44,9 @@ elseif("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
 	include(CTest)
 	find_package(GTest REQUIRED)
 
-	# cdash support
-	set(CTEST_PROJECT_NAME "Panopticon")
-	set(CTEST_NIGHTLY_START_TIME "01:00:00 UTC")
-
-	set(CTEST_DROP_METHOD "http")
-	set(CTEST_DROP_SITE "open.cdash.org")
-	set(CTEST_DROP_LOCATION "/submit.php?project=Panopticon")
-	set(CTEST_DROP_SITE_CDASH TRUE)
-
 	# compile and link with coverage info
 	if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-		message(WARNING "Coverage testing disabled when using clang")
+		message("** Coverage testing disabled when using clang")
 	else()
 		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --coverage")
 	endif()
@@ -81,10 +72,6 @@ find_package(PkgConfig)
 pkg_check_modules(redland REQUIRED redland)
 pkg_check_modules(raptor REQUIRED raptor2)
 pkg_check_modules(minizip REQUIRED minizip)
-find_path(cvc4_INCLUDE_DIRS cvc4/cvc4.h)
-find_library(cvc4_LIBRARIES cvc4)
-find_package_handle_standard_args(CVC4 REQUIRED_VARS
-	cvc4_LIBRARIES cvc4_INCLUDE_DIRS)
 find_package(Boost 1.52 COMPONENTS system REQUIRED)
 pkg_check_modules(panopticon panopticon)
 
