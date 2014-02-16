@@ -142,11 +142,18 @@ boost::optional<std::pair<QQuickItem*,QQuickItem*>> BinaryDelegate::attachableRo
 	auto fi = _visibleRows.lower_bound(sel.firstLine());
 	auto li = _visibleRows.lower_bound(sel.lastLine());
 
-	if(fi != _visibleRows.end() && fi->first >= sel.firstLine() && fi->first <= sel.lastLine())
+	quint64 f = std::abs(std::max(0,fi->first));
+	quint64 l = std::abs(std::max(0,li->first));
+
+	if(fi != _visibleRows.end() && f >= sel.firstLine() && f <= sel.lastLine())
 	{
-		if(li == _visibleRows.end() || li->first > sel.lastLine())
+		if(li == _visibleRows.end() || l > sel.lastLine())
+		{
 			--li;
-		if(li->first >= sel.firstLine() && li->first <= sel.lastLine())
+			l = std::abs(std::max(0,li->first));
+		}
+
+		if(l >= sel.firstLine() && l <= sel.lastLine())
 		{
 			return std::make_pair(fi->second,li->second);
 		}
