@@ -73,6 +73,7 @@ endif()
 # Dependencies
 find_package(Redland REQUIRED)
 find_package(Raptor REQUIRED)
+find_package(Rasqal REQUIRED)
 find_package(LibArchive REQUIRED)
 find_package(Boost 1.52 COMPONENTS system REQUIRED)
 

@@ -3,14 +3,16 @@ set(panopticon_HEADERS include/loc.hh include/value.hh include/marshal.hh
 	include/region.hh include/hash.hh)
 
 set(panopticon_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR} ${redland_INCLUDE_DIRS}
-	${raptor_INCLUDE_DIRS} ${LibArchive_INCLUDE_DIRS})
+	${raptor_INCLUDE_DIRS} ${rasqal_INCLUDE_DIRS} ${LibArchive_INCLUDE_DIRS})
 set(panopticon_INCLUDE_DIRS ${panopticon_INCLUDE_DIRS} PARENT_SCOPE)
-set(panopticon_LIBRARY_DIRS ${redland_LIBRARY_DIRS}
-	${raptor_LIBRARY_DIRS} ${LibArchive_LIBRARY_DIRS} ${tbb_LIBRARY_DIRS})
+
+set(panopticon_LIBRARY_DIRS ${LibArchive_LIBRARY_DIRS})
 set(panopticon_LIBRARY_DIRS ${panopticon_LIBRARY_DIRS} PARENT_SCOPE)
+
 set(panopticon_LIBRARIES panopticon ${redland_LIBRARIES}
-	${raptor_LIBRARIES} ${LibArchive_LIBRARIES} ${tbb_LIBRARIES})
+	${raptor_LIBRARIES} ${rasqal_LIBRARIES} ${LibArchive_LIBRARIES})
 set(panopticon_LIBRARIES ${panopticon_LIBRARIES} PARENT_SCOPE)
+
 set(panopticon_FOUND 1)
 set(panopticon_FOUND ${panopticon_FOUND} PARENT_SCOPE)
 
