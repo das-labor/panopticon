@@ -1,7 +1,7 @@
 # - Try to find raptor2
 # Once done this will define
 #  raptor_FOUND - System has raptor
-#  raptor_INCLUDE_DIRS - The raptorinclude directories
+#  raptor_INCLUDE_DIRS - The raptor include directories
 #  raptor_LIBRARIES - The libraries needed to use raptor
 #  raptor_DEFINITIONS - Compiler switches required for using raptor
 
@@ -11,9 +11,8 @@ if(UNIX AND NOT APPLE)
 	set(raptor_DEFINITIONS ${PC_raptor_CFLAGS_OTHER})
 endif()
 
-find_path(raptor_INCLUDE_DIR raptor2/raptor2.h
-          HINTS ${PC_raptor_INCLUDEDIR} ${PC_raptor_INCLUDE_DIRS}
-					PATH_SUFFIXES raptor2)
+find_path(raptor_INCLUDE_DIR raptor2.h
+          HINTS ${PC_raptor_INCLUDEDIR} ${PC_raptor_INCLUDE_DIRS})
 
 find_library(raptor_LIBRARY NAMES raptor2
              HINTS ${PC_raptor_LIBDIR} ${PC_raptor_LIBRARY_DIRS} )

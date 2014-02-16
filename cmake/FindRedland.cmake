@@ -1,7 +1,7 @@
 # - Try to find redland (librdf)
 # Once done this will define
 #  redland_FOUND - System has redland
-#  redland_INCLUDE_DIRS - The redlandinclude directories
+#  redland_INCLUDE_DIRS - The redland include directories
 #  redland_LIBRARIES - The libraries needed to use redland
 #  redland_DEFINITIONS - Compiler switches required for using redland
 
