@@ -61,9 +61,11 @@ namespace po
 
 		using world_ptr = world*;
 
+		/// Handles global initialization of librdf and raptor2.
 		class world : std::enable_shared_from_this<world>
 		{
 		public:
+			/// Returns the current world instance.
 			static world& instance(void);
 
 			world(const world&) = delete;
@@ -82,10 +84,14 @@ namespace po
 			static std::unique_ptr<world> _instance;
 		};
 
+		/// A single graph (collection of edges)
 		class storage
 		{
 		public:
+			/// Load a .panop file e.g. zip with bdb inside
 			static storage from_archive(const std::string &panopPath);
+
+			/// Read a text file in Turtle syntax
 			static storage from_turtle(const std::string &turtlePath);
 
 			storage(void);
@@ -96,8 +102,18 @@ namespace po
 
 			storage &operator=(const storage &) = delete;
 
+			/**
+			 * @brief Retrieve edges.
+			 *
+			 * Returns a stream of statements (edges). The three arguments set the source vertex, edge label and destination vertex to look for.
+			 * A boost::none argument is treated as wildcard.
+			 */
 			rdf::stream select(boost::optional<const rdf::node&> s, boost::optional<const rdf::node&> p, boost::optional<const rdf::node&> o) const;
+
+			/// Utility function returning the first element of select(). Throws a marshal_exception if no matching edge is found.
 			rdf::statement first(boost::optional<const rdf::node&> s,boost::optional<const rdf::node&> p,boost::optional<const rdf::node&> o) const;
+
+			/// Utility function returning true whenever a matching edge is in the database.
 			bool has(boost::optional<const rdf::node&> s,boost::optional<const rdf::node&> p,boost::optional<const rdf::node&> o) const;
 
 			void insert(const rdf::statement &c);
@@ -105,8 +121,10 @@ namespace po
 
 			void remove(const rdf::statement &);
 
+			/// Writes the current contents of the database to disk.
 			void snapshot(const std::string &path);
 
+			/// Dumps the current contents of the database into a string.
 			std::string dump(const std::string &format) const;
 
 		private:
@@ -117,10 +135,16 @@ namespace po
 			std::string _tempdir;
 		};
 
+
+		/**
+		 * @brief Vertex or edge in the graph
+		 */
 		class node
 		{
 		public:
 			node(void);
+
+			/// create a new blank (unnamed) node with id blank_id
 			explicit node(const std::string &blank_id);
 			node(librdf_node *n);
 			node(const node &n);
@@ -143,13 +167,16 @@ namespace po
 
 		std::ostream& operator<<(std::ostream&, const node&);
 
-		node lit(const std::string &s);
-		node lit(unsigned long long n);
-		node ns_po(const std::string &s);
-		node ns_rdf(const std::string &s);
-		node ns_xsd(const std::string &s);
-		node ns_local(const std::string &s);
+		node lit(const std::string &s);				///< Node from literal string
+		node lit(unsigned long long n);				///< Node from integer
+		node ns_po(const std::string &s);			///< Node from literal string in po namespace
+		node ns_rdf(const std::string &s);		///< Node from literal string in RDF namespace
+		node ns_xsd(const std::string &s);		///< Node from literal string in XML schema namespace
+		node ns_local(const std::string &s);	///< Node from literal string in local namespace
 
+		/**
+		 * @brief A directed edge in the graph
+		 */
 		class statement
 		{
 		public:
@@ -163,9 +190,10 @@ namespace po
 			statement &operator=(const statement &st);
 			statement &operator=(statement &&st);
 
-			node subject(void) const;
-			node predicate(void) const;
-			node object(void) const;
+			node subject(void) const;		///< Returns source vertex
+			node predicate(void) const;	///< Returns edge
+			node object(void) const;		///< Returns destination vertex
+
 			librdf_statement *inner(void) const;
 
 		private:
@@ -177,11 +205,14 @@ namespace po
 		using statements = std::list<statement>;
 		using nodes = std::list<node>;
 
+		/// Read a cons cell list starting at head node n.
 		nodes read_list(const node &n, const storage&);
 
+		/// Writes a list of edges to as a list into the graph. Returns head node written edges.
 		template<typename It>
 		std::pair<node,statements> write_list(It begin, It end, const std::string &ns = "");
 
+		/// List of edges of unknown size,
 		class stream
 		{
 		public:

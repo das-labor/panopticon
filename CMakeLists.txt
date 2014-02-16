@@ -28,6 +28,9 @@ include(CPack)
 # Default to debug build
 set(CMAKE_BUILD_TYPE "Debug")
 
+# find_package macros for librdf, raptor and panopticon
+set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+
 # Compiler flags
 add_definitions("-Wall -Wextra -pedantic
 -Wno-unused-parameter")
@@ -68,19 +71,18 @@ else()
 endif()
 
 # Dependencies
-find_package(PkgConfig)
-pkg_check_modules(redland REQUIRED redland)
-pkg_check_modules(raptor REQUIRED raptor2)
-pkg_check_modules(minizip REQUIRED minizip)
+find_package(Redland REQUIRED)
+find_package(Raptor REQUIRED)
+find_package(LibArchive REQUIRED)
 find_package(Boost 1.52 COMPONENTS system REQUIRED)
-pkg_check_modules(panopticon panopticon)
 
 # Targets
 if(${panopticon_BUILD})
 	message("** Building Panopticon library")
 	add_subdirectory("lib")
+	set(panopticon_FOUND TRUE)
 else()
-	set(panopticon_FOUND FALSE)
+	find_package(panopticon)
 endif()
 
 if(${panop_BUILD} AND ${panopticon_FOUND})
