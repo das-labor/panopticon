@@ -24,21 +24,19 @@ ApplicationWindow {
 		tooltip: "Open an Blob"
 	}
 
-	FileDialog {
-		id: fileDialog
-		title: "Please choose a file"
-
-		onAccepted: { stackView.push(Qt.createComponent("Workspace.qml")) }
-		onRejected: { console.log("Canceled") }
-	}
-
 	StackView {
 		id: stackView
 		anchors.fill: parent
 
-		Button {
+		Page {
+			anchors.fill: parent
+			primaryTitle: "Panopticon"
+			secondaryTitle: "Version 0.9"
+			primaryAction: "Quit"
+		}
+		/*Button {
 			anchors.centerIn: parent
 			action: openAction
-		}
+		}*/
 	}
 }

@@ -3,6 +3,9 @@
 	<qresource>
 		<file>Window.qml</file>
 		<file>Workspace.qml</file>
+		<file>Option.qml</file>
+		<file>Welcome.qml</file>
+		<file>Page.qml</file>
 
 		<!-- LinearView common -->
 		<file>Cursor.qml</file>
