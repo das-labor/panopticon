@@ -31,23 +31,16 @@ struct storage
 	~storage(void);
 
 	bool insert(const std::string& s, const std::string& p, const std::string& o);
+
 	bool has(const std::string& s, const std::string& p, const std::string& o) const;
-	boost::optional<std::tuple<std::string,std::string,std::string>> find(const boost::optional<std::string> &s,const boost::optional<std::string> &p,const boost::optional<std::string> &o) const;
+	std::list<std::tuple<std::string,std::string,std::string>> find(const std::string &s) const;
+	std::list<std::tuple<std::string,std::string,std::string>> find(const std::string &s, const std::string &p) const;
 
 private:
-	static std::string encode_key(const std::string& a, const std::string& b);
-	static std::pair<std::string,std::string> decode_key(const std::string& k);
+	static std::string encode_key(const std::string& s, const std::string& p, const std::string& o);
+	static std::tuple<std::string,std::string,std::string> decode_key(const std::string& k);
 	static std::string encode_varint(size_t sz);
 	static size_t decode_varint(const std::string& a);
 
-	static std::pair<iterator,iterator> find_all(const PolyDB& db);
-	static std::pair<iterator,iterator> find_full(const std::string&a, const std::string& b, int a_pos, int b_pos, int val_pos, const PolyDB& db);
-	static std::pair<iterator,iterator> find_exact(const std::string&a, const std::string& b, const std::string &val, int a_pos, int b_pos, int val_pos, const PolyDB& db);
-	static std::pair<iterator,iterator> find_partial(const std::string&a, int a_pos, int b_pos, int val_pos, const PolyDB& db);
-
-	// varint string varint string
-	PolyDB _sp; //subject_predicate;	// targets
-	PolyDB _op; //object_predicate; // sources
-	PolyDB _so; //subject_object; // arcs
-	PolyDB _po; //predicate_object; // nodes
+	PolyDB _meta; ///< subject/predicate/object
 };

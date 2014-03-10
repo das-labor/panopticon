@@ -1,66 +1,56 @@
 #include <iostream>
+#include <list>
+#include <tuple>
+
 #include "rdf.hh"
 
 using namespace std;
 
 storage::storage(const string& base)
-: _sp(), _op(), _so(), _po()
+: _meta()
 {
-	_sp.open(base + "-sp.kct",PolyDB::OWRITER | PolyDB::OCREATE);
-	_op.open(base + "-op.kct",PolyDB::OWRITER | PolyDB::OCREATE);
-	_so.open(base + "-so.kct",PolyDB::OWRITER | PolyDB::OCREATE);
-	_po.open(base + "-po.kct",PolyDB::OWRITER | PolyDB::OCREATE);
+	_meta.open(base + "meta.kct",PolyDB::OWRITER | PolyDB::OCREATE);
 }
 
 storage::~storage(void)
 {
-	_sp.close();
-	_op.close();
-	_so.close();
-	_po.close();
+	_meta.close();
 }
 
 bool storage::has(const string& s, const string& p, const string& o) const
 {
-	return find(s,p,o);
+	return false;
 }
 
-boost::optional<tuple<string,string,string>> storage::find(const boost::optional<string> &s,const boost::optional<string> &p,const boost::optional<string> &o) const
+list<tuple<string,string,string>> storage::find(const string &s, const string &p) const
 {
-	if(s && p && o)
-		return find_exact(s,p,o,1,2,3,_sp);
-	else if(s && p && !o)
-		return find_full(s,p,1,2,3,_sp);
-	else if(s && !p && o)
-		return find_full(s,o,1,3,2,_so);
-	else if(s && !p && !o)
-		return find_partial(s,1,2,3,_sp);
-	else if(!s && p && o)
-		return find_full(p,o,2,3,1);
-	else if(!s && p && !o)
-		return find_partial(p,2,3,1,_po);
-	else if(!s && !p && o)
-		return find_partial(o,3,2,1,_op);
-	else
-		return find_all(_sp);
+	return list<tuple<string,string,string>>();
+}
+
+list<tuple<string,string,string>> storage::find(const string &s) const
+{
+	return list<tuple<string,string,string>>();
 }
 
 bool storage::insert(const string& s, const string& p, const string& o)
 {
-	_sp.set(encode_key(s,p),o);
-	_op.set(encode_key(o,p),s);
-	_so.set(encode_key(s,o),p);
-	_po.set(encode_key(p,o),s);
+	_meta.set(encode_key(s,p,o),"");
 
 	return true;
 }
 
-string storage::encode_key(const string& a, const string& b)
+
+string storage::encode_key(const string& s, const string& p, const string& o)
 {
-	return varint(a.size()) + a + varint(b.size()) + b;
+	return encode_varint(s.size()) + s + encode_varint(p.size()) + p + encode_varint(o.size()) + o;
 }
 
-string storage::varint(size_t sz)
+tuple<string,string,string> storage::decode_key(const std::string& k)
+{
+	return make_tuple("","","");
+}
+
+string storage::encode_varint(size_t sz)
 {
 	string ret;
 
