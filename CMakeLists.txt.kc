@@ -3,6 +3,7 @@ project(KyotoCabinet CXX)
 
 set(CMAKE_BUILD_TYPE "Debug")
 
+include_directories(${PROJECT_SOURCE_DIR})
 
 set(KyotoCabinet_SOURCES kcutil.cc kcdb.cc kcthread.cc kcfile.cc
 	kccompress.cc kccompare.cc kcmap.cc kcregex.cc kcplantdb.cc
