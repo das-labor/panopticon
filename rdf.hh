@@ -72,6 +72,8 @@ struct iterator
 
 struct storage
 {
+	using iter = std::string::const_iterator;
+
 	storage(void);
 	storage(const std::string& base);
 	~storage(void);
@@ -85,16 +87,7 @@ struct storage
 	bool has(const node&, const node&, const node&) const;
 	std::list<statement> find(const node &s) const;
 	std::list<statement> find(const node &s, const node &p) const;
-	int64_t count(void);
-
-private:
-	using iter = std::string::const_iterator;
-	enum node_type : uint8_t
-	{
-		Blank = 0,
-		Literal = 1,
-		Named = 2
-	};
+	int64_t count(void) const;
 
 	static std::string encode_node(const node& n);
 	static std::pair<node,iter> decode_node(iter, iter);
@@ -103,5 +96,13 @@ private:
 	static std::string encode_varint(size_t sz);
 	static std::pair<size_t,iter> decode_varint(iter, iter);
 
-	PolyDB _meta; ///< subject/predicate/object
+private:
+	enum node_type : uint8_t
+	{
+		Blank = 0,
+		Literal = 1,
+		Named = 2
+	};
+
+	mutable PolyDB _meta; ///< subject/predicate/object
 };

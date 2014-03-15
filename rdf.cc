@@ -15,9 +15,9 @@ node::node(const iri& n) : _inner(n) {}
 node::node(const string& s, const iri& t) : _inner(make_pair(s,t)) {}
 node::node(const uuid& u) : _inner(u) {}
 
-bool node::is_iri(void) const { return !get<iri>(&_inner); }
-bool node::is_literal(void) const { return !get<pair<string,iri>>(&_inner); }
-bool node::is_blank(void) const { return !get<uuid>(&_inner); }
+bool node::is_iri(void) const { return !!get<iri>(&_inner); }
+bool node::is_literal(void) const { return !!get<pair<string,iri>>(&_inner); }
+bool node::is_blank(void) const { return !!get<uuid>(&_inner); }
 
 const iri& node::as_iri(void) const { return get<iri>(_inner); }
 const iri& node::as_literal(void) const { return get<pair<string,iri>>(_inner).first; }
@@ -54,13 +54,15 @@ bool statement::operator<(const statement& st) const
 storage::storage(void)
 : _meta()
 {
-	_meta.open("+",PolyDB::OWRITER | PolyDB::OCREATE);
+	if(!_meta.open("+",PolyDB::OWRITER | PolyDB::OCREATE))
+		throw runtime_error("can't open database");
 }
 
 storage::storage(const string& base)
 : _meta()
 {
-	_meta.open(base + "meta.kct",PolyDB::OWRITER | PolyDB::OCREATE);
+	if(!_meta.open(base + "meta.kct",PolyDB::OWRITER | PolyDB::OCREATE))
+		throw runtime_error("can't open database");
 }
 
 storage::~storage(void)
@@ -75,20 +77,34 @@ bool storage::has(const node& s, const node& p, const node& o) const
 
 bool storage::has(const statement& st) const
 {
-	return false;
+	return _meta.check(encode_key(st)) > -1;
 }
 
-list<statement> storage::find(const node &s, const node &p) const
+list<statement> storage::find(const node &sub, const node &pred) const
 {
-	return list<statement>();
+	list<statement> ret;
+	vector<string> keys;
+	string s = encode_node(sub), p = encode_node(pred);
+
+	_meta.match_prefix(encode_varint(s.size()) + s + encode_varint(p.size()) + p,&keys);
+	transform(keys.begin(),keys.end(),inserter(ret,ret.begin()),[&](const string &k) { return decode_key(k.begin(),k.end()).first; });
+
+	return ret;
 }
 
-list<statement> storage::find(const node &s) const
+list<statement> storage::find(const node &sub) const
 {
-	return list<statement>();
+	list<statement> ret;
+	vector<string> keys;
+	string s = encode_node(sub);
+
+	_meta.match_prefix(encode_varint(s.size()) + s,&keys);
+	transform(keys.begin(),keys.end(),inserter(ret,ret.begin()),[&](const string &k) { return decode_key(k.begin(),k.end()).first; });
+
+	return ret;
 }
 
-int64_t storage::count(void)
+int64_t storage::count(void) const
 {
 	return _meta.count();
 }
@@ -100,6 +116,9 @@ bool storage::insert(const node& s, const node& p, const node& o)
 
 bool storage::insert(const statement& st)
 {
+	if(has(st))
+		return false;
+
 	_meta.set(encode_key(st),"");
 	return true;
 }
@@ -186,7 +205,7 @@ std::pair<size_t,storage::iter> storage::decode_varint(iter b, iter e)
 		x = static_cast<uint8_t>(*b++);
 		ret = (ret << 7) | (x & 0x7f);
 	}
-	while(x & 0x80);
+	while(b != e && x & 0x80);
 
 	return make_pair(ret,b);
 }

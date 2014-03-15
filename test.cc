@@ -7,7 +7,7 @@ struct store : public ::testing::Test
 {
 	store(void) : root(node::blank()), a1(node::blank()), a2(node::blank()), b(node::blank()) {}
 
-	void setUp(void)
+	virtual void SetUp(void)
 	{
 		empty_store.reset(new storage());
 		full_store.reset(new storage());
@@ -124,5 +124,38 @@ TEST(store,save_restore)
 	}
 }
 
-TEST(store,node_value_semantics)
+TEST_F(store,node_value_semantics)
 {}
+
+TEST_F(store,varint)
+{
+	string a;
+
+	a = storage::encode_varint(1);
+	ASSERT_EQ(a,"\x01");
+	ASSERT_EQ(storage::decode_varint(a.begin(),a.end()).first,1);
+
+	a = storage::encode_varint(0x7f);
+	ASSERT_EQ(a,"\x7f");
+	ASSERT_EQ(storage::decode_varint(a.begin(),a.end()).first,0x7f);
+
+	a = storage::encode_varint(0x80);
+	ASSERT_EQ(a,"\x80\x01");
+	ASSERT_EQ(storage::decode_varint(a.begin(),a.end()).first,0x80);
+
+	a = storage::encode_varint(0x81);
+	ASSERT_EQ(a.size(),2);
+	ASSERT_EQ(storage::decode_varint(a.begin(),a.end()).first,0x81);
+
+	a = storage::encode_varint(0xef);
+	ASSERT_EQ(a.size(),2);
+	ASSERT_EQ(storage::decode_varint(a.begin(),a.end()).first,0xef);
+
+	a = storage::encode_varint(0xf0);
+	ASSERT_EQ(a.size(),3);
+	ASSERT_EQ(storage::decode_varint(a.begin(),a.end()).first,0xf0);
+
+	a = storage::encode_varint(0xf1);
+	ASSERT_EQ(a.size(),3);
+	ASSERT_EQ(storage::decode_varint(a.begin(),a.end()).first,0xf1);
+}
