@@ -64,6 +64,8 @@ elseif("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
 	message(STATUS "Debug build")
 endif()
 
+add_definitions("-Wall -Werror -pedantic -Weffc++")
+
 # Check for C++11
 CHECK_CXX_COMPILER_FLAG("-std=c++11" CXXFLAG_CPP11)
 if(NOT DEFINED "CXXFLAG_CPP11")
