@@ -103,7 +103,7 @@ TEST_F(store,find_subject)
 	ASSERT_EQ(res,exp);
 }
 
-TEST(store,save_restore)
+TEST_F(store,save_restore)
 {
 	node x = node::blank(), y = node::blank();
 	{
@@ -122,10 +122,49 @@ TEST(store,save_restore)
 		ASSERT_TRUE(st.has(x,"name"_po,"Hello, World"_lit));
 		ASSERT_TRUE(st.has(y,"age"_po,23_lit));
 	}
+
+	unlink("testmeta.kct");
 }
 
 TEST_F(store,node_value_semantics)
-{}
+{
+	{
+		node a = node::blank();
+		node b = a;
+
+		ASSERT_EQ(a,b);
+	}
+
+	{
+		node a = node::blank();
+		node b = node::blank();
+
+		b = a;
+
+		ASSERT_EQ(a,b);
+	}
+
+	{
+		node c = node::blank();
+		node d = node::blank();
+		node a = c;
+		node b = c;
+		a = d;
+		ASSERT_EQ(b,c);
+	}
+
+	{
+		node c = node::blank();
+		node b = node::blank();
+
+		{
+			node a = c;
+			b = c;
+		}
+
+		assert(b == c);
+	}
+}
 
 TEST_F(store,varint)
 {
