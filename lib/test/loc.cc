@@ -164,7 +164,7 @@ TEST(loc,marshal_simple)
 	ASSERT_TRUE(store->has(rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000004}"))),"type"_rdf,"A"_po));
 	ASSERT_TRUE(store->has(rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000004}"))),"name"_po,"Hello"_lit));
 
-	rdf::nodes bs = rdf::read_list(store->first(rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000004}"))),"bs"_po,none).object(),*store);
+	rdf::nodes bs = rdf::read_list(store->first(rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000004}"))),"bs"_po).object,*store);
 	ASSERT_EQ(bs.size(),3);
 	ASSERT_EQ(*bs.begin(),rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000001}"))));
 	ASSERT_EQ(*std::next(bs.begin()),rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000002}"))));
@@ -179,16 +179,7 @@ TEST(loc,marshal_simple)
 
 	// A: 3 + 6
 	// B: 3 * 2
-	int i = 0;
-	rdf::stream all = store->select(none,none,none);
-	while(!all.eof())
-	{
-		rdf::statement s;
-		all >> s;
-		++i;
-	}
-
-	ASSERT_EQ(i,3 + 6 + 3 * 2);
+	ASSERT_EQ(store->count(),3 + 6 + 3 * 2);
 }
 
 TEST(loc,marshal_twice)
@@ -218,7 +209,7 @@ TEST(loc,marshal_twice)
 	ASSERT_TRUE(store->has(rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000004}"))),"type"_rdf,"A"_po));
 	ASSERT_TRUE(store->has(rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000004}"))),"name"_po,"World"_lit));
 
-	rdf::nodes bs = rdf::read_list(store->first(rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000004}"))),"bs"_po,none).object(),*store);
+	rdf::nodes bs = rdf::read_list(store->first(rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000004}"))),"bs"_po).object,*store);
 	ASSERT_EQ(bs.size(),4);
 	ASSERT_EQ(*bs.begin(),rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000001}"))));
 	ASSERT_EQ(*std::next(bs.begin()),rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000002}"))));
@@ -236,16 +227,7 @@ TEST(loc,marshal_twice)
 
 	// A: 3 + 8
 	// B: 4 * 2
-	int i = 0;
-	rdf::stream all = store->select(none,none,none);
-	while(!all.eof())
-	{
-		rdf::statement s;
-		all >> s;
-		++i;
-	}
-
-	ASSERT_EQ(i,3 + 8 + 4 * 2);
+	ASSERT_EQ(store->count(),3 + 8 + 4 * 2);
 }
 
 TEST(loc,marshal_delete)
@@ -274,7 +256,7 @@ TEST(loc,marshal_delete)
 	ASSERT_TRUE(store->has(rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000004}"))),"type"_rdf,"A"_po));
 	ASSERT_TRUE(store->has(rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000004}"))),"name"_po,"Hello"_lit));
 
-	rdf::nodes bs = rdf::read_list(store->first(rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000004}"))),"bs"_po,none).object(),*store);
+	rdf::nodes bs = rdf::read_list(store->first(rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000004}"))),"bs"_po).object,*store);
 	ASSERT_EQ(bs.size(),2);
 	ASSERT_EQ(*bs.begin(),rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000001}"))));
 	ASSERT_EQ(*std::next(bs.begin()),rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000002}"))));
@@ -286,14 +268,5 @@ TEST(loc,marshal_delete)
 
 	// A: 3 + 4
 	// B: 2 * 2
-	int i = 0;
-	rdf::stream all = store->select(none,none,none);
-	while(!all.eof())
-	{
-		rdf::statement s;
-		all >> s;
-		++i;
-	}
-
-	ASSERT_EQ(i,3 + 4 + 2 * 2);
+	ASSERT_EQ(store->count(),3 + 4 + 2 * 2);
 }
