@@ -5,7 +5,7 @@ includedir=${prefix}/include
 
 Name: @CMAKE_PROJECT_NAME@
 Description: Cross platform disassembler.
-Requires: redland raptor2 minizip
+Requires: libarchive boost_system
 Version: @panopticon_VERSION@
-Libs: -L${libdir} @cvc4_pc_LIBRARIES@ @cvc4_pc_LIBRARY_DIRS@ -lpanopticon
-Cflags: -I${includedir}/panopticon @cvc4_pc_INCLUDE_DIRS@
+Libs: -L${libdir} @KyotoCabinet_LIBRARIES@ -lpanopticon
+Cflags: -I${includedir}/panopticon @KyotoCabinet_INCLUDE_DIRS@

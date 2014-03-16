@@ -481,7 +481,7 @@ pair<size_t,storage::iter> storage::decode_varint(iter b, iter e)
 	return make_pair(ret,b);
 }
 
-nodes read_list(const node &n, const storage &store)
+nodes po::rdf::read_list(const node &n, const storage &store)
 {
 	nodes ret;
 	node cur = n;
