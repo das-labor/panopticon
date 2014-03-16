@@ -154,7 +154,7 @@ template<>
 rvalue *po::unmarshal(const uuid &u, const rdf::storage &store)
 {
 	rdf::node root = rdf::ns_local(to_string(u));
-	rdf::node type = store.first(root,"type"_rdf,boost::none).object();
+	rdf::node type = store.first(root,"type"_rdf).object;
 
 	if(type == "Undefined"_po)
 	{
@@ -162,45 +162,45 @@ rvalue *po::unmarshal(const uuid &u, const rdf::storage &store)
 	}
 	else if(type == "Variable"_po)
 	{
-		rdf::statement name = store.first(root,"name"_po,boost::none),
-									 width = store.first(root,"width"_po,boost::none);
+		rdf::statement name = store.first(root,"name"_po),
+									 width = store.first(root,"width"_po);
 
 		try
 		{
-			rdf::statement subscript = store.first(root,"subscript"_po,boost::none);
+			rdf::statement subscript = store.first(root,"subscript"_po);
 
-			return new rvalue(variable(name.object().to_string(),stoull(width.object().to_string()),stoull(subscript.object().to_string())));
+			return new rvalue(variable(name.object.as_literal(),stoull(width.object.as_literal()),stoull(subscript.object.as_literal())));
 		}
 		catch(marshal_exception &e)
 		{
-			return new rvalue(variable(name.object().to_string(),stoull(width.object().to_string())));
+			return new rvalue(variable(name.object.as_literal(),stoull(width.object.as_literal())));
 		}
 	}
 	else if(type == "Constant"_po)
 	{
-		rdf::statement value = store.first(root,"content"_po,boost::none);
+		rdf::statement value = store.first(root,"content"_po);
 
-		return new rvalue(constant(stoull(value.object().to_string())));
+		return new rvalue(constant(stoull(value.object.as_literal())));
 	}
 	else if(type == "Memory"_po)
 	{
-		rdf::statement name = store.first(root,"name"_po,boost::none),
-									 offset = store.first(root,"offset"_po,boost::none),
-									 bytes = store.first(root,"bytes"_po,boost::none),
-									 endianess = store.first(root,"endianess"_po,boost::none);
+		rdf::statement name = store.first(root,"name"_po),
+									 offset = store.first(root,"offset"_po),
+									 bytes = store.first(root,"bytes"_po),
+									 endianess = store.first(root,"endianess"_po);
 
-		uuid ou = boost::uuids::string_generator()(offset.object().to_string());
+		uuid ou = boost::uuids::string_generator()(offset.object.as_literal());
 		std::shared_ptr<rvalue> off(unmarshal<rvalue>(ou,store));
 		memory::Endianess e;
 
-		if(endianess.object() == "big-endian"_po)
+		if(endianess.object == "big-endian"_po)
 			e = memory::BigEndian;
-		else if(endianess.object() == "little-endian"_po)
+		else if(endianess.object == "little-endian"_po)
 			e = memory::LittleEndian;
 		else
 			throw marshal_exception("unknown endianess");
 
-		return new rvalue(memory(*off,stoull(bytes.object().to_string()),e,name.object().to_string()));
+		return new rvalue(memory(*off,stoull(bytes.object.as_literal()),e,name.object.as_literal()));
 	}
 	else
 		throw marshal_exception("unknown value type");
@@ -226,7 +226,7 @@ rdf::statements po::marshal(const rvalue *rv, const uuid &u)
 		constant c = to_constant(*rv);
 
 		ret.emplace_back(root,"type"_rdf,"Constant"_po);
-		ret.emplace_back(root,"content"_po,rdf::lit(to_string(c.content())));
+		ret.emplace_back(root,"content"_po,rdf::lit(c.content()));
 		return ret;
 	}
 	else if(is_variable(*rv))
@@ -234,10 +234,10 @@ rdf::statements po::marshal(const rvalue *rv, const uuid &u)
 		variable v = to_variable(*rv);
 
 		ret.emplace_back(root,"type"_rdf,"Variable"_po);
-		ret.emplace_back(root,"name"_po,rdf::ns_po(v.name()));
-		ret.emplace_back(root,"width"_po,rdf::ns_po(to_string(v.width())));
+		ret.emplace_back(root,"name"_po,rdf::lit(v.name()));
+		ret.emplace_back(root,"width"_po,rdf::lit(v.width()));
 		if(v.subscript() >= 0)
-			ret.emplace_back(root,"subscript"_po,rdf::ns_po(to_string(v.subscript())));
+			ret.emplace_back(root,"subscript"_po,rdf::lit(v.subscript()));
 		return ret;
 	}
 	else if(is_memory(*rv))
@@ -246,8 +246,8 @@ rdf::statements po::marshal(const rvalue *rv, const uuid &u)
 		uuid ou = boost::uuids::name_generator(u)("offset");
 
 		ret.emplace_back(root,"type"_rdf,"Memory"_po);
-		ret.emplace_back(root,"offset"_po,rdf::ns_po(to_string(ou)));
-		ret.emplace_back(root,"bytes"_po,rdf::ns_po(to_string(m.bytes())));
+		ret.emplace_back(root,"offset"_po,rdf::lit(to_string(ou)));
+		ret.emplace_back(root,"bytes"_po,rdf::lit(m.bytes()));
 
 		switch(m.endianess())
 		{

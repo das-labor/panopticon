@@ -302,14 +302,14 @@ storage::storage(void)
 : _meta()
 {
 	if(!_meta.open("+",PolyDB::OWRITER | PolyDB::OCREATE))
-		throw runtime_error("can't open database");
+		throw marshal_exception("can't open database");
 }
 
 storage::storage(const string& base)
 : _meta()
 {
 	if(!_meta.open(base + "meta.kct",PolyDB::OWRITER | PolyDB::OCREATE))
-		throw runtime_error("can't open database");
+		throw marshal_exception("can't open database");
 }
 
 storage::~storage(void)
@@ -351,6 +351,16 @@ list<statement> storage::find(const node &sub) const
 	return ret;
 }
 
+statement storage::first(const node &s, const node &p) const
+{
+	statements st = find(s,p);
+
+	if(st.size() > 0)
+		return st.front();
+	else
+		throw marshal_exception("no statement found");
+}
+
 int64_t storage::count(void) const
 {
 	return _meta.count();
@@ -389,7 +399,7 @@ string storage::encode_node(const node& n)
 	else if(n.is_blank())
 		return string(1,Blank) + to_string(n.as_uuid());
 	else
-		throw runtime_error("unknown node type");
+		throw marshal_exception("unknown node type");
 }
 
 std::pair<node,storage::iter> storage::decode_node(iter b, iter e)
@@ -411,7 +421,7 @@ std::pair<node,storage::iter> storage::decode_node(iter b, iter e)
 			return make_pair(node(s(string(next(b),e))),e);
 		}
 		default:
-			throw runtime_error("unknown node type");
+			throw marshal_exception("unknown node type");
 	}
 }
 
@@ -478,10 +488,10 @@ nodes read_list(const node &n, const storage &store)
 
 	while(cur != "nil"_rdf)
 	{
-		statement s = store.first(cur,"first"_rdf,none);
+		statement s = store.first(cur,"first"_rdf);
 
-		ret.push_back(s.object());
-		cur = store.first(cur,"rest"_rdf,none).object();
+		ret.push_back(s.object);
+		cur = store.first(cur,"rest"_rdf).object;
 	}
 
 	return ret;

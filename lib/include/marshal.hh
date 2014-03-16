@@ -11,9 +11,9 @@
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_generators.hpp>
 #include <boost/uuid/uuid_io.hpp>
-#include <boost/functional/hash.hpp>
-#include <boost/optional.hpp>
 #include <boost/variant.hpp>
+#include <boost/operators.hpp>
+#include <boost/functional/hash.hpp>
 
 #define LOCAL "http://localhost/"
 #define PO "http://panopticon.re/rdf/v1/"
@@ -56,7 +56,7 @@ namespace po
 		using literal = std::pair<std::string,iri>;
 		using kyotocabinet::PolyDB;
 
-		struct node
+		struct node : public boost::operators<node>
 		{
 			static node blank(void);
 
@@ -82,7 +82,7 @@ namespace po
 
 		using nodes = std::list<node>;
 
-		struct statement
+		struct statement : public boost::operators<statement>
 		{
 			statement(const node& s, const node& p, const node& o);
 
@@ -111,6 +111,7 @@ namespace po
 			bool has(const node&, const node&, const node&) const;
 			std::list<statement> find(const node &s) const;
 			std::list<statement> find(const node &s, const node &p) const;
+			statement first(const node &s, const node &p) const;
 			int64_t count(void) const;
 
 			static std::string encode_node(const node& n);
@@ -140,7 +141,7 @@ namespace po
 
 		template<typename It>
 		std::pair<rdf::node,rdf::statements> write_list(It begin, It end, const std::string &ns);
-		nodes read_list(const node &n, const storage &store)
+		nodes read_list(const node &n, const storage &store);
 	}
 
 	inline rdf::node operator"" _lit(unsigned long long i) { return rdf::lit(i); }
