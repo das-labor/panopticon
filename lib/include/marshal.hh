@@ -99,8 +99,11 @@ namespace po
 			using iter = std::string::const_iterator;
 
 			storage(void);
+			storage(const storage&);
 			storage(const std::string& base);
 			~storage(void);
+
+			storage& operator=(const storage&);
 
 			bool insert(const statement& st);
 			bool insert(const node&, const node&, const node&);
@@ -113,6 +116,7 @@ namespace po
 			std::list<statement> find(const node &s, const node &p) const;
 			statement first(const node &s, const node &p) const;
 			int64_t count(void) const;
+			void snapshot(const std::string& path) const;
 
 			static std::string encode_node(const node& n);
 			static std::pair<node,iter> decode_node(iter, iter);
@@ -130,6 +134,7 @@ namespace po
 			};
 
 			mutable PolyDB _meta; ///< subject/predicate/object
+			std::string _tempdir;
 		};
 
 		inline node lit(const std::string& s) { return node(s,XSD"string"); }

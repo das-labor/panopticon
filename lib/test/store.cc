@@ -105,29 +105,6 @@ TEST_F(store,find_subject)
 	ASSERT_EQ(res,exp);
 }
 
-TEST_F(store,save_restore)
-{
-	node x = node::blank(), y = node::blank();
-	{
-		storage st("test");
-
-		ASSERT_TRUE(st.insert(x,"test"_po,y));
-		ASSERT_TRUE(st.insert(x,"name"_po,"Hello, World"_lit));
-		ASSERT_TRUE(st.insert(y,"age"_po,23_lit));
-	}
-
-	{
-		storage st("test");
-
-		ASSERT_EQ(st.count(),3);
-		ASSERT_TRUE(st.has(x,"test"_po,y));
-		ASSERT_TRUE(st.has(x,"name"_po,"Hello, World"_lit));
-		ASSERT_TRUE(st.has(y,"age"_po,23_lit));
-	}
-
-	unlink("testmeta.kct");
-}
-
 TEST_F(store,node_value_semantics)
 {
 	{

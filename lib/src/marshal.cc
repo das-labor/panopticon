@@ -28,10 +28,73 @@ marshal_exception::marshal_exception(const string &w)
 : runtime_error(w)
 {}
 
-/*rdf::storage rdf::storage::from_archive(const string &path)
+node node::blank(void) { return node(boost::uuids::random_generator()()); }
+
+node::node(const iri& n) : _inner(n) {}
+node::node(const string& s, const iri& t) : _inner(make_pair(s,t)) {}
+node::node(const uuid& u) : _inner(u) {}
+
+bool node::is_iri(void) const { return !!get<iri>(&_inner); }
+bool node::is_literal(void) const { return !!get<pair<string,iri>>(&_inner); }
+bool node::is_blank(void) const { return !!get<uuid>(&_inner); }
+
+const iri& node::as_iri(void) const { return get<iri>(_inner); }
+const iri& node::as_literal(void) const { return get<pair<string,iri>>(_inner).first; }
+const iri& node::literal_type(void) const { return get<pair<string,iri>>(_inner).second; }
+const uuid& node::as_uuid(void) const { return get<uuid>(_inner); }
+
+bool node::operator==(const node& n) const
 {
-	storage ret(false);
-	const string &tempDir = ret._tempdir;
+	return _inner == n._inner;
+}
+
+bool node::operator<(const node& n) const
+{
+	return _inner < n._inner;
+}
+
+statement::statement(const node& s, const node& p, const node& o)
+: subject(s), predicate(p), object(o) {}
+
+bool statement::operator==(const statement& st) const
+{
+	return subject == st.subject &&
+				 predicate == st.predicate &&
+				 object == st.object;
+}
+
+bool statement::operator<(const statement& st) const
+{
+	return subject < st.subject ||
+				 (subject == st.subject && predicate < st.predicate) ||
+				 (subject == st.subject && predicate == st.predicate && object < st.object);
+}
+
+storage::storage(void)
+: _meta(), _tempdir("")
+{
+	char *tmp = new char[TEMPDIR_TEMPLATE.size() + 1];
+
+	strncpy(tmp,TEMPDIR_TEMPLATE.c_str(),TEMPDIR_TEMPLATE.size() + 1);
+	tmp = mkdtemp(tmp);
+
+	_tempdir = string(tmp);
+	delete[] tmp;
+
+	if(!_meta.open(_tempdir + "/meta.kct",PolyDB::OWRITER | PolyDB::OCREATE))
+		throw marshal_exception("can't open database");
+}
+
+storage::storage(const string& path)
+: _meta(), _tempdir("")
+{
+	char *tmp = new char[TEMPDIR_TEMPLATE.size() + 1];
+
+	strncpy(tmp,TEMPDIR_TEMPLATE.c_str(),TEMPDIR_TEMPLATE.size() + 1);
+	tmp = mkdtemp(tmp);
+
+	_tempdir = string(tmp);
+	delete[] tmp;
 
 	// open target zip
 	archive *ar = archive_read_new();
@@ -49,8 +112,7 @@ marshal_exception::marshal_exception(const string &w)
 		if(archive_read_open_filename(ar,path.c_str(),4096) != ARCHIVE_OK)
 			throw marshal_exception("can't open " + path);
 
-		// XXX: depends on internals of the berkeley model of librdf
-		bool found_po2s = false, found_so2p = false, found_sp2o = false;
+		bool found_meta = false;
 
 		// copy database files to tempdir
 		struct archive_entry *ae;
@@ -58,11 +120,9 @@ marshal_exception::marshal_exception(const string &w)
 		while(archive_read_next_header(ar,&ae) == ARCHIVE_OK)
 		{
 			string pathName(archive_entry_pathname(ae));
-			string tmpName = tempDir + "/" + pathName;
+			string tmpName = _tempdir + "/" + pathName;
 
-			found_po2s = found_po2s | (pathName.substr(pathName.size() - 13,std::string::npos) == "graph-po2s.db");
-			found_so2p = found_so2p | (pathName.substr(pathName.size() - 13,std::string::npos) == "graph-so2p.db");
-			found_sp2o = found_sp2o | (pathName.substr(pathName.size() - 13,std::string::npos) == "graph-sp2o.db");
+			found_meta = found_meta | (pathName.substr(pathName.size() - 13,std::string::npos) == "meta.kct");
 			int fd = open(tmpName.c_str(),O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR);
 
 			if(fd < 0 || archive_read_data_into_fd(ar,fd) != ARCHIVE_OK || close(fd))
@@ -71,7 +131,7 @@ marshal_exception::marshal_exception(const string &w)
 			cout << "read " << tmpName << " from " << path << endl;
 		}
 
-		if(!(found_po2s && found_so2p && found_sp2o))
+		if(!(found_meta))
 			throw marshal_exception("can't open " + path + ": no graph database in file");
 	}
 	catch(...)
@@ -83,17 +143,29 @@ marshal_exception::marshal_exception(const string &w)
 	if(archive_read_free(ar) != ARCHIVE_OK)
 		throw marshal_exception("can't open " + path);
 
-	world &w = world::instance();
-	assert(ret._storage = librdf_new_storage(w.rdf(),"hashes","graph",string("hash-type='bdb',dir='" + ret._tempdir + "'").c_str()));
-	assert(ret._model = librdf_new_model(w.rdf(),ret._storage,NULL));
-
-	return ret;
+	if(!_meta.open(_tempdir + "/meta.kct",PolyDB::OWRITER | PolyDB::OCREATE))
+		throw marshal_exception("can't open database");
 }
 
-rdf::storage::~storage(void)
+storage::storage(const storage& st)
+: _meta(), _tempdir("")
 {
-	librdf_free_model(_model);
-	librdf_free_storage(_storage);
+	char *tmp = new char[TEMPDIR_TEMPLATE.size() + 1];
+
+	strncpy(tmp,TEMPDIR_TEMPLATE.c_str(),TEMPDIR_TEMPLATE.size() + 1);
+	tmp = mkdtemp(tmp);
+
+	_tempdir = string(tmp);
+	delete[] tmp;
+
+	st._meta.copy(_tempdir + "/meta.kct");
+	if(!_meta.open(_tempdir + "/meta.kct",PolyDB::OWRITER | PolyDB::OCREATE))
+		throw marshal_exception("can't open database");
+}
+
+storage::~storage(void)
+{
+	_meta.close();
 
 	std::function<void(const string &path)> rm_r;
 	rm_r = [&](const string &path)
@@ -132,27 +204,102 @@ rdf::storage::~storage(void)
 			throw marshal_exception("can't delete directory " + path);
 	};
 
-	try
+	if(_tempdir != "")
 	{
-		rm_r(_tempdir);
-	}
-	catch(const marshal_exception &e)
-	{
-		cerr << "Exception in rdf::storage::~storage: " << e.what() << endl;
+		try
+		{
+			rm_r(_tempdir);
+		}
+		catch(const marshal_exception &e)
+		{
+			cerr << "Exception in rdf::storage::~storage: " << e.what() << endl;
+		}
 	}
 }
 
-void rdf::storage::snapshot(const string &path)
+bool storage::has(const node& s, const node& p, const node& o) const
+{
+	return has(statement(s,p,o));
+}
+
+bool storage::has(const statement& st) const
+{
+	return _meta.check(encode_key(st)) > -1;
+}
+
+list<statement> storage::find(const node &sub, const node &pred) const
+{
+	list<statement> ret;
+	vector<string> keys;
+	string s = encode_node(sub), p = encode_node(pred);
+
+	_meta.match_prefix(encode_varint(s.size()) + s + encode_varint(p.size()) + p,&keys);
+	transform(keys.begin(),keys.end(),inserter(ret,ret.begin()),[&](const string &k) { return decode_key(k.begin(),k.end()).first; });
+
+	return ret;
+}
+
+list<statement> storage::find(const node &sub) const
+{
+	list<statement> ret;
+	vector<string> keys;
+	string s = encode_node(sub);
+
+	_meta.match_prefix(encode_varint(s.size()) + s,&keys);
+	transform(keys.begin(),keys.end(),inserter(ret,ret.begin()),[&](const string &k) { return decode_key(k.begin(),k.end()).first; });
+
+	return ret;
+}
+
+statement storage::first(const node &s, const node &p) const
+{
+	statements st = find(s,p);
+
+	if(st.size() > 0)
+		return st.front();
+	else
+		throw marshal_exception("no statement found");
+}
+
+int64_t storage::count(void) const
+{
+	return _meta.count();
+}
+
+bool storage::insert(const node& s, const node& p, const node& o)
+{
+	return insert(statement(s,p,o));
+}
+
+bool storage::insert(const statement& st)
+{
+	if(has(st))
+		return false;
+
+	_meta.set(encode_key(st),"");
+	return true;
+}
+
+bool storage::remove(const node& s, const node& p, const node& o)
+{
+	return remove(statement(s,p,o));
+}
+
+bool storage::remove(const statement& st)
+{
+	return _meta.remove(encode_key(st));
+}
+
+void storage::snapshot(const string& path) const
 {
 	if(path.empty())
-		return;
+		throw marshal_exception("can't save to empty path");
 
 	// delete existing `path'
 	unlink(path.c_str());
 
 	// sync bdb
-	/// XXX: lock store against modifications
-	if(librdf_storage_sync(_storage))
+	if(!_meta.synchronize(false))
 		throw marshal_exception("can't sync triple store");
 
 	// open temp dir
@@ -254,140 +401,6 @@ void rdf::storage::snapshot(const string &path)
 
 	if(closedir(dirDesc) || archive_write_free(ar) != ARCHIVE_OK)
 		throw marshal_exception("can't save to " + path + ": failed to close directory");
-}*/
-
-node node::blank(void) { return node(boost::uuids::random_generator()()); }
-
-node::node(const iri& n) : _inner(n) {}
-node::node(const string& s, const iri& t) : _inner(make_pair(s,t)) {}
-node::node(const uuid& u) : _inner(u) {}
-
-bool node::is_iri(void) const { return !!get<iri>(&_inner); }
-bool node::is_literal(void) const { return !!get<pair<string,iri>>(&_inner); }
-bool node::is_blank(void) const { return !!get<uuid>(&_inner); }
-
-const iri& node::as_iri(void) const { return get<iri>(_inner); }
-const iri& node::as_literal(void) const { return get<pair<string,iri>>(_inner).first; }
-const iri& node::literal_type(void) const { return get<pair<string,iri>>(_inner).second; }
-const uuid& node::as_uuid(void) const { return get<uuid>(_inner); }
-
-bool node::operator==(const node& n) const
-{
-	return _inner == n._inner;
-}
-
-bool node::operator<(const node& n) const
-{
-	return _inner < n._inner;
-}
-
-statement::statement(const node& s, const node& p, const node& o)
-: subject(s), predicate(p), object(o) {}
-
-bool statement::operator==(const statement& st) const
-{
-	return subject == st.subject &&
-				 predicate == st.predicate &&
-				 object == st.object;
-}
-
-bool statement::operator<(const statement& st) const
-{
-	return subject < st.subject ||
-				 (subject == st.subject && predicate < st.predicate) ||
-				 (subject == st.subject && predicate == st.predicate && object < st.object);
-}
-
-storage::storage(void)
-: _meta()
-{
-	if(!_meta.open("+",PolyDB::OWRITER | PolyDB::OCREATE))
-		throw marshal_exception("can't open database");
-}
-
-storage::storage(const string& base)
-: _meta()
-{
-	if(!_meta.open(base + "meta.kct",PolyDB::OWRITER | PolyDB::OCREATE))
-		throw marshal_exception("can't open database");
-}
-
-storage::~storage(void)
-{
-	_meta.close();
-}
-
-bool storage::has(const node& s, const node& p, const node& o) const
-{
-	return has(statement(s,p,o));
-}
-
-bool storage::has(const statement& st) const
-{
-	return _meta.check(encode_key(st)) > -1;
-}
-
-list<statement> storage::find(const node &sub, const node &pred) const
-{
-	list<statement> ret;
-	vector<string> keys;
-	string s = encode_node(sub), p = encode_node(pred);
-
-	_meta.match_prefix(encode_varint(s.size()) + s + encode_varint(p.size()) + p,&keys);
-	transform(keys.begin(),keys.end(),inserter(ret,ret.begin()),[&](const string &k) { return decode_key(k.begin(),k.end()).first; });
-
-	return ret;
-}
-
-list<statement> storage::find(const node &sub) const
-{
-	list<statement> ret;
-	vector<string> keys;
-	string s = encode_node(sub);
-
-	_meta.match_prefix(encode_varint(s.size()) + s,&keys);
-	transform(keys.begin(),keys.end(),inserter(ret,ret.begin()),[&](const string &k) { return decode_key(k.begin(),k.end()).first; });
-
-	return ret;
-}
-
-statement storage::first(const node &s, const node &p) const
-{
-	statements st = find(s,p);
-
-	if(st.size() > 0)
-		return st.front();
-	else
-		throw marshal_exception("no statement found");
-}
-
-int64_t storage::count(void) const
-{
-	return _meta.count();
-}
-
-bool storage::insert(const node& s, const node& p, const node& o)
-{
-	return insert(statement(s,p,o));
-}
-
-bool storage::insert(const statement& st)
-{
-	if(has(st))
-		return false;
-
-	_meta.set(encode_key(st),"");
-	return true;
-}
-
-bool storage::remove(const node& s, const node& p, const node& o)
-{
-	return remove(statement(s,p,o));
-}
-
-bool storage::remove(const statement& st)
-{
-	return _meta.remove(encode_key(st));
 }
 
 string storage::encode_node(const node& n)

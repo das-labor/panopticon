@@ -6,7 +6,7 @@ using namespace po;
 
 TEST(marshal,load)
 {
-	rdf::storage st = rdf::storage::from_archive("/home/seu/panopticon/lib/test/save.panop");
+	rdf::storage st = rdf::storage("/home/seu/panopticon/lib/test/save.panop");
 
 	ASSERT_TRUE(st.has("A"_local,"name"_po,"Hello"_lit));
 	ASSERT_TRUE(st.has("B"_local,"name"_po,"World"_lit));
@@ -25,12 +25,12 @@ TEST(marshal,save_load)
 
 TEST(marshal,empty)
 {
-	ASSERT_THROW(rdf::storage::from_archive("empty.db"),marshal_exception);
+	ASSERT_THROW(rdf::storage("empty.db"),marshal_exception);
 }
 
 TEST(marshal,missing_file)
 {
-	ASSERT_THROW(rdf::storage::from_archive("non-existend.db"),marshal_exception);
+	ASSERT_THROW(rdf::storage("non-existend.db"),marshal_exception);
 }
 
 TEST(marshal,missing_db)
