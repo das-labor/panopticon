@@ -1,7 +1,9 @@
 #include <gtest/gtest.h>
-#include "rdf.hh"
+#include <panopticon/marshal.hh>
 
 using namespace std;
+using namespace po;
+using namespace rdf;
 
 struct store : public ::testing::Test
 {

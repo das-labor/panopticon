@@ -1,7 +1,7 @@
 set(panopticon_test_HEADER architecture.hh)
 set(panopticon_test_SOURCES layer.cc loc.cc region.cc testsuite.cc
 	value.cc digraph.cc disassembler.cc persistent_map.cc procedure.cc
-	architecture.cc)
+	architecture.cc store.cc)
 
 link_directories(${panopticon_LIBRARY_DIRS} ${GTEST_LIBRARY_DIRS})
 add_executable(testsuite ${panopticon_test_HEADERS}
