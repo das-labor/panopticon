@@ -5,7 +5,7 @@ using namespace std;
 
 struct store : public ::testing::Test
 {
-	store(void) : root(node::blank()), a1(node::blank()), a2(node::blank()), b(node::blank()) {}
+	store(void) : root(node::blank()), a1(node::blank()), a2(node::blank()), b(node::blank()), empty_store(), full_store() {}
 
 	virtual void SetUp(void)
 	{

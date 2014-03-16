@@ -180,6 +180,8 @@ pair<statement,storage::iter> storage::decode_key(iter b, iter e)
 	pair<node,iter> p = decode_node(p_sz.second,next(p_sz.second,p_sz.first));
 	pair<size_t,iter> o_sz = decode_varint(p.second,e);
 	pair<node,iter> o = decode_node(o_sz.second,next(o_sz.second,o_sz.first));
+
+	return make_pair(statement(s.first,p.first,o.first),o.second);
 }
 
 string storage::encode_varint(size_t sz)
