@@ -1,4 +1,4 @@
-set(panopticon_SOURCES src/loc.cc src/value.cc src/marshal.cc src/region.cc)
+set(panopticon_SOURCES src/loc.cc src/value.cc src/region.cc src/marshal.cc)
 set(panopticon_HEADERS include/loc.hh include/value.hh include/marshal.hh
 	include/region.hh include/hash.hh)
 

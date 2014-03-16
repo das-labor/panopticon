@@ -7,8 +7,18 @@
 #include <memory>
 
 extern "C" {
-#include <redland.h>
+//#include <redland.h>
 }
+
+using librdf_world = char;
+using raptor_world = char;
+using librdf_storage = char;
+using librdf_node = char;
+using librdf_model = char;
+using librdf_statement = char;
+using librdf_stream = char;
+using librdf_uri = char;
+using librdf_iterator = char;
 
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_generators.hpp>
@@ -17,7 +27,7 @@ extern "C" {
 #include <boost/optional.hpp>
 
 #define LOCAL "http://localhost/"
-#define PO "http://panopticum.io/"
+#define PO "http://panopticon.re/rdf/v1/"
 #define XSD	"http://www.w3.org/2001/XMLSchema#"
 #define RDF	"http://www.w3.org/1999/02/22-rdf-syntax-ns#"
 #define TEMPDIR_TEMPLATE std::string("panopXXXXXX")
@@ -150,7 +160,7 @@ namespace po
 			node(const node &n);
 			node(node &&n);
 
-			~node(void);
+			//~node(void);
 
 			node &operator=(const node &n);
 			node &operator=(node &&n);
@@ -237,11 +247,11 @@ namespace po
 	inline rdf::node operator"" _lit(const char *_s, std::size_t l)
 	{
 		std::string s(_s,l);
-		rdf::world &w = rdf::world::instance();
-		librdf_uri *type = librdf_new_uri(w.rdf(),reinterpret_cast<const unsigned char *>(XSD"string"));
-		rdf::node ret(librdf_new_node_from_typed_literal(w.rdf(),reinterpret_cast<const unsigned char *>(s.c_str()),NULL,type));
+		//rdf::world &w = rdf::world::instance();
+		//librdf_uri *type = nullptr;//librdf_new_uri(w.rdf(),reinterpret_cast<const unsigned char *>(XSD"string"));
+		rdf::node ret(nullptr/*librdf_new_node_from_typed_literal(w.rdf(),reinterpret_cast<const unsigned char *>(s.c_str()),NULL,type)*/);
 
-		librdf_free_uri(type);
+		//librdf_free_uri(type);
 		return ret;
 	}
 

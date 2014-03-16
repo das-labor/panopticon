@@ -24,7 +24,7 @@ marshal_exception::marshal_exception(const string &w)
 : runtime_error(w)
 {}
 
-std::unique_ptr<rdf::world> rdf::world::_instance = nullptr;
+/*std::unique_ptr<rdf::world> rdf::world::_instance = nullptr;
 
 rdf::world::world(void)
 : enable_shared_from_this(), _rdf_world(nullptr), _rap_world(nullptr)
@@ -664,4 +664,4 @@ rdf::nodes rdf::read_list(const rdf::node &n, const rdf::storage &store)
 	}
 
 	return ret;
-}
+}*/

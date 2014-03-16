@@ -12,6 +12,7 @@ set(panopticon_VERSION
 option(panopticon_BUILD "Build Panopticon Library (libpanopticon)" ON)
 option(qtpanopticon_BUILD "Build Qt UI (qtpanopticon)" ON)
 option(panop_BUILD "Build cli tool (panop)" OFF)
+option(depend_BUILD "Build dependecies" OFF)
 
 # Packaging
 set(CPACK_PACKAGE_CONTACT "seu@panopticon.re")
@@ -71,9 +72,6 @@ else()
 endif()
 
 # Dependencies
-find_package(Redland REQUIRED)
-find_package(Raptor REQUIRED)
-find_package(Rasqal REQUIRED)
 find_package(LibArchive REQUIRED)
 find_package(Boost 1.52 COMPONENTS system REQUIRED)
 
