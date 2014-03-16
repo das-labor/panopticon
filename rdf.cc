@@ -136,25 +136,27 @@ bool storage::remove(const statement& st)
 string storage::encode_node(const node& n)
 {
 	if(n.is_iri())
-		return to_string(Named) + n.as_iri();
+		return string(1,Named) + n.as_iri();
 	else if(n.is_literal())
-		return to_string(Literal) + encode_varint(n.as_literal().size()) + n.as_literal() + n.literal_type();
+		return string(1,Literal) + encode_varint(n.as_literal().size()) + n.as_literal() + n.literal_type();
 	else if(n.is_blank())
-		return to_string(Blank) + to_string(n.as_uuid());
+		return string(1,Blank) + to_string(n.as_uuid());
 	else
 		throw runtime_error("unknown node type");
 }
 
 std::pair<node,storage::iter> storage::decode_node(iter b, iter e)
 {
-	switch(static_cast<uint8_t>(*b))
+	switch(static_cast<node_type>(*b))
 	{
 		case Named:
 			return make_pair(node(iri(string(next(b),e))),e);
 		case Literal:
 		{
 			pair<size_t,iter> len = decode_varint(next(b),e);
-			return make_pair(node(string(len.second,next(len.second,len.first))),next(len.second,len.first));
+			string lit(len.second,next(len.second,len.first));
+			string ty(next(len.second,len.first),e);
+			return make_pair(node(lit,ty),e);
 		}
 		case Blank:
 		{
@@ -186,12 +188,20 @@ pair<statement,storage::iter> storage::decode_key(iter b, iter e)
 
 string storage::encode_varint(size_t sz)
 {
-	string ret;
+	string tmp;
 
 	while(sz)
 	{
-		ret.push_back((sz & 0x7f) | (sz > 0x7f ? 0x80 : 0));
+		tmp.push_back(sz & 0x7f);
 		sz >>= 7;
+	}
+
+	string ret;
+	auto i = tmp.rbegin();
+	while(i != tmp.rend())
+	{
+		ret.push_back(*i | (next(i) == tmp.rend() ? 0 : 0x80));
+		++i;
 	}
 
 	return ret;
@@ -200,14 +210,16 @@ string storage::encode_varint(size_t sz)
 std::pair<size_t,storage::iter> storage::decode_varint(iter b, iter e)
 {
 	size_t ret = 0;
-	uint8_t x = 0;
+	unsigned int x = 0;
 
-	do
+	assert(b != e);
+	while(b != e)
 	{
-		x = static_cast<uint8_t>(*b++);
+		x = static_cast<unsigned int>(*b++);
 		ret = (ret << 7) | (x & 0x7f);
+		if(!(x & 0x80))
+			break;
 	}
-	while(b != e && x & 0x80);
 
 	return make_pair(ret,b);
 }

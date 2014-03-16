@@ -97,11 +97,11 @@ struct storage
 	static std::pair<size_t,iter> decode_varint(iter, iter);
 
 private:
-	enum node_type : uint8_t
+	enum node_type : char
 	{
-		Blank = 0,
-		Literal = 1,
-		Named = 2
+		Blank = 'B',
+		Literal = 'L',
+		Named = 'N'
 	};
 
 	mutable PolyDB _meta; ///< subject/predicate/object
