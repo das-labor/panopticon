@@ -132,30 +132,50 @@ TEST_F(store,varint)
 	string a;
 
 	a = storage::encode_varint(1);
-	ASSERT_EQ(a,"\x01");
-	ASSERT_EQ(storage::decode_varint(a.begin(),a.end()).first,1);
+	ASSERT_EQ("\x01",a);
+	ASSERT_EQ(1,storage::decode_varint(a.begin(),a.end()).first);
 
 	a = storage::encode_varint(0x7f);
-	ASSERT_EQ(a,"\x7f");
-	ASSERT_EQ(storage::decode_varint(a.begin(),a.end()).first,0x7f);
+	ASSERT_EQ("\x7f",a);
+	ASSERT_EQ(0x7f,storage::decode_varint(a.begin(),a.end()).first);
 
 	a = storage::encode_varint(0x80);
-	ASSERT_EQ(a,"\x80\x01");
-	ASSERT_EQ(storage::decode_varint(a.begin(),a.end()).first,0x80);
+	ASSERT_EQ(string("\x81\x00",2),a);
+	ASSERT_EQ(0x80,storage::decode_varint(a.begin(),a.end()).first);
 
 	a = storage::encode_varint(0x81);
 	ASSERT_EQ(a.size(),2);
 	ASSERT_EQ(storage::decode_varint(a.begin(),a.end()).first,0x81);
 
-	a = storage::encode_varint(0xef);
+	a = storage::encode_varint(0x3fff);
 	ASSERT_EQ(a.size(),2);
-	ASSERT_EQ(storage::decode_varint(a.begin(),a.end()).first,0xef);
+	ASSERT_EQ(storage::decode_varint(a.begin(),a.end()).first,0x3fff);
 
-	a = storage::encode_varint(0xf0);
+	a = storage::encode_varint(0x4000);
 	ASSERT_EQ(a.size(),3);
-	ASSERT_EQ(storage::decode_varint(a.begin(),a.end()).first,0xf0);
+	ASSERT_EQ(storage::decode_varint(a.begin(),a.end()).first,0x4000);
 
-	a = storage::encode_varint(0xf1);
+	a = storage::encode_varint(0x4001);
 	ASSERT_EQ(a.size(),3);
-	ASSERT_EQ(storage::decode_varint(a.begin(),a.end()).first,0xf1);
+	ASSERT_EQ(storage::decode_varint(a.begin(),a.end()).first,0x4001);
+}
+
+TEST_F(store,node)
+{
+	node a = node::blank(), b = "node"_po, c = 1_lit, d = "Hello"_lit;
+
+	string aa = storage::encode_node(a);
+	string bb = storage::encode_node(b);
+	string cc = storage::encode_node(c);
+	string dd = storage::encode_node(d);
+
+	node a2 = storage::decode_node(aa.begin(),aa.end()).first;
+	node b2 = storage::decode_node(bb.begin(),bb.end()).first;
+	node c2 = storage::decode_node(cc.begin(),cc.end()).first;
+	node d2 = storage::decode_node(dd.begin(),dd.end()).first;
+
+	ASSERT_EQ(a,a2);
+	ASSERT_EQ(b,b2);
+	ASSERT_EQ(c,c2);
+	ASSERT_EQ(d,d2);
 }
