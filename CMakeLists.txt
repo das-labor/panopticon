@@ -14,7 +14,6 @@ option(qtpanopticon_BUILD "Build Qt UI (qtpanopticon)" ON)
 option(panop_BUILD "Build cli tool (panop)" OFF)
 option(depend_BUILD "Build dependecies" OFF)
 
-<<<<<<< HEAD
 # Packaging
 set(CPACK_PACKAGE_CONTACT "seu@panopticon.re")
 SET(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Cross platform disassembler")
@@ -28,11 +27,6 @@ set(CPACK_GENERATOR "STGZ;TGZ;DEB;RPM")
 include(CPack)
 
 # Default to debug build
-=======
-# enable tests
-include(CTest)
-
->>>>>>> 50d2e78... Add test suite
 set(CMAKE_BUILD_TYPE "Debug")
 
 # find_package macros for librdf, raptor and panopticon
@@ -41,10 +35,7 @@ set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 # Compiler flags
 add_definitions("-Wall -Wextra -pedantic
 -Wno-unused-parameter")
-# remove when fixed in CVC4
-add_definitions("-Wno-deprecated")
 
-# Release mode is default
 if(NOT DEFINED "CMAKE_BUILD_TYPE" OR "${CMAKE_BUILD_TYPE}" STREQUAL "Release")
 	add_definitions("-Werror")
 	message("Build release")
@@ -64,8 +55,6 @@ elseif("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
 	message(STATUS "Debug build")
 endif()
 
-add_definitions("-Wall -Werror -pedantic -Weffc++")
-
 # Check for C++11
 CHECK_CXX_COMPILER_FLAG("-std=c++11" CXXFLAG_CPP11)
 if(NOT DEFINED "CXXFLAG_CPP11")
@@ -82,11 +71,7 @@ endif()
 # Dependencies
 find_package(LibArchive REQUIRED)
 find_package(Boost 1.52 COMPONENTS system REQUIRED)
-<<<<<<< HEAD
-=======
 find_package(KyotoCabinet REQUIRED)
-find_package(GTest REQUIRED)
->>>>>>> 50d2e78... Add test suite
 
 # Targets
 if(${panopticon_BUILD})
@@ -110,17 +95,5 @@ if(${qtpanopticon_BUILD} AND ${panopticon_FOUND})
 	add_dependencies(qtpanopticon panopticon)
 endif()
 
-<<<<<<< HEAD
 message("** Type 'make' to build.")
 message("** You can run the test suite with 'ctest'")
-=======
-add_library(rdf ${RDF_HEADERS} ${RDF_SOURCES})
-target_link_libraries(rdf ${LibArchive_LIBRARIES} ${KyotoCabinet_LIBRARIES}
-	${Boost_LIBRARIES})
-
-link_directories(${GTEST_LIBRARY_DIRS})
-add_executable(testsuite ${RDF_HEADERS} testsuite.cc test.cc)
-target_link_libraries(testsuite ${GTEST_LIBRARIES} ${LibArchive_LIBRARIES}
-	${KyotoCabinet_LIBRARIES} ${Boost_LIBRARIES} rdf)
-gtest_add_tests(testsuite "" "test.cc")
->>>>>>> 50d2e78... Add test suite
