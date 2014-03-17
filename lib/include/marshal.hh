@@ -6,18 +6,17 @@
 #include <list>
 #include <memory>
 
-extern "C" {
-#include <redland.h>
-}
+#include <kcpolydb.h>
 
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_generators.hpp>
 #include <boost/uuid/uuid_io.hpp>
+#include <boost/variant.hpp>
+#include <boost/operators.hpp>
 #include <boost/functional/hash.hpp>
-#include <boost/optional.hpp>
 
 #define LOCAL "http://localhost/"
-#define PO "http://panopticum.io/"
+#define PO "http://panopticon.re/rdf/v1/"
 #define XSD	"http://www.w3.org/2001/XMLSchema#"
 #define RDF	"http://www.w3.org/1999/02/22-rdf-syntax-ns#"
 #define TEMPDIR_TEMPLATE std::string("panopXXXXXX")
@@ -53,229 +52,116 @@ namespace po
 
 	namespace rdf
 	{
-		class world;
-		class node;
-		class statement;
-		class stream;
-		class list;
+		using iri = std::string;
+		using literal = std::pair<std::string,iri>;
+		using kyotocabinet::PolyDB;
 
-		using world_ptr = world*;
-
-		/// Handles global initialization of librdf and raptor2.
-		class world : std::enable_shared_from_this<world>
+		struct node : public boost::operators<node>
 		{
-		public:
-			/// Returns the current world instance.
-			static world& instance(void);
+			static node blank(void);
 
-			world(const world&) = delete;
-			world &operator=(const world&) = delete;
+			node(const iri& n);
+			node(const std::string& s, const iri& t);
+			node(const uuid& u);
 
-			virtual ~world(void);
+			bool operator==(const node&) const;
+			bool operator<(const node&) const;
 
-			librdf_world *rdf(void) const;
-			raptor_world *raptor(void) const;
+			bool is_iri(void) const;
+			bool is_literal(void) const;
+			bool is_blank(void) const;
+
+			const iri& as_iri(void) const;
+			const iri& as_literal(void) const;
+			const iri& literal_type(void) const;
+			const uuid& as_uuid(void) const;
 
 		private:
-			world(void);
-
-			librdf_world *_rdf_world;
-			raptor_world *_rap_world;
-			static std::unique_ptr<world> _instance;
+			boost::variant<iri,literal,uuid> _inner;
 		};
 
-		/// A single graph (collection of edges)
-		class storage
-		{
-		public:
-			/// Load a .panop file e.g. zip with bdb inside
-			static storage from_archive(const std::string &panopPath);
+		using nodes = std::list<node>;
 
-			/// Read a text file in Turtle syntax
-			static storage from_turtle(const std::string &turtlePath);
+		struct statement : public boost::operators<statement>
+		{
+			statement(const node& s, const node& p, const node& o);
+
+			bool operator==(const statement&) const;
+			bool operator<(const statement&) const;
+
+			node subject, predicate, object;
+		};
+
+		using statements = std::list<statement>;
+
+		struct storage
+		{
+			using iter = std::string::const_iterator;
 
 			storage(void);
-			storage(storage &&);
-			storage(const storage &) = delete;
-
+			storage(const storage&);
+			storage(const std::string& base);
 			~storage(void);
 
-			storage &operator=(const storage &) = delete;
+			storage& operator=(const storage&);
 
-			/**
-			 * @brief Retrieve edges.
-			 *
-			 * Returns a stream of statements (edges). The three arguments set the source vertex, edge label and destination vertex to look for.
-			 * A boost::none argument is treated as wildcard.
-			 */
-			rdf::stream select(boost::optional<const rdf::node&> s, boost::optional<const rdf::node&> p, boost::optional<const rdf::node&> o) const;
+			bool insert(const statement& st);
+			bool insert(const node&, const node&, const node&);
+			bool remove(const statement& st);
+			bool remove(const node&, const node&, const node&);
 
-			/// Utility function returning the first element of select(). Throws a marshal_exception if no matching edge is found.
-			rdf::statement first(boost::optional<const rdf::node&> s,boost::optional<const rdf::node&> p,boost::optional<const rdf::node&> o) const;
+			bool has(const statement& st) const;
+			bool has(const node&, const node&, const node&) const;
+			std::list<statement> find(const node &s) const;
+			std::list<statement> find(const node &s, const node &p) const;
+			statement first(const node &s, const node &p) const;
+			int64_t count(void) const;
+			void snapshot(const std::string& path) const;
 
-			/// Utility function returning true whenever a matching edge is in the database.
-			bool has(boost::optional<const rdf::node&> s,boost::optional<const rdf::node&> p,boost::optional<const rdf::node&> o) const;
-
-			void insert(const rdf::statement &c);
-			void insert(const rdf::node &s, const rdf::node &p, const rdf::node &o);
-
-			void remove(const rdf::statement &);
-
-			/// Writes the current contents of the database to disk.
-			void snapshot(const std::string &path);
-
-			/// Dumps the current contents of the database into a string.
-			std::string dump(const std::string &format) const;
+			static std::string encode_node(const node& n);
+			static std::pair<node,iter> decode_node(iter, iter);
+			static std::string encode_key(const statement& st);
+			static std::pair<statement,iter> decode_key(iter, iter);
+			static std::string encode_varint(size_t sz);
+			static std::pair<size_t,iter> decode_varint(iter, iter);
 
 		private:
-			explicit storage(bool openStore);
+			enum node_type : char
+			{
+				Blank = 'B',
+				Literal = 'L',
+				Named = 'N'
+			};
 
-			librdf_storage *_storage;
-			librdf_model *_model;
+			mutable PolyDB _meta; ///< subject/predicate/object
 			std::string _tempdir;
 		};
 
+		inline node lit(const std::string& s) { return node(s,XSD"string"); }
+		inline node lit(long long n) { return node(std::to_string(n),XSD"integer"); }
+		inline node ns_po(const std::string& s) { return node(PO + s); }
+		inline node ns_rdf(const std::string& s) { return node(RDF + s); }
+		inline node ns_xsd(const std::string& s) { return node(XSD + s); }
+		inline node ns_local(const std::string& s) { return node(LOCAL + s); }
 
-		/**
-		 * @brief Vertex or edge in the graph
-		 */
-		class node
-		{
-		public:
-			node(void);
-
-			/// create a new blank (unnamed) node with id blank_id
-			explicit node(const std::string &blank_id);
-			node(librdf_node *n);
-			node(const node &n);
-			node(node &&n);
-
-			~node(void);
-
-			node &operator=(const node &n);
-			node &operator=(node &&n);
-
-			bool operator==(const node &n) const;
-			bool operator!=(const node &n) const;
-
-			std::string to_string(void) const;
-			librdf_node *inner(void) const;
-
-		private:
-			librdf_node *_node;
-		};
-
-		std::ostream& operator<<(std::ostream&, const node&);
-
-		node lit(const std::string &s);				///< Node from literal string
-		node lit(unsigned long long n);				///< Node from integer
-		node ns_po(const std::string &s);			///< Node from literal string in po namespace
-		node ns_rdf(const std::string &s);		///< Node from literal string in RDF namespace
-		node ns_xsd(const std::string &s);		///< Node from literal string in XML schema namespace
-		node ns_local(const std::string &s);	///< Node from literal string in local namespace
-
-		/**
-		 * @brief A directed edge in the graph
-		 */
-		class statement
-		{
-		public:
-			statement(librdf_statement *st = 0);
-			statement(const rdf::node &s, const rdf::node &p, const rdf::node &o);
-			statement(const statement &st);
-			statement(statement &&st);
-
-			~statement(void);
-
-			statement &operator=(const statement &st);
-			statement &operator=(statement &&st);
-
-			node subject(void) const;		///< Returns source vertex
-			node predicate(void) const;	///< Returns edge
-			node object(void) const;		///< Returns destination vertex
-
-			librdf_statement *inner(void) const;
-
-		private:
-			librdf_statement *_statement;
-		};
-
-		std::ostream& operator<<(std::ostream&, const statement&);
-
-		using statements = std::list<statement>;
-		using nodes = std::list<node>;
-
-		/// Read a cons cell list starting at head node n.
-		nodes read_list(const node &n, const storage&);
-
-		/// Writes a list of edges to as a list into the graph. Returns head node written edges.
 		template<typename It>
-		std::pair<node,statements> write_list(It begin, It end, const std::string &ns = "");
-
-		/// List of edges of unknown size,
-		class stream
-		{
-		public:
-			stream(librdf_stream *s);
-			stream(librdf_iterator *i, boost::optional<const rdf::node&> s, boost::optional<const rdf::node&> p, boost::optional<const rdf::node&> o);
-			stream(const stream &s) = delete;
-			stream(stream &&s);
-
-			~stream(void);
-
-			stream &operator=(const stream &) = delete;
-			stream &operator=(stream &&st);
-
-			bool eof(void) const;
-			stream &operator>>(statement &st);
-
-		private:
-			librdf_stream *_stream;
-		};
+		std::pair<rdf::node,rdf::statements> write_list(It begin, It end, const std::string &ns);
+		nodes read_list(const node &n, const storage &store);
 	}
 
-	inline rdf::node operator"" _lit(const char *_s, std::size_t l)
-	{
-		std::string s(_s,l);
-		rdf::world &w = rdf::world::instance();
-		librdf_uri *type = librdf_new_uri(w.rdf(),reinterpret_cast<const unsigned char *>(XSD"string"));
-		rdf::node ret(librdf_new_node_from_typed_literal(w.rdf(),reinterpret_cast<const unsigned char *>(s.c_str()),NULL,type));
-
-		librdf_free_uri(type);
-		return ret;
-	}
-
-	inline rdf::node operator"" _lit(unsigned long long n)
-	{
-		return rdf::lit(n);
-	}
-
-	inline rdf::node operator"" _po(const char *s, std::size_t l)
-	{
-		return rdf::ns_po(std::string(s,l));
-	}
-
-	inline rdf::node operator"" _rdf(const char *s, std::size_t l)
-	{
-		return rdf::ns_rdf(std::string(s,l));
-	}
-
-	inline rdf::node operator"" _xsd(const char *s, std::size_t l)
-	{
-		return rdf::ns_xsd(std::string(s,l));
-	}
-
-	inline rdf::node operator"" _local(const char *s, std::size_t l)
-	{
-		return rdf::ns_local(std::string(s,l));
-	}
+	inline rdf::node operator"" _lit(unsigned long long i) { return rdf::lit(i); }
+	inline rdf::node operator"" _lit(const char *str, size_t sz) { return rdf::lit(std::string(str,sz)); }
+	inline rdf::node operator"" _po(const char *s, std::size_t l) { return rdf::ns_po(std::string(s,l)); }
+	inline rdf::node operator"" _rdf(const char *s, std::size_t l) { return rdf::ns_rdf(std::string(s,l)); }
+	inline rdf::node operator"" _xsd(const char *s, std::size_t l) { return rdf::ns_xsd(std::string(s,l)); }
+	inline rdf::node operator"" _local(const char *s, std::size_t l) { return rdf::ns_local(std::string(s,l)); }
 
 	template<typename It>
 	std::pair<rdf::node,rdf::statements> rdf::write_list(It begin, It end, const std::string &ns)
 	{
 		rdf::statements ret;
 		int counter = 0;
-		std::function<node(void)> blank = [&](void) { return ns.empty() ? node() : node(ns + std::to_string(counter++)); };
+		std::function<node(void)> blank = [&](void) { return ns.empty() ? node::blank() : node(ns + std::to_string(counter++)); };
 		rdf::node head = (std::distance(begin,end) ? blank() : "nil"_rdf);
 
 		rdf::node last = head;

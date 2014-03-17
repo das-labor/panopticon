@@ -3,8 +3,8 @@
 #include <algorithm>
 
 extern "C" {
-#include <minizip/zip.h>
-#include <minizip/unzip.h>
+#include <archive.h>
+#include <archive_entry.h>
 #include <dirent.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -14,132 +14,64 @@ extern "C" {
 #include <fcntl.h>
 }
 
+#include <boost/uuid/uuid_generators.hpp>
+#include <boost/uuid/uuid_io.hpp>
+
 #include <panopticon/marshal.hh>
 
 using namespace po;
 using namespace std;
+using namespace rdf;
 using namespace boost;
 
 marshal_exception::marshal_exception(const string &w)
 : runtime_error(w)
 {}
 
-std::unique_ptr<rdf::world> rdf::world::_instance = nullptr;
+node node::blank(void) { return node(boost::uuids::random_generator()()); }
 
-rdf::world::world(void)
-: enable_shared_from_this(), _rdf_world(nullptr), _rap_world(nullptr)
+node::node(const iri& n) : _inner(n) {}
+node::node(const string& s, const iri& t) : _inner(make_pair(s,t)) {}
+node::node(const uuid& u) : _inner(u) {}
+
+bool node::is_iri(void) const { return !!get<iri>(&_inner); }
+bool node::is_literal(void) const { return !!get<pair<string,iri>>(&_inner); }
+bool node::is_blank(void) const { return !!get<uuid>(&_inner); }
+
+const iri& node::as_iri(void) const { return get<iri>(_inner); }
+const iri& node::as_literal(void) const { return get<pair<string,iri>>(_inner).first; }
+const iri& node::literal_type(void) const { return get<pair<string,iri>>(_inner).second; }
+const uuid& node::as_uuid(void) const { return get<uuid>(_inner); }
+
+bool node::operator==(const node& n) const
 {
-	assert(!_instance);
-
-	_rdf_world = librdf_new_world();
-	librdf_world_open(_rdf_world);
-	_rap_world = librdf_world_get_raptor(_rdf_world);
+	return _inner == n._inner;
 }
 
-rdf::world::~world() {}
-
-rdf::world& rdf::world::instance(void)
+bool node::operator<(const node& n) const
 {
-	if(!_instance)
-		_instance.reset(new world());
-	return *_instance;
+	return _inner < n._inner;
 }
 
-librdf_world *rdf::world::rdf(void) const
+statement::statement(const node& s, const node& p, const node& o)
+: subject(s), predicate(p), object(o) {}
+
+bool statement::operator==(const statement& st) const
 {
-	return _rdf_world;
+	return subject == st.subject &&
+				 predicate == st.predicate &&
+				 object == st.object;
 }
 
-raptor_world *rdf::world::raptor(void) const
+bool statement::operator<(const statement& st) const
 {
-	return _rap_world;
+	return subject < st.subject ||
+				 (subject == st.subject && predicate < st.predicate) ||
+				 (subject == st.subject && predicate == st.predicate && object < st.object);
 }
 
-rdf::storage rdf::storage::from_archive(const string &path)
-{
-	storage ret(false);
-	const string &tempDir = ret._tempdir;
-
-	// open target zip
-	unzFile zf = unzOpen(path.c_str());
-	if(zf == NULL)
-		throw marshal_exception("can't open " + path);
-
-	if(unzLocateFile(zf,"graph-po2s.db",0) != UNZ_OK ||
-		 unzLocateFile(zf,"graph-so2p.db",0) != UNZ_OK ||
-		 unzLocateFile(zf,"graph-sp2o.db",0) != UNZ_OK)
-		throw marshal_exception("can't open " + path + ": no graph database in file");
-
-	if(unzGoToFirstFile(zf) != UNZ_OK)
-		throw marshal_exception("can't open " + path);
-
-	// copy database files to tempdir
-	char *buf = new char[4096];
-
-	do
-	{
-		char fileName[256];
-
-		if(unzGetCurrentFileInfo(zf,NULL,fileName,256,NULL,0,NULL,0) != UNZ_OK)
-			throw marshal_exception("can't read files from " + path);
-
-		string tmpName = tempDir + "/" + string(fileName);
-		int fd = open(tmpName.c_str(),O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR);
-
-		if(fd < 0)
-			throw marshal_exception("can't open " + path + " into tempdir: " + strerror(errno));
-
-		if(unzOpenCurrentFile(zf) != UNZ_OK)
-			throw marshal_exception("can't open file in " + path);
-
-		size_t sz;
-		while((sz = unzReadCurrentFile(zf,buf,4096)) != 0)
-		{
-			size_t p = 0;
-			while(p < sz)
-				p += write(fd,buf + p,sz - p);
-		}
-
-		if(close(fd) || unzCloseCurrentFile(zf) != UNZ_OK)
-			throw marshal_exception("can't open " + path);
-
-		cout << "read " << tmpName << " from " << path << endl;
-	}
-	while(unzGoToNextFile(zf) == UNZ_OK);
-
-	if(unzClose(zf) != UNZ_OK)
-		throw marshal_exception("can't open " + path);
-
-	world &w = world::instance();
-	assert(ret._storage = librdf_new_storage(w.rdf(),"hashes","graph",string("hash-type='bdb',dir='" + ret._tempdir + "'").c_str()));
-	assert(ret._model = librdf_new_model(w.rdf(),ret._storage,NULL));
-
-	return ret;
-}
-
-rdf::storage rdf::storage::from_turtle(const string &path)
-{
-	world &w = world::instance();
-	storage ret;
-	librdf_parser *parser = nullptr;
-	librdf_uri *uri = nullptr;
-
-	assert(parser = librdf_new_parser(w.rdf(),"turtle",NULL,NULL));
-	assert(uri = librdf_new_uri_from_filename(w.rdf(),path.c_str()));
-	assert(!librdf_parser_parse_into_model(parser,uri,uri,ret._model));
-
-	librdf_free_uri(uri);
-	librdf_free_parser(parser);
-
-	return ret;
-}
-
-rdf::storage::storage(void)
-: storage(true)
-{}
-
-rdf::storage::storage(bool openStore)
-: _storage(nullptr), _model(nullptr), _tempdir("")
+storage::storage(void)
+: _meta(), _tempdir("")
 {
 	char *tmp = new char[TEMPDIR_TEMPLATE.size() + 1];
 
@@ -149,22 +81,91 @@ rdf::storage::storage(bool openStore)
 	_tempdir = string(tmp);
 	delete[] tmp;
 
-	if(openStore)
-	{
-		world &w = world::instance();
-		assert(_storage = librdf_new_storage(w.rdf(),"hashes","graph",string("new='yes',hash-type='bdb',dir='" + _tempdir + "'").c_str()));
-		assert(_model = librdf_new_model(w.rdf(),_storage,NULL));
-	}
+	if(!_meta.open(_tempdir + "/meta.kct",PolyDB::OWRITER | PolyDB::OCREATE))
+		throw marshal_exception("can't open database");
 }
 
-rdf::storage::storage(rdf::storage &&store)
-: _storage(store._storage), _model(store._model), _tempdir(store._tempdir)
-{}
-
-rdf::storage::~storage(void)
+storage::storage(const string& path)
+: _meta(), _tempdir("")
 {
-	librdf_free_model(_model);
-	librdf_free_storage(_storage);
+	char *tmp = new char[TEMPDIR_TEMPLATE.size() + 1];
+
+	strncpy(tmp,TEMPDIR_TEMPLATE.c_str(),TEMPDIR_TEMPLATE.size() + 1);
+	tmp = mkdtemp(tmp);
+
+	_tempdir = string(tmp);
+	delete[] tmp;
+
+	// open target zip
+	archive *ar = archive_read_new();
+	if(ar == NULL)
+		throw marshal_exception("can't allocate archive struct");
+
+	if(archive_read_support_format_cpio(ar) != ARCHIVE_OK)
+		throw marshal_exception("can't set archive format");
+
+	if(archive_read_support_filter_lzma(ar) != ARCHIVE_OK)
+		throw marshal_exception("can't set compression algorithm");
+
+	try
+	{
+		if(archive_read_open_filename(ar,path.c_str(),4096) != ARCHIVE_OK)
+			throw marshal_exception("can't open " + path);
+
+		bool found_meta = false;
+
+		// copy database files to tempdir
+		struct archive_entry *ae;
+
+		while(archive_read_next_header(ar,&ae) == ARCHIVE_OK)
+		{
+			string pathName(archive_entry_pathname(ae));
+			string tmpName = _tempdir + "/" + pathName;
+
+			found_meta = found_meta | (pathName.substr(pathName.size() - 13,std::string::npos) == "meta.kct");
+			int fd = open(tmpName.c_str(),O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR);
+
+			if(fd < 0 || archive_read_data_into_fd(ar,fd) != ARCHIVE_OK || close(fd))
+					throw marshal_exception("can't open " + path + " into tempdir: " + strerror(errno));
+
+			cout << "read " << tmpName << " from " << path << endl;
+		}
+
+		if(!(found_meta))
+			throw marshal_exception("can't open " + path + ": no graph database in file");
+	}
+	catch(...)
+	{
+		archive_read_free(ar);
+		throw;
+	}
+
+	if(archive_read_free(ar) != ARCHIVE_OK)
+		throw marshal_exception("can't open " + path);
+
+	if(!_meta.open(_tempdir + "/meta.kct",PolyDB::OWRITER | PolyDB::OCREATE))
+		throw marshal_exception("can't open database");
+}
+
+storage::storage(const storage& st)
+: _meta(), _tempdir("")
+{
+	char *tmp = new char[TEMPDIR_TEMPLATE.size() + 1];
+
+	strncpy(tmp,TEMPDIR_TEMPLATE.c_str(),TEMPDIR_TEMPLATE.size() + 1);
+	tmp = mkdtemp(tmp);
+
+	_tempdir = string(tmp);
+	delete[] tmp;
+
+	st._meta.copy(_tempdir + "/meta.kct");
+	if(!_meta.open(_tempdir + "/meta.kct",PolyDB::OWRITER | PolyDB::OCREATE))
+		throw marshal_exception("can't open database");
+}
+
+storage::~storage(void)
+{
+	_meta.close();
 
 	std::function<void(const string &path)> rm_r;
 	rm_r = [&](const string &path)
@@ -203,27 +204,102 @@ rdf::storage::~storage(void)
 			throw marshal_exception("can't delete directory " + path);
 	};
 
-	try
+	if(_tempdir != "")
 	{
-		rm_r(_tempdir);
-	}
-	catch(const marshal_exception &e)
-	{
-		cerr << "Exception in rdf::storage::~storage: " << e.what() << endl;
+		try
+		{
+			rm_r(_tempdir);
+		}
+		catch(const marshal_exception &e)
+		{
+			cerr << "Exception in rdf::storage::~storage: " << e.what() << endl;
+		}
 	}
 }
 
-void rdf::storage::snapshot(const string &path)
+bool storage::has(const node& s, const node& p, const node& o) const
+{
+	return has(statement(s,p,o));
+}
+
+bool storage::has(const statement& st) const
+{
+	return _meta.check(encode_key(st)) > -1;
+}
+
+list<statement> storage::find(const node &sub, const node &pred) const
+{
+	list<statement> ret;
+	vector<string> keys;
+	string s = encode_node(sub), p = encode_node(pred);
+
+	_meta.match_prefix(encode_varint(s.size()) + s + encode_varint(p.size()) + p,&keys);
+	transform(keys.begin(),keys.end(),inserter(ret,ret.begin()),[&](const string &k) { return decode_key(k.begin(),k.end()).first; });
+
+	return ret;
+}
+
+list<statement> storage::find(const node &sub) const
+{
+	list<statement> ret;
+	vector<string> keys;
+	string s = encode_node(sub);
+
+	_meta.match_prefix(encode_varint(s.size()) + s,&keys);
+	transform(keys.begin(),keys.end(),inserter(ret,ret.begin()),[&](const string &k) { return decode_key(k.begin(),k.end()).first; });
+
+	return ret;
+}
+
+statement storage::first(const node &s, const node &p) const
+{
+	statements st = find(s,p);
+
+	if(st.size() > 0)
+		return st.front();
+	else
+		throw marshal_exception("no statement found");
+}
+
+int64_t storage::count(void) const
+{
+	return _meta.count();
+}
+
+bool storage::insert(const node& s, const node& p, const node& o)
+{
+	return insert(statement(s,p,o));
+}
+
+bool storage::insert(const statement& st)
+{
+	if(has(st))
+		return false;
+
+	_meta.set(encode_key(st),"");
+	return true;
+}
+
+bool storage::remove(const node& s, const node& p, const node& o)
+{
+	return remove(statement(s,p,o));
+}
+
+bool storage::remove(const statement& st)
+{
+	return _meta.remove(encode_key(st));
+}
+
+void storage::snapshot(const string& path) const
 {
 	if(path.empty())
-		return;
+		throw marshal_exception("can't save to empty path");
 
 	// delete existing `path'
 	unlink(path.c_str());
 
 	// sync bdb
-	/// XXX: lock store against modifications
-	if(librdf_storage_sync(_storage))
+	if(!_meta.synchronize(false))
 		throw marshal_exception("can't sync triple store");
 
 	// open temp dir
@@ -232,390 +308,203 @@ void rdf::storage::snapshot(const string &path)
 		throw marshal_exception("can't save to " + path + ": " + strerror(errno));
 
 	// open target zip
-	zipFile zf = zipOpen(path.c_str(),0);
-	if(zf == NULL)
-		throw marshal_exception("can't save to " + path + ": failed to open");
+	struct archive *ar = archive_write_new();
+	if(ar == NULL)
+		throw marshal_exception("can't save to " + path + ": failed to allocate archive struct");
 
-	// save database files
-	struct dirent *dirEnt;
-	char buf[4096];
-
-	while((dirEnt = readdir(dirDesc)))
+	try
 	{
-		string entBase(dirEnt->d_name);
-		string entPath = _tempdir + "/" + entBase;
+		if(archive_write_add_filter_lzma(ar) != ARCHIVE_OK)
+			throw marshal_exception("can't save to " + path + ": failed setting compression algorithm");
 
-		if(entBase == "." || entBase == "..")
-			continue;
+		// save into *.cpio.lzma
+		if(archive_write_set_format_cpio(ar) != ARCHIVE_OK)
+			throw marshal_exception("can't save to " + path + ": failed setting archive format");
 
-		int fd = open(entPath.c_str(),O_RDONLY);
-		zip_fileinfo zif;
+		if(archive_write_open_filename(ar,path.c_str()) != ARCHIVE_OK)
+			throw marshal_exception("can't save to " + path + ": failed to open");
 
-		memset(&zif,0,sizeof(zip_fileinfo));
+		// save database files
+		struct dirent *dirEnt;
+		char buf[4096];
+		struct archive_entry *ae = archive_entry_new();
 
-		if(fd < 0)
-			throw marshal_exception("can't save to " + path + ": " + strerror(errno));
+		if(!ae)
+			throw marshal_exception("can't save to " + path + ": failed to allocate archive entry struct");
 
-		if(zipOpenNewFileInZip(zf,entBase.c_str(),&zif,NULL,0,NULL,0,NULL,Z_DEFLATED,Z_DEFAULT_COMPRESSION) != ZIP_OK)
-			throw marshal_exception("can't save to " + path + ": " + strerror(errno));
-
-		int ret;
-		do
+		try
 		{
-			ret = read(fd,buf,4096);
+			while((dirEnt = readdir(dirDesc)))
+			{
+				string entBase(dirEnt->d_name);
+				string entPath = _tempdir + "/" + entBase;
 
-			if(ret < 0)
-				throw marshal_exception("can't save to " + path + ": error while reading " + entPath + "(" + strerror(errno) + ")");
+				if(entBase == "." || entBase == "..")
+					continue;
 
-			if(ret > 0 && zipWriteInFileInZip(zf,buf,ret) != ZIP_OK)
-				throw marshal_exception("can't save to " + path + ": error while writing " + entPath);
+				int fd = open(entPath.c_str(),O_RDONLY);
+				if(fd < 0)
+					throw marshal_exception("can't save to " + path + ": " + strerror(errno));
+
+				try
+				{
+					struct stat st;
+
+					fstat(fd,&st);
+					archive_entry_clear(ae);
+					archive_entry_copy_pathname(ae,entBase.c_str());
+					archive_entry_copy_stat(ae,&st);
+
+					if(archive_write_header(ar,ae) != ARCHIVE_OK)
+						throw marshal_exception("can't save to " + path + ": failed to write header");
+
+					int ret;
+					do
+					{
+						ret = read(fd,buf,4096);
+
+						if(ret < 0)
+							throw marshal_exception("can't save to " + path + ": error while reading " + entPath + "(" + strerror(errno) + ")");
+
+						if(ret > 0 && archive_write_data(ar,buf,ret) != ARCHIVE_OK)
+							throw marshal_exception("can't save to " + path + ": error while writing " + entPath);
+					}
+					while(ret);
+				}
+				catch(...)
+				{
+					close(fd);
+					throw;
+				}
+
+				if(close(fd))
+					throw marshal_exception("can't save to " + path + ": failed to close file descriptor");
+
+				cout << "written " << entPath << " in " << path << endl;
+			}
 		}
-		while(ret);
+		catch(...)
+		{
+			archive_entry_free(ae);
+			throw;
+		}
 
-		if(close(fd) || zipCloseFileInZip(zf) != ZIP_OK)
-			throw marshal_exception("can't save to " + path + ": failed to close file descriptor");
+		archive_entry_free(ae);
+	}
+	catch(...)
+	{
+		closedir(dirDesc);
+		archive_write_free(ar);
 
-		cout << "written " << entPath << " in " << path << endl;
+		throw;
 	}
 
-	if(closedir(dirDesc) || zipClose(zf,NULL) != ZIP_OK)
+	if(closedir(dirDesc) || archive_write_free(ar) != ARCHIVE_OK)
 		throw marshal_exception("can't save to " + path + ": failed to close directory");
 }
 
-rdf::stream rdf::storage::select(optional<const rdf::node&> s, optional<const rdf::node&> p, optional<const rdf::node&> o) const
+string storage::encode_node(const node& n)
 {
-	if(s && p && o)
-		return rdf::stream(librdf_model_find_statements(_model,statement(*s,*p,*o).inner()));
-	else if(s && p && !o)
-		return rdf::stream(librdf_model_get_targets(_model,s->inner(),p->inner()),s,p,o);
-	else if(s && !p && o)
-		return rdf::stream(librdf_model_get_arcs(_model,s->inner(),o->inner()),s,p,o);
-	else if(s && !p && !o)
-		throw std::invalid_argument("invalid query");
-	else if(!s && p && o)
-		return rdf::stream(librdf_model_get_sources(_model,o->inner(),p->inner()),s,p,o);
-	else if(!s && p && !o)
-		throw std::invalid_argument("invalid query");
-	else if(!s && !p && o)
-		throw std::invalid_argument("invalid query");
-	else
-		return rdf::stream(librdf_model_as_stream(_model));
-}
-
-rdf::statement rdf::storage::first(optional<const rdf::node&> s,optional<const rdf::node&> p,optional<const rdf::node&> o) const
-{
-	rdf::stream st = select(s,p,o);
-
-	if(st.eof())
-		throw marshal_exception("no matching rdf statement");
-
-	statement ret;
-	st >> ret;
-
-	return ret;
-}
-
-bool rdf::storage::has(optional<const rdf::node&> s,optional<const rdf::node&> p,optional<const rdf::node&> o) const
-{
-	return !select(s,p,o).eof();
-}
-
-void rdf::storage::insert(const rdf::statement &st)
-{
-	if(librdf_model_add_statement(_model,st.inner()))
-		throw marshal_exception("failed to add statement");
-}
-
-void rdf::storage::insert(const rdf::node& s, const rdf::node& p, const rdf::node& o)
-{
-	if(librdf_model_add(_model,librdf_new_node_from_node(s.inner()),
-															librdf_new_node_from_node(p.inner()),
-															librdf_new_node_from_node(o.inner())))
-		throw marshal_exception("failed to add statement");
-}
-
-void rdf::storage::remove(const rdf::statement &st)
-{
-	if(librdf_model_remove_statement(_model,st.inner()))
-	{
-		stringstream ss;
-		ss << st;
-		throw marshal_exception("failed to remove statement: " + ss.str());
-	}
-}
-
-string rdf::storage::dump(const std::string &format) const
-{
-	unsigned char *raw = librdf_model_to_string(_model,NULL,NULL,format.c_str(),NULL);
-
-	if(raw == NULL)
-		throw marshal_exception("failed to dump in '" + format + "' format");
-
-	string ret(reinterpret_cast<const char*>(raw));
-	free(raw);
-
-	return ret;
-}
-
-rdf::node::node(void)
-: _node(librdf_new_node_from_blank_identifier(world::instance().rdf(),NULL))
-{}
-
-rdf::node::node(const std::string &blank_id)
-: _node(librdf_new_node_from_blank_identifier(world::instance().rdf(),reinterpret_cast<const unsigned char*>(blank_id.c_str())))
-{}
-
-rdf::node::node(librdf_node *n)
-: _node(n)
-{}
-
-rdf::node::node(const rdf::node &n)
-: _node(librdf_new_node_from_node(n._node))
-{}
-
-rdf::node::node(rdf::node &&n)
-: _node(n._node)
-{
-	n._node = nullptr;
-}
-
-rdf::node::~node(void)
-{
-	if(_node)
-		librdf_free_node(_node);
-}
-
-rdf::node &rdf::node::operator=(const rdf::node &n)
-{
-	if(_node)
-		librdf_free_node(_node);
-	_node = n._node ? librdf_new_node_from_node(n._node) : nullptr;
-
-	return *this;
-}
-
-rdf::node &rdf::node::operator=(rdf::node &&n)
-{
-	_node = n._node;
-	n._node = nullptr;
-
-	return *this;
-}
-
-bool rdf::node::operator==(const rdf::node &n) const
-{
-	return librdf_node_equals(inner(),n.inner());
-}
-
-bool rdf::node::operator!=(const rdf::node &n) const
-{
-	return !(*this == n);
-}
-
-string rdf::node::to_string(void) const
-{
-	if(!_node)
-		return string("NULL");
-	else if(librdf_node_is_literal(_node))
-		return string(reinterpret_cast<const char *>((librdf_node_get_literal_value(_node))));
-	else if(librdf_node_is_resource(_node))
-		return string(reinterpret_cast<const char *>(librdf_uri_as_string(librdf_node_get_uri(_node))));
-	else if(librdf_node_is_blank(_node))
-		return string(reinterpret_cast<const char *>(librdf_node_get_blank_identifier(_node)));
+	if(n.is_iri())
+		return string(1,Named) + n.as_iri();
+	else if(n.is_literal())
+		return string(1,Literal) + encode_varint(n.as_literal().size()) + n.as_literal() + n.literal_type();
+	else if(n.is_blank())
+		return string(1,Blank) + to_string(n.as_uuid());
 	else
 		throw marshal_exception("unknown node type");
 }
 
-librdf_node *rdf::node::inner(void) const
+std::pair<node,storage::iter> storage::decode_node(iter b, iter e)
 {
-	return _node;
+	switch(static_cast<node_type>(*b))
+	{
+		case Named:
+			return make_pair(node(iri(string(next(b),e))),e);
+		case Literal:
+		{
+			pair<size_t,iter> len = decode_varint(next(b),e);
+			string lit(len.second,next(len.second,len.first));
+			string ty(next(len.second,len.first),e);
+			return make_pair(node(lit,ty),e);
+		}
+		case Blank:
+		{
+			boost::uuids::string_generator s;
+			return make_pair(node(s(string(next(b),e))),e);
+		}
+		default:
+			throw marshal_exception("unknown node type");
+	}
 }
 
-std::ostream& rdf::operator<<(std::ostream &os, const rdf::node &n)
+string storage::encode_key(const statement& st)
 {
-	os << n.to_string();
-	return os;
+	string s = encode_node(st.subject), p = encode_node(st.predicate), o = encode_node(st.object);
+	return encode_varint(s.size()) + s + encode_varint(p.size()) + p + encode_varint(o.size()) + o;
 }
 
-rdf::node po::rdf::lit(const std::string &s)
+pair<statement,storage::iter> storage::decode_key(iter b, iter e)
 {
-	rdf::world &w = rdf::world::instance();
-	librdf_uri *type = librdf_new_uri(w.rdf(),reinterpret_cast<const unsigned char *>(XSD"string"));
-	rdf::node ret(librdf_new_node_from_typed_literal(w.rdf(),reinterpret_cast<const unsigned char *>(s.c_str()),NULL,type));
+	pair<size_t,iter> s_sz = decode_varint(b,e);
+	pair<node,iter> s = decode_node(s_sz.second,next(s_sz.second,s_sz.first));
+	pair<size_t,iter> p_sz = decode_varint(s.second,e);
+	pair<node,iter> p = decode_node(p_sz.second,next(p_sz.second,p_sz.first));
+	pair<size_t,iter> o_sz = decode_varint(p.second,e);
+	pair<node,iter> o = decode_node(o_sz.second,next(o_sz.second,o_sz.first));
 
-	librdf_free_uri(type);
+	return make_pair(statement(s.first,p.first,o.first),o.second);
+}
+
+string storage::encode_varint(size_t sz)
+{
+	string tmp;
+
+	while(sz)
+	{
+		tmp.push_back(sz & 0x7f);
+		sz >>= 7;
+	}
+
+	string ret;
+	auto i = tmp.rbegin();
+	while(i != tmp.rend())
+	{
+		ret.push_back(*i | (next(i) == tmp.rend() ? 0 : 0x80));
+		++i;
+	}
+
 	return ret;
 }
 
-rdf::node po::rdf::lit(unsigned long long n)
+pair<size_t,storage::iter> storage::decode_varint(iter b, iter e)
 {
-	rdf::world &w = rdf::world::instance();
-	librdf_uri *type = librdf_new_uri(w.rdf(),reinterpret_cast<const unsigned char *>(XSD"nonNegativeInteger"));
-	rdf::node ret(librdf_new_node_from_typed_literal(w.rdf(),reinterpret_cast<const unsigned char *>(std::to_string(n).c_str()),NULL,type));
+	size_t ret = 0;
+	unsigned int x = 0;
 
-	librdf_free_uri(type);
-	return ret;
+	assert(b != e);
+	while(b != e)
+	{
+		x = static_cast<unsigned int>(*b++);
+		ret = (ret << 7) | (x & 0x7f);
+		if(!(x & 0x80))
+			break;
+	}
+
+	return make_pair(ret,b);
 }
 
-rdf::node po::rdf::ns_po(const std::string &s)
-{
-	return rdf::node(librdf_new_node_from_uri_string(rdf::world::instance().rdf(),
-																									 reinterpret_cast<const unsigned char *>((std::string(PO) + s).c_str())));
-}
-
-rdf::node po::rdf::ns_rdf(const std::string &s)
-{
-	return rdf::node(librdf_new_node_from_uri_string(rdf::world::instance().rdf(),
-																									 reinterpret_cast<const unsigned char *>((std::string(RDF) + s).c_str())));
-}
-
-rdf::node po::rdf::ns_xsd(const std::string &s)
-{
-	return rdf::node(librdf_new_node_from_uri_string(rdf::world::instance().rdf(),
-																									 reinterpret_cast<const unsigned char *>((std::string(XSD) + s).c_str())));
-}
-
-rdf::node po::rdf::ns_local(const std::string &s)
-{
-	return rdf::node(librdf_new_node_from_uri_string(rdf::world::instance().rdf(),
-																									 reinterpret_cast<const unsigned char *>((std::string(LOCAL) + s).c_str())));
-}
-
-rdf::statement::statement(const rdf::node &s, const rdf::node &p, const rdf::node &o)
-: _statement(librdf_new_statement_from_nodes(world::instance().rdf(),
-																							s.inner() ? librdf_new_node_from_node(s.inner()) : NULL,
-																							p.inner() ? librdf_new_node_from_node(p.inner()) : NULL,
-																							o.inner() ? librdf_new_node_from_node(o.inner()) : NULL))
-{}
-
-rdf::statement::statement(librdf_statement *n)
-: _statement(n)
-{}
-
-rdf::statement::statement(const rdf::statement &n)
-: _statement(librdf_new_statement_from_statement(n._statement))
-{}
-
-rdf::statement::statement(rdf::statement &&n)
-: _statement(n._statement)
-{
-	n._statement = nullptr;
-}
-
-rdf::statement::~statement(void)
-{
-	if(_statement)
-		librdf_free_statement(_statement);
-}
-
-rdf::statement &rdf::statement::operator=(const rdf::statement &n)
-{
-	if(_statement)
-		librdf_free_statement(_statement);
-	_statement = n._statement ? librdf_new_statement_from_statement(n._statement) : nullptr;
-
-	return *this;
-}
-
-rdf::statement &rdf::statement::operator=(rdf::statement &&n)
-{
-	_statement = n._statement;
-	n._statement = nullptr;
-
-	return *this;
-}
-
-rdf::node rdf::statement::subject(void) const
-{
-	if(!_statement || !librdf_statement_get_subject(_statement))
-		throw marshal_exception("can't get subject");
-
-	return node(librdf_new_node_from_node(librdf_statement_get_subject(_statement)));
-}
-
-rdf::node rdf::statement::predicate(void) const
-{
-	if(!_statement || !librdf_statement_get_predicate(_statement))
-		throw marshal_exception("can't get predicate");
-
-	return node(librdf_new_node_from_node(librdf_statement_get_predicate(_statement)));
-}
-
-rdf::node rdf::statement::object(void) const
-{
-	if(!_statement || !librdf_statement_get_object(_statement))
-		throw marshal_exception("can't get object");
-
-	return node(librdf_new_node_from_node(librdf_statement_get_object(_statement)));
-}
-
-librdf_statement *rdf::statement::inner(void) const
-{
-	return _statement;
-}
-
-ostream& rdf::operator<<(ostream &os, const rdf::statement &s)
-{
-	os << "(" << s.subject() << ", " << s.predicate() << ", " << s.object() << ")";
-	return os;
-}
-
-rdf::stream::stream(librdf_stream *n)
-: _stream(n)
-{}
-
-rdf::stream::stream(librdf_iterator *i, boost::optional<const rdf::node&> s, boost::optional<const rdf::node&> p, boost::optional<const rdf::node&> o)
-: _stream(NULL)
-{
-	if(!s && p && o)
-		_stream = librdf_new_stream_from_node_iterator(i,statement(node(NULL),*p,*o).inner(),LIBRDF_STATEMENT_SUBJECT);
-	else if(s && !p && o)
-		_stream = librdf_new_stream_from_node_iterator(i,statement(*s,node(NULL),*o).inner(),LIBRDF_STATEMENT_PREDICATE);
-	else if(s && p && !o)
-		_stream = librdf_new_stream_from_node_iterator(i,statement(*s,*p,node(NULL)).inner(),LIBRDF_STATEMENT_OBJECT);
-	else
-		throw marshal_exception("invalid statement template");
-}
-
-rdf::stream::stream(rdf::stream &&n)
-: _stream(n._stream)
-{
-	n._stream = NULL;
-}
-
-rdf::stream::~stream(void)
-{
-	if(_stream)
-		librdf_free_stream(_stream);
-}
-
-rdf::stream &rdf::stream::operator>>(rdf::statement &st)
-{
-	if(eof())
-		throw marshal_exception("stream at eof");
-
-	st = statement(librdf_new_statement_from_statement(librdf_stream_get_object(_stream)));
-	librdf_stream_next(_stream);
-
-	return *this;
-}
-
-bool rdf::stream::eof(void) const
-{
-	return _stream && librdf_stream_end(_stream) != 0;
-}
-
-rdf::nodes rdf::read_list(const rdf::node &n, const rdf::storage &store)
+nodes po::rdf::read_list(const node &n, const storage &store)
 {
 	nodes ret;
 	node cur = n;
 
 	while(cur != "nil"_rdf)
 	{
-		statement s = store.first(cur,"first"_rdf,none);
+		statement s = store.first(cur,"first"_rdf);
 
-		ret.push_back(s.object());
-		cur = store.first(cur,"rest"_rdf,none).object();
+		ret.push_back(s.object);
+		cur = store.first(cur,"rest"_rdf).object;
 	}
 
 	return ret;

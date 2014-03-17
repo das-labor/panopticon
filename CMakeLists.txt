@@ -12,6 +12,7 @@ set(panopticon_VERSION
 option(panopticon_BUILD "Build Panopticon Library (libpanopticon)" ON)
 option(qtpanopticon_BUILD "Build Qt UI (qtpanopticon)" ON)
 option(panop_BUILD "Build cli tool (panop)" OFF)
+option(depend_BUILD "Build dependecies" OFF)
 
 # Packaging
 set(CPACK_PACKAGE_CONTACT "seu@panopticon.re")
@@ -28,13 +29,13 @@ include(CPack)
 # Default to debug build
 set(CMAKE_BUILD_TYPE "Debug")
 
+# find_package macros for librdf, raptor and panopticon
+set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+
 # Compiler flags
 add_definitions("-Wall -Wextra -pedantic
 -Wno-unused-parameter")
-# remove when fixed in CVC4
-add_definitions("-Wno-deprecated")
 
-# Release mode is default
 if(NOT DEFINED "CMAKE_BUILD_TYPE" OR "${CMAKE_BUILD_TYPE}" STREQUAL "Release")
 	add_definitions("-Werror")
 	message("Build release")
@@ -68,19 +69,17 @@ else()
 endif()
 
 # Dependencies
-find_package(PkgConfig)
-pkg_check_modules(redland REQUIRED redland)
-pkg_check_modules(raptor REQUIRED raptor2)
-pkg_check_modules(minizip REQUIRED minizip)
+find_package(LibArchive REQUIRED)
 find_package(Boost 1.52 COMPONENTS system REQUIRED)
-pkg_check_modules(panopticon panopticon)
+find_package(KyotoCabinet REQUIRED)
 
 # Targets
 if(${panopticon_BUILD})
 	message("** Building Panopticon library")
 	add_subdirectory("lib")
+	set(panopticon_FOUND TRUE)
 else()
-	set(panopticon_FOUND FALSE)
+	find_package(panopticon)
 endif()
 
 if(${panop_BUILD} AND ${panopticon_FOUND})

@@ -145,7 +145,7 @@ TEST(value,marshal)
 
 	rdf::storage store;
 	save_point(store);
-	ASSERT_FALSE(store.select(boost::none,boost::none,boost::none).eof());
+	ASSERT_GT(store.count(),0);
 
 	a.remove();
 	b.remove();
@@ -153,5 +153,5 @@ TEST(value,marshal)
 	d.remove();
 
 	save_point(store);
-	ASSERT_TRUE(store.select(boost::none,boost::none,boost::none).eof());
+	ASSERT_EQ(store.count(),0);
 }
