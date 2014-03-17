@@ -6,9 +6,10 @@ extern "C" {
 #include <archive.h>
 #include <archive_entry.h>
 
+// stat()
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <fcntl.h>
+#include <unistd.h>
 }
 
 #include <boost/uuid/uuid_generators.hpp>
@@ -106,10 +107,15 @@ storage::storage(const filesystem::path& p)
 			filesystem::path tmpName = _tempdir / pathName;
 
 			found_meta = found_meta | (pathName.filename() == filesystem::path("meta.kct"));
-			int fd = open(tmpName.string().c_str(),O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR);
+			ofstream of(tmpName.string(), ios_base::binary | ios_base::trunc | ios_base::out);
+			char buf[4096];
+			size_t len;
 
-			if(fd < 0 || archive_read_data_into_fd(ar,fd) != ARCHIVE_OK || close(fd))
-					throw marshal_exception("can't open " + p.string() + " into tempdir: " + strerror(errno));
+			if(!of)
+				throw marshal_exception("can't open " + p.string() + " into tempdir: " + strerror(errno));
+
+			while((len = archive_read_data(ar,buf,4096)) > 0)
+				of.write(buf,len);
 
 			cout << "read " << tmpName << " from " << p.string() << endl;
 		}
@@ -271,45 +277,28 @@ void storage::snapshot(const filesystem::path& p) const
 				if(entBase == filesystem::path(".") || entBase == filesystem::path(".."))
 					continue;
 
-				int fd = open(entPath.c_str(),O_RDONLY);
-				if(fd < 0)
+				ifstream fi(entPath.string().c_str(),ios_base::binary | ios_base::in);
+				if(!fi)
 					throw marshal_exception("can't save to " + p.string() + ": " + strerror(errno));
 
-				try
+				struct stat st;
+				stat(entPath.string().c_str(),&st);
+				archive_entry_clear(ae);
+				archive_entry_copy_pathname(ae,entBase.string().c_str());
+				archive_entry_copy_stat(ae,&st);
+
+				if(archive_write_header(ar,ae) != ARCHIVE_OK)
+					throw marshal_exception("can't save to " + p.string() + ": failed to write header");
+
+				while(!fi.eof());
 				{
-					struct stat st;
+					fi.read(buf,4096);
 
-					fstat(fd,&st);
-					archive_entry_clear(ae);
-					archive_entry_copy_pathname(ae,entBase.c_str());
-					archive_entry_copy_stat(ae,&st);
-
-					if(archive_write_header(ar,ae) != ARCHIVE_OK)
-						throw marshal_exception("can't save to " + p.string() + ": failed to write header");
-
-					int ret;
-					do
-					{
-						ret = read(fd,buf,4096);
-
-						if(ret < 0)
-							throw marshal_exception("can't save to " + p.string() + ": error while reading " + entPath.string());
-
-						if(ret > 0 && archive_write_data(ar,buf,ret) != ARCHIVE_OK)
-							throw marshal_exception("can't save to " + p.string() + ": error while writing " + entPath.string());
-					}
-					while(ret);
-				}
-				catch(...)
-				{
-					close(fd);
-					throw;
+					if(archive_write_data(ar,buf,fi.gcount()) != ARCHIVE_OK)
+						throw marshal_exception("can't save to " + p.string() + ": error while writing " + entPath.string());
 				}
 
-				if(close(fd))
-					throw marshal_exception("can't save to " + p.string() + ": failed to close file descriptor");
-
-				cout << "written " << entPath << " in " << p.string() << endl;
+				cout << "written " << entPath.string() << " in " << p.string() << endl;
 			}
 		}
 		catch(...)
