@@ -14,6 +14,7 @@
 #include <boost/variant.hpp>
 #include <boost/operators.hpp>
 #include <boost/functional/hash.hpp>
+#include <boost/filesystem.hpp>
 
 #define LOCAL "http://localhost/"
 #define PO "http://panopticon.re/rdf/v1/"
@@ -100,7 +101,7 @@ namespace po
 
 			storage(void);
 			storage(const storage&);
-			storage(const std::string& base);
+			storage(const boost::filesystem::path&);
 			~storage(void);
 
 			storage& operator=(const storage&);
@@ -116,7 +117,7 @@ namespace po
 			std::list<statement> find(const node &s, const node &p) const;
 			statement first(const node &s, const node &p) const;
 			int64_t count(void) const;
-			void snapshot(const std::string& path) const;
+			void snapshot(const boost::filesystem::path&) const;
 
 			static std::string encode_node(const node& n);
 			static std::pair<node,iter> decode_node(iter, iter);
@@ -134,7 +135,7 @@ namespace po
 			};
 
 			mutable PolyDB _meta; ///< subject/predicate/object
-			std::string _tempdir;
+			boost::filesystem::path _tempdir;
 		};
 
 		inline node lit(const std::string& s) { return node(s,XSD"string"); }

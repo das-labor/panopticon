@@ -5,10 +5,7 @@
 extern "C" {
 #include <archive.h>
 #include <archive_entry.h>
-#include <dirent.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <string.h>
+
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -23,6 +20,7 @@ using namespace po;
 using namespace std;
 using namespace rdf;
 using namespace boost;
+using namespace filesystem;
 
 marshal_exception::marshal_exception(const string &w)
 : runtime_error(w)
@@ -71,31 +69,16 @@ bool statement::operator<(const statement& st) const
 }
 
 storage::storage(void)
-: _meta(), _tempdir("")
+: _meta(), _tempdir(unique_path(temp_directory_path() / "panop-%%%%-%%%%-%%%%-%%%%"))
 {
-	char *tmp = new char[TEMPDIR_TEMPLATE.size() + 1];
-
-	strncpy(tmp,TEMPDIR_TEMPLATE.c_str(),TEMPDIR_TEMPLATE.size() + 1);
-	tmp = mkdtemp(tmp);
-
-	_tempdir = string(tmp);
-	delete[] tmp;
-
-	if(!_meta.open(_tempdir + "/meta.kct",PolyDB::OWRITER | PolyDB::OCREATE))
+	if(!filesystem::create_directory(_tempdir) ||
+		 !_meta.open((_tempdir / filesystem::path("meta.kct")).string(),PolyDB::OWRITER | PolyDB::OCREATE))
 		throw marshal_exception("can't open database");
 }
 
-storage::storage(const string& path)
-: _meta(), _tempdir("")
+storage::storage(const filesystem::path& p)
+: _meta(), _tempdir(unique_path(temp_directory_path() / "panop-%%%%-%%%%-%%%%-%%%%"))
 {
-	char *tmp = new char[TEMPDIR_TEMPLATE.size() + 1];
-
-	strncpy(tmp,TEMPDIR_TEMPLATE.c_str(),TEMPDIR_TEMPLATE.size() + 1);
-	tmp = mkdtemp(tmp);
-
-	_tempdir = string(tmp);
-	delete[] tmp;
-
 	// open target zip
 	archive *ar = archive_read_new();
 	if(ar == NULL)
@@ -109,8 +92,8 @@ storage::storage(const string& path)
 
 	try
 	{
-		if(archive_read_open_filename(ar,path.c_str(),4096) != ARCHIVE_OK)
-			throw marshal_exception("can't open " + path);
+		if(archive_read_open_filename(ar,p.string().c_str(),4096) != ARCHIVE_OK)
+			throw marshal_exception("can't open " + p.string());
 
 		bool found_meta = false;
 
@@ -119,20 +102,20 @@ storage::storage(const string& path)
 
 		while(archive_read_next_header(ar,&ae) == ARCHIVE_OK)
 		{
-			string pathName(archive_entry_pathname(ae));
-			string tmpName = _tempdir + "/" + pathName;
+			filesystem::path pathName(archive_entry_pathname(ae));
+			filesystem::path tmpName = _tempdir / pathName;
 
-			found_meta = found_meta | (pathName.substr(pathName.size() - 13,std::string::npos) == "meta.kct");
-			int fd = open(tmpName.c_str(),O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR);
+			found_meta = found_meta | (pathName.filename() == filesystem::path("meta.kct"));
+			int fd = open(tmpName.string().c_str(),O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR);
 
 			if(fd < 0 || archive_read_data_into_fd(ar,fd) != ARCHIVE_OK || close(fd))
-					throw marshal_exception("can't open " + path + " into tempdir: " + strerror(errno));
+					throw marshal_exception("can't open " + p.string() + " into tempdir: " + strerror(errno));
 
-			cout << "read " << tmpName << " from " << path << endl;
+			cout << "read " << tmpName << " from " << p.string() << endl;
 		}
 
 		if(!(found_meta))
-			throw marshal_exception("can't open " + path + ": no graph database in file");
+			throw marshal_exception("can't open " + p.string() + ": no graph database in file");
 	}
 	catch(...)
 	{
@@ -141,25 +124,21 @@ storage::storage(const string& path)
 	}
 
 	if(archive_read_free(ar) != ARCHIVE_OK)
-		throw marshal_exception("can't open " + path);
+		throw marshal_exception("can't open " + p.string());
 
-	if(!_meta.open(_tempdir + "/meta.kct",PolyDB::OWRITER | PolyDB::OCREATE))
+	if(!filesystem::create_directory(_tempdir) ||
+		 !_meta.open((_tempdir / filesystem::path("meta.kct")).string(),PolyDB::OWRITER | PolyDB::OCREATE))
 		throw marshal_exception("can't open database");
 }
 
 storage::storage(const storage& st)
-: _meta(), _tempdir("")
+: _meta(), _tempdir(unique_path(temp_directory_path() / "panop-%%%%-%%%%-%%%%-%%%%"))
 {
-	char *tmp = new char[TEMPDIR_TEMPLATE.size() + 1];
+	if(!filesystem::create_directory(_tempdir))
+		throw marshal_exception("can't create temporary directory");
 
-	strncpy(tmp,TEMPDIR_TEMPLATE.c_str(),TEMPDIR_TEMPLATE.size() + 1);
-	tmp = mkdtemp(tmp);
-
-	_tempdir = string(tmp);
-	delete[] tmp;
-
-	st._meta.copy(_tempdir + "/meta.kct");
-	if(!_meta.open(_tempdir + "/meta.kct",PolyDB::OWRITER | PolyDB::OCREATE))
+	st._meta.copy((_tempdir / filesystem::path("meta.kct")).string());
+	if(!_meta.open((_tempdir / filesystem::path("meta.kct")).string(),PolyDB::OWRITER | PolyDB::OCREATE))
 		throw marshal_exception("can't open database");
 }
 
@@ -167,54 +146,8 @@ storage::~storage(void)
 {
 	_meta.close();
 
-	std::function<void(const string &path)> rm_r;
-	rm_r = [&](const string &path)
-	{
-		// open dir
-		DIR *dirDesc = opendir(path.c_str());
-		if(!dirDesc)
-			throw marshal_exception("can't delete " + path + ": " + strerror(errno));
-
-		// delete contents
-		struct dirent *dirEnt;
-		struct stat st;
-
-		while((dirEnt = readdir(dirDesc)))
-		{
-			string ent(dirEnt->d_name);
-			string cur = path + "/" + ent;
-
-			if(ent == "." || ent == "..")
-				continue;
-
-			if(stat(cur.c_str(),&st))
-				throw marshal_exception("can't stat " + path + "/" + cur + ": " + strerror(errno));
-
-			if(S_ISDIR(st.st_mode))
-				rm_r(cur);
-			else
-				if(unlink(cur.c_str()))
-					throw marshal_exception("can't unlink " + path + "/" + cur + ": " + strerror(errno));
-		}
-
-		if(closedir(dirDesc))
-			throw marshal_exception("can't close directory " + path);
-
-		if(rmdir(path.c_str()))
-			throw marshal_exception("can't delete directory " + path);
-	};
-
-	if(_tempdir != "")
-	{
-		try
-		{
-			rm_r(_tempdir);
-		}
-		catch(const marshal_exception &e)
-		{
-			cerr << "Exception in rdf::storage::~storage: " << e.what() << endl;
-		}
-	}
+	if(!_tempdir.empty())
+		filesystem::remove_all(_tempdir);
 }
 
 bool storage::has(const node& s, const node& p, const node& o) const
@@ -290,61 +223,57 @@ bool storage::remove(const statement& st)
 	return _meta.remove(encode_key(st));
 }
 
-void storage::snapshot(const string& path) const
+void storage::snapshot(const filesystem::path& p) const
 {
-	if(path.empty())
+	if(p.empty())
 		throw marshal_exception("can't save to empty path");
 
 	// delete existing `path'
-	unlink(path.c_str());
+	filesystem::remove(p);
 
 	// sync bdb
 	if(!_meta.synchronize(false))
 		throw marshal_exception("can't sync triple store");
 
 	// open temp dir
-	DIR *dirDesc = opendir(_tempdir.c_str());
-	if(!dirDesc)
-		throw marshal_exception("can't save to " + path + ": " + strerror(errno));
+	filesystem::directory_iterator di(_tempdir);
 
 	// open target zip
 	struct archive *ar = archive_write_new();
 	if(ar == NULL)
-		throw marshal_exception("can't save to " + path + ": failed to allocate archive struct");
+		throw marshal_exception("can't save to " + p.string() + ": failed to allocate archive struct");
 
 	try
 	{
 		if(archive_write_add_filter_lzma(ar) != ARCHIVE_OK)
-			throw marshal_exception("can't save to " + path + ": failed setting compression algorithm");
+			throw marshal_exception("can't save to " + p.string() + ": failed setting compression algorithm");
 
 		// save into *.cpio.lzma
 		if(archive_write_set_format_cpio(ar) != ARCHIVE_OK)
-			throw marshal_exception("can't save to " + path + ": failed setting archive format");
+			throw marshal_exception("can't save to " + p.string() + ": failed setting archive format");
 
-		if(archive_write_open_filename(ar,path.c_str()) != ARCHIVE_OK)
-			throw marshal_exception("can't save to " + path + ": failed to open");
+		if(archive_write_open_filename(ar,p.string().c_str()) != ARCHIVE_OK)
+			throw marshal_exception("can't save to " + p.string() + ": failed to open");
 
 		// save database files
-		struct dirent *dirEnt;
 		char buf[4096];
 		struct archive_entry *ae = archive_entry_new();
 
 		if(!ae)
-			throw marshal_exception("can't save to " + path + ": failed to allocate archive entry struct");
+			throw marshal_exception("can't save to " + p.string() + ": failed to allocate archive entry struct");
 
 		try
 		{
-			while((dirEnt = readdir(dirDesc)))
+			while(di != filesystem::directory_iterator())
 			{
-				string entBase(dirEnt->d_name);
-				string entPath = _tempdir + "/" + entBase;
+				filesystem::path entBase = di->path(), entPath = _tempdir / entBase;
 
-				if(entBase == "." || entBase == "..")
+				if(entBase == filesystem::path(".") || entBase == filesystem::path(".."))
 					continue;
 
 				int fd = open(entPath.c_str(),O_RDONLY);
 				if(fd < 0)
-					throw marshal_exception("can't save to " + path + ": " + strerror(errno));
+					throw marshal_exception("can't save to " + p.string() + ": " + strerror(errno));
 
 				try
 				{
@@ -356,7 +285,7 @@ void storage::snapshot(const string& path) const
 					archive_entry_copy_stat(ae,&st);
 
 					if(archive_write_header(ar,ae) != ARCHIVE_OK)
-						throw marshal_exception("can't save to " + path + ": failed to write header");
+						throw marshal_exception("can't save to " + p.string() + ": failed to write header");
 
 					int ret;
 					do
@@ -364,10 +293,10 @@ void storage::snapshot(const string& path) const
 						ret = read(fd,buf,4096);
 
 						if(ret < 0)
-							throw marshal_exception("can't save to " + path + ": error while reading " + entPath + "(" + strerror(errno) + ")");
+							throw marshal_exception("can't save to " + p.string() + ": error while reading " + entPath.string());
 
 						if(ret > 0 && archive_write_data(ar,buf,ret) != ARCHIVE_OK)
-							throw marshal_exception("can't save to " + path + ": error while writing " + entPath);
+							throw marshal_exception("can't save to " + p.string() + ": error while writing " + entPath.string());
 					}
 					while(ret);
 				}
@@ -378,9 +307,9 @@ void storage::snapshot(const string& path) const
 				}
 
 				if(close(fd))
-					throw marshal_exception("can't save to " + path + ": failed to close file descriptor");
+					throw marshal_exception("can't save to " + p.string() + ": failed to close file descriptor");
 
-				cout << "written " << entPath << " in " << path << endl;
+				cout << "written " << entPath << " in " << p.string() << endl;
 			}
 		}
 		catch(...)
@@ -393,14 +322,12 @@ void storage::snapshot(const string& path) const
 	}
 	catch(...)
 	{
-		closedir(dirDesc);
 		archive_write_free(ar);
-
 		throw;
 	}
 
-	if(closedir(dirDesc) || archive_write_free(ar) != ARCHIVE_OK)
-		throw marshal_exception("can't save to " + path + ": failed to close directory");
+	if(archive_write_free(ar) != ARCHIVE_OK)
+		throw marshal_exception("can't save to " + p.string() + ": failed to close directory");
 }
 
 string storage::encode_node(const node& n)

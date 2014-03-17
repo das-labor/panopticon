@@ -33,12 +33,15 @@ set(CMAKE_BUILD_TYPE "Debug")
 set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 # Compiler flags
-add_definitions("-Wall -Wextra -pedantic
+if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" OR
+	 "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+	add_definitions("-Wall -Wextra -pedantic
 -Wno-unused-parameter")
+endif()
 
 if(NOT DEFINED "CMAKE_BUILD_TYPE" OR "${CMAKE_BUILD_TYPE}" STREQUAL "Release")
 	add_definitions("-Werror")
-	message("Build release")
+	message(STATUS "Build release")
 elseif("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
 
 	# enable tests
@@ -46,36 +49,38 @@ elseif("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
 	find_package(GTest REQUIRED)
 
 	# compile and link with coverage info
-	if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-		message("** Coverage testing disabled when using clang")
-	else()
+	if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
 		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --coverage")
+	else()
+		message(STATUS "Coverage testing disabled when not using GCC")
 	endif()
 
 	message(STATUS "Debug build")
 endif()
 
 # Check for C++11
-CHECK_CXX_COMPILER_FLAG("-std=c++11" CXXFLAG_CPP11)
-if(NOT DEFINED "CXXFLAG_CPP11")
-	CHECK_CXX_COMPILER_FLAG("-std=c++0x" CXXFLAG_CPP0X)
-	if(NOT DEFINED "CXXFLAG_CPP0X")
-		message(FATAL_ERROR "Your compiler does not support C++11. Please use clang 3.0 or GCC 4.7.")
+if(NOT "${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+	CHECK_CXX_COMPILER_FLAG("-std=c++11" CXXFLAG_CPP11)
+	if(NOT DEFINED "CXXFLAG_CPP11")
+		CHECK_CXX_COMPILER_FLAG("-std=c++0x" CXXFLAG_CPP0X)
+		if(NOT DEFINED "CXXFLAG_CPP0X")
+			message(FATAL_ERROR "Your compiler does not support C++11. Please use clang 3.0 or GCC 4.7.")
+		else()
+			add_definitions("-std=c++0x")
+		endif()
 	else()
-		add_definitions("-std=c++0x")
+		add_definitions("-std=c++11")
 	endif()
-else()
-	add_definitions("-std=c++11")
 endif()
 
 # Dependencies
 find_package(LibArchive REQUIRED)
-find_package(Boost 1.52 COMPONENTS system REQUIRED)
+find_package(Boost 1.52 COMPONENTS system filesystem REQUIRED)
 find_package(KyotoCabinet REQUIRED)
 
 # Targets
 if(${panopticon_BUILD})
-	message("** Building Panopticon library")
+	message(STATUS "Building Panopticon library")
 	add_subdirectory("lib")
 	set(panopticon_FOUND TRUE)
 else()
@@ -83,17 +88,14 @@ else()
 endif()
 
 if(${panop_BUILD} AND ${panopticon_FOUND})
-	message("** Building Panopticon command line tool")
+	message(STATUS "Building Panopticon command line tool")
 	add_subdirectory("cli")
 	add_dependencies(panop panopticon)
 endif()
 
 if(${qtpanopticon_BUILD} AND ${panopticon_FOUND})
-	message("** Building Panopticon Qt UI")
+	message(STATUS "Building Panopticon Qt UI")
 	find_package(Qt5 COMPONENTS Widgets Qml Quick REQUIRED)
 	add_subdirectory("qt")
 	add_dependencies(qtpanopticon panopticon)
 endif()
-
-message("** Type 'make' to build.")
-message("** You can run the test suite with 'ctest'")
