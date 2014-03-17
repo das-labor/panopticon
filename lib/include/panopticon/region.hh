@@ -24,6 +24,9 @@ namespace po
 	using tryte = boost::optional<byte>;
 	using slab = boost::any_range<tryte,boost::random_access_traversal_tag,tryte,std::ptrdiff_t>;
 
+	static_assert(std::is_base_of<std::random_access_iterator_tag,typename std::iterator_traits<slab::iterator>::iterator_category>::value,"random access iterator");
+	static_assert(std::is_base_of<std::random_access_iterator_tag,typename std::iterator_traits<slab::const_iterator>::iterator_category>::value,"random access iterator");
+
 	struct layer
 	{
 		layer(const std::string&, std::function<tryte(tryte)>);
