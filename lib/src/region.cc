@@ -1,3 +1,5 @@
+#include <numeric>
+
 #include <boost/iterator/counting_iterator.hpp>
 #include <boost/iterator/zip_iterator.hpp>
 #include <boost/iterator/transform_iterator.hpp>
@@ -258,8 +260,8 @@ po::slab region::read(boost::optional<po::layer_loc> l) const
 
 std::unordered_map<region_wloc,region_wloc> po::spanning_tree(const regions &regs)
 {
-	using vertex_descriptor = typename boost::graph_traits<digraph<po::region_loc,po::bound>>::vertex_descriptor;
-	using edge_descriptor = typename boost::graph_traits<digraph<po::region_loc,po::bound>>::edge_descriptor;
+	using vertex_descriptor = boost::graph_traits<digraph<po::region_loc,po::bound>>::vertex_descriptor;
+	using edge_descriptor = boost::graph_traits<digraph<po::region_loc,po::bound>>::edge_descriptor;
 
 	auto r = root(make_reverse_graph(regs));
 	std::unordered_map<edge_descriptor,int> w_map;

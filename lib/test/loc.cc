@@ -28,8 +28,8 @@ namespace po
 		rdf::statements ret;
 		rdf::node root = rdf::ns_local(to_string(u));
 
-		ret.emplace_back(root,"type"_rdf,"B"_po);
-		ret.emplace_back(root,"length"_po,rdf::lit(b->length));
+		ret.emplace_back(root,rdf::ns_rdf("type"),rdf::ns_po("B"));
+		ret.emplace_back(root,rdf::ns_po("length"),rdf::lit(b->length));
 
 		return ret;
 	}
@@ -71,16 +71,16 @@ namespace po
 		rdf::statements ret;
 		rdf::node root = rdf::ns_local(to_string(u));
 
-		ret.emplace_back(root,"type"_rdf,"A"_po);
-		ret.emplace_back(root,"name"_po,rdf::lit(a->name));
+		ret.emplace_back(root,rdf::ns_rdf("type"),rdf::ns_po("A"));
+		ret.emplace_back(root,rdf::ns_po("name"),rdf::lit(a->name));
 
 		rdf::nodes tmp;
 		for(const loc<B> &b: a->bs)
 			tmp.emplace_back(rdf::ns_local(to_string(b.tag())));
 
 		pair<rdf::node,rdf::statements> p = rdf::write_list(tmp.begin(),tmp.end(),to_string(u));
-		ret.emplace_back(root,"bs"_po,p.first);
-		move(p.second.begin(),p.second.end(),back_inserter(ret));
+		ret.emplace_back(root,rdf::ns_po("bs"),p.first);
+		std::move(p.second.begin(),p.second.end(),back_inserter(ret));
 
 		return ret;
 	}
@@ -161,21 +161,21 @@ TEST(loc,marshal_simple)
 
 	save_point(*store);
 
-	ASSERT_TRUE(store->has(rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000004}"))),"type"_rdf,"A"_po));
-	ASSERT_TRUE(store->has(rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000004}"))),"name"_po,"Hello"_lit));
+	ASSERT_TRUE(store->has(rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000004}"))),rdf::ns_rdf("type"),rdf::ns_po("A")));
+	ASSERT_TRUE(store->has(rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000004}"))),rdf::ns_po("name"),rdf::lit("Hello")));
 
-	rdf::nodes bs = rdf::read_list(store->first(rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000004}"))),"bs"_po).object,*store);
+	rdf::nodes bs = rdf::read_list(store->first(rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000004}"))),rdf::ns_po("bs")).object,*store);
 	ASSERT_EQ(bs.size(),3);
 	ASSERT_EQ(*bs.begin(),rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000001}"))));
 	ASSERT_EQ(*std::next(bs.begin()),rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000002}"))));
 	ASSERT_EQ(*std::next(bs.begin(),2),rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000003}"))));
 
-	ASSERT_TRUE(store->has(rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000001}"))),"type"_rdf,"B"_po));
-	ASSERT_TRUE(store->has(rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000001}"))),"length"_po,1_lit));
-	ASSERT_TRUE(store->has(rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000002}"))),"type"_rdf,"B"_po));
-	ASSERT_TRUE(store->has(rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000002}"))),"length"_po,2_lit));
-	ASSERT_TRUE(store->has(rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000003}"))),"type"_rdf,"B"_po));
-	ASSERT_TRUE(store->has(rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000003}"))),"length"_po,3_lit));
+	ASSERT_TRUE(store->has(rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000001}"))),rdf::ns_rdf("type"),rdf::ns_po("B")));
+	ASSERT_TRUE(store->has(rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000001}"))),rdf::ns_po("length"),rdf::lit(1)));
+	ASSERT_TRUE(store->has(rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000002}"))),rdf::ns_rdf("type"),rdf::ns_po("B")));
+	ASSERT_TRUE(store->has(rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000002}"))),rdf::ns_po("length"),rdf::lit(2)));
+	ASSERT_TRUE(store->has(rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000003}"))),rdf::ns_rdf("type"),rdf::ns_po("B")));
+	ASSERT_TRUE(store->has(rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000003}"))),rdf::ns_po("length"),rdf::lit(3)));
 
 	// A: 3 + 6
 	// B: 3 * 2
@@ -206,24 +206,24 @@ TEST(loc,marshal_twice)
 
 	save_point(*store);
 
-	ASSERT_TRUE(store->has(rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000004}"))),"type"_rdf,"A"_po));
-	ASSERT_TRUE(store->has(rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000004}"))),"name"_po,"World"_lit));
+	ASSERT_TRUE(store->has(rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000004}"))),rdf::ns_rdf("type"),rdf::ns_po("A")));
+	ASSERT_TRUE(store->has(rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000004}"))),rdf::ns_po("name"),rdf::lit("World")));
 
-	rdf::nodes bs = rdf::read_list(store->first(rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000004}"))),"bs"_po).object,*store);
+	rdf::nodes bs = rdf::read_list(store->first(rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000004}"))),rdf::ns_po("bs")).object,*store);
 	ASSERT_EQ(bs.size(),4);
 	ASSERT_EQ(*bs.begin(),rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000001}"))));
 	ASSERT_EQ(*std::next(bs.begin()),rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000002}"))));
 	ASSERT_EQ(*std::next(bs.begin(),2),rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000003}"))));
 	ASSERT_EQ(*std::next(bs.begin(),3),rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000005}"))));
 
-	ASSERT_TRUE(store->has(rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000001}"))),"type"_rdf,"B"_po));
-	ASSERT_TRUE(store->has(rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000001}"))),"length"_po,1_lit));
-	ASSERT_TRUE(store->has(rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000002}"))),"type"_rdf,"B"_po));
-	ASSERT_TRUE(store->has(rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000002}"))),"length"_po,99_lit));
-	ASSERT_TRUE(store->has(rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000003}"))),"type"_rdf,"B"_po));
-	ASSERT_TRUE(store->has(rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000003}"))),"length"_po,3_lit));
-	ASSERT_TRUE(store->has(rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000005}"))),"type"_rdf,"B"_po));
-	ASSERT_TRUE(store->has(rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000005}"))),"length"_po,4_lit));
+	ASSERT_TRUE(store->has(rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000001}"))),rdf::ns_rdf("type"),rdf::ns_po("B")));
+	ASSERT_TRUE(store->has(rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000001}"))),rdf::ns_po("length"),rdf::lit(1)));
+	ASSERT_TRUE(store->has(rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000002}"))),rdf::ns_rdf("type"),rdf::ns_po("B")));
+	ASSERT_TRUE(store->has(rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000002}"))),rdf::ns_po("length"),rdf::lit(99)));
+	ASSERT_TRUE(store->has(rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000003}"))),rdf::ns_rdf("type"),rdf::ns_po("B")));
+	ASSERT_TRUE(store->has(rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000003}"))),rdf::ns_po("length"),rdf::lit(3)));
+	ASSERT_TRUE(store->has(rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000005}"))),rdf::ns_rdf("type"),rdf::ns_po("B")));
+	ASSERT_TRUE(store->has(rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000005}"))),rdf::ns_po("length"),rdf::lit(4)));
 
 	// A: 3 + 8
 	// B: 4 * 2
@@ -253,18 +253,18 @@ TEST(loc,marshal_delete)
 	save_point(*store);
 
 	ASSERT_THROW(*b3,std::runtime_error);
-	ASSERT_TRUE(store->has(rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000004}"))),"type"_rdf,"A"_po));
-	ASSERT_TRUE(store->has(rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000004}"))),"name"_po,"Hello"_lit));
+	ASSERT_TRUE(store->has(rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000004}"))),rdf::ns_rdf("type"),rdf::ns_po("A")));
+	ASSERT_TRUE(store->has(rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000004}"))),rdf::ns_po("name"),rdf::lit("Hello")));
 
-	rdf::nodes bs = rdf::read_list(store->first(rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000004}"))),"bs"_po).object,*store);
+	rdf::nodes bs = rdf::read_list(store->first(rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000004}"))),rdf::ns_po("bs")).object,*store);
 	ASSERT_EQ(bs.size(),2);
 	ASSERT_EQ(*bs.begin(),rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000001}"))));
 	ASSERT_EQ(*std::next(bs.begin()),rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000002}"))));
 
-	ASSERT_TRUE(store->has(rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000001}"))),"type"_rdf,"B"_po));
-	ASSERT_TRUE(store->has(rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000001}"))),"length"_po,1_lit));
-	ASSERT_TRUE(store->has(rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000002}"))),"type"_rdf,"B"_po));
-	ASSERT_TRUE(store->has(rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000002}"))),"length"_po,2_lit));
+	ASSERT_TRUE(store->has(rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000001}"))),rdf::ns_rdf("type"),rdf::ns_po("B")));
+	ASSERT_TRUE(store->has(rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000001}"))),rdf::ns_po("length"),rdf::lit(1)));
+	ASSERT_TRUE(store->has(rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000002}"))),rdf::ns_rdf("type"),rdf::ns_po("B")));
+	ASSERT_TRUE(store->has(rdf::ns_local(to_string(gen("{00000000-0000-0000-0000-000000000002}"))),rdf::ns_po("length"),rdf::lit(2)));
 
 	// A: 3 + 4
 	// B: 2 * 2

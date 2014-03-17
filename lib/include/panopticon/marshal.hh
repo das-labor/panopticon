@@ -150,12 +150,14 @@ namespace po
 		nodes read_list(const node &n, const storage &store);
 	}
 
+#ifndef _MSC_VER
 	inline rdf::node operator"" _lit(unsigned long long i) { return rdf::lit(i); }
 	inline rdf::node operator"" _lit(const char *str, size_t sz) { return rdf::lit(std::string(str,sz)); }
 	inline rdf::node operator"" _po(const char *s, std::size_t l) { return rdf::ns_po(std::string(s,l)); }
 	inline rdf::node operator"" _rdf(const char *s, std::size_t l) { return rdf::ns_rdf(std::string(s,l)); }
 	inline rdf::node operator"" _xsd(const char *s, std::size_t l) { return rdf::ns_xsd(std::string(s,l)); }
 	inline rdf::node operator"" _local(const char *s, std::size_t l) { return rdf::ns_local(std::string(s,l)); }
+#endif
 
 	template<typename It>
 	std::pair<rdf::node,rdf::statements> rdf::write_list(It begin, It end, const std::string &ns)
@@ -163,17 +165,17 @@ namespace po
 		rdf::statements ret;
 		int counter = 0;
 		std::function<node(void)> blank = [&](void) { return ns.empty() ? node::blank() : node(ns + std::to_string(counter++)); };
-		rdf::node head = (std::distance(begin,end) ? blank() : "nil"_rdf);
+		rdf::node head = (std::distance(begin,end) ? blank() : rdf::ns_rdf("nil"));
 
 		rdf::node last = head;
 		It i = begin;
 		while(i != end)
 		{
 			const rdf::node &n = *i;
-			rdf::node next = (std::next(i) == end ? "nil"_rdf : blank());
+			rdf::node next = (std::next(i) == end ? rdf::ns_rdf("nil") : blank());
 
-			ret.emplace_back(last,"first"_rdf,n);
-			ret.emplace_back(last,"rest"_rdf,next);
+			ret.emplace_back(last,rdf::ns_rdf("first"),n);
+			ret.emplace_back(last,rdf::ns_rdf("rest"),next);
 
 			last = next;
 			++i;

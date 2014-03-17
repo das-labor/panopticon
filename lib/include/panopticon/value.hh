@@ -297,6 +297,7 @@ namespace std
 	};
 }
 
+#ifndef _MSC_VER
 /// One bit wide constant
 inline po::constant operator"" _i(unsigned long long n)
 {
@@ -337,3 +338,4 @@ inline po::variable operator"" _v64(const char *n, size_t l)
 	std::string base(n,l);
 	return po::variable(base,64);
 }
+#endif

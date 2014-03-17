@@ -154,20 +154,20 @@ template<>
 rvalue *po::unmarshal(const uuid &u, const rdf::storage &store)
 {
 	rdf::node root = rdf::ns_local(to_string(u));
-	rdf::node type = store.first(root,"type"_rdf).object;
+	rdf::node type = store.first(root,rdf::ns_rdf("type")).object;
 
-	if(type == "Undefined"_po)
+	if(type == rdf::ns_po("Undefined"))
 	{
 		return new rvalue(undefined());
 	}
-	else if(type == "Variable"_po)
+	else if (type == rdf::ns_po("Variable"))
 	{
-		rdf::statement name = store.first(root,"name"_po),
-									 width = store.first(root,"width"_po);
+		rdf::statement name = store.first(root, rdf::ns_po("name")),
+			width = store.first(root, rdf::ns_po("width"));
 
 		try
 		{
-			rdf::statement subscript = store.first(root,"subscript"_po);
+			rdf::statement subscript = store.first(root, rdf::ns_po("subscript"));
 
 			return new rvalue(variable(name.object.as_literal(),stoull(width.object.as_literal()),stoull(subscript.object.as_literal())));
 		}
@@ -176,26 +176,26 @@ rvalue *po::unmarshal(const uuid &u, const rdf::storage &store)
 			return new rvalue(variable(name.object.as_literal(),stoull(width.object.as_literal())));
 		}
 	}
-	else if(type == "Constant"_po)
+	else if(type == rdf::ns_po("Constant"))
 	{
-		rdf::statement value = store.first(root,"content"_po);
+		rdf::statement value = store.first(root,rdf::ns_po("content"));
 
 		return new rvalue(constant(stoull(value.object.as_literal())));
 	}
-	else if(type == "Memory"_po)
+	else if(type == rdf::ns_po("Memory"))
 	{
-		rdf::statement name = store.first(root,"name"_po),
-									 offset = store.first(root,"offset"_po),
-									 bytes = store.first(root,"bytes"_po),
-									 endianess = store.first(root,"endianess"_po);
+		rdf::statement name = store.first(root,rdf::ns_po("name")),
+									 offset = store.first(root,rdf::ns_po("offset")),
+									 bytes = store.first(root,rdf::ns_po("bytes")),
+									 endianess = store.first(root,rdf::ns_po("endianess"));
 
 		uuid ou = boost::uuids::string_generator()(offset.object.as_literal());
 		std::shared_ptr<rvalue> off(unmarshal<rvalue>(ou,store));
 		memory::Endianess e;
 
-		if(endianess.object == "big-endian"_po)
+		if(endianess.object == rdf::ns_po("big-endian"))
 			e = memory::BigEndian;
-		else if(endianess.object == "little-endian"_po)
+		else if(endianess.object == rdf::ns_po("little-endian"))
 			e = memory::LittleEndian;
 		else
 			throw marshal_exception("unknown endianess");
@@ -218,26 +218,26 @@ rdf::statements po::marshal(const rvalue *rv, const uuid &u)
 	}
 	else if(is_undefined(*rv))
 	{
-		ret.emplace_back(root,"type"_rdf,"Undefined"_po);
+		ret.emplace_back(root,rdf::ns_rdf("type"),rdf::ns_po("Undefined"));
 		return ret;
 	}
 	else if(is_constant(*rv))
 	{
 		constant c = to_constant(*rv);
 
-		ret.emplace_back(root,"type"_rdf,"Constant"_po);
-		ret.emplace_back(root,"content"_po,rdf::lit(c.content()));
+		ret.emplace_back(root,rdf::ns_rdf("type"),rdf::ns_po("Constant"));
+		ret.emplace_back(root,rdf::ns_po("content"),rdf::lit(c.content()));
 		return ret;
 	}
 	else if(is_variable(*rv))
 	{
 		variable v = to_variable(*rv);
 
-		ret.emplace_back(root,"type"_rdf,"Variable"_po);
-		ret.emplace_back(root,"name"_po,rdf::lit(v.name()));
-		ret.emplace_back(root,"width"_po,rdf::lit(v.width()));
+		ret.emplace_back(root,rdf::ns_rdf("type"),rdf::ns_po("Variable"));
+		ret.emplace_back(root,rdf::ns_po("name"),rdf::lit(v.name()));
+		ret.emplace_back(root,rdf::ns_po("width"),rdf::lit(v.width()));
 		if(v.subscript() >= 0)
-			ret.emplace_back(root,"subscript"_po,rdf::lit(v.subscript()));
+			ret.emplace_back(root,rdf::ns_po("subscript"),rdf::lit(v.subscript()));
 		return ret;
 	}
 	else if(is_memory(*rv))
@@ -245,20 +245,20 @@ rdf::statements po::marshal(const rvalue *rv, const uuid &u)
 		memory m = to_memory(*rv);
 		uuid ou = boost::uuids::name_generator(u)("offset");
 
-		ret.emplace_back(root,"type"_rdf,"Memory"_po);
-		ret.emplace_back(root,"offset"_po,rdf::lit(to_string(ou)));
-		ret.emplace_back(root,"bytes"_po,rdf::lit(m.bytes()));
+		ret.emplace_back(root,rdf::ns_rdf("type"),rdf::ns_po("Memory"));
+		ret.emplace_back(root,rdf::ns_po("offset"),rdf::lit(to_string(ou)));
+		ret.emplace_back(root,rdf::ns_po("bytes"),rdf::lit(m.bytes()));
 
 		switch(m.endianess())
 		{
-			case memory::LittleEndian: ret.emplace_back(root,"endianess"_po,"little-endian"_po); break;
-			case memory::BigEndian: ret.emplace_back(root,"endianess"_po,"big-endian"_po); break;
+			case memory::LittleEndian: ret.emplace_back(root,rdf::ns_po("endianess"),rdf::ns_po("little-endian")); break;
+			case memory::BigEndian: ret.emplace_back(root,rdf::ns_po("endianess"),rdf::ns_po("big-endian")); break;
 			default: throw marshal_exception("unknown endianess");
 		}
 
-		ret.emplace_back(root,"name"_po,rdf::ns_po(m.name()));
+		ret.emplace_back(root,rdf::ns_po("name"),rdf::ns_po(m.name()));
 		auto off_st = marshal(&m.offset(),ou);
-		move(off_st.begin(),off_st.end(),back_inserter(ret));
+		std::move(off_st.begin(),off_st.end(),back_inserter(ret));
 
 		return ret;
 	}

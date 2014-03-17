@@ -1,4 +1,5 @@
 #include <iostream>
+#include <numeric>
 
 #include <gtest/gtest.h>
 #include <boost/range/algorithm/copy.hpp>

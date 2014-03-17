@@ -15,14 +15,14 @@ struct store : public ::testing::Test
 		full_store.reset(new storage());
 
 		root = node::blank();
-		full_store->insert(a1,"type"_rdf,"A"_po);
-		full_store->insert(a2,"type"_rdf,"A"_po);
-		full_store->insert(b,"type"_rdf,"B"_po);
-		full_store->insert(a1,"name"_po,"Mr. A"_lit);
-		full_store->insert(a1,"bs"_po,b);
-		full_store->insert(b,"count"_po,42_lit);
-		full_store->insert(root,"child"_po,a1);
-		full_store->insert(root,"child"_po,a2);
+		full_store->insert(a1, rdf::ns_rdf("type"), rdf::ns_po("A"));
+		full_store->insert(a2, rdf::ns_rdf("type"), rdf::ns_po("A"));
+		full_store->insert(b, rdf::ns_rdf("type"), rdf::ns_po("B"));
+		full_store->insert(a1, rdf::ns_po("name"), rdf::lit("Mr. A"));
+		full_store->insert(a1, rdf::ns_po("bs"), b);
+		full_store->insert(b, rdf::ns_po("count"), rdf::lit(42));
+		full_store->insert(root, rdf::ns_po("child"), a1);
+		full_store->insert(root, rdf::ns_po("child"), a2);
 	}
 
 	node root;
@@ -40,36 +40,36 @@ TEST_F(store,construct)
 
 TEST_F(store,add_single)
 {
-	ASSERT_TRUE(empty_store->insert(node::blank(),"test"_po,node::blank()));
+	ASSERT_TRUE(empty_store->insert(node::blank(),rdf::ns_po("test"),node::blank()));
 	ASSERT_EQ(empty_store->count(),1);
 }
 
 TEST_F(store,add_multiple)
 {
-	ASSERT_TRUE(empty_store->insert(node::blank(),"test"_po,node::blank()));
-	ASSERT_TRUE(empty_store->insert(node::blank(),"test2"_po,node::blank()));
-	ASSERT_TRUE(empty_store->insert(node::blank(),"test3"_po,node::blank()));
+	ASSERT_TRUE(empty_store->insert(node::blank(), rdf::ns_po("test"), node::blank()));
+	ASSERT_TRUE(empty_store->insert(node::blank(), rdf::ns_po("test2"), node::blank()));
+	ASSERT_TRUE(empty_store->insert(node::blank(), rdf::ns_po("test3"), node::blank()));
 	ASSERT_EQ(empty_store->count(),3);
 }
 
 TEST_F(store,add_twice)
 {
-	ASSERT_TRUE(empty_store->insert("La"_po,"test"_po,"Lo"_po));
-	ASSERT_FALSE(empty_store->insert("La"_po,"test"_po,"Lo"_po));
+	ASSERT_TRUE(empty_store->insert(rdf::ns_po("La"), rdf::ns_po("test"), rdf::ns_po("Lo")));
+	ASSERT_FALSE(empty_store->insert(rdf::ns_po("La"), rdf::ns_po("test"), rdf::ns_po("Lo")));
 	ASSERT_EQ(empty_store->count(),1);
 }
 
 TEST_F(store,find_single)
 {
-	ASSERT_TRUE(full_store->has(a1,"type"_rdf,"A"_po));
+	ASSERT_TRUE(full_store->has(a1, rdf::ns_rdf("type"), rdf::ns_po("A")));
 }
 
 TEST_F(store,find_multiple)
 {
-	auto res = full_store->find(root,"child"_po);
+	auto res = full_store->find(root, rdf::ns_po("child"));
 	list<statement> exp({
-		statement(root,"child"_po,a1),
-		statement(root,"child"_po,a2)
+		statement(root, rdf::ns_po("child"), a1),
+		statement(root, rdf::ns_po("child"), a2)
 	});
 
 	res.sort();
@@ -80,23 +80,23 @@ TEST_F(store,find_multiple)
 
 TEST_F(store,find_none)
 {
-	ASSERT_FALSE(full_store->has(root,"child"_po,"NOPE"_po));
+	ASSERT_FALSE(full_store->has(root, rdf::ns_po("child"), rdf::ns_po("NOPE")));
 }
 
 TEST_F(store,remove)
 {
-	ASSERT_TRUE(full_store->remove(a1,"type"_rdf,"A"_po));
+	ASSERT_TRUE(full_store->remove(a1, rdf::ns_rdf("type"), rdf::ns_po("A")));
 	ASSERT_EQ(full_store->count(),7);
-	ASSERT_FALSE(full_store->has(a1,"type"_rdf,"A"_po));
+	ASSERT_FALSE(full_store->has(a1, rdf::ns_rdf("type"), rdf::ns_po("A")));
 }
 
 TEST_F(store,find_subject)
 {
 	auto res = full_store->find(a1);
 	list<statement> exp({
-		statement(a1,"type"_rdf,"A"_po),
-		statement(a1,"name"_po,"Mr. A"_lit),
-		statement(a1,"bs"_po,b)
+		statement(a1, rdf::ns_rdf("type"), rdf::ns_po("A")),
+		statement(a1, rdf::ns_po("name"), rdf::lit("Mr. A")),
+		statement(a1, rdf::ns_po("bs"), b)
 	});
 
 	res.sort();
@@ -180,7 +180,7 @@ TEST_F(store,varint)
 
 TEST_F(store,node)
 {
-	node a = node::blank(), b = "node"_po, c = 1_lit, d = "Hello"_lit;
+	node a = node::blank(), b = rdf::ns_po("node"), c = rdf::lit(1), d = rdf::lit("Hello");
 
 	string aa = storage::encode_node(a);
 	string bb = storage::encode_node(b);

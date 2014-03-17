@@ -371,7 +371,7 @@ namespace po
 	}
 
 	template<typename Tag>
-	rule<Tag>::~rule<Tag>(void)
+	rule<Tag>::~rule(void)
 	{}
 
 	template<typename Tag>
