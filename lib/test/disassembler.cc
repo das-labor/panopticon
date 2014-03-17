@@ -4,7 +4,7 @@
 
 #include <gtest/gtest.h>
 #include <panopticon/disassembler.hh>
-#include "test/architecture.hh"
+#include "architecture.hh"
 
 class disassembler : public ::testing::Test
 {

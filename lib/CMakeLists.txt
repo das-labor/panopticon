@@ -1,8 +1,9 @@
 set(panopticon_SOURCES src/loc.cc src/value.cc src/region.cc src/marshal.cc)
-set(panopticon_HEADERS include/loc.hh include/value.hh include/marshal.hh
-	include/region.hh include/hash.hh)
+set(panopticon_HEADERS include/panopticon/loc.hh include/panopticon/value.hh
+	include/panopticon/marshal.hh
+	include/panopticon/region.hh include/panopticon/hash.hh)
 
-set(panopticon_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}
+set(panopticon_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/include
 	${KyotoCabinet_INCLUDE_DIRS} ${LibArchive_INCLUDE_DIRS}
 	${Boost_INCLUDE_DIRS})
 set(panopticon_INCLUDE_DIRS ${panopticon_INCLUDE_DIRS} PARENT_SCOPE)
@@ -28,7 +29,7 @@ set_target_properties(panopticon PROPERTIES VERSION
 	${panopticon_MAJOR}.${panopticon_MINOR}.${panopticon_PATCH} SOVERSION
 	${panopticon_MAJOR}.${panopticon_MINOR}.${panopticon_PATCH})
 
-install(TARGETS panopticon LIBRARY DESTINATION lib)
+install(TARGETS panopticon LIBRARY DESTINATION lib RUNTIME DESTINATION bin)
 install(FILES ${panopticon_HEADERS} DESTINATION include/panopticon)
 
 if(UNIX AND NOT APPLE)
