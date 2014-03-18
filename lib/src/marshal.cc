@@ -9,7 +9,7 @@ extern "C" {
 // stat()
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <unistd.h>
+#include <stdio.h>
 }
 
 #include <boost/uuid/uuid_generators.hpp>
@@ -415,12 +415,12 @@ nodes po::rdf::read_list(const node &n, const storage &store)
 	nodes ret;
 	node cur = n;
 
-	while(cur != "nil"_rdf)
+	while(cur != rdf::ns_rdf("nil"))
 	{
-		statement s = store.first(cur,"first"_rdf);
+		statement s = store.first(cur,rdf::ns_rdf("first"));
 
 		ret.push_back(s.object);
-		cur = store.first(cur,"rest"_rdf).object;
+		cur = store.first(cur,rdf::ns_rdf("rest")).object;
 	}
 
 	return ret;

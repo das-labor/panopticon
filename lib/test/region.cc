@@ -83,7 +83,7 @@ TEST(region,read_one_layer)
 
 	r1.write().add(bound(1,7),layer_loc(new layer("anon 2",{1,2,3,4,5,6})));
 	r1.write().add(bound(50,62),layer_loc(new layer("anon 2",{1,2,3,4,5,6,6,5,4,3,2,1})));
-	r1.write().add(bound(62,63),layer_loc(new layer("anon 2",{tryte(1)})));
+	r1.write().add(bound(62,63),layer_loc(new layer("anon 2",{byte(1)})));
 
 	slab s = r1->read();
 	ASSERT_EQ(boost::size(s),128);
