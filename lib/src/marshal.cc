@@ -290,7 +290,7 @@ void storage::snapshot(const filesystem::path& p) const
 				if(archive_write_header(ar,ae) != ARCHIVE_OK)
 					throw marshal_exception("can't save to " + p.string() + ": failed to write header");
 
-				while(!fi.eof());
+				while(!fi.eof())
 				{
 					fi.read(buf,4096);
 

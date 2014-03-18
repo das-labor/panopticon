@@ -276,7 +276,9 @@ std::unordered_map<region_wloc,region_wloc> po::spanning_tree(const regions &reg
 			boost::dijkstra_shortest_paths(regs,x,boost::weight_map(weight_adaptor).predecessor_map(pred_adaptor));
 
 			auto i = r;
-			std::list<vertex_descriptor> path({i});
+			std::list<vertex_descriptor> path;
+
+			path.push_back(i);
 			while(i != p_map[i])
 			{
 				i = p_map[i];

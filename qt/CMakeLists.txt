@@ -11,7 +11,6 @@ set(qtpanopticon_HEADERS include/delegate.hh include/selection.hh
 	include/dot/traits.hh include/dot/types.hh)
 set(qtpanopticon_RESOURCES res/resources.qrc)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -iquote ${CMAKE_CURRENT_SOURCE_DIR}/include")
 include_directories(${Boost_INCLUDE_DIRS} ${panopticon_INCLUDE_DIRS})
 link_directories(${Boost_LIBRARY_DIRS} ${panopticon_LIBRARY_DIRS})
 
@@ -21,7 +20,11 @@ qt5_wrap_cpp(qtpanopticon_HEADERS_MOC ${qtpanopticon_HEADERS})
 qt5_add_resources(qtpanopticon_RCCS ${qtpanopticon_RESOURCES})
 
 # remove when fixed in Qt5
-add_definitions("-Wno-nested-anon-types")
+if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" OR
+	 "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+	add_definitions("-Wno-nested-anon-types")
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -iquote ${CMAKE_CURRENT_SOURCE_DIR}/include")
+endif()
 
 add_executable(qtpanopticon ${qtpanopticon_SOURCES} ${qtpanopticon_HEADERS}
 	${qtpanopticon_HEADERS_MOC} ${qtpanopticon_RCCS})

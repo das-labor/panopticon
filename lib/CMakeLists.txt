@@ -12,7 +12,7 @@ set(panopticon_LIBRARY_DIRS ${LibArchive_LIBRARY_DIRS} ${Boost_LIBRARY_DIRS}
 	${KyotoCabinet_LIBRARY_DIRS})
 set(panopticon_LIBRARY_DIRS ${panopticon_LIBRARY_DIRS} PARENT_SCOPE)
 
-set(panopticon_LIBRARIES panopticon ${KyotoCabinet_LIBRARIES}
+set(panopticon_LIBRARIES panopticon-shared ${KyotoCabinet_LIBRARIES}
 	${LibArchive_LIBRARIES} ${Boost_LIBRARIES})
 set(panopticon_LIBRARIES ${panopticon_LIBRARIES} PARENT_SCOPE)
 
@@ -22,14 +22,26 @@ set(panopticon_FOUND ${panopticon_FOUND} PARENT_SCOPE)
 include_directories(${panopticon_INCLUDE_DIRS})
 link_directories(${panopticon_LIBRARY_DIRS})
 
-add_library(panopticon SHARED ${panopticon_SOURCES} ${panopticon_HEADERS})
-target_link_libraries(panopticon ${panopticon_LIBRARIES})
+if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" OR
+	 "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+	add_definitions("-fPIC")
+endif()
 
-set_target_properties(panopticon PROPERTIES VERSION
+add_library(panopticon OBJECT ${panopticon_SOURCES} ${panopticon_HEADERS})
+add_library(panopticon-shared SHARED $<TARGET_OBJECTS:panopticon>)
+add_library(panopticon-static STATIC $<TARGET_OBJECTS:panopticon>)
+
+set_target_properties(panopticon-shared PROPERTIES VERSION
 	${panopticon_MAJOR}.${panopticon_MINOR}.${panopticon_PATCH} SOVERSION
 	${panopticon_MAJOR}.${panopticon_MINOR}.${panopticon_PATCH})
+set_target_properties(panopticon-static PROPERTIES VERSION
+	${panopticon_MAJOR}.${panopticon_MINOR}.${panopticon_PATCH} SOVERSION
+	${panopticon_MAJOR}.${panopticon_MINOR}.${panopticon_PATCH})
+set_target_properties(panopticon-shared PROPERTIES OUTPUT_NAME panopticon)
+set_target_properties(panopticon-static PROPERTIES OUTPUT_NAME panopticon)
 
-install(TARGETS panopticon LIBRARY DESTINATION lib RUNTIME DESTINATION bin)
+install(TARGETS panopticon-static panopticon-shared LIBRARY DESTINATION lib
+	RUNTIME DESTINATION bin ARCHIVE DESTINATION lib)
 install(FILES ${panopticon_HEADERS} DESTINATION include/panopticon)
 
 if(UNIX AND NOT APPLE)
