@@ -526,7 +526,14 @@ namespace po
 	}
 }
 
-static_assert(std::is_base_of<std::bidirectional_iterator_tag,typename std::iterator_traits<po::digraph<int,std::string>::node_iterator>::iterator_category>::value,"bidirectional iterator");
-static_assert(std::is_base_of<std::bidirectional_iterator_tag,typename std::iterator_traits<po::digraph<int,std::string>::edge_iterator>::iterator_category>::value,"bidirectional iterator");
-static_assert(std::is_base_of<std::bidirectional_iterator_tag,typename std::iterator_traits<po::digraph<int,std::string>::in_edge_iterator>::iterator_category>::value,"bidirectional iterator");
-static_assert(std::is_base_of<std::bidirectional_iterator_tag,typename std::iterator_traits<po::digraph<int,std::string>::out_edge_iterator>::iterator_category>::value,"bidirectional iterator");
+namespace std
+{
+	template<typename N, typename E>
+	typename po::digraph<N,E>::node_iterator next(typename po::digraph<N,E>::node_iterator i, ptrdiff_t off) { advance(i,off); return i; }
+	template<typename N, typename E>
+	typename po::digraph<N,E>::edge_iterator next(typename po::digraph<N,E>::edge_iterator i, ptrdiff_t off) { advance(i,off); return i; }
+	template<typename N, typename E>
+	typename po::digraph<N,E>::out_edge_iterator next(typename po::digraph<N,E>::out_edge_iterator i, ptrdiff_t off) { advance(i,off); return i; }
+	template<typename N, typename E>
+	typename po::digraph<N,E>::in_edge_iterator next(typename po::digraph<N,E>::in_edge_iterator i, ptrdiff_t off) { advance(i,off); return i; }
+}

@@ -1,4 +1,5 @@
 #include <type_traits>
+#include <iterator>
 
 #include <boost/range/any_range.hpp>
 #include <boost/range/adaptor/transformed.hpp>
@@ -15,7 +16,6 @@
 
 #pragma once
 
-
 namespace po
 {
 	using offset = uint64_t;
@@ -23,10 +23,15 @@ namespace po
 	using bound = boost::icl::discrete_interval<offset>;
 	using tryte = boost::optional<byte>;
 	using slab = boost::any_range<tryte,boost::random_access_traversal_tag,tryte,std::ptrdiff_t>;
+}
 
-	static_assert(std::is_base_of<std::random_access_iterator_tag,typename std::iterator_traits<slab::iterator>::iterator_category>::value,"random access iterator");
-	static_assert(std::is_base_of<std::random_access_iterator_tag,typename std::iterator_traits<slab::const_iterator>::iterator_category>::value,"random access iterator");
+namespace std
+{
+	template<> po::slab::iterator next(po::slab::iterator i, ptrdiff_t off) { advance(i,off); return i; }
+}
 
+namespace po
+{
 	struct layer
 	{
 		layer(const std::string&, std::function<tryte(tryte)>);

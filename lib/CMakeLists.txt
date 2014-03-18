@@ -1,6 +1,6 @@
 set(panopticon_SOURCES src/loc.cc src/value.cc src/region.cc src/marshal.cc)
 set(panopticon_HEADERS include/panopticon/loc.hh include/panopticon/value.hh
-	include/panopticon/marshal.hh
+	include/panopticon/marshal.hh include/panopticon/digraph.hh
 	include/panopticon/region.hh include/panopticon/hash.hh)
 
 set(panopticon_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/include
