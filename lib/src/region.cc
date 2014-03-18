@@ -5,7 +5,6 @@
 #include <boost/iterator/transform_iterator.hpp>
 #include <boost/tuple/tuple.hpp>
 #include <boost/graph/dijkstra_shortest_paths.hpp>
-#include <boost/graph/reverse_graph.hpp>
 #include <boost/range/join.hpp>
 
 #include <panopticon/region.hh>
@@ -129,7 +128,7 @@ po::region_loc po::region::wrap(const std::string& n, std::initializer_list<byte
 
 region::region(const std::string &n, layer_loc r)
 : _graph(),
-	_root(_graph.insert_node(r)),
+	_root(insert_node(r,_graph)),
 	_name(n),
 	_size(boost::size(r->filter(slab()))),
 	_projection(none)
@@ -140,24 +139,25 @@ void region::add(const bound &_b, layer_loc l)
 	bound b = bound(0,_size) & _b;
 	auto proj = projection();
 	auto i = proj.find(b);
-	auto vx = _graph.insert_node(l);
+	auto vx = insert_node(l,_graph);
 	boost::optional<offset> last = none;
 
 	if(i == proj.end())
 	{
-		_graph.insert_edge(b,vx,_root);
+		insert_edge(b,_root,vx,_graph);
 	}
 	else
 	{
 		while(i != proj.end() && icl::size(i->first & b))
 		{
 			bound n = i->first & b;
-			_graph.insert_edge(n,vx,*_graph.find_node(i->second.lock()));
+			auto j = find_node(i->second.lock(),_graph);
+			insert_edge(n,j,vx,_graph);
 
 			if(last && *last + 1 != icl::first(n))
 			{
 				bound m(*last + 1,icl::first(n));
-				_graph.insert_edge(m,vx,_root);
+				insert_edge(m,_root,vx,_graph);
 			}
 			last = icl::last(n);
 
@@ -165,7 +165,7 @@ void region::add(const bound &_b, layer_loc l)
 		}
 
 		if(*last != icl::last(b))
-			_graph.insert_edge(bound(*last + 1,icl::last(b) + 1),vx,_root);
+			insert_edge(bound(*last + 1,icl::last(b) + 1),_root,vx,_graph);
 	}
 
 	_projection = none;
@@ -181,34 +181,34 @@ const region::image& region::projection(void) const
 		std::unordered_set<vertex_descriptor> visited;
 
 		_projection = icl::interval_map<offset,layer_wloc>();
-		*_projection += make_pair(bound(0,_size),layer_wloc(_graph.get_node(_root)));
+		*_projection += make_pair(bound(0,_size),layer_wloc(get_node(_root,_graph)));
 
 		step = [&](vertex_descriptor v)
 		{
-			layer_loc as = _graph.get_node(v);
-			auto p = in_edges(v,_graph);
+			layer_loc as = get_node(v,_graph);
+			auto p = out_edges(v,_graph);
 
 			assert(visited.insert(v).second);
 
 			std::for_each(p.first,p.second,[&](edge_descriptor e)
 			{
-				bound b = _graph.get_edge(e);
-				layer_loc other = _graph.get_node(source(e,_graph));
+				bound b = get_edge(e,_graph);
+				layer_loc other = get_node(target(e,_graph),_graph);
 
 				*_projection += make_pair(b,layer_wloc(other));
 			});
 
 			std::for_each(p.first,p.second,[&](edge_descriptor e)
 			{
-				auto u = source(e,_graph);
+				auto u = target(e,_graph);
 
-				if(u != *_graph.nodes().second && !visited.count(u))
+				if(u != *vertices(_graph).second && !visited.count(u))
 					step(u);
 			});
 		};
 
 		step(_root);
-		assert(visited.size() == _graph.num_nodes());
+		assert(visited.size() == num_vertices(_graph));
 	}
 
 	return *_projection;
@@ -225,19 +225,19 @@ po::slab region::read(boost::optional<po::layer_loc> l) const
 
 	if(l)
 	{
-		auto vx = _graph.find_node(*l);
-		auto p = _graph.out_edges(*vx);
+		auto vx = find_node(*l,_graph);
+		auto p = out_edges(vx,_graph);
 		auto i = p.first;
 
 		if(i == p.second)
 		{
-			return _graph.get_node(*vx)->filter(slab());
+			return get_node(vx,_graph)->filter(slab());
 		}
 		else
 		{
 			while(i != p.second)
 			{
-				src.emplace_back(_graph.get_edge(*i),layer_wloc(_graph.get_node(_graph.target(*i))));
+				src.emplace_back(get_edge(*i,_graph),layer_wloc(get_node(target(*i,_graph),_graph)));
 				++i;
 			}
 		}
@@ -263,15 +263,15 @@ std::unordered_map<region_wloc,region_wloc> po::spanning_tree(const regions &reg
 	using vertex_descriptor = boost::graph_traits<digraph<po::region_loc,po::bound>>::vertex_descriptor;
 	using edge_descriptor = boost::graph_traits<digraph<po::region_loc,po::bound>>::edge_descriptor;
 
-	auto r = root(make_reverse_graph(regs));
-	std::unordered_map<edge_descriptor,int> w_map;
-	boost::associative_property_map<std::unordered_map<edge_descriptor,int>> weight_adaptor(w_map);
+	auto r = root(regs);
+	std::map<edge_descriptor,int> w_map;
+	boost::associative_property_map<std::map<edge_descriptor,int>> weight_adaptor(w_map);
 	auto common_parent = [&](vertex_descriptor v, vertex_descriptor u)
 	{
 		auto find_path = [&](vertex_descriptor x)
 		{
-			std::unordered_map<vertex_descriptor,vertex_descriptor> p_map;
-			boost::associative_property_map<std::unordered_map<vertex_descriptor,vertex_descriptor>> pred_adaptor(p_map);
+			std::map<vertex_descriptor,vertex_descriptor> p_map;
+			boost::associative_property_map<std::map<vertex_descriptor,vertex_descriptor>> pred_adaptor(p_map);
 
 			boost::dijkstra_shortest_paths(regs,x,boost::weight_map(weight_adaptor).predecessor_map(pred_adaptor));
 
@@ -290,39 +290,38 @@ std::unordered_map<region_wloc,region_wloc> po::spanning_tree(const regions &reg
 
 		return *std::find_first_of(l1.begin(),l1.end(),l2.begin(),l2.end());
 	};
-	unordered_pmap<vertex_descriptor,vertex_descriptor> ret;
+	map<vertex_descriptor,vertex_descriptor> ret;
 
-	for(auto v: iters(regs.edges()))
+	for(auto v: iters(edges(regs)))
 		put(weight_adaptor,v,1);
 
 	/*
 	 * for(n: nodes(G))
-	 * 	 for(e: in_edges(n))
-	 *     c = source(e)
+	 * 	 for(e: out_edges(n))
+	 *     c = target(e)
 	 *     if(!in_tree(c))
 	 *       add_to_tree(n,c)
 	 *     else
 	 *       del_from_tree(c)
 	 *       add_to_tree(common_parent(n,c),c)
 	 */
-	auto revgraph = boost::make_reverse_graph(regs);
-	boost::breadth_first_search(revgraph,r,boost::visitor(boost::make_bfs_visitor(make_lambda_visitor(
+	boost::breadth_first_search(regs,r,boost::visitor(boost::make_bfs_visitor(make_lambda_visitor(
 		std::function<void(vertex_descriptor v)>([&](vertex_descriptor v)
 		{
-			for(auto e: iters(regs.in_edges(v)))
+			for(auto e: iters(out_edges(v,regs)))
 			{
-				auto c = source(e,regs);
+				auto c = target(e,regs);
 				if(ret.count(c) == 0)
 					ret[c] = v;
 				else
 					ret[c] = common_parent(ret.at(c),v);
 			}
-		}),revgraph,boost::on_discover_vertex()))));
+		}),regs,boost::on_discover_vertex()))));
 
 	std::unordered_map<region_wloc,region_wloc> out;
 
 	for(const pair<vertex_descriptor,vertex_descriptor> &p: ret)
-		out.emplace(region_wloc(regs.get_node(p.first)),region_wloc(regs.get_node(p.second)));
+		out.emplace(region_wloc(get_node(p.first,regs)),region_wloc(get_node(p.second,regs)));
 
 	return out;
 }
@@ -331,18 +330,18 @@ std::list<std::pair<bound,region_wloc>> po::projection(const regions &regs)
 {
 	std::list<std::pair<bound,region_wloc>> ret;
 	std::function<void(graph_traits<regions>::vertex_descriptor)> step;
-	std::unordered_set<graph_traits<regions>::vertex_descriptor> visited;
+	std::set<graph_traits<regions>::vertex_descriptor> visited;
 
 	step = [&](graph_traits<regions>::vertex_descriptor vx)
 	{
-		region_loc r = regs.get_node(vx);
-		auto p = regs.in_edges(vx);
+		region_loc r = get_node(vx,regs);
+		auto p = out_edges(vx,regs);
 		offset last = 0;
 
 		std::for_each(p.first,p.second,[&](const graph_traits<regions>::edge_descriptor e)
 		{
-			bound b = regs.get_edge(e);
-			auto nx = regs.source(e);
+			bound b = get_edge(e,regs);
+			auto nx = target(e,regs);
 			bound free(last,b.lower());
 
 			if(last < b.lower())
@@ -360,7 +359,7 @@ std::list<std::pair<bound,region_wloc>> po::projection(const regions &regs)
 		}
 	};
 
-	step(root(make_reverse_graph(regs)));
+	step(root(regs));
 	return ret;
 }
 

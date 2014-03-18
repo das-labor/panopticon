@@ -9,14 +9,14 @@ Session::Session(QObject *p)
 //	po::address_space zlib_as("zlib",po::rrange(0,1280),std::function<bytes(const bytes&)>());
 //	po::address_space aes_as("aes",po::rrange(0,320),std::function<bytes(const bytes&)>());
 
-	auto base_desc = _regions.insert_node(base_as);
-	auto xor_desc = _regions.insert_node(xor_as);
-	auto add_desc = _regions.insert_node(add_as);
+	auto base_desc = insert_node(base_as,_regions);
+	auto xor_desc = insert_node(xor_as,_regions);
+	auto add_desc = insert_node(add_as,_regions);
 //	m_graph.insert_node(zlib_as);
 //	m_graph.insert_node(aes_as);
 
-	_regions.insert_edge(po::bound(10,74),xor_desc,base_desc);
-	_regions.insert_edge(po::bound(80,107),add_desc,base_desc);
+	insert_edge(po::bound(10,74),xor_desc,base_desc,_regions);
+	insert_edge(po::bound(80,107),add_desc,base_desc,_regions);
 }
 
 po::regions &Session::graph(void)

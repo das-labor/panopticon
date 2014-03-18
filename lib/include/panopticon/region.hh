@@ -27,7 +27,7 @@ namespace po
 
 namespace std
 {
-	template<> po::slab::iterator next(po::slab::iterator i, ptrdiff_t off) { advance(i,off); return i; }
+	template<> inline po::slab::iterator next(po::slab::iterator i, ptrdiff_t off) { advance(i,off); return i; }
 }
 
 namespace po
