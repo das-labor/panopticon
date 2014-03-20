@@ -133,7 +133,7 @@ namespace po
 		const std::string& name(void) const;
 
 	private:
-		layers _graph;
+		layers _graph; ///< DAG of layers. Edge points from the covered layer to the covering.
 		boost::graph_traits<digraph<layer_loc,bound>>::vertex_descriptor _root;
 		std::string _name;
 		size_t _size;
@@ -148,6 +148,10 @@ namespace po
 	template<>
 	region* unmarshal(const uuid&, const rdf::storage&);
 
+	/**
+	 * DAG of regions. Models which region covers which.
+	 * Edges point from the covered region to the region covering it.
+	 */
 	using regions = digraph<region_loc,bound>;
 
 	std::unordered_map<region_wloc,region_wloc> spanning_tree(const regions&);

@@ -15,9 +15,9 @@ struct region : public ::testing::Test
 		auto vx2 = insert_node(r2,regs);
 		auto vx3 = insert_node(r3,regs);
 
-		insert_edge(po::bound(32,96),vx2,vx1,regs);
-		insert_edge(po::bound(16,32),vx3,vx1,regs);
-		insert_edge(po::bound(0,32),vx3,vx2,regs);
+		insert_edge(po::bound(32,96),vx1,vx2,regs);
+		insert_edge(po::bound(16,32),vx1,vx3,regs);
+		insert_edge(po::bound(0,32),vx2,vx3,regs);
 	}
 
 	po::regions regs;

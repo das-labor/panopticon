@@ -62,21 +62,21 @@ namespace po
 	typename boost::graph_traits<G>::vertex_descriptor
 	root (const G &g)
 	{
-		auto p = boost::vertices(g);
-		auto i = p.first;
+		std::set<typename boost::graph_traits<G>::vertex_descriptor> seen;
 
-		while(i != p.second)
+		for(auto i: iters(boost::vertices(g)))
 		{
-			//TODO
-			auto q = out_edges(*i,g);
+			auto q = out_edges(i,g);
 
-			if(!std::distance(q.first,q.second))
-				return *i;
-			else
-				++i;
+			for(auto j: iters(q))
+				seen.insert(target(j,g));
 		}
 
-		throw std::runtime_error("no root found");
+		for(auto i: iters(boost::vertices(g)))
+			if(!seen.count(i))
+				return i;
+
+		throw std::out_of_range("no root found");
 	}
 
 	template<typename N,typename E>

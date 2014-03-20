@@ -6,6 +6,7 @@
 #include <boost/tuple/tuple.hpp>
 #include <boost/graph/dijkstra_shortest_paths.hpp>
 #include <boost/range/join.hpp>
+#include <boost/range/adaptors.hpp>
 
 #include <panopticon/region.hh>
 
@@ -274,7 +275,6 @@ std::unordered_map<region_wloc,region_wloc> po::spanning_tree(const regions &reg
 			boost::associative_property_map<std::map<vertex_descriptor,vertex_descriptor>> pred_adaptor(p_map);
 
 			boost::dijkstra_shortest_paths(regs,x,boost::weight_map(weight_adaptor).predecessor_map(pred_adaptor));
-
 			auto i = r;
 			std::list<vertex_descriptor> path;
 
@@ -339,8 +339,15 @@ std::list<std::pair<bound,region_wloc>> po::projection(const regions &regs)
 		region_loc r = get_node(vx,regs);
 		auto p = out_edges(vx,regs);
 		offset last = 0;
+		std::list<graph_traits<regions>::edge_descriptor> es;
 
-		std::for_each(p.first,p.second,[&](const graph_traits<regions>::edge_descriptor e)
+		for(graph_traits<regions>::edge_descriptor a: iters(p))
+			es.push_back(a);
+
+		es.sort([&](const graph_traits<regions>::edge_descriptor a, const graph_traits<regions>::edge_descriptor b)
+			{ return get_edge(a,regs).lower() < get_edge(b,regs).lower(); });
+
+		for(auto e: es)
 		{
 			bound b = get_edge(e,regs);
 			auto nx = target(e,regs);
@@ -352,7 +359,7 @@ std::list<std::pair<bound,region_wloc>> po::projection(const regions &regs)
 
 			if(visited.insert(nx).second)
 				step(nx);
-		});
+		}
 
 		if(last < r->size())
 		{
