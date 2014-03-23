@@ -151,9 +151,9 @@ storage::storage(const storage& st)
 storage::~storage(void)
 {
 	_meta.close();
-
+/*
 	if(!_tempdir.empty())
-		filesystem::remove_all(_tempdir);
+		filesystem::remove_all(_tempdir);*/
 }
 
 bool storage::has(const node& s, const node& p, const node& o) const
@@ -272,19 +272,19 @@ void storage::snapshot(const filesystem::path& p) const
 		{
 			while(di != filesystem::directory_iterator())
 			{
-				filesystem::path entBase = di->path(), entPath = _tempdir / entBase;
+				filesystem::path entPath = di->path();
 
-				if(entBase == filesystem::path(".") || entBase == filesystem::path(".."))
+				if(entPath.filename() == filesystem::path(".") || entPath.filename() == filesystem::path(".."))
 					continue;
 
 				ifstream fi(entPath.string().c_str(),ios_base::binary | ios_base::in);
 				if(!fi)
-					throw marshal_exception("can't save to " + p.string() + ": " + strerror(errno));
+					throw marshal_exception("can't save to " + p.string() + ": " + strerror(errno) + " while opening " + entPath.string());
 
 				struct stat st;
 				stat(entPath.string().c_str(),&st);
 				archive_entry_clear(ae);
-				archive_entry_copy_pathname(ae,entBase.string().c_str());
+				archive_entry_copy_pathname(ae,entPath.filename().string().c_str());
 				archive_entry_copy_stat(ae,&st);
 
 				if(archive_write_header(ar,ae) != ARCHIVE_OK)
@@ -294,11 +294,12 @@ void storage::snapshot(const filesystem::path& p) const
 				{
 					fi.read(buf,4096);
 
-					if(archive_write_data(ar,buf,fi.gcount()) != ARCHIVE_OK)
-						throw marshal_exception("can't save to " + p.string() + ": error while writing " + entPath.string());
+					if(fi.gcount() && archive_write_data(ar,buf,fi.gcount()) != fi.gcount())
+						throw marshal_exception("can't save to " + p.string() + ": error while reading " + entPath.string());
 				}
 
 				cout << "written " << entPath.string() << " in " << p.string() << endl;
+				++di;
 			}
 		}
 		catch(...)

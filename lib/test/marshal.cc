@@ -15,7 +15,16 @@ TEST(marshal,load)
 
 TEST(marshal,snaphot)
 {
-	ASSERT_TRUE(false);
+	rdf::storage st;
+
+	ASSERT_TRUE(st.insert(rdf::ns_local("A"),rdf::ns_po("name"),rdf::lit("Hello")));
+	ASSERT_TRUE(st.insert(rdf::ns_local("B"),rdf::ns_po("name"),rdf::lit("World")));
+	ASSERT_TRUE(st.insert(rdf::ns_local("A"),rdf::ns_local("a"),rdf::lit("B")));
+
+	auto p = boost::filesystem::unique_path(boost::filesystem::temp_directory_path() / "test-panop-%%%%-%%%%-%%%%-%%%%");
+	st.snapshot(p.string());
+
+	ASSERT_TRUE(boost::filesystem::exists(p));
 }
 
 TEST(marshal,save_load)
