@@ -129,17 +129,4 @@ TEST(digraph,error)
 
 	ASSERT_EQ(num_edges(g1), 2);
 	ASSERT_EQ(num_vertices(g1), 3);
-
-	auto n3 = insert_node(42,g2);
-	ASSERT_THROW(get_node(n3,g1),std::out_of_range);
-	ASSERT_THROW(out_edges(n3,g1),std::out_of_range);
-	ASSERT_THROW(out_degree(n3,g1),std::out_of_range);
-
-	auto n4 = insert_node(422,g2);
-	auto e = insert_edge(string("dd"),n3,n4,g2);
-	ASSERT_THROW(get_edge(e,g1),std::out_of_range);
-	ASSERT_THROW(source(e,g1),std::out_of_range);
-	ASSERT_THROW(target(e,g1),std::out_of_range);
-
-	ASSERT_NE(n1, n3);
 }
