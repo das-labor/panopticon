@@ -4,9 +4,9 @@
 #include <boost/range/any_range.hpp>
 #include <boost/range/adaptor/transformed.hpp>
 #include <boost/range.hpp>
-#include <boost/icl/right_open_interval.hpp>
-#include <boost/optional.hpp>
+#include <boost/icl/interval.hpp>
 #include <boost/icl/split_interval_map.hpp>
+#include <boost/optional.hpp>
 #include <boost/variant.hpp>
 #include <boost/variant/static_visitor.hpp>
 
@@ -20,7 +20,7 @@ namespace po
 {
 	using offset = uint64_t;
 	using byte = uint8_t;
-	using bound = boost::icl::discrete_interval<offset>;
+	using bound = boost::icl::right_open_interval<offset>;
 	using tryte = boost::optional<byte>;
 	using slab = boost::any_range<tryte,boost::random_access_traversal_tag,tryte,std::ptrdiff_t>;
 }
@@ -113,7 +113,7 @@ namespace po
 
 	struct region
 	{
-		using image = boost::icl::interval_map<offset,layer_wloc>;
+		using image = std::list<std::pair<bound,layer_wloc>>;
 		using layers = digraph<layer_loc,bound>;
 
 		static region_loc mmap(const std::string&, const std::string&);

@@ -101,13 +101,13 @@ TEST(layer,projection)
 	st.write().add(bound(102,134),aes);
 
 	auto proj = st->projection();
-	boost::icl::interval_map<offset,layer_wloc> expect;
+	list<pair<bound,layer_wloc>> expect;
 
-	expect += std::make_pair(bound(0,45),layer_wloc(xor1));
-	expect += std::make_pair(bound(45,72),layer_wloc(add));
-	expect += std::make_pair(bound(72,80),layer_wloc(base));
-	expect += std::make_pair(bound(80,102),layer_wloc(zlib));
-	expect += std::make_pair(bound(102,134),layer_wloc(aes));
+	expect.emplace_back(bound(0,45),layer_wloc(xor1));
+	expect.emplace_back(bound(45,72),layer_wloc(add));
+	expect.emplace_back(bound(72,80),layer_wloc(base));
+	expect.emplace_back(bound(80,102),layer_wloc(zlib));
+	expect.emplace_back(bound(102,134),layer_wloc(aes));
 
 	std::cerr << "proj:" << std::endl;
 	for(const std::pair<bound,layer_wloc> &p: proj)

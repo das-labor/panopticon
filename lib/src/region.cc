@@ -22,7 +22,11 @@ layer* po::unmarshal(const uuid&, const rdf::storage&) { return nullptr; }
 
 std::ostream& std::operator<<(std::ostream& os, const po::bound& b)
 {
-	os << "[" << boost::icl::first(b) << ", " << boost::icl::last(b) << ")";
+	if(icl::size(b))
+		os << "[" << b.lower() << ", " << b.upper() << ")";
+	else
+		os << "[]";
+
 	return os;
 }
 
@@ -139,7 +143,7 @@ void region::add(const bound &_b, layer_loc l)
 {
 	bound b = bound(0,_size) & _b;
 	auto proj = projection();
-	auto i = proj.find(b);
+	auto i = find_if(proj.begin(),proj.end(),[&](const pair<bound,layer_wloc> &p) { return icl::intersects(p.first,b); });
 	auto vx = insert_node(l,_graph);
 	boost::optional<offset> last = none;
 
@@ -155,18 +159,20 @@ void region::add(const bound &_b, layer_loc l)
 			auto j = find_node(i->second.lock(),_graph);
 			insert_edge(n,j,vx,_graph);
 
-			if(last && *last + 1 != icl::first(n))
+			if(last && *last != n.lower())
 			{
-				bound m(*last + 1,icl::first(n));
+				bound m = bound(*last,n.lower());
 				insert_edge(m,_root,vx,_graph);
 			}
-			last = icl::last(n);
+			last = n.upper();
 
 			++i;
 		}
 
-		if(*last != icl::last(b))
-			insert_edge(bound(*last + 1,icl::last(b) + 1),_root,vx,_graph);
+		if(*last != b.upper())
+		{
+			insert_edge(bound(*last,b.upper()),_root,vx,_graph);
+		}
 	}
 
 	_projection = none;
@@ -180,9 +186,9 @@ const region::image& region::projection(void) const
 		using edge_descriptor = boost::graph_traits<digraph<layer_loc,bound>>::edge_descriptor;
 		std::function<void(vertex_descriptor)> step;
 		std::unordered_set<vertex_descriptor> visited;
+		icl::interval_map<offset,layer_wloc> proj;
 
-		_projection = icl::interval_map<offset,layer_wloc>();
-		*_projection += make_pair(bound(0,_size),layer_wloc(get_node(_root,_graph)));
+		proj += make_pair(icl::discrete_interval<offset>::right_open(0,_size),layer_wloc(get_node(_root,_graph)));
 
 		step = [&](vertex_descriptor v)
 		{
@@ -196,7 +202,7 @@ const region::image& region::projection(void) const
 				bound b = get_edge(e,_graph);
 				layer_loc other = get_node(target(e,_graph),_graph);
 
-				*_projection += make_pair(b,layer_wloc(other));
+				proj += make_pair(icl::discrete_interval<offset>::right_open(b.lower(),b.upper()),layer_wloc(other));
 			});
 
 			std::for_each(p.first,p.second,[&](edge_descriptor e)
@@ -210,6 +216,10 @@ const region::image& region::projection(void) const
 
 		step(_root);
 		assert(visited.size() == num_vertices(_graph));
+
+		_projection = list<pair<bound,layer_wloc>>();
+		for(auto i: proj)
+			_projection->emplace_back(bound(i.first.lower(),i.first.upper()),i.second);
 	}
 
 	return *_projection;
@@ -227,36 +237,43 @@ po::slab region::read(boost::optional<po::layer_loc> l) const
 	if(l)
 	{
 		auto vx = find_node(*l,_graph);
-		auto p = out_edges(vx,_graph);
-		auto i = p.first;
+		std::set<decltype(_graph)::edge_descriptor> in_edges;
 
-		if(i == p.second)
+		for(auto ex: iters(edges(_graph)))
+			if(target(ex,_graph) == vx)
+				in_edges.insert(ex);
+
+		if(!in_edges.size())
 		{
 			return get_node(vx,_graph)->filter(slab());
 		}
 		else
 		{
-			while(i != p.second)
-			{
-				src.emplace_back(get_edge(*i,_graph),layer_wloc(get_node(target(*i,_graph),_graph)));
-				++i;
-			}
+			for(auto e: in_edges)
+				src.emplace_back(get_edge(e,_graph),layer_wloc(get_node(source(e,_graph),_graph)));
 		}
 	}
 	else
 	{
-		for(auto r: projection())
-			src.emplace_back(r);
+		src = projection();
+		for(auto i: src)
+			cout << i.first << endl;
 	}
 
-	src.sort([&](const std::pair<bound,layer_wloc> &a, const std::pair<bound,layer_wloc> &b) { return icl::first(a.first) < icl::first(b.first); });
-
-	return std::accumulate(src.begin(),src.end(),slab(),[&](slab acc, const pair<bound,layer_wloc>& s)
+	ret = std::accumulate(src.begin(),src.end(),slab(),[&](slab acc, const pair<bound,layer_wloc>& s)
 	{
 		slab all = read(s.second.lock());
-		return boost::range::join(acc,slab(std::next(boost::begin(all),icl::first(s.first)),
-																			 std::next(boost::begin(all),icl::upper(s.first))));
+		if(!l)
+			cout << s.first << " <= " << boost::size(all) << endl;
+		assert(boost::size(all) >= s.first.upper());
+		return boost::range::join(acc,slab(std::next(boost::begin(all),s.first.lower()),
+																			 std::next(boost::begin(all),s.first.upper())));
 	});
+
+	if(l)
+		return (*l)->filter(ret);
+	else
+		return ret;
 }
 
 std::unordered_map<region_wloc,region_wloc> po::spanning_tree(const regions &regs)

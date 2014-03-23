@@ -82,7 +82,7 @@ TEST_F(region,read_one_layer)
 {
 	po::region_loc r1 = po::region::undefined("test",128);
 
-	r1.write().add(po::bound(1,7),po::layer_loc(new po::layer("anon 2",{1,2,3,4,5,6})));
+	r1.write().add(po::bound(1,8),po::layer_loc(new po::layer("anon 2",{1,2,3,4,5,6,7})));
 	r1.write().add(po::bound(50,62),po::layer_loc(new po::layer("anon 2",{1,2,3,4,5,6,6,5,4,3,2,1})));
 	r1.write().add(po::bound(62,63),po::layer_loc(new po::layer("anon 2",{po::byte(1)})));
 
@@ -91,16 +91,50 @@ TEST_F(region,read_one_layer)
 	size_t idx = 0;
 
 	for(auto i: s)
+		cout << idx++ << ": " << (i ? to_string((unsigned int)(*i)) : "none") << endl;
+	for(auto i: s)
 	{
 		if(idx >= 1 && idx < 7)
-			ASSERT_TRUE(*i == idx);
+			ASSERT_TRUE(i && *i == idx);
 		else if(idx >= 50 && idx < 56)
-			ASSERT_TRUE(*i == idx - 49);
+			ASSERT_TRUE(i && *i == idx - 49);
 		else if(idx >= 56 && idx < 62)
-			ASSERT_TRUE(*i == 6 - (idx - 56));
+			ASSERT_TRUE(i && *i == 6 - (idx - 56));
 		else if(idx == 62)
-			ASSERT_TRUE(*i == 1);
+			ASSERT_TRUE(i && *i == 1);
 		else
 			ASSERT_TRUE(i == boost::none);
+		++idx;
 	}
 }
+
+TEST_F(region,layer_proj)
+{
+	po::region_loc r1 = po::region::undefined("test",128);
+
+	r1.write().add(po::bound(2,8),po::layer_loc(new po::layer("anon 2",{1,2,3,4,5,6,7})));
+	r1.write().add(po::bound(50,62),po::layer_loc(new po::layer("anon 2",{1,2,3,4,5,6,6,5,4,3,2,1})));
+	r1.write().add(po::bound(62,63),po::layer_loc(new po::layer("anon 2",{po::byte(1)})));
+
+	auto proj = r1->projection();
+	list<po::bound> expect({
+		po::bound(0,2),
+		po::bound(2,8),
+		po::bound(8,50),
+		po::bound(50,62),
+		po::bound(62,63),
+		po::bound(63,128)
+	});
+
+	for(auto i: proj)
+		std::cout << i.first << ": " << i.second->name() << std::endl;
+
+	unsigned long i = 0;
+	while(i < expect.size())
+	{
+		std::cout << next(proj.begin(),i)->first << " vs " << *next(expect.begin(),i) << std::endl;
+		ASSERT_TRUE(next(proj.begin(),i)->first == *next(expect.begin(),i));
+		++i;
+	}
+}
+
