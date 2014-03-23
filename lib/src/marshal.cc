@@ -80,6 +80,9 @@ storage::storage(void)
 storage::storage(const filesystem::path& p)
 : _meta(), _tempdir(unique_path(temp_directory_path() / "panop-%%%%-%%%%-%%%%-%%%%"))
 {
+	if(!filesystem::create_directory(_tempdir))
+		throw marshal_exception("can't create temp directory " + _tempdir.string());
+
 	// open target zip
 	archive *ar = archive_read_new();
 	if(ar == NULL)
@@ -112,11 +115,12 @@ storage::storage(const filesystem::path& p)
 			size_t len;
 
 			if(!of)
-				throw marshal_exception("can't open " + p.string() + " into tempdir: " + strerror(errno));
+				throw marshal_exception("can't open " + pathName.string());
 
 			while((len = archive_read_data(ar,buf,4096)) > 0)
 				of.write(buf,len);
 
+			of.close();
 			cout << "read " << tmpName << " from " << p.string() << endl;
 		}
 
@@ -132,8 +136,7 @@ storage::storage(const filesystem::path& p)
 	if(archive_read_free(ar) != ARCHIVE_OK)
 		throw marshal_exception("can't open " + p.string());
 
-	if(!filesystem::create_directory(_tempdir) ||
-		 !_meta.open((_tempdir / filesystem::path("meta.kct")).string(),PolyDB::OWRITER | PolyDB::OCREATE))
+	if(!_meta.open((_tempdir / filesystem::path("meta.kct")).string(),PolyDB::OWRITER | PolyDB::OCREATE))
 		throw marshal_exception("can't open database");
 }
 
@@ -151,9 +154,9 @@ storage::storage(const storage& st)
 storage::~storage(void)
 {
 	_meta.close();
-/*
+
 	if(!_tempdir.empty())
-		filesystem::remove_all(_tempdir);*/
+		filesystem::remove_all(_tempdir);
 }
 
 bool storage::has(const node& s, const node& p, const node& o) const
