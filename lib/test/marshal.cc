@@ -61,6 +61,6 @@ TEST(marshal,empty)
 
 TEST(marshal,missing_file)
 {
-	ASSERT_FALSE(boost::filesystem::exists("empty.panop"));
+	ASSERT_FALSE(boost::filesystem::exists("non-existend.panop"));
 	ASSERT_THROW(rdf::storage("non-existend.panop"),marshal_exception);
 }
