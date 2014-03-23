@@ -79,7 +79,7 @@ TEST(layer,add)
 	st.write().add(bound(0,6),layer_loc(new layer("anon 2", {1,2,3,4,5,6})));
 	st.write().add(bound(10,40),layer_loc(new layer("anon 3", {1,2,3,4,5,6})));
 	st.write().add(bound(4,12),layer_loc(new layer("anon 4", {1,2,3,4,5,6})));
-	auto proj = st->projection();
+	auto proj = st->flatten();
 
 	for(const std::pair<bound,layer_wloc> &p: proj)
 		std::cout << p.first << ": " << p.second->name() << std::endl;
@@ -100,7 +100,7 @@ TEST(layer,projection)
 	st.write().add(bound(80,128),zlib);
 	st.write().add(bound(102,134),aes);
 
-	auto proj = st->projection();
+	auto proj = st->flatten();
 	list<pair<bound,layer_wloc>> expect;
 
 	expect.emplace_back(bound(0,45),layer_wloc(xor1));

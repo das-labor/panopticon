@@ -113,9 +113,6 @@ namespace po
 
 	struct region
 	{
-		using image = std::list<std::pair<bound,layer_wloc>>;
-		using layers = digraph<layer_loc,bound>;
-
 		static region_loc mmap(const std::string&, const std::string&);
 		static region_loc undefined(const std::string&, size_t);
 		static region_loc wrap(const std::string&, const byte*, size_t);
@@ -124,22 +121,22 @@ namespace po
 		region(const std::string&, layer_loc root);
 		void add(const bound&, layer_loc);
 
-		slab read(boost::optional<layer_loc> l = boost::none) const;
+		slab read(void) const;
 
-		const image& projection(void) const;
-		const layers& graph(void) const;
+		const std::list<std::pair<bound,layer_wloc>>& flatten(void) const;
+		const std::list<std::pair<bound,layer_loc>>& stack(void) const;
 
 		size_t size(void) const;
 		const std::string& name(void) const;
 
 	private:
-		layers _graph; ///< DAG of layers. Edge points from the covered layer to the covering.
-		boost::graph_traits<digraph<layer_loc,bound>>::vertex_descriptor _root;
+		layer_loc _base;
+		std::list<std::pair<bound,layer_loc>> _stack; ///< Stack of layers to apply to this regions data.
 		std::string _name;
 		size_t _size;
 
 		// caches
-		mutable boost::optional<image> _projection;
+		mutable boost::optional<std::list<std::pair<bound,layer_wloc>>> _projection;
 	};
 
 	template<>

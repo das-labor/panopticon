@@ -91,10 +91,9 @@ TEST_F(region,read_one_layer)
 	size_t idx = 0;
 
 	for(auto i: s)
-		cout << idx++ << ": " << (i ? to_string((unsigned int)(*i)) : "none") << endl;
-	for(auto i: s)
 	{
-		if(idx >= 1 && idx < 7)
+		cout << idx << ": " << (i ? to_string((unsigned int)(*i)) : "none") << endl;
+		if(idx >= 1 && idx < 8)
 			ASSERT_TRUE(i && *i == idx);
 		else if(idx >= 50 && idx < 56)
 			ASSERT_TRUE(i && *i == idx - 49);
@@ -116,7 +115,7 @@ TEST_F(region,layer_proj)
 	r1.write().add(po::bound(50,62),po::layer_loc(new po::layer("anon 2",{1,2,3,4,5,6,6,5,4,3,2,1})));
 	r1.write().add(po::bound(62,63),po::layer_loc(new po::layer("anon 2",{po::byte(1)})));
 
-	auto proj = r1->projection();
+	auto proj = r1->flatten();
 	list<po::bound> expect({
 		po::bound(0,2),
 		po::bound(2,8),
