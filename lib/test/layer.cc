@@ -37,15 +37,6 @@ TEST(slab,copy)
 	cout << "res: " << boost::size(a) << endl;
 }
 
-TEST(layer,map_layer)
-{
-	layer l1 = layer("add 1",[](tryte i) { return *i + 1; });
-	vector<tryte> d = {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16}, r, e({2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17});
-
-	boost::copy(l1.filter(slab(d)),back_inserter(r));
-	ASSERT_EQ(r, e);
-}
-
 TEST(layer,anonymous_layer)
 {
 	layer l1 = layer("anon 1",128);

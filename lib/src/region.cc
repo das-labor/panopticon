@@ -15,7 +15,10 @@ using namespace std;
 using namespace boost;
 
 template<>
-rdf::statements po::marshal(const layer*, const uuid&) { return rdf::statements(); }
+rdf::statements po::marshal(const layer*, const uuid&)
+{
+
+	return rdf::statements(); }
 
 template<>
 layer* po::unmarshal(const uuid&, const rdf::storage&) { return nullptr; }
@@ -34,10 +37,6 @@ po::layer_wloc po::operator+=(po::layer_wloc& a, const po::layer_wloc &b)
 {
 	return a = b;
 }
-
-layer::layer(const string &n, function<po::tryte(po::tryte)> fn)
-: _name(n), _data(fn)
-{}
 
 layer::layer(const std::string &n, std::initializer_list<byte> il)
 : _name(n), _data(std::move(vector<byte>(il)))
@@ -77,11 +76,6 @@ slab layer::filter(const slab& in) const
 }
 
 layer::filter_visitor::filter_visitor(slab s) : static_visitor(), in(s) {}
-
-slab layer::filter_visitor::operator()(std::function<tryte(tryte)> fn) const
-{
-	return adaptors::transform(in,fn);
-}
 
 slab layer::filter_visitor::operator()(const std::vector<byte>& d) const
 {

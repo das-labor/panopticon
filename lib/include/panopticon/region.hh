@@ -34,8 +34,6 @@ namespace po
 {
 	struct layer
 	{
-		layer(const std::string&, std::function<tryte(tryte)>);
-
 		layer(const std::string&, std::initializer_list<byte>);
 		layer(const std::string&, const std::vector<byte>&);
 		layer(const std::string&, const byte*, size_t);
@@ -52,7 +50,6 @@ namespace po
 		{
 			filter_visitor(slab);
 
-			slab operator()(std::function<tryte(tryte)> fn) const;
 			slab operator()(const std::vector<byte>& d) const;
 			slab operator()(const std::unordered_map<offset,tryte>& m) const;
 			slab operator()(size_t sz) const;
@@ -62,7 +59,6 @@ namespace po
 
 		std::string _name;
 		boost::variant<
-			std::function<tryte(tryte)>,			///< Function applied tryte-wise to layers below.
 			std::vector<byte>,								///< Constant data. Ignores Input.
 			std::unordered_map<offset,tryte>,	///< Sparse constant data.
 			size_t														///< Uninitialized (boost::none) data. Ignores input.
