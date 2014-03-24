@@ -108,3 +108,27 @@ TEST(layer,projection)
 		std::cerr << p.first << " => " << p.second->name() << std::endl;
 	ASSERT_TRUE(proj == expect);
 }
+
+TEST(layer,marshal)
+{
+	layer_loc l1(new layer("l1",33));
+	layer_loc l2(new layer("l2",vector<byte>({1,2,3,4,5})));
+	layer_loc l3(new layer("l3",std::unordered_map<offset,tryte>({
+		make_pair(0,5),
+		make_pair(1,5),
+		make_pair(2,boost::none),
+		make_pair(3,0xff),
+		make_pair(4,boost::none)
+	})));
+
+	rdf::storage st;
+	save_point(st);
+
+	std::unique_ptr<layer> l1b(unmarshal<layer>(l1.tag(),st));
+	std::unique_ptr<layer> l2b(unmarshal<layer>(l2.tag(),st));
+	std::unique_ptr<layer> l3b(unmarshal<layer>(l3.tag(),st));
+
+	ASSERT(*l1b == *l1);
+	ASSERT(*l2b == *l2);
+	ASSERT(*l3b == *l3);
+}
