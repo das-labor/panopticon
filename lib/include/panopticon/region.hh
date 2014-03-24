@@ -138,6 +138,9 @@ namespace po
 
 		// caches
 		mutable boost::optional<std::list<std::pair<bound,layer_wloc>>> _projection;
+
+		template<typename T>
+		friend rdf::statements marshal(const T*, const uuid&);
 	};
 
 	template<>

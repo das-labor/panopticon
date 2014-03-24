@@ -420,8 +420,10 @@ rdf::statements po::marshal(const region* r, const uuid& u)
 
 	ret.emplace_back(root,rdf::ns_rdf("type"),rdf::ns_po("Region"));
 	ret.emplace_back(root,rdf::ns_po("name"),rdf::lit(r->name()));
-	ret.emplace_back(root,rdf::ns_po("size"),rdf::lit(r->size()));
+	ret.emplace_back(root,rdf::ns_po("base"),rdf::lit(to_string(r->_base.tag())));
+	auto m = marshal(r->_base.read(),r->_base.tag());
 
+	std::move(m.begin(),m.end(),back_inserter(ret));
 	rdf::nodes ns;
 
 	for(auto p: r->stack())
@@ -431,6 +433,9 @@ rdf::statements po::marshal(const region* r, const uuid& u)
 		ret.emplace_back(n,rdf::ns_po("bound"),rdf::lit(to_string(p.first.lower()) + ":" + to_string(p.first.upper())));
 		ret.emplace_back(n,rdf::ns_po("layer"),rdf::lit(to_string(p.second.tag())));
 		ns.emplace_back(n);
+		auto m = marshal(p.second.read(),p.second.tag());
+
+		std::move(m.begin(),m.end(),back_inserter(ret));
 	}
 
 	rdf::write_list(ns.begin(),ns.end(),"layers");
@@ -440,5 +445,25 @@ rdf::statements po::marshal(const region* r, const uuid& u)
 template<>
 region* po::unmarshal(const uuid& u, const rdf::storage& st)
 {
-	return nullptr;
+	uuids::string_generator sg;
+	rdf::node root = rdf::ns_local(to_string(u));
+	rdf::node name = st.first(root,rdf::ns_po("name")).object;
+	rdf::node base = st.first(root,rdf::ns_po("base")).object;
+	rdf::node layers = st.first(root,rdf::ns_po("layers")).object;
+	rdf::nodes ns = rdf::read_list(layers,st);
+	layer_loc b(unmarshal<layer>(sg(base.as_literal()),st));
+	region *ret = new region(name.as_literal(),b);
+
+	for(auto n: ns)
+	{
+		rdf::node lay = st.first(n,rdf::ns_po("layer")).object;
+		rdf::node b = st.first(n,rdf::ns_po("bound")).object;
+		auto i = b.as_literal().find(':');
+
+		assert(i != string::npos);
+		layer_loc l(unmarshal<layer>(sg(lay.as_literal()),st));
+		ret->add(bound(stoll(b.as_literal().substr(0,i)),stoll(b.as_literal().substr(i))),l);
+	}
+
+	return ret;
 }
