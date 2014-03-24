@@ -64,7 +64,59 @@ rdf::statements po::marshal(const layer* l, const uuid& u)
 }
 
 template<>
-layer* po::unmarshal(const uuid&, const rdf::storage&) { return nullptr; }
+layer* po::unmarshal(const uuid& u, const rdf::storage& st)
+{
+	rdf::node root = rdf::ns_local(to_string(u));
+	rdf::node type = st.first(root,rdf::ns_rdf("type")).object;
+	rdf::node name = st.first(root,rdf::ns_rdf("name")).object;
+
+	if(type == rdf::ns_po("Sparse-Undefined"))
+	{
+		rdf::node size = st.first(root,rdf::ns_po("size")).object;
+		return new layer(name.as_literal(),static_cast<size_t>(stoull(size.as_literal())));
+	}
+	else if(type == rdf::ns_po("Dense-Defined"))
+	{
+		string data = st.first(root,rdf::ns_po("data")).object.as_literal();
+		vector<byte> vec(data.size() / 2);
+		auto i = data.begin();
+
+		while(i != data.end() && std::next(i) != data.end())
+		{
+			vec.push_back(static_cast<byte>(stoul(string(i,i+1))));
+			advance(i,2);
+		}
+
+		return new layer(name.as_literal(),vec);
+	}
+	else if(type == rdf::ns_po("Sparse-Defined"))
+	{
+		string data = st.first(root,rdf::ns_po("data")).object.as_literal();
+		std::unordered_map<offset,tryte> kv;
+		auto i = data.begin();
+
+		while(i != data.end())
+		{
+			auto j = find(i,data.end(),'-');
+			if(j == data.end())
+				break;
+
+			auto k = find(j,data.end(),' ');
+			if(k == data.end())
+				break;
+
+			offset off = stoul(string(i,j));
+			tryte t = (*(k-1) == 'u' ? boost::none : make_optional(static_cast<byte>(stoul(string(j+1,k)))));
+
+			kv.emplace(off,t);
+			i = k + 1;
+		}
+
+		return new layer(name.as_literal(),kv);
+	}
+	else
+		throw marshal_exception("unknown layer type \"" + type.as_literal() + "\"");
+}
 
 std::ostream& std::operator<<(std::ostream& os, const po::bound& b)
 {
