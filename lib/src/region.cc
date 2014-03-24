@@ -1,4 +1,5 @@
 #include <numeric>
+#include <iomanip>
 
 #include <boost/iterator/counting_iterator.hpp>
 #include <boost/iterator/zip_iterator.hpp>
@@ -15,10 +16,52 @@ using namespace std;
 using namespace boost;
 
 template<>
-rdf::statements po::marshal(const layer*, const uuid&)
+rdf::statements po::marshal(const layer* l, const uuid& u)
 {
+	rdf::statements ret;
+	rdf::node root = rdf::ns_local(to_string(u));
 
-	return rdf::statements(); }
+	if(get<size_t>(&l->_data))
+	{
+		ret.emplace_back(root,rdf::ns_rdf("type"),rdf::ns_po("Sparse-Undefined"));
+		ret.emplace_back(root,rdf::ns_rdf("size"),rdf::lit(get<size_t>(l->_data)));
+	}
+	else if(get<vector<byte>>(&l->_data))
+	{
+		ret.emplace_back(root,rdf::ns_rdf("type"),rdf::ns_po("Dense-Defined"));
+
+		// XXX: should be save in a seperate file
+		stringstream ss;
+		for(auto i: get<vector<byte>>(l->_data))
+			ss << hex << setw(2) << setfill('0') << static_cast<unsigned int>(i);
+
+		ret.emplace_back(root,rdf::ns_rdf("data"),rdf::lit(ss.str()));
+	}
+	else if(get<std::unordered_map<offset,tryte>>(&l->_data))
+	{
+		ret.emplace_back(root,rdf::ns_rdf("type"),rdf::ns_po("Sparse-Defined"));
+
+		// XXX: should be save in a seperate file
+		stringstream ss;
+		for(auto p: get<std::unordered_map<offset,tryte>>(l->_data))
+		{
+			ss << p.first << "-";
+			if(p.second)
+				ss << hex << setw(2) << setfill('0') << static_cast<unsigned int>(*p.second);
+			else
+				ss << "u";
+			ss << " ";
+		}
+
+		ret.emplace_back(root,rdf::ns_rdf("data"),rdf::lit(ss.str()));
+	}
+	else
+		throw marshal_exception("unknown layer type");
+
+	ret.emplace_back(root,rdf::ns_po("name"),l->name());
+
+	return ret;
+}
 
 template<>
 layer* po::unmarshal(const uuid&, const rdf::storage&) { return nullptr; }

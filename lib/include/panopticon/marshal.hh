@@ -20,7 +20,6 @@
 #define PO "http://panopticon.re/rdf/v1/"
 #define XSD	"http://www.w3.org/2001/XMLSchema#"
 #define RDF	"http://www.w3.org/1999/02/22-rdf-syntax-ns#"
-#define TEMPDIR_TEMPLATE std::string("panopXXXXXX")
 
 #pragma once
 

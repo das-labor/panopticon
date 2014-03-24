@@ -63,6 +63,9 @@ namespace po
 			std::unordered_map<offset,tryte>,	///< Sparse constant data.
 			size_t														///< Uninitialized (boost::none) data. Ignores input.
 		> _data;
+
+		template<typename T>
+		friend rdf::statements marshal(const T*, const uuid&);
 	};
 
 	using layer_loc = loc<layer>;
