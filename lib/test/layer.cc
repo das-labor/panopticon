@@ -109,6 +109,37 @@ TEST(layer,projection)
 	ASSERT_TRUE(proj == expect);
 }
 
+TEST(layer,flatten)
+{
+	po::region_loc r1 = po::region::undefined("test",128);
+
+	r1.write().add(po::bound(2,8),po::layer_loc(new po::layer("anon 2",{1,2,3,4,5,6,7})));
+	r1.write().add(po::bound(50,62),po::layer_loc(new po::layer("anon 2",{1,2,3,4,5,6,6,5,4,3,2,1})));
+	r1.write().add(po::bound(62,63),po::layer_loc(new po::layer("anon 2",{po::byte(1)})));
+
+	auto proj = r1->flatten();
+	list<po::bound> expect({
+		po::bound(0,2),
+		po::bound(2,8),
+		po::bound(8,50),
+		po::bound(50,62),
+		po::bound(62,63),
+		po::bound(63,128)
+	});
+
+	for(auto i: proj)
+		std::cout << i.first << ": " << i.second->name() << std::endl;
+
+	unsigned long i = 0;
+	while(i < expect.size())
+	{
+		std::cout << next(proj.begin(),i)->first << " vs " << *next(expect.begin(),i) << std::endl;
+		ASSERT_TRUE(next(proj.begin(),i)->first == *next(expect.begin(),i));
+		++i;
+	}
+}
+
+
 TEST(layer,marshal)
 {
 	layer_loc l1(new layer("l1",33));

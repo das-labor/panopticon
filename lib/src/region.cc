@@ -252,6 +252,8 @@ const std::list<std::pair<bound,layer_wloc>>& region::flatten(void) const
 		icl::interval_map<offset,layer_wloc> proj;
 		bound world(0,_size);
 
+		proj += make_pair(icl::discrete_interval<offset>::right_open(0,_size),layer_wloc(_base));
+
 		for(auto i: _stack)
 		{
 			assert(icl::contains(world,i.first));
