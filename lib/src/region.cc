@@ -413,7 +413,32 @@ std::list<std::pair<bound,region_wloc>> po::projection(const regions &regs)
 }
 
 template<>
-rdf::statements po::marshal(const region*, const uuid&) { return rdf::statements(); }
+rdf::statements po::marshal(const region* r, const uuid& u)
+{
+	rdf::statements ret;
+	rdf::node root = rdf::ns_local(to_string(u));
+
+	ret.emplace_back(root,rdf::ns_rdf("type"),rdf::ns_po("Region"));
+	ret.emplace_back(root,rdf::ns_po("name"),rdf::lit(r->name()));
+	ret.emplace_back(root,rdf::ns_po("size"),rdf::lit(r->size()));
+
+	rdf::nodes ns;
+
+	for(auto p: r->stack())
+	{
+		rdf::node n = rdf::node::blank();
+
+		ret.emplace_back(n,rdf::ns_po("bound"),rdf::lit(to_string(p.first.lower()) + ":" + to_string(p.first.upper())));
+		ret.emplace_back(n,rdf::ns_po("layer"),rdf::lit(to_string(p.second.tag())));
+		ns.emplace_back(n);
+	}
+
+	rdf::write_list(ns.begin(),ns.end(),"layers");
+	return ret;
+}
 
 template<>
-region* po::unmarshal(const uuid&, const rdf::storage&) { return nullptr; }
+region* po::unmarshal(const uuid& u, const rdf::storage& st)
+{
+	return nullptr;
+}
