@@ -120,10 +120,12 @@ namespace po
 		static region_loc wrap(const std::string&, std::initializer_list<byte>);
 
 		region(const std::string&, layer_loc root);
+
+		bool operator==(const region& r) const;
+
 		void add(const bound&, layer_loc);
 
 		slab read(void) const;
-
 		const std::list<std::pair<bound,layer_wloc>>& flatten(void) const;
 		const std::list<std::pair<bound,layer_loc>>& stack(void) const;
 

@@ -107,4 +107,24 @@ TEST_F(region,read_one_layer)
 	}
 }
 
+TEST_F(region,marshal)
+{
+	po::region_loc r1 = po::region::undefined("test",128);
 
+	r1.write().add(po::bound(1,8),po::layer_loc(new po::layer("anon 1",5)));
+	r1.write().add(po::bound(1,8),po::layer_loc(new po::layer("anon 2",{1,2,3,4,5,6,7})));
+	r1.write().add(po::bound(50,62),po::layer_loc(new po::layer("anon 3",{
+		make_pair(1,1),
+		make_pair(0,boost::none),
+		make_pair(3,0xff),
+		make_pair(4,boost::none),
+		make_pair(2,2)
+	})));
+
+	po::rdf::storage st;
+	po::save_point(st);
+
+	std::unique_ptr<po::region> r1b(po::unmarshal<po::region>(r1.tag(),st));
+
+	ASSERT_TRUE(*r1b == *r1);
+}

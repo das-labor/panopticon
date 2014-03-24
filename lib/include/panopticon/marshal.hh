@@ -145,7 +145,7 @@ namespace po
 		inline node ns_local(const std::string& s) { return node(LOCAL + s); }
 
 		template<typename It>
-		std::pair<rdf::node,rdf::statements> write_list(It begin, It end, const std::string &ns);
+		std::pair<rdf::node,rdf::statements> write_list(It begin, It end, const std::string &);
 		nodes read_list(const node &n, const storage &store);
 	}
 
@@ -159,19 +159,20 @@ namespace po
 #endif
 
 	template<typename It>
-	std::pair<rdf::node,rdf::statements> rdf::write_list(It begin, It end, const std::string &ns)
+	std::pair<rdf::node,rdf::statements> rdf::write_list(It begin, It end, const std::string& ns)
 	{
+		assert(ns.size());
+
 		rdf::statements ret;
-		int counter = 0;
-		std::function<node(void)> blank = [&](void) { return ns.empty() ? node::blank() : node(ns + std::to_string(counter++)); };
-		rdf::node head = (std::distance(begin,end) ? blank() : rdf::ns_rdf("nil"));
+		unsigned int counter = 0;
+		rdf::node head = (std::distance(begin,end) ? node(ns + std::to_string(counter++)) : rdf::ns_rdf("nil"));
 
 		rdf::node last = head;
 		It i = begin;
 		while(i != end)
 		{
 			const rdf::node &n = *i;
-			rdf::node next = (std::next(i) == end ? rdf::ns_rdf("nil") : blank());
+			rdf::node next = (std::next(i) == end ? rdf::ns_rdf("nil") : node(ns + std::to_string(counter++)));
 
 			ret.emplace_back(last,rdf::ns_rdf("first"),n);
 			ret.emplace_back(last,rdf::ns_rdf("rest"),next);

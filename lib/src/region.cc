@@ -237,6 +237,14 @@ region::region(const std::string &n, layer_loc r)
 	_projection(none)
 {}
 
+bool region::operator==(const region& r) const
+{
+	return _base == r._base &&
+				 _stack == r._stack &&
+				 _name == r._name &&
+				 _size == r._size;
+}
+
 void region::add(const bound &_b, layer_loc l)
 {
 	bound b = _b & bound(0,_size);
@@ -438,7 +446,10 @@ rdf::statements po::marshal(const region* r, const uuid& u)
 		std::move(m.begin(),m.end(),back_inserter(ret));
 	}
 
-	rdf::write_list(ns.begin(),ns.end(),"layers");
+	auto p = rdf::write_list(ns.begin(),ns.end(),to_string(u));
+	ret.emplace_back(root,rdf::ns_po("layers"),p.first);
+	std::move(p.second.begin(),p.second.end(),back_inserter(ret));
+
 	return ret;
 }
 
@@ -451,7 +462,9 @@ region* po::unmarshal(const uuid& u, const rdf::storage& st)
 	rdf::node base = st.first(root,rdf::ns_po("base")).object;
 	rdf::node layers = st.first(root,rdf::ns_po("layers")).object;
 	rdf::nodes ns = rdf::read_list(layers,st);
-	layer_loc b(unmarshal<layer>(sg(base.as_literal()),st));
+
+	uuid base_u = sg(base.as_literal());
+	layer_loc b(base_u,unmarshal<layer>(base_u,st));
 	region *ret = new region(name.as_literal(),b);
 
 	for(auto n: ns)
@@ -459,10 +472,11 @@ region* po::unmarshal(const uuid& u, const rdf::storage& st)
 		rdf::node lay = st.first(n,rdf::ns_po("layer")).object;
 		rdf::node b = st.first(n,rdf::ns_po("bound")).object;
 		auto i = b.as_literal().find(':');
+		uuid lay_u = sg(lay.as_literal());
 
 		assert(i != string::npos);
-		layer_loc l(unmarshal<layer>(sg(lay.as_literal()),st));
-		ret->add(bound(stoll(b.as_literal().substr(0,i)),stoll(b.as_literal().substr(i))),l);
+		layer_loc l(lay_u,unmarshal<layer>(lay_u,st));
+		ret->add(bound(stoll(b.as_literal().substr(0,i)),stoll(b.as_literal().substr(i+1))),l);
 	}
 
 	return ret;
