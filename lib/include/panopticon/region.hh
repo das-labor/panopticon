@@ -41,6 +41,8 @@ namespace po
 		layer(const std::string&, const std::unordered_map<offset,tryte>&);
 		layer(const std::string&, offset);
 
+		bool operator==(const layer&) const;
+
 		slab filter(const slab&) const;
 		const std::string& name(void) const;
 		void write(offset pos, tryte t);

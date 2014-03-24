@@ -24,7 +24,7 @@ rdf::statements po::marshal(const layer* l, const uuid& u)
 	if(get<size_t>(&l->_data))
 	{
 		ret.emplace_back(root,rdf::ns_rdf("type"),rdf::ns_po("Sparse-Undefined"));
-		ret.emplace_back(root,rdf::ns_rdf("size"),rdf::lit(get<size_t>(l->_data)));
+		ret.emplace_back(root,rdf::ns_po("size"),rdf::lit(get<size_t>(l->_data)));
 	}
 	else if(get<vector<byte>>(&l->_data))
 	{
@@ -35,7 +35,8 @@ rdf::statements po::marshal(const layer* l, const uuid& u)
 		for(auto i: get<vector<byte>>(l->_data))
 			ss << hex << setw(2) << setfill('0') << static_cast<unsigned int>(i);
 
-		ret.emplace_back(root,rdf::ns_rdf("data"),rdf::lit(ss.str()));
+		cout << "write: " << ss.str() << endl;
+		ret.emplace_back(root,rdf::ns_po("data"),rdf::lit(ss.str()));
 	}
 	else if(get<std::unordered_map<offset,tryte>>(&l->_data))
 	{
@@ -53,12 +54,13 @@ rdf::statements po::marshal(const layer* l, const uuid& u)
 			ss << " ";
 		}
 
-		ret.emplace_back(root,rdf::ns_rdf("data"),rdf::lit(ss.str()));
+		cout << "write: " << ss.str() << endl;
+		ret.emplace_back(root,rdf::ns_po("data"),rdf::lit(ss.str()));
 	}
 	else
 		throw marshal_exception("unknown layer type");
 
-	ret.emplace_back(root,rdf::ns_po("name"),l->name());
+	ret.emplace_back(root,rdf::ns_po("name"),rdf::lit(l->name()));
 
 	return ret;
 }
@@ -68,7 +70,7 @@ layer* po::unmarshal(const uuid& u, const rdf::storage& st)
 {
 	rdf::node root = rdf::ns_local(to_string(u));
 	rdf::node type = st.first(root,rdf::ns_rdf("type")).object;
-	rdf::node name = st.first(root,rdf::ns_rdf("name")).object;
+	rdf::node name = st.first(root,rdf::ns_po("name")).object;
 
 	if(type == rdf::ns_po("Sparse-Undefined"))
 	{
@@ -78,12 +80,13 @@ layer* po::unmarshal(const uuid& u, const rdf::storage& st)
 	else if(type == rdf::ns_po("Dense-Defined"))
 	{
 		string data = st.first(root,rdf::ns_po("data")).object.as_literal();
-		vector<byte> vec(data.size() / 2);
+		vector<byte> vec;
+
 		auto i = data.begin();
 
 		while(i != data.end() && std::next(i) != data.end())
 		{
-			vec.push_back(static_cast<byte>(stoul(string(i,i+1))));
+			vec.push_back(static_cast<byte>(stoul(string(i,i+2))));
 			advance(i,2);
 		}
 
@@ -106,7 +109,7 @@ layer* po::unmarshal(const uuid& u, const rdf::storage& st)
 				break;
 
 			offset off = stoul(string(i,j));
-			tryte t = (*(k-1) == 'u' ? boost::none : make_optional(static_cast<byte>(stoul(string(j+1,k)))));
+			tryte t = (*(k-1) == 'u' ? boost::none : make_optional(static_cast<byte>(stoul(string(j+1,k),nullptr,16))));
 
 			kv.emplace(off,t);
 			i = k + 1;
@@ -152,6 +155,12 @@ layer::layer(const std::string &n, const std::unordered_map<offset,tryte> &d)
 layer::layer(const std::string &n, offset sz)
 : _name(n), _data(sz)
 {}
+
+bool layer::operator==(const layer& l) const
+{
+	return name() == l.name() &&
+				 _data == l._data;
+}
 
 void layer::write(offset pos, tryte t)
 {

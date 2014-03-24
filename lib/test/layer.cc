@@ -128,7 +128,7 @@ TEST(layer,marshal)
 	std::unique_ptr<layer> l2b(unmarshal<layer>(l2.tag(),st));
 	std::unique_ptr<layer> l3b(unmarshal<layer>(l3.tag(),st));
 
-	ASSERT(*l1b == *l1);
-	ASSERT(*l2b == *l2);
-	ASSERT(*l3b == *l3);
+	ASSERT_TRUE(*l1b == *l1);
+	ASSERT_TRUE(*l2b == *l2);
+	ASSERT_TRUE(*l3b == *l3);
 }
