@@ -33,6 +33,11 @@ add_library(panopticon OBJECT ${panopticon_SOURCES} ${panopticon_HEADERS})
 add_library(panopticon-shared SHARED $<TARGET_OBJECTS:panopticon>)
 add_library(panopticon-static STATIC $<TARGET_OBJECTS:panopticon>)
 
+target_link_libraries(panopticon-shared ${KyotoCabinet_LIBRARIES}
+	${LibArchive_LIBRARIES} ${Boost_LIBRARIES})
+target_link_libraries(panopticon-static ${KyotoCabinet_LIBRARIES}
+	${LibArchive_LIBRARIES} ${Boost_LIBRARIES})
+
 set_target_properties(panopticon-shared PROPERTIES VERSION
 	${panopticon_MAJOR}.${panopticon_MINOR}.${panopticon_PATCH} SOVERSION
 	${panopticon_MAJOR}.${panopticon_MINOR}.${panopticon_PATCH})
