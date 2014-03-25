@@ -29,8 +29,8 @@ namespace po
 
 	struct format
 	{
-		static format integer(unsigned int bw, bool sign);
-		static format ieee754(unsigned int bw);
+		static format integer(offset bw, bool sign);
+		static format ieee754(offset bw);
 		static format bitfield(const std::unordered_map<unsigned int,std::string>& bits);
 		static format enumeration(const std::unordered_map<std::list<byte>,std::string>& values);
 

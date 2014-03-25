@@ -19,12 +19,16 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 qt5_wrap_cpp(qtpanopticon_HEADERS_MOC ${qtpanopticon_HEADERS})
 qt5_add_resources(qtpanopticon_RCCS ${qtpanopticon_RESOURCES})
 
-# remove when fixed in Qt5
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" OR
 	 "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+	# remove when fixed in Qt5
 	add_definitions("-Wno-nested-anon-types")
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -iquote ${CMAKE_CURRENT_SOURCE_DIR}/include")
+else()
+	# MSVC
+	include_directories("${CMAKE_CURRENT_SOURCE_DIR}/include")
 endif()
+
 
 add_executable(qtpanopticon ${qtpanopticon_SOURCES} ${qtpanopticon_HEADERS}
 	${qtpanopticon_HEADERS_MOC} ${qtpanopticon_RCCS})
