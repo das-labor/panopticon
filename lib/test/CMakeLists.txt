@@ -5,6 +5,11 @@ set(panopticon_test_SOURCES layer.cc loc.cc region.cc testsuite.cc
 
 include_directories(${GTEST_INCLUDE_DIRS})
 link_directories(${panopticon_LIBRARY_DIRS} ${GTEST_LIBRARY_DIRS})
+
+if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+	add_definitions("/MTd")
+endif()
+
 add_executable(testsuite ${panopticon_test_HEADERS}
 	${panopticon_test_SOURCES})
 target_link_libraries(testsuite ${GTEST_LIBRARIES}
