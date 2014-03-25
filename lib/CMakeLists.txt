@@ -18,6 +18,10 @@ set(panopticon_LIBRARIES panopticon-shared ${KyotoCabinet_LIBRARIES}
 	${LibArchive_LIBRARIES} ${Boost_LIBRARIES})
 set(panopticon_LIBRARIES ${panopticon_LIBRARIES} PARENT_SCOPE)
 
+set(panopticon_STATIC_LIBRARIES panopticon-static ${KyotoCabinet_LIBRARIES}
+	${LibArchive_LIBRARIES} ${Boost_LIBRARIES})
+set(panopticon_STATIC_LIBRARIES ${panopticon_LIBRARIES} PARENT_SCOPE)
+
 set(panopticon_FOUND 1)
 set(panopticon_FOUND ${panopticon_FOUND} PARENT_SCOPE)
 

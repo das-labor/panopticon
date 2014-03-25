@@ -29,7 +29,6 @@ else()
 	include_directories("${CMAKE_CURRENT_SOURCE_DIR}/include")
 endif()
 
-
 add_executable(qtpanopticon ${qtpanopticon_SOURCES} ${qtpanopticon_HEADERS}
 	${qtpanopticon_HEADERS_MOC} ${qtpanopticon_RCCS})
 qt5_use_modules(qtpanopticon Widgets Quick Qml)
