@@ -76,12 +76,12 @@ TEST(digraph,out_iterator)
 	auto e14 = insert_edge(string("d"),n1,n4,g);
 
 	auto i = out_edges(n1,g);
-	ASSERT_TRUE((*i.first == e12 && *std::next(i.first) == e14) || (*i.first == e14 && *std::next(i.first) == e12));
-	ASSERT_EQ(std::next(i.first,2), i.second);
+	ASSERT_TRUE((*i.first == e12 && *(i.first + 1) == e14) || (*i.first == e14 && *(i.first + 1) == e12));
+	ASSERT_EQ(i.first + 2, i.second);
 
 	i = out_edges(n2,g);
-	ASSERT_TRUE((*i.first == e23 && *std::next(i.first) == e21) || (*i.first == e21 && *std::next(i.first) == e23));
-	ASSERT_EQ(std::next(i.first,2), i.second);
+	ASSERT_TRUE((*i.first == e23 && *(i.first + 1) == e21) || (*i.first == e21 && *(i.first + 1) == e23));
+	ASSERT_EQ(i.first + 2, i.second);
 
 	i = out_edges(n3,g);
 	ASSERT_EQ(i.first, i.second);
