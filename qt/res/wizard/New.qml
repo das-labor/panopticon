@@ -1,5 +1,7 @@
 import QtQuick 2.0
+import QtQuick.Controls 1.0
 import "../"
+import Qt.labs.folderlistmodel 1.0
 
 Item {
 	Loader {
@@ -23,14 +25,55 @@ Item {
 		Item {
 			anchors.fill: parent
 
-			Rectangle {
+			ScrollView {
 				id: filepicker
 				x: 50
 				y: 100
 
 				height: root.height - 200
 				width: root.width / 2 - 50
-				color: "#999"
+
+				frameVisible: true
+
+				ListView {
+					id: view
+					anchors.fill: parent
+					focus: true
+					highlight: Rectangle { color: "lightsteelblue"; radius: 5 }
+
+					model: FolderListModel {
+						id: filepicker_model
+						showDirsFirst: true
+						showDotAndDotDot: true
+					}
+
+					delegate: Component { Rectangle {
+							width: label.width
+							height: label.height
+
+							Text {
+								id: label
+								text: fileName
+								anchors.horizontalCenter: parent.horizontalCenter
+							}
+
+							MouseArea {
+								anchors.fill: parent
+
+								onClicked: {
+									if(filepicker_model.isFolder(index)) {
+										filepicker_model.folder += "/" + fileName
+										console.log(fileName)
+									} else {
+										root.anchors.fill = undefined
+										root.x = -1 * root.width
+										loader.source = "../workspace/Workspace.qml"
+									}
+								}
+							}
+						}
+					}
+				}
 			}
 
 			Rectangle {
