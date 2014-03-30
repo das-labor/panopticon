@@ -47,28 +47,10 @@ public:
 	 */
 	virtual unsigned int rowCount(void) const = 0;
 
-	/*!
-	 * Current cursor selection or NULL if nothing is selected. Used to initialize Columns
-	 * after this have been created.
-	 * Caller take ownership otf the returned object.
-	 *
-	virtual const boost::optional<ElementSelection>& cursor(void) const = 0;*/
-
-	/*!
-	 * Current mouse selection or NULL. See cursor().
-	 * Caller take ownership otf the returned object.
-	 *
-	virtual const boost::optional<ElementSelection>& mouse(void) const = 0;*/
-
 	po::region_wloc region(void) const;
-
-	//virtual boost::optional<ElementSelection> elementSelection(const po::rrange &sel);
-	//virtual po::rrange byteSelection(const boost::optional<ElementSelection> &sel);
 
 public slots:
 	virtual void select(boost::optional<std::pair<po::offset,po::offset>>) = 0;
-	//virtual void setMouse(const boost::optional<ElementSelection> &pos) = 0;
-	//virtual void setCursor(const boost::optional<ElementSelection> &sel) = 0;
 
 signals:
 	void modified(void);

@@ -28,15 +28,9 @@ ApplicationWindow {
 		id: stackView
 		anchors.fill: parent
 
-		Page {
+		Loader {
 			anchors.fill: parent
-			primaryTitle: "Panopticon"
-			secondaryTitle: "Version 0.9"
-			primaryAction: "Quit"
+			source: "wizard/Main.qml"
 		}
-		/*Button {
-			anchors.centerIn: parent
-			action: openAction
-		}*/
 	}
 }

@@ -7,6 +7,10 @@
 		<file>Welcome.qml</file>
 		<file>Page.qml</file>
 
+		<!-- Wizard -->
+		<file>wizard/Main.qml</file>
+		<file>wizard/Continue.qml</file>
+
 		<!-- LinearView common -->
 		<file>Cursor.qml</file>
 		<file>Address.qml</file>
