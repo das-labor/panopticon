@@ -40,7 +40,7 @@ Item {
 							onPressed: {
 								root.anchors.fill = undefined
 								root.x = -1 * root.width
-								loader.source = "../Workspace.qml"
+								loader.source = "../workspace/Workspace.qml"
 							}
 						}
 

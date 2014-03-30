@@ -29,6 +29,18 @@ Item {
 				spacing: 100
 
 				Option {
+					icon: "blue"
+					title: "New session"
+					description: "Pick a file and analyze it in a new session."
+
+					onActivated: {
+						root.anchors.fill = undefined
+						root.x = -1 * root.width
+						loader.source = "New.qml"
+					}
+				}
+
+				Option {
 					icon: "green"
 					title: "Continue session"
 					description: "Open a session saved previously and continue analysis."

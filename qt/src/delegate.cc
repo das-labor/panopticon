@@ -13,9 +13,9 @@ po::region_wloc Delegate::region(void) const { return _region; }
 
 BinaryDelegate::BinaryDelegate(po::region_wloc r, unsigned int w, QQmlEngine *e, QQuickItem *p)
 : Delegate(r,p), _width(w), _engine(e),
-	_rowComponent(_engine,QUrl("qrc:/Binary.qml")),
-	_titleComponent(_engine,QUrl("qrc:/BinaryTitle.qml")),
-	_cursorComponent(_engine,QUrl("qrc:/Cursor.qml")),
+	_rowComponent(_engine,QUrl("qrc:/workspace/Binary.qml")),
+	_titleComponent(_engine,QUrl("qrc:/workspace/BinaryTitle.qml")),
+	_cursorComponent(_engine,QUrl("qrc:/workspace/Cursor.qml")),
 	_overlays(), _visibleRows(),
 	_cursor(boost::none), _cursorOverlay(0), _collapsed(false), _cache(boost::none)
 {
