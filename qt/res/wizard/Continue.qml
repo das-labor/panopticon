@@ -1,8 +1,11 @@
 import QtQuick 2.0
+import Panopticon 1.0
 import "../"
 
 Item {
 	Loader {
+		property variant session: null
+
 		id: loader
 		height: parent.height
 		width: parent.width
@@ -40,6 +43,7 @@ Item {
 							onPressed: {
 								root.anchors.fill = undefined
 								root.x = -1 * root.width
+								loader.session = Panopticon.openSession("old.panop")
 								loader.source = "../workspace/Workspace.qml"
 							}
 						}

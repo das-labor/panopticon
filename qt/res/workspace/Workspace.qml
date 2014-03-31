@@ -3,16 +3,14 @@ import QtQuick.Controls 1.0
 import Panopticon 1.0
 
 Item {
-	Session {
-		id: sess
-	}
+	property variant session: null
 
 	Component {
 		id: hexdump
 
 		LinearView {
 			anchors.fill: parent
-			session: sess
+			session: parent.session
 		}
 	}
 

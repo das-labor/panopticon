@@ -6,6 +6,7 @@
 #include "session.hh"
 #include "pen.hh"
 #include "selection.hh"
+#include "panopticon.hh"
 
 using namespace std;
 
@@ -15,7 +16,8 @@ int main(int argc, char *argv[])
 	//qmlRegisterType<GraphSceneItem>("Panopticon",1,0,"Graph");
 	qmlRegisterType<Pen>("Panopticon",1,0,"Pen");
 	qmlRegisterType<ElementSelectionObject>("Panopticon",1,0,"ElementSelection");
-	qmlRegisterType<Session>("Panopticon",1,0,"Session");
+	qmlRegisterUncreatableType<Session>("Panopticon",1,0,"Session","Use Panopticon.newSession or Panopticon.openSession.");
+	qmlRegisterSingletonType<Panopticon>("Panopticon",1,0,"Panopticon",Panopticon::provider);
 	qmlRegisterType<LinearView>("Panopticon",1,0,"LinearView");
 
 	QApplication app(argc, argv);

@@ -2,9 +2,12 @@ import QtQuick 2.0
 import QtQuick.Controls 1.0
 import "../"
 import Qt.labs.folderlistmodel 1.0
+import Panopticon 1.0
 
 Item {
 	Loader {
+		property variant session: null
+
 		id: loader
 		height: parent.height
 		width: parent.width
@@ -67,6 +70,7 @@ Item {
 									} else {
 										root.anchors.fill = undefined
 										root.x = -1 * root.width
+										loader.session = Panopticon.newSession(filepicker_model.folder + "/" + fileName)
 										loader.source = "../workspace/Workspace.qml"
 									}
 								}
