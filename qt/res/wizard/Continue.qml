@@ -1,6 +1,7 @@
 import QtQuick 2.0
 import Panopticon 1.0
 import "../"
+import Qt.labs.settings 1.0
 
 Item {
 	Loader {
@@ -23,6 +24,11 @@ Item {
 			NumberAnimation { duration: 300 }
 		}
 
+		Settings {
+			id: settings
+			property variant recent: []
+		}
+
 		Item {
 			height: childrenRect.height
 			width: childrenRect.width
@@ -32,10 +38,15 @@ Item {
 				spacing: 100
 
 				Repeater {
-					model: 3
+					model: settings.recent
 					delegate: Item {
 						height: 80
 						width: 300
+
+						Text {
+							centerIn: parent
+							text: modelData
+						}
 
 						MouseArea {
 							anchors.fill: parent

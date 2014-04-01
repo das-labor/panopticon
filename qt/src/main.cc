@@ -21,7 +21,12 @@ int main(int argc, char *argv[])
 	qmlRegisterType<LinearView>("Panopticon",1,0,"LinearView");
 
 	QApplication app(argc, argv);
-  QQmlApplicationEngine engine(QUrl("qrc:/Window.qml"));
+
+	app.setOrganizationName("Panopticon");
+	app.setOrganizationDomain("panopticon.re");
+	app.setApplicationName("QtPanopticon");
+
+	QQmlApplicationEngine engine(QUrl("qrc:/Window.qml"));
 
 	QListIterator<QObject*> iter(engine.rootObjects());
 	while(iter.hasNext())

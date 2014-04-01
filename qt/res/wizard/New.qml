@@ -3,6 +3,7 @@ import QtQuick.Controls 1.0
 import "../"
 import Qt.labs.folderlistmodel 1.0
 import Panopticon 1.0
+import Qt.labs.settings 1.0
 
 Item {
 	Loader {
@@ -25,6 +26,11 @@ Item {
 			NumberAnimation { duration: 300 }
 		}
 
+		Settings {
+			id: settings
+			property variant recent: []
+		}
+
 		Item {
 			anchors.fill: parent
 
@@ -42,7 +48,6 @@ Item {
 					id: view
 					anchors.fill: parent
 					focus: true
-					highlight: Rectangle { color: "lightsteelblue"; radius: 5 }
 
 					model: FolderListModel {
 						id: filepicker_model
@@ -50,7 +55,8 @@ Item {
 						showDotAndDotDot: true
 					}
 
-					delegate: Component { Rectangle {
+					delegate: Component {
+						Rectangle {
 							width: label.width
 							height: label.height
 
@@ -70,6 +76,9 @@ Item {
 									} else {
 										root.anchors.fill = undefined
 										root.x = -1 * root.width
+
+										settings.recent += filepicker_model.folder + "/" + fileName
+
 										loader.session = Panopticon.newSession(filepicker_model.folder + "/" + fileName)
 										loader.source = "../workspace/Workspace.qml"
 									}
