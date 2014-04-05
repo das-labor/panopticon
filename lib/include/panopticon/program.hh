@@ -24,8 +24,8 @@ namespace po
 {
 	struct program;
 
-	using prog_ptr = std::shared_ptr<program>;
-	using prog_wptr = std::shared_ptr<const program>;
+	using prog_loc = loc<program>;
+	using prog_wloc = wloc<const program>;
 	using disass_sig = std::function<void(unsigned int done, unsigned int todo)>;
 
 	/// @return true if the program @ref prog has a procedure with entry point @ref entry
