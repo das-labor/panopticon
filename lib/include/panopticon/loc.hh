@@ -10,7 +10,6 @@
 #include <boost/optional.hpp>
 #include <boost/variant.hpp>
 #include <boost/uuid/nil_generator.hpp>
-#include <boost/uuid/nil_generator.hpp>
 
 #include <panopticon/marshal.hh>
 
