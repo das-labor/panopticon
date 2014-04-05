@@ -55,27 +55,27 @@ namespace po
 			Phi,			///< phi-Function
 			Not,			///< Bitwise Not
 			And,			///< Bitwise And
-			Or,			///< Bitwise Or
+			Or,		 		///< Bitwise Or
 			Xor,			///< Bitwise Xor
-			Assign,		///< Assign Intermediate
-			ULeq,			///< Unsigned less-or-equal
-			SLeq,			///< Signed less-or-equal
-			UShr,			///< Unsigned right shift *
-			UShl,			///< Unsigned left shift *
-			SShr,			///< Signed right shift
-			SShl,			///< Signed left shift
-			SExt,			///< Signed extension *
-			UExt,			///< Unsigned extension *
-			Slice,		///< Slice
-			//Concat,		// Concatenation
+			Assign,  	///< Assign Intermediate
+			ULeq,		   ///< Unsigned less-or-equal
+			SLeq,		   ///< Signed less-or-equal
+			UShr,		   ///< Unsigned right shift *
+			UShl,		   ///< Unsigned left shift *
+			SShr,		   ///< Signed right shift
+			SShl,		   ///< Signed left shift
+			SExt,		   ///< Signed extension *
+			UExt,		   ///< Unsigned extension *
+			Slice,	  ///< Slice
+			//Concat,	   // Concatenation
 			Add,			///< Addition
 			Sub,			///< Subtraction
 			Mul,			///< Multiplication
-			SDiv,			///< Signed Division
-			UDiv,			///< Unsigned Division
-			SMod,			///< Unsigned Modulo reduction
-			UMod,			///< Signed Modulo reduction
-			Call,			///< Procedure call
+			SDiv,		   ///< Signed Division
+			UDiv,		   ///< Unsigned Division
+			SMod,		   ///< Unsigned Modulo reduction
+			UMod,		   ///< Signed Modulo reduction
+			Call,		   ///< Procedure call
 			/// @todo Floating point
 		};
 
@@ -91,8 +91,14 @@ namespace po
 		std::vector<rvalue> right;
 	};
 
-	std::string pretty(instr::Function fn); 				///< Pretty print the function
-	std::string symbolic(instr::Function fn);				///< Returns a string suitable for describing the function in RDF
+	template<>
+	instr* unmarshal(const uuid&, const rdf::storage&);
+
+	template<>
+	rdf::statements marshal(const instr*, const uuid&);
+
+	std::string pretty(instr::Function fn);			///< Pretty print the function
+	std::string symbolic(instr::Function fn);			///< Returns a string suitable for describing the function in RDF
 	instr::Function numeric(const std::string &s);	///< Maps a string returned from @ref symbolic back the enum value
 
 	/**
@@ -122,6 +128,7 @@ namespace po
 		typedef std::vector<instr>::const_iterator iterator;
 
 		/**
+		 * Construct a new mnemonic for opcode @arg n spanning @arg a, formatted using format string @arg fmt.
 		 * Mnemonics are formatted as a sequence of tokens. Each token
 		 * is either a literal string or a placeholder o be filled
 		 * with the contents of a IL variable.
@@ -132,16 +139,13 @@ namespace po
 		struct token
 		{
 			token(void) : has_sign(false), width(0), alias(""), is_literal(false) {}
-			bool has_sign;	///< True if the variable content has a sign
+			bool has_sign;		  ///< True if the variable content has a sign
 			unsigned int width; ///< Width of the bit vector encoded in the IL variable
 			std::string alias;	///< String alias or literal value (is @ref is_literal is true) of the token
-			bool is_literal;	///< True whenever this is a string literal not connected to a IL variable
+			bool is_literal;		///< True whenever this is a string literal not connected to a IL variable
 		};
 
-		static mnemonic unmarshal(const rdf::node &n, const rdf::storage &store);
-
 		/**
-		 * Construct a new mnemonic for opcode @arg n spanning @arg a, formatted using format string @arg fmt.
 		 * Operands between @arg ops_begin and @arg ops_end and IL statements between @arg instr_begin and
 		 * instr_end are copied into the new instance.
 		 *
@@ -162,28 +166,25 @@ namespace po
 		 */
 		mnemonic(const bound &a, const std::string &n, const std::string &fmt, std::initializer_list<rvalue> ops, std::initializer_list<instr> instrs);
 
-		mnemonic(const mnemonic &m);
-		mnemonic(mnemonic &&m);
-
-		mnemonic &operator=(const mnemonic &m);
-		mnemonic &operator=(mnemonic &&m);
-
 		/// Render the operands using the format string
 		std::string format_operands(void) const;
 
-		offset length;										///< Size of this mnemonic
+		bound area;												///< Size of this mnemonic
 		std::string opcode;								///< Mnemonic of the opcode
 		std::vector<rvalue> operands;			///< Operands of the mnemonic left to right
 		std::vector<instr> instructions;	///< Instructions encoding the mnemonic semantics
-		std::vector<token> format;				///< Parsed format string
+		std::list<token> format_seq;			///< Parsed format string
+		std::string format_string;				///< Format string
 	};
+
+	template<>
+	mnemonic* unmarshal(const uuid&, const rdf::storage&);
+
+	template<>
+	rdf::statements marshal(const mnemonic*, const uuid&);
 
 	std::ostream& operator<<(std::ostream &os, const instr &i);
 	std::ostream& operator<<(std::ostream &os, const mnemonic &m);
-	/*odotstream& operator<<(odotstream &os, const mnemonic &m);
-	oturtlestream& operator<<(oturtlestream &os, const mnemonic &m);*/
-	std::string unique_name(const mnemonic &mne);
 
-	/// Format a concrete value as specified in a escape sequence
 	int64_t format_constant(const mnemonic::token &tok, uint64_t v);
 }

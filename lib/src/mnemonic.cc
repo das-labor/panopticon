@@ -2,12 +2,10 @@
 #include <algorithm>
 #include <functional>
 
-#include <mnemonic.hh>
+#include <panopticon/mnemonic.hh>
 
 using namespace po;
 using namespace std;
-
-const addr_t po::naddr = -1;
 
 string po::pretty(instr::Function fn)
 {
@@ -82,7 +80,7 @@ instr::Function po::numeric(const std::string &s)
 	if(s.substr(0,string(PO).size()) == string(PO))
 	{
 		string t = s.substr(string(PO).size());
-		
+
 		if(t == "and") return instr::And;
 		if(t == "or") return instr::Or;
 		if(t == "xor") return instr::Xor;
@@ -139,7 +137,7 @@ instr::Function po::numeric(const std::string &s)
 	assert(false);
 	return instr::Assign;
 }
-			
+
 ostream &po::operator<<(ostream &os, const instr &i)
 {
 	string fnname = pretty(i.function);
@@ -162,99 +160,12 @@ ostream &po::operator<<(ostream &os, const instr &i)
 	return os;
 }
 
-odotstream& po::operator<<(odotstream &os, const instr &i)
-{
-	static_cast<ostringstream &>(os) << "<tr><td> </td><td ALIGN=\"LEFT\" COLSPAN=\"2\">" << i << "</td></tr>";
-	return os;
-}
-
-oturtlestream& po::operator<<(oturtlestream &os, const instr &i)
-{
-	os << "[ po:function " << symbolic(i.function) << "; "
-		 << " po:left " << static_cast<rvalue>(i.left) << "; "
-		 << " po:right (";
-		for(rvalue v: i.right)
-			os << " " << v;
-		os << " )]";
-	return os;
-}
-
-oturtlestream& po::operator<<(oturtlestream &os, const mnemonic &m)
-{
-	os << "[ po:opcode \"" << m.opcode << "\"^^xsd:string;"
-								 << " po:format \"" << accumulate(m.format.begin(),m.format.end(),string(),[&](const string &a, const mnemonic::token &t)
-																									{
-																										string ret = a;
-
-																										if(t.is_literal)
-																											ret += t.alias;
-																										else
-																										{
-																											ret += "{" + to_string(t.width) + ":";
-																											if(t.has_sign)
-																												ret += "-";
-																											ret += ":" + t.alias + "}";
-																										}
-																										return ret;
-																									}) << "\"^^po:Format;"
-		 						 << " po:begin " << m.area.begin << ";"
-								 << " po:end " << m.area.end << ";" << endl
-								 << " po:operands (";
-	for(rvalue v: m.operands)
-		os << " " << v;
-	os << " );" << endl
-								 << " po:executes (";
-
-	for(const instr &i: m.instructions)
-		os << " " << i;
-	os << ")" << endl;
-	
-
-	os << "]" << endl;
-	return os;
-}
-
-string po::unique_name(const mnemonic &mne)
-{
-	return "mne_" + to_string(mne.area.begin);
-}
-
-mnemonic mnemonic::unmarshal(const rdf::node &node, const rdf::storage &store)
-{
-	rdf::node nil = "nil"_rdf;
-	rdf::statement opcode = store.first(node,"opcode"_po,nullptr),
-								 format = store.first(node,"format"_po,nullptr),
-								 begin = store.first(node,"begin"_po,nullptr),
-								 end = store.first(node,"end"_po,nullptr),
-								 op_head = store.first(node,"operands"_po,nullptr),
-								 exec_head = store.first(node,"executes"_po,nullptr);
-	list<instr> is;
-	list<rvalue> as;
-
-	while(exec_head.object() != nil)
-	{
-		rdf::statement i_root = store.first(exec_head.object(),"first"_rdf,nullptr),
-									 func = store.first(i_root.object(),"function"_po,nullptr),
-									 left = store.first(i_root.object(),"left"_po,nullptr),
-									 right_head = store.first(i_root.object(),"right"_po,nullptr);
-
-		exec_head = store.first(exec_head.object(),"rest"_rdf,nullptr);
-		is.emplace_back(instr(static_cast<instr::Function>(numeric(func.object().to_string())),lvalue::unmarshal(left.object(),store),{}));
-	}
-
-	return mnemonic(range<addr_t>(stoull(begin.object().to_string()),stoull(end.object().to_string())),
-									opcode.object().to_string(),
-									format.object().to_string(),
-									as.begin(),as.end(),
-									is.begin(),is.end());
-}
-
-mnemonic::mnemonic(const range<addr_t> &a, const string &n, const string &fmt, initializer_list<rvalue> ops, initializer_list<instr> instrs)
-: area(a), opcode(n), operands(ops), instructions(instrs), format()
+mnemonic::mnemonic(const bound &a, const string &n, const string &fmt, initializer_list<rvalue> ops, initializer_list<instr> instrs)
+: area(a), opcode(n), operands(ops), instructions(instrs), format_seq(), format_string(fmt)
 {
 	function<string::const_iterator(string::const_iterator,string::const_iterator)> plain_or_meta;
-	function<string::const_iterator(string::const_iterator,string::const_iterator,token &)> escape_seq, modifiers, alias;
-	function<string::const_iterator(string::const_iterator,string::const_iterator,unsigned int &)> digits;
+	function<string::const_iterator(string::const_iterator,string::const_iterator,token&)> escape_seq, modifiers, alias;
+	function<string::const_iterator(string::const_iterator,string::const_iterator,unsigned int&)> digits;
 
 	// FormatString -> ('{' EscapeSequence '}') | PlainAscii
 	plain_or_meta = [&](string::const_iterator cur, string::const_iterator end)
@@ -266,21 +177,21 @@ mnemonic::mnemonic(const range<addr_t> &a, const string &n, const string &fmt, i
 			token tok;
 			cur = escape_seq(next(cur),end,tok);
 			assert(cur != end && *cur == '}');
-			format.push_back(tok);
+			format_seq.push_back(tok);
 
 			return plain_or_meta(next(cur),end);
 		}
 		else
 		{
-			if(format.empty() || !format.back().is_literal)
+			if(format_seq.empty() || !format_seq.back().is_literal)
 			{
 				token tok;
 				tok.is_literal = true;
 				tok.alias = string(1,*cur);
-				format.push_back(tok);
+				format_seq.push_back(tok);
 			}
 			else
-				format.back().alias += string(1,*cur);
+				format_seq.back().alias += string(1,*cur);
 			return plain_or_meta(next(cur),end);
 		}
 	};
@@ -290,7 +201,7 @@ mnemonic::mnemonic(const range<addr_t> &a, const string &n, const string &fmt, i
 	{
 		assert(cur != end && isdigit(*cur));
 		cur = digits(cur,end,tok.width);
-	
+
 		tok.is_literal = false;
 		tok.alias = "";
 		tok.has_sign = false;
@@ -332,7 +243,7 @@ mnemonic::mnemonic(const range<addr_t> &a, const string &n, const string &fmt, i
 
 		return cur;
 	};
-	
+
 	// Digit
 	digits = [&](string::const_iterator cur,string::const_iterator end,unsigned int &i)
 	{
@@ -344,49 +255,8 @@ mnemonic::mnemonic(const range<addr_t> &a, const string &n, const string &fmt, i
 		else
 			return cur;
 	};
-	
+
 	plain_or_meta(fmt.cbegin(),fmt.cend());
-}
-
-mnemonic::mnemonic(const mnemonic &m)
-: area(m.area), 
-	opcode(m.opcode), 
-	operands(m.operands), 
-	instructions(m.instructions), 
-	format(m.format)
-{}
-
-mnemonic::mnemonic(mnemonic &&m)
-: area(move(m.area)),
-	opcode(move(m.opcode)),
-	operands(move(m.operands)),
-	instructions(move(m.instructions)),
-	format(move(m.format))
-{}
-
-mnemonic &mnemonic::operator=(const mnemonic &m)
-{
-	if(&m != this)
-	{
-		area = m.area;
-		opcode = m.opcode;
-		operands = m.operands;
-		instructions = m.instructions;
-		format = m.format;
-	}
-
-	return *this;
-}
-
-mnemonic &mnemonic::operator=(mnemonic &&m)
-{
-	area = move(m.area);
-	opcode = move(m.opcode);
-	operands = move(m.operands);
-	instructions = move(m.instructions);
-	format = move(m.format);
-
-	return *this;
 }
 
 string mnemonic::format_operands(void) const
@@ -394,17 +264,17 @@ string mnemonic::format_operands(void) const
 	stringstream ss;
 	unsigned int idx = 0;
 
-	for(const mnemonic::token &tok: format)
+	for(const mnemonic::token &tok: format_seq)
 	{
 		if(tok.alias.empty() && !tok.is_literal)
 		{
 			assert(idx < operands.size());
-			if(operands[idx].is_constant())
+			if(is_constant(operands[idx]))
 			{
 				if(tok.has_sign)
-					ss << (int)operands[idx].to_constant().content();
+					ss << (int)to_constant(operands[idx]).content();
 				else
-					ss << operands[idx].to_constant().content();
+					ss << to_constant(operands[idx]).content();
 			}
 			else
 				ss << operands[idx];
@@ -423,23 +293,6 @@ ostream &po::operator<<(ostream &os, const mnemonic &m)
 
 	if(m.operands.size())
 		os << " " << m.format_operands();
-	
-	return os;
-}
-
-odotstream& po::operator<<(odotstream &os, const mnemonic &m)
-{
-	os << "\t" << (os.subgraph ? "\t" : "")
-		 << "<tr ALIGN=\"LEFT\"><td ALIGN=\"LEFT\">0x"
-		 << std::hex << m.area.begin << std::dec 
-		 << "</td><td ALIGN=\"LEFT\">" << m.opcode
-		 << "</td><td ALIGN=\"LEFT\">"
-		 << m.format_operands()
-		 << "</td></tr>";
-
-	if(os.instrs)
-		 for(const instr &i: m.instructions)
-			 os << i;
 
 	return os;
 }
@@ -454,4 +307,108 @@ int64_t po::format_constant(const mnemonic::token &tok, uint64_t v)
 		return (int64_t)((v & (bitmask >> 1)) & ((v & (1 << (tok.width - 1))) << (64 - tok.width)));
 	else
 		return v & bitmask;
+}
+
+template<>
+po::mnemonic* po::unmarshal(const po::uuid& u, const po::rdf::storage& store)
+{
+	rdf::node node = rdf::ns_local(to_string(u));
+	rdf::statement opcode = store.first(node,"opcode"_po),
+								 format = store.first(node,"format"_po),
+								 begin = store.first(node,"begin"_po),
+								 end = store.first(node,"end"_po),
+								 op_head = store.first(node,"operands"_po),
+								 exec_head = store.first(node,"executes"_po);
+
+	rdf::nodes ops = rdf::read_list(op_head.object,store);
+	rdf::nodes xs = rdf::read_list(exec_head.object,store);
+	list<instr> is;
+	list<rvalue> as;
+	boost::uuids::string_generator sg;
+
+	std::transform(ops.begin(),ops.end(),back_inserter(as),[&](const rdf::node &n)
+		{ return *unmarshal<rvalue>(sg(n.as_literal()),store); });
+	std::transform(xs.begin(),xs.end(),back_inserter(is),[&](const rdf::node &i_root)
+	{
+		rdf::statement func = store.first(i_root,rdf::ns_po("function")),
+									 left = store.first(i_root,rdf::ns_po("left")),
+									 right_head = store.first(i_root,rdf::ns_po("right"));
+
+		rdf::nodes rights = read_list(right_head.object,store);
+		vector<rvalue> rs;
+
+		std::transform(rights.begin(),rights.end(),back_inserter(rs),[&](const rdf::node &n)
+			{ return *unmarshal<rvalue>(sg(n.as_literal()),store); });
+
+		instr::Function fn = static_cast<instr::Function>(numeric(func.object.as_iri()));
+		lvalue l = to_lvalue(*unmarshal<rvalue>(sg(left.object.as_iri()),store));
+		instr ret(fn,l,{});
+		is.back().right = rs;
+
+		return ret;
+	});
+
+	return new mnemonic(bound(stoull(begin.object.as_literal()),stoull(end.object.as_literal())),
+									opcode.object.as_literal(),
+									format.object.as_literal(),
+									as.begin(),as.end(),
+									is.begin(),is.end());
+}
+
+template<>
+rdf::statements po::marshal(const mnemonic* mn, const uuid& uu)
+{
+	rdf::statements ret;
+	std::function<rdf::node(const rvalue&)> map_rvs = [&](const rvalue &rv)
+	{
+		uuid u;
+		rdf::node r(rdf::ns_local(to_string(u)));
+		auto st = marshal(&rv,u);
+
+		std::move(st.begin(),st.end(),back_inserter(ret));
+		return r;
+	};
+	rdf::node r = rdf::ns_local(to_string(uu));
+
+	ret.emplace_back(r,rdf::ns_po("opcode"),mn->opcode);
+	ret.emplace_back(r,rdf::ns_po("format"),mn->format_string);
+	ret.emplace_back(r,rdf::ns_po("begin"),rdf::lit(mn->area.lower()));
+	ret.emplace_back(r,rdf::ns_po("end"),rdf::lit(mn->area.upper()));
+
+	rdf::nodes n_ops, n_ex;
+
+	std::transform(mn->operands.begin(),mn->operands.end(),back_inserter(n_ops),map_rvs);
+
+	std::transform(mn->instructions.begin(),mn->instructions.end(),back_inserter(n_ex),[&](const instr& i)
+	{
+		uuid u,ul;
+		rdf::node r(rdf::ns_local(to_string(u))), rl(rdf::ns_local(to_string(ul))), rr = rdf::node::blank();
+		rdf::statements rs, ls;
+		rvalue il = i.left;
+
+		ls = marshal(&il,ul);
+		std::move(ls.begin(),ls.end(),back_inserter(ret));
+
+		rdf::nodes rn;
+		std::transform(i.right.begin(),i.right.end(),back_inserter(rn),map_rvs);
+		tie(rr,rs) = write_list(rn.begin(),rn.end(),to_string(u));
+		std::move(rs.begin(),rs.end(),back_inserter(ret));
+
+		ret.emplace_back(r,rdf::ns_po("function"),rdf::ns_po(symbolic(i.function)));
+		ret.emplace_back(r,rdf::ns_po("left"),rl);
+		ret.emplace_back(r,rdf::ns_po("right"),rr);
+
+		return r;
+	});
+
+	auto p_ops = write_list(n_ops.begin(),n_ops.end(),to_string(uu) + "-operands");
+	auto p_ex = write_list(n_ex.begin(),n_ex.end(),to_string(uu) + "-instrs");
+
+	std::move(p_ops.second.begin(),p_ops.second.end(),back_inserter(ret));
+	std::move(p_ex.second.begin(),p_ex.second.end(),back_inserter(ret));
+
+	ret.emplace_back(r,rdf::ns_po("operands"),p_ops.first);
+	ret.emplace_back(r,rdf::ns_po("executes"),p_ex.first);
+
+	return ret;
 }
