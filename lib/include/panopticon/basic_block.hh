@@ -135,6 +135,12 @@ namespace po
 	struct basic_block
 	{
 		basic_block(void);
+		basic_block(std::initializer_list<mnemonic> il) : _area(boost::none), _mnemonics(il) {}
+
+		template<typename I>
+		basic_block(I mne_begin, I mne_end) : _area(boost::none), _mnemonics(mne_begin,mne_end) {}
+
+		bool operator==(const basic_block&) const;
 
 		bound area(void) const;
 		const std::vector<mnemonic>& mnemonics(void) const { return _mnemonics; }

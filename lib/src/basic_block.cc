@@ -128,7 +128,7 @@ rdf::statements po::marshal(const basic_block* bb, const uuid& u)
 		rdf::statements mn = marshal<mnemonic>(&m,uu);
 
 		std::move(mn.begin(),mn.end(),back_inserter(ret));
-		ret.emplace_back(root,rdf::ns_po("include"),rdf::lit(to_string(uu)));
+		ret.emplace_back(root,rdf::ns_po("include"),rdf::ns_local(to_string(uu)));
 	}
 
 	return ret;
@@ -137,14 +137,16 @@ rdf::statements po::marshal(const basic_block* bb, const uuid& u)
 template<>
 basic_block* po::unmarshal(const uuid& u, const rdf::storage& store)
 {
-	rdf::node node(to_string(u));
+	rdf::node node(rdf::ns_local(to_string(u)));
 	rdf::statements mnes = store.find(node,"include"_po);
+
+	assert(mnes.size());
 	basic_block *ret = new basic_block();
 	std::list<mnemonic> mne_lst;
 
 	// mnemoics
 	for(const rdf::statement &st: mnes)
-		mne_lst.emplace_back(*unmarshal<mnemonic>(boost::uuids::string_generator()(st.object.as_literal()),store));
+		mne_lst.emplace_back(*unmarshal<mnemonic>(boost::uuids::string_generator()(st.object.as_iri().substr(st.object.as_iri().size()-36)),store));
 
 	mne_lst.sort([](const mnemonic &a, const mnemonic &b)
 		{ return a.area.lower() < b.area.lower(); });
@@ -167,6 +169,11 @@ bound basic_block::area(void) const
 	}
 
 	return *_area;
+}
+
+bool basic_block::operator==(const basic_block& b) const
+{
+	return _mnemonics == b._mnemonics;
 }
 
 void po::execute(bblock_loc bb,function<void(const instr&)> f)
