@@ -52,6 +52,17 @@ bool node::operator<(const node& n) const
 	return _inner < n._inner;
 }
 
+std::ostream& po::rdf::operator<<(std::ostream& os, const node& n)
+{
+	if(n.is_literal())
+		os << n.as_literal() << "^^" << n.literal_type();
+	else if(n.is_iri())
+		os << n.as_iri();
+	else
+		os << "Blank(" << to_string(n.as_uuid()) << ")";
+	return os;
+}
+
 statement::statement(const node& s, const node& p, const node& o)
 : subject(s), predicate(p), object(o) {}
 
@@ -67,6 +78,12 @@ bool statement::operator<(const statement& st) const
 	return subject < st.subject ||
 				 (subject == st.subject && predicate < st.predicate) ||
 				 (subject == st.subject && predicate == st.predicate && object < st.object);
+}
+
+std::ostream& po::rdf::operator<<(std::ostream& os, const statement& st)
+{
+	os << st.subject << " " << st.predicate << " " << st.object;
+	return os;
 }
 
 storage::storage(void)

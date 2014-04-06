@@ -26,9 +26,6 @@
 
 namespace po
 {
-	class instr;
-	class mnemonic;
-
 	/**
 	 * @brief Single IL statement
 	 *
@@ -44,9 +41,8 @@ namespace po
 	 * arguments (currently up to 3) and @c a is the variable
 	 * receiving the result for @c f.
 	 */
-	class instr
+	struct instr
 	{
-	public:
 		/**
 		 * IL functions
 		 */
@@ -86,6 +82,8 @@ namespace po
 		/// Construct a statement applying function @arg fn to @arg r. Saves the result in @arg a
 		instr(Function fn, lvalue a, std::initializer_list<rvalue> r) : function(fn), left(a), right(r) {}
 
+		bool operator==(const instr& i) const { return function == i.function && left == i.left && right == i.right; }
+
 		Function function;
 		lvalue left;
 		std::vector<rvalue> right;
@@ -122,9 +120,8 @@ namespace po
 	 * if the value of the eax register is known to be 10 before execution of the
 	 * opcode.
 	 */
-	class mnemonic
+	struct mnemonic
 	{
-	public:
 		typedef std::vector<instr>::const_iterator iterator;
 
 		/**
@@ -139,11 +136,18 @@ namespace po
 		struct token
 		{
 			token(void) : has_sign(false), width(0), alias(""), is_literal(false) {}
+			bool operator==(const token& t) const { return has_sign == t.has_sign && width == t.width && alias == t.alias && is_literal == t.is_literal; }
 			bool has_sign;		  ///< True if the variable content has a sign
 			unsigned int width; ///< Width of the bit vector encoded in the IL variable
 			std::string alias;	///< String alias or literal value (is @ref is_literal is true) of the token
 			bool is_literal;		///< True whenever this is a string literal not connected to a IL variable
 		};
+
+		mnemonic(const mnemonic &m);
+		mnemonic(mnemonic &&m);
+
+		mnemonic &operator=(const mnemonic &m);
+		mnemonic &operator=(mnemonic &&m);
 
 		/**
 		 * Operands between @arg ops_begin and @arg ops_end and IL statements between @arg instr_begin and
@@ -165,6 +169,8 @@ namespace po
 		 * Operands in @arg ops and IL statements in instrs are copied into the new instance.
 		 */
 		mnemonic(const bound &a, const std::string &n, const std::string &fmt, std::initializer_list<rvalue> ops, std::initializer_list<instr> instrs);
+
+		bool operator==(const mnemonic&) const;
 
 		/// Render the operands using the format string
 		std::string format_operands(void) const;

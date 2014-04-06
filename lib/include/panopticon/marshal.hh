@@ -80,6 +80,8 @@ namespace po
 			boost::variant<iri,literal,uuid> _inner;
 		};
 
+		std::ostream& operator<<(std::ostream&, const node&);
+
 		using nodes = std::list<node>;
 
 		struct statement : public boost::operators<statement>
@@ -91,6 +93,8 @@ namespace po
 
 			node subject, predicate, object;
 		};
+
+		std::ostream& operator<<(std::ostream&, const statement&);
 
 		using statements = std::list<statement>;
 
@@ -165,14 +169,14 @@ namespace po
 
 		rdf::statements ret;
 		unsigned int counter = 0;
-		rdf::node head = (std::distance(begin,end) ? node(ns + std::to_string(counter++)) : rdf::ns_rdf("nil"));
+		rdf::node head = (std::distance(begin,end) ? node(ns_local(ns + "-" + std::to_string(counter++))) : rdf::ns_rdf("nil"));
 
 		rdf::node last = head;
 		It i = begin;
 		while(i != end)
 		{
 			const rdf::node &n = *i;
-			rdf::node next = (std::next(i) == end ? rdf::ns_rdf("nil") : node(ns + std::to_string(counter++)));
+			rdf::node next = (std::next(i) == end ? rdf::ns_rdf("nil") : node(ns_local(ns + "-" + std::to_string(counter++))));
 
 			ret.emplace_back(last,rdf::ns_rdf("first"),n);
 			ret.emplace_back(last,rdf::ns_rdf("rest"),next);

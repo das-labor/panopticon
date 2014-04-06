@@ -72,10 +72,10 @@ bool po::operator==(const po::rvalue &a, const po::rvalue &b) { return a._varian
 bool po::operator!=(const po::rvalue &a, const po::rvalue &b) { return !(a._variant == b._variant); }
 bool po::operator<(const po::rvalue &a, const po::rvalue &b) { return a._variant < b._variant; }
 
-bool po::is_constant(const po::rvalue &v) { try { boost::get<constant>(v._variant); return true; } catch(const boost::bad_get&) { return false; } }
-bool po::is_memory(const po::rvalue &v) { try { boost::get<memory>(v._variant); return true; } catch(const boost::bad_get&) { return false; } }
-bool po::is_variable(const po::rvalue &v) { try { boost::get<variable>(v._variant); return true; } catch(const boost::bad_get&) { return false; } }
-bool po::is_undefined(const po::rvalue &v) { try { boost::get<undefined>(v._variant); return true; } catch(const boost::bad_get&) { return false; } }
+bool po::is_constant(const po::rvalue &v) { return boost::get<constant>(&v._variant); }
+bool po::is_memory(const po::rvalue &v) { return boost::get<memory>(&v._variant); }
+bool po::is_variable(const po::rvalue &v) { return boost::get<variable>(&v._variant); }
+bool po::is_undefined(const po::rvalue &v) { return boost::get<undefined>(&v._variant); }
 bool po::is_lvalue(const po::rvalue &a) { return is_variable(a) || is_memory(a) || is_undefined(a); }
 
 const po::constant &po::to_constant(const po::rvalue &a) { try { return get<constant>(a._variant); } catch(const boost::bad_get&) { throw value_exception("Cast to constant from invalid type"); } }

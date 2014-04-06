@@ -45,30 +45,30 @@ string po::symbolic(instr::Function fn)
 {
 	switch(fn)
 	{
-		case instr::And: 		return "po:and";
-		case instr::Or: 		return "po:or";
-		case instr::Xor:	 	return "po:xor";
-		case instr::Not: 		return "po:not";
-		case instr::Assign: return "po:assign";
-		case instr::UShr: 	return "po:u-shift-right";
-		case instr::UShl: 	return "po:i-shift-left";
-		case instr::SShr: 	return "po:s-shift-right";
-		case instr::SShl: 	return "po:s-shift-left";
-		case instr::UExt: 	return "po:u-extend";
-		case instr::SExt: 	return "po:s-extend";
-		case instr::Slice:	return "po:slice";
+		case instr::And: 		return "and";
+		case instr::Or: 		return "or";
+		case instr::Xor:	 	return "xor";
+		case instr::Not: 		return "not";
+		case instr::Assign: return "assign";
+		case instr::UShr: 	return "u-shift-right";
+		case instr::UShl: 	return "i-shift-left";
+		case instr::SShr: 	return "s-shift-right";
+		case instr::SShl: 	return "s-shift-left";
+		case instr::UExt: 	return "u-extend";
+		case instr::SExt: 	return "s-extend";
+		case instr::Slice:	return "slice";
 		//case instr::Concat: return " ∷ ";
-		case instr::Add: 		return "po:add";
-		case instr::Sub: 		return "po:subtract";
-		case instr::Mul: 		return "po:multiply";
-		case instr::SDiv: 	return "po:s-divide";
-		case instr::UDiv: 	return "po:u-divide";
-		case instr::SMod: 	return "po:s-modulo";
-		case instr::UMod: 	return "po:u-modulo";
-		case instr::SLeq: 	return "po:s-less-equal";
-		case instr::ULeq: 	return "po:u-less-equal";
-		case instr::Call: 	return "po:call";
-		case instr::Phi: 		return "po:phi";
+		case instr::Add: 		return "add";
+		case instr::Sub: 		return "subtract";
+		case instr::Mul: 		return "multiply";
+		case instr::SDiv: 	return "s-divide";
+		case instr::UDiv: 	return "u-divide";
+		case instr::SMod: 	return "s-modulo";
+		case instr::UMod: 	return "u-modulo";
+		case instr::SLeq: 	return "s-less-equal";
+		case instr::ULeq: 	return "u-less-equal";
+		case instr::Call: 	return "call";
+		case instr::Phi: 		return "phi";
 		default: assert(false);
 	}
 
@@ -158,6 +158,51 @@ ostream &po::operator<<(ostream &os, const instr &i)
 	else
 		os << i.right[0] << fnname << i.right[1];
 	return os;
+}
+
+mnemonic::mnemonic(const mnemonic &m)
+: area(m.area),
+	opcode(m.opcode),
+	operands(m.operands),
+	instructions(m.instructions),
+	format_seq(m.format_seq),
+	format_string(m.format_string)
+{}
+
+mnemonic::mnemonic(mnemonic &&m)
+: area(move(m.area)),
+	opcode(move(m.opcode)),
+	operands(move(m.operands)),
+	instructions(move(m.instructions)),
+	format_seq(move(m.format_seq)),
+	format_string(move(m.format_string))
+{}
+
+mnemonic &mnemonic::operator=(const mnemonic &m)
+{
+	if(&m != this)
+	{
+		area = m.area;
+		opcode = m.opcode;
+		operands = m.operands;
+		instructions = m.instructions;
+		format_string = m.format_string;
+		format_seq = m.format_seq;
+	}
+
+	return *this;
+}
+
+mnemonic &mnemonic::operator=(mnemonic &&m)
+{
+	area = move(m.area);
+	opcode = move(m.opcode);
+	operands = move(m.operands);
+	instructions = move(m.instructions);
+	format_string = move(m.format_string);
+	format_seq = move(m.format_seq);
+
+	return *this;
 }
 
 mnemonic::mnemonic(const bound &a, const string &n, const string &fmt, initializer_list<rvalue> ops, initializer_list<instr> instrs)
@@ -287,6 +332,16 @@ string mnemonic::format_operands(void) const
 	return ss.str();
 }
 
+bool mnemonic::operator==(const mnemonic& m) const
+{
+	return opcode == m.opcode &&
+				 area == m.area &&
+				 operands == m.operands &&
+				 instructions == m.instructions &&
+				 format_seq == m.format_seq &&
+				 format_string == m.format_string;
+}
+
 ostream &po::operator<<(ostream &os, const mnemonic &m)
 {
 	os << m.opcode;
@@ -327,7 +382,7 @@ po::mnemonic* po::unmarshal(const po::uuid& u, const po::rdf::storage& store)
 	boost::uuids::string_generator sg;
 
 	std::transform(ops.begin(),ops.end(),back_inserter(as),[&](const rdf::node &n)
-		{ return *unmarshal<rvalue>(sg(n.as_literal()),store); });
+		{ std::cerr << n.as_iri().substr(n.as_iri().size()-36) << std::endl; return *unmarshal<rvalue>(sg(n.as_iri().substr(n.as_iri().size()-36)),store); });
 	std::transform(xs.begin(),xs.end(),back_inserter(is),[&](const rdf::node &i_root)
 	{
 		rdf::statement func = store.first(i_root,rdf::ns_po("function")),
@@ -338,12 +393,12 @@ po::mnemonic* po::unmarshal(const po::uuid& u, const po::rdf::storage& store)
 		vector<rvalue> rs;
 
 		std::transform(rights.begin(),rights.end(),back_inserter(rs),[&](const rdf::node &n)
-			{ return *unmarshal<rvalue>(sg(n.as_literal()),store); });
+			{ return *unmarshal<rvalue>(sg(n.as_iri().substr(n.as_iri().size()-36)),store); });
 
 		instr::Function fn = static_cast<instr::Function>(numeric(func.object.as_iri()));
-		lvalue l = to_lvalue(*unmarshal<rvalue>(sg(left.object.as_iri()),store));
+			lvalue l = to_lvalue(*unmarshal<rvalue>(sg(left.object.as_iri().substr(left.object.as_iri().size()-36)),store));
 		instr ret(fn,l,{});
-		is.back().right = rs;
+		ret.right = rs;
 
 		return ret;
 	});
@@ -358,10 +413,12 @@ po::mnemonic* po::unmarshal(const po::uuid& u, const po::rdf::storage& store)
 template<>
 rdf::statements po::marshal(const mnemonic* mn, const uuid& uu)
 {
+	size_t rv_cnt = 0;
+	boost::uuids::name_generator ng(uu);
 	rdf::statements ret;
 	std::function<rdf::node(const rvalue&)> map_rvs = [&](const rvalue &rv)
 	{
-		uuid u;
+		uuid u = ng(to_string(rv_cnt++));
 		rdf::node r(rdf::ns_local(to_string(u)));
 		auto st = marshal(&rv,u);
 
@@ -370,8 +427,8 @@ rdf::statements po::marshal(const mnemonic* mn, const uuid& uu)
 	};
 	rdf::node r = rdf::ns_local(to_string(uu));
 
-	ret.emplace_back(r,rdf::ns_po("opcode"),mn->opcode);
-	ret.emplace_back(r,rdf::ns_po("format"),mn->format_string);
+	ret.emplace_back(r,rdf::ns_po("opcode"),rdf::lit(mn->opcode));
+	ret.emplace_back(r,rdf::ns_po("format"),rdf::lit(mn->format_string));
 	ret.emplace_back(r,rdf::ns_po("begin"),rdf::lit(mn->area.lower()));
 	ret.emplace_back(r,rdf::ns_po("end"),rdf::lit(mn->area.upper()));
 
@@ -381,7 +438,8 @@ rdf::statements po::marshal(const mnemonic* mn, const uuid& uu)
 
 	std::transform(mn->instructions.begin(),mn->instructions.end(),back_inserter(n_ex),[&](const instr& i)
 	{
-		uuid u,ul;
+		uuid u = ng(to_string(rv_cnt++));
+		uuid ul = ng(to_string(rv_cnt++));
 		rdf::node r(rdf::ns_local(to_string(u))), rl(rdf::ns_local(to_string(ul))), rr = rdf::node::blank();
 		rdf::statements rs, ls;
 		rvalue il = i.left;

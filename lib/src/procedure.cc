@@ -58,10 +58,10 @@ void procedure::rev_postorder(function<void(bblock_ptr bb)> fn) const
 	{
 	//	cout << "visit " << bb->area() << endl;
 		basic_block::succ_iterator i,iend;
-		
+
 		tie(i,iend) = bb->successors();
 		for_each(i,iend,[&](bblock_ptr s)
-		{	
+		{
 		//	cout << "check " << s->area() << endl;
 			if(known.insert(s).second)
 				visit(s);
@@ -78,12 +78,12 @@ void procedure::rev_postorder(function<void(bblock_ptr bb)> fn) const
 odotstream &po::operator<<(odotstream &os, const procedure &p)
 {
 	os << "\t";
-	
+
 	if(os.body)
 	{
 		if(os.subgraph)
 			os << "subgraph cluster_";
-		
+
 		os << unique_name(p) << endl
 			 << "\t{" << endl
 			 << "\t\tgraph [label=\"" << p.name << "\"];" << endl;
@@ -95,7 +95,7 @@ odotstream &po::operator<<(odotstream &os, const procedure &p)
 	}
 	else
 		os << unique_name(p) << " [label=\"" << p.name << "\"];" << endl;
-	
+
 	return os;
 }
 
@@ -107,7 +107,7 @@ oturtlestream &po::operator<<(oturtlestream &os, const procedure &p)
 
 	for(bblock_cptr bb: p.basic_blocks)
 		os << " po:include " << *bb << endl;
-		
+
 	if(p.entry)
 		os << " po:entry \"" << p.entry->area().begin << "\"^^xsd:integer;" << endl;
 
@@ -128,7 +128,7 @@ bblock_ptr po::find_bblock(proc_ptr proc, addr_t a)
 	while(i != proc->basic_blocks.end())
 	{
 		bblock_ptr bb = *i++;
-		
+
 		if(bb->area().includes(a))
 			return bb;
 	}
