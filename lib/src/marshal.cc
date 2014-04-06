@@ -23,11 +23,14 @@ using namespace rdf;
 using namespace boost;
 using namespace filesystem;
 
+std::mt19937 uuid::prng;
+boost::uuids::basic_random_generator<std::mt19937> uuid::generator(&uuid::prng);
+
 marshal_exception::marshal_exception(const string &w)
 : runtime_error(w)
 {}
 
-node node::blank(void) { return node(boost::uuids::random_generator()()); }
+node node::blank(void) { return node(uuid::generator()); }
 
 node::node(const iri& n) : _inner(n) {}
 node::node(const string& s, const iri& t) : _inner(make_pair(s,t)) {}
@@ -55,7 +58,7 @@ bool node::operator<(const node& n) const
 std::ostream& po::rdf::operator<<(std::ostream& os, const node& n)
 {
 	if(n.is_literal())
-		os << n.as_literal() << "^^" << n.literal_type();
+		os << "\"" << n.as_literal() << "\"^^" << n.literal_type();
 	else if(n.is_iri())
 		os << n.as_iri();
 	else
@@ -138,7 +141,6 @@ storage::storage(const filesystem::path& p)
 				of.write(buf,len);
 
 			of.close();
-			cout << "read " << tmpName << " from " << p.string() << endl;
 		}
 
 		if(!(found_meta))
@@ -318,7 +320,6 @@ void storage::snapshot(const filesystem::path& p) const
 						throw marshal_exception("can't save to " + p.string() + ": error while reading " + entPath.string());
 				}
 
-				cout << "written " << entPath.string() << " in " << p.string() << endl;
 				++di;
 			}
 		}

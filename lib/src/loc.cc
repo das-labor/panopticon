@@ -2,7 +2,6 @@
 
 using namespace po;
 
-std::mt19937 po::uuid_random;
 std::unordered_map<uuid,std::pair<marshal_poly,marshal_poly>> po::dirty_locations;
 std::mutex po::dirty_locations_mutex;
 

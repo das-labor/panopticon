@@ -22,7 +22,6 @@ namespace po
 	// pair<to delete,to write>
 	extern std::unordered_map<uuid,std::pair<marshal_poly,marshal_poly>> dirty_locations;
 	extern std::mutex dirty_locations_mutex;
-	extern std::mt19937 uuid_random;
 
 	template<typename T>
 	struct loc_control
@@ -150,7 +149,7 @@ namespace po
 		using basic_loc<T,loc<T>>::tag;
 
 		loc(const loc<T> &l) : basic_loc<T,loc<T>>(l.tag()), _control(l._control) {}
-		explicit loc(T* t) : loc(boost::uuids::basic_random_generator<std::mt19937>(&uuid_random)(),t) {}
+		explicit loc(T* t) : loc(uuid::generator(),t) {}
 		loc(const uuid &u, T* t) : basic_loc<T,loc<T>>(u), _control(new loc_control<T>(t))
 		{
 			std::lock_guard<std::mutex> guard(dirty_locations_mutex);

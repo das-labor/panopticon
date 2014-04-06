@@ -30,7 +30,15 @@
 
 namespace po
 {
-	using uuid = boost::uuids::uuid;
+	struct uuid : boost::uuids::uuid
+	{
+		uuid(void) : boost::uuids::uuid(generator()) {}
+		uuid(const boost::uuids::uuid& u) : boost::uuids::uuid(u) {}
+		uuid(const std::string& s) : boost::uuids::uuid(boost::uuids::string_generator()(s)) {}
+
+		static std::mt19937 prng;
+		static boost::uuids::basic_random_generator<std::mt19937> generator;
+	};
 }
 
 namespace std
