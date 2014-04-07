@@ -295,6 +295,12 @@ namespace std
 			}
 		}
 	};
+
+	template<>
+	struct hash<po::variable>
+	{
+		size_t operator()(const po::variable &a) const { return hash<po::rvalue>()(a); }
+	};
 }
 
 #ifndef _MSC_VER

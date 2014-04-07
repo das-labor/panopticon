@@ -60,6 +60,47 @@ namespace po
 	template<>
 	rdf::statements marshal(const basic_block*, const uuid&);
 
+	/// Adds an control transfer with @ref from as source and @ref to as destination
+	void conditional_jump(bblock_loc from, bblock_loc to, guard g);
+	/// Adds an control transfer with @ref from as source and @ref to as destination
+	void conditional_jump(rvalue from, bblock_loc to, guard g);
+	/// Adds an control transfer with @ref from as source and @ref to as destination
+	void conditional_jump(bblock_loc from, rvalue to, guard g);
+
+	/// Adds an control transfer with @ref from as source and @ref to as destination
+	void unconditional_jump(bblock_loc from, bblock_loc to);
+	/// Adds an control transfer with @ref from as source and @ref to as destination
+	void unconditional_jump(rvalue from, bblock_loc to);
+	/// Adds an control transfer with @ref from as source and @ref to as destination
+	void unconditional_jump(bblock_loc from, rvalue to);
+
+	/// Replaces the source basic block @ref oldbb with @ref newbb in all outgoing control transfers of @ref to.
+	void replace_incoming(bblock_loc to, bblock_loc oldbb, bblock_loc newbb);
+	/// Replaces the destination basic block @ref oldbb with @ref newbb in all outgoing control transfers of @ref from.
+	void replace_outgoing(bblock_loc from, bblock_loc oldbb, bblock_loc newbb);
+	/// Sets the source basic block to @ref bb in every incoming control transfer of @ref to that has a source value equal to @ref v
+	void resolve_incoming(bblock_loc to, rvalue v, bblock_loc bb);
+	/// Sets the destination basic block to @ref bb in every outgoing control transfer of @ref from that has a destination value equal to @ref v
+	void resolve_outgoing(bblock_loc from, rvalue v, bblock_loc bb);
+
+	/**
+	 * Splits the @ref bb into two. If @ref last is true all mnemonics in @ref bb
+	 * up to @ref pos are includes into the first. Otherwise the mnemonic at @ref pos
+	 * is the first in the second basic block.
+	 * @returns Pair of basic blocks.
+	 */
+	std::pair<bblock_loc,bblock_loc> split(bblock_loc bb, offset pos, bool last);
+
+	/// Merges two adjacent basic blocks into one.
+	bblock_loc merge(bblock_loc up, bblock_loc down);
+
+	/// @internal
+	void replace(std::list<ctrans> &lst, bblock_loc from, bblock_loc to);
+	/// @internal
+	void resolve(std::list<ctrans> &lst, rvalue v, bblock_loc bb);
+	/// @internal
+	void conditional_jump(const ctrans &from, const ctrans &to);
+
 	template<typename Tag>
 	proc_loc procedure::disassemble(boost::optional<proc_loc> proc, const disassembler<Tag> &main, std::vector<typename rule<Tag>::token> tokens, offset start)
 	{
@@ -291,48 +332,6 @@ namespace po
 }
 
 /*
-	/// Adds an control transfer with @ref from as source and @ref to as destination
-	void conditional_jump(bblock_loc from, bblock_loc to, guard g);
-	/// Adds an control transfer with @ref from as source and @ref to as destination
-	void conditional_jump(rvalue from, bblock_loc to, guard g);
-	/// Adds an control transfer with @ref from as source and @ref to as destination
-	void conditional_jump(bblock_loc from, rvalue to, guard g);
-
-	/// Adds an control transfer with @ref from as source and @ref to as destination
-	void unconditional_jump(bblock_loc from, bblock_loc to);
-	/// Adds an control transfer with @ref from as source and @ref to as destination
-	void unconditional_jump(rvalue from, bblock_loc to);
-	/// Adds an control transfer with @ref from as source and @ref to as destination
-	void unconditional_jump(bblock_loc from, rvalue to);
-
-	/// Replaces the source basic block @ref oldbb with @ref newbb in all outgoing control transfers of @ref to.
-	void replace_incoming(bblock_loc to, bblock_loc oldbb, bblock_loc newbb);
-	/// Replaces the destination basic block @ref oldbb with @ref newbb in all outgoing control transfers of @ref from.
-	void replace_outgoing(bblock_loc from, bblock_loc oldbb, bblock_loc newbb);
-	/// Sets the source basic block to @ref bb in every incoming control transfer of @ref to that has a source value equal to @ref v
-	void resolve_incoming(bblock_loc to, rvalue v, bblock_loc bb);
-	/// Sets the destination basic block to @ref bb in every outgoing control transfer of @ref from that has a destination value equal to @ref v
-	void resolve_outgoing(bblock_loc from, rvalue v, bblock_loc bb);
-
-	**
-	 * Splits the @ref bb into two. If @ref last is true all mnemonics in @ref bb
-	 * up to @ref pos are includes into the first. Otherwise the mnemonic at @ref pos
-	 * is the first in the second basic block.
-	 * @returns Pair of basic blocks.
-	 *
-	std::pair<bblock_loc,bblock_loc> split(bblock_loc bb, offset pos, bool last);
-
-	/// Merges two adjacent basic blocks into one.
-	bblock_loc merge(bblock_loc up, bblock_loc down);
-
-	/// @internal
-	void replace(std::list<ctrans> &lst, bblock_loc from, bblock_loc to);
-	/// @internal
-	void resolve(std::list<ctrans> &lst, rvalue v, bblock_loc bb);
-	/// @internal
-	void conditional_jump(const ctrans &from, const ctrans &to);
-
-
 void po::conditional_jump(bblock_loc from, bblock_loc to, guard g) { ctrans ct_from(g,from), ct_to(g,to); conditional_jump(ct_from,ct_to); }
 void po::conditional_jump(rvalue from, bblock_loc to, guard g) { ctrans ct_from(g,from), ct_to(g,to); conditional_jump(ct_from,ct_to); }
 void po::conditional_jump(bblock_loc from, rvalue to, guard g) { ctrans ct_from(g,from), ct_to(g,to); conditional_jump(ct_from,ct_to); }

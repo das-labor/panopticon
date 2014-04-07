@@ -45,15 +45,20 @@ namespace po
 	 * @ref proc to an instance of an element in the abstract domain.
 	 */
 	template<typename T>
-	std::shared_ptr<std::unordered_map<rvalue,typename domain_traits<T>::lattice>> interpret(const proc_ptr proc, T tag = T())
+	std::shared_ptr<std::unordered_map<rvalue,typename domain_traits<T>::lattice>> interpret(const proc_loc proc, T tag = T())
 	{
-		typedef typename domain_traits<T>::lattice L;
-		std::shared_ptr<std::unordered_map<rvalue,typename domain_traits<T>::lattice>> ret = std::make_shared(new std::unordered_map<rvalue,typename domain_traits<T>::lattice>());
-		std::unordered_set<bblock_ptr> worklist(proc->basic_blocks);
+		using L = typename domain_traits<T>::lattice;
+		using vx_desc = boost::graph_traits<decltype(proc->control_transfers)>::vertex_descriptor;
+		std::shared_ptr<std::unordered_map<rvalue,typename domain_traits<T>::lattice>> ret = std::make_shared<std::unordered_map<rvalue,typename domain_traits<T>::lattice>>();
+		const std::vector<bblock_loc>& rpo = proc->rev_postorder();
+		std::unordered_set<vx_desc> worklist;
+
+		std::transform(rpo.begin(),rpo.end(),[&](bblock_loc bb) { return find_node<boost::variant<bblock_loc,rvalue>,guard>(bb,proc->control_transfers); });
 
 		while(!worklist.empty())
 		{
-			bblock_ptr bb = *worklist.begin();
+			vx_desc vx = *worklist.begin();
+			bblock_loc bb = get<bblock_loc>(get_node<boost::variant<bblock_loc,rvalue>,guard>(vx,proc->control_transfers));
 			bool modified = false;
 
 			worklist.erase(worklist.begin());
@@ -69,24 +74,22 @@ namespace po
 						arguments.emplace_back(L());
 
 				if(fn == instr::Phi)
-					res = accumulate(arguments.begin(),arguments.end(),res,[&](const L &acc, const L &x) { return supremum(acc,x,tag); });
+					res = std::accumulate(arguments.begin(),arguments.end(),res,[&](const L &acc, const L &x) { return supremum(acc,x,tag); });
 				else
 					res = supremum(execute(left,fn,right,arguments,tag),res,tag);
 
-				if(!ret->count(left) || !(ret->at(left) == res))
-				{
-					modified = true;
-				}
+				modified = (!ret->count(left) || !(ret->at(left) == res));
 
 				if(ret->count(left))
 					ret->erase(left);
-				ret->insert(::std::make_pair(left,res));
+				ret->emplace(left,res);
 			});
 
 			if(modified)
 			{
-				auto p = bb->successors();
-				copy(p.first,p.second,::std::inserter(worklist,worklist.end()));
+				auto p = boost::out_edges(vx,proc->control_transfers);
+				std::copy_if(p.first,p.second,std::back_inserter(worklist),[&](vx_desc v)
+					{ get<bblock_loc>(&get_node<boost::variant<bblock_loc,rvalue>,guard>(v,proc->control_transfers)); });
 			}
 
 			std::cout << worklist.size() << std::endl;

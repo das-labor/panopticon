@@ -3,12 +3,11 @@
 #include <unordered_set>
 #include <mutex>
 
-#include <procedure.hh>
-#include <disassembler.hh>
-#include <dprog.hh>
-#include <interpreter.hh>
-#include <sat.hh>
-#include <marshal.hh>
+#include <panopticon/procedure.hh>
+#include <panopticon/disassembler.hh>
+#include <panopticon/interpreter.hh>
+#include <panopticon/sat.hh>
+#include <panopticon/marshal.hh>
 
 #pragma once
 
@@ -51,8 +50,6 @@ namespace po
 	 */
 	struct program
 	{
-		static prog_ptr unmarshal(const rdf::node &n, const rdf::storage &store);
-
 		/// Contruct an empty program with name @ref name
 		program(const std::string &n = "unnamed program");
 
@@ -158,8 +155,9 @@ namespace po
 		}
 	};
 
-	odotstream &operator<<(odotstream &os, const program &f);
-	oturtlestream& operator<<(oturtlestream &os, const program &f);
-	ordfstream& operator<<(ordfstream &os, const program &f);
-	std::string unique_name(const program &f);
+	template<>
+	program* unmarshal(const uuid&, const rdf::storage&);
+
+	template<>
+	rdf::statements marshal(const program*, const uuid&);
 }
