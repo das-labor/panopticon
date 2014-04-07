@@ -56,5 +56,5 @@ namespace po
 	std::ostream &operator<<(std::ostream &os, const po::formula &f);
 
 	/// Converts a procedure into a SAT expression over the QF_BV theory
-	formula_ptr sat(proc_ptr p);
+	formula_ptr sat(proc_loc p);
 }
