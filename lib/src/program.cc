@@ -110,6 +110,16 @@ ordfstream& po::operator<<(ordfstream &os, const flowgraph &f)
 	return os;
 }
 
+void po::call(prog_loc p, proc_loc from, proc_loc to)
+{
+	auto vx_a = find_node<variant<bblock_loc,rvalue>,guard>(from,p->calls);
+	auto vx_b = find_node<variant<bblock_loc,rvalue>,guard>(to,p->calls);
+
+	insert_edge(void,vx_a,vx_b,p->calls);
+	from->callees.insert(to);
+	to->callers.insert(from);
+}
+
 proc_ptr po::find_procedure(flow_ptr fg, addr_t a)
 {
 	std::set<proc_ptr>::iterator i = fg->procedures.begin();

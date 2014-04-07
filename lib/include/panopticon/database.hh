@@ -7,13 +7,14 @@
 #include <panopticon/loc.hh>
 #include <panopticon/marshal.hh>
 #include <panopticon/structure.hh>
+#include <panopticon/program.hh>
 
 #pragma once
 
 namespace po
 {
 	/// Everything that occupys space on the region graph
-	using record = boost::variant</*const bblock_loc,*/const field&>;
+	using record = boost::variant<bblock_loc,const field&>;
 	using comment_loc = loc<std::string>;
 
 	area extends(const record&);
@@ -24,8 +25,8 @@ namespace po
 
 		std::string title;
 		regions data;
-		//std::unordered_set<struct_loc> structures;
-		//std::unordered_set<prog_loc> programs;
+		std::unordered_set<struct_loc> structures;
+		std::unordered_set<prog_loc> programs;
 		std::map<ref,comment_loc> comments;
 	};
 

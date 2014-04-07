@@ -6,91 +6,65 @@
 #include <panopticon/procedure.hh>
 #include <panopticon/program.hh>
 
+#include <boost/graph/depth_first_search.hpp>
+
 using namespace po;
 using namespace std;
+using namespace boost;
 
-domtree::domtree(bblock_ptr b) : intermediate(0), successors(), frontiers(), basic_block(b) {}
+//domtree::domtree(bblock_ptr b) : intermediate(0), successors(), frontiers(), basic_block(b) {}
 
-proc_ptr procedure::unmarshal(const rdf::node &node, flow_ptr flow, const rdf::storage &store)
+template<>
+procedure* po::unmarshal(const uuid& u, const rdf::storage &store)
 {
-	rdf::statement type = store.first(node,"type"_rdf,"Procedure"_po),
-								 name = store.first(node,"name"_po,nullptr);
-	rdf::stream bbs = store.select(node,"include"_po,nullptr);
-	proc_ptr ret(new procedure(name.object().to_string()));
+	rdf::node node(rdf::ns_po(to_string(u)));
+	rdf::statement name = store.first(node,"name"_po);
+	rdf::statements bbs = store.find(node,"include"_po);
+	procedure* ret = new procedure(name.object.as_literal());
+	using vx_desc = typename boost::graph_traits<decltype(ret->control_transfers)>::vertex_descriptor;
 
-	while(!bbs.eof())
+	for(auto bb: bbs)
+		insert_node<boost::variant<bblock_loc,rvalue>,guard>(bblock_loc{uuid(bb.object.as_iri().substr(bb.object.as_iri().size()-36)),store},ret->control_transfers);
+
+	for(auto bb: bbs)
 	{
-		rdf::statement st;
+		vx_desc vx_a = find_node<boost::variant<bblock_loc,rvalue>,guard>(bblock_loc(uuid(bb.object.as_iri().substr(bb.object.as_iri().size()-36)),store),ret->control_transfers);
+		rdf::statements succ = store.find(bb.object,rdf::ns_po("out")),
+										pred = store.find(bb.object,rdf::ns_po("in"));
+		std::unordered_set<rdf::node> cts;
 
-		bbs >> st;
-		ret->basic_blocks.insert(basic_block::unmarshal(st.object(),ret,store));
+		transform(succ.begin(),succ.end(),inserter(cts,cts.begin()),[&](const rdf::statement& st) { return st.object; });
+		transform(pred.begin(),pred.end(),inserter(cts,cts.begin()),[&](const rdf::statement& st) { return st.object; });
+
+		for(rdf::node ct: cts)
+		{
+			rdf::statement g = store.first(ct,rdf::ns_po("guard")),
+										 target = store.first(ct,rdf::ns_po("target"));
+
+			guard gg = *unique_ptr<guard>(unmarshal<guard>(uuid(g.object.as_iri().substr(g.object.as_iri().size()-36)),store));
+			if(store.has(target.object,rdf::ns_rdf("type"),rdf::ns_po("BasicBlock")))
+			{
+				bblock_loc tgt(uuid(target.object.as_iri().substr(target.object.as_iri().size()-36)),store);
+				vx_desc vx_b = find_node<boost::variant<bblock_loc,rvalue>,guard>(tgt,ret->control_transfers);
+
+				insert_edge<boost::variant<bblock_loc,rvalue>,guard>(gg,vx_a,vx_b,ret->control_transfers);
+			}
+			else
+			{
+				rvalue tgt = *unique_ptr<rvalue>(unmarshal<rvalue>(uuid(target.object.as_iri().substr(target.object.as_iri().size()-36)),store));
+				vx_desc vx_b = insert_node<boost::variant<bblock_loc,rvalue>,guard>(tgt,ret->control_transfers);
+
+				insert_edge<boost::variant<bblock_loc,rvalue>,guard>(gg,vx_a,vx_b,ret->control_transfers);
+			}
+		}
 	}
 
 	return ret;
 }
 
-procedure::procedure(const std::string &n)
-: name(n), entry(0), basic_blocks(), mutex(), callers(), callees()
-{}
-
-void procedure::rev_postorder(function<void(bblock_ptr bb)> fn) const
-{
-	set<bblock_ptr> known;
-	list<bblock_ptr> postorder;
-
-	assert(entry);
-
-	//cout << "rpo: " << basic_blocks.size() << ", entry: " << entry->area() << endl;
-	//for_each(basic_blocks.begin(),basic_blocks.end(),[](const bblock_ptr bb) { cout << bb->area() << endl; });
-
-	function<void(bblock_ptr)> visit;
-	visit = [&](bblock_ptr bb)
-	{
-	//	cout << "visit " << bb->area() << endl;
-		basic_block::succ_iterator i,iend;
-
-		tie(i,iend) = bb->successors();
-		for_each(i,iend,[&](bblock_ptr s)
-		{
-		//	cout << "check " << s->area() << endl;
-			if(known.insert(s).second)
-				visit(s);
-		});
-		postorder.push_back(bb);
-	};
-
-	known.insert(entry);
-	visit(entry);
-	assert(basic_blocks.size() == postorder.size());
-	for_each(postorder.rbegin(),postorder.rend(),fn);
-}
-
-odotstream &po::operator<<(odotstream &os, const procedure &p)
-{
-	os << "\t";
-
-	if(os.body)
-	{
-		if(os.subgraph)
-			os << "subgraph cluster_";
-
-		os << unique_name(p) << endl
-			 << "\t{" << endl
-			 << "\t\tgraph [label=\"" << p.name << "\"];" << endl;
-
-		for(bblock_cptr bb: p.basic_blocks)
-			os << "\t" << (os.subgraph ? "\t" : "") << *bb << endl;
-
-		os << "\t}" << endl;
-	}
-	else
-		os << unique_name(p) << " [label=\"" << p.name << "\"];" << endl;
-
-	return os;
-}
-
-oturtlestream &po::operator<<(oturtlestream &os, const procedure &p)
-{
+template<>
+rdf::statements po::marshal(const procedure* p, const uuid& u)
+{/*
 	os << "[" << endl
 		 << " po:name \"" << p.name << "\"^^xsd:string;" << endl
 		 << " rdf:type po:Procedure;" << endl;
@@ -103,40 +77,61 @@ oturtlestream &po::operator<<(oturtlestream &os, const procedure &p)
 
 	os << "]";
 
-	return os;
+	return os;*/
+	return rdf::statements();
 }
 
-string po::unique_name(const procedure &f)
-{
-	return f.name.empty() ? std::string("proc_") + (f.entry ? to_string(f.entry->area().begin) : to_string((uintptr_t)&f)) : f.name;
-}
 
-bblock_ptr po::find_bblock(proc_ptr proc, addr_t a)
-{
-	auto i = proc->basic_blocks.begin();
+procedure::procedure(const std::string &n)
+: name(n), entry(boost::none), control_transfers(), _rev_postorder(boost::none), _dominance(boost::none)
+{}
 
-	while(i != proc->basic_blocks.end())
+const vector<bblock_loc>& procedure::rev_postorder(void) const
+{
+	if(!_rev_postorder)
 	{
-		bblock_ptr bb = *i++;
+		using vx_desc = graph_traits<decltype(control_transfers)>::vertex_descriptor;
+		using time_pm_type = associative_property_map<std::unordered_map<vx_desc,int>>;
+		using color_pm_type = associative_property_map<std::unordered_map<vx_desc,default_color_type>>;
 
-		if(bb->area().includes(a))
-			return bb;
+		std::unordered_map<vx_desc,int> ftime;
+		std::unordered_map<vx_desc,default_color_type> color;
+
+		_rev_postorder = make_optional(vector<bblock_loc>());
+
+		for(vx_desc vx: iters(vertices(control_transfers)))
+			if(get<bblock_loc>(&get_node(vx,control_transfers)))
+				_rev_postorder->push_back(get<bblock_loc>(get_node(vx,control_transfers)));
+
+		int time = 0;
+		depth_first_search(
+			control_transfers,
+			make_dfs_visitor(stamp_times(time_pm_type(ftime),time,on_finish_vertex())),
+			color_pm_type(color),
+			find_node<boost::variant<bblock_loc,rvalue>,guard>(*entry,control_transfers));
+
+		assert(_rev_postorder->size() == ftime.size());
+		sort(_rev_postorder->begin(),_rev_postorder->end(),[&](bblock_loc a, bblock_loc b)
+			{ return ftime[find_node<variant<bblock_loc,rvalue>,guard>(a,control_transfers)] < ftime[find_node<variant<bblock_loc,rvalue>,guard>(b,control_transfers)]; });
+	}
+	return *_rev_postorder;
+}
+
+boost::optional<bblock_loc> po::find_bblock(proc_loc proc, offset a)
+{
+	for(auto vx: iters(vertices(proc->control_transfers)))
+	{
+		auto bb = get_node<variant<bblock_loc,rvalue>,guard>(vx,proc->control_transfers);
+		if(get<bblock_loc>(&bb) && icl::contains(get<bblock_loc>(bb)->area(),a))
+			return get<bblock_loc>(bb);
 	}
 
-	return bblock_ptr(0);
+	return boost::none;
 }
 
-void po::call(proc_ptr from, proc_ptr to)
+void po::execute(proc_loc proc,function<void(const lvalue &left, instr::Function fn, const vector<rvalue> &right)> f)
 {
-	assert(from && to);
-
-	from->callees.insert(to);
-	to->callers.insert(from);
-}
-
-void po::execute(proc_cptr proc,function<void(const lvalue &left, instr::Function fn, const vector<rvalue> &right)> f)
-{
-	for(const bblock_ptr &bb: proc->basic_blocks)
+	for(const bblock_loc &bb: proc->rev_postorder())
 	{
 		size_t sz_mne = bb->mnemonics().size(), i_mne = 0;
 		const mnemonic *ary_mne = bb->mnemonics().data();

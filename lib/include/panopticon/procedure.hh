@@ -9,6 +9,7 @@
 #include <panopticon/mnemonic.hh>
 #include <panopticon/disassembler.hh>
 #include <panopticon/marshal.hh>
+#include <panopticon/tree.hh>
 
 #pragma once
 
@@ -16,13 +17,14 @@ namespace po
 {
 	using proc_loc = loc<struct procedure>;
 	using proc_wloc = wloc<struct procedure>;
+	using prog_loc = loc<struct program>;
 	using prog_wloc = wloc<struct program>;
 
 	/// Run @arg f on all IL statements. Basic blocks a traversed in undefined order.
 	void execute(proc_loc proc,std::function<void(const lvalue &left, instr::Function fn, const std::vector<rvalue> &right)> f);
 
 	/// Returns basic block occuping address @arg a
-	bblock_loc find_bblock(proc_loc proc, offset a);
+	boost::optional<bblock_loc> find_bblock(proc_loc proc, offset a);
 
 	/**
 	 * @brief Function
@@ -31,34 +33,35 @@ namespace po
 	 * block belongs to exactly one procedure.
 	 *
 	 * The procedures itself are saved in the call graph structure
-	 * called @ref flowgraph.
+	 * called @ref program.
 	 */
 	struct procedure
 	{
 		/// Constructs an empty procedure with name @arg n
-		procedure(const std::string &n = std::string("proc_noname"));
+		procedure(const std::string &n);
 
 		/// Calls @arg fn for every basic block in the procedure in reverse postorder.
 		const std::vector<bblock_loc>& rev_postorder(void) const;
+		const tree<bblock_loc>& domiance(void) const;
 
-		prog_wloc parent;
 		std::string name;	///< Human-readable name
 		boost::optional<bblock_loc> entry;	///< Entry point
 		digraph<boost::variant<bblock_loc,rvalue>,guard> control_transfers;
 
 		/// Create or extend a procedure by starting to disassemble using @arg main at offset @arg start in @arg tokens
 		template<typename Tag>
-		static proc_loc disassemble(boost::optional<proc_loc> proc, const disassembler<Tag> &main, std::vector<typename rule<Tag>::token> tokens, offset start);
+		static proc_loc disassemble(boost::optional<proc_loc>, const disassembler<Tag>&, std::vector<typename rule<Tag>::token>, offset);
 
 	private:
-		boost::optional<std::vector<bblock_loc>> _rev_postorder;
+		mutable boost::optional<std::vector<bblock_loc>> _rev_postorder;
+		mutable boost::optional<tree<bblock_loc>> _dominance;
 	};
 
 	template<>
 	procedure* unmarshal(const uuid&, const rdf::storage&);
 
 	template<>
-	rdf::statements marshal(const basic_block*, const uuid&);
+	rdf::statements marshal(const procedure*, const uuid&);
 
 	/// Adds an control transfer with @ref from as source and @ref to as destination
 	void conditional_jump(bblock_loc from, bblock_loc to, guard g);
@@ -108,7 +111,7 @@ namespace po
 		std::map<offset,mnemonic> mnemonics;
 		std::unordered_multimap<offset,std::pair<boost::optional<offset>,guard>> source;
 		std::unordered_multimap<offset,std::pair<offset,guard>> destination;
-		proc_loc ret = (proc ? *proc : proc_loc(new procedure()));
+		proc_loc ret = (proc ? *proc : proc_loc(new procedure("proc_noname")));
 		std::function<boost::optional<bound>(const boost::variant<rvalue,bblock_wloc>&)> get_off = [&](const boost::variant<rvalue,bblock_wloc>& v) -> boost::optional<bound>
 		{
 			if(boost::get<rvalue>(&v))

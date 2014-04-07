@@ -81,7 +81,7 @@ namespace po
 			prog_loc ret = (prog ? *prog : prog_loc(new program("unnamed program")));
 			std::unordered_set<std::pair<offset,proc_loc>> call_targets;
 
-			call_targets.insert(std::make_pair(off,proc_loc(new procedure())));
+			call_targets.insert(std::make_pair(off,proc_loc(new procedure("proc_noname"))));
 
 			while(!call_targets.empty())
 			{
@@ -95,7 +95,6 @@ namespace po
 				if(has_procedure(ret,tgt))
 					continue;
 
-				//dom_ptr dom;
 				//live_ptr live;
 
 				std::cout << "disassemble at " << tgt << std::endl;

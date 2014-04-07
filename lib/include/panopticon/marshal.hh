@@ -16,6 +16,8 @@
 #include <boost/functional/hash.hpp>
 #include <boost/filesystem.hpp>
 
+#include <panopticon/hash.hh>
+
 #define LOCAL "http://localhost/"
 #define PO "http://panopticon.re/rdf/v1/"
 #define XSD	"http://www.w3.org/2001/XMLSchema#"
@@ -208,4 +210,24 @@ namespace po
 
 	template<typename T>
 	rdf::statements marshal(const T*, const uuid&);
+}
+
+namespace std
+{
+	template<>
+	struct hash<po::rdf::node>
+	{
+		size_t operator()(const po::rdf::node& n) const
+		{
+			hash<string> h;
+
+			if(n.is_iri())
+				return h(n.as_iri());
+			else if(n.is_literal())
+				return po::hash_struct(n.as_literal(),n.literal_type());
+			else if(n.is_blank())
+				return hash<po::uuid>()(n.as_uuid());
+			throw std::runtime_error("unknown node type");
+		}
+	};
 }
