@@ -28,6 +28,9 @@ namespace po
 	using prog_wloc = wloc<const program>;
 	using disass_sig = std::function<void(unsigned int done, unsigned int todo)>;
 
+	/// Insert call graph edge from @arg from to @to
+	void call(proc_ptr from, proc_ptr to);
+
 	/// @return true if the program @ref prog has a procedure with entry point @ref entry
 	bool has_procedure(prog_ptr prog, addr_t entry);
 

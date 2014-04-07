@@ -14,22 +14,15 @@
 
 namespace po
 {
-	typedef std::shared_ptr<class procedure> proc_ptr;
-	typedef std::weak_ptr<class procedure> proc_wptr;
-
-	typedef std::shared_ptr<struct program> prog_ptr;
-
-	bool operator<(const proc_wptr &a, const proc_wptr &b);
-	bool operator<(const proc_cwptr &a, const proc_cwptr &b);
-
-	/// Insert call graph edge from @arg from to @to
-	void call(proc_ptr from, proc_ptr to);
+	using proc_loc = loc<struct procedure>;
+	using proc_wloc = wloc<struct procedure>;
+	using prog_wloc = wloc<struct program>;
 
 	/// Run @arg f on all IL statements. Basic blocks a traversed in undefined order.
-	void execute(proc_cptr proc,std::function<void(const lvalue &left, instr::Function fn, const std::vector<rvalue> &right)> f);
+	void execute(proc_loc proc,std::function<void(const lvalue &left, instr::Function fn, const std::vector<rvalue> &right)> f);
 
 	/// Returns basic block occuping address @arg a
-	bblock_ptr find_bblock(proc_ptr proc, offset_t a);
+	bblock_loc find_bblock(proc_loc proc, offset a);
 
 	/**
 	 * @brief Function
@@ -40,83 +33,94 @@ namespace po
 	 * The procedures itself are saved in the call graph structure
 	 * called @ref flowgraph.
 	 */
-	class procedure
+	struct procedure
 	{
-	public:
-		static proc_ptr unmarshal(const rdf::node &n, flow_ptr flow, const rdf::storage &store);
-
 		/// Constructs an empty procedure with name @arg n
-		procedure(const std::string &n = std::string("proc_noname"));a
-
-		/// Construct a new procedure. Copies basic blocks betwee @arg begin and @arg end into the instance
-		template<typename FW> procedure(FW begin, FW end) : procedure() { copy(begin,end,inserter(basic_blocks,basic_blocks.begin())); }
+		procedure(const std::string &n = std::string("proc_noname"));
 
 		/// Calls @arg fn for every basic block in the procedure in reverse postorder.
-		void rev_postorder(std::function<void(bblock_ptr bb)> fn) const;
+		const std::vector<bblock_loc>& rev_postorder(void) const;
 
-		digraph<boost::variant<bblock_wptr,rvalue>,guard> control_transfers;
-		std::vector<bblock_ptr> basic_blocks;
-
-		// public fields
+		prog_wloc parent;
 		std::string name;	///< Human-readable name
-		bblock_wptr entry;	///< Entry point
-		prog_wptr parent;
+		boost::optional<bblock_loc> entry;	///< Entry point
+		digraph<boost::variant<bblock_loc,rvalue>,guard> control_transfers;
 
 		/// Create or extend a procedure by starting to disassemble using @arg main at offset @arg start in @arg tokens
 		template<typename Tag>
-		static proc_ptr disassemble(const proc_ptr proc, const disassembler<Tag> &main, std::vector<typename rule<Tag>::token> tokens, offset_t start);
+		static proc_loc disassemble(boost::optional<proc_loc> proc, const disassembler<Tag> &main, std::vector<typename rule<Tag>::token> tokens, offset start);
+
+	private:
+		boost::optional<std::vector<bblock_loc>> _rev_postorder;
 	};
 
-	odotstream &operator<<(odotstream &os, const procedure &p);
-	oturtlestream &operator<<(oturtlestream &os, const procedure &p);
-	std::string unique_name(const procedure &f);
+	template<>
+	procedure* unmarshal(const uuid&, const rdf::storage&);
+
+	template<>
+	rdf::statements marshal(const basic_block*, const uuid&);
 
 	template<typename Tag>
-	proc_ptr procedure::disassemble(const proc_ptr proc, const disassembler<Tag> &main, std::vector<typename rule<Tag>::token> tokens, offset_t start)
+	proc_loc procedure::disassemble(boost::optional<proc_loc> proc, const disassembler<Tag> &main, std::vector<typename rule<Tag>::token> tokens, offset start)
 	{
-		assert(start != naddr);
-
-		std::unordered_set<offset_t> todo;
-		std::unordered_map<offset_t,mnemonic> mnemonics;
-		std::unordered_multimap<offset_t,std::pair<offset_t,guard>> source, destination;
-		proc_ptr ret = (proc ? proc : proc_ptr(new procedure()));
+		std::unordered_set<offset> todo;
+		std::map<offset,mnemonic> mnemonics;
+		std::unordered_multimap<offset,std::pair<boost::optional<offset>,guard>> source;
+		std::unordered_multimap<offset,std::pair<offset,guard>> destination;
+		proc_loc ret = (proc ? *proc : proc_loc(new procedure()));
+		std::function<boost::optional<bound>(const boost::variant<rvalue,bblock_wloc>&)> get_off = [&](const boost::variant<rvalue,bblock_wloc>& v) -> boost::optional<bound>
+		{
+			if(boost::get<rvalue>(&v))
+			{
+				rvalue rv = boost::get<rvalue>(v);
+				if(is_constant(rv))
+					return boost::optional<bound>((to_constant(rv).content(),to_constant(rv).content() + 1));
+			}
+			else if(boost::get<bblock_wloc>(&v))
+			{
+				return boost::make_optional(boost::get<bblock_wloc>(v).lock().read()->area());
+			}
+			else
+				return boost::none;
+		};
 
 		// copy exsisting mnemonics and jumps into tables. TODO: cache tables in proc
 		if(proc)
 		{
-			for(const bblock_ptr bb: proc->basic_blocks)
+			for(const bblock_loc bb: (*proc)->rev_postorder())
 			{
-				assert(bb);
-
 				for(const mnemonic &m: bb->mnemonics())
 				{
-					assert(m.area.size());
-					mnemonics.insert(std::make_pair(m.area.last(),m));
-				}
-
-				for(const ctrans &ct: bb->outgoing())
-				{
-					if(ct.bblock.lock())
-					{
-						source.insert(std::make_pair(bb->area().last(),std::make_pair(ct.bblock.lock()->area().begin,ct.condition)));
-						destination.insert(std::make_pair(ct.bblock.lock()->area().begin,std::make_pair(bb->area().last(),ct.condition)));
-					}
-					else if(ct.value.is_constant())
-					{
-						source.insert(std::make_pair(bb->area().last(),std::make_pair(ct.value.to_constant().content(),ct.condition)));
-						destination.insert(std::make_pair(ct.value.to_constant().content(),std::make_pair(bb->area().last(),ct.condition)));
-					}
+					assert(boost::icl::size(m.area));
+					mnemonics.emplace(m.area.upper() - 1,m);
 				}
 			}
 
-			proc->basic_blocks.clear();
+			for(auto e: iters(edges((*proc)->control_transfers)))
+			{
+				auto tgt = target(e,(*proc)->control_transfers);
+				auto src = boost::source(e,(*proc)->control_transfers);
+
+				auto src_b = get_off(src);
+				auto tgt_b = get_off(tgt);
+
+				if(src_b && tgt_b)
+				{
+					std::pair<offset,guard> p(tgt_b->lower(),get_edge(e,(*proc)->control_transfers));
+
+					source.emplace(src_b->upper() - 1,p);
+					destination.emplace(p,src_b->upper() - 1);
+				}
+			}
+
+			(*proc).write().control_transfers = digraph<boost::variant<bblock_loc, rvalue>, po::guard>();
 		}
 
 		todo.insert(start);
 
 		while(!todo.empty())
 		{
-			offset_t cur_addr = *todo.begin();
+			offset cur_addr = *todo.begin();
 			sem_state<Tag> state(cur_addr);
 			bool ret;
 			typename rule<Tag>::tokiter i = tokens.begin();
@@ -130,26 +134,26 @@ namespace po
 				continue;
 			}
 
-			if(j == mnemonics.end() || !j->second.area.includes(cur_addr))
+			if(j == mnemonics.end() || !boost::icl::contains(j->second.area,cur_addr))
 			{
 				advance(i,cur_addr);
 				tie(ret,i) = main.match(i,tokens.end(),state);
 
 				if(ret)
 				{
-					offset_t last = 0;
+					offset last = 0;
 
 					for(const mnemonic &m: state.mnemonics)
 					{
-						last = std::max(last,m.area.last());
-						assert(mnemonics.insert(std::make_pair(m.area.begin,m)).second);
+						last = std::max(last,m.area.upper() - 1);
+						assert(mnemonics.insert(std::make_pair(m.area.lower(),m)).second);
 					}
 
 					for(const std::pair<rvalue,guard> &p: state.jumps)
 					{
-						if(p.first.is_constant())
+						if(is_constant(p.first))
 						{
-							offset_t target = p.first.to_constant().content();
+							offset target = to_constant(p.first).content();
 
 							source.insert(std::make_pair(last,std::make_pair(target,p.second)));
 							destination.insert(std::make_pair(target,std::make_pair(last,p.second)));
@@ -157,7 +161,7 @@ namespace po
 						}
 						else
 						{
-							source.insert(std::make_pair(last,std::make_pair(naddr,p.second)));
+							source.emplace(last,std::make_pair(boost::none,p.second));
 						}
 					}
 				}
@@ -166,41 +170,35 @@ namespace po
 					std::cerr << "Failed to match anything at " << cur_addr << std::endl;
 				}
 			}
-			else if(j->second.area.begin != cur_addr)
+			else if(j->second.area.lower() != cur_addr)
 			{
 				std::cerr << "Overlapping mnemonics at " << cur_addr << " with \"" << "[" << j->second.area << "] " << j->second << "\"" << std::endl;
 			}
 		}
 
 		auto cur_mne = mnemonics.begin(), first_mne = cur_mne;
-		std::unordered_map<offset_t,bblock_ptr> bblocks;
-		std::function<void(std::unordered_map<offset_t,mnemonic>::iterator,std::unordered_map<offset_t,mnemonic>::iterator)> make_bblock;
-		make_bblock = [&](std::unordered_map<offset_t,mnemonic>::iterator begin,std::unordered_map<offset_t,mnemonic>::iterator end)
+		std::map<offset,bblock_loc> bblocks;
+		std::function<void(std::map<offset,mnemonic>::iterator,std::map<offset,mnemonic>::iterator)> make_bblock;
+		make_bblock = [&](std::map<offset,mnemonic>::iterator begin,std::map<offset,mnemonic>::iterator end)
 		{
-			bblock_ptr bb(new basic_block());
+			bblock_loc bb(new basic_block());
 
-			// copy mnemonics
-			bb->mutate_mnemonics([&](std::vector<mnemonic> &ms)
-			{
-				std::for_each(begin,end,[&](const std::pair<offset_t,mnemonic> &p)
-				{
-					ms.push_back(p.second);
-				});
-			});
+			std::for_each(begin,end,[&](const std::pair<offset,mnemonic> &p)
+				{ bb.write().mnemonics().push_back(p.second); });
 
-			ret->basic_blocks.insert(bb);
-			assert(bblocks.insert(std::make_pair(bb->area().last(),bb)).second);
+			insert_node<boost::variant<bblock_loc,rvalue>,guard>(bb,ret.write().control_transfers);
+			assert(bblocks.emplace(bb->area().upper() - 1,bb).second);
 		};
 
 		while(cur_mne != mnemonics.end())
 		{
 			auto next_mne = std::next(cur_mne);
 			const mnemonic &mne = cur_mne->second;
-			offset_t div = mne.area.end;
-			auto sources = source.equal_range(mne.area.last());
+			offset div = mne.area.upper();
+			auto sources = source.equal_range(mne.area.upper() - 1);
 			auto destinations = destination.equal_range(div);
 
-			if(next_mne != mnemonics.end() && mne.area.size())
+			if(next_mne != mnemonics.end() && boost::icl::size(mne.area))
 			{
 				bool new_bb;
 
@@ -208,15 +206,15 @@ namespace po
 				new_bb = next_mne->first != div;
 
 				// or any following jumps aren't to adjacent mnemonics
-				new_bb |= std::any_of(sources.first,sources.second,[&](const std::pair<offset_t,std::pair<offset_t,guard>> &p)
+				new_bb |= std::any_of(sources.first,sources.second,[&](const std::pair<offset,std::pair<offset,guard>> &p)
 				{
 					return p.second.first != div;
 				});
 
 				// or any jumps pointing to the next that aren't from here
-				new_bb |= std::any_of(destinations.first,destinations.second,[&](const std::pair<offset_t,std::pair<offset_t,guard>> &p)
+				new_bb |= std::any_of(destinations.first,destinations.second,[&](const std::pair<offset,std::pair<offset,guard>> &p)
 				{
-					return p.second.first != mne.area.last();
+					return p.second.first != mne.area.upper() - 1;
 				});
 
 				// construct a new basic block
@@ -242,43 +240,51 @@ namespace po
 		make_bblock(first_mne,cur_mne);
 
 		// connect basic blocks
-		for(const std::pair<offset_t,std::pair<offset_t,guard>> &p: source)
+		for(const std::pair<offset,std::pair<boost::optional<offset>,guard>> &p: source)
 		{
-			if(p.second.first != naddr)
+			if(p.second.first)
 			{
-				auto from = bblocks.find(p.first), to = bblocks.lower_bound(p.second.first);
+				auto from = bblocks.find(p.first), to = bblocks.lower_bound(*p.second.first);
 
 				assert(from != bblocks.end());
-				if(to != bblocks.end() && to->second->area().begin == p.second.first)
+				if(to != bblocks.end() && to->second->area().lower() == *p.second.first)
 					conditional_jump(from->second,to->second,p.second.second);
 				else
-					conditional_jump(from->second,po::constant(p.second.first,flsll(p.second.first)),p.second.second);
+					conditional_jump(from->second,po::constant(*p.second.first),p.second.second);
 			}
 		}
 
-		if(ret->basic_blocks.size() == 1 && (*ret->basic_blocks.begin())->mnemonics().empty())
-			ret->basic_blocks.clear();
+		auto q = vertices(ret->control_transfers);
+
+		if(std::distance(q.first,q.second) == 1 &&
+			 get<bblock_loc>(&get_node(*q.first,ret->control_transfers)) &&
+			 get<bblock_loc>(get_node(*q.first,ret->control_transfers))->mnemonics().empty())
+			ret.write().control_transfers = digraph<boost::variant<bblock_loc,rvalue>,guard>();
+
+		q = vertices(ret->control_transfers);
 
 		// entry may have been split
-		if((proc && proc->entry) || ret->basic_blocks.size())
+		if((proc && (*proc)->entry) || std::distance(q.first,q.second))
 		{
-			offset_t entry = proc && proc->entry ? proc->entry->area().begin : start;
+			offset entry = proc && (*proc)->entry ? (*(*proc)->entry)->area().lower() : start;
 			auto i = bblocks.lower_bound(entry);
 
-			if(i != bblocks.end() && i->second->area().begin == entry)
-				ret->entry = i->second;
+			if(i != bblocks.end() && i->second->area().lower() == entry)
+				ret.write().entry = i->second;
 			else
-				ret->entry = bblocks.lower_bound(start)->second;
+				ret.write().entry = bblocks.lower_bound(start)->second;
 		}
 		else
 		{
-			ret->entry = bblock_ptr(0);
+			ret.write().entry = boost::none;
 		}
 
-		if(!proc && ret->basic_blocks.size() > 0)
-			ret->name = "proc_" + std::to_string(ret->entry->area().begin);
-		else if(ret->basic_blocks.size() > 0)
-			ret->name = "proc_(empty)";
+		q = vertices(ret->control_transfers);
+
+		if(!proc && std::distance(q.first,q.second) > 0)
+			ret.write().name = "proc_" + std::to_string((*ret->entry)->area().lower());
+		else if(std::distance(q.first,q.second) > 0)
+			ret.write().name = "proc_(empty)";
 
 		return ret;
 	}
@@ -286,27 +292,27 @@ namespace po
 
 /*
 	/// Adds an control transfer with @ref from as source and @ref to as destination
-	void conditional_jump(bblock_ptr from, bblock_ptr to, guard g);
+	void conditional_jump(bblock_loc from, bblock_loc to, guard g);
 	/// Adds an control transfer with @ref from as source and @ref to as destination
-	void conditional_jump(rvalue from, bblock_ptr to, guard g);
+	void conditional_jump(rvalue from, bblock_loc to, guard g);
 	/// Adds an control transfer with @ref from as source and @ref to as destination
-	void conditional_jump(bblock_ptr from, rvalue to, guard g);
+	void conditional_jump(bblock_loc from, rvalue to, guard g);
 
 	/// Adds an control transfer with @ref from as source and @ref to as destination
-	void unconditional_jump(bblock_ptr from, bblock_ptr to);
+	void unconditional_jump(bblock_loc from, bblock_loc to);
 	/// Adds an control transfer with @ref from as source and @ref to as destination
-	void unconditional_jump(rvalue from, bblock_ptr to);
+	void unconditional_jump(rvalue from, bblock_loc to);
 	/// Adds an control transfer with @ref from as source and @ref to as destination
-	void unconditional_jump(bblock_ptr from, rvalue to);
+	void unconditional_jump(bblock_loc from, rvalue to);
 
 	/// Replaces the source basic block @ref oldbb with @ref newbb in all outgoing control transfers of @ref to.
-	void replace_incoming(bblock_ptr to, bblock_ptr oldbb, bblock_ptr newbb);
+	void replace_incoming(bblock_loc to, bblock_loc oldbb, bblock_loc newbb);
 	/// Replaces the destination basic block @ref oldbb with @ref newbb in all outgoing control transfers of @ref from.
-	void replace_outgoing(bblock_ptr from, bblock_ptr oldbb, bblock_ptr newbb);
+	void replace_outgoing(bblock_loc from, bblock_loc oldbb, bblock_loc newbb);
 	/// Sets the source basic block to @ref bb in every incoming control transfer of @ref to that has a source value equal to @ref v
-	void resolve_incoming(bblock_ptr to, rvalue v, bblock_ptr bb);
+	void resolve_incoming(bblock_loc to, rvalue v, bblock_loc bb);
 	/// Sets the destination basic block to @ref bb in every outgoing control transfer of @ref from that has a destination value equal to @ref v
-	void resolve_outgoing(bblock_ptr from, rvalue v, bblock_ptr bb);
+	void resolve_outgoing(bblock_loc from, rvalue v, bblock_loc bb);
 
 	**
 	 * Splits the @ref bb into two. If @ref last is true all mnemonics in @ref bb
@@ -314,28 +320,28 @@ namespace po
 	 * is the first in the second basic block.
 	 * @returns Pair of basic blocks.
 	 *
-	std::pair<bblock_ptr,bblock_ptr> split(bblock_ptr bb, offset pos, bool last);
+	std::pair<bblock_loc,bblock_loc> split(bblock_loc bb, offset pos, bool last);
 
 	/// Merges two adjacent basic blocks into one.
-	bblock_ptr merge(bblock_ptr up, bblock_ptr down);
+	bblock_loc merge(bblock_loc up, bblock_loc down);
 
 	/// @internal
-	void replace(std::list<ctrans> &lst, bblock_ptr from, bblock_ptr to);
+	void replace(std::list<ctrans> &lst, bblock_loc from, bblock_loc to);
 	/// @internal
-	void resolve(std::list<ctrans> &lst, rvalue v, bblock_ptr bb);
+	void resolve(std::list<ctrans> &lst, rvalue v, bblock_loc bb);
 	/// @internal
 	void conditional_jump(const ctrans &from, const ctrans &to);
 
 
-void po::conditional_jump(bblock_ptr from, bblock_ptr to, guard g) { ctrans ct_from(g,from), ct_to(g,to); conditional_jump(ct_from,ct_to); }
-void po::conditional_jump(rvalue from, bblock_ptr to, guard g) { ctrans ct_from(g,from), ct_to(g,to); conditional_jump(ct_from,ct_to); }
-void po::conditional_jump(bblock_ptr from, rvalue to, guard g) { ctrans ct_from(g,from), ct_to(g,to); conditional_jump(ct_from,ct_to); }
+void po::conditional_jump(bblock_loc from, bblock_loc to, guard g) { ctrans ct_from(g,from), ct_to(g,to); conditional_jump(ct_from,ct_to); }
+void po::conditional_jump(rvalue from, bblock_loc to, guard g) { ctrans ct_from(g,from), ct_to(g,to); conditional_jump(ct_from,ct_to); }
+void po::conditional_jump(bblock_loc from, rvalue to, guard g) { ctrans ct_from(g,from), ct_to(g,to); conditional_jump(ct_from,ct_to); }
 
-void po::unconditional_jump(bblock_ptr from, bblock_ptr to) { conditional_jump(from,to,guard()); }
-void po::unconditional_jump(rvalue from, bblock_ptr to) { conditional_jump(from,to,guard()); }
-void po::unconditional_jump(bblock_ptr from, rvalue to) { conditional_jump(from,to,guard()); }
+void po::unconditional_jump(bblock_loc from, bblock_loc to) { conditional_jump(from,to,guard()); }
+void po::unconditional_jump(rvalue from, bblock_loc to) { conditional_jump(from,to,guard()); }
+void po::unconditional_jump(bblock_loc from, rvalue to) { conditional_jump(from,to,guard()); }
 
-void po::replace_incoming(bblock_ptr to, bblock_ptr oldbb, bblock_ptr newbb)
+void po::replace_incoming(bblock_loc to, bblock_loc oldbb, bblock_loc newbb)
 {
 	assert(to && oldbb && newbb);
 	to->mutate_incoming([&](list<ctrans> &in)
@@ -344,7 +350,7 @@ void po::replace_incoming(bblock_ptr to, bblock_ptr oldbb, bblock_ptr newbb)
 	});
 }
 
-void po::replace_outgoing(bblock_ptr from, bblock_ptr oldbb, bblock_ptr newbb)
+void po::replace_outgoing(bblock_loc from, bblock_loc oldbb, bblock_loc newbb)
 {
 	assert(from && oldbb && newbb);
 	from->mutate_outgoing([&](list<ctrans> &out)
@@ -353,7 +359,7 @@ void po::replace_outgoing(bblock_ptr from, bblock_ptr oldbb, bblock_ptr newbb)
 	});
 }
 
-void po::resolve_incoming(bblock_ptr to, rvalue v, bblock_ptr bb)
+void po::resolve_incoming(bblock_loc to, rvalue v, bblock_loc bb)
 {
 	assert(to && bb);
 	to->mutate_incoming([&](list<ctrans> &in)
@@ -362,7 +368,7 @@ void po::resolve_incoming(bblock_ptr to, rvalue v, bblock_ptr bb)
 	});
 }
 
-void po::resolve_outgoing(bblock_ptr from, rvalue v, bblock_ptr bb)
+void po::resolve_outgoing(bblock_loc from, rvalue v, bblock_loc bb)
 {
 	assert(from && bb);
 	from->mutate_outgoing([&](list<ctrans> &out)
@@ -372,15 +378,15 @@ void po::resolve_outgoing(bblock_ptr from, rvalue v, bblock_ptr bb)
 }
 
 // last == true -> pos is last in `up', last == false -> pos is first in `down'
-pair<bblock_ptr,bblock_ptr> po::split(bblock_ptr bb, addr_t pos, bool last)
+pair<bblock_loc,bblock_loc> po::split(bblock_loc bb, addr_t pos, bool last)
 {
 	assert(bb);
 
-	bblock_ptr up(new basic_block()), down(new basic_block());
+	bblock_loc up(new basic_block()), down(new basic_block());
 	bool sw = false;
 	basic_block::out_iterator j,jend;
 	basic_block::in_iterator k,kend;
-	function<void(bool,bblock_ptr,ctrans)> append = [](bool in, bblock_ptr bb, ctrans ct)
+	function<void(bool,bblock_loc,ctrans)> append = [](bool in, bblock_loc bb, ctrans ct)
 	{
 		if(in)
 			bb->mutate_incoming([&](list<ctrans> &l) { l.push_back(ct); });
@@ -461,14 +467,14 @@ pair<bblock_ptr,bblock_ptr> po::split(bblock_ptr bb, addr_t pos, bool last)
 	return make_pair(up,down);
 }
 
-bblock_ptr po::merge(bblock_ptr up, bblock_ptr down)
+bblock_loc po::merge(bblock_loc up, bblock_loc down)
 {
 	assert(up && down);
 	if(up->area().begin == down->area().end) tie(up,down) = make_pair(down,up);
 	assert(up->area().end == down->area().begin);
 
-	bblock_ptr ret(new basic_block());
-	auto fn = [&ret](const bblock_ptr &bb, const mnemonic &m) { ret->mutate_mnemonics([&](vector<mnemonic> &ms)
+	bblock_loc ret(new basic_block());
+	auto fn = [&ret](const bblock_loc &bb, const mnemonic &m) { ret->mutate_mnemonics([&](vector<mnemonic> &ms)
 		{ ms.push_back(m); }); };
 
 	for_each(up->mnemonics().begin(),up->mnemonics().end(),bind(fn,up,placeholders::_1));
@@ -493,7 +499,7 @@ bblock_ptr po::merge(bblock_ptr up, bblock_ptr down)
 	return ret;
 }
 
-void po::replace(list<ctrans> &lst, bblock_ptr from, bblock_ptr to)
+void po::replace(list<ctrans> &lst, bblock_loc from, bblock_loc to)
 {
 	assert(from && to);
 
@@ -507,7 +513,7 @@ void po::replace(list<ctrans> &lst, bblock_ptr from, bblock_ptr to)
 	}
 }
 
-void po::resolve(list<ctrans> &lst, rvalue v, bblock_ptr bb)
+void po::resolve(list<ctrans> &lst, rvalue v, bblock_loc bb)
 {
 	assert(bb);
 
