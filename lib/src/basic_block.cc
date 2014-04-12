@@ -199,3 +199,23 @@ void po::execute(bblock_loc bb,function<void(const lvalue &left, instr::Function
 		f(i.left,i.function,i.right);
 	});
 }
+
+template<>
+po::guard* po::unmarshal(const po::uuid& u, const po::rdf::storage& store)
+{
+	rdf::node node = rdf::ns_local(to_string(u)),
+						rel_head = store.first(node,rdf::ns_po("relations"));
+	rdf::nodes rels = read_list(rel_head,store);
+
+
+	
+
+
+
+
+
+template<>
+rdf::statements po::marshal(const guard* g, const uuid& uu)
+{
+	rdf::node node = rdf::ns_local(to_string(uu));
+

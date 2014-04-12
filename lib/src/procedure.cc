@@ -64,21 +64,57 @@ procedure* po::unmarshal(const uuid& u, const rdf::storage &store)
 
 template<>
 rdf::statements po::marshal(const procedure* p, const uuid& u)
-{/*
-	os << "[" << endl
-		 << " po:name \"" << p.name << "\"^^xsd:string;" << endl
-		 << " rdf:type po:Procedure;" << endl;
+{
+	unsigned int cnt = 0;
+	rdf::statements ret;
+	boost::uuids::name_generator ng(u);
+	rdf::node node(rdf::ns_po(to_string(u)));
+	function<pair<rdf::node,rdf::statements>(const variant<rvalue,bblock_loc>&)> marshal_node = [&](const variant<rvalue,bblock_loc>& v) -> pair<rdf::node,rdf::statements>
+	{
+		if(get<rvalue>(&v))
+		{
+			uuid uu = ng(to_string(cnt++));
+			rdf::node n = rdf::ns_local(to_string(uu));
 
-	for(bblock_cptr bb: p.basic_blocks)
-		os << " po:include " << *bb << endl;
+			return make_pair(n,marshal(&get<rvalue>(v),uu));
+		}
+		else
+			return make_pair(rdf::ns_local(to_string(get<bblock_loc>(v).tag())),rdf::statements());
+	};
 
-	if(p.entry)
-		os << " po:entry \"" << p.entry->area().begin << "\"^^xsd:integer;" << endl;
+	ret.emplace_back(node,rdf::ns_rdf("type"),rdf::ns_po("Procedure"));
+	ret.emplace_back(node,rdf::ns_po("name"),rdf::lit(p->name));
 
-	os << "]";
+	for(auto e: iters(edges(p->control_transfers)))
+	{
+		if(get<rvalue>(&get_node(source(e,p->control_transfers),p->control_transfers)) &&
+			 get<rvalue>(&get_node(target(e,p->control_transfers),p->control_transfers)))
+			continue;
 
-	return os;*/
-	return rdf::statements();
+		uuid cu = ng(to_string(cnt++));
+		rdf::node cn = rdf::ns_local(to_string(cu));
+		uuid gu = ng(to_string(cnt++));
+		rdf::node gn = rdf::ns_local(to_string(gu));
+		rdf::statements g = marshal(&get_edge(e,p->control_transfers),gu);
+		pair<rdf::node,rdf::statements> in_p = marshal_node(target(e,p->control_transfers));
+		pair<rdf::node,rdf::statements> out_p = marshal_node(source(e,p->control_transfers));
+
+		std::move(g.begin(),g.end(),back_inserter(ret));
+		std::move(in_p.second.begin(),in_p.second.end(),back_inserter(ret));
+		std::move(out_p.second.begin(),out_p.second.end(),back_inserter(ret));
+
+		ret.emplace_back(cn,rdf::ns_po("guard"),gn);
+		ret.emplace_back(cn,rdf::ns_po("in"),in_p.first);
+		ret.emplace_back(cn,rdf::ns_po("out"),out_p.first);
+	}
+
+	for(auto bb: p->rev_postorder())
+		ret.emplace_back(node,rdf::ns_po("include"),rdf::ns_local(to_string(bb.tag())));
+
+	if(p->entry)
+		ret.emplace_back(node,rdf::ns_po("entry"),rdf::ns_local(to_string(p->entry->tag())));
+
+	return ret;
 }
 
 

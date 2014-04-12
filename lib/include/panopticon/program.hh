@@ -6,7 +6,6 @@
 #include <panopticon/procedure.hh>
 #include <panopticon/disassembler.hh>
 #include <panopticon/interpreter.hh>
-#include <panopticon/sat.hh>
 #include <panopticon/marshal.hh>
 #include <panopticon/region.hh>
 

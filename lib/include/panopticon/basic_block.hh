@@ -97,6 +97,13 @@ namespace po
 		std::list<relation> relations; ///< Conjunction of relations
 	};
 
+	template<>
+	rdf::statements marshal(const guard*, const uuid&);
+
+	template<>
+	guard* unmarshal(const uuid&, const rdf::storage&);
+
+
 	std::string symbolic(relation::Relcode r);
 
 	/// @returns The relation @ref r as UTF-8 string.
