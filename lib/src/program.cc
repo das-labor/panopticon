@@ -1,147 +1,149 @@
 #include <algorithm>
+#include <unordered_set>
 
-#include <flowgraph.hh>
-#include <basic_block.hh>
+#include <panopticon/program.hh>
+#include <panopticon/basic_block.hh>
 
 using namespace po;
 using namespace std;
+using namespace boost;
 
-flowgraph::flowgraph(const string &n)
-: procedures(), dominance(), liveness(), name(n), mutex()
+program::program(const string &n)
+: name(n), _procedures(), _calls()
 {}
 
-odotstream &po::operator<<(odotstream &os, const flowgraph &f)
+void program::insert(proc_loc p)
 {
-	os << "digraph G" << endl
-		 << "{" << endl
-		 << "\tgraph [compound=true,label=\"" << f.name << "\"];" << endl;
+	insert_node(variant<proc_loc,string>(p),calls());
+}
 
-	cout << f.procedures.size() << " procs" << endl;
+digraph<variant<proc_loc,string>,nullptr_t>& program::calls(void)
+{
+	_procedures = boost::none;
+	return _calls;
+}
 
-	for(proc_cptr p: f.procedures)
+const digraph<variant<proc_loc,string>,nullptr_t>& program::calls(void) const
+{
+	return _calls;
+}
+
+const std::unordered_set<proc_loc>& program::procedures(void) const
+{
+	if(!_procedures)
 	{
-		assert(p);
-
-		if(os.body)
-			os << subgraph << *p << nosubgraph << endl;
-		else
-			os << *p << endl;
-
-		if(os.calls)
+		_procedures = std::unordered_set<proc_loc>();
+		for(auto v: iters(vertices(_calls)))
 		{
-			for(proc_cwptr q: p->callees)
+			auto p = get_node(v,_calls);
+			if(get<proc_loc>(&p))
 			{
-				auto qq = q.lock();
-
-				if(qq && os.body)
-				{
-					cout << qq->entry << " " << p->entry << endl;
-					if(qq->entry && p->entry)
-					{
-						os << "\t"
-							 << unique_name(*p->entry) 
-							 << " -> "
-							 << unique_name(*qq->entry)
-							 << " [lhead=cluster_" << unique_name(*qq)
-							 << ",ltail=cluster_" << unique_name(*p)
-							 << "];" << endl;
-					}
-				}
-				else if(qq)
-				{
-					os << "\t" 
-						 << unique_name(*p)
-						 << " -> " 
-						 << unique_name(*qq)
-						 << ";" << endl;
-				}
+				cout << "aaa: " <<  to_string(get<proc_loc>(p).tag()) << endl;
+				assert(_procedures->insert(get<proc_loc>(p)).second);
 			}
 		}
 	}
-
-	os << "}" << endl;
-	return os;
+	return *_procedures;
 }
 
-flow_ptr flowgraph::unmarshal(const rdf::node &n, const rdf::storage &store)
+template<>
+program* po::unmarshal(const uuid& u, const rdf::storage &store)
 {
-	rdf::statement type = store.first(n,"type"_rdf,"Flowgraph"_po),
-								 name = store.first(n,"name"_po,nullptr);
-	rdf::stream procs = store.select(n,"include"_po,nullptr);
-	flow_ptr ret(new flowgraph(name.object().to_string()));
+	rdf::node n = rdf::ns_local(to_string(u));
+	assert(store.has(n,rdf::ns_rdf("type"),rdf::ns_po("Program")));
 
-	while(!procs.eof())
+	rdf::statement name = store.first(n,rdf::ns_po("name"));
+	rdf::statements procs_n = store.find(n,rdf::ns_po("include"));
+
+	program *ret = new program(name.object.as_literal());
+
+	for(auto st: procs_n)
+		ret->insert(proc_loc{uuid(st.object.as_iri().substr(st.object.as_iri().size()-36)),store});
+
+	for(proc_loc p: ret->procedures())
 	{
-		rdf::statement proc_node;
+		rdf::node pn = rdf::ns_local(to_string(p.tag()));
+		rdf::statements st = store.find(pn,rdf::ns_po("calls"));
+		auto vx_a = find_node<variant<proc_loc,string>,nullptr_t>(p,ret->_calls);
 
-		procs >> proc_node;
-		ret->procedures.insert(procedure::unmarshal(proc_node.object(),ret,store));
+		for(auto s: st)
+		{
+			uuid uu(s.object.as_iri().substr(s.object.as_iri().size()-36));
+			auto i = find_if(ret->procedures().begin(),ret->procedures().end(),[&](const proc_loc q)
+				{ return q.tag() == uu; });
+
+			assert(i != ret->procedures().end());
+			auto vx_b = find_node<variant<proc_loc,string>,nullptr_t>(*i,ret->_calls);
+
+			insert_edge(nullptr,vx_a,vx_b,ret->_calls);
+		}
 	}
 
 	return ret;
 }
 
-string po::unique_name(const flowgraph &f)
+template<>
+rdf::statements po::marshal(const program* p, const uuid& u)
 {
-	return "flow_" + to_string((uintptr_t)&f);
-}
+	rdf::statements ret;
+	rdf::node n = rdf::ns_local(to_string(u));
 
-oturtlestream& po::operator<<(oturtlestream &os, const flowgraph &f)
-{
-	os << "[" << endl 
-		 << " po:name \"" << f.name << "\"^^xsd:string;" << endl
-		 << " rdf:type po:Flowgraph;" << endl;
-	
-	for(proc_cptr p: f.procedures)
-		os << " po:include " << *p << ";" << endl;
+	ret.emplace_back(n,rdf::ns_rdf("type"),rdf::ns_po("Program"));
+	ret.emplace_back(n,rdf::ns_po("name"),rdf::lit(p->name));
 
-	os << "]";
-	return os;
-}
+	for(proc_loc q: p->procedures())
+	{
+		auto vx = find_node(variant<proc_loc,string>(q),p->calls());
+		rdf::node m = rdf::ns_local(to_string(q.tag()));
 
-ordfstream& po::operator<<(ordfstream &os, const flowgraph &f)
-{
-	rdf::node root;
+		ret.emplace_back(n,rdf::ns_po("include"),rdf::ns_local(to_string(q.tag())));
 
-	os.context().push(root);
-	os << rdf::statement(root,"name"_po,rdf::lit(f.name));
-	os << rdf::statement(root,"type"_rdf,"Flowgraph"_po);
+		for(auto e: iters(out_edges(vx,p->calls())))
+		{
+			auto wx = target(e,p->calls());
+			auto v = get_node(wx,p->calls());
 
-	return os;
+			if(get<proc_loc>(&v))
+				ret.emplace_back(m,rdf::ns_po("calls"),rdf::ns_local(to_string(get<proc_loc>(v).tag())));
+			else
+				ret.emplace_back(m,rdf::ns_po("calls"),rdf::lit(get<string>(v)));
+		}
+	}
+
+	return ret;
 }
 
 void po::call(prog_loc p, proc_loc from, proc_loc to)
 {
-	auto vx_a = find_node<variant<bblock_loc,rvalue>,guard>(from,p->calls);
-	auto vx_b = find_node<variant<bblock_loc,rvalue>,guard>(to,p->calls);
+	auto vx_a = find_node<variant<proc_loc,string>,nullptr_t>(from,p->calls());
+	auto vx_b = find_node<variant<proc_loc,string>,nullptr_t>(to,p->calls());
 
-	insert_edge(void,vx_a,vx_b,p->calls);
-	from->callees.insert(to);
-	to->callers.insert(from);
+	assert(p->procedures().count(from) && p->procedures().count(to));
+	insert_edge(nullptr,vx_a,vx_b,p.write().calls());
 }
 
-proc_ptr po::find_procedure(flow_ptr fg, addr_t a)
+optional<proc_loc> po::find_procedure(prog_loc fg, offset a)
 {
-	std::set<proc_ptr>::iterator i = fg->procedures.begin();
-	
-	while(i != fg->procedures.end())
+	std::unordered_set<proc_loc>::const_iterator i = fg->procedures().begin();
+
+	while(i != fg->procedures().end())
 		if(find_bblock(*i,a))
 			return *i;
-		else 
+		else
 			++i;
-	
-	return proc_ptr(0);
+
+	return boost::none;
 }
 
-bool po::has_procedure(flow_ptr flow, addr_t entry)
+bool po::has_procedure(prog_loc flow, offset entry)
 {
-	return any_of(flow->procedures.begin(),flow->procedures.end(),[&](const proc_ptr p) 
-								{ return p && p->entry && p->entry->area().includes(entry); });
+	return any_of(flow->procedures().begin(),flow->procedures().end(),[&](const proc_loc p)
+								{ return p->entry && icl::contains((*p->entry)->area(),entry); });
 }
 
-set<addr_t> po::collect_calls(proc_cptr proc)
+std::unordered_set<offset> po::collect_calls(proc_loc proc)
 {
-	set<addr_t> ret;
+	std::unordered_set<offset> ret;
 
 	execute(proc,[&](const lvalue &left, instr::Function fn, const std::vector<rvalue> &right)
 	{
@@ -149,9 +151,9 @@ set<addr_t> po::collect_calls(proc_cptr proc)
 		{
 			assert(right.size() == 1);
 
-			if(right[0].is_constant())
+			if(is_constant(right[0]))
 			{
-				const constant &c = right[0].to_constant();
+				const constant &c = to_constant(right[0]);
 				ret.insert(c.content());
 			}
 		}

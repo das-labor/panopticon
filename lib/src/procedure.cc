@@ -153,20 +153,23 @@ const vector<bblock_loc>& procedure::rev_postorder(void) const
 
 		_rev_postorder = make_optional(vector<bblock_loc>());
 
-		for(vx_desc vx: iters(vertices(control_transfers)))
-			if(get<bblock_loc>(&get_node(vx,control_transfers)))
-				_rev_postorder->push_back(get<bblock_loc>(get_node(vx,control_transfers)));
+		if(num_vertices(control_transfers))
+		{
+			for(vx_desc vx: iters(vertices(control_transfers)))
+				if(get<bblock_loc>(&get_node(vx,control_transfers)))
+					_rev_postorder->push_back(get<bblock_loc>(get_node(vx,control_transfers)));
 
-		int time = 0;
-		depth_first_search(
-			control_transfers,
-			make_dfs_visitor(stamp_times(time_pm_type(ftime),time,on_finish_vertex())),
-			color_pm_type(color),
-			find_node<boost::variant<bblock_loc,rvalue>,guard>(*entry,control_transfers));
+			int time = 0;
+			depth_first_search(
+				control_transfers,
+				make_dfs_visitor(stamp_times(time_pm_type(ftime),time,on_finish_vertex())),
+				color_pm_type(color),
+				find_node<boost::variant<bblock_loc,rvalue>,guard>(*entry,control_transfers));
 
-		assert(_rev_postorder->size() <= ftime.size());
-		sort(_rev_postorder->begin(),_rev_postorder->end(),[&](bblock_loc a, bblock_loc b)
-			{ return ftime[find_node<variant<bblock_loc,rvalue>,guard>(a,control_transfers)] < ftime[find_node<variant<bblock_loc,rvalue>,guard>(b,control_transfers)]; });
+			assert(_rev_postorder->size() <= ftime.size());
+			sort(_rev_postorder->begin(),_rev_postorder->end(),[&](bblock_loc a, bblock_loc b)
+				{ return ftime[find_node<variant<bblock_loc,rvalue>,guard>(a,control_transfers)] < ftime[find_node<variant<bblock_loc,rvalue>,guard>(b,control_transfers)]; });
+		}
 	}
 	return *_rev_postorder;
 }

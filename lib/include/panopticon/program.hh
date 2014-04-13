@@ -30,7 +30,7 @@ namespace po
 	using disass_sig = std::function<void(unsigned int done, unsigned int todo)>;
 
 	/// Insert call graph edge from @arg from to @to
-	void call(proc_loc from, proc_loc to);
+	void call(prog_loc p, proc_loc from, proc_loc to);
 
 	/// @return true if the program @ref prog has a procedure with entry point @ref entry
 	bool has_procedure(prog_loc prog, offset entry);
@@ -56,15 +56,20 @@ namespace po
 		program(const std::string &n = "unnamed program");
 
 		/// Set of all procedures in the graph
-		std::unordered_set<proc_loc> procedures;
+		const std::unordered_set<proc_loc>& procedures(void) const;
 
-		std::unordered_multimap<proc_wloc,boost::any> interpretations;
+		/// Call graph of the program
+		const digraph<boost::variant<proc_loc,std::string>,std::nullptr_t>& calls(void) const;
+
+		digraph<boost::variant<proc_loc,std::string>,std::nullptr_t>& calls(void);
+
+		void insert(proc_loc p);
+
+		//std::unordered_multimap<proc_wloc,boost::any> interpretations;
 
 		/// Human-readable name of the program
 		std::string name;
 
-		/// Call graph of the program
-		digraph<boost::variant<proc_wloc,std::string>,void> calls;
 
 		/**
 		 * Disassemble bytes from @ref tokens starting at @ref offset. The new opcodes
@@ -99,24 +104,22 @@ namespace po
 				std::cout << "disassemble at " << tgt << std::endl;
 				proc = procedure::disassemble(proc,main,tokens,tgt);
 
-				{
-					procedure &wp = proc.write();
+				procedure &wp = proc.write();
 
-					if(!wp.entry)
-						wp.entry = find_bblock(proc,tgt);
+				if(!wp.entry)
+					wp.entry = find_bblock(proc,tgt);
 
-					// compute dominance tree
-					//dom = dominance_tree(proc);
+				// compute dominance tree
+				//dom = dominance_tree(proc);
 
-					// compute liveness information
-					//live = po::liveness(proc);
+				// compute liveness information
+				//live = po::liveness(proc);
 
-					// finish procedure
-					ret.write().procedures.insert(proc);
-					//ret->dominance.insert(make_pair(proc,dom));
-					//ret->liveness.insert(make_pair(proc,live));
-					wp.name = "proc_" + std::to_string((*proc->entry)->area().lower());
-				}
+				// finish procedure
+				ret.write().insert(proc);
+				//ret->dominance.insert(make_pair(proc,dom));
+				//ret->liveness.insert(make_pair(proc,live));
+				wp.name = "proc_" + std::to_string((*proc->entry)->area().lower());
 
 				// insert call edges and new procedures to disassemble
 				for(offset a: collect_calls(proc))
@@ -132,11 +135,11 @@ namespace po
 							proc_loc q(new procedure("proc_" + std::to_string(a)));
 
 							call_targets.insert(std::make_pair(a,q));
-							call(proc,q);
+							call(ret,proc,q);
 						}
 						else
 						{
-							call(proc,*j);
+							call(ret,proc,*j);
 						}
 					}
 					else
@@ -146,11 +149,18 @@ namespace po
 				}
 
 				if(signal)
-					signal((*prog)->procedures.size(),call_targets.size());
+					signal((*prog)->procedures().size(),call_targets.size());
 			}
 
 			return ret;
 		}
+
+	private:
+		mutable boost::optional<std::unordered_set<proc_loc>> _procedures;
+		digraph<boost::variant<proc_loc,std::string>,std::nullptr_t> _calls;
+
+		template<typename T>
+		friend T* unmarshal(const uuid&, const rdf::storage&);
 	};
 
 	template<>
