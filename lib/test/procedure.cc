@@ -3,9 +3,13 @@
 #include <iterator>
 #include <stdexcept>
 
+#include <boost/graph/isomorphism.hpp>
 #include <gtest/gtest.h>
-//#include <panopticon/procedure.hh>
+#include <panopticon/procedure.hh>
 #include "architecture.hh"
+
+using namespace po;
+using namespace boost;
 
 /*class disassembler_mockup : public po::disassembler<test_tag>
 {
@@ -510,4 +514,57 @@ TEST(procedure,entry_split)
 TEST(procedure,variable)
 {
 	ASSERT_TRUE(false);
+}
+
+/*
+ *   bb0 ----+
+ *    |  \   |
+ *   bb1  a  |
+ *   /  \    |
+ *   bb2 \   |
+ *   \   /   |
+ * +-bb3---2 |
+ * +/ |      |
+ *    bb4----+
+ */
+TEST(procedure,marshal)
+{
+	bblock_loc bb0(new basic_block({mnemonic(bound(0,5),"test","",{},{})}));
+	bblock_loc bb1(new basic_block({mnemonic(bound(5,10),"test","",{},{})}));
+	bblock_loc bb2(new basic_block({mnemonic(bound(10,12),"test","",{},{})}));
+	bblock_loc bb3(new basic_block({mnemonic(bound(12,20),"test","",{},{})}));
+	bblock_loc bb4(new basic_block({mnemonic(bound(20,21),"test","",{},{})}));
+	rvalue rv1 = variable("a",8);
+	rvalue rv2 = constant(42);
+	proc_loc proc(new procedure("p1"));
+
+	auto vx0 = insert_node<variant<bblock_loc,rvalue>,guard>(bb0,proc.write().control_transfers);
+	auto vx1 = insert_node<variant<bblock_loc,rvalue>,guard>(bb1,proc.write().control_transfers);
+	auto vx2 = insert_node<variant<bblock_loc,rvalue>,guard>(bb2,proc.write().control_transfers);
+	auto vx3 = insert_node<variant<bblock_loc,rvalue>,guard>(bb3,proc.write().control_transfers);
+	auto vx4 = insert_node<variant<bblock_loc,rvalue>,guard>(bb4,proc.write().control_transfers);
+	auto vx5 = insert_node<variant<bblock_loc,rvalue>,guard>(rv1,proc.write().control_transfers);
+	auto vx6 = insert_node<variant<bblock_loc,rvalue>,guard>(rv2,proc.write().control_transfers);
+
+	insert_edge(guard(),vx0,vx1,proc.write().control_transfers);
+	insert_edge(guard(),vx0,vx5,proc.write().control_transfers);
+	insert_edge(guard(),vx1,vx2,proc.write().control_transfers);
+	insert_edge(guard(),vx2,vx3,proc.write().control_transfers);
+	insert_edge(guard(),vx1,vx3,proc.write().control_transfers);
+	insert_edge(guard(),vx3,vx3,proc.write().control_transfers);
+	insert_edge(guard(),vx3,vx6,proc.write().control_transfers);
+	insert_edge(guard(),vx3,vx4,proc.write().control_transfers);
+	insert_edge(guard(),vx4,vx0,proc.write().control_transfers);
+
+	proc.write().entry = bb0;
+
+	rdf::storage st;
+	save_point(st);
+
+	std::unique_ptr<procedure> p2(unmarshal<procedure>(proc.tag(),st));
+
+	ASSERT_EQ(proc->name, p2->name);
+	ASSERT_TRUE(**proc->entry == **p2->entry);
+	ASSERT_TRUE(boost::isomorphism(proc->control_transfers,p2->control_transfers));
+	ASSERT_EQ(proc->rev_postorder(), p2->rev_postorder());
 }

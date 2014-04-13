@@ -176,24 +176,31 @@ TEST_F(store,varint)
 	a = storage::encode_varint(0x4001);
 	ASSERT_EQ(a.size(),3);
 	ASSERT_EQ(storage::decode_varint(a.begin(),a.end()).first,0x4001);
+
+	a = storage::encode_varint(0);
+	ASSERT_EQ(a.size(),1);
+	ASSERT_EQ(storage::decode_varint(a.begin(),a.end()).first,0);
 }
 
 TEST_F(store,node)
 {
-	node a = node::blank(), b = rdf::ns_po("node"), c = rdf::lit(1), d = rdf::lit("Hello");
+	node a = node::blank(), b = rdf::ns_po("node"), c = rdf::lit(1), d = rdf::lit("Hello"), e = rdf::lit("");
 
 	string aa = storage::encode_node(a);
 	string bb = storage::encode_node(b);
 	string cc = storage::encode_node(c);
 	string dd = storage::encode_node(d);
+	string ee = storage::encode_node(e);
 
 	node a2 = storage::decode_node(aa.begin(),aa.end()).first;
 	node b2 = storage::decode_node(bb.begin(),bb.end()).first;
 	node c2 = storage::decode_node(cc.begin(),cc.end()).first;
 	node d2 = storage::decode_node(dd.begin(),dd.end()).first;
+	node e2 = storage::decode_node(ee.begin(),ee.end()).first;
 
 	ASSERT_EQ(a,a2);
 	ASSERT_EQ(b,b2);
 	ASSERT_EQ(c,c2);
 	ASSERT_EQ(d,d2);
+	ASSERT_EQ(e,e2);
 }

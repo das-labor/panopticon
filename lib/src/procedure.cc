@@ -59,6 +59,24 @@ procedure* po::unmarshal(const uuid& u, const rdf::storage &store)
 		}
 	}
 
+	rdf::statements ent = store.find(node,rdf::ns_po("entry"));
+	if(ent.size())
+	{
+		rdf::node o = ent.front().object;
+		uuid uu(o.as_iri().substr(o.as_iri().size()-36));
+		auto p = vertices(ret->control_transfers);
+		auto i = find_if(p.first,p.second,[&](vx_desc v)
+		{
+			auto n = get_node(v,ret->control_transfers);
+
+			return get<bblock_loc>(&n) &&
+						 get<bblock_loc>(n).tag() == uu;
+		});
+
+		assert(i != p.second);
+		ret->entry = get<bblock_loc>(get_node(*i,ret->control_transfers));
+	}
+
 	return ret;
 }
 
@@ -96,8 +114,8 @@ rdf::statements po::marshal(const procedure* p, const uuid& u)
 		uuid gu = ng(to_string(cnt++));
 		rdf::node gn = rdf::ns_local(to_string(gu));
 		rdf::statements g = marshal(&get_edge(e,p->control_transfers),gu);
-		pair<rdf::node,rdf::statements> in_p = marshal_node(target(e,p->control_transfers));
-		pair<rdf::node,rdf::statements> out_p = marshal_node(source(e,p->control_transfers));
+		pair<rdf::node,rdf::statements> in_p = marshal_node(get_node(target(e,p->control_transfers),p->control_transfers));
+		pair<rdf::node,rdf::statements> out_p = marshal_node(get_node(source(e,p->control_transfers),p->control_transfers));
 
 		std::move(g.begin(),g.end(),back_inserter(ret));
 		std::move(in_p.second.begin(),in_p.second.end(),back_inserter(ret));
@@ -146,7 +164,7 @@ const vector<bblock_loc>& procedure::rev_postorder(void) const
 			color_pm_type(color),
 			find_node<boost::variant<bblock_loc,rvalue>,guard>(*entry,control_transfers));
 
-		assert(_rev_postorder->size() == ftime.size());
+		assert(_rev_postorder->size() <= ftime.size());
 		sort(_rev_postorder->begin(),_rev_postorder->end(),[&](bblock_loc a, bblock_loc b)
 			{ return ftime[find_node<variant<bblock_loc,rvalue>,guard>(a,control_transfers)] < ftime[find_node<variant<bblock_loc,rvalue>,guard>(b,control_transfers)]; });
 	}

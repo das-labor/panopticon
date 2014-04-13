@@ -169,8 +169,11 @@ namespace po
 		/// Constructs a undefined value.
 		rvalue(void);
 
-		template<typename T>
-		rvalue(const T &t) : _variant(t) {}
+		rvalue(const constant &t) : _variant(t) {}
+		rvalue(const undefined &t) : _variant(t) {}
+		rvalue(const variable &t) : _variant(t) {}
+		rvalue(const memory &t) : _variant(t) {}
+		rvalue(const lvalue &t) : _variant(t) {}
 
 	private:
 		boost::variant<undefined,constant,variable,memory> _variant;

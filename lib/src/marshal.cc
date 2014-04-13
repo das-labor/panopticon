@@ -398,6 +398,9 @@ string storage::encode_varint(size_t sz)
 {
 	string tmp;
 
+	if(!sz)
+		return string(1,0);
+
 	while(sz)
 	{
 		tmp.push_back(sz & 0x7f);
