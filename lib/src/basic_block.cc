@@ -202,23 +202,23 @@ po::guard* po::unmarshal(const po::uuid& u, const po::rdf::storage& store)
 
 		if(code == rdf::ns_po("u-less-equal"))
 			return relation{op1,relation::ULeq,op2};
-		else if(code == rdf::ns_po("u-less-equal"))
+		else if(code == rdf::ns_po("s-less-equal"))
 			return relation{op1,relation::SLeq,op2};
-		else if(code == rdf::ns_po("u-less-equal"))
+		else if(code == rdf::ns_po("u-greater-equal"))
 			return relation{op1,relation::UGeq,op2};
-		else if(code == rdf::ns_po("u-less-equal"))
+		else if(code == rdf::ns_po("s-greater-equal"))
 			return relation{op1,relation::SGeq,op2};
-		else if(code == rdf::ns_po("u-less-equal"))
+		else if(code == rdf::ns_po("u-less"))
 			return relation{op1,relation::ULess,op2};
-		else if(code == rdf::ns_po("u-less-equal"))
+		else if(code == rdf::ns_po("s-less"))
 			return relation{op1,relation::SLess,op2};
-		else if(code == rdf::ns_po("u-less-equal"))
+		else if(code == rdf::ns_po("u-greater"))
 			return relation{op1,relation::UGrtr,op2};
-		else if(code == rdf::ns_po("u-less-equal"))
+		else if(code == rdf::ns_po("s-greater"))
 			return relation{op1,relation::SGrtr,op2};
-		else if(code == rdf::ns_po("u-less-equal"))
+		else if(code == rdf::ns_po("equal"))
 			return relation{op1,relation::Eq,op2};
-		else if(code == rdf::ns_po("u-less-equal"))
+		else if(code == rdf::ns_po("not-equal"))
 			return relation{op1,relation::Neq,op2};
 		else
 			assert(false);
@@ -253,16 +253,16 @@ rdf::statements po::marshal(const guard* g, const uuid& uu)
 
 		switch(rel.relcode)
 		{
-			case relation::ULeq:	ret.emplace_back(rn,rdf::ns_po("relcode"),rdf::ns_po("u-less-equal"));
-			case relation::SLeq: 	ret.emplace_back(rn,rdf::ns_po("relcode"),rdf::ns_po("s-less-equal"));
-			case relation::UGeq: 	ret.emplace_back(rn,rdf::ns_po("relcode"),rdf::ns_po("u-greater-equal"));
-			case relation::SGeq: 	ret.emplace_back(rn,rdf::ns_po("relcode"),rdf::ns_po("s-greater-equal"));
-			case relation::ULess: ret.emplace_back(rn,rdf::ns_po("relcode"),rdf::ns_po("u-less"));
-			case relation::SLess: ret.emplace_back(rn,rdf::ns_po("relcode"),rdf::ns_po("s-less"));
-			case relation::UGrtr: ret.emplace_back(rn,rdf::ns_po("relcode"),rdf::ns_po("u-greater"));
-			case relation::SGrtr: ret.emplace_back(rn,rdf::ns_po("relcode"),rdf::ns_po("s-greater"));
-			case relation::Eq: 		ret.emplace_back(rn,rdf::ns_po("relcode"),rdf::ns_po("equal"));
-			case relation::Neq: 	ret.emplace_back(rn,rdf::ns_po("relcode"),rdf::ns_po("not-equal"));
+			case relation::ULeq:	ret.emplace_back(rn,rdf::ns_po("relcode"),rdf::ns_po("u-less-equal")); break;
+			case relation::SLeq: 	ret.emplace_back(rn,rdf::ns_po("relcode"),rdf::ns_po("s-less-equal")); break;
+			case relation::UGeq: 	ret.emplace_back(rn,rdf::ns_po("relcode"),rdf::ns_po("u-greater-equal")); break;
+			case relation::SGeq: 	ret.emplace_back(rn,rdf::ns_po("relcode"),rdf::ns_po("s-greater-equal")); break;
+			case relation::ULess: ret.emplace_back(rn,rdf::ns_po("relcode"),rdf::ns_po("u-less")); break;
+			case relation::SLess: ret.emplace_back(rn,rdf::ns_po("relcode"),rdf::ns_po("s-less")); break;
+			case relation::UGrtr: ret.emplace_back(rn,rdf::ns_po("relcode"),rdf::ns_po("u-greater")); break;
+			case relation::SGrtr: ret.emplace_back(rn,rdf::ns_po("relcode"),rdf::ns_po("s-greater")); break;
+			case relation::Eq: 		ret.emplace_back(rn,rdf::ns_po("relcode"),rdf::ns_po("equal")); break;
+			case relation::Neq: 	ret.emplace_back(rn,rdf::ns_po("relcode"),rdf::ns_po("not-equal")); break;
 			default: assert(false);
 		}
 	}

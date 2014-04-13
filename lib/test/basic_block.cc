@@ -28,3 +28,22 @@ TEST(basic_block,marshal)
 
 	ASSERT_TRUE(*bb2 == *bb1);
 }
+
+TEST(basic_block,guard_marshal)
+{
+	loc<guard> g1(new guard(std::list<relation>{
+			relation(variable("a",8),relation::ULeq,constant(42)),
+			relation(variable("c",9),relation::SGrtr,variable("b",8))}));
+	loc<guard> g2(new guard(std::list<relation>{
+			relation(constant(33),relation::Eq,undefined())}));
+
+	rdf::storage store;
+	save_point(store);
+	ASSERT_GT(store.count(),0);
+
+	g1.remove();
+	g2.remove();
+
+	save_point(store);
+	ASSERT_EQ(store.count(),0);
+}
