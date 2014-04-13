@@ -103,9 +103,6 @@ namespace po
 	template<>
 	guard* unmarshal(const uuid&, const rdf::storage&);
 
-
-	std::string symbolic(relation::Relcode r);
-
 	/// @returns The relation @ref r as UTF-8 string.
 	std::string pretty(relation::Relcode r);
 	std::ostream& operator<<(std::ostream &os, const guard &g);
