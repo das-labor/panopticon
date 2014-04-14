@@ -14,16 +14,16 @@ program::program(const string &n)
 
 void program::insert(proc_loc p)
 {
-	insert_node(variant<proc_loc,string>(p),calls());
+	insert_node(variant<proc_loc,symbol>(p),calls());
 }
 
-digraph<variant<proc_loc,string>,nullptr_t>& program::calls(void)
+digraph<variant<proc_loc,symbol>,nullptr_t>& program::calls(void)
 {
 	_procedures = boost::none;
 	return _calls;
 }
 
-const digraph<variant<proc_loc,string>,nullptr_t>& program::calls(void) const
+const digraph<variant<proc_loc,symbol>,nullptr_t>& program::calls(void) const
 {
 	return _calls;
 }
@@ -64,18 +64,28 @@ program* po::unmarshal(const uuid& u, const rdf::storage &store)
 	{
 		rdf::node pn = rdf::ns_local(to_string(p.tag()));
 		rdf::statements st = store.find(pn,rdf::ns_po("calls"));
-		auto vx_a = find_node<variant<proc_loc,string>,nullptr_t>(p,ret->_calls);
+		auto vx_a = find_node<variant<proc_loc,symbol>,nullptr_t>(p,ret->_calls);
 
 		for(auto s: st)
 		{
-			uuid uu(s.object.as_iri().substr(s.object.as_iri().size()-36));
-			auto i = find_if(ret->procedures().begin(),ret->procedures().end(),[&](const proc_loc q)
-				{ return q.tag() == uu; });
+			if(s.object.is_iri())
+			{
+				uuid uu(s.object.as_iri().substr(s.object.as_iri().size()-36));
+				auto i = find_if(ret->procedures().begin(),ret->procedures().end(),[&](const proc_loc q)
+					{ return q.tag() == uu; });
 
-			assert(i != ret->procedures().end());
-			auto vx_b = find_node<variant<proc_loc,string>,nullptr_t>(*i,ret->_calls);
+				assert(i != ret->procedures().end());
+				auto vx_b = find_node<variant<proc_loc,symbol>,nullptr_t>(*i,ret->_calls);
 
-			insert_edge(nullptr,vx_a,vx_b,ret->_calls);
+				insert_edge(nullptr,vx_a,vx_b,ret->_calls);
+			}
+			else
+			{
+				symbol sym = s.object.as_literal();
+				auto vx_b = insert_node<variant<proc_loc,symbol>,nullptr_t>(sym,ret->_calls);
+
+				insert_edge(nullptr,vx_a,vx_b,ret->_calls);
+			}
 		}
 	}
 
@@ -93,7 +103,7 @@ rdf::statements po::marshal(const program* p, const uuid& u)
 
 	for(proc_loc q: p->procedures())
 	{
-		auto vx = find_node(variant<proc_loc,string>(q),p->calls());
+		auto vx = find_node(variant<proc_loc,symbol>(q),p->calls());
 		rdf::node m = rdf::ns_local(to_string(q.tag()));
 
 		ret.emplace_back(n,rdf::ns_po("include"),rdf::ns_local(to_string(q.tag())));
@@ -106,7 +116,7 @@ rdf::statements po::marshal(const program* p, const uuid& u)
 			if(get<proc_loc>(&v))
 				ret.emplace_back(m,rdf::ns_po("calls"),rdf::ns_local(to_string(get<proc_loc>(v).tag())));
 			else
-				ret.emplace_back(m,rdf::ns_po("calls"),rdf::lit(get<string>(v)));
+				ret.emplace_back(m,rdf::ns_po("calls"),rdf::lit(get<symbol>(v)));
 		}
 	}
 
@@ -115,11 +125,27 @@ rdf::statements po::marshal(const program* p, const uuid& u)
 
 void po::call(prog_loc p, proc_loc from, proc_loc to)
 {
-	auto vx_a = find_node<variant<proc_loc,string>,nullptr_t>(from,p->calls());
-	auto vx_b = find_node<variant<proc_loc,string>,nullptr_t>(to,p->calls());
+	auto vx_a = find_node<variant<proc_loc,symbol>,nullptr_t>(from,p->calls());
+	auto vx_b = find_node<variant<proc_loc,symbol>,nullptr_t>(to,p->calls());
 
 	assert(p->procedures().count(from) && p->procedures().count(to));
 	insert_edge(nullptr,vx_a,vx_b,p.write().calls());
+}
+
+void po::call(prog_loc p, proc_loc from, const symbol& to)
+{
+	assert(p->procedures().count(from));
+	auto vx_a = find_node<variant<proc_loc,symbol>,nullptr_t>(from,p->calls());
+
+	try
+	{
+		auto vx_b = find_node<variant<proc_loc,symbol>,nullptr_t>(to,p->calls());
+		insert_edge(nullptr,vx_a,vx_b,p.write().calls());
+	}
+	catch(const out_of_range&)
+	{
+		insert_edge(nullptr,vx_a,insert_node(variant<proc_loc,symbol>(to),p.write().calls()),p.write().calls());
+	}
 }
 
 optional<proc_loc> po::find_procedure(prog_loc fg, offset a)

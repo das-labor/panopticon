@@ -28,9 +28,11 @@ namespace po
 	using prog_loc = loc<program>;
 	using prog_wloc = wloc<program>;
 	using disass_sig = std::function<void(unsigned int done, unsigned int todo)>;
+	using symbol = std::string;
 
 	/// Insert call graph edge from @arg from to @to
 	void call(prog_loc p, proc_loc from, proc_loc to);
+	void call(prog_loc p, proc_loc from, const symbol& to);
 
 	/// @return true if the program @ref prog has a procedure with entry point @ref entry
 	bool has_procedure(prog_loc prog, offset entry);
@@ -59,9 +61,9 @@ namespace po
 		const std::unordered_set<proc_loc>& procedures(void) const;
 
 		/// Call graph of the program
-		const digraph<boost::variant<proc_loc,std::string>,std::nullptr_t>& calls(void) const;
+		const digraph<boost::variant<proc_loc,symbol>,std::nullptr_t>& calls(void) const;
 
-		digraph<boost::variant<proc_loc,std::string>,std::nullptr_t>& calls(void);
+		digraph<boost::variant<proc_loc,symbol>,std::nullptr_t>& calls(void);
 
 		void insert(proc_loc p);
 
@@ -157,7 +159,7 @@ namespace po
 
 	private:
 		mutable boost::optional<std::unordered_set<proc_loc>> _procedures;
-		digraph<boost::variant<proc_loc,std::string>,std::nullptr_t> _calls;
+		digraph<boost::variant<proc_loc,symbol>,std::nullptr_t> _calls;
 
 		template<typename T>
 		friend T* unmarshal(const uuid&, const rdf::storage&);

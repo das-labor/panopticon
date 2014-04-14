@@ -33,9 +33,8 @@ TEST(program,marshal)
 	call(prog,p3,p1);
 	call(prog,p3,p4);
 	call(prog,p5,p6);
-/*
+
 	call(prog,p1,"printf");
-	call(prog,"unk1",p5);*/
 
 	prog.write().name = "test";
 
@@ -46,6 +45,5 @@ TEST(program,marshal)
 
 	ASSERT_EQ(prog->name, proc2->name);
 
-	cout << num_vertices(proc2->calls()) << ", " << num_edges(proc2->calls()) << endl;
 	ASSERT_TRUE(boost::isomorphism(prog->calls(),proc2->calls()));
 }
