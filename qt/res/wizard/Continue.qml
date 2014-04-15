@@ -26,7 +26,7 @@ Item {
 
 		Settings {
 			id: settings
-			property variant recent: []
+			property string recent: ""
 		}
 
 		Item {
@@ -38,13 +38,13 @@ Item {
 				spacing: 100
 
 				Repeater {
-					model: settings.recent
+					model: settings.recent.split(",").filter(function(a) { return a.length > 0 })
 					delegate: Item {
 						height: 80
 						width: 300
 
 						Text {
-							centerIn: parent
+							anchors.centerIn: parent
 							text: modelData
 						}
 

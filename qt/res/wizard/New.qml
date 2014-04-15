@@ -1,6 +1,7 @@
 import QtQuick 2.0
 import QtQuick.Controls 1.0
 import "../"
+import "../workspace"
 import Qt.labs.folderlistmodel 1.0
 import Panopticon 1.0
 import Qt.labs.settings 1.0
@@ -28,7 +29,7 @@ Item {
 
 		Settings {
 			id: settings
-			property variant recent: []
+			property string recent: ""
 		}
 
 		Item {
@@ -67,20 +68,35 @@ Item {
 							}
 
 							MouseArea {
+								property variant sess: null
+
+								id: mouseArea
 								anchors.fill: parent
+
+								Component {
+									id: comp
+
+									Workspace {
+										session: mouseArea.sess
+									}
+								}
 
 								onClicked: {
 									if(filepicker_model.isFolder(index)) {
 										filepicker_model.folder += "/" + fileName
-										console.log(fileName)
 									} else {
 										root.anchors.fill = undefined
 										root.x = -1 * root.width
 
-										settings.recent += filepicker_model.folder + "/" + fileName
+										var path = Qt.resolvedUrl(filepicker_model.folder + "/" + fileName).toString()
+										var mru = settings.recent.split(",").filter(function(a) { return a.length > 0 }).filter(function(a) { return a !== path })
 
-										loader.session = Panopticon.newSession(filepicker_model.folder + "/" + fileName)
-										loader.source = "../workspace/Workspace.qml"
+										mru.unshift(path)
+										settings.recent = mru.slice(0,6).join(",")
+
+										console.log(settings.recent)
+										mouseArea.sess = Panopticon.newSession(path)
+										loader.sourceComponent = comp
 									}
 								}
 							}
