@@ -1,0 +1,3 @@
+#pragma once
+
+#define QT_PANOPTICON_BUILD_DATE "@qtpanopticon_BUILD_TIME@"
