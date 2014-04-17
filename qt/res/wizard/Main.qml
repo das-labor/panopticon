@@ -37,7 +37,7 @@ Item {
 			anchors.centerIn: parent
 
 			Column {
-				spacing: 100
+				spacing: 200
 
 				Option {
 					icon: "blue"
@@ -61,14 +61,6 @@ Item {
 						root.x = -1 * root.width
 						loader.source = "Continue.qml"
 					}
-				}
-
-				Option {
-					icon: "red"
-					title: "Quit Panopticon"
-					description: "Close all open sessions and exit the application."
-
-					onActivated: { Qt.quit() }
 				}
 			}
 		}
