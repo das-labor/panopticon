@@ -22,10 +22,7 @@ Item {
 		primaryTitle: "Panopticon"
 		secondaryTitle: "Version 0.9"
 		primaryAction: "Quit"
-
-		onPrimary: {
-			Qt.quit()
-		}
+		onPrimary: Qt.quit()
 
 		Behavior on x {
 			NumberAnimation { duration: 300 }
@@ -37,7 +34,7 @@ Item {
 			anchors.centerIn: parent
 
 			Column {
-				spacing: 200
+				spacing: 150
 
 				Option {
 					icon: "blue"

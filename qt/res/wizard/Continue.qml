@@ -1,5 +1,6 @@
 import QtQuick 2.0
 import Panopticon 1.0
+import "../workspace"
 import "../"
 import Qt.labs.settings 1.0
 
@@ -41,33 +42,45 @@ Item {
 			anchors.centerIn: parent
 
 			Column {
-				spacing: 100
+				spacing: 30
 
 				Repeater {
 					model: settings.recent.split(",").filter(function(a) { return a.length > 0 })
 					delegate: Item {
 						height: 80
-						width: 300
+						width: 600
+						clip: true
+
+						Rectangle {
+							color: "green"
+							anchors.fill: parent
+						}
 
 						Text {
+							width: 580
 							anchors.centerIn: parent
 							text: modelData
 						}
 
 						MouseArea {
+							property variant sess: null
+
+							id: mouseArea
 							anchors.fill: parent
+
+							Component {
+								id: comp
+								Workspace { session: mouseArea.sess }
+							}
 
 							onPressed: {
 								root.anchors.fill = undefined
 								root.x = -1 * root.width
-								loader.session = Panopticon.openSession("old.panop")
-								loader.source = "../workspace/Workspace.qml"
-							}
-						}
 
-						Rectangle {
-							color: "green"
-							anchors.fill: parent
+								console.log(modelData)
+								mouseArea.sess = Panopticon.openSession(modelData)
+								loader.sourceComponent = comp
+							}
 						}
 					}
 				}

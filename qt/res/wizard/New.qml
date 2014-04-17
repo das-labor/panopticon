@@ -10,8 +10,6 @@ Item {
 	signal back
 
 	Loader {
-		property variant session: null
-
 		id: loader
 		height: parent.height
 		width: parent.width
