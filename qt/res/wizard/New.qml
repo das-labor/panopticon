@@ -7,6 +7,8 @@ import Panopticon 1.0
 import Qt.labs.settings 1.0
 
 Item {
+	signal back
+
 	Loader {
 		property variant session: null
 
@@ -21,10 +23,14 @@ Item {
 		anchors.fill: parent
 		primaryTitle: "New Session"
 		secondaryTitle: "Select file"
-		primaryAction: "Analyze"
+		primaryAction: "Back"
 
 		Behavior on x {
 			NumberAnimation { duration: 300 }
+		}
+
+		onPrimary: {
+			back()
 		}
 
 		Settings {

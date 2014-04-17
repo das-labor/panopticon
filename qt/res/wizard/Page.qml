@@ -6,9 +6,7 @@ Item {
 	property string secondaryTitle: ""
 	property string primaryAction: "Next"
 
-	Loader {
-		id: nextPageLoader
-	}
+	signal primary
 
 	Rectangle {
 		id: titleItem
@@ -52,7 +50,16 @@ Item {
 
 	Item {
 		id: primaryActionItem
+		width: childrenRect.width
 		height: childrenRect.height
+
+		MouseArea {
+			anchors.fill: parent
+
+			onClicked: {
+				primary()
+			}
+		}
 
 		Rectangle {
 			id: iconItem

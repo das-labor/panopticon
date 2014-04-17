@@ -4,6 +4,8 @@ import "../"
 import Qt.labs.settings 1.0
 
 Item {
+	signal back()
+
 	Loader {
 		property variant session: null
 
@@ -18,7 +20,7 @@ Item {
 		anchors.fill: parent
 		primaryTitle: "Continue Session"
 		secondaryTitle: "Recent sessions"
-		primaryAction: "Quit"
+		primaryAction: "Back"
 
 		Behavior on x {
 			NumberAnimation { duration: 300 }
@@ -27,6 +29,10 @@ Item {
 		Settings {
 			id: settings
 			property string recent: ""
+		}
+
+		onPrimary: {
+			back()
 		}
 
 		Item {

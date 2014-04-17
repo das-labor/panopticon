@@ -9,12 +9,23 @@ Item {
 		anchors.left: root.right
 	}
 
+	Connections {
+		target: loader.item
+		onBack: {
+			root.x = 0
+		}
+	}
+
 	Page {
 		id: root
 		anchors.fill: parent
 		primaryTitle: "Panopticon"
 		secondaryTitle: "Version 0.9"
 		primaryAction: "Quit"
+
+		onPrimary: {
+			Qt.quit()
+		}
 
 		Behavior on x {
 			NumberAnimation { duration: 300 }
