@@ -37,13 +37,13 @@ sscp_lattice po::execute(const lvalue &left, instr::Function fn, const std::vect
 			ret.type = a.type;
 			break;
 		}
-		
+
 		++i;
 	}
 
 	if(ret.type == sscp_lattice::Const)
 		ret.value = execute(left,fn,concrete,args,ci_tag);
-	
+
 	return ret;
 }
 

@@ -1,6 +1,8 @@
 #include <cassert>
 #include "linearview.hh"
 
+using namespace std;
+
 LinearViewContext::LinearViewContext(QObject *parent)
 : QObject(parent), m_columnWidth(0)
 {}
@@ -54,6 +56,7 @@ void LinearView::setSession(Session *s)
 
 		rowIndex gri = 0;
 		size_t ord = 0;
+
 		for(auto p: po::projection(_session->graph()))
 		{
 			std::shared_ptr<Delegate> del = std::make_shared<BinaryDelegate>(p.second,16,&_engine,this);
@@ -68,6 +71,7 @@ void LinearView::setSession(Session *s)
 		}
 
 		emit sessionChanged();
+		scrollViewport();
 	}
 }
 

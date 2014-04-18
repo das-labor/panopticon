@@ -5,7 +5,7 @@ po::expr::expr(const CVC4::Expr &e)
 : bitvector(e), width(0)
 {
 	CVC4::Type t = e.getType(true);
-	
+
 	if(t.isBitVector())
 	{
 		CVC4::BitVectorType bvt(t);
@@ -20,7 +20,7 @@ po::expr &po::expr::operator=(const CVC4::Expr &e)
 	CVC4::Type t = e.getType(true);
 
 	bitvector = e;
-	
+
 	if(t.isBitVector())
 	{
 		CVC4::BitVectorType bvt(t);
@@ -36,7 +36,7 @@ po::formula_ptr po::sat(proc_ptr proc)
 {
 	formula_ptr ret(new formula());
 	std::map<variable,expr> proxies;
-	
+
 	execute(proc,[&](const po::lvalue &left, po::instr::Function fn, const std::vector<po::rvalue> &right)
 	{
 		if(left.is_variable())
@@ -72,7 +72,7 @@ po::formula_ptr po::sat(proc_ptr proc)
 		{
 			return std::max(acc,e.width);
 		});
-		
+
 		std::cout << 1 << std::endl;
 		for(const expr &e: args)
 			std::cout << e.bitvector << std::endl;
@@ -103,47 +103,47 @@ po::formula_ptr po::sat(proc_ptr proc)
 		{
 		// Bitwise Not
 		case po::instr::Not: e = ret->manager.mkExpr(CVC4::kind::BITVECTOR_NEG,args[0].bitvector); break;
-		
+
 		// Bitwise And
 		case po::instr::And:	e = ret->manager.mkExpr(CVC4::kind::BITVECTOR_AND,args[0].bitvector,args[1].bitvector); break;
-		
+
 		// Bitwise Or
 		case po::instr::Or:	e = ret->manager.mkExpr(CVC4::kind::BITVECTOR_OR,args[0].bitvector,args[1].bitvector); break;
-		
+
 		// Bitwize Xor
 		case po::instr::Xor:	e = ret->manager.mkExpr(CVC4::kind::BITVECTOR_XOR,args[0].bitvector,args[1].bitvector); break;
-		
+
 		// Assign Intermediate
 		case po::instr::Assign:	e = args[0]; break;
-		
+
 		// Unsigned right shift	*
 		case po::instr::UShr:
-			e = ret->manager.mkExpr(CVC4::kind::BITVECTOR_LSHR,args[0].bitvector,ret->manager.mkConst(CVC4::BitVector(args[0].width,(unsigned int)right[1].to_constant().content()))); 
+			e = ret->manager.mkExpr(CVC4::kind::BITVECTOR_LSHR,args[0].bitvector,ret->manager.mkConst(CVC4::BitVector(args[0].width,(unsigned int)right[1].to_constant().content())));
 			break;
-		
+
 		// Unsigned left shift *
 		case po::instr::UShl:
 			e = ret->manager.mkExpr(CVC4::kind::BITVECTOR_SHL,args[0].bitvector,ret->manager.mkConst(CVC4::BitVector(args[0].width,(unsigned int)right[1].to_constant().content())));
 			break;
-		
+
 		// Slice
 		case po::instr::Slice: e = ret->manager.mkExpr(CVC4::kind::BITVECTOR_EXTRACT,ret->manager.mkConst(CVC4::BitVectorExtract(right[2].to_constant().content(),right[1].to_constant().content())),args[0].bitvector); break;
-		
+
 		// Addition
 		case po::instr::Add:	e = ret->manager.mkExpr(CVC4::kind::BITVECTOR_PLUS,args[0].bitvector,args[1].bitvector); break;
-		
+
 		// Subtraction
 		case po::instr::Sub:	e = ret->manager.mkExpr(CVC4::kind::BITVECTOR_SUB,args[0].bitvector,args[1].bitvector); break;
-		
+
 		// Multiplication
 		case po::instr::Mul:	e = ret->manager.mkExpr(CVC4::kind::BITVECTOR_MULT,args[0].bitvector,args[1].bitvector); break;
-		
+
 		// Unsigned Division
 		case po::instr::UDiv:	e = ret->manager.mkExpr(CVC4::kind::BITVECTOR_UDIV,args[0].bitvector,args[1].bitvector); break;
-		
+
 		// Unsigned Modulo reduction
 		case po::instr::UMod:	e = ret->manager.mkExpr(CVC4::kind::BITVECTOR_UREM,args[0].bitvector,args[1].bitvector); break;
-		
+
 		default:
 			std::cout << "Function: " << fn << std::endl;
 			assert(false);
