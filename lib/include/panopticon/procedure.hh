@@ -10,6 +10,7 @@
 #include <panopticon/disassembler.hh>
 #include <panopticon/marshal.hh>
 #include <panopticon/tree.hh>
+#include <panopticon/hash.hh>
 
 #pragma once
 
@@ -64,18 +65,19 @@ namespace po
 	rdf::statements marshal(const procedure*, const uuid&);
 
 	/// Adds an control transfer with @ref from as source and @ref to as destination
-	void conditional_jump(bblock_loc from, bblock_loc to, guard g);
+	void conditional_jump(proc_loc p, bblock_loc from, bblock_loc to, guard g);
 	/// Adds an control transfer with @ref from as source and @ref to as destination
-	void conditional_jump(rvalue from, bblock_loc to, guard g);
+	void conditional_jump(proc_loc p, bblock_loc from, rvalue to, guard g);
 	/// Adds an control transfer with @ref from as source and @ref to as destination
-	void conditional_jump(bblock_loc from, rvalue to, guard g);
+	void unconditional_jump(proc_loc p, bblock_loc from, bblock_loc to);
+	/// Adds an control transfer with @ref from as source and @ref to as destination
+	void unconditional_jump(proc_loc p, bblock_loc from, rvalue to);
 
-	/// Adds an control transfer with @ref from as source and @ref to as destination
-	void unconditional_jump(bblock_loc from, bblock_loc to);
-	/// Adds an control transfer with @ref from as source and @ref to as destination
-	void unconditional_jump(rvalue from, bblock_loc to);
-	/// Adds an control transfer with @ref from as source and @ref to as destination
-	void unconditional_jump(bblock_loc from, rvalue to);
+	std::pair<typename boost::shared_container_iterator<std::set<typename boost::graph_traits<po::digraph<boost::variant<bblock_loc,rvalue>,guard>>::edge_descriptor>>,typename boost::shared_container_iterator<std::set<typename boost::graph_traits<po::digraph<boost::variant<bblock_loc,rvalue>,guard>>::edge_descriptor>>>
+	incoming(proc_loc p, bblock_loc bb);
+
+	std::pair<typename boost::graph_traits<decltype(procedure::control_transfers)>::out_edge_iterator,typename boost::graph_traits<decltype(procedure::control_transfers)>::out_edge_iterator>
+	outgoing(proc_loc p, bblock_loc bb);
 
 	/// Replaces the source basic block @ref oldbb with @ref newbb in all outgoing control transfers of @ref to.
 	void replace_incoming(bblock_loc to, bblock_loc oldbb, bblock_loc newbb);
@@ -97,13 +99,6 @@ namespace po
 	/// Merges two adjacent basic blocks into one.
 	bblock_loc merge(bblock_loc up, bblock_loc down);
 
-	/// @internal
-	void replace(std::list<ctrans> &lst, bblock_loc from, bblock_loc to);
-	/// @internal
-	void resolve(std::list<ctrans> &lst, rvalue v, bblock_loc bb);
-	/// @internal
-	void conditional_jump(const ctrans &from, const ctrans &to);
-
 	template<typename Tag>
 	proc_loc procedure::disassemble(boost::optional<proc_loc> proc, const disassembler<Tag> &main, std::vector<typename rule<Tag>::token> tokens, offset start)
 	{
@@ -119,6 +114,8 @@ namespace po
 				rvalue rv = boost::get<rvalue>(v);
 				if(is_constant(rv))
 					return boost::optional<bound>((to_constant(rv).content(),to_constant(rv).content() + 1));
+				else
+					return boost::none;
 			}
 			else if(boost::get<bblock_wloc>(&v))
 			{
@@ -145,15 +142,15 @@ namespace po
 				auto tgt = target(e,(*proc)->control_transfers);
 				auto src = boost::source(e,(*proc)->control_transfers);
 
-				auto src_b = get_off(src);
-				auto tgt_b = get_off(tgt);
+				auto src_b = get_off(get_node(src,(*proc)->control_transfers));
+				auto tgt_b = get_off(get_node(tgt,(*proc)->control_transfers));
 
 				if(src_b && tgt_b)
 				{
 					std::pair<offset,guard> p(tgt_b->lower(),get_edge(e,(*proc)->control_transfers));
 
 					source.emplace(src_b->upper() - 1,p);
-					destination.emplace(p,src_b->upper() - 1);
+					destination.emplace(p.first,std::make_pair(src_b->upper() - 1,p.second));
 				}
 			}
 
@@ -166,7 +163,6 @@ namespace po
 		{
 			offset cur_addr = *todo.begin();
 			sem_state<Tag> state(cur_addr);
-			bool ret;
 			typename rule<Tag>::tokiter i = tokens.begin();
 			auto j = mnemonics.lower_bound(cur_addr);
 
@@ -181,10 +177,11 @@ namespace po
 			if(j == mnemonics.end() || !boost::icl::contains(j->second.area,cur_addr))
 			{
 				advance(i,cur_addr);
-				tie(ret,i) = main.match(i,tokens.end(),state);
+				auto mi = main.match(i,tokens.end(),state);
 
-				if(ret)
+				if(mi)
 				{
+					i = *mi;
 					offset last = 0;
 
 					for(const mnemonic &m: state.mnemonics)
@@ -250,9 +247,9 @@ namespace po
 				new_bb = next_mne->first != div;
 
 				// or any following jumps aren't to adjacent mnemonics
-				new_bb |= std::any_of(sources.first,sources.second,[&](const std::pair<offset,std::pair<offset,guard>> &p)
+				new_bb |= std::any_of(sources.first,sources.second,[&](const std::pair<offset,std::pair<boost::optional<offset>,guard>> &p)
 				{
-					return p.second.first != div;
+					return p.second.first && *p.second.first != div;
 				});
 
 				// or any jumps pointing to the next that aren't from here
@@ -292,9 +289,9 @@ namespace po
 
 				assert(from != bblocks.end());
 				if(to != bblocks.end() && to->second->area().lower() == *p.second.first)
-					conditional_jump(from->second,to->second,p.second.second);
+					conditional_jump(ret,from->second,to->second,p.second.second);
 				else
-					conditional_jump(from->second,po::constant(*p.second.first),p.second.second);
+					conditional_jump(ret,from->second,po::constant(*p.second.first),p.second.second);
 			}
 		}
 
@@ -318,6 +315,10 @@ namespace po
 			else
 				ret.write().entry = bblocks.lower_bound(start)->second;
 		}
+		else if(!proc)
+		{
+			ret.write().entry = bblocks.lower_bound(start)->second;
+		}
 		else
 		{
 			ret.write().entry = boost::none;
@@ -333,206 +334,3 @@ namespace po
 		return ret;
 	}
 }
-
-/*
-void po::conditional_jump(bblock_loc from, bblock_loc to, guard g) { ctrans ct_from(g,from), ct_to(g,to); conditional_jump(ct_from,ct_to); }
-void po::conditional_jump(rvalue from, bblock_loc to, guard g) { ctrans ct_from(g,from), ct_to(g,to); conditional_jump(ct_from,ct_to); }
-void po::conditional_jump(bblock_loc from, rvalue to, guard g) { ctrans ct_from(g,from), ct_to(g,to); conditional_jump(ct_from,ct_to); }
-
-void po::unconditional_jump(bblock_loc from, bblock_loc to) { conditional_jump(from,to,guard()); }
-void po::unconditional_jump(rvalue from, bblock_loc to) { conditional_jump(from,to,guard()); }
-void po::unconditional_jump(bblock_loc from, rvalue to) { conditional_jump(from,to,guard()); }
-
-void po::replace_incoming(bblock_loc to, bblock_loc oldbb, bblock_loc newbb)
-{
-	assert(to && oldbb && newbb);
-	to->mutate_incoming([&](list<ctrans> &in)
-	{
-		replace(in,oldbb,newbb);
-	});
-}
-
-void po::replace_outgoing(bblock_loc from, bblock_loc oldbb, bblock_loc newbb)
-{
-	assert(from && oldbb && newbb);
-	from->mutate_outgoing([&](list<ctrans> &out)
-	{
-		replace(out,oldbb,newbb);
-	});
-}
-
-void po::resolve_incoming(bblock_loc to, rvalue v, bblock_loc bb)
-{
-	assert(to && bb);
-	to->mutate_incoming([&](list<ctrans> &in)
-	{
-		resolve(in,v,bb);
-	});
-}
-
-void po::resolve_outgoing(bblock_loc from, rvalue v, bblock_loc bb)
-{
-	assert(from && bb);
-	from->mutate_outgoing([&](list<ctrans> &out)
-	{
-		resolve(out,v,bb);
-	});
-}
-
-// last == true -> pos is last in `up', last == false -> pos is first in `down'
-pair<bblock_loc,bblock_loc> po::split(bblock_loc bb, addr_t pos, bool last)
-{
-	assert(bb);
-
-	bblock_loc up(new basic_block()), down(new basic_block());
-	bool sw = false;
-	basic_block::out_iterator j,jend;
-	basic_block::in_iterator k,kend;
-	function<void(bool,bblock_loc,ctrans)> append = [](bool in, bblock_loc bb, ctrans ct)
-	{
-		if(in)
-			bb->mutate_incoming([&](list<ctrans> &l) { l.push_back(ct); });
-		else
-			bb->mutate_outgoing([&](list<ctrans> &l) { l.push_back(ct); });
-	};
-
-	// distribute mnemonics under `up' and `down'
-	for_each(bb->mnemonics().begin(),bb->mnemonics().end(),[&](const mnemonic &m)
-	{
-		assert(!m.area.includes(pos) || m.area.begin == pos);
-
-		if(!last)
-			sw |= m.area.includes(pos);
-
-		if(sw)
-			down->mutate_mnemonics([&](vector<mnemonic> &ms) { ms.push_back(m); });
-		else
-			up->mutate_mnemonics([&](vector<mnemonic> &ms) { ms.push_back(m); });
-
-		if(last)
-			sw |= m.area.includes(pos);
-	});
-	assert(sw);
-
-	// move outgoing ctrans to down
-	for_each(bb->outgoing().begin(),bb->outgoing().end(),[&](const ctrans &ct)
-	{
-		if(ct.bblock.lock() == bb)
-		{
-			append(false,down,ctrans(ct.condition,up));
-			append(true,up,ctrans(ct.condition,up));
-		}
-		else
-		{
-			if(ct.bblock.lock())
-			{
-				append(false,down,ctrans(ct.condition,ct.bblock.lock()));
-				ct.bblock.lock()->mutate_incoming([&](list<ctrans> &in)
-				{
-					in.emplace_back(ctrans(ct.condition,down));
-					in.erase(find_if(in.begin(),in.end(),[&](const ctrans &ct)
-						{ return ct.bblock.lock() == bb; }));
-				});
-			}
-			else
-				append(false,down,ctrans(ct.condition,ct.value));
-		}
-	});
-
-	// move incoming edges to up
-	for_each(bb->incoming().begin(),bb->incoming().end(),[&](const ctrans &ct)
-	{
-		if(ct.bblock.lock() == bb)
-		{
-			append(true,up,ctrans(ct.condition,down));
-			append(false,down,ctrans(ct.condition,up));
-		}
-		else
-		{
-			if(ct.bblock.lock())
-			{
-				append(true,up,ctrans(ct.condition,ct.bblock.lock()));
-				ct.bblock.lock()->mutate_outgoing([&](list<ctrans> &out)
-				{
-					out.emplace_back(ctrans(ct.condition,up));
-					out.erase(find_if(out.begin(),out.end(),[&](const ctrans &ct)
-						{ return ct.bblock.lock() == bb; }));
-				});
-			}
-			else
-				append(true,up,ctrans(ct.condition,ct.value));
-		}
-	});
-
-	bb->clear();
-	unconditional_jump(up,down);
-	return make_pair(up,down);
-}
-
-bblock_loc po::merge(bblock_loc up, bblock_loc down)
-{
-	assert(up && down);
-	if(up->area().begin == down->area().end) tie(up,down) = make_pair(down,up);
-	assert(up->area().end == down->area().begin);
-
-	bblock_loc ret(new basic_block());
-	auto fn = [&ret](const bblock_loc &bb, const mnemonic &m) { ret->mutate_mnemonics([&](vector<mnemonic> &ms)
-		{ ms.push_back(m); }); };
-
-	for_each(up->mnemonics().begin(),up->mnemonics().end(),bind(fn,up,placeholders::_1));
-	for_each(down->mnemonics().begin(),down->mnemonics().end(),bind(fn,down,placeholders::_1));
-
-	for_each(up->incoming().begin(),up->incoming().end(),[&](const ctrans &ct)
-	{
-		if(ct.bblock.lock())
-			replace_outgoing(ct.bblock.lock(),up,ret);
-		ret->mutate_incoming([&](list<ctrans> &in) { in.emplace_back(ct); });
-	});
-
-	for_each(down->outgoing().begin(),down->outgoing().end(),[&](const ctrans &ct)
-	{
-		if(ct.bblock.lock())
-			replace_incoming(ct.bblock.lock(),down,ret);
-		ret->mutate_outgoing([&](list<ctrans> &out) { out.emplace_back(ct); });
-	});
-
-	up->clear();
-	down->clear();
-	return ret;
-}
-
-void po::replace(list<ctrans> &lst, bblock_loc from, bblock_loc to)
-{
-	assert(from && to);
-
-	auto i = lst.begin();
-	while(i != lst.end())
-	{
-		ctrans ct = *i;
-		if(ct.bblock.lock() == from)
-			i = lst.insert(lst.erase(i),ctrans(ct.condition,to));
-		++i;
-	}
-}
-
-void po::resolve(list<ctrans> &lst, rvalue v, bblock_loc bb)
-{
-	assert(bb);
-
-	auto i = lst.begin();
-	while(i != lst.end())
-	{
-		ctrans ct = *i;
-		if(ct.value == v)
-			i = lst.insert(lst.erase(i),ctrans(ct.condition,bb));
-		++i;
-	}
-}
-
-void po::conditional_jump(const ctrans &from, const ctrans &to)
-{
-	if(from.bblock.lock())
-		from.bblock.lock()->mutate_outgoing([&](list<ctrans> &out) { out.emplace_back(to); });
-	if(to.bblock.lock())
-		to.bblock.lock()->mutate_incoming([&](list<ctrans> &in) { in.emplace_back(from); });
-}*/

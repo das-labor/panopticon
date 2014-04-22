@@ -142,6 +142,8 @@ procedure::procedure(const std::string &n)
 
 const vector<bblock_loc>& procedure::rev_postorder(void) const
 {
+	assert(entry);
+
 	if(!_rev_postorder)
 	{
 		using vx_desc = graph_traits<decltype(control_transfers)>::vertex_descriptor;
@@ -186,6 +188,18 @@ boost::optional<bblock_loc> po::find_bblock(proc_loc proc, offset a)
 	return boost::none;
 }
 
+std::pair<typename boost::shared_container_iterator<std::set<typename boost::graph_traits<po::digraph<boost::variant<bblock_loc,rvalue>,guard>>::edge_descriptor>>,typename boost::shared_container_iterator<std::set<typename boost::graph_traits<po::digraph<boost::variant<bblock_loc,rvalue>,guard>>::edge_descriptor>>>
+po::incoming(proc_loc p, bblock_loc bb)
+{
+	return in_edges(find_node(variant<bblock_loc,rvalue>(bb),p->control_transfers),p->control_transfers);
+}
+
+std::pair<typename boost::graph_traits<decltype(procedure::control_transfers)>::out_edge_iterator,typename boost::graph_traits<decltype(procedure::control_transfers)>::out_edge_iterator>
+po::outgoing(proc_loc p, bblock_loc bb)
+{
+	return out_edges(find_node(variant<bblock_loc,rvalue>(bb),p->control_transfers),p->control_transfers);
+}
+
 void po::execute(proc_loc proc,function<void(const lvalue &left, instr::Function fn, const vector<rvalue> &right)> f)
 {
 	for(const bblock_loc &bb: proc->rev_postorder())
@@ -208,3 +222,225 @@ void po::execute(proc_loc proc,function<void(const lvalue &left, instr::Function
 		}
 	}
 }
+
+void po::conditional_jump(proc_loc p, bblock_loc from, bblock_loc to, guard g)
+{
+	auto vx_a = find_node(variant<bblock_loc,rvalue>(from),p->control_transfers);
+	auto vx_b = find_node(variant<bblock_loc,rvalue>(to),p->control_transfers);
+	auto rpo = p->rev_postorder();
+
+	assert(std::find(rpo.begin(),rpo.end(),from) != rpo.end() &&
+				 std::find(rpo.begin(),rpo.end(),from) != rpo.end());
+	insert_edge(g,vx_a,vx_b,p.write().control_transfers);
+}
+
+void po::conditional_jump(proc_loc p, bblock_loc from, rvalue to, guard g)
+{
+	auto vx_a = find_node(variant<bblock_loc,rvalue>(from),p->control_transfers);
+
+	try
+	{
+		auto vx_b = find_node(variant<bblock_loc,rvalue>(to),p->control_transfers);
+		insert_edge(g,vx_a,vx_b,p.write().control_transfers);
+	}
+	catch(const out_of_range&)
+	{
+		insert_edge(g,vx_a,insert_node(variant<bblock_loc,rvalue>(to),p.write().control_transfers),p.write().control_transfers);
+	}
+}
+
+void po::unconditional_jump(proc_loc p, bblock_loc from, bblock_loc to)
+{
+	return conditional_jump(p,from,to,guard());
+}
+
+void po::unconditional_jump(proc_loc p, bblock_loc from, rvalue to)
+{
+	return conditional_jump(p,from,to,guard());
+}
+
+/*
+void po::replace_incoming(bblock_loc to, bblock_loc oldbb, bblock_loc newbb)
+{
+	to->mutate_incoming([&](list<ctrans> &in)
+	{
+		replace(in,oldbb,newbb);
+	});
+}
+
+void po::replace_outgoing(bblock_loc from, bblock_loc oldbb, bblock_loc newbb)
+{
+	assert(from && oldbb && newbb);
+	from->mutate_outgoing([&](list<ctrans> &out)
+	{
+		replace(out,oldbb,newbb);
+	});
+}
+
+void po::resolve_incoming(bblock_loc to, rvalue v, bblock_loc bb)
+{
+	assert(to && bb);
+	to->mutate_incoming([&](list<ctrans> &in)
+	{
+		resolve(in,v,bb);
+	});
+}
+
+void po::resolve_outgoing(bblock_loc from, rvalue v, bblock_loc bb)
+{
+	assert(from && bb);
+	from->mutate_outgoing([&](list<ctrans> &out)
+	{
+		resolve(out,v,bb);
+	});
+}
+
+// last == true -> pos is last in `up', last == false -> pos is first in `down'
+pair<bblock_loc,bblock_loc> po::split(bblock_loc bb, addr_t pos, bool last)
+{
+	assert(bb);
+
+	bblock_loc up(new basic_block()), down(new basic_block());
+	bool sw = false;
+	basic_block::out_iterator j,jend;
+	basic_block::in_iterator k,kend;
+	function<void(bool,bblock_loc,ctrans)> append = [](bool in, bblock_loc bb, ctrans ct)
+	{
+		if(in)
+			bb->mutate_incoming([&](list<ctrans> &l) { l.push_back(ct); });
+		else
+			bb->mutate_outgoing([&](list<ctrans> &l) { l.push_back(ct); });
+	};
+
+	// distribute mnemonics under `up' and `down'
+	for_each(bb->mnemonics().begin(),bb->mnemonics().end(),[&](const mnemonic &m)
+	{
+		assert(!m.area.includes(pos) || m.area.begin == pos);
+
+		if(!last)
+			sw |= m.area.includes(pos);
+
+		if(sw)
+			down->mutate_mnemonics([&](vector<mnemonic> &ms) { ms.push_back(m); });
+		else
+			up->mutate_mnemonics([&](vector<mnemonic> &ms) { ms.push_back(m); });
+
+		if(last)
+			sw |= m.area.includes(pos);
+	});
+	assert(sw);
+
+	// move outgoing ctrans to down
+	for_each(bb->outgoing().begin(),bb->outgoing().end(),[&](const ctrans &ct)
+	{
+		if(ct.bblock.lock() == bb)
+		{
+			append(false,down,ctrans(ct.condition,up));
+			append(true,up,ctrans(ct.condition,up));
+		}
+		else
+		{
+			if(ct.bblock.lock())
+			{
+				append(false,down,ctrans(ct.condition,ct.bblock.lock()));
+				ct.bblock.lock()->mutate_incoming([&](list<ctrans> &in)
+				{
+					in.emplace_back(ctrans(ct.condition,down));
+					in.erase(find_if(in.begin(),in.end(),[&](const ctrans &ct)
+						{ return ct.bblock.lock() == bb; }));
+				});
+			}
+			else
+				append(false,down,ctrans(ct.condition,ct.value));
+		}
+	});
+
+	// move incoming edges to up
+	for_each(bb->incoming().begin(),bb->incoming().end(),[&](const ctrans &ct)
+	{
+		if(ct.bblock.lock() == bb)
+		{
+			append(true,up,ctrans(ct.condition,down));
+			append(false,down,ctrans(ct.condition,up));
+		}
+		else
+		{
+			if(ct.bblock.lock())
+			{
+				append(true,up,ctrans(ct.condition,ct.bblock.lock()));
+				ct.bblock.lock()->mutate_outgoing([&](list<ctrans> &out)
+				{
+					out.emplace_back(ctrans(ct.condition,up));
+					out.erase(find_if(out.begin(),out.end(),[&](const ctrans &ct)
+						{ return ct.bblock.lock() == bb; }));
+				});
+			}
+			else
+				append(true,up,ctrans(ct.condition,ct.value));
+		}
+	});
+
+	bb->clear();
+	unconditional_jump(up,down);
+	return make_pair(up,down);
+}
+
+bblock_loc po::merge(bblock_loc up, bblock_loc down)
+{
+	assert(up && down);
+	if(up->area().begin == down->area().end) tie(up,down) = make_pair(down,up);
+	assert(up->area().end == down->area().begin);
+
+	bblock_loc ret(new basic_block());
+	auto fn = [&ret](const bblock_loc &bb, const mnemonic &m) { ret->mutate_mnemonics([&](vector<mnemonic> &ms)
+		{ ms.push_back(m); }); };
+
+	for_each(up->mnemonics().begin(),up->mnemonics().end(),bind(fn,up,placeholders::_1));
+	for_each(down->mnemonics().begin(),down->mnemonics().end(),bind(fn,down,placeholders::_1));
+
+	for_each(up->incoming().begin(),up->incoming().end(),[&](const ctrans &ct)
+	{
+		if(ct.bblock.lock())
+			replace_outgoing(ct.bblock.lock(),up,ret);
+		ret->mutate_incoming([&](list<ctrans> &in) { in.emplace_back(ct); });
+	});
+
+	for_each(down->outgoing().begin(),down->outgoing().end(),[&](const ctrans &ct)
+	{
+		if(ct.bblock.lock())
+			replace_incoming(ct.bblock.lock(),down,ret);
+		ret->mutate_outgoing([&](list<ctrans> &out) { out.emplace_back(ct); });
+	});
+
+	up->clear();
+	down->clear();
+	return ret;
+}
+
+void po::replace(list<ctrans> &lst, bblock_loc from, bblock_loc to)
+{
+	assert(from && to);
+
+	auto i = lst.begin();
+	while(i != lst.end())
+	{
+		ctrans ct = *i;
+		if(ct.bblock.lock() == from)
+			i = lst.insert(lst.erase(i),ctrans(ct.condition,to));
+		++i;
+	}
+}
+
+void po::resolve(list<ctrans> &lst, rvalue v, bblock_loc bb)
+{
+	assert(bb);
+
+	auto i = lst.begin();
+	while(i != lst.end())
+	{
+		ctrans ct = *i;
+		if(ct.value == v)
+			i = lst.insert(lst.erase(i),ctrans(ct.condition,bb));
+		++i;
+	}
+}*/

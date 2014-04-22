@@ -9,19 +9,36 @@
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/property_map/property_map.hpp>
 #include <boost/iterator/transform_iterator.hpp>
+#include <boost/iterator/filter_iterator.hpp>
+#include <boost/shared_container_iterator.hpp>
 #include <boost/mpl/if.hpp>
+#include <boost/shared_ptr.hpp>
 
 #pragma once
 
 namespace po
 {
+	struct digraph_vertex_prop_tag
+	{
+		using kind = boost::vertex_property_tag;
+		static std::size_t const num;
+	};
+
+	struct digraph_edge_prop_tag
+	{
+		using kind = boost::edge_property_tag;
+		static std::size_t const num;
+	};
+
 	template<typename N, typename E>
 	using digraph = boost::adjacency_list<
 		boost::vecS,
 		boost::vecS,
 		boost::directedS,
-		boost::property<boost::vertex_name_t,boost::optional<N>>,
-		boost::property<boost::edge_name_t,boost::optional<E>>
+		boost::property<digraph_vertex_prop_tag,boost::optional<N>>,
+		//boost::property<boost::vertex_name_t,boost::optional<N>>,
+		boost::property<digraph_edge_prop_tag,boost::optional<E>>
+		//boost::property<boost::edge_name_t,boost::optional<E>>
 	>;
 
 	template<typename I>
@@ -106,20 +123,20 @@ namespace po
 	template<typename N, typename E>
 	const N &get_node(typename boost::graph_traits<po::digraph<N,E>>::vertex_descriptor n, const digraph<N,E> &g)
 	{
-		return *boost::get(boost::vertex_name_t(),g,n);
+		return *boost::get(digraph_vertex_prop_tag(),g,n);
 	}
 
 	template<typename N, typename E>
 	const E &get_edge(typename boost::graph_traits<po::digraph<N,E>>::edge_descriptor n, const digraph<N,E> &g)
 	{
-		return *boost::get(boost::edge_name_t(),g,n);
+		return *boost::get(digraph_edge_prop_tag(),g,n);
 	}
 
 	template<typename N, typename E>
 	typename boost::graph_traits<po::digraph<N,E>>::vertex_descriptor insert_node(const N& n, digraph<N,E> &g)
 	{
 		auto vx = boost::add_vertex(g);
-		boost::put(boost::vertex_name_t(),g,vx,n);
+		boost::put(digraph_vertex_prop_tag(),g,vx,n);
 		return vx;
 	}
 
@@ -130,8 +147,31 @@ namespace po
 
 		if(!o.second)
 			throw std::runtime_error("edge exists");
-		boost::put(boost::edge_name_t(),g,o.first,e);
+		boost::put(digraph_edge_prop_tag(),g,o.first,e);
 
 		return o.first;
+	}
+
+	template<typename N, typename E>
+	std::pair<typename boost::shared_container_iterator<std::set<typename boost::graph_traits<po::digraph<N,E>>::edge_descriptor>>,typename boost::shared_container_iterator<std::set<typename boost::graph_traits<po::digraph<N,E>>::edge_descriptor>>>
+	in_edges(typename boost::graph_traits<po::digraph<N,E>>::vertex_descriptor vx, const digraph<N,E> &g)
+	{
+		using cont = std::set<typename boost::graph_traits<po::digraph<N,E>>::edge_descriptor>;
+		using iter = boost::shared_container_iterator<cont>;
+
+		auto p = edges(g);
+		boost::shared_ptr<cont> ret(new cont());
+
+		for(auto e: iters(p))
+			if(target(e,g) == vx)
+				ret->insert(e);
+
+			/*	using pred = std::function<bool(typename boost::graph_traits<po::digraph<N,E>>::edge_descriptor)>;
+		using filter_iterator = boost::filter_iterator<pred,decltype(p.first)>;
+
+		pred fn = [g,p,vx](typename boost::graph_traits<po::digraph<N,E>>::edge_descriptor wx) { return target(wx,g) == vx; };
+		return std::make_pair(filter_iterator(fn,p.first),filter_iterator(fn,p.second));*/
+
+		return std::make_pair(iter(ret->begin(),ret),iter(ret->end(),ret));
 	}
 }

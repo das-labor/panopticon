@@ -102,34 +102,26 @@ namespace po
 
 	template<>
 	guard* unmarshal(const uuid&, const rdf::storage&);
+}
 
+namespace std
+{
+	template<>
+	struct hash<po::guard>
+	{
+		size_t operator()(const po::guard& g) const
+		{
+			return std::accumulate(g.relations.begin(),g.relations.end(),size_t(0),[&](size_t acc, const po::relation& r)
+				{ return acc ^ hash_struct(static_cast<int>(r.relcode),r.operand1,r.operand2); });
+		}
+	};
+}
+
+namespace po
+{
 	/// @returns The relation @ref r as UTF-8 string.
 	std::string pretty(relation::Relcode r);
 	std::ostream& operator<<(std::ostream &os, const guard &g);
-
-	/**
-	 * @brief A jump between two basic blocks.
-	 *
-	 * A control transfer is a jump from one address to another with
-	 * an optional condition. The address can be any value (constant,
-	 * memory, variables,...).
-	 *
-	 * If the target of the jump is known and has been disassembled
-	 * the instance includes a pointer to the basic blocks that spans
-	 * this address.
-	 */
-	struct ctrans
-	{
-		/// Jump to address @ref v under condition @ref g
-		ctrans(guard g, rvalue v);
-
-		/// Jump to basic block @ref b under condition @ref g
-		ctrans(guard g, bblock_loc b);
-
-		guard condition;
-		rvalue value;
-		bblock_wloc bblock;
-	};
 
 	/**
 	 * @brief Sequence of mnemonics with no jumps inbetween.

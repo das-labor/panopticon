@@ -93,9 +93,6 @@ ostream& po::operator<<(ostream &os, const guard &g)
 	return os;
 }
 
-ctrans::ctrans(struct guard g, rvalue v) : condition(g), value(v), bblock() {}
-ctrans::ctrans(struct guard g, bblock_loc b) : condition(g), value(), bblock(b) {}
-
 template<>
 rdf::statements po::marshal(const basic_block* bb, const uuid& u)
 {
@@ -147,7 +144,7 @@ bound basic_block::area(void) const
 		_area = bound();
 
 		for(auto m: _mnemonics)
-			_area = *_area & m.area;
+			_area = boost::icl::hull(*_area,m.area);
 	}
 
 	return *_area;
