@@ -154,8 +154,9 @@ TEST(procedure,branch)
 	add(2,"test2",1,boost::none);
 
 	disassembler_mockup mockup(states);
-	po::proc_loc proc = po::procedure::disassemble(0,mockup,bytes,0);
+	po::proc_loc proc = po::procedure::disassemble(boost::none,mockup,bytes,0);
 
+	ASSERT_TRUE(!!proc->entry);
 	ASSERT_EQ(proc->rev_postorder().size(), 3);
 
 	auto i0 = std::find_if(proc->rev_postorder().begin(),proc->rev_postorder().end(),[&](po::bblock_loc bb) { return bb->area().lower() == 0; });

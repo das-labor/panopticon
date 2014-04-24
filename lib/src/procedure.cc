@@ -225,12 +225,13 @@ void po::execute(proc_loc proc,function<void(const lvalue &left, instr::Function
 
 void po::conditional_jump(proc_loc p, bblock_loc from, bblock_loc to, guard g)
 {
+	using vx_desc = typename boost::graph_traits<decltype(p->control_transfers)>::vertex_descriptor;
 	auto vx_a = find_node(variant<bblock_loc,rvalue>(from),p->control_transfers);
 	auto vx_b = find_node(variant<bblock_loc,rvalue>(to),p->control_transfers);
-	auto rpo = p->rev_postorder();
+	auto q = vertices(p->control_transfers);
 
-	assert(std::find(rpo.begin(),rpo.end(),from) != rpo.end() &&
-				 std::find(rpo.begin(),rpo.end(),from) != rpo.end());
+	assert(std::find_if(q.first,q.second,[&](vx_desc d) { try { return get<bblock_loc>(get_node(d,p->control_transfers)) == from; } catch(...) { return false; } }) != q.second &&
+				 std::find_if(q.first,q.second,[&](vx_desc d) { try { return get<bblock_loc>(get_node(d,p->control_transfers)) == to; } catch(...) { return false; } }) != q.second);
 	insert_edge(g,vx_a,vx_b,p.write().control_transfers);
 }
 

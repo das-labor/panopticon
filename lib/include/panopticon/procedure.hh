@@ -154,7 +154,7 @@ namespace po
 				}
 			}
 
-			(*proc).write().control_transfers = digraph<boost::variant<bblock_loc, rvalue>, po::guard>();
+			//(*proc).write().control_transfers = digraph<boost::variant<bblock_loc, rvalue>, po::guard>();
 		}
 
 		todo.insert(start);
@@ -307,6 +307,7 @@ namespace po
 		// entry may have been split
 		if((proc && (*proc)->entry) || std::distance(q.first,q.second))
 		{
+			std::cerr << "split" << std::endl;
 			offset entry = proc && (*proc)->entry ? (*(*proc)->entry)->area().lower() : start;
 			auto i = bblocks.lower_bound(entry);
 
@@ -317,10 +318,15 @@ namespace po
 		}
 		else if(!proc)
 		{
-			ret.write().entry = bblocks.lower_bound(start)->second;
+			std::cerr << "start" << std::endl;
+			auto j = bblocks.lower_bound(start);
+
+			assert(j != bblocks.end());
+			ret.write().entry = j->second;
 		}
 		else
 		{
+			std::cerr << "none" << std::endl;
 			ret.write().entry = boost::none;
 		}
 
