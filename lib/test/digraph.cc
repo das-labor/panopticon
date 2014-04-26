@@ -10,6 +10,21 @@ TEST(digraph,concepts)
 	BOOST_CONCEPT_ASSERT((boost::VertexAndEdgeListGraphConcept<po::digraph<int,std::string>>));
 }
 
+TEST(digraph,node_attribute)
+{
+	po::digraph<int,std::string> g;
+
+	auto n1 = insert_node(42,g);
+	auto n2 = insert_node(13,g);
+	auto n3 = insert_node(1337,g);
+
+	ASSERT_EQ(n1, find_node(42,g));
+	ASSERT_EQ(n2, find_node(13,g));
+	ASSERT_EQ(n3, find_node(1337,g));
+
+	ASSERT_THROW(find_node(69,g),out_of_range);
+}
+
 TEST(digraph,usage)
 {
 	po::digraph<int,std::string> g;
