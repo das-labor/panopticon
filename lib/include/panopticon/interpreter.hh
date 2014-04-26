@@ -48,7 +48,7 @@ namespace po
 	std::shared_ptr<std::unordered_map<rvalue,typename domain_traits<T>::lattice>> interpret(const proc_loc proc, T tag = T())
 	{
 		using L = typename domain_traits<T>::lattice;
-		using vx_desc = boost::graph_traits<decltype(proc->control_transfers)>::vertex_descriptor;
+		using vx_desc = typename boost::graph_traits<decltype(proc->control_transfers)>::vertex_descriptor;
 		std::shared_ptr<std::unordered_map<rvalue,typename domain_traits<T>::lattice>> ret = std::make_shared<std::unordered_map<rvalue,typename domain_traits<T>::lattice>>();
 		const std::vector<bblock_loc>& rpo = proc->rev_postorder();
 		std::unordered_set<vx_desc> worklist;
