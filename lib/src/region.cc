@@ -319,6 +319,7 @@ std::unordered_map<region_wloc,region_wloc> po::spanning_tree(const regions &reg
 	{
 		auto find_path = [&](vertex_descriptor x)
 		{
+			std::vector<boost::default_color_type> color_map;
 			std::map<vertex_descriptor,vertex_descriptor> p_map;
 			boost::associative_property_map<std::map<vertex_descriptor,vertex_descriptor>> pred_adaptor(p_map);
 
@@ -371,7 +372,7 @@ std::unordered_map<region_wloc,region_wloc> po::spanning_tree(const regions &reg
 	std::unordered_map<region_wloc,region_wloc> out;
 
 	for(const pair<vertex_descriptor,vertex_descriptor> &p: ret)
-		out.emplace(region_wloc(get_node(p.first,regs)),region_wloc(get_node(p.second,regs)));
+		out.emplace(region_wloc(get_vertex(p.first,regs)),region_wloc(get_vertex(p.second,regs)));
 
 	return out;
 }
@@ -384,7 +385,7 @@ std::list<std::pair<bound,region_wloc>> po::projection(const regions &regs)
 
 	step = [&](graph_traits<regions>::vertex_descriptor vx)
 	{
-		region_loc r = get_node(vx,regs);
+		region_loc r = get_vertex(vx,regs);
 		auto p = out_edges(vx,regs);
 		offset last = 0;
 		std::list<graph_traits<regions>::edge_descriptor> es;

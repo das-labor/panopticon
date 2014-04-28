@@ -4,9 +4,13 @@
 #include <stdexcept>
 
 #include <boost/graph/isomorphism.hpp>
+#include <boost/graph/graphviz.hpp>
+
 #include <gtest/gtest.h>
+
 #include <panopticon/procedure.hh>
 #include <panopticon/disassembler.hh>
+
 #include "architecture.hh"
 
 using namespace po;
@@ -115,14 +119,14 @@ TEST(procedure,continuous)
 	using edge_descriptor = boost::graph_traits<decltype(procedure::control_transfers)>::edge_descriptor;
 	ASSERT_TRUE(std::all_of(ep.first,ep.second,[&](edge_descriptor e) { try { get_edge(e,proc->control_transfers); return true; } catch(...) { return false; } }));
 
-	auto in_p = incoming(proc,bb);
-	auto out_p = outgoing(proc,bb);
+	auto in_p = in_edges(find_node(variant<bblock_loc,rvalue>(bb),proc->control_transfers),proc->control_transfers);
+	auto out_p = out_edges(find_node(variant<bblock_loc,rvalue>(bb),proc->control_transfers),proc->control_transfers);
 
 	ASSERT_EQ(distance(in_p.first,in_p.second), 0);
 	ASSERT_EQ(distance(out_p.first,out_p.second), 1);
 	ASSERT_TRUE(get_edge(*out_p.first,proc->control_transfers).relations.empty());
-	ASSERT_TRUE(is_constant(get<rvalue>(get_node(target(*out_p.first,proc->control_transfers),proc->control_transfers))));
-	ASSERT_EQ(to_constant(get<rvalue>(get_node(target(*out_p.first,proc->control_transfers),proc->control_transfers))).content(), 6);
+	ASSERT_TRUE(is_constant(get<rvalue>(get_vertex(target(*out_p.first,proc->control_transfers),proc->control_transfers))));
+	ASSERT_EQ(to_constant(get<rvalue>(get_vertex(target(*out_p.first,proc->control_transfers),proc->control_transfers))).content(), 6);
 	ASSERT_EQ(bb->area(), po::bound(0,6));
 	ASSERT_EQ(bb, *(proc->entry));
 	ASSERT_NE(proc->name, "");
@@ -175,22 +179,22 @@ TEST(procedure,branch)
 	ASSERT_EQ(bb1->mnemonics().size(), 1);
 	ASSERT_EQ(bb2->mnemonics().size(), 1);
 
-	auto in0_p = incoming(proc,bb0);
-	auto out0_p = outgoing(proc,bb0);
+	auto in0_p = in_edges(find_node(variant<bblock_loc,rvalue>(bb0),proc->control_transfers),proc->control_transfers);
+	auto out0_p = out_edges(find_node(variant<bblock_loc,rvalue>(bb0),proc->control_transfers),proc->control_transfers);
 
 	ASSERT_EQ(distance(in0_p.first,in0_p.second), 0);
 	check(bb0->mnemonics()[0],"test0",0);
 	ASSERT_EQ(distance(out0_p.first,out0_p.second), 2);
 
-	auto in1_p = incoming(proc,bb1);
-	auto out1_p = outgoing(proc,bb1);
+	auto in1_p = in_edges(find_node(variant<bblock_loc,rvalue>(bb1),proc->control_transfers),proc->control_transfers);
+	auto out1_p = out_edges(find_node(variant<bblock_loc,rvalue>(bb1),proc->control_transfers),proc->control_transfers);
 
 	ASSERT_EQ(distance(in1_p.first,in1_p.second), 2);
 	check(bb1->mnemonics()[0],"test1",1);
 	ASSERT_EQ(distance(out1_p.first,out1_p.second), 1);
 
-	auto in2_p = incoming(proc,bb2);
-	auto out2_p = outgoing(proc,bb2);
+	auto in2_p = in_edges(find_node(variant<bblock_loc,rvalue>(bb2),proc->control_transfers),proc->control_transfers);
+	auto out2_p = out_edges(find_node(variant<bblock_loc,rvalue>(bb2),proc->control_transfers),proc->control_transfers);
 
 	ASSERT_EQ(distance(in2_p.first,in2_p.second), 1);
 	check(bb2->mnemonics()[0],"test2",2);
@@ -233,8 +237,8 @@ TEST(procedure,loop)
 	check(bb->mnemonics()[1],"test1",1);
 	check(bb->mnemonics()[2],"test2",2);
 
-	auto in_p = incoming(proc,bb);
-	auto out_p = outgoing(proc,bb);
+	auto in_p = in_edges(find_node(variant<bblock_loc,rvalue>(bb),proc->control_transfers),proc->control_transfers);
+	auto out_p = out_edges(find_node(variant<bblock_loc,rvalue>(bb),proc->control_transfers),proc->control_transfers);
 
 	ASSERT_EQ(distance(in_p.first,in_p.second), 1);
 	ASSERT_EQ(distance(out_p.first,out_p.second), 1);
@@ -252,7 +256,7 @@ TEST(procedure,empty)
 
 TEST(procedure,refine)
 {
-	std::vector<typename po::architecture_traits<test_tag>::token_type> bytes({0,1,2});
+	std::vector<typename po::architecture_traits<test_tag>::token_type> bytes({0,1,2,3});
 	std::map<typename po::architecture_traits<test_tag>::token_type,po::sem_state<test_tag>> states;
 	auto add = [&](po::offset p, size_t l, const std::string &n, po::offset b1) -> void
 	{
@@ -261,12 +265,12 @@ TEST(procedure,refine)
 		st.jump(b1);
 		states.insert(std::make_pair(p,st));
 	};
-	auto check = [&](const po::mnemonic &m, const std::string &n, po::offset p) -> void
+	auto check = [&](const po::mnemonic &m, const std::string &n, po::bound p) -> void
 	{
 		ASSERT_EQ(m.opcode, n);
 		ASSERT_TRUE(m.operands.empty());
 		ASSERT_TRUE(m.instructions.empty());
-		ASSERT_EQ(m.area, po::bound(p,p+1));
+		ASSERT_EQ(m.area, p);
 	};
 
 	/*
@@ -295,26 +299,59 @@ TEST(procedure,refine)
 	ASSERT_EQ(bb0->mnemonics().size(), 1);
 	ASSERT_EQ(bb1->mnemonics().size(), 2);
 
-	check(bb0->mnemonics()[0],"test0",0);
-	check(bb1->mnemonics()[0],"test1",1);
-	check(bb1->mnemonics()[1],"test2",2);
+	check(bb0->mnemonics()[0],"test0",po::bound(0,2));
+	check(bb1->mnemonics()[0],"test1",po::bound(0,2));
+	check(bb1->mnemonics()[1],"test2",po::bound(2,3));
 
-	auto in0_p = incoming(proc,bb0);
-	auto out0_p = outgoing(proc,bb0);
+	auto in0_p = in_edges(find_node(variant<bblock_loc,rvalue>(bb0),proc->control_transfers),proc->control_transfers);
+	auto out0_p = out_edges(find_node(variant<bblock_loc,rvalue>(bb0),proc->control_transfers),proc->control_transfers);
 
 	ASSERT_EQ(distance(in0_p.first,in0_p.second), 0);
 	ASSERT_EQ(distance(out0_p.first,out0_p.second), 1);
 
-	auto in1_p = incoming(proc,bb1);
-	auto out1_p = outgoing(proc,bb1);
+	auto in1_p = in_edges(find_node(variant<bblock_loc,rvalue>(bb1),proc->control_transfers),proc->control_transfers);
+	auto out1_p = out_edges(find_node(variant<bblock_loc,rvalue>(bb1),proc->control_transfers),proc->control_transfers);
 
 	ASSERT_EQ(distance(in1_p.first,in1_p.second), 2);
 	ASSERT_EQ(distance(out1_p.first,out1_p.second), 1);
 
 }
 
+struct proc_writer
+{
+	using edge_descriptor = boost::graph_traits<decltype(procedure::control_transfers)>::edge_descriptor;
+	using vertex_descriptor = boost::graph_traits<decltype(procedure::control_transfers)>::vertex_descriptor;
+
+	proc_writer(proc_loc p) : proc(p) {}
+
+	void operator()(std::ostream& os, vertex_descriptor vx) const
+	{
+		try
+		{
+			auto n = get_vertex(vx,proc->control_transfers);
+
+			if(get<bblock_loc>(&n))
+				os << "[label=\"" << get<bblock_loc>(n)->area() << "\"]";
+			else
+				os << "[label=\"" << get<rvalue>(n) << "\"]";
+		}
+		catch(const std::runtime_error&)
+		{
+			;
+		}
+	}
+
+	void operator()(std::ostream& os, edge_descriptor e) const
+	{
+	}
+
+private:
+	proc_loc proc;
+};
+
 TEST(procedure,continue)
 {
+	rdf::storage store;
 	po::proc_loc proc(new po::procedure(""));
 	po::mnemonic mne0(po::bound(0,1),"test0","",{},{});
 	po::mnemonic mne1(po::bound(1,2),"test1","",{},{});
@@ -324,6 +361,16 @@ TEST(procedure,continue)
 	po::bblock_loc bb1(new po::basic_block());
 	po::bblock_loc bb2(new po::basic_block());
 
+	insert_vertex(variant<bblock_loc,rvalue>(bb0),proc.write().control_transfers);
+	insert_vertex(variant<bblock_loc,rvalue>(bb1),proc.write().control_transfers);
+	insert_vertex(variant<bblock_loc,rvalue>(bb2),proc.write().control_transfers);
+
+	save_point(store);
+
+	find_node(variant<bblock_loc,rvalue>(bb0),proc->control_transfers);
+	find_node(variant<bblock_loc,rvalue>(bb1),proc->control_transfers);
+	find_node(variant<bblock_loc,rvalue>(bb1),proc->control_transfers);
+
 	bb0.write().mnemonics().push_back(mne0);
 	bb0.write().mnemonics().push_back(mne1);
 	bb1.write().mnemonics().push_back(mne2);
@@ -331,9 +378,8 @@ TEST(procedure,continue)
 
 	unconditional_jump(proc,bb0,po::constant(42));
 	unconditional_jump(proc,bb2,po::constant(40));
-
-	po::unconditional_jump(proc,bb0,bb1);
-	po::unconditional_jump(proc,bb0,bb2);
+	unconditional_jump(proc,bb0,bb1);
+	unconditional_jump(proc,bb0,bb2);
 
 	proc.write().entry = bb0;
 
@@ -367,8 +413,11 @@ TEST(procedure,continue)
 	add(41,"test41",42,boost::none);
 	add(42,"test42",55,make_optional<offset>(0));
 
+	proc_writer w(proc);
 	disassembler_mockup mockup(states);
 	proc = po::procedure::disassemble(proc,mockup,bytes,40);
+
+	write_graphviz(std::cerr,proc->control_transfers,w);
 
 	ASSERT_EQ(proc->rev_postorder().size(), 4);
 
@@ -388,49 +437,49 @@ TEST(procedure,continue)
 	po::bblock_loc bbo3 = *i3;
 	auto ct = proc->control_transfers;
 
-	auto in0_p = incoming(proc,bbo0);
-	auto out0_p = outgoing(proc,bbo0);
+	auto in0_p = in_edges(find_node(variant<bblock_loc,rvalue>(bbo0),proc->control_transfers),proc->control_transfers);
+	auto out0_p = out_edges(find_node(variant<bblock_loc,rvalue>(bbo0),proc->control_transfers),proc->control_transfers);
 
 	ASSERT_EQ(distance(in0_p.first,in0_p.second), 1);
-	ASSERT_TRUE(get<bblock_loc>(get_node(target(*in0_p.first,ct),ct)) == bbo3);
+	ASSERT_TRUE(get<bblock_loc>(get_vertex(target(*in0_p.first,ct),ct)) == bbo3);
 	ASSERT_EQ(bbo0->mnemonics().size(), 2);
 	check(bbo0->mnemonics()[0],"test0",0);
 	check(bbo0->mnemonics()[1],"test1",1);
 	ASSERT_EQ(distance(out0_p.first,out0_p.second), 2);
-	ASSERT_TRUE(get<bblock_loc>(get_node(target(*out0_p.first,ct),ct)) == bbo1 || get<bblock_loc>(get_node(target(*out0_p.first,ct),ct)) == bbo2);
-	ASSERT_TRUE(get<bblock_loc>(get_node(target(*(out0_p.first+1),ct),ct)) == bbo1 || get<bblock_loc>(get_node(target(*(out0_p.first+1),ct),ct)) == bbo2);
+	ASSERT_TRUE(get<bblock_loc>(get_vertex(target(*out0_p.first,ct),ct)) == bbo1 || get<bblock_loc>(get_vertex(target(*out0_p.first,ct),ct)) == bbo2);
+	ASSERT_TRUE(get<bblock_loc>(get_vertex(target(*(out0_p.first+1),ct),ct)) == bbo1 || get<bblock_loc>(get_vertex(target(*(out0_p.first+1),ct),ct)) == bbo2);
 
-	auto in1_p = incoming(proc,bbo1);
-	auto out1_p = outgoing(proc,bbo1);
+	auto in1_p = in_edges(find_node(variant<bblock_loc,rvalue>(bbo1),proc->control_transfers),proc->control_transfers);
+	auto out1_p = out_edges(find_node(variant<bblock_loc,rvalue>(bbo1),proc->control_transfers),proc->control_transfers);
 
 	ASSERT_EQ(distance(in1_p.first,in1_p.second), 1);
-	ASSERT_TRUE(get<bblock_loc>(get_node(target(*in1_p.first,ct),ct)) == bbo0);
+	ASSERT_TRUE(get<bblock_loc>(get_vertex(target(*in1_p.first,ct),ct)) == bbo0);
 	ASSERT_EQ(bbo1->mnemonics().size(), 1);
 	check(bbo1->mnemonics()[0],"test2",2);
 	ASSERT_EQ(distance(out1_p.first,out1_p.second), 0);
 
-	auto in2_p = incoming(proc,bbo2);
-	auto out2_p = outgoing(proc,bbo2);
+	auto in2_p = in_edges(find_node(variant<bblock_loc,rvalue>(bbo2),proc->control_transfers),proc->control_transfers);
+	auto out2_p = out_edges(find_node(variant<bblock_loc,rvalue>(bbo2),proc->control_transfers),proc->control_transfers);
 
 	ASSERT_EQ(distance(in2_p.first,in2_p.second), 1);
-	ASSERT_TRUE(get<bblock_loc>(get_node(target(*in2_p.first,ct),ct)) == bbo0);
+	ASSERT_TRUE(get<bblock_loc>(get_vertex(target(*in2_p.first,ct),ct)) == bbo0);
 	ASSERT_EQ(bbo2->mnemonics().size(), 1);
 	check(bbo2->mnemonics()[0],"test6",6);
 	ASSERT_EQ(distance(out2_p.first,out2_p.second), 1);
-	ASSERT_TRUE(get<bblock_loc>(get_node(target(*out2_p.first,ct),ct)) == bbo3);
+	ASSERT_TRUE(get<bblock_loc>(get_vertex(target(*out2_p.first,ct),ct)) == bbo3);
 
-	auto in3_p = incoming(proc,bbo3);
-	auto out3_p = outgoing(proc,bbo3);
+	auto in3_p = in_edges(find_node(variant<bblock_loc,rvalue>(bbo3),proc->control_transfers),proc->control_transfers);
+	auto out3_p = out_edges(find_node(variant<bblock_loc,rvalue>(bbo3),proc->control_transfers),proc->control_transfers);
 
 	ASSERT_EQ(distance(in3_p.first,in3_p.second), 1);
-	ASSERT_TRUE(get<bblock_loc>(get_node(target(*in3_p.first,ct),ct)) == bbo2);
+	ASSERT_TRUE(get<bblock_loc>(get_vertex(target(*in3_p.first,ct),ct)) == bbo2);
 	ASSERT_EQ(bbo3->mnemonics().size(), 3);
 	check(bbo3->mnemonics()[0],"test40",40);
 	check(bbo3->mnemonics()[1],"test41",41);
 	check(bbo3->mnemonics()[2],"test42",42);
 	ASSERT_EQ(distance(out3_p.first,out3_p.second), 2);
-	ASSERT_TRUE(get<bblock_loc>(get_node(target(*out3_p.first,ct),ct)) == bbo0 || to_constant(get<rvalue>(get_node(target(*out3_p.first,ct),ct))).content() == 55);
-	ASSERT_TRUE(get<bblock_loc>(get_node(target(*(out3_p.first+1),ct),ct)) == bbo0 || to_constant(get<rvalue>(get_node(target(*(out3_p.first+1),ct),ct))).content() == 55);
+	ASSERT_TRUE(get<bblock_loc>(get_vertex(target(*out3_p.first,ct),ct)) == bbo0 || to_constant(get<rvalue>(get_vertex(target(*out3_p.first,ct),ct))).content() == 55);
+	ASSERT_TRUE(get<bblock_loc>(get_vertex(target(*(out3_p.first+1),ct),ct)) == bbo0 || to_constant(get<rvalue>(get_vertex(target(*(out3_p.first+1),ct),ct))).content() == 55);
 
 	ASSERT_EQ(*(proc->entry), bbo0);
 }
@@ -442,8 +491,11 @@ TEST(procedure,entry_split)
 	po::mnemonic mne1(po::bound(1,2),"test1","",{},{});
 	po::bblock_loc bb0(new po::basic_block());
 
+	insert_vertex(variant<bblock_loc,rvalue>(bb0),proc.write().control_transfers);
+
 	bb0.write().mnemonics().push_back(mne0);
 	bb0.write().mnemonics().push_back(mne1);
+
 	unconditional_jump(proc,bb0,po::constant(2));
 
 	proc.write().entry = bb0;
@@ -521,13 +573,13 @@ TEST(procedure,marshal)
 	rvalue rv2 = constant(42);
 	proc_loc proc(new procedure("p1"));
 
-	auto vx0 = insert_node<variant<bblock_loc,rvalue>,guard>(bb0,proc.write().control_transfers);
-	auto vx1 = insert_node<variant<bblock_loc,rvalue>,guard>(bb1,proc.write().control_transfers);
-	auto vx2 = insert_node<variant<bblock_loc,rvalue>,guard>(bb2,proc.write().control_transfers);
-	auto vx3 = insert_node<variant<bblock_loc,rvalue>,guard>(bb3,proc.write().control_transfers);
-	auto vx4 = insert_node<variant<bblock_loc,rvalue>,guard>(bb4,proc.write().control_transfers);
-	auto vx5 = insert_node<variant<bblock_loc,rvalue>,guard>(rv1,proc.write().control_transfers);
-	auto vx6 = insert_node<variant<bblock_loc,rvalue>,guard>(rv2,proc.write().control_transfers);
+	auto vx0 = insert_vertex<variant<bblock_loc,rvalue>,guard>(bb0,proc.write().control_transfers);
+	auto vx1 = insert_vertex<variant<bblock_loc,rvalue>,guard>(bb1,proc.write().control_transfers);
+	auto vx2 = insert_vertex<variant<bblock_loc,rvalue>,guard>(bb2,proc.write().control_transfers);
+	auto vx3 = insert_vertex<variant<bblock_loc,rvalue>,guard>(bb3,proc.write().control_transfers);
+	auto vx4 = insert_vertex<variant<bblock_loc,rvalue>,guard>(bb4,proc.write().control_transfers);
+	auto vx5 = insert_vertex<variant<bblock_loc,rvalue>,guard>(rv1,proc.write().control_transfers);
+	auto vx6 = insert_vertex<variant<bblock_loc,rvalue>,guard>(rv2,proc.write().control_transfers);
 
 	insert_edge(guard(),vx0,vx1,proc.write().control_transfers);
 	insert_edge(guard(),vx0,vx5,proc.write().control_transfers);

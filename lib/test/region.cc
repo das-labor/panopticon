@@ -11,9 +11,9 @@ struct region : public ::testing::Test
 
 	void SetUp(void)
 	{
-		auto vx1 = insert_node(r1,regs);
-		auto vx2 = insert_node(r2,regs);
-		auto vx3 = insert_node(r3,regs);
+		auto vx1 = insert_vertex(r1,regs);
+		auto vx2 = insert_vertex(r2,regs);
+		auto vx3 = insert_vertex(r3,regs);
 
 		insert_edge(po::bound(32,96),vx1,vx2,regs);
 		insert_edge(po::bound(16,32),vx1,vx3,regs);
@@ -42,9 +42,7 @@ TEST_F(region,tree)
 	});
 
 	for(auto i: t)
-	{
 		std::cout << i.first->name() << " -> " << i.second->name() << std::endl;
-	}
 
 	ASSERT_TRUE(t == expect);
 }

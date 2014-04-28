@@ -41,6 +41,9 @@ namespace po
 		/// Constructs an empty procedure with name @arg n
 		procedure(const std::string &n);
 
+		bool operator==(const procedure&) const;
+		bool operator!=(const procedure&) const;
+
 		/// Calls @arg fn for every basic block in the procedure in reverse postorder.
 		const std::vector<bblock_loc>& rev_postorder(void) const;
 		const tree<bblock_loc>& domiance(void) const;
@@ -73,12 +76,6 @@ namespace po
 	/// Adds an control transfer with @ref from as source and @ref to as destination
 	void unconditional_jump(proc_loc p, bblock_loc from, rvalue to);
 
-	std::pair<typename boost::shared_container_iterator<std::set<typename boost::graph_traits<po::digraph<boost::variant<bblock_loc,rvalue>,guard>>::edge_descriptor>>,typename boost::shared_container_iterator<std::set<typename boost::graph_traits<po::digraph<boost::variant<bblock_loc,rvalue>,guard>>::edge_descriptor>>>
-	incoming(proc_loc p, bblock_loc bb);
-
-	std::pair<typename boost::graph_traits<decltype(procedure::control_transfers)>::out_edge_iterator,typename boost::graph_traits<decltype(procedure::control_transfers)>::out_edge_iterator>
-	outgoing(proc_loc p, bblock_loc bb);
-
 	/// Replaces the source basic block @ref oldbb with @ref newbb in all outgoing control transfers of @ref to.
 	void replace_incoming(bblock_loc to, bblock_loc oldbb, bblock_loc newbb);
 	/// Replaces the destination basic block @ref oldbb with @ref newbb in all outgoing control transfers of @ref from.
@@ -106,7 +103,7 @@ namespace po
 		std::map<offset,mnemonic> mnemonics;
 		std::unordered_multimap<offset,std::pair<boost::optional<offset>,guard>> source;
 		std::unordered_multimap<offset,std::pair<offset,guard>> destination;
-		proc_loc ret = (proc ? *proc : proc_loc(new procedure("proc_noname")));
+		proc_loc ret = /*(proc ? *proc : */proc_loc(new procedure("proc_noname"));//);
 		std::function<boost::optional<bound>(const boost::variant<rvalue,bblock_wloc>&)> get_off = [&](const boost::variant<rvalue,bblock_wloc>& v) -> boost::optional<bound>
 		{
 			if(boost::get<rvalue>(&v))
@@ -140,22 +137,24 @@ namespace po
 			for(auto e: iters(edges((*proc)->control_transfers)))
 			{
 				auto tgt = target(e,(*proc)->control_transfers);
-				auto src = boost::source(e,(*proc)->control_transfers);
+				auto src = po::source(e,(*proc)->control_transfers);
 
-				auto src_b = get_off(get_node(src,(*proc)->control_transfers));
-				auto tgt_b = get_off(get_node(tgt,(*proc)->control_transfers));
+				auto src_b = get_off(get_vertex(src,(*proc)->control_transfers));
+				auto tgt_b = get_off(get_vertex(tgt,(*proc)->control_transfers));
 
 				if(src_b && tgt_b)
 				{
-					std::pair<offset,guard> p(tgt_b->lower(),get_edge(e,(*proc)->control_transfers));
+					guard g = get_edge(e,(*proc)->control_transfers);
 
-					source.emplace(src_b->upper() - 1,p);
-					destination.emplace(p.first,std::make_pair(src_b->upper() - 1,p.second));
+					source.emplace(src_b->upper() - 1,std::make_pair(tgt_b->lower(),g));
+					destination.emplace(tgt_b->lower(),std::make_pair(src_b->upper() - 1,g));
 				}
 			}
 
 			//(*proc).write().control_transfers = digraph<boost::variant<bblock_loc, rvalue>, po::guard>();
 		}
+
+		assert(source.size() == destination.size());
 
 		todo.insert(start);
 
@@ -216,6 +215,16 @@ namespace po
 				std::cerr << "Overlapping mnemonics at " << cur_addr << " with \"" << "[" << j->second.area << "] " << j->second << "\"" << std::endl;
 			}
 		}
+for(auto d: destination)
+		{
+			std::cerr << "jump " << d.first << " <- " << d.second.first << std::endl;
+		}
+
+		if(source.empty())
+			std::cerr << "empty source" << std::endl;
+		else
+			std::cerr << "non empty source" << std::endl;
+
 
 		auto cur_mne = mnemonics.begin(), first_mne = cur_mne;
 		std::map<offset,bblock_loc> bblocks;
@@ -227,7 +236,7 @@ namespace po
 			std::for_each(begin,end,[&](const std::pair<offset,mnemonic> &p)
 				{ bb.write().mnemonics().push_back(p.second); });
 
-			insert_node<boost::variant<bblock_loc,rvalue>,guard>(bb,ret.write().control_transfers);
+			insert_vertex<boost::variant<bblock_loc,rvalue>,guard>(bb,ret.write().control_transfers);
 			assert(bblocks.emplace(bb->area().upper() - 1,bb).second);
 		};
 
@@ -298,8 +307,8 @@ namespace po
 		auto q = vertices(ret->control_transfers);
 
 		if(std::distance(q.first,q.second) == 1 &&
-			 get<bblock_loc>(&get_node(*q.first,ret->control_transfers)) &&
-			 get<bblock_loc>(get_node(*q.first,ret->control_transfers))->mnemonics().empty())
+			 get<bblock_loc>(&get_vertex(*q.first,ret->control_transfers)) &&
+			 get<bblock_loc>(get_vertex(*q.first,ret->control_transfers))->mnemonics().empty())
 			ret.write().control_transfers = digraph<boost::variant<bblock_loc,rvalue>,guard>();
 
 		q = vertices(ret->control_transfers);
@@ -307,7 +316,6 @@ namespace po
 		// entry may have been split
 		if((proc && (*proc)->entry) || std::distance(q.first,q.second))
 		{
-			std::cerr << "split" << std::endl;
 			offset entry = proc && (*proc)->entry ? (*(*proc)->entry)->area().lower() : start;
 			auto i = bblocks.lower_bound(entry);
 
@@ -318,7 +326,6 @@ namespace po
 		}
 		else if(!proc)
 		{
-			std::cerr << "start" << std::endl;
 			auto j = bblocks.lower_bound(start);
 
 			assert(j != bblocks.end());
@@ -326,7 +333,6 @@ namespace po
 		}
 		else
 		{
-			std::cerr << "none" << std::endl;
 			ret.write().entry = boost::none;
 		}
 

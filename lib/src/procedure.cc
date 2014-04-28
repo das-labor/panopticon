@@ -24,7 +24,7 @@ procedure* po::unmarshal(const uuid& u, const rdf::storage &store)
 	using vx_desc = typename boost::graph_traits<decltype(ret->control_transfers)>::vertex_descriptor;
 
 	for(auto bb: bbs)
-		insert_node<boost::variant<bblock_loc,rvalue>,guard>(bblock_loc{uuid(bb.object.as_iri().substr(bb.object.as_iri().size()-36)),store},ret->control_transfers);
+		insert_vertex<boost::variant<bblock_loc,rvalue>,guard>(bblock_loc{uuid(bb.object.as_iri().substr(bb.object.as_iri().size()-36)),store},ret->control_transfers);
 
 	for(auto bb: bbs)
 	{
@@ -52,7 +52,7 @@ procedure* po::unmarshal(const uuid& u, const rdf::storage &store)
 			else
 			{
 				rvalue tgt = *unique_ptr<rvalue>(unmarshal<rvalue>(uuid(target.object.as_iri().substr(target.object.as_iri().size()-36)),store));
-				vx_desc vx_b = insert_node<boost::variant<bblock_loc,rvalue>,guard>(tgt,ret->control_transfers);
+				vx_desc vx_b = insert_vertex<boost::variant<bblock_loc,rvalue>,guard>(tgt,ret->control_transfers);
 
 				insert_edge<boost::variant<bblock_loc,rvalue>,guard>(gg,vx_a,vx_b,ret->control_transfers);
 			}
@@ -67,14 +67,14 @@ procedure* po::unmarshal(const uuid& u, const rdf::storage &store)
 		auto p = vertices(ret->control_transfers);
 		auto i = find_if(p.first,p.second,[&](vx_desc v)
 		{
-			auto n = get_node(v,ret->control_transfers);
+			auto n = get_vertex(v,ret->control_transfers);
 
 			return get<bblock_loc>(&n) &&
 						 get<bblock_loc>(n).tag() == uu;
 		});
 
 		assert(i != p.second);
-		ret->entry = get<bblock_loc>(get_node(*i,ret->control_transfers));
+		ret->entry = get<bblock_loc>(get_vertex(*i,ret->control_transfers));
 	}
 
 	return ret;
@@ -105,8 +105,8 @@ rdf::statements po::marshal(const procedure* p, const uuid& u)
 
 	for(auto e: iters(edges(p->control_transfers)))
 	{
-		if(get<rvalue>(&get_node(source(e,p->control_transfers),p->control_transfers)) &&
-			 get<rvalue>(&get_node(target(e,p->control_transfers),p->control_transfers)))
+		if(get<rvalue>(&get_vertex(source(e,p->control_transfers),p->control_transfers)) &&
+			 get<rvalue>(&get_vertex(target(e,p->control_transfers),p->control_transfers)))
 			continue;
 
 		uuid cu = ng(to_string(cnt++));
@@ -114,8 +114,8 @@ rdf::statements po::marshal(const procedure* p, const uuid& u)
 		uuid gu = ng(to_string(cnt++));
 		rdf::node gn = rdf::ns_local(to_string(gu));
 		rdf::statements g = marshal(&get_edge(e,p->control_transfers),gu);
-		pair<rdf::node,rdf::statements> in_p = marshal_node(get_node(target(e,p->control_transfers),p->control_transfers));
-		pair<rdf::node,rdf::statements> out_p = marshal_node(get_node(source(e,p->control_transfers),p->control_transfers));
+		pair<rdf::node,rdf::statements> in_p = marshal_node(get_vertex(target(e,p->control_transfers),p->control_transfers));
+		pair<rdf::node,rdf::statements> out_p = marshal_node(get_vertex(source(e,p->control_transfers),p->control_transfers));
 
 		std::move(g.begin(),g.end(),back_inserter(ret));
 		std::move(in_p.second.begin(),in_p.second.end(),back_inserter(ret));
@@ -126,8 +126,20 @@ rdf::statements po::marshal(const procedure* p, const uuid& u)
 		ret.emplace_back(cn,rdf::ns_po("out"),out_p.first);
 	}
 
-	for(auto bb: p->rev_postorder())
-		ret.emplace_back(node,rdf::ns_po("include"),rdf::ns_local(to_string(bb.tag())));
+	for(auto o: iters(vertices(p->control_transfers)))
+	{
+		try
+		{
+			variant<bblock_loc,rvalue> var = get_vertex<variant<bblock_loc,rvalue>,guard>(o,p->control_transfers);
+
+			if(get<bblock_loc>(&var))
+				ret.emplace_back(node,rdf::ns_po("include"),rdf::ns_local(to_string(get<bblock_loc>(var).tag())));
+		}
+		catch(runtime_error&)
+		{
+			;
+		}
+	}
 
 	if(p->entry)
 		ret.emplace_back(node,rdf::ns_po("entry"),rdf::ns_local(to_string(p->entry->tag())));
@@ -139,6 +151,9 @@ rdf::statements po::marshal(const procedure* p, const uuid& u)
 procedure::procedure(const std::string &n)
 : name(n), entry(boost::none), control_transfers(), _rev_postorder(boost::none), _dominance(boost::none)
 {}
+
+bool procedure::operator==(const procedure& p) const { return &p == this; }
+bool procedure::operator!=(const procedure& p) const { return &p != this; }
 
 const vector<bblock_loc>& procedure::rev_postorder(void) const
 {
@@ -158,8 +173,8 @@ const vector<bblock_loc>& procedure::rev_postorder(void) const
 		if(num_vertices(control_transfers))
 		{
 			for(vx_desc vx: iters(vertices(control_transfers)))
-				if(get<bblock_loc>(&get_node(vx,control_transfers)))
-					_rev_postorder->push_back(get<bblock_loc>(get_node(vx,control_transfers)));
+				if(get<bblock_loc>(&get_vertex(vx,control_transfers)))
+					_rev_postorder->push_back(get<bblock_loc>(get_vertex(vx,control_transfers)));
 
 			int time = 0;
 			depth_first_search(
@@ -180,24 +195,12 @@ boost::optional<bblock_loc> po::find_bblock(proc_loc proc, offset a)
 {
 	for(auto vx: iters(vertices(proc->control_transfers)))
 	{
-		auto bb = get_node<variant<bblock_loc,rvalue>,guard>(vx,proc->control_transfers);
+		auto bb = get_vertex<variant<bblock_loc,rvalue>,guard>(vx,proc->control_transfers);
 		if(get<bblock_loc>(&bb) && icl::contains(get<bblock_loc>(bb)->area(),a))
 			return get<bblock_loc>(bb);
 	}
 
 	return boost::none;
-}
-
-std::pair<typename boost::shared_container_iterator<std::set<typename boost::graph_traits<po::digraph<boost::variant<bblock_loc,rvalue>,guard>>::edge_descriptor>>,typename boost::shared_container_iterator<std::set<typename boost::graph_traits<po::digraph<boost::variant<bblock_loc,rvalue>,guard>>::edge_descriptor>>>
-po::incoming(proc_loc p, bblock_loc bb)
-{
-	return in_edges(find_node(variant<bblock_loc,rvalue>(bb),p->control_transfers),p->control_transfers);
-}
-
-std::pair<typename boost::graph_traits<decltype(procedure::control_transfers)>::out_edge_iterator,typename boost::graph_traits<decltype(procedure::control_transfers)>::out_edge_iterator>
-po::outgoing(proc_loc p, bblock_loc bb)
-{
-	return out_edges(find_node(variant<bblock_loc,rvalue>(bb),p->control_transfers),p->control_transfers);
 }
 
 void po::execute(proc_loc proc,function<void(const lvalue &left, instr::Function fn, const vector<rvalue> &right)> f)
@@ -230,8 +233,8 @@ void po::conditional_jump(proc_loc p, bblock_loc from, bblock_loc to, guard g)
 	auto vx_b = find_node(variant<bblock_loc,rvalue>(to),p->control_transfers);
 	auto q = vertices(p->control_transfers);
 
-	assert(std::find_if(q.first,q.second,[&](vx_desc d) { try { return get<bblock_loc>(get_node(d,p->control_transfers)) == from; } catch(...) { return false; } }) != q.second &&
-				 std::find_if(q.first,q.second,[&](vx_desc d) { try { return get<bblock_loc>(get_node(d,p->control_transfers)) == to; } catch(...) { return false; } }) != q.second);
+	assert(std::find_if(q.first,q.second,[&](vx_desc d) { try { return get<bblock_loc>(get_vertex(d,p->control_transfers)) == from; } catch(...) { return false; } }) != q.second &&
+				 std::find_if(q.first,q.second,[&](vx_desc d) { try { return get<bblock_loc>(get_vertex(d,p->control_transfers)) == to; } catch(...) { return false; } }) != q.second);
 	insert_edge(g,vx_a,vx_b,p.write().control_transfers);
 }
 
@@ -246,7 +249,7 @@ void po::conditional_jump(proc_loc p, bblock_loc from, rvalue to, guard g)
 	}
 	catch(const out_of_range&)
 	{
-		insert_edge(g,vx_a,insert_node(variant<bblock_loc,rvalue>(to),p.write().control_transfers),p.write().control_transfers);
+		insert_edge(g,vx_a,insert_vertex(variant<bblock_loc,rvalue>(to),p.write().control_transfers),p.write().control_transfers);
 	}
 }
 

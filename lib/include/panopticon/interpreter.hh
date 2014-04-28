@@ -58,7 +58,7 @@ namespace po
 		while(!worklist.empty())
 		{
 			vx_desc vx = *worklist.begin();
-			bblock_loc bb = get<bblock_loc>(get_node<boost::variant<bblock_loc,rvalue>,guard>(vx,proc->control_transfers));
+			bblock_loc bb = get<bblock_loc>(get_vertex<boost::variant<bblock_loc,rvalue>,guard>(vx,proc->control_transfers));
 			bool modified = false;
 
 			worklist.erase(worklist.begin());
@@ -87,9 +87,9 @@ namespace po
 
 			if(modified)
 			{
-				auto p = boost::out_edges(vx,proc->control_transfers);
+				auto p = out_edges(vx,proc->control_transfers);
 				std::copy_if(p.first,p.second,std::back_inserter(worklist),[&](vx_desc v)
-					{ get<bblock_loc>(&get_node<boost::variant<bblock_loc,rvalue>,guard>(v,proc->control_transfers)); });
+					{ get<bblock_loc>(&get_vertex<boost::variant<bblock_loc,rvalue>,guard>(v,proc->control_transfers)); });
 			}
 
 			std::cout << worklist.size() << std::endl;

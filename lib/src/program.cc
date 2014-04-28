@@ -14,7 +14,7 @@ program::program(const string &n)
 
 void program::insert(proc_loc p)
 {
-	insert_node(variant<proc_loc,symbol>(p),calls());
+	insert_vertex(variant<proc_loc,symbol>(p),calls());
 }
 
 digraph<variant<proc_loc,symbol>,nullptr_t>& program::calls(void)
@@ -35,7 +35,7 @@ const std::unordered_set<proc_loc>& program::procedures(void) const
 		_procedures = std::unordered_set<proc_loc>();
 		for(auto v: iters(vertices(_calls)))
 		{
-			auto p = get_node(v,_calls);
+			auto p = get_vertex(v,_calls);
 			if(get<proc_loc>(&p))
 			{
 				cout << "aaa: " <<  to_string(get<proc_loc>(p).tag()) << endl;
@@ -82,7 +82,7 @@ program* po::unmarshal(const uuid& u, const rdf::storage &store)
 			else
 			{
 				symbol sym = s.object.as_literal();
-				auto vx_b = insert_node<variant<proc_loc,symbol>,nullptr_t>(sym,ret->_calls);
+				auto vx_b = insert_vertex<variant<proc_loc,symbol>,nullptr_t>(sym,ret->_calls);
 
 				insert_edge(nullptr,vx_a,vx_b,ret->_calls);
 			}
@@ -111,7 +111,7 @@ rdf::statements po::marshal(const program* p, const uuid& u)
 		for(auto e: iters(out_edges(vx,p->calls())))
 		{
 			auto wx = target(e,p->calls());
-			auto v = get_node(wx,p->calls());
+			auto v = get_vertex(wx,p->calls());
 
 			if(get<proc_loc>(&v))
 				ret.emplace_back(m,rdf::ns_po("calls"),rdf::ns_local(to_string(get<proc_loc>(v).tag())));
@@ -144,7 +144,7 @@ void po::call(prog_loc p, proc_loc from, const symbol& to)
 	}
 	catch(const out_of_range&)
 	{
-		insert_edge(nullptr,vx_a,insert_node(variant<proc_loc,symbol>(to),p.write().calls()),p.write().calls());
+		insert_edge(nullptr,vx_a,insert_vertex(variant<proc_loc,symbol>(to),p.write().calls()),p.write().calls());
 	}
 }
 

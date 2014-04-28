@@ -1,5 +1,8 @@
 #include <gtest/gtest.h>
 #include <panopticon/digraph.hh>
+#include <panopticon/loc.hh>
+
+#include <boost/graph/graph_concepts.hpp>
 
 using namespace po;
 using namespace std;
@@ -14,9 +17,9 @@ TEST(digraph,node_attribute)
 {
 	po::digraph<int,std::string> g;
 
-	auto n1 = insert_node(42,g);
-	auto n2 = insert_node(13,g);
-	auto n3 = insert_node(1337,g);
+	auto n1 = insert_vertex(42,g);
+	auto n2 = insert_vertex(13,g);
+	auto n3 = insert_vertex(1337,g);
 
 	ASSERT_EQ(n1, find_node(42,g));
 	ASSERT_EQ(n2, find_node(13,g));
@@ -25,13 +28,34 @@ TEST(digraph,node_attribute)
 	ASSERT_THROW(find_node(69,g),out_of_range);
 }
 
+/*TEST(digraph,copy)
+{
+	using int_loc = loc<int>;
+	po::digraph<int_loc,std::string> g1;
+
+	auto n1 = insert_vertex(int_loc(new int(42)),g1);
+	insert_vertex(int_loc(new int(13)),g1);
+	insert_vertex(int_loc(new int(1337)),g1);
+
+	po::digraph<int_loc,std::string> g2 = g1;
+
+	ASSERT_EQ(3, num_vertices(g2));
+	ASSERT_EQ(0, num_edges(g2));
+	ASSERT_EQ(g1, g2);
+
+	int_loc a = get_vertex(n1,g1);
+	a.write() = 41;
+
+	ASSERT_NE(g1, g2);
+}*/
+
 TEST(digraph,usage)
 {
 	po::digraph<int,std::string> g;
 
-	auto n1 = insert_node(42,g);
-	auto n2 = insert_node(13,g);
-	auto n3 = insert_node(1337,g);
+	auto n1 = insert_vertex(42,g);
+	auto n2 = insert_vertex(13,g);
+	auto n3 = insert_vertex(1337,g);
 
 	auto e12 = insert_edge(string("a"),n1,n2,g);
 	auto e23 = insert_edge(string("b"),n2,n3,g);
@@ -45,9 +69,9 @@ TEST(digraph,usage)
 	ASSERT_NE(e12, e31);
 	ASSERT_NE(e23, e31);
 
-	ASSERT_EQ(get_node(n1,g), 42);
-	ASSERT_EQ(get_node(n2,g), 13);
-	ASSERT_EQ(get_node(n3,g), 1337);
+	ASSERT_EQ(get_vertex(n1,g), 42);
+	ASSERT_EQ(get_vertex(n2,g), 13);
+	ASSERT_EQ(get_vertex(n3,g), 1337);
 
 	ASSERT_EQ(get_edge(e12,g), string("a"));
 	ASSERT_EQ(get_edge(e23,g), string("b"));
@@ -68,6 +92,7 @@ TEST(digraph,usage)
 	ASSERT_EQ(out_degree(n3,g), 1);
 
 	remove_edge(e12,g);
+
 	remove_vertex(n1,g);
 	remove_vertex(n2,g);
 	remove_vertex(n3,g);
@@ -80,10 +105,10 @@ TEST(digraph,out_iterator)
 {
 	po::digraph<int,std::string> g;
 
-	auto n1 = insert_node(42,g);
-	auto n2 = insert_node(13,g);
-	auto n3 = insert_node(1337,g);
-	auto n4 = insert_node(99,g);
+	auto n1 = insert_vertex(42,g);
+	auto n2 = insert_vertex(13,g);
+	auto n3 = insert_vertex(1337,g);
+	auto n4 = insert_vertex(99,g);
 
 	auto e12 = insert_edge(string("a"),n1,n2,g);
 	auto e23 = insert_edge(string("b"),n2,n3,g);
@@ -105,14 +130,76 @@ TEST(digraph,out_iterator)
 	ASSERT_EQ(i.first, i.second);
 }
 
+TEST(digraph,in_iterator)
+{
+	po::digraph<int,std::string> g;
+
+	auto n1 = insert_vertex(42,g);
+	auto n2 = insert_vertex(13,g);
+	auto n3 = insert_vertex(1337,g);
+	auto n4 = insert_vertex(99,g);
+
+	auto e12 = insert_edge(string("a"),n1,n2,g);
+	auto e23 = insert_edge(string("b"),n2,n3,g);
+	auto e21 = insert_edge(string("c"),n2,n1,g);
+	auto e14 = insert_edge(string("d"),n1,n4,g);
+
+	auto i = in_edges(n1,g);
+	ASSERT_TRUE(*i.first == e21);
+	ASSERT_EQ(i.first + 1, i.second);
+
+	i = in_edges(n2,g);
+	ASSERT_TRUE(*i.first == e12);
+	ASSERT_EQ(i.first + 1, i.second);
+
+	i = in_edges(n3,g);
+	ASSERT_TRUE(*i.first == e23);
+	ASSERT_EQ(i.first + 1, i.second);
+
+	i = in_edges(n4,g);
+	ASSERT_TRUE(*i.first == e14);
+	ASSERT_EQ(i.first + 1, i.second);
+}
+
+TEST(digraph,adj_iterator)
+{
+	po::digraph<int,std::string> g;
+
+	auto n1 = insert_vertex(42,g);
+	auto n2 = insert_vertex(13,g);
+	auto n3 = insert_vertex(1337,g);
+	auto n4 = insert_vertex(99,g);
+
+	insert_edge(string("a"),n1,n2,g);
+	insert_edge(string("b"),n2,n3,g);
+	insert_edge(string("c"),n2,n1,g);
+	insert_edge(string("d"),n1,n4,g);
+
+	auto i = adjacent_vertices(n1,g);
+	ASSERT_TRUE((*i.first == n2 && *(i.first + 1) == n4) || (*i.first == n4 && *(i.first + 1) == n2));
+	ASSERT_EQ(std::distance(i.first ,i.second), 2);
+
+	i = adjacent_vertices(n2,g);
+	ASSERT_TRUE((*i.first == n1 && *(i.first + 1) == n3) || (*i.first == n3 && *(i.first + 1) == n1));
+	ASSERT_EQ(std::distance(i.first ,i.second), 2);
+
+	i = adjacent_vertices(n3,g);
+	ASSERT_TRUE(*i.first == n2);
+	ASSERT_EQ(std::distance(i.first ,i.second), 1);
+
+	i = adjacent_vertices(n4,g);
+	ASSERT_TRUE(*i.first == n1);
+	ASSERT_EQ(std::distance(i.first ,i.second), 1);
+}
+
 TEST(digraph,iterators)
 {
 	po::digraph<int,std::string> g;
 
-	auto n1 = insert_node(42,g);
-	auto n2 = insert_node(13,g);
-	auto n3 = insert_node(1337,g);
-	auto n4 = insert_node(99,g);
+	auto n1 = insert_vertex(42,g);
+	auto n2 = insert_vertex(13,g);
+	auto n3 = insert_vertex(1337,g);
+	auto n4 = insert_vertex(99,g);
 
 	insert_edge(string("a"),n1,n2,g);
 	insert_edge(string("b"),n2,n3,g);
@@ -135,9 +222,9 @@ TEST(digraph,error)
 {
 	po::digraph<int,std::string> g1,g2;
 
-	auto n1 = insert_node(42,g1);
-	auto n2 = insert_node(13,g1);
-	insert_node(13,g1);
+	auto n1 = insert_vertex(42,g1);
+	auto n2 = insert_vertex(13,g1);
+	insert_vertex(13,g1);
 
 	insert_edge(string("a"),n1,n2,g1);
 	insert_edge(string("b"),n1,n2,g1);
