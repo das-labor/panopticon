@@ -27,6 +27,8 @@ namespace po
 	/// Returns basic block occuping address @arg a
 	boost::optional<bblock_loc> find_bblock(proc_loc proc, offset a);
 
+	std::list<mnemonic>& operator+=(std::list<mnemonic>& a, const std::list<mnemonic>& b);
+
 	/**
 	 * @brief Function
 	 *
@@ -40,7 +42,9 @@ namespace po
 	{
 		/// Constructs an empty procedure with name @arg n
 		procedure(const std::string &n);
+		procedure(const procedure& p);
 
+		procedure& operator=(const procedure& p);
 		bool operator==(const procedure&) const;
 		bool operator!=(const procedure&) const;
 
@@ -110,7 +114,7 @@ namespace po
 			{
 				rvalue rv = boost::get<rvalue>(v);
 				if(is_constant(rv))
-					return boost::optional<bound>((to_constant(rv).content(),to_constant(rv).content() + 1));
+					return boost::optional<bound>((to_constant(rv).content(),to_constant(rv).content()));
 				else
 					return boost::none;
 			}
@@ -125,12 +129,21 @@ namespace po
 		// copy exsisting mnemonics and jumps into tables. TODO: cache tables in proc
 		if(proc)
 		{
-			for(const bblock_loc bb: (*proc)->rev_postorder())
+			for(auto vx: iters(vertices((*proc)->control_transfers)))
 			{
-				for(const mnemonic &m: bb->mnemonics())
+				auto nd = get_vertex(vx,(*proc)->control_transfers);
+
+				if(get<bblock_loc>(&nd))
 				{
-					assert(boost::icl::size(m.area));
-					mnemonics.emplace(m.area.upper() - 1,m);
+					for(const mnemonic &m: get<bblock_loc>(nd)->mnemonics())
+					{
+						assert(boost::icl::size(m.area));
+						mnemonics.emplace(m.area.upper() - 1,m);
+					}
+				}
+				else if(get<rvalue>(&nd) && is_constant(get<rvalue>(nd)))
+				{
+					todo.emplace(to_constant(get<rvalue>(nd)).content());
 				}
 			}
 
@@ -154,10 +167,15 @@ namespace po
 			//(*proc).write().control_transfers = digraph<boost::variant<bblock_loc, rvalue>, po::guard>();
 		}
 
+		for(auto d: destination)
+		{
+			std::cout << d.first << " <- " << d.second.first << std::endl;
+		}
+
 		assert(source.size() == destination.size());
+		todo.emplace(start);
 
-		todo.insert(start);
-
+		// disassemble targets
 		while(!todo.empty())
 		{
 			offset cur_addr = *todo.begin();
@@ -215,17 +233,8 @@ namespace po
 				std::cerr << "Overlapping mnemonics at " << cur_addr << " with \"" << "[" << j->second.area << "] " << j->second << "\"" << std::endl;
 			}
 		}
-for(auto d: destination)
-		{
-			std::cerr << "jump " << d.first << " <- " << d.second.first << std::endl;
-		}
 
-		if(source.empty())
-			std::cerr << "empty source" << std::endl;
-		else
-			std::cerr << "non empty source" << std::endl;
-
-
+		// rebuild basic blocks
 		auto cur_mne = mnemonics.begin(), first_mne = cur_mne;
 		std::map<offset,bblock_loc> bblocks;
 		std::function<void(std::map<offset,mnemonic>::iterator,std::map<offset,mnemonic>::iterator)> make_bblock;
@@ -239,6 +248,16 @@ for(auto d: destination)
 			insert_vertex<boost::variant<bblock_loc,rvalue>,guard>(bb,ret.write().control_transfers);
 			assert(bblocks.emplace(bb->area().upper() - 1,bb).second);
 		};
+
+		for(auto m: mnemonics)
+		{
+			std::cout << m.second.area << std::endl;
+		}
+
+		for(auto d: destination)
+		{
+			std::cout << d.first << " <- " << d.second.first << std::endl;
+		}
 
 		while(cur_mne != mnemonics.end())
 		{
@@ -335,6 +354,8 @@ for(auto d: destination)
 		{
 			ret.write().entry = boost::none;
 		}
+
+		assert(!proc || !(*proc)->entry || ret->entry);
 
 		q = vertices(ret->control_transfers);
 

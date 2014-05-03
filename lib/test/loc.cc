@@ -2,6 +2,7 @@
 
 #include <gtest/gtest.h>
 #include <panopticon/loc.hh>
+#include <panopticon/digraph.hh>
 
 using namespace po;
 using namespace std;
@@ -269,4 +270,37 @@ TEST(loc,marshal_delete)
 	// A: 3 + 4
 	// B: 2 * 2
 	ASSERT_EQ(store->count(),3 + 4 + 2 * 2);
+}
+
+struct C
+{
+	digraph<int,std::string> graph;
+};
+
+namespace po
+{
+	template<>
+	C* unmarshal(const uuid&, const rdf::storage&)
+	{
+		return new C();
+	}
+
+	template<>
+	rdf::statements marshal(const C*, const uuid&)
+	{
+		return rdf::statements();
+	}
+}
+
+TEST(loc,multiple)
+{
+	std::shared_ptr<rdf::storage> store(new rdf::storage());
+	loc<C> c1(new C());
+	loc<C> c2 = c1;
+
+	insert_vertex(1,c1.write().graph);
+	loc<C> c3(c1);
+	ASSERT_EQ(num_vertices(c2->graph), 1);
+	insert_vertex(2,c2.write().graph);
+	ASSERT_EQ(num_vertices(c3->graph), 2);
 }

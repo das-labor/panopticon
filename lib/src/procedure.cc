@@ -14,6 +14,12 @@ using namespace boost;
 
 //domtree::domtree(bblock_ptr b) : intermediate(0), successors(), frontiers(), basic_block(b) {}
 
+std::list<mnemonic>& po::operator+=(std::list<mnemonic>& a, const std::list<mnemonic>& b)
+{
+	std::copy(b.begin(),b.end(),std::back_inserter(a));
+	return a;
+}
+
 template<>
 procedure* po::unmarshal(const uuid& u, const rdf::storage &store)
 {
@@ -152,6 +158,24 @@ procedure::procedure(const std::string &n)
 : name(n), entry(boost::none), control_transfers(), _rev_postorder(boost::none), _dominance(boost::none)
 {}
 
+procedure::procedure(const procedure& p)
+: name(p.name), entry(p.entry), control_transfers(p.control_transfers), _rev_postorder(boost::none), _dominance(boost::none)
+{}
+
+procedure& procedure::operator=(const procedure& p)
+{
+	if(&p != this)
+	{
+		name = p.name;
+		entry = p.entry;
+		control_transfers = p.control_transfers;
+		_rev_postorder = boost::none;
+		_dominance = boost::none;
+	}
+
+	return *this;
+}
+
 bool procedure::operator==(const procedure& p) const { return &p == this; }
 bool procedure::operator!=(const procedure& p) const { return &p != this; }
 
@@ -233,8 +257,8 @@ void po::conditional_jump(proc_loc p, bblock_loc from, bblock_loc to, guard g)
 	auto vx_b = find_node(variant<bblock_loc,rvalue>(to),p->control_transfers);
 	auto q = vertices(p->control_transfers);
 
-	assert(std::find_if(q.first,q.second,[&](vx_desc d) { try { return get<bblock_loc>(get_vertex(d,p->control_transfers)) == from; } catch(...) { return false; } }) != q.second &&
-				 std::find_if(q.first,q.second,[&](vx_desc d) { try { return get<bblock_loc>(get_vertex(d,p->control_transfers)) == to; } catch(...) { return false; } }) != q.second);
+	assert(std::find_if(q.first,q.second,[&](vx_desc d) { try { return get<bblock_loc>(get_vertex(d,p->control_transfers)) == from; } catch(const boost::bad_get&) { return false; } }) != q.second &&
+				 std::find_if(q.first,q.second,[&](vx_desc d) { try { return get<bblock_loc>(get_vertex(d,p->control_transfers)) == to; } catch(const boost::bad_get&) { return false; } }) != q.second);
 	insert_edge(g,vx_a,vx_b,p.write().control_transfers);
 }
 

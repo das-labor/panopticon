@@ -326,23 +326,17 @@ struct proc_writer
 
 	void operator()(std::ostream& os, vertex_descriptor vx) const
 	{
-		try
-		{
-			auto n = get_vertex(vx,proc->control_transfers);
+		auto n = get_vertex(vx,proc->control_transfers);
 
-			if(get<bblock_loc>(&n))
-				os << "[label=\"" << get<bblock_loc>(n)->area() << "\"]";
-			else
-				os << "[label=\"" << get<rvalue>(n) << "\"]";
-		}
-		catch(const std::runtime_error&)
-		{
-			;
-		}
+		if(get<bblock_loc>(&n))
+			os << "[label=\"" << get<bblock_loc>(n)->area() << "\"]";
+		else
+			os << "[label=\"" << get<rvalue>(n) << "\"]";
 	}
 
 	void operator()(std::ostream& os, edge_descriptor e) const
 	{
+		assert(false);
 	}
 
 private:
@@ -376,7 +370,7 @@ TEST(procedure,continue)
 	bb1.write().mnemonics().push_back(mne2);
 	bb2.write().mnemonics().push_back(mne3);
 
-	unconditional_jump(proc,bb0,po::constant(42));
+	//unconditional_jump(proc,bb0,po::constant(42));
 	unconditional_jump(proc,bb2,po::constant(40));
 	unconditional_jump(proc,bb0,bb1);
 	unconditional_jump(proc,bb0,bb2);
@@ -413,12 +407,12 @@ TEST(procedure,continue)
 	add(41,"test41",42,boost::none);
 	add(42,"test42",55,make_optional<offset>(0));
 
-	proc_writer w(proc);
 	disassembler_mockup mockup(states);
+	ASSERT_TRUE(proc->entry);
+
 	proc = po::procedure::disassemble(proc,mockup,bytes,40);
 
-	write_graphviz(std::cerr,proc->control_transfers,w);
-
+	ASSERT_TRUE(proc->entry);
 	ASSERT_EQ(proc->rev_postorder().size(), 4);
 
 	auto i0 = std::find_if(proc->rev_postorder().begin(),proc->rev_postorder().end(),[&](po::bblock_loc bb) { return bb->area().lower() == 0; });
@@ -441,7 +435,7 @@ TEST(procedure,continue)
 	auto out0_p = out_edges(find_node(variant<bblock_loc,rvalue>(bbo0),proc->control_transfers),proc->control_transfers);
 
 	ASSERT_EQ(distance(in0_p.first,in0_p.second), 1);
-	ASSERT_TRUE(get<bblock_loc>(get_vertex(target(*in0_p.first,ct),ct)) == bbo3);
+	ASSERT_TRUE(get<bblock_loc>(get_vertex(source(*in0_p.first,ct),ct)) == bbo3);
 	ASSERT_EQ(bbo0->mnemonics().size(), 2);
 	check(bbo0->mnemonics()[0],"test0",0);
 	check(bbo0->mnemonics()[1],"test1",1);
@@ -453,7 +447,7 @@ TEST(procedure,continue)
 	auto out1_p = out_edges(find_node(variant<bblock_loc,rvalue>(bbo1),proc->control_transfers),proc->control_transfers);
 
 	ASSERT_EQ(distance(in1_p.first,in1_p.second), 1);
-	ASSERT_TRUE(get<bblock_loc>(get_vertex(target(*in1_p.first,ct),ct)) == bbo0);
+	ASSERT_TRUE(get<bblock_loc>(get_vertex(source(*in1_p.first,ct),ct)) == bbo0);
 	ASSERT_EQ(bbo1->mnemonics().size(), 1);
 	check(bbo1->mnemonics()[0],"test2",2);
 	ASSERT_EQ(distance(out1_p.first,out1_p.second), 0);
@@ -462,7 +456,7 @@ TEST(procedure,continue)
 	auto out2_p = out_edges(find_node(variant<bblock_loc,rvalue>(bbo2),proc->control_transfers),proc->control_transfers);
 
 	ASSERT_EQ(distance(in2_p.first,in2_p.second), 1);
-	ASSERT_TRUE(get<bblock_loc>(get_vertex(target(*in2_p.first,ct),ct)) == bbo0);
+	ASSERT_TRUE(get<bblock_loc>(get_vertex(source(*in2_p.first,ct),ct)) == bbo0);
 	ASSERT_EQ(bbo2->mnemonics().size(), 1);
 	check(bbo2->mnemonics()[0],"test6",6);
 	ASSERT_EQ(distance(out2_p.first,out2_p.second), 1);
@@ -472,14 +466,16 @@ TEST(procedure,continue)
 	auto out3_p = out_edges(find_node(variant<bblock_loc,rvalue>(bbo3),proc->control_transfers),proc->control_transfers);
 
 	ASSERT_EQ(distance(in3_p.first,in3_p.second), 1);
-	ASSERT_TRUE(get<bblock_loc>(get_vertex(target(*in3_p.first,ct),ct)) == bbo2);
+	ASSERT_TRUE(get<bblock_loc>(get_vertex(source(*in3_p.first,ct),ct)) == bbo2);
 	ASSERT_EQ(bbo3->mnemonics().size(), 3);
 	check(bbo3->mnemonics()[0],"test40",40);
 	check(bbo3->mnemonics()[1],"test41",41);
 	check(bbo3->mnemonics()[2],"test42",42);
 	ASSERT_EQ(distance(out3_p.first,out3_p.second), 2);
-	ASSERT_TRUE(get<bblock_loc>(get_vertex(target(*out3_p.first,ct),ct)) == bbo0 || to_constant(get<rvalue>(get_vertex(target(*out3_p.first,ct),ct))).content() == 55);
-	ASSERT_TRUE(get<bblock_loc>(get_vertex(target(*(out3_p.first+1),ct),ct)) == bbo0 || to_constant(get<rvalue>(get_vertex(target(*(out3_p.first+1),ct),ct))).content() == 55);
+	ASSERT_TRUE((get<bblock_loc>(&get_vertex(target(*out3_p.first,ct),ct)) && get<bblock_loc>(get_vertex(target(*out3_p.first,ct),ct)) == bbo0) ||
+							(get<rvalue>(&get_vertex(target(*out3_p.first,ct),ct)) && to_constant(get<rvalue>(get_vertex(target(*out3_p.first,ct),ct))).content() == 55));
+	ASSERT_TRUE((get<bblock_loc>(&get_vertex(target(*(out3_p.first+1),ct),ct)) && get<bblock_loc>(get_vertex(target(*(out3_p.first+1),ct),ct)) == bbo0) ||
+							(get<rvalue>(&get_vertex(target(*(out3_p.first+1),ct),ct)) && to_constant(get<rvalue>(get_vertex(target(*(out3_p.first+1),ct),ct))).content() == 55));
 
 	ASSERT_EQ(*(proc->entry), bbo0);
 }

@@ -11,6 +11,7 @@
 #include <boost/graph/properties.hpp>
 #include <boost/shared_container_iterator.hpp>
 #include <boost/optional.hpp>
+#include <boost/operators.hpp>
 #pragma once
 
 namespace po
@@ -34,11 +35,43 @@ namespace po
 		F _function;
 	};
 
+	template<typename I, typename T>
+	struct integer_wrapper : public boost::operators<integer_wrapper<I,T>>
+	{
+		using integer_type = I;
+
+		integer_wrapper() : id() {}
+		integer_wrapper(I i) : id(i) {}
+
+		bool operator==(const integer_wrapper& iw) const { return iw.id == id; }
+		bool operator<(const integer_wrapper& iw) const { return id < iw.id; }
+
+		I id;
+	};
+}
+
+namespace std
+{
+	template<typename I, typename T>
+	struct hash<po::integer_wrapper<I,T>>
+	{
+		size_t operator()(const po::integer_wrapper<I,T>& iw) const
+		{
+			return hash<I>()(iw.id);
+		}
+	};
+}
+
+namespace po
+{
 	template<typename N, typename E>
 	struct digraph
 	{
-		using vertex_descriptor = uint64_t;
-		using edge_descriptor = int64_t;
+		struct vertex_descriptor_tag {};
+		struct edge_descriptor_tag {};
+		using vertex_descriptor = integer_wrapper<uint64_t,vertex_descriptor_tag>;
+		using edge_descriptor = integer_wrapper<uint64_t,edge_descriptor_tag>;
+	//	using edge_descriptor = int64_t;
 		using size_type = size_t;
 
 		digraph(void) : next_vertex(), next_edge(), vertices(), edges(), sources(), destinations(), outgoing(), incoming(), index(boost::none)
@@ -73,8 +106,8 @@ namespace po
 			return *this;
 		}
 
-		std::atomic<vertex_descriptor> next_vertex;
-		std::atomic<edge_descriptor> next_edge;
+		std::atomic<typename vertex_descriptor::integer_type> next_vertex;
+		std::atomic<typename edge_descriptor::integer_type> next_edge;
 		std::unordered_map<vertex_descriptor,N> vertices;
 		std::unordered_map<edge_descriptor,E> edges;
 		std::unordered_map<edge_descriptor,vertex_descriptor> sources;
@@ -158,18 +191,17 @@ namespace po
 	N &get_vertex(typename po::digraph<N,E>::vertex_descriptor n, po::digraph<N,E>& g) { return g.vertices.at(n); }
 
 	template<typename N, typename E>
-	const E &get_edge(typename po::digraph<N,E>::vertex_descriptor n, const po::digraph<N,E>& g) { return g.edges.at(n); }
+	const E &get_edge(typename po::digraph<N,E>::edge_descriptor n, const po::digraph<N,E>& g) { return g.edges.at(n); }
 
 	template<typename N, typename E>
-	E &get_edge(typename po::digraph<N,E>::vertex_descriptor n, po::digraph<N,E>& g) { return g.edges.at(n); }
+	E &get_edge(typename po::digraph<N,E>::edge_descriptor n, po::digraph<N,E>& g) { return g.edges.at(n); }
 
 	template<typename N, typename E>
 	typename po::digraph<N,E>::vertex_descriptor insert_vertex(const N& n, po::digraph<N,E>& g)
 	{
-		typename po::digraph<N,E>::vertex_descriptor vx = g.next_vertex++;
+		typename po::digraph<N,E>::vertex_descriptor vx(g.next_vertex++);
 		g.vertices.emplace(vx,n);
 		g.index = boost::none;
-
 		return vx;
 	}
 
@@ -185,7 +217,6 @@ namespace po
 		g.outgoing.emplace(from,vx);
 		g.incoming.emplace(to,vx);
 		g.index = boost::none;
-
 		return vx;
 	}
 
