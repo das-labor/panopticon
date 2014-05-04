@@ -54,7 +54,7 @@ protected:
 TEST_F(disassembler,single_decoder)
 {
 	po::sem_state<test_tag> st(0);
-	boost::optional<std::vector<unsigned char>::iterator> i = main.match(bytes.begin(),bytes.begin(),st);
+	boost::optional<std::vector<unsigned char>::iterator> i = main.match(bytes.begin(),bytes.end(),st);
 
 	ASSERT_TRUE(i);
 	ASSERT_EQ(i, next(bytes.begin()));
@@ -75,10 +75,10 @@ TEST_F(disassembler,single_decoder)
 TEST_F(disassembler,sub_decoder)
 {
 	po::sem_state<test_tag> st(1);
-	boost::optional<std::vector<unsigned char>::iterator> i = main.match(bytes.begin(),bytes.begin(),st);
+	boost::optional<std::vector<unsigned char>::iterator> i = main.match(std::next(bytes.begin()),bytes.end(),st);
 
 	ASSERT_TRUE(i);
-	ASSERT_EQ(*i, next(bytes.begin(),3));
+	ASSERT_EQ(std::distance(bytes.begin(), *i), 3);
 	ASSERT_EQ(st.address, 1);
 	ASSERT_GE(st.tokens.size(), 2);
 	ASSERT_EQ(st.tokens[0], 'A');
@@ -97,7 +97,7 @@ TEST_F(disassembler,sub_decoder)
 TEST_F(disassembler,default_pattern)
 {
 	po::sem_state<test_tag> st(5);
-	boost::optional<std::vector<unsigned char>::iterator> i = main.match(bytes.begin(),bytes.begin(),st);
+	boost::optional<std::vector<unsigned char>::iterator> i = main.match(std::next(bytes.begin(),5),bytes.end(),st);
 
 	ASSERT_TRUE(i);
 	ASSERT_EQ(*i, bytes.end());
@@ -118,7 +118,7 @@ TEST_F(disassembler,default_pattern)
 TEST_F(disassembler,slice)
 {
 	po::sem_state<test_tag> st(1);
-	boost::optional<std::vector<unsigned char>::iterator> i = main.match(bytes.begin(),bytes.begin(),st);
+	boost::optional<std::vector<unsigned char>::iterator> i = main.match(std::next(bytes.begin(),1),std::next(bytes.begin(),2),st);
 
 	ASSERT_TRUE(i);
 	ASSERT_EQ(*i, next(bytes.begin(),2));
@@ -152,7 +152,7 @@ TEST_F(disassembler,empty)
 TEST_F(disassembler,capture_group)
 {
 	po::sem_state<test_tag> st(4);
-	boost::optional<std::vector<unsigned char>::iterator> i = main.match(bytes.begin(),bytes.begin(),st);
+	boost::optional<std::vector<unsigned char>::iterator> i = main.match(std::next(bytes.begin(),4),bytes.end(),st);
 
 	ASSERT_TRUE(i);
 	ASSERT_EQ(*i, next(bytes.begin(),5));
@@ -179,10 +179,10 @@ TEST_F(disassembler,empty_capture_group)
 	po::disassembler<test_tag> dec;
 
 	dec | "01 a@.. 1 b@ c@..." = [](ss s) { s.mnemonic(1,"1"); };
-	boost::optional<std::vector<unsigned char>::iterator> i = main.match(bytes.begin(),bytes.begin(),st);
+	boost::optional<std::vector<unsigned char>::iterator> i = dec.match(buf.begin(),buf.end(),st);
 
 	ASSERT_TRUE(i);
-	ASSERT_EQ(*i, next(buf.begin(),1));
+	ASSERT_EQ(std::distance(buf.begin(), *i),1);
 	ASSERT_EQ(st.address, 0);
 	ASSERT_EQ(st.tokens.size(), 1);
 	ASSERT_EQ(st.tokens[0], 127);
