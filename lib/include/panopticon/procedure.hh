@@ -194,7 +194,7 @@ namespace po
 			if(j == mnemonics.end() || !boost::icl::contains(j->second.area,cur_addr))
 			{
 				advance(i,cur_addr);
-				auto mi = main.match(i,tokens.end(),state);
+				auto mi = main.match(i,(j == mnemonics.end() ? tokens.end() : std::next(tokens.begin(),j->first)),state);
 
 				if(mi)
 				{

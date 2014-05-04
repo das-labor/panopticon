@@ -212,6 +212,22 @@ list<statement> storage::find(const node &sub) const
 	return ret;
 }
 
+list<statement> storage::all(void) const
+{
+	list<statement> ret;
+
+	kyotocabinet::DB::Cursor* cur = _meta.cursor();
+	assert(cur);
+	cur->jump();
+
+	string k,v;
+  while (cur->get(&k,&v,true))
+		ret.push_back(decode_key(k.begin(),k.end()).first);
+  delete cur;
+
+	return ret;
+}
+
 statement storage::first(const node &s, const node &p) const
 {
 	statements st = find(s,p);

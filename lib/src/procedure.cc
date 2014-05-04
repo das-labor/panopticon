@@ -26,43 +26,36 @@ procedure* po::unmarshal(const uuid& u, const rdf::storage &store)
 	rdf::node node(rdf::ns_po(to_string(u)));
 	rdf::statement name = store.first(node,"name"_po);
 	rdf::statements bbs = store.find(node,"include"_po);
+	rdf::statements cts = store.find(node,"control-transfer"_po);
 	procedure* ret = new procedure(name.object.as_literal());
 	using vx_desc = typename boost::graph_traits<decltype(ret->control_transfers)>::vertex_descriptor;
 
 	for(auto bb: bbs)
 		insert_vertex<boost::variant<bblock_loc,rvalue>,guard>(bblock_loc{uuid(bb.object.as_iri().substr(bb.object.as_iri().size()-36)),store},ret->control_transfers);
 
-	for(auto bb: bbs)
+	for(auto ct: cts)
 	{
-		vx_desc vx_a = find_node<boost::variant<bblock_loc,rvalue>,guard>(bblock_loc(uuid(bb.object.as_iri().substr(bb.object.as_iri().size()-36)),store),ret->control_transfers);
-		rdf::statements succ = store.find(bb.object,rdf::ns_po("out")),
-										pred = store.find(bb.object,rdf::ns_po("in"));
-		std::unordered_set<rdf::node> cts;
-
-		transform(succ.begin(),succ.end(),inserter(cts,cts.begin()),[&](const rdf::statement& st) { return st.object; });
-		transform(pred.begin(),pred.end(),inserter(cts,cts.begin()),[&](const rdf::statement& st) { return st.object; });
-
-		for(rdf::node ct: cts)
+		std::function<vx_desc(const rdf::statement&)> fn = [&](const rdf::statement& st)
 		{
-			rdf::statement g = store.first(ct,rdf::ns_po("guard")),
-										 target = store.first(ct,rdf::ns_po("target"));
-
-			guard gg = *unique_ptr<guard>(unmarshal<guard>(uuid(g.object.as_iri().substr(g.object.as_iri().size()-36)),store));
-			if(store.has(target.object,rdf::ns_rdf("type"),rdf::ns_po("BasicBlock")))
+			if(store.has(st.object,rdf::ns_rdf("type"),rdf::ns_po("BasicBlock")))
 			{
-				bblock_loc tgt(uuid(target.object.as_iri().substr(target.object.as_iri().size()-36)),store);
-				vx_desc vx_b = find_node<boost::variant<bblock_loc,rvalue>,guard>(tgt,ret->control_transfers);
-
-				insert_edge<boost::variant<bblock_loc,rvalue>,guard>(gg,vx_a,vx_b,ret->control_transfers);
+				bblock_loc bb(uuid(st.object.as_iri().substr(st.object.as_iri().size()-36)),store);
+				return find_node<boost::variant<bblock_loc,rvalue>,guard>(bb,ret->control_transfers);
 			}
 			else
 			{
-				rvalue tgt = *unique_ptr<rvalue>(unmarshal<rvalue>(uuid(target.object.as_iri().substr(target.object.as_iri().size()-36)),store));
-				vx_desc vx_b = insert_vertex<boost::variant<bblock_loc,rvalue>,guard>(tgt,ret->control_transfers);
-
-				insert_edge<boost::variant<bblock_loc,rvalue>,guard>(gg,vx_a,vx_b,ret->control_transfers);
+				rvalue rv = *unique_ptr<rvalue>(unmarshal<rvalue>(uuid(st.object.as_iri().substr(st.object.as_iri().size()-36)),store));
+				return insert_vertex<boost::variant<bblock_loc,rvalue>,guard>(rv,ret->control_transfers);
 			}
-		}
+		};
+		rdf::statement source = store.first(ct.object,rdf::ns_po("out")),
+									 target = store.first(ct.object,rdf::ns_po("in")),
+									 g = store.first(ct.object,rdf::ns_po("guard"));
+
+		guard gg = *unique_ptr<guard>(unmarshal<guard>(uuid(g.object.as_iri().substr(g.object.as_iri().size()-36)),store));
+		vx_desc vx_a = fn(source), vx_b = fn(target);
+
+		insert_edge<boost::variant<bblock_loc,rvalue>,guard>(gg,vx_a,vx_b,ret->control_transfers);
 	}
 
 	rdf::statements ent = store.find(node,rdf::ns_po("entry"));
@@ -103,7 +96,10 @@ rdf::statements po::marshal(const procedure* p, const uuid& u)
 			return make_pair(n,marshal(&get<rvalue>(v),uu));
 		}
 		else
-			return make_pair(rdf::ns_local(to_string(get<bblock_loc>(v).tag())),rdf::statements());
+		{
+			bblock_loc bb = get<bblock_loc>(v);
+			return make_pair(rdf::ns_local(to_string(bb.tag())),rdf::statements());
+		}
 	};
 
 	ret.emplace_back(node,rdf::ns_rdf("type"),rdf::ns_po("Procedure"));
@@ -130,18 +126,19 @@ rdf::statements po::marshal(const procedure* p, const uuid& u)
 		ret.emplace_back(cn,rdf::ns_po("guard"),gn);
 		ret.emplace_back(cn,rdf::ns_po("in"),in_p.first);
 		ret.emplace_back(cn,rdf::ns_po("out"),out_p.first);
+		ret.emplace_back(node,rdf::ns_po("control-transfer"),cn);
 	}
 
 	for(auto o: iters(vertices(p->control_transfers)))
 	{
-		try
+		//try
 		{
 			variant<bblock_loc,rvalue> var = get_vertex<variant<bblock_loc,rvalue>,guard>(o,p->control_transfers);
 
 			if(get<bblock_loc>(&var))
 				ret.emplace_back(node,rdf::ns_po("include"),rdf::ns_local(to_string(get<bblock_loc>(var).tag())));
 		}
-		catch(runtime_error&)
+	//	catch(runtime_error&)
 		{
 			;
 		}

@@ -183,7 +183,7 @@ template<>
 po::guard* po::unmarshal(const po::uuid& u, const po::rdf::storage& store)
 {
 	rdf::node node = rdf::ns_local(to_string(u)),
-						rel_head = store.first(node,rdf::ns_po("relations")).object;
+									 rel_head = store.first(node,rdf::ns_po("relations")).object;
 	rdf::nodes rels_n = read_list(rel_head,store);
 
 	list<relation> rels;
@@ -228,6 +228,7 @@ template<>
 rdf::statements po::marshal(const guard* g, const uuid& uu)
 {
 	rdf::statements ret;
+	rdf::nodes rels;
 	rdf::node node = rdf::ns_local(to_string(uu));
 	boost::uuids::name_generator ng(uu);
 	unsigned int cnt = 0;
@@ -247,6 +248,7 @@ rdf::statements po::marshal(const guard* g, const uuid& uu)
 
 		ret.emplace_back(rn,rdf::ns_po("operand1"),rdf::ns_local(to_string(u1)));
 		ret.emplace_back(rn,rdf::ns_po("operand2"),rdf::ns_local(to_string(u2)));
+		rels.push_back(rn);
 
 		switch(rel.relcode)
 		{
@@ -263,6 +265,11 @@ rdf::statements po::marshal(const guard* g, const uuid& uu)
 			default: assert(false);
 		}
 	}
+
+	auto p = rdf::write_list(rels.begin(),rels.end(),to_string(uu));
+
+	std::move(p.second.begin(),p.second.end(),back_inserter(ret));
+	ret.emplace_back(node,rdf::ns_po("relations"),p.first);
 
 	return ret;
 }

@@ -126,6 +126,7 @@ namespace po
 
 			bool has(const statement& st) const;
 			bool has(const node&, const node&, const node&) const;
+			std::list<statement> all(void) const;
 			std::list<statement> find(const node &s) const;
 			std::list<statement> find(const node &s, const node &p) const;
 			statement first(const node &s, const node &p) const;
