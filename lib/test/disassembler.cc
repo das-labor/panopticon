@@ -8,7 +8,7 @@
 
 class disassembler : public ::testing::Test
 {
-/*public:
+public:
 	typedef po::sem_state<test_tag>& ss;
 	typedef po::code_generator<test_tag>& cg;
 
@@ -48,11 +48,11 @@ protected:
 	}
 
 	po::disassembler<test_tag> main, sub;
-	std::vector<unsigned char> bytes;*/
+	std::vector<unsigned char> bytes;
 };
 
 TEST_F(disassembler,single_decoder)
-{/*
+{
 	po::sem_state<test_tag> st(0);
 	boost::optional<std::vector<unsigned char>::iterator> i = main.match(bytes.begin(),bytes.begin(),st);
 
@@ -69,14 +69,12 @@ TEST_F(disassembler,single_decoder)
 	ASSERT_EQ(st.jumps.size(), 1);
 	ASSERT_TRUE(is_constant(st.jumps.front().first));
 	ASSERT_EQ(to_constant(st.jumps.front().first).content(), 1);
-	ASSERT_TRUE(st.jumps.front().second.relations.empty());*/
-
-	ASSERT_TRUE(false);
+	ASSERT_TRUE(st.jumps.front().second.relations.empty());
 }
 
 TEST_F(disassembler,sub_decoder)
 {
-	/*po::sem_state<test_tag> st(1);
+	po::sem_state<test_tag> st(1);
 	boost::optional<std::vector<unsigned char>::iterator> i = main.match(bytes.begin(),bytes.begin(),st);
 
 	ASSERT_TRUE(i);
@@ -93,14 +91,12 @@ TEST_F(disassembler,sub_decoder)
 	ASSERT_EQ(st.jumps.size(), 1);
 	ASSERT_TRUE(is_constant(st.jumps.front().first));
 	ASSERT_EQ(to_constant(st.jumps.front().first).content(), 3);
-	ASSERT_TRUE(st.jumps.front().second.relations.empty());*/
-
-	ASSERT_TRUE(false);
+	ASSERT_TRUE(st.jumps.front().second.relations.empty());
 }
 
 TEST_F(disassembler,default_pattern)
 {
-	/*po::sem_state<test_tag> st(5);
+	po::sem_state<test_tag> st(5);
 	boost::optional<std::vector<unsigned char>::iterator> i = main.match(bytes.begin(),bytes.begin(),st);
 
 	ASSERT_TRUE(i);
@@ -116,14 +112,12 @@ TEST_F(disassembler,default_pattern)
 	ASSERT_EQ(st.jumps.size(), 1);
 	ASSERT_TRUE(is_constant(st.jumps.front().first));
 	ASSERT_TRUE(st.jumps.front().second.relations.empty());
-	ASSERT_EQ(to_constant(st.jumps.front().first).content(), 6);*/
-
-	ASSERT_TRUE(false);
+	ASSERT_EQ(to_constant(st.jumps.front().first).content(), 6);
 }
 
 TEST_F(disassembler,slice)
 {
-	/*po::sem_state<test_tag> st(1);
+	po::sem_state<test_tag> st(1);
 	boost::optional<std::vector<unsigned char>::iterator> i = main.match(bytes.begin(),bytes.begin(),st);
 
 	ASSERT_TRUE(i);
@@ -139,14 +133,12 @@ TEST_F(disassembler,slice)
 	ASSERT_EQ(st.jumps.size(), 1);
 	ASSERT_TRUE(is_constant(st.jumps.front().first));
 	ASSERT_TRUE(st.jumps.front().second.relations.empty());
-	ASSERT_EQ(to_constant(st.jumps.front().first).content(), 2);*/
-
-	ASSERT_TRUE(false);
+	ASSERT_EQ(to_constant(st.jumps.front().first).content(), 2);
 }
 
 TEST_F(disassembler,empty)
 {
-	/*po::sem_state<test_tag> st(0);
+	po::sem_state<test_tag> st(0);
 	boost::optional<std::vector<unsigned char>::iterator> i = main.match(bytes.begin(),bytes.begin(),st);
 
 	ASSERT_TRUE(!i);
@@ -154,14 +146,12 @@ TEST_F(disassembler,empty)
 	ASSERT_EQ(st.tokens.size(), 0);
 	ASSERT_EQ(st.capture_groups.size(), 0);
 	ASSERT_EQ(st.mnemonics.size(), 0);
-	ASSERT_EQ(st.jumps.size(), 0);*/
-
-	ASSERT_TRUE(false);
+	ASSERT_EQ(st.jumps.size(), 0);
 }
 
 TEST_F(disassembler,capture_group)
 {
-	/*po::sem_state<test_tag> st(4);
+	po::sem_state<test_tag> st(4);
 	boost::optional<std::vector<unsigned char>::iterator> i = main.match(bytes.begin(),bytes.begin(),st);
 
 	ASSERT_TRUE(i);
@@ -179,14 +169,12 @@ TEST_F(disassembler,capture_group)
 	ASSERT_EQ(st.jumps.size(), 1);
 	ASSERT_TRUE(is_constant(st.jumps.front().first));
 	ASSERT_TRUE(st.jumps.front().second.relations.empty());
-	ASSERT_EQ(to_constant(st.jumps.front().first).content(), 5);*/
-
-	ASSERT_TRUE(false);
+	ASSERT_EQ(to_constant(st.jumps.front().first).content(), 5);
 }
 
 TEST_F(disassembler,empty_capture_group)
 {
-	/*po::sem_state<test_tag> st(0);
+	po::sem_state<test_tag> st(0);
 	std::vector<unsigned char> buf({127});
 	po::disassembler<test_tag> dec;
 
@@ -209,53 +197,43 @@ TEST_F(disassembler,empty_capture_group)
 	ASSERT_EQ(st.mnemonics.front().opcode, std::string("1"));
 	ASSERT_EQ(st.mnemonics.front().area, po::bound(0,1));
 	ASSERT_TRUE(st.mnemonics.front().instructions.empty());
-	ASSERT_EQ(st.jumps.size(), 0);*/
-
-	ASSERT_TRUE(false);
+	ASSERT_EQ(st.jumps.size(), 0);
 }
 
 TEST_F(disassembler,too_long_capture_group)
 {
-	/*po::sem_state<test_tag> st(0);
+	po::sem_state<test_tag> st(0);
 	std::vector<unsigned char> buf({127});
 	po::disassembler<test_tag> dec;
 
-	ASSERT_THROW(dec | "k@........." = [](ss s) {};,po::tokpat_error);*/
-
-	ASSERT_TRUE(false);
+	ASSERT_THROW(dec | "k@........." = [](ss s) {};,po::tokpat_error);
 }
 
 TEST_F(disassembler,too_long_token_pattern)
 {
-	/*po::sem_state<test_tag> st(0);
+	po::sem_state<test_tag> st(0);
 	std::vector<unsigned char> buf({127});
 	po::disassembler<test_tag> dec;
 
-	ASSERT_THROW(dec | "111111111" = [](ss s) {};,po::tokpat_error);*/
-
-	ASSERT_TRUE(false);
+	ASSERT_THROW(dec | "111111111" = [](ss s) {};,po::tokpat_error);
 }
 
 TEST_F(disassembler,too_short_token_pattern)
 {
-	/*po::sem_state<test_tag> st(0);
+	po::sem_state<test_tag> st(0);
 	std::vector<unsigned char> buf({127});
 	po::disassembler<test_tag> dec;
 
 	dec | "1111111" = [](ss s) {};
 
-	ASSERT_TRUE(dec.match(buf.begin(),buf.end(),st));*/
-
-	ASSERT_TRUE(false);
+	ASSERT_TRUE(dec.match(buf.begin(),buf.end(),st));
 }
 
 TEST_F(disassembler,invalid_token_pattern)
 {
-	/*po::sem_state<test_tag> st(0);
+	po::sem_state<test_tag> st(0);
 	std::vector<unsigned char> buf({127});
 	po::disassembler<test_tag> dec;
 
-	ASSERT_THROW(dec | "a111111" = [](ss s) {};,po::tokpat_error);*/
-
-	ASSERT_TRUE(false);
+	ASSERT_THROW(dec | "a111111" = [](ss s) {};,po::tokpat_error);
 }
