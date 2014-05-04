@@ -9,9 +9,9 @@ Session::Session(QObject *p)
 //	po::address_space zlib_as("zlib",po::rrange(0,1280),std::function<bytes(const bytes&)>());
 //	po::address_space aes_as("aes",po::rrange(0,320),std::function<bytes(const bytes&)>());
 
-	auto base_desc = insert_node(base_as,_regions);
-	auto xor_desc = insert_node(xor_as,_regions);
-	auto add_desc = insert_node(add_as,_regions);
+	auto base_desc = insert_vertex(base_as,_regions);
+	auto xor_desc = insert_vertex(xor_as,_regions);
+	auto add_desc = insert_vertex(add_as,_regions);
 //	m_graph.insert_node(zlib_as);
 //	m_graph.insert_node(aes_as);
 

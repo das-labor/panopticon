@@ -3,14 +3,14 @@ project(PanopticonQt CXX)
 
 set(qtpanopticon_SOURCES src/dot/dot.cc src/delegate.cc
 	src/selection.cc src/linearview.cc src/main.cc src/session.cc
-	src/panopticon.cc)
+	src/panopticon.cc src/sugiyama.cc)
 set(qtpanopticon_HEADERS include/delegate.hh include/selection.hh
 	include/pen.hh include/panopticon.hh
 	include/linearview.hh include/session.hh include/dot/adaptor.hh include/dot/astar.hh
 	include/dot/dot.hh include/dot/layout.hh include/dot/net_flow.hh
 	include/dot/phase1.hh include/dot/phase2.hh include/dot/phase3.hh
 	include/dot/traits.hh include/dot/types.hh
-	${CMAKE_CURRENT_BINARY_DIR}/config.hh)
+	${CMAKE_CURRENT_BINARY_DIR}/config.hh include/sugiyama.hh)
 set(qtpanopticon_RESOURCES res/resources.qrc)
 
 string(TIMESTAMP qtpanopticon_BUILD_TIME "%Y-%m-%d %H:%M:%S UTC" UTC)
