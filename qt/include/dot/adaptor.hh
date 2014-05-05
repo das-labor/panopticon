@@ -140,6 +140,7 @@ namespace dot
 
 		typedef typename std::unordered_set<node_adaptor<T>>::const_iterator node_iterator;
 		typedef typename std::unordered_multimap<node_adaptor<T>,node_adaptor<T>>::const_iterator edge_iterator;
+		typedef typename std::unordered_multimap<node_adaptor<T>,node_adaptor<T>>::const_iterator out_edge_iterator;
 	};
 
 	template<typename T>

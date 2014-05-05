@@ -19,5 +19,6 @@
 		<file>workspace/BinaryTitle.qml</file>
 
 		<file>workspace/Workspace.qml</file>
+		<file>workspace/Graph.qml</file>
 	</qresource>
 </RCC>

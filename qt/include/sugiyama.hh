@@ -3,6 +3,8 @@
 #include <QQmlListProperty>
 #include <QList>
 #include <QDebug>
+#include <QHash>
+#include <QVariant>
 
 #include <QtQml>
 #include <QtQuick>
@@ -130,11 +132,11 @@ private:
 namespace std
 {
 	template<>
-	struct hash<std::pair<QObject*,QQuickItem*>>
+	struct hash<std::pair<QVariant,QQuickItem*>>
 	{
-		size_t operator()(const std::pair<QObject*,QQuickItem*>& p) const
+		size_t operator()(const std::pair<QVariant,QQuickItem*>& p) const
 		{
-			return po::hash_struct(p.first,p.second);
+			return po::hash_struct(p.second);
 		}
 	};
 }
@@ -146,22 +148,24 @@ class Sugiyama : public QQuickItem
 	Q_PROPERTY(QQmlComponent* vertexDelegate READ vertexDelegate WRITE setVertexDelegate NOTIFY vertexDelegateChanged)
 	Q_PROPERTY(QQmlComponent* edgeDelegate READ edgeDelegate WRITE setEdgeDelegate NOTIFY edgeDelegateChanged)
 
-	Q_PROPERTY(QQmlListProperty<QObject> vertices READ vertices NOTIFY verticesChanged)
-	Q_PROPERTY(QQmlListProperty<QObject> edges READ edges NOTIFY edgesChanged)
+	Q_PROPERTY(QVariantList vertices READ vertices WRITE setVertices NOTIFY verticesChanged)
+	Q_PROPERTY(QVariantList edges READ edges WRITE setEdges NOTIFY edgesChanged)
 
 public:
 	Sugiyama(QQuickItem *parent = 0);
 	virtual ~Sugiyama(void);
 
-	QQmlListProperty<QObject> vertices(void);
-	QQmlListProperty<QObject> edges(void);
 	QQmlComponent* vertexDelegate(void) const { return _vertexDelegate; }
 	QQmlComponent* edgeDelegate(void) const { return _edgeDelegate; }
+	QVariantList vertices(void) const { return _vertices; }
+	QVariantList edges(void) const { return _edges; }
 
 	void setVertexDelegate(QQmlComponent* c) { _vertexDelegate = c; }
 	void setEdgeDelegate(QQmlComponent* c) { _edgeDelegate = c; }
+	void setVertices(QVariantList l) { _vertices = l; clear(); emit verticesChanged(); layout(); route(); }
+	void setEdges(QVariantList l) { _edges = l; clear(); emit edgesChanged(); layout(); route(); }
 
-	po::digraph<std::pair<QObject*,QQuickItem*>,std::pair<QObject*,QQuickItem*>>& graph(void) { return _graph; }
+	po::digraph<std::pair<QVariant,QQuickItem*>,std::pair<QVariant,QQuickItem*>>& graph(void);
 
 signals:
 	void verticesChanged(void);
@@ -169,27 +173,24 @@ signals:
 	void vertexDelegateChanged(void);
 	void edgeDelegateChanged(void);
 
+	void vertsChanged(void);
+	void edgsChanged(void);
+
 	void layoutStart(void);
 	void layoutDone(void);
 	void routingStart(void);
 	void routingDone(void);
 
 private:
-	po::digraph<std::pair<QObject*,QQuickItem*>,std::pair<QObject*,QQuickItem*>> _graph;
+	mutable boost::optional<po::digraph<std::pair<QVariant,QQuickItem*>,std::pair<QVariant,QQuickItem*>>> _graph;
 	QQmlComponent* _vertexDelegate;
 	QQmlComponent* _edgeDelegate;
+	QVariantList _vertices;
+	QVariantList _edges;
 
 	void layout(void);
 	void route(void);
-
-	static void appendVertexCallback(QQmlListProperty<QObject> *property, QObject *value);
-	static void appendEdgeCallback(QQmlListProperty<QObject> *property, QObject *value);
-	static int countVertexCallback(QQmlListProperty<QObject> *property);
-	static int countEdgeCallback(QQmlListProperty<QObject> *property);
-	static QObject *atVertexCallback(QQmlListProperty<QObject> *property, int idx);
-	static QObject *atEdgeCallback(QQmlListProperty<QObject> *property, int idx);
-	static void clearVertexCallback(QQmlListProperty<QObject> *property);
-	static void clearEdgeCallback(QQmlListProperty<QObject> *property);
+	void clear(void);
 };
 
 using SugiyamaInterface = boost::optional<Sugiyama*>;
@@ -199,12 +200,13 @@ namespace dot
 	template<>
 	struct graph_traits<SugiyamaInterface>
 	{
-		using graph = typename po::digraph<std::pair<QObject*,QQuickItem*>,std::pair<QObject*,QQuickItem*>>;
+		using graph = typename po::digraph<std::pair<QVariant,QQuickItem*>,std::pair<QVariant,QQuickItem*>>;
 		using node_type = boost::graph_traits<graph>::vertex_descriptor;
 		using edge_type = boost::graph_traits<graph>::edge_descriptor;
 
 		using node_iterator = boost::graph_traits<graph>::vertex_iterator;
 		using edge_iterator = boost::graph_traits<graph>::edge_iterator;
+		using out_edge_iterator = boost::graph_traits<graph>::out_edge_iterator;
 	};
 
 	template<>
@@ -212,7 +214,7 @@ namespace dot
 	template<>
 	std::pair<graph_traits<SugiyamaInterface>::edge_iterator,graph_traits<SugiyamaInterface>::edge_iterator> edges<SugiyamaInterface>(SugiyamaInterface t);
 	template<>
-	std::pair<graph_traits<SugiyamaInterface>::edge_iterator,graph_traits<SugiyamaInterface>::edge_iterator> out_edges<SugiyamaInterface>(graph_traits<SugiyamaInterface>::node_type n, SugiyamaInterface t);
+	std::pair<graph_traits<SugiyamaInterface>::out_edge_iterator,graph_traits<SugiyamaInterface>::out_edge_iterator> out_edges<SugiyamaInterface>(graph_traits<SugiyamaInterface>::node_type n, SugiyamaInterface t);
 	//template<>
 	//std::pair<QList<QQuickItem*>::const_iterator,QList<QQuickItem*>::const_iterator> in_paths<SugiyamaInterface>(uint64_t n, SugiyamaInterface t)
 	template<>

@@ -10,6 +10,6 @@ ApplicationWindow {
 
 	Loader {
 		anchors.fill: parent
-		source: "wizard/Main.qml"
+		source: "workspace/Graph.qml"//wizard/Main.qml"
 	}
 }

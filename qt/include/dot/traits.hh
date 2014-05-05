@@ -16,6 +16,7 @@ namespace dot
 
 		typedef void node_iterator;
 		typedef void edge_iterator;
+		typedef void out_edge_iterator;
 	};
 }
 
@@ -35,7 +36,7 @@ namespace dot
 
 	// node attributes
 	template<typename T>
-	std::pair<typename graph_traits<T>::edge_iterator,typename graph_traits<T>::edge_iterator> out_edges(typename graph_traits<T>::node_type n, T t);
+	std::pair<typename graph_traits<T>::out_edge_iterator,typename graph_traits<T>::out_edge_iterator> out_edges(typename graph_traits<T>::node_type n, T t);
 	template<typename T>
 	std::pair<typename graph_traits<T>::edge_iterator,typename graph_traits<T>::edge_iterator> in_edges(typename graph_traits<T>::node_type n, T t);
 	template<typename T>

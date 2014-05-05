@@ -286,7 +286,9 @@ template<typename T>
 void dot::feasible_tree(net_flow<T> &nf)
 {
 	typedef typename graph_traits<T>::node_type node;
-	assert(nf.nodes.size() && nf.edges_by_head.size() && nf.edges_by_head.size() == nf.edges_by_tail.size());
+	assert(nf.nodes.size());
+	assert(nf.edges_by_head.size());
+	assert(nf.edges_by_head.size() == nf.edges_by_tail.size());
 
 	rank(nf,nf.nodes);
 
@@ -389,6 +391,7 @@ dot::net_flow<T> dot::preprocess(T graph, const std::unordered_map<typename grap
 	typedef typename graph_traits<T>::edge_type edge;
 	typedef typename graph_traits<T>::node_type node;
 	typedef typename graph_traits<T>::edge_iterator edgeIter;
+	typedef typename graph_traits<T>::out_edge_iterator outEdgeIter;
 	typedef typename graph_traits<T>::node_iterator nodeIter;
 
 	net_flow<T> ret;
@@ -396,7 +399,7 @@ dot::net_flow<T> dot::preprocess(T graph, const std::unordered_map<typename grap
 	std::function<void(node, unsigned int)> dfs;
 	dfs = [&](node n, unsigned int r)
 	{
-		edgeIter i,iend;
+		outEdgeIter i,iend;
 
 		visited.insert(std::make_pair(n,r));
 

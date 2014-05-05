@@ -283,127 +283,124 @@ qreal GraphScenePath::approximateDistance(const QPointF &pnt) const
 }*/
 
 Sugiyama::Sugiyama(QQuickItem *parent)
-: QQuickItem(parent), _graph(), _vertexDelegate(nullptr), _edgeDelegate(nullptr)
+: QQuickItem(parent), _graph(), _vertexDelegate(nullptr), _edgeDelegate(nullptr), _vertices(), _edges()
 {}
 
 Sugiyama::~Sugiyama(void)
 {}
 
-QQmlListProperty<QObject> Sugiyama::vertices(void)
-{
-	return QQmlListProperty<QObject>(this,this,&appendVertexCallback,&countVertexCallback,&atVertexCallback,&clearVertexCallback);
-}
-
-QQmlListProperty<QObject> Sugiyama::edges(void)
-{
-	return QQmlListProperty<QObject>(this,this,&appendEdgeCallback,&countEdgeCallback,&atEdgeCallback,&clearEdgeCallback);
-}
-
 void Sugiyama::route(void)
 {
-	SugiyamaInterface iface{this};
+	if(po::num_edges(graph()))
+	{
+		SugiyamaInterface iface{this};
 
-	emit layoutStart();
-	dot::astar<SugiyamaInterface>(iface);
-	emit layoutDone();
+		emit layoutStart();
+		dot::astar<SugiyamaInterface>(iface);
+		emit layoutDone();
+	}
+	else
+		qDebug() << "No edges";
 }
 
 void Sugiyama::layout(void)
 {
-	SugiyamaInterface iface{this};
+	if(po::num_edges(graph()))
+	{
+		SugiyamaInterface iface{this};
 
-	emit routingStart();
-	dot::layout<SugiyamaInterface>(iface,100,100);
-	emit routingDone();
+		emit routingStart();
+		dot::layout<SugiyamaInterface>(iface,100,100);
+		emit routingDone();
+	}
+	else
+		qDebug() << "No edges";
+
 }
 
-void Sugiyama::appendVertexCallback(QQmlListProperty<QObject> *property, QObject *value)
+void Sugiyama::clear(void)
 {
-	Sugiyama *graph = reinterpret_cast<Sugiyama*>(property->data);
-	using vx_desc = decltype(graph->_graph)::vertex_descriptor;
-
-	if(graph)
+	if(_graph)
 	{
-		auto p = po::vertices(graph->_graph);
-		auto i = find_if(p.first,p.second,[&](const vx_desc v) { return get_vertex(v,graph->_graph).first == value; });
-
-		if(i == p.second)
+		for(auto vx: iters(po::vertices(*_graph)))
 		{
-			insert_vertex(std::make_pair(value,(graph->_vertexDelegate ? qobject_cast<QQuickItem*>(graph->_vertexDelegate->create()) : nullptr)),graph->_graph);
-			graph->verticesChanged();
+			QQuickItem *q = get_vertex(vx,*_graph).second;
+
+			q->setVisible(false);
+			q->setParentItem(0);
+			q->deleteLater();
+		}
+
+		for(auto ed: iters(po::edges(*_graph)))
+		{
+			QQuickItem *q = get_edge(ed,*_graph).second;
+
+			q->setVisible(false);
+			q->setParentItem(0);
+			q->deleteLater();
+		}
+
+		_graph = boost::none;
+	}
+}
+
+po::digraph<std::pair<QVariant,QQuickItem*>,std::pair<QVariant,QQuickItem*>>& Sugiyama::graph(void)
+{
+	if(!_graph)
+	{
+		_graph = po::digraph<std::pair<QVariant,QQuickItem*>,std::pair<QVariant,QQuickItem*>>();
+
+
+		QListIterator<QVariant> i(_vertices);
+		while(i.hasNext())
+		{
+			QVariant var = i.next();
+			QQuickItem *itm = nullptr;
+
+			if(_vertexDelegate)
+			{
+				itm = qobject_cast<QQuickItem*>(_vertexDelegate->create());
+				itm->setParentItem(this);
+			}
+
+			insert_vertex(std::make_pair(var,itm),*_graph);
+		}
+
+		QListIterator<QVariant> j(_edges);
+		while(j.hasNext())
+		{
+			using vx_desc = boost::graph_traits<po::digraph<std::pair<QVariant,QQuickItem*>,std::pair<QVariant,QQuickItem*>>>::vertex_descriptor;
+			QVariant var = j.next();
+			QObject *obj = var.value<QObject*>();
+
+			if(obj)
+			{
+				QQmlProperty from(obj,"from");
+				QQmlProperty to(obj,"to");
+				auto p = po::vertices(*_graph);
+
+				auto a = std::find_if(p.first,p.second,[&](vx_desc v) { return get_vertex(v,*_graph).first == from.read(); });
+				auto b = std::find_if(p.first,p.second,[&](vx_desc v) { return get_vertex(v,*_graph).first == to.read(); });
+
+				QQuickItem *itm = nullptr;
+
+				if(_edgeDelegate)
+				{
+					itm = qobject_cast<QQuickItem*>(_edgeDelegate->create());
+					itm->setParentItem(this);
+				}
+
+				if(a != p.second && b != p.second)
+					insert_edge(std::make_pair(var,itm),*a,*b,*_graph);
+				else
+					qWarning() << "Edge between unknown nodes";
+			}
+			else
+				qWarning() << "Edge" << var << "has no attribute";
 		}
 	}
-}
 
-void Sugiyama::appendEdgeCallback(QQmlListProperty<QObject> *property, QObject *value)
-{
-	Sugiyama *graph = reinterpret_cast<Sugiyama*>(property->data);
-	using vx_desc = decltype(graph->_graph)::vertex_descriptor;
-	std::function<vx_desc(QObject*)> add = [&](QObject* obj)
-	{
-		auto p = po::vertices(graph->_graph);
-		auto i = find_if(p.first,p.second,[&](const vx_desc v) { return get_vertex(v,graph->_graph).first == value; });
-
-		if(i == p.second)
-			return insert_vertex(std::make_pair(value,(graph->_vertexDelegate ? qobject_cast<QQuickItem*>(graph->_vertexDelegate->create()) : nullptr)),graph->_graph);
-		else
-			return *i;
-	};
-
-	if(graph)
-	{
-		QObject* from = value->property("from").value<QObject*>();
-		QObject* to = value->property("to").value<QObject*>();
-
-		insert_edge(std::make_pair(value,(graph->_edgeDelegate ? qobject_cast<QQuickItem*>(graph->_edgeDelegate->create()) : nullptr)),add(from),add(to),graph->_graph);
-		graph->edgesChanged();
-	}
-}
-
-int Sugiyama::countVertexCallback(QQmlListProperty<QObject> *property)
-{
-	Sugiyama *graph = reinterpret_cast<Sugiyama*>(property->data);
-	return graph ? po::num_vertices(graph->_graph) : -1;
-}
-
-int Sugiyama::countEdgeCallback(QQmlListProperty<QObject> *property)
-{
-	Sugiyama *graph = reinterpret_cast<Sugiyama*>(property->data);
-	return graph ? po::num_edges(graph->_graph) : -1;
-}
-
-QObject *Sugiyama::atVertexCallback(QQmlListProperty<QObject> *property, int idx)
-{
-	Sugiyama *graph = reinterpret_cast<Sugiyama*>(property->data);
-	return graph ? (get_vertex(*(po::vertices(graph->_graph).first + idx),graph->_graph).first) : nullptr;
-}
-
-QObject *Sugiyama::atEdgeCallback(QQmlListProperty<QObject> *property, int idx)
-{
-	Sugiyama *graph = reinterpret_cast<Sugiyama*>(property->data);
-	return graph ? (get_edge(*(po::edges(graph->_graph).first + idx),graph->_graph).first) : nullptr;
-}
-
-void Sugiyama::clearVertexCallback(QQmlListProperty<QObject> *property)
-{
-	Sugiyama *graph = reinterpret_cast<Sugiyama*>(property->data);
-	if(graph)
-	{
-		while(po::num_vertices(graph->_graph))
-			remove_vertex(*po::vertices(graph->_graph).first,graph->_graph);
-		graph->verticesChanged();
-	}
-}
-
-void Sugiyama::clearEdgeCallback(QQmlListProperty<QObject> *property)
-{
-	Sugiyama *graph = reinterpret_cast<Sugiyama*>(property->data);
-	if(graph)
-	{
-		while(po::num_edges(graph->_graph))
-			remove_edge(*po::edges(graph->_graph).first,graph->_graph);
-		graph->edgesChanged();
-	}
+	return *_graph;
 }
 
 /*
@@ -432,8 +429,13 @@ std::pair<dot::graph_traits<SugiyamaInterface>::edge_iterator,dot::graph_traits<
 	return edges((*t)->graph());
 }
 
-//template<>
-//std::pair<dot::graph_traits<SugiyamaInterface>::edge_iterator,dot::graph_traits<SugiyamaInterface>::edge_iterator> dot::out_edges<SugiyamaInterface>(dot::graph_traits<SugiyamaInterface>::node_type n, SugiyamaInterface t);
+template<>
+std::pair<dot::graph_traits<SugiyamaInterface>::out_edge_iterator,dot::graph_traits<SugiyamaInterface>::out_edge_iterator>
+dot::out_edges<SugiyamaInterface>(dot::graph_traits<SugiyamaInterface>::node_type n, SugiyamaInterface t)
+{
+	return out_edges(n,(*t)->graph());
+}
+
 //template<>
 //std::pair<QList<QQuickItem*>::const_iterator,QList<QQuickItem*>::const_iterator> in_paths<SugiyamaInterface>(uint64_t n, SugiyamaInterface t)
 
@@ -487,17 +489,19 @@ template<>
 dot::coord dot::position(dot::graph_traits<SugiyamaInterface>::node_type n, SugiyamaInterface t)
 {
 	QQuickItem *q = get_vertex(n,(*t)->graph()).second;
-	QPointF ptn(q->mapToScene(QPointF(q->x(),q->y())));
-	return std::make_pair(ptn.x(),ptn.y());
+	return std::make_pair(q->x(),q->y());
 }
 
 //template<>
 //bool is_free(float x, float y, unsigned int w, unsigned int h, QQuickItem *e, SugiyamaInterface g);
 
-/*template<>
-void dot::set_segments(dot::graph_traits<SugiyamaInterface>::edge_type e, const std::list<dot::coord> &segs, SugiyamaInterface)
+template<>
+void dot::set_segments(dot::graph_traits<SugiyamaInterface>::edge_type e, const std::list<dot::coord> &segs, SugiyamaInterface graph)
 {
-	QPainterPath pp;
+	std::stringstream pp;
+	QQmlEngine engine;
+	QQmlComponent path(&engine);
+	bool first = true;
 
 	// draw segments with bezier curves
 	if(segs.size() > 2)
@@ -549,19 +553,47 @@ void dot::set_segments(dot::graph_traits<SugiyamaInterface>::edge_type e, const 
 			else
 				a = e1;
 
-			pp.moveTo(ptn1);
-			pp.cubicTo(a,b,ptn2);
+			if(first)
+				pp << "import QtQuick 2.2" << std::endl
+					 << "Path {" << std::endl
+					 << "startX: " << ptn1.x() << std::endl
+					 << "startY: " << ptn1.y() << std::endl;
+			else
+				pp << "PathLine {" << std::endl
+					 << "x: " << ptn1.x() << std::endl
+					 << "y: " << ptn1.y() << std::endl
+					 << "}" << std::endl;
+
+			pp << "PathCubic {" << std::endl
+				 << "x: " << a.x() << std::endl
+				 << "y: " << a.y() << std::endl
+				 << "control1X: " << b.x() << std::endl
+				 << "control1Y: " << b.y() << std::endl
+				 << "control2X: " << ptn2.x() << std::endl
+				 << "control2Y: " << ptn2.y() << std::endl
+				 << "}" << std::endl;
+
+			first = false;
 			++idx;
 		}
 	}
 	else if(segs.size() == 2)
 	{
-		pp.moveTo(QPointF(segs.front().first,segs.front().second));
-		pp.lineTo(QPointF(segs.back().first,segs.back().second));
+		pp << "import QtQuick 2.2" << std::endl
+			 << "Path {" << std::endl
+			 << "startX: " << segs.front().first << std::endl
+			 << "startY: " << segs.front().second << std::endl
+			 << "PathLine {" << std::endl
+			 << "x: " << segs.back().first << std::endl
+			 << "y: " << segs.back().second << std::endl
+			 << "}" << std::endl;
 	}
 
-	e->setPath(pp);
-}*/
+	pp << "}" << std::endl;
+
+	path.setData(pp.str().c_str(),QUrl());
+	get_edge(e,(*graph)->graph()).second->setProperty("path",QVariant::fromValue(path.create()));
+}
 
 /*template<>
 bool dot::is_free(float x, float y, unsigned int w, unsigned int h, Path *e, SugiyamaInterface g)
@@ -579,7 +611,7 @@ bool dot::is_free(float x, float y, unsigned int w, unsigned int h, Path *e, Sug
 	return ret;
 }*/
 
-/*template<>
+template<>
 bool dot::is_free(const dot::vis_node<SugiyamaInterface> &a, const dot::vis_node<SugiyamaInterface> &b, SugiyamaInterface graph)
 {
 	QPainterPath line;
@@ -588,12 +620,12 @@ bool dot::is_free(const dot::vis_node<SugiyamaInterface> &a, const dot::vis_node
 	line.moveTo(QPointF(a.position.first,a.position.second));
 	line.lineTo(QPointF(b.position.first,b.position.second));
 
-	items = (*graph)->graph()->childItems();
+	items = (*graph)->childItems();
 
 	if(a.node.is_node())
-		items.removeAll(a.node.node());
+		items.removeAll(get_vertex(a.node.node(),(*graph)->graph()).second);
 	if(b.node.is_node())
-		items.removeAll(b.node.node());
+		items.removeAll(get_vertex(b.node.node(),(*graph)->graph()).second);
 
 	// collision?
 	QListIterator<QQuickItem*> iter(items);
@@ -602,10 +634,11 @@ bool dot::is_free(const dot::vis_node<SugiyamaInterface> &a, const dot::vis_node
 	{
 		QQuickItem *i = iter.next();
 		QPointF pos(i->x(),i->y());
-		QRectF bb(i->mapToItem((*graph)->graph,pos),QSizeF(i->width(),i->height()));
-
-		if(line.contains(bb) && (*graph)->graph()->nodeList().contains(i))
+		QRectF bb(i->mapToItem((*graph),pos),QSizeF(i->width(),i->height()));
+		auto p = vertices((*graph)->graph());
+		auto j = std::find_if(p.first,p.second,[&](dot::graph_traits<SugiyamaInterface>::node_type n) { return get_vertex(n,(*graph)->graph()).second == i; });
+		if(line.contains(bb) && j != p.second)
 			return false;
 	}
 	return true;
-}*/
+}
