@@ -359,7 +359,7 @@ po::digraph<std::pair<QVariant,QQuickItem*>,std::pair<QVariant,QQuickItem*>>& Su
 
 			if(_vertexDelegate)
 			{
-				itm = qobject_cast<QQuickItem*>(_vertexDelegate->create());
+				itm = qobject_cast<QQuickItem*>(_vertexDelegate->create(QQmlEngine::contextForObject(this)));
 				itm->setParentItem(this);
 			}
 
@@ -386,7 +386,7 @@ po::digraph<std::pair<QVariant,QQuickItem*>,std::pair<QVariant,QQuickItem*>>& Su
 
 				if(_edgeDelegate)
 				{
-					itm = qobject_cast<QQuickItem*>(_edgeDelegate->create());
+					itm = qobject_cast<QQuickItem*>(_edgeDelegate->create(QQmlEngine::contextForObject(this)));
 					itm->setParentItem(this);
 				}
 
@@ -480,6 +480,7 @@ dot::graph_traits<SugiyamaInterface>::node_type dot::entry<SugiyamaInterface>(Su
 template<>
 void dot::set_position(dot::graph_traits<SugiyamaInterface>::node_type n, const dot::coord &pos, SugiyamaInterface t)
 {
+	qDebug() << "set_pos" << pos.first << "x" << pos.second;
 	QQuickItem *q = get_vertex(n,(*t)->graph()).second;
 	q->setX(pos.first);
 	q->setY(pos.second);
@@ -489,6 +490,7 @@ template<>
 dot::coord dot::position(dot::graph_traits<SugiyamaInterface>::node_type n, SugiyamaInterface t)
 {
 	QQuickItem *q = get_vertex(n,(*t)->graph()).second;
+	qDebug() << "pos" << q->x() << "x" << q->y();
 	return std::make_pair(q->x(),q->y());
 }
 
@@ -502,6 +504,10 @@ void dot::set_segments(dot::graph_traits<SugiyamaInterface>::edge_type e, const 
 	QQmlEngine engine;
 	QQmlComponent path(&engine);
 	bool first = true;
+
+	for(auto s: segs)
+		std::cout << s.first << "x" << s.second << ", ";
+	std::cout << std::endl;
 
 	// draw segments with bezier curves
 	if(segs.size() > 2)
@@ -591,6 +597,8 @@ void dot::set_segments(dot::graph_traits<SugiyamaInterface>::edge_type e, const 
 
 	pp << "}" << std::endl;
 
+	//qDebug() << QString::fromStdString(pp.str());
+
 	path.setData(pp.str().c_str(),QUrl());
 	get_edge(e,(*graph)->graph()).second->setProperty("path",QVariant::fromValue(path.create()));
 }
@@ -634,7 +642,8 @@ bool dot::is_free(const dot::vis_node<SugiyamaInterface> &a, const dot::vis_node
 	{
 		QQuickItem *i = iter.next();
 		QPointF pos(i->x(),i->y());
-		QRectF bb(i->mapToItem((*graph),pos),QSizeF(i->width(),i->height()));
+		//QRectF bb(i->mapToItem((*graph),pos),QSizeF(i->width(),i->height()));
+		QRectF bb(pos,QSizeF(i->width(),i->height()));
 		auto p = vertices((*graph)->graph());
 		auto j = std::find_if(p.first,p.second,[&](dot::graph_traits<SugiyamaInterface>::node_type n) { return get_vertex(n,(*graph)->graph()).second == i; });
 		if(line.contains(bb) && j != p.second)

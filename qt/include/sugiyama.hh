@@ -167,6 +167,10 @@ public:
 
 	po::digraph<std::pair<QVariant,QQuickItem*>,std::pair<QVariant,QQuickItem*>>& graph(void);
 
+public slots:
+	void layout(void);
+	void route(void);
+
 signals:
 	void verticesChanged(void);
 	void edgesChanged(void);
@@ -188,8 +192,6 @@ private:
 	QVariantList _vertices;
 	QVariantList _edges;
 
-	void layout(void);
-	void route(void);
 	void clear(void);
 };
 
