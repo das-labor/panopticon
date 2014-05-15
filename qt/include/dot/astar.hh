@@ -65,12 +65,13 @@ std::unordered_multimap<dot::vis_node<T>,dot::vis_node<T>> dot::visibility_graph
 	{
 		auto pos = position(n,graph);
 		auto sz = dimensions(n,graph);
+		const int delta = 3;
 
 		visnodes.insert(vis_node<T>(std::make_pair(pos.first + sz.first / 2,pos.second + sz.second / 2),n));
-		visnodes.insert(vis_node<T>(std::make_pair(pos.first - 1,pos.second - 1)));
-		visnodes.insert(vis_node<T>(std::make_pair(pos.first - 1,pos.second + sz.second + 1)));
-		visnodes.insert(vis_node<T>(std::make_pair(pos.first + sz.first + 1,pos.second - 1)));
-		visnodes.insert(vis_node<T>(std::make_pair(pos.first + sz.first + 1,pos.second + sz.second + 1)));
+		visnodes.insert(vis_node<T>(std::make_pair(pos.first - delta,pos.second - delta)));
+		visnodes.insert(vis_node<T>(std::make_pair(pos.first - delta,pos.second + sz.second + delta)));
+		visnodes.insert(vis_node<T>(std::make_pair(pos.first + sz.first + delta,pos.second - delta)));
+		visnodes.insert(vis_node<T>(std::make_pair(pos.first + sz.first + delta,pos.second + sz.second + delta)));
 	});
 
 	// find edges

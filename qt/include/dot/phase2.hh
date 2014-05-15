@@ -128,8 +128,6 @@ void dot::swap(node_adaptor<T> a, node_adaptor<T> b, dot::phase2<T> &ph2)
 template<typename T>
 dot::phase2<T> dot::cook_phase2(T graph, const net_flow<T> &ph1)
 {
-	typedef node_adaptor<T> node;
-	typedef typename graph_traits<T>::edge_type edge;
 	phase2<T> ph2;
 
 	// insert virtual nodes

@@ -26,29 +26,20 @@ Item {
 		}
 	}
 
-	Component {
-		id: edgeComponent
-
-		PathView {
-			delegate: Rectangle { width: 2; height: 2; color: "blue" }
-			model: 500
-		}
-	}
-
 	ScrollView {
 		anchors.fill: parent
 
 		Sugiyama {
 			id: sugiyama
 
-			height: childrenRect.height
-			width: childrenRect.width
+			height: childrenRect.height + childrenRect.y
+			width: childrenRect.width + childrenRect.x
 
-			vertexDelegate: nodeComponent
-			edgeDelegate: edgeComponent
+			delegate: nodeComponent
 
 			QtObject { id: e1; property int from: 0; property int to: 1 }
-			/*QtObject { id: e2; property int from: 0; property int to: 2 }
+			QtObject { id: e2; property int from: 0; property int to: 2 }
+//			QtObject { id: e3; property int from: 1; property int to: 2 }
 			QtObject { id: e3; property int from: 2; property int to: 3 }
 			QtObject { id: e4; property int from: 3; property int to: 4 }
 			QtObject { id: e5; property int from: 3; property int to: 5 }
@@ -57,15 +48,15 @@ Item {
 			QtObject { id: e8; property int from: 6; property int to: 7 }
 			QtObject { id: e9; property int from: 6; property int to: 8 }
 			QtObject { id: e10; property int from: 7; property int to: 8 }
-			QtObject { id: e11; property int from: 6; property int to: 6 }*/
+			QtObject { id: e11; property int from: 6; property int to: 6 }
 
-			vertices: [0,1]
-			edges: [e1]
+			vertices: [0,1,2,3,4,5,6,7,8]
+			edges: [e1,e2,e3,e4,e5,e6,e7,e8,e9,e10,e11]
 
-			onLayoutStart: {}
-			onLayoutDone: {}
-			onRoutingStart: {}
-			onRoutingDone: {}
+			onLayoutStart: { console.log("layout start") }
+			onLayoutDone: { console.log("layout done") }
+			onRoutingStart: { console.log("routing start") }
+			onRoutingDone: { console.log("routing done") }
 		}
 	}
 }

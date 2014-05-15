@@ -283,7 +283,7 @@ qreal GraphScenePath::approximateDistance(const QPointF &pnt) const
 }*/
 
 Sugiyama::Sugiyama(QQuickItem *parent)
-: QQuickItem(parent), _graph(), _vertexDelegate(nullptr), _edgeDelegate(nullptr), _vertices(), _edges()
+: QQuickPaintedItem(parent), _graph(), _delegate(nullptr), _vertices(), _edges()
 {}
 
 Sugiyama::~Sugiyama(void)
@@ -295,12 +295,10 @@ void Sugiyama::route(void)
 	{
 		SugiyamaInterface iface{this};
 
-		emit layoutStart();
+		emit routingStart();
 		dot::astar<SugiyamaInterface>(iface);
-		emit layoutDone();
+		emit routingDone();
 	}
-	else
-		qDebug() << "No edges";
 }
 
 void Sugiyama::layout(void)
@@ -309,13 +307,10 @@ void Sugiyama::layout(void)
 	{
 		SugiyamaInterface iface{this};
 
-		emit routingStart();
+		emit layoutStart();
 		dot::layout<SugiyamaInterface>(iface,100,100);
-		emit routingDone();
+		emit layoutDone();
 	}
-	else
-		qDebug() << "No edges";
-
 }
 
 void Sugiyama::clear(void)
@@ -326,29 +321,23 @@ void Sugiyama::clear(void)
 		{
 			QQuickItem *q = get_vertex(vx,*_graph).second;
 
-			q->setVisible(false);
-			q->setParentItem(0);
-			q->deleteLater();
-		}
-
-		for(auto ed: iters(po::edges(*_graph)))
-		{
-			QQuickItem *q = get_edge(ed,*_graph).second;
-
-			q->setVisible(false);
-			q->setParentItem(0);
-			q->deleteLater();
+			if(q)
+			{
+				q->setVisible(false);
+				q->setParentItem(0);
+				q->deleteLater();
+			}
 		}
 
 		_graph = boost::none;
 	}
 }
 
-po::digraph<std::pair<QVariant,QQuickItem*>,std::pair<QVariant,QQuickItem*>>& Sugiyama::graph(void)
+po::digraph<std::pair<QVariant,QQuickItem*>,std::pair<QVariant,QPainterPath>>& Sugiyama::graph(void)
 {
 	if(!_graph)
 	{
-		_graph = po::digraph<std::pair<QVariant,QQuickItem*>,std::pair<QVariant,QQuickItem*>>();
+		_graph = po::digraph<std::pair<QVariant,QQuickItem*>,std::pair<QVariant,QPainterPath>>();
 
 
 		QListIterator<QVariant> i(_vertices);
@@ -357,9 +346,9 @@ po::digraph<std::pair<QVariant,QQuickItem*>,std::pair<QVariant,QQuickItem*>>& Su
 			QVariant var = i.next();
 			QQuickItem *itm = nullptr;
 
-			if(_vertexDelegate)
+			if(_delegate)
 			{
-				itm = qobject_cast<QQuickItem*>(_vertexDelegate->create(QQmlEngine::contextForObject(this)));
+				itm = qobject_cast<QQuickItem*>(_delegate->create(QQmlEngine::contextForObject(this)));
 				itm->setParentItem(this);
 			}
 
@@ -369,7 +358,7 @@ po::digraph<std::pair<QVariant,QQuickItem*>,std::pair<QVariant,QQuickItem*>>& Su
 		QListIterator<QVariant> j(_edges);
 		while(j.hasNext())
 		{
-			using vx_desc = boost::graph_traits<po::digraph<std::pair<QVariant,QQuickItem*>,std::pair<QVariant,QQuickItem*>>>::vertex_descriptor;
+			using vx_desc = boost::graph_traits<po::digraph<std::pair<QVariant,QQuickItem*>,std::pair<QVariant,QPainterPath>>>::vertex_descriptor;
 			QVariant var = j.next();
 			QObject *obj = var.value<QObject*>();
 
@@ -382,16 +371,8 @@ po::digraph<std::pair<QVariant,QQuickItem*>,std::pair<QVariant,QQuickItem*>>& Su
 				auto a = std::find_if(p.first,p.second,[&](vx_desc v) { return get_vertex(v,*_graph).first == from.read(); });
 				auto b = std::find_if(p.first,p.second,[&](vx_desc v) { return get_vertex(v,*_graph).first == to.read(); });
 
-				QQuickItem *itm = nullptr;
-
-				if(_edgeDelegate)
-				{
-					itm = qobject_cast<QQuickItem*>(_edgeDelegate->create(QQmlEngine::contextForObject(this)));
-					itm->setParentItem(this);
-				}
-
 				if(a != p.second && b != p.second)
-					insert_edge(std::make_pair(var,itm),*a,*b,*_graph);
+					insert_edge(std::make_pair(var,QPainterPath()),*a,*b,*_graph);
 				else
 					qWarning() << "Edge between unknown nodes";
 			}
@@ -401,6 +382,20 @@ po::digraph<std::pair<QVariant,QQuickItem*>,std::pair<QVariant,QQuickItem*>>& Su
 	}
 
 	return *_graph;
+}
+
+void Sugiyama::paint(QPainter *p)
+{
+	assert(p);
+
+	for(auto e: iters(po::edges(graph())))
+	{
+		auto t = get_edge(e,graph());
+		p->drawPath(t.second);
+	}
+	QRectF bb = contentsBoundingRect();
+	QRectF bb2(mapToScene(QPointF(bb.x(),bb.y())),QSizeF(bb.width(),bb.height()));
+	p->drawRect(QRectF(bb.x(),bb.y(),bb.width() - 1,bb.height() - 1));
 }
 
 /*
@@ -480,7 +475,6 @@ dot::graph_traits<SugiyamaInterface>::node_type dot::entry<SugiyamaInterface>(Su
 template<>
 void dot::set_position(dot::graph_traits<SugiyamaInterface>::node_type n, const dot::coord &pos, SugiyamaInterface t)
 {
-	qDebug() << "set_pos" << pos.first << "x" << pos.second;
 	QQuickItem *q = get_vertex(n,(*t)->graph()).second;
 	q->setX(pos.first);
 	q->setY(pos.second);
@@ -490,8 +484,8 @@ template<>
 dot::coord dot::position(dot::graph_traits<SugiyamaInterface>::node_type n, SugiyamaInterface t)
 {
 	QQuickItem *q = get_vertex(n,(*t)->graph()).second;
-	qDebug() << "pos" << q->x() << "x" << q->y();
-	return std::make_pair(q->x(),q->y());
+	QPointF ptn(QPointF(q->x(),q->y()));
+	return std::make_pair(ptn.x(),ptn.y());
 }
 
 //template<>
@@ -500,14 +494,7 @@ dot::coord dot::position(dot::graph_traits<SugiyamaInterface>::node_type n, Sugi
 template<>
 void dot::set_segments(dot::graph_traits<SugiyamaInterface>::edge_type e, const std::list<dot::coord> &segs, SugiyamaInterface graph)
 {
-	std::stringstream pp;
-	QQmlEngine engine;
-	QQmlComponent path(&engine);
-	bool first = true;
-
-	for(auto s: segs)
-		std::cout << s.first << "x" << s.second << ", ";
-	std::cout << std::endl;
+	QPainterPath pp;
 
 	// draw segments with bezier curves
 	if(segs.size() > 2)
@@ -559,48 +546,21 @@ void dot::set_segments(dot::graph_traits<SugiyamaInterface>::edge_type e, const 
 			else
 				a = e1;
 
-			if(first)
-				pp << "import QtQuick 2.2" << std::endl
-					 << "Path {" << std::endl
-					 << "startX: " << ptn1.x() << std::endl
-					 << "startY: " << ptn1.y() << std::endl;
-			else
-				pp << "PathLine {" << std::endl
-					 << "x: " << ptn1.x() << std::endl
-					 << "y: " << ptn1.y() << std::endl
-					 << "}" << std::endl;
-
-			pp << "PathCubic {" << std::endl
-				 << "x: " << a.x() << std::endl
-				 << "y: " << a.y() << std::endl
-				 << "control1X: " << b.x() << std::endl
-				 << "control1Y: " << b.y() << std::endl
-				 << "control2X: " << ptn2.x() << std::endl
-				 << "control2Y: " << ptn2.y() << std::endl
-				 << "}" << std::endl;
-
-			first = false;
+			pp.moveTo(ptn1);
+			pp.cubicTo(a,b,ptn2);
 			++idx;
 		}
 	}
 	else if(segs.size() == 2)
 	{
-		pp << "import QtQuick 2.2" << std::endl
-			 << "Path {" << std::endl
-			 << "startX: " << segs.front().first << std::endl
-			 << "startY: " << segs.front().second << std::endl
-			 << "PathLine {" << std::endl
-			 << "x: " << segs.back().first << std::endl
-			 << "y: " << segs.back().second << std::endl
-			 << "}" << std::endl;
+		QPointF p1(segs.front().first,segs.front().second), p2(segs.back().first,segs.back().second);
+
+		pp.moveTo(p1);
+		pp.lineTo(p2);
 	}
 
-	pp << "}" << std::endl;
-
-	//qDebug() << QString::fromStdString(pp.str());
-
-	path.setData(pp.str().c_str(),QUrl());
-	get_edge(e,(*graph)->graph()).second->setProperty("path",QVariant::fromValue(path.create()));
+	get_edge(e,(*graph)->graph()).second = pp;
+	(*graph)->update();
 }
 
 /*template<>
@@ -622,13 +582,7 @@ bool dot::is_free(float x, float y, unsigned int w, unsigned int h, Path *e, Sug
 template<>
 bool dot::is_free(const dot::vis_node<SugiyamaInterface> &a, const dot::vis_node<SugiyamaInterface> &b, SugiyamaInterface graph)
 {
-	QPainterPath line;
-	QList<QQuickItem*> items;
-
-	line.moveTo(QPointF(a.position.first,a.position.second));
-	line.lineTo(QPointF(b.position.first,b.position.second));
-
-	items = (*graph)->childItems();
+	QList<QQuickItem*> items = (*graph)->childItems();
 
 	if(a.node.is_node())
 		items.removeAll(get_vertex(a.node.node(),(*graph)->graph()).second);
@@ -636,18 +590,26 @@ bool dot::is_free(const dot::vis_node<SugiyamaInterface> &a, const dot::vis_node
 		items.removeAll(get_vertex(b.node.node(),(*graph)->graph()).second);
 
 	// collision?
+	QLineF l(QPointF(a.position.first,a.position.second),QPointF(b.position.first,b.position.second));
 	QListIterator<QQuickItem*> iter(items);
 
 	while(iter.hasNext())
 	{
 		QQuickItem *i = iter.next();
 		QPointF pos(i->x(),i->y());
-		//QRectF bb(i->mapToItem((*graph),pos),QSizeF(i->width(),i->height()));
 		QRectF bb(pos,QSizeF(i->width(),i->height()));
 		auto p = vertices((*graph)->graph());
 		auto j = std::find_if(p.first,p.second,[&](dot::graph_traits<SugiyamaInterface>::node_type n) { return get_vertex(n,(*graph)->graph()).second == i; });
-		if(line.contains(bb) && j != p.second)
+		QPointF c;
+
+		if(j != p.second && (
+			 l.intersect(QLineF(bb.topLeft(),bb.topRight()),&c) == QLineF::BoundedIntersection ||
+			 l.intersect(QLineF(bb.topRight(),bb.bottomRight()),&c) == QLineF::BoundedIntersection ||
+			 l.intersect(QLineF(bb.bottomRight(),bb.bottomLeft()),&c) == QLineF::BoundedIntersection ||
+			 l.intersect(QLineF(bb.bottomLeft(),bb.topLeft()),&c) == QLineF::BoundedIntersection))
+		{
 			return false;
+		}
 	}
 	return true;
 }

@@ -141,12 +141,11 @@ namespace std
 	};
 }
 
-class Sugiyama : public QQuickItem
+class Sugiyama : public QQuickPaintedItem
 {
 	Q_OBJECT
 
-	Q_PROPERTY(QQmlComponent* vertexDelegate READ vertexDelegate WRITE setVertexDelegate NOTIFY vertexDelegateChanged)
-	Q_PROPERTY(QQmlComponent* edgeDelegate READ edgeDelegate WRITE setEdgeDelegate NOTIFY edgeDelegateChanged)
+	Q_PROPERTY(QQmlComponent* delegate READ delegate WRITE setDelegate NOTIFY delegateChanged)
 
 	Q_PROPERTY(QVariantList vertices READ vertices WRITE setVertices NOTIFY verticesChanged)
 	Q_PROPERTY(QVariantList edges READ edges WRITE setEdges NOTIFY edgesChanged)
@@ -155,17 +154,17 @@ public:
 	Sugiyama(QQuickItem *parent = 0);
 	virtual ~Sugiyama(void);
 
-	QQmlComponent* vertexDelegate(void) const { return _vertexDelegate; }
-	QQmlComponent* edgeDelegate(void) const { return _edgeDelegate; }
+	QQmlComponent* delegate(void) const { return _delegate; }
 	QVariantList vertices(void) const { return _vertices; }
 	QVariantList edges(void) const { return _edges; }
 
-	void setVertexDelegate(QQmlComponent* c) { _vertexDelegate = c; }
-	void setEdgeDelegate(QQmlComponent* c) { _edgeDelegate = c; }
+	void setDelegate(QQmlComponent* c) { _delegate = c; }
 	void setVertices(QVariantList l) { _vertices = l; clear(); emit verticesChanged(); layout(); route(); }
 	void setEdges(QVariantList l) { _edges = l; clear(); emit edgesChanged(); layout(); route(); }
 
-	po::digraph<std::pair<QVariant,QQuickItem*>,std::pair<QVariant,QQuickItem*>>& graph(void);
+	po::digraph<std::pair<QVariant,QQuickItem*>,std::pair<QVariant,QPainterPath>>& graph(void);
+
+	virtual void paint(QPainter *) override;
 
 public slots:
 	void layout(void);
@@ -174,11 +173,7 @@ public slots:
 signals:
 	void verticesChanged(void);
 	void edgesChanged(void);
-	void vertexDelegateChanged(void);
-	void edgeDelegateChanged(void);
-
-	void vertsChanged(void);
-	void edgsChanged(void);
+	void delegateChanged(void);
 
 	void layoutStart(void);
 	void layoutDone(void);
@@ -186,9 +181,8 @@ signals:
 	void routingDone(void);
 
 private:
-	mutable boost::optional<po::digraph<std::pair<QVariant,QQuickItem*>,std::pair<QVariant,QQuickItem*>>> _graph;
-	QQmlComponent* _vertexDelegate;
-	QQmlComponent* _edgeDelegate;
+	mutable boost::optional<po::digraph<std::pair<QVariant,QQuickItem*>,std::pair<QVariant,QPainterPath>>> _graph;
+	QQmlComponent* _delegate;
 	QVariantList _vertices;
 	QVariantList _edges;
 
@@ -202,7 +196,7 @@ namespace dot
 	template<>
 	struct graph_traits<SugiyamaInterface>
 	{
-		using graph = typename po::digraph<std::pair<QVariant,QQuickItem*>,std::pair<QVariant,QQuickItem*>>;
+		using graph = typename po::digraph<std::pair<QVariant,QQuickItem*>,std::pair<QVariant,QPainterPath>>;
 		using node_type = boost::graph_traits<graph>::vertex_descriptor;
 		using edge_type = boost::graph_traits<graph>::edge_descriptor;
 

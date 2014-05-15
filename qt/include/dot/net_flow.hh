@@ -392,7 +392,6 @@ dot::net_flow<T> dot::preprocess(T graph, const std::unordered_map<typename grap
 	typedef typename graph_traits<T>::node_type node;
 	typedef typename graph_traits<T>::edge_iterator edgeIter;
 	typedef typename graph_traits<T>::out_edge_iterator outEdgeIter;
-	typedef typename graph_traits<T>::node_iterator nodeIter;
 
 	net_flow<T> ret;
 	std::unordered_map<node,unsigned int> visited;						// List of already visited nodes in DFS and their depth (distance from the root)
