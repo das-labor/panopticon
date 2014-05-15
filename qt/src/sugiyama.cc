@@ -283,7 +283,7 @@ qreal GraphScenePath::approximateDistance(const QPointF &pnt) const
 }*/
 
 Sugiyama::Sugiyama(QQuickItem *parent)
-: QQuickPaintedItem(parent), _graph(), _delegate(nullptr), _vertices(), _edges()
+: QQuickPaintedItem(parent), _graph(), _delegate(nullptr), _vertices(), _edges(), _direct(false)
 {}
 
 Sugiyama::~Sugiyama(void)
@@ -296,7 +296,24 @@ void Sugiyama::route(void)
 		SugiyamaInterface iface{this};
 
 		emit routingStart();
-		dot::astar<SugiyamaInterface>(iface);
+
+		if(direct())
+		{
+			for(auto e: iters(dot::edges(iface)))
+			{
+				auto a = dot::source(e,iface), b = dot::sink(e,iface);
+				auto ap = dot::position(a,iface), bp = dot::position(b,iface);
+				auto aw = dot::dimensions(a,iface), bw = dot::dimensions(b,iface);
+
+				dot::set_segments(e,{std::make_pair(ap.first + aw.first / 2,ap.second + aw.second / 2),
+														 std::make_pair(bp.first + bw.first / 2,bp.second + bw.second / 2)},iface);
+			}
+		}
+		else
+		{
+			dot::astar<SugiyamaInterface>(iface);
+		}
+
 		emit routingDone();
 	}
 }
@@ -306,7 +323,6 @@ void Sugiyama::layout(void)
 	if(po::num_edges(graph()))
 	{
 		SugiyamaInterface iface{this};
-
 		emit layoutStart();
 		dot::layout<SugiyamaInterface>(iface,100,100);
 		emit layoutDone();
@@ -366,8 +382,9 @@ po::digraph<std::pair<QVariant,QQuickItem*>,std::pair<QVariant,QPainterPath>>& S
 			{
 				QQmlProperty from(obj,"from");
 				QQmlProperty to(obj,"to");
+				QQmlProperty width(obj,"width");
+				QQmlProperty color(obj,"color");
 				auto p = po::vertices(*_graph);
-
 				auto a = std::find_if(p.first,p.second,[&](vx_desc v) { return get_vertex(v,*_graph).first == from.read(); });
 				auto b = std::find_if(p.first,p.second,[&](vx_desc v) { return get_vertex(v,*_graph).first == to.read(); });
 
@@ -375,6 +392,9 @@ po::digraph<std::pair<QVariant,QQuickItem*>,std::pair<QVariant,QPainterPath>>& S
 					insert_edge(std::make_pair(var,QPainterPath()),*a,*b,*_graph);
 				else
 					qWarning() << "Edge between unknown nodes";
+
+				width.connectNotifySignal(this,SLOT(update()));
+				color.connectNotifySignal(this,SLOT(update()));
 			}
 			else
 				qWarning() << "Edge" << var << "has no attribute";
@@ -387,15 +407,21 @@ po::digraph<std::pair<QVariant,QQuickItem*>,std::pair<QVariant,QPainterPath>>& S
 void Sugiyama::paint(QPainter *p)
 {
 	assert(p);
+	p->save();
 
 	for(auto e: iters(po::edges(graph())))
 	{
 		auto t = get_edge(e,graph());
+		QObject *obj = t.first.value<QObject*>();
+		QQmlProperty width(obj,"width");
+		QQmlProperty color(obj,"color");
+		QPen pen(QBrush(color.read().value<QColor>()),width.read().toInt());
+
+		p->setPen(pen);
 		p->drawPath(t.second);
 	}
-	QRectF bb = contentsBoundingRect();
-	QRectF bb2(mapToScene(QPointF(bb.x(),bb.y())),QSizeF(bb.width(),bb.height()));
-	p->drawRect(QRectF(bb.x(),bb.y(),bb.width() - 1,bb.height() - 1));
+
+	p->restore();
 }
 
 /*

@@ -3,8 +3,12 @@ import QtQuick.Controls 1.1
 import Panopticon 1.0
 
 Item {
+	id: root
+	property color edgeColor: "red"
+	property int edgeWidth: 3
+
 	Component {
-		id: nodeComponent
+		id: node
 
 		Rectangle {
 			color: "red"
@@ -20,8 +24,24 @@ Item {
 			MouseArea {
 				anchors.fill: parent
 				drag.target: parent
+				hoverEnabled: true
 
-				onReleased: { sugiyama.route() }
+				onPositionChanged: {
+					if(pressed) {
+					sugiyama.direct = true
+					edgeColor = "gray"
+					sugiyama.route()
+				}
+				}
+				onReleased: {
+					sugiyama.direct = false
+					edgeColor = "red"
+					sugiyama.route()
+				}
+				onEntered: {
+					edgeColor = "yellow"
+					edgeWidth = 1
+				}
 			}
 		}
 	}
@@ -35,28 +55,22 @@ Item {
 			height: childrenRect.height + childrenRect.y
 			width: childrenRect.width + childrenRect.x
 
-			delegate: nodeComponent
+			delegate: node
 
-			QtObject { id: e1; property int from: 0; property int to: 1 }
-			QtObject { id: e2; property int from: 0; property int to: 2 }
-//			QtObject { id: e3; property int from: 1; property int to: 2 }
-			QtObject { id: e3; property int from: 2; property int to: 3 }
-			QtObject { id: e4; property int from: 3; property int to: 4 }
-			QtObject { id: e5; property int from: 3; property int to: 5 }
-			QtObject { id: e6; property int from: 3; property int to: 6 }
-			QtObject { id: e7; property int from: 5; property int to: 6 }
-			QtObject { id: e8; property int from: 6; property int to: 7 }
-			QtObject { id: e9; property int from: 6; property int to: 8 }
-			QtObject { id: e10; property int from: 7; property int to: 8 }
-			QtObject { id: e11; property int from: 6; property int to: 6 }
+			Edge { id: e1; from: 0; to: 1; color: root.edgeColor; width: root.edgeWidth }
+			Edge { id: e2; from: 0; to: 2; color: root.edgeColor; width: root.edgeWidth }
+			Edge { id: e3; from: 2; to: 3; color: root.edgeColor; width: root.edgeWidth }
+			Edge { id: e4; from: 3; to: 4; color: root.edgeColor; width: root.edgeWidth }
+			Edge { id: e5; from: 3; to: 5; color: root.edgeColor; width: root.edgeWidth }
+			Edge { id: e6; from: 3; to: 6; color: root.edgeColor; width: root.edgeWidth }
+			Edge { id: e7; from: 5; to: 6; color: root.edgeColor; width: root.edgeWidth }
+			Edge { id: e8; from: 6; to: 7; color: root.edgeColor; width: root.edgeWidth }
+			Edge { id: e9; from: 6; to: 8; color: root.edgeColor; width: root.edgeWidth }
+			Edge { id: e10; from: 7; to: 8; color: root.edgeColor; width: root.edgeWidth }
+			Edge { id: e11; from: 6; to: 6; color: root.edgeColor; width: root.edgeWidth }
 
 			vertices: [0,1,2,3,4,5,6,7,8]
 			edges: [e1,e2,e3,e4,e5,e6,e7,e8,e9,e10,e11]
-
-			onLayoutStart: { console.log("layout start") }
-			onLayoutDone: { console.log("layout done") }
-			onRoutingStart: { console.log("routing start") }
-			onRoutingDone: { console.log("routing done") }
 		}
 	}
 }

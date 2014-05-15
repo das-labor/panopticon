@@ -149,6 +149,7 @@ class Sugiyama : public QQuickPaintedItem
 
 	Q_PROPERTY(QVariantList vertices READ vertices WRITE setVertices NOTIFY verticesChanged)
 	Q_PROPERTY(QVariantList edges READ edges WRITE setEdges NOTIFY edgesChanged)
+	Q_PROPERTY(bool direct READ direct WRITE setDirect NOTIFY directChanged)
 
 public:
 	Sugiyama(QQuickItem *parent = 0);
@@ -157,10 +158,12 @@ public:
 	QQmlComponent* delegate(void) const { return _delegate; }
 	QVariantList vertices(void) const { return _vertices; }
 	QVariantList edges(void) const { return _edges; }
+	bool direct(void) const { return _direct; }
 
 	void setDelegate(QQmlComponent* c) { _delegate = c; }
 	void setVertices(QVariantList l) { _vertices = l; clear(); emit verticesChanged(); layout(); route(); }
 	void setEdges(QVariantList l) { _edges = l; clear(); emit edgesChanged(); layout(); route(); }
+	void setDirect(bool b) { _direct = b; emit directChanged(); route(); }
 
 	po::digraph<std::pair<QVariant,QQuickItem*>,std::pair<QVariant,QPainterPath>>& graph(void);
 
@@ -174,6 +177,7 @@ signals:
 	void verticesChanged(void);
 	void edgesChanged(void);
 	void delegateChanged(void);
+	void directChanged(void);
 
 	void layoutStart(void);
 	void layoutDone(void);
@@ -185,6 +189,7 @@ private:
 	QQmlComponent* _delegate;
 	QVariantList _vertices;
 	QVariantList _edges;
+	bool _direct;
 
 	void clear(void);
 };
