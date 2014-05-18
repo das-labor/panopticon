@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 2.8.11)
 project(PanopticonQt CXX)
 
 set(qtpanopticon_SOURCES src/dot/dot.cc src/delegate.cc
-	src/selection.cc src/linearview.cc src/main.cc src/session.cc
+	src/selection.cc src/linearview.cc src/session.cc src/main.cc
 	src/panopticon.cc src/sugiyama.cc)
 set(qtpanopticon_HEADERS include/delegate.hh include/selection.hh
 	include/pen.hh include/panopticon.hh
@@ -37,8 +37,7 @@ endif()
 add_executable(qtpanopticon ${qtpanopticon_SOURCES} ${qtpanopticon_HEADERS}
 	${qtpanopticon_HEADERS_MOC} ${qtpanopticon_RCCS})
 qt5_use_modules(qtpanopticon Widgets Quick Qml)
-target_link_libraries(qtpanopticon ${QT_LIBRARIES}
-	${panopticon_LIBRARIES})
+target_link_libraries(qtpanopticon ${QT_LIBRARIES} ${panopticon_LIBRARIES})
 set_target_properties(qtpanopticon PROPERTIES VERSION
 	${panopticon_MAJOR}.${panopticon_MINOR}.${panopticon_PATCH})
 install(TARGETS qtpanopticon RUNTIME DESTINATION bin)
