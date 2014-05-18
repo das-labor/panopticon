@@ -5,4 +5,6 @@ QtObject {
 	property var to: null
 	property int width: 3
 	property color color: "blue"
+	property var head: null
+	property var tail: null
 }

@@ -1,293 +1,16 @@
 #include "sugiyama.hh"
-/*
-GraphScenePath::GraphScenePath(QQuickItem *from, QQuickItem *to,QQuickItem *parent)
-: QQuickPaintedItem(parent), m_from(0), m_to(0), m_head(0), m_tail(0), m_pen(), m_direct(false), m_boundingRect()
-{
-	setZ(1);
-
-	setFrom(from);
-	setTo(to);
-
-	connect(&m_pen,SIGNAL(changed()),this,SLOT(update()));
-	setAcceptHoverEvents(true);
-}
-
-GraphScenePath::~GraphScenePath(void)
-{}
-
-QRectF GraphScenePath::contentsBoundingRect(void) const
-{
-	return m_boundingRect;
-}
-
-void GraphScenePath::updateGeometry(void)
-{
-	if(m_from)
-	{
-		m_fromCenter = mapFromItem(m_from,m_from->boundingRect().center());
-
-		if(m_to)
-		{
-			m_toCenter = mapFromItem(m_to,m_to->boundingRect().center());
-			m_boundingRect = QRectF(mapFromItem(m_from,m_from->boundingRect().topLeft()),QSizeF(m_from->width(),m_from->height())) |
-											 QRectF(mapFromItem(m_to,m_to->boundingRect().topLeft()),QSizeF(m_to->width(),m_to->height())) |
-											 m_path.boundingRect();
-		}
-	}
-}
-
-void GraphScenePath::update(void)
-{
-	QQuickPaintedItem::update();
-}
-
-void GraphScenePath::setPath(const QPainterPath &pp)
-{
-	m_path = pp;
-	updateGeometry();
-}
-
-void GraphScenePath::paint(QPainter *painter)
-{
-	painter->save();
-	painter->setPen(m_pen);
-	painter->setRenderHints(QPainter::Antialiasing | QPainter::HighQualityAntialiasing);
-
-	if(isDirect())
-	{
-		if(from() && to())
-			painter->drawLine(QLineF(m_fromCenter,m_toCenter));
-	}
-	else
-	{
-		painter->drawPath(m_path);
-	}
-
-	painter->restore();
-}
-
-QQuickItem *GraphScenePath::from(void) const
-{
-	return m_from;
-}
-
-QQuickItem *GraphScenePath::to(void) const
-{
-	return m_to;
-}
-
-QQuickItem *GraphScenePath::head(void) const
-{
-	return m_head;
-}
-
-QQuickItem *GraphScenePath::tail(void) const
-{
-	return m_tail;
-}
-
-GraphScenePen *GraphScenePath::pen(void)
-{
-	return &m_pen;
-}
-
-bool GraphScenePath::isDirect(void) const
-{
-	return m_direct;
-}
-
-void GraphScenePath::setFrom(QQuickItem *n)
-{
-	if(m_from)
-		disconnect(m_from);
-
-	m_from = n;
-
-	if(m_from)
-	{
-		connect(m_from,SIGNAL(xChanged()),this,SLOT(updateGeometry()));
-		connect(m_from,SIGNAL(yChanged()),this,SLOT(updateGeometry()));
-	}
-
-	m_path = QPainterPath();
-	positionEnds();
-	updateGeometry();
-	emit nodesChanged();
-}
-
-void GraphScenePath::setTo(QQuickItem *n)
-{
-	if(m_to)
-		disconnect(m_to);
-
-	m_to = n;
-
-	if(m_to)
-	{
-		connect(m_to,SIGNAL(xChanged()),this,SLOT(updateGeometry()));
-		connect(m_to,SIGNAL(yChanged()),this,SLOT(updateGeometry()));
-	}
-
-	m_path = QPainterPath();
-	positionEnds();
-	updateGeometry();
-	emit nodesChanged();
-}
-
-void GraphScenePath::setHead(QQuickItem *n)
-{
-	m_head = n;
-	positionEnds();
-	updateGeometry();
-}
-
-void GraphScenePath::setTail(QQuickItem *n)
-{
-	m_tail = n;
-	positionEnds();
-	updateGeometry();
-}
-
-void GraphScenePath::setDirect(bool b)
-{
-	m_direct = b;
-	positionEnds();
-	updateGeometry();
-}
-
-void GraphScenePath::positionEnds(void)
-{
-	if(!m_path.elementCount())
-		return;
-
-	if(m_head && m_to)
-	{
-		QRectF bb = m_head->boundingRect();
-		QLineF vec = contactVector(m_to);
-		QPointF pos(vec.p1() - QPointF(bb.width() / 2,bb.height() / 2));
-
-		m_head->setX(pos.x());
-		m_head->setY(pos.y());
-		m_head->setRotation(90 - vec.angle());
-	}
-
-	if(m_tail && m_from)
-	{
-		QRectF bb = m_tail->boundingRect();
-		QLineF vec = contactVector(m_from);
-		QPointF pos(vec.p1() - QPointF(bb.width() / 2,bb.height() / 2));
-
-		m_tail->setX(pos.x());
-		m_tail->setY(pos.y());
-		m_tail->setRotation(90 - vec.angle());
-	}
-}
-
-QLineF GraphScenePath::contactVector(QQuickItem *itm) const
-{
-	QRectF bb(QQuickPaintedItem::mapFromItem(itm,itm->boundingRect().topLeft()),QSizeF(itm->width(),itm->height()));
-	std::function<std::pair<QLineF,qreal>(const QLineF&)> func = [&](const QLineF &ln)
-	{
-		qreal dist = std::numeric_limits<qreal>::max();
-		std::function<qreal(qreal,qreal)> iter;
-		iter = [&](qreal from, qreal to)
-		{
-			qreal len = to - from;
-			qreal mid = from + len / 2.0;
-
-			if(len < 0.001f)
-				return mid;
-
-			std::function<qreal(qreal)> measure = [&](qreal p)
-			{
-				QPointF b_ptn = m_path.pointAtPercent(p);
-				QLineF normal = ln.normalVector().translated(b_ptn - ln.p1());
-				QPointF cut_ptn;
-
-				assert(ln.intersect(normal,&cut_ptn) != QLineF::NoIntersection);
-				if(!bb.contains(cut_ptn))
-					return QLineF(normal.p1(),ln.p1()).length();
-				else
-					return QLineF(normal.p1(),cut_ptn).length();
-			};
-
-			qreal left = measure(from + len / 4);
-			qreal right = measure(to - len / 4);
-
-			dist = std::min(std::min(dist,left),right);
-
-			if(left < right)
-				return iter(from,mid);
-			else
-				return iter(mid,to);
-		};
-
-		qreal t = iter(0,1);
-		QLineF vec = QLineF::fromPolar(1,m_path.angleAtPercent(t));
-		QPointF p1 = m_path.pointAtPercent(t);
-
-		return std::make_pair(vec.translated(p1),dist);
-	};
-
-	QList<QLineF> es;
-	qreal best_dist = std::numeric_limits<qreal>::max();
-	QLineF ret;
-
-	es.append(QLineF(bb.topLeft(),bb.topRight()));
-	es.append(QLineF(bb.topRight(),bb.bottomRight()));
-	es.append(QLineF(bb.bottomRight(),bb.bottomLeft()));
-	es.append(QLineF(bb.bottomLeft(),bb.topLeft()));
-
-	QListIterator<QLineF> iter(es);
-	while(iter.hasNext())
-	{
-		QLineF p;
-		qreal d;
-
-		std::tie(p,d) = func(iter.next());
-		if(d < best_dist)
-		{
-			best_dist = d;
-			ret = p;
-		}
-	}
-
-	return ret;
-}
-
-qreal GraphScenePath::approximateDistance(const QPointF &pnt) const
-{
-	qreal dist = std::numeric_limits<qreal>::max();
-	std::function<qreal(qreal,qreal)> iter;
-	iter = [&](qreal from, qreal to)
-	{
-		qreal len = to - from;
-		qreal mid = from + len / 2.0;
-
-		if(len < 0.001f)
-			return mid;
-
-		qreal left = QLineF(pnt,m_path.pointAtPercent(from + len / 4)).length();
-		qreal right = QLineF(pnt,m_path.pointAtPercent(to - len / 4)).length();
-
-		dist = std::min(std::min(dist,left),right);
-
-		if(left < right)
-			return iter(from,mid);
-		else
-			return iter(mid,to);
-	};
-
-	iter(0,1);
-	return dist;
-}*/
 
 Sugiyama::Sugiyama(QQuickItem *parent)
-: QQuickPaintedItem(parent), _graph(), _delegate(nullptr), _vertices(), _edges(), _direct(false)
-{}
+: QQuickPaintedItem(parent), _graph(), _delegate(nullptr), _vertices(), _edges(), _direct(false), _mapper()
+{
+	connect(&_mapper,SIGNAL(mapped(QObject*)),this,SLOT(updateEdge(QObject*)));
+}
 
 Sugiyama::~Sugiyama(void)
-{}
+{
+	disconnect();
+	clear();
+}
 
 void Sugiyama::route(void)
 {
@@ -335,7 +58,8 @@ void Sugiyama::clear(void)
 	{
 		for(auto vx: iters(po::vertices(*_graph)))
 		{
-			QQuickItem *q = get_vertex(vx,*_graph).second;
+			QQuickItem *q = get<1>(get_vertex(vx,*_graph));
+			// ctx deleted wen q is deleted
 
 			if(q)
 			{
@@ -345,63 +69,121 @@ void Sugiyama::clear(void)
 			}
 		}
 
+		for(auto ed: iters(po::edges(*_graph)))
+		{
+			QQuickItem *a = get<2>(get_edge(ed,*_graph));
+			QQuickItem *b = get<3>(get_edge(ed,*_graph));
+
+			if(a)
+				a->deleteLater();
+			if(b)
+				b->deleteLater();
+		}
+
 		_graph = boost::none;
 	}
 }
 
-po::digraph<std::pair<QVariant,QQuickItem*>,std::pair<QVariant,QPainterPath>>& Sugiyama::graph(void)
+po::digraph<std::tuple<QVariant,QQuickItem*,QQmlContext*>,std::tuple<QVariant,QPainterPath,QQuickItem*,QQuickItem*>>& Sugiyama::graph(void)
 {
 	if(!_graph)
 	{
-		_graph = po::digraph<std::pair<QVariant,QQuickItem*>,std::pair<QVariant,QPainterPath>>();
+		_graph = po::digraph<std::tuple<QVariant,QQuickItem*,QQmlContext*>,std::tuple<QVariant,QPainterPath,QQuickItem*,QQuickItem*>>();
 
 
 		QListIterator<QVariant> i(_vertices);
 		while(i.hasNext())
 		{
 			QVariant var = i.next();
-			QQuickItem *itm = nullptr;
+			QQuickItem *itm = 0;
+			QQmlContext *ctx = 0;
 
 			if(_delegate)
 			{
-				itm = qobject_cast<QQuickItem*>(_delegate->create(QQmlEngine::contextForObject(this)));
+				ctx = new QQmlContext(QQmlEngine::contextForObject(this));
+				itm = qobject_cast<QQuickItem*>(_delegate->create(ctx));
 				itm->setParentItem(this);
 			}
 
-			insert_vertex(std::make_pair(var,itm),*_graph);
+			insert_vertex(std::make_tuple(var,itm,ctx),*_graph);
 		}
 
 		QListIterator<QVariant> j(_edges);
 		while(j.hasNext())
 		{
-			using vx_desc = boost::graph_traits<po::digraph<std::pair<QVariant,QQuickItem*>,std::pair<QVariant,QPainterPath>>>::vertex_descriptor;
-			QVariant var = j.next();
-			QObject *obj = var.value<QObject*>();
-
-			if(obj)
-			{
-				QQmlProperty from(obj,"from");
-				QQmlProperty to(obj,"to");
-				QQmlProperty width(obj,"width");
-				QQmlProperty color(obj,"color");
-				auto p = po::vertices(*_graph);
-				auto a = std::find_if(p.first,p.second,[&](vx_desc v) { return get_vertex(v,*_graph).first == from.read(); });
-				auto b = std::find_if(p.first,p.second,[&](vx_desc v) { return get_vertex(v,*_graph).first == to.read(); });
-
-				if(a != p.second && b != p.second)
-					insert_edge(std::make_pair(var,QPainterPath()),*a,*b,*_graph);
-				else
-					qWarning() << "Edge between unknown nodes";
-
-				width.connectNotifySignal(this,SLOT(update()));
-				color.connectNotifySignal(this,SLOT(update()));
-			}
-			else
-				qWarning() << "Edge" << var << "has no attribute";
+			updateEdge(j.next().value<QObject*>());
 		}
 	}
 
 	return *_graph;
+}
+
+void Sugiyama::updateEdge(QObject *obj)
+{
+	using vx_desc = boost::graph_traits<po::digraph<std::tuple<QVariant,QQuickItem*,QQmlContext*>,std::tuple<QVariant,QPainterPath,QQuickItem*,QQuickItem*>>>::vertex_descriptor;
+	QVariant var = QVariant::fromValue(obj);
+
+	if(obj)
+	{
+		QQmlProperty from(obj,"from");
+		QQmlProperty to(obj,"to");
+		QQmlProperty width(obj,"width");
+		QQmlProperty color(obj,"color");
+		QQmlProperty head(obj,"head");
+		QQmlProperty tail(obj,"tail");
+		auto p = po::vertices(*_graph);
+		auto a = std::find_if(p.first,p.second,[&](vx_desc v) { return get<0>(get_vertex(v,*_graph)) == from.read(); });
+		auto b = std::find_if(p.first,p.second,[&](vx_desc v) { return get<0>(get_vertex(v,*_graph)) == to.read(); });
+		QQmlComponent *hc = head.read().value<QQmlComponent*>();
+		QQmlComponent *tc = tail.read().value<QQmlComponent*>();
+
+		if(a != p.second && b != p.second)
+		{
+			for(auto ex: po::iters(po::edges(*_graph)))
+			{
+				std::tuple<QVariant,QPainterPath,QQuickItem*,QQuickItem*> &t = get_edge(ex,*_graph);
+				if(get<0>(t) == var)
+				{
+					if(get<2>(t))
+						get<2>(t)->deleteLater();
+					if(get<3>(t))
+						get<3>(t)->deleteLater();
+
+					remove_edge(ex,*_graph);
+					break;
+				}
+			}
+
+			QQuickItem *h = 0, *t = 0;
+
+			if(hc)
+			{
+				h = qobject_cast<QQuickItem*>(hc->create(QQmlEngine::contextForObject(this)));
+				h->setParentItem(this);
+			}
+
+			if(tc)
+			{
+				t = qobject_cast<QQuickItem*>(tc->create(QQmlEngine::contextForObject(this)));
+				t->setParentItem(this);
+			}
+
+			insert_edge(std::make_tuple(var,QPainterPath(),h,t),*a,*b,*_graph);
+		}
+		else
+		{
+			qWarning() << "Edge between unknown nodes";
+		}
+
+		assert(width.connectNotifySignal(this,SLOT(update())));
+		assert(color.connectNotifySignal(this,SLOT(update())));
+		assert(from.connectNotifySignal(&_mapper,SLOT(map())));
+		assert(to.connectNotifySignal(&_mapper,SLOT(map())));
+		assert(head.connectNotifySignal(&_mapper,SLOT(map())));
+		assert(tail.connectNotifySignal(&_mapper,SLOT(map())));
+	}
+	else
+		qWarning() << "Edge" << var << "has no attribute";
 }
 
 void Sugiyama::paint(QPainter *p)
@@ -412,31 +194,34 @@ void Sugiyama::paint(QPainter *p)
 	for(auto e: iters(po::edges(graph())))
 	{
 		auto t = get_edge(e,graph());
-		QObject *obj = t.first.value<QObject*>();
+		QObject *obj = get<0>(t).value<QObject*>();
 		QQmlProperty width(obj,"width");
 		QQmlProperty color(obj,"color");
 		QPen pen(QBrush(color.read().value<QColor>()),width.read().toInt());
 
 		p->setPen(pen);
-		p->drawPath(t.second);
+		p->drawPath(get<1>(t));
 	}
 
 	p->restore();
 }
 
-/*
-template<>
-std::pair<QList<GraphScenePath*>::const_iterator,QList<GraphScenePath*>::const_iterator> dot::out_edges<SugiyamaInterface>(QQuickItem* n, SugiyamaInterface t)
+void Sugiyama::redoAttached(void)
 {
-	const QList<GraphScenePath*> &p = t.graph->outEdges(n);
-	return std::make_pair(p.begin(),p.end());
-}*/
+	for(auto vx: iters(po::vertices(graph())))
+	{
+		QVariantList incoming;
 
-/*template<>
-std::pair<QList<Path*>::const_iterator,QList<Path*>::const_iterator> in_paths<SugiyamaInterface>(uint64_t n, SugiyamaInterface t)
-{
-	return t.paths_by_head.equal_range(n);
-}*/
+		for(auto e: iters(po::in_edges(vx,graph())))
+		{
+			auto ed = get_edge(e,graph());
+			incoming.append(get<0>(ed));
+		}
+
+		auto v = get_vertex(vx,graph());
+		get<2>(v)->setContextProperty("incoming",QVariant(incoming));
+	}
+}
 
 template<>
 std::pair<dot::graph_traits<SugiyamaInterface>::node_iterator,dot::graph_traits<SugiyamaInterface>::node_iterator> dot::nodes<SugiyamaInterface>(SugiyamaInterface t)
@@ -456,9 +241,6 @@ dot::out_edges<SugiyamaInterface>(dot::graph_traits<SugiyamaInterface>::node_typ
 {
 	return out_edges(n,(*t)->graph());
 }
-
-//template<>
-//std::pair<QList<QQuickItem*>::const_iterator,QList<QQuickItem*>::const_iterator> in_paths<SugiyamaInterface>(uint64_t n, SugiyamaInterface t)
 
 template<>
 dot::graph_traits<SugiyamaInterface>::node_type dot::source<SugiyamaInterface>(dot::graph_traits<SugiyamaInterface>::edge_type e, SugiyamaInterface t)
@@ -481,7 +263,7 @@ unsigned int dot::weight<SugiyamaInterface>(dot::graph_traits<SugiyamaInterface>
 template<>
 std::pair<unsigned int,unsigned int> dot::dimensions<SugiyamaInterface>(dot::graph_traits<SugiyamaInterface>::node_type n, SugiyamaInterface t)
 {
-	QQuickItem *q = get_vertex(n,(*t)->graph()).second;
+	QQuickItem *q = get<1>(get_vertex(n,(*t)->graph()));
 	const QRectF &bb = q->boundingRect();
 	return std::make_pair(bb.width(),bb.height());
 }
@@ -501,7 +283,7 @@ dot::graph_traits<SugiyamaInterface>::node_type dot::entry<SugiyamaInterface>(Su
 template<>
 void dot::set_position(dot::graph_traits<SugiyamaInterface>::node_type n, const dot::coord &pos, SugiyamaInterface t)
 {
-	QQuickItem *q = get_vertex(n,(*t)->graph()).second;
+	QQuickItem *q = get<1>(get_vertex(n,(*t)->graph()));
 	q->setX(pos.first);
 	q->setY(pos.second);
 }
@@ -509,13 +291,10 @@ void dot::set_position(dot::graph_traits<SugiyamaInterface>::node_type n, const 
 template<>
 dot::coord dot::position(dot::graph_traits<SugiyamaInterface>::node_type n, SugiyamaInterface t)
 {
-	QQuickItem *q = get_vertex(n,(*t)->graph()).second;
+	QQuickItem *q = get<1>(get_vertex(n,(*t)->graph()));
 	QPointF ptn(QPointF(q->x(),q->y()));
 	return std::make_pair(ptn.x(),ptn.y());
 }
-
-//template<>
-//bool is_free(float x, float y, unsigned int w, unsigned int h, QQuickItem *e, SugiyamaInterface g);
 
 template<>
 void dot::set_segments(dot::graph_traits<SugiyamaInterface>::edge_type e, const std::list<dot::coord> &segs, SugiyamaInterface graph)
@@ -585,25 +364,15 @@ void dot::set_segments(dot::graph_traits<SugiyamaInterface>::edge_type e, const 
 		pp.lineTo(p2);
 	}
 
-	get_edge(e,(*graph)->graph()).second = pp;
+	auto p = get_edge(e,(*graph)->graph());
+	auto from = get_vertex(source(e,(*graph)->graph()),(*graph)->graph());
+	auto to = get_vertex(target(e,(*graph)->graph()),(*graph)->graph());
+
+	get<1>(get_edge(e,(*graph)->graph())) = pp;
+
+	(*graph)->positionEnds(get<0>(p).value<QObject*>(),get<2>(p),get<3>(p),get<1>(from),get<1>(to),pp);
 	(*graph)->update();
 }
-
-/*template<>
-bool dot::is_free(float x, float y, unsigned int w, unsigned int h, Path *e, SugiyamaInterface g)
-{
-	QRectF bb(QPointF(x,y),QSizeF(w,h));
-	QList<QQuickItem*> itms = g.scene->items(bb);
-
-	bool ret = g.scene->sceneRect().contains(bb) &&
-						 std::none_of(itms.begin(),itms.end(),[&](QQuickItem *i)
-						 {
-							 return i != e->from() &&
-											i != e->to() &&
-											g.graph->nodeList().contains(dynamic_cast<QQuickItem*>(i));
-						 });
-	return ret;
-}*/
 
 template<>
 bool dot::is_free(const dot::vis_node<SugiyamaInterface> &a, const dot::vis_node<SugiyamaInterface> &b, SugiyamaInterface graph)
@@ -611,9 +380,9 @@ bool dot::is_free(const dot::vis_node<SugiyamaInterface> &a, const dot::vis_node
 	QList<QQuickItem*> items = (*graph)->childItems();
 
 	if(a.node.is_node())
-		items.removeAll(get_vertex(a.node.node(),(*graph)->graph()).second);
+		items.removeAll(get<1>(get_vertex(a.node.node(),(*graph)->graph())));
 	if(b.node.is_node())
-		items.removeAll(get_vertex(b.node.node(),(*graph)->graph()).second);
+		items.removeAll(get<1>(get_vertex(b.node.node(),(*graph)->graph())));
 
 	// collision?
 	QLineF l(QPointF(a.position.first,a.position.second),QPointF(b.position.first,b.position.second));
@@ -625,7 +394,7 @@ bool dot::is_free(const dot::vis_node<SugiyamaInterface> &a, const dot::vis_node
 		QPointF pos(i->x(),i->y());
 		QRectF bb(pos,QSizeF(i->width(),i->height()));
 		auto p = vertices((*graph)->graph());
-		auto j = std::find_if(p.first,p.second,[&](dot::graph_traits<SugiyamaInterface>::node_type n) { return get_vertex(n,(*graph)->graph()).second == i; });
+		auto j = std::find_if(p.first,p.second,[&](dot::graph_traits<SugiyamaInterface>::node_type n) { return get<1>(get_vertex(n,(*graph)->graph())) == i; });
 		QPointF c;
 
 		if(j != p.second && (
@@ -638,4 +407,128 @@ bool dot::is_free(const dot::vis_node<SugiyamaInterface> &a, const dot::vis_node
 		}
 	}
 	return true;
+}
+
+void Sugiyama::positionEnds(QObject* itm, QQuickItem* head, QQuickItem* tail, QQuickItem* from, QQuickItem* to, const QPainterPath& path)
+{
+	if(head)
+	{
+		QRectF bb = head->boundingRect();
+		QLineF vec = contactVector(to,path);
+		QPointF pos(vec.p1() - QPointF(bb.width() / 2,bb.height() / 2));
+
+		head->setX(pos.x());
+		head->setY(pos.y());
+		head->setRotation(90 - vec.angle());
+	}
+
+	if(tail)
+	{
+		QRectF bb = tail->boundingRect();
+		QLineF vec = contactVector(from,path);
+		QPointF pos(vec.p1() - QPointF(bb.width() / 2,bb.height() / 2));
+
+		tail->setX(pos.x());
+		tail->setY(pos.y());
+		tail->setRotation(90 - vec.angle());
+	}
+}
+
+QLineF Sugiyama::contactVector(QQuickItem *itm, const QPainterPath& path) const
+{
+	QRectF bb(QQuickPaintedItem::mapFromItem(itm,itm->boundingRect().topLeft()),QSizeF(itm->width(),itm->height()));
+	std::function<std::pair<QLineF,qreal>(const QLineF&)> func = [&](const QLineF &ln)
+	{
+		qreal dist = std::numeric_limits<qreal>::max();
+		std::function<qreal(qreal,qreal)> iter;
+		iter = [&](qreal from, qreal to)
+		{
+			qreal len = to - from;
+			qreal mid = from + len / 2.0;
+
+			if(len < 0.001f)
+				return mid;
+
+			std::function<qreal(qreal)> measure = [&](qreal p)
+			{
+				QPointF b_ptn = path.pointAtPercent(p);
+				QLineF normal = ln.normalVector().translated(b_ptn - ln.p1());
+				QPointF cut_ptn;
+
+				assert(ln.intersect(normal,&cut_ptn) != QLineF::NoIntersection);
+				if(!bb.contains(cut_ptn))
+					return QLineF(normal.p1(),ln.p1()).length();
+				else
+					return QLineF(normal.p1(),cut_ptn).length();
+			};
+
+			qreal left = measure(from + len / 4);
+			qreal right = measure(to - len / 4);
+
+			dist = std::min(std::min(dist,left),right);
+
+			if(left < right)
+				return iter(from,mid);
+			else
+				return iter(mid,to);
+		};
+
+		qreal t = iter(0,1);
+		QLineF vec = QLineF::fromPolar(1,path.angleAtPercent(t));
+		QPointF p1 = path.pointAtPercent(t);
+
+		return std::make_pair(vec.translated(p1),dist);
+	};
+
+	QList<QLineF> es;
+	qreal best_dist = std::numeric_limits<qreal>::max();
+	QLineF ret;
+
+	es.append(QLineF(bb.topLeft(),bb.topRight()));
+	es.append(QLineF(bb.topRight(),bb.bottomRight()));
+	es.append(QLineF(bb.bottomRight(),bb.bottomLeft()));
+	es.append(QLineF(bb.bottomLeft(),bb.topLeft()));
+
+	QListIterator<QLineF> iter(es);
+	while(iter.hasNext())
+	{
+		QLineF p;
+		qreal d;
+
+		std::tie(p,d) = func(iter.next());
+		if(d < best_dist)
+		{
+			best_dist = d;
+			ret = p;
+		}
+	}
+
+	return ret;
+}
+
+qreal Sugiyama::approximateDistance(const QPointF &pnt, const QPainterPath& path) const
+{
+	qreal dist = std::numeric_limits<qreal>::max();
+	std::function<qreal(qreal,qreal)> iter;
+	iter = [&](qreal from, qreal to)
+	{
+		qreal len = to - from;
+		qreal mid = from + len / 2.0;
+
+		if(len < 0.001f)
+			return mid;
+
+		qreal left = QLineF(pnt,path.pointAtPercent(from + len / 4)).length();
+		qreal right = QLineF(pnt,path.pointAtPercent(to - len / 4)).length();
+
+		dist = std::min(std::min(dist,left),right);
+
+		if(left < right)
+			return iter(from,mid);
+		else
+			return iter(mid,to);
+	};
+
+	iter(0,1);
+	return dist;
 }
