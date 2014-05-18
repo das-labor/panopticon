@@ -1,10 +1,9 @@
-#ifndef AVR_HH
-#define AVR_HH
+#include <panopticon/program.hh>
+#include <panopticon/architecture.hh>
 
-#include <flowgraph.hh>
-#include <architecture.hh>
+#pragma once
 
-namespace po 
+namespace po
 {
 	// architecture_traits
 	struct avr_tag {};
@@ -30,8 +29,6 @@ namespace po
 		typedef ::std::function<void(sm &)> sem_action;
 		typedef code_generator<avr_tag> cg;
 
-		flow_ptr disassemble(::std::vector<uint16_t> &bytes,addr_t entry, flow_ptr flow = 0, disassemble_cb signal = disassemble_cb());
+		prog_loc disassemble(::std::vector<uint16_t> &bytes,addr_t entry, flow_ptr flow = 0, disassemble_cb signal = disassemble_cb());
 	}
 }
-
-#endif

@@ -5,7 +5,7 @@
 
 #include <panopticon/procedure.hh>
 #include <panopticon/basic_block.hh>
-#include <panopticon/digraph.hh>
+#include <panopticon/tree.hh>
 
 #pragma once
 
@@ -33,8 +33,8 @@ namespace po
 	*/
 	struct dom
 	{
-		digraph<bblock_wptr,void> dominance;
-		std::unordered_multimap<bblock_wptr,bblock_wptr> frontiers;
+		tree<bblock_wloc> dominance;
+		std::unordered_multimap<bblock_wloc,bblock_wloc> frontiers;
 	};
 
 	/**
@@ -47,11 +47,11 @@ namespace po
 	struct live
 	{
 		std::unordered_set<std::string> names;										///< global (procedure-wide) names (ssa names w/o version)
-		std::unordered_multimap<std::string,bblock_wptr> usage;		///< maps names to blocks that use them
+		std::unordered_multimap<std::string,bblock_wloc> usage;		///< maps names to blocks that use them
 
-		std::unordered_multimap<bblock_wptr,std::string> uevar;		///< up exposed variables
-		std::unordered_multimap<bblock_wptr,std::string> varkill;	///< overwritten vars
-		std::unordered_multimap<bblock_wptr,std::string> liveout;	///< live past the end
+		std::unordered_multimap<bblock_wloc,std::string> uevar;		///< up exposed variables
+		std::unordered_multimap<bblock_wloc,std::string> varkill;	///< overwritten vars
+		std::unordered_multimap<bblock_wloc,std::string> liveout;	///< live past the end
 	};
 
 	/// Computes a \ b
@@ -83,11 +83,11 @@ namespace po
 	}
 
 	/// @brief Computes the dominance tree
-	dom dominance_tree(proc_ptr proc);
+	dom dominance_tree(proc_loc proc);
 
 	/// @brief Transform the IL statements to SSA form
-	void ssa(proc_ptr proc, const dom &dominance, const live &liveness);
+	void ssa(proc_loc proc, const dom &dominance, const live &liveness);
 
 	/// @brief Computes liveness sets
-	live liveness(proc_ptr proc);
+	live liveness(proc_loc proc);
 }

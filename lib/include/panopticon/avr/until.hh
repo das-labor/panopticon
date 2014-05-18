@@ -1,15 +1,14 @@
-#ifndef AVR_UNTIL_HH
-#define AVR_UNTIL_HH
-
 #ifndef AVR_PRIVATE
 #error "This header is not part of the public API!"
 #endif
 
-#include <value.hh>
+#include <panopticon/value.hh>
+
+#pragma once
 
 namespace po
 {
-	namespace avr 
+	namespace avr
 	{
 		enum IndirectRegOp { PostInc, PreDec, PostDisplace, Nop };
 
@@ -45,5 +44,3 @@ namespace po
 		void carry(const rvalue &a, const rvalue &b, const rvalue &c, cg &m);
 	}
 }
-
-#endif

@@ -4,32 +4,32 @@
 #include <map>
 #include <iostream>
 
-#include <dflow.hh>
-#include <value.hh>
+#include <panopticon/dflow.hh>
+#include <panopticon/value.hh>
 
 using namespace po;
 using namespace std;
 
-dom_ptr po::dominance_tree(proc_ptr proc)
+dom po::dominance_tree(proc_loc proc)
 {
-	dom_ptr ret(new dom);
+	dom ret;
 
-	if(!proc || !proc->entry)
+	if(!proc->entry)
 		return ret;
 
 	// dominance tree
-	ret->root = ret->tree[proc->entry] = dtree_ptr(new domtree(proc->entry));
-	ret->root->intermediate = ret->root;
+	ret.root = ret.tree[proc->entry] = dtree_loc(new domtree(proc->entry));
+	ret.root->intermediate = ret->root;
 
-	list<bblock_ptr> rpo_lst;
-	proc->rev_postorder([&](bblock_ptr bb) { rpo_lst.push_back(bb); });
+	list<bblock_loc> rpo_lst;
+	proc->rev_postorder([&](bblock_loc bb) { rpo_lst.push_back(bb); });
 
 	bool mod;
 	do
 	{
 		bool skip = true;
 		mod = false;
-		for(bblock_ptr bb: rpo_lst)
+		for(bblock_loc bb: rpo_lst)
 		{
 			// skip the first
 			if(skip)
@@ -38,11 +38,11 @@ dom_ptr po::dominance_tree(proc_ptr proc)
 				continue;
 			}
 
-			dtree_ptr newidom(0);
+			dtree_loc newidom(0);
 			basic_block::pred_iterator j,jend;
 
 			tie(j,jend) = bb->predecessors();
-			for_each(j,jend,[&](bblock_ptr p)
+			for_each(j,jend,[&](bblock_loc p)
 			{
 				if(ret->tree.count(p))
 				{
@@ -53,8 +53,8 @@ dom_ptr po::dominance_tree(proc_ptr proc)
 					else if(ret->tree[p]->intermediate)
 					{
 						// Intersect
-						dtree_ptr f1 = ret->tree[p], f2 = newidom;
-						auto rpo = [&](dtree_ptr d)
+						dtree_loc f1 = ret->tree[p], f2 = newidom;
+						auto rpo = [&](dtree_loc d)
 						{
 							return distance(rpo_lst.begin(),find(rpo_lst.begin(),rpo_lst.end(),d->basic_block.lock()));
 						};
@@ -78,7 +78,7 @@ dom_ptr po::dominance_tree(proc_ptr proc)
 			});
 
 			if(!ret->tree.count(bb))
-				ret->tree[bb] = dtree_ptr(new domtree(bb));
+				ret->tree[bb] = dtree_loc(new domtree(bb));
 
 			if(ret->tree[bb]->intermediate != newidom)
 			{
@@ -89,19 +89,19 @@ dom_ptr po::dominance_tree(proc_ptr proc)
 		}
 	} while(mod);
 
-	ret->root->intermediate = dtree_ptr();
+	ret->root->intermediate = dtree_loc();
 
 	// dominance frontiers
-	proc->rev_postorder([&](bblock_ptr bb)
+	proc->rev_postorder([&](bblock_loc bb)
 	{
 		basic_block::pred_iterator j,jend;
 		tie(j,jend) = bb->predecessors();
 
 		if(distance(j,jend) >= 2)
 		{
-			for_each(j,jend,[&](bblock_ptr p)
+			for_each(j,jend,[&](bblock_loc p)
 			{
-				dtree_ptr runner = ret->tree[p];
+				dtree_loc runner = ret->tree[p];
 
 				while(runner !=  ret->tree[bb]->intermediate)
 				{
@@ -115,11 +115,11 @@ dom_ptr po::dominance_tree(proc_ptr proc)
 	return ret;
 }
 
-live_ptr po::liveness(proc_cptr proc)
+live_loc po::liveness(proc_cloc proc)
 {
-	live_ptr ret(new live());
+	live_loc ret(new live());
 
-	auto collect = [&](const rvalue &v, bblock_ptr bb)
+	auto collect = [&](const rvalue &v, bblock_loc bb)
 	{
 		if(v.is_variable())
 		{
@@ -130,7 +130,7 @@ live_ptr po::liveness(proc_cptr proc)
 	};
 
 	// build global names and blocks that use them
-	for(bblock_ptr bb: proc->basic_blocks)
+	for(bblock_loc bb: proc->basic_blocks)
 	{
 		execute(bb,[&](const lvalue &left, instr::Function fn, const vector<rvalue> &right)
 		{
@@ -169,7 +169,7 @@ live_ptr po::liveness(proc_cptr proc)
 	{
 		mod = false;
 
-		for(bblock_ptr bb: proc->basic_blocks)
+		for(bblock_loc bb: proc->basic_blocks)
 		{
 			set<name> old_liveout = ret->liveout[bb];
 			basic_block::succ_iterator j,jend;
@@ -179,7 +179,7 @@ live_ptr po::liveness(proc_cptr proc)
 
 			// LiveOut = \_/ (UEVar \/ (LiveOut /\ !VarKill))
 			// 					 succ
-			for_each(j,j,[&](bblock_ptr s)
+			for_each(j,j,[&](bblock_loc s)
 				{	ret->liveout[bb] = set_union(ret->liveout[bb],set_union(ret->uevar[s],set_intersection(ret->liveout[s],set_difference(ret->names,ret->varkill[s])))); });
 
 			mod |= old_liveout != ret->liveout[bb];
@@ -190,11 +190,11 @@ live_ptr po::liveness(proc_cptr proc)
 	return ret;
 }
 
-void po::ssa(proc_ptr proc, dom_ptr dominance, live_ptr live)
+void po::ssa(proc_loc proc, dom_loc dominance, live_loc live)
 {
 	set<name> globals;
 
-	for(const pair<bblock_cwptr,set<name>> &s: live->uevar)
+	for(const pair<bblock_cwloc,set<name>> &s: live->uevar)
 		globals = set_union(globals,s.second);
 
 	if(live->liveout[proc->entry].size())
@@ -209,14 +209,14 @@ void po::ssa(proc_ptr proc, dom_ptr dominance, live_ptr live)
 	// insert phi
 	for(const name &n: globals)
 	{
-		set<bblock_cwptr> &worklist(live->usage[n]);
+		set<bblock_cwloc> &worklist(live->usage[n]);
 
 		while(!worklist.empty())
 		{
-			bblock_cptr bb = worklist.begin()->lock();
+			bblock_cloc bb = worklist.begin()->lock();
 
 			worklist.erase(worklist.begin());
-			for(dtree_ptr df: dominance->tree[bb]->frontiers)
+			for(dtree_loc df: dominance->tree[bb]->frontiers)
 			{
 				bool has_phi = false;
 				execute(df->basic_block.lock(),[&](lvalue left, instr::Function fn, const vector<rvalue> &right)
@@ -261,8 +261,8 @@ void po::ssa(proc_ptr proc, dom_ptr dominance, live_ptr live)
 	};
 
 	// rename ssa vars in a bblock
-	function<void(bblock_ptr bb)> rename;
-	rename = [&](bblock_ptr bb)
+	function<void(bblock_loc bb)> rename;
+	rename = [&](bblock_loc bb)
 	{
 		// for each φ-function in b, ‘‘x ← φ(· · · )’‘
 		//     rewrite x as new_name(x)
@@ -367,7 +367,7 @@ void po::ssa(proc_ptr proc, dom_ptr dominance, live_ptr live)
 					// fill in φ-function parameters in successor
 					if(s.bblock.lock())
 					{
-						bblock_ptr succ = s.bblock.lock();
+						bblock_loc succ = s.bblock.lock();
 
 						succ->mutate_mnemonics([&](vector<mnemonic> &ms)
 					{
@@ -400,7 +400,7 @@ void po::ssa(proc_ptr proc, dom_ptr dominance, live_ptr live)
 
 		// for each successor s of b in the dominator tree
 		//     rename(s)
-		for(dtree_ptr dom: dominance->tree[bb]->successors)
+		for(dtree_loc dom: dominance->tree[bb]->successors)
 			rename(dom->basic_block.lock());
 
 		// for each operation ‘‘x ← y op z’’ in bb
