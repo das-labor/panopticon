@@ -2,6 +2,7 @@
 #include <list>
 #include <map>
 #include <cassert>
+#include <numeric>
 
 #include <boost/iterator/iterator_facade.hpp>
 #include <boost/iterator/filter_iterator.hpp>

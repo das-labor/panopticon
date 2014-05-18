@@ -117,7 +117,7 @@ template<>
 basic_block* po::unmarshal(const uuid& u, const rdf::storage& store)
 {
 	rdf::node node(rdf::ns_local(to_string(u)));
-	rdf::statements mnes = store.find(node,"include"_po);
+	rdf::statements mnes = store.find(node,rdf::ns_po("include"));
 
 	assert(mnes.size());
 	basic_block *ret = new basic_block();
@@ -173,10 +173,10 @@ void po::execute(bblock_loc bb,function<void(const instr&)> f)
 
 void po::execute(bblock_loc bb,function<void(const lvalue &left, instr::Function fn, const vector<rvalue> &right)> f)
 {
-	execute(bb,[&](const instr &i)
+	execute(bb,std::function<void(const instr&)>([&](const instr &i)
 	{
 		f(i.left,i.function,i.right);
-	});
+	}));
 }
 
 template<>

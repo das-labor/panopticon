@@ -48,7 +48,7 @@ public:
 	disassembler_mockup(const std::map<typename po::architecture_traits<test_tag>::token_type,po::sem_state<test_tag>> &states)
 	: m_states(states) {}
 
-	virtual boost::optional<typename po::rule<test_tag>::tokiter> match(typename po::rule<test_tag>::tokiter begin, typename po::rule<test_tag>::tokiter end, po::sem_state<test_tag> &state) const
+	virtual boost::optional<typename po::rule<test_tag>::tokiter> match(po::rule<test_tag>::tokiter begin, po::rule<test_tag>::tokiter end, po::sem_state<test_tag> &state) const
 	{
 		if(begin == end)
 			return boost::none;
@@ -72,7 +72,7 @@ private:
 
 TEST(procedure,add_single)
 {
-	std::vector<typename po::architecture_traits<test_tag>::token_type> bytes({0});
+	std::vector<typename po::architecture_traits<test_tag>::token_type> bytes = {0};
 	std::map<typename po::architecture_traits<test_tag>::token_type,po::sem_state<test_tag>> states;
 
 	{

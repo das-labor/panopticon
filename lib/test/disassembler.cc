@@ -175,7 +175,7 @@ TEST_F(disassembler,capture_group)
 TEST_F(disassembler,empty_capture_group)
 {
 	po::sem_state<test_tag> st(0);
-	std::vector<unsigned char> buf({127});
+	std::vector<unsigned char> buf = {127};
 	po::disassembler<test_tag> dec;
 
 	dec | "01 a@.. 1 b@ c@..." = [](ss s) { s.mnemonic(1,"1"); };
@@ -203,7 +203,7 @@ TEST_F(disassembler,empty_capture_group)
 TEST_F(disassembler,too_long_capture_group)
 {
 	po::sem_state<test_tag> st(0);
-	std::vector<unsigned char> buf({127});
+	std::vector<unsigned char> buf = {127};
 	po::disassembler<test_tag> dec;
 
 	ASSERT_THROW(dec | "k@........." = [](ss s) {};,po::tokpat_error);
@@ -212,7 +212,7 @@ TEST_F(disassembler,too_long_capture_group)
 TEST_F(disassembler,too_long_token_pattern)
 {
 	po::sem_state<test_tag> st(0);
-	std::vector<unsigned char> buf({127});
+	std::vector<unsigned char> buf = {127};
 	po::disassembler<test_tag> dec;
 
 	ASSERT_THROW(dec | "111111111" = [](ss s) {};,po::tokpat_error);
@@ -221,7 +221,7 @@ TEST_F(disassembler,too_long_token_pattern)
 TEST_F(disassembler,too_short_token_pattern)
 {
 	po::sem_state<test_tag> st(0);
-	std::vector<unsigned char> buf({127});
+	std::vector<unsigned char> buf = {127};
 	po::disassembler<test_tag> dec;
 
 	dec | "1111111" = [](ss s) {};
@@ -232,7 +232,7 @@ TEST_F(disassembler,too_short_token_pattern)
 TEST_F(disassembler,invalid_token_pattern)
 {
 	po::sem_state<test_tag> st(0);
-	std::vector<unsigned char> buf({127});
+	std::vector<unsigned char> buf = {127};
 	po::disassembler<test_tag> dec;
 
 	ASSERT_THROW(dec | "a111111" = [](ss s) {};,po::tokpat_error);

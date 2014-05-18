@@ -278,6 +278,7 @@ template<>
 dot::graph_traits<SugiyamaInterface>::node_type dot::entry<SugiyamaInterface>(SugiyamaInterface g)
 {
 	assert(false);
+	return *po::vertices((*g)->graph()).first;
 }
 
 template<>

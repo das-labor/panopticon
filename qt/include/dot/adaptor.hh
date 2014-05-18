@@ -195,6 +195,7 @@ namespace dot
 	node_adaptor<T> entry(graph_adaptor<T> t)
 	{
 		assert(false);
+		return *t.nodes->begin();
 	}
 }
 

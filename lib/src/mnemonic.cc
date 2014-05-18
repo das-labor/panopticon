@@ -368,12 +368,12 @@ template<>
 po::mnemonic* po::unmarshal(const po::uuid& u, const po::rdf::storage& store)
 {
 	rdf::node node = rdf::ns_local(to_string(u));
-	rdf::statement opcode = store.first(node,"opcode"_po),
-								 format = store.first(node,"format"_po),
-								 begin = store.first(node,"begin"_po),
-								 end = store.first(node,"end"_po),
-								 op_head = store.first(node,"operands"_po),
-								 exec_head = store.first(node,"executes"_po);
+	rdf::statement opcode = store.first(node,rdf::ns_po("opcode")),
+		format = store.first(node, rdf::ns_po("format")),
+		begin = store.first(node, rdf::ns_po("begin")),
+		end = store.first(node, rdf::ns_po("end")),
+		op_head = store.first(node, rdf::ns_po("operands")),
+		exec_head = store.first(node, rdf::ns_po("executes"));
 
 	rdf::nodes ops = rdf::read_list(op_head.object,store);
 	rdf::nodes xs = rdf::read_list(exec_head.object,store);

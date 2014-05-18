@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <type_traits>
 #include <atomic>
+#include <functional>
 
 #define BOOST_RESULT_OF_USE_DECLTYPE
 #include <boost/graph/graph_traits.hpp>
@@ -117,10 +118,10 @@ namespace po
 		mutable boost::optional<std::unordered_map<vertex_descriptor,size_t>> index;
 
 		using adjacency_iterator = boost::shared_container_iterator<std::vector<vertex_descriptor>>;
-		using out_edge_iterator = map_iterator<std::function<edge_descriptor(typename decltype(outgoing)::const_iterator)>,typename decltype(outgoing)::const_iterator>;
-		using in_edge_iterator = map_iterator<std::function<edge_descriptor(typename decltype(incoming)::const_iterator)>,typename decltype(incoming)::const_iterator>;
-		using vertex_iterator = map_iterator<std::function<vertex_descriptor(typename decltype(vertices)::const_iterator)>,typename decltype(vertices)::const_iterator>;
-		using edge_iterator = map_iterator<std::function<edge_descriptor(typename decltype(edges)::const_iterator)>,typename decltype(edges)::const_iterator>;
+		using out_edge_iterator = map_iterator<std::function<edge_descriptor(typename std::unordered_multimap<vertex_descriptor, edge_descriptor>::const_iterator)>, typename std::unordered_multimap<vertex_descriptor, edge_descriptor>::const_iterator>;
+		using in_edge_iterator = map_iterator<std::function<edge_descriptor(typename std::unordered_multimap<vertex_descriptor, edge_descriptor>::const_iterator)>, typename std::unordered_multimap<vertex_descriptor, edge_descriptor>::const_iterator>;
+		using vertex_iterator = map_iterator<std::function<vertex_descriptor(typename std::unordered_map<vertex_descriptor, N>::const_iterator)>, typename std::unordered_map<vertex_descriptor, N>::const_iterator>;
+		using edge_iterator = map_iterator<std::function<edge_descriptor(typename std::unordered_map<edge_descriptor, E>::const_iterator)>, typename std::unordered_map<edge_descriptor, E>::const_iterator>;
 	};
 }
 

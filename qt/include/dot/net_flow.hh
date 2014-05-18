@@ -8,6 +8,7 @@
 #include <list>
 #include <unordered_set>
 #include <map>
+#include <numeric>
 
 #include "dot/dot.hh"
 

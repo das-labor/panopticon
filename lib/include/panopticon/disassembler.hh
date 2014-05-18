@@ -698,7 +698,7 @@ namespace po
 		if(!ret && failsafe && begin != end)
 		{
 			state.tokens.push_back(*begin);
-			return failsafe->match(next(begin),end,state);
+			return failsafe->match(std::next(begin),end,state);
 		}
 		else
 			return ret;

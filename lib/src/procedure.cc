@@ -24,11 +24,11 @@ template<>
 procedure* po::unmarshal(const uuid& u, const rdf::storage &store)
 {
 	rdf::node node(rdf::ns_po(to_string(u)));
-	rdf::statement name = store.first(node,"name"_po);
-	rdf::statements bbs = store.find(node,"include"_po);
-	rdf::statements cts = store.find(node,"control-transfer"_po);
+	rdf::statement name = store.first(node, rdf::ns_po("name"));
+	rdf::statements bbs = store.find(node, rdf::ns_po("include"));
+	rdf::statements cts = store.find(node, rdf::ns_po("control-transfer"));
 	procedure* ret = new procedure(name.object.as_literal());
-	using vx_desc = typename boost::graph_traits<decltype(ret->control_transfers)>::vertex_descriptor;
+	using vx_desc = boost::graph_traits<decltype(ret->control_transfers)>::vertex_descriptor;
 
 	for(auto bb: bbs)
 		insert_vertex<boost::variant<bblock_loc,rvalue>,guard>(bblock_loc{uuid(bb.object.as_iri().substr(bb.object.as_iri().size()-36)),store},ret->control_transfers);
@@ -249,7 +249,7 @@ void po::execute(proc_loc proc,function<void(const lvalue &left, instr::Function
 
 void po::conditional_jump(proc_loc p, bblock_loc from, bblock_loc to, guard g)
 {
-	using vx_desc = typename boost::graph_traits<decltype(p->control_transfers)>::vertex_descriptor;
+	using vx_desc = boost::graph_traits<decltype(p->control_transfers)>::vertex_descriptor;
 	auto vx_a = find_node(variant<bblock_loc,rvalue>(from),p->control_transfers);
 	auto vx_b = find_node(variant<bblock_loc,rvalue>(to),p->control_transfers);
 	auto q = vertices(p->control_transfers);

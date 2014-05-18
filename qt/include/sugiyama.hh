@@ -94,7 +94,7 @@ namespace dot
 	template<>
 	struct graph_traits<SugiyamaInterface>
 	{
-		using graph = typename po::digraph<std::tuple<QVariant,QQuickItem*,QQmlContext*>,std::tuple<QVariant,QPainterPath,QQuickItem*,QQuickItem*>>;
+		using graph = po::digraph<std::tuple<QVariant,QQuickItem*,QQmlContext*>,std::tuple<QVariant,QPainterPath,QQuickItem*,QQuickItem*>>;
 		using node_type = boost::graph_traits<graph>::vertex_descriptor;
 		using edge_type = boost::graph_traits<graph>::edge_descriptor;
 
