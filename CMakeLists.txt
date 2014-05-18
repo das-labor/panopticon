@@ -75,7 +75,7 @@ endif()
 
 # Dependencies
 find_package(LibArchive REQUIRED)
-find_package(Boost 1.52 COMPONENTS system filesystem REQUIRED)
+find_package(Boost 1.52 COMPONENTS system filesystem graph REQUIRED)
 find_package(KyotoCabinet REQUIRED)
 
 # Targets
