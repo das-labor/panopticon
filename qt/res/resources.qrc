@@ -21,5 +21,8 @@
 		<file>workspace/Workspace.qml</file>
 		<file>workspace/Graph.qml</file>
 		<file>workspace/Edge.qml</file>
+
+		<file>head.svg</file>
+		<file>tail.svg</file>
 	</qresource>
 </RCC>

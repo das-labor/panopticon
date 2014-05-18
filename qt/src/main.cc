@@ -1,4 +1,5 @@
 #include "panopticon.hh"
+#include "graphscene.hh"
 
 using namespace std;
 

@@ -287,7 +287,7 @@ template<typename T>
 void dot::feasible_tree(net_flow<T> &nf)
 {
 	typedef typename graph_traits<T>::node_type node;
-	assert(nf.nodes.size());
+	assert(!nf.nodes.empty());
 	assert(nf.edges_by_head.size());
 	assert(nf.edges_by_head.size() == nf.edges_by_tail.size());
 
@@ -392,7 +392,10 @@ dot::net_flow<T> dot::preprocess(T graph, const std::unordered_map<typename grap
 	typedef typename graph_traits<T>::edge_type edge;
 	typedef typename graph_traits<T>::node_type node;
 	typedef typename graph_traits<T>::edge_iterator edgeIter;
+<<<<<<< Updated upstream
 	typedef typename graph_traits<T>::out_edge_iterator outEdgeIter;
+=======
+>>>>>>> Stashed changes
 
 	net_flow<T> ret;
 	std::unordered_map<node,unsigned int> visited;						// List of already visited nodes in DFS and their depth (distance from the root)

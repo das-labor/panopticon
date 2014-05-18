@@ -72,7 +72,6 @@ namespace po
 		struct edge_descriptor_tag {};
 		using vertex_descriptor = integer_wrapper<uint64_t,vertex_descriptor_tag>;
 		using edge_descriptor = integer_wrapper<uint64_t,edge_descriptor_tag>;
-	//	using edge_descriptor = int64_t;
 		using size_type = size_t;
 
 		digraph(void) : next_vertex(), next_edge(), vertices(), edges(), sources(), destinations(), outgoing(), incoming(), index(boost::none)

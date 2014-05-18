@@ -1,9 +1,8 @@
-#ifndef LAYOUT_HH
-#define LAYOUT_HH
-
 #include <limits>
 
 #include "dot/dot.hh"
+
+#pragma once
 
 template<typename T>
 void dot::layout(T graph, unsigned int ranksep, unsigned int nodesep)
@@ -21,6 +20,10 @@ void dot::layout(T graph, unsigned int ranksep, unsigned int nodesep)
 	static_assert(std::is_copy_assignable<traits::edge_type>::value,"The edge type needs to be copy-assignable");
 	static_assert(std::is_default_constructible<traits::edge_type>::value,"The edge type needs a default constructor");
 	*/
+
+	auto nd = nodes(graph);
+	if(nd.first == nd.second)
+		return;
 
 	// rank
 	net_flow<T> ph1 = cook_phase1(graph);
@@ -83,5 +86,3 @@ void dot::layout(T graph, unsigned int ranksep, unsigned int nodesep)
 			set_position(n,std::make_pair(ph3.lambda.at(n) - x_correction,maxh.at(ph1.lambda.at(n))),graph);
 		}
 }
-
-#endif
