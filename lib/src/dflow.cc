@@ -6,115 +6,67 @@
 
 #include <panopticon/dflow.hh>
 #include <panopticon/value.hh>
+#include <panopticon/digraph.hh>
+
+#include <boost/graph/dominator_tree.hpp>
 
 using namespace po;
 using namespace std;
 
-dom po::dominance_tree(proc_loc proc)
+boost::optional<dom> po::dominance_tree(proc_loc proc)
 {
-	dom ret;
-
 	if(!proc->entry)
-		return ret;
+		return boost::none;
 
-	// dominance tree
-	ret.root = ret.tree[proc->entry] = dtree_loc(new domtree(proc->entry));
-	ret.root->intermediate = ret->root;
+	using vx_desc = boost::graph_traits<digraph<boost::variant<bblock_loc,rvalue>,guard>>::vertex_descriptor;
+	using domtree_pm_type = boost::associative_property_map<std::unordered_map<vx_desc,vx_desc>>;
+	std::unordered_map<vx_desc,vx_desc> idom;
+	auto ent = find_node(boost::variant<bblock_loc,rvalue>(*(proc->entry)),proc->control_transfers);
 
-	list<bblock_loc> rpo_lst;
-	proc->rev_postorder([&](bblock_loc bb) { rpo_lst.push_back(bb); });
+	boost::lengauer_tarjan_dominator_tree(proc->control_transfers,ent,domtree_pm_type(idom));
 
-	bool mod;
-	do
+	// build dominance tree from idom
+	dom ret;
+	std::unordered_map<bblock_wloc,bblock_wloc> idom2;
+
+	for(auto p: idom)
 	{
-		bool skip = true;
-		mod = false;
-		for(bblock_loc bb: rpo_lst)
-		{
-			// skip the first
-			if(skip)
-			{
-				skip = false;
-				continue;
-			}
+			auto vx_a = get_vertex(p.first,proc->control_transfers);
+			auto vx_b = get_vertex(p.second,proc->control_transfers);
 
-			dtree_loc newidom(0);
-			basic_block::pred_iterator j,jend;
+			if(get<bblock_loc>(&vx_a) && get<bblock_loc>(&vx_b))
+				idom2.emplace(get<bblock_loc>(vx_a), get<bblock_loc>(vx_b));
+	}
+	idom2.emplace(*(proc->entry),*(proc->entry));
 
-			tie(j,jend) = bb->predecessors();
-			for_each(j,jend,[&](bblock_loc p)
-			{
-				if(ret->tree.count(p))
-				{
-					if(!newidom)
-					{
-						newidom = ret->tree[p];
-					}
-					else if(ret->tree[p]->intermediate)
-					{
-						// Intersect
-						dtree_loc f1 = ret->tree[p], f2 = newidom;
-						auto rpo = [&](dtree_loc d)
-						{
-							return distance(rpo_lst.begin(),find(rpo_lst.begin(),rpo_lst.end(),d->basic_block.lock()));
-						};
-
-						while(f1 != f2)
-						{
-							int d1, d2 = rpo(f2);
-
-							while((d1 = rpo(f1)) > d2)
-								f1 = f1->intermediate;
-							while(d2 > d1)
-							{
-								f2 = f2->intermediate;
-								d2 = rpo(f2);
-							}
-						}
-
-						newidom = f1;
-					}
-				}
-			});
-
-			if(!ret->tree.count(bb))
-				ret->tree[bb] = dtree_loc(new domtree(bb));
-
-			if(ret->tree[bb]->intermediate != newidom)
-			{
-				newidom->successors.insert(ret->tree[bb]);
-				ret->tree[bb]->intermediate	= newidom;
-				mod = true;
-			}
-		}
-	} while(mod);
-
-	ret->root->intermediate = dtree_loc();
+	ret.dominance = po::tree<po::bblock_wloc>::from_map(idom2);
+	idom.emplace(ent,ent);
 
 	// dominance frontiers
-	proc->rev_postorder([&](bblock_loc bb)
+	for(auto n: proc->rev_postorder())
 	{
-		basic_block::pred_iterator j,jend;
-		tie(j,jend) = bb->predecessors();
+		auto n_vx = find_node(boost::variant<bblock_loc,rvalue>(n),proc->control_transfers);
 
-		if(distance(j,jend) >= 2)
+		if(in_degree(n_vx,proc->control_transfers) >= 2)
 		{
-			for_each(j,jend,[&](bblock_loc p)
+			for(auto in: iters(in_edges(n_vx,proc->control_transfers)))
 			{
-				dtree_loc runner = ret->tree[p];
+				bblock_loc runner = boost::get<bblock_loc>(get_vertex(source(in,proc->control_transfers),proc->control_transfers));
+				auto runner_vx = find_node(boost::variant<bblock_loc,rvalue>(runner),proc->control_transfers);
 
-				while(runner !=  ret->tree[bb]->intermediate)
+				while(runner_vx != idom.at(n_vx))
 				{
-					runner->frontiers.insert(ret->tree[bb]);
-					runner = runner->intermediate;
+					ret.frontiers.emplace(runner,n);
+					runner = boost::get<bblock_loc>(get_vertex(idom.at(runner_vx),proc->control_transfers));
+					runner_vx = find_node(boost::variant<bblock_loc,rvalue>(runner),proc->control_transfers);
 				}
-			});
+			}
 		}
-	});
+	}
 
 	return ret;
 }
-
+/*
 live_loc po::liveness(proc_cloc proc)
 {
 	live_loc ret(new live());
@@ -417,4 +369,4 @@ void po::ssa(proc_loc proc, dom_loc dominance, live_loc live)
 	};
 
 	rename(proc->entry);
-}
+}*/

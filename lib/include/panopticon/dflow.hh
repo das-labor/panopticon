@@ -83,7 +83,7 @@ namespace po
 	}
 
 	/// @brief Computes the dominance tree
-	dom dominance_tree(proc_loc proc);
+	boost::optional<dom> dominance_tree(proc_loc proc);
 
 	/// @brief Transform the IL statements to SSA form
 	void ssa(proc_loc proc, const dom &dominance, const live &liveness);
