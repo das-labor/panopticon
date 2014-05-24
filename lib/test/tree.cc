@@ -131,3 +131,57 @@ TEST_F(tree,value_semantics)
 	ASSERT_TRUE(t4 != t2);
 	ASSERT_TRUE(t4 != t3);
 }
+
+TEST_F(tree,from_map)
+{
+	std::unordered_map<int,int> m({
+		std::make_pair(1,1),
+		std::make_pair(2,1),
+		std::make_pair(3,1),
+		std::make_pair(4,2),
+		std::make_pair(5,4)});
+	po::tree<int> tr = po::tree<int>::from_map(m);
+	auto q = po::tree<int>::depth_first_search(tr.root(),tr);
+
+	while(q.first != q.second)
+	{
+		auto i = q.first;
+
+		if(*i == 1)
+		{
+			ASSERT_TRUE(tr.root() == i);
+			auto c = tr.begin(i);
+			ASSERT_EQ(std::distance(c,tr.end(i)), 2);
+			ASSERT_TRUE(*c == 2 || *c == 3);
+			ASSERT_TRUE(*(c+1) == 2 || *(c+1) == 3);
+		}
+		else if(*i == 2)
+		{
+			auto c = tr.begin(i);
+			ASSERT_EQ(std::distance(c,tr.end(i)), 1);
+			ASSERT_TRUE(*c == 4);
+		}
+		else if(*i == 3)
+		{
+			auto c = tr.begin(i);
+			ASSERT_EQ(std::distance(c,tr.end(i)), 0);
+		}
+		else if(*i == 4)
+		{
+			auto c = tr.begin(i);
+			ASSERT_EQ(std::distance(c,tr.end(i)), 1);
+			ASSERT_TRUE(*c == 5);
+		}
+		else if(*i == 5)
+		{
+			auto c = tr.begin(i);
+			ASSERT_EQ(std::distance(c,tr.end(i)), 0);
+		}
+		else
+		{
+			FAIL();
+		}
+
+		++q.first;
+	}
+}

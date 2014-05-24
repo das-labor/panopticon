@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <functional>
 #include <iostream>
+#include <sstream>
 
 #include <boost/iterator/indirect_iterator.hpp>
 
@@ -16,31 +17,6 @@ namespace po
 	template<typename T>
 	struct tree
 	{
-		class const_iterator : public boost::iterator_facade<
-						 const_iterator,
-						 const T&,
-						 boost::forward_traversal_tag,
-						 const T&>
-		{
-		public:
-			const_iterator() : _adaptee(), _items(nullptr) {};
-			explicit const_iterator(std::list<int>::const_iterator a, const std::unordered_map<int,T> *i, std::shared_ptr<std::list<int>> l = nullptr)
-			: _list(l), _adaptee(a), _items(i) {};
-
-			const_iterator &increment(void) { ++_adaptee; return *this; };
-			const_iterator &decrement(void) { --_adaptee; return *this; };
-
-			const T& dereference(void) const { return _items->at(*_adaptee); }
-			bool equal(const const_iterator &a) const { return _adaptee == a._adaptee; }
-
-		 private:
-			std::shared_ptr<std::list<int>> _list;
-			std::list<int>::const_iterator _adaptee;
-			const std::unordered_map<int,T> *_items;
-
-			friend struct tree<T>;
-		};
-
 		class iterator : public boost::iterator_facade<
 						 iterator,
 						 T&,
@@ -56,7 +32,9 @@ namespace po
 			iterator &decrement(void) { --_adaptee; return *this; };
 
 			T& dereference(void) const { return (*_items)[*_adaptee]; }
-			bool equal(const iterator &a) const { return _adaptee == a._adaptee; }
+			bool equal(const iterator &a) const { return *_adaptee == *a._adaptee; }
+
+			void advance(size_t sz) { std::advance(_adaptee,sz); }
 
 		 private:
 			std::shared_ptr<std::list<int>> _list;
@@ -65,6 +43,35 @@ namespace po
 
 			friend struct tree<T>;
 		};
+
+		class const_iterator : public boost::iterator_facade<
+						 const_iterator,
+						 const T&,
+						 boost::forward_traversal_tag,
+						 const T&>
+		{
+		public:
+			const_iterator() : _adaptee(), _items(nullptr) {};
+			const_iterator(iterator i) : _list(i._list), _adaptee(i._adaptee), _items(i._items) {}
+			explicit const_iterator(std::list<int>::const_iterator a, const std::unordered_map<int,T> *i, std::shared_ptr<std::list<int>> l = nullptr)
+			: _list(l), _adaptee(a), _items(i) {};
+
+			const_iterator &increment(void) { ++_adaptee; return *this; };
+			const_iterator &decrement(void) { --_adaptee; return *this; };
+
+			const T& dereference(void) const { return _items->at(*_adaptee); }
+			bool equal(const const_iterator &a) const { return *_adaptee == *a._adaptee; }
+
+			void advance(size_t sz) { std::advance(_adaptee,sz); }
+
+		 private:
+			std::shared_ptr<std::list<int>> _list;
+			std::list<int>::const_iterator _adaptee;
+			const std::unordered_map<int,T> *_items;
+
+			friend struct tree<T>;
+		};
+
 
 		tree(void) : tree(std::move(T())) {}
 		tree(const T& t) : tree(std::move(T(t))) {}
@@ -77,7 +84,7 @@ namespace po
 			_children.emplace(0,std::list<int>({i}));
 		}
 		tree(const tree& t) : _next(t._next.load()), _items(t._items), _parents(t._parents), _children(t._children) {}
-		tree(tree&& t);
+		tree(tree&& t) : _next(t._next.load()), _items(std::move(t._items)), _parents(std::move(t._parents)), _children(std::move(t._children)) {}
 
 		tree& operator=(const tree& t)
 		{
@@ -119,9 +126,40 @@ namespace po
 		iterator begin(iterator i) { return iterator(_children.at(*i._adaptee).begin(),&_items); }
 		const_iterator begin(const_iterator i) const { return cbegin(i); }
 		const_iterator cbegin(const_iterator i) const { return const_iterator(_children.at(*i._adaptee).cbegin(),&_items); }
+
 		iterator end(iterator i) { return iterator(_children.at(*i._adaptee).end(),&_items); }
-		const_iterator end(const_iterator i) const { return end(i); }
+		const_iterator end(const_iterator i) const { return cend(i); }
 		const_iterator cend(const_iterator i) const { return const_iterator(_children.at(*i._adaptee).cend(),&_items); }
+
+		template<typename M>
+		static tree<T> from_map(const M& m)
+		{
+			// look for root
+			for(auto p: m)
+			{
+				if(p.first == p.second)
+				{
+					tree<T> ret(p.first);
+					std::function<void(tree<T>::iterator)> fn;
+
+					fn = [&](iterator i)
+					{
+						for(auto q: m)
+						{
+							if(q.second == *i && q.first != q.second)
+							{
+								auto j = ret.insert(i,q.first);
+								fn(j);
+							}
+						}
+					};
+					fn(ret.root());
+					return ret;
+				}
+			}
+
+			throw std::runtime_error("no root");
+		}
 
 		static std::pair<const_iterator,const_iterator> depth_first_search(const_iterator i,const tree &t)
 		{
@@ -145,7 +183,7 @@ namespace po
 			return std::make_pair(const_iterator(tmp->begin(),&t._items,tmp),const_iterator(tmp->end(),&t._items,tmp));
 		}
 
-		iterator insert(iterator p, T&& itm)
+		iterator insert(iterator p, const T& itm)
 		{
 			auto i = _next++;
 			_items.emplace(i,itm);
@@ -173,6 +211,18 @@ namespace po
 			{
 				_items[idx] = T();
 			}
+		}
+
+		static std::string graphviz(const tree<T>& t)
+		{
+			std::stringstream ss;
+
+			ss << "digraph G {" << std::endl;
+			for(auto p: t._parents)
+				ss << "n_" << p.second << " -> n_" << p.first << std::endl;
+			ss << "}";
+
+			return ss.str();
 		}
 
 	private:
