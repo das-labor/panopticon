@@ -158,6 +158,9 @@ namespace po
 		loc(const uuid &u, const rdf::storage &s) : basic_loc<T,loc<T>>(u), _control(new loc_control<T>(s)) {}
 
 		bool operator==(const loc<T> &a) const { return tag() == a.tag(); }
+		bool operator!=(const loc<T> &a) const { return tag() != a.tag(); }
+		bool operator==(const wloc<T> &a) const { return tag() == a.tag(); }
+		bool operator!=(const wloc<T> &a) const { return tag() != a.tag(); }
 
 	protected:
 		loc(const uuid &u, std::shared_ptr<loc_control<T>> s) : basic_loc<T,loc<T>>(u), _control(s) {}
@@ -177,10 +180,13 @@ namespace po
 		using basic_loc<T,wloc<T>>::tag;
 
 		wloc(void) : basic_loc<T,wloc<T>>(boost::uuids::nil_uuid()), _control() {}
-		wloc(loc<T> l) : basic_loc<T,wloc<T>>(l.tag()), _control(l.control()) {}
-		wloc(const wloc<T> &l) : basic_loc<T,wloc<T>>(l.tag()), _control(l.control()) {}
+		wloc(loc<T> l) : basic_loc<T,wloc<T>>(l.tag()), _control(l._control) {}
+		wloc(const wloc<T> &l) : basic_loc<T,wloc<T>>(l.tag()), _control(l._control) {}
 
 		bool operator==(const wloc<T> &a) const { return tag() == a.tag(); }
+		bool operator!=(const wloc<T> &a) const { return tag() != a.tag(); }
+		bool operator==(const loc<T> &a) const { return tag() == a.tag(); }
+		bool operator!=(const loc<T> &a) const { return tag() != a.tag(); }
 
 		loc<T> lock(void) { return loc<T>(tag(),_control.lock()); }
 		const loc<T> lock(void) const { return loc<T>(tag(),_control.lock()); }
