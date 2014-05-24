@@ -134,7 +134,7 @@ namespace boost
 		using edge_descriptor = typename po::digraph<N,E>::edge_descriptor;
 		using directed_category = boost::directed_tag;
 		using edge_parallel_category = boost::disallow_parallel_edge_tag;
-		struct traversal_category : public boost::bidirectional_traversal_tag, adjacency_graph_tag, incidence_graph_tag, vertex_list_graph_tag, edge_list_graph_tag {};
+		struct traversal_category : public boost::bidirectional_graph_tag, adjacency_graph_tag, vertex_list_graph_tag, edge_list_graph_tag {};
 
 		static inline vertex_descriptor null_vertex(void) { return 0; }
 
