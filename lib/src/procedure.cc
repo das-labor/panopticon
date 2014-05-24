@@ -12,8 +12,6 @@ using namespace po;
 using namespace std;
 using namespace boost;
 
-//domtree::domtree(bblock_ptr b) : intermediate(0), successors(), frontiers(), basic_block(b) {}
-
 std::list<mnemonic>& po::operator+=(std::list<mnemonic>& a, const std::list<mnemonic>& b)
 {
 	std::copy(b.begin(),b.end(),std::back_inserter(a));
@@ -131,17 +129,9 @@ rdf::statements po::marshal(const procedure* p, const uuid& u)
 
 	for(auto o: iters(vertices(p->control_transfers)))
 	{
-		//try
-		{
-			variant<bblock_loc,rvalue> var = get_vertex<variant<bblock_loc,rvalue>,guard>(o,p->control_transfers);
-
-			if(get<bblock_loc>(&var))
-				ret.emplace_back(node,rdf::ns_po("include"),rdf::ns_local(to_string(get<bblock_loc>(var).tag())));
-		}
-	//	catch(runtime_error&)
-		{
-			;
-		}
+		variant<bblock_loc,rvalue> var = get_vertex<variant<bblock_loc,rvalue>,guard>(o,p->control_transfers);
+		if(get<bblock_loc>(&var))
+			ret.emplace_back(node,rdf::ns_po("include"),rdf::ns_local(to_string(get<bblock_loc>(var).tag())));
 	}
 
 	if(p->entry)

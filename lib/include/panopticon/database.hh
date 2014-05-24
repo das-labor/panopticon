@@ -8,6 +8,7 @@
 #include <panopticon/marshal.hh>
 #include <panopticon/structure.hh>
 #include <panopticon/program.hh>
+#include <panopticon/basic_block.hh>
 
 #pragma once
 
