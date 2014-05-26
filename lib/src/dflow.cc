@@ -66,48 +66,44 @@ boost::optional<dom> po::dominance_tree(proc_loc proc)
 
 	return ret;
 }
-/*
-live_loc po::liveness(proc_cloc proc)
+
+live po::liveness(proc_loc proc)
 {
-	live_loc ret(new live());
+	live ret;
 
 	auto collect = [&](const rvalue &v, bblock_loc bb)
 	{
-		if(v.is_variable())
+		if(is_variable(v))
 		{
-			ret->names.insert(v.to_variable());
-			if(!ret->varkill[bb].count(v.to_variable()))
-				ret->uevar[bb].insert(v.to_variable());
+			ret.names.insert(to_variable(v).name());
+			if(!ret[bb].varkill.count(to_variable(v).name()))
+				ret[bb].uevar.insert(to_variable(v).name());
 		}
 	};
 
 	// build global names and blocks that use them
-	for(bblock_loc bb: proc->basic_blocks)
+	for(bblock_loc bb: proc->rev_postorder())
 	{
 		execute(bb,[&](const lvalue &left, instr::Function fn, const vector<rvalue> &right)
 		{
 			for(const rvalue &v: right)
 				collect(v,bb);
 
-			if(left.is_variable())
+			if(is_variable(left))
 			{
-				ret->varkill[bb].insert(left.to_variable());
-				ret->names.insert(left.to_variable());
-				ret->usage[left.to_variable()].insert(bb);
+				ret[bb].varkill.insert(to_variable(left).name());
+				ret.names.insert(to_variable(left).name());
+				ret.usage.emplace(to_variable(left).name(),bb);
 			}
 		});
 
-		for(const mnemonic &m: bb->mnemonics())
+		auto vx = find_node(boost::variant<bblock_loc,rvalue>(bb),proc->control_transfers);
+		for(auto e: iters(out_edges(vx,proc->control_transfers)))
 		{
-			for(const rvalue &v: m.operands)
-				collect(v,bb);
-		}
+			guard g = get_edge(e,proc->control_transfers);
+			//collect(ct.value,bb);
 
-		for(const ctrans &ct: bb->outgoing())
-		{
-			collect(ct.value,bb);
-
-			for(const relation &rel: ct.condition.relations)
+			for(const relation &rel: g.relations)
 			{
 				collect(rel.operand1,bb);
 				collect(rel.operand2,bb);
@@ -121,20 +117,22 @@ live_loc po::liveness(proc_cloc proc)
 	{
 		mod = false;
 
-		for(bblock_loc bb: proc->basic_blocks)
+		for(bblock_loc bb: proc->rev_postorder())
 		{
-			set<name> old_liveout = ret->liveout[bb];
-			basic_block::succ_iterator j,jend;
+			set<std::string> old_liveout = ret[bb].liveout;
+			auto vx = find_node(boost::variant<bblock_loc,rvalue>(bb),proc->control_transfers);
 
-			ret->liveout[bb].clear();
-			tie(j,jend) = bb->successors();
+			ret[bb].liveout.clear();
 
 			// LiveOut = \_/ (UEVar \/ (LiveOut /\ !VarKill))
 			// 					 succ
-			for_each(j,j,[&](bblock_loc s)
-				{	ret->liveout[bb] = set_union(ret->liveout[bb],set_union(ret->uevar[s],set_intersection(ret->liveout[s],set_difference(ret->names,ret->varkill[s])))); });
+			for(auto e: iters(out_edges(vx,proc->control_transfers)))
+			{
+				bblock_loc s = get<bblock_loc>(get_vertex(target(e,proc->control_transfers),proc->control_transfers));
+				ret[bb].liveout = set_union(ret[bb].liveout,set_union(ret[s].uevar,set_intersection(ret[s].liveout,set_difference(ret.names,ret[s].varkill))));
+			}
 
-			mod |= old_liveout != ret->liveout[bb];
+			mod |= old_liveout != ret[bb].liveout;
 		}
 	}
 	while(mod);
@@ -142,7 +140,7 @@ live_loc po::liveness(proc_cloc proc)
 	return ret;
 }
 
-void po::ssa(proc_loc proc, dom_loc dominance, live_loc live)
+/*void po::ssa(proc_loc proc, dom_loc dominance, live_loc live)
 {
 	set<name> globals;
 

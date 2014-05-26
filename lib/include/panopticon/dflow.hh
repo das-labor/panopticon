@@ -1,6 +1,8 @@
 #include <memory>
 #include <set>
+#include <unordered_set>
 #include <map>
+#include <unordered_map>
 #include <algorithm>
 
 #include <panopticon/procedure.hh>
@@ -46,12 +48,20 @@ namespace po
 	 */
 	struct live
 	{
-		std::unordered_set<std::string> names;										///< global (procedure-wide) names (ssa names w/o version)
-		std::unordered_multimap<std::string,bblock_wloc> usage;		///< maps names to blocks that use them
+		std::set<std::string> names;										///< global (procedure-wide) names (ssa names w/o version)
+		std::multimap<std::string,bblock_wloc> usage;		///< maps names to blocks that use them
 
-		std::unordered_multimap<bblock_wloc,std::string> uevar;		///< up exposed variables
-		std::unordered_multimap<bblock_wloc,std::string> varkill;	///< overwritten vars
-		std::unordered_multimap<bblock_wloc,std::string> liveout;	///< live past the end
+		struct per_bblock
+		{
+			std::set<std::string> uevar;		///< up exposed variables
+			std::set<std::string> varkill;	///< overwritten vars
+			std::set<std::string> liveout;	///< live past the end
+		};
+
+		per_bblock& operator[](bblock_loc bb) { return _per_bblock[bb]; }
+
+	private:
+		std::unordered_map<bblock_loc,per_bblock> _per_bblock;
 	};
 
 	/// Computes a \ b
@@ -68,8 +78,8 @@ namespace po
 	std::set<T> set_union(const std::set<T> &a, const std::set<T> &b)
 	{
 		std::set<T> ret;
-		//set_union(a.begin(),a.end(),b.begin(),b.end(),inserter(ret,ret.begin()));
-		std::merge(a.begin(),a.end(),b.begin(),b.end(),std::inserter(ret,ret.begin()));
+		std::set_union(a.begin(),a.end(),b.begin(),b.end(),std::inserter(ret,ret.begin()));
+		////std::merge(a.begin(),a.end(),b.begin(),b.end(),std::inserter(ret,ret.begin()));
 		return ret;
 	}
 
