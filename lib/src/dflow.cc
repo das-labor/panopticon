@@ -84,7 +84,8 @@ live po::liveness(proc_loc proc)
 	// build global names and blocks that use them
 	for(bblock_loc bb: proc->rev_postorder())
 	{
-		execute(bb,[&](const lvalue &left, instr::Function fn, const vector<rvalue> &right)
+		std::function<void(const lvalue&, instr::Function, const vector<rvalue>&)> fn;
+		fn = [&](const lvalue &left, instr::Function fn, const vector<rvalue> &right)
 		{
 			for(const rvalue &v: right)
 				collect(v,bb);
@@ -95,7 +96,9 @@ live po::liveness(proc_loc proc)
 				ret.names.insert(to_variable(left).name());
 				ret.usage.emplace(to_variable(left).name(),bb);
 			}
-		});
+		};
+
+		execute(bb,fn);
 
 		auto vx = find_node(boost::variant<bblock_loc,rvalue>(bb),proc->control_transfers);
 		for(auto e: iters(out_edges(vx,proc->control_transfers)))
@@ -170,11 +173,13 @@ void po::ssa(proc_loc proc, const dom& domi, const live& li)
 			{
 				bool has_phi = false;
 				bblock_loc frontier = q.second.lock();
-
-				execute(frontier,[&](lvalue left, instr::Function fn, const vector<rvalue> &right)
+				std::function<void(const lvalue&, instr::Function, const vector<rvalue>&)> fn;
+				fn = [&](lvalue left, instr::Function fn, const vector<rvalue> &right)
 				{
 					has_phi = has_phi || (fn == instr::Phi && is_variable(left) && to_variable(left).name() == n);
-				});
+				};
+
+				execute(frontier,fn);
 
 				if(!has_phi)
 				{
@@ -359,14 +364,16 @@ void po::ssa(proc_loc proc, const dom& domi, const live& li)
 		// for each operation ‘‘x ← y op z’’ in bb
 		//     and each φ-function ‘‘x ← φ(· · · )’’
 		//     pop(stack[x])
-		execute(bb,[&](const lvalue &left, instr::Function fn, const vector<rvalue> &right)
+		std::function<void(const lvalue&, instr::Function, const vector<rvalue>&)> fn;
+		fn = [&](const lvalue &left, instr::Function fn, const vector<rvalue> &right)
 		{
 			if(is_variable(left))
 			{
 				assert(stack.count(to_variable(left).name()));
 				stack[to_variable(left).name()].pop_back();
 			}
-		});
+		};
+		execute(bb,fn);
 	};
 
 	rename(*(proc->entry));
