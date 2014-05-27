@@ -277,3 +277,18 @@ TEST_F(dflow,liveness)
 	ASSERT_EQ(l[get<bblock_loc>(get_vertex(b7,proc->control_transfers))].liveout.size(), 5);
 	ASSERT_EQ(l[get<bblock_loc>(get_vertex(b8,proc->control_transfers))].liveout.size(), 4);
 }
+
+TEST_F(dflow,static_single_assignment)
+{
+	ssa(proc,*dominance_tree(proc),liveness(proc));
+
+	ASSERT_NE(get<bblock_loc>(get_vertex(b0,proc->control_transfers))->mnemonics()[0].opcode, "internal-phis");
+	ASSERT_EQ(get<bblock_loc>(get_vertex(b1,proc->control_transfers))->mnemonics()[0].opcode, "internal-phis");
+	ASSERT_NE(get<bblock_loc>(get_vertex(b2,proc->control_transfers))->mnemonics()[0].opcode, "internal-phis");
+	ASSERT_EQ(get<bblock_loc>(get_vertex(b3,proc->control_transfers))->mnemonics()[0].opcode, "internal-phis");
+	ASSERT_NE(get<bblock_loc>(get_vertex(b4,proc->control_transfers))->mnemonics()[0].opcode, "internal-phis");
+	ASSERT_NE(get<bblock_loc>(get_vertex(b5,proc->control_transfers))->mnemonics()[0].opcode, "internal-phis");
+	ASSERT_NE(get<bblock_loc>(get_vertex(b6,proc->control_transfers))->mnemonics()[0].opcode, "internal-phis");
+	ASSERT_EQ(get<bblock_loc>(get_vertex(b7,proc->control_transfers))->mnemonics()[0].opcode, "internal-phis");
+	ASSERT_NE(get<bblock_loc>(get_vertex(b8,proc->control_transfers))->mnemonics()[0].opcode, "internal-phis");
+}

@@ -179,6 +179,25 @@ void po::execute(bblock_loc bb,function<void(const lvalue &left, instr::Function
 	}));
 }
 
+void po::rewrite(bblock_loc bb,std::function<void(lvalue&,instr::Function,std::vector<rvalue>&)> f)
+{
+	size_t sz_mne = bb.write().mnemonics().size(), i_mne = 0;
+	mnemonic *ary_mne = bb.write().mnemonics().data();
+
+	while(i_mne < sz_mne)
+	{
+		mnemonic &mne = ary_mne[i_mne++];
+		size_t sz_instr = mne.instructions.size(), i_instr = 0;
+		instr *ary_instr = mne.instructions.data();
+
+		while(i_instr < sz_instr)
+		{
+			instr& i = ary_instr[i_instr++];
+			f(i.left,i.function,i.right);
+		}
+	}
+}
+
 template<>
 po::guard* po::unmarshal(const po::uuid& u, const po::rdf::storage& store)
 {

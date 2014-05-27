@@ -59,6 +59,7 @@ namespace po
 		};
 
 		per_bblock& operator[](bblock_loc bb) { return _per_bblock[bb]; }
+		const per_bblock& operator[](bblock_loc bb) const { return _per_bblock.at(bb); }
 
 	private:
 		std::unordered_map<bblock_loc,per_bblock> _per_bblock;
