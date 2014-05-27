@@ -11,4 +11,4 @@ add_executable(testsuite ${panopticon_test_HEADERS}
 	${panopticon_test_SOURCES})
 target_link_libraries(testsuite ${GTEST_LIBRARIES}
 	${panopticon_LIBRARIES})
-gtest_add_tests(testsuite "" "${panopticon_test_SOURCES}")
+panopticon_add_tests(testsuite "${CMAKE_CURRENT_SOURCE_DIR}" "" "${panopticon_test_SOURCES}")

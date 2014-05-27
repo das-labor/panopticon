@@ -39,7 +39,7 @@ if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" OR
 -Wno-unused-parameter")
 endif()
 
-if(NOT DEFINED "CMAKE_BUILD_TYPE" OR "${CMAKE_BUILD_TYPE}" STREQUAL "Release")
+if("${CMAKE_BUILD_TYPE}" STREQUAL "Release")
 	add_definitions("-Werror")
 	message(STATUS "Build release")
 elseif("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
@@ -47,6 +47,7 @@ elseif("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
 	# enable tests
 	include(CTest)
 	find_package(GTest REQUIRED)
+	include(PanopticonTest)
 
 	# compile and link with coverage info
 	if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
