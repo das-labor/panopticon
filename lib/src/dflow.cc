@@ -182,9 +182,9 @@ void po::ssa(proc_loc proc, const dom& domi, const live& li)
 					assert(ms.size());
 
 					if(ms[0].opcode == "internal-phis")
-						ms[0].instructions.emplace_back(instr(instr::Phi,variable(n,-1,512)));
+						ms[0].instructions.emplace_back(instr(instr::Phi,variable(n,512)));
 					else
-						ms.emplace(ms.begin(),mnemonic(bound(ms.front().area.lower(),ms.front().area.lower()),"internal-phis","",{},{instr(instr::Phi,variable(n,-1,512))}));
+						ms.emplace(ms.begin(),mnemonic(bound(ms.front().area.lower(),ms.front().area.lower()),"internal-phis","",{},{instr(instr::Phi,variable(n,512))}));
 					worklist.insert(frontier);
 				}
 			}
@@ -221,7 +221,7 @@ void po::ssa(proc_loc proc, const dom& domi, const live& li)
 			if(fn == instr::Phi)
 			{
 				assert(is_variable(left));
-				left = variable(to_variable(left).name(),new_name(to_variable(left).name()),to_variable(left).width());
+				left = variable(to_variable(left).name(),to_variable(left).width(),new_name(to_variable(left).name()));
 			}
 		});
 
@@ -231,28 +231,27 @@ void po::ssa(proc_loc proc, const dom& domi, const live& li)
 		//     rewrite z with subscript top(stack[z])
 		//     rewrite x as new_name(x)
 		std::vector<mnemonic> &ms = bb.write().mnemonics();
-
-		size_t sz_mne = ms.size(), i_mne = 0;
-		mnemonic *ary_mne = ms.data();
+		const size_t sz_mne = ms.size();
+		size_t i_mne = 0;
 
 		while(i_mne < sz_mne)
 		{
-			mnemonic &mne = ary_mne[i_mne++];
-			size_t sz_instr = mne.instructions.size(), i_instr = 0;
-			instr *ary_instr = mne.instructions.data();
+			mnemonic &mne = ms.at(i_mne++);
+			const size_t sz_instr = mne.instructions.size();
+			size_t i_instr = 0;
 
 			for(rvalue v: mne.operands)
 			{
 				if(is_variable(v))
 				{
 					assert(stack.count(to_variable(v).name()));
-					v = variable(to_variable(v).name(),stack[to_variable(v).name()].back(),to_variable(v).width());
+					v = variable(to_variable(v).name(),to_variable(v).width(),stack[to_variable(v).name()].back());
 				}
 			}
 
 			while(i_instr < sz_instr)
 			{
-				instr &instr = ary_instr[i_instr++];
+				instr &instr = mne.instructions.at(i_instr++);
 				lvalue &left = instr.left;
 				instr::Function fn = instr.function;
 				vector<rvalue> &right = instr.right;
@@ -268,13 +267,13 @@ void po::ssa(proc_loc proc, const dom& domi, const live& li)
 						if(is_variable(v))
 						{
 							assert(stack.count(to_variable(v).name()));
-							right[ri] = variable(to_variable(v).name(),stack[to_variable(v).name()].back(),to_variable(v).width());
+							right[ri] = variable(to_variable(v).name(),to_variable(v).width(),stack[to_variable(v).name()].back());
 						}
 						++ri;
 					}
 
 					if(is_variable(left))
-						left = variable(to_variable(left).name(),new_name(to_variable(left).name()),to_variable(left).width());
+						left = variable(to_variable(left).name(),to_variable(left).width(),new_name(to_variable(left).name()));
 				}
 			}
 		}
@@ -294,13 +293,13 @@ void po::ssa(proc_loc proc, const dom& domi, const live& li)
 				{
 					const variable o1 = to_variable(rel.operand1);
 					assert(stack.count(o1.name()));
-					rel.operand1 = variable(o1.name(),stack[o1.name()].back(),o1.width());
+					rel.operand1 = variable(o1.name(),o1.width(),stack[o1.name()].back());
 				}
 				if(is_variable(rel.operand2))
 				{
 					const variable o2 = to_variable(rel.operand2);
 					assert(stack.count(o2.name()));
-					rel.operand2 = variable(o2.name(),stack[o2.name()].back(),o2.width());
+					rel.operand2 = variable(o2.name(),o2.width(),stack[o2.name()].back());
 				}
 			}
 
@@ -309,7 +308,7 @@ void po::ssa(proc_loc proc, const dom& domi, const live& li)
 			{
 				const variable v = to_variable(get<rvalue>(succ));
 				assert(stack.count(v.name()));
-				get<rvalue>(succ) = variable(v.name(),stack[v.name()].back(),v.width());
+				get<rvalue>(succ) = variable(v.name(),v.width(),stack[v.name()].back());
 			}
 
 			// fill in φ-function parameters in successor
@@ -337,7 +336,7 @@ void po::ssa(proc_loc proc, const dom& domi, const live& li)
 							--missing;
 						}
 						assert(stack.count(to_variable(i.left).name()));
-						i.right[ord] = variable(to_variable(i.left).name(),stack[to_variable(i.left).name()].back(),to_variable(i.left).width());
+						i.right[ord] = variable(to_variable(i.left).name(),to_variable(i.left).width(),stack[to_variable(i.left).name()].back());
 					}
 				}
 			}
