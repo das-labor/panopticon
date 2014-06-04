@@ -8,6 +8,7 @@
 #include <panopticon/value.hh>
 #include <panopticon/marshal.hh>
 #include <panopticon/region.hh>
+#include <panopticon/instr.hh>
 
 #pragma once
 
@@ -26,79 +27,6 @@
 
 namespace po
 {
-	/**
-	 * @brief Single IL statement
-	 *
-	 * In order to allow code analysis algorithms to
-	 * be implemented in a instruction set-agnostic manner,
-	 * all opcodes are translated into a intermediate
-	 * language first. Analysis is done on the IL and the
-	 * results are mapped back to the original code.
-	 *
-	 * Every instance of the instr class models on IL statement.
-	 * Each statement has the form a := f(b,...,z) where @c f is
-	 * a @ref Function defined in the IL, @c b to @z its
-	 * arguments (currently up to 3) and @c a is the variable
-	 * receiving the result for @c f.
-	 */
-	struct instr
-	{
-		/**
-		 * IL functions
-		 */
-		enum Function
-		{
-			Phi,			///< phi-Function
-			Not,			///< Bitwise Not
-			And,			///< Bitwise And
-			Or,		 		///< Bitwise Or
-			Xor,			///< Bitwise Xor
-			Assign,  	///< Assign Intermediate
-			ULeq,		   ///< Unsigned less-or-equal
-			SLeq,		   ///< Signed less-or-equal
-			UShr,		   ///< Unsigned right shift *
-			UShl,		   ///< Unsigned left shift *
-			SShr,		   ///< Signed right shift
-			SShl,		   ///< Signed left shift
-			SExt,		   ///< Signed extension *
-			UExt,		   ///< Unsigned extension *
-			Slice,	  ///< Slice
-			//Concat,	   // Concatenation
-			Add,			///< Addition
-			Sub,			///< Subtraction
-			Mul,			///< Multiplication
-			SDiv,		   ///< Signed Division
-			UDiv,		   ///< Unsigned Division
-			SMod,		   ///< Unsigned Modulo reduction
-			UMod,		   ///< Signed Modulo reduction
-			Call,		   ///< Procedure call
-			/// @todo Floating point
-		};
-
-		/// Construct a statement applying function @arg fn to @arg args. Saves the result in @arg a
-		template<class... Values>
-		instr(Function fn, lvalue a, Values&&... args) : function(fn), left(a), right({args...}) {}
-
-		/// Construct a statement applying function @arg fn to @arg r. Saves the result in @arg a
-		instr(Function fn, lvalue a, std::initializer_list<rvalue> r) : function(fn), left(a), right(r) {}
-
-		bool operator==(const instr& i) const { return function == i.function && left == i.left && right == i.right; }
-
-		Function function;
-		lvalue left;
-		std::vector<rvalue> right;
-	};
-
-	template<>
-	instr* unmarshal(const uuid&, const rdf::storage&);
-
-	template<>
-	rdf::statements marshal(const instr*, const uuid&);
-
-	std::string pretty(instr::Function fn);			///< Pretty print the function
-	std::string symbolic(instr::Function fn);			///< Returns a string suitable for describing the function in RDF
-	instr::Function numeric(const std::string &s);	///< Maps a string returned from @ref symbolic back the enum value
-
 	/**
 	 * @brief Mnemonic from a Instruction Set
 	 *
