@@ -5,6 +5,7 @@
 #include <type_traits>
 #include <atomic>
 #include <functional>
+#include <stdexcept>
 
 #define BOOST_RESULT_OF_USE_DECLTYPE
 #include <boost/graph/graph_traits.hpp>

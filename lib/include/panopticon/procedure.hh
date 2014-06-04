@@ -4,6 +4,7 @@
 #include <list>
 #include <mutex>
 #include <cstring>
+#include <stdexcept>
 
 #include <panopticon/basic_block.hh>
 #include <panopticon/mnemonic.hh>
@@ -138,7 +139,7 @@ namespace po
 					for(const mnemonic &m: get<bblock_loc>(nd)->mnemonics())
 					{
 						assert(boost::icl::size(m.area));
-						mnemonics.emplace(m.area.upper() - 1,m);
+						mnemonics.insert(std::make_pair(m.area.upper() - 1,m));
 					}
 				}
 				else if(get<rvalue>(&nd) && is_constant(get<rvalue>(nd)))
@@ -246,7 +247,7 @@ namespace po
 				{ bb.write().mnemonics().push_back(p.second); });
 
 			insert_vertex<boost::variant<bblock_loc,rvalue>,guard>(bb,ret.write().control_transfers);
-			assert(bblocks.emplace(bb->area().upper() - 1,bb).second);
+			assert(bblocks.insert(std::make_pair(bb->area().upper() - 1,bb)).second);
 		};
 
 		for(auto m: mnemonics)

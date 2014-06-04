@@ -7,6 +7,7 @@
 #include <functional>
 #include <iostream>
 #include <sstream>
+#include <stdexcept>
 
 #include <boost/iterator/indirect_iterator.hpp>
 

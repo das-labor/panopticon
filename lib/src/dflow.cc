@@ -94,7 +94,7 @@ live po::liveness(proc_loc proc)
 			{
 				ret[bb].varkill.insert(to_variable(left).name());
 				ret.names.insert(to_variable(left).name());
-				ret.usage.emplace(to_variable(left).name(),bb);
+				ret.usage.insert(std::make_pair(to_variable(left).name(),bb));
 			}
 		};
 
