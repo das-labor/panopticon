@@ -171,15 +171,7 @@ void po::execute(bblock_loc bb,function<void(const instr&)> f)
 	}
 }
 
-void po::execute(bblock_loc bb,function<void(const lvalue &left, instr::Function fn, const vector<rvalue> &right)> f)
-{
-	execute(bb,std::function<void(const instr&)>([&](const instr &i)
-	{
-		f(i.left,i.function,i.right);
-	}));
-}
-
-void po::rewrite(bblock_loc bb,std::function<void(lvalue&,instr::Function,std::vector<rvalue>&)> f)
+void po::rewrite(bblock_loc bb,std::function<void(instr&)> f)
 {
 	size_t sz_mne = bb.write().mnemonics().size(), i_mne = 0;
 	mnemonic *ary_mne = bb.write().mnemonics().data();
@@ -193,7 +185,7 @@ void po::rewrite(bblock_loc bb,std::function<void(lvalue&,instr::Function,std::v
 		while(i_instr < sz_instr)
 		{
 			instr& i = ary_instr[i_instr++];
-			f(i.left,i.function,i.right);
+			f(i);
 		}
 	}
 }

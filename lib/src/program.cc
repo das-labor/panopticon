@@ -170,11 +170,13 @@ bool po::has_procedure(prog_loc flow, offset entry)
 std::unordered_set<offset> po::collect_calls(proc_loc proc)
 {
 	std::unordered_set<offset> ret;
+	has_symbol_visitor<call_symbol> call_vis;
 
-	execute(proc,[&](const lvalue &left, instr::Function fn, const std::vector<rvalue> &right)
+	execute(proc,[&](const instr& i)
 	{
-		if(fn == instr::Call)
+		if(boost::apply_visitor(call_vis,i.function))
 		{
+			std::vector<rvalue> right = operators(i);
 			assert(right.size() == 1);
 
 			if(is_constant(right[0]))

@@ -21,9 +21,15 @@ namespace po
 		rvalue right;
 	};
 
+	template<typename Symbol, typename Domain, typename Codomain>
+	struct naryop
+	{
+		std::vector<rvalue> operands;
+	};
 	struct logic_domain {};
 	struct integer_domain {};
 	struct rational_domain {};
+	using universe_domain = boost::variant<logic_domain,integer_domain>;
 
 	struct and_symbol {};
 	struct or_symbol {};
@@ -50,12 +56,10 @@ namespace po
 	using logic_nop = unop<nop_symbol,logic_domain,logic_domain>;
 	using logic_impl = binop<implication_symbol,logic_domain,logic_domain>;
 	using logic_equiv = binop<equivalence_symbol,logic_domain,logic_domain>;
-	using logic_phi = binop<phi_symbol,logic_domain,logic_domain>;
 
 	using int_and = binop<and_symbol,integer_domain,integer_domain>;
 	using int_or = binop<or_symbol,integer_domain,integer_domain>;
 	using int_neg = unop<negation_symbol,integer_domain,integer_domain>;
-	using int_phi = binop<phi_symbol,integer_domain,integer_domain>;
 	using int_add = binop<add_symbol,integer_domain,integer_domain>;
 	using int_sub = binop<subtract_symbol,integer_domain,integer_domain>;
 	using int_mul = binop<multiply_symbol,integer_domain,integer_domain>;
@@ -66,6 +70,30 @@ namespace po
 	using int_lift = unop<lift_symbol,logic_domain,integer_domain>;
 	using int_call = unop<call_symbol,logic_domain,integer_domain>;
 	using int_nop = unop<nop_symbol,logic_domain,integer_domain>;
+
+	using univ_phi = naryop<phi_symbol,universe_domain,universe_domain>;
+
+	template<typename T>
+	struct has_symbol_visitor : public boost::static_visitor<bool>
+	{
+		template<typename Domain,typename Codomain>
+		bool operator()(unop<T,Domain,Codomain>) const { return true; }
+
+		template<typename Domain,typename Codomain>
+		bool operator()(binop<T,Domain,Codomain>) const { return true; }
+
+		template<typename Domain,typename Codomain>
+		bool operator()(naryop<T,Domain,Codomain>) const { return true; }
+
+		template<typename Symbol,typename Domain,typename Codomain>
+		bool operator()(unop<Symbol,Domain,Codomain>) const { return false; }
+
+		template<typename Symbol,typename Domain,typename Codomain>
+		bool operator()(binop<Symbol,Domain,Codomain>) const { return false; }
+
+		template<typename Symbol,typename Domain,typename Codomain>
+		bool operator()(naryop<Symbol,Domain,Codomain>) const { return false; }
+	};
 
 	/**
 	 * @brief Single IL statement
@@ -115,7 +143,7 @@ namespace po
 		lvalue assignee;
 	};
 
-	std::vector<rvalue> operations(const instr&);
+	std::vector<rvalue> operators(const instr&);
 	std::ostream& operator<<(std::ostream &os, const instr &i);
 
 	template<>

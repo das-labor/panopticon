@@ -155,11 +155,8 @@ namespace po
 	basic_block* unmarshal(const uuid&, const rdf::storage&);
 
 	/// Iterates all mnemonics in @ref bb, calling @ref f for each instruction.
-	void execute(bblock_loc bb,std::function<void(const lvalue&,instr::Function,const std::vector<rvalue>&)> f);
-
-	/// Iterates all mnemonics in @ref bb, calling @ref f for each instruction.
 	void execute(bblock_loc bb,std::function<void(const instr&)> f);
 
 	/// Iterates all mnemonics in @ref bb, calling @ref f for each instruction. The function may mutate operands and result
-	void rewrite(bblock_loc bb,std::function<void(lvalue&,instr::Function,std::vector<rvalue>&)> f);
+	void rewrite(bblock_loc bb,std::function<void(instr&)> f);
 }

@@ -130,7 +130,7 @@ namespace po
 		lvalue named(instr::operation fn, lvalue assign)
 		{
 			instr ret(fn,assign);
-			std::vector<rvalue> arguments = operations(ret);
+			std::vector<rvalue> arguments = operators(ret);
 
 			auto sanity_check = [](const rvalue &v)
 			{

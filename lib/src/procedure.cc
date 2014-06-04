@@ -214,7 +214,7 @@ boost::optional<bblock_loc> po::find_bblock(proc_loc proc, offset a)
 	return boost::none;
 }
 
-void po::execute(proc_loc proc,function<void(const lvalue &left, instr::Function fn, const vector<rvalue> &right)> f)
+void po::execute(proc_loc proc,function<void(const instr&)> f)
 {
 	for(const bblock_loc &bb: proc->rev_postorder())
 	{
@@ -231,7 +231,7 @@ void po::execute(proc_loc proc,function<void(const lvalue &left, instr::Function
 			{
 				const instr &instr = ary_instr[i_instr++];
 
-				f(instr.left,instr.function,instr.right);
+				f(instr);
 			}
 		}
 	}

@@ -6,6 +6,7 @@
 
 #include <boost/variant.hpp>
 
+#include <panopticon/instr.hh>
 #include <panopticon/mnemonic.hh>
 #include <panopticon/basic_block.hh>
 #include <panopticon/procedure.hh>
@@ -29,7 +30,11 @@
 namespace po
 {
 	template <typename T>
-	struct domain_traits {};
+	struct domain_traits
+	{
+		using value_type = void; ///< Lattice
+		using interpreter_type = void; ///< static_visitor<value_type>(aenv)
+	};
 
 	struct meet {};
 	struct join {};
@@ -44,14 +49,18 @@ namespace po
 	 * The returned container maps every SSA variable in
 	 * @ref proc to an instance of an element in the abstract domain.
 	 */
-	template<typename T>
-	std::shared_ptr<std::unordered_map<rvalue,typename domain_traits<T>::lattice>> interpret(const proc_loc proc, T tag = T())
+	template<typename Domain>
+	std::shared_ptr<std::unordered_map<rvalue,typename domain_traits<Domain>::value_type>> interpret(const proc_loc proc, Domain domain = Domain())
 	{
-		using L = typename domain_traits<T>::lattice;
+		using L = typename domain_traits<Domain>::value_type;
+		using I = typename domain_traits<Domain>::interpreter_type;
 		using vx_desc = typename boost::graph_traits<decltype(proc->control_transfers)>::vertex_descriptor;
-		std::shared_ptr<std::unordered_map<rvalue,typename domain_traits<T>::lattice>> ret = std::make_shared<std::unordered_map<rvalue,typename domain_traits<T>::lattice>>();
+
+		std::shared_ptr<std::unordered_map<rvalue,L>> ret = std::make_shared<std::unordered_map<rvalue,L>>();
 		const std::vector<bblock_loc>& rpo = proc->rev_postorder();
 		std::unordered_set<vx_desc> worklist;
+		I interp(ret);
+		has_symbol_visitor<phi_symbol> phi_vis;
 
 		std::transform(rpo.begin(),rpo.end(),[&](bblock_loc bb) { return find_node<boost::variant<bblock_loc,rvalue>,guard>(bb,proc->control_transfers); });
 
@@ -62,10 +71,11 @@ namespace po
 			bool modified = false;
 
 			worklist.erase(worklist.begin());
-			execute(bb,[&](const lvalue &left, instr::Function fn, const std::vector<rvalue> &right)
+			execute(bb,[&](const instr& i)
 			{
 				std::vector<L> arguments;
-				L res = ret->count(left) ? ret->at(left) : L();
+				L res = ret->count(i.assignee) ? ret->at(i.assignee) : L();
+				std::vector<rvalue> right = operators(i);
 
 				for(const rvalue &r: right)
 					if(ret->count(r))
@@ -73,16 +83,16 @@ namespace po
 					else
 						arguments.emplace_back(L());
 
-				if(fn == instr::Phi)
-					res = std::accumulate(arguments.begin(),arguments.end(),res,[&](const L &acc, const L &x) { return supremum(acc,x,tag); });
+				if(boost::apply_visitor(phi_vis,i.function))
+					res = std::accumulate(arguments.begin(),arguments.end(),res,[&](const L &acc, const L &x) { return supremum(acc,x,domain); });
 				else
-					res = supremum(execute(left,fn,right,arguments,tag),res,tag);
+					res = supremum(boost::apply_visitor(interp,i,arguments),res,domain);
 
-				modified = (!ret->count(left) || !(ret->at(left) == res));
+				modified = (!ret->count(i.assignee) || !(ret->at(i.assignee) == res));
 
-				if(ret->count(left))
-					ret->erase(left);
-				ret->emplace(left,res);
+				if(ret->count(i.assignee))
+					ret->erase(i.assignee);
+				ret->emplace(i.assignee,res);
 			});
 
 			if(modified)
@@ -109,94 +119,55 @@ namespace po
 	 * @note This is not an abstract domain, hence the AI algorithm
 	 * may not terminate.
 	 */
-	template<typename I>
-	struct concrete_interp {};
-
-	template<typename I>
-	struct domain_traits<concrete_interp<I>>
-	{
-		using lattice = I;
-	};
+	struct concrete_domain {};
 
 	/**
 	 * Executes a IL statement using concrete semantics ot type I
 	 * @internal
 	 */
-	template<typename I>
-	I execute(const lvalue &left, instr::Function fn, const std::vector<rvalue> &concrete, const std::vector<I> &args,concrete_interp<I>)
+	struct concrete_interpreter : public boost::static_visitor<unsigned long long>
 	{
-		switch(fn)
-		{
-		// Bitwise Not
-		case instr::Not: return ~args[0];
-
-		// Bitwise And
-		case instr::And:	return args[0] & args[1];
-
-		// Bitwise Or
-		case instr::Or: return args[0] | args[1];
-
-		// Bitwise Xor
-		case instr::Xor:	return args[0] ^ args[1];
-
-		// Assign Intermediate
-		case instr::Assign: return args[0];
-
-		// Unsigned right shift *
-		case instr::UShr:	return args[0] >> args[1];
-
-		// Unsigned left shift *
-		case instr::UShl:	return args[0] << args[1];
-
-		// Slice
-		case instr::Slice: return (args[0] >> args[1]) % (I)::std::pow(2,args[2]+1);
-
-		// Concatenation
-		//case instr::Concat: return args[0] << (sizeof(I) * 4) | args[1];
-
-		// Addition
-		case instr::Add:	return args[0] + args[1];
-
-		// Subtraction
-		case instr::Sub:	return args[0] - args[1];
-
-		// Multiplication
-		case instr::Mul:	return args[0] * args[1];
-
-		// Unsigned Division
-		case instr::UDiv:	return args[0] / args[1];
-
-		// Unsigned Modulo reduction
-		case instr::UMod:	return args[0] % args[1];
-
-		default: assert(false);
-		}
-	}
-
-	/**
-	 * @brief Simple Sparse Constant Propagation
-	 * @ingroup abstract_domain
-	 *
-	 * A basic abstract domain where values are either
-	 * unknown (Bottom), non constant (NonConst) or a
-	 * constant integer.
-	 *
-	 * Useful for discovering values that do not depend
-	 * on any input.
-	 */
-	struct simple_sparse_constprop {};
-	using sscp_lattice = boost::variant<meet,join,uint64_t>;
-
-	template<>
-	struct domain_traits<simple_sparse_constprop>
-	{
-		using lattice = sscp_lattice;
+		concrete_interpreter(std::shared_ptr<std::unordered_map<rvalue,unsigned long long>> aenv) : static_visitor<result_type>() /*, _environment(aenv)*/ {}
 	};
 
-	/// @internal
-	sscp_lattice execute(const lvalue &left, instr::Function fn, const std::vector<rvalue> &concrete, const std::vector<sscp_lattice> &abstract, simple_sparse_constprop);
-	/// Computes the supremum of two sscp lattice elements
-	sscp_lattice supremum(const sscp_lattice &a, const sscp_lattice &b, simple_sparse_constprop);
-}
+	template<>
+	struct domain_traits<concrete_domain>
+	{
+		using value_type = unsigned long long;
+		using interpreter_type = concrete_interpreter;
+	};
 
-std::ostream &operator<<(std::ostream &os, const po::sscp_lattice &l);
+	/**
+	 * @brief K-Set domain
+	 * @ingroup abstract_domain
+	 *
+	 * @todo
+	 */
+	template<unsigned int k>
+	struct kset_domain {};
+
+	/**
+	 * @internal
+	 */
+	template<unsigned int k>
+	struct kset_interpreter : public boost::static_visitor<boost::variant<meet,join,std::unordered_set<unsigned long long>>>
+	{
+		kset_interpreter(std::shared_ptr<std::unordered_map<rvalue,boost::variant<meet,join,std::unordered_set<unsigned long long>>>> aenv)
+		: static_visitor<result_type>()/*, _environment(aenv)*/ {}
+	};
+
+	template<unsigned int k>
+	struct domain_traits<kset_domain<k>>
+	{
+		using value_type = boost::variant<meet,join,std::unordered_set<unsigned long long>>;
+		using interpreter_type = kset_interpreter<k>;
+	};
+
+	/// Computes the supremum of two sscp lattice elements
+	template<unsigned int k>
+	boost::variant<meet,join,std::unordered_set<unsigned long long>> supremum(const boost::variant<meet,join,std::unordered_set<unsigned long long>> &a, const boost::variant<meet,join,std::unordered_set<unsigned long long>> &b, kset_domain<k>);
+
+	// intervals
+	// octagons
+	// ric
+}

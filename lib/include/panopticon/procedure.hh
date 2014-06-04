@@ -23,7 +23,7 @@ namespace po
 	using prog_wloc = wloc<struct program>;
 
 	/// Run @arg f on all IL statements. Basic blocks a traversed in undefined order.
-	void execute(proc_loc proc,std::function<void(const lvalue &left, instr::Function fn, const std::vector<rvalue> &right)> f);
+	void execute(proc_loc proc,std::function<void(const instr&)> f);
 
 	/// Returns basic block occuping address @arg a
 	boost::optional<bblock_loc> find_bblock(proc_loc proc, offset a);

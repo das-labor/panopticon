@@ -84,17 +84,18 @@ live po::liveness(proc_loc proc)
 	// build global names and blocks that use them
 	for(bblock_loc bb: proc->rev_postorder())
 	{
-		std::function<void(const lvalue&, instr::Function, const vector<rvalue>&)> fn;
-		fn = [&](const lvalue &left, instr::Function fn, const vector<rvalue> &right)
+		std::function<void(const instr&)> fn;
+		fn = [&](const instr &i)
 		{
+			std::vector<rvalue> right = operators(i);
 			for(const rvalue &v: right)
 				collect(v,bb);
 
-			if(is_variable(left))
+			if(is_variable(i.assignee))
 			{
-				ret[bb].varkill.insert(to_variable(left).name());
-				ret.names.insert(to_variable(left).name());
-				ret.usage.insert(std::make_pair(to_variable(left).name(),bb));
+				ret[bb].varkill.insert(to_variable(i.assignee).name());
+				ret.names.insert(to_variable(i.assignee).name());
+				ret.usage.insert(std::make_pair(to_variable(i.assignee).name(),bb));
 			}
 		};
 
@@ -173,10 +174,11 @@ void po::ssa(proc_loc proc, const dom& domi, const live& li)
 			{
 				bool has_phi = false;
 				bblock_loc frontier = q.second.lock();
-				std::function<void(const lvalue&, instr::Function, const vector<rvalue>&)> fn;
-				fn = [&](lvalue left, instr::Function fn, const vector<rvalue> &right)
+				std::function<void(const instr&)> fn;
+				has_symbol_visitor<phi_symbol> phi_vis;
+				fn = [&](const instr& i)
 				{
-					has_phi = has_phi || (fn == instr::Phi && is_variable(left) && to_variable(left).name() == n);
+					has_phi = has_phi || (boost::apply_visitor(phi_vis,i.function) && is_variable(i.assignee) && to_variable(i.assignee).name() == n);
 				};
 
 				execute(frontier,fn);
@@ -187,9 +189,9 @@ void po::ssa(proc_loc proc, const dom& domi, const live& li)
 					assert(ms.size());
 
 					if(ms[0].opcode == "internal-phis")
-						ms[0].instructions.emplace_back(instr(instr::Phi,variable(n,512)));
+						ms[0].instructions.emplace_back(instr(poly_phi(),variable(n,512)));
 					else
-						ms.emplace(ms.begin(),mnemonic(bound(ms.front().area.lower(),ms.front().area.lower()),"internal-phis","",{},{instr(instr::Phi,variable(n,512))}));
+						ms.emplace(ms.begin(),mnemonic(bound(ms.front().area.lower(),ms.front().area.lower()),"internal-phis","",{},{instr(poly_phi(),variable(n,512))}));
 					worklist.insert(frontier);
 				}
 			}
