@@ -29,50 +29,52 @@ namespace po
 		code_generator(std::insert_iterator<std::list<instr>> i) : inserter(i), tag() {};
 
 		/// @returns \c a and emits an IL instruction for <tt>a := op1 ∧ op2</tt>
-		lvalue and_b(lvalue a, rvalue op1, rvalue op2)		{ return named(instr::And,a,op1,op2); };
+		lvalue and_b(lvalue a, rvalue op1, rvalue op2)		{ return named(logic_and{op1,op2},a); };
 		/// @returns \c a and emits an IL instruction for <tt>a := op1 ∨ op2</tt>
-		lvalue or_b(lvalue a, rvalue op1, rvalue op2)		{ return named(instr::Or,a,op1,op2); };
+		lvalue or_b(lvalue a, rvalue op1, rvalue op2)		{ return named(logic_or{op1,op2},a); };
 		/// @returns \c a and emits an IL instruction for <tt>a := op1 ⊕ op2</tt>
-		lvalue xor_b(lvalue a, rvalue op1, rvalue op2)		{ return named(instr::Xor,a,op1,op2); };
+		//lvalue xor_b(lvalue a, rvalue op1, rvalue op2)		{ return named(instr::Xor,a,op1,op2); };
 		/// @returns \c a and emits an IL instruction for <tt>a := ¬op</tt>
-		lvalue not_b(lvalue a, rvalue op)					{ return named(instr::Not,a,op); };
+		lvalue not_b(lvalue a, rvalue op)					{ return named(logic_neg{op},a); };
 		/// @returns \c a and emits an IL instruction for <tt>a := op</tt>
-		lvalue assign(lvalue a, rvalue op)								{ return named(instr::Assign,a,op); };
+		lvalue assign_b(lvalue a, rvalue op)								{ return named(logic_nop{op},a); };
+		lvalue assign_i(lvalue a, rvalue op)								{ return named(int_nop{op},a); };
 		/// @returns \c a and emits an IL instruction for <tt>a := op1 <<ᵤ op2</tt>
-		lvalue shiftr_u(lvalue a, rvalue cnt, rvalue op)	{ return named(instr::UShr,a,cnt,op); };
+		//lvalue shiftr_u(lvalue a, rvalue cnt, rvalue op)	{ return named(instr::UShr,a,cnt,op); };
 		/// @returns \c a and emits an IL instruction for <tt>a := op1 >>ᵤ op2</tt>
-		lvalue shiftl_u(lvalue a, rvalue cnt, rvalue op)	{ return named(instr::UShl,a,cnt,op); };
+		//lvalue shiftl_u(lvalue a, rvalue cnt, rvalue op)	{ return named(instr::UShl,a,cnt,op); };
 		/// @returns \c a and emits an IL instruction for <tt>a := op1 <<ₛ op2</tt>
-		lvalue shiftr_s(lvalue a, rvalue cnt, rvalue op)	{ return named(instr::SShr,a,cnt,op); };
+		//lvalue shiftr_s(lvalue a, rvalue cnt, rvalue op)	{ return named(instr::SShr,a,cnt,op); };
 		/// @returns \c a and emits an IL instruction for <tt>a := op1 >>ₛ op2</tt>
-		lvalue shiftl_s(lvalue a, rvalue cnt, rvalue op)	{ return named(instr::SShl,a,cnt,op); };
+		//lvalue shiftl_s(lvalue a, rvalue cnt, rvalue op)	{ return named(instr::SShl,a,cnt,op); };
 		/// @returns \c a and emits an IL instruction sign-extending \c op1 to \c op2 bits and assigning the result to \c a
-		lvalue ext_u(lvalue a, rvalue cnt, rvalue op)			{ return named(instr::UExt,a,cnt,op); };
+		//lvalue ext_u(lvalue a, rvalue cnt, rvalue op)			{ return named(instr::UExt,a,cnt,op); };
 		/// @returns \c a and emits an IL instruction extending \c op1 to \c op2 bits and assigning the result to \c a
-		lvalue ext_s(lvalue a, rvalue cnt, rvalue op)			{ return named(instr::SExt,a,cnt,op); };
+		//lvalue ext_s(lvalue a, rvalue cnt, rvalue op)			{ return named(instr::SExt,a,cnt,op); };
 		/// @returns \c a and emits an IL instruction extracting bits \c to to \c from from \c op and assigning the result to \c a
-		lvalue slice(lvalue a, rvalue op, rvalue from, rvalue to)		{ return named(instr::Slice,a,op,from,to); };
+		//lvalue slice(lvalue a, rvalue op, rvalue from, rvalue to)		{ return named(instr::Slice,a,op,from,to); };
 		/// @returns \c a and emits an IL instruction for <tt>a := op1 + op2</tt>
-		lvalue add_i(lvalue a, rvalue op1, rvalue op2)		{ return named(instr::Add,a,op1,op2); };
+		lvalue add_i(lvalue a, rvalue op1, rvalue op2)		{ return named(int_add{op1,op2},a); };
 		/// @returns \c a and emits an IL instruction for <tt>a := op1 - op2</tt>
-		lvalue sub_i(lvalue a, rvalue op1, rvalue op2)		{ return named(instr::Sub,a,op1,op2); };
+		lvalue sub_i(lvalue a, rvalue op1, rvalue op2)		{ return named(int_sub{op1,op2},a); };
 		/// @returns \c a and emits an IL instruction for <tt>a := op1 * op2</tt>
-		lvalue mul_i(lvalue a, rvalue op1, rvalue op2)		{ return named(instr::Mul,a,op1,op2); };
+		lvalue mul_i(lvalue a, rvalue op1, rvalue op2)		{ return named(int_mul{op1,op2},a); };
 		/// @returns \c a and emits an IL instruction for <tt>a := op1 / op2</tt>
-		lvalue div_is(lvalue a, rvalue op1, rvalue op2)		{ return named(instr::SDiv,a,op1,op2); };
+		//lvalue div_is(lvalue a, rvalue op1, rvalue op2)		{ return named(instr::SDiv,a,op1,op2); };
 		/// @returns \c a and emits an IL instruction for <tt>a := op1 div op2</tt>
-		lvalue div_iu(lvalue a, rvalue op1, rvalue op2)		{ return named(instr::UDiv,a,op1,op2); };
+		lvalue div_iu(lvalue a, rvalue op1, rvalue op2)		{ return named(int_div{op1,op2},a); };
 		/// @returns \c a and emits an IL instruction for <tt>a := op1 % op2</tt>
-		lvalue mod_is(lvalue a, rvalue op1, rvalue op2)		{ return named(instr::SMod,a,op1,op2); };
+		//lvalue mod_is(lvalue a, rvalue op1, rvalue op2)		{ return named(instr::SMod,a,op1,op2); };
 		/// @returns \c a and emits an IL instruction for <tt>a := op1 % op2</tt>
-		lvalue mod_iu(lvalue a, rvalue op1, rvalue op2)		{ return named(instr::UMod,a,op1,op2); };
+		lvalue mod_iu(lvalue a, rvalue op1, rvalue op2)		{ return named(int_mod{op1,op2},a); };
 		/// @returns \c a and emits an IL instruction for <tt>a := op1 <ᵤ op2</tt>
-		lvalue leq_is(lvalue a, rvalue op1, rvalue op2)		{ return named(instr::SLeq,a,op1,op2); };
+		//lvalue leq_is(lvalue a, rvalue op1, rvalue op2)		{ return named(instr::SLeq,a,op1,op2); };
 		/// @returns \c a and emits an IL instruction for <tt>a := op1 <ₛ op2</tt>
-		lvalue leq_iu(lvalue a, rvalue op1, rvalue op2)		{ return named(instr::ULeq,a,op1,op2); };
+		lvalue less_iu(lvalue a, rvalue op1, rvalue op2)		{ return named(int_less{op1,op2},a); };
 		/// @returns \c a and emits an IL instruction for <tt>a := op()</tt>
-		lvalue call(lvalue a, rvalue op)									{ return named(instr::Call,a,op); };
+		lvalue call(lvalue a, rvalue op)									{ return named(int_call{op},a); };
 
+		/*
 		/// @returns a new temporary \c tmp and emits an IL instruction for <tt>tmp := op1 ∧ op2</tt>
 		lvalue and_b(rvalue op1, rvalue op2)		{ return anonymous(instr::And,op1,op2); };
 		/// @returns a new temporary \c tmp and emits an IL instruction for <tt>tmp := op1 ∨ op2</tt>
@@ -116,7 +118,7 @@ namespace po
 		/// @returns a new temporary \c tmp and emits an IL instruction for <tt>tmp := op1 <ₛ op2</tt>
 		lvalue leq_iu(rvalue op1, rvalue op2)		{ return anonymous(instr::ULeq,op1,op2); };
 		/// @returns a new temporary \c tmp and emits an IL instruction for <tt>tmp := op()</tt>
-		lvalue call(rvalue op)									{ return anonymous(instr::Call,op); };
+		lvalue call(rvalue op)									{ return anonymous(instr::Call,op); };*/
 
 	protected:
 		/**
@@ -125,9 +127,10 @@ namespace po
 		 * @returns assign
 		 */
 		template<class... Values>
-		lvalue named(instr::Function fn, lvalue assign, Values&&... args)
+		lvalue named(instr::operation fn, lvalue assign)
 		{
-			std::vector<rvalue> arguments({args...});
+			instr ret(fn,assign);
+			std::vector<rvalue> arguments = operations(ret);
 
 			auto sanity_check = [](const rvalue &v)
 			{
@@ -144,8 +147,6 @@ namespace po
 			};
 
 			assert(all_of(arguments.begin(),arguments.end(),sanity_check) && sanity_check(assign));
-
-			instr ret(fn,assign,arguments);
 			inserter = ret;
 
 			return assign;
@@ -157,9 +158,9 @@ namespace po
 		 * @returns A new temporary that holds the value of the expression.
 		 */
 		template<class... Values>
-		lvalue anonymous(instr::Function fn, Values... args)
+		lvalue anonymous(instr::operation fn)
 		{
-			return named(fn,temporary(tag),args...);
+			return named(fn,temporary(tag));
 		}
 
 		std::insert_iterator<std::list<instr>> inserter;

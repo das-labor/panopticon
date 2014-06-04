@@ -42,10 +42,12 @@ namespace po
 	struct equal_symbol {};
 	struct lift_symbol {};
 	struct call_symbol {};
+	struct nop_symbol {};
 
 	using logic_and = binop<and_symbol,logic_domain,logic_domain>;
 	using logic_or = binop<or_symbol,logic_domain,logic_domain>;
 	using logic_neg = unop<negation_symbol,logic_domain,logic_domain>;
+	using logic_nop = unop<nop_symbol,logic_domain,logic_domain>;
 	using logic_impl = binop<implication_symbol,logic_domain,logic_domain>;
 	using logic_equiv = binop<equivalence_symbol,logic_domain,logic_domain>;
 	using logic_phi = binop<phi_symbol,logic_domain,logic_domain>;
@@ -63,6 +65,7 @@ namespace po
 	using int_equal = binop<equal_symbol,integer_domain,logic_domain>;
 	using int_lift = unop<lift_symbol,logic_domain,integer_domain>;
 	using int_call = unop<call_symbol,logic_domain,integer_domain>;
+	using int_nop = unop<nop_symbol,logic_domain,integer_domain>;
 
 	/**
 	 * @brief Single IL statement
@@ -107,13 +110,13 @@ namespace po
 
 		bool operator==(const instr&) const;
 		bool operator<(const instr&) const;
-		std::ostream& operator<<(std::ostream&) const;
 
 		operation function;
 		lvalue assignee;
 	};
 
 	std::vector<rvalue> operations(const instr&);
+	std::ostream& operator<<(std::ostream &os, const instr &i);
 
 	template<>
 	instr* unmarshal(const uuid&, const rdf::storage&);

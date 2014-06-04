@@ -117,7 +117,6 @@ namespace po
 	template<>
 	rdf::statements marshal(const mnemonic*, const uuid&);
 
-	std::ostream& operator<<(std::ostream &os, const instr &i);
 	std::ostream& operator<<(std::ostream &os, const mnemonic &m);
 
 	int64_t format_constant(const mnemonic::token &tok, uint64_t v);
