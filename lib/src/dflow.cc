@@ -263,7 +263,7 @@ void po::ssa(proc_loc proc, const dom& domi, const live& li)
 				instr::operation fn = instr.function;
 				vector<rvalue> right = operands(instr);
 
-				if(boost::apply_visitor(phi_vis,instr.function))
+				if(!boost::apply_visitor(phi_vis,instr.function))
 				{
 					unsigned int ri = 0;
 
@@ -375,7 +375,7 @@ void po::ssa(proc_loc proc, const dom& domi, const live& li)
 		{
 			if(is_variable(i.assignee))
 			{
-				assert(stack.count(to_variable(i.assignee).name()));
+				assert(stack.count(to_variable(i.assignee).name()) && !stack.at(to_variable(i.assignee).name()).empty());
 				stack[to_variable(i.assignee).name()].pop_back();
 			}
 		};
