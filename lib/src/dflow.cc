@@ -87,7 +87,7 @@ live po::liveness(proc_loc proc)
 		std::function<void(const instr&)> fn;
 		fn = [&](const instr &i)
 		{
-			std::vector<rvalue> right = operators(i);
+			std::vector<rvalue> right = operands(i);
 			for(const rvalue &v: right)
 				collect(v,bb);
 
@@ -147,6 +147,7 @@ live po::liveness(proc_loc proc)
 void po::ssa(proc_loc proc, const dom& domi, const live& li)
 {
 	std::set<std::string> globals;
+	has_symbol_visitor<phi_symbol> phi_vis;
 
 	for(auto s: iters(vertices(proc->control_transfers)))
 	{
@@ -175,7 +176,6 @@ void po::ssa(proc_loc proc, const dom& domi, const live& li)
 				bool has_phi = false;
 				bblock_loc frontier = q.second.lock();
 				std::function<void(const instr&)> fn;
-				has_symbol_visitor<phi_symbol> phi_vis;
 				fn = [&](const instr& i)
 				{
 					has_phi = has_phi || (boost::apply_visitor(phi_vis,i.function) && is_variable(i.assignee) && to_variable(i.assignee).name() == n);
@@ -189,9 +189,9 @@ void po::ssa(proc_loc proc, const dom& domi, const live& li)
 					assert(ms.size());
 
 					if(ms[0].opcode == "internal-phis")
-						ms[0].instructions.emplace_back(instr(poly_phi(),variable(n,512)));
+						ms[0].instructions.emplace_back(instr(univ_phi{{}},variable(n,512)));
 					else
-						ms.emplace(ms.begin(),mnemonic(bound(ms.front().area.lower(),ms.front().area.lower()),"internal-phis","",{},{instr(poly_phi(),variable(n,512))}));
+						ms.emplace(ms.begin(),mnemonic(bound(ms.front().area.lower(),ms.front().area.lower()),"internal-phis","",{},{instr(univ_phi{{}},variable(n,512))}));
 					worklist.insert(frontier);
 				}
 			}
@@ -223,12 +223,12 @@ void po::ssa(proc_loc proc, const dom& domi, const live& li)
 	{
 		// for each φ-function in b, ‘‘x ← φ(· · · )’‘
 		//     rewrite x as new_name(x)
-		rewrite(bb,[&](lvalue &left, instr::Function fn, vector<rvalue> &right)
+		rewrite(bb,[&](instr &i)
 		{
-			if(fn == instr::Phi)
+			if(boost::apply_visitor(phi_vis,i.function))
 			{
-				assert(is_variable(left));
-				left = variable(to_variable(left).name(),to_variable(left).width(),new_name(to_variable(left).name()));
+				assert(is_variable(i.assignee));
+				i.assignee = variable(to_variable(i.assignee).name(),to_variable(i.assignee).width(),new_name(to_variable(i.assignee).name()));
 			}
 		});
 
@@ -259,11 +259,11 @@ void po::ssa(proc_loc proc, const dom& domi, const live& li)
 			while(i_instr < sz_instr)
 			{
 				instr &instr = mne.instructions.at(i_instr++);
-				lvalue &left = instr.left;
-				instr::Function fn = instr.function;
-				vector<rvalue> &right = instr.right;
+				lvalue &assignee = instr.assignee;
+				instr::operation fn = instr.function;
+				vector<rvalue> right = operands(instr);
 
-				if(fn != instr::Phi)
+				if(boost::apply_visitor(phi_vis,instr.function))
 				{
 					unsigned int ri = 0;
 
@@ -279,8 +279,10 @@ void po::ssa(proc_loc proc, const dom& domi, const live& li)
 						++ri;
 					}
 
-					if(is_variable(left))
-						left = variable(to_variable(left).name(),to_variable(left).width(),new_name(to_variable(left).name()));
+					set_operands(instr,right);
+
+					if(is_variable(assignee))
+						assignee = variable(to_variable(assignee).name(),to_variable(assignee).width(),new_name(to_variable(assignee).name()));
 				}
 			}
 		}
@@ -334,16 +336,18 @@ void po::ssa(proc_loc proc, const dom& domi, const live& li)
 
 					for(instr &i: mne.instructions)
 					{
-						assert(i.function == instr::Phi && is_variable(i.left));
-						int missing = ord - i.right.size() + 1;
+						std::vector<rvalue> right = operands(i);
+						assert(boost::apply_visitor(phi_vis,i.function) && is_variable(i.assignee));
+						int missing = ord - right.size() + 1;
 
 						while(missing > 0)
 						{
-							i.right.emplace_back(undefined());
+							right.emplace_back(undefined());
 							--missing;
 						}
-						assert(stack.count(to_variable(i.left).name()));
-						i.right[ord] = variable(to_variable(i.left).name(),to_variable(i.left).width(),stack[to_variable(i.left).name()].back());
+						assert(stack.count(to_variable(i.assignee).name()));
+						right[ord] = variable(to_variable(i.assignee).name(),to_variable(i.assignee).width(),stack[to_variable(i.assignee).name()].back());
+						set_operands(i,right);
 					}
 				}
 			}
@@ -366,13 +370,13 @@ void po::ssa(proc_loc proc, const dom& domi, const live& li)
 		// for each operation ‘‘x ← y op z’’ in bb
 		//     and each φ-function ‘‘x ← φ(· · · )’’
 		//     pop(stack[x])
-		std::function<void(const lvalue&, instr::Function, const vector<rvalue>&)> fn;
-		fn = [&](const lvalue &left, instr::Function fn, const vector<rvalue> &right)
+		std::function<void(const instr&)> fn;
+		fn = [&](const instr &i)
 		{
-			if(is_variable(left))
+			if(is_variable(i.assignee))
 			{
-				assert(stack.count(to_variable(left).name()));
-				stack[to_variable(left).name()].pop_back();
+				assert(stack.count(to_variable(i.assignee).name()));
+				stack[to_variable(i.assignee).name()].pop_back();
 			}
 		};
 		execute(bb,fn);

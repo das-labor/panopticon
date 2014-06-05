@@ -2,157 +2,177 @@
 
 using namespace po;
 
-/*
-string po::pretty(instr::Function fn)
+struct set_operands_visitor : public boost::static_visitor<>
 {
-	switch(fn)
+	set_operands_visitor(const std::vector<rvalue>& rv) : boost::static_visitor<>(), _values(rv) {}
+
+	template<typename Symbol, typename Domain, typename Codomain>
+	void operator()(unop<Symbol,Domain,Codomain>& op)
 	{
-		case instr::And:		return " ∨ ";
-		case instr::Or:			return " ∧ ";
-		case instr::Xor:		return " ⊕ ";
-		case instr::Not:		return "¬";
-		case instr::Assign: return "";
-		case instr::UShr:	return " ≫ ";
-		case instr::UShl:	return " ≪ ";
-		case instr::SShr:	return " ≫ₛ ";
-		case instr::SShl:	return " ≪ₛ ";
-		case instr::UExt:	return " ↤ᵤ ";
-		case instr::SExt:	return " ↤ₛ ";
-		case instr::Slice:	return ":";
-		//case instr::Concat: return " ∷ ";
-		case instr::Add:		return " + ";
-		case instr::Sub:		return " - ";
-		case instr::Mul:		return " × ";
-		case instr::SDiv:	return " ÷ₛ ";
-		case instr::UDiv:	return " ÷ᵤ ";
-		case instr::SMod:	return " modₛ ";
-		case instr::UMod:	return " modᵤ ";
-		case instr::SLeq:	return " ≤ₛ ";
-		case instr::ULeq:	return " ≤ᵤ ";
-		case instr::Call:	return "call";
-		case instr::Phi:		return "ϕ";
-		default: assert(false);
+		assert(_values.size() == 1);
+		op.right = _values[0];
 	}
 
-	return "";
+	template<typename Symbol, typename Domain, typename Codomain>
+	void operator()(binop<Symbol,Domain,Codomain>& op)
+	{
+		assert(_values.size() == 2);
+		op.left = _values[0];
+		op.right = _values[1];
+	}
+
+	template<typename Symbol, typename Domain, typename Codomain>
+	void operator()(naryop<Symbol,Domain,Codomain>& op)
+	{
+		op.operands = _values;
+	}
+
+	const std::vector<rvalue>& _values;
+};
+
+void po::set_operands(instr& i, const std::vector<rvalue>& rv)
+{
+	set_operands_visitor vis(rv);
+	boost::apply_visitor(vis,i.function);
 }
 
-string po::symbolic(instr::Function fn)
+struct operands_visitor : public boost::static_visitor<std::vector<rvalue>>
 {
-	switch(fn)
+	template<typename Symbol, typename Domain, typename Codomain>
+	result_type operator()(const unop<Symbol,Domain,Codomain>& op) const
 	{
-		case instr::And:		return "and";
-		case instr::Or:			return "or";
-		case instr::Xor:		return "xor";
-		case instr::Not:		return "not";
-		case instr::Assign: return "assign";
-		case instr::UShr:	return "u-shift-right";
-		case instr::UShl:	return "i-shift-left";
-		case instr::SShr:	return "s-shift-right";
-		case instr::SShl:	return "s-shift-left";
-		case instr::UExt:	return "u-extend";
-		case instr::SExt:	return "s-extend";
-		case instr::Slice:	return "slice";
-		//case instr::Concat: return " ∷ ";
-		case instr::Add:		return "add";
-		case instr::Sub:		return "subtract";
-		case instr::Mul:		return "multiply";
-		case instr::SDiv:	return "s-divide";
-		case instr::UDiv:	return "u-divide";
-		case instr::SMod:	return "s-modulo";
-		case instr::UMod:	return "u-modulo";
-		case instr::SLeq:	return "s-less-equal";
-		case instr::ULeq:	return "u-less-equal";
-		case instr::Call:	return "call";
-		case instr::Phi:		return "phi";
-		default: assert(false);
+		return {op.right};
 	}
 
-	return "";
+	template<typename Symbol, typename Domain, typename Codomain>
+	result_type operator()(const binop<Symbol,Domain,Codomain>& op) const
+	{
+		return {op.left,op.right};
+	}
+
+	template<typename Symbol, typename Domain, typename Codomain>
+	result_type operator()(const naryop<Symbol,Domain,Codomain>& op) const
+	{
+		return op.operands;
+	}
+};
+
+std::vector<rvalue> po::operands(const instr& i)
+{
+	operands_visitor vis;
+	return apply_visitor(vis,i.function);
 }
 
-instr::Function po::numeric(const std::string &s)
+std::string po::pretty(const instr::operation& i)
 {
-	if(s.substr(0,string(PO).size()) == string(PO))
+	struct vis : public boost::static_visitor<std::string>
 	{
-		string t = s.substr(string(PO).size());
+		std::string operator()(const logic_and&) const { return "∧"; }
+		std::string operator()(const logic_or&) const { return "∨"; }
+		std::string operator()(const logic_neg&) const { return "¬"; }
+		std::string operator()(const logic_impl&) const { return "→"; }
+		std::string operator()(const logic_equiv&) const { return "↔"; }
 
-		if(t == "and") return instr::And;
-		if(t == "or") return instr::Or;
-		if(t == "xor") return instr::Xor;
-		if(t == "not") return instr::Not;
-		if(t == "assign") return instr::Assign;
-		if(t == "u-shift-right") return instr::UShr;
-		if(t == "i-shift-left") return instr::UShl;
-		if(t == "s-shift-right") return instr::SShr;
-		if(t == "s-shift-left") return instr::SShl;
-		if(t == "u-extend") return instr::UExt;
-		if(t == "s-extend") return instr::SExt;
-		if(t == "slice") return instr::Slice;
-		//if(t == " ∷ ") return instr::Concat;
-		if(t == "add") return instr::Add;
-		if(t == "subtract") return instr::Sub;
-		if(t == "multiply") return instr::Mul;
-		if(t == "s-divide") return instr::SDiv;
-		if(t == "u-divide") return instr::UDiv;
-		if(t == "s-modulo") return instr::SMod;
-		if(t == "u-modulo") return instr::UMod;
-		if(t == "s-less-equal") return instr::SLeq;
-		if(t == "u-less-equal") return instr::ULeq;
-		if(t == "call") return instr::Call;
-		if(t == "phi") return instr::Phi;
-	}
-	else
-	{
-		if(s == " ∨ ") return instr::And;
-		if(s == " ∧ ") return instr::Or;
-		if(s == " ⊕ ") return instr::Xor;
-		if(s == "¬") return instr::Not;
-		if(s == "") return instr::Assign;
-		if(s == " ≫ ") return instr::UShr;
-		if(s == " ≪ ") return instr::UShl;
-		if(s == " ≫ₛ ") return instr::SShr;
-		if(s == " ≪ₛ ") return instr::SShl;
-		if(s == " ↤ᵤ ") return instr::UExt;
-		if(s == " ↤ₛ ") return instr::SExt;
-		if(s == ":") return instr::Slice;
-		//if(s == " ∷ ") return instr::Concat;
-		if(s == " + ") return instr::Add;
-		if(s == " - ") return instr::Sub;
-		if(s == " × ") return instr::Mul;
-		if(s == " ÷ₛ ") return instr::SDiv;
-		if(s == " ÷ᵤ ") return instr::UDiv;
-		if(s == " modₛ ") return instr::SMod;
-		if(s == " modᵤ ") return instr::UMod;
-		if(s == " ≤ₛ ") return instr::SLeq;
-		if(s == " ≤ᵤ ") return instr::ULeq;
-		if(s == "call") return instr::Call;
-		if(s == "ϕ") return instr::Phi;
-	}
+		std::string operator()(const int_and&) const { return "∧"; }
+		std::string operator()(const int_or&) const { return "∨"; }
+		std::string operator()(const int_neg&) const { return "¬"; }
+		std::string operator()(const int_add&) const { return "+"; }
+		std::string operator()(const int_sub&) const { return "-"; }
+		std::string operator()(const int_mul&) const { return "×"; }
+		std::string operator()(const int_div&) const { return "÷"; }
+		std::string operator()(const int_mod&) const { return "%"; }
+		std::string operator()(const int_less&) const { return "<"; }
+		std::string operator()(const int_equal&) const { return "="; }
+		std::string operator()(const int_lift&) const { return "int "; }
+		std::string operator()(const int_call&) const { return "call "; }
 
-	assert(false);
-	return instr::Assign;
+		std::string operator()(const univ_phi&) const { return "ϕ"; }
+		std::string operator()(const univ_nop&) const { return ""; }
+	};
+	vis v;
+
+	return boost::apply_visitor(v,i);
 }
 
-ostream &po::operator<<(ostream &os, const instr &i)
+std::string po::symbolic(const instr::operation& i)
 {
-	string fnname = pretty(i.function);
+	struct vis : public boost::static_visitor<std::string>
+	{
+		std::string operator()(const logic_and&) const { return "logic-and"; }
+		std::string operator()(const logic_or&) const { return "logic-or"; }
+		std::string operator()(const logic_neg&) const { return "logic-negation"; }
+		std::string operator()(const logic_impl&) const { return "logic-implication"; }
+		std::string operator()(const logic_equiv&) const { return "logic-equivalence"; }
 
-	os << i.left << " ≔ ";
-	if(i.right.size() == 0)
+		std::string operator()(const int_and&) const { return "integer-bitwise-and"; }
+		std::string operator()(const int_or&) const { return "integer-bitwise-or"; }
+		std::string operator()(const int_neg&) const { return "integer-bitwise-negation"; }
+		std::string operator()(const int_add&) const { return "integer-addition"; }
+		std::string operator()(const int_sub&) const { return "integer-subtraction"; }
+		std::string operator()(const int_mul&) const { return "integer-multiplication"; }
+		std::string operator()(const int_div&) const { return "integer-division"; }
+		std::string operator()(const int_mod&) const { return "integer-modulo"; }
+		std::string operator()(const int_less&) const { return "integer-less-than"; }
+		std::string operator()(const int_equal&) const { return "integer-equal-to"; }
+		std::string operator()(const int_lift&) const { return "integer-lift-boolean"; }
+		std::string operator()(const int_call&) const { return "integer-call-to"; }
+
+		std::string operator()(const univ_phi&) const { return "universal-phi"; }
+		std::string operator()(const univ_nop&) const { return "universal-no-op"; }
+	};
+	vis v;
+
+	return std::string(PO) + boost::apply_visitor(v,i);
+}
+
+instr::operation po::from_symbolic(const std::string &s, const std::vector<rvalue>& rv)
+{
+	if(s.substr(0,std::string(PO).size()) == std::string(PO))
+	{
+		std::string t = s.substr(std::string(PO).size());
+
+		if(t == "logic-and") return logic_and{rv[0],rv[1]};
+		if(t == "logic-or") return logic_or{rv[0],rv[1]};
+		if(t == "logic-negation") return logic_neg{rv[0]};
+		if(t == "logic-implication") return logic_impl{rv[0],rv[1]};
+		if(t == "logic-equivalence") return logic_equiv{rv[0],rv[1]};
+
+		if(t == "integer-bitwise-and") return int_and{rv[0],rv[1]};
+		if(t == "integer-bitwise-or") return int_or{rv[0],rv[1]};
+		if(t == "integer-bitwise-negation") return int_neg{rv[0]};
+		if(t == "integer-addition") return int_add{rv[0],rv[1]};
+		if(t == "integer-subtraction") return int_sub{rv[0],rv[1]};
+		if(t == "integer-multiplication") return int_mul{rv[0],rv[1]};
+		if(t == "integer-division") return int_div{rv[0],rv[1]};
+		if(t == "integer-modulo") return int_mod{rv[0],rv[1]};
+		if(t == "integer-less-than") return int_less{rv[0],rv[1]};
+		if(t == "integer-equal-to") return int_equal{rv[0],rv[1]};
+		if(t == "integer-lift-boolean") return int_lift{rv[0]};
+		if(t == "integer-call-to") return int_call{rv[0]};
+
+		if(t == "universal-phi") return univ_phi{rv};
+		if(t == "universal-no-op") return univ_nop{rv[0]};
+	}
+	throw std::runtime_error("invalid string");
+}
+
+std::ostream &po::operator<<(std::ostream &os, const instr &i)
+{
+	std::string fnname = pretty(i.function);
+	std::vector<rvalue> right = operands(i);
+
+	os << i.assignee << " ≔ ";
+	if(right.size() == 0)
 		os << fnname;
-	else if(i.function == instr::Call)
-		os << fnname << "(" << i.right[0] << ")";
-	else if(i.right.size() == 1)
-		os << fnname << i.right[0];
-	else if(i.function == instr::Phi)
-		os << fnname << "(" << i.right[0] << ", " << i.right[1] << ")";
-	else if(i.function == instr::Slice)
-		os << i.right[0] << "[" << i.right[1] << fnname << i.right[2] << "]";
-	else if(i.right.size() == 3)
-		os << fnname << "(" << i.right[0] << ", " << i.right[1] << ", " << i.right[2] << ")";
+	else if(boost::apply_visitor(has_symbol_visitor<call_symbol>(),i.function))
+		os << fnname << "(" << right[0] << ")";
+	else if(right.size() == 1)
+		os << fnname << right[0];
+	else if(boost::apply_visitor(has_symbol_visitor<phi_symbol>(),i.function))
+		os << fnname << "(" << right[0] << ", " << right[1] << ")";
+	else if(right.size() == 3)
+		os << fnname << "(" << right[0] << ", " << right[1] << ", " << right[2] << ")";
 	else
-		os << i.right[0] << fnname << i.right[1];
+		os << right[0] << fnname << right[1];
 	return os;
 }
-*/

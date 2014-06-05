@@ -75,7 +75,7 @@ namespace po
 			{
 				std::vector<L> arguments;
 				L res = ret->count(i.assignee) ? ret->at(i.assignee) : L();
-				std::vector<rvalue> right = operators(i);
+				std::vector<rvalue> right = operands(i);
 
 				for(const rvalue &r: right)
 					if(ret->count(r))
@@ -113,7 +113,7 @@ namespace po
 	 * @group abstract_domains
 	 *
 	 * Concrete semantics of Panopticon IL over then domain of
-	 * integers. The domain uses the standard C++ operators like
+	 * integers. The domain uses the standard C++ operands like
 	 * plus and bitwise OR of the type I.
 	 *
 	 * @note This is not an abstract domain, hence the AI algorithm

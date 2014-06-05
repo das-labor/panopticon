@@ -37,8 +37,7 @@ namespace po
 		/// @returns \c a and emits an IL instruction for <tt>a := ¬op</tt>
 		lvalue not_b(lvalue a, rvalue op)					{ return named(logic_neg{op},a); };
 		/// @returns \c a and emits an IL instruction for <tt>a := op</tt>
-		lvalue assign_b(lvalue a, rvalue op)								{ return named(logic_nop{op},a); };
-		lvalue assign_i(lvalue a, rvalue op)								{ return named(int_nop{op},a); };
+		lvalue assign(lvalue a, rvalue op)								{ return named(univ_nop{op},a); };
 		/// @returns \c a and emits an IL instruction for <tt>a := op1 <<ᵤ op2</tt>
 		//lvalue shiftr_u(lvalue a, rvalue cnt, rvalue op)	{ return named(instr::UShr,a,cnt,op); };
 		/// @returns \c a and emits an IL instruction for <tt>a := op1 >>ᵤ op2</tt>
@@ -130,7 +129,7 @@ namespace po
 		lvalue named(instr::operation fn, lvalue assign)
 		{
 			instr ret(fn,assign);
-			std::vector<rvalue> arguments = operators(ret);
+			std::vector<rvalue> arguments = operands(ret);
 
 			auto sanity_check = [](const rvalue &v)
 			{

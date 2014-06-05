@@ -11,12 +11,14 @@ namespace po
 	template<typename Symbol, typename Domain, typename Codomain>
 	struct unop
 	{
+		bool operator==(const unop<Symbol,Domain,Codomain>& o) const { return right == o.right; }
 		rvalue right;
 	};
 
 	template<typename Symbol, typename Domain, typename Codomain>
 	struct binop
 	{
+		bool operator==(const binop<Symbol,Domain,Codomain>& o) const { return right == o.right && left == o.left; }
 		rvalue left;
 		rvalue right;
 	};
@@ -24,8 +26,10 @@ namespace po
 	template<typename Symbol, typename Domain, typename Codomain>
 	struct naryop
 	{
+		bool operator==(const naryop<Symbol,Domain,Codomain>& o) const { return operands == o.operands; }
 		std::vector<rvalue> operands;
 	};
+
 	struct logic_domain {};
 	struct integer_domain {};
 	struct rational_domain {};
@@ -53,7 +57,6 @@ namespace po
 	using logic_and = binop<and_symbol,logic_domain,logic_domain>;
 	using logic_or = binop<or_symbol,logic_domain,logic_domain>;
 	using logic_neg = unop<negation_symbol,logic_domain,logic_domain>;
-	using logic_nop = unop<nop_symbol,logic_domain,logic_domain>;
 	using logic_impl = binop<implication_symbol,logic_domain,logic_domain>;
 	using logic_equiv = binop<equivalence_symbol,logic_domain,logic_domain>;
 
@@ -69,9 +72,9 @@ namespace po
 	using int_equal = binop<equal_symbol,integer_domain,logic_domain>;
 	using int_lift = unop<lift_symbol,logic_domain,integer_domain>;
 	using int_call = unop<call_symbol,logic_domain,integer_domain>;
-	using int_nop = unop<nop_symbol,logic_domain,integer_domain>;
 
 	using univ_phi = naryop<phi_symbol,universe_domain,universe_domain>;
+	using univ_nop = unop<nop_symbol,universe_domain,universe_domain>;
 
 	template<typename T>
 	struct has_symbol_visitor : public boost::static_visitor<bool>
@@ -118,7 +121,8 @@ namespace po
 			logic_neg,
 			logic_impl,
 			logic_equiv,
-			logic_phi,
+			univ_phi,
+			univ_nop,
 			int_and,
 			int_or,
 			int_neg,
@@ -136,14 +140,14 @@ namespace po
 		/// Construct a statement applying function @arg fn to @arg args. Saves the result in @arg a
 		instr(const operation& op, const lvalue& a) : function(op), assignee(a) {}
 
-		bool operator==(const instr&) const;
-		bool operator<(const instr&) const;
+		bool operator==(const instr& i) const { return function == i.function && assignee == i.assignee; }
 
 		operation function;
 		lvalue assignee;
 	};
 
-	std::vector<rvalue> operators(const instr&);
+	std::vector<rvalue> operands(const instr&);
+	void set_operands(instr&, const std::vector<rvalue>&);
 	std::ostream& operator<<(std::ostream &os, const instr &i);
 
 	template<>
@@ -160,4 +164,4 @@ namespace po
 
 	/// Maps a string returned from @ref symbolic back the enum value
 	instr::operation from_symbolic(const std::string &s, const std::vector<rvalue>&);
-};
+}

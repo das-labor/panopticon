@@ -176,7 +176,7 @@ std::unordered_set<offset> po::collect_calls(proc_loc proc)
 	{
 		if(boost::apply_visitor(call_vis,i.function))
 		{
-			std::vector<rvalue> right = operators(i);
+			std::vector<rvalue> right = operands(i);
 			assert(right.size() == 1);
 
 			if(is_constant(right[0]))

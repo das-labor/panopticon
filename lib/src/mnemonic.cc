@@ -294,7 +294,7 @@ rdf::statements po::marshal(const mnemonic* mn, const uuid& uu)
 		std::move(ls.begin(),ls.end(),back_inserter(ret));
 
 		rdf::nodes rn;
-		std::vector<rvalue> right = operators(i);
+		std::vector<rvalue> right = operands(i);
 		std::transform(right.begin(),right.end(),back_inserter(rn),map_rvs);
 		tie(rr,rs) = write_list(rn.begin(),rn.end(),to_string(u));
 		std::move(rs.begin(),rs.end(),back_inserter(ret));

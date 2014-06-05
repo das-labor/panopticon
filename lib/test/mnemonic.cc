@@ -7,9 +7,9 @@ using namespace po;
 TEST(mnemonic,marshal)
 {
 	mnemonic mn1(bound(0,10),"op1","{8:-:eax} nog",{constant(1),variable("a",3)},{
-		instr(instr::And,variable("a",2),{constant(1),constant(2)}),
-		instr(instr::Add,variable("a",1),{constant(4),constant(2)}),
-		instr(instr::Assign,variable("a",3),{variable("a",2)})});
+		instr(int_add{constant(1),constant(2)},variable("a",2)),
+		instr(int_add{constant(4),constant(2)},variable("a",1)),
+		instr(univ_nop{variable("a",2)},variable("a",3))});
 
 	uuid uu;
 	rdf::statements st1 = marshal(&mn1,uu);
