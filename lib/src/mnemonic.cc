@@ -299,7 +299,7 @@ rdf::statements po::marshal(const mnemonic* mn, const uuid& uu)
 		tie(rr,rs) = write_list(rn.begin(),rn.end(),to_string(u));
 		std::move(rs.begin(),rs.end(),back_inserter(ret));
 
-		ret.emplace_back(r,rdf::ns_po("function"),rdf::ns_po(symbolic(i.function)));
+		ret.emplace_back(r,rdf::ns_po("function"),symbolic(i.function));
 		ret.emplace_back(r,rdf::ns_po("left"),rl);
 		ret.emplace_back(r,rdf::ns_po("right"),rr);
 
