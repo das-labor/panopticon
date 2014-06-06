@@ -11,6 +11,8 @@
 #include <panopticon/basic_block.hh>
 #include <panopticon/procedure.hh>
 
+#pragma once
+
 /**
  * @file
  * @brief Abstract Interpretation framework
@@ -38,6 +40,9 @@ namespace po
 
 	struct meet {};
 	struct join {};
+
+	template<typename Domain>
+	using environment = std::unordered_map<std::string,Domain>;
 
 	/**
 	 * @brief Compute the Abstract Interpretation
@@ -125,15 +130,39 @@ namespace po
 	 * Executes a IL statement using concrete semantics ot type I
 	 * @internal
 	 */
-	struct concrete_interpreter : public boost::static_visitor<unsigned long long>
+	struct concrete_interpreter : public boost::static_visitor<rvalue>
 	{
-		concrete_interpreter(std::shared_ptr<std::unordered_map<rvalue,unsigned long long>> aenv) : static_visitor<result_type>() /*, _environment(aenv)*/ {}
+		concrete_interpreter(const environment<result_type>&);
+
+		result_type operator()(const logic_and& a);
+		result_type operator()(const logic_or& a);
+		result_type operator()(const logic_neg& a);
+		result_type operator()(const logic_impl& a);
+		result_type operator()(const logic_equiv& a);
+		result_type operator()(const int_add& a);
+		result_type operator()(const int_sub& a);
+		result_type operator()(const int_mul& a);
+		result_type operator()(const int_div& a);
+		result_type operator()(const int_mod& a);
+		result_type operator()(const int_less& a);
+		result_type operator()(const int_equal& a);
+		result_type operator()(const int_and& a);
+		result_type operator()(const int_or& a);
+		result_type operator()(const int_neg& a);
+		result_type operator()(const int_call& a);
+		result_type operator()(const int_lift& a);
+		result_type operator()(const univ_nop& a);
+		result_type operator()(const univ_phi& a);
+
+	protected:
+		boost::optional<constant> lookup(const rvalue& v) const;
+		const environment<rvalue> _environment;
 	};
 
 	template<>
 	struct domain_traits<concrete_domain>
 	{
-		using value_type = unsigned long long;
+		using value_type = rvalue;
 		using interpreter_type = concrete_interpreter;
 	};
 
