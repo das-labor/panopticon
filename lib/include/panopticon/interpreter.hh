@@ -42,7 +42,7 @@ namespace po
 	struct join {};
 
 	template<typename Domain>
-	using environment = std::unordered_map<std::string,Domain>;
+	using environment = std::unordered_map<variable,Domain>;
 
 	/**
 	 * @brief Compute the Abstract Interpretation
@@ -132,7 +132,7 @@ namespace po
 	 */
 	struct concrete_interpreter : public boost::static_visitor<rvalue>
 	{
-		concrete_interpreter(const environment<result_type>&);
+		concrete_interpreter(environment<result_type>&);
 
 		result_type operator()(const logic_and& a);
 		result_type operator()(const logic_or& a);
@@ -155,8 +155,9 @@ namespace po
 		result_type operator()(const univ_phi& a);
 
 	protected:
-		boost::optional<constant> lookup(const rvalue& v) const;
-		const environment<rvalue> _environment;
+		rvalue normalize(const rvalue& v) const;
+
+		const environment<rvalue>& _environment;
 	};
 
 	template<>

@@ -3,140 +3,103 @@
 
 using namespace po;
 
-concrete_interpreter::concrete_interpreter(const environment<rvalue>& env)
+concrete_interpreter::concrete_interpreter(environment<rvalue>& env)
 : boost::static_visitor<rvalue>(), _environment(env) {}
 
 rvalue concrete_interpreter::operator()(const logic_and& a)
 {
-	boost::optional<constant> l = lookup(a.left);
-	if(l)
+	rvalue l = normalize(a.left);
+	rvalue r = normalize(a.right);
+
+	if(is_constant(l))
 	{
-		boost::optional<constant> r = lookup(a.right);
-		if(r)
-		{
-			return rvalue(constant(l->content() && r->content()));
-		}
+		if(is_constant(r))
+			return constant(to_constant(l).content() && to_constant(r).content());
 		else
 		{
-			if(l->content())
-			{
-				// right := true && right
-				return rvalue(a.right);
-			}
+			if(to_constant(l).content())
+				return r;
 			else
-			{
-				// false := false && right
-				return rvalue(constant(false));
-			}
+				return constant(false);
 		}
 	}
 	else
 	{
-		boost::optional<constant> r = lookup(a.right);
-		if(r)
+		if(is_constant(r))
 		{
-			if(r->content())
-			{
-				// left := left && true
-				return rvalue(a.left);
-			}
+			if(to_constant(r).content())
+				return l;
 			else
-			{
-				// false := left && false
-				return rvalue(constant(false));
-			}
+				return constant(false);
 		}
 	}
-
 	return undefined();
 }
 
 rvalue concrete_interpreter::operator()(const logic_or& a)
 {
-	boost::optional<constant> l = lookup(a.left);
-	if(l)
+	rvalue l = normalize(a.left);
+	rvalue r = normalize(a.right);
+
+	if(is_constant(l))
 	{
-		boost::optional<constant> r = lookup(a.right);
-		if(r)
-		{
-			return rvalue(constant(l->content() || r->content()));
-		}
+		if(is_constant(r))
+			return constant(to_constant(l).content() || to_constant(r).content());
 		else
 		{
-			if(!l->content())
-			{
-				return rvalue(a.right);
-			}
+			if(!to_constant(l).content())
+				return r;
 			else
-			{
-				return rvalue(constant(true));
-			}
+				return constant(true);
 		}
 	}
 	else
 	{
-		boost::optional<constant> r = lookup(a.right);
-		if(r)
+		if(is_constant(r))
 		{
-			if(!r->content())
-			{
-				return rvalue(a.left);
-			}
+			if(!to_constant(r).content())
+				return l;
 			else
-			{
-				return rvalue(constant(true));
-			}
+				return constant(true);
 		}
 	}
-
 	return undefined();
 }
 
 rvalue concrete_interpreter::operator()(const logic_neg& a)
 {
-	boost::optional<constant> r = lookup(a.right);
-	if(r)
-	{
-		return rvalue(constant(!r->content()));
-	}
-	return undefined();
+	rvalue r = normalize(a.right);
+	if(is_constant(r))
+		return constant(!to_constant(r).content());
+	else
+		return undefined();
 }
 
 rvalue concrete_interpreter::operator()(const logic_impl& a)
 {
-	boost::optional<constant> l = lookup(a.left);
-	if(l)
+	rvalue l = normalize(a.left);
+	rvalue r = normalize(a.right);
+
+	if(is_constant(l))
 	{
-		boost::optional<constant> r = lookup(a.right);
-		if(r)
-		{
-			return rvalue(constant((l->content() && r->content()) || l->content()));
-		}
+		if(is_constant(r))
+			return constant((to_constant(l).content() && to_constant(r).content()) || to_constant(l).content());
 		else
 		{
-			if(l->content())
-			{
-				return rvalue(a.right);
-			}
+			if(to_constant(l).content())
+				return r;
 			else
-			{
 				return rvalue(constant(true));
-			}
 		}
 	}
 	else
 	{
-		boost::optional<constant> r = lookup(a.right);
-		if(r)
+		if(is_constant(r))
 		{
-			if(r->content())
-			{
-				return rvalue(a.left);
-			}
+			if(to_constant(r).content())
+				return l;
 			else
-			{
-				return rvalue(constant(true));
-			}
+				return constant(true);
 		}
 	}
 	return undefined();
@@ -144,31 +107,23 @@ rvalue concrete_interpreter::operator()(const logic_impl& a)
 
 rvalue concrete_interpreter::operator()(const logic_equiv& a)
 {
-	boost::optional<constant> l = lookup(a.left);
-	if(l)
+	rvalue l = normalize(a.left);
+	rvalue r = normalize(a.right);
+
+	if(is_constant(l))
 	{
-		boost::optional<constant> r = lookup(a.right);
-		if(r)
-		{
-			return rvalue(constant(l->content() == r->content()));
-		}
-		else
-		{
-			if(l->content())
-			{
-				return rvalue(a.right);
-			}
-		}
+		if(is_constant(r))
+			return rvalue(constant(to_constant(l).content() == to_constant(r).content()));
+		else if(to_constant(l).content())
+			return rvalue(a.right);
 	}
 	else
 	{
-		boost::optional<constant> r = lookup(a.right);
-		if(r)
+		rvalue r = normalize(a.right);
+		if(is_constant(r))
 		{
-			if(r->content())
-			{
+			if(to_constant(r).content())
 				return rvalue(a.left);
-			}
 		}
 	}
 	return undefined();
@@ -176,31 +131,22 @@ rvalue concrete_interpreter::operator()(const logic_equiv& a)
 
 rvalue concrete_interpreter::operator()(const int_add& a)
 {
-	boost::optional<constant> l = lookup(a.left);
-	if(l)
+	rvalue l = normalize(a.left);
+	rvalue r = normalize(a.right);
+
+	if(is_constant(l))
 	{
-		boost::optional<constant> r = lookup(a.right);
-		if(r)
-		{
-			return rvalue(constant(l->content() + r->content()));
-		}
-		else
-		{
-			if(l->content() == 0)
-			{
-				return rvalue(a.right);
-			}
-		}
+		if(is_constant(r))
+			return rvalue(constant(to_constant(l).content() + to_constant(r).content()));
+		else if(to_constant(l).content() == 0)
+			return rvalue(a.right);
 	}
 	else
 	{
-		boost::optional<constant> r = lookup(a.right);
-		if(r)
+		if(is_constant(r))
 		{
-			if(r->content() == 0)
-			{
+			if(to_constant(r).content() == 0)
 				return rvalue(a.left);
-			}
 		}
 	}
 	return undefined();
@@ -208,30 +154,24 @@ rvalue concrete_interpreter::operator()(const int_add& a)
 
 rvalue concrete_interpreter::operator()(const int_sub& a)
 {
-	if(a.left == a.right)
-	{
-		return rvalue(constant(0));
-	}
+	rvalue l = normalize(a.left);
+	rvalue r = normalize(a.right);
+
+	if(l == r && !is_undefined(l) && !is_undefined(r))
+		return constant(0);
 	else
 	{
-		boost::optional<constant> l = lookup(a.left);
-		if(l)
+		if(is_constant(l))
 		{
-			boost::optional<constant> r = lookup(a.right);
-			if(r)
-			{
-				return rvalue(constant(l->content() - r->content()));
-			}
+			if(is_constant(r))
+				return constant(to_constant(l).content() - to_constant(r).content());
 		}
 		else
 		{
-			boost::optional<constant> r = lookup(a.right);
-			if(r)
+			if(is_constant(r))
 			{
-				if(r->content() == 0)
-				{
-					return rvalue(a.left);
-				}
+				if(to_constant(r).content() == 0)
+					return l;
 			}
 		}
 	}
@@ -240,39 +180,29 @@ rvalue concrete_interpreter::operator()(const int_sub& a)
 
 rvalue concrete_interpreter::operator()(const int_mul& a)
 {
-	boost::optional<constant> l = lookup(a.left);
-	if(l)
+	rvalue l = normalize(a.left);
+	rvalue r = normalize(a.right);
+
+	if(is_constant(l))
 	{
-		boost::optional<constant> r = lookup(a.right);
-		if(r)
-		{
-			return rvalue(constant(l->content() * r->content()));
-		}
+		if(is_constant(r))
+			return constant(to_constant(l).content() * to_constant(r).content());
 		else
 		{
-			if(l->content() == 0)
-			{
-				return rvalue(constant(0));
-			}
-			else if(l->content() == 1)
-			{
-				return rvalue(a.right);
-			}
+			if(to_constant(l).content() == 0)
+				return constant(0);
+			else if(to_constant(l).content() == 1)
+				return r;
 		}
 	}
 	else
 	{
-		boost::optional<constant> r = lookup(a.right);
-		if(r)
+		if(is_constant(r))
 		{
-			if(r->content() == 0)
-			{
-				return rvalue(constant(0));
-			}
-			else if(r->content() == 1)
-			{
-				return rvalue(a.right);
-			}
+			if(to_constant(r).content() == 0)
+				return constant(0);
+			else if(to_constant(r).content() == 1)
+				return l;
 		}
 	}
 	return undefined();
@@ -280,34 +210,26 @@ rvalue concrete_interpreter::operator()(const int_mul& a)
 
 rvalue concrete_interpreter::operator()(const int_div& a)
 {
-	if(a.left == a.right)
-	{
-		return rvalue(constant(1));
-	}
+	rvalue l = normalize(a.left);
+	rvalue r = normalize(a.right);
+
+	if(l == r && !is_undefined(l) && !is_undefined(r))
+		return constant(1);
 	else
 	{
-		boost::optional<constant> l = lookup(a.left);
-		if(l)
+		if(is_constant(l))
 		{
-			boost::optional<constant> r = lookup(a.right);
-			if(r)
-			{
-				return rvalue(constant(l->content() / r->content()));
-			}
-			else if(l->content() == 0)
-			{
-				return rvalue(constant(0));
-			}
+			if(is_constant(r))
+				return constant(to_constant(l).content() / to_constant(r).content());
+			else if(to_constant(l).content() == 0)
+				return constant(0);
 		}
 		else
 		{
-			boost::optional<constant> r = lookup(a.right);
-			if(r)
+			if(is_constant(r))
 			{
-				if(r->content() == 0)
-				{
+				if(to_constant(r).content() == 0)
 					return undefined();
-				}
 			}
 		}
 	}
@@ -316,34 +238,26 @@ rvalue concrete_interpreter::operator()(const int_div& a)
 
 rvalue concrete_interpreter::operator()(const int_mod& a)
 {
-	if(a.left == a.right)
-	{
-		return rvalue(constant(0));
-	}
+	rvalue l = normalize(a.left);
+	rvalue r = normalize(a.right);
+
+	if(l == r && !is_undefined(l) && !is_undefined(r))
+		return constant(0);
 	else
 	{
-		boost::optional<constant> l = lookup(a.left);
-		if(l)
+		if(is_constant(l))
 		{
-			boost::optional<constant> r = lookup(a.right);
-			if(r)
-			{
-				return rvalue(constant(l->content() % r->content()));
-			}
-			else if(l->content() == 0)
-			{
-				return rvalue(constant(0));
-			}
+			if(is_constant(r))
+				return constant(to_constant(l).content() % to_constant(r).content());
+			else if(to_constant(l).content() == 0)
+				return constant(0);
 		}
 		else
 		{
-			boost::optional<constant> r = lookup(a.right);
-			if(r)
+			if(is_constant(r))
 			{
-				if(r->content() == 0)
-				{
+				if(to_constant(r).content() == 0)
 					return undefined();
-				}
 			}
 		}
 	}
@@ -352,20 +266,17 @@ rvalue concrete_interpreter::operator()(const int_mod& a)
 
 rvalue concrete_interpreter::operator()(const int_less& a)
 {
-	if(a.left == a.right)
-	{
-		return rvalue(constant(false));
-	}
+	rvalue l = normalize(a.left);
+	rvalue r = normalize(a.right);
+
+	if(l == r && !is_undefined(l) && !is_undefined(r))
+		return constant(false);
 	else
 	{
-		boost::optional<constant> l = lookup(a.left);
-		if(l)
+		if(is_constant(l))
 		{
-			boost::optional<constant> r = lookup(a.right);
-			if(r)
-			{
-				return rvalue(constant(l->content() < r->content()));
-			}
+			if(is_constant(r))
+				return rvalue(constant(to_constant(l).content() < to_constant(r).content()));
 		}
 	}
 	return undefined();
@@ -373,123 +284,117 @@ rvalue concrete_interpreter::operator()(const int_less& a)
 
 rvalue concrete_interpreter::operator()(const int_equal& a)
 {
-	if(a.left == a.right)
-	{
-		return rvalue(constant(true));
-	}
+	rvalue l = normalize(a.left);
+	rvalue r = normalize(a.right);
+
+	if(!is_undefined(l) && !is_undefined(r))
+		return constant(l == r);
 	else
-	{
-		boost::optional<constant> l = lookup(a.left);
-		if(l)
-		{
-			boost::optional<constant> r = lookup(a.right);
-			if(r)
-			{
-				return rvalue(constant(l->content() == r->content()));
-			}
-		}
-	}
-	return undefined();
+		return undefined();
 }
 
 rvalue concrete_interpreter::operator()(const int_and& a)
 {
-	if(a.left == a.right)
-	{
-		rvalue(a.left);
-	}
+	rvalue l = normalize(a.left);
+	rvalue r = normalize(a.right);
+
+	if(l == r && !is_undefined(l) && !is_undefined(r))
+		return l;
 	else
 	{
-		boost::optional<constant> l = lookup(a.left);
-		if(l)
+		if(is_constant(l))
 		{
-			boost::optional<constant> r = lookup(a.right);
-			if(r)
-			{
-				rvalue(constant(l->content() & r->content()));
-			}
-			else if(l->content() == 0)
-			{
-				rvalue(constant(0));
-			}
+			if(is_constant(r))
+				constant(to_constant(l).content() & to_constant(r).content());
+			else if(to_constant(l).content() == 0)
+				constant(0);
 		}
 
-		boost::optional<constant> r = lookup(a.right);
-		if(r && r->content() == 0)
-		{
-			return rvalue(constant(0));
-		}
+		if(is_constant(r) && to_constant(r).content() == 0)
+			return constant(0);
 	}
 	return undefined();
 }
 
 rvalue concrete_interpreter::operator()(const int_or& a)
 {
-	if(a.left == a.right)
-	{
-		return rvalue(a.left);
-	}
+	rvalue l = normalize(a.left);
+	rvalue r = normalize(a.right);
+
+	if(l == r && !is_undefined(l) && !is_undefined(r))
+		return l;
 	else
 	{
-		boost::optional<constant> l = lookup(a.left);
-		if(l)
+		if(is_constant(l))
 		{
-			boost::optional<constant> r = lookup(a.right);
-			if(r)
-			{
-				return rvalue(constant(l->content() | r->content()));
-			}
-			else if(l->content() == 0)
-			{
-				return rvalue(a.right);
-			}
+			if(is_constant(r))
+				return constant(to_constant(l).content() | to_constant(r).content());
+			else if(to_constant(l).content() == 0)
+				return r;
 		}
 
-		boost::optional<constant> r = lookup(a.right);
-		if(r && r->content() == 0)
-		{
-			return rvalue(a.left);
-		}
+		if(is_constant(r) && to_constant(r).content() == 0)
+			return l;
 	}
 	return undefined();
 }
 
 rvalue concrete_interpreter::operator()(const int_neg& a)
 {
-	boost::optional<constant> r = lookup(a.right);
-	if(r)
-		return rvalue(constant(~r->content()));
+	rvalue r = normalize(a.right);
+	if(is_constant(r))
+		return constant(~to_constant(r).content());
 	else
 		return undefined();
 }
 
 rvalue concrete_interpreter::operator()(const int_call& a)
 {
-	return a.right;
+	return normalize(a.right);
 }
 
 rvalue concrete_interpreter::operator()(const univ_nop& a)
 {
-	return a.right;
+	return normalize(a.right);
 }
 
 rvalue concrete_interpreter::operator()(const univ_phi& a)
 {
 	if(a.operands.empty())
 		return undefined();
-	else if(std::all_of(a.operands.begin(),a.operands.end(),[&](const rvalue& r) { return r == a.operands[0]; }))
-		return a.operands[0];
+	else if(a.operands.size() == 1)
+		return normalize(a.operands.at(0));
 	else
-		return undefined();
+	{
+		rvalue x = normalize(a.operands.at(0));
+		if(!is_undefined(x) && std::all_of(a.operands.begin()+1,a.operands.end(),[&](const rvalue& r)
+					{ rvalue y = normalize(r); return !is_undefined(y) && y == x; }))
+			return x;
+		else
+			return undefined();
+	}
 }
 
 rvalue concrete_interpreter::operator()(const int_lift& a)
 {
-	return a.right;
+	return normalize(a.right);
 }
 
-boost::optional<constant> concrete_interpreter::lookup(const rvalue& v) const
-{ return is_constant(v) ? boost::make_optional(to_constant(v)) : boost::none; }
+rvalue concrete_interpreter::normalize(const rvalue& v) const
+{
+	if(is_constant(v))
+		return to_constant(v);
+	else if(is_variable(v))
+	{
+		auto i = _environment.find(to_variable(v));
+		if(i != _environment.end())
+			return normalize(i->second);
+		else
+			return v;
+	}
+	else
+		return v;
+}
 
 /*template<typename It>
 concrete_environment forward(It begin, It end, const concrete_environment& cenv)
@@ -543,7 +448,7 @@ sscp_lattice po::execute(const lvalue &left, instr::Function fn, const std::vect
 		++i;
 	}
 
-	if(ret.type == sscp_lattice::Const)
+	if(is_constant(r)et.type == sscp_lattice::Const)
 		ret.value = execute(left,fn,concrete,args,ci_tag);
 
 	return ret;
