@@ -396,6 +396,15 @@ rvalue concrete_interpreter::normalize(const rvalue& v) const
 		return v;
 }
 
+template<>
+rvalue po::supremum(rvalue a, rvalue b, concrete_domain)
+{
+	if(a == b)
+		return a;
+	else
+		return undefined();
+}
+
 /*template<typename It>
 concrete_environment forward(It begin, It end, const concrete_environment& cenv)
 {

@@ -3,6 +3,7 @@
 #include <memory>
 #include <map>
 #include <set>
+#include <algorithm>
 
 #include <boost/variant.hpp>
 
@@ -44,6 +45,9 @@ namespace po
 	template<typename Domain>
 	using environment = std::unordered_map<variable,Domain>;
 
+	template<typename Domain>
+	typename domain_traits<Domain>::value_type supremum(typename domain_traits<Domain>::value_type,typename domain_traits<Domain>::value_type, Domain);
+
 	/**
 	 * @brief Compute the Abstract Interpretation
 	 *
@@ -55,19 +59,21 @@ namespace po
 	 * @ref proc to an instance of an element in the abstract domain.
 	 */
 	template<typename Domain>
-	std::shared_ptr<std::unordered_map<rvalue,typename domain_traits<Domain>::value_type>> interpret(const proc_loc proc, Domain domain = Domain())
+	std::unordered_map<variable,typename domain_traits<Domain>::value_type> interpret(const proc_loc proc, Domain domain = Domain())
 	{
 		using L = typename domain_traits<Domain>::value_type;
 		using I = typename domain_traits<Domain>::interpreter_type;
 		using vx_desc = typename boost::graph_traits<decltype(proc->control_transfers)>::vertex_descriptor;
+		using e_desc = typename boost::graph_traits<decltype(proc->control_transfers)>::edge_descriptor;
 
-		std::shared_ptr<std::unordered_map<rvalue,L>> ret = std::make_shared<std::unordered_map<rvalue,L>>();
-		const std::vector<bblock_loc>& rpo = proc->rev_postorder();
+		environment<L> ret;
+		//const std::vector<bblock_loc>& rpo = proc->rev_postorder();
+		//std::list<vx_desc> rpo_vx;
 		std::unordered_set<vx_desc> worklist;
 		I interp(ret);
 		has_symbol_visitor<phi_symbol> phi_vis;
 
-		std::transform(rpo.begin(),rpo.end(),[&](bblock_loc bb) { return find_node<boost::variant<bblock_loc,rvalue>,guard>(bb,proc->control_transfers); });
+	//	std::transform(rpo.begin(),rpo.end(),std::back_inserter(rpo_vx),[&](bblock_loc bb) { return find_node<boost::variant<bblock_loc,rvalue>,guard>(bb,proc->control_transfers); });
 
 		while(!worklist.empty())
 		{
@@ -78,33 +84,38 @@ namespace po
 			worklist.erase(worklist.begin());
 			execute(bb,[&](const instr& i)
 			{
+				boost::optional<variable> ass = (is_variable(i.assignee) ? boost::make_optional(to_variable(i.assignee)) : boost::none);
 				std::vector<L> arguments;
-				L res = ret->count(i.assignee) ? ret->at(i.assignee) : L();
+				L res = ass && ret.count(*ass) ? ret.at(*ass) : L();
 				std::vector<rvalue> right = operands(i);
 
 				for(const rvalue &r: right)
-					if(ret->count(r))
-						arguments.emplace_back(ret->at(r));
+					if(is_variable(r) && ret.count(to_variable(r)))
+						arguments.emplace_back(ret.at(to_variable(r)));
 					else
 						arguments.emplace_back(L());
 
 				if(boost::apply_visitor(phi_vis,i.function))
 					res = std::accumulate(arguments.begin(),arguments.end(),res,[&](const L &acc, const L &x) { return supremum(acc,x,domain); });
 				else
-					res = supremum(boost::apply_visitor(interp,i,arguments),res,domain);
+					res = supremum(boost::apply_visitor(interp,i.function),res,domain);
 
-				modified = (!ret->count(i.assignee) || !(ret->at(i.assignee) == res));
+				modified = ass && (!ret.count(*ass) || !(ret.at(to_variable(*ass)) == res));
 
-				if(ret->count(i.assignee))
-					ret->erase(i.assignee);
-				ret->emplace(i.assignee,res);
+				if(ass && ret.count(*ass))
+					ret.erase(*ass);
+				ret.emplace(*ass,res);
 			});
 
 			if(modified)
 			{
-				auto p = out_edges(vx,proc->control_transfers);
-				std::copy_if(p.first,p.second,std::back_inserter(worklist),[&](vx_desc v)
-					{ get<bblock_loc>(&get_vertex<boost::variant<bblock_loc,rvalue>,guard>(v,proc->control_transfers)); });
+				for(auto e: iters(out_edges(vx,proc->control_transfers)))
+				{
+					auto v = target(e,proc->control_transfers);
+					auto w = get_vertex(v,proc->control_transfers);
+					if(get<bblock_loc>(&w))
+						worklist.insert(v);
+				}
 			}
 
 			std::cout << worklist.size() << std::endl;
@@ -166,6 +177,9 @@ namespace po
 		using value_type = rvalue;
 		using interpreter_type = concrete_interpreter;
 	};
+
+	template<>
+	rvalue supremum(rvalue, rvalue, concrete_domain);
 
 	/**
 	 * @brief K-Set domain
