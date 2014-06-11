@@ -189,9 +189,9 @@ void po::ssa(proc_loc proc, const dom& domi, const live& li)
 					assert(ms.size());
 
 					if(ms[0].opcode == "internal-phis")
-						ms[0].instructions.emplace_back(instr(univ_phi{{}},variable(n,512)));
+						ms[0].instructions.emplace_back(instr(univ_phi<rvalue>{{}},variable(n,512)));
 					else
-						ms.emplace(ms.begin(),mnemonic(bound(ms.front().area.lower(),ms.front().area.lower()),"internal-phis","",{},{instr(univ_phi{{}},variable(n,512))}));
+						ms.emplace(ms.begin(),mnemonic(bound(ms.front().area.lower(),ms.front().area.lower()),"internal-phis","",{},{instr(univ_phi<rvalue>{{}},variable(n,512))}));
 					worklist.insert(frontier);
 				}
 			}

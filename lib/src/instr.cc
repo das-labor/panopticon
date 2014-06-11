@@ -7,14 +7,14 @@ struct set_operands_visitor : public boost::static_visitor<>
 	set_operands_visitor(const std::vector<rvalue>& rv) : boost::static_visitor<>(), _values(rv) {}
 
 	template<typename Symbol, typename Domain, typename Codomain>
-	void operator()(unop<Symbol,Domain,Codomain>& op)
+	void operator()(unop<Symbol,Domain,Codomain,rvalue>& op)
 	{
 		assert(_values.size() == 1);
 		op.right = _values[0];
 	}
 
 	template<typename Symbol, typename Domain, typename Codomain>
-	void operator()(binop<Symbol,Domain,Codomain>& op)
+	void operator()(binop<Symbol,Domain,Codomain,rvalue>& op)
 	{
 		assert(_values.size() == 2);
 		op.left = _values[0];
@@ -22,7 +22,7 @@ struct set_operands_visitor : public boost::static_visitor<>
 	}
 
 	template<typename Symbol, typename Domain, typename Codomain>
-	void operator()(naryop<Symbol,Domain,Codomain>& op)
+	void operator()(naryop<Symbol,Domain,Codomain,rvalue>& op)
 	{
 		op.operands = _values;
 	}
@@ -39,19 +39,19 @@ void po::set_operands(instr& i, const std::vector<rvalue>& rv)
 struct operands_visitor : public boost::static_visitor<std::vector<rvalue>>
 {
 	template<typename Symbol, typename Domain, typename Codomain>
-	result_type operator()(const unop<Symbol,Domain,Codomain>& op) const
+	result_type operator()(const unop<Symbol,Domain,Codomain,rvalue>& op) const
 	{
 		return {op.right};
 	}
 
 	template<typename Symbol, typename Domain, typename Codomain>
-	result_type operator()(const binop<Symbol,Domain,Codomain>& op) const
+	result_type operator()(const binop<Symbol,Domain,Codomain,rvalue>& op) const
 	{
 		return {op.left,op.right};
 	}
 
 	template<typename Symbol, typename Domain, typename Codomain>
-	result_type operator()(const naryop<Symbol,Domain,Codomain>& op) const
+	result_type operator()(const naryop<Symbol,Domain,Codomain,rvalue>& op) const
 	{
 		return op.operands;
 	}
@@ -67,27 +67,27 @@ std::string po::pretty(const instr::operation& i)
 {
 	struct vis : public boost::static_visitor<std::string>
 	{
-		std::string operator()(const logic_and&) const { return "∧"; }
-		std::string operator()(const logic_or&) const { return "∨"; }
-		std::string operator()(const logic_neg&) const { return "¬"; }
-		std::string operator()(const logic_impl&) const { return "→"; }
-		std::string operator()(const logic_equiv&) const { return "↔"; }
+		std::string operator()(const logic_and<rvalue>&) const { return "∧"; }
+		std::string operator()(const logic_or<rvalue>&) const { return "∨"; }
+		std::string operator()(const logic_neg<rvalue>&) const { return "¬"; }
+		std::string operator()(const logic_impl<rvalue>&) const { return "→"; }
+		std::string operator()(const logic_equiv<rvalue>&) const { return "↔"; }
 
-		std::string operator()(const int_and&) const { return "∧"; }
-		std::string operator()(const int_or&) const { return "∨"; }
-		std::string operator()(const int_neg&) const { return "¬"; }
-		std::string operator()(const int_add&) const { return "+"; }
-		std::string operator()(const int_sub&) const { return "-"; }
-		std::string operator()(const int_mul&) const { return "×"; }
-		std::string operator()(const int_div&) const { return "÷"; }
-		std::string operator()(const int_mod&) const { return "%"; }
-		std::string operator()(const int_less&) const { return "<"; }
-		std::string operator()(const int_equal&) const { return "="; }
-		std::string operator()(const int_lift&) const { return "int "; }
-		std::string operator()(const int_call&) const { return "call "; }
+		std::string operator()(const int_and<rvalue>&) const { return "∧"; }
+		std::string operator()(const int_or<rvalue>&) const { return "∨"; }
+		std::string operator()(const int_neg<rvalue>&) const { return "¬"; }
+		std::string operator()(const int_add<rvalue>&) const { return "+"; }
+		std::string operator()(const int_sub<rvalue>&) const { return "-"; }
+		std::string operator()(const int_mul<rvalue>&) const { return "×"; }
+		std::string operator()(const int_div<rvalue>&) const { return "÷"; }
+		std::string operator()(const int_mod<rvalue>&) const { return "%"; }
+		std::string operator()(const int_less<rvalue>&) const { return "<"; }
+		std::string operator()(const int_equal<rvalue>&) const { return "="; }
+		std::string operator()(const int_lift<rvalue>&) const { return "int "; }
+		std::string operator()(const int_call<rvalue>&) const { return "call "; }
 
-		std::string operator()(const univ_phi&) const { return "ϕ"; }
-		std::string operator()(const univ_nop&) const { return ""; }
+		std::string operator()(const univ_phi<rvalue>&) const { return "ϕ"; }
+		std::string operator()(const univ_nop<rvalue>&) const { return ""; }
 	};
 	vis v;
 
@@ -98,27 +98,27 @@ std::string po::symbolic(const instr::operation& i)
 {
 	struct vis : public boost::static_visitor<std::string>
 	{
-		std::string operator()(const logic_and&) const { return "logic-and"; }
-		std::string operator()(const logic_or&) const { return "logic-or"; }
-		std::string operator()(const logic_neg&) const { return "logic-negation"; }
-		std::string operator()(const logic_impl&) const { return "logic-implication"; }
-		std::string operator()(const logic_equiv&) const { return "logic-equivalence"; }
+		std::string operator()(const logic_and<rvalue>&) const { return "logic-and"; }
+		std::string operator()(const logic_or<rvalue>&) const { return "logic-or"; }
+		std::string operator()(const logic_neg<rvalue>&) const { return "logic-negation"; }
+		std::string operator()(const logic_impl<rvalue>&) const { return "logic-implication"; }
+		std::string operator()(const logic_equiv<rvalue>&) const { return "logic-equivalence"; }
 
-		std::string operator()(const int_and&) const { return "integer-bitwise-and"; }
-		std::string operator()(const int_or&) const { return "integer-bitwise-or"; }
-		std::string operator()(const int_neg&) const { return "integer-bitwise-negation"; }
-		std::string operator()(const int_add&) const { return "integer-addition"; }
-		std::string operator()(const int_sub&) const { return "integer-subtraction"; }
-		std::string operator()(const int_mul&) const { return "integer-multiplication"; }
-		std::string operator()(const int_div&) const { return "integer-division"; }
-		std::string operator()(const int_mod&) const { return "integer-modulo"; }
-		std::string operator()(const int_less&) const { return "integer-less-than"; }
-		std::string operator()(const int_equal&) const { return "integer-equal-to"; }
-		std::string operator()(const int_lift&) const { return "integer-lift-boolean"; }
-		std::string operator()(const int_call&) const { return "integer-call-to"; }
+		std::string operator()(const int_and<rvalue>&) const { return "integer-bitwise-and"; }
+		std::string operator()(const int_or<rvalue>&) const { return "integer-bitwise-or"; }
+		std::string operator()(const int_neg<rvalue>&) const { return "integer-bitwise-negation"; }
+		std::string operator()(const int_add<rvalue>&) const { return "integer-addition"; }
+		std::string operator()(const int_sub<rvalue>&) const { return "integer-subtraction"; }
+		std::string operator()(const int_mul<rvalue>&) const { return "integer-multiplication"; }
+		std::string operator()(const int_div<rvalue>&) const { return "integer-division"; }
+		std::string operator()(const int_mod<rvalue>&) const { return "integer-modulo"; }
+		std::string operator()(const int_less<rvalue>&) const { return "integer-less-than"; }
+		std::string operator()(const int_equal<rvalue>&) const { return "integer-equal-to"; }
+		std::string operator()(const int_lift<rvalue>&) const { return "integer-lift-boolean"; }
+		std::string operator()(const int_call<rvalue>&) const { return "integer-call-to"; }
 
-		std::string operator()(const univ_phi&) const { return "universal-phi"; }
-		std::string operator()(const univ_nop&) const { return "universal-no-op"; }
+		std::string operator()(const univ_phi<rvalue>&) const { return "universal-phi"; }
+		std::string operator()(const univ_nop<rvalue>&) const { return "universal-no-op"; }
 	};
 	vis v;
 
@@ -131,27 +131,27 @@ instr::operation po::from_symbolic(const std::string &s, const std::vector<rvalu
 	{
 		std::string t = s.substr(std::string(PO).size());
 
-		if(t == "logic-and") return logic_and{rv[0],rv[1]};
-		if(t == "logic-or") return logic_or{rv[0],rv[1]};
-		if(t == "logic-negation") return logic_neg{rv[0]};
-		if(t == "logic-implication") return logic_impl{rv[0],rv[1]};
-		if(t == "logic-equivalence") return logic_equiv{rv[0],rv[1]};
+		if(t == "logic-and") return logic_and<rvalue>{rv[0],rv[1]};
+		if(t == "logic-or") return logic_or<rvalue>{rv[0],rv[1]};
+		if(t == "logic-negation") return logic_neg<rvalue>{rv[0]};
+		if(t == "logic-implication") return logic_impl<rvalue>{rv[0],rv[1]};
+		if(t == "logic-equivalence") return logic_equiv<rvalue>{rv[0],rv[1]};
 
-		if(t == "integer-bitwise-and") return int_and{rv[0],rv[1]};
-		if(t == "integer-bitwise-or") return int_or{rv[0],rv[1]};
-		if(t == "integer-bitwise-negation") return int_neg{rv[0]};
-		if(t == "integer-addition") return int_add{rv[0],rv[1]};
-		if(t == "integer-subtraction") return int_sub{rv[0],rv[1]};
-		if(t == "integer-multiplication") return int_mul{rv[0],rv[1]};
-		if(t == "integer-division") return int_div{rv[0],rv[1]};
-		if(t == "integer-modulo") return int_mod{rv[0],rv[1]};
-		if(t == "integer-less-than") return int_less{rv[0],rv[1]};
-		if(t == "integer-equal-to") return int_equal{rv[0],rv[1]};
-		if(t == "integer-lift-boolean") return int_lift{rv[0]};
-		if(t == "integer-call-to") return int_call{rv[0]};
+		if(t == "integer-bitwise-and") return int_and<rvalue>{rv[0],rv[1]};
+		if(t == "integer-bitwise-or") return int_or<rvalue>{rv[0],rv[1]};
+		if(t == "integer-bitwise-negation") return int_neg<rvalue>{rv[0]};
+		if(t == "integer-addition") return int_add<rvalue>{rv[0],rv[1]};
+		if(t == "integer-subtraction") return int_sub<rvalue>{rv[0],rv[1]};
+		if(t == "integer-multiplication") return int_mul<rvalue>{rv[0],rv[1]};
+		if(t == "integer-division") return int_div<rvalue>{rv[0],rv[1]};
+		if(t == "integer-modulo") return int_mod<rvalue>{rv[0],rv[1]};
+		if(t == "integer-less-than") return int_less<rvalue>{rv[0],rv[1]};
+		if(t == "integer-equal-to") return int_equal<rvalue>{rv[0],rv[1]};
+		if(t == "integer-lift-boolean") return int_lift<rvalue>{rv[0]};
+		if(t == "integer-call-to") return int_call<rvalue>{rv[0]};
 
-		if(t == "universal-phi") return univ_phi{rv};
-		if(t == "universal-no-op") return univ_nop{rv[0]};
+		if(t == "universal-phi") return univ_phi<rvalue>{rv};
+		if(t == "universal-no-op") return univ_nop<rvalue>{rv[0]};
 	}
 	throw std::runtime_error("invalid string");
 }

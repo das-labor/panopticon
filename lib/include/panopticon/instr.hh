@@ -8,26 +8,26 @@
 
 namespace po
 {
-	template<typename Symbol, typename Domain, typename Codomain>
+	template<typename Symbol, typename Domain, typename Codomain, typename Value>
 	struct unop
 	{
-		bool operator==(const unop<Symbol,Domain,Codomain>& o) const { return right == o.right; }
-		rvalue right;
+		bool operator==(const unop<Symbol,Domain,Codomain,Value>& o) const { return right == o.right; }
+		Value right;
 	};
 
-	template<typename Symbol, typename Domain, typename Codomain>
+	template<typename Symbol, typename Domain, typename Codomain, typename Value>
 	struct binop
 	{
-		bool operator==(const binop<Symbol,Domain,Codomain>& o) const { return right == o.right && left == o.left; }
-		rvalue left;
-		rvalue right;
+		bool operator==(const binop<Symbol,Domain,Codomain,Value>& o) const { return right == o.right && left == o.left; }
+		Value left;
+		Value right;
 	};
 
-	template<typename Symbol, typename Domain, typename Codomain>
+	template<typename Symbol, typename Domain, typename Codomain, typename Value>
 	struct naryop
 	{
-		bool operator==(const naryop<Symbol,Domain,Codomain>& o) const { return operands == o.operands; }
-		std::vector<rvalue> operands;
+		bool operator==(const naryop<Symbol,Domain,Codomain,Value>& o) const { return operands == o.operands; }
+		std::vector<Value> operands;
 	};
 
 	struct logic_domain {};
@@ -54,49 +54,72 @@ namespace po
 	struct call_symbol {};
 	struct nop_symbol {};
 
-	using logic_and = binop<and_symbol,logic_domain,logic_domain>;
-	using logic_or = binop<or_symbol,logic_domain,logic_domain>;
-	using logic_neg = unop<negation_symbol,logic_domain,logic_domain>;
-	using logic_impl = binop<implication_symbol,logic_domain,logic_domain>;
-	using logic_equiv = binop<equivalence_symbol,logic_domain,logic_domain>;
+	template<typename Value> using logic_and = binop<and_symbol,logic_domain,logic_domain,Value>;
+	template<typename Value> using logic_or = binop<or_symbol,logic_domain,logic_domain,Value>;
+	template<typename Value> using logic_neg = unop<negation_symbol,logic_domain,logic_domain,Value>;
+	template<typename Value> using logic_impl = binop<implication_symbol,logic_domain,logic_domain,Value>;
+	template<typename Value> using logic_equiv = binop<equivalence_symbol,logic_domain,logic_domain,Value>;
 
-	using int_and = binop<and_symbol,integer_domain,integer_domain>;
-	using int_or = binop<or_symbol,integer_domain,integer_domain>;
-	using int_neg = unop<negation_symbol,integer_domain,integer_domain>;
-	using int_add = binop<add_symbol,integer_domain,integer_domain>;
-	using int_sub = binop<subtract_symbol,integer_domain,integer_domain>;
-	using int_mul = binop<multiply_symbol,integer_domain,integer_domain>;
-	using int_div = binop<divide_symbol,integer_domain,integer_domain>;
-	using int_mod = binop<modulo_symbol,integer_domain,integer_domain>;
-	using int_less = binop<less_symbol,integer_domain,logic_domain>;
-	using int_equal = binop<equal_symbol,integer_domain,logic_domain>;
-	using int_lift = unop<lift_symbol,logic_domain,integer_domain>;
-	using int_call = unop<call_symbol,logic_domain,integer_domain>;
+	template<typename Value> using int_and = binop<and_symbol,integer_domain,integer_domain,Value>;
+	template<typename Value> using int_or = binop<or_symbol,integer_domain,integer_domain,Value>;
+	template<typename Value> using int_neg = unop<negation_symbol,integer_domain,integer_domain,Value>;
+	template<typename Value> using int_add = binop<add_symbol,integer_domain,integer_domain,Value>;
+	template<typename Value> using int_sub = binop<subtract_symbol,integer_domain,integer_domain,Value>;
+	template<typename Value> using int_mul = binop<multiply_symbol,integer_domain,integer_domain,Value>;
+	template<typename Value> using int_div = binop<divide_symbol,integer_domain,integer_domain,Value>;
+	template<typename Value> using int_mod = binop<modulo_symbol,integer_domain,integer_domain,Value>;
+	template<typename Value> using int_less = binop<less_symbol,integer_domain,logic_domain,Value>;
+	template<typename Value> using int_equal = binop<equal_symbol,integer_domain,logic_domain,Value>;
+	template<typename Value> using int_lift = unop<lift_symbol,logic_domain,integer_domain,Value>;
+	template<typename Value> using int_call = unop<call_symbol,logic_domain,integer_domain,Value>;
 
-	using univ_phi = naryop<phi_symbol,universe_domain,universe_domain>;
-	using univ_nop = unop<nop_symbol,universe_domain,universe_domain>;
+	template<typename Value> using univ_phi = naryop<phi_symbol,universe_domain,universe_domain,Value>;
+	template<typename Value> using univ_nop = unop<nop_symbol,universe_domain,universe_domain,Value>;
 
 	template<typename T>
 	struct has_symbol_visitor : public boost::static_visitor<bool>
 	{
-		template<typename Domain,typename Codomain>
-		bool operator()(unop<T,Domain,Codomain>) const { return true; }
+		template<typename Domain,typename Codomain,typename Value>
+		bool operator()(unop<T,Domain,Codomain,Value>) const { return true; }
 
-		template<typename Domain,typename Codomain>
-		bool operator()(binop<T,Domain,Codomain>) const { return true; }
+		template<typename Domain,typename Codomain,typename Value>
+		bool operator()(binop<T,Domain,Codomain,Value>) const { return true; }
 
-		template<typename Domain,typename Codomain>
-		bool operator()(naryop<T,Domain,Codomain>) const { return true; }
+		template<typename Domain,typename Codomain,typename Value>
+		bool operator()(naryop<T,Domain,Codomain,Value>) const { return true; }
 
-		template<typename Symbol,typename Domain,typename Codomain>
-		bool operator()(unop<Symbol,Domain,Codomain>) const { return false; }
+		template<typename Symbol,typename Domain,typename Codomain,typename Value>
+		bool operator()(unop<Symbol,Domain,Codomain,Value>) const { return false; }
 
-		template<typename Symbol,typename Domain,typename Codomain>
-		bool operator()(binop<Symbol,Domain,Codomain>) const { return false; }
+		template<typename Symbol,typename Domain,typename Codomain,typename Value>
+		bool operator()(binop<Symbol,Domain,Codomain,Value>) const { return false; }
 
-		template<typename Symbol,typename Domain,typename Codomain>
-		bool operator()(naryop<Symbol,Domain,Codomain>) const { return false; }
+		template<typename Symbol,typename Domain,typename Codomain,typename Value>
+		bool operator()(naryop<Symbol,Domain,Codomain,Value>) const { return false; }
 	};
+
+	template<typename Value>
+	using basic_operation = boost::variant<
+		logic_and<Value>,
+		logic_or<Value>,
+		logic_neg<Value>,
+		logic_impl<Value>,
+		logic_equiv<Value>,
+		univ_phi<Value>,
+		univ_nop<Value>,
+		int_and<Value>,
+		int_or<Value>,
+		int_neg<Value>,
+		int_add<Value>,
+		int_sub<Value>,
+		int_mul<Value>,
+		int_div<Value>,
+		int_mod<Value>,
+		int_less<Value>,
+		int_equal<Value>,
+		int_lift<Value>,
+		int_call<Value>
+	>;
 
 	/**
 	 * @brief Single IL statement
@@ -115,27 +138,7 @@ namespace po
 	 */
 	struct instr
 	{
-		using operation = boost::variant<
-			logic_and,
-			logic_or,
-			logic_neg,
-			logic_impl,
-			logic_equiv,
-			univ_phi,
-			univ_nop,
-			int_and,
-			int_or,
-			int_neg,
-			int_add,
-			int_sub,
-			int_mul,
-			int_div,
-			int_mod,
-			int_less,
-			int_equal,
-			int_lift,
-			int_call
-		>;
+		using operation = basic_operation<rvalue>;
 
 		/// Construct a statement applying function @arg fn to @arg args. Saves the result in @arg a
 		instr(const operation& op, const lvalue& a) : function(op), assignee(a) {}
