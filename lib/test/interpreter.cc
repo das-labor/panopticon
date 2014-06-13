@@ -40,15 +40,15 @@ TEST(interpreter,kset_interpreter)
 
 	// b0
 	mnemonic mne01(bound(0,1),"mne1","",{},{instr(univ_nop<rvalue>{constant(1)},variable("i",8,0))});
-	mnemonic mne02(bound(0,1),"mne1","",{},{instr(univ_nop<rvalue>{undefined()},variable("j",8,0))});
-	mnemonic mne03(bound(0,1),"mne1","",{},{instr(logic_neg<rvalue>{variable("j",8,0)},variable("jn",8,0))});
+	mnemonic mne02(bound(1,2),"mne1","",{},{instr(univ_nop<rvalue>{undefined()},variable("j",8,0))});
+	mnemonic mne03(bound(2,3),"mne1","",{},{instr(logic_neg<rvalue>{variable("j",8,0)},variable("jn",8,0))});
 	// b1
-	mnemonic mne1(bound(1,2),"mne2","",{},{instr(univ_nop<rvalue>{constant(1)},variable("a",8,0))});
+	mnemonic mne1(bound(3,4),"mne2","",{},{instr(univ_nop<rvalue>{constant(1)},variable("a",8,0))});
 	// b2
 	mnemonic mne2(bound(4,5),"mne5","",{},{instr(univ_nop<rvalue>{constant(2)},variable("a",8,1))});
 	// b3
-	mnemonic mne31(bound(1,2),"mne2","",{},{instr(univ_phi<rvalue>{{variable("a",8,0),variable("a",8,1)}},variable("a",8,2))});
-	mnemonic mne32(bound(1,2),"mne2","",{},{instr(int_add<rvalue>{variable("i",8,0),variable("a",8,2)},variable("a",8,3))});
+	mnemonic mne31(bound(5,6),"mne2","",{},{instr(univ_phi<rvalue>{{variable("a",8,0),variable("a",8,1)}},variable("a",8,2))});
+	mnemonic mne32(bound(6,7),"mne2","",{},{instr(int_add<rvalue>{variable("i",8,0),variable("a",8,2)},variable("a",8,3))});
 
 	proc_loc proc(new procedure("proc1"));
 	vx b0, b1, b2, b3;
@@ -65,7 +65,7 @@ TEST(interpreter,kset_interpreter)
 
 	proc.write().entry = get<bblock_loc>(get_vertex(b0,proc->control_transfers));
 
-	ssa(proc,*dominance_tree(proc),liveness(proc));
+	//ssa(proc,*dominance_tree(proc),liveness(proc));
 	environment<domain_traits<kset_domain<16>>::value_type> env = interpret(proc,kset_domain<16>());
 
 	for(auto p: env)
@@ -97,11 +97,11 @@ TEST(interpreter,kset_interpreter)
 	// a2
 	var = variable("a",8,2);
 	ASSERT_EQ(1,env.count(var));
-	ASSERT_TRUE(boost::get<join_t>(&(env.at(var))));
+	ASSERT_EQ(boost::get<kset_set>(env.at(var)), kset_set({2,1}));
 	// a3
 	var = variable("a",8,3);
 	ASSERT_EQ(1,env.count(var));
-	ASSERT_TRUE(boost::get<join_t>(&(env.at(var))));
+	ASSERT_EQ(boost::get<kset_set>(env.at(var)), kset_set({2,3}));
 }
 
 TEST(interpreter,kset_semantics)

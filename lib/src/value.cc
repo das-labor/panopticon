@@ -112,7 +112,21 @@ uint16_t variable::width(void) const { return _width; }
 bool variable::operator==(const variable &v) const { return _name == v._name && _subscript == v._subscript && _width == v._width; }
 bool variable::operator<(const variable &v) const
 {
-	return _width == v._width ? (_name == v._name ? _subscript < v._subscript : _name < v._name) : _width < v._width;
+	if(_name == v._name)
+	{
+		if(_width == v._width)
+		{
+			return _subscript < v._subscript;
+		}
+		else
+		{
+			return _width < v._width;
+		}
+	}
+	else
+	{
+		return _name < v._name;
+	}
 }
 
 memory::memory(const rvalue &o, uint16_t w, Endianess e, const string &n)

@@ -33,11 +33,7 @@
 namespace po
 {
 	template <typename T>
-	struct domain_traits
-	{
-		using value_type = void; ///< Lattice
-		using interpreter_type = void; ///< static_visitor<value_type>(aenv)
-	};
+	struct domain_traits;
 
 	template<typename D>
 	struct interpreter;
@@ -155,9 +151,10 @@ namespace po
 			execute(bb,[&](const instr& i)
 			{
 				L res = boost::apply_visitor(vis,i.function);
+				variable var = to_variable(i.assignee);
 
-				modified |= !ret.count(to_variable(i.assignee)) || !(ret.at(to_variable(to_variable(i.assignee))) == res);
-				ret[to_variable(i.assignee)] = supremum(ret[to_variable(i.assignee)],res,domain);
+				modified |= !ret.count(var) || !(ret.at(var) == res);
+				ret[var] = res;
 			});
 
 			if(modified)
@@ -170,8 +167,6 @@ namespace po
 						worklist.insert(v);
 				}
 			}
-
-			std::cout << worklist.size() << std::endl;
 		}
 
 		return ret;
@@ -299,8 +294,11 @@ namespace po
 		template<typename Tag, typename Domain, typename Codomain>
 		kset_value operator()(const naryop<Tag,Domain,Codomain,kset_value>& a)
 		{
-			return meet;
-			;//mutate(a.assignee.name,lookup(a.right));
+			if(typeid(a) == typeid(const univ_phi<kset_value>&))
+				return accumulate(a.operands.begin(),a.operands.end(),kset_value(meet),
+						[&](const kset_value& a, const kset_value& b) { return supremum(a,b,kset_domain<k>()); });
+			else
+				return join;
 		}
 
 	protected:
