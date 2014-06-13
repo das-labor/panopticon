@@ -66,6 +66,9 @@ namespace po
 		std::string _region;
 
 		friend area extends(struct_loc);
+
+		template<typename T>
+		friend rdf::statements marshal(const T*, const uuid&);
 	};
 
 	template<>
