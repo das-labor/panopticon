@@ -103,26 +103,26 @@ TEST(value,variable)
 
 TEST(value,memory)
 {
-	memory m1(constant(1),2,memory::BigEndian,"n"), m2(constant(2),1,memory::BigEndian,"n"), m3(constant(3),2,memory::LittleEndian,"n");
+	memory m1(constant(1),2,BigEndian,"n"), m2(constant(2),1,BigEndian,"n"), m3(constant(3),2,LittleEndian,"n");
 
 	ASSERT_TRUE(m1 != m2);
 	ASSERT_TRUE(m1 != m3);
 	ASSERT_TRUE(m3 != m2);
 
-	ASSERT_THROW(memory m4(undefined(),32,memory::BigEndian,""), value_exception);
-	ASSERT_THROW(memory m4(undefined(),0,memory::BigEndian,""), value_exception);
+	ASSERT_THROW(memory m4(undefined(),32,BigEndian,""), value_exception);
+	ASSERT_THROW(memory m4(undefined(),0,BigEndian,""), value_exception);
 
 	ASSERT_TRUE(m1.offset() == constant(1));
 	ASSERT_TRUE(m1.name() == "n");
 	ASSERT_TRUE(m1.bytes() == 2);
-	ASSERT_TRUE(m1.endianess() == memory::BigEndian);
+	ASSERT_TRUE(m1.endianess() == BigEndian);
 
 	m1 = m2;
 	ASSERT_TRUE(m1 == m2);
 	ASSERT_TRUE(m1.offset() == constant(2));
 	ASSERT_TRUE(m1.name() == "n");
 	ASSERT_TRUE(m1.bytes() == 1);
-	ASSERT_TRUE(m1.endianess() == memory::BigEndian);
+	ASSERT_TRUE(m1.endianess() == BigEndian);
 
 	ASSERT_TRUE(to_memory(lvalue(m1)) == m1);
 
@@ -141,7 +141,7 @@ TEST(value,marshal)
 	loc<rvalue> a(rand(),new rvalue(undefined()));
 	loc<rvalue> b(rand(),new rvalue(constant(42)));
 	loc<rvalue> c(rand(),new rvalue(variable("test",8)));
-	loc<rvalue> d(rand(),new rvalue(memory(rvalue(constant(5)),2,memory::LittleEndian,"bank1")));
+	loc<rvalue> d(rand(),new rvalue(memory(rvalue(constant(5)),2,LittleEndian,"bank1")));
 
 	rdf::storage store;
 	save_point(store);

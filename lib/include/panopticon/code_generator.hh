@@ -137,7 +137,7 @@ namespace po
 					return to_variable(v).name().size() && to_variable(v).subscript() == -1 && to_variable(v).width();
 				else if(is_memory(v))
 					return to_memory(v).name().size() && to_memory(v).bytes() &&
-								 (to_memory(v).endianess() == memory::BigEndian || to_memory(v).endianess() == memory::LittleEndian) &&
+								 (to_memory(v).endianess() == BigEndian || to_memory(v).endianess() == LittleEndian) &&
 								 to_memory(v).offset() != v;
 				else if(is_constant(v))
 					return true;

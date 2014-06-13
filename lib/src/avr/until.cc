@@ -123,12 +123,12 @@ variable po::avr::decode_ioreg(unsigned int r)
 
 memory po::avr::sram(rvalue o)
 {
-	return memory(o,1,memory::BigEndian,"sram");
+	return memory(o,1,BigEndian,"sram");
 }
 
 memory po::avr::flash(rvalue o)
 {
-	return memory(o,1,memory::BigEndian,"flash");
+	return memory(o,1,BigEndian,"flash");
 }
 
 sem_action po::avr::unary_reg(std::string x, std::function<void(cg &c, const variable &v)> func)

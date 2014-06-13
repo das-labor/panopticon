@@ -23,6 +23,7 @@ struct dflow : public ::testing::Test
 		mnemonic mne2(bound(1,2),"mne2","",{},{instr(univ_nop<rvalue>{undefined()},variable("a",8))});
 		mnemonic mne3(bound(2,3),"mne3","",{},{instr(univ_nop<rvalue>{undefined()},variable("c",8))});
 		mnemonic mne4(bound(3,4),"mne4","",{},{instr(int_less<rvalue>{variable("a",8),variable("c",8)},memory(undefined(),1,memory::LittleEndian,"none"))});
+
 		// b2
 		mnemonic mne5(bound(4,5),"mne5","",{},{instr(univ_nop<rvalue>{undefined()},variable("b",8))});
 		mnemonic mne6(bound(5,6),"mne6","",{},{instr(univ_nop<rvalue>{undefined()},variable("c",8))});
@@ -38,6 +39,7 @@ struct dflow : public ::testing::Test
 		mnemonic mne13(bound(12,13),"mne13","",{},{instr(univ_nop<rvalue>{undefined()},variable("a",8))});
 		mnemonic mne14(bound(13,14),"mne14","",{},{instr(univ_nop<rvalue>{undefined()},variable("d",8))});
 		mnemonic mne15(bound(14,15),"mne15","",{},{instr(int_less<rvalue>{variable("a",8),variable("d",8)},memory(undefined(),1,memory::LittleEndian,"none"))});
+
 		// b6
 		mnemonic mne16(bound(15,16),"mne16","",{},{instr(univ_nop<rvalue>{undefined()},variable("d",8))});
 		// b7

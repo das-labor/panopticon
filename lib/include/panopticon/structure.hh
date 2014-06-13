@@ -4,6 +4,7 @@
 
 #include <boost/variant.hpp>
 
+#include <panopticon/value.hh>
 #include <panopticon/region.hh>
 #include <panopticon/marshal.hh>
 #include <panopticon/loc.hh>
@@ -27,34 +28,29 @@ namespace po
 		bound bnd;
 	};
 
-	struct format
+	struct integer
 	{
-		static format integer(offset bw, bool sign);
-		static format ieee754(offset bw);
-		static format bitfield(const std::unordered_map<unsigned int,std::string>& bits);
-		static format enumeration(const std::unordered_map<std::list<byte>,std::string>& values);
-
-		boost::variant<
-			bound,															  ///< integer
-	//		std::unordered_map<std::vector<byte>,std::string>,		  ///< enum
-			std::unordered_map<unsigned int,std::string>,			  ///< bitfield
-			std::pair<														  ///< generic
-				std::function<std::string(const std::list<byte>&)>,
-				std::function<std::list<byte>(const std::string&)>
-			>
-		> type;
-
-		std::string read(slab) const;
-		slab write(const std::string&) const;
+		unsigned long long mask;
+		int shift;
+		bool has_sign;
+		unsigned int base;
+		boost::optional<unsigned int> alternative_base;
+		Endianess endianess;
+		std::shared_ptr<std::unordered_map<unsigned long long,std::string>> symbolic;
 	};
 
-	using bits = unsigned int;
+	struct ieee754 {};
+
+	using format = boost::variant<integer,ieee754,std::string>;
+
+	std::string read(const format&, slab);
+	slab write(const format&, const std::string&);
 
 	struct field
 	{
 		std::string name;
-		bits size;
-		std::list<boost::variant<std::string,format>> value;
+		bound area;
+		format value;
 	};
 
 	using struct_loc = loc<struct structure>;

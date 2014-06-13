@@ -35,6 +35,12 @@ namespace po
 	class memory;
 	class value_exception;
 
+	enum Endianess
+	{
+		LittleEndian = 1,
+		BigEndian = 2
+	};
+
 	/**
 	 * @brief A constant value
 	 *
@@ -112,12 +118,6 @@ namespace po
 	class memory : boost::operators<memory>
 	{
 	public:
-		enum Endianess
-		{
-			LittleEndian = 1,
-			BigEndian = 2
-		};
-
 		memory(const memory &);
 
 		/// Construct a new reference to @c b bytes, starting at offset @c o, in memory region @c n, saved in @c e ordering.
@@ -260,9 +260,9 @@ namespace po
 namespace std
 {
 	template<>
-	struct hash<po::memory::Endianess>
+	struct hash<po::Endianess>
 	{
-		size_t operator()(po::memory::Endianess a) const
+		size_t operator()(po::Endianess a) const
 		{
 			return hash<uint8_t>()(a);
 		}

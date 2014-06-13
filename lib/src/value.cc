@@ -55,8 +55,8 @@ ostream &po::operator<<(ostream &os, const rvalue &r)
 		// endianess
 		switch(m.endianess())
 		{
-			case memory::LittleEndian: os << "←"; break;
-			case memory::BigEndian: os << "→"; break;
+			case LittleEndian: os << "←"; break;
+			case BigEndian: os << "→"; break;
 			default: os << "?"; break;
 		}
 
@@ -151,7 +151,7 @@ memory &memory::operator=(const memory &m)
 
 const rvalue &memory::offset(void) const { return *_offset; }
 uint16_t memory::bytes(void) const { return _bytes; }
-memory::Endianess memory::endianess(void) const { return _endianess; }
+Endianess memory::endianess(void) const { return _endianess; }
 const string &memory::name(void) const { return _name; }
 bool memory::operator==(const memory &m) const
 {
@@ -205,12 +205,12 @@ rvalue *po::unmarshal(const uuid &u, const rdf::storage &store)
 
 		uuid ou = boost::uuids::string_generator()(offset.object.as_literal());
 		std::shared_ptr<rvalue> off(unmarshal<rvalue>(ou,store));
-		memory::Endianess e;
+		Endianess e;
 
 		if(endianess.object == rdf::ns_po("big-endian"))
-			e = memory::BigEndian;
+			e = BigEndian;
 		else if(endianess.object == rdf::ns_po("little-endian"))
-			e = memory::LittleEndian;
+			e = LittleEndian;
 		else
 			throw marshal_exception("unknown endianess");
 
@@ -265,8 +265,8 @@ rdf::statements po::marshal(const rvalue *rv, const uuid &u)
 
 		switch(m.endianess())
 		{
-			case memory::LittleEndian: ret.emplace_back(root,rdf::ns_po("endianess"),rdf::ns_po("little-endian")); break;
-			case memory::BigEndian: ret.emplace_back(root,rdf::ns_po("endianess"),rdf::ns_po("big-endian")); break;
+			case LittleEndian: ret.emplace_back(root,rdf::ns_po("endianess"),rdf::ns_po("little-endian")); break;
+			case BigEndian: ret.emplace_back(root,rdf::ns_po("endianess"),rdf::ns_po("big-endian")); break;
 			default: throw marshal_exception("unknown endianess");
 		}
 
