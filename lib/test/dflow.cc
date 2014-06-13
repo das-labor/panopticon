@@ -22,7 +22,7 @@ struct dflow : public ::testing::Test
 		// b1
 		mnemonic mne2(bound(1,2),"mne2","",{},{instr(univ_nop<rvalue>{undefined()},variable("a",8))});
 		mnemonic mne3(bound(2,3),"mne3","",{},{instr(univ_nop<rvalue>{undefined()},variable("c",8))});
-		mnemonic mne4(bound(3,4),"mne4","",{},{instr(int_less<rvalue>{variable("a",8),variable("c",8)},memory(undefined(),1,memory::LittleEndian,"none"))});
+		mnemonic mne4(bound(3,4),"mne4","",{},{instr(int_less<rvalue>{variable("a",8),variable("c",8)},memory(undefined(),1,LittleEndian,"none"))});
 
 		// b2
 		mnemonic mne5(bound(4,5),"mne5","",{},{instr(univ_nop<rvalue>{undefined()},variable("b",8))});
@@ -32,13 +32,13 @@ struct dflow : public ::testing::Test
 		mnemonic mne8(bound(7,8),"mne8","",{},{instr(int_add<rvalue>{variable("a",8),variable("b",8)},variable("y",8))});
 		mnemonic mne9(bound(8,9),"mne9","",{},{instr(int_add<rvalue>{variable("c",8),variable("d",8)},variable("z",8))});
 		mnemonic mne10(bound(9,10),"mne10","",{},{instr(int_add<rvalue>{variable("i",8),constant(1)},variable("i",8))});
-		mnemonic mne11(bound(10,11),"mne11","",{},{instr(int_less<rvalue>{variable("i",8),constant(100)},memory(undefined(),1,memory::LittleEndian,"none"))});
+		mnemonic mne11(bound(10,11),"mne11","",{},{instr(int_less<rvalue>{variable("i",8),constant(100)},memory(undefined(),1,LittleEndian,"none"))});
 		// b4
 		mnemonic mne12(bound(11,12),"mne12","",{},{});
 		// b5
 		mnemonic mne13(bound(12,13),"mne13","",{},{instr(univ_nop<rvalue>{undefined()},variable("a",8))});
 		mnemonic mne14(bound(13,14),"mne14","",{},{instr(univ_nop<rvalue>{undefined()},variable("d",8))});
-		mnemonic mne15(bound(14,15),"mne15","",{},{instr(int_less<rvalue>{variable("a",8),variable("d",8)},memory(undefined(),1,memory::LittleEndian,"none"))});
+		mnemonic mne15(bound(14,15),"mne15","",{},{instr(int_less<rvalue>{variable("a",8),variable("d",8)},memory(undefined(),1,LittleEndian,"none"))});
 
 		// b6
 		mnemonic mne16(bound(15,16),"mne16","",{},{instr(univ_nop<rvalue>{undefined()},variable("d",8))});

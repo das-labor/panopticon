@@ -111,7 +111,7 @@ TEST(interpreter,kset_semantics)
 	kset_value a = overapproximate(constant(1),kset16{});
 	ASSERT_EQ(boost::get<kset_set>(a), kset_set({1}));
 
-	a = overapproximate(memory(constant(1),1,memory::LittleEndian,"none"),kset16{});
+	a = overapproximate(memory(constant(1),1,LittleEndian,"none"),kset16{});
 	ASSERT_TRUE(boost::get<meet_t>(&a));
 
 	a = overapproximate(undefined{},kset16{});
