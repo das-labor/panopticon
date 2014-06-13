@@ -9,10 +9,9 @@ set(panopticon_VERSION
   ${panopticon_MAJOR}.${panopticon_MINOR}.${panopticon_PATCH})
 
 # Options
-option(panopticon_BUILD "Build Panopticon Library (libpanopticon)" ON)
-option(qtpanopticon_BUILD "Build Qt UI (qtpanopticon)" ON)
-option(panop_BUILD "Build cli tool (panop)" OFF)
-option(depend_BUILD "Build dependecies" OFF)
+option(BUILD_lib "Build Panopticon Library (libpanopticon)" ON)
+option(BUILD_qt "Build Qt UI (qtpanopticon)" ON)
+option(BUILD_cli "Build cli tool (panop)" OFF)
 
 # Packaging
 set(CPACK_PACKAGE_CONTACT "seu@panopticon.re")
@@ -75,7 +74,7 @@ find_package(Boost 1.52 COMPONENTS system filesystem graph REQUIRED)
 find_package(KyotoCabinet REQUIRED)
 
 # Targets
-if(${panopticon_BUILD})
+if(${BUILD_lib})
 	message(STATUS "Building Panopticon library")
 	add_subdirectory("lib")
 	set(panopticon_FOUND TRUE)
@@ -83,13 +82,13 @@ else()
 	find_package(panopticon)
 endif()
 
-if(${panop_BUILD} AND ${panopticon_FOUND})
+if(${BUILD_cli} AND ${panopticon_FOUND})
 	message(STATUS "Building Panopticon command line tool")
 	add_subdirectory("cli")
 	add_dependencies(panop panopticon)
 endif()
 
-if(${qtpanopticon_BUILD} AND ${panopticon_FOUND})
+if(${BUILD_qt} AND ${panopticon_FOUND})
 	message(STATUS "Building Panopticon Qt UI")
 	find_package(Qt5 COMPONENTS Widgets Qml Quick REQUIRED)
 	add_subdirectory("qt")
