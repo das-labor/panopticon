@@ -58,6 +58,8 @@ namespace po
 
 	struct structure
 	{
+		structure(const std::string&, const tree<field>&, const std::string&);
+
 		std::string name;
 		tree<field> fields;
 
