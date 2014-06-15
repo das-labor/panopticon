@@ -31,6 +31,9 @@ namespace po
 	struct integer
 	{
 		integer(void) = delete;
+		integer(unsigned long long m, int s, bool hs, unsigned int b, boost::optional<unsigned int> ab, Endianess e, const std::list<std::pair<unsigned long long,std::string>> &l)
+		: mask(m), shift(s), has_sign(hs), base(b), alternative_base(ab), endianess(e), symbolic(l)
+		{}
 
 		bool operator==(const integer& i) const
 		{
