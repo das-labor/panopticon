@@ -7,7 +7,7 @@ using namespace po;
 using namespace std;
 
 structure::structure(const std::string& n, const tree<field>& f, const std::string& r)
-: name(n), fields(f), _area(boost::none), _region(r)
+: name(n), fields(f), _region(r)
 {}
 
 template<>
@@ -20,46 +20,48 @@ rdf::statements po::marshal(const structure* s, const uuid& u)
 	ret.emplace_back(root,rdf::ns_po("name"),rdf::lit(s->name));
 	ret.emplace_back(root,rdf::ns_po("region-name"),rdf::lit(s->_region));
 
-	boost::uuids::string_generator sg;
-	std::function<void(tree<field>::const_iterator)> fn;
+	boost::uuids::name_generator ng(u);
+	unsigned int field_idx = 0;
+	std::function<rdf::node(boost::optional<rdf::node>,tree<field>::const_iterator)> fn;
 
-	fn = [&](tree<field>::const_iterator j)
+	fn = [&](boost::optional<rdf::node> p, tree<field>::const_iterator me)
 	{
-		const field& fi = *j;
-		rdf::node f = rdf::ns_local(to_string(sg("root-field")));
-		ret.emplace_back(root,rdf::ns_po("sub-field"),f);
-		ret.emplace_back(f,rdf::ns_po("name"),fi.name);
-		ret.emplace_back(f,rdf::ns_po("area"),to_string(fi.area.lower()) + ":" + to_string(fi.area.upper()));
+		const field& fi = *me;
+		uuid uu = ng(to_string(field_idx++));
+		rdf::node f = rdf::ns_local(to_string(uu));
+
+		if(p)
+			ret.emplace_back(*p,rdf::ns_po("sub-field"),f);
+
+		ret.emplace_back(f,rdf::ns_po("name"),rdf::lit(fi.name));
+		ret.emplace_back(f,rdf::ns_po("area"),rdf::lit(to_string(fi.area.lower()) + ":" + to_string(fi.area.upper())));
 
 		struct vis : public boost::static_visitor<>
 		{
-			vis(rdf::statements& r, rdf::node _f) : ret(r), f(_f) {}
-			void operator()(const integer& i) const
+			vis(const uuid& ns, rdf::statements& r, rdf::node _f) : ng(ns), ret(r), f(_f) {}
+			void operator()(const integer& i)
 			{
 				ret.emplace_back(f,rdf::ns_rdf("type"),rdf::ns_po("Integer"));
 				ret.emplace_back(f,rdf::ns_po("mask"),rdf::lit(i.mask));
 				ret.emplace_back(f,rdf::ns_po("shift"),rdf::lit(i.shift));
-				ret.emplace_back(f,rdf::ns_po("signed"),rdf::lit(i.has_sign));
+				ret.emplace_back(f,rdf::ns_po("signed"),rdf::boolean(i.has_sign));
 				ret.emplace_back(f,rdf::ns_po("base"),rdf::lit(i.base));
 				if(i.alternative_base)
 					ret.emplace_back(f,rdf::ns_po("alternative-base"),rdf::lit(*i.alternative_base));
 
 				switch(i.endianess)
 				{
-					case LittleEndian: ret.emplace_back(f,rdf::ns_po("endianess"),rdf::lit("little-endian")); break;
-					case BigEndian: ret.emplace_back(f,rdf::ns_po("endianess"),rdf::lit("big-endian")); break;
+					case LittleEndian: ret.emplace_back(f,rdf::ns_po("endianess"),rdf::ns_po("little-endian")); break;
+					case BigEndian: ret.emplace_back(f,rdf::ns_po("endianess"),rdf::ns_po("big-endian")); break;
 					default: assert(false);
 				}
 
-				if(i.symbolic)
+				for(auto p: i.symbolic)
 				{
-					for(auto p: *i.symbolic)
-					{
-						rdf::node n = rdf::ns_local(to_string(sg("symbolic-" + to_string(p.first))));
-						ret.emplace_back(n,rdf::ns_rdf("type"),rdf::ns_po("Symbolic-Value"));
-						ret.emplace_back(n,rdf::ns_po("numeric"),rdf::lit(p.first));
-						ret.emplace_back(n,rdf::ns_po("symbolic"),rdf::lit(p.second));
-					}
+					rdf::node n = rdf::ns_local(to_string(ng("symbolic-" + to_string(p.first))));
+					ret.emplace_back(f,rdf::ns_po("symbolic"),n);
+					ret.emplace_back(n,rdf::ns_po("numeric"),rdf::lit(p.first));
+					ret.emplace_back(n,rdf::ns_po("text"),rdf::lit(p.second));
 				}
 			}
 
@@ -73,15 +75,22 @@ rdf::statements po::marshal(const structure* s, const uuid& u)
 			}
 
 		private:
-			boost::uuids::string_generator sg;
+			boost::uuids::name_generator ng;
 			rdf::statements& ret;
 			rdf::node f;
 		};
+		vis v(uu,ret,f);
+		boost::apply_visitor(v,fi.value);
 
-		boost::apply_visitor(vis(ret,f), fi.value);
+		auto k = s->fields.cbegin(me);
+		while(k != s->fields.cend(me))
+			fn(f,k++);
+
+		return f;
 	};
 
-	fn(s->fields.croot());
+	rdf::node rf = fn(boost::none,s->fields.croot());
+	ret.emplace_back(root,rdf::ns_po("root-field"),rf);
 
 	return ret;
 }
@@ -91,7 +100,7 @@ structure* po::unmarshal(const uuid& u, const rdf::storage& store)
 {
 	rdf::node node(rdf::ns_local(to_string(u)));
 
-	if(store.has(node,rdf::ns_rdf("type"),rdf::ns_po("Structure")))
+	if(!store.has(node,rdf::ns_rdf("type"),rdf::ns_po("Structure")))
 		throw marshal_exception("invalid type");
 
 	rdf::statement name = store.first(node,rdf::ns_po("name")),
@@ -112,26 +121,67 @@ structure* po::unmarshal(const uuid& u, const rdf::storage& store)
 
 		if(type_st.object == rdf::ns_po("Integer"))
 		{
+			rdf::statement mask_st = store.first(n,rdf::ns_po("mask"));
+			rdf::statement shift_st = store.first(n,rdf::ns_po("shift"));
+			rdf::statement signed_st = store.first(n,rdf::ns_po("signed"));
+			rdf::statement base_st = store.first(n,rdf::ns_po("base"));
+			rdf::statements altbase_st = store.find(n,rdf::ns_po("alternative-base"));
+			rdf::statement endianess_st = store.first(n,rdf::ns_po("endianess"));
+			rdf::statements sym_st = store.find(n,rdf::ns_po("symbolic"));
+			Endianess ed;
+			bool hs;
+			std::list<std::pair<unsigned long long,std::string>> syms;
+
+			if(endianess_st.object == rdf::ns_po("little-endian"))
+				ed = LittleEndian;
+			else if(endianess_st.object == rdf::ns_po("big-endian"))
+				ed =  BigEndian;
+			else
+				throw marshal_exception("invalid endianess");
+
+			if(signed_st.object == rdf::boolean(true))
+				hs = true;
+			else if(signed_st.object == rdf::boolean(false))
+				hs = false;
+			else
+				throw marshal_exception("invalid signedness");
+
+			for(auto s: sym_st)
+			{
+				rdf::statement txt_st = store.first(s.object,rdf::ns_po("text"));
+				rdf::statement num_st = store.first(s.object,rdf::ns_po("numeric"));
+				syms.emplace_back(stoull(num_st.object.as_literal()),txt_st.object.as_literal());
+			}
+
 			return field{
 				name_st.object.as_literal(),
-				bound(stoull(b.substr(0,div - 1)),stoull(b.substr(div))),
-				integer{}
+				bound(stoull(b.substr(0,div)),stoull(b.substr(div + 1))),
+				integer{
+					stoull(mask_st.object.as_literal()),
+					stoi(shift_st.object.as_literal()),
+					hs,
+					static_cast<unsigned int>(stoull(base_st.object.as_literal())),
+					(altbase_st.size() ? boost::make_optional(static_cast<unsigned int>(stoull(altbase_st.front().object.as_literal()))) : boost::none),
+					ed,
+					syms
+				}
 			};
 		}
 		else if(type_st.object == rdf::ns_po("IEEE-754"))
 		{
 			return field{
 				name_st.object.as_literal(),
-				bound(stoull(b.substr(0,div - 1)),stoull(b.substr(div))),
-				integer{}
+				bound(stoull(b.substr(0,div)),stoull(b.substr(div + 1))),
+				ieee754{}
 			};
 		}
 		else if(type_st.object == rdf::ns_po("Generic"))
 		{
+			rdf::statement cont_st = store.first(n,rdf::ns_po("contents"));
 			return field{
 				name_st.object.as_literal(),
-				bound(stoull(b.substr(0,div - 1)),stoull(b.substr(div))),
-				integer{}
+				bound(stoull(b.substr(0,div)),stoull(b.substr(div + 1))),
+				cont_st.object.as_literal()
 			};
 		}
 		else
@@ -145,10 +195,8 @@ structure* po::unmarshal(const uuid& u, const rdf::storage& store)
 	std::function<void(tree<field>::iterator,rdf::node)> sn;
 	sn = [&](tree<field>::iterator p, rdf::node n)
 	{
-		auto q = fields.insert(p,fn(n));
-
 		for(auto c: store.find(n,rdf::ns_po("sub-field")))
-			sn(q,c.object);
+			sn(fields.insert(p,fn(c.object)),c.object);
 	};
 
 	sn(fields.root(),root_field.object);

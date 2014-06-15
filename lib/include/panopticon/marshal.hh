@@ -155,6 +155,7 @@ namespace po
 
 		inline node lit(const std::string& s) { return node(s,XSD"string"); }
 		inline node lit(long long n) { return node(std::to_string(n),XSD"integer"); }
+		inline node boolean(bool b) { return node(b ? "true" : "false",XSD"boolean"); }
 		inline node ns_po(const std::string& s) { return node(PO + s); }
 		inline node ns_rdf(const std::string& s) { return node(RDF + s); }
 		inline node ns_xsd(const std::string& s) { return node(XSD + s); }

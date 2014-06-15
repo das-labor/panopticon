@@ -32,7 +32,7 @@ namespace po
 			iterator &increment(void) { ++_adaptee; return *this; };
 			iterator &decrement(void) { --_adaptee; return *this; };
 
-			T& dereference(void) const { return (*_items)[*_adaptee]; }
+			T& dereference(void) const { return _items->at(*_adaptee); }
 			bool equal(const iterator &a) const { return *_adaptee == *a._adaptee; }
 
 			void advance(size_t sz) { std::advance(_adaptee,sz); }

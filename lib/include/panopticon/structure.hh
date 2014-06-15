@@ -30,16 +30,44 @@ namespace po
 
 	struct integer
 	{
+		integer(void) = delete;
+
+		bool operator==(const integer& i) const
+		{
+			if(&i == this)
+				return true;
+			else
+			{
+				if(!(mask == i.mask && shift == i.shift &&
+						 has_sign == i.has_sign && base == i.base &&
+						 alternative_base == i.alternative_base &&
+						 endianess == i.endianess))
+					return false;
+
+				if(symbolic.size() != i.symbolic.size())
+					return false;
+
+				return std::all_of(symbolic.begin(),symbolic.end(),[&](const std::pair<unsigned long long,std::string>& p)
+					{ return std::find(i.symbolic.begin(),i.symbolic.end(),p) != i.symbolic.end(); });
+			}
+		}
+
+		bool operator!=(const integer& i) const { return !(i == *this); }
+
 		unsigned long long mask;
 		int shift;
 		bool has_sign;
 		unsigned int base;
 		boost::optional<unsigned int> alternative_base;
 		Endianess endianess;
-		std::shared_ptr<std::unordered_map<unsigned long long,std::string>> symbolic;
+		std::list<std::pair<unsigned long long,std::string>> symbolic;
 	};
 
-	struct ieee754 {};
+	struct ieee754
+	{
+		bool operator==(const ieee754&) const { return true; }
+		bool operator!=(const ieee754&) const { return false; }
+	};
 
 	using format = boost::variant<integer,ieee754,std::string>;
 
@@ -48,6 +76,9 @@ namespace po
 
 	struct field
 	{
+		bool operator==(const field& f) const { return &f == this || (name == f.name && area == f.area && value == f.value); }
+		bool operator!=(const field& i) const { return !(i == *this); }
+
 		std::string name;
 		bound area;
 		format value;
@@ -60,11 +91,15 @@ namespace po
 	{
 		structure(const std::string&, const tree<field>&, const std::string&);
 
+		bool operator==(const structure& s) const
+			{ return name == s.name && _region == s._region && fields == s.fields; }
+		bool operator!=(const structure& st) const
+			{ return !(st == *this); }
+
 		std::string name;
 		tree<field> fields;
 
 	private:
-		boost::optional<area> _area;
 		std::string _region;
 
 		friend area extends(struct_loc);
