@@ -17,6 +17,8 @@ namespace po
 	/// Position of a single tryte in the region graph
 	struct ref
 	{
+		bool operator<(const ref& r) const { return reg == r.reg ? off < r.off : reg < r.reg; }
+
 		std::string reg;
 		offset off;
 	};

@@ -129,12 +129,9 @@ namespace po
 	{
 		using L = typename domain_traits<Domain>::value_type;
 		using vx_desc = typename boost::graph_traits<decltype(proc->control_transfers)>::vertex_descriptor;
-		using e_desc = typename boost::graph_traits<decltype(proc->control_transfers)>::edge_descriptor;
 
 		environment<L> ret;
 		std::unordered_set<vx_desc> worklist;
-		//using I = typename domain_traits<Domain>::interpreter_type;
-	//	interpreter<Domain> interp;//(ret);
 		interpret_visitor<Domain> vis(ret);
 
 		for(auto vx: iters(vertices(proc->control_transfers)))

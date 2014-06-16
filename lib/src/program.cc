@@ -38,7 +38,6 @@ const std::unordered_set<proc_loc>& program::procedures(void) const
 			auto p = get_vertex(v,_calls);
 			if(get<proc_loc>(&p))
 			{
-				cout << "aaa: " <<  to_string(get<proc_loc>(p).tag()) << endl;
 				assert(_procedures->insert(get<proc_loc>(p)).second);
 			}
 		}
