@@ -215,7 +215,7 @@ namespace std
 	{
 		size_t operator()(const po::loc<T> &t) const
 		{
-			return hash<po::uuid>()(t.tag()) ^ hash<po::loc_control<T>*>()(t._control.get());
+			return hash<po::uuid>()(t.tag());
 		}
 	};
 
@@ -224,7 +224,7 @@ namespace std
 	{
 		size_t operator()(const po::wloc<T> &t) const
 		{
-			return hash<po::uuid>()(t.tag()) ^ hash<po::loc_control<T>*>()(t._control.lock().get());
+			return hash<po::uuid>()(t.tag());
 		}
 	};
 }

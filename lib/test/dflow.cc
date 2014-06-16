@@ -70,8 +70,10 @@ struct dflow : public ::testing::Test
 		insert_edge(guard(),b3,b1,proc.write().control_transfers);
 
 		proc.write().entry = get<bblock_loc>(get_vertex(b0,proc->control_transfers));
+		save_point(store);
 	}
 
+	rdf::storage store;
 	proc_loc proc;
 	vx b0, b1, b2, b3, b4, b5, b6, b7, b8;
 };
