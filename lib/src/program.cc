@@ -48,7 +48,7 @@ const std::unordered_set<proc_loc>& program::procedures(void) const
 template<>
 program* po::unmarshal(const uuid& u, const rdf::storage &store)
 {
-	rdf::node n = rdf::ns_local(to_string(u));
+	rdf::node n = rdf::iri(u);
 	assert(store.has(n,rdf::ns_rdf("type"),rdf::ns_po("Program")));
 
 	rdf::statement name = store.first(n,rdf::ns_po("name"));
@@ -57,11 +57,11 @@ program* po::unmarshal(const uuid& u, const rdf::storage &store)
 	program *ret = new program(name.object.as_literal());
 
 	for(auto st: procs_n)
-		ret->insert(proc_loc{uuid(st.object.as_iri().substr(st.object.as_iri().size()-36)),store});
+		ret->insert(proc_loc{st.object.as_iri().as_uuid(),store});
 
 	for(proc_loc p: ret->procedures())
 	{
-		rdf::node pn = rdf::ns_local(to_string(p.tag()));
+		rdf::node pn = rdf::iri(p.tag());
 		rdf::statements st = store.find(pn,rdf::ns_po("calls"));
 		auto vx_a = find_node<variant<proc_loc,symbol>,nullptr_t>(p,ret->_calls);
 
@@ -69,7 +69,7 @@ program* po::unmarshal(const uuid& u, const rdf::storage &store)
 		{
 			if(s.object.is_iri())
 			{
-				uuid uu(s.object.as_iri().substr(s.object.as_iri().size()-36));
+				uuid uu = s.object.as_iri().as_uuid();
 				auto i = find_if(ret->procedures().begin(),ret->procedures().end(),[&](const proc_loc q)
 					{ return q.tag() == uu; });
 
@@ -95,7 +95,7 @@ template<>
 rdf::statements po::marshal(const program* p, const uuid& u)
 {
 	rdf::statements ret;
-	rdf::node n = rdf::ns_local(to_string(u));
+	rdf::node n = rdf::iri(u);
 
 	ret.emplace_back(n,rdf::ns_rdf("type"),rdf::ns_po("Program"));
 	ret.emplace_back(n,rdf::ns_po("name"),rdf::lit(p->name));
@@ -103,9 +103,9 @@ rdf::statements po::marshal(const program* p, const uuid& u)
 	for(proc_loc q: p->procedures())
 	{
 		auto vx = find_node(variant<proc_loc,symbol>(q),p->calls());
-		rdf::node m = rdf::ns_local(to_string(q.tag()));
+		rdf::node m = rdf::iri(q.tag());
 
-		ret.emplace_back(n,rdf::ns_po("include"),rdf::ns_local(to_string(q.tag())));
+		ret.emplace_back(n,rdf::ns_po("include"),rdf::iri(q.tag()));
 
 		for(auto e: iters(out_edges(vx,p->calls())))
 		{
@@ -113,7 +113,7 @@ rdf::statements po::marshal(const program* p, const uuid& u)
 			auto v = get_vertex(wx,p->calls());
 
 			if(get<proc_loc>(&v))
-				ret.emplace_back(m,rdf::ns_po("calls"),rdf::ns_local(to_string(get<proc_loc>(v).tag())));
+				ret.emplace_back(m,rdf::ns_po("calls"),rdf::iri(get<proc_loc>(v).tag()));
 			else
 				ret.emplace_back(m,rdf::ns_po("calls"),rdf::lit(get<symbol>(v)));
 		}

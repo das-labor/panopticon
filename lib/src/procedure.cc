@@ -21,7 +21,7 @@ std::list<mnemonic>& po::operator+=(std::list<mnemonic>& a, const std::list<mnem
 template<>
 procedure* po::unmarshal(const uuid& u, const rdf::storage &store)
 {
-	rdf::node node(rdf::ns_po(to_string(u)));
+	rdf::node node = rdf::iri(u);
 	rdf::statement name = store.first(node, rdf::ns_po("name"));
 	rdf::statements bbs = store.find(node, rdf::ns_po("include"));
 	rdf::statements cts = store.find(node, rdf::ns_po("control-transfer"));
@@ -29,7 +29,7 @@ procedure* po::unmarshal(const uuid& u, const rdf::storage &store)
 	using vx_desc = boost::graph_traits<decltype(ret->control_transfers)>::vertex_descriptor;
 
 	for(auto bb: bbs)
-		insert_vertex<boost::variant<bblock_loc,rvalue>,guard>(bblock_loc{uuid(bb.object.as_iri().substr(bb.object.as_iri().size()-36)),store},ret->control_transfers);
+		insert_vertex<boost::variant<bblock_loc,rvalue>,guard>(bblock_loc{bb.object.as_iri().as_uuid(),store},ret->control_transfers);
 
 	for(auto ct: cts)
 	{
@@ -37,20 +37,20 @@ procedure* po::unmarshal(const uuid& u, const rdf::storage &store)
 		{
 			if(store.has(st.object,rdf::ns_rdf("type"),rdf::ns_po("BasicBlock")))
 			{
-				bblock_loc bb(uuid(st.object.as_iri().substr(st.object.as_iri().size()-36)),store);
+				bblock_loc bb(st.object.as_iri().as_uuid(),store);
 				return find_node<boost::variant<bblock_loc,rvalue>,guard>(bb,ret->control_transfers);
 			}
 			else
 			{
-				rvalue rv = *unique_ptr<rvalue>(unmarshal<rvalue>(uuid(st.object.as_iri().substr(st.object.as_iri().size()-36)),store));
+				rvalue rv = *unique_ptr<rvalue>(unmarshal<rvalue>(st.object.as_iri().as_uuid(),store));
 				return insert_vertex<boost::variant<bblock_loc,rvalue>,guard>(rv,ret->control_transfers);
 			}
 		};
 		rdf::statement source = store.first(ct.object,rdf::ns_po("out")),
-									 target = store.first(ct.object,rdf::ns_po("in")),
-									 g = store.first(ct.object,rdf::ns_po("guard"));
+							target = store.first(ct.object,rdf::ns_po("in")),
+							g = store.first(ct.object,rdf::ns_po("guard"));
 
-		guard gg = *unique_ptr<guard>(unmarshal<guard>(uuid(g.object.as_iri().substr(g.object.as_iri().size()-36)),store));
+		guard gg = *unique_ptr<guard>(unmarshal<guard>(g.object.as_iri().as_uuid(),store));
 		vx_desc vx_a = fn(source), vx_b = fn(target);
 
 		insert_edge<boost::variant<bblock_loc,rvalue>,guard>(gg,vx_a,vx_b,ret->control_transfers);
@@ -60,7 +60,7 @@ procedure* po::unmarshal(const uuid& u, const rdf::storage &store)
 	if(ent.size())
 	{
 		rdf::node o = ent.front().object;
-		uuid uu(o.as_iri().substr(o.as_iri().size()-36));
+		uuid uu = o.as_iri().as_uuid();
 		auto p = vertices(ret->control_transfers);
 		auto i = find_if(p.first,p.second,[&](vx_desc v)
 		{
@@ -83,20 +83,20 @@ rdf::statements po::marshal(const procedure* p, const uuid& u)
 	unsigned int cnt = 0;
 	rdf::statements ret;
 	boost::uuids::name_generator ng(u);
-	rdf::node node(rdf::ns_po(to_string(u)));
+	rdf::node node = rdf::iri(u);
 	function<pair<rdf::node,rdf::statements>(const variant<rvalue,bblock_loc>&)> marshal_node = [&](const variant<rvalue,bblock_loc>& v) -> pair<rdf::node,rdf::statements>
 	{
 		if(get<rvalue>(&v))
 		{
 			uuid uu = ng(to_string(cnt++));
-			rdf::node n = rdf::ns_local(to_string(uu));
+			rdf::node n = rdf::iri(uu);
 
 			return make_pair(n,marshal(&get<rvalue>(v),uu));
 		}
 		else
 		{
 			bblock_loc bb = get<bblock_loc>(v);
-			return make_pair(rdf::ns_local(to_string(bb.tag())),rdf::statements());
+			return make_pair(rdf::iri(bb.tag()),rdf::statements());
 		}
 	};
 
@@ -106,13 +106,13 @@ rdf::statements po::marshal(const procedure* p, const uuid& u)
 	for(auto e: iters(edges(p->control_transfers)))
 	{
 		if(get<rvalue>(&get_vertex(source(e,p->control_transfers),p->control_transfers)) &&
-			 get<rvalue>(&get_vertex(target(e,p->control_transfers),p->control_transfers)))
+			get<rvalue>(&get_vertex(target(e,p->control_transfers),p->control_transfers)))
 			continue;
 
 		uuid cu = ng(to_string(cnt++));
-		rdf::node cn = rdf::ns_local(to_string(cu));
+		rdf::node cn = rdf::iri(cu);
 		uuid gu = ng(to_string(cnt++));
-		rdf::node gn = rdf::ns_local(to_string(gu));
+		rdf::node gn = rdf::iri(gu);
 		rdf::statements g = marshal(&get_edge(e,p->control_transfers),gu);
 		pair<rdf::node,rdf::statements> in_p = marshal_node(get_vertex(target(e,p->control_transfers),p->control_transfers));
 		pair<rdf::node,rdf::statements> out_p = marshal_node(get_vertex(source(e,p->control_transfers),p->control_transfers));
@@ -131,11 +131,11 @@ rdf::statements po::marshal(const procedure* p, const uuid& u)
 	{
 		variant<bblock_loc,rvalue> var = get_vertex<variant<bblock_loc,rvalue>,guard>(o,p->control_transfers);
 		if(get<bblock_loc>(&var))
-			ret.emplace_back(node,rdf::ns_po("include"),rdf::ns_local(to_string(get<bblock_loc>(var).tag())));
+			ret.emplace_back(node,rdf::ns_po("include"),rdf::iri(get<bblock_loc>(var).tag()));
 	}
 
 	if(p->entry)
-		ret.emplace_back(node,rdf::ns_po("entry"),rdf::ns_local(to_string(p->entry->tag())));
+		ret.emplace_back(node,rdf::ns_po("entry"),rdf::iri(p->entry->tag()));
 
 	return ret;
 }

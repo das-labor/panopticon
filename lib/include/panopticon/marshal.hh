@@ -19,10 +19,9 @@
 
 #include <panopticon/hash.hh>
 
-#define LOCAL "http://localhost/"
 #define PO "http://panopticon.re/rdf/v1/"
-#define XSD	"http://www.w3.org/2001/XMLSchema#"
-#define RDF	"http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+#define XSD "http://www.w3.org/2001/XMLSchema#"
+#define RDF "http://www.w3.org/1999/02/22-rdf-syntax-ns#"
 
 #pragma once
 
@@ -63,7 +62,27 @@ namespace po
 
 	namespace rdf
 	{
-		using iri = std::string;
+		using shared_mmap = std::shared_ptr<void>;
+
+		struct iri
+		{
+			iri(const std::string&);
+			iri(const uuid&);
+
+			bool operator==(const iri&) const;
+			bool operator!=(const iri&) const;
+			bool operator<(const iri&) const;
+
+			bool is_uuid(void) const;
+
+			uuid as_uuid(void) const;
+			const std::string& as_string(void) const;
+			const std::string& raw(void) const;
+
+		private:
+			std::string _iri;
+		};
+
 		using literal = std::pair<std::string,iri>;
 		using kyotocabinet::PolyDB;
 
@@ -83,9 +102,9 @@ namespace po
 			bool is_blank(void) const;
 
 			const iri& as_iri(void) const;
-			const iri& as_literal(void) const;
+			std::string as_literal(void) const;
 			const iri& literal_type(void) const;
-			const uuid& as_uuid(void) const;
+			const uuid& blank_id(void) const;
 
 		private:
 			boost::variant<iri,literal,uuid> _inner;
@@ -151,18 +170,18 @@ namespace po
 
 			mutable PolyDB _meta; ///< subject/predicate/object
 			boost::filesystem::path _tempdir;
+			mutable std::unordered_map<std::string,shared_mmap> _blobs;
 		};
 
-		inline node lit(const std::string& s) { return node(s,XSD"string"); }
-		inline node lit(long long n) { return node(std::to_string(n),XSD"integer"); }
-		inline node boolean(bool b) { return node(b ? "true" : "false",XSD"boolean"); }
-		inline node ns_po(const std::string& s) { return node(PO + s); }
-		inline node ns_rdf(const std::string& s) { return node(RDF + s); }
-		inline node ns_xsd(const std::string& s) { return node(XSD + s); }
-		inline node ns_local(const std::string& s) { return node(LOCAL + s); }
+		inline node lit(const std::string& s) { return node(s,iri(XSD"string")); }
+		inline node lit(long long n) { return node(std::to_string(n),iri(XSD"integer")); }
+		inline node boolean(bool b) { return node(b ? "true" : "false",iri(XSD"boolean")); }
+		inline node ns_po(const std::string& s) { return node(iri(PO + s)); }
+		inline node ns_rdf(const std::string& s) { return node(iri(RDF + s)); }
+		inline node ns_xsd(const std::string& s) { return node(iri(XSD + s)); }
 
 		template<typename It>
-		std::pair<rdf::node,rdf::statements> write_list(It begin, It end, const std::string &);
+		std::pair<rdf::node,rdf::statements> write_list(It begin, It end, const uuid&);
 		nodes read_list(const node &n, const storage &store);
 	}
 
@@ -172,24 +191,22 @@ namespace po
 	inline rdf::node operator"" _po(const char *s, std::size_t l) { return rdf::ns_po(std::string(s,l)); }
 	inline rdf::node operator"" _rdf(const char *s, std::size_t l) { return rdf::ns_rdf(std::string(s,l)); }
 	inline rdf::node operator"" _xsd(const char *s, std::size_t l) { return rdf::ns_xsd(std::string(s,l)); }
-	inline rdf::node operator"" _local(const char *s, std::size_t l) { return rdf::ns_local(std::string(s,l)); }
 #endif
 
 	template<typename It>
-	std::pair<rdf::node,rdf::statements> rdf::write_list(It begin, It end, const std::string& ns)
+	std::pair<rdf::node,rdf::statements> rdf::write_list(It begin, It end, const uuid& ns)
 	{
-		assert(ns.size());
-
+		boost::uuids::name_generator ng(ns);
 		rdf::statements ret;
 		unsigned int counter = 0;
-		rdf::node head = (std::distance(begin,end) ? node(ns_local(ns + "-" + std::to_string(counter++))) : rdf::ns_rdf("nil"));
+		rdf::node head = std::distance(begin,end) ? rdf::node(iri(ng(std::to_string(counter++)))) : rdf::ns_rdf("nil");
 
 		rdf::node last = head;
 		It i = begin;
 		while(i != end)
 		{
 			const rdf::node &n = *i;
-			rdf::node next = (std::next(i) == end ? rdf::ns_rdf("nil") : node(ns_local(ns + "-" + std::to_string(counter++))));
+			rdf::node next = std::next(i) == end ? rdf::ns_rdf("nil") : rdf::node(iri(ng(std::to_string(counter++))));
 
 			ret.emplace_back(last,rdf::ns_rdf("first"),n);
 			ret.emplace_back(last,rdf::ns_rdf("rest"),next);
@@ -218,18 +235,22 @@ namespace po
 namespace std
 {
 	template<>
+	struct hash<po::rdf::iri>
+	{
+		size_t operator()(const po::rdf::iri& i) const { return std::hash<std::string>()(i.as_string()); }
+	};
+
+	template<>
 	struct hash<po::rdf::node>
 	{
 		size_t operator()(const po::rdf::node& n) const
 		{
-			hash<string> h;
-
 			if(n.is_iri())
-				return h(n.as_iri());
+				return hash<po::rdf::iri>{}(n.as_iri());
 			else if(n.is_literal())
 				return po::hash_struct(n.as_literal(),n.literal_type());
 			else if(n.is_blank())
-				return hash<po::uuid>()(n.as_uuid());
+				return hash<po::uuid>()(n.blank_id());
 			throw std::runtime_error("unknown node type");
 		}
 	};

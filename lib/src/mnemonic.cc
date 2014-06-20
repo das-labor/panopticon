@@ -214,7 +214,7 @@ int64_t po::format_constant(const mnemonic::token &tok, uint64_t v)
 template<>
 po::mnemonic* po::unmarshal(const po::uuid& u, const po::rdf::storage& store)
 {
-	rdf::node node = rdf::ns_local(to_string(u));
+	rdf::node node = rdf::iri(u);
 	rdf::statement opcode = store.first(node,rdf::ns_po("opcode")),
 		format = store.first(node, rdf::ns_po("format")),
 		begin = store.first(node, rdf::ns_po("begin")),
@@ -226,24 +226,26 @@ po::mnemonic* po::unmarshal(const po::uuid& u, const po::rdf::storage& store)
 	rdf::nodes xs = rdf::read_list(exec_head.object,store);
 	list<instr> is;
 	list<rvalue> as;
-	boost::uuids::string_generator sg;
 
 	std::transform(ops.begin(),ops.end(),back_inserter(as),[&](const rdf::node &n)
-		{ std::cerr << n.as_iri().substr(n.as_iri().size()-36) << std::endl; return *unmarshal<rvalue>(sg(n.as_iri().substr(n.as_iri().size()-36)),store); });
+	{
+		return *unmarshal<rvalue>(n.as_iri().as_uuid(),store);
+	});
+
 	std::transform(xs.begin(),xs.end(),back_inserter(is),[&](const rdf::node &i_root)
 	{
 		rdf::statement func = store.first(i_root,rdf::ns_po("function")),
-									 left = store.first(i_root,rdf::ns_po("left")),
-									 right_head = store.first(i_root,rdf::ns_po("right"));
+							left = store.first(i_root,rdf::ns_po("left")),
+							right_head = store.first(i_root,rdf::ns_po("right"));
 
 		rdf::nodes rights = read_list(right_head.object,store);
 		vector<rvalue> rs;
 
 		std::transform(rights.begin(),rights.end(),back_inserter(rs),[&](const rdf::node &n)
-			{ return *unmarshal<rvalue>(sg(n.as_iri().substr(n.as_iri().size()-36)),store); });
+			{ return *unmarshal<rvalue>(n.as_iri().as_uuid(),store); });
 
-		instr::operation fn = from_symbolic(func.object.as_iri(),rs);
-			lvalue l = to_lvalue(*unmarshal<rvalue>(sg(left.object.as_iri().substr(left.object.as_iri().size()-36)),store));
+		instr::operation fn = from_symbolic(func.object.as_iri().as_string(),rs);
+			lvalue l = to_lvalue(*unmarshal<rvalue>(left.object.as_iri().as_uuid(),store));
 		instr ret(fn,l);
 
 		return ret;
@@ -265,13 +267,14 @@ rdf::statements po::marshal(const mnemonic* mn, const uuid& uu)
 	std::function<rdf::node(const rvalue&)> map_rvs = [&](const rvalue &rv)
 	{
 		uuid u = ng(to_string(rv_cnt++));
-		rdf::node r(rdf::ns_local(to_string(u)));
+		rdf::node r = rdf::iri(u);
 		auto st = marshal(&rv,u);
 
+		assert(st.size());
 		std::move(st.begin(),st.end(),back_inserter(ret));
 		return r;
 	};
-	rdf::node r = rdf::ns_local(to_string(uu));
+	rdf::node r = rdf::iri(uu);
 
 	ret.emplace_back(r,rdf::ns_po("opcode"),rdf::lit(mn->opcode));
 	ret.emplace_back(r,rdf::ns_po("format"),rdf::lit(mn->format_string));
@@ -285,29 +288,26 @@ rdf::statements po::marshal(const mnemonic* mn, const uuid& uu)
 	std::transform(mn->instructions.begin(),mn->instructions.end(),back_inserter(n_ex),[&](const instr& i)
 	{
 		uuid u = ng(to_string(rv_cnt++));
-		uuid ul = ng(to_string(rv_cnt++));
-		rdf::node r(rdf::ns_local(to_string(u))), rl(rdf::ns_local(to_string(ul))), rr = rdf::node::blank();
-		rdf::statements rs, ls;
-		rvalue il = i.assignee;
+		rdf::node r = rdf::iri(u), rl = rdf::node::blank(), rr = rdf::node::blank();
+		rdf::statements rs;
 
-		ls = marshal(&il,ul);
-		std::move(ls.begin(),ls.end(),back_inserter(ret));
+		rl = map_rvs(i.assignee);
 
 		rdf::nodes rn;
 		std::vector<rvalue> right = operands(i);
 		std::transform(right.begin(),right.end(),back_inserter(rn),map_rvs);
-		tie(rr,rs) = write_list(rn.begin(),rn.end(),to_string(u));
+		tie(rr,rs) = write_list(rn.begin(),rn.end(),u);
 		std::move(rs.begin(),rs.end(),back_inserter(ret));
 
-		ret.emplace_back(r,rdf::ns_po("function"),symbolic(i.function));
+		ret.emplace_back(r,rdf::ns_po("function"),rdf::iri(symbolic(i.function)));
 		ret.emplace_back(r,rdf::ns_po("left"),rl);
 		ret.emplace_back(r,rdf::ns_po("right"),rr);
 
 		return r;
 	});
 
-	auto p_ops = write_list(n_ops.begin(),n_ops.end(),to_string(uu) + "-operands");
-	auto p_ex = write_list(n_ex.begin(),n_ex.end(),to_string(uu) + "-instrs");
+	auto p_ops = write_list(n_ops.begin(),n_ops.end(),ng(to_string(uu) + "-operands"));
+	auto p_ex = write_list(n_ex.begin(),n_ex.end(),ng(to_string(uu) + "-instrs"));
 
 	std::move(p_ops.second.begin(),p_ops.second.end(),back_inserter(ret));
 	std::move(p_ex.second.begin(),p_ex.second.end(),back_inserter(ret));

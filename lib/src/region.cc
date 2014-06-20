@@ -19,7 +19,7 @@ template<>
 rdf::statements po::marshal(const layer* l, const uuid& u)
 {
 	rdf::statements ret;
-	rdf::node root = rdf::ns_local(to_string(u));
+	rdf::node root = rdf::iri(u);
 
 	if(get<size_t>(&l->_data))
 	{
@@ -68,7 +68,7 @@ rdf::statements po::marshal(const layer* l, const uuid& u)
 template<>
 layer* po::unmarshal(const uuid& u, const rdf::storage& st)
 {
-	rdf::node root = rdf::ns_local(to_string(u));
+	rdf::node root = rdf::iri(u);
 	rdf::node type = st.first(root,rdf::ns_rdf("type")).object;
 	rdf::node name = st.first(root,rdf::ns_po("name")).object;
 
@@ -425,7 +425,7 @@ template<>
 rdf::statements po::marshal(const region* r, const uuid& u)
 {
 	rdf::statements ret;
-	rdf::node root = rdf::ns_local(to_string(u));
+	rdf::node root = rdf::iri(u);
 
 	ret.emplace_back(root,rdf::ns_rdf("type"),rdf::ns_po("Region"));
 	ret.emplace_back(root,rdf::ns_po("name"),rdf::lit(r->name()));
@@ -458,7 +458,7 @@ template<>
 region* po::unmarshal(const uuid& u, const rdf::storage& st)
 {
 	uuids::string_generator sg;
-	rdf::node root = rdf::ns_local(to_string(u));
+	rdf::node root = rdf::iri(u);
 	rdf::node name = st.first(root,rdf::ns_po("name")).object;
 	rdf::node base = st.first(root,rdf::ns_po("base")).object;
 	rdf::node layers = st.first(root,rdf::ns_po("layers")).object;

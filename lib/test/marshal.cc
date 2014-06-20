@@ -4,6 +4,14 @@
 
 using namespace po;
 
+namespace po
+{
+	namespace rdf
+	{
+		static rdf::node ns_local(const std::string& s) { return rdf::iri("http://localhost/" + s); }
+	}
+}
+
 TEST(marshal,load)
 {
 	rdf::storage st = rdf::storage("save.panop");

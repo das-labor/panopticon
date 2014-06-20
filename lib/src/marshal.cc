@@ -30,6 +30,25 @@ marshal_exception::marshal_exception(const string &w)
 : runtime_error(w)
 {}
 
+iri::iri(const std::string& i) : _iri(i) {}
+iri::iri(const uuid& u) : _iri("urn:uuid:" + to_string(u)) {}
+
+bool iri::operator==(const iri& i) const { return _iri == i._iri; }
+bool iri::operator!=(const iri& i) const { return _iri != i._iri; }
+bool iri::operator<(const iri& i) const { return _iri < i._iri; }
+
+bool iri::is_uuid(void) const { return _iri.substr(0,9) == "urn:uuid:"; }
+
+uuid iri::as_uuid(void) const
+{
+	if(!is_uuid())
+		throw marshal_exception("not a uuid");
+	return uuids::string_generator{}(_iri.substr(9));
+}
+
+const std::string& iri::as_string(void) const { if(is_uuid()) throw std::runtime_error("BUG: thats a uuid!"); return _iri; }
+const std::string& iri::raw(void) const { return _iri; }
+
 node node::blank(void) { return node(uuid::generator()); }
 
 node::node(const iri& n) : _inner(n) {}
@@ -41,9 +60,9 @@ bool node::is_literal(void) const { return !!get<pair<string,iri>>(&_inner); }
 bool node::is_blank(void) const { return !!get<uuid>(&_inner); }
 
 const iri& node::as_iri(void) const { return get<iri>(_inner); }
-const iri& node::as_literal(void) const { return get<pair<string,iri>>(_inner).first; }
+std::string node::as_literal(void) const { return get<pair<string,iri>>(_inner).first; }
 const iri& node::literal_type(void) const { return get<pair<string,iri>>(_inner).second; }
-const uuid& node::as_uuid(void) const { return get<uuid>(_inner); }
+const uuid& node::blank_id(void) const { return get<uuid>(_inner); }
 
 bool node::operator==(const node& n) const
 {
@@ -60,9 +79,9 @@ std::ostream& po::rdf::operator<<(std::ostream& os, const node& n)
 	if(n.is_literal())
 		os << "\"" << n.as_literal() << "\"^^" << n.literal_type();
 	else if(n.is_iri())
-		os << n.as_iri();
+		os << n.as_iri().raw();
 	else
-		os << "Blank(" << to_string(n.as_uuid()) << ")";
+		os << "Blank(" << to_string(n.blank_id()) << ")";
 	return os;
 }
 
@@ -90,7 +109,7 @@ std::ostream& po::rdf::operator<<(std::ostream& os, const statement& st)
 }
 
 storage::storage(void)
-: _meta(), _tempdir(unique_path(temp_directory_path() / "panop-%%%%-%%%%-%%%%-%%%%"))
+: _meta(), _tempdir(unique_path(temp_directory_path() / std::string("panop-%%%%-%%%%-%%%%-%%%%")))
 {
 	if(!filesystem::create_directory(_tempdir) ||
 		 !_meta.open((_tempdir / filesystem::path("meta.kct")).string(),PolyDB::OWRITER | PolyDB::OCREATE))
@@ -98,7 +117,7 @@ storage::storage(void)
 }
 
 storage::storage(const filesystem::path& p)
-: _meta(), _tempdir(unique_path(temp_directory_path() / "panop-%%%%-%%%%-%%%%-%%%%"))
+: _meta(), _tempdir(unique_path(temp_directory_path() / std::string("panop-%%%%-%%%%-%%%%-%%%%")))
 {
 	if(!filesystem::create_directory(_tempdir))
 		throw marshal_exception("can't create temp directory " + _tempdir.string());
@@ -160,7 +179,7 @@ storage::storage(const filesystem::path& p)
 }
 
 storage::storage(const storage& st)
-: _meta(), _tempdir(unique_path(temp_directory_path() / "panop-%%%%-%%%%-%%%%-%%%%"))
+: _meta(), _tempdir(unique_path(temp_directory_path() / std::string("panop-%%%%-%%%%-%%%%-%%%%")))
 {
 	if(!filesystem::create_directory(_tempdir))
 		throw marshal_exception("can't create temporary directory");
@@ -235,7 +254,11 @@ statement storage::first(const node &s, const node &p) const
 	if(st.size() > 0)
 		return st.front();
 	else
-		throw marshal_exception("no statement found");
+	{
+		std::stringstream ss;
+		ss << "no statement found: " << s << " " << p << " *";
+		throw marshal_exception(ss.str());
+	}
 }
 
 int64_t storage::count(void) const
@@ -360,11 +383,11 @@ void storage::snapshot(const filesystem::path& p) const
 string storage::encode_node(const node& n)
 {
 	if(n.is_iri())
-		return string(1,Named) + n.as_iri();
+		return string(1,Named) + n.as_iri().raw();
 	else if(n.is_literal())
-		return string(1,Literal) + encode_varint(n.as_literal().size()) + n.as_literal() + n.literal_type();
+		return string(1,Literal) + encode_varint(n.as_literal().size()) + n.as_literal() + n.literal_type().raw();
 	else if(n.is_blank())
-		return string(1,Blank) + to_string(n.as_uuid());
+		return string(1,Blank) + to_string(n.blank_id());
 	else
 		throw marshal_exception("unknown node type");
 }
@@ -374,10 +397,10 @@ std::pair<node,storage::iter> storage::decode_node(iter b, iter e)
 	switch(static_cast<node_type>(*b))
 	{
 		case Named:
-			return make_pair(node(iri(string(next(b),e))),e);
+			return make_pair(node(iri(string(std::next(b),e))),e);
 		case Literal:
 		{
-			pair<size_t,iter> len = decode_varint(next(b),e);
+			pair<size_t,iter> len = decode_varint(std::next(b),e);
 			string lit(len.second,next(len.second,len.first));
 			string ty(next(len.second,len.first),e);
 			return make_pair(node(lit,ty),e);
@@ -385,7 +408,7 @@ std::pair<node,storage::iter> storage::decode_node(iter b, iter e)
 		case Blank:
 		{
 			boost::uuids::string_generator s;
-			return make_pair(node(s(string(next(b),e))),e);
+			return make_pair(node(s(string(std::next(b),e))),e);
 		}
 		default:
 			throw marshal_exception("unknown node type");
@@ -427,7 +450,7 @@ string storage::encode_varint(size_t sz)
 	auto i = tmp.rbegin();
 	while(i != tmp.rend())
 	{
-		ret.push_back(*i | (next(i) == tmp.rend() ? 0 : 0x80));
+		ret.push_back(*i | (std::next(i) == tmp.rend() ? 0 : 0x80));
 		++i;
 	}
 

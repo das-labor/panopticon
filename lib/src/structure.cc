@@ -14,7 +14,7 @@ template<>
 rdf::statements po::marshal(const structure* s, const uuid& u)
 {
 	rdf::statements ret;
-	rdf::node root = rdf::ns_local(to_string(u));
+	rdf::node root = rdf::iri(u);
 
 	ret.emplace_back(root,rdf::ns_rdf("type"),rdf::ns_po("Structure"));
 	ret.emplace_back(root,rdf::ns_po("name"),rdf::lit(s->name));
@@ -28,7 +28,7 @@ rdf::statements po::marshal(const structure* s, const uuid& u)
 	{
 		const field& fi = *me;
 		uuid uu = ng(to_string(field_idx++));
-		rdf::node f = rdf::ns_local(to_string(uu));
+		rdf::node f = rdf::iri(uu);
 
 		if(p)
 			ret.emplace_back(*p,rdf::ns_po("sub-field"),f);
@@ -58,7 +58,7 @@ rdf::statements po::marshal(const structure* s, const uuid& u)
 
 				for(auto p: i.symbolic)
 				{
-					rdf::node n = rdf::ns_local(to_string(ng("symbolic-" + to_string(p.first))));
+					rdf::node n = rdf::iri(ng("symbolic-" + to_string(p.first)));
 					ret.emplace_back(f,rdf::ns_po("symbolic"),n);
 					ret.emplace_back(n,rdf::ns_po("numeric"),rdf::lit(p.first));
 					ret.emplace_back(n,rdf::ns_po("text"),rdf::lit(p.second));
@@ -98,7 +98,7 @@ rdf::statements po::marshal(const structure* s, const uuid& u)
 template<>
 structure* po::unmarshal(const uuid& u, const rdf::storage& store)
 {
-	rdf::node node(rdf::ns_local(to_string(u)));
+	rdf::node node = rdf::iri(u);
 
 	if(!store.has(node,rdf::ns_rdf("type"),rdf::ns_po("Structure")))
 		throw marshal_exception("invalid type");

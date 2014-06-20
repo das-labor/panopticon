@@ -7,32 +7,32 @@ template<>
 rdf::statements po::marshal(const database* db, const uuid& u)
 {
 	rdf::statements ret;
-	rdf::node root = rdf::ns_local(to_string(u));
+	rdf::node root = rdf::iri(u);
 	boost::uuids::name_generator ng(u);
 
 	ret.emplace_back(root,rdf::ns_rdf("type"),rdf::ns_po("Database"));
 	ret.emplace_back(root,rdf::ns_po("title"),rdf::lit(db->title));
 
 	for(auto s: db->structures)
-		ret.emplace_back(root,rdf::ns_po("structure"),rdf::ns_local(to_string(s.tag())));
+		ret.emplace_back(root,rdf::ns_po("structure"),rdf::iri(s.tag()));
 	for(auto s: db->programs)
-		ret.emplace_back(root,rdf::ns_po("program"),rdf::ns_local(to_string(s.tag())));
+		ret.emplace_back(root,rdf::ns_po("program"),rdf::iri(s.tag()));
 	for(auto s: db->comments)
 	{
-		rdf::node cmt = rdf::ns_local(to_string(ng("cmnt" + to_string(s.second.tag()))));
+		rdf::node cmt = rdf::iri(ng("cmnt" + to_string(s.second.tag())));
 		ret.emplace_back(root,rdf::ns_po("comment"),cmt);
 		ret.emplace_back(cmt,rdf::ns_po("region-name"),rdf::lit(s.first.reg));
 		ret.emplace_back(cmt,rdf::ns_po("offset"),rdf::lit(s.first.off));
-		ret.emplace_back(cmt,rdf::ns_po("body"),rdf::ns_local(to_string(s.second.tag())));
+		ret.emplace_back(cmt,rdf::ns_po("body"),rdf::iri(s.second.tag()));
 	}
 
 	size_t cnt = 0;
 
 	for(auto e: iters(edges(db->data)))
 	{
-		rdf::node nd = rdf::ns_local(to_string(ng("reg" + to_string(cnt++))));
-		rdf::node from_nd = rdf::ns_local(to_string(get_vertex(source(e,db->data),db->data).tag()));
-		rdf::node to_nd = rdf::ns_local(to_string(get_vertex(target(e,db->data),db->data).tag()));
+		rdf::node nd = rdf::iri(ng("reg" + to_string(cnt++)));
+		rdf::node from_nd = rdf::iri(get_vertex(source(e,db->data),db->data).tag());
+		rdf::node to_nd = rdf::iri(get_vertex(target(e,db->data),db->data).tag());
 		bound ar = get_edge(e,db->data);
 		rdf::node ar_nd = rdf::lit(to_string(ar.lower()) + ":" + to_string(ar.upper()));
 
@@ -43,7 +43,7 @@ rdf::statements po::marshal(const database* db, const uuid& u)
 	}
 
 	for(auto o: iters(vertices(db->data)))
-		ret.emplace_back(root,rdf::ns_po("region"),rdf::ns_local(to_string(get_vertex(o,db->data).tag())));
+		ret.emplace_back(root,rdf::ns_po("region"),rdf::iri(get_vertex(o,db->data).tag()));
 
 	return ret;
 }
@@ -52,7 +52,7 @@ template<>
 database* po::unmarshal(const uuid& u, const rdf::storage& store)
 {
 	using vx = boost::graph_traits<po::regions>::vertex_descriptor;
-	rdf::node root = rdf::ns_local(to_string(u));
+	rdf::node root = rdf::iri(u);
 
 	if(!store.has(root,rdf::ns_rdf("type"),rdf::ns_po("Database")))
 		throw marshal_exception("invalid type");
@@ -68,19 +68,19 @@ database* po::unmarshal(const uuid& u, const rdf::storage& store)
 	regions data;
 
 	for(auto st: struct_st)
-		structs.emplace(struct_loc{uuid(st.object.as_iri().substr(st.object.as_iri().size()-36)),store});
+		structs.emplace(struct_loc{st.object.as_iri().as_uuid(),store});
 	for(auto st: prog_st)
-		progs.emplace(prog_loc{uuid(st.object.as_iri().substr(st.object.as_iri().size()-36)),store});
+		progs.emplace(prog_loc{st.object.as_iri().as_uuid(),store});
 	for(auto st: cmnt_st)
 	{
 		rdf::statement reg_st = store.first(st.object,rdf::ns_po("region-name"));
 		rdf::statement off_st = store.first(st.object,rdf::ns_po("offset"));
 		rdf::statement body_st = store.first(st.object,rdf::ns_po("body"));
 
-		cmnts.emplace(ref{reg_st.object.as_literal(),stoull(off_st.object.as_literal())},comment_loc{uuid(body_st.object.as_iri().substr(body_st.object.as_iri().size()-36)),store});
+		cmnts.insert(std::make_pair(ref{reg_st.object.as_literal(),stoull(off_st.object.as_literal())},comment_loc{body_st.object.as_iri().as_uuid(),store}));
 	}
 	for(auto st: store.find(root,rdf::ns_po("region")))
-		insert_vertex(region_loc{uuid(st.object.as_iri().substr(st.object.as_iri().size()-36)),store},data);
+		insert_vertex(region_loc{st.object.as_iri().as_uuid(),store},data);
 	for(auto st: store.find(root,rdf::ns_po("mapping")))
 	{
 		rdf::node reg = st.object;
@@ -93,8 +93,8 @@ database* po::unmarshal(const uuid& u, const rdf::storage& store)
 		if(div == std::string::npos)
 			throw marshal_exception("ill-formed bound");
 
-		region_loc from{uuid(from_st.object.as_iri().substr(from_st.object.as_iri().size()-36)),store};
-		region_loc to{uuid(to_st.object.as_iri().substr(to_st.object.as_iri().size()-36)),store};
+		region_loc from{from_st.object.as_iri().as_uuid(),store};
+		region_loc to{to_st.object.as_iri().as_uuid(),store};
 
 		vx f = find_node(from,data);
 		vx t = find_node(to,data);

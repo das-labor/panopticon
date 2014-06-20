@@ -167,7 +167,7 @@ bool memory::operator<(const memory &m) const
 template<>
 rvalue *po::unmarshal(const uuid &u, const rdf::storage &store)
 {
-	rdf::node root = rdf::ns_local(to_string(u));
+	rdf::node root = rdf::iri(u);
 	rdf::node type = store.first(root,rdf::ns_rdf("type")).object;
 
 	if(type == rdf::ns_po("Undefined"))
@@ -224,16 +224,13 @@ template<>
 rdf::statements po::marshal(const rvalue *rv, const uuid &u)
 {
 	rdf::statements ret;
-	rdf::node root = rdf::ns_local(to_string(u));
+	rdf::node root = rdf::iri(u);
 
-	if(!rv)
-	{
-		return ret;
-	}
-	else if(is_undefined(*rv))
+	assert(rv);
+
+	if(is_undefined(*rv))
 	{
 		ret.emplace_back(root,rdf::ns_rdf("type"),rdf::ns_po("Undefined"));
-		return ret;
 	}
 	else if(is_constant(*rv))
 	{
@@ -241,7 +238,6 @@ rdf::statements po::marshal(const rvalue *rv, const uuid &u)
 
 		ret.emplace_back(root,rdf::ns_rdf("type"),rdf::ns_po("Constant"));
 		ret.emplace_back(root,rdf::ns_po("content"),rdf::lit(c.content()));
-		return ret;
 	}
 	else if(is_variable(*rv))
 	{
@@ -252,7 +248,6 @@ rdf::statements po::marshal(const rvalue *rv, const uuid &u)
 		ret.emplace_back(root,rdf::ns_po("width"),rdf::lit(v.width()));
 		if(v.subscript() >= 0)
 			ret.emplace_back(root,rdf::ns_po("subscript"),rdf::lit(v.subscript()));
-		return ret;
 	}
 	else if(is_memory(*rv))
 	{
@@ -260,7 +255,7 @@ rdf::statements po::marshal(const rvalue *rv, const uuid &u)
 		uuid ou = boost::uuids::name_generator(u)("offset");
 
 		ret.emplace_back(root,rdf::ns_rdf("type"),rdf::ns_po("Memory"));
-		ret.emplace_back(root,rdf::ns_po("offset"),rdf::lit(to_string(ou)));
+		ret.emplace_back(root,rdf::ns_po("offset"),rdf::iri(ou));
 		ret.emplace_back(root,rdf::ns_po("bytes"),rdf::lit(m.bytes()));
 
 		switch(m.endianess())
@@ -273,11 +268,12 @@ rdf::statements po::marshal(const rvalue *rv, const uuid &u)
 		ret.emplace_back(root,rdf::ns_po("name"),rdf::ns_po(m.name()));
 		auto off_st = marshal(&m.offset(),ou);
 		std::move(off_st.begin(),off_st.end(),back_inserter(ret));
-
-		return ret;
 	}
 	else
 		throw marshal_exception("unknown rvalue type");
+
+	assert(ret.size());
+	return ret;
 }
 
 value_exception::value_exception(const string &w) : runtime_error(w) {}

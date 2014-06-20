@@ -341,7 +341,6 @@ TEST(procedure,refine)
 
 	ASSERT_EQ(distance(in1_p.first,in1_p.second), 2);
 	ASSERT_EQ(distance(out1_p.first,out1_p.second), 1);
-
 }
 
 TEST(procedure,continue)
@@ -586,6 +585,9 @@ TEST(procedure,marshal)
 
 	rdf::storage st;
 	save_point(st);
+
+	for(auto s: st.all())
+		std::cout << s << std::endl;
 
 	proc_loc p2(proc.tag(),unmarshal<procedure>(proc.tag(),st));
 
