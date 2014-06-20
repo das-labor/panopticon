@@ -1,4 +1,4 @@
-#include <panopticon/architecture.hh>
+#include <panopticon/disassembler.hh>
 
 #pragma once
 

@@ -1,5 +1,4 @@
 #include <panopticon/program.hh>
-#include <panopticon/architecture.hh>
 
 #pragma once
 

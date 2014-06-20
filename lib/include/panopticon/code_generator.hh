@@ -1,5 +1,4 @@
 #include <panopticon/mnemonic.hh>
-#include <panopticon/architecture.hh>
 
 #pragma once
 
