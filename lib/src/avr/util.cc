@@ -3,8 +3,8 @@
 #include <string>
 
 #define AVR_PRIVATE
-#include <avr/avr.hh>
-#include <avr/until.hh>
+#include <panopticon/avr/avr.hh>
+#include <panopticon/avr/util.hh>
 
 using namespace po;
 using namespace po::avr;

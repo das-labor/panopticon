@@ -25,9 +25,9 @@ namespace po
 	namespace avr
 	{
 		typedef sem_state<avr_tag> sm;
-		typedef ::std::function<void(sm &)> sem_action;
+		typedef std::function<void(sm &)> sem_action;
 		typedef code_generator<avr_tag> cg;
 
-		prog_loc disassemble(::std::vector<uint16_t> &bytes,addr_t entry, flow_ptr flow = 0, disassemble_cb signal = disassemble_cb());
+		proc_loc disassemble(boost::optional<proc_loc>, std::vector<uint16_t>&, offset);
 	}
 }

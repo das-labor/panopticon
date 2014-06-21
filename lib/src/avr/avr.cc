@@ -4,11 +4,11 @@
 #include <functional>
 #include <algorithm>
 
-#include <disassembler.hh>
+#include <panopticon/disassembler.hh>
 
 #define AVR_PRIVATE
-#include <avr/avr.hh>
-#include <avr/until.hh>
+#include <panopticon/avr/avr.hh>
+#include <panopticon/avr/util.hh>
 
 using namespace po;
 using namespace po::avr;
@@ -54,8 +54,7 @@ const variable r0 = "r0"_v8, r1 = "r1"_v8, r2 = "r2"_v8, r3 = "r3"_v8, r4 = "r4"
 							 r19 = "r19"_v8, r20 = "r20"_v8, r21 = "r21"_v8, r22 = "r22"_v8, r23 = "r23"_v8, r24 = "r24"_v8,
 							 r25 = "r25"_v8, r26 = "r26"_v8, r27 = "r27"_v8, r28 = "r28"_v8, r29 = "r29"_v8, r30 = "r30"_v8,
 							 r31 = "r31"_v1, I = "I"_v1, T = "T"_v1, H = "H"_v1, S = "S"_v1, V = "V"_v1, N = "N"_v1, Z = "Z"_v1, C = "C"_v1;
-
-flow_ptr po::avr::disassemble(std::vector<typename architecture_traits<avr_tag>::token_type> &bytes, addr_t entry, flow_ptr flow, disassemble_cb signal)
+proc_loc disassemble(boost::optional<proc_loc> prog, std::vector<uint16_t>& bytes, offset entry)
 {
 	disassembler<avr_tag> main;
 
