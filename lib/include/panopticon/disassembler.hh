@@ -377,7 +377,7 @@ namespace po
 	action<Tag>::~action(void)
 	{}
 
-	// returns pair<is successful?,next token to consume>
+	// returns next token to consume
 	template<typename Tag>
 	boost::optional<typename rule<Tag>::tokiter> action<Tag>::match(typename rule<Tag>::tokiter begin, typename rule<Tag>::tokiter end, sem_state<Tag> &state) const
 	{
@@ -453,16 +453,28 @@ namespace po
 		std::list<instr> instrs;
 		code_generator<Tag> cg(inserter(instrs,instrs.end()));
 
-		if(fmt.empty())
-			fmt = accumulate(ops.begin(),ops.end(),fmt,[](const std::string &acc, const rvalue &x)
-				{ return acc + (acc.empty() ? "{8}" : ", {8}"); });
+		try
+		{
+			dsl::current_code_generator = dsl::callback_list(cg);
 
-		// generate instr list
-		if(fn)
-			fn(cg);
+			if(fmt.empty())
+				fmt = accumulate(ops.begin(),ops.end(),fmt,[](const std::string &acc, const rvalue &x)
+					{ return acc + (acc.empty() ? "{8}" : ", {8}"); });
 
-		mnemonics.emplace_back(po::mnemonic(bound(next_address,next_address + len),n,fmt,ops.begin(),ops.end(),instrs.begin(),instrs.end()));
-		next_address += len;
+			// generate instr list
+			if(fn)
+				fn(cg);
+
+			mnemonics.emplace_back(po::mnemonic(bound(next_address,next_address + len),n,fmt,ops.begin(),ops.end(),instrs.begin(),instrs.end()));
+			next_address += len;
+		}
+		catch(...)
+		{
+			dsl::current_code_generator = boost::none;
+			throw;
+		}
+
+		dsl::current_code_generator = boost::none;
 	}
 
 	template<typename Tag>
