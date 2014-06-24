@@ -1,6 +1,6 @@
 set(panopticon_test_HEADER architecture.hh ${panopticon_HEADERS})
 set(panopticon_test_SOURCES layer.cc loc.cc region.cc testsuite.cc
-	value.cc digraph.cc disassembler.cc persistent_map.cc procedure.cc
+	value.cc digraph.cc disassembler.cc procedure.cc
 	architecture.cc store.cc marshal.cc tree.cc mnemonic.cc basic_block.cc
 	program.cc dflow.cc interpreter.cc structure.cc database.cc)
 
