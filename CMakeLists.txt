@@ -11,7 +11,6 @@ set(panopticon_VERSION
 # Options
 option(BUILD_lib "Build Panopticon Library (libpanopticon)" ON)
 option(BUILD_qt "Build Qt UI (qtpanopticon)" ON)
-option(BUILD_cli "Build cli tool (panop)" OFF)
 
 # Packaging
 set(CPACK_PACKAGE_CONTACT "seu@panopticon.re")
@@ -80,12 +79,6 @@ if(${BUILD_lib})
 	set(panopticon_FOUND TRUE)
 else()
 	find_package(panopticon)
-endif()
-
-if(${BUILD_cli} AND ${panopticon_FOUND})
-	message(STATUS "Building Panopticon command line tool")
-	add_subdirectory("cli")
-	add_dependencies(panop panopticon)
 endif()
 
 if(${BUILD_qt} AND ${panopticon_FOUND})
