@@ -35,6 +35,12 @@ namespace po
 		lvalue not_b(lvalue a, rvalue op)									{ return named(logic_neg<rvalue>{op},a); };
 		/// @returns \c a and emits an IL instruction for <tt>a := op</tt>
 		lvalue assign(lvalue a, rvalue op)								{ return named(univ_nop<rvalue>{op},a); };
+		/// @returns \c a and emits an IL instruction for <tt>a := op1 ∧ op2</tt>
+		lvalue and_i(lvalue a, rvalue op1, rvalue op2)		{ return named(int_and<rvalue>{op1,op2},a); };
+		/// @returns \c a and emits an IL instruction for <tt>a := op1 ∨ op2</tt>
+		lvalue or_i(lvalue a, rvalue op1, rvalue op2)			{ return named(int_or<rvalue>{op1,op2},a); };
+		/// @returns \c a and emits an IL instruction for <tt>a := op1 ⊕ op2</tt>
+		lvalue xor_i(lvalue a, rvalue op1, rvalue op2)		{ return named(int_xor<rvalue>{op1,op2},a); };
 		/// @returns \c a and emits an IL instruction for <tt>a := op1 + op2</tt>
 		lvalue add_i(lvalue a, rvalue op1, rvalue op2)		{ return named(int_add<rvalue>{op1,op2},a); };
 		/// @returns \c a and emits an IL instruction for <tt>a := op1 - op2</tt>
@@ -42,13 +48,15 @@ namespace po
 		/// @returns \c a and emits an IL instruction for <tt>a := op1 * op2</tt>
 		lvalue mul_i(lvalue a, rvalue op1, rvalue op2)		{ return named(int_mul<rvalue>{op1,op2},a); };
 		/// @returns \c a and emits an IL instruction for <tt>a := op1 div op2</tt>
-		lvalue div_iu(lvalue a, rvalue op1, rvalue op2)		{ return named(int_div<rvalue>{op1,op2},a); };
+		lvalue div_i(lvalue a, rvalue op1, rvalue op2)		{ return named(int_div<rvalue>{op1,op2},a); };
 		/// @returns \c a and emits an IL instruction for <tt>a := op1 % op2</tt>
-		lvalue mod_iu(lvalue a, rvalue op1, rvalue op2)		{ return named(int_mod<rvalue>{op1,op2},a); };
-		/// @returns \c a and emits an IL instruction for <tt>a := op1 <ₛ op2</tt>
-		lvalue less_iu(lvalue a, rvalue op1, rvalue op2)	{ return named(int_less<rvalue>{op1,op2},a); };
+		lvalue mod_i(lvalue a, rvalue op1, rvalue op2)		{ return named(int_mod<rvalue>{op1,op2},a); };
+		/// @returns \c a and emits an IL instruction for <tt>a := op1 == op2</tt>
+		lvalue equal_i(lvalue a, rvalue op1, rvalue op2)	{ return named(int_equal<rvalue>{op1,op2},a); };
+		/// @returns \c a and emits an IL instruction for <tt>a := op1 < op2</tt>
+		lvalue less_i(lvalue a, rvalue op1, rvalue op2)	{ return named(int_less<rvalue>{op1,op2},a); };
 		/// @returns \c a and emits an IL instruction for <tt>a := op()</tt>
-		lvalue call(lvalue a, rvalue op)									{ return named(int_call<rvalue>{op},a); };
+		lvalue call_i(lvalue a, rvalue op)									{ return named(int_call<rvalue>{op},a); };
 
 		/// @returns a new temporary \c tmp and emits an IL instruction for <tt>tmp := op1 ∧ op2</tt>
 		lvalue and_b(rvalue op1, rvalue op2)		{ return anonymous(logic_and<rvalue>{op1,op2}); };
@@ -58,6 +66,12 @@ namespace po
 		lvalue not_b(rvalue op)									{ return anonymous(logic_neg<rvalue>{op}); };
 		/// @returns a new temporary \c tmp and emits an IL instruction for <tt>tmp := op</tt>
 		lvalue assign(rvalue op)								{ return anonymous(univ_nop<rvalue>{op}); };
+		/// @returns a new temporary \c tmp and emits an IL instruction for <tt>tmp := op1 ∧ op2</tt>
+		lvalue and_i(rvalue op1, rvalue op2)		{ return anonymous(int_and<rvalue>{op1,op2}); };
+		/// @returns a new temporary \c tmp and emits an IL instruction for <tt>tmp := op1 ∨ op2</tt>
+		lvalue or_i(rvalue op1, rvalue op2)			{ return anonymous(int_or<rvalue>{op1,op2}); };
+		/// @returns a new temporary \c tmp and emits an IL instruction for <tt>tmp := op1 ⊕ op2</tt>
+		lvalue xor_i(rvalue op1, rvalue op2)		{ return anonymous(int_xor<rvalue>{op1,op2}); };
 		/// @returns a new temporary \c tmp and emits an IL instruction for <tt>tmp := op1 + op2</tt>
 		lvalue add_i(rvalue op1, rvalue op2)		{ return anonymous(int_add<rvalue>{op1,op2}); };
 		/// @returns a new temporary \c tmp and emits an IL instruction for <tt>tmp := op1 - op2</tt>
@@ -65,13 +79,15 @@ namespace po
 		/// @returns a new temporary \c tmp and emits an IL instruction for <tt>tmp := op1 * op2</tt>
 		lvalue mul_i(rvalue op1, rvalue op2)		{ return anonymous(int_mul<rvalue>{op1,op2}); };
 		/// @returns a new temporary \c tmp and emits an IL instruction for <tt>tmp := op1 div op2</tt>
-		lvalue div_iu(rvalue op1, rvalue op2)		{ return anonymous(int_div<rvalue>{op1,op2}); };
+		lvalue div_i(rvalue op1, rvalue op2)		{ return anonymous(int_div<rvalue>{op1,op2}); };
 		/// @returns a new temporary \c tmp and emits an IL instruction for <tt>tmp := op1 % op2</tt>
-		lvalue mod_iu(rvalue op1, rvalue op2)		{ return anonymous(int_mod<rvalue>{op1,op2}); };
-		/// @returns a new temporary \c tmp and emits an IL instruction for <tt>tmp := op1 <ᵤ op2</tt>
-		lvalue less_iu(rvalue op1, rvalue op2)		{ return anonymous(int_less<rvalue>{op1,op2}); };
-		/// @returns a new temporary \c tmp and emits an IL instruction for <tt>tmp := op1 <ₛ op2</tt>
-		lvalue call(rvalue op)									{ return anonymous(int_call<rvalue>{op}); };
+		lvalue mod_i(rvalue op1, rvalue op2)		{ return anonymous(int_mod<rvalue>{op1,op2}); };
+		/// @returns a new temporary \c tmp and emits an IL instruction for <tt>tmp := op1 == op2</tt>
+		lvalue equal_i(rvalue op1, rvalue op2)		{ return anonymous(int_equal<rvalue>{op1,op2}); };
+		/// @returns a new temporary \c tmp and emits an IL instruction for <tt>tmp := op1 < op2</tt>
+		lvalue less_i(rvalue op1, rvalue op2)		{ return anonymous(int_less<rvalue>{op1,op2}); };
+		/// @returns a new temporary \c tmp and emits an IL instruction for <tt>tmp := op()</tt>
+		lvalue call_i(rvalue op)									{ return anonymous(int_call<rvalue>{op}); };
 
 	protected:
 		/**
