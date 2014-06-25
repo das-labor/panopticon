@@ -36,8 +36,9 @@ namespace po
 	using universe_domain = boost::variant<logic_domain,integer_domain>;
 
 	struct and_symbol {};
-	struct or_symbol {};
 	struct negation_symbol {};
+	struct inclusive_or_symbol {};
+	struct exclusive_or_symbol {};
 	struct implication_symbol {};
 	struct equivalence_symbol {};
 	struct phi_symbol {};
@@ -55,14 +56,14 @@ namespace po
 	struct nop_symbol {};
 
 	template<typename Value> using logic_and = binop<and_symbol,logic_domain,logic_domain,Value>;
-	template<typename Value> using logic_or = binop<or_symbol,logic_domain,logic_domain,Value>;
+	template<typename Value> using logic_or = binop<inclusive_or_symbol,logic_domain,logic_domain,Value>;
 	template<typename Value> using logic_neg = unop<negation_symbol,logic_domain,logic_domain,Value>;
 	template<typename Value> using logic_impl = binop<implication_symbol,logic_domain,logic_domain,Value>;
 	template<typename Value> using logic_equiv = binop<equivalence_symbol,logic_domain,logic_domain,Value>;
 
 	template<typename Value> using int_and = binop<and_symbol,integer_domain,integer_domain,Value>;
-	template<typename Value> using int_or = binop<or_symbol,integer_domain,integer_domain,Value>;
-	template<typename Value> using int_neg = unop<negation_symbol,integer_domain,integer_domain,Value>;
+	template<typename Value> using int_or = binop<inclusive_or_symbol,integer_domain,integer_domain,Value>;
+	template<typename Value> using int_xor = binop<exclusive_or_symbol,integer_domain,integer_domain,Value>;
 	template<typename Value> using int_add = binop<add_symbol,integer_domain,integer_domain,Value>;
 	template<typename Value> using int_sub = binop<subtract_symbol,integer_domain,integer_domain,Value>;
 	template<typename Value> using int_mul = binop<multiply_symbol,integer_domain,integer_domain,Value>;
@@ -109,7 +110,7 @@ namespace po
 		univ_nop<Value>,
 		int_and<Value>,
 		int_or<Value>,
-		int_neg<Value>,
+		int_xor<Value>,
 		int_add<Value>,
 		int_sub<Value>,
 		int_mul<Value>,

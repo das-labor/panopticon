@@ -356,13 +356,27 @@ rvalue concrete_interpreter::operator()(const int_or<rvalue>& a)
 	return undefined();
 }
 
-rvalue concrete_interpreter::operator()(const int_neg<rvalue>& a)
+rvalue concrete_interpreter::operator()(const int_xor<rvalue>& a)
 {
+	rvalue l = normalize(a.left);
 	rvalue r = normalize(a.right);
-	if(is_constant(r))
-		return constant(~to_constant(r).content());
+
+	if(l == r && !is_undefined(l) && !is_undefined(r))
+		return l;
 	else
-		return undefined();
+	{
+		if(is_constant(l))
+		{
+			if(is_constant(r))
+				return constant(to_constant(l).content() ^ to_constant(r).content());
+			else if(to_constant(l).content() == 0)
+				return r;
+		}
+
+		if(is_constant(r) && to_constant(r).content() == 0)
+			return l;
+	}
+	return undefined();
 }
 
 rvalue concrete_interpreter::operator()(const int_call<rvalue>& a)
