@@ -143,45 +143,49 @@ namespace po
 			template<typename T>
 			callback_list(const code_generator<T>& cg);
 
-			std::function<rvalue(const rvalue&,const rvalue&)> add_ui;
-			std::function<rvalue(const rvalue&,const rvalue&)> sub_ui;
-			std::function<rvalue(const rvalue&,const rvalue&)> mul_ui;
-			std::function<rvalue(const rvalue&,const rvalue&)> div_ui;
-			std::function<rvalue(const rvalue&,const rvalue&)> mod_ui;
-			std::function<rvalue(const rvalue&,const rvalue&)> and_ui;
-			std::function<rvalue(const rvalue&,const rvalue&)> or_ui;
-			std::function<rvalue(const rvalue&,const rvalue&)> less_ui;
-			std::function<rvalue(const rvalue&,const rvalue&)> equal_ui;
+			std::function<rvalue(const rvalue&,const rvalue&)> add_i;
+			std::function<rvalue(const rvalue&,const rvalue&)> sub_i;
+			std::function<rvalue(const rvalue&,const rvalue&)> mul_i;
+			std::function<rvalue(const rvalue&,const rvalue&)> div_i;
+			std::function<rvalue(const rvalue&,const rvalue&)> mod_i;
+			std::function<rvalue(const rvalue&,const rvalue&)> and_i;
+			std::function<rvalue(const rvalue&,const rvalue&)> or_i;
+			std::function<rvalue(const rvalue&,const rvalue&)> xor_i;
+			std::function<rvalue(const rvalue&,const rvalue&)> less_i;
+			std::function<rvalue(const rvalue&,const rvalue&)> equal_i;
 		};
 
 		thread_local boost::optional<callback_list> current_code_generator;
 
-		rvalue operator+(const rvalue& a, const rvalue& b) { return current_code_generator->add_ui(a,b); }
+		rvalue operator+(const rvalue& a, const rvalue& b) { return current_code_generator->add_i(a,b); }
 		rvalue operator+(unsigned long long a, const rvalue& b) { return constant(a) + b; }
 		rvalue operator+(const rvalue& a, unsigned long long b) { return a + constant(b); }
-		rvalue operator-(const rvalue& a, const rvalue& b) { return current_code_generator->sub_ui(a,b); }
+		rvalue operator-(const rvalue& a, const rvalue& b) { return current_code_generator->sub_i(a,b); }
 		rvalue operator-(unsigned long long a, const rvalue& b) { return constant(a) - b; }
 		rvalue operator-(const rvalue& a, unsigned long long b) { return a - constant(b); }
-		rvalue operator*(const rvalue& a, const rvalue& b) { return current_code_generator->mul_ui(a,b); }
+		rvalue operator*(const rvalue& a, const rvalue& b) { return current_code_generator->mul_i(a,b); }
 		rvalue operator*(unsigned long long a, const rvalue& b) { return constant(a) * b; }
 		rvalue operator*(const rvalue& a, unsigned long long b) { return a * constant(b); }
-		rvalue operator/(const rvalue& a, const rvalue& b) { return current_code_generator->div_ui(a,b); }
+		rvalue operator/(const rvalue& a, const rvalue& b) { return current_code_generator->div_i(a,b); }
 		rvalue operator/(unsigned long long a, const rvalue& b) { return constant(a) / b; }
 		rvalue operator/(const rvalue& a, unsigned long long b) { return a / constant(b); }
-		rvalue operator%(const rvalue& a, const rvalue& b) { return current_code_generator->mod_ui(a,b); }
+		rvalue operator%(const rvalue& a, const rvalue& b) { return current_code_generator->mod_i(a,b); }
 		rvalue operator%(unsigned long long a, const rvalue& b) { return constant(a) % b; }
 		rvalue operator%(const rvalue& a, unsigned long long b) { return a % constant(b); }
-		rvalue operator&(const rvalue& a, const rvalue& b) { return current_code_generator->and_ui(a,b); }
+		rvalue operator&(const rvalue& a, const rvalue& b) { return current_code_generator->and_i(a,b); }
 		rvalue operator&(unsigned long long a, const rvalue& b) { return constant(a) & b; }
 		rvalue operator&(const rvalue& a, unsigned long long b) { return a & constant(b); }
-		rvalue operator|(const rvalue& a, const rvalue& b) { return current_code_generator->or_ui(a,b); }
+		rvalue operator|(const rvalue& a, const rvalue& b) { return current_code_generator->or_i(a,b); }
 		rvalue operator|(unsigned long long a, const rvalue& b) { return constant(a) | b; }
 		rvalue operator|(const rvalue& a, unsigned long long b) { return a | constant(b); }
+		rvalue operator^(const rvalue& a, const rvalue& b) { return current_code_generator->xor_i(a,b); }
+		rvalue operator^(unsigned long long a, const rvalue& b) { return constant(a) ^ b; }
+		rvalue operator^(const rvalue& a, unsigned long long b) { return a ^ constant(b); }
 
-		rvalue less(const rvalue& a, const rvalue& b) { return current_code_generator->less_ui(a,b); }
+		rvalue less(const rvalue& a, const rvalue& b) { return current_code_generator->less_i(a,b); }
 		rvalue less(const rvalue& a, unsigned long long b) { return less(a,constant(b)); }
 		rvalue less(unsigned long long a, const rvalue& b) { return less(constant(a),b); }
-		rvalue equal(const rvalue& a, const rvalue& b) { return current_code_generator->equal_ui(a,b); }
+		rvalue equal(const rvalue& a, const rvalue& b) { return current_code_generator->equal_i(a,b); }
 		rvalue equal(const rvalue& a, unsigned long long b) { return equal(a,constant(b)); }
 		rvalue equal(unsigned long long a, const rvalue& b) { return equal(constant(a),b); }
 	}
