@@ -318,7 +318,7 @@ void LinearView::insertRows(float y, rowIndex gri, bool up)
 				itm->setY(y + (up ? -itm->height() : 0));
 
 				connect(itm,SIGNAL(heightChanged()),this,SLOT(rowHeightChanged()));
-				assert(_visibleRows.emplace(gri,itm).second);
+				assert(_visibleRows.insert(std::make_pair(gri,itm)).second);
 
 				y += (up ? -itm->height() : itm->height());
 			}
