@@ -33,12 +33,13 @@ set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 # Compiler flags
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" OR
 	 "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-	add_definitions("-Wall -Wextra -pedantic
--Wno-unused-parameter")
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -pedantic -Wno-unused-parameter")
 endif()
 
+set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--warn-unresolved-symbols,--warn-once")
+
 if("${CMAKE_BUILD_TYPE}" STREQUAL "Release")
-	add_definitions("-Werror")
+ 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror")
 	message(STATUS "Build release")
 elseif("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
 
@@ -63,7 +64,7 @@ if(NOT "${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
 	if(NOT DEFINED "CXXFLAG_CPP11")
 		message(FATAL_ERROR "Your compiler does not support C++11. Please use clang 3.4 or GCC 4.7.")
 	else()
-		add_definitions("-std=c++11")
+ 		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 	endif()
 endif()
 
