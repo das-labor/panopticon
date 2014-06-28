@@ -173,7 +173,7 @@ namespace po
 
 #ifdef _MSC_VER
 		extern __declspec(thread) callback_list* current_code_generator;
-#elif
+#else
 		extern __thread callback_list* current_code_generator;
 #endif
 
