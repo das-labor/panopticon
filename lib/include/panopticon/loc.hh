@@ -12,7 +12,7 @@
 #include <boost/uuid/nil_generator.hpp>
 
 #ifdef __MINGW32__
-#include <boost/mutex.hpp>
+#include <boost/thread/mutex.hpp>
 #endif
 
 #include <panopticon/marshal.hh>
