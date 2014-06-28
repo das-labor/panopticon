@@ -171,7 +171,11 @@ namespace po
 			std::function<rvalue(const rvalue&,const rvalue&)> equal_i;
 		};
 
+#ifdef MSVC
+		extern __declspec(thread) callback_list* current_code_generator;
+#elif
 		extern __thread callback_list* current_code_generator;
+#endif
 
 		inline rvalue operator+(const rvalue& a, const rvalue& b) { return current_code_generator->add_i(a,b); }
 		inline rvalue operator+(unsigned long long a, const rvalue& b) { return constant(a) + b; }
