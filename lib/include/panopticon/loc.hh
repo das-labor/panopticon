@@ -100,7 +100,7 @@ namespace po
 
 			{
 #ifdef __MINGW32__
-				std::lock_guard<mutex::mutex> guard(dirty_locations_mutex);
+				std::lock_guard<boost::mutex> guard(dirty_locations_mutex);
 #else
 				std::lock_guard<std::mutex> guard(dirty_locations_mutex);
 #endif
@@ -129,7 +129,7 @@ namespace po
 
 			{
 #ifdef __MINGW32__
-				std::lock_guard<mutex::mutex> guard(dirty_locations_mutex);
+				std::lock_guard<boost::mutex> guard(dirty_locations_mutex);
 #else
 				std::lock_guard<std::mutex> guard(dirty_locations_mutex);
 #endif
@@ -171,7 +171,7 @@ namespace po
 		loc(const uuid &u, T* t) : basic_loc<T,loc<T>>(u), _control(new loc_control<T>(t))
 		{
 #ifdef __MINGW32__
-			std::lock_guard<mutex::mutex> guard(dirty_locations_mutex);
+			std::lock_guard<boost::mutex> guard(dirty_locations_mutex);
 #else
 			std::lock_guard<std::mutex> guard(dirty_locations_mutex);
 #endif

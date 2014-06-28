@@ -13,7 +13,7 @@ std::mutex po::dirty_locations_mutex;
 void po::save_point(rdf::storage &store)
 {
 #ifdef __MINGW32__
-	std::lock_guard<mutex::mutex> guard(dirty_locations_mutex);
+	std::lock_guard<boost::mutex> guard(dirty_locations_mutex);
 #else
 	std::lock_guard<std::mutex> guard(dirty_locations_mutex);
 #endif
