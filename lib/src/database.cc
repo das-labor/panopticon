@@ -77,7 +77,10 @@ database* po::unmarshal(const uuid& u, const rdf::storage& store)
 		rdf::statement off_st = store.first(st.object,rdf::ns_po("offset"));
 		rdf::statement body_st = store.first(st.object,rdf::ns_po("body"));
 
-		cmnts.insert(std::make_pair(ref{reg_st.object.as_literal(),stoull(off_st.object.as_literal())},comment_loc{body_st.object.as_iri().as_uuid(),store}));
+		ref r{reg_st.object.as_literal(),stoull(off_st.object.as_literal())};
+		comment_loc c(body_st.object.as_iri().as_uuid(),store);
+
+		cmnts.insert(std::make_pair(r,c));
 	}
 	for(auto st: store.find(root,rdf::ns_po("region")))
 		insert_vertex(region_loc{st.object.as_iri().as_uuid(),store},data);
