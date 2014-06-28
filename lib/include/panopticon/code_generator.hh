@@ -171,7 +171,7 @@ namespace po
 			std::function<rvalue(const rvalue&,const rvalue&)> equal_i;
 		};
 
-#ifdef MSVC
+#ifdef _MSC_VER
 		extern __declspec(thread) callback_list* current_code_generator;
 #elif
 		extern __thread callback_list* current_code_generator;

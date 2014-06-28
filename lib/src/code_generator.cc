@@ -1,6 +1,6 @@
 #include <panopticon/code_generator.hh>
 
-#ifdef MSVC
+#ifdef _MSC_VER
 __declspec(thread) po::dsl::callback_list* po::dsl::current_code_generator = nullptr;
 #elif
 __thread po::dsl::callback_list* po::dsl::current_code_generator = nullptr;
