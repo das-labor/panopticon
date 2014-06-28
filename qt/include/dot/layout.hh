@@ -10,15 +10,15 @@ void dot::layout(T graph, unsigned int ranksep, unsigned int nodesep)
 	typedef dot::graph_traits<T> traits;
 
 	/*
-	static_assert(std::is_copy_constructible<T>::value,"The graph type needs to be copy-constructible");
+	static_ensure(std::is_copy_constructible<T>::value,"The graph type needs to be copy-constructible");
 
-	static_assert(std::is_copy_constructible<traits::node_type>::value,"The node type needs to be copy-constructible");
-	static_assert(std::is_copy_assignable<traits::node_type>::value,"The node type needs to be copy-assignable");
-	static_assert(std::is_default_constructible<traits::node_type>::value,"The node type needs a default constructor");
+	static_ensure(std::is_copy_constructible<traits::node_type>::value,"The node type needs to be copy-constructible");
+	static_ensure(std::is_copy_assignable<traits::node_type>::value,"The node type needs to be copy-assignable");
+	static_ensure(std::is_default_constructible<traits::node_type>::value,"The node type needs a default constructor");
 
-	static_assert(std::is_copy_constructible<traits::edge_type>::value,"The edge type needs to be copy-constructible");
-	static_assert(std::is_copy_assignable<traits::edge_type>::value,"The edge type needs to be copy-assignable");
-	static_assert(std::is_default_constructible<traits::edge_type>::value,"The edge type needs a default constructor");
+	static_ensure(std::is_copy_constructible<traits::edge_type>::value,"The edge type needs to be copy-constructible");
+	static_ensure(std::is_copy_assignable<traits::edge_type>::value,"The edge type needs to be copy-assignable");
+	static_ensure(std::is_default_constructible<traits::edge_type>::value,"The edge type needs a default constructor");
 	*/
 
 	auto nd = nodes(graph);

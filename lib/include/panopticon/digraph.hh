@@ -14,6 +14,9 @@
 #include <boost/shared_container_iterator.hpp>
 #include <boost/optional.hpp>
 #include <boost/operators.hpp>
+
+#include <panopticon/ensure.hh>
+
 #pragma once
 
 namespace po
@@ -209,7 +212,7 @@ namespace po
 	template<typename N, typename E>
 	typename po::digraph<N,E>::edge_descriptor insert_edge(const E& e, typename po::digraph<N,E>::vertex_descriptor from, typename po::digraph<N,E>::vertex_descriptor to, po::digraph<N,E>& g)
 	{
-		assert(g.vertices.count(from) && g.vertices.count(to));
+		ensure(g.vertices.count(from) && g.vertices.count(to));
 
 		typename po::digraph<N,E>::edge_descriptor vx = g.next_edge++;
 		g.edges.emplace(vx,e);
@@ -259,7 +262,7 @@ namespace po
 	typename po::digraph<N,E>::vertex_descriptor
 	source(typename po::digraph<N,E>::edge_descriptor e, const po::digraph<N,E> &g)
 	{
-		assert(g.edges.count(e));
+		ensure(g.edges.count(e));
 		return g.sources.at(e);
 	}
 
@@ -267,7 +270,7 @@ namespace po
 	typename po::digraph<N,E>::vertex_descriptor
 	target(typename po::digraph<N,E>::edge_descriptor e, const po::digraph<N,E> &g)
 	{
-		assert(g.edges.count(e));
+		ensure(g.edges.count(e));
 		return g.destinations.at(e);
 	}
 
@@ -276,7 +279,7 @@ namespace po
 						typename po::digraph<N,E>::out_edge_iterator>
 	out_edges(typename po::digraph<N,E>::vertex_descriptor v, const po::digraph<N,E> &g)
 	{
-		assert(g.vertices.count(v));
+		ensure(g.vertices.count(v));
 
 		auto fn = [](typename std::unordered_map<typename po::digraph<N,E>::vertex_descriptor,typename po::digraph<N,E>::edge_descriptor>::const_iterator i) { return i->second; };
 		auto p = g.outgoing.equal_range(v);
@@ -288,7 +291,7 @@ namespace po
 	typename boost::graph_traits<po::digraph<N,E>>::degree_size_type
 	out_degree(typename po::digraph<N,E>::vertex_descriptor v, const po::digraph<N,E> &g)
 	{
-		assert(g.vertices.count(v));
+		ensure(g.vertices.count(v));
 		return g.outgoing.count(v);
 	}
 
@@ -297,7 +300,7 @@ namespace po
 						typename po::digraph<N,E>::in_edge_iterator>
 	in_edges(typename po::digraph<N,E>::vertex_descriptor v, const po::digraph<N,E> &g)
 	{
-		assert(g.vertices.count(v));
+		ensure(g.vertices.count(v));
 
 		auto fn = [](typename std::unordered_map<typename po::digraph<N,E>::vertex_descriptor,typename po::digraph<N,E>::edge_descriptor>::const_iterator i) { return i->second; };
 		auto p = g.incoming.equal_range(v);
@@ -309,7 +312,7 @@ namespace po
 	typename boost::graph_traits<po::digraph<N,E>>::degree_size_type
 	in_degree(typename po::digraph<N,E>::vertex_descriptor v, const po::digraph<N,E> &g)
 	{
-		assert(g.vertices.count(v));
+		ensure(g.vertices.count(v));
 		return g.incoming.count(v);
 	}
 
@@ -340,7 +343,7 @@ namespace po
 	template<typename N, typename E>
 	void remove_vertex(typename po::digraph<N,E>::vertex_descriptor v, po::digraph<N,E>& g)
 	{
-		assert(g.vertices.count(v));
+		ensure(g.vertices.count(v));
 
 		while(g.outgoing.count(v))
 			remove_edge(g.outgoing.find(v)->second,g);
@@ -354,7 +357,7 @@ namespace po
 	template<typename N, typename E>
 	void remove_edge(typename po::digraph<N,E>::edge_descriptor e, po::digraph<N,E>& g)
 	{
-		assert(g.edges.count(e) && g.sources.count(e) && g.destinations.count(e) && g.outgoing.count(g.sources.at(e)) && g.incoming.count(g.destinations.at(e)));
+		ensure(g.edges.count(e) && g.sources.count(e) && g.destinations.count(e) && g.outgoing.count(g.sources.at(e)) && g.incoming.count(g.destinations.at(e)));
 
 		g.edges.erase(e);
 		g.outgoing.erase(g.sources.at(e));

@@ -1,11 +1,12 @@
 #include <sstream>
 #include <string>
-#include <cassert>
 #include <mutex>
 #include <unordered_map>
 #include <list>
 #include <memory>
 #include <random>
+
+#include <panopticon/ensure.hh>
 
 #include <kcpolydb.h>
 

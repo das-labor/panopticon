@@ -1,7 +1,7 @@
-#include <cassert>
-
 #include "delegate.hh"
+
 #include <panopticon/digraph.hh>
+#include <panopticon/ensure.hh>
 
 Delegate::Delegate(po::region_wloc r, QObject *p)
 : QObject(p), _region(r)
@@ -19,7 +19,7 @@ BinaryDelegate::BinaryDelegate(po::region_wloc r, unsigned int w, QQmlEngine *e,
 	_overlays(), _visibleRows(),
 	_cursor(boost::none), _cursorOverlay(0), _collapsed(false), _cache(boost::none)
 {
-	assert(w);
+	ensure(w);
 	qDebug() << _rowComponent.errors();
 	qDebug() << _titleComponent.errors();
 	qDebug() << _cursorComponent.errors();
@@ -44,7 +44,7 @@ QQuickItem *BinaryDelegate::createRow(unsigned int l)
 	QVariantList _data;
 	QQuickItem *ret = 0;
 
-	assert(l < rowCount());
+	ensure(l < rowCount());
 
 	if(l > 0)
 	{
@@ -59,10 +59,10 @@ QQuickItem *BinaryDelegate::createRow(unsigned int l)
 			_data.append(QVariant::fromValue(t ? QString("%1").arg(static_cast<uint>(*t),2,16,QChar('0')) : QString("??")));
 		}
 
-		assert(_data.size());
+		ensure(_data.size());
 
 		ret = qobject_cast<QQuickItem*>(_rowComponent.create());
-		assert(ret);
+		ensure(ret);
 
 		ret->setProperty("address",QVariant((l-1) * _width));
 		ret->setProperty("row",QVariant(l));
@@ -75,7 +75,7 @@ QQuickItem *BinaryDelegate::createRow(unsigned int l)
 	{
 		ret = qobject_cast<QQuickItem*>(_titleComponent.create());
 
-		assert(ret);
+		ensure(ret);
 		ret->setProperty("title",QString(QString::fromStdString(region()->name())));
 		connect(ret,SIGNAL(collapse()),this,SLOT(collapseRows()));
 	}
@@ -83,7 +83,7 @@ QQuickItem *BinaryDelegate::createRow(unsigned int l)
 	ret->setParent(this);
 	ret->setParentItem(qobject_cast<QQuickItem*>(parent()));
 
-	assert(_visibleRows.insert(std::make_pair(l,ret)).second);
+	ensure(_visibleRows.insert(std::make_pair(l,ret)).second);
 	updateOverlays(ElementSelection(l,0,l,_width-1));
 
 	return ret;
@@ -91,10 +91,10 @@ QQuickItem *BinaryDelegate::createRow(unsigned int l)
 
 void BinaryDelegate::deleteRow(QQuickItem *i)
 {
-	assert(i);
+	ensure(i);
 	auto j = std::find_if(_visibleRows.begin(),_visibleRows.end(),[&](std::pair<int,QQuickItem*> p) { return p.second == i; });
 
-	assert(j != _visibleRows.end());
+	ensure(j != _visibleRows.end());
 
 	int l = j->first;
 
@@ -107,11 +107,11 @@ QQuickItem *BinaryDelegate::createOverlay(const ElementSelection &sel)
 {
 	QQuickItem *ov = qobject_cast<QQuickItem*>(_cursorComponent.create());
 
-	assert(ov);
+	ensure(ov);
 	ov->setParent(this);
 	ov->setParentItem(qobject_cast<QQuickItem*>(parent()));
 	ov->setVisible(false);
-	assert(QQmlProperty::write(ov,"cursor",QVariant::fromValue<QObject*>(new ElementSelectionObject(sel,ov))));
+	ensure(QQmlProperty::write(ov,"cursor",QVariant::fromValue<QObject*>(new ElementSelectionObject(sel,ov))));
 
 	_overlays.insert(std::make_pair(sel,ov));
 	updateOverlays(sel);
@@ -121,9 +121,9 @@ QQuickItem *BinaryDelegate::createOverlay(const ElementSelection &sel)
 
 void BinaryDelegate::deleteOverlay(QQuickItem *ov)
 {
-	assert(ov);
+	ensure(ov);
 	auto i = std::find_if(_overlays.begin(),_overlays.end(),[&](const std::pair<ElementSelection,QQuickItem*> &p) { return p.second == ov; });
-	assert(i != _overlays.end());
+	ensure(i != _overlays.end());
 	auto key = i->first;
 
 	_overlays.erase(i);
@@ -173,8 +173,8 @@ void BinaryDelegate::updateOverlays(const ElementSelection &sel)
 			if(rows)
 			{
 				QVariant ret, first = QVariant::fromValue(rows->first), last = QVariant::fromValue(rows->second);
-				assert(QQmlProperty::write(i.second,"firstRow",first));
-				assert(QQmlProperty::write(i.second,"lastRow",last));
+				ensure(QQmlProperty::write(i.second,"firstRow",first));
+				ensure(QQmlProperty::write(i.second,"lastRow",last));
 				i.second->setVisible(true);
 
 				continue;
@@ -222,12 +222,12 @@ void BinaryDelegate::setCursor(const boost::optional<ElementSelection> &sel)
 		{
 			auto p = attachableRows(*_cursor);
 
-			assert(QQmlProperty::write(_cursorOverlay,"cursor",QVariant::fromValue<QObject*>(new ElementSelectionObject(*sel,_cursorOverlay))));
+			ensure(QQmlProperty::write(_cursorOverlay,"cursor",QVariant::fromValue<QObject*>(new ElementSelectionObject(*sel,_cursorOverlay))));
 
 			if(p)
 			{
-				assert(QQmlProperty::write(_cursorOverlay,"firstRow",QVariant::fromValue<QObject*>(p->first)));
-				assert(QQmlProperty::write(_cursorOverlay,"lastRow",QVariant::fromValue<QObject*>(p->second)));
+				ensure(QQmlProperty::write(_cursorOverlay,"firstRow",QVariant::fromValue<QObject*>(p->first)));
+				ensure(QQmlProperty::write(_cursorOverlay,"lastRow",QVariant::fromValue<QObject*>(p->second)));
 			}
 
 			_overlays.insert(std::make_pair(*_cursor,_cursorOverlay));
@@ -236,7 +236,7 @@ void BinaryDelegate::setCursor(const boost::optional<ElementSelection> &sel)
 		else
 		{
 			_cursorOverlay->setVisible(false);
-			assert(QQmlProperty::write(_cursorOverlay,"cursor",QVariant()));
+			ensure(QQmlProperty::write(_cursorOverlay,"cursor",QVariant()));
 		}
 	}
 }

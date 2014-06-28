@@ -12,6 +12,7 @@
 #include <boost/uuid/nil_generator.hpp>
 
 #include <panopticon/marshal.hh>
+#include <panopticon/ensure.hh>
 
 #pragma once
 
@@ -102,7 +103,7 @@ namespace po
 					prev = make_marshal_poly(std::make_shared<loc_control<T>>(new T(*(cb->object()))),_uuid);
 				}
 
-				assert(dirty_locations.emplace(_uuid,std::make_pair(prev,make_marshal_poly(cb,_uuid))).second);
+				ensure(dirty_locations.emplace(_uuid,std::make_pair(prev,make_marshal_poly(cb,_uuid))).second);
 			}
 			return *cb->object();
 		}
@@ -127,7 +128,7 @@ namespace po
 					prev = make_marshal_poly(std::make_shared<loc_control<T>>(new T(*(cb->object()))),_uuid);
 				}
 
-				assert(dirty_locations.emplace(_uuid,std::make_pair(prev,make_marshal_poly(std::shared_ptr<loc_control<T>>(),_uuid))).second);
+				ensure(dirty_locations.emplace(_uuid,std::make_pair(prev,make_marshal_poly(std::shared_ptr<loc_control<T>>(),_uuid))).second);
 			}
 
 			cb->inner = static_cast<T*>(nullptr);
@@ -153,7 +154,7 @@ namespace po
 		loc(const uuid &u, T* t) : basic_loc<T,loc<T>>(u), _control(new loc_control<T>(t))
 		{
 			std::lock_guard<std::mutex> guard(dirty_locations_mutex);
-			assert(dirty_locations.emplace(tag(),std::make_pair(make_marshal_poly(std::shared_ptr<loc_control<T>>(),tag()),make_marshal_poly(_control,tag()))).second);
+			ensure(dirty_locations.emplace(tag(),std::make_pair(make_marshal_poly(std::shared_ptr<loc_control<T>>(),tag()),make_marshal_poly(_control,tag()))).second);
 		}
 		loc(const uuid &u, const rdf::storage &s) : basic_loc<T,loc<T>>(u), _control(new loc_control<T>(s)) {}
 

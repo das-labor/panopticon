@@ -40,7 +40,7 @@ ostream &po::operator<<(ostream &os, const rvalue &r)
 					case '7': os << "₇"; break;
 					case '8': os << "₈"; break;
 					case '9': os << "₉"; break;
-					default: assert(false);
+					default: ensure(false);
 				}
 			});
 		}
@@ -226,7 +226,7 @@ rdf::statements po::marshal(const rvalue *rv, const uuid &u)
 	rdf::statements ret;
 	rdf::node root = rdf::iri(u);
 
-	assert(rv);
+	ensure(rv);
 
 	if(is_undefined(*rv))
 	{
@@ -272,7 +272,7 @@ rdf::statements po::marshal(const rvalue *rv, const uuid &u)
 	else
 		throw marshal_exception("unknown rvalue type");
 
-	assert(ret.size());
+	ensure(ret.size());
 	return ret;
 }
 

@@ -2,13 +2,13 @@
 #include <list>
 #include <string>
 #include <vector>
-#include <cassert>
 #include <initializer_list>
 
 #include <panopticon/value.hh>
 #include <panopticon/marshal.hh>
 #include <panopticon/region.hh>
 #include <panopticon/instr.hh>
+#include <panopticon/ensure.hh>
 
 #pragma once
 

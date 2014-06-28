@@ -68,7 +68,7 @@ mnemonic::mnemonic(const bound &a, const string &n, const string &fmt, initializ
 		{
 			token tok;
 			cur = escape_seq(next(cur),end,tok);
-			assert(cur != end && *cur == '}');
+			ensure(cur != end && *cur == '}');
 			format_seq.push_back(tok);
 
 			return plain_or_meta(next(cur),end);
@@ -91,7 +91,7 @@ mnemonic::mnemonic(const bound &a, const string &n, const string &fmt, initializ
 	// EscapeSequence -> Digit+ (':' Modifiers (':' Alias)?)?
 	escape_seq = [&](string::const_iterator cur, string::const_iterator end,token &tok)
 	{
-		assert(cur != end && isdigit(*cur));
+		ensure(cur != end && isdigit(*cur));
 		cur = digits(cur,end,tok.width);
 
 		tok.is_literal = false;
@@ -111,7 +111,7 @@ mnemonic::mnemonic(const bound &a, const string &n, const string &fmt, initializ
 	// Modifers -> '-'?
 	modifiers = [&](string::const_iterator cur, string::const_iterator end,token &tok)
 	{
-		assert(cur != end);
+		ensure(cur != end);
 
 		if(*cur == '-')
 		{
@@ -125,7 +125,7 @@ mnemonic::mnemonic(const bound &a, const string &n, const string &fmt, initializ
 	// Alias -> PlainAscii*
 	alias = [&](string::const_iterator cur,string::const_iterator end,token &tok)
 	{
-		assert(cur != end);
+		ensure(cur != end);
 
 		if(*cur != '}' && *cur != ':')
 		{
@@ -160,7 +160,7 @@ string mnemonic::format_operands(void) const
 	{
 		if(tok.alias.empty() && !tok.is_literal)
 		{
-			assert(idx < operands.size());
+			ensure(idx < operands.size());
 			if(is_constant(operands[idx]))
 			{
 				if(tok.has_sign)
@@ -201,7 +201,7 @@ ostream &po::operator<<(ostream &os, const mnemonic &m)
 
 int64_t po::format_constant(const mnemonic::token &tok, uint64_t v)
 {
-	assert(tok.width <= 64);
+	ensure(tok.width <= 64);
 	uint64_t bitmask = 0;
 	bitmask = (~bitmask) >> (64 - tok.width);
 
@@ -270,7 +270,7 @@ rdf::statements po::marshal(const mnemonic* mn, const uuid& uu)
 		rdf::node r = rdf::iri(u);
 		auto st = marshal(&rv,u);
 
-		assert(st.size());
+		ensure(st.size());
 		std::move(st.begin(),st.end(),back_inserter(ret));
 		return r;
 	};

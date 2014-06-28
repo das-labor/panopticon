@@ -31,7 +31,7 @@ dot::net_flow<dot::graph_adaptor<T>> dot::cook_phase3(T graph, const net_flow<T>
 			case 0: Omega = 1; break;
 			case 1: Omega = 2; break;
 			case 2: Omega = 8; break;
-			default: assert(false);
+			default: ensure(false);
 		}
 
 		node tmp = node_adaptor<T>(virtual_node());
@@ -70,8 +70,8 @@ dot::net_flow<dot::graph_adaptor<T>> dot::cook_phase3(T graph, const net_flow<T>
 		}
 	}
 
-	assert(delta.size() == adaptor.edges->size());
-	assert(omega.size() == adaptor.edges->size());
+	ensure(delta.size() == adaptor.edges->size());
+	ensure(omega.size() == adaptor.edges->size());
 
 	return preprocess<graph_adaptor<T>>(adaptor,omega,delta);
 }

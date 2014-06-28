@@ -20,7 +20,7 @@ const variable r0 = "r0"_v8, r1 = "r1"_v8, r2 = "r2"_v8, r3 = "r3"_v8, r4 = "r4"
 
 variable po::avr::decode_reg(unsigned int r)
 {
-	assert(r <= 31);
+	ensure(r <= 31);
 	return variable("r" + std::to_string(r),8);
 }
 
@@ -33,7 +33,7 @@ variable po::avr::decode_preg(unsigned int r, IndirectRegOp op, int d)
 		case 26: name = "X"; break;
 		case 28: name = "Y"; break;
 		case 30: name = "Z"; break;
-		default: assert(false);
+		default: ensure(false);
 	}
 
 	switch(op)
@@ -42,7 +42,7 @@ variable po::avr::decode_preg(unsigned int r, IndirectRegOp op, int d)
 		case PreDec: name = "-" + name; break;
 		case Nop: break;
 		case PostDisplace: if(r != 26) { name += "+" + std::to_string(d); break; }
-		default: assert(false);
+		default: ensure(false);
 	}
 
 	return variable(name,8);
@@ -196,7 +196,7 @@ sem_action po::avr::binary_regconst(std::string x, std::function<void(cg &,const
 
 sem_action po::avr::binary_st(variable Rd1, variable Rd2, bool pre_dec, bool post_inc)
 {
-	assert(!(pre_dec == true && post_inc == true));
+	ensure(!(pre_dec == true && post_inc == true));
 
 	return [=](sm &st)
 	{
@@ -217,7 +217,7 @@ sem_action po::avr::binary_st(variable Rd1, variable Rd2, bool pre_dec, bool pos
 		else if(Rd1.name() == "r30")
 			fmt += "Z";
 		else
-			assert(false);
+			ensure(false);
 
 
 		if(post_inc)
@@ -243,7 +243,7 @@ sem_action po::avr::binary_st(variable Rd1, variable Rd2, bool pre_dec, bool pos
 
 sem_action po::avr::binary_ld(variable Rr1, variable Rr2, bool pre_dec, bool post_inc)
 {
-	assert(!(pre_dec == true && post_inc == true));
+	ensure(!(pre_dec == true && post_inc == true));
 
 	return [=](sm &st)
 	{
@@ -264,7 +264,7 @@ sem_action po::avr::binary_ld(variable Rr1, variable Rr2, bool pre_dec, bool pos
 		else if(Rr1.name() == "r30")
 			fmt += "Z";
 		else
-			assert(false);
+			ensure(false);
 
 
 		if(post_inc)
@@ -303,7 +303,7 @@ sem_action po::avr::binary_stq(variable Rd1, variable Rd2)
 		else if(Rd1.name() == "r30")
 			fmt += "Z";
 		else
-			assert(false);
+			ensure(false);
 
 		fmt += "+" + std::to_string(q);
 
@@ -333,7 +333,7 @@ sem_action po::avr::binary_ldq(variable Rr1, variable Rr2)
 		else if(Rr1.name() == "r30")
 			fmt += "Z";
 		else
-			assert(false);
+			ensure(false);
 
 		fmt += "+" + std::to_string(q);
 

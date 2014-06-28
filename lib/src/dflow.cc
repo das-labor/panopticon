@@ -1,5 +1,4 @@
 #include <algorithm>
-#include <cassert>
 #include <list>
 #include <map>
 #include <iostream>
@@ -7,6 +6,7 @@
 #include <panopticon/dflow.hh>
 #include <panopticon/value.hh>
 #include <panopticon/digraph.hh>
+#include <panopticon/ensure.hh>
 
 #include <boost/graph/dominator_tree.hpp>
 
@@ -186,7 +186,7 @@ void po::ssa(proc_loc proc, const dom& domi, const live& li)
 				if(!has_phi)
 				{
 					std::vector<mnemonic> &ms = frontier.write().mnemonics();
-					assert(ms.size());
+					ensure(ms.size());
 
 					if(ms[0].opcode == "internal-phis")
 						ms[0].instructions.emplace_back(instr(univ_phi<rvalue>{{}},variable(n,512)));
@@ -210,7 +210,7 @@ void po::ssa(proc_loc proc, const dom& domi, const live& li)
 
 	auto new_name = [&](const std::string &n) -> int
 	{
-		assert(stack.count(n));
+		ensure(stack.count(n));
 		int i = counter[n]++;
 
 		stack[n].push_back(i);
@@ -227,7 +227,7 @@ void po::ssa(proc_loc proc, const dom& domi, const live& li)
 		{
 			if(boost::apply_visitor(phi_vis,i.function))
 			{
-				assert(is_variable(i.assignee));
+				ensure(is_variable(i.assignee));
 				i.assignee = variable(to_variable(i.assignee).name(),to_variable(i.assignee).width(),new_name(to_variable(i.assignee).name()));
 			}
 		});
@@ -251,7 +251,7 @@ void po::ssa(proc_loc proc, const dom& domi, const live& li)
 			{
 				if(is_variable(v))
 				{
-					assert(stack.count(to_variable(v).name()));
+					ensure(stack.count(to_variable(v).name()));
 					v = variable(to_variable(v).name(),to_variable(v).width(),stack[to_variable(v).name()].back());
 				}
 			}
@@ -273,7 +273,7 @@ void po::ssa(proc_loc proc, const dom& domi, const live& li)
 
 						if(is_variable(v))
 						{
-							assert(stack.count(to_variable(v).name()));
+							ensure(stack.count(to_variable(v).name()));
 							right[ri] = variable(to_variable(v).name(),to_variable(v).width(),stack[to_variable(v).name()].back());
 						}
 						++ri;
@@ -301,13 +301,13 @@ void po::ssa(proc_loc proc, const dom& domi, const live& li)
 				if(is_variable(rel.operand1))
 				{
 					const variable o1 = to_variable(rel.operand1);
-					assert(stack.count(o1.name()));
+					ensure(stack.count(o1.name()));
 					rel.operand1 = variable(o1.name(),o1.width(),stack[o1.name()].back());
 				}
 				if(is_variable(rel.operand2))
 				{
 					const variable o2 = to_variable(rel.operand2);
-					assert(stack.count(o2.name()));
+					ensure(stack.count(o2.name()));
 					rel.operand2 = variable(o2.name(),o2.width(),stack[o2.name()].back());
 				}
 			}
@@ -316,7 +316,7 @@ void po::ssa(proc_loc proc, const dom& domi, const live& li)
 			if(boost::get<rvalue>(&succ) && is_variable(get<rvalue>(succ)))
 			{
 				const variable v = to_variable(get<rvalue>(succ));
-				assert(stack.count(v.name()));
+				ensure(stack.count(v.name()));
 				get<rvalue>(succ) = variable(v.name(),v.width(),stack[v.name()].back());
 			}
 
@@ -327,7 +327,7 @@ void po::ssa(proc_loc proc, const dom& domi, const live& li)
 				std::vector<mnemonic> &mn_s = s.write().mnemonics();
 				auto in_p = in_edges(target(ed,proc->control_transfers),proc->control_transfers);
 				auto iord = find(in_p.first,in_p.second,ed);
-				assert(iord != in_p.second);
+				ensure(iord != in_p.second);
 				unsigned int ord = distance(in_p.first,iord);
 
 				if(mn_s.size() && mn_s.front().opcode == "internal-phis")
@@ -337,7 +337,7 @@ void po::ssa(proc_loc proc, const dom& domi, const live& li)
 					for(instr &i: mne.instructions)
 					{
 						std::vector<rvalue> right = operands(i);
-						assert(boost::apply_visitor(phi_vis,i.function) && is_variable(i.assignee));
+						ensure(boost::apply_visitor(phi_vis,i.function) && is_variable(i.assignee));
 						int missing = ord - right.size() + 1;
 
 						while(missing > 0)
@@ -345,7 +345,7 @@ void po::ssa(proc_loc proc, const dom& domi, const live& li)
 							right.emplace_back(undefined());
 							--missing;
 						}
-						assert(stack.count(to_variable(i.assignee).name()));
+						ensure(stack.count(to_variable(i.assignee).name()));
 						right[ord] = variable(to_variable(i.assignee).name(),to_variable(i.assignee).width(),stack[to_variable(i.assignee).name()].back());
 						set_operands(i,right);
 					}
@@ -375,7 +375,7 @@ void po::ssa(proc_loc proc, const dom& domi, const live& li)
 		{
 			if(is_variable(i.assignee))
 			{
-				assert(stack.count(to_variable(i.assignee).name()) && !stack.at(to_variable(i.assignee).name()).empty());
+				ensure(stack.count(to_variable(i.assignee).name()) && !stack.at(to_variable(i.assignee).name()).empty());
 				stack[to_variable(i.assignee).name()].pop_back();
 			}
 		};

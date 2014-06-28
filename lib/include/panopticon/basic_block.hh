@@ -1,7 +1,6 @@
 #include <memory>
 #include <list>
 #include <map>
-#include <cassert>
 #include <numeric>
 
 #include <boost/iterator/iterator_facade.hpp>
@@ -9,6 +8,7 @@
 
 #include <panopticon/marshal.hh>
 #include <panopticon/loc.hh>
+#include <panopticon/ensure.hh>
 
 #pragma once
 

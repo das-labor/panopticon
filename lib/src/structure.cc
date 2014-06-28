@@ -53,7 +53,7 @@ rdf::statements po::marshal(const structure* s, const uuid& u)
 				{
 					case LittleEndian: ret.emplace_back(f,rdf::ns_po("endianess"),rdf::ns_po("little-endian")); break;
 					case BigEndian: ret.emplace_back(f,rdf::ns_po("endianess"),rdf::ns_po("big-endian")); break;
-					default: assert(false);
+					default: ensure(false);
 				}
 
 				for(auto p: i.symbolic)

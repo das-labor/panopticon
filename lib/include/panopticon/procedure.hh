@@ -12,6 +12,7 @@
 #include <panopticon/marshal.hh>
 #include <panopticon/tree.hh>
 #include <panopticon/hash.hh>
+#include <panopticon/ensure.hh>
 
 #pragma once
 
@@ -138,7 +139,7 @@ namespace po
 				{
 					for(const mnemonic &m: get<bblock_loc>(nd)->mnemonics())
 					{
-						assert(boost::icl::size(m.area));
+						ensure(boost::icl::size(m.area));
 						mnemonics.insert(std::make_pair(m.area.upper() - 1,m));
 					}
 				}
@@ -173,7 +174,7 @@ namespace po
 			std::cout << d.first << " <- " << d.second.first << std::endl;
 		}
 
-		assert(source.size() == destination.size());
+		ensure(source.size() == destination.size());
 		todo.emplace(start);
 
 		// disassemble targets
@@ -205,7 +206,7 @@ namespace po
 					for(const mnemonic &m: state.mnemonics)
 					{
 						last = std::max(last,m.area.upper() - 1);
-						assert(mnemonics.insert(std::make_pair(m.area.lower(),m)).second);
+						ensure(mnemonics.insert(std::make_pair(m.area.lower(),m)).second);
 					}
 
 					for(const std::pair<rvalue,guard> &p: state.jumps)
@@ -247,7 +248,7 @@ namespace po
 				{ bb.write().mnemonics().push_back(p.second); });
 
 			insert_vertex<boost::variant<bblock_loc,rvalue>,guard>(bb,ret.write().control_transfers);
-			assert(bblocks.insert(std::make_pair(bb->area().upper() - 1,bb)).second);
+			ensure(bblocks.insert(std::make_pair(bb->area().upper() - 1,bb)).second);
 		};
 
 		for(auto m: mnemonics)
@@ -316,7 +317,7 @@ namespace po
 			{
 				auto from = bblocks.find(p.first), to = bblocks.lower_bound(*p.second.first);
 
-				assert(from != bblocks.end());
+				ensure(from != bblocks.end());
 				if(to != bblocks.end() && to->second->area().lower() == *p.second.first)
 					conditional_jump(ret,from->second,to->second,p.second.second);
 				else
@@ -348,7 +349,7 @@ namespace po
 		{
 			auto j = bblocks.lower_bound(start);
 
-			assert(j != bblocks.end());
+			ensure(j != bblocks.end());
 			ret.write().entry = j->second;
 		}
 		else
@@ -356,7 +357,7 @@ namespace po
 			ret.write().entry = boost::none;
 		}
 
-		assert(!proc || !(*proc)->entry || ret->entry);
+		ensure(!proc || !(*proc)->entry || ret->entry);
 
 		q = vertices(ret->control_transfers);
 

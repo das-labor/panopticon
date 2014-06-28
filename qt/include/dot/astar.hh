@@ -100,8 +100,8 @@ template<typename T>
 
 		path_ptr.erase(succ);
 		path_cost.erase(succ);
-		assert(path_ptr.insert(std::make_pair(succ,cur)).second);
-		assert(path_cost.insert(std::make_pair(succ,tg)).second);
+		ensure(path_ptr.insert(std::make_pair(succ,cur)).second);
+		ensure(path_cost.insert(std::make_pair(succ,tg)).second);
 
 		unsigned int f = tg + heuristic(succ,e,vg,tag);
 
@@ -124,7 +124,7 @@ std::list<dot::vis_node<T>> dot::route(typename graph_traits<T>::edge_type e, co
 	vis_node<T> start(std::make_pair(from_pos.first + from_sz.first / 2,from_pos.second + from_sz.second / 2),source(e,tag));
 	vis_node<T> finish(std::make_pair(to_pos.first + to_sz.first / 2,to_pos.second + to_sz.second / 2),sink(e,tag));
 
-	assert(vg.count(start) && vg.count(finish));
+	ensure(vg.count(start) && vg.count(finish));
 	openlist.insert(std::make_pair(0,start));
 	path_cost.insert(std::make_pair(start,0));
 

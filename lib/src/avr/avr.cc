@@ -51,7 +51,7 @@ uint8_t po::width(std::string n, avr_tag)
 	else if(n.c_str()[0] == 't')
 		return 16;
 	else
-		assert(false);
+		ensure(false);
 }
 
 // registers

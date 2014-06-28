@@ -38,7 +38,7 @@ const std::unordered_set<proc_loc>& program::procedures(void) const
 			auto p = get_vertex(v,_calls);
 			if(get<proc_loc>(&p))
 			{
-				assert(_procedures->insert(get<proc_loc>(p)).second);
+				ensure(_procedures->insert(get<proc_loc>(p)).second);
 			}
 		}
 	}
@@ -49,7 +49,7 @@ template<>
 program* po::unmarshal(const uuid& u, const rdf::storage &store)
 {
 	rdf::node n = rdf::iri(u);
-	assert(store.has(n,rdf::ns_rdf("type"),rdf::ns_po("Program")));
+	ensure(store.has(n,rdf::ns_rdf("type"),rdf::ns_po("Program")));
 
 	rdf::statement name = store.first(n,rdf::ns_po("name"));
 	rdf::statements procs_n = store.find(n,rdf::ns_po("include"));
@@ -73,7 +73,7 @@ program* po::unmarshal(const uuid& u, const rdf::storage &store)
 				auto i = find_if(ret->procedures().begin(),ret->procedures().end(),[&](const proc_loc q)
 					{ return q.tag() == uu; });
 
-				assert(i != ret->procedures().end());
+				ensure(i != ret->procedures().end());
 				auto vx_b = find_node<variant<proc_loc,symbol>,nullptr_t>(*i,ret->_calls);
 
 				insert_edge(nullptr,vx_a,vx_b,ret->_calls);
@@ -127,13 +127,13 @@ void po::call(prog_loc p, proc_loc from, proc_loc to)
 	auto vx_a = find_node<variant<proc_loc,symbol>,nullptr_t>(from,p->calls());
 	auto vx_b = find_node<variant<proc_loc,symbol>,nullptr_t>(to,p->calls());
 
-	assert(p->procedures().count(from) && p->procedures().count(to));
+	ensure(p->procedures().count(from) && p->procedures().count(to));
 	insert_edge(nullptr,vx_a,vx_b,p.write().calls());
 }
 
 void po::call(prog_loc p, proc_loc from, const symbol& to)
 {
-	assert(p->procedures().count(from));
+	ensure(p->procedures().count(from));
 	auto vx_a = find_node<variant<proc_loc,symbol>,nullptr_t>(from,p->calls());
 
 	try
@@ -176,7 +176,7 @@ std::unordered_set<offset> po::collect_calls(proc_loc proc)
 		if(boost::apply_visitor(call_vis,i.function))
 		{
 			std::vector<rvalue> right = operands(i);
-			assert(right.size() == 1);
+			ensure(right.size() == 1);
 
 			if(is_constant(right[0]))
 			{

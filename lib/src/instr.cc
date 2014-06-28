@@ -9,14 +9,14 @@ struct set_operands_visitor : public boost::static_visitor<>
 	template<typename Symbol, typename Domain, typename Codomain>
 	void operator()(unop<Symbol,Domain,Codomain,rvalue>& op)
 	{
-		assert(_values.size() == 1);
+		ensure(_values.size() == 1);
 		op.right = _values[0];
 	}
 
 	template<typename Symbol, typename Domain, typename Codomain>
 	void operator()(binop<Symbol,Domain,Codomain,rvalue>& op)
 	{
-		assert(_values.size() == 2);
+		ensure(_values.size() == 2);
 		op.left = _values[0];
 		op.right = _values[1];
 	}

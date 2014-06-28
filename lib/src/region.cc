@@ -264,7 +264,7 @@ const std::list<std::pair<bound,layer_wloc>>& region::flatten(void) const
 
 		for(auto i: _stack)
 		{
-			assert(icl::contains(world,i.first));
+			ensure(icl::contains(world,i.first));
 			auto iv = icl::discrete_interval<offset>::right_open(i.first.lower(),i.first.upper());
 
 			proj += make_pair(iv,layer_wloc(i.second));
@@ -475,7 +475,7 @@ region* po::unmarshal(const uuid& u, const rdf::storage& st)
 		auto i = b.as_literal().find(':');
 		uuid lay_u = sg(lay.as_literal());
 
-		assert(i != string::npos);
+		ensure(i != string::npos);
 		layer_loc l(lay_u,unmarshal<layer>(lay_u,st));
 		ret->add(bound(stoll(b.as_literal().substr(0,i)),stoll(b.as_literal().substr(i+1))),l);
 	}

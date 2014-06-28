@@ -3,7 +3,6 @@
 #include <map>
 #include <string>
 #include <iostream>
-#include <cassert>
 #include <vector>
 #include <algorithm>
 #include <stdexcept>
@@ -15,6 +14,7 @@
 #include <panopticon/basic_block.hh>
 #include <panopticon/code_generator.hh>
 #include <panopticon/architecture.hh>
+#include <panopticon/ensure.hh>
 
 #pragma once
 
@@ -527,7 +527,7 @@ namespace po
 	conjunction<Tag>::conjunction(rule_ptr<Tag> a, rule_ptr<Tag> b)
 	: first(a), second(b)
 	{
-		assert(a && b);
+		ensure(a && b);
 	}
 
 	template<typename Tag>

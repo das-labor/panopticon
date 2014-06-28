@@ -98,7 +98,7 @@ unsigned int dot::crossing(node_adaptor<T> a, node_adaptor<T> b, const dot::phas
 	p = ph2.edges_by_tail.equal_range(b);
 	std::for_each(p.first,p.second,bind(op,std::placeholders::_1,&adj_b));
 
-	assert(ph2.lambda.at(a) == ph2.lambda.at(b));
+	ensure(ph2.lambda.at(a) == ph2.lambda.at(b));
 	unsigned int ret = 0;
 
 	for(const std::pair<unsigned int,bool> &x: adj_b)
@@ -113,7 +113,7 @@ template<typename T>
 void dot::swap(node_adaptor<T> a, node_adaptor<T> b, dot::phase2<T> &ph2)
 {
 	typedef node_adaptor<T> node;
-	assert(ph2.lambda.at(a) == ph2.lambda.at(b));
+	ensure(ph2.lambda.at(a) == ph2.lambda.at(b));
 
 	int rank = ph2.lambda.at(a);
 	std::list<node> &order = ph2.order[rank];
@@ -121,7 +121,7 @@ void dot::swap(node_adaptor<T> a, node_adaptor<T> b, dot::phase2<T> &ph2)
 	auto i = std::find(order.begin(),order.end(),a);
 	auto j = std::find(order.begin(),order.end(),b);
 
-	assert(i != order.end() && j != order.end() && i != j);
+	ensure(i != order.end() && j != order.end() && i != j);
 	std::swap(*i,*j);
 }
 
@@ -171,7 +171,7 @@ dot::phase2<T> dot::cook_phase2(T graph, const net_flow<T> &ph1)
 				i = tmp;
 			}
 
-			assert(!tmp.is_nil());
+			ensure(!tmp.is_nil());
 			ph2.edges_by_tail.insert(std::make_pair(tmp,to_a));
 			ph2.edges_by_head.insert(std::make_pair(to_a,tmp));
 			ph2.rank_assignments.insert(std::make_pair(rank,from_a));
@@ -205,7 +205,7 @@ void dot::order(phase2<T> &ph2)
 		{
 			int rank = ph2.lambda.at(n);
 
-			assert(ordered.insert(n).second);
+			ensure(ordered.insert(n).second);
 
 			if(ph2.order.count(rank))
 				ph2.order.at(rank).push_back(n);

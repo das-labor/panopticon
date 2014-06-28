@@ -1,5 +1,6 @@
 #include <panopticon/mnemonic.hh>
 #include <panopticon/architecture.hh>
+#include <panopticon/ensure.hh>
 
 #pragma once
 
@@ -120,7 +121,7 @@ namespace po
 					return is_undefined(v);
 			};
 
-			assert(all_of(arguments.begin(),arguments.end(),sanity_check) && sanity_check(assign));
+			ensure(all_of(arguments.begin(),arguments.end(),sanity_check) && sanity_check(assign));
 			inserter = ret;
 
 			return assign;

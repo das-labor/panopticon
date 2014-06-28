@@ -1,12 +1,12 @@
 #include <algorithm>
 #include <functional>
-#include <cassert>
 #include <iostream>
+
+#include <boost/graph/depth_first_search.hpp>
 
 #include <panopticon/procedure.hh>
 #include <panopticon/program.hh>
-
-#include <boost/graph/depth_first_search.hpp>
+#include <panopticon/ensure.hh>
 
 using namespace po;
 using namespace std;
@@ -70,7 +70,7 @@ procedure* po::unmarshal(const uuid& u, const rdf::storage &store)
 						 get<bblock_loc>(n).tag() == uu;
 		});
 
-		assert(i != p.second);
+		ensure(i != p.second);
 		ret->entry = get<bblock_loc>(get_vertex(*i,ret->control_transfers));
 	}
 
@@ -168,7 +168,7 @@ bool procedure::operator!=(const procedure& p) const { return &p != this; }
 
 const vector<bblock_loc>& procedure::rev_postorder(void) const
 {
-	assert(entry);
+	ensure(entry);
 
 	if(!_rev_postorder)
 	{
@@ -194,7 +194,7 @@ const vector<bblock_loc>& procedure::rev_postorder(void) const
 				color_pm_type(color),
 				find_node<boost::variant<bblock_loc,rvalue>,guard>(*entry,control_transfers));
 
-			assert(_rev_postorder->size() <= ftime.size());
+			ensure(_rev_postorder->size() <= ftime.size());
 			sort(_rev_postorder->begin(),_rev_postorder->end(),[&](bblock_loc a, bblock_loc b)
 				{ return ftime[find_node<variant<bblock_loc,rvalue>,guard>(a,control_transfers)] < ftime[find_node<variant<bblock_loc,rvalue>,guard>(b,control_transfers)]; });
 		}
@@ -244,7 +244,7 @@ void po::conditional_jump(proc_loc p, bblock_loc from, bblock_loc to, guard g)
 	auto vx_b = find_node(variant<bblock_loc,rvalue>(to),p->control_transfers);
 	auto q = vertices(p->control_transfers);
 
-	assert(std::find_if(q.first,q.second,[&](vx_desc d) { try { return get<bblock_loc>(get_vertex(d,p->control_transfers)) == from; } catch(const boost::bad_get&) { return false; } }) != q.second &&
+	ensure(std::find_if(q.first,q.second,[&](vx_desc d) { try { return get<bblock_loc>(get_vertex(d,p->control_transfers)) == from; } catch(const boost::bad_get&) { return false; } }) != q.second &&
 				 std::find_if(q.first,q.second,[&](vx_desc d) { try { return get<bblock_loc>(get_vertex(d,p->control_transfers)) == to; } catch(const boost::bad_get&) { return false; } }) != q.second);
 	insert_edge(g,vx_a,vx_b,p.write().control_transfers);
 }
@@ -285,7 +285,7 @@ void po::replace_incoming(bblock_loc to, bblock_loc oldbb, bblock_loc newbb)
 
 void po::replace_outgoing(bblock_loc from, bblock_loc oldbb, bblock_loc newbb)
 {
-	assert(from && oldbb && newbb);
+	ensure(from && oldbb && newbb);
 	from->mutate_outgoing([&](list<ctrans> &out)
 	{
 		replace(out,oldbb,newbb);
@@ -294,7 +294,7 @@ void po::replace_outgoing(bblock_loc from, bblock_loc oldbb, bblock_loc newbb)
 
 void po::resolve_incoming(bblock_loc to, rvalue v, bblock_loc bb)
 {
-	assert(to && bb);
+	ensure(to && bb);
 	to->mutate_incoming([&](list<ctrans> &in)
 	{
 		resolve(in,v,bb);
@@ -303,7 +303,7 @@ void po::resolve_incoming(bblock_loc to, rvalue v, bblock_loc bb)
 
 void po::resolve_outgoing(bblock_loc from, rvalue v, bblock_loc bb)
 {
-	assert(from && bb);
+	ensure(from && bb);
 	from->mutate_outgoing([&](list<ctrans> &out)
 	{
 		resolve(out,v,bb);
@@ -313,7 +313,7 @@ void po::resolve_outgoing(bblock_loc from, rvalue v, bblock_loc bb)
 // last == true -> pos is last in `up', last == false -> pos is first in `down'
 pair<bblock_loc,bblock_loc> po::split(bblock_loc bb, addr_t pos, bool last)
 {
-	assert(bb);
+	ensure(bb);
 
 	bblock_loc up(new basic_block()), down(new basic_block());
 	bool sw = false;
@@ -330,7 +330,7 @@ pair<bblock_loc,bblock_loc> po::split(bblock_loc bb, addr_t pos, bool last)
 	// distribute mnemonics under `up' and `down'
 	for_each(bb->mnemonics().begin(),bb->mnemonics().end(),[&](const mnemonic &m)
 	{
-		assert(!m.area.includes(pos) || m.area.begin == pos);
+		ensure(!m.area.includes(pos) || m.area.begin == pos);
 
 		if(!last)
 			sw |= m.area.includes(pos);
@@ -343,7 +343,7 @@ pair<bblock_loc,bblock_loc> po::split(bblock_loc bb, addr_t pos, bool last)
 		if(last)
 			sw |= m.area.includes(pos);
 	});
-	assert(sw);
+	ensure(sw);
 
 	// move outgoing ctrans to down
 	for_each(bb->outgoing().begin(),bb->outgoing().end(),[&](const ctrans &ct)
@@ -402,9 +402,9 @@ pair<bblock_loc,bblock_loc> po::split(bblock_loc bb, addr_t pos, bool last)
 
 bblock_loc po::merge(bblock_loc up, bblock_loc down)
 {
-	assert(up && down);
+	ensure(up && down);
 	if(up->area().begin == down->area().end) tie(up,down) = make_pair(down,up);
-	assert(up->area().end == down->area().begin);
+	ensure(up->area().end == down->area().begin);
 
 	bblock_loc ret(new basic_block());
 	auto fn = [&ret](const bblock_loc &bb, const mnemonic &m) { ret->mutate_mnemonics([&](vector<mnemonic> &ms)
@@ -434,7 +434,7 @@ bblock_loc po::merge(bblock_loc up, bblock_loc down)
 
 void po::replace(list<ctrans> &lst, bblock_loc from, bblock_loc to)
 {
-	assert(from && to);
+	ensure(from && to);
 
 	auto i = lst.begin();
 	while(i != lst.end())
@@ -448,7 +448,7 @@ void po::replace(list<ctrans> &lst, bblock_loc from, bblock_loc to)
 
 void po::resolve(list<ctrans> &lst, rvalue v, bblock_loc bb)
 {
-	assert(bb);
+	ensure(bb);
 
 	auto i = lst.begin();
 	while(i != lst.end())

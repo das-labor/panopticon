@@ -1,4 +1,5 @@
-#include <cassert>
+#include <panopticon/ensure.hh>
+
 #include "linearview.hh"
 
 using namespace std;
@@ -67,7 +68,7 @@ void LinearView::setSession(Session *s)
 			connect(del.get(),SIGNAL(selected(boost::optional<po::offset>,bool)),this,SLOT(selected(boost::optional<po::offset>,bool)));
 			gri += len;
 
-			assert(_ordinals.emplace(del.get(),ord++).second);
+			ensure(_ordinals.emplace(del.get(),ord++).second);
 		}
 
 		emit sessionChanged();
@@ -78,7 +79,7 @@ void LinearView::setSession(Session *s)
 void LinearView::selected(boost::optional<po::offset> cur, bool start_new)
 {
 	Delegate *del = qobject_cast<Delegate*>(sender());
-	assert(del);
+	ensure(del);
 	size_t regIdx = regionIndex(del);
 	boost::optional<DelegateSelection> sel = boost::none;
 
@@ -141,10 +142,10 @@ void LinearView::selected(boost::optional<po::offset> cur, bool start_new)
 
 size_t LinearView::regionIndex(const Delegate *del) const
 {
-	assert(del);
+	ensure(del);
 	auto i = _ordinals.find(del);
 
-	assert(i != _ordinals.end());
+	ensure(i != _ordinals.end());
 	return i->second;
 }
 
@@ -152,7 +153,7 @@ void LinearView::delegateModified(void)
 {
 	Delegate *del = qobject_cast<Delegate*>(sender());
 
-	assert(del);
+	ensure(del);
 	auto i = std::find_if(_delegates.begin(),_delegates.end(),[&](const std::pair<decltype(_delegates)::interval_type,std::shared_ptr<Delegate>> &p)
 			{ return p.second.get() == del; });
 	auto a = _visibleRows.lower_bound(boost::icl::first(i->first));
@@ -174,7 +175,7 @@ void LinearView::rowHeightChanged(void)
 	QQuickItem *prev = 0;
 	Delegate *del = qobject_cast<Delegate*>(sender());
 
-	assert(del);
+	ensure(del);
 	auto i = std::find_if(_delegates.begin(),_delegates.end(),[&](const std::pair<decltype(_delegates)::interval_type,std::shared_ptr<Delegate>> &p)
 			{ return p.second.get() == del; });
 	auto a = _visibleRows.lower_bound(boost::icl::first(i->first));
@@ -306,7 +307,7 @@ void LinearView::insertRows(float y, rowIndex gri, bool up)
 	{
 		auto j = _delegates.find(gri);
 
-		assert(j != _delegates.end());
+		ensure(j != _delegates.end());
 		{
 			rowIndex l = gri - boost::icl::first(j->first);
 			QQuickItem *itm = j->second->createRow(l);
@@ -318,7 +319,7 @@ void LinearView::insertRows(float y, rowIndex gri, bool up)
 				itm->setY(y + (up ? -itm->height() : 0));
 
 				connect(itm,SIGNAL(heightChanged()),this,SLOT(rowHeightChanged()));
-				assert(_visibleRows.insert(std::make_pair(gri,itm)).second);
+				ensure(_visibleRows.insert(std::make_pair(gri,itm)).second);
 
 				y += (up ? -itm->height() : itm->height());
 			}

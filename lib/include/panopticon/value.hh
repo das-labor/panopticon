@@ -1,13 +1,13 @@
 #include <unordered_map>
 #include <iostream>
 #include <cstdint>
-#include <cassert>
 #include <stdexcept>
 
 #include <boost/variant.hpp>
 #include <boost/optional.hpp>
 #include <boost/operators.hpp>
 
+#include <panopticon/ensure.hh>
 #include <panopticon/marshal.hh>
 #include <panopticon/hash.hh>
 
@@ -294,7 +294,7 @@ namespace std
 			}
 			else
 			{
-				assert(false);
+				ensure(false);
 			}
 		}
 	};

@@ -4,11 +4,12 @@
 #include <iostream>
 #include <functional>
 #include <algorithm>
-#include <cassert>
 #include <list>
 #include <unordered_set>
 #include <map>
 #include <numeric>
+
+#include <panopticon/ensure.hh>
 
 #include "dot/dot.hh"
 
@@ -22,7 +23,7 @@ dot::partition(const std::pair<typename dot::graph_traits<T>::node_type,typename
 	std::function<void(node,std::unordered_set<node> &visited)> dfs;
 	dfs = [&](node n, std::unordered_set<node> &visited)
 	{
-		assert(visited.insert(n).second);
+		ensure(visited.insert(n).second);
 
 		for(const std::pair<std::pair<node,node>,int> &e: nf.cut_values)
 		{
@@ -37,14 +38,14 @@ dot::partition(const std::pair<typename dot::graph_traits<T>::node_type,typename
 		}
 	};
 
-	assert(cut.first != cut.second);
-	assert(nf.cut_values.count(cut));
+	ensure(cut.first != cut.second);
+	ensure(nf.cut_values.count(cut));
 
 	std::unordered_set<node> v1,v2;
 	dfs(cut.first,v1);
 	dfs(cut.second,v2);
 
-	assert(v1.size() + v2.size() == nf.lambda.size());
+	ensure(v1.size() + v2.size() == nf.lambda.size());
 	return std::make_pair(v1,v2);
 }
 
@@ -84,7 +85,7 @@ void dot::normalize(std::unordered_map<typename dot::graph_traits<T>::node_type,
 {
 	typedef typename graph_traits<T>::node_type node;
 
-	assert(lambda.size());
+	ensure(lambda.size());
 	int min_rank = std::accumulate(lambda.begin(),
 																 lambda.end(),
 																 lambda.begin()->second,
@@ -101,7 +102,7 @@ void dot::rank(net_flow<T> &nf, const std::unordered_set<typename dot::graph_tra
 	typedef typename graph_traits<T>::node_type node;
 	std::unordered_set<node> unranked(todo);
 
-	assert(todo.size() && nf.edges_by_head.size());
+	ensure(todo.size() && nf.edges_by_head.size());
 
 	// delete old ranking
 	for(node n: todo)
@@ -117,7 +118,7 @@ void dot::rank(net_flow<T> &nf, const std::unordered_set<typename dot::graph_tra
 			std::tie(j,jend) = nf.edges_by_head.equal_range(n);
 			return std::none_of(j,jend,[&](const std::pair<node,node> &p) { return unranked.count(p.second); });
 		});
-		assert(i != unranked.end());
+		ensure(i != unranked.end());
 
 		// assign rank
 		unsigned int rank = 0;
@@ -132,7 +133,7 @@ void dot::rank(net_flow<T> &nf, const std::unordered_set<typename dot::graph_tra
 														 [&](int acc, const std::pair<node,node> &p)
 														 { return std::max(acc,(int)nf.lambda.at(p.second) + (int)nf.delta.at(std::make_pair(p.second,p.first))); });
 
-		assert(nf.lambda.insert(std::make_pair(*i,rank)).second);
+		ensure(nf.lambda.insert(std::make_pair(*i,rank)).second);
 		unranked.erase(i);
 	}
 }
@@ -188,10 +189,10 @@ void dot::balance(net_flow<T> &nf)
 			{
 				std::cerr << "min_rank: " << min_rank << std::endl
 									<< "max_rank: " << max_rank << std::endl;
-				assert(false);
+				ensure(false);
 			}
 
-			assert(max_rank >= min_rank);
+			ensure(max_rank >= min_rank);
 
 			// on-demand computation of a std::map rank -> # of assignments
 			if(rank_count.empty())
@@ -287,9 +288,9 @@ template<typename T>
 void dot::feasible_tree(net_flow<T> &nf)
 {
 	typedef typename graph_traits<T>::node_type node;
-	assert(!nf.nodes.empty());
-	assert(nf.edges_by_head.size());
-	assert(nf.edges_by_head.size() == nf.edges_by_tail.size());
+	ensure(!nf.nodes.empty());
+	ensure(nf.edges_by_head.size());
+	ensure(nf.edges_by_head.size() == nf.edges_by_tail.size());
 
 	rank(nf,nf.nodes);
 
@@ -300,7 +301,7 @@ void dot::feasible_tree(net_flow<T> &nf)
 
 	dfs = [&](node n)
 	{
-		assert(tree.insert(n).second);
+		ensure(tree.insert(n).second);
 
 		auto q = nf.edges_by_tail.equal_range(n);
 		auto p = nf.edges_by_head.equal_range(n);
@@ -316,8 +317,8 @@ void dot::feasible_tree(net_flow<T> &nf)
 			node m = g.first;
 			std::pair<node,node> edge = g.second;
 
-			assert(m != n);
-			assert(slack(edge,nf) >= 0);
+			ensure(m != n);
+			ensure(slack(edge,nf) >= 0);
 
 			if(slack(edge,nf) == 0)
 			{
@@ -340,7 +341,7 @@ void dot::feasible_tree(net_flow<T> &nf)
 		nf.cut_values.clear();
 		dfs(nf.lambda.begin()->first);
 
-		assert(tree.size() <= nf.nodes.size());
+		ensure(tree.size() <= nf.nodes.size());
 		if(tree.size() == nf.nodes.size())
 			break;
 
@@ -348,7 +349,7 @@ void dot::feasible_tree(net_flow<T> &nf)
 		unsigned int slack;
 		int delta;
 
-		assert(min_slacks.size());
+		ensure(min_slacks.size());
 		min_slacks.sort([&](const std::tuple<node,node,unsigned int,int> &a, const std::tuple<node,node,unsigned int,int> &b)
 				{ return std::get<2>(a) < std::get<2>(b); });
 
@@ -381,8 +382,8 @@ int dot::slack(const std::pair<typename graph_traits<T>::node_type,typename grap
 template<typename T>
 void dot::swap(const std::pair<typename graph_traits<T>::node_type,typename graph_traits<T>::node_type> &cut, const std::pair<typename graph_traits<T>::node_type,typename graph_traits<T>::node_type> &min_edge, net_flow<T> &nf)
 {
-	assert(nf.cut_values.erase(cut));
-	assert(nf.cut_values.insert(make_pair(min_edge,0)).second);
+	ensure(nf.cut_values.erase(cut));
+	ensure(nf.cut_values.insert(make_pair(min_edge,0)).second);
 }
 
 template<typename T>
@@ -450,7 +451,7 @@ dot::net_flow<T> dot::preprocess(T graph, const std::unordered_map<typename grap
 	if(has_entry(graph))
 	{
 		node r = entry(graph);
-		assert(ret.nodes.count(r));
+		ensure(ret.nodes.count(r));
 		dfs(r,0);
 	}
 
@@ -498,10 +499,10 @@ dot::net_flow<T> dot::preprocess(T graph, const std::unordered_map<typename grap
 		}
 	});
 
-	assert(ret.omega.size() == ret.edges_by_head.size());
-	assert(ret.omega.size() == ret.edges_by_tail.size());
-	assert(ret.delta.size() == ret.edges_by_head.size());
-	assert(ret.delta.size() == ret.edges_by_tail.size());
+	ensure(ret.omega.size() == ret.edges_by_head.size());
+	ensure(ret.omega.size() == ret.edges_by_tail.size());
+	ensure(ret.delta.size() == ret.edges_by_head.size());
+	ensure(ret.delta.size() == ret.edges_by_tail.size());
 
 	return ret;
 }
@@ -584,7 +585,7 @@ void dot::nf_solve(std::function<void(dot::net_flow<T>&)> bal, dot::net_flow<T> 
 			++i;
 		}
 
-		assert(min_edge != nf.edges_by_tail.end() && min_slack >= 0);
+		ensure(min_edge != nf.edges_by_tail.end() && min_slack >= 0);
 
 		// swap edges
 		swap(cut,*min_edge,nf);
@@ -609,7 +610,7 @@ void dot::nf_solve(std::function<void(dot::net_flow<T>&)> bal, dot::net_flow<T> 
 				}
 			};
 
-			assert(adjusted.insert(n).second);
+			ensure(adjusted.insert(n).second);
 
 			std::for_each(p.first,p.second,op);
 			std::for_each(q.first,q.second,op);
@@ -619,7 +620,7 @@ void dot::nf_solve(std::function<void(dot::net_flow<T>&)> bal, dot::net_flow<T> 
 		adjust(min_edge->second);
 		cut_values(nf);
 
-		assert(nf.lambda.size() == nf.nodes.size());
+		ensure(nf.lambda.size() == nf.nodes.size());
 
 		leave_edge = std::find_if(nf.cut_values.begin(),nf.cut_values.end(),[&](const std::pair<std::pair<node,node>,int> &p)
 			{ return p.second < 0; });

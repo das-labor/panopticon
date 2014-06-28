@@ -11,6 +11,8 @@
 
 #include <boost/iterator/indirect_iterator.hpp>
 
+#include <panopticon/ensure.hh>
+
 #pragma once
 
 namespace po
@@ -180,7 +182,7 @@ namespace po
 
 			fn(*i._adaptee);
 
-			assert(tmp->size() == visited.size() && visited.size() == t._items.size());
+			ensure(tmp->size() == visited.size() && visited.size() == t._items.size());
 			return std::make_pair(const_iterator(tmp->begin(),&t._items,tmp),const_iterator(tmp->end(),&t._items,tmp));
 		}
 

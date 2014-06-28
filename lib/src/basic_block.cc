@@ -2,7 +2,6 @@
 #include <functional>
 #include <set>
 #include <iostream>
-#include <cassert>
 
 #include <panopticon/basic_block.hh>
 
@@ -49,7 +48,7 @@ guard guard::negation(void) const
 			case relation::SGrtr: rels.emplace_back(relation(rel.operand1,relation::SLeq,rel.operand2)); break;
 			case relation::Eq: rels.emplace_back(relation(rel.operand1,relation::Neq,rel.operand2)); break;
 			case relation::Neq: rels.emplace_back(relation(rel.operand1,relation::Eq,rel.operand2)); break;
-			default: assert(false);
+			default: ensure(false);
 		}
 	});
 
@@ -70,7 +69,7 @@ string po::pretty(relation::Relcode r)
 		case relation::SGrtr: return " >ₛ ";
 		case relation::Eq: 		return " = ";
 		case relation::Neq: 	return " ≠ ";
-		default: assert(false);
+		default: ensure(false);
 	}
 }
 
@@ -121,7 +120,7 @@ basic_block* po::unmarshal(const uuid& u, const rdf::storage& store)
 	rdf::node node = rdf::iri(u);
 	rdf::statements mnes = store.find(node,rdf::ns_po("include"));
 
-	assert(mnes.size());
+	ensure(mnes.size());
 	basic_block *ret = new basic_block();
 	std::list<mnemonic> mne_lst;
 
@@ -231,7 +230,7 @@ po::guard* po::unmarshal(const po::uuid& u, const po::rdf::storage& store)
 		else if(code == rdf::ns_po("not-equal"))
 			return relation{op1,relation::Neq,op2};
 		else
-			assert(false);
+			ensure(false);
 	});
 
 	return new guard{rels};
@@ -275,7 +274,7 @@ rdf::statements po::marshal(const guard* g, const uuid& uu)
 			case relation::SGrtr: ret.emplace_back(rn,rdf::ns_po("relcode"),rdf::ns_po("s-greater")); break;
 			case relation::Eq: 		ret.emplace_back(rn,rdf::ns_po("relcode"),rdf::ns_po("equal")); break;
 			case relation::Neq: 	ret.emplace_back(rn,rdf::ns_po("relcode"),rdf::ns_po("not-equal")); break;
-			default: assert(false);
+			default: ensure(false);
 		}
 	}
 

@@ -236,7 +236,7 @@ list<statement> storage::all(void) const
 	list<statement> ret;
 
 	kyotocabinet::DB::Cursor* cur = _meta.cursor();
-	assert(cur);
+	ensure(cur);
 	cur->jump();
 
 	string k,v;
@@ -462,7 +462,7 @@ pair<size_t,storage::iter> storage::decode_varint(iter b, iter e)
 	size_t ret = 0;
 	unsigned int x = 0;
 
-	assert(b != e);
+	ensure(b != e);
 	while(b != e)
 	{
 		x = static_cast<unsigned int>(*b++);

@@ -4,9 +4,10 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <cstdint>
-#include <cassert>
 #include <memory>
 #include <iostream>
+
+#include <panopticon/ensure.hh>
 
 namespace dot
 {
@@ -194,7 +195,7 @@ namespace dot
 	template<typename T>
 	node_adaptor<T> entry(graph_adaptor<T> t)
 	{
-		assert(false);
+		ensure(false);
 		return *t.nodes->begin();
 	}
 }

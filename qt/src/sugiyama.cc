@@ -175,12 +175,12 @@ void Sugiyama::updateEdge(QObject *obj)
 			qWarning() << "Edge between unknown nodes";
 		}
 
-		assert(width.connectNotifySignal(this,SLOT(update())));
-		assert(color.connectNotifySignal(this,SLOT(update())));
-		assert(from.connectNotifySignal(&_mapper,SLOT(map())));
-		assert(to.connectNotifySignal(&_mapper,SLOT(map())));
-		assert(head.connectNotifySignal(&_mapper,SLOT(map())));
-		assert(tail.connectNotifySignal(&_mapper,SLOT(map())));
+		ensure(width.connectNotifySignal(this,SLOT(update())));
+		ensure(color.connectNotifySignal(this,SLOT(update())));
+		ensure(from.connectNotifySignal(&_mapper,SLOT(map())));
+		ensure(to.connectNotifySignal(&_mapper,SLOT(map())));
+		ensure(head.connectNotifySignal(&_mapper,SLOT(map())));
+		ensure(tail.connectNotifySignal(&_mapper,SLOT(map())));
 	}
 	else
 		qWarning() << "Edge" << var << "has no attribute";
@@ -188,7 +188,7 @@ void Sugiyama::updateEdge(QObject *obj)
 
 void Sugiyama::paint(QPainter *p)
 {
-	assert(p);
+	ensure(p);
 	p->save();
 
 	for(auto e: iters(po::edges(graph())))
@@ -277,7 +277,7 @@ bool dot::has_entry<SugiyamaInterface>(SugiyamaInterface g)
 template<>
 dot::graph_traits<SugiyamaInterface>::node_type dot::entry<SugiyamaInterface>(SugiyamaInterface g)
 {
-	assert(false);
+	ensure(false);
 	return *po::vertices((*g)->graph()).first;
 }
 
@@ -326,7 +326,7 @@ void dot::set_segments(dot::graph_traits<SugiyamaInterface>::edge_type e, const 
 		QPointF y(std::prev(segs.end())->first,std::prev(segs.end())->second);
 		angles.push_back(QLineF(x,y).angle());
 
-		assert(angles.size() == segs.size());
+		ensure(angles.size() == segs.size());
 
 		size_t idx = 0;
 		while(idx < segs.size() - 1)
@@ -456,7 +456,7 @@ QLineF Sugiyama::contactVector(QQuickItem *itm, const QPainterPath& path) const
 				QLineF normal = ln.normalVector().translated(b_ptn - ln.p1());
 				QPointF cut_ptn;
 
-				assert(ln.intersect(normal,&cut_ptn) != QLineF::NoIntersection);
+				ensure(ln.intersect(normal,&cut_ptn) != QLineF::NoIntersection);
 				if(!bb.contains(cut_ptn))
 					return QLineF(normal.p1(),ln.p1()).length();
 				else
