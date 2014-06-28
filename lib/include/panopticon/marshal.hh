@@ -1,6 +1,5 @@
 #include <sstream>
 #include <string>
-#include <mutex>
 #include <unordered_map>
 #include <list>
 #include <memory>

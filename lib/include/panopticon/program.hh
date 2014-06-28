@@ -1,7 +1,6 @@
 #include <iostream>
 #include <memory>
 #include <unordered_set>
-#include <mutex>
 
 #include <panopticon/procedure.hh>
 #include <panopticon/disassembler.hh>

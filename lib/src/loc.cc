@@ -3,11 +3,20 @@
 using namespace po;
 
 std::unordered_map<uuid,std::pair<marshal_poly,marshal_poly>> po::dirty_locations;
+
+#ifdef __MINGW32__
+boost::mutex po::dirty_locations_mutex;
+#else
 std::mutex po::dirty_locations_mutex;
+#endif
 
 void po::save_point(rdf::storage &store)
 {
-	std::lock_guard<std::mutex> g(dirty_locations_mutex);
+#ifdef __MINGW32__
+	std::lock_guard<mutex::mutex> guard(dirty_locations_mutex);
+#else
+	std::lock_guard<std::mutex> guard(dirty_locations_mutex);
+#endif
 
 	for(const std::pair<uuid,std::pair<marshal_poly,marshal_poly>> &p: dirty_locations)
 	{

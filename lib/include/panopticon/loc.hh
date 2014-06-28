@@ -11,6 +11,10 @@
 #include <boost/variant.hpp>
 #include <boost/uuid/nil_generator.hpp>
 
+#ifdef __MINGW32__
+#include <boost/mutex.hpp>
+#endif
+
 #include <panopticon/marshal.hh>
 #include <panopticon/ensure.hh>
 
@@ -22,7 +26,12 @@ namespace po
 
 	// pair<to delete,to write>
 	extern std::unordered_map<uuid,std::pair<marshal_poly,marshal_poly>> dirty_locations;
+
+#ifdef __MINGW32__
+	extern boost::mutex dirty_locations_mutex;
+#else
 	extern std::mutex dirty_locations_mutex;
+#endif
 
 	template<typename T>
 	struct loc_control
@@ -90,7 +99,11 @@ namespace po
 			std::shared_ptr<loc_control<T>> cb = static_cast<const D*>(this)->control();
 
 			{
+#ifdef __MINGW32__
+				std::lock_guard<mutex::mutex> guard(dirty_locations_mutex);
+#else
 				std::lock_guard<std::mutex> guard(dirty_locations_mutex);
+#endif
 				marshal_poly prev;
 
 				if(dirty_locations.count(_uuid))
@@ -115,7 +128,11 @@ namespace po
 			std::shared_ptr<loc_control<T>> cb = static_cast<const D*>(this)->control();
 
 			{
+#ifdef __MINGW32__
+				std::lock_guard<mutex::mutex> guard(dirty_locations_mutex);
+#else
 				std::lock_guard<std::mutex> guard(dirty_locations_mutex);
+#endif
 				marshal_poly prev;
 
 				if(dirty_locations.count(_uuid))
@@ -153,7 +170,11 @@ namespace po
 		explicit loc(T* t) : loc(uuid::generator(),t) {}
 		loc(const uuid &u, T* t) : basic_loc<T,loc<T>>(u), _control(new loc_control<T>(t))
 		{
+#ifdef __MINGW32__
+			std::lock_guard<mutex::mutex> guard(dirty_locations_mutex);
+#else
 			std::lock_guard<std::mutex> guard(dirty_locations_mutex);
+#endif
 			ensure(dirty_locations.emplace(tag(),std::make_pair(make_marshal_poly(std::shared_ptr<loc_control<T>>(),tag()),make_marshal_poly(_control,tag()))).second);
 		}
 		loc(const uuid &u, const rdf::storage &s) : basic_loc<T,loc<T>>(u), _control(new loc_control<T>(s)) {}
