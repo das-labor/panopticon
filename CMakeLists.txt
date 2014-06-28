@@ -52,7 +52,7 @@ elseif("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
 	include(PanopticonTest)
 
 	# compile and link with coverage info
-	if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" AND ${UNIX})
+	if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" AND "${UNIX}")
 		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --coverage")
 	else()
 		message(STATUS "Coverage testing disabled when not using GCC on Unix")
