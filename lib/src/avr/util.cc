@@ -11,12 +11,12 @@ using namespace po::avr;
 using namespace po::dsl;
 
 // registers
-const variable r0 = "r0"_v8, r1 = "r1"_v8, r2 = "r2"_v8, r3 = "r3"_v8, r4 = "r4"_v8, r5 = "r5"_v8, r6 = "r6"_v8,
-							 r7 = "r7"_v8, r8 = "r8"_v8, r9 = "r9"_v8, r10 = "r10"_v8, r11 = "r11"_v8, r12 = "r12"_v8,
-							 r13 = "r13"_v8, r14 = "r14"_v8, r15 = "r15"_v8, r16 = "r16"_v8, r17 = "r17"_v8, r18 = "r18"_v8,
-							 r19 = "r19"_v8, r20 = "r20"_v8, r21 = "r21"_v8, r22 = "r22"_v8, r23 = "r23"_v8, r24 = "r24"_v8,
-							 r25 = "r25"_v8, r26 = "r26"_v8, r27 = "r27"_v8, r28 = "r28"_v8, r29 = "r29"_v8, r30 = "r30"_v8,
-							 r31 = "r31"_v1, I = "I"_v1, T = "T"_v1, H = "H"_v1, S = "S"_v1, V = "V"_v1, N = "N"_v1, Z = "Z"_v1, C = "C"_v1;
+const variable r0 = variable("r0",8), r1 = variable("r1",8), r2 = variable("r2",8), r3 = variable("r3",8), r4 = variable("r4",8), r5 = variable("r5",8), r6 = variable("r6",8),
+							 r7 = variable("r7",8), r8 = variable("r8",8), r9 = variable("r9",8), r10 = variable("r10",8), r11 = variable("r11",8), r12 = variable("r12",8),
+							 r13 = variable("r13",8), r14 = variable("r14",8), r15 = variable("r15",8), r16 = variable("r16",8), r17 = variable("r17",8), r18 = variable("r18",8),
+							 r19 = variable("r19",8), r20 = variable("r20",8), r21 = variable("r21",8), r22 = variable("r22",8), r23 = variable("r23",8), r24 = variable("r24",8),
+							 r25 = variable("r25",8), r26 = variable("r26",8), r27 = variable("r27",8), r28 = variable("r28",8), r29 = variable("r29",8), r30 = variable("r30",8),
+							 r31 = variable("r31",1), I = variable("I",1), T = variable("T",1), H = variable("H",1), S = variable("S",1), V = variable("V",1), N = variable("N",1), Z = variable("Z",1), C = variable("C",1);
 
 variable po::avr::decode_reg(unsigned int r)
 {
