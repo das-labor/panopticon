@@ -406,7 +406,7 @@ rvalue concrete_interpreter::operator()(const univ_phi<rvalue>& a)
 	}
 }
 
-rvalue concrete_interpreter::operator()(const int_lift<rvalue>& a)
+rvalue concrete_interpreter::operator()(const logic_lift<rvalue>& a)
 {
 	return normalize(a.right);
 }

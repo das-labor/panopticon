@@ -1,4 +1,5 @@
 #include <panopticon/mnemonic.hh>
+#include <panopticon/architecture.hh>
 
 #pragma once
 
@@ -31,6 +32,8 @@ namespace po
 		lvalue and_b(lvalue a, rvalue op1, rvalue op2)		{ return named(logic_and<rvalue>{op1,op2},a); };
 		/// @returns \c a and emits an IL instruction for <tt>a := op1 ∨ op2</tt>
 		lvalue or_b(lvalue a, rvalue op1, rvalue op2)			{ return named(logic_or<rvalue>{op1,op2},a); };
+		/// @returns \c a and emits an IL instruction for <tt>a := (int)op</tt>
+		lvalue lift_b(lvalue a, rvalue op)								{ return named(logic_lift<rvalue>{op},a); };
 		/// @returns \c a and emits an IL instruction for <tt>a := ¬op</tt>
 		lvalue not_b(lvalue a, rvalue op)									{ return named(logic_neg<rvalue>{op},a); };
 		/// @returns \c a and emits an IL instruction for <tt>a := op</tt>
@@ -54,9 +57,9 @@ namespace po
 		/// @returns \c a and emits an IL instruction for <tt>a := op1 == op2</tt>
 		lvalue equal_i(lvalue a, rvalue op1, rvalue op2)	{ return named(int_equal<rvalue>{op1,op2},a); };
 		/// @returns \c a and emits an IL instruction for <tt>a := op1 < op2</tt>
-		lvalue less_i(lvalue a, rvalue op1, rvalue op2)	{ return named(int_less<rvalue>{op1,op2},a); };
+		lvalue less_i(lvalue a, rvalue op1, rvalue op2)		{ return named(int_less<rvalue>{op1,op2},a); };
 		/// @returns \c a and emits an IL instruction for <tt>a := op()</tt>
-		lvalue call_i(lvalue a, rvalue op)									{ return named(int_call<rvalue>{op},a); };
+		lvalue call_i(lvalue a, rvalue op)								{ return named(int_call<rvalue>{op},a); };
 
 		/// @returns a new temporary \c tmp and emits an IL instruction for <tt>tmp := op1 ∧ op2</tt>
 		lvalue and_b(rvalue op1, rvalue op2)		{ return anonymous(logic_and<rvalue>{op1,op2}); };
@@ -64,6 +67,8 @@ namespace po
 		lvalue or_b(rvalue op1, rvalue op2)			{ return anonymous(logic_or<rvalue>{op1,op2}); };
 		/// @returns a new temporary \c tmp and emits an IL instruction for <tt>tmp := ¬op</tt>
 		lvalue not_b(rvalue op)									{ return anonymous(logic_neg<rvalue>{op}); };
+		/// @returns a new temporary \c tmp and emits an IL instruction for <tt>tmp := (int)op</tt>
+		lvalue lift_b(rvalue op)								{ return anonymous(logic_lift<rvalue>{op}); };
 		/// @returns a new temporary \c tmp and emits an IL instruction for <tt>tmp := op</tt>
 		lvalue assign(rvalue op)								{ return anonymous(univ_nop<rvalue>{op}); };
 		/// @returns a new temporary \c tmp and emits an IL instruction for <tt>tmp := op1 ∧ op2</tt>
@@ -83,11 +88,11 @@ namespace po
 		/// @returns a new temporary \c tmp and emits an IL instruction for <tt>tmp := op1 % op2</tt>
 		lvalue mod_i(rvalue op1, rvalue op2)		{ return anonymous(int_mod<rvalue>{op1,op2}); };
 		/// @returns a new temporary \c tmp and emits an IL instruction for <tt>tmp := op1 == op2</tt>
-		lvalue equal_i(rvalue op1, rvalue op2)		{ return anonymous(int_equal<rvalue>{op1,op2}); };
+		lvalue equal_i(rvalue op1, rvalue op2)	{ return anonymous(int_equal<rvalue>{op1,op2}); };
 		/// @returns a new temporary \c tmp and emits an IL instruction for <tt>tmp := op1 < op2</tt>
 		lvalue less_i(rvalue op1, rvalue op2)		{ return anonymous(int_less<rvalue>{op1,op2}); };
 		/// @returns a new temporary \c tmp and emits an IL instruction for <tt>tmp := op()</tt>
-		lvalue call_i(rvalue op)									{ return anonymous(int_call<rvalue>{op}); };
+		lvalue call_i(rvalue op)								{ return anonymous(int_call<rvalue>{op}); };
 
 	protected:
 		/**
@@ -141,7 +146,18 @@ namespace po
 		struct callback_list
 		{
 			template<typename T>
-			callback_list(const code_generator<T>& cg);
+			callback_list(code_generator<T>& cg)
+			: add_i(std::bind((lvalue(code_generator<T>::*)(rvalue,rvalue))&code_generator<T>::add_i,&cg,std::placeholders::_1,std::placeholders::_2)),
+				sub_i(std::bind((lvalue(code_generator<T>::*)(rvalue,rvalue))&code_generator<T>::sub_i,&cg,std::placeholders::_1,std::placeholders::_2)),
+				mul_i(std::bind((lvalue(code_generator<T>::*)(rvalue,rvalue))&code_generator<T>::mul_i,&cg,std::placeholders::_1,std::placeholders::_2)),
+				div_i(std::bind((lvalue(code_generator<T>::*)(rvalue,rvalue))&code_generator<T>::div_i,&cg,std::placeholders::_1,std::placeholders::_2)),
+				mod_i(std::bind((lvalue(code_generator<T>::*)(rvalue,rvalue))&code_generator<T>::mod_i,&cg,std::placeholders::_1,std::placeholders::_2)),
+				and_i(std::bind((lvalue(code_generator<T>::*)(rvalue,rvalue))&code_generator<T>::and_i,&cg,std::placeholders::_1,std::placeholders::_2)),
+				or_i(std::bind((lvalue(code_generator<T>::*)(rvalue,rvalue))&code_generator<T>::or_i,&cg,std::placeholders::_1,std::placeholders::_2)),
+				xor_i(std::bind((lvalue(code_generator<T>::*)(rvalue,rvalue))&code_generator<T>::xor_i,&cg,std::placeholders::_1,std::placeholders::_2)),
+				less_i(std::bind((lvalue(code_generator<T>::*)(rvalue,rvalue))&code_generator<T>::less_i,&cg,std::placeholders::_1,std::placeholders::_2)),
+				equal_i(std::bind((lvalue(code_generator<T>::*)(rvalue,rvalue))&code_generator<T>::equal_i,&cg,std::placeholders::_1,std::placeholders::_2))
+			{}
 
 			std::function<rvalue(const rvalue&,const rvalue&)> add_i;
 			std::function<rvalue(const rvalue&,const rvalue&)> sub_i;
@@ -155,38 +171,38 @@ namespace po
 			std::function<rvalue(const rvalue&,const rvalue&)> equal_i;
 		};
 
-		thread_local boost::optional<callback_list> current_code_generator;
+		extern __thread callback_list* current_code_generator;
 
-		rvalue operator+(const rvalue& a, const rvalue& b) { return current_code_generator->add_i(a,b); }
-		rvalue operator+(unsigned long long a, const rvalue& b) { return constant(a) + b; }
-		rvalue operator+(const rvalue& a, unsigned long long b) { return a + constant(b); }
-		rvalue operator-(const rvalue& a, const rvalue& b) { return current_code_generator->sub_i(a,b); }
-		rvalue operator-(unsigned long long a, const rvalue& b) { return constant(a) - b; }
-		rvalue operator-(const rvalue& a, unsigned long long b) { return a - constant(b); }
-		rvalue operator*(const rvalue& a, const rvalue& b) { return current_code_generator->mul_i(a,b); }
-		rvalue operator*(unsigned long long a, const rvalue& b) { return constant(a) * b; }
-		rvalue operator*(const rvalue& a, unsigned long long b) { return a * constant(b); }
-		rvalue operator/(const rvalue& a, const rvalue& b) { return current_code_generator->div_i(a,b); }
-		rvalue operator/(unsigned long long a, const rvalue& b) { return constant(a) / b; }
-		rvalue operator/(const rvalue& a, unsigned long long b) { return a / constant(b); }
-		rvalue operator%(const rvalue& a, const rvalue& b) { return current_code_generator->mod_i(a,b); }
-		rvalue operator%(unsigned long long a, const rvalue& b) { return constant(a) % b; }
-		rvalue operator%(const rvalue& a, unsigned long long b) { return a % constant(b); }
-		rvalue operator&(const rvalue& a, const rvalue& b) { return current_code_generator->and_i(a,b); }
-		rvalue operator&(unsigned long long a, const rvalue& b) { return constant(a) & b; }
-		rvalue operator&(const rvalue& a, unsigned long long b) { return a & constant(b); }
-		rvalue operator|(const rvalue& a, const rvalue& b) { return current_code_generator->or_i(a,b); }
-		rvalue operator|(unsigned long long a, const rvalue& b) { return constant(a) | b; }
-		rvalue operator|(const rvalue& a, unsigned long long b) { return a | constant(b); }
-		rvalue operator^(const rvalue& a, const rvalue& b) { return current_code_generator->xor_i(a,b); }
-		rvalue operator^(unsigned long long a, const rvalue& b) { return constant(a) ^ b; }
-		rvalue operator^(const rvalue& a, unsigned long long b) { return a ^ constant(b); }
+		inline rvalue operator+(const rvalue& a, const rvalue& b) { return current_code_generator->add_i(a,b); }
+		inline rvalue operator+(unsigned long long a, const rvalue& b) { return constant(a) + b; }
+		inline rvalue operator+(const rvalue& a, unsigned long long b) { return a + constant(b); }
+		inline rvalue operator-(const rvalue& a, const rvalue& b) { return current_code_generator->sub_i(a,b); }
+		inline rvalue operator-(unsigned long long a, const rvalue& b) { return constant(a) - b; }
+		inline rvalue operator-(const rvalue& a, unsigned long long b) { return a - constant(b); }
+		inline rvalue operator*(const rvalue& a, const rvalue& b) { return current_code_generator->mul_i(a,b); }
+		inline rvalue operator*(unsigned long long a, const rvalue& b) { return constant(a) * b; }
+		inline rvalue operator*(const rvalue& a, unsigned long long b) { return a * constant(b); }
+		inline rvalue operator/(const rvalue& a, const rvalue& b) { return current_code_generator->div_i(a,b); }
+		inline rvalue operator/(unsigned long long a, const rvalue& b) { return constant(a) / b; }
+		inline rvalue operator/(const rvalue& a, unsigned long long b) { return a / constant(b); }
+		inline rvalue operator%(const rvalue& a, const rvalue& b) { return current_code_generator->mod_i(a,b); }
+		inline rvalue operator%(unsigned long long a, const rvalue& b) { return constant(a) % b; }
+		inline rvalue operator%(const rvalue& a, unsigned long long b) { return a % constant(b); }
+		inline rvalue operator&(const rvalue& a, const rvalue& b) { return current_code_generator->and_i(a,b); }
+		inline rvalue operator&(unsigned long long a, const rvalue& b) { return constant(a) & b; }
+		inline rvalue operator&(const rvalue& a, unsigned long long b) { return a & constant(b); }
+		inline rvalue operator|(const rvalue& a, const rvalue& b) { return current_code_generator->or_i(a,b); }
+		inline rvalue operator|(unsigned long long a, const rvalue& b) { return constant(a) | b; }
+		inline rvalue operator|(const rvalue& a, unsigned long long b) { return a | constant(b); }
+		inline rvalue operator^(const rvalue& a, const rvalue& b) { return current_code_generator->xor_i(a,b); }
+		inline rvalue operator^(unsigned long long a, const rvalue& b) { return constant(a) ^ b; }
+		inline rvalue operator^(const rvalue& a, unsigned long long b) { return a ^ constant(b); }
 
-		rvalue less(const rvalue& a, const rvalue& b) { return current_code_generator->less_i(a,b); }
-		rvalue less(const rvalue& a, unsigned long long b) { return less(a,constant(b)); }
-		rvalue less(unsigned long long a, const rvalue& b) { return less(constant(a),b); }
-		rvalue equal(const rvalue& a, const rvalue& b) { return current_code_generator->equal_i(a,b); }
-		rvalue equal(const rvalue& a, unsigned long long b) { return equal(a,constant(b)); }
-		rvalue equal(unsigned long long a, const rvalue& b) { return equal(constant(a),b); }
+		inline rvalue less(const rvalue& a, const rvalue& b) { return current_code_generator->less_i(a,b); }
+		inline rvalue less(const rvalue& a, unsigned long long b) { return less(a,constant(b)); }
+		inline rvalue less(unsigned long long a, const rvalue& b) { return less(constant(a),b); }
+		inline rvalue equal(const rvalue& a, const rvalue& b) { return current_code_generator->equal_i(a,b); }
+		inline rvalue equal(const rvalue& a, unsigned long long b) { return equal(a,constant(b)); }
+		inline rvalue equal(unsigned long long a, const rvalue& b) { return equal(constant(a),b); }
 	}
 }

@@ -11,9 +11,10 @@
 #include <type_traits>
 #include <cstring>
 
-#include <panopticon/code_generator.hh>
 #include <panopticon/mnemonic.hh>
 #include <panopticon/basic_block.hh>
+#include <panopticon/code_generator.hh>
+#include <panopticon/architecture.hh>
 
 #pragma once
 
@@ -46,24 +47,6 @@
 
 namespace po
 {
-	template<typename T>
-	struct architecture_traits
-	{
-		typedef void token_type;	///< Smallest integer type that can hold one token
-	};
-
-	/// Generate new temporary variable. Must not collide with any previous temporaries.
-	template<typename T>
-	lvalue temporary(T);
-
-	/// List of all registers supported by the architecture.
-	template<typename T>
-	const std::vector<std::string>& registers(T);
-
-	/// Width of the register @arg n in bits. Allowed values for n are returned by registers<T>()
-	template<typename T>
-	uint8_t width(std::string n, T);
-
 	/**
 	 * @brief Semantic state passing information about the tokens.
 	 *
@@ -78,8 +61,8 @@ namespace po
 	template<typename Tag>
 	struct sem_state
 	{
-		typedef typename architecture_traits<Tag>::token_type token;
-		typedef typename std::vector<typename architecture_traits<Tag>::token_type>::iterator tokiter;
+		using token = typename architecture_traits<Tag>::token_type;
+		using tokiter = typename std::vector<typename architecture_traits<Tag>::token_type>::iterator;
 
 		/**
 		 * Construct a sem_state to analyze a token stream starting at address @c a
@@ -455,7 +438,7 @@ namespace po
 
 		try
 		{
-			dsl::current_code_generator = dsl::callback_list(cg);
+			dsl::current_code_generator = new dsl::callback_list(cg);
 
 			if(fmt.empty())
 				fmt = accumulate(ops.begin(),ops.end(),fmt,[](const std::string &acc, const rvalue &x)
@@ -470,11 +453,16 @@ namespace po
 		}
 		catch(...)
 		{
-			dsl::current_code_generator = boost::none;
+			if(dsl::current_code_generator)
+				delete dsl::current_code_generator;
+			dsl::current_code_generator = 0;
+
 			throw;
 		}
 
-		dsl::current_code_generator = boost::none;
+		if(dsl::current_code_generator)
+			delete dsl::current_code_generator;
+		dsl::current_code_generator = 0;
 	}
 
 	template<typename Tag>

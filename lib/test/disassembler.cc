@@ -3,8 +3,9 @@
 #include <iterator>
 
 #include <gtest/gtest.h>
-#include <panopticon/disassembler.hh>
+#include <panopticon/architecture.hh>
 #include "architecture.hh"
+#include <panopticon/disassembler.hh>
 
 class disassembler : public ::testing::Test
 {

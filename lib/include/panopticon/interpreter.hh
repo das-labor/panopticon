@@ -196,6 +196,7 @@ namespace po
 		result_type operator()(const logic_neg<rvalue>& a);
 		result_type operator()(const logic_impl<rvalue>& a);
 		result_type operator()(const logic_equiv<rvalue>& a);
+		result_type operator()(const logic_lift<rvalue>& a);
 		result_type operator()(const int_add<rvalue>& a);
 		result_type operator()(const int_sub<rvalue>& a);
 		result_type operator()(const int_mul<rvalue>& a);
@@ -207,7 +208,6 @@ namespace po
 		result_type operator()(const int_or<rvalue>& a);
 		result_type operator()(const int_xor<rvalue>& a);
 		result_type operator()(const int_call<rvalue>& a);
-		result_type operator()(const int_lift<rvalue>& a);
 		result_type operator()(const univ_nop<rvalue>& a);
 		result_type operator()(const univ_phi<rvalue>& a);
 

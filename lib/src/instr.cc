@@ -72,10 +72,11 @@ std::string po::pretty(const instr::operation& i)
 		std::string operator()(const logic_neg<rvalue>&) const { return "¬"; }
 		std::string operator()(const logic_impl<rvalue>&) const { return "→"; }
 		std::string operator()(const logic_equiv<rvalue>&) const { return "↔"; }
+		std::string operator()(const logic_lift<rvalue>&) const { return "int "; }
 
 		std::string operator()(const int_and<rvalue>&) const { return "∧"; }
 		std::string operator()(const int_or<rvalue>&) const { return "∨"; }
-		std::string operator()(const int_neg<rvalue>&) const { return "¬"; }
+		std::string operator()(const int_xor<rvalue>&) const { return "⊕"; }
 		std::string operator()(const int_add<rvalue>&) const { return "+"; }
 		std::string operator()(const int_sub<rvalue>&) const { return "-"; }
 		std::string operator()(const int_mul<rvalue>&) const { return "×"; }
@@ -83,7 +84,6 @@ std::string po::pretty(const instr::operation& i)
 		std::string operator()(const int_mod<rvalue>&) const { return "%"; }
 		std::string operator()(const int_less<rvalue>&) const { return "<"; }
 		std::string operator()(const int_equal<rvalue>&) const { return "="; }
-		std::string operator()(const int_lift<rvalue>&) const { return "int "; }
 		std::string operator()(const int_call<rvalue>&) const { return "call "; }
 
 		std::string operator()(const univ_phi<rvalue>&) const { return "ϕ"; }
@@ -103,10 +103,11 @@ std::string po::symbolic(const instr::operation& i)
 		std::string operator()(const logic_neg<rvalue>&) const { return "logic-negation"; }
 		std::string operator()(const logic_impl<rvalue>&) const { return "logic-implication"; }
 		std::string operator()(const logic_equiv<rvalue>&) const { return "logic-equivalence"; }
+		std::string operator()(const logic_lift<rvalue>&) const { return "logic-lift-boolean"; }
 
 		std::string operator()(const int_and<rvalue>&) const { return "integer-bitwise-and"; }
 		std::string operator()(const int_or<rvalue>&) const { return "integer-bitwise-or"; }
-		std::string operator()(const int_neg<rvalue>&) const { return "integer-bitwise-negation"; }
+		std::string operator()(const int_xor<rvalue>&) const { return "integer-bitwise-xor"; }
 		std::string operator()(const int_add<rvalue>&) const { return "integer-addition"; }
 		std::string operator()(const int_sub<rvalue>&) const { return "integer-subtraction"; }
 		std::string operator()(const int_mul<rvalue>&) const { return "integer-multiplication"; }
@@ -114,7 +115,6 @@ std::string po::symbolic(const instr::operation& i)
 		std::string operator()(const int_mod<rvalue>&) const { return "integer-modulo"; }
 		std::string operator()(const int_less<rvalue>&) const { return "integer-less-than"; }
 		std::string operator()(const int_equal<rvalue>&) const { return "integer-equal-to"; }
-		std::string operator()(const int_lift<rvalue>&) const { return "integer-lift-boolean"; }
 		std::string operator()(const int_call<rvalue>&) const { return "integer-call-to"; }
 
 		std::string operator()(const univ_phi<rvalue>&) const { return "universal-phi"; }
@@ -136,10 +136,11 @@ instr::operation po::from_symbolic(const std::string &s, const std::vector<rvalu
 		if(t == "logic-negation") return logic_neg<rvalue>{rv[0]};
 		if(t == "logic-implication") return logic_impl<rvalue>{rv[0],rv[1]};
 		if(t == "logic-equivalence") return logic_equiv<rvalue>{rv[0],rv[1]};
+		if(t == "logic-lift-boolean") return logic_lift<rvalue>{rv[0]};
 
 		if(t == "integer-bitwise-and") return int_and<rvalue>{rv[0],rv[1]};
 		if(t == "integer-bitwise-or") return int_or<rvalue>{rv[0],rv[1]};
-		if(t == "integer-bitwise-negation") return int_neg<rvalue>{rv[0]};
+		if(t == "integer-bitwise-xor") return int_xor<rvalue>{rv[0],rv[1]};
 		if(t == "integer-addition") return int_add<rvalue>{rv[0],rv[1]};
 		if(t == "integer-subtraction") return int_sub<rvalue>{rv[0],rv[1]};
 		if(t == "integer-multiplication") return int_mul<rvalue>{rv[0],rv[1]};
@@ -147,7 +148,6 @@ instr::operation po::from_symbolic(const std::string &s, const std::vector<rvalu
 		if(t == "integer-modulo") return int_mod<rvalue>{rv[0],rv[1]};
 		if(t == "integer-less-than") return int_less<rvalue>{rv[0],rv[1]};
 		if(t == "integer-equal-to") return int_equal<rvalue>{rv[0],rv[1]};
-		if(t == "integer-lift-boolean") return int_lift<rvalue>{rv[0]};
 		if(t == "integer-call-to") return int_call<rvalue>{rv[0]};
 
 		if(t == "universal-phi") return univ_phi<rvalue>{rv};

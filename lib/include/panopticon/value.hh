@@ -65,7 +65,7 @@ namespace po
 	/**
 	 * @brief Undefined value
 	 */
-	class undefined : boost::operators<undefined>
+	class undefined
 	{
 	public:
 		bool operator==(const undefined&) const;
@@ -82,7 +82,7 @@ namespace po
 	 * are shortcuts for constructing 1, 8, 16, 32, and 64 bit wide, unversioned
 	 * variables.
 	 */
-	class variable : boost::operators<variable>
+	class variable
 	{
 	public:
 		/**
@@ -115,7 +115,7 @@ namespace po
 	 * memory region, the number of bytes to read from this offset and the byte ordering
 	 * (endianess) to obey when saving it in a register.
 	 */
-	class memory : boost::operators<memory>
+	class memory
 	{
 	public:
 		memory(const memory &);

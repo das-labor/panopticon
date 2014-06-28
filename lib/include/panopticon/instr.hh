@@ -60,6 +60,7 @@ namespace po
 	template<typename Value> using logic_neg = unop<negation_symbol,logic_domain,logic_domain,Value>;
 	template<typename Value> using logic_impl = binop<implication_symbol,logic_domain,logic_domain,Value>;
 	template<typename Value> using logic_equiv = binop<equivalence_symbol,logic_domain,logic_domain,Value>;
+	template<typename Value> using logic_lift = unop<lift_symbol,logic_domain,integer_domain,Value>;
 
 	template<typename Value> using int_and = binop<and_symbol,integer_domain,integer_domain,Value>;
 	template<typename Value> using int_or = binop<inclusive_or_symbol,integer_domain,integer_domain,Value>;
@@ -71,7 +72,6 @@ namespace po
 	template<typename Value> using int_mod = binop<modulo_symbol,integer_domain,integer_domain,Value>;
 	template<typename Value> using int_less = binop<less_symbol,integer_domain,logic_domain,Value>;
 	template<typename Value> using int_equal = binop<equal_symbol,integer_domain,logic_domain,Value>;
-	template<typename Value> using int_lift = unop<lift_symbol,logic_domain,integer_domain,Value>;
 	template<typename Value> using int_call = unop<call_symbol,logic_domain,integer_domain,Value>;
 
 	template<typename Value> using univ_phi = naryop<phi_symbol,universe_domain,universe_domain,Value>;
@@ -106,6 +106,7 @@ namespace po
 		logic_neg<Value>,
 		logic_impl<Value>,
 		logic_equiv<Value>,
+		logic_lift<Value>,
 		univ_phi<Value>,
 		univ_nop<Value>,
 		int_and<Value>,
@@ -118,7 +119,6 @@ namespace po
 		int_mod<Value>,
 		int_less<Value>,
 		int_equal<Value>,
-		int_lift<Value>,
 		int_call<Value>
 	>;
 
