@@ -78,9 +78,10 @@ namespace po
 		template<typename Symbol,typename Domain,typename Codomain>
 		Value operator()(const binop<Symbol,Domain,Codomain,rvalue>& op)
 		{
-			basic_operation<Value> bop(binop<Symbol,Domain,Codomain,Value>{
+			binop<Symbol,Domain,Codomain,Value> bp{
 					normalize(op.left),
-					normalize(op.right)});
+					normalize(op.right)};
+			basic_operation<Value> bop(bp);
 			return boost::apply_visitor(_interpreter,bop);
 		}
 
@@ -89,7 +90,8 @@ namespace po
 		{
 			std::vector<Value> vec;
 			std::transform(op.operands.begin(),op.operands.end(),std::back_inserter(vec),[&](rvalue rv) { return normalize(rv); });
-			basic_operation<Value> bop{naryop<Symbol,Domain,Codomain,Value>{vec}};
+			naryop<Symbol,Domain,Codomain,Value> nop{vec}
+			basic_operation<Value> bop{nop};
 			return boost::apply_visitor(_interpreter,bop);
 		}
 
