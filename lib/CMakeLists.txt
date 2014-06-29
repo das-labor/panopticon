@@ -38,8 +38,8 @@ set(panopticon_FOUND ${panopticon_FOUND} PARENT_SCOPE)
 include_directories(${panopticon_INCLUDE_DIRS})
 link_directories(${panopticon_LIBRARY_DIRS})
 
-if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" OR
-	 "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+if(("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" AND UNIX) OR
+	("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang"))
 	add_definitions("-fPIC")
 endif()
 

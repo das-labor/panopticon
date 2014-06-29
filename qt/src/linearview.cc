@@ -111,23 +111,23 @@ void LinearView::selected(boost::optional<po::offset> cur, bool start_new)
 				else if(regIdx == sel->minimum().first)
 				{
 					if(regIdx == sel->anchor().first)
-						i->second->select(boost::make_optional(std::make_pair(sel->anchor().second,cur_del->region()->size() - 1)));
+						i->second->select(boost::make_optional(std::pair<po::offset,po::offset>(sel->anchor().second,cur_del->region()->size() - 1)));
 					else
-						i->second->select(boost::make_optional(std::make_pair(cur_del->region()->size() - 1,sel->cursor().second)));
+						i->second->select(boost::make_optional(std::pair<po::offset,po::offset>(cur_del->region()->size() - 1,sel->cursor().second)));
 				}
 				else if(regIdx == sel->maximum().first)
 				{
 					if(regIdx == sel->anchor().first)
-						i->second->select(boost::make_optional(std::make_pair(sel->anchor().second,null)));
+						i->second->select(boost::make_optional(std::pair<po::offset,po::offset>(sel->anchor().second,null)));
 					else
-						i->second->select(boost::make_optional(std::make_pair(null,sel->cursor().second)));
+						i->second->select(boost::make_optional(std::pair<po::offset,po::offset>(null,sel->cursor().second)));
 				}
 				else
 				{
 					if(sel->anchor().first < sel->cursor().first)
-						i->second->select(boost::make_optional(std::make_pair(null,cur_del->region()->size() - 1)));
+						i->second->select(boost::make_optional(std::pair<po::offset,po::offset>(null,cur_del->region()->size() - 1)));
 					else
-						i->second->select(boost::make_optional(std::make_pair(cur_del->region()->size() - 1,null)));
+						i->second->select(boost::make_optional(std::pair<po::offset,po::offset>(cur_del->region()->size() - 1,null)));
 				}
 			}
 			else

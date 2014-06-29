@@ -90,7 +90,7 @@ namespace po
 		{
 			std::vector<Value> vec;
 			std::transform(op.operands.begin(),op.operands.end(),std::back_inserter(vec),[&](rvalue rv) { return normalize(rv); });
-			naryop<Symbol,Domain,Codomain,Value> nop{vec}
+			naryop<Symbol,Domain,Codomain,Value> nop{vec};
 			basic_operation<Value> bop{nop};
 			return boost::apply_visitor(_interpreter,bop);
 		}
