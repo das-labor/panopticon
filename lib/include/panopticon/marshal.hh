@@ -65,12 +65,14 @@ namespace po
 		size_t size(void) const { return _size; }
 		const char* data(void) const { return _data; }
 		const uuid& tag(void) const { return _tag; }
+		const boost::filesystem::path& path(void) const { return _path; }
 
 	private:
 		size_t _size;
 		int _fd;
 		char* _data;
 		uuid _tag;
+		boost::filesystem::path _path;
 		std::atomic<unsigned long long>* _reference;
 	};
 
@@ -82,8 +84,6 @@ namespace po
 
 	namespace rdf
 	{
-		using shared_mmap = std::shared_ptr<void>;
-
 		struct iri
 		{
 			iri(const std::string&);
@@ -163,6 +163,7 @@ namespace po
 			bool insert(const node&, const node&, const node&);
 			bool remove(const statement& st);
 			bool remove(const node&, const node&, const node&);
+			bool register_blob(const mapped_file&);
 
 			bool has(const statement& st) const;
 			bool has(const node&, const node&, const node&) const;
@@ -172,6 +173,7 @@ namespace po
 			statement first(const node &s, const node &p) const;
 			int64_t count(void) const;
 			void snapshot(const boost::filesystem::path&) const;
+			mapped_file fetch_blob(const uuid&) const;
 
 			static std::string encode_node(const node& n);
 			static std::pair<node,iter> decode_node(iter, iter);
@@ -188,9 +190,11 @@ namespace po
 				Named = 'N'
 			};
 
+			void rewrite_blob_registry(void);
+
 			mutable PolyDB _meta; ///< subject/predicate/object
 			boost::filesystem::path _tempdir;
-			mutable std::unordered_map<std::string,shared_mmap> _blobs;
+			mutable std::list<mapped_file> _blobs;
 		};
 
 		inline node lit(const std::string& s) { return node(s,iri(XSD"string")); }

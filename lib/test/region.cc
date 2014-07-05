@@ -117,6 +117,12 @@ TEST_F(region,read_one_layer)
 TEST_F(region,marshal)
 {
 	po::region_loc r1 = po::region::undefined("test",128);
+	boost::filesystem::path p1 = boost::filesystem::unique_path(boost::filesystem::temp_directory_path() / "test-panop-%%%%-%%%%-%%%%");
+	std::ofstream s1(p1.string());
+
+	ASSERT_TRUE(s1.is_open());
+	s1 << "Hello, World" << std::flush;
+	s1.close();
 
 	r1.write().add(po::bound(1,8),po::layer_loc(new po::layer("anon 1",5)));
 	r1.write().add(po::bound(1,8),po::layer_loc(new po::layer("anon 2",{1,2,3,4,5,6,7})));
@@ -127,6 +133,7 @@ TEST_F(region,marshal)
 		make_pair(4,boost::none),
 		make_pair(2,2)
 	})));
+	r1.write().add(po::bound(70,82),po::layer_loc(new po::layer("anon 2",po::mapped_file(p1))));
 
 	po::rdf::storage st;
 	po::save_point(st);
@@ -134,4 +141,6 @@ TEST_F(region,marshal)
 	std::unique_ptr<po::region> r1b(po::unmarshal<po::region>(r1.tag(),st));
 
 	ASSERT_TRUE(*r1b == *r1);
+
+	boost::filesystem::remove(p1);
 }

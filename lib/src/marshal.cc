@@ -29,7 +29,7 @@ std::mt19937 uuid::prng;
 boost::uuids::basic_random_generator<std::mt19937> uuid::generator(&uuid::prng);
 
 mapped_file::mapped_file(const boost::filesystem::path& p, const uuid& t)
-: _size(file_size(p)), _fd(open(p.string().c_str(),O_RDONLY)), _data(nullptr), _tag(t), _reference(new std::atomic<unsigned long long>())
+: _size(file_size(p)), _fd(open(p.string().c_str(),O_RDONLY)), _data(nullptr), _tag(t), _path(p), _reference(new std::atomic<unsigned long long>())
 {
 	if(_fd < 0)
 		throw std::runtime_error("Can't create mapping for " + p.string());
@@ -41,7 +41,7 @@ mapped_file::mapped_file(const boost::filesystem::path& p, const uuid& t)
 }
 
 mapped_file::mapped_file(const mapped_file& f)
-: _size(f._size), _fd(f._fd), _data(f._data), _tag(f._tag), _reference(f._reference)
+: _size(f._size), _fd(f._fd), _data(f._data), _tag(f._tag), _path(f._path), _reference(f._reference)
 {
 	++(*_reference);
 }
@@ -149,6 +149,8 @@ storage::storage(void)
 storage::storage(const filesystem::path& p)
 : _meta(), _tempdir(unique_path(temp_directory_path() / std::string("panop-%%%%-%%%%-%%%%-%%%%")))
 {
+	uuids::string_generator sg;
+
 	if(!filesystem::create_directory(_tempdir))
 		throw marshal_exception("can't create temp directory " + _tempdir.string());
 
@@ -157,14 +159,14 @@ storage::storage(const filesystem::path& p)
 	if(ar == NULL)
 		throw marshal_exception("can't allocate archive struct");
 
-	if(archive_read_support_format_cpio(ar) != ARCHIVE_OK)
-		throw marshal_exception("can't set archive format");
-
-	if(archive_read_support_filter_lzma(ar) != ARCHIVE_OK)
-		throw marshal_exception("can't set compression algorithm");
-
 	try
 	{
+		if(archive_read_support_format_cpio(ar) != ARCHIVE_OK)
+			throw marshal_exception("can't set archive format");
+
+		if(archive_read_support_filter_lzma(ar) != ARCHIVE_OK)
+			throw marshal_exception("can't set compression algorithm");
+
 		if(archive_read_open_filename(ar,p.string().c_str(),4096) != ARCHIVE_OK)
 			throw marshal_exception("can't open " + p.string());
 
@@ -178,7 +180,6 @@ storage::storage(const filesystem::path& p)
 			filesystem::path pathName(archive_entry_pathname(ae));
 			filesystem::path tmpName = _tempdir / pathName;
 
-			found_meta = found_meta | (pathName.filename() == filesystem::path("meta.kct"));
 			ofstream of(tmpName.string(), ios_base::binary | ios_base::trunc | ios_base::out);
 			char buf[4096];
 			size_t len;
@@ -190,6 +191,15 @@ storage::storage(const filesystem::path& p)
 				of.write(buf,len);
 
 			of.close();
+
+
+			if(tmpName.filename() == filesystem::path("meta.kct"))
+				found_meta = true;
+			else
+			{
+				std::cerr << tmpName.filename().string() << std::endl;
+				register_blob(mapped_file(tmpName,sg(tmpName.filename().string())));
+			}
 		}
 
 		if(!(found_meta))
@@ -328,12 +338,9 @@ void storage::snapshot(const filesystem::path& p) const
 	// delete existing `path'
 	filesystem::remove(p);
 
-	// sync bdb
+	// sync db
 	if(!_meta.synchronize(false))
 		throw marshal_exception("can't sync triple store");
-
-	// open temp dir
-	filesystem::directory_iterator di(_tempdir);
 
 	// open target zip
 	struct archive *ar = archive_write_new();
@@ -361,13 +368,8 @@ void storage::snapshot(const filesystem::path& p) const
 
 		try
 		{
-			while(di != filesystem::directory_iterator())
+			std::function<void(const filesystem::path&,const std::string&)> add_to_archive = [&](const filesystem::path& entPath, const std::string& n)
 			{
-				filesystem::path entPath = di->path();
-
-				if(entPath.filename() == filesystem::path(".") || entPath.filename() == filesystem::path(".."))
-					continue;
-
 				ifstream fi(entPath.string().c_str(),ios_base::binary | ios_base::in);
 				if(!fi)
 					throw marshal_exception("can't save to " + p.string() + ": " + strerror(errno) + " while opening " + entPath.string());
@@ -375,7 +377,7 @@ void storage::snapshot(const filesystem::path& p) const
 				struct stat st;
 				stat(entPath.string().c_str(),&st);
 				archive_entry_clear(ae);
-				archive_entry_copy_pathname(ae,entPath.filename().string().c_str());
+				archive_entry_copy_pathname(ae,n.c_str());
 				archive_entry_copy_stat(ae,&st);
 
 				if(archive_write_header(ar,ae) != ARCHIVE_OK)
@@ -388,9 +390,12 @@ void storage::snapshot(const filesystem::path& p) const
 					if(fi.gcount() && archive_write_data(ar,buf,fi.gcount()) != fi.gcount())
 						throw marshal_exception("can't save to " + p.string() + ": error while reading " + entPath.string());
 				}
+			};
 
-				++di;
-			}
+			add_to_archive(_tempdir / "meta.kct","meta.kct");
+
+			for(auto mf: _blobs)
+				add_to_archive(mf.path(),to_string(mf.tag()));
 		}
 		catch(...)
 		{
@@ -408,6 +413,40 @@ void storage::snapshot(const filesystem::path& p) const
 
 	if(archive_write_free(ar) != ARCHIVE_OK)
 		throw marshal_exception("can't save to " + p.string() + ": failed to close directory");
+}
+
+bool storage::register_blob(const mapped_file& mf)
+{
+	auto i = std::find_if(_blobs.begin(),_blobs.end(),[&](const mapped_file& m) { return m.tag() == mf.tag(); });
+	if(i == _blobs.end())
+	{
+		_blobs.push_back(mf);
+		return true;
+	}
+	else
+		return false;
+}
+
+po::mapped_file storage::fetch_blob(const uuid& u) const
+{
+	auto i = std::find_if(_blobs.begin(),_blobs.end(),[&](const mapped_file& mf) { return mf.tag() == u; });
+
+	if(i == _blobs.end())
+	{
+		boost::filesystem::directory_iterator ent(_tempdir);
+
+		auto j = std::find_if(ent,boost::filesystem::directory_iterator(),[&](boost::filesystem::directory_entry e) { return e.path().filename() == to_string(u); });
+
+		if(j == boost::filesystem::directory_iterator())
+			throw marshal_exception("no blob \"" + to_string(u) + "\"");
+
+		mapped_file mf(j->path(),u);
+		_blobs.push_back(mf);
+
+		return mf;
+	}
+	else
+		return *i;
 }
 
 string storage::encode_node(const node& n)

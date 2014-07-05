@@ -141,6 +141,13 @@ TEST(layer,flatten)
 
 TEST(layer,marshal)
 {
+	boost::filesystem::path p1 = boost::filesystem::unique_path(boost::filesystem::temp_directory_path() / "test-panop-%%%%-%%%%-%%%%");
+	std::ofstream s1(p1.string());
+
+	ASSERT_TRUE(s1.is_open());
+	s1 << "Hello, World" << std::flush;
+	s1.close();
+
 	layer_loc l1(new layer("l1",33));
 	layer_loc l2(new layer("l2",vector<byte>({1,2,3,4,5})));
 	layer_loc l3(new layer("l3",std::unordered_map<offset,tryte>({
@@ -150,6 +157,7 @@ TEST(layer,marshal)
 		make_pair(3,0xff),
 		make_pair(4,boost::none)
 	})));
+	po::layer_loc l4(new po::layer("anon 2",po::mapped_file(p1)));
 
 	rdf::storage st;
 	save_point(st);
@@ -157,10 +165,14 @@ TEST(layer,marshal)
 	std::unique_ptr<layer> l1b(unmarshal<layer>(l1.tag(),st));
 	std::unique_ptr<layer> l2b(unmarshal<layer>(l2.tag(),st));
 	std::unique_ptr<layer> l3b(unmarshal<layer>(l3.tag(),st));
+	std::unique_ptr<layer> l4b(unmarshal<layer>(l4.tag(),st));
 
 	ASSERT_TRUE(*l1b == *l1);
 	ASSERT_TRUE(*l2b == *l2);
 	ASSERT_TRUE(*l3b == *l3);
+	ASSERT_TRUE(*l4b == *l4);
+
+	boost::filesystem::remove(p1);
 }
 
 TEST(layer,mapped_file)
@@ -188,4 +200,6 @@ TEST(layer,mapped_file)
 		++i;
 		++idx;
 	}
+
+	boost::filesystem::remove(p1);
 }

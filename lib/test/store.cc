@@ -204,3 +204,41 @@ TEST_F(store,node)
 	ASSERT_EQ(d,d2);
 	ASSERT_EQ(e,e2);
 }
+
+TEST_F(store,blob)
+{
+	boost::filesystem::path p1 = boost::filesystem::unique_path(boost::filesystem::temp_directory_path() / "test-panop-%%%%-%%%%-%%%%");
+	boost::filesystem::path p2 = boost::filesystem::unique_path(boost::filesystem::temp_directory_path() / "test-panop-%%%%-%%%%-%%%%");
+	std::ofstream s1(p1.string());
+
+	ASSERT_TRUE(s1.is_open());
+
+	s1 << "Hello, World" << std::flush;
+	s1.close();
+
+	uuid u1;
+	mapped_file mf1(p1,u1);
+	rdf::storage store1;
+
+	ASSERT_TRUE(store1.register_blob(mf1));
+	ASSERT_FALSE(store1.register_blob(mf1));
+
+	mapped_file mf2 = store1.fetch_blob(u1);
+	ASSERT_EQ(mf1, mf2);
+
+	store1.snapshot(p2);
+
+	rdf::storage store2(p2);
+
+	ASSERT_FALSE(store2.register_blob(mf1));
+	mapped_file mf3 = store2.fetch_blob(u1);
+
+	ASSERT_EQ(mf1.size(), mf3.size());
+
+	size_t i = 0;
+	while(i < mf3.size())
+	{
+		ASSERT_EQ(mf1.data()[i], mf3.data()[i]);
+		++i;
+	}
+}
