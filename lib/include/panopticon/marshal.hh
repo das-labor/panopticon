@@ -4,8 +4,7 @@
 #include <list>
 #include <memory>
 #include <random>
-
-#include <panopticon/ensure.hh>
+#include <atomic>
 
 #include <kcpolydb.h>
 
@@ -18,6 +17,7 @@
 #include <boost/filesystem.hpp>
 
 #include <panopticon/hash.hh>
+#include <panopticon/ensure.hh>
 
 #define PO "http://panopticon.re/rdf/v1/"
 #define XSD "http://www.w3.org/2001/XMLSchema#"
@@ -54,6 +54,26 @@ namespace std
 
 namespace po
 {
+	struct mapped_file
+	{
+		mapped_file(const boost::filesystem::path&, const uuid& t = uuid());
+		mapped_file(const mapped_file&);
+		~mapped_file(void);
+
+		bool operator==(const mapped_file& f) const { return _reference == f._reference; }
+
+		size_t size(void) const { return _size; }
+		const char* data(void) const { return _data; }
+		const uuid& tag(void) const { return _tag; }
+
+	private:
+		size_t _size;
+		int _fd;
+		char* _data;
+		uuid _tag;
+		std::atomic<unsigned long long>* _reference;
+	};
+
 	class marshal_exception : public std::runtime_error
 	{
 	public:

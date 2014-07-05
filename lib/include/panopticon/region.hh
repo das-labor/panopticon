@@ -40,6 +40,7 @@ namespace po
 
 		layer(const std::string&, const std::unordered_map<offset,tryte>&);
 		layer(const std::string&, offset);
+		layer(const std::string&, const mapped_file&);
 
 		bool operator==(const layer&) const;
 
@@ -55,6 +56,7 @@ namespace po
 			slab operator()(const std::vector<byte>& d) const;
 			slab operator()(const std::unordered_map<offset,tryte>& m) const;
 			slab operator()(size_t sz) const;
+			slab operator()(const mapped_file&) const;
 
 			slab in;
 		};
@@ -63,7 +65,8 @@ namespace po
 		boost::variant<
 			std::vector<byte>,								///< Constant data. Ignores Input.
 			std::unordered_map<offset,tryte>,	///< Sparse constant data.
-			size_t														///< Uninitialized (boost::none) data. Ignores input.
+			size_t,														///< Uninitialized (boost::none) data. Ignores input.
+			mapped_file
 		> _data;
 
 		template<typename T>
@@ -114,7 +117,7 @@ namespace po
 
 	struct region
 	{
-		static region_loc mmap(const std::string&, const std::string&);
+		static region_loc mmap(const std::string&, const boost::filesystem::path&);
 		static region_loc undefined(const std::string&, size_t);
 		static region_loc wrap(const std::string&, const byte*, size_t);
 		static region_loc wrap(const std::string&, std::initializer_list<byte>);

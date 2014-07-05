@@ -6,9 +6,11 @@ extern "C" {
 #include <archive.h>
 #include <archive_entry.h>
 
-// stat()
+// stat(), open(), mmap()
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <fcntl.h>
+#include <sys/mman.h>
 #include <stdio.h>
 }
 
@@ -25,6 +27,34 @@ using namespace filesystem;
 
 std::mt19937 uuid::prng;
 boost::uuids::basic_random_generator<std::mt19937> uuid::generator(&uuid::prng);
+
+mapped_file::mapped_file(const boost::filesystem::path& p, const uuid& t)
+: _size(file_size(p)), _fd(open(p.string().c_str(),O_RDONLY)), _data(nullptr), _tag(t), _reference(new std::atomic<unsigned long long>())
+{
+	if(_fd < 0)
+		throw std::runtime_error("Can't create mapping for " + p.string());
+	_data = (char*)mmap(NULL,_size,PROT_READ,MAP_PRIVATE,_fd,0);
+	if(!_data)
+		throw std::runtime_error("Can't create mapping for " + p.string());
+
+	++(*_reference);
+}
+
+mapped_file::mapped_file(const mapped_file& f)
+: _size(f._size), _fd(f._fd), _data(f._data), _tag(f._tag), _reference(f._reference)
+{
+	++(*_reference);
+}
+
+mapped_file::~mapped_file(void)
+{
+	if(--(*_reference) == 0)
+	{
+		munmap(_data,_size);
+		close(_fd);
+		delete _reference;
+	}
+}
 
 marshal_exception::marshal_exception(const string &w)
 : runtime_error(w)

@@ -21,30 +21,30 @@ rdf::statements po::marshal(const layer* l, const uuid& u)
 	rdf::statements ret;
 	rdf::node root = rdf::iri(u);
 
-	if(get<size_t>(&l->_data))
+	if(boost::get<size_t>(&l->_data))
 	{
 		ret.emplace_back(root,rdf::ns_rdf("type"),rdf::ns_po("Sparse-Undefined"));
-		ret.emplace_back(root,rdf::ns_po("size"),rdf::lit(get<size_t>(l->_data)));
+		ret.emplace_back(root,rdf::ns_po("size"),rdf::lit(boost::get<size_t>(l->_data)));
 	}
-	else if(get<vector<byte>>(&l->_data))
+	else if(boost::get<vector<byte>>(&l->_data))
 	{
 		ret.emplace_back(root,rdf::ns_rdf("type"),rdf::ns_po("Dense-Defined"));
 
 		// XXX: should be save in a seperate file
 		stringstream ss;
-		for(auto i: get<vector<byte>>(l->_data))
+		for(auto i: boost::get<vector<byte>>(l->_data))
 			ss << hex << setw(2) << setfill('0') << static_cast<unsigned int>(i);
 
 		cout << "write: " << ss.str() << endl;
 		ret.emplace_back(root,rdf::ns_po("data"),rdf::lit(ss.str()));
 	}
-	else if(get<std::unordered_map<offset,tryte>>(&l->_data))
+	else if(boost::get<std::unordered_map<offset,tryte>>(&l->_data))
 	{
 		ret.emplace_back(root,rdf::ns_rdf("type"),rdf::ns_po("Sparse-Defined"));
 
 		// XXX: should be save in a seperate file
 		stringstream ss;
-		for(auto p: get<std::unordered_map<offset,tryte>>(l->_data))
+		for(auto p: boost::get<std::unordered_map<offset,tryte>>(l->_data))
 		{
 			ss << p.first << "-";
 			if(p.second)
@@ -140,6 +140,10 @@ layer::layer(const std::string &n, std::initializer_list<byte> il)
 : _name(n), _data(std::move(vector<byte>(il)))
 {}
 
+layer::layer(const std::string &n, const mapped_file& mf)
+: _name(n), _data(mf)
+{}
+
 layer::layer(const std::string &n, const std::vector<byte> &d)
 : _name(n), _data(d)
 {}
@@ -209,9 +213,19 @@ slab layer::filter_visitor::operator()(size_t sz) const
 	return slab(transform_iter(a,fn),transform_iter(b,fn));
 }
 
+slab layer::filter_visitor::operator()(const mapped_file& mf) const
+{
+	return slab(mf.data(),mf.data() + mf.size());
+}
+
 const string& layer::name(void) const
 {
 	return _name;
+}
+
+po::region_loc po::region::mmap(const std::string& n, const boost::filesystem::path& p)
+{
+	return region_loc(new region(n,layer_loc(new layer("base",mapped_file(p)))));
 }
 
 po::region_loc po::region::undefined(const std::string& n, size_t sz)

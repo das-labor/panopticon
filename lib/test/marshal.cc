@@ -72,3 +72,49 @@ TEST(marshal,missing_file)
 	ASSERT_FALSE(boost::filesystem::exists("non-existend.panop"));
 	ASSERT_THROW(rdf::storage("non-existend.panop"),marshal_exception);
 }
+
+TEST(marshal,mapped_file)
+{
+	boost::filesystem::path p1 = boost::filesystem::unique_path(boost::filesystem::temp_directory_path() / "test-panop-%%%%-%%%%-%%%%");
+	boost::filesystem::path p2 = boost::filesystem::unique_path(boost::filesystem::temp_directory_path() / "test-panop-%%%%-%%%%-%%%%");
+	uuid u1;
+
+	std::ofstream s1(p1.string()), s2(p2.string());
+
+	ASSERT_TRUE(s1.is_open());
+	ASSERT_TRUE(s2.is_open());
+
+	s1 << "Hello, World" << std::flush;
+	s2 << "Goodbye, World" << std::flush;
+
+	s1.close();
+	s2.close();
+
+	mapped_file mf1(p1,u1);
+
+	{
+		mapped_file mf2(p2);
+
+		ASSERT_NE(u1,mf2.tag());
+		ASSERT_EQ(mf1.tag(),u1);
+
+		ASSERT_NE(mf1.data(), nullptr);
+		ASSERT_NE(mf2.data(), nullptr);
+
+		ASSERT_EQ(mf1.size(), 12);
+		ASSERT_EQ(mf2.size(), 14);
+
+		ASSERT_EQ(memcmp(mf1.data(),"Hello, World",mf1.size()), 0);
+		ASSERT_EQ(memcmp(mf2.data(),"Goodbye, World",mf2.size()), 0);
+
+		mapped_file mf3(mf1);
+
+		ASSERT_EQ(mf1, mf3);
+		ASSERT_EQ(mf1.data(), mf3.data());
+		ASSERT_EQ(mf1.size(), mf3.size());
+		ASSERT_EQ(mf1.tag(), mf3.tag());
+	}
+
+	boost::filesystem::remove(p1);
+	boost::filesystem::remove(p2);
+}

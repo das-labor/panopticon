@@ -78,11 +78,18 @@ TEST_F(region,read_undef)
 
 TEST_F(region,read_one_layer)
 {
+	boost::filesystem::path p1 = boost::filesystem::unique_path(boost::filesystem::temp_directory_path() / "test-panop-%%%%-%%%%-%%%%");
 	po::region_loc r1 = po::region::undefined("test",128);
+	std::ofstream s1(p1.string());
+
+	ASSERT_TRUE(s1.is_open());
+	s1 << "Hello, World" << std::flush;
+	s1.close();
 
 	r1.write().add(po::bound(1,8),po::layer_loc(new po::layer("anon 2",{1,2,3,4,5,6,7})));
 	r1.write().add(po::bound(50,62),po::layer_loc(new po::layer("anon 2",{1,2,3,4,5,6,6,5,4,3,2,1})));
 	r1.write().add(po::bound(62,63),po::layer_loc(new po::layer("anon 2",{po::byte(1)})));
+	r1.write().add(po::bound(70,82),po::layer_loc(new po::layer("anon 2",po::mapped_file(p1))));
 
 	po::slab s = r1->read();
 	ASSERT_EQ(boost::size(s),128);
@@ -97,6 +104,8 @@ TEST_F(region,read_one_layer)
 			ASSERT_TRUE(i && *i == idx - 49);
 		else if(idx >= 56 && idx < 62)
 			ASSERT_TRUE(i && *i == 6 - (idx - 56));
+		else if(idx >= 70 && idx < 82)
+			EXPECT_TRUE(i && *i == std::string("Hello, World").substr(idx - 70,1)[0]);
 		else if(idx == 62)
 			ASSERT_TRUE(i && *i == 1);
 		else
