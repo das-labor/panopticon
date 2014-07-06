@@ -9,9 +9,9 @@ Item {
 	Component {
 		id: hexdump
 
-		LinearView {
+		Linear {
 			anchors.fill: parent
-			session: root.session
+			//session: root.session
 		}
 	}
 

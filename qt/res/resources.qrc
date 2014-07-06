@@ -24,5 +24,11 @@
 
 		<file>head.svg</file>
 		<file>tail.svg</file>
+
+		<file>workspace/Linear.qml</file>
+		<file>workspace/TopBorder.qml</file>
+		<file>workspace/BottomBorder.qml</file>
+		<file>workspace/RightBorder.qml</file>
+		<file>workspace/LeftBorder.qml</file>
 	</qresource>
 </RCC>

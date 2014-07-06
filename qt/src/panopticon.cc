@@ -1,54 +1,74 @@
 #include "panopticon.hh"
 #include "config.hh"
 
-Panopticon::Panopticon(int& argc, char *argv[], const std::string& root)
-: QApplication(argc,argv), _engine(0)
-{
-	//qmlRegisterType<GraphScenePath>("Panopticon",1,0,"Path");
-	//qmlRegisterType<GraphSceneItem>("Panopticon",1,0,"Graph");
-	qmlRegisterType<Pen>("Panopticon",1,0,"Pen");
-	qmlRegisterType<ElementSelectionObject>("Panopticon",1,0,"ElementSelection");
-	qmlRegisterUncreatableType<Session>("Panopticon",1,0,"Session","Use Panopticon.newSession or Panopticon.openSession.");
-	//qmlRegisterSingletonType<Panopticon>("Panopticon",1,0,"Panopticon",Panopticon::provider);
-	qmlRegisterType<LinearView>("Panopticon",1,0,"LinearView");
-	qmlRegisterType<Sugiyama>("Panopticon",1,0,"Sugiyama");
+Panopticon* Panopticon::_instance = nullptr;
 
-	setOrganizationName("Panopticon");
-	setOrganizationDomain("panopticon.re");
-	setApplicationName("QtPanopticon");
-
-	_engine.load(QUrl(QString::fromStdString(root)));
-
-	QListIterator<QObject*> iter(_engine.rootObjects());
-	while(iter.hasNext())
-	{
-		QQuickWindow *window = qobject_cast<QQuickWindow *>(iter.next());
-
-		if(window)
-	  	window->show();
-	}
-}
+Panopticon::Panopticon(QObject* p) : QObject(p), _session(nullptr)
+{}
 
 Panopticon::~Panopticon(void)
 {}
 
-/*
+Panopticon& Panopticon::instance(void)
+{
+	if(!_instance)
+		_instance = new Panopticon();
+	return *_instance;
+}
+
 QObject* Panopticon::provider(QQmlEngine*, QJSEngine*)
 {
-	return new Panopticon();
+	return &instance();
 }
 
-Session* Panopticon::openSession(const QString& path) const
+Session* Panopticon::openSession(const QString& path)
 {
 	qDebug() << "open:" << path;
-	return new Session();
+
+	if(_session)
+	{
+		qDebug() << "Replace old session";
+		Session* old = _session;
+		_session = Session::open(path);
+
+		emit sessionChanged();
+		delete old;
+	}
+	else
+	{
+		_session = Session::open(path);
+		emit sessionChanged();
+	}
+
+	return _session;
 }
 
-Session* Panopticon::newSession(const QString& path) const
+Session* Panopticon::createSession(const QString& path)
 {
-	qDebug() << "new:" << path;
-	return new Session();
-}*/
+	qDebug() << "create:" << path;
+
+	if(_session)
+	{
+		qDebug() << "Replace old session";
+		Session* old = _session;
+		_session = Session::create(path);
+
+		emit sessionChanged();
+		delete old;
+	}
+	else
+	{
+		_session = Session::create(path);
+		emit sessionChanged();
+	}
+
+	return Session::create(path);
+}
+
+Session* Panopticon::session(void) const
+{
+	return _session;
+}
 
 QString Panopticon::buildDate(void) const
 {

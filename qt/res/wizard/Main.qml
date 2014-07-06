@@ -1,6 +1,5 @@
 import QtQuick 2.0
 import Panopticon 1.0
-import "../"
 
 Item {
 	Loader {
@@ -67,7 +66,7 @@ Item {
 			anchors.bottom: root.bottom
 			anchors.right: root.right
 
-			text: "Built " + Panopticon.buildDate
+			text: "Built TODO"// + Panopticon.buildDate
 			font.pointSize: 10
 		}
 	}

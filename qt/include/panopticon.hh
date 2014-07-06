@@ -3,7 +3,6 @@
 #include <QApplication>
 #include <QQmlApplicationEngine>
 
-#include "linearview.hh"
 #include "session.hh"
 #include "pen.hh"
 #include "selection.hh"
@@ -12,25 +11,31 @@
 
 #pragma once
 
-class Panopticon : public QApplication
+class Panopticon : public QObject
 {
 	Q_OBJECT
 	Q_PROPERTY(QString buildDate READ buildDate NOTIFY buildDateChanged)
+	Q_PROPERTY(Session* session READ session NOTIFY sessionChanged)
 
 public:
 	static QObject* provider(QQmlEngine*, QJSEngine*);
+	static Panopticon& instance(void);
 
-	Panopticon(int& argc, char *argv[], const std::string& root = "qrc:/Window.qml");
+	Panopticon(QObject* p = 0);
 	virtual ~Panopticon(void);
 
 	QString buildDate(void) const;
+	Session* session(void) const;
 
-	//Q_INVOKABLE Session* openSession(const QString& path) const;
-	//Q_INVOKABLE Session* newSession(const QString& path) const;
+	Q_INVOKABLE Session* openSession(const QString&);
+	Q_INVOKABLE Session* createSession(const QString&);
 
 signals:
 	void buildDateChanged(void);
+	void sessionChanged(void);
 
-protected:
-	QQmlApplicationEngine _engine;
+private:
+	Session* _session;
+
+	static Panopticon* _instance;
 };

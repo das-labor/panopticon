@@ -1,28 +1,33 @@
 #include "session.hh"
 
-Session::Session(QObject *p)
-: QObject(p)
+Session::Session(po::session sess, QObject *p)
+: QObject(p), _session(sess), _linear(new QStringListModel(this))
 {
-	po::region_loc base_as = po::region::undefined("base",128);
-	po::region_loc xor_as = po::region::undefined("xor",64);
-	po::region_loc add_as = po::region::wrap("add",std::initializer_list<po::byte>({0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26}));
-//	po::address_space zlib_as("zlib",po::rrange(0,1280),std::function<bytes(const bytes&)>());
-//	po::address_space aes_as("aes",po::rrange(0,320),std::function<bytes(const bytes&)>());
+	QStringList lst;
 
-	auto base_desc = insert_vertex(base_as,_regions);
-	auto xor_desc = insert_vertex(xor_as,_regions);
-	auto add_desc = insert_vertex(add_as,_regions);
-//	m_graph.insert_node(zlib_as);
-//	m_graph.insert_node(aes_as);
+	lst.append("Test0");
+	lst.append("Test1");
+	lst.append("Test2");
+	lst.append("Test3");
+	lst.append("Test4");
+	lst.append("Test5");
+	lst.append("Test6");
+	lst.append("Test7");
+	lst.append("Test8");
+	lst.append("Test9");
 
-	insert_edge(po::bound(10,74),xor_desc,base_desc,_regions);
-	insert_edge(po::bound(80,107),add_desc,base_desc,_regions);
-}
-
-po::regions &Session::graph(void)
-{
-	return _regions;
+	_linear->setStringList(lst);
 }
 
 Session::~Session(void)
 {}
+
+Session* Session::open(QString s)
+{
+	return new Session(po::open(s.toStdString()));
+}
+
+Session* Session::create(QString s)
+{
+	return new Session(po::raw(s.toStdString()));
+}

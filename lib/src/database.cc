@@ -127,8 +127,7 @@ session po::open(const std::string& path)
 
 session po::raw(const std::string& path)
 {
-	std::shared_ptr<rdf::storage> store = make_shared<rdf::storage>(path);
-	rdf::statement st = store->first(rdf::ns_po("Root"),rdf::ns_po("meta"));
+	std::shared_ptr<rdf::storage> store = make_shared<rdf::storage>();
 	dbase_loc db(new database());
 
 	db.write().title = boost::filesystem::path(path).filename().string();

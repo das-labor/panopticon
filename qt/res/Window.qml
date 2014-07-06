@@ -1,6 +1,7 @@
 import QtQuick.Controls 1.0
 import QtQuick.Dialogs 1.0
 import QtQuick 2.0
+import Panopticon 1.0
 
 ApplicationWindow {
 	id: mainWindow
@@ -9,7 +10,14 @@ ApplicationWindow {
 	width: 1000
 
 	Loader {
+		id: loader
 		anchors.fill: parent
-		source: "wizard/Main.qml"
+	}
+
+	Component.onCompleted: {
+		if(Panopticon.session)
+			loader.setSource("workspace/Linear.qml",{ "session": Panopticon.session })
+		else
+			loader.setSource("wizard/Main.qml")
 	}
 }
