@@ -107,3 +107,33 @@ database* po::unmarshal(const uuid& u, const rdf::storage& store)
 
 	return new database{title_st.object.as_literal(),data,structs,progs,cmnts};
 }
+
+session::~session(void)
+{
+	// erase dbase before store
+	rdf::storage st;
+	dbase = dbase_loc(uuid(),st);
+	store.reset();
+}
+
+session po::open(const std::string& path)
+{
+	std::shared_ptr<rdf::storage> store = make_shared<rdf::storage>(path);
+	rdf::statement st = store->first(rdf::ns_po("Root"),rdf::ns_po("meta"));
+	dbase_loc db(st.object.as_iri().as_uuid(),*store);
+
+	return session{db,store};
+}
+
+session po::raw(const std::string& path)
+{
+	std::shared_ptr<rdf::storage> store = make_shared<rdf::storage>(path);
+	rdf::statement st = store->first(rdf::ns_po("Root"),rdf::ns_po("meta"));
+	dbase_loc db(new database());
+
+	db.write().title = boost::filesystem::path(path).filename().string();
+	region_loc reg = region::mmap("base",path);
+	insert_vertex(reg,db.write().data);
+
+	return session{db,store};
+}

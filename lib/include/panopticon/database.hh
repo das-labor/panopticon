@@ -42,10 +42,18 @@ namespace po
 
 	std::pair<database::record_iterator,database::record_iterator> lookup(const area& a, bool allow_overlap, dbase_loc d);
 
-	dbase_loc open(const std::string&);
-	dbase_loc elf(const std::string&);
-	dbase_loc pe(const std::string&);
-	dbase_loc raw(const std::string&);
-	dbase_loc macho(const std::string&);
-	dbase_loc empty(const std::string&);
+	struct session
+	{
+		~session(void);
+
+		dbase_loc dbase;
+		std::shared_ptr<rdf::storage> store;
+	};
+
+	session open(const std::string&);
+	session elf(const std::string&);
+	session pe(const std::string&);
+	session raw(const std::string&);
+	session macho(const std::string&);
+	session empty(const std::string&);
 }
