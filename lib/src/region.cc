@@ -68,6 +68,7 @@ archive po::marshal(const layer* l, const uuid& u)
 		{
 			ret.triples.emplace_back(root,rdf::ns_rdf("type"),rdf::ns_po("Blob"));
 			ret.triples.emplace_back(root,rdf::ns_po("blob"),rdf::iri(mf.tag()));
+			ret.blobs.emplace_back(mf);
 		}
 
 	private:
@@ -135,8 +136,13 @@ layer* po::unmarshal(const uuid& u, const rdf::storage& st)
 
 		return new layer(name.as_literal(),kv);
 	}
+	else if(type == rdf::ns_po("Blob"))
+	{
+		rdf::node b = st.first(root,rdf::ns_po("blob")).object;
+		return new layer(name.as_literal(),st.fetch_blob(b.as_iri().as_uuid()));
+	}
 	else
-		throw marshal_exception("unknown layer type \"" + type.as_literal() + "\"");
+		throw marshal_exception("unknown layer type \"" + type.as_iri().as_string() + "\"");
 }
 
 std::ostream& std::operator<<(std::ostream& os, const po::bound& b)
