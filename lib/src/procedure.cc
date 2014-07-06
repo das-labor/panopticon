@@ -82,7 +82,7 @@ archive po::marshal(const procedure* p, const uuid& u)
 {
 	unsigned int cnt = 0;
 	rdf::statements ret;
-	std::list<mapped_file> bl;
+	std::list<blob> bl;
 	boost::uuids::name_generator ng(u);
 	rdf::node node = rdf::iri(u);
 	function<pair<rdf::node,archive>(const variant<rvalue,bblock_loc>&)> marshal_node = [&](const variant<rvalue,bblock_loc>& v) -> pair<rdf::node,archive>

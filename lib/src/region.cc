@@ -31,19 +31,6 @@ archive po::marshal(const layer* l, const uuid& u)
 			ret.triples.emplace_back(root,rdf::ns_po("size"),rdf::lit(sz));
 		}
 
-		void operator()(const std::vector<byte>& v)
-		{
-			ret.triples.emplace_back(root,rdf::ns_rdf("type"),rdf::ns_po("Dense-Defined"));
-
-			// XXX: should be save in a seperate file
-			stringstream ss;
-			for(auto i: v)
-				ss << hex << setw(2) << setfill('0') << static_cast<unsigned int>(i);
-
-			cout << "write: " << ss.str() << endl;
-			ret.triples.emplace_back(root,rdf::ns_po("data"),rdf::lit(ss.str()));
-		}
-
 		void operator()(const std::unordered_map<offset,tryte>& m)
 		{
 			ret.triples.emplace_back(root,rdf::ns_rdf("type"),rdf::ns_po("Sparse-Defined"));
@@ -64,7 +51,7 @@ archive po::marshal(const layer* l, const uuid& u)
 			ret.triples.emplace_back(root,rdf::ns_po("data"),rdf::lit(ss.str()));
 		}
 
-		void operator()(const mapped_file& mf)
+		void operator()(const blob& mf)
 		{
 			ret.triples.emplace_back(root,rdf::ns_rdf("type"),rdf::ns_po("Blob"));
 			ret.triples.emplace_back(root,rdf::ns_po("blob"),rdf::iri(mf.tag()));
@@ -95,21 +82,6 @@ layer* po::unmarshal(const uuid& u, const rdf::storage& st)
 	{
 		rdf::node size = st.first(root,rdf::ns_po("size")).object;
 		return new layer(name.as_literal(),static_cast<size_t>(stoull(size.as_literal())));
-	}
-	else if(type == rdf::ns_po("Dense-Defined"))
-	{
-		string data = st.first(root,rdf::ns_po("data")).object.as_literal();
-		vector<byte> vec;
-
-		auto i = data.begin();
-
-		while(i != data.end() && std::next(i) != data.end())
-		{
-			vec.push_back(static_cast<byte>(stoul(string(i,i+2))));
-			advance(i,2);
-		}
-
-		return new layer(name.as_literal(),vec);
 	}
 	else if(type == rdf::ns_po("Sparse-Defined"))
 	{
@@ -161,19 +133,19 @@ po::layer_wloc po::operator+=(po::layer_wloc& a, const po::layer_wloc &b)
 }
 
 layer::layer(const std::string &n, std::initializer_list<byte> il)
-: _name(n), _data(std::move(vector<byte>(il)))
+: _name(n), _data(blob(std::move(vector<byte>(il))))
 {}
 
-layer::layer(const std::string &n, const mapped_file& mf)
+layer::layer(const std::string &n, const blob& mf)
 : _name(n), _data(mf)
 {}
 
 layer::layer(const std::string &n, const std::vector<byte> &d)
-: _name(n), _data(d)
+: _name(n), _data(blob(d))
 {}
 
 layer::layer(const std::string &n, const byte *d, size_t sz)
-: _name(n), _data(std::move(std::vector<byte>(d,d + sz)))
+: _name(n), _data(blob(std::move(std::vector<byte>(d,d + sz))))
 {}
 
 layer::layer(const std::string &n, const std::unordered_map<offset,tryte> &d)
@@ -209,11 +181,6 @@ slab layer::filter(const slab& in) const
 
 layer::filter_visitor::filter_visitor(slab s) : static_visitor(), in(s) {}
 
-slab layer::filter_visitor::operator()(const std::vector<byte>& d) const
-{
-	return slab(d.cbegin(),d.cend());
-}
-
 slab layer::filter_visitor::operator()(const std::unordered_map<offset,tryte>& data) const
 {
 	using func = std::function<po::tryte(const boost::tuples::tuple<offset,po::tryte> &)>;
@@ -237,7 +204,7 @@ slab layer::filter_visitor::operator()(size_t sz) const
 	return slab(transform_iter(a,fn),transform_iter(b,fn));
 }
 
-slab layer::filter_visitor::operator()(const mapped_file& mf) const
+slab layer::filter_visitor::operator()(const blob& mf) const
 {
 	return slab(mf.data(),mf.data() + mf.size());
 }
@@ -249,7 +216,7 @@ const string& layer::name(void) const
 
 po::region_loc po::region::mmap(const std::string& n, const boost::filesystem::path& p)
 {
-	return region_loc(new region(n,layer_loc(new layer("base",mapped_file(p)))));
+	return region_loc(new region(n,layer_loc(new layer("base",blob(p)))));
 }
 
 po::region_loc po::region::undefined(const std::string& n, size_t sz)
@@ -463,7 +430,7 @@ template<>
 archive po::marshal(const region* r, const uuid& u)
 {
 	rdf::statements ret;
-	std::list<mapped_file> bl;
+	std::list<blob> bl;
 	rdf::node root = rdf::iri(u);
 
 	ret.emplace_back(root,rdf::ns_rdf("type"),rdf::ns_po("Region"));

@@ -96,7 +96,7 @@ template<>
 archive po::marshal(const basic_block* bb, const uuid& u)
 {
 	rdf::statements ret;
-	std::list<mapped_file> bl;
+	std::list<blob> bl;
 	rdf::node root = rdf::iri(u);
 	boost::uuids::name_generator ng(u);
 	size_t cnt = 0;
@@ -242,7 +242,7 @@ template<>
 archive po::marshal(const guard* g, const uuid& uu)
 {
 	rdf::statements ret;
-	std::list<mapped_file> bl;
+	std::list<blob> bl;
 	rdf::nodes rels;
 	rdf::node node = rdf::iri(uu);
 	boost::uuids::name_generator ng(uu);

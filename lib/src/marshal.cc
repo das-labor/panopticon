@@ -28,30 +28,49 @@ using namespace filesystem;
 std::mt19937 uuid::prng;
 boost::uuids::basic_random_generator<std::mt19937> uuid::generator(&uuid::prng);
 
-mapped_file::mapped_file(const boost::filesystem::path& p, const uuid& t)
-: _size(file_size(p)), _fd(open(p.string().c_str(),O_RDONLY)), _data(nullptr), _tag(t), _path(p), _reference(new std::atomic<unsigned long long>())
+blob::blob(const boost::filesystem::path& p, const uuid& t)
+: _size(file_size(p)), _source(std::make_pair(open(p.string().c_str(),O_RDONLY),p)),
+	_data(nullptr), _tag(t), _reference(new std::atomic<unsigned long long>())
 {
-	if(_fd < 0)
-		throw std::runtime_error("Can't create mapping for " + p.string());
-	_data = (char*)mmap(NULL,_size,PROT_READ,MAP_PRIVATE,_fd,0);
-	if(!_data)
-		throw std::runtime_error("Can't create mapping for " + p.string());
+	if(_source)
+	{
+		if(_source->first < 0)
+			throw std::runtime_error("Can't create mapping for " + p.string());
+		_data = (char*)mmap(NULL,_size,PROT_READ,MAP_PRIVATE,_source->first,0);
+		if(!_data)
+			throw std::runtime_error("Can't create mapping for " + p.string());
+	}
 
 	++(*_reference);
 }
 
-mapped_file::mapped_file(const mapped_file& f)
-: _size(f._size), _fd(f._fd), _data(f._data), _tag(f._tag), _path(f._path), _reference(f._reference)
+blob::blob(const std::vector<uint8_t>& v, const uuid& t)
+: _size(v.size()), _source(boost::none),
+	_data(new char[v.size()]), _tag(t), _reference(new std::atomic<unsigned long long>())
+{
+	memcpy(_data,v.data(),v.size());
+	++(*_reference);
+}
+
+blob::blob(const blob& f)
+: _size(f._size), _source(f._source), _data(f._data), _tag(f._tag), _reference(f._reference)
 {
 	++(*_reference);
 }
 
-mapped_file::~mapped_file(void)
+blob::~blob(void)
 {
 	if(--(*_reference) == 0)
 	{
-		munmap(_data,_size);
-		close(_fd);
+		if(_source)
+		{
+			munmap(_data,_size);
+			close(_source->first);
+		}
+		else
+		{
+			delete _data;
+		}
 		delete _reference;
 	}
 }
@@ -198,7 +217,7 @@ storage::storage(const filesystem::path& p)
 			else
 			{
 				std::cerr << tmpName.filename().string() << std::endl;
-				register_blob(mapped_file(tmpName,sg(tmpName.filename().string())));
+				register_blob(blob(tmpName,sg(tmpName.filename().string())));
 			}
 		}
 
@@ -395,7 +414,26 @@ void storage::snapshot(const filesystem::path& p) const
 			add_to_archive(_tempdir / "meta.kct","meta.kct");
 
 			for(auto mf: _blobs)
-				add_to_archive(mf.path(),to_string(mf.tag()));
+			{
+				if(mf.path())
+				{
+					add_to_archive(*mf.path(),to_string(mf.tag()));
+				}
+				else
+				{
+					archive_entry_clear(ae);
+					archive_entry_set_pathname(ae,to_string(mf.tag()).c_str());
+					archive_entry_set_size(ae,mf.size());
+					archive_entry_set_filetype(ae,AE_IFREG);
+					archive_entry_set_perm(ae, 0644);
+
+					if(archive_write_header(ar,ae) != ARCHIVE_OK)
+						throw marshal_exception("can't save to " + p.string() + ": failed to write header");
+
+					if(archive_write_data(ar,mf.data(),mf.size()) != (long long)mf.size())
+						throw marshal_exception("can't save to " + p.string() + ": error while reading blob");
+				}
+			}
 		}
 		catch(...)
 		{
@@ -415,9 +453,9 @@ void storage::snapshot(const filesystem::path& p) const
 		throw marshal_exception("can't save to " + p.string() + ": failed to close directory");
 }
 
-bool storage::unregister_blob(const mapped_file& mf)
+bool storage::unregister_blob(const blob& mf)
 {
-	auto i = std::find_if(_blobs.begin(),_blobs.end(),[&](const mapped_file& m) { return m.tag() == mf.tag(); });
+	auto i = std::find_if(_blobs.begin(),_blobs.end(),[&](const blob& m) { return m.tag() == mf.tag(); });
 	if(i == _blobs.end())
 	{
 		return false;
@@ -429,9 +467,9 @@ bool storage::unregister_blob(const mapped_file& mf)
 	}
 }
 
-bool storage::register_blob(const mapped_file& mf)
+bool storage::register_blob(const blob& mf)
 {
-	auto i = std::find_if(_blobs.begin(),_blobs.end(),[&](const mapped_file& m) { return m.tag() == mf.tag(); });
+	auto i = std::find_if(_blobs.begin(),_blobs.end(),[&](const blob& m) { return m.tag() == mf.tag(); });
 	if(i == _blobs.end())
 	{
 		_blobs.push_back(mf);
@@ -441,9 +479,9 @@ bool storage::register_blob(const mapped_file& mf)
 		return false;
 }
 
-po::mapped_file storage::fetch_blob(const uuid& u) const
+po::blob storage::fetch_blob(const uuid& u) const
 {
-	auto i = std::find_if(_blobs.begin(),_blobs.end(),[&](const mapped_file& mf) { return mf.tag() == u; });
+	auto i = std::find_if(_blobs.begin(),_blobs.end(),[&](const blob& mf) { return mf.tag() == u; });
 
 	if(i == _blobs.end())
 	{
@@ -454,7 +492,7 @@ po::mapped_file storage::fetch_blob(const uuid& u) const
 		if(j == boost::filesystem::directory_iterator())
 			throw marshal_exception("no blob \"" + to_string(u) + "\"");
 
-		mapped_file mf(j->path(),u);
+		blob mf(j->path(),u);
 		_blobs.push_back(mf);
 
 		return mf;

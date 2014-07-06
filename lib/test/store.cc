@@ -217,13 +217,13 @@ TEST_F(store,blob)
 	s1.close();
 
 	uuid u1;
-	mapped_file mf1(p1,u1);
+	blob mf1(p1,u1);
 	rdf::storage store1;
 
 	ASSERT_TRUE(store1.register_blob(mf1));
 	ASSERT_FALSE(store1.register_blob(mf1));
 
-	mapped_file mf2 = store1.fetch_blob(u1);
+	blob mf2 = store1.fetch_blob(u1);
 	ASSERT_EQ(mf1, mf2);
 
 	store1.snapshot(p2);
@@ -231,7 +231,7 @@ TEST_F(store,blob)
 	rdf::storage store2(p2);
 
 	ASSERT_FALSE(store2.register_blob(mf1));
-	mapped_file mf3 = store2.fetch_blob(u1);
+	blob mf3 = store2.fetch_blob(u1);
 
 	ASSERT_EQ(mf1.size(), mf3.size());
 

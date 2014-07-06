@@ -15,6 +15,7 @@
 #include <boost/operators.hpp>
 #include <boost/functional/hash.hpp>
 #include <boost/filesystem.hpp>
+#include <boost/optional.hpp>
 
 #include <panopticon/hash.hh>
 #include <panopticon/ensure.hh>
@@ -54,25 +55,29 @@ namespace std
 
 namespace po
 {
-	struct mapped_file
+	struct blob
 	{
-		mapped_file(const boost::filesystem::path&, const uuid& t = uuid());
-		mapped_file(const mapped_file&);
-		~mapped_file(void);
+		blob(const boost::filesystem::path&, const uuid& t = uuid());
+		blob(const std::vector<uint8_t>&, const uuid& t = uuid());
+		blob(const char*, size_t);
+		blob(const blob&);
+		~blob(void);
 
-		bool operator==(const mapped_file& f) const { return _reference == f._reference; }
+		bool operator==(const blob& f) const { return _reference == f._reference; }
+
+		char* data(void) { return _data; }
 
 		size_t size(void) const { return _size; }
 		const char* data(void) const { return _data; }
 		const uuid& tag(void) const { return _tag; }
-		const boost::filesystem::path& path(void) const { return _path; }
+		boost::optional<boost::filesystem::path> path(void) const
+			{ return _source ? boost::make_optional(_source->second) : boost::none; }
 
 	private:
 		size_t _size;
-		int _fd;
+		boost::optional<std::pair<int,boost::filesystem::path>> _source;
 		char* _data;
 		uuid _tag;
-		boost::filesystem::path _path;
 		std::atomic<unsigned long long>* _reference;
 	};
 
@@ -151,12 +156,12 @@ namespace po
 
 	struct archive
 	{
-		archive(const rdf::statements& st = rdf::statements(), const std::list<mapped_file>& b = std::list<mapped_file>()) : triples(st), blobs(b) {}
+		archive(const rdf::statements& st = rdf::statements(), const std::list<blob>& b = std::list<blob>()) : triples(st), blobs(b) {}
 
 		bool operator==(const archive& a) const { return a.triples == triples && a.blobs == blobs; }
 
 		rdf::statements triples;
-		std::list<mapped_file> blobs;
+		std::list<blob> blobs;
 	};
 
 	namespace rdf
@@ -176,8 +181,8 @@ namespace po
 			bool insert(const node&, const node&, const node&);
 			bool remove(const statement& st);
 			bool remove(const node&, const node&, const node&);
-			bool register_blob(const mapped_file&);
-			bool unregister_blob(const mapped_file&);
+			bool register_blob(const blob&);
+			bool unregister_blob(const blob&);
 
 			bool has(const statement& st) const;
 			bool has(const node&, const node&, const node&) const;
@@ -187,7 +192,7 @@ namespace po
 			statement first(const node &s, const node &p) const;
 			int64_t count(void) const;
 			void snapshot(const boost::filesystem::path&) const;
-			mapped_file fetch_blob(const uuid&) const;
+			blob fetch_blob(const uuid&) const;
 
 			static std::string encode_node(const node& n);
 			static std::pair<node,iter> decode_node(iter, iter);
@@ -204,11 +209,9 @@ namespace po
 				Named = 'N'
 			};
 
-			void rewrite_blob_registry(void);
-
 			mutable PolyDB _meta; ///< subject/predicate/object
 			boost::filesystem::path _tempdir;
-			mutable std::list<mapped_file> _blobs;
+			mutable std::list<blob> _blobs;
 		};
 
 		inline node lit(const std::string& s) { return node(s,iri(XSD"string")); }

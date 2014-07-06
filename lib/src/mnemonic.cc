@@ -264,7 +264,7 @@ archive po::marshal(const mnemonic* mn, const uuid& uu)
 	size_t rv_cnt = 0;
 	boost::uuids::name_generator ng(uu);
 	rdf::statements ret;
-	std::list<mapped_file> bl;
+	std::list<blob> bl;
 	std::function<rdf::node(const rvalue&)> map_rvs = [&](const rvalue &rv)
 	{
 		uuid u = ng(to_string(rv_cnt++));

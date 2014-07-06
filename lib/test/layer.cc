@@ -157,7 +157,7 @@ TEST(layer,marshal)
 		make_pair(3,0xff),
 		make_pair(4,boost::none)
 	})));
-	po::layer_loc l4(new po::layer("anon 2",po::mapped_file(p1)));
+	po::layer_loc l4(new po::layer("anon 2",po::blob(p1)));
 
 	rdf::storage st;
 	save_point(st);
@@ -175,7 +175,7 @@ TEST(layer,marshal)
 	boost::filesystem::remove(p1);
 }
 
-TEST(layer,mapped_file)
+TEST(layer,blob)
 {
 	boost::filesystem::path p1 = boost::filesystem::unique_path(boost::filesystem::temp_directory_path() / "test-panop-%%%%-%%%%-%%%%");
 	std::ofstream s1(p1.string());
@@ -184,7 +184,7 @@ TEST(layer,mapped_file)
 	s1 << "Hello, World" << std::flush;
 	s1.close();
 
-	po::mapped_file mf(p1);
+	po::blob mf(p1);
 
 	po::layer_loc l1(new po::layer("anon",mf));
 

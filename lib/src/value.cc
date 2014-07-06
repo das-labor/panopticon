@@ -224,7 +224,7 @@ template<>
 archive po::marshal(const rvalue *rv, const uuid &u)
 {
 	rdf::statements ret;
-	std::list<mapped_file> bl;
+	std::list<blob> bl;
 	rdf::node root = rdf::iri(u);
 
 	ensure(rv);

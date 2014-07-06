@@ -40,7 +40,7 @@ namespace po
 
 		layer(const std::string&, const std::unordered_map<offset,tryte>&);
 		layer(const std::string&, offset);
-		layer(const std::string&, const mapped_file&);
+		layer(const std::string&, const blob&);
 
 		bool operator==(const layer&) const;
 
@@ -53,20 +53,18 @@ namespace po
 		{
 			filter_visitor(slab);
 
-			slab operator()(const std::vector<byte>& d) const;
 			slab operator()(const std::unordered_map<offset,tryte>& m) const;
 			slab operator()(size_t sz) const;
-			slab operator()(const mapped_file&) const;
+			slab operator()(const blob&) const;
 
 			slab in;
 		};
 
 		std::string _name;
 		boost::variant<
-			std::vector<byte>,								///< Constant data. Ignores Input.
+			blob,															///< Constant data. Ignores Input.
 			std::unordered_map<offset,tryte>,	///< Sparse constant data.
-			size_t,														///< Uninitialized (boost::none) data. Ignores input.
-			mapped_file
+			size_t														///< Uninitialized (boost::none) data. Ignores input.
 		> _data;
 
 		template<typename T>

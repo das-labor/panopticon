@@ -89,7 +89,7 @@ TEST_F(region,read_one_layer)
 	r1.write().add(po::bound(1,8),po::layer_loc(new po::layer("anon 2",{1,2,3,4,5,6,7})));
 	r1.write().add(po::bound(50,62),po::layer_loc(new po::layer("anon 2",{1,2,3,4,5,6,6,5,4,3,2,1})));
 	r1.write().add(po::bound(62,63),po::layer_loc(new po::layer("anon 2",{po::byte(1)})));
-	r1.write().add(po::bound(70,82),po::layer_loc(new po::layer("anon 2",po::mapped_file(p1))));
+	r1.write().add(po::bound(70,82),po::layer_loc(new po::layer("anon 2",po::blob(p1))));
 
 	po::slab s = r1->read();
 	ASSERT_EQ(boost::size(s),128);
@@ -133,7 +133,7 @@ TEST_F(region,marshal)
 		make_pair(4,boost::none),
 		make_pair(2,2)
 	})));
-	r1.write().add(po::bound(70,82),po::layer_loc(new po::layer("anon 2",po::mapped_file(p1))));
+	r1.write().add(po::bound(70,82),po::layer_loc(new po::layer("anon 2",po::blob(p1))));
 
 	po::rdf::storage st;
 	po::save_point(st);
