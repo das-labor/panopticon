@@ -155,7 +155,7 @@ storage::storage(const filesystem::path& p)
 		throw marshal_exception("can't create temp directory " + _tempdir.string());
 
 	// open target zip
-	archive *ar = archive_read_new();
+	::archive *ar = archive_read_new();
 	if(ar == NULL)
 		throw marshal_exception("can't allocate archive struct");
 
@@ -343,7 +343,7 @@ void storage::snapshot(const filesystem::path& p) const
 		throw marshal_exception("can't sync triple store");
 
 	// open target zip
-	struct archive *ar = archive_write_new();
+	::archive *ar = archive_write_new();
 	if(ar == NULL)
 		throw marshal_exception("can't save to " + p.string() + ": failed to allocate archive struct");
 
@@ -413,6 +413,20 @@ void storage::snapshot(const filesystem::path& p) const
 
 	if(archive_write_free(ar) != ARCHIVE_OK)
 		throw marshal_exception("can't save to " + p.string() + ": failed to close directory");
+}
+
+bool storage::unregister_blob(const mapped_file& mf)
+{
+	auto i = std::find_if(_blobs.begin(),_blobs.end(),[&](const mapped_file& m) { return m.tag() == mf.tag(); });
+	if(i == _blobs.end())
+	{
+		return false;
+	}
+	else
+	{
+		_blobs.erase(i);
+		return false;
+	}
 }
 
 bool storage::register_blob(const mapped_file& mf)

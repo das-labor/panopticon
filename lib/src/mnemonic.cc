@@ -259,19 +259,21 @@ po::mnemonic* po::unmarshal(const po::uuid& u, const po::rdf::storage& store)
 }
 
 template<>
-rdf::statements po::marshal(const mnemonic* mn, const uuid& uu)
+archive po::marshal(const mnemonic* mn, const uuid& uu)
 {
 	size_t rv_cnt = 0;
 	boost::uuids::name_generator ng(uu);
 	rdf::statements ret;
+	std::list<mapped_file> bl;
 	std::function<rdf::node(const rvalue&)> map_rvs = [&](const rvalue &rv)
 	{
 		uuid u = ng(to_string(rv_cnt++));
 		rdf::node r = rdf::iri(u);
 		auto st = marshal(&rv,u);
 
-		ensure(st.size());
-		std::move(st.begin(),st.end(),back_inserter(ret));
+		ensure(st.triples.size());
+		std::move(st.triples.begin(),st.triples.end(),back_inserter(ret));
+		std::move(st.blobs.begin(),st.blobs.end(),back_inserter(bl));
 		return r;
 	};
 	rdf::node r = rdf::iri(uu);
@@ -315,5 +317,5 @@ rdf::statements po::marshal(const mnemonic* mn, const uuid& uu)
 	ret.emplace_back(r,rdf::ns_po("operands"),p_ops.first);
 	ret.emplace_back(r,rdf::ns_po("executes"),p_ex.first);
 
-	return ret;
+	return archive(ret,bl);
 }

@@ -35,7 +35,7 @@ namespace po
 	using dbase_wloc = wloc<database>;
 
 	template<>
-	rdf::statements marshal(const database*, const uuid&);
+	archive marshal(const database*, const uuid&);
 
 	template<>
 	database* unmarshal(const uuid&, const rdf::storage&);

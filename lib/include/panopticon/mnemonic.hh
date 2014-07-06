@@ -115,7 +115,7 @@ namespace po
 	mnemonic* unmarshal(const uuid&, const rdf::storage&);
 
 	template<>
-	rdf::statements marshal(const mnemonic*, const uuid&);
+	archive marshal(const mnemonic*, const uuid&);
 
 	std::ostream& operator<<(std::ostream &os, const mnemonic &m);
 

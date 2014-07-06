@@ -70,7 +70,7 @@ namespace po
 		> _data;
 
 		template<typename T>
-		friend rdf::statements marshal(const T*, const uuid&);
+		friend archive marshal(const T*, const uuid&);
 	};
 
 	using layer_loc = loc<layer>;
@@ -79,7 +79,7 @@ namespace po
 	layer_wloc operator+=(layer_wloc& a, const layer_wloc &b);
 
 	template<>
-	rdf::statements marshal(const layer*, const uuid&);
+	archive marshal(const layer*, const uuid&);
 
 	template<>
 	layer* unmarshal(const uuid&, const rdf::storage&);
@@ -145,11 +145,11 @@ namespace po
 		mutable boost::optional<std::list<std::pair<bound,layer_wloc>>> _projection;
 
 		template<typename T>
-		friend rdf::statements marshal(const T*, const uuid&);
+		friend archive marshal(const T*, const uuid&);
 	};
 
 	template<>
-	rdf::statements marshal(const region*, const uuid&);
+	archive marshal(const region*, const uuid&);
 
 	template<>
 	region* unmarshal(const uuid&, const rdf::storage&);

@@ -11,7 +11,7 @@ structure::structure(const std::string& n, const tree<field>& f, const std::stri
 {}
 
 template<>
-rdf::statements po::marshal(const structure* s, const uuid& u)
+archive po::marshal(const structure* s, const uuid& u)
 {
 	rdf::statements ret;
 	rdf::node root = rdf::iri(u);

@@ -164,7 +164,6 @@ namespace po
 		/**
 	 	 * @brief Unmarshal a rvalue from a RDF node
 		 */
-		//static rvalue unmarshal(const rdf::node &n, const rdf::storage &store);
 
 		/// Constructs a undefined value.
 		rvalue(void);
@@ -241,7 +240,7 @@ namespace po
 	rvalue* unmarshal(const uuid&, const rdf::storage&);
 
 	template<>
-	rdf::statements marshal(const rvalue*, const uuid&);
+	archive marshal(const rvalue*, const uuid&);
 
 	/**
 	 * @brief Exception associated with rvalue subclasses

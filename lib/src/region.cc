@@ -16,51 +16,69 @@ using namespace std;
 using namespace boost;
 
 template<>
-rdf::statements po::marshal(const layer* l, const uuid& u)
+archive po::marshal(const layer* l, const uuid& u)
 {
-	rdf::statements ret;
+	archive ret;
 	rdf::node root = rdf::iri(u);
 
-	if(boost::get<size_t>(&l->_data))
+	struct visitor : public boost::static_visitor<>
 	{
-		ret.emplace_back(root,rdf::ns_rdf("type"),rdf::ns_po("Sparse-Undefined"));
-		ret.emplace_back(root,rdf::ns_po("size"),rdf::lit(boost::get<size_t>(l->_data)));
-	}
-	else if(boost::get<vector<byte>>(&l->_data))
-	{
-		ret.emplace_back(root,rdf::ns_rdf("type"),rdf::ns_po("Dense-Defined"));
+		visitor(archive& a, rdf::node n) : ret(a), root(n) {}
 
-		// XXX: should be save in a seperate file
-		stringstream ss;
-		for(auto i: boost::get<vector<byte>>(l->_data))
-			ss << hex << setw(2) << setfill('0') << static_cast<unsigned int>(i);
-
-		cout << "write: " << ss.str() << endl;
-		ret.emplace_back(root,rdf::ns_po("data"),rdf::lit(ss.str()));
-	}
-	else if(boost::get<std::unordered_map<offset,tryte>>(&l->_data))
-	{
-		ret.emplace_back(root,rdf::ns_rdf("type"),rdf::ns_po("Sparse-Defined"));
-
-		// XXX: should be save in a seperate file
-		stringstream ss;
-		for(auto p: boost::get<std::unordered_map<offset,tryte>>(l->_data))
+		void operator()(size_t sz)
 		{
-			ss << p.first << "-";
-			if(p.second)
-				ss << hex << setw(2) << setfill('0') << static_cast<unsigned int>(*p.second);
-			else
-				ss << "u";
-			ss << " ";
+			ret.triples.emplace_back(root,rdf::ns_rdf("type"),rdf::ns_po("Sparse-Undefined"));
+			ret.triples.emplace_back(root,rdf::ns_po("size"),rdf::lit(sz));
 		}
 
-		cout << "write: " << ss.str() << endl;
-		ret.emplace_back(root,rdf::ns_po("data"),rdf::lit(ss.str()));
-	}
-	else
-		throw marshal_exception("unknown layer type");
+		void operator()(const std::vector<byte>& v)
+		{
+			ret.triples.emplace_back(root,rdf::ns_rdf("type"),rdf::ns_po("Dense-Defined"));
 
-	ret.emplace_back(root,rdf::ns_po("name"),rdf::lit(l->name()));
+			// XXX: should be save in a seperate file
+			stringstream ss;
+			for(auto i: v)
+				ss << hex << setw(2) << setfill('0') << static_cast<unsigned int>(i);
+
+			cout << "write: " << ss.str() << endl;
+			ret.triples.emplace_back(root,rdf::ns_po("data"),rdf::lit(ss.str()));
+		}
+
+		void operator()(const std::unordered_map<offset,tryte>& m)
+		{
+			ret.triples.emplace_back(root,rdf::ns_rdf("type"),rdf::ns_po("Sparse-Defined"));
+
+			// XXX: should be save in a seperate file
+			stringstream ss;
+			for(auto p: m)
+			{
+				ss << p.first << "-";
+				if(p.second)
+					ss << hex << setw(2) << setfill('0') << static_cast<unsigned int>(*p.second);
+				else
+					ss << "u";
+				ss << " ";
+			}
+
+			cout << "write: " << ss.str() << endl;
+			ret.triples.emplace_back(root,rdf::ns_po("data"),rdf::lit(ss.str()));
+		}
+
+		void operator()(const mapped_file& mf)
+		{
+			ret.triples.emplace_back(root,rdf::ns_rdf("type"),rdf::ns_po("Blob"));
+			ret.triples.emplace_back(root,rdf::ns_po("blob"),rdf::iri(mf.tag()));
+		}
+
+	private:
+		archive& ret;
+		rdf::node root;
+	};
+
+	visitor v(ret,root);
+
+	boost::apply_visitor(v,l->_data);
+	ret.triples.emplace_back(root,rdf::ns_po("name"),rdf::lit(l->name()));
 
 	return ret;
 }
@@ -436,9 +454,10 @@ std::list<std::pair<bound,region_wloc>> po::projection(const regions &regs)
 }
 
 template<>
-rdf::statements po::marshal(const region* r, const uuid& u)
+archive po::marshal(const region* r, const uuid& u)
 {
 	rdf::statements ret;
+	std::list<mapped_file> bl;
 	rdf::node root = rdf::iri(u);
 
 	ret.emplace_back(root,rdf::ns_rdf("type"),rdf::ns_po("Region"));
@@ -446,7 +465,8 @@ rdf::statements po::marshal(const region* r, const uuid& u)
 	ret.emplace_back(root,rdf::ns_po("base"),rdf::lit(to_string(r->_base.tag())));
 	auto m = marshal(r->_base.read(),r->_base.tag());
 
-	std::move(m.begin(),m.end(),back_inserter(ret));
+	std::move(m.triples.begin(),m.triples.end(),back_inserter(ret));
+	std::move(m.blobs.begin(),m.blobs.end(),back_inserter(bl));
 	rdf::nodes ns;
 
 	for(auto p: r->stack())
@@ -458,14 +478,15 @@ rdf::statements po::marshal(const region* r, const uuid& u)
 		ns.emplace_back(n);
 		auto m = marshal(p.second.read(),p.second.tag());
 
-		std::move(m.begin(),m.end(),back_inserter(ret));
+		std::move(m.triples.begin(),m.triples.end(),back_inserter(ret));
+		std::move(m.blobs.begin(),m.blobs.end(),back_inserter(bl));
 	}
 
 	auto p = rdf::write_list(ns.begin(),ns.end(),to_string(u));
 	ret.emplace_back(root,rdf::ns_po("layers"),p.first);
 	std::move(p.second.begin(),p.second.end(),back_inserter(ret));
 
-	return ret;
+	return archive(ret,bl);
 }
 
 template<>

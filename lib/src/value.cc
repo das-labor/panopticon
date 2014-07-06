@@ -221,9 +221,10 @@ rvalue *po::unmarshal(const uuid &u, const rdf::storage &store)
 }
 
 template<>
-rdf::statements po::marshal(const rvalue *rv, const uuid &u)
+archive po::marshal(const rvalue *rv, const uuid &u)
 {
 	rdf::statements ret;
+	std::list<mapped_file> bl;
 	rdf::node root = rdf::iri(u);
 
 	ensure(rv);
@@ -267,13 +268,14 @@ rdf::statements po::marshal(const rvalue *rv, const uuid &u)
 
 		ret.emplace_back(root,rdf::ns_po("name"),rdf::ns_po(m.name()));
 		auto off_st = marshal(&m.offset(),ou);
-		std::move(off_st.begin(),off_st.end(),back_inserter(ret));
+		std::move(off_st.triples.begin(),off_st.triples.end(),back_inserter(ret));
+		std::move(off_st.blobs.begin(),off_st.blobs.end(),back_inserter(bl));
 	}
 	else
 		throw marshal_exception("unknown rvalue type");
 
 	ensure(ret.size());
-	return ret;
+	return archive(ret,bl);
 }
 
 value_exception::value_exception(const string &w) : runtime_error(w) {}

@@ -93,9 +93,10 @@ ostream& po::operator<<(ostream &os, const guard &g)
 }
 
 template<>
-rdf::statements po::marshal(const basic_block* bb, const uuid& u)
+archive po::marshal(const basic_block* bb, const uuid& u)
 {
 	rdf::statements ret;
+	std::list<mapped_file> bl;
 	rdf::node root = rdf::iri(u);
 	boost::uuids::name_generator ng(u);
 	size_t cnt = 0;
@@ -105,13 +106,14 @@ rdf::statements po::marshal(const basic_block* bb, const uuid& u)
 	for(const mnemonic& m: bb->mnemonics())
 	{
 		uuid uu = ng(to_string(cnt++));
-		rdf::statements mn = marshal<mnemonic>(&m,uu);
+		archive mn = marshal<mnemonic>(&m,uu);
 
-		std::move(mn.begin(),mn.end(),back_inserter(ret));
+		std::move(mn.triples.begin(),mn.triples.end(),back_inserter(ret));
+		std::move(mn.blobs.begin(),mn.blobs.end(),back_inserter(bl));
 		ret.emplace_back(root,rdf::ns_po("include"),rdf::iri(uu));
 	}
 
-	return ret;
+	return archive(ret,bl);
 }
 
 template<>
@@ -237,9 +239,10 @@ po::guard* po::unmarshal(const po::uuid& u, const po::rdf::storage& store)
 }
 
 template<>
-rdf::statements po::marshal(const guard* g, const uuid& uu)
+archive po::marshal(const guard* g, const uuid& uu)
 {
 	rdf::statements ret;
+	std::list<mapped_file> bl;
 	rdf::nodes rels;
 	rdf::node node = rdf::iri(uu);
 	boost::uuids::name_generator ng(uu);
@@ -252,11 +255,13 @@ rdf::statements po::marshal(const guard* g, const uuid& uu)
 		uuid u2 = ng(to_string(cnt++));
 		rdf::node rn = rdf::iri(uu);
 
-		rdf::statements st1 = marshal(&rel.operand1,u1);
-		rdf::statements st2 = marshal(&rel.operand2,u2);
+		archive st1 = marshal(&rel.operand1,u1);
+		archive st2 = marshal(&rel.operand2,u2);
 
-		std::move(st1.begin(),st1.end(),back_inserter(ret));
-		std::move(st2.begin(),st2.end(),back_inserter(ret));
+		std::move(st1.triples.begin(),st1.triples.end(),back_inserter(ret));
+		std::move(st1.blobs.begin(),st1.blobs.end(),back_inserter(bl));
+		std::move(st2.triples.begin(),st2.triples.end(),back_inserter(ret));
+		std::move(st2.blobs.begin(),st2.blobs.end(),back_inserter(bl));
 
 		ret.emplace_back(rn,rdf::ns_po("operand1"),rdf::iri(u1));
 		ret.emplace_back(rn,rdf::ns_po("operand2"),rdf::iri(u2));
@@ -278,5 +283,5 @@ rdf::statements po::marshal(const guard* g, const uuid& uu)
 		}
 	}
 
-	return ret;
+	return archive(ret,bl);
 }

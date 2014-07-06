@@ -20,11 +20,13 @@ void po::save_point(rdf::storage &store)
 
 	for(const std::pair<uuid,std::pair<marshal_poly,marshal_poly>> &p: dirty_locations)
 	{
-		rdf::statements to_del = p.second.first();
-		std::for_each(to_del.cbegin(),to_del.cend(),std::bind((bool(rdf::storage::*)(const rdf::statement&))&rdf::storage::remove,&store,std::placeholders::_1));
+		archive to_del = p.second.first();
+		std::for_each(to_del.triples.cbegin(),to_del.triples.cend(),std::bind((bool(rdf::storage::*)(const rdf::statement&))&rdf::storage::remove,&store,std::placeholders::_1));
+		std::for_each(to_del.blobs.cbegin(),to_del.blobs.cend(),std::bind((bool(rdf::storage::*)(const mapped_file&))&rdf::storage::unregister_blob,&store,std::placeholders::_1));
 
-		rdf::statements to_new = p.second.second();
-		std::for_each(to_new.cbegin(),to_new.cend(),std::bind((bool(rdf::storage::*)(const rdf::statement&))&rdf::storage::insert,&store,std::placeholders::_1));
+		archive to_new = p.second.second();
+		std::for_each(to_new.triples.cbegin(),to_new.triples.cend(),std::bind((bool(rdf::storage::*)(const rdf::statement&))&rdf::storage::insert,&store,std::placeholders::_1));
+		std::for_each(to_new.blobs.cbegin(),to_new.blobs.cend(),std::bind((bool(rdf::storage::*)(const mapped_file&))&rdf::storage::register_blob,&store,std::placeholders::_1));
 	}
 
 	dirty_locations.clear();

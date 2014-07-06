@@ -22,7 +22,7 @@
 
 namespace po
 {
-	using marshal_poly = std::function<rdf::statements(void)>;
+	using marshal_poly = std::function<archive(void)>;
 
 	// pair<to delete,to write>
 	extern std::unordered_map<uuid,std::pair<marshal_poly,marshal_poly>> dirty_locations;
@@ -58,9 +58,9 @@ namespace po
 	template<typename T>
 	marshal_poly make_marshal_poly(std::shared_ptr<loc_control<T>> t, const uuid u)
 	{
-		std::function<rdf::statements(void)> ret = [t,u](void)
+		std::function<archive(void)> ret = [t,u](void)
 		{
-			rdf::statements ret = (t ? marshal<T>(t->object(),u) : rdf::statements());
+			archive ret = (t ? marshal<T>(t->object(),u) : archive());
 			return ret;
 		};
 

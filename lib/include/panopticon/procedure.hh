@@ -70,7 +70,7 @@ namespace po
 	procedure* unmarshal(const uuid&, const rdf::storage&);
 
 	template<>
-	rdf::statements marshal(const procedure*, const uuid&);
+	archive marshal(const procedure*, const uuid&);
 
 	/// Adds an control transfer with @ref from as source and @ref to as destination
 	void conditional_jump(proc_loc p, bblock_loc from, bblock_loc to, guard g);

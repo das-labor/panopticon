@@ -154,12 +154,6 @@ namespace po
 	void set_operands(instr&, const std::vector<rvalue>&);
 	std::ostream& operator<<(std::ostream &os, const instr &i);
 
-	template<>
-	instr* unmarshal(const uuid&, const rdf::storage&);
-
-	template<>
-	rdf::statements marshal(const instr*, const uuid&);
-
 	/// Pretty print the function
 	std::string pretty(const instr::operation& fn);
 

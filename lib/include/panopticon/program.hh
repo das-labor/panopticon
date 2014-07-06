@@ -168,5 +168,5 @@ namespace po
 	program* unmarshal(const uuid&, const rdf::storage&);
 
 	template<>
-	rdf::statements marshal(const program*, const uuid&);
+	archive marshal(const program*, const uuid&);
 }

@@ -78,13 +78,14 @@ procedure* po::unmarshal(const uuid& u, const rdf::storage &store)
 }
 
 template<>
-rdf::statements po::marshal(const procedure* p, const uuid& u)
+archive po::marshal(const procedure* p, const uuid& u)
 {
 	unsigned int cnt = 0;
 	rdf::statements ret;
+	std::list<mapped_file> bl;
 	boost::uuids::name_generator ng(u);
 	rdf::node node = rdf::iri(u);
-	function<pair<rdf::node,rdf::statements>(const variant<rvalue,bblock_loc>&)> marshal_node = [&](const variant<rvalue,bblock_loc>& v) -> pair<rdf::node,rdf::statements>
+	function<pair<rdf::node,archive>(const variant<rvalue,bblock_loc>&)> marshal_node = [&](const variant<rvalue,bblock_loc>& v) -> pair<rdf::node,archive>
 	{
 		if(get<rvalue>(&v))
 		{
@@ -96,7 +97,7 @@ rdf::statements po::marshal(const procedure* p, const uuid& u)
 		else
 		{
 			bblock_loc bb = get<bblock_loc>(v);
-			return make_pair(rdf::iri(bb.tag()),rdf::statements());
+			return make_pair(rdf::node(rdf::iri(bb.tag())),archive());
 		}
 	};
 
@@ -113,13 +114,16 @@ rdf::statements po::marshal(const procedure* p, const uuid& u)
 		rdf::node cn = rdf::iri(cu);
 		uuid gu = ng(to_string(cnt++));
 		rdf::node gn = rdf::iri(gu);
-		rdf::statements g = marshal(&get_edge(e,p->control_transfers),gu);
-		pair<rdf::node,rdf::statements> in_p = marshal_node(get_vertex(target(e,p->control_transfers),p->control_transfers));
-		pair<rdf::node,rdf::statements> out_p = marshal_node(get_vertex(source(e,p->control_transfers),p->control_transfers));
+		archive g = marshal(&get_edge(e,p->control_transfers),gu);
+		pair<rdf::node,archive> in_p = marshal_node(get_vertex(target(e,p->control_transfers),p->control_transfers));
+		pair<rdf::node,archive> out_p = marshal_node(get_vertex(source(e,p->control_transfers),p->control_transfers));
 
-		std::move(g.begin(),g.end(),back_inserter(ret));
-		std::move(in_p.second.begin(),in_p.second.end(),back_inserter(ret));
-		std::move(out_p.second.begin(),out_p.second.end(),back_inserter(ret));
+		std::move(g.triples.begin(),g.triples.end(),back_inserter(ret));
+		std::move(g.blobs.begin(),g.blobs.end(),back_inserter(bl));
+		std::move(in_p.second.triples.begin(),in_p.second.triples.end(),back_inserter(ret));
+		std::move(in_p.second.blobs.begin(),in_p.second.blobs.end(),back_inserter(bl));
+		std::move(out_p.second.triples.begin(),out_p.second.triples.end(),back_inserter(ret));
+		std::move(out_p.second.blobs.begin(),out_p.second.blobs.end(),back_inserter(bl));
 
 		ret.emplace_back(cn,rdf::ns_po("guard"),gn);
 		ret.emplace_back(cn,rdf::ns_po("in"),in_p.first);
@@ -137,7 +141,7 @@ rdf::statements po::marshal(const procedure* p, const uuid& u)
 	if(p->entry)
 		ret.emplace_back(node,rdf::ns_po("entry"),rdf::iri(p->entry->tag()));
 
-	return ret;
+	return archive(ret,bl);
 }
 
 

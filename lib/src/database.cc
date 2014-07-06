@@ -1,10 +1,11 @@
 #include <panopticon/database.hh>
+#include <panopticon/marshal.hh>
 
 using namespace po;
 using namespace std;
 
 template<>
-rdf::statements po::marshal(const database* db, const uuid& u)
+archive po::marshal(const database* db, const uuid& u)
 {
 	rdf::statements ret;
 	rdf::node root = rdf::iri(u);

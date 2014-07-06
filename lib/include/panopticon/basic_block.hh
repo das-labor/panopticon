@@ -99,7 +99,7 @@ namespace po
 	};
 
 	template<>
-	rdf::statements marshal(const guard*, const uuid&);
+	archive marshal(const guard*, const uuid&);
 
 	template<>
 	guard* unmarshal(const uuid&, const rdf::storage&);
@@ -149,7 +149,7 @@ namespace po
 	};
 
 	template<>
-	rdf::statements marshal(const basic_block*, const uuid&);
+	archive marshal(const basic_block*, const uuid&);
 
 	template<>
 	basic_block* unmarshal(const uuid&, const rdf::storage&);

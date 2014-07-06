@@ -110,11 +110,11 @@ namespace po
 		friend area extends(struct_loc);
 
 		template<typename T>
-		friend rdf::statements marshal(const T*, const uuid&);
+		friend archive marshal(const T*, const uuid&);
 	};
 
 	template<>
-	rdf::statements marshal(const structure*, const uuid&);
+	archive marshal(const structure*, const uuid&);
 
 	template<>
 	structure* unmarshal(const uuid&, const rdf::storage&);

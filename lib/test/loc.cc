@@ -24,7 +24,7 @@ namespace po
 	}
 
 	template<>
-	rdf::statements marshal(const B *b, const uuid &u)
+	archive marshal(const B *b, const uuid &u)
 	{
 		rdf::statements ret;
 		rdf::node root = rdf::iri(u);
@@ -67,7 +67,7 @@ namespace po
 	}
 
 	template<>
-	rdf::statements marshal(const A* a, const uuid &u)
+	archive marshal(const A* a, const uuid &u)
 	{
 		rdf::statements ret;
 		rdf::node root = rdf::iri(u);
@@ -286,9 +286,9 @@ namespace po
 	}
 
 	template<>
-	rdf::statements marshal(const C*, const uuid&)
+	archive marshal(const C*, const uuid&)
 	{
-		return rdf::statements();
+		return archive();
 	}
 }
 

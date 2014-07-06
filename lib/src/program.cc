@@ -92,7 +92,7 @@ program* po::unmarshal(const uuid& u, const rdf::storage &store)
 }
 
 template<>
-rdf::statements po::marshal(const program* p, const uuid& u)
+archive po::marshal(const program* p, const uuid& u)
 {
 	rdf::statements ret;
 	rdf::node n = rdf::iri(u);

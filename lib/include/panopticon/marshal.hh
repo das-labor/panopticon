@@ -147,7 +147,20 @@ namespace po
 		std::ostream& operator<<(std::ostream&, const statement&);
 
 		using statements = std::list<statement>;
+	}
 
+	struct archive
+	{
+		archive(const rdf::statements& st = rdf::statements(), const std::list<mapped_file>& b = std::list<mapped_file>()) : triples(st), blobs(b) {}
+
+		bool operator==(const archive& a) const { return a.triples == triples && a.blobs == blobs; }
+
+		rdf::statements triples;
+		std::list<mapped_file> blobs;
+	};
+
+	namespace rdf
+	{
 		struct storage
 		{
 			using iter = std::string::const_iterator;
@@ -164,6 +177,7 @@ namespace po
 			bool remove(const statement& st);
 			bool remove(const node&, const node&, const node&);
 			bool register_blob(const mapped_file&);
+			bool unregister_blob(const mapped_file&);
 
 			bool has(const statement& st) const;
 			bool has(const node&, const node&, const node&) const;
@@ -253,7 +267,7 @@ namespace po
 	T* unmarshal(const uuid&,const rdf::storage&);
 
 	template<typename T>
-	rdf::statements marshal(const T*, const uuid&);
+	archive marshal(const T*, const uuid&);
 }
 
 namespace std

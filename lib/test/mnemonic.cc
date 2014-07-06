@@ -12,17 +12,17 @@ TEST(mnemonic,marshal)
 		instr(univ_nop<rvalue>{variable("a",2)},variable("a",3))});
 
 	uuid uu;
-	rdf::statements st1 = marshal(&mn1,uu);
+	archive st1 = marshal(&mn1,uu);
 
-	ASSERT_GT(st1.size(),0);
-	rdf::statements st2 = marshal(&mn1,uu);
+	ASSERT_GT(st1.triples.size(),0);
+	ASSERT_EQ(st1.blobs.size(),0);
+	archive st2 = marshal(&mn1,uu);
 
-	ASSERT_EQ(st1.size(),st2.size());
 	ASSERT_TRUE(st1 == st2);
 
 	rdf::storage store;
 
-	for(auto s: st1)
+	for(auto s: st1.triples)
 	{
 		std::cerr << s << std::endl;
 		store.insert(s);
