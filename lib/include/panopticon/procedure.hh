@@ -205,7 +205,7 @@ namespace po
 
 					for(const mnemonic &m: state.mnemonics)
 					{
-						last = std::max(last,m.area.upper() - 1);
+						last = std::max<po::offset>(last,m.area.upper() - 1);
 						ensure(mnemonics.insert(std::make_pair(m.area.lower(),m)).second);
 					}
 

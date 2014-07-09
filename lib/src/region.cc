@@ -144,7 +144,7 @@ layer::layer(const std::string &n, const std::vector<po::byte> &d)
 : _name(n), _data(blob(d))
 {}
 
-layer::layer(const std::string &n, const byte *d, size_t sz)
+layer::layer(const std::string &n, const po::byte *d, size_t sz)
 : _name(n), _data(blob(std::move(std::vector<po::byte>(d,d + sz))))
 {}
 
