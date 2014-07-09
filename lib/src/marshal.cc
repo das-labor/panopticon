@@ -10,7 +10,13 @@ extern "C" {
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+
+#ifdef _WIN32
+#include <windows.h>
+#else
 #include <sys/mman.h>
+#endif
+
 #include <stdio.h>
 }
 
@@ -28,21 +34,40 @@ using namespace filesystem;
 std::mt19937 uuid::prng;
 boost::uuids::basic_random_generator<std::mt19937> uuid::generator(&uuid::prng);
 
+#ifdef _WIN32
+blob::blob(const boost::filesystem::path& p, const uuid& t)
+: _size(file_size(p)), _source(boost::none),
+	_data(nullptr), _tag(t), _reference(new std::atomic<unsigned long long>())
+{
+	HANDLE f = CreateFile(p.string().c_str(),GENERIC_READ,FILE_SHARE_READ,NULL,OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,NULL);
+	if(f == INVALID_HANDLE_VALUE)
+		throw std::runtime_error("Can't create mapping for " + p.string());
+
+	HANDLE m = CreateFileMapping(f,NULL,PAGE_READONLY,0,0,NULL);
+	if(m == INVALID_HANDLE_VALUE)
+		throw std::runtime_error("Can't create mapping for " + p.string());
+
+	_source = std::make_tuple(f,m,p);
+	_data = MapViewOfFile(m,FILE_MAP_READ,0,0,_size);
+	if(!_data)
+		throw std::runtime_error("Can't create mapping for " + p.string());
+
+	++(*_reference);
+}
+#else
 blob::blob(const boost::filesystem::path& p, const uuid& t)
 : _size(file_size(p)), _source(std::make_pair(open(p.string().c_str(),O_RDONLY),p)),
 	_data(nullptr), _tag(t), _reference(new std::atomic<unsigned long long>())
 {
-	if(_source)
-	{
-		if(_source->first < 0)
-			throw std::runtime_error("Can't create mapping for " + p.string());
-		_data = (char*)mmap(NULL,_size,PROT_READ,MAP_PRIVATE,_source->first,0);
-		if(!_data)
-			throw std::runtime_error("Can't create mapping for " + p.string());
-	}
+	if(_source->first < 0)
+		throw std::runtime_error("Can't create mapping for " + p.string());
+	_data = (char*)mmap(NULL,_size,PROT_READ,MAP_PRIVATE,_source->first,0);
+	if(!_data)
+		throw std::runtime_error("Can't create mapping for " + p.string());
 
 	++(*_reference);
 }
+#endif
 
 blob::blob(const std::vector<uint8_t>& v, const uuid& t)
 : _size(v.size()), _source(boost::none),
@@ -64,8 +89,14 @@ blob::~blob(void)
 	{
 		if(_source)
 		{
+#ifdef _WIN32
+			UnmapViewOfFile(_data);
+			CloseHandle(std::get<1>(*_source));
+			CloseHandle(std::get<0>(*_source));
+#else
 			munmap(_data,_size);
 			close(_source->first);
+#endif
 		}
 		else
 		{

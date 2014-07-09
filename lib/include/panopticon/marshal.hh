@@ -17,6 +17,12 @@
 #include <boost/filesystem.hpp>
 #include <boost/optional.hpp>
 
+extern "C" {
+#ifdef _WIN32
+#include <windows.h>
+#endif
+}
+
 #include <panopticon/hash.hh>
 #include <panopticon/ensure.hh>
 
@@ -71,11 +77,19 @@ namespace po
 		const char* data(void) const { return _data; }
 		const uuid& tag(void) const { return _tag; }
 		boost::optional<boost::filesystem::path> path(void) const
-			{ return _source ? boost::make_optional(_source->second) : boost::none; }
+#ifdef _WIN32
+			{ return _source ? boost::make_optional(std::get<2>(*_source)) : boost::none; }
+#else
+			{ return _source ? boost::make_optional(std::get<1>(*_source)) : boost::none; }
+#endif
 
 	private:
 		size_t _size;
+#ifdef _WIN32
+		boost::optional<std::tuple<HANDLE,HANDLE,boost::filesystem::path>> _source;
+#else
 		boost::optional<std::pair<int,boost::filesystem::path>> _source;
+#endif
 		char* _data;
 		uuid _tag;
 		std::atomic<unsigned long long>* _reference;
