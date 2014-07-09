@@ -4,6 +4,7 @@
 #include <list>
 #include <cstring>
 #include <stdexcept>
+#include <algorithm>
 
 #include <panopticon/basic_block.hh>
 #include <panopticon/mnemonic.hh>

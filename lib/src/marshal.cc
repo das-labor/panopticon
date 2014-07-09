@@ -48,7 +48,7 @@ blob::blob(const boost::filesystem::path& p, const uuid& t)
 		throw std::runtime_error("Can't create mapping for " + p.string());
 
 	_source = std::make_tuple(f,m,p);
-	_data = static_cast<char*>(MapViewOfFile(m,FILE_MAP_READ,0,0,_size));
+	_data = reinterpret_cast<char*>(MapViewOfFile(m,FILE_MAP_READ,0,0,_size));
 	if(!_data)
 		throw std::runtime_error("Can't create mapping for " + p.string());
 
