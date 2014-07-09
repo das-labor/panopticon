@@ -100,7 +100,7 @@ layer* po::unmarshal(const uuid& u, const rdf::storage& st)
 				break;
 
 			offset off = stoul(string(i,j));
-			tryte t = (*(k-1) == 'u' ? boost::none : make_optional(static_cast<byte>(stoul(string(j+1,k),nullptr,16))));
+			tryte t = (*(k-1) == 'u' ? boost::none : make_optional(static_cast<po::byte>(stoul(string(j+1,k),nullptr,16))));
 
 			kv.emplace(off,t);
 			i = k + 1;
@@ -132,20 +132,20 @@ po::layer_wloc po::operator+=(po::layer_wloc& a, const po::layer_wloc &b)
 	return a = b;
 }
 
-layer::layer(const std::string &n, std::initializer_list<byte> il)
-: _name(n), _data(blob(std::move(vector<byte>(il))))
+layer::layer(const std::string &n, std::initializer_list<po::byte> il)
+: _name(n), _data(blob(std::move(vector<po::byte>(il))))
 {}
 
 layer::layer(const std::string &n, const blob& mf)
 : _name(n), _data(mf)
 {}
 
-layer::layer(const std::string &n, const std::vector<byte> &d)
+layer::layer(const std::string &n, const std::vector<po::byte> &d)
 : _name(n), _data(blob(d))
 {}
 
 layer::layer(const std::string &n, const byte *d, size_t sz)
-: _name(n), _data(blob(std::move(std::vector<byte>(d,d + sz))))
+: _name(n), _data(blob(std::move(std::vector<po::byte>(d,d + sz))))
 {}
 
 layer::layer(const std::string &n, const std::unordered_map<offset,tryte> &d)
@@ -224,12 +224,12 @@ po::region_loc po::region::undefined(const std::string& n, size_t sz)
 	return region_loc(new region(n,layer_loc(new layer("base",sz))));
 }
 
-po::region_loc po::region::wrap(const std::string& n, const byte* p, size_t sz)
+po::region_loc po::region::wrap(const std::string& n, const po::byte* p, size_t sz)
 {
 	return region_loc(new region(n,layer_loc(new layer("base",p,sz))));
 }
 
-po::region_loc po::region::wrap(const std::string& n, std::initializer_list<byte> il)
+po::region_loc po::region::wrap(const std::string& n, std::initializer_list<po::byte> il)
 {
 	return region_loc(new region(n,layer_loc(new layer("base",il))));
 }
