@@ -39,7 +39,7 @@ QVariant LinearModel::data(const QModelIndex& idx, int role) const
 			{
 				slab sl = p.second.lock()->read();
 				auto i = boost::begin(sl) + (t - o);
-				auto j = boost::begin(sl) + std::min((t - o) + columnWidth,boost::icl::size(p.first));
+				auto j = boost::begin(sl) + std::min<po::offset>((t - o) + columnWidth,boost::icl::size(p.first));
 
 				for(po::tryte s: iters(std::make_pair(i,j)))
 				{

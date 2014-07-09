@@ -149,7 +149,7 @@ TEST(layer,marshal)
 	s1.close();
 
 	layer_loc l1(new layer("l1",33));
-	layer_loc l2(new layer("l2",vector<byte>({1,2,3,4,5})));
+	layer_loc l2(new layer("l2",vector<po::byte>({1,2,3,4,5})));
 	layer_loc l3(new layer("l3",std::unordered_map<offset,tryte>({
 		make_pair(0,5),
 		make_pair(1,5),
