@@ -16,7 +16,9 @@ ApplicationWindow {
 
 	Component.onCompleted: {
 		if(Panopticon.session)
-			loader.setSource("workspace/Linear.qml",{ "session": Panopticon.session })
+		{
+			loader.setSource("workspace/Workspace.qml",{ "session": Panopticon.session })
+		}
 		else
 			loader.setSource("wizard/Main.qml")
 	}

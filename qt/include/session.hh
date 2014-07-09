@@ -1,8 +1,25 @@
 #include <QtQuick>
-#include <QAbstractItemModel>
+#include <QAbstractTableModel>
 #include <panopticon/database.hh>
+#include <panopticon/region.hh>
 
 #pragma once
+
+class LinearModel : public QAbstractListModel
+{
+	Q_OBJECT
+
+public:
+	LinearModel(QObject* p = nullptr);
+
+	virtual int rowCount(const QModelIndex& parent = QModelIndex()) const;
+	virtual QVariant data(const QModelIndex& parent = QModelIndex(), int role = Qt::DisplayRole) const;
+
+	void setProjection(const std::list<std::pair<po::bound,po::region_wloc>>& fl);
+
+protected:
+	std::list<std::pair<po::bound,po::region_wloc>> _projection;
+};
 
 class Session : public QObject
 {
@@ -26,5 +43,5 @@ signals:
 
 private:
 	po::session _session;
-	QStringListModel* _linear;
+	LinearModel* _linear;
 };

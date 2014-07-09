@@ -4,21 +4,17 @@ import Panopticon 1.0
 
 Item {
 	id: root
+
 	property variant session: null
 
-	Component {
-		id: hexdump
+	anchors.fill: parent
+
+	Row {
+		anchors.fill: parent
 
 		Linear {
-			anchors.fill: parent
-			//session: root.session
+			id: lst1
+			session: root.session
 		}
 	}
-
-	TabView {
-		id: notebook
-		anchors.fill: parent
-	}
-
-	Component.onCompleted: { notebook.addTab("Hexdump",hexdump) }
 }
