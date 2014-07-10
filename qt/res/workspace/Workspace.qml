@@ -9,12 +9,8 @@ Item {
 
 	anchors.fill: parent
 
-	Row {
-		anchors.fill: parent
-
-		Linear {
-			id: lst1
-			session: root.session
-		}
+	Linear {
+		id: lst1
+		session: root.session
 	}
 }
