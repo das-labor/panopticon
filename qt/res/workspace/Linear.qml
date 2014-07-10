@@ -1,4 +1,5 @@
 import QtQuick 2.1
+import QtQuick.Controls 1.2
 
 Item {
 	id: root
@@ -10,7 +11,13 @@ Item {
 	property int cursorLowerRow: -1
 	property int addressColumnWidth: 0
 
+	readonly property string fontFamily: "Monospace"
+	readonly property real fontPointSize: 7
+	readonly property real cellSize: 23
+	readonly property real halfCellSize: 12
+
 	anchors.fill: parent
+	focus: true
 
 	Component {
 		id: row
@@ -51,13 +58,14 @@ Item {
 
 			Item {
 				id: addrCol
-				height: 33
+				height: root.cellSize
 				width: root.addressColumnWidth
 
 				Text {
 					height: parent.height
 					text: contents.address
 					verticalAlignment: Text.AlignVCenter
+					font { family: root.fontFamily; pointSize: root.fontPointSize }
 
 					onWidthChanged: { root.addressColumnWidth = Math.max(root.addressColumnWidth,width) }
 				}
@@ -70,8 +78,8 @@ Item {
 					model: contents.hex
 					delegate: Rectangle {
 						property int colIndex: index
-						height: 33
-						width: 33
+						height: root.cellSize
+						width: root.cellSize
 						color: {
 							var c = ((cursorUpperRow < rowIndex && cursorLowerRow > rowIndex) ||
 											 (cursorUpperRow == rowIndex && cursorLowerRow != rowIndex && cursorUpperCol <= colIndex) ||
@@ -80,7 +88,11 @@ Item {
 							return c ? "red" : "white"
 						}
 
-						Text { anchors.centerIn: parent; text: modelData }
+						Text {
+							anchors.centerIn: parent
+							text: modelData
+							font { family: root.fontFamily; pointSize: root.fontPointSize }
+						}
 					}
 				}
 			}
@@ -92,8 +104,8 @@ Item {
 					model: contents.text
 					delegate: Rectangle {
 						property int colIndex: index
-						height: 33
-						width: 33
+						height: root.cellSize
+						width: root.halfCellSize
 						color: {
 							var c = ((cursorUpperRow < rowIndex && cursorLowerRow > rowIndex) ||
 											 (cursorUpperRow == rowIndex && cursorLowerRow != rowIndex && cursorUpperCol <= colIndex) ||
@@ -102,7 +114,41 @@ Item {
 							return c ? "red" : "white"
 						}
 
-						Text { anchors.centerIn: parent; text: modelData }
+						Text {
+							anchors.centerIn: parent
+							text: modelData
+							font { family: root.fontFamily; pointSize: root.fontPointSize }
+						}
+					}
+				}
+			}
+
+			Item {
+				width: childrenRect.width; height: childrenRect.height
+				x:childrenRect.x; y: childrenRect.y
+
+				Rectangle {
+					anchors.fill: commentCol
+					color: commentCol.activeFocus ? "red" : "#00000000"
+				}
+
+				TextEdit {
+					id: commentCol
+
+					readOnly: false
+					text: ""
+					width: 300
+					height: root.cellSize * Math.max(1,lineCount)
+
+					Keys.enabled: true
+					Keys.priority: Keys.BeforeItem
+					Keys.onPressed: {
+						if((event.key == Qt.Key_Enter && (event.modifiers & Qt.ShiftModifier) == 0) ||
+							 (event.key == Qt.Key_Return && (event.modifiers & Qt.ShiftModifier) == 0) ||
+								event.key == Qt.Key_Escape) {
+							focus = false
+							event.accepted = true
+						}
 					}
 				}
 			}
@@ -130,10 +176,15 @@ Item {
 
 				if(row >= 0 && rowItm.columnAt != undefined) {
 					var col = rowItm.columnAt(mouse.x + lst.contentX)
-					anchorRow = row
-					anchorCol = col
-					state = "selecting"
-					updateCursor()
+					if(col >= 0) {
+						anchorRow = row
+						anchorCol = col
+						state = "selecting"
+						updateCursor()
+						mouse.accepted = true
+					} else {
+						mouse.accepted = false
+					}
 				}
 			} else if(state == "selected") {
 				state = ""
@@ -141,8 +192,8 @@ Item {
 				cursorLowerRow = -1
 				cursorUpperCol = -1
 				cursorLowerCol = -1
+				mouse.accepted = true
 			}
-			mouse.accepted = true
 		}
 
 		onReleased: {
@@ -170,27 +221,29 @@ Item {
 					var col = rowItm.columnAt(mouseX + lst.contentX)
 					var u = -1, d = -1, f = -1, l = -1
 
-					if(row < anchorRow) {
-						u = row
-						f = col
-						d = anchorRow
-						l = anchorCol
-					} else if(row > anchorRow) {
-						d = row
-						l = col
-						u = anchorRow
-						f = anchorCol
-					} else if(row == anchorRow) {
-						u = row
-						d = row
-						f = Math.min(col,anchorCol)
-						l = Math.max(col,anchorCol)
-					}
+					if(col >= 0) {
+						if(row < anchorRow) {
+							u = row
+							f = col
+							d = anchorRow
+							l = anchorCol
+						} else if(row > anchorRow) {
+							d = row
+							l = col
+							u = anchorRow
+							f = anchorCol
+						} else if(row == anchorRow) {
+							u = row
+							d = row
+							f = Math.min(col,anchorCol)
+							l = Math.max(col,anchorCol)
+						}
 
-					root.cursorUpperRow = u
-					root.cursorLowerRow = d
-					root.cursorUpperCol = f
-					root.cursorLowerCol = l
+						root.cursorUpperRow = u
+						root.cursorLowerRow = d
+						root.cursorUpperCol = f
+						root.cursorLowerCol = l
+					}
 				}
 			}
 		}
