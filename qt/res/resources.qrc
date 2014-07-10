@@ -1,6 +1,7 @@
 <!DOCTYPE RCC>
 <RCC version="1.0">
 	<qresource>
+		<!-- Entry point -->
 		<file>Window.qml</file>
 
 		<!-- Wizard -->
@@ -10,21 +11,15 @@
 		<file>wizard/Option.qml</file>
 		<file>wizard/New.qml</file>
 
-		<!-- LinearView common -->
-		<file>workspace/Cursor.qml</file>
-		<file>workspace/Address.qml</file>
-
-		<!-- LinearView hexdump -->
-		<file>workspace/Binary.qml</file>
-		<file>workspace/BinaryTitle.qml</file>
-
 		<file>workspace/Workspace.qml</file>
+
+		<!-- Graph -->
 		<file>workspace/Graph.qml</file>
 		<file>workspace/Edge.qml</file>
-
 		<file>head.svg</file>
 		<file>tail.svg</file>
 
+		<!-- Linear -->
 		<file>workspace/Linear.qml</file>
 	</qresource>
 </RCC>
