@@ -136,3 +136,27 @@ session po::raw(const std::string& path)
 
 	return session{db,store};
 }
+
+template<>
+archive po::marshal(const std::string* c, const uuid& u)
+{
+	rdf::statements ret;
+	rdf::node root = rdf::iri(u);
+
+	ret.emplace_back(root,rdf::ns_rdf("type"),rdf::ns_po("Comment"));
+	ret.emplace_back(root,rdf::ns_po("body"),rdf::lit(*c));
+
+	return ret;
+}
+
+template<>
+std::string* po::unmarshal(const uuid& u, const rdf::storage& store)
+{
+	rdf::node root = rdf::iri(u);
+
+	if(!store.has(root,rdf::ns_rdf("type"),rdf::ns_po("Comment")))
+		throw marshal_exception("invalid type");
+
+	rdf::statement body_st = store.first(root,rdf::ns_po("body"));
+	return new std::string(body_st.object.as_literal());
+}

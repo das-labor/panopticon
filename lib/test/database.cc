@@ -64,3 +64,17 @@ TEST(database,marshal)
 	ASSERT_EQ(db1->comments.at(ref{"zlib",0}), c2);
 	ASSERT_EQ(db1->comments.at(ref{"base",55}), c3);
 }
+
+TEST(database,comment_marshal)
+{
+	uuid uu;
+	rdf::storage store;
+	comment_loc c1(new std::string("Hello, World"));
+
+	save_point(store);
+	ASSERT_GT(store.count(),0);
+
+	std::unique_ptr<std::string> c1b(unmarshal<std::string>(uu,store));
+
+	ASSERT_EQ(*c1, *c1b);
+}

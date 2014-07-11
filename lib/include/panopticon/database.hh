@@ -18,6 +18,12 @@ namespace po
 	using record = boost::variant<bblock_loc,const field&>;
 	using comment_loc = loc<std::string>;
 
+	template<>
+	archive marshal(const std::string*, const uuid&);
+
+	template<>
+	std::string* unmarshal(const uuid&, const rdf::storage&);
+
 	area extends(const record&);
 
 	struct database
