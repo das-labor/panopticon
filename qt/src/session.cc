@@ -4,8 +4,8 @@ using namespace po;
 
 const int columnWidth = 16;
 
-LinearModel::LinearModel(QObject *p)
-: QAbstractListModel(p)
+LinearModel::LinearModel(dbase_loc db, QObject *p)
+: QAbstractListModel(p), _dbase(db), _projection(po::projection(_dbase->data))
 {}
 
 int LinearModel::rowCount(const QModelIndex& parent) const
@@ -31,7 +31,7 @@ QVariant LinearModel::data(const QModelIndex& idx, int role) const
 	{
 		const po::offset t = idx.row() * columnWidth;
 		po::offset o = 0;
-		QStringList hex, text;
+		QStringList hex, text, comments;
 
 		for(auto p: _projection)
 		{
@@ -40,6 +40,15 @@ QVariant LinearModel::data(const QModelIndex& idx, int role) const
 				slab sl = p.second.lock()->read();
 				auto i = boost::begin(sl) + (t - o);
 				auto j = boost::begin(sl) + std::min<po::offset>((t - o) + columnWidth,boost::icl::size(p.first));
+				auto k = _dbase->comments.lower_bound(ref{p.second->name(),o});
+
+				while(k != _dbase->comments.end() &&
+							k->first.reg == p.second->name() &&
+							k->first.off < o + t)
+				{
+					comments.append(QString::fromStdString(*(k->second)));
+					++k;
+				}
 
 				for(po::tryte s: iters(std::make_pair(i,j)))
 				{
@@ -75,25 +84,42 @@ QVariant LinearModel::data(const QModelIndex& idx, int role) const
 		}
 
 		ensure(text.size() == hex.size() && text.size());
-		return QString("{ 'address': '0x%1', 'hex': %2, 'text': %3 }")
+		return QString("{ 'address': '0x%1', 'hex': %2, 'text': %3, 'comment': '%4' }")
 						.arg(idx.row() * columnWidth,0,16)
 						.arg("[" + hex.join(",") + "]")
-						.arg("[" + text.join(",") + "]");
+						.arg("[" + text.join(",") + "]")
+						.arg(comments.join("\n"));
 	}
 }
 
-void LinearModel::setProjection(const std::list<std::pair<bound,region_wloc>>& fl)
+void LinearModel::postComment(int row, QString c)
 {
-	beginResetModel();
-	_projection = fl;
-	endResetModel();
+	po::offset o = 0, t = row * columnWidth;
+	for(auto p: _projection)
+	{
+		if(o <= t && o + boost::icl::size(p.first) > t)
+		{
+			auto k = _dbase->comments.lower_bound(ref{p.second->name(),o});
+
+			while(k != _dbase->comments.end() &&
+						k->first.reg == p.second->name() &&
+						k->first.off < o + columnWidth)
+			{
+				k = _dbase.write().comments.erase(k);
+			}
+
+			_dbase.write().comments.emplace(ref{p.second->name(),o},comment_loc(new std::string(c.toStdString())));
+			dataChanged(createIndex(row,0),createIndex(row,0));
+			return;
+		}
+	}
+
+	ensure(false);
 }
 
 Session::Session(po::session sess, QObject *p)
-: QObject(p), _session(sess), _linear(new LinearModel(this))
-{
-	_linear->setProjection(po::projection(_session.dbase->data));
-}
+: QObject(p), _session(sess), _linear(new LinearModel(sess.dbase,this))
+{}
 
 Session::~Session(void)
 {}
@@ -106,4 +132,10 @@ Session* Session::open(QString s)
 Session* Session::create(QString s)
 {
 	return new Session(po::raw(s.toStdString()));
+}
+
+void Session::postComment(int r, QString c)
+{
+	qDebug() << "post" << c << "in" << r;
+	_linear->postComment(r,c);
 }

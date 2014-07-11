@@ -10,14 +10,15 @@ class LinearModel : public QAbstractListModel
 	Q_OBJECT
 
 public:
-	LinearModel(QObject* p = nullptr);
+	LinearModel(po::dbase_loc db, QObject* p = nullptr);
 
 	virtual int rowCount(const QModelIndex& parent = QModelIndex()) const;
 	virtual QVariant data(const QModelIndex& parent = QModelIndex(), int role = Qt::DisplayRole) const;
 
-	void setProjection(const std::list<std::pair<po::bound,po::region_wloc>>& fl);
+	void postComment(int row, QString c);
 
 protected:
+	po::dbase_loc _dbase;
 	std::list<std::pair<po::bound,po::region_wloc>> _projection;
 };
 
@@ -31,8 +32,10 @@ public:
 	Session(po::session, QObject *parent = nullptr);
 	virtual ~Session(void);
 
-	Q_INVOKABLE static Session* open(QString);
-	Q_INVOKABLE static Session* create(QString);
+	static Session* open(QString);
+	static Session* create(QString);
+
+	Q_INVOKABLE void postComment(int row, QString c);
 
 	QString title(void) const { return QString::fromStdString(_session.dbase->title); }
 	QObject* linear(void) const { return _linear; }

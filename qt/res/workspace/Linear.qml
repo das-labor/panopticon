@@ -136,7 +136,7 @@ Item {
 					id: commentCol
 
 					readOnly: false
-					text: ""
+					text: contents.comment
 					width: 300
 					height: root.cellSize * Math.max(1,lineCount)
 
@@ -144,8 +144,14 @@ Item {
 					Keys.priority: Keys.BeforeItem
 					Keys.onPressed: {
 						if((event.key == Qt.Key_Enter && (event.modifiers & Qt.ShiftModifier) == 0) ||
-							 (event.key == Qt.Key_Return && (event.modifiers & Qt.ShiftModifier) == 0) ||
-								event.key == Qt.Key_Escape) {
+							 (event.key == Qt.Key_Return && (event.modifiers & Qt.ShiftModifier) == 0)) {
+							root.session.postComment(rowIndex,text)
+							text = contents.comment
+							focus = false
+							event.accepted = true
+						}
+						else if(event.key == Qt.Key_Escape) {
+							text = contents.comment
 							focus = false
 							event.accepted = true
 						}
