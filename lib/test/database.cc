@@ -70,10 +70,13 @@ TEST(database,comment_marshal)
 {
 	uuid uu;
 	rdf::storage store;
-	comment_loc c1(new std::string("Hello, World"));
+	comment_loc c1(uu,new std::string("Hello, World"));
 
 	save_point(store);
 	ASSERT_GT(store.count(),0);
+
+	for(auto x: store.all())
+		std::cout << x << std::endl;
 
 	std::unique_ptr<std::string> c1b(unmarshal<std::string>(uu,store));
 
