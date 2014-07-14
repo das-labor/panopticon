@@ -35,12 +35,14 @@ LinearModel::LinearModel(dbase_loc db, QObject *p)
 				{
 					interval<int>::type iv(row,row + bb->mnemonics().size());
 					_rows += std::make_pair(iv,row_t(reg,bb));
+					row += bb->mnemonics().size();
 				}
 
 				void operator()(struct_loc s) const
 				{
 					interval<int>::type iv(row,row + s->fields.size());
 					_rows += std::make_pair(iv,row_t(reg,s));
+					row += s->fields.size();
 				}
 
 				int& row;
@@ -103,7 +105,7 @@ LinearModel::LinearModel(dbase_loc db, QObject *p)
 		struct visitor : public boost::static_visitor<std::string>
 		{
 			std::string operator()(const po::bound& b) const { return "[" + std::to_string(b.lower()) + ":" + std::to_string(b.upper()) + ")"; }
-			std::string operator()(const po::bblock_loc&) const { return "bb"; }
+			std::string operator()(const po::bblock_loc& bb) const { return "bb(" + std::to_string((ptrdiff_t)(&(*bb))) + ")"; }
 			std::string operator()(const po::struct_loc&) const { return "struct"; }
 		};
 		std::cout << p.first << " " << boost::apply_visitor(visitor(), p.second.second) << std::endl;
@@ -132,7 +134,7 @@ QVariant LinearModel::data(const QModelIndex& idx, int role) const
 
 			std::pair<QString,po::bound> operator()(po::bound b) const
 			{
-				po::offset o = (row - ival.lower()) * columnWidth;
+				po::offset o = b.lower() + (row - ival.lower()) * columnWidth;
 				po::offset p = std::min<po::offset>(o + columnWidth,b.upper());
 				slab sl = reg->read();
 				auto i = boost::begin(sl) + o;
