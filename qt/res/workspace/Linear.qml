@@ -16,7 +16,6 @@ Item {
 	readonly property real cellSize: 23
 	readonly property real halfCellSize: 12
 
-	anchors.fill: parent
 	focus: true
 
 	Component {
@@ -34,6 +33,8 @@ Item {
 				var cols = [hexCol, textCol]
 				var rep = 0
 
+				x -= addressColumnWidth + 25
+
 				while(i < cols.length)
 				{
 					var c = cols[i++]
@@ -48,7 +49,7 @@ Item {
 				while(rep != 0 && i < rep.children.length) {
 					var itm = rep.children[i]
 
-					if(itm.x + rep.x <= x && itm.x + rep.x + itm.width > x && contents.hex[i] != '')
+					if(itm.x + rep.x <= x && itm.x + rep.x + itm.width > x && contents.payload.hex[i] != '')
 						return i
 					++i
 				}
@@ -71,54 +72,106 @@ Item {
 				}
 			}
 
-			Row {
-				id: hexCol
+			Item {
+				height: cellSize
+				width: childrenRect.width
 
-				Repeater {
-					model: contents.hex
-					delegate: Rectangle {
-						property int colIndex: index
-						height: root.cellSize
-						width: root.cellSize
-						color: {
-							var c = ((cursorUpperRow < rowIndex && cursorLowerRow > rowIndex) ||
-											 (cursorUpperRow == rowIndex && cursorLowerRow != rowIndex && cursorUpperCol <= colIndex) ||
-											 (cursorLowerRow == rowIndex && cursorUpperRow != rowIndex && cursorLowerCol >= colIndex) ||
-											 (cursorLowerRow == rowIndex && cursorUpperRow == rowIndex && cursorUpperCol <= colIndex && cursorLowerCol >= colIndex))
-							return c ? "red" : "white"
+				Row {
+					id: hexdump
+					visible: contents.payload.type == 'raw'
+					spacing: 25
+
+					property int activeColumn: -1
+
+					Row {
+						id: hexCol
+
+						Repeater {
+							model: contents.payload.hex
+							delegate: Rectangle {
+								property int colIndex: index
+								height: root.cellSize
+								width: root.cellSize
+								color: {
+									var c = ((cursorUpperRow < rowIndex && cursorLowerRow > rowIndex) ||
+													 (cursorUpperRow == rowIndex && cursorLowerRow != rowIndex && cursorUpperCol <= colIndex) ||
+													 (cursorLowerRow == rowIndex && cursorUpperRow != rowIndex && cursorLowerCol >= colIndex) ||
+													 (cursorLowerRow == rowIndex && cursorUpperRow == rowIndex && cursorUpperCol <= colIndex && cursorLowerCol >= colIndex))
+									return c ? "red" : "white"
+								}
+
+								Text {
+									anchors.centerIn: parent
+									text: modelData
+									color: hexdump.activeColumn == colIndex ? "red" : "black"
+									font { family: root.fontFamily; pointSize: root.fontPointSize }
+								}
+
+								MouseArea {
+									id: mouseArea
+									anchors.fill: parent
+									hoverEnabled: true
+									acceptedButtons: Qt.RightButton
+
+									onEntered: hexdump.activeColumn = colIndex
+									onExited: hexdump.activeColumn = -1
+									onPressed: session.disassemble(rowIndex,colIndex)
+								}
+							}
 						}
+					}
 
-						Text {
-							anchors.centerIn: parent
-							text: modelData
-							font { family: root.fontFamily; pointSize: root.fontPointSize }
+					Row {
+						id: textCol
+
+						Repeater {
+							model: contents.payload.text
+							delegate: Rectangle {
+								property int colIndex: index
+								height: root.cellSize
+								width: root.halfCellSize
+								color: {
+									var c = ((cursorUpperRow < rowIndex && cursorLowerRow > rowIndex) ||
+													 (cursorUpperRow == rowIndex && cursorLowerRow != rowIndex && cursorUpperCol <= colIndex) ||
+													 (cursorLowerRow == rowIndex && cursorUpperRow != rowIndex && cursorLowerCol >= colIndex) ||
+													 (cursorLowerRow == rowIndex && cursorUpperRow == rowIndex && cursorUpperCol <= colIndex && cursorLowerCol >= colIndex))
+									return c ? "red" : "white"
+								}
+
+								Text {
+									anchors.centerIn: parent
+									text: modelData
+									color: hexdump.activeColumn == colIndex ? "red" : "black"
+									font { family: root.fontFamily; pointSize: root.fontPointSize }
+								}
+
+								MouseArea {
+									id: mouseArea
+									anchors.fill: parent
+									hoverEnabled: true
+									acceptedButtons: Qt.RightButton
+
+									onEntered: hexdump.activeColumn = colIndex
+									onExited: hexdump.activeColumn = -1
+									onPressed: session.disassemble(rowIndex,colIndex)
+								}
+							}
 						}
 					}
 				}
-			}
 
-			Row {
-				id: textCol
+				Row {
+					id: struct
+					visible: contents.payload.type == 'mne'
+					height: childrenRect.height
+					width: childrenRect.width
 
-				Repeater {
-					model: contents.text
-					delegate: Rectangle {
-						property int colIndex: index
-						height: root.cellSize
-						width: root.halfCellSize
-						color: {
-							var c = ((cursorUpperRow < rowIndex && cursorLowerRow > rowIndex) ||
-											 (cursorUpperRow == rowIndex && cursorLowerRow != rowIndex && cursorUpperCol <= colIndex) ||
-											 (cursorLowerRow == rowIndex && cursorUpperRow != rowIndex && cursorLowerCol >= colIndex) ||
-											 (cursorLowerRow == rowIndex && cursorUpperRow == rowIndex && cursorUpperCol <= colIndex && cursorLowerCol >= colIndex))
-							return c ? "red" : "white"
-						}
-
-						Text {
-							anchors.centerIn: parent
-							text: modelData
-							font { family: root.fontFamily; pointSize: root.fontPointSize }
-						}
+					Text {
+						width: paintedWidth
+						height: cellSize
+						verticalAlignment: Text.AlignBottom
+						font { family: root.fontFamily; pointSize: root.fontPointSize }
+						text: (contents.payload.type == 'mne' ? contents.payload.op + "  " : "") + (contents.payload.type == 'mne' ? contents.payload.args.join(", ") : "")
 					}
 				}
 			}
@@ -161,11 +214,17 @@ Item {
 		}
 	}
 
-	ListView {
-		id: lst
+	ScrollView {
 		anchors.fill: parent
-		model: root.session.linear
-		delegate: row
+		id: scroll
+
+			ListView {
+			id: lst
+			model: root.session.linear
+			delegate: row
+			cacheBuffer: 1
+			interactive: false
+		}
 	}
 
 	MouseArea {
@@ -173,7 +232,7 @@ Item {
 		property int anchorRow: -1
 		property int anchorCol: -1
 
-		anchors.fill: lst
+		anchors.fill: scroll
 
 		onPressed: {
 			if(state == "") {

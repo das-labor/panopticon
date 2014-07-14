@@ -7,6 +7,7 @@
 #include <panopticon/interpreter.hh>
 #include <panopticon/marshal.hh>
 #include <panopticon/region.hh>
+#include <panopticon/database.hh>
 
 #include <boost/any.hpp>
 
@@ -54,7 +55,7 @@ namespace po
 	struct program
 	{
 		/// Contruct an empty program with name @ref name
-		program(const std::string &n = "unnamed program");
+		program(const std::string& r, const std::string &n = "unnamed program");
 
 		/// Set of all procedures in the graph
 		const std::unordered_set<proc_loc>& procedures(void) const;
@@ -71,6 +72,8 @@ namespace po
 		/// Human-readable name of the program
 		std::string name;
 
+		/// Region name
+		std::string reg;
 
 		/**
 		 * Disassemble bytes from @ref tokens starting at @ref offset. The new opcodes
@@ -81,12 +84,13 @@ namespace po
 		 * The @ref disass_sig is called for each procedure disassembled successfully.
 		 */
 		template<typename Tag>
-		static prog_loc disassemble(const disassembler<Tag> &main, std::vector<typename rule<Tag>::token> tokens, offset off = 0, boost::optional<prog_loc> prog = boost::none, disass_sig signal = disass_sig())
+		static prog_loc disassemble(const disassembler<Tag> &main, std::vector<typename rule<Tag>::token> tokens, const po::ref& r, boost::optional<prog_loc> prog = boost::none, disass_sig signal = disass_sig())
 		{
-			prog_loc ret = (prog ? *prog : prog_loc(new program("unnamed program")));
+			prog_loc ret = (prog ? *prog : prog_loc(new program(r.reg,"unnamed program")));
 			std::unordered_set<std::pair<offset,proc_loc>> call_targets;
+			proc_loc pp(new procedure("proc_noname"));
 
-			call_targets.insert(std::make_pair(off,proc_loc(new procedure("proc_noname"))));
+			call_targets.insert(std::make_pair(r.off,pp));
 
 			while(!call_targets.empty())
 			{
@@ -97,18 +101,27 @@ namespace po
 
 				call_targets.erase(call_targets.begin());
 
+				try
+				{
+					remove_vertex(find_node(boost::variant<proc_loc,std::string>(proc),ret.write().calls()),ret.write().calls());
+				}
+				catch(const std::out_of_range&)
+				{
+					;
+				}
+
 				if(has_procedure(ret,tgt))
 					continue;
 
 				//live_ptr live;
 
 				std::cout << "disassemble at " << tgt << std::endl;
-				proc = procedure::disassemble(proc,main,tokens,tgt);
+				proc_loc proc2 = procedure::disassemble(proc,main,tokens,tgt);
 
-				procedure &wp = proc.write();
+				procedure &wp = proc2.write();
 
-				if(!wp.entry)
-					wp.entry = find_bblock(proc,tgt);
+				/*if(!wp.entry)
+					wp.entry = find_bblock(proc,tgt);*/
 
 				// compute dominance tree
 				//dom = dominance_tree(proc);
@@ -117,35 +130,37 @@ namespace po
 				//live = po::liveness(proc);
 
 				// finish procedure
-				ret.write().insert(proc);
+				ret.write().insert(proc2);
 				//ret->dominance.insert(make_pair(proc,dom));
 				//ret->liveness.insert(make_pair(proc,live));
-				wp.name = "proc_" + std::to_string((*proc->entry)->area().lower());
+				wp.name = "proc_" + std::to_string((*proc2->entry)->area().lower());
 
 				// insert call edges and new procedures to disassemble
-				for(offset a: collect_calls(proc))
+				for(offset a: collect_calls(proc2))
 				{
 					auto i = std::find_if(call_targets.begin(),call_targets.end(),[&](const std::pair<offset,proc_loc> &p) { return p.first == a; });
 
 					if(i == call_targets.end())
 					{
 						auto j = find_procedure(ret,a);
+						std::cout << "find " << a << " -> " << (j ? "yes" : "no") << std::endl;
 
 						if(!j)
 						{
 							proc_loc q(new procedure("proc_" + std::to_string(a)));
 
 							call_targets.insert(std::make_pair(a,q));
-							call(ret,proc,q);
+							ret.write().insert(q);
+							call(ret,proc2,q);
 						}
 						else
 						{
-							call(ret,proc,*j);
+							call(ret,proc2,*j);
 						}
 					}
 					else
 					{
-						call(ret,proc,i->second);
+						call(ret,proc2,i->second);
 					}
 				}
 

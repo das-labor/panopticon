@@ -228,6 +228,11 @@ namespace po
 			return ss.str();
 		}
 
+		size_t size(void) const
+		{
+			return _items.size();
+		}
+
 	private:
 		std::atomic<int> _next;
 		std::unordered_map<int,T> _items;

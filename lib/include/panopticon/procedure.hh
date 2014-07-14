@@ -340,6 +340,7 @@ namespace po
 			offset entry = proc && (*proc)->entry ? (*(*proc)->entry)->area().lower() : start;
 			auto i = bblocks.lower_bound(entry);
 
+			std::cout << "!!"<< std::endl;
 			if(i != bblocks.end() && i->second->area().lower() == entry)
 				ret.write().entry = i->second;
 			else
@@ -349,11 +350,13 @@ namespace po
 		{
 			auto j = bblocks.lower_bound(start);
 
+			std::cout << "!"<< std::endl;
 			ensure(j != bblocks.end());
 			ret.write().entry = j->second;
 		}
 		else
 		{
+			std::cout << "!!!"<< std::endl;
 			ret.write().entry = boost::none;
 		}
 

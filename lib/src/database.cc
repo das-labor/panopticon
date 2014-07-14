@@ -1,5 +1,6 @@
 #include <panopticon/database.hh>
 #include <panopticon/marshal.hh>
+#include <panopticon/avr/avr.hh>
 
 using namespace po;
 using namespace std;
@@ -135,6 +136,89 @@ session po::raw(const std::string& path)
 	insert_vertex(reg,db.write().data);
 
 	return session{db,store};
+}
+
+session po::raw_avr(const std::string& path)
+{
+	std::shared_ptr<rdf::storage> store = make_shared<rdf::storage>();
+	dbase_loc db(new database());
+
+	db.write().title = boost::filesystem::path(path).filename().string();
+	region_loc reg = region::mmap("base",path);
+	insert_vertex(reg,db.write().data);
+
+	std::vector<uint8_t> vec;
+
+	std::transform(boost::begin(reg->read()),boost::end(reg->read()),std::back_inserter(vec),[](po::tryte t) { return t.get_value_or(0); });
+	std::vector<uint16_t> vec2((uint16_t*)vec.data(),(uint16_t*)(vec.data() + vec.size()));
+	prog_loc p = avr::disassemble(boost::none,vec2,po::ref{"base",0});
+	db.write().programs.insert(p);
+
+	std::cout << "width: " << vec2.size() << std::endl;
+
+	std::cout << p->procedures().size() << " procedures" << std::endl;
+	for(auto q: p->procedures())
+		std::cout << q->name << "(" << (unsigned long)&(*q) << "): " << num_vertices(q->control_transfers) << " bblocks" << std::endl;
+
+	return session{db,store};
+}
+
+boost::optional<record> po::next_record(const ref& r, dbase_loc db)
+{
+	boost::optional<std::pair<po::offset,record>> ret = boost::none;
+
+	for(auto s: db->structures)
+	{
+		if(s->reg == r.reg)
+		{
+			if(s->area().lower() <= r.off && s->area().upper() > r.off)
+			{
+				return record(s);
+			}
+			else if(r.off < s->area().lower())
+			{
+				po::offset d = s->area().lower() - r.off;
+
+				if(!ret || (d < ret->first))
+					ret = std::make_pair(d,record(s));
+			}
+		}
+	}
+
+	for(auto p: db->programs)
+	{
+		if(p->reg == r.reg)
+		{
+			for(auto q: p->procedures())
+			{
+				for(auto c: iters(vertices(q->control_transfers)))
+				{
+					try
+					{
+						auto bb = boost::get<bblock_loc>(get_vertex(c,q->control_transfers));
+
+						if(bb->area().lower() <= r.off && bb->area().upper() > r.off)
+						{
+							return record(bb);
+						}
+						else if(r.off < bb->area().lower())
+						{
+							po::offset d = bb->area().lower() - r.off;
+
+							if(!ret || (d < ret->first))
+								ret = std::make_pair(d,record(bb));
+						}
+					}
+					catch(const boost::bad_get&)
+					{
+						;
+					}
+				}
+			}
+		}
+	}
+
+	return ret ? boost::make_optional(ret->second) : boost::none;
 }
 
 template<>

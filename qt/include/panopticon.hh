@@ -28,6 +28,7 @@ public:
 
 	Q_INVOKABLE Session* openSession(const QString&);
 	Q_INVOKABLE Session* createSession(const QString&);
+	Session* createSession(Session *s);
 
 signals:
 	void buildDateChanged(void);

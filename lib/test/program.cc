@@ -19,7 +19,7 @@ TEST(program,marshal)
 	proc_loc p4(new procedure("proc4"));
 	proc_loc p5(new procedure("proc5"));
 	proc_loc p6(new procedure("proc6"));
-	prog_loc prog(new program("prog"));
+	prog_loc prog(new program("base","prog"));
 
 	prog.write().insert(p1);
 	prog.write().insert(p2);

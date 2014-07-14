@@ -7,7 +7,6 @@
 #include <panopticon/loc.hh>
 #include <panopticon/marshal.hh>
 #include <panopticon/structure.hh>
-#include <panopticon/program.hh>
 #include <panopticon/basic_block.hh>
 
 #pragma once
@@ -15,7 +14,7 @@
 namespace po
 {
 	/// Everything that occupys space on the region graph
-	using record = boost::variant<bblock_loc,const field&>;
+	using record = boost::variant<bblock_loc,struct_loc>;
 	using comment_loc = loc<std::string>;
 
 	template<>
@@ -24,8 +23,6 @@ namespace po
 	template<>
 	std::string* unmarshal(const uuid&, const rdf::storage&);
 
-	area extends(const record&);
-
 	struct database
 	{
 		using record_iterator = boost::shared_container_iterator<std::unordered_set<record>>;
@@ -33,7 +30,7 @@ namespace po
 		std::string title;
 		regions data;
 		std::unordered_set<struct_loc> structures;
-		std::unordered_set<prog_loc> programs;
+		std::unordered_set<loc<struct program>> programs;
 		std::map<ref,comment_loc> comments;
 	};
 
@@ -46,7 +43,7 @@ namespace po
 	template<>
 	database* unmarshal(const uuid&, const rdf::storage&);
 
-	std::pair<database::record_iterator,database::record_iterator> lookup(const area& a, bool allow_overlap, dbase_loc d);
+	boost::optional<record> next_record(const ref& r, dbase_loc db);
 
 	struct session
 	{
@@ -58,6 +55,7 @@ namespace po
 
 	session open(const std::string&);
 	session elf(const std::string&);
+	session raw_avr(const std::string&);
 	session pe(const std::string&);
 	session raw(const std::string&);
 	session macho(const std::string&);

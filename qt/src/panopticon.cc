@@ -24,45 +24,33 @@ QObject* Panopticon::provider(QQmlEngine*, QJSEngine*)
 Session* Panopticon::openSession(const QString& path)
 {
 	qDebug() << "open:" << path;
-
-	if(_session)
-	{
-		qDebug() << "Replace old session";
-		Session* old = _session;
-		_session = Session::open(path);
-
-		emit sessionChanged();
-		delete old;
-	}
-	else
-	{
-		_session = Session::open(path);
-		emit sessionChanged();
-	}
-
-	return _session;
+	return createSession(Session::open(path));
 }
 
 Session* Panopticon::createSession(const QString& path)
 {
 	qDebug() << "create:" << path;
+	return createSession(Session::create(path));
+}
 
+Session* Panopticon::createSession(Session *s)
+{
 	if(_session)
 	{
 		qDebug() << "Replace old session";
 		Session* old = _session;
-		_session = Session::create(path);
+		_session = s;
 
 		emit sessionChanged();
 		delete old;
 	}
 	else
 	{
-		_session = Session::create(path);
+		_session = s;
 		emit sessionChanged();
 	}
 
-	return Session::create(path);
+	return _session;
 }
 
 Session* Panopticon::session(void) const

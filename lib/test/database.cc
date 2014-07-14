@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <panopticon/database.hh>
+#include <panopticon/program.hh>
 
 using namespace po;
 

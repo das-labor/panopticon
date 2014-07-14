@@ -63,7 +63,7 @@ const variable r0 = variable("r0",8), r1 = variable("r1",8), r2 = variable("r2",
 							 r31 = variable("r31",1), I = variable("I",1), T = variable("T",1), H = variable("H",1), S = variable("S",1), V = variable("V",1), N = variable("N",1), Z = variable("Z",1), C = variable("C",1);
 
 
-prog_loc disassemble(boost::optional<prog_loc> prog, std::vector<uint16_t>& bytes, offset entry)
+prog_loc po::avr::disassemble(boost::optional<prog_loc> prog, std::vector<uint16_t>& bytes, const po::ref& r)
 {
 	disassembler<avr_tag> main;
 
@@ -712,5 +712,5 @@ prog_loc disassemble(boost::optional<prog_loc> prog, std::vector<uint16_t>& byte
 		st.mnemonic(1,"unk");
 	};
 
-	return program::disassemble<avr_tag>(main,bytes,0,prog);
+	return program::disassemble<avr_tag>(main,bytes,r,prog);
 }

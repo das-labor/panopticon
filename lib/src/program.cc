@@ -8,12 +8,13 @@ using namespace po;
 using namespace std;
 using namespace boost;
 
-program::program(const string &n)
-: name(n), _procedures(), _calls()
+program::program(const string& r, const string &n)
+: name(n), reg(r), _procedures(), _calls()
 {}
 
 void program::insert(proc_loc p)
 {
+	std::cout << "insert: " << (unsigned long)&(*p) << std::endl;
 	insert_vertex(variant<proc_loc,symbol>(p),calls());
 }
 
@@ -52,9 +53,10 @@ program* po::unmarshal(const uuid& u, const rdf::storage &store)
 	ensure(store.has(n,rdf::ns_rdf("type"),rdf::ns_po("Program")));
 
 	rdf::statement name = store.first(n,rdf::ns_po("name"));
+	rdf::statement reg = store.first(n,rdf::ns_po("region-name"));
 	rdf::statements procs_n = store.find(n,rdf::ns_po("include"));
 
-	program *ret = new program(name.object.as_literal());
+	program *ret = new program(reg.object.as_literal(),name.object.as_literal());
 
 	for(auto st: procs_n)
 		ret->insert(proc_loc{st.object.as_iri().as_uuid(),store});
@@ -99,6 +101,7 @@ archive po::marshal(const program* p, const uuid& u)
 
 	ret.emplace_back(n,rdf::ns_rdf("type"),rdf::ns_po("Program"));
 	ret.emplace_back(n,rdf::ns_po("name"),rdf::lit(p->name));
+	ret.emplace_back(n,rdf::ns_po("region-name"),rdf::lit(p->reg));
 
 	for(proc_loc q: p->procedures())
 	{

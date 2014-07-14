@@ -97,18 +97,17 @@ namespace po
 		structure(const std::string&, const tree<field>&, const std::string&);
 
 		bool operator==(const structure& s) const
-			{ return name == s.name && _region == s._region && fields == s.fields; }
+			{ return name == s.name && reg == s.reg && fields == s.fields; }
 		bool operator!=(const structure& st) const
 			{ return !(st == *this); }
 
+		po::bound area(void) const;
+
 		std::string name;
+		std::string reg;
 		tree<field> fields;
 
 	private:
-		std::string _region;
-
-		friend area extends(struct_loc);
-
 		template<typename T>
 		friend archive marshal(const T*, const uuid&);
 	};

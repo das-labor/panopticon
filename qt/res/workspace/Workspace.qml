@@ -9,8 +9,22 @@ Item {
 
 	anchors.fill: parent
 
+	ListView {
+		width: 150
+		height: root.height
+		model: root.session.procedures
+		delegate: Text {
+			height: 40
+			text: modelData
+			verticalAlignment: Text.AlignVCenter
+		}
+	}
+
 	Linear {
 		id: lst1
 		session: root.session
+		width: root.width - 150
+		x: 150
+		height: root.height
 	}
 }

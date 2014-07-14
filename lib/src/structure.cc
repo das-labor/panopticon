@@ -7,8 +7,13 @@ using namespace po;
 using namespace std;
 
 structure::structure(const std::string& n, const tree<field>& f, const std::string& r)
-: name(n), fields(f), _region(r)
+: name(n), reg(r), fields(f)
 {}
+
+po::bound structure::area(void) const
+{
+	return fields.croot()->area;
+}
 
 template<>
 archive po::marshal(const structure* s, const uuid& u)
@@ -18,7 +23,7 @@ archive po::marshal(const structure* s, const uuid& u)
 
 	ret.emplace_back(root,rdf::ns_rdf("type"),rdf::ns_po("Structure"));
 	ret.emplace_back(root,rdf::ns_po("name"),rdf::lit(s->name));
-	ret.emplace_back(root,rdf::ns_po("region-name"),rdf::lit(s->_region));
+	ret.emplace_back(root,rdf::ns_po("region-name"),rdf::lit(s->reg));
 
 	boost::uuids::name_generator ng(u);
 	unsigned int field_idx = 0;

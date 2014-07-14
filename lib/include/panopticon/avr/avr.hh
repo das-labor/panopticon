@@ -28,6 +28,6 @@ namespace po
 		typedef std::function<void(sm &)> sem_action;
 		typedef code_generator<avr_tag> cg;
 
-		prog_loc disassemble(boost::optional<prog_loc>, std::vector<uint16_t>&, offset);
+		prog_loc disassemble(boost::optional<prog_loc>, std::vector<uint16_t>&, const po::ref&);
 	}
 }
