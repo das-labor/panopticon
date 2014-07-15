@@ -448,7 +448,8 @@ namespace po
 			if(fn)
 				fn(cg);
 
-			mnemonics.emplace_back(po::mnemonic(bound(next_address,next_address + len),n,fmt,ops.begin(),ops.end(),instrs.begin(),instrs.end()));
+			const unsigned long t = sizeof(typename architecture_traits<Tag>::token_type);
+			mnemonics.emplace_back(po::mnemonic(bound(next_address,next_address + len * t),n,fmt,ops.begin(),ops.end(),instrs.begin(),instrs.end()));
 			next_address += len;
 		}
 		catch(...)
