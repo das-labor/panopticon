@@ -15,6 +15,7 @@
 #include <panopticon/code_generator.hh>
 #include <panopticon/architecture.hh>
 #include <panopticon/ensure.hh>
+#include <panopticon/region.hh>
 
 #pragma once
 
@@ -62,7 +63,6 @@ namespace po
 	struct sem_state
 	{
 		using token = typename architecture_traits<Tag>::token_type;
-		using tokiter = typename std::vector<typename architecture_traits<Tag>::token_type>::iterator;
 
 		/**
 		 * Construct a sem_state to analyze a token stream starting at address @c a
@@ -133,8 +133,8 @@ namespace po
 	class rule
 	{
 	public:
-		typedef typename architecture_traits<Tag>::token_type token;
-		typedef typename std::vector<typename architecture_traits<Tag>::token_type>::iterator tokiter;
+		using tokiter = po::slab::const_iterator;
+		using token = typename architecture_traits<Tag>::token_type;
 
 		virtual ~rule(void);
 
@@ -388,7 +388,10 @@ namespace po
 		if(begin == end)
 			return boost::none;
 
-		typename rule<Tag>::token t = *begin;
+		if(std::any_of(begin,begin + sizeof(typename rule<Tag>::token),[](po::tryte t) { return !t; }))
+			return boost::none;
+
+		typename rule<Tag>::token t = std::accumulate(begin,begin + sizeof(typename rule<Tag>::token),0,[](typename rule<Tag>::token acc, po::tryte t) { return (acc << 8) | *t; });
 
 		if((t & mask) == pattern)
 		{
@@ -448,8 +451,7 @@ namespace po
 			if(fn)
 				fn(cg);
 
-			const unsigned long t = sizeof(typename architecture_traits<Tag>::token_type);
-			mnemonics.emplace_back(po::mnemonic(bound(next_address,next_address + len * t),n,fmt,ops.begin(),ops.end(),instrs.begin(),instrs.end()));
+			mnemonics.emplace_back(po::mnemonic(bound(next_address,next_address + len),n,fmt,ops.begin(),ops.end(),instrs.begin(),instrs.end()));
 			next_address += len;
 		}
 		catch(...)
@@ -714,7 +716,10 @@ namespace po
 
 		if(!ret && failsafe && begin != end)
 		{
-			state.tokens.push_back(*begin);
+			if(std::any_of(begin,begin + sizeof(typename rule<Tag>::token),[](po::tryte t) { return !t; }))
+				return boost::none;
+
+			state.tokens.push_back(std::accumulate(begin,begin + sizeof(typename rule<Tag>::token),0,[](typename rule<Tag>::token acc, po::tryte t) { return (acc << 8) | *t; }));
 			return failsafe->match(std::next(begin),end,state);
 		}
 		else

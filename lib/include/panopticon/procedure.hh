@@ -60,7 +60,7 @@ namespace po
 
 		/// Create or extend a procedure by starting to disassemble using @arg main at offset @arg start in @arg tokens
 		template<typename Tag>
-		static proc_loc disassemble(boost::optional<proc_loc>, const disassembler<Tag>&, std::vector<typename rule<Tag>::token>, offset);
+		static proc_loc disassemble(boost::optional<proc_loc>, const disassembler<Tag>&, po::slab, offset);
 
 	private:
 		mutable boost::optional<std::vector<bblock_loc>> _rev_postorder;
@@ -103,7 +103,7 @@ namespace po
 	bblock_loc merge(bblock_loc up, bblock_loc down);
 
 	template<typename Tag>
-	proc_loc procedure::disassemble(boost::optional<proc_loc> proc, const disassembler<Tag> &main, std::vector<typename rule<Tag>::token> tokens, offset start)
+	proc_loc procedure::disassemble(boost::optional<proc_loc> proc, const disassembler<Tag> &main, po::slab data, offset start)
 	{
 		std::unordered_set<offset> todo;
 		std::map<offset,mnemonic> mnemonics;
@@ -182,12 +182,12 @@ namespace po
 		{
 			offset cur_addr = *todo.begin();
 			sem_state<Tag> state(cur_addr);
-			typename rule<Tag>::tokiter i = tokens.begin();
+			typename rule<Tag>::tokiter i = boost::begin(data);
 			auto j = mnemonics.lower_bound(cur_addr);
 
 			todo.erase(todo.begin());
 
-			if(cur_addr >= tokens.size())
+			if(cur_addr >= boost::size(data))
 			{
 				std::cout << "boundary err" << std::endl;
 				continue;
@@ -195,8 +195,8 @@ namespace po
 
 			if(j == mnemonics.end() || !boost::icl::contains(j->second.area,cur_addr))
 			{
-				advance(i,cur_addr);
-				auto mi = main.match(i,(j == mnemonics.end() ? tokens.end() : std::next(tokens.begin(),j->first)),state);
+				i += cur_addr;
+				auto mi = main.match(i,(j == mnemonics.end() ? boost::end(data) : std::next(boost::begin(data),j->first)),state);
 
 				if(mi)
 				{
@@ -265,21 +265,20 @@ namespace po
 		{
 			auto next_mne = std::next(cur_mne);
 			const mnemonic &mne = cur_mne->second;
-			offset div = mne.area.upper();
 			auto sources = source.equal_range(mne.area.upper() - 1);
-			auto destinations = destination.equal_range(div);
+			auto destinations = destination.equal_range(mne.area.upper());
 
 			if(next_mne != mnemonics.end() && boost::icl::size(mne.area))
 			{
 				bool new_bb;
 
-				// if next mnemonic is adjacent
-				new_bb = next_mne->first != div;
+				// if next mnemonic isn't adjacent
+				new_bb = next_mne->first != mne.area.upper();
 
 				// or any following jumps aren't to adjacent mnemonics
 				new_bb |= std::any_of(sources.first,sources.second,[&](const std::pair<offset,std::pair<boost::optional<offset>,guard>> &p)
 				{
-					return p.second.first && *p.second.first != div;
+					return p.second.first && *p.second.first != mne.area.upper();
 				});
 
 				// or any jumps pointing to the next that aren't from here
@@ -292,11 +291,13 @@ namespace po
 				if(new_bb)
 				{
 					make_bblock(first_mne,next_mne);
+					std::cout << "make bb" << std::endl;
 
 					first_mne = next_mne;
 				}
 				else
 				{
+					std::cout << "append to prev bb" << std::endl;
 					while(sources.first != sources.second)
 						source.erase(sources.first++);
 					while(destinations.first != destinations.second)
@@ -340,7 +341,6 @@ namespace po
 			offset entry = proc && (*proc)->entry ? (*(*proc)->entry)->area().lower() : start;
 			auto i = bblocks.lower_bound(entry);
 
-			std::cout << "!!"<< std::endl;
 			if(i != bblocks.end() && i->second->area().lower() == entry)
 				ret.write().entry = i->second;
 			else
@@ -350,13 +350,11 @@ namespace po
 		{
 			auto j = bblocks.lower_bound(start);
 
-			std::cout << "!"<< std::endl;
 			ensure(j != bblocks.end());
 			ret.write().entry = j->second;
 		}
 		else
 		{
-			std::cout << "!!!"<< std::endl;
 			ret.write().entry = boost::none;
 		}
 

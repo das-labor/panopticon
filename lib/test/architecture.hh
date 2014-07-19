@@ -23,3 +23,23 @@ namespace po
 	template<>
 	uint8_t width(std::string n, test_tag);
 }
+
+struct wtest_tag {};
+
+namespace po
+{
+	template<>
+	struct architecture_traits<wtest_tag>
+	{
+		using token_type = uint16_t;
+	};
+
+	template<>
+	lvalue temporary(wtest_tag);
+
+	template<>
+	const std::vector<std::string> &registers(wtest_tag);
+
+	template<>
+	uint8_t width(std::string n, wtest_tag);
+}

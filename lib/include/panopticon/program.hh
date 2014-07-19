@@ -84,7 +84,7 @@ namespace po
 		 * The @ref disass_sig is called for each procedure disassembled successfully.
 		 */
 		template<typename Tag>
-		static prog_loc disassemble(const disassembler<Tag> &main, std::vector<typename rule<Tag>::token> tokens, const po::ref& r, boost::optional<prog_loc> prog = boost::none, disass_sig signal = disass_sig())
+		static prog_loc disassemble(const disassembler<Tag> &main, po::slab data, const po::ref& r, boost::optional<prog_loc> prog = boost::none, disass_sig signal = disass_sig())
 		{
 			prog_loc ret = (prog ? *prog : prog_loc(new program(r.reg,"unnamed program")));
 			std::unordered_set<std::pair<offset,proc_loc>> call_targets;
@@ -116,7 +116,7 @@ namespace po
 				//live_ptr live;
 
 				std::cout << "disassemble at " << tgt << std::endl;
-				proc_loc proc2 = procedure::disassemble(proc,main,tokens,tgt);
+				proc_loc proc2 = procedure::disassemble(proc,main,data,tgt);
 
 				procedure &wp = proc2.write();
 

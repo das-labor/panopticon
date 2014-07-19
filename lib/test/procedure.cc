@@ -53,7 +53,7 @@ public:
 		if(begin == end)
 			return boost::none;
 
-		auto i = m_states.find(*begin);
+		auto i = m_states.find(**begin);
 
 		if(i != m_states.end())
 		{
@@ -598,4 +598,77 @@ TEST(procedure,marshal)
 	ASSERT_EQ(num_vertices(p2->control_transfers), num_vertices(proc->control_transfers));
 	ASSERT_EQ(num_edges(p2->control_transfers), num_edges(proc->control_transfers));
 	ASSERT_EQ(proc->rev_postorder().size(), p2->rev_postorder().size());
+}
+
+using sw = po::sem_state<wtest_tag>&;
+TEST(procedure,wide_token)
+{
+	std::vector<uint8_t> _buf = {0x11,0x22, 0x33,0x44, 0x55,0x44, 0x55,0x44};
+	po::slab buf(_buf.begin(),_buf.end());
+	po::disassembler<wtest_tag> dec;
+
+	dec | 0x1122 = [](sw s)
+	{
+		s.mnemonic(2,"A");
+		s.jump(s.address + 2);
+	};
+
+	dec | 0x3344 = [](sw s)
+	{
+		s.mnemonic(2,"B");
+		s.jump(s.address + 2);
+		s.jump(s.address + 4);
+	};
+
+	dec | 0x5544 = [](sw s)
+	{
+		s.mnemonic(2,"C");
+	};
+
+	proc_loc proc = procedure::disassemble(boost::none, dec, buf, 0);
+
+	EXPECT_EQ(num_vertices(proc->control_transfers), 3);
+	EXPECT_EQ(num_edges(proc->control_transfers), 2);
+
+	using vx_desc = digraph<boost::variant<bblock_loc,rvalue>,guard>::vertex_descriptor;
+	auto p = vertices(proc->control_transfers);
+	size_t sz = std::count_if(p.first,p.second,[&](const vx_desc& v)
+	{
+		try
+		{
+			bblock_loc bb = boost::get<bblock_loc>(get_vertex(v,proc->control_transfers));
+			return bb->area() == po::bound(0,4) && bb->mnemonics().size() == 2;
+		}
+		catch(const boost::bad_get&)
+		{
+			return false;
+		}
+	});
+	EXPECT_EQ(sz, 1);
+	sz = std::count_if(p.first,p.second,[&](const vx_desc& v)
+	{
+		try
+		{
+			bblock_loc bb = boost::get<bblock_loc>(get_vertex(v,proc->control_transfers));
+			return bb->area() == po::bound(4,6) && bb->mnemonics().size() == 1;
+		}
+		catch(const boost::bad_get&)
+		{
+			return false;
+		}
+	});
+	EXPECT_EQ(sz, 1);
+	sz = std::count_if(p.first,p.second,[&](const vx_desc& v)
+	{
+		try
+		{
+			bblock_loc bb = boost::get<bblock_loc>(get_vertex(v,proc->control_transfers));
+			return bb->area() == po::bound(6,8) && bb->mnemonics().size() == 1;
+		}
+		catch(const boost::bad_get&)
+		{
+			return false;
+		}
+	});
+	EXPECT_EQ(sz, 1);
 }
