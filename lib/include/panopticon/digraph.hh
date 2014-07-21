@@ -343,28 +343,34 @@ namespace po
 	template<typename N, typename E>
 	void remove_vertex(typename po::digraph<N,E>::vertex_descriptor v, po::digraph<N,E>& g)
 	{
-		ensure(g.vertices.count(v));
+		if(g.vertices.count(v))
+		{
+			while(g.outgoing.count(v))
+				remove_edge(g.outgoing.find(v)->second,g);
+			while(g.incoming.count(v))
+				remove_edge(g.incoming.find(v)->second,g);
 
-		while(g.outgoing.count(v))
-			remove_edge(g.outgoing.find(v)->second,g);
-		while(g.incoming.count(v))
-			remove_edge(g.incoming.find(v)->second,g);
-
-		g.vertices.erase(v);
-		g.index = boost::none;
+			g.vertices.erase(v);
+			g.index = boost::none;
+		}
+		else
+			throw std::out_of_range("Vertex not found");
 	}
 
 	template<typename N, typename E>
 	void remove_edge(typename po::digraph<N,E>::edge_descriptor e, po::digraph<N,E>& g)
 	{
-		ensure(g.edges.count(e) && g.sources.count(e) && g.destinations.count(e) && g.outgoing.count(g.sources.at(e)) && g.incoming.count(g.destinations.at(e)));
-
-		g.edges.erase(e);
-		g.outgoing.erase(g.sources.at(e));
-		g.incoming.erase(g.destinations.at(e));
-		g.sources.erase(e);
-		g.destinations.erase(e);
-		g.index = boost::none;
+		if(g.edges.count(e) && g.sources.count(e) && g.destinations.count(e) && g.outgoing.count(g.sources.at(e)) && g.incoming.count(g.destinations.at(e)))
+		{
+			g.edges.erase(e);
+			g.outgoing.erase(g.sources.at(e));
+			g.incoming.erase(g.destinations.at(e));
+			g.sources.erase(e);
+			g.destinations.erase(e);
+			g.index = boost::none;
+		}
+		else
+			throw std::out_of_range("Edge not found");
 	}
 
 	template<typename N, typename E>
