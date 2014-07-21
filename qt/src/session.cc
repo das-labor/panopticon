@@ -183,7 +183,18 @@ QVariant LinearModel::data(const QModelIndex& idx, int role) const
 
 				std::cout << "mne: " << o << std::endl;
 				const mnemonic& mne = bb->mnemonics().at(o);
-				QStringList ops;
+				QStringList ops, hex;
+				slab sl = reg->read();
+				auto i = boost::begin(sl) + mne.area.lower();
+				auto j = boost::begin(sl) + mne.area.upper();
+
+				for(po::tryte s: iters(std::make_pair(i,j)))
+				{
+					if(s)
+						hex += QString("'%1'").arg(static_cast<unsigned int>(*s),2,16,QChar('0'));
+					else
+						hex += "'?""?'";
+				}
 
 				for(auto q: mne.operands)
 				{
@@ -193,9 +204,12 @@ QVariant LinearModel::data(const QModelIndex& idx, int role) const
 				}
 
 				return std::make_pair(
-					QString("{ 'type': 'mne', 'op': '%1', 'args': %2 }")
+					QString("{ 'type': 'mne', 'op': '%1', 'args': %2, 'hex': %3, 'begin': %4, 'end': %5 }")
 						.arg(QString::fromStdString(mne.opcode))
-						.arg("[" + ops.join(",") + "]"),
+						.arg("[" + ops.join(",") + "]")
+						.arg("[" + hex.join(",") + "]")
+						.arg(o == 0 ? "true" : "false")
+						.arg(o == bb->mnemonics().size() - 1 ? "true" : "false"),
 					mne.area);
 			}
 

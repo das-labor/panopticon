@@ -15,6 +15,7 @@ Item {
 	readonly property real fontPointSize: 7
 	readonly property real cellSize: 23
 	readonly property real halfCellSize: 12
+	readonly property int maxMnemonicHexdump: 4
 
 	focus: true
 
@@ -33,7 +34,7 @@ Item {
 				var cols = [hexCol, textCol]
 				var rep = 0
 
-				x -= addressColumnWidth + 25
+				x -= cellSize + 25 + addressColumnWidth + 25
 
 				while(i < cols.length)
 				{
@@ -55,6 +56,26 @@ Item {
 				}
 
 				return -1
+			}
+
+			Canvas {
+				height: cellSize
+				width: cellSize
+				contextType: "2d"
+
+				onPaint: {
+					var ctx = getContext("2d")
+
+					if(contents.payload.type == "mne") {
+						if(contents.payload.begin) {
+							ctx.fillStyle = "rgb(200,0,0)";
+							ctx.fillRect (10, 10, 25, 25);
+						} else if(contents.payload.end) {
+							ctx.fillStyle = "rgb(0,200,0)";
+							ctx.fillRect (10, 10, 25, 25);
+						}
+					}
+				}
 			}
 
 			Item {
@@ -165,6 +186,54 @@ Item {
 					visible: contents.payload.type == 'mne'
 					height: childrenRect.height
 					width: childrenRect.width
+
+					Repeater {
+						model: contents.payload.hex.slice(0,maxMnemonicHexdump)
+						delegate: Rectangle {
+							property int colIndex: index
+							height: root.cellSize
+							width: root.cellSize
+							color: {
+								var c = ((cursorUpperRow < rowIndex && cursorLowerRow > rowIndex) ||
+												 (cursorUpperRow == rowIndex && cursorLowerRow != rowIndex && cursorUpperCol <= colIndex) ||
+												 (cursorLowerRow == rowIndex && cursorUpperRow != rowIndex && cursorLowerCol >= colIndex) ||
+												 (cursorLowerRow == rowIndex && cursorUpperRow == rowIndex && cursorUpperCol <= colIndex && cursorLowerCol >= colIndex))
+								return c ? "red" : "white"
+							}
+
+							Text {
+								anchors.centerIn: parent
+								text: modelData
+								color: hexdump.activeColumn == colIndex ? "red" : "black"
+								font { family: root.fontFamily; pointSize: root.fontPointSize }
+							}
+
+							MouseArea {
+								id: mouseArea
+								anchors.fill: parent
+								hoverEnabled: true
+								acceptedButtons: Qt.RightButton
+
+								onEntered: hexdump.activeColumn = colIndex
+								onExited: hexdump.activeColumn = -1
+								onPressed: session.disassemble(rowIndex,colIndex)
+							}
+						}
+					}
+
+					Repeater {
+						model: maxMnemonicHexdump - contents.payload.hex.length
+						delegate: Rectangle {
+							height: cellSize
+							width: cellSize
+						}
+					}
+
+					Text {
+						width: cellSize + halfCellSize
+						height: cellSize
+						text: (contents.payload.hex.length > maxMnemonicHexdump ? "…" : "")
+					}
 
 					Text {
 						width: paintedWidth
