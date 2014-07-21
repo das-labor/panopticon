@@ -147,14 +147,11 @@ session po::raw_avr(const std::string& path)
 	region_loc reg = region::mmap("base",path);
 	insert_vertex(reg,db.write().data);
 
-	std::vector<uint8_t> vec;
-
-	std::transform(boost::begin(reg->read()),boost::end(reg->read()),std::back_inserter(vec),[](po::tryte t) { return t.get_value_or(0); });
-	std::vector<uint16_t> vec2((uint16_t*)vec.data(),(uint16_t*)(vec.data() + vec.size()));
-	prog_loc p = avr::disassemble(boost::none,vec2,po::ref{"base",0});
+	po::slab sl = reg->read();
+	prog_loc p = avr::disassemble(boost::none,sl,po::ref{"base",0});
 	db.write().programs.insert(p);
 
-	std::cout << "width: " << vec2.size() << std::endl;
+	std::cout << "width: " << boost::size(sl) << std::endl;
 
 	std::cout << p->procedures().size() << " procedures" << std::endl;
 	for(auto q: p->procedures())

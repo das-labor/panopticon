@@ -78,12 +78,12 @@ prog_loc po::avr::disassemble(boost::optional<prog_loc> prog, po::slab bytes, co
 		variable Rd1 = decode_reg(st.capture_groups["d"] * 2), Rd2 = decode_reg(st.capture_groups["d"] * 2 + 1);
 		variable Rr1 = decode_reg(st.capture_groups["r"] * 2), Rr2 = decode_reg(st.capture_groups["r"] * 2 + 1);
 
-		st.mnemonic(st.tokens.size(),"movw","{8}:{8}, {8}:{8}",{Rd1,Rd2,Rr1,Rr2},[&](cg &c)
+		st.mnemonic(st.tokens.size() * 2,"movw","{8}:{8}, {8}:{8}",{Rd1,Rd2,Rr1,Rr2},[&](cg &c)
 		{
 			c.assign(Rd1,Rr1);
 			c.assign(Rd2,Rr2);
 		});
-		st.jump(st.address + st.tokens.size());
+		st.jump(st.address + st.tokens.size() * 2);
 	};
 	main | "10110 A@.. d@..... A@...." 	= [](sm &st)
 	{
@@ -91,11 +91,11 @@ prog_loc po::avr::disassemble(boost::optional<prog_loc> prog, po::slab bytes, co
 		variable io = decode_ioreg(st.capture_groups["A"]);
 		constant off(st.capture_groups["A"]);
 
-		st.mnemonic(st.tokens.size(),"in","{8}, {8::" + io.name() + "}",Rd,off,[&](cg &c)
+		st.mnemonic(st.tokens.size() * 2,"in","{8}, {8::" + io.name() + "}",Rd,off,[&](cg &c)
 		{
 			c.assign(Rd,sram(off));
 		});
-		st.jump(st.address + st.tokens.size());
+		st.jump(st.address + st.tokens.size() * 2);
 	};
 	main | "10111 A@.. r@..... A@...." 	= [](sm &st)
 	{
@@ -103,11 +103,11 @@ prog_loc po::avr::disassemble(boost::optional<prog_loc> prog, po::slab bytes, co
 		variable io = decode_ioreg(st.capture_groups["A"]);
 		variable Rr = decode_reg(st.capture_groups["r"]);
 
-		st.mnemonic(st.tokens.size(),"out","{8::" + io.name() + "}, {8}",off,Rr,[&](cg &c)
+		st.mnemonic(st.tokens.size() * 2,"out","{8::" + io.name() + "}, {8}",off,Rr,[&](cg &c)
 		{
 			c.assign(sram(off),Rr);
 		});
-		st.jump(st.address + st.tokens.size());
+		st.jump(st.address + st.tokens.size() * 2);
 	};
 	main | "1001000 d@..... 1111"				= unary_reg("pop",[](cg &c, const variable &r)
 	{
@@ -165,11 +165,11 @@ prog_loc po::avr::disassemble(boost::optional<prog_loc> prog, po::slab bytes, co
 		constant k = constant(st.capture_groups["k"]);
 		variable Rd = decode_reg(st.capture_groups["d"]);
 
-		st.mnemonic(st.tokens.size(),"lds","{8}, {8}",Rd,k,[&](cg &c)
+		st.mnemonic(st.tokens.size() * 2,"lds","{8}, {8}",Rd,k,[&](cg &c)
 		{
 			c.assign(Rd,sram(k));
 		});
-		st.jump(st.address + st.tokens.size());
+		st.jump(st.address + st.tokens.size() * 2);
 	};
 
 	main | "10100 k@... d@.... k@...." 	= [](sm &st)
@@ -178,36 +178,36 @@ prog_loc po::avr::disassemble(boost::optional<prog_loc> prog, po::slab bytes, co
 		variable Rd = decode_reg(st.capture_groups["d"] + 16);
 		constant k = constant((~k_ & 16) | (k_ & 16) | (k_ & 64) | (k_ & 32) | (k_ & 15));
 
-		st.mnemonic(st.tokens.size(),"lds","{8}, {16}",Rd,k,[&](cg &c)
+		st.mnemonic(st.tokens.size() * 2,"lds","{8}, {16}",Rd,k,[&](cg &c)
 		{
 			c.assign(Rd,sram(k));
 		});
-		st.jump(st.address + st.tokens.size());
+		st.jump(st.address + st.tokens.size() * 2);
 	};
 
 	main | 0x95c8 											= 	[](sm &st)
 	{
 		std::list<rvalue> nop;
-		st.mnemonic(st.tokens.size(),"lpm","",nop,[&](cg &c)
+		st.mnemonic(st.tokens.size() * 2,"lpm","",nop,[&](cg &c)
 		{
 			rvalue z = r30 * 0x100 + r31;
 			c.assign(r1,flash(z));
 		});
-		st.jump(st.address + st.tokens.size());
+		st.jump(st.address + st.tokens.size() * 2);
 	};
 
 	main | 0x95e8 											= [](sm &st)
 	{
 		// TODO
-		st.mnemonic(st.tokens.size(),"spm");
-		st.jump(st.address + st.tokens.size());
+		st.mnemonic(st.tokens.size() * 2,"spm");
+		st.jump(st.address + st.tokens.size() * 2);
 	};
 
 	main | 0x95f8 											= [](sm &st)
 	{
 		// TODO
-		st.mnemonic(st.tokens.size(),"spm","",decode_preg(30,PostInc),std::function<void(cg &c)>());
-		st.jump(st.address + st.tokens.size());
+		st.mnemonic(st.tokens.size() * 2,"spm","",decode_preg(30,PostInc),std::function<void(cg &c)>());
+		st.jump(st.address + st.tokens.size() * 2);
 	};
 
 	main | "1001001 d@..... 0000" | "k@................" = [](sm &st)
@@ -215,11 +215,11 @@ prog_loc po::avr::disassemble(boost::optional<prog_loc> prog, po::slab bytes, co
 		constant k(st.capture_groups["k"]);
 		variable Rr = decode_reg(st.capture_groups["r"]);
 
-		st.mnemonic(st.tokens.size(),"sts","{8}, {8}",{k,Rr},[&](cg &c)
+		st.mnemonic(st.tokens.size() * 2,"sts","{8}, {8}",{k,Rr},[&](cg &c)
 		{
 			c.assign(sram(k),Rr);
 		});
-		st.jump(st.address + st.tokens.size());
+		st.jump(st.address + st.tokens.size() * 2);
 	};
 
 	main | "10101 k@... d@.... k@...." 	= [](sm &st)
@@ -228,11 +228,11 @@ prog_loc po::avr::disassemble(boost::optional<prog_loc> prog, po::slab bytes, co
 		constant k = constant((~_k & 16) | (_k & 16) | (_k & 64) | (_k & 32) | (_k & 15));
 		variable Rr = decode_reg(st.capture_groups["r"]);
 
-		st.mnemonic(st.tokens.size(),"sts","{16}, {8}",{k,Rr},[&](cg &c)
+		st.mnemonic(st.tokens.size() * 2,"sts","{16}, {8}",{k,Rr},[&](cg &c)
 		{
 			c.assign(sram(k),Rr);
 		});
-		st.jump(st.address + st.tokens.size());
+		st.jump(st.address + st.tokens.size() * 2);
 	};
 
 	main | "10011010 A@..... b@..." 			= [](sm &st)
@@ -240,11 +240,11 @@ prog_loc po::avr::disassemble(boost::optional<prog_loc> prog, po::slab bytes, co
 		constant k = constant(st.capture_groups["A"]);
 		constant b = constant(1 << (st.capture_groups["b"] - 1));
 
-		st.mnemonic(st.tokens.size(),"sbi","{8}, {8}",k,b,[&](cg &c)
+		st.mnemonic(st.tokens.size() * 2,"sbi","{8}, {8}",k,b,[&](cg &c)
 		{
 			c.assign(sram(k),sram(k) | b);
 		});
-		st.jump(st.address + st.tokens.size());
+		st.jump(st.address + st.tokens.size() * 2);
 	};
 
 	main | "10011000 A@..... b@..." 			= [](sm &st)
@@ -252,11 +252,11 @@ prog_loc po::avr::disassemble(boost::optional<prog_loc> prog, po::slab bytes, co
 		constant k = constant(st.capture_groups["A"]);
 		constant b = constant((~(1 << (st.capture_groups["b"] - 1))) & 0xff);
 
-		st.mnemonic(st.tokens.size(),"cbi","{8}, {8}",k,b,[&](cg &c)
+		st.mnemonic(st.tokens.size() * 2,"cbi","{8}, {8}",k,b,[&](cg &c)
 		{
 			c.assign(sram(k),sram(k) & b);
 		});
-		st.jump(st.address + st.tokens.size());
+		st.jump(st.address + st.tokens.size() * 2);
 	};
 
 	// SREG operations
@@ -376,7 +376,7 @@ prog_loc po::avr::disassemble(boost::optional<prog_loc> prog, po::slab bytes, co
 
 		if(Rd == Rr)
 		{
-			st.mnemonic(st.tokens.size(),"clr","",Rd,[&](cg &m)
+			st.mnemonic(st.tokens.size() * 2,"clr","",Rd,[&](cg &m)
 			{
 				m.assign(Rd,constant(0));
 				m.assign(V,constant(0));
@@ -384,11 +384,11 @@ prog_loc po::avr::disassemble(boost::optional<prog_loc> prog, po::slab bytes, co
 				m.assign(S,constant(0));
 				m.assign(Z,constant(0));
 			});
-			st.jump(st.address + st.tokens.size());
+			st.jump(st.address + st.tokens.size() * 2);
 		}
 		else
 		{
-			st.mnemonic(st.tokens.size(),"eor","",Rd,Rr,[&](cg &m)
+			st.mnemonic(st.tokens.size() * 2,"eor","",Rd,Rr,[&](cg &m)
 			{
 				m.xor_i(Rd,Rd,Rr);
 				m.assign(V,constant(0));										// V: 0
@@ -396,7 +396,7 @@ prog_loc po::avr::disassemble(boost::optional<prog_loc> prog, po::slab bytes, co
 				m.or_b(S,m.and_b(m.not_b(N),V),m.and_b(N,m.not_b(V)));
 				m.equal_i(Z,constant(0),Rd);
 			});
-			st.jump(st.address + st.tokens.size());
+			st.jump(st.address + st.tokens.size() * 2);
 		}
 	};
 	main | "1001010 d@..... 0001"				= unary_reg("neg",[](cg &m, const variable &Rd)
@@ -484,7 +484,7 @@ prog_loc po::avr::disassemble(boost::optional<prog_loc> prog, po::slab bytes, co
 		variable Rd1 = decode_reg(d);
 		variable Rd2 = decode_reg(d+1);
 
-		st.mnemonic(st.tokens.size(),"adiw","{8}:{8}, {16}",{Rd2,Rd1,K},[&](cg &c)
+		st.mnemonic(st.tokens.size() * 2,"adiw","{8}:{8}, {16}",{Rd2,Rd1,K},[&](cg &c)
 		{
 			rvalue R = Rd2 * 0x100 + Rd1 + K;
 
@@ -506,7 +506,7 @@ prog_loc po::avr::disassemble(boost::optional<prog_loc> prog, po::slab bytes, co
 			c.assign(Rd2,R / 0x100);
 			c.assign(Rd1,R % 0x100);
 		});
-		st.jump(st.address + st.tokens.size());
+		st.jump(st.address + st.tokens.size() * 2);
 	};
 	main | "10010111 K@.. d@.. K@...." = [](sm &st)
 	{
@@ -515,8 +515,8 @@ prog_loc po::avr::disassemble(boost::optional<prog_loc> prog, po::slab bytes, co
 		variable Rd1 = decode_reg(d);
 		variable Rd2 = decode_reg(d+1);
 
-		st.mnemonic(st.tokens.size(),"sbiw","{8}:{8}, {16}",{Rd1,Rd2,K});
-		st.jump(st.address + st.tokens.size());
+		st.mnemonic(st.tokens.size() * 2,"sbiw","{8}:{8}, {16}",{Rd1,Rd2,K});
+		st.jump(st.address + st.tokens.size() * 2);
 	};
 	main | "0000 0011 0 d@... 1 r@..."	= binary_reg("fmul",[](cg &m, const variable &Rd, const variable &Rr)
 	{
@@ -545,7 +545,7 @@ prog_loc po::avr::disassemble(boost::optional<prog_loc> prog, po::slab bytes, co
 
 	// branches
 	// main | "111101 k@....... s@..." = simple("brbc");
-	// main | "111100 k@....... s@..." = [](sm &st)  { st.mnemonic(st.tokens.size(),"brbs"; });
+	// main | "111100 k@....... s@..." = [](sm &st)  { st.mnemonic(st.tokens.size() * 2,"brbs"; });
 	main | "111101 k@....... 000" 			= branch("brcc",C,false);
 	main | "111100 k@....... 000" 			= branch("brcs",C,true);
 	main | "111100 k@....... 001" 			= branch("breq",Z,true);
@@ -569,8 +569,8 @@ prog_loc po::avr::disassemble(boost::optional<prog_loc> prog, po::slab bytes, co
 		variable Rr = decode_reg(st.capture_groups["r"]);
 		constant b = constant(st.capture_groups["b"]);
 
-		st.mnemonic(st.tokens.size(),"sbrc","",Rr,b,std::function<void(cg &c)>());
-		st.jump(st.address + st.tokens.size());
+		st.mnemonic(st.tokens.size() * 2,"sbrc","",Rr,b,std::function<void(cg &c)>());
+		st.jump(st.address + st.tokens.size() * 2);
 		//st.skip_next = true;
 	};
 	main | "1111 111 r@..... 0 b@..." 		= [](sm &st)
@@ -578,8 +578,8 @@ prog_loc po::avr::disassemble(boost::optional<prog_loc> prog, po::slab bytes, co
 		variable Rr = decode_reg(st.capture_groups["r"]);
 		constant b = constant(st.capture_groups["b"]);
 
-		st.mnemonic(st.tokens.size(),"sbrs","",Rr,b,std::function<void(cg &c)>());
-		st.jump(st.address + st.tokens.size());
+		st.mnemonic(st.tokens.size() * 2,"sbrs","",Rr,b,std::function<void(cg &c)>());
+		st.jump(st.address + st.tokens.size() * 2);
 		//st.skip_next = true;
 	};
 	main | "000100 r@. d@..... r@...."	= [](sm &st)
@@ -587,8 +587,8 @@ prog_loc po::avr::disassemble(boost::optional<prog_loc> prog, po::slab bytes, co
 		variable Rr = decode_reg(st.capture_groups["r"]);
 		variable Rd = decode_reg(st.capture_groups["d"]);
 
-		st.mnemonic(st.tokens.size(),"cpse","",Rd,Rr,std::function<void(cg &c)>());
-		st.jump(st.address + st.tokens.size());
+		st.mnemonic(st.tokens.size() * 2,"cpse","",Rd,Rr,std::function<void(cg &c)>());
+		st.jump(st.address + st.tokens.size() * 2);
 		//st.skip_next = true;
 	};
 	main | "1001 1001 A@..... b@..." 		= [](sm &st)
@@ -596,8 +596,8 @@ prog_loc po::avr::disassemble(boost::optional<prog_loc> prog, po::slab bytes, co
 		variable A = decode_ioreg(st.capture_groups["A"]);
 		constant b = constant(st.capture_groups["b"]);
 
-		st.mnemonic(st.tokens.size(),"sbic","",A,b,std::function<void(cg &c)>());
-		st.jump(st.address + st.tokens.size());
+		st.mnemonic(st.tokens.size() * 2,"sbic","",A,b,std::function<void(cg &c)>());
+		st.jump(st.address + st.tokens.size() * 2);
 		//st.skip_next = true;
 	};
 	main | "1001 1011 A@..... b@..." 		= [](sm &st)
@@ -605,65 +605,65 @@ prog_loc po::avr::disassemble(boost::optional<prog_loc> prog, po::slab bytes, co
 		variable A = decode_ioreg(st.capture_groups["A"]);
 		constant b = constant(st.capture_groups["b"]);
 
-		st.mnemonic(st.tokens.size(),"sbis","",A,b,std::function<void(cg &c)>());
-		st.jump(st.address + st.tokens.size());
+		st.mnemonic(st.tokens.size() * 2,"sbis","",A,b,std::function<void(cg &c)>());
+		st.jump(st.address + st.tokens.size() * 2);
 		//st.skip_next = true;
 	};
 
 	// jump branches
 	main | "1001010 k@..... 111 k@." | "k@................"	= [](sm &st)
 	{
-		constant k = constant(st.capture_groups["k"]);
+		constant k = constant(st.capture_groups["k"] * 2);
 
-		st.mnemonic(st.tokens.size(),"call","",k,[&](cg &c)
+		st.mnemonic(st.tokens.size() * 2,"call","",k,[&](cg &c)
 		{
 			c.call_i(k);
 		});
-		st.jump(st.address + st.tokens.size());
+		st.jump(st.address + st.tokens.size() * 2);
 	};
 	main | "1001010 k@..... 110 k@." | "k@................"	= [](sm &st)
 	{
-		constant k = constant(st.capture_groups["k"]);
+		constant k = constant(st.capture_groups["k"] * 2);
 
-		st.mnemonic(st.tokens.size(),"jmp","",k,std::function<void(cg &c)>());
+		st.mnemonic(st.tokens.size() * 2,"jmp","",k,std::function<void(cg &c)>());
 		st.jump(k);
 	};
 
 	main | "1101 k@............" 														= [](sm &st)
 	{
 		int _k = st.capture_groups["k"];
-		constant k = constant((_k <= 2047 ? _k : _k - 4096) + 1 + st.address);
+		constant k = constant((_k <= 2047 ? _k : _k - 4096) * 2 + 2 + st.address);
 
-		st.mnemonic(st.tokens.size(),"rcall","",k,[&](cg &c)
+		st.mnemonic(st.tokens.size() * 2,"rcall","",k,[&](cg &c)
 		{
 			c.call_i(k);
 		});
-		st.jump(st.address + 1);
+		st.jump(st.address + 2);
 	};
 	main | "1100 k@............" 														= [](sm &st)
 	{
 		int _k = st.capture_groups["k"];
-		constant k = constant((_k <= 2047 ? _k : _k - 4096) + 1 + st.address);
+		constant k = constant((_k <= 2047 ? _k : _k - 4096) * 2 + 2 + st.address);
 
-		st.mnemonic(st.tokens.size(),"rjmp","",k,std::function<void(cg &c)>());
+		st.mnemonic(st.tokens.size() * 2,"rjmp","",k,std::function<void(cg &c)>());
 		st.jump(k);
 	};
-	main | 0x9508 = [](sm &st) { st.mnemonic(st.tokens.size(),"ret"); };
-	main | 0x9518 = [](sm &st) { st.mnemonic(st.tokens.size(),"reti"); };
+	main | 0x9508 = [](sm &st) { st.mnemonic(st.tokens.size() * 2,"ret"); };
+	main | 0x9518 = [](sm &st) { st.mnemonic(st.tokens.size() * 2,"reti"); };
 	main | 0x9409 = [](sm &st)
 	{
 		variable J(variable("J",16));
 		std::list<rvalue> nop;
 
-		st.mnemonic(st.tokens.size(),"ijmp","",nop,[&](cg &c)
+		st.mnemonic(st.tokens.size() * 2,"ijmp","",nop,[&](cg &c)
 		{
-			c.add_i(J,r31 * 0x100 ,r30);
+			c.assign(J,(r31 * 0x100 + r30) * 2);
 		});
 		st.jump(J);
 	};
 
 	// TODO: icall
-	main | 0x9509 = [](sm &st) { st.mnemonic(st.tokens.size(),"icall"); };
+	main | 0x9509 = [](sm &st) { st.mnemonic(st.tokens.size() * 2,"icall"); };
 
 	// store and load with x,y,z
 	main | "1001 001r@. r@.... 1100" = binary_st(r26,r27,false,false);
@@ -698,8 +698,8 @@ prog_loc po::avr::disassemble(boost::optional<prog_loc> prog, po::slab bytes, co
 	main | 0x9598 = simple("break",[](cg &m) { /* TODO */ });
 	main | "10010100 K@.... 1011" = [](sm &st)
 	{
-		st.mnemonic(st.tokens.size(),"des","",constant(st.capture_groups["K"]),std::function<void(cg &c)>());
-		st.jump(st.tokens.size() + st.address);
+		st.mnemonic(st.tokens.size() * 2,"des","",constant(st.capture_groups["K"]),std::function<void(cg &c)>());
+		st.jump(st.tokens.size() * 2 + st.address);
 	};
 
 	main | (architecture_traits<avr_tag>::token_type)0x0 = simple("nop",[](cg &m) { /* TODO */ });

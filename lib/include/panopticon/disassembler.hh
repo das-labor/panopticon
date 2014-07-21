@@ -10,6 +10,8 @@
 #include <type_traits>
 #include <cstring>
 
+#include <boost/iterator/reverse_iterator.hpp>
+
 #include <panopticon/mnemonic.hh>
 #include <panopticon/basic_block.hh>
 #include <panopticon/code_generator.hh>
@@ -388,10 +390,12 @@ namespace po
 		if(begin == end)
 			return boost::none;
 
+		boost::reverse_iterator<typename rule<Tag>::tokiter> rev_begin(begin + sizeof(typename rule<Tag>::token)), rev_end(begin);
+
 		if(std::any_of(begin,begin + sizeof(typename rule<Tag>::token),[](po::tryte t) { return !t; }))
 			return boost::none;
 
-		typename rule<Tag>::token t = std::accumulate(begin,begin + sizeof(typename rule<Tag>::token),0,[](typename rule<Tag>::token acc, po::tryte t) { return (acc << 8) | *t; });
+		typename rule<Tag>::token t = std::accumulate(rev_begin,rev_end,0,[](typename rule<Tag>::token acc, po::tryte t) { return (acc << 8) | *t; });
 
 		if((t & mask) == pattern)
 		{
@@ -422,7 +426,7 @@ namespace po
 
 			state.tokens.push_back(t);
 
-			return boost::make_optional(next(begin));
+			return boost::make_optional(begin + sizeof(typename rule<Tag>::token));
 		}
 		else
 			return boost::none;
@@ -716,11 +720,13 @@ namespace po
 
 		if(!ret && failsafe && begin != end)
 		{
-			if(std::any_of(begin,begin + sizeof(typename rule<Tag>::token),[](po::tryte t) { return !t; }))
+			boost::reverse_iterator<typename rule<Tag>::tokiter> rev_begin(begin + sizeof(typename rule<Tag>::token)), rev_end(begin);
+
+			if(std::any_of(rev_begin,rev_end,[](po::tryte t) { return !t; }))
 				return boost::none;
 
-			state.tokens.push_back(std::accumulate(begin,begin + sizeof(typename rule<Tag>::token),0,[](typename rule<Tag>::token acc, po::tryte t) { return (acc << 8) | *t; }));
-			return failsafe->match(std::next(begin),end,state);
+			state.tokens.push_back(std::accumulate(rev_begin,rev_end,0,[](typename rule<Tag>::token acc, po::tryte t) { return (acc << 8) | *t; }));
+			return failsafe->match(begin + sizeof(typename rule<Tag>::token),end,state);
 		}
 		else
 			return ret;

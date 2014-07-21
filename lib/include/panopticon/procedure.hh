@@ -189,14 +189,17 @@ namespace po
 
 			if(cur_addr >= boost::size(data))
 			{
-				std::cout << "boundary err" << std::endl;
+				std::cout << "boundary err: " << cur_addr << " not inside " << boost::size(data) << " byte large slab" << std::endl;
 				continue;
 			}
 
 			if(j == mnemonics.end() || !boost::icl::contains(j->second.area,cur_addr))
 			{
 				i += cur_addr;
-				auto mi = main.match(i,(j == mnemonics.end() ? boost::end(data) : std::next(boost::begin(data),j->first)),state);
+				typename rule<Tag>::tokiter e = (j == mnemonics.end() ? boost::end(data) : std::next(boost::begin(data),j->first + 1));
+
+				std::cerr << "match(" << std::distance(boost::begin(data),i) << ", " << std::distance(boost::begin(data),e) << ")" << std::endl;
+				auto mi = main.match(i,e,state);
 
 				if(mi)
 				{
