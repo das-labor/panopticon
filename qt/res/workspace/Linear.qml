@@ -65,15 +65,30 @@ Item {
 
 				onPaint: {
 					var ctx = getContext("2d")
+					var lr = contents.arrows.end.concat(contents.arrows.begin)
+					var ud = contents.arrows.pass
 
-					if(contents.payload.type == "mne") {
-						if(contents.payload.begin) {
-							ctx.fillStyle = "rgb(200,0,0)";
-							ctx.fillRect (10, 10, 25, 25);
-						} else if(contents.payload.end) {
-							ctx.fillStyle = "rgb(0,200,0)";
-							ctx.fillRect (10, 10, 25, 25);
-						}
+					var y_step = cellSize / (lr.length + 2)
+					var idx = 0
+					while(idx < lr.length)
+					{
+						var line = lr[idx]
+
+						ctx.fillStyle = "rgb(200,0,0)"
+						ctx.fillRect(0, y_step * (idx + 1) + 1.5,cellSize,3)
+
+						idx += 1
+					}
+
+					idx = 0
+					while(idx < ud.length)
+					{
+						var line = ud[idx]
+
+						ctx.fillStyle = "rgb(200,0,0)"
+						ctx.fillRect(line * 5, 0,3,cellSize)
+
+						idx += 1
 					}
 				}
 			}

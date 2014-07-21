@@ -20,9 +20,26 @@ public:
 	void postComment(int row, QString c);
 
 protected:
+	struct data_visitor : public boost::static_visitor<std::tuple<QString,po::bound,std::list<po::bound>>>
+	{
+		data_visitor(int r, boost::icl::interval<int>::type iv, po::region_loc re);
+
+		std::tuple<QString,po::bound,std::list<po::bound>> operator()(po::bound b) const;
+		std::tuple<QString,po::bound,std::list<po::bound>> operator()(po::bblock_loc bb) const;
+		std::tuple<QString,po::bound,std::list<po::bound>> operator()(po::struct_loc s) const;
+
+	private:
+		int row;
+		boost::icl::interval<int>::type ival;
+		po::region_loc reg;
+	};
+
+	int findTrack(po::bound b);
+
 	po::dbase_loc _dbase;
 	std::list<std::pair<po::bound,po::region_wloc>> _projection;
 	boost::icl::split_interval_map<int,row_t> _rows;
+	std::list<boost::icl::split_interval_set<po::offset>> _tracks;
 };
 
 class Session : public QObject

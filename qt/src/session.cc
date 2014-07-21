@@ -79,6 +79,52 @@ LinearModel::LinearModel(dbase_loc db, QObject *p)
 				}
 
 				boost::apply_visitor(add_vis(row,_rows,p.second.lock()), *r);
+
+				try
+				{
+					bblock_loc bb = boost::get<bblock_loc>(*r);
+					for(auto pro: _dbase->programs)
+					{
+						for(auto proc: pro->procedures())
+						{
+							if(find_bblock(proc,bb->area().lower()))
+							{
+								auto vx = find_node(boost::variant<bblock_loc,rvalue>(bb),proc->control_transfers);
+
+								for(auto e: iters(in_edges(vx,proc->control_transfers)))
+								{
+									try
+									{
+										auto vy = source(e,proc->control_transfers);
+										bblock_loc ba = boost::get<bblock_loc>(get_vertex(vy,proc->control_transfers));
+
+										findTrack(po::bound(std::min(bb->area().lower(),ba->area().upper() - 1),
+																				std::max(bb->area().lower(),ba->area().upper() - 1)));
+									}
+									catch(const boost::bad_get&)
+									{}
+								}
+
+								for(auto e: iters(out_edges(vx,proc->control_transfers)))
+								{
+									try
+									{
+										auto vy = target(e,proc->control_transfers);
+										bblock_loc ba = boost::get<bblock_loc>(get_vertex(vy,proc->control_transfers));
+
+											findTrack(po::bound(std::min(bb->area().upper() - 1,ba->area().lower()),
+																					std::max(bb->area().upper() - 1,ba->area().lower())));
+									}
+									catch(const boost::bad_get&)
+									{}
+								}
+							}
+						}
+					}
+				}
+				catch(const boost::bad_get&)
+				{}
+
 				o = a.upper();
 			}
 			else
@@ -128,121 +174,22 @@ QVariant LinearModel::data(const QModelIndex& idx, int role) const
 	}
 	else
 	{
-		struct string_vis : public boost::static_visitor<std::pair<QString,po::bound>>
-		{
-			string_vis(int r, interval<int>::type iv, region_loc re) : row(r), ival(iv), reg(re) {}
-
-			std::pair<QString,po::bound> operator()(po::bound b) const
-			{
-				po::offset o = b.lower() + (row - ival.lower()) * columnWidth;
-				po::offset p = std::min<po::offset>(o + columnWidth,b.upper());
-				slab sl = reg->read();
-				auto i = boost::begin(sl) + o;
-				auto j = boost::begin(sl) + p;
-				QStringList hex, text;
-
-				for(po::tryte s: iters(std::make_pair(i,j)))
-				{
-					if(s)
-					{
-						hex += QString("'%1'").arg(static_cast<unsigned int>(*s),2,16,QChar('0'));
-
-						if(isprint(*s))
-						{
-							if(*s == '\\' || *s == '\'')
-								text += QString("'\\%1'").arg(QChar(*s));
-							else
-								text += QString("'%1'").arg(QChar(*s));
-						}
-						else
-							text += QString("' '");
-					}
-					else
-					{
-						hex += "'?""?'";
-						text += "'?""?'";
-					}
-				}
-
-				while(hex.size() < columnWidth)
-				{
-					hex += QString("''");
-					text += QString("''");
-				}
-
-				return std::make_pair(
-					QString("{ 'type': 'raw', 'hex': %2, 'text': %3 }")
-						.arg("[" + hex.join(",") + "]")
-						.arg("[" + text.join(",") + "]"),
-					po::bound(o,p));
-			}
-
-			std::pair<QString,po::bound> operator()(bblock_loc bb) const
-			{
-				size_t o = row - ival.lower();
-
-				std::cout << "mne: " << o << std::endl;
-				const mnemonic& mne = bb->mnemonics().at(o);
-				QStringList ops, hex;
-				slab sl = reg->read();
-				auto i = boost::begin(sl) + mne.area.lower();
-				auto j = boost::begin(sl) + mne.area.upper();
-
-				for(po::tryte s: iters(std::make_pair(i,j)))
-				{
-					if(s)
-						hex += QString("'%1'").arg(static_cast<unsigned int>(*s),2,16,QChar('0'));
-					else
-						hex += "'?""?'";
-				}
-
-				for(auto q: mne.operands)
-				{
-					std::stringstream ss;
-					ss << q;
-					ops.append("'" + QString::fromStdString(ss.str()) + "'");
-				}
-
-				return std::make_pair(
-					QString("{ 'type': 'mne', 'op': '%1', 'args': %2, 'hex': %3, 'begin': %4, 'end': %5 }")
-						.arg(QString::fromStdString(mne.opcode))
-						.arg("[" + ops.join(",") + "]")
-						.arg("[" + hex.join(",") + "]")
-						.arg(o == 0 ? "true" : "false")
-						.arg(o == bb->mnemonics().size() - 1 ? "true" : "false"),
-					mne.area);
-			}
-
-			std::pair<QString,po::bound> operator()(struct_loc s) const
-			{
-				//int o = ival.lower() - row;
-
-				return std::make_pair(
-					QString("{ 'type': 'struct', 'name': 'name', 'value': 'value' }"),
-					po::bound());
-			}
-
-			int row;
-			interval<int>::type ival;
-			region_loc reg;
-		};
-
 		QString payload;
 		po::bound b;
+
 		auto r = _rows.find(idx.row());
-
 		if(r == _rows.end())
-		{
-			std::cout << "idx: " << idx.row() << " = none" << std::endl;
 			return QVariant();
-		}
 
-		std::cout << "idx: " << idx.row() << " = " << r->first << std::endl;
+		// payload
+		QString payload;
+		po::bound b;
+		std::list<po::bound> pass;
+		std::tie(payload,b,pass) = boost::apply_visitor(data_visitor(idx.row(),r->first,r->second.first.lock()), r->second.second);
+		ensure(payload.size());
 
+		// comments
 		QStringList comments;
-
-		std::tie(payload,b) = boost::apply_visitor(string_vis(idx.row(),r->first,r->second.first.lock()), r->second.second);
-
 		auto k = _dbase->comments.lower_bound(ref{r->second.first->name(),b.lower()});
 		while(k != _dbase->comments.end() &&
 					k->first.reg == r->second.first->name() &&
@@ -252,12 +199,40 @@ QVariant LinearModel::data(const QModelIndex& idx, int role) const
 			++k;
 		}
 
-		ensure(payload.size());
+		// arrows
+		QStringList pass_here, end_here, begin_here;
+		size_t track = 0;
+		boost::icl::discrete_interval<po::offset> iv(b.lower(),b.upper() - 1);
 
-		return QString("{ 'address': '0x%1', 'payload': %2, 'comment': '%4' }")
+		while(track < _tracks.size())
+		{
+			const boost::icl::split_interval_set<po::offset>& tr = *(std::next(_tracks.begin(),track));
+
+			auto i = tr.find(iv);
+			while(i != tr.end() && !boost::icl::disjoint(*i,iv))
+			{
+				if(boost::icl::contains(b,i->lower()))
+					begin_here.append(QString("%1").arg(track));
+				else if(boost::icl::contains(b,i->upper()))
+					end_here.append(QString("%1").arg(track));
+				else
+					pass_here.append(QString("%1").arg(track));
+				++i;
+			}
+
+			++track;
+		}
+
+		QString arrows = QString("{ 'pass': [%1], 'end': [%2], 'begin': [%3] }")
+											.arg(pass_here.join(","))
+											.arg(end_here.join(","))
+											.arg(begin_here.join(","));
+		qDebug() << arrows;
+		return QString("{ 'address': '0x%1', 'payload': %2, 'comment': '%3', 'arrows': %4 }")
 						.arg(b.lower(),0,16)
 						.arg(payload)
-						.arg(comments.join("\n"));
+						.arg(comments.join("\n"))
+						.arg(arrows);
 	}
 }
 
@@ -284,6 +259,134 @@ void LinearModel::postComment(int row, QString c)
 	}
 
 	ensure(false);
+}
+
+int LinearModel::findTrack(po::bound b)
+{
+	if(boost::icl::size(b) == 0)
+		throw std::invalid_argument("bound is empty");
+
+	boost::icl::discrete_interval<po::offset> iv(b.lower(),b.upper());
+	auto i = _tracks.begin();
+	while(i != _tracks.end())
+	{
+		boost::icl::split_interval_set<po::offset>& s = *i;
+		auto p = s.find(iv);
+
+		if(p == s.end() || boost::icl::disjoint(*p,iv))
+		{
+			std::cout << "add " << b << " to track " << std::distance(_tracks.begin(),i) << std::endl;
+			s.add(iv);
+			return std::distance(_tracks.begin(),i);
+		}
+		else if(*p == iv)
+		{
+			std::cout << b << " was already on track " << std::distance(_tracks.begin(),i) << std::endl;
+			return std::distance(_tracks.begin(),i);
+		}
+
+		++i;
+	}
+
+	std::cout << "add " << b << " to new track " << _tracks.size() << std::endl;
+	_tracks.push_back(boost::icl::split_interval_set<po::offset>());
+	_tracks.back().add(iv);
+
+	return _tracks.size() - 1;
+}
+
+LinearModel::data_visitor::data_visitor(int r, interval<int>::type iv, region_loc re) : row(r), ival(iv), reg(re) {}
+
+std::tuple<QString,po::bound,std::list<po::bound>> LinearModel::data_visitor::operator()(po::bound b) const
+{
+	po::offset o = b.lower() + (row - ival.lower()) * columnWidth;
+	po::offset p = std::min<po::offset>(o + columnWidth,b.upper());
+	slab sl = reg->read();
+	auto i = boost::begin(sl) + o;
+	auto j = boost::begin(sl) + p;
+	QStringList hex, text;
+
+	for(po::tryte s: iters(std::make_pair(i,j)))
+	{
+		if(s)
+		{
+			hex += QString("'%1'").arg(static_cast<unsigned int>(*s),2,16,QChar('0'));
+
+			if(isprint(*s))
+			{
+				if(*s == '\\' || *s == '\'')
+					text += QString("'\\%1'").arg(QChar(*s));
+				else
+					text += QString("'%1'").arg(QChar(*s));
+			}
+			else
+				text += QString("' '");
+		}
+		else
+		{
+			hex += "'?""?'";
+			text += "'?""?'";
+		}
+	}
+
+	while(hex.size() < columnWidth)
+	{
+		hex += QString("''");
+		text += QString("''");
+	}
+
+	return std::make_tuple(
+		QString("{ 'type': 'raw', 'hex': %2, 'text': %3 }")
+			.arg("[" + hex.join(",") + "]")
+			.arg("[" + text.join(",") + "]"),
+		po::bound(o,p),
+		std::list<po::bound>());
+}
+
+std::tuple<QString,po::bound,std::list<po::bound>> LinearModel::data_visitor::operator()(bblock_loc bb) const
+{
+	int o = row - ival.lower();
+
+	const mnemonic& mne = bb->mnemonics().at(o);
+	QStringList ops, hex;
+	slab sl = reg->read();
+	auto i = boost::begin(sl) + mne.area.lower();
+	auto j = boost::begin(sl) + mne.area.upper();
+	std::list<po::bound> conn;
+
+	for(po::tryte s: iters(std::make_pair(i,j)))
+	{
+		if(s)
+			hex += QString("'%1'").arg(static_cast<unsigned int>(*s),2,16,QChar('0'));
+		else
+			hex += "'?""?'";
+	}
+
+	for(auto q: mne.operands)
+	{
+		std::stringstream ss;
+		ss << q;
+		ops.append("'" + QString::fromStdString(ss.str()) + "'");
+	}
+
+	return std::make_tuple(
+		QString("{ 'type': 'mne', 'op': '%1', 'args': %2, 'hex': %3, 'begin': %4, 'end': %5 }")
+			.arg(QString::fromStdString(mne.opcode))
+			.arg("[" + ops.join(",") + "]")
+			.arg("[" + hex.join(",") + "]")
+			.arg(o == 0 ? "true" : "false")
+			.arg(o == bb->mnemonics().size() - 1 ? "true" : "false"),
+		mne.area,
+		conn);
+}
+
+std::tuple<QString,po::bound,std::list<po::bound>> LinearModel::data_visitor::operator()(struct_loc s) const
+{
+	//int o = ival.lower() - row;
+	return std::make_tuple(
+		QString("{ 'type': 'struct', 'name': 'name', 'value': 'value' }"),
+		po::bound(),
+		std::list<po::bound>());
 }
 
 Session::Session(po::session sess, QObject *p)
