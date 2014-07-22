@@ -179,7 +179,7 @@ QVariant LinearModel::data(const QModelIndex& idx, int role) const
 
 			std::pair<QString,po::bound> operator()(bblock_loc bb) const
 			{
-				int o = row - ival.lower();
+				size_t o = row - ival.lower();
 
 				std::cout << "mne: " << o << std::endl;
 				const mnemonic& mne = bb->mnemonics().at(o);
