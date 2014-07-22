@@ -99,7 +99,7 @@ Item {
 										settings.recent = mru.slice(0,6).join(",")
 
 										console.log(settings.recent)
-										mouseArea.sess = Panopticon.newSession(path)
+										mouseArea.sess = Panopticon.createSession(path.substring(7, path.length))
 										loader.sourceComponent = comp
 									}
 								}
