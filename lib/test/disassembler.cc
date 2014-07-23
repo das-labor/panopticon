@@ -248,7 +248,7 @@ using sw = po::sem_state<wtest_tag>&;
 TEST_F(disassembler,wide_token)
 {
 	po::sem_state<wtest_tag> st(0);
-	std::vector<uint8_t> _buf = {0x11,0x22, 0x33,0x44, 0x55,0x44};
+	std::vector<uint8_t> _buf = {0x22,0x11, 0x44,0x33, 0x44,0x55};
 	po::slab buf(_buf.begin(),_buf.end());
 	po::disassembler<wtest_tag> dec;
 
@@ -273,7 +273,7 @@ TEST_F(disassembler,wide_token)
 	boost::optional<po::slab::const_iterator> i = dec.match(boost::begin(buf),boost::end(buf),st);
 
 	ASSERT_TRUE(i);
-	ASSERT_EQ(std::distance(boost::begin(buf), *i),1);
+	ASSERT_EQ(std::distance(boost::begin(buf), *i),2);
 	ASSERT_EQ(st.address, 0);
 	ASSERT_EQ(st.tokens.size(), 1);
 	ASSERT_EQ(st.tokens[0], 0x1122);

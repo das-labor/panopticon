@@ -603,7 +603,7 @@ TEST(procedure,marshal)
 using sw = po::sem_state<wtest_tag>&;
 TEST(procedure,wide_token)
 {
-	std::vector<uint8_t> _buf = {0x11,0x22, 0x33,0x44, 0x55,0x44, 0x55,0x44};
+	std::vector<uint8_t> _buf = {0x22,0x11, 0x44,0x33, 0x44,0x55, 0x44,0x55};
 	po::slab buf(_buf.begin(),_buf.end());
 	po::disassembler<wtest_tag> dec;
 
