@@ -98,8 +98,10 @@ LinearModel::LinearModel(dbase_loc db, QObject *p)
 										auto vy = source(e,proc->control_transfers);
 										bblock_loc ba = boost::get<bblock_loc>(get_vertex(vy,proc->control_transfers));
 
-										findTrack(po::bound(std::min(bb->area().lower(),ba->area().upper() - 1),
-																				std::max(bb->area().lower(),ba->area().upper() - 1)));
+										if(ba->area().upper() != bb->area().lower() && ba != bb)
+											findTrack(po::bound(std::min(bb->area().lower(),ba->area().upper() - 1),
+																					std::max(bb->area().lower(),ba->area().upper() - 1)),
+																bb->area().lower() < ba->area().upper() - 1);
 									}
 									catch(const boost::bad_get&)
 									{}
@@ -112,8 +114,10 @@ LinearModel::LinearModel(dbase_loc db, QObject *p)
 										auto vy = target(e,proc->control_transfers);
 										bblock_loc ba = boost::get<bblock_loc>(get_vertex(vy,proc->control_transfers));
 
+										if(ba->area().lower() != bb->area().upper() && ba != bb)
 											findTrack(po::bound(std::min(bb->area().upper() - 1,ba->area().lower()),
-																					std::max(bb->area().upper() - 1,ba->area().lower())));
+																					std::max(bb->area().upper() - 1,ba->area().lower())),
+																bb->area().lower() >= ba->area().upper() - 1);
 									}
 									catch(const boost::bad_get&)
 									{}
@@ -174,9 +178,6 @@ QVariant LinearModel::data(const QModelIndex& idx, int role) const
 	}
 	else
 	{
-		QString payload;
-		po::bound b;
-
 		auto r = _rows.find(idx.row());
 		if(r == _rows.end())
 			return QVariant();
@@ -206,16 +207,15 @@ QVariant LinearModel::data(const QModelIndex& idx, int role) const
 
 		while(track < _tracks.size())
 		{
-			const boost::icl::split_interval_set<po::offset>& tr = *(std::next(_tracks.begin(),track));
+			const boost::icl::split_interval_map<po::offset,int>& tr = *(std::next(_tracks.begin(),track));
 
 			auto i = tr.lower_bound(iv);
-			while(i != tr.end() && !boost::icl::disjoint(*i,iv))
+			while(i != tr.end() && !boost::icl::disjoint(i->first,iv))
 			{
-				std::cout << "edge check: " << b << ", " << i->lower() << ", " << i->upper() << std::endl;
-				if(boost::icl::contains(b,i->lower()))
-					begin_here.append(QString("%1").arg(track));
-				else if(boost::icl::contains(b,i->upper()))
-					end_here.append(QString("%1").arg(track));
+				if(boost::icl::contains(b,i->first.lower()))
+					begin_here.append(QString("{ 'track': %1, 'tip': %2 }").arg(track).arg(i->second == 2));
+				else if(boost::icl::contains(b,i->first.upper()))
+					end_here.append(QString("{ 'track': %1, 'tip': %2 }").arg(track).arg(i->second != 2));
 				else
 					pass_here.append(QString("%1").arg(track));
 				++i;
@@ -262,7 +262,7 @@ void LinearModel::postComment(int row, QString c)
 	ensure(false);
 }
 
-int LinearModel::findTrack(po::bound b)
+int LinearModel::findTrack(po::bound b, bool d)
 {
 	if(boost::icl::size(b) == 0)
 		throw std::invalid_argument("bound is empty");
@@ -271,27 +271,25 @@ int LinearModel::findTrack(po::bound b)
 	auto i = _tracks.begin();
 	while(i != _tracks.end())
 	{
-		boost::icl::split_interval_set<po::offset>& s = *i;
-		auto p = s.find(iv);
+		boost::icl::split_interval_map<po::offset,int>& s = *i;
 
-		if(p == s.end() || boost::icl::disjoint(*p,iv))
+		auto p = boost::icl::find(s,iv);
+
+		if(p == s.end() || boost::icl::disjoint(p->first,iv))
 		{
-			std::cout << "add " << b << " to track " << std::distance(_tracks.begin(),i) << std::endl;
-			s.add(iv);
+			s += std::make_pair(iv,d ? 2:1);
 			return std::distance(_tracks.begin(),i);
 		}
-		else if(*p == iv)
+		else if(p->first == iv)
 		{
-			std::cout << b << " was already on track " << std::distance(_tracks.begin(),i) << std::endl;
 			return std::distance(_tracks.begin(),i);
 		}
 
 		++i;
 	}
 
-	std::cout << "add " << b << " to new track " << _tracks.size() << std::endl;
-	_tracks.push_back(boost::icl::split_interval_set<po::offset>());
-	_tracks.back().add(iv);
+	_tracks.push_back(boost::icl::split_interval_map<po::offset,int>());
+	_tracks.back() += (std::make_pair(iv,d?2:1));
 
 	return _tracks.size() - 1;
 }
@@ -346,7 +344,7 @@ std::tuple<QString,po::bound,std::list<po::bound>> LinearModel::data_visitor::op
 
 std::tuple<QString,po::bound,std::list<po::bound>> LinearModel::data_visitor::operator()(bblock_loc bb) const
 {
-	int o = row - ival.lower();
+	size_t o = row - ival.lower();
 
 	const mnemonic& mne = bb->mnemonics().at(o);
 	QStringList ops, hex;

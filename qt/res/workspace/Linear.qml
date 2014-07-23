@@ -79,7 +79,7 @@ Item {
 					var idx = 0
 					while(idx < begins.length)
 					{
-						var line = begins[idx]
+						var line = begins[idx].track
 						var y_pos = y_step * (idx + 1)
 						var x_pos = (line + 1) * trackPadding
 
@@ -93,13 +93,19 @@ Item {
 						ctx.lineTo(x_pos, cellSize);
 						ctx.stroke()
 
+						if(begins[idx].tip) {
+							ctx.beginPath()
+							ctx.arc(cellSize - 4,y_pos,4,0,Math.PI * 2, true)
+							ctx.fill()
+						}
+
 						idx += 1
 					}
 
 					idx = 0
 					while(idx < ends.length)
 					{
-						var line = ends[idx]
+						var line = ends[idx].track
 
 						var y_pos = y_step * (idx + 1)
 						var x_pos = (line + 1) * trackPadding
@@ -115,6 +121,11 @@ Item {
 						ctx.lineTo(x_pos, 0);
 						ctx.stroke()
 
+						if(ends[idx].tip) {
+							ctx.beginPath()
+							ctx.arc(cellSize - 4,y_pos,4,0,Math.PI * 2, true)
+							ctx.fill()
+						}
 						idx += 1
 					}
 

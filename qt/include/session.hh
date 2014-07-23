@@ -34,12 +34,12 @@ protected:
 		po::region_loc reg;
 	};
 
-	int findTrack(po::bound b);
+	int findTrack(po::bound b, bool d);
 
 	po::dbase_loc _dbase;
 	std::list<std::pair<po::bound,po::region_wloc>> _projection;
 	boost::icl::split_interval_map<int,row_t> _rows;
-	std::list<boost::icl::split_interval_set<po::offset>> _tracks;
+	std::list<boost::icl::split_interval_map<po::offset,int>> _tracks;
 };
 
 class Session : public QObject
