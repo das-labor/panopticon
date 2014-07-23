@@ -59,23 +59,61 @@ Item {
 			}
 
 			Canvas {
+				readonly property int lineWidth: 1
+				readonly property int trackPadding: 5
+				readonly property int radius: 3
+
 				height: cellSize
 				width: cellSize
 				contextType: "2d"
 
 				onPaint: {
 					var ctx = getContext("2d")
-					var lr = contents.arrows.end.concat(contents.arrows.begin)
+					var ends = contents.arrows.end
+					var begins = contents.arrows.begin
 					var ud = contents.arrows.pass
 
-					var y_step = cellSize / (lr.length + 2)
-					var idx = 0
-					while(idx < lr.length)
-					{
-						var line = lr[idx]
+					ctx.imageSmoothingEnabled = true
 
-						ctx.fillStyle = "rgb(200,0,0)"
-						ctx.fillRect(0, y_step * (idx + 1) + 1.5,cellSize,3)
+					var y_step = Math.ceil(cellSize / (ends.concat(begins).length + 1))
+					var idx = 0
+					while(idx < begins.length)
+					{
+						var line = begins[idx]
+						var y_pos = y_step * (idx + 1)
+						var x_pos = (line + 1) * trackPadding
+
+						ctx.strokeStyle = "rgb(200,0,0)"
+						ctx.lineWidth = lineWidth
+
+						ctx.beginPath()
+						ctx.moveTo(cellSize, y_pos);
+						ctx.lineTo(x_pos + radius, y_pos)
+						ctx.arc(x_pos + radius, y_pos + radius, radius, Math.PI * 1.5, Math.PI, true);
+						ctx.lineTo(x_pos, cellSize);
+						ctx.stroke()
+
+						idx += 1
+					}
+
+					idx = 0
+					while(idx < ends.length)
+					{
+						var line = ends[idx]
+
+						var y_pos = y_step * (idx + 1)
+						var x_pos = (line + 1) * trackPadding
+
+						ctx.strokeStyle = "rgb(200,0,0)"
+						ctx.lineWidth = lineWidth
+
+						ctx.beginPath()
+						ctx.moveTo(cellSize, y_pos);
+						ctx.lineTo(x_pos + radius, y_pos)
+						ctx.arc(x_pos + radius, y_pos - radius, radius, Math.PI * 0.5, 1 * Math.PI, false);
+						ctx.moveTo(x_pos, y_pos - radius);
+						ctx.lineTo(x_pos, 0);
+						ctx.stroke()
 
 						idx += 1
 					}
@@ -84,12 +122,19 @@ Item {
 					while(idx < ud.length)
 					{
 						var line = ud[idx]
+						var x_pos = (line + 1) * trackPadding
 
-						ctx.fillStyle = "rgb(200,0,0)"
-						ctx.fillRect(line * 5, 0,3,cellSize)
+						ctx.strokeStyle = "rgb(200,0,0)"
+						ctx.lineWidth = lineWidth
+
+						ctx.beginPath()
+						ctx.moveTo(x_pos, 0);
+						ctx.lineTo(x_pos , cellSize)
+						ctx.stroke()
 
 						idx += 1
 					}
+
 				}
 			}
 

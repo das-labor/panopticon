@@ -202,15 +202,16 @@ QVariant LinearModel::data(const QModelIndex& idx, int role) const
 		// arrows
 		QStringList pass_here, end_here, begin_here;
 		size_t track = 0;
-		boost::icl::discrete_interval<po::offset> iv(b.lower(),b.upper() - 1);
+		boost::icl::discrete_interval<po::offset> iv = boost::icl::discrete_interval<po::offset>::closed(b.lower(),b.upper() - 1);
 
 		while(track < _tracks.size())
 		{
 			const boost::icl::split_interval_set<po::offset>& tr = *(std::next(_tracks.begin(),track));
 
-			auto i = tr.find(iv);
+			auto i = tr.lower_bound(iv);
 			while(i != tr.end() && !boost::icl::disjoint(*i,iv))
 			{
+				std::cout << "edge check: " << b << ", " << i->lower() << ", " << i->upper() << std::endl;
 				if(boost::icl::contains(b,i->lower()))
 					begin_here.append(QString("%1").arg(track));
 				else if(boost::icl::contains(b,i->upper()))
@@ -227,7 +228,7 @@ QVariant LinearModel::data(const QModelIndex& idx, int role) const
 											.arg(pass_here.join(","))
 											.arg(end_here.join(","))
 											.arg(begin_here.join(","));
-		qDebug() << arrows;
+
 		return QString("{ 'address': '0x%1', 'payload': %2, 'comment': '%3', 'arrows': %4 }")
 						.arg(b.lower(),0,16)
 						.arg(payload)
@@ -252,7 +253,7 @@ void LinearModel::postComment(int row, QString c)
 				k = _dbase.write().comments.erase(k);
 			}
 
-			_dbase.write().comments.emplace(ref{p.second->name(),o},comment_loc(new std::string(c.toStdString())));
+			_dbase.write().comments.insert(std::make_pair(ref{p.second->name(),o},comment_loc(new std::string(c.toStdString()))));
 			dataChanged(createIndex(row,0),createIndex(row,0));
 			return;
 		}
@@ -266,7 +267,7 @@ int LinearModel::findTrack(po::bound b)
 	if(boost::icl::size(b) == 0)
 		throw std::invalid_argument("bound is empty");
 
-	boost::icl::discrete_interval<po::offset> iv(b.lower(),b.upper());
+	boost::icl::discrete_interval<po::offset> iv = boost::icl::discrete_interval<po::offset>::closed(b.lower(),b.upper());
 	auto i = _tracks.begin();
 	while(i != _tracks.end())
 	{
