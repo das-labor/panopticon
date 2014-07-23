@@ -169,11 +169,6 @@ namespace po
 			//(*proc).write().control_transfers = digraph<boost::variant<bblock_loc, rvalue>, po::guard>();
 		}
 
-		for(auto d: destination)
-		{
-			std::cout << d.first << " <- " << d.second.first << std::endl;
-		}
-
 		ensure(source.size() == destination.size());
 		todo.emplace(start);
 
@@ -189,7 +184,7 @@ namespace po
 
 			if(cur_addr >= boost::size(data))
 			{
-				std::cout << "boundary err: " << cur_addr << " not inside " << boost::size(data) << " byte large slab" << std::endl;
+				std::cerr << "boundary err: " << cur_addr << " not inside " << boost::size(data) << " byte large slab" << std::endl;
 				continue;
 			}
 
@@ -198,7 +193,6 @@ namespace po
 				i += cur_addr;
 				typename rule<Tag>::tokiter e = (j == mnemonics.end() ? boost::end(data) : std::next(boost::begin(data),j->first + 1));
 
-				std::cerr << "match(" << std::distance(boost::begin(data),i) << ", " << std::distance(boost::begin(data),e) << ")" << std::endl;
 				auto mi = main.match(i,e,state);
 
 				if(mi)
@@ -254,16 +248,6 @@ namespace po
 			ensure(bblocks.insert(std::make_pair(bb->area().upper() - 1,bb)).second);
 		};
 
-		for(auto m: mnemonics)
-		{
-			std::cout << m.second.area << std::endl;
-		}
-
-		for(auto d: destination)
-		{
-			std::cout << d.first << " <- " << d.second.first << std::endl;
-		}
-
 		while(cur_mne != mnemonics.end())
 		{
 			auto next_mne = std::next(cur_mne);
@@ -294,13 +278,11 @@ namespace po
 				if(new_bb)
 				{
 					make_bblock(first_mne,next_mne);
-					std::cout << "make bb" << std::endl;
 
 					first_mne = next_mne;
 				}
 				else
 				{
-					std::cout << "append to prev bb" << std::endl;
 					while(sources.first != sources.second)
 						source.erase(sources.first++);
 					while(destinations.first != destinations.second)
