@@ -173,6 +173,8 @@ TEST(layer,marshal)
 		ASSERT_TRUE(*l2b == *l2);
 		ASSERT_TRUE(*l3b == *l3);
 		ASSERT_TRUE(*l4b == *l4);
+
+		discard_changes();
 	}
 
 	boost::filesystem::remove(p1);
@@ -205,6 +207,8 @@ TEST(layer,blob)
 			++i;
 			++idx;
 		}
+
+		discard_changes();
 	}
 
 	boost::filesystem::remove(p1);

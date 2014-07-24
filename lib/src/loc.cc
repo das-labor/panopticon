@@ -31,3 +31,13 @@ void po::save_point(rdf::storage &store)
 
 	dirty_locations.clear();
 }
+
+void po::discard_changes(void)
+{
+#ifdef __MINGW32__
+	std::lock_guard<boost::mutex> guard(dirty_locations_mutex);
+#else
+	std::lock_guard<std::mutex> guard(dirty_locations_mutex);
+#endif
+	dirty_locations.clear();
+}

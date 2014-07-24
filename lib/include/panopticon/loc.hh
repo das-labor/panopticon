@@ -228,6 +228,7 @@ namespace po
 	};
 
 	void save_point(rdf::storage &);
+	void discard_changes(void);
 }
 
 namespace std
