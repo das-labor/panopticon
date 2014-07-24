@@ -142,35 +142,38 @@ TEST(layer,flatten)
 TEST(layer,marshal)
 {
 	boost::filesystem::path p1 = boost::filesystem::unique_path(boost::filesystem::temp_directory_path() / "test-panop-%%%%-%%%%-%%%%");
-	std::ofstream s1(p1.string());
 
-	ASSERT_TRUE(s1.is_open());
-	s1 << "Hello, World" << std::flush;
-	s1.close();
+	{
+		std::ofstream s1(p1.string());
 
-	layer_loc l1(new layer("l1",33));
-	layer_loc l2(new layer("l2",vector<po::byte>({1,2,3,4,5})));
-	layer_loc l3(new layer("l3",std::unordered_map<offset,tryte>({
-		make_pair(0,5),
-		make_pair(1,5),
-		make_pair(2,boost::none),
-		make_pair(3,0xff),
-		make_pair(4,boost::none)
-	})));
-	po::layer_loc l4(new po::layer("anon 2",po::blob(p1)));
+		ASSERT_TRUE(s1.is_open());
+		s1 << "Hello, World" << std::flush;
+		s1.close();
 
-	rdf::storage st;
-	save_point(st);
+		layer_loc l1(new layer("l1",33));
+		layer_loc l2(new layer("l2",vector<po::byte>({1,2,3,4,5})));
+		layer_loc l3(new layer("l3",std::unordered_map<offset,tryte>({
+			make_pair(0,5),
+			make_pair(1,5),
+			make_pair(2,boost::none),
+			make_pair(3,0xff),
+			make_pair(4,boost::none)
+		})));
+		po::layer_loc l4(new po::layer("anon 2",po::blob(p1)));
 
-	std::unique_ptr<layer> l1b(unmarshal<layer>(l1.tag(),st));
-	std::unique_ptr<layer> l2b(unmarshal<layer>(l2.tag(),st));
-	std::unique_ptr<layer> l3b(unmarshal<layer>(l3.tag(),st));
-	std::unique_ptr<layer> l4b(unmarshal<layer>(l4.tag(),st));
+		rdf::storage st;
+		save_point(st);
 
-	ASSERT_TRUE(*l1b == *l1);
-	ASSERT_TRUE(*l2b == *l2);
-	ASSERT_TRUE(*l3b == *l3);
-	ASSERT_TRUE(*l4b == *l4);
+		std::unique_ptr<layer> l1b(unmarshal<layer>(l1.tag(),st));
+		std::unique_ptr<layer> l2b(unmarshal<layer>(l2.tag(),st));
+		std::unique_ptr<layer> l3b(unmarshal<layer>(l3.tag(),st));
+		std::unique_ptr<layer> l4b(unmarshal<layer>(l4.tag(),st));
+
+		ASSERT_TRUE(*l1b == *l1);
+		ASSERT_TRUE(*l2b == *l2);
+		ASSERT_TRUE(*l3b == *l3);
+		ASSERT_TRUE(*l4b == *l4);
+	}
 
 	boost::filesystem::remove(p1);
 }
