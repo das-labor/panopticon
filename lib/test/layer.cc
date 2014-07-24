@@ -181,27 +181,30 @@ TEST(layer,marshal)
 TEST(layer,blob)
 {
 	boost::filesystem::path p1 = boost::filesystem::unique_path(boost::filesystem::temp_directory_path() / "test-panop-%%%%-%%%%-%%%%");
-	std::ofstream s1(p1.string());
 
-	ASSERT_TRUE(s1.is_open());
-	s1 << "Hello, World" << std::flush;
-	s1.close();
-
-	po::blob mf(p1);
-
-	po::layer_loc l1(new po::layer("anon",mf));
-
-	po::slab s = l1->filter(slab());
-	ASSERT_EQ(boost::size(s),12);
-
-	auto i = boost::begin(s);
-	int idx = 0;
-
-	while(i != boost::end(s))
 	{
-		ASSERT_EQ(**i, mf.data()[idx]);
-		++i;
-		++idx;
+		std::ofstream s1(p1.string());
+
+		ASSERT_TRUE(s1.is_open());
+		s1 << "Hello, World" << std::flush;
+		s1.close();
+
+		po::blob mf(p1);
+
+		po::layer_loc l1(new po::layer("anon",mf));
+
+		po::slab s = l1->filter(slab());
+		ASSERT_EQ(boost::size(s),12);
+
+		auto i = boost::begin(s);
+		int idx = 0;
+
+		while(i != boost::end(s))
+		{
+			ASSERT_EQ(**i, mf.data()[idx]);
+			++i;
+			++idx;
+		}
 	}
 
 	boost::filesystem::remove(p1);
