@@ -214,7 +214,7 @@ storage::storage(const filesystem::path& p)
 		if(archive_read_support_format_cpio(ar) != ARCHIVE_OK)
 			throw marshal_exception("can't set archive format");
 
-		if(archive_read_support_filter_xz(ar) != ARCHIVE_OK)
+		if(archive_read_support_filter_lzma(ar) != ARCHIVE_OK)
 			throw marshal_exception("can't set compression algorithm");
 
 		if(archive_read_open_filename(ar,p.string().c_str(),4096) != ARCHIVE_OK)
@@ -399,10 +399,10 @@ void storage::snapshot(const filesystem::path& p) const
 
 	try
 	{
-		if(archive_write_add_filter_xz(ar) != ARCHIVE_OK)
+		if(archive_write_add_filter_lzma(ar) != ARCHIVE_OK)
 			throw marshal_exception("can't save to " + p.string() + ": failed setting compression algorithm");
 
-		// save into *.cpio.xz
+		// save into *.cpio.lzma
 		if(archive_write_set_format_cpio(ar) != ARCHIVE_OK)
 			throw marshal_exception("can't save to " + p.string() + ": failed setting archive format");
 
