@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <panopticon/marshal.hh>
+#include <panopticon/loc.hh>
 
 using namespace po;
 
@@ -122,7 +123,7 @@ TEST(marshal,blob)
 			ASSERT_EQ(mf1.tag(), mf3.tag());
 		}
 
-		discard_changes();
+		po::discard_changes();
 	}
 
 	boost::filesystem::remove(p1);
