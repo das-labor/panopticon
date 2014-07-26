@@ -13,7 +13,7 @@ set(panopticon_HEADERS include/panopticon/loc.hh include/panopticon/value.hh
 	include/panopticon/dflow.hh include/panopticon/instr.hh
 	include/panopticon/interpreter.hh include/panopticon/avr/avr.hh
 	include/panopticon/avr/util.hh include/panopticon/architecture.hh
-	include/panopticon/ensure.hh)
+	include/panopticon/ensure.hh include/panopticon/tree.hh)
 
 set(panopticon_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/include
 	${KyotoCabinet_INCLUDE_DIRS} ${LibArchive_INCLUDE_DIRS}

@@ -169,6 +169,7 @@ TEST_F(tree,from_map)
 		else if(*i == 4)
 		{
 			auto c = tr.begin(i);
+			ASSERT_FALSE(c == tr.end(i));
 			ASSERT_EQ(std::distance(c,tr.end(i)), 1);
 			ASSERT_TRUE(*c == 5);
 		}
