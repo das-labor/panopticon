@@ -282,7 +282,7 @@ storage::storage(const storage& st)
 storage::~storage(void)
 {
 	_meta.close();
-
+	_blobs.clear();
 	if(!_tempdir.empty())
 		filesystem::remove_all(_tempdir);
 }
