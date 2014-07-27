@@ -105,7 +105,11 @@ live po::liveness(proc_loc proc)
 		for(auto e: iters(out_edges(vx,proc->control_transfers)))
 		{
 			guard g = get_edge(e,proc->control_transfers);
-			//collect(ct.value,bb);
+			auto wx = target(e,proc->control_transfers);
+			const rvalue *rv = boost::get<rvalue>(&get_vertex(wx,proc->control_transfers));
+
+			if(rv)
+				collect(*rv,bb);
 
 			for(const relation &rel: g.relations)
 			{
@@ -204,8 +208,8 @@ void po::ssa(proc_loc proc, const dom& domi, const live& li)
 
 	for(const std::string &n: li.names)
 	{
-		counter.insert(std::make_pair(n,0));
-		stack.insert(std::make_pair(n,std::list<int>({})));
+		counter.insert(std::make_pair(n,1));
+		stack.insert(std::make_pair(n,std::list<int>({0})));
 	}
 
 	auto new_name = [&](const std::string &n) -> int
@@ -345,8 +349,14 @@ void po::ssa(proc_loc proc, const dom& domi, const live& li)
 							right.emplace_back(undefined());
 							--missing;
 						}
-						ensure(stack.count(to_variable(i.assignee).name()));
-						right[ord] = variable(to_variable(i.assignee).name(),to_variable(i.assignee).width(),stack[to_variable(i.assignee).name()].back());
+
+						variable var = to_variable(i.assignee);
+						ensure(stack.count(var.name()));
+
+						const std::list<int>& l = stack.at(var.name());
+						ensure(l.size());
+
+						right[ord] = variable(var.name(),var.width(),l.back());
 						set_operands(i,right);
 					}
 				}
