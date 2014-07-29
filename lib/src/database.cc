@@ -160,6 +160,68 @@ session po::raw_avr(const std::string& path)
 	return session{db,store};
 }
 
+session po::pe(const string& p)
+{
+	dbase_loc db(new database());
+
+	blob file(p);
+	region_loc ram = region::undefined("base",0xc0000000);
+
+	if(file.size() < 0x3c)
+		throw runtime_error("file too short");
+
+	size_t pe_off = *(uint8_t*)(file.data() + 0x3c);
+
+	std::cout << "pe header at " << pe_off << std::endl;
+
+	struct pe_hdr
+	{
+		char magic1;
+		char magic2;
+		char magic3;
+		char magic4;
+		uint16_t machine;
+		uint16_t num_sections;
+		uint32_t timestamp;
+		uint32_t symtab;
+		uint32_t num_symbols;
+		uint16_t opthdr_size;
+		uint16_t flags;
+	};
+
+	if(file.size() < pe_off + sizeof(pe_hdr))
+		throw runtime_error("file too short");
+
+	pe_hdr* hdr = (pe_hdr*)(file.data() + pe_off);
+
+	std::cout << "magic1: " << hdr->magic1 << std::endl;
+	std::cout << "magic2: " << hdr->magic2 << std::endl;
+	std::cout << "magic3: " << hdr->magic3 << std::endl;
+	std::cout << "magic4: " << hdr->magic4 << std::endl;
+	std::cout << "machine: " << hdr->machine << std::endl;
+	std::cout << "num_sections: " << hdr->num_sections << std::endl;
+	std::cout << "timestamp: " << hdr->timestamp << std::endl;
+	std::cout << "symtab: " << hdr->symtab << std::endl;
+	std::cout << "num_symbols: " << hdr->num_symbols << std::endl;
+	std::cout << "opthdr_size: " << hdr->opthdr_size << std::endl;
+	std::cout << "flags: " << hdr->flags << std::endl;
+
+	if(hdr->magic1 != 'P' || hdr->magic2 != 'E' || hdr->magic3 != 0 || hdr->magic4 != 0)
+		throw runtime_error("wrong magic");
+
+	if(hdr->machine == 0x14c || hdr->machine == 0x864)
+		std::cout << "ia32/amd64" << std::endl;
+	else
+		throw std::runtime_error("unsupported machine type");
+
+	if(!(hdr->flags & 0x0020))
+		throw std::runtime_error("image not executable");
+
+
+
+	return session{db,std::make_shared<rdf::storage>()};
+}
+
 boost::optional<record> po::next_record(const ref& r, dbase_loc db)
 {
 	boost::optional<std::pair<po::offset,record>> ret = boost::none;
