@@ -48,7 +48,7 @@ public:
 	bool direct(void) const { return _direct; }
 
 	void setDelegate(QQmlComponent* c) { _delegate = c; }
-	void setVertices(QVariantList l) { _vertices = l; clear(); emit verticesChanged(); layout(); route(); }
+	void setVertices(QVariantList l) { _vertices = l; clear(); emit verticesChanged(); redoAttached(); layout(); route(); }
 	void setEdges(QVariantList l) { _edges = l; clear(); emit edgesChanged(); redoAttached(); layout(); route(); }
 	void setDirect(bool b) { _direct = b; emit directChanged(); route(); }
 

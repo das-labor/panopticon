@@ -17,7 +17,7 @@ Item {
 	readonly property real halfCellSize: 12
 	readonly property int maxMnemonicHexdump: 4
 
-	focus: true
+	//focus: true
 
 	Component {
 		id: row
@@ -342,8 +342,7 @@ Item {
 							text = contents.comment
 							focus = false
 							event.accepted = true
-						}
-						else if(event.key == Qt.Key_Escape) {
+						} else if(event.key == Qt.Key_Escape) {
 							text = contents.comment
 							focus = false
 							event.accepted = true

@@ -10,16 +10,16 @@ ApplicationWindow {
 	width: 1000
 
 	Loader {
+		focus: true
 		id: loader
 		anchors.fill: parent
 	}
 
 	Component.onCompleted: {
-		if(Panopticon.session)
-		{
+		if(Panopticon.session) {
 			loader.setSource("workspace/Workspace.qml",{ "session": Panopticon.session })
-		}
-		else
+		} else {
 			loader.setSource("wizard/Main.qml")
+		}
 	}
 }

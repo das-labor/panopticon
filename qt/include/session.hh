@@ -2,6 +2,7 @@
 #include <QAbstractTableModel>
 #include <panopticon/database.hh>
 #include <panopticon/region.hh>
+#include <panopticon/procedure.hh>
 
 #pragma once
 
@@ -42,11 +43,37 @@ protected:
 	std::list<boost::icl::split_interval_map<po::offset,int>> _tracks;
 };
 
+class ProcedureModel : public QObject
+{
+	Q_OBJECT
+	Q_PROPERTY(QString name READ name NOTIFY nameChanged)
+	Q_PROPERTY(QStringList jumps READ jumps NOTIFY jumpsChanged)
+	Q_PROPERTY(QStringList blocks READ blocks NOTIFY blocksChanged)
+
+public:
+	ProcedureModel(QObject* p = nullptr) : QObject(p) {}
+
+	QString name(void) const;
+	QStringList jumps(void) const;
+	QStringList blocks(void) const;
+
+	void setProcedure(po::proc_loc p);
+
+signals:
+	void nameChanged(void);
+	void jumpsChanged(void);
+	void blocksChanged(void);
+
+private:
+	boost::optional<po::proc_loc> _procedure;
+};
+
 class Session : public QObject
 {
 	Q_OBJECT
 	Q_PROPERTY(QString title READ title NOTIFY titleChanged)
 	Q_PROPERTY(QObject* linear READ linear NOTIFY linearChanged)
+	Q_PROPERTY(QObject* graph READ graph NOTIFY graphChanged)
 	Q_PROPERTY(QStringList procedures READ procedures NOTIFY proceduresChanged)
 
 public:
@@ -61,15 +88,18 @@ public:
 
 	QString title(void) const { return QString::fromStdString(_session.dbase->title); }
 	QObject* linear(void) const { return _linear; }
+	QObject* graph(void) const { return _graph; }
 	const QStringList& procedures(void) const { return _procedures; }
 
 signals:
 	void titleChanged(void);
 	void linearChanged(void);
+	void graphChanged(void);
 	void proceduresChanged(void);
 
 private:
 	po::session _session;
 	LinearModel* _linear;
+	ProcedureModel* _graph;
 	QStringList _procedures;
 };

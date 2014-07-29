@@ -8,6 +8,19 @@ Item {
 	property variant session: null
 
 	anchors.fill: parent
+	focus: true
+	state: "graph"
+	Keys.enabled: true
+	Keys.onPressed: {
+		if(event.key == Qt.Key_Space) {
+			if(root.state == "graph") {
+				root.state = "linear"
+			} else {
+				root.state = "graph"
+			}
+			event.accepted = true
+		}
+	}
 
 	ListView {
 		width: 150
@@ -20,11 +33,21 @@ Item {
 		}
 	}
 
-	Linear {
-		id: lst1
-		session: root.session
+	Graph {
 		width: root.width - 150
 		x: 150
 		height: root.height
+		id: grph
+		session: root.session
+		visible: root.state == "graph"
+	}
+
+	Linear {
+		width: root.width - 150
+		x: 150
+		height: root.height
+		id: lst1
+		session: root.session
+		visible: root.state == "linear"
 	}
 }

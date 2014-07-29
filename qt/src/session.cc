@@ -388,12 +388,88 @@ std::tuple<QString,po::bound,std::list<po::bound>> LinearModel::data_visitor::op
 		std::list<po::bound>());
 }
 
-Session::Session(po::session sess, QObject *p)
-: QObject(p), _session(sess), _linear(new LinearModel(sess.dbase,this)), _procedures()
+QString ProcedureModel::name(void) const
 {
+	return _procedure ? QString::fromStdString((*_procedure)->name) : QString();
+}
+
+QStringList ProcedureModel::jumps(void) const
+{
+	QStringList ret;
+
+	if(_procedure)
+	{
+		proc_loc proc = *_procedure;
+		for(auto e: iters(edges(proc->control_transfers)))
+		{
+			try
+			{
+				bblock_loc from = boost::get<bblock_loc>(get_vertex(source(e,proc->control_transfers),proc->control_transfers));
+				bblock_loc to = boost::get<bblock_loc>(get_vertex(target(e,proc->control_transfers),proc->control_transfers));
+
+				po::offset from_o = from->area().lower();
+				po::offset to_o = to->area().lower();
+
+				ret.append(QString("{ 'from': %1, 'to': %2 }").arg(from_o).arg(to_o));
+			}
+			catch(const boost::bad_get)
+			{}
+		}
+	}
+
+	return ret;
+}
+
+QStringList ProcedureModel::blocks(void) const
+{
+	QStringList ret;
+
+	if(_procedure)
+	{
+		proc_loc proc = *_procedure;
+		for(auto v: iters(vertices(proc->control_transfers)))
+		{
+			try
+			{
+				bblock_loc bb = boost::get<bblock_loc>(get_vertex(v,proc->control_transfers));
+				ret.append(QString("%1").arg(bb->area().lower()));
+			}
+			catch(const boost::bad_get)
+			{}
+		}
+	}
+
+	return ret;
+}
+
+void ProcedureModel::setProcedure(proc_loc p)
+{
+	if(!_procedure || p != *_procedure)
+	{
+		_procedure = p;
+		emit blocksChanged();
+		emit jumpsChanged();
+		emit nameChanged();
+	}
+}
+
+Session::Session(po::session sess, QObject *p)
+: QObject(p), _session(sess), _linear(new LinearModel(sess.dbase,this)), _graph(new ProcedureModel()), _procedures()
+{
+	bool set = false;
+
 	for(auto prog: _session.dbase->programs)
+	{
 		for(auto proc: prog->procedures())
+		{
 			_procedures.append(QString::fromStdString(proc->name));
+			if(!set)
+			{
+				set = true;
+				_graph->setProcedure(proc);
+			}
+		}
+	}
 }
 
 Session::~Session(void)

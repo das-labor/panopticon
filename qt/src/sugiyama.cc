@@ -101,6 +101,8 @@ po::digraph<std::tuple<QVariant,QQuickItem*,QQmlContext*>,std::tuple<QVariant,QP
 			if(_delegate)
 			{
 				ctx = new QQmlContext(QQmlEngine::contextForObject(this));
+				ctx->setContextProperty("modelData",var);
+				ctx->setContextProperty("incoming",QVariantList());
 				itm = qobject_cast<QQuickItem*>(_delegate->create(ctx));
 				itm->setParentItem(this);
 			}
@@ -169,10 +171,6 @@ void Sugiyama::updateEdge(QObject *obj)
 			}
 
 			insert_edge(std::make_tuple(var,QPainterPath(),h,t),*a,*b,*_graph);
-		}
-		else
-		{
-			qWarning() << "Edge between unknown nodes";
 		}
 
 		ensure(width.connectNotifySignal(this,SLOT(update())));
