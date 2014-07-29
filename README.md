@@ -14,35 +14,36 @@ Building
 
 In order to compile Panopticon the following needs to be installed first:
 
- - Qt 5.3
- - CMake 2.8
- - g++ 4.7 or Clang 3.4
- - Boost 1.53
- - Kyoto Cabinet 1.2.76
- - libarchive 3.1.2
+- Qt 5.3
+- CMake 2.8
+- g++ 4.7 or Clang 3.4
+- Boost 1.53
+- Kyoto Cabinet 1.2.76
+- libarchive 3.1.2
+- googletest 1.6.0 (only needed to run the test suite)
 
-*nix
-----
+Linux
+-----
 
 After cloning the repository onto disk, create a build directory and
 call cmake and the path to the source as argument. Compile the project
 using GNU Make.
 
-> git clone https://github.com/das-labor/panopticon.git
-> mkdir panop-build
-> cd panop-build
-> cmake ../panopticon
-> make -j4
-> sudo make install
+```bash
+git clone https://github.com/das-labor/panopticon.git
+mkdir panop-build
+cd panop-build
+cmake ../panopticon
+make -j4
+sudo make install
+```
 
 Windows
 -------
 
 After installing the prerequisites on Windows use the CMake GUI to
-generate Visual Studio project files. Panopticon can be compiled
-using VC++ 2013.
-
-**At the moment Visual C++ 2013 crashes while compiling the project.**
+generate Visual Studio project files or Mingw Makefiles. Panopticon
+can be compiled using VC++ 2013 or Mingw g++.
 
 Contributing
 ============
