@@ -167,6 +167,14 @@ session po::pe(const string& p)
 	blob file(p);
 	region_loc ram = region::undefined("base",0xc0000000);
 
+	if(file.size() < 2)
+		throw runtime_error("file too short");
+
+	std::cout << "file magic: " << file.data()[0] << file.data()[1] << std::endl;
+
+	if(file.data()[0] != 'M' || file.data()[1] != 'Z')
+		throw runtime_error("unknown magic");
+
 	if(file.size() < 0x3c)
 		throw runtime_error("file too short");
 
@@ -176,6 +184,7 @@ session po::pe(const string& p)
 
 	struct pe_hdr
 	{
+		// pe header
 		char magic1;
 		char magic2;
 		char magic3;
@@ -214,10 +223,135 @@ session po::pe(const string& p)
 	else
 		throw std::runtime_error("unsupported machine type");
 
-	if(!(hdr->flags & 0x0020))
+	if(!(hdr->flags & 2))
 		throw std::runtime_error("image not executable");
 
+	struct opt_hdr
+	{
+		uint16_t magic;
+		uint8_t major;
+		uint8_t minor;
+		uint32_t text_size;
+		uint32_t data_size;
+		uint32_t bss_size;
+		uint32_t entry_point;
+		uint32_t text_base;
 
+		union
+		{
+			struct narrow
+			{
+				uint32_t data_base; // w
+				uint32_t image_base; // w
+				uint32_t section_align;
+				uint32_t file_align;
+				uint16_t os_major;
+				uint16_t os_minor;
+				uint16_t imgae_major;
+				uint16_t image_minor;
+				uint16_t subsys_major;
+				uint16_t subsys_minor;
+				uint32_t win32_ver;
+				uint32_t image_size;
+				uint32_t header_size;
+				uint32_t checksum;
+				uint16_t subsys;
+				uint16_t dll_flags;
+				uint32_t stack_reserve; // w
+				uint32_t stack_commit; // w
+				uint32_t heap_reserve; // w
+				uint32_t heap_commit; // w
+				uint32_t loader_flags;
+				uint32_t datadir_entries;
+			} pe;
+
+			struct wide
+			{
+				uint64_t image_base; // w
+				uint32_t section_align;
+				uint32_t file_align;
+				uint16_t os_major;
+				uint16_t os_minor;
+				uint16_t imgae_major;
+				uint16_t image_minor;
+				uint16_t subsys_major;
+				uint16_t subsys_minor;
+				uint32_t win32_ver;
+				uint32_t image_size;
+				uint32_t header_size;
+				uint32_t checksum;
+				uint16_t subsys;
+				uint16_t dll_flags;
+				uint64_t stack_reserve; // w
+				uint64_t stack_commit; // w
+				uint64_t heap_reserve; // w
+				uint64_t heap_commit; // w
+				uint32_t loader_flags;
+				uint32_t datadir_entries;
+			} pe_plus;
+		} u;
+	};
+
+	if(file.size() < pe_off + sizeof(pe_hdr) + 2)
+		throw runtime_error("file too short");
+
+	opt_hdr *opt = (opt_hdr*)(file.data() + pe_off + sizeof(pe_hdr));
+
+	std::cout << "=== Optional Header ===" << std::endl;
+
+	size_t ddir_cnt = 0;
+	uint64_t image_base = 0;
+
+	if(opt->magic == 0x10b)
+	{
+		std::cout << "magic: " << std::hex << opt->magic << std::dec << " (PE)" << std::endl;
+		std::cout << "entry: " << std::hex << opt->entry_point << std::dec << std::endl;
+		std::cout << "image base: " << opt->u.pe.image_base << std::endl;
+		std::cout << "section alignment: " << opt->u.pe.section_align << std::endl;
+		std::cout << "file alignment: " << opt->u.pe.file_align << std::endl;
+		std::cout << "subsystem ver: " << opt->u.pe.subsys_major << "." << opt->u.pe.subsys_minor << std::endl;
+		std::cout << "image size: " << opt->u.pe.image_size << std::endl;
+		std::cout << "hdr size: " << opt->u.pe.header_size << std::endl;
+		std::cout << "subsys: " << opt->u.pe.subsys << std::endl;
+		ddir_cnt = opt->u.pe.datadir_entries;
+		image_base = opt->u.pe.image_base;
+	}
+	else if(opt->magic == 0x20b)
+	{
+		std::cout << "magic: " << std::hex << opt->magic << std::dec << " (PE+)" << std::endl;
+		std::cout << "entry: " << std::hex << opt->entry_point << std::dec << std::endl;
+		std::cout << "image base: " << opt->u.pe_plus.image_base << std::endl;
+		std::cout << "section alignment: " << opt->u.pe_plus.section_align << std::endl;
+		std::cout << "file alignment: " << opt->u.pe_plus.file_align << std::endl;
+		std::cout << "subsystem ver: " << opt->u.pe_plus.subsys_major << "." << opt->u.pe_plus.subsys_minor << std::endl;
+		std::cout << "image size: " << opt->u.pe_plus.image_size << std::endl;
+		std::cout << "hdr size: " << opt->u.pe_plus.header_size << std::endl;
+		std::cout << "subsys: " << opt->u.pe_plus.subsys << std::endl;
+		ddir_cnt = opt->u.pe_plus.datadir_entries;
+		image_base = opt->u.pe_plus.image_base;
+	}
+	else
+		throw std::runtime_error("unknown optional header magic");
+
+
+	struct ddir_entry
+	{
+		int32_t rva;
+		uint32_t size;
+	};
+
+	std::cout << "section table offset: " << pe_off + sizeof(pe_hdr) + hdr->opthdr_size << std::endl;
+	ddir_entry *ddir = (ddir_entry*)(file.data() + pe_off + sizeof(pe_hdr) + hdr->opthdr_size);
+	size_t ddir_idx = 0;
+
+	while(ddir_idx < ddir_cnt)
+	{
+		std::cout << "data dir entry #" << ddir_idx << std::endl;
+		std::cout << "rva: " << ddir[ddir_idx].rva << " (" << ddir[ddir_idx].rva + image_base << ")" << std::endl;
+		std::cout << "size: " << ddir[ddir_idx].size << std::endl;
+
+		++ddir_idx;
+	}
 
 	return session{db,std::make_shared<rdf::storage>()};
 }
