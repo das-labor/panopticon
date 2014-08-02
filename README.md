@@ -20,7 +20,7 @@ In order to compile Panopticon the following needs to be installed first:
 - Boost 1.53
 - Kyoto Cabinet 1.2.76
 - libarchive 3.1.2
-- googletest 1.6.0 (only needed to run the test suite)
+- googletest 1.6.0 (only needed for the test suite)
 
 Linux
 -----
@@ -90,3 +90,5 @@ References
 [1] K. Sugiyama, S. Tagawa, and M. Toda.
     “Methods for Visual Understanding of Hierarchical Systems”.
     IEEE Transactions on Systems, Man, and Cybernetics, 1981.
+
+2014-8-2
