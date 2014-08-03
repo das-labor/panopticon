@@ -26,8 +26,18 @@ Linux
 -----
 
 First install the prerequisites using your package manager. For Ubuntu
-13.10 and 14.04 it's ``apt-get install g++ cmake libboost-dev kyotocabinet-dev libarchive-dev gtest-dev libqt5-dev``
+13.10 and 14.04 it's ``sudo apt-get install g++ cmake libboost-dev kyotocabinet-dev libarchive-dev qt5-default wget git cmake unzip``
 , for Fedora 20 it's ``yum install g++ cmake libboost-devel kyotocabinet-devel libarchive-devel gtest-devel libqt5-devel``.
+
+The Google Testing Framework need to be build from source.
+
+```bash
+wget https://googletest.googlecode.com/files/gtest-1.7.0.zip
+unzip gtest-1.7.0.zip
+cd gtest-1.7.0
+./configure
+make
+```
 
 After that clone the repository onto disk, create a build directory and
 call cmake and the path to the source as argument. Compile the project
