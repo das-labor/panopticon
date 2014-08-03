@@ -9,6 +9,6 @@ link_directories(${panopticon_LIBRARY_DIRS} ${GTEST_LIBRARY_DIRS})
 
 add_executable(testsuite ${panopticon_test_HEADERS}
 	${panopticon_test_SOURCES})
-target_link_libraries(testsuite ${GTEST_LIBRARIES}
+target_link_libraries(testsuite gtest_main gtest
 	${panopticon_LIBRARIES})
 panopticon_add_tests(testsuite "${CMAKE_CURRENT_SOURCE_DIR}" "" "${panopticon_test_SOURCES}")

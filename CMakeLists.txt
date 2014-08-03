@@ -41,23 +41,24 @@ if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /bigobj")
 endif()
 
+# enable tests
+include(CTest)
+add_subdirectory("3rdparty/gtest")
+include(PanopticonTest)
+include_directories("3rdparty/gtest/include")
+link_directories(${gtest_BINARY_DIR}/src)
+
+# compile and link with coverage info
+if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" AND "${UNIX}")
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --coverage")
+else()
+	message(STATUS "Coverage testing disabled when not using GCC on Unix")
+endif()
+
 if("${CMAKE_BUILD_TYPE}" STREQUAL "Release")
  	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror")
 	message(STATUS "Build release")
 elseif("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
-
-	# enable tests
-	include(CTest)
-	find_package(GTest REQUIRED)
-	include(PanopticonTest)
-
-	# compile and link with coverage info
-	if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" AND "${UNIX}")
-		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --coverage")
-	else()
-		message(STATUS "Coverage testing disabled when not using GCC on Unix")
-	endif()
-
 	message(STATUS "Debug build")
 endif()
 

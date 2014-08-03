@@ -71,6 +71,4 @@ if(UNIX AND NOT APPLE)
 		DESTINATION "lib/pkgconfig")
 endif()
 
-if(${GTEST_FOUND})
-	add_subdirectory("test")
-endif()
+add_subdirectory("test")
