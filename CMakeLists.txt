@@ -88,7 +88,7 @@ endif()
 
 if(${BUILD_qt} AND ${panopticon_FOUND})
 	message(STATUS "Building Panopticon Qt UI")
-	find_package(Qt5 COMPONENTS Widgets Qml Quick REQUIRED)
+	find_package(Qt5Quick REQUIRED)
 	add_subdirectory("qt")
 	add_dependencies(qtpanopticon panopticon)
 endif()
