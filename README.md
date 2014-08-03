@@ -20,23 +20,20 @@ In order to compile Panopticon the following needs to be installed first:
 - Boost 1.53
 - Kyoto Cabinet 1.2.76
 - libarchive 3.1.2
-- googletest 1.6.0 (only needed for the test suite)
 
 Linux
 -----
 
-First install the prerequisites using your package manager. For Ubuntu
-13.10 and 14.04 it's ``sudo apt-get install g++ cmake libboost-dev kyotocabinet-dev libarchive-dev qt5-default wget git cmake unzip``
-, for Fedora 20 it's ``yum install g++ cmake libboost-devel kyotocabinet-devel libarchive-devel gtest-devel libqt5-devel``.
+First install the prerequisites using your package manager.
 
-The Google Testing Framework need to be build from source.
-
+Ubuntu 13.10 and 14.04:
 ```bash
-wget https://googletest.googlecode.com/files/gtest-1.7.0.zip
-unzip gtest-1.7.0.zip
-cd gtest-1.7.0
-./configure
-make
+sudo apt-get install g++ cmake git libboost-dev libboost-filesystem-dev libboost-graph-dev libkyotocabinet-dev libarchive-dev qt5-default qtdeclarative5-dev
+```
+
+Fedora 20:
+```bash
+sudo yum install gcc-c++ cmake git kyotocabinet-devel libarchive-devel qt5-qtdeclarative-devel qt5-qtquickcontrols boost-filesystem boost-graph boost-static
 ```
 
 After that clone the repository onto disk, create a build directory and
@@ -82,17 +79,17 @@ always welcome. See http://panopticon.re for our wiki and issue tracker.
 Panopticon consists of two sub projects: libpanopticon and qtpanopticon.
 The libpanopticon resides in the lib/ directory inside the repository. It
 implements all disassembling and analysis functionality.
-The libpanopticon has a test suite that can be found in lib/test/ after compilation.
-The library is documented using Doxygen. To generate an API documentation in HTML install
-Doxygen and call ``doxygen doc/doxyfile`` from inside the repository. The documentation is
-written to ``doc/html/``.
+The libpanopticon has a test suite that can be found in lib/test/ after
+compilation. The library is documented using Doxygen. To generate an API
+documentation in HTML install Doxygen and call ``doxygen doc/doxyfile``
+from inside the repository. The documentation is written to ``doc/html/``.
 
-The qtpanopticon application is a Qt5 GUI for libpanopticon. The front end uses
-QtQuick2 that interacts with libpanopticon using a thin C++ interface (the
-Session, Panopticon, LinearModel and ProcedureModel classes). For the graph view
-qtpanopticon implements the graph layout algorithm used by Graphviz' DOT program[1].
-The Sugiyama class exposes this functionality to QtQuick2.
-The QML files that reside in res/.
+The qtpanopticon application is a Qt5 GUI for libpanopticon. The front
+end uses QtQuick2 that interacts with libpanopticon using a thin C++
+interface (the Session, Panopticon, LinearModel and ProcedureModel classes).
+For the graph view qtpanopticon implements the graph layout algorithm used
+by Graphviz' DOT program[1]. The Sugiyama class exposes this functionality
+to QtQuick2. The QML files that reside in res/.
 
 References
 ==========
