@@ -17,3 +17,5 @@ set(KyotoCabinet_HEADERS kccachedb.h kccommon.h kccompare.h
 	kcstashdb.h kctextdb.h kcthread.h kcutil.h)
 
 add_library(kyotocabinet ${KyotoCabinet_HEADERS} ${KyotoCabinet_SOURCES})
+install(TARGETS kyotocabinet)
+install(FILES ${KyotoCabinet_HEADERS} DESTINATION include)
