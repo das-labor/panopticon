@@ -212,7 +212,7 @@ session po::pe(const string& p)
 	std::cout << "timestamp: " << hdr->timestamp << std::endl;
 	std::cout << "symtab: " << hdr->symtab << std::endl;
 	std::cout << "num_symbols: " << hdr->num_symbols << std::endl;
-	std::cout << "opthdr_size: " << hdr->opthdr_size << std::endl;
+	std::cout << "opthdr_size: " << std::dec << hdr->opthdr_size << std::endl;
 	std::cout << "flags: " << hdr->flags << std::endl;
 
 	if(hdr->magic1 != 'P' || hdr->magic2 != 'E' || hdr->magic3 != 0 || hdr->magic4 != 0)
@@ -297,7 +297,7 @@ session po::pe(const string& p)
 
 	opt_hdr *opt = (opt_hdr*)(file.data() + pe_off + sizeof(pe_hdr));
 
-	std::cout << "=== Optional Header ===" << std::endl;
+	std::cout << "=== Optional Header === " << std::dec << sizeof(opt_hdr) << std::endl;
 
 	size_t ddir_cnt = 0;
 	uint64_t image_base = 0;
@@ -306,7 +306,7 @@ session po::pe(const string& p)
 	{
 		std::cout << "magic: " << std::hex << opt->magic << std::dec << " (PE)" << std::endl;
 		std::cout << "entry: " << std::hex << opt->entry_point << std::dec << std::endl;
-		std::cout << "image base: " << opt->u.pe.image_base << std::endl;
+		std::cout << "image base: " << std::hex << opt->u.pe.image_base << std::endl;
 		std::cout << "section alignment: " << opt->u.pe.section_align << std::endl;
 		std::cout << "file alignment: " << opt->u.pe.file_align << std::endl;
 		std::cout << "subsystem ver: " << opt->u.pe.subsys_major << "." << opt->u.pe.subsys_minor << std::endl;
@@ -319,8 +319,8 @@ session po::pe(const string& p)
 	else if(opt->magic == 0x20b)
 	{
 		std::cout << "magic: " << std::hex << opt->magic << std::dec << " (PE+)" << std::endl;
-		std::cout << "entry: " << std::hex << opt->entry_point << std::dec << std::endl;
-		std::cout << "image base: " << opt->u.pe_plus.image_base << std::endl;
+		std::cout << "entry: " << std::hex << opt->entry_point << std::dec << std::dec << std::endl;
+		std::cout << "image base: " << std::hex << opt->u.pe_plus.image_base << std::dec << std::endl;
 		std::cout << "section alignment: " << opt->u.pe_plus.section_align << std::endl;
 		std::cout << "file alignment: " << opt->u.pe_plus.file_align << std::endl;
 		std::cout << "subsystem ver: " << opt->u.pe_plus.subsys_major << "." << opt->u.pe_plus.subsys_minor << std::endl;
@@ -340,8 +340,8 @@ session po::pe(const string& p)
 		uint32_t size;
 	};
 
-	std::cout << "section table offset: " << pe_off + sizeof(pe_hdr) + hdr->opthdr_size << std::endl;
-	ddir_entry *ddir = (ddir_entry*)(file.data() + pe_off + sizeof(pe_hdr) + hdr->opthdr_size);
+	std::cout << "data directory offset: " << pe_off + sizeof(pe_hdr) + hdr->opthdr_size - sizeof(ddir_entry) * ddir_cnt << std::endl;
+	ddir_entry *ddir = (ddir_entry*)(file.data() + pe_off + sizeof(pe_hdr) - sizeof(ddir_entry) * ddir_cnt + hdr->opthdr_size);
 	size_t ddir_idx = 0;
 
 	while(ddir_idx < ddir_cnt)
@@ -351,6 +351,58 @@ session po::pe(const string& p)
 		std::cout << "size: " << ddir[ddir_idx].size << std::endl;
 
 		++ddir_idx;
+	}
+
+	struct section
+	{
+		char name0;
+		char name1;
+		char name2;
+		char name3;
+		char name4;
+		char name5;
+		char name6;
+		char name7;
+
+		uint32_t virt_sz_or_phy_addr;
+		uint32_t virt_address;
+
+		uint32_t raw_sz;
+		uint32_t raw_ptr;
+		uint32_t reloc_ptr;
+		uint32_t linenr_ptr;
+		uint16_t reloc_count;
+		uint16_t linenr_cout;
+		uint32_t flags;
+	};
+
+	section* sec_ptr = (section *)(file.data() + pe_off + sizeof(pe_hdr) + hdr->opthdr_size);
+	size_t sec_idx = 0;
+
+	while(sec_idx < hdr->num_sections)
+	{
+		section& s = sec_ptr[sec_idx++];
+		std::string n = {s.name0, s.name1, s.name2, s.name3, s.name4, s.name5, s.name6, s.name7};
+
+		std::cout << n << ": ";
+
+		if(s.raw_sz)
+		{
+			layer_loc l(new layer(n,(uint8_t *)(file.data() + s.raw_ptr),s.raw_sz));
+			ram.write().add(po::bound(image_base + s.virt_address,image_base + s.virt_address + s.raw_sz),l);
+
+			std::cout << "mapped" << std::endl;
+		}
+		else
+		{
+			std::cout << "not mapped" << std::endl;
+
+			if(s.virt_sz_or_phy_addr)
+			{
+				layer_loc l(new layer(n,s.virt_sz_or_phy_addr));
+				ram.write().add(po::bound(image_base + s.virt_address,image_base + s.virt_address + s.virt_sz_or_phy_addr),l);
+			}
+		}
 	}
 
 	return session{db,std::make_shared<rdf::storage>()};
