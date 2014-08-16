@@ -422,6 +422,8 @@ namespace po
 		auto p = vertices(g);
 		auto i = p.first;
 
+		ensure(num_vertices(g));
+
 		while(i != p.second)
 		{
 			if(!in_degree(*i,g))

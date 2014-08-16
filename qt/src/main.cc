@@ -32,9 +32,12 @@ int main(int argc, char *argv[])
 	QCommandLineOption avrOpt(QStringList() << "a" << "avr","Disassemble new AVR file.","file");
 	parser.addOption(avrOpt);
 
+	QCommandLineOption peOpt(QStringList() << "p" << "pe","Disassemble new PE (.exe) file.","file");
+	parser.addOption(peOpt);
+
 	parser.process(app);
 
-	if(parser.isSet(openOpt) + parser.isSet(newOpt) + parser.isSet(avrOpt) > 1)
+	if(parser.isSet(openOpt) + parser.isSet(newOpt) + parser.isSet(avrOpt) + parser.isSet(peOpt) > 1)
 		return 1;
 	else
 	{
@@ -44,6 +47,9 @@ int main(int argc, char *argv[])
 			Panopticon::instance().createSession(parser.value(newOpt));
 		else if(parser.isSet(avrOpt))
 			Panopticon::instance().createSession(new Session(po::raw_avr(parser.value(avrOpt).toStdString())));
+		else if(parser.isSet(peOpt))
+			Panopticon::instance().createSession(new Session(po::pe(parser.value(peOpt).toStdString())));
+
 	}
 
 	QQmlApplicationEngine engine;

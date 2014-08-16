@@ -213,3 +213,13 @@ TEST(layer,blob)
 
 	boost::filesystem::remove(p1);
 }
+
+TEST(layer,random_access_iter)
+{
+	layer_loc l1(new layer("l1",0xffffffff));
+	slab sl = l1->filter(slab());
+	auto i = boost::begin(sl);
+
+	slab::iterator j = i + 0xc0000000;
+	slab s2 = join(sl,sl);
+}

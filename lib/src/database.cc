@@ -167,6 +167,8 @@ session po::pe(const string& p)
 	blob file(p);
 	region_loc ram = region::undefined("base",0xc0000000);
 
+	insert_vertex(ram,db.write().data);
+
 	if(file.size() < 2)
 		throw runtime_error("file too short");
 

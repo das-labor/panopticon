@@ -296,15 +296,15 @@ po::slab region::read(void) const
 		slab n;
 
 		if(i.first.lower())
-			n = slab(boost::begin(ret),next(boost::begin(ret),i.first.lower()));
+			n = slab(boost::begin(ret),boost::begin(ret) + i.first.lower());
 
-		slab src(next(boost::begin(ret),i.first.lower()),next(boost::begin(ret),i.first.upper()));
+		slab src(boost::begin(ret) + i.first.lower(),boost::begin(ret) + i.first.upper());
 		slab filtered = i.second->filter(src);
 
 		n = join(n,filtered);
 
 		if(i.first.upper() < boost::size(ret))
-			n = join(n,slab(next(boost::begin(ret),i.first.upper()),boost::end(ret)));
+			n = join(n,slab(boost::begin(ret) + i.first.upper(),boost::end(ret)));
 
 		ret = n;
 	}
@@ -422,7 +422,9 @@ std::list<std::pair<bound,region_wloc>> po::projection(const regions &regs)
 		}
 	};
 
-	step(root(regs));
+	if(num_vertices(regs))
+		step(root(regs));
+
 	return ret;
 }
 
