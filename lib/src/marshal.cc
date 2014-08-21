@@ -100,7 +100,7 @@ blob::~blob(void)
 		}
 		else
 		{
-			delete _data;
+			delete[] _data;
 		}
 		delete _reference;
 	}
