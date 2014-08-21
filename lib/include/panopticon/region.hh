@@ -22,16 +22,123 @@ namespace po
 	using byte = uint8_t;
 	using bound = boost::icl::right_open_interval<offset>;
 	using tryte = boost::optional<byte>;
-	using slab = boost::any_range<tryte,boost::random_access_traversal_tag,tryte,std::ptrdiff_t>;
-}
 
-namespace std
-{
-	template<> inline po::slab::iterator next(po::slab::iterator i, ptrdiff_t off) { advance(i,off); return i; }
-}
+	struct slab
+	{
+		using source = std::tuple<
+			boost::variant<
+				offset,
+				std::pair<unsigned char const*,offset>
+			>,
+			std::list<std::pair<std::unordered_map<offset,tryte> const*,offset>>
+		>;
 
-namespace po
-{
+		struct iterator : public boost::iterator_facade<
+			iterator,
+			po::tryte,
+			boost::random_access_traversal_tag,
+			po::tryte>
+		{
+			iterator(slab const * s,offset o) : _base(s), _off(o) {}
+
+			inline iterator &increment(void) { _off++; return *this; }
+			inline iterator &decrement(void) { _off--; return *this; }
+
+			inline po::tryte dereference(void) const { return _base->read(_off); }
+			inline bool equal(const iterator &a) const { return _base == a._base && _off == a._off; }
+
+			inline void advance(size_t sz) { _off += sz; }
+
+		private:
+			slab const* _base;
+			offset _off;
+
+			friend class slab;
+		};
+
+		inline slab(void) : _sources(), _cache(boost::none) {}
+		inline slab(unsigned char const* r,offset o) : _sources({source(std::make_pair(r,o),{})}), _cache(boost::none) {}
+		inline slab(char const* r,offset o) : slab(reinterpret_cast<unsigned char const*>(r),o) {}
+		inline slab(offset o) : _sources({source(o,{})}), _cache(boost::none) {}
+
+		slab(std::unordered_map<offset,tryte> const* m, slab sl);
+		slab(iterator i,iterator e);
+
+		inline offset size(void) const
+		{
+			if(_sources.size() == 1 && _cache)
+				return boost::icl::size(_cache->first);
+			else
+				return std::accumulate(_sources.begin(),_sources.end(),0,
+					[](offset acc, const source& s)
+					{
+						offset const *o = boost::get<offset>(&std::get<0>(s));
+						if(o)
+							return acc + *o;
+						else
+							return acc + boost::get<std::pair<unsigned char const*,offset>>(std::get<0>(s)).second;
+					});
+		}
+
+		inline tryte read(offset i) const
+		{
+			struct vis : public boost::static_visitor<tryte>
+			{
+				vis(offset _i) : i(_i) {}
+				tryte operator()(const std::pair<unsigned char const*,offset>& p) const { return p.first[i]; }
+				tryte operator()(offset) const { return boost::none; }
+
+				po::offset i;
+			};
+
+			if(!_cache || !boost::icl::contains(_cache->first,i))
+			{
+				offset j = 0;
+				_cache = boost::none;
+
+				for(const source& x: _sources)
+				{
+					offset const *o = boost::get<offset>(&std::get<0>(x));
+					bound bnd(j,j + (o ? *o : boost::get<std::pair<unsigned char const*,offset>>(std::get<0>(x)).second));
+
+					if(boost::icl::contains(bnd,i))
+					{
+						_cache = std::make_pair(bnd,&x);
+						break;
+					}
+
+					j += boost::icl::size(bnd);
+				}
+			}
+
+			if(!_cache)
+					throw std::out_of_range("oor in slab");
+
+			auto p = make_pair(std::get<1>(*_cache->second).rbegin(),std::get<1>(*_cache->second).rend());
+			for(auto l: iters(p))
+				if(l.first->count(l.second + i))
+					return l.first->at(l.second + i);
+
+			vis v(i - _cache->first.lower());
+			return boost::apply_visitor(v,std::get<0>(*_cache->second));
+		}
+
+		void debug(void) const;
+
+		inline iterator begin(void) const { return iterator(this,0); }
+		inline iterator end(void) const { return iterator(this,size()); }
+
+	private:
+		inline slab(const std::list<source>& l) : _sources(l), _cache(boost::none) {}
+
+		std::list<source> _sources;
+		mutable boost::optional<std::pair<bound,source const*>> _cache;
+
+		friend slab combine(slab,slab);
+	};
+
+	slab combine(slab,slab);
+
 	struct layer
 	{
 		layer(const std::string&, std::initializer_list<byte>);

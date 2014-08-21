@@ -1,19 +1,112 @@
 #include <numeric>
 #include <iomanip>
 
-#include <boost/iterator/counting_iterator.hpp>
-#include <boost/iterator/zip_iterator.hpp>
-#include <boost/iterator/transform_iterator.hpp>
 #include <boost/tuple/tuple.hpp>
 #include <boost/graph/dijkstra_shortest_paths.hpp>
-#include <boost/range/join.hpp>
-#include <boost/range/adaptors.hpp>
 
 #include <panopticon/region.hh>
 
 using namespace po;
 using namespace std;
 using namespace boost;
+
+slab::slab(std::unordered_map<offset,tryte> const* m, slab sl)
+: _sources(), _cache(boost::none)
+{
+	for(auto x: sl._sources)
+	{
+		std::list<std::pair<std::unordered_map<offset,tryte> const*,offset>> lst(std::get<1>(x));
+
+		lst.emplace_back(m,0);
+		_sources.push_back(source(std::get<0>(x),lst));
+	}
+}
+
+slab::slab(iterator i,iterator e) : _sources(), _cache(boost::none)
+{
+	ensure(i._base == e._base);
+	offset o = 0;
+
+	for(auto s: i._base->_sources)
+	{
+		if(boost::get<std::pair<unsigned char const*,offset>>(&std::get<0>(s)))
+		{
+			const std::pair<unsigned char const*,offset>& p = boost::get<std::pair<unsigned char const*,offset>>(std::get<0>(s));
+
+			if(i._off < o + p.second && e._off > o)
+			{
+				offset b = i._off < o ? 0 : std::max<offset>(0,i._off - o);
+				offset f = std::min<offset>(p.second,e._off - o);
+
+				if(b)
+				{
+					std::list<std::pair<std::unordered_map<offset,tryte> const*,offset>> lst;
+					std::transform(std::get<1>(s).begin(),std::get<1>(s).end(),std::back_inserter(lst),[&](std::pair<std::unordered_map<offset,tryte> const*,offset>& p)
+						{ return std::make_pair(p.first,p.second + b); });
+
+					_sources.push_back(source(std::make_pair(p.first + b,f - b),lst));
+				}
+				else
+					_sources.push_back(source(std::make_pair(p.first + b,f - b),std::get<1>(s)));
+			}
+
+			o += p.second;
+		}
+		else if(boost::get<offset>(&std::get<0>(s)))
+		{
+			offset u = boost::get<offset>(std::get<0>(s));
+
+			if(i._off < o + u && e._off > o)
+			{
+				offset b = i._off < o ? 0 : std::max<offset>(0,i._off - o);
+				offset f = std::min<offset>(u,e._off - o);
+
+				if(b)
+				{
+					std::list<std::pair<std::unordered_map<offset,tryte> const*,offset>> lst;
+					std::transform(std::get<1>(s).begin(),std::get<1>(s).end(),std::back_inserter(lst),[&](std::pair<std::unordered_map<offset,tryte> const*,offset>& p)
+						{ return std::make_pair(p.first,p.second + b); });
+
+					_sources.push_back(source(f - b,lst));
+				}
+				else
+					_sources.push_back(source(f - b,std::get<1>(s)));
+			}
+
+			o += u;
+		}
+		else
+			throw std::invalid_argument("slab: unknown variant type");
+	}
+}
+
+slab po::combine(slab a,slab b)
+{
+	std::list<slab::source> ret;
+	std::copy(a._sources.begin(),a._sources.end(),back_inserter(ret));
+	std::copy(b._sources.begin(),b._sources.end(),back_inserter(ret));
+
+	return slab(ret);
+}
+
+void slab::debug(void) const
+{
+	struct vis : public boost::static_visitor<>
+	{
+		void operator()(offset o) const
+			{ std::cout << "undef-" << o; }
+		void operator()(std::pair<unsigned char const*,offset>& p) const
+			{ std::cout << "plain-" << (ptrdiff_t)p.first << "-" << p.second; }
+	};
+
+	std::cout << "[ ";
+	for(auto x: _sources)
+	{
+		boost::apply_visitor(vis(),std::get<0>(x));
+		std::cout << " ";
+	}
+	std::cout << "]" << std::endl;
+}
 
 template<>
 archive po::marshal(const layer* l, const uuid& u)
@@ -47,7 +140,6 @@ archive po::marshal(const layer* l, const uuid& u)
 				ss << " ";
 			}
 
-			cout << "write: " << ss.str() << endl;
 			ret.triples.emplace_back(root,rdf::ns_po("data"),rdf::lit(ss.str()));
 		}
 
@@ -183,30 +275,17 @@ layer::filter_visitor::filter_visitor(slab s) : static_visitor(), in(s) {}
 
 slab layer::filter_visitor::operator()(const std::unordered_map<offset,tryte>& data) const
 {
-	using func = std::function<po::tryte(const boost::tuples::tuple<offset,po::tryte> &)>;
-	slab::const_iterator sb = boost::begin(in), se = boost::end(in);
-	func fn = [data](const boost::tuples::tuple<offset,po::tryte> &p) { return data.count(boost::get<0>(p)) ? data.at(boost::get<0>(p)) : boost::get<1>(p); };
-	auto b = make_zip_iterator(boost::make_tuple(counting_iterator<offset,boost::random_access_traversal_tag>(0),sb));
-	auto e = make_zip_iterator(boost::make_tuple(counting_iterator<offset,boost::random_access_traversal_tag>(size(in)),se));
-	using transform_iter = boost::transform_iterator<func,decltype(b)>;
-
-	return slab(transform_iter(b,fn),transform_iter(e,fn));
+	return slab(&data,in);
 }
 
 slab layer::filter_visitor::operator()(size_t sz) const
 {
-	using func = std::function<po::tryte(int)>;
-	func fn = [](int) { return boost::none; };
-	counting_iterator<offset,boost::random_access_traversal_tag> a(0);
-	counting_iterator<offset,boost::random_access_traversal_tag> b(sz);
-	using transform_iter = boost::transform_iterator<func,decltype(b)>;
-
-	return slab(transform_iter(a,fn),transform_iter(b,fn));
+	return slab(sz);
 }
 
 slab layer::filter_visitor::operator()(const blob& mf) const
 {
-	return slab(mf.data(),mf.data() + mf.size());
+	return slab(mf.data(),mf.size());
 }
 
 const string& layer::name(void) const
@@ -238,7 +317,7 @@ region::region(const std::string &n, layer_loc r)
 :	_base(r),
 	_stack(),
 	_name(n),
-	_size(boost::size(r->filter(slab()))),
+	_size(r->filter(slab()).size()),
 	_projection(none)
 {}
 
@@ -296,19 +375,20 @@ po::slab region::read(void) const
 		slab n;
 
 		if(i.first.lower())
-			n = slab(boost::begin(ret),boost::begin(ret) + i.first.lower());
+			n = slab(ret.begin(),ret.begin() + i.first.lower());
 
-		slab src(boost::begin(ret) + i.first.lower(),boost::begin(ret) + i.first.upper());
+		slab src(ret.begin() + i.first.lower(),ret.begin() + i.first.upper());
 		slab filtered = i.second->filter(src);
 
-		n = join(n,filtered);
+		n = combine(n,filtered);
 
-		if(i.first.upper() < boost::size(ret))
-			n = join(n,slab(boost::begin(ret) + i.first.upper(),boost::end(ret)));
+		if(i.first.upper() < ret.size())
+			n = combine(n,slab(ret.begin() + i.first.upper(),ret.end()));
 
 		ret = n;
 	}
 
+	ensure(ret.size() == size());
 	return ret;
 }
 

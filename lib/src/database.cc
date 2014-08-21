@@ -151,7 +151,7 @@ session po::raw_avr(const std::string& path)
 	prog_loc p = avr::disassemble(boost::none,sl,po::ref{"base",0});
 	db.write().programs.insert(p);
 
-	std::cout << "width: " << boost::size(sl) << std::endl;
+	std::cout << "width: " << sl.size() << std::endl;
 
 	std::cout << p->procedures().size() << " procedures" << std::endl;
 	for(auto q: p->procedures())

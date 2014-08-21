@@ -82,7 +82,7 @@ TEST(procedure,add_single)
 	}
 
 	disassembler_mockup mockup(states);
-	po::proc_loc proc = po::procedure::disassemble(0,mockup,bytes,0);
+	po::proc_loc proc = po::procedure::disassemble(0,mockup,slab(bytes.data(),bytes.size()),0);
 
 	ASSERT_EQ(proc->rev_postorder().size(), 1);
 
@@ -125,7 +125,7 @@ TEST(procedure,continuous)
 	add(5,"test5");
 
 	disassembler_mockup mockup(states);
-	po::proc_loc proc = po::procedure::disassemble(0,mockup,bytes,0);
+	po::proc_loc proc = po::procedure::disassemble(0,mockup,slab(bytes.data(),bytes.size()),0);
 
 	ASSERT_TRUE(!!proc->entry);
 	ASSERT_EQ(proc->rev_postorder().size(), 1);
@@ -184,7 +184,7 @@ TEST(procedure,branch)
 	add(2,"test2",1,boost::none);
 
 	disassembler_mockup mockup(states);
-	po::proc_loc proc = po::procedure::disassemble(boost::none,mockup,bytes,0);
+	po::proc_loc proc = po::procedure::disassemble(boost::none,mockup,slab(bytes.data(),bytes.size()),0);
 
 	ASSERT_TRUE(!!proc->entry);
 	ASSERT_EQ(proc->rev_postorder().size(), 3);
@@ -251,7 +251,7 @@ TEST(procedure,loop)
 	add(2,"test2",0);
 
 	disassembler_mockup mockup(states);
-	po::proc_loc proc = po::procedure::disassemble(0,mockup,bytes,0);
+	po::proc_loc proc = po::procedure::disassemble(0,mockup,slab(bytes.data(),bytes.size()),0);
 
 	ASSERT_EQ(proc->rev_postorder().size(), 1);
 
@@ -275,7 +275,7 @@ TEST(procedure,empty)
 	std::vector<typename po::architecture_traits<test_tag>::token_type> bytes({});
 	std::map<typename po::architecture_traits<test_tag>::token_type,po::sem_state<test_tag>> states;
 	disassembler_mockup mockup(states);
-	po::proc_loc proc = po::procedure::disassemble(0,mockup,bytes,0);
+	po::proc_loc proc = po::procedure::disassemble(0,mockup,slab(bytes.data(),bytes.size()),0);
 
 	ASSERT_EQ(proc->rev_postorder().size(), 0);
 }
@@ -309,7 +309,7 @@ TEST(procedure,refine)
 	add(1,1,"test1",2);
 
 	disassembler_mockup mockup(states);
-	po::proc_loc proc = po::procedure::disassemble(0,mockup,bytes,0);
+	po::proc_loc proc = po::procedure::disassemble(0,mockup,slab(bytes.data(),bytes.size()),0);
 	boost::write_graphviz(std::cout,proc->control_transfers,proc_writer(proc));
 
 	// XXX: Disabled until functionality is needed
@@ -411,7 +411,7 @@ TEST(procedure,continue)
 	disassembler_mockup mockup(states);
 	ASSERT_TRUE(proc->entry);
 
-	proc = po::procedure::disassemble(proc,mockup,bytes,40);
+	proc = po::procedure::disassemble(proc,mockup,slab(bytes.data(),bytes.size()),40);
 
 	ASSERT_TRUE(proc->entry);
 	ASSERT_EQ(proc->rev_postorder().size(), 4);
@@ -524,7 +524,7 @@ TEST(procedure,entry_split)
 	add(2,"test2",1,boost::none);
 
 	disassembler_mockup mockup(states);
-	proc = po::procedure::disassemble(proc,mockup,bytes,2);
+	proc = po::procedure::disassemble(proc,mockup,slab(bytes.data(),bytes.size()),2);
 
 	ASSERT_EQ(proc->rev_postorder().size(), 2);
 
@@ -604,7 +604,7 @@ using sw = po::sem_state<wtest_tag>&;
 TEST(procedure,wide_token)
 {
 	std::vector<uint8_t> _buf = {0x22,0x11, 0x44,0x33, 0x44,0x55, 0x44,0x55};
-	po::slab buf(_buf.begin(),_buf.end());
+	po::slab buf(_buf.data(),_buf.size());
 	po::disassembler<wtest_tag> dec;
 
 	dec | 0x1122 = [](sw s)

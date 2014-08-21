@@ -177,21 +177,21 @@ namespace po
 		{
 			offset cur_addr = *todo.begin();
 			sem_state<Tag> state(cur_addr);
-			typename rule<Tag>::tokiter i = boost::begin(data);
+			typename rule<Tag>::tokiter i = data.begin();
 			auto j = mnemonics.lower_bound(cur_addr);
 
 			todo.erase(todo.begin());
 
-			if(cur_addr >= boost::size(data))
+			if(cur_addr >= data.size())
 			{
-				std::cerr << "boundary err: " << cur_addr << " not inside " << boost::size(data) << " byte large slab" << std::endl;
+				std::cerr << "boundary err: " << cur_addr << " not inside " << data.size() << " byte large slab" << std::endl;
 				continue;
 			}
 
 			if(j == mnemonics.end() || !boost::icl::contains(j->second.area,cur_addr))
 			{
 				i += cur_addr;
-				typename rule<Tag>::tokiter e = (j == mnemonics.end() ? boost::end(data) : std::next(boost::begin(data),j->first + 1));
+				typename rule<Tag>::tokiter e = (j == mnemonics.end() ? data.end() : (data.begin() + j->first + 1));
 
 				auto mi = main.match(i,e,state);
 

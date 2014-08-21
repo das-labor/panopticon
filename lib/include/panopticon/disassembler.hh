@@ -135,7 +135,7 @@ namespace po
 	class rule
 	{
 	public:
-		using tokiter = po::slab::const_iterator;
+		using tokiter = po::slab::iterator;
 		using token = typename architecture_traits<Tag>::token_type;
 
 		virtual ~rule(void);

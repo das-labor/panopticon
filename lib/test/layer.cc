@@ -2,8 +2,6 @@
 #include <numeric>
 
 #include <gtest/gtest.h>
-#include <boost/range/algorithm/copy.hpp>
-#include <boost/range/join.hpp>
 #include <panopticon/region.hh>
 
 using namespace po;
@@ -27,14 +25,39 @@ TEST(slab,copy)
 		slab all = s.second.lock()->filter(slab());
 		cout << "add " << boost::icl::first(s.first) << "-" << boost::icl::upper(s.first) << endl;
 
-		cout << boost::size(acc) << endl;
-		auto r = boost::range::join(acc,slab(std::next(boost::begin(all),boost::icl::first(s.first)),
-																			 std::next(boost::begin(all),boost::icl::upper(s.first))));
-		cout << "new: " << boost::size(r) << endl;
+		cout << acc.size() << endl;
+		auto r = combine(acc,slab(all.begin() + boost::icl::first(s.first),all.begin() + boost::icl::upper(s.first)));
+		cout << "new: " << r.size() << endl;
 		return r;
 	});
 
-	cout << "res: " << boost::size(a) << endl;
+	cout << "res: " << a.size() << endl;
+}
+
+TEST(slab,iterator)
+{
+	vector<uint8_t> d = {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16};
+	slab s(d.data(),d.size());
+
+	ASSERT_EQ(s.size(), d.size());
+	ASSERT_EQ(s.read(0), tryte(1));
+	ASSERT_EQ(s.read(15), tryte(16));
+
+	slab::iterator i = s.begin();
+
+	ASSERT_EQ(std::distance(s.begin(),s.end()), 16);
+	ASSERT_EQ(*i, tryte(1));
+	ASSERT_EQ(*(++i), tryte(2));
+	ASSERT_EQ(i + 15,s.end());
+}
+
+TEST(slab,undefined)
+{
+	slab s(128);
+
+	ASSERT_EQ(s.size(), 128);
+	ASSERT_EQ(s.read(0), boost::none);
+	ASSERT_EQ(s.read(127), boost::none);
 }
 
 TEST(layer,anonymous_layer)
@@ -43,23 +66,27 @@ TEST(layer,anonymous_layer)
 	layer l2 = layer("anon 2",{1,2,3,4,5,6});
 	vector<tryte> r;
 
-	ASSERT_EQ(128,boost::size(l1.filter(slab())));
-	ASSERT_EQ(6,boost::size(l2.filter(slab())));
+	ASSERT_EQ(128,l1.filter(slab()).size());
+	ASSERT_EQ(6,l2.filter(slab()).size());
 
-	boost::copy(l2.filter(slab()),back_inserter(r));
+	slab s = l2.filter(slab());
+	std::copy(s.begin(),s.end(),back_inserter(r));
 	ASSERT_EQ(r,vector<tryte>({1,2,3,4,5,6}));
 }
 
 TEST(layer,mutable_layer)
 {
-	vector<tryte> d = {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16}, r, e({1,2,3,4,5,1,1,8,9,10,11,12,13,1,15,16});
+	vector<uint8_t> d = {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16};
+	vector<tryte> r, e({1,2,3,4,5,1,1,8,9,10,11,12,13,1,15,16});
 	layer l1("mut",std::unordered_map<offset,tryte>());
 
 	l1.write(5,1);
 	l1.write(6,1);
 	l1.write(13,1);
 
-	boost::copy(l1.filter(slab(d)),back_inserter(r));
+	slab s = l1.filter(slab(d.data(),d.size()));
+	ASSERT_EQ(s.size(), 16);
+	std::copy(s.begin(),s.end(),back_inserter(r));
 	ASSERT_EQ(r,e);
 }
 
@@ -196,12 +223,12 @@ TEST(layer,blob)
 		po::layer_loc l1(new po::layer("anon",mf));
 
 		po::slab s = l1->filter(slab());
-		ASSERT_EQ(boost::size(s),12);
+		ASSERT_EQ(s.size(),12);
 
-		auto i = boost::begin(s);
+		auto i = s.begin();
 		int idx = 0;
 
-		while(i != boost::end(s))
+		while(i != s.end())
 		{
 			ASSERT_EQ(**i, mf.data()[idx]);
 			++i;
@@ -218,8 +245,11 @@ TEST(layer,random_access_iter)
 {
 	layer_loc l1(new layer("l1",0xffffffff));
 	slab sl = l1->filter(slab());
-	auto i = boost::begin(sl);
+	auto i = sl.begin();
 
 	slab::iterator j = i + 0xc0000000;
-	slab s2 = join(sl,sl);
+
+	size_t k = 100;
+	while(k--)
+		slab s2 = combine(sl,sl);
 }

@@ -70,7 +70,7 @@ TEST_F(region,read_undef)
 	po::region_loc r1 = po::region::undefined("test",128);
 	po::slab s = r1->read();
 
-	ASSERT_EQ(boost::size(s),128);
+	ASSERT_EQ(s.size(),128);
 
 	for(auto i: s)
 		ASSERT_EQ(i,boost::none);
@@ -92,7 +92,7 @@ TEST_F(region,read_one_layer)
 	r1.write().add(po::bound(70,82),po::layer_loc(new po::layer("anon 2",po::blob(p1))));
 
 	po::slab s = r1->read();
-	ASSERT_EQ(boost::size(s),128);
+	ASSERT_EQ(s.size(),128);
 	size_t idx = 0;
 
 	for(auto i: s)

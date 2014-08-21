@@ -301,8 +301,8 @@ std::tuple<QString,po::bound,std::list<po::bound>> LinearModel::data_visitor::op
 	po::offset o = b.lower() + (row - ival.lower()) * columnWidth;
 	po::offset p = std::min<po::offset>(o + columnWidth,b.upper());
 	slab sl = reg->read();
-	auto i = boost::begin(sl) + o;
-	auto j = boost::begin(sl) + p;
+	auto i = sl.begin() + o;
+	auto j = sl.begin() + p;
 	QStringList hex, text;
 
 	for(po::tryte s: iters(std::make_pair(i,j)))
@@ -349,8 +349,8 @@ std::tuple<QString,po::bound,std::list<po::bound>> LinearModel::data_visitor::op
 	const mnemonic& mne = bb->mnemonics().at(o);
 	QStringList ops, hex;
 	slab sl = reg->read();
-	auto i = boost::begin(sl) + mne.area.lower();
-	auto j = boost::begin(sl) + mne.area.upper();
+	auto i = sl.begin() + mne.area.lower();
+	auto j = sl.begin() + mne.area.upper();
 	std::list<po::bound> conn;
 
 	for(po::tryte s: iters(std::make_pair(i,j)))
