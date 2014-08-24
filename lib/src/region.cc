@@ -118,7 +118,7 @@ archive po::marshal(const layer* l, const uuid& u)
 	{
 		visitor(archive& a, rdf::node n) : ret(a), root(n) {}
 
-		void operator()(size_t sz)
+		void operator()(offset sz)
 		{
 			ret.triples.emplace_back(root,rdf::ns_rdf("type"),rdf::ns_po("Sparse-Undefined"));
 			ret.triples.emplace_back(root,rdf::ns_po("size"),rdf::lit(sz));
@@ -173,7 +173,7 @@ layer* po::unmarshal(const uuid& u, const rdf::storage& st)
 	if(type == rdf::ns_po("Sparse-Undefined"))
 	{
 		rdf::node size = st.first(root,rdf::ns_po("size")).object;
-		return new layer(name.as_literal(),static_cast<size_t>(stoull(size.as_literal())));
+		return new layer(name.as_literal(),static_cast<offset>(stoull(size.as_literal())));
 	}
 	else if(type == rdf::ns_po("Sparse-Defined"))
 	{
@@ -236,7 +236,7 @@ layer::layer(const std::string &n, const std::vector<po::byte> &d)
 : _name(n), _data(blob(d))
 {}
 
-layer::layer(const std::string &n, const po::byte *d, size_t sz)
+layer::layer(const std::string &n, const po::byte *d, offset sz)
 : _name(n), _data(blob(std::move(std::vector<po::byte>(d,d + sz))))
 {}
 
@@ -278,7 +278,7 @@ slab layer::filter_visitor::operator()(const std::unordered_map<offset,tryte>& d
 	return slab(&data,in);
 }
 
-slab layer::filter_visitor::operator()(size_t sz) const
+slab layer::filter_visitor::operator()(offset sz) const
 {
 	return slab(sz);
 }
@@ -298,12 +298,12 @@ po::region_loc po::region::mmap(const std::string& n, const boost::filesystem::p
 	return region_loc(new region(n,layer_loc(new layer("base",blob(p)))));
 }
 
-po::region_loc po::region::undefined(const std::string& n, size_t sz)
+po::region_loc po::region::undefined(const std::string& n, offset sz)
 {
 	return region_loc(new region(n,layer_loc(new layer("base",sz))));
 }
 
-po::region_loc po::region::wrap(const std::string& n, const po::byte* p, size_t sz)
+po::region_loc po::region::wrap(const std::string& n, const po::byte* p, offset sz)
 {
 	return region_loc(new region(n,layer_loc(new layer("base",p,sz))));
 }
@@ -364,7 +364,7 @@ const std::list<std::pair<bound,layer_wloc>>& region::flatten(void) const
 
 const list<pair<po::bound,layer_loc>>& region::stack(void) const { return _stack; }
 const std::string& region::name(void) const { return _name; }
-size_t region::size(void) const { return _size; }
+offset region::size(void) const { return _size; }
 
 po::slab region::read(void) const
 {
@@ -484,6 +484,7 @@ std::list<std::pair<bound,region_wloc>> po::projection(const regions &regs)
 		for(auto e: es)
 		{
 			bound b = get_edge(e,regs);
+
 			auto nx = target(e,regs);
 			bound free(last,b.lower());
 

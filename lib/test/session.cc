@@ -9,9 +9,6 @@ TEST(session,pe)
 	session sess = pe("test.exe");
 	auto p = po::projection(sess.dbase->data);
 
-	region_loc undef = region::undefined("undef",0xc0000000ull);
-	undef->read();
-
 	for(auto x: p)
 	{
 		std::cout << x.first << ": " << x.second->name() << std::endl;

@@ -67,9 +67,9 @@ namespace po
 		inline offset size(void) const
 		{
 			if(_sources.size() == 1 && _cache)
-				return boost::icl::size(_cache->first);
+				return _cache->first.upper() - _cache->first.lower();
 			else
-				return std::accumulate(_sources.begin(),_sources.end(),0,
+				return std::accumulate<std::list<source>::const_iterator,offset>(_sources.begin(),_sources.end(),0,
 					[](offset acc, const source& s)
 					{
 						offset const *o = boost::get<offset>(&std::get<0>(s));
@@ -107,7 +107,7 @@ namespace po
 						break;
 					}
 
-					j += boost::icl::size(bnd);
+					j += (bnd.upper() - bnd.lower());
 				}
 			}
 
@@ -143,7 +143,7 @@ namespace po
 	{
 		layer(const std::string&, std::initializer_list<byte>);
 		layer(const std::string&, const std::vector<byte>&);
-		layer(const std::string&, const byte*, size_t);
+		layer(const std::string&, const byte*, offset);
 
 		layer(const std::string&, const std::unordered_map<offset,tryte>&);
 		layer(const std::string&, offset);
@@ -161,7 +161,7 @@ namespace po
 			filter_visitor(slab);
 
 			slab operator()(const std::unordered_map<offset,tryte>& m) const;
-			slab operator()(size_t sz) const;
+			slab operator()(offset sz) const;
 			slab operator()(const blob&) const;
 
 			slab in;
@@ -171,7 +171,7 @@ namespace po
 		boost::variant<
 			blob,															///< Constant data. Ignores Input.
 			std::unordered_map<offset,tryte>,	///< Sparse constant data.
-			size_t														///< Uninitialized (boost::none) data. Ignores input.
+			offset														///< Uninitialized (boost::none) data. Ignores input.
 		> _data;
 
 		template<typename T>
@@ -197,7 +197,7 @@ namespace std
 	template<>
 	struct hash<po::layer>
 	{
-		size_t operator()(const po::layer &a) const
+		po::offset operator()(const po::layer &a) const
 		{
 			return hash<string>()(a.name());
 		}
@@ -206,7 +206,7 @@ namespace std
 	template<>
 	struct hash<po::bound>
 	{
-		size_t operator()(const po::bound &a) const
+		po::offset operator()(const po::bound &a) const
 		{
 			return hash<po::offset>()(boost::icl::first(a)) + hash<po::offset>()(boost::icl::last(a));
 		}
@@ -223,8 +223,8 @@ namespace po
 	struct region
 	{
 		static region_loc mmap(const std::string&, const boost::filesystem::path&);
-		static region_loc undefined(const std::string&, size_t);
-		static region_loc wrap(const std::string&, const byte*, size_t);
+		static region_loc undefined(const std::string&, offset);
+		static region_loc wrap(const std::string&, const byte*, offset);
 		static region_loc wrap(const std::string&, std::initializer_list<byte>);
 
 		region(const std::string&, layer_loc root);
@@ -237,14 +237,14 @@ namespace po
 		const std::list<std::pair<bound,layer_wloc>>& flatten(void) const;
 		const std::list<std::pair<bound,layer_loc>>& stack(void) const;
 
-		size_t size(void) const;
+		offset size(void) const;
 		const std::string& name(void) const;
 
 	private:
 		layer_loc _base;
 		std::list<std::pair<bound,layer_loc>> _stack; ///< Stack of layers to apply to this regions data.
 		std::string _name;
-		size_t _size;
+		offset _size;
 
 		// caches
 		mutable boost::optional<std::list<std::pair<bound,layer_wloc>>> _projection;

@@ -49,7 +49,6 @@ int main(int argc, char *argv[])
 			Panopticon::instance().createSession(new Session(po::raw_avr(parser.value(avrOpt).toStdString())));
 		else if(parser.isSet(peOpt))
 			Panopticon::instance().createSession(new Session(po::pe(parser.value(peOpt).toStdString())));
-
 	}
 
 	QQmlApplicationEngine engine;
