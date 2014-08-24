@@ -89,23 +89,27 @@ slab po::combine(slab a,slab b)
 	return slab(ret);
 }
 
-void slab::debug(void) const
+std::ostream& po::operator<<(std::ostream& os, const po::slab& b)
 {
 	struct vis : public boost::static_visitor<>
 	{
+		vis(std::ostream& o) : os(o) {}
+
 		void operator()(offset o) const
-			{ std::cout << "undef-" << o; }
+			{ os << "undef-" << o; }
 		void operator()(std::pair<unsigned char const*,offset>& p) const
-			{ std::cout << "plain-" << (ptrdiff_t)p.first << "-" << p.second; }
+			{ os << "plain-" << (ptrdiff_t)p.first << "-" << p.second; }
+
+		std::ostream& os;
 	};
 
-	std::cout << "[ ";
-	for(auto x: _sources)
+	os << "[ ";
+	for(auto x: b._sources)
 	{
-		boost::apply_visitor(vis(),std::get<0>(x));
-		std::cout << " ";
+		boost::apply_visitor(vis(os),std::get<0>(x));
+		os << " ";
 	}
-	std::cout << "]" << std::endl;
+	return os << "]";
 }
 
 template<>

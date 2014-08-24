@@ -123,8 +123,6 @@ namespace po
 			return boost::apply_visitor(v,std::get<0>(*_cache->second));
 		}
 
-		void debug(void) const;
-
 		inline iterator begin(void) const { return iterator(this,0); }
 		inline iterator end(void) const { return iterator(this,size()); }
 
@@ -135,8 +133,10 @@ namespace po
 		mutable boost::optional<std::pair<bound,source const*>> _cache;
 
 		friend slab combine(slab,slab);
+		friend std::ostream& operator<<(std::ostream& os, const po::slab& b);
 	};
 
+	std::ostream& operator<<(std::ostream& os, const po::slab& b);
 	slab combine(slab,slab);
 
 	struct layer
