@@ -9,7 +9,7 @@ Item {
 
 	anchors.fill: parent
 	focus: true
-	state: "graph"
+	state: root.session.procedures.length > 0 ? "graph" : "linear"
 	Keys.enabled: true
 	Keys.onPressed: {
 		if(event.key == Qt.Key_Space) {
@@ -49,9 +49,5 @@ Item {
 		id: lst1
 		session: root.session
 		visible: root.state == "linear"
-	}
-
-	Component.onCompleted: {
-		console.log("Hello, World")
 	}
 }
