@@ -326,7 +326,7 @@ std::tuple<QString,po::bound,std::list<po::bound>> LinearModel::data_visitor::op
 		else
 		{
 			hex += "'?""?'";
-			text += "'?""?'";
+			text += "''";
 		}
 	}
 
