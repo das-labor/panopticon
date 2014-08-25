@@ -137,7 +137,7 @@ LinearModel::LinearModel(dbase_loc db, QObject *p)
 
 				if(delta > 0)
 				{
-					int nrow = row + (delta / columnWidth) + (delta % columnWidth == 0 ? 0 : 1);
+					long long nrow = row + (delta / columnWidth) + (delta % columnWidth == 0 ? 0 : 1);
 					interval<int>::type iv(row,nrow);
 					row_t r(p.second.lock(),po::bound(o,p.first.upper()));
 
@@ -160,6 +160,8 @@ LinearModel::LinearModel(dbase_loc db, QObject *p)
 		};
 		std::cout << p.first << " " << boost::apply_visitor(visitor(), p.second.second) << std::endl;
 	}
+
+	ensure(_rows.size());
 }
 
 int LinearModel::rowCount(const QModelIndex& parent) const
@@ -381,7 +383,6 @@ std::tuple<QString,po::bound,std::list<po::bound>> LinearModel::data_visitor::op
 
 std::tuple<QString,po::bound,std::list<po::bound>> LinearModel::data_visitor::operator()(struct_loc s) const
 {
-	//int o = ival.lower() - row;
 	return std::make_tuple(
 		QString("{ 'type': 'struct', 'name': 'name', 'value': 'value' }"),
 		po::bound(),

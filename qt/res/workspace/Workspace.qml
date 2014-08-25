@@ -50,4 +50,8 @@ Item {
 		session: root.session
 		visible: root.state == "linear"
 	}
+
+	Component.onCompleted: {
+		console.log("Hello, World")
+	}
 }

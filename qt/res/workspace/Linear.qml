@@ -63,89 +63,91 @@ Item {
 				readonly property int trackPadding: 5
 				readonly property int radius: 3
 
+				id: arrowCanvas
 				height: cellSize
 				width: cellSize
-				contextType: "2d"
 
 				onPaint: {
-					var ctx = getContext("2d")
-					var ends = contents.arrows.end
-					var begins = contents.arrows.begin
-					var ud = contents.arrows.pass
+					var ctx = arrowCanvas.getContext("2d")
 
-					ctx.imageSmoothingEnabled = true
+					if(ctx != null) {
+						var ends = contents.arrows.end
+						var begins = contents.arrows.begin
+						var ud = contents.arrows.pass
 
-					var y_step = Math.ceil(cellSize / (ends.concat(begins).length + 1))
-					var idx = 0
-					while(idx < begins.length)
-					{
-						var line = begins[idx].track
-						var y_pos = y_step * (idx + 1)
-						var x_pos = (line + 1) * trackPadding
+						ctx.imageSmoothingEnabled = true
 
-						ctx.strokeStyle = "rgb(200,0,0)"
-						ctx.lineWidth = lineWidth
+						var y_step = Math.ceil(cellSize / (ends.concat(begins).length + 1))
+						var idx = 0
+						while(idx < begins.length)
+						{
+							var line = begins[idx].track
+							var y_pos = y_step * (idx + 1)
+							var x_pos = (line + 1) * trackPadding
 
-						ctx.beginPath()
-						ctx.moveTo(cellSize, y_pos);
-						ctx.lineTo(x_pos + radius, y_pos)
-						ctx.arc(x_pos + radius, y_pos + radius, radius, Math.PI * 1.5, Math.PI, true);
-						ctx.lineTo(x_pos, cellSize);
-						ctx.stroke()
+							ctx.strokeStyle = "rgb(200,0,0)"
+							ctx.lineWidth = lineWidth
 
-						if(begins[idx].tip) {
 							ctx.beginPath()
-							ctx.arc(cellSize - 4,y_pos,4,0,Math.PI * 2, true)
-							ctx.fill()
+							ctx.moveTo(cellSize, y_pos);
+							ctx.lineTo(x_pos + radius, y_pos)
+							ctx.arc(x_pos + radius, y_pos + radius, radius, Math.PI * 1.5, Math.PI, true);
+							ctx.lineTo(x_pos, cellSize);
+							ctx.stroke()
+
+							if(begins[idx].tip) {
+								ctx.beginPath()
+								ctx.arc(cellSize - 4,y_pos,4,0,Math.PI * 2, true)
+								ctx.fill()
+							}
+
+							idx += 1
 						}
 
-						idx += 1
-					}
+						idx = 0
+						while(idx < ends.length)
+						{
+							var line = ends[idx].track
 
-					idx = 0
-					while(idx < ends.length)
-					{
-						var line = ends[idx].track
+							var y_pos = y_step * (idx + 1)
+							var x_pos = (line + 1) * trackPadding
 
-						var y_pos = y_step * (idx + 1)
-						var x_pos = (line + 1) * trackPadding
+							ctx.strokeStyle = "rgb(200,0,0)"
+							ctx.lineWidth = lineWidth
 
-						ctx.strokeStyle = "rgb(200,0,0)"
-						ctx.lineWidth = lineWidth
-
-						ctx.beginPath()
-						ctx.moveTo(cellSize, y_pos);
-						ctx.lineTo(x_pos + radius, y_pos)
-						ctx.arc(x_pos + radius, y_pos - radius, radius, Math.PI * 0.5, 1 * Math.PI, false);
-						ctx.moveTo(x_pos, y_pos - radius);
-						ctx.lineTo(x_pos, 0);
-						ctx.stroke()
-
-						if(ends[idx].tip) {
 							ctx.beginPath()
-							ctx.arc(cellSize - 4,y_pos,4,0,Math.PI * 2, true)
-							ctx.fill()
+							ctx.moveTo(cellSize, y_pos);
+							ctx.lineTo(x_pos + radius, y_pos)
+							ctx.arc(x_pos + radius, y_pos - radius, radius, Math.PI * 0.5, 1 * Math.PI, false);
+							ctx.moveTo(x_pos, y_pos - radius);
+							ctx.lineTo(x_pos, 0);
+							ctx.stroke()
+
+							if(ends[idx].tip) {
+								ctx.beginPath()
+								ctx.arc(cellSize - 4,y_pos,4,0,Math.PI * 2, true)
+								ctx.fill()
+							}
+							idx += 1
 						}
-						idx += 1
+
+						idx = 0
+						while(idx < ud.length)
+						{
+							var line = ud[idx]
+							var x_pos = (line + 1) * trackPadding
+
+							ctx.strokeStyle = "rgb(200,0,0)"
+							ctx.lineWidth = lineWidth
+
+							ctx.beginPath()
+							ctx.moveTo(x_pos, 0);
+							ctx.lineTo(x_pos , cellSize)
+							ctx.stroke()
+
+							idx += 1
+						}
 					}
-
-					idx = 0
-					while(idx < ud.length)
-					{
-						var line = ud[idx]
-						var x_pos = (line + 1) * trackPadding
-
-						ctx.strokeStyle = "rgb(200,0,0)"
-						ctx.lineWidth = lineWidth
-
-						ctx.beginPath()
-						ctx.moveTo(x_pos, 0);
-						ctx.lineTo(x_pos , cellSize)
-						ctx.stroke()
-
-						idx += 1
-					}
-
 				}
 			}
 
