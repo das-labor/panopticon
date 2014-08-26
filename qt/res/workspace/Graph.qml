@@ -85,11 +85,13 @@ Item {
 						sugiyama.route()
 					}
 				}
+
 				onReleased: {
 					sugiyama.direct = false
 					edgeColor = "black"
 					sugiyama.route()
 				}
+
 				onEntered: {
 					for(var i in incomingEdges) {
 						incomingEdges[i].color = "blue"
@@ -151,8 +153,11 @@ Item {
 		}
 	}
 
-	ScrollView {
+	Flickable {
 		anchors.fill: parent
+		clip: true
+		contentWidth: sugiyama.width
+		contentHeight: sugiyama.height
 
 		Sugiyama {
 			id: sugiyama
@@ -172,6 +177,23 @@ Item {
 
 			vertices: root.session ? root.session.graph.blocks.map(function(a) { return eval(a) }) : []
 			edges: []
+		}
+	}
+
+	MouseArea {
+		anchors.fill: parent
+
+		onPressed: {
+			mouse.accepted = false
+		}
+
+		onWheel: {
+			if(wheel.modifiers & Qt.ControlModifier) {
+				sugiyama.scale += wheel.angleDelta.y / 1000
+				wheel.accepted = true
+			} else {
+				wheel.accepted = false
+			}
 		}
 	}
 }
