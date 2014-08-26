@@ -50,6 +50,7 @@ class ProcedureModel : public QObject
 	Q_PROPERTY(QString name READ name NOTIFY nameChanged)
 	Q_PROPERTY(QStringList jumps READ jumps NOTIFY jumpsChanged)
 	Q_PROPERTY(QStringList blocks READ blocks NOTIFY blocksChanged)
+	Q_PROPERTY(QString mnemonics READ mnemonics NOTIFY mnemonicsChanged)
 
 public:
 	ProcedureModel(QObject* p = nullptr) : QObject(p) {}
@@ -57,6 +58,7 @@ public:
 	QString name(void) const;
 	QStringList jumps(void) const;
 	QStringList blocks(void) const;
+	QString mnemonics(void) const;
 
 	void setProcedure(po::proc_loc p);
 
@@ -64,6 +66,7 @@ signals:
 	void nameChanged(void);
 	void jumpsChanged(void);
 	void blocksChanged(void);
+	void mnemonicsChanged(void);
 
 private:
 	boost::optional<po::proc_loc> _procedure;

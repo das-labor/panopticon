@@ -4,7 +4,7 @@ import Panopticon 1.0
 
 Item {
 	id: root
-	property color edgeColor: "red"
+	property color edgeColor: "black"
 	property int edgeWidth: 3
 	property var session: null
 
@@ -19,20 +19,52 @@ Item {
 		id: node
 
 		Rectangle {
-			color: "red"
+			readonly property real hue: 0
 
-			Text {
-				anchors.fill: parent
-				text: modelData
+			color: Qt.hsla(hue,.7617187500,.8125,1)
+			border { width: 1; color: Qt.hsla(hue,1,.2421875,1) }
+			radius: 3
+			smooth: true
+
+			z: 2
+
+			property int bbid: modelData
+
+			Column {
+				id: col
+				x: 15; y: 15
+				spacing: 3
+				property int mnemonicWidth: 0
+
+				Repeater {
+					model: eval(session.graph.mnemonics)[bbid]
+					delegate: Row {
+						spacing: 5
+
+						Text {
+							text: modelData.op
+							width: col.mnemonicWidth
+							font { family: "Monospace" }
+
+							Component.onCompleted: {
+								col.mnemonicWidth = Math.max(col.mnemonicWidth,contentWidth)
+							}
+
+						}
+
+						Repeater {
+							model: modelData.args
+							delegate: Text {
+								font { family: "Monospace" }
+								text: modelData
+							}
+						}
+					}
+				}
 			}
 
-			/*ListView {
-				model: mnemonics
-				delegate: Text {
-					text: mnemonic
-				}
-			}*/
-			height: 100; width: 100
+			height: col.height + 30
+			width: col.width + 30
 
 			MouseArea {
 				anchors.fill: parent
@@ -48,7 +80,7 @@ Item {
 				}
 				onReleased: {
 					sugiyama.direct = false
-					edgeColor = "red"
+					edgeColor = "black"
 					sugiyama.route()
 				}
 				onEntered: {
@@ -58,7 +90,7 @@ Item {
 				}
 				onExited: {
 					for(var i in incoming) {
-						incoming[i].color = "red"
+						incoming[i].color = "black"
 					}
 				}
 			}
@@ -68,9 +100,26 @@ Item {
 	Component {
 		id: arrow
 
-		Rectangle {
-			color: "green"
-			height: 30; width: 30
+		Canvas {
+			id: cv
+			height: 40; width: 20
+
+			onPaint: {
+				var ctx = cv.getContext("2d")
+
+				if(ctx != null) {
+					ctx.lineWidth = 0
+
+					ctx.beginPath()
+					ctx.fillStyle = "black"
+					ctx.moveTo(.5 * cv.width,.5 * cv.height);
+					ctx.lineTo(0,cv.height - 1);
+					ctx.lineTo(.5 * cv.width,.75 * cv.height);
+					ctx.lineTo(cv.width - 1,cv.height - 1);
+					ctx.lineTo(.5 * cv.width,.5 * cv.height);
+					ctx.fill()
+				}
+			}
 		}
 	}
 
@@ -102,17 +151,6 @@ Item {
 					sugiyama.edges = [].concat(sugiyama.edges,[x])
 				}
 			}
-
-			/*Edge { id: e2; from: 0; to: 2; color: root.edgeColor; width: root.edgeWidth; head: arrow }
-			Edge { id: e3; from: 2; to: 3; color: root.edgeColor; width: root.edgeWidth; head: arrow }
-			Edge { id: e4; from: 3; to: 4; color: root.edgeColor; width: root.edgeWidth; head: arrow }
-			Edge { id: e5; from: 3; to: 5; color: root.edgeColor; width: root.edgeWidth; head: arrow }
-			Edge { id: e6; from: 3; to: 6; color: root.edgeColor; width: root.edgeWidth; head: arrow }
-			Edge { id: e7; from: 5; to: 6; color: root.edgeColor; width: root.edgeWidth; head: arrow }
-			Edge { id: e8; from: 6; to: 7; color: root.edgeColor; width: root.edgeWidth; head: arrow }
-			Edge { id: e9; from: 6; to: 8; color: root.edgeColor; width: root.edgeWidth; head: arrow }
-			Edge { id: e10; from: 7; to: 8; color: root.edgeColor; width: root.edgeWidth; head: arrow }
-			Edge { id: e11; from: 6; to: 6; color: root.edgeColor; width: root.edgeWidth; head: arrow }*/
 
 			vertices: root.session ? root.session.graph.blocks.map(function(a) { return eval(a) }) : []
 			edges: []

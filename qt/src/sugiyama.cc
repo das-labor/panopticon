@@ -283,8 +283,8 @@ template<>
 void dot::set_position(dot::graph_traits<SugiyamaInterface>::node_type n, const dot::coord &pos, SugiyamaInterface t)
 {
 	QQuickItem *q = get<1>(get_vertex(n,(*t)->graph()));
-	q->setX(pos.first);
-	q->setY(pos.second);
+	q->setX(pos.first - q->width() / 2);
+	q->setY(pos.second - q->height() / 2);
 }
 
 template<>

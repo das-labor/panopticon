@@ -465,12 +465,56 @@ QStringList ProcedureModel::blocks(void) const
 	return ret;
 }
 
+QString ProcedureModel::mnemonics(void) const
+{
+	QStringList ret;
+
+	if(_procedure)
+	{
+		proc_loc proc = *_procedure;
+		for(auto v: iters(vertices(proc->control_transfers)))
+		{
+			try
+			{
+				bblock_loc bb = boost::get<bblock_loc>(get_vertex(v,proc->control_transfers));
+				QStringList mnes;
+
+				for(const mnemonic& mne: bb->mnemonics())
+				{
+					QStringList ops;
+
+					for(auto q: mne.operands)
+					{
+						std::stringstream ss;
+						ss << q;
+						ops.append("'" + QString::fromStdString(ss.str()) + "'");
+					}
+
+					mnes.append(QString("{ 'op': '%1', 'args': %2 }")
+						.arg(QString::fromStdString(mne.opcode))
+						.arg("[" + ops.join(",") + "]"));
+				}
+
+				ret.append(QString("'%1': [ %2 ]")
+					.arg(bb->area().lower())
+					.arg(mnes.join(", ")));
+			}
+			catch(const boost::bad_get)
+			{}
+		}
+	}
+
+	return QString("{ %1 }").arg(ret.join(", "));
+}
+
+
 void ProcedureModel::setProcedure(proc_loc p)
 {
 	if(!_procedure || p != *_procedure)
 	{
 		_procedure = p;
 		emit blocksChanged();
+		emit mnemonicsChanged();
 		emit jumpsChanged();
 		emit nameChanged();
 	}
