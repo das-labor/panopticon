@@ -19,13 +19,20 @@ Item {
 		id: node
 
 		Rectangle {
-			readonly property real hue: 0
+			property real hue: {
+				if(state == "prev") {
+					return .4
+				} else if(state == "next") {
+					return .6
+				} else {
+					return 0
+				}
+			}
 
-			color: Qt.hsla(hue,.7617187500,.8125,1)
+			color: { Qt.hsla(hue,.7617187500,.8125,1) }
 			border { width: 1; color: Qt.hsla(hue,1,.2421875,1) }
 			radius: 3
 			smooth: true
-
 			z: 2
 
 			property int bbid: modelData
@@ -84,13 +91,24 @@ Item {
 					sugiyama.route()
 				}
 				onEntered: {
-					for(var i in incoming) {
-						incoming[i].color = "blue"
+					for(var i in incomingEdges) {
+						incomingEdges[i].color = "blue"
+						incomingNodes[i].state = "prev"
 					}
+					for(var i in outgoingEdges) {
+						outgoingEdges[i].color = "red"
+						outgoingNodes[i].state = "next"
+					}
+
 				}
 				onExited: {
-					for(var i in incoming) {
-						incoming[i].color = "black"
+					for(var i in incomingEdges) {
+						incomingEdges[i].color = "black"
+						incomingNodes[i].state = ""
+					}
+					for(var i in outgoingEdges) {
+						outgoingEdges[i].color = "black"
+						outgoingNodes[i].state = ""
 					}
 				}
 			}

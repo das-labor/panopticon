@@ -102,7 +102,10 @@ po::digraph<std::tuple<QVariant,QQuickItem*,QQmlContext*>,std::tuple<QVariant,QP
 			{
 				ctx = new QQmlContext(QQmlEngine::contextForObject(this));
 				ctx->setContextProperty("modelData",var);
-				ctx->setContextProperty("incoming",QVariantList());
+				ctx->setContextProperty("incomingEdges",QVariantList());
+				ctx->setContextProperty("incomingNodes",QVariantList());
+				ctx->setContextProperty("outgoingNodes",QVariantList());
+				ctx->setContextProperty("outgoingEdges",QVariantList());
 				itm = qobject_cast<QQuickItem*>(_delegate->create(ctx));
 				itm->setParentItem(this);
 			}
@@ -208,16 +211,32 @@ void Sugiyama::redoAttached(void)
 {
 	for(auto vx: iters(po::vertices(graph())))
 	{
-		QVariantList incoming;
+		QVariantList incomingEdges;
+		QVariantList incomingNodes;
+		QVariantList outgoingEdges;
+		QVariantList outgoingNodes;
 
 		for(auto e: iters(po::in_edges(vx,graph())))
 		{
 			auto ed = get_edge(e,graph());
-			incoming.append(get<0>(ed));
+			incomingEdges.append(get<0>(ed));
+			auto wx = get_vertex(source(e,graph()),graph());
+			incomingNodes.append(QVariant::fromValue(get<1>(wx)));
+		}
+
+		for(auto e: iters(po::out_edges(vx,graph())))
+		{
+			auto ed = get_edge(e,graph());
+			outgoingEdges.append(get<0>(ed));
+			auto wx = get_vertex(target(e,graph()),graph());
+			outgoingNodes.append(QVariant::fromValue(get<1>(wx)));
 		}
 
 		auto v = get_vertex(vx,graph());
-		get<2>(v)->setContextProperty("incoming",QVariant(incoming));
+		get<2>(v)->setContextProperty("incomingEdges",QVariant(incomingEdges));
+		get<2>(v)->setContextProperty("incomingNodes",QVariant(incomingNodes));
+		get<2>(v)->setContextProperty("outgoingEdges",QVariant(outgoingEdges));
+		get<2>(v)->setContextProperty("outgoingNodes",QVariant(outgoingNodes));
 	}
 }
 
