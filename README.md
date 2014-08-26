@@ -28,7 +28,7 @@ First install the prerequisites using your package manager.
 
 Ubuntu 13.10 and 14.04:
 ```bash
-sudo apt-get install g++ cmake git libboost-dev libboost-filesystem-dev libboost-graph-dev libkyotocabinet-dev libarchive-dev qt5-default qtdeclarative5-dev
+sudo apt-get install g++ cmake git libboost-dev libboost-filesystem-dev libboost-graph-dev libkyotocabinet-dev libarchive-dev qt5-default qtdeclarative5-dev libqt5qml-quickcontrols
 ```
 
 Fedora 20:
