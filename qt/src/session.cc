@@ -196,6 +196,7 @@ QVariant LinearModel::data(const QModelIndex& idx, int role) const
 
 		// comments
 		QStringList comments;
+
 		auto k = _dbase->comments.lower_bound(ref{r->second.first->name(),b.lower()});
 		while(k != _dbase->comments.end() &&
 					k->first.reg == r->second.first->name() &&
@@ -244,27 +245,25 @@ QVariant LinearModel::data(const QModelIndex& idx, int role) const
 
 void LinearModel::postComment(int row, QString c)
 {
-	po::offset o = 0, t = row * columnWidth;
-	for(auto p: _projection)
+	auto r = _rows.find(row);
+	ensure(r != _rows.end());
+
+	QString payload;
+	po::bound b;
+	std::list<po::bound> pass;
+	std::tie(payload,b,pass) = boost::apply_visitor(data_visitor(row,r->first,r->second.first.lock()), r->second.second);
+	ref rr{r->second.first.lock()->name(),b.lower()};
+	auto k = _dbase->comments.lower_bound(rr);
+
+	while(k != _dbase->comments.end() &&
+				k->first.reg == rr.reg &&
+				k->first.off < b.lower() + columnWidth)
 	{
-		if(o <= t && o + size(std::get<0>(p)) > t)
-		{
-			auto k = _dbase->comments.lower_bound(ref{std::get<1>(p)->name(),o});
-
-			while(k != _dbase->comments.end() &&
-						k->first.reg == std::get<1>(p)->name() &&
-						k->first.off < o + columnWidth)
-			{
-				k = _dbase.write().comments.erase(k);
-			}
-
-			_dbase.write().comments.insert(std::make_pair(ref{std::get<1>(p)->name(),o},comment_loc(new std::string(c.toStdString()))));
-			dataChanged(createIndex(row,0),createIndex(row,0));
-			return;
-		}
+		k = _dbase.write().comments.erase(k);
 	}
 
-	ensure(false);
+	_dbase.write().comments.insert(std::make_pair(rr,comment_loc(new std::string(c.toStdString()))));
+	dataChanged(createIndex(row,0),createIndex(row,0));
 }
 
 std::list<std::tuple<po::bound,po::region_wloc,bool>> LinearModel::filterUndefined(const std::list<std::pair<po::bound,po::region_wloc>>& l) const
