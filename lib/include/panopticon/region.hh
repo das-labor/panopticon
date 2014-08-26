@@ -154,6 +154,7 @@ namespace po
 		slab filter(const slab&) const;
 		const std::string& name(void) const;
 		void write(offset pos, tryte t);
+		bool is_undefined(void) const;
 
 	private:
 		struct filter_visitor : public boost::static_visitor<slab>

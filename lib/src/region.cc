@@ -270,6 +270,11 @@ void layer::write(offset pos, tryte t)
 	}
 }
 
+bool layer::is_undefined(void) const
+{
+	return boost::get<offset>(&_data) != nullptr;
+}
+
 slab layer::filter(const slab& in) const
 {
 	return boost::apply_visitor(filter_visitor(in),_data);

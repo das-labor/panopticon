@@ -36,9 +36,10 @@ protected:
 	};
 
 	int findTrack(po::bound b, bool d);
+	std::list<std::tuple<po::bound,po::region_wloc,bool>> filterUndefined(const std::list<std::pair<po::bound,po::region_wloc>>& l) const;
 
 	po::dbase_loc _dbase;
-	std::list<std::pair<po::bound,po::region_wloc>> _projection;
+	std::list<std::tuple<po::bound,po::region_wloc,bool>> _projection;
 	boost::icl::split_interval_map<int,row_t> _rows;
 	std::list<boost::icl::split_interval_map<po::offset,int>> _tracks;
 };

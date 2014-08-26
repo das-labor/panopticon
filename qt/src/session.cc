@@ -15,137 +15,140 @@ namespace boost
 }
 
 LinearModel::LinearModel(dbase_loc db, QObject *p)
-: QAbstractListModel(p), _dbase(db), _projection(po::projection(_dbase->data))
+: QAbstractListModel(p), _dbase(db), _projection(filterUndefined(po::projection(_dbase->data)))
 {
 	int row = 0;
 
 	for(auto p: _projection)
 	{
-		po::offset o = p.first.lower();
-
-		while(o < p.first.upper())
+		if(std::get<2>(p))
 		{
-			auto r = po::next_record(ref{p.second->name(),o},_dbase);
+			po::offset o = std::get<0>(p).lower();
 
-			struct add_vis : public boost::static_visitor<>
+			while(o < std::get<0>(p).upper())
 			{
-				add_vis(int &ro, split_interval_map<int,row_t>& r, region_loc re) : row(ro), _rows(r), reg(re) {}
+				auto r = po::next_record(ref{std::get<1>(p)->name(),o},_dbase);
 
-				void operator()(bblock_loc bb) const
+				struct add_vis : public boost::static_visitor<>
 				{
-					interval<int>::type iv(row,row + bb->mnemonics().size());
-					_rows += std::make_pair(iv,row_t(reg,bb));
-					row += bb->mnemonics().size();
-				}
+					add_vis(int &ro, split_interval_map<int,row_t>& r, region_loc re) : row(ro), _rows(r), reg(re) {}
 
-				void operator()(struct_loc s) const
-				{
-					interval<int>::type iv(row,row + s->fields.size());
-					_rows += std::make_pair(iv,row_t(reg,s));
-					row += s->fields.size();
-				}
-
-				int& row;
-				split_interval_map<int,row_t>& _rows;
-				region_loc reg;
-			};
-
-			struct area_vis : public boost::static_visitor<po::bound>
-			{
-				po::bound operator()(bblock_loc bb) const
-				{
-					return bb->area();
-				}
-
-				po::bound operator()(struct_loc s) const
-				{
-					return s->area();
-				}
-			};
-
-			if(r)
-			{
-				po::bound a = boost::apply_visitor(area_vis(), *r);
-
-				if(a.lower() > o)
-				{
-					po::offset delta = a.lower() - o;
-					int nrow = row + (delta / columnWidth) + (delta % columnWidth == 0 ? 0 : 1);
-					interval<int>::type iv(row,nrow);
-					row_t r(p.second.lock(),row_t::second_type(po::bound(o,a.lower())));
-
-					_rows += std::make_pair(iv,r);
-					row = nrow;
-				}
-
-				boost::apply_visitor(add_vis(row,_rows,p.second.lock()), *r);
-
-				try
-				{
-					bblock_loc bb = boost::get<bblock_loc>(*r);
-					for(auto pro: _dbase->programs)
+					void operator()(bblock_loc bb) const
 					{
-						for(auto proc: pro->procedures())
+						interval<int>::type iv(row,row + bb->mnemonics().size());
+						_rows += std::make_pair(iv,row_t(reg,bb));
+						row += bb->mnemonics().size();
+					}
+
+					void operator()(struct_loc s) const
+					{
+						interval<int>::type iv(row,row + s->fields.size());
+						_rows += std::make_pair(iv,row_t(reg,s));
+						row += s->fields.size();
+					}
+
+					int& row;
+					split_interval_map<int,row_t>& _rows;
+					region_loc reg;
+				};
+
+				struct area_vis : public boost::static_visitor<po::bound>
+				{
+					po::bound operator()(bblock_loc bb) const
+					{
+						return bb->area();
+					}
+
+					po::bound operator()(struct_loc s) const
+					{
+						return s->area();
+					}
+				};
+
+				if(r)
+				{
+					po::bound a = boost::apply_visitor(area_vis(), *r);
+
+					if(a.lower() > o)
+					{
+						po::offset delta = a.lower() - o;
+						int nrow = row + (delta / columnWidth) + (delta % columnWidth == 0 ? 0 : 1);
+						interval<int>::type iv(row,nrow);
+						row_t r(std::get<1>(p).lock(),row_t::second_type(po::bound(o,a.lower())));
+
+						_rows += std::make_pair(iv,r);
+						row = nrow;
+					}
+
+					boost::apply_visitor(add_vis(row,_rows,std::get<1>(p).lock()), *r);
+
+					try
+					{
+						bblock_loc bb = boost::get<bblock_loc>(*r);
+						for(auto pro: _dbase->programs)
 						{
-							if(find_bblock(proc,bb->area().lower()))
+							for(auto proc: pro->procedures())
 							{
-								auto vx = find_node(boost::variant<bblock_loc,rvalue>(bb),proc->control_transfers);
-
-								for(auto e: iters(in_edges(vx,proc->control_transfers)))
+								if(find_bblock(proc,bb->area().lower()))
 								{
-									try
+									auto vx = find_node(boost::variant<bblock_loc,rvalue>(bb),proc->control_transfers);
+
+									for(auto e: iters(in_edges(vx,proc->control_transfers)))
 									{
-										auto vy = source(e,proc->control_transfers);
-										bblock_loc ba = boost::get<bblock_loc>(get_vertex(vy,proc->control_transfers));
+										try
+										{
+											auto vy = source(e,proc->control_transfers);
+											bblock_loc ba = boost::get<bblock_loc>(get_vertex(vy,proc->control_transfers));
 
-										if(ba->area().upper() != bb->area().lower() && ba != bb)
-											findTrack(po::bound(std::min(bb->area().lower(),ba->area().upper() - 1),
-																					std::max(bb->area().lower(),ba->area().upper() - 1)),
-																bb->area().lower() < ba->area().upper() - 1);
+											if(ba->area().upper() != bb->area().lower() && ba != bb)
+												findTrack(po::bound(std::min(bb->area().lower(),ba->area().upper() - 1),
+																						std::max(bb->area().lower(),ba->area().upper() - 1)),
+																	bb->area().lower() < ba->area().upper() - 1);
+										}
+										catch(const boost::bad_get&)
+										{}
 									}
-									catch(const boost::bad_get&)
-									{}
-								}
 
-								for(auto e: iters(out_edges(vx,proc->control_transfers)))
-								{
-									try
+									for(auto e: iters(out_edges(vx,proc->control_transfers)))
 									{
-										auto vy = target(e,proc->control_transfers);
-										bblock_loc ba = boost::get<bblock_loc>(get_vertex(vy,proc->control_transfers));
+										try
+										{
+											auto vy = target(e,proc->control_transfers);
+											bblock_loc ba = boost::get<bblock_loc>(get_vertex(vy,proc->control_transfers));
 
-										if(ba->area().lower() != bb->area().upper() && ba != bb)
-											findTrack(po::bound(std::min(bb->area().upper() - 1,ba->area().lower()),
-																					std::max(bb->area().upper() - 1,ba->area().lower())),
-																bb->area().lower() >= ba->area().upper() - 1);
+											if(ba->area().lower() != bb->area().upper() && ba != bb)
+												findTrack(po::bound(std::min(bb->area().upper() - 1,ba->area().lower()),
+																						std::max(bb->area().upper() - 1,ba->area().lower())),
+																	bb->area().lower() >= ba->area().upper() - 1);
+										}
+										catch(const boost::bad_get&)
+										{}
 									}
-									catch(const boost::bad_get&)
-									{}
 								}
 							}
 						}
 					}
+					catch(const boost::bad_get&)
+					{}
+
+					o = a.upper();
 				}
-				catch(const boost::bad_get&)
-				{}
-
-				o = a.upper();
-			}
-			else
-			{
-				po::offset delta = p.first.upper() - 1 - o;
-
-				if(delta > 0)
+				else
 				{
-					long long nrow = row + (delta / columnWidth) + (delta % columnWidth == 0 ? 0 : 1);
-					interval<int>::type iv(row,nrow);
-					row_t r(p.second.lock(),po::bound(o,p.first.upper()));
+					po::offset delta = std::get<0>(p).upper() - 1 - o;
 
-					_rows += std::make_pair(iv,r);
-					row = nrow;
+					if(delta > 0)
+					{
+						long long nrow = row + (delta / columnWidth) + (delta % columnWidth == 0 ? 0 : 1);
+						interval<int>::type iv(row,nrow);
+						row_t r(std::get<1>(p).lock(),po::bound(o,std::get<0>(p).upper()));
+
+						_rows += std::make_pair(iv,r);
+						row = nrow;
+					}
+
+					o = std::get<0>(p).upper();
 				}
-
-				o = p.first.upper();
 			}
 		}
 	}
@@ -158,7 +161,7 @@ LinearModel::LinearModel(dbase_loc db, QObject *p)
 			std::string operator()(const po::bblock_loc& bb) const { return "bb(" + std::to_string((ptrdiff_t)(&(*bb))) + ")"; }
 			std::string operator()(const po::struct_loc&) const { return "struct"; }
 		};
-		std::cout << p.first << " " << boost::apply_visitor(visitor(), p.second.second) << std::endl;
+		std::cout << std::get<0>(p) << " " << boost::apply_visitor(visitor(), std::get<1>(p).second) << std::endl;
 	}
 
 	ensure(_rows.size());
@@ -244,24 +247,44 @@ void LinearModel::postComment(int row, QString c)
 	po::offset o = 0, t = row * columnWidth;
 	for(auto p: _projection)
 	{
-		if(o <= t && o + size(p.first) > t)
+		if(o <= t && o + size(std::get<0>(p)) > t)
 		{
-			auto k = _dbase->comments.lower_bound(ref{p.second->name(),o});
+			auto k = _dbase->comments.lower_bound(ref{std::get<1>(p)->name(),o});
 
 			while(k != _dbase->comments.end() &&
-						k->first.reg == p.second->name() &&
+						k->first.reg == std::get<1>(p)->name() &&
 						k->first.off < o + columnWidth)
 			{
 				k = _dbase.write().comments.erase(k);
 			}
 
-			_dbase.write().comments.insert(std::make_pair(ref{p.second->name(),o},comment_loc(new std::string(c.toStdString()))));
+			_dbase.write().comments.insert(std::make_pair(ref{std::get<1>(p)->name(),o},comment_loc(new std::string(c.toStdString()))));
 			dataChanged(createIndex(row,0),createIndex(row,0));
 			return;
 		}
 	}
 
 	ensure(false);
+}
+
+std::list<std::tuple<po::bound,po::region_wloc,bool>> LinearModel::filterUndefined(const std::list<std::pair<po::bound,po::region_wloc>>& l) const
+{
+	std::list<std::tuple<po::bound,po::region_wloc,bool>> ret;
+
+	for(auto p: l)
+	{
+		const std::list<std::pair<bound,layer_wloc>>& flat = p.second.lock()->flatten();
+
+		for(auto q: flat)
+		{
+			po::bound b = q.first & p.first;
+
+			if(b.lower() != b.upper())
+				ret.emplace_back(b,p.second,!q.second.lock()->is_undefined());
+		}
+	}
+
+	return ret;
 }
 
 int LinearModel::findTrack(po::bound b, bool d)
