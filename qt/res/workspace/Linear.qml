@@ -12,7 +12,7 @@ Item {
 	property int addressColumnWidth: 0
 
 	readonly property string fontFamily: "Monospace"
-	readonly property real fontPointSize: 7
+	readonly property real fontPixelSize: 14
 	readonly property real cellSize: 23
 	readonly property real halfCellSize: 12
 	readonly property int maxMnemonicHexdump: 4
@@ -160,7 +160,7 @@ Item {
 					height: parent.height
 					text: contents.address
 					verticalAlignment: Text.AlignVCenter
-					font { family: root.fontFamily; pointSize: root.fontPointSize }
+					font { family: root.fontFamily; pixelSize: root.fontPixelSize }
 
 					onWidthChanged: { root.addressColumnWidth = Math.max(root.addressColumnWidth,width) }
 				}
@@ -198,7 +198,7 @@ Item {
 									anchors.centerIn: parent
 									text: modelData
 									color: hexdump.activeColumn == colIndex ? "red" : "black"
-									font { family: root.fontFamily; pointSize: root.fontPointSize }
+									font { family: root.fontFamily; pixelSize: root.fontPixelSize }
 								}
 
 								MouseArea {
@@ -236,7 +236,7 @@ Item {
 									anchors.centerIn: parent
 									text: modelData
 									color: hexdump.activeColumn == colIndex ? "red" : "black"
-									font { family: root.fontFamily; pointSize: root.fontPointSize }
+									font { family: root.fontFamily; pixelSize: root.fontPixelSize }
 								}
 
 								MouseArea {
@@ -278,7 +278,7 @@ Item {
 								anchors.centerIn: parent
 								text: modelData
 								color: hexdump.activeColumn == colIndex ? "red" : "black"
-								font { family: root.fontFamily; pointSize: root.fontPointSize }
+								font { family: root.fontFamily; pixelSize: root.fontPixelSize }
 							}
 
 							MouseArea {
@@ -312,7 +312,7 @@ Item {
 						width: paintedWidth
 						height: cellSize
 						verticalAlignment: Text.AlignBottom
-						font { family: root.fontFamily; pointSize: root.fontPointSize }
+						font { family: root.fontFamily; pixelSize: root.fontPixelSize }
 						text: (contents.payload.type == 'mne' ? contents.payload.op + "  " : "") + (contents.payload.type == 'mne' ? contents.payload.args.join(", ") : "")
 					}
 				}
