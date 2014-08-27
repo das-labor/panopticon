@@ -245,8 +245,8 @@ TEST(layer,random_access_iter)
 {
 	layer_loc l1(new layer("l1",0xffffffff));
 	slab sl = l1->filter(slab());
-	auto i = sl.begin();
-
+	
+	// unused -> auto i = sl.begin();
 	// unused -> slab::iterator j = i + 0xc0000000;
 
 	size_t k = 100;
