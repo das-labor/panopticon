@@ -247,7 +247,7 @@ TEST(layer,random_access_iter)
 	slab sl = l1->filter(slab());
 	auto i = sl.begin();
 
-	slab::iterator j = i + 0xc0000000;
+	// unused -> slab::iterator j = i + 0xc0000000;
 
 	size_t k = 100;
 	while(k--)
