@@ -12,6 +12,9 @@
 		<file>wizard/New.qml</file>
 
 		<file>workspace/Workspace.qml</file>
+		<file>workspace/SideMenu.qml</file>
+		<file>workspace/func.png</file>
+		<file>workspace/data.png</file>
 
 		<!-- Graph -->
 		<file>workspace/Graph.qml</file>

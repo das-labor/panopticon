@@ -10,14 +10,20 @@ Item {
 	property int cursorUpperRow: -1
 	property int cursorLowerRow: -1
 	property int addressColumnWidth: 0
+	property int payloadColumnWidth: 0
+	property int arrowColumnWidth: 100
 
 	readonly property string fontFamily: "Monospace"
 	readonly property real fontPixelSize: 14
 	readonly property real cellSize: 23
 	readonly property real halfCellSize: 12
 	readonly property int maxMnemonicHexdump: 4
+	readonly property bool mnemonicHexdump: false
 
-	//focus: true
+	property color selectionColor: "red"
+	property color arrowBodyColor: "blue"
+	property color arrowHeadColor: "blue"
+	property color hoverColor: "blue"
 
 	Component {
 		id: row
@@ -25,6 +31,8 @@ Item {
 		Row {
 			id: rowContents
 			spacing: 25
+			height: childrenRect.height
+			width: childrenRect.width
 
 			property var contents: eval(model.display)
 			property int rowIndex: index
@@ -34,7 +42,7 @@ Item {
 				var cols = [hexCol, textCol]
 				var rep = 0
 
-				x -= cellSize + 25 + addressColumnWidth + 25
+				x -= arrowCanvas.width + 25 + addressColumnWidth + 25
 
 				while(i < cols.length)
 				{
@@ -60,15 +68,18 @@ Item {
 
 			Canvas {
 				readonly property int lineWidth: 1
-				readonly property int trackPadding: 5
-				readonly property int radius: 3
+				readonly property int trackPadding: 10
+				readonly property int radius: 4
 
 				id: arrowCanvas
 				height: cellSize
-				width: cellSize
+				width: root.arrowColumnWidth
 
 				onPaint: {
 					var ctx = arrowCanvas.getContext("2d")
+
+					ctx.fillStyle = "#dddddd"
+					ctx.fillRect(arrowCanvas.x,arrowCanvas.y,arrowCanvas.width,arrowCanvas.height)
 
 					if(ctx != null) {
 						var ends = contents.arrows.end
@@ -83,21 +94,22 @@ Item {
 						{
 							var line = begins[idx].track
 							var y_pos = y_step * (idx + 1)
-							var x_pos = (line + 1) * trackPadding
+							var x_pos = arrowCanvas.width - (line + 2) * trackPadding
 
-							ctx.strokeStyle = "rgb(200,0,0)"
+							ctx.strokeStyle = root.arrowBodyColor
 							ctx.lineWidth = lineWidth
 
 							ctx.beginPath()
-							ctx.moveTo(cellSize, y_pos);
+							ctx.moveTo(arrowCanvas.width, y_pos);
 							ctx.lineTo(x_pos + radius, y_pos)
 							ctx.arc(x_pos + radius, y_pos + radius, radius, Math.PI * 1.5, Math.PI, true);
 							ctx.lineTo(x_pos, cellSize);
 							ctx.stroke()
 
 							if(begins[idx].tip) {
+								ctx.fillStyle = root.arrowHeadColor
 								ctx.beginPath()
-								ctx.arc(cellSize - 4,y_pos,4,0,Math.PI * 2, true)
+								ctx.arc(arrowCanvas.width - 4,y_pos,4,0,Math.PI * 2, true)
 								ctx.fill()
 							}
 
@@ -110,13 +122,13 @@ Item {
 							var line = ends[idx].track
 
 							var y_pos = y_step * (idx + 1)
-							var x_pos = (line + 1) * trackPadding
+							var x_pos = arrowCanvas.width - (line + 2) * trackPadding
 
-							ctx.strokeStyle = "rgb(200,0,0)"
+							ctx.strokeStyle = root.arrowBodyColor
 							ctx.lineWidth = lineWidth
 
 							ctx.beginPath()
-							ctx.moveTo(cellSize, y_pos);
+							ctx.moveTo(arrowCanvas.width, y_pos);
 							ctx.lineTo(x_pos + radius, y_pos)
 							ctx.arc(x_pos + radius, y_pos - radius, radius, Math.PI * 0.5, 1 * Math.PI, false);
 							ctx.moveTo(x_pos, y_pos - radius);
@@ -124,8 +136,9 @@ Item {
 							ctx.stroke()
 
 							if(ends[idx].tip) {
+								ctx.fillStyle = root.arrowHeadColor
 								ctx.beginPath()
-								ctx.arc(cellSize - 4,y_pos,4,0,Math.PI * 2, true)
+								ctx.arc(arrowCanvas.width - 4,y_pos,4,0,Math.PI * 2, true)
 								ctx.fill()
 							}
 							idx += 1
@@ -135,9 +148,9 @@ Item {
 						while(idx < ud.length)
 						{
 							var line = ud[idx]
-							var x_pos = (line + 1) * trackPadding
+							var x_pos = arrowCanvas.width - (line + 2) * trackPadding
 
-							ctx.strokeStyle = "rgb(200,0,0)"
+							ctx.strokeStyle = root.arrowBodyColor
 							ctx.lineWidth = lineWidth
 
 							ctx.beginPath()
@@ -156,6 +169,21 @@ Item {
 				height: root.cellSize
 				width: root.addressColumnWidth
 
+				Rectangle {
+					id: background
+					x: -25
+					height: parent.height
+					width: -1 * x + parent.width + 10
+					color: "#dddddd"
+				}
+
+				Rectangle {
+					anchors.left: background.right
+					width: 1
+					height: parent.height
+					color: "#aeaeae"
+				}
+
 				Text {
 					height: parent.height
 					text: contents.address
@@ -167,6 +195,7 @@ Item {
 			}
 
 			Item {
+				id: payloadCol
 				height: cellSize
 				width: childrenRect.width
 
@@ -191,13 +220,13 @@ Item {
 													 (cursorUpperRow == rowIndex && cursorLowerRow != rowIndex && cursorUpperCol <= colIndex) ||
 													 (cursorLowerRow == rowIndex && cursorUpperRow != rowIndex && cursorLowerCol >= colIndex) ||
 													 (cursorLowerRow == rowIndex && cursorUpperRow == rowIndex && cursorUpperCol <= colIndex && cursorLowerCol >= colIndex))
-									return c ? "red" : "white"
+									return c && modelData != "" ? root.selectionColor : "#00000000"
 								}
 
 								Text {
 									anchors.centerIn: parent
 									text: modelData
-									color: hexdump.activeColumn == colIndex ? "red" : "black"
+									color: hexdump.activeColumn == colIndex ? root.hoverColor : "black"
 									font { family: root.fontFamily; pixelSize: root.fontPixelSize }
 								}
 
@@ -229,13 +258,13 @@ Item {
 													 (cursorUpperRow == rowIndex && cursorLowerRow != rowIndex && cursorUpperCol <= colIndex) ||
 													 (cursorLowerRow == rowIndex && cursorUpperRow != rowIndex && cursorLowerCol >= colIndex) ||
 													 (cursorLowerRow == rowIndex && cursorUpperRow == rowIndex && cursorUpperCol <= colIndex && cursorLowerCol >= colIndex))
-									return c ? "red" : "white"
+									return c ? root.selectionColor : "#00000000"
 								}
 
 								Text {
 									anchors.centerIn: parent
 									text: modelData
-									color: hexdump.activeColumn == colIndex ? "red" : "black"
+									color: hexdump.activeColumn == colIndex ? root.hoverColor : "black"
 									font { family: root.fontFamily; pixelSize: root.fontPixelSize }
 								}
 
@@ -261,7 +290,7 @@ Item {
 					width: childrenRect.width
 
 					Repeater {
-						model: contents.payload.hex.slice(0,maxMnemonicHexdump)
+						model: root.mnemonicHexdump ? contents.payload.hex.slice(0,maxMnemonicHexdump) : []
 						delegate: Rectangle {
 							property int colIndex: index
 							height: root.cellSize
@@ -271,13 +300,13 @@ Item {
 												 (cursorUpperRow == rowIndex && cursorLowerRow != rowIndex && cursorUpperCol <= colIndex) ||
 												 (cursorLowerRow == rowIndex && cursorUpperRow != rowIndex && cursorLowerCol >= colIndex) ||
 												 (cursorLowerRow == rowIndex && cursorUpperRow == rowIndex && cursorUpperCol <= colIndex && cursorLowerCol >= colIndex))
-								return c ? "red" : "white"
+								return c ? root.selectionColor : "#00000000"
 							}
 
 							Text {
 								anchors.centerIn: parent
 								text: modelData
-								color: hexdump.activeColumn == colIndex ? "red" : "black"
+								color: hexdump.activeColumn == colIndex ? root.hoverColor : "black"
 								font { family: root.fontFamily; pixelSize: root.fontPixelSize }
 							}
 
@@ -295,10 +324,11 @@ Item {
 					}
 
 					Repeater {
-						model: maxMnemonicHexdump - contents.payload.hex.length
+						model: root.mnemonicHexdump ? (root.maxMnemonicHexdump - contents.payload.hex.length) : 0
 						delegate: Rectangle {
 							height: cellSize
 							width: cellSize
+							color: "#00000000"
 						}
 					}
 
@@ -311,20 +341,30 @@ Item {
 					Text {
 						width: paintedWidth
 						height: cellSize
-						verticalAlignment: Text.AlignBottom
+						verticalAlignment: Text.AlignVCenter
 						font { family: root.fontFamily; pixelSize: root.fontPixelSize }
+						color: "#1e1e1e"
 						text: (contents.payload.type == 'mne' ? contents.payload.op + "  " : "") + (contents.payload.type == 'mne' ? contents.payload.args.join(", ") : "")
 					}
 				}
+
+				onWidthChanged: { root.payloadColumnWidth = Math.max(root.payloadColumnWidth,width) }
 			}
 
 			Item {
-				width: childrenRect.width; height: childrenRect.height
-				x:childrenRect.x; y: childrenRect.y
+				width: childrenRect.width + Math.max(0,root.payloadColumnWidth - payloadCol.width)
+				height: childrenRect.height
 
 				Rectangle {
+					anchors.leftMargin: -25
 					anchors.fill: commentCol
-					color: commentCol.activeFocus ? "red" : "#00000000"
+					color: commentCol.activeFocus ? root.selectionColor : "#dddddd"
+
+					Rectangle {
+						height: parent.height
+						width: 1
+						color: "#aeaeae"
+					}
 				}
 
 				TextEdit {
@@ -332,8 +372,9 @@ Item {
 
 					readOnly: false
 					text: contents.comment
-					width: 300
+					width: root.width - root.payloadColumnWidth - root.addressColumnWidth - root.arrowColumnWidth
 					height: root.cellSize * Math.max(1,lineCount)
+					x: Math.max(0,root.payloadColumnWidth - payloadCol.width) + 25
 
 					Keys.enabled: true
 					Keys.priority: Keys.BeforeItem
@@ -355,17 +396,14 @@ Item {
 		}
 	}
 
-	ScrollView {
+	ListView {
 		anchors.fill: parent
-		id: scroll
-
-			ListView {
-			id: lst
-			model: root.session.linear
-			delegate: row
-			cacheBuffer: 1
-			interactive: false
-		}
+		id: lst
+		model: root.session.linear
+		delegate: row
+		cacheBuffer: 1
+		maximumFlickVelocity: 1500
+		boundsBehavior: Flickable.StopAtBounds
 	}
 
 	MouseArea {
@@ -373,7 +411,8 @@ Item {
 		property int anchorRow: -1
 		property int anchorCol: -1
 
-		anchors.fill: scroll
+		anchors.fill: lst
+		preventStealing: true
 
 		onPressed: {
 			if(state == "") {

@@ -154,6 +154,7 @@ Item {
 	}
 
 	Flickable {
+		id: flick
 		anchors.fill: parent
 		clip: true
 		contentWidth: sugiyama.width
@@ -162,8 +163,8 @@ Item {
 		Sugiyama {
 			id: sugiyama
 
-			height: childrenRect.height + childrenRect.y
-			width: childrenRect.width + childrenRect.x
+			height: childrenRect.height
+			width: childrenRect.width
 			delegate: node
 
 			function rebuildEdges() {
@@ -181,7 +182,7 @@ Item {
 	}
 
 	MouseArea {
-		anchors.fill: parent
+		anchors.fill: flick
 
 		onPressed: {
 			mouse.accepted = false
