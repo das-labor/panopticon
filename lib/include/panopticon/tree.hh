@@ -41,8 +41,8 @@ namespace po
 				struct isend_visitor : public boost::static_visitor < bool >
 				{
 					isend_visitor(std::list<int>::const_iterator i) : _iter(i) {}
-					bool operator()(std::shared_ptr<std::list<int>> s) const { return !s || _iter == s->end(); }
-					bool operator()(const std::list<int>* s) const { return !s || _iter == s->end(); }
+					bool operator()(std::shared_ptr<std::list<int>> s) const { return !s || this->_iter == s->end(); }
+					bool operator()(const std::list<int>* s) const { return !s || this->_iter == s->end(); }
 					std::list<int>::const_iterator _iter;
 				};
 
@@ -83,8 +83,8 @@ namespace po
 				struct isend_visitor : public boost::static_visitor < bool >
 				{
 					isend_visitor(std::list<int>::const_iterator i) : _iter(i) {}
-					bool operator()(std::shared_ptr<std::list<int>> s) const { return !s || _iter == s->end(); }
-					bool operator()(const std::list<int>* s) const { return !s || _iter == s->end(); }
+					bool operator()(std::shared_ptr<std::list<int>> s) const { return !s || this->_iter == s->end(); }
+					bool operator()(const std::list<int>* s) const { return !s || this->_iter == s->end(); }
 					std::list<int>::const_iterator _iter;
 				};
 

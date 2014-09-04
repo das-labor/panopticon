@@ -53,7 +53,7 @@ namespace po
 			slab const* _base;
 			offset _off;
 
-			friend class slab;
+			friend struct slab;
 		};
 
 		inline slab(void) : _sources(), _cache(boost::none) {}
