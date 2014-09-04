@@ -41,3 +41,5 @@ target_link_libraries(qtpanopticon ${QT_LIBRARIES} ${panopticon_LIBRARIES})
 set_target_properties(qtpanopticon PROPERTIES VERSION
 	${panopticon_MAJOR}.${panopticon_MINOR}.${panopticon_PATCH})
 install(TARGETS qtpanopticon RUNTIME DESTINATION bin)
+
+add_subdirectory("test")
