@@ -1,5 +1,7 @@
 #include "sugiyama.hh"
 
+#include "dot/layout.hh"
+
 Sugiyama::Sugiyama(QQuickItem *parent)
 : QQuickPaintedItem(parent), _graph(), _delegate(nullptr), _vertices(), _edges(), _direct(false), _mapper()
 {
@@ -15,7 +17,7 @@ Sugiyama::~Sugiyama(void)
 void Sugiyama::route(void)
 {
 	if(po::num_edges(graph()))
-	{
+	{/*
 		SugiyamaInterface iface{this};
 
 		emit routingStart();
@@ -37,7 +39,7 @@ void Sugiyama::route(void)
 			dot::astar<SugiyamaInterface>(iface);
 		}
 
-		emit routingDone();
+		emit routingDone();*/
 	}
 }
 
@@ -45,9 +47,8 @@ void Sugiyama::layout(void)
 {
 	if(po::num_edges(graph()))
 	{
-		SugiyamaInterface iface{this};
 		emit layoutStart();
-		dot::layout<SugiyamaInterface>(iface,100,100);
+		dot::layout(graph());
 		emit layoutDone();
 	}
 }
@@ -239,7 +240,7 @@ void Sugiyama::redoAttached(void)
 		get<2>(v)->setContextProperty("outgoingNodes",QVariant(outgoingNodes));
 	}
 }
-
+/*
 template<>
 std::pair<dot::graph_traits<SugiyamaInterface>::node_iterator,dot::graph_traits<SugiyamaInterface>::node_iterator> dot::nodes<SugiyamaInterface>(SugiyamaInterface t)
 {
@@ -425,7 +426,7 @@ bool dot::is_free(const dot::vis_node<SugiyamaInterface> &a, const dot::vis_node
 		}
 	}
 	return true;
-}
+}*/
 
 void Sugiyama::positionEnds(QObject* itm, QQuickItem* head, QQuickItem* tail, QQuickItem* from, QQuickItem* to, const QPainterPath& path)
 {
