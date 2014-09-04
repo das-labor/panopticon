@@ -1,6 +1,3 @@
-#ifndef DOT_HH
-#define DOT_HH
-
 #include <unordered_map>
 #include <unordered_set>
 #include <map>
@@ -8,68 +5,76 @@
 #include <functional>
 #include <algorithm>
 
-#include "dot/traits.hh"
-#include "dot/adaptor.hh"
-#include "dot/types.hh"
+#include <panopticon/digraph.hh>
+
+#pragma once
+
+//#include "dot/traits.hh"
+//#include "dot/adaptor.hh"
+//#include "dot/types.hh"
 
 namespace dot
 {
-	template<typename T>
-	void layout(T t, unsigned int ranksep, unsigned int nodesep);
+	template<typename N,typename E>
+	std::unordered_map<typename po::digraph<N,E>::vertex_descriptor,std::tuple<int,int,int>> layout(const po::digraph<N,E>& g);
 
-	template<typename T>
+	template<typename N, typename E>
 	struct net_flow
 	{
-		typedef typename graph_traits<T>::node_type node;
-		typedef std::pair<node,node> edge;
+		net_flow(const po::digraph<N,E>& g) : graph(g)
+		{
+			for(auto e: iters(edges(graph)))
+			{
+				omega.insert(std::make_pair(e,1));
+				delta.insert(std::make_pair(e,1));
+			}
+		}
 
 		// in
-		std::unordered_set<node> nodes;
-		std::unordered_multimap<node,node> edges_by_head;
-		std::unordered_multimap<node,node> edges_by_tail;
-		std::unordered_map<edge,unsigned int> omega;
-		std::unordered_map<edge,unsigned int> delta;
+		const po::digraph<N,E>& graph;
+		std::unordered_map<typename po::digraph<N,E>::edge_descriptor,unsigned int> omega;
+		std::unordered_map<typename po::digraph<N,E>::edge_descriptor,unsigned int> delta;
 		// TODO lim-low tree
 
 		// out
-		std::unordered_map<node,int> lambda;
-		std::unordered_set<edge> tight_tree;
-		std::unordered_map<edge,int> cut_values;
+		std::unordered_map<typename po::digraph<N,E>::vertex_descriptor,int> lambda;
+		std::unordered_set<typename po::digraph<N,E>::edge_descriptor> tight_tree;
+		std::unordered_map<typename po::digraph<N,E>::edge_descriptor,int> cut_values;
 	};
 
 	template<typename T>
-	void dump(const net_flow<T> &nf);
+	void dump(const net_flow<N,E> &nf);
+
+	template<typename N,typename E>
+	net_flow<N,E> preprocess(const po::digraph<N,E>& graph,
+												 const std::unordered_map<typename po::digraph<N,E>::edge_descriptor,unsigned int> &omega,
+												 const std::unordered_map<typename po::digraph<N,E>::edge_descriptor,unsigned int> &delta);
 
 	template<typename T>
-	net_flow<T> preprocess(T graph,
-												 const std::unordered_map<typename graph_traits<T>::edge_type,unsigned int> &omega,
-												 const std::unordered_map<typename graph_traits<T>::edge_type,unsigned int> &delta);
-
+	void nf_solve(std::function<void(net_flow<N,E>&)> balance, net_flow<N,E> &nf);
 	template<typename T>
-	void nf_solve(std::function<void(net_flow<T>&)> balance, net_flow<T> &nf);
+	void feasible_tree(net_flow<N,E> &nf);
 	template<typename T>
-	void feasible_tree(net_flow<T> &nf);
+	std::pair<std::unordered_set<typename graph_traits<T>::node_type>,std::unordered_set<typename graph_traits<T>::node_type>> partition(const std::pair<typename graph_traits<T>::node_type,typename graph_traits<T>::node_type> &c, const net_flow<N,E> &nf);
 	template<typename T>
-	std::pair<std::unordered_set<typename graph_traits<T>::node_type>,std::unordered_set<typename graph_traits<T>::node_type>> partition(const std::pair<typename graph_traits<T>::node_type,typename graph_traits<T>::node_type> &c, const net_flow<T> &nf);
+	void rank(net_flow<N,E> &nf, const std::unordered_set<typename graph_traits<T>::node_type> &todo);
 	template<typename T>
-	void rank(net_flow<T> &nf, const std::unordered_set<typename graph_traits<T>::node_type> &todo);
+	void cut_values(net_flow<N,E> &nf);
 	template<typename T>
-	void cut_values(net_flow<T> &nf);
-	template<typename T>
-	void swap(const std::pair<typename graph_traits<T>::node_type,typename graph_traits<T>::node_type> &cut, const std::pair<typename graph_traits<T>::node_type,typename graph_traits<T>::node_type> &replace, net_flow<T> &nf);
+	void swap(const std::pair<typename graph_traits<T>::node_type,typename graph_traits<T>::node_type> &cut, const std::pair<typename graph_traits<T>::node_type,typename graph_traits<T>::node_type> &replace, net_flow<N,E> &nf);
 	template<typename T>
 	void normalize(std::unordered_map<typename graph_traits<T>::node_type,int> &lambda);
 	template<typename T>
-	void balance(net_flow<T> &nf);
+	void balance(net_flow<N,E> &nf);
 	template<typename T>
-	int length(const std::pair<typename graph_traits<T>::node_type,typename graph_traits<T>::node_type> &e, const net_flow<T> &nf);
+	int length(const std::pair<typename graph_traits<T>::node_type,typename graph_traits<T>::node_type> &e, const net_flow<N,E> &nf);
 	template<typename T>
-	int slack(const std::pair<typename graph_traits<T>::node_type,typename graph_traits<T>::node_type> &e, const net_flow<T> &nf);
+	int slack(const std::pair<typename graph_traits<T>::node_type,typename graph_traits<T>::node_type> &e, const net_flow<N,E> &nf);
 	template<typename T>
-	void symmetry(net_flow<T> &nf);
+	void symmetry(net_flow<N,E> &nf);
 
 	template<typename T>
-	net_flow<T> cook_phase1(T graph);
+	net_flow<N,E> cook_phase1(T graph);
 
 	template<typename T>
 	struct phase2
@@ -89,7 +94,7 @@ namespace dot
 	};
 
 	template<typename T>
-	phase2<T> cook_phase2(T t, const net_flow<T> &ph1);
+	phase2<T> cook_phase2(T t, const net_flow<N,E> &ph1);
 	template<typename T>
 	void order(phase2<T> &ph2);
 	template<typename T>
@@ -105,7 +110,7 @@ namespace dot
 
 	// phase3
 	template<typename T>
-	net_flow<graph_adaptor<T>> cook_phase3(T t, const net_flow<T> &ph1, const phase2<T> &ph2, unsigned int node_sep);
+	net_flow<graph_adaptor<T>> cook_phase3(T t, const net_flow<N,E> &ph1, const phase2<T> &ph2, unsigned int node_sep);
 
 	// A*
 	template<typename T>
@@ -124,14 +129,12 @@ namespace dot
 	//template<typename T>
 	//std::list<std::pair<unsigned int, unsigned int>> polylines(const std::list<std::pair<unsigned int, unsigned int>> &coords, typename graph_traits<T>::edge_type e, const std::unordered_multimap<dot::coord,dot::coord> &vis_graph, T graph);
 	template<typename T>
-	std::unordered_multimap<vis_node<T>,vis_node<T>> visibility_graph(T graph);
+	std::unordered_multimap<vis_node<T>,vis_node<T>> visibility_graph(T graph);*/
 }
-
+/*
 #include "layout.hh"
 #include "net_flow.hh"
 #include "phase1.hh"
 #include "phase2.hh"
 #include "phase3.hh"
-#include "astar.hh"
-
-#endif
+#include "astar.hh"*/
