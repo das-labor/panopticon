@@ -198,7 +198,15 @@ Loader {
 
 								onPressed: {
 									root.session = Panopticon.openSession(modelData.substring(7))
-									loader.sourceComponent = workspace
+
+									if(root.session == null) {
+										messageDialog.state = "visible"
+										messageDialog.title = "Error: Can't load session"
+										messageDialog.message = "The file '" + modelData.substring(modelData.lastIndexOf("/") + 1) + "' is not a valid Panopticon session."
+										messageDialog.callback = function() { root.enabled = true }
+									} else {
+										loader.setSource("../workspace/Workspace.qml",{ "session": Panopticon.session })
+									}
 								}
 							}
 						}
@@ -355,8 +363,11 @@ Loader {
 											console.error("BUG: invalid menu state")
 										}
 
-										if(root.session == 0) {
-											console.error("Failed to load")
+										if(root.session == null) {
+											messageDialog.state = "visible"
+											messageDialog.title = "Error: Can't create session"
+											messageDialog.message = "The file '" + path.substring(path.lastIndexOf("/") + 1) + "' can't be opened into a new Panopticon session."
+											messageDialog.callback = function() { root.enabled = true }
 										} else {
 											loader.setSource("../workspace/Workspace.qml",{ "session": Panopticon.session })
 										}
@@ -366,6 +377,127 @@ Loader {
 							}
 						}
 					}
+				}
+			}
+		}
+	}
+
+	Rectangle {
+		id: messageDialog
+
+		property string title: "Error"
+		property string message: "Unknown error."
+		property var callback: function() {}
+
+		Keys.onPressed: {
+			if(event.key == Qt.Key_Return && messageDialog.visible) {
+				event.accepted = true
+				messageDialog.state = "hidden"
+				messageDialog.callback()
+			}
+		}
+
+		anchors.centerIn: parent
+		color: "#ee1e1e"
+		height: titleItem.font.pixelSize + 10 + 3 + 40 + (messageItem.contentHeight) + 20 + button.height + 10
+		width: 600
+		z: 1
+		radius: 15
+		border { width: 3; color: "#aa1e1e" }
+		opacity: 0
+		scale: .666
+
+		states: [ State {
+			name: "hidden"
+			PropertyChanges {
+				target: messageDialog
+				opacity: 0
+				scale: .666
+				focus: false
+			}
+		}, State {
+			name: "visible"
+			PropertyChanges {
+				target: messageDialog
+				opacity: .95
+				scale: 1
+				focus: true
+			}
+		} ]
+
+		state: "hidden"
+
+		Behavior on opacity { NumberAnimation { duration: 100 } }
+		Behavior on scale { NumberAnimation { duration: 100 } }
+
+		Text {
+			id: titleItem
+			anchors.top: parent.top
+			anchors.topMargin: 5
+			text: messageDialog.title
+			font {
+				family: "Sans"
+				pixelSize: 36
+			}
+			x: (parent.width - contentWidth) / 2
+			color: "white"
+		}
+
+		Rectangle {
+			anchors.topMargin: titleItem.anchors.topMargin
+			anchors.top: titleItem.bottom
+			height: 3
+			width: parent.width
+			color: "#aa1e1e"
+		}
+
+		Text {
+			id: messageItem
+			text: messageDialog.message
+			color: "white"
+			anchors.left:  parent.left
+			anchors.right:  parent.right
+			anchors.top:  titleItem.bottom
+			anchors.bottom:  parent.bottom
+			anchors.margins: 40
+
+			font {
+				family: "Sans"
+				pixelSize: 28
+			}
+			horizontalAlignment: Text.AlignTop
+			wrapMode: Text.WordWrap
+		}
+
+		Rectangle {
+			id: button
+			color: "#aa1e1e"
+			opacity: 1
+			radius: 15
+			anchors.bottom: parent.bottom
+			anchors.bottomMargin: 5
+			height: 45
+			width: 100
+			x: (parent.width - width) / 2
+
+			Text {
+				text: "Okay"
+				color: "white"
+				font {
+					family: "Sans"
+					pixelSize: 28
+				}
+				anchors.fill: parent
+				verticalAlignment: Text.AlignVCenter
+				horizontalAlignment: Text.AlignHCenter
+			}
+
+			MouseArea {
+				anchors.fill: parent
+
+				onClicked: {
+					messageDialog.state = "hidden"
+					messageDialog.callback()
 				}
 			}
 		}
