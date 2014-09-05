@@ -7,6 +7,86 @@ import Panopticon 1.0
 import Qt.labs.settings 1.0
 
 Item {
+	id: root
+
+
+	Item {
+		id: menu
+
+		property bool alignLeft: true
+		property color primaryColor: "#34495e"
+		property color secondaryColor: "#1bbc9b"
+
+		Rectangle {
+			anchors.fill: parent
+			color: menu.primaryColor
+		}
+
+		Column {
+			y: 5
+			width: parent.width
+			spacing: 4
+
+			Repeater {
+				model: [ "Open session", "Empty session" ]
+				delegate: Item {
+					id: itm
+					height: 30
+					width: menu.width - 10
+					x: (parent.width - width) / 2
+
+					state: {
+						if(menu.activeItem == modelData) {
+							"active"
+						} else if(mouseArea.containsMouse) {
+							"hover"
+						} else {
+							""
+						}
+					}
+
+					Rectangle {
+						visible: itm.state == "hover"
+						anchors.fill: parent
+						radius: 5
+						border { color: menu.secondaryColor; width: 1 }
+						color: "#00000000"
+					}
+
+					Rectangle {
+						visible: itm.state == "active"
+						anchors.fill: parent
+						radius: 5
+						color: menu.secondaryColor
+					}
+
+					Text {
+						anchors.leftMargin: 5
+						anchors.rightMargin: 5
+						anchors.fill: parent
+
+						text: modelData
+						elide: Text.ElideRight
+						verticalAlignment: Text.AlignVCenter
+						color: "white"
+						font {
+							family: "Monospace"
+							pixelSize: 16
+						}
+					}
+
+					MouseArea {
+						id: mouseArea
+						hoverEnabled: true
+						anchors.fill: parent
+						onClicked: { selected(modelData) }
+					}
+				}
+			}
+		}
+	}
+}
+/*
 	signal back
 
 	Loader {
@@ -119,4 +199,4 @@ Item {
 			}
 		}
 	}
-}
+}*/

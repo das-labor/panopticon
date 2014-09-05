@@ -4,12 +4,10 @@ import Panopticon 1.0
 Item {
 	id: root
 
-	property string select: "proc_100"
+	property string select: ""
 	property variant session: null
 
-	anchors.fill: parent
-
-	state: "code"
+	state: "data"
 	focus: true
 
 	Keys.onPressed: {

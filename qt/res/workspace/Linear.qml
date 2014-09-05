@@ -397,13 +397,13 @@ Item {
 	}
 
 	ListView {
-		anchors.fill: parent
 		id: lst
 		model: root.session.linear
 		delegate: row
 		cacheBuffer: 1
 		maximumFlickVelocity: 1500
 		boundsBehavior: Flickable.StopAtBounds
+		anchors.fill: parent
 	}
 
 	MouseArea {

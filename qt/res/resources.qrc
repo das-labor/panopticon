@@ -4,6 +4,9 @@
 		<!-- Entry point -->
 		<file>Window.qml</file>
 
+		<!-- Common -->
+		<file>panop.png</file>
+
 		<!-- Wizard -->
 		<file>wizard/Main.qml</file>
 		<file>wizard/Continue.qml</file>
@@ -11,10 +14,11 @@
 		<file>wizard/Option.qml</file>
 		<file>wizard/New.qml</file>
 
+		<!-- Workspace -->
 		<file>workspace/Workspace.qml</file>
-		<file>workspace/SideMenu.qml</file>
 		<file>workspace/func.png</file>
 		<file>workspace/data.png</file>
+		<file>workspace/SideMenu.qml</file>
 
 		<!-- Graph -->
 		<file>workspace/Graph.qml</file>
