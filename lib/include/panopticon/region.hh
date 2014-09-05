@@ -1,5 +1,6 @@
 #include <type_traits>
 #include <iterator>
+#include <numeric>
 
 #include <boost/range/any_range.hpp>
 #include <boost/range/adaptor/transformed.hpp>
