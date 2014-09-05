@@ -85,7 +85,8 @@ public:
 	virtual ~Session(void);
 
 	static Session* open(QString);
-	static Session* create(QString);
+	static Session* createRaw(QString);
+	static Session* createAvr(QString);
 
 	Q_INVOKABLE void postComment(int row, QString c);
 	Q_INVOKABLE void disassemble(int row, int col);

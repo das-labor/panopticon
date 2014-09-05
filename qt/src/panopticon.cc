@@ -24,13 +24,40 @@ QObject* Panopticon::provider(QQmlEngine*, QJSEngine*)
 Session* Panopticon::openSession(const QString& path)
 {
 	qDebug() << "open:" << path;
-	return createSession(Session::open(path));
+	try
+	{
+		return createSession(Session::open(path));
+	}
+	catch(...)
+	{
+		return 0;
+	}
 }
 
-Session* Panopticon::createSession(const QString& path)
+Session* Panopticon::createRawSession(const QString& path)
 {
-	qDebug() << "create:" << path;
-	return createSession(Session::create(path));
+	qDebug() << "create raw:" << path;
+	try
+	{
+		return createSession(Session::createRaw(path));
+	}
+	catch(...)
+	{
+		return 0;
+	}
+}
+
+Session* Panopticon::createAvrSession(const QString& path)
+{
+	qDebug() << "create AVR:" << path;
+	try
+	{
+		return createSession(Session::createAvr(path));
+	}
+	catch(...)
+	{
+		return 0;
+	}
 }
 
 Session* Panopticon::createSession(Session *s)

@@ -27,7 +27,8 @@ public:
 	Session* session(void) const;
 
 	Q_INVOKABLE Session* openSession(const QString&);
-	Q_INVOKABLE Session* createSession(const QString&);
+	Q_INVOKABLE Session* createAvrSession(const QString&);
+	Q_INVOKABLE Session* createRawSession(const QString&);
 	Session* createSession(Session *s);
 
 signals:

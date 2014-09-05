@@ -547,9 +547,14 @@ Session* Session::open(QString s)
 	return new Session(po::open(s.toStdString()));
 }
 
-Session* Session::create(QString s)
+Session* Session::createRaw(QString s)
 {
 	return new Session(po::raw(s.toStdString()));
+}
+
+Session* Session::createAvr(QString s)
+{
+	return new Session(po::raw_avr(s.toStdString()));
 }
 
 void Session::postComment(int r, QString c)

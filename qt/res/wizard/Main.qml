@@ -350,12 +350,16 @@ Loader {
 										} else if(root.state == "avr") {
 											root.session = Panopticon.createAvrSession(path.substring(7, path.length))
 										} else if(root.state == "raw") {
-											root.session = Panopticon.createSession(path.substring(7, path.length))
+											root.session = Panopticon.createRawSession(path.substring(7, path.length))
 										} else {
 											console.error("BUG: invalid menu state")
 										}
 
-										loader.setSource("../workspace/Workspace.qml",{ "session": Panopticon.session })
+										if(root.session == 0) {
+											console.error("Failed to load")
+										} else {
+											loader.setSource("../workspace/Workspace.qml",{ "session": Panopticon.session })
+										}
 									}
 								}
 

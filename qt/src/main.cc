@@ -26,8 +26,8 @@ int main(int argc, char *argv[])
 	QCommandLineOption openOpt(QStringList() << "o" << "open","Open previous session.","file.panop");
 	parser.addOption(openOpt);
 
-	QCommandLineOption newOpt(QStringList() << "n" << "new","Disassemble new file.","file");
-	parser.addOption(newOpt);
+	QCommandLineOption rawOpt(QStringList() << "n" << "raw","Open a plain file.","file");
+	parser.addOption(rawOpt);
 
 	QCommandLineOption avrOpt(QStringList() << "a" << "avr","Disassemble new AVR file.","file");
 	parser.addOption(avrOpt);
@@ -37,14 +37,14 @@ int main(int argc, char *argv[])
 
 	parser.process(app);
 
-	if(parser.isSet(openOpt) + parser.isSet(newOpt) + parser.isSet(avrOpt) + parser.isSet(peOpt) > 1)
+	if(parser.isSet(openOpt) + parser.isSet(rawOpt) + parser.isSet(avrOpt) + parser.isSet(peOpt) > 1)
 		return 1;
 	else
 	{
 		if(parser.isSet(openOpt))
 			Panopticon::instance().openSession(parser.value(openOpt));
-		else if(parser.isSet(newOpt))
-			Panopticon::instance().createSession(parser.value(newOpt));
+		else if(parser.isSet(rawOpt))
+			Panopticon::instance().createRawSession(parser.value(rawOpt));
 		else if(parser.isSet(avrOpt))
 			Panopticon::instance().createSession(new Session(po::raw_avr(parser.value(avrOpt).toStdString())));
 		else if(parser.isSet(peOpt))
