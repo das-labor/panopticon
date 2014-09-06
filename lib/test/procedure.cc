@@ -60,7 +60,7 @@ public:
 			state.mnemonics = i->second.mnemonics;
 			state.jumps = i->second.jumps;
 
-			return std::next(begin,std::accumulate(state.mnemonics.begin(),state.mnemonics.end(),0,[](size_t acc, const po::mnemonic &m) { return icl::size(m.area) + acc; }));
+			return boost::make_optional(begin + std::accumulate(state.mnemonics.begin(),state.mnemonics.end(),0,[](size_t acc, const po::mnemonic &m) { return icl::size(m.area) + acc; }));
 		}
 		else
 			return boost::none;
