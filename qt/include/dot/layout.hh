@@ -45,34 +45,6 @@ namespace dot
 			auto leave_edge = std::find_if(cut_values.begin(),cut_values.end(),[&](const std::pair<edge_desc,int> &p)
 					{ return p.second < 0; });
 
-
-	std::cerr << "digraph G {" << std::endl;
-			for(auto ed: iters(edges(graph)))
-			{
-				std::cerr << po::source(ed,graph).id << " -> " << po::target(ed,graph).id;
-				std::cerr << " [label=\"slack: " << slack(ed);
-				if(cut_values.count(ed))
-					std::cerr << " cutval: " << cut_values.at(ed);
-				std::cerr << " omega: " << omega.at(ed);
-				std::cerr << "\"]" << std::endl;
-			}
-			for(auto vx: iters(vertices(graph)))
-			{
-				std::cerr << vx.id << " [label=\"";
-				auto w = get_vertex(vx,graph);
-
-				if(w && w->first)
-					std::cerr << "upper of " << w->second.id;
-				else if(w && !w->first)
-					std::cerr << "lower of " << w->second.id;
-				else
-					std::cerr << "virtual";
-
-				std::cerr << " (" << lambda.at(vx) << ")";
-				std::cerr << "\"]" << std::endl;
-			}
-			std::cerr << "}" << std::endl;
-
 			// finds non tree edge to replace leave_edge
 			while(leave_edge != cut_values.end())
 			{
@@ -128,38 +100,6 @@ namespace dot
 				compute_cut_values();
 
 				ensure(lambda.size() == num_vertices(graph));
-				
-				/*std::cerr << "digraph G {" << std::endl;
-			for(auto ed: iters(edges(graph)))
-			{
-				std::cerr << po::source(ed,graph).id << " -> " << po::target(ed,graph).id;
-				std::cerr << " [label=\"slack: " << slack(ed);
-				if(cut_values.count(ed))
-					std::cerr << " cutval: " << cut_values.at(ed);
-				std::cerr << " omega: " << omega.at(ed);
-				std::cerr << "\"]" << std::endl;
-			}
-			for(auto vx: iters(vertices(graph)))
-			{
-				std::cerr << vx.id << " [label=\"";
-				auto w = get_vertex(vx,graph);
-
-				if(w && w->first)
-					std::cerr << "upper of " << w->second.id;
-				else if(w && !w->first)
-					std::cerr << "lower of " << w->second.id;
-				else
-					std::cerr << "virtual";
-
-				std::cerr << " (" << lambda.at(vx) << ")";
-				if(tail_nodes.count(vx))
-					std::cerr << " T";
-				if(head_nodes.count(vx))
-					std::cerr << " H";
-				std::cerr << "\"]" << std::endl;
-			}
-			std::cerr << "}" << std::endl;*/
-
 
 				// finds a tree edge w/ negative cut value if one exists
 				leave_edge = std::find_if(cut_values.begin(),cut_values.end(),[&](const std::pair<edge_desc,int> &p)
@@ -627,6 +567,7 @@ namespace dot
 			// insert dummy nodes
 			// ordering
 			// map back to g
+
 			std::unordered_map<typename po::digraph<N,E>::vertex_descriptor,std::tuple<int,int,int>> ret;
 			for(auto vx: iters(vertices(g)))
 			{
