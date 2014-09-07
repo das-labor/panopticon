@@ -10,72 +10,102 @@
 
 namespace dot
 {
+	const unsigned int dummy_edge_omega = 1;
+	const unsigned int graph_edge_omega = 10;
+
 	template<typename N, typename E>
 	struct net_flow
 	{
-		net_flow(const po::digraph<N,E>& g) : graph(g)
+		net_flow(const po::digraph<N,E>& g, boost::optional<std::unordered_map<typename po::digraph<N,E>::edge_descriptor,unsigned int>> o) : graph(g)
 		{
+			if(o)
+			{
+				omega = *o;
+				ensure(omega.size() == num_edges(g));
+			}
+
 			for(auto e: iters(edges(graph)))
 			{
-				omega.insert(std::make_pair(e,1));
+				if(!o)
+					omega.insert(std::make_pair(e,graph_edge_omega));
+				else
+					ensure(omega.count(e));
 				delta.insert(std::make_pair(e,1));
 			}
 		}
 
 		void solve(std::function<void()> bal)
 		{
+			using node = typename po::digraph<N,E>::vertex_descriptor;
+			using edge_desc = typename po::digraph<N,E>::edge_descriptor;
+
 			feasible_tree();
-/*
-			auto leave_edge = std::find_if(cut_values.begin(),cut_values.end(),[&](const std::pair<std::pair<node,node>,int> &p)
+
+			// finds a tree edge w/ negative cut value if one exists
+			auto leave_edge = std::find_if(cut_values.begin(),cut_values.end(),[&](const std::pair<edge_desc,int> &p)
 					{ return p.second < 0; });
 
+
+	std::cerr << "digraph G {" << std::endl;
+			for(auto ed: iters(edges(graph)))
+			{
+				std::cerr << po::source(ed,graph).id << " -> " << po::target(ed,graph).id;
+				std::cerr << " [label=\"slack: " << slack(ed);
+				if(cut_values.count(ed))
+					std::cerr << " cutval: " << cut_values.at(ed);
+				std::cerr << " omega: " << omega.at(ed);
+				std::cerr << "\"]" << std::endl;
+			}
+			for(auto vx: iters(vertices(graph)))
+			{
+				std::cerr << vx.id << " [label=\"";
+				auto w = get_vertex(vx,graph);
+
+				if(w && w->first)
+					std::cerr << "upper of " << w->second.id;
+				else if(w && !w->first)
+					std::cerr << "lower of " << w->second.id;
+				else
+					std::cerr << "virtual";
+
+				std::cerr << " (" << lambda.at(vx) << ")";
+				std::cerr << "\"]" << std::endl;
+			}
+			std::cerr << "}" << std::endl;
+
+			// finds non tree edge to replace leave_edge
 			while(leave_edge != cut_values.end())
 			{
-				const std::pair<node,node> &cut = leave_edge->first;
+				const edge_desc& cut = leave_edge->first;
 				std::unordered_set<node> head_nodes, tail_nodes;
-				typename std::unordered_multimap<node,node>::const_iterator min_edge = nf.edges_by_tail.end(), i = nf.edges_by_tail.begin();
-				int min_slack = 0;
+				boost::optional<std::pair<edge_desc,int>> min_edge = boost::none;
+
+				std::cout << "have leave edge" << std::endl;
 
 				std::tie(tail_nodes,head_nodes) = partition(cut);
 
-				while(i != nf.edges_by_tail.end())
-				{
-					const std::pair<node,node> &edge = *i;
+				for(auto edge: iters(edges(graph)))
+					if(edge != cut && !cut_values.count(edge) && head_nodes.count(source(edge,graph)) && tail_nodes.count(target(edge,graph)) && (!min_edge || slack(edge) < min_edge->second))
+						min_edge = std::make_pair(edge,slack(edge));
 
-					if(edge != cut && !cut_values.count(edge) && head_nodes.count(edge.first) && tail_nodes.count(edge.second))
-					{
-						if(min_edge == nf.edges_by_tail.end() || slack(edge) < min_slack)
-						{
-							min_slack = slack(edge);
-							min_edge = i;
-						}
-					}
-
-					++i;
-				}
-
-				ensure(min_edge != nf.edges_by_tail.end() && min_slack >= 0);
+				ensure(min_edge && min_edge->second >= 0);
 
 				// swap edges
-				swap(cut,*min_edge);
+				swap_edges(cut,min_edge->first);
 
-				// tail node of the new edge deterstd::mins the rank of its head. Nodes of the tail component are adjusted after that
+				// tail node of the new edge determines the rank of its head. Nodes of the tail component are adjusted after that
 				std::unordered_set<node> adjusted;
 				std::function<void(node n)> adjust;
 				adjust = [&](node n)
 				{
-					auto p = nf.edges_by_head.equal_range(n);
-					auto q = nf.edges_by_tail.equal_range(n);
-					std::function<void(const std::pair<node,node>&)> op = [&](const std::pair<node,node> &edge)
+					auto p = out_edges(n,graph);
+					auto q = in_edges(n,graph);
+					std::function<void(const edge_desc&)> op = [&](const edge_desc &edge)
 					{
-						if(tail_nodes.count(n) &&
-							 !adjusted.count(edge.second) &&
-							 (cut_values.count(std::make_pair(edge.second,edge.first)) || cut_values.count(edge)))
+						if(tail_nodes.count(n) && !adjusted.count(target(edge,graph)) && cut_values.count(edge))
 						{
-							int d = delta.count(edge) ? delta.at(edge) : -1 * delta.at(std::make_pair(edge.second,edge.first));
-							lambda[edge.second] = lambda.at(n) + d;
-
-							adjust(edge.second);
+							lambda[target(edge,graph)] = lambda.at(n) + delta.at(edge);
+							adjust(target(edge,graph));
 						}
 					};
 
@@ -85,22 +115,70 @@ namespace dot
 					std::for_each(q.first,q.second,op);
 				};
 
-				lambda[min_edge->second] = lambda.at(min_edge->first) - delta.at(*min_edge);
-				adjust(min_edge->second);
-				cut_values();
+				if(tail_nodes.count(target(min_edge->first,graph)))
+				{
+					lambda[source(min_edge->first,graph)] = lambda.at(target(min_edge->first,graph)) - delta.at(min_edge->first);
+					adjust(source(min_edge->first,graph));
+				}
+				else
+				{
+					lambda[target(min_edge->first,graph)] = lambda.at(source(min_edge->first,graph)) - delta.at(min_edge->first);
+					adjust(target(min_edge->first,graph));
+				}
+				compute_cut_values();
 
-				ensure(lambda.size() == nodes.size());
+				ensure(lambda.size() == num_vertices(graph));
+				
+				/*std::cerr << "digraph G {" << std::endl;
+			for(auto ed: iters(edges(graph)))
+			{
+				std::cerr << po::source(ed,graph).id << " -> " << po::target(ed,graph).id;
+				std::cerr << " [label=\"slack: " << slack(ed);
+				if(cut_values.count(ed))
+					std::cerr << " cutval: " << cut_values.at(ed);
+				std::cerr << " omega: " << omega.at(ed);
+				std::cerr << "\"]" << std::endl;
+			}
+			for(auto vx: iters(vertices(graph)))
+			{
+				std::cerr << vx.id << " [label=\"";
+				auto w = get_vertex(vx,graph);
 
-				leave_edge = std::find_if(cut_values.begin(),cut_values.end(),[&](const std::pair<std::pair<node,node>,int> &p)
+				if(w && w->first)
+					std::cerr << "upper of " << w->second.id;
+				else if(w && !w->first)
+					std::cerr << "lower of " << w->second.id;
+				else
+					std::cerr << "virtual";
+
+				std::cerr << " (" << lambda.at(vx) << ")";
+				if(tail_nodes.count(vx))
+					std::cerr << " T";
+				if(head_nodes.count(vx))
+					std::cerr << " H";
+				std::cerr << "\"]" << std::endl;
+			}
+			std::cerr << "}" << std::endl;*/
+
+
+				// finds a tree edge w/ negative cut value if one exists
+				leave_edge = std::find_if(cut_values.begin(),cut_values.end(),[&](const std::pair<edge_desc,int> &p)
 					{ return p.second < 0; });
 			}
 
-			bal(*this);*/
+			bal();
 		}
 
-	private:
+		void swap_edges(typename po::digraph<N,E>::edge_descriptor cut, typename po::digraph<N,E>::edge_descriptor min_edge)
+		{
+			ensure(cut_values.erase(cut));
+			ensure(cut_values.insert(std::make_pair(min_edge,0)).second);
+		}
+
 		void feasible_tree(void)
 		{
+			using node = typename po::digraph<N,E>::vertex_descriptor;
+
 			ensure(num_vertices(graph));
 			ensure(num_edges(graph));
 
@@ -120,17 +198,17 @@ namespace dot
 			{
 				ensure(tree.insert(n).second);
 
-				std::unordered_set<po::digraph<N,E>::edge_descriptor> eds;
+				std::unordered_set<typename po::digraph<N,E>::edge_descriptor> eds;
 				auto p = in_edges(n,graph);
 				auto q = out_edges(n,graph);
 
-				std::copy_if(p.first,p.second,std::inserter(eds,eds.end()),[&](typename po::digraph<N,E>::edge_descriptor e) { return tree.count(source(e,graph)); });
-				std::copy_if(q.first,q.second,std::inserter(eds,eds.end()),[&](typename po::digraph<N,E>::edge_descriptor e) { return tree.count(target(e,graph)); });
+				std::copy_if(p.first,p.second,std::inserter(eds,eds.end()),[&](typename po::digraph<N,E>::edge_descriptor e) { return !tree.count(source(e,graph)); });
+				std::copy_if(q.first,q.second,std::inserter(eds,eds.end()),[&](typename po::digraph<N,E>::edge_descriptor e) { return !tree.count(target(e,graph)); });
 
 				for(auto g: eds)
 				{
-					node m = g.first;
-					std::pair<node,node> edge = g.second;
+					node m = (n != source(g,graph) ? source(g,graph) : target(g,graph));
+					int dir = (n != source(g,graph) ? 1 : -1);
 
 					ensure(m != n);
 					ensure(slack(g) >= 0);
@@ -145,7 +223,7 @@ namespace dot
 					}
 					else
 					{
-						min_slacks.push_back(std::make_tuple(g.first,edge.second,slack(edge),slack(edge) * (edge.second == n ? -1 : 1)));
+						min_slacks.push_back(std::make_tuple(source(g,graph),target(g,graph),slack(g),slack(g) * dir));
 					}
 				}
 			};
@@ -153,11 +231,10 @@ namespace dot
 			while(true)
 			{
 				tree.clear();
-				nf.cut_values.clear();
-				dfs(nf.lambda.begin()->first);
-
-				ensure(tree.size() <= nf.nodes.size());
-				if(tree.size() == nf.nodes.size())
+				cut_values.clear();
+				tight_tree(lambda.begin()->first);
+				ensure(tree.size() <= num_vertices(graph));
+				if(tree.size() == num_vertices(graph))
 					break;
 
 				node n, m;
@@ -174,12 +251,12 @@ namespace dot
 				auto i = tree.begin();
 				while(i != tree.end())
 				{
-					nf.lambda[*i] = nf.lambda.at(*i) + delta;
+					lambda[*i] = lambda.at(*i) + delta;
 					++i;
 				}
 			}
 
-			//cut_values(nf);
+			compute_cut_values();
 		}
 
 		void rank(const std::unordered_set<typename po::digraph<N,E>::vertex_descriptor>& todo)
@@ -206,9 +283,10 @@ namespace dot
 				// assign rank
 				auto p = in_edges(*i,graph);
 
-
 				if(p.first != p.second)
 				{
+					ensure(delta.count(*p.first));
+					ensure(lambda.count(source(*p.first,graph)));
 					unsigned int rank = std::accumulate(p.first,p.second,
 																 (int)lambda.at(source(*p.first,graph)) + delta.at(*p.first),
 																 [&](int acc, typename po::digraph<N,E>::edge_descriptor e)
@@ -216,8 +294,94 @@ namespace dot
 
 					ensure(lambda.insert(std::make_pair(*i,rank)).second);
 				}
+				else
+				{
+					ensure(lambda.insert(std::make_pair(*i,0)).second);
+				}
+
 				unranked.erase(i);
 			}
+		}
+
+		// tail,head components
+		std::pair<std::unordered_set<typename po::digraph<N,E>::vertex_descriptor>,std::unordered_set<typename po::digraph<N,E>::vertex_descriptor>>
+		partition(const typename po::digraph<N,E>::edge_descriptor& cut)
+		{
+			using node = typename po::digraph<N,E>::vertex_descriptor;
+			using edge_desc = typename po::digraph<N,E>::edge_descriptor;
+
+			std::function<void(node,std::unordered_set<node> &visited)> dfs;
+			dfs = [&](node n, std::unordered_set<node> &visited)
+			{
+				ensure(visited.insert(n).second);
+
+				for(const std::pair<edge_desc,int> &e: cut_values)
+				{
+					const edge_desc &g = e.first;
+
+					if(g != cut && (source(g,graph) == n || target(g,graph) == n))
+					{
+						node other = (source(g,graph) == n ? target(g,graph) : source(g,graph));
+						if(!visited.count(other))
+							dfs(other,visited);
+					}
+				}
+			};
+
+			ensure(source(cut,graph) != target(cut,graph));
+			ensure(cut_values.count(cut));
+
+			std::unordered_set<node> v1,v2;
+			dfs(source(cut,graph),v1);
+			dfs(target(cut,graph),v2);
+
+			ensure(v1.size() + v2.size() == lambda.size());
+			return std::make_pair(v1,v2);
+		}
+
+		void compute_cut_values(void)
+		{
+			using node = typename po::digraph<N,E>::vertex_descriptor;
+			using edge_desc = typename po::digraph<N,E>::edge_descriptor;
+
+			for(std::pair<edge_desc const,int> &p: cut_values)
+				p.second = 0;
+
+			for(std::pair<edge_desc const,int> &g: cut_values)
+			{
+				const edge_desc &cut = g.first;
+				std::unordered_set<node> head_nodes, tail_nodes;
+				int cut_value = omega.at(cut);
+
+				std::tie(tail_nodes,head_nodes) = partition(cut);
+
+				for(const edge_desc& edge: iters(edges(graph)))
+				{
+					if(edge != cut)
+					{
+						if(head_nodes.count(source(edge,graph)) && tail_nodes.count(target(edge,graph)))
+							cut_value -= omega.at(edge);
+						else if(head_nodes.count(target(edge,graph)) && tail_nodes.count(source(edge,graph)))
+							cut_value += omega.at(edge);
+					}
+				}
+
+				g.second = cut_value;
+			}
+
+			for(std::pair<edge_desc const,int> &g: cut_values)
+				std::cout << "cut: " << g.second << std::endl;
+
+		}
+
+		int length(typename po::digraph<N,E>::edge_descriptor e) const
+		{
+			return lambda.at(target(e,graph)) - lambda.at(source(e,graph));
+		}
+
+		int slack(typename po::digraph<N,E>::edge_descriptor e) const
+		{
+			return length(e) - delta.at(e);
 		}
 
 		// in
@@ -241,23 +405,32 @@ namespace dot
 		using virt_graph = typename po::digraph<virt_vx,int>;
 
 		dag_visitor(void) : _h(0) {}
-		dag_visitor(virt_graph& h) : _h(&h) {}
-		dag_visitor(const dag_visitor& v) : _h(v._h) {}
+		dag_visitor(virt_graph* h, std::unordered_map<typename virt_graph::edge_descriptor,unsigned int> *o) : _h(h), _omega(o) {}
+		dag_visitor(const dag_visitor& v) : _h(v._h), _omega(v._omega) {}
 
-		dag_visitor& operator=(const dag_visitor& v) { _h = v._h; return *this; }
+		dag_visitor& operator=(const dag_visitor& v) { _h = v._h; _omega = v._omega; return *this; }
 
-		void initialize_vertex(vx_desc,const po::digraph<N,E>&) {}
-		void start_vertex(vx_desc,const po::digraph<N,E>&) {}
-		void discover_vertex(vx_desc vx,const po::digraph<N,E>&)
+		void initialize_vertex(vx_desc vx,const po::digraph<N,E>&)
 		{
-			auto a = insert_vertex(boost::make_optional(std::make_pair(true,vx)),*this->_h);
-			auto b = insert_vertex(boost::make_optional(std::make_pair(false,vx)),*this->_h);
-			insert_edge(0,a,b,*this->_h);
+			auto vxs = vertices(*this->_h);
+			if(std::none_of(vxs.first,vxs.second,[&](typename virt_graph::vertex_descriptor _w) { auto w = get_vertex(_w,*this->_h); return w && w->second == vx; }))
+			{
+				auto a = insert_vertex(boost::make_optional(std::make_pair(true,vx)),*this->_h);
+				auto b = insert_vertex(boost::make_optional(std::make_pair(false,vx)),*this->_h);
+				_omega->insert(std::make_pair(insert_edge(0,a,b,*this->_h),dummy_edge_omega));
+			}
 		}
+
+		void start_vertex(vx_desc,const po::digraph<N,E>&) {}
+		void discover_vertex(vx_desc vx,const po::digraph<N,E>&) {}
 
 		void finish_vertex(vx_desc,const po::digraph<N,E>&) {}
 		void examine_edge(eg_desc,const po::digraph<N,E>&) {}
-		void tree_edge(eg_desc,const po::digraph<N,E>&) {}
+		void tree_edge(eg_desc e,const po::digraph<N,E>& g)
+		{
+			forward_or_cross_edge(e,g);
+		}
+
 		void back_edge(eg_desc e,const po::digraph<N,E>& g)
 		{
 			auto p = vertices(*this->_h);
@@ -267,7 +440,10 @@ namespace dot
 				{ auto v = get_vertex(_v,*this->_h); return v && v->second == target(e,g) && v->first; });
 
 			ensure(ai != p.second && bi != p.second);
-			insert_edge(0,*bi,*ai,*this->_h);
+
+			auto eds = edges(*this->_h);
+			if(std::none_of(eds.first,eds.second,[&](typename virt_graph::edge_descriptor _f) { return source(_f,*this->_h) == *bi && target(_f,*this->_h) == *ai; }))
+				_omega->insert(std::make_pair(insert_edge(0,*bi,*ai,*this->_h),graph_edge_omega));
 		}
 
 		void forward_or_cross_edge(eg_desc e,const po::digraph<N,E>& g)
@@ -279,12 +455,16 @@ namespace dot
 				{ auto v = get_vertex(_v,*this->_h); return v && v->second == target(e,g) && v->first; });
 
 			ensure(ai != p.second && bi != p.second);
-			insert_edge(0,*ai,*bi,*this->_h);
+
+			auto eds = edges(*this->_h);
+			if(std::none_of(eds.first,eds.second,[&](typename virt_graph::edge_descriptor _f) { return source(_f,*this->_h) == *ai && target(_f,*this->_h) == *bi; }))
+				_omega->insert(std::make_pair(insert_edge(0,*ai,*bi,*this->_h),graph_edge_omega));
 		}
 
 		void finish_edge(eg_desc,const po::digraph<N,E>&) {}
 
 		virt_graph *_h;
+		std::unordered_map<typename virt_graph::edge_descriptor,unsigned int> *_omega;
 	};
 
 	// min-level, max-level, x order
@@ -307,7 +487,8 @@ namespace dot
 
 		virt_graph h;
 		std::unordered_map<vx_desc,boost::default_color_type> color;
-		dag_visitor<N,E> v(h);
+		std::unordered_map<typename virt_graph::edge_descriptor,unsigned int> omega;
+		dag_visitor<N,E> visitor(&h,&omega);
 
 		std::list<vx_desc> sources, sinks;
 
@@ -317,13 +498,13 @@ namespace dot
 			int i = in_degree(vx,g);
 
 			if(o == 0 && i > 0)
-				sinks.push_back(i);
+				sinks.push_back(vx);
 			else if(o > 0 && i == 0)
-				sources.push_back(i);
+				sources.push_back(vx);
 		}
 
 		for(auto r: sources)
-			boost::depth_first_search(g,v,color_pm_type(color),r);
+			boost::depth_first_search(g,visitor,color_pm_type(color),r);
 
 		typename virt_graph::vertex_descriptor source, sink;
 
@@ -351,20 +532,20 @@ namespace dot
 					{ auto w = get_vertex(_w,h); return w && w->first && w->second == v; });
 				ensure(s != p.second);
 
-				insert_edge(0,source,*s,h);
+				omega.insert(std::make_pair(insert_edge(0,source,*s,h),dummy_edge_omega));
 			}
 		}
 
 		// ensure single sink node in h
 		if(sinks.size() == 0)
 		{
-			sink = *vertices(h).first;
+			sink = *(vertices(h).first + 1);
 		}
 		else if(sinks.size() == 1)
 		{
 			auto p = vertices(h);
 			auto s = find_if(p.first,p.second,[&](typename virt_graph::vertex_descriptor _w)
-				{ auto w = get_vertex(_w,h); return w && !w->first && w->second == sources.front(); });
+				{ auto w = get_vertex(_w,h); return w && !w->first && w->second == sinks.front(); });
 			ensure(s != p.second);
 
 			sink = *s;
@@ -379,21 +560,88 @@ namespace dot
 					{ auto w = get_vertex(_w,h); return w && !w->first && w->second == v; });
 				ensure(s != p.second);
 
-				insert_edge(0,*s,sink,h);
+				omega.insert(std::make_pair(insert_edge(0,*s,sink,h),dummy_edge_omega));
 			}
 		}
 
 		// layer assign
-		net_flow<virt_vx,int> layer_nf(h);
+		net_flow<virt_vx,int> layer_nf(h,omega);
 		layer_nf.solve(std::function<void(void)>([](void) {}));
 
+		// insert virtual nodes
+		/*for(auto edge: iters(edges(graph)))
+		{
+			auto from = source(e,graph), to = target(e,graph);
+			int rank_first = layer.lambda.at(from);
+			int rank_sec = ph1.lambda.at(to);
+			node_adaptor<T> from_a(from), to_a(to);
+			std::pair<node_adaptor<T>,node_adaptor<T>> edge_a(from_a,to_a);
+			unsigned int omega = ph1.omega.at(e);
 
-		// insert dummy nodes
-		// ordering
-		// map back to g
+			ph2.nodes.insert(from_a);
+			ph2.nodes.insert(to_a);
+			ph2.widths.insert(std::make_pair(from_a,dimensions(from,graph).first));
+			ph2.widths.insert(std::make_pair(to_a,dimensions(to,graph).first));
 
-		return std::unordered_map<typename po::digraph<N,E>::vertex_descriptor,std::tuple<int,int,int>>();
-	}
+			ph2.lambda.insert(std::make_pair(from_a,rank_first));
+			ph2.lambda.insert(std::make_pair(to_a,rank_sec));
+
+			if(abs(rank_first - rank_sec) > 1)
+			{
+				node_adaptor<T> i = from_a;
+				int rank = rank_first + dir;
+				node_adaptor<T> tmp;
+
+				while(rank != rank_sec)
+				{
+					tmp = node_adaptor<T>(virtual_node());
+
+					ph2.widths.insert(std::make_pair(tmp,dimensions(from,graph).first));
+					ph2.edges_by_tail.insert(std::make_pair(i,tmp));
+					ph2.edges_by_head.insert(std::make_pair(tmp,i));
+					ph2.rank_assignments.insert(std::make_pair(rank,tmp));
+					ph2.lambda.insert(std::make_pair(tmp,rank));
+					ph2.nodes.insert(tmp);
+					ph2.weights.insert(std::make_pair(std::make_pair(i,tmp),omega));
+
+					rank += dir;
+					i = tmp;
+				}
+
+				ensure(!tmp.is_nil());
+				ph2.edges_by_tail.insert(std::make_pair(tmp,to_a));
+				ph2.edges_by_head.insert(std::make_pair(to_a,tmp));
+				ph2.rank_assignments.insert(std::make_pair(rank,from_a));
+				ph2.rank_assignments.insert(std::make_pair(rank,to_a));
+				ph2.weights.insert(std::make_pair(std::make_pair(tmp,to_a),omega));
+			}
+			else
+			{
+				ph2.edges_by_tail.insert(edge_a);
+				ph2.edges_by_head.insert(std::make_pair(to_a,from_a));
+				ph2.rank_assignments.insert(std::make_pair(rank_first,from_a));
+				ph2.rank_assignments.insert(std::make_pair(rank_sec,to_a));
+				ph2.weights.insert(std::make_pair(edge_a,omega));
+			}*/
+
+			// insert dummy nodes
+			// ordering
+			// map back to g
+			std::unordered_map<typename po::digraph<N,E>::vertex_descriptor,std::tuple<int,int,int>> ret;
+			for(auto vx: iters(vertices(g)))
+			{
+				auto p = vertices(h);
+				auto upper = find_if(p.first,p.second,[&](typename virt_graph::vertex_descriptor _w) { auto w = get_vertex(_w,h); return w && w->first && w->second == vx; });
+				auto lower = find_if(p.first,p.second,[&](typename virt_graph::vertex_descriptor _w) { auto w = get_vertex(_w,h); return w && !w->first && w->second == vx; });
+
+				ensure(upper != p.second && lower != p.second);
+				ret.emplace(vx,std::make_tuple(layer_nf.lambda.at(*upper),layer_nf.lambda.at(*lower),-1));
+			}
+
+			ensure(ret.size() == num_vertices(g));
+
+			return ret;
+		}
 }
 /*po::digraph<
 	auto nd = nodes(graph);
