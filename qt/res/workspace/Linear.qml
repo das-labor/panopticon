@@ -404,6 +404,52 @@ Item {
 		maximumFlickVelocity: 1500
 		boundsBehavior: Flickable.StopAtBounds
 		anchors.fill: parent
+
+		Rectangle {
+			id:scrollBar
+			width: 10
+			height: {
+				if(lst.contentHeight <= lst.height) {
+					0
+				} else if(lst.contentHeight > lst.height && lst.contentHeight <= lst.height * 2) {
+					Math.max(30,lst.contentHeight - lst.height)
+				} else {
+					30
+				}
+			}
+			anchors.right: parent.right
+			anchors.rightMargin: 3
+			radius: 2
+			y: {
+				if(!scrollArea.drag.active) {
+					(lst.height - height) * (lst.contentY / (lst.contentHeight - lst.height))
+				} else {
+					y
+				}
+			}
+			color: "#1e1e1e"
+			opacity: scrollArea.containsMouse || scrollArea.drag.active ? 1 : 0.8
+			enabled: true
+
+			onYChanged: {
+				if(scrollArea.drag.active) {
+					lst.contentY = (lst.contentHeight - lst.height) * (scrollBar.y / (lst.height - height))
+				}
+			}
+
+			MouseArea {
+				id: scrollArea
+				hoverEnabled: true
+				anchors.fill: parent
+				drag {
+					target: parent
+					axis: Drag.YAxis
+					minimumY: 0
+					maximumY: lst.height - parent.height
+					threshold: 0
+				}
+			}
+		}
 	}
 
 	MouseArea {
