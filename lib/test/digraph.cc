@@ -101,6 +101,63 @@ TEST(digraph,usage)
 	ASSERT_EQ(num_edges(g), 0);
 }
 
+TEST(digraph,degree)
+{
+	po::digraph<boost::optional<int>,std::string> g;
+
+	auto n1 = insert_vertex(boost::make_optional(42),g);
+	auto n2 = insert_vertex(boost::optional<int>(boost::none),g);
+	auto n3 = insert_vertex(boost::make_optional(42),g);
+
+	auto e12 = insert_edge(string("a"),n1,n2,g);
+	auto e23 = insert_edge(string("a"),n2,n3,g);
+	auto e31 = insert_edge(string("a"),n3,n1,g);
+
+	ASSERT_EQ(in_degree(n1,g),1);
+	ASSERT_EQ(in_degree(n2,g),1);
+	ASSERT_EQ(in_degree(n3,g),1);
+
+	ASSERT_EQ(out_degree(n1,g),1);
+	ASSERT_EQ(out_degree(n2,g),1);
+	ASSERT_EQ(out_degree(n3,g),1);
+
+	auto n4 = insert_vertex(boost::make_optional(42),g);
+	auto e41 = insert_edge(string("d"),n4,n1,g);
+
+	ASSERT_EQ(in_degree(n1,g),2);
+	ASSERT_EQ(in_degree(n2,g),1);
+	ASSERT_EQ(in_degree(n3,g),1);
+	ASSERT_EQ(in_degree(n4,g),0);
+
+	ASSERT_EQ(out_degree(n1,g),1);
+	ASSERT_EQ(out_degree(n2,g),1);
+	ASSERT_EQ(out_degree(n3,g),1);
+	ASSERT_EQ(out_degree(n4,g),1);
+
+	remove_edge(e23,g);
+	auto e32 = insert_edge(string("d1"),n3,n2,g);
+
+	auto n5 = insert_vertex(boost::optional<int>(boost::none),g);
+	auto e25 = insert_edge(string("d1"),n2,n5,g);
+	auto e53 = insert_edge(string("d2"),n5,n3,g);
+	auto e54 = insert_edge(string("d2"),n5,n4,g);
+
+	ASSERT_EQ(in_degree(n1,g),2);
+	ASSERT_EQ(in_degree(n2,g),2);
+	ASSERT_EQ(in_degree(n3,g),1);
+	ASSERT_EQ(in_degree(n4,g),1);
+	ASSERT_EQ(in_degree(n5,g),1);
+
+	ASSERT_EQ(out_degree(n1,g),1);
+	ASSERT_EQ(out_degree(n2,g),1);
+	ASSERT_EQ(out_degree(n3,g),2);
+	ASSERT_EQ(out_degree(n4,g),1);
+	ASSERT_EQ(out_degree(n5,g),2);
+
+	auto p = edges(g);
+	ASSERT_EQ(std::distance(p.first,p.second),7);
+}
+
 TEST(digraph,out_iterator)
 {
 	po::digraph<int,std::string> g;
@@ -232,3 +289,24 @@ TEST(digraph,error)
 	ASSERT_EQ(num_edges(g1), 2);
 	ASSERT_EQ(num_vertices(g1), 3);
 }
+
+TEST(digraph,remove_edge_from_node_with_multiple_out_edges)
+{
+	po::digraph<int,std::string> g;
+
+	auto n1 = insert_vertex(42,g);
+	auto n2 = insert_vertex(13,g);
+	auto n3 = insert_vertex(12,g);
+
+	auto e12 = insert_edge(string("a"),n1,n2,g);
+	auto e13 = insert_edge(string("b"),n1,n3,g);
+
+	ASSERT_EQ(num_edges(g), 2);
+	ASSERT_EQ(num_vertices(g), 3);
+	ASSERT_EQ(out_degree(n1,g), 2);
+
+	remove_edge(e12,g);
+
+	ASSERT_EQ(out_degree(n1,g), 1);
+}
+

@@ -48,6 +48,7 @@ namespace po
 		integer_wrapper() : id() {}
 		integer_wrapper(I i) : id(i) {}
 
+		integer_wrapper operator=(const integer_wrapper& iw) { if(iw != *this) id = iw.id; return *this; }
 		bool operator==(const integer_wrapper& iw) const { return iw.id == id; }
 		bool operator<(const integer_wrapper& iw) const { return id < iw.id; }
 
@@ -215,9 +216,9 @@ namespace po
 		ensure(g.vertices.count(from) && g.vertices.count(to));
 
 		typename po::digraph<N,E>::edge_descriptor vx = g.next_edge++;
-		g.edges.emplace(vx,e);
-		g.sources.emplace(vx,from);
-		g.destinations.emplace(vx,to);
+		ensure(g.edges.emplace(vx,e).second);
+		ensure(g.sources.emplace(vx,from).second);
+		ensure(g.destinations.emplace(vx,to).second);
 		g.outgoing.emplace(from,vx);
 		g.incoming.emplace(to,vx);
 		g.index = boost::none;
@@ -350,7 +351,7 @@ namespace po
 			while(g.incoming.count(v))
 				remove_edge(g.incoming.find(v)->second,g);
 
-			g.vertices.erase(v);
+			ensure(g.vertices.erase(v));
 			g.index = boost::none;
 		}
 		else
@@ -360,13 +361,24 @@ namespace po
 	template<typename N, typename E>
 	void remove_edge(typename po::digraph<N,E>::edge_descriptor e, po::digraph<N,E>& g)
 	{
+		using edge_desc = typename po::digraph<N,E>::edge_descriptor;
+		using vx_desc = typename po::digraph<N,E>::vertex_descriptor;
+
 		if(g.edges.count(e) && g.sources.count(e) && g.destinations.count(e) && g.outgoing.count(g.sources.at(e)) && g.incoming.count(g.destinations.at(e)))
 		{
-			g.edges.erase(e);
-			g.outgoing.erase(g.sources.at(e));
-			g.incoming.erase(g.destinations.at(e));
-			g.sources.erase(e);
-			g.destinations.erase(e);
+			ensure(g.edges.erase(e) == 1);
+
+			auto p = g.outgoing.equal_range(g.sources.at(e));
+			auto i = std::find_if(p.first,p.second,[&](const std::pair<vx_desc,edge_desc>& x) { return x.second == e; });
+			ensure(i != p.second);
+			g.outgoing.erase(i);
+
+			auto q = g.incoming.equal_range(g.destinations.at(e));
+			auto j = std::find_if(q.first,q.second,[&](const std::pair<vx_desc,edge_desc>& x) { return x.second == e; });
+			g.incoming.erase(j);
+
+			ensure(g.sources.erase(e) == 1);
+			ensure(g.destinations.erase(e) == 1);
 			g.index = boost::none;
 		}
 		else
