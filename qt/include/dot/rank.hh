@@ -12,6 +12,8 @@ namespace dot
 {
 	const int dummy_edge_omega = 1;
 	const int graph_edge_omega = 10;
+	const int dummy_edge_delta = 0;
+	const int graph_edge_delta = 1;
 
 	template<typename N,typename E>
 	struct rank_dag_visitor
@@ -19,7 +21,7 @@ namespace dot
 		using vx_desc = typename po::digraph<N,E>::vertex_descriptor;
 		using eg_desc = typename po::digraph<N,E>::edge_descriptor;
 		using virt_vx = typename boost::optional<std::pair<bool,vx_desc>>; // true <=> upper node
-		using virt_graph = typename po::digraph<virt_vx,int>;
+		using virt_graph = typename po::digraph<virt_vx,std::pair<int,int>>; // omega,delta
 
 		rank_dag_visitor(void) {}
 		rank_dag_visitor(virt_graph* h) : _h(h) {}
@@ -34,7 +36,7 @@ namespace dot
 			{
 				auto a = insert_vertex(boost::make_optional(std::make_pair(true,vx)),*this->_h);
 				auto b = insert_vertex(boost::make_optional(std::make_pair(false,vx)),*this->_h);
-				insert_edge(dummy_edge_omega,a,b,*this->_h);
+				insert_edge(std::make_pair(dummy_edge_omega,dummy_edge_delta),a,b,*this->_h);
 			}
 		}
 
@@ -60,7 +62,7 @@ namespace dot
 
 			auto eds = edges(*this->_h);
 			if(std::none_of(eds.first,eds.second,[&](typename virt_graph::edge_descriptor _f) { return source(_f,*this->_h) == *bi && target(_f,*this->_h) == *ai; }))
-				insert_edge(graph_edge_omega,*bi,*ai,*this->_h);
+				insert_edge(std::make_pair(graph_edge_omega,graph_edge_delta),*bi,*ai,*this->_h);
 		}
 
 		void forward_or_cross_edge(eg_desc e,const po::digraph<N,E>& g)
@@ -75,7 +77,7 @@ namespace dot
 
 			auto eds = edges(*this->_h);
 			if(std::none_of(eds.first,eds.second,[&](typename virt_graph::edge_descriptor _f) { return source(_f,*this->_h) == *ai && target(_f,*this->_h) == *bi; }))
-				insert_edge(graph_edge_omega,*ai,*bi,*this->_h);
+				insert_edge(std::make_pair(graph_edge_omega,graph_edge_delta),*ai,*bi,*this->_h);
 		}
 
 		void finish_edge(eg_desc,const po::digraph<N,E>&) {}
@@ -85,12 +87,12 @@ namespace dot
 
 	/// convert g to DAG w/ two nodes per g-node and a single source and sink
 	template<typename N,typename E>
-	po::digraph<boost::optional<std::pair<bool,typename po::digraph<N,E>::vertex_descriptor>>,int> prepare_rank_graph(const po::digraph<N,E>& g)
+	po::digraph<boost::optional<std::pair<bool,typename po::digraph<N,E>::vertex_descriptor>>,std::pair<int,int>> prepare_rank_graph(const po::digraph<N,E>& g)
 	{
 		using vx_desc = typename po::digraph<N,E>::vertex_descriptor;
 		using eg_desc = typename po::digraph<N,E>::edge_descriptor;
 		using virt_vx = typename boost::optional<std::pair<bool,vx_desc>>; // true <=> upper node
-		using virt_graph = typename po::digraph<virt_vx,int>;
+		using virt_graph = typename po::digraph<virt_vx,std::pair<int,int>>; // omega,delta
 		using color_pm_type = boost::associative_property_map<std::unordered_map<vx_desc,boost::default_color_type>>;
 
 		virt_graph h;
@@ -138,7 +140,7 @@ namespace dot
 					{ auto w = get_vertex(_w,h); return w && w->first && w->second == v; });
 				ensure(s != p.second);
 
-				insert_edge(dummy_edge_omega,source,*s,h);
+				insert_edge(std::make_pair(dummy_edge_omega,dummy_edge_delta),source,*s,h);
 			}
 		}
 
@@ -166,7 +168,7 @@ namespace dot
 					{ auto w = get_vertex(_w,h); return w && !w->first && w->second == v; });
 				ensure(s != p.second);
 
-				insert_edge(dummy_edge_omega,*s,sink,h);
+				insert_edge(std::make_pair(dummy_edge_omega,dummy_edge_delta),*s,sink,h);
 			}
 		}
 
@@ -179,7 +181,7 @@ namespace dot
 		using vx_desc = typename po::digraph<N,E>::vertex_descriptor;
 		using eg_desc = typename po::digraph<N,E>::edge_descriptor;
 		using virt_vx = typename boost::optional<std::pair<bool,vx_desc>>; // true <=> upper node
-		using virt_graph = typename po::digraph<virt_vx,int>;
+		using virt_graph = typename po::digraph<virt_vx,std::pair<int,int>>; // omega,delta
 
 		virt_graph h = prepare_rank_graph(g);
 

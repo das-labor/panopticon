@@ -8,16 +8,12 @@
 template<typename N>
 struct net_flow
 {
-	net_flow(const po::digraph<N,int>& g) : graph(g)
-	{
-		for(auto e: iters(edges(graph)))
-			delta.insert(std::make_pair(e,1));
-	}
+	net_flow(const po::digraph<N,std::pair<int,int>>& g) : graph(g) {}
 
 	void solve(std::function<void()> bal)
 	{
-		using node = typename po::digraph<N,int>::vertex_descriptor;
-		using edge_desc = typename po::digraph<N,int>::edge_descriptor;
+		using node = typename po::digraph<N,std::pair<int,int>>::vertex_descriptor;
+		using edge_desc = typename po::digraph<N,std::pair<int,int>>::edge_descriptor;
 
 		feasible_tree();
 
@@ -50,11 +46,11 @@ struct net_flow
 			{
 				auto p = out_edges(n,graph);
 				auto q = in_edges(n,graph);
-				std::function<void(const edge_desc&)> op = [&](const edge_desc &edge)
+				std::function<void(const edge_desc&)> op = [&](edge_desc edge)
 				{
 					if(/*tail_nodes.count(n) &&*/ !adjusted.count(target(edge,graph)) && cut_values.count(edge))
 					{
-						lambda[target(edge,graph)] = lambda.at(n) + delta.at(edge);
+						lambda[target(edge,graph)] = lambda.at(n) + get_edge(edge,graph).second;
 						adjust(target(edge,graph));
 					}
 				};
@@ -67,12 +63,12 @@ struct net_flow
 
 			if(tail_nodes.count(target(min_edge->first,graph)))
 			{
-				lambda[source(min_edge->first,graph)] = lambda.at(target(min_edge->first,graph)) - delta.at(min_edge->first);
+				lambda[source(min_edge->first,graph)] = lambda.at(target(min_edge->first,graph)) - get_edge(min_edge->first,graph).second;
 				adjust(source(min_edge->first,graph));
 			}
 			else
 			{
-				lambda[target(min_edge->first,graph)] = lambda.at(source(min_edge->first,graph)) - delta.at(min_edge->first);
+				lambda[target(min_edge->first,graph)] = lambda.at(source(min_edge->first,graph)) - get_edge(min_edge->first,graph).second;
 				adjust(target(min_edge->first,graph));
 			}
 			compute_cut_values();
@@ -94,7 +90,7 @@ struct net_flow
 		bal();
 	}
 
-	void swap_edges(typename po::digraph<N,int>::edge_descriptor cut, typename po::digraph<N,int>::edge_descriptor min_edge)
+	void swap_edges(typename po::digraph<N,std::pair<int,int>>::edge_descriptor cut, typename po::digraph<N,std::pair<int,int>>::edge_descriptor min_edge)
 	{
 		ensure(cut_values.erase(cut));
 		ensure(cut_values.insert(std::make_pair(min_edge,0)).second);
@@ -102,33 +98,33 @@ struct net_flow
 
 	void feasible_tree(void)
 	{
-		using node = typename po::digraph<N,int>::vertex_descriptor;
+		using node = typename po::digraph<N,std::pair<int,int>>::vertex_descriptor;
 
 		ensure(num_vertices(graph));
 		ensure(num_edges(graph));
 
 		{
 			auto p = vertices(graph);
-			std::unordered_set<typename po::digraph<N,int>::vertex_descriptor> all;
+			std::unordered_set<typename po::digraph<N,std::pair<int,int>>::vertex_descriptor> all;
 			std::copy(p.first,p.second,std::inserter(all,all.end()));
 			rank(all);
 		}
 
 		// tight_tree()
-		std::unordered_set<typename po::digraph<N,int>::vertex_descriptor> tree;
-		std::list<std::tuple<typename po::digraph<N,int>::vertex_descriptor,typename po::digraph<N,int>::vertex_descriptor,unsigned int,int>> min_slacks; // from, to, slack, delta
-		std::function<void(typename po::digraph<N,int>::vertex_descriptor)> tight_tree;
+		std::unordered_set<typename po::digraph<N,std::pair<int,int>>::vertex_descriptor> tree;
+		std::list<std::tuple<typename po::digraph<N,std::pair<int,int>>::vertex_descriptor,typename po::digraph<N,std::pair<int,int>>::vertex_descriptor,unsigned int,int>> min_slacks; // from, to, slack, delta
+		std::function<void(typename po::digraph<N,std::pair<int,int>>::vertex_descriptor)> tight_tree;
 
-		tight_tree = [&](typename po::digraph<N,int>::vertex_descriptor n)
+		tight_tree = [&](typename po::digraph<N,std::pair<int,int>>::vertex_descriptor n)
 		{
 			ensure(tree.insert(n).second);
 
-			std::unordered_set<typename po::digraph<N,int>::edge_descriptor> eds;
+			std::unordered_set<typename po::digraph<N,std::pair<int,int>>::edge_descriptor> eds;
 			auto p = in_edges(n,graph);
 			auto q = out_edges(n,graph);
 
-			std::copy_if(p.first,p.second,std::inserter(eds,eds.end()),[&](typename po::digraph<N,int>::edge_descriptor e) { return !tree.count(source(e,graph)); });
-			std::copy_if(q.first,q.second,std::inserter(eds,eds.end()),[&](typename po::digraph<N,int>::edge_descriptor e) { return !tree.count(target(e,graph)); });
+			std::copy_if(p.first,p.second,std::inserter(eds,eds.end()),[&](typename po::digraph<N,std::pair<int,int>>::edge_descriptor e) { return !tree.count(source(e,graph)); });
+			std::copy_if(q.first,q.second,std::inserter(eds,eds.end()),[&](typename po::digraph<N,std::pair<int,int>>::edge_descriptor e) { return !tree.count(target(e,graph)); });
 
 			for(auto g: eds)
 			{
@@ -184,9 +180,9 @@ struct net_flow
 		compute_cut_values();
 	}
 
-	void rank(const std::unordered_set<typename po::digraph<N,int>::vertex_descriptor>& todo)
+	void rank(const std::unordered_set<typename po::digraph<N,std::pair<int,int>>::vertex_descriptor>& todo)
 	{
-		std::unordered_set<typename po::digraph<N,int>::vertex_descriptor> unranked(todo);
+		std::unordered_set<typename po::digraph<N,std::pair<int,int>>::vertex_descriptor> unranked(todo);
 
 		ensure(todo.size() && num_edges(graph));
 
@@ -197,10 +193,10 @@ struct net_flow
 		while(unranked.size())
 		{
 			// find a ``root'', node w/o unranked in-edges
-			auto i = std::find_if(unranked.begin(),unranked.end(),[&](typename po::digraph<N,int>::vertex_descriptor n)
+			auto i = std::find_if(unranked.begin(),unranked.end(),[&](typename po::digraph<N,std::pair<int,int>>::vertex_descriptor n)
 			{
 				auto p = in_edges(n,graph);
-				return std::none_of(p.first,p.second,[&](typename po::digraph<N,int>::edge_descriptor e)
+				return std::none_of(p.first,p.second,[&](typename po::digraph<N,std::pair<int,int>>::edge_descriptor e)
 					{ return unranked.count(source(e,graph)); });
 			});
 			ensure(i != unranked.end());
@@ -210,12 +206,11 @@ struct net_flow
 
 			if(p.first != p.second)
 			{
-				ensure(delta.count(*p.first));
 				ensure(lambda.count(source(*p.first,graph)));
 				unsigned int rank = std::accumulate(p.first,p.second,
-															 (int)lambda.at(source(*p.first,graph)) + delta.at(*p.first),
-															 [&](int acc, typename po::digraph<N,int>::edge_descriptor e)
-															 { return std::max(acc,(int)lambda.at(source(e,graph)) + (int)delta.at(e)); });
+															 lambda.at(source(*p.first,graph)) + get_edge(*p.first,graph).second,
+															 [&](int acc, typename po::digraph<N,std::pair<int,int>>::edge_descriptor e)
+															 { return std::max(acc,(int)lambda.at(source(e,graph)) + get_edge(e,graph).second); });
 
 				ensure(lambda.insert(std::make_pair(*i,rank)).second);
 			}
@@ -229,11 +224,11 @@ struct net_flow
 	}
 
 	// tail,head components
-	std::pair<std::unordered_set<typename po::digraph<N,int>::vertex_descriptor>,std::unordered_set<typename po::digraph<N,int>::vertex_descriptor>>
-	partition(const typename po::digraph<N,int>::edge_descriptor& cut)
+	std::pair<std::unordered_set<typename po::digraph<N,std::pair<int,int>>::vertex_descriptor>,std::unordered_set<typename po::digraph<N,std::pair<int,int>>::vertex_descriptor>>
+	partition(const typename po::digraph<N,std::pair<int,int>>::edge_descriptor& cut)
 	{
-		using node = typename po::digraph<N,int>::vertex_descriptor;
-		using edge_desc = typename po::digraph<N,int>::edge_descriptor;
+		using node = typename po::digraph<N,std::pair<int,int>>::vertex_descriptor;
+		using edge_desc = typename po::digraph<N,std::pair<int,int>>::edge_descriptor;
 
 		std::function<void(node,std::unordered_set<node> &visited)> dfs;
 		dfs = [&](node n, std::unordered_set<node> &visited)
@@ -266,8 +261,8 @@ struct net_flow
 
 	void compute_cut_values(void)
 	{
-		using node = typename po::digraph<N,int>::vertex_descriptor;
-		using edge_desc = typename po::digraph<N,int>::edge_descriptor;
+		using node = typename po::digraph<N,std::pair<int,int>>::vertex_descriptor;
+		using edge_desc = typename po::digraph<N,std::pair<int,int>>::edge_descriptor;
 
 		for(std::pair<edge_desc const,int> &p: cut_values)
 			p.second = 0;
@@ -276,7 +271,7 @@ struct net_flow
 		{
 			const edge_desc &cut = g.first;
 			std::unordered_set<node> head_nodes, tail_nodes;
-			int cut_value = get_edge(cut,graph);
+			int cut_value = get_edge(cut,graph).first;
 
 			std::tie(tail_nodes,head_nodes) = partition(cut);
 
@@ -285,9 +280,9 @@ struct net_flow
 				if(edge != cut)
 				{
 					if(head_nodes.count(source(edge,graph)) && tail_nodes.count(target(edge,graph)))
-						cut_value -= get_edge(edge,graph);
+						cut_value -= get_edge(edge,graph).first;
 					else if(head_nodes.count(target(edge,graph)) && tail_nodes.count(source(edge,graph)))
-						cut_value += get_edge(edge,graph);
+						cut_value += get_edge(edge,graph).first;
 				}
 			}
 
@@ -295,23 +290,21 @@ struct net_flow
 		}
 	}
 
-	int length(typename po::digraph<N,int>::edge_descriptor e) const
+	int length(typename po::digraph<N,std::pair<int,int>>::edge_descriptor e) const
 	{
 		return lambda.at(target(e,graph)) - lambda.at(source(e,graph));
 	}
 
-	int slack(typename po::digraph<N,int>::edge_descriptor e) const
+	int slack(typename po::digraph<N,std::pair<int,int>>::edge_descriptor e) const
 	{
-		return length(e) - delta.at(e);
+		return length(e) - get_edge(e,graph).second;
 	}
 
-	// in
-	const po::digraph<N,int>& graph;
-	std::unordered_map<typename po::digraph<N,int>::edge_descriptor,int> delta;
-	// TODO lim-low tree
+	// omega,delta
+	const po::digraph<N,std::pair<int,int>>& graph;
 
 	// out
-	std::unordered_map<typename po::digraph<N,int>::vertex_descriptor,int> lambda;
-	std::unordered_set<typename po::digraph<N,int>::edge_descriptor> tight_tree;
-	std::unordered_map<typename po::digraph<N,int>::edge_descriptor,int> cut_values;
+	std::unordered_map<typename po::digraph<N,std::pair<int,int>>::vertex_descriptor,int> lambda;
+	std::unordered_set<typename po::digraph<N,std::pair<int,int>>::edge_descriptor> tight_tree;
+	std::unordered_map<typename po::digraph<N,std::pair<int,int>>::edge_descriptor,int> cut_values;
 };
