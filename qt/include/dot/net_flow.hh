@@ -154,6 +154,14 @@ struct net_flow
 			tree.clear();
 			cut_values.clear();
 			tight_tree(lambda.begin()->first);
+
+			std::cerr << "digraph G {" << std::endl;
+			for(auto e: iters(edges(graph)))
+				std::cerr << source(e,graph).id << " -> " << target(e,graph).id << " [label\"delta = " << get_edge(e,graph).second << "\"]" << std::endl;
+			for(auto v: iters(vertices(graph)))
+				std::cerr << v.id << " [label=\"" << (lambda.count(v) ? lambda.at(v) : -1) << "\"]" << std::endl;
+			std::cerr << "}" << std::endl;
+
 			ensure(tree.size() <= num_vertices(graph));
 			if(tree.size() == num_vertices(graph))
 				break;

@@ -14,7 +14,7 @@ namespace dot
 		if(num_vertices(g) == 0)
 			return std::unordered_map<typename po::digraph<N,E>::vertex_descriptor,std::tuple<int,int,int>>();
 		else if(num_vertices(g) == 1)
-			return std::unordered_map<typename po::digraph<N,E>::vertex_descriptor,std::tuple<int,int,int>>({std::make_pair(*vertices(g).first,std::make_tuple(0,1,0))});
+			return std::unordered_map<typename po::digraph<N,E>::vertex_descriptor,std::tuple<int,int,int>>({std::make_pair(*vertices(g).first,std::make_tuple(0,0,0))});
 
 		std::unordered_map<vx_desc,std::pair<int,int>> ranks = rank(g);
 		std::unordered_map<vx_desc,int> ordering = order(ranks,g);

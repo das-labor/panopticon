@@ -10,7 +10,7 @@ namespace dot
 	{
 		using vx_desc = typename po::digraph<N,E>::vertex_descriptor;
 		using eg_desc = typename po::digraph<N,E>::edge_descriptor;
-		using virt_vx = typename boost::optional<std::tuple<int,int,vx_desc>>;
+		using virt_vx = typename std::tuple<int,int,boost::optional<vx_desc>>;
 		using virt_graph = typename po::digraph<virt_vx,int>;
 
 		order_dag_visitor(void) {}
@@ -22,9 +22,9 @@ namespace dot
 		void initialize_vertex(vx_desc vx,const po::digraph<N,E>&)
 		{
 			auto vxs = vertices(*this->_h);
-			if(std::none_of(vxs.first,vxs.second,[&](typename virt_graph::vertex_descriptor _w) { auto w = get_vertex(_w,*this->_h); return w && std::get<2>(*w) == vx; }))
+			if(std::none_of(vxs.first,vxs.second,[&](typename virt_graph::vertex_descriptor _w) { auto w = get_vertex(_w,*this->_h); return std::get<2>(w) && *std::get<2>(w) == vx; }))
 			{
-				insert_vertex(boost::make_optional(std::make_tuple(_ranks->at(vx).first,_ranks->at(vx).second,vx)),*this->_h);
+				insert_vertex(virt_vx(_ranks->at(vx).first,_ranks->at(vx).second,vx),*this->_h);
 			}
 		}
 
@@ -42,9 +42,9 @@ namespace dot
 		{
 			auto p = vertices(*this->_h);
 			auto ai = std::find_if(p.first,p.second,[&](typename virt_graph::vertex_descriptor _v)
-				{ auto v = get_vertex(_v,*this->_h); return v && std::get<2>(*v) == source(e,g); });
+				{ auto v = get_vertex(_v,*this->_h); return std::get<2>(v) && *std::get<2>(v) == source(e,g); });
 			auto bi = std::find_if(p.first,p.second,[&](typename virt_graph::vertex_descriptor _v)
-				{ auto v = get_vertex(_v,*this->_h); return v && std::get<2>(*v) == target(e,g); });
+				{ auto v = get_vertex(_v,*this->_h); return std::get<2>(v) && *std::get<2>(v) == target(e,g); });
 
 			ensure(ai != p.second && bi != p.second);
 
@@ -57,9 +57,9 @@ namespace dot
 		{
 			auto p = vertices(*this->_h);
 			auto ai = std::find_if(p.first,p.second,[&](typename virt_graph::vertex_descriptor _v)
-				{ auto v = get_vertex(_v,*this->_h); return v && std::get<2>(*v) == source(e,g); });
+				{ auto v = get_vertex(_v,*this->_h); return std::get<2>(v) && *std::get<2>(v) == source(e,g); });
 			auto bi = std::find_if(p.first,p.second,[&](typename virt_graph::vertex_descriptor _v)
-				{ auto v = get_vertex(_v,*this->_h); return v && std::get<2>(*v) == target(e,g); });
+				{ auto v = get_vertex(_v,*this->_h); return std::get<2>(v) && *std::get<2>(v) == target(e,g); });
 
 			ensure(ai != p.second && bi != p.second);
 
@@ -76,12 +76,12 @@ namespace dot
 
 	/// convert g to DAG w/ two nodes per g-node and a single source and sink
 	template<typename N,typename E>
-	po::digraph<boost::optional<std::tuple<int,int,typename po::digraph<N,E>::vertex_descriptor>>,int>
+	po::digraph<std::tuple<int,int,boost::optional<typename po::digraph<N,E>::vertex_descriptor>>,int>
 	prepare_order_graph(const std::unordered_map<typename po::digraph<N,E>::vertex_descriptor,std::pair<int,int>>& ranks, const po::digraph<N,E>& g)
 	{
 		using vx_desc = typename po::digraph<N,E>::vertex_descriptor;
 		using eg_desc = typename po::digraph<N,E>::edge_descriptor;
-		using virt_vx = typename boost::optional<std::tuple<int,int,vx_desc>>;
+		using virt_vx = typename std::tuple<int,int,boost::optional<vx_desc>>;
 		using virt_graph = typename po::digraph<virt_vx,int>;
 		using color_pm_type = boost::associative_property_map<std::unordered_map<vx_desc,boost::default_color_type>>;
 
@@ -115,19 +115,21 @@ namespace dot
 		{
 			auto p = vertices(h);
 			auto s = find_if(p.first,p.second,[&](typename virt_graph::vertex_descriptor _w)
-				{ auto w = get_vertex(_w,h); return w && std::get<2>(*w) == sources.front(); });
+				{ auto w = get_vertex(_w,h); return std::get<2>(w) && *std::get<2>(w) == sources.front(); });
 			ensure(s != p.second);
 
 			source = *s;
 		}
 		else
 		{
-			source = insert_vertex(virt_vx(boost::none),h);
+			int r = std::accumulate(sources.begin(),sources.end(),ranks.at(sources.front()).second,[&](int acc, vx_desc v)
+					{ return std::min(acc,ranks.at(v).second); });
+			source = insert_vertex(virt_vx(r,r,boost::none),h);
 			for(auto v: sources)
 			{
 				auto p = vertices(h);
 				auto s = find_if(p.first,p.second,[&](typename virt_graph::vertex_descriptor _w)
-					{ auto w = get_vertex(_w,h); return w && std::get<2>(*w) == v; });
+					{ auto w = get_vertex(_w,h); return std::get<2>(w) && *std::get<2>(w) == v; });
 				ensure(s != p.second);
 
 				insert_edge(0,source,*s,h);
@@ -143,19 +145,22 @@ namespace dot
 		{
 			auto p = vertices(h);
 			auto s = find_if(p.first,p.second,[&](typename virt_graph::vertex_descriptor _w)
-				{ auto w = get_vertex(_w,h); return w && std::get<2>(*w) == sinks.front(); });
+				{ auto w = get_vertex(_w,h); return std::get<2>(w) && *std::get<2>(w) == sinks.front(); });
 			ensure(s != p.second);
 
 			sink = *s;
 		}
 		else
 		{
-			sink = insert_vertex(virt_vx(boost::none),h);
+			int r = std::accumulate(sinks.begin(),sinks.end(),ranks.at(sinks.front()).second,[&](int acc, vx_desc v)
+					{ return std::max(acc,ranks.at(v).second); });
+			sink = insert_vertex(virt_vx(r,r,boost::none),h);
+
 			for(auto v: sinks)
 			{
 				auto p = vertices(h);
 				auto s = find_if(p.first,p.second,[&](typename virt_graph::vertex_descriptor _w)
-					{ auto w = get_vertex(_w,h); return w && std::get<2>(*w) == v; });
+					{ auto w = get_vertex(_w,h); return std::get<2>(w) && *std::get<2>(w) == v; });
 				ensure(s != p.second);
 
 				insert_edge(0,*s,sink,h);
@@ -171,7 +176,7 @@ namespace dot
 			for(auto edge: iters(edges(h)))
 			{
 				auto from = po::source(edge,h), to = target(edge,h);
-				int lf = ranks.at(std::get<2>(*get_vertex(from,h))).first, lt = ranks.at(std::get<2>(*get_vertex(to,h))).first;
+				int lf = std::get<0>(get_vertex(from,h)), lt = std::get<0>(get_vertex(to,h));
 
 				ensure(lf >= 0 && lt >= 0 && lt - lf >= 0);
 				if(lt - lf > 1)
@@ -184,8 +189,7 @@ namespace dot
 
 					while(r != lt)
 					{
-						auto n = insert_vertex(virt_vx(boost::none),h);
-						//ranks.emplace(n,r);
+						auto n = insert_vertex(virt_vx(r,r,boost::none),h);
 						insert_edge(0,prev,n,h);
 						prev = n;
 						++r;
@@ -199,18 +203,18 @@ namespace dot
 		return h;
 	}
 
-	/*template<typename N,typename E>
-	std::unordered_map<typename po::digraph<N,E>::vertex_descriptor,int>
-	initial_order(std::unordered_map<typename po::digraph<N,E>::vertex_descriptor,int>& lambda, const po::digraph<N,E>& graph)
+	template<typename N,typename E>
+	std::unordered_map<typename po::digraph<std::tuple<int,int,boost::optional<typename po::digraph<N,E>::vertex_descriptor>>,int>::vertex_descriptor,int>
+	initial_order(const po::digraph<std::tuple<int,int,boost::optional<typename po::digraph<N,E>::vertex_descriptor>>,int>& graph)
 	{
-		using node = typename po::digraph<N,E>::vertex_descriptor;
+		using node = typename po::digraph<std::tuple<int,int,boost::optional<typename po::digraph<N,E>::vertex_descriptor>>,int>::vertex_descriptor;
 		std::unordered_map<node,int> ret;
 		std::unordered_multiset<int> rev;
 		std::function<void(node)> dfs;
 
 		dfs = [&](node n)
 		{
-			int rank = lambda.at(n);
+			int rank = get<0>(get_vertex(n,graph));
 
 			ensure(ret.insert(std::make_pair(n,rev.count(rank))).second);
 			rev.insert(rank);
@@ -227,17 +231,22 @@ namespace dot
 		ensure(ret.size() == num_vertices(graph));
 
 		return ret;
-	}*/
+	}
 
 	template<typename N,typename E>
 	std::unordered_map<typename po::digraph<N,E>::vertex_descriptor,int>
 	order(std::unordered_map<typename po::digraph<N,E>::vertex_descriptor,std::pair<int,int>>& lambda, const po::digraph<N,E>& graph)
 	{
-		auto h = prepare_order_graph(lambda,graph);
-		std::unordered_map<typename po::digraph<N,E>::vertex_descriptor,int> cur/* = initial_order(lambda,h)*/, best;
+		using vx_desc = typename po::digraph<N,E>::vertex_descriptor;
+		using eg_desc = typename po::digraph<N,E>::edge_descriptor;
+		using virt_vx = typename std::tuple<int,int,boost::optional<vx_desc>>;
+		using virt_graph = typename po::digraph<virt_vx,int>;
 
-		for(auto vx: iters(vertices(graph)))
-			cur.emplace(vx,0);
+		virt_graph h = prepare_order_graph(lambda,graph);
+		std::unordered_map<typename virt_graph::vertex_descriptor,int> cur = initial_order<N,E>(h), best;
+
+		/*for(auto vx: iters(vertices(graph)))
+			cur.emplace(vx,0);*/
 
 		/*std::cerr << "digraph G {" << std::endl;
 			for(auto e: iters(edges(h)))
@@ -266,6 +275,16 @@ namespace dot
 		}*/
 
 		// map back to g
-		return best;
+		std::unordered_map<vx_desc,int> ret;
+
+		for(auto x: best)
+		{
+			auto v = get_vertex(x.first,h);
+			if(std::get<2>(v))
+				ret.emplace(*std::get<2>(v),x.second);
+		}
+
+		ensure(ret.size() == num_vertices(graph));
+		return ret;
 	}
 }
