@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 
-#include "dot/layout.hh"
+#include "dot/dot.hh"
 
 TEST(dot,layout_empty_graph)
 {
@@ -15,11 +15,13 @@ TEST(dot,layout_graph_with_single_node)
 	po::digraph<std::string,int> g;
 	auto a = insert_vertex(std::string("Hello"),g);
 	auto ret = dot::layout(g);
+	for(auto vx: ret)
+		std::cout << get_vertex(vx.first,g) << ": " << get<0>(vx.second) << "-" << std::get<1>(vx.second) << std::endl;
 
 	ASSERT_EQ(ret.size(),1);
 	ASSERT_EQ(ret.count(a),1);
 	ASSERT_EQ(std::get<0>(ret.at(a)),0);
-	ASSERT_EQ(std::get<1>(ret.at(a)),0);
+	ASSERT_EQ(std::get<1>(ret.at(a)),1);
 	ASSERT_EQ(std::get<2>(ret.at(a)),0);
 }
 
@@ -34,11 +36,11 @@ TEST(dot,layout_graph_with_two_nodes)
 	ASSERT_EQ(ret.size(),2);
 	ASSERT_EQ(ret.count(a),1);
 	ASSERT_EQ(std::get<0>(ret.at(a)),0);
-	ASSERT_EQ(std::get<1>(ret.at(a)),0);
+	ASSERT_EQ(std::get<1>(ret.at(a)),1);
 	ASSERT_EQ(std::get<2>(ret.at(a)),0);
 	ASSERT_EQ(ret.count(b),1);
-	ASSERT_EQ(std::get<0>(ret.at(b)),1);
-	ASSERT_EQ(std::get<1>(ret.at(b)),1);
+	ASSERT_EQ(std::get<0>(ret.at(b)),2);
+	ASSERT_EQ(std::get<1>(ret.at(b)),3);
 	ASSERT_EQ(std::get<2>(ret.at(b)),0);
 }
 
@@ -75,15 +77,15 @@ TEST(dot,layout_graph_with_two_entries)
 	ASSERT_EQ(ret.size(),3);
 	ASSERT_EQ(ret.count(a),1);
 	ASSERT_EQ(std::get<0>(ret.at(a)),0);
-	ASSERT_EQ(std::get<1>(ret.at(a)),0);
+	ASSERT_EQ(std::get<1>(ret.at(a)),1);
 	ASSERT_EQ(ret.count(b),1);
 	ASSERT_EQ(std::get<0>(ret.at(b)),0);
-	ASSERT_EQ(std::get<1>(ret.at(b)),0);
+	ASSERT_EQ(std::get<1>(ret.at(b)),1);
 	ASSERT_NE(std::get<2>(ret.at(a)),std::get<2>(ret.at(b)));
 
 	ASSERT_EQ(ret.count(c),1);
-	ASSERT_EQ(std::get<0>(ret.at(c)),1);
-	ASSERT_EQ(std::get<1>(ret.at(c)),1);
+	ASSERT_EQ(std::get<0>(ret.at(c)),2);
+	ASSERT_EQ(std::get<1>(ret.at(c)),3);
 	ASSERT_EQ(std::get<2>(ret.at(c)),0);
 }
 
@@ -100,14 +102,14 @@ TEST(dot,layout_graph_with_two_exits)
 	ASSERT_EQ(ret.size(),3);
 	ASSERT_EQ(ret.count(a),1);
 	ASSERT_EQ(std::get<0>(ret.at(a)),0);
-	ASSERT_EQ(std::get<1>(ret.at(a)),0);
+	ASSERT_EQ(std::get<1>(ret.at(a)),1);
 	ASSERT_EQ(std::get<2>(ret.at(a)),0);
 	ASSERT_EQ(ret.count(b),1);
-	ASSERT_EQ(std::get<0>(ret.at(b)),1);
-	ASSERT_EQ(std::get<1>(ret.at(b)),1);
+	ASSERT_EQ(std::get<0>(ret.at(b)),2);
+	ASSERT_EQ(std::get<1>(ret.at(b)),3);
 	ASSERT_EQ(ret.count(c),1);
-	ASSERT_EQ(std::get<0>(ret.at(c)),1);
-	ASSERT_EQ(std::get<1>(ret.at(c)),1);
+	ASSERT_EQ(std::get<0>(ret.at(c)),2);
+	ASSERT_EQ(std::get<1>(ret.at(c)),3);
 	ASSERT_NE(std::get<2>(ret.at(b)),std::get<2>(ret.at(c)));
 }
 
@@ -127,13 +129,13 @@ TEST(dot,layout_graph_with_cycle)
 	ASSERT_EQ(ret.size(),4);
 	ASSERT_EQ(ret.count(a),1);
 	ASSERT_EQ(std::get<0>(ret.at(a)),0);
-	ASSERT_EQ(std::get<1>(ret.at(a)),0);
+	ASSERT_EQ(std::get<1>(ret.at(a)),1);
 	ASSERT_EQ(std::get<2>(ret.at(a)),0);
 	ASSERT_EQ(ret.count(b),1);
 	ASSERT_EQ(ret.count(c),1);
 	ASSERT_EQ(ret.count(d),1);
-	ASSERT_EQ(std::get<0>(ret.at(d)),3);
-	ASSERT_EQ(std::get<1>(ret.at(d)),3);
+	ASSERT_EQ(std::get<0>(ret.at(d)),6);
+	ASSERT_EQ(std::get<1>(ret.at(d)),7);
 	ASSERT_EQ(std::get<2>(ret.at(d)),0);
 	ASSERT_NE(std::get<2>(ret.at(b)),std::get<2>(ret.at(c)));
 }
