@@ -7,6 +7,7 @@ Item {
 	property color edgeColor: "black"
 	property int edgeWidth: 3
 	property var session: null
+	property var nodes: []
 
 	onSessionChanged: {
 		if(session != null) {
@@ -15,10 +16,16 @@ Item {
 		}
 	}
 
+
 	Component {
 		id: node
 
 		Rectangle {
+			id: bblock
+
+			property int lRank: lastRank
+			property int fRank: firstRank
+			property int ordNr: ordinal
 			property real hue: {
 				if(state == "prev") {
 					return .4
@@ -34,8 +41,24 @@ Item {
 			radius: 3
 			smooth: true
 			z: 2
+			x: computedX - width / 2
+			/*{
+				var w = root.nodes.reduce(function(a,n,i,all) { if(n.fRank == firstRank) { return Math.max(a,n.width + 50) } else { return a } },0) + 50
+				return (root.childrenRect.width - w) / 2 + root.nodes.reduce(function(a,n,i,all) { if(n.fRank == firstRank && n.ordNr < ordinal) { return Math.max(a,n.width + 50) } else { return a } },0) + 50
+			}*/
+
+
+			y: root.nodes.reduce(function(a,n,i,all) { if(n.lRank == firstRank - 1) { return Math.max(a,n.y + n.height) } else { return a } },0) + 50
 
 			property int bbid: modelData
+
+			Component.onCompleted: {
+				if(root.nodes != undefined) {
+					root.nodes.push(bblock)
+				} else {
+					root.nodes = [bblock]
+				}
+			}
 
 			Column {
 				id: col

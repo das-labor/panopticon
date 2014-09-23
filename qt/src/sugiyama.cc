@@ -1,6 +1,6 @@
 #include "sugiyama.hh"
 
-#include "dot/layout.hh"
+#include "dot/dot.hh"
 
 Sugiyama::Sugiyama(QQuickItem *parent)
 : QQuickPaintedItem(parent), _graph(), _delegate(nullptr), _vertices(), _edges(), _direct(false), _mapper()
@@ -48,7 +48,24 @@ void Sugiyama::layout(void)
 	if(po::num_edges(graph()))
 	{
 		emit layoutStart();
-		dot::layout(graph());
+		auto pos = dot::layout(graph());
+		std::unordered_map<decltype(_graph)::value_type::vertex_descriptor,int> width;
+
+		for(auto v: iters(po::vertices(graph())))
+			width.emplace(v,std::get<1>(get_vertex(v,graph()))->width());
+
+		auto xpos = dot::place(pos,width,300,graph());
+		//po::digraph<std::tuple<QVariant,QQuickItem*,QQmlContext*>,std::tuple<QVariant,QPainterPath,QQuickItem*,QQuickItem*>>& graph(void);
+
+		for(auto p: pos)
+		{
+			auto vx = get_vertex(p.first,graph());
+			std::get<2>(vx)->setContextProperty("firstRank",QVariant(std::get<0>(p.second)));
+			std::get<2>(vx)->setContextProperty("lastRank",QVariant(std::get<1>(p.second)));
+			std::get<2>(vx)->setContextProperty("ordinal",QVariant(std::get<2>(p.second)));
+			std::get<2>(vx)->setContextProperty("computedX",QVariant(xpos.at(p.first)));
+		}
+
 		emit layoutDone();
 	}
 }
@@ -107,6 +124,10 @@ po::digraph<std::tuple<QVariant,QQuickItem*,QQmlContext*>,std::tuple<QVariant,QP
 				ctx->setContextProperty("incomingNodes",QVariantList());
 				ctx->setContextProperty("outgoingNodes",QVariantList());
 				ctx->setContextProperty("outgoingEdges",QVariantList());
+				ctx->setContextProperty("firstRank",QVariant());
+				ctx->setContextProperty("lastRank",QVariant());
+				ctx->setContextProperty("ordinal",QVariant());
+				ctx->setContextProperty("computedX",QVariant());
 				itm = qobject_cast<QQuickItem*>(_delegate->create(ctx));
 				itm->setParentItem(this);
 			}

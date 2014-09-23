@@ -144,7 +144,28 @@ TEST(dot,layout_graph_with_cycle)
 
 TEST(dot,layout_graph_with_self_loops)
 {
-	FAIL();
+	po::digraph<std::string,int> g;
+	auto a = insert_vertex(std::string("Hello"),g);
+	auto b = insert_vertex(std::string(","),g);
+	auto c = insert_vertex(std::string("World"),g);
+	auto ab = insert_edge(0,a,b,g);
+	auto bc = insert_edge(1,b,c,g);
+	auto bb = insert_edge(2,b,b,g);
+	auto ret = dot::layout(g);
+
+	ASSERT_EQ(ret.size(),3);
+	ASSERT_EQ(ret.count(a),1);
+	ASSERT_EQ(std::get<0>(ret.at(a)),0);
+	ASSERT_EQ(std::get<1>(ret.at(a)),0);
+	ASSERT_EQ(std::get<2>(ret.at(a)),0);
+	ASSERT_EQ(ret.count(b),1);
+	ASSERT_EQ(std::get<0>(ret.at(b)),1);
+	ASSERT_EQ(std::get<1>(ret.at(b)),1);
+	ASSERT_EQ(std::get<2>(ret.at(b)),0);
+	ASSERT_EQ(ret.count(c),1);
+	ASSERT_EQ(std::get<0>(ret.at(c)),2);
+	ASSERT_EQ(std::get<1>(ret.at(c)),2);
+	ASSERT_EQ(std::get<2>(ret.at(c)),0);
 }
 
 TEST(dot,layout_graph_with_two_exits_and_two_entries)

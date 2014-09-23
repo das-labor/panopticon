@@ -298,6 +298,50 @@ struct net_flow
 		}
 	}
 
+	void make_symmetric(void)
+	{
+		using edge_desc = typename po::digraph<N,std::pair<int,int>>::edge_descriptor;
+		using vx_desc = typename po::digraph<N,std::pair<int,int>>::vertex_descriptor;
+
+		for(const std::pair<edge_desc,int> &cut: cut_values)
+		{
+			if(cut.second == 0)
+			{
+				std::unordered_set<vx_desc> head_component,tail_component;
+				boost::optional<edge_desc> min_edge = boost::none;
+				int min_slack = 0;
+
+				std::tie(tail_component,head_component) = partition(cut.first);
+
+				for(auto edge: iters(edges(graph)))
+				{
+					if(edge != cut.first &&
+						!cut_values.count(edge) &&
+						(head_component.count(po::source(edge,graph)) &&
+						tail_component.count(po::target(edge,graph))))
+					{
+						if(!min_edge || slack(edge) < min_slack)
+						{
+							min_slack = slack(edge);
+							min_edge = edge;
+						}
+					}
+				}
+
+				if(min_edge)
+				{
+					if(head_component.count(po::source(*min_edge,graph)))
+						for(vx_desc n: tail_component)
+							lambda[n] -= min_slack/2;
+					else
+						for(vx_desc n: head_component)
+							lambda[n] += min_slack/2;
+				}
+			}
+		}
+	}
+
+
 	int length(typename po::digraph<N,std::pair<int,int>>::edge_descriptor e) const
 	{
 		return lambda.at(target(e,graph)) - lambda.at(source(e,graph));
