@@ -2,7 +2,7 @@
 
 #include "dot/rank.hh"
 #include "dot/order.hh"
-#include "dot/place.hh"
+//#include "dot/place.hh"
 
 #pragma once
 
@@ -10,26 +10,26 @@ namespace dot
 {
 	/// min-level, max-level, x order
 	template<typename N,typename E>
-	std::unordered_map<typename po::digraph<N,E>::vertex_descriptor,std::tuple<int,int,int>> layout(const po::digraph<N,E>& g)
+	std::unordered_map<typename po::digraph<N,E>::vertex_descriptor,std::pair<int,int>> layout(const po::digraph<N,E>& g)
 	{
 		using vx_desc = typename po::digraph<N,E>::vertex_descriptor;
 
 		if(num_vertices(g) == 0)
-			return std::unordered_map<typename po::digraph<N,E>::vertex_descriptor,std::tuple<int,int,int>>();
+			return std::unordered_map<typename po::digraph<N,E>::vertex_descriptor,std::pair<int,int>>();
 		else if(num_vertices(g) == 1)
-			return std::unordered_map<typename po::digraph<N,E>::vertex_descriptor,std::tuple<int,int,int>>({std::make_pair(*vertices(g).first,std::make_tuple(0,0,0))});
+			return std::unordered_map<typename po::digraph<N,E>::vertex_descriptor,std::pair<int,int>>({std::make_pair(*vertices(g).first,std::make_pair(0,0))});
 
 		std::unordered_map<vx_desc,std::pair<int,int>> ranks = rank(g);
-		std::unordered_map<vx_desc,int> ordering = order(ranks,g);
-		std::unordered_map<typename po::digraph<N,E>::vertex_descriptor,std::tuple<int,int,int>> ret;
+		//std::unordered_map<vx_desc,int> ordering = order(ranks,g);
+		std::unordered_map<typename po::digraph<N,E>::vertex_descriptor,std::pair<int,int>> ret;
 
 		for(auto vx: iters(vertices(g)))
-			ret.emplace(vx,std::make_tuple(ranks.at(vx).first,ranks.at(vx).second,ordering.at(vx)));
+			ret.emplace(vx,std::make_pair(ranks.at(vx).first,ranks.at(vx).second/*,0ordering.at(vx)*/));
 
 		return ret;
 	}
 
-	/// x pos
+	/* x pos
 	template<typename N,typename E>
 	std::unordered_map<typename po::digraph<N,E>::vertex_descriptor,int>
 	place(const std::unordered_map<typename po::digraph<N,E>::vertex_descriptor,std::tuple<int,int,int>>& layout, const std::unordered_map<typename po::digraph<N,E>::vertex_descriptor,int>& widths, int nodesep, const po::digraph<N,E>& g)
@@ -44,9 +44,14 @@ namespace dot
 		// solve x-coord
 		po::digraph<boost::optional<vx_desc>,std::pair<int,int>> aux = prepare_place_graph(layout,widths,nodesep,g);
 
+		*std::cerr << "digraph G {" << std::endl;
+		for(auto e: iters(edges(aux)))
+			std::cerr << po::source(e,aux).id << " -> " << po::target(e,aux).id << std::endl;
+		std::cerr << "}" << std::endl;*
+
 		net_flow<boost::optional<vx_desc>> layer_nf(aux);
 		layer_nf.solve(std::function<void(void)>([](void) {}));
-		layer_nf.make_symmetric();
+		//layer_nf.make_symmetric();
 
 		// move the nodes so that all x coordinates are >= 0
 		int x_correction = std::accumulate(layer_nf.lambda.begin(),layer_nf.lambda.end(),std::numeric_limits<int>::max(),[](int a, std::pair<typename decltype(aux)::vertex_descriptor,int> b)
@@ -58,10 +63,10 @@ namespace dot
 		{
 			auto v = get_vertex(_v,aux);
 			if(v)
-				ret.emplace(*v,layer_nf.lambda.at(_v) - x_correction);
+				ret.emplace(*v,layer_nf.lambda.at(_v) *- x_correction*);
 		}
 
-		/*int x_correction = std::numeric_limits<int>::max();
+		*int x_correction = std::numeric_limits<int>::max();
 	std::map<unsigned int,unsigned int> maxh;
 	typename traits::node_iterator i,iend;
 
@@ -89,8 +94,8 @@ namespace dot
 		{
 			typename traits::node_type n = m.node();
 			set_position(n,std::make_pair(ph3.lambda.at(n) - x_correction,maxh.at(ph1.lambda.at(n))),graph);
-		}*/
+		}*
 
 		return ret;
-	}
+	}*/
 }

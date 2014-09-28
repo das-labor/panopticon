@@ -5,6 +5,67 @@
 
 #pragma once
 
+template<typename N,typename E>
+std::pair<typename po::digraph<N,E>::vertex_descriptor,typename po::digraph<N,E>::vertex_descriptor>
+single_source_sink(N null_vx, E null_edge, po::digraph<N,E>& g)
+{
+	using vx_desc = typename po::digraph<N,E>::vertex_descriptor;
+
+	std::list<vx_desc> sources, sinks;
+
+	for(auto vx: iters(vertices(g)))
+	{
+		int o = out_degree(vx,g);
+		int i = in_degree(vx,g);
+
+		if(o == 0 && i > 0)
+			sinks.push_back(vx);
+		else if(o > 0 && i == 0)
+			sources.push_back(vx);
+	}
+
+	vx_desc source, sink;
+
+	// ensure single source node in h
+	if(sources.empty())
+	{
+		sources.push_back(*vertices(g).first);
+	}
+	if(sources.size() == 1)
+	{
+		source = sources.front();
+	}
+	else
+	{
+		source = insert_vertex(null_vx,g);
+		for(auto v: sources)
+		{
+			insert_edge(null_edge,source,v,g);
+		}
+	}
+
+	// ensure single sink node in h
+	if(sinks.size() == 0)
+	{
+		sink = *(vertices(g).first + 1);
+	}
+	else if(sinks.size() == 1)
+	{
+		sink = sinks.front();
+	}
+	else
+	{
+		sink = insert_vertex(null_vx,g);
+
+		for(auto v: sinks)
+		{
+			insert_edge(null_edge,v,sink,g);
+		}
+	}
+
+	return std::make_pair(source,sink);
+}
+
 template<typename N>
 struct net_flow
 {
@@ -31,10 +92,21 @@ struct net_flow
 			std::tie(tail_nodes,head_nodes) = partition(cut);
 
 			for(auto edge: iters(edges(graph)))
-				if(edge != cut && !cut_values.count(edge) && head_nodes.count(source(edge,graph)) && tail_nodes.count(target(edge,graph)) && (!min_edge || slack(edge) < min_edge->second))
+				if(edge != cut && !cut_values.count(edge) && head_nodes.count(source(edge,graph)) && tail_nodes.count(target(edge,graph)) && slack(edge) >= 0 && (!min_edge || slack(edge) < min_edge->second))
 					min_edge = std::make_pair(edge,slack(edge));
 
-			ensure(min_edge && min_edge->second >= 0);
+			if(!(min_edge && min_edge->second >= 0))
+			{
+				std::cerr << "digraph G {" << std::endl;
+				for(auto e: iters(edges(graph)))
+					std::cerr << po::source(e,graph).id << " -> " << target(e,graph).id << " [label=\"" << slack(e) << (min_edge && e == min_edge->first ? ", cut" : "") << "\"]" << std::endl;
+				for(auto v: iters(vertices(graph)))
+					std::cerr << v.id << " [label=\"" << v.id << " (" << lambda[v] << ")\"]" << std::endl;
+				std::cerr << "}" << std::endl;
+			}
+
+			ensure(min_edge);
+			ensure(min_edge->second >= 0);
 
 			// swap edges
 			swap_edges(cut,min_edge->first);
@@ -79,13 +151,6 @@ struct net_flow
 			leave_edge = std::find_if(cut_values.begin(),cut_values.end(),[&](const std::pair<edge_desc,int> &p)
 				{ return p.second < 0; });
 		}
-
-		/*std::cerr << "digraph G {" << std::endl;
-		for(auto e: iters(edges(graph)))
-			std::cerr << po::source(e,graph).id << " -> " << target(e,graph).id << std::endl;
-		for(auto v: iters(vertices(graph)))
-			std::cerr << v.id << " [label=\"" << v.id << " (" << lambda[v] << ")\"]" << std::endl;
-		std::cerr << "}" << std::endl;*/
 
 		bal();
 	}
@@ -155,12 +220,12 @@ struct net_flow
 			cut_values.clear();
 			tight_tree(lambda.begin()->first);
 
-			std::cerr << "digraph G {" << std::endl;
+			/*std::cerr << "digraph G {" << std::endl;
 			for(auto e: iters(edges(graph)))
 				std::cerr << source(e,graph).id << " -> " << target(e,graph).id << " [label\"delta = " << get_edge(e,graph).second << "\"]" << std::endl;
 			for(auto v: iters(vertices(graph)))
 				std::cerr << v.id << " [label=\"" << (lambda.count(v) ? lambda.at(v) : -1) << "\"]" << std::endl;
-			std::cerr << "}" << std::endl;
+			std::cerr << "}" << std::endl;*/
 
 			ensure(tree.size() <= num_vertices(graph));
 			if(tree.size() == num_vertices(graph))

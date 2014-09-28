@@ -1,14 +1,15 @@
 cmake_minimum_required(VERSION 2.8.11)
 project(PanopticonQt CXX)
 
-set(qtpanopticon_SOURCES src/dot/dot.cc
-	src/session.cc src/main.cc
+set(qtpanopticon_SOURCES src/session.cc src/main.cc
 	src/panopticon.cc src/sugiyama.cc)
 set(qtpanopticon_HEADERS
-	include/pen.hh include/panopticon.hh include/session.hh
 	include/dot/dot.hh include/dot/rank.hh include/dot/order.hh
-	include/dot/net_flow.hh ${CMAKE_CURRENT_BINARY_DIR}/config.hh
+	include/dot/net_flow.hh ${CMAKE_CURRENT_BINARY_DIR}/config.hh)
+set(qtpanopticon_HEADERS_QT
+	include/pen.hh include/panopticon.hh include/session.hh
 	include/sugiyama.hh)
+
 set(qtpanopticon_RESOURCES res/resources.qrc)
 
 string(TIMESTAMP qtpanopticon_BUILD_TIME "%Y-%m-%d %H:%M:%S UTC" UTC)
@@ -19,7 +20,7 @@ link_directories(${Boost_LIBRARY_DIRS} ${panopticon_LIBRARY_DIRS})
 
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
-qt5_wrap_cpp(qtpanopticon_HEADERS_MOC ${qtpanopticon_HEADERS})
+qt5_wrap_cpp(qtpanopticon_HEADERS_MOC ${qtpanopticon_HEADERS_QT})
 qt5_add_resources(qtpanopticon_RCCS ${qtpanopticon_RESOURCES})
 
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" OR
@@ -33,7 +34,7 @@ else()
 endif()
 
 add_executable(qtpanopticon ${qtpanopticon_SOURCES} ${qtpanopticon_HEADERS}
-	${qtpanopticon_HEADERS_MOC} ${qtpanopticon_RCCS})
+	${qtpanopticon_HEADERS_QT} ${qtpanopticon_HEADERS_MOC} ${qtpanopticon_RCCS})
 qt5_use_modules(qtpanopticon Widgets Quick Qml)
 target_link_libraries(qtpanopticon ${QT_LIBRARIES} ${panopticon_LIBRARIES})
 set_target_properties(qtpanopticon PROPERTIES VERSION

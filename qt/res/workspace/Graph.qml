@@ -25,7 +25,7 @@ Item {
 
 			property int lRank: lastRank
 			property int fRank: firstRank
-			property int ordNr: ordinal
+			property int centerX: computedX
 			property real hue: {
 				if(state == "prev") {
 					return .4
@@ -41,13 +41,11 @@ Item {
 			radius: 3
 			smooth: true
 			z: 2
-			x: computedX - width / 2
+			x: computedX - (bblock.width / 2)
 			/*{
-				var w = root.nodes.reduce(function(a,n,i,all) { if(n.fRank == firstRank) { return Math.max(a,n.width + 50) } else { return a } },0) + 50
-				return (root.childrenRect.width - w) / 2 + root.nodes.reduce(function(a,n,i,all) { if(n.fRank == firstRank && n.ordNr < ordinal) { return Math.max(a,n.width + 50) } else { return a } },0) + 50
+				var w = root.nodes.reduce(function(a,n,i,all) { if(n.fRank == firstRank) { return Math.max(a,n.centerX + n.width / 2) } else { return a } },0)
+				return (root.width / 2) - (w / 2) + computedX - (bblock.width / 2)
 			}*/
-
-
 			y: root.nodes.reduce(function(a,n,i,all) { if(n.lRank == firstRank - 1) { return Math.max(a,n.y + n.height) } else { return a } },0) + 50
 
 			property int bbid: modelData

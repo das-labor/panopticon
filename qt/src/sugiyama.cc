@@ -54,15 +54,15 @@ void Sugiyama::layout(void)
 		for(auto v: iters(po::vertices(graph())))
 			width.emplace(v,std::get<1>(get_vertex(v,graph()))->width());
 
-		auto xpos = dot::place(pos,width,300,graph());
+		auto xpos = dot::order(pos,width,100,graph());
 		//po::digraph<std::tuple<QVariant,QQuickItem*,QQmlContext*>,std::tuple<QVariant,QPainterPath,QQuickItem*,QQuickItem*>>& graph(void);
 
 		for(auto p: pos)
 		{
+			std::cout << p.first.id << " xpos: " << xpos.at(p.first) << std::endl;
 			auto vx = get_vertex(p.first,graph());
 			std::get<2>(vx)->setContextProperty("firstRank",QVariant(std::get<0>(p.second)));
 			std::get<2>(vx)->setContextProperty("lastRank",QVariant(std::get<1>(p.second)));
-			std::get<2>(vx)->setContextProperty("ordinal",QVariant(std::get<2>(p.second)));
 			std::get<2>(vx)->setContextProperty("computedX",QVariant(xpos.at(p.first)));
 		}
 
@@ -126,7 +126,6 @@ po::digraph<std::tuple<QVariant,QQuickItem*,QQmlContext*>,std::tuple<QVariant,QP
 				ctx->setContextProperty("outgoingEdges",QVariantList());
 				ctx->setContextProperty("firstRank",QVariant());
 				ctx->setContextProperty("lastRank",QVariant());
-				ctx->setContextProperty("ordinal",QVariant());
 				ctx->setContextProperty("computedX",QVariant());
 				itm = qobject_cast<QQuickItem*>(_delegate->create(ctx));
 				itm->setParentItem(this);
