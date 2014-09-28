@@ -176,16 +176,18 @@ Item {
 
 	Flickable {
 		id: flick
-		anchors.fill: parent
+		width: parent.width
+		height: parent.height
 		clip: true
-		contentWidth: sugiyama.width
-		contentHeight: sugiyama.height
+		contentWidth: Math.max(sugiyama.width,root.width * 2)
+		contentHeight: Math.max(sugiyama.height,root.height)
 
 		Sugiyama {
 			id: sugiyama
 
-			height: childrenRect.height
-			width: childrenRect.width
+			x: (childrenRect.width < root.width * 2 ? ((root.width - childrenRect.width) / 2) : 0)
+			width: Math.max(childrenRect.width,root.width * 2)
+			height: Math.max(childrenRect.height,root.height)
 			delegate: node
 
 			function rebuildEdges() {
