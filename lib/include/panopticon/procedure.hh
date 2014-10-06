@@ -60,7 +60,7 @@ namespace po
 
 		/// Create or extend a procedure by starting to disassemble using @arg main at offset @arg start in @arg tokens
 		template<typename Tag>
-		static proc_loc disassemble(boost::optional<proc_loc>, const disassembler<Tag>&, po::slab, offset);
+		static boost::optional<proc_loc> disassemble(boost::optional<proc_loc>, const disassembler<Tag>&, po::slab, offset);
 
 	private:
 		mutable boost::optional<std::vector<bblock_loc>> _rev_postorder;
@@ -103,13 +103,13 @@ namespace po
 	bblock_loc merge(bblock_loc up, bblock_loc down);
 
 	template<typename Tag>
-	proc_loc procedure::disassemble(boost::optional<proc_loc> proc, const disassembler<Tag> &main, po::slab data, offset start)
+	boost::optional<proc_loc> procedure::disassemble(boost::optional<proc_loc> proc, const disassembler<Tag> &main, po::slab data, offset start)
 	{
 		std::unordered_set<offset> todo;
 		std::map<offset,mnemonic> mnemonics;
 		std::unordered_multimap<offset,std::pair<boost::optional<offset>,guard>> source;
 		std::unordered_multimap<offset,std::pair<offset,guard>> destination;
-		proc_loc ret = /*(proc ? *proc : */proc_loc(new procedure("proc_noname"));//);
+		boost::optional<proc_loc> ret = proc;// ? *proc : proc_loc(new procedure("proc_noname"));//);
 		std::function<boost::optional<bound>(const boost::variant<rvalue,bblock_wloc>&)> get_off = [&](const boost::variant<rvalue,bblock_wloc>& v) -> boost::optional<bound>
 		{
 			if(boost::get<rvalue>(&v))
@@ -233,124 +233,132 @@ namespace po
 			}
 		}
 
-		// rebuild basic blocks
-		auto cur_mne = mnemonics.begin(), first_mne = cur_mne;
-		std::map<offset,bblock_loc> bblocks;
-		std::function<void(std::map<offset,mnemonic>::iterator,std::map<offset,mnemonic>::iterator)> make_bblock;
-		make_bblock = [&](std::map<offset,mnemonic>::iterator begin,std::map<offset,mnemonic>::iterator end)
+		if(!mnemonics.empty())
 		{
-			bblock_loc bb(new basic_block());
-
-			std::for_each(begin,end,[&](const std::pair<offset,mnemonic> &p)
-				{ bb.write().mnemonics().push_back(p.second); });
-
-			insert_vertex<boost::variant<bblock_loc,rvalue>,guard>(bb,ret.write().control_transfers);
-			ensure(bblocks.insert(std::make_pair(bb->area().upper() - 1,bb)).second);
-		};
-
-		while(cur_mne != mnemonics.end())
-		{
-			auto next_mne = std::next(cur_mne);
-			const mnemonic &mne = cur_mne->second;
-			auto sources = source.equal_range(mne.area.upper() - 1);
-			auto destinations = destination.equal_range(mne.area.upper());
-
-			if(next_mne != mnemonics.end() && boost::icl::size(mne.area))
+			if(!ret)
 			{
-				bool new_bb;
+				ret = proc_loc(new procedure("(unnamed proc)"));
+			}
 
-				// if next mnemonic isn't adjacent
-				new_bb = next_mne->first != mne.area.upper();
+			// rebuild basic blocks
+			auto cur_mne = mnemonics.begin(), first_mne = cur_mne;
+			std::map<offset,bblock_loc> bblocks;
+			std::function<void(std::map<offset,mnemonic>::iterator,std::map<offset,mnemonic>::iterator)> make_bblock;
+			make_bblock = [&](std::map<offset,mnemonic>::iterator begin,std::map<offset,mnemonic>::iterator end)
+			{
+				bblock_loc bb(new basic_block());
 
-				// or any following jumps aren't to adjacent mnemonics
-				new_bb |= std::any_of(sources.first,sources.second,[&](const std::pair<offset,std::pair<boost::optional<offset>,guard>> &p)
+				std::for_each(begin,end,[&](const std::pair<offset,mnemonic> &p)
+					{ bb.write().mnemonics().push_back(p.second); });
+
+				insert_vertex<boost::variant<bblock_loc,rvalue>,guard>(bb,ret->write().control_transfers);
+				ensure(bblocks.insert(std::make_pair(bb->area().upper() - 1,bb)).second);
+			};
+
+			while(cur_mne != mnemonics.end())
+			{
+				auto next_mne = std::next(cur_mne);
+				const mnemonic &mne = cur_mne->second;
+				auto sources = source.equal_range(mne.area.upper() - 1);
+				auto destinations = destination.equal_range(mne.area.upper());
+
+				if(next_mne != mnemonics.end() && boost::icl::size(mne.area))
 				{
-					return p.second.first && *p.second.first != mne.area.upper();
-				});
+					bool new_bb;
 
-				// or any jumps pointing to the next that aren't from here
-				new_bb |= std::any_of(destinations.first,destinations.second,[&](const std::pair<offset,std::pair<offset,guard>> &p)
-				{
-					return p.second.first != mne.area.upper() - 1;
-				});
+					// if next mnemonic isn't adjacent
+					new_bb = next_mne->first != mne.area.upper();
 
-				// construct a new basic block
-				if(new_bb)
-				{
-					make_bblock(first_mne,next_mne);
+					// or any following jumps aren't to adjacent mnemonics
+					new_bb |= std::any_of(sources.first,sources.second,[&](const std::pair<offset,std::pair<boost::optional<offset>,guard>> &p)
+					{
+						return p.second.first && *p.second.first != mne.area.upper();
+					});
 
-					first_mne = next_mne;
+					// or any jumps pointing to the next that aren't from here
+					new_bb |= std::any_of(destinations.first,destinations.second,[&](const std::pair<offset,std::pair<offset,guard>> &p)
+					{
+						return p.second.first != mne.area.upper() - 1;
+					});
+
+					// construct a new basic block
+					if(new_bb)
+					{
+						make_bblock(first_mne,next_mne);
+
+						first_mne = next_mne;
+					}
+					else
+					{
+						while(sources.first != sources.second)
+							source.erase(sources.first++);
+						while(destinations.first != destinations.second)
+							destination.erase(destinations.first++);
+					}
 				}
-				else
+
+				cur_mne = next_mne;
+			}
+
+			// last bblock
+			make_bblock(first_mne,cur_mne);
+
+			// connect basic blocks
+			for(const std::pair<offset,std::pair<boost::optional<offset>,guard>> &p: source)
+			{
+				if(p.second.first)
 				{
-					while(sources.first != sources.second)
-						source.erase(sources.first++);
-					while(destinations.first != destinations.second)
-						destination.erase(destinations.first++);
+					auto from = bblocks.find(p.first), to = bblocks.lower_bound(*p.second.first);
+
+					ensure(from != bblocks.end());
+					if(to != bblocks.end() && to->second->area().lower() == *p.second.first)
+						conditional_jump(*ret,from->second,to->second,p.second.second);
+					else
+						conditional_jump(*ret,from->second,po::constant(*p.second.first),p.second.second);
 				}
 			}
 
-			cur_mne = next_mne;
-		}
+			auto q = vertices((*ret)->control_transfers);
 
-		// last bblock
-		make_bblock(first_mne,cur_mne);
+			if(std::distance(q.first,q.second) == 1 &&
+				 get<bblock_loc>(&get_vertex(*q.first,(*ret)->control_transfers)) &&
+				 get<bblock_loc>(get_vertex(*q.first,(*ret)->control_transfers))->mnemonics().empty())
+				ret->write().control_transfers = digraph<boost::variant<bblock_loc,rvalue>,guard>();
 
-		// connect basic blocks
-		for(const std::pair<offset,std::pair<boost::optional<offset>,guard>> &p: source)
-		{
-			if(p.second.first)
+			q = vertices((*ret)->control_transfers);
+
+			// entry may have been split
+			if((proc && (*proc)->entry) || std::distance(q.first,q.second))
 			{
-				auto from = bblocks.find(p.first), to = bblocks.lower_bound(*p.second.first);
+				offset entry = proc && (*proc)->entry ? (*(*proc)->entry)->area().lower() : start;
+				auto i = bblocks.lower_bound(entry);
 
-				ensure(from != bblocks.end());
-				if(to != bblocks.end() && to->second->area().lower() == *p.second.first)
-					conditional_jump(ret,from->second,to->second,p.second.second);
+				if(i != bblocks.end() && i->second->area().lower() == entry)
+					ret->write().entry = i->second;
 				else
-					conditional_jump(ret,from->second,po::constant(*p.second.first),p.second.second);
+					ret->write().entry = bblocks.lower_bound(start)->second;
 			}
-		}
+			else if(!proc)
+			{
+				auto j = bblocks.lower_bound(start);
 
-		auto q = vertices(ret->control_transfers);
-
-		if(std::distance(q.first,q.second) == 1 &&
-			 get<bblock_loc>(&get_vertex(*q.first,ret->control_transfers)) &&
-			 get<bblock_loc>(get_vertex(*q.first,ret->control_transfers))->mnemonics().empty())
-			ret.write().control_transfers = digraph<boost::variant<bblock_loc,rvalue>,guard>();
-
-		q = vertices(ret->control_transfers);
-
-		// entry may have been split
-		if((proc && (*proc)->entry) || std::distance(q.first,q.second))
-		{
-			offset entry = proc && (*proc)->entry ? (*(*proc)->entry)->area().lower() : start;
-			auto i = bblocks.lower_bound(entry);
-
-			if(i != bblocks.end() && i->second->area().lower() == entry)
-				ret.write().entry = i->second;
+				ensure(j != bblocks.end());
+				ret->write().entry = j->second;
+			}
 			else
-				ret.write().entry = bblocks.lower_bound(start)->second;
+			{
+				ret->write().entry = boost::none;
+			}
+
+			ensure(!proc || !(*proc)->entry || (*ret)->entry);
+
+			q = vertices((*ret)->control_transfers);
+
+			if(!proc && std::distance(q.first,q.second) > 0)
+				ret->write().name = "proc_" + std::to_string((*(*ret)->entry)->area().lower());
+			else if(std::distance(q.first,q.second) > 0)
+				ret->write().name = "proc_(empty)";
 		}
-		else if(!proc)
-		{
-			auto j = bblocks.lower_bound(start);
-
-			ensure(j != bblocks.end());
-			ret.write().entry = j->second;
-		}
-		else
-		{
-			ret.write().entry = boost::none;
-		}
-
-		ensure(!proc || !(*proc)->entry || ret->entry);
-
-		q = vertices(ret->control_transfers);
-
-		if(!proc && std::distance(q.first,q.second) > 0)
-			ret.write().name = "proc_" + std::to_string((*ret->entry)->area().lower());
-		else if(std::distance(q.first,q.second) > 0)
-			ret.write().name = "proc_(empty)";
 
 		return ret;
 	}
