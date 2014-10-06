@@ -109,7 +109,7 @@ namespace po
 		std::map<offset,mnemonic> mnemonics;
 		std::unordered_multimap<offset,std::pair<boost::optional<offset>,guard>> source;
 		std::unordered_multimap<offset,std::pair<offset,guard>> destination;
-		boost::optional<proc_loc> ret = proc;// ? *proc : proc_loc(new procedure("proc_noname"));//);
+		boost::optional<proc_loc> ret = boost::none;
 		std::function<boost::optional<bound>(const boost::variant<rvalue,bblock_wloc>&)> get_off = [&](const boost::variant<rvalue,bblock_wloc>& v) -> boost::optional<bound>
 		{
 			if(boost::get<rvalue>(&v))

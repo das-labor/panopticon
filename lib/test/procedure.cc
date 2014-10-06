@@ -82,7 +82,9 @@ TEST(procedure,add_single)
 	}
 
 	disassembler_mockup mockup(states);
-	po::proc_loc proc = po::procedure::disassemble(0,mockup,slab(bytes.data(),bytes.size()),0);
+	boost::optional<po::proc_loc> maybe_proc = po::procedure::disassemble(0,mockup,slab(bytes.data(),bytes.size()),0);
+	ASSERT_TRUE(!!maybe_proc);
+	proc_loc proc = *maybe_proc;
 
 	ASSERT_EQ(proc->rev_postorder().size(), 1);
 
@@ -125,7 +127,9 @@ TEST(procedure,continuous)
 	add(5,"test5");
 
 	disassembler_mockup mockup(states);
-	po::proc_loc proc = po::procedure::disassemble(0,mockup,slab(bytes.data(),bytes.size()),0);
+	boost::optional<po::proc_loc> maybe_proc = po::procedure::disassemble(0,mockup,slab(bytes.data(),bytes.size()),0);
+	ASSERT_TRUE(!!maybe_proc);
+	proc_loc proc = *maybe_proc;
 
 	ASSERT_TRUE(!!proc->entry);
 	ASSERT_EQ(proc->rev_postorder().size(), 1);
@@ -184,7 +188,9 @@ TEST(procedure,branch)
 	add(2,"test2",1,boost::none);
 
 	disassembler_mockup mockup(states);
-	po::proc_loc proc = po::procedure::disassemble(boost::none,mockup,slab(bytes.data(),bytes.size()),0);
+	boost::optional<po::proc_loc> maybe_proc = po::procedure::disassemble(boost::none,mockup,slab(bytes.data(),bytes.size()),0);
+	ASSERT_TRUE(!!maybe_proc);
+	proc_loc proc = *maybe_proc;
 
 	ASSERT_TRUE(!!proc->entry);
 	ASSERT_EQ(proc->rev_postorder().size(), 3);
@@ -251,7 +257,9 @@ TEST(procedure,loop)
 	add(2,"test2",0);
 
 	disassembler_mockup mockup(states);
-	po::proc_loc proc = po::procedure::disassemble(0,mockup,slab(bytes.data(),bytes.size()),0);
+	boost::optional<po::proc_loc> maybe_proc = po::procedure::disassemble(0,mockup,slab(bytes.data(),bytes.size()),0);
+	ASSERT_TRUE(!!maybe_proc);
+	proc_loc proc = *maybe_proc;
 
 	ASSERT_EQ(proc->rev_postorder().size(), 1);
 
@@ -275,9 +283,8 @@ TEST(procedure,empty)
 	std::vector<typename po::architecture_traits<test_tag>::token_type> bytes({});
 	std::map<typename po::architecture_traits<test_tag>::token_type,po::sem_state<test_tag>> states;
 	disassembler_mockup mockup(states);
-	po::proc_loc proc = po::procedure::disassemble(0,mockup,slab(bytes.data(),bytes.size()),0);
-
-	ASSERT_EQ(proc->rev_postorder().size(), 0);
+	boost::optional<po::proc_loc> maybe_proc = po::procedure::disassemble(0,mockup,slab(bytes.data(),bytes.size()),0);
+	ASSERT_TRUE(!maybe_proc);
 }
 
 TEST(procedure,refine)
@@ -309,7 +316,9 @@ TEST(procedure,refine)
 	add(1,1,"test1",2);
 
 	disassembler_mockup mockup(states);
-	po::proc_loc proc = po::procedure::disassemble(0,mockup,slab(bytes.data(),bytes.size()),0);
+	boost::optional<po::proc_loc> maybe_proc = po::procedure::disassemble(0,mockup,slab(bytes.data(),bytes.size()),0);
+	ASSERT_TRUE(!!maybe_proc);
+	proc_loc proc = *maybe_proc;
 	boost::write_graphviz(std::cout,proc->control_transfers,proc_writer(proc));
 
 	// XXX: Disabled until functionality is needed
@@ -411,7 +420,10 @@ TEST(procedure,continue)
 	disassembler_mockup mockup(states);
 	ASSERT_TRUE(proc->entry);
 
-	proc = po::procedure::disassemble(proc,mockup,slab(bytes.data(),bytes.size()),40);
+	boost::optional<proc_loc> maybe_proc = po::procedure::disassemble(proc,mockup,slab(bytes.data(),bytes.size()),40);
+	ASSERT_TRUE(!!maybe_proc);
+
+	proc = *maybe_proc;
 
 	ASSERT_TRUE(proc->entry);
 	ASSERT_EQ(proc->rev_postorder().size(), 4);
@@ -524,7 +536,10 @@ TEST(procedure,entry_split)
 	add(2,"test2",1,boost::none);
 
 	disassembler_mockup mockup(states);
-	proc = po::procedure::disassemble(proc,mockup,slab(bytes.data(),bytes.size()),2);
+	boost::optional<proc_loc> maybe_proc = po::procedure::disassemble(proc,mockup,slab(bytes.data(),bytes.size()),2);
+	ASSERT_TRUE(!!maybe_proc);
+
+	proc = *maybe_proc;
 
 	ASSERT_EQ(proc->rev_postorder().size(), 2);
 
@@ -625,7 +640,9 @@ TEST(procedure,wide_token)
 		s.mnemonic(2,"C");
 	};
 
-	proc_loc proc = procedure::disassemble(boost::none, dec, buf, 0);
+	boost::optional<proc_loc> maybe_proc = procedure::disassemble(boost::none, dec, buf, 0);
+	ASSERT_TRUE(!!maybe_proc);
+	proc_loc proc = *maybe_proc;
 
 	EXPECT_EQ(num_vertices(proc->control_transfers), 3);
 	EXPECT_EQ(num_edges(proc->control_transfers), 2);
