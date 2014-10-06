@@ -47,3 +47,28 @@ TEST(program,marshal)
 	ASSERT_EQ(num_vertices(prog2->calls()), num_vertices(prog->calls()));
 	ASSERT_EQ(num_edges(prog2->calls()), num_edges(prog->calls()));
 }
+
+TEST(program,continue)
+{
+	FAIL();
+}
+
+TEST(program,disassemble)
+{
+	FAIL();
+}
+
+TEST(program,recursive)
+{
+	FAIL();
+}
+
+TEST(program,mutual_recursive)
+{
+	FAIL();
+}
+
+TEST(program,empty)
+{
+	FAIL();
+}
