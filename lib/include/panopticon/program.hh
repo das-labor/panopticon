@@ -162,26 +162,26 @@ namespace po
 						call(*ret,*new_proc,*maybe_proc);
 					}
 				}
-			}
 
-			// XXX: resolve calls to address in call graph
-			using ed_desc = typename decltype(program::_calls)::edge_descriptor;
-			std::list<ed_desc> to_resolv;
-			auto eds = po::edges((*ret)->calls());
+				// XXX: resolve calls to address in call graph
+				using ed_desc = typename decltype(program::_calls)::edge_descriptor;
+				std::list<ed_desc> to_resolv;
+				auto eds = po::edges((*ret)->calls());
 
-			std::copy_if(eds.first,eds.second,std::back_inserter(to_resolv),
-				[&](ed_desc e) { return boost::get<offset>(&get_vertex(po::target(e,(*ret)->calls()),(*ret)->calls())); });
+				std::copy_if(eds.first,eds.second,std::back_inserter(to_resolv),
+					[&](ed_desc e) { return boost::get<offset>(&get_vertex(po::target(e,(*ret)->calls()),(*ret)->calls())); });
 
-			for(auto e: to_resolv)
-			{
-				auto caller = boost::get<proc_loc>(get_vertex(po::source(e,(*ret)->calls()),(*ret)->calls()));
-				offset off = boost::get<offset>(get_vertex(po::target(e,(*ret)->calls()),(*ret)->calls()));
-				auto maybe_proc = find_procedure_by_entry(*ret,off);
-
-				if(maybe_proc)
+				for(auto e: to_resolv)
 				{
-					remove_edge(e,ret->write().calls());
-					call(*ret,caller,*maybe_proc);
+					auto caller = boost::get<proc_loc>(get_vertex(po::source(e,(*ret)->calls()),(*ret)->calls()));
+					offset off = boost::get<offset>(get_vertex(po::target(e,(*ret)->calls()),(*ret)->calls()));
+					auto maybe_proc = find_procedure_by_entry(*ret,off);
+
+					if(maybe_proc)
+					{
+						remove_edge(e,ret->write().calls());
+						call(*ret,caller,*maybe_proc);
+					}
 				}
 			}
 
