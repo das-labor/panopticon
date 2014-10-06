@@ -14,7 +14,6 @@ program::program(const string& r, const string &n)
 
 void program::insert(proc_loc p)
 {
-	std::cout << "insert: " << (unsigned long)&(*p) << std::endl;
 	insert_vertex(variant<proc_loc,symbol>(p),calls());
 }
 
@@ -150,7 +149,7 @@ void po::call(prog_loc p, proc_loc from, const symbol& to)
 	}
 }
 
-optional<proc_loc> po::find_procedure(prog_loc fg, offset a)
+optional<proc_loc> po::find_procedure_by_bblock(prog_loc fg, offset a)
 {
 	std::unordered_set<proc_loc>::const_iterator i = fg->procedures().begin();
 
@@ -163,10 +162,14 @@ optional<proc_loc> po::find_procedure(prog_loc fg, offset a)
 	return boost::none;
 }
 
-bool po::has_procedure(prog_loc flow, offset entry)
+optional<proc_loc> po::find_procedure_by_entry(prog_loc fg, offset a)
 {
-	return any_of(flow->procedures().begin(),flow->procedures().end(),[&](const proc_loc p)
-								{ return p->entry && icl::contains((*p->entry)->area(),entry); });
+	auto maybe_ret = find_procedure_by_bblock(fg,a);
+
+	if(maybe_ret && (*maybe_ret)->entry && (*(*maybe_ret)->entry)->area().lower() == a)
+		return maybe_ret;
+	else
+		return boost::none;
 }
 
 std::unordered_set<offset> po::collect_calls(proc_loc proc)

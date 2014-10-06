@@ -34,11 +34,11 @@ namespace po
 	void call(prog_loc p, proc_loc from, proc_loc to);
 	void call(prog_loc p, proc_loc from, const symbol& to);
 
-	/// @return true if the program @ref prog has a procedure with entry point @ref entry
-	bool has_procedure(prog_loc prog, offset entry);
-
 	/// @returns the procedure with entry point @ref entry
-	boost::optional<proc_loc> find_procedure(prog_loc prog, offset entry);
+	boost::optional<proc_loc> find_procedure_by_entry(prog_loc prog, offset entry);
+
+	/// @returns the procedure with a basic block covering @ref off
+	boost::optional<proc_loc> find_procedure_by_bblock(prog_loc prog, offset off);
 
 	/// looks for call instructions to find new procedures to disassemble
 	std::unordered_set<offset> collect_calls(proc_loc proc);
@@ -76,100 +76,15 @@ namespace po
 		std::string reg;
 
 		/**
-		 * Disassemble bytes from @ref tokens starting at @ref offset. The new opcodes
-		 * are inserted into a new procedure. If @ref prog is NULL a new proggaph
-		 * is allocated and returned, otherwise the new procedure is added to @ref prog.
+		 * Disassemble bytes from @ref tokens starting at @ref r. The new opcodes
+		 * are inserted into a new procedure. If @ref prog is NULL a new program
+		 * is allocated and returned, otherwise a new procedure is added to @ref prog.
 		 * All @c call instructions found while disassembling are followed. If the calls
 		 * point to new procedures these are disassembled too.
 		 * The @ref disass_sig is called for each procedure disassembled successfully.
 		 */
 		template<typename Tag>
-		static prog_loc disassemble(const disassembler<Tag> &main, po::slab data, const po::ref& r, boost::optional<prog_loc> prog = boost::none, disass_sig signal = disass_sig())
-		{
-			prog_loc ret = (prog ? *prog : prog_loc(new program(r.reg,"unnamed program")));
-			std::unordered_set<std::pair<offset,proc_loc>> call_targets;
-			proc_loc pp(new procedure("proc_noname"));
-
-			call_targets.insert(std::make_pair(r.off,pp));
-
-			while(!call_targets.empty())
-			{
-				auto h = call_targets.begin();
-				offset tgt;
-				tgt = h->first;
-				proc_loc proc = h->second;
-
-				call_targets.erase(call_targets.begin());
-
-				try
-				{
-					remove_vertex(find_node(boost::variant<proc_loc,std::string>(proc),ret.write().calls()),ret.write().calls());
-				}
-				catch(const std::out_of_range&)
-				{
-					;
-				}
-
-				if(has_procedure(ret,tgt))
-					continue;
-
-				//live_ptr live;
-
-				std::cout << "disassemble at " << tgt << std::endl;
-				proc_loc proc2 = procedure::disassemble(proc,main,data,tgt);
-
-				procedure &wp = proc2.write();
-
-				/*if(!wp.entry)
-					wp.entry = find_bblock(proc,tgt);*/
-
-				// compute dominance tree
-				//dom = dominance_tree(proc);
-
-				// compute liveness information
-				//live = po::liveness(proc);
-
-				// finish procedure
-				ret.write().insert(proc2);
-				//ret->dominance.insert(make_pair(proc,dom));
-				//ret->liveness.insert(make_pair(proc,live));
-				wp.name = "proc_" + std::to_string((*proc2->entry)->area().lower());
-
-				// insert call edges and new procedures to disassemble
-				for(offset a: collect_calls(proc2))
-				{
-					auto i = std::find_if(call_targets.begin(),call_targets.end(),[&](const std::pair<offset,proc_loc> &p) { return p.first == a; });
-
-					if(i == call_targets.end())
-					{
-						auto j = find_procedure(ret,a);
-						std::cout << "find " << a << " -> " << (j ? "yes" : "no") << std::endl;
-
-						if(!j)
-						{
-							proc_loc q(new procedure("proc_" + std::to_string(a)));
-
-							call_targets.insert(std::make_pair(a,q));
-							ret.write().insert(q);
-							call(ret,proc2,q);
-						}
-						else
-						{
-							call(ret,proc2,*j);
-						}
-					}
-					else
-					{
-						call(ret,proc2,i->second);
-					}
-				}
-
-				if(signal)
-					signal((*prog)->procedures().size(),call_targets.size());
-			}
-
-			return ret;
-		}
+		static boost::optional<prog_loc> disassemble(const disassembler<Tag> &main, po::slab data, const po::ref& r, boost::optional<prog_loc> prog = boost::none, disass_sig signal = disass_sig());
 
 	private:
 		mutable boost::optional<std::unordered_set<proc_loc>> _procedures;
@@ -184,4 +99,97 @@ namespace po
 
 	template<>
 	archive marshal(const program*, const uuid&);
+
+	template<typename Tag>
+	boost::optional<prog_loc> program::disassemble(const disassembler<Tag> &main, po::slab data, const po::ref& r, boost::optional<prog_loc> prog, disass_sig signal)
+	{
+		if(prog && (*prog)->reg != r.reg)
+			std::invalid_argument("programs can't span multiple regions. Program region: '" + (*prog)->reg + "', disassembly target: '" + r.reg + "'");
+
+		if(prog && find_procedure_by_bblock(*prog,r.off))
+			return prog;
+
+		boost::optional<prog_loc> ret = prog;
+		std::unordered_set<offset> worklist({r.off});
+
+		while(!worklist.empty())
+		{
+			offset tgt = *worklist.begin();
+			worklist.erase(worklist.begin());
+
+			if(ret && find_procedure_by_entry(*ret,tgt))
+				continue;
+
+			std::cout << "disassemble at " << tgt << std::endl;
+			boost::optional<proc_loc> new_proc = procedure::disassemble(boost::none,main,data,tgt);
+
+			if(new_proc)
+			{
+				procedure& wp = new_proc->write();
+
+				ensure(wp.entry);
+				ensure((*wp.entry)->area().lower() == tgt);
+
+				wp.name = "proc_" + std::to_string((*wp.entry)->area().lower());
+
+				// XXX: compute dominance tree
+				//dom = dominance_tree(proc);
+				//ret->dominance.insert(make_pair(proc,dom));
+
+				// XXX: compute liveness information
+				//live = po::liveness(proc);
+				//ret->liveness.insert(make_pair(proc,live));
+
+				// add to call graph
+				if(!ret)
+				{
+					ret = prog_loc(new program(r.reg));
+				}
+
+				ret->write().insert(*new_proc);
+
+				// insert call edges and new procedures to disassemble
+				for(offset a: collect_calls(*new_proc))
+				{
+					auto maybe_proc = find_procedure_by_entry(*ret,a);
+
+					if(!maybe_proc)
+					{
+						worklist.insert(a);
+					}
+					else
+					{
+						call(*ret,*new_proc,*maybe_proc);
+					}
+				}
+			}
+
+			// XXX: resolve calls to address in call graph
+			std::list<decltype(program::_calls)::edge_descriptor> to_resolv;
+			auto eds = po::edges((*ret)->calls());
+
+			std::copy_if(eds.first,eds.second,std::back_inserter(to_resolv),
+				[&](decltype(program::_calls)::edge_descriptor e) { return boost::get<offset>(&get_vertex(po::target(e,(*ret)->calls()),(*ret)->calls())); });
+
+			for(auto e: to_resolv)
+			{
+				auto caller = boost::get<proc_loc>(get_vertex(po::source(e,(*ret)->calls()),(*ret)->calls()));
+				offset off = boost::get<offset>(get_vertex(po::target(e,(*ret)->calls()),(*ret)->calls()));
+				auto maybe_proc = find_procedure_by_entry(*ret,off);
+
+				if(maybe_proc)
+				{
+					remove_edge(e,ret->write().calls());
+					call(*ret,caller,*maybe_proc);
+				}
+			}
+
+			if(signal)
+			{
+				signal((*prog)->procedures().size(),worklist.size());
+			}
+		}
+
+		return ret;
+	}
 }
