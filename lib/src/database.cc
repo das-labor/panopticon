@@ -148,15 +148,22 @@ session po::raw_avr(const std::string& path)
 	insert_vertex(reg,db.write().data);
 
 	po::slab sl = reg->read();
-	prog_loc p = avr::disassemble(boost::none,sl,po::ref{"base",0});
-	db.write().programs.insert(p);
+	boost::optional<prog_loc> p = avr::disassemble(boost::none,sl,po::ref{"base",0});
+
+	if(p)
+	{
+		db.write().programs.insert(*p);
+		std::cout << (*p)->procedures().size() << " procedures" << std::endl;
+
+		for(auto q: (*p)->procedures())
+			std::cout << q->name << "(" << (unsigned long)&(*q) << "): " << num_vertices(q->control_transfers) << " bblocks" << std::endl;
+	}
+	else
+	{
+		std::cout << "no procedures found!" << std::endl;
+	}
 
 	std::cout << "width: " << sl.size() << std::endl;
-
-	std::cout << p->procedures().size() << " procedures" << std::endl;
-	for(auto q: p->procedures())
-		std::cout << q->name << "(" << (unsigned long)&(*q) << "): " << num_vertices(q->control_transfers) << " bblocks" << std::endl;
-
 	return session{db,store};
 }
 

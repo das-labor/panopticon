@@ -63,7 +63,7 @@ const variable r0 = variable("r0",8), r1 = variable("r1",8), r2 = variable("r2",
 							 r31 = variable("r31",1), I = variable("I",1), T = variable("T",1), H = variable("H",1), S = variable("S",1), V = variable("V",1), N = variable("N",1), Z = variable("Z",1), C = variable("C",1);
 
 
-prog_loc po::avr::disassemble(boost::optional<prog_loc> prog, po::slab bytes, const po::ref& r)
+boost::optional<prog_loc> po::avr::disassemble(boost::optional<prog_loc> prog, po::slab bytes, const po::ref& r)
 {
 	disassembler<avr_tag> main;
 
