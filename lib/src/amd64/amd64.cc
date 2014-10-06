@@ -53,7 +53,7 @@ uint8_t po::width(std::string n, amd64_tag)
 		ensure(false);
 }
 
-prog_loc po::amd64::disassemble(boost::optional<prog_loc> prog, po::slab bytes, const po::ref& r)
+boost::optional<prog_loc> po::amd64::disassemble(boost::optional<prog_loc> prog, po::slab bytes, const po::ref& r)
 {
 	disassembler<amd64_tag> main;
 

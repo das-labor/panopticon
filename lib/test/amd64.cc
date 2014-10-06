@@ -8,7 +8,8 @@ TEST(amd64,simple)
 {
 	region_loc reg = region::wrap("ram",{0x00});
 	po::slab sl = reg->read();
-	prog_loc p = amd64::disassemble(boost::none,sl,po::ref{"ram",0});
+	boost::optional<prog_loc> maybe_proc = amd64::disassemble(boost::none,sl,po::ref{"ram",0});
 
-	ASSERT_EQ(p->procedures().size(), 1);
+	ASSERT_TRUE(!!maybe_proc);
+	ASSERT_EQ((*maybe_proc)->procedures().size(), 1);
 }

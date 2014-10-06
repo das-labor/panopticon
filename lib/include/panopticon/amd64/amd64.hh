@@ -37,6 +37,6 @@ namespace po
 		typedef std::function<void(sm &)> sem_action;
 		typedef code_generator<amd64_tag> cg;
 
-		prog_loc disassemble(boost::optional<prog_loc>, po::slab, const po::ref&);
+		boost::optional<prog_loc> disassemble(boost::optional<prog_loc>, po::slab, const po::ref&);
 	}
 }
