@@ -53,14 +53,35 @@ uint8_t po::width(std::string n, amd64_tag)
 		ensure(false);
 }
 
+namespace pls = std::placeholders;
+
 boost::optional<prog_loc> po::amd64::disassemble(boost::optional<prog_loc> prog, po::slab bytes, const po::ref& r)
 {
-	disassembler<amd64_tag> main;
+	disassembler<amd64_tag> main, opsize_prfix, rex_prfix,
+									imm8_a, imm16_a, imm32_a, imm64_a,
+									imm8_b, imm16_b, imm32_b, imm64_b,
+									imm8_c, imm16_c, imm32_c, imm64_c;
 
-	main | 0x37 = [](sm& st) {};
-	main | 0xd5 | "i@........" = [](sm& st) {};
-	main | 0xd4 | "i@........" = [](sm& st) {};
-	main | 0x3f = [](sm& st) {};
+	std::function<void(const std::string&,sm&)> simple = [&](const std::string& m,sm& st)
+	{
+		std::cerr << m << std::endl;
+		st.jump(st.address + st.tokens.size());
+	};
+
+	opsize_prfix | 0x66 = [](sm& st) { /*st.operand_size_prefix = true;*/ };
+	rex_prfix | 0x66 = [](sm& st) { /*st.operand_size_prefix = true;*/ };
+
+	// 32 bits only
+	main | 0x37 = std::bind(simple,"AAA",std::placeholders::_1);
+	main | 0xd5 | "i@........" = std::bind(simple,"AAD imm8",std::placeholders::_1);
+	main | 0xd4 | "i@........" = std::bind(simple,"AAM imm8",std::placeholders::_1);
+	main | 0x3f = std::bind(simple,"AAS",std::placeholders::_1);
+
+	// ADC
+	main						| 0x14 | imm8_a	= std::bind(simple,"ADC AL, imm8",pls::_1);
+	main | opsize_prfix	| 0x15 | imm16_a	= std::bind(simple,"ADC AX, imm16",pls::_1);
+	main						| 0x15 | imm32_a	= std::bind(simple,"ADC EAX, imm32",pls::_1);
+	main | rex_prfix		| 0x15 | imm64_a	= std::bind(simple,"ADC RAX, imm64",pls::_1);
 
 	return program::disassemble<amd64_tag>(main,bytes,r,prog);
 }

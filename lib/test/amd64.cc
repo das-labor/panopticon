@@ -6,10 +6,11 @@ using namespace po;
 
 TEST(amd64,simple)
 {
-	region_loc reg = region::wrap("ram",{0x00});
+	//region_loc reg = region::wrap("ram",{0x37,0xd5,0x0a,0xd5,0x33,0xd4,0x0a,0xd4,0x55,0x3f});
+	region_loc reg = region::wrap("ram",{0x14,0x06,0x66,0x83,0xd0,0x2c,0x15,0x20,0x02,0x00,0x00,0x48,0x15,0xba,0xfe,0xe7,0x03});
 	po::slab sl = reg->read();
 	boost::optional<prog_loc> maybe_proc = amd64::disassemble(boost::none,sl,po::ref{"ram",0});
 
 	ASSERT_TRUE(!!maybe_proc);
-	ASSERT_EQ((*maybe_proc)->procedures().size(), 1);
+	ASSERT_EQ((*maybe_proc)->procedures().size(), 6);
 }
