@@ -104,8 +104,6 @@ void Sugiyama::route(void)
 				}
 			}
 
-			std::cout << vis.size() << std::endl;
-
 			for(auto e: iters(po::edges(graph())))
 			{
 				auto from = po::source(e,graph());
@@ -120,13 +118,8 @@ void Sugiyama::route(void)
 				QSize from_sz(from_obj->width(),from_obj->height());
 				QSize to_sz(to_obj->width(),to_obj->height());
 
-				std::cout << "route " << from.id << " -> " << to.id << ": ";
-				auto route = astar(point{from,true,from_pos.x() + from_sz.width() / 2,from_pos.y() + from_sz.height() / 2},
-													 point{to,true,to_pos.x() + to_sz.width() / 2,to_pos.y() + to_sz.height() / 2},vis);
-
-				for(auto c: route)
-					std::cout << c.node.id << ", ";
-				std::cout << std::endl;
+				auto route = dijkstra(point{from,true,from_pos.x() + from_sz.width() / 2,from_pos.y() + from_sz.height() / 2},
+													 		point{to,true,to_pos.x() + to_sz.width() / 2,to_pos.y() + to_sz.height() / 2},vis);
 
 				QPainterPath pp = to_bezier(route);
 				auto p = get_edge(e,graph());
@@ -153,11 +146,9 @@ void Sugiyama::layout(void)
 			width.emplace(v,std::get<1>(get_vertex(v,graph()))->width());
 
 		auto xpos = dot::order(pos,width,100,graph());
-		//po::digraph<std::tuple<QVariant,QQuickItem*,QQmlContext*>,std::tuple<QVariant,QPainterPath,QQuickItem*,QQuickItem*>>& graph(void);
 
 		for(auto p: pos)
 		{
-			std::cout << p.first.id << " xpos: " << xpos.at(p.first) << std::endl;
 			auto vx = get_vertex(p.first,graph());
 			std::get<2>(vx)->setContextProperty("firstRank",QVariant(std::get<0>(p.second)));
 			std::get<2>(vx)->setContextProperty("lastRank",QVariant(std::get<1>(p.second)));
@@ -365,19 +356,12 @@ void Sugiyama::redoAttached(void)
 	}
 }
 
-std::list<point> Sugiyama::astar(point start, point goal, visgraph const& graph)
+std::list<point> Sugiyama::dijkstra(point start, point goal, visgraph const& graph)
 {
 	std::unordered_map<point,double> distance;
-	//std::unordered_map<visgraph::const_iterator,visgraph::const_iterator> path_ptr;
 	std::unordered_set<point> worklist;
-	//std::unordered_set<visgraph::const_iterator> closedlist;
 	std::unordered_map<point,point> came_from;
 	std::list<point> ret({goal});
-
-	/*coord from_pos = position(source(e,tag),tag), to_pos = position(sink(e,tag),tag);
-	std::pair<unsigned int,unsigned int> from_sz = dimensions(source(e,tag),tag), to_sz = dimensions(sink(e,tag),tag);
-	vis_node<T> start(std::make_pair(from_pos.first + from_sz.first / 2,from_pos.second + from_sz.second / 2),source(e,tag));
-	vis_node<T> finish(std::make_pair(to_pos.first + to_sz.first / 2,to_pos.second + to_sz.second / 2),sink(e,tag));*/
 
 	std::transform(graph.begin(),graph.end(),std::inserter(worklist,worklist.end()),[](const std::pair<point,point>& p) { return p.first; });
 	std::transform(graph.begin(),graph.end(),std::inserter(worklist,worklist.end()),[](const std::pair<point,point>& p) { return p.second; });
@@ -486,194 +470,6 @@ QPainterPath Sugiyama::to_bezier(const std::list<point> &segs)
 
 	return pp;
 }
-
-/*
-template<>
-std::pair<dot::graph_traits<SugiyamaInterface>::node_iterator,dot::graph_traits<SugiyamaInterface>::node_iterator> dot::nodes<SugiyamaInterface>(SugiyamaInterface t)
-{
-	return vertices((*t)->graph());
-}
-
-template<>
-std::pair<dot::graph_traits<SugiyamaInterface>::edge_iterator,dot::graph_traits<SugiyamaInterface>::edge_iterator> dot::edges<SugiyamaInterface>(SugiyamaInterface t)
-{
-	return edges((*t)->graph());
-}
-
-template<>
-std::pair<dot::graph_traits<SugiyamaInterface>::out_edge_iterator,dot::graph_traits<SugiyamaInterface>::out_edge_iterator>
-dot::out_edges<SugiyamaInterface>(dot::graph_traits<SugiyamaInterface>::node_type n, SugiyamaInterface t)
-{
-	return out_edges(n,(*t)->graph());
-}
-
-template<>
-dot::graph_traits<SugiyamaInterface>::node_type dot::source<SugiyamaInterface>(dot::graph_traits<SugiyamaInterface>::edge_type e, SugiyamaInterface t)
-{
-	return po::source(e,(*t)->graph());
-}
-
-template<>
-dot::graph_traits<SugiyamaInterface>::node_type dot::sink<SugiyamaInterface>(dot::graph_traits<SugiyamaInterface>::edge_type e, SugiyamaInterface t)
-{
-	return po::target(e,(*t)->graph());
-}
-
-template<>
-unsigned int dot::weight<SugiyamaInterface>(dot::graph_traits<SugiyamaInterface>::edge_type e, SugiyamaInterface)
-{
-	return 1;
-}
-
-template<>
-std::pair<unsigned int,unsigned int> dot::dimensions<SugiyamaInterface>(dot::graph_traits<SugiyamaInterface>::node_type n, SugiyamaInterface t)
-{
-	QQuickItem *q = get<1>(get_vertex(n,(*t)->graph()));
-	const QRectF &bb = q->boundingRect();
-	return std::make_pair(bb.width(),bb.height());
-}
-
-template<>
-bool dot::has_entry<SugiyamaInterface>(SugiyamaInterface g)
-{
-	return false;//g.root;
-}
-
-template<>
-dot::graph_traits<SugiyamaInterface>::node_type dot::entry<SugiyamaInterface>(SugiyamaInterface g)
-{
-	ensure(false);
-	return *po::vertices((*g)->graph()).first;
-}
-
-template<>
-void dot::set_position(dot::graph_traits<SugiyamaInterface>::node_type n, const dot::coord &pos, SugiyamaInterface t)
-{
-	QQuickItem *q = get<1>(get_vertex(n,(*t)->graph()));
-	q->setX(pos.first - q->width() / 2);
-	q->setY(pos.second - q->height() / 2);
-}
-
-template<>
-dot::coord dot::position(dot::graph_traits<SugiyamaInterface>::node_type n, SugiyamaInterface t)
-{
-	QQuickItem *q = get<1>(get_vertex(n,(*t)->graph()));
-	QPointF ptn(QPointF(q->x(),q->y()));
-	return std::make_pair(ptn.x(),ptn.y());
-}
-
-template<>
-void dot::set_segments(dot::graph_traits<SugiyamaInterface>::edge_type e, const std::list<dot::coord> &segs, SugiyamaInterface graph)
-{
-	QPainterPath pp;
-
-	// draw segments with bezier curves
-	if(segs.size() > 2)
-	{
-		std::list<qreal> angles;
-		auto d = std::next(segs.begin());
-		QPointF f1(segs.front().first,segs.front().second);
-		QPointF f2(std::next(segs.begin())->first,std::next(segs.begin())->second);
-
-		angles.push_back(QLineF(f1,f2).angle());
-		while(d != std::prev(segs.end()))
-		{
-			QPointF a(std::prev(d)->first,std::prev(d)->second);
-			QPointF b(d->first,d->second);
-			QPointF c(std::next(d)->first,std::next(d)->second);
-
-			QLineF ln(a,b);
-			angles.push_back(ln.angle() + ln.angleTo(QLineF(b,c)) / 2.0);
-			++d;
-		}
-
-		QPointF x(std::prev(segs.end(),2)->first,std::prev(segs.end(),2)->second);
-		QPointF y(std::prev(segs.end())->first,std::prev(segs.end())->second);
-		angles.push_back(QLineF(x,y).angle());
-
-		ensure(angles.size() == segs.size());
-
-		size_t idx = 0;
-		while(idx < segs.size() - 1)
-		{
-			QPointF ptn1(std::next(segs.begin(),idx)->first,std::next(segs.begin(),idx)->second);
-			qreal alpha1 = *std::next(angles.begin(),idx);
-
-			QPointF ptn2(std::next(segs.begin(),idx + 1)->first,std::next(segs.begin(),idx + 1)->second);
-			qreal alpha2 = *std::next(angles.begin(),idx + 1);
-
-			qreal omega = std::min(QLineF(ptn1,ptn2).length() / 5.0,100.0);
-			QPointF c1(QLineF::fromPolar(omega,alpha2).translated(ptn2).p2()), c2(QLineF::fromPolar(omega,alpha2 - 180.0).translated(ptn2).p2());
-			QPointF e1(QLineF::fromPolar(omega,alpha1).translated(ptn1).p2()), e2(QLineF::fromPolar(omega,alpha1 - 180.0).translated(ptn1).p2());
-			QPointF a,b;
-
-			if(QLineF(ptn1,c1).length() > QLineF(ptn1,c2).length())
-				b = c2;
-			else
-				b = c1;
-
-			if(QLineF(ptn2,e1).length() > QLineF(ptn2,e2).length())
-				a = e2;
-			else
-				a = e1;
-
-			pp.moveTo(ptn1);
-			pp.cubicTo(a,b,ptn2);
-			++idx;
-		}
-	}
-	else if(segs.size() == 2)
-	{
-		QPointF p1(segs.front().first,segs.front().second), p2(segs.back().first,segs.back().second);
-
-		pp.moveTo(p1);
-		pp.lineTo(p2);
-	}
-
-	auto p = get_edge(e,(*graph)->graph());
-	auto from = get_vertex(source(e,(*graph)->graph()),(*graph)->graph());
-	auto to = get_vertex(target(e,(*graph)->graph()),(*graph)->graph());
-
-	get<1>(get_edge(e,(*graph)->graph())) = pp;
-
-	(*graph)->positionEnds(get<0>(p).value<QObject*>(),get<2>(p),get<3>(p),get<1>(from),get<1>(to),pp);
-	(*graph)->update();
-}
-
-template<>
-bool dot::is_free(const dot::vis_node<SugiyamaInterface> &a, const dot::vis_node<SugiyamaInterface> &b, SugiyamaInterface graph)
-{
-	QList<QQuickItem*> items = (*graph)->childItems();
-
-	if(a.node.is_node())
-		items.removeAll(get<1>(get_vertex(a.node.node(),(*graph)->graph())));
-	if(b.node.is_node())
-		items.removeAll(get<1>(get_vertex(b.node.node(),(*graph)->graph())));
-
-	// collision?
-	QLineF l(QPointF(a.position.first,a.position.second),QPointF(b.position.first,b.position.second));
-	QListIterator<QQuickItem*> iter(items);
-
-	while(iter.hasNext())
-	{
-		QQuickItem *i = iter.next();
-		QPointF pos(i->x(),i->y());
-		QRectF bb(pos,QSizeF(i->width(),i->height()));
-		auto p = vertices((*graph)->graph());
-		auto j = std::find_if(p.first,p.second,[&](dot::graph_traits<SugiyamaInterface>::node_type n) { return get<1>(get_vertex(n,(*graph)->graph())) == i; });
-		QPointF c;
-
-		if(j != p.second && (
-			 l.intersect(QLineF(bb.topLeft(),bb.topRight()),&c) == QLineF::BoundedIntersection ||
-			 l.intersect(QLineF(bb.topRight(),bb.bottomRight()),&c) == QLineF::BoundedIntersection ||
-			 l.intersect(QLineF(bb.bottomRight(),bb.bottomLeft()),&c) == QLineF::BoundedIntersection ||
-			 l.intersect(QLineF(bb.bottomLeft(),bb.topLeft()),&c) == QLineF::BoundedIntersection))
-		{
-			return false;
-		}
-	}
-	return true;
-}*/
 
 void Sugiyama::positionEnds(QObject* itm, QQuickItem* head, QQuickItem* tail, QQuickItem* from, QQuickItem* to, const QPainterPath& path)
 {

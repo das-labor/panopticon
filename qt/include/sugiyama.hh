@@ -110,6 +110,6 @@ private:
 
 	void clear(void);
 
-	static std::list<point> astar(point start, point goal, visgraph const& graph);
+	static std::list<point> dijkstra(point start, point goal, visgraph const& graph);
 	static QPainterPath to_bezier(const std::list<point> &segs);
 };
