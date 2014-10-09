@@ -14,8 +14,29 @@
 
 #pragma once
 
+namespace
+{
+	struct point
+	{
+		bool operator==(point const& p) const { return p.node == node && p.x == x && p.y == y && is_center == p.is_center; }
+		bool operator!=(point const& p) const { return !(p == *this); }
+		po::digraph<std::tuple<QVariant,QQuickItem*,QQmlContext*>,std::tuple<QVariant,QPainterPath,QQuickItem*,QQuickItem*>>::vertex_descriptor node;
+		bool is_center;
+		int x, y;
+	};
+}
+
 namespace std
 {
+	template<>
+	struct hash<point>
+	{
+		size_t operator()(struct point const& p) const
+		{
+			return po::hash_struct<int,int,int>(p.node.id,p.x,p.y);
+		}
+	};
+
 	template<>
 	struct hash<std::tuple<QVariant,QQuickItem*,QQmlContext*>>
 	{
@@ -36,6 +57,8 @@ class Sugiyama : public QQuickPaintedItem
 	Q_PROPERTY(QVariantList edges READ edges WRITE setEdges NOTIFY edgesChanged)
 	Q_PROPERTY(bool direct READ direct WRITE setDirect NOTIFY directChanged)
 
+	using itmgraph = po::digraph<std::tuple<QVariant,QQuickItem*,QQmlContext*>,std::tuple<QVariant,QPainterPath,QQuickItem*,QQuickItem*>>;
+
 public:
 	Sugiyama(QQuickItem *parent = 0);
 	virtual ~Sugiyama(void);
@@ -50,7 +73,7 @@ public:
 	void setEdges(QVariantList l) { _edges = l; clear(); emit edgesChanged(); redoAttached(); layout(); route(); }
 	void setDirect(bool b) { _direct = b; emit directChanged(); route(); }
 
-	po::digraph<std::tuple<QVariant,QQuickItem*,QQmlContext*>,std::tuple<QVariant,QPainterPath,QQuickItem*,QQuickItem*>>& graph(void);
+	itmgraph& graph(void);
 
 	virtual void paint(QPainter *) override;
 	void positionEnds(QObject* itm, QQuickItem* head, QQuickItem *tail, QQuickItem* from, QQuickItem* to, const QPainterPath& path);
@@ -75,12 +98,18 @@ signals:
 	void routingDone(void);
 
 private:
-	mutable boost::optional<po::digraph<std::tuple<QVariant,QQuickItem*,QQmlContext*>,std::tuple<QVariant,QPainterPath,QQuickItem*,QQuickItem*>>> _graph;
+	using visgraph = std::unordered_multimap<point,point>;
+
+	mutable boost::optional<itmgraph> _graph;
 	QQmlComponent* _delegate;
 	QVariantList _vertices;
 	QVariantList _edges;
 	bool _direct;
 	QSignalMapper _mapper;
+	std::list<QLine> _visgraph;
 
 	void clear(void);
+
+	static std::list<point> astar(point start, point goal, visgraph const& graph);
+	static QPainterPath to_bezier(const std::list<point> &segs);
 };

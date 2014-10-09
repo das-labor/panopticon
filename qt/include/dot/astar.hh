@@ -1,18 +1,31 @@
-#ifndef ASTAR_HH
-#define ASTAR_HH
-
 #include <unordered_map>
 #include <unordered_set>
 #include <list>
 #include <functional>
 #include <algorithm>
 
-#include "dot/dot.hh"
-#include "dot/traits.hh"
-#include "dot/adaptor.hh"
+#include <panopticon/hash.hh>
+
+#pragma once
+
+struct point { int x, y; };
+
+namespace std
+{
+	template<>
+	struct hash
+	{
+		size_t operator()(struct point const& p) const
+		{
+			return hash_struct<int,int>(p.x,p.y);
+		}
+	};
+}
+
+using visgraph = std::unordered_multimap<point,point>;
 
 template<typename T>
-std::unordered_set<dot::vis_node<T>> dot::successors(dot::vis_node<T> cur, typename graph_traits<T>::edge_type e, const std::unordered_multimap<vis_node<T>,vis_node<T>> &vg, T graph)
+std::unordered_set<dot::vis_node<T>> dot::successors(visgraph::const_iterator a, typename graph_traits<T>::edge_type e, const std::unordered_multimap<vis_node<T>,vis_node<T>> &vg, T graph)
 {
 	auto p = vg.equal_range(cur);
 	std::unordered_set<vis_node<T>> ret;
@@ -86,6 +99,7 @@ std::unordered_multimap<dot::vis_node<T>,dot::vis_node<T>> dot::visibility_graph
 template<typename T>
 	void dot::expand(dot::vis_node<T> cur,std::unordered_map<dot::vis_node<T>,unsigned int> &path_cost, std::unordered_map<vis_node<T>,vis_node<T>> &path_ptr, std::map<unsigned int,dot::vis_node<T>> &openlist, const std::unordered_set<dot::vis_node<T>> &closedlist, typename graph_traits<T>::edge_type e, const std::unordered_multimap<vis_node<T>,vis_node<T>> &vg, T tag)
 {
+
 	for(vis_node<T> succ: successors(cur,e,vg,tag))
 	{
 		if(closedlist.count(succ))
@@ -111,23 +125,39 @@ template<typename T>
 	}
 }
 
-template<typename T>
-std::list<dot::vis_node<T>> dot::route(typename graph_traits<T>::edge_type e, const std::unordered_multimap<vis_node<T>,vis_node<T>> &vg, T tag)
+std::list<visgraph::const_iterator> dot::astar(visgraph::const_iterator start, visgraph::const_iterator goal, visgraph const& graph)
 {
-	std::unordered_map<vis_node<T>,unsigned int> path_cost;
-	std::unordered_map<vis_node<T>,vis_node<T>> path_ptr;
-	std::map<unsigned int,vis_node<T>> openlist;
-	std::unordered_set<vis_node<T>> closedlist;
-	std::list<vis_node<T>> ret;
-	coord from_pos = position(source(e,tag),tag), to_pos = position(sink(e,tag),tag);
+	ensure(graph.count(start) && graph.count(goal));
+
+	//std::unordered_map<visgraph::const_iterator,unsigned int> path_cost({std::make_pair(start,0)});
+	//std::unordered_map<visgraph::const_iterator,visgraph::const_iterator> path_ptr;
+	std::set<visgraph::const_iterator> visited, worklist({start});
+	//std::unordered_set<visgraph::const_iterator> closedlist;
+	//std::map<visgraph::const_iterator,visgraph::const_iterator> came_from;
+	std::list<visgraph::const_iterator> ret;
+
+	/*coord from_pos = position(source(e,tag),tag), to_pos = position(sink(e,tag),tag);
 	std::pair<unsigned int,unsigned int> from_sz = dimensions(source(e,tag),tag), to_sz = dimensions(sink(e,tag),tag);
 	vis_node<T> start(std::make_pair(from_pos.first + from_sz.first / 2,from_pos.second + from_sz.second / 2),source(e,tag));
-	vis_node<T> finish(std::make_pair(to_pos.first + to_sz.first / 2,to_pos.second + to_sz.second / 2),sink(e,tag));
+	vis_node<T> finish(std::make_pair(to_pos.first + to_sz.first / 2,to_pos.second + to_sz.second / 2),sink(e,tag));*/
 
-	ensure(vg.count(start) && vg.count(finish));
-	openlist.insert(std::make_pair(0,start));
-	path_cost.insert(std::make_pair(start,0));
+	while(!worklist.empty())
+	{
+		auto it = worklist.begin();
+		auto vx = *it;
 
+		worklist.erase(it);
+
+		for(auto neight: iters(graph.equal_range(vx)))
+		{
+			if(neight != vx && !visited.count(neight))
+			{
+				worklist.emplace(neight);
+			}
+		}
+	}
+
+/*
 	do
 	{
 		vis_node<T> cur = openlist.begin()->second;
@@ -149,27 +179,9 @@ std::list<dot::vis_node<T>> dot::route(typename graph_traits<T>::edge_type e, co
 		closedlist.insert(cur);
 		expand(cur,path_cost,path_ptr,openlist,closedlist,e,vg,tag);
 	}
-	while(openlist.size());
+	while(openlist.size());*/
 
 	return ret;
-}
-
-template<typename T>
-void dot::astar(T graph)
-{
-	auto p = edges(graph);
-	auto vg = visibility_graph(graph);
-
-	std::for_each(p.first,p.second,[&](const typename graph_traits<T>::edge_type &e)
-	{
-		std::list<dot::coord> segs;
-		std::list<vis_node<T>> path = route(e,vg,graph);
-
-		std::transform(path.begin(),path.end(),std::inserter(segs,segs.end()),[&](const vis_node<T> &vn)
-			{ return vn.position; });
-
-		set_segments(e,segs,graph);
-	});
 }
 
 #endif
