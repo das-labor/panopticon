@@ -1,11 +1,22 @@
-#include "sugiyama.hh"
+#include <QtConcurrentRun>
 
+#include "sugiyama.hh"
 #include "dot/dot.hh"
 
 Sugiyama::Sugiyama(QQuickItem *parent)
-: QQuickPaintedItem(parent), _graph(), _delegate(nullptr), _vertices(), _edges(), _direct(false), _mapper()
+: QQuickPaintedItem(parent),
+	_delegate(nullptr), _vertices(), _edges(), _direct(false),
+	_graph(), _mapper(), _layoutWatcher(), _routeWatcher()
 {
 	connect(&_mapper,SIGNAL(mapped(QObject*)),this,SLOT(updateEdge(QObject*)));
+	connect(&_layoutWatcher,
+					SIGNAL(finished()),
+					this,
+					SLOT(processLayout()));
+	connect(&_routeWatcher,
+					SIGNAL(finished()),
+					this,
+					SLOT(processRoute()));
 }
 
 Sugiyama::~Sugiyama(void)
@@ -20,117 +31,38 @@ void Sugiyama::route(void)
 	{
 		if(direct())
 		{
+			std::cout << "route direct" << std::endl;
+
 			for(auto e: iters(po::edges(graph())))
 			{
 				auto from = po::source(e,graph()), to = po::target(e,graph());
 				auto from_obj = std::get<1>(get_vertex(from,graph())), to_obj = std::get<1>(get_vertex(to,graph()));
 
-				QPainterPath pp = to_bezier({
+				QPainterPath pp = toBezier({
 					point{from,true,static_cast<int>(from_obj->x() + from_obj->width( )/ 2),
 										 static_cast<int>(from_obj->y() + from_obj->height() / 2)},
 					point{to,true,static_cast<int>(to_obj->x() + to_obj->width() / 2),
 									 static_cast<int>(to_obj->y() + to_obj->height() / 2)}});
 
 				std::get<1>(get_edge(e,graph())) = pp;
+				update();
+				emit routingDone();
 			}
 		}
 		else
 		{
-			std::unordered_set<point> points;
+			_routeWatcher.cancel();
 
-			for(auto desc: iters(po::vertices(graph())))
+			std::unordered_map<itmgraph::vertex_descriptor,QRect> bbs;
+			for(auto _vx: iters(po::vertices(graph())))
 			{
-				auto vx = get_vertex(desc,graph());
-				QPoint pos(std::get<1>(vx)->x(),std::get<1>(vx)->y());
-				QSize sz(std::get<1>(vx)->width(),std::get<1>(vx)->height());
-				const int delta = 3;
-
-				points.insert(point{desc,true,pos.x() + sz.width() / 2,pos.y() + sz.height() / 2});
-				points.insert(point{desc,false,pos.x() - delta,pos.y() - delta});
-				points.insert(point{desc,false,pos.x() - delta,pos.y() + sz.height() + delta});
-				points.insert(point{desc,false,pos.x() + sz.width() + delta,pos.y() - delta});
-				points.insert(point{desc,false,pos.x() + sz.width() + delta,pos.y() + sz.height() + delta});
+				auto vx = std::get<1>(get_vertex(_vx,graph()));
+				bbs.emplace(_vx,QRect(vx->x(),vx->y(),vx->width(),vx->height()));
 			}
 
-			visgraph vis;
-			_visgraph.clear();
-
-			// find edges
-			for(auto from: points)
-			{
-				for(auto to: points)
-				{
-					if(from != to)
-					{
-						QPoint from_pos(from.x,from.y);
-						QPoint to_pos(to.x,to.y);
-						auto from_obj = std::get<1>(get_vertex(from.node,graph()));
-						auto to_obj = std::get<1>(get_vertex(to.node,graph()));
-						QRect from_bb(from_obj->x(),from_obj->y(),from_obj->width(),from_obj->height());
-						QRect to_bb(to_obj->x(),to_obj->y(),to_obj->width(),to_obj->height());
-
-						if(from.is_center == to.is_center || from.node != to.node)
-						{
-							bool add = true;
-							QLineF l(from_pos,to_pos);
-
-							for(auto _wx: iters(po::vertices(graph())))
-							{
-								auto wx = std::get<1>(get_vertex(_wx,graph()));
-								QPointF pos(wx->x(),wx->y());
-								QRectF bb(pos,QSizeF(wx->width(),wx->height()));
-								QPointF c;
-
-								if(!(from.is_center && from_obj == wx) &&
-									 !(to.is_center && to_obj == wx) &&
-									 (l.intersect(QLineF(bb.topLeft(),bb.topRight()),&c) == QLineF::BoundedIntersection ||
-									  l.intersect(QLineF(bb.topRight(),bb.bottomRight()),&c) == QLineF::BoundedIntersection ||
-									  l.intersect(QLineF(bb.bottomRight(),bb.bottomLeft()),&c) == QLineF::BoundedIntersection ||
-									  l.intersect(QLineF(bb.bottomLeft(),bb.topLeft()),&c) == QLineF::BoundedIntersection))
-								{
-									add = false;
-									break;
-								}
-							}
-
-							if(add)
-							{
-								vis.emplace(from,to);
-								vis.emplace(to,from);
-								_visgraph.push_back(QLine(from.x,from.y,to.x,to.y));
-							}
-						}
-					}
-				}
-			}
-
-			for(auto e: iters(po::edges(graph())))
-			{
-				auto from = po::source(e,graph());
-				auto to = po::target(e,graph());
-
-				auto from_obj = std::get<1>(get_vertex(from,graph()));
-				auto to_obj = std::get<1>(get_vertex(to,graph()));
-
-				QPoint from_pos(from_obj->x(),from_obj->y());
-				QPoint to_pos(to_obj->x(),to_obj->y());
-
-				QSize from_sz(from_obj->width(),from_obj->height());
-				QSize to_sz(to_obj->width(),to_obj->height());
-
-				auto route = dijkstra(point{from,true,from_pos.x() + from_sz.width() / 2,from_pos.y() + from_sz.height() / 2},
-													 		point{to,true,to_pos.x() + to_sz.width() / 2,to_pos.y() + to_sz.height() / 2},vis);
-
-				QPainterPath pp = to_bezier(route);
-				auto p = get_edge(e,graph());
-				std::get<1>(get_edge(e,graph())) = pp;
-				positionEnds(std::get<0>(p).value<QObject*>(),get<2>(p),get<3>(p),from_obj,to_obj,pp);
-			}
+			itmgraph g = graph();
+			//_routeWatcher.setFuture(QtConcurrent::run(std::bind(doRoute,g,bbs)));
 		}
-
-		update();
-
-		//emit routingDone();
 	}
 }
 
@@ -139,24 +71,44 @@ void Sugiyama::layout(void)
 	if(po::num_edges(graph()))
 	{
 		emit layoutStart();
-		auto pos = dot::layout(graph());
-		std::unordered_map<decltype(_graph)::value_type::vertex_descriptor,int> width;
+		_layoutWatcher.cancel();
 
-		for(auto v: iters(po::vertices(graph())))
-			width.emplace(v,std::get<1>(get_vertex(v,graph()))->width());
+		std::unordered_map<itmgraph::vertex_descriptor,int> widths;
+		for(auto vx: iters(po::vertices(graph())))
+			widths.emplace(vx,std::get<1>(get_vertex(vx,graph()))->width());
 
-		auto xpos = dot::order(pos,width,100,graph());
-
-		for(auto p: pos)
-		{
-			auto vx = get_vertex(p.first,graph());
-			std::get<2>(vx)->setContextProperty("firstRank",QVariant(std::get<0>(p.second)));
-			std::get<2>(vx)->setContextProperty("lastRank",QVariant(std::get<1>(p.second)));
-			std::get<2>(vx)->setContextProperty("computedX",QVariant(xpos.at(p.first)));
-		}
-
-		emit layoutDone();
+		itmgraph g = graph();
+		_layoutWatcher.setFuture(QtConcurrent::run(std::bind(doLayout,g,100,widths)));
 	}
+}
+
+void Sugiyama::processLayout(void)
+{
+	for(auto p: _layoutWatcher.future().result())
+	{
+		auto vx = get_vertex(p.first,graph());
+		std::get<2>(vx)->setContextProperty("firstRank",QVariant(std::get<0>(p.second)));
+		std::get<2>(vx)->setContextProperty("lastRank",QVariant(std::get<1>(p.second)));
+		std::get<2>(vx)->setContextProperty("computedX",QVariant(std::get<2>(p.second)));
+
+		std::cout << std::get<2>(vx) << std::endl;
+	}
+
+	emit layoutDone();
+	update();
+	route();
+}
+
+void Sugiyama::processRoute(void)
+{
+	std::unordered_map<itmgraph::edge_descriptor,QPainterPath> r = _routeWatcher.future().result();
+	for(auto e: iters(po::edges(graph())))
+	{
+		auto edge = get_edge(e,graph());
+		std::get<1>(edge) = r.at(e);
+	}
+
+	emit routingDone();
 }
 
 void Sugiyama::clear(void)
@@ -314,12 +266,6 @@ void Sugiyama::paint(QPainter *p)
 		p->drawPath(get<1>(t));
 	}
 
-	QPen pen(QBrush(QColor("red")),1);
-	p->setPen(pen);
-
-	/*for(auto q: _visgraph)
-		p->drawLine(q);*/
-
 	p->restore();
 }
 
@@ -356,121 +302,6 @@ void Sugiyama::redoAttached(void)
 	}
 }
 
-std::list<point> Sugiyama::dijkstra(point start, point goal, visgraph const& graph)
-{
-	std::unordered_map<point,double> distance;
-	std::unordered_set<point> worklist;
-	std::unordered_map<point,point> came_from;
-	std::list<point> ret({goal});
-
-	std::transform(graph.begin(),graph.end(),std::inserter(worklist,worklist.end()),[](const std::pair<point,point>& p) { return p.first; });
-	std::transform(graph.begin(),graph.end(),std::inserter(worklist,worklist.end()),[](const std::pair<point,point>& p) { return p.second; });
-	distance.insert(std::make_pair(start,0));
-
-	for(auto w: worklist)
-		distance.insert(std::make_pair(w,std::numeric_limits<double>::infinity()));
-
-	while(!worklist.empty())
-	{
-		auto it = std::min_element(worklist.begin(),worklist.end(),[&](point a,point b)
-				{ return distance.at(a) < distance.at(b); });
-		auto vx = *it;
-
-		worklist.erase(it);
-
-		for(auto succ: po::iters(graph.equal_range(vx)))
-		{
-			if((!succ.second.is_center || succ.second == goal) && succ.second != vx && worklist.count(succ.second))
-			{
-				double edge_cost = std::sqrt(std::pow(std::abs(succ.second.x - vx.x),2) + std::pow(std::abs(succ.second.y - vx.y),2));
-				double cum_cost = distance.at(vx) + edge_cost;
-
-				if(!distance.count(succ.second) || distance.at(succ.second) > cum_cost)
-				{
-					distance[succ.second] = cum_cost;
-					came_from[succ.second] = vx;
-				}
-			}
-		}
-	}
-
-	if(came_from.count(goal))
-		while(ret.front() != start)
-			ret.push_front(came_from.at(ret.front()));
-
-	return ret;
-}
-
-QPainterPath Sugiyama::to_bezier(const std::list<point> &segs)
-{
-	QPainterPath pp;
-
-	// draw segments with bezier curves
-	if(segs.size() > 2)
-	{
-		std::list<qreal> angles;
-		auto d = std::next(segs.begin());
-		QPointF f1(segs.front().x,segs.front().y);
-		QPointF f2(std::next(segs.begin())->x,std::next(segs.begin())->y);
-
-		angles.push_back(QLineF(f1,f2).angle());
-		while(d != std::prev(segs.end()))
-		{
-			QPointF a(std::prev(d)->x,std::prev(d)->y);
-			QPointF b(d->x,d->y);
-			QPointF c(std::next(d)->x,std::next(d)->y);
-
-			QLineF ln(a,b);
-			angles.push_back(ln.angle() + ln.angleTo(QLineF(b,c)) / 2.0);
-			++d;
-		}
-
-		QPointF x(std::prev(segs.end(),2)->x,std::prev(segs.end(),2)->y);
-		QPointF y(std::prev(segs.end())->x,std::prev(segs.end())->y);
-		angles.push_back(QLineF(x,y).angle());
-
-		ensure(angles.size() == segs.size());
-
-		size_t idx = 0;
-		while(idx < segs.size() - 1)
-		{
-			QPointF ptn1(std::next(segs.begin(),idx)->x,std::next(segs.begin(),idx)->y);
-			qreal alpha1 = *std::next(angles.begin(),idx);
-
-			QPointF ptn2(std::next(segs.begin(),idx + 1)->x,std::next(segs.begin(),idx + 1)->y);
-			qreal alpha2 = *std::next(angles.begin(),idx + 1);
-
-			qreal omega = std::min(QLineF(ptn1,ptn2).length() / 5.0,100.0);
-			QPointF c1(QLineF::fromPolar(omega,alpha2).translated(ptn2).p2()), c2(QLineF::fromPolar(omega,alpha2 - 180.0).translated(ptn2).p2());
-			QPointF e1(QLineF::fromPolar(omega,alpha1).translated(ptn1).p2()), e2(QLineF::fromPolar(omega,alpha1 - 180.0).translated(ptn1).p2());
-			QPointF a,b;
-
-			if(QLineF(ptn1,c1).length() > QLineF(ptn1,c2).length())
-				b = c2;
-			else
-				b = c1;
-
-			if(QLineF(ptn2,e1).length() > QLineF(ptn2,e2).length())
-				a = e2;
-			else
-				a = e1;
-
-			pp.moveTo(ptn1);
-			pp.cubicTo(a,b,ptn2);
-			++idx;
-		}
-	}
-	else if(segs.size() == 2)
-	{
-		QPointF p1(segs.front().x,segs.front().y), p2(segs.back().x,segs.back().y);
-
-		pp.moveTo(p1);
-		pp.lineTo(p2);
-	}
-
-	return pp;
-}
-
 void Sugiyama::positionEnds(QObject* itm, QQuickItem* head, QQuickItem* tail, QQuickItem* from, QQuickItem* to, const QPainterPath& path)
 {
 	if(head)
@@ -496,9 +327,9 @@ void Sugiyama::positionEnds(QObject* itm, QQuickItem* head, QQuickItem* tail, QQ
 	}
 }
 
-QLineF Sugiyama::contactVector(QQuickItem *itm, const QPainterPath& path) const
+QLineF contactVector(QQuickItem *itm, const QPainterPath& path)
 {
-	QRectF bb(QQuickPaintedItem::mapFromItem(itm,itm->boundingRect().topLeft()),QSizeF(itm->width(),itm->height()));
+	QRectF bb(/*QQuickPaintedItem::mapFromItem(itm,*/itm->boundingRect().topLeft()/*)*/,QSizeF(itm->width(),itm->height()));
 	std::function<std::pair<QLineF,qreal>(const QLineF&)> func = [&](const QLineF &ln)
 	{
 		qreal dist = std::numeric_limits<qreal>::max();
@@ -568,7 +399,7 @@ QLineF Sugiyama::contactVector(QQuickItem *itm, const QPainterPath& path) const
 	return ret;
 }
 
-qreal Sugiyama::approximateDistance(const QPointF &pnt, const QPainterPath& path) const
+qreal approximateDistance(const QPointF &pnt, const QPainterPath& path)
 {
 	qreal dist = std::numeric_limits<qreal>::max();
 	std::function<qreal(qreal,qreal)> iter;
@@ -593,4 +424,228 @@ qreal Sugiyama::approximateDistance(const QPointF &pnt, const QPainterPath& path
 
 	iter(0,1);
 	return dist;
+}
+
+
+std::unordered_map<itmgraph::vertex_descriptor,std::tuple<unsigned int,unsigned int,unsigned int>>
+doLayout(itmgraph graph, unsigned int nodesep, std::unordered_map<itmgraph::vertex_descriptor,int> widths)
+{
+	auto pos = dot::layout(graph);
+	auto xpos = dot::order(pos,widths,nodesep,graph);
+	std::unordered_map<itmgraph::vertex_descriptor,std::tuple<unsigned int,unsigned int,unsigned int>> ret;
+
+	for(auto p: pos)
+	{
+		ret.emplace(p.first,std::make_tuple(std::get<0>(p.second),std::get<0>(p.second),xpos.at(p.first)));
+	}
+
+	return ret;
+}
+
+std::unordered_map<itmgraph::edge_descriptor,QPainterPath>
+doRoute(itmgraph graph, std::unordered_map<itmgraph::vertex_descriptor,QRect> bboxes)
+{
+	std::cout << "route dijkstra" << std::endl;
+
+	std::unordered_set<point> points;
+
+	for(auto desc: iters(po::vertices(graph)))
+	{
+		auto bb = bboxes.at(desc);
+		QPoint pos = bb.topLeft();
+		QSize sz = bb.size();
+		const int delta = 3;
+
+		points.insert(point{desc,true,pos.x() + sz.width() / 2,pos.y() + sz.height() / 2});
+		points.insert(point{desc,false,pos.x() - delta,pos.y() - delta});
+		points.insert(point{desc,false,pos.x() - delta,pos.y() + sz.height() + delta});
+		points.insert(point{desc,false,pos.x() + sz.width() + delta,pos.y() - delta});
+		points.insert(point{desc,false,pos.x() + sz.width() + delta,pos.y() + sz.height() + delta});
+	}
+
+	visgraph vis;
+
+	// find edges
+	for(auto from: points)
+	{
+		for(auto to: points)
+		{
+			if(from != to)
+			{
+				QPoint from_pos(from.x,from.y);
+				QPoint to_pos(to.x,to.y);
+				QRect from_bb = bboxes.at(from.node);
+				QRect to_bb = bboxes.at(to.node);
+
+				if(from.is_center == to.is_center || from.node != to.node)
+				{
+					bool add = true;
+					QLineF l(from_pos,to_pos);
+
+					for(auto wx: iters(po::vertices(graph)))
+					{
+						QRectF bb = bboxes.at(wx);
+						QPointF c;
+
+						if(!(from.is_center && from.node == wx) &&
+							 !(to.is_center && to.node == wx) &&
+							 (l.intersect(QLineF(bb.topLeft(),bb.topRight()),&c) == QLineF::BoundedIntersection ||
+								l.intersect(QLineF(bb.topRight(),bb.bottomRight()),&c) == QLineF::BoundedIntersection ||
+								l.intersect(QLineF(bb.bottomRight(),bb.bottomLeft()),&c) == QLineF::BoundedIntersection ||
+								l.intersect(QLineF(bb.bottomLeft(),bb.topLeft()),&c) == QLineF::BoundedIntersection))
+						{
+							add = false;
+							break;
+						}
+					}
+
+					if(add)
+					{
+						vis.emplace(from,to);
+						vis.emplace(to,from);
+					}
+				}
+			}
+		}
+	}
+
+	std::unordered_map<itmgraph::edge_descriptor,QPainterPath> ret;
+
+	for(auto e: iters(po::edges(graph)))
+	{
+		auto from = po::source(e,graph);
+		auto to = po::target(e,graph);
+
+		auto from_bb = bboxes.at(from);
+		auto to_bb = bboxes.at(to);
+
+		QPoint from_pos = from_bb.topLeft();
+		QPoint to_pos = to_bb.topLeft();
+
+		QSize from_sz = from_bb.size();
+		QSize to_sz = from_bb.size();
+
+		auto r = dijkstra(point{from,true,from_pos.x() + from_sz.width() / 2,from_pos.y() + from_sz.height() / 2},
+													point{to,true,to_pos.x() + to_sz.width() / 2,to_pos.y() + to_sz.height() / 2},vis);
+
+		QPainterPath pp = toBezier(r);
+		ret.emplace(e,pp);
+	}
+
+	return ret;
+}
+
+std::list<point> dijkstra(point start, point goal, visgraph const& graph)
+{
+	std::unordered_map<point,double> distance;
+	std::unordered_set<point> worklist;
+	std::unordered_map<point,point> came_from;
+	std::list<point> ret({goal});
+
+	std::transform(graph.begin(),graph.end(),std::inserter(worklist,worklist.end()),[](const std::pair<point,point>& p) { return p.first; });
+	std::transform(graph.begin(),graph.end(),std::inserter(worklist,worklist.end()),[](const std::pair<point,point>& p) { return p.second; });
+	distance.insert(std::make_pair(start,0));
+
+	for(auto w: worklist)
+		distance.insert(std::make_pair(w,std::numeric_limits<double>::infinity()));
+
+	while(!worklist.empty())
+	{
+		auto it = std::min_element(worklist.begin(),worklist.end(),[&](point a,point b)
+				{ return distance.at(a) < distance.at(b); });
+		auto vx = *it;
+
+		worklist.erase(it);
+
+		for(auto succ: po::iters(graph.equal_range(vx)))
+		{
+			if((!succ.second.is_center || succ.second == goal) && succ.second != vx && worklist.count(succ.second))
+			{
+				double edge_cost = std::sqrt(std::pow(std::abs(succ.second.x - vx.x),2) + std::pow(std::abs(succ.second.y - vx.y),2));
+				double cum_cost = distance.at(vx) + edge_cost;
+
+				if(!distance.count(succ.second) || distance.at(succ.second) > cum_cost)
+				{
+					distance[succ.second] = cum_cost;
+					came_from[succ.second] = vx;
+				}
+			}
+		}
+	}
+
+	if(came_from.count(goal))
+		while(ret.front() != start)
+			ret.push_front(came_from.at(ret.front()));
+
+	return ret;
+}
+
+QPainterPath toBezier(const std::list<point> &segs)
+{
+	QPainterPath pp;
+
+	// draw segments with bezier curves
+	if(segs.size() > 2)
+	{
+		std::list<qreal> angles;
+		auto d = std::next(segs.begin());
+		QPointF f1(segs.front().x,segs.front().y);
+		QPointF f2(std::next(segs.begin())->x,std::next(segs.begin())->y);
+
+		angles.push_back(QLineF(f1,f2).angle());
+		while(d != std::prev(segs.end()))
+		{
+			QPointF a(std::prev(d)->x,std::prev(d)->y);
+			QPointF b(d->x,d->y);
+			QPointF c(std::next(d)->x,std::next(d)->y);
+
+			QLineF ln(a,b);
+			angles.push_back(ln.angle() + ln.angleTo(QLineF(b,c)) / 2.0);
+			++d;
+		}
+
+		QPointF x(std::prev(segs.end(),2)->x,std::prev(segs.end(),2)->y);
+		QPointF y(std::prev(segs.end())->x,std::prev(segs.end())->y);
+		angles.push_back(QLineF(x,y).angle());
+
+		ensure(angles.size() == segs.size());
+
+		size_t idx = 0;
+		while(idx < segs.size() - 1)
+		{
+			QPointF ptn1(std::next(segs.begin(),idx)->x,std::next(segs.begin(),idx)->y);
+			qreal alpha1 = *std::next(angles.begin(),idx);
+
+			QPointF ptn2(std::next(segs.begin(),idx + 1)->x,std::next(segs.begin(),idx + 1)->y);
+			qreal alpha2 = *std::next(angles.begin(),idx + 1);
+
+			qreal omega = std::min(QLineF(ptn1,ptn2).length() / 5.0,100.0);
+			QPointF c1(QLineF::fromPolar(omega,alpha2).translated(ptn2).p2()), c2(QLineF::fromPolar(omega,alpha2 - 180.0).translated(ptn2).p2());
+			QPointF e1(QLineF::fromPolar(omega,alpha1).translated(ptn1).p2()), e2(QLineF::fromPolar(omega,alpha1 - 180.0).translated(ptn1).p2());
+			QPointF a,b;
+
+			if(QLineF(ptn1,c1).length() > QLineF(ptn1,c2).length())
+				b = c2;
+			else
+				b = c1;
+
+			if(QLineF(ptn2,e1).length() > QLineF(ptn2,e2).length())
+				a = e2;
+			else
+				a = e1;
+
+			pp.moveTo(ptn1);
+			pp.cubicTo(a,b,ptn2);
+			++idx;
+		}
+	}
+	else if(segs.size() == 2)
+	{
+		QPointF p1(segs.front().x,segs.front().y), p2(segs.back().x,segs.back().y);
+
+		pp.moveTo(p1);
+		pp.lineTo(p2);
+	}
+
+	return pp;
 }

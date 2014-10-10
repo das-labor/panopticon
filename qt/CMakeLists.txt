@@ -35,7 +35,7 @@ endif()
 
 add_executable(qtpanopticon ${qtpanopticon_SOURCES} ${qtpanopticon_HEADERS}
 	${qtpanopticon_HEADERS_QT} ${qtpanopticon_HEADERS_MOC} ${qtpanopticon_RCCS})
-qt5_use_modules(qtpanopticon Widgets Quick Qml)
+qt5_use_modules(qtpanopticon Widgets Quick Qml Concurrent)
 target_link_libraries(qtpanopticon ${QT_LIBRARIES} ${panopticon_LIBRARIES})
 set_target_properties(qtpanopticon PROPERTIES VERSION
 	${panopticon_MAJOR}.${panopticon_MINOR}.${panopticon_PATCH})

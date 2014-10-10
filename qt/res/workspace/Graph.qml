@@ -8,6 +8,7 @@ Item {
 	property int edgeWidth: 3
 	property var session: null
 	property var nodes: []
+	property var rankY: []
 
 	onSessionChanged: {
 		if(session != null) {
@@ -23,9 +24,9 @@ Item {
 		Rectangle {
 			id: bblock
 
-			property int lRank: lastRank
-			property int fRank: firstRank
-			property int centerX: computedX
+			property int lRank: lastRank != undefined ? lastRank : 0
+			property int fRank: firstRank != undefined ? firstRank : 0
+			property int centerX: computedX != undefined ? computedX : 0
 			property real hue: {
 				if(state == "prev") {
 					return .4
@@ -42,11 +43,13 @@ Item {
 			smooth: true
 			z: 2
 			x: computedX - (bblock.width / 2)
-			/*{
-				var w = root.nodes.reduce(function(a,n,i,all) { if(n.fRank == firstRank) { return Math.max(a,n.centerX + n.width / 2) } else { return a } },0)
-				return (root.width / 2) - (w / 2) + computedX - (bblock.width / 2)
-			}*/
-			y: root.nodes.reduce(function(a,n,i,all) { if(n.lRank == firstRank - 1) { return Math.max(a,n.y + n.height) } else { return a } },0) + 50
+			y: {
+				if(root.rankY[firstRank] != undefined) {
+					return root.rankY[fRank];
+				} else {
+					return 0;
+				}
+			}
 
 			property int bbid: modelData
 
@@ -103,16 +106,14 @@ Item {
 					if(pressed) {
 						sugiyama.direct = true
 						edgeColor = "gray"
-						sugiyama.route()
+						arrow_cv.visible = false
 					}
 				}
 
 				onReleased: {
-					sugiyama.direct = false
-					edgeColor = "black"
-					sugiyama.route()
-				}
 
+						//sugiyama.route()
+					}
 				onEntered: {
 					for(var i in incomingEdges) {
 						incomingEdges[i].color = "blue"
@@ -142,22 +143,22 @@ Item {
 		id: arrow
 
 		Canvas {
-			id: cv
+			id: arrow_cv
 			height: 40; width: 20
 
 			onPaint: {
-				var ctx = cv.getContext("2d")
+				var ctx = arrow_cv.getContext("2d")
 
 				if(ctx != null) {
 					ctx.lineWidth = 0
 
 					ctx.beginPath()
 					ctx.fillStyle = "black"
-					ctx.moveTo(.5 * cv.width,.5 * cv.height);
-					ctx.lineTo(0,cv.height - 1);
-					ctx.lineTo(.5 * cv.width,.75 * cv.height);
-					ctx.lineTo(cv.width - 1,cv.height - 1);
-					ctx.lineTo(.5 * cv.width,.5 * cv.height);
+					ctx.moveTo(.5 * arrow_cv.width,.5 * arrow_cv.height);
+					ctx.lineTo(0,arrow_cv.height - 1);
+					ctx.lineTo(.5 * arrow_cv.width,.75 * arrow_cv.height);
+					ctx.lineTo(arrow_cv.width - 1,arrow_cv.height - 1);
+					ctx.lineTo(.5 * arrow_cv.width,.5 * arrow_cv.height);
 					ctx.fill()
 				}
 			}
@@ -185,6 +186,8 @@ Item {
 		Sugiyama {
 			id: sugiyama
 
+			property var rankStart: []
+
 			x: (childrenRect.width < root.width * 2 ? ((root.width - childrenRect.width) / 2) : 0)
 			width: Math.max(childrenRect.width,root.width * 2)
 			height: Math.max(childrenRect.height,root.height)
@@ -201,6 +204,33 @@ Item {
 
 			vertices: root.session ? root.session.graph.blocks.map(function(a) { return eval(a) }) : []
 			edges: []
+
+			onLayoutStart: {
+				console.log("layout start");
+			}
+
+			onLayoutDone: {
+				console.log("layout done");
+				root.rankY = []
+				var rankHeights = []
+
+				for(var n in root.nodes) {
+					var node = root.nodes[n]
+					rankHeights[node.fRank] = Math.max(rankHeights[node.fRank] != undefined ? rankHeights[node.fRank] : 0,node.height);
+				}
+
+				for(var n in rankHeights) {
+					root.rankY[n] = rankHeights[n];//.reduce(function(a,n,i,all) { return i < n ? a + n : a })
+				}
+
+				console.log(rankY);
+				console.log(rankHeights);
+			}
+
+			onRoutingDone: {
+				sugiyama.direct = false
+				edgeColor = "black"
+			}
 		}
 	}
 

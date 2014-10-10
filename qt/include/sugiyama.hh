@@ -5,6 +5,8 @@
 #include <QDebug>
 #include <QHash>
 #include <QVariant>
+#include <QFuture>
+#include <QFutureWatcher>
 
 #include <QtQml>
 #include <QtQuick>
@@ -16,14 +18,19 @@
 
 namespace
 {
+	using itmgraph = po::digraph<std::tuple<QVariant,QQuickItem*,QQmlContext*>,std::tuple<QVariant,QPainterPath,QQuickItem*,QQuickItem*>>;
+
 	struct point
 	{
 		bool operator==(point const& p) const { return p.node == node && p.x == x && p.y == y && is_center == p.is_center; }
 		bool operator!=(point const& p) const { return !(p == *this); }
-		po::digraph<std::tuple<QVariant,QQuickItem*,QQmlContext*>,std::tuple<QVariant,QPainterPath,QQuickItem*,QQuickItem*>>::vertex_descriptor node;
+
+		itmgraph::vertex_descriptor node;
 		bool is_center;
 		int x, y;
 	};
+
+	using visgraph = std::unordered_multimap<point,point>;
 }
 
 namespace std
@@ -52,15 +59,12 @@ class Sugiyama : public QQuickPaintedItem
 	Q_OBJECT
 
 	Q_PROPERTY(QQmlComponent* delegate READ delegate WRITE setDelegate NOTIFY delegateChanged)
-
 	Q_PROPERTY(QVariantList vertices READ vertices WRITE setVertices NOTIFY verticesChanged)
 	Q_PROPERTY(QVariantList edges READ edges WRITE setEdges NOTIFY edgesChanged)
 	Q_PROPERTY(bool direct READ direct WRITE setDirect NOTIFY directChanged)
 
-	using itmgraph = po::digraph<std::tuple<QVariant,QQuickItem*,QQmlContext*>,std::tuple<QVariant,QPainterPath,QQuickItem*,QQuickItem*>>;
-
 public:
-	Sugiyama(QQuickItem *parent = 0);
+	Sugiyama(QQuickItem *parent = nullptr);
 	virtual ~Sugiyama(void);
 
 	QQmlComponent* delegate(void) const { return _delegate; }
@@ -69,22 +73,18 @@ public:
 	bool direct(void) const { return _direct; }
 
 	void setDelegate(QQmlComponent* c) { _delegate = c; }
-	void setVertices(QVariantList l) { _vertices = l; clear(); emit verticesChanged(); redoAttached(); layout(); route(); }
-	void setEdges(QVariantList l) { _edges = l; clear(); emit edgesChanged(); redoAttached(); layout(); route(); }
+	void setVertices(QVariantList l) { _vertices = l; clear(); emit verticesChanged(); redoAttached(); layout(); }
+	void setEdges(QVariantList l) { _edges = l; clear(); emit edgesChanged(); redoAttached(); layout(); }
 	void setDirect(bool b) { _direct = b; emit directChanged(); route(); }
 
-	itmgraph& graph(void);
-
 	virtual void paint(QPainter *) override;
-	void positionEnds(QObject* itm, QQuickItem* head, QQuickItem *tail, QQuickItem* from, QQuickItem* to, const QPainterPath& path);
-	QLineF contactVector(QQuickItem *itm, const QPainterPath& pp) const;
-	qreal approximateDistance(const QPointF &pnt, const QPainterPath& pp) const;
-	void redoAttached(void);
 
 public slots:
 	void layout(void);
 	void route(void);
 	void updateEdge(QObject*);
+	void processRoute(void);
+	void processLayout(void);
 
 signals:
 	void verticesChanged(void);
@@ -98,18 +98,28 @@ signals:
 	void routingDone(void);
 
 private:
-	using visgraph = std::unordered_multimap<point,point>;
-
-	mutable boost::optional<itmgraph> _graph;
+	// Properties
 	QQmlComponent* _delegate;
 	QVariantList _vertices;
 	QVariantList _edges;
 	bool _direct;
+
+	mutable boost::optional<itmgraph> _graph;
 	QSignalMapper _mapper;
-	std::list<QLine> _visgraph;
+	QFutureWatcher<std::unordered_map<itmgraph::vertex_descriptor,std::tuple<unsigned int,unsigned int,unsigned int>>> _layoutWatcher;
+	QFutureWatcher<std::unordered_map<itmgraph::edge_descriptor,QPainterPath>> _routeWatcher;
 
 	void clear(void);
-
-	static std::list<point> dijkstra(point start, point goal, visgraph const& graph);
-	static QPainterPath to_bezier(const std::list<point> &segs);
+	itmgraph& graph(void);
+	void positionEnds(QObject* itm, QQuickItem* head, QQuickItem *tail, QQuickItem* from, QQuickItem* to, const QPainterPath& path);
+	void redoAttached(void);
 };
+
+	std::unordered_map<itmgraph::edge_descriptor,QPainterPath>
+		doRoute(itmgraph graph, std::unordered_map<itmgraph::vertex_descriptor,QRect> bboxes);
+	QPainterPath toBezier(const std::list<point> &segs);
+	std::unordered_map<itmgraph::vertex_descriptor,std::tuple<unsigned int,unsigned int,unsigned int>>
+		doLayout(itmgraph, unsigned int, std::unordered_map<itmgraph::vertex_descriptor,int>);
+	QLineF contactVector(QQuickItem *itm, const QPainterPath& pp);
+	qreal approximateDistance(const QPointF &pnt, const QPainterPath& pp);
+	std::list<point> dijkstra(point start, point goal, visgraph const& graph);
