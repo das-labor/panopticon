@@ -111,7 +111,7 @@ private:
 
 	void clear(void);
 	itmgraph& graph(void);
-	void positionEnds(QObject* itm, QQuickItem* head, QQuickItem *tail, QQuickItem* from, QQuickItem* to, const QPainterPath& path);
+	void positionEnds(QQuickItem* head, QQuickItem *tail, QQuickItem* from, QQuickItem* to, const QPainterPath& path);
 	void redoAttached(void);
 };
 
@@ -120,6 +120,6 @@ private:
 	QPainterPath toBezier(const std::list<point> &segs);
 	std::unordered_map<itmgraph::vertex_descriptor,std::tuple<unsigned int,unsigned int,unsigned int>>
 		doLayout(itmgraph, unsigned int, std::unordered_map<itmgraph::vertex_descriptor,int>);
-	QLineF contactVector(QQuickItem *itm, const QPainterPath& pp);
+	QLineF contactVector(QRectF const& bb, const QPainterPath& pp);
 	qreal approximateDistance(const QPointF &pnt, const QPainterPath& pp);
 	std::list<point> dijkstra(point start, point goal, visgraph const& graph);

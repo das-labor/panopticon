@@ -45,9 +45,12 @@ void Sugiyama::route(void)
 									 static_cast<int>(to_obj->y() + to_obj->height() / 2)}});
 
 				std::get<1>(get_edge(e,graph())) = pp;
-				update();
-				emit routingDone();
+				auto ee = get_edge(e,graph());
+				positionEnds(std::get<2>(ee),std::get<3>(ee),std::get<1>(get_vertex(source(e,graph()),graph())),std::get<1>(get_vertex(target(e,graph()),graph())),pp);
 			}
+
+			emit routingDone();
+			update();
 		}
 		else
 		{
@@ -102,6 +105,8 @@ void Sugiyama::processRoute(void)
 	for(auto e: iters(po::edges(graph())))
 	{
 		std::get<1>(get_edge(e,graph())) = r.at(e);
+		auto ee = get_edge(e,graph());
+		positionEnds(std::get<2>(ee),std::get<3>(ee),std::get<1>(get_vertex(source(e,graph()),graph())),std::get<1>(get_vertex(target(e,graph()),graph())),r.at(e));
 	}
 
 	emit routingDone();
@@ -301,12 +306,13 @@ void Sugiyama::redoAttached(void)
 	}
 }
 
-void Sugiyama::positionEnds(QObject* itm, QQuickItem* head, QQuickItem* tail, QQuickItem* from, QQuickItem* to, const QPainterPath& path)
+void Sugiyama::positionEnds(QQuickItem* head, QQuickItem* tail, QQuickItem* from, QQuickItem* to, const QPainterPath& path)
 {
 	if(head)
 	{
 		QRectF bb = head->boundingRect();
-		QLineF vec = contactVector(to,path);
+		QRectF to_bb(QQuickPaintedItem::mapFromItem(to,to->boundingRect().topLeft()),QSizeF(to->width(),to->height()));
+		QLineF vec = contactVector(to_bb,path);
 		QPointF pos(vec.p1() - QPointF(bb.width() / 2,bb.height() / 2));
 
 		head->setX(pos.x());
@@ -317,7 +323,8 @@ void Sugiyama::positionEnds(QObject* itm, QQuickItem* head, QQuickItem* tail, QQ
 	if(tail)
 	{
 		QRectF bb = tail->boundingRect();
-		QLineF vec = contactVector(from,path);
+		QRectF from_bb(QQuickPaintedItem::mapFromItem(from,from->boundingRect().topLeft()),QSizeF(from->width(),from->height()));
+		QLineF vec = contactVector(from_bb,path);
 		QPointF pos(vec.p1() - QPointF(bb.width() / 2,bb.height() / 2));
 
 		tail->setX(pos.x());
@@ -326,9 +333,8 @@ void Sugiyama::positionEnds(QObject* itm, QQuickItem* head, QQuickItem* tail, QQ
 	}
 }
 
-QLineF contactVector(QQuickItem *itm, const QPainterPath& path)
+QLineF contactVector(QRectF const& bb, const QPainterPath& path)
 {
-	QRectF bb(/*QQuickPaintedItem::mapFromItem(itm,*/itm->boundingRect().topLeft()/*)*/,QSizeF(itm->width(),itm->height()));
 	std::function<std::pair<QLineF,qreal>(const QLineF&)> func = [&](const QLineF &ln)
 	{
 		qreal dist = std::numeric_limits<qreal>::max();
