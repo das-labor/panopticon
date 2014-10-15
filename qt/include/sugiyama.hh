@@ -40,7 +40,7 @@ namespace std
 	{
 		size_t operator()(struct point const& p) const
 		{
-			return po::hash_struct<int,int,int>(p.node.id,p.x,p.y);
+			return po::hash_struct<int,int,int,bool>(p.node.id,p.x,p.y,p.is_center);
 		}
 	};
 
@@ -73,9 +73,9 @@ public:
 	bool direct(void) const { return _direct; }
 
 	void setDelegate(QQmlComponent* c) { _delegate = c; }
-	void setVertices(QVariantList l) { _vertices = l; clear(); emit verticesChanged(); redoAttached(); layout(); }
-	void setEdges(QVariantList l) { _edges = l; clear(); emit edgesChanged(); redoAttached(); layout(); }
-	void setDirect(bool b) { _direct = b; emit directChanged(); route(); }
+	void setVertices(QVariantList l) { if(_vertices != l) { _vertices = l; clear(); emit verticesChanged(); redoAttached(); layout(); } }
+	void setEdges(QVariantList l) { if(_edges != l) { _edges = l; clear(); emit edgesChanged(); redoAttached(); layout(); } }
+	void setDirect(bool b) { if(b != _direct) { _direct = b; emit directChanged(); route(); } }
 
 	virtual void paint(QPainter *) override;
 

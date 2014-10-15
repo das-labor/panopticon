@@ -61,7 +61,7 @@ void Sugiyama::route(void)
 			}
 
 			itmgraph g = graph();
-			//_routeWatcher.setFuture(QtConcurrent::run(std::bind(doRoute,g,bbs)));
+			_routeWatcher.setFuture(QtConcurrent::run(std::bind(doRoute,g,bbs)));
 		}
 	}
 }
@@ -90,12 +90,9 @@ void Sugiyama::processLayout(void)
 		std::get<2>(vx)->setContextProperty("firstRank",QVariant(std::get<0>(p.second)));
 		std::get<2>(vx)->setContextProperty("lastRank",QVariant(std::get<1>(p.second)));
 		std::get<2>(vx)->setContextProperty("computedX",QVariant(std::get<2>(p.second)));
-
-		std::cout << std::get<2>(vx) << std::endl;
 	}
 
 	emit layoutDone();
-	update();
 	route();
 }
 
@@ -104,11 +101,11 @@ void Sugiyama::processRoute(void)
 	std::unordered_map<itmgraph::edge_descriptor,QPainterPath> r = _routeWatcher.future().result();
 	for(auto e: iters(po::edges(graph())))
 	{
-		auto edge = get_edge(e,graph());
-		std::get<1>(edge) = r.at(e);
+		std::get<1>(get_edge(e,graph())) = r.at(e);
 	}
 
 	emit routingDone();
+	update();
 }
 
 void Sugiyama::clear(void)
@@ -265,6 +262,8 @@ void Sugiyama::paint(QPainter *p)
 		p->setPen(pen);
 		p->drawPath(get<1>(t));
 	}
+
+	std::cout << "paint" << std::endl;
 
 	p->restore();
 }
@@ -501,8 +500,8 @@ doRoute(itmgraph graph, std::unordered_map<itmgraph::vertex_descriptor,QRect> bb
 
 					if(add)
 					{
-						vis.emplace(from,to);
-						vis.emplace(to,from);
+						vis.insert(std::make_pair(from,to));
+						vis.insert(std::make_pair(to,from));
 					}
 				}
 			}
@@ -523,13 +522,22 @@ doRoute(itmgraph graph, std::unordered_map<itmgraph::vertex_descriptor,QRect> bb
 		QPoint to_pos = to_bb.topLeft();
 
 		QSize from_sz = from_bb.size();
-		QSize to_sz = from_bb.size();
+		QSize to_sz = to_bb.size();
 
 		auto r = dijkstra(point{from,true,from_pos.x() + from_sz.width() / 2,from_pos.y() + from_sz.height() / 2},
-													point{to,true,to_pos.x() + to_sz.width() / 2,to_pos.y() + to_sz.height() / 2},vis);
+											point{to,true,to_pos.x() + to_sz.width() / 2,to_pos.y() + to_sz.height() / 2},vis);
 
-		QPainterPath pp = toBezier(r);
-		ret.emplace(e,pp);
+		if(r.empty())
+		{
+			qWarning() << "No route from" << from_pos << "to" << to_pos;
+			ret.emplace(e,QPainterPath());
+		}
+		else
+		{
+			std::cout << "route: " << from.id << " -> " << to.id << ", " << r.size() << std::endl;
+			QPainterPath pp = toBezier(r);
+			ret.emplace(e,pp);
+		}
 	}
 
 	return ret;
@@ -545,6 +553,9 @@ std::list<point> dijkstra(point start, point goal, visgraph const& graph)
 	std::transform(graph.begin(),graph.end(),std::inserter(worklist,worklist.end()),[](const std::pair<point,point>& p) { return p.first; });
 	std::transform(graph.begin(),graph.end(),std::inserter(worklist,worklist.end()),[](const std::pair<point,point>& p) { return p.second; });
 	distance.insert(std::make_pair(start,0));
+
+	Q_ASSERT(graph.count(start));
+	Q_ASSERT(graph.count(goal));
 
 	for(auto w: worklist)
 		distance.insert(std::make_pair(w,std::numeric_limits<double>::infinity()));
@@ -574,10 +585,13 @@ std::list<point> dijkstra(point start, point goal, visgraph const& graph)
 	}
 
 	if(came_from.count(goal))
+	{
 		while(ret.front() != start)
 			ret.push_front(came_from.at(ret.front()));
-
-	return ret;
+		return ret;
+	}
+	else
+		return {};
 }
 
 QPainterPath toBezier(const std::list<point> &segs)

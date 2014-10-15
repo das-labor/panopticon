@@ -106,14 +106,16 @@ Item {
 					if(pressed) {
 						sugiyama.direct = true
 						edgeColor = "gray"
-						arrow_cv.visible = false
+						//arrow_cv.visible = false
 					}
+					sugiyama.route()
 				}
 
 				onReleased: {
+						sugiyama.direct = false
+						sugiyama.route()
+				}
 
-						//sugiyama.route()
-					}
 				onEntered: {
 					for(var i in incomingEdges) {
 						incomingEdges[i].color = "blue"
@@ -219,17 +221,21 @@ Item {
 					rankHeights[node.fRank] = Math.max(rankHeights[node.fRank] != undefined ? rankHeights[node.fRank] : 0,node.height);
 				}
 
-				for(var n in rankHeights) {
-					root.rankY[n] = rankHeights[n];//.reduce(function(a,n,i,all) { return i < n ? a + n : a })
+				for(var m in rankHeights) {
+					root.rankY[m] = rankHeights.reduce(function(a,n,i,all) { if(i < m) { return a + n + 50; } else { return a; } },50);
 				}
 
-				console.log(rankY);
-				console.log(rankHeights);
+				for(var n in root.nodes) {
+					var node = root.nodes[n]
+					node.y = rankY[node.fRank];
+				}
 			}
 
 			onRoutingDone: {
-				sugiyama.direct = false
-				edgeColor = "black"
+				//sugiyama.direct = false;
+				edgeColor = "black";
+				//arrow_cv.visible = true;
+				console.log("route done");
 			}
 		}
 	}
@@ -238,7 +244,7 @@ Item {
 		anchors.fill: flick
 
 		onPressed: {
-			mouse.accepted = false
+			mouse.accepted = false;
 		}
 
 		onWheel: {
