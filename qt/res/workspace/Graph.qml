@@ -118,10 +118,14 @@ Item {
 				onEntered: {
 					for(var i in incomingEdges) {
 						incomingEdges[i].color = "blue"
+						incomingEdges[i].head.color = "blue"
+						incomingEdges[i].tail.color = "blue"
 						incomingNodes[i].state = "prev"
 					}
 					for(var i in outgoingEdges) {
 						outgoingEdges[i].color = "red"
+						outgoingEdges[i].head.color = "red"
+						outgoingEdges[i].tail.color = "red"
 						outgoingNodes[i].state = "next"
 					}
 
@@ -129,10 +133,14 @@ Item {
 				onExited: {
 					for(var i in incomingEdges) {
 						incomingEdges[i].color = "black"
+						incomingEdges[i].head.color = "black"
+						incomingEdges[i].tail.color = "black"
 						incomingNodes[i].state = ""
 					}
 					for(var i in outgoingEdges) {
 						outgoingEdges[i].color = "black"
+						outgoingEdges[i].head.color = "black"
+						outgoingEdges[i].tail.color = "black"
 						outgoingNodes[i].state = ""
 					}
 				}
@@ -148,6 +156,8 @@ Item {
 			height: 40; width: 20
 			z: 4
 
+			property color color: "black"
+
 			onPaint: {
 				var ctx = arrow_cv.getContext("2d")
 
@@ -155,7 +165,7 @@ Item {
 					ctx.lineWidth = 0
 
 					ctx.beginPath()
-					ctx.fillStyle = "black"
+					ctx.fillStyle = arrow_cv.color;
 					ctx.moveTo(.5 * arrow_cv.width,.5 * arrow_cv.height);
 					ctx.lineTo(0,arrow_cv.height - 1);
 					ctx.lineTo(.5 * arrow_cv.width,.75 * arrow_cv.height);
