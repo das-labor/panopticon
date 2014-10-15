@@ -5,7 +5,7 @@ import Panopticon 1.0
 Item {
 	id: root
 	property color edgeColor: "black"
-	property int edgeWidth: 3
+	property int edgeWidth: 2
 	property var session: null
 	property var nodes: []
 	property var rankY: []
@@ -41,7 +41,7 @@ Item {
 			border { width: 1; color: Qt.hsla(hue,1,.2421875,1) }
 			radius: 3
 			smooth: true
-			z: 2
+			z: 3
 			x: computedX - (bblock.width / 2)
 			y: {
 				if(root.rankY[firstRank] != undefined) {
@@ -106,7 +106,6 @@ Item {
 					if(pressed) {
 						sugiyama.direct = true
 						edgeColor = "gray"
-						//arrow_cv.visible = false
 					}
 					sugiyama.route()
 				}
@@ -147,6 +146,7 @@ Item {
 		Canvas {
 			id: arrow_cv
 			height: 40; width: 20
+			z: 4
 
 			onPaint: {
 				var ctx = arrow_cv.getContext("2d")

@@ -255,6 +255,7 @@ void Sugiyama::paint(QPainter *p)
 {
 	ensure(p);
 	p->save();
+	p->setRenderHints(QPainter::Antialiasing | QPainter::TextAntialiasing,true);
 
 	for(auto e: iters(po::edges(graph())))
 	{
@@ -264,6 +265,7 @@ void Sugiyama::paint(QPainter *p)
 		QQmlProperty color(obj,"color");
 		QPen pen(QBrush(color.read().value<QColor>()),width.read().toInt());
 
+		pen.setCosmetic(true);
 		p->setPen(pen);
 		p->drawPath(get<1>(t));
 	}
