@@ -233,9 +233,9 @@ namespace dot
 		/*for(auto vx: iters(vertices(graph)))
 			cur.emplace(vx,0);*/
 
-			// ordering
-		int iter = 0;
-		int cross = -1;
+		// ordering
+		//int iter = 0;
+		//int cross = -1;
 		best = cur;
 
 		/*while(iter < 24)
