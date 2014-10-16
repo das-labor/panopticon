@@ -31,8 +31,6 @@ void Sugiyama::route(void)
 	{
 		if(direct())
 		{
-			std::cout << "route direct" << std::endl;
-
 			for(auto e: iters(po::edges(graph())))
 			{
 				auto from = po::source(e,graph()), to = po::target(e,graph());
@@ -270,8 +268,6 @@ void Sugiyama::paint(QPainter *p)
 		p->drawPath(get<1>(t));
 	}
 
-	std::cout << "paint" << std::endl;
-
 	p->restore();
 }
 
@@ -452,8 +448,6 @@ doLayout(itmgraph graph, unsigned int nodesep, std::unordered_map<itmgraph::vert
 std::unordered_map<itmgraph::edge_descriptor,QPainterPath>
 doRoute(itmgraph graph, std::unordered_map<itmgraph::vertex_descriptor,QRect> bboxes)
 {
-	std::cout << "route dijkstra" << std::endl;
-
 	std::unordered_set<point> points;
 
 	for(auto desc: iters(po::vertices(graph)))
@@ -481,8 +475,6 @@ doRoute(itmgraph graph, std::unordered_map<itmgraph::vertex_descriptor,QRect> bb
 			{
 				QPoint from_pos(from.x,from.y);
 				QPoint to_pos(to.x,to.y);
-				QRect from_bb = bboxes.at(from.node);
-				QRect to_bb = bboxes.at(to.node);
 
 				if(from.is_center == to.is_center || from.node != to.node)
 				{
@@ -542,7 +534,6 @@ doRoute(itmgraph graph, std::unordered_map<itmgraph::vertex_descriptor,QRect> bb
 		}
 		else
 		{
-			std::cout << "route: " << from.id << " -> " << to.id << ", " << r.size() << std::endl;
 			QPainterPath pp = toBezier(r);
 			ret.emplace(e,pp);
 		}
