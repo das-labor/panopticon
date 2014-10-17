@@ -230,12 +230,6 @@ Item {
 					node.y = rankY[node.fRank];
 				}
 			}
-
-			onRoutingDone: {
-				//sugiyama.direct = false;
-				edgeColor = "black";
-				//arrow_cv.visible = true;
-			}
 		}
 	}
 
