@@ -143,12 +143,11 @@ void Sugiyama::clear(void)
 	}
 }
 
-po::digraph<std::tuple<QVariant,QQuickItem*,QQmlContext*>,std::tuple<QVariant,QPainterPath,QQuickItem*,QQuickItem*>>& Sugiyama::graph(void)
+itmgraph& Sugiyama::graph(void)
 {
 	if(!_graph)
 	{
-		_graph = po::digraph<std::tuple<QVariant,QQuickItem*,QQmlContext*>,std::tuple<QVariant,QPainterPath,QQuickItem*,QQuickItem*>>();
-
+		_graph = itmgraph();
 
 		QListIterator<QVariant> i(_vertices);
 		while(i.hasNext())
@@ -187,7 +186,7 @@ po::digraph<std::tuple<QVariant,QQuickItem*,QQmlContext*>,std::tuple<QVariant,QP
 
 void Sugiyama::updateEdge(QObject *obj)
 {
-	using vx_desc = boost::graph_traits<po::digraph<std::tuple<QVariant,QQuickItem*,QQmlContext*>,std::tuple<QVariant,QPainterPath,QQuickItem*,QQuickItem*>>>::vertex_descriptor;
+	using vx_desc = boost::graph_traits<itmgraph>::vertex_descriptor;
 	QVariant var = QVariant::fromValue(obj);
 
 	if(obj)
@@ -208,7 +207,7 @@ void Sugiyama::updateEdge(QObject *obj)
 		{
 			for(auto ex: po::iters(po::edges(*_graph)))
 			{
-				std::tuple<QVariant,QPainterPath,QQuickItem*,QQuickItem*> &t = get_edge(ex,*_graph);
+				std::tuple<QVariant,QPainterPath,QQuickItem*,QQuickItem*,QQmlContext*,QQmlContext*> &t = get_edge(ex,*_graph);
 				if(get<0>(t) == var)
 				{
 					if(get<2>(t))
@@ -222,20 +221,25 @@ void Sugiyama::updateEdge(QObject *obj)
 			}
 
 			QQuickItem *h = 0, *t = 0;
+			QQmlContext *hctx = 0, *tctx = 0;
 
 			if(hc)
 			{
-				h = qobject_cast<QQuickItem*>(hc->create(QQmlEngine::contextForObject(this)));
+				hctx = new QQmlContext(QQmlEngine::contextForObject(this));
+				hctx->setContextProperty("edge",obj);
+				h = qobject_cast<QQuickItem*>(hc->create(hctx));
 				h->setParentItem(this);
 			}
 
 			if(tc)
 			{
-				t = qobject_cast<QQuickItem*>(tc->create(QQmlEngine::contextForObject(this)));
+				tctx = new QQmlContext(QQmlEngine::contextForObject(this));
+				tctx->setContextProperty("edge",obj);
+				t = qobject_cast<QQuickItem*>(tc->create(tctx));
 				t->setParentItem(this);
 			}
 
-			insert_edge(std::make_tuple(var,QPainterPath(),h,t),*a,*b,*_graph);
+			insert_edge(std::make_tuple(var,QPainterPath(),h,t,hctx,tctx),*a,*b,*_graph);
 		}
 
 		ensure(width.connectNotifySignal(this,SLOT(update())));
