@@ -145,7 +145,7 @@ Item {
 
 		Canvas {
 			id: arrow_cv
-			height: 40; width: 20
+			height: 30; width: 15
 			z: 4
 
 			onPaint: {
@@ -222,7 +222,7 @@ Item {
 				}
 
 				for(var m in rankHeights) {
-					root.rankY[m] = rankHeights.reduce(function(a,n,i,all) { if(i < m) { return a + n + 50; } else { return a; } },50);
+					root.rankY[m] = rankHeights.reduce(function(a,n,i,all) { if(i < m) { return a + n + 100; } else { return a; } },100);
 				}
 
 				for(var n in root.nodes) {

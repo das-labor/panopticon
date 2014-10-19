@@ -22,11 +22,19 @@ namespace
 
 	struct point
 	{
-		bool operator==(point const& p) const { return p.node == node && p.x == x && p.y == y && is_center == p.is_center; }
+		enum Type : uint8_t
+		{
+			Entry,
+			Exit,
+			Corner,
+			Center
+		};
+
+		bool operator==(point const& p) const { return p.node == node && p.x == x && p.y == y && type == p.type; }
 		bool operator!=(point const& p) const { return !(p == *this); }
 
 		itmgraph::vertex_descriptor node;
-		bool is_center;
+		Type type;
 		int x, y;
 	};
 
@@ -40,7 +48,7 @@ namespace std
 	{
 		size_t operator()(struct point const& p) const
 		{
-			return po::hash_struct<int,int,int,bool>(p.node.id,p.x,p.y,p.is_center);
+			return po::hash_struct<int,int,int,uint8_t>(p.node.id,p.x,p.y,p.type);
 		}
 	};
 
@@ -79,6 +87,8 @@ public:
 
 	virtual void paint(QPainter *) override;
 
+	static const int delta;
+
 public slots:
 	void layout(void);
 	void route(void);
@@ -113,6 +123,7 @@ private:
 	itmgraph& graph(void);
 	void positionEnds(QQuickItem* head, QQuickItem *tail, QQuickItem* from, QQuickItem* to, const QPainterPath& path);
 	void redoAttached(void);
+
 };
 
 	std::unordered_map<itmgraph::edge_descriptor,QPainterPath>

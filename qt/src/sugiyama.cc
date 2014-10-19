@@ -3,6 +3,8 @@
 #include "sugiyama.hh"
 #include "dot/dot.hh"
 
+const int Sugiyama::delta = 3;
+
 Sugiyama::Sugiyama(QQuickItem *parent)
 : QQuickPaintedItem(parent),
 	_delegate(nullptr), _vertices(), _edges(), _direct(false),
@@ -37,10 +39,10 @@ void Sugiyama::route(void)
 				auto from_obj = std::get<1>(get_vertex(from,graph())), to_obj = std::get<1>(get_vertex(to,graph()));
 
 				QPainterPath pp = toBezier({
-					point{from,true,static_cast<int>(from_obj->x() + from_obj->width( )/ 2),
-										 static_cast<int>(from_obj->y() + from_obj->height() / 2)},
-					point{to,true,static_cast<int>(to_obj->x() + to_obj->width() / 2),
-									 static_cast<int>(to_obj->y() + to_obj->height() / 2)}});
+					point{from,point::Exit,static_cast<int>(from_obj->x() + from_obj->width( )/ 2),
+										 static_cast<int>(from_obj->y() + from_obj->height() + delta)},
+					point{to,point::Entry,static_cast<int>(to_obj->x() + to_obj->width() / 2),
+									 static_cast<int>(to_obj->y() - delta)}});
 
 				std::get<1>(get_edge(e,graph())) = pp;
 				auto ee = get_edge(e,graph());
@@ -453,60 +455,55 @@ std::unordered_map<itmgraph::edge_descriptor,QPainterPath>
 doRoute(itmgraph graph, std::unordered_map<itmgraph::vertex_descriptor,QRect> bboxes)
 {
 	std::unordered_set<point> points;
+	visgraph vis;
 
 	for(auto desc: iters(po::vertices(graph)))
 	{
 		auto bb = bboxes.at(desc);
 		QPoint pos = bb.topLeft();
 		QSize sz = bb.size();
-		const int delta = 3;
 
-		points.insert(point{desc,true,pos.x() + sz.width() / 2,pos.y() + sz.height() / 2});
-		points.insert(point{desc,false,pos.x() - delta,pos.y() - delta});
-		points.insert(point{desc,false,pos.x() - delta,pos.y() + sz.height() + delta});
-		points.insert(point{desc,false,pos.x() + sz.width() + delta,pos.y() - delta});
-		points.insert(point{desc,false,pos.x() + sz.width() + delta,pos.y() + sz.height() + delta});
+		points.insert(point{desc,point::Entry,pos.x() + sz.width() / 2,pos.y() - 3*Sugiyama::delta});
+		points.insert(point{desc,point::Exit,pos.x() + sz.width() / 2,pos.y() + sz.height() + 3*Sugiyama::delta});
+
+		points.insert(point{desc,point::Corner,pos.x() - Sugiyama::delta,pos.y() - Sugiyama::delta});
+		points.insert(point{desc,point::Corner,pos.x() - Sugiyama::delta,pos.y() + sz.height() + Sugiyama::delta});
+		points.insert(point{desc,point::Corner,pos.x() + sz.width() + Sugiyama::delta,pos.y() - Sugiyama::delta});
+		points.insert(point{desc,point::Corner,pos.x() + sz.width() + Sugiyama::delta,pos.y() + sz.height() + Sugiyama::delta});
 	}
-
-	visgraph vis;
 
 	// find edges
 	for(auto from: points)
 	{
 		for(auto to: points)
 		{
-			if(from != to)
+			QPoint from_pos(from.x,from.y);
+			QPoint to_pos(to.x,to.y);
+
+			if(to.type != point::Exit && from.type != point::Entry)
 			{
-				QPoint from_pos(from.x,from.y);
-				QPoint to_pos(to.x,to.y);
+				bool add = true;
+				QLineF l(from_pos,to_pos);
 
-				if(from.is_center == to.is_center || from.node != to.node)
+				for(auto wx: iters(po::vertices(graph)))
 				{
-					bool add = true;
-					QLineF l(from_pos,to_pos);
+					QRectF bb = bboxes.at(wx);
+					QPointF c;
 
-					for(auto wx: iters(po::vertices(graph)))
+					if(l.intersect(QLineF(bb.topLeft(),bb.topRight()),&c) == QLineF::BoundedIntersection ||
+						 l.intersect(QLineF(bb.topRight(),bb.bottomRight()),&c) == QLineF::BoundedIntersection ||
+						 l.intersect(QLineF(bb.bottomRight(),bb.bottomLeft()),&c) == QLineF::BoundedIntersection ||
+						 l.intersect(QLineF(bb.bottomLeft(),bb.topLeft()),&c) == QLineF::BoundedIntersection)
 					{
-						QRectF bb = bboxes.at(wx);
-						QPointF c;
-
-						if(!(from.is_center && from.node == wx) &&
-							 !(to.is_center && to.node == wx) &&
-							 (l.intersect(QLineF(bb.topLeft(),bb.topRight()),&c) == QLineF::BoundedIntersection ||
-								l.intersect(QLineF(bb.topRight(),bb.bottomRight()),&c) == QLineF::BoundedIntersection ||
-								l.intersect(QLineF(bb.bottomRight(),bb.bottomLeft()),&c) == QLineF::BoundedIntersection ||
-								l.intersect(QLineF(bb.bottomLeft(),bb.topLeft()),&c) == QLineF::BoundedIntersection))
-						{
-							add = false;
-							break;
-						}
+						add = false;
+						break;
 					}
+				}
 
-					if(add)
-					{
-						vis.insert(std::make_pair(from,to));
-						vis.insert(std::make_pair(to,from));
-					}
+				if(add)
+				{
+					vis.insert(std::make_pair(from,to));
+					//vis.insert(std::make_pair(to,from));
 				}
 			}
 		}
@@ -528,9 +525,10 @@ doRoute(itmgraph graph, std::unordered_map<itmgraph::vertex_descriptor,QRect> bb
 		QSize from_sz = from_bb.size();
 		QSize to_sz = to_bb.size();
 
-		auto r = dijkstra(point{from,true,from_pos.x() + from_sz.width() / 2,from_pos.y() + from_sz.height() / 2},
-											point{to,true,to_pos.x() + to_sz.width() / 2,to_pos.y() + to_sz.height() / 2},vis);
-
+		auto r = dijkstra(point{from,point::Exit,from_pos.x() + from_sz.width() / 2,from_pos.y() + from_sz.height() + 3*Sugiyama::delta},
+											point{to,point::Entry,to_pos.x() + to_sz.width() / 2,to_pos.y() - 3*Sugiyama::delta},vis);
+		r.push_front(point{from,point::Center,from_pos.x() + from_sz.width() / 2,from_pos.y() + from_sz.height() / 2});
+		r.push_back(point{to,point::Center,to_pos.x() + to_sz.width() / 2,to_pos.y() + to_sz.height() / 2});
 		if(r.empty())
 		{
 			qWarning() << "No route from" << from_pos << "to" << to_pos;
@@ -558,7 +556,7 @@ std::list<point> dijkstra(point start, point goal, visgraph const& graph)
 	distance.insert(std::make_pair(start,0));
 
 	Q_ASSERT(graph.count(start));
-	Q_ASSERT(graph.count(goal));
+	//Q_ASSERT(graph.count(goal));
 
 	for(auto w: worklist)
 		distance.insert(std::make_pair(w,std::numeric_limits<double>::infinity()));
@@ -573,7 +571,7 @@ std::list<point> dijkstra(point start, point goal, visgraph const& graph)
 
 		for(auto succ: po::iters(graph.equal_range(vx)))
 		{
-			if((!succ.second.is_center || succ.second == goal) && succ.second != vx && worklist.count(succ.second))
+			if(succ.second != vx && worklist.count(succ.second))
 			{
 				double edge_cost = std::sqrt(std::pow(std::abs(succ.second.x - vx.x),2) + std::pow(std::abs(succ.second.y - vx.y),2));
 				double cum_cost = distance.at(vx) + edge_cost;
