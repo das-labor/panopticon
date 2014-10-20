@@ -145,7 +145,7 @@ namespace po
 		 * using @c state to pass information to subsequent rules.
 		 * @returns A pair with the first field true if the rule was successful and the second set to an iterator pointing to the next token to read by the next rules.
 		 */
-		virtual boost::optional<tokiter> match(tokiter begin, tokiter end, sem_state<Tag> &state) const = 0;
+		virtual boost::optional<std::pair<tokiter,sem_state<Tag>>> match(tokiter begin, tokiter end, sem_state<Tag> const& state) const = 0;
 	};
 
 	template<typename Tag>
@@ -161,6 +161,8 @@ namespace po
 	class action : public rule<Tag>
 	{
 	public:
+		using typename rule<Tag>::tokiter;
+
 		/// @param f Function to be called if this rule is tried to match.
 		action(std::function<void(sem_state<Tag>&)> &f);
 
@@ -170,7 +172,7 @@ namespace po
 		 * Calls the user-definied function.
 		 * @returns Always success, iterator pointing to @c end.
 		 */
-		virtual boost::optional<typename rule<Tag>::tokiter> match(typename rule<Tag>::tokiter begin, typename rule<Tag>::tokiter end, sem_state<Tag> &state) const;
+		virtual boost::optional<std::pair<tokiter,sem_state<Tag>>> match(tokiter begin, tokiter end, sem_state<Tag> const& state) const;
 
 		std::function<void(sem_state<Tag>&)> semantic_action;
 	};
@@ -184,6 +186,8 @@ namespace po
 	class tokpat : public rule<Tag>
 	{
 	public:
+		using typename rule<Tag>::tokiter;
+
 		/**
 		 * Constructs a new tokpa rule.
 		 * @param m Token value to match.
@@ -195,7 +199,7 @@ namespace po
 		virtual ~tokpat(void);
 
 		/// Matches one or no token.
-		virtual boost::optional<typename rule<Tag>::tokiter> match(typename rule<Tag>::tokiter begin, typename rule<Tag>::tokiter end, sem_state<Tag> &state) const;
+		virtual boost::optional<std::pair<tokiter,sem_state<Tag>>> match(tokiter begin, tokiter end, sem_state<Tag> const& state) const;
 
 	private:
 		typename rule<Tag>::token mask;
@@ -212,11 +216,13 @@ namespace po
 	class disjunction : public rule<Tag>
 	{
 	public:
+		using typename rule<Tag>::tokiter;
+
 		disjunction(void);
 		virtual ~disjunction(void);
 
 		/// Runs all rules with the supplied arguments and returns the result of the first successful rule.
-		virtual boost::optional<typename rule<Tag>::tokiter> match(typename rule<Tag>::tokiter begin, typename rule<Tag>::tokiter end, sem_state<Tag> &state) const;
+		virtual boost::optional<std::pair<tokiter,sem_state<Tag>>> match(tokiter begin, tokiter end, sem_state<Tag> const& state) const;
 
 		/// Append the rule @c r to the end of the list of rules to run if @c match is called.
 		void chain(rule_ptr<Tag> r);
@@ -236,6 +242,8 @@ namespace po
 	class conjunction : public rule<Tag>
 	{
 	public:
+		using typename rule<Tag>::tokiter;
+
 		/// Construct a new instance using @c a and @c b as first and second rule to run.
 		conjunction(rule_ptr<Tag> a, rule_ptr<Tag> b);
 
@@ -246,7 +254,7 @@ namespace po
 		 * rule is run with that result of the first as arguments. The result of this
 		 * second rule is returned. If the first rule fails its result is returned.
 		 */
-		virtual boost::optional<typename rule<Tag>::tokiter> match(typename rule<Tag>::tokiter begin, typename rule<Tag>::tokiter end, sem_state<Tag> &state) const;
+		virtual boost::optional<std::pair<tokiter,sem_state<Tag>>> match(tokiter begin, tokiter end, sem_state<Tag> const& state) const;
 
 	private:
 		rule_ptr<Tag> first, second;
@@ -286,6 +294,8 @@ namespace po
 		static_assert(std::is_unsigned<typename architecture_traits<Tag>::token_type>::value,"token_type type in architecture_traits must be an unsigned integer");
 
 	public:
+		using typename rule<Tag>::tokiter;
+
 		/// Constructs a disassembler with empty ruleset matching nothing.
 		disassembler(void);
 
@@ -343,7 +353,7 @@ namespace po
 		 * Tries to match a rule on the token sequence [begin,end), calling the associated function with @c state.
 		 * @returns An iterator pointint to the token after the match or nothing if not rule matched.
 		 */
-		virtual boost::optional<typename rule<Tag>::tokiter> match(typename rule<Tag>::tokiter begin, typename rule<Tag>::tokiter end, sem_state<Tag> &state) const;
+		virtual boost::optional<std::pair<tokiter,sem_state<Tag>>> match(tokiter begin, tokiter end, sem_state<Tag> const& state) const;
 
 	protected:
 		void append(rule_ptr<Tag> r);
@@ -364,11 +374,13 @@ namespace po
 
 	// returns next token to consume
 	template<typename Tag>
-	boost::optional<typename rule<Tag>::tokiter> action<Tag>::match(typename rule<Tag>::tokiter begin, typename rule<Tag>::tokiter end, sem_state<Tag> &state) const
+	boost::optional<std::pair<typename rule<Tag>::tokiter,sem_state<Tag>>>
+	action<Tag>::match(typename rule<Tag>::tokiter begin, typename rule<Tag>::tokiter end, sem_state<Tag> const& in_state) const
 	{
+		sem_state<Tag> state = in_state;
 		if(this->semantic_action)
 			semantic_action(state);
-		return boost::make_optional(begin);
+		return boost::make_optional(std::make_pair(begin,state));
 	}
 
 	template<typename Tag>
@@ -385,7 +397,8 @@ namespace po
 	{}
 
 	template<typename Tag>
-	boost::optional<typename rule<Tag>::tokiter> tokpat<Tag>::match(typename rule<Tag>::tokiter begin, typename rule<Tag>::tokiter end, sem_state<Tag> &state) const
+	boost::optional<std::pair<typename rule<Tag>::tokiter,sem_state<Tag>>>
+	tokpat<Tag>::match(typename rule<Tag>::tokiter begin, typename rule<Tag>::tokiter end, sem_state<Tag> const& in_state) const
 	{
 		if(begin == end)
 			return boost::none;
@@ -396,6 +409,7 @@ namespace po
 			return boost::none;
 
 		typename rule<Tag>::token t = std::accumulate(rev_begin,rev_end,0,[](typename rule<Tag>::token acc, po::tryte t) { return (acc << 8) | *t; });
+		sem_state<Tag> state = in_state;
 
 		if((t & mask) == pattern)
 		{
@@ -426,7 +440,7 @@ namespace po
 
 			state.tokens.push_back(t);
 
-			return boost::make_optional(begin + sizeof(typename rule<Tag>::token));
+			return boost::make_optional(std::make_pair(begin + sizeof(typename rule<Tag>::token),state));
 		}
 		else
 			return boost::none;
@@ -507,17 +521,17 @@ namespace po
 	{}
 
 	template<typename Tag>
-	boost::optional<typename rule<Tag>::tokiter> disjunction<Tag>::match(typename rule<Tag>::tokiter begin, typename rule<Tag>::tokiter end, sem_state<Tag> &state) const
+	boost::optional<std::pair<typename rule<Tag>::tokiter,sem_state<Tag>>>
+	disjunction<Tag>::match(typename rule<Tag>::tokiter begin, typename rule<Tag>::tokiter end, sem_state<Tag> const& in_state) const
 	{
 		auto i = patterns.cbegin();
-		boost::optional<typename rule<Tag>::tokiter> j;
 
 		while(i != patterns.cend())
 		{
-			rule<Tag> &r(**i++);
-			boost::optional<typename rule<Tag>::tokiter> ret = r.match(begin,end,state);
+			rule<Tag> const& r(**i++);
+			boost::optional<std::pair<typename rule<Tag>::tokiter,sem_state<Tag>>> ret;
 
-			if(ret)
+			if((ret = r.match(begin,end,in_state)))
 				return ret;
 		}
 
@@ -542,14 +556,19 @@ namespace po
 	{}
 
 	template<typename Tag>
-	boost::optional<typename rule<Tag>::tokiter> conjunction<Tag>::match(typename rule<Tag>::tokiter begin, typename rule<Tag>::tokiter end, sem_state<Tag> &state) const
+	boost::optional<std::pair<typename rule<Tag>::tokiter,sem_state<Tag>>>
+	conjunction<Tag>::match(typename rule<Tag>::tokiter begin, typename rule<Tag>::tokiter end, sem_state<Tag> const& in_state) const
 	{
-		boost::optional<typename rule<Tag>::tokiter> i = first->match(begin,end,state);
+		boost::optional<std::pair<typename rule<Tag>::tokiter,sem_state<Tag>>> maybe_ret;
 
-		if(i)
-			return second->match(*i,end,state);
+		if((maybe_ret = first->match(begin,end,in_state)))
+		{
+			return second->match(maybe_ret->first,end,maybe_ret->second);
+		}
 		else
+		{
 			return boost::none;
+		}
 	}
 
 	template<typename Tag>
@@ -714,21 +733,31 @@ namespace po
 	}
 
 	template<typename Tag>
-	boost::optional<typename rule<Tag>::tokiter> disassembler<Tag>::match(typename rule<Tag>::tokiter begin, typename rule<Tag>::tokiter end, sem_state<Tag> &state) const
+	boost::optional<std::pair<typename rule<Tag>::tokiter,sem_state<Tag>>>
+	disassembler<Tag>::match(typename rule<Tag>::tokiter begin, typename rule<Tag>::tokiter end, sem_state<Tag> const& in_state) const
 	{
-		boost::optional<typename rule<Tag>::tokiter> ret = disjunction<Tag>::match(begin,end,state);
+		boost::optional<std::pair<typename rule<Tag>::tokiter,sem_state<Tag>>> maybe_ret;
 
-		if(!ret && failsafe && begin != end)
+		if(!(maybe_ret = disjunction<Tag>::match(begin,end,in_state)) && failsafe && begin != end)
 		{
-			boost::reverse_iterator<typename rule<Tag>::tokiter> rev_begin(begin + sizeof(typename rule<Tag>::token)), rev_end(begin);
+			typename rule<Tag>::tokiter _end = begin + sizeof(typename rule<Tag>::token);
+			boost::reverse_iterator<typename rule<Tag>::tokiter> rev_begin(_end), rev_end(begin);
 
 			if(std::any_of(rev_begin,rev_end,[](po::tryte t) { return !t; }))
 				return boost::none;
 
-			state.tokens.push_back(std::accumulate(rev_begin,rev_end,0,[](typename rule<Tag>::token acc, po::tryte t) { return (acc << 8) | *t; }));
+			sem_state<Tag> state = in_state;
+			typename rule<Tag>::token t;
+
+			t = std::accumulate(rev_begin,rev_end,0,[](typename rule<Tag>::token acc, po::tryte t)
+				{ return (acc << 8) | *t; });
+			state.tokens.push_back(t);
+
 			return failsafe->match(begin + sizeof(typename rule<Tag>::token),end,state);
 		}
 		else
-			return ret;
+		{
+			return maybe_ret;
+		}
 	}
 }

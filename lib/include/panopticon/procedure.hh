@@ -197,7 +197,8 @@ namespace po
 
 				if(mi)
 				{
-					i = *mi;
+					i = mi->first;
+					state = mi->second;
 					offset last = 0;
 
 					for(const mnemonic &m: state.mnemonics)

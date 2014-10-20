@@ -48,7 +48,8 @@ public:
 	disassembler_mockup(const std::map<typename po::architecture_traits<test_tag>::token_type,po::sem_state<test_tag>> &states)
 	: m_states(states) {}
 
-	virtual boost::optional<typename po::rule<test_tag>::tokiter> match(po::rule<test_tag>::tokiter begin, po::rule<test_tag>::tokiter end, po::sem_state<test_tag> &state) const
+	virtual boost::optional<std::pair<typename po::rule<test_tag>::tokiter,sem_state<test_tag>>>
+	match(po::rule<test_tag>::tokiter begin, po::rule<test_tag>::tokiter end, po::sem_state<test_tag> const& in_state) const
 	{
 		if(begin == end)
 			return boost::none;
@@ -57,10 +58,11 @@ public:
 
 		if(i != m_states.end())
 		{
+			sem_state<test_tag> state = in_state;
 			state.mnemonics = i->second.mnemonics;
 			state.jumps = i->second.jumps;
 
-			return boost::make_optional(begin + std::accumulate(state.mnemonics.begin(),state.mnemonics.end(),0,[](size_t acc, const po::mnemonic &m) { return icl::size(m.area) + acc; }));
+			return boost::make_optional(std::make_pair(begin + std::accumulate(state.mnemonics.begin(),state.mnemonics.end(),0,[](size_t acc, const po::mnemonic &m) { return icl::size(m.area) + acc; }),state));
 		}
 		else
 			return boost::none;

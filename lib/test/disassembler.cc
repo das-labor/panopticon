@@ -57,10 +57,13 @@ protected:
 TEST_F(disassembler,single_decoder)
 {
 	po::sem_state<test_tag> st(0);
-	boost::optional<po::slab::iterator> i = main.match(bytes.begin(),bytes.end(),st);
+	boost::optional<std::pair<po::slab::iterator,po::sem_state<test_tag>>> i;
+
+	i = main.match(bytes.begin(),bytes.end(),st);
+	st = i->second;
 
 	ASSERT_TRUE(i);
-	ASSERT_EQ(i, next(bytes.begin()));
+	ASSERT_EQ(i->first, next(bytes.begin()));
 	ASSERT_EQ(st.address, 0);
 	ASSERT_GE(st.tokens.size(), 1);
 	ASSERT_EQ(st.tokens[0], 'A');
@@ -78,10 +81,13 @@ TEST_F(disassembler,single_decoder)
 TEST_F(disassembler,sub_decoder)
 {
 	po::sem_state<test_tag> st(1);
-	boost::optional<po::slab::iterator> i = main.match(bytes.begin()+1,bytes.end(),st);
+	boost::optional<std::pair<po::slab::iterator,po::sem_state<test_tag>>> i;
+
+	i = main.match(bytes.begin()+1,bytes.end(),st);
+	st = i->second;
 
 	ASSERT_TRUE(i);
-	ASSERT_EQ(std::distance(bytes.begin(), *i), 3);
+	ASSERT_EQ(std::distance(bytes.begin(), i->first), 3);
 	ASSERT_EQ(st.address, 1);
 	ASSERT_GE(st.tokens.size(), 2);
 	ASSERT_EQ(st.tokens[0], 'A');
@@ -100,10 +106,13 @@ TEST_F(disassembler,sub_decoder)
 TEST_F(disassembler,default_pattern)
 {
 	po::sem_state<test_tag> st(5);
-	boost::optional<po::slab::iterator> i = main.match(bytes.begin()+5,bytes.end(),st);
+	boost::optional<std::pair<po::slab::iterator,po::sem_state<test_tag>>> i;
+
+	i = main.match(bytes.begin()+5,bytes.end(),st);
+	st = i->second;
 
 	ASSERT_TRUE(i);
-	ASSERT_EQ(*i, bytes.end());
+	ASSERT_EQ(i->first, bytes.end());
 	ASSERT_EQ(st.address, 5);
 	ASSERT_EQ(st.tokens.size(), 1);
 	ASSERT_EQ(st.tokens[0], 'X');
@@ -121,10 +130,13 @@ TEST_F(disassembler,default_pattern)
 TEST_F(disassembler,slice)
 {
 	po::sem_state<test_tag> st(1);
-	boost::optional<po::slab::iterator> i = main.match(bytes.begin()+1,bytes.begin()+2,st);
+	boost::optional<std::pair<po::slab::iterator,po::sem_state<test_tag>>> i;
+
+	i = main.match(bytes.begin()+1,bytes.begin()+2,st);
+	st = i->second;
 
 	ASSERT_TRUE(i);
-	ASSERT_EQ(*i, next(bytes.begin(),2));
+	ASSERT_EQ(i->first, next(bytes.begin(),2));
 	ASSERT_EQ(st.address, 1);
 	ASSERT_GE(st.tokens.size(), 1);
 	ASSERT_EQ(st.tokens[0], 'A');
@@ -142,7 +154,10 @@ TEST_F(disassembler,slice)
 TEST_F(disassembler,empty)
 {
 	po::sem_state<test_tag> st(0);
-	boost::optional<po::slab::iterator> i = main.match(bytes.begin(),bytes.begin(),st);
+	boost::optional<std::pair<po::slab::iterator,po::sem_state<test_tag>>> i;
+
+	i = main.match(bytes.begin(),bytes.begin(),st);
+	st = i->second;
 
 	ASSERT_TRUE(!i);
 	ASSERT_EQ(st.address, 0);
@@ -155,10 +170,13 @@ TEST_F(disassembler,empty)
 TEST_F(disassembler,capture_group)
 {
 	po::sem_state<test_tag> st(4);
-	boost::optional<po::slab::iterator> i = main.match(bytes.begin()+4,bytes.end(),st);
+	boost::optional<std::pair<po::slab::iterator,po::sem_state<test_tag>>> i;
+
+	i = main.match(bytes.begin()+4,bytes.end(),st);
+	st = i->second;
 
 	ASSERT_TRUE(i);
-	ASSERT_EQ(*i, next(bytes.begin(),5));
+	ASSERT_EQ(i->first, next(bytes.begin(),5));
 	ASSERT_EQ(st.address, 4);
 	ASSERT_GE(st.tokens.size(), 1);
 	ASSERT_EQ(st.tokens[0], 'C');
@@ -183,10 +201,13 @@ TEST_F(disassembler,empty_capture_group)
 	po::disassembler<test_tag> dec;
 
 	dec | "01 a@.. 1 b@ c@..." = [](ss s) { s.mnemonic(1,"1"); };
-	boost::optional<po::slab::iterator> i = dec.match(buf.begin(),buf.end(),st);
+	boost::optional<std::pair<po::slab::iterator,po::sem_state<test_tag>>> i;
+
+	i = dec.match(buf.begin(),buf.end(),st);
+	st = i->second;
 
 	ASSERT_TRUE(i);
-	ASSERT_EQ(std::distance(buf.begin(), *i),1);
+	ASSERT_EQ(std::distance(buf.begin(), i->first),1);
 	ASSERT_EQ(st.address, 0);
 	ASSERT_EQ(st.tokens.size(), 1);
 	ASSERT_EQ(st.tokens[0], 127);
@@ -270,10 +291,13 @@ TEST_F(disassembler,wide_token)
 		s.mnemonic(2,"C");
 	};
 
-	boost::optional<po::slab::iterator> i = dec.match(buf.begin(),buf.end(),st);
+	boost::optional<std::pair<po::slab::iterator,po::sem_state<wtest_tag>>> i;
+
+	i = dec.match(buf.begin(),buf.end(),st);
+	st = i->second;
 
 	ASSERT_TRUE(i);
-	ASSERT_EQ(std::distance(buf.begin(), *i),2);
+	ASSERT_EQ(std::distance(buf.begin(), i->first),2);
 	ASSERT_EQ(st.address, 0);
 	ASSERT_EQ(st.tokens.size(), 1);
 	ASSERT_EQ(st.tokens[0], 0x1122);
