@@ -9,7 +9,12 @@
 #include <memory>
 #include <type_traits>
 #include <cstring>
+#include <string>
+#include <memory>
+#include <list>
 
+#include <boost/optional.hpp>
+#include <boost/variant.hpp>
 #include <boost/iterator/reverse_iterator.hpp>
 
 #include <panopticon/mnemonic.hh>
@@ -36,7 +41,7 @@
  * - conjunction: Takes two rules and calls both, passing the return value of the first into the second.
  * - disjunction: Takes a list of rules and calls each one returning the output of the first @c match function that is successful
  * - action: Takes a std::function and calls it with the current token stream. Always returns success.
- * - tokpat: Takes a string describing a bit pattern and returns successful if the current token matches.
+ * - token_pat: Takes a string describing a bit pattern and returns successful if the current token matches.
  * - disassembler: Add a DSEL like interface to disjunction to ease the construction of a disassembler.
  *
  * The @c match functions of each class pass along a @c sem_state instance that is filled with informations of
@@ -125,57 +130,54 @@ namespace po
 		offset next_address;
 	};
 
-	/**
-	 * @brief Base of all parsing rules in a disassembler instance.
-	 *
-	 * Subclasses are required to implement @c match that consumes a part of
-	 * the token stream.
-	 */
 	template<typename Tag>
-	class rule
+	struct disassembler;
+
+	struct token_expr
 	{
-	public:
-		using tokiter = po::slab::iterator;
-		using token = typename architecture_traits<Tag>::token_type;
+		using iter = po::slab::iterator;
 
-		virtual ~rule(void);
+		struct conjunction { std::unique_ptr<token_expr> a, b; };
+		struct option { std::unique_ptr<token_expr> e; };
+		struct terminal { std::string s; };
+		struct sub { void const* d; };
 
-		/**
-		 * Apply this rule on the token stream delimited by @c begin and @c end,
-		 * using @c state to pass information to subsequent rules.
-		 * @returns A pair with the first field true if the rule was successful and the second set to an iterator pointing to the next token to read by the next rules.
-		 */
-		virtual boost::optional<std::pair<tokiter,sem_state<Tag>>> match(tokiter begin, tokiter end, sem_state<Tag> const& state) const = 0;
+		using token_expr_union = boost::variant<
+			conjunction,
+			option,
+			terminal,
+			sub
+		>;
+
+		template<typename Tag>
+		token_expr(disassembler<Tag> const&);
+		token_expr(std::string const&);
+		token_expr(unsigned long long);
+		token_expr(token_expr const& e1,token_expr const& e2);
+		token_expr(token_expr_union const& e);
+
+		template<typename Tag>
+		std::list<std::pair<
+			std::list<std::pair<token,token>>,
+			std::list<std::function<void(sem_state<Tag>&)>>
+		>>
+		to_pattern_list(void) const;
+
+	private:
+		token_expr_union _u;
 	};
 
+	token_expr operator*(token_expr const& e);
+	token_expr operator""_e(char const* s,unsigned long l);
+	token_expr operator""_e(unsigned long long l);
+	token_expr operator>>(token_expr const& e1,token_expr const& e2);
+
 	template<typename Tag>
-	using rule_ptr = std::shared_ptr<rule<Tag>>;
-
-	/**
-	 * @brief Semantic action
-	 *
-	 * This class finished a rule sequence by calling a user-definied
-	 * function to carry out the translation of a matched token range to mnemonics.
-	 */
+	token_expr operator>>(token_expr const&,disassembler<Tag> const&);
 	template<typename Tag>
-	class action : public rule<Tag>
-	{
-	public:
-		using typename rule<Tag>::tokiter;
-
-		/// @param f Function to be called if this rule is tried to match.
-		action(std::function<void(sem_state<Tag>&)> &f);
-
-		virtual ~action(void);
-
-		/**
-		 * Calls the user-definied function.
-		 * @returns Always success, iterator pointing to @c end.
-		 */
-		virtual boost::optional<std::pair<tokiter,sem_state<Tag>>> match(tokiter begin, tokiter end, sem_state<Tag> const& state) const;
-
-		std::function<void(sem_state<Tag>&)> semantic_action;
-	};
+	token_expr operator>>(disassembler<Tag> const&,token_expr const&);
+	template<typename Tag>
+	token_expr operator>>(disassembler<Tag> const&,disassembler<Tag> const&);
 
 	/**
 	 * @brief Matches a pattern of bits in a token
@@ -183,90 +185,27 @@ namespace po
 	 * This rule implements token patterns build either with strings or literal integers
 	 */
 	template<typename Tag>
-	class tokpat : public rule<Tag>
+	struct token_pat
 	{
-	public:
-		using typename rule<Tag>::tokiter;
+		using iter = po::slab::iterator;
+		using token = typename architecture_traits<Tag>::token_type;
 
-		/**
-		 * Constructs a new tokpa rule.
-		 * @param m Token value to match.
-		 * @param pat Bits to mask before comparing a candidate token to @c m. Used to realize match-all sequences like "10...".
-		 * @param cg Capture groups. Key is the group name, value a bit mask describing the bits to save in the group.
-		 */
-		tokpat(typename rule<Tag>::token m, typename rule<Tag>::token pat, std::map< std::string,typename rule<Tag>::token> &cg);
-
-		virtual ~tokpat(void);
-
-		/// Matches one or no token.
-		virtual boost::optional<std::pair<tokiter,sem_state<Tag>>> match(tokiter begin, tokiter end, sem_state<Tag> const& state) const;
+		token_pat(std::string const&);
+		boost::optional<std::list<std::string,token>> matches(token) const;
 
 	private:
-		typename rule<Tag>::token mask;
-		typename rule<Tag>::token pattern;
-		std::map< std::string,typename rule<Tag>::token> capture_patterns;
-	};
-
-	/**
-	 * @brief OR rule
-	 *
-	 * Tries a number of rules until one matches and returns its result.
-	 */
-	template<typename Tag>
-	class disjunction : public rule<Tag>
-	{
-	public:
-		using typename rule<Tag>::tokiter;
-
-		disjunction(void);
-		virtual ~disjunction(void);
-
-		/// Runs all rules with the supplied arguments and returns the result of the first successful rule.
-		virtual boost::optional<std::pair<tokiter,sem_state<Tag>>> match(tokiter begin, tokiter end, sem_state<Tag> const& state) const;
-
-		/// Append the rule @c r to the end of the list of rules to run if @c match is called.
-		void chain(rule_ptr<Tag> r);
-
-	private:
-		std::list<rule_ptr<Tag> > patterns;
-	};
-
-	/**
-	 * @brief AND rule
-	 *
-	 * An instance of this class is constructed from two other rules.
-	 * The result of the first is put in the second on if the first is
-	 * successful. The result of the second is returned.
-	 */
-	template<typename Tag>
-	class conjunction : public rule<Tag>
-	{
-	public:
-		using typename rule<Tag>::tokiter;
-
-		/// Construct a new instance using @c a and @c b as first and second rule to run.
-		conjunction(rule_ptr<Tag> a, rule_ptr<Tag> b);
-
-		virtual ~conjunction(void);
-
-		/**
-		 * Runs the first rule with the supplied arguments if it is successful the second
-		 * rule is run with that result of the first as arguments. The result of this
-		 * second rule is returned. If the first rule fails its result is returned.
-		 */
-		virtual boost::optional<std::pair<tokiter,sem_state<Tag>>> match(tokiter begin, tokiter end, sem_state<Tag> const& state) const;
-
-	private:
-		rule_ptr<Tag> first, second;
+		token _mask;
+		token _pat;
+		std::list<std::string,token> _capture;
 	};
 
 	/**
 	 * @brief Thrown by disassembler to signal an invalid token pattern
 	 */
-	class tokpat_error : public std::invalid_argument
+	class token_pat_error : public std::invalid_argument
 	{
 	public:
-		tokpat_error(std::string w = std::string("invalid token pattern"));
+		token_pat_error(std::string w = std::string("invalid token pattern"));
 	};
 
 	/**
@@ -289,167 +228,19 @@ namespace po
 	 * matches everything.
 	 */
 	template<typename Tag>
-	class disassembler : public disjunction<Tag>
+	struct disassembler
 	{
-		static_assert(std::is_unsigned<typename architecture_traits<Tag>::token_type>::value,"token_type type in architecture_traits must be an unsigned integer");
+		using iter = po::slab::iterator;
+		using token = typename architecture_traits<Tag>::token_type;
 
-	public:
-		using typename rule<Tag>::tokiter;
+		token_expr operator*(void) const { return token_expr(token_expr::token_expr_union(token_expr::option{std::unique_ptr<token_expr>(new token_expr(token_expr::token_expr_union(token_expr::sub{reinterpret_cast<void const*>(this)})))})); }
+		std::function<void(void)>& operator[](token_expr const&);
 
-		/// Constructs a disassembler with empty ruleset matching nothing.
-		disassembler(void);
-
-		virtual ~disassembler(void);
-
-		/**
-		 * Sets the function of the rule constructed last to @c f and starts a new rule.
-		 * @note This function does not behave as a standard assignment operator!
-		 * @returns self
-		 */
-		disassembler &operator=(std::function<void(sem_state<Tag>&)> f);
-
-		/**
-		 * Appends the token pattern @c i to the currently constructed rule.
-		 * @note This function does not behave like a bitwise OR!
-		 * @returns self to allow joining of | operations.
-		 */
-		disassembler &operator|(typename rule<Tag>::token i);
-
-		/**
-		 * @brief Adds a token pattern.
-		 * A token pattern is a string describing a token as a sequence of bits. Simple patters
-		 * consist of "0" and "1". The pattern "01101100" matches a token with value 108 decimal.
-		 * Token patterns can include "." which match both 0 and 1 bits. The pattern "00.." matches
-		 * 0, 1, 2 and 3 decimal. Spaces are ignored: "0 0 0" matches the same tokens as "000".
-		 * To get the concrete values of the bits matched with "." a capture group can be used.
-		 * Each group has a name and an associated range of "." signs. The pattern "a@..." defines
-		 * the capture group "a" holding the value of the three lower bits the @ sign divides group
-		 * name and sub pattern. Capture groups extend to the next space. If a capture group occurs
-		 * more than once in a pattern, its bits are concatenated in the order the show up in the
-		 * pattern. The pattern "a@..0a@.." matches all tokens with the 3rd bit set to zero.
-		 * The contents of a for token with value 01011 would be 0111. The name of a capture
-		 * group can only include upper and lower case letters. Empty capture groups ("a@") are allowed.
-		 * Token patterns that are shorter than the token are left-extended with zeros. If the pattern
-		 * is too wide a tokpat_error is thrown.
-		 *
-		 * @param c Token pattern formatted as above
-		 * @returns self
-		 * @throws tokpat_error On invalid token pattern
-		 *
-		 * @todo Make sure an exception is thrown if an invalid token pattern is feed into the function.
-		 */
-		disassembler &operator|(const char *c);
-
-		/**
-		 * Adds another disassembler to the currently constructed rule. The
-		 * rule matches if any rule of @c dec matches. The function of @c runs before
-		 * the function associated with this rule.
-		 * @note This function does not behave like a bitwise OR!
-		 * @returns self to allow joining of | operations.
-		 */
-		disassembler &operator|(disassembler<Tag> &dec);
-
-		/**
-		 * Tries to match a rule on the token sequence [begin,end), calling the associated function with @c state.
-		 * @returns An iterator pointint to the token after the match or nothing if not rule matched.
-		 */
-		virtual boost::optional<std::pair<tokiter,sem_state<Tag>>> match(tokiter begin, tokiter end, sem_state<Tag> const& state) const;
-
-	protected:
-		void append(rule_ptr<Tag> r);
+		boost::optional<std::pair<iter,sem_state<Tag>>> try_match(iter b, iter e,sem_state<Tag> const&) const;
 
 	private:
-		rule_ptr<Tag> current;
-		std::shared_ptr<action<Tag>> failsafe;
+		std::list<std::pair<std::list<token_pat<Tag>>,std::function<void(void)>>> _pats;
 	};
-
-	template<typename Tag>
-	action<Tag>::action(std::function<void(sem_state<Tag>&)> &f)
-	: semantic_action(f)
-	{}
-
-	template<typename Tag>
-	action<Tag>::~action(void)
-	{}
-
-	// returns next token to consume
-	template<typename Tag>
-	boost::optional<std::pair<typename rule<Tag>::tokiter,sem_state<Tag>>>
-	action<Tag>::match(typename rule<Tag>::tokiter begin, typename rule<Tag>::tokiter end, sem_state<Tag> const& in_state) const
-	{
-		sem_state<Tag> state = in_state;
-		if(this->semantic_action)
-			semantic_action(state);
-		return boost::make_optional(std::make_pair(begin,state));
-	}
-
-	template<typename Tag>
-	rule<Tag>::~rule(void)
-	{}
-
-	template<typename Tag>
-	tokpat<Tag>::~tokpat(void)
-	{}
-
-	template<typename Tag>
-	tokpat<Tag>::tokpat(typename rule<Tag>::token m, typename rule<Tag>::token pat, std::map< std::string,typename rule<Tag>::token> &cg)
-	: mask(m), pattern(pat), capture_patterns(cg)
-	{}
-
-	template<typename Tag>
-	boost::optional<std::pair<typename rule<Tag>::tokiter,sem_state<Tag>>>
-	tokpat<Tag>::match(typename rule<Tag>::tokiter begin, typename rule<Tag>::tokiter end, sem_state<Tag> const& in_state) const
-	{
-		if(begin == end)
-			return boost::none;
-
-		boost::reverse_iterator<typename rule<Tag>::tokiter> rev_begin(begin + sizeof(typename rule<Tag>::token)), rev_end(begin);
-
-		if(std::any_of(begin,begin + sizeof(typename rule<Tag>::token),[](po::tryte t) { return !t; }))
-			return boost::none;
-
-		typename rule<Tag>::token t = std::accumulate(rev_begin,rev_end,0,[](typename rule<Tag>::token acc, po::tryte t) { return (acc << 8) | *t; });
-		sem_state<Tag> state = in_state;
-
-		if((t & mask) == pattern)
-		{
-			auto cg_iter = capture_patterns.cbegin();
-
-			while(cg_iter != capture_patterns.cend())
-			{
-				typename rule<Tag>::token mask = cg_iter->second;
-				unsigned int res = 0;
-				int bit = sizeof(typename rule<Tag>::token) * 8 - 1;
-
-				if(state.capture_groups.count(cg_iter->first))
-					res = state.capture_groups.find(cg_iter->first)->second;
-
-				while(bit >= 0)
-				{
-					if((mask >> bit) & 1)
-						res = (res << 1) | ((t >> bit) & 1);
-					--bit;
-				}
-
-				if(state.capture_groups.count(cg_iter->first))
-					state.capture_groups.find(cg_iter->first)->second = res;
-				else
-					state.capture_groups.insert(std::make_pair(cg_iter->first,res));
-				++cg_iter;
-			}
-
-			state.tokens.push_back(t);
-
-			return boost::make_optional(std::make_pair(begin + sizeof(typename rule<Tag>::token),state));
-		}
-		else
-			return boost::none;
-	}
-
-	template<typename Tag>
-	sem_state<Tag>::sem_state(offset a)
-	: address(a), tokens(), capture_groups(), mnemonics(), jumps(), next_address(a)
-	{}
 
 	template<typename Tag>
 	void sem_state<Tag>::mnemonic(size_t len, std::string n, std::string fmt, std::list<rvalue> ops, std::function<void(code_generator<Tag>&)> fn)
@@ -512,106 +303,13 @@ namespace po
 	}
 
 	template<typename Tag>
-	disjunction<Tag>::disjunction(void)
-	: patterns()
-	{}
-
-	template<typename Tag>
-	disjunction<Tag>::~disjunction(void)
-	{}
-
-	template<typename Tag>
-	boost::optional<std::pair<typename rule<Tag>::tokiter,sem_state<Tag>>>
-	disjunction<Tag>::match(typename rule<Tag>::tokiter begin, typename rule<Tag>::tokiter end, sem_state<Tag> const& in_state) const
+	token_pat::token_pat(std::string const& c)
+	: _mask(0), _pat(0), _capture()
 	{
-		auto i = patterns.cbegin();
-
-		while(i != patterns.cend())
-		{
-			rule<Tag> const& r(**i++);
-			boost::optional<std::pair<typename rule<Tag>::tokiter,sem_state<Tag>>> ret;
-
-			if((ret = r.match(begin,end,in_state)))
-				return ret;
-		}
-
-		return boost::none;
-	}
-
-	template<typename Tag>
-	void disjunction<Tag>::chain(rule_ptr<Tag> r)
-	{
-		patterns.push_back(r);
-	}
-
-	template<typename Tag>
-	conjunction<Tag>::conjunction(rule_ptr<Tag> a, rule_ptr<Tag> b)
-	: first(a), second(b)
-	{
-		ensure(a && b);
-	}
-
-	template<typename Tag>
-	conjunction<Tag>::~conjunction(void)
-	{}
-
-	template<typename Tag>
-	boost::optional<std::pair<typename rule<Tag>::tokiter,sem_state<Tag>>>
-	conjunction<Tag>::match(typename rule<Tag>::tokiter begin, typename rule<Tag>::tokiter end, sem_state<Tag> const& in_state) const
-	{
-		boost::optional<std::pair<typename rule<Tag>::tokiter,sem_state<Tag>>> maybe_ret;
-
-		if((maybe_ret = first->match(begin,end,in_state)))
-		{
-			return second->match(maybe_ret->first,end,maybe_ret->second);
-		}
-		else
-		{
-			return boost::none;
-		}
-	}
-
-	template<typename Tag>
-	disassembler<Tag>::disassembler(void)
-	: current(0), failsafe(0)
-	{}
-
-	template<typename Tag>
-	disassembler<Tag>::~disassembler(void)
-	{}
-
-	template<typename Tag>
-	disassembler<Tag> &disassembler<Tag>::operator=(std::function<void(sem_state<Tag>&)> f)
-	{
-		if(this->current)
-		{
-			this->chain(rule_ptr<Tag>(new conjunction<Tag>(current,rule_ptr<Tag>(new action<Tag>(f)))));
-			this->current = 0;
-		}
-		else
-		{
-			this->failsafe = std::shared_ptr<action<Tag>>(new action<Tag>(f));
-		}
-
-		return *this;
-	}
-
-	template<typename Tag>
-	disassembler<Tag> &disassembler<Tag>::operator|(typename rule<Tag>::token i)
-	{
-		std::map< std::string,typename rule<Tag>::token> cgs;
-		append(rule_ptr<Tag>(new tokpat<Tag>(~((typename rule<Tag>::token)0),i,cgs)));
-		return *this;
-	}
-
-	template<typename Tag>
-	disassembler<Tag> &disassembler<Tag>::operator|(const char *c)
-	{
-		typename rule<Tag>::token mask = 0, pattern = 0;
-		int bit = sizeof(typename rule<Tag>::token) * 8 - 1;
-		const char *p = c;
-		std::map< std::string,typename rule<Tag>::token> cgs;
-		typename rule<Tag>::token *cg_mask = 0;
+		int bit = sizeof(token) * 8 - 1;
+		const char *p = c.c_str();
+		std::unordered_map<std::string,token> cgs;
+		boost::optional<token> cg_mask = boost::none;
 		std::string cg_name;
 		enum pstate { ANY, AT, PAT } ps = ANY;
 
@@ -624,8 +322,8 @@ namespace po
 				{
 					if(*p == '0' || *p == '1')
 					{
-						pattern |= (*p - '0') << bit;
-						mask |= 1 << bit;
+						_pat |= (*p - '0') << bit;
+						_mask |= 1 << bit;
 						--bit;
 						++p;
 					}
@@ -641,7 +339,7 @@ namespace po
 					}
 					else
 					{
-						throw tokpat_error("invalid pattern at column " + std::to_string(p - c) + " '" + std::string(c) + "'");
+						throw token_pat_error("invalid pattern at column " + std::to_string(p - c) + " '" + std::string(c) + "'");
 					}
 
 					break;
@@ -653,7 +351,7 @@ namespace po
 					if(*p == '@')
 					{
 						if(!cgs.count(cg_name))
-							cgs.insert(std::pair< std::string,typename rule<Tag>::token>(cg_name,0));
+							cgs.emplace(cg_name,0);
 						cg_mask = &cgs[cg_name];
 						ps = PAT;
 						++p;
@@ -665,7 +363,7 @@ namespace po
 					}
 					else
 					{
-						throw tokpat_error("invalid pattern at column " + std::to_string(p - c) + " '" + std::string(c) + "'");
+						throw token_pat_error("invalid pattern at column " + std::to_string(p - c) + " '" + std::string(c) + "'");
 					}
 					break;
 				}
@@ -676,7 +374,7 @@ namespace po
 					if(*p == '.')
 					{
 						if(!cg_mask)
-							throw tokpat_error();
+							throw token_pat_error();
 
 						*cg_mask |= 1 << bit;
 						--bit;
@@ -691,73 +389,140 @@ namespace po
 
 				default:
 				{
-					throw tokpat_error("invalid pattern at column " + std::to_string(p-c) + " '" + std::string(c) + "'");
+					throw token_pat_error("invalid pattern at column " + std::to_string(p-c) + " '" + std::string(c) + "'");
 				}
 			}
 		}
 
 		if(*p != 0)
-			throw tokpat_error();
+			throw token_pat_error();
 
 		// left extend a too short token pattern with zeros
 		if(bit > -1)
 		{
-			int tshift = sizeof(typename rule<Tag>::token) * 8 - bit - 1, mshift = bit + 1;
-			typename rule<Tag>::token t = 0;
+			int tshift = sizeof(token) * 8 - bit - 1, mshift = bit + 1;
+			token t = 0;
 
 			while(bit-- > -1)
 				t = (t << 1) | 1;
 
-			mask = (mask >> mshift) | (t << tshift);
-			pattern = pattern >> mshift;
+			_mask = (_mask >> mshift) | (t << tshift);
+			_pat = _pat >> mshift;
 		}
 
-		append(rule_ptr<Tag>(new tokpat<Tag>(mask,pattern,cgs)));
-		return *this;
+		std::copy(cgs.begin(),cgs.end(),std::back_inserter(_capture));
 	}
 
 	template<typename Tag>
-	disassembler<Tag> &disassembler<Tag>::operator|(disassembler<Tag> &dec)
+	boost::optional<std::list<std::string,token>> token_pat::matches(token t) const
 	{
-		append(rule_ptr<Tag>(&dec,[](disassembler *) {}));
-		return *this;
-	}
-
-	template<typename Tag>
-	void disassembler<Tag>::append(rule_ptr<Tag> r)
-	{
-		if(!current)
-			current = r;
-		else
-			current = rule_ptr<Tag>(new conjunction<Tag>(current,r));
-	}
-
-	template<typename Tag>
-	boost::optional<std::pair<typename rule<Tag>::tokiter,sem_state<Tag>>>
-	disassembler<Tag>::match(typename rule<Tag>::tokiter begin, typename rule<Tag>::tokiter end, sem_state<Tag> const& in_state) const
-	{
-		boost::optional<std::pair<typename rule<Tag>::tokiter,sem_state<Tag>>> maybe_ret;
-
-		if(!(maybe_ret = disjunction<Tag>::match(begin,end,in_state)) && failsafe && begin != end)
+		if((t & _mask) == _pat)
 		{
-			typename rule<Tag>::tokiter _end = begin + sizeof(typename rule<Tag>::token);
-			boost::reverse_iterator<typename rule<Tag>::tokiter> rev_begin(_end), rev_end(begin);
+			std::list<std::pair<std::string,token>> ret;
+			auto cg_iter = _capture.cbegin();
 
-			if(std::any_of(rev_begin,rev_end,[](po::tryte t) { return !t; }))
-				return boost::none;
+			while(cg_iter != _capture.cend())
+			{
+				token cg_mask = cg_iter->second;
+				unsigned int res = 0;
+				int bit = sizeof(token) * 8 - 1;
+				auto i = std::find_if(ret.begin(),ret.end(),[&](std::pair<std::string,token>& p)
+					{ return p.first == cg_iter->first; });
 
-			sem_state<Tag> state = in_state;
-			typename rule<Tag>::token t;
+				if(i != ret.end())
+				{
+					res = i->second;
+					ret.erase(i);
+				}
 
-			t = std::accumulate(rev_begin,rev_end,0,[](typename rule<Tag>::token acc, po::tryte t)
-				{ return (acc << 8) | *t; });
-			state.tokens.push_back(t);
+				while(bit >= 0)
+				{
+					if((cg_mask >> bit) & 1)
+						res = (res << 1) | ((t >> bit) & 1);
+					--bit;
+				}
 
-			return failsafe->match(begin + sizeof(typename rule<Tag>::token),end,state);
+				ret.emplace_back(cg_iter->first,res);
+				++cg_iter;
+			}
+
+			return ret;
 		}
 		else
 		{
-			return maybe_ret;
+			return boost::none;
 		}
+	}
+
+	template<typename Tag>
+	token_expr::token_expr(disassembler<Tag> const& d)
+	: _u(sub{reinterpret_cast<void const*>(&d)})
+	{}
+
+	template<typename Tag>
+	std::list<std::pair<
+		std::list<std::pair<token,token>>,
+		std::list<std::function<void(sem_state<Tag>&)>>
+	>>
+	token_expr::to_pattern_list(void) const
+	{
+		using token = architecture_traits<Tag>::token;
+		using toklist = std::list<std::pair<token,token>>;
+		using actlist = std::list<std::function<void(sem_state<Tag>&)>>;
+		using ret_type = std::list<std::pair<toklist,actlist>>;
+
+		struct vis : public boost::static_visitor<ret_type>
+		{
+			ret_type operator()(conjunction const& c) const
+			{
+				ret_type a = c.a->to_pattern_list();
+				ret_type b = c.b->to_pattern_list();
+				ret_type ret;
+
+				for(auto x: a)
+				{
+					for(auto y: b)
+					{
+						toklist tl;
+						actlist al;
+
+						std::copy(x.first.begin(),x.first.end(),std::back_inserter(tl));
+						std::copy(y.first.begin(),y.first.end(),std::back_inserter(tl));
+						std::copy(x.second.begin(),x.second.end(),std::back_inserter(al));
+						std::copy(y.second.begin(),y.second.end(),std::back_inserter(al));
+
+						ret.emplace_back(tl,al);
+					}
+				}
+
+				return ret;
+			}
+
+			ret_type operator()(terminal const& c) const
+			{
+				token_pat pat(c);
+				toklist tl;
+
+				tl.emplace_back(pat.mask(),pat.pattern());
+				return ret_type({std::make_pair(tl,actlis())});
+			}
+
+			ret_type operator()(sub const& c) const
+			{
+				return reinterpret_cast<disassembler<Tag> const*>(c.d)->patterns();
+			}
+
+			ret_type operator()(option const& c) const
+			{
+				ret_type o = c.e->to_pattern_list();
+
+				o.emplace_back(toklist(),actlist());
+
+				return o;
+			}
+		};
+
+		vis v();
+		return boost::apply_visitor(_u,v);
 	}
 }
