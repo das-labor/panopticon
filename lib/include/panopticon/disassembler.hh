@@ -137,15 +137,55 @@ namespace po
 	{
 		using iter = po::slab::iterator;
 
-		struct conjunction { std::unique_ptr<token_expr> a, b; };
-		struct option { std::unique_ptr<token_expr> e; };
+		struct conjunction
+		{
+			conjunction(token_expr const& _a, token_expr const& _b)
+			: a(new token_expr(_a)), b(new token_expr(_b))
+			{}
+
+			conjunction(conjunction const& c)
+			: a(new token_expr(*c.a)), b(new token_expr(*c.b))
+			{}
+
+			conjunction& operator=(conjunction const& c)
+			{
+				if(this != &c)
+				{
+					a.reset(new token_expr(*c.a));
+					b.reset(new token_expr(*c.b));
+				}
+				return *this;
+			}
+
+			std::unique_ptr<token_expr> a, b;
+		};
+
+		struct option
+		{
+			option(token_expr const& _e)
+			: e(new token_expr(_e))
+			{}
+
+			option(option const& o)
+			: e(new token_expr(*o.e))
+			{}
+
+			option& operator=(option const& o)
+			{
+				if(this != &o)
+					e.reset(new token_expr(*o.e));
+				return *this;
+			}
+
+			std::unique_ptr<token_expr> e;
+		};
 		struct terminal { std::string s; };
 		struct sub { void const* d; };
 
 		using token_expr_union = boost::variant<
-			conjunction,
-			option,
 			terminal,
+			option,
+			conjunction,
 			sub
 		>;
 
@@ -156,9 +196,13 @@ namespace po
 		token_expr(token_expr const& e1,token_expr const& e2);
 		token_expr(token_expr_union const& e);
 
+		token_expr(void) = delete;
+
 		template<typename Tag>
 		std::list<std::pair<
-			std::list<std::pair<token,token>>,
+			std::list<std::pair<
+				typename architecture_traits<Tag>::token_type,
+				typename architecture_traits<Tag>::token_type>>,
 			std::list<std::function<void(sem_state<Tag>&)>>
 		>>
 		to_pattern_list(void) const;
@@ -168,8 +212,8 @@ namespace po
 	};
 
 	token_expr operator*(token_expr const& e);
-	token_expr operator""_e(char const* s,unsigned long l);
-	token_expr operator""_e(unsigned long long l);
+	token_expr operator"" _e(char const* s,unsigned long l);
+	token_expr operator"" _e(unsigned long long l);
 	token_expr operator>>(token_expr const& e1,token_expr const& e2);
 
 	template<typename Tag>
@@ -202,10 +246,10 @@ namespace po
 	/**
 	 * @brief Thrown by disassembler to signal an invalid token pattern
 	 */
-	class token_pat_error : public std::invalid_argument
+	class tokpat_error : public std::invalid_argument
 	{
 	public:
-		token_pat_error(std::string w = std::string("invalid token pattern"));
+		tokpat_error(std::string w = std::string("invalid token pattern"));
 	};
 
 	/**
@@ -303,11 +347,12 @@ namespace po
 	}
 
 	template<typename Tag>
-	token_pat::token_pat(std::string const& c)
+	token_pat<Tag>::token_pat(std::string const& _c)
 	: _mask(0), _pat(0), _capture()
 	{
 		int bit = sizeof(token) * 8 - 1;
-		const char *p = c.c_str();
+		char const* c = _c.c_str();
+		char const* p = c;
 		std::unordered_map<std::string,token> cgs;
 		boost::optional<token> cg_mask = boost::none;
 		std::string cg_name;
@@ -339,7 +384,7 @@ namespace po
 					}
 					else
 					{
-						throw token_pat_error("invalid pattern at column " + std::to_string(p - c) + " '" + std::string(c) + "'");
+						throw tokpat_error("invalid pattern at column " + std::to_string(p - c) + " '" + std::string(c) + "'");
 					}
 
 					break;
@@ -363,7 +408,7 @@ namespace po
 					}
 					else
 					{
-						throw token_pat_error("invalid pattern at column " + std::to_string(p - c) + " '" + std::string(c) + "'");
+						throw tokpat_error("invalid pattern at column " + std::to_string(p - c) + " '" + std::string(c) + "'");
 					}
 					break;
 				}
@@ -374,7 +419,7 @@ namespace po
 					if(*p == '.')
 					{
 						if(!cg_mask)
-							throw token_pat_error();
+							throw tokpat_error();
 
 						*cg_mask |= 1 << bit;
 						--bit;
@@ -389,13 +434,13 @@ namespace po
 
 				default:
 				{
-					throw token_pat_error("invalid pattern at column " + std::to_string(p-c) + " '" + std::string(c) + "'");
+					throw tokpat_error("invalid pattern at column " + std::to_string(p-c) + " '" + std::string(c) + "'");
 				}
 			}
 		}
 
 		if(*p != 0)
-			throw token_pat_error();
+			throw tokpat_error();
 
 		// left extend a too short token pattern with zeros
 		if(bit > -1)
@@ -414,7 +459,7 @@ namespace po
 	}
 
 	template<typename Tag>
-	boost::optional<std::list<std::string,token>> token_pat::matches(token t) const
+	boost::optional<std::list<std::string,typename architecture_traits<Tag>::token_type>> token_pat<Tag>::matches(typename architecture_traits<Tag>::token_type t) const
 	{
 		if((t & _mask) == _pat)
 		{
@@ -461,12 +506,14 @@ namespace po
 
 	template<typename Tag>
 	std::list<std::pair<
-		std::list<std::pair<token,token>>,
+		std::list<std::pair<
+			typename architecture_traits<Tag>::token_type,
+			typename architecture_traits<Tag>::token_type>>,
 		std::list<std::function<void(sem_state<Tag>&)>>
 	>>
 	token_expr::to_pattern_list(void) const
 	{
-		using token = architecture_traits<Tag>::token;
+		using token = typename architecture_traits<Tag>::token_type;
 		using toklist = std::list<std::pair<token,token>>;
 		using actlist = std::list<std::function<void(sem_state<Tag>&)>>;
 		using ret_type = std::list<std::pair<toklist,actlist>>;
@@ -475,8 +522,8 @@ namespace po
 		{
 			ret_type operator()(conjunction const& c) const
 			{
-				ret_type a = c.a->to_pattern_list();
-				ret_type b = c.b->to_pattern_list();
+				ret_type a = c.a->to_pattern_list<Tag>();
+				ret_type b = c.b->to_pattern_list<Tag>();
 				ret_type ret;
 
 				for(auto x: a)
@@ -500,11 +547,11 @@ namespace po
 
 			ret_type operator()(terminal const& c) const
 			{
-				token_pat pat(c);
+				token_pat<Tag> pat(c);
 				toklist tl;
 
 				tl.emplace_back(pat.mask(),pat.pattern());
-				return ret_type({std::make_pair(tl,actlis())});
+				return ret_type({std::make_pair(tl,actlist())});
 			}
 
 			ret_type operator()(sub const& c) const
@@ -514,7 +561,7 @@ namespace po
 
 			ret_type operator()(option const& c) const
 			{
-				ret_type o = c.e->to_pattern_list();
+				ret_type o = c.e->to_pattern_list<Tag>();
 
 				o.emplace_back(toklist(),actlist());
 
@@ -522,7 +569,7 @@ namespace po
 			}
 		};
 
-		vis v();
+		vis v;
 		return boost::apply_visitor(_u,v);
 	}
 }

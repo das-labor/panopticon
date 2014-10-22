@@ -6,9 +6,10 @@
 #include <panopticon/avr/avr.hh>
 #include <panopticon/avr/util.hh>
 
+#include <panopticon/code_generator.hh>
+
 using namespace po;
 using namespace po::avr;
-using namespace po::dsl;
 
 // registers
 const variable r0 = variable("r0",8), r1 = variable("r1",8), r2 = variable("r2",8), r3 = variable("r3",8), r4 = variable("r4",8), r5 = variable("r5",8), r6 = variable("r6",8),
@@ -200,6 +201,10 @@ sem_action po::avr::binary_st(variable Rd1, variable Rd2, bool pre_dec, bool pos
 
 	return [=](sm &st)
 	{
+		using po::dsl::operator*;
+		using po::dsl::operator+;
+		using po::dsl::operator-;
+
 		lvalue X = po::temporary(po::avr_tag());
 
 		variable Rr = decode_reg(st.capture_groups["r"]);
@@ -247,6 +252,10 @@ sem_action po::avr::binary_ld(variable Rr1, variable Rr2, bool pre_dec, bool pos
 
 	return [=](sm &st)
 	{
+		using po::dsl::operator*;
+		using po::dsl::operator+;
+		using po::dsl::operator-;
+
 		lvalue X = po::temporary(po::avr_tag());
 
 		variable Rd = decode_reg(st.capture_groups["r"]);
@@ -292,6 +301,10 @@ sem_action po::avr::binary_stq(variable Rd1, variable Rd2)
 {
 	return [=](sm &st)
 	{
+		using po::dsl::operator*;
+		using po::dsl::operator+;
+		using po::dsl::operator-;
+
 		unsigned int q = st.capture_groups["q"];
 		lvalue X = po::temporary(po::avr_tag());
 
@@ -311,7 +324,7 @@ sem_action po::avr::binary_stq(variable Rd1, variable Rd2)
 
 		st.mnemonic(st.tokens.size() * 2,"st",fmt,{X,Rr},[=](cg &c)
 		{
-			c.add_i(X,Rd2 * 0x100 + Rd1 + constant(q));
+			c.add_i(X,Rd2 * 0x100ull + Rd1 + constant(q));
 			c.assign(sram(X),Rr);
 		});
 		st.jump(st.address + st.tokens.size() * 2);
@@ -322,6 +335,10 @@ sem_action po::avr::binary_ldq(variable Rr1, variable Rr2)
 {
 		return [=](sm &st)
 	{
+		using po::dsl::operator*;
+		using po::dsl::operator+;
+		using po::dsl::operator-;
+
 		unsigned int q = st.capture_groups["q"];
 		lvalue X = po::temporary(po::avr_tag());
 

@@ -65,7 +65,7 @@ const variable r0 = variable("r0",8), r1 = variable("r1",8), r2 = variable("r2",
 
 boost::optional<prog_loc> po::avr::disassemble(boost::optional<prog_loc> prog, po::slab bytes, const po::ref& r)
 {
-	disassembler<avr_tag> main;
+	/*disassembler<avr_tag> main;
 
 	// memory operations
 	main | "001011 r@. d@..... r@...." 	= binary_reg("mov",[](cg &m, const variable &Rd, const variable &Rr)
@@ -695,16 +695,16 @@ boost::optional<prog_loc> po::avr::disassemble(boost::optional<prog_loc> prog, p
 	main | "10q@.0 q@..0d@. d@.... 0q@..." = binary_ldq(r30,r31);
 
 	// misc
-	main | 0x9598 = simple("break",[](cg &m) { /* TODO */ });
+	main | 0x9598 = simple("break",[](cg &m) { * TODO * });
 	main | "10010100 K@.... 1011" = [](sm &st)
 	{
 		st.mnemonic(st.tokens.size() * 2,"des","",constant(st.capture_groups["K"]),std::function<void(cg &c)>());
 		st.jump(st.tokens.size() * 2 + st.address);
 	};
 
-	main | (architecture_traits<avr_tag>::token_type)0x0 = simple("nop",[](cg &m) { /* TODO */ });
-	main | 0x9588 = simple("sleep",[](cg &m) { /* TODO */ });
-	main | 0x95a8 = simple("wdr",[](cg &m) { /* TODO */ });
+	main | (architecture_traits<avr_tag>::token_type)0x0 = simple("nop",[](cg &m) { * TODO * });
+	main | 0x9588 = simple("sleep",[](cg &m) { * TODO * });
+	main | 0x95a8 = simple("wdr",[](cg &m) { * TODO * });
 
 	// catch all
 	main = [](sm &st)
@@ -712,5 +712,6 @@ boost::optional<prog_loc> po::avr::disassemble(boost::optional<prog_loc> prog, p
 		st.mnemonic(1,"unk");
 	};
 
-	return program::disassemble<avr_tag>(main,bytes,r,prog);
+	return program::disassemble<avr_tag>(main,bytes,r,prog);*/
+	return boost::none;
 }

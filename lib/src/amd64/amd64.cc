@@ -57,7 +57,7 @@ namespace pls = std::placeholders;
 
 boost::optional<prog_loc> po::amd64::disassemble(boost::optional<prog_loc> prog, po::slab bytes, const po::ref& r)
 {
-	disassembler<amd64_tag> main, opsize_prfix, rex_prfix, rexw_prfix,
+	/*disassembler<amd64_tag> main, opsize_prfix, rex_prfix, rexw_prfix,
 									generic_prfx, addrsize_prfx, rep_prfx,
 									imm8_a, imm16_a, imm32_a, imm64_a,
 									imm8_b, imm16_b, imm32_b, imm64_b,
@@ -279,5 +279,6 @@ boost::optional<prog_loc> po::amd64::disassemble(boost::optional<prog_loc> prog,
 	generic_prfx 						| 0x13 | rm32					= std::bind(simple,"ADC r32, r/m32",2,pls::_1);
 	generic_prfx | rexw_prfix		| 0x13 | rm64					= std::bind(simple,"ADC r64, r/m64",3,pls::_1);
 
-	return program::disassemble<amd64_tag>(generic_prfx,bytes,r,prog);
+	return program::disassemble<amd64_tag>(generic_prfx,bytes,r,prog);*/
+	return boost::none;
 }

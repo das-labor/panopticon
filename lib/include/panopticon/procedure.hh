@@ -177,7 +177,7 @@ namespace po
 		{
 			offset cur_addr = *todo.begin();
 			sem_state<Tag> state(cur_addr);
-			typename rule<Tag>::tokiter i = data.begin();
+			slab::iterator i = data.begin();
 			auto j = mnemonics.lower_bound(cur_addr);
 
 			todo.erase(todo.begin());
@@ -191,7 +191,7 @@ namespace po
 			if(j == mnemonics.end() || !boost::icl::contains(j->second.area,cur_addr))
 			{
 				i += cur_addr;
-				typename rule<Tag>::tokiter e = (j == mnemonics.end() ? data.end() : (data.begin() + j->first + 1));
+				slab::iterator e = (j == mnemonics.end() ? data.end() : (data.begin() + j->first + 1));
 
 				auto mi = main.match(i,e,state);
 
