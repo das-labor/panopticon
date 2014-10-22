@@ -240,7 +240,7 @@ namespace po
 	private:
 		token _mask;
 		token _pat;
-		std::list<std::string,token> _capture;
+		std::list<std::pair<std::string,token>> _capture;
 	};
 
 	/**
@@ -277,13 +277,23 @@ namespace po
 		using iter = po::slab::iterator;
 		using token = typename architecture_traits<Tag>::token_type;
 
-		token_expr operator*(void) const { return token_expr(token_expr::token_expr_union(token_expr::option{std::unique_ptr<token_expr>(new token_expr(token_expr::token_expr_union(token_expr::sub{reinterpret_cast<void const*>(this)})))})); }
-		std::function<void(void)>& operator[](token_expr const&);
+		disassembler<Tag>& operator=(std::function<void(sem_state<Tag>&)>);
+		disassembler<Tag>& operator=(disassembler<Tag> const&);
+
+		token_expr operator*(void) const
+		{
+			token_expr e(token_expr::sub{reinterpret_cast<void const*>(this)});
+			return token_expr(token_expr::token_expr_union(token_expr::option(e)));
+		}
+		std::function<void(sem_state<Tag>&)>& operator[](token_expr const&);
+		std::function<void(sem_state<Tag>&)>& operator[](disassembler<Tag> const&);
+		std::function<void(sem_state<Tag>&)>& operator[](token);
+		std::function<void(sem_state<Tag>&)>& operator[](std::string const&);
 
 		boost::optional<std::pair<iter,sem_state<Tag>>> try_match(iter b, iter e,sem_state<Tag> const&) const;
 
 	private:
-		std::list<std::pair<std::list<token_pat<Tag>>,std::function<void(void)>>> _pats;
+		std::list<std::pair<std::list<token_pat<Tag>>,std::function<void(sem_state<Tag>&)>>> _pats;
 	};
 
 	template<typename Tag>

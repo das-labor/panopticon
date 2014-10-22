@@ -16,24 +16,21 @@ public:
 protected:
 	void SetUp(void)
 	{
-		sub | 'B' = [](ss st)
+		sub['B'] = [](ss st)
 		{
 			st.mnemonic(2,"BA");
 			st.jump(st.address + 2);
 		};
 
-		main | 'A' | sub = [](ss st)
-		{
-			;
-		};
+		main['A' >> sub];
 
-		main | 'A' = [](ss st)
+		main['A'] = [](ss st)
 		{
 			st.mnemonic(1,"A");
 			st.jump(st.address + 1);
 		};
 
-		main | "0 k@..... 11" = [](ss st)
+		main["0 k@..... 11"] = [](ss st)
 		{
 			st.mnemonic(1,"C");
 			st.jump(st.address + 1);
@@ -59,7 +56,7 @@ TEST_F(disassembler,single_decoder)
 	po::sem_state<test_tag> st(0);
 	boost::optional<std::pair<po::slab::iterator,po::sem_state<test_tag>>> i;
 
-	i = main.match(bytes.begin(),bytes.end(),st);
+	i = main.try_match(bytes.begin(),bytes.end(),st);
 	st = i->second;
 
 	ASSERT_TRUE(i);
@@ -83,7 +80,7 @@ TEST_F(disassembler,sub_decoder)
 	po::sem_state<test_tag> st(1);
 	boost::optional<std::pair<po::slab::iterator,po::sem_state<test_tag>>> i;
 
-	i = main.match(bytes.begin()+1,bytes.end(),st);
+	i = main.try_match(bytes.begin()+1,bytes.end(),st);
 	st = i->second;
 
 	ASSERT_TRUE(i);
@@ -108,7 +105,7 @@ TEST_F(disassembler,default_pattern)
 	po::sem_state<test_tag> st(5);
 	boost::optional<std::pair<po::slab::iterator,po::sem_state<test_tag>>> i;
 
-	i = main.match(bytes.begin()+5,bytes.end(),st);
+	i = main.try_match(bytes.begin()+5,bytes.end(),st);
 	st = i->second;
 
 	ASSERT_TRUE(i);
@@ -132,7 +129,7 @@ TEST_F(disassembler,slice)
 	po::sem_state<test_tag> st(1);
 	boost::optional<std::pair<po::slab::iterator,po::sem_state<test_tag>>> i;
 
-	i = main.match(bytes.begin()+1,bytes.begin()+2,st);
+	i = main.try_match(bytes.begin()+1,bytes.begin()+2,st);
 	st = i->second;
 
 	ASSERT_TRUE(i);
@@ -156,7 +153,7 @@ TEST_F(disassembler,empty)
 	po::sem_state<test_tag> st(0);
 	boost::optional<std::pair<po::slab::iterator,po::sem_state<test_tag>>> i;
 
-	i = main.match(bytes.begin(),bytes.begin(),st);
+	i = main.try_match(bytes.begin(),bytes.begin(),st);
 	st = i->second;
 
 	ASSERT_TRUE(!i);
@@ -172,7 +169,7 @@ TEST_F(disassembler,capture_group)
 	po::sem_state<test_tag> st(4);
 	boost::optional<std::pair<po::slab::iterator,po::sem_state<test_tag>>> i;
 
-	i = main.match(bytes.begin()+4,bytes.end(),st);
+	i = main.try_match(bytes.begin()+4,bytes.end(),st);
 	st = i->second;
 
 	ASSERT_TRUE(i);
@@ -200,10 +197,10 @@ TEST_F(disassembler,empty_capture_group)
 	po::slab buf(_buf.data(),_buf.size());
 	po::disassembler<test_tag> dec;
 
-	dec | "01 a@.. 1 b@ c@..." = [](ss s) { s.mnemonic(1,"1"); };
+	dec["01 a@.. 1 b@ c@..."] = [](ss s) { s.mnemonic(1,"1"); };
 	boost::optional<std::pair<po::slab::iterator,po::sem_state<test_tag>>> i;
 
-	i = dec.match(buf.begin(),buf.end(),st);
+	i = dec.try_match(buf.begin(),buf.end(),st);
 	st = i->second;
 
 	ASSERT_TRUE(i);
@@ -231,7 +228,7 @@ TEST_F(disassembler,too_long_capture_group)
 	std::vector<unsigned char> buf = {127};
 	po::disassembler<test_tag> dec;
 
-	ASSERT_THROW(dec | "k@........." = [](ss s) {};,po::tokpat_error);
+	ASSERT_THROW(dec["k@........."],po::tokpat_error);
 }
 
 TEST_F(disassembler,too_long_token_pattern)
@@ -240,7 +237,7 @@ TEST_F(disassembler,too_long_token_pattern)
 	std::vector<unsigned char> buf = {127};
 	po::disassembler<test_tag> dec;
 
-	ASSERT_THROW(dec | "111111111" = [](ss s) {};,po::tokpat_error);
+	ASSERT_THROW(dec["111111111"],po::tokpat_error);
 }
 
 TEST_F(disassembler,too_short_token_pattern)
@@ -250,9 +247,9 @@ TEST_F(disassembler,too_short_token_pattern)
 	po::slab buf(_buf.data(),_buf.size());
 	po::disassembler<test_tag> dec;
 
-	dec | "1111111" = [](ss s) {};
+	dec["1111111"];
 
-	ASSERT_TRUE(dec.match(buf.begin(),buf.end(),st));
+	ASSERT_TRUE(dec.try_match(buf.begin(),buf.end(),st));
 }
 
 TEST_F(disassembler,invalid_token_pattern)
@@ -261,7 +258,7 @@ TEST_F(disassembler,invalid_token_pattern)
 	std::vector<unsigned char> buf = {127};
 	po::disassembler<test_tag> dec;
 
-	ASSERT_THROW(dec | "a111111" = [](ss s) {};,po::tokpat_error);
+	ASSERT_THROW(dec["a111111"];,po::tokpat_error);
 }
 
 using sw = po::sem_state<wtest_tag>&;
@@ -273,27 +270,27 @@ TEST_F(disassembler,wide_token)
 	po::slab buf(_buf.data(),_buf.size());
 	po::disassembler<wtest_tag> dec;
 
-	dec | 0x1122 = [](sw s)
+	dec[0x1122] = [](sw s)
 	{
 		s.mnemonic(2,"A");
 		s.jump(s.address + 2);
 	};
 
-	dec | 0x3344 = [](sw s)
+	dec[0x3344] = [](sw s)
 	{
 		s.mnemonic(2,"B");
 		s.jump(s.address + 2);
 		s.jump(s.address + 4);
 	};
 
-	dec | 0x5544 = [](sw s)
+	dec[0x5544] = [](sw s)
 	{
 		s.mnemonic(2,"C");
 	};
 
 	boost::optional<std::pair<po::slab::iterator,po::sem_state<wtest_tag>>> i;
 
-	i = dec.match(buf.begin(),buf.end(),st);
+	i = dec.try_match(buf.begin(),buf.end(),st);
 	st = i->second;
 
 	ASSERT_TRUE(i);

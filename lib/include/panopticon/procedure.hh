@@ -193,7 +193,7 @@ namespace po
 				i += cur_addr;
 				slab::iterator e = (j == mnemonics.end() ? data.end() : (data.begin() + j->first + 1));
 
-				auto mi = main.match(i,e,state);
+				auto mi = main.try_match(i,e,state);
 
 				if(mi)
 				{

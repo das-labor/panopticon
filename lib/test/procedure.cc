@@ -45,11 +45,13 @@ private:
 class disassembler_mockup : public po::disassembler<test_tag>
 {
 public:
+	using iter = po::slab::iterator;
+	using token = typename architecture_traits<test_tag>::token_type;
+
 	disassembler_mockup(const std::map<typename po::architecture_traits<test_tag>::token_type,po::sem_state<test_tag>> &states)
 	: m_states(states) {}
 
-	virtual boost::optional<std::pair<typename po::rule<test_tag>::tokiter,sem_state<test_tag>>>
-	match(po::rule<test_tag>::tokiter begin, po::rule<test_tag>::tokiter end, po::sem_state<test_tag> const& in_state) const
+	boost::optional<std::pair<iter,sem_state<test_tag>>> try_match(iter begin, iter end,sem_state<test_tag> const& in_state) const
 	{
 		if(begin == end)
 			return boost::none;
@@ -624,20 +626,20 @@ TEST(procedure,wide_token)
 	po::slab buf(_buf.data(),_buf.size());
 	po::disassembler<wtest_tag> dec;
 
-	dec | 0x1122 = [](sw s)
+	dec[0x1122] = [](sw s)
 	{
 		s.mnemonic(2,"A");
 		s.jump(s.address + 2);
 	};
 
-	dec | 0x3344 = [](sw s)
+	dec[0x3344] = [](sw s)
 	{
 		s.mnemonic(2,"B");
 		s.jump(s.address + 2);
 		s.jump(s.address + 4);
 	};
 
-	dec | 0x5544 = [](sw s)
+	dec[0x5544] = [](sw s)
 	{
 		s.mnemonic(2,"C");
 	};
