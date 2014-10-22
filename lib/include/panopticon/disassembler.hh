@@ -179,7 +179,7 @@ namespace po
 
 			std::unique_ptr<token_expr> e;
 		};
-		struct terminal { std::string s; };
+		struct terminal { boost::variant<std::string,unsigned long long> s; };
 		struct sub { void const* d; };
 
 		using token_expr_union = boost::variant<
@@ -217,11 +217,22 @@ namespace po
 	token_expr operator>>(token_expr const& e1,token_expr const& e2);
 
 	template<typename Tag>
-	token_expr operator>>(token_expr const&,disassembler<Tag> const&);
+	token_expr operator>>(token_expr const& t,disassembler<Tag> const& d)
+	{
+		return t >> token_expr(d);
+	}
+
 	template<typename Tag>
-	token_expr operator>>(disassembler<Tag> const&,token_expr const&);
+	token_expr operator>>(disassembler<Tag> const& d,token_expr const& t)
+	{
+		return token_expr(d) >> t;
+	}
+
 	template<typename Tag>
-	token_expr operator>>(disassembler<Tag> const&,disassembler<Tag> const&);
+	token_expr operator>>(disassembler<Tag> const& d1,disassembler<Tag> const& d2)
+	{
+		return token_expr(d1) >> token_expr(d2);
+	}
 
 	/**
 	 * @brief Matches a pattern of bits in a token
@@ -235,7 +246,11 @@ namespace po
 		using token = typename architecture_traits<Tag>::token_type;
 
 		token_pat(std::string const&);
-		boost::optional<std::list<std::string,token>> matches(token) const;
+		token_pat(token);
+		boost::optional<std::list<std::pair<std::string,token>>> matches(token) const;
+
+		token mask(void) const { return _mask; }
+		token pattern(void) const { return _pat; }
 
 	private:
 		token _mask;
@@ -276,25 +291,52 @@ namespace po
 	{
 		using iter = po::slab::iterator;
 		using token = typename architecture_traits<Tag>::token_type;
+		using pattern_list = std::list<std::pair<
+										std::list<std::pair<
+											typename architecture_traits<Tag>::token_type,
+											typename architecture_traits<Tag>::token_type>>,
+										std::list<std::function<void(sem_state<Tag>&)>>
+									>>;
+		struct assignment_proxy
+		{
+			using piter = typename pattern_list::iterator;
+
+			assignment_proxy(piter b,piter e) : _begin(b), _end(e) {};
+			assignment_proxy& operator=(std::function<void(sem_state<Tag>&)> fn)
+			{
+				auto i = _begin;
+				while(i != _end)
+					(i++)->second.push_back(fn);
+
+				return *this;
+			}
+
+		private:
+			piter _begin, _end;
+		};
 
 		disassembler<Tag>& operator=(std::function<void(sem_state<Tag>&)>);
 		disassembler<Tag>& operator=(disassembler<Tag> const&);
+		token_expr operator*(void) const;
 
-		token_expr operator*(void) const
-		{
-			token_expr e(token_expr::sub{reinterpret_cast<void const*>(this)});
-			return token_expr(token_expr::token_expr_union(token_expr::option(e)));
-		}
-		std::function<void(sem_state<Tag>&)>& operator[](token_expr const&);
-		std::function<void(sem_state<Tag>&)>& operator[](disassembler<Tag> const&);
-		std::function<void(sem_state<Tag>&)>& operator[](token);
-		std::function<void(sem_state<Tag>&)>& operator[](std::string const&);
+		assignment_proxy operator[](token_expr const&);
+		assignment_proxy operator[](disassembler<Tag> const&);
+		assignment_proxy operator[](token);
+		assignment_proxy operator[](std::string const&);
+
+		pattern_list const& patterns(void) const { return _pats; }
 
 		boost::optional<std::pair<iter,sem_state<Tag>>> try_match(iter b, iter e,sem_state<Tag> const&) const;
 
 	private:
-		std::list<std::pair<std::list<token_pat<Tag>>,std::function<void(sem_state<Tag>&)>>> _pats;
+		boost::optional<std::function<void(sem_state<Tag>&)>> _default;
+		pattern_list _pats;
 	};
+
+	template<typename Tag>
+	sem_state<Tag>::sem_state(offset a)
+	: address(a), tokens(), capture_groups(), mnemonics(), jumps(), next_address(a)
+	{}
 
 	template<typename Tag>
 	void sem_state<Tag>::mnemonic(size_t len, std::string n, std::string fmt, std::list<rvalue> ops, std::function<void(code_generator<Tag>&)> fn)
@@ -357,6 +399,11 @@ namespace po
 	}
 
 	template<typename Tag>
+	token_pat<Tag>::token_pat(typename architecture_traits<Tag>::token_type t)
+	: _mask(-1), _pat(t), _capture()
+	{}
+
+	template<typename Tag>
 	token_pat<Tag>::token_pat(std::string const& _c)
 	: _mask(0), _pat(0), _capture()
 	{
@@ -407,7 +454,7 @@ namespace po
 					{
 						if(!cgs.count(cg_name))
 							cgs.emplace(cg_name,0);
-						cg_mask = &cgs[cg_name];
+						cg_mask = cgs[cg_name];
 						ps = PAT;
 						++p;
 					}
@@ -469,7 +516,8 @@ namespace po
 	}
 
 	template<typename Tag>
-	boost::optional<std::list<std::string,typename architecture_traits<Tag>::token_type>> token_pat<Tag>::matches(typename architecture_traits<Tag>::token_type t) const
+	boost::optional<std::list<std::pair<std::string,typename architecture_traits<Tag>::token_type>>>
+	token_pat<Tag>::matches(typename architecture_traits<Tag>::token_type t) const
 	{
 		if((t & _mask) == _pat)
 		{
@@ -557,7 +605,13 @@ namespace po
 
 			ret_type operator()(terminal const& c) const
 			{
-				token_pat<Tag> pat(c);
+				struct vis : public boost::static_visitor<token_pat<Tag>>
+				{
+					token_pat<Tag> operator()(std::string const& s) const { return token_pat<Tag>(s); }
+					token_pat<Tag> operator()(unsigned long long i) const { return token_pat<Tag>(i); }
+				};
+
+				token_pat<Tag> pat = boost::apply_visitor(vis(),c.s);
 				toklist tl;
 
 				tl.emplace_back(pat.mask(),pat.pattern());
@@ -580,6 +634,66 @@ namespace po
 		};
 
 		vis v;
-		return boost::apply_visitor(_u,v);
+		return boost::apply_visitor(v,_u);
+	}
+
+	template<typename Tag>
+	disassembler<Tag>& disassembler<Tag>::operator=(std::function<void(sem_state<Tag>&)> fn)
+	{
+		_default = fn;
+		return *this;
+	}
+
+	template<typename Tag>
+	disassembler<Tag>& disassembler<Tag>::operator=(disassembler<Tag> const& o)
+	{
+		if(this != &o)
+		{
+			_default = o._default;
+			_pats = o._pats;
+		}
+
+		return *this;
+	}
+
+	template<typename Tag>
+	token_expr disassembler<Tag>::operator*(void) const
+	{
+		token_expr e(token_expr::sub{reinterpret_cast<void const*>(this)});
+		return token_expr(token_expr::token_expr_union(token_expr::option(e)));
+	}
+
+	template<typename Tag>
+	typename disassembler<Tag>::assignment_proxy disassembler<Tag>::operator[](token_expr const& t)
+	{
+		auto pl = t.to_pattern_list<Tag>();
+		size_t l = pl.size();
+
+		std::move(pl.begin(),pl.end(),std::back_inserter(_pats));
+		return assignment_proxy(std::next(_pats.begin(),_pats.size() - l),_pats.end());
+	}
+
+	template<typename Tag>
+	typename disassembler<Tag>::assignment_proxy disassembler<Tag>::operator[](disassembler<Tag> const& d)
+	{
+		return operator[](token_expr(d));
+	}
+
+	template<typename Tag>
+	typename disassembler<Tag>::assignment_proxy disassembler<Tag>::operator[](token t)
+	{
+		return operator[](token_expr(t));
+	}
+
+	template<typename Tag>
+	typename disassembler<Tag>::assignment_proxy disassembler<Tag>::operator[](std::string const& s)
+	{
+		return operator[](token_expr(s));
+	}
+
+	template<typename Tag>
+	boost::optional<std::pair<slab::iterator,sem_state<Tag>>> disassembler<Tag>::try_match(slab::iterator b, slab::iterator e,sem_state<Tag> const&) const
+	{
+		return boost::none;
 	}
 }

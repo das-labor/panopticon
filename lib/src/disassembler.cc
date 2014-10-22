@@ -10,8 +10,8 @@ po::tokpat_error::tokpat_error(std::string w)
 po::token_expr::token_expr(std::string const& s)
 : _u(terminal{s}) {}
 
-/*po::token_expr::token_expr(unsigned long long i)
-: _u(terminal{i}) {}*/
+po::token_expr::token_expr(unsigned long long i)
+: _u(terminal{i}) {}
 
 po::token_expr::token_expr(token_expr const& e1,token_expr const& e2)
 {
