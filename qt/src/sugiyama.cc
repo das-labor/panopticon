@@ -564,16 +564,21 @@ doRoute(itmgraph graph, std::unordered_map<itmgraph::vertex_descriptor,QRect> bb
 		auto r = dijkstra(point{from,point::Exit,out_x,from_pos.y() + from_sz.height() + Sugiyama::delta},
 											point{to,point::Entry,in_x,to_pos.y() - Sugiyama::delta},vis);
 
-		r.push_front(point{from,point::Center,r.front().x,from_pos.y() + from_sz.height() / 2});
-		r.push_back(point{to,point::Center,r.back().x,to_pos.y() + to_sz.height() / 2});
-
 		if(r.empty())
 		{
 			qWarning() << "No route from" << from_pos << "to" << to_pos;
-			ret.emplace(e,QPainterPath());
+
+			QPainterPath pp;
+
+			pp.moveTo(from_bb.center());
+			pp.lineTo(to_bb.center());
+			ret.emplace(e,pp);
 		}
 		else
 		{
+			r.push_front(point{from,point::Center,r.front().x,from_pos.y() + from_sz.height() / 2});
+			r.push_back(point{to,point::Center,r.back().x,to_pos.y() + to_sz.height() / 2});
+
 			QPainterPath pp = toPoly(r);
 			//QPainterPath pp = toBezier(r);
 			ret.emplace(e,pp);
@@ -717,6 +722,7 @@ QPainterPath toPoly(const std::list<point> &segs)
 		qreal prev_gap = 0;
 		int idx = 0;
 
+		pp.moveTo(QPointF(segs.front().x,segs.front().y));
 		while(idx < segs.size() - 2)
 		{
 			QPointF f1(std::next(segs.begin(),idx)->x,std::next(segs.begin(),idx)->y);
@@ -732,6 +738,7 @@ QPainterPath toPoly(const std::list<point> &segs)
 			const qreal x2 = std::sqrt(std::pow(radius,2) - std::pow(radius * std::cos(rad/2),2));
 			const qreal len = x1 + x2;
 			const qreal gap = len * std::cos(rad/2);
+			const qreal sweep = -std::fmod(l1.angle() - l2.angle() - 180,360);
 
 			QLineF l3 = QLineF::fromPolar(len,deg/2 + (dir ? 180 + l1.angle() : l2.angle() - 180)).translated(f2);
 			QRectF bb(l3.p2() - QPointF(radius,radius),QSizeF(2*radius,2*radius));
@@ -742,7 +749,7 @@ QPainterPath toPoly(const std::list<point> &segs)
 
 			pp.moveTo(l1.p1());
 			pp.lineTo(l1.p2());
-			pp.arcTo(bb,dir ? l1.angle() + 90 : l1.angle() - 90,-std::fmod(l1.angle() - l2.angle() - 180,360));
+			pp.arcTo(bb,dir ? l1.angle() + 90 : l1.angle() - 90,sweep > 180 ? sweep - 360 : sweep);
 
 			if(idx + 1 == segs.size() - 2)
 			{

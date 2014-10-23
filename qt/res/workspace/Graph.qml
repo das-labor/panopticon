@@ -41,7 +41,6 @@ Item {
 			border { width: 1; color: Qt.hsla(hue,1,.2421875,1) }
 			radius: 3
 			smooth: true
-			opacity: 0.2
 			z: 3
 			x: computedX - (bblock.width / 2)
 			y: {
@@ -81,7 +80,6 @@ Item {
 							Component.onCompleted: {
 								col.mnemonicWidth = Math.max(col.mnemonicWidth,contentWidth)
 							}
-
 						}
 
 						Repeater {
