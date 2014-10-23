@@ -88,6 +88,7 @@ public:
 	virtual void paint(QPainter *) override;
 
 	static const int delta;
+	static const int radius;
 
 public slots:
 	void layout(void);
@@ -129,6 +130,7 @@ private:
 	std::unordered_map<itmgraph::edge_descriptor,QPainterPath>
 		doRoute(itmgraph graph, std::unordered_map<itmgraph::vertex_descriptor,QRect> bboxes);
 	QPainterPath toBezier(const std::list<point> &segs);
+	QPainterPath toPoly(const std::list<point> &segs);
 	std::unordered_map<itmgraph::vertex_descriptor,std::tuple<unsigned int,unsigned int,unsigned int>>
 		doLayout(itmgraph, unsigned int, std::unordered_map<itmgraph::vertex_descriptor,int>);
 	QLineF contactVector(QRectF const& bb, const QPainterPath& pp);

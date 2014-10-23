@@ -3,7 +3,8 @@
 #include "sugiyama.hh"
 #include "dot/dot.hh"
 
-const int Sugiyama::delta = 3;
+const int Sugiyama::delta = 20;
+const int Sugiyama::radius = 10;
 
 Sugiyama::Sugiyama(QQuickItem *parent)
 : QQuickPaintedItem(parent),
@@ -31,7 +32,7 @@ void Sugiyama::route(void)
 {
 	if(po::num_edges(graph()))
 	{
-		if(direct())
+		if(false && direct())
 		{
 			for(auto e: iters(po::edges(graph())))
 			{
@@ -317,6 +318,7 @@ void Sugiyama::positionEnds(QQuickItem* head, QQuickItem* tail, QQuickItem* from
 		QRectF bb = head->boundingRect();
 		QRectF to_bb(QQuickPaintedItem::mapFromItem(to,to->boundingRect().topLeft()),QSizeF(to->width(),to->height()));
 		QLineF vec = contactVector(to_bb,path);
+		//QLineF vec = QLineF::fromPolar(1,path.angleAtPercent(1)).translated(path.pointAtPercent(1));
 		QPointF pos(vec.p1() - QPointF(bb.width() / 2,bb.height() / 2));
 
 		head->setX(pos.x());
@@ -329,6 +331,7 @@ void Sugiyama::positionEnds(QQuickItem* head, QQuickItem* tail, QQuickItem* from
 		QRectF bb = tail->boundingRect();
 		QRectF from_bb(QQuickPaintedItem::mapFromItem(from,from->boundingRect().topLeft()),QSizeF(from->width(),from->height()));
 		QLineF vec = contactVector(from_bb,path);
+		//QLineF vec = QLineF::fromPolar(1,path.angleAtPercent(1)).translated(path.pointAtPercent(1));
 		QPointF pos(vec.p1() - QPointF(bb.width() / 2,bb.height() / 2));
 
 		tail->setX(pos.x());
@@ -462,9 +465,23 @@ doRoute(itmgraph graph, std::unordered_map<itmgraph::vertex_descriptor,QRect> bb
 		auto bb = bboxes.at(desc);
 		QPoint pos = bb.topLeft();
 		QSize sz = bb.size();
+		int x_ord = 0;
+		const int pad = 10;
+		const int indeg = in_degree(desc,graph);
+		const int outdeg = out_degree(desc,graph);
 
-		points.insert(point{desc,point::Entry,pos.x() + sz.width() / 2,pos.y() - 3*Sugiyama::delta});
-		points.insert(point{desc,point::Exit,pos.x() + sz.width() / 2,pos.y() + sz.height() + 3*Sugiyama::delta});
+		while(x_ord < indeg)
+		{
+			points.insert(point{desc,point::Entry,pos.x() + sz.width() / 2 - (indeg * pad) / 2 + (x_ord * pad),pos.y() - Sugiyama::delta});
+			++x_ord;
+		}
+
+		x_ord = 0;
+		while(x_ord < outdeg)
+		{
+			points.insert(point{desc,point::Exit,pos.x() + sz.width() / 2 - (outdeg * pad) / 2 + (x_ord * pad),pos.y() + sz.height() + Sugiyama::delta});
+			++x_ord;
+		}
 
 		points.insert(point{desc,point::Corner,pos.x() - Sugiyama::delta,pos.y() - Sugiyama::delta});
 		points.insert(point{desc,point::Corner,pos.x() - Sugiyama::delta,pos.y() + sz.height() + Sugiyama::delta});
@@ -525,10 +542,21 @@ doRoute(itmgraph graph, std::unordered_map<itmgraph::vertex_descriptor,QRect> bb
 		QSize from_sz = from_bb.size();
 		QSize to_sz = to_bb.size();
 
-		auto r = dijkstra(point{from,point::Exit,from_pos.x() + from_sz.width() / 2,from_pos.y() + from_sz.height() + 3*Sugiyama::delta},
-											point{to,point::Entry,to_pos.x() + to_sz.width() / 2,to_pos.y() - 3*Sugiyama::delta},vis);
+		auto in_e = in_edges(to,graph);
+		auto out_e = out_edges(from,graph);
+		const int pad = 10;
+		const int in_x_ord = std::distance(in_e.first,std::find(in_e.first,in_e.second,e));
+		const int out_x_ord = std::distance(out_e.first,std::find(out_e.first,out_e.second,e));
+		const int indeg = in_degree(to,graph);
+		const int outdeg = out_degree(from,graph);
+		const int in_x = to_pos.x() + to_sz.width() / 2 - (indeg * pad) / 2 + (in_x_ord * pad);
+		const int out_x = from_pos.x() + from_sz.width() / 2 - (outdeg * pad) / 2 + (out_x_ord * pad);
+		auto r = dijkstra(point{from,point::Exit,out_x,from_pos.y() + from_sz.height() + Sugiyama::delta},
+											point{to,point::Entry,in_x,to_pos.y() - Sugiyama::delta},vis);
+
 		r.push_front(point{from,point::Center,from_pos.x() + from_sz.width() / 2,from_pos.y() + from_sz.height() / 2});
 		r.push_back(point{to,point::Center,to_pos.x() + to_sz.width() / 2,to_pos.y() + to_sz.height() / 2});
+
 		if(r.empty())
 		{
 			qWarning() << "No route from" << from_pos << "to" << to_pos;
@@ -536,7 +564,8 @@ doRoute(itmgraph graph, std::unordered_map<itmgraph::vertex_descriptor,QRect> bb
 		}
 		else
 		{
-			QPainterPath pp = toBezier(r);
+			QPainterPath pp = toPoly(r);
+			//QPainterPath pp = toBezier(r);
 			ret.emplace(e,pp);
 		}
 	}
@@ -634,7 +663,7 @@ QPainterPath toBezier(const std::list<point> &segs)
 			QPointF ptn2(std::next(segs.begin(),idx + 1)->x,std::next(segs.begin(),idx + 1)->y);
 			qreal alpha2 = *std::next(angles.begin(),idx + 1);
 
-			qreal omega = std::min(QLineF(ptn1,ptn2).length() / 5.0,100.0);
+			qreal omega = std::min(QLineF(ptn1,ptn2).length() / 20.0,100.0);
 			QPointF c1(QLineF::fromPolar(omega,alpha2).translated(ptn2).p2()), c2(QLineF::fromPolar(omega,alpha2 - 180.0).translated(ptn2).p2());
 			QPointF e1(QLineF::fromPolar(omega,alpha1).translated(ptn1).p2()), e2(QLineF::fromPolar(omega,alpha1 - 180.0).translated(ptn1).p2());
 			QPointF a,b;
@@ -652,6 +681,64 @@ QPainterPath toBezier(const std::list<point> &segs)
 			pp.moveTo(ptn1);
 			pp.cubicTo(a,b,ptn2);
 			++idx;
+		}
+	}
+	else if(segs.size() == 2)
+	{
+		QPointF p1(segs.front().x,segs.front().y), p2(segs.back().x,segs.back().y);
+
+		pp.moveTo(p1);
+		pp.lineTo(p2);
+	}
+
+	return pp;
+}
+
+QPainterPath toPoly(const std::list<point> &segs)
+{
+	QPainterPath pp;
+
+	// draw segments with polylines and rounded corners
+	if(segs.size() > 2)
+	{
+		qreal prev_gap = 0;
+		int idx = 0;
+
+		while(idx < segs.size() - 2)
+		{
+			QPointF f1(std::next(segs.begin(),idx)->x,std::next(segs.begin(),idx)->y);
+			QPointF f2(std::next(segs.begin(),idx + 1)->x,std::next(segs.begin(),idx + 1)->y);
+			QPointF f3(std::next(segs.begin(),idx + 2)->x,std::next(segs.begin(),idx + 2)->y);
+			QLineF l1(f1,f2), l2(f3,f2);
+
+			const bool dir = l1.angleTo(l2) < l2.angleTo(l1);
+			const qreal deg = dir ? l1.angleTo(l2) : l2.angleTo(l1);
+			const qreal rad = deg / 360.0f * 44.0f/7.0f;
+			const qreal radius = 10;
+			const qreal x1 = (radius * std::cos(rad/2)) / std::tan(rad/2);
+			const qreal x2 = std::sqrt(std::pow(radius,2) - std::pow(radius * std::cos(rad/2),2));
+			const qreal len = x1 + x2;
+			const qreal gap = len * std::cos(rad/2);
+
+			QLineF l3 = QLineF::fromPolar(len,deg/2 + (dir ? 180 + l1.angle() : l2.angle() - 180)).translated(f2);
+			QRectF bb(l3.p2() - QPointF(radius,radius),QSizeF(2*radius,2*radius));
+
+			l1.translate(QLineF::fromPolar(prev_gap,l1.angle()).p2());
+			l1.setLength(l1.length() - gap - prev_gap);
+			l2.setLength(l2.length() - gap);
+
+			pp.moveTo(l1.p1());
+			pp.lineTo(l1.p2());
+			pp.arcTo(bb,dir ? l1.angle() + 90 : l1.angle() - 90,-std::fmod(l1.angle() - l2.angle() - 180,360));
+
+			if(idx + 1 == segs.size() - 2)
+			{
+				pp.moveTo(l2.p2());
+				pp.lineTo(l2.p1());
+			}
+
+			idx += 1;
+			prev_gap = gap;
 		}
 	}
 	else if(segs.size() == 2)
