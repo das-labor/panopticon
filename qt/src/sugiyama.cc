@@ -466,20 +466,20 @@ doRoute(itmgraph graph, std::unordered_map<itmgraph::vertex_descriptor,QRect> bb
 		QPoint pos = bb.topLeft();
 		QSize sz = bb.size();
 		int x_ord = 0;
-		const int pad = 10;
+		const int pad = 30;
 		const int indeg = in_degree(desc,graph);
 		const int outdeg = out_degree(desc,graph);
 
 		while(x_ord < indeg)
 		{
-			points.insert(point{desc,point::Entry,pos.x() + sz.width() / 2 - (indeg * pad) / 2 + (x_ord * pad),pos.y() - Sugiyama::delta});
+			points.insert(point{desc,point::Entry,pos.x() + sz.width() / 2 - ((indeg - 1) * pad) / 2 + (x_ord * pad),pos.y() - Sugiyama::delta});
 			++x_ord;
 		}
 
 		x_ord = 0;
 		while(x_ord < outdeg)
 		{
-			points.insert(point{desc,point::Exit,pos.x() + sz.width() / 2 - (outdeg * pad) / 2 + (x_ord * pad),pos.y() + sz.height() + Sugiyama::delta});
+			points.insert(point{desc,point::Exit,pos.x() + sz.width() / 2 - ((outdeg - 1) * pad) / 2 + (x_ord * pad),pos.y() + sz.height() + Sugiyama::delta});
 			++x_ord;
 		}
 
@@ -542,20 +542,30 @@ doRoute(itmgraph graph, std::unordered_map<itmgraph::vertex_descriptor,QRect> bb
 		QSize from_sz = from_bb.size();
 		QSize to_sz = to_bb.size();
 
-		auto in_e = in_edges(to,graph);
-		auto out_e = out_edges(from,graph);
-		const int pad = 10;
-		const int in_x_ord = std::distance(in_e.first,std::find(in_e.first,in_e.second,e));
-		const int out_x_ord = std::distance(out_e.first,std::find(out_e.first,out_e.second,e));
-		const int indeg = in_degree(to,graph);
-		const int outdeg = out_degree(from,graph);
+		std::list<itmgraph::edge_descriptor> in_e, out_e;
+		auto in_e_p = in_edges(to,graph);
+		auto out_e_p = out_edges(from,graph);
+
+		std::copy(in_e_p.first,in_e_p.second,std::back_inserter(in_e));
+		std::copy(out_e_p.first,out_e_p.second,std::back_inserter(out_e));
+
+		in_e.sort([&](itmgraph::edge_descriptor a, itmgraph::edge_descriptor b)
+			{ return bboxes.at(po::source(a,graph)).topLeft().x() < bboxes.at(po::source(b,graph)).topLeft().x(); });
+		out_e.sort([&](itmgraph::edge_descriptor a, itmgraph::edge_descriptor b)
+			{ return bboxes.at(po::target(a,graph)).topLeft().x() < bboxes.at(po::target(b,graph)).topLeft().x(); });
+
+		const int pad = 30;
+		const int in_x_ord = std::distance(in_e.begin(),std::find(in_e.begin(),in_e.end(),e));
+		const int out_x_ord = std::distance(out_e.begin(),std::find(out_e.begin(),out_e.end(),e));
+		const int indeg = in_degree(to,graph) - 1;
+		const int outdeg = out_degree(from,graph) - 1;
 		const int in_x = to_pos.x() + to_sz.width() / 2 - (indeg * pad) / 2 + (in_x_ord * pad);
 		const int out_x = from_pos.x() + from_sz.width() / 2 - (outdeg * pad) / 2 + (out_x_ord * pad);
 		auto r = dijkstra(point{from,point::Exit,out_x,from_pos.y() + from_sz.height() + Sugiyama::delta},
 											point{to,point::Entry,in_x,to_pos.y() - Sugiyama::delta},vis);
 
-		r.push_front(point{from,point::Center,from_pos.x() + from_sz.width() / 2,from_pos.y() + from_sz.height() / 2});
-		r.push_back(point{to,point::Center,to_pos.x() + to_sz.width() / 2,to_pos.y() + to_sz.height() / 2});
+		r.push_front(point{from,point::Center,r.front().x,from_pos.y() + from_sz.height() / 2});
+		r.push_back(point{to,point::Center,r.back().x,to_pos.y() + to_sz.height() / 2});
 
 		if(r.empty())
 		{
@@ -584,8 +594,11 @@ std::list<point> dijkstra(point start, point goal, visgraph const& graph)
 	std::transform(graph.begin(),graph.end(),std::inserter(worklist,worklist.end()),[](const std::pair<point,point>& p) { return p.second; });
 	distance.insert(std::make_pair(start,0));
 
-	Q_ASSERT(graph.count(start));
-	//Q_ASSERT(graph.count(goal));
+	if(graph.count(start) == 0)
+	{
+		qWarning() << "Dijkstra: start node not part of graph. No solution possible!";
+		return {};
+	}
 
 	for(auto w: worklist)
 		distance.insert(std::make_pair(w,std::numeric_limits<double>::infinity()));
@@ -714,7 +727,7 @@ QPainterPath toPoly(const std::list<point> &segs)
 			const bool dir = l1.angleTo(l2) < l2.angleTo(l1);
 			const qreal deg = dir ? l1.angleTo(l2) : l2.angleTo(l1);
 			const qreal rad = deg / 360.0f * 44.0f/7.0f;
-			const qreal radius = 10;
+			const qreal radius = 15;
 			const qreal x1 = (radius * std::cos(rad/2)) / std::tan(rad/2);
 			const qreal x2 = std::sqrt(std::pow(radius,2) - std::pow(radius * std::cos(rad/2),2));
 			const qreal len = x1 + x2;
