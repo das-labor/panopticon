@@ -17,7 +17,6 @@ Item {
 		}
 	}
 
-
 	Component {
 		id: node
 
@@ -178,6 +177,7 @@ Item {
 			color: root.edgeColor
 			width: root.edgeWidth
 			head: arrow
+			label: Component { Text { text: "Hello, World" } }
 		}
 	}
 

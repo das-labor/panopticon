@@ -18,7 +18,9 @@
 
 namespace
 {
-	using itmgraph = po::digraph<std::tuple<QVariant,QQuickItem*,QQmlContext*>,std::tuple<QVariant,QPainterPath,QQuickItem*,QQuickItem*,QQmlContext*,QQmlContext*>>;
+	using itmgraph = po::digraph<
+		std::tuple<QVariant,QQuickItem*,QQmlContext*>,
+		std::tuple<QVariant,QPainterPath,QQuickItem*,QQuickItem*,QQmlContext*,QQmlContext*,QQuickItem*,QQmlContext*,QPointF>>;
 
 	struct point
 	{
@@ -87,8 +89,9 @@ public:
 
 	virtual void paint(QPainter *) override;
 
-	static const int delta;
-	static const int radius;
+	static const int nodeBorderPadding;
+	static const int edgeRadius;
+	static const int nodePortPadding;
 
 public slots:
 	void layout(void);
@@ -118,16 +121,15 @@ private:
 	mutable boost::optional<itmgraph> _graph;
 	QSignalMapper _mapper;
 	QFutureWatcher<std::unordered_map<itmgraph::vertex_descriptor,std::tuple<unsigned int,unsigned int,unsigned int>>> _layoutWatcher;
-	QFutureWatcher<std::unordered_map<itmgraph::edge_descriptor,QPainterPath>> _routeWatcher;
+	QFutureWatcher<std::unordered_map<itmgraph::edge_descriptor,std::pair<QPainterPath,QPointF>>> _routeWatcher;
 
 	void clear(void);
 	itmgraph& graph(void);
-	void positionEnds(QQuickItem* head, QQuickItem *tail, QQuickItem* from, QQuickItem* to, const QPainterPath& path);
+	void positionEdgeDecoration(itmgraph::edge_descriptor e, itmgraph const& graph);
 	void redoAttached(void);
-
 };
 
-	std::unordered_map<itmgraph::edge_descriptor,QPainterPath>
+	std::unordered_map<itmgraph::edge_descriptor,std::pair<QPainterPath,QPointF>>
 		doRoute(itmgraph graph, std::unordered_map<itmgraph::vertex_descriptor,QRect> bboxes);
 	QPainterPath toBezier(const std::list<point> &segs);
 	QPainterPath toPoly(const std::list<point> &segs);
@@ -136,3 +138,5 @@ private:
 	QLineF contactVector(QRectF const& bb, const QPainterPath& pp);
 	qreal approximateDistance(const QPointF &pnt, const QPainterPath& pp);
 	std::list<point> dijkstra(point start, point goal, visgraph const& graph);
+	std::pair<int,int>
+		nodePorts(itmgraph::edge_descriptor e, boost::optional<std::unordered_map<itmgraph::vertex_descriptor,QRect>> bboxes, itmgraph const& graph);

@@ -7,4 +7,5 @@ QtObject {
 	property color color: "blue"
 	property var head: null
 	property var tail: null
+	property var label: null
 }
