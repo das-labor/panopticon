@@ -386,6 +386,9 @@ nodePorts(itmgraph::edge_descriptor e, boost::optional<std::unordered_map<itmgra
 	auto from_bb = get_bb(from);
 	auto to_bb = get_bb(to);
 
+	if(from == to)
+		return std::make_pair(to_bb.left() + 20,to_bb.left() + 20);
+
 	QPoint from_pos = from_bb.topLeft();
 	QPoint to_pos = to_bb.topLeft();
 
@@ -540,8 +543,11 @@ doRoute(itmgraph graph, std::unordered_map<itmgraph::vertex_descriptor,QRect> bb
 		QPoint pos = bb.topLeft();
 		QSize sz = bb.size();
 		int x_ord = 0;
-		const int indeg = in_degree(desc,graph);
-		const int outdeg = out_degree(desc,graph);
+		auto out = out_edges(desc,graph);
+		const int loops = std::count_if(out.first,out.second,[&](itmgraph::edge_descriptor e)
+			{ return po::source(e,graph) == po::target(e,graph); });
+		const int indeg = in_degree(desc,graph) - loops;
+		const int outdeg = out_degree(desc,graph) - loops;
 
 		while(x_ord < indeg)
 		{
@@ -617,9 +623,22 @@ doRoute(itmgraph graph, std::unordered_map<itmgraph::vertex_descriptor,QRect> bb
 
 		int in_x, out_x;
 		std::tie(out_x,in_x) = nodePorts(e,bboxes,graph);
+		std::list<point> r;
 
-		auto r = dijkstra(point{from,point::Exit,out_x,from_pos.y() + from_sz.height() + Sugiyama::nodeBorderPadding},
-											point{to,point::Entry,in_x,to_pos.y() - Sugiyama::nodeBorderPadding},vis);
+		if(from != to)
+		{
+			r = dijkstra(point{from,point::Exit,out_x,from_pos.y() + from_sz.height() + Sugiyama::nodeBorderPadding},
+									 point{to,point::Entry,in_x,to_pos.y() - Sugiyama::nodeBorderPadding},vis);
+		}
+		else
+		{
+			r = {
+				point{to,point::Exit,to_bb.left() + 20,to_pos.y() + to_sz.height() + Sugiyama::nodeBorderPadding/2},
+				point{to,point::Corner,to_bb.left() - Sugiyama::nodeBorderPadding/2,to_bb.bottom() + Sugiyama::nodeBorderPadding/2},
+				point{to,point::Corner,to_bb.left() -Sugiyama::nodeBorderPadding/2,to_bb.top() -Sugiyama::nodeBorderPadding/2},
+				point{to,point::Entry,to_bb.left() + 20,to_pos.y() - Sugiyama::nodeBorderPadding/2}
+			};
+		}
 
 		if(r.empty())
 		{

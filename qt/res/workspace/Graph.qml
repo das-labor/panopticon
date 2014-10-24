@@ -196,7 +196,7 @@ Item {
 
 			x: (childrenRect.width < root.width * 2 ? ((root.width - childrenRect.width) / 2) : 0)
 			width: Math.max(childrenRect.width,root.width * 2)
-			height: Math.max(childrenRect.height,root.height)
+			height: Math.max(2*childrenRect.height,root.height)
 			delegate: node
 
 			function rebuildEdges() {
