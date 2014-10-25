@@ -93,6 +93,7 @@ namespace dot
 		using eg_desc = typename po::digraph<N,E>::edge_descriptor;
 		using virt_vx = typename boost::optional<std::pair<bool,vx_desc>>; // true <=> upper node
 		using virt_graph = typename po::digraph<virt_vx,std::pair<int,int>>; // omega,delta
+		using virt_desc = typename po::digraph<virt_vx,std::pair<int,int>>::vertex_descriptor;
 		using color_pm_type = boost::associative_property_map<std::unordered_map<vx_desc,boost::default_color_type>>;
 
 		virt_graph h;
@@ -118,13 +119,13 @@ namespace dot
 		for(auto r: sources)
 			boost::depth_first_search(g,visitor,color_pm_type(color),r);
 
-		typename virt_graph::vertex_descriptor source, sink;
+		virt_desc source, sink;
 
 		// ensure single source node in h
 		if(sources.size() == 1)
 		{
 			auto p = vertices(h);
-			auto s = find_if(p.first,p.second,[&](typename virt_graph::vertex_descriptor _w)
+			auto s = find_if(p.first,p.second,[&](virt_desc _w)
 				{ auto w = get_vertex(_w,h); return w && w->first && w->second == sources.front(); });
 			ensure(s != p.second);
 
@@ -136,7 +137,7 @@ namespace dot
 			for(auto v: sources)
 			{
 				auto p = vertices(h);
-				auto s = find_if(p.first,p.second,[&](typename virt_graph::vertex_descriptor _w)
+				auto s = find_if(p.first,p.second,[&](virt_desc _w)
 					{ auto w = get_vertex(_w,h); return w && w->first && w->second == v; });
 				ensure(s != p.second);
 
@@ -152,7 +153,7 @@ namespace dot
 		else if(sinks.size() == 1)
 		{
 			auto p = vertices(h);
-			auto s = find_if(p.first,p.second,[&](typename virt_graph::vertex_descriptor _w)
+			auto s = find_if(p.first,p.second,[&](virt_desc _w)
 				{ auto w = get_vertex(_w,h); return w && !w->first && w->second == sinks.front(); });
 			ensure(s != p.second);
 
@@ -164,7 +165,7 @@ namespace dot
 			for(auto v: sinks)
 			{
 				auto p = vertices(h);
-				auto s = find_if(p.first,p.second,[&](typename virt_graph::vertex_descriptor _w)
+				auto s = find_if(p.first,p.second,[&](virt_desc _w)
 					{ auto w = get_vertex(_w,h); return w && !w->first && w->second == v; });
 				ensure(s != p.second);
 
@@ -182,21 +183,22 @@ namespace dot
 		using eg_desc = typename po::digraph<N,E>::edge_descriptor;
 		using virt_vx = typename boost::optional<std::pair<bool,vx_desc>>; // true <=> upper node
 		using virt_graph = typename po::digraph<virt_vx,std::pair<int,int>>; // omega,delta
+		using virt_desc = typename po::digraph<virt_vx,std::pair<int,int>>::vertex_descriptor;
 
 		virt_graph h = prepare_rank_graph(g);
 
 		// layer assign
 		net_flow<virt_vx> layer_nf(h);
 		layer_nf.solve(std::function<void(void)>([](void) {}));
-		std::unordered_map<typename po::digraph<N,E>::vertex_descriptor,std::pair<int,int>> ret;
+		std::unordered_map<vx_desc,std::pair<int,int>> ret;
 
 		// map back to g
 		for(auto vx: iters(vertices(g)))
 		{
 			auto p = vertices(h);
-			auto f = find_if(p.first,p.second,[&](typename virt_graph::vertex_descriptor _wx)
+			auto f = find_if(p.first,p.second,[&](virt_desc _wx)
 					{ auto wx = get_vertex(_wx,h); return wx && wx->first && wx->second == vx; });
-			auto l = find_if(p.first,p.second,[&](typename virt_graph::vertex_descriptor _wx)
+			auto l = find_if(p.first,p.second,[&](virt_desc _wx)
 					{ auto wx = get_vertex(_wx,h); return wx && !wx->first && wx->second == vx; });
 
 			ensure(l != p.second && f != p.second);

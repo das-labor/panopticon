@@ -337,7 +337,6 @@ void Sugiyama::positionEdgeDecoration(itmgraph::edge_descriptor e, itmgraph cons
 
 	if(head)
 	{
-		QRectF bb = head->boundingRect();
 		QRectF to_bb(QQuickPaintedItem::mapFromItem(to,to->boundingRect().topLeft()),QSizeF(to->width(),to->height()));
 
 		head->setX(ports.second - head->width() / 2);
@@ -347,7 +346,6 @@ void Sugiyama::positionEdgeDecoration(itmgraph::edge_descriptor e, itmgraph cons
 
 	if(tail)
 	{
-		QRectF bb = tail->boundingRect();
 		QRectF from_bb(QQuickPaintedItem::mapFromItem(from,from->boundingRect().topLeft()),QSizeF(from->width(),from->height()));
 
 		tail->setX(ports.first - head->width() / 2);

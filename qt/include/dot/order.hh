@@ -64,6 +64,7 @@ namespace dot
 		using eg_desc = typename po::digraph<N,E>::edge_descriptor;
 		using virt_vx = typename std::tuple<int,int,boost::optional<vx_desc>>;
 		using virt_graph = typename po::digraph<virt_vx,int>;
+		using virt_desc = typename po::digraph<virt_vx,int>::vertex_descriptor;
 		using color_pm_type = boost::associative_property_map<std::unordered_map<vx_desc,boost::default_color_type>>;
 
 		virt_graph h;
@@ -89,13 +90,13 @@ namespace dot
 		for(auto r: sources)
 			boost::depth_first_search(g,visitor,color_pm_type(color),r);
 
-		typename virt_graph::vertex_descriptor source, sink;
+		virt_desc source, sink;
 
 		// ensure single source node in h
 		if(sources.size() == 1)
 		{
 			auto p = vertices(h);
-			auto s = find_if(p.first,p.second,[&](typename virt_graph::vertex_descriptor _w)
+			auto s = find_if(p.first,p.second,[&](virt_desc _w)
 				{ auto w = get_vertex(_w,h); return std::get<2>(w) && *std::get<2>(w) == sources.front(); });
 			ensure(s != p.second);
 
@@ -109,7 +110,7 @@ namespace dot
 			for(auto v: sources)
 			{
 				auto p = vertices(h);
-				auto s = find_if(p.first,p.second,[&](typename virt_graph::vertex_descriptor _w)
+				auto s = find_if(p.first,p.second,[&](virt_desc _w)
 					{ auto w = get_vertex(_w,h); return std::get<2>(w) && *std::get<2>(w) == v; });
 				ensure(s != p.second);
 
@@ -125,7 +126,7 @@ namespace dot
 		else if(sinks.size() == 1)
 		{
 			auto p = vertices(h);
-			auto s = find_if(p.first,p.second,[&](typename virt_graph::vertex_descriptor _w)
+			auto s = find_if(p.first,p.second,[&](virt_desc _w)
 				{ auto w = get_vertex(_w,h); return std::get<2>(w) && *std::get<2>(w) == sinks.front(); });
 			ensure(s != p.second);
 
@@ -140,7 +141,7 @@ namespace dot
 			for(auto v: sinks)
 			{
 				auto p = vertices(h);
-				auto s = find_if(p.first,p.second,[&](typename virt_graph::vertex_descriptor _w)
+				auto s = find_if(p.first,p.second,[&](virt_desc _w)
 					{ auto w = get_vertex(_w,h); return std::get<2>(w) && *std::get<2>(w) == v; });
 				ensure(s != p.second);
 
@@ -166,7 +167,7 @@ namespace dot
 					done = false;
 
 					int r = lf + 1;
-					typename virt_graph::vertex_descriptor prev = from;
+					virt_desc prev = from;
 
 					while(r != lt)
 					{
