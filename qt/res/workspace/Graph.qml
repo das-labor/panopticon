@@ -4,7 +4,7 @@ import Panopticon 1.0
 
 Item {
 	id: root
-	property color edgeColor: "black"
+	property bool edgeSelection: false
 	property int edgeWidth: 2
 	property var session: null
 	property var nodes: []
@@ -35,9 +35,10 @@ Item {
 					return 0
 				}
 			}
+			property color textColor: state == "" && root.edgeSelection ? "#aaa" : "black"
 
-			color: { Qt.hsla(hue,.7617187500,.8125,1) }
-			border { width: 1; color: Qt.hsla(hue,1,.2421875,1) }
+			color: { state == "" && root.edgeSelection ? "#eee" : Qt.hsla(hue,.7617187500,.8125,1) }
+			border { width: 1; color: state == "" && root.edgeSelection ? "#aaa" : Qt.hsla(hue,1,.2421875,1) }
 			radius: 3
 			smooth: true
 			z: 3
@@ -75,6 +76,7 @@ Item {
 							text: modelData.op
 							width: col.mnemonicWidth
 							font { family: "Monospace" }
+							color: textColor
 
 							Component.onCompleted: {
 								col.mnemonicWidth = Math.max(col.mnemonicWidth,contentWidth)
@@ -86,6 +88,7 @@ Item {
 							delegate: Text {
 								font { family: "Monospace" }
 								text: modelData
+								color: textColor
 							}
 						}
 					}
@@ -115,24 +118,27 @@ Item {
 
 				onEntered: {
 					for(var i in incomingEdges) {
-						//incomingEdges[i].color = "blue"
 						incomingNodes[i].state = "prev"
+						incomingEdges[i].state = "prev"
 					}
 					for(var i in outgoingEdges) {
-						//outgoingEdges[i].color = "red"
 						outgoingNodes[i].state = "next"
+						outgoingEdges[i].state = "next"
 					}
-
+					root.edgeSelection = true
+					bblock.state = "active"
 				}
 				onExited: {
 					for(var i in incomingEdges) {
-						//incomingEdges[i].color = "black"
 						incomingNodes[i].state = ""
+						incomingEdges[i].state = ""
 					}
 					for(var i in outgoingEdges) {
-						//outgoingEdges[i].color = "black"
 						outgoingNodes[i].state = ""
+						outgoingEdges[i].state = ""
 					}
+					root.edgeSelection = false
+					bblock.state = ""
 				}
 			}
 		}
@@ -144,7 +150,6 @@ Item {
 		Canvas {
 			id: arrow_cv
 			height: 30; width: 15
-			y: 10
 			z: 4
 
 			onPaint: {
@@ -177,25 +182,30 @@ Item {
 		Edge {
 			property string type: ""
 			property string condition: ""
+			property string state: ""
 
 			color: {
-				if(type == "true") {
-					return "green"
-				} else if(type == "false") {
-					return "red"
+				if(state == "" && root.edgeSelection) {
+					return "gray"
 				} else {
-					return "blue"
+					if(type == "true") {
+						return "green"
+					} else if(type == "false") {
+						return "red"
+					} else {
+						return "blue"
+					}
 				}
 			}
 
-			width: root.edgeWidth
+			width: state == "" && root.edgeSelection ? root.edgeWidth / 2 : root.edgeWidth
 			head: arrow
 			label: Component {
 				Item {
 					height: label.height + 4
 					width: label.width + 4
 					z: 5
-					visible: edge.type != "unconditional"
+					visible: edge.type != "unconditional" && edge.state != ""
 
 					Rectangle {
 						anchors.fill: parent
