@@ -42,7 +42,7 @@ Item {
 			radius: 3
 			smooth: true
 			z: 3
-			x: computedX - (bblock.width / 2)
+			x: computedX - (bblock.width / 2) + 100
 			y: {
 				if(root.rankY[firstRank] != undefined) {
 					return root.rankY[fRank];
@@ -240,7 +240,7 @@ Item {
 			property var rankStart: []
 
 			x: (childrenRect.width < root.width * 2 ? ((root.width - childrenRect.width) / 2) : 0)
-			width: Math.max(childrenRect.width,root.width * 2)
+			width: Math.max(childrenRect.width,root.width + 100)
 			height: Math.max(2*childrenRect.height,root.height)
 			delegate: node
 
