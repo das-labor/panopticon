@@ -115,22 +115,22 @@ Item {
 
 				onEntered: {
 					for(var i in incomingEdges) {
-						incomingEdges[i].color = "blue"
+						//incomingEdges[i].color = "blue"
 						incomingNodes[i].state = "prev"
 					}
 					for(var i in outgoingEdges) {
-						outgoingEdges[i].color = "red"
+						//outgoingEdges[i].color = "red"
 						outgoingNodes[i].state = "next"
 					}
 
 				}
 				onExited: {
 					for(var i in incomingEdges) {
-						incomingEdges[i].color = "black"
+						//incomingEdges[i].color = "black"
 						incomingNodes[i].state = ""
 					}
 					for(var i in outgoingEdges) {
-						outgoingEdges[i].color = "black"
+						//outgoingEdges[i].color = "black"
 						outgoingNodes[i].state = ""
 					}
 				}
@@ -144,6 +144,7 @@ Item {
 		Canvas {
 			id: arrow_cv
 			height: 30; width: 15
+			y: 10
 			z: 4
 
 			onPaint: {
@@ -174,10 +175,44 @@ Item {
 		id: edge
 
 		Edge {
-			color: root.edgeColor
+			property string type: ""
+			property string condition: ""
+
+			color: {
+				if(type == "true") {
+					return "green"
+				} else if(type == "false") {
+					return "red"
+				} else {
+					return "blue"
+				}
+			}
+
 			width: root.edgeWidth
 			head: arrow
-			label: Component { Text { text: "Hello, World" } }
+			label: Component {
+				Item {
+					height: label.height + 4
+					width: label.width + 4
+					z: 5
+					visible: edge.type != "unconditional"
+
+					Rectangle {
+						anchors.fill: parent
+						color: "gray"
+						opacity: 0.8
+						border { width: 1; color: "black" }
+						radius: 3
+					}
+
+					Text {
+						x: 2; y: 2
+						id: "label"
+						text: edge.condition
+						font { pixelSize: 14 }
+					}
+				}
+			}
 		}
 	}
 

@@ -427,13 +427,26 @@ QStringList ProcedureModel::jumps(void) const
 		{
 			try
 			{
-				bblock_loc from = boost::get<bblock_loc>(get_vertex(source(e,proc->control_transfers),proc->control_transfers));
+				auto from_desc = source(e,proc->control_transfers);
+				bblock_loc from = boost::get<bblock_loc>(get_vertex(from_desc,proc->control_transfers));
 				bblock_loc to = boost::get<bblock_loc>(get_vertex(target(e,proc->control_transfers),proc->control_transfers));
 
 				po::offset from_o = from->area().lower();
 				po::offset to_o = to->area().lower();
+				std::string type = "unconditional";
+				std::stringstream ss;
 
-				ret.append(QString("{ 'from': %1, 'to': %2 }").arg(from_o).arg(to_o));
+				ss << get_edge(e,proc->control_transfers);
+
+				// fallthru <=> false branch
+				if(out_degree(from_desc,proc->control_transfers) > 1)
+					type = (from->area().upper() == to->area().lower() ? "false" : "true");
+
+				ret.append(QString("{ 'from': %1, 'to': %2, 'type': '%3', 'condition': '%4' }")
+						.arg(from_o)
+						.arg(to_o)
+						.arg(QString::fromStdString(type))
+						.arg(QString::fromStdString(ss.str())));
 			}
 			catch(const boost::bad_get)
 			{}
