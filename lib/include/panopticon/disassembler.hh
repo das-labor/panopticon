@@ -400,7 +400,7 @@ namespace po
 
 	template<typename Tag>
 	token_pat<Tag>::token_pat(typename architecture_traits<Tag>::token_type t)
-	: _mask(-1), _pat(t), _capture()
+	: _mask(std::numeric_limits<typename architecture_traits<Tag>::token_type>::max()), _pat(t), _capture()
 	{}
 
 	template<typename Tag>
@@ -692,8 +692,72 @@ namespace po
 	}
 
 	template<typename Tag>
-	boost::optional<std::pair<slab::iterator,sem_state<Tag>>> disassembler<Tag>::try_match(slab::iterator b, slab::iterator e,sem_state<Tag> const&) const
+	boost::optional<std::pair<slab::iterator,sem_state<Tag>>> disassembler<Tag>::try_match(slab::iterator b, slab::iterator e,sem_state<Tag> const& _st) const
 	{
+		using token = typename architecture_traits<Tag>::token_type;
+
+		std::list<token> read;
+		size_t const len = std::distance(b,e);
+
+		for(auto const& opt: _pats)
+		{
+			auto const& pattern = opt.first;
+			auto const& actions = opt.second;
+
+			if(len < pattern.size() * sizeof(token))
+				continue;
+
+			if(read.size() < pattern.size())
+			{
+				size_t const mis = (pattern.size() - read.size()) * sizeof(token);
+				auto i = b + read.size() * sizeof(token);
+				bool const defined = std::none_of(i,i + mis,[](po::tryte s) { return !s; });
+
+				if(!defined)
+					continue;
+
+				do
+				{
+					token const t = std::accumulate(i,i + sizeof(token),0,[](token acc, po::tryte b) { return (acc << 8) | *b; });
+					read.push_back(t);
+					i += sizeof(token);
+					std::cerr << "read " << t << std::endl;
+				}
+				while(read.size() < pattern.size());
+			}
+
+			ensure(pattern.size() <= read.size());
+
+			auto j = pattern.begin();
+			auto k = read.begin();
+			bool match = true;
+
+			while(match && j != pattern.end())
+			{
+				ensure(k != read.end());
+
+				match &= (j->first & *k) == j->second;
+				++j;
+				++k;
+			}
+
+			if(match)
+			{
+				sem_state<Tag> st(_st);
+
+				std::for_each(actions.begin(),actions.end(),[&](std::function<void(sem_state<Tag>&)> fn) { fn(st); });
+				std::copy(read.begin(),k,std::back_inserter(st.tokens));
+
+				return std::make_pair(b + pattern.size() * sizeof(token),st);
+			}
+		}
+
 		return boost::none;
 	}
+
+/*	std::list<std::pair<
+										std::list<std::pair<
+											typename architecture_traits<Tag>::token_type,
+											typename architecture_traits<Tag>::token_type>>,
+										std::list<std::function<void(sem_state<Tag>&)>>*/
 }
