@@ -133,6 +133,16 @@ namespace po
 	template<typename Tag>
 	struct disassembler;
 
+	template<typename Tag>
+	struct token_match
+	{
+		using token_type = typename architecture_traits<Tag>::token_type;
+
+		std::list<std::pair<token_type,token_type>> patterns;
+		std::list<std::function<void(sem_state<Tag>&)>> sem_actions;
+		std::unordered_map<std::string,std::list<token_type>> cap_groups;
+	};
+
 	struct token_expr
 	{
 		using iter = po::slab::iterator;
@@ -199,13 +209,7 @@ namespace po
 		token_expr(void) = delete;
 
 		template<typename Tag>
-		std::list<std::pair<
-			std::list<std::pair<
-				typename architecture_traits<Tag>::token_type,
-				typename architecture_traits<Tag>::token_type>>,
-			std::list<std::function<void(sem_state<Tag>&)>>
-		>>
-		to_pattern_list(void) const;
+		std::list<token_match<Tag>> to_match(void) const;
 
 	private:
 		token_expr_union _u;
@@ -247,10 +251,8 @@ namespace po
 
 		token_pat(std::string const&);
 		token_pat(token);
-		boost::optional<std::list<std::pair<std::string,token>>> matches(token) const;
 
-		token mask(void) const { return _mask; }
-		token pattern(void) const { return _pat; }
+		std::list<token_match<Tag>> to_match(void) const;
 
 	private:
 		token _mask;
@@ -291,22 +293,17 @@ namespace po
 	{
 		using iter = po::slab::iterator;
 		using token = typename architecture_traits<Tag>::token_type;
-		using pattern_list = std::list<std::pair<
-										std::list<std::pair<
-											typename architecture_traits<Tag>::token_type,
-											typename architecture_traits<Tag>::token_type>>,
-										std::list<std::function<void(sem_state<Tag>&)>>
-									>>;
+
 		struct assignment_proxy
 		{
-			using piter = typename pattern_list::iterator;
+			using piter = typename std::list<token_match<Tag>>::iterator;
 
 			assignment_proxy(piter b,piter e) : _begin(b), _end(e) {};
 			assignment_proxy& operator=(std::function<void(sem_state<Tag>&)> fn)
 			{
 				auto i = _begin;
 				while(i != _end)
-					(i++)->second.push_back(fn);
+					(i++)->sem_actions.push_back(fn);
 
 				return *this;
 			}
@@ -324,13 +321,13 @@ namespace po
 		assignment_proxy operator[](token);
 		assignment_proxy operator[](std::string const&);
 
-		pattern_list const& patterns(void) const { return _pats; }
+		std::list<token_match<Tag>> const& patterns(void) const { return _pats; }
 
 		boost::optional<std::pair<iter,sem_state<Tag>>> try_match(iter b, iter e,sem_state<Tag> const&) const;
 
 	private:
 		boost::optional<std::function<void(sem_state<Tag>&)>> _default;
-		pattern_list _pats;
+		std::list<token_match<Tag>> _pats;
 	};
 
 	template<typename Tag>
@@ -411,8 +408,7 @@ namespace po
 		char const* c = _c.c_str();
 		char const* p = c;
 		std::unordered_map<std::string,token> cgs;
-		boost::optional<token> cg_mask = boost::none;
-		std::string cg_name;
+		boost::optional<std::string> cg_name;
 		enum pstate { ANY, AT, PAT } ps = ANY;
 
 		while(*p != 0 && bit >= 0)
@@ -431,7 +427,7 @@ namespace po
 					}
 					else if(isalpha(*p))
 					{
-						cg_name.assign(1,*p);
+						cg_name = std::string(1,*p);
 						ps = AT;
 						++p;
 					}
@@ -450,17 +446,16 @@ namespace po
 				// scan name of capture pattern until '@'
 				case AT:
 				{
-					if(*p == '@')
+					if(*p == '@' && cg_name)
 					{
-						if(!cgs.count(cg_name))
-							cgs.emplace(cg_name,0);
-						cg_mask = cgs[cg_name];
+						if(!cgs.count(*cg_name))
+							cgs.emplace(*cg_name,0);
 						ps = PAT;
 						++p;
 					}
-					else if(isalpha(*p))
+					else if(isalpha(*p) && cg_name)
 					{
-						cg_name.append(1,*p);
+						cg_name->append(1,*p);
 						++p;
 					}
 					else
@@ -473,12 +468,9 @@ namespace po
 				// scan '.' pattern
 				case PAT:
 				{
-					if(*p == '.')
+					if(*p == '.' && cg_name)
 					{
-						if(!cg_mask)
-							throw tokpat_error();
-
-						*cg_mask |= 1 << bit;
+						cgs[*cg_name] |= 1 << bit;
 						--bit;
 						++p;
 					}
@@ -516,45 +508,19 @@ namespace po
 	}
 
 	template<typename Tag>
-	boost::optional<std::list<std::pair<std::string,typename architecture_traits<Tag>::token_type>>>
-	token_pat<Tag>::matches(typename architecture_traits<Tag>::token_type t) const
+	std::list<token_match<Tag>> token_pat<Tag>::to_match(void) const
 	{
-		if((t & _mask) == _pat)
+		token_match<Tag> ret;
+
+		ret.patterns.emplace_back(_mask,_pat);
+		for(auto c: _capture)
 		{
-			std::list<std::pair<std::string,token>> ret;
-			auto cg_iter = _capture.cbegin();
-
-			while(cg_iter != _capture.cend())
-			{
-				token cg_mask = cg_iter->second;
-				unsigned int res = 0;
-				int bit = sizeof(token) * 8 - 1;
-				auto i = std::find_if(ret.begin(),ret.end(),[&](std::pair<std::string,token>& p)
-					{ return p.first == cg_iter->first; });
-
-				if(i != ret.end())
-				{
-					res = i->second;
-					ret.erase(i);
-				}
-
-				while(bit >= 0)
-				{
-					if((cg_mask >> bit) & 1)
-						res = (res << 1) | ((t >> bit) & 1);
-					--bit;
-				}
-
-				ret.emplace_back(cg_iter->first,res);
-				++cg_iter;
-			}
-
-			return ret;
+			ensure(!ret.cap_groups.count(c.first));
+			std::list<token> l({c.second});
+			ret.cap_groups.emplace(c.first,l);
 		}
-		else
-		{
-			return boost::none;
-		}
+
+		return {ret};
 	}
 
 	template<typename Tag>
@@ -563,40 +529,39 @@ namespace po
 	{}
 
 	template<typename Tag>
-	std::list<std::pair<
-		std::list<std::pair<
-			typename architecture_traits<Tag>::token_type,
-			typename architecture_traits<Tag>::token_type>>,
-		std::list<std::function<void(sem_state<Tag>&)>>
-	>>
-	token_expr::to_pattern_list(void) const
+	std::list<token_match<Tag>> token_expr::to_match(void) const
 	{
-		using token = typename architecture_traits<Tag>::token_type;
-		using toklist = std::list<std::pair<token,token>>;
-		using actlist = std::list<std::function<void(sem_state<Tag>&)>>;
-		using ret_type = std::list<std::pair<toklist,actlist>>;
+		using ret_type = std::list<token_match<Tag>>;
 
 		struct vis : public boost::static_visitor<ret_type>
 		{
 			ret_type operator()(conjunction const& c) const
 			{
-				ret_type a = c.a->to_pattern_list<Tag>();
-				ret_type b = c.b->to_pattern_list<Tag>();
+				ret_type a = c.a->to_match<Tag>();
+				ret_type b = c.b->to_match<Tag>();
 				ret_type ret;
 
 				for(auto x: a)
 				{
 					for(auto y: b)
 					{
-						toklist tl;
-						actlist al;
+						token_match<Tag> tm;
 
-						std::copy(x.first.begin(),x.first.end(),std::back_inserter(tl));
-						std::copy(y.first.begin(),y.first.end(),std::back_inserter(tl));
-						std::copy(x.second.begin(),x.second.end(),std::back_inserter(al));
-						std::copy(y.second.begin(),y.second.end(),std::back_inserter(al));
+						std::copy(x.patterns.begin(),x.patterns.end(),std::back_inserter(tm.patterns));
+						std::copy(y.patterns.begin(),y.patterns.end(),std::back_inserter(tm.patterns));
+						std::copy(x.sem_actions.begin(),x.sem_actions.end(),std::back_inserter(tm.sem_actions));
+						std::copy(y.sem_actions.begin(),y.sem_actions.end(),std::back_inserter(tm.sem_actions));
 
-						ret.emplace_back(tl,al);
+						tm.cap_groups = x.cap_groups;
+						for(auto c: y.cap_groups)
+						{
+							if(tm.cap_groups.count(c.first))
+								std::copy(c.second.begin(),c.second.end(),std::back_inserter(tm.cap_groups[c.first]));
+							else
+								tm.cap_groups.emplace(c);
+						}
+
+						ret.emplace_back(tm);
 					}
 				}
 
@@ -611,11 +576,7 @@ namespace po
 					token_pat<Tag> operator()(unsigned long long i) const { return token_pat<Tag>(i); }
 				};
 
-				token_pat<Tag> pat = boost::apply_visitor(vis(),c.s);
-				toklist tl;
-
-				tl.emplace_back(pat.mask(),pat.pattern());
-				return ret_type({std::make_pair(tl,actlist())});
+				return boost::apply_visitor(vis(),c.s).to_match();
 			}
 
 			ret_type operator()(sub const& c) const
@@ -625,9 +586,9 @@ namespace po
 
 			ret_type operator()(option const& c) const
 			{
-				ret_type o = c.e->to_pattern_list<Tag>();
+				ret_type o = c.e->to_match<Tag>();
 
-				o.emplace_back(toklist(),actlist());
+				o.emplace_back(token_match<Tag>());
 
 				return o;
 			}
@@ -666,7 +627,7 @@ namespace po
 	template<typename Tag>
 	typename disassembler<Tag>::assignment_proxy disassembler<Tag>::operator[](token_expr const& t)
 	{
-		auto pl = t.to_pattern_list<Tag>();
+		auto pl = t.to_match<Tag>();
 		size_t l = pl.size();
 
 		std::move(pl.begin(),pl.end(),std::back_inserter(_pats));
@@ -698,66 +659,126 @@ namespace po
 
 		std::list<token> read;
 		size_t const len = std::distance(b,e);
+		std::function<boost::optional<token>(void)> read_next;
 
-		for(auto const& opt: _pats)
+		read_next = [&](void) -> boost::optional<token>
 		{
-			auto const& pattern = opt.first;
-			auto const& actions = opt.second;
+			auto i = b + read.size() * sizeof(token);
+			bool const defined = std::none_of(i,i + sizeof(token),[](po::tryte s) { return !s; });
 
-			if(len < pattern.size() * sizeof(token))
-				continue;
+			if(!defined)
+				return boost::none;
 
-			if(read.size() < pattern.size())
+			std::array<uint8_t,sizeof(token)> tmp;
+
+			std::transform(i,i + sizeof(token),tmp.begin(),[](po::tryte b) { return *b; });
+			return std::accumulate(tmp.rbegin(),tmp.rend(),0,[](token acc, uint8_t b) { return (acc << 8) | b; });
+		};
+
+		if(len > 0)
+		{
+			for(auto const& opt: _pats)
 			{
-				size_t const mis = (pattern.size() - read.size()) * sizeof(token);
-				auto i = b + read.size() * sizeof(token);
-				bool const defined = std::none_of(i,i + mis,[](po::tryte s) { return !s; });
+				auto const& pattern = opt.patterns;
+				auto const& actions = opt.sem_actions;
 
-				if(!defined)
+				if(len < pattern.size() * sizeof(token))
 					continue;
 
-				do
+				while(read.size() < pattern.size())
 				{
-					token const t = std::accumulate(i,i + sizeof(token),0,[](token acc, po::tryte b) { return (acc << 8) | *b; });
-					read.push_back(t);
-					i += sizeof(token);
-					std::cerr << "read " << t << std::endl;
+					auto maybe_token = read_next();
+
+					if(!maybe_token)
+						break;
+					else
+						read.push_back(*maybe_token);
 				}
-				while(read.size() < pattern.size());
+
+				if(read.size() < pattern.size())
+					continue;
+
+				auto j = pattern.begin();
+				auto k = read.begin();
+				bool match = true;
+
+				while(match && j != pattern.end())
+				{
+					ensure(k != read.end());
+
+					match &= (j->first & *k) == j->second;
+					++j;
+					++k;
+				}
+
+				if(match)
+				{
+					sem_state<Tag> st(_st);
+
+					for(auto cap: opt.cap_groups)
+					{
+						std::list<token> masks = cap.second;
+						unsigned int res;
+
+						ensure(masks.size() <= pattern.size());
+
+						if(st.capture_groups.count(cap.first))
+						{
+							res = st.capture_groups.at(cap.first);
+							st.capture_groups.erase(cap.first);
+						}
+						else
+						{
+							res = 0;
+						}
+
+						auto t = read.begin();
+						for(auto cg_mask: masks)
+						{
+							if(cg_mask == 0)
+								continue;
+
+							ensure(t != k);
+							int bit = sizeof(token) * 8 - 1;
+							while(bit >= 0)
+							{
+								if((cg_mask >> bit) & 1)
+									res = (res << 1) | ((*t >> bit) & 1);
+								--bit;
+							}
+
+							++t;
+						}
+
+						st.capture_groups.emplace(cap.first,res);
+					}
+
+					std::copy(read.begin(),k,std::back_inserter(st.tokens));
+					std::for_each(actions.begin(),actions.end(),[&](std::function<void(sem_state<Tag>&)> fn) { fn(st); });
+
+					return std::make_pair(b + pattern.size() * sizeof(token),st);
+				}
 			}
 
-			ensure(pattern.size() <= read.size());
-
-			auto j = pattern.begin();
-			auto k = read.begin();
-			bool match = true;
-
-			while(match && j != pattern.end())
-			{
-				ensure(k != read.end());
-
-				match &= (j->first & *k) == j->second;
-				++j;
-				++k;
-			}
-
-			if(match)
+			if(_default)
 			{
 				sem_state<Tag> st(_st);
 
-				std::for_each(actions.begin(),actions.end(),[&](std::function<void(sem_state<Tag>&)> fn) { fn(st); });
-				std::copy(read.begin(),k,std::back_inserter(st.tokens));
+				if(read.empty())
+				{
+					auto maybe_token = read_next();
 
-				return std::make_pair(b + pattern.size() * sizeof(token),st);
+					ensure(maybe_token);
+					read.push_back(*maybe_token);
+				}
+
+				st.tokens.push_back(read.front());
+				(*_default)(st);
+
+				return std::make_pair(b + sizeof(token),st);
 			}
 		}
 
 		return boost::none;
 	}
-
-/*	std::list<std::pair<
-										std::list<std::pair<
-											typename architecture_traits<Tag>::token_type,
-											typename architecture_traits<Tag>::token_type>>,
-										std::list<std::function<void(sem_state<Tag>&)>>*/
 }
