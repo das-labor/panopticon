@@ -42,7 +42,7 @@ private:
 	proc_loc proc;
 };
 
-class disassembler_mockup : public po::disassembler<test_tag>
+class disassembler_mockup
 {
 public:
 	using iter = po::slab::iterator;
@@ -86,7 +86,7 @@ TEST(procedure,add_single)
 	}
 
 	disassembler_mockup mockup(states);
-	boost::optional<po::proc_loc> maybe_proc = po::procedure::disassemble(0,mockup,slab(bytes.data(),bytes.size()),0);
+	boost::optional<po::proc_loc> maybe_proc = po::procedure::disassemble<test_tag,disassembler_mockup>(0,mockup,slab(bytes.data(),bytes.size()),0);
 	ASSERT_TRUE(!!maybe_proc);
 	proc_loc proc = *maybe_proc;
 
@@ -131,7 +131,7 @@ TEST(procedure,continuous)
 	add(5,"test5");
 
 	disassembler_mockup mockup(states);
-	boost::optional<po::proc_loc> maybe_proc = po::procedure::disassemble(0,mockup,slab(bytes.data(),bytes.size()),0);
+	boost::optional<po::proc_loc> maybe_proc = po::procedure::disassemble<test_tag,disassembler_mockup>(0,mockup,slab(bytes.data(),bytes.size()),0);
 	ASSERT_TRUE(!!maybe_proc);
 	proc_loc proc = *maybe_proc;
 
@@ -192,7 +192,7 @@ TEST(procedure,branch)
 	add(2,"test2",1,boost::none);
 
 	disassembler_mockup mockup(states);
-	boost::optional<po::proc_loc> maybe_proc = po::procedure::disassemble(boost::none,mockup,slab(bytes.data(),bytes.size()),0);
+	boost::optional<po::proc_loc> maybe_proc = po::procedure::disassemble<test_tag,disassembler_mockup>(boost::none,mockup,slab(bytes.data(),bytes.size()),0);
 	ASSERT_TRUE(!!maybe_proc);
 	proc_loc proc = *maybe_proc;
 
@@ -261,7 +261,7 @@ TEST(procedure,loop)
 	add(2,"test2",0);
 
 	disassembler_mockup mockup(states);
-	boost::optional<po::proc_loc> maybe_proc = po::procedure::disassemble(0,mockup,slab(bytes.data(),bytes.size()),0);
+	boost::optional<po::proc_loc> maybe_proc = po::procedure::disassemble<test_tag,disassembler_mockup>(0,mockup,slab(bytes.data(),bytes.size()),0);
 	ASSERT_TRUE(!!maybe_proc);
 	proc_loc proc = *maybe_proc;
 
@@ -287,7 +287,7 @@ TEST(procedure,empty)
 	std::vector<typename po::architecture_traits<test_tag>::token_type> bytes({});
 	std::map<typename po::architecture_traits<test_tag>::token_type,po::sem_state<test_tag>> states;
 	disassembler_mockup mockup(states);
-	boost::optional<po::proc_loc> maybe_proc = po::procedure::disassemble(0,mockup,slab(bytes.data(),bytes.size()),0);
+	boost::optional<po::proc_loc> maybe_proc = po::procedure::disassemble<test_tag,disassembler_mockup>(0,mockup,slab(bytes.data(),bytes.size()),0);
 	ASSERT_TRUE(!maybe_proc);
 }
 
@@ -320,7 +320,7 @@ TEST(procedure,refine)
 	add(1,1,"test1",2);
 
 	disassembler_mockup mockup(states);
-	boost::optional<po::proc_loc> maybe_proc = po::procedure::disassemble(0,mockup,slab(bytes.data(),bytes.size()),0);
+	boost::optional<po::proc_loc> maybe_proc = po::procedure::disassemble<test_tag,disassembler_mockup>(0,mockup,slab(bytes.data(),bytes.size()),0);
 	ASSERT_TRUE(!!maybe_proc);
 	proc_loc proc = *maybe_proc;
 	boost::write_graphviz(std::cout,proc->control_transfers,proc_writer(proc));
@@ -424,7 +424,7 @@ TEST(procedure,continue)
 	disassembler_mockup mockup(states);
 	ASSERT_TRUE(proc->entry);
 
-	boost::optional<proc_loc> maybe_proc = po::procedure::disassemble(proc,mockup,slab(bytes.data(),bytes.size()),40);
+	boost::optional<proc_loc> maybe_proc = po::procedure::disassemble<test_tag,disassembler_mockup>(proc,mockup,slab(bytes.data(),bytes.size()),40);
 	ASSERT_TRUE(!!maybe_proc);
 
 	proc = *maybe_proc;
@@ -540,7 +540,7 @@ TEST(procedure,entry_split)
 	add(2,"test2",1,boost::none);
 
 	disassembler_mockup mockup(states);
-	boost::optional<proc_loc> maybe_proc = po::procedure::disassemble(proc,mockup,slab(bytes.data(),bytes.size()),2);
+	boost::optional<proc_loc> maybe_proc = po::procedure::disassemble<test_tag,disassembler_mockup>(proc,mockup,slab(bytes.data(),bytes.size()),2);
 	ASSERT_TRUE(!!maybe_proc);
 
 	proc = *maybe_proc;
@@ -644,7 +644,7 @@ TEST(procedure,wide_token)
 		s.mnemonic(2,"C");
 	};
 
-	boost::optional<proc_loc> maybe_proc = procedure::disassemble(boost::none, dec, buf, 0);
+	boost::optional<proc_loc> maybe_proc = procedure::disassemble<wtest_tag,po::disassembler<wtest_tag>>(boost::none, dec, buf, 0);
 	ASSERT_TRUE(!!maybe_proc);
 	proc_loc proc = *maybe_proc;
 

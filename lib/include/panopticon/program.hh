@@ -83,8 +83,8 @@ namespace po
 		 * point to new procedures these are disassembled too.
 		 * The @ref disass_sig is called for each procedure disassembled successfully.
 		 */
-		template<typename Tag>
-		static boost::optional<prog_loc> disassemble(const disassembler<Tag> &main, po::slab data, const po::ref& r, boost::optional<prog_loc> prog = boost::none, disass_sig signal = disass_sig());
+		template<typename Tag,typename Dis>
+		static boost::optional<prog_loc> disassemble(Dis const& main, po::slab data, const po::ref& r, boost::optional<prog_loc> prog = boost::none, disass_sig signal = disass_sig());
 
 	private:
 		mutable boost::optional<std::unordered_set<proc_loc>> _procedures;
@@ -100,8 +100,8 @@ namespace po
 	template<>
 	archive marshal(const program*, const uuid&);
 
-	template<typename Tag>
-	boost::optional<prog_loc> program::disassemble(const disassembler<Tag> &main, po::slab data, const po::ref& r, boost::optional<prog_loc> prog, disass_sig signal)
+	template<typename Tag,typename Dis>
+	boost::optional<prog_loc> program::disassemble(Dis const& main, po::slab data, const po::ref& r, boost::optional<prog_loc> prog, disass_sig signal)
 	{
 		if(prog && (*prog)->reg != r.reg)
 			std::invalid_argument("programs can't span multiple regions. Program region: '" + (*prog)->reg + "', disassembly target: '" + r.reg + "'");
@@ -121,7 +121,7 @@ namespace po
 				continue;
 
 			std::cout << "disassemble at " << tgt << std::endl;
-			boost::optional<proc_loc> new_proc = procedure::disassemble(boost::none,main,data,tgt);
+			boost::optional<proc_loc> new_proc = procedure::disassemble<Tag,Dis>(boost::none,main,data,tgt);
 
 			if(new_proc)
 			{

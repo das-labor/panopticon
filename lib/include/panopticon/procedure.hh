@@ -59,8 +59,8 @@ namespace po
 		digraph<boost::variant<bblock_loc,rvalue>,guard> control_transfers;
 
 		/// Create or extend a procedure by starting to disassemble using @arg main at offset @arg start in @arg tokens
-		template<typename Tag>
-		static boost::optional<proc_loc> disassemble(boost::optional<proc_loc>, const disassembler<Tag>&, po::slab, offset);
+		template<typename Tag,typename Dis>
+		static boost::optional<proc_loc> disassemble(boost::optional<proc_loc>, Dis const&, po::slab, offset);
 
 	private:
 		mutable boost::optional<std::vector<bblock_loc>> _rev_postorder;
@@ -102,8 +102,8 @@ namespace po
 	/// Merges two adjacent basic blocks into one.
 	bblock_loc merge(bblock_loc up, bblock_loc down);
 
-	template<typename Tag>
-	boost::optional<proc_loc> procedure::disassemble(boost::optional<proc_loc> proc, const disassembler<Tag> &main, po::slab data, offset start)
+	template<typename Tag,typename Dis>
+	boost::optional<proc_loc> procedure::disassemble(boost::optional<proc_loc> proc, Dis const& main, po::slab data, offset start)
 	{
 		std::unordered_set<offset> todo;
 		std::map<offset,mnemonic> mnemonics;
