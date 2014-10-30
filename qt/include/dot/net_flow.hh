@@ -188,8 +188,10 @@ struct net_flow
 			auto p = in_edges(n,graph);
 			auto q = out_edges(n,graph);
 
-			std::copy_if(p.first,p.second,std::inserter(eds,eds.end()),[&](typename po::digraph<N,std::pair<int,int>>::edge_descriptor e) { return !tree.count(source(e,graph)); });
-			std::copy_if(q.first,q.second,std::inserter(eds,eds.end()),[&](typename po::digraph<N,std::pair<int,int>>::edge_descriptor e) { return !tree.count(target(e,graph)); });
+			std::copy_if(p.first,p.second,std::inserter(eds,eds.end()),[&](typename po::digraph<N,std::pair<int,int>>::edge_descriptor e)
+				{ return !tree.count(source(e,graph)); });
+			std::copy_if(q.first,q.second,std::inserter(eds,eds.end()),[&](typename po::digraph<N,std::pair<int,int>>::edge_descriptor e)
+				{ return !tree.count(target(e,graph)); });
 
 			for(auto g: eds)
 			{
@@ -216,6 +218,7 @@ struct net_flow
 
 		while(true)
 		{
+			min_slacks.clear();
 			tree.clear();
 			cut_values.clear();
 			tight_tree(lambda.begin()->first);
@@ -239,8 +242,13 @@ struct net_flow
 			min_slacks.sort([&](const std::tuple<node,node,unsigned int,int> &a, const std::tuple<node,node,unsigned int,int> &b)
 					{ return std::get<2>(a) < std::get<2>(b); });
 
-			std::tie(n,m,slack,delta) = *std::find_if(min_slacks.begin(),min_slacks.end(),[&](const std::tuple<node,node,unsigned int,int> &a)
+			auto j = std::find_if(min_slacks.begin(),min_slacks.end(),[&](const std::tuple<node,node,unsigned int,int> &a)
 					{ return tree.count(std::get<0>(a)) + tree.count(std::get<1>(a)) == 1; });
+
+			ensure(j != min_slacks.end());
+			std::tie(n,m,slack,delta) = *j;
+
+			ensure(delta != 0);
 
 			auto i = tree.begin();
 			while(i != tree.end())
