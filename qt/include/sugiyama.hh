@@ -82,10 +82,10 @@ public:
 	QVariantList edges(void) const { return _edges; }
 	bool direct(void) const { return _direct; }
 
-	void setDelegate(QQmlComponent* c) { _delegate = c; }
-	void setVertices(QVariantList l) { if(_vertices != l) { _vertices = l; clear(); emit verticesChanged(); redoAttached(); layout(); } }
-	void setEdges(QVariantList l) { if(_edges != l) { _edges = l; clear(); emit edgesChanged(); redoAttached(); layout(); } }
-	void setDirect(bool b) { if(b != _direct) { _direct = b; emit directChanged(); route(); } }
+	void setDelegate(QQmlComponent* c);
+	void setVertices(QVariantList l);
+	void setEdges(QVariantList l);
+	void setDirect(bool b);
 
 	virtual void paint(QPainter *) override;
 
@@ -122,6 +122,8 @@ private:
 	QSignalMapper _mapper;
 	QFutureWatcher<std::unordered_map<itmgraph::vertex_descriptor,std::tuple<unsigned int,unsigned int,unsigned int>>> _layoutWatcher;
 	QFutureWatcher<std::unordered_map<itmgraph::edge_descriptor,std::pair<QPainterPath,QPointF>>> _routeWatcher;
+	QTimer _layoutTimer;
+	bool _scheduleLayout;
 
 	void clear(void);
 	itmgraph& graph(void);

@@ -10,7 +10,8 @@ const int Sugiyama::nodePortPadding = 10;
 Sugiyama::Sugiyama(QQuickItem *parent)
 : QQuickPaintedItem(parent),
 	_delegate(nullptr), _vertices(), _edges(), _direct(false),
-	_graph(), _mapper(), _layoutWatcher(), _routeWatcher()
+	_graph(), _mapper(), _layoutWatcher(), _routeWatcher(),
+	_scheduleLayout(false)
 {
 	connect(&_mapper,SIGNAL(mapped(QObject*)),this,SLOT(updateEdge(QObject*)));
 	connect(&_layoutWatcher,
@@ -31,9 +32,9 @@ Sugiyama::~Sugiyama(void)
 
 void Sugiyama::route(void)
 {
-	if(po::num_edges(graph()))
+	if(po::num_edges(graph()) && po::num_vertices(graph()))
 	{
-		if(false && direct())
+		if(direct())
 		{
 			for(auto e: iters(po::edges(graph())))
 			{
@@ -57,6 +58,14 @@ void Sugiyama::route(void)
 		else
 		{
 			_routeWatcher.cancel();
+			try
+			{
+				_routeWatcher.waitForFinished();
+			}
+			catch(...)
+			{
+				;
+			}
 
 			std::unordered_map<itmgraph::vertex_descriptor,QRect> bbs;
 			for(auto _vx: iters(po::vertices(graph())))
@@ -73,10 +82,18 @@ void Sugiyama::route(void)
 
 void Sugiyama::layout(void)
 {
-	if(po::num_edges(graph()))
+	if(po::num_edges(graph()) && po::num_vertices(graph()))
 	{
 		emit layoutStart();
 		_layoutWatcher.cancel();
+		try
+		{
+			_layoutWatcher.waitForFinished();
+		}
+		catch(...)
+		{
+			;
+		}
 
 		std::unordered_map<itmgraph::vertex_descriptor,int> widths;
 		for(auto vx: iters(po::vertices(graph())))
@@ -290,6 +307,12 @@ void Sugiyama::paint(QPainter *p)
 	}
 
 	p->restore();
+
+	if(_scheduleLayout)
+	{
+		_scheduleLayout = false;
+		layout();
+	}
 }
 
 void Sugiyama::redoAttached(void)
@@ -359,6 +382,47 @@ void Sugiyama::positionEdgeDecoration(itmgraph::edge_descriptor e, itmgraph cons
 
 		label->setX(pnt.x() - bb.width() / 2);
 		label->setY(pnt.y() - bb.height() / 2);
+	}
+}
+
+void Sugiyama::setDelegate(QQmlComponent* c)
+{
+	_delegate = c;
+}
+
+void Sugiyama::setVertices(QVariantList l)
+{
+	if(_vertices != l)
+	{
+		_vertices = l;
+		clear();
+		emit verticesChanged();
+		redoAttached();
+		//_scheduleLayout = true;
+		layout();
+	}
+}
+
+void Sugiyama::setEdges(QVariantList l)
+{
+	if(_edges != l)
+	{
+		_edges = l;
+		clear();
+		emit edgesChanged();
+		redoAttached();
+		//_scheduleLayout = true;
+		layout();
+	}
+}
+
+void Sugiyama::setDirect(bool b)
+{
+	if(b != _direct)
+	{
+		_direct = b;
+		emit directChanged();
+		route();
 	}
 }
 
@@ -798,7 +862,7 @@ QPainterPath toPoly(const std::list<point> &segs)
 		int idx = 0;
 
 		pp.moveTo(QPointF(segs.front().x,segs.front().y));
-		while(idx < segs.size() - 2)
+		while(idx < static_cast<int>(segs.size()) - 2)
 		{
 			QPointF f1(std::next(segs.begin(),idx)->x,std::next(segs.begin(),idx)->y);
 			QPointF f2(std::next(segs.begin(),idx + 1)->x,std::next(segs.begin(),idx + 1)->y);
@@ -825,7 +889,7 @@ QPainterPath toPoly(const std::list<point> &segs)
 			pp.lineTo(l1.p2());
 			pp.arcTo(bb,dir ? l1.angle() + 90 : l1.angle() - 90,sweep > 180 ? sweep - 360 : sweep);
 
-			if(idx + 1 == segs.size() - 2)
+			if(idx + 1 == static_cast<int>(segs.size()) - 2)
 			{
 				pp.moveTo(l2.p2());
 				pp.lineTo(l2.p1());

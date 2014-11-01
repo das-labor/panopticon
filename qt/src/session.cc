@@ -80,6 +80,7 @@ LinearModel::LinearModel(dbase_loc db, QObject *p)
 						row = nrow;
 					}
 
+					auto old_row = row;
 					boost::apply_visitor(add_vis(row,_rows,std::get<1>(p).lock()), *r);
 
 					try
@@ -89,9 +90,15 @@ LinearModel::LinearModel(dbase_loc db, QObject *p)
 						{
 							for(auto proc: pro->procedures())
 							{
-								if(find_bblock(proc,bb->area().lower()))
+								boost::optional<bblock_loc> maybe_bb;
+								if((maybe_bb = find_bblock(proc,bb->area().lower())))
 								{
 									auto vx = find_node(boost::variant<bblock_loc,rvalue>(bb),proc->control_transfers);
+
+									if(maybe_bb == proc->entry)
+									{
+										_procedures.emplace(proc->name,old_row);
+									}
 
 									for(auto e: iters(in_edges(vx,proc->control_transfers)))
 									{
@@ -153,18 +160,14 @@ LinearModel::LinearModel(dbase_loc db, QObject *p)
 		}
 	}
 
-	for(auto p: _rows)
-	{
-		struct visitor : public boost::static_visitor<std::string>
-		{
-			std::string operator()(const po::bound& b) const { return "[" + std::to_string(b.lower()) + ":" + std::to_string(b.upper()) + ")"; }
-			std::string operator()(const po::bblock_loc& bb) const { return "bb(" + std::to_string((ptrdiff_t)(&(*bb))) + ")"; }
-			std::string operator()(const po::struct_loc&) const { return "struct"; }
-		};
-		std::cout << std::get<0>(p) << " " << boost::apply_visitor(visitor(), std::get<1>(p).second) << std::endl;
-	}
-
 	ensure(_rows.size());
+}
+
+int LinearModel::rowForProcedure(QString s) const
+{
+	std::string n = s.toStdString();
+	auto i = _procedures.find(n);
+	return i != _procedures.end() ? i->second : -1;
 }
 
 int LinearModel::rowCount(const QModelIndex& parent) const
@@ -534,20 +537,17 @@ void ProcedureModel::setProcedure(proc_loc p)
 }
 
 Session::Session(po::session sess, QObject *p)
-: QObject(p), _session(sess), _linear(new LinearModel(sess.dbase,this)), _graph(new ProcedureModel()), _procedures()
+: QObject(p), _session(sess), _linear(new LinearModel(sess.dbase,this)), _graph(new ProcedureModel()), _procedures(), _activeProcedure("")
 {
 	bool set = false;
 
-	for(auto prog: _session.dbase->programs)
+	for(auto proc: (*_session.dbase->programs.begin())->procedures())
 	{
-		for(auto proc: prog->procedures())
+		_procedures.append(QString::fromStdString(proc->name));
+		if(!set)
 		{
-			_procedures.append(QString::fromStdString(proc->name));
-			if(!set)
-			{
-				set = true;
-				_graph->setProcedure(proc);
-			}
+			set = true;
+			_graph->setProcedure(proc);
 		}
 	}
 }
@@ -572,11 +572,28 @@ Session* Session::createAvr(QString s)
 
 void Session::postComment(int r, QString c)
 {
-	qDebug() << "post" << c << "in" << r;
 	_linear->postComment(r,c);
 }
 
 void Session::disassemble(int r, int c)
 {
 	qDebug() << "start disassemble at" << r << "/" << c;
+}
+
+void Session::setActiveProcedure(QString const& s)
+{
+	if(s != _activeProcedure)
+	{
+		_activeProcedure = s;
+
+		auto prog = *_session.dbase->programs.begin();
+		auto p = std::find_if(prog->procedures().begin(),prog->procedures().end(),[&](proc_loc p) { return p->name == s.toStdString(); });
+
+		ensure(p != prog->procedures().end());
+
+		_graph->setProcedure(*p);
+		//_linear->setProcedure(*p);
+
+		emit activeProceduresChanged();
+	}
 }

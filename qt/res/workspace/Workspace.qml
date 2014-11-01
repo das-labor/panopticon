@@ -4,7 +4,6 @@ import Panopticon 1.0
 Item {
 	id: root
 
-	property string select: ""
 	property variant session: null
 
 	state: "data"
@@ -32,6 +31,22 @@ Item {
 			color: "#eeeeee"
 		}
 
+		/*TabView {
+			property var session: null
+
+			onSessionChanged: {
+				var i = 0
+				while(i < count) {
+					var t = getTab(i)
+
+					if(t.session == session) {
+						currentIndex = i
+						return
+					}
+				}
+
+				currentIndex = addTab("",
+				*/
 		Graph {
 			anchors.fill: parent
 			id: grph
@@ -61,10 +76,10 @@ Item {
 		primaryColor: "#1c1c1c"
 		secondaryColor: "#1bbc9b"
 		alignLeft: true
-		activeItem: root.select
+		activeItem: root.session.activeProcedure
 		icon: "func.png"
 
-		onSelected: { select = i }
+		onSelected: { root.session.activeProcedure = i }
 	}
 
 	SideMenu {
@@ -78,9 +93,9 @@ Item {
 		model: root.session.procedures
 		primaryColor: "#1c1c1c"
 		secondaryColor: "#bed83f"
-		activeItem: root.select
+		activeItem: root.session.activeProcedure
 		icon: "data.png"
 
-		onSelected: { select = i }
+		onSelected: { root.session.activeProcedure = i }
 	}
 }

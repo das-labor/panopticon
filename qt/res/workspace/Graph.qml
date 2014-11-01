@@ -245,12 +245,15 @@ Item {
 			delegate: node
 
 			function rebuildEdges() {
+				var tmp = []
 				for(var a in root.session.graph.jumps) {
 					var e = eval(root.session.graph.jumps[a])
 					var x = edge.createObject(sugiyama,e)
 
-					sugiyama.edges = [].concat(sugiyama.edges,[x])
+					tmp = [].concat(tmp,[x])
 				}
+
+				sugiyama.edges = tmp
 			}
 
 			vertices: root.session ? root.session.graph.blocks.map(function(a) { return eval(a) }) : []

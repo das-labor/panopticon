@@ -25,6 +25,18 @@ Item {
 	property color arrowHeadColor: "blue"
 	property color hoverColor: "blue"
 
+	onSessionChanged: {
+		if(session != null) {
+			session.activeProceduresChanged.connect(function() {
+				console.log(session.activeProcedure)
+				console.log(session.linear.rowForProcedure(session.activeProcedure))
+
+				lst.positionViewAtIndex(session.linear.rowForProcedure(session.activeProcedure),ListView.Beginning)
+			})
+		}
+	}
+
+
 	Component {
 		id: row
 

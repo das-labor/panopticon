@@ -20,6 +20,8 @@ public:
 
 	void postComment(int row, QString c);
 
+	Q_INVOKABLE int rowForProcedure(QString p) const;
+
 protected:
 	struct data_visitor : public boost::static_visitor<std::tuple<QString,po::bound,std::list<po::bound>>>
 	{
@@ -42,6 +44,7 @@ protected:
 	std::list<std::tuple<po::bound,po::region_wloc,bool>> _projection;
 	boost::icl::split_interval_map<int,row_t> _rows;
 	std::list<boost::icl::split_interval_map<po::offset,int>> _tracks;
+	std::unordered_map<std::string,int> _procedures;
 };
 
 class ProcedureModel : public QObject
@@ -79,6 +82,7 @@ class Session : public QObject
 	Q_PROPERTY(QObject* linear READ linear NOTIFY linearChanged)
 	Q_PROPERTY(QObject* graph READ graph NOTIFY graphChanged)
 	Q_PROPERTY(QStringList procedures READ procedures NOTIFY proceduresChanged)
+	Q_PROPERTY(QString activeProcedure READ activeProcedure WRITE setActiveProcedure NOTIFY activeProceduresChanged)
 
 public:
 	Session(po::session, QObject *parent = nullptr);
@@ -95,16 +99,21 @@ public:
 	QObject* linear(void) const { return _linear; }
 	QObject* graph(void) const { return _graph; }
 	const QStringList& procedures(void) const { return _procedures; }
+	QString activeProcedure(void) const { return _activeProcedure; }
+
+	void setActiveProcedure(QString const& s);
 
 signals:
 	void titleChanged(void);
 	void linearChanged(void);
 	void graphChanged(void);
 	void proceduresChanged(void);
+	void activeProceduresChanged(void);
 
 private:
 	po::session _session;
 	LinearModel* _linear;
 	ProcedureModel* _graph;
 	QStringList _procedures;
+	QString _activeProcedure;
 };
