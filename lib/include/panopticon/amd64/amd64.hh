@@ -5,21 +5,38 @@
 namespace po
 {
 	// architecture_traits
-	struct amd64_tag
+	struct amd64_tag {};
+
+	struct amd64_state
 	{
-		enum
+		enum AddressSize
 		{
-			AMD64_PROTECTED_MODE,
-			AMD64_REAL_ADDRESS_MODE,
-			AMD64_COMPAT_MODE,
-			AMD64_64_MODE
-		} mode;
+			AddrSz_64,
+			AddrSz_32,
+			AddrSz_16,
+		};
+
+		enum OperandSize
+		{
+			OpSz_64,
+			OpSz_32,
+			OpSz_16,
+			OpSz_8,
+		};
+
+		AddressSize addr_sz;
+		OperandSize op_sz;
+
+		boost::optional<rvalue> operand_a;
+		boost::optional<rvalue> operand_b;
+		boost::optional<rvalue> operand_c;
 	};
 
 	template<>
 	struct architecture_traits<amd64_tag>
 	{
-		typedef uint8_t token_type;
+		using token_type = uint8_t;
+		using state_type = amd64_state;
 	};
 
 	template<>

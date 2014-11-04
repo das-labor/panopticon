@@ -10,7 +10,8 @@ namespace po
 	template<>
 	struct architecture_traits<avr_tag>
 	{
-		typedef uint16_t token_type;
+		using token_type = uint16_t;
+		using state_type = std::nullptr_t;
 	};
 
 	template<>

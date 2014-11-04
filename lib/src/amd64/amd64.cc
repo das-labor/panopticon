@@ -1,5 +1,7 @@
 #include <panopticon/disassembler.hh>
+
 #include <panopticon/amd64/amd64.hh>
+#include <panopticon/amd64/util.hh>
 
 using namespace po;
 using namespace po::amd64;
@@ -53,6 +55,67 @@ uint8_t po::width(std::string n, amd64_tag)
 		ensure(false);
 }
 
+// 8 bit gp registers
+const variable al = variable("al",8),
+					bl = variable("bl",8),
+					cl = variable("cl",8),
+					dl = variable("dl",8),
+					ah = variable("al",8),
+					bh = variable("bl",8),
+					ch = variable("cl",8),
+					dh = variable("dl",8),
+
+// 16 bit gp registers
+					ax = variable("ax",16),
+					bx = variable("bx",16),
+					cx = variable("cx",16),
+					dx = variable("dx",16),
+
+// 32 bit gp registers
+					eax = variable("eax",32),
+					ebx = variable("ebx",32),
+					ecx = variable("ecx",32),
+					edx = variable("edx",32),
+
+// 64 bit gp registers
+					rax = variable("rax",64),
+					rbx = variable("rbx",64),
+					rcx = variable("rcx",64),
+					rdx = variable("rdx",64),
+					r4 = variable("r4",64),
+					r5 = variable("r5",64),
+					r6 = variable("r6",64),
+					r7 = variable("r7",64),
+
+// 32 bit management registers
+					esp = variable("esp",32),
+					ebp = variable("ebp",32),
+					eip = variable("eip",32),
+					//eflags = variable("eflags",32),
+					CF = variable("CF",1),
+					PF = variable("PF",1),
+					AF = variable("AF",1),
+					ZF = variable("ZF",1),
+					SF = variable("SF",1),
+					TF = variable("TF",1),
+					IF = variable("IF",1),
+					DF = variable("DF",1),
+					OF = variable("OF",1),
+					IOPL = variable("IOPL",2),
+					NT = variable("NT",1),
+					RF = variable("RF",1),
+					VM = variable("VM",1),
+					AC = variable("AC",1),
+					VIF = variable("VIF",1),
+					VIP = variable("VIP",1),
+					ID = variable("ID",1),
+
+// 64 bit management registers
+					rsp = variable("rsp",64),
+					rbp = variable("rbp",64),
+					rip = variable("rip",64),
+					rflags = variable("rflags",64);
+
 namespace pls = std::placeholders;
 
 boost::optional<prog_loc> po::amd64::disassemble(boost::optional<prog_loc> prog, po::slab bytes, const po::ref& r)
@@ -73,39 +136,30 @@ boost::optional<prog_loc> po::amd64::disassemble(boost::optional<prog_loc> prog,
 									rm8_6, rm16_6, rm32_6, rm64_6,
 									rm8_7, rm16_7, rm32_7, rm64_7;
 
-	std::function<void(const std::string&,int,sm&)> simple = [&](const std::string& m,int j,sm& st)
-	{
-		std::cerr << m << ": " << std::hex;
-		for(auto b: st.tokens)
-			std::cerr << (unsigned int)b << " ";
-		std::cerr << std::dec << std::endl;
-		st.jump(st.address + st.tokens.size());
-	};
-
 	opsize_prfix[0x66] = [](sm& st) {};
 	addrsize_prfx[0x67] = [](sm& st) {};
 	rep_prfx[0xf3] = [](sm& st) {};
 	rex_prfix [ "01000 r@. x@. b@."_e] = [](sm& st) {};
 	rexw_prfix [ "01001 r@. x@. b@."_e] = [](sm& st) {};
 
-	generic_prfx [rep_prfx]  = [](sm& st) {};
-	generic_prfx [addrsize_prfx]  = [](sm& st) {};
+	generic_prfx [rep_prfx]			= [](sm& st) {};
+	generic_prfx [addrsize_prfx]	= [](sm& st) {};
 
-	imm8_a [ "a@........"_e] = [](sm& st) {};
-	imm8_b [ "b@........"_e] = [](sm& st) {};
-	imm8_c [ "a@........"_e] = [](sm& st) {};
+	imm8_a [ "a@........"_e] = [](sm& st) { st.state.operand_a = constant(st.capture_groups.at("a")); };
+	imm8_b [ "b@........"_e] = [](sm& st) { st.state.operand_b = constant(st.capture_groups.at("b")); };
+	imm8_c [ "a@........"_e] = [](sm& st) { st.state.operand_c = constant(st.capture_groups.at("c")); };
 
-	imm16_a [ imm8_a >> "a@........"_e] = [](sm& st) {};
-	imm16_b [ imm8_b >> "b@........"_e] = [](sm& st) {};
-	imm16_c [ imm8_c >> "c@........"_e] = [](sm& st) {};
+	imm16_a [ imm8_a >> "a@........"_e] = [](sm& st) { st.state.operand_a = constant(st.capture_groups.at("a")); };
+	imm16_b [ imm8_b >> "b@........"_e] = [](sm& st) { st.state.operand_b = constant(st.capture_groups.at("b")); };
+	imm16_c [ imm8_c >> "c@........"_e] = [](sm& st) { st.state.operand_c = constant(st.capture_groups.at("c")); };
 
-	imm32_a [ imm16_a >> "a@........"_e >> "a@........"_e] = [](sm& st) {};
-	imm32_b [ imm16_b >> "b@........"_e >> "b@........"_e] = [](sm& st) {};
-	imm32_c [ imm16_c >> "c@........"_e >> "c@........"_e] = [](sm& st) {};
+	imm32_a [ imm16_a >> "a@........"_e >> "a@........"_e] = [](sm& st) { st.state.operand_a = constant(st.capture_groups.at("a")); };
+	imm32_b [ imm16_b >> "b@........"_e >> "b@........"_e] = [](sm& st) { st.state.operand_b = constant(st.capture_groups.at("b")); };
+	imm32_c [ imm16_c >> "c@........"_e >> "c@........"_e] = [](sm& st) { st.state.operand_c = constant(st.capture_groups.at("c")); };
 
-	imm64_a [ imm32_a >> "a@........"_e >> "a@........"_e >> "a@........"_e >> "a@........"_e] = [](sm& st) {};
-	imm64_b [ imm32_b >> "b@........"_e >> "b@........"_e >> "b@........"_e >> "b@........"_e] = [](sm& st) {};
-	imm64_c [ imm32_c >> "c@........"_e >> "c@........"_e >> "c@........"_e >> "c@........"_e] = [](sm& st) {};
+	imm64_a [ imm32_a >> "a@........"_e >> "a@........"_e >> "a@........"_e >> "a@........"_e] = [](sm& st) { st.state.operand_a = constant(st.capture_groups.at("a")); };
+	imm64_b [ imm32_b >> "b@........"_e >> "b@........"_e >> "b@........"_e >> "b@........"_e] = [](sm& st) { st.state.operand_b = constant(st.capture_groups.at("b")); };
+	imm64_c [ imm32_c >> "c@........"_e >> "c@........"_e >> "c@........"_e >> "c@........"_e] = [](sm& st) { st.state.operand_c = constant(st.capture_groups.at("c")); };
 
 	// 64 bit
 	disassembler<amd64_tag> imm_a(imm32_a), imm_b(imm32_b), imm_c(imm32_c);
@@ -240,43 +294,57 @@ boost::optional<prog_loc> po::amd64::disassemble(boost::optional<prog_loc> prog,
 	rm32_7[ "11 111 rm@..."_e] = [](sm& st) {};
 	rm64_7[ "11 111 rm@..."_e] = [](sm& st) {};
 
+	std::function<void(const std::string&,sm&)> simple = [&](const std::string& m,sm& st)
+	{
+		std::cerr << m << ": " << std::hex;
+		for(auto b: st.tokens)
+			std::cerr << (unsigned int)b << " ";
+		std::cerr << std::dec << std::endl;
+		st.jump(st.address + st.tokens.size());
+	};
+
 	// 32 bits only
-	generic_prfx[0x37_e] = std::bind(simple,"AAA",1,std::placeholders::_1);
-	generic_prfx[0xd5_e >> "i@........"_e] = std::bind(simple,"AAD imm8",2,std::placeholders::_1);
-	generic_prfx[0xd4_e >> "i@........"_e] = std::bind(simple,"AAM imm8",2,std::placeholders::_1);
-	generic_prfx[0x3f_e] = std::bind(simple,"AAS",1,std::placeholders::_1);
+	main[ *generic_prfx >> 0x37_e							] = std::bind(simple,"AAA",std::placeholders::_1);
+	main[ *generic_prfx >> 0xd5_e >> "i@........"_e	] = std::bind(simple,"AAD imm8",std::placeholders::_1);
+	main[ *generic_prfx >> 0xd4_e >> "i@........"_e	] = std::bind(simple,"AAM imm8",std::placeholders::_1);
+	main[ *generic_prfx >> 0x3f_e							] = std::bind(simple,"AAS",std::placeholders::_1);
 
 	// ADC
-	generic_prfx[						0x14 >> imm8_a					] = std::bind(simple,"ADC AL, imm8",2,pls::_1);
+	std::function<void(cg&,rvalue,rvalue)> adc = [](cg& m, rvalue a, rvalue b)
+	{
+		m.assign(to_lvalue(a),(a + b + CF) % 0x100000000ull);
+	};
 
-	generic_prfx[ opsize_prfix	>> 0x15 >> imm16_a				] = std::bind(simple,"ADC AX, imm16",4,pls::_1);
-	generic_prfx[						0x15 >> imm32_a				] = std::bind(simple,"ADC EAX, imm32",5,pls::_1);
-	generic_prfx[ rexw_prfix	>> 0x15 >> imm32_a				] = std::bind(simple,"ADC RAX, imm32",6,pls::_1);
+	main[ *generic_prfx >>						0x14 >> imm8_a					] = unary("adc",std::bind(adc,pls::_1,al,pls::_2));
 
-	generic_prfx[						0x80 >> rm8_2 >> imm8_b		] = std::bind(simple,"ADC r/m8, imm8",3,pls::_1);
-	generic_prfx[ rex_prfix		>> 0x80 >> rm8_2 >> imm8_b		] = std::bind(simple,"ADC r/m8, imm8",4,pls::_1);
+	main[ *generic_prfx >> opsize_prfix	>> 0x15 >> imm16_a				] = unary("adc",std::bind(adc,pls::_1,ax,pls::_2));
+	main[ *generic_prfx >>						0x15 >> imm32_a				] = unary("adc",std::bind(adc,pls::_1,eax,pls::_2));
+	main[ *generic_prfx >> rexw_prfix	>> 0x15 >> imm32_a				] = unary("adc",std::bind(adc,pls::_1,rax,pls::_2));
 
-	generic_prfx[ opsize_prfix	>> 0x81 >> rm16_2 >> imm16_b	] = std::bind(simple,"ADC r/m16, imm16",5,pls::_1);
-	generic_prfx[						0x81 >> rm32_2 >> imm32_b	] = std::bind(simple,"ADC r/m32, imm32",6,pls::_1);
-	generic_prfx[ rexw_prfix	>> 0x81 >> rm64_2 >> imm32_b	] = std::bind(simple,"ADC r/m64, imm32",7,pls::_1);
+	/*main[ *generic_prfx >>						0x80 >> rm8_2 >> imm8_b		] = binary("adc",adc);
+	main[ *generic_prfx >> rex_prfix		>> 0x80 >> rm8_2 >> imm8_b		] = binary("adc",adc);
 
-	generic_prfx[ opsize_prfix	>> 0x83 >> rm16_2 >> imm8_b	] = std::bind(simple,"ADC r/m16, imm8",4,pls::_1);
-	generic_prfx[						0x83 >> rm32_2 >> imm8_b	] = std::bind(simple,"ADC r/m32, imm8",3,pls::_1);
-	generic_prfx[ rexw_prfix	>> 0x83 >> rm64_2 >> imm8_b	] = std::bind(simple,"ADC r/m64, imm8",4,pls::_1);
+	main[ *generic_prfx >> opsize_prfix	>> 0x81 >> rm16_2 >> imm16_b	] = binary("adc",adc);
+	main[ *generic_prfx >>						0x81 >> rm32_2 >> imm32_b	] = binary("adc",adc);
+	main[ *generic_prfx >> rexw_prfix	>> 0x81 >> rm64_2 >> imm32_b	] = binary("adc",adc);
 
-	generic_prfx[						0x10 >> rm8						] = std::bind(simple,"ADC r/m8, r8",6,pls::_1);
-	generic_prfx[ rex_prfix		>> 0x10 >> rm8						] = std::bind(simple,"ADC r/m8, r8",7,pls::_1);
+	main[ *generic_prfx >> opsize_prfix	>> 0x83 >> rm16_2 >> imm8_b	] = binary("adc",adc);
+	main[ *generic_prfx >>						0x83 >> rm32_2 >> imm8_b	] = binary("adc",adc);
+	main[ *generic_prfx >> rexw_prfix	>> 0x83 >> rm64_2 >> imm8_b	] = binary("adc",adc);
 
-	generic_prfx[ opsize_prfix	>> 0x11 >> rm16					] = std::bind(simple,"ADC r/m16, r16",3,pls::_1);
-	generic_prfx[						0x11 >> rm32					] = std::bind(simple,"ADC r/m32, r32",2,pls::_1);
-	generic_prfx[ rexw_prfix	>> 0x11 >> rm64					] = std::bind(simple,"ADC r/m64, r64",3,pls::_1);
+	main[ *generic_prfx >>						0x10 >> rm8						] = binary("adc",adc);
+	main[ *generic_prfx >> rex_prfix		>> 0x10 >> rm8						] = binary("adc",adc);
 
-	generic_prfx[						0x12 >> rm8						] = std::bind(simple,"ADC r8, r/m8",2,pls::_1);
-	generic_prfx[ rex_prfix		>> 0x12 >> rm8						] = std::bind(simple,"ADC r8, r/m8",3,pls::_1);
+	main[ *generic_prfx >> opsize_prfix	>> 0x11 >> rm16					] = binary("adc",adc);
+	main[ *generic_prfx >>						0x11 >> rm32					] = binary("adc",adc);
+	main[ *generic_prfx >> rexw_prfix	>> 0x11 >> rm64					] = binary("adc",adc);
 
-	generic_prfx[ opsize_prfix	>> 0x13 >> rm16					] = std::bind(simple,"ADC r16, r/m16",3,pls::_1);
-	generic_prfx[ 						0x13 >> rm32					] = std::bind(simple,"ADC r32, r/m32",2,pls::_1);
-	generic_prfx[ rexw_prfix	>> 0x13 >> rm64					] = std::bind(simple,"ADC r64, r/m64",3,pls::_1);
+	main[ *generic_prfx >>						0x12 >> rm8						] = binary("adc",adc);
+	main[ *generic_prfx >> rex_prfix		>> 0x12 >> rm8						] = binary("adc",adc);
 
-	return program::disassemble<amd64_tag>(generic_prfx,bytes,r,prog);
+	main[ *generic_prfx >> opsize_prfix	>> 0x13 >> rm16					] = binary("adc",adc);
+	main[ *generic_prfx >> 						0x13 >> rm32					] = binary("adc",adc);
+	main[ *generic_prfx >> rexw_prfix	>> 0x13 >> rm64					] = binary("adc",adc);*/
+
+	return program::disassemble<amd64_tag>(main,bytes,r,prog);
 }

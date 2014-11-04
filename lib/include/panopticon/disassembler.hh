@@ -126,6 +126,8 @@ namespace po
 		std::list<po::mnemonic> mnemonics;
 		std::list<std::pair<rvalue,guard>> jumps;
 
+		typename architecture_traits<Tag>::state_type state;
+
 	private:
 		offset next_address;
 	};
@@ -332,7 +334,7 @@ namespace po
 
 	template<typename Tag>
 	sem_state<Tag>::sem_state(offset a)
-	: address(a), tokens(), capture_groups(), mnemonics(), jumps(), next_address(a)
+	: address(a), tokens(), capture_groups(), mnemonics(), jumps(), state(), next_address(a)
 	{}
 
 	template<typename Tag>

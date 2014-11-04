@@ -10,7 +10,8 @@ namespace po
 	template<typename T>
 	struct architecture_traits
 	{
-		typedef void token_type;	///< Smallest integer type that can hold one token
+		using token_type = void;	///< Smallest integer type that can hold one token
+		using state_type = std::nullptr_t;	///< additional semantic info. Type of sem_state<Tag>::state
 	};
 
 	/// Generate new temporary variable. Must not collide with any previous temporaries.

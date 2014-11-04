@@ -12,6 +12,7 @@ namespace po
 	struct architecture_traits<test_tag>
 	{
 		using token_type = unsigned char;
+		using state_type = unsigned char;
 	};
 
 	template<>
@@ -32,6 +33,7 @@ namespace po
 	struct architecture_traits<wtest_tag>
 	{
 		using token_type = uint16_t;
+		using state_type = unsigned char;
 	};
 
 	template<>
