@@ -17,10 +17,134 @@ namespace po
 			"bl","bh","bx","ebx","rbx",
 			"cl","ch","cx","ecx","rcx",
 			"dh","dl","dx","edx","rdx",
+			"dil","di","edi","rdi",
+			"sil","si","esi","rsi",
 			"r4","r5","r6","r7",
-			"ebp","rbp","esp","rsp",
-			"eip","rip","eflags","rflags"
+			"r8","r10","r11","r12",
+			"r13","r14","r15",
+			"bpl","ebp","rbp",
+			"spl","esp","rsp",
+			"eip","rip",
+			"eflags","rflags"
 		});
+
+		const variable al = variable("al",8),
+							bl = variable("bl",8),
+							cl = variable("cl",8),
+							dl = variable("dl",8),
+							ah = variable("al",8),
+							bh = variable("bl",8),
+							ch = variable("cl",8),
+							dh = variable("dl",8),
+							dil = variable("dil",8),
+							sil = variable("sil",8),
+							bpl = variable("bpl",8),
+							spl = variable("spl",8),
+							r4l = variable("r4l",8),
+							r5l = variable("r5l",8),
+							r6l = variable("r6l",8),
+							r7l = variable("r7l",8),
+							r8l = variable("r8l",8),
+							r9l = variable("r9l",8),
+							r10l = variable("r10l",8),
+							r11l = variable("r11l",8),
+							r12l = variable("r12l",8),
+							r13l = variable("r13l",8),
+							r14l = variable("r14l",8),
+							r15l = variable("r15l",8),
+
+							// 16 bit gp registers
+							ax = variable("ax",16),
+							bx = variable("bx",16),
+							cx = variable("cx",16),
+							dx = variable("dx",16),
+							di = variable("di",16),
+							si = variable("si",16),
+							r4w = variable("r4w",16),
+							r5w = variable("r5w",16),
+							r6w = variable("r6w",16),
+							r7w = variable("r7w",16),
+							r8w = variable("r8w",16),
+							r9w = variable("r9w",16),
+							r10w = variable("r10w",16),
+							r11w = variable("r11w",16),
+							r12w = variable("r12w",16),
+							r13w = variable("r13w",16),
+							r14w = variable("r14w",16),
+							r15w = variable("r15w",16),
+
+							// 32 bit gp registers
+							eax = variable("eax",32),
+							ebx = variable("ebx",32),
+							ecx = variable("ecx",32),
+							edx = variable("edx",32),
+							esi = variable("esi",32),
+							edi = variable("edx",32),
+							r4d = variable("r4d",32),
+							r5d = variable("r5d",32),
+							r6d = variable("r6d",32),
+							r7d = variable("r7d",32),
+							r8d = variable("r8d",32),
+							r9d = variable("r9d",32),
+							r10d = variable("r10d",32),
+							r11d = variable("r11d",32),
+							r12d = variable("r12d",32),
+							r13d = variable("r13d",32),
+							r14d = variable("r14d",32),
+							r15d = variable("r15d",32),
+
+							// 64 bit gp registers
+							rax = variable("rax",64),
+							rbx = variable("rbx",64),
+							rcx = variable("rcx",64),
+							rdx = variable("rdx",64),
+							rdi = variable("rdi",64),
+							rsi = variable("rsi",64),
+							r4 = variable("r4",64),
+							r5 = variable("r5",64),
+							r6 = variable("r6",64),
+							r7 = variable("r7",64),
+							r8 = variable("r8",64),
+							r9 = variable("r9",64),
+							r10 = variable("r10",64),
+							r11 = variable("r11",64),
+							r12 = variable("r12",64),
+							r13 = variable("r13",64),
+							r14 = variable("r14",64),
+							r15 = variable("r15",64),
+
+							// 16 bit management registes
+							ip = variable("ip",16),
+							sp = variable("sp",16),
+							bp = variable("bp",16),
+
+							// 32 bit management registers
+							esp = variable("esp",32),
+							ebp = variable("ebp",32),
+							eip = variable("eip",32),
+							CF = variable("CF",1),
+							PF = variable("PF",1),
+							AF = variable("AF",1),
+							ZF = variable("ZF",1),
+							SF = variable("SF",1),
+							TF = variable("TF",1),
+							IF = variable("IF",1),
+							DF = variable("DF",1),
+							OF = variable("OF",1),
+							IOPL = variable("IOPL",2),
+							NT = variable("NT",1),
+							RF = variable("RF",1),
+							AC = variable("AC",1),
+							VIF = variable("VIF",1),
+							VIP = variable("VIP",1),
+							VM = variable("VM",1),
+							ID = variable("ID",1),
+
+							// 64 bit management registers
+							rsp = variable("rsp",64),
+							rbp = variable("rbp",64),
+							rip = variable("rip",64),
+							rflags = variable("rflags",64);
 	}
 }
 
@@ -55,76 +179,13 @@ uint8_t po::width(std::string n, amd64_tag)
 		ensure(false);
 }
 
-// 8 bit gp registers
-const variable al = variable("al",8),
-					bl = variable("bl",8),
-					cl = variable("cl",8),
-					dl = variable("dl",8),
-					ah = variable("al",8),
-					bh = variable("bl",8),
-					ch = variable("cl",8),
-					dh = variable("dl",8),
-
-// 16 bit gp registers
-					ax = variable("ax",16),
-					bx = variable("bx",16),
-					cx = variable("cx",16),
-					dx = variable("dx",16),
-
-// 32 bit gp registers
-					eax = variable("eax",32),
-					ebx = variable("ebx",32),
-					ecx = variable("ecx",32),
-					edx = variable("edx",32),
-
-// 64 bit gp registers
-					rax = variable("rax",64),
-					rbx = variable("rbx",64),
-					rcx = variable("rcx",64),
-					rdx = variable("rdx",64),
-					r4 = variable("r4",64),
-					r5 = variable("r5",64),
-					r6 = variable("r6",64),
-					r7 = variable("r7",64),
-
-// 32 bit management registers
-					esp = variable("esp",32),
-					ebp = variable("ebp",32),
-					eip = variable("eip",32),
-					//eflags = variable("eflags",32),
-					CF = variable("CF",1),
-					PF = variable("PF",1),
-					AF = variable("AF",1),
-					ZF = variable("ZF",1),
-					SF = variable("SF",1),
-					TF = variable("TF",1),
-					IF = variable("IF",1),
-					DF = variable("DF",1),
-					OF = variable("OF",1),
-					IOPL = variable("IOPL",2),
-					NT = variable("NT",1),
-					RF = variable("RF",1),
-					VM = variable("VM",1),
-					AC = variable("AC",1),
-					VIF = variable("VIF",1),
-					VIP = variable("VIP",1),
-					ID = variable("ID",1),
-
-// 64 bit management registers
-					rsp = variable("rsp",64),
-					rbp = variable("rbp",64),
-					rip = variable("rip",64),
-					rflags = variable("rflags",64);
-
 namespace pls = std::placeholders;
 
 boost::optional<prog_loc> po::amd64::disassemble(boost::optional<prog_loc> prog, po::slab bytes, const po::ref& r)
 {
 	disassembler<amd64_tag> main, opsize_prfix, rex_prfix, rexw_prfix,
 									generic_prfx, addrsize_prfx, rep_prfx,
-									imm8_a, imm16_a, imm32_a, imm64_a,
-									imm8_b, imm16_b, imm32_b, imm64_b,
-									imm8_c, imm16_c, imm32_c, imm64_c,
+									imm8, imm16, imm32, imm64,
 									sib,
 									rm8, rm16, rm32, rm64,
 									rm8_0, rm16_0, rm32_0, rm64_0,
@@ -134,180 +195,424 @@ boost::optional<prog_loc> po::amd64::disassemble(boost::optional<prog_loc> prog,
 									rm8_4, rm16_4, rm32_4, rm64_4,
 									rm8_5, rm16_5, rm32_5, rm64_5,
 									rm8_6, rm16_6, rm32_6, rm64_6,
-									rm8_7, rm16_7, rm32_7, rm64_7;
+									rm8_7, rm16_7, rm32_7, rm64_7,
+									disp8, disp16, disp32, disp64;
 
-	opsize_prfix[0x66] = [](sm& st) {};
-	addrsize_prfx[0x67] = [](sm& st) {};
-	rep_prfx[0xf3] = [](sm& st) {};
-	rex_prfix [ "01000 r@. x@. b@."_e] = [](sm& st) {};
-	rexw_prfix [ "01001 r@. x@. b@."_e] = [](sm& st) {};
+	opsize_prfix[ 0x66 ] = [](sm& st) {};
+	addrsize_prfx[ 0x67 ] = [](sm& st) {};
+	rep_prfx[ 0xf3 ] = [](sm& st) {};
+	rex_prfix[ "01000 r@. x@. b@."_e ] = [](sm& st) { st.state.rex = true; };
+	rexw_prfix[ "01001 r@. x@. b@."_e ] = [](sm& st) { st.state.rex = true; };
 
 	generic_prfx [rep_prfx]			= [](sm& st) {};
 	generic_prfx [addrsize_prfx]	= [](sm& st) {};
 
-	imm8_a [ "a@........"_e] = [](sm& st) { st.state.operand_a = constant(st.capture_groups.at("a")); };
-	imm8_b [ "b@........"_e] = [](sm& st) { st.state.operand_b = constant(st.capture_groups.at("b")); };
-	imm8_c [ "a@........"_e] = [](sm& st) { st.state.operand_c = constant(st.capture_groups.at("c")); };
+	imm8 [ "imm@........"_e] = [](sm& st) {};
+	imm16[ imm8 >> "imm@........"_e] = [](sm& st) {};
+	imm32[ imm16 >> "imm@........"_e >> "imm@........"_e] = [](sm& st) {};
+	imm64[ imm32 >> "imm@........"_e >> "imm@........"_e >> "imm@........"_e >> "imm@........"_e] = [](sm& st) {};
 
-	imm16_a [ imm8_a >> "a@........"_e] = [](sm& st) { st.state.operand_a = constant(st.capture_groups.at("a")); };
-	imm16_b [ imm8_b >> "b@........"_e] = [](sm& st) { st.state.operand_b = constant(st.capture_groups.at("b")); };
-	imm16_c [ imm8_c >> "c@........"_e] = [](sm& st) { st.state.operand_c = constant(st.capture_groups.at("c")); };
-
-	imm32_a [ imm16_a >> "a@........"_e >> "a@........"_e] = [](sm& st) { st.state.operand_a = constant(st.capture_groups.at("a")); };
-	imm32_b [ imm16_b >> "b@........"_e >> "b@........"_e] = [](sm& st) { st.state.operand_b = constant(st.capture_groups.at("b")); };
-	imm32_c [ imm16_c >> "c@........"_e >> "c@........"_e] = [](sm& st) { st.state.operand_c = constant(st.capture_groups.at("c")); };
-
-	imm64_a [ imm32_a >> "a@........"_e >> "a@........"_e >> "a@........"_e >> "a@........"_e] = [](sm& st) { st.state.operand_a = constant(st.capture_groups.at("a")); };
-	imm64_b [ imm32_b >> "b@........"_e >> "b@........"_e >> "b@........"_e >> "b@........"_e] = [](sm& st) { st.state.operand_b = constant(st.capture_groups.at("b")); };
-	imm64_c [ imm32_c >> "c@........"_e >> "c@........"_e >> "c@........"_e >> "c@........"_e] = [](sm& st) { st.state.operand_c = constant(st.capture_groups.at("c")); };
-
-	// 64 bit
-	disassembler<amd64_tag> imm_a(imm32_a), imm_b(imm32_b), imm_c(imm32_c);
+	disp8 [ "disp@........"_e] = [](sm& st) {};
+	disp16[ disp8 >> "disp@........"_e] = [](sm& st) {};
+	disp32[ disp16 >> "disp@........"_e >> "disp@........"_e] = [](sm& st) {};
+	disp64[ disp32 >> "disp@........"_e >> "disp@........"_e >> "disp@........"_e >> "disp@........"_e] = [](sm& st) {};
 
 	// sib
-	sib [ "00 index@... base@..."_e >> imm32_a ] = [](sm& st) {};
-	sib [ "01 index@... base@..."_e >> imm8_a ] = [](sm& st) {};
-	sib [ "10 index@... base@..."_e >> imm32_a ] = [](sm& st) {};
+	sib [ "00 index@... base@..."_e >> "x@........"_e >> "x@........"_e >> "x@........"_e >> "x@........"_e	] = [](sm& st) {};
+	sib [ "01 index@... base@..."_e >> "x@........"_e																			] = [](sm& st) {};
+	sib [ "10 index@... base@..."_e >> "x@........"_e >> "x@........"_e >> "x@........"_e >> "x@........"_e	] = [](sm& st) {};
 	sib [ "scale@.. index@... base@..."_e] = [](sm& st) {};
 
-	// direct addressing
-	rm8[ "00 reg@... 101"_e >> imm32_a ] = [](sm& st) {};
-	rm8[ "00 reg@... 100"_e >> sib ] = [](sm& st) {};
-	rm8[ "00 reg@... rm@..."_e] = [](sm& st) {};
-	rm16[ "00 reg@... 101"_e >> imm32_a ] = [](sm& st) {};
-	rm16[ "00 reg@... 100"_e >> sib ] = [](sm& st) {};
-	rm16[ "00 reg@... rm@..."_e] = [](sm& st) {};
-	rm32[ "00 reg@... 101"_e >> imm32_a ] = [](sm& st) {};
-	rm32[ "00 reg@... 100"_e >> sib ] = [](sm& st) {};
-	rm32[ "00 reg@... rm@..."_e] = [](sm& st) {};
-	rm64[ "00 reg@... 101"_e >> imm32_a ] = [](sm& st) {};
-	rm64[ "00 reg@... 100"_e >> sib ] = [](sm& st) {};
-	rm64[ "00 reg@... rm@..."_e] = [](sm& st) {};
-
-	rm8_0[ "00 000 101"_e >> imm32_a ] = [](sm& st) {};
-	rm8_0[ "00 000 100"_e >> sib ] = [](sm& st) {};
-	rm8_0[ "00 000 rm@..."_e] = [](sm& st) {};
-	rm16_0[ "00 000 101"_e >> imm32_a ] = [](sm& st) {};
-	rm16_0[ "00 000 100"_e >> sib ] = [](sm& st) {};
-	rm16_0[ "00 000 rm@..."_e] = [](sm& st) {};
-	rm32_0[ "00 000 101"_e >> imm32_a ] = [](sm& st) {};
-	rm32_0[ "00 000 100"_e >> sib ] = [](sm& st) {};
-	rm32_0[ "00 000 rm@..."_e] = [](sm& st) {};
-	rm64_0[ "00 000 101"_e >> imm32_a ] = [](sm& st) {};
-	rm64_0[ "00 000 100"_e >> sib ] = [](sm& st) {};
-	rm64_0[ "00 000 rm@..."_e] = [](sm& st) {};
-
-	rm8_1[ "00 001 rm@..."_e] = [](sm& st) {};
-	rm16_1[ "00 001 rm@..."_e] = [](sm& st) {};
-	rm32_1[ "00 001 rm@..."_e] = [](sm& st) {};
-	rm64_1[ "00 001 rm@..."_e] = [](sm& st) {};
-
-	rm8_2[ "00 010 101"_e >> imm32_a ] = [](sm& st) {};
-	rm8_2[ "00 010 100"_e >> sib  ]= [](sm& st) {};
-	rm8_2[ "00 010 rm@..."_e] = [](sm& st) {};
-	rm16_2[ "00 010 101"_e >> imm32_a ] = [](sm& st) {};
-	rm16_2[ "00 010 100"_e >> sib ] = [](sm& st) {};
-	rm16_2[ "00 010 rm@..."_e] = [](sm& st) {};
-	rm32_2[ "00 010 101"_e >> imm32_a ] = [](sm& st) {};
-	rm32_2[ "00 010 100"_e >> sib ] = [](sm& st) {};
-	rm32_2[ "00 010 rm@..."_e] = [](sm& st) {};
-	rm64_2[ "00 010 101"_e >> imm32_a ] = [](sm& st) {};
-	rm64_2[ "00 010 100"_e >> sib ] = [](sm& st) {};
-	rm64_2[ "00 010 rm@..."_e] = [](sm& st) {};
-
-	rm8_3[ "00 011 rm@..."_e] = [](sm& st) {};
-	rm16_3[ "00 011 rm@..."_e] = [](sm& st) {};
-	rm32_3[ "00 011 rm@..."_e] = [](sm& st) {};
-	rm64_3[ "00 011 rm@..."_e] = [](sm& st) {};
-
-	rm8_4[ "00 100 rm@..."_e] = [](sm& st) {};
-	rm16_4[ "00 100 rm@..."_e] = [](sm& st) {};
-	rm32_4[ "00 100 rm@..."_e] = [](sm& st) {};
-	rm64_4[ "00 100 rm@..."_e] = [](sm& st) {};
-
-	rm8_5[ "00 101 rm@..."_e] = [](sm& st) {};
-	rm16_5[ "00 101 rm@..."_e] = [](sm& st) {};
-	rm32_5[ "00 101 rm@..."_e] = [](sm& st) {};
-	rm64_5[ "00 101 rm@..."_e] = [](sm& st) {};
-
-	rm8_6[ "00 110 rm@..."_e] = [](sm& st) {};
-	rm16_6[ "00 110 rm@..."_e] = [](sm& st) {};
-	rm32_6[ "00 110 rm@..."_e] = [](sm& st) {};
-	rm64_6[ "00 110 rm@..."_e] = [](sm& st) {};
-
-	rm8_7[ "00 111 rm@..."_e] = [](sm& st) {};
-	rm16_7[ "00 111 rm@..."_e] = [](sm& st) {};
-	rm32_7[ "00 111 rm@..."_e] = [](sm& st) {};
-	rm64_7[ "00 111 rm@..."_e] = [](sm& st) {};
-
-	// indirect addressing
-	rm8[ "11 reg@... 101"_e >> imm32_a ] = [](sm& st) {};
-	rm8[ "11 reg@... rm@..."_e] = [](sm& st) {};
-	rm16[ "11 reg@... 101"_e >> imm32_a ] = [](sm& st) {};
-	rm16[ "11 reg@... rm@..."_e] = [](sm& st) {};
-	rm32[ "11 reg@... 101"_e >> imm32_a ] = [](sm& st) {};
-	rm32[ "11 reg@... rm@..."_e] = [](sm& st) {};
-	rm64[ "11 reg@... 101"_e >> imm32_a ] = [](sm& st) {};
-	rm64[ "11 reg@... rm@..."_e] = [](sm& st) {};
-
-	rm8_0[ "11 000 rm@..."_e] = [](sm& st) {};
-	rm16_0[ "11 000 rm@..."_e] = [](sm& st) {};
-	rm32_0[ "11 000 rm@..."_e] = [](sm& st) {};
-	rm64_0[ "11 000 rm@..."_e] = [](sm& st) {};
-
-	rm8_1[ "11 001 rm@..."_e] = [](sm& st) {};
-	rm16_1[ "11 001 rm@..."_e] = [](sm& st) {};
-	rm32_1[ "11 001 rm@..."_e] = [](sm& st) {};
-	rm64_1[ "11 001 rm@..."_e] = [](sm& st) {};
-
-	rm8_2[ "11 010 101"_e >> imm32_a ] = [](sm& st) {};
-	rm8_2[ "11 010 rm@..."_e] = [](sm& st) {};
-	rm16_2[ "11 010 101"_e >> imm32_a ] = [](sm& st) {};
-	rm16_2[ "11 010 rm@..."_e] = [](sm& st) {};
-	rm32_2[ "11 010 101"_e >> imm32_a ] = [](sm& st) {};
-	rm32_2[ "11 010 rm@..."_e] = [](sm& st) {};
-	rm64_2[ "11 010 101"_e >> imm32_a ] = [](sm& st) {};
-	rm64_2[ "11 010 rm@..."_e] = [](sm& st) {};
-
-	rm8_3[ "11 011 rm@..."_e] = [](sm& st) {};
-	rm16_3[ "11 011 rm@..."_e] = [](sm& st) {};
-	rm32_3[ "11 011 rm@..."_e] = [](sm& st) {};
-	rm64_3[ "11 011 rm@..."_e] = [](sm& st) {};
-
-	rm8_4[ "11 100 rm@..."_e] = [](sm& st) {};
-	rm16_4[ "11 100 rm@..."_e] = [](sm& st) {};
-	rm32_4[ "11 100 rm@..."_e] = [](sm& st) {};
-	rm64_4[ "11 100 rm@..."_e] = [](sm& st) {};
-
-	rm8_5[ "11 101 rm@..."_e] = [](sm& st) {};
-	rm16_5[ "11 101 rm@..."_e] = [](sm& st) {};
-	rm32_5[ "11 101 rm@..."_e] = [](sm& st) {};
-	rm64_5[ "11 101 rm@..."_e] = [](sm& st) {};
-
-	rm8_6[ "11 110 rm@..."_e] = [](sm& st) {};
-	rm16_6[ "11 110 rm@..."_e] = [](sm& st) {};
-	rm32_6[ "11 110 rm@..."_e] = [](sm& st) {};
-	rm64_6[ "11 110 rm@..."_e] = [](sm& st) {};
-
-	rm8_7[ "11 111 rm@..."_e] = [](sm& st) {};
-	rm16_7[ "11 111 rm@..."_e] = [](sm& st) {};
-	rm32_7[ "11 111 rm@..."_e] = [](sm& st) {};
-	rm64_7[ "11 111 rm@..."_e] = [](sm& st) {};
-
-	std::function<void(const std::string&,sm&)> simple = [&](const std::string& m,sm& st)
+	std::function<void(sm&)> rm8_func = [&](sm& st)
 	{
-		std::cerr << m << ": " << std::hex;
-		for(auto b: st.tokens)
-			std::cerr << (unsigned int)b << " ";
-		std::cerr << std::dec << std::endl;
-		st.jump(st.address + st.tokens.size());
+		ensure(!st.state.reg && !st.state.rm);
+
+		if(st.capture_groups.count("reg"))
+			st.state.reg = decode_reg8((1 << 3) * st.capture_groups.count("b") + st.capture_groups.at("reg"),st.state.rex);
+
+		boost::optional<unsigned int> disp = st.capture_groups.count("disp") ? boost::make_optional(st.capture_groups.at("disp")) : boost::none;
+		boost::optional<unsigned int> sib = st.capture_groups.count("sib") ? boost::make_optional(st.capture_groups.at("sib")) : boost::none;
+		st.state.rm = decode_modrm(st.capture_groups.at("mod"),st.capture_groups.at("rm"),disp,sib,st.state.op_sz,st.state.addr_sz);
 	};
 
+	std::function<void(sm&)> rm16_func = [&](sm& st)
+	{
+		ensure(!st.state.reg && !st.state.rm);
+
+		if(st.capture_groups.count("reg"))
+			st.state.reg = decode_reg16((1 << 3) * st.capture_groups.count("b") + st.capture_groups.at("reg"));
+
+		boost::optional<unsigned int> disp = st.capture_groups.count("disp") ? boost::make_optional(st.capture_groups.at("disp")) : boost::none;
+		boost::optional<unsigned int> sib = st.capture_groups.count("sib") ? boost::make_optional(st.capture_groups.at("sib")) : boost::none;
+		st.state.rm = decode_modrm(st.capture_groups.at("mod"),st.capture_groups.at("rm"),disp,sib,st.state.op_sz,st.state.addr_sz);
+	};
+
+	std::function<void(sm&)> rm32_func = [&](sm& st)
+	{
+		ensure(!st.state.reg && !st.state.rm);
+
+		if(st.capture_groups.count("reg"))
+			st.state.reg = decode_reg32((1 << 3) * st.capture_groups.count("b") + st.capture_groups.at("reg"));
+
+		boost::optional<unsigned int> disp = st.capture_groups.count("disp") ? boost::make_optional(st.capture_groups.at("disp")) : boost::none;
+		boost::optional<unsigned int> sib = st.capture_groups.count("sib") ? boost::make_optional(st.capture_groups.at("sib")) : boost::none;
+		st.state.rm = decode_modrm(st.capture_groups.at("mod"),st.capture_groups.at("rm"),disp,sib,st.state.op_sz,st.state.addr_sz);
+	};
+
+	std::function<void(sm&)> rm64_func = [&](sm& st)
+	{
+		ensure(!st.state.reg && !st.state.rm);
+
+		if(st.capture_groups.count("reg"))
+			st.state.reg = decode_reg64((1 << 3) * st.capture_groups.count("b") + st.capture_groups.at("reg"));
+
+		boost::optional<unsigned int> disp = st.capture_groups.count("disp") ? boost::make_optional(st.capture_groups.at("disp")) : boost::none;
+		boost::optional<unsigned int> sib = st.capture_groups.count("sib") ? boost::make_optional(st.capture_groups.at("sib")) : boost::none;
+		st.state.rm = decode_modrm(st.capture_groups.at("mod"),st.capture_groups.at("rm"),disp,sib,st.state.op_sz,st.state.addr_sz);
+	};
+
+	// mod = 00
+	rm8 [ "mod@00 reg@... rm@101"_e >> disp32	] = rm8_func;
+	rm8 [ "mod@00 reg@... rm@100"_e >> sib		] = rm8_func;
+	rm8 [ "mod@00 reg@... rm@..."_e				] = rm8_func;
+	rm16[ "mod@00 reg@... rm@101"_e >> disp32	] = rm16_func;
+	rm16[ "mod@00 reg@... rm@100"_e >> sib		] = rm16_func;
+	rm16[ "mod@00 reg@... rm@..."_e				] = rm16_func;
+	rm32[ "mod@00 reg@... rm@101"_e >> disp32	] = rm32_func;
+	rm32[ "mod@00 reg@... rm@100"_e >> sib		] = rm32_func;
+	rm32[ "mod@00 reg@... rm@..."_e				] = rm32_func;
+	rm64[ "mod@00 reg@... rm@101"_e >> disp32	] = rm64_func;
+	rm64[ "mod@00 reg@... rm@100"_e >> sib		] = rm64_func;
+	rm64[ "mod@00 reg@... rm@..."_e				] = rm64_func;
+
+	// mod = 00 w/ extension opcode
+	rm8_0 [ "mod@00 000 rm@101"_e >> disp32	] = rm8_func;
+	rm8_0 [ "mod@00 000 rm@100"_e >> sib		] = rm8_func;
+	rm8_0 [ "mod@00 000 rm@..."_e					] = rm8_func;
+	rm16_0[ "mod@00 000 rm@101"_e >> disp32	] = rm16_func;
+	rm16_0[ "mod@00 000 rm@100"_e >> sib		] = rm16_func;
+	rm16_0[ "mod@00 000 rm@..."_e					] = rm16_func;
+	rm32_0[ "mod@00 000 rm@101"_e >> disp32	] = rm32_func;
+	rm32_0[ "mod@00 000 rm@100"_e >> sib		] = rm32_func;
+	rm32_0[ "mod@00 000 rm@..."_e					] = rm32_func;
+	rm64_0[ "mod@00 000 rm@101"_e >> disp32	] = rm64_func;
+	rm64_0[ "mod@00 000 rm@100"_e >> sib		] = rm64_func;
+	rm64_0[ "mod@00 000 rm@..."_e					] = rm64_func;
+
+	rm8_1 [ "mod@00 001 rm@101"_e >> disp32	] = rm8_func;
+	rm8_1 [ "mod@00 001 rm@100"_e >> sib		] = rm8_func;
+	rm8_1 [ "mod@00 001 rm@..."_e					] = rm8_func;
+	rm16_1[ "mod@00 001 rm@101"_e >> disp32	] = rm16_func;
+	rm16_1[ "mod@00 001 rm@100"_e >> sib		] = rm16_func;
+	rm16_1[ "mod@00 001 rm@..."_e					] = rm16_func;
+	rm32_1[ "mod@00 001 rm@101"_e >> disp32	] = rm32_func;
+	rm32_1[ "mod@00 001 rm@100"_e >> sib		] = rm32_func;
+	rm32_1[ "mod@00 001 rm@..."_e					] = rm32_func;
+	rm64_1[ "mod@00 001 rm@101"_e >> disp32	] = rm64_func;
+	rm64_1[ "mod@00 001 rm@100"_e >> sib		] = rm64_func;
+	rm64_1[ "mod@00 001 rm@..."_e					] = rm64_func;
+
+	rm8_0 [ "mod@00 010 rm@101"_e >> disp32	] = rm8_func;
+	rm8_0 [ "mod@00 010 rm@100"_e >> sib		] = rm8_func;
+	rm8_0 [ "mod@00 010 rm@..."_e					] = rm8_func;
+	rm16_0[ "mod@00 010 rm@101"_e >> disp32	] = rm16_func;
+	rm16_0[ "mod@00 010 rm@100"_e >> sib		] = rm16_func;
+	rm16_0[ "mod@00 010 rm@..."_e					] = rm16_func;
+	rm32_0[ "mod@00 010 rm@101"_e >> disp32	] = rm32_func;
+	rm32_0[ "mod@00 010 rm@100"_e >> sib		] = rm32_func;
+	rm32_0[ "mod@00 010 rm@..."_e					] = rm32_func;
+	rm64_0[ "mod@00 010 rm@101"_e >> disp32	] = rm64_func;
+	rm64_0[ "mod@00 010 rm@100"_e >> sib		] = rm64_func;
+	rm64_0[ "mod@00 010 rm@..."_e					] = rm64_func;
+
+	rm8_0 [ "mod@00 011 rm@101"_e >> disp32	] = rm8_func;
+	rm8_0 [ "mod@00 011 rm@100"_e >> sib		] = rm8_func;
+	rm8_0 [ "mod@00 011 rm@..."_e					] = rm8_func;
+	rm16_0[ "mod@00 011 rm@101"_e >> disp32	] = rm16_func;
+	rm16_0[ "mod@00 011 rm@100"_e >> sib		] = rm16_func;
+	rm16_0[ "mod@00 011 rm@..."_e					] = rm16_func;
+	rm32_0[ "mod@00 011 rm@101"_e >> disp32	] = rm32_func;
+	rm32_0[ "mod@00 011 rm@100"_e >> sib		] = rm32_func;
+	rm32_0[ "mod@00 011 rm@..."_e					] = rm32_func;
+	rm64_0[ "mod@00 011 rm@101"_e >> disp32	] = rm64_func;
+	rm64_0[ "mod@00 011 rm@100"_e >> sib		] = rm64_func;
+	rm64_0[ "mod@00 011 rm@..."_e					] = rm64_func;
+
+	rm8_0 [ "mod@00 100 rm@101"_e >> disp32	] = rm8_func;
+	rm8_0 [ "mod@00 100 rm@100"_e >> sib		] = rm8_func;
+	rm8_0 [ "mod@00 100 rm@..."_e					] = rm8_func;
+	rm16_0[ "mod@00 100 rm@101"_e >> disp32	] = rm16_func;
+	rm16_0[ "mod@00 100 rm@100"_e >> sib		] = rm16_func;
+	rm16_0[ "mod@00 100 rm@..."_e					] = rm16_func;
+	rm32_0[ "mod@00 100 rm@101"_e >> disp32	] = rm32_func;
+	rm32_0[ "mod@00 100 rm@100"_e >> sib		] = rm32_func;
+	rm32_0[ "mod@00 100 rm@..."_e					] = rm32_func;
+	rm64_0[ "mod@00 100 rm@101"_e >> disp32	] = rm64_func;
+	rm64_0[ "mod@00 100 rm@100"_e >> sib		] = rm64_func;
+	rm64_0[ "mod@00 100 rm@..."_e					] = rm64_func;
+
+	rm8_0 [ "mod@00 101 rm@101"_e >> disp32	] = rm8_func;
+	rm8_0 [ "mod@00 101 rm@100"_e >> sib		] = rm8_func;
+	rm8_0 [ "mod@00 101 rm@..."_e					] = rm8_func;
+	rm16_0[ "mod@00 101 rm@101"_e >> disp32	] = rm16_func;
+	rm16_0[ "mod@00 101 rm@100"_e >> sib		] = rm16_func;
+	rm16_0[ "mod@00 101 rm@..."_e					] = rm16_func;
+	rm32_0[ "mod@00 101 rm@101"_e >> disp32	] = rm32_func;
+	rm32_0[ "mod@00 101 rm@100"_e >> sib		] = rm32_func;
+	rm32_0[ "mod@00 101 rm@..."_e					] = rm32_func;
+	rm64_0[ "mod@00 101 rm@101"_e >> disp32	] = rm64_func;
+	rm64_0[ "mod@00 101 rm@100"_e >> sib		] = rm64_func;
+	rm64_0[ "mod@00 101 rm@..."_e					] = rm64_func;
+
+	rm8_0 [ "mod@00 110 rm@101"_e >> disp32	] = rm8_func;
+	rm8_0 [ "mod@00 110 rm@100"_e >> sib		] = rm8_func;
+	rm8_0 [ "mod@00 110 rm@..."_e					] = rm8_func;
+	rm16_0[ "mod@00 110 rm@101"_e >> disp32	] = rm16_func;
+	rm16_0[ "mod@00 110 rm@100"_e >> sib		] = rm16_func;
+	rm16_0[ "mod@00 110 rm@..."_e					] = rm16_func;
+	rm32_0[ "mod@00 110 rm@101"_e >> disp32	] = rm32_func;
+	rm32_0[ "mod@00 110 rm@100"_e >> sib		] = rm32_func;
+	rm32_0[ "mod@00 110 rm@..."_e					] = rm32_func;
+	rm64_0[ "mod@00 110 rm@101"_e >> disp32	] = rm64_func;
+	rm64_0[ "mod@00 110 rm@100"_e >> sib		] = rm64_func;
+	rm64_0[ "mod@00 110 rm@..."_e					] = rm64_func;
+
+	rm8_0 [ "mod@00 111 rm@101"_e >> disp32	] = rm8_func;
+	rm8_0 [ "mod@00 111 rm@100"_e >> sib		] = rm8_func;
+	rm8_0 [ "mod@00 111 rm@..."_e					] = rm8_func;
+	rm16_0[ "mod@00 111 rm@101"_e >> disp32	] = rm16_func;
+	rm16_0[ "mod@00 111 rm@100"_e >> sib		] = rm16_func;
+	rm16_0[ "mod@00 111 rm@..."_e					] = rm16_func;
+	rm32_0[ "mod@00 111 rm@101"_e >> disp32	] = rm32_func;
+	rm32_0[ "mod@00 111 rm@100"_e >> sib		] = rm32_func;
+	rm32_0[ "mod@00 111 rm@..."_e					] = rm32_func;
+	rm64_0[ "mod@00 111 rm@101"_e >> disp32	] = rm64_func;
+	rm64_0[ "mod@00 111 rm@100"_e >> sib		] = rm64_func;
+	rm64_0[ "mod@00 111 rm@..."_e					] = rm64_func;
+
+	// mod = 01
+	rm8 [ "mod@01 reg@... rm@100"_e >> sib		] = rm8_func;
+	rm8 [ "mod@01 reg@... rm@..."_e >> disp8	] = rm8_func;
+	rm16[ "mod@01 reg@... rm@100"_e >> sib		] = rm16_func;
+	rm16[ "mod@01 reg@... rm@..."_e >> disp8	] = rm16_func;
+	rm32[ "mod@01 reg@... rm@100"_e >> sib		] = rm32_func;
+	rm32[ "mod@01 reg@... rm@..."_e >> disp8	] = rm32_func;
+	rm64[ "mod@01 reg@... rm@100"_e >> sib		] = rm64_func;
+	rm64[ "mod@01 reg@... rm@..."_e >> disp8	] = rm64_func;
+
+	// mod = 01 w/ opcode extension
+	rm8_0 [ "mod@01 000 rm@100"_e >> sib	] = rm8_func;
+	rm8_0 [ "mod@01 000 rm@..."_e >> disp8	] = rm8_func;
+	rm16_0[ "mod@01 000 rm@100"_e >> sib	] = rm16_func;
+	rm16_0[ "mod@01 000 rm@..."_e >> disp8	] = rm16_func;
+	rm32_0[ "mod@01 000 rm@100"_e >> sib	] = rm32_func;
+	rm32_0[ "mod@01 000 rm@..."_e >> disp8	] = rm32_func;
+	rm64_0[ "mod@01 000 rm@100"_e >> sib	] = rm64_func;
+	rm64_0[ "mod@01 000 rm@..."_e >> disp8	] = rm64_func;
+
+	rm8_1 [ "mod@01 001 rm@100"_e >> sib	] = rm8_func;
+	rm8_1 [ "mod@01 001 rm@..."_e >> disp8	] = rm8_func;
+	rm16_1[ "mod@01 001 rm@100"_e >> sib	] = rm16_func;
+	rm16_1[ "mod@01 001 rm@..."_e >> disp8	] = rm16_func;
+	rm32_1[ "mod@01 001 rm@100"_e >> sib	] = rm32_func;
+	rm32_1[ "mod@01 001 rm@..."_e >> disp8	] = rm32_func;
+	rm64_1[ "mod@01 001 rm@100"_e >> sib	] = rm64_func;
+	rm64_1[ "mod@01 001 rm@..."_e >> disp8	] = rm64_func;
+
+	rm8_2 [ "mod@01 010 rm@100"_e >> sib	] = rm8_func;
+	rm8_2 [ "mod@01 010 rm@..."_e >> disp8	] = rm8_func;
+	rm16_2[ "mod@01 010 rm@100"_e >> sib	] = rm16_func;
+	rm16_2[ "mod@01 010 rm@..."_e >> disp8	] = rm16_func;
+	rm32_2[ "mod@01 010 rm@100"_e >> sib	] = rm32_func;
+	rm32_2[ "mod@01 010 rm@..."_e >> disp8	] = rm32_func;
+	rm64_2[ "mod@01 010 rm@100"_e >> sib	] = rm64_func;
+	rm64_2[ "mod@01 010 rm@..."_e >> disp8	] = rm64_func;
+
+	rm8_3 [ "mod@01 011 rm@100"_e >> sib	] = rm8_func;
+	rm8_3 [ "mod@01 011 rm@..."_e >> disp8	] = rm8_func;
+	rm16_3[ "mod@01 011 rm@100"_e >> sib	] = rm16_func;
+	rm16_3[ "mod@01 011 rm@..."_e >> disp8	] = rm16_func;
+	rm32_3[ "mod@01 011 rm@100"_e >> sib	] = rm32_func;
+	rm32_3[ "mod@01 011 rm@..."_e >> disp8	] = rm32_func;
+	rm64_3[ "mod@01 011 rm@100"_e >> sib	] = rm64_func;
+	rm64_3[ "mod@01 011 rm@..."_e >> disp8	] = rm64_func;
+
+	rm8_4 [ "mod@01 100 rm@100"_e >> sib	] = rm8_func;
+	rm8_4 [ "mod@01 100 rm@..."_e >> disp8	] = rm8_func;
+	rm16_4[ "mod@01 100 rm@100"_e >> sib	] = rm16_func;
+	rm16_4[ "mod@01 100 rm@..."_e >> disp8	] = rm16_func;
+	rm32_4[ "mod@01 100 rm@100"_e >> sib	] = rm32_func;
+	rm32_4[ "mod@01 100 rm@..."_e >> disp8	] = rm32_func;
+	rm64_4[ "mod@01 100 rm@100"_e >> sib	] = rm64_func;
+	rm64_4[ "mod@01 100 rm@..."_e >> disp8	] = rm64_func;
+
+	rm8_5 [ "mod@01 101 rm@100"_e >> sib	] = rm8_func;
+	rm8_5 [ "mod@01 101 rm@..."_e >> disp8	] = rm8_func;
+	rm16_5[ "mod@01 101 rm@100"_e >> sib	] = rm16_func;
+	rm16_5[ "mod@01 101 rm@..."_e >> disp8	] = rm16_func;
+	rm32_5[ "mod@01 101 rm@100"_e >> sib	] = rm32_func;
+	rm32_5[ "mod@01 101 rm@..."_e >> disp8	] = rm32_func;
+	rm64_5[ "mod@01 101 rm@100"_e >> sib	] = rm64_func;
+	rm64_5[ "mod@01 101 rm@..."_e >> disp8	] = rm64_func;
+
+	rm8_6 [ "mod@01 110 rm@100"_e >> sib	] = rm8_func;
+	rm8_6 [ "mod@01 110 rm@..."_e >> disp8	] = rm8_func;
+	rm16_6[ "mod@01 110 rm@100"_e >> sib	] = rm16_func;
+	rm16_6[ "mod@01 110 rm@..."_e >> disp8	] = rm16_func;
+	rm32_6[ "mod@01 110 rm@100"_e >> sib	] = rm32_func;
+	rm32_6[ "mod@01 110 rm@..."_e >> disp8	] = rm32_func;
+	rm64_6[ "mod@01 110 rm@100"_e >> sib	] = rm64_func;
+	rm64_6[ "mod@01 110 rm@..."_e >> disp8	] = rm64_func;
+
+	rm8_7 [ "mod@01 111 rm@100"_e >> sib	] = rm8_func;
+	rm8_7 [ "mod@01 111 rm@..."_e >> disp8	] = rm8_func;
+	rm16_7[ "mod@01 111 rm@100"_e >> sib	] = rm16_func;
+	rm16_7[ "mod@01 111 rm@..."_e >> disp8	] = rm16_func;
+	rm32_7[ "mod@01 111 rm@100"_e >> sib	] = rm32_func;
+	rm32_7[ "mod@01 111 rm@..."_e >> disp8	] = rm32_func;
+	rm64_7[ "mod@01 111 rm@100"_e >> sib	] = rm64_func;
+	rm64_7[ "mod@01 111 rm@..."_e >> disp8	] = rm64_func;
+
+	// mod = 10
+	rm8 [ "mod@10 reg@... rm@100"_e >> sib		] = rm8_func;
+	rm8 [ "mod@10 reg@... rm@..."_e >> disp32	] = rm8_func;
+	rm16[ "mod@10 reg@... rm@100"_e >> sib		] = rm16_func;
+	rm16[ "mod@10 reg@... rm@..."_e >> disp32	] = rm16_func;
+	rm32[ "mod@10 reg@... rm@100"_e >> sib		] = rm32_func;
+	rm32[ "mod@10 reg@... rm@..."_e >> disp32	] = rm32_func;
+	rm64[ "mod@10 reg@... rm@100"_e >> sib		] = rm64_func;
+	rm64[ "mod@10 reg@... rm@..."_e >> disp32	] = rm64_func;
+
+	// mod = 10 w/ opcode extension
+	rm8_0 [ "mod@10 000 rm@100"_e >> sib		] = rm8_func;
+	rm8_0 [ "mod@10 000 rm@..."_e >> disp32	] = rm8_func;
+	rm16_0[ "mod@10 000 rm@100"_e >> sib		] = rm16_func;
+	rm16_0[ "mod@10 000 rm@..."_e >> disp32	] = rm16_func;
+	rm32_0[ "mod@10 000 rm@100"_e >> sib		] = rm32_func;
+	rm32_0[ "mod@10 000 rm@..."_e >> disp32	] = rm32_func;
+	rm64_0[ "mod@10 000 rm@100"_e >> sib		] = rm64_func;
+	rm64_0[ "mod@10 000 rm@..."_e >> disp32	] = rm64_func;
+
+	rm8_1 [ "mod@10 001 rm@100"_e >> sib		] = rm8_func;
+	rm8_1 [ "mod@10 001 rm@..."_e >> disp32	] = rm8_func;
+	rm16_1[ "mod@10 001 rm@100"_e >> sib		] = rm16_func;
+	rm16_1[ "mod@10 001 rm@..."_e >> disp32	] = rm16_func;
+	rm32_1[ "mod@10 001 rm@100"_e >> sib		] = rm32_func;
+	rm32_1[ "mod@10 001 rm@..."_e >> disp32	] = rm32_func;
+	rm64_1[ "mod@10 001 rm@100"_e >> sib		] = rm64_func;
+	rm64_1[ "mod@10 001 rm@..."_e >> disp32	] = rm64_func;
+
+	rm8_2 [ "mod@10 010 rm@100"_e >> sib		] = rm8_func;
+	rm8_2 [ "mod@10 010 rm@..."_e >> disp32	] = rm8_func;
+	rm16_2[ "mod@10 010 rm@100"_e >> sib		] = rm16_func;
+	rm16_2[ "mod@10 010 rm@..."_e >> disp32	] = rm16_func;
+	rm32_2[ "mod@10 010 rm@100"_e >> sib		] = rm32_func;
+	rm32_2[ "mod@10 010 rm@..."_e >> disp32	] = rm32_func;
+	rm64_2[ "mod@10 010 rm@100"_e >> sib		] = rm64_func;
+	rm64_2[ "mod@10 010 rm@..."_e >> disp32	] = rm64_func;
+
+	rm8_3 [ "mod@10 011 rm@100"_e >> sib		] = rm8_func;
+	rm8_3 [ "mod@10 011 rm@..."_e >> disp32	] = rm8_func;
+	rm16_3[ "mod@10 011 rm@100"_e >> sib		] = rm16_func;
+	rm16_3[ "mod@10 011 rm@..."_e >> disp32	] = rm16_func;
+	rm32_3[ "mod@10 011 rm@100"_e >> sib		] = rm32_func;
+	rm32_3[ "mod@10 011 rm@..."_e >> disp32	] = rm32_func;
+	rm64_3[ "mod@10 011 rm@100"_e >> sib		] = rm64_func;
+	rm64_3[ "mod@10 011 rm@..."_e >> disp32	] = rm64_func;
+
+	rm8_4 [ "mod@10 100 rm@100"_e >> sib		] = rm8_func;
+	rm8_4 [ "mod@10 100 rm@..."_e >> disp32	] = rm8_func;
+	rm16_4[ "mod@10 100 rm@100"_e >> sib		] = rm16_func;
+	rm16_4[ "mod@10 100 rm@..."_e >> disp32	] = rm16_func;
+	rm32_4[ "mod@10 100 rm@100"_e >> sib		] = rm32_func;
+	rm32_4[ "mod@10 100 rm@..."_e >> disp32	] = rm32_func;
+	rm64_4[ "mod@10 100 rm@100"_e >> sib		] = rm64_func;
+	rm64_4[ "mod@10 100 rm@..."_e >> disp32	] = rm64_func;
+
+	rm8_5 [ "mod@10 101 rm@100"_e >> sib		] = rm8_func;
+	rm8_5 [ "mod@10 101 rm@..."_e >> disp32	] = rm8_func;
+	rm16_5[ "mod@10 101 rm@100"_e >> sib		] = rm16_func;
+	rm16_5[ "mod@10 101 rm@..."_e >> disp32	] = rm16_func;
+	rm32_5[ "mod@10 101 rm@100"_e >> sib		] = rm32_func;
+	rm32_5[ "mod@10 101 rm@..."_e >> disp32	] = rm32_func;
+	rm64_5[ "mod@10 101 rm@100"_e >> sib		] = rm64_func;
+	rm64_5[ "mod@10 101 rm@..."_e >> disp32	] = rm64_func;
+
+	rm8_6 [ "mod@10 110 rm@100"_e >> sib		] = rm8_func;
+	rm8_6 [ "mod@10 110 rm@..."_e >> disp32	] = rm8_func;
+	rm16_6[ "mod@10 110 rm@100"_e >> sib		] = rm16_func;
+	rm16_6[ "mod@10 110 rm@..."_e >> disp32	] = rm16_func;
+	rm32_6[ "mod@10 110 rm@100"_e >> sib		] = rm32_func;
+	rm32_6[ "mod@10 110 rm@..."_e >> disp32	] = rm32_func;
+	rm64_6[ "mod@10 110 rm@100"_e >> sib		] = rm64_func;
+	rm64_6[ "mod@10 110 rm@..."_e >> disp32	] = rm64_func;
+
+	rm8_7 [ "mod@10 111 rm@100"_e >> sib		] = rm8_func;
+	rm8_7 [ "mod@10 111 rm@..."_e >> disp32	] = rm8_func;
+	rm16_7[ "mod@10 111 rm@100"_e >> sib		] = rm16_func;
+	rm16_7[ "mod@10 111 rm@..."_e >> disp32	] = rm16_func;
+	rm32_7[ "mod@10 111 rm@100"_e >> sib		] = rm32_func;
+	rm32_7[ "mod@10 111 rm@..."_e >> disp32	] = rm32_func;
+	rm64_7[ "mod@10 111 rm@100"_e >> sib		] = rm64_func;
+	rm64_7[ "mod@10 111 rm@..."_e >> disp32	] = rm64_func;
+
+	// mod = 11
+	rm8 [ "mod@11 reg@... rm@..."_e ] = rm8_func;
+	rm16[ "mod@11 reg@... rm@..."_e ] = rm16_func;
+	rm32[ "mod@11 reg@... rm@..."_e ] = rm32_func;
+	rm64[ "mod@11 reg@... rm@..."_e ] = rm64_func;
+
+	// mod = 11 w/ opcode extension
+	rm8_0 [ "mod@11 000 rm@..."_e ] = rm8_func;
+	rm16_0[ "mod@11 000 rm@..."_e ] = rm16_func;
+	rm32_0[ "mod@11 000 rm@..."_e ] = rm32_func;
+	rm64_0[ "mod@11 000 rm@..."_e ] = rm64_func;
+
+	rm8_1 [ "mod@11 001 rm@..."_e ] = rm8_func;
+	rm16_1[ "mod@11 001 rm@..."_e ] = rm16_func;
+	rm32_1[ "mod@11 001 rm@..."_e ] = rm32_func;
+	rm64_1[ "mod@11 001 rm@..."_e ] = rm64_func;
+
+	rm8_2 [ "mod@11 010 rm@..."_e ] = rm8_func;
+	rm16_2[ "mod@11 010 rm@..."_e ] = rm16_func;
+	rm32_2[ "mod@11 010 rm@..."_e ] = rm32_func;
+	rm64_2[ "mod@11 010 rm@..."_e ] = rm64_func;
+
+	rm8_3 [ "mod@11 011 rm@..."_e ] = rm8_func;
+	rm16_3[ "mod@11 011 rm@..."_e ] = rm16_func;
+	rm32_3[ "mod@11 011 rm@..."_e ] = rm32_func;
+	rm64_3[ "mod@11 011 rm@..."_e ] = rm64_func;
+
+	rm8_4 [ "mod@11 100 rm@..."_e ] = rm8_func;
+	rm16_4[ "mod@11 100 rm@..."_e ] = rm16_func;
+	rm32_4[ "mod@11 100 rm@..."_e ] = rm32_func;
+	rm64_4[ "mod@11 100 rm@..."_e ] = rm64_func;
+
+	rm8_5 [ "mod@11 101 rm@..."_e ] = rm8_func;
+	rm16_5[ "mod@11 101 rm@..."_e ] = rm16_func;
+	rm32_5[ "mod@11 101 rm@..."_e ] = rm32_func;
+	rm64_5[ "mod@11 101 rm@..."_e ] = rm64_func;
+
+	rm8_6 [ "mod@11 110 rm@..."_e ] = rm8_func;
+	rm16_6[ "mod@11 110 rm@..."_e ] = rm16_func;
+	rm32_6[ "mod@11 110 rm@..."_e ] = rm32_func;
+	rm64_6[ "mod@11 110 rm@..."_e ] = rm64_func;
+
+	rm8_7 [ "mod@11 111 rm@..."_e ] = rm8_func;
+	rm16_7[ "mod@11 111 rm@..."_e ] = rm16_func;
+	rm32_7[ "mod@11 111 rm@..."_e ] = rm32_func;
+	rm64_7[ "mod@11 111 rm@..."_e ] = rm64_func;
+
+	std::function<void(cg&)> aaa = [](cg& m) { };
+	std::function<void(cg&)> aad = [](cg& m) { };
+	std::function<void(cg&)> aam = [](cg& m) { };
+	std::function<void(cg&)> aas = [](cg& m) { };
+
 	// 32 bits only
-	main[ *generic_prfx >> 0x37_e							] = std::bind(simple,"AAA",std::placeholders::_1);
-	main[ *generic_prfx >> 0xd5_e >> "i@........"_e	] = std::bind(simple,"AAD imm8",std::placeholders::_1);
-	main[ *generic_prfx >> 0xd4_e >> "i@........"_e	] = std::bind(simple,"AAM imm8",std::placeholders::_1);
-	main[ *generic_prfx >> 0x3f_e							] = std::bind(simple,"AAS",std::placeholders::_1);
+	main[ *generic_prfx >> 0x37			] = nonary("aaa",aaa);
+	main[ *generic_prfx >> 0xd5 >> imm8	] = nonary("aad",aad);
+	main[ *generic_prfx >> 0xd4 >> imm8	] = nonary("aam",aam);
+	main[ *generic_prfx >> 0x3f			] = nonary("aas",aas);
 
 	// ADC
 	std::function<void(cg&,rvalue,rvalue)> adc = [](cg& m, rvalue a, rvalue b)
@@ -315,36 +620,36 @@ boost::optional<prog_loc> po::amd64::disassemble(boost::optional<prog_loc> prog,
 		m.assign(to_lvalue(a),(a + b + CF) % 0x100000000ull);
 	};
 
-	main[ *generic_prfx >>						0x14 >> imm8_a					] = unary("adc",std::bind(adc,pls::_1,al,pls::_2));
+	main[ *generic_prfx >>						0x14 >> imm8				] = binary("adc",decode_i,adc);
 
-	main[ *generic_prfx >> opsize_prfix	>> 0x15 >> imm16_a				] = unary("adc",std::bind(adc,pls::_1,ax,pls::_2));
-	main[ *generic_prfx >>						0x15 >> imm32_a				] = unary("adc",std::bind(adc,pls::_1,eax,pls::_2));
-	main[ *generic_prfx >> rexw_prfix	>> 0x15 >> imm32_a				] = unary("adc",std::bind(adc,pls::_1,rax,pls::_2));
+	main[ *generic_prfx >> opsize_prfix	>> 0x15 >> imm16				] = binary("adc",decode_i,adc);
+	main[ *generic_prfx >>						0x15 >> imm32				] = binary("adc",decode_i,adc);
+	main[ *generic_prfx >> rexw_prfix	>> 0x15 >> imm32				] = binary("adc",decode_i,adc);
 
-	/*main[ *generic_prfx >>						0x80 >> rm8_2 >> imm8_b		] = binary("adc",adc);
-	main[ *generic_prfx >> rex_prfix		>> 0x80 >> rm8_2 >> imm8_b		] = binary("adc",adc);
+	main[ *generic_prfx >>						0x80 >> rm8_2 >> imm8	] = binary("adc",decode_mi,adc);
+	main[ *generic_prfx >> rex_prfix		>> 0x80 >> rm8_2 >> imm8	] = binary("adc",decode_mi,adc);
 
-	main[ *generic_prfx >> opsize_prfix	>> 0x81 >> rm16_2 >> imm16_b	] = binary("adc",adc);
-	main[ *generic_prfx >>						0x81 >> rm32_2 >> imm32_b	] = binary("adc",adc);
-	main[ *generic_prfx >> rexw_prfix	>> 0x81 >> rm64_2 >> imm32_b	] = binary("adc",adc);
+	main[ *generic_prfx >> opsize_prfix	>> 0x81 >> rm16_2 >> imm16	] = binary("adc",decode_mi,adc);
+	main[ *generic_prfx >>						0x81 >> rm32_2 >> imm32	] = binary("adc",decode_mi,adc);
+	main[ *generic_prfx >> rexw_prfix	>> 0x81 >> rm64_2 >> imm32	] = binary("adc",decode_mi,adc);
 
-	main[ *generic_prfx >> opsize_prfix	>> 0x83 >> rm16_2 >> imm8_b	] = binary("adc",adc);
-	main[ *generic_prfx >>						0x83 >> rm32_2 >> imm8_b	] = binary("adc",adc);
-	main[ *generic_prfx >> rexw_prfix	>> 0x83 >> rm64_2 >> imm8_b	] = binary("adc",adc);
+	main[ *generic_prfx >> opsize_prfix	>> 0x83 >> rm16_2 >> imm8	] = binary("adc",decode_mi,adc);
+	main[ *generic_prfx >>						0x83 >> rm32_2 >> imm8	] = binary("adc",decode_mi,adc);
+	main[ *generic_prfx >> rexw_prfix	>> 0x83 >> rm64_2 >> imm8	] = binary("adc",decode_mi,adc);
 
-	main[ *generic_prfx >>						0x10 >> rm8						] = binary("adc",adc);
-	main[ *generic_prfx >> rex_prfix		>> 0x10 >> rm8						] = binary("adc",adc);
+	main[ *generic_prfx >>						0x10 >> rm8					] = binary("adc",decode_mr,adc);
+	main[ *generic_prfx >> rex_prfix		>> 0x10 >> rm8					] = binary("adc",decode_mr,adc);
 
-	main[ *generic_prfx >> opsize_prfix	>> 0x11 >> rm16					] = binary("adc",adc);
-	main[ *generic_prfx >>						0x11 >> rm32					] = binary("adc",adc);
-	main[ *generic_prfx >> rexw_prfix	>> 0x11 >> rm64					] = binary("adc",adc);
+	main[ *generic_prfx >> opsize_prfix	>> 0x11 >> rm16				] = binary("adc",decode_mr,adc);
+	main[ *generic_prfx >>						0x11 >> rm32				] = binary("adc",decode_mr,adc);
+	main[ *generic_prfx >> rexw_prfix	>> 0x11 >> rm64				] = binary("adc",decode_mr,adc);
 
-	main[ *generic_prfx >>						0x12 >> rm8						] = binary("adc",adc);
-	main[ *generic_prfx >> rex_prfix		>> 0x12 >> rm8						] = binary("adc",adc);
+	main[ *generic_prfx >>						0x12 >> rm8					] = binary("adc",decode_rm,adc);
+	main[ *generic_prfx >> rex_prfix		>> 0x12 >> rm8					] = binary("adc",decode_rm,adc);
 
-	main[ *generic_prfx >> opsize_prfix	>> 0x13 >> rm16					] = binary("adc",adc);
-	main[ *generic_prfx >> 						0x13 >> rm32					] = binary("adc",adc);
-	main[ *generic_prfx >> rexw_prfix	>> 0x13 >> rm64					] = binary("adc",adc);*/
+	main[ *generic_prfx >> opsize_prfix	>> 0x13 >> rm16				] = binary("adc",decode_rm,adc);
+	main[ *generic_prfx >> 						0x13 >> rm32				] = binary("adc",decode_rm,adc);
+	main[ *generic_prfx >> rexw_prfix	>> 0x13 >> rm64				] = binary("adc",decode_rm,adc);
 
 	return program::disassemble<amd64_tag>(main,bytes,r,prog);
 }
