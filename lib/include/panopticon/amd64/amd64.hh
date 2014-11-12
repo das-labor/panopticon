@@ -9,12 +9,6 @@ namespace po
 
 	struct amd64_state
 	{
-		amd64_state(void)
-		: addr_sz(AddrSz_32), op_sz(OpSz_32),
-		  rex(false),
-		  reg(boost::none), rm(boost::none), imm(boost::none)
-		{}
-
 		enum AddressSize
 		{
 			AddrSz_64,
@@ -30,8 +24,31 @@ namespace po
 			OpSz_8,
 		};
 
+		enum Mode
+		{
+			RealMode,		// Real mode / Virtual 8086 mode
+			ProtectedMode,	// Protected mode / Long compatibility mode
+			LongMode			// Long 64-bit mode
+		};
+
+		amd64_state(void) : amd64_state(ProtectedMode) {}
+
+		amd64_state(Mode m)
+		: addr_sz(), op_sz(), mode(m),
+		  rex(false), reg(boost::none), rm(boost::none), imm(boost::none)
+		{
+			switch(m)
+			{
+				case RealMode:			addr_sz = AddrSz_16; op_sz = OpSz_16; break;
+				case ProtectedMode:	addr_sz = AddrSz_32; op_sz = OpSz_32; break; // assumes CS.d == 1
+				case LongMode:			addr_sz = AddrSz_32; op_sz = OpSz_64; break; // assumes REX.W == 0
+				default: ensure(false);
+			}
+		}
+
 		AddressSize addr_sz;
 		OperandSize op_sz;
+		Mode mode;
 
 		bool rex;
 

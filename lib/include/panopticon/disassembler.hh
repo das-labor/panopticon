@@ -100,6 +100,13 @@ namespace po
 		void mnemonic(size_t len, std::string n, std::string fmt, rvalue a, rvalue b, std::function<void(code_generator<Tag>&)> fn = std::function<void(code_generator<Tag>&)>());
 
 		/**
+		 * Append a new mnemonic to this state. Overload for mnemonics with
+		 * dynamic number of operands.
+		 * @see mnemonic(size_t,std::string,std::string,std::list<rvalue>,std::function<void(code_generator<Tag>&)>)
+		 */
+		void mnemonic(size_t len, std::string n, std::string fmt, std::function<std::list<rvalue>(code_generator<Tag>&)> fn);
+
+		/**
 		 * Add a jump to this state. The class assumes that all mnemonics
 		 * are executed as a sequence. After the last the position of the next mnemonic to
 		 * be processed is chosen from a list of successor addresses (jumps).
@@ -120,7 +127,7 @@ namespace po
 		// in
 		offset address;
 		std::vector<token> tokens;
-		std::map<std::string,unsigned int> capture_groups;
+		std::map<std::string,uint64_t> capture_groups;
 
 		// out
 		std::list<po::mnemonic> mnemonics;
@@ -534,6 +541,7 @@ namespace po
 	std::list<token_match<Tag>> token_expr::to_match(void) const
 	{
 		using ret_type = std::list<token_match<Tag>>;
+		using token_type = typename architecture_traits<Tag>::token_type;
 
 		struct vis : public boost::static_visitor<ret_type>
 		{
@@ -555,14 +563,33 @@ namespace po
 						std::copy(y.sem_actions.begin(),y.sem_actions.end(),std::back_inserter(tm.sem_actions));
 
 						tm.cap_groups = x.cap_groups;
+
+						for(std::pair<std::string const,std::list<token_type>>& c: tm.cap_groups)
+							while(c.second.size() < tm.patterns.size())
+								c.second.emplace_back(0);
+
 						for(auto c: y.cap_groups)
 						{
 							if(tm.cap_groups.count(c.first))
-								std::copy(c.second.begin(),c.second.end(),std::back_inserter(tm.cap_groups[c.first]));
+							{
+								std::list<token_type> tmp;
+
+								std::copy(tm.cap_groups.at(c.first).begin(),std::next(tm.cap_groups.at(c.first).begin(),x.patterns.size()),std::back_inserter(tmp));
+								std::copy(c.second.begin(),c.second.end(),std::back_inserter(tmp));
+								tm.cap_groups.erase(c.first);
+								tm.cap_groups.emplace(c.first,tmp);
+							}
 							else
-								tm.cap_groups.emplace(c);
+							{
+								std::list<token_type> tmp(x.patterns.size(),0);
+
+								std::copy(c.second.begin(),c.second.end(),std::back_inserter(tmp));
+								tm.cap_groups.emplace(c.first,tmp);
+							}
 						}
 
+						ensure(std::all_of(tm.cap_groups.begin(),tm.cap_groups.end(),[&](std::pair<std::string,std::list<token_type>> const& l)
+							{ return l.second.size() == tm.patterns.size(); }));
 						ret.emplace_back(tm);
 					}
 				}
@@ -722,7 +749,7 @@ namespace po
 						std::list<token> masks = cap.second;
 						unsigned int res;
 
-						ensure(masks.size() <= pattern.size());
+						ensure(masks.size() == pattern.size());
 
 						if(st.capture_groups.count(cap.first))
 						{
@@ -738,7 +765,10 @@ namespace po
 						for(auto cg_mask: masks)
 						{
 							if(cg_mask == 0)
+							{
+								++t;
 								continue;
+							}
 
 							ensure(t != k);
 							int bit = sizeof(token) * 8 - 1;

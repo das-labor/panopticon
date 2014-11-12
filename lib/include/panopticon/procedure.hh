@@ -176,7 +176,6 @@ namespace po
 		while(!todo.empty())
 		{
 			offset cur_addr = *todo.begin();
-			sem_state<Tag> state(cur_addr);
 			slab::iterator i = data.begin();
 			auto j = mnemonics.lower_bound(cur_addr);
 
@@ -191,6 +190,7 @@ namespace po
 			if(j == mnemonics.end() || !boost::icl::contains(j->second.area,cur_addr))
 			{
 				i += cur_addr;
+				sem_state<Tag> state(cur_addr);
 				slab::iterator e = (j == mnemonics.end() ? data.end() : (data.begin() + j->first + 1));
 
 				auto mi = main.try_match(i,e,state);

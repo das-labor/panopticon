@@ -3,6 +3,8 @@
 #include <panopticon/amd64/amd64.hh>
 #include <panopticon/amd64/util.hh>
 
+#include <endian.h>
+
 using namespace po;
 using namespace po::amd64;
 using namespace po::dsl;
@@ -198,19 +200,61 @@ boost::optional<prog_loc> po::amd64::disassemble(boost::optional<prog_loc> prog,
 									rm8_7, rm16_7, rm32_7, rm64_7,
 									disp8, disp16, disp32, disp64;
 
-	opsize_prfix[ 0x66 ] = [](sm& st) {};
-	addrsize_prfx[ 0x67 ] = [](sm& st) {};
+	opsize_prfix[ 0x66 ] = [](sm& st)
+	{
+		switch(st.state.mode)
+		{
+			case amd64_state::RealMode:		st.state.op_sz = amd64_state::OpSz_32; break;
+			case amd64_state::ProtectedMode:	st.state.op_sz = amd64_state::OpSz_16; break; // assumes CS.d == 1
+			case amd64_state::LongMode:		st.state.op_sz = amd64_state::OpSz_16; break;
+			default: ensure(false);
+		}
+	};
+
+	addrsize_prfx[ 0x67 ] = [](sm& st)
+	{
+		switch(st.state.mode)
+		{
+			case amd64_state::RealMode:		st.state.addr_sz = amd64_state::AddrSz_32; break;
+			case amd64_state::ProtectedMode:	st.state.addr_sz = amd64_state::AddrSz_16; break; // assumes CS.d == 1
+			case amd64_state::LongMode:		st.state.addr_sz = amd64_state::AddrSz_32; break;
+			default: ensure(false);
+		}
+	};
+
 	rep_prfx[ 0xf3 ] = [](sm& st) {};
-	rex_prfix[ "01000 r@. x@. b@."_e ] = [](sm& st) { st.state.rex = true; };
-	rexw_prfix[ "01001 r@. x@. b@."_e ] = [](sm& st) { st.state.rex = true; };
 
-	generic_prfx [rep_prfx]			= [](sm& st) {};
-	generic_prfx [addrsize_prfx]	= [](sm& st) {};
+	rex_prfix [ "0100 w@0 r@. x@. b@."_e ] = [](sm& st) { st.state.rex = true; };
+	rexw_prfix[ "0100 w@1 r@. x@. b@."_e ] = [](sm& st) { st.state.rex = true; st.state.op_sz = amd64_state::OpSz_64; };
 
-	imm8 [ "imm@........"_e] = [](sm& st) {};
-	imm16[ imm8 >> "imm@........"_e] = [](sm& st) {};
-	imm32[ imm16 >> "imm@........"_e >> "imm@........"_e] = [](sm& st) {};
-	imm64[ imm32 >> "imm@........"_e >> "imm@........"_e >> "imm@........"_e >> "imm@........"_e] = [](sm& st) {};
+	generic_prfx[ rep_prfx														 ] = [](sm& st) {};
+	generic_prfx[ *addrsize_prfx >> *opsize_prfix >> *addrsize_prfx ] = [](sm& st)
+	{
+		switch(st.state.mode)
+		{
+			case amd64_state::RealMode:		st.state.addr_sz = amd64_state::AddrSz_32; break;
+			case amd64_state::ProtectedMode:	st.state.addr_sz = amd64_state::AddrSz_16; break; // assumes CS.d == 1
+			case amd64_state::LongMode:		st.state.addr_sz = amd64_state::AddrSz_32; break;
+			default: ensure(false);
+		}
+	};
+
+	imm8 [ "imm@........"_e] = [](sm& st)
+	{
+		st.state.imm = constant(st.capture_groups.at("imm"));
+	};
+	imm16[ imm8 >> "imm@........"_e] = [](sm& st)
+	{
+		st.state.imm = constant(be16toh(st.capture_groups.at("imm")));
+	};
+	imm32[ imm16 >> "imm@........"_e >> "imm@........"_e] = [](sm& st)
+	{
+		st.state.imm = constant(be32toh(st.capture_groups.at("imm")));
+	};
+	imm64[ imm32 >> "imm@........"_e >> "imm@........"_e >> "imm@........"_e >> "imm@........"_e] = [](sm& st)
+	{
+		st.state.imm = constant(be64toh(st.capture_groups.at("imm")) << 32);
+	};
 
 	disp8 [ "disp@........"_e] = [](sm& st) {};
 	disp16[ disp8 >> "disp@........"_e] = [](sm& st) {};
@@ -218,9 +262,9 @@ boost::optional<prog_loc> po::amd64::disassemble(boost::optional<prog_loc> prog,
 	disp64[ disp32 >> "disp@........"_e >> "disp@........"_e >> "disp@........"_e >> "disp@........"_e] = [](sm& st) {};
 
 	// sib
-	sib [ "00 index@... base@..."_e >> "x@........"_e >> "x@........"_e >> "x@........"_e >> "x@........"_e	] = [](sm& st) {};
-	sib [ "01 index@... base@..."_e >> "x@........"_e																			] = [](sm& st) {};
-	sib [ "10 index@... base@..."_e >> "x@........"_e >> "x@........"_e >> "x@........"_e >> "x@........"_e	] = [](sm& st) {};
+	sib [ "00 index@... base@..."_e >> "sib@........"_e >> "sib@........"_e >> "sib@........"_e >> "sib@........"_e	] = [](sm& st) {};
+	sib [ "01 index@... base@..."_e >> "sib@........"_e																			] = [](sm& st) {};
+	sib [ "10 index@... base@..."_e >> "sib@........"_e >> "sib@........"_e >> "sib@........"_e >> "sib@........"_e	] = [](sm& st) {};
 	sib [ "scale@.. index@... base@..."_e] = [](sm& st) {};
 
 	std::function<void(sm&)> rm8_func = [&](sm& st)
@@ -228,11 +272,11 @@ boost::optional<prog_loc> po::amd64::disassemble(boost::optional<prog_loc> prog,
 		ensure(!st.state.reg && !st.state.rm);
 
 		if(st.capture_groups.count("reg"))
-			st.state.reg = decode_reg8((1 << 3) * st.capture_groups.count("b") + st.capture_groups.at("reg"),st.state.rex);
+			st.state.reg = decode_reg8((1 << 3) * (st.capture_groups.count("r") && st.capture_groups.at("r")) + st.capture_groups.at("reg"),st.state.rex);
 
-		boost::optional<unsigned int> disp = st.capture_groups.count("disp") ? boost::make_optional(st.capture_groups.at("disp")) : boost::none;
-		boost::optional<unsigned int> sib = st.capture_groups.count("sib") ? boost::make_optional(st.capture_groups.at("sib")) : boost::none;
-		st.state.rm = decode_modrm(st.capture_groups.at("mod"),st.capture_groups.at("rm"),disp,sib,st.state.op_sz,st.state.addr_sz);
+		boost::optional<uint64_t> disp = st.capture_groups.count("disp") ? boost::make_optional(st.capture_groups.at("disp")) : boost::none;
+		boost::optional<uint64_t> sib = st.capture_groups.count("sib") ? boost::make_optional(st.capture_groups.at("sib")) : boost::none;
+		st.state.rm = decode_modrm(st.capture_groups.at("mod"),(1 << 3) * (st.capture_groups.count("b") && st.capture_groups.at("b")) + st.capture_groups.at("rm"),disp,sib,st.state.op_sz,st.state.addr_sz);
 	};
 
 	std::function<void(sm&)> rm16_func = [&](sm& st)
@@ -240,11 +284,11 @@ boost::optional<prog_loc> po::amd64::disassemble(boost::optional<prog_loc> prog,
 		ensure(!st.state.reg && !st.state.rm);
 
 		if(st.capture_groups.count("reg"))
-			st.state.reg = decode_reg16((1 << 3) * st.capture_groups.count("b") + st.capture_groups.at("reg"));
+			st.state.reg = decode_reg16((1 << 3) * (st.capture_groups.count("r") && st.capture_groups.at("r")) + st.capture_groups.at("reg"));
 
-		boost::optional<unsigned int> disp = st.capture_groups.count("disp") ? boost::make_optional(st.capture_groups.at("disp")) : boost::none;
-		boost::optional<unsigned int> sib = st.capture_groups.count("sib") ? boost::make_optional(st.capture_groups.at("sib")) : boost::none;
-		st.state.rm = decode_modrm(st.capture_groups.at("mod"),st.capture_groups.at("rm"),disp,sib,st.state.op_sz,st.state.addr_sz);
+		boost::optional<uint64_t> disp = st.capture_groups.count("disp") ? boost::make_optional(st.capture_groups.at("disp")) : boost::none;
+		boost::optional<uint64_t> sib = st.capture_groups.count("sib") ? boost::make_optional(st.capture_groups.at("sib")) : boost::none;
+		st.state.rm = decode_modrm(st.capture_groups.at("mod"),(1 << 3) * (st.capture_groups.count("b") && st.capture_groups.at("b")) + st.capture_groups.at("rm"),disp,sib,st.state.op_sz,st.state.addr_sz);
 	};
 
 	std::function<void(sm&)> rm32_func = [&](sm& st)
@@ -252,11 +296,11 @@ boost::optional<prog_loc> po::amd64::disassemble(boost::optional<prog_loc> prog,
 		ensure(!st.state.reg && !st.state.rm);
 
 		if(st.capture_groups.count("reg"))
-			st.state.reg = decode_reg32((1 << 3) * st.capture_groups.count("b") + st.capture_groups.at("reg"));
+			st.state.reg = decode_reg32((1 << 3) * (st.capture_groups.count("r") && st.capture_groups.at("r")) + st.capture_groups.at("reg"));
 
-		boost::optional<unsigned int> disp = st.capture_groups.count("disp") ? boost::make_optional(st.capture_groups.at("disp")) : boost::none;
-		boost::optional<unsigned int> sib = st.capture_groups.count("sib") ? boost::make_optional(st.capture_groups.at("sib")) : boost::none;
-		st.state.rm = decode_modrm(st.capture_groups.at("mod"),st.capture_groups.at("rm"),disp,sib,st.state.op_sz,st.state.addr_sz);
+		boost::optional<uint64_t> disp = st.capture_groups.count("disp") ? boost::make_optional(st.capture_groups.at("disp")) : boost::none;
+		boost::optional<uint64_t> sib = st.capture_groups.count("sib") ? boost::make_optional(st.capture_groups.at("sib")) : boost::none;
+		st.state.rm = decode_modrm(st.capture_groups.at("mod"),(1 << 3) * (st.capture_groups.count("b") && st.capture_groups.at("b")) + st.capture_groups.at("rm"),disp,sib,st.state.op_sz,st.state.addr_sz);
 	};
 
 	std::function<void(sm&)> rm64_func = [&](sm& st)
@@ -264,11 +308,11 @@ boost::optional<prog_loc> po::amd64::disassemble(boost::optional<prog_loc> prog,
 		ensure(!st.state.reg && !st.state.rm);
 
 		if(st.capture_groups.count("reg"))
-			st.state.reg = decode_reg64((1 << 3) * st.capture_groups.count("b") + st.capture_groups.at("reg"));
+			st.state.reg = decode_reg64((1 << 3) * (st.capture_groups.count("r") && st.capture_groups.at("r")) + st.capture_groups.at("reg"));
 
-		boost::optional<unsigned int> disp = st.capture_groups.count("disp") ? boost::make_optional(st.capture_groups.at("disp")) : boost::none;
-		boost::optional<unsigned int> sib = st.capture_groups.count("sib") ? boost::make_optional(st.capture_groups.at("sib")) : boost::none;
-		st.state.rm = decode_modrm(st.capture_groups.at("mod"),st.capture_groups.at("rm"),disp,sib,st.state.op_sz,st.state.addr_sz);
+		boost::optional<uint64_t> disp = st.capture_groups.count("disp") ? boost::make_optional(st.capture_groups.at("disp")) : boost::none;
+		boost::optional<uint64_t> sib = st.capture_groups.count("sib") ? boost::make_optional(st.capture_groups.at("sib")) : boost::none;
+		st.state.rm = decode_modrm(st.capture_groups.at("mod"),(1 << 3) * (st.capture_groups.count("b") && st.capture_groups.at("b")) + st.capture_groups.at("rm"),disp,sib,st.state.op_sz,st.state.addr_sz);
 	};
 
 	// mod = 00
@@ -603,16 +647,11 @@ boost::optional<prog_loc> po::amd64::disassemble(boost::optional<prog_loc> prog,
 	rm32_7[ "mod@11 111 rm@..."_e ] = rm32_func;
 	rm64_7[ "mod@11 111 rm@..."_e ] = rm64_func;
 
-	std::function<void(cg&)> aaa = [](cg& m) { };
-	std::function<void(cg&)> aad = [](cg& m) { };
-	std::function<void(cg&)> aam = [](cg& m) { };
-	std::function<void(cg&)> aas = [](cg& m) { };
-
 	// 32 bits only
-	main[ *generic_prfx >> 0x37			] = nonary("aaa",aaa);
-	main[ *generic_prfx >> 0xd5 >> imm8	] = nonary("aad",aad);
-	main[ *generic_prfx >> 0xd4 >> imm8	] = nonary("aam",aam);
-	main[ *generic_prfx >> 0x3f			] = nonary("aas",aas);
+	main[ *generic_prfx >> 0x37			] = [](sm& m) { m.mnemonic(m.tokens.size(),"aaa","",std::list<rvalue>(),[](cg&) {}); };
+	main[ *generic_prfx >> 0xd5 >> imm8	] = [](sm& m) { m.mnemonic(m.tokens.size(),"aad","{8}",*m.state.imm,[](cg&) {}); };
+	main[ *generic_prfx >> 0xd4 >> imm8	] = [](sm& m) { m.mnemonic(m.tokens.size(),"aam","{8}",*m.state.imm,[](cg&) {}); };
+	main[ *generic_prfx >> 0x3f			] = [](sm& m) { m.mnemonic(m.tokens.size(),"aas","",std::list<rvalue>(),[](cg&) {}); };
 
 	// ADC
 	std::function<void(cg&,rvalue,rvalue)> adc = [](cg& m, rvalue a, rvalue b)
