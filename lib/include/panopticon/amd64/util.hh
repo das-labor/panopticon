@@ -35,7 +35,7 @@ namespace po
 			unsigned int mod,
 			unsigned int b_rm,	// B.R/M
 			boost::optional<uint64_t> disp,
-			boost::optional<std::tuple<uint64_t,uint64_t,uint64_t>> sib, // scale, X.index, B.base
+			boost::optional<std::tuple<unsigned int,unsigned int,unsigned int>> sib, // scale, X.index, B.base
 			amd64_state::OperandSize os,
 			amd64_state::AddressSize as,
 			cg& c);

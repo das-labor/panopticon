@@ -106,7 +106,7 @@ namespace po
 	boost::optional<proc_loc> procedure::disassemble(boost::optional<proc_loc> proc, Dis const& main, po::slab data, offset start)
 	{
 		std::unordered_set<offset> todo;
-		std::map<offset,mnemonic> mnemonics;
+		std::map<offset,std::list<mnemonic>> mnemonics;
 		std::unordered_multimap<offset,std::pair<boost::optional<offset>,guard>> source;
 		std::unordered_multimap<offset,std::pair<offset,guard>> destination;
 		boost::optional<proc_loc> ret = boost::none;
@@ -139,8 +139,8 @@ namespace po
 				{
 					for(const mnemonic &m: get<bblock_loc>(nd)->mnemonics())
 					{
-						ensure(boost::icl::size(m.area));
-						mnemonics.insert(std::make_pair(m.area.upper() - 1,m));
+						po::offset o = boost::icl::size(m.area) ? m.area.upper() - 1 : m.area.lower();
+						mnemonics[o].push_back(m);
 					}
 				}
 				else if(get<rvalue>(&nd) && is_constant(get<rvalue>(nd)))
@@ -160,9 +160,10 @@ namespace po
 				if(src_b && tgt_b)
 				{
 					guard g = get_edge(e,(*proc)->control_transfers);
+					po::offset last = boost::icl::size(*src_b) ? src_b->upper() - 1 : src_b->lower();
 
-					source.emplace(src_b->upper() - 1,std::make_pair(tgt_b->lower(),g));
-					destination.emplace(tgt_b->lower(),std::make_pair(src_b->upper() - 1,g));
+					source.emplace(last,std::make_pair(tgt_b->lower(),g));
+					destination.emplace(tgt_b->lower(),std::make_pair(last,g));
 				}
 			}
 
@@ -178,6 +179,15 @@ namespace po
 			offset cur_addr = *todo.begin();
 			slab::iterator i = data.begin();
 			auto j = mnemonics.lower_bound(cur_addr);
+			boost::optional<po::bound> area = boost::none;
+
+			if(j != mnemonics.end())
+			{
+				ensure(!j->second.empty());
+
+				area = std::accumulate(j->second.begin(),j->second.end(),j->second.front().area,
+					[](po::bound acc, mnemonic const& x) -> po::bound { return boost::icl::hull(x.area,acc); });
+			}
 
 			todo.erase(todo.begin());
 
@@ -187,7 +197,7 @@ namespace po
 				continue;
 			}
 
-			if(j == mnemonics.end() || !boost::icl::contains(j->second.area,cur_addr))
+			if(j == mnemonics.end() || (area && !boost::icl::contains(*area,cur_addr)))
 			{
 				i += cur_addr;
 				sem_state<Tag> state(cur_addr);
@@ -203,8 +213,8 @@ namespace po
 
 					for(const mnemonic &m: state.mnemonics)
 					{
-						last = std::max<po::offset>(last,m.area.upper() - 1);
-						ensure(mnemonics.insert(std::make_pair(m.area.lower(),m)).second);
+						last = std::max<po::offset>(last,boost::icl::size(m.area) ? m.area.upper() - 1 : m.area.lower());
+						mnemonics[m.area.lower()].push_back(m);
 					}
 
 					for(const std::pair<rvalue,guard> &p: state.jumps)
@@ -228,9 +238,9 @@ namespace po
 					std::cerr << "Failed to match anything at " << cur_addr << std::endl;
 				}
 			}
-			else if(j->second.area.lower() != cur_addr)
+			else if(area && area->lower() != cur_addr)
 			{
-				std::cerr << "Overlapping mnemonics at " << cur_addr << " with \"" << "[" << j->second.area << "] " << j->second << "\"" << std::endl;
+				std::cerr << "Overlapping mnemonics at " << cur_addr << " with \"" << "[" << *area << "] " << j->second.front() << "\"" << std::endl;
 			}
 		}
 
@@ -244,42 +254,46 @@ namespace po
 			// rebuild basic blocks
 			auto cur_mne = mnemonics.begin(), first_mne = cur_mne;
 			std::map<offset,bblock_loc> bblocks;
-			std::function<void(std::map<offset,mnemonic>::iterator,std::map<offset,mnemonic>::iterator)> make_bblock;
-			make_bblock = [&](std::map<offset,mnemonic>::iterator begin,std::map<offset,mnemonic>::iterator end)
+			std::function<void(std::map<offset,std::list<mnemonic>>::iterator,
+									 std::map<offset,std::list<mnemonic>>::iterator)> make_bblock;
+			make_bblock = [&](std::map<offset,std::list<mnemonic>>::iterator begin,
+									std::map<offset,std::list<mnemonic>>::iterator end)
 			{
 				bblock_loc bb(new basic_block());
 
-				std::for_each(begin,end,[&](const std::pair<offset,mnemonic> &p)
-					{ bb.write().mnemonics().push_back(p.second); });
+				std::for_each(begin,end,[&](const std::pair<offset,std::list<mnemonic>> &p)
+					{ std::copy(p.second.begin(),p.second.end(),std::back_inserter(bb.write().mnemonics())); });
 
 				insert_vertex<boost::variant<bblock_loc,rvalue>,guard>(bb,ret->write().control_transfers);
-				ensure(bblocks.insert(std::make_pair(bb->area().upper() - 1,bb)).second);
+				ensure(bblocks.insert(std::make_pair(boost::icl::size(bb->area()) ? bb->area().upper() - 1 : bb->area().lower(),bb)).second);
 			};
 
 			while(cur_mne != mnemonics.end())
 			{
 				auto next_mne = std::next(cur_mne);
-				const mnemonic &mne = cur_mne->second;
-				auto sources = source.equal_range(mne.area.upper() - 1);
-				auto destinations = destination.equal_range(mne.area.upper());
+				std::list<mnemonic> const& mne = cur_mne->second;
+				po::bound area = std::accumulate(mne.begin(),mne.end(),mne.front().area,
+					[](po::bound acc, mnemonic const& x) -> po::bound { return boost::icl::hull(x.area,acc); });
+				auto sources = source.equal_range(boost::icl::size(area)? area.upper() - 1 : area.lower());
+				auto destinations = destination.equal_range(area.upper());
 
-				if(next_mne != mnemonics.end() && boost::icl::size(mne.area))
+				if(next_mne != mnemonics.end() && boost::icl::size(area))
 				{
 					bool new_bb;
 
 					// if next mnemonic isn't adjacent
-					new_bb = next_mne->first != mne.area.upper();
+					new_bb = next_mne->first != area.upper();
 
 					// or any following jumps aren't to adjacent mnemonics
 					new_bb |= std::any_of(sources.first,sources.second,[&](const std::pair<offset,std::pair<boost::optional<offset>,guard>> &p)
 					{
-						return p.second.first && *p.second.first != mne.area.upper();
+						return p.second.first && *p.second.first != area.upper();
 					});
 
 					// or any jumps pointing to the next that aren't from here
 					new_bb |= std::any_of(destinations.first,destinations.second,[&](const std::pair<offset,std::pair<offset,guard>> &p)
 					{
-						return p.second.first != mne.area.upper() - 1;
+						return p.second.first != (boost::icl::size(area)? area.upper() - 1 : area.lower());
 					});
 
 					// construct a new basic block
@@ -310,6 +324,9 @@ namespace po
 				if(p.second.first)
 				{
 					auto from = bblocks.find(p.first), to = bblocks.lower_bound(*p.second.first);
+
+					if(from == bblocks.end())
+						std::cerr << from->first << " is not part of bblocks" << std::endl;
 
 					ensure(from != bblocks.end());
 					if(to != bblocks.end() && to->second->area().lower() == *p.second.first)

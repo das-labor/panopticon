@@ -143,19 +143,59 @@ po::lvalue po::amd64::decode_modrm(
 		unsigned int mod,
 		unsigned int b_rm,	// B.R/M
 		boost::optional<uint64_t> disp,
-		boost::optional<std::tuple<uint64_t,uint64_t,uint64_t>> sib, // scale, X.index, B.base
+		boost::optional<std::tuple<unsigned int,unsigned int,unsigned int>> sib, // scale, X.index, B.base
 		amd64_state::OperandSize os,
 		amd64_state::AddressSize as,
 		cg& c)
 {
 	ensure(mod < 0x4);
-	ensure(rm < 0x8);
+	ensure(b_rm < 0x8);
 
 	switch(as)
 	{
 		case amd64_state::AddrSz_16:
 		{
-			ensure(false);
+			switch(mod)
+			{
+				case 0: case 1: case 2:
+				{
+					if(b_rm == 6)
+					{
+						if(mod == 0)
+							return select_mem(as,constant(*disp));
+						else
+							return c.add_i(select_mem(as,bp),constant(*disp));
+					}
+					else
+					{
+						lvalue base = undefined();
+
+						switch(b_rm)
+						{
+							case 0: base = select_mem(as,c.add_i(bx,si)); break;
+							case 1: base = select_mem(as,c.add_i(bx,di)); break;
+							case 2: base = select_mem(as,c.add_i(bp,si)); break;
+							case 3: base = select_mem(as,c.add_i(bp,di)); break;
+							case 4: base = select_mem(as,si); break;
+							case 5: base = select_mem(as,di); break;
+							case 7: base = select_mem(as,bx); break;
+							default: ensure(false);
+						}
+
+						if(mod == 0)
+							return base;
+						else
+							return c.add_i(base,constant(*disp));
+					}
+				}
+
+				case 3:
+				{
+					return select_reg(os,b_rm);
+				}
+
+				default: ensure(false);
+			}
 		}
 
 		case amd64_state::AddrSz_32:
@@ -168,7 +208,7 @@ po::lvalue po::amd64::decode_modrm(
 					case 0: case 1: case 2: case 3:
 					case 6: case 7: case 8: case 9: case 10: case 11:
 					case 14: case 15:
-						return select_mem(as,select_reg(os,rm));
+						return select_mem(as,select_reg(os,b_rm));
 
 					case 4:
 					case 12:
@@ -199,7 +239,7 @@ po::lvalue po::amd64::decode_modrm(
 	}
 }
 
-po::memory decode_sib(unsigned int mod, unsigned int scale, unsigned int x_index, unsigned int b_base, boost::optional<uint64_t> disp,amd64_state::AddressSize as,cg& c)
+po::memory po::amd64::decode_sib(unsigned int mod, unsigned int scale, unsigned int x_index, unsigned int b_base, boost::optional<uint64_t> disp,amd64_state::AddressSize as,cg& c)
 {
 	switch(mod)
 	{

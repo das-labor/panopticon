@@ -345,22 +345,23 @@ namespace po
 	{}
 
 	template<typename Tag>
-	void sem_state<Tag>::mnemonic(size_t len, std::string n, std::string fmt, std::list<rvalue> ops, std::function<void(code_generator<Tag>&)> fn)
+	void sem_state<Tag>::mnemonic(size_t len, std::string n, std::string fmt, std::function<std::list<rvalue>(code_generator<Tag>&)> fn)
 	{
 		std::list<instr> instrs;
 		code_generator<Tag> cg(inserter(instrs,instrs.end()));
+
+		ensure(fn);
 
 		try
 		{
 			dsl::current_code_generator = new dsl::callback_list(cg);
 
+			// generate instr list
+			std::list<rvalue> ops = fn(cg);
+
 			if(fmt.empty())
 				fmt = accumulate(ops.begin(),ops.end(),fmt,[](const std::string &acc, const rvalue &x)
 					{ return acc + (acc.empty() ? "{8}" : ", {8}"); });
-
-			// generate instr list
-			if(fn)
-				fn(cg);
 
 			mnemonics.emplace_back(po::mnemonic(bound(next_address,next_address + len),n,fmt,ops.begin(),ops.end(),instrs.begin(),instrs.end()));
 			next_address += len;
@@ -377,6 +378,13 @@ namespace po
 		if(dsl::current_code_generator)
 			delete dsl::current_code_generator;
 		dsl::current_code_generator = 0;
+	}
+
+	template<typename Tag>
+	void sem_state<Tag>::mnemonic(size_t len, std::string n, std::string fmt, std::list<rvalue> ops, std::function<void(code_generator<Tag>&)> fn)
+	{
+		return this->mnemonic(len,n,fmt,[fn,ops](code_generator<Tag>& cg)
+			{ if(fn) { fn(cg); } return ops; });
 	}
 
 	template<typename Tag>

@@ -275,8 +275,23 @@ boost::optional<prog_loc> po::amd64::disassemble(boost::optional<prog_loc> prog,
 			st.state.reg = decode_reg8((1 << 3) * (st.capture_groups.count("r") && st.capture_groups.at("r")) + st.capture_groups.at("reg"),st.state.rex);
 
 		boost::optional<uint64_t> disp = st.capture_groups.count("disp") ? boost::make_optional(st.capture_groups.at("disp")) : boost::none;
-		boost::optional<uint64_t> sib = st.capture_groups.count("sib") ? boost::make_optional(st.capture_groups.at("sib")) : boost::none;
-		st.state.rm = decode_modrm(st.capture_groups.at("mod"),(1 << 3) * (st.capture_groups.count("b") && st.capture_groups.at("b")) + st.capture_groups.at("rm"),disp,sib,st.state.op_sz,st.state.addr_sz);
+		boost::optional<std::tuple<unsigned int,unsigned int,unsigned int>> sib = boost::none;
+		unsigned int b_rm = (1 << 3) * (st.capture_groups.count("b") && st.capture_groups.at("b")) + st.capture_groups.at("rm");
+
+		if(st.capture_groups.count("scale") && st.capture_groups.count("index") && st.capture_groups.count("base"))
+		{
+			unsigned int scale = st.capture_groups.at("scale");
+			unsigned int x_index = (st.state.rex ? (1 << 4) * st.capture_groups.count("x") : 0) + st.capture_groups.at("index");
+			unsigned int b_base = (st.state.rex ? (1 << 3) * st.capture_groups.count("b") : 0) + st.capture_groups.at("base");
+
+			sib = std::make_tuple(scale,x_index,b_base);
+		}
+
+		st.mnemonic(0,"internal-rm8","",[&](cg& c) -> std::list<rvalue>
+		{
+			st.state.rm = decode_modrm(st.capture_groups.at("mod"),b_rm,disp,sib,st.state.op_sz,st.state.addr_sz,c);
+			return {};
+		});
 	};
 
 	std::function<void(sm&)> rm16_func = [&](sm& st)
@@ -287,8 +302,23 @@ boost::optional<prog_loc> po::amd64::disassemble(boost::optional<prog_loc> prog,
 			st.state.reg = decode_reg16((1 << 3) * (st.capture_groups.count("r") && st.capture_groups.at("r")) + st.capture_groups.at("reg"));
 
 		boost::optional<uint64_t> disp = st.capture_groups.count("disp") ? boost::make_optional(st.capture_groups.at("disp")) : boost::none;
-		boost::optional<uint64_t> sib = st.capture_groups.count("sib") ? boost::make_optional(st.capture_groups.at("sib")) : boost::none;
-		st.state.rm = decode_modrm(st.capture_groups.at("mod"),(1 << 3) * (st.capture_groups.count("b") && st.capture_groups.at("b")) + st.capture_groups.at("rm"),disp,sib,st.state.op_sz,st.state.addr_sz);
+		boost::optional<std::tuple<unsigned int,unsigned int,unsigned int>> sib = boost::none;
+		unsigned int b_rm = (1 << 3) * (st.capture_groups.count("b") && st.capture_groups.at("b")) + st.capture_groups.at("rm");
+
+		if(st.capture_groups.count("scale") && st.capture_groups.count("index") && st.capture_groups.count("base"))
+		{
+			unsigned int scale = st.capture_groups.at("scale");
+			unsigned int x_index = (st.state.rex ? (1 << 4) * st.capture_groups.count("x") : 0) + st.capture_groups.at("index");
+			unsigned int b_base = (st.state.rex ? (1 << 3) * st.capture_groups.count("b") : 0) + st.capture_groups.at("base");
+
+			sib = std::make_tuple(scale,x_index,b_base);
+		}
+
+		st.mnemonic(0,"internal-rm16","",[&](cg& c) -> std::list<rvalue>
+		{
+			st.state.rm = decode_modrm(st.capture_groups.at("mod"),b_rm,disp,sib,st.state.op_sz,st.state.addr_sz,c);
+			return {};
+		});
 	};
 
 	std::function<void(sm&)> rm32_func = [&](sm& st)
@@ -299,8 +329,23 @@ boost::optional<prog_loc> po::amd64::disassemble(boost::optional<prog_loc> prog,
 			st.state.reg = decode_reg32((1 << 3) * (st.capture_groups.count("r") && st.capture_groups.at("r")) + st.capture_groups.at("reg"));
 
 		boost::optional<uint64_t> disp = st.capture_groups.count("disp") ? boost::make_optional(st.capture_groups.at("disp")) : boost::none;
-		boost::optional<uint64_t> sib = st.capture_groups.count("sib") ? boost::make_optional(st.capture_groups.at("sib")) : boost::none;
-		st.state.rm = decode_modrm(st.capture_groups.at("mod"),(1 << 3) * (st.capture_groups.count("b") && st.capture_groups.at("b")) + st.capture_groups.at("rm"),disp,sib,st.state.op_sz,st.state.addr_sz);
+		boost::optional<std::tuple<unsigned int,unsigned int,unsigned int>> sib = boost::none;
+		unsigned int b_rm = (1 << 3) * (st.capture_groups.count("b") && st.capture_groups.at("b")) + st.capture_groups.at("rm");
+
+		if(st.capture_groups.count("scale") && st.capture_groups.count("index") && st.capture_groups.count("base"))
+		{
+			unsigned int scale = st.capture_groups.at("scale");
+			unsigned int x_index = (st.state.rex ? (1 << 4) * st.capture_groups.count("x") : 0) + st.capture_groups.at("index");
+			unsigned int b_base = (st.state.rex ? (1 << 3) * st.capture_groups.count("b") : 0) + st.capture_groups.at("base");
+
+			sib = std::make_tuple(scale,x_index,b_base);
+		}
+
+		st.mnemonic(0,"internal-rm32","",[&](cg& c) -> std::list<rvalue>
+		{
+			st.state.rm = decode_modrm(st.capture_groups.at("mod"),b_rm,disp,sib,st.state.op_sz,st.state.addr_sz,c);
+			return {};
+		});
 	};
 
 	std::function<void(sm&)> rm64_func = [&](sm& st)
@@ -311,8 +356,23 @@ boost::optional<prog_loc> po::amd64::disassemble(boost::optional<prog_loc> prog,
 			st.state.reg = decode_reg64((1 << 3) * (st.capture_groups.count("r") && st.capture_groups.at("r")) + st.capture_groups.at("reg"));
 
 		boost::optional<uint64_t> disp = st.capture_groups.count("disp") ? boost::make_optional(st.capture_groups.at("disp")) : boost::none;
-		boost::optional<uint64_t> sib = st.capture_groups.count("sib") ? boost::make_optional(st.capture_groups.at("sib")) : boost::none;
-		st.state.rm = decode_modrm(st.capture_groups.at("mod"),(1 << 3) * (st.capture_groups.count("b") && st.capture_groups.at("b")) + st.capture_groups.at("rm"),disp,sib,st.state.op_sz,st.state.addr_sz);
+		boost::optional<std::tuple<unsigned int,unsigned int,unsigned int>> sib = boost::none;
+		unsigned int b_rm = (1 << 3) * (st.capture_groups.count("b") && st.capture_groups.at("b")) + st.capture_groups.at("rm");
+
+		if(st.capture_groups.count("scale") && st.capture_groups.count("index") && st.capture_groups.count("base"))
+		{
+			unsigned int scale = st.capture_groups.at("scale");
+			unsigned int x_index = (st.state.rex ? (1 << 4) * st.capture_groups.count("x") : 0) + st.capture_groups.at("index");
+			unsigned int b_base = (st.state.rex ? (1 << 3) * st.capture_groups.count("b") : 0) + st.capture_groups.at("base");
+
+			sib = std::make_tuple(scale,x_index,b_base);
+		}
+
+		st.mnemonic(0,"internal-rm64","",[&](cg& c) -> std::list<rvalue>
+		{
+			st.state.rm = decode_modrm(st.capture_groups.at("mod"),b_rm,disp,sib,st.state.op_sz,st.state.addr_sz,c);
+			return {};
+		});
 	};
 
 	// mod = 00
