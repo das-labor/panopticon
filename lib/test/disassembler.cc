@@ -207,7 +207,7 @@ TEST_F(disassembler,empty_capture_group)
 	ASSERT_EQ(st.address, 0);
 	ASSERT_EQ(st.tokens.size(), 1);
 	ASSERT_EQ(st.tokens[0], 127);
-	ASSERT_EQ(st.capture_groups.size(), 3);
+	ASSERT_EQ(st.capture_groups.size(), 2);
 	ASSERT_EQ(st.capture_groups.count("a"), 1);
 	ASSERT_EQ(st.capture_groups.count("b"), 1);
 	ASSERT_EQ(st.capture_groups.count("c"), 1);
@@ -349,4 +349,36 @@ TEST_F(disassembler,optional)
 	ASSERT_EQ(st.mnemonics.front().area, po::bound(3,5));
 	ASSERT_TRUE(st.mnemonics.front().instructions.empty());
 	ASSERT_EQ(st.jumps.size(), 0);
+}
+
+TEST_F(disassembler,fixed_capture_group_contents)
+{
+	using po::operator "" _e;
+
+	po::sem_state<test_tag> st(0);
+	std::vector<unsigned char> _buf = {127,255};
+	po::slab buf(_buf.data(),_buf.size());
+	po::disassembler<test_tag> dec;
+
+	dec[ "01111111"_e >> "a@11111111"_e ] = [](ss s) { s.mnemonic(1,"1"); };
+	boost::optional<std::pair<po::slab::iterator,po::sem_state<test_tag>>> i;
+
+	i = dec.try_match(buf.begin(),buf.end(),st);
+	ASSERT_TRUE(i);
+	st = i->second;
+
+	ASSERT_EQ(std::distance(buf.begin(), i->first),2);
+	ASSERT_EQ(st.address, 0);
+	ASSERT_EQ(st.tokens.size(), 2);
+	ASSERT_EQ(st.tokens[0], 127);
+	ASSERT_EQ(st.tokens[1], 255);
+	ASSERT_EQ(st.capture_groups.size(), 1);
+	ASSERT_EQ(st.capture_groups.count("a"), 1);
+	ASSERT_EQ(st.capture_groups["a"], 255);
+	ASSERT_EQ(st.mnemonics.size(), 1);
+	ASSERT_EQ(st.mnemonics.front().opcode, std::string("1"));
+	ASSERT_EQ(st.mnemonics.front().area, po::bound(0,1));
+	ASSERT_TRUE(st.mnemonics.front().instructions.empty());
+	ASSERT_EQ(st.jumps.size(), 0);
+
 }

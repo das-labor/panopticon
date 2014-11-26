@@ -426,19 +426,27 @@ namespace po
 		char const* p = c;
 		std::unordered_map<std::string,token> cgs;
 		boost::optional<std::string> cg_name;
-		enum pstate { ANY, AT, PAT } ps = ANY;
+		enum pstate { ANY, AT } ps = ANY;
 
 		while(*p != 0 && bit >= 0)
 		{
 			switch(ps)
 			{
-				// scan 1/0, skip spaces, wait for start of capture pattern
+				// scan 1/0, skip spaces and '.', wait for start of capture pattern
 				case ANY:
 				{
-					if(*p == '0' || *p == '1')
+					if(*p == '0' || *p == '1' || *p == '.')
 					{
-						_pat |= (*p - '0') << bit;
-						_mask |= 1 << bit;
+						_pat |= ((*p == '1') ? 1 : 0) << bit;
+						_mask |= ((*p != '.') ? 1 : 0) << bit;
+
+						if(cg_name)
+						{
+							if(!cgs.count(*cg_name))
+								cgs.emplace(*cg_name,0);
+							cgs[*cg_name] |= 1 << bit;
+						}
+
 						--bit;
 						++p;
 					}
@@ -450,6 +458,8 @@ namespace po
 					}
 					else if(*p == ' ')
 					{
+						if(cg_name)
+							cg_name = boost::none;
 						++p;
 					}
 					else
@@ -465,9 +475,7 @@ namespace po
 				{
 					if(*p == '@' && cg_name)
 					{
-						if(!cgs.count(*cg_name))
-							cgs.emplace(*cg_name,0);
-						ps = PAT;
+						ps = ANY;
 						++p;
 					}
 					else if(isalpha(*p) && cg_name)
@@ -478,22 +486,6 @@ namespace po
 					else
 					{
 						throw tokpat_error("invalid pattern at column " + std::to_string(p - c) + " '" + std::string(c) + "'");
-					}
-					break;
-				}
-
-				// scan '.' pattern
-				case PAT:
-				{
-					if(*p == '.' && cg_name)
-					{
-						cgs[*cg_name] |= 1 << bit;
-						--bit;
-						++p;
-					}
-					else
-					{
-						ps = ANY;
 					}
 					break;
 				}
