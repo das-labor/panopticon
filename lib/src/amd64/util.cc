@@ -128,13 +128,14 @@ po::variable po::amd64::select_reg(amd64_state::OperandSize os,unsigned int r)
 	}
 }
 
-po::memory po::amd64::select_mem(amd64_state::AddressSize as,rvalue o)
+po::memory po::amd64::select_mem(amd64_state::OperandSize os,rvalue o)
 {
-	switch(as)
+	switch(os)
 	{
-		case amd64_state::AddrSz_16: return word(o);
-		case amd64_state::AddrSz_32: return dword(o);
-		case amd64_state::AddrSz_64: return qword(o);
+		case amd64_state::OpSz_8: return byte(o);
+		case amd64_state::OpSz_16: return word(o);
+		case amd64_state::OpSz_32: return dword(o);
+		case amd64_state::OpSz_64: return qword(o);
 		default: ensure(false);
 	}
 }
@@ -142,7 +143,7 @@ po::memory po::amd64::select_mem(amd64_state::AddressSize as,rvalue o)
 po::lvalue po::amd64::decode_modrm(
 		unsigned int mod,
 		unsigned int b_rm,	// B.R/M
-		boost::optional<uint64_t> disp,
+		boost::optional<constant> disp,
 		boost::optional<std::tuple<unsigned int,unsigned int,unsigned int>> sib, // scale, X.index, B.base
 		amd64_state::OperandSize os,
 		amd64_state::AddressSize as,
@@ -162,9 +163,9 @@ po::lvalue po::amd64::decode_modrm(
 					if(b_rm == 6)
 					{
 						if(mod == 0)
-							return select_mem(as,constant(*disp));
+							return select_mem(os,*disp);
 						else
-							return c.add_i(select_mem(as,bp),constant(*disp));
+							return c.add_i(select_mem(os,bp),*disp);
 					}
 					else
 					{
@@ -172,20 +173,20 @@ po::lvalue po::amd64::decode_modrm(
 
 						switch(b_rm)
 						{
-							case 0: base = select_mem(as,c.add_i(bx,si)); break;
-							case 1: base = select_mem(as,c.add_i(bx,di)); break;
-							case 2: base = select_mem(as,c.add_i(bp,si)); break;
-							case 3: base = select_mem(as,c.add_i(bp,di)); break;
-							case 4: base = select_mem(as,si); break;
-							case 5: base = select_mem(as,di); break;
-							case 7: base = select_mem(as,bx); break;
+							case 0: base = select_mem(os,c.add_i(bx,si)); break;
+							case 1: base = select_mem(os,c.add_i(bx,di)); break;
+							case 2: base = select_mem(os,c.add_i(bp,si)); break;
+							case 3: base = select_mem(os,c.add_i(bp,di)); break;
+							case 4: base = select_mem(os,si); break;
+							case 5: base = select_mem(os,di); break;
+							case 7: base = select_mem(os,bx); break;
 							default: ensure(false);
 						}
 
 						if(mod == 0)
 							return base;
 						else
-							return c.add_i(base,constant(*disp));
+							return c.add_i(base,*disp);
 					}
 				}
 
@@ -208,15 +209,15 @@ po::lvalue po::amd64::decode_modrm(
 					case 0: case 1: case 2: case 3:
 					case 6: case 7: case 8: case 9: case 10: case 11:
 					case 14: case 15:
-						return select_mem(as,select_reg(os,b_rm));
+						return select_mem(os,select_reg(os,b_rm));
 
 					case 4:
 					case 12:
-						return decode_sib(mod,std::get<0>(*sib),std::get<1>(*sib),std::get<2>(*sib),disp,as,c);
+						return decode_sib(mod,std::get<0>(*sib),std::get<1>(*sib),std::get<2>(*sib),disp,os,c);
 
 					case 5:
 					case 13:
-						return select_mem(as,constant(*disp));
+						return select_mem(os,*disp);
 
 					default: ensure(false);
 				}
@@ -228,9 +229,9 @@ po::lvalue po::amd64::decode_modrm(
 				{
 					default: ensure(false);
 				}
-				case 3: switch(b_rm)
+				case 3:
 				{
-					default: ensure(false);
+					return select_reg(os,b_rm);
 				}
 				default: ensure(false);
 			}
@@ -239,8 +240,17 @@ po::lvalue po::amd64::decode_modrm(
 	}
 }
 
-po::memory po::amd64::decode_sib(unsigned int mod, unsigned int scale, unsigned int x_index, unsigned int b_base, boost::optional<uint64_t> disp,amd64_state::AddressSize as,cg& c)
+po::memory po::amd64::decode_sib(
+		unsigned int mod,
+		unsigned int scale,
+		unsigned int x_index,
+		unsigned int b_base,
+		boost::optional<constant> disp,
+		amd64_state::OperandSize os,
+		cg& c)
 {
+	ensure(mod <= 0b11 && scale <= 0b11 && x_index <= 0b1111 && b_base <= 0b1111);
+
 	switch(mod)
 	{
 		case 0:
@@ -255,9 +265,9 @@ po::memory po::amd64::decode_sib(unsigned int mod, unsigned int scale, unsigned 
 					{
 						case 0: case 1: case 2: case 3:
 						case 5: case 6: case 7: case 8: case 9: case 10: case 11: case 12: case 13: case 14: case 15:
-							return select_mem(as,c.add_i(decode_reg64(b_base & 0b111),constant((x_index & 0b111) * (1 << (scale & 0b11)))));
+							return select_mem(os,c.add_i(decode_reg64(b_base & 0b111),constant((x_index & 0b111) * ((1 << (scale & 0b11)) / 2))));
 						case 4:
-							return select_mem(as,constant(b_base & 0b111));
+							return select_mem(os,constant(b_base & 0b111));
 						default: ensure(false);
 					}
 				}
@@ -268,9 +278,9 @@ po::memory po::amd64::decode_sib(unsigned int mod, unsigned int scale, unsigned 
 					{
 						case 0: case 1: case 2: case 3:
 						case 5: case 6: case 7: case 8: case 9: case 10: case 11: case 12: case 13: case 14: case 15:
-							return select_mem(as,constant((x_index & 0b111) * (1 << (scale & 0b11)) + *disp));
+							return select_mem(os,constant((x_index & 0b111) * ((1 << (scale & 0b11)) / 2) + disp->content()));
 						case 4:
-							return select_mem(as,constant(*disp));
+							return select_mem(os,*disp);
 						default: ensure(false);
 					}
 				}
@@ -284,9 +294,9 @@ po::memory po::amd64::decode_sib(unsigned int mod, unsigned int scale, unsigned 
 			{
 				case 0: case 1: case 2: case 3:
 				case 5: case 6: case 7: case 8: case 9: case 10: case 11: case 12: case 13: case 14: case 15:
-					return select_mem(as,c.add_i(decode_reg64(b_base & 0b111),constant((x_index & 0b111) * (1 << (scale & 0b11)) + *disp)));
+					return select_mem(os,c.add_i(decode_reg64(b_base & 0b111),constant((x_index & 0b111) * ((1 << (scale & 0b11)) / 2) + disp->content())));
 				case 4:
-					return select_mem(as,c.add_i(decode_reg64(b_base & 0b111),constant(*disp)));
+					return select_mem(os,c.add_i(decode_reg64(b_base & 0b111),*disp));
 				default: ensure(false);
 			}
 		}
@@ -312,10 +322,10 @@ std::pair<rvalue,rvalue> po::amd64::decode_mi(sm const& st,cg&)
 	return std::make_pair(*st.state.rm,*st.state.imm);
 }
 
-std::pair<rvalue,rvalue> po::amd64::decode_i(sm const& st,cg&)
+std::pair<rvalue,rvalue> po::amd64::decode_i(amd64_state::OperandSize os, sm const& st,cg&)
 {
 	ensure(st.state.imm);
-	switch(st.state.op_sz)
+	switch(os)
 	{
 		case amd64_state::OpSz_8: return std::make_pair(ah,*st.state.imm);
 		case amd64_state::OpSz_16: return std::make_pair(ax,*st.state.imm);

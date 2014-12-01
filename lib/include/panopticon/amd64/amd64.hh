@@ -31,11 +31,11 @@ namespace po
 			LongMode			// Long 64-bit mode
 		};
 
-		amd64_state(void) : amd64_state(ProtectedMode) {}
+		amd64_state(void) : amd64_state(LongMode) {}
 
 		amd64_state(Mode m)
 		: addr_sz(), op_sz(), mode(m),
-		  rex(false), reg(boost::none), rm(boost::none), imm(boost::none)
+		  rex(false), reg(boost::none), rm(boost::none), imm(boost::none), disp(boost::none)
 		{
 			switch(m)
 			{
@@ -53,7 +53,7 @@ namespace po
 		bool rex;
 
 		boost::optional<lvalue> reg, rm;
-		boost::optional<constant> imm;
+		boost::optional<constant> imm, disp;
 	};
 
 	template<>

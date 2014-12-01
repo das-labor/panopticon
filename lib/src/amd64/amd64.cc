@@ -253,18 +253,36 @@ boost::optional<prog_loc> po::amd64::disassemble(boost::optional<prog_loc> prog,
 	};
 	imm64[ imm32 >> "imm@........"_e >> "imm@........"_e >> "imm@........"_e >> "imm@........"_e] = [](sm& st)
 	{
-		st.state.imm = constant(be64toh(st.capture_groups.at("imm")) << 32);
+		st.state.imm = constant(be64toh(st.capture_groups.at("imm")));
 	};
 
-	disp8 [ "disp@........"_e] = [](sm& st) {};
-	disp16[ disp8 >> "disp@........"_e] = [](sm& st) {};
-	disp32[ disp16 >> "disp@........"_e >> "disp@........"_e] = [](sm& st) {};
-	disp64[ disp32 >> "disp@........"_e >> "disp@........"_e >> "disp@........"_e >> "disp@........"_e] = [](sm& st) {};
+	disp8 [ "disp@........"_e] = [](sm& st)
+	{
+		st.state.disp = constant(st.capture_groups.at("disp"));
+	};
+	disp16[ disp8 >> "disp@........"_e] = [](sm& st)
+	{
+		st.state.disp = constant(be16toh(st.capture_groups.at("disp")));
+	};
+	disp32[ disp16 >> "disp@........"_e >> "disp@........"_e] = [](sm& st)
+	{
+		st.state.disp = constant(be32toh(st.capture_groups.at("disp")));
+	};
+	disp64[ disp32 >> "disp@........"_e >> "disp@........"_e >> "disp@........"_e >> "disp@........"_e] = [](sm& st)
+	{
+		st.state.disp = constant(be64toh(st.capture_groups.at("disp")));
+	};
 
 	// sib
-	sib [ "00 index@... base@..."_e >> "sib@........"_e >> "sib@........"_e >> "sib@........"_e >> "sib@........"_e	] = [](sm& st) {};
-	sib [ "01 index@... base@..."_e >> "sib@........"_e																			] = [](sm& st) {};
-	sib [ "10 index@... base@..."_e >> "sib@........"_e >> "sib@........"_e >> "sib@........"_e >> "sib@........"_e	] = [](sm& st) {};
+	sib [ "scale@00 index@... base@..."_e >> "disp@........"_e >> "disp@........"_e >> "disp@........"_e >> "disp@........"_e	] = [](sm& st)
+	{
+		st.state.disp = constant(be32toh(st.capture_groups.at("disp")));
+	};
+	sib [ "scale@01 index@... base@..."_e >> "sib@........"_e																			] = [](sm& st) {};
+	sib [ "scale@10 index@... base@..."_e >> "disp@........"_e >> "disp@........"_e >> "disp@........"_e >> "disp@........"_e	] = [](sm& st)
+	{
+		st.state.disp = constant(be32toh(st.capture_groups.at("disp")));
+	};
 	sib [ "scale@.. index@... base@..."_e] = [](sm& st) {};
 
 	std::function<void(sm&)> rm8_func = [&](sm& st)
@@ -274,14 +292,13 @@ boost::optional<prog_loc> po::amd64::disassemble(boost::optional<prog_loc> prog,
 		if(st.capture_groups.count("reg"))
 			st.state.reg = decode_reg8((1 << 3) * (st.capture_groups.count("r") && st.capture_groups.at("r")) + st.capture_groups.at("reg"),st.state.rex);
 
-		boost::optional<uint64_t> disp = st.capture_groups.count("disp") ? boost::make_optional(st.capture_groups.at("disp")) : boost::none;
 		boost::optional<std::tuple<unsigned int,unsigned int,unsigned int>> sib = boost::none;
 		unsigned int b_rm = (1 << 3) * (st.capture_groups.count("b") && st.capture_groups.at("b")) + st.capture_groups.at("rm");
 
 		if(st.capture_groups.count("scale") && st.capture_groups.count("index") && st.capture_groups.count("base"))
 		{
 			unsigned int scale = st.capture_groups.at("scale");
-			unsigned int x_index = (st.state.rex ? (1 << 4) * st.capture_groups.count("x") : 0) + st.capture_groups.at("index");
+			unsigned int x_index = (st.state.rex ? (1 << 3) * st.capture_groups.count("x") : 0) + st.capture_groups.at("index");
 			unsigned int b_base = (st.state.rex ? (1 << 3) * st.capture_groups.count("b") : 0) + st.capture_groups.at("base");
 
 			sib = std::make_tuple(scale,x_index,b_base);
@@ -289,7 +306,7 @@ boost::optional<prog_loc> po::amd64::disassemble(boost::optional<prog_loc> prog,
 
 		st.mnemonic(0,"internal-rm8","",[&](cg& c) -> std::list<rvalue>
 		{
-			st.state.rm = decode_modrm(st.capture_groups.at("mod"),b_rm,disp,sib,st.state.op_sz,st.state.addr_sz,c);
+			st.state.rm = decode_modrm(st.capture_groups.at("mod"),b_rm,st.state.disp,sib,amd64_state::OpSz_8,st.state.addr_sz,c);
 			return {};
 		});
 	};
@@ -301,14 +318,13 @@ boost::optional<prog_loc> po::amd64::disassemble(boost::optional<prog_loc> prog,
 		if(st.capture_groups.count("reg"))
 			st.state.reg = decode_reg16((1 << 3) * (st.capture_groups.count("r") && st.capture_groups.at("r")) + st.capture_groups.at("reg"));
 
-		boost::optional<uint64_t> disp = st.capture_groups.count("disp") ? boost::make_optional(st.capture_groups.at("disp")) : boost::none;
 		boost::optional<std::tuple<unsigned int,unsigned int,unsigned int>> sib = boost::none;
 		unsigned int b_rm = (1 << 3) * (st.capture_groups.count("b") && st.capture_groups.at("b")) + st.capture_groups.at("rm");
 
 		if(st.capture_groups.count("scale") && st.capture_groups.count("index") && st.capture_groups.count("base"))
 		{
 			unsigned int scale = st.capture_groups.at("scale");
-			unsigned int x_index = (st.state.rex ? (1 << 4) * st.capture_groups.count("x") : 0) + st.capture_groups.at("index");
+			unsigned int x_index = (st.state.rex ? (1 << 3) * st.capture_groups.count("x") : 0) + st.capture_groups.at("index");
 			unsigned int b_base = (st.state.rex ? (1 << 3) * st.capture_groups.count("b") : 0) + st.capture_groups.at("base");
 
 			sib = std::make_tuple(scale,x_index,b_base);
@@ -316,7 +332,7 @@ boost::optional<prog_loc> po::amd64::disassemble(boost::optional<prog_loc> prog,
 
 		st.mnemonic(0,"internal-rm16","",[&](cg& c) -> std::list<rvalue>
 		{
-			st.state.rm = decode_modrm(st.capture_groups.at("mod"),b_rm,disp,sib,st.state.op_sz,st.state.addr_sz,c);
+			st.state.rm = decode_modrm(st.capture_groups.at("mod"),b_rm,st.state.disp,sib,amd64_state::OpSz_16,st.state.addr_sz,c);
 			return {};
 		});
 	};
@@ -328,14 +344,13 @@ boost::optional<prog_loc> po::amd64::disassemble(boost::optional<prog_loc> prog,
 		if(st.capture_groups.count("reg"))
 			st.state.reg = decode_reg32((1 << 3) * (st.capture_groups.count("r") && st.capture_groups.at("r")) + st.capture_groups.at("reg"));
 
-		boost::optional<uint64_t> disp = st.capture_groups.count("disp") ? boost::make_optional(st.capture_groups.at("disp")) : boost::none;
 		boost::optional<std::tuple<unsigned int,unsigned int,unsigned int>> sib = boost::none;
 		unsigned int b_rm = (1 << 3) * (st.capture_groups.count("b") && st.capture_groups.at("b")) + st.capture_groups.at("rm");
 
 		if(st.capture_groups.count("scale") && st.capture_groups.count("index") && st.capture_groups.count("base"))
 		{
 			unsigned int scale = st.capture_groups.at("scale");
-			unsigned int x_index = (st.state.rex ? (1 << 4) * st.capture_groups.count("x") : 0) + st.capture_groups.at("index");
+			unsigned int x_index = (st.state.rex ? (1 << 3) * st.capture_groups.count("x") : 0) + st.capture_groups.at("index");
 			unsigned int b_base = (st.state.rex ? (1 << 3) * st.capture_groups.count("b") : 0) + st.capture_groups.at("base");
 
 			sib = std::make_tuple(scale,x_index,b_base);
@@ -343,7 +358,7 @@ boost::optional<prog_loc> po::amd64::disassemble(boost::optional<prog_loc> prog,
 
 		st.mnemonic(0,"internal-rm32","",[&](cg& c) -> std::list<rvalue>
 		{
-			st.state.rm = decode_modrm(st.capture_groups.at("mod"),b_rm,disp,sib,st.state.op_sz,st.state.addr_sz,c);
+			st.state.rm = decode_modrm(st.capture_groups.at("mod"),b_rm,st.state.disp,sib,amd64_state::OpSz_32,st.state.addr_sz,c);
 			return {};
 		});
 	};
@@ -355,14 +370,13 @@ boost::optional<prog_loc> po::amd64::disassemble(boost::optional<prog_loc> prog,
 		if(st.capture_groups.count("reg"))
 			st.state.reg = decode_reg64((1 << 3) * (st.capture_groups.count("r") && st.capture_groups.at("r")) + st.capture_groups.at("reg"));
 
-		boost::optional<uint64_t> disp = st.capture_groups.count("disp") ? boost::make_optional(st.capture_groups.at("disp")) : boost::none;
 		boost::optional<std::tuple<unsigned int,unsigned int,unsigned int>> sib = boost::none;
 		unsigned int b_rm = (1 << 3) * (st.capture_groups.count("b") && st.capture_groups.at("b")) + st.capture_groups.at("rm");
 
 		if(st.capture_groups.count("scale") && st.capture_groups.count("index") && st.capture_groups.count("base"))
 		{
 			unsigned int scale = st.capture_groups.at("scale");
-			unsigned int x_index = (st.state.rex ? (1 << 4) * st.capture_groups.count("x") : 0) + st.capture_groups.at("index");
+			unsigned int x_index = (st.state.rex ? (1 << 3) * st.capture_groups.count("x") : 0) + st.capture_groups.at("index");
 			unsigned int b_base = (st.state.rex ? (1 << 3) * st.capture_groups.count("b") : 0) + st.capture_groups.at("base");
 
 			sib = std::make_tuple(scale,x_index,b_base);
@@ -370,7 +384,7 @@ boost::optional<prog_loc> po::amd64::disassemble(boost::optional<prog_loc> prog,
 
 		st.mnemonic(0,"internal-rm64","",[&](cg& c) -> std::list<rvalue>
 		{
-			st.state.rm = decode_modrm(st.capture_groups.at("mod"),b_rm,disp,sib,st.state.op_sz,st.state.addr_sz,c);
+			st.state.rm = decode_modrm(st.capture_groups.at("mod"),b_rm,st.state.disp,sib,amd64_state::OpSz_64,st.state.addr_sz,c);
 			return {};
 		});
 	};
@@ -719,11 +733,11 @@ boost::optional<prog_loc> po::amd64::disassemble(boost::optional<prog_loc> prog,
 		m.assign(to_lvalue(a),(a + b + CF) % 0x100000000ull);
 	};
 
-	main[ *generic_prfx >>						0x14 >> imm8				] = binary("adc",decode_i,adc);
+	main[ *generic_prfx >>						0x14 >> imm8				] = binary("adc",std::bind(decode_i,amd64_state::OpSz_8,pls::_1,pls::_2),adc);
 
-	main[ *generic_prfx >> opsize_prfix	>> 0x15 >> imm16				] = binary("adc",decode_i,adc);
-	main[ *generic_prfx >>						0x15 >> imm32				] = binary("adc",decode_i,adc);
-	main[ *generic_prfx >> rexw_prfix	>> 0x15 >> imm32				] = binary("adc",decode_i,adc);
+	main[ *generic_prfx >> opsize_prfix	>> 0x15 >> imm16				] = binary("adc",std::bind(decode_i,amd64_state::OpSz_16,pls::_1,pls::_2),adc);
+	main[ *generic_prfx >>						0x15 >> imm32				] = binary("adc",std::bind(decode_i,amd64_state::OpSz_32,pls::_1,pls::_2),adc);
+	main[ *generic_prfx >> rexw_prfix	>> 0x15 >> imm32				] = binary("adc",std::bind(decode_i,amd64_state::OpSz_64,pls::_1,pls::_2),adc);
 
 	main[ *generic_prfx >>						0x80 >> rm8_2 >> imm8	] = binary("adc",decode_mi,adc);
 	main[ *generic_prfx >> rex_prfix		>> 0x80 >> rm8_2 >> imm8	] = binary("adc",decode_mi,adc);
