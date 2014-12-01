@@ -209,10 +209,8 @@ TEST_F(disassembler,empty_capture_group)
 	ASSERT_EQ(st.tokens[0], 127);
 	ASSERT_EQ(st.capture_groups.size(), 2);
 	ASSERT_EQ(st.capture_groups.count("a"), 1);
-	ASSERT_EQ(st.capture_groups.count("b"), 1);
 	ASSERT_EQ(st.capture_groups.count("c"), 1);
 	ASSERT_EQ(st.capture_groups["a"], 3);
-	ASSERT_EQ(st.capture_groups["b"], 0);
 	ASSERT_EQ(st.capture_groups["c"], 7);
 	ASSERT_EQ(st.mnemonics.size(), 1);
 	ASSERT_EQ(st.mnemonics.front().opcode, std::string("1"));
