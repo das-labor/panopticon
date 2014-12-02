@@ -3,7 +3,7 @@
 #include <string>
 
 #include <panopticon/amd64/amd64.hh>
-#include <panopticon/amd64/util.hh>
+#include <panopticon/amd64/decode.hh>
 
 #include <panopticon/code_generator.hh>
 
