@@ -414,140 +414,21 @@ std::tuple<QString,po::bound,std::list<po::bound>> LinearModel::data_visitor::op
 		std::list<po::bound>());
 }
 
-QString ProcedureModel::name(void) const
-{
-	return _procedure ? QString::fromStdString((*_procedure)->name) : QString();
-}
-
-QStringList ProcedureModel::jumps(void) const
-{
-	QStringList ret;
-
-	if(_procedure)
-	{
-		proc_loc proc = *_procedure;
-		for(auto e: iters(edges(proc->control_transfers)))
-		{
-			try
-			{
-				auto from_desc = source(e,proc->control_transfers);
-				bblock_loc from = boost::get<bblock_loc>(get_vertex(from_desc,proc->control_transfers));
-				bblock_loc to = boost::get<bblock_loc>(get_vertex(target(e,proc->control_transfers),proc->control_transfers));
-
-				po::offset from_o = from->area().lower();
-				po::offset to_o = to->area().lower();
-				std::string type = "unconditional";
-				std::stringstream ss;
-
-				ss << get_edge(e,proc->control_transfers);
-
-				// fallthru <=> false branch
-				if(out_degree(from_desc,proc->control_transfers) > 1)
-					type = (from->area().upper() == to->area().lower() ? "false" : "true");
-
-				ret.append(QString("{ 'from': %1, 'to': %2, 'type': '%3', 'condition': '%4' }")
-						.arg(from_o)
-						.arg(to_o)
-						.arg(QString::fromStdString(type))
-						.arg(QString::fromStdString(ss.str())));
-			}
-			catch(const boost::bad_get)
-			{}
-		}
-	}
-
-	return ret;
-}
-
-QStringList ProcedureModel::blocks(void) const
-{
-	QStringList ret;
-
-	if(_procedure)
-	{
-		proc_loc proc = *_procedure;
-		for(auto v: iters(vertices(proc->control_transfers)))
-		{
-			try
-			{
-				bblock_loc bb = boost::get<bblock_loc>(get_vertex(v,proc->control_transfers));
-				ret.append(QString("%1").arg(bb->area().lower()));
-			}
-			catch(const boost::bad_get)
-			{}
-		}
-	}
-
-	return ret;
-}
-
-QString ProcedureModel::mnemonics(void) const
-{
-	QStringList ret;
-
-	if(_procedure)
-	{
-		proc_loc proc = *_procedure;
-		for(auto v: iters(vertices(proc->control_transfers)))
-		{
-			try
-			{
-				bblock_loc bb = boost::get<bblock_loc>(get_vertex(v,proc->control_transfers));
-				QStringList mnes;
-
-				for(const mnemonic& mne: bb->mnemonics())
-				{
-					QStringList ops;
-
-					for(auto q: mne.operands)
-					{
-						std::stringstream ss;
-						ss << q;
-						ops.append("'" + QString::fromStdString(ss.str()) + "'");
-					}
-
-					mnes.append(QString("{ 'op': '%1', 'args': %2 }")
-						.arg(QString::fromStdString(mne.opcode))
-						.arg("[" + ops.join(",") + "]"));
-				}
-
-				ret.append(QString("'%1': [ %2 ]")
-					.arg(bb->area().lower())
-					.arg(mnes.join(", ")));
-			}
-			catch(const boost::bad_get)
-			{}
-		}
-	}
-
-	return QString("{ %1 }").arg(ret.join(", "));
-}
-
-
-void ProcedureModel::setProcedure(proc_loc p)
-{
-	if(!_procedure || p != *_procedure)
-	{
-		_procedure = p;
-		emit blocksChanged();
-		emit mnemonicsChanged();
-		emit jumpsChanged();
-		emit nameChanged();
-	}
-}
-
 Session::Session(po::session sess, QObject *p)
-: QObject(p), _session(sess), _linear(new LinearModel(sess.dbase,this)), _graph(new ProcedureModel()), _procedures(), _activeProcedure("")
+: QObject(p), _session(sess), _linear(new LinearModel(sess.dbase,this)), _procedures(), _activeProcedure(nullptr)
 {
 	bool set = false;
 
 	for(auto proc: (*_session.dbase->programs.begin())->procedures())
 	{
-		_procedures.append(QString::fromStdString(proc->name));
+		auto p = new Procedure(this);
+
+		p->setProcedure(proc);
+		_procedures.append(QVariant::fromValue<QObject*>(p));
 		if(!set)
 		{
 			set = true;
-			_graph->setProcedure(proc);
+			//_graph->setProcedure(proc);
 		}
 	}
 }
@@ -580,19 +461,20 @@ void Session::disassemble(int r, int c)
 	qDebug() << "start disassemble at" << r << "/" << c;
 }
 
-void Session::setActiveProcedure(QString const& s)
+void Session::setActiveProcedure(QObject* s)
 {
-	if(s != _activeProcedure)
+	Procedure *proc = qobject_cast<Procedure*>(s);
+	if(proc && proc != _activeProcedure && proc->procedure())
 	{
-		_activeProcedure = s;
+		_activeProcedure = proc;
 
-		auto prog = *_session.dbase->programs.begin();
+		/*auto prog = *_session.dbase->programs.begin();
 		auto p = std::find_if(prog->procedures().begin(),prog->procedures().end(),[&](proc_loc p) { return p->name == s.toStdString(); });
 
 		ensure(p != prog->procedures().end());
 
-		_graph->setProcedure(*p);
-		//_linear->setProcedure(*p);
+		_graph->setProcedure(*p);*/
+		//_linear->setProcedure(*proc->procedure());
 
 		emit activeProceduresChanged();
 	}

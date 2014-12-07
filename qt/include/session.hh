@@ -47,29 +47,22 @@ protected:
 	std::unordered_map<std::string,int> _procedures;
 };
 
-class ProcedureModel : public QObject
+class Procedure : public QObject
 {
 	Q_OBJECT
 	Q_PROPERTY(QString name READ name NOTIFY nameChanged)
-	Q_PROPERTY(QStringList jumps READ jumps NOTIFY jumpsChanged)
-	Q_PROPERTY(QStringList blocks READ blocks NOTIFY blocksChanged)
-	Q_PROPERTY(QString mnemonics READ mnemonics NOTIFY mnemonicsChanged)
 
 public:
-	ProcedureModel(QObject* p = nullptr) : QObject(p) {}
+	Procedure(QObject* parent = 0);
+	virtual ~Procedure(void);
 
-	QString name(void) const;
-	QStringList jumps(void) const;
-	QStringList blocks(void) const;
-	QString mnemonics(void) const;
+	void setProcedure(po::proc_loc p) { _procedure = p; }
+	boost::optional<po::proc_loc> procedure(void) const { return _procedure; }
 
-	void setProcedure(po::proc_loc p);
+	QString name(void) const { return _procedure ? QString::fromStdString((*_procedure)->name) : ""; }
 
 signals:
 	void nameChanged(void);
-	void jumpsChanged(void);
-	void blocksChanged(void);
-	void mnemonicsChanged(void);
 
 private:
 	boost::optional<po::proc_loc> _procedure;
@@ -80,9 +73,8 @@ class Session : public QObject
 	Q_OBJECT
 	Q_PROPERTY(QString title READ title NOTIFY titleChanged)
 	Q_PROPERTY(QObject* linear READ linear NOTIFY linearChanged)
-	Q_PROPERTY(QObject* graph READ graph NOTIFY graphChanged)
-	Q_PROPERTY(QStringList procedures READ procedures NOTIFY proceduresChanged)
-	Q_PROPERTY(QString activeProcedure READ activeProcedure WRITE setActiveProcedure NOTIFY activeProceduresChanged)
+	Q_PROPERTY(QVariantList procedures READ procedures NOTIFY proceduresChanged)
+	Q_PROPERTY(QObject* activeProcedure READ activeProcedure WRITE setActiveProcedure NOTIFY activeProceduresChanged)
 
 public:
 	Session(po::session, QObject *parent = nullptr);
@@ -97,23 +89,20 @@ public:
 
 	QString title(void) const { return QString::fromStdString(_session.dbase->title); }
 	QObject* linear(void) const { return _linear; }
-	QObject* graph(void) const { return _graph; }
-	const QStringList& procedures(void) const { return _procedures; }
-	QString activeProcedure(void) const { return _activeProcedure; }
+	QVariantList const& procedures(void) const { return _procedures; }
+	QObject* activeProcedure(void) const { return _activeProcedure; }
 
-	void setActiveProcedure(QString const& s);
+	void setActiveProcedure(QObject*);
 
 signals:
 	void titleChanged(void);
 	void linearChanged(void);
-	void graphChanged(void);
 	void proceduresChanged(void);
 	void activeProceduresChanged(void);
 
 private:
 	po::session _session;
 	LinearModel* _linear;
-	ProcedureModel* _graph;
-	QStringList _procedures;
-	QString _activeProcedure;
+	QVariantList _procedures;
+	Procedure* _activeProcedure;
 };
