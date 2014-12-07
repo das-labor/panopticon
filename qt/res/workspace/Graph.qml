@@ -12,7 +12,7 @@ Item {
 
 	onSessionChanged: {
 		if(session != null) {
-			session.graph.jumpsChanged.connect(sugiyama.rebuildEdges)
+			//session.graph.jumpsChanged.connect(sugiyama.rebuildEdges)
 			sugiyama.rebuildEdges()
 		}
 	}
@@ -51,8 +51,6 @@ Item {
 				}
 			}
 
-			property int bbid: modelData
-
 			Component.onCompleted: {
 				if(root.nodes != undefined) {
 					root.nodes.push(bblock)
@@ -68,12 +66,12 @@ Item {
 				property int mnemonicWidth: 0
 
 				Repeater {
-					model: eval(session.graph.mnemonics)[bbid]
+					model: payload == undefined ? [] : eval(payload).payload
 					delegate: Row {
 						spacing: 5
 
 						Text {
-							text: modelData.op
+							text: modelData.opcode
 							width: col.mnemonicWidth
 							font { family: "Monospace" }
 							color: textColor
@@ -84,7 +82,7 @@ Item {
 						}
 
 						Repeater {
-							model: modelData.args
+							model: modelData.operands
 							delegate: Text {
 								font { family: "Monospace" }
 								text: modelData
@@ -105,14 +103,14 @@ Item {
 
 				onPositionChanged: {
 					if(pressed) {
-						sugiyama.direct = true
-						edgeColor = "gray"
+						//sugiyama.direct = true
+						//edgeColor = "gray"
 					}
 					sugiyama.route()
 				}
 
 				onReleased: {
-						sugiyama.direct = false
+						//sugiyama.direct = false
 						sugiyama.route()
 				}
 
@@ -242,22 +240,22 @@ Item {
 			x: (childrenRect.width < root.width * 2 ? ((root.width - childrenRect.width) / 2) : 0)
 			width: Math.max(childrenRect.width,root.width + 100)
 			height: Math.max(2*childrenRect.height,root.height)
-			delegate: node
 
 			function rebuildEdges() {
 				var tmp = []
-				for(var a in root.session.graph.jumps) {
+				/*for(var a in root.session.graph.jumps) {
 					var e = eval(root.session.graph.jumps[a])
 					var x = edge.createObject(sugiyama,e)
 
 					tmp = [].concat(tmp,[x])
-				}
+				}*/
 
-				sugiyama.edges = tmp
+				//sugiyama.edges = tmp
 			}
 
-			vertices: root.session ? root.session.graph.blocks.map(function(a) { return eval(a) }) : []
-			edges: []
+			procedure: root.session.activeProcedure
+			vertex: node
+			edge: edge
 
 			onLayoutDone: {
 				root.rankY = []

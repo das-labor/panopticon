@@ -1,47 +1,82 @@
-#include <unordered_map>
-
-#include <QQmlListProperty>
-#include <QList>
-#include <QDebug>
-#include <QHash>
-#include <QVariant>
-#include <QFuture>
-#include <QFutureWatcher>
+#include <mutex>
 
 #include <QtQml>
 #include <QtQuick>
 
-#include <panopticon/digraph.hh>
-#include <panopticon/hash.hh>
+#include <boost/optional.hpp>
+
+#include <panopticon/procedure.hh>
+
+#include "session.hh"
 
 #pragma once
 
-namespace
+struct node_proxy
 {
-	using itmgraph = po::digraph<
-		std::tuple<QVariant,QQuickItem*,QQmlContext*>,
-		std::tuple<QVariant,QPainterPath,QQuickItem*,QQuickItem*,QQmlContext*,QQmlContext*,QQuickItem*,QQmlContext*,QPointF>>;
-
-	struct point
+	node_proxy(QQmlComponent* comp,QQuickItem* parent)
+	: item(nullptr), context(nullptr)
 	{
-		enum Type : uint8_t
+		if(comp)
 		{
-			Entry,
-			Exit,
-			Corner,
-			Center
-		};
+			context = new QQmlContext(QQmlEngine::contextForObject(parent));
+			context->setContextProperty("modelData",QVariant());
+			context->setContextProperty("incomingEdges",QVariantList());
+			context->setContextProperty("incomingNodes",QVariantList());
+			context->setContextProperty("outgoingNodes",QVariantList());
+			context->setContextProperty("outgoingEdges",QVariantList());
+			context->setContextProperty("firstRank",QVariant());
+			context->setContextProperty("lastRank",QVariant());
+			context->setContextProperty("computedX",QVariant());
+			context->setContextProperty("payload",QVariant());
+			item = qobject_cast<QQuickItem*>(comp->create(context));
+			item->setParentItem(parent);
+		}
+	}
 
-		bool operator==(point const& p) const { return p.node == node && p.x == x && p.y == y && type == p.type; }
-		bool operator!=(point const& p) const { return !(p == *this); }
+	QQuickItem* item;
+	QQmlContext* context;
+};
 
-		itmgraph::vertex_descriptor node;
-		Type type;
-		int x, y;
+struct edge_proxy
+{
+	edge_proxy(QQmlComponent* comp,QQuickItem* parent)
+	: label(nullptr), head(nullptr), tail(nullptr),
+		label_context(nullptr), head_context(nullptr), tail_context(nullptr)
+	{
+		if(comp)
+		{
+			edge_context = new QQmlContext(QQmlEngine::contextForObject(parent));
+			edge = qobject_cast<QObject*>(comp->create(edge_context));
+			edge->setParent(parent);
+		}
+	}
+
+	QObject *edge;
+	QQuickItem *label, *head, *tail;
+	QQmlContext *edge_context, *label_context, *head_context, *tail_context;
+};
+
+using itmgraph = po::digraph<node_proxy,edge_proxy>;
+
+struct point
+{
+	enum Type : uint8_t
+	{
+		Entry,
+		Exit,
+		Corner,
+		Center
 	};
 
-	using visgraph = std::unordered_multimap<point,point>;
-}
+	bool operator==(point const& p) const { return p.node == node && p.x == x && p.y == y && type == p.type; }
+	bool operator!=(point const& p) const { return !(p == *this); }
+
+	itmgraph::vertex_descriptor node;
+	Type type;
+	int x, y;
+};
+
+using visgraph = std::unordered_multimap<point,point>;
 
 namespace std
 {
@@ -55,11 +90,11 @@ namespace std
 	};
 
 	template<>
-	struct hash<std::tuple<QVariant,QQuickItem*,QQmlContext*>>
+	struct hash<node_proxy>
 	{
-		size_t operator()(const std::tuple<QVariant,QQuickItem*,QQmlContext*>& p) const
+		size_t operator()(node_proxy const& p) const
 		{
-			return po::hash_struct(get<1>(p));
+			return po::hash_struct(p.item,p.context);
 		}
 	};
 }
@@ -68,30 +103,31 @@ class Sugiyama : public QQuickPaintedItem
 {
 	Q_OBJECT
 
-	Q_PROPERTY(QQmlComponent* delegate READ delegate WRITE setDelegate NOTIFY delegateChanged)
-	Q_PROPERTY(QVariantList vertices READ vertices WRITE setVertices NOTIFY verticesChanged)
-	Q_PROPERTY(QVariantList edges READ edges WRITE setEdges NOTIFY edgesChanged)
-	Q_PROPERTY(bool direct READ direct WRITE setDirect NOTIFY directChanged)
+	Q_PROPERTY(QQmlComponent* vertex READ vertex WRITE setVertex NOTIFY vertexChanged)
+	Q_PROPERTY(QQmlComponent* edge READ edge WRITE setEdge NOTIFY edgeChanged)
+	Q_PROPERTY(QObject* procedure READ procedure WRITE setProcedure NOTIFY procedureChanged)
 
 public:
-	Sugiyama(QQuickItem *parent = nullptr);
-	virtual ~Sugiyama(void);
-
-	QQmlComponent* delegate(void) const { return _delegate; }
-	QVariantList vertices(void) const { return _vertices; }
-	QVariantList edges(void) const { return _edges; }
-	bool direct(void) const { return _direct; }
-
-	void setDelegate(QQmlComponent* c);
-	void setVertices(QVariantList l);
-	void setEdges(QVariantList l);
-	void setDirect(bool b);
-
-	virtual void paint(QPainter *) override;
+	using layout_type = std::unordered_map<itmgraph::vertex_descriptor,std::tuple<unsigned int,unsigned int,unsigned int>>;
+	using route_type = std::unordered_map<itmgraph::edge_descriptor,std::pair<QPainterPath,QPointF>>;
+	using cache_type = std::tuple<itmgraph,boost::optional<layout_type>,boost::optional<route_type>>;
 
 	static const int nodeBorderPadding;
 	static const int edgeRadius;
 	static const int nodePortPadding;
+
+	Sugiyama(QQuickItem *parent = nullptr);
+	virtual ~Sugiyama(void);
+
+	QQmlComponent* vertex(void) const { return _vertex; }
+	QQmlComponent* edge(void) const { return _edge; }
+	QObject* procedure(void) const { return _procedure; }
+
+	void setVertex(QQmlComponent* c);
+	void setEdge(QQmlComponent* c);
+	void setProcedure(QObject* o);
+
+	virtual void paint(QPainter*) override;
 
 public slots:
 	void layout(void);
@@ -101,44 +137,30 @@ public slots:
 	void processLayout(void);
 
 signals:
-	void verticesChanged(void);
-	void edgesChanged(void);
-	void delegateChanged(void);
-	void directChanged(void);
+	void vertexChanged(void);
+	void edgeChanged(void);
+	void procedureChanged(void);
 
 	void layoutStart(void);
 	void layoutDone(void);
-	void routingStart(void);
-	void routingDone(void);
+	void routeStart(void);
+	void routeDone(void);
 
 private:
 	// Properties
-	QQmlComponent* _delegate;
-	QVariantList _vertices;
-	QVariantList _edges;
-	bool _direct;
+	QQmlComponent* _vertex;
+	QQmlComponent* _edge;
+	Procedure* _procedure;
 
-	mutable boost::optional<itmgraph> _graph;
+	std::unordered_map<po::proc_wloc,cache_type> _cache;
 	QSignalMapper _mapper;
-	QFutureWatcher<std::unordered_map<itmgraph::vertex_descriptor,std::tuple<unsigned int,unsigned int,unsigned int>>> _layoutWatcher;
-	QFutureWatcher<std::unordered_map<itmgraph::edge_descriptor,std::pair<QPainterPath,QPointF>>> _routeWatcher;
-	QTimer _layoutTimer;
-	bool _scheduleLayout;
+	QFutureWatcher<std::pair<po::proc_wloc,layout_type>> _layoutWatcher;
+	QFutureWatcher<std::pair<po::proc_wloc,route_type>> _routeWatcher;
+	bool _routingNeeded;
+	std::mutex _mutex;
 
-	void clear(void);
-	itmgraph& graph(void);
-	void positionEdgeDecoration(itmgraph::edge_descriptor e, itmgraph const& graph);
+	void positionNode(itmgraph::vertex_descriptor v, itmgraph const& graph, std::tuple<unsigned int,unsigned int,unsigned int> pos);
+	void positionEdgeDecoration(itmgraph::edge_descriptor e, cache_type const& cache);
+	void updateEdgeDecorations(itmgraph::edge_descriptor e, cache_type& cache);
 	void redoAttached(void);
 };
-
-	std::unordered_map<itmgraph::edge_descriptor,std::pair<QPainterPath,QPointF>>
-		doRoute(itmgraph graph, std::unordered_map<itmgraph::vertex_descriptor,QRect> bboxes);
-	QPainterPath toBezier(const std::list<point> &segs);
-	QPainterPath toPoly(const std::list<point> &segs);
-	std::unordered_map<itmgraph::vertex_descriptor,std::tuple<unsigned int,unsigned int,unsigned int>>
-		doLayout(itmgraph, unsigned int, std::unordered_map<itmgraph::vertex_descriptor,int>);
-	QLineF contactVector(QRectF const& bb, const QPainterPath& pp);
-	qreal approximateDistance(const QPointF &pnt, const QPainterPath& pp);
-	std::list<point> dijkstra(point start, point goal, visgraph const& graph);
-	std::pair<int,int>
-		nodePorts(itmgraph::edge_descriptor e, boost::optional<std::unordered_map<itmgraph::vertex_descriptor,QRect>> bboxes, itmgraph const& graph);

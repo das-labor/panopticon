@@ -78,7 +78,7 @@ Item {
 					anchors.rightMargin: 5
 					anchors.fill: parent
 
-					text: modelData
+					text: modelData.name
 					elide: Text.ElideRight
 					verticalAlignment: Text.AlignVCenter
 					color: "white"
