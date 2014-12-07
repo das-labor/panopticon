@@ -249,7 +249,7 @@ po::memory po::amd64::decode_sib(
 		amd64_state::OperandSize os,
 		cg& c)
 {
-	ensure(mod <= 0b11 && scale <= 0b11 && x_index <= 0b1111 && b_base <= 0b1111);
+	ensure(mod <= 3 && scale <= 3 && x_index <= 15 && b_base <= 15);
 
 	switch(mod)
 	{
@@ -265,9 +265,9 @@ po::memory po::amd64::decode_sib(
 					{
 						case 0: case 1: case 2: case 3:
 						case 5: case 6: case 7: case 8: case 9: case 10: case 11: case 12: case 13: case 14: case 15:
-							return select_mem(os,c.add_i(decode_reg64(b_base & 0b111),constant((x_index & 0b111) * ((1 << (scale & 0b11)) / 2))));
+							return select_mem(os,c.add_i(decode_reg64(b_base & 7),constant((x_index & 7) * ((1 << (scale & 3)) / 2))));
 						case 4:
-							return select_mem(os,constant(b_base & 0b111));
+							return select_mem(os,constant(b_base & 7));
 						default: ensure(false);
 					}
 				}
@@ -278,7 +278,7 @@ po::memory po::amd64::decode_sib(
 					{
 						case 0: case 1: case 2: case 3:
 						case 5: case 6: case 7: case 8: case 9: case 10: case 11: case 12: case 13: case 14: case 15:
-							return select_mem(os,constant((x_index & 0b111) * ((1 << (scale & 0b11)) / 2) + disp->content()));
+							return select_mem(os,constant((x_index & 7) * ((1 << (scale & 3)) / 2) + disp->content()));
 						case 4:
 							return select_mem(os,*disp);
 						default: ensure(false);
@@ -294,9 +294,9 @@ po::memory po::amd64::decode_sib(
 			{
 				case 0: case 1: case 2: case 3:
 				case 5: case 6: case 7: case 8: case 9: case 10: case 11: case 12: case 13: case 14: case 15:
-					return select_mem(os,c.add_i(decode_reg64(b_base & 0b111),constant((x_index & 0b111) * ((1 << (scale & 0b11)) / 2) + disp->content())));
+					return select_mem(os,c.add_i(decode_reg64(b_base & 7),constant((x_index & 7) * ((1 << (scale & 3)) / 2) + disp->content())));
 				case 4:
-					return select_mem(os,c.add_i(decode_reg64(b_base & 0b111),*disp));
+					return select_mem(os,c.add_i(decode_reg64(b_base & 7),*disp));
 				default: ensure(false);
 			}
 		}
