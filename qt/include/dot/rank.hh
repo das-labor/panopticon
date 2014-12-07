@@ -90,7 +90,6 @@ namespace dot
 	po::digraph<boost::optional<std::pair<bool,typename po::digraph<N,E>::vertex_descriptor>>,std::pair<int,int>> prepare_rank_graph(const po::digraph<N,E>& g)
 	{
 		using vx_desc = typename po::digraph<N,E>::vertex_descriptor;
-		using eg_desc = typename po::digraph<N,E>::edge_descriptor;
 		using virt_vx = typename boost::optional<std::pair<bool,vx_desc>>; // true <=> upper node
 		using virt_graph = typename po::digraph<virt_vx,std::pair<int,int>>; // omega,delta
 		using virt_desc = typename po::digraph<virt_vx,std::pair<int,int>>::vertex_descriptor;
@@ -180,7 +179,6 @@ namespace dot
 	std::unordered_map<typename po::digraph<N,E>::vertex_descriptor,std::pair<int,int>> rank(const po::digraph<N,E>& g)
 	{
 		using vx_desc = typename po::digraph<N,E>::vertex_descriptor;
-		using eg_desc = typename po::digraph<N,E>::edge_descriptor;
 		using virt_vx = typename boost::optional<std::pair<bool,vx_desc>>; // true <=> upper node
 		using virt_graph = typename po::digraph<virt_vx,std::pair<int,int>>; // omega,delta
 		using virt_desc = typename po::digraph<virt_vx,std::pair<int,int>>::vertex_descriptor;

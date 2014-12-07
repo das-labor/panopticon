@@ -42,6 +42,8 @@ namespace po
 	 */
 	struct procedure
 	{
+		using graph_type = digraph<boost::variant<bblock_loc,rvalue>,guard>;
+
 		/// Constructs an empty procedure with name @arg n
 		procedure(const std::string &n);
 		procedure(const procedure& p);
@@ -56,7 +58,7 @@ namespace po
 
 		std::string name;	///< Human-readable name
 		boost::optional<bblock_loc> entry;	///< Entry point
-		digraph<boost::variant<bblock_loc,rvalue>,guard> control_transfers;
+		graph_type control_transfers;
 
 		/// Create or extend a procedure by starting to disassemble using @arg main at offset @arg start in @arg tokens
 		template<typename Tag,typename Dis>
@@ -341,7 +343,7 @@ namespace po
 			if(std::distance(q.first,q.second) == 1 &&
 				 get<bblock_loc>(&get_vertex(*q.first,(*ret)->control_transfers)) &&
 				 get<bblock_loc>(get_vertex(*q.first,(*ret)->control_transfers))->mnemonics().empty())
-				ret->write().control_transfers = digraph<boost::variant<bblock_loc,rvalue>,guard>();
+				ret->write().control_transfers = procedure::graph_type();
 
 			q = vertices((*ret)->control_transfers);
 

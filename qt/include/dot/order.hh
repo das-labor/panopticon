@@ -61,7 +61,6 @@ namespace dot
 	prepare_order_graph(const std::unordered_map<typename po::digraph<N,E>::vertex_descriptor,std::pair<int,int>>& ranks, const po::digraph<N,E>& g)
 	{
 		using vx_desc = typename po::digraph<N,E>::vertex_descriptor;
-		using eg_desc = typename po::digraph<N,E>::edge_descriptor;
 		using virt_vx = typename std::tuple<int,int,boost::optional<vx_desc>>;
 		using virt_graph = typename po::digraph<virt_vx,int>;
 		using virt_desc = typename po::digraph<virt_vx,int>::vertex_descriptor;
@@ -189,8 +188,6 @@ namespace dot
 	std::unordered_map<typename po::digraph<std::tuple<int,int,boost::optional<typename po::digraph<N,E>::vertex_descriptor>>,int>::vertex_descriptor,int>
 	initial_order(const po::digraph<std::tuple<int,int,boost::optional<typename po::digraph<N,E>::vertex_descriptor>>,int>& graph)
 	{
-		using virt_vx = typename std::tuple<int,int,boost::optional<typename po::digraph<N,E>::vertex_descriptor>>;
-		using virt_graph = typename po::digraph<virt_vx,std::pair<int,int>>;
 		using node = typename std::remove_reference<decltype(graph)>::type::vertex_descriptor;
 
 		std::unordered_map<node,int> ret;
@@ -223,7 +220,6 @@ namespace dot
 	order(const std::unordered_map<typename po::digraph<N,E>::vertex_descriptor,std::pair<int,int>>& lambda, const std::unordered_map<typename po::digraph<N,E>::vertex_descriptor,int>& widths, int nodesep, const po::digraph<N,E>& graph)
 	{
 		using vx_desc = typename po::digraph<N,E>::vertex_descriptor;
-		using eg_desc = typename po::digraph<N,E>::edge_descriptor;
 		using virt_vx = typename std::tuple<int,int,boost::optional<vx_desc>>;
 		using virt_graph = typename po::digraph<virt_vx,int>;
 		using virt_graph2 = typename po::digraph<virt_vx,std::pair<int,int>>;
