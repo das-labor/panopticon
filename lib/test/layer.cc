@@ -55,7 +55,7 @@ TEST(slab,undefined)
 {
 	slab s(128);
 
-	ASSERT_EQ(s.size(), 128);
+	ASSERT_EQ(s.size(), 128u);
 	ASSERT_EQ(s.read(0), boost::none);
 	ASSERT_EQ(s.read(127), boost::none);
 }
@@ -66,8 +66,8 @@ TEST(layer,anonymous_layer)
 	layer l2 = layer("anon 2",{1,2,3,4,5,6});
 	vector<tryte> r;
 
-	ASSERT_EQ(128,l1.filter(slab()).size());
-	ASSERT_EQ(6,l2.filter(slab()).size());
+	ASSERT_EQ(128u,l1.filter(slab()).size());
+	ASSERT_EQ(6u,l2.filter(slab()).size());
 
 	slab s = l2.filter(slab());
 	std::copy(s.begin(),s.end(),back_inserter(r));
@@ -85,7 +85,7 @@ TEST(layer,mutable_layer)
 	l1.write(13,1);
 
 	slab s = l1.filter(slab(d.data(),d.size()));
-	ASSERT_EQ(s.size(), 16);
+	ASSERT_EQ(s.size(), 16u);
 	std::copy(s.begin(),s.end(),back_inserter(r));
 	ASSERT_EQ(r,e);
 }
@@ -223,7 +223,7 @@ TEST(layer,blob)
 		po::layer_loc l1(new po::layer("anon",mf));
 
 		po::slab s = l1->filter(slab());
-		ASSERT_EQ(s.size(),12);
+		ASSERT_EQ(s.size(),12u);
 
 		auto i = s.begin();
 		int idx = 0;
@@ -245,7 +245,7 @@ TEST(layer,random_access_iter)
 {
 	layer_loc l1(new layer("l1",0xffffffff));
 	slab sl = l1->filter(slab());
-	
+
 	// unused -> auto i = sl.begin();
 	// unused -> slab::iterator j = i + 0xc0000000;
 

@@ -90,17 +90,17 @@ TEST(procedure,add_single)
 	ASSERT_TRUE(!!maybe_proc);
 	proc_loc proc = *maybe_proc;
 
-	ASSERT_EQ(proc->rev_postorder().size(), 1);
+	ASSERT_EQ(proc->rev_postorder().size(), 1u);
 
 	po::bblock_loc bb = *proc->rev_postorder().begin();
 
-	ASSERT_EQ(bb->mnemonics().size(), 1);
+	ASSERT_EQ(bb->mnemonics().size(), 1u);
 	ASSERT_EQ(bb->mnemonics()[0].opcode, "test");
 	ASSERT_EQ(bb->mnemonics()[0].area, po::bound(0,1));
 	ASSERT_EQ(po::bound(0,1), bb->area());
 	ASSERT_EQ(bb, *(proc->entry));
-	ASSERT_EQ(num_edges(proc->control_transfers), 0);
-	ASSERT_EQ(num_vertices(proc->control_transfers), 1);
+	ASSERT_EQ(num_edges(proc->control_transfers), 0u);
+	ASSERT_EQ(num_vertices(proc->control_transfers), 1u);
 	ASSERT_NE(proc->name, "");
 }
 
@@ -118,8 +118,8 @@ TEST(procedure,continuous)
 	auto check = [&](const po::mnemonic &m, const std::string &n, po::offset p) -> void
 	{
 		ASSERT_EQ(m.opcode, n);
-		ASSERT_EQ(m.operands.size(), 0);
-		ASSERT_EQ(m.instructions.size(), 0);
+		ASSERT_EQ(m.operands.size(), 0u);
+		ASSERT_EQ(m.instructions.size(), 0u);
 		ASSERT_EQ(m.area, po::bound(p,p+1));
 	};
 
@@ -136,11 +136,11 @@ TEST(procedure,continuous)
 	proc_loc proc = *maybe_proc;
 
 	ASSERT_TRUE(!!proc->entry);
-	ASSERT_EQ(proc->rev_postorder().size(), 1);
+	ASSERT_EQ(proc->rev_postorder().size(), 1u);
 
 	po::bblock_loc bb = *proc->rev_postorder().begin();
 
-	ASSERT_EQ(bb->mnemonics().size(), 6);
+	ASSERT_EQ(bb->mnemonics().size(), 6u);
 
 	check(bb->mnemonics()[0],"test0",0);
 	check(bb->mnemonics()[1],"test1",1);
@@ -160,7 +160,7 @@ TEST(procedure,continuous)
 	ASSERT_EQ(distance(out_p.first,out_p.second), 1);
 	ASSERT_TRUE(get_edge(*out_p.first,proc->control_transfers).relations.empty());
 	ASSERT_TRUE(is_constant(get<rvalue>(get_vertex(target(*out_p.first,proc->control_transfers),proc->control_transfers))));
-	ASSERT_EQ(to_constant(get<rvalue>(get_vertex(target(*out_p.first,proc->control_transfers),proc->control_transfers))).content(), 6);
+	ASSERT_EQ(to_constant(get<rvalue>(get_vertex(target(*out_p.first,proc->control_transfers),proc->control_transfers))).content(), 6u);
 	ASSERT_EQ(bb->area(), po::bound(0,6));
 	ASSERT_EQ(bb, *(proc->entry));
 	ASSERT_NE(proc->name, "");
@@ -197,7 +197,7 @@ TEST(procedure,branch)
 	proc_loc proc = *maybe_proc;
 
 	ASSERT_TRUE(!!proc->entry);
-	ASSERT_EQ(proc->rev_postorder().size(), 3);
+	ASSERT_EQ(proc->rev_postorder().size(), 3u);
 
 	auto i0 = std::find_if(proc->rev_postorder().begin(),proc->rev_postorder().end(),[&](po::bblock_loc bb) { return bb->area().lower() == 0; });
 	auto i1 = std::find_if(proc->rev_postorder().begin(),proc->rev_postorder().end(),[&](po::bblock_loc bb) { return bb->area().lower() == 1; });
@@ -211,9 +211,9 @@ TEST(procedure,branch)
 	po::bblock_loc bb1 = *i1;
 	po::bblock_loc bb2 = *i2;
 
-	ASSERT_EQ(bb0->mnemonics().size(), 1);
-	ASSERT_EQ(bb1->mnemonics().size(), 1);
-	ASSERT_EQ(bb2->mnemonics().size(), 1);
+	ASSERT_EQ(bb0->mnemonics().size(), 1u);
+	ASSERT_EQ(bb1->mnemonics().size(), 1u);
+	ASSERT_EQ(bb2->mnemonics().size(), 1u);
 
 	auto in0_p = in_edges(find_node(variant<bblock_loc,rvalue>(bb0),proc->control_transfers),proc->control_transfers);
 	auto out0_p = out_edges(find_node(variant<bblock_loc,rvalue>(bb0),proc->control_transfers),proc->control_transfers);
@@ -265,11 +265,11 @@ TEST(procedure,loop)
 	ASSERT_TRUE(!!maybe_proc);
 	proc_loc proc = *maybe_proc;
 
-	ASSERT_EQ(proc->rev_postorder().size(), 1);
+	ASSERT_EQ(proc->rev_postorder().size(), 1u);
 
 	po::bblock_loc bb = *proc->rev_postorder().begin();
 
-	ASSERT_EQ(bb->mnemonics().size(), 3);
+	ASSERT_EQ(bb->mnemonics().size(), 3u);
 
 	check(bb->mnemonics()[0],"test0",0);
 	check(bb->mnemonics()[1],"test1",1);
@@ -430,7 +430,7 @@ TEST(procedure,continue)
 	proc = *maybe_proc;
 
 	ASSERT_TRUE(proc->entry);
-	ASSERT_EQ(proc->rev_postorder().size(), 4);
+	ASSERT_EQ(proc->rev_postorder().size(), 4u);
 
 	auto i0 = std::find_if(proc->rev_postorder().begin(),proc->rev_postorder().end(),[&](po::bblock_loc bb) { return bb->area().lower() == 0; });
 	auto i1 = std::find_if(proc->rev_postorder().begin(),proc->rev_postorder().end(),[&](po::bblock_loc bb) { return bb->area().lower() == 2; });
@@ -453,7 +453,7 @@ TEST(procedure,continue)
 
 	ASSERT_EQ(distance(in0_p.first,in0_p.second), 1);
 	ASSERT_TRUE(get<bblock_loc>(get_vertex(source(*in0_p.first,ct),ct)) == bbo3);
-	ASSERT_EQ(bbo0->mnemonics().size(), 2);
+	ASSERT_EQ(bbo0->mnemonics().size(), 2u);
 	check(bbo0->mnemonics()[0],"test0",0);
 	check(bbo0->mnemonics()[1],"test1",1);
 	ASSERT_EQ(distance(out0_p.first,out0_p.second), 2);
@@ -465,7 +465,7 @@ TEST(procedure,continue)
 
 	ASSERT_EQ(distance(in1_p.first,in1_p.second), 1);
 	ASSERT_TRUE(get<bblock_loc>(get_vertex(source(*in1_p.first,ct),ct)) == bbo0);
-	ASSERT_EQ(bbo1->mnemonics().size(), 1);
+	ASSERT_EQ(bbo1->mnemonics().size(), 1u);
 	check(bbo1->mnemonics()[0],"test2",2);
 	ASSERT_EQ(distance(out1_p.first,out1_p.second), 0);
 
@@ -474,7 +474,7 @@ TEST(procedure,continue)
 
 	ASSERT_EQ(distance(in2_p.first,in2_p.second), 1);
 	ASSERT_TRUE(get<bblock_loc>(get_vertex(source(*in2_p.first,ct),ct)) == bbo0);
-	ASSERT_EQ(bbo2->mnemonics().size(), 1);
+	ASSERT_EQ(bbo2->mnemonics().size(), 1u);
 	check(bbo2->mnemonics()[0],"test6",6);
 	ASSERT_EQ(distance(out2_p.first,out2_p.second), 1);
 	ASSERT_TRUE(get<bblock_loc>(get_vertex(target(*out2_p.first,ct),ct)) == bbo3);
@@ -484,7 +484,7 @@ TEST(procedure,continue)
 
 	ASSERT_EQ(distance(in3_p.first,in3_p.second), 1);
 	ASSERT_TRUE(get<bblock_loc>(get_vertex(source(*in3_p.first,ct),ct)) == bbo2);
-	ASSERT_EQ(bbo3->mnemonics().size(), 3);
+	ASSERT_EQ(bbo3->mnemonics().size(), 3u);
 	check(bbo3->mnemonics()[0],"test40",40);
 	check(bbo3->mnemonics()[1],"test41",41);
 	check(bbo3->mnemonics()[2],"test42",42);
@@ -545,7 +545,7 @@ TEST(procedure,entry_split)
 
 	proc = *maybe_proc;
 
-	ASSERT_EQ(proc->rev_postorder().size(), 2);
+	ASSERT_EQ(proc->rev_postorder().size(), 2u);
 
 	auto i0 = std::find_if(proc->rev_postorder().begin(),proc->rev_postorder().end(),[&](po::bblock_loc bb) { return bb->area().lower() == 0; });
 	auto i1 = std::find_if(proc->rev_postorder().begin(),proc->rev_postorder().end(),[&](po::bblock_loc bb) { return bb->area().lower() == 1; });
@@ -557,9 +557,9 @@ TEST(procedure,entry_split)
 	po::bblock_loc bbo1 = *i1;
 
 	ASSERT_EQ(*(proc->entry), bbo0);
-	ASSERT_EQ(bbo0->mnemonics().size(), 1);
+	ASSERT_EQ(bbo0->mnemonics().size(), 1u);
 	check(bbo0->mnemonics()[0],"test0",0);
-	ASSERT_EQ(bbo1->mnemonics().size(), 2);
+	ASSERT_EQ(bbo1->mnemonics().size(), 2u);
 }
 
 /*
@@ -648,8 +648,8 @@ TEST(procedure,wide_token)
 	ASSERT_TRUE(!!maybe_proc);
 	proc_loc proc = *maybe_proc;
 
-	EXPECT_EQ(num_vertices(proc->control_transfers), 3);
-	EXPECT_EQ(num_edges(proc->control_transfers), 2);
+	EXPECT_EQ(num_vertices(proc->control_transfers), 3u);
+	EXPECT_EQ(num_edges(proc->control_transfers), 2u);
 
 	using vx_desc = digraph<boost::variant<bblock_loc,rvalue>,guard>::vertex_descriptor;
 	auto p = vertices(proc->control_transfers);
@@ -665,7 +665,7 @@ TEST(procedure,wide_token)
 			return false;
 		}
 	});
-	EXPECT_EQ(sz, 1);
+	EXPECT_EQ(sz, 1u);
 	sz = std::count_if(p.first,p.second,[&](const vx_desc& v)
 	{
 		try
@@ -678,7 +678,7 @@ TEST(procedure,wide_token)
 			return false;
 		}
 	});
-	EXPECT_EQ(sz, 1);
+	EXPECT_EQ(sz, 1u);
 	sz = std::count_if(p.first,p.second,[&](const vx_desc& v)
 	{
 		try
@@ -691,5 +691,5 @@ TEST(procedure,wide_token)
 			return false;
 		}
 	});
-	EXPECT_EQ(sz, 1);
+	EXPECT_EQ(sz, 1u);
 }

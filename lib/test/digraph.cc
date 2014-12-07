@@ -77,8 +77,8 @@ TEST(digraph,usage)
 	ASSERT_EQ(get_edge(e23,g), string("b"));
 	ASSERT_EQ(get_edge(e31,g), string("c"));
 
-	ASSERT_EQ(num_edges(g), 3);
-	ASSERT_EQ(num_vertices(g), 3);
+	ASSERT_EQ(num_edges(g), 3u);
+	ASSERT_EQ(num_vertices(g), 3u);
 
 	ASSERT_EQ(source(e12,g), n1);
 	ASSERT_EQ(target(e12,g), n2);
@@ -87,9 +87,9 @@ TEST(digraph,usage)
 	ASSERT_EQ(source(e31,g), n3);
 	ASSERT_EQ(target(e31,g), n1);
 
-	ASSERT_EQ(out_degree(n1,g), 1);
-	ASSERT_EQ(out_degree(n2,g), 1);
-	ASSERT_EQ(out_degree(n3,g), 1);
+	ASSERT_EQ(out_degree(n1,g), 1u);
+	ASSERT_EQ(out_degree(n2,g), 1u);
+	ASSERT_EQ(out_degree(n3,g), 1u);
 
 	remove_edge(e12,g);
 
@@ -97,8 +97,8 @@ TEST(digraph,usage)
 	remove_vertex(n2,g);
 	remove_vertex(n3,g);
 
-	ASSERT_EQ(num_vertices(g), 0);
-	ASSERT_EQ(num_edges(g), 0);
+	ASSERT_EQ(num_vertices(g), 0u);
+	ASSERT_EQ(num_edges(g), 0u);
 }
 
 TEST(digraph,degree)
@@ -113,26 +113,26 @@ TEST(digraph,degree)
 	auto e23 = insert_edge(string("a"),n2,n3,g);
 	insert_edge(string("a"),n3,n1,g);
 
-	ASSERT_EQ(in_degree(n1,g),1);
-	ASSERT_EQ(in_degree(n2,g),1);
-	ASSERT_EQ(in_degree(n3,g),1);
+	ASSERT_EQ(in_degree(n1,g),1u);
+	ASSERT_EQ(in_degree(n2,g),1u);
+	ASSERT_EQ(in_degree(n3,g),1u);
 
-	ASSERT_EQ(out_degree(n1,g),1);
-	ASSERT_EQ(out_degree(n2,g),1);
-	ASSERT_EQ(out_degree(n3,g),1);
+	ASSERT_EQ(out_degree(n1,g),1u);
+	ASSERT_EQ(out_degree(n2,g),1u);
+	ASSERT_EQ(out_degree(n3,g),1u);
 
 	auto n4 = insert_vertex(boost::make_optional(42),g);
 	insert_edge(string("d"),n4,n1,g);
 
-	ASSERT_EQ(in_degree(n1,g),2);
-	ASSERT_EQ(in_degree(n2,g),1);
-	ASSERT_EQ(in_degree(n3,g),1);
-	ASSERT_EQ(in_degree(n4,g),0);
+	ASSERT_EQ(in_degree(n1,g),2u);
+	ASSERT_EQ(in_degree(n2,g),1u);
+	ASSERT_EQ(in_degree(n3,g),1u);
+	ASSERT_EQ(in_degree(n4,g),0u);
 
-	ASSERT_EQ(out_degree(n1,g),1);
-	ASSERT_EQ(out_degree(n2,g),1);
-	ASSERT_EQ(out_degree(n3,g),1);
-	ASSERT_EQ(out_degree(n4,g),1);
+	ASSERT_EQ(out_degree(n1,g),1u);
+	ASSERT_EQ(out_degree(n2,g),1u);
+	ASSERT_EQ(out_degree(n3,g),1u);
+	ASSERT_EQ(out_degree(n4,g),1u);
 
 	remove_edge(e23,g);
 	insert_edge(string("d1"),n3,n2,g);
@@ -142,17 +142,17 @@ TEST(digraph,degree)
 	insert_edge(string("d2"),n5,n3,g);
 	insert_edge(string("d2"),n5,n4,g);
 
-	ASSERT_EQ(in_degree(n1,g),2);
-	ASSERT_EQ(in_degree(n2,g),2);
-	ASSERT_EQ(in_degree(n3,g),1);
-	ASSERT_EQ(in_degree(n4,g),1);
-	ASSERT_EQ(in_degree(n5,g),1);
+	ASSERT_EQ(in_degree(n1,g),2u);
+	ASSERT_EQ(in_degree(n2,g),2u);
+	ASSERT_EQ(in_degree(n3,g),1u);
+	ASSERT_EQ(in_degree(n4,g),1u);
+	ASSERT_EQ(in_degree(n5,g),1u);
 
-	ASSERT_EQ(out_degree(n1,g),1);
-	ASSERT_EQ(out_degree(n2,g),1);
-	ASSERT_EQ(out_degree(n3,g),2);
-	ASSERT_EQ(out_degree(n4,g),1);
-	ASSERT_EQ(out_degree(n5,g),2);
+	ASSERT_EQ(out_degree(n1,g),1u);
+	ASSERT_EQ(out_degree(n2,g),1u);
+	ASSERT_EQ(out_degree(n3,g),2u);
+	ASSERT_EQ(out_degree(n4,g),1u);
+	ASSERT_EQ(out_degree(n5,g),2u);
 
 	auto p = edges(g);
 	ASSERT_EQ(std::distance(p.first,p.second),7);
@@ -271,8 +271,8 @@ TEST(digraph,iterators)
 	std::set<decltype(g)::edge_descriptor> es;
 	std::for_each(j.first,j.second,[&](const decltype(g)::edge_descriptor &n) { ASSERT_TRUE(es.insert(n).second); });
 
-	ASSERT_EQ(ns.size(), 4);
-	ASSERT_EQ(es.size(), 4);
+	ASSERT_EQ(ns.size(), 4u);
+	ASSERT_EQ(es.size(), 4u);
 }
 
 TEST(digraph,error)
@@ -286,8 +286,8 @@ TEST(digraph,error)
 	insert_edge(string("a"),n1,n2,g1);
 	insert_edge(string("b"),n1,n2,g1);
 
-	ASSERT_EQ(num_edges(g1), 2);
-	ASSERT_EQ(num_vertices(g1), 3);
+	ASSERT_EQ(num_edges(g1), 2u);
+	ASSERT_EQ(num_vertices(g1), 3u);
 }
 
 TEST(digraph,remove_edge_from_node_with_multiple_out_edges)
@@ -301,12 +301,12 @@ TEST(digraph,remove_edge_from_node_with_multiple_out_edges)
 	auto e12 = insert_edge(string("a"),n1,n2,g);
 	insert_edge(string("b"),n1,n3,g);
 
-	ASSERT_EQ(num_edges(g), 2);
-	ASSERT_EQ(num_vertices(g), 3);
-	ASSERT_EQ(out_degree(n1,g), 2);
+	ASSERT_EQ(num_edges(g), 2u);
+	ASSERT_EQ(num_vertices(g), 3u);
+	ASSERT_EQ(out_degree(n1,g), 2u);
 
 	remove_edge(e12,g);
 
-	ASSERT_EQ(out_degree(n1,g), 1);
+	ASSERT_EQ(out_degree(n1,g), 1u);
 }
 

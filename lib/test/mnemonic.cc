@@ -14,8 +14,8 @@ TEST(mnemonic,marshal)
 	uuid uu;
 	archive st1 = marshal(&mn1,uu);
 
-	ASSERT_GT(st1.triples.size(),0);
-	ASSERT_EQ(st1.blobs.size(),0);
+	ASSERT_GT(st1.triples.size(),0u);
+	ASSERT_EQ(st1.blobs.size(),0u);
 	archive st2 = marshal(&mn1,uu);
 
 	ASSERT_TRUE(st1 == st2);

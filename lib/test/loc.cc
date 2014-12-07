@@ -166,7 +166,7 @@ TEST(loc,marshal_simple)
 	ASSERT_TRUE(store->has(rdf::iri(gen("{00000000-0000-0000-0000-000000000004}")),rdf::ns_po("name"),rdf::lit("Hello")));
 
 	rdf::nodes bs = rdf::read_list(store->first(rdf::iri(gen("{00000000-0000-0000-0000-000000000004}")),rdf::ns_po("bs")).object,*store);
-	ASSERT_EQ(bs.size(),3);
+	ASSERT_EQ(bs.size(),3u);
 	ASSERT_EQ(*bs.begin(),rdf::iri(gen("{00000000-0000-0000-0000-000000000001}")));
 	ASSERT_EQ(*std::next(bs.begin()),rdf::iri(gen("{00000000-0000-0000-0000-000000000002}")));
 	ASSERT_EQ(*std::next(bs.begin(),2),rdf::iri(gen("{00000000-0000-0000-0000-000000000003}")));
@@ -211,7 +211,7 @@ TEST(loc,marshal_twice)
 	ASSERT_TRUE(store->has(rdf::iri(gen("{00000000-0000-0000-0000-000000000004}")),rdf::ns_po("name"),rdf::lit("World")));
 
 	rdf::nodes bs = rdf::read_list(store->first(rdf::iri(gen("{00000000-0000-0000-0000-000000000004}")),rdf::ns_po("bs")).object,*store);
-	ASSERT_EQ(bs.size(),4);
+	ASSERT_EQ(bs.size(),4u);
 	ASSERT_EQ(*bs.begin(),rdf::iri(gen("{00000000-0000-0000-0000-000000000001}")));
 	ASSERT_EQ(*std::next(bs.begin()),rdf::iri(gen("{00000000-0000-0000-0000-000000000002}")));
 	ASSERT_EQ(*std::next(bs.begin(),2),rdf::iri(gen("{00000000-0000-0000-0000-000000000003}")));
@@ -258,7 +258,7 @@ TEST(loc,marshal_delete)
 	ASSERT_TRUE(store->has(rdf::iri(gen("{00000000-0000-0000-0000-000000000004}")),rdf::ns_po("name"),rdf::lit("Hello")));
 
 	rdf::nodes bs = rdf::read_list(store->first(rdf::iri(gen("{00000000-0000-0000-0000-000000000004}")),rdf::ns_po("bs")).object,*store);
-	ASSERT_EQ(bs.size(),2);
+	ASSERT_EQ(bs.size(),2u);
 	ASSERT_EQ(*bs.begin(),rdf::iri(gen("{00000000-0000-0000-0000-000000000001}")));
 	ASSERT_EQ(*std::next(bs.begin()),rdf::iri(gen("{00000000-0000-0000-0000-000000000002}")));
 
@@ -300,7 +300,7 @@ TEST(loc,multiple)
 
 	insert_vertex(1,c1.write().graph);
 	loc<C> c3(c1);
-	ASSERT_EQ(num_vertices(c2->graph), 1);
+	ASSERT_EQ(num_vertices(c2->graph), 1u);
 	insert_vertex(2,c2.write().graph);
-	ASSERT_EQ(num_vertices(c3->graph), 2);
+	ASSERT_EQ(num_vertices(c3->graph), 2u);
 }

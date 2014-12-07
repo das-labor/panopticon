@@ -73,34 +73,34 @@ TEST(interpreter,kset_interpreter)
 
 	// i0
 	variable var = variable("i",8,0);
-	ASSERT_EQ(1,env.count(var));
+	ASSERT_EQ(1u,env.count(var));
 	ASSERT_TRUE(boost::get<kset_set>(&(env.at(var))));
 	ASSERT_EQ(boost::get<kset_set>(env.at(var)), kset_set({1}));
 	// j0
 	var = variable("j",8,0);
-	ASSERT_EQ(1,env.count(var));
+	ASSERT_EQ(1u,env.count(var));
 	ASSERT_TRUE(boost::get<join_t>(&(env.at(var))));
 	// jn0
 	var = variable("jn",8,0);
-	ASSERT_EQ(1,env.count(var));
+	ASSERT_EQ(1u,env.count(var));
 	ASSERT_TRUE(boost::get<join_t>(&(env.at(var))));
 	// a0
 	var = variable("a",8,0);
-	ASSERT_EQ(1,env.count(var));
+	ASSERT_EQ(1u,env.count(var));
 	ASSERT_TRUE(boost::get<kset_set>(&(env.at(var))));
 	ASSERT_EQ(boost::get<kset_set>(env.at(var)), kset_set({1}));
 	// a1
 	var = variable("a",8,1);
-	ASSERT_EQ(1,env.count(var));
+	ASSERT_EQ(1u,env.count(var));
 	ASSERT_TRUE(boost::get<kset_set>(&(env.at(var))));
 	ASSERT_EQ(boost::get<kset_set>(env.at(var)), kset_set({2}));
 	// a2
 	var = variable("a",8,2);
-	ASSERT_EQ(1,env.count(var));
+	ASSERT_EQ(1u,env.count(var));
 	ASSERT_EQ(boost::get<kset_set>(env.at(var)), kset_set({2,1}));
 	// a3
 	var = variable("a",8,3);
-	ASSERT_EQ(1,env.count(var));
+	ASSERT_EQ(1u,env.count(var));
 	ASSERT_EQ(boost::get<kset_set>(env.at(var)), kset_set({2,3}));
 }
 

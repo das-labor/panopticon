@@ -151,35 +151,35 @@ TEST_F(store,varint)
 
 	a = storage::encode_varint(1);
 	ASSERT_EQ("\x01",a);
-	ASSERT_EQ(1,storage::decode_varint(a.begin(),a.end()).first);
+	ASSERT_EQ(1u,storage::decode_varint(a.begin(),a.end()).first);
 
 	a = storage::encode_varint(0x7f);
 	ASSERT_EQ("\x7f",a);
-	ASSERT_EQ(0x7f,storage::decode_varint(a.begin(),a.end()).first);
+	ASSERT_EQ(0x7fu,storage::decode_varint(a.begin(),a.end()).first);
 
 	a = storage::encode_varint(0x80);
 	ASSERT_EQ(string("\x81\x00",2),a);
-	ASSERT_EQ(0x80,storage::decode_varint(a.begin(),a.end()).first);
+	ASSERT_EQ(0x80u,storage::decode_varint(a.begin(),a.end()).first);
 
 	a = storage::encode_varint(0x81);
-	ASSERT_EQ(a.size(),2);
-	ASSERT_EQ(storage::decode_varint(a.begin(),a.end()).first,0x81);
+	ASSERT_EQ(a.size(),2u);
+	ASSERT_EQ(storage::decode_varint(a.begin(),a.end()).first,0x81u);
 
 	a = storage::encode_varint(0x3fff);
-	ASSERT_EQ(a.size(),2);
-	ASSERT_EQ(storage::decode_varint(a.begin(),a.end()).first,0x3fff);
+	ASSERT_EQ(a.size(),2u);
+	ASSERT_EQ(storage::decode_varint(a.begin(),a.end()).first,0x3fffu);
 
 	a = storage::encode_varint(0x4000);
-	ASSERT_EQ(a.size(),3);
-	ASSERT_EQ(storage::decode_varint(a.begin(),a.end()).first,0x4000);
+	ASSERT_EQ(a.size(),3u);
+	ASSERT_EQ(storage::decode_varint(a.begin(),a.end()).first,0x4000u);
 
 	a = storage::encode_varint(0x4001);
-	ASSERT_EQ(a.size(),3);
-	ASSERT_EQ(storage::decode_varint(a.begin(),a.end()).first,0x4001);
+	ASSERT_EQ(a.size(),3u);
+	ASSERT_EQ(storage::decode_varint(a.begin(),a.end()).first,0x4001u);
 
 	a = storage::encode_varint(0);
-	ASSERT_EQ(a.size(),1);
-	ASSERT_EQ(storage::decode_varint(a.begin(),a.end()).first,0);
+	ASSERT_EQ(a.size(),1u);
+	ASSERT_EQ(storage::decode_varint(a.begin(),a.end()).first,0u);
 }
 
 TEST_F(store,node)

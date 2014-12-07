@@ -107,9 +107,9 @@ TEST(marshal,blob)
 			ASSERT_NE(mf2.data(), nullptr);
 			ASSERT_NE(mf4.data(), nullptr);
 
-			ASSERT_EQ(mf1.size(), 12);
-			ASSERT_EQ(mf2.size(), 14);
-			ASSERT_EQ(mf4.size(), 9);
+			ASSERT_EQ(mf1.size(), 12u);
+			ASSERT_EQ(mf2.size(), 14u);
+			ASSERT_EQ(mf4.size(), 9u);
 
 			ASSERT_EQ(memcmp(mf1.data(),"Hello, World",mf1.size()), 0);
 			ASSERT_EQ(memcmp(mf2.data(),"Goodbye, World",mf2.size()), 0);

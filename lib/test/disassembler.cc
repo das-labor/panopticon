@@ -61,17 +61,17 @@ TEST_F(disassembler,single_decoder)
 	st = i->second;
 
 	ASSERT_EQ(i->first, next(bytes.begin()));
-	ASSERT_EQ(st.address, 0);
-	ASSERT_GE(st.tokens.size(), 1);
+	ASSERT_EQ(st.address, 0u);
+	ASSERT_GE(st.tokens.size(), 1u);
 	ASSERT_EQ(st.tokens[0], 'A');
-	ASSERT_EQ(st.capture_groups.size(), 0);
-	ASSERT_EQ(st.mnemonics.size(), 1);
+	ASSERT_EQ(st.capture_groups.size(), 0u);
+	ASSERT_EQ(st.mnemonics.size(), 1u);
 	ASSERT_EQ(st.mnemonics.front().opcode, std::string("A"));
 	ASSERT_EQ(st.mnemonics.front().area, po::bound(0,1));
 	ASSERT_TRUE(st.mnemonics.front().instructions.empty());
-	ASSERT_EQ(st.jumps.size(), 1);
+	ASSERT_EQ(st.jumps.size(), 1u);
 	ASSERT_TRUE(is_constant(st.jumps.front().first));
-	ASSERT_EQ(to_constant(st.jumps.front().first).content(), 1);
+	ASSERT_EQ(to_constant(st.jumps.front().first).content(), 1u);
 	ASSERT_TRUE(st.jumps.front().second.relations.empty());
 }
 
@@ -85,18 +85,18 @@ TEST_F(disassembler,sub_decoder)
 	st = i->second;
 
 	ASSERT_EQ(std::distance(bytes.begin(), i->first), 3);
-	ASSERT_EQ(st.address, 1);
-	ASSERT_GE(st.tokens.size(), 2);
+	ASSERT_EQ(st.address, 1u);
+	ASSERT_GE(st.tokens.size(), 2u);
 	ASSERT_EQ(st.tokens[0], 'A');
 	ASSERT_EQ(st.tokens[1], 'B');
-	ASSERT_EQ(st.capture_groups.size(), 0);
-	ASSERT_EQ(st.mnemonics.size(), 1);
+	ASSERT_EQ(st.capture_groups.size(), 0u);
+	ASSERT_EQ(st.mnemonics.size(), 1u);
 	ASSERT_EQ(st.mnemonics.front().opcode, std::string("BA"));
 	ASSERT_EQ(st.mnemonics.front().area, po::bound(1,3));
 	ASSERT_TRUE(st.mnemonics.front().instructions.empty());
-	ASSERT_EQ(st.jumps.size(), 1);
+	ASSERT_EQ(st.jumps.size(), 1u);
 	ASSERT_TRUE(is_constant(st.jumps.front().first));
-	ASSERT_EQ(to_constant(st.jumps.front().first).content(), 3);
+	ASSERT_EQ(to_constant(st.jumps.front().first).content(), 3u);
 	ASSERT_TRUE(st.jumps.front().second.relations.empty());
 }
 
@@ -110,18 +110,18 @@ TEST_F(disassembler,default_pattern)
 	st = i->second;
 
 	ASSERT_EQ(i->first, bytes.end());
-	ASSERT_EQ(st.address, 5);
-	ASSERT_EQ(st.tokens.size(), 1);
+	ASSERT_EQ(st.address, 5u);
+	ASSERT_EQ(st.tokens.size(), 1u);
 	ASSERT_EQ(st.tokens[0], 'X');
-	ASSERT_EQ(st.capture_groups.size(), 0);
-	ASSERT_EQ(st.mnemonics.size(), 1);
+	ASSERT_EQ(st.capture_groups.size(), 0u);
+	ASSERT_EQ(st.mnemonics.size(), 1u);
 	ASSERT_EQ(st.mnemonics.front().opcode, std::string("UNK"));
 	ASSERT_EQ(st.mnemonics.front().area, po::bound(5,6));
 	ASSERT_TRUE(st.mnemonics.front().instructions.empty());
-	ASSERT_EQ(st.jumps.size(), 1);
+	ASSERT_EQ(st.jumps.size(), 1u);
 	ASSERT_TRUE(is_constant(st.jumps.front().first));
 	ASSERT_TRUE(st.jumps.front().second.relations.empty());
-	ASSERT_EQ(to_constant(st.jumps.front().first).content(), 6);
+	ASSERT_EQ(to_constant(st.jumps.front().first).content(), 6u);
 }
 
 TEST_F(disassembler,slice)
@@ -134,18 +134,18 @@ TEST_F(disassembler,slice)
 	st = i->second;
 
 	ASSERT_EQ(i->first, next(bytes.begin(),2));
-	ASSERT_EQ(st.address, 1);
-	ASSERT_GE(st.tokens.size(), 1);
+	ASSERT_EQ(st.address, 1u);
+	ASSERT_GE(st.tokens.size(), 1u);
 	ASSERT_EQ(st.tokens[0], 'A');
-	ASSERT_EQ(st.capture_groups.size(), 0);
-	ASSERT_EQ(st.mnemonics.size(), 1);
+	ASSERT_EQ(st.capture_groups.size(), 0u);
+	ASSERT_EQ(st.mnemonics.size(), 1u);
 	ASSERT_EQ(st.mnemonics.front().opcode, std::string("A"));
 	ASSERT_EQ(st.mnemonics.front().area, po::bound(1,2));
 	ASSERT_TRUE(st.mnemonics.front().instructions.empty());
-	ASSERT_EQ(st.jumps.size(), 1);
+	ASSERT_EQ(st.jumps.size(), 1u);
 	ASSERT_TRUE(is_constant(st.jumps.front().first));
 	ASSERT_TRUE(st.jumps.front().second.relations.empty());
-	ASSERT_EQ(to_constant(st.jumps.front().first).content(), 2);
+	ASSERT_EQ(to_constant(st.jumps.front().first).content(), 2u);
 }
 
 TEST_F(disassembler,empty)
@@ -156,11 +156,11 @@ TEST_F(disassembler,empty)
 	i = main.try_match(bytes.begin(),bytes.begin(),st);
 
 	ASSERT_TRUE(!i);
-	ASSERT_EQ(st.address, 0);
-	ASSERT_EQ(st.tokens.size(), 0);
-	ASSERT_EQ(st.capture_groups.size(), 0);
-	ASSERT_EQ(st.mnemonics.size(), 0);
-	ASSERT_EQ(st.jumps.size(), 0);
+	ASSERT_EQ(st.address, 0u);
+	ASSERT_EQ(st.tokens.size(), 0u);
+	ASSERT_EQ(st.capture_groups.size(), 0u);
+	ASSERT_EQ(st.mnemonics.size(), 0u);
+	ASSERT_EQ(st.jumps.size(), 0u);
 }
 
 TEST_F(disassembler,capture_group)
@@ -173,20 +173,20 @@ TEST_F(disassembler,capture_group)
 	st = i->second;
 
 	ASSERT_EQ(i->first, next(bytes.begin(),5));
-	ASSERT_EQ(st.address, 4);
-	ASSERT_GE(st.tokens.size(), 1);
+	ASSERT_EQ(st.address, 4u);
+	ASSERT_GE(st.tokens.size(), 1u);
 	ASSERT_EQ(st.tokens[0], 'C');
-	ASSERT_EQ(st.capture_groups.size(), 1);
-	ASSERT_EQ(st.capture_groups.count("k"), 1);
-	ASSERT_EQ(st.capture_groups["k"], 16);
-	ASSERT_EQ(st.mnemonics.size(), 1);
+	ASSERT_EQ(st.capture_groups.size(), 1u);
+	ASSERT_EQ(st.capture_groups.count("k"), 1u);
+	ASSERT_EQ(st.capture_groups["k"], 16u);
+	ASSERT_EQ(st.mnemonics.size(), 1u);
 	ASSERT_EQ(st.mnemonics.front().opcode, std::string("C"));
 	ASSERT_EQ(st.mnemonics.front().area, po::bound(4,5));
 	ASSERT_TRUE(st.mnemonics.front().instructions.empty());
-	ASSERT_EQ(st.jumps.size(), 1);
+	ASSERT_EQ(st.jumps.size(), 1u);
 	ASSERT_TRUE(is_constant(st.jumps.front().first));
 	ASSERT_TRUE(st.jumps.front().second.relations.empty());
-	ASSERT_EQ(to_constant(st.jumps.front().first).content(), 5);
+	ASSERT_EQ(to_constant(st.jumps.front().first).content(), 5u);
 }
 
 TEST_F(disassembler,empty_capture_group)
@@ -204,19 +204,19 @@ TEST_F(disassembler,empty_capture_group)
 	st = i->second;
 
 	ASSERT_EQ(std::distance(buf.begin(), i->first),1);
-	ASSERT_EQ(st.address, 0);
-	ASSERT_EQ(st.tokens.size(), 1);
+	ASSERT_EQ(st.address, 0u);
+	ASSERT_EQ(st.tokens.size(), 1u);
 	ASSERT_EQ(st.tokens[0], 127);
-	ASSERT_EQ(st.capture_groups.size(), 2);
-	ASSERT_EQ(st.capture_groups.count("a"), 1);
-	ASSERT_EQ(st.capture_groups.count("c"), 1);
-	ASSERT_EQ(st.capture_groups["a"], 3);
-	ASSERT_EQ(st.capture_groups["c"], 7);
-	ASSERT_EQ(st.mnemonics.size(), 1);
+	ASSERT_EQ(st.capture_groups.size(), 2u);
+	ASSERT_EQ(st.capture_groups.count("a"), 1u);
+	ASSERT_EQ(st.capture_groups.count("c"), 1u);
+	ASSERT_EQ(st.capture_groups["a"], 3u);
+	ASSERT_EQ(st.capture_groups["c"], 7u);
+	ASSERT_EQ(st.mnemonics.size(), 1u);
 	ASSERT_EQ(st.mnemonics.front().opcode, std::string("1"));
 	ASSERT_EQ(st.mnemonics.front().area, po::bound(0,1));
 	ASSERT_TRUE(st.mnemonics.front().instructions.empty());
-	ASSERT_EQ(st.jumps.size(), 0);
+	ASSERT_EQ(st.jumps.size(), 0u);
 }
 
 TEST_F(disassembler,too_long_capture_group)
@@ -292,14 +292,14 @@ TEST_F(disassembler,wide_token)
 	st = i->second;
 
 	ASSERT_EQ(std::distance(buf.begin(), i->first),2);
-	ASSERT_EQ(st.address, 0);
-	ASSERT_EQ(st.tokens.size(), 1);
-	ASSERT_EQ(st.tokens[0], 0x1122);
-	ASSERT_EQ(st.mnemonics.size(), 1);
+	ASSERT_EQ(st.address, 0u);
+	ASSERT_EQ(st.tokens.size(), 1u);
+	ASSERT_EQ(st.tokens[0], 0x1122u);
+	ASSERT_EQ(st.mnemonics.size(), 1u);
 	ASSERT_EQ(st.mnemonics.front().opcode, std::string("A"));
 	ASSERT_EQ(st.mnemonics.front().area, po::bound(0,2));
 	ASSERT_TRUE(st.mnemonics.front().instructions.empty());
-	ASSERT_EQ(st.jumps.size(), 1);
+	ASSERT_EQ(st.jumps.size(), 1u);
 }
 
 TEST_F(disassembler,optional)
@@ -319,17 +319,17 @@ TEST_F(disassembler,optional)
 	st = i->second;
 
 	ASSERT_EQ(std::distance(buf.begin(), i->first),3);
-	ASSERT_EQ(st.address, 0);
-	ASSERT_EQ(st.tokens.size(), 3);
-	ASSERT_EQ(st.tokens[0], 127);
-	ASSERT_EQ(st.tokens[1], 126);
-	ASSERT_EQ(st.tokens[2], 125);
-	ASSERT_EQ(st.capture_groups.size(), 0);
-	ASSERT_EQ(st.mnemonics.size(), 1);
+	ASSERT_EQ(st.address, 0u);
+	ASSERT_EQ(st.tokens.size(), 3u);
+	ASSERT_EQ(st.tokens[0], 127u);
+	ASSERT_EQ(st.tokens[1], 126u);
+	ASSERT_EQ(st.tokens[2], 125u);
+	ASSERT_EQ(st.capture_groups.size(), 0u);
+	ASSERT_EQ(st.mnemonics.size(), 1u);
 	ASSERT_EQ(st.mnemonics.front().opcode, std::string("1"));
 	ASSERT_EQ(st.mnemonics.front().area, po::bound(0,3));
 	ASSERT_TRUE(st.mnemonics.front().instructions.empty());
-	ASSERT_EQ(st.jumps.size(), 0);
+	ASSERT_EQ(st.jumps.size(), 0u);
 
 	st = po::sem_state<test_tag>(3);
 	i = dec.try_match(i->first,buf.end(),st);
@@ -337,16 +337,16 @@ TEST_F(disassembler,optional)
 	st = i->second;
 
 	ASSERT_EQ(std::distance(buf.begin(), i->first),5);
-	ASSERT_EQ(st.address, 3);
-	ASSERT_EQ(st.tokens.size(), 2);
-	ASSERT_EQ(st.tokens[0], 127);
-	ASSERT_EQ(st.tokens[1], 125);
-	ASSERT_EQ(st.capture_groups.size(), 0);
-	ASSERT_EQ(st.mnemonics.size(), 1);
+	ASSERT_EQ(st.address, 3u);
+	ASSERT_EQ(st.tokens.size(), 2u);
+	ASSERT_EQ(st.tokens[0], 127u);
+	ASSERT_EQ(st.tokens[1], 125u);
+	ASSERT_EQ(st.capture_groups.size(), 0u);
+	ASSERT_EQ(st.mnemonics.size(), 1u);
 	ASSERT_EQ(st.mnemonics.front().opcode, std::string("1"));
 	ASSERT_EQ(st.mnemonics.front().area, po::bound(3,5));
 	ASSERT_TRUE(st.mnemonics.front().instructions.empty());
-	ASSERT_EQ(st.jumps.size(), 0);
+	ASSERT_EQ(st.jumps.size(), 0u);
 }
 
 TEST_F(disassembler,fixed_capture_group_contents)
@@ -366,17 +366,17 @@ TEST_F(disassembler,fixed_capture_group_contents)
 	st = i->second;
 
 	ASSERT_EQ(std::distance(buf.begin(), i->first),2);
-	ASSERT_EQ(st.address, 0);
-	ASSERT_EQ(st.tokens.size(), 2);
-	ASSERT_EQ(st.tokens[0], 127);
-	ASSERT_EQ(st.tokens[1], 255);
-	ASSERT_EQ(st.capture_groups.size(), 1);
-	ASSERT_EQ(st.capture_groups.count("a"), 1);
-	ASSERT_EQ(st.capture_groups["a"], 255);
-	ASSERT_EQ(st.mnemonics.size(), 1);
+	ASSERT_EQ(st.address, 0u);
+	ASSERT_EQ(st.tokens.size(), 2u);
+	ASSERT_EQ(st.tokens[0], 127u);
+	ASSERT_EQ(st.tokens[1], 255u);
+	ASSERT_EQ(st.capture_groups.size(), 1u);
+	ASSERT_EQ(st.capture_groups.count("a"), 1u);
+	ASSERT_EQ(st.capture_groups["a"], 255u);
+	ASSERT_EQ(st.mnemonics.size(), 1u);
 	ASSERT_EQ(st.mnemonics.front().opcode, std::string("1"));
 	ASSERT_EQ(st.mnemonics.front().area, po::bound(0,1));
 	ASSERT_TRUE(st.mnemonics.front().instructions.empty());
-	ASSERT_EQ(st.jumps.size(), 0);
+	ASSERT_EQ(st.jumps.size(), 0u);
 
 }

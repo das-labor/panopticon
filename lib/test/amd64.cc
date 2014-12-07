@@ -14,7 +14,7 @@ TEST(amd64,simple)
 	boost::optional<prog_loc> maybe_proc = amd64::disassemble(boost::none,sl,po::ref{"ram",0});
 
 	ASSERT_TRUE(!!maybe_proc);
-	ASSERT_EQ((*maybe_proc)->procedures().size(), 1);
-	ASSERT_EQ((*(*maybe_proc)->procedures().begin())->rev_postorder().size(), 1);
-	ASSERT_EQ((*(*maybe_proc)->procedures().begin())->rev_postorder()[0]->mnemonics().size(), 1);
+	ASSERT_EQ((*maybe_proc)->procedures().size(), 1u);
+	ASSERT_EQ((*(*maybe_proc)->procedures().begin())->rev_postorder().size(), 1u);
+	ASSERT_EQ((*(*maybe_proc)->procedures().begin())->rev_postorder()[0]->mnemonics().size(), 1u);
 }

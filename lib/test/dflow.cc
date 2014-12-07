@@ -160,28 +160,28 @@ TEST_F(dflow,dominance)
 		++i;
 	}
 
-	ASSERT_EQ(d->frontiers.size(), 7);
-	ASSERT_EQ(d->frontiers.count(get<bblock_loc>(get_vertex(b0,proc->control_transfers))), 0);
-	ASSERT_EQ(d->frontiers.count(get<bblock_loc>(get_vertex(b1,proc->control_transfers))), 1);
+	ASSERT_EQ(d->frontiers.size(), 7u);
+	ASSERT_EQ(d->frontiers.count(get<bblock_loc>(get_vertex(b0,proc->control_transfers))), 0u);
+	ASSERT_EQ(d->frontiers.count(get<bblock_loc>(get_vertex(b1,proc->control_transfers))), 1u);
 	ASSERT_TRUE(d->frontiers.equal_range(get<bblock_loc>(get_vertex(b1,proc->control_transfers))).first->second ==
 			get<bblock_loc>(get_vertex(b1,proc->control_transfers)));
-	ASSERT_EQ(d->frontiers.count(get<bblock_loc>(get_vertex(b2,proc->control_transfers))), 1);
+	ASSERT_EQ(d->frontiers.count(get<bblock_loc>(get_vertex(b2,proc->control_transfers))), 1u);
 	ASSERT_TRUE(d->frontiers.equal_range(get<bblock_loc>(get_vertex(b2,proc->control_transfers))).first->second ==
 			get<bblock_loc>(get_vertex(b3,proc->control_transfers)));
-	ASSERT_EQ(d->frontiers.count(get<bblock_loc>(get_vertex(b3,proc->control_transfers))), 1);
+	ASSERT_EQ(d->frontiers.count(get<bblock_loc>(get_vertex(b3,proc->control_transfers))), 1u);
 	ASSERT_TRUE(d->frontiers.equal_range(get<bblock_loc>(get_vertex(b3,proc->control_transfers))).first->second ==
 			get<bblock_loc>(get_vertex(b1,proc->control_transfers)));
-	ASSERT_EQ(d->frontiers.count(get<bblock_loc>(get_vertex(b4,proc->control_transfers))), 0);
-	ASSERT_EQ(d->frontiers.count(get<bblock_loc>(get_vertex(b5,proc->control_transfers))), 1);
+	ASSERT_EQ(d->frontiers.count(get<bblock_loc>(get_vertex(b4,proc->control_transfers))), 0u);
+	ASSERT_EQ(d->frontiers.count(get<bblock_loc>(get_vertex(b5,proc->control_transfers))), 1u);
 	ASSERT_TRUE(d->frontiers.equal_range(get<bblock_loc>(get_vertex(b5,proc->control_transfers))).first->second ==
 			get<bblock_loc>(get_vertex(b3,proc->control_transfers)));
-	ASSERT_EQ(d->frontiers.count(get<bblock_loc>(get_vertex(b6,proc->control_transfers))), 1);
+	ASSERT_EQ(d->frontiers.count(get<bblock_loc>(get_vertex(b6,proc->control_transfers))), 1u);
 	ASSERT_TRUE(d->frontiers.equal_range(get<bblock_loc>(get_vertex(b6,proc->control_transfers))).first->second ==
 			get<bblock_loc>(get_vertex(b7,proc->control_transfers)));
-	ASSERT_EQ(d->frontiers.count(get<bblock_loc>(get_vertex(b7,proc->control_transfers))), 1);
+	ASSERT_EQ(d->frontiers.count(get<bblock_loc>(get_vertex(b7,proc->control_transfers))), 1u);
 	ASSERT_TRUE(d->frontiers.equal_range(get<bblock_loc>(get_vertex(b7,proc->control_transfers))).first->second ==
 			get<bblock_loc>(get_vertex(b3,proc->control_transfers)));
-	ASSERT_EQ(d->frontiers.count(get<bblock_loc>(get_vertex(b8,proc->control_transfers))), 1);
+	ASSERT_EQ(d->frontiers.count(get<bblock_loc>(get_vertex(b8,proc->control_transfers))), 1u);
 	ASSERT_TRUE(d->frontiers.equal_range(get<bblock_loc>(get_vertex(b8,proc->control_transfers))).first->second ==
 			get<bblock_loc>(get_vertex(b7,proc->control_transfers)));
 }
@@ -189,7 +189,7 @@ TEST_F(dflow,dominance)
 TEST_F(dflow,liveness)
 {
 	live l = liveness(proc);
-	ASSERT_EQ(l.names.size(), 7);
+	ASSERT_EQ(l.names.size(), 7u);
 
 	// a
 	auto p = l.usage.equal_range("a");
@@ -251,35 +251,35 @@ TEST_F(dflow,liveness)
 	ASSERT_EQ(std::distance(p.first,p.second), 1);
 	ASSERT_TRUE(l.usage.find("z")->second == get<bblock_loc>(get_vertex(b3,proc->control_transfers)));
 
-	ASSERT_EQ(l[get<bblock_loc>(get_vertex(b0,proc->control_transfers))].uevar.size(), 0);
-	ASSERT_EQ(l[get<bblock_loc>(get_vertex(b1,proc->control_transfers))].uevar.size(), 0);
-	ASSERT_EQ(l[get<bblock_loc>(get_vertex(b2,proc->control_transfers))].uevar.size(), 0);
-	ASSERT_EQ(l[get<bblock_loc>(get_vertex(b3,proc->control_transfers))].uevar.size(), 5);
-	ASSERT_EQ(l[get<bblock_loc>(get_vertex(b4,proc->control_transfers))].uevar.size(), 0);
-	ASSERT_EQ(l[get<bblock_loc>(get_vertex(b5,proc->control_transfers))].uevar.size(), 0);
-	ASSERT_EQ(l[get<bblock_loc>(get_vertex(b6,proc->control_transfers))].uevar.size(), 0);
-	ASSERT_EQ(l[get<bblock_loc>(get_vertex(b7,proc->control_transfers))].uevar.size(), 0);
-	ASSERT_EQ(l[get<bblock_loc>(get_vertex(b8,proc->control_transfers))].uevar.size(), 0);
+	ASSERT_EQ(l[get<bblock_loc>(get_vertex(b0,proc->control_transfers))].uevar.size(), 0u);
+	ASSERT_EQ(l[get<bblock_loc>(get_vertex(b1,proc->control_transfers))].uevar.size(), 0u);
+	ASSERT_EQ(l[get<bblock_loc>(get_vertex(b2,proc->control_transfers))].uevar.size(), 0u);
+	ASSERT_EQ(l[get<bblock_loc>(get_vertex(b3,proc->control_transfers))].uevar.size(), 5u);
+	ASSERT_EQ(l[get<bblock_loc>(get_vertex(b4,proc->control_transfers))].uevar.size(), 0u);
+	ASSERT_EQ(l[get<bblock_loc>(get_vertex(b5,proc->control_transfers))].uevar.size(), 0u);
+	ASSERT_EQ(l[get<bblock_loc>(get_vertex(b6,proc->control_transfers))].uevar.size(), 0u);
+	ASSERT_EQ(l[get<bblock_loc>(get_vertex(b7,proc->control_transfers))].uevar.size(), 0u);
+	ASSERT_EQ(l[get<bblock_loc>(get_vertex(b8,proc->control_transfers))].uevar.size(), 0u);
 
-	ASSERT_EQ(l[get<bblock_loc>(get_vertex(b0,proc->control_transfers))].varkill.size(), 1);
-	ASSERT_EQ(l[get<bblock_loc>(get_vertex(b1,proc->control_transfers))].varkill.size(), 2);
-	ASSERT_EQ(l[get<bblock_loc>(get_vertex(b2,proc->control_transfers))].varkill.size(), 3);
-	ASSERT_EQ(l[get<bblock_loc>(get_vertex(b3,proc->control_transfers))].varkill.size(), 3);
-	ASSERT_EQ(l[get<bblock_loc>(get_vertex(b4,proc->control_transfers))].varkill.size(), 0);
-	ASSERT_EQ(l[get<bblock_loc>(get_vertex(b5,proc->control_transfers))].varkill.size(), 2);
-	ASSERT_EQ(l[get<bblock_loc>(get_vertex(b6,proc->control_transfers))].varkill.size(), 1);
-	ASSERT_EQ(l[get<bblock_loc>(get_vertex(b7,proc->control_transfers))].varkill.size(), 1);
-	ASSERT_EQ(l[get<bblock_loc>(get_vertex(b8,proc->control_transfers))].varkill.size(), 1);
+	ASSERT_EQ(l[get<bblock_loc>(get_vertex(b0,proc->control_transfers))].varkill.size(), 1u);
+	ASSERT_EQ(l[get<bblock_loc>(get_vertex(b1,proc->control_transfers))].varkill.size(), 2u);
+	ASSERT_EQ(l[get<bblock_loc>(get_vertex(b2,proc->control_transfers))].varkill.size(), 3u);
+	ASSERT_EQ(l[get<bblock_loc>(get_vertex(b3,proc->control_transfers))].varkill.size(), 3u);
+	ASSERT_EQ(l[get<bblock_loc>(get_vertex(b4,proc->control_transfers))].varkill.size(), 0u);
+	ASSERT_EQ(l[get<bblock_loc>(get_vertex(b5,proc->control_transfers))].varkill.size(), 2u);
+	ASSERT_EQ(l[get<bblock_loc>(get_vertex(b6,proc->control_transfers))].varkill.size(), 1u);
+	ASSERT_EQ(l[get<bblock_loc>(get_vertex(b7,proc->control_transfers))].varkill.size(), 1u);
+	ASSERT_EQ(l[get<bblock_loc>(get_vertex(b8,proc->control_transfers))].varkill.size(), 1u);
 
-	ASSERT_EQ(l[get<bblock_loc>(get_vertex(b0,proc->control_transfers))].liveout.size(), 1);
-	ASSERT_EQ(l[get<bblock_loc>(get_vertex(b1,proc->control_transfers))].liveout.size(), 3);
-	ASSERT_EQ(l[get<bblock_loc>(get_vertex(b2,proc->control_transfers))].liveout.size(), 5);
-	ASSERT_EQ(l[get<bblock_loc>(get_vertex(b3,proc->control_transfers))].liveout.size(), 1);
-	ASSERT_EQ(l[get<bblock_loc>(get_vertex(b4,proc->control_transfers))].liveout.size(), 0);
-	ASSERT_EQ(l[get<bblock_loc>(get_vertex(b5,proc->control_transfers))].liveout.size(), 4);
-	ASSERT_EQ(l[get<bblock_loc>(get_vertex(b6,proc->control_transfers))].liveout.size(), 4);
-	ASSERT_EQ(l[get<bblock_loc>(get_vertex(b7,proc->control_transfers))].liveout.size(), 5);
-	ASSERT_EQ(l[get<bblock_loc>(get_vertex(b8,proc->control_transfers))].liveout.size(), 4);
+	ASSERT_EQ(l[get<bblock_loc>(get_vertex(b0,proc->control_transfers))].liveout.size(), 1u);
+	ASSERT_EQ(l[get<bblock_loc>(get_vertex(b1,proc->control_transfers))].liveout.size(), 3u);
+	ASSERT_EQ(l[get<bblock_loc>(get_vertex(b2,proc->control_transfers))].liveout.size(), 5u);
+	ASSERT_EQ(l[get<bblock_loc>(get_vertex(b3,proc->control_transfers))].liveout.size(), 1u);
+	ASSERT_EQ(l[get<bblock_loc>(get_vertex(b4,proc->control_transfers))].liveout.size(), 0u);
+	ASSERT_EQ(l[get<bblock_loc>(get_vertex(b5,proc->control_transfers))].liveout.size(), 4u);
+	ASSERT_EQ(l[get<bblock_loc>(get_vertex(b6,proc->control_transfers))].liveout.size(), 4u);
+	ASSERT_EQ(l[get<bblock_loc>(get_vertex(b7,proc->control_transfers))].liveout.size(), 5u);
+	ASSERT_EQ(l[get<bblock_loc>(get_vertex(b8,proc->control_transfers))].liveout.size(), 4u);
 }
 
 TEST_F(dflow,static_single_assignment)
