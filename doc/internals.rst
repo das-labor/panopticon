@@ -18,24 +18,26 @@ The most important types and their interaction are as follows:
 .. graphviz::
 
   digraph G {
+      rankdir=LR
       graph [bgcolor="transparent"]
-      session -> database;
-      database -> program;
-      program -> procedure;
-      procedure -> basic_block;
-      basic_block -> mnemonic;
-      mnemonic -> instr;
-      database -> region;
-      region -> layer;
-      database -> structure;
-      structure -> field;
+      node [shape=rect]
+      session -> database [label="contains"]
+      database -> program [label="contains"]
+      program -> procedure [label="contains"]
+      procedure -> basic_block [label="contains"]
+      basic_block -> mnemonic [label="contains"]
+      mnemonic -> instr [label="contains"]
+      database -> region [label="contains"]
+      region -> layer [label="contains"]
+      database -> structure [label="contains"]
+      structure -> field [label="contains"]
   }
 
 The program, procedure, basic_block and instr types model the behaviour of code,
 structure and field the meaning of data. The region and layer types represent
 how the program is laid out in memory.
 
-Aside from these there are the storage, blob an loc<T> types that manage
+Aside from these there are the storage, blob an :cpp:class:`loc\<T\>` types that manage
 serialization of Panopticon types into an on-disk format.
 
 Code
@@ -46,8 +48,8 @@ program consists of procedures (e.g. functions). A procedure is a control flow
 graph, e.g. a graph with nodes representing a sequence of instructions and
 directed edges for (un)conditional jumps. These instruction sequences are basic
 blocks and contain a list of mnemonics. Panopticon models the semantic of each
-mnemonic using its own language PIL. Each mnemonic instance has a sequence of
-PIL instructions (instr type) implementing it.
+mnemonic using its own language called :ref:`PIL <pil>`. Each mnemonic instance
+has a sequence of PIL instructions (:cpp:class:`instr` type) implementing it.
 
 Panopticon allows multiple programs per session. An example for that would be a
 C# application that calls functions of a DLL written in C. Such an application
@@ -88,21 +90,22 @@ input (for example uncompressing parts of the executable image).
 Marshalling
 ~~~~~~~~~~~
 
-The final group of types are storage, blob, loc<T> and the rdf namespace. These
-allow fairly transparent (un)marshalling of all important Panopticon types onto
-disk. The loc<T> template implements a smart pointer that lazily loads its
-instance from disk and keeps track of changes on the enclosed instance. A list
-of all loc<T> instances that are out of sync with the version on disk is kept.
-The changes are flushed by calling save_point().
+The final group of types are :cpp:class:`storage`, :cpp:class:`blob`, :cpp:class:`loc\<T\>`
+and the rdf namespace. These allow fairly transparent (un)marshalling of all
+important Panopticon types onto disk. The :cpp:class:`loc\<T\>` template implements a smart
+pointer that lazily loads its instance from disk and keeps track of changes
+on the enclosed instance. A list of all :cpp:class:`loc\<T\>` instances that are out of
+sync with the version on disk is kept. The changes are flushed by calling
+:cpp:func:`save_point()`.
 
 The instance on disk are referenced using a randomly generated UUID. The on disk
 is an RDF graph. The graph is saved as a edge list in a embedded database. For
-large binary objects like files the blob type is used instead of loc<T>. The
+large binary objects like files the blob type is used instead of :cpp:class:`loc\<T\>`. The
 contents of blob instances are written as files instead of putting the into the
 database. The database and the blob files are archived using cpio and compressed
 using LZMA.
 
-Each type that uses the loc<T> smart pointer implements the marshal and
+Each type that uses the :cpp:class:`loc\<T\>` smart pointer implements the marshal and
 unmarshal functions that turn an instance into a edge list and a set of blob
 instances or allocate a new instance from and edge list and blob set.
 
@@ -121,3 +124,6 @@ Moving data to QML is done by implementing Models (QAbstractModel subclasses
 LinearModel and ProcedureModel) that return JSON encoded Javascript objects.
 This makes memory management easier and save us from implementing dozens of
 QObject subclasses.
+
+.. include:: internals/pil.rst
+.. include:: internals/regions.rst
