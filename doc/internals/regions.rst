@@ -1,12 +1,12 @@
 Regions and Layer
-=================
+-----------------
 
 Data in Panopticon is organized into regions. Each region is a array of one byte
 wide cells. On top of a region can be a number layer. A layer spans part or all
 of its region and transforms the contents of cell inside.
 
 Region
-------
+~~~~~~
 
 Regions model continuous memory like RAM, Flash or files. A region has a unique
 name that is used to reference it and a size. The size is the number of cells in
@@ -33,7 +33,7 @@ Reading from a region is done by calling ``read`` on it. The function returns a
 ``slab`` instance that is a range of cells. Each cell is a ``tryte`` instance.
 
 Layer
------
+~~~~~
 
 Layer transform parts of a region in some way. Instead of writing the contents
 of a region directly layer allow changes to be tracked. A region that models the
@@ -70,7 +70,7 @@ using which layer. Layers are added to a region using ``add``.
    reg.write().add(bound(0x100,0x100 + com.size()),mapping);
 
 Region Graph
-------------
+~~~~~~~~~~~~
 
 Regions can overlap each other. This allows Panopticon to display compressed
 parts of a region. The decompression can't be modeled by a layer that transforms

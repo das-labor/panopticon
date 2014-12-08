@@ -15,8 +15,6 @@ This is the documentation of the Panopticon cross-platform disassembler.
   feats
   install
   usage
-  dev
-  pil
-  regions
+  internals
   others
   refs

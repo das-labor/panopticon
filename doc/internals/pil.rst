@@ -1,5 +1,5 @@
 Intermediate Language
-=====================
+---------------------
 
 Panopticon uses a intermediate language to model mnemonic semantics.
 
@@ -10,7 +10,7 @@ Reverse engineering is about understanding code. Most of the time the analyst in
 Panopticon uses a simple and well defined programming language (called PIL) to model the semantics of mnemonics in a machine readable manner. This intermediate languages is emitted by the disassembler part of Panopticon and used by all analysis algorithms. This way the analysis implementation is decoupled from the details of the instruction set.
 
 Basic structure
----------------
+~~~~~~~~~~~~~~~
 
 A PIL program modeling the AVR "adc" instruction looks as this:
 
@@ -39,7 +39,7 @@ Memory in PIL programs is modeled as an array of memory cells. These arrays are 
 Aside from boolean and integer constants, variables and memory references PIL programs can use undefined values. Setting a variable or memory cell to "undefined" tells the analysis engine that the operation either has no result or that this value can not be by determined by the disassembler. A example for the first case is the "call" instruction in x86. PIL structure mandates that call produces a value that is assigned to a varaible. No such value exists in Intel architectures, so "call" returns "undefined".
 
 Control Flow
-------------
+~~~~~~~~~~~~
 
 The PIL programs produced by the disassemblers are seqences of instructions. No jump or optional instructions are allowd inside a mnemonic. After each mnemonic an unlimited number of jumps is allowed. Each jump is associated with a guard which is a boolean PIL expression. If the guard is true, the jump is taken. A convetional "jmp" mnemonic in x86 can be modeled like this
 
@@ -50,7 +50,7 @@ The PIL programs produced by the disassemblers are seqences of instructions. No 
 Nevertheless PIL has a "call" instruction. This instruction has a single argument that specifis the address where a new function begins. No "return" instruction exists in PIL. Functions terminate after a sequence with no outgoing jumps is reached.
 
 Generating Code
----------------
+~~~~~~~~~~~~~~~
 
 The textual representaion of PIL used previous examples can'b be used directly in the disassembler. The code is expected to generate the PIL structures itself. PIL is defined in the "value.hh" and "instr.hh" header files . These are part of the Panopticon library. A PIL instruction is an instance of the "instr" class. Its contructor needs the operation to use, its arguments and the variable or memory reference that receives the result of the operation:
 
