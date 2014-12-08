@@ -1,8 +1,8 @@
 Regions and Layer
 -----------------
 
-Data in Panopticon is organized into regions. Each region is a array of one byte
-wide cells. On top of a region can be a number layer. A layer spans part or all
+Data in Panopticon is organized into regions. Each :cpp:class:`region` is a array of one byte
+wide cells. On top of a region can be a number layer. A :cpp:class:`layer` spans part or all
 of its region and transforms the contents of cell inside.
 
 Region
@@ -29,8 +29,9 @@ undefined values.
    region_loc undefined_region = region::undefined("undef",4096);
 
 
-Reading from a region is done by calling ``read`` on it. The function returns a
-``slab`` instance that is a range of cells. Each cell is a ``tryte`` instance.
+Reading from a region is done by calling :cpp:func:`read` on it. The function returns a
+:cpp:class:`slab` instance that is a range of cells. Each cell is a :cpp:class:`tryte`
+instance.
 
 Layer
 ~~~~~
@@ -51,7 +52,7 @@ will transform the written cell from its old value to the new one.
 
 A layer instance has a name but no size. Instead, it is given a slab to
 transform. Region keep track with parts of its contents need to be transformed
-using which layer. Layers are added to a region using ``add``.
+using which layer. Layers are added to a region using :cpp:func:`add`.
 
 .. code-block:: c++
 
