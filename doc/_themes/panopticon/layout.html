@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>{{ title|striptags|e }}{{ titlesuffix }}</title>
+
+		<meta charset="utf-8">
+		<meta http-equiv="X-UA-Compatible" content="IE=edge">
+		<meta name="description" content="">
+		<meta name="author" content="">
+
+		<link rel="icon" type="image/x-icon" href="http://panopticon.re/assets/favicon.ico">
+		<link rel="shortcut icon" type="image/x-icon" href="http://panopticon.re/assets/favicon.ico">
+		<link type="image/x-icon" href="http://panopticon.re/assets/favicon.ico">
+
+		<link rel="stylesheet" href="http://panopticon.re/assets/ink/css/ink.css">
+		<link rel="stylesheet" href="http://panopticon.re/assets/site.css">
+		<link rel="stylesheet" href="http://panopticon.re/assets/pygments.css">
+
+		<script type="text/javascript" src="http://panopticon.re/assets/ink/js/ink-all.min.js"></script>
+		<script type="text/javascript" src="http://panopticon.re/assets/ink/js/autoload.js"></script>
+	</head>
+	<body>
+		<div id="topbar">
+			<nav class="ink-navigation ink-grid large">
+				<ul class="menu horizontal flat black push-left">
+					<li>
+						<a href="http://panopticon.re/" id="small-brand" title="Panopticon">
+							<svg xmlns="http://www.w3.org/2000/svg" viewBox="0,0,50.5,57.65625" width="30" height="35" version="1.1" id="top-logo">
+								<g id="layer1" transform="translate(-331.89285,-460.67692)">
+									<path d="m 357.14285,460.67692 c -14.08394,0 -25.25,13.09006 -25.25,28.8125 0,15.72244 11.16606,28.84375 25.25,28.84375 14.08395,0 25.25,-13.12131 25.25,-28.84375 0,-15.72244 -11.16605,-28.8125 -25.25,-28.8125 z m 0,6.65625 c 8.95262,0 16.61916,7.3252 18.5,17.375 -3.83853,-4.13688 -10.91895,-9.125 -18.90625,-9.125 -7.43795,0 -14.05383,4.77565 -18,8.78125 1.98913,-9.87292 9.55577,-17.03125 18.40625,-17.03125 z m -0.40625,12.96875 c 5.08891,0 9.1875,4.12984 9.1875,9.21875 0,5.08891 -4.09859,9.21875 -9.1875,9.21875 -5.08891,0 -9.21875,-4.12984 -9.21875,-9.21875 0,-5.08891 4.12984,-9.21875 9.21875,-9.21875 z m 18.84375,14.34375 c -1.98913,9.86604 -9.58702,17 -18.4375,17 -8.42908,0 -15.70113,-6.45527 -18.09375,-15.59375 4.01832,3.80269 10.55093,7.65625 17.75,7.65625 8.06992,0 14.98944,-4.88184 18.78125,-9.0625 z" />
+								</g>
+							</svg>
+							PANOPTICON
+						</a>
+					</li>
+				</ul>
+				<ul class="menu horizontal flat black" />
+			</nav>
+		</div>
+		<div class="vertical-space ink-grid">
+			<div class="column-group horizontal-gutters">
+				<div class="all-20">
+					<nav class="ink-navigation">
+					<ul class="menu vertical">
+						{{ toc }}
+					</ul>
+					</nav>
+				</div>
+				<div class="all-80">
+					{% block body %} {% endblock %}
+				</div>
+			</div>
+		</div>
+	</body>
+</html>
