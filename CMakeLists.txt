@@ -76,6 +76,7 @@ endif()
 find_package(LibArchive REQUIRED)
 find_package(Boost 1.52 COMPONENTS system filesystem graph REQUIRED)
 find_package(KyotoCabinet REQUIRED)
+find_package(Sphinx)
 
 # Targets
 if(${BUILD_lib})
@@ -94,4 +95,8 @@ if(${BUILD_qt} AND ${panopticon_FOUND})
 	find_package(Qt5Qml REQUIRED)
 	add_subdirectory("qt")
 	add_dependencies(qtpanopticon panopticon)
+endif()
+
+if(${SPHINX_FOUND})
+	add_subdirectory(doc)
 endif()
