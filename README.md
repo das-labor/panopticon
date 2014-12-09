@@ -80,9 +80,15 @@ Panopticon consists of two sub projects: libpanopticon and qtpanopticon.
 The libpanopticon resides in the lib/ directory inside the repository. It
 implements all disassembling and analysis functionality.
 The libpanopticon has a test suite that can be found in lib/test/ after
-compilation. The library is documented using Doxygen. To generate an API
-documentation in HTML install Doxygen and call ``doxygen doc/doxyfile``
-from inside the repository. The documentation is written to ``doc/html/``.
+compilation.
+
+The documentation is build by typing:
+
+```bash
+make doc
+```
+
+View it by opening doc/html/index.html in your web browser.
 
 The qtpanopticon application is a Qt5 GUI for libpanopticon. The front
 end uses QtQuick2 that interacts with libpanopticon using a thin C++
@@ -90,6 +96,9 @@ interface (the Session, Panopticon, LinearModel and ProcedureModel classes).
 For the graph view qtpanopticon implements the graph layout algorithm used
 by Graphviz' DOT program[1]. The Sugiyama class exposes this functionality
 to QtQuick2. The QML files that reside in res/.
+The qtpanopticon test suite is placed in qt/test/ after compilation.
+
+Both test suites can are run by typing ``ctest``.
 
 References
 ==========
