@@ -1,4 +1,4 @@
-# GTEST_ADD_TESTS(executable workdir extra_args ARGN)
+# PANOPTICON_ADD_TESTS(executable workdir extra_args ARGN)
 #    executable = The path to the test executable
 #    workdir    = Working directory
 #    extra_args = Pass a list of extra arguments to be passed to
@@ -71,15 +71,17 @@
 # Based on GTEST_ADD_TESTS by Daniel Blezek <blezek@gmail.com>
 
 function(PANOPTICON_ADD_TESTS executable wd extra_args)
-    if(NOT ARGN)
-        message(FATAL_ERROR "Missing ARGN: Read the documentation for GTEST_ADD_TESTS")
-    endif()
-    foreach(source ${ARGN})
-        file(READ "${source}" contents)
-        string(REGEX MATCHALL "TEST_?F?\\(([A-Za-z_0-9 ,]+)\\)" found_tests ${contents})
-        foreach(hit ${found_tests})
-            string(REGEX REPLACE ".*\\( *([A-Za-z_0-9]+), *([A-Za-z_0-9]+) *\\).*" "\\1.\\2" test_name ${hit})
-						add_test(NAME ${test_name} WORKING_DIRECTORY ${wd} COMMAND ${executable} --gtest_filter=${test_name} ${extra_args})
-        endforeach()
-    endforeach()
+	if(NOT ARGN)
+		message(FATAL_ERROR "Missing ARGN: Read the documentation for GTEST_ADD_TESTS")
+	endif()
+
+	foreach(source ${ARGN})
+		file(READ "${source}" contents)
+		string(REGEX MATCHALL "TEST_?F?\\(([A-Za-z_0-9 ,]+)\\)" found_tests ${contents})
+
+		foreach(hit ${found_tests})
+			string(REGEX REPLACE ".*\\( *([A-Za-z_0-9]+), *([A-Za-z_0-9]+) *\\).*" "\\1.\\2" test_name ${hit})
+			add_test(NAME ${test_name} WORKING_DIRECTORY ${wd} COMMAND ${executable} --gtest_filter=${test_name} ${extra_args})
+		endforeach()
+	endforeach()
 endfunction()

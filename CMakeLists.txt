@@ -9,8 +9,9 @@ set(panopticon_VERSION
   ${panopticon_MAJOR}.${panopticon_MINOR}.${panopticon_PATCH})
 
 # Options
-option(BUILD_lib "Build Panopticon Library (libpanopticon)" ON)
-option(BUILD_qt "Build Qt UI (qtpanopticon)" ON)
+option(BUILD_lib "Build Panopticon Library (libpanopticon)")
+option(BUILD_qt "Build Qt UI (qtpanopticon)")
+option(BUILD_doc "Build documentation")
 
 # Packaging
 set(CPACK_PACKAGE_CONTACT "seu@panopticon.re")
@@ -25,15 +26,17 @@ set(CPACK_GENERATOR "STGZ;TGZ;DEB;RPM")
 include(CPack)
 
 # Default to debug build
-set(CMAKE_BUILD_TYPE "Debug")
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+	set(CMAKE_BUILD_TYPE Debug)
+endif()
 
-# find_package macros for librdf, raptor and panopticon
+# find_package macros for kyotocabinet, sphinx and panopticon
 set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 # Compiler flags
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" OR
-	 "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -pedantic -Wno-unused-parameter")
+	"${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -pedantic -Wno-unused-parameter -Wno-maybe-uninitialized")
 	set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--warn-unresolved-symbols,--warn-once")
 endif()
 
@@ -48,17 +51,17 @@ include(PanopticonTest)
 include_directories("3rdparty/gtest/include")
 link_directories(${gtest_BINARY_DIR}/src)
 
-# compile and link with coverage info
-if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" AND "${UNIX}")
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --coverage")
-else()
-	message(STATUS "Coverage testing disabled when not using GCC on Unix")
-endif()
-
 if("${CMAKE_BUILD_TYPE}" STREQUAL "Release")
  	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror")
 	message(STATUS "Build release")
 elseif("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
+	# compile and link with coverage info
+	if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" AND "${UNIX}")
+		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --coverage")
+	else()
+		message(STATUS "Coverage testing disabled when not using GCC on Unix")
+	endif()
+
 	message(STATUS "Debug build")
 endif()
 
@@ -76,27 +79,47 @@ endif()
 find_package(LibArchive REQUIRED)
 find_package(Boost 1.52 COMPONENTS system filesystem graph REQUIRED)
 find_package(KyotoCabinet REQUIRED)
-find_package(Sphinx)
 
 # Targets
-if(${BUILD_lib})
+if(NOT BUILD_lib OR ${BUILD_lib})
 	message(STATUS "Building Panopticon library")
 	add_subdirectory("lib")
-	set(panopticon_FOUND TRUE)
+	set(Panopticon_FOUND TRUE)
 else()
-	find_package(panopticon)
+	find_package(Panopticon REQUIRED)
 endif()
 
-if(${BUILD_qt} AND ${panopticon_FOUND})
+if(NOT BUILD_qt)
+	find_package(Qt5Quick)
+	find_package(Qt5Concurrent)
+	find_package(Qt5Widgets)
+	find_package(Qt5Qml)
+
+	if(${Qt5Quick_FOUND} AND ${Qt5Quick_FOUND} AND
+		${Qt5Quick_FOUND} AND ${Qt5Quick_FOUND})
+		message(STATUS "Building Panopticon Qt UI")
+		add_subdirectory("qt")
+		add_dependencies(qtpanopticon panopticon)
+	endif()
+elseif(${BUILD_qt})
+	find_package(Qt5Quick)
+	find_package(Qt5Concurrent)
+	find_package(Qt5Widgets)
+	find_package(Qt5Qml)
+
 	message(STATUS "Building Panopticon Qt UI")
-	find_package(Qt5Quick REQUIRED)
-	find_package(Qt5Concurrent REQUIRED)
-	find_package(Qt5Widgets REQUIRED)
-	find_package(Qt5Qml REQUIRED)
 	add_subdirectory("qt")
 	add_dependencies(qtpanopticon panopticon)
 endif()
 
-if(${SPHINX_FOUND})
+if(NOT BUILD_doc)
+	find_package(Sphinx)
+	if(${SPHINX_FOUND})
+		message(STATUS "Building Panopticon documentation")
+		add_subdirectory(doc)
+	endif()
+elseif(${BUILD_doc})
+	find_package(Sphinx)
+	message(STATUS "Building Panopticon documentation")
 	add_subdirectory(doc)
 endif()
