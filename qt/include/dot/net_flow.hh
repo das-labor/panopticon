@@ -92,64 +92,66 @@ struct net_flow
 			std::tie(tail_nodes,head_nodes) = partition(cut);
 
 			for(auto edge: iters(edges(graph)))
-				if(edge != cut && !cut_values.count(edge) && head_nodes.count(source(edge,graph)) && tail_nodes.count(target(edge,graph)) && slack(edge) >= 0 && (!min_edge || slack(edge) < min_edge->second))
-					min_edge = std::make_pair(edge,slack(edge));
-
-			if(!(min_edge && min_edge->second >= 0))
 			{
-				std::cerr << "digraph G {" << std::endl;
-				for(auto e: iters(edges(graph)))
-					std::cerr << po::source(e,graph).id << " -> " << target(e,graph).id << " [label=\"" << slack(e) << (min_edge && e == min_edge->first ? ", cut" : "") << "\"]" << std::endl;
-				for(auto v: iters(vertices(graph)))
-					std::cerr << v.id << " [label=\"" << v.id << " (" << lambda[v] << ")\"]" << std::endl;
-				std::cerr << "}" << std::endl;
+				if(edge != cut &&
+					!cut_values.count(edge) &&
+					head_nodes.count(source(edge,graph)) &&
+					tail_nodes.count(target(edge,graph)) &&
+					slack(edge) >= 0 &&
+					(!min_edge || slack(edge) < min_edge->second))
+				{
+					min_edge = std::make_pair(edge,slack(edge));
+				}
 			}
 
 			ensure(min_edge);
 			ensure(min_edge->second >= 0);
 
-			// swap edges
-			swap_edges(cut,min_edge->first);
-
-			// tail node of the new edge determines the rank of its head. Nodes of the tail component are adjusted after that
-			std::unordered_set<node> adjusted;
-			std::function<void(node n)> adjust;
-			adjust = [&](node n)
+			if(min_edge)
 			{
-				auto p = out_edges(n,graph);
-				auto q = in_edges(n,graph);
-				std::function<void(const edge_desc&)> op = [&](edge_desc edge)
+				// swap edges
+				swap_edges(cut,min_edge->first);
+
+				// tail node of the new edge determines the rank of its head. Nodes of the tail component are adjusted after that
+				std::unordered_set<node> adjusted;
+				std::function<void(node n)> adjust;
+				adjust = [&](node n)
 				{
-					if(/*tail_nodes.count(n) &&*/ !adjusted.count(target(edge,graph)) && cut_values.count(edge))
+					auto p = out_edges(n,graph);
+					auto q = in_edges(n,graph);
+					std::function<void(const edge_desc&)> op = [&](edge_desc edge)
 					{
-						lambda[target(edge,graph)] = lambda.at(n) + get_edge(edge,graph).second;
-						adjust(target(edge,graph));
-					}
+						if(!adjusted.count(target(edge,graph)) && cut_values.count(edge))
+						{
+							lambda[target(edge,graph)] = lambda.at(n) + get_edge(edge,graph).second;
+							adjust(target(edge,graph));
+						}
+					};
+
+					ensure(adjusted.insert(n).second);
+
+					std::for_each(p.first,p.second,op);
+					std::for_each(q.first,q.second,op);
 				};
 
-				ensure(adjusted.insert(n).second);
+				if(tail_nodes.count(target(min_edge->first,graph)))
+				{
+					lambda[source(min_edge->first,graph)] = lambda.at(target(min_edge->first,graph)) - get_edge(min_edge->first,graph).second;
+					adjust(source(min_edge->first,graph));
+				}
+				else
+				{
+					lambda[target(min_edge->first,graph)] = lambda.at(source(min_edge->first,graph)) - get_edge(min_edge->first,graph).second;
+					adjust(target(min_edge->first,graph));
+				}
+				compute_cut_values();
 
-				std::for_each(p.first,p.second,op);
-				std::for_each(q.first,q.second,op);
-			};
+				ensure(lambda.size() == num_vertices(graph));
 
-			if(tail_nodes.count(target(min_edge->first,graph)))
-			{
-				lambda[source(min_edge->first,graph)] = lambda.at(target(min_edge->first,graph)) - get_edge(min_edge->first,graph).second;
-				adjust(source(min_edge->first,graph));
+				// finds a tree edge w/ negative cut value if one exists
+				leave_edge = std::find_if(cut_values.begin(),cut_values.end(),[&](const std::pair<edge_desc,int> &p)
+					{ return p.second < 0; });
 			}
-			else
-			{
-				lambda[target(min_edge->first,graph)] = lambda.at(source(min_edge->first,graph)) - get_edge(min_edge->first,graph).second;
-				adjust(target(min_edge->first,graph));
-			}
-			compute_cut_values();
-
-			ensure(lambda.size() == num_vertices(graph));
-
-			// finds a tree edge w/ negative cut value if one exists
-			leave_edge = std::find_if(cut_values.begin(),cut_values.end(),[&](const std::pair<edge_desc,int> &p)
-				{ return p.second < 0; });
 		}
 
 		bal();
@@ -222,13 +224,6 @@ struct net_flow
 			tree.clear();
 			cut_values.clear();
 			tight_tree(lambda.begin()->first);
-
-			/*std::cerr << "digraph G {" << std::endl;
-			for(auto e: iters(edges(graph)))
-				std::cerr << source(e,graph).id << " -> " << target(e,graph).id << " [label\"delta = " << get_edge(e,graph).second << "\"]" << std::endl;
-			for(auto v: iters(vertices(graph)))
-				std::cerr << v.id << " [label=\"" << (lambda.count(v) ? lambda.at(v) : -1) << "\"]" << std::endl;
-			std::cerr << "}" << std::endl;*/
 
 			ensure(tree.size() <= num_vertices(graph));
 			if(tree.size() == num_vertices(graph))

@@ -45,10 +45,10 @@ namespace po
 	{
 		using integer_type = I;
 
-		integer_wrapper() : id() {}
+		integer_wrapper() : id(-1) {}
 		integer_wrapper(I i) : id(i) {}
 
-		integer_wrapper operator=(const integer_wrapper& iw) { if(iw != *this) id = iw.id; return *this; }
+		integer_wrapper& operator=(const integer_wrapper& iw) { if(&iw != this) id = iw.id; return *this; }
 		bool operator==(const integer_wrapper& iw) const { return iw.id == id; }
 		bool operator<(const integer_wrapper& iw) const { return id < iw.id; }
 
