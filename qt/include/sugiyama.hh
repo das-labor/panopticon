@@ -46,12 +46,24 @@ struct edge_proxy
 		if(comp)
 		{
 			edge_context = new QQmlContext(QQmlEngine::contextForObject(parent));
-			edge = qobject_cast<QObject*>(comp->create(edge_context));
-			edge->setParent(parent);
+			QObject* edge_obj = comp->create(edge_context);
+
+			edge = qobject_cast<QQuickItem*>(edge_obj);
+			if(!edge)
+			{
+				delete edge_obj;
+				qWarning() << "Edge delegate needs to be an Item class";
+				edge = nullptr;
+			}
+			else
+			{
+				edge->setParent(parent);
+				edge->setParentItem(parent);
+			}
 		}
 	}
 
-	QObject *edge;
+	QQuickItem *edge;
 	QQuickItem *label, *head, *tail;
 	QQmlContext *edge_context, *label_context, *head_context, *tail_context;
 };

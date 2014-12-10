@@ -78,12 +78,8 @@ void Sugiyama::setProcedure(QObject* o)
 						{
 							auto edge = get_edge(ed,std::get<0>(i->second));
 
-							if(edge.head)
-								edge.head->setVisible(v);
-							if(edge.tail)
-								edge.tail->setVisible(v);
-							if(edge.label)
-								edge.label->setVisible(v);
+							if(edge.edge)
+								edge.edge->setVisible(v);
 						}
 					}
 				}
@@ -309,7 +305,7 @@ void Sugiyama::updateEdgeDecorations(itmgraph::edge_descriptor e, Sugiyama::cach
 			px.head_context = new QQmlContext(QQmlEngine::contextForObject(obj));
 			px.head_context->setContextProperty("edge",obj);
 			px.head = qobject_cast<QQuickItem*>(hc->create(px.head_context));
-			px.head->setParentItem(this);
+			px.head->setParentItem(px.edge);
 		}
 		else
 		{
@@ -322,7 +318,7 @@ void Sugiyama::updateEdgeDecorations(itmgraph::edge_descriptor e, Sugiyama::cach
 			px.tail_context = new QQmlContext(QQmlEngine::contextForObject(obj));
 			px.tail_context->setContextProperty("edge",obj);
 			px.tail = qobject_cast<QQuickItem*>(tc->create(px.tail_context));
-			px.tail->setParentItem(this);
+			px.tail->setParentItem(px.edge);
 		}
 		else
 		{
@@ -335,7 +331,7 @@ void Sugiyama::updateEdgeDecorations(itmgraph::edge_descriptor e, Sugiyama::cach
 			px.label_context = new QQmlContext(QQmlEngine::contextForObject(obj));
 			px.label_context->setContextProperty("edge",obj);
 			px.label = qobject_cast<QQuickItem*>(lc->create(px.label_context));
-			px.label->setParentItem(this);
+			px.label->setParentItem(px.edge);
 		}
 		else
 		{
