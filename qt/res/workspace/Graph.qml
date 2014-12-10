@@ -191,7 +191,7 @@ Item {
 				}
 			}
 
-			width: state == "" && root.edgeSelection ? root.edgeWidth / 2 : root.edgeWidth
+			lineWidth: state == "" && root.edgeSelection ? root.edgeWidth / 2 : root.edgeWidth
 			head: arrow
 			label: Component {
 				Item {

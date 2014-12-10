@@ -131,9 +131,9 @@ void Sugiyama::paint(QPainter* p)
 			{
 				auto t = get_edge(e.first,graph);
 				QObject *obj = t.edge;
-				QQmlProperty width(obj,"width");
+				QQmlProperty lineWidth(obj,"lineWidth");
 				QQmlProperty color(obj,"color");
-				QPen pen(QBrush(color.read().value<QColor>()),width.read().toInt());
+				QPen pen(QBrush(color.read().value<QColor>()),lineWidth.read().toInt());
 
 				pen.setCosmetic(true);
 				p->setPen(pen);
@@ -281,7 +281,7 @@ void Sugiyama::updateEdgeDecorations(itmgraph::edge_descriptor e, Sugiyama::cach
 	{
 		QQmlProperty from(obj,"from");
 		QQmlProperty to(obj,"to");
-		QQmlProperty width(obj,"width");
+		QQmlProperty lineWidth(obj,"lineWidth");
 		QQmlProperty color(obj,"color");
 		QQmlProperty head(obj,"head");
 		QQmlProperty tail(obj,"tail");
@@ -343,7 +343,7 @@ void Sugiyama::updateEdgeDecorations(itmgraph::edge_descriptor e, Sugiyama::cach
 			px.label_context = nullptr;
 		}
 
-		ensure(width.connectNotifySignal(this,SLOT(update())));
+		ensure(lineWidth.connectNotifySignal(this,SLOT(update())));
 		ensure(color.connectNotifySignal(this,SLOT(update())));
 		ensure(from.connectNotifySignal(&_mapper,SLOT(map())));
 		ensure(to.connectNotifySignal(&_mapper,SLOT(map())));
