@@ -31,22 +31,6 @@ Item {
 			color: "#eeeeee"
 		}
 
-		/*TabView {
-			property var session: null
-
-			onSessionChanged: {
-				var i = 0
-				while(i < count) {
-					var t = getTab(i)
-
-					if(t.session == session) {
-						currentIndex = i
-						return
-					}
-				}
-
-				currentIndex = addTab("",
-				*/
 		Graph {
 			anchors.fill: parent
 			id: grph

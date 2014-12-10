@@ -94,15 +94,21 @@ void Sugiyama::setProcedure(QObject* o)
 
 			_procedure = proc;
 			next = (_procedure && _procedure->procedure() && !_cache.count(*_procedure->procedure()));
+
+			emit procedureChanged();
 		}
 	}
 
 	if(next)
 	{
 		if(*next)
+		{
 			layout();
+		}
 		else
+		{
 			update();
+		}
 	}
 }
 
@@ -123,22 +129,15 @@ void Sugiyama::paint(QPainter* p)
 		{
 			for(auto e: *r)
 			{
-				try
-				{
-					auto t = get_edge(e.first,graph);
-					QObject *obj = t.edge;
-					QQmlProperty width(obj,"width");
-					QQmlProperty color(obj,"color");
-					QPen pen(QBrush(color.read().value<QColor>()),width.read().toInt());
+				auto t = get_edge(e.first,graph);
+				QObject *obj = t.edge;
+				QQmlProperty width(obj,"width");
+				QQmlProperty color(obj,"color");
+				QPen pen(QBrush(color.read().value<QColor>()),width.read().toInt());
 
-					pen.setCosmetic(true);
-					p->setPen(pen);
-					p->drawPath(e.second.first);
-				}
-				catch(...)
-				{
-					;
-				}
+				pen.setCosmetic(true);
+				p->setPen(pen);
+				p->drawPath(e.second.first);
 			}
 		}
 	}
@@ -182,8 +181,6 @@ void Sugiyama::layout(void)
 
 		if(maybe_proc)
 		{
-			qDebug() << "layout" << maybe_proc->read();
-
 			po::proc_loc proc = *maybe_proc;
 			auto i = _cache.find(proc);
 
@@ -289,16 +286,21 @@ void Sugiyama::updateEdgeDecorations(itmgraph::edge_descriptor e, Sugiyama::cach
 		QQmlProperty head(obj,"head");
 		QQmlProperty tail(obj,"tail");
 		QQmlProperty label(obj,"label");
-		//auto from_itm = po::source(e,std::get<0>(cache));
-		//auto to_itm = po::target(e,std::get<0>(cache));
+
 		QQmlComponent *hc = head.read().value<QQmlComponent*>();
 		QQmlComponent *tc = tail.read().value<QQmlComponent*>();
 		QQmlComponent *lc = label.read().value<QQmlComponent*>();
 
 		if(px.head)
+		{
 			px.head->deleteLater();
+		}
+
 		if(px.tail)
+		{
 			px.tail->deleteLater();
+		}
+
 		if(px.label)
 			px.label->deleteLater();
 
@@ -857,19 +859,14 @@ void Sugiyama::updateEdge(QObject* edge)
 
 void Sugiyama::processRoute(void)
 {
-	if(_routingNeeded)
-	{
-		_routingNeeded = false;
-		route();
-	}
-	else
+	if(!_procedure || !_procedure->procedure() || *_procedure->procedure() != _routeWatcher.result().first || !_routingNeeded)
 	{
 		po::proc_wloc proc = _routeWatcher.result().first;
 		std::lock_guard<std::mutex> guard(_mutex);
 
 		ensure(_cache.count(proc));
 
-		_cache[proc] = cache_type(std::get<0>(_cache.at(proc)),std::get<1>(_cache.at(proc)),_routeWatcher.result().second);
+		std::get<2>(_cache[proc]) = _routeWatcher.result().second;
 		cache_type& cache = _cache.at(proc);
 		itmgraph& g = std::get<0>(cache);
 
@@ -880,6 +877,12 @@ void Sugiyama::processRoute(void)
 
 		emit routeDone();
 		update();
+	}
+
+	if(_routingNeeded)
+	{
+		_routingNeeded = false;
+		route();
 	}
 }
 

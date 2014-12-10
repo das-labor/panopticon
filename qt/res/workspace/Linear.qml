@@ -28,10 +28,10 @@ Item {
 	onSessionChanged: {
 		if(session != null) {
 			session.activeProceduresChanged.connect(function() {
-				console.log(session.activeProcedure)
-				console.log(session.linear.rowForProcedure(session.activeProcedure))
-
-				lst.positionViewAtIndex(session.linear.rowForProcedure(session.activeProcedure),ListView.Beginning)
+				lst.positionViewAtIndex(
+					session.linear.rowForProcedure(session.activeProcedure),
+					ListView.Beginning
+				)
 			})
 		}
 	}
@@ -231,7 +231,8 @@ Item {
 									var c = ((cursorUpperRow < rowIndex && cursorLowerRow > rowIndex) ||
 													 (cursorUpperRow == rowIndex && cursorLowerRow != rowIndex && cursorUpperCol <= colIndex) ||
 													 (cursorLowerRow == rowIndex && cursorUpperRow != rowIndex && cursorLowerCol >= colIndex) ||
-													 (cursorLowerRow == rowIndex && cursorUpperRow == rowIndex && cursorUpperCol <= colIndex && cursorLowerCol >= colIndex))
+													 (cursorLowerRow == rowIndex && cursorUpperRow == rowIndex &&
+													 	cursorUpperCol <= colIndex && cursorLowerCol >= colIndex))
 									return c && modelData != "" ? root.selectionColor : "#00000000"
 								}
 
@@ -269,7 +270,8 @@ Item {
 									var c = ((cursorUpperRow < rowIndex && cursorLowerRow > rowIndex) ||
 													 (cursorUpperRow == rowIndex && cursorLowerRow != rowIndex && cursorUpperCol <= colIndex) ||
 													 (cursorLowerRow == rowIndex && cursorUpperRow != rowIndex && cursorLowerCol >= colIndex) ||
-													 (cursorLowerRow == rowIndex && cursorUpperRow == rowIndex && cursorUpperCol <= colIndex && cursorLowerCol >= colIndex))
+													 (cursorLowerRow == rowIndex && cursorUpperRow == rowIndex &&
+													  cursorUpperCol <= colIndex && cursorLowerCol >= colIndex))
 									return c ? root.selectionColor : "#00000000"
 								}
 
@@ -311,7 +313,8 @@ Item {
 								var c = ((cursorUpperRow < rowIndex && cursorLowerRow > rowIndex) ||
 												 (cursorUpperRow == rowIndex && cursorLowerRow != rowIndex && cursorUpperCol <= colIndex) ||
 												 (cursorLowerRow == rowIndex && cursorUpperRow != rowIndex && cursorLowerCol >= colIndex) ||
-												 (cursorLowerRow == rowIndex && cursorUpperRow == rowIndex && cursorUpperCol <= colIndex && cursorLowerCol >= colIndex))
+												 (cursorLowerRow == rowIndex && cursorUpperRow == rowIndex &&
+												  cursorUpperCol <= colIndex && cursorLowerCol >= colIndex))
 								return c ? root.selectionColor : "#00000000"
 							}
 
@@ -356,7 +359,8 @@ Item {
 						verticalAlignment: Text.AlignVCenter
 						font { family: root.fontFamily; pixelSize: root.fontPixelSize }
 						color: "#1e1e1e"
-						text: (contents.payload.type == 'mne' ? contents.payload.op + "  " : "") + (contents.payload.type == 'mne' ? contents.payload.args.join(", ") : "")
+						text: (contents.payload.type == 'mne' ? contents.payload.op + "  " : "") +
+									(contents.payload.type == 'mne' ? contents.payload.args.join(", ") : "")
 					}
 				}
 

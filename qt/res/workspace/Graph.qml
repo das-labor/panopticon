@@ -10,13 +10,6 @@ Item {
 	property var nodes: []
 	property var rankY: []
 
-	onSessionChanged: {
-		if(session != null) {
-			//session.graph.jumpsChanged.connect(sugiyama.rebuildEdges)
-			sugiyama.rebuildEdges()
-		}
-	}
-
 	Component {
 		id: node
 
@@ -52,10 +45,12 @@ Item {
 			}
 
 			Component.onCompleted: {
-				if(root.nodes != undefined) {
-					root.nodes.push(bblock)
+				var p = session.activeProcedure
+
+				if(root.nodes[p] != undefined) {
+					root.nodes[p].push(bblock)
 				} else {
-					root.nodes = [bblock]
+					root.nodes[p] = [bblock]
 				}
 			}
 
@@ -241,38 +236,45 @@ Item {
 			width: Math.max(childrenRect.width,root.width + 100)
 			height: Math.max(2*childrenRect.height,root.height)
 
-			function rebuildEdges() {
-				var tmp = []
-				/*for(var a in root.session.graph.jumps) {
-					var e = eval(root.session.graph.jumps[a])
-					var x = edge.createObject(sugiyama,e)
-
-					tmp = [].concat(tmp,[x])
-				}*/
-
-				//sugiyama.edges = tmp
-			}
-
 			procedure: root.session.activeProcedure
 			vertex: node
 			edge: edge
 
 			onLayoutDone: {
-				root.rankY = []
+				var p = session.activeProcedure
 				var rankHeights = []
 
-				for(var n in root.nodes) {
-					var node = root.nodes[n]
+				root.rankY[p] = []
+
+				for(var n in root.nodes[p]) {
+					var node = root.nodes[p][n]
 					rankHeights[node.fRank] = Math.max(rankHeights[node.fRank] != undefined ? rankHeights[node.fRank] : 0,node.height);
 				}
 
 				for(var m in rankHeights) {
-					root.rankY[m] = rankHeights.reduce(function(a,n,i,all) { if(i < m) { return a + n + 100; } else { return a; } },100);
+					root.rankY[p][m] = rankHeights.reduce(function(a,n,i,all) {
+						if(i < m) {
+							return a + n + 100
+						} else {
+							return a
+						}
+					},100);
 				}
 
-				for(var n in root.nodes) {
-					var node = root.nodes[n]
-					node.y = rankY[node.fRank];
+				for(var n in root.nodes[p]) {
+					var node = root.nodes[p][n]
+					node.y = rankY[p][node.fRank];
+				}
+			}
+
+			onProcedureChanged: {
+				var p = session.activeProcedure
+
+				if(root.rankY[p] == undefined) {
+					root.rankY[p] = []
+				}
+				if(root.nodes[p] == undefined) {
+					root.nodes[p] = []
 				}
 			}
 		}
