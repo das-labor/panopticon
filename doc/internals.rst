@@ -127,3 +127,4 @@ QObject subclasses.
 
 .. include:: internals/pil.rst
 .. include:: internals/regions.rst
+.. include:: internals/disass.rst
