@@ -1,5 +1,5 @@
-Internals
-=========
+Architecture
+============
 
 This is the developer's documentation.
 
@@ -124,7 +124,3 @@ Moving data to QML is done by implementing Models (QAbstractModel subclasses
 LinearModel and ProcedureModel) that return JSON encoded Javascript objects.
 This makes memory management easier and save us from implementing dozens of
 QObject subclasses.
-
-.. include:: internals/pil.rst
-.. include:: internals/regions.rst
-.. include:: internals/disass.rst
