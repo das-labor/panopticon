@@ -33,17 +33,6 @@ endif()
 # find_package macros for kyotocabinet, sphinx and panopticon
 set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
-# Compiler flags
-if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" OR
-	"${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
- set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -pedantic -Wno-unused-parameter -Wno-maybe-uninitialized")
-	set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--warn-unresolved-symbols,--warn-once")
-endif()
-
-if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /bigobj")
-endif()
-
 # enable tests
 include(CTest)
 add_subdirectory("3rdparty/gtest")
@@ -63,6 +52,20 @@ elseif("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
 	endif()
 
 	message(STATUS "Debug build")
+endif()
+
+# Compiler flags
+if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" OR
+	"${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -pedantic")
+ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-parameter")
+ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-maybe-uninitialized")
+ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unknown-warning-option")
+	set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--warn-unresolved-symbols,--warn-once")
+endif()
+
+if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /bigobj")
 endif()
 
 # Check for C++11

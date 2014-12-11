@@ -4,7 +4,6 @@
 #include <QQmlApplicationEngine>
 
 #include "session.hh"
-#include "pen.hh"
 #include "sugiyama.hh"
 #include "session.hh"
 

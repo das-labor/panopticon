@@ -8,7 +8,6 @@ int main(int argc, char *argv[])
 {
 	QApplication app(argc,argv);
 
-	qmlRegisterType<Pen>("Panopticon",1,0,"Pen");
 	qmlRegisterUncreatableType<Session>("Panopticon",1,0,"Session","Use Panopticon.newSession or Panopticon.openSession.");
 	qmlRegisterSingletonType<Panopticon>("Panopticon",1,0,"Panopticon",Panopticon::provider);
 	qmlRegisterType<Sugiyama>("Panopticon",1,0,"Sugiyama");

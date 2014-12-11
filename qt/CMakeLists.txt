@@ -7,7 +7,7 @@ set(qtpanopticon_HEADERS
 	include/dot/dot.hh include/dot/rank.hh include/dot/order.hh
 	include/dot/net_flow.hh ${CMAKE_CURRENT_BINARY_DIR}/config.hh)
 set(qtpanopticon_HEADERS_QT
-	include/pen.hh include/panopticon.hh include/session.hh
+	include/panopticon.hh include/session.hh
 	include/sugiyama.hh)
 
 set(qtpanopticon_RESOURCES res/resources.qrc)
