@@ -44,6 +44,30 @@ Item {
 				}
 			}
 
+			onXChanged: {
+				if(x < 0) {
+					var delta = Math.abs(x)
+					var p = session.activeProcedure
+
+					for(var n in root.nodes[p]) {
+						var node = root.nodes[p][n]
+						node.x += delta
+					}
+				}
+			}
+
+			onYChanged: {
+				if(y < 0) {
+					var delta = Math.abs(y)
+					var p = session.activeProcedure
+
+					for(var n in root.nodes[p]) {
+						var node = root.nodes[p][n]
+						node.y += delta
+					}
+				}
+			}
+
 			Component.onCompleted: {
 				var p = session.activeProcedure
 
@@ -221,20 +245,22 @@ Item {
 
 	Flickable {
 		id: flick
-		width: parent.width
-		height: parent.height
+		anchors.fill: parent
 		clip: true
-		contentWidth: Math.max(sugiyama.width,root.width * 2)
-		contentHeight: Math.max(sugiyama.height,root.height)
+		contentWidth: sugiyama.width
+		contentHeight: sugiyama.height
+		bottomMargin: 200
+		leftMargin: 200
+		topMargin: 200
+		rightMargin: 200
 
 		Sugiyama {
 			id: sugiyama
 
 			property var rankStart: []
 
-			x: (childrenRect.width < root.width * 2 ? ((root.width - childrenRect.width) / 2) : 0)
-			width: Math.max(childrenRect.width,root.width + 100)
-			height: Math.max(2*childrenRect.height,root.height)
+			width: childrenRect.width
+			height: childrenRect.height
 
 			procedure: root.session.activeProcedure
 			vertex: node
