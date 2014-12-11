@@ -799,12 +799,10 @@ void Sugiyama::route(void)
 					}
 					else
 					{
-						pp = toPoly({
-							point{from,point::Exit,out_x,from_y + from_height / 2},
-							point{from,point::Exit,out_x,from_y + from_height + nodeBorderPadding},
-							point{to,point::Entry,in_x,to_y - nodeBorderPadding},
-							point{to,point::Entry,in_x,to_y + to_height / 2}
-						});
+						pp.moveTo(QPoint(out_x,from_y + from_height / 2));
+						pp.lineTo(QPoint(out_x,from_y + from_height + nodeBorderPadding));
+						pp.lineTo(QPoint(in_x,to_y - nodeBorderPadding));
+						pp.lineTo(QPoint(in_x,to_y + to_height / 2));
 					}
 
 					ret.emplace(e,std::make_pair(pp,pp.pointAtPercent(.5)));

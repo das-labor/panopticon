@@ -122,15 +122,12 @@ Item {
 
 				onPositionChanged: {
 					if(pressed) {
-						//sugiyama.direct = true
-						//edgeColor = "gray"
+						sugiyama.route()
 					}
-					sugiyama.route()
 				}
 
 				onReleased: {
-						//sugiyama.direct = false
-						sugiyama.route()
+					sugiyama.route()
 				}
 
 				onEntered: {
