@@ -482,11 +482,18 @@ void Sugiyama::positionEdgeDecoration(itmgraph::edge_descriptor e, cache_type co
 	QQuickItem* head = edge.head;
 	QQuickItem* tail = edge.tail;
 	QQuickItem* label = edge.label;
+	QRectF to_bb(QQuickPaintedItem::mapFromItem(to,to->boundingRect().topLeft()),QSizeF(to->width(),to->height()));
+	QRectF from_bb(QQuickPaintedItem::mapFromItem(from,from->boundingRect().topLeft()),QSizeF(from->width(),from->height()));
+	int const p = nodeBorderPadding;
+	QPoint p1(ports.first,from_bb.y() + from_bb.height() + p);
+	QPoint p2(ports.second,to_bb.y() - p);
+	QLineF l(p1,p2);
+	bool overlap = !(l.length() > 2*edgeRadius && (to_bb.adjusted(-p,-p,p,p) & from_bb.adjusted(-p,-p,p,p)).isNull());
+
+	edge.edge->setVisible(!overlap);
 
 	if(head)
 	{
-		QRectF to_bb(QQuickPaintedItem::mapFromItem(to,to->boundingRect().topLeft()),QSizeF(to->width(),to->height()));
-
 		head->setX(ports.second - head->width() / 2);
 		head->setY(to_bb.top() - head->height() / 2);
 		head->setRotation(180);
@@ -494,8 +501,6 @@ void Sugiyama::positionEdgeDecoration(itmgraph::edge_descriptor e, cache_type co
 
 	if(tail)
 	{
-		QRectF from_bb(QQuickPaintedItem::mapFromItem(from,from->boundingRect().topLeft()),QSizeF(from->width(),from->height()));
-
 		tail->setX(ports.first - head->width() / 2);
 		tail->setY(from_bb.bottom());
 	}
@@ -712,45 +717,58 @@ doRoute(itmgraph graph, std::unordered_map<itmgraph::vertex_descriptor,QRect> bb
 		QSize from_sz = from_bb.size();
 		QSize to_sz = to_bb.size();
 
+		int const p = Sugiyama::nodeBorderPadding;
+		int const hr = Sugiyama::edgeRadius / 3;
 		int in_x, out_x;
 		std::tie(out_x,in_x) = nodePorts(e,bboxes,graph);
-		std::list<point> r;
+		QPainterPath pp;
 
 		if(from != to)
 		{
-			r = dijkstra(point{from,point::Exit,out_x,from_pos.y() + from_sz.height() + Sugiyama::nodeBorderPadding},
-									 point{to,point::Entry,in_x,to_pos.y() - Sugiyama::nodeBorderPadding},vis);
+			std::list<point> r;
+			QPoint p1(out_x,from_pos.y() + from_sz.height() + p);
+			QPoint p2(in_x,to_pos.y() - p);
+			QLineF l(p1,p2);
+
+			if(l.length() > 2*Sugiyama::edgeRadius && (to_bb.adjusted(-p,-p,p,p) & from_bb.adjusted(-p,-p,p,p)).isNull())
+			{
+				r = dijkstra(point{from,point::Exit,out_x,from_pos.y() + from_sz.height() + p},
+										 point{to,point::Entry,in_x,to_pos.y() - p},vis);
+
+				if(r.empty())
+				{
+					qWarning() << "No route from" << from_pos << "to" << to_pos;
+
+					pp.moveTo(from_bb.center());
+					pp.lineTo(to_bb.center());
+				}
+				else
+				{
+					r.push_front(point{from,point::Center,r.front().x,from_pos.y() + from_sz.height() / 2});
+					r.push_back(point{to,point::Center,r.back().x,to_pos.y() + to_sz.height() / 2});
+					pp = toPoly(r);
+				}
+			}
+			else
+			{
+				pp.moveTo(from_bb.center());
+				pp.lineTo(to_bb.center());
+			}
 		}
 		else
 		{
-			r = {
-				point{to,point::Exit,to_bb.left() + 20,to_pos.y() + to_sz.height() + Sugiyama::nodeBorderPadding/2},
-				point{to,point::Corner,to_bb.left() - Sugiyama::nodeBorderPadding/2,to_bb.bottom() + Sugiyama::nodeBorderPadding/2},
-				point{to,point::Corner,to_bb.left() -Sugiyama::nodeBorderPadding/2,to_bb.top() -Sugiyama::nodeBorderPadding/2},
-				point{to,point::Entry,to_bb.left() + 20,to_pos.y() - Sugiyama::nodeBorderPadding/2}
-			};
+			pp = toPoly({
+				point{from,point::Center,to_bb.left() + 20,from_pos.y() + from_sz.height() / 2},
+				point{to,point::Exit,to_bb.left() + 20,to_pos.y() + to_sz.height() + p/2},
+				point{to,point::Corner,to_bb.left() - p/2,to_bb.bottom() + p/2},
+				point{to,point::Corner,to_bb.left() - p/2,to_bb.top() - p/2},
+				point{to,point::Entry,to_bb.left() + 20,to_pos.y() - p/2},
+				point{to,point::Center,to_bb.left() + 20,to_pos.y() + to_sz.height() / 2}
+			});
 		}
 
-		if(r.empty())
-		{
-			qWarning() << "No route from" << from_pos << "to" << to_pos;
-
-			QPainterPath pp;
-
-			pp.moveTo(from_bb.center());
-			pp.lineTo(to_bb.center());
-			ret.emplace(e,std::make_pair(pp,pp.pointAtPercent(.5)));
-		}
-		else
-		{
-			QPointF pnt = toPoly(r).pointAtPercent(.5);
-			r.push_front(point{from,point::Center,r.front().x,from_pos.y() + from_sz.height() / 2});
-			r.push_back(point{to,point::Center,r.back().x,to_pos.y() + to_sz.height() / 2});
-
-			QPainterPath pp = toPoly(r);
-			//QPainterPath pp = toBezier(r);
-			ret.emplace(e,std::make_pair(pp,pnt));
-		}
+		ret.emplace(e,std::make_pair(pp,pp.pointAtPercent(.5)));
+		//ret.emplace(e,std::make_pair(pp,pnt));
 	}
 
 	return std::make_pair(proc,ret);
@@ -783,26 +801,34 @@ void Sugiyama::route(void)
 					int in_x, out_x;
 					std::tie(out_x,in_x) = nodePorts(e,boost::none,g);
 					QPainterPath pp;
-					int to_x = static_cast<int>(to_obj->x()), to_y = static_cast<int>(to_obj->y());
-					int to_height = static_cast<int>(to_obj->height());
-					int from_y = static_cast<int>(from_obj->y());
-					int from_height = static_cast<int>(from_obj->height());
+					QRect to_bb(to_obj->x(),to_obj->y(),to_obj->width(),to_obj->height());
+					QRect from_bb(from_obj->x(),from_obj->y(),from_obj->width(),from_obj->height());
 
 					if(from == to)
 					{
 						pp = toPoly({
-							point{to,point::Exit,to_x + 20,to_y + to_height + Sugiyama::nodeBorderPadding/2},
-							point{to,point::Corner,to_x - Sugiyama::nodeBorderPadding/2,to_y + to_height + Sugiyama::nodeBorderPadding/2},
-							point{to,point::Corner,to_x - Sugiyama::nodeBorderPadding/2,to_y -Sugiyama::nodeBorderPadding/2},
-							point{to,point::Entry,to_x + 20,to_y - Sugiyama::nodeBorderPadding/2}
+							point{to,point::Exit,to_bb.x() + 20,to_bb.y() + to_bb.height() + Sugiyama::nodeBorderPadding/2},
+							point{to,point::Corner,to_bb.x() - Sugiyama::nodeBorderPadding/2,to_bb.y() + to_bb.height() + Sugiyama::nodeBorderPadding/2},
+							point{to,point::Corner,to_bb.x() - Sugiyama::nodeBorderPadding/2,to_bb.y() -Sugiyama::nodeBorderPadding/2},
+							point{to,point::Entry,to_bb.x() + 20,to_bb.y() - Sugiyama::nodeBorderPadding/2}
 						});
 					}
 					else
 					{
-						pp.moveTo(QPoint(out_x,from_y + from_height / 2));
-						pp.lineTo(QPoint(out_x,from_y + from_height + nodeBorderPadding));
-						pp.lineTo(QPoint(in_x,to_y - nodeBorderPadding));
-						pp.lineTo(QPoint(in_x,to_y + to_height / 2));
+						int const p = nodeBorderPadding;
+						QPoint p1(out_x,from_bb.y() + from_bb.height() + nodeBorderPadding);
+						QPoint p2(in_x,to_bb.y() - nodeBorderPadding);
+						QLineF l(p1,p2);
+
+						pp.moveTo(QPoint(out_x,from_bb.y() + from_bb.height()/2));
+
+						if(l.length() > 2*edgeRadius && (to_bb.adjusted(-p,-p,p,p) & from_bb.adjusted(-p,-p,p,p)).isNull())
+						{
+							pp.lineTo(QPoint(out_x,from_bb.y() + from_bb.height() + nodeBorderPadding));
+							pp.lineTo(QPoint(in_x,to_bb.y() - nodeBorderPadding));
+						}
+
+						pp.lineTo(QPoint(in_x,to_bb.y() + to_bb.height()/2));
 					}
 
 					ret.emplace(e,std::make_pair(pp,pp.pointAtPercent(.5)));
@@ -815,7 +841,6 @@ void Sugiyama::route(void)
 
 				emit routeDone();
 				update();
-
 
 				// XXX: race condition
 				if(!_routeWatcher.isRunning())
