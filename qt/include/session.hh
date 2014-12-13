@@ -20,7 +20,7 @@ public:
 
 	void postComment(int row, QString c);
 
-	Q_INVOKABLE int rowForProcedure(QString p) const;
+	Q_INVOKABLE int rowForProcedure(QObject*) const;
 
 protected:
 	struct data_visitor : public boost::static_visitor<std::tuple<QString,po::bound,std::list<po::bound>>>
@@ -44,7 +44,7 @@ protected:
 	std::list<std::tuple<po::bound,po::region_wloc,bool>> _projection;
 	boost::icl::split_interval_map<int,row_t> _rows;
 	std::list<boost::icl::split_interval_map<po::offset,int>> _tracks;
-	std::unordered_map<std::string,int> _procedures;
+	std::unordered_map<po::proc_wloc,int> _procedures;
 };
 
 class Procedure : public QObject

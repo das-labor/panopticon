@@ -97,7 +97,7 @@ LinearModel::LinearModel(dbase_loc db, QObject *p)
 
 									if(maybe_bb == proc->entry)
 									{
-										_procedures.emplace(proc->name,old_row);
+										_procedures.emplace(proc_wloc(proc),old_row);
 									}
 
 									for(auto e: iters(in_edges(vx,proc->control_transfers)))
@@ -163,11 +163,19 @@ LinearModel::LinearModel(dbase_loc db, QObject *p)
 	ensure(_rows.size());
 }
 
-int LinearModel::rowForProcedure(QString s) const
+int LinearModel::rowForProcedure(QObject* p) const
 {
-	std::string n = s.toStdString();
-	auto i = _procedures.find(n);
-	return i != _procedures.end() ? i->second : -1;
+	Procedure* proc = qobject_cast<Procedure*>(p);
+
+	if(proc && proc->procedure())
+	{
+		auto i = _procedures.find(*proc->procedure());
+		return i != _procedures.end() ? i->second : -1;
+	}
+	else
+	{
+		return -1;
+	}
 }
 
 int LinearModel::rowCount(const QModelIndex& parent) const
