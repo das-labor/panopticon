@@ -1,3 +1,21 @@
+/*
+ * This file is part of Panopticon (http://panopticon.re).
+ * Copyright (C) 2014 Kai Michaelis
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 #include <list>
 
 #include <panopticon/region.hh>
@@ -304,14 +322,6 @@ namespace dot
 		}
 
 		single_source_sink(virt_vx(-1,-1,boost::none),std::make_pair(0,0),h2);
-
-		/*std::cerr << "digraph G {" << std::endl;
-		for(auto e: iters(edges(h2)))
-			if(get_edge(e,h2).first > 0)
-				std::cerr << po::source(e,h2).id << " -> " << target(e,h2).id << " [label=\"omega: " << get_edge(e,h2).first << ", delta: " << get_edge(e,h2).second << "\"]" << std::endl;
-		for(auto v: iters(vertices(h2)))
-			std::cerr << v.id << " [label=\"rank: " << std::get<0>(get_vertex(v,h2)) << "-" << std::get<1>(get_vertex(v,h2)) << (std::get<2>(get_vertex(v,h2)) ? ", virt" : "") << "\"]" << std::endl;
-		std::cerr << "}" << std::endl;*/
 
 		net_flow<virt_vx> layer_nf(h2);
 		layer_nf.solve(std::function<void(void)>([](void) {}));

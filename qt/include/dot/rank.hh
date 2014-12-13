@@ -1,3 +1,21 @@
+/*
+ * This file is part of Panopticon (http://panopticon.re).
+ * Copyright (C) 2014 Kai Michaelis
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 #include <unordered_map>
 
 #include <boost/graph/depth_first_search.hpp>
@@ -206,69 +224,3 @@ namespace dot
 		return ret;
 	}
 }
-/*po::digraph<
-	auto nd = nodes(graph);
-	if(nd.first == nd.second)
-		return;
-
-	// rank
-	net_flow<T> ph1 = cook_phase1(graph);
-	nf_solve<T>(balance<T>,ph1);
-
-	// ordering
-	int iter = 0;
-	int cross = -1;
-	phase2<T> best, ph2 = cook_phase2(graph,ph1);
-
-	order(ph2);
-
-	best = ph2;
-	while(iter < 24)
-	{
-		std::unordered_map<node_adaptor<T>,double> median = weighted_median(ph2,iter & 1);
-		unsigned int tmp = transpose(ph2);
-
-		if(cross < 0 || static_cast<unsigned int>(cross) > tmp)
-		{
-			cross = tmp;
-			best = ph2;
-		}
-
-		++iter;
-	}
-	ph2 = best;
-
-	// x coordinate
-	net_flow<graph_adaptor<T>> ph3 = cook_phase3(graph,ph1,ph2,nodesep);
-	nf_solve<graph_adaptor<T>>(symmetry<graph_adaptor<T>>,ph3);
-
-	int x_correction = std::numeric_limits<int>::max();
-	std::map<unsigned int,unsigned int> maxh;
-	typename traits::node_iterator i,iend;
-
-	std::tie(i,iend) = nodes(graph);
-
-	std::for_each(i,iend,[&](const typename traits::node_type &n)
-	{
-		int r = ph1.lambda.at(n);
-
-		x_correction = std::min(x_correction,ph3.lambda.at(n));
-		if(maxh.count(r))
-			maxh[r] = std::max(maxh.at(r),dimensions(n,graph).second);
-		else
-			maxh.insert(std::make_pair(r,dimensions(n,graph).second));
-	});
-
-	// position nodes
-	int t = 0;
-	for(std::pair<unsigned int const,unsigned int> &x: maxh)
-		t = x.second += t + ranksep;
-
-	std::unordered_map<typename traits::node_type,std::pair<int,int>> pos;
-	for(typename graph_traits<graph_adaptor<T>>::node_type m: ph2.nodes)
-		if(m.is_node())
-		{
-			typename traits::node_type n = m.node();
-			set_position(n,std::make_pair(ph3.lambda.at(n) - x_correction,maxh.at(ph1.lambda.at(n))),graph);
-		}
-}*/
