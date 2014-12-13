@@ -718,7 +718,6 @@ doRoute(itmgraph graph, std::unordered_map<itmgraph::vertex_descriptor,QRect> bb
 		QSize to_sz = to_bb.size();
 
 		int const p = Sugiyama::nodeBorderPadding;
-		int const hr = Sugiyama::edgeRadius / 3;
 		int in_x, out_x;
 		std::tie(out_x,in_x) = nodePorts(e,bboxes,graph);
 		QPainterPath pp;

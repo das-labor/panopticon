@@ -2,8 +2,9 @@ cmake_minimum_required(VERSION 2.8.9)
 project(Panopticon CXX)
 include(CheckCXXCompilerFlag)
 
+set(panopticon_MILESTONE "Stammheim")
 set(panopticon_MAJOR 0)
-set(panopticon_MINOR 8)
+set(panopticon_MINOR 9)
 set(panopticon_PATCH 0)
 set(panopticon_VERSION
   ${panopticon_MAJOR}.${panopticon_MINOR}.${panopticon_PATCH})
@@ -33,17 +34,18 @@ endif()
 # find_package macros for kyotocabinet, sphinx and panopticon
 set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
-# enable tests
-include(CTest)
-add_subdirectory("3rdparty/gtest")
-include(PanopticonTest)
-include_directories("3rdparty/gtest/include")
-link_directories(${gtest_BINARY_DIR}/src)
-
+# build type-depend
 if("${CMAKE_BUILD_TYPE}" STREQUAL "Release")
  	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror")
 	message(STATUS "Build release")
 elseif("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
+	# enable tests
+	include(CTest)
+	add_subdirectory("3rdparty/gtest")
+	include(PanopticonTest)
+	include_directories("3rdparty/gtest/include")
+	link_directories(${gtest_BINARY_DIR}/src)
+
 	# compile and link with coverage info
 	if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" AND "${UNIX}")
 		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --coverage")

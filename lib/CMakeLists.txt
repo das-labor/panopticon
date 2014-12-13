@@ -73,4 +73,6 @@ if(UNIX AND NOT APPLE)
 		DESTINATION "lib/pkgconfig")
 endif()
 
-add_subdirectory("test")
+if("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
+	add_subdirectory("test")
+endif()
