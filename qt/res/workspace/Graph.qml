@@ -9,6 +9,7 @@ Item {
 	property var session: null
 	property var nodes: []
 	property var rankY: []
+	property var viewOffsets: []
 
 	Component {
 		id: node
@@ -251,6 +252,24 @@ Item {
 		topMargin: 200
 		rightMargin: 200
 
+		onContentXChanged: {
+			var p = session.activeProcedure
+			if(root.viewOffsets[p] == undefined) {
+				root.viewOffsets[p] = {'x': contentX, 'y': contentY}
+			} else {
+				root.viewOffsets[p]['x'] = contentX
+			}
+		}
+
+		onContentYChanged: {
+			var p = session.activeProcedure
+			if(root.viewOffsets[p] == undefined) {
+				root.viewOffsets[p] = {'x': contentX, 'y': contentY}
+			} else {
+				root.viewOffsets[p]['y'] = contentY
+			}
+		}
+
 		Sugiyama {
 			id: sugiyama
 
@@ -292,6 +311,14 @@ Item {
 
 			onProcedureChanged: {
 				var p = session.activeProcedure
+
+				if(root.viewOffsets[p] != undefined) {
+					flick.contentX = root.viewOffsets[p]['x']
+					flick.contentY = root.viewOffsets[p]['y']
+				} else {
+					flick.contentX = 0
+					flick.contentY = 0
+				}
 
 				if(root.rankY[p] == undefined) {
 					root.rankY[p] = []
