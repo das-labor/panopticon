@@ -49,6 +49,10 @@ Item {
 		}
 	}
 
+	Component.onCompleted: {
+		root.session.activeProcedure = root.session.procedures[0]
+	}
+
 	SideMenu {
 		id: mainCode
 
