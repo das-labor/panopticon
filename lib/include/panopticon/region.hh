@@ -20,8 +20,6 @@
 #include <iterator>
 #include <numeric>
 
-#include <boost/range/any_range.hpp>
-#include <boost/range/adaptor/transformed.hpp>
 #include <boost/range.hpp>
 #include <boost/icl/interval.hpp>
 #include <boost/icl/split_interval_map.hpp>
@@ -41,6 +39,8 @@ namespace po
 	using byte = uint8_t;
 	using bound = boost::icl::right_open_interval<offset>;
 	using tryte = boost::optional<byte>;
+
+	std::ostream& operator<<(std::ostream& os, const po::tryte& b);
 
 	struct slab
 	{

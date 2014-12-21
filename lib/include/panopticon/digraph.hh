@@ -26,6 +26,7 @@
 #include <stdexcept>
 
 #define BOOST_RESULT_OF_USE_DECLTYPE
+#include <boost/iterator/iterator_facade.hpp>
 #include <boost/graph/graph_traits.hpp>
 #include <boost/property_map/property_map.hpp>
 #include <boost/graph/properties.hpp>
@@ -40,18 +41,21 @@
 namespace po
 {
 	template<typename F, typename I>
-	class map_iterator : public boost::iterator_facade<map_iterator<F,I>,typename F::result_type,boost::forward_traversal_tag,typename F::result_type>
+	class map_iterator : public boost::iterator_facade<map_iterator<F,I>,typename F::result_type,boost::random_access_traversal_tag,typename F::result_type>
 	{
 	public:
+		using base = boost::iterator_facade<map_iterator<F,I>,typename F::result_type,boost::random_access_traversal_tag,typename F::result_type>;
+		friend class boost::iterator_core_access;
+
 		map_iterator(void) : _iterator(), _function() {}
 		map_iterator(I i, F fn) : _iterator(i), _function(fn) {}
 
 		map_iterator &increment(void) { ++_iterator; return *this; }
 		map_iterator &decrement(void) { --_iterator; return *this; }
 
-		typename F::result_type dereference(void) const { return _function(_iterator); }
+		typename base::reference dereference(void) const { return _function(_iterator); }
 		bool equal(const map_iterator &a) const { return _iterator == a._iterator; }
-		void advance(size_t n) { std::advance(_iterator,n); }
+		void advance(std::ptrdiff_t n) { std::advance(_iterator,n); }
 
 	private:
 		I _iterator;

@@ -75,10 +75,10 @@ TEST_F(disassembler,single_decoder)
 	boost::optional<std::pair<po::slab::iterator,po::sem_state<test_tag>>> i;
 
 	i = main.try_match(bytes.begin(),bytes.end(),st);
-	ASSERT_TRUE(i);
+	ASSERT_TRUE(!!i);
 	st = i->second;
 
-	ASSERT_EQ(i->first, next(bytes.begin()));
+	ASSERT_EQ(i->first, std::next(bytes.begin()));
 	ASSERT_EQ(st.address, 0u);
 	ASSERT_GE(st.tokens.size(), 1u);
 	ASSERT_EQ(st.tokens[0], 'A');
@@ -99,7 +99,7 @@ TEST_F(disassembler,sub_decoder)
 	boost::optional<std::pair<po::slab::iterator,po::sem_state<test_tag>>> i;
 
 	i = main.try_match(bytes.begin()+1,bytes.end(),st);
-	ASSERT_TRUE(i);
+	ASSERT_TRUE(!!i);
 	st = i->second;
 
 	ASSERT_EQ(std::distance(bytes.begin(), i->first), 3);
@@ -124,7 +124,7 @@ TEST_F(disassembler,default_pattern)
 	boost::optional<std::pair<po::slab::iterator,po::sem_state<test_tag>>> i;
 
 	i = main.try_match(bytes.begin()+5,bytes.end(),st);
-	ASSERT_TRUE(i);
+	ASSERT_TRUE(!!i);
 	st = i->second;
 
 	ASSERT_EQ(i->first, bytes.end());
@@ -148,10 +148,10 @@ TEST_F(disassembler,slice)
 	boost::optional<std::pair<po::slab::iterator,po::sem_state<test_tag>>> i;
 
 	i = main.try_match(bytes.begin()+1,bytes.begin()+2,st);
-	ASSERT_TRUE(i);
+	ASSERT_TRUE(!!i);
 	st = i->second;
 
-	ASSERT_EQ(i->first, next(bytes.begin(),2));
+	ASSERT_EQ(i->first, std::next(bytes.begin(),2));
 	ASSERT_EQ(st.address, 1u);
 	ASSERT_GE(st.tokens.size(), 1u);
 	ASSERT_EQ(st.tokens[0], 'A');
@@ -187,10 +187,10 @@ TEST_F(disassembler,capture_group)
 	boost::optional<std::pair<po::slab::iterator,po::sem_state<test_tag>>> i;
 
 	i = main.try_match(bytes.begin()+4,bytes.end(),st);
-	ASSERT_TRUE(i);
+	ASSERT_TRUE(!!i);
 	st = i->second;
 
-	ASSERT_EQ(i->first, next(bytes.begin(),5));
+	ASSERT_EQ(i->first, std::next(bytes.begin(),5));
 	ASSERT_EQ(st.address, 4u);
 	ASSERT_GE(st.tokens.size(), 1u);
 	ASSERT_EQ(st.tokens[0], 'C');
@@ -218,7 +218,7 @@ TEST_F(disassembler,empty_capture_group)
 	boost::optional<std::pair<po::slab::iterator,po::sem_state<test_tag>>> i;
 
 	i = dec.try_match(buf.begin(),buf.end(),st);
-	ASSERT_TRUE(i);
+	ASSERT_TRUE(!!i);
 	st = i->second;
 
 	ASSERT_EQ(std::distance(buf.begin(), i->first),1);
@@ -264,7 +264,7 @@ TEST_F(disassembler,too_short_token_pattern)
 
 	dec["1111111"];
 
-	ASSERT_TRUE(dec.try_match(buf.begin(),buf.end(),st));
+	ASSERT_TRUE(!!dec.try_match(buf.begin(),buf.end(),st));
 }
 
 TEST_F(disassembler,invalid_token_pattern)
@@ -306,7 +306,7 @@ TEST_F(disassembler,wide_token)
 	boost::optional<std::pair<po::slab::iterator,po::sem_state<wtest_tag>>> i;
 
 	i = dec.try_match(buf.begin(),buf.end(),st);
-	ASSERT_TRUE(i);
+	ASSERT_TRUE(!!i);
 	st = i->second;
 
 	ASSERT_EQ(std::distance(buf.begin(), i->first),2);
@@ -333,7 +333,7 @@ TEST_F(disassembler,optional)
 	boost::optional<std::pair<po::slab::iterator,po::sem_state<test_tag>>> i;
 
 	i = dec.try_match(buf.begin(),buf.end(),st);
-	ASSERT_TRUE(i);
+	ASSERT_TRUE(!!i);
 	st = i->second;
 
 	ASSERT_EQ(std::distance(buf.begin(), i->first),3);
@@ -351,7 +351,7 @@ TEST_F(disassembler,optional)
 
 	st = po::sem_state<test_tag>(3);
 	i = dec.try_match(i->first,buf.end(),st);
-	ASSERT_TRUE(i);
+	ASSERT_TRUE(!!i);
 	st = i->second;
 
 	ASSERT_EQ(std::distance(buf.begin(), i->first),5);
@@ -380,7 +380,7 @@ TEST_F(disassembler,fixed_capture_group_contents)
 	boost::optional<std::pair<po::slab::iterator,po::sem_state<test_tag>>> i;
 
 	i = dec.try_match(buf.begin(),buf.end(),st);
-	ASSERT_TRUE(i);
+	ASSERT_TRUE(!!i);
 	st = i->second;
 
 	ASSERT_EQ(std::distance(buf.begin(), i->first),2);

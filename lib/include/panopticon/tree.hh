@@ -42,7 +42,7 @@ namespace po
 		class iterator : public boost::iterator_facade<
 			iterator,
 			T&,
-			boost::forward_traversal_tag,
+			boost::random_access_traversal_tag,
 			T&>
 		{
 		public:
@@ -70,7 +70,8 @@ namespace po
 				return (e1 && e2) || (!e1 && !e2 && *_adaptee == *a._adaptee);
 			}
 
-			void advance(size_t sz) { std::advance(_adaptee, sz); }
+			void advance(std::ptrdiff_t sz) { std::advance(_adaptee, sz); }
+			std::ptrdiff_t distance_to(iterator const& i) const { return std::distance(_adaptee,i._adaptee); }
 
 		private:
 			boost::variant<std::shared_ptr<std::list<int>>, const std::list<int>*> _list;
@@ -83,7 +84,7 @@ namespace po
 		class const_iterator : public boost::iterator_facade<
 			const_iterator,
 			const T&,
-			boost::forward_traversal_tag,
+			boost::random_access_traversal_tag,
 			const T&>
 		{
 		public:
@@ -112,7 +113,8 @@ namespace po
 				return (e1 && e2) || (!e1 && !e2 && *_adaptee == *a._adaptee);
 			}
 
-			void advance(size_t sz) { std::advance(_adaptee, sz); }
+			void advance(std::ptrdiff_t sz) { std::advance(_adaptee, sz); }
+			std::ptrdiff_t distance_to(const_iterator const& i) const { return std::distance(_adaptee,i._adaptee); }
 
 		private:
 			boost::variant<std::shared_ptr<std::list<int>>, const std::list<int>*> _list;

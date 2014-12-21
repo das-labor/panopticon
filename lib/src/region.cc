@@ -130,6 +130,15 @@ std::ostream& po::operator<<(std::ostream& os, const po::slab& b)
 	return os << "]";
 }
 
+std::ostream& po::operator<<(std::ostream& os, const po::tryte& b)
+{
+	if(b)
+		os << static_cast<unsigned int>(*b);
+	else
+		os << "??";
+	return os;
+}
+
 template<>
 archive po::marshal(const layer* l, const uuid& u)
 {

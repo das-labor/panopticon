@@ -440,14 +440,14 @@ TEST(procedure,continue)
 	add(42,"test42",55,make_optional<offset>(0));
 
 	disassembler_mockup mockup(states);
-	ASSERT_TRUE(proc->entry);
+	ASSERT_TRUE(!!proc->entry);
 
 	boost::optional<proc_loc> maybe_proc = po::procedure::disassemble<test_tag,disassembler_mockup>(proc,mockup,slab(bytes.data(),bytes.size()),40);
 	ASSERT_TRUE(!!maybe_proc);
 
 	proc = *maybe_proc;
 
-	ASSERT_TRUE(proc->entry);
+	ASSERT_TRUE(!!proc->entry);
 	ASSERT_EQ(proc->rev_postorder().size(), 4u);
 
 	auto i0 = std::find_if(proc->rev_postorder().begin(),proc->rev_postorder().end(),[&](po::bblock_loc bb) { return bb->area().lower() == 0; });
