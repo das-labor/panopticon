@@ -10,9 +10,9 @@ set(panopticon_VERSION
   ${panopticon_MAJOR}.${panopticon_MINOR}.${panopticon_PATCH})
 
 # Options
-option(BUILD_lib "Build Panopticon Library (libpanopticon)")
-option(BUILD_qt "Build Qt UI (qtpanopticon)")
-option(BUILD_doc "Build documentation")
+option(BUILD_lib "Build Panopticon Library (libpanopticon)" ON)
+option(BUILD_qt "Build Qt UI (qtpanopticon)" ON)
+option(BUILD_doc "Build documentation" OFF)
 
 # Packaging
 set(CPACK_PACKAGE_CONTACT "seu@panopticon.re")
@@ -86,7 +86,7 @@ find_package(Boost 1.52 COMPONENTS system filesystem graph REQUIRED)
 find_package(KyotoCabinet REQUIRED)
 
 # Targets
-if(NOT BUILD_lib OR ${BUILD_lib})
+if(${BUILD_lib})
 	message(STATUS "Building Panopticon library")
 	add_subdirectory("lib")
 	set(Panopticon_FOUND TRUE)
@@ -94,19 +94,7 @@ else()
 	find_package(Panopticon REQUIRED)
 endif()
 
-if(NOT BUILD_qt)
-	find_package(Qt5Quick)
-	find_package(Qt5Concurrent)
-	find_package(Qt5Widgets)
-	find_package(Qt5Qml)
-
-	if(${Qt5Quick_FOUND} AND ${Qt5Quick_FOUND} AND
-		${Qt5Quick_FOUND} AND ${Qt5Quick_FOUND})
-		message(STATUS "Building Panopticon Qt UI")
-		add_subdirectory("qt")
-		add_dependencies(qtpanopticon panopticon)
-	endif()
-elseif(${BUILD_qt})
+if(${BUILD_qt})
 	find_package(Qt5Quick)
 	find_package(Qt5Concurrent)
 	find_package(Qt5Widgets)
@@ -117,13 +105,7 @@ elseif(${BUILD_qt})
 	add_dependencies(qtpanopticon panopticon)
 endif()
 
-if(NOT BUILD_doc)
-	find_package(Sphinx)
-	if(${SPHINX_FOUND})
-		message(STATUS "Building Panopticon documentation")
-		add_subdirectory(doc)
-	endif()
-elseif(${BUILD_doc})
+if(${BUILD_doc})
 	find_package(Sphinx)
 	message(STATUS "Building Panopticon documentation")
 	add_subdirectory(doc)
