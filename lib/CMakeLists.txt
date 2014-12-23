@@ -56,10 +56,10 @@ target_link_libraries(panopticon-static ${KyotoCabinet_LIBRARIES}
 
 set_target_properties(panopticon-shared PROPERTIES VERSION
 	${panopticon_MAJOR}.${panopticon_MINOR}.${panopticon_PATCH} SOVERSION
-	${panopticon_MAJOR}.${panopticon_MINOR}.${panopticon_PATCH})
+	${panopticon_MAJOR})
 set_target_properties(panopticon-static PROPERTIES VERSION
 	${panopticon_MAJOR}.${panopticon_MINOR}.${panopticon_PATCH} SOVERSION
-	${panopticon_MAJOR}.${panopticon_MINOR}.${panopticon_PATCH})
+	${panopticon_MAJOR})
 set_target_properties(panopticon-shared PROPERTIES OUTPUT_NAME panopticon)
 set_target_properties(panopticon-static PROPERTIES OUTPUT_NAME panopticon)
 
