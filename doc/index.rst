@@ -15,6 +15,7 @@ Usage
   others
   install
   usage
+  qtpanop
 
 #########
 Internals
