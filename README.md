@@ -74,13 +74,8 @@ Contributing
 ============
 
 Panopticon is licensed under GPLv3 and is Free Software. Hackers are
-always welcome. See http://panopticon.re for our wiki and issue tracker.
-
-Panopticon consists of two sub projects: libpanopticon and qtpanopticon.
-The libpanopticon resides in the lib/ directory inside the repository. It
-implements all disassembling and analysis functionality.
-The libpanopticon has a test suite that can be found in lib/test/ after
-compilation.
+always welcome. See http://panopticon.re for our project documentation.
+Panopticon uses Github for issue tracking: https://github.com/das-labor/panopticon/issues
 
 The documentation is build by typing:
 
@@ -89,6 +84,12 @@ make doc
 ```
 
 View it by opening doc/html/index.html in your web browser.
+
+Panopticon consists of two sub projects: libpanopticon and qtpanopticon.
+The libpanopticon resides in the lib/ directory inside the repository. It
+implements all disassembling and analysis functionality.
+The libpanopticon has a test suite that can be found in lib/test/ after
+compilation.
 
 The qtpanopticon application is a Qt5 GUI for libpanopticon. The front
 end uses QtQuick2 that interacts with libpanopticon using a thin C++
@@ -106,5 +107,3 @@ References
 [1] K. Sugiyama, S. Tagawa, and M. Toda.
     “Methods for Visual Understanding of Hierarchical Systems”.
     IEEE Transactions on Systems, Man, and Cybernetics, 1981.
-
-2014-8-2
