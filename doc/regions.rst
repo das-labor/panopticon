@@ -3,12 +3,12 @@ Regions and Layer
 
 Data in Panopticon is organized into regions. Each :cpp:class:`region` is a array of one byte
 wide cells. On top of a region can be a number layer. A :cpp:class:`layer` spans part or all
-of its region and transforms the contents of cell inside.
+of its region and transforms the content of cells inside.
 
 Region
 ~~~~~~
 
-Regions model continuous memory like RAM, Flash or files. A region has a unique
+Regions model continuous memory like RAM, flash memory or files. A region has a unique
 name that is used to reference it and a size. The size is the number of cells in
 a region. A cell either has a value between 0 and 255 or is undefined. Cells are
 numbered in ascending order starting at 0.
@@ -18,14 +18,14 @@ undefined values.
 
 .. code-block:: c++
 
-   // This region is filled with the contents of "path/to/file"
+   // This region is named "file" and is filled with the contents of "path/to/file"
    region_loc file_region = region::wrap("file",blob("path/to/file"));
 
-   // This region is initialized with the contents of buf
+   // This region is named "buf" and is initialized with the contents of buf
    std::vector<uint8_t> buf = {1, 2, 3, 4, 5, 6, 7, 8, 9, 0};
    region_loc buf_region = region::wrap("buf",buf);
 
-   // This region is just 4k of undefined cells
+   // This region is named "undef" and is just 4k of undefined cells
    region_loc undefined_region = region::undefined("undef",4096);
 
 
@@ -37,21 +37,21 @@ Layer
 ~~~~~
 
 Layer transform parts of a region in some way. Instead of writing the contents
-of a region directly layer allow changes to be tracked. A region that models the
-RAM of a process could be covered with a layer that replaces parts of this
-region with the contents of a file. This is an easy way to model memory mapping
-files into process memory.
+of a region directly the cells are covered with a layer. This allows changes to be
+tracked. A region that models the RAM of a process could be covered with a layer
+that replaces parts of this region with the contents of a file. This is an easy
+way to model mapping files into process memory.
 
 .. image:: layer.png
 
-Layer can work as functions. They can take the contents of the region into
+Layer can work as functions and take the contents of the region into
 account. A layer could XOR each cell with a constant value to model the results
 of unpacking a packed executable. Layer are also used to make regions writable.
 Changing a cells value will add a layer on the region of the cell. This layer
 will transform the written cell from its old value to the new one.
 
 A layer instance has a name but no size. Instead, it is given a slab to
-transform. Region keep track with parts of its contents need to be transformed
+transform. Regions keep track with parts of its contents need to be transformed
 using which layer. Layers are added to a region using :cpp:func:`add`.
 
 .. code-block:: c++
@@ -64,7 +64,7 @@ using which layer. Layers are added to a region using :cpp:func:`add`.
    // The file that's being loaded
    blob com("/path/to/file.com");
 
-   // The layer that simulates the mapping of the COM file into RAM
+   // The layer that simulates mapping the COM file into RAM
    layer_loc mapping(new layer("file.com",com));
 
    // COM files are always mapped at 0100h
