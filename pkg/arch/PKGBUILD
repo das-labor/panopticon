@@ -15,9 +15,11 @@ depends=(
 makedepends=(
     'cmake>=2.8.9'
     'boost>=1.53.0'
+    'git>=1'
     'python-sphinx>=1.2.2')
 optdepends=(
-    'python-sphinx: API documentation')
+    'python-sphinx: API documentation'
+    'qt5-quickcontrols: Qt frontend')
 provides=()
 conflicts=()
 replaces=()
@@ -25,9 +27,9 @@ backup=()
 options=()
 install=
 changelog=
-source=($pkgname-$pkgver.tar.bz2)
+source=($pkgname-$pkgver::git+https://github.com/das-labor/panopticon.git#branch=release/0.9)
 noextract=()
-md5sums=('4246ff4c303c42e65f93f2fd84d3d7e0')
+md5sums=('SKIP')
 
 build() {
     mkdir -p "$pkgname-$pkgver/build"
