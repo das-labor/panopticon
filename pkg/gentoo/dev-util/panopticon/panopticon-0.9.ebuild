@@ -9,7 +9,7 @@ inherit git-2 cmake-utils pax-utils
 DESCRIPTION="A libre cross platform disassembler."
 HOMEPAGE="https://panopticon.re"
 EGIT_REPO_URI="https://github.com/das-labor/panopticon.git"
-EGIT_BRANCH="master"
+EGIT_BRANCH="release/0.9"
 SRC_URI=""
 KEYWORDS="~amd64 ~x86"
 LICENSE="GPL-3"
@@ -17,9 +17,9 @@ SLOT="0"
 IUSE="debug doc +qt5 test"
 
 RDEPEND="
-	dev-libs/boost
-	app-arch/libarchive
-	dev-db/kyotocabinet
+	>=dev-libs/boost-1.53.0
+	>=app-arch/libarchive-3.1.2
+	>=dev-db/kyotocabinet-1.2.72
 	qt5? ( dev-qt/qtgui:5
 		   dev-qt/qtwidgets:5
 		   dev-qt/qtdeclarative:5
@@ -27,8 +27,7 @@ RDEPEND="
 		   dev-qt/qtconcurrent )
 	"
 DEPEND="${RDEPEND}
-	test? ( dev-cpp/gtest )
-	doc?    ( app-doc/doxygen )
+	doc?    ( >=dev-python/sphinx-1.2.2 )
 	>=sys-devel/gcc-4.8.3"
 
 RESTRICT="strip"
