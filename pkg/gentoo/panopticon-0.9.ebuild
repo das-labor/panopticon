@@ -9,7 +9,7 @@ inherit git-2 cmake-utils pax-utils
 DESCRIPTION="A libre cross platform disassembler."
 HOMEPAGE="https://panopticon.re"
 EGIT_REPO_URI="https://github.com/das-labor/panopticon.git"
-EGIT_BRANCH="master"
+EGIT_BRANCH="release/0.9"
 SRC_URI=""
 KEYWORDS="~amd64 ~x86"
 LICENSE="GPL-3"

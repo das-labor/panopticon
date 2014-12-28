@@ -7,6 +7,6 @@
     <name>Philipp Deppenwiese</name>
   </maintainer>
   <longdescription>
-   A disassembler with basic static analysis capabilities and infer invariants for basic blocks.
+   A graphical disassembler with basic static analysis capabilities.
   </longdescription>
 </pkgmetadata>
