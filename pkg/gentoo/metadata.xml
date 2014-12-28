@@ -1,0 +1,12 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE pkgmetadata SYSTEM "http://www.gentoo.org/dtd/metadata.dtd">
+<pkgmetadata>
+  <herd>tools-portage</herd>
+  <maintainer>
+    <email>zaolin@das-labor.org</email>
+    <name>Philipp Deppenwiese</name>
+  </maintainer>
+  <longdescription>
+   A disassembler with basic static analysis capabilities and infer invariants for basic blocks.
+  </longdescription>
+</pkgmetadata>
