@@ -1,0 +1,22 @@
+Source: panopticon
+Maintainer: seu <seu@panopticon.re>
+Build-Depends:
+Standards-Version: 0.9
+Homepage: http://panopticon.re/
+
+Package: libpanopticon
+Architecture: amd64 i386
+Description: Library for Panopticon
+Depends: libboost-system1.55.0 (>= 1.55.0-1), libkyotocabinet16 (>= 1.2.76-4), libarchive13 (>= 3.1.2-7ubuntu2)
+
+Package: qtpanopticon
+Architecture: amd64 i386
+Description: Qt 5 frontend of Panopticon
+
+Package: libpanopticon-dev
+Architecture: any
+Description: Header files Panopticon
+
+Package: panopticon-doc
+Architecture: any
+Description: API and usage documentation for Panopticon
