@@ -30,7 +30,6 @@
 class Panopticon : public QObject
 {
 	Q_OBJECT
-	Q_PROPERTY(QString buildDate READ buildDate NOTIFY buildDateChanged)
 	Q_PROPERTY(Session* session READ session NOTIFY sessionChanged)
 
 public:
@@ -49,7 +48,6 @@ public:
 	Session* createSession(Session *s);
 
 signals:
-	void buildDateChanged(void);
 	void sessionChanged(void);
 
 private:

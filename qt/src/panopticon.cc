@@ -17,7 +17,6 @@
  */
 
 #include "panopticon.hh"
-#include "config.hh"
 
 Panopticon* Panopticon::_instance = nullptr;
 
@@ -101,9 +100,4 @@ Session* Panopticon::createSession(Session *s)
 Session* Panopticon::session(void) const
 {
 	return _session;
-}
-
-QString Panopticon::buildDate(void) const
-{
-	return QString(QT_PANOPTICON_BUILD_DATE);
 }

@@ -68,9 +68,12 @@ install(TARGETS panopticon-static panopticon-shared LIBRARY DESTINATION lib
 install(FILES ${panopticon_HEADERS} DESTINATION include/panopticon)
 
 if(UNIX AND NOT APPLE)
+	EXECUTE_PROCESS(COMMAND dpkg-architecture -qDEB_HOST_MULTIARCH OUTPUT_VARIABLE
+		CMAKE_ARCH_TRIPLET OUTPUT_STRIP_TRAILING_WHITESPACE)
+
   configure_file("panopticon.pc.in" "panopticon.pc" @ONLY)
   install(FILES "${CMAKE_CURRENT_BINARY_DIR}/panopticon.pc"
-		DESTINATION "lib/pkgconfig")
+		DESTINATION "lib/${CMAKE_ARCH_TRIPLET}/pkgconfig")
 endif()
 
 if("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")

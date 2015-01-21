@@ -136,7 +136,7 @@ if(${BUILD_doc})
 elseif(${BUILD_doc} STREQUAL "AUTO")
 	find_package(Sphinx)
 
-	if(${Sphinx_FOUND})
+	if(SPHINX_EXECUTABLE)
 		message(STATUS "Building Panopticon documentation")
 		add_subdirectory(doc)
 	endif()
