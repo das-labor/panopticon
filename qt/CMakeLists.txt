@@ -5,15 +5,12 @@ set(qtpanopticon_SOURCES src/session.cc src/main.cc
 	src/panopticon.cc src/sugiyama.cc)
 set(qtpanopticon_HEADERS
 	include/dot/dot.hh include/dot/rank.hh include/dot/order.hh
-	include/dot/net_flow.hh ${CMAKE_CURRENT_BINARY_DIR}/config.hh)
+	include/dot/net_flow.hh)
 set(qtpanopticon_HEADERS_QT
 	include/panopticon.hh include/session.hh
 	include/sugiyama.hh)
 
 set(qtpanopticon_RESOURCES res/resources.qrc)
-
-string(TIMESTAMP qtpanopticon_BUILD_TIME "%Y-%m-%d %H:%M:%S UTC" UTC)
-configure_file(include/config.hh.in config.hh)
 
 include_directories(${Boost_INCLUDE_DIRS} ${panopticon_INCLUDE_DIRS})
 link_directories(${Boost_LIBRARY_DIRS} ${panopticon_LIBRARY_DIRS})
