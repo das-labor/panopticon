@@ -1,0 +1,39 @@
+Source: panopticon
+Maintainer: seu <seu@panopticon.re>
+Build-Depends: debhelper (>= 9.0), cdbs, cmake (>= 2.8.9), libarchive-dev (>= 3.1.2), libkyotocabinet-dev (>= 1.2.76), libboost1.55-dev, libboost-graph1.55-dev, libboost-filesystem1.55-dev, libboost-system1.55-dev, python-sphinx, qtdeclarative5-dev
+Homepage: http://panopticon.re/
+Priority: optional
+Standards-Version: 3.9.5.0
+Section: editors
+
+Package: libpanopticon0
+Architecture: amd64 i386
+Description: Library for Panopticon
+ Provides routines and data structures for binart program analysis.
+Depends: libboost-system1.55.0, libboost-graph1.55, libboost-filesystem-1.55, libkyotocabinet16 (>= 1.2.76-4), libarchive13 (>= 3.1.2-7ubuntu2), ${misc:Depends}, ${shlibs:Depends}
+Priority: optional
+Section: libs
+
+Package: qtpanopticon
+Architecture: amd64 i386
+Description: Qt 5 frontend of Panopticon
+ Graphical interface for browsing and manipulating binary programs.
+Depends: libboost-system1.55.0, libboost-graph1.55, libboost-filesystem-1.55, libkyotocabinet16 (>= 1.2.76-4), libarchive13 (>= 3.1.2-7ubuntu2), ${misc:Depends}, ${shlibs:Depends}, libqt5core, libqt5widgets, libqt5concurrent, libqt5declarative, libqt5qml-quickcontrols, qtdeclarative5-folderlistmodel-plugin, qtdeclarative5-settings-plugin, libpanopticon0
+Priority: optional
+Section: editors
+
+Package: libpanopticon-dev
+Architecture: any
+Description: Header files Panopticon
+ Developer package for the panopticon library.
+Depends: ${misc:Depends}
+Priority: optional
+Section: libdevel
+
+Package: panopticon-doc
+Architecture: all
+Description: API and usage documentation for Panopticon
+ Documents the internals of the panopticon library.
+Depends: ${misc:Depends}
+Priority: optional
+Section: doc

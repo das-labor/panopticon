@@ -31,9 +31,9 @@ set(CPACK_GENERATOR "DEB")
 set(CPACK_STRIP_FILES ON)
 include(CPack)
 
-# Default to debug build
+# Default to release build
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
-	set(CMAKE_BUILD_TYPE Debug)
+	set(CMAKE_BUILD_TYPE Release)
 endif()
 
 # find_package macros for kyotocabinet, sphinx and panopticon
