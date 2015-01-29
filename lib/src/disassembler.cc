@@ -44,7 +44,7 @@ po::token_expr po::operator*(po::token_expr const& e)
 	return token_expr::token_expr_union(token_expr::option(e));
 }
 
-po::token_expr po::operator"" _e(char const* s,unsigned long l)
+po::token_expr po::operator"" _e(char const* s,size_t l)
 {
 	return token_expr(std::string(s,l));
 }
