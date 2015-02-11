@@ -145,8 +145,12 @@ namespace po
 				main[ *generic_prfx >> rexw_prfix	>> 0x03 >> rm64				] = binary("add",decode_rm,std::bind(add,pls::_1,pls::_2,pls::_3,boost::none));
 			}
 
-			// ADX
-			// AMX
+			// ADCX
+			main[ 0x66_e >> 0x0f_e >> 0x38_e >> 0xf6_e >> rm32 ] = binary("adcx",decode_rm,adcx);
+
+			if(Bits == 64)
+				main[ rexw_prfix >> 0x66_e >> 0x0f_e >> 0x38_e >> 0xf6_e >> rm64 ] = binary("adcx",decode_rm,adcx);
+
 			// AND
 			main[ *generic_prfx >>						0x24 >> imm8				] = binary("and",std::bind(decode_i,amd64_state::OpSz_8,pls::_1,pls::_2),
 																													  std::bind(and_,pls::_1,pls::_2,pls::_3,boost::none));
@@ -177,14 +181,81 @@ namespace po
 				main[ *generic_prfx >> rex_prfix		>> 0x22 >> rm8					] = binary("and",decode_rm,std::bind(and_,pls::_1,pls::_2,pls::_3,boost::none));
 				main[ *generic_prfx >> rexw_prfix	>> 0x23 >> rm64				] = binary("and",decode_rm,std::bind(and_,pls::_1,pls::_2,pls::_3,boost::none));
 			}
+
 			// BOUND
+			if(Bits <= 32)
+			{
+				main[ 					 0x62_e >> rm_pri ] = binary("bound",decode_rm,bound);
+				main[ opsize_prfix >> 0x62_e >> rm_alt ] = binary("bound",decode_rm,bound);
+			}
+
 			// BSF
+			main[ 					 0x0f_e >> 0xbc_e >> rm_pri ] = binary("bsf",decode_rm,bsf);
+			main[ opsize_prfix >> 0x0f_e >> 0xbc_e >> rm_alt ] = binary("bsf",decode_rm,bsf);
+
+			if(Bits == 64)
+				main[ rexw_prfix >> 0x0f_e >> 0xbc_e >> rm64 ] = binary("bsf",decode_rm,bsf);
+
 			// BSR
+			main[ 					 0x0f_e >> 0xbd_e >> rm_pri ] = binary("bsr",decode_rm,bsr);
+			main[ opsize_prfix >> 0x0f_e >> 0xbd_e >> rm_alt ] = binary("bsr",decode_rm,bsr);
+
+			if(Bits == 64)
+				main[ rexw_prfix >> 0x0f_e >> 0xbd_e >> rm64 ] = binary("bsr",decode_rm,bsr);
+
 			// BSWAP
+			main[ 0x0f_e >> 0xc8_e >> rm32 ] = binary("bswap",decode_o,bswap);
+			if(Bits == 64)
+				main[ rexw_prfix >> 0x0f_e >> 0xc8_e >> rm64 ] = binary("bswap",decode_o,bswap);
+
 			// BT
+			main[ 					 0x0f_e >> 0xa3_e >> rm_pri			] = binary("bt",decode_rm,bt);
+			main[ opsize_prfix >> 0x0f_e >> 0xa3_e >> rm_alt			] = binary("bt",decode_rm,bt);
+			main[ 					 0x0f_e >> 0xba_e >> rm_pri_4 >> imm8 ] = binary("bt",decode_mi,bt);
+			main[ opsize_prfix >> 0x0f_e >> 0xba_e >> rm_alt_4 >> imm8 ] = binary("bt",decode_mi,bt);
+
+			if(Bits == 64)
+			{
+				main[ rexw_prfix >> 0x0f_e >> 0xa3_e >> rm64					] = binary("bt",decode_rm,bt);
+				main[ rexw_prfix >> 0x0f_e >> 0xba_e >> rm64_4 >> imm8	] = binary("bt",decode_mi,bt);
+			}
+
 			// BTC
+			main[ 					 0x0f_e >> 0xbb_e >> rm_pri				] = binary("btc",decode_rm,btc);
+			main[ opsize_prfix >> 0x0f_e >> 0xbb_e >> rm_alt				] = binary("btc",decode_rm,btc);
+			main[ 					 0x0f_e >> 0xba_e >> rm_pri_7 >> imm8	] = binary("btc",decode_mi,btc);
+			main[ opsize_prfix >> 0x0f_e >> 0xba_e >> rm_alt_7 >> imm8	] = binary("btc",decode_mi,btc);
+
+			if(Bits == 64)
+			{
+				main[ rexw_prfix >> 0x0f_e >> 0xbb_e >> rm64					] = binary("btc",decode_rm,btc);
+				main[ rexw_prfix >> 0x0f_e >> 0xba_e >> rm64_7 >> imm8	] = binary("btc",decode_mi,btc);
+			}
+
 			// BTR
+			main[ 					 0x0f_e >> 0xb3_e >> rm_pri				] = binary("btr",decode_rm,btr);
+			main[ opsize_prfix >> 0x0f_e >> 0xb3_e >> rm_alt				] = binary("btr",decode_rm,btr);
+			main[ 					 0x0f_e >> 0xba_e >> rm_pri_6 >> imm8	] = binary("btr",decode_mi,btr);
+			main[ opsize_prfix >> 0x0f_e >> 0xba_e >> rm_alt_6 >> imm8	] = binary("btr",decode_mi,btr);
+
+			if(Bits == 64)
+			{
+				main[ rexw_prfix >> 0x0f_e >> 0xb3_e >> rm64					] = binary("btr",decode_rm,btr);
+				main[ rexw_prfix >> 0x0f_e >> 0xba_e >> rm64_6 >> imm8	] = binary("btr",decode_mi,btr);
+			}
+
 			// BTS
+			main[ 					 0x0f_e >> 0xab_e >> rm_pri				] = binary("bts",decode_rm,bts);
+			main[ opsize_prfix >> 0x0f_e >> 0xab_e >> rm_alt				] = binary("bts",decode_rm,bts);
+			main[ 					 0x0f_e >> 0xba_e >> rm_pri_5 >> imm8	] = binary("bts",decode_mi,bts);
+			main[ opsize_prfix >> 0x0f_e >> 0xba_e >> rm_alt_5 >> imm8	] = binary("bts",decode_mi,bts);
+
+			if(Bits == 64)
+			{
+				main[ rexw_prfix >> 0x0f_e >> 0xab_e >> rm64					] = binary("bts",decode_rm,bts);
+				main[ rexw_prfix >> 0x0f_e >> 0xba_e >> rm64_5 >> imm8	] = binary("bts",decode_mi,bts);
+			}
+
 			// CALL
 			// CALLF
 			// CBW
