@@ -76,42 +76,42 @@ namespace po
 			// AAA, AAD, AAM and AAS (32 bits only)
 			if(Bits <= 32)
 			{
-				main[ *generic_prfx >> 0x37			] = [](sm& m) { m.mnemonic(m.tokens.size(),"aaa","",std::list<rvalue>(),[](cg&) {}); };
-				main[ *generic_prfx >> 0xd5 >> imm8	] = [](sm& m) { m.mnemonic(m.tokens.size(),"aad","{8}",*m.state.imm,[](cg&) {}); };
-				main[ *generic_prfx >> 0xd4 >> imm8	] = [](sm& m) { m.mnemonic(m.tokens.size(),"aam","{8}",*m.state.imm,[](cg&) {}); };
-				main[ *generic_prfx >> 0x3f			] = [](sm& m) { m.mnemonic(m.tokens.size(),"aas","",std::list<rvalue>(),[](cg&) {}); };
+				main[ *generic_prfx >> 0x37_e         ] = [](sm& m) { m.mnemonic(m.tokens.size(),"aaa","",std::list<rvalue>(),[](cg&) {}); };
+				main[ *generic_prfx >> 0xd5_e >> imm8 ] = [](sm& m) { m.mnemonic(m.tokens.size(),"aad","{8}",*m.state.imm,[](cg&) {}); };
+				main[ *generic_prfx >> 0xd4_e >> imm8 ] = [](sm& m) { m.mnemonic(m.tokens.size(),"aam","{8}",*m.state.imm,[](cg&) {}); };
+				main[ *generic_prfx >> 0x3f_e         ] = [](sm& m) { m.mnemonic(m.tokens.size(),"aas","",std::list<rvalue>(),[](cg&) {}); };
 			}
 
-			// ADC
-			main[ *generic_prfx >>						0x14 >> imm8				] = binary("adc",std::bind(decode_i,amd64_state::OpSz_8,pls::_1,pls::_2),
+         // ADC
+			main[ *generic_prfx >>                 0x14_e >> imm8                ] = binary("adc",std::bind(decode_i,amd64_state::OpSz_8,pls::_1,pls::_2),
 																													  std::bind(adc,pls::_1,pls::_2,pls::_3,boost::none));
-			main[ *generic_prfx >> opsize_prfix	>> 0x15 >> imm_alt			] = binary("adc",std::bind(decode_i,opsz_alt,pls::_1,pls::_2),
+			main[ *generic_prfx >> opsize_prfix >> 0x15_e >> imm_alt             ] = binary("adc",std::bind(decode_i,opsz_alt,pls::_1,pls::_2),
 																													  std::bind(adc,pls::_1,pls::_2,pls::_3,boost::none));
-			main[ *generic_prfx >>						0x15 >> imm_pri			] = binary("adc",std::bind(decode_i,opsz_pri,pls::_1,pls::_2),
+			main[ *generic_prfx >>                 0x15_e >> imm_pri             ] = binary("adc",std::bind(decode_i,opsz_pri,pls::_1,pls::_2),
 																													  std::bind(adc,pls::_1,pls::_2,pls::_3,boost::none));
-			main[ *generic_prfx >>						0x80 >> rm8_2 >> imm8	] = binary("adc",decode_mi,std::bind(adc,pls::_1,pls::_2,pls::_3,boost::none));
-			main[ *generic_prfx >> opsize_prfix	>> 0x81 >> rm_alt_2 >> imm_alt	] = binary("adc",decode_mi,std::bind(adc,pls::_1,pls::_2,pls::_3,boost::none));
-			main[ *generic_prfx >>						0x81 >> rm_pri_2 >> imm_pri	] = binary("adc",decode_mi,std::bind(adc,pls::_1,pls::_2,pls::_3,boost::none));
-			main[ *generic_prfx >> opsize_prfix	>> 0x83 >> rm_alt_2 >> imm8	] = binary("adc",decode_mi,std::bind(adc,pls::_1,pls::_2,pls::_3,std::pair<uint8_t,uint8_t>(8,alt)));
-			main[ *generic_prfx >>						0x83 >> rm_pri_2 >> imm8	] = binary("adc",decode_mi,std::bind(adc,pls::_1,pls::_2,pls::_3,std::pair<uint8_t,uint8_t>(8,pri)));
-			main[ *generic_prfx >>						0x10 >> rm8					] = binary("adc",decode_mr,std::bind(adc,pls::_1,pls::_2,pls::_3,boost::none));
-			main[ *generic_prfx >> opsize_prfix	>> 0x11 >> rm_alt				] = binary("adc",decode_mr,std::bind(adc,pls::_1,pls::_2,pls::_3,boost::none));
-			main[ *generic_prfx >>						0x11 >> rm_pri				] = binary("adc",decode_mr,std::bind(adc,pls::_1,pls::_2,pls::_3,boost::none));
-			main[ *generic_prfx >>						0x12 >> rm8					] = binary("adc",decode_rm,std::bind(adc,pls::_1,pls::_2,pls::_3,boost::none));
-			main[ *generic_prfx >> opsize_prfix	>> 0x13 >> rm_alt				] = binary("adc",decode_rm,std::bind(adc,pls::_1,pls::_2,pls::_3,boost::none));
-			main[ *generic_prfx >> 						0x13 >> rm_pri				] = binary("adc",decode_rm,std::bind(adc,pls::_1,pls::_2,pls::_3,boost::none));
+			main[ *generic_prfx >>                 0x80_e >> rm8_2 >> imm8       ] = binary("adc",decode_mi,std::bind(adc,pls::_1,pls::_2,pls::_3,boost::none));
+			main[ *generic_prfx >> opsize_prfix >> 0x81_e >> rm_alt_2 >> imm_alt ] = binary("adc",decode_mi,std::bind(adc,pls::_1,pls::_2,pls::_3,boost::none));
+			main[ *generic_prfx >>                 0x81_e >> rm_pri_2 >> imm_pri ] = binary("adc",decode_mi,std::bind(adc,pls::_1,pls::_2,pls::_3,boost::none));
+			main[ *generic_prfx >> opsize_prfix >> 0x83_e >> rm_alt_2 >> imm8    ] = binary("adc",decode_mi,std::bind(adc,pls::_1,pls::_2,pls::_3,std::pair<uint8_t,uint8_t>(8,alt)));
+			main[ *generic_prfx >>                 0x83_e >> rm_pri_2 >> imm8    ] = binary("adc",decode_mi,std::bind(adc,pls::_1,pls::_2,pls::_3,std::pair<uint8_t,uint8_t>(8,pri)));
+			main[ *generic_prfx >>                 0x10_e >> rm8                 ] = binary("adc",decode_mr,std::bind(adc,pls::_1,pls::_2,pls::_3,boost::none));
+			main[ *generic_prfx >> opsize_prfix >> 0x11_e >> rm_alt              ] = binary("adc",decode_mr,std::bind(adc,pls::_1,pls::_2,pls::_3,boost::none));
+			main[ *generic_prfx >>                 0x11_e >> rm_pri              ] = binary("adc",decode_mr,std::bind(adc,pls::_1,pls::_2,pls::_3,boost::none));
+			main[ *generic_prfx >>                 0x12_e >> rm8                 ] = binary("adc",decode_rm,std::bind(adc,pls::_1,pls::_2,pls::_3,boost::none));
+			main[ *generic_prfx >> opsize_prfix >> 0x13_e >> rm_alt              ] = binary("adc",decode_rm,std::bind(adc,pls::_1,pls::_2,pls::_3,boost::none));
+			main[ *generic_prfx >>                 0x13_e >> rm_pri              ] = binary("adc",decode_rm,std::bind(adc,pls::_1,pls::_2,pls::_3,boost::none));
 
 			if(Bits == 64)
 			{
-				main[ *generic_prfx >> rexw_prfix	>> 0x15 >> imm32				] = binary("adc",std::bind(decode_i,amd64_state::OpSz_64,pls::_1,pls::_2),
+				main[ *generic_prfx >> rexw_prfix >> 0x15_e >> imm32           ] = binary("adc",std::bind(decode_i,amd64_state::OpSz_64,pls::_1,pls::_2),
 																														  std::bind(adc,pls::_1,pls::_2,pls::_3,std::pair<uint8_t,uint8_t>(32,64)));
-				main[ *generic_prfx >> rex_prfix		>> 0x80 >> rm8_2 >> imm8	] = binary("adc",decode_mi,std::bind(adc,pls::_1,pls::_2,pls::_3,boost::none));
-				main[ *generic_prfx >> rexw_prfix	>> 0x81 >> rm64_2 >> imm32	] = binary("adc",decode_mi,std::bind(adc,pls::_1,pls::_2,pls::_3,std::pair<uint8_t,uint8_t>(32,64)));
-				main[ *generic_prfx >> rexw_prfix	>> 0x83 >> rm64_2 >> imm8	] = binary("adc",decode_mi,std::bind(adc,pls::_1,pls::_2,pls::_3,std::pair<uint8_t,uint8_t>(8,64)));
-				main[ *generic_prfx >> rex_prfix		>> 0x10 >> rm8					] = binary("adc",decode_mr,std::bind(adc,pls::_1,pls::_2,pls::_3,boost::none));
-				main[ *generic_prfx >> rexw_prfix	>> 0x11 >> rm64				] = binary("adc",decode_mr,std::bind(adc,pls::_1,pls::_2,pls::_3,boost::none));
-				main[ *generic_prfx >> rex_prfix		>> 0x12 >> rm8					] = binary("adc",decode_rm,std::bind(adc,pls::_1,pls::_2,pls::_3,boost::none));
-				main[ *generic_prfx >> rexw_prfix	>> 0x13 >> rm64				] = binary("adc",decode_rm,std::bind(adc,pls::_1,pls::_2,pls::_3,boost::none));
+				main[ *generic_prfx >> rex_prfix >>  0x80_e >> rm8_2 >>  imm8  ] = binary("adc",decode_mi,std::bind(adc,pls::_1,pls::_2,pls::_3,boost::none));
+				main[ *generic_prfx >> rexw_prfix >> 0x81_e >> rm64_2 >> imm32 ] = binary("adc",decode_mi,std::bind(adc,pls::_1,pls::_2,pls::_3,std::pair<uint8_t,uint8_t>(32,64)));
+				main[ *generic_prfx >> rexw_prfix >> 0x83_e >> rm64_2 >> imm8  ] = binary("adc",decode_mi,std::bind(adc,pls::_1,pls::_2,pls::_3,std::pair<uint8_t,uint8_t>(8,64)));
+				main[ *generic_prfx >> rex_prfix >>  0x10_e >> rm8             ] = binary("adc",decode_mr,std::bind(adc,pls::_1,pls::_2,pls::_3,boost::none));
+				main[ *generic_prfx >> rexw_prfix >> 0x11_e >> rm64            ] = binary("adc",decode_mr,std::bind(adc,pls::_1,pls::_2,pls::_3,boost::none));
+				main[ *generic_prfx >> rex_prfix >>  0x12_e >> rm8             ] = binary("adc",decode_rm,std::bind(adc,pls::_1,pls::_2,pls::_3,boost::none));
+				main[ *generic_prfx >> rexw_prfix >> 0x13_e >> rm64            ] = binary("adc",decode_rm,std::bind(adc,pls::_1,pls::_2,pls::_3,boost::none));
 			}
 
 			// ADD
@@ -257,74 +257,101 @@ namespace po
 			}
 
 			// CALL
-			// CALLF
-			// CBW
-			// CWDE
-			// CWQE
-			// CDQ
-			// CLC
-			// CLD
-			// CLI
-			// CMC
-			// CMOVB
-			// CMOVNAE
-			// CMOVC
-			// CMOVBE
-			// CMOVNA
-			// CMOVL
-			// CMOVNGE
-			// CMOVLE
-			// CMOVNG
-			// CMOVNB
-			// CMOVAE
-			// CMOVNC
-			// CMOVNBE
-			// CMOVA
-			// CMOVNL
-			// CMOVGE
-			// CMOVNLE
-			// CMOVG
-			// CMOVNO
-			// CMOVNP
-			// CMOVPO
-			// CMOVNS
-			// CMOVNZ
-			// CMOVNE
-			// CMOVO
-			// CMOVP
-			// CMOVPE
-			// CMOVS
-			// CMOVZ
-			// CMOVE
-			// CMP
-			main[ *generic_prfx >>						0x3b >> imm8				] = binary("cmp",std::bind(decode_i,amd64_state::OpSz_8,pls::_1,pls::_2),
-																													  std::bind(cmp,pls::_1,pls::_2,pls::_3,boost::none));
-			main[ *generic_prfx >> opsize_prfix	>> 0x3c >> imm_alt			] = binary("cmp",std::bind(decode_i,opsz_alt,pls::_1,pls::_2),
-																													  std::bind(cmp,pls::_1,pls::_2,pls::_3,boost::none));
-			main[ *generic_prfx >>						0x3c >> imm_pri			] = binary("cmp",std::bind(decode_i,opsz_pri,pls::_1,pls::_2),
-																													  std::bind(cmp,pls::_1,pls::_2,pls::_3,boost::none));
-			main[ *generic_prfx >> opsize_prfix	>> 0x81 >> rm_alt_7 >> imm_alt	] = binary("cmp",decode_mi,std::bind(cmp,pls::_1,pls::_2,pls::_3,boost::none));
-			main[ *generic_prfx >>						0x81 >> rm_pri_7 >> imm_pri	] = binary("cmp",decode_mi,std::bind(cmp,pls::_1,pls::_2,pls::_3,boost::none));
-			main[ *generic_prfx >> opsize_prfix	>> 0x83 >> rm_alt_7 >> imm8	] = binary("cmp",decode_mi,std::bind(cmp,pls::_1,pls::_2,pls::_3,std::pair<uint8_t,uint8_t>(8,alt)));
-			main[ *generic_prfx >>						0x83 >> rm_pri_7 >> imm8	] = binary("cmp",decode_mi,std::bind(cmp,pls::_1,pls::_2,pls::_3,std::pair<uint8_t,uint8_t>(8,pri)));
-			main[ *generic_prfx >>						0x38 >> rm8					] = binary("cmp",decode_mr,std::bind(cmp,pls::_1,pls::_2,pls::_3,boost::none));
-			main[ *generic_prfx >> opsize_prfix	>> 0x39 >> rm_alt				] = binary("cmp",decode_mr,std::bind(cmp,pls::_1,pls::_2,pls::_3,boost::none));
-			main[ *generic_prfx >>						0x39 >> rm_pri				] = binary("cmp",decode_mr,std::bind(cmp,pls::_1,pls::_2,pls::_3,boost::none));
-			main[ *generic_prfx >>						0x3a >> rm8					] = binary("cmp",decode_rm,std::bind(cmp,pls::_1,pls::_2,pls::_3,boost::none));
-			main[ *generic_prfx >> opsize_prfix	>> 0x3b >> rm_alt				] = binary("cmp",decode_rm,std::bind(cmp,pls::_1,pls::_2,pls::_3,boost::none));
-			main[ *generic_prfx >> 						0x3b >> rm_pri				] = binary("cmp",decode_rm,std::bind(cmp,pls::_1,pls::_2,pls::_3,boost::none));
+			if(Bits <= 32)
+			{
+				main[ opsize_prfix >> 0xe8_e >> rm_pri >> imm16          ] = unary("call",decode_m,std::bind(call,pls::_1,pls::_2,true));
+				main[                 0xff_e >> rm_pri_2                 ] = unary("call",decode_m,std::bind(call,pls::_1,pls::_2,false));
+				main[ opsize_prfix >> 0xff_e >> rm_alt_2                 ] = unary("call",decode_m,std::bind(call,pls::_1,pls::_2,false));
+				main[                 0x9a_e >> rm_pri >> imm16 >> imm32 ] = unary("call",decode_d,std::bind(call,pls::_1,pls::_2,true));
+				main[ opsize_prfix    0x9a_e >> rm_alt >> imm16 >> imm16 ] = unary("call",decode_d,std::bind(call,pls::_1,pls::_2,true));
+			}
 
 			if(Bits == 64)
 			{
-				main[ *generic_prfx >> rexw_prfix	>> 0x3c >> imm32				] = binary("cmp",std::bind(decode_i,amd64_state::OpSz_64,pls::_1,pls::_2),
+				main[               0xff_e >> rm64_2 ] = unary("call",decode_m,std::bind(call,pls::_1,pls::_2,false));
+				main[ rexw_prfix >> 0xff_e >> rm64_3 ] = unary("call",decode_m,std::bind(call,pls::_1,pls::_2,false));
+			}
+
+			main[                 0xff_e >> rm_pri_3        ] = unary("call",decode_m,std::bind(call,pls::_1,pls::_2,false));
+			main[ opsize_prfix >> 0xff_e >> rm_alt_3        ] = unary("call",decode_m,std::bind(call,pls::_1,pls::_2,false));
+			main[                 0xe8_e >> rm_pri >> imm32 ] = unary("call",decode_m,std::bind(call,pls::_1,pls::_2,true));
+
+			// CBW
+			main[                 0x98_e ] = binary("cbw",decode_np,cbw);
+			main[ opsize_prfix >> 0x98_e ] = binary("cwde",decode_np,cwde);
+			if(Bits == 64)
+				main[ rexw_prfix >> 0x98_e ] = binary("cwqe",decode_np,cwqe);
+
+			// CDQ
+
+			// CLC
+			main[ 0xf8_e ] = binary("clc",decode_np,std::bind(flagwr,pls::_1,CF,false));
+
+			// CLD
+			main[ 0xfc_e ] = binary("cld",decode_np,std::bind(flagwr,pls::_1,DF,false));
+
+			// CLI
+			main[ 0xfa_e ] = binary("cli",decode_np,std::bind(flagwr,pls::_1,IF,false));
+
+			// CMC
+			main[ 0xf5_e ] = binary("cmc",decode_np,std::bind(flagcomp,pls::_1,CF));
+
+			// CMOVcc
+			std::function<void(std::string const&, amd64::condition)> cmovcc = [&](uint8_t op, std::string const& suffix, amd64::condition cond)
+			{
+				main[                 0x0f_e >> op >> rm_pri ] = binary("cmov" + suffix,decode_rm,std::bind(cmov,pls::_1,cond));
+				main[ opsize_prfix >> 0x0f_e >> op >> rm_pri ] = binary("cmov" + suffix,decode_rm,std::bind(cmov,pls::_1,cond));
+
+				if(Bits == 64)
+					main[ rexw_prfix >> 0x0f_e >> op >> rm64 ] = binary("cmov" + suffix,decode_rm,std::bind(cmov,pls::_1,cond));
+			};
+
+			cmovcc(0x40,"o",Overflow);
+			cmovcc(0x41,"no",NotOverflow);
+			cmovcc(0x42,"c",Carry);
+			cmovcc(0x43,"ae",AboveEqual);
+			cmovcc(0x44,"e",Equal);
+			cmovcc(0x45,"ne",NotEqual);
+			cmovcc(0x46,"be",BelowEqual);
+			cmovcc(0x47,"a",Above);
+			cmovcc(0x48,"s",Sign);
+			cmovcc(0x49,"ns",NotSign);
+			cmovcc(0x4a,"p",Parity);
+			cmovcc(0x4b,"np",NotParity);
+			cmovcc(0x4c,"l",Less);
+			cmovcc(0x4d,"ge",GreaterEqual);
+			cmovcc(0x4e,"le",LessEqual);
+			cmovcc(0x4f,"g",Greater);
+
+			// CMP
+			main[ *generic_prfx >>                 0x3b_e >> imm8                ] = binary("cmp",std::bind(decode_i,amd64_state::OpSz_8,pls::_1,pls::_2),
+																													  std::bind(cmp,pls::_1,pls::_2,pls::_3,boost::none));
+			main[ *generic_prfx >> opsize_prfix >> 0x3c_e >> imm_alt             ] = binary("cmp",std::bind(decode_i,opsz_alt,pls::_1,pls::_2),
+																													  std::bind(cmp,pls::_1,pls::_2,pls::_3,boost::none));
+			main[ *generic_prfx >>                 0x3c_e >> imm_pri             ] = binary("cmp",std::bind(decode_i,opsz_pri,pls::_1,pls::_2),
+																													  std::bind(cmp,pls::_1,pls::_2,pls::_3,boost::none));
+			main[ *generic_prfx >> opsize_prfix >> 0x81_e >> rm_alt_7 >> imm_alt ] = binary("cmp",decode_mi,std::bind(cmp,pls::_1,pls::_2,pls::_3,boost::none));
+			main[ *generic_prfx >>                 0x81_e >> rm_pri_7 >> imm_pri ] = binary("cmp",decode_mi,std::bind(cmp,pls::_1,pls::_2,pls::_3,boost::none));
+			main[ *generic_prfx >> opsize_prfix >> 0x83_e >> rm_alt_7 >> imm8    ] = binary("cmp",decode_mi,std::bind(cmp,pls::_1,pls::_2,pls::_3,std::pair<uint8_t,uint8_t>(8,alt)));
+			main[ *generic_prfx >>                 0x83_e >> rm_pri_7 >> imm8    ] = binary("cmp",decode_mi,std::bind(cmp,pls::_1,pls::_2,pls::_3,std::pair<uint8_t,uint8_t>(8,pri)));
+			main[ *generic_prfx >>                 0x38_e >> rm8                 ] = binary("cmp",decode_mr,std::bind(cmp,pls::_1,pls::_2,pls::_3,boost::none));
+			main[ *generic_prfx >> opsize_prfix >> 0x39_e >> rm_alt              ] = binary("cmp",decode_mr,std::bind(cmp,pls::_1,pls::_2,pls::_3,boost::none));
+			main[ *generic_prfx >>                 0x39_e >> rm_pri              ] = binary("cmp",decode_mr,std::bind(cmp,pls::_1,pls::_2,pls::_3,boost::none));
+			main[ *generic_prfx >>                 0x3a_e >> rm8                 ] = binary("cmp",decode_rm,std::bind(cmp,pls::_1,pls::_2,pls::_3,boost::none));
+			main[ *generic_prfx >> opsize_prfix >> 0x3b_e >> rm_alt              ] = binary("cmp",decode_rm,std::bind(cmp,pls::_1,pls::_2,pls::_3,boost::none));
+			main[ *generic_prfx >>                 0x3b_e >> rm_pri              ] = binary("cmp",decode_rm,std::bind(cmp,pls::_1,pls::_2,pls::_3,boost::none));
+
+			if(Bits == 64)
+			{
+				main[ *generic_prfx >> rexw_prfix >> 0x3c_e >> imm32           ] = binary("cmp",std::bind(decode_i,amd64_state::OpSz_64,pls::_1,pls::_2),
 																														  std::bind(cmp,pls::_1,pls::_2,pls::_3,std::pair<uint8_t,uint8_t>(32,64)));
-				main[ *generic_prfx >> rex_prfix		>> 0x80 >> rm8_7 >> imm8	] = binary("cmp",decode_mi,std::bind(cmp,pls::_1,pls::_2,pls::_3,boost::none));
-				main[ *generic_prfx >> rexw_prfix	>> 0x81 >> rm64_7 >> imm32	] = binary("cmp",decode_mi,std::bind(cmp,pls::_1,pls::_2,pls::_3,std::pair<uint8_t,uint8_t>(32,64)));
-				main[ *generic_prfx >> rexw_prfix	>> 0x83 >> rm64_7 >> imm8	] = binary("cmp",decode_mi,std::bind(cmp,pls::_1,pls::_2,pls::_3,std::pair<uint8_t,uint8_t>(8,64)));
-				main[ *generic_prfx >> rex_prfix		>> 0x38 >> rm8					] = binary("cmp",decode_mr,std::bind(cmp,pls::_1,pls::_2,pls::_3,boost::none));
-				main[ *generic_prfx >> rexw_prfix	>> 0x39 >> rm64				] = binary("cmp",decode_mr,std::bind(cmp,pls::_1,pls::_2,pls::_3,boost::none));
-				main[ *generic_prfx >> rex_prfix		>> 0x3a >> rm8					] = binary("cmp",decode_rm,std::bind(cmp,pls::_1,pls::_2,pls::_3,boost::none));
-				main[ *generic_prfx >> rexw_prfix	>> 0x3b >> rm64				] = binary("cmp",decode_rm,std::bind(cmp,pls::_1,pls::_2,pls::_3,boost::none));
+				main[ *generic_prfx >> rex_prfix >>  0x80_e >> rm8_7 >>  imm8  ] = binary("cmp",decode_mi,std::bind(cmp,pls::_1,pls::_2,pls::_3,boost::none));
+				main[ *generic_prfx >> rexw_prfix >> 0x81_e >> rm64_7 >> imm32 ] = binary("cmp",decode_mi,std::bind(cmp,pls::_1,pls::_2,pls::_3,std::pair<uint8_t,uint8_t>(32,64)));
+				main[ *generic_prfx >> rexw_prfix >> 0x83_e >> rm64_7 >> imm8  ] = binary("cmp",decode_mi,std::bind(cmp,pls::_1,pls::_2,pls::_3,std::pair<uint8_t,uint8_t>(8,64)));
+				main[ *generic_prfx >> rex_prfix >>  0x38_e >> rm8             ] = binary("cmp",decode_mr,std::bind(cmp,pls::_1,pls::_2,pls::_3,boost::none));
+				main[ *generic_prfx >> rexw_prfix >> 0x39_e >> rm64            ] = binary("cmp",decode_mr,std::bind(cmp,pls::_1,pls::_2,pls::_3,boost::none));
+				main[ *generic_prfx >> rex_prfix >>  0x3a_e >> rm8             ] = binary("cmp",decode_rm,std::bind(cmp,pls::_1,pls::_2,pls::_3,boost::none));
+				main[ *generic_prfx >> rexw_prfix >> 0x3b_e >> rm64            ] = binary("cmp",decode_rm,std::bind(cmp,pls::_1,pls::_2,pls::_3,boost::none));
 			}
 
 			// CMPS
