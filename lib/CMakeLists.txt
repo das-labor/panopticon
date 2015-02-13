@@ -63,9 +63,9 @@ set_target_properties(panopticon-static PROPERTIES VERSION
 set_target_properties(panopticon-shared PROPERTIES OUTPUT_NAME panopticon)
 set_target_properties(panopticon-static PROPERTIES OUTPUT_NAME panopticon)
 
-install(TARGETS panopticon-static panopticon-shared LIBRARY DESTINATION lib
-	RUNTIME DESTINATION bin ARCHIVE DESTINATION lib)
-install(FILES ${panopticon_HEADERS} DESTINATION include/panopticon)
+install(TARGETS panopticon-shared LIBRARY DESTINATION ${LIB_INSTALL_DIR}
+	RUNTIME DESTINATION bin ARCHIVE DESTINATION ${LIB_INSTALL_DIR})
+install(FILES ${panopticon_HEADERS} DESTINATION ${INCLUDE_INSTALL_DIR}/panopticon)
 
 if(UNIX AND NOT APPLE)
 	EXECUTE_PROCESS(COMMAND dpkg-architecture -qDEB_HOST_MULTIARCH OUTPUT_VARIABLE
@@ -73,7 +73,7 @@ if(UNIX AND NOT APPLE)
 
   configure_file("panopticon.pc.in" "panopticon.pc" @ONLY)
   install(FILES "${CMAKE_CURRENT_BINARY_DIR}/panopticon.pc"
-		DESTINATION "lib/${CMAKE_ARCH_TRIPLET}/pkgconfig")
+		DESTINATION "${LIB_INSTALL_DIR}/${CMAKE_ARCH_TRIPLET}/pkgconfig")
 endif()
 
 if("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
