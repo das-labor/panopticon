@@ -30,7 +30,8 @@ set(panopticon_HTMLDOC feats.html arch.html disass.html index.html
 	_static/file.png _static/comment-bright.png _static/comment.png
 	_static/ajax-loader.gif _static/down-pressed.png _static/up.png
 	_static/searchtools.js _static/comment-close.png _static/minus.png
-	_static/pygments.css _static/websupport.js)
+	_static/pygments.css _static/websupport.js _static/autoload.js
+	_static/ink-all.js _static/ink.css _static/site.css _static/favicon.ico)
 
 foreach(file ${panopticon_HTMLDOC})
 	get_filename_component(dirname "${file}" PATH)
