@@ -17,8 +17,7 @@
  */
 
 #include <panopticon/disassembler.hh>
-
-#include <panopticon/amd64/amd64.hh>
+#include <panopticon/amd64/traits.hh>
 
 #pragma once
 
@@ -26,6 +25,9 @@ namespace po
 {
 	namespace amd64
 	{
+		void flagcomp(cg& m, variable const& flag);
+		void flagwr(cg& m, variable const& flag,bool val);
+
 		void aaa(cg& m);
 		void aam(cg& m, rvalue a, rvalue b);
 		void aad(cg& m, rvalue a, rvalue b);
@@ -33,66 +35,50 @@ namespace po
 		void adc(cg& m, rvalue a, rvalue b, boost::optional<std::pair<uint8_t,uint8_t>> sign_ext);
 		void add(cg& m, rvalue a, rvalue b, boost::optional<std::pair<uint8_t,uint8_t>> sign_ext);
 		void adc(cg& m, rvalue a, rvalue b, boost::optional<std::pair<uint8_t,uint8_t>> sign_ext);
+		void adcx(cg& m, rvalue a, rvalue b);
 	// ADX
 	// AMX
 		void and_(cg& m, rvalue a, rvalue b, boost::optional<std::pair<uint8_t,uint8_t>> sign_ext);
-	// BOUND
-	// BSF
-	// BSR
-	// BSWAP
-	// BT
-	// BTC
-	// BTR
-	// BTS
-	// CALL
-	// CALLF
-	// CBW
-	// CWDE
-	// CWQE
+		void bound(cg& m, rvalue a, rvalue b);
+		void bsf(cg& m, rvalue a, rvalue b);
+		void bsr(cg& m, rvalue a, rvalue b);
+		void bswap(cg& m, rvalue a);
+		void bt(cg& m, rvalue a, rvalue b);
+		void btc(cg& m, rvalue a, rvalue b);
+		void btr(cg& m, rvalue a, rvalue b);
+		void bts(cg& m, rvalue a, rvalue b);
+		void call(cg& m, rvalue a, bool rel);
+		void cbw(cg& m);
+		void cwde(cg& m);
+		void cwqe(cg& m);
 	// CDQ
 	// CLC
 	// CLD
 	// CLI
 	// CMC
-	// CMOVB
-	// CMOVNAE
-	// CMOVC
-	// CMOVBE
-	// CMOVNA
-	// CMOVL
-	// CMOVNGE
-	// CMOVLE
-	// CMOVNG
-	// CMOVNB
-	// CMOVAE
-	// CMOVNC
-	// CMOVNBE
-	// CMOVA
-	// CMOVNL
-	// CMOVGE
-	// CMOVNLE
-	// CMOVG
-	// CMOVNO
-	// CMOVNP
-	// CMOVPO
-	// CMOVNS
-	// CMOVNZ
-	// CMOVNE
-	// CMOVO
-	// CMOVP
-	// CMOVPE
-	// CMOVS
-	// CMOVZ
-	// CMOVE
-	// CMP
-	// CMPS
-	// CMPSW
-	// CMPSB
-	// CMPSD
-	// CMPSQ
-	// CMPXCHG
-	// CMPXCHG8B
-	// CMPXCHG16B
+		enum condition
+		{
+			Less,
+			LessEqual,
+			Equal,
+			NotEqual,
+			Parity,
+			NotParity,
+			Carry,
+			Sign,
+			NotSign,
+			Overflow,
+			NotOverflow,
+			Greater,
+			GreaterEqual,
+			BelowEqual,
+			Above,
+			AboveEqual,
+		};
+		void cmov(cg& m, rvalue a, rvalue b, condition c);
+		void cmp(cg& m, rvalue a, rvalue b, boost::optional<std::pair<uint8_t,uint8_t>> sign_ext);
+		void cmps(cg& m, int bits);
+		void cmpxchg(cg& m, rvalue a, rvalue b, int bits);
 	// CPUID
 	// CWD
 	// CWQ
@@ -185,7 +171,7 @@ namespace po
 	// MUL
 	// NEG
 	// NOP
-	// OR
+	void or_(cg& m, rvalue a, rvalue b, boost::optional<std::pair<uint8_t,uint8_t>> sign_ext);
 	// OUT
 	// OUTS
 	// OUTSW
@@ -215,7 +201,7 @@ namespace po
 	// SALC
 	// SETALC
 	// SAR
-	// SBB
+	void sbb(cg& m, rvalue a, rvalue b, boost::optional<std::pair<uint8_t,uint8_t>> sign_ext);
 	// SCAS
 	// SCASB
 	// SCASW
@@ -265,12 +251,13 @@ namespace po
 	// STOSW
 	// STOSD
 	// STOSQ
-	// SUB
+	void sub(cg& m, rvalue a, rvalue b, boost::optional<std::pair<uint8_t,uint8_t>> sign_ext);
 	// TEST
 	// UD
 	// US2
 	// XADD
 	// XCHG
 	// XOR
+	void xor_(cg& m, rvalue a, rvalue b, boost::optional<std::pair<uint8_t,uint8_t>> sign_ext);
 	}
 }

@@ -17,8 +17,7 @@
  */
 
 #include <panopticon/value.hh>
-
-#include <panopticon/amd64/amd64.hh>
+#include <panopticon/amd64/traits.hh>
 
 #pragma once
 
@@ -35,6 +34,9 @@ namespace po
 		memory dword(uint64_t);
 		memory qword(uint64_t);
 
+		rvalue decode_m(sm const&,cg&);
+		rvalue decode_d(sm const&,cg&);
+		rvalue decode_o(sm const&,cg&);
 		std::pair<rvalue,rvalue> decode_rm(sm const&,cg&);
 		std::pair<rvalue,rvalue> decode_mr(sm const&,cg&);
 		std::pair<rvalue,rvalue> decode_mi(sm const&,cg&);
@@ -69,6 +71,7 @@ namespace po
 		variable select_reg(amd64_state::OperandSize,unsigned int);
 		memory select_mem(amd64_state::OperandSize,rvalue);
 
+		sem_action nonary(std::string const&,std::function<void(cg&)>);
 		sem_action unary(std::string const&,std::function<rvalue(sm const&,cg&)>,std::function<void(cg&,rvalue)>);
 		sem_action binary(std::string const&,std::function<std::pair<rvalue,rvalue>(sm const&,cg&)>,std::function<void(cg&,rvalue,rvalue)>);
 		sem_action branch(std::string const&, rvalue, bool);

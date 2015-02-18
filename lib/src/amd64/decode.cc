@@ -353,6 +353,35 @@ std::pair<rvalue,rvalue> po::amd64::decode_i(amd64_state::OperandSize os, sm con
 	}
 }
 
+rvalue po::amd64::decode_m(sm const& st,cg&)
+{
+	ensure(false);
+}
+
+rvalue po::amd64::decode_d(sm const& st,cg&)
+{
+	ensure(false);
+}
+
+rvalue po::amd64::decode_o(sm const& st,cg&)
+{
+	ensure(false);
+}
+
+sem_action po::amd64::nonary(std::string const& op, std::function<void(cg&)> func)
+{
+	return [op,func](sm &st)
+	{
+		st.mnemonic(st.tokens.size(),op,"",[func,st](cg& c)
+		{
+			func(c);
+
+			return std::list<rvalue>({});
+		});
+		st.jump(st.address + st.tokens.size());
+	};
+}
+
 sem_action po::amd64::unary(std::string const& op, std::function<rvalue(sm const&,cg&)> decode, std::function<void(cg&,rvalue)> func)
 {
 	return [op,func,decode](sm &st)
