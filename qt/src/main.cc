@@ -22,8 +22,20 @@
 
 using namespace std;
 
+void qtMessageHandler(QtMsgType type, QMessageLogContext const& ctx, QString const& msg)
+{
+	std::cerr << "Qt: " << msg.toLocal8Bit().data() << " (" << ctx.file << ":" << ctx.line << ", " << ctx.function << ")" << std::endl;
+	if(type == QtFatalMsg)
+	{
+		std::cerr << "This is a fatal error. Terminating." << std::endl;
+		std::exit(EXIT_FAILURE);
+	}
+}
+
 int main(int argc, char *argv[])
 {
+	qInstallMessageHandler(qtMessageHandler);
+
 	QApplication app(argc,argv);
 
 	qmlRegisterUncreatableType<Session>("Panopticon",1,0,"Session","Use Panopticon.newSession or Panopticon.openSession.");
