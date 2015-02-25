@@ -1,6 +1,18 @@
 import QtQuick 2.0
 import Panopticon 1.0
 
+/*
+ * +-------+---------------------+-------+
+ * |   S   |    Notifications    |   S   |
+ * |   i   +---------------------+   i   |
+ * |   d   |                     |   d   |
+ * |   e   |                     |   e   |
+ * |       |                     |       |
+ * |   B   |      Workspace      |   B   |
+ * |   a   |                     |   a   |
+ * |   r   |                     |   r   |
+ * +-------+---------------------+-------+
+ */
 Item {
 	id: root
 
@@ -20,11 +32,58 @@ Item {
 		}
 	}
 
+	Component.onCompleted: {
+		root.session.activeProcedure = root.session.procedures[0]
+	}
+
+	Item {
+		id: notifications
+
+		visible: session.dirty
+		height: 40//notifyDirty.visible ? 40 : 0
+		anchors.left: mainCode.right
+		anchors.right: mainData.left
+
+		property var elements: [
+			{ title: "Save session", when: session.dirty, act: function() { session.save() } }
+		]
+
+		Row {
+			width: childrenRect.width
+			anchors.horizontalCenter: parent.horizontalCenter
+			/*Repeater {
+				data: notifications.elements
+				delegate:*/ Rectangle {
+					width: 100
+					height: notifications.height
+					color: "#aa5555"
+					visible: true//modelData.when
+
+					Text {
+						anchors.fill: parent
+						text: "aaa"//modelData.title
+						verticalAlignment: Text.AlignVCenter
+						horizontalAlignment: Text.AlignHCenter
+					}
+
+					MouseArea {
+						anchors.fill: parent
+						onPressed: {
+							modelData.act()
+						}
+					}
+				}
+			//}
+		}
+	}
+
 	Item {
 		id: workspace
 		anchors.left: mainCode.right
 		anchors.right: mainData.left
-		height: parent.height
+		anchors.top: notifications.bottom
+		anchors.bottom: parent.bottom
+		clip: true
 
 		Rectangle {
 			anchors.fill: parent
@@ -47,10 +106,6 @@ Item {
 			arrowHeadColor: "#aa1c1c"
 			selectionColor: "#bed83f"
 		}
-	}
-
-	Component.onCompleted: {
-		root.session.activeProcedure = root.session.procedures[0]
 	}
 
 	SideMenu {

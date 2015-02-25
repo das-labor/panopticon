@@ -442,7 +442,7 @@ std::tuple<QString,po::bound,std::list<po::bound>> LinearModel::data_visitor::op
 }
 
 Session::Session(po::session sess, QObject *p)
-: QObject(p), _session(sess), _linear(new LinearModel(sess.dbase,this)), _procedures(), _activeProcedure(nullptr)
+: QObject(p), _session(sess), _linear(new LinearModel(sess.dbase,this)), _procedures(), _activeProcedure(nullptr), _dirty(true)
 {
 	bool set = false;
 
@@ -481,6 +481,7 @@ Session* Session::createAvr(QString s)
 void Session::postComment(int r, QString c)
 {
 	_linear->postComment(r,c);
+	makeDirty();
 }
 
 void Session::disassemble(int r, int c)
@@ -504,5 +505,22 @@ void Session::setActiveProcedure(QObject* s)
 		//_linear->setProcedure(*proc->procedure());
 
 		emit activeProceduresChanged();
+	}
+}
+
+void Session::save(void)
+{
+	if(isDirty())
+	{
+		qDebug() << "Saving session...";
+		_session.store->snapshot("test.panop");
+		qDebug() << "Done";
+
+		_dirty = false;
+		emit dirtyFlagChanged();
+	}
+	else
+	{
+		qDebug() << "No changes to save";
 	}
 }
