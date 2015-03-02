@@ -442,7 +442,8 @@ std::tuple<QString,po::bound,std::list<po::bound>> LinearModel::data_visitor::op
 }
 
 Session::Session(po::session sess, QObject *p)
-: QObject(p), _session(sess), _linear(new LinearModel(sess.dbase,this)), _procedures(), _activeProcedure(nullptr), _dirty(true)
+: QObject(p), _session(sess), _linear(new LinearModel(sess.dbase,this)),
+  _procedures(), _activeProcedure(nullptr), _dirty(true), _savePath()
 {
 	bool set = false;
 
@@ -508,16 +509,30 @@ void Session::setActiveProcedure(QObject* s)
 	}
 }
 
-void Session::save(void)
+void Session::save(QString path)
 {
 	if(isDirty())
 	{
-		qDebug() << "Saving session...";
-		_session.store->snapshot("test.panop");
-		qDebug() << "Done";
+		qDebug() << "Saving session at " << path;
 
-		_dirty = false;
-		emit dirtyFlagChanged();
+		try
+		{
+			_session.store->snapshot(path.toStdString());
+
+			bool x = _savePath == path;
+			_savePath = path;
+			_dirty = false;
+
+			emit dirtyFlagChanged();
+			if(!x)
+				emit savePathChanged();
+
+			qDebug() << "Done";
+		}
+		catch(std::runtime_error const& e)
+		{
+			qWarning() << QString(e.what());
+		}
 	}
 	else
 	{
