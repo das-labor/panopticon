@@ -48,7 +48,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'Panopticon'
-copyright = u'2014, Kai Michaelis <seu@panopticon.re>'
+copyright = u'2014-2015, Kai Michaelis <seu@panopticon.re>'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
