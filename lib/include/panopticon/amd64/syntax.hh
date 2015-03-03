@@ -74,10 +74,10 @@ namespace po
 			// AAA, AAD, AAM and AAS (32 bits only)
 			if(Bits <= 32)
 			{
-				main[ *lock_or_rep >> 0x37_e         ] = [](sm& m) { m.mnemonic(m.tokens.size(),"aaa","",std::list<rvalue>(),[](cg&) {}); };
-				main[ *lock_or_rep >> 0xd5_e >> imm8 ] = [](sm& m) { m.mnemonic(m.tokens.size(),"aad","{8}",*m.state.imm,[](cg&) {}); };
-				main[ *lock_or_rep >> 0xd4_e >> imm8 ] = [](sm& m) { m.mnemonic(m.tokens.size(),"aam","{8}",*m.state.imm,[](cg&) {}); };
-				main[ *lock_or_rep >> 0x3f_e         ] = [](sm& m) { m.mnemonic(m.tokens.size(),"aas","",std::list<rvalue>(),[](cg&) {}); };
+				main[ *rep_prfx >> 0x37_e         ] = nonary("aaa",aaa);
+				main[ *rep_prfx >> 0xd5_e >> imm8 ] = unary("aad",decode_imm,aad);
+				main[ *rep_prfx >> 0xd4_e >> imm8 ] = unary("aam",decode_imm,aam);
+				main[ *rep_prfx >> 0x3f_e         ] = nonary("aas",aas);
 			}
 
          // ADC

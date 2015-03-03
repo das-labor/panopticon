@@ -368,14 +368,21 @@ rvalue po::amd64::decode_o(sm const& st,cg&)
 	ensure(false);
 }
 
+rvalue po::amd64::decode_imm(sm const& st,cg&)
+{
+	ensure(st.state.imm);
+	return *st.state.imm;
+}
+
 sem_action po::amd64::nonary(std::string const& op, std::function<void(cg&)> func)
 {
 	return [op,func](sm &st)
 	{
-		st.mnemonic(st.tokens.size(),op,"",[func,st](cg& c)
+		st.mnemonic(st.tokens.size(),op,"",[func,st,op](cg& c)
 		{
 			func(c);
 
+			std::cout << op << std::endl;
 			return std::list<rvalue>({});
 		});
 		st.jump(st.address + st.tokens.size());
@@ -386,11 +393,12 @@ sem_action po::amd64::unary(std::string const& op, std::function<rvalue(sm const
 {
 	return [op,func,decode](sm &st)
 	{
-		st.mnemonic(st.tokens.size(),op,"{64}",[decode,func,st](cg& c)
+		st.mnemonic(st.tokens.size(),op,"{64}",[decode,func,st,op](cg& c)
 		{
 			rvalue a = decode(st,c);
 			func(c,a);
 
+			std::cout << op << " " << a << std::endl;
 			return std::list<rvalue>({a});
 		});
 		st.jump(st.address + st.tokens.size());
@@ -409,7 +417,7 @@ sem_action po::amd64::binary(std::string const& op, std::function<std::pair<rval
 			func(c,a,b);
 
 			std::cout << op << " " << a << ", " << b << std::endl;
-			return std::list<rvalue>({a});
+			return std::list<rvalue>({a,b});
 		});
 
 		st.jump(st.address + st.tokens.size());

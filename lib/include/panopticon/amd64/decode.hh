@@ -37,6 +37,7 @@ namespace po
 		rvalue decode_m(sm const&,cg&);
 		rvalue decode_d(sm const&,cg&);
 		rvalue decode_o(sm const&,cg&);
+		rvalue decode_imm(sm const&,cg&);
 		std::pair<rvalue,rvalue> decode_rm(sm const&,cg&);
 		std::pair<rvalue,rvalue> decode_mr(sm const&,cg&);
 		std::pair<rvalue,rvalue> decode_mi(sm const&,cg&);
