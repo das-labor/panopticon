@@ -25,12 +25,14 @@ namespace po
 {
 	namespace amd64
 	{
+		void set_arithm_flags(rvalue res, rvalue res_half, rvalue a, rvalue b, cg& m);
+		rvalue sign_ext(rvalue v, unsigned from, unsigned to, cg& m);
 		void flagcomp(cg& m, variable const& flag);
 		void flagwr(cg& m, variable const& flag,bool val);
 
 		void aaa(cg& m);
-		void aam(cg& m, rvalue a, rvalue b);
-		void aad(cg& m, rvalue a, rvalue b);
+		void aam(cg& m, rvalue a);
+		void aad(cg& m, rvalue a);
 		void aas(cg& m);
 		void adc(cg& m, rvalue a, rvalue b, boost::optional<std::pair<uint8_t,uint8_t>> sign_ext);
 		void add(cg& m, rvalue a, rvalue b, boost::optional<std::pair<uint8_t,uint8_t>> sign_ext);
