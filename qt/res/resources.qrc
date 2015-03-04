@@ -3,16 +3,7 @@
 	<qresource>
 		<!-- Entry point -->
 		<file>Window.qml</file>
-
-		<!-- Common -->
 		<file>panop.png</file>
-
-		<!-- Wizard -->
-		<file>wizard/Main.qml</file>
-		<file>wizard/Continue.qml</file>
-		<file>wizard/Page.qml</file>
-		<file>wizard/Option.qml</file>
-		<file>wizard/New.qml</file>
 
 		<!-- Workspace -->
 		<file>workspace/Workspace.qml</file>
@@ -23,8 +14,6 @@
 		<!-- Graph -->
 		<file>workspace/Graph.qml</file>
 		<file>workspace/Edge.qml</file>
-		<file>head.svg</file>
-		<file>tail.svg</file>
 
 		<!-- Linear -->
 		<file>workspace/Linear.qml</file>
