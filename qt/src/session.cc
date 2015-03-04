@@ -19,6 +19,7 @@
 #include "session.hh"
 #include <panopticon/program.hh>
 #include <panopticon/avr/avr.hh>
+#include <panopticon/loc.hh>
 
 using namespace po;
 using namespace boost::icl;
@@ -521,6 +522,7 @@ void Session::save(QString path)
 
 		try
 		{
+			save_point(*_session.store);
 			_session.store->snapshot(path.toStdString());
 
 			bool x = _savePath == path;

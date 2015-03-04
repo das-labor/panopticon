@@ -135,8 +135,9 @@ ApplicationWindow {
 		property var next: function() {}
 
 		onAccepted: {
-			console.log("You saved to: " + fileSaveDialog.fileUrls)
-			Panopticon.session.save(fileSaveDialog.fileUrls)
+			var path = fileSaveDialog.fileUrls.toString().substring(7)
+			console.log("You saved to: " + path)
+			Panopticon.session.save(path)
 			next()
 		}
 	}

@@ -74,55 +74,63 @@ void Sugiyama::setProcedure(QObject* o)
 	Procedure* proc = qobject_cast<Procedure*>(o);
 	boost::optional<bool> next(boost::none);
 
+	if(o)
 	{
-		std::lock_guard<std::mutex> guard(_mutex);
-
-		if(proc && proc != _procedure)
 		{
-			std::function<void(Procedure*,bool)> f = [&](Procedure* p, bool v)
+			std::lock_guard<std::mutex> guard(_mutex);
+
+			if(proc && proc != _procedure)
 			{
-				if(p && p->procedure())
+				std::function<void(Procedure*,bool)> f = [&](Procedure* p, bool v)
 				{
-					auto i = _cache.find(*p->procedure());
-
-					if(i != _cache.end())
+					if(p && p->procedure())
 					{
-						for(auto vx: iters(vertices(std::get<0>(i->second))))
-						{
-							get_vertex(vx,std::get<0>(i->second)).item->setVisible(v);
-						}
+						auto i = _cache.find(*p->procedure());
 
-						for(auto ed: iters(edges(std::get<0>(i->second))))
+						if(i != _cache.end())
 						{
-							auto edge = get_edge(ed,std::get<0>(i->second));
+							for(auto vx: iters(vertices(std::get<0>(i->second))))
+							{
+								get_vertex(vx,std::get<0>(i->second)).item->setVisible(v);
+							}
 
-							if(edge.edge)
-								edge.edge->setVisible(v);
+							for(auto ed: iters(edges(std::get<0>(i->second))))
+							{
+								auto edge = get_edge(ed,std::get<0>(i->second));
+
+								if(edge.edge)
+									edge.edge->setVisible(v);
+							}
 						}
 					}
-				}
-			};
+				};
 
-			f(_procedure,false);
-			f(proc,true);
+				f(_procedure,false);
+				f(proc,true);
 
-			_procedure = proc;
-			next = (_procedure && _procedure->procedure() && !_cache.count(*_procedure->procedure()));
+				_procedure = proc;
+				next = (_procedure && _procedure->procedure() && !_cache.count(*_procedure->procedure()));
 
-			emit procedureChanged();
+				emit procedureChanged();
+			}
+		}
+
+		if(next)
+		{
+			if(*next)
+			{
+				layout();
+			}
+			else
+			{
+				update();
+			}
 		}
 	}
-
-	if(next)
+	else
 	{
-		if(*next)
-		{
-			layout();
-		}
-		else
-		{
-			update();
-		}
+		_procedure = nullptr;
+		emit procedureChanged();
 	}
 }
 
