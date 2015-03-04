@@ -51,7 +51,7 @@ ApplicationWindow {
 	}
 
 	function saveStaleSession(next) {
-		if(Panopticon.session) {
+		if(Panopticon.session && Panopticon.session.dirty) {
 			saveStaleDialog.next = next
 			saveStaleDialog.open()
 		} else {
@@ -122,6 +122,9 @@ ApplicationWindow {
 			MenuItem {
 				text: "Quit"
 				shortcut: "Ctrl+Q"
+				onTriggered: {
+					saveStaleSession(Qt.quit)
+				}
 			}
 		}
 	}
