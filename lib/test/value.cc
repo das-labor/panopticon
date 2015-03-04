@@ -156,20 +156,86 @@ TEST(value,memory)
 TEST(value,marshal)
 {
 	auto rand = boost::uuids::random_generator();
-	loc<rvalue> a(rand(),new rvalue(undefined()));
-	loc<rvalue> b(rand(),new rvalue(constant(42)));
-	loc<rvalue> c(rand(),new rvalue(variable("test",8)));
-	loc<rvalue> d(rand(),new rvalue(memory(rvalue(constant(5)),2,LittleEndian,"bank1")));
 
-	rdf::storage store;
-	save_point(store);
-	ASSERT_GT(store.count(),0);
+	rvalue a = undefined(),
+			 b = constant(42),
+			 c = variable("test",8),
+			 d = memory(rvalue(constant(5)),2,LittleEndian,"bank1");
 
-	a.remove();
-	b.remove();
-	c.remove();
-	d.remove();
+	uuid uua = rand(), uub = rand(), uuc = rand(), uud = rand();
+	archive st1a = marshal(&a,uua);
+	archive st1b = marshal(&b,uub);
+	archive st1c = marshal(&c,uuc);
+	archive st1d = marshal(&d,uud);
 
-	save_point(store);
-	ASSERT_EQ(store.count(),0);
+	ASSERT_GT(st1a.triples.size(),0u);
+	ASSERT_GT(st1b.triples.size(),0u);
+	ASSERT_GT(st1c.triples.size(),0u);
+	ASSERT_GT(st1d.triples.size(),0u);
+	ASSERT_EQ(st1a.blobs.size(),0u);
+	ASSERT_EQ(st1b.blobs.size(),0u);
+	ASSERT_EQ(st1c.blobs.size(),0u);
+	ASSERT_EQ(st1d.blobs.size(),0u);
+
+	archive st2a = marshal(&a,uua);
+	archive st2b = marshal(&b,uub);
+	archive st2c = marshal(&c,uuc);
+	archive st2d = marshal(&d,uud);
+
+	ASSERT_TRUE(st1a == st2a);
+	ASSERT_TRUE(st1b == st2b);
+	ASSERT_TRUE(st1c == st2c);
+	ASSERT_TRUE(st1d == st2d);
+
+	{
+		rdf::storage store;
+
+		for(auto s: st1a.triples)
+		{
+			std::cerr << s << std::endl;
+			store.insert(s);
+		}
+
+		rvalue a2 = *std::unique_ptr<rvalue>(unmarshal<rvalue>(uua,store));
+		ASSERT_TRUE(a2 == a);
+	}
+
+	{
+		rdf::storage store;
+
+		for(auto s: st1b.triples)
+		{
+			std::cerr << s << std::endl;
+			store.insert(s);
+		}
+
+		rvalue b2 = *std::unique_ptr<rvalue>(unmarshal<rvalue>(uub,store));
+		ASSERT_TRUE(b2 == b);
+	}
+
+	{
+		rdf::storage store;
+
+		for(auto s: st1c.triples)
+		{
+			std::cerr << s << std::endl;
+			store.insert(s);
+		}
+
+		rvalue c2 = *std::unique_ptr<rvalue>(unmarshal<rvalue>(uuc,store));
+		ASSERT_TRUE(c2 == c);
+	}
+
+	{
+		rdf::storage store;
+
+		for(auto s: st1d.triples)
+		{
+			std::cerr << s << std::endl;
+			store.insert(s);
+		}
+
+		rvalue d2 = *std::unique_ptr<rvalue>(unmarshal<rvalue>(uud,store));
+		ASSERT_TRUE(d2 == d);
+	}
 }
