@@ -446,17 +446,21 @@ Session::Session(po::session sess, QObject *p)
   _procedures(), _activeProcedure(nullptr), _dirty(true), _savePath()
 {
 	bool set = false;
+	auto prog = _session.dbase->programs.begin();
 
-	for(auto proc: (*_session.dbase->programs.begin())->procedures())
+	if(prog !=  _session.dbase->programs.end())
 	{
-		auto p = new Procedure(this);
-
-		p->setProcedure(proc);
-		_procedures.append(QVariant::fromValue<QObject*>(p));
-		if(!set)
+		for(auto proc: (*prog)->procedures())
 		{
-			set = true;
-			//_graph->setProcedure(proc);
+			auto p = new Procedure(this);
+
+			p->setProcedure(proc);
+			_procedures.append(QVariant::fromValue<QObject*>(p));
+			if(!set)
+			{
+				set = true;
+				//_graph->setProcedure(proc);
+			}
 		}
 	}
 }

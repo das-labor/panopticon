@@ -17,12 +17,48 @@
  */
 
 import QtQuick.Controls 1.1
-import QtQuick.Dialogs 1.0
+import QtQuick.Dialogs 1.1
 import QtQuick 2.1
 import Panopticon 1.0
 
 ApplicationWindow {
 	id: mainWindow
+
+	MessageDialog {
+		id: saveStaleDialog
+		title: "Unsaved changes"
+		text: "Do you want to save the changes made to the current session?"
+		icon: StandardIcon.Question
+		standardButtons: StandardButton.Yes | StandardButton.No | StandardButton.Abort
+
+		property var next: function() {}
+
+		onYes: {
+			if(Panopticon.session.savePath != "") {
+				Panopticon.session.save(Panopticon.session.savePath)
+				next()
+			} else {
+				fileSaveDialog.next = saveStaleDialog.next
+				fileSaveDialog.open()
+			}
+		}
+
+		onNo: {
+			next()
+		}
+
+		onRejected: {}
+	}
+
+	function saveStaleSession(next) {
+		if(Panopticon.session) {
+			saveStaleDialog.next = next
+			saveStaleDialog.open()
+		} else {
+			next()
+		}
+	}
+
 	title: "Panopticon"
 	height: 1000
 	width: 1000
@@ -36,8 +72,10 @@ ApplicationWindow {
 					text: "Relocated AVR image"
 					shortcut: "Ctrl+A"
 					onTriggered: {
-						fileNewDialog.openFunction = Panopticon.newAvrSession
-						fileNewDialog.open()
+						saveStaleSession(function() {
+							fileNewDialog.openFunction = Panopticon.createAvrSession
+							fileNewDialog.open()
+						})
 					}
 				}
 
@@ -45,8 +83,10 @@ ApplicationWindow {
 					text: "Uninterpreted data"
 					shortcut: "Ctrl+R"
 					onTriggered: {
-						fileNewDialog.openFunction = Panopticon.newRawSession
-						fileNewDialog.open()
+						saveStaleSession(function() {
+							fileNewDialog.openFunction = Panopticon.createRawSession
+							fileNewDialog.open()
+						});
 					}
 				}
 			}
@@ -54,7 +94,9 @@ ApplicationWindow {
 			MenuItem {
 				text: "Open"
 				shortcut: "Ctrl+O"
-				onTriggered: { fileOpenDialog.open() }
+				onTriggered: {
+					saveStaleSession(fileOpenDialog.open);
+				}
 			}
 			MenuItem {
 				text: "Save"
@@ -90,9 +132,12 @@ ApplicationWindow {
 		selectExisting: false
 		selectFolder: false
 
+		property var next: function() {}
+
 		onAccepted: {
 			console.log("You saved to: " + fileSaveDialog.fileUrls)
-			Panopticon.session.savePath(fileSaveDialog.fileUrls)
+			Panopticon.session.save(fileSaveDialog.fileUrls)
+			next()
 		}
 	}
 
@@ -102,9 +147,9 @@ ApplicationWindow {
 		selectExisting: true
 		selectFolder: false
 
-		onAccepted: {
-			console.log("You opened: " + fileOpenDialog.fileUrls)
+		property var next: function() {}
 
+		onAccepted: {
 			// cut off the "file://" part
 			var path = fileOpenDialog.fileUrls.toString().substring(7)
 			var sess = Panopticon.openSession(path)
@@ -114,6 +159,8 @@ ApplicationWindow {
 			} else {
 				loader.setSource("workspace/Workspace.qml",{ "session": Panopticon.session })
 			}
+
+			next()
 		}
 	}
 
@@ -124,6 +171,7 @@ ApplicationWindow {
 		selectFolder: false
 
 		property var openFunction: null
+		property var next: function() {}
 
 		onAccepted: {
 			console.log("You opened: " + fileNewDialog.fileUrls)
@@ -137,6 +185,8 @@ ApplicationWindow {
 			} else {
 				loader.setSource("workspace/Workspace.qml",{ "session": Panopticon.session })
 			}
+
+			next()
 		}
 	}
 
@@ -154,8 +204,6 @@ ApplicationWindow {
 	Component.onCompleted: {
 		if(Panopticon.session) {
 			loader.setSource("workspace/Workspace.qml",{ "session": Panopticon.session })
-		} else {
-			loader.setSource("wizard/Main.qml")
 		}
 	}
 }
