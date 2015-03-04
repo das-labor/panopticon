@@ -190,15 +190,33 @@ ApplicationWindow {
 		}
 	}
 
-	statusBar: Rectangle {
-		height: 40
-		color: '#ff11ff'
-	}
-
 	Loader {
 		focus: true
 		id: loader
 		anchors.fill: parent
+		sourceComponent: Item {
+			anchors.fill: parent
+
+			Item {
+				anchors.centerIn: parent
+				height: childrenRect.height
+				width: childrenRect.width
+
+				Image {
+					id: panopLogo
+					source: "qrc:///panop.png"
+				}
+				Text {
+					anchors.verticalCenter: panopLogo.verticalCenter
+					anchors.left: panopLogo.right
+					anchors.leftMargin: 10
+					text: "PANOPTICON"
+					font {
+						pixelSize: panopLogo.height
+					}
+				}
+			}
+		}
 	}
 
 	Component.onCompleted: {
