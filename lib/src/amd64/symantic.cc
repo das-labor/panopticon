@@ -202,6 +202,7 @@ void po::amd64::bswap(cg& m, rvalue a)
 
 void po::amd64::bt(cg& m, rvalue a, rvalue b)
 {
+	using dsl::operator<<;
 	rvalue mod = (constant(1) << (b % constant(to_variable(a).width())));
 
 	m.assign(CF,(a / mod) % 2);
@@ -210,10 +211,51 @@ void po::amd64::bt(cg& m, rvalue a, rvalue b)
 	m.assign(SF,undefined());
 	m.assign(AF,undefined());
 }
-void po::amd64::btc(cg& m, rvalue a, rvalue b) {}
-void po::amd64::btr(cg& m, rvalue a, rvalue b) {}
-void po::amd64::bts(cg& m, rvalue a, rvalue b) {}
-void po::amd64::call(cg& m, rvalue a, bool rel) {}
+
+void po::amd64::btc(cg& m, rvalue a, rvalue b)
+{
+	using dsl::operator<<;
+	rvalue mod = (constant(1) << (b % constant(to_variable(a).width())));
+
+	m.assign(CF,(a / mod) % 2);
+	m.assign(PF,undefined());
+	m.assign(OF,undefined());
+	m.assign(SF,undefined());
+	m.assign(AF,undefined());
+	m.assign(to_lvalue(a),a ^ mod);
+}
+
+void po::amd64::btr(cg& m, rvalue a, rvalue b)
+{
+	using dsl::operator<<;
+	size_t const a_w = to_variable(a).width();
+	rvalue mod =  ((constant(1) << (b % constant(to_variable(a).width()))));
+
+	m.assign(CF,(a / mod) % 2);
+	m.assign(PF,undefined());
+	m.assign(OF,undefined());
+	m.assign(SF,undefined());
+	m.assign(AF,undefined());
+	m.assign(to_lvalue(a),(a & (constant(0xffffffffffffffff) ^ mod)) % constant(1 << a_w));
+}
+
+void po::amd64::bts(cg& m, rvalue a, rvalue b)
+{
+	using dsl::operator<<;
+	rvalue mod = (constant(1) << (b % constant(to_variable(a).width())));
+
+	m.assign(CF,(a / mod) % 2);
+	m.assign(PF,undefined());
+	m.assign(OF,undefined());
+	m.assign(SF,undefined());
+	m.assign(AF,undefined());
+	m.assign(to_lvalue(a),a & mod);
+}
+
+void po::amd64::call(cg& m, rvalue a, bool rel, bool near)
+{
+}
+
 void po::amd64::cbw(cg& m) {}
 void po::amd64::cwde(cg& m) {}
 void po::amd64::cwqe(cg& m) {}
