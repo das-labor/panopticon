@@ -85,6 +85,10 @@ if(NOT "${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
 	endif()
 endif()
 
+# Defines
+add_definitions("-DBOOST_MPL_CFG_NO_PREPROCESSED_HEADERS")
+add_definitions("-DBOOST_MPL_LIMIT_LIST_SIZE=30")
+
 # Dependencies
 find_package(LibArchive REQUIRED)
 find_package(Boost 1.52 COMPONENTS system filesystem graph REQUIRED)
