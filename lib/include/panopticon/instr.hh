@@ -80,8 +80,6 @@ namespace po
 	template<typename Value> using logic_neg = unop<negation_symbol,logic_domain,logic_domain,Value>;
 	template<typename Value> using logic_impl = binop<implication_symbol,logic_domain,logic_domain,Value>;
 	template<typename Value> using logic_equiv = binop<equivalence_symbol,logic_domain,logic_domain,Value>;
-	template<typename Value> using logic_rshift = binop<right_shift_symbol,logic_domain,logic_domain,Value>;
-	template<typename Value> using logic_lshift = binop<left_shift_symbol,logic_domain,logic_domain,Value>;
 	template<typename Value> using logic_lift = unop<lift_symbol,logic_domain,integer_domain,Value>;
 
 	template<typename Value> using int_and = binop<and_symbol,integer_domain,integer_domain,Value>;
@@ -131,8 +129,6 @@ namespace po
 		logic_impl<Value>,
 		logic_equiv<Value>,
 		logic_lift<Value>,
-		logic_rshift<Value>,
-		logic_lshift<Value>,
 		univ_phi<Value>,
 		univ_nop<Value>,
 		int_and<Value>,

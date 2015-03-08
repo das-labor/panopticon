@@ -397,6 +397,52 @@ rvalue concrete_interpreter::operator()(const int_xor<rvalue>& a)
 	return undefined();
 }
 
+rvalue concrete_interpreter::operator()(const int_lshift<rvalue>& a)
+{
+	rvalue l = normalize(a.left);
+	rvalue r = normalize(a.right);
+
+	if(l == r && !is_undefined(l) && !is_undefined(r))
+		return l;
+	else
+	{
+		if(is_constant(l))
+		{
+			if(is_constant(r))
+				return constant(to_constant(l).content() << to_constant(r).content());
+			else if(to_constant(l).content() == 0)
+				return l;
+		}
+
+		if(is_constant(r) && to_constant(r).content() == 0)
+			return l;
+	}
+	return undefined();
+}
+
+rvalue concrete_interpreter::operator()(const int_rshift<rvalue>& a)
+{
+	rvalue l = normalize(a.left);
+	rvalue r = normalize(a.right);
+
+	if(l == r && !is_undefined(l) && !is_undefined(r))
+		return l;
+	else
+	{
+		if(is_constant(l))
+		{
+			if(is_constant(r))
+				return constant(to_constant(l).content() >> to_constant(r).content());
+			else if(to_constant(l).content() == 0)
+				return l;
+		}
+
+		if(is_constant(r) && to_constant(r).content() == 0)
+			return l;
+	}
+	return undefined();
+}
+
 rvalue concrete_interpreter::operator()(const int_call<rvalue>& a)
 {
 	return normalize(a.right);

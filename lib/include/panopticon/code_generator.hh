@@ -55,10 +55,6 @@ namespace po
 		lvalue lift_b(lvalue a, rvalue op)								{ logic_lift<rvalue> i{op}; return named(i,a); };
 		/// @returns \c a and emits an IL instruction for <tt>a := ¬op</tt>
 		lvalue not_b(lvalue a, rvalue op)									{ logic_neg<rvalue> i{op}; return named(i,a); };
-		/// @returns \c a and emits an IL instruction for <tt>a := op1 >> op2</tt>
-		lvalue rshift_b(lvalue a, rvalue op1, rvalue op2)	{ logic_rshift<rvalue> i{op1,op2}; return named(i,a); };
-		/// @returns \c a and emits an IL instruction for <tt>a := op1 << op2</tt>
-		lvalue lshift_b(lvalue a, rvalue op1, rvalue op2)	{ logic_lshift<rvalue> i{op1,op2}; return named(i,a); };
 		/// @returns \c a and emits an IL instruction for <tt>a := op</tt>
 		lvalue assign(lvalue a, rvalue op)								{ univ_nop<rvalue> i{op}; return named(i,a); };
 		/// @returns \c a and emits an IL instruction for <tt>a := op1 ∧ op2</tt>
@@ -96,10 +92,6 @@ namespace po
 		lvalue not_b(rvalue op)									{ logic_neg<rvalue> i{op}; return anonymous(i); };
 		/// @returns a new temporary \c tmp and emits an IL instruction for <tt>tmp := (int)op</tt>
 		lvalue lift_b(rvalue op)								{ logic_lift<rvalue> i{op}; return anonymous(i); };
-		/// @returns a new temporary \c tmp and emits an IL instruction for <tt>tmp := op1 >> op2</tt>
-		lvalue rshift_b(rvalue op1, rvalue op2)	{ logic_rshift<rvalue> i{op1,op2}; return anonymous(i); };
-		/// @returns a new temporary \c tmp and emits an IL instruction for <tt>tmp := op1 << op2</tt>
-		lvalue lshift_b(rvalue op1, rvalue op2)	{ logic_lshift<rvalue> i{op1,op2}; return anonymous(i); };
 		/// @returns a new temporary \c tmp and emits an IL instruction for <tt>tmp := op</tt>
 		lvalue assign(rvalue op)								{ univ_nop<rvalue> i{op}; return anonymous(i); };
 		/// @returns a new temporary \c tmp and emits an IL instruction for <tt>tmp := op1 ∧ op2</tt>
