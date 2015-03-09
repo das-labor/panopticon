@@ -109,14 +109,21 @@ namespace po
 		extern const variable rax,rbx,rcx,rdx,
 				 					 rsi,rdi,
 									 r4,r5,r6,r7,r8,r9,r10,r11,r12,r13,r14,r15;
+
+		// 16 bit management registers
+		extern const variable sp,bp,ip/*,eflags*/;
+
 		// 32 bit management registers
 		extern const variable esp,ebp,eip,/*eflags,*/CF,PF,AF,ZF,SF,TF,IF,DF,OF,IOPL,NT,RF,VM,AC,VIF,VIP,ID;
 
 		// 64 bit management registers
 		extern const variable rsp,rbp,rip,rflags;
 
-		 typedef sem_state<amd64_tag> sm;
-     typedef std::function<void(sm &)> sem_action;
-     typedef code_generator<amd64_tag> cg;
+		// segment registers
+		extern const variable CS, DS, FS, SS;
+
+		using sm = sem_state<amd64_tag>;
+		using sem_action = std::function<void(sm &)>;
+		using cg = code_generator<amd64_tag>;
 	}
 }

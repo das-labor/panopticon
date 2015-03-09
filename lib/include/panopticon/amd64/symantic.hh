@@ -29,6 +29,7 @@ namespace po
 		rvalue sign_ext(rvalue v, unsigned from, unsigned to, cg& m);
 		void flagcomp(cg& m, variable const& flag);
 		void flagwr(cg& m, variable const& flag,bool val);
+		void push(variable v, amd64_state::Mode mode, cg& m);
 
 		void aaa(cg& m);
 		void aam(cg& m, rvalue a);
@@ -49,7 +50,8 @@ namespace po
 		void btc(cg& m, rvalue a, rvalue b);
 		void btr(cg& m, rvalue a, rvalue b);
 		void bts(cg& m, rvalue a, rvalue b);
-		void call(cg& m, rvalue a, bool rel);
+		void near_call(cg& m, rvalue a, bool rel, amd64_state::OperandSize op);
+		void far_call(cg& m, rvalue a, bool rel, amd64_state::OperandSize op);
 		void cbw(cg& m);
 		void cwde(cg& m);
 		void cwqe(cg& m);
@@ -79,8 +81,8 @@ namespace po
 		};
 		void cmov(cg& m, rvalue a, rvalue b, condition c);
 		void cmp(cg& m, rvalue a, rvalue b, boost::optional<std::pair<uint8_t,uint8_t>> sign_ext);
-		void cmps(cg& m, int bits);
-		void cmpxchg(cg& m, rvalue a, rvalue b, int bits);
+		void cmps(cg& m, rvalue aoff, rvalue boff, int bits);
+		void cmpxchg(cg& m, rvalue a, rvalue b, rvalue acc);
 	// CPUID
 	// CWD
 	// CWQ

@@ -257,22 +257,22 @@ namespace po
 			// CALL
 			if(Bits <= 32)
 			{
-				main[ opsize_prfix >> 0xe8_e >> rm_pri >> imm16          ] = unary("call",decode_m,std::bind(call,pls::_1,pls::_2,true));
-				main[                 0xff_e >> rm_pri_2                 ] = unary("call",decode_m,std::bind(call,pls::_1,pls::_2,false));
-				main[ opsize_prfix >> 0xff_e >> rm_alt_2                 ] = unary("call",decode_m,std::bind(call,pls::_1,pls::_2,false));
-				main[                 0x9a_e >> rm_pri >> imm16 >> imm32 ] = unary("call",decode_d,std::bind(call,pls::_1,pls::_2,true));
-				main[ opsize_prfix >> 0x9a_e >> rm_alt >> imm16 >> imm16 ] = unary("call",decode_d,std::bind(call,pls::_1,pls::_2,true));
+				main[ opsize_prfix >> 0xe8_e >> rm_alt >> imm16          ] = unary("call",decode_m,std::bind(near_call,pls::_1,pls::_2,true,opsz_alt));
+				main[                 0xff_e >> rm_pri_2                 ] = unary("call",decode_m,std::bind(near_call,pls::_1,pls::_2,false,opsz_pri));
+				main[ opsize_prfix >> 0xff_e >> rm_alt_2                 ] = unary("call",decode_m,std::bind(near_call,pls::_1,pls::_2,false,opsz_alt));
+				main[                 0x9a_e >> rm_pri >> imm16 >> imm32 ] = unary("call",decode_d,std::bind(far_call,pls::_1,pls::_2,true,opsz_pri));
+				main[ opsize_prfix >> 0x9a_e >> rm_alt >> imm16 >> imm16 ] = unary("call",decode_d,std::bind(far_call,pls::_1,pls::_2,true,opsz_alt));
 			}
 
 			if(Bits == 64)
 			{
-				main[               0xff_e >> rm64_2 ] = unary("call",decode_m,std::bind(call,pls::_1,pls::_2,false));
-				main[ rexw_prfix >> 0xff_e >> rm64_3 ] = unary("call",decode_m,std::bind(call,pls::_1,pls::_2,false));
+				main[               0xff_e >> rm64_2 ] = unary("call",decode_m,std::bind(near_call,pls::_1,pls::_2,false,amd64_state::OpSz_64));
+				main[ rexw_prfix >> 0xff_e >> rm64_3 ] = unary("call",decode_m,std::bind(far_call,pls::_1,pls::_2,false,amd64_state::OpSz_64));
 			}
 
-			main[                 0xff_e >> rm_pri_3        ] = unary("call",decode_m,std::bind(call,pls::_1,pls::_2,false));
-			main[ opsize_prfix >> 0xff_e >> rm_alt_3        ] = unary("call",decode_m,std::bind(call,pls::_1,pls::_2,false));
-			main[                 0xe8_e >> rm_pri >> imm32 ] = unary("call",decode_m,std::bind(call,pls::_1,pls::_2,true));
+			main[                 0xff_e >> rm_pri_3        ] = unary("call",decode_m,std::bind(far_call,pls::_1,pls::_2,false,opsz_pri));
+			main[ opsize_prfix >> 0xff_e >> rm_alt_3        ] = unary("call",decode_m,std::bind(far_call,pls::_1,pls::_2,false,opsz_alt));
+			main[                 0xe8_e >> rm_pri >> imm32 ] = unary("call",decode_m,std::bind(near_call,pls::_1,pls::_2,true,opsz_pri));
 
 			// CBW
 			main[                 0x98_e ] = nonary("cbw",cbw);
@@ -353,22 +353,26 @@ namespace po
 			}
 
 			// CMPS/CMPSW/CMPSD/CMPSQ
-			main[ *lock_or_rep >>                  0xa6_e ] = nonary("cmpsb",std::bind(cmps,pls::_1,8));
-			main[ *lock_or_rep >>                  0xa7_e ] = nonary("cmpsw",std::bind(cmps,pls::_1,pri));
-			main[ *lock_or_rep >> addrsize_prfx >> 0xa7_e ] = nonary("cmpsd",std::bind(cmps,pls::_1,alt));
+			variable Xsi = (Bits == 16 ? si : (Bits == 32 ? esi : rsi));
+			variable Xdi = (Bits == 16 ? di : (Bits == 32 ? edi : rdi));
+			variable Xa = (Bits == 16 ? ax : (Bits == 32 ? eax : rax));
+
+			main[ *lock_or_rep >>                  0xa6_e ] = nonary("cmpsb",std::bind(cmps,pls::_1,Xdi,Xsi,8));
+			main[ *lock_or_rep >>                  0xa7_e ] = nonary("cmpsw",std::bind(cmps,pls::_1,Xdi,Xsi,pri));
+			main[ *lock_or_rep >> addrsize_prfx >> 0xa7_e ] = nonary("cmpsd",std::bind(cmps,pls::_1,Xdi,Xsi,alt));
 
 			if(Bits == 64)
-				main[ *lock_or_rep >> rexw_prfix >> 0xa7_e ] = nonary("cmpsq",std::bind(cmps,pls::_1,64));
+				main[ *lock_or_rep >> rexw_prfix >> 0xa7_e ] = nonary("cmpsq",std::bind(cmps,pls::_1,Xdi,Xsi,64));
 
 			// CMPXCHG
-			main[ *lock_or_rep >>                 0x0f_e >> 0xb0_e >> rm8 ] = binary("cmpxchg",decode_mr,std::bind(cmpxchg,pls::_1,pls::_2,pls::_3,8));
-			main[ *lock_or_rep >>                 0x0f_e >> 0xb1_e >> rm_pri ] = binary("cmpxchg",decode_mr,std::bind(cmpxchg,pls::_1,pls::_2,pls::_3,pri));
-			main[ *lock_or_rep >> opsize_prfix >> 0x0f_e >> 0xb1_e >> rm8 ] = binary("cmpxchg",decode_mr,std::bind(cmpxchg,pls::_1,pls::_2,pls::_3,alt));
+			main[ *lock_or_rep >>                 0x0f_e >> 0xb0_e >> rm8 ] = binary("cmpxchg",decode_mr,std::bind(cmpxchg,pls::_1,pls::_2,pls::_3,al));
+			main[ *lock_or_rep >>                 0x0f_e >> 0xb1_e >> rm_pri ] = binary("cmpxchg",decode_mr,std::bind(cmpxchg,pls::_1,pls::_2,pls::_3,Xa));
+			main[ *lock_or_rep >> opsize_prfix >> 0x0f_e >> 0xb1_e >> rm8 ] = binary("cmpxchg",decode_mr,std::bind(cmpxchg,pls::_1,pls::_2,pls::_3,Xa));
 
 			if(Bits == 64)
 			{
-				main[ *lock_or_rep >> rex_prfix >> 0x0f_e >> 0xb0_e >> rm_pri ] = binary("cmpxchg",decode_mr,std::bind(cmpxchg,pls::_1,pls::_2,pls::_3,0));
-				main[ *lock_or_rep >> rex_prfix >> 0x0f_e >> 0xb1_e >> rm_pri ] = binary("cmpxchg",decode_mr,std::bind(cmpxchg,pls::_1,pls::_2,pls::_3,64));
+				main[ *lock_or_rep >> rex_prfix >> 0x0f_e >> 0xb0_e >> rm_pri ] = binary("cmpxchg",decode_mr,std::bind(cmpxchg,pls::_1,pls::_2,pls::_3,al));
+				main[ *lock_or_rep >> rex_prfix >> 0x0f_e >> 0xb1_e >> rm_pri ] = binary("cmpxchg",decode_mr,std::bind(cmpxchg,pls::_1,pls::_2,pls::_3,Xa));
 			}
 
 			// CMPXCHG8B
