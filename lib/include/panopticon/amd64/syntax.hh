@@ -29,6 +29,7 @@ namespace po
 		namespace pls = std::placeholders;
 		using dis = po::disassembler<po::amd64_tag>;
 
+		// 207 generic mnemonics
 		template<int Bits>
 		void add_generic(
 			dis& main, dis const& opsize_prfix, dis const& rex_prfix, dis const& rexw_prfix,
@@ -80,7 +81,7 @@ namespace po
 				main[ *rep_prfx >> 0x3f_e         ] = nonary("aas",aas);
 			}
 
-         // ADC
+			// ADC
 			main[ *lock_or_rep >>                 0x14_e >> imm8                ] = binary("adc",std::bind(decode_i,amd64_state::OpSz_8,pls::_1,pls::_2),
 																													  std::bind(adc,pls::_1,pls::_2,pls::_3,boost::none));
 			main[ *lock_or_rep >> opsize_prfix >> 0x15_e >> imm_alt             ] = binary("adc",std::bind(decode_i,opsz_alt,pls::_1,pls::_2),
@@ -375,100 +376,100 @@ namespace po
 				main[ *lock_or_rep >> rex_prfix >> 0x0f_e >> 0xb1_e >> rm_pri ] = binary("cmpxchg",decode_mr,std::bind(cmpxchg,pls::_1,pls::_2,pls::_3,Xa));
 			}
 
-			// CMPXCHG8B
-			// CMPXCHG16B
-			// CPUID
-			// CWD
-			// CWQ
-			// CDQ
-			// CQO
-			// CWDE
-			// DAS
-			// DEC
-			// DIV
-			// DAA
-			// ENTER
-			// HINT_NOP
-			// IDIV
-			// IMUL
-			// IN
-			// INC
-			// INS
-			// INSB
-			// INSW
-			// INSD
-			// INT
-			// INT1
-			// ICEBP
-			// INTO
-			// IRET
-			// IRETD
-			// IRETQ
-			// JB
-			// JNAE
-			// JC
-			// JB
-			// JBE
-			// JNA
-			// JCXZ
-			// JECXZ
-			// JRCXZ
-			// JL
-			// JNGE
-			// JLE
-			// JNG
-			// JPE
-			// JPF
-			// JNB
-			// JAE
-			// JNC
-			// JNBE
-			// JA
-			// JNL
-			// JGE
-			// JNLE
-			// JNO
-			// JNP
-			// JNS
-			// JNZ
-			// JNE
-			// JO
-			// JP
-			// JPE
-			// JS
-			// JZ
-			// JE
-			// LAHF
-			// LDS
-			// LEA
-			// LEAVE
-			// LES
-			// LFS
-			// LGS
-			// LODS
-			// LODSB
-			// LODSW
-			// LODSD
-			// LODSQ
-			// LOOP
-			// LOOPNZ
-			// LOOPNE
-			// LOOPZ
-			// LOOPE
-			// LSS
-			// MOV
-			// MOVBE
-			// MOVS
-			// MOVSB
-			// MOVSW
-			// MOVSD
-			// MOVSQ
-			// MOVSXD
-			// MOVSX
-			// MOVZX
-			// MUL
-			// NEG
-			// NOP
+			// TODO: CMPXCHG8B
+			// TODO: CMPXCHG16B
+			// TODO: CPUID
+			// TODO: CWD
+			// TODO: CWQ
+			// TODO: CDQ
+			// TODO: CQO
+			// TODO: CWDE
+			// TODO: DAS
+			// TODO: DEC
+			// TODO: DIV
+			// TODO: DAA
+			// TODO: ENTER
+			// TODO: HINT_NOP
+			// TODO: IDIV
+			// TODO: IMUL
+			// TODO: IN
+			// TODO: INC
+			// TODO: INS
+			// TODO: INSB
+			// TODO: INSW
+			// TODO: INSD
+			// TODO: INT
+			// TODO: INT1
+			// TODO: ICEBP
+			// TODO: INTO
+			// TODO: IRET
+			// TODO: IRETD
+			// TODO: IRETQ
+			// TODO: JB
+			// TODO: JNAE
+			// TODO: JC
+			// TODO: JB
+			// TODO: JBE
+			// TODO: JNA
+			// TODO: JCXZ
+			// TODO: JECXZ
+			// TODO: JRCXZ
+			// TODO: JL
+			// TODO: JNGE
+			// TODO: JLE
+			// TODO: JNG
+			// TODO: JPE
+			// TODO: JPF
+			// TODO: JNB
+			// TODO: JAE
+			// TODO: JNC
+			// TODO: JNBE
+			// TODO: JA
+			// TODO: JNL
+			// TODO: JGE
+			// TODO: JNLE
+			// TODO: JNO
+			// TODO: JNP
+			// TODO: JNS
+			// TODO: JNZ
+			// TODO: JNE
+			// TODO: JO
+			// TODO: JP
+			// TODO: JPE
+			// TODO: JS
+			// TODO: JZ
+			// TODO: JE
+			// TODO: LAHF
+			// TODO: LDS
+			// TODO: LEA
+			// TODO: LEAVE
+			// TODO: LES
+			// TODO: LFS
+			// TODO: LGS
+			// TODO: LODS
+			// TODO: LODSB
+			// TODO: LODSW
+			// TODO: LODSD
+			// TODO: LODSQ
+			// TODO: LOOP
+			// TODO: LOOPNZ
+			// TODO: LOOPNE
+			// TODO: LOOPZ
+			// TODO: LOOPE
+			// TODO: LSS
+			// TODO: MOV
+			// TODO: MOVBE
+			// TODO: MOVS
+			// TODO: MOVSB
+			// TODO: MOVSW
+			// TODO: MOVSD
+			// TODO: MOVSQ
+			// TODO: MOVSXD
+			// TODO: MOVSX
+			// TODO: MOVZX
+			// TODO: MUL
+			// TODO: NEG
+			// TODO: NOP
 			// OR
 			main[ *lock_or_rep >>						0x0c >> imm8				] = binary("or",std::bind(decode_i,amd64_state::OpSz_8,pls::_1,pls::_2),
 																													  std::bind(or_,pls::_1,pls::_2,pls::_3,boost::none));
@@ -500,35 +501,35 @@ namespace po
 				main[ *lock_or_rep >> rexw_prfix	>> 0x0b >> rm64				] = binary("or",decode_rm,std::bind(or_,pls::_1,pls::_2,pls::_3,boost::none));
 			}
 
-			// OUT
-			// OUTS
-			// OUTSW
-			// OUTSD
-			// POP
-			// POPA
-			// POPAD
-			// POPCNT
-			// POPF
-			// POPFQ
-			// POPFD
-			// PUSH
-			// PUSHA
-			// PUSHAD
-			// PUSHF
-			// PUSHFD
-			// PUSHFQ
-			// RCL
-			// RCR
-			// RETF
-			// RETN
-			// ROL
-			// ROR
-			// SAHF
-			// SAL
-			// SHL
-			// SALC
-			// SETALC
-			// SAR
+			// TODO: OUT
+			// TODO: OUTS
+			// TODO: OUTSW
+			// TODO: OUTSD
+			// TODO: POP
+			// TODO: POPA
+			// TODO: POPAD
+			// TODO: POPCNT
+			// TODO: POPF
+			// TODO: POPFQ
+			// TODO: POPFD
+			// TODO: PUSH
+			// TODO: PUSHA
+			// TODO: PUSHAD
+			// TODO: PUSHF
+			// TODO: PUSHFD
+			// TODO: PUSHFQ
+			// TODO: RCL
+			// TODO: RCR
+			// TODO: RETF
+			// TODO: RETN
+			// TODO: ROL
+			// TODO: ROR
+			// TODO: SAHF
+			// TODO: SAL
+			// TODO: SHL
+			// TODO: SALC
+			// TODO: SETALC
+			// TODO: SAR
 			// SBB
 			main[ *lock_or_rep >>						0x1c >> imm8				] = binary("sbb",std::bind(decode_i,amd64_state::OpSz_8,pls::_1,pls::_2),
 																													  std::bind(sbb,pls::_1,pls::_2,pls::_3,boost::none));
@@ -561,55 +562,55 @@ namespace po
 				main[ *lock_or_rep >> rexw_prfix	>> 0x1b >> rm64				] = binary("sbb",decode_rm,std::bind(sbb,pls::_1,pls::_2,pls::_3,boost::none));
 			}
 
-			// SCAS
-			// SCASB
-			// SCASW
-			// SCASD
-			// SCASQ
-			// SETB
-			// SETNE
-			// SETNAE
-			// SETC
-			// SETBE
-			// SETNA
-			// SETL
-			// SETNGE
-			// SETLE
-			// SETNG
-			// SETNB
-			// SETAE
-			// SETNC
-			// SETNBE
-			// SETA
-			// SETNL
-			// SETGE
-			// SETNLE
-			// SETG
-			// SETNO
-			// SETNP
-			// SETPO
-			// SETNS
-			// SETNZ
-			// SETNE
-			// SETO
-			// SETP
-			// SETPE
-			// SETS
-			// SETZ
-			// SETE
-			// SHL
-			// SAL
-			// SHLD
-			// SHR
-			// SHRD
-			// STC
-			// STD
-			// STI
-			// STOS
-			// STOSB
-			// STOSW
-			// STOSD
-			// STOSQ
+			// TODO: SCAS
+			// TODO: SCASB
+			// TODO: SCASW
+			// TODO: SCASD
+			// TODO: SCASQ
+			// TODO: SETB
+			// TODO: SETNE
+			// TODO: SETNAE
+			// TODO: SETC
+			// TODO: SETBE
+			// TODO: SETNA
+			// TODO: SETL
+			// TODO: SETNGE
+			// TODO: SETLE
+			// TODO: SETNG
+			// TODO: SETNB
+			// TODO: SETAE
+			// TODO: SETNC
+			// TODO: SETNBE
+			// TODO: SETA
+			// TODO: SETNL
+			// TODO: SETGE
+			// TODO: SETNLE
+			// TODO: SETG
+			// TODO: SETNO
+			// TODO: SETNP
+			// TODO: SETPO
+			// TODO: SETNS
+			// TODO: SETNZ
+			// TODO: SETNE
+			// TODO: SETO
+			// TODO: SETP
+			// TODO: SETPE
+			// TODO: SETS
+			// TODO: SETZ
+			// TODO: SETE
+			// TODO: SHL
+			// TODO: SAL
+			// TODO: SHLD
+			// TODO: SHR
+			// TODO: SHRD
+			// TODO: STC
+			// TODO: STD
+			// TODO: STI
+			// TODO: STOS
+			// TODO: STOSB
+			// TODO: STOSW
+			// TODO: STOSD
+			// TODO: STOSQ
 			// SUB
 			main[ *lock_or_rep >>						0x2b >> imm8				] = binary("sub",std::bind(decode_i,amd64_state::OpSz_8,pls::_1,pls::_2),
 																													  std::bind(sub,pls::_1,pls::_2,pls::_3,boost::none));
@@ -641,11 +642,11 @@ namespace po
 				main[ *lock_or_rep >> rexw_prfix	>> 0x2b >> rm64				] = binary("sub",decode_rm,std::bind(sub,pls::_1,pls::_2,pls::_3,boost::none));
 			}
 
-			// TEST
-			// UD
-			// US2
-			// XADD
-			// XCHG
+			// TODO: TEST
+			// TODO: UD
+			// TODO: US2
+			// TODO: XADD
+			// TODO: XCHG
 			// XOR
 			main[ *lock_or_rep >>						0x34 >> imm8				] = binary("xor",std::bind(decode_i,amd64_state::OpSz_8,pls::_1,pls::_2),
 																													  std::bind(xor_,pls::_1,pls::_2,pls::_3,boost::none));
