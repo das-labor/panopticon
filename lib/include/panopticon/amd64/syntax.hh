@@ -376,21 +376,83 @@ namespace po
 				main[ *lock_or_rep >> rex_prfix >> 0x0f_e >> 0xb1_e >> rm_pri ] = binary("cmpxchg",decode_mr,std::bind(cmpxchg,pls::_1,pls::_2,pls::_3,Xa));
 			}
 
-			// TODO: CMPXCHG8B
-			// TODO: CMPXCHG16B
-			// TODO: CPUID
-			// TODO: CWD
-			// TODO: CWQ
-			// TODO: CDQ
-			// TODO: CQO
-			// TODO: CWDE
-			// TODO: DAS
-			// TODO: DEC
-			// TODO: DIV
-			// TODO: DAA
-			// TODO: ENTER
-			// TODO: HINT_NOP
-			// TODO: IDIV
+			// CMPXCHG8B
+			main[ *lock_prfix >> 0x0f_e >> 0xc7_e >> rm_pri_1 >> m64 ] = unary("cmpxchg8b",decode_m,std::bind(cmpxchg,pls::_1,pls::_2,8));
+
+			// CMPXCHG16B
+			if(Bits == 64)
+				main[ *lock_prfix >> rexw_prfix >> 0x0f_e >> 0xc7_e >> rm_pri_1 >> m128 ] = unary("cmpxchg16b",decode_m,std::bind(cmpxchg,pls::_1,pls::_2,16));
+
+			// CPUID
+			main[ 0x0f_e >> 0xa2_e ] = nonary("cpuid",cpuid);
+
+			// CWD, CWQ, CQO
+			if(Bits == 16)
+			{
+				main[                 0x99_e ] = nonary("cwd",cwd);
+				main[ opsize_prfix >> 0x99_e ] = nonary("cdq",cdq);
+			}
+			else if(Bits >= 32)
+			{
+				main[                 0x99_e ] = nonary("cdq",cdq);
+				main[ opsize_prfix >> 0x99_e ] = nonary("cwd",cwd);
+
+				if(Bits == 64)
+					main[ rexw_prfix >>   0x99_e ] = nonary("cqo",cqo);
+			}
+
+			// DAS
+			if(Bits <= 32)
+				main[ 0x2f_e ] = nonary("das",das);
+
+			// DEC
+			main[ *lock_or_rep >>                 0xfe_e >> rm8_1 ] = unary("dec",decode_m,dec);
+			main[ *lock_or_rep >>                 0xff_e >> rm_pri_1 ] = unary("dec",decode_m,dec);
+			main[ *lock_or_rep >> opsize_prfix >> 0xff_e >> rm_alt_1 ] = unary("dec",decode_m,dec);
+
+			if(Bits == 64)
+			{
+				main[ *lock_or_rep >> rex_prfix >> 0xfe_e >> rm8_1 ] = unary("dec",decode_m,dec);
+				main[ *lock_or_rep >> rexw_prfix >> 0xff_e >> rm64_1 ] = unary("dec",decode_m,dec);
+			}
+			else
+			{
+				main[ *lock_or_rep >>                 0x48_e >> rpri ] = unary("dec",decode_o,dec);
+				main[ *lock_or_rep >> opsize_prfix >> 0x48_e >> ralt ] = unary("dec",decode_o,dec);
+			}
+
+			// DIV
+			main[ *lock_or_rep >>                 0xf6_e >> rm8_6 ] = unary("div",decode_m,div);
+			main[ *lock_or_rep >>                 0xf7_e >> rm_pri_6 ] = unary("div",decode_m,div);
+			main[ *lock_or_rep >> opsize_prfix >> 0xf7_e >> rm_alt_6 ] = unary("div",decode_m,div);
+
+			if(Bits == 64)
+			{
+				main[ *lock_or_rep >> rex_prfix >> 0xf6_e >> rm8_6 ] = unary("div",decode_m,div);
+				main[ *lock_or_rep >> rexw_prfix >> 0xf7_e >> rm64_6 ] = unary("div",decode_m,div);
+			}
+
+			// DAA
+			if(Bits <= 32)
+				main[ 0x27_e ] = nonary("daa",daa);
+
+			// ENTER
+			main[ 0xc8_e >> imm16 >> imm8 ] = binary("enter",decode_ii,enter);
+
+			// HLT
+			main[ 0xf4_e ] = nonary("hlt",hlt);
+
+			// IDIV
+			main[ *lock_or_rep >>                 0xf6_e >> rm8_7 ] = unary("idiv",decode_m,idiv);
+			main[ *lock_or_rep >>                 0xf7_e >> rm_pri_7 ] = unary("idiv",decode_m,idiv);
+			main[ *lock_or_rep >> opsize_prfix >> 0xf7_e >> rm_alt_7 ] = unary("idiv",decode_m,idiv);
+
+			if(Bits == 64)
+			{
+				main[ *lock_or_rep >> rex_prfix >> 0xf6_e >> rm8_7 ] = unary("idiv",decode_m,idiv);
+				main[ *lock_or_rep >> rexw_prfix >> 0xf7_e >> rm64_7 ] = unary("idiv",decode_m,idiv);
+			}
+
 			// TODO: IMUL
 			// TODO: IN
 			// TODO: INC
@@ -405,40 +467,51 @@ namespace po
 			// TODO: IRET
 			// TODO: IRETD
 			// TODO: IRETQ
-			// TODO: JB
-			// TODO: JNAE
-			// TODO: JC
-			// TODO: JB
-			// TODO: JBE
-			// TODO: JNA
-			// TODO: JCXZ
-			// TODO: JECXZ
-			// TODO: JRCXZ
-			// TODO: JL
-			// TODO: JNGE
-			// TODO: JLE
-			// TODO: JNG
-			// TODO: JPE
-			// TODO: JPF
-			// TODO: JNB
-			// TODO: JAE
-			// TODO: JNC
-			// TODO: JNBE
-			// TODO: JA
-			// TODO: JNL
-			// TODO: JGE
-			// TODO: JNLE
-			// TODO: JNO
-			// TODO: JNP
-			// TODO: JNS
-			// TODO: JNZ
-			// TODO: JNE
-			// TODO: JO
-			// TODO: JP
-			// TODO: JPE
-			// TODO: JS
-			// TODO: JZ
-			// TODO: JE
+
+			// J*CXZ
+			if(Bits == 16)
+			{
+				main[                  0xe3_e >> imm8 ] = unary("jcxz",decode_imm,std::bind(jcxz,pls::_1,pls::_2,cx));
+				main[ addrsize_prfx >> 0xe3_e >> imm8 ] = unary("jecxz",decode_imm,std::bind(jcxz,pls::_1,pls::_2,ecx));
+			}
+			else if(Bits == 32)
+			{
+				main[                  0xe3_e >> imm8 ] = unary("jecxz",decode_imm,std::bind(jcxz,pls::_1,pls::_2,ecx));
+				main[ addrsize_prfx >> 0xe3_e >> imm8 ] = unary("jcxz",decode_imm,std::bind(jcxz,pls::_1,pls::_2,cx));
+			}
+			else if(Bits == 64)
+			{
+				main[                  0xe3_e >> imm8 ] = unary("jrcxz",decode_imm,std::bind(jcxz,pls::_1,pls::_2,rcx));
+				main[ addrsize_prfx >> 0xe3_e >> imm8 ] = unary("jecxz",decode_imm,std::bind(jcxz,pls::_1,pls::_2,ecx));
+			}
+
+			// Jcc
+			std::function<void(uint8_t, std::string const&, amd64::condition)> jcc = [&](uint8_t op, std::string const& suffix, amd64::condition cond)
+			{
+				main[            op >> imm8            ] = unary("j" + suffix,decode_imm,std::bind(jcc,pls::_1,pls::_2,cond));
+				main[ 0x0f_e >> (op + 0x10) >> imm_pri ] = unary("j" + suffix,decode_imm,std::bind(jcc,pls::_1,pls::_2,cond));
+
+				if(Bits <= 32)
+					main[ opsize_prfix >> 0x0f_e >> (op + 0x10) >> imm_alt ] = unary("j" + suffix,decode_imm,std::bind(jcc,pls::_1,pls::_2,cond));
+			};
+
+			jcc(0x70,"o",Overflow);
+			jcc(0x71,"no",NotOverflow);
+			jcc(0x72,"c",Carry);
+			jcc(0x73,"ae",AboveEqual);
+			jcc(0x74,"e",Equal);
+			jcc(0x75,"ne",NotEqual);
+			jcc(0x76,"be",BelowEqual);
+			jcc(0x77,"a",Above);
+			jcc(0x78,"s",Sign);
+			jcc(0x79,"ns",NotSign);
+			jcc(0x7a,"p",Parity);
+			jcc(0x7b,"np",NotParity);
+			jcc(0x7c,"l",Less);
+			jcc(0x7d,"ge",GreaterEqual);
+			jcc(0x7e,"le",LessEqual);
+			jcc(0x7f,"g",Greater);
+
 			// TODO: LAHF
 			// TODO: LDS
 			// TODO: LEA
@@ -530,6 +603,7 @@ namespace po
 			// TODO: SALC
 			// TODO: SETALC
 			// TODO: SAR
+
 			// SBB
 			main[ *lock_or_rep >>						0x1c >> imm8				] = binary("sbb",std::bind(decode_i,amd64_state::OpSz_8,pls::_1,pls::_2),
 																													  std::bind(sbb,pls::_1,pls::_2,pls::_3,boost::none));
@@ -567,37 +641,33 @@ namespace po
 			// TODO: SCASW
 			// TODO: SCASD
 			// TODO: SCASQ
-			// TODO: SETB
-			// TODO: SETNE
-			// TODO: SETNAE
-			// TODO: SETC
-			// TODO: SETBE
-			// TODO: SETNA
-			// TODO: SETL
-			// TODO: SETNGE
-			// TODO: SETLE
-			// TODO: SETNG
-			// TODO: SETNB
-			// TODO: SETAE
-			// TODO: SETNC
-			// TODO: SETNBE
-			// TODO: SETA
-			// TODO: SETNL
-			// TODO: SETGE
-			// TODO: SETNLE
-			// TODO: SETG
-			// TODO: SETNO
-			// TODO: SETNP
-			// TODO: SETPO
-			// TODO: SETNS
-			// TODO: SETNZ
-			// TODO: SETNE
-			// TODO: SETO
-			// TODO: SETP
-			// TODO: SETPE
-			// TODO: SETS
-			// TODO: SETZ
-			// TODO: SETE
+
+			// SETcc
+			std::function<void(uint8_t, std::string const&, amd64::condition)> setcc = [&](uint8_t op, std::string const& suffix, amd64::condition cond)
+			{
+				main[ 0x0f_e >> op >> rm8 ] = unary("set" + suffix,decode_rm,std::bind(setcc,pls::_1,pls::_2,cond));
+
+				if(Bits == 64)
+					main[ rex_prfix >> 0x0f_e >> op >> rm8 ] = unary("set" + suffix,decode_rm,std::bind(setcc,pls::_1,pls::_2,cond));
+			};
+
+			setcc(0x90,"o",Overflow);
+			setcc(0x91,"no",NotOverflow);
+			setcc(0x92,"c",Carry);
+			setcc(0x93,"ae",AboveEqual);
+			setcc(0x94,"e",Equal);
+			setcc(0x95,"ne",NotEqual);
+			setcc(0x96,"be",BelowEqual);
+			setcc(0x97,"a",Above);
+			setcc(0x98,"s",Sign);
+			setcc(0x99,"ns",NotSign);
+			setcc(0x9a,"p",Parity);
+			setcc(0x9b,"np",NotParity);
+			setcc(0x9c,"l",Less);
+			setcc(0x9d,"ge",GreaterEqual);
+			setcc(0x9e,"le",LessEqual);
+			setcc(0x9f,"g",Greater);
+
 			// TODO: SHL
 			// TODO: SAL
 			// TODO: SHLD
