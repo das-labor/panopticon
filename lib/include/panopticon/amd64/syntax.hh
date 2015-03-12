@@ -453,20 +453,84 @@ namespace po
 				main[ *lock_or_rep >> rexw_prfix >> 0xf7_e >> rm64_7 ] = unary("idiv",decode_m,idiv);
 			}
 
-			// TODO: IMUL
-			// TODO: IN
-			// TODO: INC
-			// TODO: INS
-			// TODO: INSB
-			// TODO: INSW
-			// TODO: INSD
-			// TODO: INT
-			// TODO: INT1
-			// TODO: ICEBP
-			// TODO: INTO
-			// TODO: IRET
-			// TODO: IRETD
-			// TODO: IRETQ
+			// IMUL
+			main[                 0xf6_e >> rm8_5 ] = unary("imul",decode_m,imul);
+
+			main[                 0xf7_e >> rm_pri_5 ] = unary("imul",decode_m,imul);
+			main[ opsize_prfix >> 0xf7_e >> rm_alt_5 ] = unary("imul",decode_m,imul);
+
+			main[                 0x6b_e >> rm_pri >> imm8 ] = trinary("imul",decode_rmi,imul);
+			main[ opsize_prfix >> 0x6b_e >> rm_alt >> imm8 ] = trinary("imul",decode_rmi,imul);
+
+			main[                 0x69_e >> rm_pri >> imm_pri ] = trinary("imul",decode_rmi,imul);
+			main[ opsize_prfix >> 0x69_e >> rm_alt >> imm_alt ] = trinary("imul",decode_rmi,imul);
+
+			main[                 0x0f_e >> 0xaf_e >> rm_pri ] = binary("imul",decode_rm,imul);
+			main[ opsize_prfix >> 0x0f_e >> 0xaf_e >> rm_alt ] = binary("imul",decode_rm,imul);
+
+			if(Bits == 64)
+			{
+				main[ rexw_prfix >> 0xf7_e >> rm64_5 ] = unary("imul",decode_m,imul);
+				main[ rexw_prfix >> 0x6b_e >> rm64 >> imm8 ] = trinary("imul",decode_rmi,imul);
+				main[ rexw_prfix >> 0x0f_e >> 0xaf_e >> rm64 ] = binary("imul",decode_rm,imul);
+				main[ rexw_prfix >> 0x69_e >> rm64 >> imm32 ] = trinary("imul",decode_rmi,imul);
+			}			main[ *lock_or_rep >>                 0xfe_e >> rm8_1 ] = unary("inc",decode_m,dec);
+			main[ *lock_or_rep >>                 0xff_e >> rm_pri_1 ] = unary("dec",decode_m,dec);
+			main[ *lock_or_rep >> opsize_prfix >> 0xff_e >> rm_alt_1 ] = unary("dec",decode_m,dec);
+
+			if(Bits == 64)
+			{
+				main[ *lock_or_rep >> rex_prfix >> 0xfe_e >> rm8_1 ] = unary("dec",decode_m,dec);
+				main[ *lock_or_rep >> rexw_prfix >> 0xff_e >> rm64_1 ] = unary("dec",decode_m,dec);
+			}
+			else
+			{
+				main[ *lock_or_rep >>                 0x48_e >> rpri ] = unary("dec",decode_o,dec);
+				main[ *lock_or_rep >> opsize_prfix >> 0x48_e >> ralt ] = unary("dec",decode_o,dec);
+			}
+
+			// IN
+			main[                 0xe4_e >> imm8 ] = unary("in",decode_i,std::bind(in,pls::_1,al,pls::_2));
+			main[                 0xe5_e >> imm8 ] = unary("in",decode_i,std::bind(in,pls::_1,(Bits == 16 ? ax : eax),pls::_2));
+			main[ opsize_prfix >> 0xe5_e >> imm8 ] = unary("in",decode_i,std::bind(in,pls::_1,(Bits == 16 ? eax : ax),pls::_2));
+
+			main[                 0xec_e ] = nonary("in",std::bind(in,pls::_1,al,dx));
+			main[                 0xed_e ] = nonary("in",std::bind(in,pls::_1,(Bits == 16 ? ax : eax),dx));
+			main[ opsize_prfix >> 0xed_e ] = nonary("in",std::bind(in,pls::_1,(Bits == 16 ? eax : ax),dx));
+
+			// INC
+			main[ *lock_or_rep >>                 0xfe_e >> rm8_0 ] = unary("inc",decode_m,inc);
+			main[ *lock_or_rep >>                 0xff_e >> rm_pri_0 ] = unary("inc",decode_m,inc);
+			main[ *lock_or_rep >> opsize_prfix >> 0xff_e >> rm_alt_0 ] = unary("inc",decode_m,inc);
+
+			if(Bits == 64)
+			{
+				main[ *lock_or_rep >> rex_prfix >> 0xfe_e >> rm8_0 ] = unary("inc",decode_m,inc);
+				main[ *lock_or_rep >> rexw_prfix >> 0xff_e >> rm64_0 ] = unary("inc",decode_m,inc);
+			}
+			else
+			{
+				main[ *lock_or_rep >>                 0x40_e >> rpri ] = unary("inc",decode_o,inc);
+				main[ *lock_or_rep >> opsize_prfix >> 0x40_e >> ralt ] = unary("inc",decode_o,inc);
+			}
+
+			// INS*
+			main[                  0x6c_e ] = nonary("insb",std::bind(ins,pls::_1,Xdi,8))
+			main[                  0x6d_e ] = nonary("ins" + (Bits = 16 ? "w" : "d"),std::bind(ins,pls::_1,Xdi,Bits == 16 ? 16 : 32))
+			main[ addrsize_prfx >> 0x6d_e ] = nonary("ins" + (Bits = 16 ? "d" : "w"),std::bind(ins,pls::_1,Xdi,Bits == 16 ? 32 : 16))
+
+			// INT
+			main[ 0xcc_e         ] = nonary("int",std::bind(int_,pls::_1,3));
+			main[ 0xce_e         ] = nonary("into",into);
+			main[ 0xcd_e >> imm8 ] = unary("int",decode_i,std::bind(int_,pls::_1,3));
+
+			// ICEBP
+			main[ 0xf1_e ] = nonary("icebp",icebp);
+
+			// IRET*
+			main[                 0xcf_e ] = nonary("iret" + (Bits == 16 ? "" : "d"),std::bind(iret,pls::_1,Bits == 16 ? 16 : 32));
+			main[ opsize_prfix >> 0xcf_e ] = nonary("iret" + (Bits == 16 ? "d" : ""),std::bind(iret,pls::_1,Bits == 16 ? 32 : 16));
+			main[ rexw_prfix >>   0xcf_e ] = nonary("iretq",std::bind(iret,pls::_1,64));
 
 			// J*CXZ
 			if(Bits == 16)
