@@ -810,62 +810,269 @@ namespace po
 			main[                 0x1f_e >> rm_pri_0 ] = unary("nop",decode_m,nop);
 			main[ opsize_prfix >> 0x1f_e >> rm_alt_0 ] = unary("nop",decode_m,nop);
 
-			// TODO: NOT (lock)
-
-			// OR
-			main[ *lock_prfix >>                 0x0c >> imm8    ] = binary("or",std::bind(decode_i,amd64_state::OpSz_8,pls::_1,pls::_2),
-																													  std::bind(or_,pls::_1,pls::_2,pls::_3,boost::none));
-			main[ *lock_prfix >> opsize_prfix >> 0x0d >> imm_alt ] = binary("or",std::bind(decode_i,opsz_alt,pls::_1,pls::_2),
-																													  std::bind(or_,pls::_1,pls::_2,pls::_3,boost::none));
-			main[ *lock_prfix >>                 0x0d >> imm_pri ] = binary("or",std::bind(decode_i,opsz_pri,pls::_1,pls::_2),
-																													  std::bind(or_,pls::_1,pls::_2,pls::_3,boost::none));
-			main[ *lock_prfix >> opsize_prfix >> 0x81 >> rm_alt_1 >> imm_alt	] = binary("or",decode_mi,std::bind(or_,pls::_1,pls::_2,pls::_3,boost::none));
-			main[ *lock_prfix >>                 0x81 >> rm_pri_1 >> imm_pri	] = binary("or",decode_mi,std::bind(or_,pls::_1,pls::_2,pls::_3,boost::none));
-			main[ *lock_prfix >> opsize_prfix >> 0x83 >> rm_alt_1 >> imm8  ] = binary("or",decode_mi,std::bind(or_,pls::_1,pls::_2,pls::_3,std::pair<uint8_t,uint8_t>(8,alt)));
-			main[ *lock_prfix >>                 0x83 >> rm_pri_1 >> imm8  ] = binary("or",decode_mi,std::bind(or_,pls::_1,pls::_2,pls::_3,std::pair<uint8_t,uint8_t>(8,pri)));
-			main[ *lock_prfix >>                 0x08 >> rm8    ] = binary("or",decode_mr,std::bind(or_,pls::_1,pls::_2,pls::_3,boost::none));
-			main[ *lock_prfix >> opsize_prfix >> 0x09 >> rm_alt ] = binary("or",decode_mr,std::bind(or_,pls::_1,pls::_2,pls::_3,boost::none));
-			main[ *lock_prfix >>                 0x09 >> rm_pri ] = binary("or",decode_mr,std::bind(or_,pls::_1,pls::_2,pls::_3,boost::none));
-			main[ *lock_prfix >>                 0x0a >> rm8    ] = binary("or",decode_rm,std::bind(or_,pls::_1,pls::_2,pls::_3,boost::none));
-			main[ *lock_prfix >> opsize_prfix >> 0x0b >> rm_alt ] = binary("or",decode_rm,std::bind(or_,pls::_1,pls::_2,pls::_3,boost::none));
-			main[ *lock_prfix >>                 0x0b >> rm_pri ] = binary("or",decode_rm,std::bind(or_,pls::_1,pls::_2,pls::_3,boost::none));
+			// NOT (lock)
+			main[ *lock_prfix >>                 0xf6_e >> rm8_2 ] = unary("not",decode_m,not_);
+			main[ *lock_prfix >>                 0xf7_e >> rm_pri_2 ] = unary("not",decode_m,not_);
+			main[ *lock_prfix >> opsize_prfix >> 0xf7_e >> rm_alt_2 ] = unary("not",decode_m,not_);
 
 			if(Bits == 64)
 			{
-				main[ *lock_prfix >> rexw_prfix	>> 0x0d >> imm32				] = binary("or",std::bind(decode_i,amd64_state::OpSz_64,pls::_1,pls::_2),
-																														  std::bind(or_,pls::_1,pls::_2,pls::_3,std::pair<uint8_t,uint8_t>(32,64)));
-				main[ *lock_prfix >> rex_prfix		>> 0x80 >> rm8_1 >> imm8	] = binary("or",decode_mi,std::bind(or_,pls::_1,pls::_2,pls::_3,boost::none));
-				main[ *lock_prfix >> rexw_prfix	>> 0x81 >> rm64_1 >> imm32	] = binary("or",decode_mi,std::bind(or_,pls::_1,pls::_2,pls::_3,std::pair<uint8_t,uint8_t>(32,64)));
-				main[ *lock_prfix >> rexw_prfix	>> 0x83 >> rm64_1 >> imm8	] = binary("or",decode_mi,std::bind(or_,pls::_1,pls::_2,pls::_3,std::pair<uint8_t,uint8_t>(8,64)));
-				main[ *lock_prfix >> rex_prfix		>> 0x08 >> rm8					] = binary("or",decode_mr,std::bind(or_,pls::_1,pls::_2,pls::_3,boost::none));
-				main[ *lock_prfix >> rexw_prfix	>> 0x09 >> rm64				] = binary("or",decode_mr,std::bind(or_,pls::_1,pls::_2,pls::_3,boost::none));
-				main[ *lock_prfix >> rex_prfix		>> 0x0a >> rm8					] = binary("or",decode_rm,std::bind(or_,pls::_1,pls::_2,pls::_3,boost::none));
-				main[ *lock_prfix >> rexw_prfix	>> 0x0b >> rm64				] = binary("or",decode_rm,std::bind(or_,pls::_1,pls::_2,pls::_3,boost::none));
+				main[ *lock_prfix >> rex_prfix >> 0xf6_e >> rm8_2 ] = unary("not",decode_m,not_);
+				main[ *lock_prfix >> rexw_prfix >> 0xf7_e >> rm64_2 ] = unary("not",decode_m,not_);
 			}
 
-			// TODO: OUT
-			// TODO: OUTS (rep)
-			// TODO: OUTSW
-			// TODO: OUTSD
-			// TODO: POP
-			// TODO: POPA
-			// TODO: POPAD
-			// TODO: POPCNT
-			// TODO: POPF
-			// TODO: POPFQ
-			// TODO: POPFD
-			// TODO: PUSH
-			// TODO: PUSHA
-			// TODO: PUSHAD
-			// TODO: PUSHF
-			// TODO: PUSHFD
-			// TODO: PUSHFQ
-			// TODO: RCL
-			// TODO: RCR
+			// OR
+			main[ *lock_prfix >>                 0x0c_e >> imm8    ] = binary("or",std::bind(decode_i,amd64_state::OpSz_8,pls::_1,pls::_2),
+																													  std::bind(or_,pls::_1,pls::_2,pls::_3,boost::none));
+			main[ *lock_prfix >> opsize_prfix >> 0x0d_e >> imm_alt ] = binary("or",std::bind(decode_i,opsz_alt,pls::_1,pls::_2),
+																													  std::bind(or_,pls::_1,pls::_2,pls::_3,boost::none));
+			main[ *lock_prfix >>                 0x0d_e >> imm_pri ] = binary("or",std::bind(decode_i,opsz_pri,pls::_1,pls::_2),
+																													  std::bind(or_,pls::_1,pls::_2,pls::_3,boost::none));
+			main[ *lock_prfix >> opsize_prfix >> 0x81_e >> rm_alt_1 >> imm_alt	] = binary("or",decode_mi,std::bind(or_,pls::_1,pls::_2,pls::_3,boost::none));
+			main[ *lock_prfix >>                 0x81_e >> rm_pri_1 >> imm_pri	] = binary("or",decode_mi,std::bind(or_,pls::_1,pls::_2,pls::_3,boost::none));
+			main[ *lock_prfix >> opsize_prfix >> 0x83_e >> rm_alt_1 >> imm8  ] = binary("or",decode_mi,std::bind(or_,pls::_1,pls::_2,pls::_3,std::pair<uint8_t,uint8_t>(8,alt)));
+			main[ *lock_prfix >>                 0x83_e >> rm_pri_1 >> imm8  ] = binary("or",decode_mi,std::bind(or_,pls::_1,pls::_2,pls::_3,std::pair<uint8_t,uint8_t>(8,pri)));
+			main[ *lock_prfix >>                 0x08_e >> rm8    ] = binary("or",decode_mr,std::bind(or_,pls::_1,pls::_2,pls::_3,boost::none));
+			main[ *lock_prfix >> opsize_prfix >> 0x09_e >> rm_alt ] = binary("or",decode_mr,std::bind(or_,pls::_1,pls::_2,pls::_3,boost::none));
+			main[ *lock_prfix >>                 0x09_e >> rm_pri ] = binary("or",decode_mr,std::bind(or_,pls::_1,pls::_2,pls::_3,boost::none));
+			main[ *lock_prfix >>                 0x0a_e >> rm8    ] = binary("or",decode_rm,std::bind(or_,pls::_1,pls::_2,pls::_3,boost::none));
+			main[ *lock_prfix >> opsize_prfix >> 0x0b_e >> rm_alt ] = binary("or",decode_rm,std::bind(or_,pls::_1,pls::_2,pls::_3,boost::none));
+			main[ *lock_prfix >>                 0x0b_e >> rm_pri ] = binary("or",decode_rm,std::bind(or_,pls::_1,pls::_2,pls::_3,boost::none));
+
+			if(Bits == 64)
+			{
+				main[ *lock_prfix >> rexw_prfix	>> 0x0d_e >> imm32           ] = binary("or",std::bind(decode_i,amd64_state::OpSz_64,pls::_1,pls::_2),
+																														  std::bind(or_,pls::_1,pls::_2,pls::_3,std::pair<uint8_t,uint8_t>(32,64)));
+				main[ *lock_prfix >> rex_prfix >>  0x80_e >> rm8_1 >> imm8   ] = binary("or",decode_mi,std::bind(or_,pls::_1,pls::_2,pls::_3,boost::none));
+				main[ *lock_prfix >> rexw_prfix	>> 0x81_e >> rm64_1 >> imm32 ] = binary("or",decode_mi,std::bind(or_,pls::_1,pls::_2,pls::_3,std::pair<uint8_t,uint8_t>(32,64)));
+				main[ *lock_prfix >> rexw_prfix	>> 0x83_e >> rm64_1 >> imm8  ] = binary("or",decode_mi,std::bind(or_,pls::_1,pls::_2,pls::_3,std::pair<uint8_t,uint8_t>(8,64)));
+				main[ *lock_prfix >> rex_prfix >>  0x08_e >> rm8             ] = binary("or",decode_mr,std::bind(or_,pls::_1,pls::_2,pls::_3,boost::none));
+				main[ *lock_prfix >> rexw_prfix	>> 0x09_e >> rm64            ] = binary("or",decode_mr,std::bind(or_,pls::_1,pls::_2,pls::_3,boost::none));
+				main[ *lock_prfix >> rex_prfix >>  0x0a_e >> rm8             ] = binary("or",decode_rm,std::bind(or_,pls::_1,pls::_2,pls::_3,boost::none));
+				main[ *lock_prfix >> rexw_prfix	>> 0x0b_e >> rm64            ] = binary("or",decode_rm,std::bind(or_,pls::_1,pls::_2,pls::_3,boost::none));
+			}
+
+			// OUT
+			main[                 0xe6_e >> imm8 ] = unary("out",decode_i,std::bind(out,pls::_1,al,pls::_2));
+			main[                 0xe7_e >> imm8 ] = unary("out",decode_i,std::bind(out,pls::_1,(Bits == 16 ? ax : eax),pls::_2));
+			main[ opsize_prfix >> 0xe7_e >> imm8 ] = unary("out",decode_i,std::bind(out,pls::_1,(Bits == 16 ? eax : ax),pls::_2));
+
+			main[                 0xee_e ] = nonary("out",std::bind(out,pls::_1,al,dx));
+			main[                 0xef_e ] = nonary("out",std::bind(out,pls::_1,(Bits == 16 ? ax : eax),dx));
+			main[ opsize_prfix >> 0xef_e ] = nonary("out",std::bind(out,pls::_1,(Bits == 16 ? eax : ax),dx));
+
+			// OUTS* (rep)
+			main[ *rep_prfx >>                  0x6e_e ] = nonary("outsb",std::bind(outs,pls::_1,Xdi,8))
+			main[ *rep_prfx >>                  0x6f_e ] = nonary("outs" + (Bits = 16 ? "w" : "d"),std::bind(outs,pls::_1,Xdi,Bits == 16 ? 16 : 32))
+			main[ *rep_prfx >> addrsize_prfx >> 0x6f_e ] = nonary("outs" + (Bits = 16 ? "d" : "w"),std::bind(outs,pls::_1,Xdi,Bits == 16 ? 32 : 16))
+
+			// POP
+			if(Bits == 16)
+			{
+				main[                  0x8f_e >> rm16_0 ] = unary("pop",decode_m,pop);
+				main[ addrsize_prfx >> 0x8f_e >> rm32_0 ] = unary("pop",decode_m,pop);
+				main[                  0x58_e >> imm8 ] = unary("pop",decode_o,pop);
+				main[ addrsize_prfx >> 0x58_e >> imm8 ] = unary("pop",decode_o,pop);
+				main[                  0x0f_e >> 0xa1_e >> imm8 ] = nonary("pop",std::bind(pop,pls::_1,fs,16));
+				main[ addrsize_prfx >> 0x0f_e >> 0xa1_e >> imm8 ] = nonary("pop",std::bind(pop,pls::_1,fs,32));
+				main[                  0x0f_e >> 0xa9_e >> imm8 ] = nonary("pop",std::bind(pop,pls::_1,gs,16));
+				main[ addrsize_prfx >> 0x0f_e >> 0xa9_e >> imm8 ] = nonary("pop",std::bind(pop,pls::_1,gs,32));
+			}
+			else if(Bits == 32)
+			{
+				main[                  0x8f_e >> rm32_0 ] = unary("pop",decode_m,pop);
+				main[ addrsize_prfx >> 0x8f_e >> rm16_0 ] = unary("pop",decode_m,pop);
+				main[                  0x58_e >> imm8 ] = unary("pop",decode_o,pop);
+				main[ addrsize_prfx >> 0x58_e >> imm8 ] = unary("pop",decode_o,pop);
+				main[                  0x0f_e >> 0xa1_e >> imm8 ] = nonary("pop",std::bind(pop,pls::_1,fs,32));
+				main[ addrsize_prfx >> 0x0f_e >> 0xa1_e >> imm8 ] = nonary("pop",std::bind(pop,pls::_1,fs,16));
+				main[                  0x0f_e >> 0xa9_e >> imm8 ] = nonary("pop",std::bind(pop,pls::_1,gs,32));
+				main[ addrsize_prfx >> 0x0f_e >> 0xa9_e >> imm8 ] = nonary("pop",std::bind(pop,pls::_1,gs,16));
+
+			}
+			else if(Bits == 64)
+			{
+				main[                  0x8f_e >> rm64_0 ] = unary("pop",decode_m,pop);
+				main[ addrsize_prfx >> 0x8f_e >> rm16_0 ] = unary("pop",decode_m,pop);
+				main[                  0x58_e >> imm8 ] = unary("pop",decode_o,pop);
+				main[ addrsize_prfx >> 0x58_e >> imm8 ] = unary("pop",decode_o,pop);
+				main[                  0x0f_e >> 0xa1_e >> imm8 ] = nonary("pop",std::bind(pop,pls::_1,fs,64));
+				main[ addrsize_prfx >> 0x0f_e >> 0xa1_e >> imm8 ] = nonary("pop",std::bind(pop,pls::_1,fs,16));
+				main[                  0x0f_e >> 0xa9_e >> imm8 ] = nonary("pop",std::bind(pop,pls::_1,gs,64));
+				main[ addrsize_prfx >> 0x0f_e >> 0xa9_e >> imm8 ] = nonary("pop",std::bind(pop,pls::_1,gs,16));
+			}
+
+			if(Bits <= 32)
+			{
+				main[ 0x1f_e ] = nonary("pop",std::bind(pop,pls::_1,ds));
+				main[ 0x07_e ] = nonary("pop",std::bind(pop,pls::_1,es));
+				main[ 0x17_e ] = nonary("pop",std::bind(pop,pls::_1,ss));
+			}
+
+			// POPA*
+			if(Bits != 64)
+			{
+				main[                 0x61_e ] = nonary("popa",std::bind(popa,pls::_1,Bits == 32 ? 16 : 16));
+				main[ opsize_prfix >> 0x61_e ] = nonary("popad",std::bind(popa,pls::_1,Bits == 32 ? 16 : 32));
+			}
+
+			// POPCNT
+			main[                 0xf3_e >> 0x0f_e >> 0xb8_e >> rm_pri ] = binary("popcnt",decode_rm,popcnt);
+			main[ opsize_prfix >> 0xf3_e >> 0x0f_e >> 0xb8_e >> rm_alt ] = binary("popcnt",decode_rm,popcnt);
+
+			if(Bits == 64)
+				main[ rexw_prfix >> 0xf3_e >> 0x0f_e >> 0xb8_e >> rm64 ] = binary("popcnt",decode_rm,popcnt);
+
+			// POPF*
+			main[                0x9d_e ] = unary("pop",decode_m,std::bind(popf,pls::_1,Bits));
+			main[ opsize_prfx >> 0x9d_e ] = unary("pop",decode_m,std::bind(popf,pls::_1,Bits == 16 ? 32 : 16));
+
+			// PUSH
+			if(Bits == 16)
+			{
+				main[                  0xff_e >> rm16_6 ] = unary("push",decode_m,push);
+				main[ addrsize_prfx >> 0xff_e >> rm32_6 ] = unary("push",decode_m,push);
+				main[                  0x50_e >> imm8 ] = unary("push",decode_o,push);
+				main[ addrsize_prfx >> 0x50_e >> imm8 ] = unary("push",decode_o,push);
+				main[                  0x0f_e >> 0xa0_e >> imm8 ] = nonary("push",std::bind(push,pls::_1,fs,16));
+				main[ addrsize_prfx >> 0x0f_e >> 0xa0_e >> imm8 ] = nonary("push",std::bind(push,pls::_1,fs,32));
+				main[                  0x0f_e >> 0xa8_e >> imm8 ] = nonary("push",std::bind(push,pls::_1,gs,16));
+				main[ addrsize_prfx >> 0x0f_e >> 0xa8_e >> imm8 ] = nonary("push",std::bind(push,pls::_1,gs,32));
+			}
+			else if(Bits == 32)
+			{
+				main[                  0xff_e >> rm32_6 ] = unary("push",decode_m,push);
+				main[ addrsize_prfx >> 0xff_e >> rm16_6 ] = unary("push",decode_m,push);
+				main[                  0x50_e >> imm8 ] = unary("push",decode_o,push);
+				main[ addrsize_prfx >> 0x50_e >> imm8 ] = unary("push",decode_o,push);
+				main[                  0x0f_e >> 0xa0_e >> imm8 ] = nonary("push",std::bind(push,pls::_1,fs,32));
+				main[ addrsize_prfx >> 0x0f_e >> 0xa0_e >> imm8 ] = nonary("push",std::bind(push,pls::_1,fs,16));
+				main[                  0x0f_e >> 0xa8_e >> imm8 ] = nonary("push",std::bind(push,pls::_1,gs,32));
+				main[ addrsize_prfx >> 0x0f_e >> 0xa8_e >> imm8 ] = nonary("push",std::bind(push,pls::_1,gs,16));
+
+			}
+			else if(Bits == 64)
+			{
+				main[                  0xff_e >> rm64_6 ] = unary("push",decode_m,push);
+				main[ addrsize_prfx >> 0xff_e >> rm16_6 ] = unary("push",decode_m,push);
+				main[                  0x50_e >> imm8 ] = unary("push",decode_o,push);
+				main[ addrsize_prfx >> 0x50_e >> imm8 ] = unary("push",decode_o,push);
+				main[                  0x0f_e >> 0xa0_e >> imm8 ] = nonary("push",std::bind(push,pls::_1,fs,64));
+				main[ addrsize_prfx >> 0x0f_e >> 0xa0_e >> imm8 ] = nonary("push",std::bind(push,pls::_1,fs,16));
+				main[                  0x0f_e >> 0xa8_e >> imm8 ] = nonary("push",std::bind(push,pls::_1,gs,64));
+				main[ addrsize_prfx >> 0x0f_e >> 0xa8_e >> imm8 ] = nonary("push",std::bind(push,pls::_1,gs,16));
+			}
+
+			if(Bits <= 32)
+			{
+				main[ 0x0e_e ] = nonary("push",std::bind(push,pls::_1,ds));
+				main[ 0x1e_e ] = nonary("push",std::bind(push,pls::_1,ds));
+				main[ 0x06_e ] = nonary("push",std::bind(push,pls::_1,es));
+				main[ 0x16_e ] = nonary("push",std::bind(push,pls::_1,ss));
+			}
+
+			main[                 0x6a_e >> imm8 ] = unary("push",decode_i,push);
+			main[                 0x68_e >> imm_pri ] = unary("push",decode_i,push);
+			main[ opsize_prfix >> 0x68_e >> imm_alt ] = unary("push",decode_i,push);
+
+			// PUSHA*
+			if(Bits != 64)
+			{
+				main[                 0x60_e ] = nonary("pusha",std::bind(pusha,pls::_1,Bits == 32 ? 16 : 16));
+				main[ opsize_prfix >> 0x60_e ] = nonary("pushad",std::bind(pusha,pls::_1,Bits == 32 ? 16 : 32));
+			}
+
+			// PUSHF*
+			main[                0x9d_e ] = unary("push",decode_m,std::bind(pushf,pls::_1,Bits));
+			main[ opsize_prfx >> 0x9d_e ] = unary("push",decode_m,std::bind(pushf,pls::_1,Bits == 16 ? 32 : 16));
+
+			// RCL
+			main[                 0xd0_e >> rm8_2         ] = binary(rcl,decode_m1,rcl);
+			main[                 0xd1_e >> rm_pri_2      ] = binary(rcl,decode_m1,rcl);
+			main[ opsize_prfix >> 0xd1_e >> rm_alt_2      ] = binary(rcl,decode_m1,rcl);
+			main[                 0xd2_e >> rm8_2         ] = binary(rcl,decode_mc,rcl);
+			main[                 0xd3_e >> rm_pri_2      ] = binary(rcl,decode_mc,rcl);
+			main[ opsize_prfix >> 0xd3_e >> rm_alt_2      ] = binary(rcl,decode_mc,rcl);
+			main[                 0xc0_e >> rm8_2 >> imm8 ] = binary(rcl,decode_mi,rcl);
+			main[                 0xc1_e >> rm_pri_2 >> imm8 ] = binary(rcl,decode_mi,rcl);
+			main[ opsize_prfix >> 0xc1_e >> rm_alt_2 >> imm8 ] = binary(rcl,decode_mi,rcl);
+
+			if(Bits == 64)
+			{
+				main[ rex_prfix >> 0xd0_e >> rm8_2          ] = binary(rcl,decode_m1,rcl);
+				main[ rex_prfix >> 0xd1_e >> rm64_2         ] = binary(rcl,decode_m1,rcl);
+				main[ rex_prfix >> 0xd2_e >> rm8_2          ] = binary(rcl,decode_mc,rcl);
+				main[ rex_prfix >> 0xd3_e >> rm64_2         ] = binary(rcl,decode_mc,rcl);
+				main[ rex_prfix >> 0xc0_e >> rm8_2 >> imm8  ] = binary(rcl,decode_mi,rcl);
+				main[ rex_prfix >> 0xc1_e >> rm64_2 >> imm8 ] = binary(rcl,decode_mi,rcl);
+			}
+
+			// RCR
+			main[                 0xd0_e >> rm8_3         ] = binary(rcr,decode_m1,rcr);
+			main[                 0xd1_e >> rm_pri_3      ] = binary(rcr,decode_m1,rcr);
+			main[ opsize_prfix >> 0xd1_e >> rm_alt_3      ] = binary(rcr,decode_m1,rcr);
+			main[                 0xd2_e >> rm8_3         ] = binary(rcr,decode_mc,rcr);
+			main[                 0xd3_e >> rm_pri_3      ] = binary(rcr,decode_mc,rcr);
+			main[ opsize_prfix >> 0xd3_e >> rm_alt_3      ] = binary(rcr,decode_mc,rcr);
+			main[                 0xc0_e >> rm8_3 >> imm8 ] = binary(rcr,decode_mi,rcr);
+			main[                 0xc1_e >> rm_pri_3 >> imm8 ] = binary(rcr,decode_mi,rcr);
+			main[ opsize_prfix >> 0xc1_e >> rm_alt_3 >> imm8 ] = binary(rcr,decode_mi,rcr);
+
+			if(Bits == 64)
+			{
+				main[ rex_prfix >> 0xd0_e >> rm8_3          ] = binary(rcr,decode_m1,rcr);
+				main[ rex_prfix >> 0xd1_e >> rm64_3         ] = binary(rcr,decode_m1,rcr);
+				main[ rex_prfix >> 0xd2_e >> rm8_3          ] = binary(rcr,decode_mc,rcr);
+				main[ rex_prfix >> 0xd3_e >> rm64_3         ] = binary(rcr,decode_mc,rcr);
+				main[ rex_prfix >> 0xc0_e >> rm8_3 >> imm8  ] = binary(rcr,decode_mi,rcr);
+				main[ rex_prfix >> 0xc1_e >> rm64_3 >> imm8 ] = binary(rcr,decode_mi,rcr);
+			}
+
 			// TODO: RETF
 			// TODO: RETN
-			// TODO: ROL
-			// TODO: ROR
+
+			// ROL
+			main[                 0xd0_e >> rm8_0         ] = binary(rol,decode_m1,rol);
+			main[                 0xd1_e >> rm_pri_0      ] = binary(rol,decode_m1,rol);
+			main[ opsize_prfix >> 0xd1_e >> rm_alt_0      ] = binary(rol,decode_m1,rol);
+			main[                 0xd2_e >> rm8_0         ] = binary(rol,decode_mc,rol);
+			main[                 0xd3_e >> rm_pri_0      ] = binary(rol,decode_mc,rol);
+			main[ opsize_prfix >> 0xd3_e >> rm_alt_0      ] = binary(rol,decode_mc,rol);
+			main[                 0xc0_e >> rm8_0 >> imm8 ] = binary(rol,decode_mi,rol);
+			main[                 0xc1_e >> rm_pri_0 >> imm8 ] = binary(rol,decode_mi,rol);
+			main[ opsize_prfix >> 0xc1_e >> rm_alt_0 >> imm8 ] = binary(rol,decode_mi,rol);
+
+			if(Bits == 64)
+			{
+				main[ rex_prfix >> 0xd0_e >> rm8_0          ] = binary(rol,decode_m1,rol);
+				main[ rex_prfix >> 0xd1_e >> rm64_0         ] = binary(rol,decode_m1,rol);
+				main[ rex_prfix >> 0xd2_e >> rm8_0          ] = binary(rol,decode_mc,rol);
+				main[ rex_prfix >> 0xd3_e >> rm64_0         ] = binary(rol,decode_mc,rol);
+				main[ rex_prfix >> 0xc0_e >> rm8_0 >> imm8  ] = binary(rol,decode_mi,rol);
+				main[ rex_prfix >> 0xc1_e >> rm64_0 >> imm8 ] = binary(rol,decode_mi,rol);
+			}
+
+			// ROR
+			main[                 0xd0_e >> rm8_1         ] = binary(ror,decode_m1,ror);
+			main[                 0xd1_e >> rm_pri_1      ] = binary(ror,decode_m1,ror);
+			main[ opsize_prfix >> 0xd1_e >> rm_alt_1      ] = binary(ror,decode_m1,ror);
+			main[                 0xd2_e >> rm8_1         ] = binary(ror,decode_mc,ror);
+			main[                 0xd3_e >> rm_pri_1      ] = binary(ror,decode_mc,ror);
+			main[ opsize_prfix >> 0xd3_e >> rm_alt_1      ] = binary(ror,decode_mc,ror);
+			main[                 0xc0_e >> rm8_1 >> imm8 ] = binary(ror,decode_mi,ror);
+			main[                 0xc1_e >> rm_pri_1 >> imm8 ] = binary(ror,decode_mi,ror);
+			main[ opsize_prfix >> 0xc1_e >> rm_alt_1 >> imm8 ] = binary(ror,decode_mi,ror);
+
+			if(Bits == 64)
+			{
+				main[ rex_prfix >> 0xd0_e >> rm8_1          ] = binary(ror,decode_m1,ror);
+				main[ rex_prfix >> 0xd1_e >> rm64_1         ] = binary(ror,decode_m1,ror);
+				main[ rex_prfix >> 0xd2_e >> rm8_1          ] = binary(ror,decode_mc,ror);
+				main[ rex_prfix >> 0xd3_e >> rm64_1         ] = binary(ror,decode_mc,ror);
+				main[ rex_prfix >> 0xc0_e >> rm8_1 >> imm8  ] = binary(ror,decode_mi,ror);
+				main[ rex_prfix >> 0xc1_e >> rm64_1 >> imm8 ] = binary(ror,decode_mi,ror);
+			}
+
 			// TODO: SAHF
 			// TODO: SAL
 			// TODO: SHL
@@ -874,35 +1081,35 @@ namespace po
 			// TODO: SAR
 
 			// SBB
-			main[ *lock_prfix >>						0x1c >> imm8				] = binary("sbb",std::bind(decode_i,amd64_state::OpSz_8,pls::_1,pls::_2),
+			main[ *lock_prfix >>                 0x1c_e >> imm8                ] = binary("sbb",std::bind(decode_i,amd64_state::OpSz_8,pls::_1,pls::_2),
 																													  std::bind(sbb,pls::_1,pls::_2,pls::_3,boost::none));
-			main[ *lock_prfix >> opsize_prfix	>> 0x1d >> imm_alt			] = binary("sbb",std::bind(decode_i,opsz_alt,pls::_1,pls::_2),
+			main[ *lock_prfix >> opsize_prfix	>> 0x1d_e >> imm_alt             ] = binary("sbb",std::bind(decode_i,opsz_alt,pls::_1,pls::_2),
 																													  std::bind(sbb,pls::_1,pls::_2,pls::_3,boost::none));
-			main[ *lock_prfix >>						0x1d >> imm_pri			] = binary("sbb",std::bind(decode_i,opsz_pri,pls::_1,pls::_2),
+			main[ *lock_prfix >>                 0x1d_e >> imm_pri             ] = binary("sbb",std::bind(decode_i,opsz_pri,pls::_1,pls::_2),
 																													  std::bind(sbb,pls::_1,pls::_2,pls::_3,boost::none));
-			main[ *lock_prfix >>						0x80 >> rm8_3 >> imm8	] = binary("sbb",decode_mi,std::bind(sbb,pls::_1,pls::_2,pls::_3,boost::none));
-			main[ *lock_prfix >> opsize_prfix	>> 0x81 >> rm_alt_3 >> imm_alt	] = binary("sbb",decode_mi,std::bind(sbb,pls::_1,pls::_2,pls::_3,boost::none));
-			main[ *lock_prfix >>						0x81 >> rm_pri_3 >> imm_pri	] = binary("sbb",decode_mi,std::bind(sbb,pls::_1,pls::_2,pls::_3,boost::none));
-			main[ *lock_prfix >> opsize_prfix	>> 0x83 >> rm_alt_3 >> imm8	] = binary("sbb",decode_mi,std::bind(sbb,pls::_1,pls::_2,pls::_3,std::pair<uint8_t,uint8_t>(8,alt)));
-			main[ *lock_prfix >>						0x83 >> rm_pri_3 >> imm8	] = binary("sbb",decode_mi,std::bind(sbb,pls::_1,pls::_2,pls::_3,std::pair<uint8_t,uint8_t>(8,pri)));
-			main[ *lock_prfix >>						0x18 >> rm8					] = binary("sbb",decode_mr,std::bind(sbb,pls::_1,pls::_2,pls::_3,boost::none));
-			main[ *lock_prfix >> opsize_prfix	>> 0x19 >> rm_alt				] = binary("sbb",decode_mr,std::bind(sbb,pls::_1,pls::_2,pls::_3,boost::none));
-			main[ *lock_prfix >>						0x19 >> rm_pri				] = binary("sbb",decode_mr,std::bind(sbb,pls::_1,pls::_2,pls::_3,boost::none));
-			main[ *lock_prfix >>						0x1a >> rm8					] = binary("sbb",decode_rm,std::bind(sbb,pls::_1,pls::_2,pls::_3,boost::none));
-			main[ *lock_prfix >> opsize_prfix	>> 0x1b >> rm_alt				] = binary("sbb",decode_rm,std::bind(sbb,pls::_1,pls::_2,pls::_3,boost::none));
-			main[ *lock_prfix >> 						0x1b >> rm_pri				] = binary("sbb",decode_rm,std::bind(sbb,pls::_1,pls::_2,pls::_3,boost::none));
+			main[ *lock_prfix >>                 0x80_e >> rm8_3 >> imm8	     ] = binary("sbb",decode_mi,std::bind(sbb,pls::_1,pls::_2,pls::_3,boost::none));
+			main[ *lock_prfix >> opsize_prfix	>> 0x81_e >> rm_alt_3 >> imm_alt ] = binary("sbb",decode_mi,std::bind(sbb,pls::_1,pls::_2,pls::_3,boost::none));
+			main[ *lock_prfix >>                 0x81_e >> rm_pri_3 >> imm_pri ] = binary("sbb",decode_mi,std::bind(sbb,pls::_1,pls::_2,pls::_3,boost::none));
+			main[ *lock_prfix >> opsize_prfix	>> 0x83_e >> rm_alt_3 >> imm8	   ] = binary("sbb",decode_mi,std::bind(sbb,pls::_1,pls::_2,pls::_3,std::pair<uint8_t,uint8_t>(8,alt)));
+			main[ *lock_prfix >>                 0x83_e >> rm_pri_3 >> imm8	   ] = binary("sbb",decode_mi,std::bind(sbb,pls::_1,pls::_2,pls::_3,std::pair<uint8_t,uint8_t>(8,pri)));
+			main[ *lock_prfix >>                 0x18_e >> rm8                 ] = binary("sbb",decode_mr,std::bind(sbb,pls::_1,pls::_2,pls::_3,boost::none));
+			main[ *lock_prfix >> opsize_prfix	>> 0x19_e >> rm_alt              ] = binary("sbb",decode_mr,std::bind(sbb,pls::_1,pls::_2,pls::_3,boost::none));
+			main[ *lock_prfix >>                 0x19_e >> rm_pri              ] = binary("sbb",decode_mr,std::bind(sbb,pls::_1,pls::_2,pls::_3,boost::none));
+			main[ *lock_prfix >>                 0x1a_e >> rm8                 ] = binary("sbb",decode_rm,std::bind(sbb,pls::_1,pls::_2,pls::_3,boost::none));
+			main[ *lock_prfix >> opsize_prfix	>> 0x1b_e >> rm_alt              ] = binary("sbb",decode_rm,std::bind(sbb,pls::_1,pls::_2,pls::_3,boost::none));
+			main[ *lock_prfix >>                 0x1b_e >> rm_pri              ] = binary("sbb",decode_rm,std::bind(sbb,pls::_1,pls::_2,pls::_3,boost::none));
 
 			if(Bits == 64)
 			{
-				main[ *lock_prfix >> rexw_prfix	>> 0x1d >> imm32				] = binary("sbb",std::bind(decode_i,amd64_state::OpSz_64,pls::_1,pls::_2),
+				main[ *lock_prfix >> rexw_prfix	>> 0x1d_e >> imm32           ] = binary("sbb",std::bind(decode_i,amd64_state::OpSz_64,pls::_1,pls::_2),
 																														  std::bind(sbb,pls::_1,pls::_2,pls::_3,std::pair<uint8_t,uint8_t>(32,64)));
-				main[ *lock_prfix >> rex_prfix		>> 0x80 >> rm8_3 >> imm8	] = binary("sbb",decode_mi,std::bind(sbb,pls::_1,pls::_2,pls::_3,boost::none));
-				main[ *lock_prfix >> rexw_prfix	>> 0x81 >> rm64_3 >> imm32	] = binary("sbb",decode_mi,std::bind(sbb,pls::_1,pls::_2,pls::_3,std::pair<uint8_t,uint8_t>(32,64)));
-				main[ *lock_prfix >> rexw_prfix	>> 0x83 >> rm64_3 >> imm8	] = binary("sbb",decode_mi,std::bind(sbb,pls::_1,pls::_2,pls::_3,std::pair<uint8_t,uint8_t>(8,64)));
-				main[ *lock_prfix >> rex_prfix		>> 0x18 >> rm8					] = binary("sbb",decode_mr,std::bind(sbb,pls::_1,pls::_2,pls::_3,boost::none));
-				main[ *lock_prfix >> rexw_prfix	>> 0x19 >> rm64				] = binary("sbb",decode_mr,std::bind(sbb,pls::_1,pls::_2,pls::_3,boost::none));
-				main[ *lock_prfix >> rex_prfix		>> 0x1a >> rm8					] = binary("sbb",decode_rm,std::bind(sbb,pls::_1,pls::_2,pls::_3,boost::none));
-				main[ *lock_prfix >> rexw_prfix	>> 0x1b >> rm64				] = binary("sbb",decode_rm,std::bind(sbb,pls::_1,pls::_2,pls::_3,boost::none));
+				main[ *lock_prfix >> rex_prfix >>  0x80_e >> rm8_3 >> imm8   ] = binary("sbb",decode_mi,std::bind(sbb,pls::_1,pls::_2,pls::_3,boost::none));
+				main[ *lock_prfix >> rexw_prfix	>> 0x81_e >> rm64_3 >> imm32 ] = binary("sbb",decode_mi,std::bind(sbb,pls::_1,pls::_2,pls::_3,std::pair<uint8_t,uint8_t>(32,64)));
+				main[ *lock_prfix >> rexw_prfix	>> 0x83_e >> rm64_3 >> imm8  ] = binary("sbb",decode_mi,std::bind(sbb,pls::_1,pls::_2,pls::_3,std::pair<uint8_t,uint8_t>(8,64)));
+				main[ *lock_prfix >> rex_prfix >>  0x18_e >> rm8             ] = binary("sbb",decode_mr,std::bind(sbb,pls::_1,pls::_2,pls::_3,boost::none));
+				main[ *lock_prfix >> rexw_prfix	>> 0x19_e >> rm64            ] = binary("sbb",decode_mr,std::bind(sbb,pls::_1,pls::_2,pls::_3,boost::none));
+				main[ *lock_prfix >> rex_prfix >>  0x1a_e >> rm8             ] = binary("sbb",decode_rm,std::bind(sbb,pls::_1,pls::_2,pls::_3,boost::none));
+				main[ *lock_prfix >> rexw_prfix	>> 0x1b_e >> rm64            ] = binary("sbb",decode_rm,std::bind(sbb,pls::_1,pls::_2,pls::_3,boost::none));
 			}
 
 			// TODO: SCAS (rep*)
