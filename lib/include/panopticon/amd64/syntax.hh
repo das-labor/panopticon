@@ -281,7 +281,7 @@ namespace po
 			if(Bits == 64)
 				main[ rexw_prfix >> 0x98_e ] = nonary("cwqe",cwqe);
 
-			// CDQ
+			// TODO: CDQ
 
 			// CLC
 			main[ 0xf8_e ] = nonary("clc",std::bind(flagwr,pls::_1,CF,false));
@@ -1028,8 +1028,11 @@ namespace po
 				main[ rex_prfix >> 0xc1_e >> rm64_3 >> imm8 ] = binary(rcr,decode_mi,rcr);
 			}
 
-			// TODO: RETF
-			// TODO: RETN
+			// RET*
+			main[ 0xc3_e         ] = nonary("ret",std::bind(ret,pls::_1,0));
+			main[ 0xcb_e         ] = nonary("retf",std::bind(retf,pls::_1,0));
+			main[ 0xc2_e >> imm8 ] = unary("ret",decode_i,ret);
+			main[ 0xca_e >> imm8 ] = unary("retf",decode_i,retf);
 
 			// ROL
 			main[                 0xd0_e >> rm8_0         ] = binary(rol,decode_m1,rol);
@@ -1073,12 +1076,53 @@ namespace po
 				main[ rex_prfix >> 0xc1_e >> rm64_1 >> imm8 ] = binary(ror,decode_mi,ror);
 			}
 
-			// TODO: SAHF
-			// TODO: SAL
-			// TODO: SHL
-			// TODO: SALC
-			// TODO: SETALC
-			// TODO: SAR
+			// SAHF
+			main[ 0x9e_e ] = nonary("sahf",shaf);
+
+			// SAL
+			main[                 0xd0_e >> rm8_4         ] = binary(sal,decode_m1,sal);
+			main[                 0xd1_e >> rm_pri_4      ] = binary(sal,decode_m1,sal);
+			main[ opsize_prfix >> 0xd1_e >> rm_alt_4      ] = binary(sal,decode_m1,sal);
+			main[                 0xd2_e >> rm8_4         ] = binary(sal,decode_mc,sal);
+			main[                 0xd3_e >> rm_pri_4      ] = binary(sal,decode_mc,sal);
+			main[ opsize_prfix >> 0xd3_e >> rm_alt_4      ] = binary(sal,decode_mc,sal);
+			main[                 0xc0_e >> rm8_4 >> imm8 ] = binary(sal,decode_mi,sal);
+			main[                 0xc1_e >> rm_pri_4 >> imm8 ] = binary(sal,decode_mi,sal);
+			main[ opsize_prfix >> 0xc1_e >> rm_alt_4 >> imm8 ] = binary(sal,decode_mi,sal);
+
+			if(Bits == 64)
+			{
+				main[ rex_prfix >> 0xd0_e >> rm8_4          ] = binary(sal,decode_m1,sal);
+				main[ rex_prfix >> 0xd1_e >> rm64_4         ] = binary(sal,decode_m1,sal);
+				main[ rex_prfix >> 0xd2_e >> rm8_4          ] = binary(sal,decode_mc,sal);
+				main[ rex_prfix >> 0xd3_e >> rm64_4         ] = binary(sal,decode_mc,sal);
+				main[ rex_prfix >> 0xc0_e >> rm8_4 >> imm8  ] = binary(sal,decode_mi,sal);
+				main[ rex_prfix >> 0xc1_e >> rm64_4 >> imm8 ] = binary(sal,decode_mi,sal);
+			}
+
+			// SALC/SETALC
+			main[ 0xd6_e ] = nonary("salc",salc);
+
+			// SAR
+			main[                 0xd0_e >> rm8_7         ] = binary(sar,decode_m1,sar);
+			main[                 0xd1_e >> rm_pri_7      ] = binary(sar,decode_m1,sar);
+			main[ opsize_prfix >> 0xd1_e >> rm_alt_7      ] = binary(sar,decode_m1,sar);
+			main[                 0xd2_e >> rm8_7         ] = binary(sar,decode_mc,sar);
+			main[                 0xd3_e >> rm_pri_7      ] = binary(sar,decode_mc,sar);
+			main[ opsize_prfix >> 0xd3_e >> rm_alt_7      ] = binary(sar,decode_mc,sar);
+			main[                 0xc0_e >> rm8_7 >> imm8 ] = binary(sar,decode_mi,sar);
+			main[                 0xc1_e >> rm_pri_7 >> imm8 ] = binary(sar,decode_mi,sar);
+			main[ opsize_prfix >> 0xc1_e >> rm_alt_7 >> imm8 ] = binary(sar,decode_mi,sar);
+
+			if(Bits == 64)
+			{
+				main[ rex_prfix >> 0xd0_e >> rm8_7          ] = binary(sar,decode_m1,sar);
+				main[ rex_prfix >> 0xd1_e >> rm64_7         ] = binary(sar,decode_m1,sar);
+				main[ rex_prfix >> 0xd2_e >> rm8_7          ] = binary(sar,decode_mc,sar);
+				main[ rex_prfix >> 0xd3_e >> rm64_7         ] = binary(sar,decode_mc,sar);
+				main[ rex_prfix >> 0xc0_e >> rm8_7 >> imm8  ] = binary(sar,decode_mi,sar);
+				main[ rex_prfix >> 0xc1_e >> rm64_7 >> imm8 ] = binary(sar,decode_mi,sar);
+			}
 
 			// SBB
 			main[ *lock_prfix >>                 0x1c_e >> imm8                ] = binary("sbb",std::bind(decode_i,amd64_state::OpSz_8,pls::_1,pls::_2),
@@ -1112,11 +1156,13 @@ namespace po
 				main[ *lock_prfix >> rexw_prfix	>> 0x1b_e >> rm64            ] = binary("sbb",decode_rm,std::bind(sbb,pls::_1,pls::_2,pls::_3,boost::none));
 			}
 
-			// TODO: SCAS (rep*)
-			// TODO: SCASB
-			// TODO: SCASW
-			// TODO: SCASD
-			// TODO: SCASQ
+			// SCAS* (rep*)
+			main[ *repx_prfx >>                  0xae_e ] = nonary("scasb",std::bind(scas,pls::_1,Xdi,8))
+			main[ *repx_prfx >>                  0xaf_e ] = nonary("scas" + (Bits = 16 ? "w" : "d"),std::bind(scas,pls::_1,Xdi,Bits == 16 ? 16 : 32))
+			main[ *repx_prfx >> addrsize_prfx >> 0xaf_e ] = nonary("scas" + (Bits = 16 ? "d" : "w"),std::bind(scas,pls::_1,Xdi,Bits == 16 ? 32 : 16))
+
+			if(Bits == 64)
+				main[ *repx_prfix >> rexw_prfix >> 0xaf_e ] = nonary("scasq",std::bind(scas,pls::_1,Xdi,64));
 
 			// SETcc
 			std::function<void(uint8_t, std::string const&, amd64::condition)> setcc = [&](uint8_t op, std::string const& suffix, amd64::condition cond)
@@ -1144,19 +1190,67 @@ namespace po
 			setcc(0x9e,"le",LessEqual);
 			setcc(0x9f,"g",Greater);
 
-			// TODO: SHL
-			// TODO: SAL
-			// TODO: SHLD
-			// TODO: SHR
-			// TODO: SHRD
-			// TODO: STC
-			// TODO: STD
-			// TODO: STI
-			// TODO: STOS (rep)
-			// TODO: STOSB
-			// TODO: STOSW
-			// TODO: STOSD
-			// TODO: STOSQ
+			// SHLD
+			main[                 0x0f_e >> 0xa4_e >> rm_pri >> imm8 ] = trinary("shld",decode_mri,shld);
+			main[ opsize_prfix >> 0x0f_e >> 0xa4_e >> rm_alt >> imm8 ] = trinary("shld",decode_mri,shld);
+			main[                 0x0f_e >> 0xa5_e >> rm_pri         ] = trinary("shld",decode_mrc,shld);
+			main[ opsize_prfix >> 0x0f_e >> 0xa5_e >> rm_alt         ] = trinary("shld",decode_mrc,shld);
+
+			if(Bits == 64)
+			{
+				main[ rexw_prfix >> 0x0f_e >> 0xa4_e >> rm64 >> imm8 ] = trinary("shld",decode_mri,shld);
+				main[ rexw_prfix >> 0x0f_e >> 0xa5_e >> rm64         ] = trinary("shld",decode_mrc,shld);
+			}
+
+			// SHR
+			main[                 0xd0_e >> rm8_5         ] = binary(shr,decode_m1,shr);
+			main[                 0xd1_e >> rm_pri_5      ] = binary(shr,decode_m1,shr);
+			main[ opsize_prfix >> 0xd1_e >> rm_alt_5      ] = binary(shr,decode_m1,shr);
+			main[                 0xd2_e >> rm8_5         ] = binary(shr,decode_mc,shr);
+			main[                 0xd3_e >> rm_pri_5      ] = binary(shr,decode_mc,shr);
+			main[ opsize_prfix >> 0xd3_e >> rm_alt_5      ] = binary(shr,decode_mc,shr);
+			main[                 0xc0_e >> rm8_5 >> imm8 ] = binary(shr,decode_mi,shr);
+			main[                 0xc1_e >> rm_pri_5 >> imm8 ] = binary(shr,decode_mi,shr);
+			main[ opsize_prfix >> 0xc1_e >> rm_alt_5 >> imm8 ] = binary(shr,decode_mi,shr);
+
+			if(Bits == 64)
+			{
+				main[ rex_prfix >> 0xd0_e >> rm8_5          ] = binary(shr,decode_m1,shr);
+				main[ rex_prfix >> 0xd1_e >> rm64_5         ] = binary(shr,decode_m1,shr);
+				main[ rex_prfix >> 0xd2_e >> rm8_5          ] = binary(shr,decode_mc,shr);
+				main[ rex_prfix >> 0xd3_e >> rm64_5         ] = binary(shr,decode_mc,shr);
+				main[ rex_prfix >> 0xc0_e >> rm8_5 >> imm8  ] = binary(shr,decode_mi,shr);
+				main[ rex_prfix >> 0xc1_e >> rm64_5 >> imm8 ] = binary(shr,decode_mi,shr);
+			}
+
+			// SHRD
+			main[                 0x0f_e >> 0xac_e >> rm_pri >> imm8 ] = trinary("shrd",decode_mri,shrd);
+			main[ opsize_prfix >> 0x0f_e >> 0xac_e >> rm_alt >> imm8 ] = trinary("shrd",decode_mri,shrd);
+			main[                 0x0f_e >> 0xad_e >> rm_pri         ] = trinary("shrd",decode_mrc,shrd);
+			main[ opsize_prfix >> 0x0f_e >> 0xad_e >> rm_alt         ] = trinary("shrd",decode_mrc,shrd);
+
+			if(Bits == 64)
+			{
+				main[ rexw_prfix >> 0x0f_e >> 0xac_e >> rm64 >> imm8 ] = trinary("shrd",decode_mri,shrd);
+				main[ rexw_prfix >> 0x0f_e >> 0xad_e >> rm64         ] = trinary("shrd",decode_mrc,shrd);
+			}
+
+			// STC
+			main[ 0xf8_e ] = nonary("stc",std::bind(flagwr,pls::_1,CF,true));
+
+			// STD
+			main[ 0xf8_e ] = nonary("std",std::bind(flagwr,pls::_1,DF,true));
+
+			// STI
+			main[ 0xf8_e ] = nonary("sti",std::bind(flagwr,pls::_1,IF,true));
+
+			// STOS* (rep)
+			main[ *rep_prfx >>                 0xaa_e ] = nonary("stosb",std::bind(stos,pls::_1,Xdi,al));
+			main[ *rep_prfx >> opsize_prfix >> 0xab_e ] = nonary("stos" + (Bits == 16 ? "d" : "w"),std::bind(stos,pls::_1,Xdi,Bits == 16 ? eax : ax));
+			main[ *rep_prfx >>                 0xab_e ] = nonary("stos" + (Bits == 16 ? "w" : "d"),std::bind(stos,pls::_1,Xdi,Bits == 16 ? ax : eax));
+
+			if(Bits == 64)
+				main[ *rep_prfx >> rexw_prfix >> 0xab_e ] = nonary("stosq",std::bind(stos,pls::_1,Xdi,rax));
 
 			// SUB
 			main[ *lock_prfix >>						0x2b >> imm8				] = binary("sub",std::bind(decode_i,amd64_state::OpSz_8,pls::_1,pls::_2),
@@ -1189,11 +1283,69 @@ namespace po
 				main[ *lock_prfix >> rexw_prfix	>> 0x2b >> rm64				] = binary("sub",decode_rm,std::bind(sub,pls::_1,pls::_2,pls::_3,boost::none));
 			}
 
-			// TODO: TEST
-			// TODO: UD
-			// TODO: US2
-			// TODO: XADD (lock)
-			// TODO: XCHG (lock)
+			// TEST
+			main[                 0xa8_e >> imm8 ] = unary("test",decode_i,std::bind(test,pls::_1,al,pls::_2));
+			main[                 0xa9_e >> imm_pri ] = unary("test",decode_i,std::bind(test,pls::_1,Bits == 32 ? ax : eax,pls::_2));
+			main[ opsize_prfix >> 0xa9_e >> imm_alt ] = unary("test",decode_i,std::bind(test,pls::_1,Bits == 32 ? eax : ax,pls::_2));
+
+			if(Bits == 64)
+				main[ rexw_prfix >> 0xa9_e >> imm32 ] = unary("test",decode_i,std::bind(test,pls::_1,rax,pls::_2));
+
+			main[                 0xf6_e >> rm8_0 >> imm8 ] = binary("test",decode_mi,test);
+
+			if(Bits == 64)
+				main[ rex_prfix >>    0xf6_e >> rm8_0 >> imm8 ] = binary("test",decode_mi,test);
+
+			main[                 0xf7_e >> rm_pri_0 >> imm_pri ] = binary("test",decode_mi,test);
+			main[ opsize_prfix >> 0xf7_e >> rm_alt_0 >> imm_alt ] = binary("test",decode_mi,test);
+
+			if(Bits == 64)
+				main[ rexw_prfix >>   0xf7_e >> rm64_0 >> imm32 ] = binary("test",decode_mi,test);
+
+			main[ 0x84_e >> rm8 ] = binary("test",decode_mr,test);
+
+			if(Bits == 64)
+				main[ rex_prfix >>  0x84_e >> rm8 ] = binary("test",decode_mr,test);
+
+			main[                 0x85_e >> rm_pri ] = binary("test",decode_mr,test);
+			main[ opsize_prfix >> 0x85_e >> rm_alt ] = binary("test",decode_mr,test);
+
+			if(Bits == 64)
+				main[ rexw_prfix >> 0x85_e >> rm64 ] = binary("test",decode_mr,test);
+
+			// UD2
+			main[ 0x0f_e >> 0x0b_e ] = nonary(undef);
+
+			// XADD (lock)
+			main[ 0x0f_e >> 0xc0_e >> rm8 ] = binary("xadd",decode_mr,xadd);
+
+			if(Bits == 64)
+				main[ rex_prfix >> 0x0f_e >> 0xc0_e >> rm8 ] = binary("xadd",decode_mr,xadd);
+
+			main[                 0x0f_e >> 0xc1_e >> rm_pri ] = binary("xadd",decode_mr,xadd);
+			main[ opsize_prfix >> 0x0f_e >> 0xc1_e >> rm_alt ] = binary("xadd",decode_mr,xadd);
+
+			if(Bits == 64)
+				main[ rexw_prfix >> 0x0f_e >> 0xc1_e >> rm64 ] = binary("xadd",decode_mr,xadd);
+
+			// XCHG (lock)
+			main[                 0x90_e >> imm_pri ] = unary("xchg",decode_o,std::bind(xchg,pls::_1,Bits == 32 ? eax : ax));
+			main[ opsize_prfix >> 0x90_e >> imm_alt ] = unary("xchg",decode_o,std::bind(xchg,pls::_1,Bits == 32 ? ax : eax));
+
+			if(Bits == 64)
+				main[ rexw_prfix >> 0x90_e >> imm32 ] = unary("xchg",decode_o,std::bind(xchg,pls::_1,rax));
+
+			main[ 0x86_e >> rm8 ] = unary("xchg",decode_mr,xchg);
+
+			if(Bits == 64)
+				main[ rex_prfix >> 0x86_e >> rm8 ] = unary("xchg",decode_mr,xchg);
+
+			main[                 0x87_e >> rm_pri ] = unary("xchg",decode_mr,xchg);
+			main[ opsize_prfix >> 0x87_e >> rm_alt ] = unary("xchg",decode_mr,xchg);
+
+			if(Bits == 64)
+				main[ rexw_prfix >> 0x87_e >> rm64 ] = unary("xchg",decode_mr,xchg);
+
 
 			// XOR
 			main[ *lock_prfix >>						0x34 >> imm8				] = binary("xor",std::bind(decode_i,amd64_state::OpSz_8,pls::_1,pls::_2),
