@@ -17,9 +17,12 @@
  */
 
 #include <mutex>
+#include <memory>
 
 #include <QtQml>
 #include <QtQuick>
+#include <QQuickItem>
+#include <QQmlContext>
 
 #include <boost/optional.hpp>
 
@@ -32,58 +35,105 @@
 struct node_proxy
 {
 	node_proxy(QQmlComponent* comp,QQuickItem* parent)
-	: item(nullptr), context(nullptr)
+	: _item(), _context()
 	{
 		if(comp)
 		{
-			context = new QQmlContext(QQmlEngine::contextForObject(parent));
-			context->setContextProperty("modelData",QVariant());
-			context->setContextProperty("incomingEdges",QVariantList());
-			context->setContextProperty("incomingNodes",QVariantList());
-			context->setContextProperty("outgoingNodes",QVariantList());
-			context->setContextProperty("outgoingEdges",QVariantList());
-			context->setContextProperty("firstRank",QVariant());
-			context->setContextProperty("lastRank",QVariant());
-			context->setContextProperty("computedX",QVariant());
-			context->setContextProperty("payload",QVariant());
-			item = qobject_cast<QQuickItem*>(comp->create(context));
-			item->setParentItem(parent);
+			_context.reset(new QQmlContext(QQmlEngine::contextForObject(parent)),[](QQmlContext *q) { q->deleteLater(); });
+			_context->setContextProperty("modelData",QVariant());
+			_context->setContextProperty("incomingEdges",QVariantList());
+			_context->setContextProperty("incomingNodes",QVariantList());
+			_context->setContextProperty("outgoingNodes",QVariantList());
+			_context->setContextProperty("outgoingEdges",QVariantList());
+			_context->setContextProperty("firstRank",QVariant());
+			_context->setContextProperty("lastRank",QVariant());
+			_context->setContextProperty("computedX",QVariant());
+			_context->setContextProperty("payload",QVariant());
+			_item.reset(qobject_cast<QQuickItem*>(comp->create(_context.get())),[](QQuickItem *q) { q->deleteLater(); });
+			_item->setParentItem(parent);
 		}
 	}
 
-	QQuickItem* item;
-	QQmlContext* context;
+	std::shared_ptr<QQuickItem> const& item(void) const { return _item; }
+	std::shared_ptr<QQmlContext> const& context(void) const { return _context; }
+
+private:
+	std::shared_ptr<QQuickItem> _item;
+	std::shared_ptr<QQmlContext> _context;
 };
 
 struct edge_proxy
 {
 	edge_proxy(QQmlComponent* comp,QQuickItem* parent)
-	: label(nullptr), head(nullptr), tail(nullptr),
-		label_context(nullptr), head_context(nullptr), tail_context(nullptr)
+	: _edge(), _label(), _head(), _tail(),
+	  _edge_cxt(), _label_cxt(), _head_cxt(), _tail_cxt()
 	{
 		if(comp)
 		{
-			edge_context = new QQmlContext(QQmlEngine::contextForObject(parent));
-			QObject* edge_obj = comp->create(edge_context);
+			_edge_cxt.reset(new QQmlContext(QQmlEngine::contextForObject(parent)),[](QQmlContext *q) { q->deleteLater(); });
+			QObject* edge_obj = comp->create(_edge_cxt.get());
 
-			edge = qobject_cast<QQuickItem*>(edge_obj);
-			if(!edge)
+			QQuickItem* ed = qobject_cast<QQuickItem*>(edge_obj);
+			if(!ed)
 			{
 				delete edge_obj;
 				qWarning() << "Edge delegate needs to be an Item class";
-				edge = nullptr;
 			}
 			else
 			{
-				edge->setParent(parent);
-				edge->setParentItem(parent);
+				_edge.reset(ed,[](QQuickItem* q) { q->deleteLater(); });
+				_edge->setParent(parent);
+				_edge->setParentItem(parent);
 			}
 		}
 	}
 
-	QQuickItem *edge;
-	QQuickItem *label, *head, *tail;
-	QQmlContext *edge_context, *label_context, *head_context, *tail_context;
+	void replaceDecorations(boost::optional<std::pair<QQuickItem*,QQmlContext*>> lb,
+			boost::optional<std::pair<QQuickItem*,QQmlContext*>> tl,
+			boost::optional<std::pair<QQuickItem*,QQmlContext*>> hd)
+	{
+		if(lb)
+		{
+			_label.reset(lb->first,[](QQuickItem* q) { q->deleteLater(); });
+			_label_cxt.reset(lb->second,[](QQmlContext* q) { q->deleteLater(); });
+		}
+		else
+		{
+			_label.reset();
+			_label_cxt.reset();
+		}
+
+		if(tl)
+		{
+			_tail.reset(tl->first,[](QQuickItem* q) { q->deleteLater(); });
+			_tail_cxt.reset(tl->second,[](QQmlContext* q) { q->deleteLater(); });
+		}
+		else
+		{
+			_tail.reset();
+			_tail_cxt.reset();
+		}
+
+		if(hd)
+		{
+			_head.reset(hd->first,[](QQuickItem* q) { q->deleteLater(); });
+			_head_cxt.reset(hd->second,[](QQmlContext* q) { q->deleteLater(); });
+		}
+		else
+		{
+			_head.reset();
+			_head_cxt.reset();
+		}
+	}
+
+	std::shared_ptr<QQuickItem> const& edge(void) const { return _edge; }
+	std::shared_ptr<QQuickItem> const& label(void) const { return _label; }
+	std::shared_ptr<QQuickItem> const& tail(void) const { return _tail; }
+	std::shared_ptr<QQuickItem> const& head(void) const { return _head; }
+
+private:
+	std::shared_ptr<QQuickItem> _edge, _label, _head, _tail;
+	std::shared_ptr<QQmlContext> _edge_cxt, _label_cxt, _head_cxt, _tail_cxt;
 };
 
 using itmgraph = po::digraph<node_proxy,edge_proxy>;
@@ -124,7 +174,7 @@ namespace std
 	{
 		size_t operator()(node_proxy const& p) const
 		{
-			return po::hash_struct(p.item,p.context);
+			return po::hash_struct(p.item().get(),p.context().get());
 		}
 	};
 }
@@ -162,7 +212,7 @@ public:
 public slots:
 	void layout(void);
 	void route(void);
-	void updateEdge(QObject*);
+	void updateEdge(QObject *);
 	void processRoute(void);
 	void processLayout(void);
 

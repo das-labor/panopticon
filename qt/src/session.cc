@@ -460,7 +460,7 @@ Session::Session(po::session sess, QObject *p)
 			if(!set)
 			{
 				set = true;
-				//_graph->setProcedure(proc);
+				_activeProcedure = p;
 			}
 		}
 	}
