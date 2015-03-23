@@ -339,7 +339,7 @@ std::pair<rvalue,rvalue> po::amd64::decode_mi(sm const& st,cg&)
 	ensure(st.state.rm && st.state.imm);
 	return std::make_pair(*st.state.rm,*st.state.imm);
 }
-
+/*
 std::pair<rvalue,rvalue> po::amd64::decode_i(amd64_state::OperandSize os, sm const& st,cg&)
 {
 	ensure(st.state.imm);
@@ -351,7 +351,7 @@ std::pair<rvalue,rvalue> po::amd64::decode_i(amd64_state::OperandSize os, sm con
 		case amd64_state::OpSz_64: return std::make_pair(rax,*st.state.imm);
 		default: ensure(false);
 	}
-}
+}*/
 
 rvalue po::amd64::decode_m(sm const& st,cg&)
 {

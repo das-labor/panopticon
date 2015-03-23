@@ -25,41 +25,6 @@ namespace po
 {
 	namespace amd64
 	{
-		void set_arithm_flags(rvalue res, rvalue res_half, rvalue a, rvalue b, cg& m);
-		rvalue sign_ext(rvalue v, unsigned from, unsigned to, cg& m);
-		void flagcomp(cg& m, variable const& flag);
-		void flagwr(cg& m, variable const& flag,bool val);
-		void push(variable v, amd64_state::Mode mode, cg& m);
-
-		void aaa(cg& m);
-		void aam(cg& m, rvalue a);
-		void aad(cg& m, rvalue a);
-		void aas(cg& m);
-		void adc(cg& m, rvalue a, rvalue b, boost::optional<std::pair<uint8_t,uint8_t>> sign_ext);
-		void add(cg& m, rvalue a, rvalue b, boost::optional<std::pair<uint8_t,uint8_t>> sign_ext);
-		void adc(cg& m, rvalue a, rvalue b, boost::optional<std::pair<uint8_t,uint8_t>> sign_ext);
-		void adcx(cg& m, rvalue a, rvalue b);
-	// ADX
-	// AMX
-		void and_(cg& m, rvalue a, rvalue b, boost::optional<std::pair<uint8_t,uint8_t>> sign_ext);
-		void bound(cg& m, rvalue a, rvalue b);
-		void bsf(cg& m, rvalue a, rvalue b);
-		void bsr(cg& m, rvalue a, rvalue b);
-		void bswap(cg& m, rvalue a);
-		void bt(cg& m, rvalue a, rvalue b);
-		void btc(cg& m, rvalue a, rvalue b);
-		void btr(cg& m, rvalue a, rvalue b);
-		void bts(cg& m, rvalue a, rvalue b);
-		void near_call(cg& m, rvalue a, bool rel, amd64_state::OperandSize op);
-		void far_call(cg& m, rvalue a, bool rel, amd64_state::OperandSize op);
-		void cbw(cg& m);
-		void cwde(cg& m);
-		void cwqe(cg& m);
-	// CDQ
-	// CLC
-	// CLD
-	// CLI
-	// CMC
 		enum condition
 		{
 			Less,
@@ -79,189 +44,115 @@ namespace po
 			Above,
 			AboveEqual,
 		};
+
+		void set_arithm_flags(rvalue res, rvalue res_half, rvalue a, rvalue b, cg& m);
+		rvalue sign_ext(rvalue v, unsigned from, unsigned to, cg& m);
+		void flagcomp(cg& m, variable const& flag);
+		void flagwr(cg& m, variable const& flag,bool val);
+		void push(variable v, amd64_state::Mode mode, cg& m);
+
+		// General integer
+		void aaa(cg& m);
+		void aam(cg& m, rvalue a);
+		void aad(cg& m, rvalue a);
+		void aas(cg& m);
+		void adc(cg& m, rvalue a, rvalue b, boost::optional<std::pair<uint8_t,uint8_t>> sign_ext);
+		void add(cg& m, rvalue a, rvalue b, boost::optional<std::pair<uint8_t,uint8_t>> sign_ext);
+		void adc(cg& m, rvalue a, rvalue b, boost::optional<std::pair<uint8_t,uint8_t>> sign_ext);
+		void adcx(cg& m, rvalue a, rvalue b);
+		void and_(cg& m, rvalue a, rvalue b, boost::optional<std::pair<uint8_t,uint8_t>> sign_ext);
+		void bound(cg& m, rvalue a, rvalue b);
+		void bsf(cg& m, rvalue a, rvalue b);
+		void bsr(cg& m, rvalue a, rvalue b);
+		void bswap(cg& m, rvalue a);
+		void bt(cg& m, rvalue a, rvalue b);
+		void btc(cg& m, rvalue a, rvalue b);
+		void btr(cg& m, rvalue a, rvalue b);
+		void bts(cg& m, rvalue a, rvalue b);
+		void near_call(cg& m, rvalue a, bool rel, amd64_state::OperandSize op);
+		void far_call(cg& m, rvalue a, bool rel, amd64_state::OperandSize op);
+		void cbw(cg& m);
+		void cwde(cg& m);
+		void cdqe(cg& m);
+		void cbw(cg& m);
+		void cwd(cg& m);
+		void cdq(cg& m);
+		void cqo(cg& m);
 		void cmov(cg& m, rvalue a, rvalue b, condition c);
 		void cmp(cg& m, rvalue a, rvalue b, boost::optional<std::pair<uint8_t,uint8_t>> sign_ext);
 		void cmps(cg& m, rvalue aoff, rvalue boff, int bits);
 		void cmpxchg(cg& m, rvalue a, rvalue b, rvalue acc);
-	// CPUID
-	// CWD
-	// CWQ
-	// CDQ
-	// CQO
-	// CWDE
-	// DAS
-	// DEC
-	// DIV
-	// DAA
-	// ENTER
-	// HINT_NOP
-	// IDIV
-	// IMUL
-	// IN
-	// INC
-	// INS
-	// INSB
-	// INSW
-	// INSD
-	// INT
-	// INT1
-	// ICEBP
-	// INTO
-	// IRET
-	// IRETD
-	// IRETQ
-	// JB
-	// JNAE
-	// JC
-	// JB
-	// JBE
-	// JNA
-	// JCXZ
-	// JECXZ
-	// JRCXZ
-	// JL
-	// JNGE
-	// JLE
-	// JNG
-	// JPE
-	// JPF
-	// JNB
-	// JAE
-	// JNC
-	// JNBE
-	// JA
-	// JNL
-	// JGE
-	// JNLE
-	// JNO
-	// JNP
-	// JNS
-	// JNZ
-	// JNE
-	// JO
-	// JP
-	// JPE
-	// JS
-	// JZ
-	// JE
-	// LAHF
-	// LDS
-	// LEA
-	// LEAVE
-	// LES
-	// LFS
-	// LGS
-	// LODS
-	// LODSB
-	// LODSW
-	// LODSD
-	// LODSQ
-	// LOOP
-	// LOOPNZ
-	// LOOPNE
-	// LOOPZ
-	// LOOPE
-	// LSS
-	// MOV
-	// MOVBE
-	// MOVS
-	// MOVSB
-	// MOVSW
-	// MOVSD
-	// MOVSQ
-	// MOVSXD
-	// MOVSX
-	// MOVZX
-	// MUL
-	// NEG
-	// NOP
-	void or_(cg& m, rvalue a, rvalue b, boost::optional<std::pair<uint8_t,uint8_t>> sign_ext);
-	// OUT
-	// OUTS
-	// OUTSW
-	// OUTSD
-	// POP
-	// POPA
-	// POPAD
-	// POPCNT
-	// POPF
-	// POPFQ
-	// POPFD
-	// PUSH
-	// PUSHA
-	// PUSHAD
-	// PUSHF
-	// PUSHFD
-	// PUSHFQ
-	// RCL
-	// RCR
-	// RETF
-	// RETN
-	// ROL
-	// ROR
-	// SAHF
-	// SAL
-	// SHL
-	// SALC
-	// SETALC
-	// SAR
-	void sbb(cg& m, rvalue a, rvalue b, boost::optional<std::pair<uint8_t,uint8_t>> sign_ext);
-	// SCAS
-	// SCASB
-	// SCASW
-	// SCASD
-	// SCASQ
-	// SETB
-	// SETNE
-	// SETNAE
-	// SETC
-	// SETBE
-	// SETNA
-	// SETL
-	// SETNGE
-	// SETLE
-	// SETNG
-	// SETNB
-	// SETAE
-	// SETNC
-	// SETNBE
-	// SETA
-	// SETNL
-	// SETGE
-	// SETNLE
-	// SETG
-	// SETNO
-	// SETNP
-	// SETPO
-	// SETNS
-	// SETNZ
-	// SETNE
-	// SETO
-	// SETP
-	// SETPE
-	// SETS
-	// SETZ
-	// SETE
-	// SHL
-	// SAL
-	// SHLD
-	// SHR
-	// SHRD
-	// STC
-	// STD
-	// STI
-	// STOS
-	// STOSB
-	// STOSW
-	// STOSD
-	// STOSQ
-	void sub(cg& m, rvalue a, rvalue b, boost::optional<std::pair<uint8_t,uint8_t>> sign_ext);
-	// TEST
-	// UD
-	// US2
-	// XADD
-	// XCHG
-	// XOR
-	void xor_(cg& m, rvalue a, rvalue b, boost::optional<std::pair<uint8_t,uint8_t>> sign_ext);
+		void cmpxchg8b(cg& m, rvalue a);
+		void cmpxchg16b(cg& m, rvalue a);
+		void cpuid(cg&);
+		void daa(cg&);
+		void das(cg&);
+		void dec(cg& m, rvalue a);
+		void div(cg& m, rvalue a, amd64_state::OperandSize);
+		void enter(cg& m, rvalue a, rvalue b);
+		void hlt(cg&);
+		void idiv(cg& m, rvalue a, amd64_state::OperandSize);
+		void imul1(cg& m, rvalue a);
+		void imul2(cg& m, rvalue a, rvalue b);
+		void imul3(cg& m, rvalue a, rvalue b, rvalue c);
+		void in(cg& m, rvalue a, rvalue b);
+		void dec(cg& m, rvalue a);
+		void icebp(cg& m);
+		void inc(cg& m, rvalue a);
+		void ins(cg& m, rvalue a, amd64_state::OperandSize);
+		void int_(cg& m, rvalue a);
+		void into(cg& m);
+		void iret(cg&,amd64_state::OperandSize);
+		void jcc(cg&,rvalue a, condition c);
+		void jxz(cg&,rvalue a, rvalue b);
+		void lahf(cg& m);
+		void lar(cg& m, rvalue a, rvalue b);
+		void lxs(cg& m,rvalue a, rvalue b, rvalue seg);
+		void lea(cg& m,rvalue a, rvalue b);
+		void leave(cg&,amd64_state::OperandSize);
+		void lods(cg&,amd64_state::OperandSize,int bytes);
+		void loop(cg&,rvalue a,amd64_state::AddressSize);
+		void mov(cg&,rvalue a,rvalue b,bool sign_ext);
+		void movbe(cg&,rvalue a,rvalue b);
+		void movs(cg&,amd64_state::AddressSize,int bytes);
+		void movsx(cg&,rvalue a,rvalue b);
+		void movzx(cg&,rvalue a,rvalue b);
+		void mul(cg& m, rvalue a, amd64_state::OperandSize);
+		void neg(cg& m, rvalue a);
+		void nop(cg& m);
+		void not_(cg& m,rvalue);
+		void or_(cg& m, rvalue a, rvalue b, boost::optional<std::pair<uint8_t,uint8_t>> sign_ext);
+		void out(cg& m, rvalue a, rvalue b);
+		void outs(cg& m, rvalue a, amd64_state::OperandSize);
+		void pop(cg& m, rvalue a, amd64_state::AddressSize b);
+		void popa(cg& m, amd64_state::OperandSize);
+		void popcnt(cg& m, rvalue a, rvalue b);
+		void popf(cg& m, amd64_state::OperandSize);
+		void push(cg& m, rvalue a, amd64_state::AddressSize);
+		void pusha(cg& m, rvalue a, amd64_state::OperandSize);
+		void pushf(cg& m, amd64_state::OperandSize);
+		void rcl(cg& m, rvalue a, rvalue b);
+		void rcr(cg& m, rvalue a, rvalue b);
+		void ret(cg& m, rvalue a);
+		void retf(cg& m, rvalue a);
+		void ror(cg& m, rvalue a, rvalue b);
+		void rol(cg& m, rvalue a, rvalue b);
+		void sahf(cg& m);
+		void sal(cg& m, rvalue a, rvalue b);
+		void salc(cg& m);
+		void sar(cg& m, rvalue a, rvalue b);
+		void sbb(cg& m, rvalue a, rvalue b, boost::optional<std::pair<uint8_t,uint8_t>> sign_ext);
+		void scas(cg&,amd64_state::OperandSize,int bytes);
+		void setcc(cg& m, rvalue a, condition c);
+		void shl(cg& m, rvalue a, rvalue b);
+		void shr(cg& m, rvalue a, rvalue b);
+		void sal(cg& m, rvalue a, rvalue b);
+		void stos(cg&,amd64_state::OperandSize,int bytes);
+		void sub(cg& m, rvalue a, rvalue b, boost::optional<std::pair<uint8_t,uint8_t>> sign_ext);
+		void sal(cg& m, rvalue a, rvalue b, bool sign_ext);
+		void ud2(cg& m);
+		void xadd(cg& m, rvalue a, rvalue b);
+		void xchg(cg& m, rvalue a, rvalue b);
+		void xor_(cg& m, rvalue a, rvalue b, boost::optional<std::pair<uint8_t,uint8_t>> sign_ext);
 	}
 }

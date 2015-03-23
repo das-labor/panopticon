@@ -38,10 +38,14 @@ namespace po
 		rvalue decode_d(sm const&,cg&);
 		rvalue decode_o(sm const&,cg&);
 		rvalue decode_imm(sm const&,cg&);
+		std::pair<rvalue,rvalue> decode_i(amd64_state::OperandSize,sm const&,cg&);
 		std::pair<rvalue,rvalue> decode_rm(sm const&,cg&);
 		std::pair<rvalue,rvalue> decode_mr(sm const&,cg&);
 		std::pair<rvalue,rvalue> decode_mi(sm const&,cg&);
-		std::pair<rvalue,rvalue> decode_i(amd64_state::OperandSize os, sm const&,cg&);
+		std::pair<rvalue,rvalue> decode_ii(sm const&,cg&);
+		std::pair<rvalue,rvalue> decode_fd(amd64_state::OperandSize,sm const&,cg&);
+		std::pair<rvalue,rvalue> decode_td(amd64_state::OperandSize,sm const&,cg&);
+		std::pair<rvalue,rvalue> decode_oi(sm const&,cg&);
 		std::tuple<rvalue,rvalue,rvalue> decode_rvm(sm const&,cg&);
 		std::tuple<rvalue,rvalue,rvalue> decode_rmv(sm const&,cg&);
 		std::tuple<rvalue,rvalue,rvalue,rvalue> decode_rvmi(sm const&,cg&);
@@ -75,6 +79,7 @@ namespace po
 		sem_action nonary(std::string const&,std::function<void(cg&)>);
 		sem_action unary(std::string const&,std::function<rvalue(sm const&,cg&)>,std::function<void(cg&,rvalue)>);
 		sem_action binary(std::string const&,std::function<std::pair<rvalue,rvalue>(sm const&,cg&)>,std::function<void(cg&,rvalue,rvalue)>);
+		sem_action trinary(std::string const&,std::function<std::tuple<rvalue,rvalue,rvalue>(sm const&,cg&)>,std::function<void(cg&,rvalue,rvalue,rvalue)>);
 		sem_action branch(std::string const&, rvalue, bool);
 	}
 }

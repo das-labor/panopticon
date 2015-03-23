@@ -120,7 +120,13 @@ namespace po
 		extern const variable rsp,rbp,rip,rflags;
 
 		// segment registers
-		extern const variable CS, DS, FS, SS;
+		extern const variable cs, ds, fs, ss, gs, es;
+
+		// control registers
+		extern const variable cr0, cr1, cr2, cr3, cr4, cr8, ldtr, gdtr, idtr;
+
+		// debug registers
+		extern const variable dr0, dr1, dr2, dr3, dr6, dr7;
 
 		using sm = sem_state<amd64_tag>;
 		using sem_action = std::function<void(sm &)>;
