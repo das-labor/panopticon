@@ -49,7 +49,7 @@ namespace po
 		rvalue sign_ext(rvalue v, unsigned from, unsigned to, cg& m);
 		void flagcomp(cg& m, variable const& flag);
 		void flagwr(cg& m, variable const& flag,bool val);
-		void push(variable v, amd64_state::Mode mode, cg& m);
+		void do_push(variable v, amd64_state::Mode mode, cg& m);
 
 		// General integer
 		void aaa(cg& m);
@@ -129,7 +129,7 @@ namespace po
 		void popcnt(cg& m, rvalue a, rvalue b);
 		void popf(cg& m, amd64_state::OperandSize);
 		void push(cg& m, rvalue a, amd64_state::AddressSize);
-		void pusha(cg& m, rvalue a, amd64_state::OperandSize);
+		void pusha(cg& m, amd64_state::OperandSize);
 		void pushf(cg& m, amd64_state::OperandSize);
 		void rcl(cg& m, rvalue a, rvalue b);
 		void rcr(cg& m, rvalue a, rvalue b);
@@ -142,14 +142,16 @@ namespace po
 		void salc(cg& m);
 		void sar(cg& m, rvalue a, rvalue b);
 		void sbb(cg& m, rvalue a, rvalue b, boost::optional<std::pair<uint8_t,uint8_t>> sign_ext);
-		void scas(cg&,amd64_state::OperandSize,int bytes);
+		void scas(cg&,amd64_state::OperandSize,int);
 		void setcc(cg& m, rvalue a, condition c);
 		void shl(cg& m, rvalue a, rvalue b);
 		void shr(cg& m, rvalue a, rvalue b);
+		void shld(cg& m, rvalue a, rvalue b, rvalue c);
+		void shrd(cg& m, rvalue a, rvalue b, rvalue c);
 		void sal(cg& m, rvalue a, rvalue b);
-		void stos(cg&,amd64_state::OperandSize,int bytes);
+		void stos(cg&,amd64_state::OperandSize,int);
 		void sub(cg& m, rvalue a, rvalue b, boost::optional<std::pair<uint8_t,uint8_t>> sign_ext);
-		void sal(cg& m, rvalue a, rvalue b, bool sign_ext);
+		void test(cg& m,rvalue a, rvalue b);
 		void ud2(cg& m);
 		void xadd(cg& m, rvalue a, rvalue b);
 		void xchg(cg& m, rvalue a, rvalue b);

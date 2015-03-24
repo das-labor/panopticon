@@ -42,6 +42,8 @@ namespace po
 		std::pair<rvalue,rvalue> decode_rm(sm const&,cg&);
 		std::pair<rvalue,rvalue> decode_mr(sm const&,cg&);
 		std::pair<rvalue,rvalue> decode_mi(sm const&,cg&);
+		std::pair<rvalue,rvalue> decode_m1(sm const&,cg&);
+		std::pair<rvalue,rvalue> decode_mc(sm const&,cg&);
 		std::pair<rvalue,rvalue> decode_ii(sm const&,cg&);
 		std::pair<rvalue,rvalue> decode_fd(amd64_state::OperandSize,sm const&,cg&);
 		std::pair<rvalue,rvalue> decode_td(amd64_state::OperandSize,sm const&,cg&);
@@ -50,6 +52,9 @@ namespace po
 		std::tuple<rvalue,rvalue,rvalue> decode_rmv(sm const&,cg&);
 		std::tuple<rvalue,rvalue,rvalue,rvalue> decode_rvmi(sm const&,cg&);
 		std::tuple<rvalue,rvalue,rvalue> decode_rmi(sm const&,cg&);
+		std::tuple<rvalue,rvalue,rvalue> decode_mri(sm const&,cg&);
+		std::tuple<rvalue,rvalue,rvalue> decode_mrc(sm const&,cg&);
+
 
 		variable decode_reg8(unsigned int r_reg,bool rex);
 		variable decode_reg16(unsigned int r_reg);

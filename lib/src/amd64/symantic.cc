@@ -5,7 +5,7 @@
 using namespace po;
 using namespace dsl;
 
-void po::amd64::push(variable v, amd64_state::Mode mode, cg& m)
+void po::amd64::do_push(variable v, amd64_state::Mode mode, cg& m)
 {
 	int const w = v.width() / 8;
 
@@ -23,7 +23,7 @@ void po::amd64::push(variable v, amd64_state::Mode mode, cg& m)
 			m.assign(rsp,rsp + w);
 			return;
 		default:
-			throw std::invalid_argument("invalid mode in push");
+			throw std::invalid_argument("invalid mode in do_push");
 	}
 }
 
@@ -287,7 +287,7 @@ void po::amd64::near_call(cg& m, rvalue a, bool rel, amd64_state::OperandSize op
 			else
 				new_ip = sign_ext(a,32,64,m);
 
-			push(rip,amd64_state::LongMode,m);
+			do_push(rip,amd64_state::LongMode,m);
 			m.assign(rip,new_ip);
 			m.call_i(new_ip);
 
@@ -300,7 +300,7 @@ void po::amd64::near_call(cg& m, rvalue a, bool rel, amd64_state::OperandSize op
 			else
 				new_ip = a;
 
-			push(eip,amd64_state::ProtectedMode,m);
+			do_push(eip,amd64_state::ProtectedMode,m);
 			m.assign(eip,new_ip);
 			m.call_i(new_ip);
 
@@ -313,7 +313,7 @@ void po::amd64::near_call(cg& m, rvalue a, bool rel, amd64_state::OperandSize op
 			else
 				new_ip = a % 0x10000;
 
-			push(ip,amd64_state::RealMode,m);
+			do_push(ip,amd64_state::RealMode,m);
 			m.assign(ip,new_ip);
 			m.call_i(new_ip);
 
@@ -330,22 +330,22 @@ void po::amd64::far_call(cg& m, rvalue a, bool rel, amd64_state::OperandSize op)
 	{
 		case amd64_state::OpSz_16:
 		{
-			push(CS,amd64_state::RealMode,m);
-			push(ip,amd64_state::RealMode,m);
+			do_push(cs,amd64_state::RealMode,m);
+			do_push(ip,amd64_state::RealMode,m);
 
 			return;
 		}
 		case amd64_state::OpSz_32:
 		{
-			push(CS,amd64_state::ProtectedMode,m);
-			push(eip,amd64_state::ProtectedMode,m);
+			do_push(cs,amd64_state::ProtectedMode,m);
+			do_push(eip,amd64_state::ProtectedMode,m);
 
 			return;
 		}
 		case amd64_state::OpSz_64:
 		{
-			push(CS,amd64_state::LongMode,m);
-			push(rip,amd64_state::LongMode,m);
+			do_push(cs,amd64_state::LongMode,m);
+			do_push(rip,amd64_state::LongMode,m);
 
 			return;
 		}
@@ -364,7 +364,7 @@ void po::amd64::cwde(cg& m)
 	m.assign(eax,sign_ext(ax,16,32,m));
 }
 
-void po::amd64::cwqe(cg& m)
+void po::amd64::cdqe(cg& m)
 {
 	m.assign(rax,sign_ext(eax,32,64,m));
 }
@@ -413,7 +413,7 @@ void po::amd64::cmps(cg& m, rvalue aoff, rvalue boff, int bits)
 {
 	using dsl::operator*;
 
-	memory const a(aoff,bits / 8,LittleEndian,"ram"), b(boff,bits / 8,LittleEndian,"ram");
+	rvalue const a = memory(aoff,bits / 8,LittleEndian,"ram"), b = memory(boff,bits / 8,LittleEndian,"ram");
 	rvalue const res = a - b;
 	rvalue const res_half = (a % 0x100) - (b % 0x100);
 
@@ -421,8 +421,8 @@ void po::amd64::cmps(cg& m, rvalue aoff, rvalue boff, int bits)
 
 	rvalue off = (bits / 8) * m.lift_b(DF) - (bits / 8) * m.lift_b(m.not_b(DF));
 
-	m.assign(aoff,aoff + off);
-	m.assign(boff,boff + off);
+	m.assign(to_lvalue(aoff),aoff + off);
+	m.assign(to_lvalue(boff),boff + off);
 }
 
 void po::amd64::cmpxchg(cg& m, rvalue a, rvalue b, rvalue acc)
@@ -432,8 +432,8 @@ void po::amd64::cmpxchg(cg& m, rvalue a, rvalue b, rvalue acc)
 	rvalue t = equal(a,acc);
 
 	m.assign(ZF,t);
-	m.assign(a,m.lift_b(t) * b + m.lift_b(m.not_b(t)) * a);
-	m.assign(acc,m.lift_b(t) * acc + m.lift_b(m.not_b(ZF)) * a);
+	m.assign(to_lvalue(a),m.lift_b(t) * b + m.lift_b(m.not_b(t)) * a);
+	m.assign(to_lvalue(acc),m.lift_b(t) * acc + m.lift_b(m.not_b(ZF)) * a);
 }
 
 void po::amd64::or_(cg& m, rvalue a, rvalue b, boost::optional<std::pair<uint8_t,uint8_t>> se)
