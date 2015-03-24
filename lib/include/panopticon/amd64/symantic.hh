@@ -50,6 +50,7 @@ namespace po
 		void flagcomp(cg& m, variable const& flag);
 		void flagwr(cg& m, variable const& flag,bool val);
 		void do_push(variable v, amd64_state::Mode mode, cg& m);
+		unsigned int bitwidth(rvalue a);
 
 		// General integer
 		void aaa(cg& m);

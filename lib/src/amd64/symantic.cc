@@ -27,6 +27,16 @@ void po::amd64::do_push(variable v, amd64_state::Mode mode, cg& m)
 	}
 }
 
+unsigned int po::amd64::bitwidth(rvalue a)
+{
+	if(is_variable(a))
+		return to_variable(a).width();
+	else if(is_memory(a))
+		return to_memory(a).bytes() * 8;
+	else
+		throw std::invalid_argument("bitwidth() called with argument that is not a memory ref or variable.");
+}
+
 rvalue po::amd64::sign_ext(rvalue v, unsigned from, unsigned to, cg& m)
 {
 	using dsl::operator*;
@@ -39,7 +49,7 @@ rvalue po::amd64::sign_ext(rvalue v, unsigned from, unsigned to, cg& m)
 
 void po::amd64::set_arithm_flags(rvalue res, rvalue res_half, rvalue a, rvalue b, cg& m)
 {
-	size_t const a_w = to_variable(a).width();
+	size_t const a_w = bitwidth(a);
 	rvalue const msb_res = less(res / (1 << (a_w - 1)),1);
 
 	m.assign(CF,res / constant(1 << a_w));
@@ -61,7 +71,7 @@ void po::amd64::set_arithm_flags(rvalue res, rvalue res_half, rvalue a, rvalue b
 
 void po::amd64::adc(cg& m, rvalue a, rvalue b, boost::optional<std::pair<uint8_t,uint8_t>> se)
 {
-	size_t const a_w = to_variable(a).width();
+	size_t const a_w = bitwidth(a);
 	rvalue const res = a + (se ? sign_ext(b,se->first,se->second,m) : b) + CF;
 	rvalue const res_half = (a % constant(0x100)) + (b % constant(0x100)) + CF;
 
@@ -126,7 +136,7 @@ void po::amd64::aas(cg& m)
 
 void po::amd64::add(cg& m, rvalue a, rvalue b, boost::optional<std::pair<uint8_t,uint8_t>> se)
 {
-	size_t const a_w = to_variable(a).width();
+	size_t const a_w = bitwidth(a);
 	rvalue const res = a + (se ? sign_ext(b,se->first,se->second,m) : b);
 	rvalue const res_half = (a % constant(0x100)) + (b % constant(0x100));
 
@@ -136,7 +146,7 @@ void po::amd64::add(cg& m, rvalue a, rvalue b, boost::optional<std::pair<uint8_t
 
 void po::amd64::adcx(cg& m, rvalue a, rvalue b)
 {
-	size_t const a_w = to_variable(a).width();
+	size_t const a_w = bitwidth(a);
 	rvalue const res = a + b + CF;
 
 	m.assign(CF,res / constant(1 << a_w));
@@ -158,7 +168,7 @@ void po::amd64::bsf(cg& m, rvalue a, rvalue b)
 {
 	using dsl::operator*;
 
-	size_t const a_w = to_variable(a).width();
+	size_t const a_w = bitwidth(a);
 	size_t bit = 0;
 	boost::optional<rvalue> prev;
 
@@ -182,7 +192,7 @@ void po::amd64::bsr(cg& m, rvalue a, rvalue b)
 {
 	using dsl::operator*;
 
-	size_t const a_w = to_variable(a).width();
+	size_t const a_w = bitwidth(a);
 	size_t bit = a_w - 1;
 	boost::optional<rvalue> prev;
 
@@ -205,7 +215,7 @@ void po::amd64::bswap(cg& m, rvalue a)
 {
 	using dsl::operator*;
 
-	size_t const a_w = to_variable(a).width();
+	size_t const a_w = bitwidth(a);
 	size_t byte = 0;
 
 	rvalue tmp = undefined();
@@ -225,7 +235,7 @@ void po::amd64::bswap(cg& m, rvalue a)
 void po::amd64::bt(cg& m, rvalue a, rvalue b)
 {
 	using dsl::operator<<;
-	rvalue mod = (constant(1) << (b % constant(to_variable(a).width())));
+	rvalue mod = (constant(1) << (b % constant(bitwidth(a))));
 
 	m.assign(CF,(a / mod) % 2);
 	m.assign(PF,undefined());
@@ -237,7 +247,7 @@ void po::amd64::bt(cg& m, rvalue a, rvalue b)
 void po::amd64::btc(cg& m, rvalue a, rvalue b)
 {
 	using dsl::operator<<;
-	rvalue mod = (constant(1) << (b % constant(to_variable(a).width())));
+	rvalue mod = (constant(1) << (b % constant(bitwidth(a))));
 
 	m.assign(CF,(a / mod) % 2);
 	m.assign(PF,undefined());
@@ -250,8 +260,8 @@ void po::amd64::btc(cg& m, rvalue a, rvalue b)
 void po::amd64::btr(cg& m, rvalue a, rvalue b)
 {
 	using dsl::operator<<;
-	size_t const a_w = to_variable(a).width();
-	rvalue mod =  ((constant(1) << (b % constant(to_variable(a).width()))));
+	size_t const a_w = bitwidth(a);
+	rvalue mod =  ((constant(1) << (b % constant(bitwidth(a)))));
 
 	m.assign(CF,(a / mod) % 2);
 	m.assign(PF,undefined());
@@ -264,7 +274,7 @@ void po::amd64::btr(cg& m, rvalue a, rvalue b)
 void po::amd64::bts(cg& m, rvalue a, rvalue b)
 {
 	using dsl::operator<<;
-	rvalue mod = (constant(1) << (b % constant(to_variable(a).width())));
+	rvalue mod = (constant(1) << (b % constant(bitwidth(a))));
 
 	m.assign(CF,(a / mod) % 2);
 	m.assign(PF,undefined());
@@ -447,7 +457,7 @@ void po::amd64::or_(cg& m, rvalue a, rvalue b, boost::optional<std::pair<uint8_t
 
 void po::amd64::sbb(cg& m, rvalue a, rvalue b, boost::optional<std::pair<uint8_t,uint8_t>> se)
 {
-	size_t const a_w = to_variable(a).width();
+	size_t const a_w = bitwidth(a);
 	rvalue const res = a - (se ? sign_ext(b,se->first,se->second,m) : b) - CF;
 	rvalue const res_half = (a % constant(0x100)) - (b % constant(0x100)) - CF;
 
@@ -457,7 +467,7 @@ void po::amd64::sbb(cg& m, rvalue a, rvalue b, boost::optional<std::pair<uint8_t
 
 void po::amd64::sub(cg& m, rvalue a, rvalue b, boost::optional<std::pair<uint8_t,uint8_t>> se)
 {
-	size_t const a_w = to_variable(a).width();
+	size_t const a_w = bitwidth(a);
 	rvalue const res = a - (se ? sign_ext(b,se->first,se->second,m) : b);
 	rvalue const res_half = (a % constant(0x100)) - (b % constant(0x100));
 
