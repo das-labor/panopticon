@@ -50,11 +50,10 @@ namespace po
 		std::pair<rvalue,rvalue> decode_oi(sm const&,cg&);
 		std::tuple<rvalue,rvalue,rvalue> decode_rvm(sm const&,cg&);
 		std::tuple<rvalue,rvalue,rvalue> decode_rmv(sm const&,cg&);
-		std::tuple<rvalue,rvalue,rvalue,rvalue> decode_rvmi(sm const&,cg&);
 		std::tuple<rvalue,rvalue,rvalue> decode_rmi(sm const&,cg&);
 		std::tuple<rvalue,rvalue,rvalue> decode_mri(sm const&,cg&);
 		std::tuple<rvalue,rvalue,rvalue> decode_mrc(sm const&,cg&);
-
+		std::tuple<rvalue,rvalue,rvalue,rvalue> decode_rvmi(sm const&,cg&);
 
 		variable decode_reg8(unsigned int r_reg,bool rex);
 		variable decode_reg16(unsigned int r_reg);

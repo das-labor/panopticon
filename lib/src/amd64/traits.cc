@@ -136,10 +136,12 @@ namespace po
 								r15 = variable("r15",64),
 
 								// Segment registers
-								CS = variable("CS",16),
-								FS = variable("FS",16),
-								SS = variable("SS",16),
-								DS = variable("DS",16),
+								cs = variable("cs",16),
+								fs = variable("fs",16),
+								ss = variable("ss",16),
+								ds = variable("ds",16),
+								gs = variable("gs",16),
+								es = variable("es",16),
 
 								// 16 bit management registes
 								ip = variable("ip",16),

@@ -339,7 +339,7 @@ std::pair<rvalue,rvalue> po::amd64::decode_mi(sm const& st,cg&)
 	ensure(st.state.rm && st.state.imm);
 	return std::make_pair(*st.state.rm,*st.state.imm);
 }
-/*
+
 std::pair<rvalue,rvalue> po::amd64::decode_i(amd64_state::OperandSize os, sm const& st,cg&)
 {
 	ensure(st.state.imm);
@@ -351,7 +351,7 @@ std::pair<rvalue,rvalue> po::amd64::decode_i(amd64_state::OperandSize os, sm con
 		case amd64_state::OpSz_64: return std::make_pair(rax,*st.state.imm);
 		default: ensure(false);
 	}
-}*/
+}
 
 rvalue po::amd64::decode_m(sm const& st,cg&)
 {
@@ -436,4 +436,68 @@ sem_action po::amd64::branch(std::string const& m, rvalue flag, bool set)
 		st.jump(st.address + st.tokens.size());//,g.negation());
 		//st.jump(undefined(),g);//st.address + k.content() + 2,g);
 	};
+}
+
+sem_action po::amd64::trinary(std::string const& op, std::function<std::tuple<rvalue,rvalue,rvalue>(sm const&,cg&)> decode, std::function<void(cg&,rvalue,rvalue,rvalue)> func)
+{
+	return [op,func,decode](sm &st)
+	{
+		st.mnemonic(st.tokens.size(),op,"{64} {64} {64}",[decode,func,st,op](cg& d)
+		{
+			rvalue a,b,c;
+
+			std::tie(a,b,c) = decode(st,d);
+			func(d,a,b,c);
+
+			std::cout << op << " " << a << ", " << b << ", " << c << std::endl;
+			return std::list<rvalue>({a,b,c});
+		});
+
+		st.jump(st.address + st.tokens.size());
+	};
+}
+
+std::pair<rvalue,rvalue> po::amd64::decode_td(po::amd64_state::OperandSize,sm const& st,cg&)
+{
+	ensure(false);
+}
+
+std::pair<rvalue,rvalue> po::amd64::decode_fd(po::amd64_state::OperandSize,sm const& st,cg&)
+{
+	ensure(false);
+}
+
+std::pair<rvalue,rvalue> po::amd64::decode_mc(sm const& st,cg&)
+{
+	ensure(false);
+}
+
+std::pair<rvalue,rvalue> po::amd64::decode_oi(sm const& st,cg&)
+{
+	ensure(false);
+}
+
+std::pair<rvalue,rvalue> po::amd64::decode_ii(sm const& st,cg&)
+{
+	ensure(false);
+}
+
+std::pair<rvalue,rvalue> po::amd64::decode_m1(sm const& st,cg&)
+{
+	ensure(false);
+}
+
+std::tuple<rvalue,rvalue,rvalue> po::amd64::decode_rmi(sm const&,cg&)
+{
+	ensure(false);
+}
+
+std::tuple<rvalue,rvalue,rvalue> po::amd64::decode_mri(sm const&,cg&)
+{
+	ensure(false);
+}
+
+std::tuple<rvalue,rvalue,rvalue> po::amd64::decode_mrc(sm const&,cg&)
+{
+	ensure(false);
 }

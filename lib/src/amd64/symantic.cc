@@ -473,3 +473,75 @@ void po::amd64::xor_(cg& m, rvalue a, rvalue b, boost::optional<std::pair<uint8_
 	m.assign(to_lvalue(a),res);
 	set_arithm_flags(res,res_half,a,b,m);
 }
+
+void po::amd64::cmpxchg8b(cg& m, rvalue a) {}
+void po::amd64::cmpxchg16b(cg& m, rvalue a) {}
+void po::amd64::cpuid(cg&) {}
+void po::amd64::cwd(cg&) {}
+void po::amd64::cdq(cg&) {}
+void po::amd64::cqo(cg&) {}
+void po::amd64::daa(cg&) {}
+void po::amd64::das(cg&) {}
+void po::amd64::dec(cg& m, rvalue a) {}
+void po::amd64::div(cg& m, rvalue a, amd64_state::OperandSize) {}
+void po::amd64::enter(cg& m, rvalue a, rvalue b) {}
+void po::amd64::hlt(cg&) {}
+void po::amd64::idiv(cg& m, rvalue a, amd64_state::OperandSize) {}
+void po::amd64::imul1(cg& m, rvalue a) {}
+void po::amd64::imul2(cg& m, rvalue a, rvalue b) {}
+void po::amd64::imul3(cg& m, rvalue a, rvalue b, rvalue c) {}
+void po::amd64::in(cg& m, rvalue a, rvalue b) {}
+void po::amd64::icebp(cg& m) {}
+void po::amd64::inc(cg& m, rvalue a) {}
+void po::amd64::ins(cg& m, rvalue a, amd64_state::OperandSize) {}
+void po::amd64::int_(cg& m, rvalue a) {}
+void po::amd64::into(cg& m) {}
+void po::amd64::iret(cg&,amd64_state::OperandSize) {}
+void po::amd64::jcc(cg&,rvalue a, condition c) {}
+void po::amd64::jxz(cg&,rvalue a, rvalue b) {}
+void po::amd64::lahf(cg& m) {}
+void po::amd64::lar(cg& m, rvalue a, rvalue b) {}
+void po::amd64::lxs(cg& m,rvalue a, rvalue b, rvalue seg) {}
+void po::amd64::lea(cg& m,rvalue a, rvalue b) {}
+void po::amd64::leave(cg&,amd64_state::OperandSize) {}
+void po::amd64::lods(cg&,amd64_state::OperandSize,int bytes) {}
+void po::amd64::loop(cg&,rvalue a,amd64_state::AddressSize) {}
+void po::amd64::mov(cg&,rvalue a,rvalue b,bool sign_ext) {}
+void po::amd64::movbe(cg&,rvalue a,rvalue b) {}
+void po::amd64::movs(cg&,amd64_state::AddressSize,int bytes) {}
+void po::amd64::movsx(cg&,rvalue a,rvalue b) {}
+void po::amd64::movzx(cg&,rvalue a,rvalue b) {}
+void po::amd64::mul(cg& m, rvalue a, amd64_state::OperandSize) {}
+void po::amd64::neg(cg& m, rvalue a) {}
+void po::amd64::nop(cg& m) {}
+void po::amd64::not_(cg& m,rvalue) {}
+void po::amd64::out(cg& m, rvalue a, rvalue b) {}
+void po::amd64::outs(cg& m, rvalue a, amd64_state::OperandSize) {}
+void po::amd64::pop(cg& m, rvalue a, amd64_state::AddressSize b) {}
+void po::amd64::popa(cg& m, amd64_state::OperandSize) {}
+void po::amd64::popcnt(cg& m, rvalue a, rvalue b) {}
+void po::amd64::popf(cg& m, amd64_state::OperandSize) {}
+void po::amd64::push(cg& m, rvalue a, amd64_state::AddressSize) {}
+void po::amd64::pusha(cg& m, amd64_state::OperandSize) {}
+void po::amd64::pushf(cg& m, amd64_state::OperandSize) {}
+void po::amd64::rcl(cg& m, rvalue a, rvalue b) {}
+void po::amd64::rcr(cg& m, rvalue a, rvalue b) {}
+void po::amd64::ret(cg& m, rvalue a) {}
+void po::amd64::retf(cg& m, rvalue a) {}
+void po::amd64::ror(cg& m, rvalue a, rvalue b) {}
+void po::amd64::rol(cg& m, rvalue a, rvalue b) {}
+void po::amd64::sahf(cg& m) {}
+void po::amd64::sal(cg& m, rvalue a, rvalue b) {}
+void po::amd64::salc(cg& m) {}
+void po::amd64::sar(cg& m, rvalue a, rvalue b) {}
+void po::amd64::scas(cg&,amd64_state::OperandSize,int) {}
+void po::amd64::setcc(cg& m, rvalue a, condition c) {}
+void po::amd64::shl(cg& m, rvalue a, rvalue b) {}
+void po::amd64::shr(cg& m, rvalue a, rvalue b) {}
+void po::amd64::shld(cg& m, rvalue a, rvalue b, rvalue c) {}
+void po::amd64::shrd(cg& m, rvalue a, rvalue b, rvalue c) {}
+void po::amd64::stos(cg&,amd64_state::OperandSize,int) {}
+void po::amd64::test(cg& m,rvalue a, rvalue b) {}
+void po::amd64::ud2(cg& m) {}
+void po::amd64::xadd(cg& m, rvalue a, rvalue b) {}
+void po::amd64::xchg(cg& m, rvalue a, rvalue b) {}

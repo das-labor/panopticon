@@ -30,22 +30,25 @@ namespace po
 		template<int Bits>
 		boost::optional<prog_loc> disassemble(boost::optional<prog_loc> prog, po::slab bytes, const po::ref& r)
 		{
-			disassembler<amd64_tag> main, opsize_prfix, rex_prfix, rexw_prfix,
-											lock_or_rep, addrsize_prfx, rep_prfx, lock_prfx,
-											imm8, imm16, imm32, imm64,
-											sib,
-											rm8, rm16, rm32, rm64,
-											rm8_0, rm16_0, rm32_0, rm64_0,
-											rm8_1, rm16_1, rm32_1, rm64_1,
-											rm8_2, rm16_2, rm32_2, rm64_2,
-											rm8_3, rm16_3, rm32_3, rm64_3,
-											rm8_4, rm16_4, rm32_4, rm64_4,
-											rm8_5, rm16_5, rm32_5, rm64_5,
-											rm8_6, rm16_6, rm32_6, rm64_6,
-											rm8_7, rm16_7, rm32_7, rm64_7,
-											disp8, disp16, disp32, disp64;
+			disassembler<amd64_tag>
+				main, opsize_prfx, rex_prfx, rexw_prfx, rexr_prfx,
+				addrsize_prfx, rep_prfx, repx_prfx, lock_prfx,
+				imm8, imm16, imm32, imm64,
+				sib,
+				rm8, rm16, rm32, rm64,
+				rm8_0, rm16_0, rm32_0, rm64_0,
+				rm8_1, rm16_1, rm32_1, rm64_1,
+				rm8_2, rm16_2, rm32_2, rm64_2,
+				rm8_3, rm16_3, rm32_3, rm64_3,
+				rm8_4, rm16_4, rm32_4, rm64_4,
+				rm8_5, rm16_5, rm32_5, rm64_5,
+				rm8_6, rm16_6, rm32_6, rm64_6,
+				rm8_7, rm16_7, rm32_7, rm64_7,
+				disp8, disp16, disp32, disp64,
+				m64, m128,
+				r16, r32, r64;
 
-			opsize_prfix[ 0x66 ] = [](sm& st)
+			opsize_prfx[ 0x66 ] = [](sm& st)
 			{
 				switch(st.state.mode)
 				{
@@ -69,10 +72,12 @@ namespace po
 
 			rep_prfx[ 0xf3 ] = [](sm& st) {};
 
-			rex_prfix [ "0100 w@0 r@. x@. b@."_e ] = [](sm& st) { st.state.rex = true; };
-			rexw_prfix[ "0100 w@1 r@. x@. b@."_e ] = [](sm& st) { st.state.rex = true; st.state.op_sz = amd64_state::OpSz_64; };
+			repx_prfx[ 0xf3 ] = [](sm& st) {};
+			repx_prfx[ 0xf2 ] = [](sm& st) {};
 
-			lock_or_rep[ *rep_prfx >> *lock_prfx >> *rep_prfx ] = [](sm& st) {};
+			rex_prfx [ "0100 w@0 r@. x@. b@."_e ] = [](sm& st) { st.state.rex = true; };
+			rexw_prfx[ "0100 w@1 r@. x@. b@."_e ] = [](sm& st) { st.state.rex = true; st.state.op_sz = amd64_state::OpSz_64; };
+			rexr_prfx[ "0100 w@. r@1 x@. b@."_e ] = [](sm& st) { st.state.rex = true; };
 
 			imm8 [ "imm@........"_e] = [](sm& st)
 			{
@@ -556,8 +561,9 @@ namespace po
 			rm32_7[ "mod@11 111 rm@..."_e ] = rm32_func;
 			rm64_7[ "mod@11 111 rm@..."_e ] = rm64_func;
 
-			add_generic<Bits>(main, opsize_prfix, rex_prfix, rexw_prfix,
-				lock_or_rep, addrsize_prfx, rep_prfx,
+			add_generic<Bits>(
+				main, opsize_prfx, rex_prfx, rexw_prfx, rexr_prfx,
+				lock_prfx, addrsize_prfx, rep_prfx, repx_prfx,
 				imm8, imm16, imm32, imm64,
 				sib,
 				rm8, rm16, rm32, rm64,
@@ -569,7 +575,9 @@ namespace po
 				rm8_5, rm16_5, rm32_5, rm64_5,
 				rm8_6, rm16_6, rm32_6, rm64_6,
 				rm8_7, rm16_7, rm32_7, rm64_7,
-				disp8, disp16, disp32, disp64);
+				disp8, disp16, disp32, disp64,
+				m64, m128,
+				r16, r32, r64);
 
 			return program::disassemble<amd64_tag>(main,bytes,r,prog);
 		}
