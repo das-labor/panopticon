@@ -96,15 +96,61 @@ bool po::is_variable(const po::rvalue &v) { return boost::get<variable>(&v._vari
 bool po::is_undefined(const po::rvalue &v) { return boost::get<undefined>(&v._variant); }
 bool po::is_lvalue(const po::rvalue &a) { return is_variable(a) || is_memory(a) || is_undefined(a); }
 
-const po::constant &po::to_constant(const po::rvalue &a) { try { return get<constant>(a._variant); } catch(const boost::bad_get&) { throw value_exception("Cast to constant from invalid type"); } }
-const po::variable &po::to_variable(const po::rvalue &a) { try { return get<variable>(a._variant); } catch(const boost::bad_get&) { throw value_exception("Cast to variable from invalid type"); } }
-const po::memory &po::to_memory(const po::rvalue &a) { try { return get<memory>(a._variant); } catch(const boost::bad_get&) { throw value_exception("Cast to memory from invalid type"); } }
+const po::constant &po::to_constant(const po::rvalue &a)
+{
+	try
+	{
+		return get<constant>(a._variant);
+	}
+	catch(const boost::bad_get&)
+	{
+		std::stringstream ss;
+
+		ss << a;
+		throw value_exception("Invalid cast from " + ss.str() + " to constant.");
+	}
+}
+
+const po::variable &po::to_variable(const po::rvalue &a)
+{
+	try
+	{
+		return get<variable>(a._variant);
+	}
+	catch(const boost::bad_get&)
+	{
+		std::stringstream ss;
+
+		ss << a;
+		throw value_exception("Invalid cast from " + ss.str() + " to variable.");
+	}
+}
+
+const po::memory &po::to_memory(const po::rvalue &a)
+{
+	try
+	{
+		return get<memory>(a._variant);
+	}
+	catch(const boost::bad_get&)
+	{
+		std::stringstream ss;
+
+		ss << a;
+		throw value_exception("Invalid cast from " + ss.str() + " to memory reference.");
+	}
+}
+
 po::lvalue po::to_lvalue(const po::rvalue &a)
 {
 	if(is_memory(a)) return to_memory(a);
 	if(is_variable(a)) return to_variable(a);
 	if(is_undefined(a)) return undefined();
-	throw value_exception("Cast to lvalue from invalid type");
+
+	std::stringstream ss;
+
+	ss << a;
+	throw value_exception("Invalid cast from " + ss.str() + " to lvalue.");
 }
 
 bool undefined::operator<(const undefined&) const { return false; }
