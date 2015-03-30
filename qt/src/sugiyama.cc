@@ -61,10 +61,14 @@ void Sugiyama::setVertex(QQmlComponent* c)
 	if(_vertex)
 		_vertex->deleteLater();
 
+	_layoutWatcher.waitForFinished();
+	_routeWatcher.waitForFinished();
+
 	{
 		std::lock_guard<std::mutex> guard(_mutex);
 
 		_vertex = c;
+
 		_cache.clear();
 	}
 
@@ -75,8 +79,17 @@ void Sugiyama::setEdge(QQmlComponent* c)
 {
 	if(_edge)
 		_edge->deleteLater();
-	_edge = c;
-	_cache.clear();
+
+	_layoutWatcher.waitForFinished();
+	_routeWatcher.waitForFinished();
+
+	{
+		std::lock_guard<std::mutex> guard(_mutex);
+
+		_edge = c;
+
+		_cache.clear();
+	}
 
 	emit edgeChanged();
 }
@@ -196,6 +209,16 @@ doLayout(itmgraph graph, unsigned int nodesep, std::unordered_map<itmgraph::vert
 
 void Sugiyama::layout(void)
 {
+	boost::optional<po::proc_loc> maybe_proc =_procedure->procedure();
+
+	if(maybe_proc)
+	{
+		scheduleLayout(*maybe_proc);
+	}
+}
+
+void Sugiyama::scheduleLayout(po::proc_loc proc)
+{
 	std::lock_guard<std::mutex> guard(_mutex);
 
 	if(_procedure)
@@ -210,14 +233,11 @@ void Sugiyama::layout(void)
 			;
 		}
 
-		emit layoutStart();
 
-		boost::optional<po::proc_loc> maybe_proc =_procedure->procedure();
-		qDebug() << "start layout";
-
-		if(maybe_proc && _vertex)
+		if(_vertex)
 		{
-			po::proc_loc proc = *maybe_proc;
+			emit layoutStart();
+
 			auto i = _cache.find(proc);
 
 			if(i == _cache.end())
@@ -889,7 +909,6 @@ void Sugiyama::updateEdge(QObject* edge)
 		for(auto x: iters(edges(graph)))
 			if(get_edge(x,graph).edge().get()== edge)
 				return updateEdgeDecorations(x,cache);
-		qDebug() << edge << "not found";
 	}
 }
 
@@ -928,16 +947,20 @@ void Sugiyama::processLayout(void)
 
 	if(_cache.count(proc))
 	{
+		_cache[proc] = cache_type(std::get<0>(_cache.at(proc)),_layoutWatcher.result().second,boost::none);
 
-	_cache[proc] = cache_type(std::get<0>(_cache.at(proc)),_layoutWatcher.result().second,boost::none);
+		for(auto vx: iters(vertices(std::get<0>(_cache.at(proc)))))
+		{
+			positionNode(vx,std::get<0>(_cache.at(proc)),std::get<1>(_cache.at(proc))->at(vx));
+		}
 
-	for(auto vx: iters(vertices(std::get<0>(_cache.at(proc)))))
-	{
-		positionNode(vx,std::get<0>(_cache.at(proc)),std::get<1>(_cache.at(proc))->at(vx));
+		emit layoutDone();
+		route();
 	}
-
-	emit layoutDone();
-	route();}
+	else
+	{
+		scheduleLayout(proc.lock());
+	}
 }
 
 void Sugiyama::positionNode(itmgraph::vertex_descriptor v, itmgraph const& graph, std::tuple<unsigned int,unsigned int,unsigned int> pos)

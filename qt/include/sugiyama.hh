@@ -243,4 +243,5 @@ private:
 	void positionEdgeDecoration(itmgraph::edge_descriptor e, cache_type const& cache);
 	void updateEdgeDecorations(itmgraph::edge_descriptor e, cache_type& cache);
 	void redoAttached(void);
+	void scheduleLayout(po::proc_loc proc);
 };
