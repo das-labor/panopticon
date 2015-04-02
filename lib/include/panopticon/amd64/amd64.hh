@@ -114,12 +114,7 @@ namespace po
 			};
 
 			// sib
-			sib [ "scale@00 index@... base@..."_e >> "disp@........"_e >> "disp@........"_e >> "disp@........"_e >> "disp@........"_e	] = [](sm& st)
-			{
-				st.state.disp = constant(be32toh(st.capture_groups.at("disp")));
-			};
-			sib [ "scale@01 index@... base@..."_e >> "sib@........"_e																			] = [](sm& st) {};
-			sib [ "scale@10 index@... base@..."_e >> "disp@........"_e >> "disp@........"_e >> "disp@........"_e >> "disp@........"_e	] = [](sm& st)
+			sib [ "scale@.. index@... base@101"_e >> "disp@........"_e >> "disp@........"_e >> "disp@........"_e >> "disp@........"_e	] = [](sm& st)
 			{
 				st.state.disp = constant(be32toh(st.capture_groups.at("disp")));
 			};
@@ -349,169 +344,169 @@ namespace po
 			rm64_0[ "mod@00 111 rm@..."_e					] = rm64_func;
 
 			// mod = 01
-			rm8 [ "mod@01 reg@... rm@100"_e >> sib		] = rm8_func;
+			rm8 [ "mod@01 reg@... rm@100"_e >> sib >> disp32 ] = rm8_func;
 			rm8 [ "mod@01 reg@... rm@..."_e >> disp8	] = rm8_func;
-			rm16[ "mod@01 reg@... rm@100"_e >> sib		] = rm16_func;
+			rm16[ "mod@01 reg@... rm@100"_e >> sib >> disp32 ] = rm16_func;
 			rm16[ "mod@01 reg@... rm@..."_e >> disp8	] = rm16_func;
-			rm32[ "mod@01 reg@... rm@100"_e >> sib		] = rm32_func;
+			rm32[ "mod@01 reg@... rm@100"_e >> sib >> disp32 ] = rm32_func;
 			rm32[ "mod@01 reg@... rm@..."_e >> disp8	] = rm32_func;
-			rm64[ "mod@01 reg@... rm@100"_e >> sib		] = rm64_func;
+			rm64[ "mod@01 reg@... rm@100"_e >> sib >> disp32 ] = rm64_func;
 			rm64[ "mod@01 reg@... rm@..."_e >> disp8	] = rm64_func;
 
 			// mod = 01 w/ opcode extension
-			rm8_0 [ "mod@01 000 rm@100"_e >> sib	] = rm8_func;
+			rm8_0 [ "mod@01 000 rm@100"_e >> sib >> disp8 ] = rm8_func;
 			rm8_0 [ "mod@01 000 rm@..."_e >> disp8	] = rm8_func;
-			rm16_0[ "mod@01 000 rm@100"_e >> sib	] = rm16_func;
+			rm16_0[ "mod@01 000 rm@100"_e >> sib >> disp8 ] = rm16_func;
 			rm16_0[ "mod@01 000 rm@..."_e >> disp8	] = rm16_func;
-			rm32_0[ "mod@01 000 rm@100"_e >> sib	] = rm32_func;
+			rm32_0[ "mod@01 000 rm@100"_e >> sib >> disp8 ] = rm32_func;
 			rm32_0[ "mod@01 000 rm@..."_e >> disp8	] = rm32_func;
-			rm64_0[ "mod@01 000 rm@100"_e >> sib	] = rm64_func;
+			rm64_0[ "mod@01 000 rm@100"_e >> sib >> disp8 ] = rm64_func;
 			rm64_0[ "mod@01 000 rm@..."_e >> disp8	] = rm64_func;
 
-			rm8_1 [ "mod@01 001 rm@100"_e >> sib	] = rm8_func;
+			rm8_1 [ "mod@01 001 rm@100"_e >> sib >> disp8 ] = rm8_func;
 			rm8_1 [ "mod@01 001 rm@..."_e >> disp8	] = rm8_func;
-			rm16_1[ "mod@01 001 rm@100"_e >> sib	] = rm16_func;
+			rm16_1[ "mod@01 001 rm@100"_e >> sib >> disp8 ] = rm16_func;
 			rm16_1[ "mod@01 001 rm@..."_e >> disp8	] = rm16_func;
-			rm32_1[ "mod@01 001 rm@100"_e >> sib	] = rm32_func;
+			rm32_1[ "mod@01 001 rm@100"_e >> sib >> disp8 ] = rm32_func;
 			rm32_1[ "mod@01 001 rm@..."_e >> disp8	] = rm32_func;
-			rm64_1[ "mod@01 001 rm@100"_e >> sib	] = rm64_func;
+			rm64_1[ "mod@01 001 rm@100"_e >> sib >> disp8 ] = rm64_func;
 			rm64_1[ "mod@01 001 rm@..."_e >> disp8	] = rm64_func;
 
-			rm8_2 [ "mod@01 010 rm@100"_e >> sib	] = rm8_func;
+			rm8_2 [ "mod@01 010 rm@100"_e >> sib >> disp8 ] = rm8_func;
 			rm8_2 [ "mod@01 010 rm@..."_e >> disp8	] = rm8_func;
-			rm16_2[ "mod@01 010 rm@100"_e >> sib	] = rm16_func;
+			rm16_2[ "mod@01 010 rm@100"_e >> sib >> disp8 ] = rm16_func;
 			rm16_2[ "mod@01 010 rm@..."_e >> disp8	] = rm16_func;
-			rm32_2[ "mod@01 010 rm@100"_e >> sib	] = rm32_func;
+			rm32_2[ "mod@01 010 rm@100"_e >> sib >> disp8 ] = rm32_func;
 			rm32_2[ "mod@01 010 rm@..."_e >> disp8	] = rm32_func;
-			rm64_2[ "mod@01 010 rm@100"_e >> sib	] = rm64_func;
+			rm64_2[ "mod@01 010 rm@100"_e >> sib >> disp8 ] = rm64_func;
 			rm64_2[ "mod@01 010 rm@..."_e >> disp8	] = rm64_func;
 
-			rm8_3 [ "mod@01 011 rm@100"_e >> sib	] = rm8_func;
+			rm8_3 [ "mod@01 011 rm@100"_e >> sib >> disp8 ] = rm8_func;
 			rm8_3 [ "mod@01 011 rm@..."_e >> disp8	] = rm8_func;
-			rm16_3[ "mod@01 011 rm@100"_e >> sib	] = rm16_func;
+			rm16_3[ "mod@01 011 rm@100"_e >> sib >> disp8 ] = rm16_func;
 			rm16_3[ "mod@01 011 rm@..."_e >> disp8	] = rm16_func;
-			rm32_3[ "mod@01 011 rm@100"_e >> sib	] = rm32_func;
+			rm32_3[ "mod@01 011 rm@100"_e >> sib >> disp8 ] = rm32_func;
 			rm32_3[ "mod@01 011 rm@..."_e >> disp8	] = rm32_func;
-			rm64_3[ "mod@01 011 rm@100"_e >> sib	] = rm64_func;
+			rm64_3[ "mod@01 011 rm@100"_e >> sib >> disp8 ] = rm64_func;
 			rm64_3[ "mod@01 011 rm@..."_e >> disp8	] = rm64_func;
 
-			rm8_4 [ "mod@01 100 rm@100"_e >> sib	] = rm8_func;
+			rm8_4 [ "mod@01 100 rm@100"_e >> sib >> disp8 ] = rm8_func;
 			rm8_4 [ "mod@01 100 rm@..."_e >> disp8	] = rm8_func;
-			rm16_4[ "mod@01 100 rm@100"_e >> sib	] = rm16_func;
+			rm16_4[ "mod@01 100 rm@100"_e >> sib >> disp8 ] = rm16_func;
 			rm16_4[ "mod@01 100 rm@..."_e >> disp8	] = rm16_func;
-			rm32_4[ "mod@01 100 rm@100"_e >> sib	] = rm32_func;
+			rm32_4[ "mod@01 100 rm@100"_e >> sib >> disp8 ] = rm32_func;
 			rm32_4[ "mod@01 100 rm@..."_e >> disp8	] = rm32_func;
-			rm64_4[ "mod@01 100 rm@100"_e >> sib	] = rm64_func;
+			rm64_4[ "mod@01 100 rm@100"_e >> sib >> disp8 ] = rm64_func;
 			rm64_4[ "mod@01 100 rm@..."_e >> disp8	] = rm64_func;
 
-			rm8_5 [ "mod@01 101 rm@100"_e >> sib	] = rm8_func;
+			rm8_5 [ "mod@01 101 rm@100"_e >> sib >> disp8 ] = rm8_func;
 			rm8_5 [ "mod@01 101 rm@..."_e >> disp8	] = rm8_func;
-			rm16_5[ "mod@01 101 rm@100"_e >> sib	] = rm16_func;
+			rm16_5[ "mod@01 101 rm@100"_e >> sib >> disp8 ] = rm16_func;
 			rm16_5[ "mod@01 101 rm@..."_e >> disp8	] = rm16_func;
-			rm32_5[ "mod@01 101 rm@100"_e >> sib	] = rm32_func;
+			rm32_5[ "mod@01 101 rm@100"_e >> sib >> disp8 ] = rm32_func;
 			rm32_5[ "mod@01 101 rm@..."_e >> disp8	] = rm32_func;
-			rm64_5[ "mod@01 101 rm@100"_e >> sib	] = rm64_func;
+			rm64_5[ "mod@01 101 rm@100"_e >> sib >> disp8 ] = rm64_func;
 			rm64_5[ "mod@01 101 rm@..."_e >> disp8	] = rm64_func;
 
-			rm8_6 [ "mod@01 110 rm@100"_e >> sib	] = rm8_func;
+			rm8_6 [ "mod@01 110 rm@100"_e >> sib >> disp8 ] = rm8_func;
 			rm8_6 [ "mod@01 110 rm@..."_e >> disp8	] = rm8_func;
-			rm16_6[ "mod@01 110 rm@100"_e >> sib	] = rm16_func;
+			rm16_6[ "mod@01 110 rm@100"_e >> sib >> disp8 ] = rm16_func;
 			rm16_6[ "mod@01 110 rm@..."_e >> disp8	] = rm16_func;
-			rm32_6[ "mod@01 110 rm@100"_e >> sib	] = rm32_func;
+			rm32_6[ "mod@01 110 rm@100"_e >> sib >> disp8 ] = rm32_func;
 			rm32_6[ "mod@01 110 rm@..."_e >> disp8	] = rm32_func;
-			rm64_6[ "mod@01 110 rm@100"_e >> sib	] = rm64_func;
+			rm64_6[ "mod@01 110 rm@100"_e >> sib >> disp8 ] = rm64_func;
 			rm64_6[ "mod@01 110 rm@..."_e >> disp8	] = rm64_func;
 
-			rm8_7 [ "mod@01 111 rm@100"_e >> sib	] = rm8_func;
+			rm8_7 [ "mod@01 111 rm@100"_e >> sib >> disp8 ] = rm8_func;
 			rm8_7 [ "mod@01 111 rm@..."_e >> disp8	] = rm8_func;
-			rm16_7[ "mod@01 111 rm@100"_e >> sib	] = rm16_func;
+			rm16_7[ "mod@01 111 rm@100"_e >> sib >> disp8 ] = rm16_func;
 			rm16_7[ "mod@01 111 rm@..."_e >> disp8	] = rm16_func;
-			rm32_7[ "mod@01 111 rm@100"_e >> sib	] = rm32_func;
+			rm32_7[ "mod@01 111 rm@100"_e >> sib >> disp8 ] = rm32_func;
 			rm32_7[ "mod@01 111 rm@..."_e >> disp8	] = rm32_func;
-			rm64_7[ "mod@01 111 rm@100"_e >> sib	] = rm64_func;
+			rm64_7[ "mod@01 111 rm@100"_e >> sib >> disp8 ] = rm64_func;
 			rm64_7[ "mod@01 111 rm@..."_e >> disp8	] = rm64_func;
 
 			// mod = 10
-			rm8 [ "mod@10 reg@... rm@100"_e >> sib		] = rm8_func;
+			rm8 [ "mod@10 reg@... rm@100"_e >> sib >> disp32 ] = rm8_func;
 			rm8 [ "mod@10 reg@... rm@..."_e >> disp32	] = rm8_func;
-			rm16[ "mod@10 reg@... rm@100"_e >> sib		] = rm16_func;
+			rm16[ "mod@10 reg@... rm@100"_e >> sib >> disp32 ] = rm16_func;
 			rm16[ "mod@10 reg@... rm@..."_e >> disp32	] = rm16_func;
-			rm32[ "mod@10 reg@... rm@100"_e >> sib		] = rm32_func;
+			rm32[ "mod@10 reg@... rm@100"_e >> sib >> disp32 ] = rm32_func;
 			rm32[ "mod@10 reg@... rm@..."_e >> disp32	] = rm32_func;
-			rm64[ "mod@10 reg@... rm@100"_e >> sib		] = rm64_func;
+			rm64[ "mod@10 reg@... rm@100"_e >> sib >> disp32 ] = rm64_func;
 			rm64[ "mod@10 reg@... rm@..."_e >> disp32	] = rm64_func;
 
 			// mod = 10 w/ opcode extension
-			rm8_0 [ "mod@10 000 rm@100"_e >> sib		] = rm8_func;
+			rm8_0 [ "mod@10 000 rm@100"_e >> sib >> disp32 ] = rm8_func;
 			rm8_0 [ "mod@10 000 rm@..."_e >> disp32	] = rm8_func;
-			rm16_0[ "mod@10 000 rm@100"_e >> sib		] = rm16_func;
+			rm16_0[ "mod@10 000 rm@100"_e >> sib >> disp32 ] = rm16_func;
 			rm16_0[ "mod@10 000 rm@..."_e >> disp32	] = rm16_func;
-			rm32_0[ "mod@10 000 rm@100"_e >> sib		] = rm32_func;
+			rm32_0[ "mod@10 000 rm@100"_e >> sib >> disp32 ] = rm32_func;
 			rm32_0[ "mod@10 000 rm@..."_e >> disp32	] = rm32_func;
-			rm64_0[ "mod@10 000 rm@100"_e >> sib		] = rm64_func;
+			rm64_0[ "mod@10 000 rm@100"_e >> sib >> disp32 ] = rm64_func;
 			rm64_0[ "mod@10 000 rm@..."_e >> disp32	] = rm64_func;
 
-			rm8_1 [ "mod@10 001 rm@100"_e >> sib		] = rm8_func;
+			rm8_1 [ "mod@10 001 rm@100"_e >> sib >> disp32 ] = rm8_func;
 			rm8_1 [ "mod@10 001 rm@..."_e >> disp32	] = rm8_func;
-			rm16_1[ "mod@10 001 rm@100"_e >> sib		] = rm16_func;
+			rm16_1[ "mod@10 001 rm@100"_e >> sib >> disp32 ] = rm16_func;
 			rm16_1[ "mod@10 001 rm@..."_e >> disp32	] = rm16_func;
-			rm32_1[ "mod@10 001 rm@100"_e >> sib		] = rm32_func;
+			rm32_1[ "mod@10 001 rm@100"_e >> sib >> disp32 ] = rm32_func;
 			rm32_1[ "mod@10 001 rm@..."_e >> disp32	] = rm32_func;
-			rm64_1[ "mod@10 001 rm@100"_e >> sib		] = rm64_func;
+			rm64_1[ "mod@10 001 rm@100"_e >> sib >> disp32 ] = rm64_func;
 			rm64_1[ "mod@10 001 rm@..."_e >> disp32	] = rm64_func;
 
-			rm8_2 [ "mod@10 010 rm@100"_e >> sib		] = rm8_func;
+			rm8_2 [ "mod@10 010 rm@100"_e >> sib >> disp32 ] = rm8_func;
 			rm8_2 [ "mod@10 010 rm@..."_e >> disp32	] = rm8_func;
-			rm16_2[ "mod@10 010 rm@100"_e >> sib		] = rm16_func;
+			rm16_2[ "mod@10 010 rm@100"_e >> sib >> disp32 ] = rm16_func;
 			rm16_2[ "mod@10 010 rm@..."_e >> disp32	] = rm16_func;
-			rm32_2[ "mod@10 010 rm@100"_e >> sib		] = rm32_func;
+			rm32_2[ "mod@10 010 rm@100"_e >> sib >> disp32 ] = rm32_func;
 			rm32_2[ "mod@10 010 rm@..."_e >> disp32	] = rm32_func;
-			rm64_2[ "mod@10 010 rm@100"_e >> sib		] = rm64_func;
+			rm64_2[ "mod@10 010 rm@100"_e >> sib >> disp32 ] = rm64_func;
 			rm64_2[ "mod@10 010 rm@..."_e >> disp32	] = rm64_func;
 
-			rm8_3 [ "mod@10 011 rm@100"_e >> sib		] = rm8_func;
+			rm8_3 [ "mod@10 011 rm@100"_e >> sib >> disp32 ] = rm8_func;
 			rm8_3 [ "mod@10 011 rm@..."_e >> disp32	] = rm8_func;
-			rm16_3[ "mod@10 011 rm@100"_e >> sib		] = rm16_func;
+			rm16_3[ "mod@10 011 rm@100"_e >> sib >> disp32 ] = rm16_func;
 			rm16_3[ "mod@10 011 rm@..."_e >> disp32	] = rm16_func;
-			rm32_3[ "mod@10 011 rm@100"_e >> sib		] = rm32_func;
+			rm32_3[ "mod@10 011 rm@100"_e >> sib >> disp32 ] = rm32_func;
 			rm32_3[ "mod@10 011 rm@..."_e >> disp32	] = rm32_func;
-			rm64_3[ "mod@10 011 rm@100"_e >> sib		] = rm64_func;
+			rm64_3[ "mod@10 011 rm@100"_e >> sib >> disp32 ] = rm64_func;
 			rm64_3[ "mod@10 011 rm@..."_e >> disp32	] = rm64_func;
 
-			rm8_4 [ "mod@10 100 rm@100"_e >> sib		] = rm8_func;
+			rm8_4 [ "mod@10 100 rm@100"_e >> sib >> disp32 ] = rm8_func;
 			rm8_4 [ "mod@10 100 rm@..."_e >> disp32	] = rm8_func;
-			rm16_4[ "mod@10 100 rm@100"_e >> sib		] = rm16_func;
+			rm16_4[ "mod@10 100 rm@100"_e >> sib >> disp32 ] = rm16_func;
 			rm16_4[ "mod@10 100 rm@..."_e >> disp32	] = rm16_func;
-			rm32_4[ "mod@10 100 rm@100"_e >> sib		] = rm32_func;
+			rm32_4[ "mod@10 100 rm@100"_e >> sib >> disp32 ] = rm32_func;
 			rm32_4[ "mod@10 100 rm@..."_e >> disp32	] = rm32_func;
-			rm64_4[ "mod@10 100 rm@100"_e >> sib		] = rm64_func;
+			rm64_4[ "mod@10 100 rm@100"_e >> sib >> disp32 ] = rm64_func;
 			rm64_4[ "mod@10 100 rm@..."_e >> disp32	] = rm64_func;
 
-			rm8_5 [ "mod@10 101 rm@100"_e >> sib		] = rm8_func;
+			rm8_5 [ "mod@10 101 rm@100"_e >> sib >> disp32 ] = rm8_func;
 			rm8_5 [ "mod@10 101 rm@..."_e >> disp32	] = rm8_func;
-			rm16_5[ "mod@10 101 rm@100"_e >> sib		] = rm16_func;
+			rm16_5[ "mod@10 101 rm@100"_e >> sib >> disp32 ] = rm16_func;
 			rm16_5[ "mod@10 101 rm@..."_e >> disp32	] = rm16_func;
-			rm32_5[ "mod@10 101 rm@100"_e >> sib		] = rm32_func;
+			rm32_5[ "mod@10 101 rm@100"_e >> sib >> disp32 ] = rm32_func;
 			rm32_5[ "mod@10 101 rm@..."_e >> disp32	] = rm32_func;
-			rm64_5[ "mod@10 101 rm@100"_e >> sib		] = rm64_func;
+			rm64_5[ "mod@10 101 rm@100"_e >> sib >> disp32 ] = rm64_func;
 			rm64_5[ "mod@10 101 rm@..."_e >> disp32	] = rm64_func;
 
-			rm8_6 [ "mod@10 110 rm@100"_e >> sib		] = rm8_func;
+			rm8_6 [ "mod@10 110 rm@100"_e >> sib >> disp32 ] = rm8_func;
 			rm8_6 [ "mod@10 110 rm@..."_e >> disp32	] = rm8_func;
-			rm16_6[ "mod@10 110 rm@100"_e >> sib		] = rm16_func;
+			rm16_6[ "mod@10 110 rm@100"_e >> sib >> disp32 ] = rm16_func;
 			rm16_6[ "mod@10 110 rm@..."_e >> disp32	] = rm16_func;
-			rm32_6[ "mod@10 110 rm@100"_e >> sib		] = rm32_func;
+			rm32_6[ "mod@10 110 rm@100"_e >> sib >> disp32 ] = rm32_func;
 			rm32_6[ "mod@10 110 rm@..."_e >> disp32	] = rm32_func;
-			rm64_6[ "mod@10 110 rm@100"_e >> sib		] = rm64_func;
+			rm64_6[ "mod@10 110 rm@100"_e >> sib >> disp32 ] = rm64_func;
 			rm64_6[ "mod@10 110 rm@..."_e >> disp32	] = rm64_func;
 
-			rm8_7 [ "mod@10 111 rm@100"_e >> sib		] = rm8_func;
+			rm8_7 [ "mod@10 111 rm@100"_e >> sib >> disp32 ] = rm8_func;
 			rm8_7 [ "mod@10 111 rm@..."_e >> disp32	] = rm8_func;
-			rm16_7[ "mod@10 111 rm@100"_e >> sib		] = rm16_func;
+			rm16_7[ "mod@10 111 rm@100"_e >> sib >> disp32 ] = rm16_func;
 			rm16_7[ "mod@10 111 rm@..."_e >> disp32	] = rm16_func;
-			rm32_7[ "mod@10 111 rm@100"_e >> sib		] = rm32_func;
+			rm32_7[ "mod@10 111 rm@100"_e >> sib >> disp32 ] = rm32_func;
 			rm32_7[ "mod@10 111 rm@..."_e >> disp32	] = rm32_func;
-			rm64_7[ "mod@10 111 rm@100"_e >> sib		] = rm64_func;
+			rm64_7[ "mod@10 111 rm@100"_e >> sib >> disp32 ] = rm64_func;
 			rm64_7[ "mod@10 111 rm@..."_e >> disp32	] = rm64_func;
 
 			// mod = 11
