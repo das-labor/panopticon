@@ -17,7 +17,7 @@
  */
 
 #include <panopticon/disassembler.hh>
-#include <panopticon/amd64/symantic.hh>
+#include <panopticon/amd64/semantics.hh>
 #include <panopticon/amd64/decode.hh>
 
 #pragma once

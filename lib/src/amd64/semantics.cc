@@ -1,5 +1,5 @@
 #include <panopticon/amd64/amd64.hh>
-#include <panopticon/amd64/symantic.hh>
+#include <panopticon/amd64/semantics.hh>
 #include <panopticon/code_generator.hh>
 
 using namespace po;
