@@ -47,6 +47,6 @@ TEST(amd64,all32)
 	ASSERT_EQ((*(*maybe_proc)->procedures().begin())->rev_postorder().size(), 1u);
 	ASSERT_TRUE((*(*maybe_proc)->procedures().begin())->rev_postorder()[0]->mnemonics().size() > 0);
 
-	for(auto mne: (*(*maybe_proc)->procedures().begin())->rev_postorder()[0]->mnemonics())
-		std::cout << mne << std::endl;
+	/*for(auto mne: (*(*maybe_proc)->procedures().begin())->rev_postorder()[0]->mnemonics())
+		std::cout << mne << std::endl;*/
 }
