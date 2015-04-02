@@ -33,7 +33,7 @@ namespace po
 			disassembler<amd64_tag>
 				main, opsize_prfx, rex_prfx, rexw_prfx, rexr_prfx,
 				addrsize_prfx, rep_prfx, repx_prfx, lock_prfx,
-				imm8, imm16, imm32, imm64,
+				imm8, imm16, imm32, imm48, imm64,
 				sib,
 				rm8, rm16, rm32, rm64,
 				rm8_0, rm16_0, rm32_0, rm64_0,
@@ -90,6 +90,12 @@ namespace po
 			imm32[ imm16 >> "imm@........"_e >> "imm@........"_e] = [](sm& st)
 			{
 				st.state.imm = constant(be32toh(st.capture_groups.at("imm")));
+			};
+			imm48[ imm32 >> "imm@........"_e >> "imm@........"_e ] = [](sm& st)
+			{
+				uint64_t a = be16toh(st.capture_groups.at("imm") & 0xffff);
+
+				st.state.imm = constant((a << 32) | be32toh(st.capture_groups.at("imm") >> 16));
 			};
 			imm64[ imm32 >> "imm@........"_e >> "imm@........"_e >> "imm@........"_e >> "imm@........"_e] = [](sm& st)
 			{
@@ -559,7 +565,7 @@ namespace po
 			add_generic<Bits>(
 				main, opsize_prfx, rex_prfx, rexw_prfx, rexr_prfx,
 				lock_prfx, addrsize_prfx, rep_prfx, repx_prfx,
-				imm8, imm16, imm32, imm64,
+				imm8, imm16, imm32, imm48, imm64,
 				sib,
 				rm8, rm16, rm32, rm64,
 				rm8_0, rm16_0, rm32_0, rm64_0,
