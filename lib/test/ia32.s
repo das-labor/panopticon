@@ -11,12 +11,10 @@ adc eax, 544
 adc al, bl
 adc ax, bx
 adc eax, ebx
-
 adc [0x11223344], bl
 adc [0x44332211], bx
 adc [eax], ebx
 adc [0x001aa1], ebx
-foo:
 add    byte ptr 0x90909090[eax], dl
 add    dword ptr 0x90909090[eax], edx
 add    dl, byte ptr 0x90909090[eax]
@@ -162,9 +160,9 @@ xchg   edi, eax
 cwde
 cdq
 call   0x9090:0x90909090
-fwait
-pushf
-popf
+#fwait
+#pushf
+#popf
 sahf
 lahf
 mov    al, FLAT:[0x90909090]
@@ -223,15 +221,15 @@ rcl    byte ptr 0x90909090[eax], cl
 rcl    dword ptr 0x90909090[eax], cl
 aam    0xffffff90
 aad    0xffffff90
-xlat   byte ptr ds:[ebx]
-fcom   dword ptr 0x90909090[eax]
-fst    dword ptr 0x90909090[eax]
-ficom  dword ptr 0x90909090[eax]
-fist   dword ptr 0x90909090[eax]
-fcom   qword ptr 0x90909090[eax]
-fst    qword ptr 0x90909090[eax]
-ficom  word ptr 0x90909090[eax]
-fist   word ptr 0x90909090[eax]
+#xlat   byte ptr ds:[ebx]
+#fcom   dword ptr 0x90909090[eax]
+#fst    dword ptr 0x90909090[eax]
+#ficom  dword ptr 0x90909090[eax]
+#fist   dword ptr 0x90909090[eax]
+#fcom   qword ptr 0x90909090[eax]
+#fst    qword ptr 0x90909090[eax]
+#ficom  word ptr 0x90909090[eax]
+#fist   word ptr 0x90909090[eax]
 loopne .+2-0x70
 loope  .+2-0x70
 loop   .+2-0x70
@@ -259,24 +257,24 @@ sti
 cld
 std
 call   dword ptr 0x90909090[eax]
-lldt   0x90909090[eax]
-lgdt   0x90909090[eax]
+#lldt   0x90909090[eax]
+#lgdt   0x90909090[eax]
 lar    edx, 0x90909090[eax]
-lsl    edx, 0x90909090[eax]
-clts
-invd
-wbinvd
+#lsl    edx, 0x90909090[eax]
+#clts
+#invd
+#wbinvd
 ud2a
 mov    eax, cr2
 mov    eax, db2
 mov    cr2, eax
 mov    db2, eax
-mov    eax, tr2
-mov    tr2, eax
-wrmsr
-rdtsc
-rdmsr
-rdpmc
+#mov    eax, tr2
+#mov    tr2, eax
+#wrmsr
+#rdtsc
+#rdmsr
+#rdpmc
 cmovo  edx, 0x90909090[eax]
 cmovno edx, 0x90909090[eax]
 cmovb  edx, 0x90909090[eax]
@@ -293,29 +291,29 @@ cmovl  edx, 0x90909090[eax]
 cmovge edx, 0x90909090[eax]
 cmovle edx, 0x90909090[eax]
 cmovg  edx, 0x90909090[eax]
-punpcklbw mm2, 0x90909090[eax]
-punpcklwd mm2, 0x90909090[eax]
-punpckldq mm2, 0x90909090[eax]
-packsswb mm2, 0x90909090[eax]
-pcmpgtb mm2, 0x90909090[eax]
-pcmpgtw mm2, 0x90909090[eax]
-pcmpgtd mm2, 0x90909090[eax]
-packuswb mm2, 0x90909090[eax]
-punpckhbw mm2, 0x90909090[eax]
-punpckhwd mm2, 0x90909090[eax]
-punpckhdq mm2, 0x90909090[eax]
-packssdw mm2, 0x90909090[eax]
-movd   mm2, 0x90909090[eax]
-movq   mm2, 0x90909090[eax]
-psrlw  mm0, 0x90
-psrld  mm0, 0x90
-psrlq  mm0, 0x90
-pcmpeqb mm2, 0x90909090[eax]
-pcmpeqw mm2, 0x90909090[eax]
-pcmpeqd mm2, 0x90909090[eax]
-emms
-movd   0x90909090[eax], mm2
-movq   0x90909090[eax], mm2
+#punpcklbw mm2, 0x90909090[eax]
+#punpcklwd mm2, 0x90909090[eax]
+#punpckldq mm2, 0x90909090[eax]
+#packsswb mm2, 0x90909090[eax]
+#pcmpgtb mm2, 0x90909090[eax]
+#pcmpgtw mm2, 0x90909090[eax]
+#pcmpgtd mm2, 0x90909090[eax]
+#packuswb mm2, 0x90909090[eax]
+#punpckhbw mm2, 0x90909090[eax]
+#punpckhwd mm2, 0x90909090[eax]
+#punpckhdq mm2, 0x90909090[eax]
+#packssdw mm2, 0x90909090[eax]
+#movd   mm2, 0x90909090[eax]
+#movq   mm2, 0x90909090[eax]
+#psrlw  mm0, 0x90
+#psrld  mm0, 0x90
+#psrlq  mm0, 0x90
+#pcmpeqb mm2, 0x90909090[eax]
+#pcmpeqw mm2, 0x90909090[eax]
+#pcmpeqd mm2, 0x90909090[eax]
+#emms
+#movd   0x90909090[eax], mm2
+#movq   0x90909090[eax], mm2
 jo     .+6+0x90909090
 jno    .+6+0x90909090
 jb     .+6+0x90909090
@@ -356,7 +354,7 @@ shld   0x90909090[eax], edx, 0x90
 shld   0x90909090[eax], edx, cl
 push   gs
 pop    gs
-rsm
+#rsm
 bts    0x90909090[eax], edx
 shrd   0x90909090[eax], edx, 0x90
 shrd   0x90909090[eax], edx, cl
@@ -385,35 +383,35 @@ bswap  esp
 bswap  ebp
 bswap  esi
 bswap  edi
-psrlw  mm2, 0x90909090[eax]
-psrld  mm2, 0x90909090[eax]
-psrlq  mm2, 0x90909090[eax]
-pmullw mm2, 0x90909090[eax]
-psubusb mm2, 0x90909090[eax]
-psubusw mm2, 0x90909090[eax]
-pand   mm2, 0x90909090[eax]
-paddusb mm2, 0x90909090[eax]
-paddusw mm2, 0x90909090[eax]
-pandn  mm2, 0x90909090[eax]
-psraw  mm2, 0x90909090[eax]
-psrad  mm2, 0x90909090[eax]
-pmulhw mm2, 0x90909090[eax]
-psubsb mm2, 0x90909090[eax]
-psubsw mm2, 0x90909090[eax]
-por    mm2, 0x90909090[eax]
-paddsb mm2, 0x90909090[eax]
-paddsw mm2, 0x90909090[eax]
-pxor   mm2, 0x90909090[eax]
-psllw  mm2, 0x90909090[eax]
-pslld  mm2, 0x90909090[eax]
-psllq  mm2, 0x90909090[eax]
-pmaddwd mm2, 0x90909090[eax]
-psubb  mm2, 0x90909090[eax]
-psubw  mm2, 0x90909090[eax]
-psubd  mm2, 0x90909090[eax]
-paddb  mm2, 0x90909090[eax]
-paddw  mm2, 0x90909090[eax]
-paddd  mm2, 0x90909090[eax]
+#psrlw  mm2, 0x90909090[eax]
+#psrld  mm2, 0x90909090[eax]
+#psrlq  mm2, 0x90909090[eax]
+#pmullw mm2, 0x90909090[eax]
+#psubusb mm2, 0x90909090[eax]
+#psubusw mm2, 0x90909090[eax]
+#pand   mm2, 0x90909090[eax]
+#paddusb mm2, 0x90909090[eax]
+#paddusw mm2, 0x90909090[eax]
+#pandn  mm2, 0x90909090[eax]
+#psraw  mm2, 0x90909090[eax]
+#psrad  mm2, 0x90909090[eax]
+#pmulhw mm2, 0x90909090[eax]
+#psubsb mm2, 0x90909090[eax]
+#psubsw mm2, 0x90909090[eax]
+#por    mm2, 0x90909090[eax]
+#paddsb mm2, 0x90909090[eax]
+#paddsw mm2, 0x90909090[eax]
+#pxor   mm2, 0x90909090[eax]
+#psllw  mm2, 0x90909090[eax]
+#pslld  mm2, 0x90909090[eax]
+#psllq  mm2, 0x90909090[eax]
+#pmaddwd mm2, 0x90909090[eax]
+#psubb  mm2, 0x90909090[eax]
+#psubw  mm2, 0x90909090[eax]
+#psubd  mm2, 0x90909090[eax]
+#paddb  mm2, 0x90909090[eax]
+#paddw  mm2, 0x90909090[eax]
+#paddd  mm2, 0x90909090[eax]
 add    0x90909090[eax], dx
 add    dx, 0x90909090[eax]
 add    ax, 0x9090
@@ -505,8 +503,8 @@ xchg   di, ax
 cbw
 cwd
 callw  0x9090:0x9090
-pushfw
-popfw
+#pushfw
+#popfw
 mov    ax, FLAT:[0x90909090]
 mov    FLAT:[0x90909090], ax
 movs   word ptr es:[edi], word ptr ds:[esi]
@@ -531,8 +529,8 @@ lds    dx, 0x90909090[eax]
 mov    word ptr 0x90909090[eax], 0x9090
 enterw 0x9090, 0x90
 leavew
-retfw  0x9090
-retfw
+#retfw  0x9090
+#retfw
 lretw  0x9090
 lretw
 iretw
@@ -547,7 +545,7 @@ out    dx, ax
 not    word ptr 0x90909090[eax]
 call   word ptr 0x90909090[eax]
 lar    dx, 0x90909090[eax]
-lsl    dx, 0x90909090[eax]
+#lsl    dx, 0x90909090[eax]
 cmovo  dx, 0x90909090[eax]
 cmovno dx, 0x90909090[eax]
 cmovb  dx, 0x90909090[eax]
@@ -596,7 +594,8 @@ ret
 bar:
 call	gs_foo
 call	short_foo
-fstp   QWORD PTR [eax+edx*8]
+ok_till_here:
+#fstp   QWORD PTR [eax+edx*8]
 mov	BYTE PTR [esi+edx], al
 mov	BYTE PTR [edx+esi], al
 mov	BYTE PTR [edx*2+esi], al
@@ -621,10 +620,10 @@ jo     .+2-0x70
 1:
 jne	1b
 add	edi, dword ptr [ebx+8*eax]
-movd	mm0, dword ptr [ebx+8*eax+4]
+#movd	mm0, dword ptr [ebx+8*eax+4]
 add	edi, dword ptr [ebx+8*ecx+((4095+1)*8)]
-movd	mm1, dword ptr [ebx+8*ecx+((4095+1)*8)+4]
-movd	mm2, dword ptr [ebx+8*eax+(2*(4095+1)*8)+4]
+#movd	mm1, dword ptr [ebx+8*ecx+((4095+1)*8)+4]
+#movd	mm2, dword ptr [ebx+8*eax+(2*(4095+1)*8)+4]
 add	edi, dword ptr [ebx+8*eax+(2*(4095+1)*8)]
 mov	ax,  word ptr [ebx+2*eax]
 mov	cx,  word ptr [ebx+2*ecx+((4095+1)*2)]
@@ -646,67 +645,67 @@ mov	%bl, 0x47
 shrd   eax, edx, cl
 shld   eax, edx, cl
 
-fadd
-fadd	st(3)
-fadd	st,st(3)
-fadd	st(3),st
-fadd   DWORD PTR [ebx]
-fadd   QWORD PTR [ebx]
-faddp
-faddp	st(3)
-faddp	st(3),st
-fdiv
-fdiv   st(3)
-fdiv   st,st(3)
-fdiv   st(3),st
-fdiv   DWORD PTR [ebx]
-fdiv   QWORD PTR [ebx]
-fdivp
-fdivp  st(3)
-fdivp  st(3),st
-fdivp  st,st(3)
-fdivr
-fdivr  st(3)
-fdivr  st,st(3)
-fdivr  st(3),st
-fdivr  DWORD PTR [ebx]
-fdivr  QWORD PTR [ebx]
-fdivrp
-fdivrp st(3)
-fdivrp st(3),st
-fdivrp st,st(3)
-fmul
-fmul	st(3)
-fmul	st,st(3)
-fmul	st(3),st
-fmul   DWORD PTR [ebx]
-fmul   QWORD PTR [ebx]
-fmulp
-fmulp	st(3)
-fmulp	st(3),st
-fsub
-fsubr
-fsub   st(3)
-fsub   st,st(3)
-fsub   st(3),st
-fsub   DWORD PTR [ebx]
-fsub   QWORD PTR [ebx]
-fsubp
-fsubp  st(3)
-fsubp  st,st(3)
-fsubp  st(3),st
-fsubr  st(3)
-fsubr  st,st(3)
-fsubr  st(3),st
-fsubr  DWORD PTR [ebx]
-fsubr  QWORD PTR [ebx]
-fsubrp
-fsubrp st(3)
-fsubrp st(3),st
-fsubrp st,st(3)
+#fadd
+#fadd	st(3)
+#fadd	st,st(3)
+#fadd	st(3),st
+#fadd   DWORD PTR [ebx]
+#fadd   QWORD PTR [ebx]
+#faddp
+#faddp	st(3)
+#faddp	st(3),st
+#fdiv
+#fdiv   st(3)
+#fdiv   st,st(3)
+#fdiv   st(3),st
+#fdiv   DWORD PTR [ebx]
+#fdiv   QWORD PTR [ebx]
+#fdivp
+#fdivp  st(3)
+#fdivp  st(3),st
+#fdivp  st,st(3)
+#fdivr
+#fdivr  st(3)
+#fdivr  st,st(3)
+#fdivr  st(3),st
+#fdivr  DWORD PTR [ebx]
+#fdivr  QWORD PTR [ebx]
+#fdivrp
+#fdivrp st(3)
+#fdivrp st(3),st
+#fdivrp st,st(3)
+#fmul
+#fmul	st(3)
+#fmul	st,st(3)
+#fmul	st(3),st
+#fmul   DWORD PTR [ebx]
+#fmul   QWORD PTR [ebx]
+#fmulp
+#fmulp	st(3)
+#fmulp	st(3),st
+#fsub
+#fsubr
+#fsub   st(3)
+#fsub   st,st(3)
+#fsub   st(3),st
+#fsub   DWORD PTR [ebx]
+#fsub   QWORD PTR [ebx]
+#fsubp
+#fsubp  st(3)
+#fsubp  st,st(3)
+#fsubp  st(3),st
+#fsubr  st(3)
+#fsubr  st,st(3)
+#fsubr  st(3),st
+#fsubr  DWORD PTR [ebx]
+#fsubr  QWORD PTR [ebx]
+#fsubrp
+#fsubrp st(3)
+#fsubrp st(3),st
+#fsubrp st,st(3)
 
-fidivr  word ptr [ebx]
-fidivr  dword ptr [ebx]
+#fidivr  word ptr [ebx]
+#fidivr  dword ptr [ebx]
 
 cmovpe  edx, 0x90909090[eax]
 cmovpo edx, 0x90909090[eax]
