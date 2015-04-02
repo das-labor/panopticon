@@ -162,6 +162,8 @@ void po::amd64::and_(cg& m, rvalue a, rvalue b, boost::optional<std::pair<uint8_
 	set_arithm_flags(res,res_half,a,b,m);
 }
 
+void po::amd64::arpl(cg& m, rvalue a, rvalue b) {}
+
 void po::amd64::bound(cg& m, rvalue a, rvalue b) {}
 
 void po::amd64::bsf(cg& m, rvalue a, rvalue b)
@@ -503,11 +505,12 @@ void po::amd64::imul3(cg& m, rvalue a, rvalue b, rvalue c) {}
 void po::amd64::in(cg& m, rvalue a, rvalue b) {}
 void po::amd64::icebp(cg& m) {}
 void po::amd64::inc(cg& m, rvalue a) {}
-void po::amd64::ins(cg& m, rvalue a, amd64_state::OperandSize) {}
+void po::amd64::ins(cg& m, rvalue a, rvalue b, amd64_state::OperandSize) {}
 void po::amd64::int_(cg& m, rvalue a) {}
 void po::amd64::into(cg& m) {}
 void po::amd64::iret(cg&,amd64_state::OperandSize) {}
 void po::amd64::jcc(cg&,rvalue a, condition c) {}
+void po::amd64::jmp(cg&,rvalue a) {}
 void po::amd64::jxz(cg&,rvalue a, rvalue b) {}
 void po::amd64::lahf(cg& m) {}
 void po::amd64::lar(cg& m, rvalue a, rvalue b) {}
@@ -526,7 +529,7 @@ void po::amd64::neg(cg& m, rvalue a) {}
 void po::amd64::nop(cg& m) {}
 void po::amd64::not_(cg& m,rvalue) {}
 void po::amd64::out(cg& m, rvalue a, rvalue b) {}
-void po::amd64::outs(cg& m, rvalue a, amd64_state::OperandSize) {}
+void po::amd64::outs(cg& m, rvalue a, rvalue b, amd64_state::OperandSize) {}
 void po::amd64::pop(cg& m, rvalue a, amd64_state::AddressSize b) {}
 void po::amd64::popa(cg& m, amd64_state::OperandSize) {}
 void po::amd64::popcnt(cg& m, rvalue a, rvalue b) {}
@@ -552,6 +555,7 @@ void po::amd64::shld(cg& m, rvalue a, rvalue b, rvalue c) {}
 void po::amd64::shrd(cg& m, rvalue a, rvalue b, rvalue c) {}
 void po::amd64::stos(cg&,amd64_state::OperandSize,int) {}
 void po::amd64::test(cg& m,rvalue a, rvalue b) {}
+void po::amd64::ud1(cg& m) {}
 void po::amd64::ud2(cg& m) {}
 void po::amd64::xadd(cg& m, rvalue a, rvalue b) {}
 void po::amd64::xchg(cg& m, rvalue a, rvalue b) {}

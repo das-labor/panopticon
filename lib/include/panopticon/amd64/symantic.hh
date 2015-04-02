@@ -62,6 +62,7 @@ namespace po
 		void adc(cg& m, rvalue a, rvalue b, boost::optional<std::pair<uint8_t,uint8_t>> sign_ext);
 		void adcx(cg& m, rvalue a, rvalue b);
 		void and_(cg& m, rvalue a, rvalue b, boost::optional<std::pair<uint8_t,uint8_t>> sign_ext);
+		void arpl(cg& m, rvalue a, rvalue b);
 		void bound(cg& m, rvalue a, rvalue b);
 		void bsf(cg& m, rvalue a, rvalue b);
 		void bsr(cg& m, rvalue a, rvalue b);
@@ -100,11 +101,12 @@ namespace po
 		void dec(cg& m, rvalue a);
 		void icebp(cg& m);
 		void inc(cg& m, rvalue a);
-		void ins(cg& m, rvalue a, amd64_state::OperandSize);
+		void ins(cg& m, rvalue a, rvalue b, amd64_state::OperandSize);
 		void int_(cg& m, rvalue a);
 		void into(cg& m);
 		void iret(cg&,amd64_state::OperandSize);
 		void jcc(cg&,rvalue a, condition c);
+		void jmp(cg&,rvalue a);
 		void jxz(cg&,rvalue a, rvalue b);
 		void lahf(cg& m);
 		void lar(cg& m, rvalue a, rvalue b);
@@ -124,7 +126,7 @@ namespace po
 		void not_(cg& m,rvalue);
 		void or_(cg& m, rvalue a, rvalue b, boost::optional<std::pair<uint8_t,uint8_t>> sign_ext);
 		void out(cg& m, rvalue a, rvalue b);
-		void outs(cg& m, rvalue a, amd64_state::OperandSize);
+		void outs(cg& m, rvalue a, rvalue b, amd64_state::OperandSize);
 		void pop(cg& m, rvalue a, amd64_state::AddressSize b);
 		void popa(cg& m, amd64_state::OperandSize);
 		void popcnt(cg& m, rvalue a, rvalue b);
@@ -153,6 +155,7 @@ namespace po
 		void stos(cg&,amd64_state::OperandSize,int);
 		void sub(cg& m, rvalue a, rvalue b, boost::optional<std::pair<uint8_t,uint8_t>> sign_ext);
 		void test(cg& m,rvalue a, rvalue b);
+		void ud1(cg& m);
 		void ud2(cg& m);
 		void xadd(cg& m, rvalue a, rvalue b);
 		void xchg(cg& m, rvalue a, rvalue b);
