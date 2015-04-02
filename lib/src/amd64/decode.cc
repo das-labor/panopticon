@@ -19,9 +19,11 @@
 #include <functional>
 #include <list>
 #include <string>
+#include <iomanip>
 
 #include <panopticon/amd64/amd64.hh>
 #include <panopticon/amd64/decode.hh>
+#include <panopticon/amd64/traits.hh>
 
 #include <panopticon/code_generator.hh>
 
@@ -220,37 +222,37 @@ po::lvalue po::amd64::decode_modrm(
 		case amd64_state::AddrSz_32:
 		case amd64_state::AddrSz_64:
 		{
+			boost::optional<lvalue> base;
+
+			switch(b_rm)
+			{
+				case 0: case 1: case 2: case 3:
+				case 6: case 7: case 8: case 9: case 10: case 11:
+				case 14: case 15:
+					base = select_reg(os,b_rm);
+					break;
+
+				case 4: case 12:
+					base = decode_sib(mod,std::get<0>(*sib),std::get<1>(*sib),std::get<2>(*sib),disp,os,c);
+					break;
+
+				case 5:
+				case 13:
+					if(mod == 0)
+						return select_mem(os,*disp);
+					else
+						base = select_reg(os,b_rm);
+					break;
+
+				default: ensure(false);
+			}
+
 			switch(mod)
 			{
-				case 0: switch(b_rm)
-				{
-					case 0: case 1: case 2: case 3:
-					case 6: case 7: case 8: case 9: case 10: case 11:
-					case 14: case 15:
-						return select_mem(os,select_reg(os,b_rm));
-
-					case 4:
-					case 12:
-						return decode_sib(mod,std::get<0>(*sib),std::get<1>(*sib),std::get<2>(*sib),disp,os,c);
-
-					case 5:
-					case 13:
-						return select_mem(os,*disp);
-
-					default: ensure(false);
-				}
-				case 1: switch(b_rm)
-				{
-					default: ensure(false);
-				}
-				case 2: switch(b_rm)
-				{
-					default: ensure(false);
-				}
-				case 3:
-				{
-					return select_reg(os,b_rm);
-				}
+				case 0: return select_mem(os,*base);
+				case 1: return select_mem(os,c.add_i(*base,*disp));
+				case 2: return select_mem(os,c.add_i(*base,*disp));
+				case 3: return *base;
 				default: ensure(false);
 			}
 		}
@@ -259,13 +261,13 @@ po::lvalue po::amd64::decode_modrm(
 }
 
 po::memory po::amd64::decode_sib(
-		unsigned int mod,
-		unsigned int scale,
-		unsigned int x_index,
-		unsigned int b_base,
-		boost::optional<constant> disp,
-		amd64_state::OperandSize os,
-		cg& c)
+	unsigned int mod,
+	unsigned int scale,
+	unsigned int x_index,
+	unsigned int b_base,
+	boost::optional<constant> disp,
+	amd64_state::OperandSize os,
+	cg& c)
 {
 	ensure(mod <= 3 && scale <= 3 && x_index <= 15 && b_base <= 15);
 
@@ -328,6 +330,98 @@ std::pair<po::rvalue,po::rvalue> po::amd64::decode_rm(sm const& st,cg&)
 	return std::make_pair(*st.state.reg,*st.state.rm);
 }
 
+std::pair<po::rvalue,po::rvalue> po::amd64::decode_sregm(sm const& st,cg&)
+{
+	ensure(st.state.reg && st.state.rm);
+	ensure(is_variable(*st.state.reg));
+
+	variable reg = to_variable(*st.state.reg);
+
+	if(reg == ax)
+		return std::make_pair(es,*st.state.rm);
+	else if(reg == cx)
+		return std::make_pair(cs,*st.state.rm);
+	else if(reg == dx)
+		return std::make_pair(ss,*st.state.rm);
+	else if(reg == bx)
+		return std::make_pair(ds,*st.state.rm);
+	else if(reg == sp)
+		return std::make_pair(fs,*st.state.rm);
+	else if(reg == bp)
+		return std::make_pair(gs,*st.state.rm);
+	else
+		throw std::invalid_argument("unknown segment register");
+}
+
+std::pair<po::rvalue,po::rvalue> po::amd64::decode_msreg(sm const& st,cg& c)
+{
+	auto ret = decode_sregm(st,c);
+	return std::make_pair(ret.second,ret.first);
+}
+
+std::pair<po::rvalue,po::rvalue> po::amd64::decode_ctrlrm(sm const& st,cg&)
+{
+	ensure(st.state.reg && st.state.rm);
+	ensure(is_variable(*st.state.reg));
+
+	variable reg = to_variable(*st.state.reg);
+
+	if(reg == eax || reg == rax)
+		return std::make_pair(cr0,*st.state.rm);
+	else if(reg == edx || reg == rdx)
+		return std::make_pair(cr2,*st.state.rm);
+	else if(reg == ebx || reg == rbx)
+		return std::make_pair(cr3,*st.state.rm);
+	else if(reg == esp || reg == rsp)
+		return std::make_pair(cr4,*st.state.rm);
+	else
+		throw std::invalid_argument("unknown control register");
+}
+
+std::pair<po::rvalue,po::rvalue> po::amd64::decode_rmctrl(sm const& st,cg& c)
+{
+	auto ret = decode_ctrlrm(st,c);
+	return std::make_pair(ret.second,ret.first);
+}
+
+std::pair<po::rvalue,po::rvalue> po::amd64::decode_dbgrm(sm const& st,cg&)
+{
+	ensure(st.state.reg && st.state.rm);
+	ensure(is_variable(*st.state.reg));
+
+	variable reg = to_variable(*st.state.reg);
+
+	if(reg == eax || reg == rax)
+		return std::make_pair(dr0,*st.state.rm);
+	else if(reg == ecx || reg == rcx)
+		return std::make_pair(dr1,*st.state.rm);
+	else if(reg == edx || reg == rdx)
+		return std::make_pair(dr2,*st.state.rm);
+	else if(reg == ebx || reg == rbx)
+		return std::make_pair(dr3,*st.state.rm);
+	else if(reg == esp || reg == rsp)
+		return std::make_pair(dr4,*st.state.rm);
+	else if(reg == ebp || reg == rbp)
+		return std::make_pair(dr5,*st.state.rm);
+	else if(reg == esi || reg == rsi)
+		return std::make_pair(dr6,*st.state.rm);
+	else if(reg == edi || reg == rdi)
+		return std::make_pair(dr7,*st.state.rm);
+	else
+		throw std::invalid_argument("unknown debug register");
+}
+
+std::pair<po::rvalue,po::rvalue> po::amd64::decode_rmdbg(sm const& st,cg& c)
+{
+	auto ret = decode_dbgrm(st,c);
+	return std::make_pair(ret.second,ret.first);
+}
+po::rvalue po::amd64::decode_rm1(sm const& st,cg&)
+{
+	ensure(st.state.rm);
+	return *st.state.rm;
+}
+
 std::pair<rvalue,rvalue> po::amd64::decode_mr(sm const& st,cg&)
 {
 	ensure(st.state.reg && st.state.rm);
@@ -355,23 +449,44 @@ std::pair<rvalue,rvalue> po::amd64::decode_i(amd64_state::OperandSize os, sm con
 
 rvalue po::amd64::decode_m(sm const& st,cg&)
 {
-	ensure(false);
+	ensure(st.state.rm);
+	return *st.state.rm;
 }
 
 rvalue po::amd64::decode_d(sm const& st,cg&)
 {
-	ensure(false);
-}
+	ensure(st.state.imm);
 
-rvalue po::amd64::decode_o(sm const& st,cg&)
-{
-	ensure(false);
+	constant c = *st.state.imm;
+	uint64_t a,b;
+	unsigned int s;
+
+	if(c.content() <= 0xffffffff)
+	{
+		a = st.state.imm->content() >> 16;
+		b = c.content() & 0xffff;
+		s = 16;
+	}
+	else
+	{
+		a = st.state.imm->content() >> 32;
+		b = c.content() & 0xffffffff;
+		s = 32;
+	}
+
+	return constant((a << s) | b);
 }
 
 rvalue po::amd64::decode_imm(sm const& st,cg&)
 {
 	ensure(st.state.imm);
 	return *st.state.imm;
+}
+
+rvalue po::amd64::decode_moffs(amd64_state::OperandSize os,sm const& st,cg&)
+{
+	ensure(st.state.imm);
+	return select_mem(os,*st.state.imm);
 }
 
 sem_action po::amd64::nonary(std::string const& op, std::function<void(cg&)> func)
@@ -398,8 +513,29 @@ sem_action po::amd64::unary(std::string const& op, std::function<rvalue(sm const
 			rvalue a = decode(st,c);
 			func(c,a);
 
-			std::cout << op << " " << a << std::endl;
+			std::cout << "[ ";
+			for(auto x: st.tokens)
+				std::cout << std::setw(2) << std::hex << (unsigned int)x << " ";
+			std::cout << "] " << op << " " << a << std::endl;
 			return std::list<rvalue>({a});
+		});
+		st.jump(st.address + st.tokens.size());
+	};
+}
+
+sem_action po::amd64::unary(std::string const& op, rvalue arg, std::function<void(cg&,rvalue)> func)
+{
+	return [op,func,arg](sm &st)
+	{
+		st.mnemonic(st.tokens.size(),op,"{64}",[arg,func,st,op](cg& c)
+		{
+			func(c,arg);
+
+			std::cout << "[ ";
+			for(auto x: st.tokens)
+				std::cout << std::setw(2) << std::hex << (unsigned int)x << " ";
+			std::cout << "] " << op << " " << arg << std::endl;
+			return std::list<rvalue>({arg});
 		});
 		st.jump(st.address + st.tokens.size());
 	};
@@ -415,9 +551,67 @@ sem_action po::amd64::binary(std::string const& op, std::function<std::pair<rval
 
 			std::tie(a,b) = decode(st,c);
 			func(c,a,b);
-
-			std::cout << op << " " << a << ", " << b << std::endl;
+			std::cout << "[ ";
+			for(auto x: st.tokens)
+				std::cout << std::setw(2) << std::hex << (unsigned int)x << " ";
+			std::cout << "] " << op << " " << a << ", " << b << std::endl;
 			return std::list<rvalue>({a,b});
+		});
+
+		st.jump(st.address + st.tokens.size());
+	};
+}
+
+sem_action po::amd64::binary(std::string const& op, std::function<rvalue(sm const&,cg&)> decode, rvalue arg2, std::function<void(cg&,rvalue,rvalue)> func)
+{
+	return [op,func,decode,arg2](sm &st)
+	{
+		st.mnemonic(st.tokens.size(),op,"{64} {64}",[arg2,decode,func,st,op](cg& c)
+		{
+			rvalue arg1 = decode(st,c);
+			func(c,arg1,arg2);
+			std::cout << "[ ";
+			for(auto x: st.tokens)
+				std::cout << std::setw(2) << std::hex << (unsigned int)x << " ";
+			std::cout << "] " << op << " " << arg1 << ", " << arg2 << std::endl;
+			return std::list<rvalue>({arg1,arg2});
+		});
+
+		st.jump(st.address + st.tokens.size());
+	};
+}
+
+sem_action po::amd64::binary(std::string const& op, rvalue arg1, std::function<rvalue(sm const&,cg&)> decode, std::function<void(cg&,rvalue,rvalue)> func)
+{
+	return [op,func,arg1,decode](sm &st)
+	{
+		st.mnemonic(st.tokens.size(),op,"{64} {64}",[arg1,decode,func,st,op](cg& c)
+		{
+			rvalue arg2 = decode(st,c);
+			func(c,arg1,arg2);
+			std::cout << "[ ";
+			for(auto x: st.tokens)
+				std::cout << std::setw(2) << std::hex << (unsigned int)x << " ";
+			std::cout << "] " << op << " " << arg1 << ", " << arg2 << std::endl;
+			return std::list<rvalue>({arg1,arg2});
+		});
+
+		st.jump(st.address + st.tokens.size());
+	};
+}
+
+sem_action po::amd64::binary(std::string const& op, rvalue arg1, rvalue arg2, std::function<void(cg&,rvalue,rvalue)> func)
+{
+	return [op,func,arg1,arg2](sm &st)
+	{
+		st.mnemonic(st.tokens.size(),op,"{64} {64}",[arg1,arg2,func,st,op](cg& c)
+		{
+			func(c,arg1,arg2);
+			std::cout << "[ ";
+			for(auto x: st.tokens)
+				std::cout << std::setw(2) << std::hex << (unsigned int)x << " ";
+			std::cout << "] " << op << " " << arg1 << ", " << arg2 << std::endl;
+			return std::list<rvalue>({arg1,arg2});
 		});
 
 		st.jump(st.address + st.tokens.size());
@@ -457,47 +651,39 @@ sem_action po::amd64::trinary(std::string const& op, std::function<std::tuple<rv
 	};
 }
 
-std::pair<rvalue,rvalue> po::amd64::decode_td(po::amd64_state::OperandSize,sm const& st,cg&)
+sem_action po::amd64::trinary(std::string const& op, std::function<std::pair<rvalue,rvalue>(sm const&,cg&)> decode, rvalue arg3, std::function<void(cg&,rvalue,rvalue,rvalue)> func)
 {
-	ensure(false);
-}
+	return [op,func,decode,arg3](sm &st)
+	{
+		st.mnemonic(st.tokens.size(),op,"{64} {64} {64}",[decode,arg3,func,st,op](cg& d)
+		{
+			rvalue a,b;
 
-std::pair<rvalue,rvalue> po::amd64::decode_fd(po::amd64_state::OperandSize,sm const& st,cg&)
-{
-	ensure(false);
-}
+			std::tie(a,b) = decode(st,d);
+			func(d,a,b,arg3);
 
-std::pair<rvalue,rvalue> po::amd64::decode_mc(sm const& st,cg&)
-{
-	ensure(false);
-}
+			std::cout << op << " " << a << ", " << b << ", " << arg3 << std::endl;
+			return std::list<rvalue>({a,b,arg3});
+		});
 
-std::pair<rvalue,rvalue> po::amd64::decode_oi(sm const& st,cg&)
-{
-	ensure(false);
+		st.jump(st.address + st.tokens.size());
+	};
 }
 
 std::pair<rvalue,rvalue> po::amd64::decode_ii(sm const& st,cg&)
 {
-	ensure(false);
+	ensure(st.state.imm);
+	return std::make_pair(constant(st.state.imm->content() >> 8),constant(st.state.imm->content() & 0xff));
 }
 
-std::pair<rvalue,rvalue> po::amd64::decode_m1(sm const& st,cg&)
+std::tuple<rvalue,rvalue,rvalue> po::amd64::decode_rmi(sm const& st,cg&)
 {
-	ensure(false);
+	ensure(st.state.reg && st.state.rm && st.state.imm);
+	return std::make_tuple(*st.state.reg,*st.state.rm,*st.state.imm);
 }
 
-std::tuple<rvalue,rvalue,rvalue> po::amd64::decode_rmi(sm const&,cg&)
+std::tuple<rvalue,rvalue,rvalue> po::amd64::decode_mri(sm const& st,cg&)
 {
-	ensure(false);
-}
-
-std::tuple<rvalue,rvalue,rvalue> po::amd64::decode_mri(sm const&,cg&)
-{
-	ensure(false);
-}
-
-std::tuple<rvalue,rvalue,rvalue> po::amd64::decode_mrc(sm const&,cg&)
-{
-	ensure(false);
+	ensure(st.state.reg && st.state.rm && st.state.imm);
+	return std::make_tuple(*st.state.rm,*st.state.reg,*st.state.imm);
 }
