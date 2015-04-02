@@ -47,7 +47,9 @@ namespace po
 			"sp","spl","esp","rsp",
 			"ip","eip","rip",
 			"CS","FS","SS","DS",
-			"CF","PF","AF","ZF","SF","TF","IF","DF","OF","IOPL","NT","RF","AC","VIF","VIP","VM","ID"
+			"CF","PF","AF","ZF","SF","TF","IF","DF","OF","IOPL","NT","RF","AC","VIF","VIP","VM","ID",
+			"cr0","cr2","cr3","cr4",
+			"dr0","dr1","dr2","dr3","dr4","dr5","dr6","dr7"
 			});
 
 			const variable al = variable("al",8),
@@ -101,7 +103,7 @@ namespace po
 								ecx = variable("ecx",32),
 								edx = variable("edx",32),
 								esi = variable("esi",32),
-								edi = variable("edx",32),
+								edi = variable("edi",32),
 								r4d = variable("r4d",32),
 								r5d = variable("r5d",32),
 								r6d = variable("r6d",32),
@@ -169,6 +171,22 @@ namespace po
 								VIP = variable("VIP",1),
 								VM = variable("VM",1),
 								ID = variable("ID",1),
+
+								// 32 bit control registers
+								cr0 = variable("cr0",32),
+								cr2 = variable("cr2",32),
+								cr3 = variable("cr3",32),
+								cr4 = variable("cr4",32),
+
+								// 32 bit debug registers
+								dr0 = variable("dr0",32),
+								dr1 = variable("dr1",32),
+								dr2 = variable("dr2",32),
+								dr3 = variable("dr3",32),
+								dr4 = variable("dr4",32),
+								dr5 = variable("dr5",32),
+								dr6 = variable("dr6",32),
+								dr7 = variable("dr7",32),
 
 								// 64 bit management registers
 								rsp = variable("rsp",64),
