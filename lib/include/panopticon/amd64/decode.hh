@@ -39,7 +39,7 @@ namespace po
 		rvalue decode_imm(sm const&,cg&);
 		rvalue decode_moffs(amd64_state::OperandSize os,sm const&,cg&);
 		rvalue decode_rm1(sm const&,cg&);
-		std::pair<rvalue,rvalue> decode_i(amd64_state::OperandSize,sm const&,cg&);
+		std::pair<rvalue,rvalue> decode_i(sm const&,cg&);
 		std::pair<rvalue,rvalue> decode_rm(sm const&,cg&);
 		std::pair<rvalue,rvalue> decode_sregm(sm const&,cg&);
 		std::pair<rvalue,rvalue> decode_msreg(sm const&,cg&);
@@ -70,6 +70,7 @@ namespace po
 			boost::optional<std::tuple<unsigned int,unsigned int,unsigned int>> sib, // scale, X.index, B.base
 			amd64_state::OperandSize os,
 			amd64_state::AddressSize as,
+			bool rex,
 			cg& c);
 
 		memory decode_sib(
@@ -80,7 +81,7 @@ namespace po
 			boost::optional<constant> disp,
 			amd64_state::OperandSize,cg&);
 
-		variable select_reg(amd64_state::OperandSize,unsigned int);
+		variable select_reg(amd64_state::OperandSize,unsigned int,bool);
 		memory select_mem(amd64_state::OperandSize,rvalue);
 
 		sem_action nonary(std::string const&,std::function<void(cg&)>);

@@ -5,6 +5,7 @@ aad 0x33
 aam
 aam 0x55
 aas
+
 adc al, 6
 adc ax, 44
 adc eax, 544
@@ -15,6 +16,7 @@ adc [0x11223344], bl
 adc [0x44332211], bx
 adc [eax], ebx
 adc [0x001aa1], ebx
+
 add    byte ptr 0x90909090[eax], dl
 add    dword ptr 0x90909090[eax], edx
 add    dl, byte ptr 0x90909090[eax]
