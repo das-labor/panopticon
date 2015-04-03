@@ -60,18 +60,18 @@ protected:
 			st.jump(st.address + 1);
 		};
 
-		_bytes = {'A','A','B','A','C','X'};
+		_bytes = {'A','A','B','A','C','X','A','X'};
 		bytes = po::slab(_bytes.data(),_bytes.size());
 	}
 
-	po::disassembler<test_tag> main, sub;
+	po::disassembler<test_tag> main, sub, sub2;
 	std::vector<unsigned char> _bytes;
 	po::slab bytes;
 };
 
 TEST_F(disassembler,single_decoder)
 {
-	po::sem_state<test_tag> st(0);
+	po::sem_state<test_tag> st(0,'a');
 	boost::optional<std::pair<po::slab::iterator,po::sem_state<test_tag>>> i;
 
 	i = main.try_match(bytes.begin(),bytes.end(),st);
@@ -95,7 +95,7 @@ TEST_F(disassembler,single_decoder)
 
 TEST_F(disassembler,sub_decoder)
 {
-	po::sem_state<test_tag> st(1);
+	po::sem_state<test_tag> st(1,'a');
 	boost::optional<std::pair<po::slab::iterator,po::sem_state<test_tag>>> i;
 
 	i = main.try_match(bytes.begin()+1,bytes.end(),st);
@@ -120,7 +120,7 @@ TEST_F(disassembler,sub_decoder)
 
 TEST_F(disassembler,default_pattern)
 {
-	po::sem_state<test_tag> st(5);
+	po::sem_state<test_tag> st(7,'a');
 	boost::optional<std::pair<po::slab::iterator,po::sem_state<test_tag>>> i;
 
 	i = main.try_match(bytes.begin()+5,bytes.end(),st);
@@ -144,7 +144,7 @@ TEST_F(disassembler,default_pattern)
 
 TEST_F(disassembler,slice)
 {
-	po::sem_state<test_tag> st(1);
+	po::sem_state<test_tag> st(1,'a');
 	boost::optional<std::pair<po::slab::iterator,po::sem_state<test_tag>>> i;
 
 	i = main.try_match(bytes.begin()+1,bytes.begin()+2,st);
@@ -168,7 +168,7 @@ TEST_F(disassembler,slice)
 
 TEST_F(disassembler,empty)
 {
-	po::sem_state<test_tag> st(0);
+	po::sem_state<test_tag> st(0,'a');
 	boost::optional<std::pair<po::slab::iterator,po::sem_state<test_tag>>> i;
 
 	i = main.try_match(bytes.begin(),bytes.begin(),st);
@@ -183,7 +183,7 @@ TEST_F(disassembler,empty)
 
 TEST_F(disassembler,capture_group)
 {
-	po::sem_state<test_tag> st(4);
+	po::sem_state<test_tag> st(4,'a');
 	boost::optional<std::pair<po::slab::iterator,po::sem_state<test_tag>>> i;
 
 	i = main.try_match(bytes.begin()+4,bytes.end(),st);
@@ -209,7 +209,7 @@ TEST_F(disassembler,capture_group)
 
 TEST_F(disassembler,empty_capture_group)
 {
-	po::sem_state<test_tag> st(0);
+	po::sem_state<test_tag> st(0,'a');
 	std::vector<unsigned char> _buf = {127};
 	po::slab buf(_buf.data(),_buf.size());
 	po::disassembler<test_tag> dec;
@@ -239,7 +239,7 @@ TEST_F(disassembler,empty_capture_group)
 
 TEST_F(disassembler,too_long_capture_group)
 {
-	po::sem_state<test_tag> st(0);
+	po::sem_state<test_tag> st(0,'a');
 	std::vector<unsigned char> buf = {127};
 	po::disassembler<test_tag> dec;
 
@@ -248,7 +248,7 @@ TEST_F(disassembler,too_long_capture_group)
 
 TEST_F(disassembler,too_long_token_pattern)
 {
-	po::sem_state<test_tag> st(0);
+	po::sem_state<test_tag> st(0,'a');
 	std::vector<unsigned char> buf = {127};
 	po::disassembler<test_tag> dec;
 
@@ -257,7 +257,7 @@ TEST_F(disassembler,too_long_token_pattern)
 
 TEST_F(disassembler,too_short_token_pattern)
 {
-	po::sem_state<test_tag> st(0);
+	po::sem_state<test_tag> st(0,'a');
 	std::vector<unsigned char> _buf = {127};
 	po::slab buf(_buf.data(),_buf.size());
 	po::disassembler<test_tag> dec;
@@ -269,7 +269,7 @@ TEST_F(disassembler,too_short_token_pattern)
 
 TEST_F(disassembler,invalid_token_pattern)
 {
-	po::sem_state<test_tag> st(0);
+	po::sem_state<test_tag> st(0,'a');
 	std::vector<unsigned char> buf = {127};
 	po::disassembler<test_tag> dec;
 
@@ -280,7 +280,7 @@ using sw = po::sem_state<wtest_tag>&;
 
 TEST_F(disassembler,wide_token)
 {
-	po::sem_state<wtest_tag> st(0);
+	po::sem_state<wtest_tag> st(0,'a');
 	std::vector<uint8_t> _buf = {0x22,0x11, 0x44,0x33, 0x44,0x55};
 	po::slab buf(_buf.data(),_buf.size());
 	po::disassembler<wtest_tag> dec;
@@ -324,7 +324,7 @@ TEST_F(disassembler,optional)
 {
 	using po::operator "" _e;
 
-	po::sem_state<test_tag> st(0);
+	po::sem_state<test_tag> st(0,'a');
 	std::vector<unsigned char> _buf = {127,126,125,127,125};
 	po::slab buf(_buf.data(),_buf.size());
 	po::disassembler<test_tag> dec;
@@ -349,7 +349,7 @@ TEST_F(disassembler,optional)
 	ASSERT_TRUE(st.mnemonics.front().instructions.empty());
 	ASSERT_EQ(st.jumps.size(), 0u);
 
-	st = po::sem_state<test_tag>(3);
+	st = po::sem_state<test_tag>(3,'a');
 	i = dec.try_match(i->first,buf.end(),st);
 	ASSERT_TRUE(!!i);
 	st = i->second;
@@ -371,7 +371,7 @@ TEST_F(disassembler,fixed_capture_group_contents)
 {
 	using po::operator "" _e;
 
-	po::sem_state<test_tag> st(0);
+	po::sem_state<test_tag> st(0,'a');
 	std::vector<unsigned char> _buf = {127,255};
 	po::slab buf(_buf.data(),_buf.size());
 	po::disassembler<test_tag> dec;

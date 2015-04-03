@@ -733,5 +733,5 @@ boost::optional<prog_loc> po::avr::disassemble(boost::optional<prog_loc> prog, p
 		st.mnemonic(1,"unk");
 	};
 
-	return program::disassemble<avr_tag>(main,bytes,r,prog);
+	return program::disassemble<avr_tag>(main,nullptr,bytes,r,prog);
 }

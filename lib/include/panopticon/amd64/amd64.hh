@@ -580,7 +580,20 @@ namespace po
 				m64, m128,
 				r16, r32, r64);
 
-			return program::disassemble<amd64_tag>(main,bytes,r,prog);
+			if(Bits == 64)
+			{
+				dis amd64;
+
+				amd64[ *rex_prfx >> *opsize_prfx >> *rex_prfx >> main ];
+				return program::disassemble<amd64_tag>(amd64,amd64_state(amd64_state::ProtectedMode),bytes,r,prog);
+			}
+			else
+			{
+				dis intel;
+
+				intel[ *opsize_prfx >> main ];
+				return program::disassemble<amd64_tag>(intel,amd64_state(Bits == 32 ? amd64_state::ProtectedMode : amd64_state::RealMode),bytes,r,prog);
+			}
 		}
 	}
 }
