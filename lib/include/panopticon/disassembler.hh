@@ -93,7 +93,7 @@ namespace po
 		 * Construct a sem_state to analyze a token stream starting at address @c a
 		 * @note The address is arbitrary.
 		 */
-		sem_state(offset a);
+		sem_state(offset a, typename architecture_traits<Tag>::state_type const&);
 
 		/**
 		 * Appends a @c len token long mnemonic for opcode @c n and operands @c ops,
@@ -166,7 +166,7 @@ namespace po
 		using token_type = typename architecture_traits<Tag>::token_type;
 
 		std::list<std::pair<token_type,token_type>> patterns;
-		std::list<std::function<void(sem_state<Tag>&)>> sem_actions;
+		std::list<std::function<bool(sem_state<Tag>&)>> sem_actions;
 		std::unordered_map<std::string,std::list<token_type>> cap_groups;
 	};
 
@@ -326,19 +326,30 @@ namespace po
 			using piter = typename std::list<token_match<Tag>>::iterator;
 
 			assignment_proxy(piter b,piter e) : _begin(b), _end(e) {};
+			assignment_proxy& operator=(std::function<bool(sem_state<Tag>&)> fn)
+			{
+				assign(fn);
+				return *this;
+			}
+
 			assignment_proxy& operator=(std::function<void(sem_state<Tag>&)> fn)
 			{
-				auto i = _begin;
-				while(i != _end)
-					(i++)->sem_actions.push_back(fn);
-
+				assign([fn](sem_state<Tag>& s) -> bool { fn(s); return true; });
 				return *this;
 			}
 
 		private:
+			void assign(std::function<bool(sem_state<Tag>&)> fn)
+			{
+				auto i = _begin;
+				while(i != _end)
+					(i++)->sem_actions.push_back(fn);
+			}
+
 			piter _begin, _end;
 		};
 
+		disassembler<Tag>& operator=(std::function<bool(sem_state<Tag>&)>);
 		disassembler<Tag>& operator=(std::function<void(sem_state<Tag>&)>);
 		disassembler<Tag>& operator=(disassembler<Tag> const&);
 		token_expr operator*(void) const;
@@ -353,13 +364,13 @@ namespace po
 		boost::optional<std::pair<iter,sem_state<Tag>>> try_match(iter b, iter e,sem_state<Tag> const&) const;
 
 	private:
-		boost::optional<std::function<void(sem_state<Tag>&)>> _default;
+		boost::optional<std::function<bool(sem_state<Tag>&)>> _default;
 		std::list<token_match<Tag>> _pats;
 	};
 
 	template<typename Tag>
-	sem_state<Tag>::sem_state(offset a)
-	: address(a), tokens(), capture_groups(), mnemonics(), jumps(), state(), next_address(a)
+	sem_state<Tag>::sem_state(offset a, typename architecture_traits<Tag>::state_type const& s)
+	: address(a), tokens(), capture_groups(), mnemonics(), jumps(), state(s), next_address(a)
 	{}
 
 	template<typename Tag>
@@ -646,9 +657,16 @@ namespace po
 	}
 
 	template<typename Tag>
-	disassembler<Tag>& disassembler<Tag>::operator=(std::function<void(sem_state<Tag>&)> fn)
+	disassembler<Tag>& disassembler<Tag>::operator=(std::function<bool(sem_state<Tag>&)> fn)
 	{
 		_default = fn;
+		return *this;
+	}
+
+	template<typename Tag>
+	disassembler<Tag>& disassembler<Tag>::operator=(std::function<void(sem_state<Tag>&)> fn)
+	{
+		_default = [fn](sem_state<Tag>& s) -> bool { fn(s); return true; };
 		return *this;
 	}
 
@@ -804,9 +822,10 @@ namespace po
 					}
 
 					std::copy(read.begin(),k,std::back_inserter(st.tokens));
-					std::for_each(actions.begin(),actions.end(),[&](std::function<void(sem_state<Tag>&)> fn) { fn(st); });
+					match = std::all_of(actions.begin(),actions.end(),[&](std::function<bool(sem_state<Tag>&)> fn) { return fn(st); });
 
-					return std::make_pair(b + pattern.size() * sizeof(token),st);
+					if(match)
+						return std::make_pair(b + pattern.size() * sizeof(token),st);
 				}
 			}
 
@@ -823,9 +842,8 @@ namespace po
 				}
 
 				st.tokens.push_back(read.front());
-				(*_default)(st);
-
-				return std::make_pair(b + sizeof(token),st);
+				if((*_default)(st))
+					return std::make_pair(b + sizeof(token),st);
 			}
 		}
 

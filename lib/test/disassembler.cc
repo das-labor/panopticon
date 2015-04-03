@@ -40,6 +40,11 @@ protected:
 			st.jump(st.address + 2);
 		};
 
+		sub2['X'] = std::function<bool(ss)>([](ss st) -> bool
+		{
+			return false;
+		});
+
 		main['A' >> sub];
 
 		main['A'] = [](ss st)
@@ -118,28 +123,37 @@ TEST_F(disassembler,sub_decoder)
 	ASSERT_TRUE(st.jumps.front().second.relations.empty());
 }
 
+TEST_F(disassembler,semantic_false)
+{
+	po::sem_state<test_tag> st(6,'a');
+	boost::optional<std::pair<po::slab::iterator,po::sem_state<test_tag>>> i;
+
+	i = main.try_match(bytes.begin()+6,bytes.end(),st);
+	ASSERT_FALSE(!!i);
+}
+
 TEST_F(disassembler,default_pattern)
 {
 	po::sem_state<test_tag> st(7,'a');
 	boost::optional<std::pair<po::slab::iterator,po::sem_state<test_tag>>> i;
 
-	i = main.try_match(bytes.begin()+5,bytes.end(),st);
+	i = main.try_match(bytes.begin()+7,bytes.end(),st);
 	ASSERT_TRUE(!!i);
 	st = i->second;
 
 	ASSERT_EQ(i->first, bytes.end());
-	ASSERT_EQ(st.address, 5u);
+	ASSERT_EQ(st.address, 7u);
 	ASSERT_EQ(st.tokens.size(), 1u);
 	ASSERT_EQ(st.tokens[0], 'X');
 	ASSERT_EQ(st.capture_groups.size(), 0u);
 	ASSERT_EQ(st.mnemonics.size(), 1u);
 	ASSERT_EQ(st.mnemonics.front().opcode, std::string("UNK"));
-	ASSERT_EQ(st.mnemonics.front().area, po::bound(5,6));
+	ASSERT_EQ(st.mnemonics.front().area, po::bound(7,8));
 	ASSERT_TRUE(st.mnemonics.front().instructions.empty());
 	ASSERT_EQ(st.jumps.size(), 1u);
 	ASSERT_TRUE(is_constant(st.jumps.front().first));
 	ASSERT_TRUE(st.jumps.front().second.relations.empty());
-	ASSERT_EQ(to_constant(st.jumps.front().first).content(), 6u);
+	ASSERT_EQ(to_constant(st.jumps.front().first).content(), 8u);
 }
 
 TEST_F(disassembler,slice)
