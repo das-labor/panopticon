@@ -783,7 +783,7 @@ namespace po
 					for(auto cap: opt.cap_groups)
 					{
 						std::list<token> masks = cap.second;
-						unsigned int res;
+						uint64_t res;
 
 						ensure(masks.size() == pattern.size());
 

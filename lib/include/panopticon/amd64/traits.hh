@@ -52,13 +52,14 @@ namespace po
 		amd64_state(void) = delete;
 		amd64_state(Mode m)
 		: addr_sz(), op_sz(), mode(m),
-		  rex(false), reg(boost::none), rm(boost::none), imm(boost::none), disp(boost::none)
+		  rex(false), reg(boost::none), rm(boost::none),
+			imm(boost::none), disp(boost::none), moffs(boost::none)
 		{
 			switch(m)
 			{
 				case RealMode:			addr_sz = AddrSz_16; op_sz = OpSz_16; break;
 				case ProtectedMode:	addr_sz = AddrSz_32; op_sz = OpSz_32; break; // assumes CS.d == 1
-				case LongMode:			addr_sz = AddrSz_32; op_sz = OpSz_64; break; // assumes REX.W == 0
+				case LongMode:			addr_sz = AddrSz_64; op_sz = OpSz_32; break; // assumes REX.W == 0
 				default: ensure(false);
 			}
 		}
@@ -70,7 +71,7 @@ namespace po
 		bool rex;
 
 		boost::optional<lvalue> reg, rm;
-		boost::optional<constant> imm, disp;
+		boost::optional<constant> imm, disp, moffs;
 	};
 
 	template<>

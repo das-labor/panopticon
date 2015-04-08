@@ -37,10 +37,12 @@ namespace po
 		rvalue decode_m(sm const&,cg&);
 		rvalue decode_d(sm const&,cg&);
 		rvalue decode_imm(sm const&,cg&);
-		rvalue decode_moffs(amd64_state::OperandSize os,sm const&,cg&);
+		rvalue decode_moffs(sm const&,cg&);
 		rvalue decode_rm1(sm const&,cg&);
 		std::pair<rvalue,rvalue> decode_i(sm const&,cg&);
 		std::pair<rvalue,rvalue> decode_rm(sm const&,cg&);
+		std::pair<rvalue,rvalue> decode_fd(sm const&,cg&);
+		std::pair<rvalue,rvalue> decode_td(sm const&,cg&);
 		std::pair<rvalue,rvalue> decode_sregm(sm const&,cg&);
 		std::pair<rvalue,rvalue> decode_msreg(sm const&,cg&);
 		std::pair<rvalue,rvalue> decode_dbgrm(sm const&,cg&);
@@ -63,6 +65,38 @@ namespace po
 		variable decode_reg32(unsigned int r_reg);
 		variable decode_reg64(unsigned int r_reg);
 
+		template<unsigned int I>
+		rvalue reg(sm const& st,cg&);
+		template<unsigned int I>
+		rvalue regd(sm const& st,cg&);
+		template<unsigned int I>
+		rvalue regb(sm const& st,cg&);
+
+#define reg_a reg<0>
+#define reg_c reg<1>
+#define reg_d reg<2>
+#define reg_b reg<3>
+#define reg_sp reg<4>
+#define reg_bp reg<5>
+#define reg_si reg<6>
+#define reg_di reg<7>
+#define regd_a regd<0>
+#define regd_c regd<1>
+#define regd_d regd<2>
+#define regd_b regd<3>
+#define regd_sp regd<4>
+#define regd_bp regd<5>
+#define regd_si regd<6>
+#define regd_di regd<7>
+#define regb_a regb<0>
+#define regb_c regb<1>
+#define regb_d regb<2>
+#define regb_b regb<3>
+#define regb_sp regb<4>
+#define regb_bp regb<5>
+#define regb_si regb<6>
+#define regb_di regb<7>
+
 		lvalue decode_modrm(
 			unsigned int mod,
 			unsigned int b_rm,	// B.R/M
@@ -70,6 +104,7 @@ namespace po
 			boost::optional<std::tuple<unsigned int,unsigned int,unsigned int>> sib, // scale, X.index, B.base
 			amd64_state::OperandSize os,
 			amd64_state::AddressSize as,
+			amd64_state::Mode mode,
 			bool rex,
 			cg& c);
 
@@ -92,9 +127,35 @@ namespace po
 		sem_action binary(std::string const&, rvalue, std::function<rvalue(sm const&,cg&)>,std::function<void(cg&,rvalue,rvalue)>);
 		sem_action binary(std::string const&, std::function<rvalue(sm const&,cg&)>,rvalue,std::function<void(cg&,rvalue,rvalue)>);
 		sem_action binary(std::string const&, rvalue, rvalue,std::function<void(cg&,rvalue,rvalue)>);
+		sem_action binary(std::string const&, std::function<rvalue(sm const&,cg&)>, std::function<rvalue(sm const&,cg&)>,std::function<void(cg&,rvalue,rvalue)>);
 
 		sem_action trinary(std::string const&,std::function<std::tuple<rvalue,rvalue,rvalue>(sm const&,cg&)>,std::function<void(cg&,rvalue,rvalue,rvalue)>);
 		sem_action trinary(std::string const&,std::function<std::pair<rvalue,rvalue>(sm const&,cg&)>,rvalue,std::function<void(cg&,rvalue,rvalue,rvalue)>);
 		sem_action branch(std::string const&, rvalue, bool);
 	}
+}
+
+template<unsigned int I>
+po::rvalue po::amd64::reg(sm const& st,cg&)
+{
+	unsigned int reg = (st.capture_groups.count("b") && st.capture_groups.at("b") == 1 ? 8 : 0) + I;
+	return select_reg(st.state.op_sz,reg,st.state.rex);
+}
+
+template<unsigned int I>
+po::rvalue po::amd64::regd(sm const& st,cg&)
+{
+	amd64_state::OperandSize opsz = st.state.op_sz;
+	unsigned int reg = (st.capture_groups.count("b") && st.capture_groups.at("b") == 1 ? 8 : 0) + I;
+
+	if(st.state.mode == amd64_state::LongMode && st.state.op_sz == amd64_state::OpSz_32)
+		opsz = amd64_state::OpSz_64;
+
+	return select_reg(opsz,reg,st.state.rex);
+}
+
+template<unsigned int I>
+po::rvalue po::amd64::regb(sm const& st,cg&)
+{
+	return select_reg(amd64_state::OpSz_8,(st.capture_groups.count("b") && st.capture_groups.at("b") == 1 ? 8 : 0) + I,st.state.rex);
 }

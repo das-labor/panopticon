@@ -177,6 +177,7 @@ namespace po
 								cr2 = variable("cr2",32),
 								cr3 = variable("cr3",32),
 								cr4 = variable("cr4",32),
+								cr8 = variable("cr8",32),
 
 								// 32 bit debug registers
 								dr0 = variable("dr0",32),

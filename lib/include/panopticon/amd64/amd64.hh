@@ -31,13 +31,15 @@ namespace po
 		boost::optional<prog_loc> disassemble(boost::optional<prog_loc> prog, po::slab bytes, const po::ref& r)
 		{
 			disassembler<amd64_tag>
-				main, rex_prfx, opsize_prfx,
+				main, mainrep, mainrepx, rex_prfx, opsize_prfx,
 				addrsize_prfx, rep_prfx, repx_prfx, lock_prfx,
-				imm8, imm16, imm32, imm48, imm64, imm,
+				imm8, imm16, imm32, imm48, imm64, imm, immlong,
+				moffs8, moffs,
 				sib,
 				rm, rm0, rm1, rm2, rm3, rm4, rm5, rm6, rm7,
 				rmbyte, rmbyte0, rmbyte1, rmbyte2, rmbyte3,
 				rmbyte4, rmbyte5, rmbyte6, rmbyte7,
+				rmlong,
 				disp8, disp16, disp32, disp64,
 				m64, m128,
 				r16, r32, r64;
@@ -88,21 +90,21 @@ namespace po
 			};
 			imm16[ imm8 >> "imm@........"_e] = [](sm& st)
 			{
-				st.state.imm = constant(be16toh(st.capture_groups.at("imm")));
+				st.state.imm = constant(st.capture_groups.at("imm"));
 			};
 			imm32[ imm16 >> "imm@........"_e >> "imm@........"_e] = [](sm& st)
 			{
-				st.state.imm = constant(be32toh(st.capture_groups.at("imm")));
+				st.state.imm = constant(st.capture_groups.at("imm"));
 			};
 			imm48[ imm32 >> "imm@........"_e >> "imm@........"_e ] = [](sm& st)
 			{
-				uint64_t a = be16toh(st.capture_groups.at("imm") & 0xffff);
+				uint64_t a = st.capture_groups.at("imm") & 0xffff;
 
-				st.state.imm = constant((a << 32) | be32toh(st.capture_groups.at("imm") >> 16));
+				st.state.imm = constant((a << 32) | st.capture_groups.at("imm") >> 16);
 			};
 			imm64[ imm32 >> "imm@........"_e >> "imm@........"_e >> "imm@........"_e >> "imm@........"_e] = [](sm& st)
 			{
-				st.state.imm = constant(be64toh(st.capture_groups.at("imm")));
+				st.state.imm = constant(st.capture_groups.at("imm"));
 			};
 
 			imm [ "imm@........"_e] = std::function<bool(sm&)>([](sm& st) -> bool
@@ -112,20 +114,73 @@ namespace po
 			});
 			imm [ "imm@........"_e >>  "imm@........"_e ] = std::function<bool(sm&)>([](sm& st) -> bool
 			{
-				st.state.imm = constant(be16toh(st.capture_groups.at("imm")));
+				st.state.imm = constant(st.capture_groups.at("imm"));
 				return st.state.op_sz == amd64_state::OpSz_16;
 			});
 			imm [ "imm@........"_e >>  "imm@........"_e >> "imm@........"_e >>  "imm@........"_e ] = std::function<bool(sm&)>([](sm& st) -> bool
 			{
-				st.state.imm = constant(be32toh(st.capture_groups.at("imm")));
+				st.state.imm = constant(st.capture_groups.at("imm"));
 				return st.state.op_sz == amd64_state::OpSz_32 || st.state.op_sz == amd64_state::OpSz_64;
 			});
-			/*imm [ "imm@........"_e >>  "imm@........"_e >> "imm@........"_e >>  "imm@........"_e >>
-			      "imm@........"_e >>  "imm@........"_e >> "imm@........"_e >>  "imm@........"_e ] = std::function<bool(sm&)>([](sm& st) -> bool
+
+			immlong [ "imm@........"_e] = std::function<bool(sm&)>([](sm& st) -> bool
 			{
-				st.state.imm = constant(be64toh(st.capture_groups.at("imm")));
+				st.state.imm = constant(st.capture_groups.at("imm"));
+				return st.state.op_sz == amd64_state::OpSz_8;
+			});
+			immlong [ "imm@........"_e >>  "imm@........"_e ] = std::function<bool(sm&)>([](sm& st) -> bool
+			{
+				st.state.imm = constant(st.capture_groups.at("imm"));
+				return st.state.op_sz == amd64_state::OpSz_16;
+			});
+			immlong [ "imm@........"_e >>  "imm@........"_e >> "imm@........"_e >>  "imm@........"_e ] = std::function<bool(sm&)>([](sm& st) -> bool
+			{
+				st.state.imm = constant(st.capture_groups.at("imm"));
+				return st.state.op_sz == amd64_state::OpSz_32;
+			});
+			immlong [ "imm@........"_e >>  "imm@........"_e >> "imm@........"_e >>  "imm@........"_e >>
+								"imm@........"_e >>  "imm@........"_e >> "imm@........"_e >>  "imm@........"_e ] = std::function<bool(sm&)>([](sm& st) -> bool
+			{
+				st.state.imm = constant(st.capture_groups.at("imm"));
 				return st.state.op_sz == amd64_state::OpSz_64;
-			});*/
+			});
+
+			moffs [ "moffs@........"_e >>  "moffs@........"_e ] = std::function<bool(sm&)>([](sm& st) -> bool
+			{
+				st.state.moffs = constant(st.capture_groups.at("moffs"));
+				return st.state.addr_sz == amd64_state::AddrSz_16;
+			});
+			moffs [ "moffs@........"_e >>  "moffs@........"_e >> "moffs@........"_e >>  "moffs@........"_e ] = std::function<bool(sm&)>([](sm& st) -> bool
+			{
+				st.state.moffs = constant(st.capture_groups.at("moffs"));
+				return st.state.addr_sz == amd64_state::AddrSz_32;
+			});
+			moffs [ "moffs@........"_e >>  "moffs@........"_e >> "moffs@........"_e >>  "moffs@........"_e >>
+			        "moffs@........"_e >>  "moffs@........"_e >> "moffs@........"_e >>  "moffs@........"_e ] = std::function<bool(sm&)>([](sm& st) -> bool
+			{
+				st.state.moffs = constant(st.capture_groups.at("moffs"));
+				return st.state.addr_sz == amd64_state::AddrSz_64;
+			});
+
+			moffs8 [ "moffs@........"_e >>  "moffs@........"_e ] = std::function<bool(sm&)>([](sm& st) -> bool
+			{
+				st.state.moffs = constant(st.capture_groups.at("moffs"));
+				st.state.op_sz = amd64_state::OpSz_8;
+				return st.state.addr_sz == amd64_state::AddrSz_16;
+			});
+			moffs8 [ "moffs@........"_e >>  "moffs@........"_e >> "moffs@........"_e >>  "moffs@........"_e ] = std::function<bool(sm&)>([](sm& st) -> bool
+			{
+				st.state.moffs = constant(st.capture_groups.at("moffs"));
+				st.state.op_sz = amd64_state::OpSz_8;
+				return st.state.addr_sz == amd64_state::AddrSz_32;
+			});
+			moffs8 [ "moffs@........"_e >>  "moffs@........"_e >> "moffs@........"_e >>  "moffs@........"_e >>
+			         "moffs@........"_e >>  "moffs@........"_e >> "moffs@........"_e >>  "moffs@........"_e ] = std::function<bool(sm&)>([](sm& st) -> bool
+			{
+				st.state.moffs = constant(st.capture_groups.at("moffs"));
+				st.state.op_sz = amd64_state::OpSz_8;
+				return st.state.addr_sz == amd64_state::AddrSz_64;
+			});
 
 			disp8 [ "disp@........"_e] = [](sm& st)
 			{
@@ -133,21 +188,21 @@ namespace po
 			};
 			disp16[ disp8 >> "disp@........"_e] = [](sm& st)
 			{
-				st.state.disp = constant(be16toh(st.capture_groups.at("disp")));
+				st.state.disp = constant(st.capture_groups.at("disp"));
 			};
 			disp32[ disp16 >> "disp@........"_e >> "disp@........"_e] = [](sm& st)
 			{
-				st.state.disp = constant(be32toh(st.capture_groups.at("disp")));
+				st.state.disp = constant(st.capture_groups.at("disp"));
 			};
 			disp64[ disp32 >> "disp@........"_e >> "disp@........"_e >> "disp@........"_e >> "disp@........"_e] = [](sm& st)
 			{
-				st.state.disp = constant(be64toh(st.capture_groups.at("disp")));
+				st.state.disp = constant(st.capture_groups.at("disp"));
 			};
 
 			// sib
 			sib [ "scale@.. index@... base@101"_e >> "disp@........"_e >> "disp@........"_e >> "disp@........"_e >> "disp@........"_e	] = [](sm& st)
 			{
-				st.state.disp = constant(be32toh(st.capture_groups.at("disp")));
+				st.state.disp = constant(st.capture_groups.at("disp"));
 			};
 			sib [ "scale@.. index@... base@..."_e] = [](sm& st) {};
 
@@ -156,29 +211,17 @@ namespace po
 				ensure(!st.state.reg && !st.state.rm);
 
 				if(os)
-					st.state.op_sz = *os;
+				{
+					if(*os == amd64_state::OpSz_64)
+						st.state.op_sz = st.state.mode == amd64_state::LongMode ? *os : amd64_state::OpSz_32;
+					else
+						st.state.op_sz = *os;
+				}
 
 				if(st.capture_groups.count("reg"))
 				{
 					unsigned int reg = (st.capture_groups.count("r") && st.capture_groups.at("r") == 1 ? 8 : 0) + st.capture_groups.at("reg");
-
-					switch(st.state.op_sz)
-					{
-						case amd64_state::OpSz_8:
-							st.state.reg = decode_reg8(reg,st.state.rex);
-							break;
-						case amd64_state::OpSz_16:
-							st.state.reg = decode_reg16(reg);
-							break;
-						case amd64_state::OpSz_32:
-							st.state.reg = decode_reg32(reg);
-							break;
-						case amd64_state::OpSz_64:
-							st.state.reg = decode_reg64(reg);
-							break;
-						default:
-							throw std::invalid_argument("invalid opseration size");
-					}
+					st.state.reg = select_reg(st.state.op_sz,reg,st.state.rex);
 				}
 
 				boost::optional<std::tuple<unsigned int,unsigned int,unsigned int>> sib = boost::none;
@@ -195,7 +238,7 @@ namespace po
 
 				st.mnemonic(0,"internal-rm","",[&](cg& c) -> std::list<rvalue>
 				{
-					st.state.rm = decode_modrm(st.capture_groups.at("mod"),b_rm,st.state.disp,sib,st.state.op_sz,st.state.addr_sz,st.state.rex,c);
+					st.state.rm = decode_modrm(st.capture_groups.at("mod"),b_rm,st.state.disp,sib,st.state.op_sz,st.state.addr_sz,st.state.mode,st.state.rex,c);
 					return {};
 				});
 			};
@@ -204,6 +247,9 @@ namespace po
 			rm [ "mod@00 reg@... rm@101"_e >> disp32 ] = std::bind(rm_func,boost::none,pls::_1);
 			rm [ "mod@00 reg@... rm@100"_e >> sib    ] = std::bind(rm_func,boost::none,pls::_1);
 			rm [ "mod@00 reg@... rm@..."_e           ] = std::bind(rm_func,boost::none,pls::_1);
+			rmlong [ "mod@00 reg@... rm@101"_e >> disp32 ] = std::bind(rm_func,amd64_state::OpSz_64,pls::_1);
+			rmlong [ "mod@00 reg@... rm@100"_e >> sib    ] = std::bind(rm_func,amd64_state::OpSz_64,pls::_1);
+			rmlong [ "mod@00 reg@... rm@..."_e           ] = std::bind(rm_func,amd64_state::OpSz_64,pls::_1);
 			rmbyte [ "mod@00 reg@... rm@101"_e >> disp32 ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
 			rmbyte [ "mod@00 reg@... rm@100"_e >> sib    ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
 			rmbyte [ "mod@00 reg@... rm@..."_e           ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
@@ -270,6 +316,8 @@ namespace po
 			rm [ "mod@01 reg@... rm@..."_e >> disp8	            ] = std::bind(rm_func,boost::none,pls::_1);
 			rmbyte [ "mod@01 reg@... rm@100"_e >> sib >> disp32 ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
 			rmbyte [ "mod@01 reg@... rm@..."_e >> disp8	        ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
+			rmlong [ "mod@01 reg@... rm@100"_e >> sib >> disp32 ] = std::bind(rm_func,amd64_state::OpSz_64,pls::_1);
+			rmlong [ "mod@01 reg@... rm@..."_e >> disp8	        ] = std::bind(rm_func,amd64_state::OpSz_64,pls::_1);
 
 			// mod = 01 w/ opcode extension
 			rm0 [ "mod@01 000 rm@100"_e >> sib >> disp8 ] = std::bind(rm_func,boost::none,pls::_1);
@@ -317,6 +365,8 @@ namespace po
 			rm [ "mod@10 reg@... rm@..."_e >> disp32	      ] = std::bind(rm_func,boost::none,pls::_1);
 			rmbyte [ "mod@10 reg@... rm@100"_e >> sib >> disp32 ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
 			rmbyte [ "mod@10 reg@... rm@..."_e >> disp32	      ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
+			rmlong [ "mod@10 reg@... rm@100"_e >> sib >> disp32 ] = std::bind(rm_func,amd64_state::OpSz_64,pls::_1);
+			rmlong [ "mod@10 reg@... rm@..."_e >> disp32	      ] = std::bind(rm_func,amd64_state::OpSz_64,pls::_1);
 
 			// mod = 10 w/ opcode extension
 			rm0 [ "mod@10 000 rm@100"_e >> sib >> disp32 ] = std::bind(rm_func,boost::none,pls::_1);
@@ -362,6 +412,7 @@ namespace po
 			// mod = 11
 			rm [ "mod@11 reg@... rm@..."_e ] = std::bind(rm_func,boost::none,pls::_1);
 			rmbyte [ "mod@11 reg@... rm@..."_e ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
+			rmlong [ "mod@11 reg@... rm@..."_e ] = std::bind(rm_func,amd64_state::OpSz_64,pls::_1);
 
 			// mod = 11 w/ opcode extension
 			rm0 [ "mod@11 000 rm@..."_e ] = std::bind(rm_func,boost::none,pls::_1);
@@ -382,13 +433,15 @@ namespace po
 			rmbyte7 [ "mod@11 111 rm@..."_e ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
 
 			add_generic<Bits>(
-				main,
-				lock_prfx, addrsize_prfx, rep_prfx, repx_prfx,
-				imm8, imm16, imm32, imm48, imm64, imm,
+				main, mainrep, mainrepx,
+				lock_prfx,
+				imm8, imm16, imm32, imm48, imm64, imm, immlong,
+				moffs8, moffs,
 				sib,
 				rm, rm0, rm1, rm2, rm3, rm4, rm5, rm6, rm7,
 				rmbyte, rmbyte0, rmbyte1, rmbyte2, rmbyte3,
 				rmbyte4, rmbyte5, rmbyte6, rmbyte7,
+				rmlong,
 				disp8, disp16, disp32, disp64,
 				m64, m128,
 				r16, r32, r64);
@@ -397,13 +450,17 @@ namespace po
 			{
 				dis amd64;
 
-				amd64[ *rex_prfx >> *opsize_prfx >> *rex_prfx >> main ];
-				return program::disassemble<amd64_tag>(amd64,amd64_state(amd64_state::ProtectedMode),bytes,r,prog);
+				amd64[ *opsize_prfx >> *rex_prfx >> main ];
+				amd64[ *rep_prfx >> *opsize_prfx >> *rep_prfx >> *rex_prfx >> mainrep ];
+				amd64[ *rep_prfx >> *opsize_prfx >> *repx_prfx >> *rex_prfx >> mainrepx ];
+				return program::disassemble<amd64_tag>(amd64,amd64_state(amd64_state::LongMode),bytes,r,prog);
 			}
 			else
 			{
 				dis intel;
 
+				intel[ *rep_prfx >> *opsize_prfx >> *rep_prfx >> mainrep ];
+				intel[ *rep_prfx >> *opsize_prfx >> *repx_prfx >> mainrepx ];
 				intel[ *opsize_prfx >> main ];
 				return program::disassemble<amd64_tag>(intel,amd64_state(Bits == 32 ? amd64_state::ProtectedMode : amd64_state::RealMode),bytes,r,prog);
 			}
