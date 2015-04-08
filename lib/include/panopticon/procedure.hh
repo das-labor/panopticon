@@ -80,7 +80,7 @@ namespace po
 
 		/// Create or extend a procedure by starting to disassemble using @arg main at offset @arg start in @arg tokens
 		template<typename Tag,typename Dis>
-		static boost::optional<proc_loc> disassemble(boost::optional<proc_loc>, Dis const&, po::slab, offset);
+		static boost::optional<proc_loc> disassemble(boost::optional<proc_loc>, Dis const&, typename architecture_traits<Tag>::state_type const&, po::slab, offset);
 
 	private:
 		mutable boost::optional<std::vector<bblock_loc>> _rev_postorder;
@@ -123,7 +123,7 @@ namespace po
 	bblock_loc merge(bblock_loc up, bblock_loc down);
 
 	template<typename Tag,typename Dis>
-	boost::optional<proc_loc> procedure::disassemble(boost::optional<proc_loc> proc, Dis const& main, po::slab data, offset start)
+	boost::optional<proc_loc> procedure::disassemble(boost::optional<proc_loc> proc, Dis const& main, typename architecture_traits<Tag>::state_type const& init, po::slab data, offset start)
 	{
 		std::unordered_set<offset> todo;
 		std::map<offset,std::list<mnemonic>> mnemonics;
@@ -220,7 +220,7 @@ namespace po
 			if(j == mnemonics.end() || (area && !boost::icl::contains(*area,cur_addr)))
 			{
 				i += cur_addr;
-				sem_state<Tag> state(cur_addr);
+				sem_state<Tag> state(cur_addr,init);
 				slab::iterator e = (j == mnemonics.end() ? data.end() : (data.begin() + j->first + 1));
 
 				auto mi = main.try_match(i,e,state);

@@ -72,6 +72,8 @@ namespace po
 	struct lift_symbol {};
 	struct call_symbol {};
 	struct nop_symbol {};
+	struct right_shift_symbol {};
+	struct left_shift_symbol {};
 
 	template<typename Value> using logic_and = binop<and_symbol,logic_domain,logic_domain,Value>;
 	template<typename Value> using logic_or = binop<inclusive_or_symbol,logic_domain,logic_domain,Value>;
@@ -91,6 +93,8 @@ namespace po
 	template<typename Value> using int_less = binop<less_symbol,integer_domain,logic_domain,Value>;
 	template<typename Value> using int_equal = binop<equal_symbol,integer_domain,logic_domain,Value>;
 	template<typename Value> using int_call = unop<call_symbol,logic_domain,integer_domain,Value>;
+	template<typename Value> using int_rshift = binop<right_shift_symbol,integer_domain,integer_domain,Value>;
+	template<typename Value> using int_lshift = binop<left_shift_symbol,integer_domain,integer_domain,Value>;
 
 	template<typename Value> using univ_phi = naryop<phi_symbol,universe_domain,universe_domain,Value>;
 	template<typename Value> using univ_nop = unop<nop_symbol,universe_domain,universe_domain,Value>;
@@ -137,7 +141,9 @@ namespace po
 		int_mod<Value>,
 		int_less<Value>,
 		int_equal<Value>,
-		int_call<Value>
+		int_call<Value>,
+		int_lshift<Value>,
+		int_rshift<Value>
 	>;
 
 	/**

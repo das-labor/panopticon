@@ -103,6 +103,8 @@ std::string po::pretty(const instr::operation& i)
 		std::string operator()(const int_less<rvalue>&) const { return "<"; }
 		std::string operator()(const int_equal<rvalue>&) const { return "="; }
 		std::string operator()(const int_call<rvalue>&) const { return "call "; }
+		std::string operator()(const int_rshift<rvalue>&) const { return ">>"; }
+		std::string operator()(const int_lshift<rvalue>&) const { return "<<"; }
 
 		std::string operator()(const univ_phi<rvalue>&) const { return "ϕ"; }
 		std::string operator()(const univ_nop<rvalue>&) const { return ""; }
@@ -134,6 +136,9 @@ std::string po::symbolic(const instr::operation& i)
 		std::string operator()(const int_less<rvalue>&) const { return "integer-less-than"; }
 		std::string operator()(const int_equal<rvalue>&) const { return "integer-equal-to"; }
 		std::string operator()(const int_call<rvalue>&) const { return "integer-call-to"; }
+		std::string operator()(const int_rshift<rvalue>&) const { return "integer-right-shift"; }
+		std::string operator()(const int_lshift<rvalue>&) const { return "integer-left-shift"; }
+
 
 		std::string operator()(const univ_phi<rvalue>&) const { return "universal-phi"; }
 		std::string operator()(const univ_nop<rvalue>&) const { return "universal-no-op"; }
@@ -167,6 +172,8 @@ instr::operation po::from_symbolic(const std::string &s, const std::vector<rvalu
 		if(t == "integer-less-than") return int_less<rvalue>{rv[0],rv[1]};
 		if(t == "integer-equal-to") return int_equal<rvalue>{rv[0],rv[1]};
 		if(t == "integer-call-to") return int_call<rvalue>{rv[0]};
+		if(t == "integer-right-shift") return int_rshift<rvalue>{rv[0],rv[1]};
+		if(t == "integer-left-shift") return int_lshift<rvalue>{rv[0],rv[1]};
 
 		if(t == "universal-phi") return univ_phi<rvalue>{rv};
 		if(t == "universal-no-op") return univ_nop<rvalue>{rv[0]};

@@ -227,6 +227,8 @@ namespace po
 		result_type operator()(const int_and<rvalue>& a);
 		result_type operator()(const int_or<rvalue>& a);
 		result_type operator()(const int_xor<rvalue>& a);
+		result_type operator()(const int_rshift<rvalue>& a);
+		result_type operator()(const int_lshift<rvalue>& a);
 		result_type operator()(const int_call<rvalue>& a);
 		result_type operator()(const univ_nop<rvalue>& a);
 		result_type operator()(const univ_phi<rvalue>& a);
