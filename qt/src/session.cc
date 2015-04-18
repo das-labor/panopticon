@@ -18,6 +18,7 @@
 
 #include "session.hh"
 #include <panopticon/program.hh>
+#include <panopticon/avr/avr.hh>
 
 using namespace po;
 using namespace boost::icl;
@@ -474,7 +475,7 @@ Session* Session::createRaw(QString s)
 
 Session* Session::createAvr(QString s)
 {
-	return new Session(po::raw_avr(s.toStdString()));
+	return new Session(po::raw_avr(s.toStdString(),po::avr_state::mega88()));
 }
 
 void Session::postComment(int r, QString c)
