@@ -3,7 +3,7 @@ Intermediate Language
 
 Panopticon uses a intermediate language to model mnemonic semantics.
 
-Conventional disassembler translate machine code from its binary representaion to into a list of mnemonics similar to the format assemblers accept. The only knowlegde the disassembler has of the opcode is its textual form (for example "mov") and the number and type (constant vs. register) of operands. These informations are purly "syntactic" – they are only about opcode shape. Advanced disassembler like distorm or IDA Pro add limited semantic information to an opcode like whenever it's a jump or how executing it effects the stack pointer. This ultimatly limits the scope and acurcy of analysis a disassembler can do.
+Conventional disassembler translate machine code from its binary representaion to into a list of mnemonics similar to the format assemblers accept. The only knowlegde the disassembler has of the opcode is its textual form (for example ``mov``) and the number and type (constant vs. register) of operands. These informations are purly "syntactic" – they are only about opcode shape. Advanced disassembler like distorm or IDA Pro add limited semantic information to an opcode like whenever it's a jump or how executing it effects the stack pointer. This ultimatly limits the scope and acurcy of analysis a disassembler can do.
 
 Reverse engineering is about understanding code. Most of the time the analyst interprets assembler instructions by "executing" them in his or her head. Good reverse engeineers are those who can do this faster and more aquratly than others. In order to help human analysts in this labourus task the disassembler needs to understand the semantics of each mnemonic.
 
@@ -15,19 +15,31 @@ Basic structure
 A PIL program modeling the AVR "adc" instruction looks as this:
 
 .. math::
+
   a \rightarrow b
 
 Each PIL program is a seqence of assignemnts. The left side is either a variable or a memory reference. The right side is a single operation with one or more arguments. PIL has two types of values, integers and booleans. PIL is strongly typed, operations that work on integers will not accept boolean values and vise versa. Conversion between those two types must be done explicitly. Integers allow simple linear arithmetic and comparison:
 
-- add
-- sub
-- ...
+- Bitwise and
+- Bitwise inclusive or
+- Bitwise exclusive or
+- Addition
+- Substraction
+- Multiplication
+- Division
+- Remainder
+- Less than comparison
+- Bitwise left shift
+- Bitwise right shift
 
 Booleans support first order logic and conversion to integers:
 
-- and
-- xor
-- ...
+- And
+- Inclusive or
+- Exclusive or
+- Negation
+- Implication
+- Equivalance
 
 Memory in PIL programs is modeled as an array of memory cells. These arrays are called memory banks and have unique names used for identification. The cells are numbered in acending order starting at 0. This nmber is the offset of the cell. If mutiple cells are accessed at once, cells can either be interpreted in Little Endian (torwards lower offsets) or Big Endian (torwards higher offsets). In conclusion, a read- and writable memory reference consist of the memory bank name, the offset of the first cell to be read/written, the number of cells to work on and whenever Big or Little Endian byte ordering should be honored.
 
@@ -59,27 +71,26 @@ The textual representaion of PIL used previous examples can'b be used directly i
   instr i(logic_xor{true,false},variable("a"));
   instr j(int_add{variable("b"),contant(55)},variable("c"));
 
-Classes the represent PIL values are defined in "value.hh". These are either "constant", "variable", "memory" or "undefined". The "lvalue" type is a union of all value classes the can be the target of an assignment, "rvalue" combines all implemented value types.
+Classes the represent PIL values are defined in "value.hh". These are either :cpp:class:`constant`, :cpp:class:`variable`, :cpp:class:`memory` or :cpp:class:`undefined`. The :cpp:class:`lvalue` type is a union of all value classes the can be the target of an assignment, :cpp:class:`rvalue` combines all implemented value types.
 
-The PIL operations are named <domain>_<operation> where <domain> is either "int" for operations accepting integer arguments, "logic" for operations on booleans or "univ" if both types are allowed. Keep in mind that "univ" operations do not allow mixing of types. All arguments need be either integers of booleans. Supported operations are:
+The PIL operations are named <domain>_<operation> where <domain> is either ``int`` for operations accepting integer arguments, ``logic`` for operations on booleans or ``univ`` if both types are allowed. Keep in mind that ``univ`` operations do not allow mixing of types. All arguments need be either integers of booleans. Supported operations are:
 
-- univ_phi
-- ...
+- Phi selection
+- No operation
 
-To make "instr" instance construction easier, the disassembler framework defines a "code_generator" class and give an instance of it to the semantic function of an opcode. The "code_generator" structure has methods for starting new mnemonics and appending PIL instructions to them.
+To make :cpp:class:`instr` instance construction easier, the disassembler framework defines a :cpp:class:`code_generator` class and give an instance of it to the semantic function of an opcode. The :cpp:class:`code_generator` structure has methods for starting new mnemonics and appending PIL instructions to them.
 
 .. code-block:: c++
 
-  ---test a, b => a = a*55 + b
   st.mnemonic("test",2,{variable("a"),variable("b")},[&](void)
   {
-  cg.add_i(variable("a"),cg.mul_i(variable("a"),constant(55)),variable("b"));
-  cg.jump(st.address + 2);
+    cg.add_i(variable("a"),cg.mul_i(variable("a"),constant(55)),variable("b"));
+    cg.jump(st.address + 2);
   });
 
-The code above add the 3 byte large mnemonic "test" to the current basic block. The mnemonic receives two arguments "a" and "b". When executed "test" computes "a * 55 + b", writes the value into "a" and jump the the next mnemonic. The code_generator methods come in two version. One is called with the arguments for the operations and returns a temporary variable with the result, another that accepts the target of the assignment as the first argument and the operands of the operation after that.
+The code above add the 3 byte large mnemonic `test` to the current basic block. The mnemonic receives two arguments `a` and `b`. When executed `test` computes ``a * 55 + b``, writes the value into `a` and jumps to the next mnemonic. The :cpp:class:`code_generator` methods come in two version. One is called with the arguments for the operations and returns a temporary variable with the result, another that accepts the target of the assignment as the first argument and the operands of the operation after that.
 
-To make complex PIL expression more readable Panopticon includes overloads of most of the arithmetic and logic operators that behave like the code generator methods Thses overloads reside in the "po::dsel" namespace and are "activated" by including this namespace.
+To make complex PIL expression more readable Panopticon includes overloads of most of the arithmetic and logic operators that behave like the code generator methods Thses overloads reside in the "po::dsel" namespace and are used by including this namespace.
 
 .. code-block:: c++
 
@@ -87,9 +98,9 @@ To make complex PIL expression more readable Panopticon includes overloads of mo
 
   st.mnemonic("test",2,{variable("a"),variable("b")},[&](void)
   {
-  variable a("a"), variable b("b");
-  cg.assign(a, a * 55 + b);
-  cg.jump(st.address + 2);
+    variable a("a"), variable b("b");
+    cg.assign(a, a * 55 + b);
+    cg.jump(st.address + 2);
   });
 
 This code has the same semantic as the one above.
