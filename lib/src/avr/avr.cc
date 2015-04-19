@@ -81,7 +81,7 @@ const variable r0 = variable("r0",8), r1 = variable("r1",8), r2 = variable("r2",
 							 r31 = variable("r31",1), I = variable("I",1), T = variable("T",1), H = variable("H",1), S = variable("S",1), V = variable("V",1), N = variable("N",1), Z = variable("Z",1), C = variable("C",1);
 
 
-boost::optional<prog_loc> po::avr::disassemble(boost::optional<prog_loc> prog, po::slab bytes, const po::ref& r)
+boost::optional<prog_loc> po::avr::disassemble(po::avr_state const& st, boost::optional<prog_loc> prog, po::slab bytes, const po::ref& r)
 {
 	using po::dsl::operator*;
 	using po::dsl::operator+;
@@ -634,7 +634,7 @@ boost::optional<prog_loc> po::avr::disassemble(boost::optional<prog_loc> prog, p
 	// jump branches
 	main["1001010 k@..... 111 k@."_e >> "k@................"_e] = [](sm &st)
 	{
-		constant k = constant(st.capture_groups["k"] * 2);
+		constant k = constant((st.capture_groups["k"] * 2) % (st.state.flash_sz));
 
 		st.mnemonic(st.tokens.size() * 2,"call","",k,[&](cg &c)
 		{
@@ -644,7 +644,7 @@ boost::optional<prog_loc> po::avr::disassemble(boost::optional<prog_loc> prog, p
 	};
 	main["1001010 k@..... 110 k@."_e >> "k@................"_e] = [](sm &st)
 	{
-		constant k = constant(st.capture_groups["k"] * 2);
+		constant k = constant((st.capture_groups["k"] * 2) % (st.state.flash_sz));
 
 		st.mnemonic(st.tokens.size() * 2,"jmp","",k,std::function<void(cg &c)>());
 		st.jump(k);
@@ -653,7 +653,7 @@ boost::optional<prog_loc> po::avr::disassemble(boost::optional<prog_loc> prog, p
 	main["1101 k@............"_e] = [](sm &st)
 	{
 		int _k = st.capture_groups["k"];
-		constant k = constant((_k <= 2047 ? _k : _k - 4096) * 2 + 2 + st.address);
+		constant k = constant(((_k <= 2047 ? _k : _k - 4096) * 2 + 2 + st.address) % st.state.flash_sz);
 
 		st.mnemonic(st.tokens.size() * 2,"rcall","",k,[&](cg &c)
 		{
@@ -664,9 +664,10 @@ boost::optional<prog_loc> po::avr::disassemble(boost::optional<prog_loc> prog, p
 	main["1100 k@............"_e] = [](sm &st)
 	{
 		int _k = st.capture_groups["k"];
-		constant k = constant((_k <= 2047 ? _k : _k - 4096) * 2 + 2 + st.address);
+		constant k = constant(((_k <= 2047 ? _k : _k - 4096) * 2 + 2 + st.address) % st.state.flash_sz);
 
 		st.mnemonic(st.tokens.size() * 2,"rjmp","",k,std::function<void(cg &c)>());
+		std::cerr << k << " " << _k << " " << (_k <= 2047 ? _k : _k - 4096) << " " << (_k <= 2047 ? _k : _k - 4096) * 2 + 2 + st.address << std::endl;
 		st.jump(k);
 	};
 	main[0x9508_e] = [](sm &st) { st.mnemonic(st.tokens.size() * 2,"ret"); };
@@ -678,7 +679,7 @@ boost::optional<prog_loc> po::avr::disassemble(boost::optional<prog_loc> prog, p
 
 		st.mnemonic(st.tokens.size() * 2,"ijmp","",nop,[&](cg &c)
 		{
-			c.assign(J,(r31 * 0x100 + r30) * 2);
+			c.assign(J,((r31 * 0x100 + r30) * 2) % constant(st.state.flash_sz));
 		});
 		st.jump(J);
 	};
@@ -733,5 +734,5 @@ boost::optional<prog_loc> po::avr::disassemble(boost::optional<prog_loc> prog, p
 		st.mnemonic(1,"unk");
 	};
 
-	return program::disassemble<avr_tag>(main,nullptr,bytes,r,prog);
+	return program::disassemble<avr_tag>(main,st,bytes,r,prog);
 }

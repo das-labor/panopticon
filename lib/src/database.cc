@@ -156,7 +156,7 @@ session po::raw(const std::string& path)
 	return session{db,store};
 }
 
-session po::raw_avr(const std::string& path)
+session po::raw_avr(const std::string& path,po::avr_state const& mcu)
 {
 	std::shared_ptr<rdf::storage> store = make_shared<rdf::storage>();
 	dbase_loc db(new database());
@@ -166,7 +166,7 @@ session po::raw_avr(const std::string& path)
 	insert_vertex(reg,db.write().data);
 
 	po::slab sl = reg->read();
-	boost::optional<prog_loc> p = avr::disassemble(boost::none,sl,po::ref{"base",0});
+	boost::optional<prog_loc> p = avr::disassemble(mcu,boost::none,sl,po::ref{"base",0});
 
 	if(p)
 	{

@@ -73,7 +73,7 @@ namespace po
 
 	session open(const std::string&);
 	session elf(const std::string&);
-	session raw_avr(const std::string&);
+	session raw_avr(const std::string&, struct avr_state const&);
 	session pe(const std::string&);
 	session raw(const std::string&);
 	session macho(const std::string&);
