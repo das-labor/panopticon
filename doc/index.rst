@@ -3,16 +3,15 @@ Panopticon documentation
 
 This is the documentation of the Panopticon cross-platform disassembler.
 
-#####
-Usage
-#####
+###################
+Users Documentation
+###################
 
 .. toctree::
   :maxdepth: 2
 
   intro
   feats
-  others
   install
   usage
   qtpanop
@@ -36,4 +35,5 @@ Appendix
 .. toctree::
   :maxdepth: 2
 
+  others
   refs
