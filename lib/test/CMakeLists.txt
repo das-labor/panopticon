@@ -13,12 +13,10 @@ set_property(SOURCE amd64.s PROPERTY LANGUAGE ASM)
 set_property(SOURCE ia32.s PROPERTY LANGUAGE ASM)
 
 add_executable(amd64-testelf amd64.s)
-set_target_properties(amd64-testelf PROPERTIES LINKER_LANGUAGE CXX)
 set_target_properties(amd64-testelf PROPERTIES COMPILE_FLAGS "-nostdlib -m64")
 set_target_properties(amd64-testelf PROPERTIES LINK_FLAGS "-Ttext 0x0 -nostdlib -m64")
 
 add_executable(ia32-testelf ia32.s)
-set_target_properties(ia32-testelf PROPERTIES LINKER_LANGUAGE CXX)
 set_target_properties(ia32-testelf PROPERTIES COMPILE_FLAGS "-nostdlib -m32")
 set_target_properties(ia32-testelf PROPERTIES LINK_FLAGS "-Ttext 0x0 -nostdlib -m32")
 

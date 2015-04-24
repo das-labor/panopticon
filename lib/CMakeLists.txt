@@ -44,7 +44,7 @@ link_directories(${panopticon_LIBRARY_DIRS})
 
 if(("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" AND UNIX) OR
 	("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang"))
-	add_definitions("-fPIC")
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
 endif()
 
 add_library(panopticon OBJECT ${panopticon_SOURCES} ${panopticon_HEADERS})
