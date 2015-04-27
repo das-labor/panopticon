@@ -39,7 +39,7 @@ struct node_proxy
 	{
 		if(comp)
 		{
-			_context.reset(new QQmlContext(QQmlEngine::contextForObject(parent)),[](QQmlContext *q) { q->deleteLater(); });
+			_context.reset(new QQmlContext(QQmlEngine::contextForObject(parent)));
 			_context->setContextProperty("modelData",QVariant());
 			_context->setContextProperty("incomingEdges",QVariantList());
 			_context->setContextProperty("incomingNodes",QVariantList());
@@ -49,7 +49,7 @@ struct node_proxy
 			_context->setContextProperty("lastRank",QVariant());
 			_context->setContextProperty("computedX",QVariant());
 			_context->setContextProperty("payload",QVariant());
-			_item.reset(qobject_cast<QQuickItem*>(comp->create(_context.get())),[](QQuickItem *q) { q->deleteLater(); });
+			_item.reset(qobject_cast<QQuickItem*>(comp->create(_context.get())));
 			_item->setParentItem(parent);
 		}
 	}
@@ -70,7 +70,7 @@ struct edge_proxy
 	{
 		if(comp)
 		{
-			_edge_cxt.reset(new QQmlContext(QQmlEngine::contextForObject(parent)),[](QQmlContext *q) { q->deleteLater(); });
+			_edge_cxt.reset(new QQmlContext(QQmlEngine::contextForObject(parent)));
 			QObject* edge_obj = comp->create(_edge_cxt.get());
 
 			QQuickItem* ed = qobject_cast<QQuickItem*>(edge_obj);
@@ -81,7 +81,7 @@ struct edge_proxy
 			}
 			else
 			{
-				_edge.reset(ed,[](QQuickItem* q) { q->deleteLater(); });
+				_edge.reset(ed);
 				_edge->setParent(parent);
 				_edge->setParentItem(parent);
 			}
@@ -94,8 +94,8 @@ struct edge_proxy
 	{
 		if(lb)
 		{
-			_label.reset(lb->first,[](QQuickItem* q) { q->deleteLater(); });
-			_label_cxt.reset(lb->second,[](QQmlContext* q) { q->deleteLater(); });
+			_label.reset(lb->first);
+			_label_cxt.reset(lb->second);
 		}
 		else
 		{
@@ -105,8 +105,8 @@ struct edge_proxy
 
 		if(tl)
 		{
-			_tail.reset(tl->first,[](QQuickItem* q) { q->deleteLater(); });
-			_tail_cxt.reset(tl->second,[](QQmlContext* q) { q->deleteLater(); });
+			_tail.reset(tl->first);
+			_tail_cxt.reset(tl->second);
 		}
 		else
 		{
@@ -116,8 +116,8 @@ struct edge_proxy
 
 		if(hd)
 		{
-			_head.reset(hd->first,[](QQuickItem* q) { q->deleteLater(); });
-			_head_cxt.reset(hd->second,[](QQmlContext* q) { q->deleteLater(); });
+			_head.reset(hd->first);
+			_head_cxt.reset(hd->second);
 		}
 		else
 		{
