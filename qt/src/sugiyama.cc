@@ -38,6 +38,7 @@ Sugiyama::Sugiyama(QQuickItem* p)
 	_mutex()
 {
 	connect(this,SIGNAL(vertexChanged()),this,SLOT(layout()));
+	connect(this,SIGNAL(edgeChanged()),this,SLOT(layout()));
 	connect(this,SIGNAL(procedureChanged()),this,SLOT(layout()));
 	connect(&_mapper,SIGNAL(mapped(QObject*)),this,SLOT(updateEdge(QObject*)));
 	connect(&_layoutWatcher,
@@ -58,9 +59,6 @@ Sugiyama::~Sugiyama(void)
 
 void Sugiyama::setVertex(QQmlComponent* c)
 {
-	if(_vertex)
-		_vertex->deleteLater();
-
 	_layoutWatcher.waitForFinished();
 	_routeWatcher.waitForFinished();
 
@@ -70,6 +68,8 @@ void Sugiyama::setVertex(QQmlComponent* c)
 		_vertex = c;
 
 		_cache.clear();
+		_layoutWatcher.setFuture(QFuture<std::pair<po::proc_wloc,layout_type>>());
+		_routeWatcher.setFuture(QFuture<std::pair<po::proc_wloc,route_type>>());
 	}
 
 	emit vertexChanged();
@@ -77,9 +77,6 @@ void Sugiyama::setVertex(QQmlComponent* c)
 
 void Sugiyama::setEdge(QQmlComponent* c)
 {
-	if(_edge)
-		_edge->deleteLater();
-
 	_layoutWatcher.waitForFinished();
 	_routeWatcher.waitForFinished();
 
@@ -89,6 +86,8 @@ void Sugiyama::setEdge(QQmlComponent* c)
 		_edge = c;
 
 		_cache.clear();
+		_layoutWatcher.setFuture(QFuture<std::pair<po::proc_wloc,layout_type>>());
+		_routeWatcher.setFuture(QFuture<std::pair<po::proc_wloc,route_type>>());
 	}
 
 	emit edgeChanged();
@@ -98,39 +97,42 @@ void Sugiyama::setProcedure(QObject* o)
 {
 	Procedure* proc = qobject_cast<Procedure*>(o), *old_proc = _procedure;
 	boost::optional<bool> next(boost::none);
+	std::function<void(Procedure*,bool)> f = [&](Procedure* p, bool v)
+	{
+		if(p && p->procedure())
+		{
+			auto i = _cache.find(*p->procedure());
 
-	if(o)
+			if(i != _cache.end())
+			{
+				for(auto vx: iters(vertices(std::get<0>(i->second))))
+				{
+					get_vertex(vx,std::get<0>(i->second)).item()->setVisible(v);
+				}
+
+				for(auto ed: iters(edges(std::get<0>(i->second))))
+				{
+					auto const& edge = get_edge(ed,std::get<0>(i->second));
+
+					if(edge.edge())
+						edge.edge()->setVisible(v);
+				}
+			}
+		}
+	};
+
+	_layoutWatcher.waitForFinished();
+	_routeWatcher.waitForFinished();
+
+	f(_procedure,false);
+
+	if(proc)
 	{
 		{
 			std::lock_guard<std::mutex> guard(_mutex);
 
-			if(proc && proc != _procedure)
+			if(proc != _procedure)
 			{
-				std::function<void(Procedure*,bool)> f = [&](Procedure* p, bool v)
-				{
-					if(p && p->procedure())
-					{
-						auto i = _cache.find(*p->procedure());
-
-						if(i != _cache.end())
-						{
-							for(auto vx: iters(vertices(std::get<0>(i->second))))
-							{
-								get_vertex(vx,std::get<0>(i->second)).item()->setVisible(v);
-							}
-
-							for(auto ed: iters(edges(std::get<0>(i->second))))
-							{
-								auto const& edge = get_edge(ed,std::get<0>(i->second));
-
-								if(edge.edge())
-									edge.edge()->setVisible(v);
-							}
-						}
-					}
-				};
-
-				f(_procedure,false);
 				f(proc,true);
 
 				_procedure = proc;
@@ -287,7 +289,7 @@ void Sugiyama::scheduleLayout(po::proc_loc proc)
 
 					if(np.context())
 						np.context()->setContextProperty("payload",QVariant(p));
-					vx_map.emplace(vx,insert_vertex(np,g));
+					ensure(vx_map.emplace(vx,insert_vertex(np,g)).second);
 				}
 
 				std::list<itmgraph::edge_descriptor> to_proc;
@@ -299,7 +301,9 @@ void Sugiyama::scheduleLayout(po::proc_loc proc)
 					to_proc.emplace_back(insert_edge(edge_proxy(_edge,this),from,to,g));
 				}
 
-				_cache.emplace(proc,cache_type(g,boost::none,boost::none));
+				ensure(!_cache.count(proc));
+				ensure(_cache.emplace(proc,cache_type(g,boost::none,boost::none)).second);
+				ensure(_cache.count(proc) == 1);
 
 				for(auto e: to_proc)
 					updateEdgeDecorations(e,_cache.at(proc));
@@ -914,52 +918,62 @@ void Sugiyama::updateEdge(QObject* edge)
 
 void Sugiyama::processRoute(void)
 {
-	if(!_procedure || !_procedure->procedure() || *_procedure->procedure() != _routeWatcher.result().first || !_routingNeeded)
+	QFuture<std::pair<po::proc_wloc,route_type>> f = _routeWatcher.future();
+
+	if(f.resultCount())
 	{
-		po::proc_wloc proc = _routeWatcher.result().first;
-		std::lock_guard<std::mutex> guard(_mutex);
-
-		ensure(_cache.count(proc));
-
-		std::get<2>(_cache[proc]) = _routeWatcher.result().second;
-		cache_type& cache = _cache.at(proc);
-		itmgraph& g = std::get<0>(cache);
-
-		for(auto e: iters(po::edges(g)))
+		if(!_procedure || !_procedure->procedure() || *_procedure->procedure() != f.result().first || !_routingNeeded)
 		{
-			positionEdgeDecoration(e,cache);
+			po::proc_wloc proc = f.result().first;
+			std::lock_guard<std::mutex> guard(_mutex);
+
+			ensure(_cache.count(proc));
+
+			std::get<2>(_cache[proc]) = f.result().second;
+			cache_type& cache = _cache.at(proc);
+			itmgraph& g = std::get<0>(cache);
+
+			for(auto e: iters(po::edges(g)))
+			{
+				positionEdgeDecoration(e,cache);
+			}
+
+			emit routeDone();
+			update();
 		}
 
-		emit routeDone();
-		update();
-	}
-
-	if(_routingNeeded)
-	{
-		_routingNeeded = false;
-		route();
+		if(_routingNeeded)
+		{
+			_routingNeeded = false;
+			route();
+		}
 	}
 }
 
 void Sugiyama::processLayout(void)
 {
-	po::proc_wloc proc = _layoutWatcher.result().first;
+	QFuture<std::pair<po::proc_wloc,layout_type>> f = _layoutWatcher.future();
 
-	if(_cache.count(proc))
+	if(f.resultCount())
 	{
-		_cache[proc] = cache_type(std::get<0>(_cache.at(proc)),_layoutWatcher.result().second,boost::none);
+		po::proc_wloc proc = f.result().first;
 
-		for(auto vx: iters(vertices(std::get<0>(_cache.at(proc)))))
+		if(_cache.count(proc))
 		{
-			positionNode(vx,std::get<0>(_cache.at(proc)),std::get<1>(_cache.at(proc))->at(vx));
-		}
+			_cache[proc] = cache_type(std::get<0>(_cache.at(proc)),f.result().second,boost::none);
 
-		emit layoutDone();
-		route();
-	}
-	else
-	{
-		scheduleLayout(proc.lock());
+			for(auto vx: iters(vertices(std::get<0>(_cache.at(proc)))))
+			{
+				positionNode(vx,std::get<0>(_cache.at(proc)),std::get<1>(_cache.at(proc))->at(vx));
+			}
+
+			emit layoutDone();
+			route();
+		}
+		else
+		{
+			scheduleLayout(proc.lock());
+		}
 	}
 }
 
@@ -973,5 +987,4 @@ void Sugiyama::positionNode(itmgraph::vertex_descriptor v, itmgraph const& graph
 		np.context()->setContextProperty("lastRank",std::get<1>(pos));
 		np.context()->setContextProperty("computedX",std::get<2>(pos));
 	}
-	np.item()->setVisible(true);
 }
