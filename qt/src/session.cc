@@ -471,16 +471,19 @@ Session::~Session(void)
 
 Session* Session::open(QString s)
 {
+	po::discard_changes();
 	return new Session(po::open(s.toStdString()));
 }
 
 Session* Session::createRaw(QString s)
 {
+	po::discard_changes();
 	return new Session(po::raw(s.toStdString()));
 }
 
 Session* Session::createAvr(QString s)
 {
+	po::discard_changes();
 	return new Session(po::raw_avr(s.toStdString(),po::avr_state::mega88()));
 }
 
