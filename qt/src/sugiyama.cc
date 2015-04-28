@@ -34,8 +34,12 @@ Procedure::~Procedure(void) {}
 
 Sugiyama::Sugiyama(QQuickItem* p)
 : _vertex(nullptr), _edge(nullptr), _procedure(nullptr),
-	_cache(), _mapper(), _layoutWatcher(), _routeWatcher()
+	_cache(), _mapper(), _layoutWatcher(), _routeWatcher(),
+	_mutex()
 {
+	connect(this,SIGNAL(vertexChanged()),this,SLOT(layout()));
+	connect(this,SIGNAL(edgeChanged()),this,SLOT(layout()));
+	connect(this,SIGNAL(procedureChanged()),this,SLOT(layout()));
 	connect(&_mapper,SIGNAL(mapped(QObject*)),this,SLOT(updateEdge(QObject*)));
 	connect(&_layoutWatcher,
 					SIGNAL(finished()),
@@ -49,80 +53,112 @@ Sugiyama::Sugiyama(QQuickItem* p)
 
 Sugiyama::~Sugiyama(void)
 {
-	connect(this,SIGNAL(vertexChanged()),this,SLOT(layout()));
-	connect(this,SIGNAL(procedureChanged()),this,SLOT(layout()));
+	disconnect(this,SIGNAL(vertexChanged()),this,SLOT(layout()));
+	disconnect(this,SIGNAL(procedureChanged()),this,SLOT(layout()));
 }
 
 void Sugiyama::setVertex(QQmlComponent* c)
 {
-	if(_vertex)
-		_vertex->deleteLater();
-	_vertex = c;
+	_layoutWatcher.waitForFinished();
+	_routeWatcher.waitForFinished();
+
+	{
+		std::lock_guard<std::mutex> guard(_mutex);
+
+		_vertex = c;
+
+		_cache.clear();
+		_layoutWatcher.setFuture(QFuture<std::pair<po::proc_wloc,layout_type>>());
+		_routeWatcher.setFuture(QFuture<std::pair<po::proc_wloc,route_type>>());
+	}
+
 	emit vertexChanged();
 }
 
 void Sugiyama::setEdge(QQmlComponent* c)
 {
-	if(_edge)
-		_edge->deleteLater();
-	_edge = c;
+	_layoutWatcher.waitForFinished();
+	_routeWatcher.waitForFinished();
+
+	{
+		std::lock_guard<std::mutex> guard(_mutex);
+
+		_edge = c;
+
+		_cache.clear();
+		_layoutWatcher.setFuture(QFuture<std::pair<po::proc_wloc,layout_type>>());
+		_routeWatcher.setFuture(QFuture<std::pair<po::proc_wloc,route_type>>());
+	}
+
 	emit edgeChanged();
 }
 
 void Sugiyama::setProcedure(QObject* o)
 {
-	Procedure* proc = qobject_cast<Procedure*>(o);
+	Procedure* proc = qobject_cast<Procedure*>(o), *old_proc = _procedure;
 	boost::optional<bool> next(boost::none);
-
+	std::function<void(Procedure*,bool)> f = [&](Procedure* p, bool v)
 	{
-		std::lock_guard<std::mutex> guard(_mutex);
-
-		if(proc && proc != _procedure)
+		if(p && p->procedure())
 		{
-			std::function<void(Procedure*,bool)> f = [&](Procedure* p, bool v)
+			auto i = _cache.find(*p->procedure());
+
+			if(i != _cache.end())
 			{
-				if(p && p->procedure())
+				for(auto vx: iters(vertices(std::get<0>(i->second))))
 				{
-					auto i = _cache.find(*p->procedure());
-
-					if(i != _cache.end())
-					{
-						for(auto vx: iters(vertices(std::get<0>(i->second))))
-						{
-							get_vertex(vx,std::get<0>(i->second)).item->setVisible(v);
-						}
-
-						for(auto ed: iters(edges(std::get<0>(i->second))))
-						{
-							auto edge = get_edge(ed,std::get<0>(i->second));
-
-							if(edge.edge)
-								edge.edge->setVisible(v);
-						}
-					}
+					get_vertex(vx,std::get<0>(i->second)).item()->setVisible(v);
 				}
-			};
 
-			f(_procedure,false);
-			f(proc,true);
+				for(auto ed: iters(edges(std::get<0>(i->second))))
+				{
+					auto const& edge = get_edge(ed,std::get<0>(i->second));
 
-			_procedure = proc;
-			next = (_procedure && _procedure->procedure() && !_cache.count(*_procedure->procedure()));
+					if(edge.edge())
+						edge.edge()->setVisible(v);
+				}
+			}
+		}
+	};
 
+	_layoutWatcher.waitForFinished();
+	_routeWatcher.waitForFinished();
+
+	f(_procedure,false);
+
+	if(proc)
+	{
+		{
+			std::lock_guard<std::mutex> guard(_mutex);
+
+			if(proc != _procedure)
+			{
+				f(proc,true);
+
+				_procedure = proc;
+				next = (_procedure && _procedure->procedure() && !_cache.count(*_procedure->procedure()));
+			}
+		}
+
+		if(old_proc != _procedure)
 			emit procedureChanged();
+
+		if(next)
+		{
+			if(*next)
+			{
+				layout();
+			}
+			else
+			{
+				update();
+			}
 		}
 	}
-
-	if(next)
+	else
 	{
-		if(*next)
-		{
-			layout();
-		}
-		else
-		{
-			update();
-		}
+		_procedure = nullptr;
+		emit procedureChanged();
 	}
 }
 
@@ -143,10 +179,10 @@ void Sugiyama::paint(QPainter* p)
 		{
 			for(auto e: *r)
 			{
-				auto t = get_edge(e.first,graph);
-				QObject *obj = t.edge;
-				QQmlProperty lineWidth(obj,"lineWidth");
-				QQmlProperty color(obj,"color");
+				auto const& t = get_edge(e.first,graph);
+				std::shared_ptr<QQuickItem> obj = t.edge();
+				QQmlProperty lineWidth(obj.get(),"lineWidth");
+				QQmlProperty color(obj.get(),"color");
 				QPen pen(QBrush(color.read().value<QColor>()),lineWidth.read().toInt());
 
 				pen.setCosmetic(true);
@@ -175,6 +211,16 @@ doLayout(itmgraph graph, unsigned int nodesep, std::unordered_map<itmgraph::vert
 
 void Sugiyama::layout(void)
 {
+	boost::optional<po::proc_loc> maybe_proc =_procedure->procedure();
+
+	if(maybe_proc)
+	{
+		scheduleLayout(*maybe_proc);
+	}
+}
+
+void Sugiyama::scheduleLayout(po::proc_loc proc)
+{
 	std::lock_guard<std::mutex> guard(_mutex);
 
 	if(_procedure)
@@ -189,13 +235,11 @@ void Sugiyama::layout(void)
 			;
 		}
 
-		emit layoutStart();
 
-		boost::optional<po::proc_loc> maybe_proc =_procedure->procedure();
-
-		if(maybe_proc)
+		if(_vertex)
 		{
-			po::proc_loc proc = *maybe_proc;
+			emit layoutStart();
+
 			auto i = _cache.find(proc);
 
 			if(i == _cache.end())
@@ -243,8 +287,9 @@ void Sugiyama::layout(void)
 
 					QString p = boost::apply_visitor(vis(),get_vertex(vx,h));
 
-					np.context->setContextProperty("payload",QVariant(p));
-					vx_map.emplace(vx,insert_vertex(np,g));
+					if(np.context())
+						np.context()->setContextProperty("payload",QVariant(p));
+					ensure(vx_map.emplace(vx,insert_vertex(np,g)).second);
 				}
 
 				std::list<itmgraph::edge_descriptor> to_proc;
@@ -256,13 +301,14 @@ void Sugiyama::layout(void)
 					to_proc.emplace_back(insert_edge(edge_proxy(_edge,this),from,to,g));
 				}
 
-				_cache.emplace(proc,cache_type(g,boost::none,boost::none));
+				ensure(!_cache.count(proc));
+				ensure(_cache.emplace(proc,cache_type(g,boost::none,boost::none)).second);
+				ensure(_cache.count(proc) == 1);
 
 				for(auto e: to_proc)
 					updateEdgeDecorations(e,_cache.at(proc));
 
 				i = _cache.find(proc);
-
 			}
 
 			ensure(i != _cache.end());
@@ -271,7 +317,7 @@ void Sugiyama::layout(void)
 			{
 				std::unordered_map<itmgraph::vertex_descriptor,int> widths;
 				for(auto vx: iters(po::vertices(std::get<0>(i->second))))
-					widths.emplace(vx,get_vertex(vx,std::get<0>(i->second)).item->width());
+					widths.emplace(vx,get_vertex(vx,std::get<0>(i->second)).item()->width());
 
 				_layoutWatcher.setFuture(QtConcurrent::run(std::bind(doLayout,std::get<0>(i->second),100,widths,po::proc_wloc(i->first))));
 			}
@@ -279,7 +325,7 @@ void Sugiyama::layout(void)
 			{
 				for(auto vx: iters(vertices(std::get<0>(i->second))))
 				{
-					get_vertex(vx,std::get<0>(i->second)).item->setVisible(true);
+					get_vertex(vx,std::get<0>(i->second)).item()->setVisible(true);
 				}
 			}
 		}
@@ -289,81 +335,59 @@ void Sugiyama::layout(void)
 void Sugiyama::updateEdgeDecorations(itmgraph::edge_descriptor e, Sugiyama::cache_type& cache)
 {
 	edge_proxy& px = get_edge(e,std::get<0>(cache));
-	QObject* obj = px.edge;
+	std::shared_ptr<QQuickItem> obj = px.edge();
 
 	if(obj)
 	{
-		QQmlProperty from(obj,"from");
-		QQmlProperty to(obj,"to");
-		QQmlProperty lineWidth(obj,"lineWidth");
-		QQmlProperty color(obj,"color");
-		QQmlProperty head(obj,"head");
-		QQmlProperty tail(obj,"tail");
-		QQmlProperty label(obj,"label");
+		QQmlProperty from(obj.get(),"from");
+		QQmlProperty to(obj.get(),"to");
+		QQmlProperty lineWidth(obj.get(),"lineWidth");
+		QQmlProperty color(obj.get(),"color");
+		QQmlProperty head(obj.get(),"head");
+		QQmlProperty tail(obj.get(),"tail");
+		QQmlProperty label(obj.get(),"label");
 
 		QQmlComponent *hc = head.read().value<QQmlComponent*>();
 		QQmlComponent *tc = tail.read().value<QQmlComponent*>();
 		QQmlComponent *lc = label.read().value<QQmlComponent*>();
 
-		if(px.head)
-		{
-			px.head->deleteLater();
-		}
 
-		if(px.tail)
-		{
-			px.tail->deleteLater();
-		}
-
-		if(px.label)
-			px.label->deleteLater();
+		boost::optional<std::pair<QQuickItem*,QQmlContext*>> lb, tl, hd;
 
 		if(hc)
 		{
-			px.head_context = new QQmlContext(QQmlEngine::contextForObject(obj));
-			px.head_context->setContextProperty("edge",obj);
-			px.head = qobject_cast<QQuickItem*>(hc->create(px.head_context));
-			px.head->setParentItem(px.edge);
-		}
-		else
-		{
-			px.head = nullptr;
-			px.head_context = nullptr;
+			auto head_context = new QQmlContext(QQmlEngine::contextForObject(obj.get()));
+			head_context->setContextProperty("edge",obj.get());
+			auto head = qobject_cast<QQuickItem*>(hc->create(head_context));
+			head->setParentItem(px.edge().get());
+			hd = std::make_pair(head,head_context);
 		}
 
 		if(tc)
 		{
-			px.tail_context = new QQmlContext(QQmlEngine::contextForObject(obj));
-			px.tail_context->setContextProperty("edge",obj);
-			px.tail = qobject_cast<QQuickItem*>(tc->create(px.tail_context));
-			px.tail->setParentItem(px.edge);
-		}
-		else
-		{
-			px.tail = nullptr;
-			px.tail_context = nullptr;
+			auto tail_context = new QQmlContext(QQmlEngine::contextForObject(obj.get()));
+			tail_context->setContextProperty("edge",obj.get());
+			auto tail = qobject_cast<QQuickItem*>(tc->create(tail_context));
+			tail->setParentItem(px.edge().get());
 		}
 
 		if(lc)
 		{
-			px.label_context = new QQmlContext(QQmlEngine::contextForObject(obj));
-			px.label_context->setContextProperty("edge",obj);
-			px.label = qobject_cast<QQuickItem*>(lc->create(px.label_context));
-			px.label->setParentItem(px.edge);
-		}
-		else
-		{
-			px.label = nullptr;
-			px.label_context = nullptr;
+			auto label_context = new QQmlContext(QQmlEngine::contextForObject(obj.get()));
+			label_context->setContextProperty("edge",obj.get());
+			auto label = qobject_cast<QQuickItem*>(lc->create(label_context));
+			label->setParentItem(px.edge().get());
 		}
 
-		ensure(lineWidth.connectNotifySignal(this,SLOT(update())));
-		ensure(color.connectNotifySignal(this,SLOT(update())));
-		ensure(from.connectNotifySignal(&_mapper,SLOT(map())));
-		ensure(to.connectNotifySignal(&_mapper,SLOT(map())));
-		ensure(head.connectNotifySignal(&_mapper,SLOT(map())));
-		ensure(tail.connectNotifySignal(&_mapper,SLOT(map())));
-		ensure(label.connectNotifySignal(&_mapper,SLOT(map())));
+		px.replaceDecorations(lb,tl,hd);
+
+		lineWidth.connectNotifySignal(this,SLOT(update()));
+		color.connectNotifySignal(this,SLOT(update()));
+		from.connectNotifySignal(&_mapper,SLOT(map()));
+		to.connectNotifySignal(&_mapper,SLOT(map()));
+		head.connectNotifySignal(&_mapper,SLOT(map()));
+		tail.connectNotifySignal(&_mapper,SLOT(map()));
+		label.connectNotifySignal(&_mapper,SLOT(map()));
 	}
 }
 
@@ -448,8 +472,8 @@ nodePorts(itmgraph::edge_descriptor e, boost::optional<std::unordered_map<itmgra
 		}
 		else
 		{
-			auto v = get_vertex(_v,graph);
-			return QRect(v.item->x(),v.item->y(),v.item->width(),v.item->height());
+			auto const& v = get_vertex(_v,graph);
+			return QRect(v.item()->x(),v.item()->y(),v.item()->width(),v.item()->height());
 		}
 	};
 
@@ -493,22 +517,22 @@ nodePorts(itmgraph::edge_descriptor e, boost::optional<std::unordered_map<itmgra
 void Sugiyama::positionEdgeDecoration(itmgraph::edge_descriptor e, cache_type const& cache)
 {
 	itmgraph const& graph = std::get<0>(cache);
-	auto edge = get_edge(e,graph);
-	QQuickItem* from = get_vertex(po::source(e,graph),graph).item;
-	QQuickItem* to = get_vertex(po::target(e,graph),graph).item;
+	auto & edge = get_edge(e,graph);
+	std::shared_ptr<QQuickItem> from = get_vertex(po::source(e,graph),graph).item();
+	std::shared_ptr<QQuickItem> to = get_vertex(po::target(e,graph),graph).item();
 	auto ports = nodePorts(e,boost::none,graph);
-	QQuickItem* head = edge.head;
-	QQuickItem* tail = edge.tail;
-	QQuickItem* label = edge.label;
-	QRectF to_bb(QQuickPaintedItem::mapFromItem(to,to->boundingRect().topLeft()),QSizeF(to->width(),to->height()));
-	QRectF from_bb(QQuickPaintedItem::mapFromItem(from,from->boundingRect().topLeft()),QSizeF(from->width(),from->height()));
+	std::shared_ptr<QQuickItem> head = edge.head();
+	std::shared_ptr<QQuickItem> tail = edge.tail();
+	std::shared_ptr<QQuickItem> label = edge.label();
+	QRectF to_bb(QQuickPaintedItem::mapFromItem(to.get(),to->boundingRect().topLeft()),QSizeF(to->width(),to->height()));
+	QRectF from_bb(QQuickPaintedItem::mapFromItem(from.get(),from->boundingRect().topLeft()),QSizeF(from->width(),from->height()));
 	int const p = nodeBorderPadding;
 	QPoint p1(ports.first,from_bb.y() + from_bb.height() + p);
 	QPoint p2(ports.second,to_bb.y() - p);
 	QLineF l(p1,p2);
 	bool overlap = !(l.length() > 2*edgeRadius && (to_bb.adjusted(-p,-p,p,p) & from_bb.adjusted(-p,-p,p,p)).isNull());
 
-	edge.edge->setVisible(!overlap);
+	edge.edge()->setVisible(!overlap);
 
 	if(head)
 	{
@@ -519,7 +543,7 @@ void Sugiyama::positionEdgeDecoration(itmgraph::edge_descriptor e, cache_type co
 
 	if(tail)
 	{
-		tail->setX(ports.first - head->width() / 2);
+		tail->setX(ports.first - tail->width() / 2);
 		tail->setY(from_bb.bottom());
 	}
 
@@ -814,7 +838,7 @@ void Sugiyama::route(void)
 				for(auto e: iters(po::edges(g)))
 				{
 					auto from = po::source(e,g), to = po::target(e,g);
-					auto from_obj = get_vertex(from,g).item, to_obj = get_vertex(to,g).item;
+					auto from_obj = get_vertex(from,g).item(), to_obj = get_vertex(to,g).item();
 					int in_x, out_x;
 					std::tie(out_x,in_x) = nodePorts(e,boost::none,g);
 					QPainterPath pp;
@@ -865,7 +889,7 @@ void Sugiyama::route(void)
 					std::unordered_map<itmgraph::vertex_descriptor,QRect> bbs;
 					for(auto _vx: iters(po::vertices(g)))
 					{
-						auto vx = get_vertex(_vx,g).item;
+						auto vx = get_vertex(_vx,g).item();
 						bbs.emplace(_vx,QRect(vx->x(),vx->y(),vx->width(),vx->height()));
 					}
 
@@ -887,63 +911,80 @@ void Sugiyama::updateEdge(QObject* edge)
 		cache_type& cache = _cache.at(*(_procedure->procedure()));
 		itmgraph const& graph = std::get<0>(cache);
 		for(auto x: iters(edges(graph)))
-			if(get_edge(x,graph).edge == edge)
+			if(get_edge(x,graph).edge().get()== edge)
 				return updateEdgeDecorations(x,cache);
-		qDebug() << edge << "not found";
 	}
 }
 
 void Sugiyama::processRoute(void)
 {
-	if(!_procedure || !_procedure->procedure() || *_procedure->procedure() != _routeWatcher.result().first || !_routingNeeded)
+	QFuture<std::pair<po::proc_wloc,route_type>> f = _routeWatcher.future();
+
+	if(f.resultCount())
 	{
-		po::proc_wloc proc = _routeWatcher.result().first;
-		std::lock_guard<std::mutex> guard(_mutex);
-
-		ensure(_cache.count(proc));
-
-		std::get<2>(_cache[proc]) = _routeWatcher.result().second;
-		cache_type& cache = _cache.at(proc);
-		itmgraph& g = std::get<0>(cache);
-
-		for(auto e: iters(po::edges(g)))
+		if(!_procedure || !_procedure->procedure() || *_procedure->procedure() != f.result().first || !_routingNeeded)
 		{
-			positionEdgeDecoration(e,cache);
+			po::proc_wloc proc = f.result().first;
+			std::lock_guard<std::mutex> guard(_mutex);
+
+			ensure(_cache.count(proc));
+
+			std::get<2>(_cache[proc]) = f.result().second;
+			cache_type& cache = _cache.at(proc);
+			itmgraph& g = std::get<0>(cache);
+
+			for(auto e: iters(po::edges(g)))
+			{
+				positionEdgeDecoration(e,cache);
+			}
+
+			emit routeDone();
+			update();
 		}
 
-		emit routeDone();
-		update();
-	}
-
-	if(_routingNeeded)
-	{
-		_routingNeeded = false;
-		route();
+		if(_routingNeeded)
+		{
+			_routingNeeded = false;
+			route();
+		}
 	}
 }
 
 void Sugiyama::processLayout(void)
 {
-	po::proc_wloc proc = _layoutWatcher.result().first;
-	ensure(_cache.count(proc));
+	QFuture<std::pair<po::proc_wloc,layout_type>> f = _layoutWatcher.future();
 
-	_cache[proc] = cache_type(std::get<0>(_cache.at(proc)),_layoutWatcher.result().second,boost::none);
-
-	for(auto vx: iters(vertices(std::get<0>(_cache.at(proc)))))
+	if(f.resultCount())
 	{
-		positionNode(vx,std::get<0>(_cache.at(proc)),std::get<1>(_cache.at(proc))->at(vx));
-	}
+		po::proc_wloc proc = f.result().first;
 
-	emit layoutDone();
-	route();
+		if(_cache.count(proc))
+		{
+			_cache[proc] = cache_type(std::get<0>(_cache.at(proc)),f.result().second,boost::none);
+
+			for(auto vx: iters(vertices(std::get<0>(_cache.at(proc)))))
+			{
+				positionNode(vx,std::get<0>(_cache.at(proc)),std::get<1>(_cache.at(proc))->at(vx));
+			}
+
+			emit layoutDone();
+			route();
+		}
+		else
+		{
+			scheduleLayout(proc.lock());
+		}
+	}
 }
 
 void Sugiyama::positionNode(itmgraph::vertex_descriptor v, itmgraph const& graph, std::tuple<unsigned int,unsigned int,unsigned int> pos)
 {
 	node_proxy const& np = get_vertex(v,graph);
 
-	np.context->setContextProperty("firstRank",std::get<0>(pos));
-	np.context->setContextProperty("lastRank",std::get<1>(pos));
-	np.context->setContextProperty("computedX",std::get<2>(pos));
-	np.item->setVisible(true);
+	if(np.context())
+	{
+		np.context()->setContextProperty("firstRank",std::get<0>(pos));
+		np.context()->setContextProperty("lastRank",std::get<1>(pos));
+		np.context()->setContextProperty("computedX",std::get<2>(pos));
+	}
 }

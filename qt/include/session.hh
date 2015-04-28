@@ -93,6 +93,8 @@ class Session : public QObject
 	Q_PROPERTY(QObject* linear READ linear NOTIFY linearChanged)
 	Q_PROPERTY(QVariantList procedures READ procedures NOTIFY proceduresChanged)
 	Q_PROPERTY(QObject* activeProcedure READ activeProcedure WRITE setActiveProcedure NOTIFY activeProceduresChanged)
+	Q_PROPERTY(bool dirty READ isDirty NOTIFY dirtyFlagChanged)
+	Q_PROPERTY(QString savePath READ savePath NOTIFY savePathChanged)
 
 public:
 	Session(po::session, QObject *parent = nullptr);
@@ -104,11 +106,14 @@ public:
 
 	Q_INVOKABLE void postComment(int row, QString c);
 	Q_INVOKABLE void disassemble(int row, int col);
+	Q_INVOKABLE void save(QString);
 
 	QString title(void) const { return QString::fromStdString(_session.dbase->title); }
 	QObject* linear(void) const { return _linear; }
 	QVariantList const& procedures(void) const { return _procedures; }
 	QObject* activeProcedure(void) const { return _activeProcedure; }
+	bool isDirty(void) const { return _dirty; }
+	QString savePath(void) const { return _savePath; }
 
 	void setActiveProcedure(QObject*);
 
@@ -117,10 +122,16 @@ signals:
 	void linearChanged(void);
 	void proceduresChanged(void);
 	void activeProceduresChanged(void);
+	void dirtyFlagChanged(void);
+	void savePathChanged(void);
 
 private:
 	po::session _session;
 	LinearModel* _linear;
 	QVariantList _procedures;
 	Procedure* _activeProcedure;
+	bool _dirty;
+	QString _savePath;
+
+	void makeDirty(void) { if(!_dirty) { _dirty = true; emit dirtyFlagChanged(); } }
 };

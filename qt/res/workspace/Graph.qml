@@ -312,7 +312,7 @@ Item {
 			onProcedureChanged: {
 				var p = session.activeProcedure
 
-				if(root.viewOffsets[p] != undefined) {
+				if(root.viewOffsets != undefined && root.viewOffsets[p] != undefined) {
 					flick.contentX = root.viewOffsets[p]['x']
 					flick.contentY = root.viewOffsets[p]['y']
 				} else {
@@ -320,8 +320,14 @@ Item {
 					flick.contentY = 0
 				}
 
+				if(root.rankY == undefined) {
+					root.rankY = []
+				}
 				if(root.rankY[p] == undefined) {
 					root.rankY[p] = []
+				}
+				if(root.nodes == undefined) {
+					root.nodes = []
 				}
 				if(root.nodes[p] == undefined) {
 					root.nodes[p] = []

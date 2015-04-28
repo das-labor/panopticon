@@ -45,8 +45,9 @@ Session* Panopticon::openSession(const QString& path)
 	{
 		return createSession(Session::open(path));
 	}
-	catch(...)
+	catch(std::runtime_error const& e)
 	{
+		qWarning() << e.what();
 		return 0;
 	}
 }
@@ -58,8 +59,9 @@ Session* Panopticon::createRawSession(const QString& path)
 	{
 		return createSession(Session::createRaw(path));
 	}
-	catch(...)
+	catch(std::runtime_error const& e)
 	{
+		qWarning() << e.what();
 		return 0;
 	}
 }
@@ -71,8 +73,9 @@ Session* Panopticon::createAvrSession(const QString& path)
 	{
 		return createSession(Session::createAvr(path));
 	}
-	catch(...)
+	catch(std::runtime_error const& e)
 	{
+		qWarning() << e.what();
 		return 0;
 	}
 }

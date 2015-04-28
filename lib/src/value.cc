@@ -267,7 +267,7 @@ rvalue *po::unmarshal(const uuid &u, const rdf::storage &store)
 									 bytes = store.first(root,rdf::ns_po("bytes")),
 									 endianess = store.first(root,rdf::ns_po("endianess"));
 
-		uuid ou = boost::uuids::string_generator()(offset.object.as_literal());
+		uuid ou = offset.object.as_iri().as_uuid();
 		std::shared_ptr<rvalue> off(unmarshal<rvalue>(ou,store));
 		Endianess e;
 
@@ -330,7 +330,7 @@ archive po::marshal(const rvalue *rv, const uuid &u)
 			default: throw marshal_exception("unknown endianess");
 		}
 
-		ret.emplace_back(root,rdf::ns_po("name"),rdf::ns_po(m.name()));
+		ret.emplace_back(root,rdf::ns_po("name"),rdf::lit(m.name()));
 		auto off_st = marshal(&m.offset(),ou);
 		std::move(off_st.triples.begin(),off_st.triples.end(),back_inserter(ret));
 		std::move(off_st.blobs.begin(),off_st.blobs.end(),back_inserter(bl));

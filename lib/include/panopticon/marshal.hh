@@ -66,6 +66,8 @@ namespace po
 		static std::mt19937 prng;
 		static boost::uuids::basic_random_generator<std::mt19937> generator;
 	};
+
+	std::ostream& operator<<(std::ostream&, const uuid&);
 }
 
 namespace std

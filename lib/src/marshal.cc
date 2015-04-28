@@ -52,6 +52,11 @@ using namespace filesystem;
 std::mt19937 uuid::prng;
 boost::uuids::basic_random_generator<std::mt19937> uuid::generator(&uuid::prng);
 
+std::ostream& po::operator<<(std::ostream& os, const uuid& n)
+{
+	return (os << "{" << to_string(n) << "}");
+}
+
 #ifdef _WIN32
 blob::blob(const boost::filesystem::path& p, const uuid& t)
 : _size(file_size(p)), _source(boost::none),

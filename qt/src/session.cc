@@ -19,6 +19,7 @@
 #include "session.hh"
 #include <panopticon/program.hh>
 #include <panopticon/avr/avr.hh>
+#include <panopticon/loc.hh>
 
 using namespace po;
 using namespace boost::icl;
@@ -442,20 +443,25 @@ std::tuple<QString,po::bound,std::list<po::bound>> LinearModel::data_visitor::op
 }
 
 Session::Session(po::session sess, QObject *p)
-: QObject(p), _session(sess), _linear(new LinearModel(sess.dbase,this)), _procedures(), _activeProcedure(nullptr)
+: QObject(p), _session(sess), _linear(new LinearModel(sess.dbase,this)),
+  _procedures(), _activeProcedure(nullptr), _dirty(true), _savePath()
 {
 	bool set = false;
+	auto prog = _session.dbase->programs.begin();
 
-	for(auto proc: (*_session.dbase->programs.begin())->procedures())
+	if(prog !=  _session.dbase->programs.end())
 	{
-		auto p = new Procedure(this);
-
-		p->setProcedure(proc);
-		_procedures.append(QVariant::fromValue<QObject*>(p));
-		if(!set)
+		for(auto proc: (*prog)->procedures())
 		{
-			set = true;
-			//_graph->setProcedure(proc);
+			auto p = new Procedure(this);
+
+			p->setProcedure(proc);
+			_procedures.append(QVariant::fromValue<QObject*>(p));
+			if(!set)
+			{
+				set = true;
+				_activeProcedure = p;
+			}
 		}
 	}
 }
@@ -465,22 +471,26 @@ Session::~Session(void)
 
 Session* Session::open(QString s)
 {
+	po::discard_changes();
 	return new Session(po::open(s.toStdString()));
 }
 
 Session* Session::createRaw(QString s)
 {
+	po::discard_changes();
 	return new Session(po::raw(s.toStdString()));
 }
 
 Session* Session::createAvr(QString s)
 {
+	po::discard_changes();
 	return new Session(po::raw_avr(s.toStdString(),po::avr_state::mega88()));
 }
 
 void Session::postComment(int r, QString c)
 {
 	_linear->postComment(r,c);
+	makeDirty();
 }
 
 void Session::disassemble(int r, int c)
@@ -504,5 +514,37 @@ void Session::setActiveProcedure(QObject* s)
 		//_linear->setProcedure(*proc->procedure());
 
 		emit activeProceduresChanged();
+	}
+}
+
+void Session::save(QString path)
+{
+	if(isDirty())
+	{
+		qDebug() << "Saving session at " << path;
+
+		try
+		{
+			save_point(*_session.store);
+			_session.store->snapshot(path.toStdString());
+
+			bool x = _savePath == path;
+			_savePath = path;
+			_dirty = false;
+
+			emit dirtyFlagChanged();
+			if(!x)
+				emit savePathChanged();
+
+			qDebug() << "Done";
+		}
+		catch(std::runtime_error const& e)
+		{
+			qWarning() << QString(e.what());
+		}
+	}
+	else
+	{
+		qDebug() << "No changes to save";
 	}
 }

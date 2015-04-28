@@ -263,8 +263,10 @@ po::mnemonic* po::unmarshal(const po::uuid& u, const po::rdf::storage& store)
 			{ return *unmarshal<rvalue>(n.as_iri().as_uuid(),store); });
 
 		instr::operation fn = from_symbolic(func.object.as_iri().as_string(),rs);
-			lvalue l = to_lvalue(*unmarshal<rvalue>(left.object.as_iri().as_uuid(),store));
-		instr ret(fn,l);
+		rvalue l = *unmarshal<rvalue>(left.object.as_iri().as_uuid(),store);
+
+		ensure(is_lvalue(l));
+		instr ret(fn,to_lvalue(l));
 
 		return ret;
 	});

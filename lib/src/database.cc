@@ -30,6 +30,7 @@ archive po::marshal(const database* db, const uuid& u)
 	rdf::node root = rdf::iri(u);
 	boost::uuids::name_generator ng(u);
 
+	ret.emplace_back(rdf::ns_po("Root"),rdf::ns_po("meta"),root);
 	ret.emplace_back(root,rdf::ns_rdf("type"),rdf::ns_po("Database"));
 	ret.emplace_back(root,rdf::ns_po("title"),rdf::lit(db->title));
 

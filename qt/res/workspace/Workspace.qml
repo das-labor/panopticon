@@ -1,6 +1,18 @@
 import QtQuick 2.0
 import Panopticon 1.0
 
+/*
+ * +-------+---------------------+-------+
+ * |   S   |                     |   S   |
+ * |   i   |                     |   i   |
+ * |   d   |                     |   d   |
+ * |   e   |      Workspace      |   e   |
+ * |       |                     |       |
+ * |   B   |                     |   B   |
+ * |   a   |                     |   a   |
+ * |   r   |                     |   r   |
+ * +-------+---------------------+-------+
+ */
 Item {
 	id: root
 
@@ -20,11 +32,17 @@ Item {
 		}
 	}
 
+	Component.onCompleted: {
+		root.session.activeProcedure = root.session.procedures[0]
+	}
+
 	Item {
 		id: workspace
 		anchors.left: mainCode.right
 		anchors.right: mainData.left
-		height: parent.height
+		anchors.top: parent.top
+		anchors.bottom: parent.bottom
+		clip: true
 
 		Rectangle {
 			anchors.fill: parent
@@ -47,10 +65,6 @@ Item {
 			arrowHeadColor: "#aa1c1c"
 			selectionColor: "#bed83f"
 		}
-	}
-
-	Component.onCompleted: {
-		root.session.activeProcedure = root.session.procedures[0]
 	}
 
 	SideMenu {
