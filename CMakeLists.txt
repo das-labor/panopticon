@@ -2,12 +2,12 @@ cmake_minimum_required(VERSION 2.8.9)
 project(Panopticon CXX)
 include(CheckCXXCompilerFlag)
 
-set(panopticon_MILESTONE "Stammheim")
+set(panopticon_MILESTONE "Bastille")
 set(panopticon_MAJOR 0)
-set(panopticon_MINOR 9)
+set(panopticon_MINOR 10)
 set(panopticon_PATCH 0)
 set(panopticon_VERSION
-  ${panopticon_MAJOR}.${panopticon_MINOR}.${panopticon_PATCH})
+  ${panopticon_MAJOR}.${panopticon_MINOR}.${panopticon_PATCH}-dev)
 
 # Options
 set(BUILD_lib "AUTO" CACHE STRING "Build Panopticon Library (libpanopticon)")
