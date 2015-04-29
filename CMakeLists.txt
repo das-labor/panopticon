@@ -14,23 +14,6 @@ set(BUILD_lib "AUTO" CACHE STRING "Build Panopticon Library (libpanopticon)")
 set(BUILD_qt "AUTO" CACHE STRING "Build Qt UI (qtpanopticon)")
 set(BUILD_doc "AUTO" CACHE STRING "Build documentation")
 
-# Packaging
-set(CPACK_PACKAGE_NAME "Panopticon")
-set(CPACK_DEBIAN_PACKAGE_NAME "panopticon")
-set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE "amd64")
-set(CPACK_DEBIAN_PACKAGE_DEPENDS "libc6 (>= 2.3.1-6), libarchive1 (>= 1:3.1.2), cmake (>= 2:2.8.9), libboost (>= 1:1.53.0), libkyotocabinet (>= 1:1.2.76), qt5-default (>= 1:1.0)")
-set(CPACK_PACKAGE_CONTACT "Kai Michaelis <seu@panopticon.re>")
-set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Cross platform disassembler")
-set(CPACK_PACKAGE_VENDOR "http://panopticon.re")
-set(CPACK_PACKAGE_DESCRIPTION_FILE "${CMAKE_CURRENT_SOURCE_DIR}/README.md")
-set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
-set(CPACK_PACKAGE_VERSION_MAJOR ${panopticon_MAJOR})
-set(CPACK_PACKAGE_VERSION_MINOR ${panopticon_MINOR})
-set(CPACK_PACKAGE_VERSION_PATCH ${panopticon_PATCH})
-set(CPACK_GENERATOR "DEB")
-set(CPACK_STRIP_FILES ON)
-include(CPack)
-
 # Default to release build
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
 	set(CMAKE_BUILD_TYPE Release)
