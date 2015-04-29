@@ -150,14 +150,9 @@ int main(int argc, char *argv[])
 		QQuickWindow *window = qobject_cast<QQuickWindow *>(iter.next());
 
 		if(window)
-		{
-			qDebug() << "show" << window;
 			window->show();
-		}
 		else
-		{
-			qDebug() << iter.peekPrevious() << "is not a window";
-		}
+			qWarning() << iter.peekPrevious() << "is not a window";
 	}
 
 	return app.exec();
