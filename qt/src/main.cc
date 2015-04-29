@@ -55,18 +55,18 @@ int main(int argc, char *argv[])
 	parser.addHelpOption();
 	parser.addVersionOption();
 
-	QCommandLineOption openOpt(QStringList() << "o" << "open","Open previous session.","file.panop");
+	QCommandLineOption openOpt({"o","open"},"Open previous session.","file.panop");
 	parser.addOption(openOpt);
 
-	QCommandLineOption rawOpt(QStringList() << "n" << "raw","Open a plain file.","file");
+	QCommandLineOption rawOpt({"n", "raw"},"Open a plain file.","file");
 	parser.addOption(rawOpt);
 
-	QCommandLineOption avrOpt(QStringList() << "a" << "avr","Disassemble new AVR file.","file");
+	QCommandLineOption avrOpt({"a", "avr"},"Disassemble new AVR file.","file");
 	parser.addOption(avrOpt);
-	QCommandLineOption avrMcuOpt(QStringList() << "A" << "avr-mcu","Set the MCU to assume when disassembling. Default: mega88.","{ mega103, mega161, mega163, mega168, mega16, mega2561, mega3250, mega3290, mega32, mega48, mega64, mega8535, mega8, mega128, mega162, mega165, mega169, mega2560, mega323, mega325, mega329, mega406, mega649, mega8515, mega88 }");
+	QCommandLineOption avrMcuOpt({"A", "avr-mcu"},"Set the MCU to assume when disassembling. Possible values are mega103, mega161, mega163, mega168, mega16, mega2561, mega3250, mega3290, mega32, mega48, mega64, mega8535, mega8, mega128, mega162, mega165, mega169, mega2560, mega323, mega325, mega329, mega406, mega649, mega8515 and mega88 (default).","mcu");
 	parser.addOption(avrMcuOpt);
 
-	QCommandLineOption peOpt(QStringList() << "p" << "pe","Disassemble new PE (.exe) file.","file");
+	QCommandLineOption peOpt({"p", "pe"},"Disassemble new PE (.exe) file.","file");
 	parser.addOption(peOpt);
 
 	parser.process(app);
