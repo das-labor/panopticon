@@ -47,6 +47,7 @@ int main(int argc, char *argv[])
 	app.setOrganizationName("Panopticon");
 	app.setOrganizationDomain("panopticon.re");
 	app.setApplicationName("QtPanopticon");
+	app.setApplicationVersion("0.10.0-dev");
 
 	QCommandLineParser parser;
 
