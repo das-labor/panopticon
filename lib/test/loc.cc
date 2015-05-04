@@ -36,19 +36,19 @@ struct B
 namespace po
 {
 	template<>
-	B* unmarshal(const uuid &u, const rdf::storage &store)
+	std::unique_ptr<B> unmarshal(const uuid &u, const rdf::storage &store)
 	{
-		return new B(42);
+		return std::unique_ptr<B>(new B(42));
 	}
 
 	template<>
-	archive marshal(const B *b, const uuid &u)
+	archive marshal(B const& b, const uuid &u)
 	{
 		rdf::statements ret;
 		rdf::node root = rdf::iri(u);
 
 		ret.emplace_back(root,rdf::ns_rdf("type"),rdf::ns_po("B"));
-		ret.emplace_back(root,rdf::ns_po("length"),rdf::lit(b->length));
+		ret.emplace_back(root,rdf::ns_po("length"),rdf::lit(b.length));
 
 		return ret;
 	}
@@ -79,22 +79,22 @@ ostream& operator<<(ostream &os, const A &a)
 namespace po
 {
 	template<>
-	A* unmarshal(const uuid &u, const rdf::storage &store)
+	std::unique_ptr<A> unmarshal(const uuid &u, const rdf::storage &store)
 	{
-		return new A("test",{});
+		return std::unique_ptr<A>(new A("test",{}));
 	}
 
 	template<>
-	archive marshal(const A* a, const uuid &u)
+	archive marshal(A const& a, const uuid &u)
 	{
 		rdf::statements ret;
 		rdf::node root = rdf::iri(u);
 
 		ret.emplace_back(root,rdf::ns_rdf("type"),rdf::ns_po("A"));
-		ret.emplace_back(root,rdf::ns_po("name"),rdf::lit(a->name));
+		ret.emplace_back(root,rdf::ns_po("name"),rdf::lit(a.name));
 
 		rdf::nodes tmp;
-		for(const loc<B> &b: a->bs)
+		for(const loc<B> &b: a.bs)
 			tmp.emplace_back(rdf::iri(b.tag()));
 
 		pair<rdf::node,rdf::statements> p = rdf::write_list(tmp.begin(),tmp.end(),to_string(u));
@@ -173,10 +173,10 @@ TEST(loc,marshal_simple)
 	std::shared_ptr<rdf::storage> store(new rdf::storage());
 	auto gen = string_generator();
 
-	loc<A> a(gen("{00000000-0000-0000-0000-000000000004}"),new A("Hello",{}));
-	a.write().bs.push_back(loc<B>(gen("{00000000-0000-0000-0000-000000000001}"),new B(1)));
-	a.write().bs.push_back(loc<B>(gen("{00000000-0000-0000-0000-000000000002}"),new B(2)));
-	a.write().bs.push_back(loc<B>(gen("{00000000-0000-0000-0000-000000000003}"),new B(3)));
+	loc<A> a(gen("{00000000-0000-0000-0000-000000000004}"),std::unique_ptr<A>(new A("Hello",{})));
+	a.write().bs.push_back(loc<B>(gen("{00000000-0000-0000-0000-000000000001}"),std::unique_ptr<B>(new B(1))));
+	a.write().bs.push_back(loc<B>(gen("{00000000-0000-0000-0000-000000000002}"),std::unique_ptr<B>(new B(2))));
+	a.write().bs.push_back(loc<B>(gen("{00000000-0000-0000-0000-000000000003}"),std::unique_ptr<B>(new B(3))));
 
 	save_point(*store);
 
@@ -206,10 +206,10 @@ TEST(loc,marshal_twice)
 	std::shared_ptr<rdf::storage> store(new rdf::storage());
 	auto gen = string_generator();
 
-	loc<A> a(gen("{00000000-0000-0000-0000-000000000004}"),new A("Hello",{}));
-	loc<B> b1(gen("{00000000-0000-0000-0000-000000000001}"),new B(1));
-	loc<B> b2(gen("{00000000-0000-0000-0000-000000000002}"),new B(2));
-	loc<B> b3(gen("{00000000-0000-0000-0000-000000000003}"),new B(3));
+	loc<A> a(gen("{00000000-0000-0000-0000-000000000004}"),std::unique_ptr<A>(new A("Hello",{})));
+	loc<B> b1(gen("{00000000-0000-0000-0000-000000000001}"),std::unique_ptr<B>(new B(1)));
+	loc<B> b2(gen("{00000000-0000-0000-0000-000000000002}"),std::unique_ptr<B>(new B(2)));
+	loc<B> b3(gen("{00000000-0000-0000-0000-000000000003}"),std::unique_ptr<B>(new B(3)));
 
 	a.write().bs.push_back(b1);
 	a.write().bs.push_back(b2);
@@ -219,7 +219,7 @@ TEST(loc,marshal_twice)
 
 	b2.write().length = 99;
 	a.write().name = "World";
-	loc<B> b4(gen("{00000000-0000-0000-0000-000000000005}"),new B(4));
+	loc<B> b4(gen("{00000000-0000-0000-0000-000000000005}"),std::unique_ptr<B>(new B(4)));
 
 	a.write().bs.push_back(b4);
 
@@ -254,10 +254,10 @@ TEST(loc,marshal_delete)
 	std::shared_ptr<rdf::storage> store(new rdf::storage());
 	auto gen = string_generator();
 
-	loc<A> a(gen("{00000000-0000-0000-0000-000000000004}"),new A("Hello",{}));
-	loc<B> b1(gen("{00000000-0000-0000-0000-000000000001}"),new B(1));
-	loc<B> b2(gen("{00000000-0000-0000-0000-000000000002}"),new B(2));
-	loc<B> b3(gen("{00000000-0000-0000-0000-000000000003}"),new B(3));
+	loc<A> a(gen("{00000000-0000-0000-0000-000000000004}"),std::unique_ptr<A>(new A("Hello",{})));
+	loc<B> b1(gen("{00000000-0000-0000-0000-000000000001}"),std::unique_ptr<B>(new B(1)));
+	loc<B> b2(gen("{00000000-0000-0000-0000-000000000002}"),std::unique_ptr<B>(new B(2)));
+	loc<B> b3(gen("{00000000-0000-0000-0000-000000000003}"),std::unique_ptr<B>(new B(3)));
 
 	a.write().bs.push_back(b1);
 	a.write().bs.push_back(b2);
@@ -298,13 +298,13 @@ struct C
 namespace po
 {
 	template<>
-	C* unmarshal(const uuid&, const rdf::storage&)
+	std::unique_ptr<C> unmarshal(const uuid&, const rdf::storage&)
 	{
-		return new C();
+		return std::unique_ptr<C>(new C());
 	}
 
 	template<>
-	archive marshal(const C*, const uuid&)
+	archive marshal(C const&, const uuid&)
 	{
 		return archive();
 	}

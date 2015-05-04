@@ -195,7 +195,7 @@ namespace po
 		> _data;
 
 		template<typename T>
-		friend archive marshal(const T*, const uuid&);
+		friend archive marshal(T const&, const uuid&);
 	};
 
 	using layer_loc = loc<layer>;
@@ -204,10 +204,10 @@ namespace po
 	layer_wloc operator+=(layer_wloc& a, const layer_wloc &b);
 
 	template<>
-	archive marshal(const layer*, const uuid&);
+	archive marshal(layer const&, const uuid&);
 
 	template<>
-	layer* unmarshal(const uuid&, const rdf::storage&);
+	std::unique_ptr<layer> unmarshal(const uuid&, const rdf::storage&);
 }
 
 namespace std
@@ -270,14 +270,14 @@ namespace po
 		mutable boost::optional<std::list<std::pair<bound,layer_wloc>>> _projection;
 
 		template<typename T>
-		friend archive marshal(const T*, const uuid&);
+		friend archive marshal(T const&, const uuid&);
 	};
 
 	template<>
-	archive marshal(const region*, const uuid&);
+	archive marshal(region const&, const uuid&);
 
 	template<>
-	region* unmarshal(const uuid&, const rdf::storage&);
+	std::unique_ptr<region> unmarshal(const uuid&, const rdf::storage&);
 
 	/**
 	 * DAG of regions. Models which region covers which.

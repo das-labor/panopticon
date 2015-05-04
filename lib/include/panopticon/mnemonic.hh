@@ -130,10 +130,10 @@ namespace po
 	};
 
 	template<>
-	mnemonic* unmarshal(const uuid&, const rdf::storage&);
+	std::unique_ptr<mnemonic> unmarshal(const uuid&, const rdf::storage&);
 
 	template<>
-	archive marshal(const mnemonic*, const uuid&);
+	archive marshal(mnemonic const&, const uuid&);
 
 	std::ostream& operator<<(std::ostream &os, const mnemonic &m);
 

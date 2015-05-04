@@ -26,11 +26,16 @@ TEST(structure,marshal_single)
 {
 	uuid uu1, uu2, uu3, uu4, uu5;
 
-	struct_loc st1(uu1,new structure("s1",tree<field>(field{"root",bound(0,100),integer{0xffffff,0,false,16,boost::none,LittleEndian,{}}}),"a"));
-	struct_loc st2(uu2,new structure("s2",tree<field>(field{"root",bound(1,100),integer{0xffffff,0,false,16,10,LittleEndian,{}}}),"a"));
-	struct_loc st3(uu3,new structure("s3",tree<field>(field{"root",bound(2,100),ieee754{}}),"a"));
-	struct_loc st4(uu4,new structure("s4",tree<field>(field{"root",bound(3,100),std::string("test")}),"a"));
-	struct_loc st5(uu5,new structure("s5",tree<field>(field{"root",bound(1,100),integer{0xffffff,0,false,16,10,LittleEndian,{std::make_pair(1,"one"),std::make_pair(2,"two")}}}),"a"));
+	struct_loc st1(uu1,std::unique_ptr<structure>(
+		new structure("s1",tree<field>(field{"root",bound(0,100),integer{0xffffff,0,false,16,boost::none,LittleEndian,{}}}),"a")));
+	struct_loc st2(uu2,std::unique_ptr<structure>(
+		new structure("s2",tree<field>(field{"root",bound(1,100),integer{0xffffff,0,false,16,10,LittleEndian,{}}}),"a")));
+	struct_loc st3(uu3,std::unique_ptr<structure>(
+		new structure("s3",tree<field>(field{"root",bound(2,100),ieee754{}}),"a")));
+	struct_loc st4(uu4,std::unique_ptr<structure>(
+		new structure("s4",tree<field>(field{"root",bound(3,100),std::string("test")}),"a")));
+	struct_loc st5(uu5,std::unique_ptr<structure>(
+		new structure("s5",tree<field>(field{"root",bound(1,100),integer{0xffffff,0,false,16,10,LittleEndian,{std::make_pair(1,"one"),std::make_pair(2,"two")}}}),"a")));
 	rdf::storage store;
 
 	save_point(store);
@@ -62,7 +67,7 @@ TEST(structure,marshal_tree)
 	auto f3 = tr.insert(f1,field{"root",bound(3,100),std::string("test")});
 	auto f4 = tr.insert(f3,field{"root",bound(1,100),integer{0xffffff,0,false,16,10,LittleEndian,{std::make_pair(1,"one"),std::make_pair(2,"two")}}});
 
-	struct_loc st1(uu1,new structure("s1",tr,"a"));
+	struct_loc st1(uu1,std::unique_ptr<structure>(new structure("s1",tr,"a")));
 	rdf::storage store;
 
 	save_point(store);

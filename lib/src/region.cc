@@ -140,7 +140,7 @@ std::ostream& po::operator<<(std::ostream& os, const po::tryte& b)
 }
 
 template<>
-archive po::marshal(const layer* l, const uuid& u)
+archive po::marshal(layer const& l, const uuid& u)
 {
 	archive ret;
 	rdf::node root = rdf::iri(u);
@@ -188,14 +188,14 @@ archive po::marshal(const layer* l, const uuid& u)
 
 	visitor v(ret,root);
 
-	boost::apply_visitor(v,l->_data);
-	ret.triples.emplace_back(root,rdf::ns_po("name"),rdf::lit(l->name()));
+	boost::apply_visitor(v,l._data);
+	ret.triples.emplace_back(root,rdf::ns_po("name"),rdf::lit(l.name()));
 
 	return ret;
 }
 
 template<>
-layer* po::unmarshal(const uuid& u, const rdf::storage& st)
+std::unique_ptr<layer> po::unmarshal(const uuid& u, const rdf::storage& st)
 {
 	rdf::node root = rdf::iri(u);
 	rdf::node type = st.first(root,rdf::ns_rdf("type")).object;
@@ -204,7 +204,7 @@ layer* po::unmarshal(const uuid& u, const rdf::storage& st)
 	if(type == rdf::ns_po("Sparse-Undefined"))
 	{
 		rdf::node size = st.first(root,rdf::ns_po("size")).object;
-		return new layer(name.as_literal(),static_cast<offset>(stoull(size.as_literal())));
+		return std::unique_ptr<layer>(new layer(name.as_literal(),static_cast<offset>(stoull(size.as_literal()))));
 	}
 	else if(type == rdf::ns_po("Sparse-Defined"))
 	{
@@ -229,12 +229,12 @@ layer* po::unmarshal(const uuid& u, const rdf::storage& st)
 			i = k + 1;
 		}
 
-		return new layer(name.as_literal(),kv);
+		return std::unique_ptr<layer>(new layer(name.as_literal(),kv));
 	}
 	else if(type == rdf::ns_po("Blob"))
 	{
 		rdf::node b = st.first(root,rdf::ns_po("blob")).object;
-		return new layer(name.as_literal(),st.fetch_blob(b.as_iri().as_uuid()));
+		return std::unique_ptr<layer>(new layer(name.as_literal(),st.fetch_blob(b.as_iri().as_uuid())));
 	}
 	else
 		throw marshal_exception("unknown layer type \"" + type.as_iri().as_string() + "\"");
@@ -546,29 +546,29 @@ std::list<std::pair<bound,region_wloc>> po::projection(const regions &regs)
 }
 
 template<>
-archive po::marshal(const region* r, const uuid& u)
+archive po::marshal(region const& r, const uuid& u)
 {
 	rdf::statements ret;
 	std::list<blob> bl;
 	rdf::node root = rdf::iri(u);
 
 	ret.emplace_back(root,rdf::ns_rdf("type"),rdf::ns_po("Region"));
-	ret.emplace_back(root,rdf::ns_po("name"),rdf::lit(r->name()));
-	ret.emplace_back(root,rdf::ns_po("base"),rdf::lit(to_string(r->_base.tag())));
-	auto m = marshal(r->_base.read(),r->_base.tag());
+	ret.emplace_back(root,rdf::ns_po("name"),rdf::lit(r.name()));
+	ret.emplace_back(root,rdf::ns_po("base"),rdf::lit(to_string(r._base.tag())));
+	auto m = marshal<layer>(*r._base.read(),r._base.tag());
 
 	std::move(m.triples.begin(),m.triples.end(),back_inserter(ret));
 	std::move(m.blobs.begin(),m.blobs.end(),back_inserter(bl));
 	rdf::nodes ns;
 
-	for(auto p: r->stack())
+	for(auto p: r.stack())
 	{
 		rdf::node n = rdf::node::blank();
 
 		ret.emplace_back(n,rdf::ns_po("bound"),rdf::lit(to_string(p.first.lower()) + ":" + to_string(p.first.upper())));
 		ret.emplace_back(n,rdf::ns_po("layer"),rdf::lit(to_string(p.second.tag())));
 		ns.emplace_back(n);
-		auto m = marshal(p.second.read(),p.second.tag());
+		auto m = marshal<layer>(*p.second.read(),p.second.tag());
 
 		std::move(m.triples.begin(),m.triples.end(),back_inserter(ret));
 		std::move(m.blobs.begin(),m.blobs.end(),back_inserter(bl));
@@ -582,7 +582,7 @@ archive po::marshal(const region* r, const uuid& u)
 }
 
 template<>
-region* po::unmarshal(const uuid& u, const rdf::storage& st)
+std::unique_ptr<region> po::unmarshal(const uuid& u, const rdf::storage& st)
 {
 	uuids::string_generator sg;
 	rdf::node root = rdf::iri(u);
@@ -593,7 +593,7 @@ region* po::unmarshal(const uuid& u, const rdf::storage& st)
 
 	uuid base_u = sg(base.as_literal());
 	layer_loc b(base_u,unmarshal<layer>(base_u,st));
-	region *ret = new region(name.as_literal(),b);
+	std::unique_ptr<region> ret(new region(name.as_literal(),b));
 
 	for(auto n: ns)
 	{

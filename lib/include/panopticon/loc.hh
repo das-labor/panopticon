@@ -55,22 +55,15 @@ namespace po
 	struct loc_control
 	{
 		loc_control(void) = delete;
-		loc_control(T *t) : inner(t) {}
+		loc_control(std::unique_ptr<T>&& t) : inner(std::move(t)) {}
 		loc_control(const rdf::storage &s) : inner(&s) {}
 
-		~loc_control(void)
-		{
-			T** t = boost::get<T*>(&inner);
-			if(t && *t)
-				delete *t;
-		}
+		bool has_object(void) const { return !!boost::get<std::unique_ptr<T>*>(&inner); }
 
-		bool has_object(void) const { return !!boost::get<T*>(&inner); }
-
-		T* object(void) { return boost::get<T*>(inner); }
+		T* object(void) { return boost::get<std::unique_ptr<T>>(inner).get(); }
 		const rdf::storage &storage(void) { return *boost::get<const rdf::storage*>(inner); }
 
-		boost::variant<T*,const rdf::storage*> inner;
+		boost::variant<std::unique_ptr<T>,const rdf::storage*> inner;
 	};
 
 	template<typename T>
@@ -78,8 +71,15 @@ namespace po
 	{
 		std::function<archive(void)> ret = [t,u](void)
 		{
-			archive ret = (t ? marshal<T>(t->object(),u) : archive());
-			return ret;
+			if(t)
+			{
+				ensure(t->object());
+				return marshal<T>(*(t->object()),u);
+			}
+			else
+			{
+				return archive();
+			}
 		};
 
 		return ret;
@@ -131,7 +131,7 @@ namespace po
 				}
 				else
 				{
-					prev = make_marshal_poly(std::make_shared<loc_control<T>>(new T(*(cb->object()))),_uuid);
+					prev = make_marshal_poly(std::make_shared<loc_control<T>>(std::unique_ptr<T>(new T(*(cb->object())))),_uuid);
 				}
 
 				ensure(dirty_locations.emplace(_uuid,std::make_pair(prev,make_marshal_poly(cb,_uuid))).second);
@@ -160,13 +160,13 @@ namespace po
 				}
 				else
 				{
-					prev = make_marshal_poly(std::make_shared<loc_control<T>>(new T(*(cb->object()))),_uuid);
+					prev = make_marshal_poly(std::make_shared<loc_control<T>>(std::unique_ptr<T>(new T(*(cb->object())))),_uuid);
 				}
 
 				ensure(dirty_locations.emplace(_uuid,std::make_pair(prev,make_marshal_poly(std::shared_ptr<loc_control<T>>(),_uuid))).second);
 			}
 
-			cb->inner = static_cast<T*>(nullptr);
+			cb->inner = static_cast<std::unique_ptr<T>>(std::unique_ptr<T>());
 		}
 
 		const uuid& tag(void) const { return _uuid; }
@@ -185,8 +185,9 @@ namespace po
 		using basic_loc<T,loc<T>>::tag;
 
 		loc(const loc<T> &l) : basic_loc<T,loc<T>>(l.tag()), _control(l._control) {}
-		explicit loc(T* t) : loc(uuid::generator(),t) {}
-		loc(const uuid &u, T* t) : basic_loc<T,loc<T>>(u), _control(new loc_control<T>(t))
+		explicit loc(std::unique_ptr<T> t) : loc(uuid::generator(),t) {}
+		explicit loc(T* t) : loc(uuid::generator(),std::unique_ptr<T>(t)) {}
+		loc(const uuid &u, std::unique_ptr<T>&& t) : basic_loc<T,loc<T>>(u), _control(new loc_control<T>(std::move(t)))
 		{
 #ifdef __MINGW32__
 			std::lock_guard<boost::mutex> guard(dirty_locations_mutex);

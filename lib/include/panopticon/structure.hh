@@ -127,14 +127,14 @@ namespace po
 
 	private:
 		template<typename T>
-		friend archive marshal(const T*, const uuid&);
+		friend archive marshal(T const&, const uuid&);
 	};
 
 	template<>
-	archive marshal(const structure*, const uuid&);
+	archive marshal(structure const&, const uuid&);
 
 	template<>
-	structure* unmarshal(const uuid&, const rdf::storage&);
+	std::unique_ptr<structure> unmarshal(const uuid&, const rdf::storage&);
 
 	template<typename ParserTag>
 	struct_loc parse(region_loc, offset, ParserTag);

@@ -109,14 +109,14 @@ namespace po
 		digraph<boost::variant<proc_loc,symbol>,std::nullptr_t> _calls;
 
 		template<typename T>
-		friend T* unmarshal(const uuid&, const rdf::storage&);
+		friend std::unique_ptr<T> unmarshal(const uuid&, const rdf::storage&);
 	};
 
 	template<>
-	program* unmarshal(const uuid&, const rdf::storage&);
+	std::unique_ptr<program> unmarshal(const uuid&, const rdf::storage&);
 
 	template<>
-	archive marshal(const program*, const uuid&);
+	archive marshal(program const&, const uuid&);
 
 	template<typename Tag,typename Dis>
 	boost::optional<prog_loc> program::disassemble(Dis const& main, typename architecture_traits<Tag>::state_type const& init, po::slab data, const po::ref& r, boost::optional<prog_loc> prog, disass_sig signal)

@@ -24,7 +24,7 @@ using namespace po;
 using namespace std;
 
 template<>
-archive po::marshal(const database* db, const uuid& u)
+archive po::marshal(database const& db, const uuid& u)
 {
 	rdf::statements ret;
 	rdf::node root = rdf::iri(u);
@@ -32,13 +32,13 @@ archive po::marshal(const database* db, const uuid& u)
 
 	ret.emplace_back(rdf::ns_po("Root"),rdf::ns_po("meta"),root);
 	ret.emplace_back(root,rdf::ns_rdf("type"),rdf::ns_po("Database"));
-	ret.emplace_back(root,rdf::ns_po("title"),rdf::lit(db->title));
+	ret.emplace_back(root,rdf::ns_po("title"),rdf::lit(db.title));
 
-	for(auto s: db->structures)
+	for(auto s: db.structures)
 		ret.emplace_back(root,rdf::ns_po("structure"),rdf::iri(s.tag()));
-	for(auto s: db->programs)
+	for(auto s: db.programs)
 		ret.emplace_back(root,rdf::ns_po("program"),rdf::iri(s.tag()));
-	for(auto s: db->comments)
+	for(auto s: db.comments)
 	{
 		rdf::node cmt = rdf::iri(ng("cmnt" + to_string(s.second.tag())));
 		ret.emplace_back(root,rdf::ns_po("comment"),cmt);
@@ -49,12 +49,12 @@ archive po::marshal(const database* db, const uuid& u)
 
 	size_t cnt = 0;
 
-	for(auto e: iters(edges(db->data)))
+	for(auto e: iters(edges(db.data)))
 	{
 		rdf::node nd = rdf::iri(ng("reg" + to_string(cnt++)));
-		rdf::node from_nd = rdf::iri(get_vertex(source(e,db->data),db->data).tag());
-		rdf::node to_nd = rdf::iri(get_vertex(target(e,db->data),db->data).tag());
-		bound ar = get_edge(e,db->data);
+		rdf::node from_nd = rdf::iri(get_vertex(source(e,db.data),db.data).tag());
+		rdf::node to_nd = rdf::iri(get_vertex(target(e,db.data),db.data).tag());
+		bound ar = get_edge(e,db.data);
 		rdf::node ar_nd = rdf::lit(to_string(ar.lower()) + ":" + to_string(ar.upper()));
 
 		ret.emplace_back(nd,rdf::ns_po("area"),ar_nd);
@@ -63,14 +63,14 @@ archive po::marshal(const database* db, const uuid& u)
 		ret.emplace_back(root,rdf::ns_po("mapping"),nd);
 	}
 
-	for(auto o: iters(vertices(db->data)))
-		ret.emplace_back(root,rdf::ns_po("region"),rdf::iri(get_vertex(o,db->data).tag()));
+	for(auto o: iters(vertices(db.data)))
+		ret.emplace_back(root,rdf::ns_po("region"),rdf::iri(get_vertex(o,db.data).tag()));
 
 	return ret;
 }
 
 template<>
-database* po::unmarshal(const uuid& u, const rdf::storage& store)
+std::unique_ptr<database> po::unmarshal(const uuid& u, const rdf::storage& store)
 {
 	using vx = boost::graph_traits<po::regions>::vertex_descriptor;
 	rdf::node root = rdf::iri(u);
@@ -125,7 +125,7 @@ database* po::unmarshal(const uuid& u, const rdf::storage& store)
 		insert_edge(bound(stoull(b.substr(0,div)),stoull(b.substr(div + 1))),f,t,data);
 	}
 
-	return new database{title_st.object.as_literal(),data,structs,progs,cmnts};
+	return std::unique_ptr<database>(new database{title_st.object.as_literal(),data,structs,progs,cmnts});
 }
 
 session::~session(void)
@@ -494,19 +494,19 @@ boost::optional<record> po::next_record(const ref& r, dbase_loc db)
 }
 
 template<>
-archive po::marshal(const std::string* c, const uuid& u)
+archive po::marshal(std::string const& c, const uuid& u)
 {
 	rdf::statements ret;
 	rdf::node root = rdf::iri(u);
 
 	ret.emplace_back(root,rdf::ns_rdf("type"),rdf::ns_po("Comment"));
-	ret.emplace_back(root,rdf::ns_po("body"),rdf::lit(*c));
+	ret.emplace_back(root,rdf::ns_po("body"),rdf::lit(c));
 
 	return ret;
 }
 
 template<>
-std::string* po::unmarshal(const uuid& u, const rdf::storage& store)
+std::unique_ptr<std::string> po::unmarshal(const uuid& u, const rdf::storage& store)
 {
 	rdf::node root = rdf::iri(u);
 
@@ -514,5 +514,5 @@ std::string* po::unmarshal(const uuid& u, const rdf::storage& store)
 		throw marshal_exception("invalid type");
 
 	rdf::statement body_st = store.first(root,rdf::ns_po("body"));
-	return new std::string(body_st.object.as_literal());
+	return std::unique_ptr<std::string>(new std::string(body_st.object.as_literal()));
 }

@@ -36,7 +36,7 @@ TEST(basic_block,marshal)
 		instr(univ_nop<rvalue>{constant(66)},variable("c",3,5))});
 	uuid uu;
 
-	bblock_loc bb1(uu,new basic_block({mn1,mn2,mn3}));
+	bblock_loc bb1(uu,std::unique_ptr<basic_block>(new basic_block({mn1,mn2,mn3})));
 	rdf::storage store;
 
 	save_point(store);
