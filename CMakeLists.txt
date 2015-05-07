@@ -71,6 +71,10 @@ endif()
 # Defines
 add_definitions("-DBOOST_MPL_CFG_NO_PREPROCESSED_HEADERS")
 add_definitions("-DBOOST_MPL_LIMIT_LIST_SIZE=30")
+if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+	add_definitions("-DNOMINMAX")
+endif()
+
 
 # Dependencies
 find_package(LibArchive REQUIRED)
