@@ -336,14 +336,13 @@ TEST_F(disassembler,wide_token)
 
 TEST_F(disassembler,optional)
 {
-	using po::operator "" _e;
 
 	po::sem_state<test_tag> st(0,'a');
 	std::vector<unsigned char> _buf = {127,126,125,127,125};
 	po::slab buf(_buf.data(),_buf.size());
 	po::disassembler<test_tag> dec;
 
-	dec[127_e >> *126_e >> 125_e] = [](ss s) { s.mnemonic(s.tokens.size(),"1"); };
+	dec[po::token_expr(127) >> *po::token_expr(126) >> po::token_expr(125)] = [](ss s) { s.mnemonic(s.tokens.size(),"1"); };
 	boost::optional<std::pair<po::slab::iterator,po::sem_state<test_tag>>> i;
 
 	i = dec.try_match(buf.begin(),buf.end(),st);
@@ -383,14 +382,13 @@ TEST_F(disassembler,optional)
 
 TEST_F(disassembler,fixed_capture_group_contents)
 {
-	using po::operator "" _e;
 
 	po::sem_state<test_tag> st(0,'a');
 	std::vector<unsigned char> _buf = {127,255};
 	po::slab buf(_buf.data(),_buf.size());
 	po::disassembler<test_tag> dec;
 
-	dec[ "01111111"_e >> "a@11111111"_e ] = [](ss s) { s.mnemonic(1,"1"); };
+	dec[ po::token_expr(std::string("01111111")) >> po::token_expr(std::string("a@11111111")) ] = [](ss s) { s.mnemonic(1,"1"); };
 	boost::optional<std::pair<po::slab::iterator,po::sem_state<test_tag>>> i;
 
 	i = dec.try_match(buf.begin(),buf.end(),st);

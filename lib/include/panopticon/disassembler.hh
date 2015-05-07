@@ -243,8 +243,8 @@ namespace po
 	};
 
 	token_expr operator*(token_expr const& e);
-	token_expr operator"" _e(char const* s,size_t l);
-	token_expr operator"" _e(unsigned long long l);
+	//token_expr operator"" _e(char const* s,size_t l);
+	//token_expr operator"" _e(unsigned long long l);
 	token_expr operator>>(token_expr const& e1,token_expr const& e2);
 
 	template<typename Tag>

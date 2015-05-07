@@ -23,6 +23,8 @@
 
 #pragma once
 
+#define f(x) token_expr(std::string(x))
+
 namespace po
 {
 	namespace amd64
@@ -77,134 +79,134 @@ namespace po
 			repx_prfx[ 0xf3 ] = [](sm& st) {};
 			repx_prfx[ 0xf2 ] = [](sm& st) {};
 
-			rex_prfx[ "0100 w@. r@. x@. b@."_e ] = [](sm& st)
+			rex_prfx[ f("0100 w@. r@. x@. b@.") ] = [](sm& st)
 			{
 				st.state.rex = true;
 				if(st.capture_groups.at("w") == 1)
 					st.state.op_sz = amd64_state::OpSz_64;
 			};
 
-			imm8 [ "imm@........"_e] = [](sm& st)
+			imm8 [ f("imm@........")] = [](sm& st)
 			{
 				st.state.imm = constant(st.capture_groups.at("imm"));
 			};
-			imm16[ imm8 >> "imm@........"_e] = [](sm& st)
+			imm16[ imm8 >> f("imm@........")] = [](sm& st)
 			{
 				st.state.imm = constant(st.capture_groups.at("imm"));
 			};
-			imm32[ imm16 >> "imm@........"_e >> "imm@........"_e] = [](sm& st)
+			imm32[ imm16 >> f("imm@........") >> f("imm@........")] = [](sm& st)
 			{
 				st.state.imm = constant(st.capture_groups.at("imm"));
 			};
-			imm48[ imm32 >> "imm@........"_e >> "imm@........"_e ] = [](sm& st)
+			imm48[ imm32 >> f("imm@........") >> f("imm@........") ] = [](sm& st)
 			{
 				uint64_t a = st.capture_groups.at("imm") & 0xffff;
 
 				st.state.imm = constant((a << 32) | st.capture_groups.at("imm") >> 16);
 			};
-			imm64[ imm32 >> "imm@........"_e >> "imm@........"_e >> "imm@........"_e >> "imm@........"_e] = [](sm& st)
+			imm64[ imm32 >> f("imm@........") >> f("imm@........") >> f("imm@........") >> f("imm@........")] = [](sm& st)
 			{
 				st.state.imm = constant(st.capture_groups.at("imm"));
 			};
 
-			imm [ "imm@........"_e] = std::function<bool(sm&)>([](sm& st) -> bool
+			imm [ f("imm@........")] = std::function<bool(sm&)>([](sm& st) -> bool
 			{
 				st.state.imm = constant(st.capture_groups.at("imm"));
 				return st.state.op_sz == amd64_state::OpSz_8;
 			});
-			imm [ "imm@........"_e >>  "imm@........"_e ] = std::function<bool(sm&)>([](sm& st) -> bool
+			imm [ f("imm@........") >>  f("imm@........") ] = std::function<bool(sm&)>([](sm& st) -> bool
 			{
 				st.state.imm = constant(st.capture_groups.at("imm"));
 				return st.state.op_sz == amd64_state::OpSz_16;
 			});
-			imm [ "imm@........"_e >>  "imm@........"_e >> "imm@........"_e >>  "imm@........"_e ] = std::function<bool(sm&)>([](sm& st) -> bool
+			imm [ f("imm@........") >>  f("imm@........") >> f("imm@........") >>  f("imm@........") ] = std::function<bool(sm&)>([](sm& st) -> bool
 			{
 				st.state.imm = constant(st.capture_groups.at("imm"));
 				return st.state.op_sz == amd64_state::OpSz_32 || st.state.op_sz == amd64_state::OpSz_64;
 			});
 
-			immlong [ "imm@........"_e] = std::function<bool(sm&)>([](sm& st) -> bool
+			immlong [ f("imm@........")] = std::function<bool(sm&)>([](sm& st) -> bool
 			{
 				st.state.imm = constant(st.capture_groups.at("imm"));
 				return st.state.op_sz == amd64_state::OpSz_8;
 			});
-			immlong [ "imm@........"_e >>  "imm@........"_e ] = std::function<bool(sm&)>([](sm& st) -> bool
+			immlong [ f("imm@........") >>  f("imm@........") ] = std::function<bool(sm&)>([](sm& st) -> bool
 			{
 				st.state.imm = constant(st.capture_groups.at("imm"));
 				return st.state.op_sz == amd64_state::OpSz_16;
 			});
-			immlong [ "imm@........"_e >>  "imm@........"_e >> "imm@........"_e >>  "imm@........"_e ] = std::function<bool(sm&)>([](sm& st) -> bool
+			immlong [ f("imm@........") >>  f("imm@........") >> f("imm@........") >>  f("imm@........") ] = std::function<bool(sm&)>([](sm& st) -> bool
 			{
 				st.state.imm = constant(st.capture_groups.at("imm"));
 				return st.state.op_sz == amd64_state::OpSz_32;
 			});
-			immlong [ "imm@........"_e >>  "imm@........"_e >> "imm@........"_e >>  "imm@........"_e >>
-								"imm@........"_e >>  "imm@........"_e >> "imm@........"_e >>  "imm@........"_e ] = std::function<bool(sm&)>([](sm& st) -> bool
+			immlong [ f("imm@........") >>  f("imm@........") >> f("imm@........") >>  f("imm@........") >>
+								f("imm@........") >>  f("imm@........") >> f("imm@........") >>  f("imm@........") ] = std::function<bool(sm&)>([](sm& st) -> bool
 			{
 				st.state.imm = constant(st.capture_groups.at("imm"));
 				return st.state.op_sz == amd64_state::OpSz_64;
 			});
 
-			moffs [ "moffs@........"_e >>  "moffs@........"_e ] = std::function<bool(sm&)>([](sm& st) -> bool
+			moffs [ f("moffs@........") >>  f("moffs@........") ] = std::function<bool(sm&)>([](sm& st) -> bool
 			{
 				st.state.moffs = constant(st.capture_groups.at("moffs"));
 				return st.state.addr_sz == amd64_state::AddrSz_16;
 			});
-			moffs [ "moffs@........"_e >>  "moffs@........"_e >> "moffs@........"_e >>  "moffs@........"_e ] = std::function<bool(sm&)>([](sm& st) -> bool
+			moffs [ f("moffs@........") >>  f("moffs@........") >> f("moffs@........") >>  f("moffs@........") ] = std::function<bool(sm&)>([](sm& st) -> bool
 			{
 				st.state.moffs = constant(st.capture_groups.at("moffs"));
 				return st.state.addr_sz == amd64_state::AddrSz_32;
 			});
-			moffs [ "moffs@........"_e >>  "moffs@........"_e >> "moffs@........"_e >>  "moffs@........"_e >>
-			        "moffs@........"_e >>  "moffs@........"_e >> "moffs@........"_e >>  "moffs@........"_e ] = std::function<bool(sm&)>([](sm& st) -> bool
+			moffs [ f("moffs@........") >>  f("moffs@........") >> f("moffs@........") >>  f("moffs@........") >>
+			        f("moffs@........") >>  f("moffs@........") >> f("moffs@........") >>  f("moffs@........") ] = std::function<bool(sm&)>([](sm& st) -> bool
 			{
 				st.state.moffs = constant(st.capture_groups.at("moffs"));
 				return st.state.addr_sz == amd64_state::AddrSz_64;
 			});
 
-			moffs8 [ "moffs@........"_e >>  "moffs@........"_e ] = std::function<bool(sm&)>([](sm& st) -> bool
+			moffs8 [ f("moffs@........") >>  f("moffs@........") ] = std::function<bool(sm&)>([](sm& st) -> bool
 			{
 				st.state.moffs = constant(st.capture_groups.at("moffs"));
 				st.state.op_sz = amd64_state::OpSz_8;
 				return st.state.addr_sz == amd64_state::AddrSz_16;
 			});
-			moffs8 [ "moffs@........"_e >>  "moffs@........"_e >> "moffs@........"_e >>  "moffs@........"_e ] = std::function<bool(sm&)>([](sm& st) -> bool
+			moffs8 [ f("moffs@........") >>  f("moffs@........") >> f("moffs@........") >>  f("moffs@........") ] = std::function<bool(sm&)>([](sm& st) -> bool
 			{
 				st.state.moffs = constant(st.capture_groups.at("moffs"));
 				st.state.op_sz = amd64_state::OpSz_8;
 				return st.state.addr_sz == amd64_state::AddrSz_32;
 			});
-			moffs8 [ "moffs@........"_e >>  "moffs@........"_e >> "moffs@........"_e >>  "moffs@........"_e >>
-			         "moffs@........"_e >>  "moffs@........"_e >> "moffs@........"_e >>  "moffs@........"_e ] = std::function<bool(sm&)>([](sm& st) -> bool
+			moffs8 [ f("moffs@........") >>  f("moffs@........") >> f("moffs@........") >>  f("moffs@........") >>
+			         f("moffs@........") >>  f("moffs@........") >> f("moffs@........") >>  f("moffs@........") ] = std::function<bool(sm&)>([](sm& st) -> bool
 			{
 				st.state.moffs = constant(st.capture_groups.at("moffs"));
 				st.state.op_sz = amd64_state::OpSz_8;
 				return st.state.addr_sz == amd64_state::AddrSz_64;
 			});
 
-			disp8 [ "disp@........"_e] = [](sm& st)
+			disp8 [ f("disp@........")] = [](sm& st)
 			{
 				st.state.disp = constant(st.capture_groups.at("disp"));
 			};
-			disp16[ disp8 >> "disp@........"_e] = [](sm& st)
+			disp16[ disp8 >> f("disp@........")] = [](sm& st)
 			{
 				st.state.disp = constant(st.capture_groups.at("disp"));
 			};
-			disp32[ disp16 >> "disp@........"_e >> "disp@........"_e] = [](sm& st)
+			disp32[ disp16 >> f("disp@........") >> f("disp@........")] = [](sm& st)
 			{
 				st.state.disp = constant(st.capture_groups.at("disp"));
 			};
-			disp64[ disp32 >> "disp@........"_e >> "disp@........"_e >> "disp@........"_e >> "disp@........"_e] = [](sm& st)
+			disp64[ disp32 >> f("disp@........") >> f("disp@........") >> f("disp@........") >> f("disp@........")] = [](sm& st)
 			{
 				st.state.disp = constant(st.capture_groups.at("disp"));
 			};
 
 			// sib
-			sib [ "scale@.. index@... base@101"_e >> "disp@........"_e >> "disp@........"_e >> "disp@........"_e >> "disp@........"_e	] = [](sm& st)
+			sib [ f("scale@.. index@... base@101") >> f("disp@........") >> f("disp@........") >> f("disp@........") >> f("disp@........")	] = [](sm& st)
 			{
 				st.state.disp = constant(st.capture_groups.at("disp"));
 			};
-			sib [ "scale@.. index@... base@..."_e] = [](sm& st) {};
+			sib [ f("scale@.. index@... base@...")] = [](sm& st) {};
 
 			std::function<void(boost::optional<amd64_state::OperandSize>,sm&)> rm_func = [&](boost::optional<amd64_state::OperandSize> os,sm& st)
 			{
@@ -244,193 +246,193 @@ namespace po
 			};
 
 			// mod = 00
-			rm [ "mod@00 reg@... rm@101"_e >> disp32 ] = std::bind(rm_func,boost::none,pls::_1);
-			rm [ "mod@00 reg@... rm@100"_e >> sib    ] = std::bind(rm_func,boost::none,pls::_1);
-			rm [ "mod@00 reg@... rm@..."_e           ] = std::bind(rm_func,boost::none,pls::_1);
-			rmlong [ "mod@00 reg@... rm@101"_e >> disp32 ] = std::bind(rm_func,amd64_state::OpSz_64,pls::_1);
-			rmlong [ "mod@00 reg@... rm@100"_e >> sib    ] = std::bind(rm_func,amd64_state::OpSz_64,pls::_1);
-			rmlong [ "mod@00 reg@... rm@..."_e           ] = std::bind(rm_func,amd64_state::OpSz_64,pls::_1);
-			rmbyte [ "mod@00 reg@... rm@101"_e >> disp32 ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
-			rmbyte [ "mod@00 reg@... rm@100"_e >> sib    ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
-			rmbyte [ "mod@00 reg@... rm@..."_e           ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
+			rm [ f("mod@00 reg@... rm@101") >> disp32 ] = std::bind(rm_func,boost::none,pls::_1);
+			rm [ f("mod@00 reg@... rm@100") >> sib    ] = std::bind(rm_func,boost::none,pls::_1);
+			rm [ f("mod@00 reg@... rm@...")           ] = std::bind(rm_func,boost::none,pls::_1);
+			rmlong [ f("mod@00 reg@... rm@101") >> disp32 ] = std::bind(rm_func,amd64_state::OpSz_64,pls::_1);
+			rmlong [ f("mod@00 reg@... rm@100") >> sib    ] = std::bind(rm_func,amd64_state::OpSz_64,pls::_1);
+			rmlong [ f("mod@00 reg@... rm@...")           ] = std::bind(rm_func,amd64_state::OpSz_64,pls::_1);
+			rmbyte [ f("mod@00 reg@... rm@101") >> disp32 ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
+			rmbyte [ f("mod@00 reg@... rm@100") >> sib    ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
+			rmbyte [ f("mod@00 reg@... rm@...")           ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
 
 			// mod = 00 w/ extension opcode
-			rm0 [ "mod@00 000 rm@101"_e >> disp32	] = std::bind(rm_func,boost::none,pls::_1);
-			rm0 [ "mod@00 000 rm@100"_e >> sib		] = std::bind(rm_func,boost::none,pls::_1);
-			rm0 [ "mod@00 000 rm@..."_e					  ] = std::bind(rm_func,boost::none,pls::_1);
-			rmbyte0 [ "mod@00 000 rm@101"_e >> disp32	] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
-			rmbyte0 [ "mod@00 000 rm@100"_e >> sib		] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
-			rmbyte0 [ "mod@00 000 rm@..."_e				  	] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
+			rm0 [ f("mod@00 000 rm@101") >> disp32	] = std::bind(rm_func,boost::none,pls::_1);
+			rm0 [ f("mod@00 000 rm@100") >> sib		] = std::bind(rm_func,boost::none,pls::_1);
+			rm0 [ f("mod@00 000 rm@...")					  ] = std::bind(rm_func,boost::none,pls::_1);
+			rmbyte0 [ f("mod@00 000 rm@101") >> disp32	] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
+			rmbyte0 [ f("mod@00 000 rm@100") >> sib		] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
+			rmbyte0 [ f("mod@00 000 rm@...")				  	] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
 
-			rm1 [ "mod@00 001 rm@101"_e >> disp32	] = std::bind(rm_func,boost::none,pls::_1);
-			rm1 [ "mod@00 001 rm@100"_e >> sib		] = std::bind(rm_func,boost::none,pls::_1);
-			rm1 [ "mod@00 001 rm@..."_e				  	] = std::bind(rm_func,boost::none,pls::_1);
-			rmbyte1 [ "mod@00 001 rm@101"_e >> disp32	] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
-			rmbyte1 [ "mod@00 001 rm@100"_e >> sib		] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
-			rmbyte1 [ "mod@00 001 rm@..."_e		  			] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
+			rm1 [ f("mod@00 001 rm@101") >> disp32	] = std::bind(rm_func,boost::none,pls::_1);
+			rm1 [ f("mod@00 001 rm@100") >> sib		] = std::bind(rm_func,boost::none,pls::_1);
+			rm1 [ f("mod@00 001 rm@...")				  	] = std::bind(rm_func,boost::none,pls::_1);
+			rmbyte1 [ f("mod@00 001 rm@101") >> disp32	] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
+			rmbyte1 [ f("mod@00 001 rm@100") >> sib		] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
+			rmbyte1 [ f("mod@00 001 rm@...")		  			] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
 
-			rm2 [ "mod@00 010 rm@101"_e >> disp32	] = std::bind(rm_func,boost::none,pls::_1);
-			rm2 [ "mod@00 010 rm@100"_e >> sib		] = std::bind(rm_func,boost::none,pls::_1);
-			rm2 [ "mod@00 010 rm@..."_e				  	] = std::bind(rm_func,boost::none,pls::_1);
-			rmbyte2 [ "mod@00 010 rm@101"_e >> disp32	] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
-			rmbyte2 [ "mod@00 010 rm@100"_e >> sib		] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
-			rmbyte2 [ "mod@00 010 rm@..."_e		  			] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
+			rm2 [ f("mod@00 010 rm@101") >> disp32	] = std::bind(rm_func,boost::none,pls::_1);
+			rm2 [ f("mod@00 010 rm@100") >> sib		] = std::bind(rm_func,boost::none,pls::_1);
+			rm2 [ f("mod@00 010 rm@...")				  	] = std::bind(rm_func,boost::none,pls::_1);
+			rmbyte2 [ f("mod@00 010 rm@101") >> disp32	] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
+			rmbyte2 [ f("mod@00 010 rm@100") >> sib		] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
+			rmbyte2 [ f("mod@00 010 rm@...")		  			] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
 
-			rm3 [ "mod@00 011 rm@101"_e >> disp32	] = std::bind(rm_func,boost::none,pls::_1);
-			rm3 [ "mod@00 011 rm@100"_e >> sib		] = std::bind(rm_func,boost::none,pls::_1);
-			rm3 [ "mod@00 011 rm@..."_e				  	] = std::bind(rm_func,boost::none,pls::_1);
-			rmbyte3 [ "mod@00 011 rm@101"_e >> disp32	] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
-			rmbyte3 [ "mod@00 011 rm@100"_e >> sib		] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
-			rmbyte3 [ "mod@00 011 rm@..."_e		  			] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
+			rm3 [ f("mod@00 011 rm@101") >> disp32	] = std::bind(rm_func,boost::none,pls::_1);
+			rm3 [ f("mod@00 011 rm@100") >> sib		] = std::bind(rm_func,boost::none,pls::_1);
+			rm3 [ f("mod@00 011 rm@...")				  	] = std::bind(rm_func,boost::none,pls::_1);
+			rmbyte3 [ f("mod@00 011 rm@101") >> disp32	] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
+			rmbyte3 [ f("mod@00 011 rm@100") >> sib		] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
+			rmbyte3 [ f("mod@00 011 rm@...")		  			] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
 
-			rm4 [ "mod@00 100 rm@101"_e >> disp32	] = std::bind(rm_func,boost::none,pls::_1);
-			rm4 [ "mod@00 100 rm@100"_e >> sib		] = std::bind(rm_func,boost::none,pls::_1);
-			rm4 [ "mod@00 100 rm@..."_e				  	] = std::bind(rm_func,boost::none,pls::_1);
-			rmbyte4 [ "mod@00 100 rm@101"_e >> disp32	] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
-			rmbyte4 [ "mod@00 100 rm@100"_e >> sib		] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
-			rmbyte4 [ "mod@00 100 rm@..."_e		  			] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
+			rm4 [ f("mod@00 100 rm@101") >> disp32	] = std::bind(rm_func,boost::none,pls::_1);
+			rm4 [ f("mod@00 100 rm@100") >> sib		] = std::bind(rm_func,boost::none,pls::_1);
+			rm4 [ f("mod@00 100 rm@...")				  	] = std::bind(rm_func,boost::none,pls::_1);
+			rmbyte4 [ f("mod@00 100 rm@101") >> disp32	] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
+			rmbyte4 [ f("mod@00 100 rm@100") >> sib		] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
+			rmbyte4 [ f("mod@00 100 rm@...")		  			] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
 
-			rm5 [ "mod@00 101 rm@101"_e >> disp32	] = std::bind(rm_func,boost::none,pls::_1);
-			rm5 [ "mod@00 101 rm@100"_e >> sib		] = std::bind(rm_func,boost::none,pls::_1);
-			rm5 [ "mod@00 101 rm@..."_e				  	] = std::bind(rm_func,boost::none,pls::_1);
-			rmbyte5 [ "mod@00 101 rm@101"_e >> disp32	] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
-			rmbyte5 [ "mod@00 101 rm@100"_e >> sib		] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
-			rmbyte5 [ "mod@00 101 rm@..."_e		  			] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
+			rm5 [ f("mod@00 101 rm@101") >> disp32	] = std::bind(rm_func,boost::none,pls::_1);
+			rm5 [ f("mod@00 101 rm@100") >> sib		] = std::bind(rm_func,boost::none,pls::_1);
+			rm5 [ f("mod@00 101 rm@...")				  	] = std::bind(rm_func,boost::none,pls::_1);
+			rmbyte5 [ f("mod@00 101 rm@101") >> disp32	] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
+			rmbyte5 [ f("mod@00 101 rm@100") >> sib		] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
+			rmbyte5 [ f("mod@00 101 rm@...")		  			] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
 
-			rm6 [ "mod@00 110 rm@101"_e >> disp32	] = std::bind(rm_func,boost::none,pls::_1);
-			rm6 [ "mod@00 110 rm@100"_e >> sib		] = std::bind(rm_func,boost::none,pls::_1);
-			rm6 [ "mod@00 110 rm@..."_e				  	] = std::bind(rm_func,boost::none,pls::_1);
-			rmbyte6 [ "mod@00 110 rm@101"_e >> disp32	] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
-			rmbyte6 [ "mod@00 110 rm@100"_e >> sib		] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
-			rmbyte6 [ "mod@00 110 rm@..."_e				  	] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
+			rm6 [ f("mod@00 110 rm@101") >> disp32	] = std::bind(rm_func,boost::none,pls::_1);
+			rm6 [ f("mod@00 110 rm@100") >> sib		] = std::bind(rm_func,boost::none,pls::_1);
+			rm6 [ f("mod@00 110 rm@...")				  	] = std::bind(rm_func,boost::none,pls::_1);
+			rmbyte6 [ f("mod@00 110 rm@101") >> disp32	] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
+			rmbyte6 [ f("mod@00 110 rm@100") >> sib		] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
+			rmbyte6 [ f("mod@00 110 rm@...")				  	] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
 
-			rm7 [ "mod@00 111 rm@101"_e >> disp32	] = std::bind(rm_func,boost::none,pls::_1);
-			rm7 [ "mod@00 111 rm@100"_e >> sib		] = std::bind(rm_func,boost::none,pls::_1);
-			rm7 [ "mod@00 111 rm@..."_e				  	] = std::bind(rm_func,boost::none,pls::_1);
-			rmbyte7 [ "mod@00 111 rm@101"_e >> disp32	] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
-			rmbyte7 [ "mod@00 111 rm@100"_e >> sib		] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
-			rmbyte7 [ "mod@00 111 rm@..."_e		  			] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
+			rm7 [ f("mod@00 111 rm@101") >> disp32	] = std::bind(rm_func,boost::none,pls::_1);
+			rm7 [ f("mod@00 111 rm@100") >> sib		] = std::bind(rm_func,boost::none,pls::_1);
+			rm7 [ f("mod@00 111 rm@...")				  	] = std::bind(rm_func,boost::none,pls::_1);
+			rmbyte7 [ f("mod@00 111 rm@101") >> disp32	] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
+			rmbyte7 [ f("mod@00 111 rm@100") >> sib		] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
+			rmbyte7 [ f("mod@00 111 rm@...")		  			] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
 
 			// mod = 01
-			rm [ "mod@01 reg@... rm@100"_e >> sib >> disp32     ] = std::bind(rm_func,boost::none,pls::_1);
-			rm [ "mod@01 reg@... rm@..."_e >> disp8	            ] = std::bind(rm_func,boost::none,pls::_1);
-			rmbyte [ "mod@01 reg@... rm@100"_e >> sib >> disp32 ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
-			rmbyte [ "mod@01 reg@... rm@..."_e >> disp8	        ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
-			rmlong [ "mod@01 reg@... rm@100"_e >> sib >> disp32 ] = std::bind(rm_func,amd64_state::OpSz_64,pls::_1);
-			rmlong [ "mod@01 reg@... rm@..."_e >> disp8	        ] = std::bind(rm_func,amd64_state::OpSz_64,pls::_1);
+			rm [ f("mod@01 reg@... rm@100") >> sib >> disp32     ] = std::bind(rm_func,boost::none,pls::_1);
+			rm [ f("mod@01 reg@... rm@...") >> disp8	            ] = std::bind(rm_func,boost::none,pls::_1);
+			rmbyte [ f("mod@01 reg@... rm@100") >> sib >> disp32 ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
+			rmbyte [ f("mod@01 reg@... rm@...") >> disp8	        ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
+			rmlong [ f("mod@01 reg@... rm@100") >> sib >> disp32 ] = std::bind(rm_func,amd64_state::OpSz_64,pls::_1);
+			rmlong [ f("mod@01 reg@... rm@...") >> disp8	        ] = std::bind(rm_func,amd64_state::OpSz_64,pls::_1);
 
 			// mod = 01 w/ opcode extension
-			rm0 [ "mod@01 000 rm@100"_e >> sib >> disp8 ] = std::bind(rm_func,boost::none,pls::_1);
-			rm0 [ "mod@01 000 rm@..."_e >> disp8	      ] = std::bind(rm_func,boost::none,pls::_1);
-			rmbyte0 [ "mod@01 000 rm@100"_e >> sib >> disp8 ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
-			rmbyte0 [ "mod@01 000 rm@..."_e >> disp8	      ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
+			rm0 [ f("mod@01 000 rm@100") >> sib >> disp8 ] = std::bind(rm_func,boost::none,pls::_1);
+			rm0 [ f("mod@01 000 rm@...") >> disp8	      ] = std::bind(rm_func,boost::none,pls::_1);
+			rmbyte0 [ f("mod@01 000 rm@100") >> sib >> disp8 ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
+			rmbyte0 [ f("mod@01 000 rm@...") >> disp8	      ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
 
-			rm1 [ "mod@01 001 rm@100"_e >> sib >> disp8 ] = std::bind(rm_func,boost::none,pls::_1);
-			rm1 [ "mod@01 001 rm@..."_e >> disp8	      ] = std::bind(rm_func,boost::none,pls::_1);
-			rmbyte1 [ "mod@01 001 rm@100"_e >> sib >> disp8 ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
-			rmbyte1 [ "mod@01 001 rm@..."_e >> disp8	      ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
+			rm1 [ f("mod@01 001 rm@100") >> sib >> disp8 ] = std::bind(rm_func,boost::none,pls::_1);
+			rm1 [ f("mod@01 001 rm@...") >> disp8	      ] = std::bind(rm_func,boost::none,pls::_1);
+			rmbyte1 [ f("mod@01 001 rm@100") >> sib >> disp8 ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
+			rmbyte1 [ f("mod@01 001 rm@...") >> disp8	      ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
 
-			rm2 [ "mod@01 010 rm@100"_e >> sib >> disp8 ] = std::bind(rm_func,boost::none,pls::_1);
-			rm2 [ "mod@01 010 rm@..."_e >> disp8	      ] = std::bind(rm_func,boost::none,pls::_1);
-			rmbyte2 [ "mod@01 010 rm@100"_e >> sib >> disp8 ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
-			rmbyte2 [ "mod@01 010 rm@..."_e >> disp8	      ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
+			rm2 [ f("mod@01 010 rm@100") >> sib >> disp8 ] = std::bind(rm_func,boost::none,pls::_1);
+			rm2 [ f("mod@01 010 rm@...") >> disp8	      ] = std::bind(rm_func,boost::none,pls::_1);
+			rmbyte2 [ f("mod@01 010 rm@100") >> sib >> disp8 ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
+			rmbyte2 [ f("mod@01 010 rm@...") >> disp8	      ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
 
-			rm3 [ "mod@01 011 rm@100"_e >> sib >> disp8 ] = std::bind(rm_func,boost::none,pls::_1);
-			rm3 [ "mod@01 011 rm@..."_e >> disp8	      ] = std::bind(rm_func,boost::none,pls::_1);
-			rmbyte3 [ "mod@01 011 rm@100"_e >> sib >> disp8 ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
-			rmbyte3 [ "mod@01 011 rm@..."_e >> disp8	      ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
+			rm3 [ f("mod@01 011 rm@100") >> sib >> disp8 ] = std::bind(rm_func,boost::none,pls::_1);
+			rm3 [ f("mod@01 011 rm@...") >> disp8	      ] = std::bind(rm_func,boost::none,pls::_1);
+			rmbyte3 [ f("mod@01 011 rm@100") >> sib >> disp8 ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
+			rmbyte3 [ f("mod@01 011 rm@...") >> disp8	      ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
 
-			rm4 [ "mod@01 100 rm@100"_e >> sib >> disp8 ] = std::bind(rm_func,boost::none,pls::_1);
-			rm4 [ "mod@01 100 rm@..."_e >> disp8	      ] = std::bind(rm_func,boost::none,pls::_1);
-			rmbyte4 [ "mod@01 100 rm@100"_e >> sib >> disp8 ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
-			rmbyte4 [ "mod@01 100 rm@..."_e >> disp8	      ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
+			rm4 [ f("mod@01 100 rm@100") >> sib >> disp8 ] = std::bind(rm_func,boost::none,pls::_1);
+			rm4 [ f("mod@01 100 rm@...") >> disp8	      ] = std::bind(rm_func,boost::none,pls::_1);
+			rmbyte4 [ f("mod@01 100 rm@100") >> sib >> disp8 ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
+			rmbyte4 [ f("mod@01 100 rm@...") >> disp8	      ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
 
-			rm5 [ "mod@01 101 rm@100"_e >> sib >> disp8 ] = std::bind(rm_func,boost::none,pls::_1);
-			rm5 [ "mod@01 101 rm@..."_e >> disp8	      ] = std::bind(rm_func,boost::none,pls::_1);
-			rmbyte5 [ "mod@01 101 rm@100"_e >> sib >> disp8 ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
-			rmbyte5 [ "mod@01 101 rm@..."_e >> disp8	      ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
+			rm5 [ f("mod@01 101 rm@100") >> sib >> disp8 ] = std::bind(rm_func,boost::none,pls::_1);
+			rm5 [ f("mod@01 101 rm@...") >> disp8	      ] = std::bind(rm_func,boost::none,pls::_1);
+			rmbyte5 [ f("mod@01 101 rm@100") >> sib >> disp8 ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
+			rmbyte5 [ f("mod@01 101 rm@...") >> disp8	      ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
 
-			rm6 [ "mod@01 110 rm@100"_e >> sib >> disp8 ] = std::bind(rm_func,boost::none,pls::_1);
-			rm6 [ "mod@01 110 rm@..."_e >> disp8	      ] = std::bind(rm_func,boost::none,pls::_1);
-			rmbyte6 [ "mod@01 110 rm@100"_e >> sib >> disp8 ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
-			rmbyte6 [ "mod@01 110 rm@..."_e >> disp8	      ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
+			rm6 [ f("mod@01 110 rm@100") >> sib >> disp8 ] = std::bind(rm_func,boost::none,pls::_1);
+			rm6 [ f("mod@01 110 rm@...") >> disp8	      ] = std::bind(rm_func,boost::none,pls::_1);
+			rmbyte6 [ f("mod@01 110 rm@100") >> sib >> disp8 ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
+			rmbyte6 [ f("mod@01 110 rm@...") >> disp8	      ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
 
-			rm7 [ "mod@01 111 rm@100"_e >> sib >> disp8 ] = std::bind(rm_func,boost::none,pls::_1);
-			rm7 [ "mod@01 111 rm@..."_e >> disp8	      ] = std::bind(rm_func,boost::none,pls::_1);
-			rmbyte7 [ "mod@01 111 rm@100"_e >> sib >> disp8 ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
-			rmbyte7 [ "mod@01 111 rm@..."_e >> disp8	      ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
+			rm7 [ f("mod@01 111 rm@100") >> sib >> disp8 ] = std::bind(rm_func,boost::none,pls::_1);
+			rm7 [ f("mod@01 111 rm@...") >> disp8	      ] = std::bind(rm_func,boost::none,pls::_1);
+			rmbyte7 [ f("mod@01 111 rm@100") >> sib >> disp8 ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
+			rmbyte7 [ f("mod@01 111 rm@...") >> disp8	      ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
 
 			// mod = 10
-			rm [ "mod@10 reg@... rm@100"_e >> sib >> disp32 ] = std::bind(rm_func,boost::none,pls::_1);
-			rm [ "mod@10 reg@... rm@..."_e >> disp32	      ] = std::bind(rm_func,boost::none,pls::_1);
-			rmbyte [ "mod@10 reg@... rm@100"_e >> sib >> disp32 ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
-			rmbyte [ "mod@10 reg@... rm@..."_e >> disp32	      ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
-			rmlong [ "mod@10 reg@... rm@100"_e >> sib >> disp32 ] = std::bind(rm_func,amd64_state::OpSz_64,pls::_1);
-			rmlong [ "mod@10 reg@... rm@..."_e >> disp32	      ] = std::bind(rm_func,amd64_state::OpSz_64,pls::_1);
+			rm [ f("mod@10 reg@... rm@100") >> sib >> disp32 ] = std::bind(rm_func,boost::none,pls::_1);
+			rm [ f("mod@10 reg@... rm@...") >> disp32	      ] = std::bind(rm_func,boost::none,pls::_1);
+			rmbyte [ f("mod@10 reg@... rm@100") >> sib >> disp32 ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
+			rmbyte [ f("mod@10 reg@... rm@...") >> disp32	      ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
+			rmlong [ f("mod@10 reg@... rm@100") >> sib >> disp32 ] = std::bind(rm_func,amd64_state::OpSz_64,pls::_1);
+			rmlong [ f("mod@10 reg@... rm@...") >> disp32	      ] = std::bind(rm_func,amd64_state::OpSz_64,pls::_1);
 
 			// mod = 10 w/ opcode extension
-			rm0 [ "mod@10 000 rm@100"_e >> sib >> disp32 ] = std::bind(rm_func,boost::none,pls::_1);
-			rm0 [ "mod@10 000 rm@..."_e >> disp32	       ] = std::bind(rm_func,boost::none,pls::_1);
-			rmbyte0 [ "mod@10 000 rm@100"_e >> sib >> disp32 ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
-			rmbyte0 [ "mod@10 000 rm@..."_e >> disp32	       ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
+			rm0 [ f("mod@10 000 rm@100") >> sib >> disp32 ] = std::bind(rm_func,boost::none,pls::_1);
+			rm0 [ f("mod@10 000 rm@...") >> disp32	       ] = std::bind(rm_func,boost::none,pls::_1);
+			rmbyte0 [ f("mod@10 000 rm@100") >> sib >> disp32 ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
+			rmbyte0 [ f("mod@10 000 rm@...") >> disp32	       ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
 
-			rm1 [ "mod@10 001 rm@100"_e >> sib >> disp32 ] = std::bind(rm_func,boost::none,pls::_1);
-			rm1 [ "mod@10 001 rm@..."_e >> disp32	       ] = std::bind(rm_func,boost::none,pls::_1);
-			rmbyte1 [ "mod@10 001 rm@100"_e >> sib >> disp32 ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
-			rmbyte1 [ "mod@10 001 rm@..."_e >> disp32	       ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
+			rm1 [ f("mod@10 001 rm@100") >> sib >> disp32 ] = std::bind(rm_func,boost::none,pls::_1);
+			rm1 [ f("mod@10 001 rm@...") >> disp32	       ] = std::bind(rm_func,boost::none,pls::_1);
+			rmbyte1 [ f("mod@10 001 rm@100") >> sib >> disp32 ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
+			rmbyte1 [ f("mod@10 001 rm@...") >> disp32	       ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
 
-			rm2 [ "mod@10 010 rm@100"_e >> sib >> disp32 ] = std::bind(rm_func,boost::none,pls::_1);
-			rm2 [ "mod@10 010 rm@..."_e >> disp32	       ] = std::bind(rm_func,boost::none,pls::_1);
-			rmbyte2 [ "mod@10 010 rm@100"_e >> sib >> disp32 ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
-			rmbyte2 [ "mod@10 010 rm@..."_e >> disp32	       ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
+			rm2 [ f("mod@10 010 rm@100") >> sib >> disp32 ] = std::bind(rm_func,boost::none,pls::_1);
+			rm2 [ f("mod@10 010 rm@...") >> disp32	       ] = std::bind(rm_func,boost::none,pls::_1);
+			rmbyte2 [ f("mod@10 010 rm@100") >> sib >> disp32 ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
+			rmbyte2 [ f("mod@10 010 rm@...") >> disp32	       ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
 
-			rm3 [ "mod@10 011 rm@100"_e >> sib >> disp32 ] = std::bind(rm_func,boost::none,pls::_1);
-			rm3 [ "mod@10 011 rm@..."_e >> disp32	       ] = std::bind(rm_func,boost::none,pls::_1);
-			rmbyte3 [ "mod@10 011 rm@100"_e >> sib >> disp32 ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
-			rmbyte3 [ "mod@10 011 rm@..."_e >> disp32	       ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
+			rm3 [ f("mod@10 011 rm@100") >> sib >> disp32 ] = std::bind(rm_func,boost::none,pls::_1);
+			rm3 [ f("mod@10 011 rm@...") >> disp32	       ] = std::bind(rm_func,boost::none,pls::_1);
+			rmbyte3 [ f("mod@10 011 rm@100") >> sib >> disp32 ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
+			rmbyte3 [ f("mod@10 011 rm@...") >> disp32	       ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
 
-			rm4 [ "mod@10 100 rm@100"_e >> sib >> disp32 ] = std::bind(rm_func,boost::none,pls::_1);
-			rm4 [ "mod@10 100 rm@..."_e >> disp32	       ] = std::bind(rm_func,boost::none,pls::_1);
-			rmbyte4 [ "mod@10 100 rm@100"_e >> sib >> disp32 ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
-			rmbyte4 [ "mod@10 100 rm@..."_e >> disp32	       ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
+			rm4 [ f("mod@10 100 rm@100") >> sib >> disp32 ] = std::bind(rm_func,boost::none,pls::_1);
+			rm4 [ f("mod@10 100 rm@...") >> disp32	       ] = std::bind(rm_func,boost::none,pls::_1);
+			rmbyte4 [ f("mod@10 100 rm@100") >> sib >> disp32 ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
+			rmbyte4 [ f("mod@10 100 rm@...") >> disp32	       ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
 
-			rm5 [ "mod@10 101 rm@100"_e >> sib >> disp32 ] = std::bind(rm_func,boost::none,pls::_1);
-			rm5 [ "mod@10 101 rm@..."_e >> disp32	       ] = std::bind(rm_func,boost::none,pls::_1);
-			rmbyte5 [ "mod@10 101 rm@100"_e >> sib >> disp32 ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
-			rmbyte5 [ "mod@10 101 rm@..."_e >> disp32	       ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
+			rm5 [ f("mod@10 101 rm@100") >> sib >> disp32 ] = std::bind(rm_func,boost::none,pls::_1);
+			rm5 [ f("mod@10 101 rm@...") >> disp32	       ] = std::bind(rm_func,boost::none,pls::_1);
+			rmbyte5 [ f("mod@10 101 rm@100") >> sib >> disp32 ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
+			rmbyte5 [ f("mod@10 101 rm@...") >> disp32	       ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
 
-			rm6 [ "mod@10 110 rm@100"_e >> sib >> disp32 ] = std::bind(rm_func,boost::none,pls::_1);
-			rm6 [ "mod@10 110 rm@..."_e >> disp32	       ] = std::bind(rm_func,boost::none,pls::_1);
-			rmbyte6 [ "mod@10 110 rm@100"_e >> sib >> disp32 ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
-			rmbyte6 [ "mod@10 110 rm@..."_e >> disp32	       ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
+			rm6 [ f("mod@10 110 rm@100") >> sib >> disp32 ] = std::bind(rm_func,boost::none,pls::_1);
+			rm6 [ f("mod@10 110 rm@...") >> disp32	       ] = std::bind(rm_func,boost::none,pls::_1);
+			rmbyte6 [ f("mod@10 110 rm@100") >> sib >> disp32 ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
+			rmbyte6 [ f("mod@10 110 rm@...") >> disp32	       ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
 
-			rm7 [ "mod@10 111 rm@100"_e >> sib >> disp32 ] = std::bind(rm_func,boost::none,pls::_1);
-			rm7 [ "mod@10 111 rm@..."_e >> disp32	       ] = std::bind(rm_func,boost::none,pls::_1);
-			rmbyte7 [ "mod@10 111 rm@100"_e >> sib >> disp32 ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
-			rmbyte7 [ "mod@10 111 rm@..."_e >> disp32	       ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
+			rm7 [ f("mod@10 111 rm@100") >> sib >> disp32 ] = std::bind(rm_func,boost::none,pls::_1);
+			rm7 [ f("mod@10 111 rm@...") >> disp32	       ] = std::bind(rm_func,boost::none,pls::_1);
+			rmbyte7 [ f("mod@10 111 rm@100") >> sib >> disp32 ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
+			rmbyte7 [ f("mod@10 111 rm@...") >> disp32	       ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
 
 			// mod = 11
-			rm [ "mod@11 reg@... rm@..."_e ] = std::bind(rm_func,boost::none,pls::_1);
-			rmbyte [ "mod@11 reg@... rm@..."_e ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
-			rmlong [ "mod@11 reg@... rm@..."_e ] = std::bind(rm_func,amd64_state::OpSz_64,pls::_1);
+			rm [ f("mod@11 reg@... rm@...") ] = std::bind(rm_func,boost::none,pls::_1);
+			rmbyte [ f("mod@11 reg@... rm@...") ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
+			rmlong [ f("mod@11 reg@... rm@...") ] = std::bind(rm_func,amd64_state::OpSz_64,pls::_1);
 
 			// mod = 11 w/ opcode extension
-			rm0 [ "mod@11 000 rm@..."_e ] = std::bind(rm_func,boost::none,pls::_1);
-			rm1 [ "mod@11 001 rm@..."_e ] = std::bind(rm_func,boost::none,pls::_1);
-			rm2 [ "mod@11 010 rm@..."_e ] = std::bind(rm_func,boost::none,pls::_1);
-			rm3 [ "mod@11 011 rm@..."_e ] = std::bind(rm_func,boost::none,pls::_1);
-			rm4 [ "mod@11 100 rm@..."_e ] = std::bind(rm_func,boost::none,pls::_1);
-			rm5 [ "mod@11 101 rm@..."_e ] = std::bind(rm_func,boost::none,pls::_1);
-			rm6 [ "mod@11 110 rm@..."_e ] = std::bind(rm_func,boost::none,pls::_1);
-			rm7 [ "mod@11 111 rm@..."_e ] = std::bind(rm_func,boost::none,pls::_1);
-			rmbyte0 [ "mod@11 000 rm@..."_e ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
-			rmbyte1 [ "mod@11 001 rm@..."_e ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
-			rmbyte2 [ "mod@11 010 rm@..."_e ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
-			rmbyte3 [ "mod@11 011 rm@..."_e ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
-			rmbyte4 [ "mod@11 100 rm@..."_e ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
-			rmbyte5 [ "mod@11 101 rm@..."_e ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
-			rmbyte6 [ "mod@11 110 rm@..."_e ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
-			rmbyte7 [ "mod@11 111 rm@..."_e ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
+			rm0 [ f("mod@11 000 rm@...") ] = std::bind(rm_func,boost::none,pls::_1);
+			rm1 [ f("mod@11 001 rm@...") ] = std::bind(rm_func,boost::none,pls::_1);
+			rm2 [ f("mod@11 010 rm@...") ] = std::bind(rm_func,boost::none,pls::_1);
+			rm3 [ f("mod@11 011 rm@...") ] = std::bind(rm_func,boost::none,pls::_1);
+			rm4 [ f("mod@11 100 rm@...") ] = std::bind(rm_func,boost::none,pls::_1);
+			rm5 [ f("mod@11 101 rm@...") ] = std::bind(rm_func,boost::none,pls::_1);
+			rm6 [ f("mod@11 110 rm@...") ] = std::bind(rm_func,boost::none,pls::_1);
+			rm7 [ f("mod@11 111 rm@...") ] = std::bind(rm_func,boost::none,pls::_1);
+			rmbyte0 [ f("mod@11 000 rm@...") ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
+			rmbyte1 [ f("mod@11 001 rm@...") ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
+			rmbyte2 [ f("mod@11 010 rm@...") ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
+			rmbyte3 [ f("mod@11 011 rm@...") ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
+			rmbyte4 [ f("mod@11 100 rm@...") ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
+			rmbyte5 [ f("mod@11 101 rm@...") ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
+			rmbyte6 [ f("mod@11 110 rm@...") ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
+			rmbyte7 [ f("mod@11 111 rm@...") ] = std::bind(rm_func,amd64_state::OpSz_8,pls::_1);
 
 			add_generic<Bits>(
 				main, mainrep, mainrepx,
