@@ -229,14 +229,14 @@ bool memory::operator<(const memory &m) const
 }
 
 template<>
-rvalue *po::unmarshal(const uuid &u, const rdf::storage &store)
+std::unique_ptr<rvalue> po::unmarshal(const uuid &u, const rdf::storage &store)
 {
 	rdf::node root = rdf::iri(u);
 	rdf::node type = store.first(root,rdf::ns_rdf("type")).object;
 
 	if(type == rdf::ns_po("Undefined"))
 	{
-		return new rvalue(undefined());
+		return std::unique_ptr<rvalue>(new rvalue(undefined()));
 	}
 	else if (type == rdf::ns_po("Variable"))
 	{
@@ -247,18 +247,18 @@ rvalue *po::unmarshal(const uuid &u, const rdf::storage &store)
 		{
 			rdf::statement subscript = store.first(root, rdf::ns_po("subscript"));
 
-			return new rvalue(variable(name.object.as_literal(),stoull(width.object.as_literal()),stoull(subscript.object.as_literal())));
+			return std::unique_ptr<rvalue>(new rvalue(variable(name.object.as_literal(),stoull(width.object.as_literal()),stoull(subscript.object.as_literal()))));
 		}
 		catch(marshal_exception &e)
 		{
-			return new rvalue(variable(name.object.as_literal(),stoull(width.object.as_literal())));
+			return std::unique_ptr<rvalue>(new rvalue(variable(name.object.as_literal(),stoull(width.object.as_literal()))));
 		}
 	}
 	else if(type == rdf::ns_po("Constant"))
 	{
 		rdf::statement value = store.first(root,rdf::ns_po("content"));
 
-		return new rvalue(constant(stoull(value.object.as_literal())));
+		return std::unique_ptr<rvalue>(new rvalue(constant(stoull(value.object.as_literal()))));
 	}
 	else if(type == rdf::ns_po("Memory"))
 	{
@@ -268,7 +268,7 @@ rvalue *po::unmarshal(const uuid &u, const rdf::storage &store)
 									 endianess = store.first(root,rdf::ns_po("endianess"));
 
 		uuid ou = offset.object.as_iri().as_uuid();
-		std::shared_ptr<rvalue> off(unmarshal<rvalue>(ou,store));
+		std::unique_ptr<rvalue> off(unmarshal<rvalue>(ou,store));
 		Endianess e;
 
 		if(endianess.object == rdf::ns_po("big-endian"))
@@ -278,35 +278,33 @@ rvalue *po::unmarshal(const uuid &u, const rdf::storage &store)
 		else
 			throw marshal_exception("unknown endianess");
 
-		return new rvalue(memory(*off,stoull(bytes.object.as_literal()),e,name.object.as_literal()));
+		return std::unique_ptr<rvalue>(new rvalue(memory(*off,stoull(bytes.object.as_literal()),e,name.object.as_literal())));
 	}
 	else
 		throw marshal_exception("unknown value type");
 }
 
 template<>
-archive po::marshal(const rvalue *rv, const uuid &u)
+archive po::marshal(rvalue const& rv, const uuid &u)
 {
 	rdf::statements ret;
 	std::list<blob> bl;
 	rdf::node root = rdf::iri(u);
 
-	ensure(rv);
-
-	if(is_undefined(*rv))
+	if(is_undefined(rv))
 	{
 		ret.emplace_back(root,rdf::ns_rdf("type"),rdf::ns_po("Undefined"));
 	}
-	else if(is_constant(*rv))
+	else if(is_constant(rv))
 	{
-		constant c = to_constant(*rv);
+		constant c = to_constant(rv);
 
 		ret.emplace_back(root,rdf::ns_rdf("type"),rdf::ns_po("Constant"));
 		ret.emplace_back(root,rdf::ns_po("content"),rdf::lit(c.content()));
 	}
-	else if(is_variable(*rv))
+	else if(is_variable(rv))
 	{
-		variable v = to_variable(*rv);
+		variable v = to_variable(rv);
 
 		ret.emplace_back(root,rdf::ns_rdf("type"),rdf::ns_po("Variable"));
 		ret.emplace_back(root,rdf::ns_po("name"),rdf::lit(v.name()));
@@ -314,9 +312,9 @@ archive po::marshal(const rvalue *rv, const uuid &u)
 		if(v.subscript() >= 0)
 			ret.emplace_back(root,rdf::ns_po("subscript"),rdf::lit(v.subscript()));
 	}
-	else if(is_memory(*rv))
+	else if(is_memory(rv))
 	{
-		memory m = to_memory(*rv);
+		memory m = to_memory(rv);
 		uuid ou = boost::uuids::name_generator(u)("offset");
 
 		ret.emplace_back(root,rdf::ns_rdf("type"),rdf::ns_po("Memory"));
@@ -331,7 +329,7 @@ archive po::marshal(const rvalue *rv, const uuid &u)
 		}
 
 		ret.emplace_back(root,rdf::ns_po("name"),rdf::lit(m.name()));
-		auto off_st = marshal(&m.offset(),ou);
+		auto off_st = marshal(m.offset(),ou);
 		std::move(off_st.triples.begin(),off_st.triples.end(),back_inserter(ret));
 		std::move(off_st.blobs.begin(),off_st.blobs.end(),back_inserter(bl));
 	}

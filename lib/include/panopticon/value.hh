@@ -255,10 +255,10 @@ namespace po
 	std::ostream& operator<<(std::ostream&, const rvalue &);
 
 	template<>
-	rvalue* unmarshal(const uuid&, const rdf::storage&);
+	std::unique_ptr<rvalue> unmarshal(const uuid&, const rdf::storage&);
 
 	template<>
-	archive marshal(const rvalue*, const uuid&);
+	archive marshal(rvalue const&, const uuid&);
 
 	/**
 	 * @brief Exception associated with rvalue subclasses

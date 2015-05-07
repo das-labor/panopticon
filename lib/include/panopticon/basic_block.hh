@@ -117,10 +117,10 @@ namespace po
 	};
 
 	template<>
-	archive marshal(const guard*, const uuid&);
+	archive marshal(guard const&, const uuid&);
 
 	template<>
-	guard* unmarshal(const uuid&, const rdf::storage&);
+	std::unique_ptr<guard> unmarshal(const uuid&, const rdf::storage&);
 }
 
 namespace std
@@ -167,10 +167,10 @@ namespace po
 	};
 
 	template<>
-	archive marshal(const basic_block*, const uuid&);
+	archive marshal(basic_block const&, const uuid&);
 
 	template<>
-	basic_block* unmarshal(const uuid&, const rdf::storage&);
+	std::unique_ptr<basic_block> unmarshal(const uuid&, const rdf::storage&);
 
 	/// Iterates all mnemonics in @ref bb, calling @ref f for each instruction.
 	void execute(bblock_loc bb,std::function<void(const instr&)> f);

@@ -301,10 +301,10 @@ namespace po
 	 */
 
 	template<typename T>
-	T* unmarshal(const uuid&,const rdf::storage&);
+	std::unique_ptr<T> unmarshal(const uuid&,const rdf::storage&);
 
 	template<typename T>
-	archive marshal(const T*, const uuid&);
+	archive marshal(T const&, const uuid&);
 }
 
 namespace std

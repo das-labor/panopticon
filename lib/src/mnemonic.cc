@@ -230,7 +230,7 @@ int64_t po::format_constant(const mnemonic::token &tok, uint64_t v)
 }
 
 template<>
-po::mnemonic* po::unmarshal(const po::uuid& u, const po::rdf::storage& store)
+std::unique_ptr<po::mnemonic> po::unmarshal(const po::uuid& u, const po::rdf::storage& store)
 {
 	rdf::node node = rdf::iri(u);
 	rdf::statement opcode = store.first(node,rdf::ns_po("opcode")),
@@ -271,15 +271,15 @@ po::mnemonic* po::unmarshal(const po::uuid& u, const po::rdf::storage& store)
 		return ret;
 	});
 
-	return new mnemonic(bound(stoull(begin.object.as_literal()),stoull(end.object.as_literal())),
+	return std::unique_ptr<po::mnemonic>(new mnemonic(bound(stoull(begin.object.as_literal()),stoull(end.object.as_literal())),
 									opcode.object.as_literal(),
 									format.object.as_literal(),
 									as.begin(),as.end(),
-									is.begin(),is.end());
+									is.begin(),is.end()));
 }
 
 template<>
-archive po::marshal(const mnemonic* mn, const uuid& uu)
+archive po::marshal(mnemonic const& mn, const uuid& uu)
 {
 	size_t rv_cnt = 0;
 	boost::uuids::name_generator ng(uu);
@@ -289,7 +289,7 @@ archive po::marshal(const mnemonic* mn, const uuid& uu)
 	{
 		uuid u = ng(to_string(rv_cnt++));
 		rdf::node r = rdf::iri(u);
-		auto st = marshal(&rv,u);
+		auto st = marshal(rv,u);
 
 		ensure(st.triples.size());
 		std::move(st.triples.begin(),st.triples.end(),back_inserter(ret));
@@ -298,16 +298,16 @@ archive po::marshal(const mnemonic* mn, const uuid& uu)
 	};
 	rdf::node r = rdf::iri(uu);
 
-	ret.emplace_back(r,rdf::ns_po("opcode"),rdf::lit(mn->opcode));
-	ret.emplace_back(r,rdf::ns_po("format"),rdf::lit(mn->format_string));
-	ret.emplace_back(r,rdf::ns_po("begin"),rdf::lit(mn->area.lower()));
-	ret.emplace_back(r,rdf::ns_po("end"),rdf::lit(mn->area.upper()));
+	ret.emplace_back(r,rdf::ns_po("opcode"),rdf::lit(mn.opcode));
+	ret.emplace_back(r,rdf::ns_po("format"),rdf::lit(mn.format_string));
+	ret.emplace_back(r,rdf::ns_po("begin"),rdf::lit(mn.area.lower()));
+	ret.emplace_back(r,rdf::ns_po("end"),rdf::lit(mn.area.upper()));
 
 	rdf::nodes n_ops, n_ex;
 
-	std::transform(mn->operands.begin(),mn->operands.end(),back_inserter(n_ops),map_rvs);
+	std::transform(mn.operands.begin(),mn.operands.end(),back_inserter(n_ops),map_rvs);
 
-	std::transform(mn->instructions.begin(),mn->instructions.end(),back_inserter(n_ex),[&](const instr& i)
+	std::transform(mn.instructions.begin(),mn.instructions.end(),back_inserter(n_ex),[&](const instr& i)
 	{
 		uuid u = ng(to_string(rv_cnt++));
 		rdf::node r = rdf::iri(u), rl = rdf::node::blank(), rr = rdf::node::blank();

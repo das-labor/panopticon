@@ -34,14 +34,14 @@ po::bound structure::area(void) const
 }
 
 template<>
-archive po::marshal(const structure* s, const uuid& u)
+archive po::marshal(structure const& s, const uuid& u)
 {
 	rdf::statements ret;
 	rdf::node root = rdf::iri(u);
 
 	ret.emplace_back(root,rdf::ns_rdf("type"),rdf::ns_po("Structure"));
-	ret.emplace_back(root,rdf::ns_po("name"),rdf::lit(s->name));
-	ret.emplace_back(root,rdf::ns_po("region-name"),rdf::lit(s->reg));
+	ret.emplace_back(root,rdf::ns_po("name"),rdf::lit(s.name));
+	ret.emplace_back(root,rdf::ns_po("region-name"),rdf::lit(s.reg));
 
 	boost::uuids::name_generator ng(u);
 	unsigned int field_idx = 0;
@@ -105,21 +105,21 @@ archive po::marshal(const structure* s, const uuid& u)
 		vis v(uu,ret,f);
 		boost::apply_visitor(v,fi.value);
 
-		auto k = s->fields.cbegin(me);
-		while(k != s->fields.cend(me))
+		auto k = s.fields.cbegin(me);
+		while(k != s.fields.cend(me))
 			fn(f,k++);
 
 		return f;
 	};
 
-	rdf::node rf = fn(boost::none,s->fields.croot());
+	rdf::node rf = fn(boost::none,s.fields.croot());
 	ret.emplace_back(root,rdf::ns_po("root-field"),rf);
 
 	return ret;
 }
 
 template<>
-structure* po::unmarshal(const uuid& u, const rdf::storage& store)
+std::unique_ptr<structure> po::unmarshal(const uuid& u, const rdf::storage& store)
 {
 	rdf::node node = rdf::iri(u);
 
@@ -224,5 +224,5 @@ structure* po::unmarshal(const uuid& u, const rdf::storage& store)
 
 	sn(fields.root(),root_field.object);
 
-	return new structure(name.object.as_literal(),fields,region_name.object.as_literal());
+	return std::unique_ptr<structure>(new structure(name.object.as_literal(),fields,region_name.object.as_literal()));
 }

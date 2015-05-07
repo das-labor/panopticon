@@ -30,11 +30,11 @@ TEST(mnemonic,marshal)
 		instr(univ_nop<rvalue>{variable("a",2)},variable("a",3))});
 
 	uuid uu;
-	archive st1 = marshal(&mn1,uu);
+	archive st1 = marshal(mn1,uu);
 
 	ASSERT_GT(st1.triples.size(),0u);
 	ASSERT_EQ(st1.blobs.size(),0u);
-	archive st2 = marshal(&mn1,uu);
+	archive st2 = marshal(mn1,uu);
 
 	ASSERT_TRUE(st1 == st2);
 

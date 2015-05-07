@@ -36,10 +36,10 @@ namespace po
 	using comment_loc = loc<std::string>;
 
 	template<>
-	archive marshal(const std::string*, const uuid&);
+	archive marshal(std::string const&, const uuid&);
 
 	template<>
-	std::string* unmarshal(const uuid&, const rdf::storage&);
+	std::unique_ptr<std::string> unmarshal(const uuid&, const rdf::storage&);
 
 	struct database
 	{
@@ -56,10 +56,10 @@ namespace po
 	using dbase_wloc = wloc<database>;
 
 	template<>
-	archive marshal(const database*, const uuid&);
+	archive marshal(database const&, const uuid&);
 
 	template<>
-	database* unmarshal(const uuid&, const rdf::storage&);
+	std::unique_ptr<database> unmarshal(const uuid&, const rdf::storage&);
 
 	boost::optional<record> next_record(const ref& r, dbase_loc db);
 

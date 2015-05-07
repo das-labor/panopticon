@@ -64,7 +64,7 @@ const std::unordered_set<proc_loc>& program::procedures(void) const
 }
 
 template<>
-program* po::unmarshal(const uuid& u, const rdf::storage &store)
+std::unique_ptr<program> po::unmarshal(const uuid& u, const rdf::storage &store)
 {
 	rdf::node n = rdf::iri(u);
 	ensure(store.has(n,rdf::ns_rdf("type"),rdf::ns_po("Program")));
@@ -73,7 +73,7 @@ program* po::unmarshal(const uuid& u, const rdf::storage &store)
 	rdf::statement reg = store.first(n,rdf::ns_po("region-name"));
 	rdf::statements procs_n = store.find(n,rdf::ns_po("include"));
 
-	program *ret = new program(reg.object.as_literal(),name.object.as_literal());
+	std::unique_ptr<program> ret = std::unique_ptr<program>(new program(reg.object.as_literal(),name.object.as_literal()));
 
 	for(auto st: procs_n)
 		ret->insert(proc_loc{st.object.as_iri().as_uuid(),store});
@@ -111,26 +111,26 @@ program* po::unmarshal(const uuid& u, const rdf::storage &store)
 }
 
 template<>
-archive po::marshal(const program* p, const uuid& u)
+archive po::marshal(const program& p, const uuid& u)
 {
 	rdf::statements ret;
 	rdf::node n = rdf::iri(u);
 
 	ret.emplace_back(n,rdf::ns_rdf("type"),rdf::ns_po("Program"));
-	ret.emplace_back(n,rdf::ns_po("name"),rdf::lit(p->name));
-	ret.emplace_back(n,rdf::ns_po("region-name"),rdf::lit(p->reg));
+	ret.emplace_back(n,rdf::ns_po("name"),rdf::lit(p.name));
+	ret.emplace_back(n,rdf::ns_po("region-name"),rdf::lit(p.reg));
 
-	for(proc_loc q: p->procedures())
+	for(proc_loc q: p.procedures())
 	{
-		auto vx = find_node(variant<proc_loc,symbol>(q),p->calls());
+		auto vx = find_node(variant<proc_loc,symbol>(q),p.calls());
 		rdf::node m = rdf::iri(q.tag());
 
 		ret.emplace_back(n,rdf::ns_po("include"),rdf::iri(q.tag()));
 
-		for(auto e: iters(out_edges(vx,p->calls())))
+		for(auto e: iters(out_edges(vx,p.calls())))
 		{
-			auto wx = target(e,p->calls());
-			auto v = get_vertex(wx,p->calls());
+			auto wx = target(e,p.calls());
+			auto v = get_vertex(wx,p.calls());
 
 			if(get<proc_loc>(&v))
 				ret.emplace_back(m,rdf::ns_po("calls"),rdf::iri(get<proc_loc>(v).tag()));

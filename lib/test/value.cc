@@ -163,10 +163,10 @@ TEST(value,marshal)
 			 d = memory(rvalue(constant(5)),2,LittleEndian,"bank1");
 
 	uuid uua = rand(), uub = rand(), uuc = rand(), uud = rand();
-	archive st1a = marshal(&a,uua);
-	archive st1b = marshal(&b,uub);
-	archive st1c = marshal(&c,uuc);
-	archive st1d = marshal(&d,uud);
+	archive st1a = marshal(a,uua);
+	archive st1b = marshal(b,uub);
+	archive st1c = marshal(c,uuc);
+	archive st1d = marshal(d,uud);
 
 	ASSERT_GT(st1a.triples.size(),0u);
 	ASSERT_GT(st1b.triples.size(),0u);
@@ -177,10 +177,10 @@ TEST(value,marshal)
 	ASSERT_EQ(st1c.blobs.size(),0u);
 	ASSERT_EQ(st1d.blobs.size(),0u);
 
-	archive st2a = marshal(&a,uua);
-	archive st2b = marshal(&b,uub);
-	archive st2c = marshal(&c,uuc);
-	archive st2d = marshal(&d,uud);
+	archive st2a = marshal(a,uua);
+	archive st2b = marshal(b,uub);
+	archive st2c = marshal(c,uuc);
+	archive st2d = marshal(d,uud);
 
 	ASSERT_TRUE(st1a == st2a);
 	ASSERT_TRUE(st1b == st2b);

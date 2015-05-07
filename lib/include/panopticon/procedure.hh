@@ -88,10 +88,10 @@ namespace po
 	};
 
 	template<>
-	procedure* unmarshal(const uuid&, const rdf::storage&);
+	std::unique_ptr<procedure> unmarshal(const uuid&, const rdf::storage&);
 
 	template<>
-	archive marshal(const procedure*, const uuid&);
+	archive marshal(procedure const&, const uuid&);
 
 	/// Adds an control transfer with @ref from as source and @ref to as destination
 	void conditional_jump(proc_loc p, bblock_loc from, bblock_loc to, guard g);

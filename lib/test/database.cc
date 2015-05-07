@@ -46,7 +46,7 @@ TEST(database,marshal)
 	struct_loc s1(uuid{},store), s2(uuid{},store);
 	prog_loc p1(uuid{},store), p2(uuid{},store), p3(uuid{},store);
 	comment_loc c1(uuid{},store), c2(uuid{},store), c3(uuid{},store);
-	dbase_loc db1(uu,new database{
+	dbase_loc db1(uu,std::unique_ptr<database>(new database{
 		"db1",
 		regs,
 		std::unordered_set<struct_loc>({s1,s2}),
@@ -56,7 +56,7 @@ TEST(database,marshal)
 			std::make_pair(ref{"zlib",0},c2),
 			std::make_pair(ref{"base",55},c3)
 		}
-	});
+	}));
 
 	save_point(store);
 	ASSERT_GT(store.count(),0);
@@ -88,7 +88,7 @@ TEST(database,comment_marshal)
 {
 	uuid uu;
 	rdf::storage store;
-	comment_loc c1(uu,new std::string("Hello, World"));
+	comment_loc c1(uu,std::unique_ptr<std::string>(new std::string("Hello, World")));
 
 	save_point(store);
 	ASSERT_GT(store.count(),0);

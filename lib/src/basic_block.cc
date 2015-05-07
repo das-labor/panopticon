@@ -111,7 +111,7 @@ ostream& po::operator<<(ostream &os, const guard &g)
 }
 
 template<>
-archive po::marshal(const basic_block* bb, const uuid& u)
+archive po::marshal(basic_block const& bb, const uuid& u)
 {
 	rdf::statements ret;
 	std::list<blob> bl;
@@ -121,10 +121,10 @@ archive po::marshal(const basic_block* bb, const uuid& u)
 
 	ret.emplace_back(root,rdf::ns_rdf("type"),rdf::ns_po("BasicBlock"));
 
-	for(const mnemonic& m: bb->mnemonics())
+	for(const mnemonic& m: bb.mnemonics())
 	{
 		uuid uu = ng(to_string(cnt++));
-		archive mn = marshal<mnemonic>(&m,uu);
+		archive mn = marshal<mnemonic>(m,uu);
 
 		std::move(mn.triples.begin(),mn.triples.end(),back_inserter(ret));
 		std::move(mn.blobs.begin(),mn.blobs.end(),back_inserter(bl));
@@ -135,13 +135,13 @@ archive po::marshal(const basic_block* bb, const uuid& u)
 }
 
 template<>
-basic_block* po::unmarshal(const uuid& u, const rdf::storage& store)
+std::unique_ptr<basic_block> po::unmarshal(const uuid& u, const rdf::storage& store)
 {
 	rdf::node node = rdf::iri(u);
 	rdf::statements mnes = store.find(node,rdf::ns_po("include"));
 
 	ensure(mnes.size());
-	basic_block *ret = new basic_block();
+	std::unique_ptr<basic_block> ret(new basic_block());
 	std::list<mnemonic> mne_lst;
 
 	// mnemoics
@@ -212,7 +212,7 @@ void po::rewrite(bblock_loc bb,std::function<void(instr&)> f)
 }
 
 template<>
-po::guard* po::unmarshal(const po::uuid& u, const po::rdf::storage& store)
+std::unique_ptr<po::guard> po::unmarshal(const po::uuid& u, const po::rdf::storage& store)
 {
 	rdf::node node = rdf::iri(u);
 	rdf::statements rels_st = store.find(node,rdf::ns_po("relations"));
@@ -253,11 +253,11 @@ po::guard* po::unmarshal(const po::uuid& u, const po::rdf::storage& store)
 			ensure(false);
 	});
 
-	return new guard{rels};
+	return std::unique_ptr<po::guard>(new guard{rels});
 }
 
 template<>
-archive po::marshal(const guard* g, const uuid& uu)
+archive po::marshal(guard const& g, const uuid& uu)
 {
 	rdf::statements ret;
 	std::list<blob> bl;
@@ -266,15 +266,15 @@ archive po::marshal(const guard* g, const uuid& uu)
 	boost::uuids::name_generator ng(uu);
 	unsigned int cnt = 0;
 
-	for(auto rel: g->relations)
+	for(auto rel: g.relations)
 	{
 		uuid uu = ng(to_string(cnt++));
 		uuid u1 = ng(to_string(cnt++));
 		uuid u2 = ng(to_string(cnt++));
 		rdf::node rn = rdf::iri(uu);
 
-		archive st1 = marshal(&rel.operand1,u1);
-		archive st2 = marshal(&rel.operand2,u2);
+		archive st1 = marshal(rel.operand1,u1);
+		archive st2 = marshal(rel.operand2,u2);
 
 		std::move(st1.triples.begin(),st1.triples.end(),back_inserter(ret));
 		std::move(st1.blobs.begin(),st1.blobs.end(),back_inserter(bl));
