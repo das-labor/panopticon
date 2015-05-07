@@ -332,11 +332,11 @@ namespace po
 				return *this;
 			}
 
-			assignment_proxy& operator=(std::function<void(sem_state<Tag>&)> fn)
+			/*assignment_proxy& operator=(std::function<void(sem_state<Tag>&)> fn)
 			{
 				assign([fn](sem_state<Tag>& s) -> bool { fn(s); return true; });
 				return *this;
-			}
+			}*/
 
 		private:
 			void assign(std::function<bool(sem_state<Tag>&)> fn)

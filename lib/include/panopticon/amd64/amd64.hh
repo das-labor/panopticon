@@ -46,67 +46,73 @@ namespace po
 				m64, m128,
 				r16, r32, r64;
 
-			opsize_prfx[ 0x66 ] = [](sm& st)
+			opsize_prfx[ 0x66 ] = [](sm& st) -> bool
 			{
 				switch(st.state.mode)
 				{
 					case amd64_state::RealMode:
-						st.state.op_sz = amd64_state::OpSz_32; break;
+						st.state.op_sz = amd64_state::OpSz_32; return true;
 					case amd64_state::ProtectedMode:
-						st.state.op_sz = amd64_state::OpSz_16; break; // assumes CS.d == 1
+						st.state.op_sz = amd64_state::OpSz_16; return true; // assumes CS.d == 1
 					case amd64_state::LongMode:
-						st.state.op_sz = amd64_state::OpSz_16; break;
+						st.state.op_sz = amd64_state::OpSz_16; return true;
 					default: ensure(false);
 				}
 			};
 
-			addrsize_prfx[ 0x67 ] = [](sm& st)
+			addrsize_prfx[ 0x67 ] = [](sm& st) -> bool
 			{
 				switch(st.state.mode)
 				{
 					case amd64_state::RealMode:
-						st.state.addr_sz = amd64_state::AddrSz_32; break;
+						st.state.addr_sz = amd64_state::AddrSz_32; return true;
 					case amd64_state::ProtectedMode:
-						st.state.addr_sz = amd64_state::AddrSz_16; break; // assumes CS.d == 1
+						st.state.addr_sz = amd64_state::AddrSz_16; return true; // assumes CS.d == 1
 					case amd64_state::LongMode:
-						st.state.addr_sz = amd64_state::AddrSz_32; break;
+						st.state.addr_sz = amd64_state::AddrSz_32; return true;
 					default: ensure(false);
 				}
 			};
 
-			rep_prfx[ 0xf3 ] = [](sm& st) {};
+			rep_prfx[ 0xf3 ] = [](sm& st) -> bool { return true; };
 
-			repx_prfx[ 0xf3 ] = [](sm& st) {};
-			repx_prfx[ 0xf2 ] = [](sm& st) {};
+			repx_prfx[ 0xf3 ] = [](sm& st) -> bool { return true; };
+			repx_prfx[ 0xf2 ] = [](sm& st) -> bool { return true; };
 
-			rex_prfx[ f("0100 w@. r@. x@. b@.") ] = [](sm& st)
+			rex_prfx[ f("0100 w@. r@. x@. b@.") ] = [](sm& st) -> bool
 			{
 				st.state.rex = true;
 				if(st.capture_groups.at("w") == 1)
 					st.state.op_sz = amd64_state::OpSz_64;
+				return true;
 			};
 
-			imm8 [ f("imm@........")] = [](sm& st)
+			imm8 [ f("imm@........")] = [](sm& st) -> bool
 			{
 				st.state.imm = constant(st.capture_groups.at("imm"));
+				return true;
 			};
-			imm16[ imm8 >> f("imm@........")] = [](sm& st)
+			imm16[ imm8 >> f("imm@........")] = [](sm& st) -> bool
 			{
 				st.state.imm = constant(st.capture_groups.at("imm"));
+				return true;
 			};
-			imm32[ imm16 >> f("imm@........") >> f("imm@........")] = [](sm& st)
+			imm32[ imm16 >> f("imm@........") >> f("imm@........")] = [](sm& st) -> bool
 			{
 				st.state.imm = constant(st.capture_groups.at("imm"));
+				return true;
 			};
-			imm48[ imm32 >> f("imm@........") >> f("imm@........") ] = [](sm& st)
+			imm48[ imm32 >> f("imm@........") >> f("imm@........") ] = [](sm& st) -> bool
 			{
 				uint64_t a = st.capture_groups.at("imm") & 0xffff;
 
 				st.state.imm = constant((a << 32) | st.capture_groups.at("imm") >> 16);
+				return true;
 			};
-			imm64[ imm32 >> f("imm@........") >> f("imm@........") >> f("imm@........") >> f("imm@........")] = [](sm& st)
+			imm64[ imm32 >> f("imm@........") >> f("imm@........") >> f("imm@........") >> f("imm@........")] = [](sm& st) -> bool
 			{
 				st.state.imm = constant(st.capture_groups.at("imm"));
+				return true;
 			};
 
 			imm [ f("imm@........")] = std::function<bool(sm&)>([](sm& st) -> bool
@@ -184,31 +190,36 @@ namespace po
 				return st.state.addr_sz == amd64_state::AddrSz_64;
 			});
 
-			disp8 [ f("disp@........")] = [](sm& st)
+			disp8 [ f("disp@........")] = [](sm& st) -> bool
 			{
 				st.state.disp = constant(st.capture_groups.at("disp"));
+				return true;
 			};
-			disp16[ disp8 >> f("disp@........")] = [](sm& st)
+			disp16[ disp8 >> f("disp@........")] = [](sm& st) -> bool
 			{
 				st.state.disp = constant(st.capture_groups.at("disp"));
+				return true;
 			};
-			disp32[ disp16 >> f("disp@........") >> f("disp@........")] = [](sm& st)
+			disp32[ disp16 >> f("disp@........") >> f("disp@........")] = [](sm& st) -> bool
 			{
 				st.state.disp = constant(st.capture_groups.at("disp"));
+				return true;
 			};
-			disp64[ disp32 >> f("disp@........") >> f("disp@........") >> f("disp@........") >> f("disp@........")] = [](sm& st)
+			disp64[ disp32 >> f("disp@........") >> f("disp@........") >> f("disp@........") >> f("disp@........")] = [](sm& st) -> bool
 			{
 				st.state.disp = constant(st.capture_groups.at("disp"));
+				return true;
 			};
 
 			// sib
-			sib [ f("scale@.. index@... base@101") >> f("disp@........") >> f("disp@........") >> f("disp@........") >> f("disp@........")	] = [](sm& st)
+			sib [ f("scale@.. index@... base@101") >> f("disp@........") >> f("disp@........") >> f("disp@........") >> f("disp@........")	] = [](sm& st) -> bool
 			{
 				st.state.disp = constant(st.capture_groups.at("disp"));
+				return true;
 			};
-			sib [ f("scale@.. index@... base@...")] = [](sm& st) {};
+			sib [ f("scale@.. index@... base@...")] = [](sm& st) -> bool {};
 
-			std::function<void(boost::optional<amd64_state::OperandSize>,sm&)> rm_func = [&](boost::optional<amd64_state::OperandSize> os,sm& st)
+			std::function<bool(boost::optional<amd64_state::OperandSize>,sm&)> rm_func = [&](boost::optional<amd64_state::OperandSize> os,sm& st) -> bool
 			{
 				ensure(!st.state.reg && !st.state.rm);
 
@@ -243,6 +254,7 @@ namespace po
 					st.state.rm = decode_modrm(st.capture_groups.at("mod"),b_rm,st.state.disp,sib,st.state.op_sz,st.state.addr_sz,st.state.mode,st.state.rex,c);
 					return {};
 				});
+				return true;
 			};
 
 			// mod = 00
