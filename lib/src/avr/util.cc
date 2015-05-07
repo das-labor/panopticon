@@ -170,7 +170,7 @@ sem_action po::avr::unary_reg(std::string x, std::function<void(cg &c, const var
 		if(func)
 			st.mnemonic(st.tokens.size() * 2,x,"{8}",op,std::bind(func,std::placeholders::_1,op));
 		else
-			st.mnemonic(st.tokens.size() * 2,x,"{8}",op);
+			st.mnemonic(st.tokens.size() * 2,x,"{8}",std::list<rvalue>({op}));
 		st.jump(st.address + st.tokens.size() * 2);
 	};
 }
@@ -195,7 +195,7 @@ sem_action po::avr::branch(std::string m, rvalue flag, bool set)
 		guard g(flag,relation::Eq,set ? constant(1) : constant(0));
 		constant k((int8_t)(_k <= 63 ? _k : _k - 128));
 
-		st.mnemonic(st.tokens.size() * 2,m,"{8:-}",k);
+		st.mnemonic(st.tokens.size() * 2,m,"{8:-}",std::list<rvalue>({rvalue(k)}));
 		st.jump(st.address + 2,g.negation());
 		st.jump(st.address + k.content() + 2,g);
 	};

@@ -422,7 +422,7 @@ boost::optional<prog_loc> po::avr::disassemble(po::avr_state const& st, boost::o
 			});
 			st.jump(st.address + st.tokens.size() * 2);
 		}
-	};)
+	});
 	main[e("1001010 d@..... 0001")] = unary_reg("neg",[](cg &m, const variable &Rd)
 	{
 		//TODO: m.assign(Rd,Rd ^ 0xff);

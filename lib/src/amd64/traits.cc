@@ -22,8 +22,6 @@
 #include <panopticon/amd64/decode.hh>
 #include <panopticon/amd64/syntax.hh>
 
-#include <endian.h>
-
 using namespace po;
 using namespace po::amd64;
 using namespace po::dsl;
