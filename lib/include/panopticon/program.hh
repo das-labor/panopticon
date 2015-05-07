@@ -128,7 +128,9 @@ namespace po
 			return prog;
 
 		boost::optional<prog_loc> ret = prog;
-		std::unordered_set<offset> worklist({r.off});
+		std::unordered_set<offset> worklist;
+
+		worklist.insert(r.off);
 
 		while(!worklist.empty())
 		{
