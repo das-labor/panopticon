@@ -33,5 +33,5 @@ if(NOT "${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
 endif()
 
 target_link_libraries(testsuite gtest_main gtest
-	${panopticon_LIBRARIES})
+	${panopticon_STATIC_LIBRARIES})
 panopticon_add_tests(testsuite "${CMAKE_CURRENT_BINARY_DIR}" "" "${panopticon_test_SOURCES}")

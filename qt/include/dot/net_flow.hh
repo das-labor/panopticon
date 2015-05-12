@@ -208,9 +208,9 @@ struct net_flow
 			auto p = in_edges(n,graph);
 			auto q = out_edges(n,graph);
 
-			std::copy_if(p.first,p.second,std::inserter(eds,eds.end()),[&](typename po::digraph<N,std::pair<int,int>>::edge_descriptor e)
+			std::copy_if(p.first,p.second,std::inserter(eds,eds.end()),[&](po::digraph<N,std::pair<int,int>>::edge_descriptor e)
 				{ return !tree.count(source(e,graph)); });
-			std::copy_if(q.first,q.second,std::inserter(eds,eds.end()),[&](typename po::digraph<N,std::pair<int,int>>::edge_descriptor e)
+			std::copy_if(q.first,q.second,std::inserter(eds,eds.end()),[&](po::digraph<N,std::pair<int,int>>::edge_descriptor e)
 				{ return !tree.count(target(e,graph)); });
 
 			for(auto g: eds)
@@ -290,7 +290,7 @@ struct net_flow
 			auto i = std::find_if(unranked.begin(),unranked.end(),[&](typename po::digraph<N,std::pair<int,int>>::vertex_descriptor n)
 			{
 				auto p = in_edges(n,graph);
-				return std::none_of(p.first,p.second,[&](typename po::digraph<N,std::pair<int,int>>::edge_descriptor e)
+				return std::none_of(p.first,p.second,[&](po::digraph<N,std::pair<int,int>>::edge_descriptor e)
 					{ return unranked.count(source(e,graph)); });
 			});
 			ensure(i != unranked.end());
@@ -303,7 +303,7 @@ struct net_flow
 				ensure(lambda.count(source(*p.first,graph)));
 				unsigned int rank = std::accumulate(p.first,p.second,
 															 lambda.at(source(*p.first,graph)) + get_edge(*p.first,graph).second,
-															 [&](int acc, typename po::digraph<N,std::pair<int,int>>::edge_descriptor e)
+															 [&](int acc, po::digraph<N,std::pair<int,int>>::edge_descriptor e)
 															 { return std::max(acc,(int)lambda.at(source(e,graph)) + get_edge(e,graph).second); });
 
 				ensure(lambda.insert(std::make_pair(*i,rank)).second);

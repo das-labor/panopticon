@@ -217,7 +217,7 @@ namespace po
 				st.state.disp = constant(st.capture_groups.at("disp"));
 				return true;
 			};
-			sib [ f("scale@.. index@... base@...")] = [](sm& st) -> bool {};
+			sib [ f("scale@.. index@... base@...")] = [](sm& st) -> bool { return true; };
 
 			std::function<bool(boost::optional<amd64_state::OperandSize>,sm&)> rm_func = [&](boost::optional<amd64_state::OperandSize> os,sm& st) -> bool
 			{

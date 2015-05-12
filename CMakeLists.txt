@@ -22,6 +22,8 @@ endif()
 # find_package macros for kyotocabinet, sphinx and panopticon
 set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
+set_property(GLOBAL PROPERTY USE_FOLDERS ON)
+
 # build type-depend
 if("${CMAKE_BUILD_TYPE}" STREQUAL "Release")
  	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror")
@@ -29,6 +31,7 @@ if("${CMAKE_BUILD_TYPE}" STREQUAL "Release")
 elseif("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
 	# enable tests
 	include(CTest)
+	set(gtest_force_shared_crt ON CACHE FORCE BOOL)
 	add_subdirectory("3rdparty/gtest")
 	include(PanopticonTest)
 	include_directories("3rdparty/gtest/include")

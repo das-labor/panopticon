@@ -5,8 +5,9 @@
 using namespace po;
 using namespace dsl;
 
-void po::amd64::do_push(variable v, amd64_state::Mode mode, cg& m)
+void po::amd64::do_push(rvalue _v, amd64_state::Mode mode, cg& m)
 {
+	variable v = to_variable(_v);
 	int const w = v.width() / 8;
 
 	m.assign(memory(rip,w,LittleEndian,"ram"),v);
@@ -14,13 +15,13 @@ void po::amd64::do_push(variable v, amd64_state::Mode mode, cg& m)
 	switch(mode)
 	{
 		case amd64_state::RealMode:
-			m.assign(sp,sp + w % 0x10000);
+			m.assign(to_lvalue(sp),sp + w % 0x10000);
 			return;
 		case amd64_state::ProtectedMode:
-			m.assign(esp,esp + w % 0x100000000);
+			m.assign(to_lvalue(esp), esp + w % 0x100000000);
 			return;
 		case amd64_state::LongMode:
-			m.assign(rsp,rsp + w);
+			m.assign(to_lvalue(rsp), rsp + w);
 			return;
 		default:
 			throw std::invalid_argument("invalid mode in do_push");
@@ -52,11 +53,11 @@ void po::amd64::set_arithm_flags(rvalue res, rvalue res_half, rvalue a, rvalue b
 	size_t const a_w = bitwidth(a);
 	rvalue const msb_res = less(res / (1 << (a_w - 1)),1);
 
-	m.assign(CF,res / constant(1 << a_w));
-	m.assign(AF,res_half / constant(0x100));
-	m.assign(SF,msb_res);
-	m.assign(ZF,equal(a,constant(0)));
-	m.assign(OF,CF ^ SF);
+	m.assign(to_lvalue(CF),res / constant(1 << a_w));
+	m.assign(to_lvalue(AF), res_half / constant(0x100));
+	m.assign(to_lvalue(SF), msb_res);
+	m.assign(to_lvalue(ZF), equal(a, constant(0)));
+	m.assign(to_lvalue(OF), CF ^ SF);
 
 	rvalue b0 = res % 2;
 	rvalue b1 = (res % 4) / 2;
@@ -66,7 +67,7 @@ void po::amd64::set_arithm_flags(rvalue res, rvalue res_half, rvalue a, rvalue b
 	rvalue b5 = (res % 64) / 32;
 	rvalue b6 = (res % 128) / 64;
 	rvalue b7 = (res % 256) / 128;
-	m.assign(PF,b0 ^ b1 ^ b2 ^ b3 ^ b4 ^ b5 ^ b6 ^ b7);
+	m.assign(to_lvalue(PF), b0 ^ b1 ^ b2 ^ b3 ^ b4 ^ b5 ^ b6 ^ b7);
 }
 
 void po::amd64::adc(cg& m, rvalue a, rvalue b)
@@ -96,28 +97,28 @@ void po::amd64::aaa(cg& m)
 	rvalue y = al & constant(0x0f);
 	rvalue x = m.or_b(m.not_b(m.or_b(less(y,constant(9)),equal(y,constant(9)))),AF);
 
-	m.assign(AF,m.lift_b(x));
-	m.assign(CF,m.lift_b(x));
-	m.assign(ax,(ax + m.lift_b(x) * constant(0x106)) % constant(0x100));
+	m.assign(to_lvalue(AF), m.lift_b(x));
+	m.assign(to_lvalue(CF), m.lift_b(x));
+	m.assign(to_lvalue(ax), (ax + m.lift_b(x) * constant(0x106)) % constant(0x100));
 }
 
 void po::amd64::aam(cg& m, rvalue a)
 {
-	rvalue temp_al = m.assign(al);
+	rvalue temp_al = m.assign(to_lvalue(al));
 
-	m.assign(ah,temp_al / a);
-	m.assign(al,temp_al % a);
+	m.assign(to_lvalue(ah), temp_al / a);
+	m.assign(to_lvalue(al), temp_al % a);
 }
 
 void po::amd64::aad(cg& m, rvalue a)
 {
 	using dsl::operator*;
 
-	rvalue temp_al = m.assign(al);
-	rvalue temp_ah = m.assign(ah);
+	rvalue temp_al = m.assign(to_lvalue(al));
+	rvalue temp_ah = m.assign(to_lvalue(ah));
 
-	m.assign(al,temp_al + temp_ah * a);
-	m.assign(ah,constant(0));
+	m.assign(to_lvalue(al), temp_al + temp_ah * a);
+	m.assign(to_lvalue(ah), constant(0));
 }
 
 void po::amd64::aas(cg& m)
@@ -127,11 +128,11 @@ void po::amd64::aas(cg& m)
 	rvalue y = al & constant(0x0f);
 	rvalue x = m.or_b(m.not_b(m.or_b(less(y,constant(9)),equal(y,constant(9)))),AF);
 
-	m.assign(AF,m.lift_b(x));
-	m.assign(CF,m.lift_b(x));
-	m.assign(ax,(ax - m.lift_b(x) * constant(6)) % constant(0x100));
-	m.assign(ah,(ah - m.lift_b(x)) % constant(0x10));
-	m.assign(al,y);
+	m.assign(to_lvalue(AF), m.lift_b(x));
+	m.assign(to_lvalue(CF), m.lift_b(x));
+	m.assign(to_lvalue(ax), (ax - m.lift_b(x) * constant(6)) % constant(0x100));
+	m.assign(to_lvalue(ah), (ah - m.lift_b(x)) % constant(0x10));
+	m.assign(to_lvalue(al), y);
 }
 
 void po::amd64::add(cg& m, rvalue a, rvalue b)
@@ -149,7 +150,7 @@ void po::amd64::adcx(cg& m, rvalue a, rvalue b)
 	size_t const a_w = bitwidth(a);
 	rvalue const res = a + b + CF;
 
-	m.assign(CF,res / constant(1 << a_w));
+	m.assign(to_lvalue(CF), res / constant(1 << a_w));
 	m.assign(to_lvalue(a),res % constant(1 << a_w));
 }
 
@@ -175,7 +176,7 @@ void po::amd64::bsf(cg& m, rvalue a, rvalue b)
 	size_t bit = 0;
 	boost::optional<rvalue> prev;
 
-	m.assign(ZF,equal(constant(0),b));
+	m.assign(to_lvalue(ZF), equal(constant(0), b));
 
 	while(bit < a_w)
 	{
@@ -199,7 +200,7 @@ void po::amd64::bsr(cg& m, rvalue a, rvalue b)
 	size_t bit = a_w - 1;
 	boost::optional<rvalue> prev;
 
-	m.assign(ZF,equal(constant(0),b));
+	m.assign(to_lvalue(ZF), equal(constant(0), b));
 
 	do
 	{
@@ -240,11 +241,11 @@ void po::amd64::bt(cg& m, rvalue a, rvalue b)
 	using dsl::operator<<;
 	rvalue mod = (constant(1) << (b % constant(bitwidth(a))));
 
-	m.assign(CF,(a / mod) % 2);
-	m.assign(PF,undefined());
-	m.assign(OF,undefined());
-	m.assign(SF,undefined());
-	m.assign(AF,undefined());
+	m.assign(to_lvalue(CF), (a / mod) % 2);
+	m.assign(to_lvalue(PF), undefined());
+	m.assign(to_lvalue(OF), undefined());
+	m.assign(to_lvalue(SF), undefined());
+	m.assign(to_lvalue(AF), undefined());
 }
 
 void po::amd64::btc(cg& m, rvalue a, rvalue b)
@@ -252,11 +253,11 @@ void po::amd64::btc(cg& m, rvalue a, rvalue b)
 	using dsl::operator<<;
 	rvalue mod = (constant(1) << (b % constant(bitwidth(a))));
 
-	m.assign(CF,(a / mod) % 2);
-	m.assign(PF,undefined());
-	m.assign(OF,undefined());
-	m.assign(SF,undefined());
-	m.assign(AF,undefined());
+	m.assign(to_lvalue(CF), (a / mod) % 2);
+	m.assign(to_lvalue(PF), undefined());
+	m.assign(to_lvalue(OF), undefined());
+	m.assign(to_lvalue(SF), undefined());
+	m.assign(to_lvalue(AF), undefined());
 	m.assign(to_lvalue(a),a ^ mod);
 }
 
@@ -266,11 +267,11 @@ void po::amd64::btr(cg& m, rvalue a, rvalue b)
 	size_t const a_w = bitwidth(a);
 	rvalue mod =  ((constant(1) << (b % constant(bitwidth(a)))));
 
-	m.assign(CF,(a / mod) % 2);
-	m.assign(PF,undefined());
-	m.assign(OF,undefined());
-	m.assign(SF,undefined());
-	m.assign(AF,undefined());
+	m.assign(to_lvalue(CF), (a / mod) % 2);
+	m.assign(to_lvalue(PF), undefined());
+	m.assign(to_lvalue(OF), undefined());
+	m.assign(to_lvalue(SF), undefined());
+	m.assign(to_lvalue(AF), undefined());
 	m.assign(to_lvalue(a),(a & (constant(0xffffffffffffffff) ^ mod)) % constant(1 << a_w));
 }
 
@@ -279,11 +280,11 @@ void po::amd64::bts(cg& m, rvalue a, rvalue b)
 	using dsl::operator<<;
 	rvalue mod = (constant(1) << (b % constant(bitwidth(a))));
 
-	m.assign(CF,(a / mod) % 2);
-	m.assign(PF,undefined());
-	m.assign(OF,undefined());
-	m.assign(SF,undefined());
-	m.assign(AF,undefined());
+	m.assign(to_lvalue(CF), (a / mod) % 2);
+	m.assign(to_lvalue(PF), undefined());
+	m.assign(to_lvalue(OF), undefined());
+	m.assign(to_lvalue(SF), undefined());
+	m.assign(to_lvalue(AF), undefined());
 	m.assign(to_lvalue(a),a & mod);
 }
 
@@ -302,7 +303,7 @@ void po::amd64::near_call(cg& m, rvalue a, bool rel)
 				new_ip = sign_ext(a,32,64,m);
 
 			do_push(rip,amd64_state::LongMode,m);
-			m.assign(rip,new_ip);
+			m.assign(to_lvalue(rip), new_ip);
 			m.call_i(new_ip);
 
 			return;
@@ -315,7 +316,7 @@ void po::amd64::near_call(cg& m, rvalue a, bool rel)
 				new_ip = a;
 
 			do_push(eip,amd64_state::ProtectedMode,m);
-			m.assign(eip,new_ip);
+			m.assign(to_lvalue(eip), new_ip);
 			m.call_i(new_ip);
 
 			return;
@@ -328,7 +329,7 @@ void po::amd64::near_call(cg& m, rvalue a, bool rel)
 				new_ip = a % 0x10000;
 
 			do_push(ip,amd64_state::RealMode,m);
-			m.assign(ip,new_ip);
+			m.assign(to_lvalue(ip), new_ip);
 			m.call_i(new_ip);
 
 			return;
@@ -435,7 +436,7 @@ void po::amd64::cmpxchg(cg& m, rvalue a, rvalue b)
 
 	rvalue t = equal(a,acc);
 
-	m.assign(ZF,t);
+	m.assign(to_lvalue(ZF), t);
 	m.assign(to_lvalue(a),m.lift_b(t) * b + m.lift_b(m.not_b(t)) * a);
 	m.assign(to_lvalue(acc),m.lift_b(t) * acc + m.lift_b(m.not_b(ZF)) * a);
 }
@@ -484,14 +485,16 @@ void po::amd64::cmpxchg8b(cg& m, rvalue a) {}
 void po::amd64::cmpxchg16b(cg& m, rvalue a) {}
 void po::amd64::cpuid(cg&) {}
 
-void po::amd64::conv(sm& st)
+bool po::amd64::conv(sm& st)
 {
 	st.jump(st.address + st.tokens.size());
+	return true;
 }
 
-void po::amd64::conv2(sm& st)
+bool po::amd64::conv2(sm& st)
 {
 	st.jump(st.address + st.tokens.size());
+	return true;
 }
 
 void po::amd64::daa(cg&) {}
@@ -511,9 +514,10 @@ void po::amd64::ins(cg& m, rvalue a, rvalue b) {}
 void po::amd64::int_(cg& m, rvalue a) {}
 void po::amd64::into(cg& m) {}
 
-void po::amd64::iret(sm& st)
+bool po::amd64::iret(sm& st)
 {
 	st.jump(st.address + st.tokens.size());
+	return true;
 }
 
 void po::amd64::jcc(cg&,rvalue a, condition c) {}
@@ -524,47 +528,55 @@ void po::amd64::lar(cg& m, rvalue a, rvalue b) {}
 void po::amd64::lxs(cg& m,rvalue a, rvalue b, rvalue seg) {}
 void po::amd64::lea(cg& m,rvalue a, rvalue b) {}
 
-void po::amd64::leave(sm& st)
+bool po::amd64::leave(sm& st)
 {
 	st.jump(st.address + st.tokens.size());
+	return true;
 }
 
-void po::amd64::lodsb(sm& st)
+bool po::amd64::lodsb(sm& st)
 {
 	st.jump(st.address + st.tokens.size());
+	return true;
 }
 
-void po::amd64::lods(sm& st)
+bool po::amd64::lods(sm& st)
 {
 	st.jump(st.address + st.tokens.size());
+	return true;
 }
 
-void po::amd64::loop(sm& st)
+bool po::amd64::loop(sm& st)
 {
 	st.jump(st.address + st.tokens.size());
+	return true;
 }
 
-void po::amd64::loope(sm& st)
+bool po::amd64::loope(sm& st)
 {
 	st.jump(st.address + st.tokens.size());
+	return true;
 }
 
-void po::amd64::loopne(sm& st)
+bool po::amd64::loopne(sm& st)
 {
 	st.jump(st.address + st.tokens.size());
+	return true;
 }
 
 void po::amd64::mov(cg&,rvalue a,rvalue b,bool sign_ext) {}
 void po::amd64::movbe(cg&,rvalue a,rvalue b) {}
 
-void po::amd64::movsb(sm& st)
+bool po::amd64::movsb(sm& st)
 {
 	st.jump(st.address + st.tokens.size());
+	return true;
 }
 
-void po::amd64::movs(sm& st)
+bool po::amd64::movs(sm& st)
 {
 	st.jump(st.address + st.tokens.size());
+	return true;
 }
 
 void po::amd64::movsx(cg&,rvalue a,rvalue b) {}
@@ -575,32 +587,37 @@ void po::amd64::nop(cg& m) {}
 void po::amd64::not_(cg& m,rvalue) {}
 void po::amd64::out(cg& m, rvalue a, rvalue b) {}
 
-void po::amd64::outs(sm& st)
+bool po::amd64::outs(sm& st)
 {
 	st.jump(st.address + st.tokens.size());
+	return true;
 }
 
-void po::amd64::pop(sm& st)
+bool po::amd64::pop(sm& st)
 {
 	st.jump(st.address + st.tokens.size());
+	return true;
 }
 
-void po::amd64::popa(sm& st)
+bool po::amd64::popa(sm& st)
 {
 	st.jump(st.address + st.tokens.size());
+	return true;
 }
 
 void po::amd64::popcnt(cg& m, rvalue a, rvalue b) {}
 void po::amd64::popf(cg& m,rvalue) {}
 
-void po::amd64::push(sm& st)
+bool po::amd64::push(sm& st)
 {
 	st.jump(st.address + st.tokens.size());
+	return true;
 }
 
-void po::amd64::pusha(sm& st)
+bool po::amd64::pusha(sm& st)
 {
 	st.jump(st.address + st.tokens.size());
+	return true;
 }
 
 void po::amd64::pushf(cg& m,rvalue) {}
@@ -615,9 +632,10 @@ void po::amd64::sal(cg& m, rvalue a, rvalue b) {}
 void po::amd64::salc(cg& m) {}
 void po::amd64::sar(cg& m, rvalue a, rvalue b) {}
 
-void po::amd64::scas(sm& st)
+bool po::amd64::scas(sm& st)
 {
 	st.jump(st.address + st.tokens.size());
+	return true;
 }
 
 void po::amd64::setcc(cg& m, rvalue a, condition c) {}
@@ -626,9 +644,10 @@ void po::amd64::shr(cg& m, rvalue a, rvalue b) {}
 void po::amd64::shld(cg& m, rvalue a, rvalue b, rvalue c) {}
 void po::amd64::shrd(cg& m, rvalue a, rvalue b, rvalue c) {}
 
-void po::amd64::stos(sm& st)
+bool po::amd64::stos(sm& st)
 {
 	st.jump(st.address + st.tokens.size());
+	return true;
 }
 
 void po::amd64::test(cg& m,rvalue a, rvalue b) {}

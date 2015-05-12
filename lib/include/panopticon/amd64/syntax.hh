@@ -148,16 +148,16 @@ namespace po
 			main[ e(0x99) ] = conv2;
 
 			// CLC
-			main[ e(0xf8) ] = nonary("clc",std::bind(flagwr,pls::_1,CF,false));
+			main[ e(0xf8) ] = nonary("clc",std::bind(flagwr,pls::_1,to_variable(CF),false));
 
 			// CLD
-			main[ e(0xfc) ] = nonary("cld",std::bind(flagwr,pls::_1,DF,false));
+			main[ e(0xfc) ] = nonary("cld",std::bind(flagwr,pls::_1,to_variable(DF),false));
 
 			// CLI
-			main[ e(0xfa) ] = nonary("cli",std::bind(flagwr,pls::_1,IF,false));
+			main[ e(0xfa) ] = nonary("cli",std::bind(flagwr,pls::_1,to_variable(IF),false));
 
 			// CMC
-			main[ e(0xf5) ] = nonary("cmc",std::bind(flagcomp,pls::_1,CF));
+			main[ e(0xf5) ] = nonary("cmc",std::bind(flagcomp,pls::_1,to_variable(CF)));
 
 			// CMOVcc
 			std::function<void(uint8_t, std::string const&, amd64::condition)> cmovcc = [&](uint8_t op, std::string const& suffix, amd64::condition cond)
@@ -282,7 +282,7 @@ namespace po
 			mainrep[ e(0x6d) ] = binary("ins",reg_di,dx,ins);
 
 			// INT
-			main[ e(0xcc)         ] = unary("int",constant(3),int_);
+			main[ e(0xcc)         ] = unary("int",rvalue(constant(3)),int_);
 			main[ e(0xce)         ] = nonary("into",into);
 			main[ e(0xcd) >> imm8 ] = unary("int",decode_imm,int_);
 
@@ -554,38 +554,38 @@ namespace po
 			main[ e(0x9d) ] = unary("push",decode_m,pushf);
 
 			// RCL
-			main[ e(0xd0) >> rmbyte2         ] = binary("rcl",decode_m,constant(1),rcl);
-			main[ e(0xd1) >> rm2             ] = binary("rcl",decode_m,constant(1),rcl);
+			main[ e(0xd0) >> rmbyte2         ] = binary("rcl",decode_m,rvalue(constant(1)),rcl);
+			main[ e(0xd1) >> rm2             ] = binary("rcl",decode_m,rvalue(constant(1)),rcl);
 			main[ e(0xd2) >> rmbyte2         ] = binary("rcl",decode_m,CF,rcl);
 			main[ e(0xd3) >> rm2             ] = binary("rcl",decode_m,CF,rcl);
 			main[ e(0xc0) >> rmbyte2 >> imm8 ] = binary("rcl",decode_mi,rcl);
 			main[ e(0xc1) >> rm2 >> imm8     ] = binary("rcl",decode_mi,rcl);
 
 			// RCR
-			main[ e(0xd0) >> rmbyte3         ] = binary("rcr",decode_m,constant(1),rcr);
-			main[ e(0xd1) >> rm3             ] = binary("rcr",decode_m,constant(1),rcr);
+			main[ e(0xd0) >> rmbyte3         ] = binary("rcr",decode_m,rvalue(constant(1)),rcr);
+			main[ e(0xd1) >> rm3             ] = binary("rcr",decode_m,rvalue(constant(1)),rcr);
 			main[ e(0xd2) >> rmbyte3         ] = binary("rcr",decode_m,CF,rcr);
 			main[ e(0xd3) >> rm3             ] = binary("rcr",decode_m,CF,rcr);
 			main[ e(0xc0) >> rmbyte3 >> imm8 ] = binary("rcr",decode_mi,rcr);
 			main[ e(0xc1) >> rm3 >> imm8     ] = binary("rcr",decode_mi,rcr);
 
 			// RET*
-			main[ e(0xc3)          ] = unary("ret",constant(0),ret);
-			main[ e(0xcb)          ] = unary("retf",constant(0),retf);
+			main[ e(0xc3)          ] = unary("ret",rvalue(constant(0)),ret);
+			main[ e(0xcb)          ] = unary("retf",rvalue(constant(0)),retf);
 			main[ e(0xc2) >> imm16 ] = unary("ret",decode_imm,ret);
 			main[ e(0xca) >> imm16 ] = unary("retf",decode_imm,retf);
 
 			// ROL
-			main[ e(0xd0) >> rmbyte0         ] = binary("rol",decode_m,constant(1),rol);
-			main[ e(0xd1) >> rm0             ] = binary("rol",decode_m,constant(1),rol);
+			main[ e(0xd0) >> rmbyte0         ] = binary("rol",decode_m,rvalue(constant(1)),rol);
+			main[ e(0xd1) >> rm0             ] = binary("rol",decode_m,rvalue(constant(1)),rol);
 			main[ e(0xd2) >> rmbyte0         ] = binary("rol",decode_m,CF,rol);
 			main[ e(0xd3) >> rm0             ] = binary("rol",decode_m,CF,rol);
 			main[ e(0xc0) >> rmbyte0 >> imm8 ] = binary("rol",decode_mi,rol);
 			main[ e(0xc1) >> rm0 >> imm8     ] = binary("rol",decode_mi,rol);
 
 			// ROR
-			main[ e(0xd0) >> rmbyte1         ] = binary("ror",decode_m,constant(1),ror);
-			main[ e(0xd1) >> rm1             ] = binary("ror",decode_m,constant(1),ror);
+			main[ e(0xd0) >> rmbyte1         ] = binary("ror",decode_m,rvalue(constant(1)),ror);
+			main[ e(0xd1) >> rm1             ] = binary("ror",decode_m,rvalue(constant(1)),ror);
 			main[ e(0xd2) >> rmbyte1         ] = binary("ror",decode_m,CF,ror);
 			main[ e(0xd3) >> rm1             ] = binary("ror",decode_m,CF,ror);
 			main[ e(0xc0) >> rmbyte1 >> imm8 ] = binary("ror",decode_mi,ror);
@@ -595,8 +595,8 @@ namespace po
 			main[ e(0x9e) ] = nonary("sahf",sahf);
 
 			// SAL
-			main[ e(0xd0) >> rmbyte4         ] = binary("sal",decode_m,constant(1),sal);
-			main[ e(0xd1) >> rm4             ] = binary("sal",decode_m,constant(1),sal);
+			main[ e(0xd0) >> rmbyte4         ] = binary("sal",decode_m,rvalue(constant(1)),sal);
+			main[ e(0xd1) >> rm4             ] = binary("sal",decode_m,rvalue(constant(1)),sal);
 			main[ e(0xd2) >> rmbyte4         ] = binary("sal",decode_m,CF,sal);
 			main[ e(0xd3) >> rm4             ] = binary("sal",decode_m,CF,sal);
 			main[ e(0xc0) >> rmbyte4 >> imm8 ] = binary("sal",decode_mi,sal);
@@ -606,8 +606,8 @@ namespace po
 			main[ e(0xd6) ] = nonary("salc",salc);
 
 			// SAR
-			main[ e(0xd0) >> rmbyte7         ] = binary("sar",decode_m,constant(1),sar);
-			main[ e(0xd1) >> rm7             ] = binary("sar",decode_m,constant(1),sar);
+			main[ e(0xd0) >> rmbyte7         ] = binary("sar",decode_m,rvalue(constant(1)),sar);
+			main[ e(0xd1) >> rm7             ] = binary("sar",decode_m,rvalue(constant(1)),sar);
 			main[ e(0xd2) >> rmbyte7         ] = binary("sar",decode_m,CF,sar);
 			main[ e(0xd3) >> rm7             ] = binary("sar",decode_m,CF,sar);
 			main[ e(0xc0) >> rmbyte7 >> imm8 ] = binary("sar",decode_mi,sar);
@@ -651,8 +651,8 @@ namespace po
 			main[ e(0x0f) >> e(0xa5) >> rm         ] = trinary("shld",decode_mr,CF,shld);
 
 			// SHR
-			main[ e(0xd0) >> rmbyte5         ] = binary("shr",decode_m,constant(1),shr);
-			main[ e(0xd1) >> rm5             ] = binary("shr",decode_m,constant(1),shr);
+			main[ e(0xd0) >> rmbyte5         ] = binary("shr",decode_m,rvalue(constant(1)),shr);
+			main[ e(0xd1) >> rm5             ] = binary("shr",decode_m,rvalue(constant(1)),shr);
 			main[ e(0xd2) >> rmbyte5         ] = binary("shr",decode_m,CF,shr);
 			main[ e(0xd3) >> rm5             ] = binary("shr",decode_m,CF,shr);
 			main[ e(0xc0) >> rmbyte5 >> imm8 ] = binary("shr",decode_mi,shr);
@@ -663,13 +663,13 @@ namespace po
 			main[ e(0x0f) >> e(0xad) >> rm         ] = trinary("shrd",decode_mr,CF,shrd);
 
 			// STC
-			main[ e(0xf9) ] = nonary("stc",std::bind(flagwr,pls::_1,CF,true));
+			main[ e(0xf9) ] = nonary("stc",std::bind(flagwr,pls::_1,to_variable(CF),true));
 
 			// STD
-			main[ e(0xfd) ] = nonary("std",std::bind(flagwr,pls::_1,DF,true));
+			main[ e(0xfd) ] = nonary("std",std::bind(flagwr,pls::_1,to_variable(DF),true));
 
 			// STI
-			main[ e(0xfb) ] = nonary("sti",std::bind(flagwr,pls::_1,IF,true));
+			main[ e(0xfb) ] = nonary("sti",std::bind(flagwr,pls::_1,to_variable(IF),true));
 
 			// STOS* (rep)
 			mainrep[ e(0xaa) ] = stos;

@@ -108,6 +108,7 @@ boost::optional<prog_loc> po::avr::disassemble(po::avr_state const& st, boost::o
 			c.assign(Rd2,Rr2);
 		});
 		st.jump(st.address + st.tokens.size() * 2);
+		return true;
 	});
 	main[e("10110 A@.. d@..... A@....")] = sem_action([](sm &st)
 	{
@@ -120,6 +121,7 @@ boost::optional<prog_loc> po::avr::disassemble(po::avr_state const& st, boost::o
 			c.assign(Rd,sram(off));
 		});
 		st.jump(st.address + st.tokens.size() * 2);
+		return true;
 	});
 	main[e("10111 A@.. r@..... A@....")] = sem_action([](sm &st)
 	{
@@ -132,6 +134,7 @@ boost::optional<prog_loc> po::avr::disassemble(po::avr_state const& st, boost::o
 			c.assign(sram(off),Rr);
 		});
 		st.jump(st.address + st.tokens.size() * 2);
+		return true;
 	});
 	main[e("1001000 d@..... 1111")] = unary_reg("pop",[](cg &c, const variable &r)
 	{
@@ -194,6 +197,7 @@ boost::optional<prog_loc> po::avr::disassemble(po::avr_state const& st, boost::o
 			c.assign(Rd,sram(k));
 		});
 		st.jump(st.address + st.tokens.size() * 2);
+		return true;
 	});
 
 	main[e("10100 k@... d@.... k@....")] = sem_action([](sm &st)
@@ -207,6 +211,7 @@ boost::optional<prog_loc> po::avr::disassemble(po::avr_state const& st, boost::o
 			c.assign(Rd,sram(k));
 		});
 		st.jump(st.address + st.tokens.size() * 2);
+		return true;
 	});
 
 	main[f(0x95c8)] = sem_action([](sm &st)
@@ -218,6 +223,7 @@ boost::optional<prog_loc> po::avr::disassemble(po::avr_state const& st, boost::o
 			c.assign(r1,flash(z));
 		});
 		st.jump(st.address + st.tokens.size() * 2);
+		return true;
 	});
 
 	main[f(0x95e8)] = sem_action([](sm &st)
@@ -225,6 +231,7 @@ boost::optional<prog_loc> po::avr::disassemble(po::avr_state const& st, boost::o
 		// TODO
 		st.mnemonic(st.tokens.size() * 2,"spm");
 		st.jump(st.address + st.tokens.size() * 2);
+		return true;
 	});
 
 	main[f(0x95f8)] = sem_action([](sm &st)
@@ -232,6 +239,7 @@ boost::optional<prog_loc> po::avr::disassemble(po::avr_state const& st, boost::o
 		// TODO
 		st.mnemonic(st.tokens.size() * 2,"spm","",decode_preg(30,PostInc),std::function<void(cg &c)>());
 		st.jump(st.address + st.tokens.size() * 2);
+		return true;
 	});
 
 	main[e("1001001 d@..... 0000") >> e("k@................")] = sem_action([](sm &st)
@@ -244,6 +252,7 @@ boost::optional<prog_loc> po::avr::disassemble(po::avr_state const& st, boost::o
 			c.assign(sram(k),Rr);
 		});
 		st.jump(st.address + st.tokens.size() * 2);
+		return true;
 	});
 
 	main[e("10101 k@... d@.... k@....")] = sem_action([](sm &st)
@@ -257,6 +266,7 @@ boost::optional<prog_loc> po::avr::disassemble(po::avr_state const& st, boost::o
 			c.assign(sram(k),Rr);
 		});
 		st.jump(st.address + st.tokens.size() * 2);
+		return true;
 	});
 
 	main[e("10011010 A@..... b@...")] = sem_action([](sm &st)
@@ -269,6 +279,7 @@ boost::optional<prog_loc> po::avr::disassemble(po::avr_state const& st, boost::o
 			c.assign(sram(k),sram(k) | b);
 		});
 		st.jump(st.address + st.tokens.size() * 2);
+		return true;
 	});
 
 	main[e("10011000 A@..... b@...")] = sem_action([](sm &st)
@@ -281,6 +292,7 @@ boost::optional<prog_loc> po::avr::disassemble(po::avr_state const& st, boost::o
 			c.assign(sram(k),sram(k) & b);
 		});
 		st.jump(st.address + st.tokens.size() * 2);
+		return true;
 	});
 
 	// SREG operations
@@ -422,6 +434,7 @@ boost::optional<prog_loc> po::avr::disassemble(po::avr_state const& st, boost::o
 			});
 			st.jump(st.address + st.tokens.size() * 2);
 		}
+		return true;
 	});
 	main[e("1001010 d@..... 0001")] = unary_reg("neg",[](cg &m, const variable &Rd)
 	{
@@ -531,6 +544,7 @@ boost::optional<prog_loc> po::avr::disassemble(po::avr_state const& st, boost::o
 			c.assign(Rd1,R % 0x100);
 		});
 		st.jump(st.address + st.tokens.size() * 2);
+		return true;
 	});
 	main[e("10010111 K@.. d@.. K@....")] = sem_action([](sm &st)
 	{
@@ -541,6 +555,7 @@ boost::optional<prog_loc> po::avr::disassemble(po::avr_state const& st, boost::o
 
 		st.mnemonic(st.tokens.size() * 2,"sbiw","{8}:{8}, {16}",{Rd1,Rd2,K});
 		st.jump(st.address + st.tokens.size() * 2);
+		return true;
 	});
 	main[e("0000 0011 0 d@... 1 r@...")] = binary_reg("fmul",[](cg &m, const variable &Rd, const variable &Rr)
 	{
@@ -596,6 +611,7 @@ boost::optional<prog_loc> po::avr::disassemble(po::avr_state const& st, boost::o
 		st.mnemonic(st.tokens.size() * 2,"sbrc","",Rr,b,std::function<void(cg &c)>());
 		st.jump(st.address + st.tokens.size() * 2);
 		//st.skip_next = true;
+		return true;
 	});
 	main[e("1111 111 r@..... 0 b@...")] = sem_action([](sm &st)
 	{
@@ -605,6 +621,7 @@ boost::optional<prog_loc> po::avr::disassemble(po::avr_state const& st, boost::o
 		st.mnemonic(st.tokens.size() * 2,"sbrs","",Rr,b,std::function<void(cg &c)>());
 		st.jump(st.address + st.tokens.size() * 2);
 		//st.skip_next = true;
+		return true;
 	});
 	main[e("000100 r@. d@..... r@....")] = sem_action([](sm &st)
 	{
@@ -614,6 +631,7 @@ boost::optional<prog_loc> po::avr::disassemble(po::avr_state const& st, boost::o
 		st.mnemonic(st.tokens.size() * 2,"cpse","",Rd,Rr,std::function<void(cg &c)>());
 		st.jump(st.address + st.tokens.size() * 2);
 		//st.skip_next = true;
+		return true;
 	});
 	main[e("1001 1001 A@..... b@...")] = sem_action([](sm &st)
 	{
@@ -623,6 +641,7 @@ boost::optional<prog_loc> po::avr::disassemble(po::avr_state const& st, boost::o
 		st.mnemonic(st.tokens.size() * 2,"sbic","",A,b,std::function<void(cg &c)>());
 		st.jump(st.address + st.tokens.size() * 2);
 		//st.skip_next = true;
+		return true;
 	});
 	main[e("1001 1011 A@..... b@...")] = sem_action([](sm &st)
 	{
@@ -632,6 +651,7 @@ boost::optional<prog_loc> po::avr::disassemble(po::avr_state const& st, boost::o
 		st.mnemonic(st.tokens.size() * 2,"sbis","",A,b,std::function<void(cg &c)>());
 		st.jump(st.address + st.tokens.size() * 2);
 		//st.skip_next = true;
+		return true;
 	});
 
 	// jump branches
@@ -644,6 +664,7 @@ boost::optional<prog_loc> po::avr::disassemble(po::avr_state const& st, boost::o
 			c.call_i(k);
 		});
 		st.jump(st.address + st.tokens.size() * 2);
+		return true;
 	});
 	main[e("1001010 k@..... 110 k@.") >> e("k@................")] = sem_action([](sm &st)
 	{
@@ -651,6 +672,7 @@ boost::optional<prog_loc> po::avr::disassemble(po::avr_state const& st, boost::o
 
 		st.mnemonic(st.tokens.size() * 2,"jmp","",k,std::function<void(cg &c)>());
 		st.jump(k);
+		return true;
 	});
 
 	main[e("1101 k@............")] = sem_action([](sm &st)
@@ -663,6 +685,7 @@ boost::optional<prog_loc> po::avr::disassemble(po::avr_state const& st, boost::o
 			c.call_i(k);
 		});
 		st.jump(st.address + 2);
+		return true;
 	});
 	main[e("1100 k@............")] = sem_action([](sm &st)
 	{
@@ -672,9 +695,10 @@ boost::optional<prog_loc> po::avr::disassemble(po::avr_state const& st, boost::o
 		st.mnemonic(st.tokens.size() * 2,"rjmp","",k,std::function<void(cg &c)>());
 		std::cerr << k << " " << _k << " " << (_k <= 2047 ? _k : _k - 4096) << " " << (_k <= 2047 ? _k : _k - 4096) * 2 + 2 + st.address << std::endl;
 		st.jump(k);
+		return true;
 	});
-	main[f(0x9508)] = sem_action([](sm &st) { st.mnemonic(st.tokens.size() * 2,"ret"); });
-	main[f(0x9518)] = sem_action([](sm &st) { st.mnemonic(st.tokens.size() * 2,"reti"); });
+	main[f(0x9508)] = sem_action([](sm &st) { st.mnemonic(st.tokens.size() * 2, "ret"); return true;  });
+	main[f(0x9518)] = sem_action([](sm &st) { st.mnemonic(st.tokens.size() * 2, "reti"); return true; });
 	main[f(0x9409)] = sem_action([](sm &st)
 	{
 		variable J(variable("J",16));
@@ -685,10 +709,11 @@ boost::optional<prog_loc> po::avr::disassemble(po::avr_state const& st, boost::o
 			c.assign(J,((r31 * 0x100 + r30) * 2) % constant(st.state.flash_sz));
 		});
 		st.jump(J);
+		return true;
 	});
 
 	// TODO: icall
-	main[f(0x9509)] = sem_action([](sm &st) { st.mnemonic(st.tokens.size() * 2,"icall"); });
+	main[f(0x9509)] = sem_action([](sm &st) { st.mnemonic(st.tokens.size() * 2, "icall"); return true; });
 
 	// store and load with x,y,z
 	main[e("1001 001r@. r@.... 1100")] = binary_st(r26,r27,false,false);
@@ -725,6 +750,7 @@ boost::optional<prog_loc> po::avr::disassemble(po::avr_state const& st, boost::o
 	{
 		st.mnemonic(st.tokens.size() * 2,"des","",constant(st.capture_groups["K"]),std::function<void(cg &c)>());
 		st.jump(st.tokens.size() * 2 + st.address);
+		return true;
 	});
 
 	main[f(0x0)] = simple("nop",[](cg &m) { /* TODO */ });
@@ -734,7 +760,8 @@ boost::optional<prog_loc> po::avr::disassemble(po::avr_state const& st, boost::o
 	// catch all
 	main = sem_action([](sm &st)
 	{
-		st.mnemonic(1,"unk");
+		st.mnemonic(1, "unk");
+		return true;
 	});
 
 	return program::disassemble<avr_tag>(main,st,bytes,r,prog);
