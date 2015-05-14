@@ -58,7 +58,7 @@ namespace po
 		loc_control(std::unique_ptr<T>&& t) : inner(std::move(t)) {}
 		loc_control(const rdf::storage &s) : inner(&s) {}
 
-		bool has_object(void) const { return !!boost::get<std::unique_ptr<T>*>(&inner); }
+		bool has_object(void) const { return !!boost::get<std::unique_ptr<T>>(&inner); }
 
 		T* object(void) { return boost::get<std::unique_ptr<T>>(inner).get(); }
 		const rdf::storage &storage(void) { return *boost::get<const rdf::storage*>(inner); }
