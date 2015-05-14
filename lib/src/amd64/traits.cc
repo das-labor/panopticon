@@ -22,8 +22,6 @@
 #include <panopticon/amd64/decode.hh>
 #include <panopticon/amd64/syntax.hh>
 
-#include <endian.h>
-
 using namespace po;
 using namespace po::amd64;
 using namespace po::dsl;
@@ -52,7 +50,7 @@ namespace po
 			"dr0","dr1","dr2","dr3","dr4","dr5","dr6","dr7"
 			});
 
-			const variable al = variable("al",8),
+			const rvalue al = variable("al",8),
 								bl = variable("bl",8),
 								cl = variable("cl",8),
 								dl = variable("dl",8),

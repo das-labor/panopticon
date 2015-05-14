@@ -93,43 +93,43 @@ namespace po
 	namespace amd64
 	{
 		// 8 bit gp registers
-		extern const variable al,bl,cl,dl,
+		extern const rvalue al,bl,cl,dl,
 				 					 ah,bh,ch,dh,
 									 r8l,r9l,r10l,r11l,r12l,r13l,r14l,r15l,
 									 spl,bpl,sil,dil;
 		// 16 bit gp registers
-		extern const variable ax,bx,cx,dx,
+		extern const rvalue ax,bx,cx,dx,
 				 					 r8w,r9w,r10w,r11w,r12w,r13w,r14w,r15w,
 									 si,di,sp,bp;
 		// 32 bit gp registers
-		extern const variable eax,ebx,ecx,edx,
+		extern const rvalue eax,ebx,ecx,edx,
 				 					 esi,edi,
 									 r8d,r9d,r10d,r11d,r12d,r13d,r14d,r15d;
 		// 64 bit gp registers
-		extern const variable rax,rbx,rcx,rdx,
+		extern const rvalue rax,rbx,rcx,rdx,
 				 					 rsi,rdi,
 									 r4,r5,r6,r7,r8,r9,r10,r11,r12,r13,r14,r15;
 
 		// 16 bit management registers
-		extern const variable sp,bp,ip/*,eflags*/;
+		extern const rvalue sp,bp,ip/*,eflags*/;
 
 		// 32 bit management registers
-		extern const variable esp,ebp,eip,/*eflags,*/CF,PF,AF,ZF,SF,TF,IF,DF,OF,IOPL,NT,RF,VM,AC,VIF,VIP,ID;
+		extern const rvalue esp,ebp,eip,/*eflags,*/CF,PF,AF,ZF,SF,TF,IF,DF,OF,IOPL,NT,RF,VM,AC,VIF,VIP,ID;
 
 		// 64 bit management registers
-		extern const variable rsp,rbp,rip,rflags;
+		extern const rvalue rsp,rbp,rip,rflags;
 
 		// segment registers
-		extern const variable cs, ds, fs, ss, gs, es;
+		extern const rvalue cs, ds, fs, ss, gs, es;
 
 		// control registers
-		extern const variable cr0, cr1, cr2, cr3, cr4, cr8, ldtr, gdtr, idtr;
+		extern const rvalue cr0, cr1, cr2, cr3, cr4, cr8, ldtr, gdtr, idtr;
 
 		// debug registers
-		extern const variable dr0, dr1, dr2, dr3, dr4, dr5, dr6, dr7;
+		extern const rvalue dr0, dr1, dr2, dr3, dr4, dr5, dr6, dr7;
 
 		using sm = sem_state<amd64_tag>;
-		using sem_action = std::function<void(sm &)>;
+		using sem_action = std::function<bool(sm &)>;
 		using cg = code_generator<amd64_tag>;
 	}
 }

@@ -163,53 +163,57 @@ memory po::avr::flash(unsigned int o)
 
 sem_action po::avr::unary_reg(std::string x, std::function<void(cg &c, const variable &v)> func)
 {
-	return [x,func](sm &st)
+	return [x,func](sm &st) -> bool
 	{
 		variable op = st.capture_groups.count("d") ? decode_reg((unsigned int)st.capture_groups["d"]) :
 																								 decode_reg((unsigned int)st.capture_groups["r"]);
 		if(func)
 			st.mnemonic(st.tokens.size() * 2,x,"{8}",op,std::bind(func,std::placeholders::_1,op));
 		else
-			st.mnemonic(st.tokens.size() * 2,x,"{8}",op);
+			st.mnemonic(st.tokens.size() * 2,x,"{8}",std::list<rvalue>({op}));
 		st.jump(st.address + st.tokens.size() * 2);
+		return true;
 	};
 }
 
 sem_action po::avr::binary_reg(std::string x, std::function<void(cg &,const variable&,const variable&)> func)
 {
-	return [x,func](sm &st)
+	return [x,func](sm &st) -> bool
 	{
 		variable Rd = decode_reg(st.capture_groups["d"]);
 		variable Rr = decode_reg(st.capture_groups["r"]);
 
 		st.mnemonic(st.tokens.size() * 2,x,"{8}, {8}",Rd,Rr,bind(func,std::placeholders::_1,Rd,Rr));
 		st.jump(st.address + st.tokens.size() * 2);
+		return true;
 	};
 }
 
 sem_action po::avr::branch(std::string m, rvalue flag, bool set)
 {
-	return [m,flag,set](sm &st)
+	return [m,flag,set](sm &st) -> bool
 	{
 		int64_t _k = st.capture_groups["k"] * 2;
 		guard g(flag,relation::Eq,set ? constant(1) : constant(0));
 		constant k((int8_t)(_k <= 63 ? _k : _k - 128));
 
-		st.mnemonic(st.tokens.size() * 2,m,"{8:-}",k);
+		st.mnemonic(st.tokens.size() * 2,m,"{8:-}",std::list<rvalue>({rvalue(k)}));
 		st.jump(st.address + 2,g.negation());
 		st.jump(st.address + k.content() + 2,g);
+		return true;
 	};
 }
 
 sem_action po::avr::binary_regconst(std::string x, std::function<void(cg &,const variable&,const constant&)> func)
 {
-	return [x,func](sm &st)
+	return [x,func](sm &st) -> bool
 	{
 		variable Rd = decode_reg(st.capture_groups["d"] + 16);
 		constant K(st.capture_groups["K"]);
 
 		st.mnemonic(st.tokens.size() * 2,x,"{8}, {8}",{Rd,K},bind(func,std::placeholders::_1,Rd,K));
 		st.jump(st.address + st.tokens.size() * 2);
+		return true;
 	};
 }
 
@@ -217,7 +221,7 @@ sem_action po::avr::binary_st(variable Rd1, variable Rd2, bool pre_dec, bool pos
 {
 	ensure(!(pre_dec == true && post_inc == true));
 
-	return [=](sm &st)
+	return [=](sm &st) -> bool
 	{
 		using po::dsl::operator*;
 		using po::dsl::operator+;
@@ -261,6 +265,7 @@ sem_action po::avr::binary_st(variable Rd1, variable Rd2, bool pre_dec, bool pos
 				c.mod_i(X,X + 1,constant(0x10000));
 		});
 		st.jump(st.address + st.tokens.size() * 2);
+		return true;
 	};
 }
 
@@ -268,7 +273,7 @@ sem_action po::avr::binary_ld(variable Rr1, variable Rr2, bool pre_dec, bool pos
 {
 	ensure(!(pre_dec == true && post_inc == true));
 
-	return [=](sm &st)
+	return [=](sm &st) -> bool
 	{
 		using po::dsl::operator*;
 		using po::dsl::operator+;
@@ -312,12 +317,13 @@ sem_action po::avr::binary_ld(variable Rr1, variable Rr2, bool pre_dec, bool pos
 				c.mod_i(X,X + 1,constant(0x10000));
 		});
 		st.jump(st.address + st.tokens.size() * 2);
+		return true;
 	};
 }
 
 sem_action po::avr::binary_stq(variable Rd1, variable Rd2)
 {
-	return [=](sm &st)
+	return [=](sm &st) -> bool
 	{
 		using po::dsl::operator*;
 		using po::dsl::operator+;
@@ -346,12 +352,13 @@ sem_action po::avr::binary_stq(variable Rd1, variable Rd2)
 			c.assign(sram(X),Rr);
 		});
 		st.jump(st.address + st.tokens.size() * 2);
+		return true;
 	};
 }
 
 sem_action po::avr::binary_ldq(variable Rr1, variable Rr2)
 {
-		return [=](sm &st)
+	return [=](sm &st) -> bool
 	{
 		using po::dsl::operator*;
 		using po::dsl::operator+;
@@ -380,15 +387,17 @@ sem_action po::avr::binary_ldq(variable Rr1, variable Rr2)
 			c.assign(Rd,sram(X));
 		});
 		st.jump(st.address + st.tokens.size() * 2);
+		return true;
 	};
 }
 
 sem_action po::avr::simple(std::string x, std::function<void(cg&)> fn)
 {
-	return [x,fn](sm &st)
+	return [x,fn](sm &st) -> bool
 	{
 		std::list<rvalue> nop;
 		st.mnemonic(st.tokens.size() * 2,x,"",nop,fn);
 		st.jump(st.address + st.tokens.size() * 2);
+		return true;
 	};
 }

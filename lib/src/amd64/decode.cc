@@ -44,22 +44,22 @@ variable po::amd64::decode_reg8(unsigned int r_reg,bool rex)
 {
 	switch(r_reg)
 	{
-		case 0: return al;
-		case 1: return cl;
-		case 2: return dl;
-		case 3: return bl;
-		case 4: return rex ? spl : ah;
-		case 5: return rex ? bpl : ch;
-		case 6: return rex ? sil : dh;
-		case 7: return rex ? dil : bh;
-		case 8: return r8l;
-		case 9: return r9l;
-		case 10: return r10l;
-		case 11: return r11l;
-		case 12: return r12l;
-		case 13: return r13l;
-		case 14: return r14l;
-		case 15: return r15l;
+		case 0: return to_variable(al);
+		case 1: return to_variable(cl);
+		case 2: return to_variable(dl);
+		case 3: return to_variable(bl);
+		case 4: return rex ? to_variable(spl) : to_variable(ah);
+		case 5: return rex ? to_variable(bpl) : to_variable(ch);
+		case 6: return rex ? to_variable(sil) : to_variable(dh);
+		case 7: return rex ? to_variable(dil) : to_variable(bh);
+		case 8: return to_variable(r8l);
+		case 9: return to_variable(r9l);
+		case 10: return to_variable(r10l);
+		case 11: return to_variable(r11l);
+		case 12: return to_variable(r12l);
+		case 13: return to_variable(r13l);
+		case 14: return to_variable(r14l);
+		case 15: return to_variable(r15l);
 		default: ensure(false);
 	}
 }
@@ -68,22 +68,22 @@ variable po::amd64::decode_reg16(unsigned int r_reg)
 {
 	switch(r_reg)
 	{
-		case 0: return ax;
-		case 1: return cx;
-		case 2: return dx;
-		case 3: return bx;
-		case 4: return sp;
-		case 5: return bp;
-		case 6: return si;
-		case 7: return di;
-		case 8: return r8w;
-		case 9: return r9w;
-		case 10: return r10w;
-		case 11: return r11w;
-		case 12: return r12w;
-		case 13: return r13w;
-		case 14: return r14w;
-		case 15: return r15w;
+		case 0: return to_variable(ax);
+		case 1: return to_variable(cx);
+		case 2: return to_variable(dx);
+		case 3: return to_variable(bx);
+		case 4: return to_variable(sp);
+		case 5: return to_variable(bp);
+		case 6: return to_variable(si);
+		case 7: return to_variable(di);
+		case 8: return to_variable(r8w);
+		case 9: return to_variable(r9w);
+		case 10: return to_variable(r10w);
+		case 11: return to_variable(r11w);
+		case 12: return to_variable(r12w);
+		case 13: return to_variable(r13w);
+		case 14: return to_variable(r14w);
+		case 15: return to_variable(r15w);
 		default: ensure(false);
 	}
 }
@@ -92,22 +92,22 @@ variable po::amd64::decode_reg32(unsigned int r_reg)
 {
 	switch(r_reg)
 	{
-		case 0: return eax;
-		case 1: return ecx;
-		case 2: return edx;
-		case 3: return ebx;
-		case 4: return esp;
-		case 5: return ebp;
-		case 6: return esi;
-		case 7: return edi;
-		case 8: return r8d;
-		case 9: return r9d;
-		case 10: return r10d;
-		case 11: return r11d;
-		case 12: return r12d;
-		case 13: return r13d;
-		case 14: return r14d;
-		case 15: return r15d;
+	case 0: return to_variable(eax);
+	case 1: return to_variable(ecx);
+	case 2: return to_variable(edx);
+	case 3: return to_variable(ebx);
+	case 4: return to_variable(esp);
+	case 5: return to_variable(ebp);
+	case 6: return to_variable(esi);
+	case 7: return to_variable(edi);
+	case 8: return to_variable(r8d);
+	case 9: return to_variable(r9d);
+	case 10: return to_variable(r10d);
+	case 11: return to_variable(r11d);
+	case 12: return to_variable(r12d);
+	case 13: return to_variable(r13d);
+	case 14: return to_variable(r14d);
+	case 15: return to_variable(r15d);
 		default: ensure(false);
 	}
 }
@@ -116,22 +116,22 @@ variable po::amd64::decode_reg64(unsigned int r_reg)
 {
 	switch(r_reg)
 	{
-		case 0: return rax;
-		case 1: return rcx;
-		case 2: return rdx;
-		case 3: return rbx;
-		case 4: return rsp;
-		case 5: return rbp;
-		case 6: return rsi;
-		case 7: return rdi;
-		case 8: return r8;
-		case 9: return r9;
-		case 10: return r10;
-		case 11: return r11;
-		case 12: return r12;
-		case 13: return r13;
-		case 14: return r14;
-		case 15: return r15;
+	case 0: return to_variable(rax);
+	case 1: return to_variable(rcx);
+	case 2: return to_variable(rdx);
+	case 3: return to_variable(rbx);
+	case 4: return to_variable(rsp);
+	case 5: return to_variable(rbp);
+	case 6: return to_variable(rsi);
+	case 7: return to_variable(rdi);
+	case 8: return to_variable(r8);
+	case 9: return to_variable(r9);
+	case 10: return to_variable(r10);
+	case 11: return to_variable(r11);
+	case 12: return to_variable(r12);
+	case 13: return to_variable(r13);
+	case 14: return to_variable(r14);
+	case 15: return to_variable(r15);
 		default: ensure(false);
 	}
 }
@@ -558,6 +558,7 @@ sem_action po::amd64::nonary(std::string const& op, std::function<void(cg&)> fun
 			return std::list<rvalue>({});
 		});
 		st.jump(st.address + st.tokens.size());
+		return true;
 	};
 }
 
@@ -577,6 +578,7 @@ sem_action po::amd64::unary(std::string const& op, std::function<rvalue(sm const
 			return std::list<rvalue>({a});
 		});
 		st.jump(st.address + st.tokens.size());
+		return true;
 	};
 }
 
@@ -595,6 +597,7 @@ sem_action po::amd64::unary(std::string const& op, rvalue arg, std::function<voi
 			return std::list<rvalue>({arg});
 		});
 		st.jump(st.address + st.tokens.size());
+		return true;
 	};
 }
 
@@ -616,6 +619,7 @@ sem_action po::amd64::binary(std::string const& op, std::function<std::pair<rval
 		});
 
 		st.jump(st.address + st.tokens.size());
+		return true;
 	};
 }
 
@@ -635,6 +639,7 @@ sem_action po::amd64::binary(std::string const& op, std::function<rvalue(sm cons
 		});
 
 		st.jump(st.address + st.tokens.size());
+		return true;
 	};
 }
 
@@ -654,6 +659,7 @@ sem_action po::amd64::binary(std::string const& op, rvalue arg1, std::function<r
 		});
 
 		st.jump(st.address + st.tokens.size());
+		return true;
 	};
 }
 
@@ -672,6 +678,7 @@ sem_action po::amd64::binary(std::string const& op, rvalue arg1, rvalue arg2, st
 		});
 
 		st.jump(st.address + st.tokens.size());
+		return true;
 	};
 }
 
@@ -692,6 +699,7 @@ sem_action po::amd64::binary(std::string const& op, std::function<rvalue(sm cons
 		});
 
 		st.jump(st.address + st.tokens.size());
+		return true;
 	};
 }
 
@@ -706,6 +714,7 @@ sem_action po::amd64::branch(std::string const& m, rvalue flag, bool set)
 		st.mnemonic(st.tokens.size() * 2,m,"");
 		st.jump(st.address + st.tokens.size());//,g.negation());
 		//st.jump(undefined(),g);//st.address + k.content() + 2,g);
+		return true;
 	};
 }
 
@@ -725,6 +734,7 @@ sem_action po::amd64::trinary(std::string const& op, std::function<std::tuple<rv
 		});
 
 		st.jump(st.address + st.tokens.size());
+		return true;
 	};
 }
 
@@ -744,6 +754,7 @@ sem_action po::amd64::trinary(std::string const& op, std::function<std::pair<rva
 		});
 
 		st.jump(st.address + st.tokens.size());
+		return true;
 	};
 }
 

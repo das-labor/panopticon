@@ -38,6 +38,7 @@ protected:
 		{
 			st.mnemonic(2,"BA");
 			st.jump(st.address + 2);
+			return true;
 		};
 
 		sub2['X'] = std::function<bool(ss)>([](ss st) -> bool
@@ -51,19 +52,22 @@ protected:
 		{
 			st.mnemonic(1,"A");
 			st.jump(st.address + 1);
+			return true;
 		};
 
 		main["0 k@..... 11"] = [](ss st)
 		{
 			st.mnemonic(1,"C");
 			st.jump(st.address + 1);
+			return true;
 		};
 
-		main = [](ss st)
+		main = std::function<bool(ss)>([](ss st) -> bool
 		{
 			st.mnemonic(1,"UNK");
 			st.jump(st.address + 1);
-		};
+			return true;
+		});
 
 		_bytes = {'A','A','B','A','C','X','A','X'};
 		bytes = po::slab(_bytes.data(),_bytes.size());
@@ -83,7 +87,7 @@ TEST_F(disassembler,single_decoder)
 	ASSERT_TRUE(!!i);
 	st = i->second;
 
-	ASSERT_EQ(i->first, std::next(bytes.begin()));
+	ASSERT_EQ(i->first, ++bytes.begin());
 	ASSERT_EQ(st.address, 0u);
 	ASSERT_GE(st.tokens.size(), 1u);
 	ASSERT_EQ(st.tokens[0], 'A');
@@ -165,7 +169,7 @@ TEST_F(disassembler,slice)
 	ASSERT_TRUE(!!i);
 	st = i->second;
 
-	ASSERT_EQ(i->first, std::next(bytes.begin(),2));
+	ASSERT_EQ(i->first, bytes.begin()+2);
 	ASSERT_EQ(st.address, 1u);
 	ASSERT_GE(st.tokens.size(), 1u);
 	ASSERT_EQ(st.tokens[0], 'A');
@@ -204,7 +208,7 @@ TEST_F(disassembler,capture_group)
 	ASSERT_TRUE(!!i);
 	st = i->second;
 
-	ASSERT_EQ(i->first, std::next(bytes.begin(),5));
+	ASSERT_EQ(i->first, bytes.begin()+5);
 	ASSERT_EQ(st.address, 4u);
 	ASSERT_GE(st.tokens.size(), 1u);
 	ASSERT_EQ(st.tokens[0], 'C');
@@ -228,7 +232,7 @@ TEST_F(disassembler,empty_capture_group)
 	po::slab buf(_buf.data(),_buf.size());
 	po::disassembler<test_tag> dec;
 
-	dec["01 a@.. 1 b@ c@..."] = [](ss s) { s.mnemonic(1,"1"); };
+	dec["01 a@.. 1 b@ c@..."] = [](ss s) { s.mnemonic(1, "1"); return true; };
 	boost::optional<std::pair<po::slab::iterator,po::sem_state<test_tag>>> i;
 
 	i = dec.try_match(buf.begin(),buf.end(),st);
@@ -303,6 +307,7 @@ TEST_F(disassembler,wide_token)
 	{
 		s.mnemonic(2,"A");
 		s.jump(s.address + 2);
+		return true;
 	};
 
 	dec[0x3344] = [](sw s)
@@ -310,11 +315,13 @@ TEST_F(disassembler,wide_token)
 		s.mnemonic(2,"B");
 		s.jump(s.address + 2);
 		s.jump(s.address + 4);
+		return true;
 	};
 
 	dec[0x5544] = [](sw s)
 	{
-		s.mnemonic(2,"C");
+		s.mnemonic(2, "C");
+		return true;
 	};
 
 	boost::optional<std::pair<po::slab::iterator,po::sem_state<wtest_tag>>> i;
@@ -336,14 +343,13 @@ TEST_F(disassembler,wide_token)
 
 TEST_F(disassembler,optional)
 {
-	using po::operator "" _e;
 
 	po::sem_state<test_tag> st(0,'a');
 	std::vector<unsigned char> _buf = {127,126,125,127,125};
 	po::slab buf(_buf.data(),_buf.size());
 	po::disassembler<test_tag> dec;
 
-	dec[127_e >> *126_e >> 125_e] = [](ss s) { s.mnemonic(s.tokens.size(),"1"); };
+	dec[po::token_expr(127) >> *po::token_expr(126) >> po::token_expr(125)] = [](ss s) { s.mnemonic(s.tokens.size(), "1"); return true; };
 	boost::optional<std::pair<po::slab::iterator,po::sem_state<test_tag>>> i;
 
 	i = dec.try_match(buf.begin(),buf.end(),st);
@@ -383,14 +389,13 @@ TEST_F(disassembler,optional)
 
 TEST_F(disassembler,fixed_capture_group_contents)
 {
-	using po::operator "" _e;
 
 	po::sem_state<test_tag> st(0,'a');
 	std::vector<unsigned char> _buf = {127,255};
 	po::slab buf(_buf.data(),_buf.size());
 	po::disassembler<test_tag> dec;
 
-	dec[ "01111111"_e >> "a@11111111"_e ] = [](ss s) { s.mnemonic(1,"1"); };
+	dec[ po::token_expr(std::string("01111111")) >> po::token_expr(std::string("a@11111111")) ] = [](ss s) { s.mnemonic(1,"1"); return true; };
 	boost::optional<std::pair<po::slab::iterator,po::sem_state<test_tag>>> i;
 
 	i = dec.try_match(buf.begin(),buf.end(),st);
@@ -410,5 +415,4 @@ TEST_F(disassembler,fixed_capture_group_contents)
 	ASSERT_EQ(st.mnemonics.front().area, po::bound(0,1));
 	ASSERT_TRUE(st.mnemonics.front().instructions.empty());
 	ASSERT_EQ(st.jumps.size(), 0u);
-
 }

@@ -208,10 +208,17 @@ struct net_flow
 			auto p = in_edges(n,graph);
 			auto q = out_edges(n,graph);
 
+#ifdef _MSC_VER
+			std::copy_if(p.first,p.second,std::inserter(eds,eds.end()),[&](po::digraph<N,std::pair<int,int>>::edge_descriptor e)
+				{ return !tree.count(source(e,graph)); });
+			std::copy_if(q.first,q.second,std::inserter(eds,eds.end()),[&](po::digraph<N,std::pair<int,int>>::edge_descriptor e)
+				{ return !tree.count(target(e,graph)); });
+#else
 			std::copy_if(p.first,p.second,std::inserter(eds,eds.end()),[&](typename po::digraph<N,std::pair<int,int>>::edge_descriptor e)
 				{ return !tree.count(source(e,graph)); });
 			std::copy_if(q.first,q.second,std::inserter(eds,eds.end()),[&](typename po::digraph<N,std::pair<int,int>>::edge_descriptor e)
 				{ return !tree.count(target(e,graph)); });
+#endif
 
 			for(auto g: eds)
 			{
@@ -290,8 +297,13 @@ struct net_flow
 			auto i = std::find_if(unranked.begin(),unranked.end(),[&](typename po::digraph<N,std::pair<int,int>>::vertex_descriptor n)
 			{
 				auto p = in_edges(n,graph);
+#ifdef _MSC_VER
+				return std::none_of(p.first,p.second,[&](po::digraph<N,std::pair<int,int>>::edge_descriptor e)
+					{ return unranked.count(source(e,graph)); });
+#else
 				return std::none_of(p.first,p.second,[&](typename po::digraph<N,std::pair<int,int>>::edge_descriptor e)
 					{ return unranked.count(source(e,graph)); });
+#endif
 			});
 			ensure(i != unranked.end());
 
@@ -303,7 +315,11 @@ struct net_flow
 				ensure(lambda.count(source(*p.first,graph)));
 				unsigned int rank = std::accumulate(p.first,p.second,
 															 lambda.at(source(*p.first,graph)) + get_edge(*p.first,graph).second,
-															 [&](int acc, typename po::digraph<N,std::pair<int,int>>::edge_descriptor e)
+#ifdef _MSC_VER
+															 [&](int acc,po::digraph<N,std::pair<int,int>>::edge_descriptor e)
+#else
+															 [&](int acc,typename po::digraph<N,std::pair<int,int>>::edge_descriptor e)
+#endif
 															 { return std::max(acc,(int)lambda.at(source(e,graph)) + get_edge(e,graph).second); });
 
 				ensure(lambda.insert(std::make_pair(*i,rank)).second);

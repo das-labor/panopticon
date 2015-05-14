@@ -14,23 +14,6 @@ set(BUILD_lib "AUTO" CACHE STRING "Build Panopticon Library (libpanopticon)")
 set(BUILD_qt "AUTO" CACHE STRING "Build Qt UI (qtpanopticon)")
 set(BUILD_doc "AUTO" CACHE STRING "Build documentation")
 
-# Packaging
-set(CPACK_PACKAGE_NAME "Panopticon")
-set(CPACK_DEBIAN_PACKAGE_NAME "panopticon")
-set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE "amd64")
-set(CPACK_DEBIAN_PACKAGE_DEPENDS "libc6 (>= 2.3.1-6), libarchive1 (>= 1:3.1.2), cmake (>= 2:2.8.9), libboost (>= 1:1.53.0), libkyotocabinet (>= 1:1.2.76), qt5-default (>= 1:1.0)")
-set(CPACK_PACKAGE_CONTACT "Kai Michaelis <seu@panopticon.re>")
-set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Cross platform disassembler")
-set(CPACK_PACKAGE_VENDOR "http://panopticon.re")
-set(CPACK_PACKAGE_DESCRIPTION_FILE "${CMAKE_CURRENT_SOURCE_DIR}/README.md")
-set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
-set(CPACK_PACKAGE_VERSION_MAJOR ${panopticon_MAJOR})
-set(CPACK_PACKAGE_VERSION_MINOR ${panopticon_MINOR})
-set(CPACK_PACKAGE_VERSION_PATCH ${panopticon_PATCH})
-set(CPACK_GENERATOR "DEB")
-set(CPACK_STRIP_FILES ON)
-include(CPack)
-
 # Default to release build
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
 	set(CMAKE_BUILD_TYPE Release)
@@ -39,6 +22,8 @@ endif()
 # find_package macros for kyotocabinet, sphinx and panopticon
 set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
+set_property(GLOBAL PROPERTY USE_FOLDERS ON)
+
 # build type-depend
 if("${CMAKE_BUILD_TYPE}" STREQUAL "Release")
  	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror")
@@ -46,6 +31,7 @@ if("${CMAKE_BUILD_TYPE}" STREQUAL "Release")
 elseif("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
 	# enable tests
 	include(CTest)
+	set(gtest_force_shared_crt ON CACHE FORCE BOOL)
 	add_subdirectory("3rdparty/gtest")
 	include(PanopticonTest)
 	include_directories("3rdparty/gtest/include")
@@ -88,6 +74,10 @@ endif()
 # Defines
 add_definitions("-DBOOST_MPL_CFG_NO_PREPROCESSED_HEADERS")
 add_definitions("-DBOOST_MPL_LIMIT_LIST_SIZE=30")
+if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+	add_definitions("-DNOMINMAX")
+endif()
+
 
 # Dependencies
 find_package(LibArchive REQUIRED)

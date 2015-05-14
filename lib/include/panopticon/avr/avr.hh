@@ -77,7 +77,7 @@ namespace po
 	namespace avr
 	{
 		using sm = sem_state<avr_tag>;
-		using sem_action = std::function<void(sm &)>;
+		using sem_action = std::function<bool(sm &)>;
 		using cg = code_generator<avr_tag>;
 
 		boost::optional<prog_loc> disassemble(po::avr_state const& st, boost::optional<prog_loc>, po::slab, const po::ref&);

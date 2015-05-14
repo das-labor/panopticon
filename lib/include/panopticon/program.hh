@@ -128,7 +128,9 @@ namespace po
 			return prog;
 
 		boost::optional<prog_loc> ret = prog;
-		std::unordered_set<offset> worklist({r.off});
+		std::unordered_set<offset> worklist;
+
+		worklist.insert(r.off);
 
 		while(!worklist.empty())
 		{
@@ -187,12 +189,12 @@ namespace po
 				auto eds = po::edges((*ret)->calls());
 
 				std::copy_if(eds.first,eds.second,std::back_inserter(to_resolv),
-					[&](ed_desc e) { return boost::get<offset>(&get_vertex(po::target(e,(*ret)->calls()),(*ret)->calls())); });
+					[&](ed_desc e) { return boost::get<symbol>(&get_vertex(po::target(e,(*ret)->calls()),(*ret)->calls())); });
 
 				for(auto e: to_resolv)
 				{
 					auto caller = boost::get<proc_loc>(get_vertex(po::source(e,(*ret)->calls()),(*ret)->calls()));
-					offset off = boost::get<offset>(get_vertex(po::target(e,(*ret)->calls()),(*ret)->calls()));
+					offset off = stoull(boost::get<symbol>(get_vertex(po::target(e,(*ret)->calls()),(*ret)->calls())));
 					auto maybe_proc = find_procedure_by_entry(*ret,off);
 
 					if(maybe_proc)
