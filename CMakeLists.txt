@@ -83,6 +83,7 @@ endif()
 find_package(LibArchive REQUIRED)
 find_package(Boost 1.52 COMPONENTS system filesystem graph REQUIRED)
 find_package(KyotoCabinet REQUIRED)
+find_program(AVRA avra)
 
 if(NOT INCLUDE_INSTALL_DIR)
 	set(INCLUDE_INSTALL_DIR "include")
