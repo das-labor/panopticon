@@ -23,6 +23,7 @@ endforeach()
 add_executable(testsuite ${panopticon_test_HEADERS}
 	${panopticon_test_SOURCES})
 add_dependencies(testsuite verbatim-testfiles)
+add_definitions("-DTESTDATA_DIR=\"${CMAKE_CURRENT_BINARY_DIR}/data/\"")
 
 target_link_libraries(testsuite gtest_main gtest
 	${panopticon_STATIC_LIBRARIES})

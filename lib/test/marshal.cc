@@ -33,7 +33,7 @@ namespace po
 
 TEST(marshal,load)
 {
-	rdf::storage st = rdf::storage("save.panop");
+	rdf::storage st = rdf::storage(TESTDATA_DIR "save.panop");
 
 	ASSERT_TRUE(st.has(rdf::ns_local("A"),rdf::ns_po("name"),rdf::lit("Hello")));
 	ASSERT_TRUE(st.has(rdf::ns_local("B"),rdf::ns_po("name"),rdf::lit("World")));
@@ -82,8 +82,8 @@ TEST(marshal,save_load)
 
 TEST(marshal,empty)
 {
-	ASSERT_TRUE(boost::filesystem::exists("empty.panop"));
-	ASSERT_THROW(rdf::storage("empty.panop"),marshal_exception);
+	ASSERT_TRUE(boost::filesystem::exists(TESTDATA_DIR "empty.panop"));
+	ASSERT_THROW(rdf::storage(TESTDATA_DIR "empty.panop"),marshal_exception);
 }
 
 TEST(marshal,missing_file)
