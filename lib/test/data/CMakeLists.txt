@@ -8,7 +8,10 @@ set(panopticon_test_avr_SOURCES avr/all-01.asm
 	avr/all-12.asm avr/all-13.asm
 	avr/all-14.asm avr/all-15.asm
 	avr/jmp-overflow.asm)
-set(panopticon_test_x86_SOURCES x86/ia32.asm x86/amd64.asm)
+set(panopticon_test_ia32_SOURCES data/ia32.asm)
+set(panopticon_test_amd64_SOURCES data/amd64.asm)
+
+add_definitions("-DTESTDATA_DIR=\"${CMAKE_CURRENT_BINARY_DIR}/data/\"")
 
 # copy verbatim test files
 foreach(f ${panopticon_test_verbatim_SOURCES})
@@ -20,7 +23,6 @@ foreach(f ${panopticon_test_verbatim_SOURCES})
 		COMMENT "Copying ${f}")
 	set(panopticon_test_verbatim_OBJECTS ${panopticon_test_verbatim_OBJECTS} ${CMAKE_CURRENT_BINARY_DIR}/${f})
 endforeach()
-
 
 # assemble AVR test files
 if(NOT AVRA STREQUAL "AVRA-NOTFOUND")
@@ -40,6 +42,30 @@ if(NOT AVRA STREQUAL "AVRA-NOTFOUND")
 			COMMENT "Assembling AVR object ${CMAKE_CURRENT_BINARY_DIR}/${f}"
 			WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 		set(panopticon_test_avr_OBJECTS ${panopticon_test_avr_OBJECTS} ${CMAKE_CURRENT_BINARY_DIR}/${t})
+	endforeach()
+endif()
+
+# assemble intel test files
+if(NOT NASM STREQUAL "NASM-NOTFOUND")
+	message("-- Found NASM: ${NASM}")
+	message("-- Building x86 tests")
+
+	add_definitions("-DHAVE_TESTFILES_INTEL")
+
+	foreach(f ${panopticon_test_ia32_SOURCES})
+		add_custom_command(
+			TARGET intel-testfiles
+			COMMAND ${NASM} -f bin ${CMAKE_CURRENT_SOURCE_DIR}/${f} -o ${CMAKE_CURRENT_BINARY_DIR}/${f}.bin
+			MAIN_DEPENDENCY "${f}"
+			COMMENT "Assembling ${f}")
+	endforeach()
+
+	foreach(f ${panopticon_test_amd64_SOURCES})
+		add_custom_command(
+			TARGET intel-testfiles
+			COMMAND ${NASM} -f bin ${CMAKE_CURRENT_SOURCE_DIR}/${f} -o ${CMAKE_CURRENT_BINARY_DIR}/${f}.bin
+			MAIN_DEPENDENCY "${f}"
+			COMMENT "Assembling ${f}")
 	endforeach()
 endif()
 
