@@ -1,0 +1,114 @@
+BITS 64
+
+global _start
+
+section .text.text
+adc al, 6
+adc ax, 44
+adc eax, 544
+adc rax, 65535674
+adc rax, [65535674]
+adc al, bl
+adc ax, bx
+adc eax, ebx
+adc rax, rbx
+adc [0x11223344], bl
+adc [0x44332211], bx
+adc [0x001aa1], ebx
+add edx,ecx
+add edx,r9d
+add r10d,ecx
+add rdx,rcx
+add r10,r9
+add r8d,eax
+add r8w,ax
+add r8,rax
+add eax,0x44332211
+add rax,0xfffffffff4332211
+add ax,0x4433
+add rax,0x44332211
+add dl,cl
+add bh,dh
+add dil,sil
+add r15b,sil
+add dil,r14b
+add r15b,r14b
+PUSH RAX
+PUSH R8
+POP R9
+ADD AL,0x11
+ADD AH,0x11
+ADD SPL,0x11
+ADD R8B,0x11
+ADD R12B,0x11
+MOV RAX,CR0
+MOV R8,CR0
+MOV RAX,CR8
+MOV CR8,RAX
+REP MOVSQ ;[RSI],[RDI]
+REP MOVSW ;[RSI,[RDI]
+REP MOVSQ ;[RSI],[RDI]
+MOV AL, 0x11
+MOV AH, 0x11
+MOV SPL, 0x11
+MOV R12B, 0x11
+MOV EAX,0x11223344
+MOV R8D,0x11223344
+MOV RAX,0x1122334455667788
+MOV R8,0x1122334455667788
+add eax,[rax]
+ADD EAX,[R8]
+ADD R8D,[R8]
+ADD RAX,[R8]
+ADD EAX,dword [rel $ +0x22222222]
+ADD EAX,[RBP+0x00]
+ADD EAX,[abs 0x22222222]
+ADD EAX,[R13+0]
+ADD EAX,[RAX+RAX*4]
+ADD EAX,[R8+RAX*4]
+ADD R8D,[R8+RAX*4]
+ADD EAX,[R8+R8*4]
+ADD [RCX+R8*4],R8D
+ADD EDX,[RAX+RAX*8]
+ADD EDX,[RAX+RCX*8]
+ADD EDX,[RAX+RDX*8]
+ADD EDX,[RAX+RBX*8]
+ADD EDX,[RAX]
+ADD EDX,[RAX+RBP*8]
+ADD EDX,[RAX+RSI*8]
+ADD EDX,[RAX+RDI*8]
+ADD EDX,[RAX+R8*8]
+ADD EDX,[RAX+R9*8]
+ADD EDX,[RAX+R10*8]
+ADD EDX,[RAX+R11*8]
+ADD EDX,[RAX+R12*8]
+ADD EDX,[RAX+R13*8]
+ADD EDX,[RAX+R14*8]
+ADD EDX,[RAX+R15*8]
+ADD ECX,0x11
+ADD DWORD [RAX],0x11
+ADD QWORD [RAX],0x11
+ADD DWORD [R8],0x11
+ADD DWORD [RCX+RAX*4],0x11
+ADD DWORD [R9+RAX*4],0x11
+ADD DWORD [RCX+R8*4],0x11
+ADD DWORD [rel $ +0x22222222],0x33
+ADD QWORD [rel $ +0x22222222],0x33
+ADD DWORD [rel $ +0x22222222],0x33333333
+ADD QWORD [rel $ +0x22222222],0x33333333
+ADD DWORD [RAX*8+0x22222222],0x33
+ADD DWORD [RAX+0x22222222],0x33
+ADD DWORD [RAX+0x22222222],0x33
+ADD DWORD [R8+RBP*8],0x33
+ADD DWORD [dword abs 0x22222222],0x33
+MOV AL,byte [abs qword 0x8877665544332211]
+MOV EAX,dword [abs qword 0x8877665544332211]
+MOV byte [abs qword 0x8877665544332211],AL
+MOV dword [abs qword 0x8877665544332211],EAX
+MOV RAX,qword [abs qword 0x8877665544332211]
+MOV qword [abs qword 0x8877665544332211],RAX
+cqo
+cdqe
+movsx rax, eax
+movsx rax, ax
+movsx rax, al
