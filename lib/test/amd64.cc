@@ -22,9 +22,10 @@
 
 using namespace po;
 
+#ifdef HAVE_TESTFILES_INTEL
 TEST(amd64,all64)
 {
-	region_loc reg = region::mmap("ram","lib/test/amd64-testraw");
+	region_loc reg = region::mmap("ram",TESTDATA_DIR "/x86/amd64.bin");
 
 	po::slab sl = reg->read();
 	boost::optional<prog_loc> maybe_proc = amd64::disassemble<64>(boost::none,sl,po::ref{"ram",0});
@@ -37,7 +38,7 @@ TEST(amd64,all64)
 
 TEST(amd64,all32)
 {
-	region_loc reg = region::mmap("ram","lib/test/ia32-testraw");
+	region_loc reg = region::mmap("ram",TESTDATA_DIR "/x86/ia32.bin");
 
 	po::slab sl = reg->read();
 	boost::optional<prog_loc> maybe_proc = amd64::disassemble<32>(boost::none,sl,po::ref{"ram",0});
@@ -50,3 +51,5 @@ TEST(amd64,all32)
 	/*for(auto mne: (*(*maybe_proc)->procedures().begin())->rev_postorder()[0]->mnemonics())
 		std::cout << mne << std::endl;*/
 }
+
+#endif // HAVE_TESTFILES_INTEL

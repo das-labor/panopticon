@@ -24,7 +24,7 @@ using namespace po;
 
 TEST(session,pe)
 {
-	session sess = pe("test.exe");
+	session sess = pe(TESTDATA_DIR "test.exe");
 	auto p = po::projection(sess.dbase->data);
 
 	for(auto x: p)
