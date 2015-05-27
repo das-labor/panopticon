@@ -10,6 +10,18 @@ add_subdirectory(data)
 include_directories(${GTEST_INCLUDE_DIRS})
 link_directories(${panopticon_LIBRARY_DIRS} ${GTEST_LIBRARY_DIRS})
 
+add_definitions("-DTESTDATA_DIR=\"${CMAKE_CURRENT_BINARY_DIR}/data/\"")
+
+# assemble AVR test files
+if(NOT AVRA STREQUAL "AVRA-NOTFOUND")
+	add_definitions("-DHAVE_TESTFILES_AVR")
+endif()
+
+# assemble intel test files
+if(NOT NASM STREQUAL "NASM-NOTFOUND")
+	add_definitions("-DHAVE_TESTFILES_INTEL")
+endif()
+
 add_executable(testsuite ${panopticon_test_HEADERS}
 	${panopticon_test_SOURCES})
 add_dependencies(testsuite testdata)

@@ -8,10 +8,7 @@ set(panopticon_test_avr_SOURCES avr/all-01.asm
 	avr/all-12.asm avr/all-13.asm
 	avr/all-14.asm avr/all-15.asm
 	avr/jmp-overflow.asm)
-set(panopticon_test_ia32_SOURCES data/ia32.asm)
-set(panopticon_test_amd64_SOURCES data/amd64.asm)
-
-add_definitions("-DTESTDATA_DIR=\"${CMAKE_CURRENT_BINARY_DIR}/data/\"")
+set(panopticon_test_x86_SOURCES x86/ia32.asm x86/amd64.asm)
 
 # copy verbatim test files
 foreach(f ${panopticon_test_verbatim_SOURCES})
@@ -20,7 +17,7 @@ foreach(f ${panopticon_test_verbatim_SOURCES})
 		MAIN_DEPENDENCY ${CMAKE_CURRENT_SOURCE_DIR}/${f}
 		COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}
 		COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/${f} ${CMAKE_CURRENT_BINARY_DIR}/${f}
-		COMMENT "Copying ${f}")
+		COMMENT "Generating object ${CMAKE_CURRENT_BINARY_DIR}/${f}")
 	set(panopticon_test_verbatim_OBJECTS ${panopticon_test_verbatim_OBJECTS} ${CMAKE_CURRENT_BINARY_DIR}/${f})
 endforeach()
 
@@ -28,8 +25,6 @@ endforeach()
 if(NOT AVRA STREQUAL "AVRA-NOTFOUND")
 	message("-- Found AVRA: ${AVRA}")
 	message("-- Building AVR tests")
-
-	add_definitions("-DHAVE_TESTFILES_AVR")
 
 	foreach(f ${panopticon_test_avr_SOURCES})
 		string(REGEX REPLACE ".asm$" ".obj" t ${f})
@@ -50,23 +45,18 @@ if(NOT NASM STREQUAL "NASM-NOTFOUND")
 	message("-- Found NASM: ${NASM}")
 	message("-- Building x86 tests")
 
-	add_definitions("-DHAVE_TESTFILES_INTEL")
+	foreach(f ${panopticon_test_x86_SOURCES})
+		string(REGEX REPLACE ".asm$" ".bin" t ${f})
+		get_filename_component(d ${t} DIRECTORY)
 
-	foreach(f ${panopticon_test_ia32_SOURCES})
 		add_custom_command(
-			TARGET intel-testfiles
-			COMMAND ${NASM} -f bin ${CMAKE_CURRENT_SOURCE_DIR}/${f} -o ${CMAKE_CURRENT_BINARY_DIR}/${f}.bin
-			MAIN_DEPENDENCY "${f}"
-			COMMENT "Assembling ${f}")
-	endforeach()
-
-	foreach(f ${panopticon_test_amd64_SOURCES})
-		add_custom_command(
-			TARGET intel-testfiles
-			COMMAND ${NASM} -f bin ${CMAKE_CURRENT_SOURCE_DIR}/${f} -o ${CMAKE_CURRENT_BINARY_DIR}/${f}.bin
-			MAIN_DEPENDENCY "${f}"
-			COMMENT "Assembling ${f}")
+			OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/${t}
+			MAIN_DEPENDENCY ${CMAKE_CURRENT_SOURCE_DIR}/${f}
+			COMMAND ${CMAKE_COMMAND} -E make_directory ${d}
+			COMMAND ${NASM} -f bin ${CMAKE_CURRENT_SOURCE_DIR}/${f} -o ${CMAKE_CURRENT_BINARY_DIR}/${t}
+			COMMENT "Assembling x86 object ${CMAKE_CURRENT_BINARY_DIR}/${t}")
+		set(panopticon_test_x86_OBJECTS ${panopticon_test_x86_OBJECTS} ${CMAKE_CURRENT_BINARY_DIR}/${t})
 	endforeach()
 endif()
 
-add_custom_target(testdata DEPENDS ${panopticon_test_verbatim_OBJECTS} ${panopticon_test_avr_OBJECTS})
+add_custom_target(testdata DEPENDS ${panopticon_test_verbatim_OBJECTS} ${panopticon_test_avr_OBJECTS} ${panopticon_test_x86_OBJECTS})

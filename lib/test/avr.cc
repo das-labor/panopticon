@@ -25,7 +25,7 @@ using namespace po;
 #ifdef HAVE_TESTFILES_AVR
 TEST(avr,all_opcodes_01)
 {
-	region_loc reg = region::mmap("flash",TESTDATA_DIR "avr-all-opcodes-01.obj");
+	region_loc reg = region::mmap("flash",TESTDATA_DIR "/avr/all-01.obj");
 
 	po::slab sl = reg->read();
 	boost::optional<prog_loc> maybe_proc = avr::disassemble(avr_state::mega128(),boost::none,sl,po::ref{"flash",0});
@@ -39,7 +39,7 @@ TEST(avr,all_opcodes_01)
 
 TEST(avr,all_opcodes_02)
 {
-	region_loc reg = region::mmap("flash",TESTDATA_DIR "avr-all-opcodes-02.obj");
+	region_loc reg = region::mmap("flash",TESTDATA_DIR "/avr/all-02.obj");
 
 	po::slab sl = reg->read();
 	boost::optional<prog_loc> maybe_proc = avr::disassemble(avr_state::mega128(),boost::none,sl,po::ref{"flash",0});
@@ -53,7 +53,7 @@ TEST(avr,all_opcodes_02)
 
 TEST(avr,all_opcodes_03)
 {
-	region_loc reg = region::mmap("flash",TESTDATA_DIR "avr-all-opcodes-03.obj");
+	region_loc reg = region::mmap("flash",TESTDATA_DIR "/avr/all-03.obj");
 
 	po::slab sl = reg->read();
 	boost::optional<prog_loc> maybe_proc = avr::disassemble(avr_state::mega128(),boost::none,sl,po::ref{"flash",0});
@@ -67,7 +67,7 @@ TEST(avr,all_opcodes_03)
 
 TEST(avr,all_opcodes_04)
 {
-	region_loc reg = region::mmap("flash",TESTDATA_DIR "avr-all-opcodes-04.obj");
+	region_loc reg = region::mmap("flash",TESTDATA_DIR "/avr/all-04.obj");
 
 	po::slab sl = reg->read();
 	boost::optional<prog_loc> maybe_proc = avr::disassemble(avr_state::mega128(),boost::none,sl,po::ref{"flash",0});
@@ -81,7 +81,7 @@ TEST(avr,all_opcodes_04)
 
 TEST(avr,all_opcodes_05)
 {
-	region_loc reg = region::mmap("flash",TESTDATA_DIR "avr-all-opcodes-05.obj");
+	region_loc reg = region::mmap("flash",TESTDATA_DIR "/avr/all-05.obj");
 
 	po::slab sl = reg->read();
 	boost::optional<prog_loc> maybe_proc = avr::disassemble(avr_state::mega128(),boost::none,sl,po::ref{"flash",0});
@@ -95,7 +95,7 @@ TEST(avr,all_opcodes_05)
 
 TEST(avr,all_opcodes_06)
 {
-	region_loc reg = region::mmap("flash",TESTDATA_DIR "avr-all-opcodes-06.obj");
+	region_loc reg = region::mmap("flash",TESTDATA_DIR "/avr/all-06.obj");
 
 	po::slab sl = reg->read();
 	boost::optional<prog_loc> maybe_proc = avr::disassemble(avr_state::mega128(),boost::none,sl,po::ref{"flash",0});
@@ -109,7 +109,7 @@ TEST(avr,all_opcodes_06)
 
 TEST(avr,all_opcodes_07)
 {
-	region_loc reg = region::mmap("flash",TESTDATA_DIR "avr-all-opcodes-07.obj");
+	region_loc reg = region::mmap("flash",TESTDATA_DIR "/avr/all-07.obj");
 
 	po::slab sl = reg->read();
 	boost::optional<prog_loc> maybe_proc = avr::disassemble(avr_state::mega128(),boost::none,sl,po::ref{"flash",0});
@@ -123,7 +123,7 @@ TEST(avr,all_opcodes_07)
 
 TEST(avr,all_opcodes_08)
 {
-	region_loc reg = region::mmap("flash",TESTDATA_DIR "avr-all-opcodes-08.obj");
+	region_loc reg = region::mmap("flash",TESTDATA_DIR "/avr/all-08.obj");
 
 	po::slab sl = reg->read();
 	boost::optional<prog_loc> maybe_proc = avr::disassemble(avr_state::mega128(),boost::none,sl,po::ref{"flash",0});
@@ -137,7 +137,7 @@ TEST(avr,all_opcodes_08)
 
 TEST(avr,all_opcodes_09)
 {
-	region_loc reg = region::mmap("flash",TESTDATA_DIR "avr-all-opcodes-09.obj");
+	region_loc reg = region::mmap("flash",TESTDATA_DIR "/avr/all-09.obj");
 
 	po::slab sl = reg->read();
 	boost::optional<prog_loc> maybe_proc = avr::disassemble(avr_state::mega128(),boost::none,sl,po::ref{"flash",0});
@@ -151,7 +151,7 @@ TEST(avr,all_opcodes_09)
 
 TEST(avr,all_opcodes_10)
 {
-	region_loc reg = region::mmap("flash",TESTDATA_DIR "avr-all-opcodes-10.obj");
+	region_loc reg = region::mmap("flash",TESTDATA_DIR "/avr/all-10.obj");
 
 	po::slab sl = reg->read();
 	boost::optional<prog_loc> maybe_proc = avr::disassemble(avr_state::mega128(),boost::none,sl,po::ref{"flash",0});
@@ -165,7 +165,7 @@ TEST(avr,all_opcodes_10)
 
 TEST(avr,all_opcodes_11)
 {
-	region_loc reg = region::mmap("flash",TESTDATA_DIR "avr-all-opcodes-11.obj");
+	region_loc reg = region::mmap("flash",TESTDATA_DIR "/avr/all-11.obj");
 
 	po::slab sl = reg->read();
 	boost::optional<prog_loc> maybe_proc = avr::disassemble(avr_state::mega128(),boost::none,sl,po::ref{"flash",0});
@@ -179,7 +179,7 @@ TEST(avr,all_opcodes_11)
 
 TEST(avr,all_opcodes_12)
 {
-	region_loc reg = region::mmap("flash",TESTDATA_DIR "avr-all-opcodes-12.obj");
+	region_loc reg = region::mmap("flash",TESTDATA_DIR "/avr/all-12.obj");
 
 	po::slab sl = reg->read();
 	boost::optional<prog_loc> maybe_proc = avr::disassemble(avr_state::mega128(),boost::none,sl,po::ref{"flash",0});
@@ -193,7 +193,7 @@ TEST(avr,all_opcodes_12)
 
 TEST(avr,all_opcodes_13)
 {
-	region_loc reg = region::mmap("flash",TESTDATA_DIR "avr-all-opcodes-13.obj");
+	region_loc reg = region::mmap("flash",TESTDATA_DIR "/avr/all-13.obj");
 
 	po::slab sl = reg->read();
 	boost::optional<prog_loc> maybe_proc = avr::disassemble(avr_state::mega128(),boost::none,sl,po::ref{"flash",0});
@@ -207,7 +207,7 @@ TEST(avr,all_opcodes_13)
 
 TEST(avr,all_opcodes_14)
 {
-	region_loc reg = region::mmap("flash",TESTDATA_DIR "avr-all-opcodes-14.obj");
+	region_loc reg = region::mmap("flash",TESTDATA_DIR "/avr/all-14.obj");
 
 	po::slab sl = reg->read();
 	boost::optional<prog_loc> maybe_proc = avr::disassemble(avr_state::mega128(),boost::none,sl,po::ref{"flash",0});
@@ -221,7 +221,7 @@ TEST(avr,all_opcodes_14)
 
 TEST(avr,all_opcodes_15)
 {
-	region_loc reg = region::mmap("flash",TESTDATA_DIR "avr-all-opcodes-15.obj");
+	region_loc reg = region::mmap("flash",TESTDATA_DIR "/avr/all-15.obj");
 
 	po::slab sl = reg->read();
 	boost::optional<prog_loc> maybe_proc = avr::disassemble(avr_state::mega128(),boost::none,sl,po::ref{"flash",0});
