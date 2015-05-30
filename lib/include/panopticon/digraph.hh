@@ -494,4 +494,19 @@ namespace po
 		else
 			return *ret;
 	}
+
+	template<typename N,typename E>
+	std::string to_dot(const po::digraph<N,E> &g)
+	{
+		std::stringstream ss;
+
+		ss << "digraph G {" << std::endl;
+		for(auto vx: iters(vertices(g)))
+			ss << vx.id << " [label=\"" << vx.id << "\"];" << std::endl;
+		for(auto e: iters(edges(g)))
+			ss << source(e,g).id << " -> " << target(e,g).id << std::endl;
+
+		ss << "}";
+		return ss.str();
+	}
 }
