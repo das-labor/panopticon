@@ -563,21 +563,27 @@ TEST(procedure,entry_split)
 
 	proc = *maybe_proc;
 
-	ASSERT_EQ(proc->rev_postorder().size(), 2u);
+	ASSERT_EQ(proc->rev_postorder().size(), 3u);
 
 	auto i0 = std::find_if(proc->rev_postorder().begin(),proc->rev_postorder().end(),[&](po::bblock_loc bb) { return bb->area().lower() == 0; });
 	auto i1 = std::find_if(proc->rev_postorder().begin(),proc->rev_postorder().end(),[&](po::bblock_loc bb) { return bb->area().lower() == 1; });
+	auto i2 = std::find_if(proc->rev_postorder().begin(),proc->rev_postorder().end(),[&](po::bblock_loc bb) { return bb->area().lower() == 2; });
 
 	ASSERT_NE(i0, proc->rev_postorder().end());
 	ASSERT_NE(i1, proc->rev_postorder().end());
+	ASSERT_NE(i2, proc->rev_postorder().end());
 
 	po::bblock_loc bbo0 = *i0;
 	po::bblock_loc bbo1 = *i1;
+	po::bblock_loc bbo2 = *i2;
 
 	ASSERT_EQ(*(proc->entry), bbo0);
 	ASSERT_EQ(bbo0->mnemonics().size(), 1u);
 	check(bbo0->mnemonics()[0],"test0",0);
-	ASSERT_EQ(bbo1->mnemonics().size(), 2u);
+	ASSERT_EQ(bbo1->mnemonics().size(), 1u);
+	check(bbo1->mnemonics()[0],"test1",1);
+	ASSERT_EQ(bbo2->mnemonics().size(), 1u);
+	check(bbo2->mnemonics()[0],"test2",2);
 }
 
 /*
@@ -713,4 +719,52 @@ TEST(procedure,wide_token)
 		}
 	});
 	EXPECT_EQ(sz, 1u);
+}
+
+TEST(procedure,issue_51_treat_entry_point_as_incoming_edge)
+{
+	std::vector<typename po::architecture_traits<test_tag>::token_type> bytes({0,1,2});
+	std::map<typename po::architecture_traits<test_tag>::token_type,po::sem_state<test_tag>> states;
+	auto add = [&](po::offset p, const std::string &n, po::offset b1) -> void
+	{
+		po::sem_state<test_tag> st(p,'a');
+		st.mnemonic(1,n);
+		st.jump(b1);
+
+		states.insert(std::make_pair(p,st));
+	};
+	auto check = [&](const po::mnemonic &m, const std::string &n, po::offset p) -> void
+	{
+		ASSERT_EQ(m.opcode, n);
+		ASSERT_TRUE(m.operands.empty());
+		ASSERT_TRUE(m.instructions.empty());
+		ASSERT_EQ(m.area, po::bound(p,p+1));
+	};
+
+	add(0,"test0",1);
+	add(1,"test1",2);
+
+	add(2,"test2",0);
+
+	disassembler_mockup mockup(states);
+	boost::optional<proc_loc> maybe_proc = po::procedure::disassemble<test_tag,disassembler_mockup>(boost::none,mockup,'a',slab(bytes.data(),bytes.size()),1);
+	ASSERT_TRUE(!!maybe_proc);
+
+	proc_loc proc = *maybe_proc;
+
+	ASSERT_EQ(proc->rev_postorder().size(), 2u);
+
+	auto i0 = std::find_if(proc->rev_postorder().begin(),proc->rev_postorder().end(),[&](po::bblock_loc bb) { return bb->area().lower() == 0; });
+	auto i1 = std::find_if(proc->rev_postorder().begin(),proc->rev_postorder().end(),[&](po::bblock_loc bb) { return bb->area().lower() == 1; });
+
+	ASSERT_NE(i0, proc->rev_postorder().end());
+	ASSERT_NE(i1, proc->rev_postorder().end());
+
+	po::bblock_loc bbo0 = *i0;
+	po::bblock_loc bbo1 = *i1;
+
+	ASSERT_EQ(*(proc->entry), bbo1);
+	ASSERT_EQ(bbo0->mnemonics().size(), 1u);
+	check(bbo0->mnemonics()[0],"test0",0);
+	ASSERT_EQ(bbo1->mnemonics().size(), 2u);
 }

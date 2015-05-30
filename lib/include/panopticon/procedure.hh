@@ -316,6 +316,8 @@ namespace po
 						return p.second.first != (boost::icl::size(area)? area.upper() - 1 : area.lower());
 					});
 
+					new_bb |= next_mne->first == start;
+
 					// construct a new basic block
 					if(new_bb)
 					{
@@ -372,9 +374,13 @@ namespace po
 				auto i = bblocks.lower_bound(entry);
 
 				if(i != bblocks.end() && i->second->area().lower() == entry)
+				{
 					ret->write().entry = i->second;
+				}
 				else
+				{
 					ret->write().entry = bblocks.lower_bound(start)->second;
+				}
 			}
 			else if(!proc)
 			{
