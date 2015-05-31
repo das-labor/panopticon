@@ -1,5 +1,5 @@
 set(panopticon_test_HEADER architecture.hh ${panopticon_HEADERS})
-set(panopticon_test_SOURCES dot.cc qttestsuite.cc)
+set(panopticon_test_SOURCES order.cc rank.cc qttestsuite.cc)
 
 include_directories(${GTEST_INCLUDE_DIRS})
 link_directories(${panopticon_LIBRARY_DIRS} ${GTEST_LIBRARY_DIRS})

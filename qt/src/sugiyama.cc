@@ -198,6 +198,8 @@ void Sugiyama::paint(QPainter* p)
 std::pair<po::proc_wloc,std::unordered_map<itmgraph::vertex_descriptor,std::tuple<unsigned int,unsigned int,unsigned int>>>
 doLayout(itmgraph graph, unsigned int nodesep, std::unordered_map<itmgraph::vertex_descriptor,int> widths, po::proc_wloc proc)
 {
+	try
+	{
 	auto pos = dot::layout(graph);
 	auto xpos = dot::order(pos,widths,nodesep,graph);
 	std::unordered_map<itmgraph::vertex_descriptor,std::tuple<unsigned int,unsigned int,unsigned int>> ret;
@@ -207,6 +209,12 @@ doLayout(itmgraph graph, unsigned int nodesep, std::unordered_map<itmgraph::vert
 		ret.emplace(p.first,std::make_tuple(std::get<0>(p.second),std::get<0>(p.second),xpos.at(p.first)));
 	}
 	return std::make_pair(proc,ret);
+	}
+	catch(std::exception const& e)
+	{
+		std::unordered_map<itmgraph::vertex_descriptor,std::tuple<unsigned int,unsigned int,unsigned int>> ret;
+		return std::make_pair(proc,ret);
+	}
 }
 
 void Sugiyama::layout(void)
