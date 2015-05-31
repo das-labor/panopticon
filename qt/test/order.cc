@@ -242,5 +242,29 @@ TEST(order,graph_with_two_exits_and_two_entries)
 
 TEST(order,multiple_components)
 {
-	FAIL();
+	std::unordered_map<typename po::digraph<std::string,int>::vertex_descriptor,std::pair<int,int>> lambda;
+	std::unordered_map<typename po::digraph<std::string,int>::vertex_descriptor,int> widths;
+	po::digraph<std::string,int> g;
+	auto a = insert_vertex(std::string("Hello"),g);
+	auto b = insert_vertex(std::string(","),g);
+	auto c = insert_vertex(std::string("World"),g);
+	auto d = insert_vertex(std::string("\n"),g);
+	/*auto ab = */insert_edge(0,a,b,g);
+	/*auto cd = */insert_edge(2,c,d,g);
+
+	lambda.emplace(a,std::make_pair(0,0));
+	lambda.emplace(b,std::make_pair(1,1));
+	lambda.emplace(c,std::make_pair(2,2));
+	lambda.emplace(d,std::make_pair(3,3));
+	widths.emplace(a,10);
+	widths.emplace(b,10);
+	widths.emplace(c,10);
+	widths.emplace(d,10);
+	auto ret = dot::order(lambda,widths,100,g);
+
+	ASSERT_EQ(ret.size(),4u);
+	ASSERT_EQ(ret.count(a),1u);
+	ASSERT_EQ(ret.count(b),1u);
+	ASSERT_EQ(ret.count(c),1u);
+	ASSERT_EQ(ret.count(d),1u);
 }

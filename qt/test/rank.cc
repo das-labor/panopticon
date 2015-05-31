@@ -254,3 +254,22 @@ TEST(rank,layout_real_cfg)
 	/*auto lj = */insert_edge(3,l,j,graph);
 	/*auto ret = */dot::layout(graph);
 }
+
+TEST(rank,multiple_components)
+{
+	po::digraph<std::string,int> g;
+	auto a = insert_vertex(std::string("Hello"),g);
+	auto b = insert_vertex(std::string(","),g);
+	auto c = insert_vertex(std::string("World"),g);
+	auto d = insert_vertex(std::string("\n"),g);
+	/*auto ab = */insert_edge(0,a,b,g);
+	/*auto cd = */insert_edge(2,c,d,g);
+
+	auto ret = dot::layout(g);
+
+	ASSERT_EQ(ret.size(),4u);
+	ASSERT_EQ(ret.count(a),1u);
+	ASSERT_EQ(ret.count(b),1u);
+	ASSERT_EQ(ret.count(c),1u);
+	ASSERT_EQ(ret.count(d),1u);
+}
