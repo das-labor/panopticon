@@ -113,44 +113,50 @@ LinearModel::LinearModel(dbase_loc db, QObject *p)
 								boost::optional<bblock_loc> maybe_bb;
 								if((maybe_bb = find_bblock(proc,bb->area().lower())))
 								{
-									auto vx = find_node(boost::variant<bblock_loc,rvalue>(bb),proc->control_transfers);
-
-									if(maybe_bb == proc->entry)
+									try
 									{
-										_procedures.emplace(proc_wloc(proc),old_row);
-									}
+										auto vx = find_node(boost::variant<bblock_loc,rvalue>(bb),proc->control_transfers);
 
-									for(auto e: iters(in_edges(vx,proc->control_transfers)))
-									{
-										try
+										if(maybe_bb == proc->entry)
 										{
-											auto vy = source(e,proc->control_transfers);
-											bblock_loc ba = boost::get<bblock_loc>(get_vertex(vy,proc->control_transfers));
-
-											if(ba->area().upper() != bb->area().lower() && ba != bb)
-												findTrack(po::bound(std::min(bb->area().lower(),ba->area().upper() - 1),
-																						std::max(bb->area().lower(),ba->area().upper() - 1)),
-																	bb->area().lower() < ba->area().upper() - 1);
+											_procedures.emplace(proc_wloc(proc),old_row);
 										}
-										catch(const boost::bad_get&)
-										{}
-									}
 
-									for(auto e: iters(out_edges(vx,proc->control_transfers)))
-									{
-										try
+										for(auto e: iters(in_edges(vx,proc->control_transfers)))
 										{
-											auto vy = target(e,proc->control_transfers);
-											bblock_loc ba = boost::get<bblock_loc>(get_vertex(vy,proc->control_transfers));
+											try
+											{
+												auto vy = source(e,proc->control_transfers);
+												bblock_loc ba = boost::get<bblock_loc>(get_vertex(vy,proc->control_transfers));
 
-											if(ba->area().lower() != bb->area().upper() && ba != bb)
-												findTrack(po::bound(std::min(bb->area().upper() - 1,ba->area().lower()),
-																						std::max(bb->area().upper() - 1,ba->area().lower())),
-																	bb->area().lower() >= ba->area().upper() - 1);
+												if(ba->area().upper() != bb->area().lower() && ba != bb)
+													findTrack(po::bound(std::min(bb->area().lower(),ba->area().upper() - 1),
+																							std::max(bb->area().lower(),ba->area().upper() - 1)),
+																		bb->area().lower() < ba->area().upper() - 1);
+											}
+											catch(const boost::bad_get&)
+											{}
 										}
-										catch(const boost::bad_get&)
-										{}
+
+										for(auto e: iters(out_edges(vx,proc->control_transfers)))
+										{
+											try
+											{
+												auto vy = target(e,proc->control_transfers);
+												bblock_loc ba = boost::get<bblock_loc>(get_vertex(vy,proc->control_transfers));
+
+												if(ba->area().lower() != bb->area().upper() && ba != bb)
+													findTrack(po::bound(std::min(bb->area().upper() - 1,ba->area().lower()),
+																							std::max(bb->area().upper() - 1,ba->area().lower())),
+																		bb->area().lower() >= ba->area().upper() - 1);
+											}
+											catch(const boost::bad_get&)
+											{}
+										}
 									}
+									// happends due overlapping bblocks. find_bblock find a bblock but find_node throws as it compares bblock_loc instead of area.
+									catch(std::out_of_range const& e)
+									{}
 								}
 							}
 						}
