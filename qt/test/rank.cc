@@ -20,7 +20,7 @@
 
 #include "dot/dot.hh"
 
-TEST(dot,layout_empty_graph)
+TEST(rank,layout_empty_graph)
 {
 	po::digraph<std::string,int> g;
 	auto ret = dot::layout(g);
@@ -28,7 +28,7 @@ TEST(dot,layout_empty_graph)
 	ASSERT_EQ(ret.size(),0u);
 }
 
-TEST(dot,layout_graph_with_single_node)
+TEST(rank,layout_graph_with_single_node)
 {
 	po::digraph<std::string,int> g;
 	auto a = insert_vertex(std::string("Hello"),g);
@@ -40,7 +40,7 @@ TEST(dot,layout_graph_with_single_node)
 	ASSERT_EQ(std::get<1>(ret.at(a)),0);
 }
 
-TEST(dot,layout_graph_with_two_nodes)
+TEST(rank,layout_graph_with_two_nodes)
 {
 	po::digraph<std::string,int> g;
 	auto a = insert_vertex(std::string("Hello"),g);
@@ -57,7 +57,7 @@ TEST(dot,layout_graph_with_two_nodes)
 	ASSERT_EQ(std::get<1>(ret.at(b)),1);
 }
 
-TEST(dot,layout_circle_graph)
+TEST(rank,layout_circle_graph)
 {
 	po::digraph<std::string,int> g;
 	auto a = insert_vertex(std::string("Hello"),g);
@@ -77,7 +77,7 @@ TEST(dot,layout_circle_graph)
 	ASSERT_EQ(ret.count(d),1u);
 }
 
-TEST(dot,layout_graph_with_two_entries)
+TEST(rank,layout_graph_with_two_entries)
 {
 	po::digraph<std::string,int> g;
 	auto a = insert_vertex(std::string("Hello"),g);
@@ -100,7 +100,7 @@ TEST(dot,layout_graph_with_two_entries)
 	ASSERT_EQ(std::get<1>(ret.at(c)),1);
 }
 
-TEST(dot,layout_graph_with_two_exits)
+TEST(rank,layout_graph_with_two_exits)
 {
 	po::digraph<std::string,int> g;
 	auto a = insert_vertex(std::string("Hello"),g);
@@ -122,7 +122,7 @@ TEST(dot,layout_graph_with_two_exits)
 	ASSERT_EQ(std::get<1>(ret.at(c)),1);
 }
 
-TEST(dot,layout_graph_with_cycle)
+TEST(rank,layout_graph_with_cycle)
 {
 	po::digraph<std::string,int> g;
 	auto a = insert_vertex(std::string("Hello"),g);
@@ -146,7 +146,7 @@ TEST(dot,layout_graph_with_cycle)
 	ASSERT_EQ(std::get<1>(ret.at(d)),3);
 }
 
-TEST(dot,layout_graph_with_self_loops)
+TEST(rank,layout_graph_with_self_loops)
 {
 	po::digraph<std::string,int> g;
 	auto a = insert_vertex(std::string("Hello"),g);
@@ -169,7 +169,7 @@ TEST(dot,layout_graph_with_self_loops)
 	ASSERT_EQ(std::get<1>(ret.at(c)),2);
 }
 
-TEST(dot,layout_graph_with_two_exits_and_two_entries)
+TEST(rank,layout_graph_with_two_exits_and_two_entries)
 {
 	po::digraph<std::string,int> g;
 	auto a = insert_vertex(std::string("Hello"),g);
@@ -202,7 +202,7 @@ TEST(dot,layout_graph_with_two_exits_and_two_entries)
 	ASSERT_EQ(std::get<1>(ret.at(e)),2);
 }
 
-TEST(dot,layout_graph_with_a_node_spanning_two_ranks)
+TEST(rank,layout_graph_with_a_node_spanning_two_ranks)
 {
 	po::digraph<std::string,int> graph;
 	auto a = insert_vertex(std::string("A"),graph);
@@ -222,7 +222,7 @@ TEST(dot,layout_graph_with_a_node_spanning_two_ranks)
 	/*auto ret = */dot::layout(graph);
 }
 
-TEST(dot,layout_real_cfg)
+TEST(rank,layout_real_cfg)
 {
 	po::digraph<std::string,int> graph;
 	auto a = insert_vertex(std::string("A"),graph); // jmp 84
@@ -253,4 +253,23 @@ TEST(dot,layout_real_cfg)
 	/*auto fl = */insert_edge(3,f,l,graph);
 	/*auto lj = */insert_edge(3,l,j,graph);
 	/*auto ret = */dot::layout(graph);
+}
+
+TEST(rank,multiple_components)
+{
+	po::digraph<std::string,int> g;
+	auto a = insert_vertex(std::string("Hello"),g);
+	auto b = insert_vertex(std::string(","),g);
+	auto c = insert_vertex(std::string("World"),g);
+	auto d = insert_vertex(std::string("\n"),g);
+	/*auto ab = */insert_edge(0,a,b,g);
+	/*auto cd = */insert_edge(2,c,d,g);
+
+	auto ret = dot::layout(g);
+
+	ASSERT_EQ(ret.size(),4u);
+	ASSERT_EQ(ret.count(a),1u);
+	ASSERT_EQ(ret.count(b),1u);
+	ASSERT_EQ(ret.count(c),1u);
+	ASSERT_EQ(ret.count(d),1u);
 }

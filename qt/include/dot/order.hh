@@ -43,7 +43,8 @@ namespace dot
 
 		void initialize_vertex(vx_desc vx,const po::digraph<N,E>&)
 		{
-			_mapping->emplace(vx,insert_vertex(virt_vx(_ranks->at(vx).first,_ranks->at(vx).second,vx),*this->_h));
+			if(!_mapping->count(vx))
+				_mapping->emplace(vx,insert_vertex(virt_vx(_ranks->at(vx).first,_ranks->at(vx).second,vx),*this->_h));
 		}
 
 		void start_vertex(vx_desc,const po::digraph<N,E>&) {}
@@ -87,6 +88,7 @@ namespace dot
 		virt_graph h;
 		std::unordered_map<vx_desc,boost::default_color_type> color;
 		order_dag_visitor<N,E> visitor(&h,&ranks);
+
 
 		std::list<vx_desc> sources, sinks;
 
@@ -135,10 +137,19 @@ namespace dot
 			}
 		}
 
+		ensure(source == root(h));
+
 		// ensure single sink node in h
 		if(sinks.size() == 0)
 		{
-			sink = *(vertices(h).first + 1);
+			auto p = vertices(h);
+			auto s = find_if(p.first,p.second,[&](virt_desc _w)
+				{ return _w != source; });
+
+			if(s != p.second)
+				sink = *s;
+			else
+				sink = source;
 		}
 		else if(sinks.size() == 1)
 		{
@@ -177,7 +188,10 @@ namespace dot
 				auto from = po::source(edge,h), to = target(edge,h);
 				int lf = std::get<0>(get_vertex(from,h)), lt = std::get<0>(get_vertex(to,h));
 
-				ensure(lf >= 0 && lt >= 0 && lt - lf >= 0);
+				ensure(lf >= 0);
+				ensure(lt >= 0);
+				ensure(lt >= lf);
+
 				if(lt - lf > 1)
 				{
 					remove_edge(edge,h);
@@ -228,6 +242,7 @@ namespace dot
 		};
 
 		dfs(root(graph));
+
 		ensure(ret.size() == num_vertices(graph));
 
 		return ret;
@@ -242,7 +257,25 @@ namespace dot
 		using virt_graph = typename po::digraph<virt_vx,int>;
 		using virt_graph2 = typename po::digraph<virt_vx,std::pair<int,int>>;
 
+		if(num_vertices(graph) == 0)
+			return std::unordered_map<typename po::digraph<N,E>::vertex_descriptor,int>();
+		else if(num_vertices(graph) == 1)
+			return std::unordered_map<typename po::digraph<N,E>::vertex_descriptor,int>{ { std::make_pair(*vertices(graph).first,0) } };
+		if(num_vertices(graph) == 2)
+			return std::unordered_map<typename po::digraph<N,E>::vertex_descriptor,int>{ {
+				std::make_pair(*vertices(graph).first,0), std::make_pair(*(vertices(graph).first + 1),1) } };
+
 		virt_graph h = prepare_order_graph(lambda,graph);
+
+		try
+		{
+			root(h);
+		}
+		catch(std::runtime_error const&)
+		{
+			ensure(false);
+		}
+
 		std::unordered_map<typename virt_graph::vertex_descriptor,int> cur = initial_order<N,E>(h), best;
 
 		/*for(auto vx: iters(vertices(graph)))
