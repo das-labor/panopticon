@@ -5,7 +5,7 @@ License: GPLv3+
 #Group: Applications/
 BuildRequires: cmake >= 2.8.9, libarchive-devel >= 3.1.2, kyotocabinet-devel >= 1.2.76, qt5-qtdeclarative-devel,  boost-devel >= 1.53.0, python-sphinx
 Requires: libarchive >= 3.1.2, kyotocabinet >= 1.2.76, qt5-qtdeclarative, qt5-qtquickcontrols, boost-filesystem >= 1.53.0, boost-graph >= 1.53.0, boost-system >= 1.53.0
-Source: https://panopticon.re/files/panopticon_0.10.orig.tar.gz
+Source: https://panopticon.re/files/panopticon-0.10.tar.gz
 URL: https://panopticon.re/
 Summary: A libre cross-platform disassembler
 
@@ -55,7 +55,6 @@ ln -sf %{_mandir}/man1/qtpanopticon.1.gz %{buildroot}/%{_mandir}/man1/qtpanoptic
 %{_includedir}/panopticon/decode.hh
 %{_includedir}/panopticon/procedure.hh
 %{_includedir}/panopticon/digraph.hh
-%{_includedir}/panopticon/generic.hh
 %{_includedir}/panopticon/mnemonic.hh
 %{_includedir}/panopticon/loc.hh
 %{_includedir}/panopticon/util.hh
