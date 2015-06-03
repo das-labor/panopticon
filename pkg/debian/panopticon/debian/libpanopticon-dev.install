@@ -1,3 +1,5 @@
+#!/usr/bin/dh-exec
+
 debian/tmp/usr/lib/libpanopticon.so
 debian/tmp/usr/include/panopticon/tree.hh
 debian/tmp/usr/include/panopticon/structure.hh
@@ -23,5 +25,4 @@ debian/tmp/usr/include/panopticon/interpreter.hh
 debian/tmp/usr/include/panopticon/instr.hh
 debian/tmp/usr/include/panopticon/value.hh
 debian/tmp/usr/include/panopticon/marshal.hh
-debian/tmp/usr/lib/pkgconfig
-debian/tmp/usr/lib/pkgconfig/panopticon.pc
+debian/tmp/usr/lib/${DEB_HOST_MULTIARCH}/pkgconfig/panopticon.pc

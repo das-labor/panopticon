@@ -1,2 +1,3 @@
 debian/tmp/usr/bin/qtpanopticon-0.10.0
 debian/tmp/usr/bin/qtpanopticon
+debian/tmp/usr/share/man/man1/qtpanopticon.1

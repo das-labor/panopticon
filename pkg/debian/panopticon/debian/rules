@@ -1,6 +1,20 @@
 #!/usr/bin/make -f
 
 DEB_SRCDIR=../../../
+DEB_CONFIGURE_EXTRA_FLAGS += --libdir=\$${prefix}/lib/$(DEB_HOST_MULTIARCH)
 
 include /usr/share/cdbs/1/rules/debhelper.mk
+
+ifeq ($(shell dpkg-vendor --derives-from Ubuntu && echo yes),yes)
+
+ifeq ($(shell lsb_release -rs),14.10)
+		DEB_DH_GENCONTROL_ARGS_ALL = -- -Vdist:Depends="qml-module-qtquick-controls"
+else
+		DEB_DH_GENCONTROL_ARGS_ALL = -- -Vdist:Depends="libqt5qml-quickcontrols"
+endif
+
+else
+	DEB_DH_GENCONTROL_ARGS_ALL = -- -Vdist:Depends="libqt5qml-quickcontrols"
+endif
+
 include /usr/share/cdbs/1/class/cmake.mk
