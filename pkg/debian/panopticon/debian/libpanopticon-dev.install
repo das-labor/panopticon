@@ -11,7 +11,6 @@ debian/tmp/usr/include/panopticon/architecture.hh
 debian/tmp/usr/include/panopticon/decode.hh
 debian/tmp/usr/include/panopticon/procedure.hh
 debian/tmp/usr/include/panopticon/digraph.hh
-debian/tmp/usr/include/panopticon/generic.hh
 debian/tmp/usr/include/panopticon/mnemonic.hh
 debian/tmp/usr/include/panopticon/loc.hh
 debian/tmp/usr/include/panopticon/util.hh
