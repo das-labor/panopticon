@@ -1,5 +1,5 @@
 /doc/_build
 *.swp
-.ycm_extra_conf.pyc
 doc/html
-build
+/target
+Cargo.lock

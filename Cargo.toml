@@ -1,0 +1,18 @@
+[package]
+name = "panopticon"
+version = "0.1.0"
+authors = ["seu <seu@panopticon.re>"]
+
+[lib]
+name = "panopticon"
+path = "lib/src/lib.rs"
+crate-type = ["dylib"]
+plugin = true # needed to force dynamic linking
+
+[[bin]]
+name = "qtpanopticon"
+path = "qt/src/main.rs"
+
+[dependencies]
+#leveldb = "0.7.0"
+uuid = "0.1"
