@@ -29,7 +29,8 @@ pub trait Marshal {
 
 impl Storage {
     pub fn new() -> Option<Storage> {
-        if let Ok(tmp) = TempDir::new("panopticon-") {
+        if let Ok(tmp) = TempDir::new("panopticon") {
+            println!("{:?}",tmp.path());
             if let Ok(mut env) = EnvBuilder::new().open(&tmp.path(), 0o777) {
                 if let Ok(db) = env.get_default_db(DbFlags::empty()) {
                     return Some(Storage{
@@ -44,7 +45,19 @@ impl Storage {
     }
 
 //    fn open(p: &Path) -> Storage
-//    fn insert(st: Statement) -> bool
+
+    fn insert(&self, st: Statement) -> bool {
+        let txn = self.env.new_transaction().unwrap();
+        {
+            let db = txn.bind(&self.database);
+            db.set(&Self::encode_statement(&st),&Vec::new());
+        }
+
+        match txn.commit() {
+            Err(_) => false,
+            Ok(_) => true
+        }
+    }
 
 /*
     fn insert(s: Node,p: Node, o: Node) -> bool;
@@ -160,32 +173,22 @@ impl Storage {
                 } else {
                     None
                 },
-            Some(&2) =>
+            Some(&2) => {
                 if let Some(l2) = Self::decode_varint(i) {
                     if let Ok(v) = String::from_utf8(i.take(l2).cloned().collect()) {
                         if let Some(l2) = Self::decode_varint(i) {
                             if let Ok(t) = String::from_utf8(i.take(l2).cloned().collect()) {
-                                Some(Node::Literal{ value: v, ty: t })
-                            } else {
-                                None
+                                return Some(Node::Literal{ value: v, ty: t })
                             }
-                        } else {
-                            None
                         }
-                    } else {
-                        None
                     }
-                } else {
-                    None
-                },
+                }
+                None
+            },
             _ => None
         }
     }
 }
-/*
-fn encode_key(const node& n) -> [u8];
-fn decode_key(i: &mut Iterator<Item=u8>) -> Statement;
-*/
 
 #[cfg(test)]
 mod tests {
@@ -283,4 +286,24 @@ mod tests {
         assert_eq!(Some(st2), st2_2);
     }
 
+   #[test]
+    fn insert() {
+        let maybe_store = Storage::new();
+
+        assert!(maybe_store.is_some());
+        let store = maybe_store.unwrap();
+
+        let a = Node::new_blank();
+        let b = Node::ns_po("node");
+        let c = Node::unsigned(1);
+        let d = Node::lit(&"Hello".to_string());
+        let e = Node::lit(&"".to_string());
+        let f = Node::unsigned(1);
+
+        let st1 = Statement::new(a,b,c);
+        let st2 = Statement::new(d,e,f);
+
+        assert!(store.insert(st1));
+        assert!(store.insert(st2));
+    }
 }
