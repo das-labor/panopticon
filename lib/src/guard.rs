@@ -48,7 +48,6 @@ impl Guard {
 mod tests {
     use super::*;
     use value::{Rvalue};
-    use std::collections::HashSet;
 
     #[test]
     fn construct() {

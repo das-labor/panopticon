@@ -1,25 +1,27 @@
 use uuid::Uuid;
+use std::collections::HashSet;
+use rdf::{Statement,Node};
+use std::sync::Arc;
 
-pub enum Node {
-    Blank(Uuid),
-    Iri(Uuid),
-    Literal(String,Uuid),
-}
-
-pub struct Statement {
-    subject: Node,
-    predicate: Node,
-    object: Node,
-}
-
+#[derive(Eq,PartialEq,Debug,Hash,Clone)]
 pub struct Blob {
-    data: Box<[u8]>
+    data: Arc<Vec<u8>>
+}
+
+pub struct Archive {
+    pub statements: HashSet<Statement>,
+    pub blobs: HashSet<Blob>,
 }
 
 pub struct Storage {
     //meta: leveldb::database::Database,
     //tempdir: TempDir,
     blobs: Vec<Blob>,
+}
+
+pub trait Marshal {
+    fn marshal(&self, n: &Node) -> Archive;
+    fn unmarshal(a: &Archive) -> Self;
 }
 
 /*impl Storage {

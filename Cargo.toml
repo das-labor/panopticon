@@ -15,4 +15,5 @@ path = "qt/src/main.rs"
 
 [dependencies]
 #leveldb = "0.7.0"
-uuid = "0.1"
+uuid = "*"
+rand = "*"

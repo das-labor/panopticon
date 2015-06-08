@@ -1,3 +1,7 @@
+use marshal::{Marshal,Archive};
+use rdf::{Node,Statement};
+use std::collections::HashSet;
+
 #[derive(Clone,Debug,PartialEq,Eq,Hash)]
 pub enum Endianess {
     LittleEndian,
@@ -44,9 +48,54 @@ impl Lvalue {
     }
 }
 
+impl Marshal for Rvalue {
+    fn marshal(&self, r: &Node) -> Archive {
+        Archive{
+            statements: match self {
+                &Rvalue::Undefined => vec!(Statement::new(r.clone(),Node::ns_rdf("type"),Node::ns_po("Undefined"))),
+                &Rvalue::Constant(ref v) => vec!(
+                    Statement::new(r.clone(),Node::ns_rdf("type"),Node::ns_po("Constant")),
+                    Statement::new(r.clone(),Node::ns_po("content"),Node::unsigned(*v))),
+                &Rvalue::Variable{ name: ref n, width: ref w, subscript: ref s } => {
+                    let mut ret = vec!(
+                        Statement::new(r.clone(),Node::ns_rdf("type"),Node::ns_po("Variable")),
+                        Statement::new(r.clone(),Node::ns_po("name"),Node::lit(n)),
+                        Statement::new(r.clone(),Node::ns_po("width"),Node::unsigned(*w as u64)));
+
+                    if s.is_some() {
+                        ret.push(Statement::new(r.clone(),Node::ns_po("subscript"),Node::unsigned(s.unwrap() as u64)));
+                    }
+                    ret
+                },
+                &Rvalue::Memory{ name: ref n, offset: ref o, bytes: ref b, endianess: ref e } => {
+                    let mut ret = vec!(
+                        Statement::new(r.clone(),Node::ns_rdf("type"),Node::ns_po("Memory")),
+                        Statement::new(r.clone(),Node::ns_po("name"),Node::lit(n)),
+                        Statement::new(r.clone(),Node::ns_po("bytes"),Node::unsigned(*b as u64)));
+                    match *e {
+                        Endianess::LittleEndian => ret.push(Statement::new(r.clone(),Node::ns_po("endianess"),Node::ns_po("little-endian"))),
+                        Endianess::BigEndian => ret.push(Statement::new(r.clone(),Node::ns_po("endianess"),Node::ns_po("big-endian"))),
+                    }
+
+                    let mut y = o.marshal(&Node::from_ns(r,"offset".as_bytes()));
+                    ret.iter().cloned().chain(y.statements.iter().cloned()).collect()
+                }
+            }.iter().cloned().collect::<HashSet<Statement>>(),
+            blobs: HashSet::new()
+        }
+    }
+
+    fn unmarshal(a: &Archive) -> Rvalue {
+        unimplemented!();
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use marshal::Marshal;
+    use uuid::Uuid;
+    use rdf::Node;
 
     #[test]
     fn construct() {
@@ -61,6 +110,11 @@ mod tests {
         let m2 = m.clone();
 
         println!("{:?} {:?} {:?} {:?}",u,c,v,m);
+
+        assert_eq!(u,u2);
+        assert_eq!(c,c2);
+        assert_eq!(v,v2);
+        assert_eq!(m,m2);
     }
 
     #[test]
@@ -82,5 +136,28 @@ mod tests {
         assert_eq!(ru, Rvalue::from_lvalue(&lu));
         assert_eq!(rv, Rvalue::from_lvalue(&lv));
         assert_eq!(rm, Rvalue::from_lvalue(&lm));
+    }
+
+    #[test]
+    fn marshal() {
+        let a = Rvalue::Undefined;
+        let b = Rvalue::Constant(42);
+        let c = Rvalue::Variable{ name: "test".to_string(), width: 8, subscript: Some(8) };
+        let d = Rvalue::Memory{ offset: Box::new(Rvalue::Constant(5)), bytes: 2, endianess: Endianess::LittleEndian, name: "bank1".to_string()};
+
+        let a2 = a.marshal(&Node::from_uuid(&Uuid::new_v4()));
+        let b2 = b.marshal(&Node::from_uuid(&Uuid::new_v4()));
+        let c2 = c.marshal(&Node::from_uuid(&Uuid::new_v4()));
+        let d2 = d.marshal(&Node::from_uuid(&Uuid::new_v4()));
+
+        let a3 = Rvalue::unmarshal(&a2);
+        let b3 = Rvalue::unmarshal(&b2);
+        let c3 = Rvalue::unmarshal(&c2);
+        let d3 = Rvalue::unmarshal(&d2);
+
+        assert_eq!(a, a3);
+        assert_eq!(b, b3);
+        assert_eq!(c, c3);
+        assert_eq!(d, d3);
     }
 }
