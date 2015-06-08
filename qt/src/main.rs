@@ -1,11 +1,9 @@
 extern crate panopticon;
-
-use panopticon::guard::*;
-use panopticon::value::*;
+extern crate qmlrs;
 
 fn main() {
-    let v = Guard::new(Relation::Equal(Rvalue::Constant(222),Rvalue::Undefined));
+    let mut engine = qmlrs::Engine::new();
 
-    let w = v.negation();
-    println!("{:?}",w);
+    engine.load_local_file("qt/res/Window.qml");
+    engine.exec();
 }

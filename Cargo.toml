@@ -14,6 +14,10 @@ name = "qtpanopticon"
 path = "qt/src/main.rs"
 
 [dependencies]
-#leveldb = "0.7.0"
 uuid = "*"
 rand = "*"
+tempdir = "*"
+lmdb-rs = "*"
+
+[dependencies.qmlrs]
+git = "https://github.com/cyndis/qmlrs"

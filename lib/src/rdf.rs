@@ -14,9 +14,9 @@ pub enum Node {
 
 #[derive(Eq,PartialEq,Debug,Hash,Clone)]
 pub struct Statement {
-    subject: Node,
-    predicate: Node,
-    object: Node,
+    pub subject: Node,
+    pub predicate: Node,
+    pub object: Node,
 }
 
 impl Statement {

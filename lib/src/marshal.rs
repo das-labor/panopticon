@@ -2,6 +2,8 @@ use uuid::Uuid;
 use std::collections::HashSet;
 use rdf::{Statement,Node};
 use std::sync::Arc;
+use lmdb_rs::core::{Environment,DbHandle,EnvBuilder,DbFlags};
+use tempdir::TempDir;
 
 #[derive(Eq,PartialEq,Debug,Hash,Clone)]
 pub struct Blob {
@@ -14,8 +16,9 @@ pub struct Archive {
 }
 
 pub struct Storage {
-    //meta: leveldb::database::Database,
-    //tempdir: TempDir,
+    env: Environment,
+    database: DbHandle,
+    tempdir: TempDir,
     blobs: Vec<Blob>,
 }
 
@@ -24,21 +27,26 @@ pub trait Marshal {
     fn unmarshal(a: &Archive) -> Self;
 }
 
-/*impl Storage {
-    fn new() -> Storage {
-        let tmp = TempDir::new("panopticon-").ok().unwrap();
-        Storage{
-            meta: leveldb::database::Database::open(tmp.path().push("meta.db")),
-            tempdir: tmp,
-            blobs: Vec::<Blob>::new()
+impl Storage {
+    pub fn new() -> Option<Storage> {
+        if let Ok(tmp) = TempDir::new("panopticon-") {
+            if let Ok(mut env) = EnvBuilder::new().open(&tmp.path(), 0o777) {
+                if let Ok(db) = env.get_default_db(DbFlags::empty()) {
+                    return Some(Storage{
+                        env: env,
+                        database: db,
+                        tempdir: tmp,
+                        blobs: Vec::new() })
+                }
+            }
         }
+        None
     }
 
-//    fn open(p: &Path) -> Storage {
+//    fn open(p: &Path) -> Storage
+//    fn insert(st: Statement) -> bool
 
-    fn open();
-
-    fn insert(st: Statement) -> bool;
+/*
     fn insert(s: Node,p: Node, o: Node) -> bool;
     fn register_blob(b: Blob) -> bool;
     fn unregister_blob(t: &Uuid) -> Option<Blob>;
