@@ -18,6 +18,7 @@ uuid = "*"
 rand = "*"
 tempdir = "*"
 lmdb-rs = "*"
+log = "*"
 
 [dependencies.qmlrs]
 git = "https://github.com/cyndis/qmlrs"

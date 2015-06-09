@@ -30,7 +30,7 @@ pub trait Marshal {
 impl Storage {
     pub fn new() -> Option<Storage> {
         if let Ok(tmp) = TempDir::new("panopticon") {
-            println!("{:?}",tmp.path());
+            debug!("Open temporary directory {:?}.",tmp.path());
             if let Ok(mut env) = EnvBuilder::new().open(&tmp.path(), 0o777) {
                 if let Ok(db) = env.get_default_db(DbFlags::empty()) {
                     return Some(Storage{
@@ -41,39 +41,83 @@ impl Storage {
                 }
             }
         }
+        error!("Failed to open temporary directory in Storage::new.");
         None
     }
 
-//    fn open(p: &Path) -> Storage
-
+/*
+    fn open(p: &Path) -> Storage
+*/
     fn insert(&self, st: Statement) -> bool {
-        let txn = self.env.new_transaction().unwrap();
-        {
-            let db = txn.bind(&self.database);
-            db.set(&Self::encode_statement(&st),&Vec::new());
-        }
-
-        match txn.commit() {
-            Err(_) => false,
-            Ok(_) => true
+        if let Ok(txn) = self.env.new_transaction() {
+            {
+                let db = txn.bind(&self.database);
+                db.set(&Self::encode_statement(&st),&Vec::new());
+            }
+            txn.commit().is_ok()
+        } else {
+            error!("Failed to aquire transaction in Storage::insert. Returning false.");
+            false
         }
     }
 
 /*
-    fn insert(s: Node,p: Node, o: Node) -> bool;
     fn register_blob(b: Blob) -> bool;
     fn unregister_blob(t: &Uuid) -> Option<Blob>;
+*/
 
-    fn has(st: &Statement) -> bool;
-    fn has(s: &Node, p: &Node, o: &Node) -> bool;
+    fn has(&self, st: &Statement) -> bool {
+        let key = Self::encode_statement(st);
+
+        if let Ok(reader) = self.env.get_reader() {
+            let db = reader.bind(&self.database);
+            let ret = {
+                if let Ok(ref mut i) = db.keyrange(&key,&key) {
+                    i.next().is_some()
+                } else {
+                    error!("Failed to get database iterator in Storage::has. Returning false.");
+                    false
+                }
+            };
+
+            ret
+        } else {
+            error!("Failed to aquire transaction in Storage::has. Returning false.");
+            false
+        }
+    }
+
+/*
     fn all() -> Vec<Statement>;
     fn find(s: &Node) -> Vec<Statement>;
     fn find(s: &Node, p: &Node) -> Vec<Statement>;
     fn first(s: &Node, p: &Node) -> Option<Statement>;
-    fn count() -> usize;
+*/
 
+    fn count(&self) -> usize {
+        if let Ok(reader) = self.env.get_reader() {
+            let db = reader.bind(&self.database);
+            let ret = {
+                if let Ok(i) = db.iter() {
+                    i.count()
+                } else {
+                    error!("Failed to get database iterator in Storage::count. Returning 0.");
+                    0
+                }
+            };
+
+            ret
+        } else {
+            error!("Failed to aquire transaction in Storage::count. Returning 0.");
+            0
+        }
+    }
+
+
+/*
     fn snapshot(p: &Path);
-    fn fetch_blob(t: &Uuid) -> Option<Blob>;*/
+    fn fetch_blob(t: &Uuid) -> Option<Blob>;
+*/
 
     fn encode_statement(st: &Statement) -> Vec<u8> {
         let sub = Self::encode_node(&st.subject);
@@ -185,6 +229,10 @@ impl Storage {
                 }
                 None
             },
+            Some(ref x) => {
+                error!("Unknown node type while decoding: {}.",x);
+                None
+            },
             _ => None
         }
     }
@@ -194,6 +242,7 @@ impl Storage {
 mod tests {
     use super::*;
     use rdf::{Node,Statement};
+    use uuid::Uuid;
 
     #[test]
     fn open_empty() {
@@ -286,7 +335,7 @@ mod tests {
         assert_eq!(Some(st2), st2_2);
     }
 
-   #[test]
+    #[test]
     fn insert() {
         let maybe_store = Storage::new();
 
@@ -306,4 +355,155 @@ mod tests {
         assert!(store.insert(st1));
         assert!(store.insert(st2));
     }
+
+    fn fixture_full_store() -> (Storage,Node,Node,Node,Node) {
+        let maybe_ret = Storage::new();
+        let ret = maybe_ret.unwrap();
+
+        let root = Node::new_blank();
+        let a1 = Node::from_uuid(&Uuid::new_v4());
+        let a2 = Node::from_uuid(&Uuid::new_v4());
+        let b = Node::from_uuid(&Uuid::new_v4());
+
+        ret.insert(Statement::new(a1.clone(), Node::ns_rdf("type"), Node::ns_po("A")));
+        ret.insert(Statement::new(a2.clone(), Node::ns_rdf("type"), Node::ns_po("A")));
+		ret.insert(Statement::new(b.clone(), Node::ns_rdf("type"), Node::ns_po("B")));
+		ret.insert(Statement::new(a1.clone(), Node::ns_po("name"), Node::lit(&"Mr. A".to_string())));
+		ret.insert(Statement::new(a1.clone(), Node::ns_po("bs"), b.clone()));
+		ret.insert(Statement::new(b.clone(), Node::ns_po("count"), Node::unsigned(42)));
+		ret.insert(Statement::new(root.clone(), Node::ns_po("child"), a1.clone()));
+		ret.insert(Statement::new(root.clone(), Node::ns_po("child"), a2.clone()));
+
+        (ret,root,a1,a2,b)
+	}
+
+    #[test]
+    fn empty_store() {
+        let maybe_store = Storage::new();
+        assert!(maybe_store.is_some());
+        assert_eq!(maybe_store.unwrap().count(), 0);
+    }
+
+    #[test]
+    fn add_single() {
+        let maybe_store = Storage::new();
+
+        assert!(maybe_store.is_some());
+
+        let store = maybe_store.unwrap();
+
+        assert!(store.insert(Statement::new(Node::new_blank(),Node::ns_po("test"),Node::new_blank())));
+        assert_eq!(store.count(), 1);
+    }
+
+    #[test]
+    fn add_multiple() {
+        let maybe_store = Storage::new();
+
+        assert!(maybe_store.is_some());
+
+        let store = maybe_store.unwrap();
+
+        assert!(store.insert(Statement::new(Node::new_blank(), Node::ns_po("test"), Node::new_blank())));
+        assert!(store.insert(Statement::new(Node::new_blank(), Node::ns_po("test2"), Node::new_blank())));
+        assert!(store.insert(Statement::new(Node::new_blank(), Node::ns_po("test3"), Node::new_blank())));
+        assert_eq!(store.count(),3);
+    }
+
+    fn add_twice() {
+        let maybe_store = Storage::new();
+
+        assert!(maybe_store.is_some());
+
+        let store = maybe_store.unwrap();
+
+        assert!(store.insert(Statement::new(Node::ns_po("La"), Node::ns_po("test"), Node::ns_po("Lo"))));
+        assert!(!store.insert(Statement::new(Node::ns_po("La"), Node::ns_po("test"), Node::ns_po("Lo"))));
+        assert_eq!(store.count(),1);
+    }
+
+    fn find_single() {
+        let (store,_,a1,_,_) = fixture_full_store();
+        assert!(store.has(&Statement::new(a1, Node::ns_rdf("type"), Node::ns_po("A"))));
+    }
+/*
+    fn find_multiple()
+    {
+        auto res = full_store->find(root, rdf::ns_po("child"));
+        list<statement> exp({
+            statement(root, rdf::ns_po("child"), a1),
+            statement(root, rdf::ns_po("child"), a2)
+        });
+
+        res.sort();
+        exp.sort();
+
+        ASSERT_EQ(res,exp);
+    }
+
+    TEST_F(store,find_none)
+    {
+        ASSERT_FALSE(full_store->has(root, rdf::ns_po("child"), rdf::ns_po("NOPE")));
+    }
+
+    TEST_F(store,remove)
+    {
+        ASSERT_TRUE(full_store->remove(a1, rdf::ns_rdf("type"), rdf::ns_po("A")));
+        ASSERT_EQ(full_store->count(),7);
+        ASSERT_FALSE(full_store->has(a1, rdf::ns_rdf("type"), rdf::ns_po("A")));
+    }
+
+    TEST_F(store,find_subject)
+    {
+        auto res = full_store->find(a1);
+        list<statement> exp({
+            statement(a1, rdf::ns_rdf("type"), rdf::ns_po("A")),
+            statement(a1, rdf::ns_po("name"), rdf::lit("Mr. A")),
+            statement(a1, rdf::ns_po("bs"), b)
+        });
+
+        res.sort();
+        exp.sort();
+
+        ASSERT_EQ(res,exp);
+    }*/
+/*
+    TEST_F(store,blob)
+    {
+        boost::filesystem::path p1 = boost::filesystem::unique_path(boost::filesystem::temp_directory_path() / "test-panop-%%%%-%%%%-%%%%");
+        boost::filesystem::path p2 = boost::filesystem::unique_path(boost::filesystem::temp_directory_path() / "test-panop-%%%%-%%%%-%%%%");
+        std::ofstream s1(p1.string());
+
+        ASSERT_TRUE(s1.is_open());
+
+        s1 << "Hello, World" << std::flush;
+        s1.close();
+
+        uuid u1;
+        blob mf1(p1,u1);
+        rdf::storage store1;
+
+        ASSERT_TRUE(store1.register_blob(mf1));
+        ASSERT_FALSE(store1.register_blob(mf1));
+
+        blob mf2 = store1.fetch_blob(u1);
+        ASSERT_EQ(mf1, mf2);
+
+        store1.snapshot(p2);
+
+        rdf::storage store2(p2);
+
+        ASSERT_FALSE(store2.register_blob(mf1));
+        blob mf3 = store2.fetch_blob(u1);
+
+        ASSERT_EQ(mf1.size(), mf3.size());
+
+        size_t i = 0;
+        while(i < mf3.size())
+        {
+            ASSERT_EQ(mf1.data()[i], mf3.data()[i]);
+            ++i;
+        }
+    }
+*/
 }
