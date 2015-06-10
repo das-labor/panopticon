@@ -13,3 +13,4 @@ pub mod marshal;
 pub mod guard;
 pub mod mnemonic;
 pub mod basic_block;
+pub mod loc;
