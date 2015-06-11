@@ -17,6 +17,7 @@ path = "qt/src/main.rs"
 [dependencies]
 log = "*"
 rustc-serialize = "*"
+num = "*"
 
 [dependencies.qmlrs]
 git = "https://github.com/cyndis/qmlrs"
