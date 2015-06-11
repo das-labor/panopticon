@@ -1,6 +1,6 @@
 use value::{Lvalue,Rvalue};
 
-#[derive(Clone,PartialEq,Eq,Debug)]
+#[derive(Clone,PartialEq,Eq,Debug,RustcEncodable,RustcDecodable)]
 pub enum Operation {
     LogicAnd(Rvalue,Rvalue),
     LogicOr(Rvalue,Rvalue),
@@ -27,7 +27,7 @@ pub enum Operation {
     Nop(Rvalue),
 }
 
-#[derive(Clone,PartialEq,Eq,Debug)]
+#[derive(Clone,PartialEq,Eq,Debug,RustcEncodable,RustcDecodable)]
 pub struct Instr {
     pub op: Operation,
     pub assignee: Lvalue,

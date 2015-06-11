@@ -8,6 +8,7 @@ name = "panopticon"
 path = "lib/src/lib.rs"
 crate-type = ["dylib"]
 plugin = true # needed to force dynamic linking
+test = true
 
 [[bin]]
 name = "qtpanopticon"
@@ -19,6 +20,11 @@ rand = "*"
 tempdir = "*"
 lmdb-rs = "*"
 log = "*"
+rustc-serialize = "*"
 
 [dependencies.qmlrs]
 git = "https://github.com/cyndis/qmlrs"
+
+[dependencies.msgpack]
+git = "https://github.com/neonquill/rust-msgpack.git"
+branch = "rust_1.0.0_for_merge"
