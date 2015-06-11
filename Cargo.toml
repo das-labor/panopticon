@@ -15,10 +15,6 @@ name = "qtpanopticon"
 path = "qt/src/main.rs"
 
 [dependencies]
-uuid = "*"
-rand = "*"
-tempdir = "*"
-lmdb-rs = "*"
 log = "*"
 rustc-serialize = "*"
 
