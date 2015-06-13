@@ -173,7 +173,6 @@ pub struct Disassembler<I: Token> {
     matches: Vec<Match<I>>
 }
 
-
 impl<I: Token> Disassembler<I> {
     pub fn new() -> Disassembler<I> {
         Disassembler::<I> {
@@ -198,6 +197,9 @@ impl<I: Token> Disassembler<I> {
                             _match.patterns.push(x.clone());
                         }
 
+                        for x in &pre.actions {
+                            _match.actions.push(x.clone());
+                        }
                         for x in &pre.groups {
                             for y in _match.groups.iter_mut() {
                                 if y.0 == x.0 {
@@ -209,7 +211,11 @@ impl<I: Token> Disassembler<I> {
                         }
                     }
 
-                    ret.push(Match::<I>{ patterns: _match.patterns, actions: vec!(Rc::new(a)), groups: _match.groups });
+                    ret.push(Match::<I>{
+                        patterns: _match.patterns,
+                        actions:_match.actions,
+                        groups: _match.groups
+                    });
                 }
 
                 ret
