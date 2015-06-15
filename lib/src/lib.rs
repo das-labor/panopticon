@@ -14,3 +14,4 @@ pub mod function;
 pub mod program;
 pub mod project;
 pub mod disassembler;
+pub mod region;
