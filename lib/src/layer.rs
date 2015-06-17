@@ -49,6 +49,10 @@ pub enum Layer {
 }
 
 impl Layer {
+    pub fn open(s: String, p: &Path) -> Layer {
+        unimplemented!();
+    }
+
     pub fn wrap(s: String, d: Vec<u8>) -> Layer {
         Layer::Raw{
             name: s,

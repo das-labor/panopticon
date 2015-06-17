@@ -4,6 +4,8 @@ extern crate log;
 extern crate msgpack;
 extern crate rustc_serialize;
 extern crate num;
+extern crate graph_algos;
+extern crate tempdir;
 
 pub mod value;
 pub mod instr;

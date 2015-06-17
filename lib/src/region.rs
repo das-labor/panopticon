@@ -5,6 +5,9 @@ use mnemonic::Bound;
 use std::iter::Repeat;
 use std::slice::Iter;
 use layer::{Cell,Slab,Layer};
+use graph_algos::AdjacencyList;
+use graph_algos::adjacency_list::AdjacencyListVertexDescriptor;
+use graph_algos::{GraphTrait,MutableGraphTrait};
 
 pub struct Region {
     base: Layer,
@@ -12,6 +15,9 @@ pub struct Region {
     name: String,
     size: u64,
 }
+
+pub type Regions = AdjacencyList<Region,Bound>;
+pub type RegionRef = AdjacencyListVertexDescriptor;
 
 impl Region {
     pub fn open(s: String, p: &Path) -> Region {
@@ -70,18 +76,33 @@ impl Region {
     }
 }
 
+pub fn projection(regs: &Regions) -> Vec<(Bound,RegionRef)> {
+    unimplemented!();
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use mnemonic::Bound;
     use layer::{Cell,Slab,Layer};
+    use graph_algos::AdjacencyList;
+    use graph_algos::{GraphTrait,MutableGraphTrait};
+    use tempdir::TempDir;
+    use std::fs::File;
+    use std::path::Path;
+    use std::io::Write;
 
-    fn fixture() -> (Region,Region,Region) {
-        let r1 = Region::undefined("base".to_string(),128);
-        let r2 = Region::undefined("zlib".to_string(),64);
-        let r3 = Region::undefined("aes".to_string(),48);
+    fn fixture<'a>() -> (RegionRef,RegionRef,RegionRef,Regions) {
+        let mut regs = AdjacencyList::<Region,Bound>::new();
+        let r1 = regs.add_vertex(Region::undefined("base".to_string(),128));
+        let r2 = regs.add_vertex(Region::undefined("zlib".to_string(),64));
+        let r3 = regs.add_vertex(Region::undefined("aes".to_string(),48));
 
-        (r1,r2,r3)
+        regs.add_edge(Bound::new(32,96),r1,r2);
+        regs.add_edge(Bound::new(16,32),r1,r3);
+        regs.add_edge(Bound::new(0,32),r2,r3);
+
+        (r1,r2,r3,regs)
     }
 
     #[test]
@@ -91,63 +112,18 @@ mod tests {
         assert!(st.cover(Bound::new(0,6),Layer::wrap("anon 2".to_string(),vec!(1,2,3,4,5))));
     }
 
-    /*
-    struct region : public ::testing::Test
-    {
-        region(void) : regs(), r1(po::region::undefined("base",128)), r2(po::region::undefined("zlib",64)), r3(po::region::undefined("aes",48)) {}
-
-        void SetUp(void)
-        {
-            auto vx1 = insert_vertex(r1,regs);
-            auto vx2 = insert_vertex(r2,regs);
-            auto vx3 = insert_vertex(r3,regs);
-
-            insert_edge(po::bound(32,96),vx1,vx2,regs);
-            insert_edge(po::bound(16,32),vx1,vx3,regs);
-            insert_edge(po::bound(0,32),vx2,vx3,regs);
-        }
-
-        po::regions regs;
-
-        po::region_loc r1;
-        po::region_loc r2;
-        po::region_loc r3;
-
-        using vx = boost::graph_traits<po::regions>::vertex_descriptor;
-
-        vx vx1;
-        vx vx2;
-        vx vx3;
-    };*/
-
-    /*
     #[test]
-    fn tree() {
+    fn projection_test() {
         let f = fixture();
+        let proj = projection(&f.3);
+        let expect = vec!(
+            (Bound::new(0,16),f.0),
+            (Bound::new(0,48),f.2),
+            (Bound::new(32,64),f.1),
+            (Bound::new(96,128),f.0));
 
-        assert_eq!(spanning_tree(f.3), vec!((&r2,&r1),(&r3,&r1)));
+        assert_eq!(proj,expect);
     }
-    */
-
-    /*
-    TEST_F(region,proj)
-    {
-        auto proj = po::projection(regs);
-        decltype(proj) expect({
-            make_pair(po::bound(0,16),po::region_wloc(r1)),
-            make_pair(po::bound(0,48),po::region_wloc(r3)),
-            make_pair(po::bound(32,64),po::region_wloc(r2)),
-            make_pair(po::bound(96,128),po::region_wloc(r1))
-        });
-
-        for(auto i: proj)
-        {
-            std::cout << i.first << ": " << i.second->name() << std::endl;
-        }
-
-        ASSERT_TRUE(proj == expect);
-    }
-    */
 
     #[test]
     fn read_undefined() {
@@ -158,43 +134,41 @@ mod tests {
         assert!(s1.all(|x| x.is_none()));
     }
 
-    /*
-    TEST_F(region,read_one_layer)
-    {
-        boost::filesystem::path p1 = boost::filesystem::unique_path(boost::filesystem::temp_directory_path() / "test-panop-%%%%-%%%%-%%%%");
-        po::region_loc r1 = po::region::undefined("test",128);
-        std::ofstream s1(p1.string());
+    #[test]
+    fn read_one_layer() {
+        let p1 = TempDir::new("test-panop").unwrap();
+        let mut r1 = Region::undefined("test".to_string(),128);
 
-        ASSERT_TRUE(s1.is_open());
-        s1 << "Hello, World" << std::flush;
-        s1.close();
-
-        r1.write().add(po::bound(1,8),po::layer_loc(new po::layer("anon 2",{1,2,3,4,5,6,7})));
-        r1.write().add(po::bound(50,62),po::layer_loc(new po::layer("anon 2",{1,2,3,4,5,6,6,5,4,3,2,1})));
-        r1.write().add(po::bound(62,63),po::layer_loc(new po::layer("anon 2",{po::byte(1)})));
-        r1.write().add(po::bound(70,82),po::layer_loc(new po::layer("anon 2",po::blob(p1))));
-
-        po::slab s = r1->read();
-        ASSERT_EQ(s.size(),128u);
-        size_t idx = 0;
-
-        for(auto i: s)
         {
-            cout << idx << ": " << (i ? to_string((unsigned int)(*i)) : "none") << endl;
-            if(idx >= 1 && idx < 8)
-                ASSERT_TRUE(i && *i == idx);
-            else if(idx >= 50 && idx < 56)
-                ASSERT_TRUE(i && *i == idx - 49);
-            else if(idx >= 56 && idx < 62)
-                ASSERT_TRUE(i && *i == 6 - (idx - 56));
-            else if(idx >= 70 && idx < 82)
-                EXPECT_TRUE(i && *i == std::string("Hello, World").substr(idx - 70,1)[0]);
-            else if(idx == 62)
-                ASSERT_TRUE(i && *i == 1);
-            else
-                ASSERT_TRUE(i == boost::none);
-            ++idx;
+            let mut fd = File::create(p1.path().join(Path::new("test"))).unwrap();
+            fd.write_all(b"Hello, World");
+        }
+
+        r1.cover(Bound::new(1,8),Layer::wrap("anon 2".to_string(),vec!(1,2,3,4,5,6,7)));
+        r1.cover(Bound::new(50,62),Layer::wrap("anon 2".to_string(),vec!(1,2,3,4,5,6,6,5,4,3,2,1)));
+        r1.cover(Bound::new(62,63),Layer::wrap("anon 2".to_string(),vec!(1)));
+        r1.cover(Bound::new(70,82),Layer::open("anon 2".to_string(),p1.path()));
+
+        let mut s = r1.read();
+        let mut idx = 0;
+
+        assert_eq!(s.length(), 128);
+
+        for i in s {
+            if idx >= 1 && idx < 8 {
+                assert_eq!(i, Some(idx));
+            } else if idx >= 50 && idx < 56 {
+                assert_eq!(i, Some(idx - 49));
+            } else if idx >= 56 && idx < 62 {
+                assert_eq!(i, Some(6 - (idx - 56)));
+            } else if idx >= 70 && idx < 82 {
+                assert_eq!(i, Some("Hello, World".to_string().into_bytes()[(idx - 70) as usize]));
+            } else if idx == 62 {
+                assert_eq!(i, Some(1));
+            } else {
+                assert_eq!(i, None);
+            }
+            idx += 1;
         }
     }
-*/
  }

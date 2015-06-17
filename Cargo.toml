@@ -18,6 +18,7 @@ path = "qt/src/main.rs"
 log = "*"
 rustc-serialize = "*"
 num = "*"
+tempdir = "*"
 
 [dependencies.qmlrs]
 git = "https://github.com/cyndis/qmlrs"
@@ -25,3 +26,6 @@ git = "https://github.com/cyndis/qmlrs"
 [dependencies.msgpack]
 git = "https://github.com/neonquill/rust-msgpack.git"
 branch = "rust_1.0.0_for_merge"
+
+[dependencies.graph_algos]
+git = "https://github.com/flanfly/rust-graph-algos.git"
