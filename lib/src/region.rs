@@ -4,90 +4,7 @@ use std::path::Path;
 use mnemonic::Bound;
 use std::iter::Repeat;
 use std::slice::Iter;
-pub type Cell = Option<u8>;
-
-pub enum Slab<'a> {
-    Undefined(Repeat<Cell>),
-    Sparse(Values<'a,u64,Cell>),
-    Raw(Iter<'a,u8>),
-    Empty,
-}
-
-impl<'a> Iterator for Slab<'a> {
-    type Item = Cell;
-
-    fn next(&mut self) -> Option<Cell> {
-        match self {
-            &mut Slab::Undefined(ref mut a) => a.next(),
-            &mut Slab::Sparse(ref mut a) => a.next().cloned(),
-            &mut Slab::Raw(ref mut a) => a.next().map(|a| Some(a.clone())),
-            &mut Slab::Empty => None,
-        }
-    }
-}
-
-impl<'a> Slab<'a> {
-    pub fn empty() -> Slab<'a> {
-        Slab::Empty
-    }
-
-    pub fn idx(&mut self, index: usize) -> Option<Cell> {
-        None
-    }
-
-    pub fn length(&self) -> usize {
-        0
-    }
-}
-
-pub enum Layer {
-    Raw{ name: String, data: Vec<u8> },
-    Undefined{ name: String, data: u64 },
-    Sparse{ name: String, data: HashMap<u64,Cell> }
-}
-
-impl Layer {
-    pub fn wrap(s: String, d: Vec<u8>) -> Layer {
-        Layer::Raw{
-            name: s,
-            data: d
-        }
-    }
-
-    pub fn undefined(s: String, l: u64) -> Layer {
-        Layer::Undefined{
-            name: s,
-            data: l
-        }
-    }
-
-    pub fn writable(s: String) -> Layer {
-        Layer::Sparse{
-            name: s,
-            data: HashMap::new()
-        }
-    }
-
-    pub fn filter(&self, s: &Slab) -> Slab {
-        unimplemented!();
-    }
-
-    pub fn name(&self) -> &String {
-        unimplemented!();
-    }
-
-    pub fn write(&self, p: u64, c: Cell) -> bool {
-        unimplemented!();
-    }
-
-    pub fn is_undefined(&self) -> bool {
-        unimplemented!();
-    }
-
-    pub fn is_writeable(&self) -> bool {
-        unimplemented!();
-    }
-}
+use layer::{Cell,Slab,Layer};
 
 pub struct Region {
     base: Layer,
@@ -128,7 +45,7 @@ impl Region {
         }
     }
 
-    pub fn push(&mut self, l: Layer) {
+    pub fn cover(&mut self, b: Bound, l: Layer) -> bool {
         unimplemented!();
     }
 
@@ -156,6 +73,8 @@ impl Region {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use mnemonic::Bound;
+    use layer::{Cell,Slab,Layer};
 
     fn fixture() -> (Region,Region,Region) {
         let r1 = Region::undefined("base".to_string(),128);
