@@ -10,7 +10,7 @@ use std::ops::Range;
 
 pub type Cell = Option<u8>;
 
-#[derive(Debug)]
+#[derive(Debug,RustcDecodable,RustcEncodable)]
 pub enum OpaqueLayer {
     Undefined(u64),
     Defined(Box<Vec<u8>>),
@@ -69,7 +69,7 @@ impl<'a> LayerIter<'a> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug,RustcDecodable,RustcEncodable)]
 pub enum Layer {
     Opaque(OpaqueLayer),
     Sparse(HashMap<u64,Cell>)

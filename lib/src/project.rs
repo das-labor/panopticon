@@ -1,19 +1,24 @@
 use std::path::Path;
 
 use program::Program;
+use region::{Region,Regions};
 
-#[derive(RustcDecodable,RustcEncodable,PartialEq,Eq,Debug)]
+#[derive(RustcDecodable,RustcEncodable)]
 pub struct Project {
     name: String,
     code: Vec<Program>,
     //data: Vec<Structure>,
-    //sources: AdjacencyList<Region,Bound>,
+    sources: Regions,
     //comments: Vec<Comment>,
 }
 
 impl Project {
-    fn new(s: String) -> Project {
-        Project{ name: s, code: Vec::new() }
+    fn new(s: String,r: Region) -> Project {
+        Project{
+            name: s,
+            code: Vec::new(),
+            sources: Regions::new(r),
+        }
     }
 
     fn open(p: &Path) -> Option<Project> {
@@ -24,10 +29,11 @@ impl Project {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use region::Region;
 
-#[test]
+    #[test]
     fn new() {
-        let p = Project::new("test".to_string());
+        let p = Project::new("test".to_string(),Region::undefined("base".to_string(),128));
 
         assert_eq!(p.name, "test".to_string());
         assert_eq!(p.code, Vec::new());

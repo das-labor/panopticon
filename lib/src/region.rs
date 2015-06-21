@@ -7,7 +7,7 @@ use layer::{Cell,Layer,OpaqueLayer,LayerIter};
 use graph_algos::adjacency_list::{AdjacencyListEdgeDescriptor,AdjacencyListVertexDescriptor};
 use graph_algos::{AdjacencyList,GraphTrait,VertexListGraphTrait,MutableGraphTrait,IncidenceGraphTrait};
 
-#[derive(Debug)]
+#[derive(Debug,RustcDecodable,RustcEncodable)]
 pub struct Region {
     stack: Vec<(Bound,Layer)>,
     name: String,
@@ -17,6 +17,7 @@ pub struct Region {
 pub type RegionGraph = AdjacencyList<Region,Bound>;
 pub type RegionRef = AdjacencyListVertexDescriptor;
 
+#[derive(RustcDecodable,RustcEncodable)]
 pub struct Regions {
     dependencies: RegionGraph,
     root: RegionRef,
