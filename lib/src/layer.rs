@@ -2,96 +2,174 @@ use std::collections::HashMap;
 use std::collections::hash_map::Values;
 use std::path::Path;
 use mnemonic::Bound;
-use std::iter::Repeat;
+use std::iter::{Enumerate,Take,Skip,Chain};
 use std::slice::Iter;
+use std::fs::File;
+use std::io::Read;
+use std::ops::Range;
 
 pub type Cell = Option<u8>;
 
-#[derive(Clone)]
-pub enum Slab<'a> {
-    Undefined(Repeat<Cell>),
-    Sparse(Values<'a,u64,Cell>),
-    Raw(Iter<'a,u8>),
-    Empty,
+#[derive(Debug)]
+pub enum OpaqueLayer {
+    Undefined(u64),
+    Defined(Box<Vec<u8>>),
 }
 
-impl<'a> Iterator for Slab<'a> {
+#[derive(Clone)]
+pub enum LayerIter<'a> {
+    Undefined(Range<u64>),
+    Defined(Iter<'a,u8>),
+    Sparse{ map: &'a HashMap<u64,Cell>, mapped: Box<Enumerate<LayerIter<'a>>> },
+    Concat{ car: Box<LayerIter<'a>>, cdr: Box<LayerIter<'a>> },
+    Take(Box<Take<LayerIter<'a>>>),
+    Skip(Box<Skip<LayerIter<'a>>>),
+    Chain(Box<Chain<LayerIter<'a>,LayerIter<'a>>>),
+}
+
+impl<'a> Iterator for LayerIter<'a> {
     type Item = Cell;
 
     fn next(&mut self) -> Option<Cell> {
         match self {
-            &mut Slab::Undefined(ref mut a) => a.next(),
-            &mut Slab::Sparse(ref mut a) => a.next().cloned(),
-            &mut Slab::Raw(ref mut a) => a.next().map(|a| Some(a.clone())),
-            &mut Slab::Empty => None,
+            &mut LayerIter::Undefined(ref mut r) => r.next().map(|x| None),
+            &mut LayerIter::Defined(ref mut r) => r.cloned().next().map(|x| Some(x)),
+            &mut LayerIter::Sparse{ map: ref m, mapped: ref mut i } => {
+                if let Some((idx,covered)) = i.next() {
+                    Some(*m.get(&(idx as u64)).unwrap_or(&covered))
+                } else {
+                    None
+                }
+            },
+            &mut LayerIter::Concat{ car: ref mut a, cdr: ref mut b } => {
+                if let Some(aa) = a.next() {
+                    Some(aa)
+                } else {
+                    b.next()
+                }
+            },
+            &mut LayerIter::Take(ref mut i) => i.next(),
+            &mut LayerIter::Skip(ref mut i) => i.next(),
+            &mut LayerIter::Chain(ref mut i) => i.next(),
         }
     }
 }
 
-impl<'a> Slab<'a> {
-    pub fn empty() -> Slab<'a> {
-        Slab::Empty
+impl<'a> LayerIter<'a> {
+    pub fn cut(&self, r: &Range<u64>) -> LayerIter<'a> {
+        if r.start > 0 {
+            LayerIter::Take(Box::new(LayerIter::Skip(Box::new(self.clone().skip(r.start as usize))).clone().take((r.end - r.start) as usize)))
+        } else {
+            LayerIter::Take(Box::new(self.clone().take(r.end as usize)))
+        }
     }
 
-    pub fn idx(&mut self, index: usize) -> Option<Cell> {
-        None
-    }
-
-    pub fn length(&self) -> usize {
-        0
+    pub fn append(&self, l: LayerIter<'a>) -> LayerIter<'a> {
+        LayerIter::Chain(Box::new(self.clone().chain(l)))
     }
 }
 
+#[derive(Debug)]
 pub enum Layer {
-    Raw{ name: String, data: Vec<u8> },
-    Undefined{ name: String, data: u64 },
-    Sparse{ name: String, data: HashMap<u64,Cell> }
+    Opaque(OpaqueLayer),
+    Sparse(HashMap<u64,Cell>)
+}
+
+impl OpaqueLayer {
+    pub fn iter(&self) -> LayerIter {
+        match self {
+            &OpaqueLayer::Undefined(ref len) => LayerIter::Undefined(0..*len),
+            &OpaqueLayer::Defined(ref v) => LayerIter::Defined(v.iter()),
+        }
+    }
+
+    pub fn len(&self) -> u64 {
+        match self {
+            &OpaqueLayer::Undefined(ref len) => *len,
+            &OpaqueLayer::Defined(ref v) => v.len() as u64,
+        }
+    }
+
+    pub fn open(p: &Path) -> Option<OpaqueLayer> {
+        let fd = File::open(p);
+
+        if fd.is_ok() {
+            let mut buf = Vec::<u8>::new();
+            let len = fd.unwrap().read_to_end(&mut buf);
+
+            if len.is_ok() {
+                Some(Self::wrap(buf))
+            } else {
+                error!("can't read file '{:?}': {:?}",p,len);
+                None
+            }
+        } else {
+            error!("can't open file '{:?}",p);
+            None
+        }
+    }
+
+    pub fn wrap(d: Vec<u8>) -> OpaqueLayer {
+        OpaqueLayer::Defined(Box::new(d))
+    }
+
+    pub fn undefined(l: u64) -> OpaqueLayer {
+        OpaqueLayer::Undefined(l)
+    }
 }
 
 impl Layer {
-    pub fn open(s: String, p: &Path) -> Layer {
-        unimplemented!();
-    }
-
-    pub fn wrap(s: String, d: Vec<u8>) -> Layer {
-        Layer::Raw{
-            name: s,
-            data: d
+    pub fn filter<'a>(&'a self,i: LayerIter<'a>) -> LayerIter<'a> {
+        match self {
+            &Layer::Opaque(ref o) => o.iter(),
+            &Layer::Sparse(ref m) => LayerIter::Sparse{ map: m, mapped: Box::new(i.enumerate()) },
         }
     }
 
-    pub fn undefined(s: String, l: u64) -> Layer {
-        Layer::Undefined{
-            name: s,
-            data: l
+    pub fn wrap(d: Vec<u8>) -> Layer {
+        Layer::Opaque(OpaqueLayer::wrap(d))
+    }
+
+    pub fn undefined(l: u64) -> Layer {
+        Layer::Opaque(OpaqueLayer::undefined(l))
+    }
+
+    pub fn open(p: &Path) -> Option<Layer> {
+        OpaqueLayer::open(p).map(|x| Layer::Opaque(x))
+    }
+
+    pub fn writable() -> Layer {
+        Layer::Sparse(HashMap::new())
+    }
+
+    pub fn write(&mut self, p: u64, c: Cell) -> bool {
+        match self {
+            &mut Layer::Sparse(ref mut m) => { m.insert(p,c); true },
+            _ => false
         }
-    }
-
-    pub fn writable(s: String) -> Layer {
-        Layer::Sparse{
-            name: s,
-            data: HashMap::new()
-        }
-    }
-
-    pub fn filter(&self, s: &Slab) -> Slab {
-        unimplemented!();
-    }
-
-    pub fn name(&self) -> &String {
-        unimplemented!();
-    }
-
-    pub fn write(&self, p: u64, c: Cell) -> bool {
-        unimplemented!();
     }
 
     pub fn is_undefined(&self) -> bool {
-        unimplemented!();
+        if let &Layer::Opaque(OpaqueLayer::Undefined(_)) = self {
+            true
+        } else {
+            false
+        }
     }
 
     pub fn is_writeable(&self) -> bool {
-        unimplemented!();
+        if let &Layer::Sparse(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_opaque<'a>(&'a self) -> Option<&'a OpaqueLayer> {
+        match self {
+            &Layer::Opaque(ref o) => Some(o),
+            _ => None,
+        }
     }
 }
 
@@ -102,135 +180,65 @@ mod tests {
     use region::Region;
 
     #[test]
-    fn chain() {
-        let l1 = Layer::undefined("anon 1".to_string(),6);
-        let l2 = Layer::wrap("anon 2".to_string(),vec!(1,2,3));
-        let l3 = Layer::wrap("anon 2".to_string(),vec!(1,2,3));
-        let l4 = Layer::wrap("anon 2".to_string(),vec!(13,23,33,6,7));
+    fn construct() {
+        let l1 = OpaqueLayer::undefined(6);
+        let l2 = OpaqueLayer::wrap(vec!(1,2,3));
 
-        let s1 = l1.filter(&Slab::empty())
-            .chain(l2.filter(&Slab::empty()))
-            .chain(l3.filter(&Slab::empty()))
-            .chain(l4.filter(&Slab::empty()));
-
-        assert_eq!(s1.collect::<Vec<Cell>>(), vec!(None,None,Some(1),Some(2),Some(3),Some(2),Some(3),Some(13),Some(23),Some(33),Some(6),Some(7)));
+        assert_eq!(l1.len(),6);
+        assert_eq!(l2.len(),3);
     }
 
     #[test]
-    fn empty_slab() {
-        let mut s1 = Slab::empty();
+    fn append() {
+        let l1 = OpaqueLayer::undefined(6);
+        let l2 = OpaqueLayer::wrap(vec!(1,2,3));
+        let l3 = OpaqueLayer::wrap(vec!(1,2,3));
+        let l4 = OpaqueLayer::wrap(vec!(13,23,33,6,7));
 
-        assert_eq!(s1.length(), 0);
-        assert_eq!(s1.next(), None);
-        assert_eq!(s1.idx(1337), None);
+        let s1 = l1.iter().append(l2.iter()).append(l3.iter()).append(l4.iter());
+
+        assert_eq!(s1.collect::<Vec<Cell>>(), vec!(None,None,None,None,None,None,Some(1),Some(2),Some(3),Some(1),Some(2),Some(3),Some(13),Some(23),Some(33),Some(6),Some(7)));
     }
 
     #[test]
     fn slab() {
-        let l1 = Layer::wrap("anon 2".to_string(),vec!(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16));
-        let mut s1 = l1.filter(&Slab::empty());
+        let l1 = OpaqueLayer::wrap(vec!(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16));
+        let mut s1 = l1.iter();
 
-        assert_eq!(s1.length(), 16);
+        assert_eq!(s1.clone().count(), 16);
         assert_eq!(s1.next().unwrap(), Some(1));
-        assert_eq!(s1.idx(13).unwrap(), Some(14));
+        //assert_eq!(s1.idx(13).unwrap(), Some(14));
         assert_eq!(s1.next().unwrap(), Some(2));
-        assert_eq!(s1.length(), 14);
+        assert_eq!(s1.clone().count(), 14);
     }
-
-    #[test]
-    fn filter() {
-        let l1 = Layer::undefined("anon 1".to_string(),128);
-        let l2 = Layer::wrap("anon 2".to_string(),vec!(1,2,3,4,5,6));
-
-        assert!(l1.is_undefined());
-        assert!(!l2.is_undefined());
-        assert_eq!(l1.filter(&Slab::empty()).length(), 128);
-        assert_eq!(l2.filter(&Slab::empty()).length(), 6);
-
-        assert_eq!(l2.filter(&l1.filter(&Slab::empty())).take(9).collect::<Vec<Cell>>(),
-            vec!(Some(1),Some(2),Some(3),Some(4),Some(5),Some(6),None,None,None));
-    }
-
 
     #[test]
     fn mutable() {
-        let l1 = Layer::wrap("const".to_string(),vec!(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16));
-        let l2 = Layer::writable("mut".to_string());
+        let l1 = OpaqueLayer::wrap(vec!(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16));
+        let mut l2 = Layer::writable();
         let e = vec!(Some(1),Some(2),Some(3),Some(4),Some(5),Some(1),Some(1),Some(8),Some(9),Some(10),Some(11),Some(12),Some(13),Some(1),Some(15),Some(16));
 
         l2.write(5,Some(1));
         l2.write(6,Some(1));
         l2.write(13,Some(1));
 
-        let s = l2.filter(&l1.filter(&Slab::empty()));
-        assert_eq!(s.length(), 16);
+        let s = l2.filter(l1.iter());
+        assert_eq!(s.clone().count(), 16);
         assert_eq!(s.collect::<Vec<Cell>>(),e);
-    }
-
-    #[test]
-    fn add() {
-        let mut st = Region::undefined("".to_string(),40);
-
-        assert!(st.cover(Bound::new(0,6),Layer::wrap("anon 2".to_string(),vec!(1,2,3,4,5,6))));
-        assert!(st.cover(Bound::new(10,39),Layer::wrap("anon 3".to_string(),vec!(1,2,3,4,5,6,8,9,10,11,12,13,14,15,16,17,18,19))));
-        assert!(st.cover(Bound::new(4,12),Layer::wrap("anon 4".to_string(),vec!(1,2,3,4,5,6,7,8))));
-
-        let proj = st.flatten();
-
-        assert_eq!(proj.len(),4);
-        assert_eq!(proj[0].0, Bound::new(0,4));
-        assert_eq!(proj[0].1.name(), &"anon 2".to_string());
-        assert_eq!(proj[1].0, Bound::new(4,10));
-        assert_eq!(proj[1].1.name(), &"anon 3".to_string());
-        assert_eq!(proj[2].0, Bound::new(10,39));
-        assert_eq!(proj[2].1.name(), &"anon 4".to_string());
-        assert_eq!(proj[3].0, Bound::new(39,40));
-        assert_eq!(proj[3].1.name(), &"".to_string());
-    }
-
-    #[test]
-    fn projection() {
-        let mut st = Region::undefined("".to_string(),40);
-
-        let base = Layer::undefined("base".to_string(),128);
-        let xor1 = Layer::undefined("xor".to_string(),64);
-        let add = Layer::undefined("add".to_string(),27);
-        let zlib = Layer::undefined("zlib".to_string(),48);
-        let aes = Layer::undefined("aes".to_string(),32);
-
-        assert!(st.cover(Bound::new(0,128),base));
-        assert!(st.cover(Bound::new(0,64),xor1));
-        assert!(st.cover(Bound::new(45,72),add));
-        assert!(st.cover(Bound::new(80,128),zlib));
-        assert!(st.cover(Bound::new(102,134),aes));
-
-        let proj = st.flatten();
-
-        assert_eq!(proj.len(), 5);
-        assert_eq!(proj[0].0, Bound::new(0,45));
-        assert_eq!(proj[0].1.name(), &"xor".to_string());
-        assert_eq!(proj[1].0, Bound::new(45,72));
-        assert_eq!(proj[1].1.name(), &"add".to_string());
-        assert_eq!(proj[2].0, Bound::new(72,80));
-        assert_eq!(proj[2].1.name(), &"base".to_string());
-        assert_eq!(proj[3].0, Bound::new(80,102));
-        assert_eq!(proj[3].1.name(), &"zlib".to_string());
-        assert_eq!(proj[4].0, Bound::new(102,134));
-        assert_eq!(proj[4].1.name(), &"aes".to_string());
     }
 
     #[test]
     fn random_access_iter()
     {
-        let l1 = Layer::undefined("l1".to_string(),0xffffffff);
-        let sl = l1.filter(&Slab::empty());
+        let l1 = OpaqueLayer::undefined(0xffffffff);
+        let sl = l1.iter();
 
         // unused -> auto i = sl.begin();
         // unused -> slab::iterator j = i + 0xc0000000;
 
         let mut k = 100;
         while k > 0 {
-            let s2 = sl.clone().chain(sl.clone());
+            let s2 = sl.append(sl.clone());
             k -= 1;
         }
     }
