@@ -4,10 +4,16 @@ use value::{Rvalue,Lvalue};
 static mut temporary_variable_counter: usize = 0;
 
 pub struct CodeGen {
-    instructions: Vec<Instr>,
+    pub instructions: Vec<Instr>,
 }
 
 impl CodeGen {
+    pub fn new() -> CodeGen {
+        CodeGen{
+            instructions: Vec::new(),
+        }
+    }
+
     pub fn and_b(&mut self,a: Lvalue, op1: Rvalue, op2: Rvalue) -> Lvalue { self.named(Operation::LogicAnd(op1,op2),a) }
     pub fn or_b(&mut self,a: Lvalue, op1: Rvalue, op2: Rvalue) -> Lvalue { self.named(Operation::LogicOr(op1,op2),a) }
     pub fn lift_b(&mut self,a: Lvalue, op: Rvalue) -> Lvalue { self.named(Operation::LogicLift(op),a) }

@@ -1,5 +1,5 @@
 use value::Rvalue;
-use mnemonic::Mnemonic;
+use mnemonic::{Mnemonic,Bound};
 use guard::Guard;
 use std::rc::Rc;
 use num::traits::*;
@@ -8,6 +8,7 @@ use std::slice::Iter;
 use std::ops::{BitOr,Shl,Not};
 use std::collections::HashMap;
 use std::mem::size_of;
+use codegen::CodeGen;
 
 pub trait Token: Clone + Zero + One + Debug + Not + BitOr + Shl<usize> + NumCast
 where <Self as Not>::Output: NumCast,
@@ -22,13 +23,53 @@ pub type Action<I: Token> = fn(&State<I>) -> bool;
 #[derive(Debug)]
 pub struct State<I: Clone> {
     // in
-    address: u64,
-    tokens: Vec<I>,
-    groups: Vec<(String,I)>,
+    pub address: u64,
+    pub tokens: Vec<I>,
+    pub groups: Vec<(String,I)>,
 
     // out
-    mnemonics: Vec<Mnemonic>,
-    jumps: Vec<(Rvalue,Guard)>,
+    pub mnemonics: Vec<Mnemonic>,
+    pub jumps: Vec<(Rvalue,Guard)>,
+
+    next_address: u64,
+}
+
+impl<I: Clone> State<I> {
+    pub fn new(a: u64, t: Vec<I>, g: Vec<(String,I)>) -> State<I> {
+        State{
+            address: a,
+            tokens: t,
+            groups: g,
+            mnemonics: Vec::new(),
+            jumps: Vec::new(),
+            next_address: a,
+        }
+    }
+
+    pub fn mnemonic<F: Fn(&CodeGen) -> ()>(&mut self,len: usize, n: &str, fmt: &str, ops: Vec<Rvalue>, f: F) {
+        self.mnemonic_dynargs(len,n,fmt,|cg: &CodeGen| -> Vec<Rvalue> {
+            f(cg);
+            ops.clone()
+        });
+    }
+
+    pub fn mnemonic_dynargs<F>(&mut self,len: usize, n: &str, fmt: &str, f: F)
+    where F: Fn(&CodeGen) -> Vec<Rvalue> {
+        let mut cg = CodeGen::new();
+        let ops = f(&cg);
+
+        self.mnemonics.push(Mnemonic::new(
+                self.next_address..(self.next_address + (len as u64)),
+                n.to_string(),
+                fmt.to_string(),
+                ops.iter(),
+                cg.instructions.iter()));
+        self.next_address += len as u64;
+    }
+
+    pub fn jump(&mut self,v: Rvalue,g: Guard) {
+        self.jumps.push((v,g));
+    }
 }
 
 #[derive(Clone)]
