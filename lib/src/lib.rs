@@ -18,3 +18,4 @@ pub mod project;
 pub mod disassembler;
 pub mod region;
 pub mod layer;
+pub mod codegen;
