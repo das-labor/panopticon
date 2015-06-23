@@ -1,5 +1,4 @@
 extern crate panopticon;
-use self::panopticon::project::Project;
 
 #[test]
 fn open() {

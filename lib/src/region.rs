@@ -1,9 +1,7 @@
-use std::collections::{HashMap,HashSet};
+use std::collections::HashSet;
 use std::path::Path;
 use mnemonic::Bound;
-use std::iter::{Repeat,Skip};
-use std::slice::Iter;
-use layer::{Cell,Layer,OpaqueLayer,LayerIter};
+use layer::{Layer,OpaqueLayer,LayerIter};
 use graph_algos::adjacency_list::{AdjacencyListEdgeDescriptor,AdjacencyListVertexDescriptor};
 use graph_algos::{AdjacencyList,GraphTrait,VertexListGraphTrait,MutableGraphTrait,IncidenceGraphTrait};
 
@@ -200,9 +198,8 @@ impl Regions {
 mod tests {
     use super::*;
     use mnemonic::Bound;
-    use layer::{Cell,Layer};
-    use graph_algos::AdjacencyList;
-    use graph_algos::{GraphTrait,MutableGraphTrait};
+    use layer::Layer;
+    use graph_algos::MutableGraphTrait;
     use tempdir::TempDir;
     use std::fs::File;
     use std::path::Path;
@@ -265,8 +262,8 @@ mod tests {
             let mut r1 = Region::undefined("test".to_string(),128);
 
             {
-                let mut fd = File::create(p1.clone());
-                fd.unwrap().write_all(b"Hello, World");
+                let fd = File::create(p1.clone());
+                assert!(fd.unwrap().write_all(b"Hello, World").is_ok());
             }
 
             assert!(r1.cover(Bound::new(1,8),Layer::wrap(vec!(1,2,3,4,5,6,7))));
@@ -274,7 +271,7 @@ mod tests {
             assert!(r1.cover(Bound::new(62,63),Layer::wrap(vec!(1))));
             assert!(r1.cover(Bound::new(70,82),Layer::open(&p1).unwrap()));
 
-            let mut s = r1.iter();
+            let s = r1.iter();
             let mut idx = 0;
 
             assert_eq!(s.clone().count(), 128);

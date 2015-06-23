@@ -1,5 +1,5 @@
 use value::Rvalue;
-use mnemonic::{Mnemonic,Bound};
+use mnemonic::Mnemonic;
 use guard::Guard;
 use std::rc::Rc;
 use num::traits::*;
@@ -20,7 +20,7 @@ where <Self as Not>::Output: NumCast,
 
 impl Token for u8 {}
 
-pub type Action<I: Token> = fn(&mut State<I>) -> bool;
+pub type Action<I/*: Token*/> = fn(&mut State<I>) -> bool;
 
 #[derive(Debug)]
 pub struct State<I: Clone> {
@@ -57,7 +57,7 @@ impl<I: Clone> State<I> {
 
     pub fn mnemonic_dynargs<F>(&mut self,len: usize, n: &str, fmt: &str, f: F)
     where F: Fn(&CodeGen) -> Vec<Rvalue> {
-        let mut cg = CodeGen::new();
+        let cg = CodeGen::new();
         let ops = f(&cg);
 
         self.mnemonics.push(Mnemonic::new(
@@ -238,7 +238,7 @@ impl<I: Token> Disassembler<I> {
     {
         match i.next() {
             Some(e) => {
-                let mut rest = Self::combine_expr(i,a);
+                let rest = Self::combine_expr(i,a);
                 let mut ret = Vec::new();
 
 
@@ -418,7 +418,7 @@ impl<I: Token> Disassembler<I> {
 
 		return boost::none;
 	}*/
-    pub fn next_match(&self,i: &mut LayerIter, st: State<I>) -> Option<State<I>>
+    pub fn next_match(&self,i: &mut LayerIter, _: State<I>) -> Option<State<I>>
     where <I as Not>::Output: NumCast,
           <I as BitAnd>::Output: NumCast,
           <I as BitOr>::Output: NumCast,
@@ -434,7 +434,7 @@ impl<I: Token> Disassembler<I> {
                 for t in j.take(len * size_of::<I>()) {
                     let mut tmp: I = I::zero();
 
-                    for _ in (0..(size_of::<I>())) {
+                    for _ in (1..(size_of::<I>())) {
                         if let Some(b) = t {
                             tmp = cast(cast::<<I as Shl<usize>>::Output,I>(tmp << 8).unwrap() | cast(b).unwrap()).unwrap();
                         } else {
@@ -450,7 +450,7 @@ impl<I: Token> Disassembler<I> {
 
         for opt in &self.matches {
             let pattern = &opt.patterns;
-            let actions = &opt.actions;
+            //let actions = &opt.actions;
 
             if !min_len(pattern.len(),&mut tokens,&mut j) {
                 continue;
@@ -829,20 +829,21 @@ TEST_F(disassembler,fixed_capture_group_contents)
 mod tests {
     use super::*;
     use std::rc::Rc;
-    use layer::{Cell,OpaqueLayer};
+    use layer::OpaqueLayer;
     use guard::Guard;
     use value::Rvalue;
+    use mnemonic::Bound;
 
     #[test]
     fn decode_macro() {
         let lock_prfx = new_disassembler!(u8 =>
-            [ 0x06 ] = |x| { true }
+            [ 0x06 ] = |_| { true }
         );
 
-        let main = new_disassembler!(u8 =>
-            [ 22 , 21, lock_prfx ] = |x| { true },
-            [ "....11 d@00"         ] = |x| true,
-            [ "....11 d@00", ".. d@0011. 0" ] = |x| true
+        new_disassembler!(u8 =>
+            [ 22 , 21, lock_prfx ] = |_| { true },
+            [ "....11 d@00"         ] = |_| true,
+            [ "....11 d@00", ".. d@0011. 0" ] = |_| true
         );
     }
 
@@ -857,7 +858,7 @@ mod tests {
         let sub2 = new_disassembler!(u8 =>
             [ 8 ] = |_| false);
 
-        let mut main = new_disassembler!(u8 =>
+        let main = new_disassembler!(u8 =>
             [ 1, sub ] = |_| true,
             [ 1 ] = |st: &mut State<u8>| {
                 let next = st.address;
@@ -886,23 +887,30 @@ mod tests {
     fn single_decoder()
     {
         let (_,_,main,def) = fixture();
-        let mut st = State::<u8>::new(0);
+        let st = State::<u8>::new(0);
 
-        assert!(main.next_match(&mut def.iter(),st).is_some());
-        /*
-        ASSERT_EQ(i->first, ++bytes.begin());
-        ASSERT_EQ(st.address, 0u);
-        ASSERT_GE(st.tokens.size(), 1u);
-        ASSERT_EQ(st.tokens[0], 'A');
-        ASSERT_EQ(st.capture_groups.size(), 0u);
-        ASSERT_EQ(st.mnemonics.size(), 1u);
-        ASSERT_EQ(st.mnemonics.front().opcode, std::string("A"));
-        ASSERT_EQ(st.mnemonics.front().area, po::bound(0,1));
-        ASSERT_TRUE(st.mnemonics.front().instructions.empty());
-        ASSERT_EQ(st.jumps.size(), 1u);
-        ASSERT_TRUE(is_constant(st.jumps.front().first));
-        ASSERT_EQ(to_constant(st.jumps.front().first).content(), 1u);
-        ASSERT_TRUE(st.jumps.front().second.relations.empty());
-        */
+        let maybe_res = main.next_match(&mut def.iter(),st);
+
+        assert!(maybe_res.is_some());
+
+        let res = maybe_res.unwrap();
+
+        //ASSERT_EQ(i->first, ++bytes.begin());
+
+        assert_eq!(res.address, 0);
+        assert_eq!(res.tokens.len(), 1);
+        assert_eq!(res.tokens[0], 1);
+        assert_eq!(res.groups.len(), 0);
+        assert_eq!(res.mnemonics.len(), 1);
+        assert_eq!(res.mnemonics[0].opcode, "A".to_string());
+        assert_eq!(res.mnemonics[0].area, Bound::new(0,1));
+        assert_eq!(res.mnemonics[0].instructions.len(), 0);
+        assert_eq!(res.jumps.len(), 1);
+
+        if let &(Rvalue::Constant(1),ref g) = &res.jumps[0] {
+            assert_eq!(g, &Guard::new());
+        } else {
+            assert!(false);
+        }
     }
 }

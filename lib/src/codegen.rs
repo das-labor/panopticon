@@ -34,14 +34,14 @@ impl CodeGen {
     pub fn lshift_i(&mut self,a: Lvalue, op1: Rvalue, op2: Rvalue) -> Lvalue { self.named(Operation::IntLeftShift(op1,op2),a) }
 
     fn named(&mut self,op: Operation, assign: Lvalue) -> Lvalue {
-        let mut ret = Instr{ op: op, assignee: assign.clone() };
+        let ret = Instr{ op: op, assignee: assign.clone() };
 
         fn sanity_check(v: &Rvalue) -> bool {
             match v {
                 &Rvalue::Constant(_) => true,
                 &Rvalue::Undefined => true,
                 &Rvalue::Variable{ width: ref w, name: ref n, subscript: ref s} => *w > 0 && s.is_none() && n.len() > 0,
-                &Rvalue::Memory{ offset: ref o, bytes: ref b, endianess: ref e, name: ref n} => sanity_check(o) && *b > 0 && n.len() > 0,
+                &Rvalue::Memory{ offset: ref o, bytes: ref b, endianess: _, name: ref n} => sanity_check(o) && *b > 0 && n.len() > 0,
             }
         };
 

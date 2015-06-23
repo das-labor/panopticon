@@ -13,7 +13,7 @@ pub struct Project {
 }
 
 impl Project {
-    fn new(s: String,r: Region) -> Project {
+    pub fn new(s: String,r: Region) -> Project {
         Project{
             name: s,
             code: Vec::new(),
@@ -21,7 +21,7 @@ impl Project {
         }
     }
 
-    fn open(p: &Path) -> Option<Project> {
+    pub fn open(_: &Path) -> Option<Project> {
         unimplemented!()
     }
 }

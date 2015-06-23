@@ -1,7 +1,5 @@
 use std::collections::HashMap;
-use std::collections::hash_map::Values;
 use std::path::Path;
-use mnemonic::Bound;
 use std::iter::{Enumerate,Take,Skip,Chain};
 use std::slice::Iter;
 use std::fs::File;
@@ -32,7 +30,7 @@ impl<'a> Iterator for LayerIter<'a> {
 
     fn next(&mut self) -> Option<Cell> {
         match self {
-            &mut LayerIter::Undefined(ref mut r) => r.next().map(|x| None),
+            &mut LayerIter::Undefined(ref mut r) => r.next().map(|_| None),
             &mut LayerIter::Defined(ref mut r) => r.cloned().next().map(|x| Some(x)),
             &mut LayerIter::Sparse{ map: ref m, mapped: ref mut i } => {
                 if let Some((idx,covered)) = i.next() {
@@ -176,8 +174,6 @@ impl Layer {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use mnemonic::Bound;
-    use region::Region;
 
     #[test]
     fn construct() {
@@ -238,7 +234,7 @@ mod tests {
 
         let mut k = 100;
         while k > 0 {
-            let s2 = sl.append(sl.clone());
+            sl.append(sl.clone());
             k -= 1;
         }
     }
