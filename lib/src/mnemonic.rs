@@ -15,7 +15,7 @@ impl Bound {
     }
 }
 
-#[derive(Debug,PartialEq,Eq,RustcEncodable,RustcDecodable)]
+#[derive(Clone,Debug,PartialEq,Eq,RustcEncodable,RustcDecodable)]
 pub enum MnemonicFormatToken {
     Literal(char),
     Variable{ has_sign: bool, width: u16, alias: Option<String> },
@@ -100,7 +100,7 @@ impl MnemonicFormatToken {
     }
 }
 
-#[derive(PartialEq,Eq,Debug,RustcEncodable,RustcDecodable)]
+#[derive(Clone,PartialEq,Eq,Debug,RustcEncodable,RustcDecodable)]
 pub struct Mnemonic {
     pub area: Bound,
     pub opcode: String,
