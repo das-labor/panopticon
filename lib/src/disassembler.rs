@@ -443,31 +443,6 @@ impl<I: Clone> State<I> {
     }
     /*
 
-    TEST_F(disassembler,sub_decoder)
-    {
-        po::sem_state<test_tag> st(1,'a');
-        boost::optional<std::pair<po::slab::iterator,po::sem_state<test_tag>>> i;
-
-        i = main.try_match(bytes.begin()+1,bytes.end(),st);
-        ASSERT_TRUE(!!i);
-        st = i->second;
-
-        ASSERT_EQ(std::distance(bytes.begin(), i->first), 3);
-        ASSERT_EQ(st.address, 1u);
-	ASSERT_GE(st.tokens.size(), 2u);
-	ASSERT_EQ(st.tokens[0], 'A');
-	ASSERT_EQ(st.tokens[1], 'B');
-	ASSERT_EQ(st.capture_groups.size(), 0u);
-	ASSERT_EQ(st.mnemonics.size(), 1u);
-	ASSERT_EQ(st.mnemonics.front().opcode, std::string("BA"));
-	ASSERT_EQ(st.mnemonics.front().area, po::bound(1,3));
-	ASSERT_TRUE(st.mnemonics.front().instructions.empty());
-	ASSERT_EQ(st.jumps.size(), 1u);
-	ASSERT_TRUE(is_constant(st.jumps.front().first));
-	ASSERT_EQ(to_constant(st.jumps.front().first).content(), 3u);
-	ASSERT_TRUE(st.jumps.front().second.relations.empty());
-}
-
 TEST_F(disassembler,semantic_false)
 {
 	po::sem_state<test_tag> st(6,'a');
@@ -822,20 +797,10 @@ mod tests {
     {
         let (_,_,main,def) = fixture();
         let st = State::<u8>::new(0);
-
         let maybe_res = main.next_match(&mut def.iter(),st);
 
-        for i in &main.matches {
-            println!("{:?}",i.patterns);
-        }
-
-
         assert!(maybe_res.is_some());
-
         let res = maybe_res.unwrap();
-        //ASSERT_EQ(i->first, ++bytes.begin());
-
-        println!("{:?}",res);
 
         assert_eq!(res.address, 0);
         assert_eq!(res.tokens.len(), 1);
@@ -848,6 +813,33 @@ mod tests {
         assert_eq!(res.jumps.len(), 1);
 
         if let &(Rvalue::Constant(1),ref g) = &res.jumps[0] {
+            assert_eq!(g, &Guard::new());
+        } else {
+            assert!(false);
+        }
+    }
+
+    #[test]
+    fn sub_decoder() {
+        let (_,_,main,def) = fixture();
+        let st = State::<u8>::new(1);
+        let maybe_res = main.next_match(&mut def.iter().skip(1),st);
+
+        assert!(maybe_res.is_some());
+        let res = maybe_res.unwrap();
+
+        assert_eq!(res.address, 1);
+        assert_eq!(res.tokens.len(), 2);
+        assert_eq!(res.tokens[0], 1);
+        assert_eq!(res.tokens[0], 2);
+        assert_eq!(res.groups.len(), 0);
+        assert_eq!(res.mnemonics.len(), 1);
+        assert_eq!(res.mnemonics[0].opcode, "BA".to_string());
+        assert_eq!(res.mnemonics[0].area, Bound::new(1,3));
+        assert_eq!(res.mnemonics[0].instructions.len(), 0);
+        assert_eq!(res.jumps.len(), 1);
+
+        if let &(Rvalue::Constant(3),ref g) = &res.jumps[0] {
             assert_eq!(g, &Guard::new());
         } else {
             assert!(false);
