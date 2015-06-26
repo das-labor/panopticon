@@ -740,6 +740,12 @@ mod tests {
 
     #[test]
     #[should_panic]
+    fn invalid_char_in_token_pattern() {
+        new_disassembler!(u8 => [ "101/1010" ] = |_| { true });
+    }
+
+    #[test]
+    #[should_panic]
     fn invalid_token_pattern() {
         new_disassembler!(u8 => [ "a111111" ] = |_| { true });
     }
