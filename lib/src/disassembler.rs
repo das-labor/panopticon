@@ -20,6 +20,7 @@ where <Self as Not>::Output: NumCast,
 {}
 
 impl Token for u8 {}
+impl Token for u16 {}
 
 pub type Action<I/*: Token*/> = fn(&mut State<I>) -> bool;
 
@@ -82,10 +83,12 @@ pub struct Match<I: Token> {
     groups: Vec<(String,Vec<I>)>
 }
 
+#[derive(Clone)]
 pub enum Expr<I: Token> {
     Pattern(String),
     Terminal(I),
-    Subdecoder(Rc<Disassembler<I>>)
+    Subdecoder(Rc<Disassembler<I>>),
+    Optional(Box<Expr<I>>),
 }
 
 pub trait ToExpr<I: Token> {
@@ -107,6 +110,12 @@ impl<'a,I: Token> ToExpr<I> for Rc<Disassembler<I>> {
 impl<I: Token> ToExpr<I> for usize {
     fn to_expr(&self) -> Expr<I> {
         Expr::Terminal(I::from::<usize>(*self).unwrap().clone())
+    }
+}
+
+impl<I: Token> ToExpr<I> for Expr<I> {
+    fn to_expr(&self) -> Expr<I> {
+        self.clone()
     }
 }
 
@@ -205,6 +214,19 @@ impl<I: Token> Expr<I> {
             },
             &Expr::Terminal(ref i) => pats.push((i.clone(),cast(!I::zero()).unwrap())),
             &Expr::Subdecoder(ref m) => return m.matches.clone(),
+            &Expr::Optional(ref e) => {
+                let mut ms = e.matches();
+                ms.push(Match::<I>{
+                    patterns: vec!(),
+                    groups: vec!(),
+                    actions: vec!()
+                });
+
+                for x in &ms {
+                println!("opt: {:?}",x.patterns);
+                }
+                return ms;
+            }
         }
 
         vec!(Match::<I>{
@@ -244,32 +266,40 @@ impl<I: Token> Disassembler<I> {
                 let mut ret = Vec::new();
 
 
-                for mut _match in (*e).matches() {
+                for _match in (*e).matches() {
                     for pre in &rest {
+                        let mut m = _match.clone();
+
                         for x in &pre.patterns {
-                            _match.patterns.push(x.clone());
+                            m.patterns.push(x.clone());
                         }
 
                         for x in &pre.actions {
-                            _match.actions.push(x.clone());
+                            m.actions.push(x.clone());
                         }
 
                         for x in &pre.groups {
-                            for y in _match.groups.iter_mut() {
+                            let mut new = true;
+                            for y in m.groups.iter_mut() {
                                 if y.0 == x.0 {
                                     for p in &x.1 {
                                         y.1.push(p.clone());
                                     }
+                                    new = false;
                                 }
                             }
-                        }
-                    }
 
-                    ret.push(Match::<I>{
-                        patterns: _match.patterns,
-                        actions:_match.actions,
-                        groups: _match.groups
-                    });
+                            if new {
+                                m.groups.push(x.clone());
+                            }
+                        }
+
+                        ret.push(Match::<I>{
+                            patterns: m.patterns,
+                            actions: m.actions,
+                            groups: m.groups
+                        });
+                    }
                 }
 
                 ret
@@ -398,6 +428,10 @@ impl<I: Token> Disassembler<I> {
     }
 }
 
+macro_rules! opt {
+    ($e:expr) => { { Expr::Optional(Box::new($e.to_expr())) } };
+}
+
 macro_rules! new_disassembler {
     ($ty:ty => $( [ $( $t:expr ),+ ] = $f:expr),+) => {
         {
@@ -447,6 +481,22 @@ mod tests {
     use guard::Guard;
     use value::Rvalue;
     use mnemonic::Bound;
+
+    #[test]
+    fn combine_expr() {
+        let sub = new_disassembler!(u8 =>
+            [ 1 ] = |_| { true },
+            [ 2, 2 ] = |_| { true }
+        );
+
+        let main = new_disassembler!(u8 =>
+            [ 3, sub ] = |_| { true }
+        );
+
+        for x in &main.matches {
+            assert!(x.patterns == vec!((3,255),(1,255)) || x.patterns == vec!((3,255),(2,255),(2,255)));
+        }
+    }
 
     #[test]
     fn decode_macro() {
@@ -696,128 +746,131 @@ mod tests {
     fn invalid_token_pattern() {
         new_disassembler!(u8 => [ "a111111" ] = |_| { true });
     }
-/*
-    using sw = po::sem_state<wtest_tag>&;
 
-    TEST_F(disassembler,wide_token)
-    {
-        po::sem_state<wtest_tag> st(0,'a');
-        std::vector<uint8_t> _buf = {0x22,0x11, 0x44,0x33, 0x44,0x55};
-        po::slab buf(_buf.data(),_buf.size());
-        po::disassembler<wtest_tag> dec;
+    #[test]
+    fn wide_token() {
+        let st = State::<u16>::new(0);
+        let def = OpaqueLayer::wrap(vec!(0x11,0x22,0x33,0x44,0x55,0x44));
+        let dec = new_disassembler!(u16 =>
+            [0x1122] = |s: &mut State<u16>|
+            {
+                let a = s.address;
+                s.mnemonic(2,"A","",vec!(),|_| {});
+                s.jump(Rvalue::Constant(a + 2),Guard::new());
+                true
+            },
 
-        dec[0x1122] = [](sw s)
-        {
-            s.mnemonic(2,"A");
-            s.jump(s.address + 2);
-            return true;
-        };
+            [0x3344] = |s: &mut State<u16>|
+            {
+                let a = s.address;
+                s.mnemonic(2,"B","",vec!(),|_| {});
+                s.jump(Rvalue::Constant(a + 2),Guard::new());
+                s.jump(Rvalue::Constant(a + 4),Guard::new());
+                true
+            },
 
-        dec[0x3344] = [](sw s)
-        {
-            s.mnemonic(2,"B");
-            s.jump(s.address + 2);
-            s.jump(s.address + 4);
-            return true;
-        };
+            [0x5544] = |s: &mut State<u16>|
+            {
+                s.mnemonic(2, "C","",vec!(),|_| {});
+                true
+            }
+        );
 
-        dec[0x5544] = [](sw s)
-        {
-            s.mnemonic(2, "C");
-            return true;
-        };
+        let maybe_res = dec.next_match(&mut def.iter(),st);
 
-        boost::optional<std::pair<po::slab::iterator,po::sem_state<wtest_tag>>> i;
+        assert!(maybe_res.is_some());
+        let res = maybe_res.unwrap();
 
-        i = dec.try_match(buf.begin(),buf.end(),st);
-        ASSERT_TRUE(!!i);
-        st = i->second;
-
-        ASSERT_EQ(std::distance(buf.begin(), i->first),2);
-        ASSERT_EQ(st.address, 0u);
-        ASSERT_EQ(st.tokens.size(), 1u);
-        ASSERT_EQ(st.tokens[0], 0x1122u);
-        ASSERT_EQ(st.mnemonics.size(), 1u);
-        ASSERT_EQ(st.mnemonics.front().opcode, std::string("A"));
-        ASSERT_EQ(st.mnemonics.front().area, po::bound(0,2));
-        ASSERT_TRUE(st.mnemonics.front().instructions.empty());
-        ASSERT_EQ(st.jumps.size(), 1u);
+        assert_eq!(res.address, 0);
+        assert_eq!(res.tokens.len(), 1);
+        assert_eq!(res.tokens[0], 0x1122);
+        assert_eq!(res.mnemonics.len(), 1);
+        assert_eq!(res.mnemonics[0].opcode, "A".to_string());
+        assert_eq!(res.mnemonics[0].area, Bound::new(0,2));
+        assert_eq!(res.mnemonics[0].instructions.len(), 0);
+        assert_eq!(res.jumps.len(), 1);
     }
 
-    TEST_F(disassembler,optional)
-    {
+    #[test]
+    fn optional() {
+        let def = OpaqueLayer::wrap(vec!(127,126,125,127,125));
+        let dec = new_disassembler!(u8 =>
+            [127, opt!(126), 125] = |st: &mut State<u8>|
+            {
+                let l = st.tokens.len();
+                st.mnemonic(l, "1", "", vec!(),|_| {});
+                true
+            }
+        );
 
-        po::sem_state<test_tag> st(0,'a');
-        std::vector<unsigned char> _buf = {127,126,125,127,125};
-        po::slab buf(_buf.data(),_buf.size());
-        po::disassembler<test_tag> dec;
+        for x in &dec.matches {
+            println!("{:?}",x.patterns);
+        }
 
-        dec[po::token_expr(127) >> *po::token_expr(126) >> po::token_expr(125)] = [](ss s) { s.mnemonic(s.tokens.size(), "1"); return true; };
-        boost::optional<std::pair<po::slab::iterator,po::sem_state<test_tag>>> i;
+        {
+            let st = State::<u8>::new(0);
+            let maybe_res = dec.next_match(&mut def.iter(),st);
 
-        i = dec.try_match(buf.begin(),buf.end(),st);
-        ASSERT_TRUE(!!i);
-        st = i->second;
+            assert!(maybe_res.is_some());
+            let res = maybe_res.unwrap();
 
-        ASSERT_EQ(std::distance(buf.begin(), i->first),3);
-        ASSERT_EQ(st.address, 0u);
-        ASSERT_EQ(st.tokens.size(), 3u);
-        ASSERT_EQ(st.tokens[0], 127u);
-        ASSERT_EQ(st.tokens[1], 126u);
-        ASSERT_EQ(st.tokens[2], 125u);
-        ASSERT_EQ(st.capture_groups.size(), 0u);
-        ASSERT_EQ(st.mnemonics.size(), 1u);
-        ASSERT_EQ(st.mnemonics.front().opcode, std::string("1"));
-        ASSERT_EQ(st.mnemonics.front().area, po::bound(0,3));
-        ASSERT_TRUE(st.mnemonics.front().instructions.empty());
-        ASSERT_EQ(st.jumps.size(), 0u);
+            assert_eq!(res.address, 0);
+            assert_eq!(res.tokens.len(), 3);
+            assert_eq!(res.tokens, vec!(127,126,125));
+            assert_eq!(res.mnemonics.len(), 1);
+            assert_eq!(res.mnemonics[0].opcode, "1".to_string());
+            assert_eq!(res.mnemonics[0].area, Bound::new(0,3));
+            assert_eq!(res.mnemonics[0].instructions.len(), 0);
+            assert_eq!(res.jumps.len(), 0);
+        }
 
-        st = po::sem_state<test_tag>(3,'a');
-        i = dec.try_match(i->first,buf.end(),st);
-        ASSERT_TRUE(!!i);
-        st = i->second;
+        {
+            let st = State::<u8>::new(3);
+            let maybe_res = dec.next_match(&mut def.iter().cut(&(3..5)),st);
 
-        ASSERT_EQ(std::distance(buf.begin(), i->first),5);
-        ASSERT_EQ(st.address, 3u);
-        ASSERT_EQ(st.tokens.size(), 2u);
-        ASSERT_EQ(st.tokens[0], 127u);
-        ASSERT_EQ(st.tokens[1], 125u);
-        ASSERT_EQ(st.capture_groups.size(), 0u);
-        ASSERT_EQ(st.mnemonics.size(), 1u);
-        ASSERT_EQ(st.mnemonics.front().opcode, std::string("1"));
-        ASSERT_EQ(st.mnemonics.front().area, po::bound(3,5));
-        ASSERT_TRUE(st.mnemonics.front().instructions.empty());
-        ASSERT_EQ(st.jumps.size(), 0u);
+            assert!(maybe_res.is_some());
+            let res = maybe_res.unwrap();
+
+            assert_eq!(res.address, 3);
+            assert_eq!(res.tokens.len(), 2);
+            assert_eq!(res.tokens, vec!(127,125));
+            assert_eq!(res.mnemonics.len(), 1);
+            assert_eq!(res.mnemonics[0].opcode, "1".to_string());
+            assert_eq!(res.mnemonics[0].area, Bound::new(3,5));
+            assert_eq!(res.mnemonics[0].instructions.len(), 0);
+            assert_eq!(res.jumps.len(), 0);
+        }
     }
 
-    TEST_F(disassembler,fixed_capture_group_contents)
-    {
+    #[test]
+    fn fixed_capture_group_contents() {
+        let def = OpaqueLayer::wrap(vec!(127,255));
+        let dec = new_disassembler!(u8 =>
+            [ "01111111", "a@11111111" ] = |st: &mut State<u8>|
+            {
+                let l = st.tokens.len();
+                st.mnemonic(l, "1", "", vec!(),|_| {});
+                true
+            }
+        );
 
-        po::sem_state<test_tag> st(0,'a');
-        std::vector<unsigned char> _buf = {127,255};
-        po::slab buf(_buf.data(),_buf.size());
-        po::disassembler<test_tag> dec;
+        for d in &dec.matches {
+            println!("{:?}",d.groups);
+        }
+        let st = State::<u8>::new(0);
+        let maybe_res = dec.next_match(&mut def.iter(),st);
 
-        dec[ po::token_expr(std::string("01111111")) >> po::token_expr(std::string("a@11111111")) ] = [](ss s) { s.mnemonic(1,"1"); return true; };
-        boost::optional<std::pair<po::slab::iterator,po::sem_state<test_tag>>> i;
+        assert!(maybe_res.is_some());
+        let res = maybe_res.unwrap();
 
-        i = dec.try_match(buf.begin(),buf.end(),st);
-        ASSERT_TRUE(!!i);
-        st = i->second;
-
-        ASSERT_EQ(std::distance(buf.begin(), i->first),2);
-        ASSERT_EQ(st.address, 0u);
-        ASSERT_EQ(st.tokens.size(), 2u);
-        ASSERT_EQ(st.tokens[0], 127u);
-        ASSERT_EQ(st.tokens[1], 255u);
-        ASSERT_EQ(st.capture_groups.size(), 1u);
-        ASSERT_EQ(st.capture_groups.count("a"), 1u);
-        ASSERT_EQ(st.capture_groups["a"], 255u);
-        ASSERT_EQ(st.mnemonics.size(), 1u);
-        ASSERT_EQ(st.mnemonics.front().opcode, std::string("1"));
-        ASSERT_EQ(st.mnemonics.front().area, po::bound(0,1));
-        ASSERT_TRUE(st.mnemonics.front().instructions.empty());
-        ASSERT_EQ(st.jumps.size(), 0u);
+        assert_eq!(res.address, 0);
+        assert_eq!(res.tokens.len(), 2);
+        assert_eq!(res.tokens, vec!(127,255));
+        assert_eq!(res.groups, vec!(("a".to_string(),255)));
+        assert_eq!(res.mnemonics.len(), 1);
+        assert_eq!(res.mnemonics[0].opcode, "1".to_string());
+        assert_eq!(res.mnemonics[0].area, Bound::new(0,2));
+        assert_eq!(res.mnemonics[0].instructions.len(), 0);
+        assert_eq!(res.jumps.len(), 0);
     }
-*/
 }
