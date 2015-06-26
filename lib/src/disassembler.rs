@@ -126,16 +126,13 @@ impl<I: Token> Expr<I> {
           <I as BitAnd>::Output: NumCast,
           <I as Shl<usize>>::Output: NumCast
     {
-        let mut pats = Vec::<(I,I)>::new();
-        let mut grps = HashMap::<String,Vec<I>>::new();
-
         match self {
             &Expr::Pattern(ref s) => {
                 let mut groups = HashMap::<String,I>::new();
                 let mut cur_group = "".to_string();
                 let mut read_pat = false; // false while reading torwards @
                 let mut bit: isize = (size_of::<I>() * 8) as isize;
-                let mut invmask = I::zero();
+                let mut mask = I::zero();
                 let mut pat = I::zero();
 
                 for c in s.chars() {
@@ -168,9 +165,9 @@ impl<I: Token> Expr<I> {
                         },
                         '0' | '1' => {
                             if bit - 1 > 0 {
-                                invmask = cast(invmask | cast(I::one() << ((bit - 1) as usize)).unwrap()).unwrap();
+                                mask = cast(mask | cast(I::one() << ((bit - 1) as usize)).unwrap()).unwrap();
                             } else {
-                                invmask = cast(invmask | I::one()).unwrap();
+                                mask = cast(mask | I::one()).unwrap();
                             }
 
                             if c == '1' {
@@ -202,18 +199,24 @@ impl<I: Token> Expr<I> {
                     panic!("Pattern syntax error: invalid pattern length");
                 }
 
-                pats.push((pat.clone(),cast(invmask.clone()).unwrap()));
-
-                for g in groups {
-                    if grps.contains_key(&g.0) {
-                        grps.get_mut(&g.0).unwrap().push(g.1)
-                    } else if g.1 != I::zero() {
-                        grps.insert(g.0,vec!(g.1));
-                    }
-                }
+                vec!(Match::<I>{
+                    patterns: vec!((pat,mask)),
+                    groups: groups.iter().filter_map(|x| {
+                        if *x.1 != I::zero() {
+                            Some((x.0.clone(),vec!(x.1.clone())))
+                        } else {
+                            None
+                        }
+                    }).collect(),
+                    actions: vec!()
+                })
             },
-            &Expr::Terminal(ref i) => pats.push((i.clone(),cast(!I::zero()).unwrap())),
-            &Expr::Subdecoder(ref m) => return m.matches.clone(),
+            &Expr::Terminal(ref i) => vec!(Match::<I>{
+                patterns: vec!((i.clone(),cast(!I::zero()).unwrap())),
+                groups: vec!(),
+                actions: vec!(),
+            }),
+            &Expr::Subdecoder(ref m) => m.matches.clone(),
             &Expr::Optional(ref e) => {
                 let mut ms = e.matches();
                 ms.push(Match::<I>{
@@ -223,17 +226,11 @@ impl<I: Token> Expr<I> {
                 });
 
                 for x in &ms {
-                println!("opt: {:?}",x.patterns);
+                    println!("opt: {:?}",x.patterns);
                 }
-                return ms;
+                ms
             }
         }
-
-        vec!(Match::<I>{
-            patterns: pats,
-            groups: grps.iter().map(|x| (x.0.clone(),x.1.clone())).collect(),
-            actions: vec!()
-        })
     }
 }
 
