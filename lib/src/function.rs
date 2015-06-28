@@ -137,9 +137,11 @@ impl Function {
         for (src_off,tgts) in by_source.iter() {
             for &(ref opt_tgt,ref gu) in tgts {
                 if opt_tgt.is_some() {
+                    println!("by_sec: {} -> {}",*src_off,opt_tgt.unwrap());
+
                     let from_bb = ret.vertices().find(|&t| {
                         match ret.vertex_label(t) {
-                           Some(&ControlFlowTarget::Resolved(ref bb)) => bb.area.start == *src_off,
+                            Some(&ControlFlowTarget::Resolved(ref bb)) => bb.mnemonics.last().map_or(false,|x| x.area.start == *src_off),
                             _ => false
                         }
                     });
@@ -155,10 +157,12 @@ impl Function {
                         (None,Some(to)) => {
                             let vx = ret.add_vertex(ControlFlowTarget::Unresolved(Rvalue::Constant(*src_off)));
                             ret.add_edge(gu.clone(),vx,to);
+                            println!("conn {} with bb",*src_off);
                         },
                         (Some(from),None) => {
                             let vx = ret.add_vertex(ControlFlowTarget::Unresolved(Rvalue::Constant(opt_tgt.unwrap())));
                             ret.add_edge(gu.clone(),from,vx);
+                            println!("conn bb with {},{}",opt_tgt.unwrap(),*src_off);
                         },
                         _ => error!("jump from {} to {} doesn't hit any blocks",src_off,opt_tgt.unwrap()),
                     }
@@ -202,10 +206,8 @@ impl Function {
                 }
             }
 
-            let mut st = init.clone();
+            let mut st = State::<I>::new(addr);//init.clone();
             let mut i = data.seek(addr);
-
-            st.address = addr;
 
             let maybe_match = dec.next_match(&mut i,st);
 
@@ -226,9 +228,11 @@ impl Function {
                             by_source.entry(last_mne_start).or_insert(Vec::new()).push((Some(*c),gu.clone()));
                             by_destination.entry(*c).or_insert(Vec::new()).push((Some(last_mne_start),gu.clone()));
                             todo.insert(*c);
+                            println!("jump to {}",c);
                         },
                         _ => {
                             by_source.entry(last_mne_start).or_insert(Vec::new()).push((None,gu.clone()));
+                            println!("jump to unresolved");
                         }
                     }
                 }
@@ -257,7 +261,7 @@ impl Function {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use graph_algos::{VertexListGraphTrait,EdgeListGraphTrait};
+    use graph_algos::{VertexListGraphTrait,EdgeListGraphTrait,AdjacencyMatrixGraphTrait};
     use graph_algos::{AdjacencyList,GraphTrait,MutableGraphTrait};
     use guard::Guard;
     use mnemonic::{Mnemonic,Bound};
@@ -425,69 +429,89 @@ mod tests {
         assert_eq!(func.name, "func_0".to_string());
     }
 
-    /*
-    TEST(procedure,continuous)
-    {
-        std::vector<typename po::architecture_traits<test_tag>::token_type> bytes({0,1,2,3,4,5});
-        std::map<typename po::architecture_traits<test_tag>::token_type,po::sem_state<test_tag>> states;
-        auto add = [&](po::offset p, const std::string &n) -> void
-        {
-            po::sem_state<test_tag> st(p,'a');
-            st.mnemonic(1,n);
-            st.jump(p+1);
-            states.insert(std::make_pair(p,st));
-        };
-        auto check = [&](const po::mnemonic &m, const std::string &n, po::offset p) -> void
-        {
-            ASSERT_EQ(m.opcode, n);
-            ASSERT_EQ(m.operands.size(), 0u);
-            ASSERT_EQ(m.instructions.size(), 0u);
-            ASSERT_EQ(m.area, po::bound(p,p+1));
-        };
+    #[test]
+    fn continuous() {
+        let main = new_disassembler!(u8 =>
+            [ 0 ] = |st: &mut State<u8>| {
+                let next = st.address;
+                st.mnemonic(1,"test0","",vec!(),|_| {});
+                st.jump(Rvalue::Constant(next + 1),Guard::new());
+                true
+            },
+            [ 1 ] = |st: &mut State<u8>| {
+                let next = st.address;
+                st.mnemonic(1,"test1","",vec!(),|_| {});
+                st.jump(Rvalue::Constant(next + 1),Guard::new());
+                true
+            },
+            [ 2 ] = |st: &mut State<u8>| {
+                let next = st.address;
+                st.mnemonic(1,"test2","",vec!(),|_| {});
+                st.jump(Rvalue::Constant(next + 1),Guard::new());
+                true
+            },
+            [ 3 ] = |st: &mut State<u8>| {
+                let next = st.address;
+                st.mnemonic(1,"test3","",vec!(),|_| {});
+                st.jump(Rvalue::Constant(next + 1),Guard::new());
+                true
+            },
+            [ 4 ] = |st: &mut State<u8>| {
+                let next = st.address;
+                st.mnemonic(1,"test4","",vec!(),|_| {});
+                st.jump(Rvalue::Constant(next + 1),Guard::new());
+                true
+            },
+            [ 5 ] = |st: &mut State<u8>| {
+                let next = st.address;
+                st.mnemonic(1,"test5","",vec!(),|_| {});
+                st.jump(Rvalue::Constant(next + 1),Guard::new());
+                true
+            }
+        );
 
-        add(0,"test0");
-        add(1,"test1");
-        add(2,"test2");
-        add(3,"test3");
-        add(4,"test4");
-        add(5,"test5");
+        let data = OpaqueLayer::wrap(vec!(0,1,2,3,4,5));
+        let init = State::new(0);
+        let func = Function::disassemble(None,main,init,data.iter(),0);
 
-        disassembler_mockup mockup(states);
-        boost::optional<po::proc_loc> maybe_proc = po::procedure::disassemble<test_tag,disassembler_mockup>(boost::none,mockup,'a',slab(bytes.data(),bytes.size()),0);
-        ASSERT_TRUE(!!maybe_proc);
-        proc_loc proc = *maybe_proc;
+        assert_eq!(func.cflow_graph.num_vertices(), 2);
+        assert_eq!(func.cflow_graph.num_edges(), 1);
 
-        ASSERT_TRUE(!!proc->entry);
-        ASSERT_EQ(proc->rev_postorder().size(), 1u);
+        let mut bb_vx = None;
+        let mut ures_vx = None;
 
-        po::bblock_loc bb = *proc->rev_postorder().begin();
+        for vx in func.cflow_graph.vertices() {
+            if let Some(&ControlFlowTarget::Resolved(ref bb)) = func.cflow_graph.vertex_label(vx) {
+                assert_eq!(bb.mnemonics.len(), 6);
+                assert_eq!(bb.mnemonics[0].opcode, "test0".to_string());
+                assert_eq!(bb.mnemonics[0].area, Bound::new(0,1));
+                assert_eq!(bb.mnemonics[1].opcode, "test1".to_string());
+                assert_eq!(bb.mnemonics[1].area, Bound::new(1,2));
+                assert_eq!(bb.mnemonics[2].opcode, "test2".to_string());
+                assert_eq!(bb.mnemonics[2].area, Bound::new(2,3));
+                assert_eq!(bb.mnemonics[3].opcode, "test3".to_string());
+                assert_eq!(bb.mnemonics[3].area, Bound::new(3,4));
+                assert_eq!(bb.mnemonics[4].opcode, "test4".to_string());
+                assert_eq!(bb.mnemonics[4].area, Bound::new(4,5));
+                assert_eq!(bb.mnemonics[5].opcode, "test5".to_string());
+                assert_eq!(bb.mnemonics[5].area, Bound::new(5,6));
+                assert_eq!(bb.area, Bound::new(0,6));
+                bb_vx = Some(vx);
+            } else if let Some(&ControlFlowTarget::Unresolved(Rvalue::Constant(c))) = func.cflow_graph.vertex_label(vx) {
+                assert_eq!(c, 6);
+                ures_vx = Some(vx);
+            } else {
+                unreachable!();
+            }
+        }
 
-        ASSERT_EQ(bb->mnemonics().size(), 6u);
-
-        check(bb->mnemonics()[0],"test0",0);
-        check(bb->mnemonics()[1],"test1",1);
-        check(bb->mnemonics()[2],"test2",2);
-        check(bb->mnemonics()[3],"test3",3);
-        check(bb->mnemonics()[4],"test4",4);
-        check(bb->mnemonics()[5],"test5",5);
-
-        auto ep = edges(proc->control_transfers);
-        using edge_descriptor = boost::graph_traits<decltype(procedure::control_transfers)>::edge_descriptor;
-        ASSERT_TRUE(std::all_of(ep.first,ep.second,[&](edge_descriptor e) { try { get_edge(e,proc->control_transfers); return true; } catch(...) { return false; } }));
-
-        auto in_p = in_edges(find_node(variant<bblock_loc,rvalue>(bb),proc->control_transfers),proc->control_transfers);
-        auto out_p = out_edges(find_node(variant<bblock_loc,rvalue>(bb),proc->control_transfers),proc->control_transfers);
-
-        ASSERT_EQ(distance(in_p.first,in_p.second), 0);
-        ASSERT_EQ(distance(out_p.first,out_p.second), 1);
-        ASSERT_TRUE(get_edge(*out_p.first,proc->control_transfers).relations.empty());
-        ASSERT_TRUE(is_constant(get<rvalue>(get_vertex(target(*out_p.first,proc->control_transfers),proc->control_transfers))));
-        ASSERT_EQ(to_constant(get<rvalue>(get_vertex(target(*out_p.first,proc->control_transfers),proc->control_transfers))).content(), 6u);
-        ASSERT_EQ(bb->area(), po::bound(0,6));
-        ASSERT_EQ(bb, *(proc->entry));
-        ASSERT_NE(proc->name, "");
+        assert!(ures_vx.is_some() && bb_vx.is_some());
+        assert_eq!(func.entry_point, bb_vx);
+        assert_eq!(func.name, "func_0".to_string());
+        assert!(func.cflow_graph.edge(bb_vx.unwrap(),ures_vx.unwrap()).is_some());
     }
 
+    /*
     TEST(procedure,branch)
     {
         std::vector<typename po::architecture_traits<test_tag>::token_type> bytes({0,1,2});
