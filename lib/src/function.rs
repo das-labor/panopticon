@@ -11,6 +11,9 @@ use mnemonic::Mnemonic;
 use num::traits::NumCast;
 use std::fmt::{Display,Debug};
 use std::ops::{BitAnd,BitOr,Shl,Shr,Not};
+use std::rc::Rc;
+
+use disassembler;
 
 #[derive(RustcDecodable,RustcEncodable,Debug)]
 pub enum ControlFlowTarget {
@@ -166,7 +169,7 @@ impl Function {
         ret
     }
 
-    pub fn disassemble<I: Token>(cont: Option<Function>, dec: &Disassembler<I>, init: State<I>, data: LayerIter, start: u64) -> Function
+    pub fn disassemble<I: Token>(cont: Option<Function>, dec: Rc<Disassembler<I>>, init: State<I>, data: LayerIter, start: u64) -> Function
     where <I as Not>::Output: NumCast,
           <I as BitAnd>::Output: NumCast,
           <I as BitOr>::Output: NumCast,
@@ -188,43 +191,49 @@ impl Function {
             todo.remove(&addr);
 
             if let Some(mnes) = maybe_mnes {
-                if mnes.is_empty() || mnes.first().unwrap().area.start != addr {
-                    let mut st = init.clone();
-                    let mut i = data.seek(addr);
-
-                    st.address = addr;
-
-                    let maybe_match = dec.next_match(&mut i,st);
-
-                    if let Some(match_st) = maybe_match {
-                        let mut last_mne_start = 0;
-
-                        for mne in match_st.mnemonics {
-                            last_mne_start = mne.area.start;
-                            mnemonics.entry(mne.area.start).or_insert(Vec::new()).push(mne);
-                        }
-
-                        for (tgt,gu) in match_st.jumps {
-                            match tgt {
-                                Rvalue::Constant(ref c) => {
-                                    by_source.entry(last_mne_start).or_insert(Vec::new()).push((Some(*c),gu.clone()));
-                                    by_destination.entry(*c).or_insert(Vec::new()).push((Some(last_mne_start),gu.clone()));
-                                    todo.insert(*c);
-                                },
-                                _ => {
-                                    by_source.entry(last_mne_start).or_insert(Vec::new()).push((None,gu.clone()));
-                                }
-                            }
-                        }
-                    } else {
-                        error!("failed to match anything at {}",addr);
-                    }
-                } else {
+                if !mnes.is_empty() {
                     let a = mnes.first().unwrap().area.clone();
-                    if !mnes.is_empty() || (a.start < addr && a.end > addr) {
-                        error!("jump inside mnemonic at {}",addr);
+                    if a.start < addr && a.end > addr {
+                        println!("jump inside mnemonic at {}",addr);
+                    } else if a.start == addr {
+                        // else: already disassembled
+                        continue;
                     }
                 }
+            }
+
+            let mut st = init.clone();
+            let mut i = data.seek(addr);
+
+            st.address = addr;
+
+            let maybe_match = dec.next_match(&mut i,st);
+
+            if let Some(match_st) = maybe_match {
+                let mut last_mne_start = 0;
+
+                println!("match with {} mnemonics",match_st.mnemonics.len());
+
+                for mne in match_st.mnemonics {
+                    last_mne_start = mne.area.start;
+                    println!("match {} at {}..{}",mne.opcode,mne.area.start,mne.area.end);
+                    mnemonics.entry(mne.area.start).or_insert(Vec::new()).push(mne);
+                }
+
+                for (tgt,gu) in match_st.jumps {
+                    match tgt {
+                        Rvalue::Constant(ref c) => {
+                            by_source.entry(last_mne_start).or_insert(Vec::new()).push((Some(*c),gu.clone()));
+                            by_destination.entry(*c).or_insert(Vec::new()).push((Some(last_mne_start),gu.clone()));
+                            todo.insert(*c);
+                        },
+                        _ => {
+                            by_source.entry(last_mne_start).or_insert(Vec::new()).push((None,gu.clone()));
+                        }
+                    }
+                }
+            } else {
+                println!("failed to match anything at {}",addr);
             }
         }
 
@@ -251,9 +260,11 @@ mod tests {
     use graph_algos::{VertexListGraphTrait,EdgeListGraphTrait};
     use graph_algos::{AdjacencyList,GraphTrait,MutableGraphTrait};
     use guard::Guard;
-    use mnemonic::Mnemonic;
+    use mnemonic::{Mnemonic,Bound};
     use basic_block::BasicBlock;
     use value::Rvalue;
+    use layer::OpaqueLayer;
+    use disassembler::{ToExpr,State};
 
     #[test]
     fn new() {
@@ -381,37 +392,40 @@ mod tests {
         }
     }
 
-    /*
-    TEST(procedure,add_single)
-    {
-        std::vector<typename po::architecture_traits<test_tag>::token_type> bytes = {0};
-        std::map<typename po::architecture_traits<test_tag>::token_type,po::sem_state<test_tag>> states;
+    #[test]
+    fn add_single() {
+        let main = new_disassembler!(u8 =>
+            [ 0 ] = |st: &mut State<u8>| {
+                let next = st.address;
+                st.mnemonic(1,"A","",vec!(),|_| {});
+                true
+            }
+		);
+        let data = OpaqueLayer::wrap(vec!(0));
+        let init = State::new(0);
+        let func = Function::disassemble(None,main,init,data.iter(),0);
 
-        {
-            po::sem_state<test_tag> st(0,'a');
-            st.mnemonic(1,"test");
-            states.insert(std::make_pair(0,st));
+        assert_eq!(func.cflow_graph.num_vertices(), 1);
+        assert_eq!(func.cflow_graph.num_edges(), 0);
+
+        if let Some(vx) = func.cflow_graph.vertices().next() {
+            if let Some(&ControlFlowTarget::Resolved(ref bb)) = func.cflow_graph.vertex_label(vx) {
+                assert_eq!(bb.mnemonics.len(), 1);
+                assert_eq!(bb.mnemonics[0].opcode, "A".to_string());
+                assert_eq!(bb.mnemonics[0].area, Bound::new(0,1));
+                assert_eq!(bb.area, Bound::new(0,1));
+            } else {
+                unreachable!();
+            }
+         } else {
+            unreachable!();
         }
 
-        disassembler_mockup mockup(states);
-        boost::optional<po::proc_loc> maybe_proc = po::procedure::disassemble<test_tag,disassembler_mockup>(boost::none,mockup,'a',slab(bytes.data(),bytes.size()),0);
-        ASSERT_TRUE(!!maybe_proc);
-        proc_loc proc = *maybe_proc;
-
-        ASSERT_EQ(proc->rev_postorder().size(), 1u);
-
-        po::bblock_loc bb = *proc->rev_postorder().begin();
-
-        ASSERT_EQ(bb->mnemonics().size(), 1u);
-        ASSERT_EQ(bb->mnemonics()[0].opcode, "test");
-        ASSERT_EQ(bb->mnemonics()[0].area, po::bound(0,1));
-        ASSERT_EQ(po::bound(0,1), bb->area());
-        ASSERT_EQ(bb, *(proc->entry));
-        ASSERT_EQ(num_edges(proc->control_transfers), 0u);
-        ASSERT_EQ(num_vertices(proc->control_transfers), 1u);
-        ASSERT_NE(proc->name, "");
+        assert_eq!(func.entry_point, func.cflow_graph.vertices().next());
+        assert_eq!(func.name, "func_0".to_string());
     }
 
+    /*
     TEST(procedure,continuous)
     {
         std::vector<typename po::architecture_traits<test_tag>::token_type> bytes({0,1,2,3,4,5});
