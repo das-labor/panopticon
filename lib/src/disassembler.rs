@@ -1,3 +1,5 @@
+#![macro_use]
+
 use value::Rvalue;
 use mnemonic::Mnemonic;
 use guard::Guard;
@@ -429,22 +431,23 @@ macro_rules! opt {
     ($e:expr) => { { Expr::Optional(Box::new($e.to_expr())) } };
 }
 
+#[macro_export]
 macro_rules! new_disassembler {
     ($ty:ty => $( [ $( $t:expr ),+ ] = $f:expr),+) => {
         {
-            let mut dis = Disassembler::<$ty>::new();
+            let mut dis = ::disassembler::Disassembler::<$ty>::new();
 
             $({
-                let mut __x = Vec::new();
+                let mut __x = ::std::vec::Vec::new();
                 $(
                     __x.push($t.to_expr());
                 )+
-                fn a(a: &mut State<$ty>) -> bool { ($f)(a) };
-                let fuc: Action<$ty> = a;
+                fn a(a: &mut ::disassembler::State<$ty>) -> bool { ($f)(a) };
+                let fuc: ::disassembler::Action<$ty> = a;
                 dis.add_expr(__x,fuc);
             })+
 
-            Rc::<Disassembler<$ty>>::new(dis)
+            ::std::rc::Rc::<::disassembler::Disassembler<$ty>>::new(dis)
         }
     };
     ($ty:ty => $( [ $( $t:expr ),+ ] = $f:expr),+, _ = $def:expr) => {
