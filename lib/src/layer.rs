@@ -62,6 +62,14 @@ impl<'a> LayerIter<'a> {
         }
     }
 
+    pub fn seek(&self, p: u64) -> LayerIter<'a> {
+        if p > 0 {
+            LayerIter::Skip(Box::new(self.clone().skip(p as usize)))
+        } else {
+            self.clone()
+        }
+    }
+
     pub fn append(&self, l: LayerIter<'a>) -> LayerIter<'a> {
         LayerIter::Chain(Box::new(self.clone().chain(l)))
     }

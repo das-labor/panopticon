@@ -1,25 +1,31 @@
 use basic_block::BasicBlock;
 use guard::Guard;
 use graph_algos::{AdjacencyList,GraphTrait,MutableGraphTrait};
+use graph_algos::adjacency_list::{AdjacencyListEdgeDescriptor,AdjacencyListVertexDescriptor};
 use graph_algos::{VertexListGraphTrait,EdgeListGraphTrait};
 use disassembler::{Disassembler,State,Token};
 use layer::LayerIter;
 use value::Rvalue;
-use std::collections::{HashMap,BTreeMap};
+use std::collections::{HashMap,BTreeMap,BinaryHeap,Bound,BTreeSet};
 use mnemonic::Mnemonic;
+use num::traits::NumCast;
+use std::fmt::{Display,Debug};
+use std::ops::{BitAnd,BitOr,Shl,Shr,Not};
 
-#[derive(RustcDecodable,RustcEncodable)]
+#[derive(RustcDecodable,RustcEncodable,Debug)]
 pub enum ControlFlowTarget {
     Resolved(BasicBlock),
     Unresolved(Rvalue),
 }
 
 pub type ControlFlowGraph = AdjacencyList<ControlFlowTarget,Guard>;
+pub type ControlFlowRef = AdjacencyListVertexDescriptor;
 
 #[derive(RustcDecodable,RustcEncodable)]
 pub struct Function {
     pub name: String,
     pub cflow_graph: ControlFlowGraph,
+    pub entry_point: Option<ControlFlowRef>
 }
 
 impl Function {
@@ -27,6 +33,7 @@ impl Function {
         Function{
             name: a,
             cflow_graph: AdjacencyList::new(),
+            entry_point: None,
         }
     }
 
@@ -90,28 +97,33 @@ impl Function {
                     mne.area.end - 1
                 };
 
-                bblock.push(mne.clone());
-
                 if bblock.len() > 0 {
+                    println!("start");
                     // if next mnemonics aren't adjacent
                     let mut new_bb = bblock.last().unwrap().area.end != mne.area.start;
+                    println!("1: {} ({} vs {}, {})",new_bb,bblock.last().unwrap().area.end,mne.area.start,off);
 
 					// or any following jumps aren't to adjacent mnemonics
-                    new_bb |= by_source.get(&last_pos).unwrap_or(&Vec::new()).iter().any(|&(ref opt_dest,ref gu)| {
+                    new_bb |= by_source.get(&mne.area.start).unwrap_or(&Vec::new()).iter().any(|&(ref opt_dest,ref gu)| {
                         opt_dest.is_some() && opt_dest.unwrap() != mne.area.end });
+                    println!("2: {}",new_bb);
 
 					// or any jumps pointing to the next that aren't from here
-                    new_bb |= by_destination.get(&mne.area.end).unwrap_or(&Vec::new()).iter().any(|&(ref opt_src,ref gu)| {
-                        opt_src.is_some() && opt_src.unwrap() != last_pos });
+                    new_bb |= by_destination.get(&mne.area.start).unwrap_or(&Vec::new()).iter().any(|&(ref opt_src,ref gu)| {
+                        opt_src.is_some() && opt_src.unwrap() != bblock.last().unwrap().area.start });
+                    println!("3: {}",new_bb);
 
                     // or the entry point does not point here
                     new_bb |= mne.area.start == start;
+                    println!("4: {}",new_bb);
 
                     if new_bb {
                         ret.add_vertex(ControlFlowTarget::Resolved(BasicBlock::from_vec(bblock.clone())));
                         bblock.clear();
                     }
                 }
+
+                bblock.push(mne.clone());
             }
         }
 
@@ -124,7 +136,7 @@ impl Function {
                 if opt_tgt.is_some() {
                     let from_bb = ret.vertices().find(|&t| {
                         match ret.vertex_label(t) {
-                           Some(&ControlFlowTarget::Resolved(ref bb)) => bb.area.end - 1 == *src_off,
+                           Some(&ControlFlowTarget::Resolved(ref bb)) => bb.area.start == *src_off,
                             _ => false
                         }
                     });
@@ -154,294 +166,83 @@ impl Function {
         ret
     }
 
-    pub fn disassemble<I: Token>(cont: Option<Function>, dec: &Disassembler<I>, init: State<I>, data: LayerIter, start: u64) -> Function {
-        unimplemented!();
+    pub fn disassemble<I: Token>(cont: Option<Function>, dec: &Disassembler<I>, init: State<I>, data: LayerIter, start: u64) -> Function
+    where <I as Not>::Output: NumCast,
+          <I as BitAnd>::Output: NumCast,
+          <I as BitOr>::Output: NumCast,
+          <I as Shl<usize>>::Output: NumCast,
+          <I as Shr<usize>>::Output: NumCast,
+          I: Eq + PartialEq + Display
+    {
+        let name = cont.as_ref().map_or(format!("func_{}",start),|x| x.name.clone());
+        let (mut mnemonics,mut by_source,mut by_destination) = cont.map_or(
+            (BTreeMap::new(),HashMap::new(),HashMap::new()),|x| Self::index_cflow_graph(x.cflow_graph));
+        let mut todo = BTreeSet::<u64>::new();
+
+        todo.insert(start);
+
+        while !todo.is_empty() {
+            let addr = todo.iter().next().unwrap().clone();
+            let maybe_mnes = mnemonics.iter().find(|x| *x.0 >= addr).map(|x| x.1.clone());
+
+            todo.remove(&addr);
+
+            if let Some(mnes) = maybe_mnes {
+                if mnes.is_empty() || mnes.first().unwrap().area.start != addr {
+                    let mut st = init.clone();
+                    let mut i = data.seek(addr);
+
+                    st.address = addr;
+
+                    let maybe_match = dec.next_match(&mut i,st);
+
+                    if let Some(match_st) = maybe_match {
+                        let mut last_mne_start = 0;
+
+                        for mne in match_st.mnemonics {
+                            last_mne_start = mne.area.start;
+                            mnemonics.entry(mne.area.start).or_insert(Vec::new()).push(mne);
+                        }
+
+                        for (tgt,gu) in match_st.jumps {
+                            match tgt {
+                                Rvalue::Constant(ref c) => {
+                                    by_source.entry(last_mne_start).or_insert(Vec::new()).push((Some(*c),gu.clone()));
+                                    by_destination.entry(*c).or_insert(Vec::new()).push((Some(last_mne_start),gu.clone()));
+                                    todo.insert(*c);
+                                },
+                                _ => {
+                                    by_source.entry(last_mne_start).or_insert(Vec::new()).push((None,gu.clone()));
+                                }
+                            }
+                        }
+                    } else {
+                        error!("failed to match anything at {}",addr);
+                    }
+                } else {
+                    let a = mnes.first().unwrap().area.clone();
+                    if !mnes.is_empty() || (a.start < addr && a.end > addr) {
+                        error!("jump inside mnemonic at {}",addr);
+                    }
+                }
+            }
+        }
+
+        let cfg = Self::assemble_cflow_graph(mnemonics,by_source,by_destination,start);
+        let e = cfg.vertices().find(|&vx| {
+            if let Some(&ControlFlowTarget::Resolved(ref bb)) = cfg.vertex_label(vx) {
+                bb.area.start == start
+            } else {
+                false
+            }
+        });
+
+        Function{
+            name: name,
+            cflow_graph: cfg,
+            entry_point: e,
+        }
     }
-
-    /*template<typename Tag,typename Dis>
-	boost::optional<proc_loc> procedure::disassemble(boost::optional<proc_loc> proc, Dis const& main, typename architecture_traits<Tag>::state_type const& init, po::slab data, offset start)
-	{
-		std::unordered_set<offset> todo;
-		std::map<offset,std::list<mnemonic>> mnemonics;
-		std::unordered_multimap<offset,std::pair<boost::optional<offset>,guard>> source;
-		std::unordered_multimap<offset,std::pair<offset,guard>> destination;
-		boost::optional<proc_loc> ret = boost::none;
-		std::function<boost::optional<bound>(const boost::variant<rvalue,bblock_wloc>&)> get_off = [&](const boost::variant<rvalue,bblock_wloc>& v) -> boost::optional<bound>
-		{
-			if(boost::get<rvalue>(&v))
-			{
-				rvalue rv = boost::get<rvalue>(v);
-				if(is_constant(rv))
-					return boost::optional<bound>((to_constant(rv).content(),to_constant(rv).content()));
-				else
-					return boost::none;
-			}
-			else if(boost::get<bblock_wloc>(&v))
-			{
-				return boost::make_optional(boost::get<bblock_wloc>(v).lock().read()->area());
-			}
-			else
-				return boost::none;
-		};
-
-		// copy exsisting mnemonics and jumps into tables. TODO: cache tables in proc
-		if(proc)
-		{
-			for(auto vx: iters(vertices((*proc)->control_transfers)))
-			{
-				auto nd = get_vertex(vx,(*proc)->control_transfers);
-
-				if(get<bblock_loc>(&nd))
-				{
-					for(const mnemonic &m: get<bblock_loc>(nd)->mnemonics())
-					{
-						po::offset o = boost::icl::size(m.area) ? m.area.upper() - 1 : m.area.lower();
-						mnemonics[o].push_back(m);
-					}
-				}
-				else if(get<rvalue>(&nd) && is_constant(get<rvalue>(nd)))
-				{
-					todo.emplace(to_constant(get<rvalue>(nd)).content());
-				}
-			}
-
-			for(auto e: iters(edges((*proc)->control_transfers)))
-			{
-				auto tgt = target(e,(*proc)->control_transfers);
-				auto src = po::source(e,(*proc)->control_transfers);
-
-				auto src_b = get_off(get_vertex(src,(*proc)->control_transfers));
-				auto tgt_b = get_off(get_vertex(tgt,(*proc)->control_transfers));
-
-				if(src_b && tgt_b)
-				{
-					guard g = get_edge(e,(*proc)->control_transfers);
-					po::offset last = boost::icl::size(*src_b) ? src_b->upper() - 1 : src_b->lower();
-
-					source.emplace(last,std::make_pair(tgt_b->lower(),g));
-					destination.emplace(tgt_b->lower(),std::make_pair(last,g));
-				}
-			}
-
-			//(*proc).write().control_transfers = digraph<boost::variant<bblock_loc, rvalue>, po::guard>();
-		}
-
-		ensure(source.size() == destination.size());
-		todo.emplace(start);
-
-		// disassemble targets
-		while(!todo.empty())
-		{
-			offset cur_addr = *todo.begin();
-			slab::iterator i = data.begin();
-			auto j = mnemonics.lower_bound(cur_addr);
-			boost::optional<po::bound> area = boost::none;
-
-			if(j != mnemonics.end())
-			{
-				ensure(!j->second.empty());
-
-				area = std::accumulate(j->second.begin(),j->second.end(),j->second.front().area,
-					[](po::bound acc, mnemonic const& x) -> po::bound { return boost::icl::hull(x.area,acc); });
-			}
-
-			todo.erase(todo.begin());
-
-			if(cur_addr >= data.size())
-			{
-				std::cerr << "boundary err: " << cur_addr << " not inside " << data.size() << " byte large slab" << std::endl;
-				continue;
-			}
-
-			if(j == mnemonics.end() || (area && !boost::icl::contains(*area,cur_addr)))
-			{
-				i += cur_addr;
-				sem_state<Tag> state(cur_addr,init);
-				slab::iterator e = (j == mnemonics.end() ? data.end() : (data.begin() + j->first + 1));
-
-				auto mi = main.try_match(i,e,state);
-
-				if(mi)
-				{
-					i = mi->first;
-					state = mi->second;
-					offset last = 0;
-
-					for(const mnemonic &m: state.mnemonics)
-					{
-						last = std::max<po::offset>(last,boost::icl::size(m.area) ? m.area.upper() - 1 : m.area.lower());
-						mnemonics[m.area.lower()].push_back(m);
-					}
-
-					for(const std::pair<rvalue,guard> &p: state.jumps)
-					{
-						if(is_constant(p.first))
-						{
-							offset target = to_constant(p.first).content();
-
-							source.insert(std::make_pair(last,std::make_pair(target,p.second)));
-							destination.insert(std::make_pair(target,std::make_pair(last,p.second)));
-							todo.insert(target);
-						}
-						else
-						{
-							source.emplace(last,std::make_pair(boost::none,p.second));
-						}
-					}
-				}
-				else
-				{
-					std::cerr << "Failed to match anything at " << cur_addr << std::endl;
-				}
-			}
-			else if(area && area->lower() != cur_addr)
-			{
-				std::cerr << "Overlapping mnemonics at " << cur_addr << " with \"" << "[" << *area << "] " << j->second.front() << "\"" << std::endl;
-			}
-		}
-
-		if(!mnemonics.empty())
-		{
-			if(!ret)
-			{
-				ret = proc_loc(new procedure("(unnamed proc)"));
-			}
-
-			// rebuild basic blocks
-			auto cur_mne = mnemonics.begin(), first_mne = cur_mne;
-			std::map<offset,bblock_loc> bblocks;
-			std::function<void(std::map<offset,std::list<mnemonic>>::iterator,
-									 std::map<offset,std::list<mnemonic>>::iterator)> make_bblock;
-			make_bblock = [&](std::map<offset,std::list<mnemonic>>::iterator begin,
-									std::map<offset,std::list<mnemonic>>::iterator end)
-			{
-				bblock_loc bb(new basic_block());
-
-				std::for_each(begin,end,[&](const std::pair<offset,std::list<mnemonic>> &p)
-					{ std::copy(p.second.begin(),p.second.end(),std::back_inserter(bb.write().mnemonics())); });
-
-				insert_vertex<boost::variant<bblock_loc,rvalue>,guard>(bb,ret->write().control_transfers);
-				ensure(bblocks.insert(std::make_pair(boost::icl::size(bb->area()) ? bb->area().upper() - 1 : bb->area().lower(),bb)).second);
-			};
-
-			while(cur_mne != mnemonics.end())
-			{
-				auto next_mne = std::next(cur_mne);
-				std::list<mnemonic> const& mne = cur_mne->second;
-				po::bound area = std::accumulate(mne.begin(),mne.end(),mne.front().area,
-					[](po::bound acc, mnemonic const& x) -> po::bound { return boost::icl::hull(x.area,acc); });
-				auto sources = source.equal_range(boost::icl::size(area)? area.upper() - 1 : area.lower());
-				auto destinations = destination.equal_range(area.upper());
-
-				if(next_mne != mnemonics.end() && boost::icl::size(area))
-				{
-					bool new_bb;
-
-					// if next mnemonic isn't adjacent
-					new_bb = next_mne->first != area.upper();
-
-					// or any following jumps aren't to adjacent mnemonics
-					new_bb |= std::any_of(sources.first,sources.second,[&](const std::pair<offset,std::pair<boost::optional<offset>,guard>> &p)
-					{
-						return p.second.first && *p.second.first != area.upper();
-					});
-
-					// or any jumps pointing to the next that aren't from here
-					new_bb |= std::any_of(destinations.first,destinations.second,[&](const std::pair<offset,std::pair<offset,guard>> &p)
-					{
-						return p.second.first != (boost::icl::size(area)? area.upper() - 1 : area.lower());
-					});
-
-					new_bb |= next_mne->first == start;
-
-					// construct a new basic block
-					if(new_bb)
-					{
-						make_bblock(first_mne,next_mne);
-
-						first_mne = next_mne;
-					}
-					else
-					{
-						while(sources.first != sources.second)
-							source.erase(sources.first++);
-						while(destinations.first != destinations.second)
-							destination.erase(destinations.first++);
-					}
-				}
-
-				cur_mne = next_mne;
-			}
-
-			// last bblock
-			make_bblock(first_mne,cur_mne);
-
-			// connect basic blocks
-			for(const std::pair<offset,std::pair<boost::optional<offset>,guard>> &p: source)
-			{
-				if(p.second.first)
-				{
-					auto from = bblocks.find(p.first), to = bblocks.lower_bound(*p.second.first);
-
-					if(from == bblocks.end())
-						std::cerr << from->first << " is not part of bblocks" << std::endl;
-
-					ensure(from != bblocks.end());
-					if(to != bblocks.end() && to->second->area().lower() == *p.second.first)
-						conditional_jump(*ret,from->second,to->second,p.second.second);
-					else
-						conditional_jump(*ret,from->second,po::constant(*p.second.first),p.second.second);
-				}
-			}
-
-			auto q = vertices((*ret)->control_transfers);
-
-			if(std::distance(q.first,q.second) == 1 &&
-				 get<bblock_loc>(&get_vertex(*q.first,(*ret)->control_transfers)) &&
-				 get<bblock_loc>(get_vertex(*q.first,(*ret)->control_transfers))->mnemonics().empty())
-				ret->write().control_transfers = procedure::graph_type();
-
-			q = vertices((*ret)->control_transfers);
-
-			// entry may have been split
-			if((proc && (*proc)->entry) || std::distance(q.first,q.second))
-			{
-				offset entry = proc && (*proc)->entry ? (*(*proc)->entry)->area().lower() : start;
-				auto i = bblocks.lower_bound(entry);
-
-				if(i != bblocks.end() && i->second->area().lower() == entry)
-				{
-					ret->write().entry = i->second;
-				}
-				else
-				{
-					ret->write().entry = bblocks.lower_bound(start)->second;
-				}
-			}
-			else if(!proc)
-			{
-				auto j = bblocks.lower_bound(start);
-
-				ensure(j != bblocks.end());
-				ret->write().entry = j->second;
-			}
-			else
-			{
-				ret->write().entry = boost::none;
-			}
-
-			ensure(!proc || !(*proc)->entry || (*ret)->entry);
-
-			q = vertices((*ret)->control_transfers);
-
-			if(!proc && std::distance(q.first,q.second) > 0)
-				ret->write().name = "proc_" + std::to_string((*(*ret)->entry)->area().lower());
-			else if(std::distance(q.first,q.second) > 0)
-				ret->write().name = "proc_(empty)";
-		}
-
-		return ret;
-	}*/
 }
 
 #[cfg(test)]
@@ -461,6 +262,7 @@ mod tests {
         assert_eq!(f.name, "test".to_string());
         assert_eq!(f.cflow_graph.num_vertices(), 0);
         assert_eq!(f.cflow_graph.num_edges(), 0);
+        assert_eq!(f.entry_point, None);
     }
 
     #[test]
@@ -492,11 +294,12 @@ mod tests {
         let (mnes,src,dest) = Function::index_cflow_graph(cfg);
 
         assert_eq!(mnes.len(),9);
-        assert_eq!(src.len(),4);
-        assert_eq!(dest.len(),4);
+        assert_eq!(src.values().fold(0,|acc,x| acc + x.len()),4);
+        assert_eq!(dest.values().fold(0,|acc,x| acc + x.len()),4);
 
         let cfg_re = Function::assemble_cflow_graph(mnes,src,dest,0);
 
+        println!("{:?}",cfg_re.vertices().map(|x| cfg_re.vertex_label(x)).collect::<Vec<_>>());
         assert_eq!(cfg_re.num_vertices(), 3);
         assert_eq!(cfg_re.num_edges(), 4);
 
@@ -526,6 +329,54 @@ mod tests {
                 }
             } else {
                 unreachable!();
+            }
+        }
+    }
+
+    #[test]
+    fn index_unresolved() {
+        let mut cfg = ControlFlowGraph::new();
+
+        let bb0 = BasicBlock::from_vec(vec!(
+                Mnemonic::dummy(0..1)));
+        let bb1 = BasicBlock::from_vec(vec!(
+                Mnemonic::dummy(10..11)));
+
+        let vx0 = cfg.add_vertex(ControlFlowTarget::Resolved(bb0));
+        let vx1 = cfg.add_vertex(ControlFlowTarget::Resolved(bb1));
+        let vx2 = cfg.add_vertex(ControlFlowTarget::Unresolved(Rvalue::Constant(42)));
+        let vx3 = cfg.add_vertex(ControlFlowTarget::Unresolved(Rvalue::Constant(23)));
+        let vx4 = cfg.add_vertex(ControlFlowTarget::Unresolved(Rvalue::Variable{ name: "a".to_string(), width:8, subscript: None }));
+
+        cfg.add_edge(Guard::new(),vx0,vx1);
+        cfg.add_edge(Guard::new(),vx2,vx1);
+        cfg.add_edge(Guard::new(),vx3,vx0);
+        cfg.add_edge(Guard::new(),vx4,vx3);
+
+        let (mnes,src,dest) = Function::index_cflow_graph(cfg);
+
+        assert_eq!(mnes.len(),2);
+        assert_eq!(src.values().fold(0,|acc,x| acc + x.len()),3);
+        assert_eq!(dest.values().fold(0,|acc,x| acc + x.len()),3);
+
+        let cfg_re = Function::assemble_cflow_graph(mnes,src,dest,0);
+
+        println!("{:?}",cfg_re.vertices().map(|x| cfg_re.vertex_label(x)).collect::<Vec<_>>());
+        assert_eq!(cfg_re.num_vertices(), 4);
+        assert_eq!(cfg_re.num_edges(), 3);
+
+        for vx in cfg_re.vertices() {
+            match cfg_re.vertex_label(vx) {
+                Some(&ControlFlowTarget::Resolved(ref bb)) => {
+                    assert!(
+                        (bb.area.start == 0 && bb.area.end == 1) ||
+                        (bb.area.start == 10 && bb.area.end == 11)
+                    );
+                },
+                Some(&ControlFlowTarget::Unresolved(Rvalue::Constant(ref c))) => {
+                    assert!(*c == 42 || *c == 23);
+                },
+                _ => { unreachable!(); }
             }
         }
     }
