@@ -121,6 +121,17 @@ impl Mnemonic {
         }
     }
 
+    #[cfg(test)]
+    pub fn dummy(a: Range<u64>) -> Mnemonic {
+        Mnemonic{
+            area: Bound::new(a.start,a.end),
+            opcode: "dummy".to_string(),
+            operands: vec!(),
+            instructions: vec!(),
+            format_string: vec!(),
+        }
+    }
+
     pub fn format(&self) -> String {
         self.format_string.iter().fold("".to_string(),|acc,x| -> String {
             let t: String = match x {

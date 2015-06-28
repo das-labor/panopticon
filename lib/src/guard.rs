@@ -1,6 +1,6 @@
 use value::{Rvalue};
 
-#[derive(Debug,Clone,PartialEq,Eq,Hash)]
+#[derive(Debug,Clone,PartialEq,Eq,Hash,RustcDecodable,RustcEncodable)]
 pub enum Relation {
     UnsignedLessOrEqual(Rvalue,Rvalue),
     SignedLessOrEqual(Rvalue,Rvalue),
@@ -16,7 +16,7 @@ pub enum Relation {
     False,
 }
 
-#[derive(Clone,Debug,PartialEq)]
+#[derive(Clone,Debug,PartialEq,RustcDecodable,RustcEncodable)]
 pub struct Guard {
     relation: Relation,
 }

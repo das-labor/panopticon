@@ -36,6 +36,6 @@ mod tests {
         let p = Project::new("test".to_string(),Region::undefined("base".to_string(),128));
 
         assert_eq!(p.name, "test".to_string());
-        assert_eq!(p.code, Vec::new());
+        assert_eq!(p.code.len(), 0);
     }
 }

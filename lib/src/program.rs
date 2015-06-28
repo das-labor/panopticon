@@ -1,6 +1,6 @@
 use function::Function;
 
-#[derive(RustcDecodable,RustcEncodable,PartialEq,Eq,Debug)]
+#[derive(RustcDecodable,RustcEncodable)]
 pub struct Program {
     name: String,
     functions: Vec<Function>,
