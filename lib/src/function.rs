@@ -47,8 +47,16 @@ impl Function {
 
         for v in g.vertices() {
             if let Some(&ControlFlowTarget::Resolved(ref bb)) = g.vertex_label(v) {
+                let mut prev_mne = None;
+
                 for mne in &bb.mnemonics {
                     mnemonics.entry(mne.area.start).or_insert(Vec::new()).push(mne.clone());
+
+                    if let Some(prev) = prev_mne {
+                        by_source.entry(prev).or_insert(Vec::new()).push((Some(mne.area.start),Guard::new()));
+                        by_destination.entry(mne.area.start).or_insert(Vec::new()).push((Some(prev),Guard::new()));
+                    }
+                    prev_mne = Some(mne.area.start);
                 }
             }
         }
@@ -60,12 +68,14 @@ impl Function {
 
             match (src,tgt) {
                 (Some(&ControlFlowTarget::Resolved(ref src_bb)),Some(&ControlFlowTarget::Resolved(ref tgt_bb))) => {
-                    by_source.entry(src_bb.area.start).or_insert(Vec::new()).push((Some(tgt_bb.area.start),gu.clone()));
-                    by_destination.entry(tgt_bb.area.start).or_insert(Vec::new()).push((Some(src_bb.area.start),gu));
+                    let last = src_bb.mnemonics.last().map_or(src_bb.area.start,|mne| mne.area.start);
+                    by_source.entry(last).or_insert(Vec::new()).push((Some(tgt_bb.area.start),gu.clone()));
+                    by_destination.entry(tgt_bb.area.start).or_insert(Vec::new()).push((Some(last),gu));
                 },
                 (Some(&ControlFlowTarget::Resolved(ref src_bb)),Some(&ControlFlowTarget::Unresolved(Rvalue::Constant(ref c)))) => {
-                    by_source.entry(src_bb.area.start).or_insert(Vec::new()).push((Some(*c),gu.clone()));
-                    by_destination.entry(*c).or_insert(Vec::new()).push((Some(src_bb.area.start),gu));
+                    let last = src_bb.mnemonics.last().map_or(src_bb.area.start,|mne| mne.area.start);
+                    by_source.entry(last).or_insert(Vec::new()).push((Some(*c),gu.clone()));
+                    by_destination.entry(*c).or_insert(Vec::new()).push((Some(last),gu));
                 },
                 (Some(&ControlFlowTarget::Unresolved(Rvalue::Constant(ref c))),Some(&ControlFlowTarget::Resolved(ref tgt_bb))) => {
                     by_source.entry(*c).or_insert(Vec::new()).push((Some(tgt_bb.area.start),gu.clone()));
@@ -94,35 +104,27 @@ impl Function {
 
         for (off,mnes) in mnemonics.iter() {
             for mne in mnes {
-                let last_pos = if mne.area.start == mne.area.end {
-                    mne.area.start
-                } else {
-                    mne.area.end - 1
-                };
-
                 if bblock.len() > 0 {
-                    println!("start");
+                    let last_mne = &bblock.last().unwrap().clone();
                     // if next mnemonics aren't adjacent
                     let mut new_bb = bblock.last().unwrap().area.end != mne.area.start;
-                    println!("1: {} ({} vs {}, {})",new_bb,bblock.last().unwrap().area.end,mne.area.start,off);
 
 					// or any following jumps aren't to adjacent mnemonics
-                    new_bb |= by_source.get(&mne.area.start).unwrap_or(&Vec::new()).iter().any(|&(ref opt_dest,ref gu)| {
-                        opt_dest.is_some() && opt_dest.unwrap() != mne.area.end });
-                    println!("2: {}",new_bb);
+                    new_bb |= by_source.get(&last_mne.area.start).unwrap_or(&Vec::new()).iter().any(|&(ref opt_dest,ref gu)| {
+                        opt_dest.is_some() && opt_dest.unwrap() != mne.area.start });
 
 					// or any jumps pointing to the next that aren't from here
                     new_bb |= by_destination.get(&mne.area.start).unwrap_or(&Vec::new()).iter().any(|&(ref opt_src,ref gu)| {
-                        opt_src.is_some() && opt_src.unwrap() != bblock.last().unwrap().area.start });
-                    println!("3: {}",new_bb);
+                        opt_src.is_some() && opt_src.unwrap() != last_mne.area.start });
 
                     // or the entry point does not point here
                     new_bb |= mne.area.start == start;
-                    println!("4: {}",new_bb);
 
                     if new_bb {
-                        ret.add_vertex(ControlFlowTarget::Resolved(BasicBlock::from_vec(bblock.clone())));
+                        let bb = BasicBlock::from_vec(bblock.clone());
+
                         bblock.clear();
+                        ret.add_vertex(ControlFlowTarget::Resolved(bb));
                     }
                 }
 
@@ -131,13 +133,14 @@ impl Function {
         }
 
         // last basic block
-        ret.add_vertex(ControlFlowTarget::Resolved(BasicBlock::from_vec(bblock)));
+        if !bblock.is_empty() {
+            ret.add_vertex(ControlFlowTarget::Resolved(BasicBlock::from_vec(bblock)));
+        }
 
         // connect basic blocks
         for (src_off,tgts) in by_source.iter() {
             for &(ref opt_tgt,ref gu) in tgts {
                 if opt_tgt.is_some() {
-                    println!("by_sec: {} -> {}",*src_off,opt_tgt.unwrap());
 
                     let from_bb = ret.vertices().find(|&t| {
                         match ret.vertex_label(t) {
@@ -155,14 +158,24 @@ impl Function {
                     match (from_bb,to_bb) {
                         (Some(from),Some(to)) => { ret.add_edge(gu.clone(),from,to); },
                         (None,Some(to)) => {
+                            if let Some(&ControlFlowTarget::Resolved(ref bb)) = ret.vertex_label(to) {
+                                if bb.area.start <= *src_off && bb.area.end > *src_off {
+                                    continue;
+                                }
+                            }
+
                             let vx = ret.add_vertex(ControlFlowTarget::Unresolved(Rvalue::Constant(*src_off)));
                             ret.add_edge(gu.clone(),vx,to);
-                            println!("conn {} with bb",*src_off);
                         },
                         (Some(from),None) => {
+                            if let Some(&ControlFlowTarget::Resolved(ref bb)) = ret.vertex_label(from) {
+                                if bb.area.start <= opt_tgt.unwrap() && bb.area.end > opt_tgt.unwrap() {
+                                    continue;
+                                }
+                            }
+
                             let vx = ret.add_vertex(ControlFlowTarget::Unresolved(Rvalue::Constant(opt_tgt.unwrap())));
                             ret.add_edge(gu.clone(),from,vx);
-                            println!("conn bb with {},{}",opt_tgt.unwrap(),*src_off);
                         },
                         _ => error!("jump from {} to {} doesn't hit any blocks",src_off,opt_tgt.unwrap()),
                     }
@@ -182,6 +195,18 @@ impl Function {
           I: Eq + PartialEq + Display
     {
         let name = cont.as_ref().map_or(format!("func_{}",start),|x| x.name.clone());
+        let maybe_entry = if let Some(Function{ entry_point: ent, cflow_graph: ref cfg, ..}) = cont {
+            if let Some(ref v) = ent {
+                match cfg.vertex_label(*v) {
+                    Some(&ControlFlowTarget::Resolved(ref bb)) => Some(bb.area.start),
+                    _ => None
+                }
+            } else {
+                None
+            }
+        } else {
+            Some(start)
+        };
         let (mut mnemonics,mut by_source,mut by_destination) = cont.map_or(
             (BTreeMap::new(),HashMap::new(),HashMap::new()),|x| Self::index_cflow_graph(x.cflow_graph));
         let mut todo = BTreeSet::<u64>::new();
@@ -214,11 +239,8 @@ impl Function {
             if let Some(match_st) = maybe_match {
                 let mut last_mne_start = 0;
 
-                println!("match with {} mnemonics",match_st.mnemonics.len());
-
                 for mne in match_st.mnemonics {
                     last_mne_start = mne.area.start;
-                    println!("match {} at {}..{}",mne.opcode,mne.area.start,mne.area.end);
                     mnemonics.entry(mne.area.start).or_insert(Vec::new()).push(mne);
                 }
 
@@ -228,11 +250,9 @@ impl Function {
                             by_source.entry(last_mne_start).or_insert(Vec::new()).push((Some(*c),gu.clone()));
                             by_destination.entry(*c).or_insert(Vec::new()).push((Some(last_mne_start),gu.clone()));
                             todo.insert(*c);
-                            println!("jump to {}",c);
                         },
                         _ => {
                             by_source.entry(last_mne_start).or_insert(Vec::new()).push((None,gu.clone()));
-                            println!("jump to unresolved");
                         }
                     }
                 }
@@ -242,13 +262,18 @@ impl Function {
         }
 
         let cfg = Self::assemble_cflow_graph(mnemonics,by_source,by_destination,start);
-        let e = cfg.vertices().find(|&vx| {
-            if let Some(&ControlFlowTarget::Resolved(ref bb)) = cfg.vertex_label(vx) {
-                bb.area.start == start
-            } else {
-                false
-            }
-        });
+
+        let e = if let Some(addr) = maybe_entry {
+            cfg.vertices().find(|&vx| {
+                if let Some(&ControlFlowTarget::Resolved(ref bb)) = cfg.vertex_label(vx) {
+                    bb.area.start == addr
+                } else {
+                    false
+                }
+            })
+        } else {
+            None
+        };
 
         Function{
             name: name,
@@ -269,6 +294,7 @@ mod tests {
     use value::Rvalue;
     use layer::OpaqueLayer;
     use disassembler::{ToExpr,State};
+    use msgpack;
 
     #[test]
     fn new() {
@@ -309,12 +335,11 @@ mod tests {
         let (mnes,src,dest) = Function::index_cflow_graph(cfg);
 
         assert_eq!(mnes.len(),9);
-        assert_eq!(src.values().fold(0,|acc,x| acc + x.len()),4);
-        assert_eq!(dest.values().fold(0,|acc,x| acc + x.len()),4);
+        assert_eq!(src.values().fold(0,|acc,x| acc + x.len()),10);
+        assert_eq!(dest.values().fold(0,|acc,x| acc + x.len()),10);
 
         let cfg_re = Function::assemble_cflow_graph(mnes,src,dest,0);
 
-        println!("{:?}",cfg_re.vertices().map(|x| cfg_re.vertex_label(x)).collect::<Vec<_>>());
         assert_eq!(cfg_re.num_vertices(), 3);
         assert_eq!(cfg_re.num_edges(), 4);
 
@@ -376,7 +401,6 @@ mod tests {
 
         let cfg_re = Function::assemble_cflow_graph(mnes,src,dest,0);
 
-        println!("{:?}",cfg_re.vertices().map(|x| cfg_re.vertex_label(x)).collect::<Vec<_>>());
         assert_eq!(cfg_re.num_vertices(), 4);
         assert_eq!(cfg_re.num_edges(), 3);
 
@@ -511,398 +535,230 @@ mod tests {
         assert!(func.cflow_graph.edge(bb_vx.unwrap(),ures_vx.unwrap()).is_some());
     }
 
-    /*
-    TEST(procedure,branch)
-    {
-        std::vector<typename po::architecture_traits<test_tag>::token_type> bytes({0,1,2});
-        std::map<typename po::architecture_traits<test_tag>::token_type,po::sem_state<test_tag>> states;
-        auto add = [&](po::offset p, const std::string &n, po::offset b1, boost::optional<po::offset> b2) -> void
-        {
-            po::sem_state<test_tag> st(p,'a');
-            st.mnemonic(1,n);
-            st.jump(b1);
-            if(b2)
-                st.jump(*b2);
-            states.insert(std::make_pair(p,st));
-        };
-        auto check = [&](const po::mnemonic &m, const std::string &n, po::offset p) -> void
-        {
-            ASSERT_EQ(m.opcode, n);
-            ASSERT_TRUE(m.operands.empty());
-            ASSERT_TRUE(m.instructions.empty());
-            ASSERT_EQ(m.area, po::bound(p,p+1));
-        };
+    #[test]
+    fn branch() {
+        let main = new_disassembler!(u8 =>
+            [ 0 ] = |st: &mut State<u8>| {
+                st.mnemonic(1,"test0","",vec!(),|_| {});
+                st.jump(Rvalue::Constant(1),Guard::new());
+                st.jump(Rvalue::Constant(2),Guard::new());
+                true
+            },
+            [ 1 ] = |st: &mut State<u8>| {
+                st.mnemonic(1,"test1","",vec!(),|_| {});
+                st.jump(Rvalue::Constant(3),Guard::new());
+                true
+            },
+            [ 2 ] = |st: &mut State<u8>| {
+                st.mnemonic(1,"test2","",vec!(),|_| {});
+                st.jump(Rvalue::Constant(1),Guard::new());
+                true
+            }
+        );
 
-        add(0,"test0",1,2);
-        add(1,"test1",3,boost::none);
-        add(2,"test2",1,boost::none);
+        let data = OpaqueLayer::wrap(vec!(0,1,2));
+        let init = State::new(0);
+        let func = Function::disassemble(None,main,init,data.iter(),0);
 
-        disassembler_mockup mockup(states);
-        boost::optional<po::proc_loc> maybe_proc = po::procedure::disassemble<test_tag,disassembler_mockup>(boost::none,mockup,'a',slab(bytes.data(),bytes.size()),0);
-        ASSERT_TRUE(!!maybe_proc);
-        proc_loc proc = *maybe_proc;
+        assert_eq!(func.cflow_graph.num_vertices(), 4);
+        assert_eq!(func.cflow_graph.num_edges(), 4);
 
-        ASSERT_TRUE(!!proc->entry);
-        ASSERT_EQ(proc->rev_postorder().size(), 3u);
+        let mut bb0_vx = None;
+        let mut bb1_vx = None;
+        let mut bb2_vx = None;
+        let mut ures_vx = None;
 
-        auto i0 = std::find_if(proc->rev_postorder().begin(),proc->rev_postorder().end(),[&](po::bblock_loc bb) { return bb->area().lower() == 0; });
-        auto i1 = std::find_if(proc->rev_postorder().begin(),proc->rev_postorder().end(),[&](po::bblock_loc bb) { return bb->area().lower() == 1; });
-        auto i2 = std::find_if(proc->rev_postorder().begin(),proc->rev_postorder().end(),[&](po::bblock_loc bb) { return bb->area().lower() == 2; });
+        for vx in func.cflow_graph.vertices() {
+            if let Some(&ControlFlowTarget::Resolved(ref bb)) = func.cflow_graph.vertex_label(vx) {
+                if bb.area.start == 0 {
+                    assert_eq!(bb.mnemonics.len(), 1);
+                    assert_eq!(bb.mnemonics[0].opcode, "test0".to_string());
+                    assert_eq!(bb.mnemonics[0].area, Bound::new(0,1));
+                    assert_eq!(bb.area, Bound::new(0,1));
+                    bb0_vx = Some(vx);
+                } else if bb.area.start == 1 {
+                    assert_eq!(bb.mnemonics.len(), 1);
+                    assert_eq!(bb.mnemonics[0].opcode, "test1".to_string());
+                    assert_eq!(bb.mnemonics[0].area, Bound::new(1,2));
+                    assert_eq!(bb.area, Bound::new(1,2));
+                    bb1_vx = Some(vx);
+                } else if bb.area.start == 2 {
+                    assert_eq!(bb.mnemonics.len(), 1);
+                    assert_eq!(bb.mnemonics[0].opcode, "test2".to_string());
+                    assert_eq!(bb.mnemonics[0].area, Bound::new(2,3));
+                    assert_eq!(bb.area, Bound::new(2,3));
+                    bb2_vx = Some(vx);
+                } else {
+                    unreachable!();
+                }
+            } else if let Some(&ControlFlowTarget::Unresolved(Rvalue::Constant(c))) = func.cflow_graph.vertex_label(vx) {
+                assert_eq!(c, 3);
+                ures_vx = Some(vx);
+            } else {
+                unreachable!();
+            }
+        }
 
-        ASSERT_NE(i0, proc->rev_postorder().end());
-        ASSERT_NE(i1, proc->rev_postorder().end());
-        ASSERT_NE(i2, proc->rev_postorder().end());
-
-        po::bblock_loc bb0 = *i0;
-        po::bblock_loc bb1 = *i1;
-        po::bblock_loc bb2 = *i2;
-
-        ASSERT_EQ(bb0->mnemonics().size(), 1u);
-        ASSERT_EQ(bb1->mnemonics().size(), 1u);
-        ASSERT_EQ(bb2->mnemonics().size(), 1u);
-
-        auto in0_p = in_edges(find_node(variant<bblock_loc,rvalue>(bb0),proc->control_transfers),proc->control_transfers);
-        auto out0_p = out_edges(find_node(variant<bblock_loc,rvalue>(bb0),proc->control_transfers),proc->control_transfers);
-
-        ASSERT_EQ(distance(in0_p.first,in0_p.second), 0);
-        check(bb0->mnemonics()[0],"test0",0);
-        ASSERT_EQ(distance(out0_p.first,out0_p.second), 2);
-
-        auto in1_p = in_edges(find_node(variant<bblock_loc,rvalue>(bb1),proc->control_transfers),proc->control_transfers);
-        auto out1_p = out_edges(find_node(variant<bblock_loc,rvalue>(bb1),proc->control_transfers),proc->control_transfers);
-
-        ASSERT_EQ(distance(in1_p.first,in1_p.second), 2);
-        check(bb1->mnemonics()[0],"test1",1);
-        ASSERT_EQ(distance(out1_p.first,out1_p.second), 1);
-
-        auto in2_p = in_edges(find_node(variant<bblock_loc,rvalue>(bb2),proc->control_transfers),proc->control_transfers);
-        auto out2_p = out_edges(find_node(variant<bblock_loc,rvalue>(bb2),proc->control_transfers),proc->control_transfers);
-
-        ASSERT_EQ(distance(in2_p.first,in2_p.second), 1);
-        check(bb2->mnemonics()[0],"test2",2);
-        ASSERT_EQ(distance(out2_p.first,out2_p.second), 1);
+        assert!(ures_vx.is_some() && bb0_vx.is_some() && bb1_vx.is_some() && bb2_vx.is_some());
+        assert_eq!(func.entry_point, bb0_vx);
+        assert_eq!(func.name, "func_0".to_string());
+        assert!(func.cflow_graph.edge(bb0_vx.unwrap(),bb1_vx.unwrap()).is_some());
+        assert!(func.cflow_graph.edge(bb0_vx.unwrap(),bb2_vx.unwrap()).is_some());
+        assert!(func.cflow_graph.edge(bb1_vx.unwrap(),ures_vx.unwrap()).is_some());
+        assert!(func.cflow_graph.edge(bb2_vx.unwrap(),bb1_vx.unwrap()).is_some());
     }
 
-    TEST(procedure,loop)
-    {
-        std::vector<typename po::architecture_traits<test_tag>::token_type> bytes({0,1,2});
-        std::map<typename po::architecture_traits<test_tag>::token_type,po::sem_state<test_tag>> states;
-        auto add = [&](po::offset p, const std::string &n, po::offset b1) -> void
-        {
-            po::sem_state<test_tag> st(p,'a');
-            st.mnemonic(1,n);
-            st.jump(b1);
-            states.insert(std::make_pair(p,st));
-        };
-        auto check = [&](const po::mnemonic &m, const std::string &n, po::offset p) -> void
-        {
-            ASSERT_EQ(m.opcode, n);
-            ASSERT_TRUE(m.operands.empty());
-            ASSERT_TRUE(m.instructions.empty());
-            ASSERT_EQ(m.area, po::bound(p,p+1));
-        };
+    #[test]
+    fn function_loop() {
+      let main = new_disassembler!(u8 =>
+            [ 0 ] = |st: &mut State<u8>| {
+                st.mnemonic(1,"test0","",vec!(),|_| {});
+                st.jump(Rvalue::Constant(1),Guard::new());
+                true
+            },
+            [ 1 ] = |st: &mut State<u8>| {
+                st.mnemonic(1,"test1","",vec!(),|_| {});
+                st.jump(Rvalue::Constant(2),Guard::new());
+                true
+            },
+            [ 2 ] = |st: &mut State<u8>| {
+                st.mnemonic(1,"test2","",vec!(),|_| {});
+                st.jump(Rvalue::Constant(0),Guard::new());
+                true
+            }
+        );
 
-        add(0,"test0",1);
-        add(1,"test1",2);
-        add(2,"test2",0);
+        let data = OpaqueLayer::wrap(vec!(0,1,2));
+        let init = State::new(0);
+        let func = Function::disassemble(None,main,init,data.iter(),0);
 
-        disassembler_mockup mockup(states);
-        boost::optional<po::proc_loc> maybe_proc = po::procedure::disassemble<test_tag,disassembler_mockup>(boost::none,mockup,'a',slab(bytes.data(),bytes.size()),0);
-        ASSERT_TRUE(!!maybe_proc);
-        proc_loc proc = *maybe_proc;
+        assert_eq!(func.cflow_graph.num_vertices(), 1);
+        assert_eq!(func.cflow_graph.num_edges(), 1);
 
-        ASSERT_EQ(proc->rev_postorder().size(), 1u);
+        let vx = func.cflow_graph.vertices().next().unwrap();
+        if let Some(&ControlFlowTarget::Resolved(ref bb)) = func.cflow_graph.vertex_label(vx) {
+            if bb.area.start == 0 {
+                assert_eq!(bb.mnemonics.len(), 3);
+                assert_eq!(bb.mnemonics[0].opcode, "test0".to_string());
+                assert_eq!(bb.mnemonics[0].area, Bound::new(0,1));
+                assert_eq!(bb.mnemonics[1].opcode, "test1".to_string());
+                assert_eq!(bb.mnemonics[1].area, Bound::new(1,2));
+                assert_eq!(bb.mnemonics[2].opcode, "test2".to_string());
+                assert_eq!(bb.mnemonics[2].area, Bound::new(2,3));
+                assert_eq!(bb.area, Bound::new(0,3));
+            } else {
+                unreachable!();
+            }
+        }
 
-        po::bblock_loc bb = *proc->rev_postorder().begin();
-
-        ASSERT_EQ(bb->mnemonics().size(), 3u);
-
-        check(bb->mnemonics()[0],"test0",0);
-        check(bb->mnemonics()[1],"test1",1);
-        check(bb->mnemonics()[2],"test2",2);
-
-        auto in_p = in_edges(find_node(variant<bblock_loc,rvalue>(bb),proc->control_transfers),proc->control_transfers);
-        auto out_p = out_edges(find_node(variant<bblock_loc,rvalue>(bb),proc->control_transfers),proc->control_transfers);
-
-        ASSERT_EQ(distance(in_p.first,in_p.second), 1);
-        ASSERT_EQ(distance(out_p.first,out_p.second), 1);
+        assert_eq!(func.name, "func_0".to_string());
+        assert_eq!(func.entry_point,Some(vx));
+        assert!(func.cflow_graph.edge(vx,vx).is_some());
     }
 
-    TEST(procedure,empty)
-    {
-        std::vector<typename po::architecture_traits<test_tag>::token_type> bytes({});
-        std::map<typename po::architecture_traits<test_tag>::token_type,po::sem_state<test_tag>> states;
-        disassembler_mockup mockup(states);
-        boost::optional<po::proc_loc> maybe_proc = po::procedure::disassemble<test_tag,disassembler_mockup>(boost::none,mockup,'a',slab(bytes.data(),bytes.size()),0);
-        ASSERT_TRUE(!maybe_proc);
+    #[test]
+    fn empty() {
+        let main = new_disassembler!(u8 =>
+            [ 0 ] = |st: &mut State<u8>| {
+                st.mnemonic(1,"test0","",vec!(),|_| {});
+                st.jump(Rvalue::Constant(1),Guard::new());
+                true
+            },
+            [ 1 ] = |st: &mut State<u8>| {
+                st.mnemonic(1,"test1","",vec!(),|_| {});
+                st.jump(Rvalue::Constant(2),Guard::new());
+                true
+            },
+            [ 2 ] = |st: &mut State<u8>| {
+                st.mnemonic(1,"test2","",vec!(),|_| {});
+                st.jump(Rvalue::Constant(0),Guard::new());
+                true
+            }
+        );
+
+        let data = OpaqueLayer::wrap(vec!());
+        let init = State::new(0);
+        let func = Function::disassemble(None,main,init,data.iter(),0);
+
+        assert_eq!(func.cflow_graph.num_vertices(), 0);
+        assert_eq!(func.cflow_graph.num_edges(), 0);
+        assert_eq!(func.name, "func_0".to_string());
+        assert_eq!(func.entry_point,None);
     }
 
-    TEST(procedure,refine)
-    {
-        std::vector<typename po::architecture_traits<test_tag>::token_type> bytes({0,1,2,3});
-        std::map<typename po::architecture_traits<test_tag>::token_type,po::sem_state<test_tag>> states;
-        auto add = [&](po::offset p, size_t l, const std::string &n, po::offset b1) -> void
-        {
-            po::sem_state<test_tag> st(p,'a');
-            st.mnemonic(l,n);
-            st.jump(b1);
-            states.insert(std::make_pair(p,st));
-        };
-        /*auto check = [&](const po::mnemonic &m, const std::string &n, po::bound p) -> void
-        {
-            ASSERT_EQ(m.opcode, n);
-            ASSERT_TRUE(m.operands.empty());
-            ASSERT_TRUE(m.instructions.empty());
-            ASSERT_EQ(m.area, p);
-        };*/
+    #[test]
+    fn entry_split() {
+        let bb = BasicBlock::from_vec(vec!(Mnemonic::dummy(0..1),Mnemonic::dummy(1..2)));
+        let mut fun = Function::new("test_func".to_string());
+        let vx0 = fun.cflow_graph.add_vertex(ControlFlowTarget::Resolved(bb));
+        let vx1 = fun.cflow_graph.add_vertex(ControlFlowTarget::Unresolved(Rvalue::Constant(2)));
 
-        /*
-         * test0
-         *  -"-  test1
-         * test2
-         */
-        add(0,2,"test0",2);
-        add(2,1,"test2",1);
-        add(1,1,"test1",2);
+        fun.entry_point = Some(vx0);
+        fun.cflow_graph.add_edge(Guard::new(),vx0,vx1);
 
-        disassembler_mockup mockup(states);
-        boost::optional<po::proc_loc> maybe_proc = po::procedure::disassemble<test_tag,disassembler_mockup>(boost::none,mockup,'a',slab(bytes.data(),bytes.size()),0);
-        ASSERT_TRUE(!!maybe_proc);
-        proc_loc proc = *maybe_proc;
-        boost::write_graphviz(std::cout,proc->control_transfers,proc_writer(proc));
+        let main = new_disassembler!(u8 =>
+            [ 0 ] = |st: &mut State<u8>| {
+                st.mnemonic(1,"test0","",vec!(),|_| {});
+                st.jump(Rvalue::Constant(1),Guard::new());
+                true
+            },
+            [ 1 ] = |st: &mut State<u8>| {
+                st.mnemonic(1,"test1","",vec!(),|_| {});
+                st.jump(Rvalue::Constant(2),Guard::new());
+                true
+            },
+            [ 2 ] = |st: &mut State<u8>| {
+                st.mnemonic(1,"test2","",vec!(),|_| {});
+                st.jump(Rvalue::Constant(1),Guard::new());
+                true
+            }
+        );
 
-        // XXX: Disabled until functionality is needed
-        /*
-        ASSERT_EQ(proc->rev_postorder().size(), 2);
-        auto i0 = std::find_if(proc->rev_postorder().begin(),proc->rev_postorder().end(),[&](po::bblock_loc bb) { return bb->area().lower() == 0; });
-        auto i1 = std::find_if(proc->rev_postorder().begin(),proc->rev_postorder().end(),[&](po::bblock_loc bb) { return bb->area().lower() == 1; });
-        ASSERT_NE(i0, proc->rev_postorder().end());
-        ASSERT_NE(i1, proc->rev_postorder().end());
-        po::bblock_loc bb0 = *i0;
-        po::bblock_loc bb1 = *i1;
-        ASSERT_EQ(bb0->mnemonics().size(), 1);
-        ASSERT_EQ(bb1->mnemonics().size(), 2);
-        check(bb0->mnemonics()[0],"test0",po::bound(0,2));
-        check(bb1->mnemonics()[0],"test1",po::bound(0,2));
-        check(bb1->mnemonics()[1],"test2",po::bound(2,3));
-        auto in0_p = in_edges(find_node(variant<bblock_loc,rvalue>(bb0),proc->control_transfers),proc->control_transfers);
-        auto out0_p = out_edges(find_node(variant<bblock_loc,rvalue>(bb0),proc->control_transfers),proc->control_transfers);
-        ASSERT_EQ(distance(in0_p.first,in0_p.second), 0);
-        ASSERT_EQ(distance(out0_p.first,out0_p.second), 1);
-        auto in1_p = in_edges(find_node(variant<bblock_loc,rvalue>(bb1),proc->control_transfers),proc->control_transfers);
-        auto out1_p = out_edges(find_node(variant<bblock_loc,rvalue>(bb1),proc->control_transfers),proc->control_transfers);
-        ASSERT_EQ(distance(in1_p.first,in1_p.second), 2);
-        ASSERT_EQ(distance(out1_p.first,out1_p.second), 1);*/
-    }
+        let data = OpaqueLayer::wrap(vec!(0,1,2));
+        let init = State::new(2);
+        let func = Function::disassemble(Some(fun),main,init,data.iter(),2);
 
-    TEST(procedure,continue)
-    {
-        rdf::storage store;
-        po::proc_loc proc(new po::procedure(""));
-        po::mnemonic mne0(po::bound(0,1),"test0","",{},{});
-        po::mnemonic mne1(po::bound(1,2),"test1","",{},{});
-        po::mnemonic mne2(po::bound(2,3),"test2","",{},{});
-        po::mnemonic mne3(po::bound(6,7),"test6","",{},{});
-        po::bblock_loc bb0(new po::basic_block());
-        po::bblock_loc bb1(new po::basic_block());
-        po::bblock_loc bb2(new po::basic_block());
+        assert_eq!(func.cflow_graph.num_vertices(), 3);
+        assert_eq!(func.cflow_graph.num_edges(), 3);
+        assert_eq!(func.name, "test_func".to_string());
 
-        insert_vertex(variant<bblock_loc,rvalue>(bb0),proc.write().control_transfers);
-        insert_vertex(variant<bblock_loc,rvalue>(bb1),proc.write().control_transfers);
-        insert_vertex(variant<bblock_loc,rvalue>(bb2),proc.write().control_transfers);
+        let mut bb0_vx = None;
+        let mut bb1_vx = None;
+        let mut bb2_vx = None;
 
-        save_point(store);
+        for vx in func.cflow_graph.vertices() {
+            if let Some(&ControlFlowTarget::Resolved(ref bb)) = func.cflow_graph.vertex_label(vx) {
+                if bb.area.start == 0 {
+                    assert_eq!(bb.mnemonics.len(), 1);
+                    assert_eq!(bb.mnemonics[0].opcode, "dummy".to_string());
+                    assert_eq!(bb.mnemonics[0].area, Bound::new(0,1));
+                    assert_eq!(bb.area, Bound::new(0,1));
+                    bb0_vx = Some(vx);
+                } else if bb.area.start == 1 {
+                    assert_eq!(bb.mnemonics.len(), 1);
+                    assert_eq!(bb.mnemonics[0].opcode, "dummy".to_string());
+                    assert_eq!(bb.mnemonics[0].area, Bound::new(1,2));
+                    assert_eq!(bb.area, Bound::new(1,2));
+                    bb1_vx = Some(vx);
+                } else if bb.area.start == 2 {
+                    assert_eq!(bb.mnemonics.len(), 1);
+                    assert_eq!(bb.mnemonics[0].opcode, "test2".to_string());
+                    assert_eq!(bb.mnemonics[0].area, Bound::new(2,3));
+                    assert_eq!(bb.area, Bound::new(2,3));
+                    bb2_vx = Some(vx);
+                } else {
+                    unreachable!();
+                }
+            } else {
+                unreachable!();
+            }
+        }
 
-        find_node(variant<bblock_loc,rvalue>(bb0),proc->control_transfers);
-        find_node(variant<bblock_loc,rvalue>(bb1),proc->control_transfers);
-        find_node(variant<bblock_loc,rvalue>(bb1),proc->control_transfers);
-
-        bb0.write().mnemonics().push_back(mne0);
-        bb0.write().mnemonics().push_back(mne1);
-        bb1.write().mnemonics().push_back(mne2);
-        bb2.write().mnemonics().push_back(mne3);
-
-        unconditional_jump(proc,bb2,po::constant(40));
-        unconditional_jump(proc,bb0,bb1);
-        unconditional_jump(proc,bb0,bb2);
-
-        proc.write().entry = bb0;
-
-        std::vector<typename po::architecture_traits<test_tag>::token_type> bytes({0,1,2,0,0,0,6,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,40,41,42});
-        std::map<typename po::architecture_traits<test_tag>::token_type,po::sem_state<test_tag>> states;
-        auto add = [&](po::offset p, const std::string &n, boost::optional<po::offset> b1, boost::optional<po::offset> b2) -> void
-        {
-            po::sem_state<test_tag> st(p,'a');
-            st.mnemonic(1,n);
-            if(b1)
-                st.jump(*b1);
-            if(b2)
-                st.jump(*b2);
-
-            states.insert(std::make_pair(p,st));
-        };
-        auto check = [&](const po::mnemonic &m, const std::string &n, po::offset p) -> void
-        {
-            ASSERT_EQ(m.opcode, n);
-            ASSERT_TRUE(m.operands.empty());
-            ASSERT_TRUE(m.instructions.empty());
-            ASSERT_EQ(m.area, po::bound(p,p+1));
-        };
-
-        add(0,"test0",1,boost::none);
-        add(1,"test1",2,6);
-        add(2,"test2",boost::none,boost::none);
-        add(6,"test6",40,boost::none);
-
-        add(40,"test40",41,boost::none);
-        add(41,"test41",42,boost::none);
-        add(42,"test42",55,make_optional<offset>(0));
-
-        disassembler_mockup mockup(states);
-        ASSERT_TRUE(!!proc->entry);
-
-        boost::optional<proc_loc> maybe_proc = po::procedure::disassemble<test_tag,disassembler_mockup>(proc,mockup,'a',slab(bytes.data(),bytes.size()),40);
-        ASSERT_TRUE(!!maybe_proc);
-
-        proc = *maybe_proc;
-
-        ASSERT_TRUE(!!proc->entry);
-        ASSERT_EQ(proc->rev_postorder().size(), 4u);
-
-        auto i0 = std::find_if(proc->rev_postorder().begin(),proc->rev_postorder().end(),[&](po::bblock_loc bb) { return bb->area().lower() == 0; });
-        auto i1 = std::find_if(proc->rev_postorder().begin(),proc->rev_postorder().end(),[&](po::bblock_loc bb) { return bb->area().lower() == 2; });
-        auto i2 = std::find_if(proc->rev_postorder().begin(),proc->rev_postorder().end(),[&](po::bblock_loc bb) { return bb->area().lower() == 6; });
-        auto i3 = std::find_if(proc->rev_postorder().begin(),proc->rev_postorder().end(),[&](po::bblock_loc bb) { return bb->area().lower() == 40; });
-
-        ASSERT_NE(i0, proc->rev_postorder().end());
-        ASSERT_NE(i1, proc->rev_postorder().end());
-        ASSERT_NE(i2, proc->rev_postorder().end());
-        ASSERT_NE(i3, proc->rev_postorder().end());
-
-        po::bblock_loc bbo0 = *i0;
-        po::bblock_loc bbo1 = *i1;
-        po::bblock_loc bbo2 = *i2;
-        po::bblock_loc bbo3 = *i3;
-        auto ct = proc->control_transfers;
-
-        auto in0_p = in_edges(find_node(variant<bblock_loc,rvalue>(bbo0),proc->control_transfers),proc->control_transfers);
-        auto out0_p = out_edges(find_node(variant<bblock_loc,rvalue>(bbo0),proc->control_transfers),proc->control_transfers);
-
-        ASSERT_EQ(distance(in0_p.first,in0_p.second), 1);
-        ASSERT_TRUE(get<bblock_loc>(get_vertex(source(*in0_p.first,ct),ct)) == bbo3);
-        ASSERT_EQ(bbo0->mnemonics().size(), 2u);
-        check(bbo0->mnemonics()[0],"test0",0);
-        check(bbo0->mnemonics()[1],"test1",1);
-        ASSERT_EQ(distance(out0_p.first,out0_p.second), 2);
-        ASSERT_TRUE(get<bblock_loc>(get_vertex(target(*out0_p.first,ct),ct)) == bbo1 || get<bblock_loc>(get_vertex(target(*out0_p.first,ct),ct)) == bbo2);
-        ASSERT_TRUE(get<bblock_loc>(get_vertex(target(*(out0_p.first+1),ct),ct)) == bbo1 || get<bblock_loc>(get_vertex(target(*(out0_p.first+1),ct),ct)) == bbo2);
-
-        auto in1_p = in_edges(find_node(variant<bblock_loc,rvalue>(bbo1),proc->control_transfers),proc->control_transfers);
-        auto out1_p = out_edges(find_node(variant<bblock_loc,rvalue>(bbo1),proc->control_transfers),proc->control_transfers);
-
-        ASSERT_EQ(distance(in1_p.first,in1_p.second), 1);
-        ASSERT_TRUE(get<bblock_loc>(get_vertex(source(*in1_p.first,ct),ct)) == bbo0);
-        ASSERT_EQ(bbo1->mnemonics().size(), 1u);
-        check(bbo1->mnemonics()[0],"test2",2);
-        ASSERT_EQ(distance(out1_p.first,out1_p.second), 0);
-
-        auto in2_p = in_edges(find_node(variant<bblock_loc,rvalue>(bbo2),proc->control_transfers),proc->control_transfers);
-        auto out2_p = out_edges(find_node(variant<bblock_loc,rvalue>(bbo2),proc->control_transfers),proc->control_transfers);
-
-        ASSERT_EQ(distance(in2_p.first,in2_p.second), 1);
-        ASSERT_TRUE(get<bblock_loc>(get_vertex(source(*in2_p.first,ct),ct)) == bbo0);
-        ASSERT_EQ(bbo2->mnemonics().size(), 1u);
-        check(bbo2->mnemonics()[0],"test6",6);
-        ASSERT_EQ(distance(out2_p.first,out2_p.second), 1);
-        ASSERT_TRUE(get<bblock_loc>(get_vertex(target(*out2_p.first,ct),ct)) == bbo3);
-
-        auto in3_p = in_edges(find_node(variant<bblock_loc,rvalue>(bbo3),proc->control_transfers),proc->control_transfers);
-        auto out3_p = out_edges(find_node(variant<bblock_loc,rvalue>(bbo3),proc->control_transfers),proc->control_transfers);
-
-        ASSERT_EQ(distance(in3_p.first,in3_p.second), 1);
-        ASSERT_TRUE(get<bblock_loc>(get_vertex(source(*in3_p.first,ct),ct)) == bbo2);
-        ASSERT_EQ(bbo3->mnemonics().size(), 3u);
-        check(bbo3->mnemonics()[0],"test40",40);
-        check(bbo3->mnemonics()[1],"test41",41);
-        check(bbo3->mnemonics()[2],"test42",42);
-        ASSERT_EQ(distance(out3_p.first,out3_p.second), 2);
-        ASSERT_TRUE((get<bblock_loc>(&get_vertex(target(*out3_p.first,ct),ct)) && get<bblock_loc>(get_vertex(target(*out3_p.first,ct),ct)) == bbo0) ||
-                                (get<rvalue>(&get_vertex(target(*out3_p.first,ct),ct)) && to_constant(get<rvalue>(get_vertex(target(*out3_p.first,ct),ct))).content() == 55));
-        ASSERT_TRUE((get<bblock_loc>(&get_vertex(target(*(out3_p.first+1),ct),ct)) && get<bblock_loc>(get_vertex(target(*(out3_p.first+1),ct),ct)) == bbo0) ||
-                                (get<rvalue>(&get_vertex(target(*(out3_p.first+1),ct),ct)) && to_constant(get<rvalue>(get_vertex(target(*(out3_p.first+1),ct),ct))).content() == 55));
-
-        ASSERT_EQ(*(proc->entry), bbo0);
-    }
-
-    TEST(procedure,entry_split)
-    {
-        po::proc_loc proc(new po::procedure(""));
-        po::mnemonic mne0(po::bound(0,1),"test0","",{},{});
-        po::mnemonic mne1(po::bound(1,2),"test1","",{},{});
-        po::bblock_loc bb0(new po::basic_block());
-
-        insert_vertex(variant<bblock_loc,rvalue>(bb0),proc.write().control_transfers);
-
-        bb0.write().mnemonics().push_back(mne0);
-        bb0.write().mnemonics().push_back(mne1);
-
-        unconditional_jump(proc,bb0,po::constant(2));
-
-        proc.write().entry = bb0;
-
-        std::vector<typename po::architecture_traits<test_tag>::token_type> bytes({0,1,2});
-        std::map<typename po::architecture_traits<test_tag>::token_type,po::sem_state<test_tag>> states;
-        auto add = [&](po::offset p, const std::string &n, boost::optional<po::offset> b1, boost::optional<po::offset> b2) -> void
-        {
-            po::sem_state<test_tag> st(p,'a');
-            st.mnemonic(1,n);
-            if(b1)
-                st.jump(*b1);
-            if(b2)
-                st.jump(*b2);
-
-            states.insert(std::make_pair(p,st));
-        };
-        auto check = [&](const po::mnemonic &m, const std::string &n, po::offset p) -> void
-        {
-            ASSERT_EQ(m.opcode, n);
-            ASSERT_TRUE(m.operands.empty());
-            ASSERT_TRUE(m.instructions.empty());
-            ASSERT_EQ(m.area, po::bound(p,p+1));
-        };
-
-        add(0,"test0",1,boost::none);
-        add(1,"test1",2,boost::none);
-
-        add(2,"test2",1,boost::none);
-
-        disassembler_mockup mockup(states);
-        boost::optional<proc_loc> maybe_proc = po::procedure::disassemble<test_tag,disassembler_mockup>(proc,mockup,'a',slab(bytes.data(),bytes.size()),2);
-        ASSERT_TRUE(!!maybe_proc);
-
-        proc = *maybe_proc;
-
-        ASSERT_EQ(proc->rev_postorder().size(), 3u);
-
-        auto i0 = std::find_if(proc->rev_postorder().begin(),proc->rev_postorder().end(),[&](po::bblock_loc bb) { return bb->area().lower() == 0; });
-        auto i1 = std::find_if(proc->rev_postorder().begin(),proc->rev_postorder().end(),[&](po::bblock_loc bb) { return bb->area().lower() == 1; });
-        auto i2 = std::find_if(proc->rev_postorder().begin(),proc->rev_postorder().end(),[&](po::bblock_loc bb) { return bb->area().lower() == 2; });
-
-        ASSERT_NE(i0, proc->rev_postorder().end());
-        ASSERT_NE(i1, proc->rev_postorder().end());
-        ASSERT_NE(i2, proc->rev_postorder().end());
-
-        po::bblock_loc bbo0 = *i0;
-        po::bblock_loc bbo1 = *i1;
-        po::bblock_loc bbo2 = *i2;
-
-        ASSERT_EQ(*(proc->entry), bbo0);
-        ASSERT_EQ(bbo0->mnemonics().size(), 1u);
-        check(bbo0->mnemonics()[0],"test0",0);
-        ASSERT_EQ(bbo1->mnemonics().size(), 1u);
-        check(bbo1->mnemonics()[0],"test1",1);
-        ASSERT_EQ(bbo2->mnemonics().size(), 1u);
-        check(bbo2->mnemonics()[0],"test2",2);
+        assert!(bb0_vx.is_some() && bb1_vx.is_some() && bb2_vx.is_some());
+        assert_eq!(func.entry_point, bb0_vx);
+        assert!(func.cflow_graph.edge(bb0_vx.unwrap(),bb1_vx.unwrap()).is_some());
+        assert!(func.cflow_graph.edge(bb1_vx.unwrap(),bb2_vx.unwrap()).is_some());
+        assert!(func.cflow_graph.edge(bb2_vx.unwrap(),bb1_vx.unwrap()).is_some());
     }
 
     /*
@@ -916,176 +772,162 @@ mod tests {
      * +/ |      |
      *    bb4----+
      */
-    TEST(procedure,marshal)
-    {
-        bblock_loc bb0(new basic_block({mnemonic(bound(0,5),"test","",{},{})}));
-        bblock_loc bb1(new basic_block({mnemonic(bound(5,10),"test","",{},{})}));
-        bblock_loc bb2(new basic_block({mnemonic(bound(10,12),"test","",{},{})}));
-        bblock_loc bb3(new basic_block({mnemonic(bound(12,20),"test","",{},{})}));
-        bblock_loc bb4(new basic_block({mnemonic(bound(20,21),"test","",{},{})}));
-        rvalue rv1 = variable("a",8);
-        rvalue rv2 = constant(42);
-        proc_loc proc(new procedure("p1"));
+    #[test]
+    fn marshal() {
+        let bb0 = BasicBlock::from_vec(vec!(Mnemonic::dummy(0..1),Mnemonic::dummy(1..5)));
+        let bb1 = BasicBlock::from_vec(vec!(Mnemonic::dummy(5..8),Mnemonic::dummy(8..10)));
+        let bb2 = BasicBlock::from_vec(vec!(Mnemonic::dummy(10..12)));
+        let bb3 = BasicBlock::from_vec(vec!(Mnemonic::dummy(12..20)));
+        let bb4 = BasicBlock::from_vec(vec!(Mnemonic::dummy(20..21)));
+        let rv1 = Rvalue::Variable{ name: "a".to_string(), width: 8, subscript: None };
+        let rv2 = Rvalue::Constant(42);
+        let mut fun = Function::new("test_func".to_string());
 
-        auto vx0 = insert_vertex<variant<bblock_loc,rvalue>,guard>(bb0,proc.write().control_transfers);
-        auto vx1 = insert_vertex<variant<bblock_loc,rvalue>,guard>(bb1,proc.write().control_transfers);
-        auto vx2 = insert_vertex<variant<bblock_loc,rvalue>,guard>(bb2,proc.write().control_transfers);
-        auto vx3 = insert_vertex<variant<bblock_loc,rvalue>,guard>(bb3,proc.write().control_transfers);
-        auto vx4 = insert_vertex<variant<bblock_loc,rvalue>,guard>(bb4,proc.write().control_transfers);
-        auto vx5 = insert_vertex<variant<bblock_loc,rvalue>,guard>(rv1,proc.write().control_transfers);
-        auto vx6 = insert_vertex<variant<bblock_loc,rvalue>,guard>(rv2,proc.write().control_transfers);
+        let vx0 = fun.cflow_graph.add_vertex(ControlFlowTarget::Resolved(bb0));
+        let vx1 = fun.cflow_graph.add_vertex(ControlFlowTarget::Resolved(bb1));
+        let vx2 = fun.cflow_graph.add_vertex(ControlFlowTarget::Resolved(bb2));
+        let vx3 = fun.cflow_graph.add_vertex(ControlFlowTarget::Resolved(bb3));
+        let vx4 = fun.cflow_graph.add_vertex(ControlFlowTarget::Resolved(bb4));
+        let vx5 = fun.cflow_graph.add_vertex(ControlFlowTarget::Unresolved(rv1));
+        let vx6 = fun.cflow_graph.add_vertex(ControlFlowTarget::Unresolved(rv2));
 
-        insert_edge(guard(),vx0,vx1,proc.write().control_transfers);
-        insert_edge(guard(),vx0,vx5,proc.write().control_transfers);
-        insert_edge(guard(),vx1,vx2,proc.write().control_transfers);
-        insert_edge(guard(),vx2,vx3,proc.write().control_transfers);
-        insert_edge(guard(),vx1,vx3,proc.write().control_transfers);
-        insert_edge(guard(),vx3,vx3,proc.write().control_transfers);
-        insert_edge(guard(),vx3,vx6,proc.write().control_transfers);
-        insert_edge(guard(),vx3,vx4,proc.write().control_transfers);
-        insert_edge(guard(),vx4,vx0,proc.write().control_transfers);
+        fun.cflow_graph.add_edge(Guard::new(),vx0,vx1);
+        fun.cflow_graph.add_edge(Guard::new(),vx0,vx5);
+        fun.cflow_graph.add_edge(Guard::new(),vx1,vx2);
+        fun.cflow_graph.add_edge(Guard::new(),vx2,vx3);
+        fun.cflow_graph.add_edge(Guard::new(),vx1,vx3);
+        fun.cflow_graph.add_edge(Guard::new(),vx3,vx3);
+        fun.cflow_graph.add_edge(Guard::new(),vx3,vx6);
+        fun.cflow_graph.add_edge(Guard::new(),vx3,vx4);
+        fun.cflow_graph.add_edge(Guard::new(),vx4,vx0);
 
-        proc.write().entry = bb0;
+        fun.entry_point = Some(vx0);
 
-        rdf::storage st;
-        save_point(st);
+        let a = msgpack::Encoder::to_msgpack(&fun).ok().unwrap();
+        let fun_new: Function = msgpack::from_msgpack(&a).ok().unwrap();
 
-        for(auto s: st.all())
-            std::cout << s << std::endl;
+        assert_eq!(fun.name, fun_new.name);
 
-        proc_loc p2(proc.tag(),unmarshal<procedure>(proc.tag(),st));
+        let t1 = Function::index_cflow_graph(fun.cflow_graph);
+        let t2 = Function::index_cflow_graph(fun_new.cflow_graph);
 
-        ASSERT_EQ(proc->name, p2->name);
-        ASSERT_TRUE(**proc->entry == **p2->entry);
-        ASSERT_EQ(num_vertices(p2->control_transfers), num_vertices(proc->control_transfers));
-        ASSERT_EQ(num_edges(p2->control_transfers), num_edges(proc->control_transfers));
-        ASSERT_EQ(proc->rev_postorder().size(), p2->rev_postorder().size());
+        assert_eq!(t1.0, t2.0);
+        assert_eq!(t1.1.values().fold(0,|acc,x| acc + x.len()),t2.1.values().fold(0,|acc,x| acc + x.len()));
+        assert_eq!(t1.2.values().fold(0,|acc,x| acc + x.len()),t2.2.values().fold(0,|acc,x| acc + x.len()));
     }
 
-    using sw = po::sem_state<wtest_tag>&;
-    TEST(procedure,wide_token)
-    {
-        std::vector<uint8_t> _buf = {0x22,0x11, 0x44,0x33, 0x44,0x55, 0x44,0x55};
-        po::slab buf(_buf.data(),_buf.size());
-        po::disassembler<wtest_tag> dec;
-
-        dec[0x1122] = [](sw s)
-        {
-            s.mnemonic(2,"A");
-            s.jump(s.address + 2);
-            return true;
-        };
-
-        dec[0x3344] = [](sw s)
-        {
-            s.mnemonic(2,"B");
-            s.jump(s.address + 2);
-            s.jump(s.address + 4);
-            return true;
-        };
-
-        dec[0x5544] = [](sw s)
-        {
-            s.mnemonic(2, "C");
-            return true;
-        };
-
-        boost::optional<proc_loc> maybe_proc = procedure::disassemble<wtest_tag,po::disassembler<wtest_tag>>(boost::none, dec,'a', buf, 0);
-        ASSERT_TRUE(!!maybe_proc);
-        proc_loc proc = *maybe_proc;
-
-        EXPECT_EQ(num_vertices(proc->control_transfers), 3u);
-        EXPECT_EQ(num_edges(proc->control_transfers), 2u);
-
-        using vx_desc = digraph<boost::variant<bblock_loc,rvalue>,guard>::vertex_descriptor;
-        auto p = vertices(proc->control_transfers);
-        size_t sz = std::count_if(p.first,p.second,[&](const vx_desc& v)
-        {
-            try
+    #[test]
+    fn wide_token() {
+        let st = State::<u16>::new(0);
+        let def = OpaqueLayer::wrap(vec!(0x11,0x22,0x33,0x44,0x55,0x44));
+        let dec = new_disassembler!(u16 =>
+            [0x1122] = |s: &mut State<u16>|
             {
-                bblock_loc bb = boost::get<bblock_loc>(get_vertex(v,proc->control_transfers));
-                return bb->area() == po::bound(0,4) && bb->mnemonics().size() == 2;
-            }
-            catch(const boost::bad_get&)
+                let a = s.address;
+                s.mnemonic(2,"A","",vec!(),|_| {});
+                s.jump(Rvalue::Constant(a + 2),Guard::new());
+                true
+            },
+
+            [0x3344] = |s: &mut State<u16>|
             {
-                return false;
-            }
-        });
-        EXPECT_EQ(sz, 1u);
-        sz = std::count_if(p.first,p.second,[&](const vx_desc& v)
-        {
-            try
+                let a = s.address;
+                s.mnemonic(2,"B","",vec!(),|_| {});
+                s.jump(Rvalue::Constant(a + 2),Guard::new());
+                s.jump(Rvalue::Constant(a + 4),Guard::new());
+                true
+            },
+
+            [0x5544] = |s: &mut State<u16>|
             {
-                bblock_loc bb = boost::get<bblock_loc>(get_vertex(v,proc->control_transfers));
-                return bb->area() == po::bound(4,6) && bb->mnemonics().size() == 1;
+                s.mnemonic(2, "C","",vec!(),|_| {});
+                true
             }
-            catch(const boost::bad_get&)
-            {
-                return false;
+        );
+
+        let func = Function::disassemble(None,dec,st,def.iter(),0);
+
+        assert_eq!(func.cflow_graph.num_vertices(), 3);
+        assert_eq!(func.cflow_graph.num_edges(), 2);
+
+        let mut bb0_vx = None;
+        let mut bb1_vx = None;
+
+        for vx in func.cflow_graph.vertices() {
+            match func.cflow_graph.vertex_label(vx) {
+                Some(&ControlFlowTarget::Resolved(ref bb)) => {
+                    if bb.area.start == 0 {
+                        assert_eq!(bb.mnemonics.len(), 2);
+                        assert_eq!(bb.area, Bound::new(0,4));
+                        bb0_vx = Some(vx);
+                    } else if bb.area.start == 4 {
+                        assert_eq!(bb.mnemonics.len(), 1);
+                        assert_eq!(bb.area, Bound::new(4,6));
+                        bb1_vx = Some(vx);
+                    } else {
+                        unreachable!();
+                    }
+                },
+                Some(&ControlFlowTarget::Unresolved(Rvalue::Constant(6))) => {},
+                _ => unreachable!()
             }
-        });
-        EXPECT_EQ(sz, 1u);
-        sz = std::count_if(p.first,p.second,[&](const vx_desc& v)
-        {
-            try
-            {
-                bblock_loc bb = boost::get<bblock_loc>(get_vertex(v,proc->control_transfers));
-                return bb->area() == po::bound(6,8) && bb->mnemonics().size() == 1;
-            }
-            catch(const boost::bad_get&)
-            {
-                return false;
-            }
-        });
-        EXPECT_EQ(sz, 1u);
+        }
+
+        assert!(bb0_vx.is_some() && bb1_vx.is_some());
+        assert_eq!(func.entry_point, bb0_vx);
     }
 
-    TEST(procedure,issue_51_treat_entry_point_as_incoming_edge)
-    {
-        std::vector<typename po::architecture_traits<test_tag>::token_type> bytes({0,1,2});
-        std::map<typename po::architecture_traits<test_tag>::token_type,po::sem_state<test_tag>> states;
-        auto add = [&](po::offset p, const std::string &n, po::offset b1) -> void
-        {
-            po::sem_state<test_tag> st(p,'a');
-            st.mnemonic(1,n);
-            st.jump(b1);
+    #[test]
+    fn issue_51_treat_entry_point_as_incoming_edge() {
+        let main = new_disassembler!(u8 =>
+            [ 0 ] = |st: &mut State<u8>| {
+                st.mnemonic(1,"test0","",vec!(),|_| {});
+                st.jump(Rvalue::Constant(1),Guard::new());
+                true
+            },
+            [ 1 ] = |st: &mut State<u8>| {
+                st.mnemonic(1,"test1","",vec!(),|_| {});
+                st.jump(Rvalue::Constant(2),Guard::new());
+                true
+            },
+            [ 2 ] = |st: &mut State<u8>| {
+                st.mnemonic(1,"test2","",vec!(),|_| {});
+                st.jump(Rvalue::Constant(0),Guard::new());
+                true
+            }
+        );
 
-            states.insert(std::make_pair(p,st));
-        };
-        auto check = [&](const po::mnemonic &m, const std::string &n, po::offset p) -> void
-        {
-            ASSERT_EQ(m.opcode, n);
-            ASSERT_TRUE(m.operands.empty());
-            ASSERT_TRUE(m.instructions.empty());
-            ASSERT_EQ(m.area, po::bound(p,p+1));
-        };
+        let data = OpaqueLayer::wrap(vec!(0,1,2));
+        let init = State::new(1);
+        let func = Function::disassemble(None,main,init,data.iter(),1);
 
-        add(0,"test0",1);
-        add(1,"test1",2);
+        assert_eq!(func.cflow_graph.num_vertices(), 2);
+        assert_eq!(func.cflow_graph.num_edges(), 2);
 
-        add(2,"test2",0);
+        let mut bb0_vx = None;
+        let mut bb1_vx = None;
 
-        disassembler_mockup mockup(states);
-        boost::optional<proc_loc> maybe_proc = po::procedure::disassemble<test_tag,disassembler_mockup>(boost::none,mockup,'a',slab(bytes.data(),bytes.size()),1);
-        ASSERT_TRUE(!!maybe_proc);
+        for vx in func.cflow_graph.vertices() {
+            if let Some(&ControlFlowTarget::Resolved(ref bb)) = func.cflow_graph.vertex_label(vx) {
+                if bb.area.start == 0 {
+                    assert_eq!(bb.mnemonics.len(), 1);
+                    assert_eq!(bb.area, Bound::new(0,1));
+                    bb0_vx = Some(vx);
+                } else if bb.area.start == 1 {
+                    assert_eq!(bb.mnemonics.len(), 2);
+                    assert_eq!(bb.area, Bound::new(1,3));
+                    bb1_vx = Some(vx);
+                } else {
+                    unreachable!();
+                }
+            } else {
+                unreachable!();
+            }
+        }
 
-        proc_loc proc = *maybe_proc;
-
-        ASSERT_EQ(proc->rev_postorder().size(), 2u);
-
-        auto i0 = std::find_if(proc->rev_postorder().begin(),proc->rev_postorder().end(),[&](po::bblock_loc bb) { return bb->area().lower() == 0; });
-        auto i1 = std::find_if(proc->rev_postorder().begin(),proc->rev_postorder().end(),[&](po::bblock_loc bb) { return bb->area().lower() == 1; });
-
-        ASSERT_NE(i0, proc->rev_postorder().end());
-        ASSERT_NE(i1, proc->rev_postorder().end());
-
-        po::bblock_loc bbo0 = *i0;
-        po::bblock_loc bbo1 = *i1;
-
-        ASSERT_EQ(*(proc->entry), bbo1);
-        ASSERT_EQ(bbo0->mnemonics().size(), 1u);
-        check(bbo0->mnemonics()[0],"test0",0);
-        ASSERT_EQ(bbo1->mnemonics().size(), 2u);
+        assert!(bb0_vx.is_some() && bb1_vx.is_some());
+        assert_eq!(func.entry_point, bb1_vx);
+        assert!(func.cflow_graph.edge(bb0_vx.unwrap(),bb1_vx.unwrap()).is_some());
+        assert!(func.cflow_graph.edge(bb1_vx.unwrap(),bb0_vx.unwrap()).is_some());
     }
-*/
 }
