@@ -12,6 +12,7 @@ use num::traits::NumCast;
 use std::fmt::{Display,Debug};
 use std::ops::{BitAnd,BitOr,Shl,Shr,Not};
 use std::rc::Rc;
+use instr::{Instr,Operation};
 
 use disassembler;
 
@@ -280,6 +281,21 @@ impl Function {
             cflow_graph: cfg,
             entry_point: e,
         }
+    }
+
+    pub fn collect_calls(&self) -> Vec<u64> {
+        let mut ret = Vec::new();
+
+        for vx in self.cflow_graph.vertices() {
+            if let Some(&ControlFlowTarget::Resolved(ref bb)) = self.cflow_graph.vertex_label(vx) {
+                bb.execute(|i| match i {
+                    &Instr{ op: Operation::IntCall(Rvalue::Constant(ref c)), ..} => ret.push(*c),
+                    _ => {}
+                });
+            }
+        }
+
+        ret
     }
 }
 
