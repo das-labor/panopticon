@@ -7,6 +7,9 @@ extern crate num;
 extern crate graph_algos;
 extern crate tempdir;
 
+#[macro_use]
+extern crate lazy_static;
+
 pub mod disassembler;
 pub mod value;
 pub mod instr;
@@ -19,3 +22,4 @@ pub mod project;
 pub mod region;
 pub mod layer;
 pub mod codegen;
+pub mod avr;

@@ -19,6 +19,7 @@ log = "*"
 rustc-serialize = "*"
 num = "*"
 tempdir = "*"
+lazy_static = "*"
 
 [dependencies.qmlrs]
 git = "https://github.com/cyndis/qmlrs"

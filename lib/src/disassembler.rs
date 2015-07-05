@@ -52,17 +52,21 @@ impl<I: Clone> State<I> {
         }
     }
 
-    pub fn mnemonic<F: Fn(&CodeGen) -> ()>(&mut self,len: usize, n: &str, fmt: &str, ops: Vec<Rvalue>, f: F) {
-        self.mnemonic_dynargs(len,n,fmt,|cg: &CodeGen| -> Vec<Rvalue> {
+    pub fn get_group(&self,n: &str) -> I {
+        self.groups.iter().find(|x| x.0 == n.to_string()).unwrap().1.clone()
+    }
+
+    pub fn mnemonic<F: FnOnce(&mut CodeGen) -> ()>(&mut self,len: usize, n: &str, fmt: &str, ops: Vec<Rvalue>, f: F) {
+        self.mnemonic_dynargs(len,n,fmt,|cg: &mut CodeGen| -> Vec<Rvalue> {
             f(cg);
             ops.clone()
         });
     }
 
     pub fn mnemonic_dynargs<F>(&mut self,len: usize, n: &str, fmt: &str, f: F)
-    where F: Fn(&CodeGen) -> Vec<Rvalue> {
-        let cg = CodeGen::new();
-        let ops = f(&cg);
+    where F: FnOnce(&mut CodeGen) -> Vec<Rvalue> {
+        let mut cg = CodeGen::new();
+        let ops = f(&mut cg);
 
         self.mnemonics.push(Mnemonic::new(
                 self.next_address..(self.next_address + (len as u64)),

@@ -1,7 +1,7 @@
 #[derive(Clone,Debug,PartialEq,Eq,Hash,RustcEncodable,RustcDecodable)]
 pub enum Endianess {
-    LittleEndian,
-    BigEndian,
+    Little,
+    Big,
 }
 
 #[derive(Clone,Debug,PartialEq,Eq,Hash,RustcEncodable,RustcDecodable)]
@@ -41,6 +41,10 @@ impl Lvalue {
                 Some(Lvalue::Memory{ offset: o.clone(), bytes: b.clone(), endianess: e.clone(), name: n.clone()}),
             _ => None,
         }
+    }
+
+    pub fn to_rv(&self) -> Rvalue {
+        Rvalue::from_lvalue(self)
     }
 }
 
