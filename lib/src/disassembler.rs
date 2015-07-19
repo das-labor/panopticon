@@ -471,10 +471,9 @@ macro_rules! new_disassembler {
             fn __def(st: &mut State<u8>) -> bool { ($def)(st) };
             dis.set_default(__def);
 
-            Rc::<Disassembler<$ty>>::new(dis)
+            ::std::rc::Rc::<Disassembler<$ty>>::new(dis)
         }
     };
-
 }
 
 #[cfg(test)]
