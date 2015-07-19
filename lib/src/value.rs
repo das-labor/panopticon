@@ -58,7 +58,7 @@ mod tests {
         let u = Rvalue::Undefined;
         let c = Rvalue::Constant(5);
         let v = Rvalue::Variable{ name: "n".to_string(), width: 32, subscript: None };
-        let m = Rvalue::Memory{ offset: Box::new(Rvalue::Undefined), bytes: 1, endianess: Endianess::LittleEndian, name: "ram".to_string() };
+        let m = Rvalue::Memory{ offset: Box::new(Rvalue::Undefined), bytes: 1, endianess: Endianess::Little, name: "ram".to_string() };
 
         let u2 = u.clone();
         let c2 = c.clone();
@@ -78,11 +78,11 @@ mod tests {
         let ru = Rvalue::Undefined;
         let rc = Rvalue::Constant(5);
         let rv = Rvalue::Variable{ name: "n".to_string(), width: 32, subscript: None };
-        let rm = Rvalue::Memory{ offset: Box::new(Rvalue::Undefined), bytes: 1, endianess: Endianess::LittleEndian, name: "ram".to_string() };
+        let rm = Rvalue::Memory{ offset: Box::new(Rvalue::Undefined), bytes: 1, endianess: Endianess::Little, name: "ram".to_string() };
 
         let lu = Lvalue::Undefined;
         let lv = Lvalue::Variable{ name: "n".to_string(), width: 32, subscript: None };
-        let lm = Lvalue::Memory{ offset: Box::new(Rvalue::Undefined), bytes: 1, endianess: Endianess::LittleEndian, name: "ram".to_string() };
+        let lm = Lvalue::Memory{ offset: Box::new(Rvalue::Undefined), bytes: 1, endianess: Endianess::Little, name: "ram".to_string() };
 
         assert_eq!(Some(lu.clone()), Lvalue::from_rvalue(&ru));
         assert_eq!(Some(lv.clone()), Lvalue::from_rvalue(&rv));
@@ -99,7 +99,7 @@ mod tests {
         let a = Rvalue::Undefined;
         let b = Rvalue::Constant(42);
         let c = Rvalue::Variable{ name: "test".to_string(), width: 8, subscript: Some(8) };
-        let d = Rvalue::Memory{ offset: Box::new(Rvalue::Constant(5)), bytes: 2, endianess: Endianess::LittleEndian, name: "bank1".to_string()};
+        let d = Rvalue::Memory{ offset: Box::new(Rvalue::Constant(5)), bytes: 2, endianess: Endianess::Little, name: "bank1".to_string()};
 
         let a2 = msgpack::Encoder::to_msgpack(&a).ok().unwrap();
         let b2 = msgpack::Encoder::to_msgpack(&b).ok().unwrap();
