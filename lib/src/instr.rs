@@ -3,10 +3,9 @@ use value::{Lvalue,Rvalue};
 #[derive(Clone,PartialEq,Eq,Debug,RustcEncodable,RustcDecodable)]
 pub enum Operation {
     LogicAnd(Rvalue,Rvalue),
-    LogicOr(Rvalue,Rvalue),
+    LogicInclusiveOr(Rvalue,Rvalue),
+    LogicExlusiveOr(Rvalue,Rvalue),
     LogicNegation(Rvalue),
-    LogicImplication(Rvalue,Rvalue),
-    LogicEquivalence(Rvalue,Rvalue),
     LogicLift(Rvalue),
 
     IntAnd(Rvalue,Rvalue),
@@ -37,10 +36,9 @@ impl Instr {
     pub fn operands(&self) -> Vec<&Rvalue> {
         match self.op {
             Operation::LogicAnd(ref a,ref b) => return vec!(a,b),
-            Operation::LogicOr(ref a,ref b) => return vec!(a,b),
+            Operation::LogicInclusiveOr(ref a,ref b) => return vec!(a,b),
+            Operation::LogicExlusiveOr(ref a,ref b) => return vec!(a,b),
             Operation::LogicNegation(ref a) => return vec!(a),
-            Operation::LogicImplication(ref a,ref b) => return vec!(a,b),
-            Operation::LogicEquivalence(ref a,ref b) => return vec!(a,b),
             Operation::LogicLift(ref a) => return vec!(a),
 
             Operation::IntAnd(ref a,ref b) => return vec!(a,b),
@@ -71,10 +69,9 @@ mod tests {
     #[test]
     fn construct() {
         let logic_and = Instr{ op: Operation::LogicAnd(Rvalue::Undefined,Rvalue::Undefined), assignee: Lvalue::Undefined };
-        let logic_or = Instr{ op: Operation::LogicOr(Rvalue::Undefined,Rvalue::Undefined), assignee: Lvalue::Undefined };
+        let logic_or = Instr{ op: Operation::LogicInclusiveOr(Rvalue::Undefined,Rvalue::Undefined), assignee: Lvalue::Undefined };
+        let logic_xor = Instr{ op: Operation::LogicExlusiveOr(Rvalue::Undefined,Rvalue::Undefined), assignee: Lvalue::Undefined };
         let logic_neg = Instr{ op: Operation::LogicNegation(Rvalue::Undefined), assignee: Lvalue::Undefined };
-        let logic_imp = Instr{ op: Operation::LogicImplication(Rvalue::Undefined,Rvalue::Undefined), assignee: Lvalue::Undefined };
-        let logic_equiv = Instr{ op: Operation::LogicEquivalence(Rvalue::Undefined,Rvalue::Undefined), assignee: Lvalue::Undefined };
         let logic_lift = Instr{ op: Operation::LogicLift(Rvalue::Undefined), assignee: Lvalue::Undefined };
 
         let int_and = Instr{ op: Operation::IntAnd(Rvalue::Undefined,Rvalue::Undefined), assignee: Lvalue::Undefined };
@@ -96,9 +93,8 @@ mod tests {
 
         assert_eq!(logic_and.clone(),logic_and);
         assert_eq!(logic_or.clone(),logic_or);
+        assert_eq!(logic_xor.clone(),logic_xor);
         assert_eq!(logic_neg.clone(),logic_neg);
-        assert_eq!(logic_imp.clone(),logic_imp);
-        assert_eq!(logic_equiv.clone(),logic_equiv);
         assert_eq!(logic_lift.clone(),logic_lift);
 
         assert_eq!(int_and.clone(),int_and);
@@ -120,9 +116,8 @@ mod tests {
 
         println!("{:?}",logic_and);
         println!("{:?}",logic_or);
+        println!("{:?}",logic_xor);
         println!("{:?}",logic_neg);
-        println!("{:?}",logic_imp);
-        println!("{:?}",logic_equiv);
         println!("{:?}",logic_lift);
 
         println!("{:?}",int_and);
@@ -146,10 +141,9 @@ mod tests {
     #[test]
     fn operands() {
         let logic_and = Instr{ op: Operation::LogicAnd(Rvalue::Undefined,Rvalue::Undefined), assignee: Lvalue::Undefined };
-        let logic_or = Instr{ op: Operation::LogicOr(Rvalue::Undefined,Rvalue::Undefined), assignee: Lvalue::Undefined };
+        let logic_or = Instr{ op: Operation::LogicInclusiveOr(Rvalue::Undefined,Rvalue::Undefined), assignee: Lvalue::Undefined };
+        let logic_or = Instr{ op: Operation::LogicExlusiveOr(Rvalue::Undefined,Rvalue::Undefined), assignee: Lvalue::Undefined };
         let logic_neg = Instr{ op: Operation::LogicNegation(Rvalue::Undefined), assignee: Lvalue::Undefined };
-        let logic_imp = Instr{ op: Operation::LogicImplication(Rvalue::Undefined,Rvalue::Undefined), assignee: Lvalue::Undefined };
-        let logic_equiv = Instr{ op: Operation::LogicEquivalence(Rvalue::Undefined,Rvalue::Undefined), assignee: Lvalue::Undefined };
         let logic_lift = Instr{ op: Operation::LogicLift(Rvalue::Undefined), assignee: Lvalue::Undefined };
 
         let int_and = Instr{ op: Operation::IntAnd(Rvalue::Undefined,Rvalue::Undefined), assignee: Lvalue::Undefined };
@@ -171,9 +165,8 @@ mod tests {
 
         assert_eq!(logic_and.operands(),vec!(&Rvalue::Undefined,&Rvalue::Undefined));
         assert_eq!(logic_or.operands(),vec!(&Rvalue::Undefined,&Rvalue::Undefined));
+        assert_eq!(logic_xor.operands(),vec!(&Rvalue::Undefined,&Rvalue::Undefined));
         assert_eq!(logic_neg.operands(),vec!(&Rvalue::Undefined));
-        assert_eq!(logic_imp.operands(),vec!(&Rvalue::Undefined,&Rvalue::Undefined));
-        assert_eq!(logic_equiv.operands(),vec!(&Rvalue::Undefined,&Rvalue::Undefined));
         assert_eq!(logic_lift.operands(),vec!(&Rvalue::Undefined));
 
         assert_eq!(int_and.operands(),vec!(&Rvalue::Undefined,&Rvalue::Undefined));
@@ -194,4 +187,3 @@ mod tests {
         assert_eq!(nop.operands(),vec!(&Rvalue::Undefined));
     }
 }
-
