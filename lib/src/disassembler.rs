@@ -519,7 +519,7 @@ mod tests {
             [ 2 ] = |st: &mut State<u8>| {
                 let next = st.address;
                 st.mnemonic(2,"BA","",vec!(),|_| {});
-                st.jump(Rvalue::Constant(next + 2),Guard::new());
+                st.jump(Rvalue::Constant(next + 2),Guard::always());
                 true
             });
         let sub2 = new_disassembler!(u8 =>
@@ -530,19 +530,19 @@ mod tests {
             [ 1 ] = |st: &mut State<u8>| {
                 let next = st.address;
                 st.mnemonic(1,"A","",vec!(),|_| {});
-                st.jump(Rvalue::Constant(next + 1),Guard::new());
+                st.jump(Rvalue::Constant(next + 1),Guard::always());
                 true
             },
             [ "0 k@..... 11" ] = |st: &mut State<u8>| {
                 let next = st.address;
                 st.mnemonic(1,"C","",vec!(),|_| {});
-                st.jump(Rvalue::Constant(next + 1),Guard::new());
+                st.jump(Rvalue::Constant(next + 1),Guard::always());
                 true
             },
             _ = |st: &mut State<u8>| {
                 let next = st.address;
                 st.mnemonic(1,"UNK","",vec!(),|_| {});
-                st.jump(Rvalue::Constant(next + 1),Guard::new());
+                st.jump(Rvalue::Constant(next + 1),Guard::always());
                 true
             }
 		);
@@ -570,7 +570,7 @@ mod tests {
         assert_eq!(res.jumps.len(), 1);
 
         if let &(Rvalue::Constant(1),ref g) = &res.jumps[0] {
-            assert_eq!(g, &Guard::new());
+            assert_eq!(g, &Guard::always());
         } else {
             assert!(false);
         }
@@ -597,7 +597,7 @@ mod tests {
         assert_eq!(res.jumps.len(), 1);
 
         if let &(Rvalue::Constant(3),ref g) = &res.jumps[0] {
-            assert_eq!(g, &Guard::new());
+            assert_eq!(g, &Guard::always());
         } else {
             assert!(false);
         }
@@ -632,7 +632,7 @@ mod tests {
         assert_eq!(res.jumps.len(), 1);
 
         if let &(Rvalue::Constant(8),ref g) = &res.jumps[0] {
-            assert_eq!(g, &Guard::new());
+            assert_eq!(g, &Guard::always());
         } else {
             assert!(false);
         }
@@ -658,7 +658,7 @@ mod tests {
         assert_eq!(res.jumps.len(), 1);
 
         if let &(Rvalue::Constant(2),ref g) = &res.jumps[0] {
-            assert_eq!(g, &Guard::new());
+            assert_eq!(g, &Guard::always());
         } else {
             assert!(false);
         }
@@ -694,7 +694,7 @@ mod tests {
         assert_eq!(res.jumps.len(), 1);
 
         if let &(Rvalue::Constant(5),ref g) = &res.jumps[0] {
-            assert_eq!(g, &Guard::new());
+            assert_eq!(g, &Guard::always());
         } else {
             assert!(false);
         }
@@ -765,7 +765,7 @@ mod tests {
             {
                 let a = s.address;
                 s.mnemonic(2,"A","",vec!(),|_| {});
-                s.jump(Rvalue::Constant(a + 2),Guard::new());
+                s.jump(Rvalue::Constant(a + 2),Guard::always());
                 true
             },
 
@@ -773,8 +773,8 @@ mod tests {
             {
                 let a = s.address;
                 s.mnemonic(2,"B","",vec!(),|_| {});
-                s.jump(Rvalue::Constant(a + 2),Guard::new());
-                s.jump(Rvalue::Constant(a + 4),Guard::new());
+                s.jump(Rvalue::Constant(a + 2),Guard::always());
+                s.jump(Rvalue::Constant(a + 4),Guard::always());
                 true
             },
 

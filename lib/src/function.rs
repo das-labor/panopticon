@@ -343,10 +343,10 @@ mod tests {
         let vx1 = cfg.add_vertex(ControlFlowTarget::Resolved(bb1));
         let vx2 = cfg.add_vertex(ControlFlowTarget::Resolved(bb2));
 
-        cfg.add_edge(Guard::new(),vx0,vx1);
-        cfg.add_edge(Guard::new(),vx1,vx1);
-        cfg.add_edge(Guard::new(),vx1,vx2);
-        cfg.add_edge(Guard::new(),vx2,vx0);
+        cfg.add_edge(Guard::always(),vx0,vx1);
+        cfg.add_edge(Guard::always(),vx1,vx1);
+        cfg.add_edge(Guard::always(),vx1,vx2);
+        cfg.add_edge(Guard::always(),vx2,vx0);
 
         let (mnes,src,dest) = Function::index_cflow_graph(cfg);
 
@@ -404,10 +404,10 @@ mod tests {
         let vx3 = cfg.add_vertex(ControlFlowTarget::Unresolved(Rvalue::Constant(23)));
         let vx4 = cfg.add_vertex(ControlFlowTarget::Unresolved(Rvalue::Variable{ name: "a".to_string(), width:8, subscript: None }));
 
-        cfg.add_edge(Guard::new(),vx0,vx1);
-        cfg.add_edge(Guard::new(),vx2,vx1);
-        cfg.add_edge(Guard::new(),vx3,vx0);
-        cfg.add_edge(Guard::new(),vx4,vx3);
+        cfg.add_edge(Guard::always(),vx0,vx1);
+        cfg.add_edge(Guard::always(),vx2,vx1);
+        cfg.add_edge(Guard::always(),vx3,vx0);
+        cfg.add_edge(Guard::always(),vx4,vx3);
 
         let (mnes,src,dest) = Function::index_cflow_graph(cfg);
 
@@ -475,37 +475,37 @@ mod tests {
             [ 0 ] = |st: &mut State<u8>| {
                 let next = st.address;
                 st.mnemonic(1,"test0","",vec!(),|_| {});
-                st.jump(Rvalue::Constant(next + 1),Guard::new());
+                st.jump(Rvalue::Constant(next + 1),Guard::always());
                 true
             },
             [ 1 ] = |st: &mut State<u8>| {
                 let next = st.address;
                 st.mnemonic(1,"test1","",vec!(),|_| {});
-                st.jump(Rvalue::Constant(next + 1),Guard::new());
+                st.jump(Rvalue::Constant(next + 1),Guard::always());
                 true
             },
             [ 2 ] = |st: &mut State<u8>| {
                 let next = st.address;
                 st.mnemonic(1,"test2","",vec!(),|_| {});
-                st.jump(Rvalue::Constant(next + 1),Guard::new());
+                st.jump(Rvalue::Constant(next + 1),Guard::always());
                 true
             },
             [ 3 ] = |st: &mut State<u8>| {
                 let next = st.address;
                 st.mnemonic(1,"test3","",vec!(),|_| {});
-                st.jump(Rvalue::Constant(next + 1),Guard::new());
+                st.jump(Rvalue::Constant(next + 1),Guard::always());
                 true
             },
             [ 4 ] = |st: &mut State<u8>| {
                 let next = st.address;
                 st.mnemonic(1,"test4","",vec!(),|_| {});
-                st.jump(Rvalue::Constant(next + 1),Guard::new());
+                st.jump(Rvalue::Constant(next + 1),Guard::always());
                 true
             },
             [ 5 ] = |st: &mut State<u8>| {
                 let next = st.address;
                 st.mnemonic(1,"test5","",vec!(),|_| {});
-                st.jump(Rvalue::Constant(next + 1),Guard::new());
+                st.jump(Rvalue::Constant(next + 1),Guard::always());
                 true
             }
         );
@@ -556,18 +556,18 @@ mod tests {
         let main = new_disassembler!(u8 =>
             [ 0 ] = |st: &mut State<u8>| {
                 st.mnemonic(1,"test0","",vec!(),|_| {});
-                st.jump(Rvalue::Constant(1),Guard::new());
-                st.jump(Rvalue::Constant(2),Guard::new());
+                st.jump(Rvalue::Constant(1),Guard::always());
+                st.jump(Rvalue::Constant(2),Guard::always());
                 true
             },
             [ 1 ] = |st: &mut State<u8>| {
                 st.mnemonic(1,"test1","",vec!(),|_| {});
-                st.jump(Rvalue::Constant(3),Guard::new());
+                st.jump(Rvalue::Constant(3),Guard::always());
                 true
             },
             [ 2 ] = |st: &mut State<u8>| {
                 st.mnemonic(1,"test2","",vec!(),|_| {});
-                st.jump(Rvalue::Constant(1),Guard::new());
+                st.jump(Rvalue::Constant(1),Guard::always());
                 true
             }
         );
@@ -629,17 +629,17 @@ mod tests {
       let main = new_disassembler!(u8 =>
             [ 0 ] = |st: &mut State<u8>| {
                 st.mnemonic(1,"test0","",vec!(),|_| {});
-                st.jump(Rvalue::Constant(1),Guard::new());
+                st.jump(Rvalue::Constant(1),Guard::always());
                 true
             },
             [ 1 ] = |st: &mut State<u8>| {
                 st.mnemonic(1,"test1","",vec!(),|_| {});
-                st.jump(Rvalue::Constant(2),Guard::new());
+                st.jump(Rvalue::Constant(2),Guard::always());
                 true
             },
             [ 2 ] = |st: &mut State<u8>| {
                 st.mnemonic(1,"test2","",vec!(),|_| {});
-                st.jump(Rvalue::Constant(0),Guard::new());
+                st.jump(Rvalue::Constant(0),Guard::always());
                 true
             }
         );
@@ -677,17 +677,17 @@ mod tests {
         let main = new_disassembler!(u8 =>
             [ 0 ] = |st: &mut State<u8>| {
                 st.mnemonic(1,"test0","",vec!(),|_| {});
-                st.jump(Rvalue::Constant(1),Guard::new());
+                st.jump(Rvalue::Constant(1),Guard::always());
                 true
             },
             [ 1 ] = |st: &mut State<u8>| {
                 st.mnemonic(1,"test1","",vec!(),|_| {});
-                st.jump(Rvalue::Constant(2),Guard::new());
+                st.jump(Rvalue::Constant(2),Guard::always());
                 true
             },
             [ 2 ] = |st: &mut State<u8>| {
                 st.mnemonic(1,"test2","",vec!(),|_| {});
-                st.jump(Rvalue::Constant(0),Guard::new());
+                st.jump(Rvalue::Constant(0),Guard::always());
                 true
             }
         );
@@ -710,22 +710,22 @@ mod tests {
         let vx1 = fun.cflow_graph.add_vertex(ControlFlowTarget::Unresolved(Rvalue::Constant(2)));
 
         fun.entry_point = Some(vx0);
-        fun.cflow_graph.add_edge(Guard::new(),vx0,vx1);
+        fun.cflow_graph.add_edge(Guard::always(),vx0,vx1);
 
         let main = new_disassembler!(u8 =>
             [ 0 ] = |st: &mut State<u8>| {
                 st.mnemonic(1,"test0","",vec!(),|_| {});
-                st.jump(Rvalue::Constant(1),Guard::new());
+                st.jump(Rvalue::Constant(1),Guard::always());
                 true
             },
             [ 1 ] = |st: &mut State<u8>| {
                 st.mnemonic(1,"test1","",vec!(),|_| {});
-                st.jump(Rvalue::Constant(2),Guard::new());
+                st.jump(Rvalue::Constant(2),Guard::always());
                 true
             },
             [ 2 ] = |st: &mut State<u8>| {
                 st.mnemonic(1,"test2","",vec!(),|_| {});
-                st.jump(Rvalue::Constant(1),Guard::new());
+                st.jump(Rvalue::Constant(1),Guard::always());
                 true
             }
         );
@@ -807,15 +807,15 @@ mod tests {
         let vx5 = fun.cflow_graph.add_vertex(ControlFlowTarget::Unresolved(rv1));
         let vx6 = fun.cflow_graph.add_vertex(ControlFlowTarget::Unresolved(rv2));
 
-        fun.cflow_graph.add_edge(Guard::new(),vx0,vx1);
-        fun.cflow_graph.add_edge(Guard::new(),vx0,vx5);
-        fun.cflow_graph.add_edge(Guard::new(),vx1,vx2);
-        fun.cflow_graph.add_edge(Guard::new(),vx2,vx3);
-        fun.cflow_graph.add_edge(Guard::new(),vx1,vx3);
-        fun.cflow_graph.add_edge(Guard::new(),vx3,vx3);
-        fun.cflow_graph.add_edge(Guard::new(),vx3,vx6);
-        fun.cflow_graph.add_edge(Guard::new(),vx3,vx4);
-        fun.cflow_graph.add_edge(Guard::new(),vx4,vx0);
+        fun.cflow_graph.add_edge(Guard::always(),vx0,vx1);
+        fun.cflow_graph.add_edge(Guard::always(),vx0,vx5);
+        fun.cflow_graph.add_edge(Guard::always(),vx1,vx2);
+        fun.cflow_graph.add_edge(Guard::always(),vx2,vx3);
+        fun.cflow_graph.add_edge(Guard::always(),vx1,vx3);
+        fun.cflow_graph.add_edge(Guard::always(),vx3,vx3);
+        fun.cflow_graph.add_edge(Guard::always(),vx3,vx6);
+        fun.cflow_graph.add_edge(Guard::always(),vx3,vx4);
+        fun.cflow_graph.add_edge(Guard::always(),vx4,vx0);
 
         fun.entry_point = Some(vx0);
 
@@ -841,7 +841,7 @@ mod tests {
             {
                 let a = s.address;
                 s.mnemonic(2,"A","",vec!(),|_| {});
-                s.jump(Rvalue::Constant(a + 2),Guard::new());
+                s.jump(Rvalue::Constant(a + 2),Guard::always());
                 true
             },
 
@@ -849,8 +849,8 @@ mod tests {
             {
                 let a = s.address;
                 s.mnemonic(2,"B","",vec!(),|_| {});
-                s.jump(Rvalue::Constant(a + 2),Guard::new());
-                s.jump(Rvalue::Constant(a + 4),Guard::new());
+                s.jump(Rvalue::Constant(a + 2),Guard::always());
+                s.jump(Rvalue::Constant(a + 4),Guard::always());
                 true
             },
 
@@ -898,17 +898,17 @@ mod tests {
         let main = new_disassembler!(u8 =>
             [ 0 ] = |st: &mut State<u8>| {
                 st.mnemonic(1,"test0","",vec!(),|_| {});
-                st.jump(Rvalue::Constant(1),Guard::new());
+                st.jump(Rvalue::Constant(1),Guard::always());
                 true
             },
             [ 1 ] = |st: &mut State<u8>| {
                 st.mnemonic(1,"test1","",vec!(),|_| {});
-                st.jump(Rvalue::Constant(2),Guard::new());
+                st.jump(Rvalue::Constant(2),Guard::always());
                 true
             },
             [ 2 ] = |st: &mut State<u8>| {
                 st.mnemonic(1,"test2","",vec!(),|_| {});
-                st.jump(Rvalue::Constant(0),Guard::new());
+                st.jump(Rvalue::Constant(0),Guard::always());
                 true
             }
         );

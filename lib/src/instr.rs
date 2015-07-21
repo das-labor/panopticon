@@ -142,7 +142,7 @@ mod tests {
     fn operands() {
         let logic_and = Instr{ op: Operation::LogicAnd(Rvalue::Undefined,Rvalue::Undefined), assignee: Lvalue::Undefined };
         let logic_or = Instr{ op: Operation::LogicInclusiveOr(Rvalue::Undefined,Rvalue::Undefined), assignee: Lvalue::Undefined };
-        let logic_or = Instr{ op: Operation::LogicExlusiveOr(Rvalue::Undefined,Rvalue::Undefined), assignee: Lvalue::Undefined };
+        let logic_xor = Instr{ op: Operation::LogicExclusiveOr(Rvalue::Undefined,Rvalue::Undefined), assignee: Lvalue::Undefined };
         let logic_neg = Instr{ op: Operation::LogicNegation(Rvalue::Undefined), assignee: Lvalue::Undefined };
         let logic_lift = Instr{ op: Operation::LogicLift(Rvalue::Undefined), assignee: Lvalue::Undefined };
 
