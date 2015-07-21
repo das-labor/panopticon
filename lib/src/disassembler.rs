@@ -468,7 +468,7 @@ macro_rules! new_disassembler {
                 dis.add_expr(__x,fuc);
             })+
 
-            fn __def(st: &mut State<u8>) -> bool { ($def)(st) };
+            fn __def(st: &mut State<$ty>) -> bool { ($def)(st) };
             dis.set_default(__def);
 
             ::std::rc::Rc::<Disassembler<$ty>>::new(dis)

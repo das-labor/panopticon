@@ -22,7 +22,7 @@ tempdir = "*"
 lazy_static = "*"
 
 [dependencies.qmlrs]
-git = "https://github.com/cyndis/qmlrs"
+git = "https://github.com/flanfly/qmlrs"
 
 [dependencies.msgpack]
 git = "https://github.com/neonquill/rust-msgpack.git"

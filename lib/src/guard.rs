@@ -1,4 +1,4 @@
-use value::{Rvalue};
+use value::{Rvalue,ToRvalue};
 
 #[derive(Debug,Clone,PartialEq,Eq,Hash,RustcDecodable,RustcEncodable)]
 pub enum Relation {
@@ -22,16 +22,60 @@ pub struct Guard {
 }
 
 impl Guard {
-    pub fn from_relation(r: Relation) -> Guard {
+    pub fn new(r: Relation) -> Guard {
         Guard{ relation: r }
     }
 
-    pub fn new() -> Guard {
+    pub fn never() -> Guard {
+        Guard{ relation: Relation::False }
+    }
+
+    pub fn always() -> Guard {
         Guard{ relation: Relation::True }
     }
 
+    pub fn eq<A: ToRvalue, B: ToRvalue>(a: &A, b: &B) -> Guard {
+        Guard{ relation: Relation::Equal(a.to_rv(),b.to_rv()) }
+    }
+
+    pub fn neq<A: ToRvalue, B: ToRvalue>(a: &A, b: &B) -> Guard {
+        Guard{ relation: Relation::NotEqual(a.to_rv(),b.to_rv()) }
+    }
+
+    pub fn sign_gt<A: ToRvalue, B: ToRvalue>(a: &A, b: &B) -> Guard {
+        Guard{ relation: Relation::SignedGreater(a.to_rv(),b.to_rv()) }
+    }
+
+    pub fn unsi_gt<A: ToRvalue, B: ToRvalue>(a: &A, b: &B) -> Guard {
+        Guard{ relation: Relation::UnsignedGreater(a.to_rv(),b.to_rv()) }
+    }
+
+    pub fn sign_less<A: ToRvalue, B: ToRvalue>(a: &A, b: &B) -> Guard {
+        Guard{ relation: Relation::SignedLess(a.to_rv(),b.to_rv()) }
+    }
+
+    pub fn unsi_less<A: ToRvalue, B: ToRvalue>(a: &A, b: &B) -> Guard {
+        Guard{ relation: Relation::UnsignedLess(a.to_rv(),b.to_rv()) }
+    }
+
+    pub fn sign_geq<A: ToRvalue, B: ToRvalue>(a: &A, b: &B) -> Guard {
+        Guard{ relation: Relation::SignedGreaterOrEqual(a.to_rv(),b.to_rv()) }
+    }
+
+    pub fn unsi_geq<A: ToRvalue, B: ToRvalue>(a: &A, b: &B) -> Guard {
+        Guard{ relation: Relation::UnsignedGreaterOrEqual(a.to_rv(),b.to_rv()) }
+    }
+
+    pub fn sign_leq<A: ToRvalue, B: ToRvalue>(a: &A, b: &B) -> Guard {
+        Guard{ relation: Relation::SignedLessOrEqual(a.to_rv(),b.to_rv()) }
+    }
+
+    pub fn unsi_leq<A: ToRvalue, B: ToRvalue>(a: &A, b: &B) -> Guard {
+        Guard{ relation: Relation::UnsignedLessOrEqual(a.to_rv(),b.to_rv()) }
+    }
+
     pub fn negation(&self) -> Guard {
-        Guard::from_relation(match self.relation {
+        Guard::new(match self.relation {
             Relation::UnsignedLessOrEqual(ref a,ref b) => Relation::UnsignedGreater(a.clone(),b.clone()),
             Relation::SignedLessOrEqual(ref a,ref b) => Relation::SignedGreater(a.clone(),b.clone()),
             Relation::UnsignedGreaterOrEqual(ref a,ref b) => Relation::UnsignedLess(a.clone(),b.clone()),
@@ -55,26 +99,26 @@ mod tests {
 
     #[test]
     fn construct() {
-        let g = Guard::from_relation(Relation::UnsignedGreater(Rvalue::Undefined,Rvalue::Undefined));
-        let g2 = Guard::from_relation(Relation::Equal(Rvalue::Undefined,Rvalue::Undefined));
+        let g = Guard::new(Relation::UnsignedGreater(Rvalue::Undefined,Rvalue::Undefined));
+        let g2 = Guard::new(Relation::Equal(Rvalue::Undefined,Rvalue::Undefined));
 
         assert!(g != g2);
     }
 
     #[test]
     fn negation() {
-        let g1 = Guard::from_relation(Relation::UnsignedLessOrEqual(Rvalue::Undefined,Rvalue::Undefined));
-        let g2 = Guard::from_relation(Relation::SignedLessOrEqual(Rvalue::Undefined,Rvalue::Undefined));
-        let g3 = Guard::from_relation(Relation::UnsignedGreaterOrEqual(Rvalue::Undefined,Rvalue::Undefined));
-        let g4 = Guard::from_relation(Relation::SignedGreaterOrEqual(Rvalue::Undefined,Rvalue::Undefined));
-        let g5 = Guard::from_relation(Relation::UnsignedLess(Rvalue::Undefined,Rvalue::Undefined));
-        let g6 = Guard::from_relation(Relation::SignedLess(Rvalue::Undefined,Rvalue::Undefined));
-        let g7 = Guard::from_relation(Relation::UnsignedGreater(Rvalue::Undefined,Rvalue::Undefined));
-        let g8 = Guard::from_relation(Relation::SignedGreater(Rvalue::Undefined,Rvalue::Undefined));
-        let g9 = Guard::from_relation(Relation::Equal(Rvalue::Undefined,Rvalue::Undefined));
-        let g10 = Guard::from_relation(Relation::NotEqual(Rvalue::Undefined,Rvalue::Undefined));
-        let g11 = Guard::from_relation(Relation::True);
-        let g12 = Guard::from_relation(Relation::False);
+        let g1 = Guard::new(Relation::UnsignedLessOrEqual(Rvalue::Undefined,Rvalue::Undefined));
+        let g2 = Guard::new(Relation::SignedLessOrEqual(Rvalue::Undefined,Rvalue::Undefined));
+        let g3 = Guard::new(Relation::UnsignedGreaterOrEqual(Rvalue::Undefined,Rvalue::Undefined));
+        let g4 = Guard::new(Relation::SignedGreaterOrEqual(Rvalue::Undefined,Rvalue::Undefined));
+        let g5 = Guard::new(Relation::UnsignedLess(Rvalue::Undefined,Rvalue::Undefined));
+        let g6 = Guard::new(Relation::SignedLess(Rvalue::Undefined,Rvalue::Undefined));
+        let g7 = Guard::new(Relation::UnsignedGreater(Rvalue::Undefined,Rvalue::Undefined));
+        let g8 = Guard::new(Relation::SignedGreater(Rvalue::Undefined,Rvalue::Undefined));
+        let g9 = Guard::new(Relation::Equal(Rvalue::Undefined,Rvalue::Undefined));
+        let g10 = Guard::new(Relation::NotEqual(Rvalue::Undefined,Rvalue::Undefined));
+        let g11 = Guard::new(Relation::True);
+        let g12 = Guard::new(Relation::False);
 
         let not_g1 = g1.negation();
         let not_g2 = g2.negation();

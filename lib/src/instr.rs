@@ -4,7 +4,7 @@ use value::{Lvalue,Rvalue};
 pub enum Operation {
     LogicAnd(Rvalue,Rvalue),
     LogicInclusiveOr(Rvalue,Rvalue),
-    LogicExlusiveOr(Rvalue,Rvalue),
+    LogicExclusiveOr(Rvalue,Rvalue),
     LogicNegation(Rvalue),
     LogicLift(Rvalue),
 
@@ -37,7 +37,7 @@ impl Instr {
         match self.op {
             Operation::LogicAnd(ref a,ref b) => return vec!(a,b),
             Operation::LogicInclusiveOr(ref a,ref b) => return vec!(a,b),
-            Operation::LogicExlusiveOr(ref a,ref b) => return vec!(a,b),
+            Operation::LogicExclusiveOr(ref a,ref b) => return vec!(a,b),
             Operation::LogicNegation(ref a) => return vec!(a),
             Operation::LogicLift(ref a) => return vec!(a),
 
@@ -70,7 +70,7 @@ mod tests {
     fn construct() {
         let logic_and = Instr{ op: Operation::LogicAnd(Rvalue::Undefined,Rvalue::Undefined), assignee: Lvalue::Undefined };
         let logic_or = Instr{ op: Operation::LogicInclusiveOr(Rvalue::Undefined,Rvalue::Undefined), assignee: Lvalue::Undefined };
-        let logic_xor = Instr{ op: Operation::LogicExlusiveOr(Rvalue::Undefined,Rvalue::Undefined), assignee: Lvalue::Undefined };
+        let logic_xor = Instr{ op: Operation::LogicExclusiveOr(Rvalue::Undefined,Rvalue::Undefined), assignee: Lvalue::Undefined };
         let logic_neg = Instr{ op: Operation::LogicNegation(Rvalue::Undefined), assignee: Lvalue::Undefined };
         let logic_lift = Instr{ op: Operation::LogicLift(Rvalue::Undefined), assignee: Lvalue::Undefined };
 

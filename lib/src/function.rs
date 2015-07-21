@@ -1,12 +1,12 @@
 use basic_block::BasicBlock;
 use guard::Guard;
 use graph_algos::{AdjacencyList,GraphTrait,MutableGraphTrait};
-use graph_algos::adjacency_list::{AdjacencyListEdgeDescriptor,AdjacencyListVertexDescriptor};
+use graph_algos::adjacency_list::AdjacencyListVertexDescriptor;
 use graph_algos::{VertexListGraphTrait,EdgeListGraphTrait};
 use disassembler::{Disassembler,State,Token};
 use layer::LayerIter;
 use value::Rvalue;
-use std::collections::{HashMap,BTreeMap,BinaryHeap,Bound,BTreeSet};
+use std::collections::{HashMap,BTreeMap,Bound,BTreeSet};
 use mnemonic::Mnemonic;
 use num::traits::NumCast;
 use std::fmt::{Display,Debug};
@@ -54,8 +54,8 @@ impl Function {
                     mnemonics.entry(mne.area.start).or_insert(Vec::new()).push(mne.clone());
 
                     if let Some(prev) = prev_mne {
-                        by_source.entry(prev).or_insert(Vec::new()).push((Some(mne.area.start),Guard::new()));
-                        by_destination.entry(mne.area.start).or_insert(Vec::new()).push((Some(prev),Guard::new()));
+                        by_source.entry(prev).or_insert(Vec::new()).push((Some(mne.area.start),Guard::always()));
+                        by_destination.entry(mne.area.start).or_insert(Vec::new()).push((Some(prev),Guard::always()));
                     }
                     prev_mne = Some(mne.area.start);
                 }

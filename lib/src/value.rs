@@ -48,6 +48,28 @@ impl Lvalue {
     }
 }
 
+pub trait ToRvalue {
+    fn to_rv(&self) -> Rvalue;
+}
+
+impl ToRvalue for Rvalue {
+    fn to_rv(&self) -> Rvalue {
+        self.clone()
+    }
+}
+
+impl ToRvalue for Lvalue {
+    fn to_rv(&self) -> Rvalue {
+        Rvalue::from_lvalue(self)
+    }
+}
+
+impl ToRvalue for u64 {
+    fn to_rv(&self) -> Rvalue {
+        Rvalue::Constant(self.clone())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
