@@ -243,6 +243,7 @@ impl Function {
                 for mne in match_st.mnemonics {
                     last_mne_start = mne.area.start;
                     mnemonics.entry(mne.area.start).or_insert(Vec::new()).push(mne);
+
                 }
 
                 for (tgt,gu) in match_st.jumps {

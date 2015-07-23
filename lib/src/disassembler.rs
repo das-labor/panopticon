@@ -202,7 +202,7 @@ impl<I: Token> Expr<I> {
                 }
 
                 if bit != 0 {
-                    panic!("Pattern syntax error: invalid pattern length");
+                    panic!("Pattern syntax error: invalid pattern length in '{}'",s);
                 }
 
                 vec!(Match::<I>{
@@ -346,9 +346,10 @@ impl<I: Token> Disassembler<I> {
                     for x in (0..size_of::<I>()) {
                         if let Some(Some(b)) = j.next() {
                             if x != 0 {
-                                tmp = cast::<<I as Shl<usize>>::Output,I>(tmp << 8).unwrap();
+                                tmp = cast(tmp | cast::<<I as Shl<usize>>::Output,I>(cast::<u8,I>(b).unwrap() << 8).unwrap()).unwrap();
+                            } else {
+                                tmp = cast(b).unwrap();
                             }
-                            tmp = cast(tmp | cast(b).unwrap()).unwrap();
                         } else {
                             return false;
                         }
