@@ -20,6 +20,7 @@ rustc-serialize = "*"
 num = "*"
 tempdir = "*"
 lazy_static = "*"
+libc = "*"
 
 [dependencies.qmlrs]
 git = "https://github.com/flanfly/qmlrs"

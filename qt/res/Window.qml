@@ -34,8 +34,8 @@ ApplicationWindow {
 		property var next: function() {}
 
 		onYes: {
-			if(Panopticon.session.savePath != "") {
-				Panopticon.session.save(Panopticon.session.savePath)
+			if(Panopticon.savePath != "") {
+				Panopticon.save(Panopticon.savePath)
 				next()
 			} else {
 				fileSaveDialog.next = saveStaleDialog.next
@@ -50,8 +50,8 @@ ApplicationWindow {
 		onRejected: {}
 	}
 
-	function saveStaleSession(next) {
-		if(Panopticon.session && Panopticon.session.dirty) {
+	function saveStalePanopticon(next) {
+		if(Panopticon.active && Panopticon.dirty) {
 			saveStaleDialog.next = next
 			saveStaleDialog.open()
 		} else {
@@ -62,6 +62,7 @@ ApplicationWindow {
 	title: "Panopticon"
 	height: 1000
 	width: 1000
+	visible: true
 	menuBar: MenuBar {
 		Menu {
 			title: "File"
@@ -72,7 +73,7 @@ ApplicationWindow {
 					text: "Relocated AVR image"
 					shortcut: "Ctrl+A"
 					onTriggered: {
-						saveStaleSession(function() {
+						saveStalePanopticon(function() {
 							fileNewDialog.openFunction = Panopticon.createAvrSession
 							fileNewDialog.open()
 						})
@@ -83,7 +84,7 @@ ApplicationWindow {
 					text: "Uninterpreted data"
 					shortcut: "Ctrl+R"
 					onTriggered: {
-						saveStaleSession(function() {
+						saveStalePanopticon(function() {
 							fileNewDialog.openFunction = Panopticon.createRawSession
 							fileNewDialog.open()
 						});
@@ -95,16 +96,16 @@ ApplicationWindow {
 				text: "Open"
 				shortcut: "Ctrl+O"
 				onTriggered: {
-					saveStaleSession(fileOpenDialog.open);
+					saveStalePanopticon(fileOpenDialog.open);
 				}
 			}
 			MenuItem {
 				text: "Save"
 				shortcut: "Ctrl+S"
-				enabled: Panopticon.session && Panopticon.session.dirty
+				enabled: Panopticon.state == "DIRTY"
 				onTriggered: {
-					if(Panopticon.session.savePath != "") {
-						Panopticon.session.save(Panopticon.session.savePath)
+					if(Panopticon.savePath != "") {
+						Panopticon.save(Panopticon.savePath)
 					} else {
 						fileSaveDialog.open()
 					}
@@ -113,7 +114,7 @@ ApplicationWindow {
 			MenuItem {
 				text: "Save As"
 				shortcut: "Ctrl+Shift+S"
-				enabled: Panopticon.session
+				enabled: Panopticon.state == "DONE"
 				onTriggered: { fileSaveDialog.open() }
 			}
 
@@ -123,7 +124,7 @@ ApplicationWindow {
 				text: "Quit"
 				shortcut: "Ctrl+Q"
 				onTriggered: {
-					saveStaleSession(Qt.quit)
+					saveStalePanopticon(Qt.quit)
 				}
 			}
 		}
@@ -140,7 +141,7 @@ ApplicationWindow {
 		onAccepted: {
 			var path = fileSaveDialog.fileUrls.toString().substring(7)
 			console.log("You saved to: " + path)
-			Panopticon.session.save(path)
+			Panopticon.save(path)
 			next()
 		}
 	}
@@ -156,12 +157,12 @@ ApplicationWindow {
 		onAccepted: {
 			// cut off the "file://" part
 			var path = fileOpenDialog.fileUrls.toString().substring(7)
-			var sess = Panopticon.openSession(path)
+			var sess = Panopticon.openPanopticon(path)
 
 			if(sess == null) {
 				console.log("The file '" + path + "' is not a valid Panopticon session.")
 			} else {
-				loader.setSource("workspace/Workspace.qml",{ "session": Panopticon.session })
+				loader.setSource("workspace/Workspace.qml",{ "session": Panopticon })
 			}
 
 			next()
@@ -187,7 +188,7 @@ ApplicationWindow {
 			if(sess == null) {
 				console.log("The file '" + path + "' is not a valid Panopticon session.")
 			} else {
-				loader.setSource("workspace/Workspace.qml",{ "session": Panopticon.session })
+				loader.setSource("workspace/Workspace.qml",{ "session": Panopticon })
 			}
 
 			next()
@@ -224,8 +225,8 @@ ApplicationWindow {
 	}
 
 	Component.onCompleted: {
-		if(Panopticon.session) {
-			loader.setSource("workspace/Workspace.qml",{ "session": Panopticon.session })
+		if(Panopticon.active) {
+			loader.setSource("workspace/Workspace.qml")
 		}
 	}
 }

@@ -17,8 +17,8 @@ pub type RegionRef = AdjacencyListVertexDescriptor;
 
 #[derive(RustcDecodable,RustcEncodable)]
 pub struct Regions {
-    dependencies: RegionGraph,
-    root: RegionRef,
+    pub dependencies: RegionGraph,
+    pub root: RegionRef,
 }
 
 impl Region {

@@ -5,10 +5,10 @@ use region::{Region,Regions};
 
 #[derive(RustcDecodable,RustcEncodable)]
 pub struct Project {
-    name: String,
-    code: Vec<Program>,
+    pub name: String,
+    pub code: Vec<Program>,
     //data: Vec<Structure>,
-    sources: Regions,
+    pub sources: Regions,
     //comments: Vec<Comment>,
 }
 
