@@ -1,5 +1,5 @@
 use disassembler::*;
-use program::Program;
+use program::{Program,DisassembleEvent};
 use layer::LayerIter;
 use value::{Lvalue,Rvalue,Endianess,ToRvalue};
 use codegen::CodeGen;
@@ -685,7 +685,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
         [ 0x9488 ] = |st: &mut State<Avr>| {
             let next = st.address + 2;
 
-            st.mnemonic(2,"CLC","",vec!(),|cg: &mut CodeGen| {
+            st.mnemonic(2,"clc","",vec!(),|cg: &mut CodeGen| {
                 cg.assign(&*C,&0);
             });
             st.jump(Rvalue::Constant(next),Guard::always());
@@ -695,7 +695,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
         [ 0x94d8 ] = |st: &mut State<Avr>| {
             let next = st.address + 2;
 
-            st.mnemonic(2,"CLH","",vec!(),|cg: &mut CodeGen| {
+            st.mnemonic(2,"clh","",vec!(),|cg: &mut CodeGen| {
                 cg.assign(&*H,&0);
             });
             st.jump(Rvalue::Constant(next),Guard::always());
@@ -705,7 +705,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
         [ 0x94f8 ] = |st: &mut State<Avr>| {
             let next = st.address + 2;
 
-            st.mnemonic(2,"CLI","",vec!(),|cg: &mut CodeGen| {
+            st.mnemonic(2,"cli","",vec!(),|cg: &mut CodeGen| {
                 cg.assign(&*I,&0);
             });
             st.jump(Rvalue::Constant(next),Guard::always());
@@ -715,7 +715,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
         [ 0x94a8 ] = |st: &mut State<Avr>| {
             let next = st.address + 2;
 
-            st.mnemonic(2,"CLN","",vec!(),|cg: &mut CodeGen| {
+            st.mnemonic(2,"cln","",vec!(),|cg: &mut CodeGen| {
                 cg.assign(&*N,&0);
             });
             st.jump(Rvalue::Constant(next),Guard::always());
@@ -725,7 +725,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
         [ 0x94c8 ] = |st: &mut State<Avr>| {
             let next = st.address + 2;
 
-            st.mnemonic(2,"CLS","",vec!(),|cg: &mut CodeGen| {
+            st.mnemonic(2,"cls","",vec!(),|cg: &mut CodeGen| {
                 cg.assign(&*S,&0);
             });
             st.jump(Rvalue::Constant(next),Guard::always());
@@ -735,7 +735,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
         [ 0x94e8 ] = |st: &mut State<Avr>| {
             let next = st.address + 2;
 
-            st.mnemonic(2,"CLT","",vec!(),|cg: &mut CodeGen| {
+            st.mnemonic(2,"clt","",vec!(),|cg: &mut CodeGen| {
                 cg.assign(&*T,&0);
             });
             st.jump(Rvalue::Constant(next),Guard::always());
@@ -745,7 +745,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
         [ 0x94b8 ] = |st: &mut State<Avr>| {
             let next = st.address + 2;
 
-            st.mnemonic(2,"CLV","",vec!(),|cg: &mut CodeGen| {
+            st.mnemonic(2,"clv","",vec!(),|cg: &mut CodeGen| {
                 cg.assign(&*V,&0);
             });
             st.jump(Rvalue::Constant(next),Guard::always());
@@ -755,7 +755,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
         [ 0x9498 ] = |st: &mut State<Avr>| {
             let next = st.address + 2;
 
-            st.mnemonic(2,"CLZ","",vec!(),|cg: &mut CodeGen| {
+            st.mnemonic(2,"clz","",vec!(),|cg: &mut CodeGen| {
                 cg.assign(&*Z,&0);
             });
             st.jump(Rvalue::Constant(next),Guard::always());
@@ -1574,22 +1574,20 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
                 _k
             } * 2 + 2 + (st.address as i16)) % 0x1000) + 0x1000) % 0x1000);
 
-            st.mnemonic(2,"jmp","{26}",vec!(k.to_rv()),|_: &mut CodeGen| {});
-            st.jump(k,Guard::always());
+            st.mnemonic(2,"rjmp","{26}",vec!(Rvalue::Constant(k as u64)),|_: &mut CodeGen| {});
+            st.jump(Rvalue::Constant(k as u64),Guard::always());
             true
         },
         // RET
         [ 0x9508 ] = |st: &mut State<Avr>| {
             let next = st.address + 2;
             st.mnemonic(2,"ret","",vec!(),|_: &mut CodeGen| {});
-            st.jump(Rvalue::Constant(next),Guard::always());
             true
         },
         // RETI
         [ 0x9518 ] = |st: &mut State<Avr>| {
             let next = st.address + 2;
             st.mnemonic(2,"reti","",vec!(),|_: &mut CodeGen| {});
-            st.jump(Rvalue::Constant(next),Guard::always());
             true
         },
         // IJMP
