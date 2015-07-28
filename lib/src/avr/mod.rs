@@ -22,7 +22,7 @@ pub struct Mcu {
 
 impl Mcu {
     pub fn new() -> Mcu {
-        Mcu { pc_bits: 24 }
+        Mcu { pc_bits: 12 }
     }
 }
 
@@ -1398,7 +1398,8 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
         },
         // BRCx
         [ "11110 x@. k@....... 000" ] = |st: &mut State<Avr>| {
-            let d = st.get_group("k") as u64;
+            let pc_mod = (1 << (st.configuration.pc_bits - 1));
+            let d = (((st.get_group("k") * 2) % pc_mod) + pc_mod) % pc_mod;
             let fallthru = st.address + 2;
             let g = Guard::eq(&*C,&0);
 
@@ -1415,7 +1416,8 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
         },
         // BREQ/BRNE
         [ "11110 x@. k@....... 001" ] = |st: &mut State<Avr>| {
-            let d = st.get_group("k") as u64;
+            let pc_mod = (1 << (st.configuration.pc_bits - 1));
+            let d = (((st.get_group("k") * 2) % pc_mod) + pc_mod) % pc_mod;
             let fallthru = st.address + 2;
             let g = Guard::eq(&*Z,&0);
 
@@ -1432,7 +1434,8 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
         },
         // BRNx
         [ "11110 x@. k@....... 010" ] = |st: &mut State<Avr>| {
-            let d = st.get_group("k") as u64;
+            let pc_mod = (1 << (st.configuration.pc_bits - 1));
+            let d = (((st.get_group("k") * 2) % pc_mod) + pc_mod) % pc_mod;
             let fallthru = st.address + 2;
             let g = Guard::eq(&*N,&0);
 
@@ -1449,7 +1452,8 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
         },
         // BRVx
         [ "11110 x@. k@....... 011" ] = |st: &mut State<Avr>| {
-            let d = st.get_group("k") as u64;
+            let pc_mod = (1 << (st.configuration.pc_bits - 1));
+            let d = (((st.get_group("k") * 2) % pc_mod) + pc_mod) % pc_mod;
             let fallthru = st.address + 2;
             let g = Guard::eq(&*V,&0);
 
@@ -1466,7 +1470,8 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
         },
         // BRGE/BTLT
         [ "11110 x@. k@....... 100" ] = |st: &mut State<Avr>| {
-            let d = st.get_group("k") as u64;
+            let pc_mod = (1 << (st.configuration.pc_bits - 1));
+            let d = (((st.get_group("k") * 2) % pc_mod) + pc_mod) % pc_mod;
             let fallthru = st.address + 2;
             let g = Guard::eq(&*S,&0);
 
@@ -1483,7 +1488,8 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
         },
         // BRHx
         [ "11110 x@. k@....... 101" ] = |st: &mut State<Avr>| {
-            let d = st.get_group("k") as u64;
+            let pc_mod = (1 << (st.configuration.pc_bits - 1));
+            let d = (((st.get_group("k") * 2) % pc_mod) + pc_mod) % pc_mod;
             let fallthru = st.address + 2;
             let g = Guard::eq(&*H,&0);
 
@@ -1500,7 +1506,8 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
         },
         // BRTx
         [ "11110 x@. k@....... 110" ] = |st: &mut State<Avr>| {
-            let d = st.get_group("k") as u64;
+            let pc_mod = (1 << (st.configuration.pc_bits - 1));
+            let d = (((st.get_group("k") * 2) % pc_mod) + pc_mod) % pc_mod;
             let fallthru = st.address + 2;
             let g = Guard::eq(&*T,&0);
 
@@ -1517,7 +1524,8 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
         },
         // BRIx
         [ "11110 x@. k@....... 111" ] = |st: &mut State<Avr>| {
-            let d = st.get_group("k") as u64;
+            let pc_mod = (1 << (st.configuration.pc_bits - 1));
+            let d = (((st.get_group("k") * 2) % pc_mod) + pc_mod) % pc_mod;
             let fallthru = st.address + 2;
             let g = Guard::eq(&*I,&0);
 
@@ -1534,7 +1542,8 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
         },
         // CALL
         [ "1001010 k@..... 111 k@.", "k@................" ] = |st: &mut State<Avr>| {
-            let _k = ((st.get_group("k") as u64) * 2);// % st.state.flash_sz;
+            let pc_mod = (1 << (st.configuration.pc_bits - 1));
+            let _k = (((st.get_group("k") * 2) % pc_mod) + pc_mod) % pc_mod;
             let k = Rvalue::Constant(_k);
 
             st.mnemonic(4,"call","{26}",vec!(k.to_rv()),|cg: &mut CodeGen| {
@@ -1544,7 +1553,8 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
         },
         // JMP
         [ "1001010 k@..... 110 k@.", "k@................" ] = |st: &mut State<Avr>| {
-            let _k = st.get_group("k") * 2;// % st.state.flash_sz;
+            let pc_mod = (1 << (st.configuration.pc_bits - 1));
+            let _k = (((st.get_group("k") * 2) % pc_mod) + pc_mod) % pc_mod;
             let k = Rvalue::Constant(_k);
 
             st.mnemonic(4,"jmp","{26}",vec!(k.to_rv()),|_: &mut CodeGen| {});
@@ -1554,11 +1564,12 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
         // RCALL
         [ "1101 k@............" ] = |st: &mut State<Avr>| {
             let _k = st.get_group("k") as i16;
+            let pc_mod = (1 << (st.configuration.pc_bits - 1));
             let k = ((((if _k & 0x0800 != 0 {
                 _k | 0xF000
             } else {
                 _k
-            } * 2 + 2 + (st.address as i16)) % 0x1000) + 0x1000) % 0x1000);
+            } * 2 + 2 + (st.address as i16)) % pc_mod) + pc_mod) % pc_mod);
 
             st.mnemonic(2,"rcall","{26}",vec!(Rvalue::Constant(k as u64)),|cg: &mut CodeGen| {
                 cg.call_i(&Lvalue::Undefined,&Rvalue::Constant(k as u64));
@@ -1568,11 +1579,12 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
         // RJMP
         [ "1100 k@............" ] = |st: &mut State<Avr>| {
             let _k = st.get_group("k") as i16; // 12 bits
+            let pc_mod = (1 << (st.configuration.pc_bits - 1));
             let k = ((((if _k & 0x0800 != 0 {
                 _k | 0xF000
             } else {
                 _k
-            } * 2 + 2 + (st.address as i16)) % 0x1000) + 0x1000) % 0x1000);
+            } * 2 + 2 + (st.address as i16)) % pc_mod) + pc_mod) % pc_mod);
 
             st.mnemonic(2,"rjmp","{26}",vec!(Rvalue::Constant(k as u64)),|_: &mut CodeGen| {});
             st.jump(Rvalue::Constant(k as u64),Guard::always());
@@ -2026,7 +2038,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let next = st.address + 2;
             let z = new_temp(22);
 
-            st.mnemonic_dynargs(2,"icall","{16::Z}",|cg: &mut CodeGen| {
+            st.mnemonic_dynargs(2,"eicall","{16::Z}",|cg: &mut CodeGen| {
                 let t = new_temp(22);
 
                 cg.mul_i(&t,&*EIND,&0x10000);

@@ -13,15 +13,6 @@ use std::mem::size_of;
 use codegen::CodeGen;
 use layer::LayerIter;
 
-/*
-pub trait Token: Clone + Zero + One + Debug + Not + BitOr + BitAnd + Shl<usize> + Shr<usize> + NumCast + PartialEq + Eq
-where <Self as Not>::Output: NumCast,
-      <Self as BitOr>::Output: NumCast,
-      <Self as BitAnd>::Output: NumCast,
-      <Self as Shl<usize>>::Output: NumCast,
-      <Self as Shr<usize>>::Output: NumCast,
-{}*/
-
 pub trait Architecture: Clone
 {
     type Token: Not<Output=Self::Token> +
@@ -53,7 +44,7 @@ pub struct State<A: Architecture> {
     pub jumps: Vec<(Rvalue,Guard)>,
 
     next_address: u64,
-    configuration: A::Configuration,
+    pub configuration: A::Configuration,
 }
 
 impl<A: Architecture> State<A> {
