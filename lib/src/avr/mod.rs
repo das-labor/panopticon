@@ -12,19 +12,17 @@ pub enum Avr {}
 
 impl Architecture for Avr {
     type Token = u16;
-    type Configuration = AvrState;
+    type Configuration = Mcu;
 }
 
 #[derive(Clone)]
-pub struct AvrState {
+pub struct Mcu {
     pub pc_bits: u16, // width of the program counter in bits (FLASHEND)
 }
 
-impl AvrState {
-    pub fn new() -> AvrState {
-        AvrState{
-            pc_bits: 24
-        }
+impl Mcu {
+    pub fn new() -> Mcu {
+        Mcu { pc_bits: 24 }
     }
 }
 
@@ -2412,6 +2410,6 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
     main
 }
 
-pub fn disassemble(_: AvrState, data: LayerIter) -> Program {
-    Program::disassemble(None,disassembler(),AvrState::new(),data,0)
+pub fn disassemble<F: Fn(DisassembleEvent)>(_: Mcu, data: LayerIter, progress: Option<F>) -> Program {
+    Program::disassemble(None,disassembler(),Mcu::new(),data,0,progress)
 }
