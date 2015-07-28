@@ -159,7 +159,7 @@ fn set_sp<A: ToRvalue>(v: &A, cg: &mut CodeGen) {
     cg.assign(&sram(&sp),v);
 }
 
-fn resolv(r: u16) -> Lvalue {
+fn resolv(r: u64) -> Lvalue {
     if r > 31 {
         panic!("can't decode register {}",r);
     } else {
@@ -1544,7 +1544,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
         },
         // JMP
         [ "1001010 k@..... 110 k@.", "k@................" ] = |st: &mut State<Avr>| {
-            let _k = ((st.get_group("k") as u64) * 2);// % st.state.flash_sz;
+            let _k = st.get_group("k") * 2;// % st.state.flash_sz;
             let k = Rvalue::Constant(_k);
 
             st.mnemonic(4,"jmp","{26}",vec!(k.to_rv()),|_: &mut CodeGen| {});
@@ -1553,26 +1553,26 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
         },
         // RCALL
         [ "1101 k@............" ] = |st: &mut State<Avr>| {
-            let _k = st.get_group("k") as u64;
-            let k = if _k <= 2047 {
-                Rvalue::Constant(((_k * 2 + 2) + st.address))// % st.state.flash_sz);
+            let _k = st.get_group("k") as i16;
+            let k = ((((if _k & 0x0800 != 0 {
+                _k | 0xF000
             } else {
-                Rvalue::Constant((((_k - 4096) * 2 + 2) + st.address))// % st.state.flash_sz);
-            };
+                _k
+            } * 2 + 2 + (st.address as i16)) % 0x1000) + 0x1000) % 0x1000);
 
-            st.mnemonic(2,"call","{26}",vec!(k.to_rv()),|cg: &mut CodeGen| {
-                cg.call_i(&Lvalue::Undefined,&k);
+            st.mnemonic(2,"rcall","{26}",vec!(Rvalue::Constant(k as u64)),|cg: &mut CodeGen| {
+                cg.call_i(&Lvalue::Undefined,&Rvalue::Constant(k as u64));
             });
             true
         },
         // RJMP
         [ "1100 k@............" ] = |st: &mut State<Avr>| {
-            let _k = ((st.get_group("k") as u64) * 2);// % st.state.flash_sz;
-            let k = if _k <= 2047 {
-                Rvalue::Constant(((_k * 2 + 2) + st.address))// % st.state.flash_sz);
+            let _k = st.get_group("k") as i16; // 12 bits
+            let k = ((((if _k & 0x0800 != 0 {
+                _k | 0xF000
             } else {
-                Rvalue::Constant((((_k - 4096) * 2 + 2) + st.address))// % st.state.flash_sz);
-            };
+                _k
+            } * 2 + 2 + (st.address as i16)) % 0x1000) + 0x1000) % 0x1000);
 
             st.mnemonic(2,"jmp","{26}",vec!(k.to_rv()),|_: &mut CodeGen| {});
             st.jump(k,Guard::always());
