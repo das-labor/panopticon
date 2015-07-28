@@ -25,6 +25,12 @@ pub struct Program {
     pub call_graph: CallGraph,
 }
 
+pub enum DisassembleEvent {
+    Discovered(u64),
+    Started(u64),
+    Done(u64),
+}
+
 impl Program {
     pub fn new(n: &str) -> Program {
         Program{
@@ -50,7 +56,8 @@ impl Program {
         })
     }
 
-    pub fn disassemble<A: Architecture>(cont: Option<Program>, dec: Rc<Disassembler<A>>, init: A::Configuration, data: LayerIter, start: u64) -> Program {
+    pub fn disassemble<A: Architecture,F: Fn(DisassembleEvent)>(cont: Option<Program>, dec: Rc<Disassembler<A>>, init: A::Configuration, data: LayerIter,
+                                                                start: u64, progress: Option<F>) -> Program {
         if cont.is_some() && cont.as_ref().map(|x| x.find_function_by_entry(start)).is_some() {
             return cont.unwrap();
         }
@@ -60,9 +67,17 @@ impl Program {
 
 		worklist.insert(start);
 
-		while(!worklist.is_empty()) {
+        if let Some(ref f) = progress {
+            f(DisassembleEvent::Discovered(start))
+        }
+
+		while !worklist.is_empty() {
 			let tgt = *worklist.iter().next().unwrap();
 			worklist.remove(&tgt);
+
+            if let Some(ref f) = progress {
+                f(DisassembleEvent::Started(tgt))
+            }
 
             if ret.find_function_by_entry(tgt).is_some() {
                 continue;
@@ -71,6 +86,10 @@ impl Program {
             println!("Disassemble at {}",tgt);
 
             let new_fun = Function::disassemble::<A>(None,dec.clone(),init.clone(),data.clone(),tgt);
+
+            if let Some(ref f) = progress {
+                f(DisassembleEvent::Done(tgt));
+            }
 
             if new_fun.cflow_graph.num_vertices() > 0 {
 				// XXX: compute dominance tree
@@ -87,6 +106,9 @@ impl Program {
                         if let Some(other_fun) = ret.find_function_by_entry(a) {
                             new.push(other_fun);
                         } else {
+                            if let Some(ref f) = progress {
+                                f(DisassembleEvent::Discovered(a))
+                            }
                             worklist.insert(a);
                         }
                     }

@@ -46,7 +46,7 @@ pub struct State<A: Architecture> {
     // in
     pub address: u64,
     pub tokens: Vec<A::Token>,
-    pub groups: Vec<(String,A::Token)>,
+    pub groups: Vec<(String,u64)>,
 
     // out
     pub mnemonics: Vec<Mnemonic>,
@@ -69,7 +69,7 @@ impl<A: Architecture> State<A> {
         }
     }
 
-    pub fn get_group(&self,n: &str) -> A::Token {
+    pub fn get_group(&self,n: &str) -> u64 {
         self.groups.iter().find(|x| x.0 == n.to_string()).unwrap().1.clone()
     }
 
@@ -242,10 +242,6 @@ impl<A: Architecture> Expr<A> {
                     groups: vec!(),
                     actions: vec!()
                 });
-
-                for x in &ms {
-                    println!("opt: {:?}",x.patterns);
-                }
                 ms
             }
         }
@@ -373,12 +369,12 @@ impl<A: Architecture> Disassembler<A> {
             });
 
             if is_match {
-                let mut grps = HashMap::<String,A::Token>::new();
+                let mut grps = HashMap::<String,u64>::new();
                 let mut st = _st.clone();
 
                 for cap in &opt.groups {
                     let masks = &cap.1;
-                    let mut res = grps.get(&cap.0).unwrap_or(&A::Token::zero()).clone();
+                    let mut res: u64 = grps.get(&cap.0).unwrap_or(&0).clone();
 
                     for tok_msk in tokens.iter().zip(masks.iter()) {
                         if *tok_msk.1 != A::Token::zero() {
@@ -390,11 +386,13 @@ impl<A: Architecture> Disassembler<A> {
                                     A::Token::one()
                                 };
 
-                                if mask.clone() & tok_msk.1.clone() != A::Token::zero() {
-                                    res = res << 1;
+                                let a = mask.clone() & tok_msk.1.clone();
 
-                                    if tok_msk.0.clone() & tok_msk.1.clone() != A::Token::zero() {
-                                        res = res | A::Token::one();
+                                if a != I::zero() {
+                                    res <<= 1;
+
+                                    if tok_msk.0.clone() & a != I::zero() {
+                                        res |= 1;
                                     }
                                 }
                             }
@@ -405,7 +403,7 @@ impl<A: Architecture> Disassembler<A> {
                 }
 
                 st.tokens = tokens.iter().take(pattern.len()).cloned().collect();
-                st.groups = grps.iter().map(|x| (x.0.clone(),x.1.clone())).collect::<Vec<_>>();
+                st.groups = grps.iter().map(|x| (x.0.clone(),x.1.clone())).collect::<Vec<(String,u64)>>();
 
                 if actions.iter().all(|x| x(&mut st)) {
                     return Some(st);
