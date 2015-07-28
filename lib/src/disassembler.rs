@@ -6,7 +6,7 @@ use guard::Guard;
 use std::rc::Rc;
 use num::traits::{Zero,One,NumCast,cast};
 use std::slice::Iter;
-use std::fmt::{Display,Debug};
+use std::fmt::Debug;
 use std::ops::{BitAnd,BitOr,Shl,Shr,Not};
 use std::collections::HashMap;
 use std::mem::size_of;

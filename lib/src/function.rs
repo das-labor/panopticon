@@ -8,9 +8,6 @@ use layer::LayerIter;
 use value::Rvalue;
 use std::collections::{HashMap,BTreeMap,BTreeSet};
 use mnemonic::Mnemonic;
-use num::traits::NumCast;
-use std::fmt::Display;
-use std::ops::{BitAnd,BitOr,Shl,Shr,Not};
 use std::rc::Rc;
 use instr::{Instr,Operation};
 

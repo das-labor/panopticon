@@ -539,18 +539,8 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let rd = reg(st,"d");
             let next = st.address + 2;
 
-            st.mnemonic_dynargs(2,"sts","{{16::X+}}",|cg: &mut CodeGen| {
-                let z = new_temp(16);
-                cg.mul_i(&z,&*R30,&0x100);
-                cg.add_i(&z,&*R31,&z);
-
-                cg.assign(&flash(&z),&*R1);
-                cg.add_i(&z,&z,&1);
-
-                cg.div_i(&*R30,&z,&0x100);
-                cg.mod_i(&*R31,&z,&0x100);
-
-                vec!(z.to_rv())
+            st.mnemonic(2,"sts","{16}, {8}",vec!(k.clone(),rd.to_rv()),|cg: &mut CodeGen| {
+                cg.assign(&sram(&k),&rd);
             });
             st.jump(Rvalue::Constant(next),Guard::always());
             true
