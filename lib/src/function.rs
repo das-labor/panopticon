@@ -6,15 +6,13 @@ use graph_algos::{VertexListGraphTrait,EdgeListGraphTrait};
 use disassembler::{Disassembler,State,Architecture};
 use layer::LayerIter;
 use value::Rvalue;
-use std::collections::{HashMap,BTreeMap,Bound,BTreeSet};
+use std::collections::{HashMap,BTreeMap,BTreeSet};
 use mnemonic::Mnemonic;
 use num::traits::NumCast;
-use std::fmt::{Display,Debug};
+use std::fmt::Display;
 use std::ops::{BitAnd,BitOr,Shl,Shr,Not};
 use std::rc::Rc;
 use instr::{Instr,Operation};
-
-use disassembler;
 
 #[derive(RustcDecodable,RustcEncodable,Debug)]
 pub enum ControlFlowTarget {
@@ -103,7 +101,7 @@ impl Function {
         let mut ret = ControlFlowGraph::new();
         let mut bblock = Vec::<Mnemonic>::new();
 
-        for (off,mnes) in mnemonics.iter() {
+        for (_,mnes) in mnemonics.iter() {
             for mne in mnes {
                 if bblock.len() > 0 {
                     let last_mne = &bblock.last().unwrap().clone();
@@ -111,11 +109,11 @@ impl Function {
                     let mut new_bb = bblock.last().unwrap().area.end != mne.area.start;
 
 					// or any following jumps aren't to adjacent mnemonics
-                    new_bb |= by_source.get(&last_mne.area.start).unwrap_or(&Vec::new()).iter().any(|&(ref opt_dest,ref gu)| {
+                    new_bb |= by_source.get(&last_mne.area.start).unwrap_or(&Vec::new()).iter().any(|&(ref opt_dest,_)| {
                         opt_dest.is_some() && opt_dest.unwrap() != mne.area.start });
 
 					// or any jumps pointing to the next that aren't from here
-                    new_bb |= by_destination.get(&mne.area.start).unwrap_or(&Vec::new()).iter().any(|&(ref opt_src,ref gu)| {
+                    new_bb |= by_destination.get(&mne.area.start).unwrap_or(&Vec::new()).iter().any(|&(ref opt_src,_)| {
                         opt_src.is_some() && opt_src.unwrap() != last_mne.area.start });
 
                     // or the entry point does not point here
@@ -225,7 +223,7 @@ impl Function {
                 }
             }
 
-            let mut st = State::<A>::new(addr,init.clone());
+            let st = State::<A>::new(addr,init.clone());
             let mut i = data.seek(addr);
 
             let maybe_match = dec.next_match(&mut i,st);
@@ -234,6 +232,7 @@ impl Function {
                 let mut last_mne_start = 0;
 
                 for mne in match_st.mnemonics {
+                    println!("{:x}: {}",mne.area.start,mne.opcode);
                     last_mne_start = mne.area.start;
                     mnemonics.entry(mne.area.start).or_insert(Vec::new()).push(mne);
 

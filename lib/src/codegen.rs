@@ -1,8 +1,6 @@
 use instr::{Operation,Instr};
 use value::{Rvalue,Lvalue,ToRvalue};
 
-static mut temporary_variable_counter: usize = 0;
-
 pub struct CodeGen {
     pub instructions: Vec<Instr>,
 }

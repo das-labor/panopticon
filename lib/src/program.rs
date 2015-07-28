@@ -1,9 +1,9 @@
 use function::{ControlFlowTarget,Function};
 use graph_algos::{AdjacencyList,GraphTrait,MutableGraphTrait};
-use graph_algos::adjacency_list::{AdjacencyListEdgeDescriptor,AdjacencyListVertexDescriptor};
-use graph_algos::{VertexListGraphTrait,EdgeListGraphTrait};
+use graph_algos::adjacency_list::AdjacencyListVertexDescriptor;
+use graph_algos::VertexListGraphTrait;
 use num::traits::NumCast;
-use std::fmt::{Display,Debug};
+use std::fmt::Display;
 use std::ops::{BitAnd,BitOr,Shl,Shr,Not};
 use std::rc::Rc;
 use disassembler::{Architecture,Disassembler,State};
