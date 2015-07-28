@@ -388,10 +388,10 @@ impl<A: Architecture> Disassembler<A> {
 
                                 let a = mask.clone() & tok_msk.1.clone();
 
-                                if a != I::zero() {
+                                if a != A::Token::zero() {
                                     res <<= 1;
 
-                                    if tok_msk.0.clone() & a != I::zero() {
+                                    if tok_msk.0.clone() & a != A::Token::zero() {
                                         res |= 1;
                                     }
                                 }
