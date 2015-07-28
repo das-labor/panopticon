@@ -10,13 +10,15 @@ use libc::c_int;
 use std::sync::RwLock;
 use std::path::Path;
 use std::thread;
+use std::collections::HashSet;
 
 use panopticon::project::Project;
+use panopticon::function::Function;
 use panopticon::region::Region;
-use panopticon::program::DisassembleEvent;
+use panopticon::program::{DisassembleEvent,Program};
 use panopticon::avr;
 
-use graph_algos::traits::Graph;
+use graph_algos::traits::{VertexListGraph,Graph};
 use qmlrs::{ffi,MetaObject,Variant,Object,ToQVariant};
 
 /*
@@ -71,30 +73,64 @@ extern "C" fn panopticon_slot(this: *mut ffi::QObject, id: libc::c_int, a: *cons
             obj.emit(0,&[]);
 
             thread::spawn(move || {
-                let prog = {
-                    let read_guard = PROJECT.read().unwrap();
-                    let pro: &Project = read_guard.as_ref().unwrap();
-                    let i = pro.sources.dependencies.vertex_label(pro.sources.root).unwrap().iter();
+                let prog = Program::new("prog0");
+                let start = 0;
+                let dec = avr::disassembler();
+                let init = avr::Mcu::new();
 
-                    avr::disassemble(avr::Mcu::new(),i,Some(|e| {
-                        match e {
-                            DisassembleEvent::Discovered(pos) => {
-                                obj.emit(1,&vec!(Variant::I64(pos as i64)));
-                            },
-                            DisassembleEvent::Started(pos) => {
-                                obj.emit(2,&vec!(Variant::I64(pos as i64)));
-                            },
-                            DisassembleEvent::Done(pos) => {
-                                obj.emit(3,&vec!(Variant::I64(pos as i64)));
-                            },
-                        }
-                    }))
-                };
-
+                // Add empty program
                 {
                     let mut write_guard = PROJECT.write().unwrap();
                     let pro: &mut Project = write_guard.as_mut().unwrap();
                     pro.code.push(prog);
+                }
+
+                let mut worklist = HashSet::new();
+
+                worklist.insert(start);
+                obj.emit(1,&vec!(Variant::I64(start as i64)));
+
+                while !worklist.is_empty() {
+                    let tgt = *worklist.iter().next().unwrap();
+
+                    {
+                        let read_guard = PROJECT.read().unwrap();
+                        let pro: &Project = read_guard.as_ref().unwrap();
+
+                        // XXX
+                        if pro.code.last().unwrap().find_function_by_entry(tgt).is_some() {
+                            continue;
+                        } else {
+                            worklist.remove(&tgt);
+                            obj.emit(2,&vec!(Variant::I64(tgt as i64)));
+                        }
+                    }
+
+                    println!("Disassemble at {}",tgt);
+
+                    let new_fun = {
+                        let read_guard = PROJECT.read().unwrap();
+                        let pro: &Project = read_guard.as_ref().unwrap();
+                        let i = pro.sources.dependencies.vertex_label(pro.sources.root).unwrap().iter();
+
+                        Function::disassemble::<avr::Avr>(None,dec.clone(),init.clone(),i,tgt)
+                    };
+
+                    if new_fun.cflow_graph.num_vertices() > 0 {
+                        obj.emit(3,&vec!(Variant::I64(tgt as i64)));
+
+                        let new_tgt = {
+                            let mut write_guard = PROJECT.write().unwrap();
+                            let pro: &mut Project = write_guard.as_mut().unwrap();
+
+                            // XXX
+                            pro.code.last_mut().unwrap().insert(new_fun)
+                        };
+
+                        for a in new_tgt {
+                            worklist.insert(a);
+                        }
+                    }
                 }
 
                 obj.call(8,&[]);

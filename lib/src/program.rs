@@ -119,5 +119,29 @@ impl Program {
 
 		ret
 	}
-}
 
+    pub fn insert(&mut self, new_fun: Function) -> Vec<u64> {
+        let mut ret = Vec::new();
+
+        // add to call graph
+        let new_vx = self.call_graph.add_vertex(CallTarget::Concrete(new_fun));
+        let mut new = Vec::new();
+
+        if let Some(&CallTarget::Concrete(ref fun)) = self.call_graph.vertex_label(new_vx) {
+            // insert call edges and new procedures to disassemble
+            for a in fun.collect_calls() {
+                if let Some(other_fun) = self.find_function_by_entry(a) {
+                    new.push(other_fun);
+                } else {
+                    ret.push(a);
+                }
+            }
+        }
+
+        for other_fun in new {
+            self.call_graph.add_edge((),new_vx,other_fun);
+        }
+
+        ret
+    }
+}
