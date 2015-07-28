@@ -7,15 +7,32 @@ use guard::Guard;
 use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
 use std::rc::Rc;
 
+#[derive(Clone)]
+pub enum Avr {}
+
+impl Architecture for Avr {
+    type Token = u16;
+    type Configuration = AvrState;
+}
+
+#[derive(Clone)]
 pub struct AvrState {
     pub pc_bits: u16, // width of the program counter in bits (FLASHEND)
 }
 
-fn reg(st: &State<u16>, cap: &str) -> Lvalue {
+impl AvrState {
+    pub fn new() -> AvrState {
+        AvrState{
+            pc_bits: 24
+        }
+    }
+}
+
+fn reg(st: &State<Avr>, cap: &str) -> Lvalue {
     resolv(st.get_group(cap))
 }
 
-fn ioreg(st: &State<u16>, cap: &str) -> Lvalue {
+fn ioreg(st: &State<Avr>, cap: &str) -> Lvalue {
     let r = st.get_group(cap);
     let name = match r {
 	    0x00 => "ubrr1",
@@ -209,10 +226,10 @@ lazy_static! {
     static ref RAMPZ: Lvalue = Lvalue::Variable{ name: "RAMPZ".to_string(), width: 8, subscript: None };
 }
 
-pub fn disassembler() -> Rc<Disassembler<u16>> {
-    let simple = new_disassembler!(u16 =>
+pub fn disassembler() -> Rc<Disassembler<Avr>> {
+    let simple = new_disassembler!(Avr =>
         // MOV
-        [ "001011 r@. d@..... r@...." ] = |st: &mut State<u16>| {
+        [ "001011 r@. d@..... r@...." ] = |st: &mut State<Avr>| {
             let rd = reg(st,"d");
             let rr = reg(st,"r");
             let next = st.address + 2;
@@ -224,7 +241,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // MOVW
-        [ "00000001 d@.... r@...." ] = |st: &mut State<u16>| {
+        [ "00000001 d@.... r@...." ] = |st: &mut State<Avr>| {
             let rd1 = reg(st,"d"); let rd2 = resolv(st.get_group("d") * 2 + 1);
             let rr1 = reg(st,"r"); let rr2 = resolv(st.get_group("r") * 2 + 1);
             let next = st.address + 2;
@@ -237,7 +254,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // IN
-        [ "10110 A@.. d@..... A@...." ] = |st: &mut State<u16>| {
+        [ "10110 A@.. d@..... A@...." ] = |st: &mut State<Avr>| {
             let rd = reg(st,"d");
             let io = ioreg(st,"A");
             let name = if let Lvalue::Variable{ name: n,..} = io { n } else { "(noname)".to_string() };
@@ -251,7 +268,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // OUT
-        [ "10111 A@.. r@..... A@...." ] = |st: &mut State<u16>| {
+        [ "10111 A@.. r@..... A@...." ] = |st: &mut State<Avr>| {
             let rr = reg(st,"r");
             let io = ioreg(st,"A");
             let name = if let Lvalue::Variable{ name: n,..} = io { n } else { "(noname)".to_string() };
@@ -265,7 +282,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // POP
-        [ "1001000 d@..... 1111" ] = |st: &mut State<u16>| {
+        [ "1001000 d@..... 1111" ] = |st: &mut State<Avr>| {
             let rd = reg(st,"d");
             let next = st.address + 2;
 
@@ -279,7 +296,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // PUSH
-        [ "1001001 d@..... 1111" ] = |st: &mut State<u16>| {
+        [ "1001001 d@..... 1111" ] = |st: &mut State<Avr>| {
             let rd = reg(st,"d");
             let next = st.address + 2;
 
@@ -293,7 +310,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // SWAP
-        [ "1001010 d@..... 0010" ] = |st: &mut State<u16>| {
+        [ "1001010 d@..... 0010" ] = |st: &mut State<Avr>| {
             let rd = reg(st,"d");
             let next = st.address + 2;
 
@@ -313,7 +330,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // XCH
-        [ "1001001 r@..... 0100" ] = |st: &mut State<u16>| {
+        [ "1001001 r@..... 0100" ] = |st: &mut State<Avr>| {
             let rr = reg(st,"r");
             let next = st.address + 2;
 
@@ -331,7 +348,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // SER
-        [ "11101111 d@.... 1111" ] = |st: &mut State<u16>| {
+        [ "11101111 d@.... 1111" ] = |st: &mut State<Avr>| {
             let rd = reg(st,"d");
             let next = st.address + 2;
 
@@ -342,7 +359,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // LDI
-        [ "1110 K@.... d@.... K@...." ] = |st: &mut State<u16>| {
+        [ "1110 K@.... d@.... K@...." ] = |st: &mut State<Avr>| {
             let rd = reg(st,"d");
             let k = st.get_group("K");
             let next = st.address + 2;
@@ -354,7 +371,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // LAC
-        [ "1001001 r@..... 0110" ] = |st: &mut State<u16>| {
+        [ "1001001 r@..... 0110" ] = |st: &mut State<Avr>| {
             let rr = reg(st,"r");
             let next = st.address + 2;
 
@@ -372,7 +389,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // LAS
-        [ "1001001 r@..... 0101" ] = |st: &mut State<u16>| {
+        [ "1001001 r@..... 0101" ] = |st: &mut State<Avr>| {
             let rr = reg(st,"r");
             let next = st.address + 2;
 
@@ -391,7 +408,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // LAT
-        [ "1001001 r@..... 0111" ] = |st: &mut State<u16>| {
+        [ "1001001 r@..... 0111" ] = |st: &mut State<Avr>| {
             let rr = reg(st,"r");
             let next = st.address + 2;
 
@@ -410,7 +427,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // LDS
-        [ "1001000 d@..... 0000", "k@................" ] = |st: &mut State<u16>| {
+        [ "1001000 d@..... 0000", "k@................" ] = |st: &mut State<Avr>| {
             let k = Rvalue::Constant(st.get_group("k") as u64);
             let rd = reg(st,"d");
             let next = st.address + 2;
@@ -422,7 +439,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // LDS
-        [ "10100 k@... d@.... k@...." ] = |st: &mut State<u16>| {
+        [ "10100 k@... d@.... k@...." ] = |st: &mut State<Avr>| {
             let k_ = st.get_group("k");
             let k = Rvalue::Constant(((!k_ & 16) | (k_ & 16) | (k_ & 64) | (k_ & 32) | (k_ & 15)) as u64);
             let rd = reg(st,"d");
@@ -435,7 +452,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // LPM
-        [ 0x95c8 ] = |st: &mut State<u16>| {
+        [ 0x95c8 ] = |st: &mut State<Avr>| {
             let next = st.address + 2;
 
             st.mnemonic(2,"lpm","",vec!(),|cg: &mut CodeGen| {
@@ -449,7 +466,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // LPM
-        [ "1001 000 d@..... 0100" ] = |st: &mut State<u16>| {
+        [ "1001 000 d@..... 0100" ] = |st: &mut State<Avr>| {
             let next = st.address + 2;
             let rd = reg(st,"d");
 
@@ -465,7 +482,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // LPM
-        [ "1001 000 d@..... 0101" ] = |st: &mut State<u16>| {
+        [ "1001 000 d@..... 0101" ] = |st: &mut State<Avr>| {
             let next = st.address + 2;
             let rd = reg(st,"d");
 
@@ -484,7 +501,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // SPM
-        [ 0x95e8 ] = |st: &mut State<u16>| {
+        [ 0x95e8 ] = |st: &mut State<Avr>| {
             let next = st.address + 2;
 
             st.mnemonic_dynargs(2,"spm","{{16::X}}",|cg: &mut CodeGen| {
@@ -499,7 +516,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // SPM
-        [ 0x95f8 ] = |st: &mut State<u16>| {
+        [ 0x95f8 ] = |st: &mut State<Avr>| {
             let next = st.address + 2;
 
             st.mnemonic_dynargs(2,"spm","{{16::X+}}",|cg: &mut CodeGen| {
@@ -519,7 +536,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // STS
-        [ "1001001 d@..... 0000", "k@................" ] = |st: &mut State<u16>| {
+        [ "1001001 d@..... 0000", "k@................" ] = |st: &mut State<Avr>| {
             let k = Rvalue::Constant(st.get_group("k") as u64);
             let rd = reg(st,"d");
             let next = st.address + 2;
@@ -541,7 +558,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // STS
-        [ "10101 k@... d@.... k@...." ] = |st: &mut State<u16>| {
+        [ "10101 k@... d@.... k@...." ] = |st: &mut State<Avr>| {
             let k_ = st.get_group("k");
             let k = Rvalue::Constant(((!k_ & 16) | (k_ & 16) | (k_ & 64) | (k_ & 32) | (k_ & 15)) as u64);
             let rd = reg(st,"d");
@@ -561,7 +578,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // SBI
-        [ "1001 1010 A@..... b@..." ] = |st: &mut State<u16>| {
+        [ "1001 1010 A@..... b@..." ] = |st: &mut State<Avr>| {
             let a = Rvalue::Constant(st.get_group("A") as u64);
             let b = Rvalue::Constant(st.get_group("b") as u64);
             let mask = Rvalue::Constant(1 << (st.get_group("b")));
@@ -574,7 +591,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // CBI
-        [ "1001 1000 A@..... b@..." ] = |st: &mut State<u16>| {
+        [ "1001 1000 A@..... b@..." ] = |st: &mut State<Avr>| {
             let a = Rvalue::Constant(st.get_group("A") as u64);
             let b = Rvalue::Constant(st.get_group("b") as u64);
             let mask = Rvalue::Constant(((!(1 << (st.get_group("b")))) & 0xff) as u64);
@@ -587,7 +604,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // SEC
-        [ 0x9408 ] = |st: &mut State<u16>| {
+        [ 0x9408 ] = |st: &mut State<Avr>| {
             let next = st.address + 2;
 
             st.mnemonic(2,"sec","",vec!(),|cg: &mut CodeGen| {
@@ -597,7 +614,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // SEH
-        [ 0x9458 ] = |st: &mut State<u16>| {
+        [ 0x9458 ] = |st: &mut State<Avr>| {
             let next = st.address + 2;
 
             st.mnemonic(2,"seh","",vec!(),|cg: &mut CodeGen| {
@@ -607,7 +624,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // SEI
-        [ 0x9478 ] = |st: &mut State<u16>| {
+        [ 0x9478 ] = |st: &mut State<Avr>| {
             let next = st.address + 2;
 
             st.mnemonic(2,"sei","",vec!(),|cg: &mut CodeGen| {
@@ -617,7 +634,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // SEN
-        [ 0x9428 ] = |st: &mut State<u16>| {
+        [ 0x9428 ] = |st: &mut State<Avr>| {
             let next = st.address + 2;
 
             st.mnemonic(2,"sen","",vec!(),|cg: &mut CodeGen| {
@@ -627,7 +644,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // SES
-        [ 0x9448 ] = |st: &mut State<u16>| {
+        [ 0x9448 ] = |st: &mut State<Avr>| {
             let next = st.address + 2;
 
             st.mnemonic(2,"ses","",vec!(),|cg: &mut CodeGen| {
@@ -637,7 +654,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // SET
-        [ 0x9468 ] = |st: &mut State<u16>| {
+        [ 0x9468 ] = |st: &mut State<Avr>| {
             let next = st.address + 2;
 
             st.mnemonic(2,"set","",vec!(),|cg: &mut CodeGen| {
@@ -647,7 +664,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // SEV
-        [ 0x9438 ] = |st: &mut State<u16>| {
+        [ 0x9438 ] = |st: &mut State<Avr>| {
             let next = st.address + 2;
 
             st.mnemonic(2,"sev","",vec!(),|cg: &mut CodeGen| {
@@ -657,7 +674,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // SEZ
-        [ 0x9418 ] = |st: &mut State<u16>| {
+        [ 0x9418 ] = |st: &mut State<Avr>| {
             let next = st.address + 2;
 
             st.mnemonic(2,"sez","",vec!(),|cg: &mut CodeGen| {
@@ -667,7 +684,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // CLC
-        [ 0x9488 ] = |st: &mut State<u16>| {
+        [ 0x9488 ] = |st: &mut State<Avr>| {
             let next = st.address + 2;
 
             st.mnemonic(2,"CLC","",vec!(),|cg: &mut CodeGen| {
@@ -677,7 +694,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // CLH
-        [ 0x94d8 ] = |st: &mut State<u16>| {
+        [ 0x94d8 ] = |st: &mut State<Avr>| {
             let next = st.address + 2;
 
             st.mnemonic(2,"CLH","",vec!(),|cg: &mut CodeGen| {
@@ -687,7 +704,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // CLI
-        [ 0x94f8 ] = |st: &mut State<u16>| {
+        [ 0x94f8 ] = |st: &mut State<Avr>| {
             let next = st.address + 2;
 
             st.mnemonic(2,"CLI","",vec!(),|cg: &mut CodeGen| {
@@ -697,7 +714,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // CLN
-        [ 0x94a8 ] = |st: &mut State<u16>| {
+        [ 0x94a8 ] = |st: &mut State<Avr>| {
             let next = st.address + 2;
 
             st.mnemonic(2,"CLN","",vec!(),|cg: &mut CodeGen| {
@@ -707,7 +724,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // CLS
-        [ 0x94c8 ] = |st: &mut State<u16>| {
+        [ 0x94c8 ] = |st: &mut State<Avr>| {
             let next = st.address + 2;
 
             st.mnemonic(2,"CLS","",vec!(),|cg: &mut CodeGen| {
@@ -717,7 +734,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // CLT
-        [ 0x94e8 ] = |st: &mut State<u16>| {
+        [ 0x94e8 ] = |st: &mut State<Avr>| {
             let next = st.address + 2;
 
             st.mnemonic(2,"CLT","",vec!(),|cg: &mut CodeGen| {
@@ -727,7 +744,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // CLV
-        [ 0x94b8 ] = |st: &mut State<u16>| {
+        [ 0x94b8 ] = |st: &mut State<Avr>| {
             let next = st.address + 2;
 
             st.mnemonic(2,"CLV","",vec!(),|cg: &mut CodeGen| {
@@ -737,7 +754,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // CLZ
-        [ 0x9498 ] = |st: &mut State<u16>| {
+        [ 0x9498 ] = |st: &mut State<Avr>| {
             let next = st.address + 2;
 
             st.mnemonic(2,"CLZ","",vec!(),|cg: &mut CodeGen| {
@@ -747,7 +764,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // CP
-        [ "0001 01 r@. d@..... r@...." ] = |st: &mut State<u16>| {
+        [ "0001 01 r@. d@..... r@...." ] = |st: &mut State<Avr>| {
             let next = st.address + 2;
             let rr = reg(st,"r");
             let rd = reg(st,"d");
@@ -773,7 +790,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // CPC
-        [ "000001 r@. d@..... r@...." ] = |st: &mut State<u16>| {
+        [ "000001 r@. d@..... r@...." ] = |st: &mut State<Avr>| {
             let next = st.address + 2;
             let rr = reg(st,"r");
             let rd = reg(st,"d");
@@ -803,7 +820,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // CPI
-        [ "0011 K@.... d@.... K@...." ] = |st: &mut State<u16>| {
+        [ "0011 K@.... d@.... K@...." ] = |st: &mut State<Avr>| {
             let next = st.address + 2;
             let k = st.get_group("K") as u64;
             let rd = reg(st,"d");
@@ -829,7 +846,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // LSR
-        [ "1001010 d@..... 0110" ] = |st: &mut State<u16>| {
+        [ "1001010 d@..... 0110" ] = |st: &mut State<Avr>| {
             let next = st.address + 2;
             let rd = reg(st,"d");
 
@@ -845,7 +862,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // ADC
-        [ "000111 r@. d@..... r@...." ] = |st: &mut State<u16>| {
+        [ "000111 r@. d@..... r@...." ] = |st: &mut State<Avr>| {
             let next = st.address + 2;
             let rd = reg(st,"d");
             let rr = reg(st,"r");
@@ -875,7 +892,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // ADD
-        [ "0000 11 r@. d@..... r@...." ] = |st: &mut State<u16>| {
+        [ "0000 11 r@. d@..... r@...." ] = |st: &mut State<Avr>| {
             let next = st.address + 2;
             let rd = reg(st,"d");
             let rr = reg(st,"r");
@@ -905,7 +922,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // AND
-        [ "0010 00 r@. d@..... r@...." ] = |st: &mut State<u16>| {
+        [ "0010 00 r@. d@..... r@...." ] = |st: &mut State<Avr>| {
             let rd = reg(st,"d");
             let rr = reg(st,"r");
             let next = st.address + 2;
@@ -922,7 +939,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // ANDI
-        [ "0111 K@.... d@.... K@...." ] = |st: &mut State<u16>| {
+        [ "0111 K@.... d@.... K@...." ] = |st: &mut State<Avr>| {
             let rd = reg(st,"d");
             let _k = st.get_group("K");
             let k = Rvalue::Constant(_k as u64);
@@ -940,7 +957,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // SUB
-        [ "000110 r@. d@..... r@...." ] = |st: &mut State<u16>| {
+        [ "000110 r@. d@..... r@...." ] = |st: &mut State<Avr>| {
             let rd = reg(st,"d");
             let rr = reg(st,"r");
             let next = st.address + 4;
@@ -968,7 +985,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // SUBI
-        [ "0101 K@.... d@.... K@...." ] = |st: &mut State<u16>| {
+        [ "0101 K@.... d@.... K@...." ] = |st: &mut State<Avr>| {
             let rd = reg(st,"d");
             let k = st.get_group("K");
             let next = st.address + 4;
@@ -998,7 +1015,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // ASR
-        [ "1001010 d@..... 0101" ] = |st: &mut State<u16>| {
+        [ "1001010 d@..... 0101" ] = |st: &mut State<Avr>| {
             let rd = reg(st,"d");
             let next = st.address + 2;
 
@@ -1021,7 +1038,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // BST
-        [ "1111 101 d@..... 0 b@..." ] = |st: &mut State<u16>| {
+        [ "1111 101 d@..... 0 b@..." ] = |st: &mut State<Avr>| {
             let rd = reg(st,"d");
             let b = st.get_group("b");
             let mask = 1 << (b as u64);
@@ -1038,7 +1055,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // BLD
-        [ "1111 100 d@..... 0 b@..." ] = |st: &mut State<u16>| {
+        [ "1111 100 d@..... 0 b@..." ] = |st: &mut State<Avr>| {
             let rd = reg(st,"d");
             let b = st.get_group("b");
             let mask = 1 << (b as u64);
@@ -1056,7 +1073,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
         },
 
         // ROL
-        [ "000111 d@.........." ] = |st: &mut State<u16>| {
+        [ "000111 d@.........." ] = |st: &mut State<Avr>| {
             let rd = reg(st,"d");
             let next = st.address + 2;
 
@@ -1081,7 +1098,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // ROR
-        [ "1001010 d@..... 0111" ] = |st: &mut State<u16>| {
+        [ "1001010 d@..... 0111" ] = |st: &mut State<Avr>| {
             let rd = reg(st,"d");
             let next = st.address + 2;
 
@@ -1105,7 +1122,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // DEC
-        [ "1001010 d@..... 1010" ] = |st: &mut State<u16>| {
+        [ "1001010 d@..... 1010" ] = |st: &mut State<Avr>| {
             let rd = reg(st,"d");
             let next = st.address + 2;
 
@@ -1122,7 +1139,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // INC
-        [ "1001010 d@..... 0011" ] = |st: &mut State<u16>| {
+        [ "1001010 d@..... 0011" ] = |st: &mut State<Avr>| {
             let rd = reg(st,"d");
             let next = st.address + 2;
 
@@ -1139,7 +1156,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // SBC
-        [ "000010 r@. d@..... r@...." ] = |st: &mut State<u16>| {
+        [ "000010 r@. d@..... r@...." ] = |st: &mut State<Avr>| {
             let rd = reg(st,"d");
             let rr = reg(st,"r");
             let next = st.address + 2;
@@ -1170,7 +1187,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // SBCI
-        [ "0100 K@.... d@.... K@...." ] = |st: &mut State<u16>| {
+        [ "0100 K@.... d@.... K@...." ] = |st: &mut State<Avr>| {
             let rd = reg(st,"d");
             let _k = st.get_group("K");
             let k = Rvalue::Constant(_k as u64);
@@ -1201,7 +1218,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // COM
-        [ "1001010 d@..... 0000" ] = |st: &mut State<u16>| {
+        [ "1001010 d@..... 0000" ] = |st: &mut State<Avr>| {
             let rd = reg(st,"d");
             let next = st.address + 2;
 
@@ -1218,7 +1235,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // ADIW
-        [ "10010110 K@.. d@.. K@...." ] = |st: &mut State<u16>| {
+        [ "10010110 K@.. d@.. K@...." ] = |st: &mut State<Avr>| {
             let d = st.get_group("d") * 2 + 24;
             let k = Rvalue::Constant(st.get_group("K") as u64);
             let rd1 = resolv(d);
@@ -1259,7 +1276,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // SBIW
-        [ "10010111 K@.. d@.. K@...." ] = |st: &mut State<u16>| {
+        [ "10010111 K@.. d@.. K@...." ] = |st: &mut State<Avr>| {
             let d = st.get_group("d") * 2 + 24;
             let k = Rvalue::Constant(st.get_group("K") as u64);
             let rd1 = resolv(d);
@@ -1300,7 +1317,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // MULS
-        [ "0000 0010 d@.... r@...." ] = |st: &mut State<u16>| {
+        [ "0000 0010 d@.... r@...." ] = |st: &mut State<Avr>| {
             let rd = reg(st,"d");
             let rr = reg(st,"r");
             let next = st.address + 2;
@@ -1319,7 +1336,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // MULSU
-        [ "0000 0011 0 d@... 0 r@..." ] = |st: &mut State<u16>| {
+        [ "0000 0011 0 d@... 0 r@..." ] = |st: &mut State<Avr>| {
             let rd = reg(st,"d");
             let rr = reg(st,"r");
             let next = st.address + 2;
@@ -1338,7 +1355,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // NEG
-        [ "1001 010 d@..... 0001" ] = |st: &mut State<u16>| {
+        [ "1001 010 d@..... 0001" ] = |st: &mut State<Avr>| {
             let rd = reg(st,"d");
             let next = st.address + 4;
 
@@ -1363,7 +1380,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // MUL
-        [ "1001 11 r@. d@..... r@...." ] = |st: &mut State<u16>| {
+        [ "1001 11 r@. d@..... r@...." ] = |st: &mut State<Avr>| {
             let rd = reg(st,"d");
             let rr = reg(st,"r");
             let next = st.address + 2;
@@ -1382,7 +1399,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // BRCx
-        [ "11110 x@. k@....... 000" ] = |st: &mut State<u16>| {
+        [ "11110 x@. k@....... 000" ] = |st: &mut State<Avr>| {
             let d = st.get_group("k") as u64;
             let fallthru = st.address + 2;
             let g = Guard::eq(&*C,&0);
@@ -1399,7 +1416,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // BREQ/BRNE
-        [ "11110 x@. k@....... 001" ] = |st: &mut State<u16>| {
+        [ "11110 x@. k@....... 001" ] = |st: &mut State<Avr>| {
             let d = st.get_group("k") as u64;
             let fallthru = st.address + 2;
             let g = Guard::eq(&*Z,&0);
@@ -1416,7 +1433,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // BRNx
-        [ "11110 x@. k@....... 010" ] = |st: &mut State<u16>| {
+        [ "11110 x@. k@....... 010" ] = |st: &mut State<Avr>| {
             let d = st.get_group("k") as u64;
             let fallthru = st.address + 2;
             let g = Guard::eq(&*N,&0);
@@ -1433,7 +1450,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // BRVx
-        [ "11110 x@. k@....... 011" ] = |st: &mut State<u16>| {
+        [ "11110 x@. k@....... 011" ] = |st: &mut State<Avr>| {
             let d = st.get_group("k") as u64;
             let fallthru = st.address + 2;
             let g = Guard::eq(&*V,&0);
@@ -1450,7 +1467,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // BRGE/BTLT
-        [ "11110 x@. k@....... 100" ] = |st: &mut State<u16>| {
+        [ "11110 x@. k@....... 100" ] = |st: &mut State<Avr>| {
             let d = st.get_group("k") as u64;
             let fallthru = st.address + 2;
             let g = Guard::eq(&*S,&0);
@@ -1467,7 +1484,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // BRHx
-        [ "11110 x@. k@....... 101" ] = |st: &mut State<u16>| {
+        [ "11110 x@. k@....... 101" ] = |st: &mut State<Avr>| {
             let d = st.get_group("k") as u64;
             let fallthru = st.address + 2;
             let g = Guard::eq(&*H,&0);
@@ -1484,7 +1501,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // BRTx
-        [ "11110 x@. k@....... 110" ] = |st: &mut State<u16>| {
+        [ "11110 x@. k@....... 110" ] = |st: &mut State<Avr>| {
             let d = st.get_group("k") as u64;
             let fallthru = st.address + 2;
             let g = Guard::eq(&*T,&0);
@@ -1501,7 +1518,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // BRIx
-        [ "11110 x@. k@....... 111" ] = |st: &mut State<u16>| {
+        [ "11110 x@. k@....... 111" ] = |st: &mut State<Avr>| {
             let d = st.get_group("k") as u64;
             let fallthru = st.address + 2;
             let g = Guard::eq(&*I,&0);
@@ -1518,7 +1535,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // CALL
-        [ "1001010 k@..... 111 k@.", "k@................" ] = |st: &mut State<u16>| {
+        [ "1001010 k@..... 111 k@.", "k@................" ] = |st: &mut State<Avr>| {
             let _k = ((st.get_group("k") as u64) * 2);// % st.state.flash_sz;
             let k = Rvalue::Constant(_k);
 
@@ -1528,7 +1545,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // JMP
-        [ "1001010 k@..... 110 k@.", "k@................" ] = |st: &mut State<u16>| {
+        [ "1001010 k@..... 110 k@.", "k@................" ] = |st: &mut State<Avr>| {
             let _k = ((st.get_group("k") as u64) * 2);// % st.state.flash_sz;
             let k = Rvalue::Constant(_k);
 
@@ -1537,7 +1554,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // RCALL
-        [ "1101 k@............" ] = |st: &mut State<u16>| {
+        [ "1101 k@............" ] = |st: &mut State<Avr>| {
             let _k = st.get_group("k") as u64;
             let k = if _k <= 2047 {
                 Rvalue::Constant(((_k * 2 + 2) + st.address))// % st.state.flash_sz);
@@ -1551,7 +1568,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // RJMP
-        [ "1100 k@............" ] = |st: &mut State<u16>| {
+        [ "1100 k@............" ] = |st: &mut State<Avr>| {
             let _k = ((st.get_group("k") as u64) * 2);// % st.state.flash_sz;
             let k = if _k <= 2047 {
                 Rvalue::Constant(((_k * 2 + 2) + st.address))// % st.state.flash_sz);
@@ -1564,21 +1581,21 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // RET
-        [ 0x9508 ] = |st: &mut State<u16>| {
+        [ 0x9508 ] = |st: &mut State<Avr>| {
             let next = st.address + 2;
             st.mnemonic(2,"ret","",vec!(),|_: &mut CodeGen| {});
             st.jump(Rvalue::Constant(next),Guard::always());
             true
         },
         // RETI
-        [ 0x9518 ] = |st: &mut State<u16>| {
+        [ 0x9518 ] = |st: &mut State<Avr>| {
             let next = st.address + 2;
             st.mnemonic(2,"reti","",vec!(),|_: &mut CodeGen| {});
             st.jump(Rvalue::Constant(next),Guard::always());
             true
         },
         // IJMP
-        [ 0x9409 ] = |st: &mut State<u16>| {
+        [ 0x9409 ] = |st: &mut State<Avr>| {
             let z = new_temp(16);
             let next = st.address + 2;
             st.mnemonic_dynargs(2,"ijmp","{16::Z}",|cg: &mut CodeGen| {
@@ -1590,7 +1607,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // ICALL
-        [ 0x9509 ] = |st: &mut State<u16>| {
+        [ 0x9509 ] = |st: &mut State<Avr>| {
             let next = st.address + 2;
             let z = new_temp(16);
             let next = st.address + 2;
@@ -1606,7 +1623,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // ST X
-        [ "1001 001 r@. r@.... 1100" ] = |st: &mut State<u16>| {
+        [ "1001 001 r@. r@.... 1100" ] = |st: &mut State<Avr>| {
             let rr = reg(st,"r");
             let x = new_temp(16);
             let next = st.address + 2;
@@ -1621,7 +1638,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // ST -X
-        [ "1001 001 r@. r@.... 1110" ] = |st: &mut State<u16>| {
+        [ "1001 001 r@. r@.... 1110" ] = |st: &mut State<Avr>| {
             let rr = reg(st,"r");
             let x = new_temp(16);
             let next = st.address + 2;
@@ -1637,7 +1654,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // ST X+
-        [ "1001 001 r@. r@.... 1101" ] = |st: &mut State<u16>| {
+        [ "1001 001 r@. r@.... 1101" ] = |st: &mut State<Avr>| {
             let rr = reg(st,"r");
             let x = new_temp(16);
             let next = st.address + 2;
@@ -1653,7 +1670,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // ST Y
-        [ "1001 001 r@. r@.... 1000" ] = |st: &mut State<u16>| {
+        [ "1001 001 r@. r@.... 1000" ] = |st: &mut State<Avr>| {
             let rr = reg(st,"r");
             let x = new_temp(16);
             let next = st.address + 2;
@@ -1670,7 +1687,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // ST -Y
-        [ "1001 001 r@. r@.... 1010" ] = |st: &mut State<u16>| {
+        [ "1001 001 r@. r@.... 1010" ] = |st: &mut State<Avr>| {
             let rr = reg(st,"r");
             let x = new_temp(16);
             let next = st.address + 2;
@@ -1686,7 +1703,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // ST Y+
-        [ "1001 001 r@. r@.... 1001" ] = |st: &mut State<u16>| {
+        [ "1001 001 r@. r@.... 1001" ] = |st: &mut State<Avr>| {
             let rr = reg(st,"r");
             let x = new_temp(16);
             let next = st.address + 2;
@@ -1702,7 +1719,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // ST Z
-        [ "1001 001 r@. r@.... 0000" ] = |st: &mut State<u16>| {
+        [ "1001 001 r@. r@.... 0000" ] = |st: &mut State<Avr>| {
             let rr = reg(st,"r");
             let x = new_temp(16);
             let next = st.address + 2;
@@ -1717,7 +1734,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // ST -Z
-        [ "1001 001 r@. r@.... 0010" ] = |st: &mut State<u16>| {
+        [ "1001 001 r@. r@.... 0010" ] = |st: &mut State<Avr>| {
             let rr = reg(st,"r");
             let x = new_temp(16);
             let next = st.address + 2;
@@ -1733,7 +1750,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // ST Z+
-        [ "1001 001 r@. r@.... 0001" ] = |st: &mut State<u16>| {
+        [ "1001 001 r@. r@.... 0001" ] = |st: &mut State<Avr>| {
             let rr = reg(st,"r");
             let x = new_temp(16);
             let next = st.address + 2;
@@ -1749,7 +1766,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // STD *+q
-        [ "10 q@. 0 q@.. 1 r@..... x@. q@..." ] = |st: &mut State<u16>| {
+        [ "10 q@. 0 q@.. 1 r@..... x@. q@..." ] = |st: &mut State<Avr>| {
             let rr = reg(st,"r");
             let reg = st.get_group("x") == 1;
             let q = st.get_group("q");
@@ -1774,7 +1791,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // LD X
-        [ "1001 000 d@..... 1100" ] = |st: &mut State<u16>| {
+        [ "1001 000 d@..... 1100" ] = |st: &mut State<Avr>| {
             let rd = reg(st,"d");
             let x = new_temp(16);
             let next = st.address + 2;
@@ -1789,7 +1806,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // LD -X
-        [ "1001 000 d@..... 1110" ] = |st: &mut State<u16>| {
+        [ "1001 000 d@..... 1110" ] = |st: &mut State<Avr>| {
             let rd = reg(st,"d");
             let x = new_temp(16);
             let next = st.address + 2;
@@ -1808,7 +1825,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // LD X+
-        [ "1001 000 d@..... 1101" ] = |st: &mut State<u16>| {
+        [ "1001 000 d@..... 1101" ] = |st: &mut State<Avr>| {
             let rd = reg(st,"d");
             let x = new_temp(16);
             let next = st.address + 2;
@@ -1827,7 +1844,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // LD Y
-        [ "1000 000 d@..... 1000" ] = |st: &mut State<u16>| {
+        [ "1000 000 d@..... 1000" ] = |st: &mut State<Avr>| {
             let rd = reg(st,"d");
             let x = new_temp(16);
             let next = st.address + 2;
@@ -1842,7 +1859,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // LD -Y
-        [ "1001 000 d@..... 1010" ] = |st: &mut State<u16>| {
+        [ "1001 000 d@..... 1010" ] = |st: &mut State<Avr>| {
             let rd = reg(st,"d");
             let x = new_temp(16);
             let next = st.address + 2;
@@ -1861,7 +1878,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // LD Y+
-        [ "1001 000 d@..... 1001" ] = |st: &mut State<u16>| {
+        [ "1001 000 d@..... 1001" ] = |st: &mut State<Avr>| {
             let rd = reg(st,"d");
             let x = new_temp(16);
             let next = st.address + 2;
@@ -1880,7 +1897,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // LD Z
-        [ "1000 000 d@..... 0000" ] = |st: &mut State<u16>| {
+        [ "1000 000 d@..... 0000" ] = |st: &mut State<Avr>| {
             let rd = reg(st,"d");
             let x = new_temp(16);
             let next = st.address + 2;
@@ -1895,7 +1912,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // LD -Z
-        [ "1001 000 d@..... 0010" ] = |st: &mut State<u16>| {
+        [ "1001 000 d@..... 0010" ] = |st: &mut State<Avr>| {
             let rd = reg(st,"d");
             let x = new_temp(16);
             let next = st.address + 2;
@@ -1914,7 +1931,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // LD Z+
-        [ "1001 000 d@..... 0001" ] = |st: &mut State<u16>| {
+        [ "1001 000 d@..... 0001" ] = |st: &mut State<Avr>| {
             let rd = reg(st,"d");
             let x = new_temp(16);
             let next = st.address + 2;
@@ -1933,7 +1950,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // LDD Y+q
-        [ "10 q@. 0 q@.. 0 d@..... 1 q@..." ] = |st: &mut State<u16>| {
+        [ "10 q@. 0 q@.. 0 d@..... 1 q@..." ] = |st: &mut State<Avr>| {
             let rd = reg(st,"d");
             let _q = st.get_group("q");
             let q = Rvalue::Constant(_q as u64);
@@ -1954,7 +1971,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // LDD Z+q
-        [ "10 q@. 0 q@.. 0 d@..... 0 q@..." ] = |st: &mut State<u16>| {
+        [ "10 q@. 0 q@.. 0 d@..... 0 q@..." ] = |st: &mut State<Avr>| {
             let rd = reg(st,"d");
             let _q = st.get_group("q");
             let q = Rvalue::Constant(_q as u64);
@@ -1975,7 +1992,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // BREAK
-        [ 0x9598 ] = |st: &mut State<u16>| {
+        [ 0x9598 ] = |st: &mut State<Avr>| {
             let next = st.address + 1;
 
             st.mnemonic(2,"break","",vec!(),|_: &mut CodeGen| {});
@@ -1983,7 +2000,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // DES
-        [ "10010100 K@.... 1011" ] = |st: &mut State<u16>| {
+        [ "10010100 K@.... 1011" ] = |st: &mut State<Avr>| {
             let next = st.address + 1;
             let k = Rvalue::Constant(st.get_group("K") as u64);
 
@@ -2009,7 +2026,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // EICALL
-        [ "1001 0101 0001 1001" ] = |st: &mut State<u16>| {
+        [ "1001 0101 0001 1001" ] = |st: &mut State<Avr>| {
             let next = st.address + 2;
             let z = new_temp(22);
 
@@ -2028,7 +2045,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // IJMP
-        [ "1001 0100 0001 1001" ] = |st: &mut State<u16>| {
+        [ "1001 0100 0001 1001" ] = |st: &mut State<Avr>| {
             let z = new_temp(22);
             let next = st.address + 2;
             st.mnemonic_dynargs(2,"ijmp","{22::Z:EIND}",|cg: &mut CodeGen| {
@@ -2044,7 +2061,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // ELPM
-        [ "1001 0101 1101 1000" ] = |st: &mut State<u16>| {
+        [ "1001 0101 1101 1000" ] = |st: &mut State<Avr>| {
             let next = st.address + 2;
 
             st.mnemonic(2,"elpm","",vec!(),|cg: &mut CodeGen| {
@@ -2062,7 +2079,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // ELPM
-        [ "1001 000 d@..... 0110" ] = |st: &mut State<u16>| {
+        [ "1001 000 d@..... 0110" ] = |st: &mut State<Avr>| {
             let rd = reg(st,"d");
             let next = st.address + 2;
 
@@ -2083,7 +2100,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // ELPM
-        [ "1001 000 d@..... 0111" ] = |st: &mut State<u16>| {
+        [ "1001 000 d@..... 0111" ] = |st: &mut State<Avr>| {
             let rd = reg(st,"d");
             let next = st.address + 2;
 
@@ -2108,7 +2125,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // EOR
-        [ "0010 01 r@. d@..... r@...." ] = |st: &mut State<u16>| {
+        [ "0010 01 r@. d@..... r@...." ] = |st: &mut State<Avr>| {
             let rd = reg(st,"d");
             let rr = reg(st,"r");
             let next = st.address + 2;
@@ -2125,7 +2142,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // FMUL
-        [ "0000 0011 0 d@... 1 r@..." ] = |st: &mut State<u16>| {
+        [ "0000 0011 0 d@... 1 r@..." ] = |st: &mut State<Avr>| {
             let rd = reg(st,"d");
             let rr = reg(st,"r");
             let next = st.address + 2;
@@ -2145,7 +2162,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // FMULS
-        [ "0000 0011 1 d@... 0 r@..." ] = |st: &mut State<u16>| {
+        [ "0000 0011 1 d@... 0 r@..." ] = |st: &mut State<Avr>| {
             let rd = reg(st,"d");
             let rr = reg(st,"r");
             let next = st.address + 2;
@@ -2165,7 +2182,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // FMULSU
-        [ "0000 0011 1 d@... 1 r@..." ] = |st: &mut State<u16>| {
+        [ "0000 0011 1 d@... 1 r@..." ] = |st: &mut State<Avr>| {
             let rd = reg(st,"d");
             let rr = reg(st,"r");
             let next = st.address + 2;
@@ -2185,14 +2202,14 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // NOP
-        [ 0x0 ] = |st: &mut State<u16>| {
+        [ 0x0 ] = |st: &mut State<Avr>| {
             let next = st.address + 2;
             st.mnemonic(2,"nop","",vec!(),|_: &mut CodeGen| {});
             st.jump(Rvalue::Constant(next),Guard::always());
             true
         },
         // OR
-        [ "0010 10 r@. d@..... r@...." ] = |st: &mut State<u16>| {
+        [ "0010 10 r@. d@..... r@...." ] = |st: &mut State<Avr>| {
             let rd = reg(st,"d");
             let rr = reg(st,"r");
             let next = st.address + 2;
@@ -2209,7 +2226,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // ORI
-        [ "0110 K@.... d@.... K@...." ] = |st: &mut State<u16>| {
+        [ "0110 K@.... d@.... K@...." ] = |st: &mut State<Avr>| {
             let rd = reg(st,"d");
             let _k = st.get_group("K");
             let k = Rvalue::Constant(_k as u64);
@@ -2227,7 +2244,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // SLEEP
-        [ 0x9588 ] = |st: &mut State<u16>| {
+        [ 0x9588 ] = |st: &mut State<Avr>| {
             let next = st.address + 1;
 
             st.mnemonic(2,"sleep","",vec!(),|_: &mut CodeGen| {});
@@ -2235,7 +2252,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // WDR
-        [ 0x95a8 ] = |st: &mut State<u16>| {
+        [ 0x95a8 ] = |st: &mut State<Avr>| {
             let next = st.address + 1;
 
             st.mnemonic(2,"wdr","",vec!(),|_: &mut CodeGen| {});
@@ -2243,7 +2260,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // catch all
-        _ = |st: &mut State<u16>| {
+        _ = |st: &mut State<Avr>| {
             let next = st.address + 1;
             let rd = reg(st,"d");
 
@@ -2253,9 +2270,9 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
         }
     );
 
-    let main = new_disassembler!(u16 =>
+    let main = new_disassembler!(Avr =>
         // SBRC
-        [ "1111 110 sr@..... 0 sb@...", opt!(simple) ] = |st: &mut State<u16>| {
+        [ "1111 110 sr@..... 0 sb@...", opt!(simple) ] = |st: &mut State<Avr>| {
             let _b = st.get_group("sb") as u64;
             let b = Rvalue::Constant(_b);
             let mask = Rvalue::Constant(1 << _b);
@@ -2280,7 +2297,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // SBRS
-        [ "1111 111 sr@..... 0 sb@...", opt!(simple) ] = |st: &mut State<u16>| {
+        [ "1111 111 sr@..... 0 sb@...", opt!(simple) ] = |st: &mut State<Avr>| {
             let _b = st.get_group("sb") as u64;
             let b = Rvalue::Constant(_b);
             let mask = Rvalue::Constant(1 << _b);
@@ -2305,7 +2322,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // CPSE
-        [ "000100 cr@. cd@..... cr@....", opt!(simple) ] = |st: &mut State<u16>| {
+        [ "000100 cr@. cd@..... cr@....", opt!(simple) ] = |st: &mut State<Avr>| {
             let rr = reg(st,"cr");
             let rd = reg(st,"cd");
             let fallthru = st.address + 2;
@@ -2340,7 +2357,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // SBIC
-        [ "1001 1001 sA@..... sb@...", opt!(simple) ] = |st: &mut State<u16>| {
+        [ "1001 1001 sA@..... sb@...", opt!(simple) ] = |st: &mut State<Avr>| {
             let _b = st.get_group("sb") as u64;
             let b = Rvalue::Constant(_b);
             let mask = Rvalue::Constant(1 << _b);
@@ -2365,7 +2382,7 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             true
         },
         // SBIS
-        [ "1001 1011 sA@..... sb@...", opt!(simple) ] = |st: &mut State<u16>| {
+        [ "1001 1011 sA@..... sb@...", opt!(simple) ] = |st: &mut State<Avr>| {
             let _b = st.get_group("sb") as u64;
             let b = Rvalue::Constant(_b);
             let mask = Rvalue::Constant(1 << _b);
@@ -2389,12 +2406,12 @@ pub fn disassembler() -> Rc<Disassembler<u16>> {
             st.jump(Rvalue::Constant(fallthru),g);
             true
         },
-        [ simple ] = |_: &mut State<u16>| { true }
+        [ simple ] = |_: &mut State<Avr>| { true }
     );
 
     main
 }
 
 pub fn disassemble(_: AvrState, data: LayerIter) -> Program {
-    Program::disassemble(None,disassembler(),State::<u16>::new(0),data,0)
+    Program::disassemble(None,disassembler(),AvrState::new(),data,0)
 }

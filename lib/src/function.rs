@@ -3,7 +3,7 @@ use guard::Guard;
 use graph_algos::{AdjacencyList,GraphTrait,MutableGraphTrait};
 use graph_algos::adjacency_list::AdjacencyListVertexDescriptor;
 use graph_algos::{VertexListGraphTrait,EdgeListGraphTrait};
-use disassembler::{Disassembler,State,Token};
+use disassembler::{Disassembler,State,Architecture};
 use layer::LayerIter;
 use value::Rvalue;
 use std::collections::{HashMap,BTreeMap,Bound,BTreeSet};
@@ -187,14 +187,7 @@ impl Function {
         ret
     }
 
-    pub fn disassemble<I: Token>(cont: Option<Function>, dec: Rc<Disassembler<I>>, init: State<I>, data: LayerIter, start: u64) -> Function
-    where <I as Not>::Output: NumCast,
-          <I as BitAnd>::Output: NumCast,
-          <I as BitOr>::Output: NumCast,
-          <I as Shl<usize>>::Output: NumCast,
-          <I as Shr<usize>>::Output: NumCast,
-          I: Eq + PartialEq + Display
-    {
+    pub fn disassemble<A: Architecture>(cont: Option<Function>, dec: Rc<Disassembler<A>>, init: A::Configuration, data: LayerIter, start: u64) -> Function {
         let name = cont.as_ref().map_or(format!("func_{}",start),|x| x.name.clone());
         let maybe_entry = if let Some(Function{ entry_point: ent, cflow_graph: ref cfg, ..}) = cont {
             if let Some(ref v) = ent {
@@ -232,7 +225,7 @@ impl Function {
                 }
             }
 
-            let mut st = State::<I>::new(addr);//init.clone();
+            let mut st = State::<A>::new(addr,init.clone());
             let mut i = data.seek(addr);
 
             let maybe_match = dec.next_match(&mut i,st);

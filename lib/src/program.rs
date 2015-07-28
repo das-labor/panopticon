@@ -6,7 +6,7 @@ use num::traits::NumCast;
 use std::fmt::{Display,Debug};
 use std::ops::{BitAnd,BitOr,Shl,Shr,Not};
 use std::rc::Rc;
-use disassembler::{Token,Disassembler,State};
+use disassembler::{Architecture,Disassembler,State};
 use layer::LayerIter;
 use std::collections::HashSet;
 
@@ -50,14 +50,7 @@ impl Program {
         })
     }
 
-    pub fn disassemble<I: Token>(cont: Option<Program>, dec: Rc<Disassembler<I>>, init: State<I>, data: LayerIter, start: u64) -> Program
-    where <I as Not>::Output: NumCast,
-          <I as BitAnd>::Output: NumCast,
-          <I as BitOr>::Output: NumCast,
-          <I as Shl<usize>>::Output: NumCast,
-          <I as Shr<usize>>::Output: NumCast,
-          I: Eq + PartialEq + Display
-    {
+    pub fn disassemble<A: Architecture>(cont: Option<Program>, dec: Rc<Disassembler<A>>, init: A::Configuration, data: LayerIter, start: u64) -> Program {
         if cont.is_some() && cont.as_ref().map(|x| x.find_function_by_entry(start)).is_some() {
             return cont.unwrap();
         }
@@ -77,7 +70,7 @@ impl Program {
 
             println!("Disassemble at {}",tgt);
 
-            let new_fun = Function::disassemble::<I>(None,dec.clone(),init.clone(),data.clone(),tgt);
+            let new_fun = Function::disassemble::<A>(None,dec.clone(),init.clone(),data.clone(),tgt);
 
             if new_fun.cflow_graph.num_vertices() > 0 {
 				// XXX: compute dominance tree

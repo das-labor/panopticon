@@ -4,7 +4,7 @@ use value::Rvalue;
 use mnemonic::Mnemonic;
 use guard::Guard;
 use std::rc::Rc;
-use num::traits::*;
+use num::traits::{Zero,One,NumCast,cast};
 use std::slice::Iter;
 use std::fmt::{Display,Debug};
 use std::ops::{BitAnd,BitOr,Shl,Shr,Not};
@@ -13,35 +13,51 @@ use std::mem::size_of;
 use codegen::CodeGen;
 use layer::LayerIter;
 
+/*
 pub trait Token: Clone + Zero + One + Debug + Not + BitOr + BitAnd + Shl<usize> + Shr<usize> + NumCast + PartialEq + Eq
 where <Self as Not>::Output: NumCast,
       <Self as BitOr>::Output: NumCast,
       <Self as BitAnd>::Output: NumCast,
       <Self as Shl<usize>>::Output: NumCast,
       <Self as Shr<usize>>::Output: NumCast,
-{}
+{}*/
 
-impl Token for u8 {}
-impl Token for u16 {}
+pub trait Architecture: Clone
+{
+    type Token: Not<Output=Self::Token> +
+                Clone +
+                Zero +
+                One +
+                Debug +
+                NumCast +
+                BitOr<Output=Self::Token> +
+                BitAnd<Output=Self::Token> +
+                Shl<usize,Output=Self::Token> +
+                Shr<usize,Output=Self::Token> +
+                PartialEq +
+                Eq;
+    type Configuration: Clone;
+}
 
-pub type Action<I/*: Token*/> = fn(&mut State<I>) -> bool;
+pub type Action<A> = fn(&mut State<A>) -> bool;
 
 #[derive(Debug,Clone)]
-pub struct State<I: Clone> {
+pub struct State<A: Architecture> {
     // in
     pub address: u64,
-    pub tokens: Vec<I>,
-    pub groups: Vec<(String,I)>,
+    pub tokens: Vec<A::Token>,
+    pub groups: Vec<(String,A::Token)>,
 
     // out
     pub mnemonics: Vec<Mnemonic>,
     pub jumps: Vec<(Rvalue,Guard)>,
 
     next_address: u64,
+    configuration: A::Configuration,
 }
 
-impl<I: Clone> State<I> {
-    pub fn new(a: u64) -> State<I> {
+impl<A: Architecture> State<A> {
+    pub fn new(a: u64,c: A::Configuration) -> State<A> {
         State{
             address: a,
             tokens: vec!(),
@@ -49,10 +65,11 @@ impl<I: Clone> State<I> {
             mnemonics: Vec::new(),
             jumps: Vec::new(),
             next_address: a,
+            configuration: c,
         }
     }
 
-    pub fn get_group(&self,n: &str) -> I {
+    pub fn get_group(&self,n: &str) -> A::Token {
         self.groups.iter().find(|x| x.0 == n.to_string()).unwrap().1.clone()
     }
 
@@ -83,63 +100,58 @@ impl<I: Clone> State<I> {
 }
 
 #[derive(Clone)]
-pub struct Match<I: Token> {
-    patterns: Vec<(I,I)>,
-    actions: Vec<Rc<Action<I>>>,
-    groups: Vec<(String,Vec<I>)>
+pub struct Match<A: Architecture> {
+    patterns: Vec<(A::Token,A::Token)>,
+    actions: Vec<Rc<Action<A>>>,
+    groups: Vec<(String,Vec<A::Token>)>
 }
 
 #[derive(Clone)]
-pub enum Expr<I: Token> {
+pub enum Expr<A: Architecture> {
     Pattern(String),
-    Terminal(I),
-    Subdecoder(Rc<Disassembler<I>>),
-    Optional(Box<Expr<I>>),
+    Terminal(A::Token),
+    Subdecoder(Rc<Disassembler<A>>),
+    Optional(Box<Expr<A>>),
 }
 
-pub trait ToExpr<I: Token> {
-    fn to_expr(&self) -> Expr<I>;
+pub trait ToExpr<A: Architecture> {
+    fn to_expr(&self) -> Expr<A>;
 }
 
-impl<'a,I: Token> ToExpr<I> for &'a str {
-    fn to_expr(&self) -> Expr<I> {
+impl<'a,A: Architecture> ToExpr<A> for &'a str {
+    fn to_expr(&self) -> Expr<A> {
         Expr::Pattern(self.to_string())
     }
 }
 
-impl<'a,I: Token> ToExpr<I> for Rc<Disassembler<I>> {
-    fn to_expr(&self) -> Expr<I> {
+impl<'a,A: Architecture> ToExpr<A> for Rc<Disassembler<A>> {
+    fn to_expr(&self) -> Expr<A> {
         Expr::Subdecoder(self.clone())
     }
 }
 
-impl<I: Token> ToExpr<I> for usize {
-    fn to_expr(&self) -> Expr<I> {
-        Expr::Terminal(I::from::<usize>(*self).unwrap().clone())
+impl<A: Architecture> ToExpr<A> for usize {
+    fn to_expr(&self) -> Expr<A> {
+        Expr::Terminal(<A::Token as NumCast>::from::<usize>(*self).unwrap().clone())
     }
 }
 
-impl<I: Token> ToExpr<I> for Expr<I> {
-    fn to_expr(&self) -> Expr<I> {
+impl<A: Architecture> ToExpr<A> for Expr<A> {
+    fn to_expr(&self) -> Expr<A> {
         self.clone()
     }
 }
 
-impl<I: Token> Expr<I> {
-    pub fn matches(&self) -> Vec<Match<I>>
-    where <I as Not>::Output: NumCast,
-          <I as BitOr>::Output: NumCast,
-          <I as BitAnd>::Output: NumCast,
-          <I as Shl<usize>>::Output: NumCast
-    {
+impl<A: Architecture> Expr<A> {
+    pub fn matches(&self) -> Vec<Match<A>> {
         match self {
             &Expr::Pattern(ref s) => {
-                let mut groups = HashMap::<String,I>::new();
+                let mut groups = HashMap::<String,A::Token>::new();
                 let mut cur_group = "".to_string();
                 let mut read_pat = false; // false while reading torwards @
-                let mut bit: isize = (size_of::<I>() * 8) as isize;
-                let mut mask = I::zero();
-                let mut pat = I::zero();
+                let mut bit: isize = (size_of::<A::Token>() * 8) as isize;
+                let mut mask = A::Token::zero();
+                let mut pat = A::Token::zero();
 
                 for c in s.chars() {
                     match c {
@@ -155,7 +167,7 @@ impl<I: Token> Expr<I> {
                                     //return Vec::new();
                                 }
 
-                                groups.insert(cur_group.clone(),I::zero());
+                                groups.insert(cur_group.clone(),A::Token::zero());
                             }
                         },
                         ' ' => {
@@ -164,24 +176,24 @@ impl<I: Token> Expr<I> {
                         },
                         '.' => {
                             if read_pat && cur_group != "" {
-                                *groups.get_mut(&cur_group).unwrap() = cast(groups.get(&cur_group).unwrap().clone() | cast(I::one() << ((bit - 1) as usize)).unwrap()).unwrap();
+                                *groups.get_mut(&cur_group).unwrap() = groups.get(&cur_group).unwrap().clone() | (A::Token::one() << ((bit - 1) as usize));
                             }
 
                             bit -= 1;
                         },
                         '0' | '1' => {
                             if bit - 1 > 0 {
-                                mask = cast(mask | cast(I::one() << ((bit - 1) as usize)).unwrap()).unwrap();
+                                mask = mask | (A::Token::one() << ((bit - 1) as usize));
                             } else {
-                                mask = cast(mask | I::one()).unwrap();
+                                mask = mask | A::Token::one();
                             }
 
                             if c == '1' {
-                                pat = cast(pat | cast(I::one() << ((bit - 1) as usize)).unwrap()).unwrap();
+                                pat = pat | (A::Token::one() << ((bit - 1) as usize));
                             }
 
                             if read_pat && cur_group != "" {
-                                *groups.get_mut(&cur_group).unwrap() = cast(groups.get(&cur_group).unwrap().clone() | cast(I::one() << ((bit - 1) as usize)).unwrap()).unwrap();
+                                *groups.get_mut(&cur_group).unwrap() = groups.get(&cur_group).unwrap().clone() | (A::Token::one() << ((bit - 1) as usize));
                             }
 
                             bit -= 1;
@@ -205,10 +217,10 @@ impl<I: Token> Expr<I> {
                     panic!("Pattern syntax error: invalid pattern length in '{}'",s);
                 }
 
-                vec!(Match::<I>{
+                vec!(Match::<A>{
                     patterns: vec!((pat,mask)),
                     groups: groups.iter().filter_map(|x| {
-                        if *x.1 != I::zero() {
+                        if *x.1 != A::Token::zero() {
                             Some((x.0.clone(),vec!(x.1.clone())))
                         } else {
                             None
@@ -217,15 +229,15 @@ impl<I: Token> Expr<I> {
                     actions: vec!()
                 })
             },
-            &Expr::Terminal(ref i) => vec!(Match::<I>{
-                patterns: vec!((i.clone(),cast(!I::zero()).unwrap())),
+            &Expr::Terminal(ref i) => vec!(Match::<A>{
+                patterns: vec!((i.clone(),!A::Token::zero())),
                 groups: vec!(),
                 actions: vec!(),
             }),
             &Expr::Subdecoder(ref m) => m.matches.clone(),
             &Expr::Optional(ref e) => {
                 let mut ms = e.matches();
-                ms.push(Match::<I>{
+                ms.push(Match::<A>{
                     patterns: vec!(),
                     groups: vec!(),
                     actions: vec!()
@@ -240,29 +252,24 @@ impl<I: Token> Expr<I> {
     }
 }
 
-pub struct Disassembler<I: Token> {
-    pub matches: Vec<Match<I>>,
-    default: Option<Action<I>>,
+pub struct Disassembler<A: Architecture> {
+    pub matches: Vec<Match<A>>,
+    default: Option<Action<A>>,
 }
 
-impl<I: Token> Disassembler<I> {
-    pub fn new() -> Disassembler<I> {
-        Disassembler::<I> {
+impl<A: Architecture> Disassembler<A> {
+    pub fn new() -> Disassembler<A> {
+        Disassembler::<A> {
             matches: Vec::new(),
             default: None,
         }
     }
 
-    pub fn set_default(&mut self,f: Action<I>) {
+    pub fn set_default(&mut self,f: Action<A>) {
         self.default = Some(f);
     }
 
-    fn combine_expr(mut i: Iter<Expr<I>>, a: Action<I>) -> Vec<Match<I>>
-    where <I as Not>::Output: NumCast,
-          <I as BitOr>::Output: NumCast,
-          <I as BitAnd>::Output: NumCast,
-          <I as Shl<usize>>::Output: NumCast
-    {
+    fn combine_expr(mut i: Iter<Expr<A>>, a: Action<A>) -> Vec<Match<A>> {
         match i.next() {
             Some(e) => {
                 let rest = Self::combine_expr(i,a);
@@ -297,7 +304,7 @@ impl<I: Token> Disassembler<I> {
                             }
                         }
 
-                        ret.push(Match::<I>{
+                        ret.push(Match::<A>{
                             patterns: m.patterns,
                             actions: m.actions,
                             groups: m.groups
@@ -307,7 +314,7 @@ impl<I: Token> Disassembler<I> {
 
                 ret
             },
-            None => vec!(Match::<I>{
+            None => vec!(Match::<A>{
                 patterns: vec!(),
                 actions: vec!(Rc::new(a)),
                 groups: vec!(),
@@ -315,38 +322,26 @@ impl<I: Token> Disassembler<I> {
         }
     }
 
-    pub fn add_expr(&mut self, e: Vec<Expr<I>>, a: Action<I>)
-    where <I as Not>::Output: NumCast,
-          <I as BitAnd>::Output: NumCast,
-          <I as BitOr>::Output: NumCast,
-          <I as Shl<usize>>::Output: NumCast
-    {
+    pub fn add_expr(&mut self, e: Vec<Expr<A>>, a: Action<A>) {
         for x in Self::combine_expr(e.iter(),a) {
             self.matches.push(x);
         }
     }
 
-    pub fn next_match(&self,i: &mut LayerIter, _st: State<I>) -> Option<State<I>>
-    where <I as Not>::Output: NumCast,
-          <I as BitAnd>::Output: NumCast,
-          <I as BitOr>::Output: NumCast,
-          <I as Shl<usize>>::Output: NumCast,
-          <I as Shr<usize>>::Output: NumCast,
-          I: Eq + PartialEq + Display
-    {
-        let mut tokens = Vec::<I>::new();
+    pub fn next_match(&self,i: &mut LayerIter, _st: State<A>) -> Option<State<A>> {
+        let mut tokens = Vec::<A::Token>::new();
         let mut j = i.clone();
-        let min_len = |len: usize, ts: &mut Vec<I>, j: &mut LayerIter| -> bool {
+        let min_len = |len: usize, ts: &mut Vec<A::Token>, j: &mut LayerIter| -> bool {
             if ts.len() >= len {
                 true
             } else {
                 for _ in ts.len()..len {
-                    let mut tmp: I = I::zero();
+                    let mut tmp: A::Token = A::Token::zero();
 
-                    for x in (0..size_of::<I>()) {
+                    for x in (0..size_of::<A::Token>()) {
                         if let Some(Some(b)) = j.next() {
                             if x != 0 {
-                                tmp = cast(tmp | cast::<<I as Shl<usize>>::Output,I>(cast::<u8,I>(b).unwrap() << 8).unwrap()).unwrap();
+                                tmp = tmp | (cast::<u8,A::Token>(b).unwrap() << 8);
                             } else {
                                 tmp = cast(b).unwrap();
                             }
@@ -374,32 +369,32 @@ impl<I: Token> Disassembler<I> {
                 let msk = (p.0).1.clone();
                 let tok = p.1.clone();
 
-                cast::<<I as BitAnd>::Output,I>(msk & tok).unwrap() == pat
+                (msk & tok) == pat
             });
 
             if is_match {
-                let mut grps = HashMap::<String,I>::new();
+                let mut grps = HashMap::<String,A::Token>::new();
                 let mut st = _st.clone();
 
                 for cap in &opt.groups {
                     let masks = &cap.1;
-                    let mut res = grps.get(&cap.0).unwrap_or(&I::zero()).clone();
+                    let mut res = grps.get(&cap.0).unwrap_or(&A::Token::zero()).clone();
 
                     for tok_msk in tokens.iter().zip(masks.iter()) {
-                        if *tok_msk.1 != I::zero() {
-                            for rbit in (0..(size_of::<I>() * 8)) {
-                                let bit = (size_of::<I>() * 8) - rbit - 1;
+                        if *tok_msk.1 != A::Token::zero() {
+                            for rbit in (0..(size_of::<A::Token>() * 8)) {
+                                let bit = (size_of::<A::Token>() * 8) - rbit - 1;
                                 let mask = if bit > 0 {
-                                    cast::<<I as Shl<usize>>::Output,I>(I::one() << bit).unwrap()
+                                    A::Token::one() << bit
                                 } else {
-                                    I::one()
+                                    A::Token::one()
                                 };
 
-                                if cast::<<I as BitAnd>::Output,I>(mask.clone() & tok_msk.1.clone()).unwrap() != I::zero() {
-                                    res = cast::<<I as Shl<usize>>::Output,I>(res << 1).unwrap();
+                                if mask.clone() & tok_msk.1.clone() != A::Token::zero() {
+                                    res = res << 1;
 
-                                    if cast::<<I as BitAnd>::Output,I>(tok_msk.0.clone() & tok_msk.1.clone()).unwrap() != I::zero() {
-                                        res = cast::<<I as BitOr>::Output,I>(res | I::one()).unwrap();
+                                    if tok_msk.0.clone() & tok_msk.1.clone() != A::Token::zero() {
+                                        res = res | A::Token::one();
                                     }
                                 }
                             }
@@ -457,7 +452,7 @@ macro_rules! new_disassembler {
     };
     ($ty:ty => $( [ $( $t:expr ),+ ] = $f:expr),+, _ = $def:expr) => {
         {
-            let mut dis = Disassembler::<$ty>::new();
+            let mut dis = Disassembler::<>::new();
 
             $({
                 let mut __x = Vec::new();
