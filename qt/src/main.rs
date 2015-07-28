@@ -6,13 +6,10 @@ extern crate graph_algos;
 #[macro_use]
 extern crate lazy_static;
 
-use libc::{c_int,c_uint};
-use std::cell::RefCell;
-use std::sync::{RwLock,Arc};
+use libc::c_int;
+use std::sync::RwLock;
 use std::path::Path;
 use std::thread;
-use std::thread::{JoinHandle};
-use std::sync::mpsc::{Sender,Receiver,channel};
 
 use panopticon::project::Project;
 use panopticon::region::Region;
@@ -64,7 +61,7 @@ extern "C" fn panopticon_slot(this: *mut ffi::QObject, id: libc::c_int, a: *cons
         },
         (7,ready,0) => {
             let guard = PROJECT.read().unwrap();
-            let mut maybe_project = guard;
+            let maybe_project = guard;
 
             if !maybe_project.is_some() {
                 false.to_qvariant(ret);
