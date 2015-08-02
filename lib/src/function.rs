@@ -242,7 +242,7 @@ impl Function {
                 let mut last_mne_start = 0;
 
                 for mne in match_st.mnemonics {
-                    println!("{:x}: {}",mne.area.start,mne.opcode);
+                    //println!("{:x}: {}",mne.area.start,mne.opcode);
                     last_mne_start = mne.area.start;
                     mnemonics.entry(mne.area.start).or_insert(Vec::new()).push(mne);
 
