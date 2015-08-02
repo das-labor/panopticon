@@ -34,8 +34,6 @@ Item {
 			var obj = Panopticon.functionInfo(id);
 			console.log(obj);
 			obj = eval(obj);
-			obj.x = 1;
-			obj.y = 1;
 			layoutTask.sendMessage({"type":"add","item":obj});
 		});
 
@@ -59,25 +57,15 @@ Item {
 		width: 300
 
     TableViewColumn {
-        role: "name"
-        title: "Name"
-        width: 100
+			role: "name"
+			title: "Name"
+			width: 100
     }
     TableViewColumn {
-        role: "start"
-        title: "Offset"
-        width: 100
+			role: "start"
+			title: "Offset"
+			width: 100
 		}
-		TableViewColumn {
-        role: "x"
-        title: "x"
-        width: 50
-		}
-		TableViewColumn {
-        role: "y"
-        title: "y"
-        width: 50
-    }
 
     model: functionModel
 	}
@@ -98,7 +86,29 @@ Item {
 				var func = functionModel.get(i);
 
 				ctx.moveTo(func.x,func.y);
-				ctx.arc(func.x,func.y,50,0,Math.PI * 2,true);
+				ctx.arc(func.x,func.y,10,0,Math.PI * 2,true);
+			}
+
+			ctx.stroke();
+			ctx.fill();
+
+			ctx.beginPath();
+
+			for(var i = 0; i < functionModel.count; ++i) {
+				var from = functionModel.get(i);
+
+				for(var e in from.calls) {
+					var edge = from.calls[e];
+
+					for(var j = 0; j < functionModel.count; ++j) {
+						var to = functionModel.get(j);
+
+						if(to.uuid == edge) {
+							ctx.moveTo(from.x,from.y);
+							ctx.lineTo(to.x,to.y);
+						}
+					}
+				}
 			}
 
 			ctx.stroke();
@@ -109,8 +119,8 @@ Item {
 			id: layoutTask
 			source: "../layout.js"
 			onMessage: {
-				timer.running = true;
-				callgraph.requestPaint()
+				timer.running = messageObject.type !== "stop";
+				callgraph.requestPaint();
 			}
 	}
 }

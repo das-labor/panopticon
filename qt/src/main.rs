@@ -180,29 +180,30 @@ extern "C" fn panopticon_slot(this: *mut ffi::QObject, id: libc::c_int, a: *cons
                         let callees = prog.call_graph.out_edges(vx).
                             map(|x| prog.call_graph.target(x)).
                             filter_map(|x| prog.call_graph.vertex_label(x)).
-                            map(|x| format!("\"{}\"",x.uuid())).
+                            enumerate().
+                            map(|(i,x)| format!("\"{}\":\"{}\"",i,x.uuid())).
                             fold("".to_string(),|acc,x| if acc != "" { acc + "," + &x } else { x });
 
                         match prog.call_graph.vertex_label(vx) {
                             Some(&CallTarget::Concrete(Function{ ref uuid, ref name, entry_point: Some(ref ent), cflow_graph: ref cg,..})) => {
                                 match cg.vertex_label(*ent) {
                                     Some(&ControlFlowTarget::Resolved(ref bb)) =>
-                                        format!("{{\"type\":\"function\",\"name\":\"{}\",\"uuid\":\"{}\",\"start\":{},\"calls\":[{}]}}",name,uuid,bb.area.start,callees),
+                                        format!("{{\"type\":\"function\",\"name\":\"{}\",\"uuid\":\"{}\",\"start\":{},\"calls\":{{{}}}}}",name,uuid,bb.area.start,callees),
                                     Some(&ControlFlowTarget::Unresolved(Rvalue::Constant(ref c))) =>
-                                        format!("{{\"type\":\"function\",\"name\":\"{}\",\"uuid\":\"{}\",\"start\":{},\"calls\":[{}]}}",name,uuid,c,callees),
+                                        format!("{{\"type\":\"function\",\"name\":\"{}\",\"uuid\":\"{}\",\"start\":{},\"calls\":{{{}}}}}",name,uuid,c,callees),
                                     Some(&ControlFlowTarget::Unresolved(_)) =>
-                                        format!("{{\"type\":\"function\",\"name\":\"{}\",\"uuid\":\"{}\",\"calls\":[{}]}}",name,uuid,callees),
+                                        format!("{{\"type\":\"function\",\"name\":\"{}\",\"uuid\":\"{}\",\"calls\":{{{}}}}}",name,uuid,callees),
                                     None => unreachable!()
                                 }
                             },
                             Some(&CallTarget::Concrete(Function{ ref uuid, ref name, entry_point: None,..})) => {
-                                format!("{{\"type\":\"function\",\"name\":\"{}\",\"uuid\":\"{}\",\"calls\":[{}]}}",name,uuid,callees)
+                                format!("{{\"type\":\"function\",\"name\":\"{}\",\"uuid\":\"{}\",\"calls\":{{{}}}}}",name,uuid,callees)
                             },
                             Some(&CallTarget::Symbolic(ref sym,ref uuid)) => {
-                                format!("{{\"type\":\"symbol\",\"name\":\"{}\",\"uuid\":\"{}\",\"calls\":[{}]}}",sym,uuid,callees)
+                                format!("{{\"type\":\"symbol\",\"name\":\"{}\",\"uuid\":\"{}\",\"calls\":{{{}}}}}",sym,uuid,callees)
                             },
                             Some(&CallTarget::Todo(ref a,ref uuid)) => {
-                                format!("{{\"type\":\"todo\",\"start\":\"{}\",\"uuid\":\"{}\",\"calls\":[{}]}}",a,uuid,callees)
+                                format!("{{\"type\":\"todo\",\"start\":\"{}\",\"uuid\":\"{}\",\"calls\":{{{}}}}}",a,uuid,callees)
                             },
                             None => {
                                 "".to_string()

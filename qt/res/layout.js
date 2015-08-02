@@ -727,15 +727,16 @@ WorkerScript.onMessage = function(msg) {
 		model.append(msg.item);
 		model.setProperty(model.count - 1,"x",Math.random() * width);
 		model.setProperty(model.count - 1,"y",Math.random() * height);
+
 		model.sync();
 
 		graph.addNodes(msg.item.uuid);
-		for(var i = 0; i < msg.item.calls.length; i++) {
+		for(var e in msg.item.calls) {
 			try {
-				graph.addEdges([msg.item.uuid,msg.item.calls[i]]);
-			} catch(e) {
-				graph.addNodes(msg.item.calls[i]);
-				graph.addEdges([msg.item.uuid,msg.item.calls[i]]);
+				graph.addEdges([msg.item.uuid,msg.item.calls[e]]);
+			} catch(ex) {
+				graph.addNodes(msg.item.calls[e]);
+				graph.addEdges([msg.item.uuid,msg.item.calls[e]]);
 			}
 		}
 
@@ -768,6 +769,11 @@ WorkerScript.onMessage = function(msg) {
 		});
 
 		model.sync();
-		WorkerScript.sendMessage({});
+
+		if(layout.totalEnergy() < layout.minEnergyThreshold) {
+			WorkerScript.sendMessage({"type":"stop"});
+		} else {
+			WorkerScript.sendMessage({});
+		}
 	}
 };
