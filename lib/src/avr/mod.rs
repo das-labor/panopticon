@@ -1561,13 +1561,13 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
         },
         // RJMP
         [ "1100 k@............" ] = |st: &mut State<Avr>| {
-            let _k = st.get_group("k") as i16; // 12 bits
-            let pc_mod = 1 << (st.configuration.pc_bits - 1);
+            let _k = st.get_group("k") as i32; // 12 bits
+            let pc_mod = (1 << (st.configuration.pc_bits - 1)) as i32;
             let k = (((if _k & 0x0800 != 0 {
                 _k | 0xF000
             } else {
                 _k
-            } * 2 + 2 + (st.address as i16)) % pc_mod) + pc_mod) % pc_mod;
+            } * 2 + 2 + (st.address as i32)) % pc_mod) + pc_mod) % pc_mod;
 
             st.mnemonic(2,"rjmp","{26}",vec!(Rvalue::Constant(k as u64)),|_: &mut CodeGen| {});
             st.jump(Rvalue::Constant(k as u64),Guard::always());
