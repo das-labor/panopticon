@@ -470,14 +470,28 @@ mod tests {
     use value::Rvalue;
     use mnemonic::Bound;
 
+    #[derive(Clone)]
+    enum TestArchShort {}
+    impl Architecture for TestArchShort {
+        type Token = u8;
+        type Configuration = ();
+    }
+
+    #[derive(Clone)]
+    enum TestArchWide {}
+    impl Architecture for TestArchWide {
+        type Token = u16;
+        type Configuration = ();
+    }
+
     #[test]
     fn combine_expr() {
-        let sub = new_disassembler!(u8 =>
+        let sub = new_disassembler!(TestArchShort =>
             [ 1 ] = |_| { true },
             [ 2, 2 ] = |_| { true }
         );
 
-        let main = new_disassembler!(u8 =>
+        let main = new_disassembler!(TestArchShort =>
             [ 3, sub ] = |_| { true }
         );
 
@@ -488,43 +502,43 @@ mod tests {
 
     #[test]
     fn decode_macro() {
-        let lock_prfx = new_disassembler!(u8 =>
+        let lock_prfx = new_disassembler!(TestArchShort =>
             [ 0x06 ] = |_| { true }
         );
 
-        new_disassembler!(u8 =>
+        new_disassembler!(TestArchShort =>
             [ 22 , 21, lock_prfx ] = |_| { true },
             [ "....11 d@00"         ] = |_| true,
             [ "....11 d@00", ".. d@0011. 0" ] = |_| true
         );
     }
 
-    fn fixture() -> (Rc<Disassembler<u8>>,Rc<Disassembler<u8>>,Rc<Disassembler<u8>>,OpaqueLayer) {
-        let sub = new_disassembler!(u8 =>
-            [ 2 ] = |st: &mut State<u8>| {
+    fn fixture() -> (Rc<Disassembler<TestArchShort>>,Rc<Disassembler<TestArchShort>>,Rc<Disassembler<TestArchShort>>,OpaqueLayer) {
+        let sub = new_disassembler!(TestArchShort =>
+            [ 2 ] = |st: &mut State<TestArchShort>| {
                 let next = st.address;
                 st.mnemonic(2,"BA","",vec!(),|_| {});
                 st.jump(Rvalue::Constant(next + 2),Guard::always());
                 true
             });
-        let sub2 = new_disassembler!(u8 =>
+        let sub2 = new_disassembler!(TestArchShort =>
             [ 8 ] = |_| false);
 
-        let main = new_disassembler!(u8 =>
+        let main = new_disassembler!(TestArchShort =>
             [ 1, sub ] = |_| true,
-            [ 1 ] = |st: &mut State<u8>| {
+            [ 1 ] = |st: &mut State<TestArchShort>| {
                 let next = st.address;
                 st.mnemonic(1,"A","",vec!(),|_| {});
                 st.jump(Rvalue::Constant(next + 1),Guard::always());
                 true
             },
-            [ "0 k@..... 11" ] = |st: &mut State<u8>| {
+            [ "0 k@..... 11" ] = |st: &mut State<TestArchShort>| {
                 let next = st.address;
                 st.mnemonic(1,"C","",vec!(),|_| {});
                 st.jump(Rvalue::Constant(next + 1),Guard::always());
                 true
             },
-            _ = |st: &mut State<u8>| {
+            _ = |st: &mut State<TestArchShort>| {
                 let next = st.address;
                 st.mnemonic(1,"UNK","",vec!(),|_| {});
                 st.jump(Rvalue::Constant(next + 1),Guard::always());
@@ -538,7 +552,7 @@ mod tests {
     #[test]
     fn single_decoder() {
         let (_,_,main,def) = fixture();
-        let st = State::<u8>::new(0);
+        let st = State::<TestArchShort>::new(0,());
         let maybe_res = main.next_match(&mut def.iter(),st);
 
         assert!(maybe_res.is_some());
@@ -564,7 +578,7 @@ mod tests {
     #[test]
     fn sub_decoder() {
         let (_,_,main,def) = fixture();
-        let st = State::<u8>::new(1);
+        let st = State::<TestArchShort>::new(1,());
         let maybe_res = main.next_match(&mut def.iter().cut(&(1..def.len())),st);
 
         assert!(maybe_res.is_some());
@@ -591,7 +605,7 @@ mod tests {
     #[test]
     fn semantic_false() {
         let (_,sub2,_,def) = fixture();
-        let st = State::<u8>::new(7);
+        let st = State::<TestArchShort>::new(7,());
         let maybe_res = sub2.next_match(&mut def.iter().cut(&(7..def.len())),st);
 
         assert!(maybe_res.is_none());
@@ -600,7 +614,7 @@ mod tests {
     #[test]
     fn default_pattern() {
         let (_,_,main,def) = fixture();
-        let st = State::<u8>::new(7);
+        let st = State::<TestArchShort>::new(7,());
         let maybe_res = main.next_match(&mut def.iter().cut(&(7..def.len())),st);
 
         assert!(maybe_res.is_some());
@@ -626,7 +640,7 @@ mod tests {
     #[test]
     fn slice() {
         let (_,_,main,def) = fixture();
-        let st = State::<u8>::new(1);
+        let st = State::<TestArchShort>::new(1,());
         let maybe_res = main.next_match(&mut def.iter().cut(&(1..2)),st);
 
         assert!(maybe_res.is_some());
@@ -652,7 +666,7 @@ mod tests {
     #[test]
     fn empty() {
         let (_,_,main,def) = fixture();
-        let st = State::<u8>::new(0);
+        let st = State::<TestArchShort>::new(0,());
         let maybe_res = main.next_match(&mut def.iter().cut(&(0..0)),st);
 
         assert!(maybe_res.is_none());
@@ -661,7 +675,7 @@ mod tests {
     #[test]
     fn capture_group() {
         let (_,_,main,def) = fixture();
-        let st = State::<u8>::new(4);
+        let st = State::<TestArchShort>::new(4,());
         let maybe_res = main.next_match(&mut def.iter().cut(&(4..def.len())),st);
 
         assert!(maybe_res.is_some());
@@ -687,10 +701,10 @@ mod tests {
 
     #[test]
     fn empty_capture_group() {
-        let st = State::<u8>::new(0);
+        let st = State::<TestArchShort>::new(0,());
         let def = OpaqueLayer::wrap(vec!(127));
-        let dec = new_disassembler!(u8 =>
-            ["01 a@.. 1 b@ c@..."] = |st: &mut State<u8>| {
+        let dec = new_disassembler!(TestArchShort =>
+            ["01 a@.. 1 b@ c@..."] = |st: &mut State<TestArchShort>| {
                 st.mnemonic(1, "1","",vec!(),|_| {});
                 true
             }
@@ -714,39 +728,39 @@ mod tests {
     #[test]
     #[should_panic]
     fn too_long_capture_group() {
-        new_disassembler!(u8 => [ "k@........." ] = |_| { true });
+        new_disassembler!(TestArchShort => [ "k@........." ] = |_| { true });
     }
 
     #[test]
     #[should_panic]
     fn too_long_token_pattern() {
-        new_disassembler!(u8 => [ "111111111" ] = |_| { true });
+        new_disassembler!(TestArchShort => [ "111111111" ] = |_| { true });
     }
 
     #[test]
     #[should_panic]
     fn too_short_token_pattern() {
-        new_disassembler!(u8 => [ "1111111" ] = |_| { true });
+        new_disassembler!(TestArchShort => [ "1111111" ] = |_| { true });
     }
 
     #[test]
     #[should_panic]
     fn invalid_char_in_token_pattern() {
-        new_disassembler!(u8 => [ "101/1010" ] = |_| { true });
+        new_disassembler!(TestArchShort => [ "101/1010" ] = |_| { true });
     }
 
     #[test]
     #[should_panic]
     fn invalid_token_pattern() {
-        new_disassembler!(u8 => [ "a111111" ] = |_| { true });
+        new_disassembler!(TestArchShort => [ "a111111" ] = |_| { true });
     }
 
     #[test]
     fn wide_token() {
-        let st = State::<u16>::new(0);
+        let st = State::<TestArchWide>::new(0,());
         let def = OpaqueLayer::wrap(vec!(0x11,0x22,0x33,0x44,0x55,0x44));
-        let dec = new_disassembler!(u16 =>
-            [0x1122] = |s: &mut State<u16>|
+        let dec = new_disassembler!(TestArchWide =>
+            [0x2211] = |s: &mut State<TestArchWide>|
             {
                 let a = s.address;
                 s.mnemonic(2,"A","",vec!(),|_| {});
@@ -754,7 +768,7 @@ mod tests {
                 true
             },
 
-            [0x3344] = |s: &mut State<u16>|
+            [0x4433] = |s: &mut State<TestArchWide>|
             {
                 let a = s.address;
                 s.mnemonic(2,"B","",vec!(),|_| {});
@@ -763,7 +777,7 @@ mod tests {
                 true
             },
 
-            [0x5544] = |s: &mut State<u16>|
+            [0x4455] = |s: &mut State<TestArchWide>|
             {
                 s.mnemonic(2, "C","",vec!(),|_| {});
                 true
@@ -777,7 +791,7 @@ mod tests {
 
         assert_eq!(res.address, 0);
         assert_eq!(res.tokens.len(), 1);
-        assert_eq!(res.tokens[0], 0x1122);
+        assert_eq!(res.tokens[0], 0x2211);
         assert_eq!(res.mnemonics.len(), 1);
         assert_eq!(res.mnemonics[0].opcode, "A".to_string());
         assert_eq!(res.mnemonics[0].area, Bound::new(0,2));
@@ -788,8 +802,8 @@ mod tests {
     #[test]
     fn optional() {
         let def = OpaqueLayer::wrap(vec!(127,126,125,127,125));
-        let dec = new_disassembler!(u8 =>
-            [127, opt!(126), 125] = |st: &mut State<u8>|
+        let dec = new_disassembler!(TestArchShort =>
+            [127, opt!(126), 125] = |st: &mut State<TestArchShort>|
             {
                 let l = st.tokens.len();
                 st.mnemonic(l, "1", "", vec!(),|_| {});
@@ -802,7 +816,7 @@ mod tests {
         }
 
         {
-            let st = State::<u8>::new(0);
+            let st = State::<TestArchShort>::new(0,());
             let maybe_res = dec.next_match(&mut def.iter(),st);
 
             assert!(maybe_res.is_some());
@@ -819,7 +833,7 @@ mod tests {
         }
 
         {
-            let st = State::<u8>::new(3);
+            let st = State::<TestArchShort>::new(3,());
             let maybe_res = dec.next_match(&mut def.iter().cut(&(3..5)),st);
 
             assert!(maybe_res.is_some());
@@ -839,8 +853,8 @@ mod tests {
     #[test]
     fn fixed_capture_group_contents() {
         let def = OpaqueLayer::wrap(vec!(127,255));
-        let dec = new_disassembler!(u8 =>
-            [ "01111111", "a@11111111" ] = |st: &mut State<u8>|
+        let dec = new_disassembler!(TestArchShort =>
+            [ "01111111", "a@11111111" ] = |st: &mut State<TestArchShort>|
             {
                 let l = st.tokens.len();
                 st.mnemonic(l, "1", "", vec!(),|_| {});
@@ -851,7 +865,7 @@ mod tests {
         for d in &dec.matches {
             println!("{:?}",d.groups);
         }
-        let st = State::<u8>::new(0);
+        let st = State::<TestArchShort>::new(0,());
         let maybe_res = dec.next_match(&mut def.iter(),st);
 
         assert!(maybe_res.is_some());

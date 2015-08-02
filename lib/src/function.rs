@@ -301,20 +301,45 @@ impl Function {
 
         ret
     }
+
+    pub fn find_basic_block_at_address(&self,a: u64) -> Option<ControlFlowRef> {
+        self.cflow_graph.vertices().find(|&x| {
+            match self.cflow_graph.vertex_label(x) {
+                Some(&ControlFlowTarget::Resolved(ref bb)) => {
+                    bb.area.start <= a && bb.area.end > a
+                },
+                _ => false
+            }
+        })
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use graph_algos::{VertexListGraphTrait,EdgeListGraphTrait,AdjacencyMatrixGraphTrait};
-    use graph_algos::{AdjacencyList,GraphTrait,MutableGraphTrait};
+    use graph_algos::{GraphTrait,MutableGraphTrait};
     use guard::Guard;
     use mnemonic::{Mnemonic,Bound};
     use basic_block::BasicBlock;
     use value::Rvalue;
     use layer::OpaqueLayer;
-    use disassembler::{ToExpr,State};
+    use disassembler::{ToExpr,State,Architecture};
     use msgpack;
+
+    #[derive(Clone)]
+    enum TestArchShort {}
+    impl Architecture for TestArchShort {
+        type Token = u8;
+        type Configuration = ();
+    }
+
+    #[derive(Clone)]
+    enum TestArchWide {}
+    impl Architecture for TestArchWide {
+        type Token = u16;
+        type Configuration = ();
+    }
 
     #[test]
     fn new() {
@@ -442,16 +467,14 @@ mod tests {
 
     #[test]
     fn add_single() {
-        let main = new_disassembler!(u8 =>
-            [ 0 ] = |st: &mut State<u8>| {
-                let next = st.address;
+        let main = new_disassembler!(TestArchShort =>
+            [ 0 ] = |st: &mut State<TestArchShort>| {
                 st.mnemonic(1,"A","",vec!(),|_| {});
                 true
             }
 		);
         let data = OpaqueLayer::wrap(vec!(0));
-        let init = State::new(0);
-        let func = Function::disassemble(None,main,init,data.iter(),0);
+        let func = Function::disassemble(None,main,(),data.iter(),0);
 
         assert_eq!(func.cflow_graph.num_vertices(), 1);
         assert_eq!(func.cflow_graph.num_edges(), 0);
@@ -475,38 +498,38 @@ mod tests {
 
     #[test]
     fn continuous() {
-        let main = new_disassembler!(u8 =>
-            [ 0 ] = |st: &mut State<u8>| {
+        let main = new_disassembler!(TestArchShort =>
+            [ 0 ] = |st: &mut State<TestArchShort>| {
                 let next = st.address;
                 st.mnemonic(1,"test0","",vec!(),|_| {});
                 st.jump(Rvalue::Constant(next + 1),Guard::always());
                 true
             },
-            [ 1 ] = |st: &mut State<u8>| {
+            [ 1 ] = |st: &mut State<TestArchShort>| {
                 let next = st.address;
                 st.mnemonic(1,"test1","",vec!(),|_| {});
                 st.jump(Rvalue::Constant(next + 1),Guard::always());
                 true
             },
-            [ 2 ] = |st: &mut State<u8>| {
+            [ 2 ] = |st: &mut State<TestArchShort>| {
                 let next = st.address;
                 st.mnemonic(1,"test2","",vec!(),|_| {});
                 st.jump(Rvalue::Constant(next + 1),Guard::always());
                 true
             },
-            [ 3 ] = |st: &mut State<u8>| {
+            [ 3 ] = |st: &mut State<TestArchShort>| {
                 let next = st.address;
                 st.mnemonic(1,"test3","",vec!(),|_| {});
                 st.jump(Rvalue::Constant(next + 1),Guard::always());
                 true
             },
-            [ 4 ] = |st: &mut State<u8>| {
+            [ 4 ] = |st: &mut State<TestArchShort>| {
                 let next = st.address;
                 st.mnemonic(1,"test4","",vec!(),|_| {});
                 st.jump(Rvalue::Constant(next + 1),Guard::always());
                 true
             },
-            [ 5 ] = |st: &mut State<u8>| {
+            [ 5 ] = |st: &mut State<TestArchShort>| {
                 let next = st.address;
                 st.mnemonic(1,"test5","",vec!(),|_| {});
                 st.jump(Rvalue::Constant(next + 1),Guard::always());
@@ -515,8 +538,7 @@ mod tests {
         );
 
         let data = OpaqueLayer::wrap(vec!(0,1,2,3,4,5));
-        let init = State::new(0);
-        let func = Function::disassemble(None,main,init,data.iter(),0);
+        let func = Function::disassemble(None,main,(),data.iter(),0);
 
         assert_eq!(func.cflow_graph.num_vertices(), 2);
         assert_eq!(func.cflow_graph.num_edges(), 1);
@@ -557,19 +579,19 @@ mod tests {
 
     #[test]
     fn branch() {
-        let main = new_disassembler!(u8 =>
-            [ 0 ] = |st: &mut State<u8>| {
+        let main = new_disassembler!(TestArchShort =>
+            [ 0 ] = |st: &mut State<TestArchShort>| {
                 st.mnemonic(1,"test0","",vec!(),|_| {});
                 st.jump(Rvalue::Constant(1),Guard::always());
                 st.jump(Rvalue::Constant(2),Guard::always());
                 true
             },
-            [ 1 ] = |st: &mut State<u8>| {
+            [ 1 ] = |st: &mut State<TestArchShort>| {
                 st.mnemonic(1,"test1","",vec!(),|_| {});
                 st.jump(Rvalue::Constant(3),Guard::always());
                 true
             },
-            [ 2 ] = |st: &mut State<u8>| {
+            [ 2 ] = |st: &mut State<TestArchShort>| {
                 st.mnemonic(1,"test2","",vec!(),|_| {});
                 st.jump(Rvalue::Constant(1),Guard::always());
                 true
@@ -577,8 +599,7 @@ mod tests {
         );
 
         let data = OpaqueLayer::wrap(vec!(0,1,2));
-        let init = State::new(0);
-        let func = Function::disassemble(None,main,init,data.iter(),0);
+        let func = Function::disassemble(None,main,(),data.iter(),0);
 
         assert_eq!(func.cflow_graph.num_vertices(), 4);
         assert_eq!(func.cflow_graph.num_edges(), 4);
@@ -630,18 +651,18 @@ mod tests {
 
     #[test]
     fn function_loop() {
-      let main = new_disassembler!(u8 =>
-            [ 0 ] = |st: &mut State<u8>| {
+      let main = new_disassembler!(TestArchShort =>
+            [ 0 ] = |st: &mut State<TestArchShort>| {
                 st.mnemonic(1,"test0","",vec!(),|_| {});
                 st.jump(Rvalue::Constant(1),Guard::always());
                 true
             },
-            [ 1 ] = |st: &mut State<u8>| {
+            [ 1 ] = |st: &mut State<TestArchShort>| {
                 st.mnemonic(1,"test1","",vec!(),|_| {});
                 st.jump(Rvalue::Constant(2),Guard::always());
                 true
             },
-            [ 2 ] = |st: &mut State<u8>| {
+            [ 2 ] = |st: &mut State<TestArchShort>| {
                 st.mnemonic(1,"test2","",vec!(),|_| {});
                 st.jump(Rvalue::Constant(0),Guard::always());
                 true
@@ -649,8 +670,7 @@ mod tests {
         );
 
         let data = OpaqueLayer::wrap(vec!(0,1,2));
-        let init = State::new(0);
-        let func = Function::disassemble(None,main,init,data.iter(),0);
+        let func = Function::disassemble(None,main,(),data.iter(),0);
 
         assert_eq!(func.cflow_graph.num_vertices(), 1);
         assert_eq!(func.cflow_graph.num_edges(), 1);
@@ -678,18 +698,18 @@ mod tests {
 
     #[test]
     fn empty() {
-        let main = new_disassembler!(u8 =>
-            [ 0 ] = |st: &mut State<u8>| {
+        let main = new_disassembler!(TestArchShort =>
+            [ 0 ] = |st: &mut State<TestArchShort>| {
                 st.mnemonic(1,"test0","",vec!(),|_| {});
                 st.jump(Rvalue::Constant(1),Guard::always());
                 true
             },
-            [ 1 ] = |st: &mut State<u8>| {
+            [ 1 ] = |st: &mut State<TestArchShort>| {
                 st.mnemonic(1,"test1","",vec!(),|_| {});
                 st.jump(Rvalue::Constant(2),Guard::always());
                 true
             },
-            [ 2 ] = |st: &mut State<u8>| {
+            [ 2 ] = |st: &mut State<TestArchShort>| {
                 st.mnemonic(1,"test2","",vec!(),|_| {});
                 st.jump(Rvalue::Constant(0),Guard::always());
                 true
@@ -697,8 +717,7 @@ mod tests {
         );
 
         let data = OpaqueLayer::wrap(vec!());
-        let init = State::new(0);
-        let func = Function::disassemble(None,main,init,data.iter(),0);
+        let func = Function::disassemble(None,main,(),data.iter(),0);
 
         assert_eq!(func.cflow_graph.num_vertices(), 0);
         assert_eq!(func.cflow_graph.num_edges(), 0);
@@ -716,18 +735,18 @@ mod tests {
         fun.entry_point = Some(vx0);
         fun.cflow_graph.add_edge(Guard::always(),vx0,vx1);
 
-        let main = new_disassembler!(u8 =>
-            [ 0 ] = |st: &mut State<u8>| {
+        let main = new_disassembler!(TestArchShort =>
+            [ 0 ] = |st: &mut State<TestArchShort>| {
                 st.mnemonic(1,"test0","",vec!(),|_| {});
                 st.jump(Rvalue::Constant(1),Guard::always());
                 true
             },
-            [ 1 ] = |st: &mut State<u8>| {
+            [ 1 ] = |st: &mut State<TestArchShort>| {
                 st.mnemonic(1,"test1","",vec!(),|_| {});
                 st.jump(Rvalue::Constant(2),Guard::always());
                 true
             },
-            [ 2 ] = |st: &mut State<u8>| {
+            [ 2 ] = |st: &mut State<TestArchShort>| {
                 st.mnemonic(1,"test2","",vec!(),|_| {});
                 st.jump(Rvalue::Constant(1),Guard::always());
                 true
@@ -735,8 +754,7 @@ mod tests {
         );
 
         let data = OpaqueLayer::wrap(vec!(0,1,2));
-        let init = State::new(2);
-        let func = Function::disassemble(Some(fun),main,init,data.iter(),2);
+        let func = Function::disassemble(Some(fun),main,(),data.iter(),2);
 
         assert_eq!(func.cflow_graph.num_vertices(), 3);
         assert_eq!(func.cflow_graph.num_edges(), 3);
@@ -838,10 +856,9 @@ mod tests {
 
     #[test]
     fn wide_token() {
-        let st = State::<u16>::new(0);
         let def = OpaqueLayer::wrap(vec!(0x11,0x22,0x33,0x44,0x55,0x44));
-        let dec = new_disassembler!(u16 =>
-            [0x1122] = |s: &mut State<u16>|
+        let dec = new_disassembler!(TestArchWide =>
+            [0x2211] = |s: &mut State<TestArchWide>|
             {
                 let a = s.address;
                 s.mnemonic(2,"A","",vec!(),|_| {});
@@ -849,7 +866,7 @@ mod tests {
                 true
             },
 
-            [0x3344] = |s: &mut State<u16>|
+            [0x4433] = |s: &mut State<TestArchWide>|
             {
                 let a = s.address;
                 s.mnemonic(2,"B","",vec!(),|_| {});
@@ -858,14 +875,14 @@ mod tests {
                 true
             },
 
-            [0x5544] = |s: &mut State<u16>|
+            [0x4455] = |s: &mut State<TestArchWide>|
             {
                 s.mnemonic(2, "C","",vec!(),|_| {});
                 true
             }
         );
 
-        let func = Function::disassemble(None,dec,st,def.iter(),0);
+        let func = Function::disassemble(None,dec,(),def.iter(),0);
 
         assert_eq!(func.cflow_graph.num_vertices(), 3);
         assert_eq!(func.cflow_graph.num_edges(), 2);
@@ -899,18 +916,18 @@ mod tests {
 
     #[test]
     fn issue_51_treat_entry_point_as_incoming_edge() {
-        let main = new_disassembler!(u8 =>
-            [ 0 ] = |st: &mut State<u8>| {
+        let main = new_disassembler!(TestArchShort =>
+            [ 0 ] = |st: &mut State<TestArchShort>| {
                 st.mnemonic(1,"test0","",vec!(),|_| {});
                 st.jump(Rvalue::Constant(1),Guard::always());
                 true
             },
-            [ 1 ] = |st: &mut State<u8>| {
+            [ 1 ] = |st: &mut State<TestArchShort>| {
                 st.mnemonic(1,"test1","",vec!(),|_| {});
                 st.jump(Rvalue::Constant(2),Guard::always());
                 true
             },
-            [ 2 ] = |st: &mut State<u8>| {
+            [ 2 ] = |st: &mut State<TestArchShort>| {
                 st.mnemonic(1,"test2","",vec!(),|_| {});
                 st.jump(Rvalue::Constant(0),Guard::always());
                 true
@@ -918,8 +935,7 @@ mod tests {
         );
 
         let data = OpaqueLayer::wrap(vec!(0,1,2));
-        let init = State::new(1);
-        let func = Function::disassemble(None,main,init,data.iter(),1);
+        let func = Function::disassemble(None,main,(),data.iter(),1);
 
         assert_eq!(func.cflow_graph.num_vertices(), 2);
         assert_eq!(func.cflow_graph.num_edges(), 2);
