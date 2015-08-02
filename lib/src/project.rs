@@ -1,7 +1,10 @@
 use std::path::Path;
 
-use program::Program;
+use program::{Program,CallGraphRef};
 use region::{Region,Regions};
+use function::Function;
+
+use uuid::Uuid;
 
 #[derive(RustcDecodable,RustcEncodable)]
 pub struct Project {

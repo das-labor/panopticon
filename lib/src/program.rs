@@ -1,5 +1,5 @@
 use function::{ControlFlowTarget,Function};
-use graph_algos::{AdjacencyList,GraphTrait,MutableGraphTrait};
+use graph_algos::{AdjacencyList,GraphTrait,MutableGraphTrait,AdjacencyMatrixGraphTrait};
 use graph_algos::adjacency_list::AdjacencyListVertexDescriptor;
 use graph_algos::VertexListGraphTrait;
 use std::rc::Rc;
@@ -11,7 +11,18 @@ use uuid::Uuid;
 #[derive(RustcDecodable,RustcEncodable)]
 pub enum CallTarget {
     Concrete(Function),
-    Symbolic(String),
+    Symbolic(String,Uuid),
+    Todo(u64,Uuid),
+}
+
+impl CallTarget {
+    pub fn uuid(&self) -> Uuid {
+        match self {
+            &CallTarget::Concrete(Function{ uuid,..}) => uuid,
+            &CallTarget::Symbolic(_,uuid) => uuid,
+            &CallTarget::Todo(_,uuid) => uuid,
+        }
+    }
 }
 
 pub type CallGraph = AdjacencyList<CallTarget,()>;
