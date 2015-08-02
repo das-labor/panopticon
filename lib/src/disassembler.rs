@@ -287,7 +287,24 @@ impl<A: Architecture> Disassembler<A> {
                             }
 
                             if new {
-                                m.groups.push(x.clone());
+                                let mut v = Vec::new();
+
+                                for _ in (0..pre.patterns.len()) {
+                                    v.push(A::Token::zero());
+                                }
+
+                                for t in &x.1 {
+                                    v.push(t.clone());
+                                }
+
+                                m.groups.push((x.0.clone(),v));
+                            }
+
+                            let pat_len = m.patterns.len();
+                            for g in m.groups.iter_mut() {
+                                while g.1.len() < pat_len {
+                                    g.1.push(A::Token::zero());
+                                }
                             }
                         }
 
