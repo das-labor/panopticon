@@ -108,8 +108,6 @@ extern "C" fn panopticon_slot(this: *mut ffi::QObject, id: libc::c_int, a: *cons
                         let proj: &Project = read_guard.as_ref().unwrap();
                         let prog: &Program = proj.find_program_by_uuid(&prog_uuid).unwrap();
 
-                        println!("num: {}",prog.call_graph.num_vertices());
-
                         prog.call_graph.vertices().filter_map(|x| {
                             if let Some(&CallTarget::Todo(tgt,uuid)) = prog.call_graph.vertex_label(x) {
                                 Some((tgt,uuid))
@@ -212,7 +210,22 @@ extern "C" fn panopticon_slot(this: *mut ffi::QObject, id: libc::c_int, a: *cons
                     }
                 }
             }
-        }
+        },
+        (11,_,1) => {
+            "".to_qvariant(ret);
+
+            if let Variant::String(ref uuid_str) = args[0] {
+                if let Some(tgt_uuid) = Uuid::parse_str(uuid_str).ok() {
+                    let read_guard = PROJECT.read().unwrap();
+                    let proj: &Project = read_guard.as_ref().unwrap();
+                    if let Some((vx,prog)) = proj.find_call_target_by_uuid(&tgt_uuid) {
+                        if let Some(&CallTarget::Concrete(ref fun)) = prog.call_graph.vertex_label(vx) {
+                            format!("{{\"count\":{}}}",fun.cflow_graph.num_vertices()).to_qvariant(ret);
+                        }
+                    }
+                }
+            }
+        },
         _ => panic!("unknown Panopticon type call error (id: {}, args: {})",id,args.len())
     }
 }
@@ -244,6 +257,7 @@ extern "C" fn create_panopticon_singleton(_: *mut qmlrs::ffi::QQmlEngine, _: *mu
 
     // getter
     assert_eq!(metaobj.add_method("functionInfo(QString)","QString"),10);
+    assert_eq!(metaobj.add_method("functionCfg(QString)","QString"),11);
 
     let mut obj = metaobj.instantiate();
 

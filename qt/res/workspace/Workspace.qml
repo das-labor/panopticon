@@ -56,12 +56,14 @@ Item {
 
 				property string selection: "";
 
-				onSelectionChanged: layoutTask.sendMessage(Panopticon.functionCfg(selection));
+				onSelectionChanged: layoutTask.sendMessage(eval(Panopticon.functionCfg(selection)));
 				onPaint: {
 					var ctx = cflow_graph.item.getContext('2d');
 					var func = eval(Panopticon.functionInfo(selection));
 
-					ctx.fillText(func.name,cflow_graph.width / 2,cflow_graph.height / 2);
+					if(func !== undefined) {
+						ctx.fillText(func.name,cflow_graph.width / 2,cflow_graph.height / 2);
+					}
 				}
 
 				WorkerScript {
