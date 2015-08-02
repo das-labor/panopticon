@@ -27,6 +27,34 @@ impl Project {
     pub fn open(_: &Path) -> Option<Project> {
         unimplemented!()
     }
+
+    pub fn find_program_by_uuid(&self,uu: &Uuid) -> Option<&Program> {
+        self.code.iter().find(|x| x.uuid == *uu)
+    }
+
+    pub fn find_program_by_uuid_mut(&mut self,uu: &Uuid) -> Option<&mut Program> {
+        self.code.iter_mut().find(|x| x.uuid == *uu)
+    }
+
+    pub fn find_function_by_uuid<'a>(&'a self,uu: &Uuid) -> Option<&'a Function> {
+        for p in self.code.iter() {
+            if let Some(f) = p.find_function_by_uuid::<'a>(uu) {
+                return Some(f);
+            }
+        }
+
+        None
+    }
+
+    pub fn find_call_target_by_uuid<'a>(&'a self,uu: &Uuid) -> Option<(CallGraphRef,&'a Program)> {
+        for p in self.code.iter() {
+            if let Some(ct) = p.find_call_target_by_uuid::<'a>(uu) {
+                return Some((ct,p));
+            }
+        }
+
+        None
+    }
 }
 
 #[cfg(test)]
