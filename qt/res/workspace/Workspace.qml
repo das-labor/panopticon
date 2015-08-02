@@ -2,43 +2,55 @@ import QtQuick 2.0
 import Panopticon 1.0
 import QtQuick.Controls 1.3
 
-/*
- * +-------+---------------------+-------+
- * |   S   |                     |   S   |
- * |   i   |                     |   i   |
- * |   d   |                     |   d   |
- * |   e   |      Workspace      |   e   |
- * |       |                     |       |
- * |   B   |                     |   B   |
- * |   a   |                     |   a   |
- * |   r   |                     |   r   |
- * +-------+---------------------+-------+
- */
 Item {
 	id: root
 
 	Component.onCompleted: {
-		console.log(Panopticon.state)
-		layoutTask.sendMessage({"type":"update","model":functionModel,"width":callgraph.width,"height":callgraph.height});
+		layoutTask.sendMessage({"type":"resize","width":callgraph.width,"height":callgraph.height});
 		timer.running = true;
 
-		Panopticon.startedFunction.connect(function(pos) {
-			console.log("started " + pos);
+		Panopticon.startedFunction.connect(function(uu) {
+			var obj = eval(Panopticon.functionInfo(uu));
+
+			obj.name = "<b>Working</b>";
+			for(var i = 0; i < functionModel.count; i++) {
+				var node = functionModel.get(i);
+
+				if(node.uuid == obj.uuid) {
+					functionModel.set(i,obj);
+					return;
+				}
+			}
+
+			console.error("Error: got startedFunction() signal w/ unknown function " + uu);
 		});
 
-		Panopticon.discoveredFunction.connect(function(pos) {
-			console.log("discovered " + pos);
+		Panopticon.discoveredFunction.connect(function(uu) {
+			var obj = eval(Panopticon.functionInfo(uu));
+			if(obj.type == "todo") {
+				obj.name = "<i>Todo</i>";
+			}
+			console.log(JSON.stringify(obj));
+			functionModel.append(obj);
 		});
 
-		Panopticon.finishedFunction.connect(function(id) {
-			var obj = Panopticon.functionInfo(id);
-			console.log(obj);
-			obj = eval(obj);
-			layoutTask.sendMessage({"type":"add","item":obj});
+		Panopticon.finishedFunction.connect(function(uu) {
+			var obj = eval(Panopticon.functionInfo(uu));
+			for(var i = 0; i < functionModel.count; i++) {
+				var node = functionModel.get(i);
+
+				if(node.uuid == obj.uuid) {
+					functionModel.set(i,obj);
+					layoutTask.sendMessage({"type":"add","item":obj});
+					timer.running = true;
+
+					return;
+				}
+			}
+			console.error("Error: got finishedFunction() signal w/ unknown function " + uu);
 		});
 
 		Panopticon.start()
-		console.log(Panopticon.state)
 	}
 
 	ListModel {
@@ -65,8 +77,15 @@ Item {
 			role: "start"
 			title: "Offset"
 			width: 100
-		}
-
+		}/*
+itemDelegate: Item {
+    Text {
+        anchors.verticalCenter: parent.verticalCenter
+        color: styleData.textColor
+        elide: styleData.elideMode
+        text: styleData.value === undefined ? "---" : styleData.value
+			}
+		}*/
     model: functionModel
 	}
 
@@ -119,6 +138,19 @@ Item {
 			id: layoutTask
 			source: "../layout.js"
 			onMessage: {
+				//console.log("MS: " + JSON.stringify(messageObject));
+
+				if(messageObject.type == "tock") {
+					for(var i = 0; i < functionModel.count; i++) {
+						var node = functionModel.get(i);
+
+						if(messageObject.nodes[node.uuid] !== undefined) {
+							functionModel.setProperty(i,"x",messageObject.nodes[node.uuid].x);
+							functionModel.setProperty(i,"y",messageObject.nodes[node.uuid].y);
+						}
+					}
+				}
+
 				timer.running = messageObject.type !== "stop";
 				callgraph.requestPaint();
 			}

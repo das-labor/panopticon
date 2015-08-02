@@ -710,70 +710,55 @@ var Springy = (function() {
   return Springy;
 })();
 
-var model = null;
 var width = 0;
 var height = 0;
-var graph = null;
 var layout = null;
-var renderer = null;
 
 WorkerScript.onMessage = function(msg) {
-	if(msg.type == "update") {
-		graph = new Springy.Graph();
-		model = msg.model;
+	if(layout === null) {
+		var graph = new Springy.Graph();
+		layout = new Springy.Layout.ForceDirected(graph,40,40,0.5,0.00001);
+	}
+
+	//console.log("WS: " + JSON.stringify(msg));
+
+	if(msg.type == "resize") {
 		width = msg.width;
 		height = msg.height;
 	} else if(msg.type == "add") {
-		model.append(msg.item);
-		model.setProperty(model.count - 1,"x",Math.random() * width);
-		model.setProperty(model.count - 1,"y",Math.random() * height);
+		layout.graph.addNodes(msg.item.uuid);
 
-		model.sync();
-
-		graph.addNodes(msg.item.uuid);
 		for(var e in msg.item.calls) {
 			try {
-				graph.addEdges([msg.item.uuid,msg.item.calls[e]]);
+				layout.graph.addEdges([msg.item.uuid,msg.item.calls[e]]);
 			} catch(ex) {
-				graph.addNodes(msg.item.calls[e]);
-				graph.addEdges([msg.item.uuid,msg.item.calls[e]]);
+				layout.graph.addNodes(msg.item.calls[e]);
+				layout.graph.addEdges([msg.item.uuid,msg.item.calls[e]]);
 			}
 		}
 
 		WorkerScript.sendMessage({});
 	} else if(msg.type == "tick") {
-		if(layout === null) {
-			layout = new Springy.Layout.ForceDirected(graph,40,40,0.5,0.00001);
-		}
-
 		layout.tick(0.1);
-
-		var toScreen = function(p) {
-			var currentBB = layout.getBoundingBox();
-			var size = currentBB.topright.subtract(currentBB.bottomleft);
-			var sx = p.subtract(currentBB.bottomleft).divide(size.x).x * width;
-			var sy = p.subtract(currentBB.bottomleft).divide(size.y).y * height;
-			return new Springy.Vector(sx, sy);
-		};
-
-		layout.eachNode(function(node, p) {
-			for(var i = 0; i < model.count; i++) {
-				var item = model.get(i);
-
-				if(item.uuid == node.id) {
-					var s = toScreen(p.p);
-					model.setProperty(i,"x",s.x);
-					model.setProperty(i,"y",s.y);
-				}
-			}
-		});
-
-		model.sync();
 
 		if(layout.totalEnergy() < layout.minEnergyThreshold) {
 			WorkerScript.sendMessage({"type":"stop"});
 		} else {
-			WorkerScript.sendMessage({});
+			var toScreen = function(p) {
+				var currentBB = layout.getBoundingBox();
+				var size = currentBB.topright.subtract(currentBB.bottomleft);
+				var sx = p.subtract(currentBB.bottomleft).divide(size.x).x * width;
+				var sy = p.subtract(currentBB.bottomleft).divide(size.y).y * height;
+				return new Springy.Vector(sx, sy);
+			};
+
+			var ret = {};
+
+			layout.eachNode(function(node, p) {
+				ret[node.id] = toScreen(p.p);
+			});
+
+			WorkerScript.sendMessage({"type":"tock","nodes":ret});
 		}
 	}
 };

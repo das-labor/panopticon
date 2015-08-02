@@ -122,8 +122,6 @@ extern "C" fn panopticon_slot(this: *mut ffi::QObject, id: libc::c_int, a: *cons
                     if let Some((tgt,uuid)) = maybe_tgt {
                         obj.emit(2,&vec!(Variant::String(uuid.to_string())));
 
-                        println!("Disassemble at {}",tgt);
-
                         let new_fun = {
                             let read_guard = PROJECT.read().unwrap();
                             let pro: &Project = read_guard.as_ref().unwrap();
@@ -203,7 +201,7 @@ extern "C" fn panopticon_slot(this: *mut ffi::QObject, id: libc::c_int, a: *cons
                                 format!("{{\"type\":\"symbol\",\"name\":\"{}\",\"uuid\":\"{}\",\"calls\":{{{}}}}}",sym,uuid,callees)
                             },
                             Some(&CallTarget::Todo(ref a,ref uuid)) => {
-                                format!("{{\"type\":\"todo\",\"start\":\"{}\",\"uuid\":\"{}\",\"calls\":{{{}}}}}",a,uuid,callees)
+                                format!("{{\"type\":\"todo\",\"start\":{},\"uuid\":\"{}\",\"calls\":{{{}}}}}",a,uuid,callees)
                             },
                             None => {
                                 "".to_string()
