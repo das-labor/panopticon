@@ -6,6 +6,7 @@ extern crate rustc_serialize;
 extern crate num;
 extern crate graph_algos;
 extern crate tempdir;
+extern crate uuid;
 
 #[macro_use]
 extern crate lazy_static;

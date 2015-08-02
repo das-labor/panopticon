@@ -6,6 +6,7 @@ use std::rc::Rc;
 use disassembler::{Architecture,Disassembler};
 use layer::LayerIter;
 use std::collections::HashSet;
+use uuid::Uuid;
 
 #[derive(RustcDecodable,RustcEncodable)]
 pub enum CallTarget {
@@ -18,6 +19,7 @@ pub type CallGraphRef = AdjacencyListVertexDescriptor;
 
 #[derive(RustcDecodable,RustcEncodable)]
 pub struct Program {
+    pub uuid: Uuid,
     pub name: String,
     pub call_graph: CallGraph,
 }
@@ -31,6 +33,7 @@ pub enum DisassembleEvent {
 impl Program {
     pub fn new(n: &str) -> Program {
         Program{
+            uuid: Uuid::new_v4(),
             name: n.to_string(),
             call_graph: CallGraph::new(),
         }

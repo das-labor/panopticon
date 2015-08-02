@@ -10,6 +10,7 @@ use std::collections::{HashMap,BTreeMap,BTreeSet};
 use mnemonic::Mnemonic;
 use std::rc::Rc;
 use instr::{Instr,Operation};
+use uuid::Uuid;
 
 #[derive(RustcDecodable,RustcEncodable,Debug)]
 pub enum ControlFlowTarget {
@@ -22,6 +23,7 @@ pub type ControlFlowRef = AdjacencyListVertexDescriptor;
 
 #[derive(RustcDecodable,RustcEncodable)]
 pub struct Function {
+    pub uuid: Uuid,
     pub name: String,
     pub cflow_graph: ControlFlowGraph,
     pub entry_point: Option<ControlFlowRef>
@@ -30,6 +32,16 @@ pub struct Function {
 impl Function {
     pub fn new(a: String) -> Function {
         Function{
+            uuid: Uuid::new_v4(),
+            name: a,
+            cflow_graph: AdjacencyList::new(),
+            entry_point: None,
+        }
+    }
+
+    pub fn with_uuid(a: String,uu: Uuid) -> Function {
+        Function{
+            uuid: uu,
             name: a,
             cflow_graph: AdjacencyList::new(),
             entry_point: None,
@@ -184,6 +196,7 @@ impl Function {
 
     pub fn disassemble<A: Architecture>(cont: Option<Function>, dec: Rc<Disassembler<A>>, init: A::Configuration, data: LayerIter, start: u64) -> Function {
         let name = cont.as_ref().map_or(format!("func_{}",start),|x| x.name.clone());
+        let uuid = cont.as_ref().map_or(Uuid::new_v4(),|x| x.uuid.clone());
         let maybe_entry = if let Some(Function{ entry_point: ent, cflow_graph: ref cfg, ..}) = cont {
             if let Some(ref v) = ent {
                 match cfg.vertex_label(*v) {
@@ -267,6 +280,7 @@ impl Function {
         };
 
         Function{
+            uuid: uuid,
             name: name,
             cflow_graph: cfg,
             entry_point: e,
