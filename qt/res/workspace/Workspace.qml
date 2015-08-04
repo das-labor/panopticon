@@ -56,13 +56,17 @@ Item {
 					id: bblock
 
 					Rectangle {
-						width: childrenRect.width;
-						height: childrenRect.height;
+						width: childrenRect.width + 10;
+						height: childrenRect.height + 10;
 						color: "steelblue";
+						border.width: 1;
+						border.color: "black";
 
 						property string contents: "";
 
 						Text {
+							x: 5
+							y: 5
 							height: contentHeight
 							width: contentWidth
 							text: contents
@@ -70,10 +74,30 @@ Item {
 					}
 				}
 
-				Item {
+				Canvas {
 					width: childrenRect.width;
 					height: childrenRect.height;
 					id: graph
+
+					onPaint: {
+						var ctx = graph.getContext('2d');
+						var func = eval(Panopticon.functionInfo(selection));
+						var cfg = eval(Panopticon.functionCfg(selection));
+
+						if(func !== undefined) {
+							ctx.clearRect(0,0,width,height);
+
+							for(var i = 0; i < cfg.edges.length; i++) {
+								var from = bblockList[cfg.edges[i].from];
+								var to = bblockList[cfg.edges[i].to];
+
+								ctx.beginPath();
+								ctx.moveTo(from.x + from.width / 2,from.y + from.height / 2);
+								ctx.lineTo(to.x + to.width / 2,to.y + to.height / 2);
+								ctx.stroke();
+							}
+						}
+					}
 
 					MouseArea {
 						anchors.fill: parent;
@@ -81,7 +105,6 @@ Item {
 						drag.axis: Drag.XAndYAxis
 					}
 				}
-
 
 				anchors.fill: parent
 				clip: true;
@@ -93,6 +116,10 @@ Item {
 					var cfg = eval(Panopticon.functionCfg(selection));
 					var func = eval(Panopticon.functionInfo(selection));
 					cfg.type = "rankingSimplex";
+					cfg.widths = {};
+					cfg.heights = {};
+
+					cfg.head = "bb" + func.start.toString();
 
 					if(cflow_graph.item.bblockList != null) {
 						for (var i in bblockList) {
@@ -106,15 +133,17 @@ Item {
 					bblockList = {};
 
 					for(var i = 0; i < cfg.nodes.length; i++) {
-						var c = {"contents":cfg.contents[cfg.nodes[i]].join("\n")};
+						var node = cfg.nodes[i];
+						var c = {"contents":cfg.contents[node].join("\n"),"color":(node == cfg.head ? "red" : "steelblue")};
 						var obj = bblock.createObject(graph,c);
 
 						obj.visible = false;
-						bblockList[cfg.nodes[i]] = obj;
+						bblockList[node] = obj;
+						cfg.widths[node] = obj.width;
+						cfg.heights[node] = obj.height;
 					}
 
 					if(cfg.nodes.length > 1) {
-						cfg.head = "bb" + func.start.toString();
 						layoutTask.sendMessage(cfg);
 					} else {
 						for (var i in bblockList) {
@@ -125,17 +154,9 @@ Item {
 
 						graph.y = (cflow_graph.item.height - graph.height) / 2;
 						graph.x = (cflow_graph.item.width - graph.width) / 2;
+						graph.requestPaint();
 					}
 				}
-/*
-				onPaint: {
-					var ctx = cflow_graph.item.getContext('2d');
-					var func = eval(Panopticon.functionInfo(selection));
-
-					if(func !== undefined) {
-						ctx.fillText(func.name,cflow_graph.width / 2,cflow_graph.height / 2);
-					}
-				}*/
 
 				WorkerScript {
 					id: layoutTask
@@ -152,6 +173,23 @@ Item {
 								simplexTask.sendMessage(messageObject);
 								break;
 							}
+							case "finalize": {
+								for(var i = 0; i < messageObject.nodes.length; i++) {
+									var node = messageObject.nodes[i];
+
+									if(cflow_graph.item.bblockList[node] !== undefined) {
+										cflow_graph.item.bblockList[node].x = messageObject.layout[node].x;
+										cflow_graph.item.bblockList[node].y = messageObject.layout[node].y;
+										cflow_graph.item.bblockList[node].visible = true;
+									}
+								}
+
+								graph.y = (cflow_graph.item.height - graph.height) / 2;
+								graph.x = (cflow_graph.item.width - graph.width) / 2;
+								graph.requestPaint();
+								break;
+							}
+
 							default: {
 								break;
 							}
@@ -172,20 +210,8 @@ Item {
 								break;
 							}
 							case "order": {
-								for(var i = 0; i < messageObject.nodes.length; i++) {
-									var node = messageObject.nodes[i];
-
-									if(cflow_graph.item.bblockList[node] !== undefined) {
-										cflow_graph.item.bblockList[node].x = messageObject.lp.x[i];
-										cflow_graph.item.bblockList[node].y = messageObject.layout[node].rank * 100;
-										cflow_graph.item.bblockList[node].visible = true;
-									}
-								}
-
-								graph.y = (cflow_graph.item.height - graph.height) / 2;
-								graph.x = (cflow_graph.item.width - graph.width) / 2;
-
-								//cflow_graph.item.requestPaint()
+								messageObject.type = "finalize";
+								layoutTask.sendMessage(messageObject);
 								break;
 							}
 							default: {

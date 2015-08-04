@@ -169,6 +169,8 @@ WorkerScript.onMessage = function(msg) {
 		case "rankingSimplex": (function(){
 			var nodes = msg.nodes;
 			var edges = msg.edges;
+			var widths = msg.widths;
+			var heights = msg.heights;
 
 			// ensure single entry
 			var has_in_edges = {};
@@ -243,7 +245,15 @@ WorkerScript.onMessage = function(msg) {
 				lp.A.push(Arow);
 			}
 
-			WorkerScript.sendMessage({lp:lp,nodes:nodes,edges:edges,type:"rankingSimplex",head:head});
+			WorkerScript.sendMessage({
+				lp:lp,
+				nodes:nodes,
+				edges:edges,
+				type:"rankingSimplex",
+				head:head,
+				widths:widths,
+				heights:heights
+			});
 			return;
 		})(); break;
 		case "order": (function() {
@@ -254,7 +264,11 @@ WorkerScript.onMessage = function(msg) {
 
 			var layout = {};
 			for(var i = 0; i < nodes.length; i++) {
-				layout[nodes[i]] = {rank:lp.x[i]};
+				layout[nodes[i]] = {
+					rank:lp.x[i],
+					width:msg.widths[nodes[i]],
+					height:msg.heights[nodes[i]]
+				};
 			}
 
 			// virtual nodes
@@ -352,7 +366,7 @@ WorkerScript.onMessage = function(msg) {
 					Arow[right_node_idx] = 1;
 					Arow[lr_cost_idx] = -1;
 					lp.A.push(Arow);
-					lp.b.push(40);
+					lp.b.push((layout[edge.from].width + layout[edge.to].width)/2 + 40);
 				}
 			}
 
@@ -362,12 +376,35 @@ WorkerScript.onMessage = function(msg) {
 			WorkerScript.sendMessage({nodes:nodes,edges:edges,layout:layout,lp:lp,type:"order"});
 			return;
 		})(); break;
-		case "assignX": (function(){
+		case "finalize": (function(){
 			var lp = msg.lp;
 			var layout = msg.layout;
 			var nodes = msg.nodes;
 			var edges = msg.edges;
+			var rank_height = new Array(nodes.length).fill(0);
 
+			for(var i = 0; i < nodes.length; i++) {
+				var node = nodes[i];
+				rank_height[layout[node].rank] = Math.max(rank_height[layout[node].rank],layout[node].height);
+			}
+			/*rank
+
+				var in_edges = edges.filter(function(i) { return i.to == node; });
+				var out_edges = edges.filter(function(i) { return i.from == node; });
+
+				if */
+
+			for(var i = 0; i < nodes.length; i++) {
+				var node = nodes[i];
+				var rank = layout[node].rank;
+				var t = rank_height.slice(0,rank).reduce(function(acc,x) { return acc + x + 40; },0);
+
+				t += (rank_height[rank] - layout[node].height) / 2;
+				layout[node].x = lp.x[i];
+				layout[node].y = t;
+			}
+
+			WorkerScript.sendMessage({nodes:nodes,edges:edges,layout:layout,type:"finalize"});
 			return;
 		})(); break;
 		default: {
