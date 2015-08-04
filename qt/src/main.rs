@@ -20,7 +20,7 @@ use panopticon::region::Region;
 use panopticon::program::{Program,CallTarget};
 use panopticon::avr;
 
-use graph_algos::traits::{VertexListGraph,Graph,MutableGraph,IncidenceGraph};
+use graph_algos::traits::{VertexListGraph,Graph,MutableGraph,IncidenceGraph,EdgeListGraph};
 use qmlrs::{ffi,MetaObject,Variant,Object,ToQVariant};
 use uuid::Uuid;
 
@@ -220,7 +220,38 @@ extern "C" fn panopticon_slot(this: *mut ffi::QObject, id: libc::c_int, a: *cons
                     let proj: &Project = read_guard.as_ref().unwrap();
                     if let Some((vx,prog)) = proj.find_call_target_by_uuid(&tgt_uuid) {
                         if let Some(&CallTarget::Concrete(ref fun)) = prog.call_graph.vertex_label(vx) {
-                            format!("{{\"count\":{}}}",fun.cflow_graph.num_vertices()).to_qvariant(ret);
+                            let nodes = fun.cflow_graph.vertices().filter_map(|x| {
+                                match fun.cflow_graph.vertex_label(x) {
+                                    Some(&ControlFlowTarget::Resolved(ref bb)) => Some(format!("\"bb{}\"",bb.area.start)),
+                                    _ => None,
+                                }
+                            }).fold("".to_string(),|acc,x| if acc != "" { acc + "," + &x } else { x });
+
+                            let contents = fun.cflow_graph.vertices().filter_map(|x| {
+                                match fun.cflow_graph.vertex_label(x) {
+                                    Some(&ControlFlowTarget::Resolved(ref bb)) => {
+                                        let mnes = bb.mnemonics.iter().
+                                            map(|x| format!("\"{}\"",x.opcode)).
+                                            fold("".to_string(),|acc,x| if acc != "" { acc + "," + &x } else { x });
+                                        Some(format!("\"bb{}\":[{}]",bb.area.start,mnes))
+                                    },
+                                    _ => None,
+                                }
+                            }).fold("".to_string(),|acc,x| if acc != "" { acc + "," + &x } else { x });
+
+                            let edges = fun.cflow_graph.edges().filter_map(|x| {
+                                let cg = &fun.cflow_graph;
+                                let from = cg.source(x);
+                                let to = cg.target(x);
+
+                                match (cg.vertex_label(from),cg.vertex_label(to)) {
+                                    (Some(&ControlFlowTarget::Resolved(ref bb_from)),Some(&ControlFlowTarget::Resolved(ref bb_to))) =>
+                                        Some(format!("{{\"from\":\"bb{}\",\"to\":\"bb{}\"}}",bb_from.area.start,bb_to.area.start)),
+                                    _ => None,
+                                }
+                            }).fold("".to_string(),|acc,x| if acc != "" { acc + "," + &x } else { x });
+
+                            format!("{{\"nodes\":[{}],\"edges\":[{}],\"contents\":{{{}}}}}",nodes,edges,contents).to_qvariant(ret);
                         }
                     }
                 }
