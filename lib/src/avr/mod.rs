@@ -428,9 +428,9 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
         [ "1001000 d@..... 0000", "k@................" ] = |st: &mut State<Avr>| {
             let k = Rvalue::Constant(st.get_group("k") as u64);
             let rd = reg(st,"d");
-            let next = st.address + 2;
+            let next = st.address + 4;
 
-            st.mnemonic(2,"lds","{{8}}, {{8}}",vec!(rd.to_rv(),k.to_rv()),|cg: &mut CodeGen| {
+            st.mnemonic(4,"lds","{{8}}, {{8}}",vec!(rd.to_rv(),k.to_rv()),|cg: &mut CodeGen| {
                 cg.assign(&rd,&sram(&k));
             });
             st.jump(Rvalue::Constant(next),Guard::always());
@@ -537,9 +537,9 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
         [ "1001001 d@..... 0000", "k@................" ] = |st: &mut State<Avr>| {
             let k = Rvalue::Constant(st.get_group("k") as u64);
             let rd = reg(st,"d");
-            let next = st.address + 2;
+            let next = st.address + 4;
 
-            st.mnemonic(2,"sts","{16}, {8}",vec!(k.clone(),rd.to_rv()),|cg: &mut CodeGen| {
+            st.mnemonic(4,"sts","{16}, {8}",vec!(k.clone(),rd.to_rv()),|cg: &mut CodeGen| {
                 cg.assign(&sram(&k),&rd);
             });
             st.jump(Rvalue::Constant(next),Guard::always());
@@ -1528,10 +1528,12 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let pc_mod = 1 << (st.configuration.pc_bits - 1);
             let _k = (((st.get_group("k") * 2) % pc_mod) + pc_mod) % pc_mod;
             let k = Rvalue::Constant(_k);
+            let next = st.address + 4;
 
             st.mnemonic(4,"call","{26}",vec!(k.to_rv()),|cg: &mut CodeGen| {
                 cg.call_i(&Lvalue::Undefined,&k);
             });
+            st.jump(Rvalue::Constant(next),Guard::always());
             true
         },
         // JMP
@@ -1553,10 +1555,12 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             } else {
                 _k
             } * 2 + 2 + (st.address as i16)) % pc_mod) + pc_mod) % pc_mod;
+            let next = st.address + 2;
 
             st.mnemonic(2,"rcall","{26}",vec!(Rvalue::Constant(k as u64)),|cg: &mut CodeGen| {
                 cg.call_i(&Lvalue::Undefined,&Rvalue::Constant(k as u64));
             });
+            st.jump(Rvalue::Constant(next),Guard::always());
             true
         },
         // RJMP
