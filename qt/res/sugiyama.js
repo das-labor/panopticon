@@ -117,7 +117,7 @@ function transpose(nodes,edges,order,layout) {
 		imp = false;
 
 		for(var r = 0; r < nodes.length; r++) {
-			for(var i = 0; i < order[r].length - 2; i++) {
+			for(var i = 0; i < order[r].length - 1; i++) {
 				var v = order[r][i];
 				var w = order[r][i+1];
 
@@ -126,8 +126,10 @@ function transpose(nodes,edges,order,layout) {
 				alt_order[r][i] = w;
 				alt_order[r][i+1] = v;
 
-				if(crossings(nodes,edges,order,layout) >
-					 crossings(nodes,edges,alt_order,layout)) {
+				var xings = crossings(nodes,edges,order,layout);
+				var alt_xings = crossings(nodes,edges,alt_order,layout);
+
+				if(xings > alt_xings) {
 					imp = true;
 
 					order[r][i] = w;
@@ -151,8 +153,17 @@ function crossings(nodes,edges,order,layout) {
 			var e2_end_rank = layout[e2.to].rank;
 
 			if(e1_start_rank == e2_start_rank && e1_end_rank == e2_end_rank) {
-				if((order[e1_start_rank].indexOf(e1.from) < order[e1_end_rank].indexOf(e1.to)) !=
-				   (order[e2_start_rank].indexOf(e2.from) < order[e2_end_rank].indexOf(e2.to))) {
+				var e1_start_ord = order[e1_start_rank].indexOf(e1.from);
+				var e1_end_ord = order[e1_end_rank].indexOf(e1.to);
+				var e2_start_ord = order[e2_start_rank].indexOf(e2.from);
+				var e2_end_ord = order[e2_end_rank].indexOf(e2.to);
+
+				if(e1_start_ord == -1 || e1_end_ord == -1 || e2_start_ord == -1 || e2_end_ord == -1) {
+					console.error("assert failed: route.js:163");
+				}
+
+				if((e1_start_ord != e1_end_ord) && (e2_start_ord != e2_end_ord) &&
+					 ((e1_start_ord <= e1_end_ord) != (e2_start_ord <= e2_end_ord))) {
 					ret += 1;
 				}
 			}
@@ -211,6 +222,7 @@ WorkerScript.onMessage = function(msg) {
 					to_inv.push(e);
 				}
 			});
+
 
 			edges = edges.map(function(e) {
 				var i = to_inv.indexOf(e);
@@ -284,10 +296,10 @@ WorkerScript.onMessage = function(msg) {
 
 				if(rank_to - rank_from > 1) {
 					for(var r = rank_from + 1; r < rank_to; r++) {
-						var n = "virt_" + virt_cnt.toString();
+						var n = "virt_" + (virt_cnt++).toString();
 
 						nodes.push(n);
-						layout[n] = {rank:r};
+						layout[n] = {rank:r,height:10,width:10};
 						to_add.push({from:prev,to:n});
 						prev = n;
 					}
@@ -298,7 +310,7 @@ WorkerScript.onMessage = function(msg) {
 			}
 
 			edges = edges.filter(function(e) { return to_delete.indexOf(e) == -1; });
-			edges.concat(to_add);
+			edges = edges.concat(to_add);
 
 			// initial ordering
 			var seen = {};
@@ -309,12 +321,17 @@ WorkerScript.onMessage = function(msg) {
 
 			// optimize intra-rank ordering
 			var best = JSON.parse(JSON.stringify(order));
+			var best_xings = crossings(nodes,edges,best,layout);
+
 			for(var i = 0; i < 24; i++) {
 				wmedian(i,nodes,edges,order,layout);
 				transpose(nodes,edges,order,layout);
 
-				if(crossings(nodes,edges,order,layout) < crossings(nodes,edges,best,layout)) {
-					best = order;
+				var xings = crossings(nodes,edges,order,layout);
+
+				if(xings < best_xings) {
+					best = JSON.parse(JSON.stringify(order));
+					best_xings = xings;
 				}
 			}
 
@@ -393,6 +410,7 @@ WorkerScript.onMessage = function(msg) {
 				var out_edges = edges.filter(function(i) { return i.from == node; });
 
 				if */
+
 
 			for(var i = 0; i < nodes.length; i++) {
 				var node = nodes[i];

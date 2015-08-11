@@ -79,25 +79,35 @@ Item {
 					height: childrenRect.height;
 					id: graph
 
+					property var edges: null;
+					property var boxes: null;
+
 					onPaint: {
 						var ctx = graph.getContext('2d');
 						var func = eval(Panopticon.functionInfo(selection));
 						var cfg = eval(Panopticon.functionCfg(selection));
 
-						if(func !== undefined) {
-							ctx.clearRect(0,0,width,height);
+						ctx.clearRect(0,0,width,height);
 
-							for(var i = 0; i < cfg.edges.length; i++) {
-								var from = bblockList[cfg.edges[i].from];
-								var to = bblockList[cfg.edges[i].to];
+						for(var i = 0; i < cfg.edges.length; i++) {
+							var from = cfg.edges[i].from;
+							var to = cfg.edges[i].to;
+						}
+
+						if(edges !== null && boxes !== null) {
+							for(var i = 0; i < graph.edges.length; i++) {
+								var from = graph.boxes[graph.edges[i].from];
+								var to = graph.boxes[graph.edges[i].to];
 
 								ctx.beginPath();
-								ctx.moveTo(from.x + from.width / 2,from.y + from.height / 2);
-								ctx.lineTo(to.x + to.width / 2,to.y + to.height / 2);
+								ctx.moveTo(Math.max(1,from.x + from.width / 2),Math.max(1,from.y + from.height / 2));
+								ctx.lineTo(Math.max(1,to.x + to.width / 2),Math.max(1,to.y + to.height / 2));
 								ctx.stroke();
 							}
 						}
 					}
+
+					onEdgesChanged: requestPaint();
 
 					MouseArea {
 						anchors.fill: parent;
@@ -107,7 +117,7 @@ Item {
 				}
 
 				anchors.fill: parent
-				clip: true;
+				//clip: true;
 
 				property string selection: "";
 				property var bblockList: null;
@@ -131,10 +141,10 @@ Item {
 					}
 
 					bblockList = {};
-
 					for(var i = 0; i < cfg.nodes.length; i++) {
 						var node = cfg.nodes[i];
 						var c = {"contents":cfg.contents[node].join("\n"),"color":(node == cfg.head ? "red" : "steelblue")};
+						//var c = {"contents":node,"color":(node == cfg.head ? "red" : "steelblue")};
 						var obj = bblock.createObject(graph,c);
 
 						obj.visible = false;
@@ -154,8 +164,9 @@ Item {
 
 						graph.y = (cflow_graph.item.height - graph.height) / 2;
 						graph.x = (cflow_graph.item.width - graph.width) / 2;
-						graph.requestPaint();
 					}
+
+					graph.edges = [];
 				}
 
 				WorkerScript {
@@ -174,19 +185,33 @@ Item {
 								break;
 							}
 							case "finalize": {
+								var boxes = {};
+								var nodes = [];
+
 								for(var i = 0; i < messageObject.nodes.length; i++) {
 									var node = messageObject.nodes[i];
+									var l = messageObject.layout[node];
+
+									nodes.push(node);
+									boxes[node] = {"x":l.x,"y":l.y,"width":l.width,"height":l.height};
 
 									if(cflow_graph.item.bblockList[node] !== undefined) {
-										cflow_graph.item.bblockList[node].x = messageObject.layout[node].x;
-										cflow_graph.item.bblockList[node].y = messageObject.layout[node].y;
+										cflow_graph.item.bblockList[node].x = l.x;
+										cflow_graph.item.bblockList[node].y = l.y;
 										cflow_graph.item.bblockList[node].visible = true;
 									}
 								}
 
 								graph.y = (cflow_graph.item.height - graph.height) / 2;
 								graph.x = (cflow_graph.item.width - graph.width) / 2;
-								graph.requestPaint();
+								graph.boxes = boxes;
+								graph.edges = messageObject.edges;
+								//graph.requestPaint();
+
+								//var cfg = eval(Panopticon.functionCfg(cflow_graph.item.selection));
+								//routeTask.sendMessage({"boxes":boxes,"nodes":nodes,"edges":messageObject.edges});
+								//routeTask.sendMessage({"boxes":boxes,"nodes":nodes,"edges":cfg.edges});
+
 								break;
 							}
 
@@ -218,6 +243,15 @@ Item {
 								break;
 							}
 						}
+					}
+				}
+
+				WorkerScript {
+					id: routeTask
+					source: "../route.js"
+					onMessage: {
+						graph.edges = messageObject;
+						graph.requestPaint();
 					}
 				}
 			}
