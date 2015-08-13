@@ -99,6 +99,7 @@ WorkerScript.onMessage = function(msg) {
 	var ports = [];
 	var used_in_ports = {};
 	var used_out_ports = {};
+	var loops = [];
 
 	for(var j = 0; j < msg.edges.length; j++) {
 		if(msg.edges[j].from != msg.edges[j].to) {
@@ -142,6 +143,8 @@ WorkerScript.onMessage = function(msg) {
 			pos[n2] = from_port;
 			nodes.push(n1,n2);
 			ports.push({from:n2,to:n1,from_center:from_box.y,to_center:to_box.y});
+		} else {
+			loops.push(msg.edges[j].from);
 		}
 	}
 
@@ -189,6 +192,30 @@ WorkerScript.onMessage = function(msg) {
 			return ret;
 		}));
 	},[]);
+
+
+	for(var m = 0; m < loops.length; m++) {
+		var p = msg.boxes[loops[m]];
+
+		console.log("loop: " + JSON.stringify(p));
+
+		ret.push({
+			from:{x:p.x+5,y:p.y+3},
+			to:  {x:p.x+5,y:p.y-3}
+		},{
+			from:{x:p.x+5,y:p.y-3},
+			to:  {x:p.x-5,y:p.y-3}
+		},{
+			from:{x:p.x-5,y:p.y-3},
+			to:  {x:p.x-5,y:p.y+p.height+3}
+		},{
+			from:{x:p.x-5,y:p.y+p.height+3},
+			to:  {x:p.x+5,y:p.y+p.height+3}
+		},{
+			from:{x:p.x+5,y:p.y+p.height+3},
+			to:  {x:p.x+5,y:p.y+p.height-3}
+		});
+	}
 
 	console.log(JSON.stringify(ret));
 	WorkerScript.sendMessage(ret);

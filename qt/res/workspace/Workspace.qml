@@ -56,8 +56,8 @@ Item {
 					id: bblock
 
 					Rectangle {
-						width: childrenRect.width + 10;
-						height: childrenRect.height + 10;
+						height: txt.contentHeight + 10
+						width: txt.contentWidth + 10
 						color: "steelblue";
 						border.width: 1;
 						border.color: "black";
@@ -68,8 +68,6 @@ Item {
 							id: txt
 							x: 5
 							y: 5
-							height: contentHeight
-							width: contentWidth
 							text: contents
 							font.family: "Monospace"
 						}
@@ -77,8 +75,6 @@ Item {
 				}
 
 				Canvas {
-					width: childrenRect.width;
-					height: childrenRect.height;
 					id: graph
 
 					property var edges: null;
@@ -189,20 +185,28 @@ Item {
 							case "finalize": {
 								var boxes = {};
 								var nodes = [];
+								var right = 0;
+								var bottom = 0;
 
 								for(var i = 0; i < messageObject.nodes.length; i++) {
 									var node = messageObject.nodes[i];
 									var l = messageObject.layout[node];
 
 									nodes.push(node);
-									boxes[node] = {"x":l.x - l.width / 2,"y":l.y - l.height / 2,"width":l.width,"height":l.height};
+									boxes[node] = {"x":l.x - l.width / 2 + 100,"y":l.y + 100,"width":l.width,"height":l.height};
 
 									if(cflow_graph.item.bblockList[node] !== undefined) {
-										cflow_graph.item.bblockList[node].x = l.x - l.width / 2;
-										cflow_graph.item.bblockList[node].y = l.y - l.height / 2;
+										cflow_graph.item.bblockList[node].x = l.x - l.width / 2 + 100;
+										cflow_graph.item.bblockList[node].y = l.y + 100;// + l.height / 2;
 										cflow_graph.item.bblockList[node].visible = true;
+
+										right = Math.max(right,l.x + l.width / 2);
+										bottom = Math.max(bottom,l.y + l.height);
 									}
 								}
+
+								graph.width = right + 200;
+								graph.height = bottom + 200;
 
 								graph.y = (cflow_graph.item.height - graph.height) / 2;
 								graph.x = (cflow_graph.item.width - graph.width) / 2;
