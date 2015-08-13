@@ -65,11 +65,13 @@ Item {
 						property string contents: "";
 
 						Text {
+							id: txt
 							x: 5
 							y: 5
 							height: contentHeight
 							width: contentWidth
 							text: contents
+							font.family: "Monospace"
 						}
 					}
 				}
@@ -94,20 +96,21 @@ Item {
 							var to = cfg.edges[i].to;
 						}
 
-						if(edges !== null && boxes !== null) {
+						if(edges !== null) {
 							for(var i = 0; i < graph.edges.length; i++) {
-								var from = graph.boxes[graph.edges[i].from];
-								var to = graph.boxes[graph.edges[i].to];
+								var from = graph.edges[i].from;
+								var to = graph.edges[i].to;
 
 								ctx.beginPath();
-								ctx.moveTo(Math.max(1,from.x + from.width / 2),Math.max(1,from.y + from.height / 2));
-								ctx.lineTo(Math.max(1,to.x + to.width / 2),Math.max(1,to.y + to.height / 2));
+								ctx.moveTo(Math.max(1,from.x),Math.max(1,from.y));
+								ctx.lineTo(Math.max(1,to.x),Math.max(1,to.y));
 								ctx.stroke();
 							}
 						}
 					}
 
 					onEdgesChanged: requestPaint();
+					onBoxesChanged: requestPaint();
 
 					MouseArea {
 						anchors.fill: parent;
@@ -117,7 +120,6 @@ Item {
 				}
 
 				anchors.fill: parent
-				//clip: true;
 
 				property string selection: "";
 				property var bblockList: null;
@@ -193,24 +195,20 @@ Item {
 									var l = messageObject.layout[node];
 
 									nodes.push(node);
-									boxes[node] = {"x":l.x,"y":l.y,"width":l.width,"height":l.height};
+									boxes[node] = {"x":l.x - l.width / 2,"y":l.y - l.height / 2,"width":l.width,"height":l.height};
 
 									if(cflow_graph.item.bblockList[node] !== undefined) {
-										cflow_graph.item.bblockList[node].x = l.x;
-										cflow_graph.item.bblockList[node].y = l.y;
+										cflow_graph.item.bblockList[node].x = l.x - l.width / 2;
+										cflow_graph.item.bblockList[node].y = l.y - l.height / 2;
 										cflow_graph.item.bblockList[node].visible = true;
 									}
 								}
 
 								graph.y = (cflow_graph.item.height - graph.height) / 2;
 								graph.x = (cflow_graph.item.width - graph.width) / 2;
-								graph.boxes = boxes;
-								graph.edges = messageObject.edges;
-								//graph.requestPaint();
 
-								//var cfg = eval(Panopticon.functionCfg(cflow_graph.item.selection));
-								//routeTask.sendMessage({"boxes":boxes,"nodes":nodes,"edges":messageObject.edges});
-								//routeTask.sendMessage({"boxes":boxes,"nodes":nodes,"edges":cfg.edges});
+								var cfg = eval(Panopticon.functionCfg(cflow_graph.item.selection));
+								routeTask.sendMessage({"boxes":boxes,"nodes":nodes,"edges":messageObject.edges});
 
 								break;
 							}
@@ -250,6 +248,7 @@ Item {
 					id: routeTask
 					source: "../route.js"
 					onMessage: {
+
 						graph.edges = messageObject;
 						graph.requestPaint();
 					}

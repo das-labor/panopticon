@@ -158,9 +158,15 @@ function crossings(nodes,edges,order,layout) {
 				var e2_start_ord = order[e2_start_rank].indexOf(e2.from);
 				var e2_end_ord = order[e2_end_rank].indexOf(e2.to);
 
-				if(e1_start_ord == -1 || e1_end_ord == -1 || e2_start_ord == -1 || e2_end_ord == -1) {
-					console.error("assert failed: route.js:163");
+				/*if(!(e1_start_ord > -1 && e1_end_ord > -1 && e2_start_ord > -1 && e2_end_ord > -1)) {
+					console.log(JSON.stringify(e1),JSON.stringify(e2));
+					console.log(JSON.stringify(order),JSON.stringify(nodes));
 				}
+
+				console.assert(e1_start_ord > -1);
+				console.assert(e1_end_ord > -1);
+				console.assert(e2_start_ord > -1);
+				console.assert(e2_end_ord > -1);*/
 
 				if((e1_start_ord != e1_end_ord) && (e2_start_ord != e2_end_ord) &&
 					 ((e1_start_ord <= e1_end_ord) != (e2_start_ord <= e2_end_ord))) {
@@ -294,6 +300,8 @@ WorkerScript.onMessage = function(msg) {
 				var rank_to = layout[edge.to].rank;
 				var prev = edge.from;
 
+				console.assert(rank_to >= rank_from);
+
 				if(rank_to - rank_from > 1) {
 					for(var r = rank_from + 1; r < rank_to; r++) {
 						var n = "virt_" + (virt_cnt++).toString();
@@ -318,6 +326,8 @@ WorkerScript.onMessage = function(msg) {
 			dfs(head,0,nodes,edges,seen,function(n) {
 				order[layout[n].rank].push(n);
 			},function(){});
+
+			console.assert(order.reduce(function(acc,x) { return acc + x.length; },0) == nodes.length);
 
 			// optimize intra-rank ordering
 			var best = JSON.parse(JSON.stringify(order));

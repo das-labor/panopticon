@@ -30,31 +30,15 @@ function intersect_boxes(p,r,boxes) {
 	return false;
 }
 
-WorkerScript.onMessage = function(msg) {
-	console.log(JSON.stringify(msg));
-
+function visibility_graph(nodes,boxes) {
 	var next_node = 0;
-	var nodes = [];
+	var ret_nodes = [];
 	var edges = [];
 	var pos = {};
-	var in_degree = {};
-	var out_degree = {};
 
-	for(var i = 0; i < msg.nodes.length; i++) {
-		in_degree[msg.nodes[i]] = 0;
-		out_degree[msg.nodes[i]] = 0;
-	}
-
-	for(var i = 0; i < msg.edges.length; i++) {
-		if(msg.edges[i].from != msg.edges[i].to) {
-			in_degree[msg.edges[i].to] += 1;
-			out_degree[msg.edges[i].from] += 1;
-		}
-	}
-
-	for(var i = 0; i < msg.nodes.length; i++) {
-		var node = msg.nodes[i];
-		var box = msg.boxes[node];
+	for(var k = 0; k < nodes.length; k++) {
+		var node = nodes[i];
+		var box = boxes[node];
 		var o = Qt.vector2d(box.x-3,box.y-3);
 		var sx = Qt.vector2d(box.width+6,0);
 		var sy = Qt.vector2d(0,box.height+6);
@@ -69,16 +53,56 @@ WorkerScript.onMessage = function(msg) {
 		pos[n3] = {x:o.plus(sy).x,y:o.plus(sy).y};
 		pos[n4] = {x:o.plus(sx).plus(sy).x,y:o.plus(sx).plus(sy).y};
 
-		nodes.push(n1,n2,n3,n4);
+		ret_nodes.push(n1,n2,n3,n4);
+	}
+
+	for(var i = 0; i < ret_nodes.length; i++) {
+		var box1 = pos[ret_nodes[i]];
+		var from = Qt.vector2d(box1.x,box1.y);
+
+		for(var j = 0; j < ret_nodes.length; j++) {
+			if(j != i) {
+				var box2 = pos[ret_nodes[j]];
+				var to = Qt.vector2d(box2.x,box2.y);
+
+				if(!intersect_boxes(from,to.minus(from),boxes)) {
+					edges.push({from:ret_nodes[i],to:ret_nodes[j]});
+				}
+			}
+		}
+	}
+
+	return [ret_nodes,edges,pos];
+}
+
+WorkerScript.onMessage = function(msg) {
+	console.log(JSON.stringify(msg));
+
+	var pos = {};
+	var nodes = [];
+	var next_node = msg.nodes.length + 5;
+	var in_degree = {};
+	var out_degree = {};
+
+	for(var i = 0; i < msg.nodes.length; i++) {
+		in_degree[msg.nodes[i]] = 0;
+		out_degree[msg.nodes[i]] = 0;
+	}
+
+	for(var l = 0; l < msg.edges.length; l++) {
+		if(msg.edges[l].from != msg.edges[l].to) {
+			in_degree[msg.edges[l].to] += 1;
+			out_degree[msg.edges[l].from] += 1;
+		}
 	}
 
 	var ports = [];
 	var used_in_ports = {};
 	var used_out_ports = {};
 
-	for(var i = 0; i < msg.edges.length; i++) {
-		if(msg.edges[i].from != msg.edges[i].to) {
-			var edge = msg.edges[i];
+	for(var j = 0; j < msg.edges.length; j++) {
+		if(msg.edges[j].from != msg.edges[j].to) {
+			var edge = msg.edges[j];
 			var in_w = (in_degree[edge.to] * 5 - 5) / 2;
 			var out_w = (out_degree[edge.from] * 5 - 5) / 2;
 			var in_off;
@@ -117,36 +141,53 @@ WorkerScript.onMessage = function(msg) {
 			pos[n1] = to_port;
 			pos[n2] = from_port;
 			nodes.push(n1,n2);
-			ports.push({from:n2,to:n1});
-		}
-	}
-
-	for(var i = 0; i < nodes.length; i++) {
-		var box1 = pos[nodes[i]];
-		var from = Qt.vector2d(box1.x,box1.y);
-
-		for(var j = 0; j < nodes.length; j++) {
-			if(j != i) {
-				var box2 = pos[nodes[j]];
-
-				var to = Qt.vector2d(box2.x,box2.y);
-
-				if(!intersect_boxes(from,to.minus(from),msg.boxes)) {
-					edges.push({from:nodes[i],to:nodes[j]});
-				}
-			}
+			ports.push({from:n2,to:n1,from_center:from_box.y,to_center:to_box.y});
 		}
 	}
 
 	var ret = [];
-	for(var i = 0; i < ports.length; i++) {
-		var ps = ports[i];
-		ret.push(dijkstra(nodes,edges,ps.from,ps.to));
-		//ret.push([ps.from,ps.to]);
+	var edges = null;
+
+	for(var k = 0; k < ports.length; k++) {
+		var ps = ports[k];
+		var vec_f = Qt.vector2d(ps.from.x,ps.to.y);
+		var vec_t = Qt.vector2d(ps.to.x,ps.to.y);
+		var path;
+
+		if(intersect_boxes(vec_f,vec_t.minus(vec_f),msg.boxes)) {
+			if(edges === null) {
+				var tmp = visibility_graph(msg.nodes,msg.boxes);
+
+				nodes = nodes.concat(tmp[0]);
+				edges = tmp[1];
+				pos = pos.concat(tmp[2]);
+			}
+
+			path = dijkstra(nodes,edges,ps.from,ps.to);
+		} else {
+			path = [ps.from,ps.to];
+		}
+
+		var from_end = next_node++;
+		var to_end = next_node++;
+
+		pos[from_end] = {x:pos[path[0]].x,y:ps.from_center};
+		pos[to_end] = {x:pos[path[path.length-1]].x,y:ps.to_center};
+
+		path.unshift(from_end);
+		path.push(to_end);
+		ret.push(path);
+		nodes.push(from_end,to_end);
 	}
 
 	ret = ret.reduce(function(acc,cv) {
-		return acc.concat([{from:pos[cv[0]],to:pos[cv[1]]}]);
+		var last = cv[0];
+		return acc.concat(cv.map(function(x) {
+			var ret = {from:pos[last],to:pos[x]};
+			last = x;
+
+			return ret;
+		}));
 	},[]);
 
 	console.log(JSON.stringify(ret));
@@ -166,9 +207,10 @@ function smallest(q,dist) {
 }
 
 function dijkstra(nodes,edges,start,end) {
-	var dist = [];
-	var prev = [];
+	var dist = {};
+	var prev = {};
 	var q = [];
+
 
 	dist[start] = 0;
 
@@ -176,7 +218,7 @@ function dijkstra(nodes,edges,start,end) {
 		var node = nodes[i];
 
 		if(node != start) {
-			dist[node] = Infinity;
+			dist[node] = 9999;
 		}
 
 		q.push(node);
@@ -188,9 +230,9 @@ function dijkstra(nodes,edges,start,end) {
 		if(u == end)
 			break;
 
-		for(var i = 0; i < edges.length; i++) {
-			if(edges[i].from == u) {
-				var v = edges[i].to;
+		for(var j = 0; j < edges.length; j++) {
+			if(edges[j].to == u) {
+				var v = edges[j].from;
 				var alt = dist[u] + 1;
 
 				if(alt < dist[v]) {
@@ -204,9 +246,10 @@ function dijkstra(nodes,edges,start,end) {
 	var ret = [];
 	var w = end;
 
+
 	while(prev[w] !== undefined) {
 		ret.unshift(w);
-		w = prev[w];
+		w = prev[w].toString();
 	}
 
 	if(ret.length === 0) {
@@ -214,6 +257,6 @@ function dijkstra(nodes,edges,start,end) {
 		ret.push(end);
 	}
 
-	ret.push(start);
+	ret.unshift(start);
 	return ret;
 }
