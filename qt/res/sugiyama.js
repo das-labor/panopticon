@@ -158,16 +158,6 @@ function crossings(nodes,edges,order,layout) {
 				var e2_start_ord = order[e2_start_rank].indexOf(e2.from);
 				var e2_end_ord = order[e2_end_rank].indexOf(e2.to);
 
-				/*if(!(e1_start_ord > -1 && e1_end_ord > -1 && e2_start_ord > -1 && e2_end_ord > -1)) {
-					console.log(JSON.stringify(e1),JSON.stringify(e2));
-					console.log(JSON.stringify(order),JSON.stringify(nodes));
-				}
-
-				console.assert(e1_start_ord > -1);
-				console.assert(e1_end_ord > -1);
-				console.assert(e2_start_ord > -1);
-				console.assert(e2_end_ord > -1);*/
-
 				if((e1_start_ord != e1_end_ord) && (e2_start_ord != e2_end_ord) &&
 					 ((e1_start_ord <= e1_end_ord) != (e2_start_ord <= e2_end_ord))) {
 					ret += 1;
@@ -178,6 +168,26 @@ function crossings(nodes,edges,order,layout) {
 
 	return ret;
 }
+
+function rm_circles(n,edges,seen,to_inv,stack) {
+	seen.push(n);
+	stack.push(n);
+
+	for(var l = 0; l < edges.length; l++) {
+		if(edges[l].from == n) {
+			var neigh = edges[l].to;
+
+			if(seen.indexOf(neigh) < 0) {
+				rm_circles(neigh,edges,seen,to_inv,stack);
+			} else if(stack.indexOf(neigh) > -1) {
+				to_inv.push(edges[l]);
+			}
+		}
+	}
+
+	console.assert(n == stack.pop());
+}
+
 
 WorkerScript.onMessage = function(msg) {
 	//console.log("SU: " + JSON.stringify(msg));
@@ -197,9 +207,9 @@ WorkerScript.onMessage = function(msg) {
 			}
 
 			var heads = [];
-			for(var i = 0; i < nodes.length; i++) {
-				if(has_in_edges[nodes[i]] !== true) {
-					heads.push(nodes[i]);
+			for(var k = 0; k < nodes.length; k++) {
+				if(has_in_edges[nodes[k]] !== true) {
+					heads.push(nodes[k]);
 				}
 			}
 
@@ -212,23 +222,32 @@ WorkerScript.onMessage = function(msg) {
 					head = "__init";
 					nodes.push(head);
 
-					for(var i = 0; i < heads.length; i++) {
-						edges.push({from:head,to:heads[i]});
+					for(var j = 0; j < heads.length; j++) {
+						edges.push({from:head,to:heads[j]});
 					}
 				}
 			} else {
 				head = msg.head;
 			}
 
-			// remove circles
-			var seen = {};
-			var to_inv = [];
-			dfs(head,0,nodes,edges,seen,function(v) {},function(e,n) {
-				if(!n) {
-					to_inv.push(e);
+			// remove loops
+			var loops = [];
+			for(var l = 0; l < edges.length; l++) {
+				if(edges[l].to == edges[l].from) {
+					loops.push(edges[l].to);
 				}
+			}
+
+			edges = edges.filter(function(e) {
+				return e.to != e.from || loops.indexOf(e.to) < 0;
 			});
 
+			// remove circles
+			var seen = [];
+			var to_inv = [];
+			var dfs_stack = [];
+
+			rm_circles(head,edges,seen,to_inv,dfs_stack);
 
 			edges = edges.map(function(e) {
 				var i = to_inv.indexOf(e);
@@ -264,6 +283,8 @@ WorkerScript.onMessage = function(msg) {
 			}
 
 			WorkerScript.sendMessage({
+				inverted_edges:to_inv,
+				loops:loops,
 				lp:lp,
 				nodes:nodes,
 				edges:edges,
@@ -279,6 +300,8 @@ WorkerScript.onMessage = function(msg) {
 			var nodes = msg.nodes;
 			var edges = msg.edges;
 			var head = msg.head;
+			var inv = msg.inverted_edges;
+			var loops = msg.loops;
 
 			var layout = {};
 			for(var i = 0; i < nodes.length; i++) {
@@ -291,14 +314,14 @@ WorkerScript.onMessage = function(msg) {
 
 			// virtual nodes
 			var virt_cnt = 0;
-			var to_delete = [];
-			var to_add = [];
+			var edge_delta = [];
 
 			for(var i = 0; i < edges.length; i++) {
 				var edge = edges[i];
 				var rank_from = layout[edge.from].rank;
 				var rank_to = layout[edge.to].rank;
 				var prev = edge.from;
+				var delta = {add:[],del:null};
 
 				console.assert(rank_to >= rank_from);
 
@@ -308,17 +331,34 @@ WorkerScript.onMessage = function(msg) {
 
 						nodes.push(n);
 						layout[n] = {rank:r,height:10,width:10};
-						to_add.push({from:prev,to:n});
+						delta.add.push({from:prev,to:n});
 						prev = n;
 					}
 
-					to_add.push({from:prev,to:edge.to});
-					to_delete.push(edge);
+					delta.add.push({from:prev,to:edge.to});
+					delta.del = edge;
+
+					edge_delta.push(delta);
 				}
 			}
 
-			edges = edges.filter(function(e) { return to_delete.indexOf(e) == -1; });
-			edges = edges.concat(to_add);
+			for(var l = 0; l < edge_delta.length; l++) {
+				var delta = edge_delta[l];
+
+				for(var m = 0; m < inv.length; m++) {
+					var e = inv[m];
+
+					if(e.from == delta.del.to && e.to == delta.del.from) {
+						inv.splice(m,1);
+						inv = inv.concat(delta.add);
+					}
+				}
+
+				edges = edges.filter(function(e) {
+					return !(e.from == delta.del.from && e.to == delta.del.to);
+				});
+				edges = edges.concat(delta.add);
+			}
 
 			// initial ordering
 			var seen = {};
@@ -333,8 +373,8 @@ WorkerScript.onMessage = function(msg) {
 			var best = JSON.parse(JSON.stringify(order));
 			var best_xings = crossings(nodes,edges,best,layout);
 
-			for(var i = 0; i < 24; i++) {
-				wmedian(i,nodes,edges,order,layout);
+			for(var j = 0; j < 24; j++) {
+				wmedian(j,nodes,edges,order,layout);
 				transpose(nodes,edges,order,layout);
 
 				var xings = crossings(nodes,edges,order,layout);
@@ -347,9 +387,9 @@ WorkerScript.onMessage = function(msg) {
 
 			order = best;
 
-			for(var i = 0; i < nodes.length; i++) {
-				for(var j = 0; j < order[i].length; j++) {
-					layout[order[i][j]].order = j;
+			for(var k = 0; k < nodes.length; k++) {
+				for(var o = 0; o < order[k].length; o++) {
+					layout[order[k][o]].order = o;
 				}
 			}
 
@@ -400,7 +440,15 @@ WorkerScript.onMessage = function(msg) {
 			lp.m = lp.A.length;
 			lp.n = lp.A[0].length;
 
-			WorkerScript.sendMessage({nodes:nodes,edges:edges,layout:layout,lp:lp,type:"order"});
+			WorkerScript.sendMessage({
+				nodes:nodes,
+				edges:edges,
+				layout:layout,
+				lp:lp,
+				type:"order",
+				inverted_edges:inv,
+				loops:loops
+			});
 			return;
 		})(); break;
 		case "finalize": (function(){
@@ -408,19 +456,14 @@ WorkerScript.onMessage = function(msg) {
 			var layout = msg.layout;
 			var nodes = msg.nodes;
 			var edges = msg.edges;
+			var inv = msg.inverted_edges;
+			var loops = msg.loops;
 			var rank_height = new Array(nodes.length).fill(0);
 
 			for(var i = 0; i < nodes.length; i++) {
 				var node = nodes[i];
 				rank_height[layout[node].rank] = Math.max(rank_height[layout[node].rank],layout[node].height);
 			}
-			/*rank
-
-				var in_edges = edges.filter(function(i) { return i.to == node; });
-				var out_edges = edges.filter(function(i) { return i.from == node; });
-
-				if */
-
 
 			for(var i = 0; i < nodes.length; i++) {
 				var node = nodes[i];
@@ -430,6 +473,22 @@ WorkerScript.onMessage = function(msg) {
 				t += (rank_height[rank] - layout[node].height) / 2;
 				layout[node].x = lp.x[i];
 				layout[node].y = t;
+			}
+
+			// recover circles
+			edges = edges.map(function(e) {
+				for(var j = 0; j < inv.length; j++) {
+					if(inv[j].from == e.from && inv[j].to == e.to) {
+						console.log("recovered edges");
+						return {from:e.to,to:e.from};
+					}
+				}
+				return e;
+			});
+
+			// recover loops
+			for(var k = 0; k < loops.length; k++) {
+				edges.push({from:loops[k],to:loops[k]});
 			}
 
 			WorkerScript.sendMessage({nodes:nodes,edges:edges,layout:layout,type:"finalize"});

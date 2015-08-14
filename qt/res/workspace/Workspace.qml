@@ -129,6 +129,14 @@ Item {
 
 					cfg.head = "bb" + func.start.toString();
 
+					console.log("digraph G {");
+					for(var j = 0; j < cfg.edges.length; j++) {
+						console.log(cfg.edges[j].from + " -> " + cfg.edges[j].to);
+					}
+					console.log("{ rank=min " + cfg.head + "}");
+					console.log("}");
+
+
 					if(cflow_graph.item.bblockList != null) {
 						for (var i in bblockList) {
 							if(bblockList.hasOwnProperty(i)) {
@@ -212,7 +220,7 @@ Item {
 								graph.x = (cflow_graph.item.width - graph.width) / 2;
 
 								var cfg = eval(Panopticon.functionCfg(cflow_graph.item.selection));
-								routeTask.sendMessage({"boxes":boxes,"nodes":nodes,"edges":messageObject.edges});
+								routeTask.sendMessage({"boxes":boxes,"nodes":nodes,"edges":messageObject.edges,"layout":messageObject.layout});
 
 								break;
 							}

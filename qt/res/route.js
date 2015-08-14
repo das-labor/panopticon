@@ -100,6 +100,7 @@ WorkerScript.onMessage = function(msg) {
 	var used_in_ports = {};
 	var used_out_ports = {};
 	var loops = [];
+	var ret = [];
 
 	for(var j = 0; j < msg.edges.length; j++) {
 		if(msg.edges[j].from != msg.edges[j].to) {
@@ -129,16 +130,81 @@ WorkerScript.onMessage = function(msg) {
 			var to_box = msg.boxes[edge.to];
 			var to_port = {
 				x: to_box.x + to_box.width / 2 - in_w + 5 * in_off,
-				y: to_box.y - 3
+				y: to_box.y - (edge.to.indexOf("virt") === 0 ? 0 : 3)
 			};
-			var from_port = {
-				x: from_box.x + from_box.width / 2 - out_w + 5 * out_off,
-				y: from_box.y + from_box.height + 3
-			};
+			var from_port;
 
+			var from_rank = msg.layout[edge.from].rank;
+			var to_rank = msg.layout[edge.to].rank;
 			var n1 = next_node++;
 			var n2 = next_node++;
 
+			if(edge.from.indexOf("virt") !== 0) {
+				if(from_rank > to_rank) {
+					from_port = {
+						x: from_box.x + from_box.width + 6,
+						y: from_box.y - 6
+					};
+
+					var x1 = (next_node++).toString();
+					var x2 = (next_node++).toString();
+					var x3 = (next_node++).toString();
+
+					pos[x1] = {x:from_port.x,y:from_box.y + from_box.height + 6};
+					pos[x2] = {x:from_box.x + from_box.width / 2 - out_w + 5 * out_off,y:from_box.y + from_box.height + 6};
+					pos[x3] = {x:from_box.x + from_box.width / 2 - out_w + 5 * out_off,y:from_box.y};
+
+					nodes.push(x1,x2,x3);
+					ret.push([n2,x1,x2,x3]);
+				} else {
+					from_port = {
+						x: from_box.x + from_box.width / 2 - out_w + 5 * out_off,
+						y: from_box.y + from_box.height + 3
+					};
+				}
+			} else {
+				from_port = {
+					x: from_box.x + from_box.width / 2 - out_w + 5 * out_off,
+					y: from_box.y
+				};
+			}
+
+			if(edge.to.indexOf("virt") !== 0) {
+				if(from_rank > to_rank) {
+					to_port = {
+						x: to_box.x + to_box.width + 6,
+						y: to_box.y + to_box.height + 6
+					};
+
+					var y1 = (next_node++).toString();
+					var y2 = (next_node++).toString();
+					var y3 = (next_node++).toString();
+
+					pos[y1] = {x:to_port.x,y:to_box.y - 6};
+					pos[y2] = {x:to_box.x + to_box.width / 2 - in_w + 5 * in_off,y:to_box.y - 6};
+					pos[y3] = {x:to_box.x + to_box.width / 2 - in_w + 5 * in_off,y:to_box.y};
+
+					nodes.push(y1,y2,y3);
+					ret.push([n1,y1,y2,y3]);
+				} else {
+					to_port = {
+						x: to_box.x + to_box.width / 2 - in_w + 5 * in_off,
+						y: to_box.y - 3
+					};
+				}
+			} else {
+				to_port = {
+					x: to_box.x + to_box.width / 2 - in_w + 5 * in_off,
+					y: to_box.y
+				};
+			}
+
+/*
+			} else if(edge.to.indexOf("virt") !== 0) {
+				console.log("need fix up for " + edge.to);
+			}
+*/
+			
 			pos[n1] = to_port;
 			pos[n2] = from_port;
 			nodes.push(n1,n2);
@@ -148,7 +214,6 @@ WorkerScript.onMessage = function(msg) {
 		}
 	}
 
-	var ret = [];
 	var edges = null;
 
 	for(var k = 0; k < ports.length; k++) {
@@ -197,8 +262,6 @@ WorkerScript.onMessage = function(msg) {
 	for(var m = 0; m < loops.length; m++) {
 		var p = msg.boxes[loops[m]];
 
-		console.log("loop: " + JSON.stringify(p));
-
 		ret.push({
 			from:{x:p.x+5,y:p.y+3},
 			to:  {x:p.x+5,y:p.y-3}
@@ -217,7 +280,6 @@ WorkerScript.onMessage = function(msg) {
 		});
 	}
 
-	console.log(JSON.stringify(ret));
 	WorkerScript.sendMessage(ret);
 };
 
