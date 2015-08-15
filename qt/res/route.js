@@ -76,7 +76,7 @@ function visibility_graph(nodes,boxes) {
 }
 
 WorkerScript.onMessage = function(msg) {
-	console.log(JSON.stringify(msg));
+	//console.log(JSON.stringify(msg));
 
 	var pos = {};
 	var nodes = [];
@@ -199,12 +199,6 @@ WorkerScript.onMessage = function(msg) {
 				};
 			}
 
-/*
-			} else if(edge.to.indexOf("virt") !== 0) {
-				console.log("need fix up for " + edge.to);
-			}
-*/
-			
 			pos[n1] = to_port;
 			pos[n2] = from_port;
 			nodes.push(n1,n2);

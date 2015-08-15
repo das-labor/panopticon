@@ -74,6 +74,8 @@ Item {
 					}
 				}
 
+				clip: true;
+
 				Canvas {
 					id: graph
 
@@ -128,14 +130,6 @@ Item {
 					cfg.heights = {};
 
 					cfg.head = "bb" + func.start.toString();
-
-					console.log("digraph G {");
-					for(var j = 0; j < cfg.edges.length; j++) {
-						console.log(cfg.edges[j].from + " -> " + cfg.edges[j].to);
-					}
-					console.log("{ rank=min " + cfg.head + "}");
-					console.log("}");
-
 
 					if(cflow_graph.item.bblockList != null) {
 						for (var i in bblockList) {

@@ -479,7 +479,6 @@ WorkerScript.onMessage = function(msg) {
 			edges = edges.map(function(e) {
 				for(var j = 0; j < inv.length; j++) {
 					if(inv[j].from == e.from && inv[j].to == e.to) {
-						console.log("recovered edges");
 						return {from:e.to,to:e.from};
 					}
 				}
