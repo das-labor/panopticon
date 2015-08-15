@@ -941,7 +941,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
         [ "000110 r@. d@..... r@...." ] = |st: &mut State<Avr>| {
             let rd = reg(st,"d");
             let rr = reg(st,"r");
-            let next = st.address + 4;
+            let next = st.address + 2;
 
             st.mnemonic(2,"sub","{8}, {8}",vec!(rd.to_rv(),rr.to_rv()),|cg: &mut CodeGen| {
                 let r = new_temp(8);
@@ -969,7 +969,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
         [ "0101 K@.... d@.... K@...." ] = |st: &mut State<Avr>| {
             let rd = reg(st,"d");
             let k = st.get_group("K");
-            let next = st.address + 4;
+            let next = st.address + 2;
 
             st.mnemonic(2,"subi","{8}, {8}",vec!(rd.to_rv(),Rvalue::Constant(k as u64)),|cg: &mut CodeGen| {
                 let r = new_temp(8);
@@ -1338,7 +1338,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
         // NEG
         [ "1001 010 d@..... 0001" ] = |st: &mut State<Avr>| {
             let rd = reg(st,"d");
-            let next = st.address + 4;
+            let next = st.address + 2;
 
             st.mnemonic(2,"neg","{8}",vec!(rd.to_rv()),|cg: &mut CodeGen| {
                 let r = new_temp(8);
@@ -1381,145 +1381,185 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
         },
         // BRCx
         [ "11110 x@. k@....... 000" ] = |st: &mut State<Avr>| {
-            let pc_mod = 1 << (st.configuration.pc_bits - 1);
-            let d = (((st.get_group("k") * 2) % pc_mod) + pc_mod) % pc_mod;
+            let _k = st.get_group("k") as i16; // 6 bits
+            let pc_mod = (1 << (st.configuration.pc_bits - 1)) as i16;
+            let k = (((if _k & 0x20 != 0 {
+                _k | 0xFFE0
+            } else {
+                _k
+            } * 2 + 2 + (st.address as i16)) % pc_mod) + pc_mod) % pc_mod;
             let fallthru = st.address + 2;
             let g = Guard::eq(&*C,&0);
 
             if st.get_group("x") == 0 {
-                st.mnemonic(2,"brcs","{8}",vec!(Rvalue::Constant(d)),|_: &mut CodeGen| {});
-                st.jump(Rvalue::Constant(d),g.negation());
+                st.mnemonic(2,"brcs","{8}",vec!(Rvalue::Constant(k as u64)),|_: &mut CodeGen| {});
+                st.jump(Rvalue::Constant(k as u64),g.negation());
                 st.jump(Rvalue::Constant(fallthru),g);
             } else {
-                st.mnemonic(2,"brcc","{8}",vec!(Rvalue::Constant(d)),|_: &mut CodeGen| {});
+                st.mnemonic(2,"brcc","{8}",vec!(Rvalue::Constant(k as u64)),|_: &mut CodeGen| {});
                 st.jump(Rvalue::Constant(fallthru),g.negation());
-                st.jump(Rvalue::Constant(d),g);
+                st.jump(Rvalue::Constant(k as u64),g);
             }
             true
         },
         // BREQ/BRNE
         [ "11110 x@. k@....... 001" ] = |st: &mut State<Avr>| {
-            let pc_mod = 1 << (st.configuration.pc_bits - 1);
-            let d = (((st.get_group("k") * 2) % pc_mod) + pc_mod) % pc_mod;
+            let _k = st.get_group("k") as i16; // 6 bits
+            let pc_mod = (1 << (st.configuration.pc_bits - 1)) as i16;
+            let k = (((if _k & 0x20 != 0 {
+                _k | 0xFFE0
+            } else {
+                _k
+            } * 2 + 2 + (st.address as i16)) % pc_mod) + pc_mod) % pc_mod;
             let fallthru = st.address + 2;
             let g = Guard::eq(&*Z,&0);
 
             if st.get_group("x") == 0 {
-                st.mnemonic(2,"breq","{8}",vec!(Rvalue::Constant(d)),|_: &mut CodeGen| {});
-                st.jump(Rvalue::Constant(d),g.negation());
+                st.mnemonic(2,"breq","{8}",vec!(Rvalue::Constant(k as u64)),|_: &mut CodeGen| {});
+                st.jump(Rvalue::Constant(k as u64),g.negation());
                 st.jump(Rvalue::Constant(fallthru),g);
             } else {
-                st.mnemonic(2,"brne","{8}",vec!(Rvalue::Constant(d)),|_: &mut CodeGen| {});
+                st.mnemonic(2,"brne","{8}",vec!(Rvalue::Constant(k as u64)),|_: &mut CodeGen| {});
                 st.jump(Rvalue::Constant(fallthru),g.negation());
-                st.jump(Rvalue::Constant(d),g);
+                st.jump(Rvalue::Constant(k as u64),g);
             }
             true
         },
         // BRNx
         [ "11110 x@. k@....... 010" ] = |st: &mut State<Avr>| {
-            let pc_mod = 1 << (st.configuration.pc_bits - 1);
-            let d = (((st.get_group("k") * 2) % pc_mod) + pc_mod) % pc_mod;
+            let _k = st.get_group("k") as i16; // 6 bits
+            let pc_mod = (1 << (st.configuration.pc_bits - 1)) as i16;
+            let k = (((if _k & 0x20 != 0 {
+                _k | 0xFFE0
+            } else {
+                _k
+            } * 2 + 2 + (st.address as i16)) % pc_mod) + pc_mod) % pc_mod;
             let fallthru = st.address + 2;
             let g = Guard::eq(&*N,&0);
 
             if st.get_group("x") == 0 {
-                st.mnemonic(2,"brns","{8}",vec!(Rvalue::Constant(d)),|_: &mut CodeGen| {});
-                st.jump(Rvalue::Constant(d),g.negation());
+                st.mnemonic(2,"brns","{8}",vec!(Rvalue::Constant(k as u64)),|_: &mut CodeGen| {});
+                st.jump(Rvalue::Constant(k as u64),g.negation());
                 st.jump(Rvalue::Constant(fallthru),g);
             } else {
-                st.mnemonic(2,"brnc","{8}",vec!(Rvalue::Constant(d)),|_: &mut CodeGen| {});
+                st.mnemonic(2,"brnc","{8}",vec!(Rvalue::Constant(k as u64)),|_: &mut CodeGen| {});
                 st.jump(Rvalue::Constant(fallthru),g.negation());
-                st.jump(Rvalue::Constant(d),g);
+                st.jump(Rvalue::Constant(k as u64),g);
             }
             true
         },
         // BRVx
         [ "11110 x@. k@....... 011" ] = |st: &mut State<Avr>| {
-            let pc_mod = 1 << (st.configuration.pc_bits - 1);
-            let d = (((st.get_group("k") * 2) % pc_mod) + pc_mod) % pc_mod;
+            let _k = st.get_group("k") as i16; // 6 bits
+            let pc_mod = (1 << (st.configuration.pc_bits - 1)) as i16;
+            let k = (((if _k & 0x20 != 0 {
+                _k | 0xFFE0
+            } else {
+                _k
+            } * 2 + 2 + (st.address as i16)) % pc_mod) + pc_mod) % pc_mod;
             let fallthru = st.address + 2;
             let g = Guard::eq(&*V,&0);
 
             if st.get_group("x") == 0 {
-                st.mnemonic(2,"brvs","{8}",vec!(Rvalue::Constant(d)),|_: &mut CodeGen| {});
-                st.jump(Rvalue::Constant(d),g.negation());
+                st.mnemonic(2,"brvs","{8}",vec!(Rvalue::Constant(k as u64)),|_: &mut CodeGen| {});
+                st.jump(Rvalue::Constant(k as u64),g.negation());
                 st.jump(Rvalue::Constant(fallthru),g);
             } else {
-                st.mnemonic(2,"brvc","{8}",vec!(Rvalue::Constant(d)),|_: &mut CodeGen| {});
+                st.mnemonic(2,"brvc","{8}",vec!(Rvalue::Constant(k as u64)),|_: &mut CodeGen| {});
                 st.jump(Rvalue::Constant(fallthru),g.negation());
-                st.jump(Rvalue::Constant(d),g);
+                st.jump(Rvalue::Constant(k as u64),g);
             }
             true
         },
         // BRGE/BTLT
         [ "11110 x@. k@....... 100" ] = |st: &mut State<Avr>| {
-            let pc_mod = 1 << (st.configuration.pc_bits - 1);
-            let d = (((st.get_group("k") * 2) % pc_mod) + pc_mod) % pc_mod;
+            let _k = st.get_group("k") as i16; // 6 bits
+            let pc_mod = (1 << (st.configuration.pc_bits - 1)) as i16;
+            let k = (((if _k & 0x20 != 0 {
+                _k | 0xFFE0
+            } else {
+                _k
+            } * 2 + 2 + (st.address as i16)) % pc_mod) + pc_mod) % pc_mod;
             let fallthru = st.address + 2;
             let g = Guard::eq(&*S,&0);
 
             if st.get_group("x") == 0 {
-                st.mnemonic(2,"brlt","{8}",vec!(Rvalue::Constant(d)),|_: &mut CodeGen| {});
-                st.jump(Rvalue::Constant(d),g.negation());
+                st.mnemonic(2,"brlt","{8}",vec!(Rvalue::Constant(k as u64)),|_: &mut CodeGen| {});
+                st.jump(Rvalue::Constant(k as u64),g.negation());
                 st.jump(Rvalue::Constant(fallthru),g);
             } else {
-                st.mnemonic(2,"brge","{8}",vec!(Rvalue::Constant(d)),|_: &mut CodeGen| {});
+                st.mnemonic(2,"brge","{8}",vec!(Rvalue::Constant(k as u64)),|_: &mut CodeGen| {});
                 st.jump(Rvalue::Constant(fallthru),g.negation());
-                st.jump(Rvalue::Constant(d),g);
+                st.jump(Rvalue::Constant(k as u64),g);
             }
             true
         },
         // BRHx
         [ "11110 x@. k@....... 101" ] = |st: &mut State<Avr>| {
-            let pc_mod = 1 << (st.configuration.pc_bits - 1);
-            let d = (((st.get_group("k") * 2) % pc_mod) + pc_mod) % pc_mod;
+            let _k = st.get_group("k") as i16; // 6 bits
+            let pc_mod = (1 << (st.configuration.pc_bits - 1)) as i16;
+            let k = (((if _k & 0x20 != 0 {
+                _k | 0xFFE0
+            } else {
+                _k
+            } * 2 + 2 + (st.address as i16)) % pc_mod) + pc_mod) % pc_mod;
             let fallthru = st.address + 2;
             let g = Guard::eq(&*H,&0);
 
             if st.get_group("x") == 0 {
-                st.mnemonic(2,"brhs","{8}",vec!(Rvalue::Constant(d)),|_: &mut CodeGen| {});
-                st.jump(Rvalue::Constant(d),g.negation());
+                st.mnemonic(2,"brhs","{8}",vec!(Rvalue::Constant(k as u64)),|_: &mut CodeGen| {});
+                st.jump(Rvalue::Constant(k as u64),g.negation());
                 st.jump(Rvalue::Constant(fallthru),g);
             } else {
-                st.mnemonic(2,"brhc","{8}",vec!(Rvalue::Constant(d)),|_: &mut CodeGen| {});
+                st.mnemonic(2,"brhc","{8}",vec!(Rvalue::Constant(k as u64)),|_: &mut CodeGen| {});
                 st.jump(Rvalue::Constant(fallthru),g.negation());
-                st.jump(Rvalue::Constant(d),g);
+                st.jump(Rvalue::Constant(k as u64),g);
             }
             true
         },
         // BRTx
         [ "11110 x@. k@....... 110" ] = |st: &mut State<Avr>| {
-            let pc_mod = 1 << (st.configuration.pc_bits - 1);
-            let d = (((st.get_group("k") * 2) % pc_mod) + pc_mod) % pc_mod;
+            let _k = st.get_group("k") as i16; // 6 bits
+            let pc_mod = (1 << (st.configuration.pc_bits - 1)) as i16;
+            let k = (((if _k & 0x20 != 0 {
+                _k | 0xFFE0
+            } else {
+                _k
+            } * 2 + 2 + (st.address as i16)) % pc_mod) + pc_mod) % pc_mod;
             let fallthru = st.address + 2;
             let g = Guard::eq(&*T,&0);
 
             if st.get_group("x") == 0 {
-                st.mnemonic(2,"brts","{8}",vec!(Rvalue::Constant(d)),|_: &mut CodeGen| {});
-                st.jump(Rvalue::Constant(d),g.negation());
+                st.mnemonic(2,"brts","{8}",vec!(Rvalue::Constant(k as u64)),|_: &mut CodeGen| {});
+                st.jump(Rvalue::Constant(k as u64),g.negation());
                 st.jump(Rvalue::Constant(fallthru),g);
             } else {
-                st.mnemonic(2,"brtc","{8}",vec!(Rvalue::Constant(d)),|_: &mut CodeGen| {});
+                st.mnemonic(2,"brtc","{8}",vec!(Rvalue::Constant(k as u64)),|_: &mut CodeGen| {});
                 st.jump(Rvalue::Constant(fallthru),g.negation());
-                st.jump(Rvalue::Constant(d),g);
+                st.jump(Rvalue::Constant(k as u64),g);
             }
             true
         },
         // BRIx
         [ "11110 x@. k@....... 111" ] = |st: &mut State<Avr>| {
-            let pc_mod = 1 << (st.configuration.pc_bits - 1);
-            let d = (((st.get_group("k") * 2) % pc_mod) + pc_mod) % pc_mod;
+            let _k = st.get_group("k") as i16; // 6 bits
+            let pc_mod = (1 << (st.configuration.pc_bits - 1)) as i16;
+            let k = (((if _k & 0x20 != 0 {
+                _k | 0xFFE0
+            } else {
+                _k
+            } * 2 + 2 + (st.address as i16)) % pc_mod) + pc_mod) % pc_mod;
             let fallthru = st.address + 2;
             let g = Guard::eq(&*I,&0);
 
             if st.get_group("x") == 0 {
-                st.mnemonic(2,"brie","{8}",vec!(Rvalue::Constant(d)),|_: &mut CodeGen| {});
-                st.jump(Rvalue::Constant(d),g.negation());
+                st.mnemonic(2,"brie","{8}",vec!(Rvalue::Constant(k as u64)),|_: &mut CodeGen| {});
+                st.jump(Rvalue::Constant(k as u64),g.negation());
                 st.jump(Rvalue::Constant(fallthru),g);
             } else {
-                st.mnemonic(2,"brid","{8}",vec!(Rvalue::Constant(d)),|_: &mut CodeGen| {});
+                st.mnemonic(2,"brid","{8}",vec!(Rvalue::Constant(k as u64)),|_: &mut CodeGen| {});
                 st.jump(Rvalue::Constant(fallthru),g.negation());
-                st.jump(Rvalue::Constant(d),g);
+                st.jump(Rvalue::Constant(k as u64),g);
             }
             true
         },
@@ -1538,7 +1578,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
         },
         // JMP
         [ "1001010 k@..... 110 k@.", "k@................" ] = |st: &mut State<Avr>| {
-            let pc_mod = 1 << (st.configuration.pc_bits - 1);
+            let pc_mod = 1 << 25;
             let _k = (((st.get_group("k") * 2) % pc_mod) + pc_mod) % pc_mod;
             let k = Rvalue::Constant(_k);
 
