@@ -149,7 +149,7 @@ Item {
 					bblockList = {};
 					for(var i = 0; i < cfg.nodes.length; i++) {
 						var node = cfg.nodes[i];
-						var c = {"contents":cfg.contents[node].join("\n"),"color":(node == cfg.head ? "red" : "steelblue")};
+						var c = {"contents":cfg.contents[node] ? cfg.contents[node].join("\n") : " " ,"color":(node == cfg.head ? "red" : "steelblue")};
 						//var c = {"contents":node,"color":(node == cfg.head ? "red" : "steelblue")};
 						var obj = bblock.createObject(graph,c);
 

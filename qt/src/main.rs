@@ -12,6 +12,7 @@ use libc::c_int;
 use std::sync::RwLock;
 use std::path::Path;
 use std::thread;
+use std::hash::{Hash,Hasher,SipHasher};
 
 use panopticon::value::Rvalue;
 use panopticon::project::Project;
@@ -220,11 +221,20 @@ extern "C" fn panopticon_slot(this: *mut ffi::QObject, id: libc::c_int, a: *cons
                     let proj: &Project = read_guard.as_ref().unwrap();
                     if let Some((vx,prog)) = proj.find_call_target_by_uuid(&tgt_uuid) {
                         if let Some(&CallTarget::Concrete(ref fun)) = prog.call_graph.vertex_label(vx) {
-                            let nodes = fun.cflow_graph.vertices().filter_map(|x| {
-                                match fun.cflow_graph.vertex_label(x) {
+                            fn to_ident(t: Option<&ControlFlowTarget>) -> Option<String> {
+                                match t {
                                     Some(&ControlFlowTarget::Resolved(ref bb)) => Some(format!("\"bb{}\"",bb.area.start)),
+                                    Some(&ControlFlowTarget::Unresolved(ref c)) => {
+                                        let ref mut h = SipHasher::new();
+                                        c.hash::<SipHasher>(h);
+                                        Some(format!("\"c{}\"",h.finish()))
+                                    },
                                     _ => None,
                                 }
+                            };
+
+                            let nodes = fun.cflow_graph.vertices().filter_map(|x| {
+                                to_ident(fun.cflow_graph.vertex_label(x))
                             }).fold("".to_string(),|acc,x| if acc != "" { acc + "," + &x } else { x });
 
                             let contents = fun.cflow_graph.vertices().filter_map(|x| {
@@ -243,11 +253,13 @@ extern "C" fn panopticon_slot(this: *mut ffi::QObject, id: libc::c_int, a: *cons
                                 let cg = &fun.cflow_graph;
                                 let from = cg.source(x);
                                 let to = cg.target(x);
+                                let from_ident = to_ident(cg.vertex_label(from));
+                                let to_ident = to_ident(cg.vertex_label(to));
 
-                                match (cg.vertex_label(from),cg.vertex_label(to)) {
-                                    (Some(&ControlFlowTarget::Resolved(ref bb_from)),Some(&ControlFlowTarget::Resolved(ref bb_to))) =>
-                                        Some(format!("{{\"from\":\"bb{}\",\"to\":\"bb{}\"}}",bb_from.area.start,bb_to.area.start)),
-                                    _ => None,
+                                if from_ident.is_some() && to_ident.is_some() {
+                                    Some(format!("{{\"from\":{},\"to\":{}}}",from_ident.unwrap(),to_ident.unwrap()))
+                                } else {
+                                    None
                                 }
                             }).fold("".to_string(),|acc,x| if acc != "" { acc + "," + &x } else { x });
 

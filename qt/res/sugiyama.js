@@ -219,7 +219,7 @@ WorkerScript.onMessage = function(msg) {
 				if(heads.length == 1) {
 					head = heads[0];
 				} else {
-					head = "__init";
+					head = "virtH";
 					nodes.push(head);
 
 					for(var j = 0; j < heads.length; j++) {
