@@ -24,3 +24,4 @@ pub mod region;
 pub mod layer;
 pub mod codegen;
 pub mod avr;
+pub mod amd64;

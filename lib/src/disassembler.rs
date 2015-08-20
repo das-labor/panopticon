@@ -64,6 +64,10 @@ impl<A: Architecture> State<A> {
         self.groups.iter().find(|x| x.0 == n.to_string()).unwrap().1.clone()
     }
 
+    pub fn has_group(&self,n: &str) -> bool {
+        self.groups.iter().find(|x| x.0 == n.to_string()).is_some()
+    }
+
     pub fn mnemonic<F: FnOnce(&mut CodeGen) -> ()>(&mut self,len: usize, n: &str, fmt: &str, ops: Vec<Rvalue>, f: F) {
         self.mnemonic_dynargs(len,n,fmt,|cg: &mut CodeGen| -> Vec<Rvalue> {
             f(cg);
