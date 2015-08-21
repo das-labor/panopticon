@@ -58,16 +58,26 @@ function dfs(n,num,nodes,edges,seen,cb_node,cb_edge) {
 	}
 }
 
-function adj_positions(n,nodes,edges,order,layout) {
+function adj_positions(iter,n,nodes,edges,order,layout) {
 	var ret = [];
+	var r = layout[n].rank;
 
 	for(var i = 0; i < edges.length; i++) {
 		var edge = edges[i];
+		var other = n;
 
 		if(edge.from == n) {
-			ret.push(order[layout[edge.to].rank].indexOf(edge.to));
+			other = edge.to;
 		} else if(edge.to == n) {
-			ret.push(order[layout[edge.from].rank].indexOf(edge.from));
+			other = edge.from;
+		}
+
+		if(other != n) {
+			var or = layout[other].rank;
+			if((iter % 2 == 1 && or == r - 1) ||
+				 (iter % 2 === 0 && or == r + 1)) {
+				ret.push(order[or].indexOf(other));
+			}
 		}
 	}
 
@@ -75,13 +85,13 @@ function adj_positions(n,nodes,edges,order,layout) {
 	return ret;
 }
 
-function median_value(v,nodes,edges,order,layout) {
-	var P = adj_positions(v,nodes,edges,order,layout);
-	var m = P.length / 2;
+function median_value(iter,v,nodes,edges,order,layout) {
+	var P = adj_positions(iter,v,nodes,edges,order,layout);
+	var m = Math.floor(P.length / 2);
 
 	if(P.length === 0) {
 		return -1.0;
-	} else if(P.length & 1 == 1) {
+	} else if(P.length % 2 == 1) {
 		return P[m];
 	} else if(P.length == 2) {
 		return (P[0] + P[1]) / 2;
@@ -93,15 +103,15 @@ function median_value(v,nodes,edges,order,layout) {
 }
 
 function wmedian(iter,nodes,edges,order,layout) {
-	var d = (iter & 1 == 1) ? 1 : -1;
-	var s = (iter & 1 == 1) ? 0 : nodes.length - 1;
-	var e = (iter & 1 == 1) ? nodes.length : -1;
+	var d = (iter % 2 == 1) ? 1 : -1;
+	var s = (iter % 2 == 1) ? 0 : nodes.length - 1;
+	var e = (iter % 2 == 1) ? nodes.length : -1;
 	for(var r = s; r != e; r += d) {
 		var ord = order[r];
 
-		for(var i = 0; i < order.length; i++) {
+		for(var i = 0; i < nodes.length; i++) {
 			var node = nodes[i];
-			layout[node].median = median_value(node,nodes,edges,order,layout);
+			layout[node].median = median_value(iter,node,nodes,edges,order,layout);
 		}
 
 		order[r].sort(function(a,b) {
@@ -383,6 +393,8 @@ WorkerScript.onMessage = function(msg) {
 					best = JSON.parse(JSON.stringify(order));
 					best_xings = xings;
 				}
+
+				console.assert(best.reduce(function(acc,x) { return acc + x.length; },0) == nodes.length);
 			}
 
 			order = best;
