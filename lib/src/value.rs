@@ -1,3 +1,5 @@
+use std::fmt::{Formatter,Display,Error};
+
 #[derive(Clone,Debug,PartialEq,Eq,Hash,RustcEncodable,RustcDecodable)]
 pub enum Endianess {
     Little,
@@ -27,6 +29,17 @@ impl Rvalue {
                 Rvalue::Variable{ width: w.clone(), name: n.clone(), subscript: s.clone()},
             &Lvalue::Memory{ offset: ref o, bytes: ref b, endianess: ref e, name: ref n} =>
                 Rvalue::Memory{ offset: o.clone(), bytes: b.clone(), endianess: e.clone(), name: n.clone()},
+        }
+    }
+}
+
+impl Display for Rvalue {
+    fn fmt(&self, f: &mut Formatter) -> Result<(), Error> {
+        match self {
+            &Rvalue::Constant(c) => f.write_fmt(format_args!("{:x}",c)),
+            &Rvalue::Undefined => f.write_str("undef"),
+            &Rvalue::Variable{ name: ref n,.. } => f.write_str(n),
+            &Rvalue::Memory{ offset: ref o, name: ref n,..} => f.write_fmt(format_args!("{}[{}]",n,o)),
         }
     }
 }

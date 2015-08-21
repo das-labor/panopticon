@@ -241,7 +241,12 @@ extern "C" fn panopticon_slot(this: *mut ffi::QObject, id: libc::c_int, a: *cons
                                 match fun.cflow_graph.vertex_label(x) {
                                     Some(&ControlFlowTarget::Resolved(ref bb)) => {
                                         let mnes = bb.mnemonics.iter().
-                                            map(|x| format!("\"{}\"",x.opcode)).
+                                            map(|x| {
+                                                let args = x.operands.iter().map(|y| format!("\"{}\"",y))
+                                                    .fold("".to_string(),|acc,x| if acc != "" { acc + "," + &x } else { x });
+
+                                                format!("{{\"opcode\":\"{}\",\"args\":[{}]}}",x.opcode,args)
+                                            }).
                                             fold("".to_string(),|acc,x| if acc != "" { acc + "," + &x } else { x });
                                         Some(format!("\"bb{}\":[{}]",bb.area.start,mnes))
                                     },
