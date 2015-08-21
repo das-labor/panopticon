@@ -1,3 +1,7 @@
+2015-08-XX: 0.11 (Salt Pit)
+ - Port Panopticon from C++ to Rust
+ - Layout Control Flow Graphs in QML
+
 XXXX-XX-XX: 0.10 (Bastille)
 
 2015-03-03: 0.9 (Stammheim)
