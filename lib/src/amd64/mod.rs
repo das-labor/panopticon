@@ -7,6 +7,10 @@ use guard::Guard;
 use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
 use std::rc::Rc;
 
+pub mod decode;
+pub mod generic;
+pub mod semantic;
+
 #[derive(Clone)]
 pub enum Amd64 {}
 
@@ -32,7 +36,7 @@ pub enum Mode
 {
     Real,       // Real mode / Virtual 8086 mode
     Protected,  // Protected mode / Long compatibility mode
-    Long,           // Long 64-bit mode
+    Long,       // Long 64-bit mode
 }
 
 #[derive(Clone)]
@@ -80,12 +84,33 @@ impl Architecture for Amd64 {
     type Configuration = Config;
 }
 
-/*
 // 8 bit gp registers
-        extern const rvalue al,bl,cl,dl,
-                                     ah,bh,ch,dh,
-                                     r8l,r9l,r10l,r11l,r12l,r13l,r14l,r15l,
-                                     spl,bpl,sil,dil;
+lazy_static! {
+    pub static ref al: Lvalue = Lvalue::Variable{ name: "al".to_string(), width: 8, subscript: None };
+    static ref bl: Lvalue = Lvalue::Variable{ name: "bl".to_string(), width: 8, subscript: None };
+    static ref cl: Lvalue = Lvalue::Variable{ name: "cl".to_string(), width: 8, subscript: None };
+    static ref dl: Lvalue = Lvalue::Variable{ name: "dl".to_string(), width: 8, subscript: None };
+    static ref r8l: Lvalue = Lvalue::Variable{ name: "r8l".to_string(), width: 8, subscript: None };
+    static ref r9l: Lvalue = Lvalue::Variable{ name: "r9l".to_string(), width: 8, subscript: None };
+    static ref r10: Lvalue = Lvalue::Variable{ name: "r10l".to_string(), width: 8, subscript: None };
+    static ref r11l: Lvalue = Lvalue::Variable{ name: "r11l".to_string(), width: 8, subscript: None };
+    static ref r12l: Lvalue = Lvalue::Variable{ name: "r12l".to_string(), width: 8, subscript: None };
+    static ref r13l: Lvalue = Lvalue::Variable{ name: "r13l".to_string(), width: 8, subscript: None };
+    static ref r14l: Lvalue = Lvalue::Variable{ name: "r14l".to_string(), width: 8, subscript: None };
+    static ref r15l: Lvalue = Lvalue::Variable{ name: "r15l".to_string(), width: 8, subscript: None };
+    static ref spl: Lvalue = Lvalue::Variable{ name: "spl".to_string(), width: 8, subscript: None };
+    static ref bpl: Lvalue = Lvalue::Variable{ name: "bpl".to_string(), width: 8, subscript: None };
+    static ref sil: Lvalue = Lvalue::Variable{ name: "sill".to_string(), width: 8, subscript: None };
+    static ref dil: Lvalue = Lvalue::Variable{ name: "dil".to_string(), width: 8, subscript: None };
+    static ref ah: Lvalue = Lvalue::Variable{ name: "ah".to_string(), width: 8, subscript: None };
+    static ref bh: Lvalue = Lvalue::Variable{ name: "bh".to_string(), width: 8, subscript: None };
+    static ref ch: Lvalue = Lvalue::Variable{ name: "ch".to_string(), width: 8, subscript: None };
+    static ref dh: Lvalue = Lvalue::Variable{ name: "dh".to_string(), width: 8, subscript: None };
+}
+
+
+
+/*
         // 16 bit gp registers
         extern const rvalue ax,bx,cx,dx,
                                      r8w,r9w,r10w,r11w,r12w,r13w,r14w,r15w,
@@ -504,7 +529,7 @@ pub fn disassembler(bits: u8) -> Rc<Disassembler<Amd64>> {
         [ "mod@10 111 rm@100", sib, disp32 ] = rm_semantic(Some(OperandSize::Eight)),
         [ "mod@10 111 rm@...", disp32      ] = rm_semantic(Some(OperandSize::Eight)));
 
-    let (main, mainrep, mainrepx) = add_generic(
+    let (main, mainrep, mainrepx) = generic::add_generic(
         bits,
         lock_prfx,
         imm8, imm16, imm32, imm48, imm64, imm,
@@ -531,18 +556,3 @@ pub fn disassembler(bits: u8) -> Rc<Disassembler<Amd64>> {
             [ opt!(opsize_prfx), main ] = |_: &mut State<Amd64>| { true })
     }
 }
-
-fn add_generic(
-        bits: u8,
-        lock_prfx: Rc<Disassembler<Amd64>>,
-        imm8: Rc<Disassembler<Amd64>>, imm16: Rc<Disassembler<Amd64>>, imm32: Rc<Disassembler<Amd64>>, imm48: Rc<Disassembler<Amd64>>, imm64: Rc<Disassembler<Amd64>>, imm: Rc<Disassembler<Amd64>>,
-        moffs8: Rc<Disassembler<Amd64>>, moffs: Rc<Disassembler<Amd64>>,
-        sib: Rc<Disassembler<Amd64>>,
-        rm: Rc<Disassembler<Amd64>>, rm0: Rc<Disassembler<Amd64>>, rm1: Rc<Disassembler<Amd64>>, rm2: Rc<Disassembler<Amd64>>, rm3: Rc<Disassembler<Amd64>>, rm4: Rc<Disassembler<Amd64>>, rm5: Rc<Disassembler<Amd64>>, rm6: Rc<Disassembler<Amd64>>, rm7: Rc<Disassembler<Amd64>>,
-        rmbyte: Rc<Disassembler<Amd64>>, rmbyte0: Rc<Disassembler<Amd64>>, rmbyte1: Rc<Disassembler<Amd64>>, rmbyte2: Rc<Disassembler<Amd64>>, rmbyte3: Rc<Disassembler<Amd64>>,
-        rmbyte4: Rc<Disassembler<Amd64>>, rmbyte5: Rc<Disassembler<Amd64>>, rmbyte6: Rc<Disassembler<Amd64>>, rmbyte7: Rc<Disassembler<Amd64>>,
-        rmlong: Rc<Disassembler<Amd64>>,
-        disp8: Rc<Disassembler<Amd64>>, disp16: Rc<Disassembler<Amd64>>, disp32: Rc<Disassembler<Amd64>>, disp64: Rc<Disassembler<Amd64>>) -> (Rc<Disassembler<Amd64>>, Rc<Disassembler<Amd64>>, Rc<Disassembler<Amd64>>) {
-            unimplemented!()
-//(main, mainrep, mainrepx)
-        }

@@ -11,6 +11,7 @@ extern crate uuid;
 #[macro_use]
 extern crate lazy_static;
 
+// core
 pub mod disassembler;
 pub mod value;
 pub mod instr;
@@ -23,5 +24,7 @@ pub mod project;
 pub mod region;
 pub mod layer;
 pub mod codegen;
+
+// disassembler
 pub mod avr;
 pub mod amd64;
