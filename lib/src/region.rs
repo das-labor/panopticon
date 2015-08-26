@@ -5,6 +5,29 @@ use layer::{Layer,OpaqueLayer,LayerIter};
 use graph_algos::adjacency_list::{AdjacencyListEdgeDescriptor,AdjacencyListVertexDescriptor};
 use graph_algos::{AdjacencyList,GraphTrait,VertexListGraphTrait,MutableGraphTrait,IncidenceGraphTrait};
 
+/// Regions model continuous memory like RAM, flash memory or files. A region has a unique
+/// name that is used to reference it and a size. The size is the number of cells in
+/// a region. A cell either has a value between 0 and 255 or is undefined. Cells are
+/// numbered in ascending order starting at 0.
+///
+/// Regions can be constructed from files or buffers in memory or be filled with
+/// undefined values.
+///
+/// ```
+/// // This region is named "file" and is filled with the contents of "path/to/file"
+/// region_loc file_region = region::wrap("file",blob("path/to/file"));
+///
+/// // This region is named "buf" and is initialized with the contents of buf
+/// std::vector<uint8_t> buf = {1, 2, 3, 4, 5, 6, 7, 8, 9, 0};
+/// region_loc buf_region = region::wrap("buf",buf);
+///
+/// // This region is named "undef" and is just 4k of undefined cells
+/// region_loc undefined_region = region::undefined("undef",4096);
+/// ```
+///
+/// Reading from a region is done by calling :cpp:func:`read` on it. The function returns a
+/// :cpp:class:`slab` instance that is a range of cells. Each cell is a :cpp:class:`tryte`
+/// instance.
 #[derive(Debug,RustcDecodable,RustcEncodable)]
 pub struct Region {
     stack: Vec<(Bound,Layer)>,

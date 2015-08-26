@@ -77,6 +77,16 @@ impl Project {
 
         None
     }
+
+    pub fn find_call_target_by_uuid_mut<'a>(&'a mut self,uu: &Uuid) -> Option<(CallGraphRef,&'a mut Program)> {
+        for p in self.code.iter_mut() {
+            if let Some(ct) = p.find_call_target_by_uuid::<'a>(uu) {
+                return Some((ct,p));
+            }
+        }
+
+        None
+    }
 }
 
 #[cfg(test)]
