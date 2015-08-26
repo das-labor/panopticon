@@ -6,19 +6,33 @@ rust:
 matrix:
    allow_failure:
       - rust: nightly
-sudo: false
 addons:
   apt:
     sources:
     - ubuntu-sdk-team
+    - kalakris-cmake
+    - ubuntu-toolchain-r-test
     packages:
-    - qt5-default
-    - qtdeclarative5-dev
-    - qtdeclarative5-folderlistmodel-plugin
-    - qtdeclarative5-qtquick2-plugin
     - cmake
-    - libcurl4-openssl-dev
-    - libelf-dev
-    - libdw-dev
+install:
+  - if [ "${TRAVIS_OS_NAME}" = "linux" ]; then
+         sudo apt-add-repository -y ppa:beineri/opt-qt541
+      && sudo apt-get -qq update
+      && sudo apt-get -qq install g++-4.8 libc6-i386 qt54tools qt54base qt54declarative qt54quickcontrols kcov
+      && export CXX="g++-4.8"
+      && export CC="gcc-4.8"
+      && export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/opt/qt54/lib/pkgconfig/
+      && export CMAKE_PREFIX_PATH=$CMAKE_PREFIX_PATH:/opt/qt54
+      ;
+    else
+         brew update
+      && brew install qt5
+      && brew install qt5-qmake
+      && chmod -R 755 /usr/local/opt/qt5/*
+      ;
+    fi
 after_success: |
   kcov --coveralls-id=$TRAVIS_JOB_ID --exclude-pattern=/.cargo target/kcov target/debug/*panopticon-*
+script: |
+   cargo build --verbose &&
+   (cargo test --verbose || true)
