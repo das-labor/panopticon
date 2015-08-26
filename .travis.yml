@@ -7,9 +7,9 @@ matrix:
    allow_failure:
       - rust: nightly
 before_install: |
-  sudo add-apt-repository "deb mirror://mirrors.ubuntu.com/mirrors.txt trusty main restricted universe multiverse" -y
-  sudo apt-get update -qq
-  sudo apt-get install -qq libqt5core5a libqt5gui5 libqt5quick5 libqt5qml5 qtbase5-dev qtdeclarative5-dev cmake qtdeclarative5-folderlistmodel-plugin qtdeclarative5-qtquick2-plugin
+  sudo add-apt-repository --yes ppa:ubuntu-sdk-team/ppa &&
+  sudo apt-get update -qq &&
+  sudo apt-get install qt5-default qtdeclarative5-dev qtdeclarative5-folderlistmodel-plugin qtdeclarative5-qtquick2-plugin cmake
 after_success: |
   sudo apt-get install libcurl4-openssl-dev libelf-dev libdw-dev &&
   wget https://github.com/SimonKagstrom/kcov/archive/master.tar.gz &&
