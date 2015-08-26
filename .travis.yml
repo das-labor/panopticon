@@ -6,6 +6,8 @@ rust:
 matrix:
    allow_failure:
       - rust: nightly
+before_install: |
+   sudo apt-get install qt5-default qtdeclarative5-dev libqt5qml-quickcontrols qtdeclarative5-folderlistmodel-plugin qtdeclarative5-settings-plugin
 after_success: |
   sudo apt-get install libcurl4-openssl-dev libelf-dev libdw-dev &&
   wget https://github.com/SimonKagstrom/kcov/archive/master.tar.gz &&
