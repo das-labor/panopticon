@@ -10,7 +10,7 @@ sudo: false
 addons:
   apt:
     sources:
-    - ppa:ubuntu-sdk-team/ppa
+    - ubuntu-sdk-team
     packages:
     - qt5-default
     - qtdeclarative5-dev
