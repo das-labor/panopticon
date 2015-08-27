@@ -25,8 +25,9 @@ install:
   - cargo --version
   # Qt
   - set QTDIR=C:\Qt\5.4\mingw491_32
-  - set PATH=%QTDIR%\bin;C:\MinGW\bin;%PATH%
+  - set PATH=%QTDIR%\bin;C:\MinGW\bin;C:\msys;C:\GTK\bin;%PATH%
   - set CMAKE_PREFIX_PATH=%QTDIR%;%CMAKE_PREFIX_PATH%
+  - set PKG_CONFIG_PATH=%PKG_CONFIG_PATH%;%QTDIR%\lib\pkgconfig\
 build: false
 test_script:
   - cargo build --verbose
