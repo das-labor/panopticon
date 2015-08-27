@@ -6,8 +6,6 @@ authors = ["seu <seu@panopticon.re>"]
 [lib]
 name = "panopticon"
 path = "lib/src/lib.rs"
-crate-type = ["dylib"]
-plugin = true # needed to force dynamic linking
 test = true
 
 [[bin]]
