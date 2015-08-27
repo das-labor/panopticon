@@ -1,0 +1,33 @@
+os: unstable
+platform:
+  - x64
+environment:
+  RUST_INSTALL_DIR: C:\Rust
+  matrix:
+    - RUST_INSTALL_TRIPLE: i686-pc-windows-gnu
+      RUST_VERSION: 1.2.0
+    - RUST_INSTALL_TRIPLE: i686-pc-windows-gnu
+      RUST_VERSION: beta
+    - RUST_INSTALL_TRIPLE: i686-pc-windows-gnu
+      RUST_VERSION: nightly
+    - RUST_INSTALL_TRIPLE: x86_64-pc-windows-gnu
+      RUST_VERSION: 1.2.0
+    - RUST_INSTALL_TRIPLE: x86_64-pc-windows-gnu
+      RUST_VERSION: beta
+    - RUST_INSTALL_TRIPLE: x86_64-pc-windows-gnu
+      RUST_VERSION: nightly
+install:
+   # Rust
+  - ps: Start-FileDownload "https://static.rust-lang.org/dist/rust-$Env:RUST_VERSION-$Env:RUST_INSTALL_TRIPLE.exe"
+  - cmd: rust-%RUST_VERSION%-%RUST_INSTALL_TRIPLE%.exe /VERYSILENT /NORESTART /COMPONENTS="rust,gcc,cargo" /DIR="%RUST_INSTALL_DIR%"
+  - cmd: SET PATH=%PATH%;%RUST_INSTALL_DIR%\bin
+  - rustc --version
+  - cargo --version
+  # Qt
+  - set QTDIR=C:\Qt\5.4\mingw491_32
+  - set PATH=%QTDIR%\bin;C:\MinGW\bin;%PATH%
+  - set CMAKE_PREFIX_PATH=%QTDIR%;%CMAKE_PREFIX_PATH%
+build: false
+test_script:
+  - cargo build --verbose
+  - cargo test --verbose
