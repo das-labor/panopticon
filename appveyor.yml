@@ -4,31 +4,25 @@ platform:
 environment:
   RUST_INSTALL_DIR: C:\Rust
   matrix:
-    - RUST_INSTALL_TRIPLE: i686-pc-windows-gnu
+    - RUST_INSTALL_TRIPLE: x86_64-pc-windows-msvc
       RUST_VERSION: 1.2.0
-    - RUST_INSTALL_TRIPLE: i686-pc-windows-gnu
+    - RUST_INSTALL_TRIPLE: x86_64-pc-windows-msvc
       RUST_VERSION: beta
-    - RUST_INSTALL_TRIPLE: i686-pc-windows-gnu
-      RUST_VERSION: nightly
-    - RUST_INSTALL_TRIPLE: x86_64-pc-windows-gnu
-      RUST_VERSION: 1.2.0
-    - RUST_INSTALL_TRIPLE: x86_64-pc-windows-gnu
-      RUST_VERSION: beta
-    - RUST_INSTALL_TRIPLE: x86_64-pc-windows-gnu
+    - RUST_INSTALL_TRIPLE: x86_64-pc-windows-msvc
       RUST_VERSION: nightly
 install:
    # Rust
   - ps: Start-FileDownload "https://static.rust-lang.org/dist/rust-$Env:RUST_VERSION-$Env:RUST_INSTALL_TRIPLE.exe"
-  - cmd: rust-%RUST_VERSION%-%RUST_INSTALL_TRIPLE%.exe /VERYSILENT /NORESTART /COMPONENTS="rust,gcc,cargo" /DIR="%RUST_INSTALL_DIR%"
+  - cmd: rust-%RUST_VERSION%-%RUST_INSTALL_TRIPLE%.exe /VERYSILENT /NORESTART /COMPONENTS="rust,cargo" /DIR="%RUST_INSTALL_DIR%"
   - cmd: SET PATH=%PATH%;%RUST_INSTALL_DIR%\bin
   - rustc --version
   - cargo --version
   # Qt
-  - set QTDIR=C:\Qt\5.4\mingw491_32
-  - set PATH=%QTDIR%\bin;C:\MinGW\bin;C:\msys;C:\GTK\bin;%PATH%
+  - set QTDIR=C:\Qt\5.4\msvc2013_64_opengl
+  - set PATH=%QTDIR%\bin;%PATH%
   - set CMAKE_PREFIX_PATH=%QTDIR%;%CMAKE_PREFIX_PATH%
-  - set PKG_CONFIG_PATH=%PKG_CONFIG_PATH%;%QTDIR%\lib\pkgconfig
 build: false
 test_script:
+  - call "C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\vcvarsall.bat" x64
   - cargo build --verbose
   - cargo test --verbose
