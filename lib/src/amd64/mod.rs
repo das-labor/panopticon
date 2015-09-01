@@ -31,6 +31,17 @@ pub enum OperandSize
     Eight,
 }
 
+impl OperandSize {
+    fn num_bits(&self) -> usize {
+        match self {
+            &OperandSize::SixtyFour => 64,
+            &OperandSize::ThirtyTwo => 32,
+            &OperandSize::Sixteen => 16,
+            &OperandSize::Eight => 8,
+        }
+    }
+}
+
 #[derive(Clone,PartialEq)]
 pub enum Mode
 {

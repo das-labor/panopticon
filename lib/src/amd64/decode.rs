@@ -64,8 +64,8 @@ pub fn decode_i(sm: &mut State<Amd64>,cg: &mut CodeGen) -> (Rvalue,Rvalue) {
 }
 
 pub fn decode_rm(sm: &mut State<Amd64>,cg: &mut CodeGen) -> (Rvalue,Rvalue) {
-    if let (Some(ref reg),Some(ref rm)) = (sm.config.reg,sm.config.rm) {
-        (reg.clone(),rm.clone())
+    if let (&Some(ref reg),&Some(ref rm)) = (&sm.configuration.reg,&sm.configuration.rm) {
+        (reg.to_rv(),rm.to_rv())
     } else {
         unimplemented!();
     }
@@ -85,19 +85,19 @@ pub fn decode_regms(sm: &mut State<Amd64>,cg: &mut CodeGen) -> (Rvalue,Rvalue) {
 }
 
 pub fn decode_sregm(sm: &mut State<Amd64>,cg: &mut CodeGen) -> (Rvalue,Rvalue) {
-    if let (Some(ref reg),Some(ref rm)) = (sm.config.reg,sm.config.rm) {
-        if reg == ax || reg == eax  {
-            (es.clone(),rm.clone())
-        } else if reg == cx || reg == ecx  {
-            (cs.clone(),rm.clone())
-        } else if reg == dx || reg == edx  {
-            (ss.clone(),rm.clone())
-        } else if reg == bx || reg == ebx  {
-            (ds.clone(),rm.clone())
-        } else if reg == sp || reg == esp  {
-            (fs.clone(),rm.clone())
-        } else if reg == bp || reg == ebp  {
-            (gs.clone(),rm.clone())
+    if let (&Some(ref reg),&Some(ref rm)) = (&sm.configuration.reg,&sm.configuration.rm) {
+        if *reg == *ax || *reg == *eax  {
+            (es.to_rv(),rm.to_rv())
+        } else if *reg == *cx || *reg == *ecx  {
+            (cs.to_rv(),rm.to_rv())
+        } else if *reg == *dx || *reg == *edx  {
+            (ss.to_rv(),rm.to_rv())
+        } else if *reg == *bx || *reg == *ebx  {
+            (ds.to_rv(),rm.to_rv())
+        } else if *reg == *sp || *reg == *esp  {
+            (fs.to_rv(),rm.to_rv())
+        } else if *reg == *bp || *reg == *ebp  {
+            (gs.to_rv(),rm.to_rv())
         } else {
             unreachable!()
         }
@@ -139,7 +139,7 @@ pub fn decode_mc(sm: &mut State<Amd64>,cg: &mut CodeGen) -> (Rvalue,Rvalue) {
 }
 
 pub fn decode_ii(sm: &mut State<Amd64>,cg: &mut CodeGen) -> (Rvalue,Rvalue) {
-    if let Some(Rvalue::Constant(c)) = sm.config.imm {
+    if let &Some(Rvalue::Constant(c)) = &sm.configuration.imm {
         (Rvalue::Constant(c >> 8),Rvalue::Constant(c & 0xff))
     } else {
         unreachable!()
@@ -155,8 +155,8 @@ pub fn decode_rmv(sm: &mut State<Amd64>,cg: &mut CodeGen) -> (Rvalue,Rvalue,Rval
 }
 
 pub fn decode_rmi(sm: &mut State<Amd64>,cg: &mut CodeGen) -> (Rvalue,Rvalue,Rvalue) {
-    if let (Some(ref reg),Some(ref rm),Some(ref imm)) = (sm.config.reg,sm.config.rm,sm.config.imm) {
-        (reg.clone(),rm.clone(),imm.clone())
+    if let (&Some(ref reg),&Some(ref rm),&Some(ref imm)) = (&sm.configuration.reg,&sm.configuration.rm,&sm.configuration.imm) {
+        (reg.to_rv(),rm.to_rv(),imm.clone())
     } else {
         unreachable!()
     }
@@ -259,21 +259,21 @@ pub fn decode_reg64(r_reg: usize) -> Lvalue {
     }
 }
 
-fn select_reg(os: OperandSize,r: usize, rex: bool) -> Lvalue {
+fn select_reg(os: &OperandSize,r: usize, rex: bool) -> Lvalue {
     match os {
-        OperandSize::Eight => decode_reg8(r,rex),
-        OperandSize::Sixteen => decode_reg16(r,rex),
-        OperandSize::ThirtyTwo => decode_reg32(r,rex),
-        OperandSize::SixtyFour => decode_reg64(r,rex),
+        &OperandSize::Eight => decode_reg8(r,rex),
+        &OperandSize::Sixteen => decode_reg16(r),
+        &OperandSize::ThirtyTwo => decode_reg32(r),
+        &OperandSize::SixtyFour => decode_reg64(r),
     }
 }
 
-fn select_mem(os: OperandSize,o: Rvalue) -> Lvalue {
+fn select_mem(os: &OperandSize,o: Rvalue) -> Lvalue {
     match os {
-        OperandSize::Eight => byte(o),
-        OperandSize::Sixteen => word(o),
-        OperandSize::ThirtyTwo => dword(o),
-        OperandSize::SixtyFour => qword(o),
+        &OperandSize::Eight => byte(o),
+        &OperandSize::Sixteen => word(o),
+        &OperandSize::ThirtyTwo => dword(o),
+        &OperandSize::SixtyFour => qword(o),
     }
 }
 
@@ -286,7 +286,7 @@ fn decode_modrm(
         addrsz: AddressSize,
         mode: Mode,
         rex: bool,
-        c: &CodeGen)
+        c: &mut CodeGen) -> Lvalue
 {
     assert!(_mod < 0x4);
     assert!(b_rm < 0x10);
@@ -299,32 +299,32 @@ fn decode_modrm(
 
                     if b_rm == 6 {
                         if _mod == 0 {
-                            select_mem(os,disp.unwrap());
+                            select_mem(&os,disp.unwrap())
                         } else {
-                            c.add_i(tmp,select_mem(os,bp),disp.unwrap());
+                            c.add_i(&tmp,&select_mem(&os,bp.clone().to_rv()),&disp.unwrap());
                             tmp
                         }
                     } else {
-                        let base = select_mem(os,match b_rm {
-                            0 => { c.add_i(tmp,bx,si); tmp },
-                            1 => { c.add_i(tmp,bx,di); tmp },
-                            2 => { c.add_i(tmp,bp,si); tmp },
-                            3 => { c.add_i(tmp,bp,di); tmp },
+                        let base = select_mem(&os,match b_rm {
+                            0 => { c.add_i(&tmp,&*bx,&*si); tmp.clone() },
+                            1 => { c.add_i(&tmp,&*bx,&*di); tmp.clone() },
+                            2 => { c.add_i(&tmp,&*bp,&*si); tmp.clone() },
+                            3 => { c.add_i(&tmp,&*bp,&*di); tmp.clone() },
                             4 => si.clone(),
                             5 => di.clone(),
                             7 => bx.clone(),
                             _ => unreachable!(),
-                        });
+                        }.to_rv());
 
                         if _mod == 0 {
                             base
                         } else {
-                            c.add_i(tmp,base,disp.unwrap());
+                            c.add_i(&tmp,&base,&disp.unwrap());
                             tmp
                         }
                     }
                 },
-                3 => select_reg(os,b_rm,rex),
+                3 => select_reg(&os,b_rm,rex),
                 _ => unreachable!()
             }
         },
@@ -332,39 +332,54 @@ fn decode_modrm(
             let base = match b_rm {
                 0 | 1 | 2 | 3 |
                 6 | 7 | 8 | 9 | 10 | 11 |
-                14 | 15 => select_reg(if _mod != 3 && addrsz == AddressSize::SixtyFour { OperandSize::SixtyFour } else { os },b_rm,rex),
+                14 | 15 => select_reg(&if _mod != 3 && addrsz == AddressSize::SixtyFour { OperandSize::SixtyFour } else { os.clone() },b_rm,rex),
 
                 4 | 12 => if _mod == 3 {
-                        select_reg(os,b_rm,rex)
+                        select_reg(&os,b_rm,rex)
                     } else {
-                        decode_sib(_mod,sib.0,sib.1,sib.2,disp,os,c)
+                        if let Some((scale,index,base)) = sib {
+                            decode_sib(_mod,scale,index,base,disp.clone(),os.clone(),c)
+                        } else {
+                            unreachable!()
+                        }
                     },
 
                 5 | 13 => if _mod == 0 {
                     if mode == Mode::Long {
                         if addrsz == AddressSize::SixtyFour {
-                            select_mem(os,c.mod_i(c.add_i(disp.unwrap(),rip),Rvalue::Constant(0xffffffffffffffff)))
+                            let tmp = new_temp(64);
+
+                            c.add_i(&tmp,disp.as_ref().unwrap(),&*rip);
+                            c.mod_i(&tmp,&tmp,&Rvalue::Constant(0xffffffffffffffff));
+                            select_mem(&os,tmp.to_rv())
                         } else {
-                            select_mem(os,c.mod_i(c.add_i(disp.unwrap(),eip),Rvalue::Constant(0xffffffff)))
+                            let tmp = new_temp(32);
+
+                            c.add_i(&tmp,disp.as_ref().unwrap(),&*eip);
+                            c.mod_i(&tmp,&tmp,&Rvalue::Constant(0xffffffff));
+                            select_mem(&os,tmp.to_rv())
                         }
                     } else {
-                        select_mem(os,disp.unwrap())
+                        select_mem(&os,disp.clone().unwrap())
                     }
                 } else {
-                    select_reg(if _mod != 3 && addrsz == AddressSize::SixtyFour { OperandSize::SixtyFour } else { os },b_rm,rex)
+                    select_reg(&if _mod != 3 && addrsz == AddressSize::SixtyFour { OperandSize::SixtyFour } else { os.clone() },b_rm,rex)
                 },
                 _ => unreachable!()
             };
 
             match _mod {
-                0 => select_mem(os,*base),
-                1 => select_mem(os,c.add_i(*base,disp.unwrap())),
-                2 => select_mem(os,c.add_i(*base,disp.unwrap())),
-                3 => *base,
+                0 => select_mem(&os,base.to_rv()),
+                1 | 2 => {
+                    let tmp = new_temp(os.num_bits());
+
+                    c.add_i(&tmp,&base,disp.as_ref().unwrap());
+                    select_mem(&os,tmp.to_rv())
+                },
+                3 => base,
                 _ => unreachable!()
             }
-        },
-        _ => unreachable!()
+        }
     }
 }
 
@@ -375,7 +390,7 @@ fn decode_sib(
     b_base: usize,
     disp: Option<Rvalue>,
     os: OperandSize,
-    c: &CodeGen)
+    c: &mut CodeGen) -> Lvalue
 {
     assert!(_mod <= 3 && scale <= 3 && x_index <= 15 && b_base <= 15);
 
@@ -383,31 +398,43 @@ fn decode_sib(
         0 => match b_base {
             0 | 1 | 2 | 3 | 4 |
             6 | 7 | 8 | 9 | 10 | 11 | 12 |
-            14 | 15 => match x_index {
+            14 => match x_index {
                 0 | 1 | 2 | 3 | 5...15 => {
                     let base = decode_reg64(b_base);
                     let index = decode_reg64(x_index);
+                    let tmp = new_temp(64);
 
                     if scale > 0 {
-                        select_mem(os,c.add_i(base,c.mul_i(index,Rvalue::Constant((1 << (scale & 3)) / 2))))
+                        c.mul_i(&tmp,&index,&Rvalue::Constant((1 << (scale & 3)) / 2));
+                        c.add_i(&tmp,&base,&tmp);
+
+                        select_mem(&os,tmp.to_rv())
                     } else {
-                        select_mem(os,c.add_i(base,index))
+                        c.add_i(&tmp,&base,&index);
+
+                        select_mem(&os,tmp.to_rv())
                     }
                 },
-                4 => select_mem(os,Rvalue::Constant(b_base & 7)),
+                4 => select_mem(&os,Rvalue::Constant((b_base & 7) as u64)),
                 _ => unreachable!()
             },
             5 | 15 => match x_index {
                 0...3 | 5...15 => {
                     let index = decode_reg64(x_index);
+                    let tmp = new_temp(64);
 
                     if scale > 0 {
-                        select_mem(os,c.add_i(disp.unwrap(),c.mul_i(index,Rvalue::Constant((1 << (scale & 3)) / 2))))
+                        c.mul_i(&tmp,&index,&Rvalue::Constant((1 << (scale & 3)) / 2));
+                        c.add_i(&tmp,&disp.unwrap(),&tmp);
+
+                        select_mem(&os,tmp.to_rv())
                     } else {
-                        select_mem(os,c.add_i(disp.unwrap(),index))
+                        c.add_i(&tmp,&disp.unwrap(),&index);
+
+                        select_mem(&os,tmp.to_rv())
                     }
                 },
-                4 => select_mem(os,disp.unwrap()),
+                4 => select_mem(&os,disp.unwrap()),
                 _ => unreachable!()
             },
             _ => unreachable!()
@@ -416,14 +443,27 @@ fn decode_sib(
             0...3 | 5...15 => {
                 let base = decode_reg64(b_base);
                 let index = decode_reg64(x_index);
+                let tmp = new_temp(64);
 
                 if scale > 0 {
-                    select_mem(os,c.add_i(base,c.add_i(c.mul_i(index,Rvalue::Constant((1 << (scale & 3)) / 2)),disp.unwrap())))
+                    c.mul_i(&tmp,&index,&Rvalue::Constant((1 << (scale & 3)) / 2));
+                    c.add_i(&tmp,&tmp,&disp.unwrap());
+                    c.add_i(&tmp,&base,&tmp);
+
+                    select_mem(&os,tmp.to_rv())
                 } else {
-                    select_mem(os,c.add_i(base,c.add_i(index,disp.unwrap())))
+                    c.add_i(&tmp,&index,&disp.unwrap());
+                    c.add_i(&tmp,&base,&tmp);
+
+                    select_mem(&os,tmp.to_rv())
                 }
             },
-            4 => select_mem(os,c.add_i(decode_reg64(b_base),disp.unwrap())),
+            4 => {
+                let tmp = new_temp(64);
+
+                c.add_i(&tmp,&decode_reg64(b_base),&disp.unwrap());
+                select_mem(&os,tmp.to_rv())
+            },
             _ => unreachable!()
         },
         _ => unreachable!()
