@@ -16,16 +16,18 @@ Building
 ========
 
 Panopticon builds with Rust stable. The only dependencies aside from
-a working Rust toolchain and Cargo you need Qt 5.3 and GLPK installed.
+a working Rust toolchain and Cargo you need Qt 5.4 and GLPK installed.
 
 Linux
 -----
 
-First install Qt and GLPK using your package manager.
+Install Qt using your package manager.
 
 Ubuntu 13.10 and 14.04:
 ```bash
-sudo apt-get install qt5-default qtdeclarative5-dev libqt5qml-quickcontrols qtdeclarative5-folderlistmodel-plugin qtdeclarative5-settings-plugin libglpk-dev
+sudo apt-get install qt5-default qtdeclarative5-dev libqt5qml-quickcontrols \
+                     qtdeclarative5-folderlistmodel-plugin qtdeclarative5-settings-plugin \
+                     libglpk-dev
 ```
 
 Fedora 20:
@@ -33,8 +35,8 @@ Fedora 20:
 sudo yum install qt5-qtdeclarative-devel qt5-qtquickcontrols glpk-devel
 ```
 
-After that clone the repository onto disk, create a build directory and
-use cargo to build everything.
+After that clone the repository onto disk and use cargo to build
+everything.
 
 ```bash
 git clone https://github.com/das-labor/panopticon.git
@@ -45,7 +47,7 @@ cargo build
 Windows
 -------
 
-Install the Qt SDK, GLPK for Windows and the Rust toolchain Panopticon can be build using cargo.
+Install the Qt 5.4 SDK, GLPK for Windows and the Rust toolchain Panopticon can be build using ``cargo build``.
 
 Running
 =======
@@ -53,10 +55,6 @@ Running
 The current version only supports AVR and has no ELF or PE loader yet.
 To test Panopticon you need relocated AVR code. Such a file is prepared in
 ``tests/data/sosse``.
-
-```bash
-cargo run
-```
 
 Contributing
 ============
