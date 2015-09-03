@@ -3,8 +3,10 @@ List of authors
 
 Philipp Deppenwiese
 	Gentoo ebuild and supporting files inside pkg/gentoo.
-XXX
-  The file qt/res/simplex.js.
+Iain Dunning
+	The simplex solver in qt/res/simplex.js. See LICENSE.simplexjs for full license.
+Dennis Hotson
+	The file  qt/res/layout.js. See LICENSE.springy for full license.
 Kai Michaelis
 	Everything not listed above.
 
