@@ -157,7 +157,7 @@ ApplicationWindow {
 		onAccepted: {
 			// cut off the "file://" part
 			var path = fileOpenDialog.fileUrls.toString().substring(7)
-			var sess = Panopticon.openPanopticon(path)
+			var sess = Panopticon.openSession(path)
 
 			if(sess == null) {
 				console.log("The file '" + path + "' is not a valid Panopticon session.")
