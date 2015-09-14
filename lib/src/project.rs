@@ -3,6 +3,7 @@ use std::path::Path;
 use program::{Program,CallGraphRef};
 use region::{Region,Regions};
 use function::Function;
+use pe;
 
 use uuid::Uuid;
 
@@ -26,6 +27,24 @@ impl Project {
 
     pub fn open(_: &Path) -> Option<Project> {
         unimplemented!()
+    }
+
+    pub fn raw(p: &Path) -> Option<Project> {
+        if let Some(nam) = p.file_name().and_then(|x| x.to_str()).or(p.to_str()) {
+            if let Some(r) = Region::open(nam.to_string(),p) {
+                return Some(Project{
+                    name: nam.to_string(),
+                    code: Vec::new(),
+                    sources: Regions::new(r),
+                });
+            }
+        }
+
+        None
+    }
+
+    pub fn pe(p: &Path) -> Option<Project> {
+        pe::pe(p)
     }
 
     pub fn find_program_by_uuid(&self,uu: &Uuid) -> Option<&Program> {

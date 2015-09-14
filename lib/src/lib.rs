@@ -28,3 +28,5 @@ pub mod codegen;
 // disassembler
 pub mod avr;
 pub mod amd64;
+
+pub mod pe;
