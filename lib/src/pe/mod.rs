@@ -5,6 +5,8 @@ use std::io::{Read,Seek,SeekFrom};
 
 use project::Project;
 use region::Region;
+use mnemonic::Bound;
+use layer::Layer;
 
 #[repr(C,packed)]
 struct Mz {
@@ -137,9 +139,7 @@ struct PeSection {
 }
 
 pub fn pe(p: &Path) -> Option<Project> {
-    let ram = Region::undefined("ram".to_string(),0xc0000000);
     let name = p.file_name().and_then(|x| x.to_str()).or(p.to_str()).unwrap_or("unknown pe");
-    let mut ret = Project::new(name.to_string(),ram);
 
     if let Some(mut fd) = File::open(p).ok() {
         // read MZ header
@@ -227,32 +227,49 @@ pub fn pe(p: &Path) -> Option<Project> {
         // read sections
         const PESEC_SIZE: usize = 40;
         assert_eq!(PESEC_SIZE, mem::size_of::<PeSection>());
-        let sec_off = ((mz.e_lfanew as u64) + (PE_SIZE as u64) + (pe.opthdr_size as u64)) as u64;
+        let mut ram = Region::undefined("ram".to_string(),0xc0000000);
 
-        if Some(sec_off) != fd.seek(SeekFrom::Start(sec_off)).ok() {
-            return None;
-        }
-
-        for _ in 0..pe.num_section {
+        for i in 0..pe.num_section {
+            let sec_off = (mz.e_lfanew as u64) + (PE_SIZE as u64) + (PESEC_SIZE as u64) * (i as u64) + (pe.opthdr_size as u64);
             let mut sec_raw = [0; PESEC_SIZE];
+
+            if Some(sec_off) != fd.seek(SeekFrom::Start(sec_off)).ok() {
+                return None;
+            }
 
             if Some(PESEC_SIZE) != fd.read(&mut sec_raw).ok() {
                 return None;
             }
 
             let sec: PeSection = unsafe { mem::transmute(sec_raw) };
-            println!("{}{}{}{}{}{}{}{}",
-                     sec.name[0] as char,
-                     sec.name[1] as char,
-                     sec.name[2] as char,
-                     sec.name[3] as char,
-                     sec.name[4] as char,
-                     sec.name[5] as char,
-                     sec.name[6] as char,
-                     sec.name[7] as char);
+            let name = String::from_utf8_lossy(&sec.name);
+
+            println!("{}",name);
+
+            let l = if sec.raw_sz > 0 {
+                let mut buf = vec![0; sec.raw_sz as usize];
+
+                if Some(sec.raw_ptr as u64) != fd.seek(SeekFrom::Start(sec.raw_ptr as u64)).ok() {
+                    return None;
+                }
+
+                if Some(sec.raw_sz as usize) != fd.read(&mut buf).ok() {
+                    return None;
+                }
+
+                println!("mapped '{}'",name);
+                Layer::wrap(buf.to_vec())
+            } else {
+                println!("not mapped '{}'",name);
+                Layer::undefined(sec.virt_sz_or_phy_addr as u64)
+            };
+
+            if !ram.cover(Bound::new(img_base + (sec.virt_address as u64),img_base + (sec.virt_address as u64) + (sec.raw_sz as u64)),l) {
+                return None;
+            }
         }
 
-        Some(ret)
+        Some(Project::new(name.to_string(),ram))
     } else {
         None
     }
