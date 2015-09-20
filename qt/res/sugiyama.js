@@ -204,6 +204,7 @@ WorkerScript.onMessage = function(msg) {
 
 	switch(msg.type) {
 		case "rankingSimplex": (function(){
+			console.log("rankingSimplex");
 			var nodes = msg.nodes;
 			var edges = msg.edges;
 			var widths = msg.widths;
@@ -306,6 +307,7 @@ WorkerScript.onMessage = function(msg) {
 			return;
 		})(); break;
 		case "order": (function() {
+			console.log("order");
 			var lp = msg.lp;
 			var nodes = msg.nodes;
 			var edges = msg.edges;
@@ -384,10 +386,14 @@ WorkerScript.onMessage = function(msg) {
 			var best_xings = crossings(nodes,edges,best,layout);
 
 			for(var j = 0; j < 24; j++) {
+				console.log("iter start");
 				wmedian(j,nodes,edges,order,layout);
+				console.log("iter wmedian done");
 				transpose(nodes,edges,order,layout);
+				console.log("iter transpose done");
 
 				var xings = crossings(nodes,edges,order,layout);
+				console.log("iter crossings done");
 
 				if(xings < best_xings) {
 					best = JSON.parse(JSON.stringify(order));
@@ -464,6 +470,7 @@ WorkerScript.onMessage = function(msg) {
 			return;
 		})(); break;
 		case "finalize": (function(){
+			console.log("finalize");
 			var lp = msg.lp;
 			var layout = msg.layout;
 			var nodes = msg.nodes;
