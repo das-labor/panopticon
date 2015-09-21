@@ -1,6 +1,5 @@
-use panopticon::value::Rvalue;
 use panopticon::project::Project;
-use panopticon::function::{Function,ControlFlowTarget};
+use panopticon::function::Function;
 use panopticon::region::Region;
 use panopticon::program::{Program,CallTarget};
 use panopticon::avr;
@@ -8,17 +7,13 @@ use panopticon::avr;
 use std::path::Path;
 use std::thread;
 use uuid::Uuid;
-use qmlrs::{ffi,MetaObject,Variant,Object,ToQVariant,unpack_varlist};
-use graph_algos::traits::{VertexListGraph,Graph,MutableGraph,IncidenceGraph,EdgeListGraph};
+use qmlrs::{Variant,Object};
+use graph_algos::traits::{VertexListGraph,Graph,MutableGraph};
 use controller::{
     DISCOVERED_FUNCTION,
     STARTED_FUNCTION,
     FINISHED_FUNCTION,
-    CREATE_AVR_SESSION,
-    CREATE_RAW_SESSION,
-    OPEN_SESSION,
     DONE,
-    START,
     PROJECT
 };
 
@@ -73,7 +68,7 @@ pub fn create_avr_session(_path: &Variant, ctrl: &mut Object) -> Variant {
     })
 }
 
-pub fn create_raw_session(_path: &Variant, ctrl: &mut Object) -> Variant {
+pub fn create_raw_session(_: &Variant, _: &mut Object) -> Variant {
     unimplemented!();
 }
 
@@ -113,7 +108,7 @@ pub fn start(_ctrl: &mut Object) -> Variant {
         } else {
             set_state("WORKING",_ctrl);
 
-            let mut ctrl = Object::from_ptr(_ctrl.as_ptr());
+            let ctrl = Object::from_ptr(_ctrl.as_ptr());
             thread::spawn(move || {
                 let mut prog = Program::new("prog0");
                 let prog_uuid = prog.uuid;

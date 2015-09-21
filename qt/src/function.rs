@@ -1,11 +1,11 @@
 use panopticon::value::Rvalue;
 use panopticon::project::Project;
 use panopticon::function::{Function,ControlFlowTarget};
-use panopticon::program::{Program,CallTarget};
+use panopticon::program::CallTarget;
 
 use std::hash::{Hash,Hasher,SipHasher};
-use qmlrs::{Variant,Object};
-use graph_algos::traits::{VertexListGraph,Graph,MutableGraph,IncidenceGraph,EdgeListGraph};
+use qmlrs::Variant;
+use graph_algos::traits::{VertexListGraph,Graph,IncidenceGraph,EdgeListGraph};
 use uuid::Uuid;
 use controller::PROJECT;
 

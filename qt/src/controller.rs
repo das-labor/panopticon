@@ -1,11 +1,8 @@
 use libc::c_int;
 use std::sync::RwLock;
-use std::path::Path;
-use std::thread;
 
 use panopticon::project::Project;
 use qmlrs::{ffi,MetaObject,Variant,Object,ToQVariant,unpack_varlist};
-use uuid::Uuid;
 
 lazy_static! {
     pub static ref PROJECT: RwLock<Option<Project>> = RwLock::new(None);
