@@ -14,7 +14,7 @@ pub mod semantic;
 #[derive(Clone)]
 pub enum Amd64 {}
 
-#[derive(Clone,PartialEq)]
+#[derive(Clone,PartialEq,Copy)]
 pub enum AddressSize
 {
     SixtyFour,
@@ -22,7 +22,7 @@ pub enum AddressSize
     Sixteen,
 }
 
-#[derive(Clone,PartialEq)]
+#[derive(Clone,PartialEq,Copy)]
 pub enum OperandSize
 {
     SixtyFour,
@@ -40,6 +40,26 @@ impl OperandSize {
             &OperandSize::Eight => 8,
         }
     }
+}
+
+#[derive(Clone,PartialEq,Copy)]
+pub enum Condition {
+    Overflow,
+    NotOverflow,
+    Carry,
+    AboveEqual,
+    Equal,
+    NotEqual,
+    BelowEqual,
+    Above,
+    Sign,
+    NotSign,
+    Parity,
+    NotParity,
+    Less,
+    GreaterEqual,
+    LessEqual,
+    Greater,
 }
 
 #[derive(Clone,PartialEq)]
@@ -332,6 +352,20 @@ pub fn disassembler(bits: u8) -> Rc<Disassembler<Amd64>> {
         },
         [ "imm@........", "imm@........", "imm@........", "imm@........" ] = |st: &mut State<Amd64>| {
             st.configuration.imm = Some(Rvalue::Constant(st.get_group("imm")));
+            st.configuration.operand_size == OperandSize::ThirtyTwo || st.configuration.operand_size == OperandSize::SixtyFour
+        });
+
+    let immlong = new_disassembler!(Amd64 =>
+        [ "imm@........" ] = |st: &mut State<Amd64>| {
+            st.configuration.imm = Some(Rvalue::Constant(st.get_group("imm")));
+            st.configuration.operand_size == OperandSize::Eight
+        },
+        [ "imm@........", "imm@........" ] = |st: &mut State<Amd64>| {
+            st.configuration.imm = Some(Rvalue::Constant(st.get_group("imm")));
+            st.configuration.operand_size == OperandSize::Sixteen
+        },
+        [ "imm@........", "imm@........", "imm@........", "imm@........" ] = |st: &mut State<Amd64>| {
+            st.configuration.imm = Some(Rvalue::Constant(st.get_group("imm")));
             st.configuration.operand_size == OperandSize::ThirtyTwo
         },
         [ "imm@........", "imm@........", "imm@........", "imm@........",
@@ -370,6 +404,21 @@ pub fn disassembler(bits: u8) -> Rc<Disassembler<Amd64>> {
           "moffs@........", "moffs@........", "moffs@........", "moffs@........" ] = |st: &mut State<Amd64>| {
             st.configuration.moffs = Some(Rvalue::Constant(st.get_group("moffs")));
             st.configuration.operand_size = OperandSize::Eight;
+            st.configuration.address_size == AddressSize::SixtyFour
+        });
+
+    let m64 = new_disassembler!(Amd64 =>
+        [ "mq@........", "mq@........" ] = |st: &mut State<Amd64>| {
+            st.configuration.rm = Some(decode::select_mem(&OperandSize::SixtyFour,Rvalue::Constant(st.get_group("mq"))));
+            st.configuration.address_size == AddressSize::Sixteen
+        },
+        [ "mq@........", "mq@........", "mq@........", "mq@........" ] = |st: &mut State<Amd64>| {
+            st.configuration.rm = Some(decode::select_mem(&OperandSize::SixtyFour,Rvalue::Constant(st.get_group("mq"))));
+            st.configuration.address_size == AddressSize::ThirtyTwo
+        },
+        [ "mq@........", "mq@........", "mq@........", "mq@........",
+          "mq@........", "mq@........", "mq@........", "mq@........" ] = |st: &mut State<Amd64>| {
+            st.configuration.rm = Some(decode::select_mem(&OperandSize::SixtyFour,Rvalue::Constant(st.get_group("mq"))));
             st.configuration.address_size == AddressSize::SixtyFour
         });
 
@@ -638,13 +687,13 @@ pub fn disassembler(bits: u8) -> Rc<Disassembler<Amd64>> {
     let (main, mainrep, mainrepx) = generic::add_generic(
         bits,
         lock_prfx,
-        imm8, imm16, imm32, imm48, imm64, imm,
+        imm8, imm16, imm32, imm48, imm64, imm, immlong,
         moffs8, moffs,
         sib,
         rm, rm0, rm1, rm2, rm3, rm4, rm5, rm6, rm7,
         rmbyte, rmbyte0, rmbyte1, rmbyte2, rmbyte3,
         rmbyte4, rmbyte5, rmbyte6, rmbyte7,
-        rmlong,
+        rmlong, m64,
         disp8, disp16, disp32, disp64);
 
     if(bits == 64)

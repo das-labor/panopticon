@@ -40,46 +40,66 @@ fn qword(o: Rvalue) -> Lvalue {
 }
 
 pub fn decode_m(sm: &mut State<Amd64>,cg: &mut CodeGen) -> Rvalue {
-    unimplemented!();
+    sm.configuration.rm.as_ref().unwrap().to_rv()
 }
 
 pub fn decode_d(sm: &mut State<Amd64>,cg: &mut CodeGen) -> Rvalue {
-    unimplemented!();
+    if let Some(Rvalue::Constant(c)) = sm.configuration.imm {
+        if c <= 0xffffffff {
+            Rvalue::Constant(c >> 16 | ((c & 0xffff) << 16))
+        } else {
+            Rvalue::Constant(c >> 32 | ((c & 0xffffffff) << 32))
+        }
+    } else {
+        unreachable!()
+    }
 }
 
 pub fn decode_imm(sm: &mut State<Amd64>,cg: &mut CodeGen) -> Rvalue {
-    unimplemented!();
+    sm.configuration.imm.clone().unwrap()
 }
 
 pub fn decode_moffs(sm: &mut State<Amd64>,cg: &mut CodeGen) -> Rvalue {
-    unimplemented!();
+    sm.configuration.moffs.clone().unwrap()
 }
 
 pub fn decode_rm1(sm: &mut State<Amd64>,cg: &mut CodeGen) -> Rvalue {
-    unimplemented!();
+    sm.configuration.rm.as_ref().unwrap().to_rv()
 }
 
 pub fn decode_i(sm: &mut State<Amd64>,cg: &mut CodeGen) -> (Rvalue,Rvalue) {
-    unimplemented!();
+    match &sm.configuration.operand_size {
+        &OperandSize::Eight => (ah.to_rv(),sm.configuration.imm.clone().unwrap()),
+        &OperandSize::Sixteen => (ax.to_rv(),sm.configuration.imm.clone().unwrap()),
+        &OperandSize::ThirtyTwo => (eax.to_rv(),sm.configuration.imm.clone().unwrap()),
+        &OperandSize::SixtyFour => (rax.to_rv(),sm.configuration.imm.clone().unwrap()),
+    }
 }
 
 pub fn decode_rm(sm: &mut State<Amd64>,cg: &mut CodeGen) -> (Rvalue,Rvalue) {
     if let (&Some(ref reg),&Some(ref rm)) = (&sm.configuration.reg,&sm.configuration.rm) {
         (reg.to_rv(),rm.to_rv())
     } else {
-        unimplemented!();
+        unreachable!();
     }
 }
 
+pub fn decode_mr(sm: &mut State<Amd64>,cg: &mut CodeGen) -> (Rvalue,Rvalue) {
+    let (a,b) = decode_rm(sm,cg);
+    (b,a)
+}
+
 pub fn decode_fd(sm: &mut State<Amd64>,cg: &mut CodeGen) -> (Rvalue,Rvalue) {
-    unimplemented!();
+    (select_reg(&sm.configuration.operand_size,0,sm.configuration.rex).to_rv(),
+    select_mem(&sm.configuration.operand_size,sm.configuration.moffs.clone().unwrap()).to_rv())
 }
 
 pub fn decode_td(sm: &mut State<Amd64>,cg: &mut CodeGen) -> (Rvalue,Rvalue) {
-    unimplemented!();
+    let (a,b) = decode_fd(sm,cg);
+    (b,a)
 }
 
-pub fn decode_regms(sm: &mut State<Amd64>,cg: &mut CodeGen) -> (Rvalue,Rvalue) {
+pub fn decode_msreg(sm: &mut State<Amd64>,cg: &mut CodeGen) -> (Rvalue,Rvalue) {
     let (a,b) = decode_sregm(sm,cg);
     (b,a)
 }
@@ -107,27 +127,67 @@ pub fn decode_sregm(sm: &mut State<Amd64>,cg: &mut CodeGen) -> (Rvalue,Rvalue) {
 }
 
 pub fn decode_dbgrm(sm: &mut State<Amd64>,cg: &mut CodeGen) -> (Rvalue,Rvalue) {
-    unimplemented!();
+    if let (&Some(ref reg),&Some(ref rm)) = (&sm.configuration.reg,&sm.configuration.rm) {
+        if *reg == *rax || *reg == *eax  {
+            (dr0.to_rv(),rm.to_rv())
+        } else if *reg == *rcx || *reg == *ecx  {
+            (dr1.to_rv(),rm.to_rv())
+        } else if *reg == *rdx || *reg == *edx  {
+            (dr2.to_rv(),rm.to_rv())
+        } else if *reg == *rbx || *reg == *ebx  {
+            (dr3.to_rv(),rm.to_rv())
+        } else if *reg == *rsp || *reg == *esp  {
+            (dr4.to_rv(),rm.to_rv())
+        } else if *reg == *rbp || *reg == *ebp  {
+            (dr5.to_rv(),rm.to_rv())
+        } else if *reg == *rdi || *reg == *edi  {
+            (dr7.to_rv(),rm.to_rv())
+        } else if *reg == *rsi || *reg == *esi  {
+            (dr6.to_rv(),rm.to_rv())
+        } else {
+            unreachable!()
+        }
+    } else {
+        unreachable!()
+    }
 }
 
 pub fn decode_rmdbg(sm: &mut State<Amd64>,cg: &mut CodeGen) -> (Rvalue,Rvalue) {
-    unimplemented!();
+    let (a,b) = decode_dbgrm(sm,cg);
+    (b,a)
 }
 
 pub fn decode_ctrlrm(sm: &mut State<Amd64>,cg: &mut CodeGen) -> (Rvalue,Rvalue) {
-    unimplemented!();
+    if let (&Some(ref reg),&Some(ref rm)) = (&sm.configuration.reg,&sm.configuration.rm) {
+        if *reg == *rax || *reg == *eax  {
+            (cr0.to_rv(),rm.to_rv())
+        } else if *reg == *rdx || *reg == *edx  {
+            (cr2.to_rv(),rm.to_rv())
+        } else if *reg == *rbx || *reg == *ebx  {
+            (cr3.to_rv(),rm.to_rv())
+        } else if *reg == *rsp || *reg == *esp  {
+            (cr4.to_rv(),rm.to_rv())
+        } else if *reg == *r9 || *reg == *r9w  {
+            (cr8.to_rv(),rm.to_rv())
+        } else {
+            unreachable!()
+        }
+    } else {
+        unreachable!()
+    }
 }
 
 pub fn decode_rmctrl(sm: &mut State<Amd64>,cg: &mut CodeGen) -> (Rvalue,Rvalue) {
-    unimplemented!();
-}
-
-pub fn decode_mr(sm: &mut State<Amd64>,cg: &mut CodeGen) -> (Rvalue,Rvalue) {
-    unimplemented!();
+    let (a,b) = decode_ctrlrm(sm,cg);
+    (b,a)
 }
 
 pub fn decode_mi(sm: &mut State<Amd64>,cg: &mut CodeGen) -> (Rvalue,Rvalue) {
-    unimplemented!();
+    if let (&Some(ref rm),&Some(ref imm)) = (&sm.configuration.rm,&sm.configuration.imm) {
+        (rm.to_rv(),imm.clone())
+    } else {
+        unreachable!()
+    }
 }
 
 pub fn decode_m1(sm: &mut State<Amd64>,cg: &mut CodeGen) -> (Rvalue,Rvalue) {
@@ -268,7 +328,7 @@ fn select_reg(os: &OperandSize,r: usize, rex: bool) -> Lvalue {
     }
 }
 
-fn select_mem(os: &OperandSize,o: Rvalue) -> Lvalue {
+pub fn select_mem(os: &OperandSize,o: Rvalue) -> Lvalue {
     match os {
         &OperandSize::Eight => byte(o),
         &OperandSize::Sixteen => word(o),
@@ -470,174 +530,167 @@ fn decode_sib(
     }
 }
 
-pub fn binary(opcode: &str,
-              decode: fn(&mut State<Amd64>, &mut CodeGen) -> (Rvalue,Rvalue),
-              sem: fn(cg: &mut CodeGen, a: Rvalue, b: Rvalue)
+pub fn nonary(opcode: &str, sem: &Fn(&mut CodeGen)) -> Box<Fn(&mut State<Amd64>) -> bool> {
+    Box::new(move |st: &mut State<Amd64>| -> bool {
+        false
+    })
+}
+
+pub fn unary(opcode: &str,
+              decode: fn(&mut State<Amd64>, &mut CodeGen) -> Rvalue,
+              sem: &Fn(&mut CodeGen, Rvalue)
              ) -> Box<Fn(&mut State<Amd64>) -> bool> {
     Box::new(move |st: &mut State<Amd64>| -> bool {
         false
     })
 }
 
-pub fn binary_reg(opcode: &str,
-                  a: &Lvalue,
-                  decode: fn(&mut State<Amd64>, &mut CodeGen) -> Rvalue,
-                  sem: fn(cg: &mut CodeGen, a: Rvalue, b: Rvalue)
+pub fn unary_c(opcode: &str,
+                  a: Rvalue,
+                  sem: &Fn(&mut CodeGen, Rvalue)
                  ) -> Box<Fn(&mut State<Amd64>) -> bool> {
     Box::new(move |st: &mut State<Amd64>| -> bool {
         false
     })
 }
 
+pub fn binary(opcode: &str,
+              decode: fn(&mut State<Amd64>, &mut CodeGen) -> (Rvalue,Rvalue),
+              sem: &Fn(&mut CodeGen, Rvalue, Rvalue)
+             ) -> Box<Fn(&mut State<Amd64>) -> bool> {
+    Box::new(move |st: &mut State<Amd64>| -> bool {
+        false
+    })
+}
+
+pub fn binary_rv(opcode: &str,
+                  a: &Lvalue,
+                  decode: fn(&mut State<Amd64>, &mut CodeGen) -> Rvalue,
+                  sem: &Fn(&mut CodeGen, Rvalue, Rvalue)
+                 ) -> Box<Fn(&mut State<Amd64>) -> bool> {
+    Box::new(move |st: &mut State<Amd64>| -> bool {
+        false
+    })
+}
+
+pub fn binary_vr(opcode: &str,
+                  decode: fn(&mut State<Amd64>, &mut CodeGen) -> Rvalue,
+                  b: &Lvalue,
+                  sem: &Fn(&mut CodeGen, Rvalue, Rvalue)
+                 ) -> Box<Fn(&mut State<Amd64>) -> bool> {
+    Box::new(move |st: &mut State<Amd64>| -> bool {
+        false
+    })
+}
+
+pub fn binary_vc(opcode: &str,
+                  decode: fn(&mut State<Amd64>, &mut CodeGen) -> Rvalue,
+                  b: Rvalue,
+                  sem: &Fn(&mut CodeGen, Rvalue, Rvalue)
+                 ) -> Box<Fn(&mut State<Amd64>) -> bool> {
+    Box::new(move |st: &mut State<Amd64>| -> bool {
+        false
+    })
+}
+
+pub fn binary_rr(opcode: &str,
+                  a: &Lvalue,
+                  b: &Lvalue,
+                  sem: &Fn(&mut CodeGen, Rvalue, Rvalue)
+                 ) -> Box<Fn(&mut State<Amd64>) -> bool> {
+    Box::new(move |st: &mut State<Amd64>| -> bool {
+        false
+    })
+}
+
+pub fn binary_vv(opcode: &str,
+                  decodea: fn(&mut State<Amd64>, &mut CodeGen) -> Rvalue,
+                  decodeb: fn(&mut State<Amd64>, &mut CodeGen) -> Rvalue,
+                  sem: &Fn(&mut CodeGen, Rvalue, Rvalue)
+                 ) -> Box<Fn(&mut State<Amd64>) -> bool> {
+    Box::new(move |st: &mut State<Amd64>| -> bool {
+        false
+    })
+}
+
+pub fn trinary(opcode: &str,
+              decode: fn(&mut State<Amd64>, &mut CodeGen) -> (Rvalue,Rvalue,Rvalue),
+              sem: &Fn(&mut CodeGen, Rvalue, Rvalue, Rvalue)
+             ) -> Box<Fn(&mut State<Amd64>) -> bool> {
+    Box::new(move |st: &mut State<Amd64>| -> bool {
+        false
+    })
+}
+
+pub fn trinary_vr(opcode: &str,
+                  decode: fn(&mut State<Amd64>, &mut CodeGen) -> (Rvalue,Rvalue),
+                  c: &Lvalue,
+                  sem: &Fn(&mut CodeGen, Rvalue, Rvalue, Rvalue)) -> Box<Fn(&mut State<Amd64>) -> bool> {
+    Box::new(move |st: &mut State<Amd64>| -> bool {
+        false
+    })
+}
+
+macro_rules! reg {
+    ( $a:ident,$I:expr ) => {
+        pub fn $a(st: &mut State<Amd64>, cg: &mut CodeGen) -> Rvalue {
+            let r = if st.has_group("b") && st.get_group("b") == 1 { 8 } else { 0 } + $I;
+            select_reg(&st.configuration.operand_size,r,st.configuration.rex).to_rv()
+        }
+    }
+}
+
+macro_rules! regd {
+    ( $a:ident,$I:expr ) => {
+        pub fn $a(st: &mut State<Amd64>, cg: &mut CodeGen) -> Rvalue {
+            let r = if st.has_group("b") && st.get_group("b") == 1 { 8 } else { 0 } + $I;
+            let opsz = if st.configuration.mode == Mode::Long && st.configuration.operand_size == OperandSize::ThirtyTwo {
+                OperandSize::SixtyFour
+            } else {
+                st.configuration.operand_size
+            };
+            select_reg(&opsz,r,st.configuration.rex).to_rv()
+        }
+    }
+}
+
+macro_rules! regb {
+    ( $a:ident,$I:expr ) => {
+        pub fn $a(st: &mut State<Amd64>, cg: &mut CodeGen) -> Rvalue {
+            let r = if st.has_group("b") && st.get_group("b") == 1 { 8 } else { 0 } + $I;
+            select_reg(&OperandSize::Eight,r,st.configuration.rex).to_rv()
+        }
+    }
+}
+
+reg!(reg_a,0);
+reg!(reg_c,1);
+reg!(reg_d,2);
+reg!(reg_b,3);
+reg!(reg_sp,4);
+reg!(reg_bp,5);
+reg!(reg_si,6);
+reg!(reg_di,7);
+
+regd!(regd_a,0);
+regd!(regd_c,1);
+regd!(regd_d,2);
+regd!(regd_b,3);
+regd!(regd_sp,4);
+regd!(regd_bp,5);
+regd!(regd_si,6);
+regd!(regd_di,7);
+
+regb!(regb_a,0);
+regb!(regb_c,1);
+regb!(regb_d,2);
+regb!(regb_b,3);
+regb!(regb_sp,4);
+regb!(regb_bp,5);
+regb!(regb_si,6);
+regb!(regb_di,7);
+
 /*
-
-std::pair<po::rvalue,po::rvalue> po::amd64::decode_ctrlrm(sm const& st,cg&)
-{
-    ensure(st.state.reg && st.state.rm);
-    ensure(is_variable(*st.state.reg));
-
-    variable reg = to_variable(*st.state.reg);
-
-    if(reg == eax || reg == rax)
-        return std::make_pair(cr0,*st.state.rm);
-    else if(reg == edx || reg == rdx)
-        return std::make_pair(cr2,*st.state.rm);
-    else if(reg == ebx || reg == rbx)
-        return std::make_pair(cr3,*st.state.rm);
-    else if(reg == esp || reg == rsp)
-        return std::make_pair(cr4,*st.state.rm);
-    else if(reg == r9w || reg == r8)
-        return std::make_pair(cr8,*st.state.rm);
-    else
-    {
-        std::cerr << reg << std::endl;
-        throw std::invalid_argument("unknown control register");
-    }
-}
-
-std::pair<po::rvalue,po::rvalue> po::amd64::decode_rmctrl(sm const& st,cg& c)
-{
-    auto ret = decode_ctrlrm(st,c);
-    return std::make_pair(ret.second,ret.first);
-}
-
-std::pair<po::rvalue,po::rvalue> po::amd64::decode_dbgrm(sm const& st,cg&)
-{
-    ensure(st.state.reg && st.state.rm);
-    ensure(is_variable(*st.state.reg));
-
-    variable reg = to_variable(*st.state.reg);
-
-    if(reg == eax || reg == rax)
-        return std::make_pair(dr0,*st.state.rm);
-    else if(reg == ecx || reg == rcx)
-        return std::make_pair(dr1,*st.state.rm);
-    else if(reg == edx || reg == rdx)
-        return std::make_pair(dr2,*st.state.rm);
-    else if(reg == ebx || reg == rbx)
-        return std::make_pair(dr3,*st.state.rm);
-    else if(reg == esp || reg == rsp)
-        return std::make_pair(dr4,*st.state.rm);
-    else if(reg == ebp || reg == rbp)
-        return std::make_pair(dr5,*st.state.rm);
-    else if(reg == esi || reg == rsi)
-        return std::make_pair(dr6,*st.state.rm);
-    else if(reg == edi || reg == rdi)
-        return std::make_pair(dr7,*st.state.rm);
-    else
-        throw std::invalid_argument("unknown debug register");
-}
-
-std::pair<po::rvalue,po::rvalue> po::amd64::decode_rmdbg(sm const& st,cg& c)
-{
-    auto ret = decode_dbgrm(st,c);
-    return std::make_pair(ret.second,ret.first);
-}
-po::rvalue po::amd64::decode_rm1(sm const& st,cg&)
-{
-    ensure(st.state.rm);
-    return *st.state.rm;
-}
-
-std::pair<rvalue,rvalue> po::amd64::decode_mr(sm const& st,cg&)
-{
-    ensure(st.state.reg && st.state.rm);
-    return std::make_pair(*st.state.rm,*st.state.reg);
-}
-
-std::pair<rvalue,rvalue> po::amd64::decode_fd(sm const& st,cg&)
-{
-    ensure(st.state.moffs);
-    return std::make_pair(select_reg(st.state.op_sz,0,st.state.rex),select_mem(st.state.op_sz,*st.state.moffs));
-}
-
-std::pair<rvalue,rvalue> po::amd64::decode_td(sm const& st,cg&)
-{
-    ensure(st.state.moffs);
-    return std::make_pair(select_mem(st.state.op_sz,*st.state.moffs),select_reg(st.state.op_sz,0,st.state.rex));
-}
-
-std::pair<rvalue,rvalue> po::amd64::decode_mi(sm const& st,cg&)
-{
-    ensure(st.state.rm && st.state.imm);
-    return std::make_pair(*st.state.rm,*st.state.imm);
-}
-
-std::pair<rvalue,rvalue> po::amd64::decode_i(sm const& st,cg&)
-{
-    ensure(st.state.imm);
-    switch(st.state.op_sz)
-    {
-        case amd64_state::OpSz_8: return std::make_pair(ah,*st.state.imm);
-        case amd64_state::OpSz_16: return std::make_pair(ax,*st.state.imm);
-        case amd64_state::OpSz_32: return std::make_pair(eax,*st.state.imm);
-        case amd64_state::OpSz_64: return std::make_pair(rax,*st.state.imm);
-        default: ensure(false);
-    }
-}
-
-rvalue po::amd64::decode_m(sm const& st,cg&)
-{
-    ensure(st.state.rm);
-    return *st.state.rm;
-}
-
-rvalue po::amd64::decode_d(sm const& st,cg&)
-{
-    ensure(st.state.imm);
-
-    Rvalue::Constant c = *st.state.imm;
-    uint64_t a,b;
-    unsigned int s;
-
-    if(c.content() <= 0xffffffff)
-    {
-        a = st.state.imm->content() >> 16;
-        b = c.content() & 0xffff;
-        s = 16;
-    }
-    else
-    {
-        a = st.state.imm->content() >> 32;
-        b = c.content() & 0xffffffff;
-        s = 32;
-    }
-
-    return Rvalue::Constant((a << s) | b);
-}
-
-rvalue po::amd64::decode_imm(sm const& st,cg&)
-{
-    ensure(st.state.imm);
-    return *st.state.imm;
-}
-
-rvalue po::amd64::decode_moffs(sm const& st,cg&)
-{
-    ensure(st.state.moffs);
-    return select_mem(st.state.op_sz,*st.state.moffs);
-}
-
 sem_action po::amd64::nonary(std::string const& op, std::function<void(cg&)> func)
 {
     return [op,func](sm &st)
