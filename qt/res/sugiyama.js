@@ -204,6 +204,7 @@ WorkerScript.onMessage = function(msg) {
 
 	switch(msg.type) {
 		case "rankingSimplex": (function(){
+			Panopticon.sugiyamaLayout("{}");
 			console.log("rankingSimplex");
 			var nodes = msg.nodes;
 			var edges = msg.edges;

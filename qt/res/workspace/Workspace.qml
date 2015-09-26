@@ -125,11 +125,16 @@ Item {
 				onSelectionChanged: {
 					var cfg = eval(Panopticon.functionCfg(selection));
 					var func = eval(Panopticon.functionInfo(selection));
-					cfg.type = "rankingSimplex";
-					cfg.widths = {};
-					cfg.heights = {};
+					var rev_index = {};
+					var msg = {
+						"nodes": [],
+						"edges": [],
+						"dimensions": {},
+						"rank_spacing": 100,
+						"node_spacing": 30,
+					};
 
-					cfg.head = "bb" + func.start.toString();
+					console.log(JSON.stringify(cfg));
 
 					if(cflow_graph.item.bblockList != null) {
 						for (var i in bblockList) {
@@ -143,7 +148,6 @@ Item {
 					bblockList = {};
 					for(var i = 0; i < cfg.nodes.length; i++) {
 						var node = cfg.nodes[i];
-
 						var contents = " ";
 
 						if(cfg.contents[node]) {
@@ -158,12 +162,51 @@ Item {
 
 						obj.visible = false;
 						bblockList[node] = obj;
-						cfg.widths[node] = obj.width;
-						cfg.heights[node] = obj.height;
+
+						msg.dimensions[i] = {"width":obj.width,"height":obj.height};
+						rev_index[node] = i;
+						msg.nodes.push(i);
+
+						if("bb" + func.start.toString() == node) {
+							msg.entry = i;
+						}
+					}
+
+					for(var j = 0; j < cfg.edges.length; j++) {
+						msg.edges.push({
+							"from":rev_index[cfg.edges[j].from],
+							"to":rev_index[cfg.edges[j].to]
+						});
 					}
 
 					if(cfg.nodes.length > 1) {
-						layoutTask.sendMessage(cfg);
+						console.log(JSON.stringify(msg));
+						var pos = JSON.parse(Panopticon.sugiyamaLayout(JSON.stringify(msg)));
+						var right = 0;
+						var bottom = 0;
+
+						console.log(JSON.stringify(pos));
+
+						for (var k in pos) {
+							if(pos.hasOwnProperty(k)) {
+								var node = cfg.nodes[k];
+								var obj = bblockList[node];
+
+								obj.visible = true;
+								obj.x = pos[k].x - obj.width / 2 + 100;
+								obj.y = pos[k].y - obj.height / 2 + 100;
+
+
+								right = Math.max(right,obj.x + obj.width);
+								bottom = Math.max(bottom,obj.y + obj.height);
+							}
+						}
+
+						graph.width = right + 200;
+						graph.height = bottom + 200;
+
+						graph.y = (cflow_graph.item.height - graph.height) / 2;
+						graph.x = (cflow_graph.item.width - graph.width) / 2;
 					} else {
 						for (var i in bblockList) {
 							if(bblockList.hasOwnProperty(i)) {

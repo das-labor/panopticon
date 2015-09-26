@@ -20,6 +20,7 @@ tempdir = "*"
 lazy_static = "*"
 libc = "*"
 uuid = "*"
+glpk-sys = "*"
 
 [dependencies.qmlrs]
 git = "https://github.com/flanfly/qmlrs"

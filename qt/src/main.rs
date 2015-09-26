@@ -3,6 +3,8 @@ extern crate qmlrs;
 extern crate libc;
 extern crate graph_algos;
 extern crate uuid;
+extern crate rustc_serialize;
+extern crate glpk_sys as glpk;
 
 #[macro_use]
 extern crate lazy_static;
