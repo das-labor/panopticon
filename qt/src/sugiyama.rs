@@ -616,7 +616,6 @@ fn solve_integer_program(a: &Vec<Vec<isize>>,
 #[cfg(test)]
 mod tests {
     use super::*;
-    use qmlrs::Variant;
     use graph_algos::{AdjacencyList,GraphTrait,MutableGraphTrait};
     use graph_algos::{VertexListGraphTrait,EdgeListGraphTrait};
     use std::collections::HashMap;
@@ -751,10 +750,44 @@ mod tests {
             tr - fr == 1
         }));
     }
-/* XXX
+
     #[test]
     fn large_graph() {
-        let json = Variant::String("{\"dimensions\":{\"0\":{\"height\":178,\"width\":139.375},\"1\":{\"height\":24,\"width\":67.5},\"2\":{\"height\":24,\"width\":67.5},\"3\":{\"height\":24,\"width\":67.5},\"4\":{\"height\":52,\"width\":89.0625},\"5\":{\"height\":52,\"width\":125},\"6\":{\"height\":346,\"width\":139.375},\"7\":{\"height\":52,\"width\":132.1875},\"8\":{\"height\":108,\"width\":96.25},\"9\":{\"height\":38,\"width\":53.125},\"10\":{\"height\":38,\"width\":67.5},\"11\":{\"height\":52,\"width\":132.1875},\"12\":{\"height\":24,\"width\":53.125},\"13\":{\"height\":24,\"width\":67.5},\"14\":{\"height\":24,\"width\":53.125},\"15\":{\"height\":24,\"width\":67.5},\"16\":{\"height\":52,\"width\":67.5},\"17\":{\"height\":234,\"width\":132.1875},\"18\":{\"height\":24,\"width\":67.5},\"19\":{\"height\":94,\"width\":132.1875},\"20\":{\"height\":52,\"width\":89.0625},\"21\":{\"height\":24,\"width\":67.5},\"22\":{\"height\":94,\"width\":96.25},\"23\":{\"height\":52,\"width\":81.875},\"24\":{\"height\":206,\"width\":132.1875},\"25\":{\"height\":24,\"width\":67.5},\"26\":{\"height\":164,\"width\":125},\"27\":{\"height\":38,\"width\":89.0625},\"28\":{\"height\":94,\"width\":96.25},\"29\":{\"height\":52,\"width\":67.5},\"30\":{\"height\":38,\"width\":89.0625}},\"edges\":[{\"from\":22,\"to\":13},{\"from\":1,\"to\":23},{\"from\":23,\"to\":3},{\"from\":27,\"to\":16},{\"from\":20,\"to\":27},{\"from\":17,\"to\":12},{\"from\":30,\"to\":20},{\"from\":9,\"to\":25},{\"from\":16,\"to\":25},{\"from\":4,\"to\":17},{\"from\":26,\"to\":7},{\"from\":28,\"to\":26},{\"from\":7,\"to\":11},{\"from\":8,\"to\":26},{\"from\":23,\"to\":15},{\"from\":2,\"to\":10},{\"from\":30,\"to\":24},{\"from\":19,\"to\":18},{\"from\":15,\"to\":28},{\"from\":10,\"to\":5},{\"from\":19,\"to\":9},{\"from\":5,\"to\":6},{\"from\":1,\"to\":8},{\"from\":4,\"to\":30},{\"from\":27,\"to\":4},{\"from\":13,\"to\":16},{\"from\":20,\"to\":21},{\"from\":12,\"to\":19},{\"from\":26,\"to\":22},{\"from\":7,\"to\":16},{\"from\":29,\"to\":25},{\"from\":18,\"to\":14},{\"from\":11,\"to\":27},{\"from\":24,\"to\":19},{\"from\":3,\"to\":29},{\"from\":0,\"to\":12},{\"from\":22,\"to\":2},{\"from\":25,\"to\":10},{\"from\":14,\"to\":5},{\"from\":21,\"to\":0}],\"node_spacing\":30,\"nodes\":[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30],\"rank_spacing\":100,\"entry\":1}".to_string());
-        layout(&json);
-    }*/
+        let nodes = vec![0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30];
+        let edges = vec![(22,13),(1,23),(23,3),(27,16),(20,27),(17,12),(30,20),(9,25),(16,25),(4,17),(26,7),(28,26),(7,11),(8,26),(23,15),(2,10),(30,24),(19,18),(15,28),(10,5),(19,9),(5,6),(1,8),(4,30),(27,4),(13,16),(20,21),(12,19),(26,22),(7,16),(29,25),(18,14),(11,27),(24,19),(3,29),(0,12),(22,2),(25,10),(14,5),(21,0)];
+        let mut dims = HashMap::<usize,(f32,f32)>::new();
+
+        dims.insert(0,(178.0,139.375));
+        dims.insert(1,(24.0,67.5));
+        dims.insert(2,(24.0,67.5));
+        dims.insert(3,(24.0,67.5));
+        dims.insert(4,(52.0,89.0625));
+        dims.insert(5,(52.0,125.0));
+        dims.insert(6,(346.0,139.375));
+        dims.insert(7,(52.0,132.1875));
+        dims.insert(8,(108.0,96.25));
+        dims.insert(9,(38.0,53.125));
+        dims.insert(10,(38.0,67.5));
+        dims.insert(11,(52.0,132.1875));
+        dims.insert(12,(24.0,53.125));
+        dims.insert(13,(24.0,67.5));
+        dims.insert(14,(24.0,53.125));
+        dims.insert(15,(24.0,67.5));
+        dims.insert(16,(52.0,67.5));
+        dims.insert(17,(234.0,132.1875));
+        dims.insert(18,(24.0,67.5));
+        dims.insert(19,(94.0,132.1875));
+        dims.insert(20,(52.0,89.0625));
+        dims.insert(21,(24.0,67.5));
+        dims.insert(22,(94.0,96.25));
+        dims.insert(23,(52.0,81.875));
+        dims.insert(24,(206.0,132.1875));
+        dims.insert(25,(24.0,67.5));
+        dims.insert(26,(164.0,125.0));
+        dims.insert(27,(38.0,89.0625));
+        dims.insert(28,(94.0,96.25));
+        dims.insert(29,(52.0,67.5));
+        dims.insert(30,(38.0,89.0625));
+        layout(&nodes,&edges,&dims,None,100,30);
+    }
 }
