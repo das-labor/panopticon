@@ -4,10 +4,20 @@ use panopticon::function::{Function,ControlFlowTarget};
 use panopticon::program::CallTarget;
 
 use std::hash::{Hash,Hasher,SipHasher};
-use qmlrs::Variant;
+use std::thread;
+use qmlrs::{Object,Variant};
 use graph_algos::traits::{VertexListGraph,Graph,IncidenceGraph,EdgeListGraph};
 use uuid::Uuid;
 use controller::PROJECT;
+use rustc_serialize::json;
+use std::collections::HashMap;
+use controller::LAYOUTED_FUNCTION;
+use sugiyama;
+
+/*
+ * emit DISCOVERED_FUNCTION -> emit STARTED_FUNCTION -> emit FINISHED_FUNCTION -> layout(UUID) ->
+ * emit LAYOUTED_FUNCTION -> emit ROUTED_FUNCTION
+ */
 
 /// JSON describing the function with UUID `arg`.
 ///
@@ -119,7 +129,7 @@ pub fn control_flow_graph(arg: &Variant) -> Variant {
                     // nodes
                     let nodes = cfg.vertices()
                         .filter_map(|x| {
-                            cfg.vertex_label(x).map(to_ident)
+                            cfg.vertex_label(x).map(|x| "\"".to_string() + &to_ident(x) + "\"")
                         })
                         .fold("".to_string(),|acc,x| {
                             if acc != "" { acc + "," + &x } else { x }
@@ -157,7 +167,7 @@ pub fn control_flow_graph(arg: &Variant) -> Variant {
                             let to_ident = cfg.vertex_label(to).map(to_ident);
 
                             if let (Some(f),Some(t)) = (from_ident,to_ident) {
-                                Some(format!("{{\"from\":{},\"to\":{}}}",f,t))
+                                Some(format!("{{\"from\":\"{}\",\"to\":\"{}\"}}",f,t))
                             } else {
                                 None
                             }
@@ -189,11 +199,125 @@ pub fn control_flow_graph(arg: &Variant) -> Variant {
 fn to_ident(t: &ControlFlowTarget) -> String {
     match t {
         &ControlFlowTarget::Resolved(ref bb) =>
-            format!("\"bb{}\"",bb.area.start),
+            format!("bb{}",bb.area.start),
         &ControlFlowTarget::Unresolved(ref c) => {
             let ref mut h = SipHasher::new();
             c.hash::<SipHasher>(h);
-            format!("\"c{}\"",h.finish())
+            format!("c{}",h.finish())
         }
     }
+}
+
+#[derive(RustcDecodable,Debug)]
+struct LayoutInputDimension {
+    width: f32,
+    height: f32,
+}
+
+#[derive(RustcEncodable,Debug)]
+struct LayoutOutputPosition {
+    x: f32,
+    y: f32,
+}
+
+/// Layout a control flow graph.
+///
+/// Uses a layered graph drawing algorithm (Sugiyama's method) the
+/// lay out a directed control flow graph.
+///
+/// Input has to look loke this:
+/// ```json
+/// {
+///         "<ID>": {
+///             "height": <NUM>,
+///             "width": <NUM,
+///         },
+///         ...
+///     },
+///     "entry": "<ID>", // optional
+///     "rank_spacing": <INT>, // y padding
+///     "node_spacing": <INT>  // x padding
+/// }```
+///
+/// Output:
+/// ```json
+/// {
+///     <ID>: {
+///         "x": <X-COORD>,
+///         "y": <Y-COORD>
+///     }
+/// }```
+pub fn layout(arg0: &Variant, arg1: &Variant, arg2: &Variant, arg3: &Variant, _ctrl: &mut Object) -> Variant {
+    let dims = if let &Variant::String(ref st) = arg1 {
+        match json::decode::<HashMap<String,LayoutInputDimension>>(st) {
+            Ok(input) => {
+                input
+            },
+            Err(err) => {
+                println!("can't parse layout request: {}",err);
+                return Variant::String("{}".to_string());
+            }
+        }
+    } else {
+        return Variant::String("{}".to_string());
+    };
+
+    let rank_spacing = if let &Variant::I64(ref x) = arg2 {
+        *x
+    } else {
+        return Variant::String("{}".to_string());
+    };
+
+    let node_spacing = if let &Variant::I64(ref x) = arg3 {
+        *x
+    } else {
+        return Variant::String("{}".to_string());
+    };
+
+    if let &Variant::String(ref st) = arg0 {
+        if let Some(uuid) = Uuid::parse_str(st).ok() {
+            let read_guard = PROJECT.read().unwrap();
+            let proj: &Project = read_guard.as_ref().unwrap();
+
+            if let Some((vx,prog)) = proj.find_call_target_by_uuid(&uuid) {
+                if let Some(&CallTarget::Concrete(ref func)) = prog.call_graph.vertex_label(vx) {
+
+                    let vertices = func.cflow_graph.vertices().collect::<Vec<_>>();
+                    let edges = func.cflow_graph.edges().map(|e| {
+                        let f = vertices.iter().position(|&x| x == func.cflow_graph.source(e)).unwrap();
+                        let t = vertices.iter().position(|&x| x == func.cflow_graph.target(e)).unwrap();
+                        (f,t)
+                    }).collect::<Vec<_>>();
+                    let mut dims_transformed = HashMap::<usize,(f32,f32)>::new();
+
+                    for (k,v) in dims.iter() {
+                        let _k = vertices.iter().position(|&x| {
+                            let a = to_ident(func.cflow_graph.vertex_label(x).unwrap());
+                            a == *k
+                        }).unwrap();
+                        dims_transformed.insert(_k,(v.width as f32,v.height as f32));
+                    }
+                    let maybe_entry = func.entry_point.map(|k| vertices.iter().position(|&x| x == k).unwrap());
+                    let idents = func.cflow_graph.vertices().map(|x| to_ident(func.cflow_graph.vertex_label(x).unwrap())).collect::<Vec<_>>();
+                    let ctrl = Object::from_ptr(_ctrl.as_ptr());
+
+                    thread::spawn(move || {
+                        let res = sugiyama::layout(&(0..vertices.len()).collect::<Vec<usize>>(),
+                                                   &edges,
+                                                   &dims_transformed,
+                                                   maybe_entry,
+                                                   node_spacing as usize,
+                                                   rank_spacing as usize);
+                        let mut ret = HashMap::<String,LayoutOutputPosition>::new();
+                        for (k,v) in res.iter() {
+                            ret.insert(idents[*k].clone(),LayoutOutputPosition{ x: v.0 as f32, y: v.1 as f32 });
+                        }
+                        ctrl.emit(LAYOUTED_FUNCTION,&vec![Variant::String(json::encode(&ret).ok().unwrap())]);
+                    });
+                }
+            }
+        }
+    }
+
+    Variant::String("{}".to_string())
 }

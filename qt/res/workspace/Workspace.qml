@@ -84,8 +84,8 @@ Item {
 
 					onPaint: {
 						var ctx = graph.getContext('2d');
-						var func = eval(Panopticon.functionInfo(selection));
-						var cfg = eval(Panopticon.functionCfg(selection));
+						var func = JSON.parse(Panopticon.functionInfo(selection));
+						var cfg = JSON.parse(Panopticon.functionCfg(selection));
 
 						ctx.clearRect(0,0,width,height);
 
@@ -122,19 +122,39 @@ Item {
 				property string selection: "";
 				property var bblockList: null;
 
-				onSelectionChanged: {
-					var cfg = eval(Panopticon.functionCfg(selection));
-					var func = eval(Panopticon.functionInfo(selection));
-					var rev_index = {};
-					var msg = {
-						"nodes": [],
-						"edges": [],
-						"dimensions": {},
-						"rank_spacing": 100,
-						"node_spacing": 30,
-					};
+				Component.onCompleted: {
+					Panopticon.layoutedFunction.connect(function(_pos) {
+						var cfg = JSON.parse(Panopticon.functionCfg(selection));
+						var pos = JSON.parse(_pos);
+						var right = 0;
+						var bottom = 0;
 
-					console.log(JSON.stringify(cfg));
+						for (var k in pos) {
+							if(pos.hasOwnProperty(k)) {
+								var obj = bblockList[k];
+
+								obj.visible = true;
+								obj.x = pos[k].x - obj.width / 2 + 100;
+								obj.y = pos[k].y - obj.height / 2 + 100;
+
+
+								right = Math.max(right,obj.x + obj.width);
+								bottom = Math.max(bottom,obj.y + obj.height);
+							}
+						}
+
+						graph.width = right + 200;
+						graph.height = bottom + 200;
+
+						graph.y = (cflow_graph.item.height - graph.height) / 2;
+						graph.x = (cflow_graph.item.width - graph.width) / 2;
+					});
+				}
+
+				onSelectionChanged: {
+					var cfg = JSON.parse(Panopticon.functionCfg(selection));
+					var func = JSON.parse(Panopticon.functionInfo(selection));
+					var dims = {};
 
 					if(cflow_graph.item.bblockList != null) {
 						for (var i in bblockList) {
@@ -163,50 +183,11 @@ Item {
 						obj.visible = false;
 						bblockList[node] = obj;
 
-						msg.dimensions[i] = {"width":obj.width,"height":obj.height};
-						rev_index[node] = i;
-						msg.nodes.push(i);
-
-						if("bb" + func.start.toString() == node) {
-							msg.entry = i;
-						}
-					}
-
-					for(var j = 0; j < cfg.edges.length; j++) {
-						msg.edges.push({
-							"from":rev_index[cfg.edges[j].from],
-							"to":rev_index[cfg.edges[j].to]
-						});
+						dims[node] = {"width":obj.width,"height":obj.height};
 					}
 
 					if(cfg.nodes.length > 1) {
-						console.log(JSON.stringify(msg));
-						var pos = JSON.parse(Panopticon.sugiyamaLayout(JSON.stringify(msg)));
-						var right = 0;
-						var bottom = 0;
-
-						console.log(JSON.stringify(pos));
-
-						for (var k in pos) {
-							if(pos.hasOwnProperty(k)) {
-								var node = cfg.nodes[k];
-								var obj = bblockList[node];
-
-								obj.visible = true;
-								obj.x = pos[k].x - obj.width / 2 + 100;
-								obj.y = pos[k].y - obj.height / 2 + 100;
-
-
-								right = Math.max(right,obj.x + obj.width);
-								bottom = Math.max(bottom,obj.y + obj.height);
-							}
-						}
-
-						graph.width = right + 200;
-						graph.height = bottom + 200;
-
-						graph.y = (cflow_graph.item.height - graph.height) / 2;
-						graph.x = (cflow_graph.item.width - graph.width) / 2;
+						Panopticon.sugiyamaLayout(selection,JSON.stringify(dims),100,30);
 					} else {
 						for (var i in bblockList) {
 							if(bblockList.hasOwnProperty(i)) {
@@ -219,97 +200,6 @@ Item {
 					}
 
 					graph.edges = [];
-				}
-
-				WorkerScript {
-					id: layoutTask
-					source: "../sugiyama.js"
-					onMessage: {
-						//console.log("MS: " + JSON.stringify(messageObject));
-
-						switch(messageObject.type) {
-							case "rankingSimplex": {
-								simplexTask.sendMessage(messageObject);
-								break;
-							}
-							case "order": {
-								simplexTask.sendMessage(messageObject);
-								break;
-							}
-							case "finalize": {
-								var boxes = {};
-								var nodes = [];
-								var right = 0;
-								var bottom = 0;
-
-								for(var i = 0; i < messageObject.nodes.length; i++) {
-									var node = messageObject.nodes[i];
-									var l = messageObject.layout[node];
-
-									nodes.push(node);
-									boxes[node] = {"x":l.x - l.width / 2 + 100,"y":l.y + 100,"width":l.width,"height":l.height};
-
-									if(cflow_graph.item.bblockList[node] !== undefined) {
-										cflow_graph.item.bblockList[node].x = l.x - l.width / 2 + 100;
-										cflow_graph.item.bblockList[node].y = l.y + 100;// + l.height / 2;
-										cflow_graph.item.bblockList[node].visible = true;
-
-										right = Math.max(right,l.x + l.width / 2);
-										bottom = Math.max(bottom,l.y + l.height);
-									}
-								}
-
-								graph.width = right + 200;
-								graph.height = bottom + 200;
-
-								graph.y = (cflow_graph.item.height - graph.height) / 2;
-								graph.x = (cflow_graph.item.width - graph.width) / 2;
-
-								var cfg = eval(Panopticon.functionCfg(cflow_graph.item.selection));
-								routeTask.sendMessage({"boxes":boxes,"nodes":nodes,"edges":messageObject.edges,"layout":messageObject.layout});
-
-								break;
-							}
-
-							default: {
-								break;
-							}
-						}
-					}
-				}
-
-				WorkerScript {
-					id: simplexTask
-					source: "../simplex.js"
-					onMessage: {
-						//console.log("SP: " + JSON.stringify(messageObject));
-
-						switch(messageObject.type) {
-							case "rankingSimplex": {
-								messageObject.type = "order";
-								layoutTask.sendMessage(messageObject);
-								break;
-							}
-							case "order": {
-								messageObject.type = "finalize";
-								layoutTask.sendMessage(messageObject);
-								break;
-							}
-							default: {
-								break;
-							}
-						}
-					}
-				}
-
-				WorkerScript {
-					id: routeTask
-					source: "../route.js"
-					onMessage: {
-
-						graph.edges = messageObject;
-						graph.requestPaint();
-					}
 				}
 			}
 		}

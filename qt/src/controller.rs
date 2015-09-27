@@ -25,7 +25,7 @@ extern "C" fn controller_slot(this: *mut ffi::QObject, id: c_int, a: *const ffi:
         (FUNCTION_CFG,1) => ::function::control_flow_graph(&args[0]).to_qvariant(ret),
 
         // Self-contained functions
-        (SUGIYAMA_LAYOUT,1) => ::sugiyama::layout(&args[0]).to_qvariant(ret),
+        (SUGIYAMA_LAYOUT,4) => ::function::layout(&args[0],&args[1],&args[2],&args[3],&mut obj).to_qvariant(ret),
 
         _ => panic!("Unknown controller call id '{}' with {} arguments.",id,args.len())
     }
@@ -33,23 +33,23 @@ extern "C" fn controller_slot(this: *mut ffi::QObject, id: c_int, a: *const ffi:
 
 pub const STATE_CHANGED: isize = 0;
 
+pub const DISCOVERED_FUNCTION: isize = 1;
 pub const STARTED_FUNCTION: isize = 2;
 pub const FINISHED_FUNCTION: isize = 3;
-pub const DISCOVERED_FUNCTION: isize = 1;
+pub const LAYOUTED_FUNCTION: isize = 4;
+pub const CHANGED_FUNCTION: isize = 5;
 
-pub const CHANGED_FUNCTION: isize = 4;
+pub const CREATE_AVR_SESSION: isize = 6;
+pub const CREATE_RAW_SESSION: isize = 7;
+pub const OPEN_SESSION: isize = 8;
 
-pub const CREATE_AVR_SESSION: isize = 5;
-pub const CREATE_RAW_SESSION: isize = 6;
-pub const OPEN_SESSION: isize = 7;
+pub const START: isize = 9;
+pub const DONE: isize = 10;
 
-pub const START: isize = 8;
-pub const DONE: isize = 9;
+pub const FUNCTION_INFO: isize = 11;
+pub const FUNCTION_CFG: isize = 12;
 
-pub const FUNCTION_INFO: isize = 10;
-pub const FUNCTION_CFG: isize = 11;
-
-pub const SUGIYAMA_LAYOUT: isize = 12;
+pub const SUGIYAMA_LAYOUT: isize = 13;
 
 pub extern "C" fn create_singleton(_: *mut ffi::QQmlEngine, _: *mut ffi::QJSEngine) -> *mut ffi::QObject {
     let mut metaobj = MetaObject::new("Panopticon",controller_slot);
@@ -64,6 +64,7 @@ pub extern "C" fn create_singleton(_: *mut ffi::QQmlEngine, _: *mut ffi::QJSEngi
     assert_eq!(metaobj.add_signal("finishedFunction(QString)"),FINISHED_FUNCTION);
 
     // WORKING and DONE signals
+    assert_eq!(metaobj.add_signal("layoutedFunction(QString)"),LAYOUTED_FUNCTION);
     assert_eq!(metaobj.add_signal("changedFunction(QString)"),CHANGED_FUNCTION);
 
     // state = NEW -> READY
@@ -82,7 +83,7 @@ pub extern "C" fn create_singleton(_: *mut ffi::QQmlEngine, _: *mut ffi::QJSEngi
     assert_eq!(metaobj.add_method("functionCfg(QString)","QString"),FUNCTION_CFG);
 
     // self-contained
-    assert_eq!(metaobj.add_method("sugiyamaLayout(QString)","QString"),SUGIYAMA_LAYOUT);
+    assert_eq!(metaobj.add_method("sugiyamaLayout(QString,QString,int,int)","QString"),SUGIYAMA_LAYOUT);
 
     let mut obj = metaobj.instantiate();
 
