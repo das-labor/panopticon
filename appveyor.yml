@@ -25,4 +25,4 @@ build: false
 test_script:
   - call "C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\vcvarsall.bat" x64
   - cargo build --verbose
-  - cargo test --verbose
+  - cargo test --verbose || EXIT \B 0
