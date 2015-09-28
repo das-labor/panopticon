@@ -26,6 +26,7 @@ extern "C" fn controller_slot(this: *mut ffi::QObject, id: c_int, a: *const ffi:
 
         // Self-contained functions
         (SUGIYAMA_LAYOUT,4) => ::function::layout(&args[0],&args[1],&args[2],&args[3],&mut obj).to_qvariant(ret),
+        (DIJKSTRA_ROUTE,2) => ::function::route(&args[0],&args[1],&mut obj).to_qvariant(ret),
 
         _ => panic!("Unknown controller call id '{}' with {} arguments.",id,args.len())
     }
@@ -37,19 +38,21 @@ pub const DISCOVERED_FUNCTION: isize = 1;
 pub const STARTED_FUNCTION: isize = 2;
 pub const FINISHED_FUNCTION: isize = 3;
 pub const LAYOUTED_FUNCTION: isize = 4;
-pub const CHANGED_FUNCTION: isize = 5;
+pub const ROUTED_FUNCTION: isize = 5;
+pub const CHANGED_FUNCTION: isize = 6;
 
-pub const CREATE_AVR_SESSION: isize = 6;
-pub const CREATE_RAW_SESSION: isize = 7;
-pub const OPEN_SESSION: isize = 8;
+pub const CREATE_AVR_SESSION: isize = 7;
+pub const CREATE_RAW_SESSION: isize = 8;
+pub const OPEN_SESSION: isize = 9;
 
-pub const START: isize = 9;
-pub const DONE: isize = 10;
+pub const START: isize = 10;
+pub const DONE: isize = 11;
 
-pub const FUNCTION_INFO: isize = 11;
-pub const FUNCTION_CFG: isize = 12;
+pub const FUNCTION_INFO: isize = 12;
+pub const FUNCTION_CFG: isize = 13;
 
-pub const SUGIYAMA_LAYOUT: isize = 13;
+pub const SUGIYAMA_LAYOUT: isize = 14;
+pub const DIJKSTRA_ROUTE: isize = 15;
 
 pub extern "C" fn create_singleton(_: *mut ffi::QQmlEngine, _: *mut ffi::QJSEngine) -> *mut ffi::QObject {
     let mut metaobj = MetaObject::new("Panopticon",controller_slot);
@@ -65,6 +68,7 @@ pub extern "C" fn create_singleton(_: *mut ffi::QQmlEngine, _: *mut ffi::QJSEngi
 
     // WORKING and DONE signals
     assert_eq!(metaobj.add_signal("layoutedFunction(QString)"),LAYOUTED_FUNCTION);
+    assert_eq!(metaobj.add_signal("routedFunction(QString)"),ROUTED_FUNCTION);
     assert_eq!(metaobj.add_signal("changedFunction(QString)"),CHANGED_FUNCTION);
 
     // state = NEW -> READY
@@ -84,6 +88,7 @@ pub extern "C" fn create_singleton(_: *mut ffi::QQmlEngine, _: *mut ffi::QJSEngi
 
     // self-contained
     assert_eq!(metaobj.add_method("sugiyamaLayout(QString,QString,int,int)","QString"),SUGIYAMA_LAYOUT);
+    assert_eq!(metaobj.add_method("dijkstraRoute(QString,QString)","QString"),DIJKSTRA_ROUTE);
 
     let mut obj = metaobj.instantiate();
 

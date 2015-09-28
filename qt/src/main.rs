@@ -13,6 +13,7 @@ mod controller;
 mod state;
 mod function;
 mod sugiyama;
+mod route;
 
 use controller::create_singleton;
 

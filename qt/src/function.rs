@@ -228,15 +228,11 @@ struct LayoutOutputPosition {
 /// Input has to look loke this:
 /// ```json
 /// {
-///         "<ID>": {
-///             "height": <NUM>,
-///             "width": <NUM,
-///         },
-///         ...
+///     "<ID>": {
+///         "height": <NUM>,
+///         "width": <NUM,
 ///     },
-///     "entry": "<ID>", // optional
-///     "rank_spacing": <INT>, // y padding
-///     "node_spacing": <INT>  // x padding
+///     ...
 /// }```
 ///
 /// Output:
@@ -319,5 +315,39 @@ pub fn layout(arg0: &Variant, arg1: &Variant, arg2: &Variant, arg3: &Variant, _c
         }
     }
 
+    Variant::String("{}".to_string())
+}
+
+/// Route a control flow graph.
+///
+/// Input has to look loke this:
+/// ```json
+/// {
+///     "obstacles": [
+///         {
+///             "x": <NUM>,
+///             "y": <NUM>,
+///             "height": <NUM>,
+///             "width": <NUM,
+///         },
+///         ...
+///     ],
+///     routes: [
+///         {
+///             "from": {"x": <NUM>, "y": <NUM>},
+///             "to": {"x": <NUM>, "y": <NUM>},
+///         },
+///         ...
+///     ]
+/// }```
+///
+/// Output:
+/// ```json
+/// [
+///     [{"x": <NUM>, "y": <NUM>},...],
+///     ...
+/// ]
+/// }```
+pub fn route(arg0: &Variant, arg1: &Variant, _ctrl: &mut Object) -> Variant {
     Variant::String("{}".to_string())
 }
