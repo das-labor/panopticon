@@ -26,7 +26,7 @@ extern "C" fn controller_slot(this: *mut ffi::QObject, id: c_int, a: *const ffi:
 
         // Self-contained functions
         (SUGIYAMA_LAYOUT,4) => ::function::layout(&args[0],&args[1],&args[2],&args[3],&mut obj).to_qvariant(ret),
-        (DIJKSTRA_ROUTE,2) => ::function::route(&args[0],&args[1],&mut obj).to_qvariant(ret),
+        (DIJKSTRA_ROUTE,1) => ::function::route(&args[0],&mut obj).to_qvariant(ret),
 
         _ => panic!("Unknown controller call id '{}' with {} arguments.",id,args.len())
     }
@@ -88,7 +88,7 @@ pub extern "C" fn create_singleton(_: *mut ffi::QQmlEngine, _: *mut ffi::QJSEngi
 
     // self-contained
     assert_eq!(metaobj.add_method("sugiyamaLayout(QString,QString,int,int)","QString"),SUGIYAMA_LAYOUT);
-    assert_eq!(metaobj.add_method("dijkstraRoute(QString,QString)","QString"),DIJKSTRA_ROUTE);
+    assert_eq!(metaobj.add_method("dijkstraRoute(QString)","QString"),DIJKSTRA_ROUTE);
 
     let mut obj = metaobj.instantiate();
 

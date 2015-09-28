@@ -1,17 +1,16 @@
 use std::collections::HashMap;
-use std::f32;
 use std::cmp::Ordering;
 
 #[derive(Debug,PartialEq,Clone)]
 pub struct Point {
-    x: f32,
-    y: f32
+    pub x: f32,
+    pub y: f32
 }
 
 #[derive(Debug,PartialEq,Clone)]
 pub struct Segment {
-    start: Point,
-    end: Point
+    pub start: Point,
+    pub end: Point
 }
 
 fn orientation(p: &Point, q: &Point, r: &Point) -> usize {

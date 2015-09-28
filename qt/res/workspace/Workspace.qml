@@ -128,6 +128,8 @@ Item {
 						var pos = JSON.parse(_pos);
 						var right = 0;
 						var bottom = 0;
+						var obstacles = [];
+						var waypoints = [];
 
 						for (var k in pos) {
 							if(pos.hasOwnProperty(k)) {
@@ -140,14 +142,50 @@ Item {
 
 								right = Math.max(right,obj.x + obj.width);
 								bottom = Math.max(bottom,obj.y + obj.height);
+
+								obstacles.push({"x":obj.x,"y":obj.y,"width":obj.width,"height":obj.height});
+								waypoints.push({"x":obj.x - 3,"y":obj.y - 3});
+								waypoints.push({"x":obj.x - 3,"y":obj.y + obj.height + 3 });
+								waypoints.push({"x":obj.x + obj.width + 3,"y":obj.y - 3});
+								waypoints.push({"x":obj.x + obj.width + 3,"y":obj.y + obj.height + 3});
 							}
 						}
+
+						var edges = [];
+						for (var i = 0; i < cfg.edges.length; i++) {
+							var from = bblockList[cfg.edges[i].from];
+							var to = bblockList[cfg.edges[i].to];
+
+							waypoints.push({"x": to.x + to.width / 2,"y": to.y - 5});
+							waypoints.push({"x": from.x + from.width / 2,"y": from.y + from.height + 5});
+							edges.push({"from": waypoints.length - 1, "to": waypoints.length - 2});
+						}
+
 
 						graph.width = right + 200;
 						graph.height = bottom + 200;
 
 						graph.y = (cflow_graph.item.height - graph.height) / 2;
 						graph.x = (cflow_graph.item.width - graph.width) / 2;
+
+						Panopticon.dijkstraRoute(JSON.stringify({"obstacles":obstacles,"waypoints":waypoints,"edges":edges}));
+					});
+
+					Panopticon.routedFunction.connect(function(_paths) {
+						var paths = JSON.parse(_paths);
+						var canvas_edges = [];
+
+						for (var j = 0; j < paths.length; j++) {
+							var p = paths[j];
+
+							if (p.length >= 2) {
+								for (var l = 1; l < p.length; l++) {
+									canvas_edges.push({"from":p[l-1],"to":p[l]});
+								}
+							}
+						}
+
+						graph.edges = canvas_edges;
 					});
 				}
 
