@@ -24,10 +24,13 @@ install:
   # GLPK
   - ps: Start-FileDownload "http://downloads.sourceforge.net/project/winglpk/winglpk/GLPK-4.55/winglpk-4.55.zip"
   - cmd: 7z x winglpk-4.55.zip
-  - set PATH=%~dp0\glpk-4.55\w64;%PATH%
-  - set INCLUDE=%INCLUDE%;%~dp0\glpk-4.55\src
+  - set LIB=%LIB%;C:\projects\panopticon\glpk-4.55\w64
+  - set PATH=%PATH%;C:\projects\panopticon\glpk-4.55\w64
+  - cmd: ren glpk-4.55\w64\glpk_4_55.lib glpk.lib
+  - cmd: dir glpk-4.55\w64\
 build: false
 test_script:
   - call "C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\vcvarsall.bat" x64
+  - cmd: echo %LIB%
   - cargo build --verbose
   - cargo test --verbose || EXIT \B 0
