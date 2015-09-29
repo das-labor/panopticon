@@ -55,7 +55,7 @@ fn avr_brne() {
             0xe4,0xe0  // 22: ldi
         ));
     let main = disassembler();
-    let fun = Function::disassemble::<Avr>(None,main,Mcu::new(),reg.iter(),0);
+    let fun = Function::disassemble::<Avr>(None,main,Mcu::new(),reg.iter(),0,reg.name().to_string());
 
     fn to_ident(t: Option<&ControlFlowTarget>) -> Option<String> {
         match t {

@@ -11,7 +11,11 @@ use uuid::Uuid;
 use controller::PROJECT;
 use rustc_serialize::json;
 use std::collections::HashMap;
-use controller::{LAYOUTED_FUNCTION,ROUTED_FUNCTION};
+use controller::{
+    LAYOUTED_FUNCTION,
+    ROUTED_FUNCTION,
+    CHANGED_FUNCTION
+};
 
 use sugiyama;
 use route;
@@ -108,9 +112,13 @@ pub fn metainfo(arg: &Variant) -> Variant {
 ///     "contents": {
 ///         <IDENT>: [{
 ///             "opcode": "mov",
+///             "reg": "ram",
+///             "offset": 100,
 ///             "args": ["r1", "r2"],
 ///         },{
 ///             "opcode": "add",
+///             "reg": "ram",
+///             "offset": 102,
 ///             "args": ["1", "r2"],
 ///         },
 ///             ...
@@ -147,8 +155,15 @@ pub fn control_flow_graph(arg: &Variant) -> Variant {
                                         map(|x| {
                                             let args = x.operands.iter().map(|y| format!("\"{}\"",y))
                                                 .fold("".to_string(),|acc,x| if acc != "" { acc + "," + &x } else { x });
+                                            let cmnt = proj.comments.get(&(fun.region.clone(),x.area.start)).unwrap_or(&"".to_string()).clone();
 
-                                            format!("{{\"opcode\":\"{}\",\"args\":[{}]}}",x.opcode,args)
+                                            format!("{{
+                                                \"opcode\":\"{}\",
+                                                \"args\":[{}],
+                                                \"region\":\"{}\",
+                                                \"offset\":{},
+                                                \"comment\":\"{}\"
+                                            }}",x.opcode,args,fun.region,x.area.start,cmnt)
                                         }).
                                         fold("".to_string(),|acc,x| if acc != "" { acc + "," + &x } else { x });
                                     Some(format!("\"bb{}\":[{}]",bb.area.start,mnes))
@@ -422,4 +437,53 @@ pub fn route(arg0: &Variant, _ctrl: &mut Object) -> Variant {
     });
 
     Variant::String("{}".to_string())
+}
+
+pub fn comment(arg0: &Variant, arg1: &Variant, arg2: &Variant, ctrl: &mut Object) -> Variant {
+    let reg = if let &Variant::String(ref x) = arg0 {
+        x.clone()
+    } else {
+        return Variant::String("{}".to_string());
+    };
+
+    let offset = if let &Variant::I64(ref x) = arg1 {
+        *x as u64
+    } else {
+        return Variant::String("{}".to_string());
+    };
+
+    let cmnt = if let &Variant::String(ref x) = arg2 {
+        x.clone()
+    } else {
+        return Variant::String("{}".to_string());
+    };
+
+    println!("{}:{} \"{}\"",reg,offset,cmnt);
+    // write comment
+    {
+        let mut write_guard = PROJECT.write().unwrap();
+        let proj: &mut Project = write_guard.as_mut().unwrap();
+        proj.comments.insert((reg.clone(),offset),cmnt);
+    }
+
+    {
+        let read_guard = PROJECT.read().unwrap();
+        let proj: &Project = read_guard.as_ref().unwrap();
+
+        for prog in proj.code.iter() {
+            for ct in prog.call_graph.vertices() {
+                match prog.call_graph.vertex_label(ct) {
+                    Some(&CallTarget::Concrete(ref func)) => {
+                        if func.region == reg {
+                            // XXX: check offset?
+                            ctrl.emit(CHANGED_FUNCTION,&vec![Variant::String(func.uuid.to_string())]);
+                        }
+                    },
+                    _ => {}
+                }
+            }
+        }
+    }
+
+    Variant::String("".to_string())
 }

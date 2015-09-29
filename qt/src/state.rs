@@ -54,7 +54,7 @@ fn set_state(st: &str, ctrl: &mut Object) {
 pub fn create_avr_session(_path: &Variant, ctrl: &mut Object) -> Variant {
     Variant::Bool(if state(ctrl) == "NEW" {
         if let &Variant::String(ref s) = _path {
-            let p = Project::new("".to_string(),Region::open("".to_string(),&Path::new(s)).unwrap());
+            let p = Project::new("AVR".to_string(),Region::open("flash".to_string(),&Path::new(s)).unwrap());
 
             *PROJECT.write().unwrap() = Some(p);
             set_state("READY",ctrl);
@@ -108,6 +108,7 @@ pub fn start(_ctrl: &mut Object) -> Variant {
         } else {
             set_state("WORKING",_ctrl);
 
+
             let ctrl = Object::from_ptr(_ctrl.as_ptr());
             thread::spawn(move || {
                 let mut prog = Program::new("prog0");
@@ -121,9 +122,11 @@ pub fn start(_ctrl: &mut Object) -> Variant {
                 {
                     let mut write_guard = PROJECT.write().unwrap();
                     let proj: &mut Project = write_guard.as_mut().unwrap();
+                    let root = proj.sources.dependencies.vertex_label(proj.sources.root).unwrap();
 
                     prog.call_graph.add_vertex(CallTarget::Todo(start,uu.clone()));
                     proj.code.push(prog);
+                    proj.comments.insert((root.name().clone(),0),"MCU entry point".to_string());
                 }
 
                 ctrl.emit(DISCOVERED_FUNCTION,&vec!(Variant::String(uu.to_string())));
@@ -149,10 +152,11 @@ pub fn start(_ctrl: &mut Object) -> Variant {
                         let new_fun = {
                             let read_guard = PROJECT.read().unwrap();
                             let pro: &Project = read_guard.as_ref().unwrap();
-                            let i = pro.sources.dependencies.vertex_label(pro.sources.root).unwrap().iter();
-                            let mut fun = Function::with_uuid(format!("func_{}",tgt),uuid);
+                            let root = pro.sources.dependencies.vertex_label(pro.sources.root).unwrap();
+                            let i = root.iter();
+                            let mut fun = Function::with_uuid(format!("func_{}",tgt),uuid,root.name().clone());
 
-                            fun = Function::disassemble::<avr::Avr>(Some(fun),dec.clone(),init.clone(),i,tgt);
+                            fun = Function::disassemble::<avr::Avr>(Some(fun),dec.clone(),init.clone(),i,tgt,root.name().clone());
                             fun.entry_point = fun.find_basic_block_at_address(tgt);
                             fun
                         };

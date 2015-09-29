@@ -26,25 +26,28 @@ pub struct Function {
     pub uuid: Uuid,
     pub name: String,
     pub cflow_graph: ControlFlowGraph,
-    pub entry_point: Option<ControlFlowRef>
+    pub entry_point: Option<ControlFlowRef>,
+    pub region: String,
 }
 
 impl Function {
-    pub fn new(a: String) -> Function {
+    pub fn new(a: String, reg: String) -> Function {
         Function{
             uuid: Uuid::new_v4(),
             name: a,
             cflow_graph: AdjacencyList::new(),
             entry_point: None,
+            region: reg,
         }
     }
 
-    pub fn with_uuid(a: String,uu: Uuid) -> Function {
+    pub fn with_uuid(a: String,uu: Uuid, reg: String) -> Function {
         Function{
             uuid: uu,
             name: a,
             cflow_graph: AdjacencyList::new(),
             entry_point: None,
+            region: reg,
         }
     }
 
@@ -194,7 +197,7 @@ impl Function {
         ret
     }
 
-    pub fn disassemble<A: Architecture>(cont: Option<Function>, dec: Rc<Disassembler<A>>, init: A::Configuration, data: LayerIter, start: u64) -> Function {
+    pub fn disassemble<A: Architecture>(cont: Option<Function>, dec: Rc<Disassembler<A>>, init: A::Configuration, data: LayerIter, start: u64, reg: String) -> Function {
         let name = cont.as_ref().map_or(format!("func_{}",start),|x| x.name.clone());
         let uuid = cont.as_ref().map_or(Uuid::new_v4(),|x| x.uuid.clone());
         let maybe_entry = if let Some(Function{ entry_point: ent, cflow_graph: ref cfg, ..}) = cont {
@@ -284,6 +287,7 @@ impl Function {
             name: name,
             cflow_graph: cfg,
             entry_point: e,
+            region: reg,
         }
     }
 
@@ -343,7 +347,7 @@ mod tests {
 
     #[test]
     fn new() {
-        let f = Function::new("test".to_string());
+        let f = Function::new("test".to_string(),"ram".to_string());
 
         assert_eq!(f.name, "test".to_string());
         assert_eq!(f.cflow_graph.num_vertices(), 0);
@@ -474,7 +478,7 @@ mod tests {
             }
 		);
         let data = OpaqueLayer::wrap(vec!(0));
-        let func = Function::disassemble(None,main,(),data.iter(),0);
+        let func = Function::disassemble(None,main,(),data.iter(),0,"ram".to_string());
 
         assert_eq!(func.cflow_graph.num_vertices(), 1);
         assert_eq!(func.cflow_graph.num_edges(), 0);
@@ -538,7 +542,7 @@ mod tests {
         );
 
         let data = OpaqueLayer::wrap(vec!(0,1,2,3,4,5));
-        let func = Function::disassemble(None,main,(),data.iter(),0);
+        let func = Function::disassemble(None,main,(),data.iter(),0,"ram".to_string());
 
         assert_eq!(func.cflow_graph.num_vertices(), 2);
         assert_eq!(func.cflow_graph.num_edges(), 1);
@@ -599,7 +603,7 @@ mod tests {
         );
 
         let data = OpaqueLayer::wrap(vec!(0,1,2));
-        let func = Function::disassemble(None,main,(),data.iter(),0);
+        let func = Function::disassemble(None,main,(),data.iter(),0,"ram".to_string());
 
         assert_eq!(func.cflow_graph.num_vertices(), 4);
         assert_eq!(func.cflow_graph.num_edges(), 4);
@@ -670,7 +674,7 @@ mod tests {
         );
 
         let data = OpaqueLayer::wrap(vec!(0,1,2));
-        let func = Function::disassemble(None,main,(),data.iter(),0);
+        let func = Function::disassemble(None,main,(),data.iter(),0,"ram".to_string());
 
         assert_eq!(func.cflow_graph.num_vertices(), 1);
         assert_eq!(func.cflow_graph.num_edges(), 1);
@@ -717,7 +721,7 @@ mod tests {
         );
 
         let data = OpaqueLayer::wrap(vec!());
-        let func = Function::disassemble(None,main,(),data.iter(),0);
+        let func = Function::disassemble(None,main,(),data.iter(),0,"ram".to_string());
 
         assert_eq!(func.cflow_graph.num_vertices(), 0);
         assert_eq!(func.cflow_graph.num_edges(), 0);
@@ -728,7 +732,7 @@ mod tests {
     #[test]
     fn entry_split() {
         let bb = BasicBlock::from_vec(vec!(Mnemonic::dummy(0..1),Mnemonic::dummy(1..2)));
-        let mut fun = Function::new("test_func".to_string());
+        let mut fun = Function::new("test_func".to_string(),"ram".to_string());
         let vx0 = fun.cflow_graph.add_vertex(ControlFlowTarget::Resolved(bb));
         let vx1 = fun.cflow_graph.add_vertex(ControlFlowTarget::Unresolved(Rvalue::Constant(2)));
 
@@ -754,7 +758,7 @@ mod tests {
         );
 
         let data = OpaqueLayer::wrap(vec!(0,1,2));
-        let func = Function::disassemble(Some(fun),main,(),data.iter(),2);
+        let func = Function::disassemble(Some(fun),main,(),data.iter(),2,"ram".to_string());
 
         assert_eq!(func.cflow_graph.num_vertices(), 3);
         assert_eq!(func.cflow_graph.num_edges(), 3);
@@ -819,7 +823,7 @@ mod tests {
         let bb4 = BasicBlock::from_vec(vec!(Mnemonic::dummy(20..21)));
         let rv1 = Rvalue::Variable{ name: "a".to_string(), width: 8, subscript: None };
         let rv2 = Rvalue::Constant(42);
-        let mut fun = Function::new("test_func".to_string());
+        let mut fun = Function::new("test_func".to_string(),"ram".to_string());
 
         let vx0 = fun.cflow_graph.add_vertex(ControlFlowTarget::Resolved(bb0));
         let vx1 = fun.cflow_graph.add_vertex(ControlFlowTarget::Resolved(bb1));
@@ -882,7 +886,7 @@ mod tests {
             }
         );
 
-        let func = Function::disassemble(None,dec,(),def.iter(),0);
+        let func = Function::disassemble(None,dec,(),def.iter(),0,"ram".to_string());
 
         assert_eq!(func.cflow_graph.num_vertices(), 3);
         assert_eq!(func.cflow_graph.num_edges(), 2);
@@ -935,7 +939,7 @@ mod tests {
         );
 
         let data = OpaqueLayer::wrap(vec!(0,1,2));
-        let func = Function::disassemble(None,main,(),data.iter(),1);
+        let func = Function::disassemble(None,main,(),data.iter(),1,"ram".to_string());
 
         assert_eq!(func.cflow_graph.num_vertices(), 2);
         assert_eq!(func.cflow_graph.num_edges(), 2);

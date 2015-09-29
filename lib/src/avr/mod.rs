@@ -2442,5 +2442,5 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
 }
 
 pub fn disassemble<F: Fn(DisassembleEvent)>(_: Mcu, data: LayerIter, progress: Option<F>) -> Program {
-    Program::disassemble(None,disassembler(),Mcu::new(),data,0,progress)
+    Program::disassemble(None,disassembler(),Mcu::new(),data,0,"flash".to_string(),progress)
 }

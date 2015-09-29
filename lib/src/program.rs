@@ -78,7 +78,7 @@ impl Program {
     }
 
     pub fn disassemble<A: Architecture,F: Fn(DisassembleEvent)>(cont: Option<Program>, dec: Rc<Disassembler<A>>, init: A::Configuration, data: LayerIter,
-                                                                start: u64, progress: Option<F>) -> Program {
+                                                                start: u64, reg: String, progress: Option<F>) -> Program {
         if cont.is_some() && cont.as_ref().map(|x| x.find_function_by_entry(start)).is_some() {
             return cont.unwrap();
         }
@@ -106,7 +106,7 @@ impl Program {
 
             println!("Disassemble at {}",tgt);
 
-            let new_fun = Function::disassemble::<A>(None,dec.clone(),init.clone(),data.clone(),tgt);
+            let new_fun = Function::disassemble::<A>(None,dec.clone(),init.clone(),data.clone(),tgt,reg.clone());
 
             if let Some(ref f) = progress {
                 f(DisassembleEvent::Done(tgt));
@@ -244,12 +244,12 @@ mod tests {
     #[test]
     fn find_by_entry() {
         let mut prog = Program::new("prog_test");
-        let mut func = Function::new("test2".to_string());
+        let mut func = Function::new("test2".to_string(),"ram".to_string());
 
         let bb0 = BasicBlock::from_vec(vec!(Mnemonic::dummy(0..10)));
         func.entry_point = Some(func.cflow_graph.add_vertex(ControlFlowTarget::Resolved(bb0)));
 
-        prog.call_graph.add_vertex(CallTarget::Concrete(Function::new("test".to_string())));
+        prog.call_graph.add_vertex(CallTarget::Concrete(Function::new("test".to_string(),"ram".to_string())));
         let vx1 = prog.call_graph.add_vertex(CallTarget::Concrete(func));
 
         assert_eq!(prog.find_function_by_entry(0),Some(vx1));
@@ -262,13 +262,13 @@ mod tests {
         let mut prog = Program::new("prog_test");
 
         let tvx = prog.call_graph.add_vertex(CallTarget::Todo(12,uu));
-        let vx0 = prog.call_graph.add_vertex(CallTarget::Concrete(Function::new("test".to_string())));
-        let vx1 = prog.call_graph.add_vertex(CallTarget::Concrete(Function::new("test2".to_string())));
+        let vx0 = prog.call_graph.add_vertex(CallTarget::Concrete(Function::new("test".to_string(),"ram".to_string())));
+        let vx1 = prog.call_graph.add_vertex(CallTarget::Concrete(Function::new("test2".to_string(),"ram".to_string())));
 
         let e1 = prog.call_graph.add_edge((),tvx,vx0);
         let e2 = prog.call_graph.add_edge((),vx1,tvx);
 
-        let mut func = Function::with_uuid("test3".to_string(),uu.clone());
+        let mut func = Function::with_uuid("test3".to_string(),uu.clone(),"ram".to_string());
         let bb0 = BasicBlock::from_vec(vec!(Mnemonic::dummy(12..20)));
         func.entry_point = Some(func.cflow_graph.add_vertex(ControlFlowTarget::Resolved(bb0)));
         let uuf = func.uuid.clone();
