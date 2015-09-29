@@ -1,4 +1,5 @@
 use std::path::Path;
+use std::collections::HashMap;
 
 use program::{Program,CallGraphRef};
 use region::{Region,Regions};
@@ -13,7 +14,7 @@ pub struct Project {
     pub code: Vec<Program>,
     //data: Vec<Structure>,
     pub sources: Regions,
-    //comments: Vec<Comment>,
+    pub comments: HashMap<(String,u64),String>,
 }
 
 impl Project {
@@ -22,6 +23,7 @@ impl Project {
             name: s,
             code: Vec::new(),
             sources: Regions::new(r),
+            comments: HashMap::new(),
         }
     }
 
@@ -36,6 +38,7 @@ impl Project {
                     name: nam.to_string(),
                     code: Vec::new(),
                     sources: Regions::new(r),
+                    comments: HashMap::new(),
                 });
             }
         }

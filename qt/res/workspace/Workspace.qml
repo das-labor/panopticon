@@ -9,6 +9,20 @@ Item {
 	property string selection: "";
 
 	Component.onCompleted: {
+		Panopticon.changedFunction.connect(function(uu) {
+			if (uu == selection) {
+				var cfg = JSON.parse(Panopticon.functionCfg(selection));
+
+				if(cflow_graph.item.bblockList != null) {
+					for (var i in cflow_graph.item.bblockList) {
+						if(cflow_graph.item.bblockList.hasOwnProperty(i) && cfg.contents[i] !== undefined) {
+							cflow_graph.item.bblockList[i].contents = cfg.contents[i];
+						}
+					}
+				}
+			}
+		});
+
 		Panopticon.start()
 	}
 
@@ -52,28 +66,6 @@ Item {
 			onLoaded: item.selection = root.selection
 
 			Item {
-				Component {
-					id: bblock
-
-					Rectangle {
-						height: txt.contentHeight + 10
-						width: txt.contentWidth + 10
-						color: "steelblue";
-						border.width: 1;
-						border.color: "black";
-
-						property string contents: "";
-
-						Text {
-							id: txt
-							x: 5
-							y: 5
-							text: contents
-							font.family: "Monospace"
-						}
-					}
-				}
-
 				clip: true;
 
 				Canvas {
@@ -114,6 +106,7 @@ Item {
 						anchors.fill: parent;
 						drag.target: parent
 						drag.axis: Drag.XAndYAxis
+						cursorShape: containsMouse && pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor
 					}
 				}
 
@@ -148,6 +141,21 @@ Item {
 								waypoints.push({"x":obj.x - 3,"y":obj.y + obj.height + 3 });
 								waypoints.push({"x":obj.x + obj.width + 3,"y":obj.y - 3});
 								waypoints.push({"x":obj.x + obj.width + 3,"y":obj.y + obj.height + 3});
+							}
+						}
+
+						var in_degree = {};
+						var out_degree = {};
+
+						for(var i = 0; i < cfg.nodes.length; i++) {
+							in_degree[cfg.nodes[i]] = 0;
+							out_degree[cfg.nodes[i]] = 0;
+						}
+
+						for(var l = 0; l < cfg.edges.length; l++) {
+							if(cfg.edges[l].from != cfg.edges[l].to) {
+								in_degree[cfg.edges[l].to] += 1;
+								out_degree[cfg.edges[l].from] += 1;
 							}
 						}
 
@@ -204,24 +212,27 @@ Item {
 					}
 
 					bblockList = {};
+					var bblock = Qt.createComponent("BasicBlock.qml");
 					for(var i = 0; i < cfg.nodes.length; i++) {
 						var node = cfg.nodes[i];
-						var contents = " ";
+						var c = {
+							"contents":cfg.contents[node] ,
+							"color":(node == cfg.head ? "red" : "steelblue"),
+						};
 
-						if(cfg.contents[node]) {
-							contents = cfg.contents[node].map(function(x) {
-								return x.opcode + " " + x.args.join(", ");
-							}).join("\n");
+						while (bblock.status != Component.Ready && bblock.status != Component.Error) {
+							sleep(1);
 						}
+						if (bblock.status == Component.Error) {
+							console.log(bblock.errorString())
+						} else {
+							var obj = bblock.createObject(graph,c);
 
-						var c = {"contents":contents ,"color":(node == cfg.head ? "red" : "steelblue")};
-						//var c = {"contents":node,"color":(node == cfg.head ? "red" : "steelblue")};
-						var obj = bblock.createObject(graph,c);
+							obj.visible = false;
+							bblockList[node] = obj;
 
-						obj.visible = false;
-						bblockList[node] = obj;
-
-						dims[node] = {"width":obj.width,"height":obj.height};
+							dims[node] = {"width":obj.width,"height":obj.height};
+						}
 					}
 
 					if(cfg.nodes.length > 1) {
