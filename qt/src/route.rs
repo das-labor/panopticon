@@ -69,7 +69,7 @@ pub fn dijkstra(start: usize, finish: usize, graph: &HashMap<usize,Vec<usize>>, 
 
     q.push((0.0,start));
 
-    while let Some((neg_cost,u)) = q.pop() {
+    while let Some((cost,u)) = q.pop() {
         if u == finish {
             let mut ret = vec![];
             let mut tmp = u;
@@ -89,12 +89,12 @@ pub fn dijkstra(start: usize, finish: usize, graph: &HashMap<usize,Vec<usize>>, 
             for v in n.iter() {
                 let a = points[u].x - points[*v].x;
                 let b = points[u].y - points[*v].y;
-                let alt = -1.0 * neg_cost + (a*a + b*b).sqrt();
+                let alt = cost + (a*a + b*b).sqrt();
                 if !dist.contains_key(v) || alt < dist[v] {
                     dist.insert(*v,alt);
                     prev.insert(*v,u);
-                    q.push((-1.0 * alt,*v));
-                    q.sort_by(|a,b| a.partial_cmp(b).unwrap_or(Ordering::Equal));
+                    q.push((alt,*v));
+                    q.sort_by(|a,b| b.partial_cmp(a).unwrap_or(Ordering::Equal));
                 }
             }
         }
