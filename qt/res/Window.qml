@@ -209,13 +209,15 @@ ApplicationWindow {
 
 				Image {
 					id: panopLogo
-					source: "qrc:///panop.png"
+					source: "panop.png"
 				}
+
 				Text {
 					anchors.verticalCenter: panopLogo.verticalCenter
 					anchors.left: panopLogo.right
 					anchors.leftMargin: 10
 					text: "PANOPTICON"
+					color: "#1e1e1e";
 					font {
 						pixelSize: panopLogo.height
 					}
