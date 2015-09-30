@@ -509,6 +509,13 @@ pub fn xor(_: &mut CodeGen, a: Rvalue, b: Rvalue) {
 pub fn cmpxchg8b(_: &mut CodeGen, a: Rvalue) {}
 pub fn cmpxchg16b(_: &mut CodeGen, a: Rvalue) {}
 pub fn cpuid(_: &mut CodeGen) {}
+pub fn clc(_: &mut CodeGen) {}
+pub fn cld(_: &mut CodeGen) {}
+pub fn cli(_: &mut CodeGen) {}
+pub fn cmc(_: &mut CodeGen) {}
+pub fn std(_: &mut CodeGen) {}
+pub fn sti(_: &mut CodeGen) {}
+pub fn stc(_: &mut CodeGen) {}
 
 pub fn conv(st: &mut State<Amd64>) -> bool {
     let next = st.address + (st.tokens.len() as u64);

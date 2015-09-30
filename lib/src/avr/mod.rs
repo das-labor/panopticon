@@ -248,7 +248,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let rr = reg(st,"r");
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic(2,"mov","{8}, {8}",vec!(rd.to_rv(),rr.to_rv()),|cg: &mut CodeGen| {
+            st.mnemonic(2,"mov","{8}, {8}",vec!(rd.to_rv(),rr.to_rv()),&|cg: &mut CodeGen| {
                 cg.assign(&rd,&rr);
             });
             st.jump(next,Guard::always());
@@ -260,7 +260,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let rr1 = reg(st,"r"); let rr2 = resolv(st.get_group("r") * 2 + 1);
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic(2,"mov","{8}, {8}",vec!(rd1.to_rv(),rr1.to_rv()),|cg: &mut CodeGen| {
+            st.mnemonic(2,"mov","{8}, {8}",vec!(rd1.to_rv(),rr1.to_rv()),&|cg: &mut CodeGen| {
                 cg.assign(&rd1,&rr1);
                 cg.assign(&rd2,&rr2);
             });
@@ -275,7 +275,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let off = Rvalue::Constant(st.get_group("d") as u64);
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic(2,"in",&format!("{{8}}, {{8::{}}}",name),vec!(rd.to_rv(),off.to_rv()),|cg: &mut CodeGen| {
+            st.mnemonic(2,"in",&format!("{{8}}, {{8::{}}}",name),vec!(rd.to_rv(),off.to_rv()),&|cg: &mut CodeGen| {
                 cg.assign(&rd,&sram(&off));
             });
             st.jump(next,Guard::always());
@@ -289,7 +289,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let off = Rvalue::Constant(st.get_group("r") as u64);
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic(2,"in",&format!("{{8::{}}}, {{8}}",name),vec!(off.to_rv(),rr.to_rv()),|cg: &mut CodeGen| {
+            st.mnemonic(2,"in",&format!("{{8::{}}}, {{8}}",name),vec!(off.to_rv(),rr.to_rv()),&|cg: &mut CodeGen| {
                 cg.assign(&sram(&off),&rr);
             });
             st.jump(next,Guard::always());
@@ -300,7 +300,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let rd = reg(st,"d");
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic(2,"pop","{{8}}",vec!(rd.to_rv()),|cg: &mut CodeGen| {
+            st.mnemonic(2,"pop","{{8}}",vec!(rd.to_rv()),&|cg: &mut CodeGen| {
                 let sp = get_sp(cg);
                 cg.sub_i(&sp,&sp,&1);
                 cg.assign(&rd,&sram(&sp));
@@ -314,7 +314,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let rd = reg(st,"d");
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic(2,"push","{{8}}",vec!(rd.to_rv()),|cg: &mut CodeGen| {
+            st.mnemonic(2,"push","{{8}}",vec!(rd.to_rv()),&|cg: &mut CodeGen| {
                 let sp = get_sp(cg);
                 cg.sub_i(&sp,&sp,&1);
                 cg.assign(&sram(&sp),&rd);
@@ -328,7 +328,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let rd = reg(st,"d");
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic(2,"swap","{8}",vec!(rd.to_rv()),|cg: &mut CodeGen| {
+            st.mnemonic(2,"swap","{8}",vec!(rd.to_rv()),&|cg: &mut CodeGen| {
                 let lower = new_temp(8);
                 let higher = new_temp(8);
 
@@ -348,7 +348,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let rr = reg(st,"r");
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic(2,"xch","{8}",vec!(rr.to_rv()),|cg: &mut CodeGen| {
+            st.mnemonic(2,"xch","{8}",vec!(rr.to_rv()),&|cg: &mut CodeGen| {
                 let z = new_temp(16);
                 cg.mul_i(&z,&*R30,&0x100);
                 cg.add_i(&z,&*R31,&z);
@@ -366,7 +366,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let rd = reg(st,"d");
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic(2,"ser","{8}",vec!(rd.to_rv()),|cg: &mut CodeGen| {
+            st.mnemonic(2,"ser","{8}",vec!(rd.to_rv()),&|cg: &mut CodeGen| {
                 cg.assign(&rd,&0xff);
             });
             st.jump(next,Guard::always());
@@ -378,7 +378,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let k = st.get_group("K");
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic(2,"ldi",&format!("{{8}}, {{::{}}}",k),vec!(rd.to_rv()),|cg: &mut CodeGen| {
+            st.mnemonic(2,"ldi",&format!("{{8}}, {{::{}}}",k),vec!(rd.to_rv()),&|cg: &mut CodeGen| {
                 cg.assign(&rd,&(k as u64));
             });
             st.jump(next,Guard::always());
@@ -389,7 +389,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let rr = reg(st,"r");
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic(2,"lac","{{8}}",vec!(rr.to_rv()),|cg: &mut CodeGen| {
+            st.mnemonic(2,"lac","{{8}}",vec!(rr.to_rv()),&|cg: &mut CodeGen| {
                 let z = new_temp(16);
                 cg.mul_i(&z,&*R30,&0x100);
                 cg.add_i(&z,&*R31,&z);
@@ -407,7 +407,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let rr = reg(st,"r");
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic(2,"las","{{8}}",vec!(rr.to_rv()),|cg: &mut CodeGen| {
+            st.mnemonic(2,"las","{{8}}",vec!(rr.to_rv()),&|cg: &mut CodeGen| {
                 let z = new_temp(16);
                 cg.mul_i(&z,&*R30,&0x100);
                 cg.add_i(&z,&*R31,&z);
@@ -426,7 +426,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let rr = reg(st,"r");
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic(2,"lat","{{8}}",vec!(rr.to_rv()),|cg: &mut CodeGen| {
+            st.mnemonic(2,"lat","{{8}}",vec!(rr.to_rv()),&|cg: &mut CodeGen| {
                 let z = new_temp(16);
                 cg.mul_i(&z,&*R30,&0x100);
                 cg.add_i(&z,&*R31,&z);
@@ -446,7 +446,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let rd = reg(st,"d");
             let next = st.configuration.wrap(st.address + 4);
 
-            st.mnemonic(4,"lds","{{8}}, {{8}}",vec!(rd.to_rv(),k.to_rv()),|cg: &mut CodeGen| {
+            st.mnemonic(4,"lds","{{8}}, {{8}}",vec!(rd.to_rv(),k.to_rv()),&|cg: &mut CodeGen| {
                 cg.assign(&rd,&sram(&k));
             });
             st.jump(next,Guard::always());
@@ -459,7 +459,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let rd = reg(st,"d");
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic(2,"lds","{{8}}, {{8}}",vec!(rd.to_rv(),k.to_rv()),|cg: &mut CodeGen| {
+            st.mnemonic(2,"lds","{{8}}, {{8}}",vec!(rd.to_rv(),k.to_rv()),&|cg: &mut CodeGen| {
                 cg.assign(&rd,&sram(&k));
             });
             st.jump(next,Guard::always());
@@ -469,7 +469,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
         [ 0x95c8 ] = |st: &mut State<Avr>| {
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic(2,"lpm","",vec!(),|cg: &mut CodeGen| {
+            st.mnemonic(2,"lpm","",vec!(),&|cg: &mut CodeGen| {
                 let z = new_temp(16);
                 cg.mul_i(&z,&*R30,&0x100);
                 cg.add_i(&z,&*R31,&z);
@@ -484,7 +484,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let next = st.configuration.wrap(st.address + 2);
             let rd = reg(st,"d");
 
-            st.mnemonic_dynargs(2,"lpm","{8}, {16::Z}",|cg: &mut CodeGen| {
+            st.mnemonic_dynargs(2,"lpm","{8}, {16::Z}",&|cg: &mut CodeGen| {
                 let z = new_temp(16);
                 cg.mul_i(&z,&*R30,&0x100);
                 cg.add_i(&z,&*R31,&z);
@@ -500,7 +500,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let next = st.configuration.wrap(st.address + 2);
             let rd = reg(st,"d");
 
-            st.mnemonic_dynargs(2,"lpm","{8}, {16::Z+}",|cg: &mut CodeGen| {
+            st.mnemonic_dynargs(2,"lpm","{8}, {16::Z+}",&|cg: &mut CodeGen| {
                 let z = new_temp(16);
                 cg.mul_i(&z,&*R30,&0x100);
                 cg.add_i(&z,&*R31,&z);
@@ -518,7 +518,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
         [ 0x95e8 ] = |st: &mut State<Avr>| {
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic_dynargs(2,"spm","{{16::X}}",|cg: &mut CodeGen| {
+            st.mnemonic_dynargs(2,"spm","{{16::X}}",&|cg: &mut CodeGen| {
                 let z = new_temp(16);
                 cg.mul_i(&z,&*R30,&0x100);
                 cg.add_i(&z,&*R31,&z);
@@ -533,7 +533,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
         [ 0x95f8 ] = |st: &mut State<Avr>| {
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic_dynargs(2,"spm","{{16::X+}}",|cg: &mut CodeGen| {
+            st.mnemonic_dynargs(2,"spm","{{16::X+}}",&|cg: &mut CodeGen| {
                 let z = new_temp(16);
                 cg.mul_i(&z,&*R30,&0x100);
                 cg.add_i(&z,&*R31,&z);
@@ -555,7 +555,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let rd = reg(st,"d");
             let next = st.configuration.wrap(st.address + 4);
 
-            st.mnemonic(4,"sts","{16}, {8}",vec!(k.clone(),rd.to_rv()),|cg: &mut CodeGen| {
+            st.mnemonic(4,"sts","{16}, {8}",vec!(k.clone(),rd.to_rv()),&|cg: &mut CodeGen| {
                 cg.assign(&sram(&k),&rd);
             });
             st.jump(next,Guard::always());
@@ -568,7 +568,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let rd = reg(st,"d");
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic(2,"sts","{16}, {8}",vec!(k.clone(),rd.to_rv()),|cg: &mut CodeGen| {
+            st.mnemonic(2,"sts","{16}, {8}",vec!(k.clone(),rd.to_rv()),&|cg: &mut CodeGen| {
                 cg.assign(&sram(&k),&rd);
             });
             st.jump(next,Guard::always());
@@ -581,7 +581,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let mask = Rvalue::Constant(1 << (st.get_group("b")));
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic(2,"sbi","{{8}}, {{8}}",vec!(a.to_rv(),b.to_rv()),|cg: &mut CodeGen| {
+            st.mnemonic(2,"sbi","{{8}}, {{8}}",vec!(a.to_rv(),b.to_rv()),&|cg: &mut CodeGen| {
                 cg.or_i(&sram(&a),&sram(&a),&mask);
             });
             st.jump(next,Guard::always());
@@ -594,7 +594,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let mask = Rvalue::Constant(((!(1 << (st.get_group("b")))) & 0xff) as u64);
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic(2,"sbi","{{8}}, {{8}}",vec!(a.to_rv(),b.to_rv()),|cg: &mut CodeGen| {
+            st.mnemonic(2,"sbi","{{8}}, {{8}}",vec!(a.to_rv(),b.to_rv()),&|cg: &mut CodeGen| {
                 cg.and_i(&sram(&a),&sram(&a),&mask);
             });
             st.jump(next,Guard::always());
@@ -604,7 +604,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
         [ 0x9408 ] = |st: &mut State<Avr>| {
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic(2,"sec","",vec!(),|cg: &mut CodeGen| {
+            st.mnemonic(2,"sec","",vec!(),&|cg: &mut CodeGen| {
                 cg.assign(&*C,&1);
             });
             st.jump(next,Guard::always());
@@ -614,7 +614,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
         [ 0x9458 ] = |st: &mut State<Avr>| {
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic(2,"seh","",vec!(),|cg: &mut CodeGen| {
+            st.mnemonic(2,"seh","",vec!(),&|cg: &mut CodeGen| {
                 cg.assign(&*H,&1);
             });
             st.jump(next,Guard::always());
@@ -624,7 +624,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
         [ 0x9478 ] = |st: &mut State<Avr>| {
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic(2,"sei","",vec!(),|cg: &mut CodeGen| {
+            st.mnemonic(2,"sei","",vec!(),&|cg: &mut CodeGen| {
                 cg.assign(&*I,&1);
             });
             st.jump(next,Guard::always());
@@ -634,7 +634,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
         [ 0x9428 ] = |st: &mut State<Avr>| {
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic(2,"sen","",vec!(),|cg: &mut CodeGen| {
+            st.mnemonic(2,"sen","",vec!(),&|cg: &mut CodeGen| {
                 cg.assign(&*N,&1);
             });
             st.jump(next,Guard::always());
@@ -644,7 +644,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
         [ 0x9448 ] = |st: &mut State<Avr>| {
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic(2,"ses","",vec!(),|cg: &mut CodeGen| {
+            st.mnemonic(2,"ses","",vec!(),&|cg: &mut CodeGen| {
                 cg.assign(&*S,&1);
             });
             st.jump(next,Guard::always());
@@ -654,7 +654,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
         [ 0x9468 ] = |st: &mut State<Avr>| {
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic(2,"set","",vec!(),|cg: &mut CodeGen| {
+            st.mnemonic(2,"set","",vec!(),&|cg: &mut CodeGen| {
                 cg.assign(&*T,&1);
             });
             st.jump(next,Guard::always());
@@ -664,7 +664,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
         [ 0x9438 ] = |st: &mut State<Avr>| {
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic(2,"sev","",vec!(),|cg: &mut CodeGen| {
+            st.mnemonic(2,"sev","",vec!(),&|cg: &mut CodeGen| {
                 cg.assign(&*V,&1);
             });
             st.jump(next,Guard::always());
@@ -674,7 +674,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
         [ 0x9418 ] = |st: &mut State<Avr>| {
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic(2,"sez","",vec!(),|cg: &mut CodeGen| {
+            st.mnemonic(2,"sez","",vec!(),&|cg: &mut CodeGen| {
                 cg.assign(&*Z,&1);
             });
             st.jump(next,Guard::always());
@@ -684,7 +684,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
         [ 0x9488 ] = |st: &mut State<Avr>| {
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic(2,"clc","",vec!(),|cg: &mut CodeGen| {
+            st.mnemonic(2,"clc","",vec!(),&|cg: &mut CodeGen| {
                 cg.assign(&*C,&0);
             });
             st.jump(next,Guard::always());
@@ -694,7 +694,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
         [ 0x94d8 ] = |st: &mut State<Avr>| {
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic(2,"clh","",vec!(),|cg: &mut CodeGen| {
+            st.mnemonic(2,"clh","",vec!(),&|cg: &mut CodeGen| {
                 cg.assign(&*H,&0);
             });
             st.jump(next,Guard::always());
@@ -704,7 +704,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
         [ 0x94f8 ] = |st: &mut State<Avr>| {
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic(2,"cli","",vec!(),|cg: &mut CodeGen| {
+            st.mnemonic(2,"cli","",vec!(),&|cg: &mut CodeGen| {
                 cg.assign(&*I,&0);
             });
             st.jump(next,Guard::always());
@@ -714,7 +714,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
         [ 0x94a8 ] = |st: &mut State<Avr>| {
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic(2,"cln","",vec!(),|cg: &mut CodeGen| {
+            st.mnemonic(2,"cln","",vec!(),&|cg: &mut CodeGen| {
                 cg.assign(&*N,&0);
             });
             st.jump(next,Guard::always());
@@ -724,7 +724,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
         [ 0x94c8 ] = |st: &mut State<Avr>| {
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic(2,"cls","",vec!(),|cg: &mut CodeGen| {
+            st.mnemonic(2,"cls","",vec!(),&|cg: &mut CodeGen| {
                 cg.assign(&*S,&0);
             });
             st.jump(next,Guard::always());
@@ -734,7 +734,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
         [ 0x94e8 ] = |st: &mut State<Avr>| {
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic(2,"clt","",vec!(),|cg: &mut CodeGen| {
+            st.mnemonic(2,"clt","",vec!(),&|cg: &mut CodeGen| {
                 cg.assign(&*T,&0);
             });
             st.jump(next,Guard::always());
@@ -744,7 +744,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
         [ 0x94b8 ] = |st: &mut State<Avr>| {
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic(2,"clv","",vec!(),|cg: &mut CodeGen| {
+            st.mnemonic(2,"clv","",vec!(),&|cg: &mut CodeGen| {
                 cg.assign(&*V,&0);
             });
             st.jump(next,Guard::always());
@@ -754,7 +754,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
         [ 0x9498 ] = |st: &mut State<Avr>| {
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic(2,"clz","",vec!(),|cg: &mut CodeGen| {
+            st.mnemonic(2,"clz","",vec!(),&|cg: &mut CodeGen| {
                 cg.assign(&*Z,&0);
             });
             st.jump(next,Guard::always());
@@ -766,7 +766,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let rr = reg(st,"r");
             let rd = reg(st,"d");
 
-            st.mnemonic(2,"cp","{8}, {8}",vec!(rd.to_rv(),rr.to_rv()),|cg: &mut CodeGen| {
+            st.mnemonic(2,"cp","{8}, {8}",vec!(rd.to_rv(),rr.to_rv()),&|cg: &mut CodeGen| {
                 let r = new_temp(8);
                 cg.sub_i(&r,&rd,&rr);
 
@@ -792,7 +792,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let rr = reg(st,"r");
             let rd = reg(st,"d");
 
-            st.mnemonic(2,"cpc","{{8}}, {{8}}",vec!(rd.to_rv(),rr.to_rv()),|cg: &mut CodeGen| {
+            st.mnemonic(2,"cpc","{{8}}, {{8}}",vec!(rd.to_rv(),rr.to_rv()),&|cg: &mut CodeGen| {
                 let r = new_temp(8);
                 let cr = new_temp(8);
 
@@ -822,7 +822,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let k = st.get_group("K") as u64;
             let rd = reg(st,"d");
 
-            st.mnemonic(2,"cpi","{{8}}, {{8}}",vec!(rd.to_rv(),Rvalue::Constant(k)),|cg: &mut CodeGen| {
+            st.mnemonic(2,"cpi","{{8}}, {{8}}",vec!(rd.to_rv(),Rvalue::Constant(k)),&|cg: &mut CodeGen| {
                 let r = new_temp(8);
                 cg.sub_i(&r,&rd,&k);
 
@@ -847,7 +847,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let next = st.configuration.wrap(st.address + 2);
             let rd = reg(st,"d");
 
-            st.mnemonic(2,"lsr","",vec!(rd.to_rv()),|cg: &mut CodeGen| {
+            st.mnemonic(2,"lsr","",vec!(rd.to_rv()),&|cg: &mut CodeGen| {
                 cg.mod_i(&*C,&rd,&2);
                 cg.rshift_i(&rd,&rd,&1);
                 cg.xor_b(&*S,&*V,&*N);
@@ -864,7 +864,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let rd = reg(st,"d");
             let rr = reg(st,"r");
 
-            st.mnemonic(2,"adc","{{8}}, {{8}}",vec!(rd.to_rv(),rr.to_rv()),|cg: &mut CodeGen| {
+            st.mnemonic(2,"adc","{{8}}, {{8}}",vec!(rd.to_rv(),rr.to_rv()),&|cg: &mut CodeGen| {
                 let cr = new_temp(1);
                 let r = new_temp(9);
 
@@ -894,7 +894,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let rd = reg(st,"d");
             let rr = reg(st,"r");
 
-            st.mnemonic(2,"add","{{8}}, {{8}}",vec!(rd.to_rv(),rr.to_rv()),|cg: &mut CodeGen| {
+            st.mnemonic(2,"add","{{8}}, {{8}}",vec!(rd.to_rv(),rr.to_rv()),&|cg: &mut CodeGen| {
                 let cr = new_temp(1);
                 let r = new_temp(9);
 
@@ -924,7 +924,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let rr = reg(st,"r");
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic(2,"and","{8}, {8}",vec!(rd.to_rv(),rr.to_rv()),|cg: &mut CodeGen| {
+            st.mnemonic(2,"and","{8}, {8}",vec!(rd.to_rv(),rr.to_rv()),&|cg: &mut CodeGen| {
                 cg.and_i(&rd,&rd,&rr);
                 cg.assign(&*V,&0);
                 cg.equal_i(&*Z,&0,&rd);
@@ -942,7 +942,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let k = Rvalue::Constant(_k as u64);
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic(2,"andi","{8}, {8}",vec!(rd.to_rv(),k.clone()),|cg: &mut CodeGen| {
+            st.mnemonic(2,"andi","{8}, {8}",vec!(rd.to_rv(),k.clone()),&|cg: &mut CodeGen| {
                 cg.and_i(&rd,&rd,&k);
                 cg.assign(&*V,&0);
                 cg.equal_i(&*Z,&0,&rd);
@@ -959,7 +959,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let rr = reg(st,"r");
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic(2,"sub","{8}, {8}",vec!(rd.to_rv(),rr.to_rv()),|cg: &mut CodeGen| {
+            st.mnemonic(2,"sub","{8}, {8}",vec!(rd.to_rv(),rr.to_rv()),&|cg: &mut CodeGen| {
                 let r = new_temp(8);
 
                 cg.sub_i(&r,&rd,&rr);
@@ -987,7 +987,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let k = st.get_group("K");
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic(2,"subi","{8}, {8}",vec!(rd.to_rv(),Rvalue::Constant(k as u64)),|cg: &mut CodeGen| {
+            st.mnemonic(2,"subi","{8}, {8}",vec!(rd.to_rv(),Rvalue::Constant(k as u64)),&|cg: &mut CodeGen| {
                 let r = new_temp(8);
                 let cr = new_temp(8);
 
@@ -1016,7 +1016,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let rd = reg(st,"d");
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic(2,"asr","{8}",vec!(rd.to_rv()),|cg: &mut CodeGen| {
+            st.mnemonic(2,"asr","{8}",vec!(rd.to_rv()),&|cg: &mut CodeGen| {
                 let low = new_temp(8);
 
                 cg.mod_i(&low,&rd,&2);
@@ -1041,7 +1041,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let mask = 1 << (b as u64);
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic(2,"bst","{8}, {8}",vec!(rd.to_rv(),Rvalue::Constant(b as u64)),|cg: &mut CodeGen| {
+            st.mnemonic(2,"bst","{8}, {8}",vec!(rd.to_rv(),Rvalue::Constant(b as u64)),&|cg: &mut CodeGen| {
                 let t = new_temp(8);
 
                 cg.div_i(&t,&rd,&mask);
@@ -1058,7 +1058,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let mask = 1 << (b as u64);
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic(2,"bld","{8}, {8}",vec!(rd.to_rv(),Rvalue::Constant(b as u64)),|cg: &mut CodeGen| {
+            st.mnemonic(2,"bld","{8}, {8}",vec!(rd.to_rv(),Rvalue::Constant(b as u64)),&|cg: &mut CodeGen| {
                 let t = new_temp(8);
 
                 cg.lift_b(&t,&*T);
@@ -1074,7 +1074,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let rd = reg(st,"d");
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic(2,"rol","{8}",vec!(rd.to_rv()),|cg: &mut CodeGen| {
+            st.mnemonic(2,"rol","{8}",vec!(rd.to_rv()),&|cg: &mut CodeGen| {
                 let c = new_temp(1);
 
                 cg.div_i(&c,&rd,&0x80);
@@ -1099,7 +1099,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let rd = reg(st,"d");
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic(2,"ror","{8}",vec!(rd.to_rv()),|cg: &mut CodeGen| {
+            st.mnemonic(2,"ror","{8}",vec!(rd.to_rv()),&|cg: &mut CodeGen| {
                 let c = new_temp(1);
 
                 cg.mod_i(&c,&rd,&2);
@@ -1123,7 +1123,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let rd = reg(st,"d");
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic(2,"dec","{8}",vec!(rd.to_rv()),|cg: &mut CodeGen| {
+            st.mnemonic(2,"dec","{8}",vec!(rd.to_rv()),&|cg: &mut CodeGen| {
                 cg.sub_i(&rd,&rd,&1);
                 cg.equal_i(&*C,&rd,&0xff);
 
@@ -1140,7 +1140,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let rd = reg(st,"d");
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic(2,"inc","{8}",vec!(rd.to_rv()),|cg: &mut CodeGen| {
+            st.mnemonic(2,"inc","{8}",vec!(rd.to_rv()),&|cg: &mut CodeGen| {
                 cg.add_i(&rd,&rd,&1);
                 cg.equal_i(&*C,&rd,&0);
 
@@ -1158,7 +1158,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let rr = reg(st,"r");
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic(2,"sbc","{8}, {8}",vec!(rd.to_rv(),rr.to_rv()),|cg: &mut CodeGen| {
+            st.mnemonic(2,"sbc","{8}, {8}",vec!(rd.to_rv(),rr.to_rv()),&|cg: &mut CodeGen| {
                 let r = new_temp(8);
                 let cr = new_temp(8);
 
@@ -1190,7 +1190,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let k = Rvalue::Constant(_k as u64);
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic(2,"sbci","{8}, {8}",vec!(rd.to_rv(),k.to_rv()),|cg: &mut CodeGen| {
+            st.mnemonic(2,"sbci","{8}, {8}",vec!(rd.to_rv(),k.to_rv()),&|cg: &mut CodeGen| {
                 let r = new_temp(8);
                 let cr = new_temp(8);
 
@@ -1219,7 +1219,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let rd = reg(st,"d");
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic(2,"com","{8}",vec!(rd.to_rv()),|cg: &mut CodeGen| {
+            st.mnemonic(2,"com","{8}",vec!(rd.to_rv()),&|cg: &mut CodeGen| {
                 cg.sub_i(&rd,&0xff,&rd);
 
                 cg.assign(&*C,&0);
@@ -1239,7 +1239,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let rd2 = resolv(d + 1);
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic(2,"adiw","{8}:{8}, {8}",vec!(rd1.to_rv(),rd2.to_rv(),k.to_rv()),|cg: &mut CodeGen| {
+            st.mnemonic(2,"adiw","{8}:{8}, {8}",vec!(rd1.to_rv(),rd2.to_rv(),k.to_rv()),&|cg: &mut CodeGen| {
                 let r = new_temp(16);
 
                 cg.assign(&r,&rd2);
@@ -1280,7 +1280,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let rd2 = resolv(d + 1);
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic(2,"sbiw","{8}:{8}, {8}",vec!(rd1.to_rv(),rd2.to_rv(),k.to_rv()),|cg: &mut CodeGen| {
+            st.mnemonic(2,"sbiw","{8}:{8}, {8}",vec!(rd1.to_rv(),rd2.to_rv(),k.to_rv()),&|cg: &mut CodeGen| {
                 let r = new_temp(16);
 
                 cg.assign(&r,&rd2);
@@ -1319,7 +1319,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let rr = reg(st,"r");
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic(2,"muls","{8}, {8}",vec!(rd.to_rv(),rr.to_rv()),|cg: &mut CodeGen| {
+            st.mnemonic(2,"muls","{8}, {8}",vec!(rd.to_rv(),rr.to_rv()),&|cg: &mut CodeGen| {
                 let r = new_temp(17);
 
                 cg.mul_i(&r,&rd,&rr);
@@ -1338,7 +1338,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let rr = reg(st,"r");
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic(2,"mulsu","{8}, {8}",vec!(rd.to_rv(),rr.to_rv()),|cg: &mut CodeGen| {
+            st.mnemonic(2,"mulsu","{8}, {8}",vec!(rd.to_rv(),rr.to_rv()),&|cg: &mut CodeGen| {
                 let r = new_temp(17);
 
                 cg.mul_i(&r,&rd,&rr);
@@ -1356,7 +1356,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let rd = reg(st,"d");
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic(2,"neg","{8}",vec!(rd.to_rv()),|cg: &mut CodeGen| {
+            st.mnemonic(2,"neg","{8}",vec!(rd.to_rv()),&|cg: &mut CodeGen| {
                 let r = new_temp(8);
 
                 cg.sub_i(&r,&0,&rd);
@@ -1382,7 +1382,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let rr = reg(st,"r");
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic(2,"mul","{8}, {8}",vec!(rd.to_rv(),rr.to_rv()),|cg: &mut CodeGen| {
+            st.mnemonic(2,"mul","{8}, {8}",vec!(rd.to_rv(),rr.to_rv()),&|cg: &mut CodeGen| {
                 let r = new_temp(17);
 
                 cg.mul_i(&r,&rd,&rr);
@@ -1409,11 +1409,11 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let skip = st.configuration.wrap(k as u64);
 
             if st.get_group("x") == 0 {
-                st.mnemonic(2,"brcs","{8}",vec!(Rvalue::Constant(k as u64)),|_: &mut CodeGen| {});
+                st.mnemonic(2,"brcs","{8}",vec!(Rvalue::Constant(k as u64)),&|_: &mut CodeGen| {});
                 st.jump(skip,g.negation());
                 st.jump(fallthru,g);
             } else {
-                st.mnemonic(2,"brcc","{8}",vec!(Rvalue::Constant(k as u64)),|_: &mut CodeGen| {});
+                st.mnemonic(2,"brcc","{8}",vec!(Rvalue::Constant(k as u64)),&|_: &mut CodeGen| {});
                 st.jump(fallthru,g.negation());
                 st.jump(skip,g);
             }
@@ -1433,11 +1433,11 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let skip = st.configuration.wrap(k as u64);
 
             if st.get_group("x") == 0 {
-                st.mnemonic(2,"breq","{8}",vec!(Rvalue::Constant(k as u64)),|_: &mut CodeGen| {});
+                st.mnemonic(2,"breq","{8}",vec!(Rvalue::Constant(k as u64)),&|_: &mut CodeGen| {});
                 st.jump(skip,g.negation());
                 st.jump(fallthru,g);
             } else {
-                st.mnemonic(2,"brne","{8}",vec!(Rvalue::Constant(k as u64)),|_: &mut CodeGen| {});
+                st.mnemonic(2,"brne","{8}",vec!(Rvalue::Constant(k as u64)),&|_: &mut CodeGen| {});
                 st.jump(fallthru,g.negation());
                 st.jump(skip,g);
             }
@@ -1457,11 +1457,11 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let skip = st.configuration.wrap(k as u64);
 
             if st.get_group("x") == 0 {
-                st.mnemonic(2,"brns","{8}",vec!(Rvalue::Constant(k as u64)),|_: &mut CodeGen| {});
+                st.mnemonic(2,"brns","{8}",vec!(Rvalue::Constant(k as u64)),&|_: &mut CodeGen| {});
                 st.jump(skip,g.negation());
                 st.jump(fallthru,g);
             } else {
-                st.mnemonic(2,"brnc","{8}",vec!(Rvalue::Constant(k as u64)),|_: &mut CodeGen| {});
+                st.mnemonic(2,"brnc","{8}",vec!(Rvalue::Constant(k as u64)),&|_: &mut CodeGen| {});
                 st.jump(fallthru,g.negation());
                 st.jump(skip,g);
             }
@@ -1481,11 +1481,11 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let skip = st.configuration.wrap(k as u64);
 
             if st.get_group("x") == 0 {
-                st.mnemonic(2,"brvs","{8}",vec!(Rvalue::Constant(k as u64)),|_: &mut CodeGen| {});
+                st.mnemonic(2,"brvs","{8}",vec!(Rvalue::Constant(k as u64)),&|_: &mut CodeGen| {});
                 st.jump(skip,g.negation());
                 st.jump(fallthru,g);
             } else {
-                st.mnemonic(2,"brvc","{8}",vec!(Rvalue::Constant(k as u64)),|_: &mut CodeGen| {});
+                st.mnemonic(2,"brvc","{8}",vec!(Rvalue::Constant(k as u64)),&|_: &mut CodeGen| {});
                 st.jump(fallthru,g.negation());
                 st.jump(skip,g);
             }
@@ -1505,11 +1505,11 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let skip = st.configuration.wrap(k as u64);
 
             if st.get_group("x") == 0 {
-                st.mnemonic(2,"brlt","{8}",vec!(Rvalue::Constant(k as u64)),|_: &mut CodeGen| {});
+                st.mnemonic(2,"brlt","{8}",vec!(Rvalue::Constant(k as u64)),&|_: &mut CodeGen| {});
                 st.jump(skip,g.negation());
                 st.jump(fallthru,g);
             } else {
-                st.mnemonic(2,"brge","{8}",vec!(Rvalue::Constant(k as u64)),|_: &mut CodeGen| {});
+                st.mnemonic(2,"brge","{8}",vec!(Rvalue::Constant(k as u64)),&|_: &mut CodeGen| {});
                 st.jump(fallthru,g.negation());
                 st.jump(skip,g);
             }
@@ -1529,11 +1529,11 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let skip = st.configuration.wrap(k as u64);
 
             if st.get_group("x") == 0 {
-                st.mnemonic(2,"brhs","{8}",vec!(Rvalue::Constant(k as u64)),|_: &mut CodeGen| {});
+                st.mnemonic(2,"brhs","{8}",vec!(Rvalue::Constant(k as u64)),&|_: &mut CodeGen| {});
                 st.jump(skip,g.negation());
                 st.jump(fallthru,g);
             } else {
-                st.mnemonic(2,"brhc","{8}",vec!(Rvalue::Constant(k as u64)),|_: &mut CodeGen| {});
+                st.mnemonic(2,"brhc","{8}",vec!(Rvalue::Constant(k as u64)),&|_: &mut CodeGen| {});
                 st.jump(fallthru,g.negation());
                 st.jump(skip,g);
             }
@@ -1553,11 +1553,11 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let skip = st.configuration.wrap(k as u64);
 
             if st.get_group("x") == 0 {
-                st.mnemonic(2,"brts","{8}",vec!(Rvalue::Constant(k as u64)),|_: &mut CodeGen| {});
+                st.mnemonic(2,"brts","{8}",vec!(Rvalue::Constant(k as u64)),&|_: &mut CodeGen| {});
                 st.jump(skip,g.negation());
                 st.jump(fallthru,g);
             } else {
-                st.mnemonic(2,"brtc","{8}",vec!(Rvalue::Constant(k as u64)),|_: &mut CodeGen| {});
+                st.mnemonic(2,"brtc","{8}",vec!(Rvalue::Constant(k as u64)),&|_: &mut CodeGen| {});
                 st.jump(fallthru,g.negation());
                 st.jump(skip,g);
             }
@@ -1577,11 +1577,11 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let skip = st.configuration.wrap(k as u64);
 
             if st.get_group("x") == 0 {
-                st.mnemonic(2,"brie","{8}",vec!(Rvalue::Constant(k as u64)),|_: &mut CodeGen| {});
+                st.mnemonic(2,"brie","{8}",vec!(Rvalue::Constant(k as u64)),&|_: &mut CodeGen| {});
                 st.jump(skip,g.negation());
                 st.jump(fallthru,g);
             } else {
-                st.mnemonic(2,"brid","{8}",vec!(Rvalue::Constant(k as u64)),|_: &mut CodeGen| {});
+                st.mnemonic(2,"brid","{8}",vec!(Rvalue::Constant(k as u64)),&|_: &mut CodeGen| {});
                 st.jump(fallthru,g.negation());
                 st.jump(skip,g);
             }
@@ -1594,7 +1594,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let k = Rvalue::Constant(_k);
             let next = st.configuration.wrap(st.address + 4);
 
-            st.mnemonic(4,"call","{26}",vec!(k.to_rv()),|cg: &mut CodeGen| {
+            st.mnemonic(4,"call","{26}",vec!(k.to_rv()),&|cg: &mut CodeGen| {
                 cg.call_i(&Lvalue::Undefined,&k);
             });
             st.jump(next,Guard::always());
@@ -1606,7 +1606,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let _k = (((st.get_group("k") * 2) % pc_mod) + pc_mod) % pc_mod;
             let k = Rvalue::Constant(_k);
 
-            st.mnemonic(4,"jmp","{26}",vec!(k.to_rv()),|_: &mut CodeGen| {});
+            st.mnemonic(4,"jmp","{26}",vec!(k.to_rv()),&|_: &mut CodeGen| {});
             st.jump(k,Guard::always());
             true
         },
@@ -1620,7 +1620,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             } * 2 + 2 + (st.address as i64);
             let next = st.configuration.wrap_signed(k);
 
-            st.mnemonic(2,"rcall","{26}",vec!(next.clone()),|cg: &mut CodeGen| {
+            st.mnemonic(2,"rcall","{26}",vec!(next.clone()),&|cg: &mut CodeGen| {
                 cg.call_i(&Lvalue::Undefined,&next);
             });
             st.jump(next,Guard::always());
@@ -1636,24 +1636,24 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             } * 2 + 2 + (st.address as i64);
             let skip = st.configuration.wrap_signed(k);
 
-            st.mnemonic(2,"rjmp","{26}",vec!(Rvalue::Constant(k as u64)),|_: &mut CodeGen| {});
+            st.mnemonic(2,"rjmp","{26}",vec!(Rvalue::Constant(k as u64)),&|_: &mut CodeGen| {});
             st.jump(skip,Guard::always());
             true
         },
         // RET
         [ 0x9508 ] = |st: &mut State<Avr>| {
-            st.mnemonic(2,"ret","",vec!(),|_: &mut CodeGen| {});
+            st.mnemonic(2,"ret","",vec!(),&|_: &mut CodeGen| {});
             true
         },
         // RETI
         [ 0x9518 ] = |st: &mut State<Avr>| {
-            st.mnemonic(2,"reti","",vec!(),|_: &mut CodeGen| {});
+            st.mnemonic(2,"reti","",vec!(),&|_: &mut CodeGen| {});
             true
         },
         // IJMP
         [ 0x9409 ] = |st: &mut State<Avr>| {
             let z = new_temp(16);
-            st.mnemonic_dynargs(2,"ijmp","{16::Z}",|cg: &mut CodeGen| {
+            st.mnemonic_dynargs(2,"ijmp","{16::Z}",&|cg: &mut CodeGen| {
                 cg.mul_i(&z,&*R30,&0x100);
                 cg.add_i(&z,&*R31,&z);
                 vec!(z.to_rv())
@@ -1666,7 +1666,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let z = new_temp(16);
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic_dynargs(2,"icall","{16::Z}",|cg: &mut CodeGen| {
+            st.mnemonic_dynargs(2,"icall","{16::Z}",&|cg: &mut CodeGen| {
                 cg.mul_i(&z,&*R30,&0x100);
                 cg.add_i(&z,&*R31,&z);
 
@@ -1682,7 +1682,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let x = new_temp(16);
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic_dynargs(2,"st","{16::X}",|cg: &mut CodeGen| {
+            st.mnemonic_dynargs(2,"st","{16::X}",&|cg: &mut CodeGen| {
                 cg.mul_i(&x,&*R26,&0x100);
                 cg.add_i(&x,&*R27,&x);
                 cg.assign(&sram(&x),&rr);
@@ -1697,7 +1697,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let x = new_temp(16);
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic_dynargs(2,"st","{16::-X}",|cg: &mut CodeGen| {
+            st.mnemonic_dynargs(2,"st","{16::-X}",&|cg: &mut CodeGen| {
                 cg.mul_i(&x,&*R26,&0x100);
                 cg.add_i(&x,&*R27,&x);
                 cg.sub_i(&x,&x,&1);
@@ -1713,7 +1713,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let x = new_temp(16);
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic_dynargs(2,"st","{16::X+}",|cg: &mut CodeGen| {
+            st.mnemonic_dynargs(2,"st","{16::X+}",&|cg: &mut CodeGen| {
                 cg.mul_i(&x,&*R26,&0x100);
                 cg.add_i(&x,&*R27,&x);
                 cg.assign(&sram(&x),&rr);
@@ -1729,7 +1729,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let x = new_temp(16);
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic_dynargs(2,"st","{16::Y}",|cg: &mut CodeGen| {
+            st.mnemonic_dynargs(2,"st","{16::Y}",&|cg: &mut CodeGen| {
                 cg.mul_i(&x,&*R28,&0x100);
                 cg.add_i(&x,&*R29,&x);
                     cg.sub_i(&x,&x,&1);
@@ -1746,7 +1746,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let x = new_temp(16);
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic_dynargs(2,"st","{16::-Y}",|cg: &mut CodeGen| {
+            st.mnemonic_dynargs(2,"st","{16::-Y}",&|cg: &mut CodeGen| {
                 cg.mul_i(&x,&*R28,&0x100);
                 cg.add_i(&x,&*R29,&x);
                 cg.sub_i(&x,&x,&1);
@@ -1762,7 +1762,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let x = new_temp(16);
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic_dynargs(2,"st","{16::Y+}",|cg: &mut CodeGen| {
+            st.mnemonic_dynargs(2,"st","{16::Y+}",&|cg: &mut CodeGen| {
                 cg.mul_i(&x,&*R28,&0x100);
                 cg.add_i(&x,&*R29,&x);
                 cg.assign(&sram(&x),&rr);
@@ -1778,7 +1778,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let x = new_temp(16);
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic_dynargs(2,"st","{16::Z}",|cg: &mut CodeGen| {
+            st.mnemonic_dynargs(2,"st","{16::Z}",&|cg: &mut CodeGen| {
                 cg.mul_i(&x,&*R30,&0x100);
                 cg.add_i(&x,&*R31,&x);
                 cg.assign(&sram(&x),&rr);
@@ -1793,7 +1793,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let x = new_temp(16);
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic_dynargs(2,"st","{16::-Z}",|cg: &mut CodeGen| {
+            st.mnemonic_dynargs(2,"st","{16::-Z}",&|cg: &mut CodeGen| {
                 cg.mul_i(&x,&*R30,&0x100);
                 cg.add_i(&x,&*R31,&x);
                 cg.sub_i(&x,&x,&1);
@@ -1809,7 +1809,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let x = new_temp(16);
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic_dynargs(2,"st","{16::Z+}",|cg: &mut CodeGen| {
+            st.mnemonic_dynargs(2,"st","{16::Z+}",&|cg: &mut CodeGen| {
                 cg.mul_i(&x,&*R30,&0x100);
                 cg.add_i(&x,&*R31,&x);
                 cg.assign(&sram(&x),&rr);
@@ -1828,7 +1828,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let t = if reg { "Y" } else { "Z" };
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic_dynargs(2,"std",&format!("{{16::{}+{}}}",t,q),|cg: &mut CodeGen| {
+            st.mnemonic_dynargs(2,"std",&format!("{{16::{}+{}}}",t,q),&|cg: &mut CodeGen| {
                 if reg {
                     cg.mul_i(&x,&*R28,&0x100);
                     cg.add_i(&x,&*R29,&x);
@@ -1850,7 +1850,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let x = new_temp(16);
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic_dynargs(2,"ld","{8}, {16::X}",|cg: &mut CodeGen| {
+            st.mnemonic_dynargs(2,"ld","{8}, {16::X}",&|cg: &mut CodeGen| {
                 cg.mul_i(&x,&*R26,&0x100);
                 cg.add_i(&x,&*R27,&x);
                 cg.assign(&rd,&sram(&x).to_rv());
@@ -1865,7 +1865,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let x = new_temp(16);
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic_dynargs(2,"ld","{8}, {16::-X}",|cg: &mut CodeGen| {
+            st.mnemonic_dynargs(2,"ld","{8}, {16::-X}",&|cg: &mut CodeGen| {
                 cg.mul_i(&x,&*R26,&0x100);
                 cg.add_i(&x,&*R27,&x);
                 cg.sub_i(&x,&x,&1);
@@ -1884,7 +1884,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let x = new_temp(16);
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic_dynargs(2,"ld","{8}, {16::X+}",|cg: &mut CodeGen| {
+            st.mnemonic_dynargs(2,"ld","{8}, {16::X+}",&|cg: &mut CodeGen| {
                 cg.mul_i(&x,&*R26,&0x100);
                 cg.add_i(&x,&*R27,&x);
                 cg.assign(&rd,&sram(&x).to_rv());
@@ -1903,7 +1903,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let x = new_temp(16);
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic_dynargs(2,"ld","{8}, {16::Y}",|cg: &mut CodeGen| {
+            st.mnemonic_dynargs(2,"ld","{8}, {16::Y}",&|cg: &mut CodeGen| {
                 cg.mul_i(&x,&*R28,&0x100);
                 cg.add_i(&x,&*R29,&x);
                 cg.assign(&rd,&sram(&x).to_rv());
@@ -1918,7 +1918,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let x = new_temp(16);
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic_dynargs(2,"ld","{8}, {16::-Y}",|cg: &mut CodeGen| {
+            st.mnemonic_dynargs(2,"ld","{8}, {16::-Y}",&|cg: &mut CodeGen| {
                 cg.mul_i(&x,&*R28,&0x100);
                 cg.add_i(&x,&*R29,&x);
                 cg.sub_i(&x,&x,&1);
@@ -1937,7 +1937,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let x = new_temp(16);
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic_dynargs(2,"ld","{8}, {16::Y+}",|cg: &mut CodeGen| {
+            st.mnemonic_dynargs(2,"ld","{8}, {16::Y+}",&|cg: &mut CodeGen| {
                 cg.mul_i(&x,&*R28,&0x100);
                 cg.add_i(&x,&*R29,&x);
                 cg.assign(&rd,&sram(&x).to_rv());
@@ -1956,7 +1956,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let x = new_temp(16);
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic_dynargs(2,"ld","{8}, {16::Z}",|cg: &mut CodeGen| {
+            st.mnemonic_dynargs(2,"ld","{8}, {16::Z}",&|cg: &mut CodeGen| {
                 cg.mul_i(&x,&*R30,&0x100);
                 cg.add_i(&x,&*R31,&x);
                 cg.assign(&rd,&sram(&x).to_rv());
@@ -1971,7 +1971,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let x = new_temp(16);
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic_dynargs(2,"ld","{8}, {16::-Z}",|cg: &mut CodeGen| {
+            st.mnemonic_dynargs(2,"ld","{8}, {16::-Z}",&|cg: &mut CodeGen| {
                 cg.mul_i(&x,&*R30,&0x100);
                 cg.add_i(&x,&*R31,&x);
                 cg.sub_i(&x,&x,&1);
@@ -1990,7 +1990,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let x = new_temp(16);
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic_dynargs(2,"ld","{8}, {16::Z+}",|cg: &mut CodeGen| {
+            st.mnemonic_dynargs(2,"ld","{8}, {16::Z+}",&|cg: &mut CodeGen| {
                 cg.mul_i(&x,&*R30,&0x100);
                 cg.add_i(&x,&*R31,&x);
                 cg.assign(&rd,&sram(&x).to_rv());
@@ -2011,7 +2011,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let x = new_temp(16);
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic_dynargs(2,"ldd",&format!("{{8}}, {{16::Y+{}}}",_q),|cg: &mut CodeGen| {
+            st.mnemonic_dynargs(2,"ldd",&format!("{{8}}, {{16::Y+{}}}",_q),&|cg: &mut CodeGen| {
                 cg.mul_i(&x,&*R28,&0x100);
                 cg.add_i(&x,&*R29,&x);
                 cg.assign(&rd,&sram(&x).to_rv());
@@ -2032,7 +2032,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let x = new_temp(16);
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic_dynargs(2,"ldd",&format!("{{8}}, {{16::Z+{}}}",_q),|cg: &mut CodeGen| {
+            st.mnemonic_dynargs(2,"ldd",&format!("{{8}}, {{16::Z+{}}}",_q),&|cg: &mut CodeGen| {
                 cg.mul_i(&x,&*R30,&0x100);
                 cg.add_i(&x,&*R31,&x);
                 cg.assign(&rd,&sram(&x).to_rv());
@@ -2049,7 +2049,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
         [ 0x9598 ] = |st: &mut State<Avr>| {
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic(2,"break","",vec!(),|_: &mut CodeGen| {});
+            st.mnemonic(2,"break","",vec!(),&|_: &mut CodeGen| {});
             st.jump(next,Guard::always());
             true
         },
@@ -2058,7 +2058,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let next = st.configuration.wrap(st.address + 2);
             let k = Rvalue::Constant(st.get_group("K") as u64);
 
-            st.mnemonic(2,"des","{{4}}",vec!(k),|cg: &mut CodeGen| {
+            st.mnemonic(2,"des","{{4}}",vec!(k),&|cg: &mut CodeGen| {
                 cg.assign(&*R0,&Rvalue::Undefined);
                 cg.assign(&*R1,&Rvalue::Undefined);
                 cg.assign(&*R2,&Rvalue::Undefined);
@@ -2084,7 +2084,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let next = st.configuration.wrap(st.address + 2);
             let z = new_temp(22);
 
-            st.mnemonic_dynargs(2,"eicall","{16::Z}",|cg: &mut CodeGen| {
+            st.mnemonic_dynargs(2,"eicall","{16::Z}",&|cg: &mut CodeGen| {
                 let t = new_temp(22);
 
                 cg.mul_i(&t,&*EIND,&0x10000);
@@ -2101,7 +2101,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
         // EIJMP
         [ "1001 0100 0001 1001" ] = |st: &mut State<Avr>| {
             let z = new_temp(22);
-            st.mnemonic_dynargs(2,"eijmp","{22::Z:EIND}",|cg: &mut CodeGen| {
+            st.mnemonic_dynargs(2,"eijmp","{22::Z:EIND}",&|cg: &mut CodeGen| {
                 let t = new_temp(22);
 
                 cg.mul_i(&t,&*EIND,&0x10000);
@@ -2117,7 +2117,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
         [ "1001 0101 1101 1000" ] = |st: &mut State<Avr>| {
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic(2,"elpm","",vec!(),|cg: &mut CodeGen| {
+            st.mnemonic(2,"elpm","",vec!(),&|cg: &mut CodeGen| {
                 let z = new_temp(24);
                 let t = new_temp(24);
 
@@ -2136,7 +2136,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let rd = reg(st,"d");
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic_dynargs(2,"elpm","{8}, {24::Z}",|cg: &mut CodeGen| {
+            st.mnemonic_dynargs(2,"elpm","{8}, {24::Z}",&|cg: &mut CodeGen| {
                 let z = new_temp(24);
                 let t = new_temp(24);
 
@@ -2157,7 +2157,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let rd = reg(st,"d");
             let next = st.configuration.wrap(st.address + 2);
 
-             st.mnemonic_dynargs(2,"elpm","{8}, {24::Z+}",|cg: &mut CodeGen| {
+             st.mnemonic_dynargs(2,"elpm","{8}, {24::Z+}",&|cg: &mut CodeGen| {
                 let z = new_temp(24);
                 let t = new_temp(24);
 
@@ -2183,7 +2183,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let rr = reg(st,"r");
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic(2,"eor","{8}, {8}",vec!(rd.to_rv(),rr.to_rv()),|cg: &mut CodeGen| {
+            st.mnemonic(2,"eor","{8}, {8}",vec!(rd.to_rv(),rr.to_rv()),&|cg: &mut CodeGen| {
                 cg.xor_i(&rd,&rd,&rr);
                 cg.assign(&*V,&0);
                 cg.equal_i(&*Z,&0,&rd);
@@ -2200,7 +2200,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let rr = reg(st,"r");
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic(2,"fmul","{8}, {8}",vec!(rd.to_rv(),rr.to_rv()),|cg: &mut CodeGen| {
+            st.mnemonic(2,"fmul","{8}, {8}",vec!(rd.to_rv(),rr.to_rv()),&|cg: &mut CodeGen| {
                 let r = new_temp(17);
 
                 cg.mul_i(&r,&rd,&rr);
@@ -2220,7 +2220,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let rr = reg(st,"r");
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic(2,"fmuls","{8}, {8}",vec!(rd.to_rv(),rr.to_rv()),|cg: &mut CodeGen| {
+            st.mnemonic(2,"fmuls","{8}, {8}",vec!(rd.to_rv(),rr.to_rv()),&|cg: &mut CodeGen| {
                 let r = new_temp(17);
 
                 cg.mul_i(&r,&rd,&rr);
@@ -2240,7 +2240,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let rr = reg(st,"r");
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic(2,"fmulsu","{8}, {8}",vec!(rd.to_rv(),rr.to_rv()),|cg: &mut CodeGen| {
+            st.mnemonic(2,"fmulsu","{8}, {8}",vec!(rd.to_rv(),rr.to_rv()),&|cg: &mut CodeGen| {
                 let r = new_temp(17);
 
                 cg.mul_i(&r,&rd,&rr);
@@ -2257,7 +2257,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
         // NOP
         [ 0x0 ] = |st: &mut State<Avr>| {
             let next = st.configuration.wrap(st.address + 2);
-            st.mnemonic(2,"nop","",vec!(),|_: &mut CodeGen| {});
+            st.mnemonic(2,"nop","",vec!(),&|_: &mut CodeGen| {});
             st.jump(next,Guard::always());
             true
         },
@@ -2267,7 +2267,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let rr = reg(st,"r");
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic(2,"or","{8}, {8}",vec!(rd.to_rv(),rr.to_rv()),|cg: &mut CodeGen| {
+            st.mnemonic(2,"or","{8}, {8}",vec!(rd.to_rv(),rr.to_rv()),&|cg: &mut CodeGen| {
                 cg.or_i(&rd,&rd,&rr);
                 cg.assign(&*V,&0);
                 cg.equal_i(&*Z,&0,&rd);
@@ -2285,7 +2285,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let k = Rvalue::Constant(_k as u64);
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic(2,"ori","{8}, {8}",vec!(rd.to_rv(),k.clone()),|cg: &mut CodeGen| {
+            st.mnemonic(2,"ori","{8}, {8}",vec!(rd.to_rv(),k.clone()),&|cg: &mut CodeGen| {
                 cg.or_i(&rd,&rd,&k);
                 cg.assign(&*V,&0);
                 cg.equal_i(&*Z,&0,&rd);
@@ -2300,7 +2300,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
         [ 0x9588 ] = |st: &mut State<Avr>| {
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic(2,"sleep","",vec!(),|_: &mut CodeGen| {});
+            st.mnemonic(2,"sleep","",vec!(),&|_: &mut CodeGen| {});
             st.jump(next,Guard::always());
             true
         },
@@ -2308,7 +2308,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
         [ 0x95a8 ] = |st: &mut State<Avr>| {
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic(2,"wdr","",vec!(),|_: &mut CodeGen| {});
+            st.mnemonic(2,"wdr","",vec!(),&|_: &mut CodeGen| {});
             st.jump(next,Guard::always());
             true
         },
@@ -2316,7 +2316,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
         _ = |st: &mut State<Avr>| {
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic(1,"unk","",vec!(),|_: &mut CodeGen| {});
+            st.mnemonic(1,"unk","",vec!(),&|_: &mut CodeGen| {});
             st.jump(next,Guard::always());
             true
         }
@@ -2333,7 +2333,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let skip = st.configuration.wrap(st.address + (st.tokens.len() as u64) * 2);
             let r = new_temp(8);
 
-            st.mnemonic(2,"sbrc","{8}, {3}",vec!(rr.to_rv(),b.to_rv()),|cg: &mut CodeGen| {
+            st.mnemonic(2,"sbrc","{8}, {3}",vec!(rr.to_rv(),b.to_rv()),&|cg: &mut CodeGen| {
                 cg.div_i(&r,&rr,&mask);
                 cg.mod_i(&r,&r,&2);
             });
@@ -2353,7 +2353,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let skip = st.configuration.wrap(st.address + (st.tokens.len() as u64) * 2);
             let r = new_temp(8);
 
-            st.mnemonic(2,"sbrs","{8}, {3}",vec!(rr.to_rv(),b.to_rv()),|cg: &mut CodeGen| {
+            st.mnemonic(2,"sbrs","{8}, {3}",vec!(rr.to_rv(),b.to_rv()),&|cg: &mut CodeGen| {
                 cg.div_i(&r,&rr,&mask);
                 cg.mod_i(&r,&r,&2);
             });
@@ -2370,7 +2370,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let fallthru = st.configuration.wrap(st.address + 2);
             let skip = st.configuration.wrap(st.address + (st.tokens.len() as u64) * 2);
 
-            st.mnemonic(2,"cpse","{8}, {8}",vec!(rr.to_rv(),rd.to_rv()),|cg: &mut CodeGen| {
+            st.mnemonic(2,"cpse","{8}, {8}",vec!(rr.to_rv(),rd.to_rv()),&|cg: &mut CodeGen| {
                 let r = new_temp(8);
                 cg.sub_i(&r,&rr,&rd);
 
@@ -2403,7 +2403,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let skip = st.configuration.wrap(st.address + (st.tokens.len() as u64) * 2);
             let r = new_temp(8);
 
-            st.mnemonic(2,"sbic","{8}, {3}",vec!(a.to_rv(),b.to_rv()),|cg: &mut CodeGen| {
+            st.mnemonic(2,"sbic","{8}, {3}",vec!(a.to_rv(),b.to_rv()),&|cg: &mut CodeGen| {
                 cg.div_i(&r,&a,&mask);
                 cg.mod_i(&r,&r,&2);
             });
@@ -2423,7 +2423,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let skip = st.configuration.wrap(st.address + (st.tokens.len() as u64) * 2);
             let r = new_temp(8);
 
-            st.mnemonic(2,"sbis","{8}, {3}",vec!(a.to_rv(),b.to_rv()),|cg: &mut CodeGen| {
+            st.mnemonic(2,"sbis","{8}, {3}",vec!(a.to_rv(),b.to_rv()),&|cg: &mut CodeGen| {
                 cg.div_i(&r,&a,&mask);
                 cg.mod_i(&r,&r,&2);
             });

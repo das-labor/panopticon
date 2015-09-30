@@ -473,7 +473,7 @@ mod tests {
     fn add_single() {
         let main = new_disassembler!(TestArchShort =>
             [ 0 ] = |st: &mut State<TestArchShort>| {
-                st.mnemonic(1,"A","",vec!(),|_| {});
+                st.mnemonic(1,"A","",vec!(),&|_| {});
                 true
             }
 		);
@@ -505,37 +505,37 @@ mod tests {
         let main = new_disassembler!(TestArchShort =>
             [ 0 ] = |st: &mut State<TestArchShort>| {
                 let next = st.address;
-                st.mnemonic(1,"test0","",vec!(),|_| {});
+                st.mnemonic(1,"test0","",vec!(),&|_| {});
                 st.jump(Rvalue::Constant(next + 1),Guard::always());
                 true
             },
             [ 1 ] = |st: &mut State<TestArchShort>| {
                 let next = st.address;
-                st.mnemonic(1,"test1","",vec!(),|_| {});
+                st.mnemonic(1,"test1","",vec!(),&|_| {});
                 st.jump(Rvalue::Constant(next + 1),Guard::always());
                 true
             },
             [ 2 ] = |st: &mut State<TestArchShort>| {
                 let next = st.address;
-                st.mnemonic(1,"test2","",vec!(),|_| {});
+                st.mnemonic(1,"test2","",vec!(),&|_| {});
                 st.jump(Rvalue::Constant(next + 1),Guard::always());
                 true
             },
             [ 3 ] = |st: &mut State<TestArchShort>| {
                 let next = st.address;
-                st.mnemonic(1,"test3","",vec!(),|_| {});
+                st.mnemonic(1,"test3","",vec!(),&|_| {});
                 st.jump(Rvalue::Constant(next + 1),Guard::always());
                 true
             },
             [ 4 ] = |st: &mut State<TestArchShort>| {
                 let next = st.address;
-                st.mnemonic(1,"test4","",vec!(),|_| {});
+                st.mnemonic(1,"test4","",vec!(),&|_| {});
                 st.jump(Rvalue::Constant(next + 1),Guard::always());
                 true
             },
             [ 5 ] = |st: &mut State<TestArchShort>| {
                 let next = st.address;
-                st.mnemonic(1,"test5","",vec!(),|_| {});
+                st.mnemonic(1,"test5","",vec!(),&|_| {});
                 st.jump(Rvalue::Constant(next + 1),Guard::always());
                 true
             }
@@ -585,18 +585,18 @@ mod tests {
     fn branch() {
         let main = new_disassembler!(TestArchShort =>
             [ 0 ] = |st: &mut State<TestArchShort>| {
-                st.mnemonic(1,"test0","",vec!(),|_| {});
+                st.mnemonic(1,"test0","",vec!(),&|_| {});
                 st.jump(Rvalue::Constant(1),Guard::always());
                 st.jump(Rvalue::Constant(2),Guard::always());
                 true
             },
             [ 1 ] = |st: &mut State<TestArchShort>| {
-                st.mnemonic(1,"test1","",vec!(),|_| {});
+                st.mnemonic(1,"test1","",vec!(),&|_| {});
                 st.jump(Rvalue::Constant(3),Guard::always());
                 true
             },
             [ 2 ] = |st: &mut State<TestArchShort>| {
-                st.mnemonic(1,"test2","",vec!(),|_| {});
+                st.mnemonic(1,"test2","",vec!(),&|_| {});
                 st.jump(Rvalue::Constant(1),Guard::always());
                 true
             }
@@ -657,17 +657,17 @@ mod tests {
     fn function_loop() {
       let main = new_disassembler!(TestArchShort =>
             [ 0 ] = |st: &mut State<TestArchShort>| {
-                st.mnemonic(1,"test0","",vec!(),|_| {});
+                st.mnemonic(1,"test0","",vec!(),&|_| {});
                 st.jump(Rvalue::Constant(1),Guard::always());
                 true
             },
             [ 1 ] = |st: &mut State<TestArchShort>| {
-                st.mnemonic(1,"test1","",vec!(),|_| {});
+                st.mnemonic(1,"test1","",vec!(),&|_| {});
                 st.jump(Rvalue::Constant(2),Guard::always());
                 true
             },
             [ 2 ] = |st: &mut State<TestArchShort>| {
-                st.mnemonic(1,"test2","",vec!(),|_| {});
+                st.mnemonic(1,"test2","",vec!(),&|_| {});
                 st.jump(Rvalue::Constant(0),Guard::always());
                 true
             }
@@ -704,17 +704,17 @@ mod tests {
     fn empty() {
         let main = new_disassembler!(TestArchShort =>
             [ 0 ] = |st: &mut State<TestArchShort>| {
-                st.mnemonic(1,"test0","",vec!(),|_| {});
+                st.mnemonic(1,"test0","",vec!(),&|_| {});
                 st.jump(Rvalue::Constant(1),Guard::always());
                 true
             },
             [ 1 ] = |st: &mut State<TestArchShort>| {
-                st.mnemonic(1,"test1","",vec!(),|_| {});
+                st.mnemonic(1,"test1","",vec!(),&|_| {});
                 st.jump(Rvalue::Constant(2),Guard::always());
                 true
             },
             [ 2 ] = |st: &mut State<TestArchShort>| {
-                st.mnemonic(1,"test2","",vec!(),|_| {});
+                st.mnemonic(1,"test2","",vec!(),&|_| {});
                 st.jump(Rvalue::Constant(0),Guard::always());
                 true
             }
@@ -741,17 +741,17 @@ mod tests {
 
         let main = new_disassembler!(TestArchShort =>
             [ 0 ] = |st: &mut State<TestArchShort>| {
-                st.mnemonic(1,"test0","",vec!(),|_| {});
+                st.mnemonic(1,"test0","",vec!(),&|_| {});
                 st.jump(Rvalue::Constant(1),Guard::always());
                 true
             },
             [ 1 ] = |st: &mut State<TestArchShort>| {
-                st.mnemonic(1,"test1","",vec!(),|_| {});
+                st.mnemonic(1,"test1","",vec!(),&|_| {});
                 st.jump(Rvalue::Constant(2),Guard::always());
                 true
             },
             [ 2 ] = |st: &mut State<TestArchShort>| {
-                st.mnemonic(1,"test2","",vec!(),|_| {});
+                st.mnemonic(1,"test2","",vec!(),&|_| {});
                 st.jump(Rvalue::Constant(1),Guard::always());
                 true
             }
@@ -865,7 +865,7 @@ mod tests {
             [0x2211] = |s: &mut State<TestArchWide>|
             {
                 let a = s.address;
-                s.mnemonic(2,"A","",vec!(),|_| {});
+                s.mnemonic(2,"A","",vec!(),&|_| {});
                 s.jump(Rvalue::Constant(a + 2),Guard::always());
                 true
             },
@@ -873,7 +873,7 @@ mod tests {
             [0x4433] = |s: &mut State<TestArchWide>|
             {
                 let a = s.address;
-                s.mnemonic(2,"B","",vec!(),|_| {});
+                s.mnemonic(2,"B","",vec!(),&|_| {});
                 s.jump(Rvalue::Constant(a + 2),Guard::always());
                 s.jump(Rvalue::Constant(a + 4),Guard::always());
                 true
@@ -881,7 +881,7 @@ mod tests {
 
             [0x4455] = |s: &mut State<TestArchWide>|
             {
-                s.mnemonic(2, "C","",vec!(),|_| {});
+                s.mnemonic(2, "C","",vec!(),&|_| {});
                 true
             }
         );
@@ -922,17 +922,17 @@ mod tests {
     fn issue_51_treat_entry_point_as_incoming_edge() {
         let main = new_disassembler!(TestArchShort =>
             [ 0 ] = |st: &mut State<TestArchShort>| {
-                st.mnemonic(1,"test0","",vec!(),|_| {});
+                st.mnemonic(1,"test0","",vec!(),&|_| {});
                 st.jump(Rvalue::Constant(1),Guard::always());
                 true
             },
             [ 1 ] = |st: &mut State<TestArchShort>| {
-                st.mnemonic(1,"test1","",vec!(),|_| {});
+                st.mnemonic(1,"test1","",vec!(),&|_| {});
                 st.jump(Rvalue::Constant(2),Guard::always());
                 true
             },
             [ 2 ] = |st: &mut State<TestArchShort>| {
-                st.mnemonic(1,"test2","",vec!(),|_| {});
+                st.mnemonic(1,"test2","",vec!(),&|_| {});
                 st.jump(Rvalue::Constant(0),Guard::always());
                 true
             }

@@ -2,6 +2,7 @@ use value::{Lvalue,Rvalue,Endianess};
 use disassembler::State;
 use amd64::*;
 use codegen::CodeGen;
+use guard::Guard;
 
 fn byte(o: Rvalue) -> Lvalue {
     Lvalue::Memory{
@@ -48,11 +49,11 @@ fn oword(o: Rvalue) -> Lvalue {
     }
 }
 
-pub fn decode_m(sm: &mut State<Amd64>,cg: &mut CodeGen) -> Rvalue {
+pub fn decode_m(sm: &mut State<Amd64>) -> Rvalue {
     sm.configuration.rm.as_ref().unwrap().to_rv()
 }
 
-pub fn decode_d(sm: &mut State<Amd64>,cg: &mut CodeGen) -> Rvalue {
+pub fn decode_d(sm: &mut State<Amd64>) -> Rvalue {
     if let Some(Rvalue::Constant(c)) = sm.configuration.imm {
         if c <= 0xffffffff {
             Rvalue::Constant(c >> 16 | ((c & 0xffff) << 16))
@@ -64,19 +65,19 @@ pub fn decode_d(sm: &mut State<Amd64>,cg: &mut CodeGen) -> Rvalue {
     }
 }
 
-pub fn decode_imm(sm: &mut State<Amd64>,cg: &mut CodeGen) -> Rvalue {
+pub fn decode_imm(sm: &mut State<Amd64>) -> Rvalue {
     sm.configuration.imm.clone().unwrap()
 }
 
-pub fn decode_moffs(sm: &mut State<Amd64>,cg: &mut CodeGen) -> Rvalue {
+pub fn decode_moffs(sm: &mut State<Amd64>) -> Rvalue {
     sm.configuration.moffs.clone().unwrap()
 }
 
-pub fn decode_rm1(sm: &mut State<Amd64>,cg: &mut CodeGen) -> Rvalue {
+pub fn decode_rm1(sm: &mut State<Amd64>) -> Rvalue {
     sm.configuration.rm.as_ref().unwrap().to_rv()
 }
 
-pub fn decode_i(sm: &mut State<Amd64>,cg: &mut CodeGen) -> (Rvalue,Rvalue) {
+pub fn decode_i(sm: &mut State<Amd64>) -> (Rvalue,Rvalue) {
     match &sm.configuration.operand_size {
         &OperandSize::Eight => (ah.to_rv(),sm.configuration.imm.clone().unwrap()),
         &OperandSize::Sixteen => (ax.to_rv(),sm.configuration.imm.clone().unwrap()),
@@ -86,7 +87,7 @@ pub fn decode_i(sm: &mut State<Amd64>,cg: &mut CodeGen) -> (Rvalue,Rvalue) {
     }
 }
 
-pub fn decode_rm(sm: &mut State<Amd64>,cg: &mut CodeGen) -> (Rvalue,Rvalue) {
+pub fn decode_rm(sm: &mut State<Amd64>) -> (Rvalue,Rvalue) {
     if let (&Some(ref reg),&Some(ref rm)) = (&sm.configuration.reg,&sm.configuration.rm) {
         (reg.to_rv(),rm.to_rv())
     } else {
@@ -94,27 +95,27 @@ pub fn decode_rm(sm: &mut State<Amd64>,cg: &mut CodeGen) -> (Rvalue,Rvalue) {
     }
 }
 
-pub fn decode_mr(sm: &mut State<Amd64>,cg: &mut CodeGen) -> (Rvalue,Rvalue) {
-    let (a,b) = decode_rm(sm,cg);
+pub fn decode_mr(sm: &mut State<Amd64>) -> (Rvalue,Rvalue) {
+    let (a,b) = decode_rm(sm);
     (b,a)
 }
 
-pub fn decode_fd(sm: &mut State<Amd64>,cg: &mut CodeGen) -> (Rvalue,Rvalue) {
+pub fn decode_fd(sm: &mut State<Amd64>) -> (Rvalue,Rvalue) {
     (select_reg(&sm.configuration.operand_size,0,sm.configuration.rex).to_rv(),
     select_mem(&sm.configuration.operand_size,sm.configuration.moffs.clone().unwrap()).to_rv())
 }
 
-pub fn decode_td(sm: &mut State<Amd64>,cg: &mut CodeGen) -> (Rvalue,Rvalue) {
-    let (a,b) = decode_fd(sm,cg);
+pub fn decode_td(sm: &mut State<Amd64>) -> (Rvalue,Rvalue) {
+    let (a,b) = decode_fd(sm);
     (b,a)
 }
 
-pub fn decode_msreg(sm: &mut State<Amd64>,cg: &mut CodeGen) -> (Rvalue,Rvalue) {
-    let (a,b) = decode_sregm(sm,cg);
+pub fn decode_msreg(sm: &mut State<Amd64>) -> (Rvalue,Rvalue) {
+    let (a,b) = decode_sregm(sm);
     (b,a)
 }
 
-pub fn decode_sregm(sm: &mut State<Amd64>,cg: &mut CodeGen) -> (Rvalue,Rvalue) {
+pub fn decode_sregm(sm: &mut State<Amd64>) -> (Rvalue,Rvalue) {
     if let (&Some(ref reg),&Some(ref rm)) = (&sm.configuration.reg,&sm.configuration.rm) {
         if *reg == *ax || *reg == *eax  {
             (es.to_rv(),rm.to_rv())
@@ -136,7 +137,7 @@ pub fn decode_sregm(sm: &mut State<Amd64>,cg: &mut CodeGen) -> (Rvalue,Rvalue) {
     }
 }
 
-pub fn decode_dbgrm(sm: &mut State<Amd64>,cg: &mut CodeGen) -> (Rvalue,Rvalue) {
+pub fn decode_dbgrm(sm: &mut State<Amd64>) -> (Rvalue,Rvalue) {
     if let (&Some(ref reg),&Some(ref rm)) = (&sm.configuration.reg,&sm.configuration.rm) {
         if *reg == *rax || *reg == *eax  {
             (dr0.to_rv(),rm.to_rv())
@@ -162,12 +163,12 @@ pub fn decode_dbgrm(sm: &mut State<Amd64>,cg: &mut CodeGen) -> (Rvalue,Rvalue) {
     }
 }
 
-pub fn decode_rmdbg(sm: &mut State<Amd64>,cg: &mut CodeGen) -> (Rvalue,Rvalue) {
-    let (a,b) = decode_dbgrm(sm,cg);
+pub fn decode_rmdbg(sm: &mut State<Amd64>) -> (Rvalue,Rvalue) {
+    let (a,b) = decode_dbgrm(sm);
     (b,a)
 }
 
-pub fn decode_ctrlrm(sm: &mut State<Amd64>,cg: &mut CodeGen) -> (Rvalue,Rvalue) {
+pub fn decode_ctrlrm(sm: &mut State<Amd64>) -> (Rvalue,Rvalue) {
     if let (&Some(ref reg),&Some(ref rm)) = (&sm.configuration.reg,&sm.configuration.rm) {
         if *reg == *rax || *reg == *eax  {
             (cr0.to_rv(),rm.to_rv())
@@ -187,12 +188,12 @@ pub fn decode_ctrlrm(sm: &mut State<Amd64>,cg: &mut CodeGen) -> (Rvalue,Rvalue) 
     }
 }
 
-pub fn decode_rmctrl(sm: &mut State<Amd64>,cg: &mut CodeGen) -> (Rvalue,Rvalue) {
-    let (a,b) = decode_ctrlrm(sm,cg);
+pub fn decode_rmctrl(sm: &mut State<Amd64>) -> (Rvalue,Rvalue) {
+    let (a,b) = decode_ctrlrm(sm);
     (b,a)
 }
 
-pub fn decode_mi(sm: &mut State<Amd64>,cg: &mut CodeGen) -> (Rvalue,Rvalue) {
+pub fn decode_mi(sm: &mut State<Amd64>) -> (Rvalue,Rvalue) {
     if let (&Some(ref rm),&Some(ref imm)) = (&sm.configuration.rm,&sm.configuration.imm) {
         (rm.to_rv(),imm.clone())
     } else {
@@ -200,15 +201,15 @@ pub fn decode_mi(sm: &mut State<Amd64>,cg: &mut CodeGen) -> (Rvalue,Rvalue) {
     }
 }
 
-pub fn decode_m1(sm: &mut State<Amd64>,cg: &mut CodeGen) -> (Rvalue,Rvalue) {
+pub fn decode_m1(sm: &mut State<Amd64>) -> (Rvalue,Rvalue) {
     unimplemented!();
 }
 
-pub fn decode_mc(sm: &mut State<Amd64>,cg: &mut CodeGen) -> (Rvalue,Rvalue) {
+pub fn decode_mc(sm: &mut State<Amd64>) -> (Rvalue,Rvalue) {
     unimplemented!();
 }
 
-pub fn decode_ii(sm: &mut State<Amd64>,cg: &mut CodeGen) -> (Rvalue,Rvalue) {
+pub fn decode_ii(sm: &mut State<Amd64>) -> (Rvalue,Rvalue) {
     if let &Some(Rvalue::Constant(c)) = &sm.configuration.imm {
         (Rvalue::Constant(c >> 8),Rvalue::Constant(c & 0xff))
     } else {
@@ -216,15 +217,15 @@ pub fn decode_ii(sm: &mut State<Amd64>,cg: &mut CodeGen) -> (Rvalue,Rvalue) {
     }
 }
 
-pub fn decode_rvm(sm: &mut State<Amd64>,cg: &mut CodeGen) -> (Rvalue,Rvalue,Rvalue) {
+pub fn decode_rvm(sm: &mut State<Amd64>) -> (Rvalue,Rvalue,Rvalue) {
     unimplemented!();
 }
 
-pub fn decode_rmv(sm: &mut State<Amd64>,cg: &mut CodeGen) -> (Rvalue,Rvalue,Rvalue) {
+pub fn decode_rmv(sm: &mut State<Amd64>) -> (Rvalue,Rvalue,Rvalue) {
     unimplemented!();
 }
 
-pub fn decode_rmi(sm: &mut State<Amd64>,cg: &mut CodeGen) -> (Rvalue,Rvalue,Rvalue) {
+pub fn decode_rmi(sm: &mut State<Amd64>) -> (Rvalue,Rvalue,Rvalue) {
     if let (&Some(ref reg),&Some(ref rm),&Some(ref imm)) = (&sm.configuration.reg,&sm.configuration.rm,&sm.configuration.imm) {
         (reg.to_rv(),rm.to_rv(),imm.clone())
     } else {
@@ -232,12 +233,12 @@ pub fn decode_rmi(sm: &mut State<Amd64>,cg: &mut CodeGen) -> (Rvalue,Rvalue,Rval
     }
 }
 
-pub fn decode_mri(sm: &mut State<Amd64>,cg: &mut CodeGen) -> (Rvalue,Rvalue,Rvalue) {
-    let (a,b,c) = decode_rmi(sm,cg);
+pub fn decode_mri(sm: &mut State<Amd64>) -> (Rvalue,Rvalue,Rvalue) {
+    let (a,b,c) = decode_rmi(sm);
     (b,a,c)
 }
 
-pub fn decode_rvmi(sm: &mut State<Amd64>,cg: &mut CodeGen) -> (Rvalue,Rvalue,Rvalue,Rvalue) {
+pub fn decode_rvmi(sm: &mut State<Amd64>) -> (Rvalue,Rvalue,Rvalue,Rvalue) {
     unimplemented!();
 }
 
@@ -542,91 +543,211 @@ fn decode_sib(
     }
 }
 
-pub fn nonary(opcode: &str, sem: &Fn(&mut CodeGen)) -> Box<Fn(&mut State<Amd64>) -> bool> {
+pub fn nonary(opcode: &'static str, sem: fn(&mut CodeGen)) -> Box<Fn(&mut State<Amd64>) -> bool> {
     Box::new(move |st: &mut State<Amd64>| -> bool {
-        false
+        let len = st.tokens.len();
+        let next = st.address + len as u64;
+
+        st.mnemonic_dynargs(len,&opcode,"",&|c| {
+            sem(c);
+            vec![]
+        });
+        st.jump(Rvalue::Constant(next),Guard::always());
+        true
     })
 }
 
-pub fn unary(opcode: &str,
-              decode: fn(&mut State<Amd64>, &mut CodeGen) -> Rvalue,
-              sem: &Fn(&mut CodeGen, Rvalue)
+pub fn unary(opcode: &'static str,
+              decode: fn(&mut State<Amd64>) -> Rvalue,
+              sem: fn(&mut CodeGen,Rvalue)
              ) -> Box<Fn(&mut State<Amd64>) -> bool> {
     Box::new(move |st: &mut State<Amd64>| -> bool {
-        false
+        let len = st.tokens.len();
+        let next = st.address + len as u64;
+        let arg = decode(st);
+
+        st.mnemonic_dynargs(len,&opcode,"{64}",&|c| {
+            sem(c,arg.clone());
+            vec![arg.clone()]
+        });
+        st.jump(Rvalue::Constant(next),Guard::always());
+        true
     })
 }
 
-pub fn unary_c(opcode: &str,
-                  a: Rvalue,
-                  sem: &Fn(&mut CodeGen, Rvalue)
-                 ) -> Box<Fn(&mut State<Amd64>) -> bool> {
-    Box::new(move |st: &mut State<Amd64>| -> bool {
-        false
-    })
-}
-
-pub fn binary(opcode: &str,
-              decode: fn(&mut State<Amd64>, &mut CodeGen) -> (Rvalue,Rvalue),
-              sem: &Fn(&mut CodeGen, Rvalue, Rvalue)
+pub fn unary_box(opcode: &'static str,
+              decode: fn(&mut State<Amd64>) -> Rvalue,
+              sem: Box<Fn(&mut CodeGen,Rvalue)>
              ) -> Box<Fn(&mut State<Amd64>) -> bool> {
     Box::new(move |st: &mut State<Amd64>| -> bool {
-        false
+        let len = st.tokens.len();
+        let next = st.address + len as u64;
+        let arg = decode(st);
+
+        st.mnemonic_dynargs(len,&opcode,"{64}",&|c| {
+            sem(c,arg.clone());
+            vec![arg.clone()]
+        });
+        st.jump(Rvalue::Constant(next),Guard::always());
+        true
     })
 }
 
-pub fn binary_rv(opcode: &str,
-                  a: &Lvalue,
-                  decode: fn(&mut State<Amd64>, &mut CodeGen) -> Rvalue,
-                  sem: &Fn(&mut CodeGen, Rvalue, Rvalue)
+pub fn unary_c(opcode: &'static str,
+                  arg: Rvalue,
+                  sem: fn(&mut CodeGen, Rvalue)
                  ) -> Box<Fn(&mut State<Amd64>) -> bool> {
     Box::new(move |st: &mut State<Amd64>| -> bool {
-        false
+        let len = st.tokens.len();
+        let next = st.address + len as u64;
+
+        st.mnemonic_dynargs(len,&opcode,"{64}",&|c| {
+            sem(c,arg.clone());
+            vec![arg.clone()]
+        });
+        st.jump(Rvalue::Constant(next),Guard::always());
+        true
+
     })
 }
 
-pub fn binary_vr(opcode: &str,
-                  decode: fn(&mut State<Amd64>, &mut CodeGen) -> Rvalue,
-                  b: &Lvalue,
-                  sem: &Fn(&mut CodeGen, Rvalue, Rvalue)
+pub fn binary(opcode: &'static str,
+              decode: fn(&mut State<Amd64>) -> (Rvalue,Rvalue),
+              sem: fn(&mut CodeGen, Rvalue, Rvalue)
+             ) -> Box<Fn(&mut State<Amd64>) -> bool> {
+    Box::new(move |st: &mut State<Amd64>| -> bool {
+        let len = st.tokens.len();
+        let next = st.address + len as u64;
+        let (arg0,arg1) = decode(st);
+
+        st.mnemonic_dynargs(len,&opcode,"{64}, {64}",&|c| {
+            sem(c,arg0.clone(),arg1.clone());
+            vec![arg0.clone(),arg1.clone()]
+        });
+        st.jump(Rvalue::Constant(next),Guard::always());
+        true
+    })
+}
+
+pub fn binary_box(opcode: &'static str,
+              decode: fn(&mut State<Amd64>) -> (Rvalue,Rvalue),
+              sem: Box<Fn(&mut CodeGen, Rvalue, Rvalue)>
+             ) -> Box<Fn(&mut State<Amd64>) -> bool> {
+    Box::new(move |st: &mut State<Amd64>| -> bool {
+        let len = st.tokens.len();
+        let next = st.address + len as u64;
+        let (arg0,arg1) = decode(st);
+
+        st.mnemonic_dynargs(len,&opcode,"{64}, {64}",&|c| {
+            sem(c,arg0.clone(),arg1.clone());
+            vec![arg0.clone(),arg1.clone()]
+        });
+        st.jump(Rvalue::Constant(next),Guard::always());
+        true
+    })
+}
+
+pub fn binary_rv(opcode: &'static str,
+                  _arg0: &Lvalue,
+                  decode: fn(&mut State<Amd64>) -> Rvalue,
+                  sem: fn(&mut CodeGen, Rvalue, Rvalue)
+                 ) -> Box<Fn(&mut State<Amd64>) -> bool> {
+    let arg0 = _arg0.clone();
+    Box::new(move |st: &mut State<Amd64>| -> bool {
+        let len = st.tokens.len();
+        let next = st.address + len as u64;
+        let arg1 = decode(st);
+
+        st.mnemonic_dynargs(len,&opcode,"{64}, {64}",&|c| {
+            sem(c,arg0.to_rv(),arg1.clone());
+            vec![arg0.to_rv(),arg1.clone()]
+        });
+        st.jump(Rvalue::Constant(next),Guard::always());
+        true
+    })
+}
+
+pub fn binary_vr(opcode: &'static str,
+                  decode: fn(&mut State<Amd64>) -> Rvalue,
+                  _arg1: &Lvalue,
+                  sem: fn(&mut CodeGen, Rvalue, Rvalue)
+                 ) -> Box<Fn(&mut State<Amd64>) -> bool> {
+    let arg1 = _arg1.clone();
+    Box::new(move |st: &mut State<Amd64>| -> bool {
+        let len = st.tokens.len();
+        let next = st.address + len as u64;
+        let arg0 = decode(st);
+
+        st.mnemonic_dynargs(len,&opcode,"{64}, {64}",&|c| {
+            sem(c,arg0.clone(),arg1.to_rv());
+            vec![arg0.clone(),arg1.to_rv()]
+        });
+        st.jump(Rvalue::Constant(next),Guard::always());
+        true
+    })
+}
+
+pub fn binary_vc(opcode: &'static str,
+                  decode: fn(&mut State<Amd64>) -> Rvalue,
+                  arg1: Rvalue,
+                  sem: fn(&mut CodeGen, Rvalue, Rvalue)
                  ) -> Box<Fn(&mut State<Amd64>) -> bool> {
     Box::new(move |st: &mut State<Amd64>| -> bool {
-        false
+        let len = st.tokens.len();
+        let next = st.address + len as u64;
+        let arg0 = decode(st);
+
+        st.mnemonic_dynargs(len,&opcode,"{64}, {64}",&|c| {
+            sem(c,arg0.clone(),arg1.clone());
+            vec![arg0.clone(),arg1.clone()]
+        });
+        st.jump(Rvalue::Constant(next),Guard::always());
+        true
     })
 }
 
-pub fn binary_vc(opcode: &str,
-                  decode: fn(&mut State<Amd64>, &mut CodeGen) -> Rvalue,
-                  b: Rvalue,
-                  sem: &Fn(&mut CodeGen, Rvalue, Rvalue)
+pub fn binary_rr(opcode: &'static str,
+                  _arg0: &Lvalue,
+                  _arg1: &Lvalue,
+                  sem: fn(&mut CodeGen, Rvalue, Rvalue)
+                 ) -> Box<Fn(&mut State<Amd64>) -> bool> {
+    let arg0 = _arg0.clone();
+    let arg1 = _arg1.clone();
+    Box::new(move |st: &mut State<Amd64>| -> bool {
+        let len = st.tokens.len();
+        let next = st.address + len as u64;
+
+        st.mnemonic_dynargs(len,&opcode,"{64}, {64}",&|c| {
+            sem(c,arg0.to_rv(),arg1.to_rv());
+            vec![arg0.to_rv(),arg1.to_rv()]
+        });
+        st.jump(Rvalue::Constant(next),Guard::always());
+        true
+    })
+}
+
+pub fn binary_vv(opcode: &'static str,
+                  decodea: fn(&mut State<Amd64>) -> Rvalue,
+                  decodeb: fn(&mut State<Amd64>) -> Rvalue,
+                  sem: fn(&mut CodeGen, Rvalue, Rvalue)
                  ) -> Box<Fn(&mut State<Amd64>) -> bool> {
     Box::new(move |st: &mut State<Amd64>| -> bool {
-        false
+        let len = st.tokens.len();
+        let next = st.address + len as u64;
+        let arg0 = decodea(st);
+        let arg1 = decodeb(st);
+
+        st.mnemonic_dynargs(len,&opcode,"{64}, {64}",&|c| {
+            sem(c,arg0.clone(),arg1.clone());
+            vec![arg0.clone(),arg1.clone()]
+        });
+        st.jump(Rvalue::Constant(next),Guard::always());
+        true
     })
 }
 
-pub fn binary_rr(opcode: &str,
-                  a: &Lvalue,
-                  b: &Lvalue,
-                  sem: &Fn(&mut CodeGen, Rvalue, Rvalue)
-                 ) -> Box<Fn(&mut State<Amd64>) -> bool> {
-    Box::new(move |st: &mut State<Amd64>| -> bool {
-        false
-    })
-}
-
-pub fn binary_vv(opcode: &str,
-                  decodea: fn(&mut State<Amd64>, &mut CodeGen) -> Rvalue,
-                  decodeb: fn(&mut State<Amd64>, &mut CodeGen) -> Rvalue,
-                  sem: &Fn(&mut CodeGen, Rvalue, Rvalue)
-                 ) -> Box<Fn(&mut State<Amd64>) -> bool> {
-    Box::new(move |st: &mut State<Amd64>| -> bool {
-        false
-    })
-}
-
-pub fn trinary(opcode: &str,
-              decode: fn(&mut State<Amd64>, &mut CodeGen) -> (Rvalue,Rvalue,Rvalue),
+pub fn trinary(opcode: &'static str,
+              decode: fn(&mut State<Amd64>) -> (Rvalue,Rvalue,Rvalue),
               sem: &Fn(&mut CodeGen, Rvalue, Rvalue, Rvalue)
              ) -> Box<Fn(&mut State<Amd64>) -> bool> {
     Box::new(move |st: &mut State<Amd64>| -> bool {
@@ -634,8 +755,8 @@ pub fn trinary(opcode: &str,
     })
 }
 
-pub fn trinary_vr(opcode: &str,
-                  decode: fn(&mut State<Amd64>, &mut CodeGen) -> (Rvalue,Rvalue),
+pub fn trinary_vr(opcode: &'static str,
+                  decode: fn(&mut State<Amd64>) -> (Rvalue,Rvalue),
                   c: &Lvalue,
                   sem: &Fn(&mut CodeGen, Rvalue, Rvalue, Rvalue)) -> Box<Fn(&mut State<Amd64>) -> bool> {
     Box::new(move |st: &mut State<Amd64>| -> bool {
@@ -645,7 +766,7 @@ pub fn trinary_vr(opcode: &str,
 
 macro_rules! reg {
     ( $a:ident,$I:expr ) => {
-        pub fn $a(st: &mut State<Amd64>, cg: &mut CodeGen) -> Rvalue {
+        pub fn $a(st: &mut State<Amd64>) -> Rvalue {
             let r = if st.has_group("b") && st.get_group("b") == 1 { 8 } else { 0 } + $I;
             select_reg(&st.configuration.operand_size,r,st.configuration.rex).to_rv()
         }
@@ -654,7 +775,7 @@ macro_rules! reg {
 
 macro_rules! regd {
     ( $a:ident,$I:expr ) => {
-        pub fn $a(st: &mut State<Amd64>, cg: &mut CodeGen) -> Rvalue {
+        pub fn $a(st: &mut State<Amd64>) -> Rvalue {
             let r = if st.has_group("b") && st.get_group("b") == 1 { 8 } else { 0 } + $I;
             let opsz = if st.configuration.mode == Mode::Long && st.configuration.operand_size == OperandSize::ThirtyTwo {
                 OperandSize::SixtyFour
@@ -668,7 +789,7 @@ macro_rules! regd {
 
 macro_rules! regb {
     ( $a:ident,$I:expr ) => {
-        pub fn $a(st: &mut State<Amd64>, cg: &mut CodeGen) -> Rvalue {
+        pub fn $a(st: &mut State<Amd64>) -> Rvalue {
             let r = if st.has_group("b") && st.get_group("b") == 1 { 8 } else { 0 } + $I;
             select_reg(&OperandSize::Eight,r,st.configuration.rex).to_rv()
         }

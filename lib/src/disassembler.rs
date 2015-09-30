@@ -68,15 +68,15 @@ impl<A: Architecture> State<A> {
         self.groups.iter().find(|x| x.0 == n.to_string()).is_some()
     }
 
-    pub fn mnemonic<F: FnOnce(&mut CodeGen) -> ()>(&mut self,len: usize, n: &str, fmt: &str, ops: Vec<Rvalue>, f: F) {
-        self.mnemonic_dynargs(len,n,fmt,|cg: &mut CodeGen| -> Vec<Rvalue> {
+    pub fn mnemonic<'a,F: Fn(&mut CodeGen) -> ()>(&mut self,len: usize, n: &str, fmt: &str, ops: Vec<Rvalue>, f: &F) {
+        self.mnemonic_dynargs(len,n,fmt,&|cg: &mut CodeGen| -> Vec<Rvalue> {
             f(cg);
             ops.clone()
         });
     }
 
-    pub fn mnemonic_dynargs<F>(&mut self,len: usize, n: &str, fmt: &str, f: F)
-    where F: FnOnce(&mut CodeGen) -> Vec<Rvalue> {
+    pub fn mnemonic_dynargs<F>(&mut self,len: usize, n: &str, fmt: &str, f: &F)
+    where F: Fn(&mut CodeGen) -> Vec<Rvalue> {
         let mut cg = CodeGen::new();
         let ops = f(&mut cg);
 
@@ -508,12 +508,12 @@ mod tests {
     #[test]
     fn combine_expr() {
         let sub = new_disassembler!(TestArchShort =>
-            [ 1 ] = |_| { true },
-            [ 2, 2 ] = |_| { true }
+            [ 1 ] = &|_| { true },
+            [ 2, 2 ] = &|_| { true }
         );
 
         let main = new_disassembler!(TestArchShort =>
-            [ 3, sub ] = |_| { true }
+            [ 3, sub ] = &|_| { true }
         );
 
         for x in &main.matches {
@@ -524,13 +524,13 @@ mod tests {
     #[test]
     fn decode_macro() {
         let lock_prfx = new_disassembler!(TestArchShort =>
-            [ 0x06 ] = |_| { true }
+            [ 0x06 ] = &|_| { true }
         );
 
         new_disassembler!(TestArchShort =>
-            [ 22 , 21, lock_prfx ] = |_| { true },
-            [ "....11 d@00"         ] = |_| true,
-            [ "....11 d@00", ".. d@0011. 0" ] = |_| true
+            [ 22 , 21, lock_prfx ] = &|_| { true },
+            [ "....11 d@00"         ] = &|_| true,
+            [ "....11 d@00", ".. d@0011. 0" ] = &|_| true
         );
     }
 
@@ -538,30 +538,30 @@ mod tests {
         let sub = new_disassembler!(TestArchShort =>
             [ 2 ] = |st: &mut State<TestArchShort>| {
                 let next = st.address;
-                st.mnemonic(2,"BA","",vec!(),|_| {});
+                st.mnemonic(2,"BA","",vec!(),&|_| {});
                 st.jump(Rvalue::Constant(next + 2),Guard::always());
                 true
             });
         let sub2 = new_disassembler!(TestArchShort =>
-            [ 8 ] = |_| false);
+            [ 8 ] = &|_| false);
 
         let main = new_disassembler!(TestArchShort =>
-            [ 1, sub ] = |_| true,
+            [ 1, sub ] = &|_| true,
             [ 1 ] = |st: &mut State<TestArchShort>| {
                 let next = st.address;
-                st.mnemonic(1,"A","",vec!(),|_| {});
+                st.mnemonic(1,"A","",vec!(),&|_| {});
                 st.jump(Rvalue::Constant(next + 1),Guard::always());
                 true
             },
             [ "0 k@..... 11" ] = |st: &mut State<TestArchShort>| {
                 let next = st.address;
-                st.mnemonic(1,"C","",vec!(),|_| {});
+                st.mnemonic(1,"C","",vec!(),&|_| {});
                 st.jump(Rvalue::Constant(next + 1),Guard::always());
                 true
             },
             _ = |st: &mut State<TestArchShort>| {
                 let next = st.address;
-                st.mnemonic(1,"UNK","",vec!(),|_| {});
+                st.mnemonic(1,"UNK","",vec!(),&|_| {});
                 st.jump(Rvalue::Constant(next + 1),Guard::always());
                 true
             }
@@ -726,7 +726,7 @@ mod tests {
         let def = OpaqueLayer::wrap(vec!(127));
         let dec = new_disassembler!(TestArchShort =>
             ["01 a@.. 1 b@ c@..."] = |st: &mut State<TestArchShort>| {
-                st.mnemonic(1, "1","",vec!(),|_| {});
+                st.mnemonic(1, "1","",vec!(),&|_| {});
                 true
             }
         );
@@ -749,31 +749,31 @@ mod tests {
     #[test]
     #[should_panic]
     fn too_long_capture_group() {
-        new_disassembler!(TestArchShort => [ "k@........." ] = |_| { true });
+        new_disassembler!(TestArchShort => [ "k@........." ] = &|_| { true });
     }
 
     #[test]
     #[should_panic]
     fn too_long_token_pattern() {
-        new_disassembler!(TestArchShort => [ "111111111" ] = |_| { true });
+        new_disassembler!(TestArchShort => [ "111111111" ] = &|_| { true });
     }
 
     #[test]
     #[should_panic]
     fn too_short_token_pattern() {
-        new_disassembler!(TestArchShort => [ "1111111" ] = |_| { true });
+        new_disassembler!(TestArchShort => [ "1111111" ] = &|_| { true });
     }
 
     #[test]
     #[should_panic]
     fn invalid_char_in_token_pattern() {
-        new_disassembler!(TestArchShort => [ "101/1010" ] = |_| { true });
+        new_disassembler!(TestArchShort => [ "101/1010" ] = &|_| { true });
     }
 
     #[test]
     #[should_panic]
     fn invalid_token_pattern() {
-        new_disassembler!(TestArchShort => [ "a111111" ] = |_| { true });
+        new_disassembler!(TestArchShort => [ "a111111" ] = &|_| { true });
     }
 
     #[test]
@@ -784,7 +784,7 @@ mod tests {
             [0x2211] = |s: &mut State<TestArchWide>|
             {
                 let a = s.address;
-                s.mnemonic(2,"A","",vec!(),|_| {});
+                s.mnemonic(2,"A","",vec!(),&|_| {});
                 s.jump(Rvalue::Constant(a + 2),Guard::always());
                 true
             },
@@ -792,7 +792,7 @@ mod tests {
             [0x4433] = |s: &mut State<TestArchWide>|
             {
                 let a = s.address;
-                s.mnemonic(2,"B","",vec!(),|_| {});
+                s.mnemonic(2,"B","",vec!(),&|_| {});
                 s.jump(Rvalue::Constant(a + 2),Guard::always());
                 s.jump(Rvalue::Constant(a + 4),Guard::always());
                 true
@@ -800,7 +800,7 @@ mod tests {
 
             [0x4455] = |s: &mut State<TestArchWide>|
             {
-                s.mnemonic(2, "C","",vec!(),|_| {});
+                s.mnemonic(2, "C","",vec!(),&|_| {});
                 true
             }
         );
@@ -827,7 +827,7 @@ mod tests {
             [127, opt!(126), 125] = |st: &mut State<TestArchShort>|
             {
                 let l = st.tokens.len();
-                st.mnemonic(l, "1", "", vec!(),|_| {});
+                st.mnemonic(l, "1", "", vec!(),&|_| {});
                 true
             }
         );
@@ -878,7 +878,7 @@ mod tests {
             [ "01111111", "a@11111111" ] = |st: &mut State<TestArchShort>|
             {
                 let l = st.tokens.len();
-                st.mnemonic(l, "1", "", vec!(),|_| {});
+                st.mnemonic(l, "1", "", vec!(),&|_| {});
                 true
             }
         );

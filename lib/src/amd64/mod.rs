@@ -503,7 +503,7 @@ pub fn disassembler(bits: Mode) -> Rc<Disassembler<Amd64>> {
                 None
             };
 
-            st.mnemonic(0,"internal-rm","",vec!(),|cg: &mut CodeGen| {
+            st.mnemonic(0,"internal-rm","",vec!(),&|cg: &mut CodeGen| {
                 /*st.configuration.rm = decode_modrm(st.get_group("mod"),
                     b_rm,
                     st.configuration.disp,
