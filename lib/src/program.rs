@@ -77,6 +77,22 @@ impl Program {
         })
     }
 
+    pub fn find_function_by_uuid_mut<'a>(&'a mut self, a: &Uuid) -> Option<&'a mut Function> {
+        let ct = self.call_graph.vertices().find(|&x| match self.call_graph.vertex_label(x) {
+            Some(&CallTarget::Concrete(ref s)) => s.uuid == *a,
+            _ => false,
+        });
+
+        if ct.is_none() {
+            return None;
+        }
+
+        match self.call_graph.vertex_label_mut(ct.unwrap()) {
+            Some(&mut CallTarget::Concrete(ref mut s)) => Some(s),
+            _ => None
+        }
+    }
+
     pub fn disassemble<A: Architecture,F: Fn(DisassembleEvent)>(cont: Option<Program>, dec: Rc<Disassembler<A>>, init: A::Configuration, data: LayerIter,
                                                                 start: u64, reg: String, progress: Option<F>) -> Program {
         if cont.is_some() && cont.as_ref().map(|x| x.find_function_by_entry(start)).is_some() {

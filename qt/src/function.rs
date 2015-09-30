@@ -6,7 +6,12 @@ use panopticon::program::CallTarget;
 use std::hash::{Hash,Hasher,SipHasher};
 use std::thread;
 use qmlrs::{Object,Variant};
-use graph_algos::traits::{VertexListGraph,Graph,IncidenceGraph,EdgeListGraph};
+use graph_algos::traits::{
+    VertexListGraph,
+    Graph,
+    IncidenceGraph,
+    EdgeListGraph
+};
 use uuid::Uuid;
 use controller::PROJECT;
 use rustc_serialize::json;
@@ -292,42 +297,39 @@ pub fn layout(arg0: &Variant, arg1: &Variant, arg2: &Variant, arg3: &Variant, _c
             let read_guard = PROJECT.read().unwrap();
             let proj: &Project = read_guard.as_ref().unwrap();
 
-            if let Some((vx,prog)) = proj.find_call_target_by_uuid(&uuid) {
-                if let Some(&CallTarget::Concrete(ref func)) = prog.call_graph.vertex_label(vx) {
+            if let Some(func) = proj.find_function_by_uuid(&uuid) {
+                let vertices = func.cflow_graph.vertices().collect::<Vec<_>>();
+                let edges = func.cflow_graph.edges().map(|e| {
+                    let f = vertices.iter().position(|&x| x == func.cflow_graph.source(e)).unwrap();
+                    let t = vertices.iter().position(|&x| x == func.cflow_graph.target(e)).unwrap();
+                    (f,t)
+                }).collect::<Vec<_>>();
+                let mut dims_transformed = HashMap::<usize,(f32,f32)>::new();
 
-                    let vertices = func.cflow_graph.vertices().collect::<Vec<_>>();
-                    let edges = func.cflow_graph.edges().map(|e| {
-                        let f = vertices.iter().position(|&x| x == func.cflow_graph.source(e)).unwrap();
-                        let t = vertices.iter().position(|&x| x == func.cflow_graph.target(e)).unwrap();
-                        (f,t)
-                    }).collect::<Vec<_>>();
-                    let mut dims_transformed = HashMap::<usize,(f32,f32)>::new();
-
-                    for (k,v) in dims.iter() {
-                        let _k = vertices.iter().position(|&x| {
-                            let a = to_ident(func.cflow_graph.vertex_label(x).unwrap());
-                            a == *k
-                        }).unwrap();
-                        dims_transformed.insert(_k,(v.width as f32,v.height as f32));
-                    }
-                    let maybe_entry = func.entry_point.map(|k| vertices.iter().position(|&x| x == k).unwrap());
-                    let idents = func.cflow_graph.vertices().map(|x| to_ident(func.cflow_graph.vertex_label(x).unwrap())).collect::<Vec<_>>();
-                    let ctrl = Object::from_ptr(_ctrl.as_ptr());
-
-                    thread::spawn(move || {
-                        let res = sugiyama::layout(&(0..vertices.len()).collect::<Vec<usize>>(),
-                                                   &edges,
-                                                   &dims_transformed,
-                                                   maybe_entry,
-                                                   node_spacing as usize,
-                                                   rank_spacing as usize);
-                        let mut ret = HashMap::<String,LayoutOutputPosition>::new();
-                        for (k,v) in res.iter() {
-                            ret.insert(idents[*k].clone(),LayoutOutputPosition{ x: v.0 as f32, y: v.1 as f32 });
-                        }
-                        ctrl.emit(LAYOUTED_FUNCTION,&vec![Variant::String(json::encode(&ret).ok().unwrap())]);
-                    });
+                for (k,v) in dims.iter() {
+                    let _k = vertices.iter().position(|&x| {
+                        let a = to_ident(func.cflow_graph.vertex_label(x).unwrap());
+                        a == *k
+                    }).unwrap();
+                    dims_transformed.insert(_k,(v.width as f32,v.height as f32));
                 }
+                let maybe_entry = func.entry_point.map(|k| vertices.iter().position(|&x| x == k).unwrap());
+                let idents = func.cflow_graph.vertices().map(|x| to_ident(func.cflow_graph.vertex_label(x).unwrap())).collect::<Vec<_>>();
+                let ctrl = Object::from_ptr(_ctrl.as_ptr());
+
+                thread::spawn(move || {
+                    let res = sugiyama::layout(&(0..vertices.len()).collect::<Vec<usize>>(),
+                                               &edges,
+                                               &dims_transformed,
+                                               maybe_entry,
+                                               node_spacing as usize,
+                                               rank_spacing as usize);
+                    let mut ret = HashMap::<String,LayoutOutputPosition>::new();
+                    for (k,v) in res.iter() {
+                        ret.insert(idents[*k].clone(),LayoutOutputPosition{ x: v.0 as f32, y: v.1 as f32 });
+                    }
+                    ctrl.emit(LAYOUTED_FUNCTION,&vec![Variant::String(json::encode(&ret).ok().unwrap())]);
+                });
             }
         }
     }
@@ -458,7 +460,6 @@ pub fn comment(arg0: &Variant, arg1: &Variant, arg2: &Variant, ctrl: &mut Object
         return Variant::String("{}".to_string());
     };
 
-    println!("{}:{} \"{}\"",reg,offset,cmnt);
     // write comment
     {
         let mut write_guard = PROJECT.write().unwrap();
@@ -481,6 +482,28 @@ pub fn comment(arg0: &Variant, arg1: &Variant, arg2: &Variant, ctrl: &mut Object
                     },
                     _ => {}
                 }
+            }
+        }
+    }
+
+    Variant::String("".to_string())
+}
+
+pub fn rename(arg0: &Variant, arg1: &Variant, ctrl: &mut Object) -> Variant {
+    let name = if let &Variant::String(ref x) = arg1 {
+        x.clone()
+    } else {
+        return Variant::String("{}".to_string());
+    };
+
+    if let &Variant::String(ref st) = arg0 {
+        if let Some(uuid) = Uuid::parse_str(st).ok() {
+            let mut write_guard = PROJECT.write().unwrap();
+            let proj: &mut Project = write_guard.as_mut().unwrap();
+
+            if let Some(func) = proj.find_function_by_uuid_mut(&uuid) {
+                func.name = name;
+                ctrl.emit(CHANGED_FUNCTION,&vec![Variant::String(func.uuid.to_string())]);
             }
         }
     }

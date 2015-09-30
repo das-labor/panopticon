@@ -68,6 +68,16 @@ impl Project {
         None
     }
 
+    pub fn find_function_by_uuid_mut<'a>(&'a mut self,uu: &Uuid) -> Option<&'a mut Function> {
+        for p in self.code.iter_mut() {
+            if let Some(f) = p.find_function_by_uuid_mut::<'a>(uu) {
+                return Some(f);
+            }
+        }
+
+        None
+    }
+
     pub fn find_call_target_by_uuid<'a>(&'a self,uu: &Uuid) -> Option<(CallGraphRef,&'a Program)> {
         for p in self.code.iter() {
             if let Some(ct) = p.find_call_target_by_uuid::<'a>(uu) {

@@ -30,6 +30,7 @@ extern "C" fn controller_slot(this: *mut ffi::QObject, id: c_int, a: *const ffi:
 
         // Setter
         (SET_COMMENT,3) => ::function::comment(&args[0],&args[1],&args[2],&mut obj).to_qvariant(ret),
+        (SET_NAME,2) => ::function::rename(&args[0],&args[1],&mut obj).to_qvariant(ret),
 
         _ => panic!("Unknown controller call id '{}' with {} arguments.",id,args.len())
     }
@@ -57,6 +58,7 @@ pub const FUNCTION_CFG: isize = 13;
 pub const SUGIYAMA_LAYOUT: isize = 14;
 pub const DIJKSTRA_ROUTE: isize = 15;
 pub const SET_COMMENT: isize = 16;
+pub const SET_NAME: isize = 17;
 
 pub extern "C" fn create_singleton(_: *mut ffi::QQmlEngine, _: *mut ffi::QJSEngine) -> *mut ffi::QObject {
     let mut metaobj = MetaObject::new("Panopticon",controller_slot);
@@ -94,6 +96,7 @@ pub extern "C" fn create_singleton(_: *mut ffi::QQmlEngine, _: *mut ffi::QJSEngi
     assert_eq!(metaobj.add_method("sugiyamaLayout(QString,QString,int,int)","QString"),SUGIYAMA_LAYOUT);
     assert_eq!(metaobj.add_method("dijkstraRoute(QString)","QString"),DIJKSTRA_ROUTE);
     assert_eq!(metaobj.add_method("setComment(QString,int,QString)","QString"),SET_COMMENT);
+    assert_eq!(metaobj.add_method("setName(QString,QString)","QString"),SET_NAME);
 
     let mut obj = metaobj.instantiate();
 
