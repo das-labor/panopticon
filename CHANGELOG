@@ -1,7 +1,9 @@
 2015-YY-XX: 0.11 (Bastille)
- - Port Panopticon from C++ to Rust
+ - Partial port from C++ to Rust
  - Layout control flow graphs in QML
  - Add function call graph
+ - Add comment function in graph view (double click on row to comment)
+ - Functions can be renamed in the function table
 
 2015-06-03: 0.10 (Salt Pit)
  - Prototype AMD64 disassembler
