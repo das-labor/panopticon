@@ -1,16 +1,10 @@
 extern crate panopticon;
-extern crate graph_algos;
 
 use panopticon::region::Region;
 use panopticon::amd64::{disassembler,Amd64,Config,Mode};
-use panopticon::function::{ControlFlowTarget,Function};
 use panopticon::disassembler::State;
-use panopticon::value::Rvalue;
 
 use std::path::Path;
-use std::hash::{Hash,Hasher,SipHasher};
-
-use graph_algos::traits::{VertexListGraph,Graph,MutableGraph,IncidenceGraph,EdgeListGraph};
 
 #[test]
 fn amd64_opcodes() {
