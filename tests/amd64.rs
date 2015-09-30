@@ -15,7 +15,7 @@ use graph_algos::traits::{VertexListGraph,Graph,MutableGraph,IncidenceGraph,Edge
 #[test]
 fn amd64_opcodes() {
     let reg = Region::open("com".to_string(),Path::new("tests/data/amd64.com")).unwrap();
-    let main = disassembler(64);
+    let main = disassembler(Mode::Long);
     let mut addr = 0;
 
     loop {
@@ -40,7 +40,7 @@ fn amd64_opcodes() {
 #[test]
 fn ia32_opcodes() {
     let reg = Region::open("com".to_string(),Path::new("tests/data/ia32.com")).unwrap();
-    let main = disassembler(32);
+    let main = disassembler(Mode::Protected);
     let mut addr = 0;
 
     loop {

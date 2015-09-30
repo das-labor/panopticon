@@ -39,6 +39,15 @@ fn qword(o: Rvalue) -> Lvalue {
     }
 }
 
+fn oword(o: Rvalue) -> Lvalue {
+    Lvalue::Memory{
+        offset: Box::new(o),
+        bytes: 16,
+        endianess: Endianess::Little,
+        name: "ram".to_string()
+    }
+}
+
 pub fn decode_m(sm: &mut State<Amd64>,cg: &mut CodeGen) -> Rvalue {
     sm.configuration.rm.as_ref().unwrap().to_rv()
 }
@@ -73,6 +82,7 @@ pub fn decode_i(sm: &mut State<Amd64>,cg: &mut CodeGen) -> (Rvalue,Rvalue) {
         &OperandSize::Sixteen => (ax.to_rv(),sm.configuration.imm.clone().unwrap()),
         &OperandSize::ThirtyTwo => (eax.to_rv(),sm.configuration.imm.clone().unwrap()),
         &OperandSize::SixtyFour => (rax.to_rv(),sm.configuration.imm.clone().unwrap()),
+        &OperandSize::HundredTwentyEight => panic!("No 128 bit register in x86!")
     }
 }
 
@@ -325,6 +335,7 @@ fn select_reg(os: &OperandSize,r: usize, rex: bool) -> Lvalue {
         &OperandSize::Sixteen => decode_reg16(r),
         &OperandSize::ThirtyTwo => decode_reg32(r),
         &OperandSize::SixtyFour => decode_reg64(r),
+        &OperandSize::HundredTwentyEight => panic!("No 128 bit registers in x86!")
     }
 }
 
@@ -334,6 +345,7 @@ pub fn select_mem(os: &OperandSize,o: Rvalue) -> Lvalue {
         &OperandSize::Sixteen => word(o),
         &OperandSize::ThirtyTwo => dword(o),
         &OperandSize::SixtyFour => qword(o),
+        &OperandSize::HundredTwentyEight => oword(o),
     }
 }
 

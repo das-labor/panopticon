@@ -25,6 +25,7 @@ pub enum AddressSize
 #[derive(Clone,PartialEq,Copy)]
 pub enum OperandSize
 {
+    HundredTwentyEight,
     SixtyFour,
     ThirtyTwo,
     Sixteen,
@@ -34,6 +35,7 @@ pub enum OperandSize
 impl OperandSize {
     fn num_bits(&self) -> usize {
         match self {
+            &OperandSize::HundredTwentyEight => 128,
             &OperandSize::SixtyFour => 64,
             &OperandSize::ThirtyTwo => 32,
             &OperandSize::Sixteen => 16,
@@ -268,7 +270,7 @@ pub fn new_temp(bits: usize) -> Lvalue {
     }
 }
 
-pub fn disassembler(bits: u8) -> Rc<Disassembler<Amd64>> {
+pub fn disassembler(bits: Mode) -> Rc<Disassembler<Amd64>> {
     let opsize_prfx = new_disassembler!(Amd64 =>
         [ 0x66 ] = |st: &mut State<Amd64>| {
             match st.configuration.mode {
@@ -419,6 +421,21 @@ pub fn disassembler(bits: u8) -> Rc<Disassembler<Amd64>> {
         [ "mq@........", "mq@........", "mq@........", "mq@........",
           "mq@........", "mq@........", "mq@........", "mq@........" ] = |st: &mut State<Amd64>| {
             st.configuration.rm = Some(decode::select_mem(&OperandSize::SixtyFour,Rvalue::Constant(st.get_group("mq"))));
+            st.configuration.address_size == AddressSize::SixtyFour
+        });
+
+    let m128 = new_disassembler!(Amd64 =>
+        [ "mdq@........", "mdq@........" ] = |st: &mut State<Amd64>| {
+            st.configuration.rm = Some(decode::select_mem(&OperandSize::HundredTwentyEight,Rvalue::Constant(st.get_group("mdq"))));
+            st.configuration.address_size == AddressSize::Sixteen
+        },
+        [ "mdq@........", "mdq@........", "mdq@........", "mdq@........" ] = |st: &mut State<Amd64>| {
+            st.configuration.rm = Some(decode::select_mem(&OperandSize::HundredTwentyEight,Rvalue::Constant(st.get_group("mdq"))));
+            st.configuration.address_size == AddressSize::ThirtyTwo
+        },
+        [ "mdq@........", "mdq@........", "mdq@........", "mdq@........",
+          "mdq@........", "mdq@........", "mdq@........", "mdq@........" ] = |st: &mut State<Amd64>| {
+            st.configuration.rm = Some(decode::select_mem(&OperandSize::HundredTwentyEight,Rvalue::Constant(st.get_group("mdq"))));
             st.configuration.address_size == AddressSize::SixtyFour
         });
 
@@ -684,30 +701,15 @@ pub fn disassembler(bits: u8) -> Rc<Disassembler<Amd64>> {
         [ "mod@10 111 rm@100", sib, disp32 ] = rm_semantic(Some(OperandSize::Eight)),
         [ "mod@10 111 rm@...", disp32      ] = rm_semantic(Some(OperandSize::Eight)));
 
-    let (main, mainrep, mainrepx) = generic::add_generic(
+    generic::integer_instructions(
         bits,
-        lock_prfx,
+        lock_prfx, rep_prfx, repx_prfx, opsize_prfx,
         imm8, imm16, imm32, imm48, imm64, imm, immlong,
         moffs8, moffs,
         sib,
         rm, rm0, rm1, rm2, rm3, rm4, rm5, rm6, rm7,
         rmbyte, rmbyte0, rmbyte1, rmbyte2, rmbyte3,
         rmbyte4, rmbyte5, rmbyte6, rmbyte7,
-        rmlong, m64,
-        disp8, disp16, disp32, disp64);
-
-    if(bits == 64)
-    {
-        new_disassembler!(Amd64 =>
-            [ opt!(opsize_prfx), opt!(rex_prfx), main ] = |_: &mut State<Amd64>| { true },
-            [ opt!(rep_prfx), opt!(opsize_prfx), opt!(rep_prfx), opt!(rex_prfx), mainrep ] = |_: &mut State<Amd64>| { true },
-            [ opt!(rep_prfx), opt!(opsize_prfx), opt!(repx_prfx), opt!(rex_prfx), mainrepx ] = |_: &mut State<Amd64>| { true })
-    }
-    else
-    {
-        new_disassembler!(Amd64 =>
-            [ opt!(rep_prfx), opt!(opsize_prfx), opt!(rep_prfx), mainrep ] = |_: &mut State<Amd64>| { true },
-            [ opt!(rep_prfx), opt!(opsize_prfx), opt!(repx_prfx), mainrepx ] = |_: &mut State<Amd64>| { true },
-            [ opt!(opsize_prfx), main ] = |_: &mut State<Amd64>| { true })
-    }
+        rmlong, m64, m128,
+        disp8, disp16, disp32, disp64)
 }

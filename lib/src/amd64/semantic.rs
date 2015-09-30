@@ -1,7 +1,7 @@
 use value::{Lvalue,Rvalue};
 use codegen::CodeGen;
 use disassembler::State;
-use amd64::{Amd64,Mode,Condition,ss,ds,fs,gs};
+use amd64::{Amd64,Mode,Condition,ss,ds,es,fs,gs};
 use guard::Guard;
 
 fn do_push(v: Rvalue, mode: Mode, _: &mut CodeGen) {
@@ -550,10 +550,13 @@ pub fn iret(st: &mut State<Amd64>) -> bool {
 
 pub fn jcc(_: &mut CodeGen,a: Rvalue, c: Condition) {}
 pub fn jmp(_: &mut CodeGen,a: Rvalue) {}
-pub fn jxz(_: &mut CodeGen,a: Rvalue, b: Rvalue) {}
+pub fn jcxz(_: &mut CodeGen,a: Rvalue) {}
+pub fn jecxz(_: &mut CodeGen,a: Rvalue) {}
+pub fn jrcxz(_: &mut CodeGen,a: Rvalue) {}
 pub fn lahf(_: &mut CodeGen) {}
 pub fn lar(_: &mut CodeGen, a: Rvalue, b: Rvalue) {}
 pub fn lds(cg: &mut CodeGen,a: Rvalue, b: Rvalue) { lxs(cg,a,b,ds.to_rv()) }
+pub fn les(cg: &mut CodeGen,a: Rvalue, b: Rvalue) { lxs(cg,a,b,es.to_rv()) }
 pub fn lss(cg: &mut CodeGen,a: Rvalue, b: Rvalue) { lxs(cg,a,b,ss.to_rv()) }
 pub fn lfs(cg: &mut CodeGen,a: Rvalue, b: Rvalue) { lxs(cg,a,b,fs.to_rv()) }
 pub fn lgs(cg: &mut CodeGen,a: Rvalue, b: Rvalue) { lxs(cg,a,b,gs.to_rv()) }
