@@ -149,7 +149,7 @@ Item {
 
 	WorkerScript {
 		id: layoutTask
-		source: "../layout.js"
+		source: "../springy.js"
 		onMessage: {
 			//console.log("MS: " + JSON.stringify(messageObject));
 
