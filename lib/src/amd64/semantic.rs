@@ -99,49 +99,79 @@ pub fn flagcomp(flag: &Lvalue) -> Box<Fn(&mut CodeGen<Amd64>)> {
     })
 }
 
-pub fn aaa(_: &mut CodeGen) {
-    unimplemented!()/*
-	using dsl::operator*;
+pub fn aaa(cg: &mut CodeGen<Amd64>) {
+    let y = new_temp(16);
+    let x1 = new_temp(1);
+    let x2 = new_temp(1);
 
-	rvalue y = al & Rvalue::Constant(0x0f);
-	rvalue x = m.or_b(m.not_b(m.or_b(less(y,Rvalue::Constant(9)),equal(y,constant(9)))),AF);
+    cg.and_b(&y,&*al,&Rvalue::Constant(0x0f));
 
-	m.assign(to_lvalue(AF), m.lift_b(x));
-	m.assign(to_lvalue(CF), m.lift_b(x));
-	m.assign(to_lvalue(ax), (ax + m.lift_b(x) * Rvalue::Constant(0x106)) % constant(0x100));*/
+    // x1 = !(y <= 9) || AF
+    cg.equal_i(&x1,&y.to_rv(),&Rvalue::Constant(9));
+    cg.less_i(&x2,&y.to_rv(),&Rvalue::Constant(9));
+    cg.or_b(&x1,&x1.to_rv(),&x2.to_rv());
+    cg.not_b(&x1,&x1.to_rv());
+    cg.or_b(&x1,&x1.to_rv(),&AF.to_rv());
+
+    cg.assign(&*AF,&x1.to_rv());
+    cg.assign(&*CF,&x1.to_rv());
+
+    // ax = (ax + x1 * 0x106) % 0x100
+    cg.lift_b(&y,&x1.to_rv());
+    cg.mul_i(&y,&y.to_rv(),&Rvalue::Constant(0x106));
+    cg.add_i(&ax,&ax.to_rv(),&y.to_rv());
+    cg.mod_i(&ax,&ax.to_rv(),&Rvalue::Constant(0x100));
 }
 
-pub fn aam(_: &mut CodeGen, a: Rvalue) {
-    unimplemented!()/*
-	rvalue temp_al = m.assign(to_lvalue(al));
+pub fn aam(cg: &mut CodeGen<Amd64>, a: Rvalue) {
+    let temp_al = new_temp(16);
 
-	m.assign(to_lvalue(ah), temp_al / a);
-	m.assign(to_lvalue(al), temp_al % a);*/
+    cg.assign(&temp_al,&al.to_rv());
+    cg.div_i(&*ah,&temp_al,&a);
+    cg.mod_i(&*al,&temp_al,&a);
 }
 
-pub fn aad(_: &mut CodeGen, a: Rvalue) {
-    unimplemented!()/*
-	using dsl::operator*;
+pub fn aad(cg: &mut CodeGen<Amd64>, a: Rvalue) {
+    let x = new_temp(16);
 
-	rvalue temp_al = m.assign(to_lvalue(al));
-	rvalue temp_ah = m.assign(to_lvalue(ah));
-
-	m.assign(to_lvalue(al), temp_al + temp_ah * a);
-	m.assign(to_lvalue(ah), Rvalue::Constant(0));*/
+    cg.mul_i(&x,&ah.to_rv(),&a);
+    cg.add_i(&*al,&x,&al.to_rv());
+    cg.assign(&*ah,&Rvalue::Constant(0));
 }
 
-pub fn aas(_: &mut CodeGen) {
-    unimplemented!()/*
-	using dsl::operator*;
+pub fn aas(cg: &mut CodeGen<Amd64>) {
+    let y1 = new_temp(16);
+    let x1 = new_temp(1);
+    let x2 = new_temp(1);
 
-	rvalue y = al & Rvalue::Constant(0x0f);
-	rvalue x = m.or_b(m.not_b(m.or_b(less(y,Rvalue::Constant(9)),equal(y,constant(9)))),AF);
+    cg.and_b(&y1,&*al,&Rvalue::Constant(0x0f));
 
-	m.assign(to_lvalue(AF), m.lift_b(x));
-	m.assign(to_lvalue(CF), m.lift_b(x));
-	m.assign(to_lvalue(ax), (ax - m.lift_b(x) * Rvalue::Constant(6)) % constant(0x100));
-	m.assign(to_lvalue(ah), (ah - m.lift_b(x)) % Rvalue::Constant(0x10));
-	m.assign(to_lvalue(al), y);*/
+    // x1 = !(y <= 9) || AF
+    cg.equal_i(&x1,&y1.to_rv(),&Rvalue::Constant(9));
+    cg.less_i(&x2,&y1.to_rv(),&Rvalue::Constant(9));
+    cg.or_b(&x1,&x1.to_rv(),&x2.to_rv());
+    cg.not_b(&x1,&x1.to_rv());
+    cg.or_b(&x1,&x1.to_rv(),&AF.to_rv());
+
+    cg.assign(&*AF,&x1.to_rv());
+    cg.assign(&*CF,&x1.to_rv());
+
+    let y2 = new_temp(16);
+
+    // ax = (ax - x1 * 6) % 0x100
+    cg.lift_b(&y2,&x1.to_rv());
+    cg.mul_i(&y2,&y2.to_rv(),&Rvalue::Constant(6));
+    cg.sub_i(&ax,&ax.to_rv(),&y2.to_rv());
+    cg.mod_i(&ax,&ax.to_rv(),&Rvalue::Constant(0x100));
+
+    let z = new_temp(16);
+
+    // ah = (ah - x1) % 0x10
+    cg.lift_b(&z,&x1.to_rv());
+    cg.sub_i(&ah,&ah.to_rv(),&z.to_rv());
+    cg.mod_i(&ah,&ah.to_rv(),&Rvalue::Constant(0x10));
+
+    cg.assign(&*al,&y1.to_rv());
 }
 
 pub fn add(cg: &mut CodeGen<Amd64>, a: Rvalue, b: Rvalue) {
