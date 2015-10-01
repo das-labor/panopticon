@@ -242,7 +242,7 @@ pub fn decode_rvmi(sm: &mut State<Amd64>) -> (Rvalue,Rvalue,Rvalue,Rvalue) {
     unimplemented!();
 }
 
-pub fn decode_reg8(r_reg: usize,rex: bool) -> Lvalue {
+pub fn decode_reg8(r_reg: u64,rex: bool) -> Lvalue {
     match r_reg {
         0 => al.clone(),
         1 => cl.clone(),
@@ -264,7 +264,7 @@ pub fn decode_reg8(r_reg: usize,rex: bool) -> Lvalue {
     }
 }
 
-pub fn decode_reg16(r_reg: usize) -> Lvalue {
+pub fn decode_reg16(r_reg: u64) -> Lvalue {
     match r_reg {
         0 => ax.clone(),
         1 => cx.clone(),
@@ -286,7 +286,7 @@ pub fn decode_reg16(r_reg: usize) -> Lvalue {
     }
 }
 
-pub fn decode_reg32(r_reg: usize) -> Lvalue {
+pub fn decode_reg32(r_reg: u64) -> Lvalue {
     match r_reg {
         0 => eax.clone(),
         1 => ecx.clone(),
@@ -308,7 +308,7 @@ pub fn decode_reg32(r_reg: usize) -> Lvalue {
     }
 }
 
-pub fn decode_reg64(r_reg: usize) -> Lvalue {
+pub fn decode_reg64(r_reg: u64) -> Lvalue {
     match r_reg {
         0 => rax.clone(),
         1 => rcx.clone(),
@@ -330,7 +330,7 @@ pub fn decode_reg64(r_reg: usize) -> Lvalue {
     }
 }
 
-fn select_reg(os: &OperandSize,r: usize, rex: bool) -> Lvalue {
+fn select_reg(os: &OperandSize,r: u64, rex: bool) -> Lvalue {
     match os {
         &OperandSize::Eight => decode_reg8(r,rex),
         &OperandSize::Sixteen => decode_reg16(r),
@@ -350,16 +350,16 @@ pub fn select_mem(os: &OperandSize,o: Rvalue) -> Lvalue {
     }
 }
 
-fn decode_modrm(
-        _mod: usize,
-        b_rm: usize,    // B.R/M
+pub fn decode_modrm(
+        _mod: u64,
+        b_rm: u64,    // B.R/M
         disp: Option<Rvalue>,
-        sib: Option<(usize,usize,usize)>, // scale, X.index, B.base
+        sib: Option<(u64,u64,u64)>, // scale, X.index, B.base
         os: OperandSize,
         addrsz: AddressSize,
         mode: Mode,
         rex: bool,
-        c: &mut CodeGen) -> Lvalue
+        c: &mut CodeGen<Amd64>) -> Lvalue
 {
     assert!(_mod < 0x4);
     assert!(b_rm < 0x10);
@@ -457,13 +457,13 @@ fn decode_modrm(
 }
 
 fn decode_sib(
-    _mod: usize,
-    scale: usize,
-    x_index: usize,
-    b_base: usize,
+    _mod: u64,
+    scale: u64,
+    x_index: u64,
+    b_base: u64,
     disp: Option<Rvalue>,
     os: OperandSize,
-    c: &mut CodeGen) -> Lvalue
+    c: &mut CodeGen<Amd64>) -> Lvalue
 {
     assert!(_mod <= 3 && scale <= 3 && x_index <= 15 && b_base <= 15);
 
@@ -543,7 +543,7 @@ fn decode_sib(
     }
 }
 
-pub fn nonary(opcode: &'static str, sem: fn(&mut CodeGen)) -> Box<Fn(&mut State<Amd64>) -> bool> {
+pub fn nonary(opcode: &'static str, sem: fn(&mut CodeGen<Amd64>)) -> Box<Fn(&mut State<Amd64>) -> bool> {
     Box::new(move |st: &mut State<Amd64>| -> bool {
         let len = st.tokens.len();
         let next = st.address + len as u64;
@@ -559,7 +559,7 @@ pub fn nonary(opcode: &'static str, sem: fn(&mut CodeGen)) -> Box<Fn(&mut State<
 
 pub fn unary(opcode: &'static str,
               decode: fn(&mut State<Amd64>) -> Rvalue,
-              sem: fn(&mut CodeGen,Rvalue)
+              sem: fn(&mut CodeGen<Amd64>,Rvalue)
              ) -> Box<Fn(&mut State<Amd64>) -> bool> {
     Box::new(move |st: &mut State<Amd64>| -> bool {
         let len = st.tokens.len();
@@ -577,7 +577,7 @@ pub fn unary(opcode: &'static str,
 
 pub fn unary_box(opcode: &'static str,
               decode: fn(&mut State<Amd64>) -> Rvalue,
-              sem: Box<Fn(&mut CodeGen,Rvalue)>
+              sem: Box<Fn(&mut CodeGen<Amd64>,Rvalue)>
              ) -> Box<Fn(&mut State<Amd64>) -> bool> {
     Box::new(move |st: &mut State<Amd64>| -> bool {
         let len = st.tokens.len();
@@ -595,7 +595,7 @@ pub fn unary_box(opcode: &'static str,
 
 pub fn unary_c(opcode: &'static str,
                   arg: Rvalue,
-                  sem: fn(&mut CodeGen, Rvalue)
+                  sem: fn(&mut CodeGen<Amd64>, Rvalue)
                  ) -> Box<Fn(&mut State<Amd64>) -> bool> {
     Box::new(move |st: &mut State<Amd64>| -> bool {
         let len = st.tokens.len();
@@ -613,7 +613,7 @@ pub fn unary_c(opcode: &'static str,
 
 pub fn binary(opcode: &'static str,
               decode: fn(&mut State<Amd64>) -> (Rvalue,Rvalue),
-              sem: fn(&mut CodeGen, Rvalue, Rvalue)
+              sem: fn(&mut CodeGen<Amd64>, Rvalue, Rvalue)
              ) -> Box<Fn(&mut State<Amd64>) -> bool> {
     Box::new(move |st: &mut State<Amd64>| -> bool {
         let len = st.tokens.len();
@@ -631,7 +631,7 @@ pub fn binary(opcode: &'static str,
 
 pub fn binary_box(opcode: &'static str,
               decode: fn(&mut State<Amd64>) -> (Rvalue,Rvalue),
-              sem: Box<Fn(&mut CodeGen, Rvalue, Rvalue)>
+              sem: Box<Fn(&mut CodeGen<Amd64>, Rvalue, Rvalue)>
              ) -> Box<Fn(&mut State<Amd64>) -> bool> {
     Box::new(move |st: &mut State<Amd64>| -> bool {
         let len = st.tokens.len();
@@ -650,7 +650,7 @@ pub fn binary_box(opcode: &'static str,
 pub fn binary_rv(opcode: &'static str,
                   _arg0: &Lvalue,
                   decode: fn(&mut State<Amd64>) -> Rvalue,
-                  sem: fn(&mut CodeGen, Rvalue, Rvalue)
+                  sem: fn(&mut CodeGen<Amd64>, Rvalue, Rvalue)
                  ) -> Box<Fn(&mut State<Amd64>) -> bool> {
     let arg0 = _arg0.clone();
     Box::new(move |st: &mut State<Amd64>| -> bool {
@@ -670,7 +670,7 @@ pub fn binary_rv(opcode: &'static str,
 pub fn binary_vr(opcode: &'static str,
                   decode: fn(&mut State<Amd64>) -> Rvalue,
                   _arg1: &Lvalue,
-                  sem: fn(&mut CodeGen, Rvalue, Rvalue)
+                  sem: fn(&mut CodeGen<Amd64>, Rvalue, Rvalue)
                  ) -> Box<Fn(&mut State<Amd64>) -> bool> {
     let arg1 = _arg1.clone();
     Box::new(move |st: &mut State<Amd64>| -> bool {
@@ -690,7 +690,7 @@ pub fn binary_vr(opcode: &'static str,
 pub fn binary_vc(opcode: &'static str,
                   decode: fn(&mut State<Amd64>) -> Rvalue,
                   arg1: Rvalue,
-                  sem: fn(&mut CodeGen, Rvalue, Rvalue)
+                  sem: fn(&mut CodeGen<Amd64>, Rvalue, Rvalue)
                  ) -> Box<Fn(&mut State<Amd64>) -> bool> {
     Box::new(move |st: &mut State<Amd64>| -> bool {
         let len = st.tokens.len();
@@ -709,7 +709,7 @@ pub fn binary_vc(opcode: &'static str,
 pub fn binary_rr(opcode: &'static str,
                   _arg0: &Lvalue,
                   _arg1: &Lvalue,
-                  sem: fn(&mut CodeGen, Rvalue, Rvalue)
+                  sem: fn(&mut CodeGen<Amd64>, Rvalue, Rvalue)
                  ) -> Box<Fn(&mut State<Amd64>) -> bool> {
     let arg0 = _arg0.clone();
     let arg1 = _arg1.clone();
@@ -729,7 +729,7 @@ pub fn binary_rr(opcode: &'static str,
 pub fn binary_vv(opcode: &'static str,
                   decodea: fn(&mut State<Amd64>) -> Rvalue,
                   decodeb: fn(&mut State<Amd64>) -> Rvalue,
-                  sem: fn(&mut CodeGen, Rvalue, Rvalue)
+                  sem: fn(&mut CodeGen<Amd64>, Rvalue, Rvalue)
                  ) -> Box<Fn(&mut State<Amd64>) -> bool> {
     Box::new(move |st: &mut State<Amd64>| -> bool {
         let len = st.tokens.len();
@@ -748,7 +748,7 @@ pub fn binary_vv(opcode: &'static str,
 
 pub fn trinary(opcode: &'static str,
               decode: fn(&mut State<Amd64>) -> (Rvalue,Rvalue,Rvalue),
-              sem: &Fn(&mut CodeGen, Rvalue, Rvalue, Rvalue)
+              sem: &Fn(&mut CodeGen<Amd64>, Rvalue, Rvalue, Rvalue)
              ) -> Box<Fn(&mut State<Amd64>) -> bool> {
     Box::new(move |st: &mut State<Amd64>| -> bool {
         false
@@ -758,7 +758,7 @@ pub fn trinary(opcode: &'static str,
 pub fn trinary_vr(opcode: &'static str,
                   decode: fn(&mut State<Amd64>) -> (Rvalue,Rvalue),
                   c: &Lvalue,
-                  sem: &Fn(&mut CodeGen, Rvalue, Rvalue, Rvalue)) -> Box<Fn(&mut State<Amd64>) -> bool> {
+                  sem: &Fn(&mut CodeGen<Amd64>, Rvalue, Rvalue, Rvalue)) -> Box<Fn(&mut State<Amd64>) -> bool> {
     Box::new(move |st: &mut State<Amd64>| -> bool {
         false
     })

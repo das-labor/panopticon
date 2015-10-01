@@ -64,7 +64,7 @@ pub enum Condition {
     Greater,
 }
 
-#[derive(Clone,PartialEq)]
+#[derive(Clone,PartialEq,Copy)]
 pub enum Mode
 {
     Real,       // Real mode / Virtual 8086 mode
@@ -503,16 +503,17 @@ pub fn disassembler(bits: Mode) -> Rc<Disassembler<Amd64>> {
                 None
             };
 
-            st.mnemonic(0,"internal-rm","",vec!(),&|cg: &mut CodeGen| {
-                /*st.configuration.rm = decode_modrm(st.get_group("mod"),
-                    b_rm,
-                    st.configuration.disp,
-                    sib,
-                    st.configuration.operand_size,
-                    st.configuration.address_size,
-                    st.configuration.mode,
-                    st.configuration.rex,
-                    c);*/
+            let _mod = st.get_group("mod");
+            st.mnemonic(0,"internal-rm","",vec!(),&mut |cg: &mut CodeGen<Amd64>| {
+                cg.configuration.rm = Some(decode::decode_modrm(_mod,
+                                                                b_rm,
+                                                                cg.configuration.disp.clone(),
+                                                                sib,
+                                                                cg.configuration.operand_size,
+                                                                cg.configuration.address_size,
+                                                                cg.configuration.mode,
+                                                                cg.configuration.rex,
+                                                                cg));
                 });
                 true
             })

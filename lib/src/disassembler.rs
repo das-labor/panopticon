@@ -68,18 +68,19 @@ impl<A: Architecture> State<A> {
         self.groups.iter().find(|x| x.0 == n.to_string()).is_some()
     }
 
-    pub fn mnemonic<'a,F: Fn(&mut CodeGen) -> ()>(&mut self,len: usize, n: &str, fmt: &str, ops: Vec<Rvalue>, f: &F) {
-        self.mnemonic_dynargs(len,n,fmt,&|cg: &mut CodeGen| -> Vec<Rvalue> {
+    pub fn mnemonic<'a,F: Fn(&mut CodeGen<A>) -> ()>(&mut self,len: usize, n: &str, fmt: &str, ops: Vec<Rvalue>, f: &F) {
+        self.mnemonic_dynargs(len,n,fmt,&|cg: &mut CodeGen<A>| -> Vec<Rvalue> {
             f(cg);
             ops.clone()
         });
     }
 
     pub fn mnemonic_dynargs<F>(&mut self,len: usize, n: &str, fmt: &str, f: &F)
-    where F: Fn(&mut CodeGen) -> Vec<Rvalue> {
-        let mut cg = CodeGen::new();
+    where F: Fn(&mut CodeGen<A>) -> Vec<Rvalue> {
+        let mut cg = CodeGen::new(&self.configuration);
         let ops = f(&mut cg);
 
+        self.configuration = cg.configuration;
         self.mnemonics.push(Mnemonic::new(
                 self.next_address..(self.next_address + (len as u64)),
                 n.to_string(),

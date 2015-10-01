@@ -1,14 +1,17 @@
 use instr::{Operation,Instr};
 use value::{Rvalue,Lvalue,ToRvalue};
+use disassembler::Architecture;
 
-pub struct CodeGen {
+pub struct CodeGen<A: Architecture> {
     pub instructions: Vec<Instr>,
+    pub configuration: A::Configuration,
 }
 
-impl CodeGen {
-    pub fn new() -> CodeGen {
+impl<C: Architecture> CodeGen<C> {
+    pub fn new(cfg: &C::Configuration) -> CodeGen<C> {
         CodeGen{
             instructions: Vec::new(),
+            configuration: cfg.clone(),
         }
     }
 

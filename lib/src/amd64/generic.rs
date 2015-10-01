@@ -25,20 +25,20 @@ pub fn integer_universial(lock_prfx: Rc<Disassembler<Amd64>>, imm8: Rc<Disassemb
                           m64: Rc<Disassembler<Amd64>>, disp8: Rc<Disassembler<Amd64>>,
                           disp16: Rc<Disassembler<Amd64>>, disp32: Rc<Disassembler<Amd64>>,
                           disp64: Rc<Disassembler<Amd64>>) -> Rc<Disassembler<Amd64>> {
-    fn cmovcc(cond: Condition) -> Box<Fn(&mut CodeGen,Rvalue,Rvalue)> {
-        Box::new(move |cg: &mut CodeGen,a: Rvalue,b: Rvalue| {
+    fn cmovcc(cond: Condition) -> Box<Fn(&mut CodeGen<Amd64>,Rvalue,Rvalue)> {
+        Box::new(move |cg: &mut CodeGen<Amd64>,a: Rvalue,b: Rvalue| {
             cmov(cg,a,b,cond)
         })
     }
 
-    fn _jcc(cond: Condition) -> Box<Fn(&mut CodeGen,Rvalue)> {
-        Box::new(move |cg: &mut CodeGen,a: Rvalue| {
+    fn _jcc(cond: Condition) -> Box<Fn(&mut CodeGen<Amd64>,Rvalue)> {
+        Box::new(move |cg: &mut CodeGen<Amd64>,a: Rvalue| {
             jcc(cg,a,cond)
         })
     }
 
-    fn _setcc(cond: Condition) -> Box<Fn(&mut CodeGen,Rvalue)> {
-        Box::new(move |cg: &mut CodeGen,a: Rvalue| {
+    fn _setcc(cond: Condition) -> Box<Fn(&mut CodeGen<Amd64>,Rvalue)> {
+        Box::new(move |cg: &mut CodeGen<Amd64>,a: Rvalue| {
             setcc(cg,a,cond)
         })
     }
@@ -824,6 +824,27 @@ pub fn integer_instructions(bits: Mode,
                      disp8: Rc<Disassembler<Amd64>>,
                      disp16: Rc<Disassembler<Amd64>>, disp32: Rc<Disassembler<Amd64>>,
                      disp64: Rc<Disassembler<Amd64>>) -> Rc<Disassembler<Amd64>> {
+
+    let main = integer_universial(
+        lock_prfx.clone(), imm8.clone(),
+        imm16.clone(), imm32.clone(),
+        imm48.clone(), imm64.clone(),
+        imm.clone(), immlong.clone(),
+        moffs8.clone(), moffs.clone(),
+        sib.clone(), rm.clone(),
+        rm0.clone(), rm1.clone(),
+        rm2.clone(), rm3.clone(),
+        rm4.clone(), rm5.clone(),
+        rm6.clone(), rm7.clone(),
+        rmbyte.clone(), rmbyte0.clone(),
+        rmbyte1.clone(), rmbyte2.clone(),
+        rmbyte3.clone(), rmbyte4.clone(),
+        rmbyte5.clone(), rmbyte6.clone(),
+        rmbyte7.clone(), rmlong.clone(),
+        m64.clone(), disp8.clone(),
+        disp16.clone(), disp32.clone(),
+        disp64.clone());
+
     match bits {
         Mode::Real => {
             let main16 = integer_16bit(
@@ -849,6 +870,7 @@ pub fn integer_instructions(bits: Mode,
                 disp8, disp16, disp32, disp64);
 
             new_disassembler!(Amd64 =>
+                [ main ] = |_: &mut State<Amd64>| { true },
                 [ main16 ] = |_: &mut State<Amd64>| { true },
                 [ main16_or_32 ] = |_: &mut State<Amd64>| { true })
         },
@@ -887,13 +909,14 @@ pub fn integer_instructions(bits: Mode,
                 disp8, disp16, disp32, disp64);
 
             new_disassembler!(Amd64 =>
+                [ main ] = |_: &mut State<Amd64>| { true },
                 [ main32 ] = |_: &mut State<Amd64>| { true },
                 [ main16_or_32 ] = |_: &mut State<Amd64>| { true },
                 [ opt!(rep_prfx), opt!(opsize_prfx), opt!(rep_prfx), rep ] = |_: &mut State<Amd64>| { true },
                 [ opt!(rep_prfx), opt!(opsize_prfx), opt!(repx_prfx), repx ] = |_: &mut State<Amd64>| { true })
         },
         Mode::Long => {
-            let main = integer_64bit(
+            let main64 = integer_64bit(
                 lock_prfx.clone(),
                 imm8.clone(), imm16.clone(), imm32.clone(), imm48.clone(), imm64.clone(), imm.clone(), immlong.clone(),
                 moffs8.clone(), moffs.clone(),
@@ -916,7 +939,8 @@ pub fn integer_instructions(bits: Mode,
                 disp8, disp16, disp32, disp64);
 
             new_disassembler!(Amd64 =>
-                [ opt!(opsize_prfx), main ] = |_: &mut State<Amd64>| { true },
+                [ main ] = |_: &mut State<Amd64>| { true },
+                [ opt!(opsize_prfx), main64 ] = |_: &mut State<Amd64>| { true },
                 [ opt!(rep_prfx), opt!(opsize_prfx), opt!(rep_prfx), rep ] = |_: &mut State<Amd64>| { true },
                 [ opt!(rep_prfx), opt!(opsize_prfx), opt!(repx_prfx), repx ] = |_: &mut State<Amd64>| { true })
         }
