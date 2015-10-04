@@ -717,7 +717,7 @@ var layout = null;
 WorkerScript.onMessage = function(msg) {
 	if(layout === null) {
 		var graph = new Springy.Graph();
-		layout = new Springy.Layout.ForceDirected(graph,40,40,0.5,0.00001);
+		layout = new Springy.Layout.ForceDirected(graph,400.0,400.0,0.01);
 	}
 
 	//console.log("WS: " + JSON.stringify(msg));
