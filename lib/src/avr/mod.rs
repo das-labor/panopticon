@@ -285,11 +285,11 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
         [ "10111 A@.. r@..... A@...." ] = |st: &mut State<Avr>| {
             let rr = reg(st,"r");
             let io = ioreg(st,"A");
-            let name = if let Lvalue::Variable{ name: n,..} = io { n } else { "(noname)".to_string() };
+            let name = if let Lvalue::Variable{ name: n,..} = io.clone() { n } else { "(noname)".to_string() };
             let off = Rvalue::Constant(st.get_group("r") as u64);
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic(2,"in",&format!("{{8::{}}}, {{8}}",name),vec!(off.to_rv(),rr.to_rv()),&|cg: &mut CodeGen<Avr>| {
+            st.mnemonic(2,"out",&format!("{{8::{}}}, {{8}}",name),vec!(io.to_rv(),rr.to_rv()),&|cg: &mut CodeGen<Avr>| {
                 cg.assign(&sram(&off),&rr);
             });
             st.jump(next,Guard::always());
@@ -374,11 +374,11 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
         },
         // LDI
         [ "1110 K@.... d@.... K@...." ] = |st: &mut State<Avr>| {
-            let rd = reg(st,"d");
+            let rd = resolv(st.get_group("d") + 16);
             let k = st.get_group("K");
             let next = st.configuration.wrap(st.address + 2);
 
-            st.mnemonic(2,"ldi",&format!("{{8}}, {{::{}}}",k),vec!(rd.to_rv()),&|cg: &mut CodeGen<Avr>| {
+            st.mnemonic(2,"ldi",&format!("{{8}}, {{::{}}}",k),vec!(rd.to_rv(),Rvalue::Constant(k)),&|cg: &mut CodeGen<Avr>| {
                 cg.assign(&rd,&(k as u64));
             });
             st.jump(next,Guard::always());
@@ -820,7 +820,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
         [ "0011 K@.... d@.... K@...." ] = |st: &mut State<Avr>| {
             let next = st.configuration.wrap(st.address + 2);
             let k = st.get_group("K") as u64;
-            let rd = reg(st,"d");
+            let rd = resolv(st.get_group("d") + 16);
 
             st.mnemonic(2,"cpi","{{8}}, {{8}}",vec!(rd.to_rv(),Rvalue::Constant(k)),&|cg: &mut CodeGen<Avr>| {
                 let r = new_temp(8);
@@ -1589,8 +1589,8 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
         },
         // CALL
         [ "1001010 k@..... 111 k@.", "k@................" ] = |st: &mut State<Avr>| {
-            let pc_mod = 1 << (st.configuration.pc_bits - 1);
-            let _k = (((st.get_group("k") * 2) % pc_mod) + pc_mod) % pc_mod;
+            let pc_mod = 1 << st.configuration.pc_bits;
+            let _k = (st.get_group("k") % pc_mod) * 2;
             let k = Rvalue::Constant(_k);
             let next = st.configuration.wrap(st.address + 4);
 
@@ -1602,8 +1602,8 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
         },
         // JMP
         [ "1001010 k@..... 110 k@.", "k@................" ] = |st: &mut State<Avr>| {
-            let pc_mod = 1 << 25;
-            let _k = (((st.get_group("k") * 2) % pc_mod) + pc_mod) % pc_mod;
+            let pc_mod = 1 << st.configuration.pc_bits;
+            let _k = (st.get_group("k") % pc_mod) * 2;
             let k = Rvalue::Constant(_k);
 
             st.mnemonic(4,"jmp","{26}",vec!(k.to_rv()),&|_: &mut CodeGen<Avr>| {});
@@ -1613,15 +1613,15 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
         // RCALL
         [ "1101 k@............" ] = |st: &mut State<Avr>| {
             let _k = st.get_group("k") as i64;
-            let k = if _k & 0x0800 != 0 {
+            let k = st.configuration.wrap_signed(if _k & 0x0800 != 0 {
                 (Wrapping(_k) | Wrapping(0xFFFFFFFFFFFFF000)).0
             } else {
                 _k
-            } * 2 + 2 + (st.address as i64);
-            let next = st.configuration.wrap_signed(k);
+            } * 2 + 2 + (st.address as i64));
+            let next =  st.configuration.wrap(st.address + 2);
 
-            st.mnemonic(2,"rcall","{26}",vec!(next.clone()),&|cg: &mut CodeGen<Avr>| {
-                cg.call_i(&Lvalue::Undefined,&next);
+            st.mnemonic(2,"rcall","{26}",vec!(k.clone()),&|cg: &mut CodeGen<Avr>| {
+                cg.call_i(&Lvalue::Undefined,&k);
             });
             st.jump(next,Guard::always());
             true
