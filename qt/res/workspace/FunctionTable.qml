@@ -45,6 +45,7 @@ Item {
 				obj.name = "<i>Todo</i>";
 			}
 			functionModel.append(obj);
+			functionModel.sort();
 		});
 
 		Panopticon.finishedFunction.connect(function(uu) {
@@ -62,7 +63,48 @@ Item {
 	}
 
 	ListModel {
+		function sortBy(a,b) {
+			return parseInt(a.start,10) < parseInt(b.start,10);
+		}
+
 		id: functionModel
+
+		function sort() {
+			if (count < 2) {
+				return;
+			}
+
+			var qsort = function(left, right) {
+				if (left < right) {
+					var pivot = JSON.parse(JSON.stringify(get(right)));
+					var i = left - 1;
+					var j = right + 1;
+
+					while (true) {
+						do {
+							j -= 1;
+						} while (sortBy(pivot,get(j)));
+
+						do {
+							i += 1;
+						} while (sortBy(get(i),pivot));
+
+						if (i < j) {
+							var t = JSON.parse(JSON.stringify(get(i)));
+							set(i,JSON.parse(JSON.stringify(get(j))));
+							set(j,t);
+						} else {
+							break;
+						}
+					}
+
+					qsort(left,j-1)
+					qsort(j+1,right)
+				}
+			};
+
+			qsort(0,count-1)
+		}
 	}
 
 	TableView {
