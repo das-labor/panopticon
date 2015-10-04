@@ -123,39 +123,64 @@ fn depth_first_search(seen: &mut HashSet<AdjacencyListVertexDescriptor>,
 #[derive(PartialEq,Eq)]
 enum EdgeKind {
     Tree,
-    Forward,
+    ForwardOrCross,
     Backward,
-    Cross
 }
 
-fn depth_first_visit(vertex_visitor: &mut FnMut(&AdjacencyListVertexDescriptor),
+#[derive(PartialEq,Eq)]
+enum VertexEvent {
+    Discovered,
+    Finished,
+}
+
+#[derive(PartialEq,Eq,Hash)]
+enum VertexColor {
+    White,
+    Gray,
+    Black,
+}
+
+fn depth_first_visit(vertex_visitor: &mut FnMut(&AdjacencyListVertexDescriptor,VertexEvent),
                      edge_visitor: &mut FnMut(&AdjacencyListEdgeDescriptor,EdgeKind),
                      start: &AdjacencyListVertexDescriptor,
                      graph: &AdjacencyList<usize,()>) {
-    let mut seen = HashMap::new();
-    let mut stack = vec![(start.clone(),0)];
+    let mut color = HashMap::new();
 
-    while !stack.is_empty() {
-        let (vx,num) = stack.pop().unwrap().clone();
+    for v in graph.vertices() {
+        color.insert(v,VertexColor::White);
+    }
 
-        vertex_visitor(&vx);
-        seen.insert(vx,num);
+    fn visit(vx: AdjacencyListVertexDescriptor,
+             color: &mut HashMap<AdjacencyListVertexDescriptor,VertexColor>,
+             vertex_visitor: &mut FnMut(&AdjacencyListVertexDescriptor,VertexEvent),
+             edge_visitor: &mut FnMut(&AdjacencyListEdgeDescriptor,EdgeKind),
+             graph: &AdjacencyList<usize,()>) {
+        color.insert(vx,VertexColor::Gray);
 
-        for out in graph.out_edges(vx) {
-            let s = graph.target(out);
+        vertex_visitor(&vx,VertexEvent::Discovered);
 
-            if let Some(other_num) = seen.get(&s) {
-                if *other_num > num {
-                    edge_visitor(&out,EdgeKind::Forward);
-                } else if *other_num == num {
-                    edge_visitor(&out,EdgeKind::Cross);
-                } else {
-                    edge_visitor(&out,EdgeKind::Backward);
-                }
-            } else {
-                edge_visitor(&out,EdgeKind::Tree);
-                stack.push((s,num+1));
+        for e in graph.out_edges(vx) {
+            let wx = graph.target(e);
+
+            match color[&wx] {
+                VertexColor::White => {
+                    edge_visitor(&e,EdgeKind::Tree);
+                    visit(wx,color,vertex_visitor,edge_visitor,graph);
+                },
+                VertexColor::Gray => edge_visitor(&e,EdgeKind::Backward),
+                VertexColor::Black => edge_visitor(&e,EdgeKind::ForwardOrCross),
             }
+        }
+
+        color.insert(vx,VertexColor::Black);
+        vertex_visitor(&vx,VertexEvent::Finished);
+    }
+
+    visit(*start,&mut color,vertex_visitor,edge_visitor,graph);
+
+    for v in graph.vertices() {
+        if color[&v] == VertexColor::White {
+            visit(v,&mut color,vertex_visitor,edge_visitor,graph);
         }
     }
 }
@@ -217,7 +242,7 @@ pub fn ensure_single_entry(maybe_entry: Option<&AdjacencyListVertexDescriptor>,
 pub fn remove_cycles(head: &AdjacencyListVertexDescriptor,graph: &mut AdjacencyList<usize,()>) {
     let mut to_flip = Vec::new();
 
-    depth_first_visit(&mut |_| {},&mut |e,k| if k == EdgeKind::Backward { to_flip.push(e.clone()) },head,graph);
+    depth_first_visit(&mut |_,_| {},&mut |e,k| if k == EdgeKind::Backward { to_flip.push(e.clone()) },head,graph);
 
     for e in to_flip {
         let from = graph.source(e);
@@ -316,7 +341,7 @@ fn initial_ordering(rank: &HashMap<AdjacencyListVertexDescriptor,isize>,
                     graph: &AdjacencyList<usize,()>) -> Vec<Vec<AdjacencyListVertexDescriptor>> {
     let mut ret = Vec::new();
 
-    depth_first_visit(&mut |vx| {
+    depth_first_visit(&mut |vx,_| {
         let r = rank[vx];
 
         assert!(r >= 0);
