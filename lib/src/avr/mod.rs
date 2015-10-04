@@ -24,7 +24,7 @@ pub struct Mcu {
 
 impl Mcu {
     pub fn new() -> Mcu {
-        Mcu { pc_bits: 12 }
+        Mcu { pc_bits: 13 }
     }
 
     pub fn atmega88() -> Mcu {
