@@ -2341,6 +2341,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let g = Guard::eq(&r,&0);
             st.jump(fallthru,g.negation());
             st.jump(skip,g);
+            st.address += 2;
             true
         },
         // SBRS
@@ -2361,6 +2362,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let g = Guard::eq(&r,&0);
             st.jump(skip,g.negation());
             st.jump(fallthru,g);
+            st.address += 2;
             true
         },
         // CPSE
@@ -2391,6 +2393,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let g = Guard::eq(&*Z,&0);
             st.jump(fallthru,g.negation());
             st.jump(skip,g);
+            st.address += 2;
             true
         },
         // SBIC
@@ -2411,6 +2414,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let g = Guard::eq(&r,&0);
             st.jump(fallthru,g.negation());
             st.jump(skip,g);
+            st.address += 2;
             true
         },
         // SBIS
@@ -2431,6 +2435,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let g = Guard::eq(&r,&0);
             st.jump(skip,g.negation());
             st.jump(fallthru,g);
+            st.address += 2;
             true
         },
         [ simple ] = |_: &mut State<Avr>| { true }
