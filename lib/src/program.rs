@@ -120,8 +120,6 @@ impl Program {
                 continue;
             }
 
-            println!("Disassemble at {}",tgt);
-
             let new_fun = Function::disassemble::<A>(None,dec.clone(),init.clone(),data.clone(),tgt,reg.clone());
 
             if let Some(ref f) = progress {
@@ -180,7 +178,7 @@ impl Program {
         };
 
         let mut other_funs = Vec::new();
-        let mut todos = Vec::new();
+        let mut ret = Vec::new();
         let calls = if let Some(&CallTarget::Concrete(ref fun)) = self.call_graph.vertex_label(new_vx) {
             fun.collect_calls()
         } else {
@@ -192,7 +190,7 @@ impl Program {
 
             for w in self.call_graph.vertices() {
                 match self.call_graph.vertex_label(w) {
-                    Some(&CallTarget::Concrete(Function{ cflow_graph: ref cg, entry_point: Some(ent),.. })) => {
+                    Some(&CallTarget::Concrete(Function{ cflow_graph: ref cg, entry_point: Some(ent), name: ref n,.. })) => {
                         if let Some(&ControlFlowTarget::Resolved(ref bb)) = cg.vertex_label(ent) {
                             if bb.area.start == a {
                                 other_funs.push(w);
@@ -206,12 +204,17 @@ impl Program {
                             break;
                         }
                     },
-                    _ => {}
+                    _ => {
+                    }
                 }
             }
 
             if l == other_funs.len() {
-                todos.push(a);
+                let uu = Uuid::new_v4();
+                let v = self.call_graph.add_vertex(CallTarget::Todo(a,uu));
+
+                self.call_graph.add_edge((),new_vx,v);
+                ret.push(uu);
             }
         }
 
@@ -219,15 +222,6 @@ impl Program {
             if self.call_graph.edge(new_vx,other_fun) == None {
                 self.call_graph.add_edge((),new_vx,other_fun);
             }
-        }
-
-        let mut ret = Vec::new();
-        for t in todos {
-            let uu = Uuid::new_v4();
-            let v = self.call_graph.add_vertex(CallTarget::Todo(t,uu));
-
-            self.call_graph.add_edge((),new_vx,v);
-            ret.push(uu);
         }
 
         ret
@@ -256,6 +250,8 @@ mod tests {
     use graph_algos::traits::{VertexListGraph,Graph,MutableGraph,AdjacencyMatrixGraph,EdgeListGraph};
     use basic_block::BasicBlock;
     use uuid::Uuid;
+    use value::{Lvalue,Rvalue};
+    use instr::{Operation,Instr};
 
     #[test]
     fn find_by_entry() {
@@ -305,5 +301,34 @@ mod tests {
         assert_eq!(prog.call_graph.edge(vx1,tvx),e2);
         assert_eq!(prog.call_graph.num_edges(),2);
         assert_eq!(prog.call_graph.num_vertices(),3);
+    }
+
+    #[test]
+    fn insert_ignores_new_todo() {
+        let uu1 = Uuid::new_v4();
+        let uu2 = Uuid::new_v4();
+        let mut prog = Program::new("prog_test");
+
+        let tvx = prog.call_graph.add_vertex(CallTarget::Todo(12,uu1));
+
+        let mut func = Function::with_uuid("test3".to_string(),uu2.clone(),"ram".to_string());
+        let ops1 = vec![];
+        let i1 = vec![Instr{ op: Operation::IntCall(Rvalue::Constant(12)), assignee: Lvalue::Undefined}];
+        let mne1 = Mnemonic::new(0..10,"call".to_string(),"12".to_string(),ops1.iter(),i1.iter());
+        let bb0 = BasicBlock::from_vec(vec!(mne1));
+        func.entry_point = Some(func.cflow_graph.add_vertex(ControlFlowTarget::Resolved(bb0)));
+        let uuf = func.uuid.clone();
+
+        let new = prog.insert(func);
+
+        assert_eq!(new,vec!());
+
+        if let Some(&CallTarget::Concrete(ref f)) = prog.call_graph.vertex_label(tvx) {
+            assert_eq!(f.uuid,uuf);
+            assert!(f.entry_point.is_some());
+        }
+        assert!(prog.call_graph.vertex_label(tvx).is_some());
+        assert_eq!(prog.call_graph.num_edges(),1);
+        assert_eq!(prog.call_graph.num_vertices(),2);
     }
 }
