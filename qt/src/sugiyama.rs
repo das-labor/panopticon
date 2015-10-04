@@ -45,9 +45,9 @@ pub fn layout(vertices: &Vec<usize>,
 
     // normalize graph to DAG with single entry "head"
     let head = ensure_single_entry(maybe_entry.as_ref(),&mut graph);
-
     remove_cycles(&head,&mut graph);
     remove_loops(&mut graph);
+    remove_parallel_edges(&mut graph);
 
     // rank assignment
     let rank_vec = {
@@ -230,6 +230,20 @@ pub fn remove_cycles(head: &AdjacencyListVertexDescriptor,graph: &mut AdjacencyL
 
 pub fn remove_loops(graph: &mut AdjacencyList<usize,()>) {
     let to_rm = graph.edges().filter(|&e| graph.source(e) == graph.target(e)).collect::<Vec<_>>();
+
+    for e in to_rm {
+        graph.remove_edge(e);
+    }
+}
+
+pub fn remove_parallel_edges(graph: &mut AdjacencyList<usize,()>) {
+    let mut seen_edges = HashSet::<(usize,usize)>::new();
+    let to_rm = graph.edges().filter(|&e| {
+        let from = graph.vertex_label(graph.source(e)).unwrap();
+        let to = graph.vertex_label(graph.target(e)).unwrap();
+
+        !seen_edges.insert((*from,*to))
+    }).collect::<Vec<_>>();
 
     for e in to_rm {
         graph.remove_edge(e);
