@@ -421,7 +421,7 @@ impl<A: Architecture> Disassembler<A> {
                 st.tokens = tokens.iter().take(pattern.len()).cloned().collect();
                 st.groups = grps.iter().map(|x| (x.0.clone(),x.1.clone())).collect::<Vec<(String,u64)>>();
 
-                if actions.iter().all(|x| x(&mut st)) {
+                if actions.iter().rev().all(|x| x(&mut st)) {
                     return Some(st);
                 }
             }
