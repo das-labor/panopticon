@@ -41,9 +41,10 @@ pub struct State<A: Architecture> {
 
     // out
     pub mnemonics: Vec<Mnemonic>,
-    pub jumps: Vec<(Rvalue,Guard)>,
+    pub jumps: Vec<(u64,Rvalue,Guard)>,
 
-    next_address: u64,
+    mnemonic_origin: u64,
+    jump_origin: u64,
     pub configuration: A::Configuration,
 }
 
@@ -55,7 +56,8 @@ impl<A: Architecture> State<A> {
             groups: vec!(),
             mnemonics: Vec::new(),
             jumps: Vec::new(),
-            next_address: a,
+            mnemonic_origin: a,
+            jump_origin: a,
             configuration: c,
         }
     }
@@ -82,16 +84,17 @@ impl<A: Architecture> State<A> {
 
         self.configuration = cg.configuration;
         self.mnemonics.push(Mnemonic::new(
-                self.next_address..(self.next_address + (len as u64)),
+                self.mnemonic_origin..(self.mnemonic_origin + (len as u64)),
                 n.to_string(),
                 fmt.to_string(),
                 ops.iter(),
                 cg.instructions.iter()));
-        self.next_address += len as u64;
+        self.jump_origin = self.mnemonic_origin;
+        self.mnemonic_origin += len as u64;
     }
 
     pub fn jump(&mut self,v: Rvalue,g: Guard) {
-        self.jumps.push((v,g));
+        self.jumps.push((self.jump_origin,v,g));
     }
 }
 

@@ -251,20 +251,20 @@ impl Function {
 
                 }
 
-                for (tgt,gu) in match_st.jumps {
+                for (origin,tgt,gu) in match_st.jumps {
                     match tgt {
                         Rvalue::Constant(ref c) => {
-                            by_source.entry(last_mne_start).or_insert(Vec::new()).push((Some(*c),gu.clone()));
-                            by_destination.entry(*c).or_insert(Vec::new()).push((Some(last_mne_start),gu.clone()));
+                            by_source.entry(origin).or_insert(Vec::new()).push((Some(*c),gu.clone()));
+                            by_destination.entry(*c).or_insert(Vec::new()).push((Some(origin),gu.clone()));
                             todo.insert(*c);
                         },
                         _ => {
-                            by_source.entry(last_mne_start).or_insert(Vec::new()).push((None,gu.clone()));
+                            by_source.entry(origin).or_insert(Vec::new()).push((None,gu.clone()));
                         }
                     }
                 }
             } else {
-                println!("failed to match anything at {}",addr);
+                //println!("failed to match anything at {}",addr);
             }
         }
 
