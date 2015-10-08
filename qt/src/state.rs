@@ -114,7 +114,7 @@ pub fn start(_ctrl: &mut Object) -> Variant {
                 let mut prog = Program::new("prog0");
                 let prog_uuid = prog.uuid;
                 let start = 0;
-                let dec = avr::disassembler();
+                let dec = avr::syntax::disassembler();
                 let init = avr::Mcu::new();
                 let uu = Uuid::new_v4();
 
