@@ -8,7 +8,7 @@ use num::traits::{Zero,One,NumCast,cast};
 use std::slice::Iter;
 use std::fmt::Debug;
 use std::ops::{BitAnd,BitOr,Shl,Shr,Not};
-use std::collections::HashMap;
+use std::collections::{HashSet,HashMap};
 use std::mem::size_of;
 use codegen::CodeGen;
 use layer::LayerIter;
@@ -94,7 +94,12 @@ impl<A: Architecture> State<A> {
     }
 
     pub fn jump(&mut self,v: Rvalue,g: Guard) {
-        self.jumps.push((self.jump_origin,v,g));
+        let o = self.jump_origin;
+        self.jump_from(o,v,g);
+    }
+
+    pub fn jump_from(&mut self,origin: u64,v: Rvalue,g: Guard) {
+        self.jumps.push((origin,v,g));
     }
 }
 
@@ -264,74 +269,77 @@ impl<A: Architecture> Disassembler<A> {
         self.default = Some(f);
     }
 
-    fn combine_expr(mut i: Iter<Expr<A>>, a: Action<A>) -> Vec<Match<A>> {
-        match i.next() {
-            Some(e) => {
-                let rest = Self::combine_expr(i,a);
-                let mut ret = Vec::new();
+    /// Returns a || b
+    fn concat_two_matches(a: &Match<A>, b: &Match<A>) -> Match<A> {
+        let patterns = a.patterns.iter().chain(b.patterns.iter()).cloned().collect::<Vec<_>>();
+        let actions = a.actions.iter().chain(b.actions.iter()).cloned().collect::<Vec<_>>();
+        let group_keys = a.groups.iter().map(|x| x.0.clone()).chain(b.groups.iter().map(|x| x.0.clone())).collect::<HashSet<_>>();
+        let mut groups = vec![];
 
+        for key in group_keys {
+            let maybe_a_pos = a.groups.iter().position(|x| x.0 == key);
+            let maybe_b_pos = b.groups.iter().position(|x| x.0 == key);
+            let mut mask: Vec<A::Token>;
 
-                for _match in (*e).matches() {
-                    for pre in &rest {
-                        let mut m = _match.clone();
+            if let Some(p) = maybe_a_pos {
+                mask = a.groups[p].1.clone();
+            } else {
+                mask = (0..a.patterns.len()).map(|_| A::Token::zero()).collect::<Vec<_>>();
+            }
 
-                        for x in &pre.patterns {
-                            m.patterns.push(x.clone());
+            if let Some(p) = maybe_b_pos {
+                mask = mask.iter().cloned().chain(b.groups[p].1.iter().cloned()).collect::<Vec<_>>();
+            } else {
+                mask = mask.iter().cloned().chain((0..b.patterns.len()).map(|_| A::Token::zero())).collect::<Vec<_>>();
+            }
+
+            assert_eq!(mask.len(),patterns.len());
+            groups.push((key,mask));
+        }
+
+        Match::<A> {
+            patterns: patterns,
+            actions: actions,
+            groups: groups
+        }
+    }
+
+    fn combine_expr(i: Iter<Expr<A>>, a: Action<A>) -> Vec<Match<A>> {
+        let mut ms = i.fold(Vec::<Match<A>>::new(),|acc,x| {
+            let matches = x.matches();
+
+            if matches.is_empty() {
+                acc
+            } else {
+                let mut ret = vec![];
+
+                if acc.is_empty() {
+                    matches
+                } else {
+                    for a in acc.iter() {
+                        for b in matches.iter() {
+                            ret.push(Self::concat_two_matches(a,&b));
                         }
-
-                        for x in &pre.actions {
-                            m.actions.push(x.clone());
-                        }
-
-                        for x in &pre.groups {
-                            let mut new = true;
-                            for y in m.groups.iter_mut() {
-                                if y.0 == x.0 {
-                                    for p in &x.1 {
-                                        y.1.push(p.clone());
-                                    }
-                                    new = false;
-                                }
-                            }
-
-                            if new {
-                                let mut v = Vec::new();
-
-                                for _ in (0..pre.patterns.len()) {
-                                    v.push(A::Token::zero());
-                                }
-
-                                for t in &x.1 {
-                                    v.push(t.clone());
-                                }
-
-                                m.groups.push((x.0.clone(),v));
-                            }
-
-                            let pat_len = m.patterns.len();
-                            for g in m.groups.iter_mut() {
-                                while g.1.len() < pat_len {
-                                    g.1.push(A::Token::zero());
-                                }
-                            }
-                        }
-
-                        ret.push(Match::<A>{
-                            patterns: m.patterns,
-                            actions: m.actions,
-                            groups: m.groups
-                        });
                     }
-                }
 
-                ret
-            },
-            None => vec!(Match::<A>{
+                    ret
+                }
+            }
+        });
+
+        for mut m in ms.iter_mut() {
+            m.actions.push(Rc::new(a));
+        }
+
+        if ms.is_empty() {
+            ms = vec![Match::<A>{
                 patterns: vec!(),
                 actions: vec!(Rc::new(a)),
                 groups: vec!(),
-            })
+            }];
         }
+
+        ms
     }
 
     pub fn add_expr(&mut self, e: Vec<Expr<A>>, a: Action<A>) {
@@ -421,7 +429,7 @@ impl<A: Architecture> Disassembler<A> {
                 st.tokens = tokens.iter().take(pattern.len()).cloned().collect();
                 st.groups = grps.iter().map(|x| (x.0.clone(),x.1.clone())).collect::<Vec<(String,u64)>>();
 
-                if actions.iter().rev().all(|x| x(&mut st)) {
+                if actions.iter().all(|x| x(&mut st)) {
                     return Some(st);
                 }
             }
@@ -593,7 +601,7 @@ mod tests {
         assert_eq!(res.mnemonics[0].instructions.len(), 0);
         assert_eq!(res.jumps.len(), 1);
 
-        if let &(Rvalue::Constant(1),ref g) = &res.jumps[0] {
+        if let &(0,Rvalue::Constant(1),ref g) = &res.jumps[0] {
             assert_eq!(g, &Guard::always());
         } else {
             assert!(false);
@@ -620,7 +628,7 @@ mod tests {
         assert_eq!(res.mnemonics[0].instructions.len(), 0);
         assert_eq!(res.jumps.len(), 1);
 
-        if let &(Rvalue::Constant(3),ref g) = &res.jumps[0] {
+        if let &(1,Rvalue::Constant(3),ref g) = &res.jumps[0] {
             assert_eq!(g, &Guard::always());
         } else {
             assert!(false);
@@ -655,7 +663,7 @@ mod tests {
         assert_eq!(res.mnemonics[0].instructions.len(), 0);
         assert_eq!(res.jumps.len(), 1);
 
-        if let &(Rvalue::Constant(8),ref g) = &res.jumps[0] {
+        if let &(7,Rvalue::Constant(8),ref g) = &res.jumps[0] {
             assert_eq!(g, &Guard::always());
         } else {
             assert!(false);
@@ -681,7 +689,7 @@ mod tests {
         assert_eq!(res.mnemonics[0].instructions.len(), 0);
         assert_eq!(res.jumps.len(), 1);
 
-        if let &(Rvalue::Constant(2),ref g) = &res.jumps[0] {
+        if let &(1,Rvalue::Constant(2),ref g) = &res.jumps[0] {
             assert_eq!(g, &Guard::always());
         } else {
             assert!(false);
@@ -717,7 +725,7 @@ mod tests {
         assert_eq!(res.mnemonics[0].instructions.len(), 0);
         assert_eq!(res.jumps.len(), 1);
 
-        if let &(Rvalue::Constant(5),ref g) = &res.jumps[0] {
+        if let &(4,Rvalue::Constant(5),ref g) = &res.jumps[0] {
             assert_eq!(g, &Guard::always());
         } else {
             assert!(false);
@@ -870,6 +878,44 @@ mod tests {
             assert_eq!(res.mnemonics.len(), 1);
             assert_eq!(res.mnemonics[0].opcode, "1".to_string());
             assert_eq!(res.mnemonics[0].area, Bound::new(3,5));
+            assert_eq!(res.mnemonics[0].instructions.len(), 0);
+            assert_eq!(res.jumps.len(), 0);
+        }
+    }
+
+    #[test]
+    fn optional_group() {
+        let def = OpaqueLayer::wrap(vec!(127,126));
+        let dec = new_disassembler!(TestArchShort =>
+            [opt!("011 a@. 1111"), "0111111 b@.", "011 c@. 1110"] = |st: &mut State<TestArchShort>|
+            {
+                assert_eq!(st.get_group("b"),1);
+                assert_eq!(st.get_group("c"),1);
+
+                let l = st.tokens.len();
+                st.mnemonic(l, "1", "", vec!(),&|_| {});
+                true
+            }
+        );
+
+        for x in &dec.matches {
+            println!("{:?}",x.patterns);
+            println!("{:?}",x.groups);
+        }
+
+        {
+            let st = State::<TestArchShort>::new(0,());
+            let maybe_res = dec.next_match(&mut def.iter(),st);
+
+            assert!(maybe_res.is_some());
+            let res = maybe_res.unwrap();
+
+            assert_eq!(res.address, 0);
+            assert_eq!(res.tokens.len(), 2);
+            assert_eq!(res.tokens, vec!(127,126));
+            assert_eq!(res.mnemonics.len(), 1);
+            assert_eq!(res.mnemonics[0].opcode, "1".to_string());
+            assert_eq!(res.mnemonics[0].area, Bound::new(0,2));
             assert_eq!(res.mnemonics[0].instructions.len(), 0);
             assert_eq!(res.jumps.len(), 0);
         }
