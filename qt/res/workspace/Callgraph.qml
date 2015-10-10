@@ -28,6 +28,20 @@ Item {
 			layoutTask.sendMessage({"type":"add","item":obj});
 			timer.running = true;
 		});
+
+		Panopticon.changedFunction.connect(function(uu) {
+			var obj = eval(Panopticon.functionInfo(uu));
+			for(var i = 0; i < functionModel.count; i++) {
+				var node = functionModel.get(i);
+
+				if(node.uuid == obj.uuid) {
+					functionModel.set(i,obj);
+					callgraph.requestPaint()
+					return;
+				}
+			}
+		});
+
 	}
 
 	ListModel {

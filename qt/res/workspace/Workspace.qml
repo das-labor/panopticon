@@ -13,7 +13,7 @@ Item {
 			if (uu == selection) {
 				var cfg = JSON.parse(Panopticon.functionCfg(selection));
 
-				if(cflow_graph.item.bblockList != null) {
+				if(cflow_graph.item !== null && cflow_graph.item.bblockList !== null) {
 					for (var i in cflow_graph.item.bblockList) {
 						if(cflow_graph.item.bblockList.hasOwnProperty(i) && cfg.contents[i] !== undefined) {
 							cflow_graph.item.bblockList[i].contents = cfg.contents[i];

@@ -496,16 +496,26 @@ pub fn rename(arg0: &Variant, arg1: &Variant, ctrl: &mut Object) -> Variant {
         return Variant::String("{}".to_string());
     };
 
-    if let &Variant::String(ref st) = arg0 {
+    let maybe_uu = if let &Variant::String(ref st) = arg0 {
         if let Some(uuid) = Uuid::parse_str(st).ok() {
             let mut write_guard = PROJECT.write().unwrap();
             let proj: &mut Project = write_guard.as_mut().unwrap();
 
             if let Some(func) = proj.find_function_by_uuid_mut(&uuid) {
                 func.name = name;
-                ctrl.emit(CHANGED_FUNCTION,&vec![Variant::String(func.uuid.to_string())]);
+                Some(uuid.clone())
+            } else {
+                None
             }
+        } else {
+            None
         }
+    } else {
+        None
+    };
+
+    if let Some(uu) = maybe_uu {
+        ctrl.emit(CHANGED_FUNCTION,&vec![Variant::String(uu.to_string())]);
     }
 
     Variant::String("".to_string())
