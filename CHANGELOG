@@ -1,9 +1,9 @@
-2015-YY-XX: 0.11 (Bastille)
+2015-10-11: 0.11 (Bastille)
  - Partial port from C++ to Rust
  - Layout control flow graphs in QML
  - Add function call graph
  - Add comment function in graph view (double click on row to comment)
- - Functions can be renamed in the function table
+ - Functions can be renamed by double clicking them in the function table
 
 2015-06-03: 0.10 (Salt Pit)
  - Prototype AMD64 disassembler
