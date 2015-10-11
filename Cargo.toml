@@ -1,6 +1,6 @@
 [package]
 name = "panopticon"
-version = "0.11.0"
+version = "0.12.0"
 authors = ["seu <seu@panopticon.re>"]
 
 [lib]

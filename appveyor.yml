@@ -1,5 +1,5 @@
 os: unstable
-version: 0.11.0-{build}
+version: 0.12.0-{build}
 platform:
   - x64
 environment:
