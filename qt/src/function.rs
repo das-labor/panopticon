@@ -158,13 +158,13 @@ pub fn control_flow_graph(arg: &Variant) -> Variant {
                                 Some(&ControlFlowTarget::Resolved(ref bb)) => {
                                     let mnes = bb.mnemonics.iter().
                                         map(|x| {
-                                            let args = x.operands.iter().map(|y| format!("\"{}\"",y))
-                                                .fold("".to_string(),|acc,x| if acc != "" { acc + "," + &x } else { x });
+                                            let args = x.format();
+                                            println!("args: {}",args);
                                             let cmnt = proj.comments.get(&(fun.region.clone(),x.area.start)).unwrap_or(&"".to_string()).clone();
 
                                             format!("{{
                                                 \"opcode\":\"{}\",
-                                                \"args\":[{}],
+                                                \"args\":\"{}\",
                                                 \"region\":\"{}\",
                                                 \"offset\":{},
                                                 \"comment\":\"{}\"

@@ -52,7 +52,7 @@ Item {
 
 					Text {
 						id: args
-						text: modelData.args.join(", ")
+						text: modelData.args
 						font.family: "Monospace"
 						width: bblock.argsWidth
 						height: contentHeight

@@ -133,14 +133,33 @@ impl Mnemonic {
     }
 
     pub fn format(&self) -> String {
-        self.format_string.iter().fold("".to_string(),|acc,x| -> String {
-            let t: String = match x {
+        let mut ops = self.operands.iter().rev().cloned().collect::<Vec<_>>();
+        self.format_string.iter().map(|x| -> String {
+            match x {
                 &MnemonicFormatToken::Literal(ref s) => s.to_string(),
-                &MnemonicFormatToken::Variable{ has_sign: b, width: w, alias: ref a } =>
-                    format!("{{{}:{}:{}}}",w,if b { "-".to_string() } else { "".to_string() },a.clone().unwrap_or("".to_string()))
-            };
-            acc + &t
-        })
+                &MnemonicFormatToken::Variable{ has_sign: b, width: w, alias: ref a } => {
+                    if let &Some(ref al) = a {
+                        al.clone()
+                    } else {
+                        match ops.pop() {
+                            Some(Rvalue::Constant(c)) => {
+                                let val = c % (1 << w);
+
+                                if b {
+                                    format!("{}",val)
+                                } else {
+                                    format!("0x{:x}",(val + (1 << w)) % (1 << w))
+                                }
+                            },
+                            Some(Rvalue::Undefined) => "↑".to_string(),
+                            Some(Rvalue::Variable{ name: n, .. }) => n.clone(),
+                            Some(Rvalue::Memory{ .. }) => "(memref)".to_string(),
+                            None => unreachable!(),
+                        }
+                    }
+                }
+            }
+        }).fold("".to_string(),|acc,x| if acc == "" { x } else { acc + &x })
     }
 }
 
