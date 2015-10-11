@@ -190,7 +190,7 @@ impl Program {
 
             for w in self.call_graph.vertices() {
                 match self.call_graph.vertex_label(w) {
-                    Some(&CallTarget::Concrete(Function{ cflow_graph: ref cg, entry_point: Some(ent), name: ref n,.. })) => {
+                    Some(&CallTarget::Concrete(Function{ cflow_graph: ref cg, entry_point: Some(ent),.. })) => {
                         if let Some(&ControlFlowTarget::Resolved(ref bb)) = cg.vertex_label(ent) {
                             if bb.area.start == a {
                                 other_funs.push(w);

@@ -8,11 +8,11 @@ use amd64::*;
 use std::rc::Rc;
 
 pub fn integer_universial(lock_prfx: Rc<Disassembler<Amd64>>, imm8: Rc<Disassembler<Amd64>>,
-                          imm16: Rc<Disassembler<Amd64>>, imm32: Rc<Disassembler<Amd64>>,
-                          imm48: Rc<Disassembler<Amd64>>, imm64: Rc<Disassembler<Amd64>>,
+                          imm16: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>,
+                          _: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>,
                           imm: Rc<Disassembler<Amd64>>, immlong: Rc<Disassembler<Amd64>>,
                           moffs8: Rc<Disassembler<Amd64>>, moffs: Rc<Disassembler<Amd64>>,
-                          sib: Rc<Disassembler<Amd64>>, rm: Rc<Disassembler<Amd64>>,
+                          _: Rc<Disassembler<Amd64>>, rm: Rc<Disassembler<Amd64>>,
                           rm0: Rc<Disassembler<Amd64>>, rm1: Rc<Disassembler<Amd64>>,
                           rm2: Rc<Disassembler<Amd64>>, rm3: Rc<Disassembler<Amd64>>,
                           rm4: Rc<Disassembler<Amd64>>, rm5: Rc<Disassembler<Amd64>>,
@@ -22,9 +22,9 @@ pub fn integer_universial(lock_prfx: Rc<Disassembler<Amd64>>, imm8: Rc<Disassemb
                           rmbyte3: Rc<Disassembler<Amd64>>, rmbyte4: Rc<Disassembler<Amd64>>,
                           rmbyte5: Rc<Disassembler<Amd64>>, rmbyte6: Rc<Disassembler<Amd64>>,
                           rmbyte7: Rc<Disassembler<Amd64>>, rmlong: Rc<Disassembler<Amd64>>,
-                          m64: Rc<Disassembler<Amd64>>, disp8: Rc<Disassembler<Amd64>>,
-                          disp16: Rc<Disassembler<Amd64>>, disp32: Rc<Disassembler<Amd64>>,
-                          disp64: Rc<Disassembler<Amd64>>) -> Rc<Disassembler<Amd64>> {
+                          m64: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>,
+                          _: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>,
+                          _: Rc<Disassembler<Amd64>>) -> Rc<Disassembler<Amd64>> {
     fn cmovcc(cond: Condition) -> Box<Fn(&mut CodeGen<Amd64>,Rvalue,Rvalue)> {
         Box::new(move |cg: &mut CodeGen<Amd64>,a: Rvalue,b: Rvalue| {
             cmov(cg,a,b,cond)
@@ -46,7 +46,7 @@ pub fn integer_universial(lock_prfx: Rc<Disassembler<Amd64>>, imm8: Rc<Disassemb
 
     new_disassembler!(Amd64 =>
         // ADC
-        [ opt!(lock_prfx), 0x14, imm8          ] = binary_rv("adc",&*al,decode_imm,adc),
+        [ opt!(lock_prfx), 0x14, imm8          ] = binary_rv("adc",&*AL,decode_imm,adc),
         [ opt!(lock_prfx), 0x15, imm           ] = binary("adc",decode_i,adc),
         [ opt!(lock_prfx), 0x80, rmbyte2, imm8 ] = binary("adc",decode_mi,adc),
         [ opt!(lock_prfx), 0x81, rm2, imm      ] = binary("adc",decode_mi,adc),
@@ -57,7 +57,7 @@ pub fn integer_universial(lock_prfx: Rc<Disassembler<Amd64>>, imm8: Rc<Disassemb
         [ opt!(lock_prfx), 0x13, rm            ] = binary("adc",decode_rm,adc),
 
         // ADD
-        [ opt!(lock_prfx), 0x04, imm8          ] = binary_rv("add",&*al,decode_imm,add),
+        [ opt!(lock_prfx), 0x04, imm8          ] = binary_rv("add",&*AL,decode_imm,add),
         [ opt!(lock_prfx), 0x05, imm           ] = binary("add",decode_i,add),
         [ opt!(lock_prfx), 0x80, rmbyte0, imm8 ] = binary("add",decode_mi,add),
         [ opt!(lock_prfx), 0x81, rm0, imm      ] = binary("add",decode_mi,add),
@@ -71,7 +71,7 @@ pub fn integer_universial(lock_prfx: Rc<Disassembler<Amd64>>, imm8: Rc<Disassemb
         [ 0x66, 0x0f, 0x38, 0xf6, rm ] = binary("adcx",decode_rm,adcx),
 
         // AND
-        [ opt!(lock_prfx), 0x24, imm8      ] = binary_rv("and",&*al,decode_imm,and),
+        [ opt!(lock_prfx), 0x24, imm8      ] = binary_rv("and",&*AL,decode_imm,and),
         [ opt!(lock_prfx), 0x25, imm       ] = binary("and",decode_i,and),
         [ opt!(lock_prfx), 0x81, rm4, imm  ] = binary("and",decode_mi,and),
         [ opt!(lock_prfx), 0x83, rm4, imm8 ] = binary("and",decode_mi,and),
@@ -152,7 +152,7 @@ pub fn integer_universial(lock_prfx: Rc<Disassembler<Amd64>>, imm8: Rc<Disassemb
         [ 0x0f, 0x4f, rm ] = binary_box("cmovg",decode_rm,cmovcc(Condition::Greater)),
 
         // CMP
-        [ 0x3c, imm8      ] = binary_rv("cmp",&*al,decode_imm,cmp),
+        [ 0x3c, imm8      ] = binary_rv("cmp",&*AL,decode_imm,cmp),
         [ 0x3d, imm       ] = binary("cmp",decode_i,cmp),
         [ 0x81, rm7, imm  ] = binary("cmp",decode_mi,cmp),
         [ 0x83, rm7, imm8 ] = binary("cmp",decode_mi,cmp),
@@ -198,10 +198,10 @@ pub fn integer_universial(lock_prfx: Rc<Disassembler<Amd64>>, imm8: Rc<Disassemb
         [ 0x0f, 0xaf, rm ] = binary("imul",decode_rm,imul2),
 
         // IN
-        [ 0xe4, imm8 ] = binary_rv("in",&*al,decode_imm,in_),
+        [ 0xe4, imm8 ] = binary_rv("in",&*AL,decode_imm,in_),
         [ 0xe5, imm8 ] = binary("in",decode_i,in_),
-        [ 0xec       ] = binary_rr("in",&*al,&*dx,in_),
-        [ 0xed       ] = binary_vr("in",reg_a,&*dx,in_),
+        [ 0xec       ] = binary_rr("in",&*AL,&*DX,in_),
+        [ 0xed       ] = binary_vr("in",reg_a,&*DX,in_),
 
         // INC
         [ opt!(lock_prfx), 0xfe, rmbyte0 ] = unary("inc",decode_m,inc),
@@ -350,7 +350,7 @@ pub fn integer_universial(lock_prfx: Rc<Disassembler<Amd64>>, imm8: Rc<Disassemb
         [ opt!(lock_prfx), 0xf7, rm2     ] = unary("not",decode_m,not),
 
         // OR
-        [ opt!(lock_prfx), 0x0c, imm8        ] = binary_rv("or",&*al,decode_imm,or),
+        [ opt!(lock_prfx), 0x0c, imm8        ] = binary_rv("or",&*AL,decode_imm,or),
         [ opt!(lock_prfx), 0x0d, imm         ] = binary("or",decode_i,or),
         [ opt!(lock_prfx), 0x81, rm1, imm  ] = binary("or",decode_mi,or),
         [ opt!(lock_prfx), 0x83, rm1, imm8 ] = binary("or",decode_mi,or),
@@ -360,11 +360,11 @@ pub fn integer_universial(lock_prfx: Rc<Disassembler<Amd64>>, imm8: Rc<Disassemb
         [ opt!(lock_prfx), 0x0b, rm          ] = binary("or",decode_rm,or),
 
         // OUT
-        [ 0xe6, imm8 ] = binary_rv("out",&*al,decode_imm,out),
+        [ 0xe6, imm8 ] = binary_rv("out",&*AL,decode_imm,out),
         [ 0xe7, imm8 ] = binary("out",decode_i,out),
 
-        [ 0xee ] = binary_rr("out",&*al,&*dx,out),
-        [ 0xef ] = binary_vr("out",reg_a,&*dx,out),
+        [ 0xee ] = binary_rr("out",&*AL,&*DX,out),
+        [ 0xef ] = binary_vr("out",reg_a,&*DX,out),
 
         [ 0x8f, rm0  ] = pop,
         [ 0x58       ] = pop,
@@ -463,7 +463,7 @@ pub fn integer_universial(lock_prfx: Rc<Disassembler<Amd64>>, imm8: Rc<Disassemb
         [ 0xc1, rm7, imm8     ] = binary("sar",decode_mi,sar),
 
         // SBB
-        [ opt!(lock_prfx), 0x1c, imm8          ] = binary_rv("sbb",&*al,decode_imm,sbb),
+        [ opt!(lock_prfx), 0x1c, imm8          ] = binary_rv("sbb",&*AL,decode_imm,sbb),
         [ opt!(lock_prfx), 0x1d, imm           ] = binary("sbb",decode_i,sbb),
         [ opt!(lock_prfx), 0x80, rmbyte3, imm8 ] = binary("sbb",decode_mi,sbb),
         [ opt!(lock_prfx), 0x81, rm3, imm      ] = binary("sbb",decode_mi,sbb),
@@ -517,7 +517,7 @@ pub fn integer_universial(lock_prfx: Rc<Disassembler<Amd64>>, imm8: Rc<Disassemb
         [ 0xfb ] = nonary("sti",sti),
 
         // SUB
-        [ opt!(lock_prfx), 0x2c, imm8      ] = binary_rv("sub",&*al,decode_imm,sub),
+        [ opt!(lock_prfx), 0x2c, imm8      ] = binary_rv("sub",&*AL,decode_imm,sub),
         [ opt!(lock_prfx), 0x2d, imm       ] = binary("sub",decode_i,sub),
         [ opt!(lock_prfx), 0x81, rm5, imm  ] = binary("sub",decode_mi,sub),
         [ opt!(lock_prfx), 0x83, rm5, imm8 ] = binary("sub",decode_mi,sub),
@@ -527,7 +527,7 @@ pub fn integer_universial(lock_prfx: Rc<Disassembler<Amd64>>, imm8: Rc<Disassemb
         [ opt!(lock_prfx), 0x2b, rm        ] = binary("sub",decode_rm,sub),
 
         // TEST
-        [ 0xa8, imm8          ] = binary_rv("test",&*al,decode_imm,test),
+        [ 0xa8, imm8          ] = binary_rv("test",&*AL,decode_imm,test),
         [ 0xa9, imm           ] = binary("test",decode_i,test),
         [ 0xf6, rmbyte0, imm8 ] = binary("test",decode_mi,test),
         [ 0xf7, rm0, imm      ] = binary("test",decode_mi,test),
@@ -557,7 +557,7 @@ pub fn integer_universial(lock_prfx: Rc<Disassembler<Amd64>>, imm8: Rc<Disassemb
         [ 0x87, rm     ] = binary("xchg",decode_mr,xchg),
 
         // XOR
-        [ opt!(lock_prfx), 0x34, imm8      ] = binary_rv("xor",&*al,decode_imm,xor),
+        [ opt!(lock_prfx), 0x34, imm8      ] = binary_rv("xor",&*AL,decode_imm,xor),
         [ opt!(lock_prfx), 0x35, imm       ] = binary("xor",decode_i,xor),
         [ opt!(lock_prfx), 0x81, rm6, imm  ] = binary("xor",decode_mi,xor),
         [ opt!(lock_prfx), 0x83, rm6, imm8 ] = binary("xor",decode_mi,xor),
@@ -567,32 +567,15 @@ pub fn integer_universial(lock_prfx: Rc<Disassembler<Amd64>>, imm8: Rc<Disassemb
         [ opt!(lock_prfx), 0x33, rm        ] = binary("xor",decode_rm,xor))
 }
 
-pub fn integer_rep(lock_prfx: Rc<Disassembler<Amd64>>, imm8: Rc<Disassembler<Amd64>>,
-                   imm16: Rc<Disassembler<Amd64>>, imm32: Rc<Disassembler<Amd64>>,
-                          imm48: Rc<Disassembler<Amd64>>, imm64: Rc<Disassembler<Amd64>>,
-                          imm: Rc<Disassembler<Amd64>>, immlong: Rc<Disassembler<Amd64>>,
-                          moffs8: Rc<Disassembler<Amd64>>, moffs: Rc<Disassembler<Amd64>>,
-                          sib: Rc<Disassembler<Amd64>>, rm: Rc<Disassembler<Amd64>>,
-                          rm0: Rc<Disassembler<Amd64>>, rm1: Rc<Disassembler<Amd64>>,
-                          rm2: Rc<Disassembler<Amd64>>, rm3: Rc<Disassembler<Amd64>>,
-                          rm4: Rc<Disassembler<Amd64>>, rm5: Rc<Disassembler<Amd64>>,
-                          rm6: Rc<Disassembler<Amd64>>, rm7: Rc<Disassembler<Amd64>>,
-                          rmbyte: Rc<Disassembler<Amd64>>, rmbyte0: Rc<Disassembler<Amd64>>,
-                          rmbyte1: Rc<Disassembler<Amd64>>, rmbyte2: Rc<Disassembler<Amd64>>,
-                          rmbyte3: Rc<Disassembler<Amd64>>, rmbyte4: Rc<Disassembler<Amd64>>,
-                          rmbyte5: Rc<Disassembler<Amd64>>, rmbyte6: Rc<Disassembler<Amd64>>,
-                          rmbyte7: Rc<Disassembler<Amd64>>, rmlong: Rc<Disassembler<Amd64>>,
-                          m64: Rc<Disassembler<Amd64>>, disp8: Rc<Disassembler<Amd64>>,
-                          disp16: Rc<Disassembler<Amd64>>, disp32: Rc<Disassembler<Amd64>>,
-                          disp64: Rc<Disassembler<Amd64>>) -> (Rc<Disassembler<Amd64>>,Rc<Disassembler<Amd64>>) {
+pub fn integer_rep() -> (Rc<Disassembler<Amd64>>,Rc<Disassembler<Amd64>>) {
     let rep = new_disassembler!(Amd64 =>
         // INS*
-        [ 0x6c ] = binary_vr("insb",reg_di,&*dx,ins),
-        [ 0x6d ] = binary_vr("ins",reg_di,&*dx,ins),
+        [ 0x6c ] = binary_vr("insb",reg_di,&*DX,ins),
+        [ 0x6d ] = binary_vr("ins",reg_di,&*DX,ins),
 
         // OUTS*
-        [ 0x6e ] = binary_vr("outsb",reg_di,&*dx,outs),
-        [ 0x6f ] = binary_vr("outs",reg_di,&*dx,outs),
+        [ 0x6e ] = binary_vr("outsb",reg_di,&*DX,outs),
+        [ 0x6f ] = binary_vr("outs",reg_di,&*DX,outs),
 
         // LODS*
         [ 0xac ] = lodsb,
@@ -619,24 +602,12 @@ pub fn integer_rep(lock_prfx: Rc<Disassembler<Amd64>>, imm8: Rc<Disassembler<Amd
 }
 
 
-pub fn integer_16bit(lock_prfx: Rc<Disassembler<Amd64>>, imm8: Rc<Disassembler<Amd64>>,
-                     imm16: Rc<Disassembler<Amd64>>, imm32: Rc<Disassembler<Amd64>>,
-                     imm48: Rc<Disassembler<Amd64>>, imm64: Rc<Disassembler<Amd64>>,
-                     imm: Rc<Disassembler<Amd64>>, immlong: Rc<Disassembler<Amd64>>,
-                     moffs8: Rc<Disassembler<Amd64>>, moffs: Rc<Disassembler<Amd64>>,
-                     sib: Rc<Disassembler<Amd64>>, rm: Rc<Disassembler<Amd64>>,
-                     rm0: Rc<Disassembler<Amd64>>, rm1: Rc<Disassembler<Amd64>>,
-                     rm2: Rc<Disassembler<Amd64>>, rm3: Rc<Disassembler<Amd64>>,
+pub fn integer_16bit(imm8: Rc<Disassembler<Amd64>>, imm32: Rc<Disassembler<Amd64>>,
+                     moffs: Rc<Disassembler<Amd64>>,
+                     _: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>,
+                     _: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>,
                      rm4: Rc<Disassembler<Amd64>>, rm5: Rc<Disassembler<Amd64>>,
-                     rm6: Rc<Disassembler<Amd64>>, rm7: Rc<Disassembler<Amd64>>,
-                     rmbyte: Rc<Disassembler<Amd64>>, rmbyte0: Rc<Disassembler<Amd64>>,
-                     rmbyte1: Rc<Disassembler<Amd64>>, rmbyte2: Rc<Disassembler<Amd64>>,
-                     rmbyte3: Rc<Disassembler<Amd64>>, rmbyte4: Rc<Disassembler<Amd64>>,
-                     rmbyte5: Rc<Disassembler<Amd64>>, rmbyte6: Rc<Disassembler<Amd64>>,
-                     rmbyte7: Rc<Disassembler<Amd64>>, rmlong: Rc<Disassembler<Amd64>>,
-                     m64: Rc<Disassembler<Amd64>>, disp8: Rc<Disassembler<Amd64>>,
-                     disp16: Rc<Disassembler<Amd64>>, disp32: Rc<Disassembler<Amd64>>,
-                     disp64: Rc<Disassembler<Amd64>>) -> Rc<Disassembler<Amd64>> {
+                     _: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>) -> Rc<Disassembler<Amd64>> {
     new_disassembler!(Amd64 =>
         // JCXZ
         [ 0xe3, imm8 ] = unary("jcxz",decode_imm,jcxz),
@@ -648,24 +619,12 @@ pub fn integer_16bit(lock_prfx: Rc<Disassembler<Amd64>>, imm8: Rc<Disassembler<A
         [ 0xff, rm5   ] = unary("jmp",decode_d,jmp))
 }
 
-pub fn integer_32bit(lock_prfx: Rc<Disassembler<Amd64>>, imm8: Rc<Disassembler<Amd64>>,
-                     imm16: Rc<Disassembler<Amd64>>, imm32: Rc<Disassembler<Amd64>>,
-                     imm48: Rc<Disassembler<Amd64>>, imm64: Rc<Disassembler<Amd64>>,
-                     imm: Rc<Disassembler<Amd64>>, immlong: Rc<Disassembler<Amd64>>,
-                     moffs8: Rc<Disassembler<Amd64>>, moffs: Rc<Disassembler<Amd64>>,
-                     sib: Rc<Disassembler<Amd64>>, rm: Rc<Disassembler<Amd64>>,
-                     rm0: Rc<Disassembler<Amd64>>, rm1: Rc<Disassembler<Amd64>>,
-                     rm2: Rc<Disassembler<Amd64>>, rm3: Rc<Disassembler<Amd64>>,
+pub fn integer_32bit(imm8: Rc<Disassembler<Amd64>>, imm48: Rc<Disassembler<Amd64>>,
+                     moffs: Rc<Disassembler<Amd64>>,
+                     _: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>,
+                     _: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>,
                      rm4: Rc<Disassembler<Amd64>>, rm5: Rc<Disassembler<Amd64>>,
-                     rm6: Rc<Disassembler<Amd64>>, rm7: Rc<Disassembler<Amd64>>,
-                     rmbyte: Rc<Disassembler<Amd64>>, rmbyte0: Rc<Disassembler<Amd64>>,
-                     rmbyte1: Rc<Disassembler<Amd64>>, rmbyte2: Rc<Disassembler<Amd64>>,
-                     rmbyte3: Rc<Disassembler<Amd64>>, rmbyte4: Rc<Disassembler<Amd64>>,
-                     rmbyte5: Rc<Disassembler<Amd64>>, rmbyte6: Rc<Disassembler<Amd64>>,
-                     rmbyte7: Rc<Disassembler<Amd64>>, rmlong: Rc<Disassembler<Amd64>>,
-                     m64: Rc<Disassembler<Amd64>>, disp8: Rc<Disassembler<Amd64>>,
-                     disp16: Rc<Disassembler<Amd64>>, disp32: Rc<Disassembler<Amd64>>,
-                     disp64: Rc<Disassembler<Amd64>>) -> Rc<Disassembler<Amd64>> {
+                     _: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>) -> Rc<Disassembler<Amd64>> {
     new_disassembler!(Amd64 =>
         // JECX
         [ 0xe3, imm8 ] = unary("jecxz",decode_imm,jecxz),
@@ -678,24 +637,13 @@ pub fn integer_32bit(lock_prfx: Rc<Disassembler<Amd64>>, imm8: Rc<Disassembler<A
 }
 
 pub fn integer_64bit(lock_prfx: Rc<Disassembler<Amd64>>, imm8: Rc<Disassembler<Amd64>>,
-                     imm16: Rc<Disassembler<Amd64>>, imm32: Rc<Disassembler<Amd64>>,
-                     imm48: Rc<Disassembler<Amd64>>, imm64: Rc<Disassembler<Amd64>>,
-                     imm: Rc<Disassembler<Amd64>>, immlong: Rc<Disassembler<Amd64>>,
-                     moffs8: Rc<Disassembler<Amd64>>, moffs: Rc<Disassembler<Amd64>>,
-                     sib: Rc<Disassembler<Amd64>>, rm: Rc<Disassembler<Amd64>>,
-                     rm0: Rc<Disassembler<Amd64>>, rm1: Rc<Disassembler<Amd64>>,
-                     rm2: Rc<Disassembler<Amd64>>, rm3: Rc<Disassembler<Amd64>>,
+                     moffs: Rc<Disassembler<Amd64>>,
+                     rm: Rc<Disassembler<Amd64>>,
+                     _: Rc<Disassembler<Amd64>>, rm1: Rc<Disassembler<Amd64>>,
+                     _: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>,
                      rm4: Rc<Disassembler<Amd64>>, rm5: Rc<Disassembler<Amd64>>,
-                     rm6: Rc<Disassembler<Amd64>>, rm7: Rc<Disassembler<Amd64>>,
-                     rmbyte: Rc<Disassembler<Amd64>>, rmbyte0: Rc<Disassembler<Amd64>>,
-                     rmbyte1: Rc<Disassembler<Amd64>>, rmbyte2: Rc<Disassembler<Amd64>>,
-                     rmbyte3: Rc<Disassembler<Amd64>>, rmbyte4: Rc<Disassembler<Amd64>>,
-                     rmbyte5: Rc<Disassembler<Amd64>>, rmbyte6: Rc<Disassembler<Amd64>>,
-                     rmbyte7: Rc<Disassembler<Amd64>>, rmlong: Rc<Disassembler<Amd64>>,
-                     m64: Rc<Disassembler<Amd64>>, m128: Rc<Disassembler<Amd64>>,
-                     disp8: Rc<Disassembler<Amd64>>,
-                     disp16: Rc<Disassembler<Amd64>>, disp32: Rc<Disassembler<Amd64>>,
-                     disp64: Rc<Disassembler<Amd64>>) -> Rc<Disassembler<Amd64>> {
+                     _: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>,
+                     m128: Rc<Disassembler<Amd64>>) -> Rc<Disassembler<Amd64>> {
     new_disassembler!(Amd64 =>
         // CMPXCHG16B
         [ opt!(lock_prfx), 0x0f, 0xc7, rm1, m128 ] = unary("cmpxchg16b",decode_m,cmpxchg16b),
@@ -713,23 +661,12 @@ pub fn integer_64bit(lock_prfx: Rc<Disassembler<Amd64>>, imm8: Rc<Disassembler<A
 }
 
 pub fn integer_32bit_or_less(lock_prfx: Rc<Disassembler<Amd64>>, imm8: Rc<Disassembler<Amd64>>,
-                     imm16: Rc<Disassembler<Amd64>>, imm32: Rc<Disassembler<Amd64>>,
-                     imm48: Rc<Disassembler<Amd64>>, imm64: Rc<Disassembler<Amd64>>,
-                     imm: Rc<Disassembler<Amd64>>, immlong: Rc<Disassembler<Amd64>>,
-                     moffs8: Rc<Disassembler<Amd64>>, moffs: Rc<Disassembler<Amd64>>,
-                     sib: Rc<Disassembler<Amd64>>, rm: Rc<Disassembler<Amd64>>,
-                     rm0: Rc<Disassembler<Amd64>>, rm1: Rc<Disassembler<Amd64>>,
-                     rm2: Rc<Disassembler<Amd64>>, rm3: Rc<Disassembler<Amd64>>,
-                     rm4: Rc<Disassembler<Amd64>>, rm5: Rc<Disassembler<Amd64>>,
-                     rm6: Rc<Disassembler<Amd64>>, rm7: Rc<Disassembler<Amd64>>,
-                     rmbyte: Rc<Disassembler<Amd64>>, rmbyte0: Rc<Disassembler<Amd64>>,
-                     rmbyte1: Rc<Disassembler<Amd64>>, rmbyte2: Rc<Disassembler<Amd64>>,
-                     rmbyte3: Rc<Disassembler<Amd64>>, rmbyte4: Rc<Disassembler<Amd64>>,
-                     rmbyte5: Rc<Disassembler<Amd64>>, rmbyte6: Rc<Disassembler<Amd64>>,
-                     rmbyte7: Rc<Disassembler<Amd64>>, rmlong: Rc<Disassembler<Amd64>>,
-                     m64: Rc<Disassembler<Amd64>>, disp8: Rc<Disassembler<Amd64>>,
-                     disp16: Rc<Disassembler<Amd64>>, disp32: Rc<Disassembler<Amd64>>,
-                     disp64: Rc<Disassembler<Amd64>>) -> Rc<Disassembler<Amd64>> {
+                     imm48: Rc<Disassembler<Amd64>>,
+                     rm: Rc<Disassembler<Amd64>>,
+                     _: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>,
+                     rm2: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>,
+                     _: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>,
+                     _: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>) -> Rc<Disassembler<Amd64>> {
     new_disassembler!(Amd64 =>
         // AAA
         [ 0x37 ] = nonary("aaa",aaa),
@@ -852,27 +789,14 @@ pub fn integer_instructions(bits: Mode,
 
     match bits {
         Mode::Real => {
-            let main16 = integer_16bit(
-                lock_prfx.clone(),
-                imm8.clone(), imm16.clone(), imm32.clone(), imm48.clone(), imm64.clone(), imm.clone(), immlong.clone(),
-                moffs8.clone(), moffs.clone(),
-                sib.clone(),
-                rm.clone(), rm0.clone(), rm1.clone(), rm2.clone(), rm3.clone(), rm4.clone(), rm5.clone(), rm6.clone(), rm7.clone(),
-                rmbyte.clone(), rmbyte0.clone(), rmbyte1.clone(), rmbyte2.clone(), rmbyte3.clone(),
-                rmbyte4.clone(), rmbyte5.clone(), rmbyte6.clone(), rmbyte7.clone(),
-                rmlong.clone(), m64.clone(),
-                disp8.clone(), disp16.clone(), disp32.clone(), disp64.clone());
+            let main16 = integer_16bit(imm16.clone(), imm32.clone(),
+                moffs.clone(),
+                rm0.clone(), rm1.clone(), rm2.clone(), rm3.clone(), rm4.clone(), rm5.clone(), rm6.clone(), rm7.clone());
 
             let main16_or_32 = integer_32bit_or_less(
                 lock_prfx,
-                imm8, imm16, imm32, imm48, imm64, imm, immlong,
-                moffs8, moffs,
-                sib,
-                rm, rm0, rm1, rm2, rm3, rm4, rm5, rm6, rm7,
-                rmbyte, rmbyte0, rmbyte1, rmbyte2, rmbyte3,
-                rmbyte4, rmbyte5, rmbyte6, rmbyte7,
-                rmlong, m64,
-                disp8, disp16, disp32, disp64);
+                imm8, imm48,
+                rm, rm0, rm1, rm2, rm3, rm4, rm5, rm6, rm7);
 
             new_disassembler!(Amd64 =>
                 [ main ] = |_: &mut State<Amd64>| { true },
@@ -881,37 +805,16 @@ pub fn integer_instructions(bits: Mode,
         },
         Mode::Protected => {
             let main32 = integer_32bit(
-                lock_prfx.clone(),
-                imm8.clone(), imm16.clone(), imm32.clone(), imm48.clone(), imm64.clone(), imm.clone(), immlong.clone(),
-                moffs8.clone(), moffs.clone(),
-                sib.clone(),
-                rm.clone(), rm0.clone(), rm1.clone(), rm2.clone(), rm3.clone(), rm4.clone(), rm5.clone(), rm6.clone(), rm7.clone(),
-                rmbyte.clone(), rmbyte0.clone(), rmbyte1.clone(), rmbyte2.clone(), rmbyte3.clone(),
-                rmbyte4.clone(), rmbyte5.clone(), rmbyte6.clone(), rmbyte7.clone(),
-                rmlong.clone(), m64.clone(),
-                disp8.clone(), disp16.clone(), disp32.clone(), disp64.clone());
+                imm8.clone(), imm48.clone(),
+                moffs.clone(),
+                rm0.clone(), rm1.clone(), rm2.clone(), rm3.clone(), rm4.clone(), rm5.clone(), rm6.clone(), rm7.clone());
 
             let main16_or_32 = integer_32bit_or_less(
                 lock_prfx.clone(),
-                imm8.clone(), imm16.clone(), imm32.clone(), imm48.clone(), imm64.clone(), imm.clone(), immlong.clone(),
-                moffs8.clone(), moffs.clone(),
-                sib.clone(),
-                rm.clone(), rm0.clone(), rm1.clone(), rm2.clone(), rm3.clone(), rm4.clone(), rm5.clone(), rm6.clone(), rm7.clone(),
-                rmbyte.clone(), rmbyte0.clone(), rmbyte1.clone(), rmbyte2.clone(), rmbyte3.clone(),
-                rmbyte4.clone(), rmbyte5.clone(), rmbyte6.clone(), rmbyte7.clone(),
-                rmlong.clone(), m64.clone(),
-                disp8.clone(), disp16.clone(), disp32.clone(), disp64.clone());
+                imm8.clone(), imm48.clone(),
+                rm.clone(), rm0.clone(), rm1.clone(), rm2.clone(), rm3.clone(), rm4.clone(), rm5.clone(), rm6.clone(), rm7.clone());
 
-            let (rep,repx) = integer_rep(
-                lock_prfx,
-                imm8, imm16, imm32, imm48, imm64, imm, immlong,
-                moffs8, moffs,
-                sib,
-                rm, rm0, rm1, rm2, rm3, rm4, rm5, rm6, rm7,
-                rmbyte, rmbyte0, rmbyte1, rmbyte2, rmbyte3,
-                rmbyte4, rmbyte5, rmbyte6, rmbyte7,
-                rmlong, m64,
-                disp8, disp16, disp32, disp64);
+            let (rep,repx) = integer_rep();
 
             new_disassembler!(Amd64 =>
                 [ opt!(seg_prfx), opt!(opsize_prfx), opt!(addrsz_prfx),  main ] = |_: &mut State<Amd64>| { true },
@@ -923,25 +826,12 @@ pub fn integer_instructions(bits: Mode,
         Mode::Long => {
             let main64 = integer_64bit(
                 lock_prfx.clone(),
-                imm8.clone(), imm16.clone(), imm32.clone(), imm48.clone(), imm64.clone(), imm.clone(), immlong.clone(),
-                moffs8.clone(), moffs.clone(),
-                sib.clone(),
+                imm8.clone(),
+                moffs.clone(),
                 rm.clone(), rm0.clone(), rm1.clone(), rm2.clone(), rm3.clone(), rm4.clone(), rm5.clone(), rm6.clone(), rm7.clone(),
-                rmbyte.clone(), rmbyte0.clone(), rmbyte1.clone(), rmbyte2.clone(), rmbyte3.clone(),
-                rmbyte4.clone(), rmbyte5.clone(), rmbyte6.clone(), rmbyte7.clone(),
-                rmlong.clone(), m64.clone(), m128.clone(),
-                disp8.clone(), disp16.clone(), disp32.clone(), disp64.clone());
+                m128.clone());
 
-            let (rep,repx) = integer_rep(
-                lock_prfx,
-                imm8, imm16, imm32, imm48, imm64, imm, immlong,
-                moffs8, moffs,
-                sib,
-                rm, rm0, rm1, rm2, rm3, rm4, rm5, rm6, rm7,
-                rmbyte, rmbyte0, rmbyte1, rmbyte2, rmbyte3,
-                rmbyte4, rmbyte5, rmbyte6, rmbyte7,
-                rmlong, m64,
-                disp8, disp16, disp32, disp64);
+            let (rep,repx) = integer_rep();
 
             new_disassembler!(Amd64 =>
                 [ opt!(opsize_prfx), opt!(addrsz_prfx), opt!(rex_prfx),  main ] = |_: &mut State<Amd64>| { true },

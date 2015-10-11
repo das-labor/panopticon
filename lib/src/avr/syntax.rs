@@ -1,10 +1,7 @@
 use disassembler::*;
-use program::{Program,DisassembleEvent};
-use layer::LayerIter;
-use value::{Lvalue,Rvalue,Endianess,ToRvalue};
+use value::{Lvalue,Rvalue,ToRvalue};
 use codegen::CodeGen;
 use guard::Guard;
-use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
 use std::rc::Rc;
 use std::num::Wrapping;
 use super::*;

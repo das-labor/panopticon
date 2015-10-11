@@ -5,8 +5,6 @@ use value::{Lvalue,Rvalue,Endianess,ToRvalue};
 use codegen::CodeGen;
 use guard::Guard;
 use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
-use std::rc::Rc;
-use std::num::Wrapping;
 
 pub mod syntax;
 
@@ -264,7 +262,6 @@ mod tests {
     use region::Region;
     use super::syntax::disassembler;
     use function::{ControlFlowTarget,Function};
-    use disassembler::State;
     use value::Rvalue;
 
     use std::hash::{Hash,Hasher,SipHasher};

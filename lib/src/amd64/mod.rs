@@ -1,9 +1,6 @@
 use disassembler::*;
-use program::Program;
-use layer::LayerIter;
-use value::{Lvalue,Rvalue,Endianess,ToRvalue};
+use value::{Lvalue,Rvalue};
 use codegen::CodeGen;
-use guard::Guard;
 use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
 use std::rc::Rc;
 
@@ -119,89 +116,89 @@ impl Architecture for Amd64 {
 
 // 8 bit gp registers
 lazy_static! {
-    pub static ref al: Lvalue = Lvalue::Variable{ name: "al".to_string(), width: 8, subscript: None };
-    pub static ref bl: Lvalue = Lvalue::Variable{ name: "bl".to_string(), width: 8, subscript: None };
-    pub static ref cl: Lvalue = Lvalue::Variable{ name: "cl".to_string(), width: 8, subscript: None };
-    pub static ref dl: Lvalue = Lvalue::Variable{ name: "dl".to_string(), width: 8, subscript: None };
-    pub static ref r8l: Lvalue = Lvalue::Variable{ name: "r8l".to_string(), width: 8, subscript: None };
-    pub static ref r9l: Lvalue = Lvalue::Variable{ name: "r9l".to_string(), width: 8, subscript: None };
-    pub static ref r10l: Lvalue = Lvalue::Variable{ name: "r10l".to_string(), width: 8, subscript: None };
-    pub static ref r11l: Lvalue = Lvalue::Variable{ name: "r11l".to_string(), width: 8, subscript: None };
-    pub static ref r12l: Lvalue = Lvalue::Variable{ name: "r12l".to_string(), width: 8, subscript: None };
-    pub static ref r13l: Lvalue = Lvalue::Variable{ name: "r13l".to_string(), width: 8, subscript: None };
-    pub static ref r14l: Lvalue = Lvalue::Variable{ name: "r14l".to_string(), width: 8, subscript: None };
-    pub static ref r15l: Lvalue = Lvalue::Variable{ name: "r15l".to_string(), width: 8, subscript: None };
-    pub static ref spl: Lvalue = Lvalue::Variable{ name: "spl".to_string(), width: 8, subscript: None };
-    pub static ref bpl: Lvalue = Lvalue::Variable{ name: "bpl".to_string(), width: 8, subscript: None };
-    pub static ref sil: Lvalue = Lvalue::Variable{ name: "sil".to_string(), width: 8, subscript: None };
-    pub static ref dil: Lvalue = Lvalue::Variable{ name: "dil".to_string(), width: 8, subscript: None };
-    pub static ref ah: Lvalue = Lvalue::Variable{ name: "ah".to_string(), width: 8, subscript: None };
-    pub static ref bh: Lvalue = Lvalue::Variable{ name: "bh".to_string(), width: 8, subscript: None };
-    pub static ref ch: Lvalue = Lvalue::Variable{ name: "ch".to_string(), width: 8, subscript: None };
-    pub static ref dh: Lvalue = Lvalue::Variable{ name: "dh".to_string(), width: 8, subscript: None };
+    pub static ref AL: Lvalue = Lvalue::Variable{ name: "al".to_string(), width: 8, subscript: None };
+    pub static ref BL: Lvalue = Lvalue::Variable{ name: "bl".to_string(), width: 8, subscript: None };
+    pub static ref CL: Lvalue = Lvalue::Variable{ name: "cl".to_string(), width: 8, subscript: None };
+    pub static ref DL: Lvalue = Lvalue::Variable{ name: "dl".to_string(), width: 8, subscript: None };
+    pub static ref R8L: Lvalue = Lvalue::Variable{ name: "r8l".to_string(), width: 8, subscript: None };
+    pub static ref R9L: Lvalue = Lvalue::Variable{ name: "r9l".to_string(), width: 8, subscript: None };
+    pub static ref R10L: Lvalue = Lvalue::Variable{ name: "r10l".to_string(), width: 8, subscript: None };
+    pub static ref R11L: Lvalue = Lvalue::Variable{ name: "r11l".to_string(), width: 8, subscript: None };
+    pub static ref R12L: Lvalue = Lvalue::Variable{ name: "r12l".to_string(), width: 8, subscript: None };
+    pub static ref R13L: Lvalue = Lvalue::Variable{ name: "r13l".to_string(), width: 8, subscript: None };
+    pub static ref R14L: Lvalue = Lvalue::Variable{ name: "r14l".to_string(), width: 8, subscript: None };
+    pub static ref R15L: Lvalue = Lvalue::Variable{ name: "r15l".to_string(), width: 8, subscript: None };
+    pub static ref SPL: Lvalue = Lvalue::Variable{ name: "spl".to_string(), width: 8, subscript: None };
+    pub static ref BPL: Lvalue = Lvalue::Variable{ name: "bpl".to_string(), width: 8, subscript: None };
+    pub static ref SIL: Lvalue = Lvalue::Variable{ name: "sil".to_string(), width: 8, subscript: None };
+    pub static ref DIL: Lvalue = Lvalue::Variable{ name: "dil".to_string(), width: 8, subscript: None };
+    pub static ref AH: Lvalue = Lvalue::Variable{ name: "ah".to_string(), width: 8, subscript: None };
+    pub static ref BH: Lvalue = Lvalue::Variable{ name: "bh".to_string(), width: 8, subscript: None };
+    pub static ref CH: Lvalue = Lvalue::Variable{ name: "ch".to_string(), width: 8, subscript: None };
+    pub static ref DH: Lvalue = Lvalue::Variable{ name: "dh".to_string(), width: 8, subscript: None };
 }
 
 // 16 bit gp registers
 lazy_static! {
-    pub static ref ax: Lvalue = Lvalue::Variable{ name: "ax".to_string(), width: 16, subscript: None };
-    pub static ref bx: Lvalue = Lvalue::Variable{ name: "bx".to_string(), width: 16, subscript: None };
-    pub static ref cx: Lvalue = Lvalue::Variable{ name: "cx".to_string(), width: 16, subscript: None };
-    pub static ref dx: Lvalue = Lvalue::Variable{ name: "dx".to_string(), width: 16, subscript: None };
-    pub static ref r8w: Lvalue = Lvalue::Variable{ name: "r8w".to_string(), width: 16, subscript: None };
-    pub static ref r9w: Lvalue = Lvalue::Variable{ name: "r9w".to_string(), width: 16, subscript: None };
-    pub static ref r10w: Lvalue = Lvalue::Variable{ name: "r10w".to_string(), width: 16, subscript: None };
-    pub static ref r11w: Lvalue = Lvalue::Variable{ name: "r11w".to_string(), width: 16, subscript: None };
-    pub static ref r12w: Lvalue = Lvalue::Variable{ name: "r12w".to_string(), width: 16, subscript: None };
-    pub static ref r13w: Lvalue = Lvalue::Variable{ name: "r13w".to_string(), width: 16, subscript: None };
-    pub static ref r14w: Lvalue = Lvalue::Variable{ name: "r14w".to_string(), width: 16, subscript: None };
-    pub static ref r15w: Lvalue = Lvalue::Variable{ name: "r15w".to_string(), width: 16, subscript: None };
-    pub static ref sp: Lvalue = Lvalue::Variable{ name: "sp".to_string(), width: 16, subscript: None };
-    pub static ref bp: Lvalue = Lvalue::Variable{ name: "bp".to_string(), width: 16, subscript: None };
-    pub static ref si: Lvalue = Lvalue::Variable{ name: "si".to_string(), width: 16, subscript: None };
-    pub static ref di: Lvalue = Lvalue::Variable{ name: "di".to_string(), width: 16, subscript: None };
-    pub static ref ip: Lvalue = Lvalue::Variable{ name: "ip".to_string(), width: 16, subscript: None };
+    pub static ref AX: Lvalue = Lvalue::Variable{ name: "ax".to_string(), width: 16, subscript: None };
+    pub static ref BX: Lvalue = Lvalue::Variable{ name: "bx".to_string(), width: 16, subscript: None };
+    pub static ref CX: Lvalue = Lvalue::Variable{ name: "cx".to_string(), width: 16, subscript: None };
+    pub static ref DX: Lvalue = Lvalue::Variable{ name: "dx".to_string(), width: 16, subscript: None };
+    pub static ref R8W: Lvalue = Lvalue::Variable{ name: "r8w".to_string(), width: 16, subscript: None };
+    pub static ref R9W: Lvalue = Lvalue::Variable{ name: "r9w".to_string(), width: 16, subscript: None };
+    pub static ref R10W: Lvalue = Lvalue::Variable{ name: "r10w".to_string(), width: 16, subscript: None };
+    pub static ref R11W: Lvalue = Lvalue::Variable{ name: "r11w".to_string(), width: 16, subscript: None };
+    pub static ref R12W: Lvalue = Lvalue::Variable{ name: "r12w".to_string(), width: 16, subscript: None };
+    pub static ref R13W: Lvalue = Lvalue::Variable{ name: "r13w".to_string(), width: 16, subscript: None };
+    pub static ref R14W: Lvalue = Lvalue::Variable{ name: "r14w".to_string(), width: 16, subscript: None };
+    pub static ref R15W: Lvalue = Lvalue::Variable{ name: "r15w".to_string(), width: 16, subscript: None };
+    pub static ref SP: Lvalue = Lvalue::Variable{ name: "sp".to_string(), width: 16, subscript: None };
+    pub static ref BP: Lvalue = Lvalue::Variable{ name: "bp".to_string(), width: 16, subscript: None };
+    pub static ref SI: Lvalue = Lvalue::Variable{ name: "si".to_string(), width: 16, subscript: None };
+    pub static ref DI: Lvalue = Lvalue::Variable{ name: "di".to_string(), width: 16, subscript: None };
+    pub static ref IP: Lvalue = Lvalue::Variable{ name: "ip".to_string(), width: 16, subscript: None };
 }
 
 // 32 bit gp registers
 lazy_static! {
-    pub static ref eax: Lvalue = Lvalue::Variable{ name: "eax".to_string(), width: 32, subscript: None };
-    pub static ref ebx: Lvalue = Lvalue::Variable{ name: "ebx".to_string(), width: 32, subscript: None };
-    pub static ref ecx: Lvalue = Lvalue::Variable{ name: "ecx".to_string(), width: 32, subscript: None };
-    pub static ref edx: Lvalue = Lvalue::Variable{ name: "edx".to_string(), width: 32, subscript: None };
-    pub static ref r8d: Lvalue = Lvalue::Variable{ name: "r8d".to_string(), width: 32, subscript: None };
-    pub static ref r9d: Lvalue = Lvalue::Variable{ name: "r9d".to_string(), width: 32, subscript: None };
-    pub static ref r10d: Lvalue = Lvalue::Variable{ name: "r10d".to_string(), width: 32, subscript: None };
-    pub static ref r11d: Lvalue = Lvalue::Variable{ name: "r11d".to_string(), width: 32, subscript: None };
-    pub static ref r12d: Lvalue = Lvalue::Variable{ name: "r12d".to_string(), width: 32, subscript: None };
-    pub static ref r13d: Lvalue = Lvalue::Variable{ name: "r13d".to_string(), width: 32, subscript: None };
-    pub static ref r14d: Lvalue = Lvalue::Variable{ name: "r14d".to_string(), width: 32, subscript: None };
-    pub static ref r15d: Lvalue = Lvalue::Variable{ name: "r15d".to_string(), width: 32, subscript: None };
-    pub static ref esp: Lvalue = Lvalue::Variable{ name: "esp".to_string(), width: 32, subscript: None };
-    pub static ref ebp: Lvalue = Lvalue::Variable{ name: "ebp".to_string(), width: 32, subscript: None };
-    pub static ref esi: Lvalue = Lvalue::Variable{ name: "esi".to_string(), width: 32, subscript: None };
-    pub static ref edi: Lvalue = Lvalue::Variable{ name: "edi".to_string(), width: 32, subscript: None };
-    pub static ref eip: Lvalue = Lvalue::Variable{ name: "eip".to_string(), width: 32, subscript: None };
+    pub static ref EAX: Lvalue = Lvalue::Variable{ name: "eax".to_string(), width: 32, subscript: None };
+    pub static ref EBX: Lvalue = Lvalue::Variable{ name: "ebx".to_string(), width: 32, subscript: None };
+    pub static ref ECX: Lvalue = Lvalue::Variable{ name: "ecx".to_string(), width: 32, subscript: None };
+    pub static ref EDX: Lvalue = Lvalue::Variable{ name: "edx".to_string(), width: 32, subscript: None };
+    pub static ref R8D: Lvalue = Lvalue::Variable{ name: "r8d".to_string(), width: 32, subscript: None };
+    pub static ref R9D: Lvalue = Lvalue::Variable{ name: "r9d".to_string(), width: 32, subscript: None };
+    pub static ref R10D: Lvalue = Lvalue::Variable{ name: "r10d".to_string(), width: 32, subscript: None };
+    pub static ref R11D: Lvalue = Lvalue::Variable{ name: "r11d".to_string(), width: 32, subscript: None };
+    pub static ref R12D: Lvalue = Lvalue::Variable{ name: "r12d".to_string(), width: 32, subscript: None };
+    pub static ref R13D: Lvalue = Lvalue::Variable{ name: "r13d".to_string(), width: 32, subscript: None };
+    pub static ref R14D: Lvalue = Lvalue::Variable{ name: "r14d".to_string(), width: 32, subscript: None };
+    pub static ref R15D: Lvalue = Lvalue::Variable{ name: "r15d".to_string(), width: 32, subscript: None };
+    pub static ref ESP: Lvalue = Lvalue::Variable{ name: "esp".to_string(), width: 32, subscript: None };
+    pub static ref EBP: Lvalue = Lvalue::Variable{ name: "ebp".to_string(), width: 32, subscript: None };
+    pub static ref ESI: Lvalue = Lvalue::Variable{ name: "esi".to_string(), width: 32, subscript: None };
+    pub static ref EDI: Lvalue = Lvalue::Variable{ name: "edi".to_string(), width: 32, subscript: None };
+    pub static ref EIP: Lvalue = Lvalue::Variable{ name: "eip".to_string(), width: 32, subscript: None };
 }
 
 // 64 bit gp registers
 lazy_static! {
-    pub static ref rax: Lvalue = Lvalue::Variable{ name: "rax".to_string(), width: 64, subscript: None };
-    pub static ref rbx: Lvalue = Lvalue::Variable{ name: "rbx".to_string(), width: 64, subscript: None };
-    pub static ref rcx: Lvalue = Lvalue::Variable{ name: "rcx".to_string(), width: 64, subscript: None };
-    pub static ref rdx: Lvalue = Lvalue::Variable{ name: "rdx".to_string(), width: 64, subscript: None };
-    pub static ref r8: Lvalue = Lvalue::Variable{ name: "r8".to_string(), width: 64, subscript: None };
-    pub static ref r9: Lvalue = Lvalue::Variable{ name: "r9".to_string(), width: 64, subscript: None };
-    pub static ref r10: Lvalue = Lvalue::Variable{ name: "r10".to_string(), width: 64, subscript: None };
-    pub static ref r11: Lvalue = Lvalue::Variable{ name: "r11".to_string(), width: 64, subscript: None };
-    pub static ref r12: Lvalue = Lvalue::Variable{ name: "r12".to_string(), width: 64, subscript: None };
-    pub static ref r13: Lvalue = Lvalue::Variable{ name: "r13".to_string(), width: 64, subscript: None };
-    pub static ref r14: Lvalue = Lvalue::Variable{ name: "r14".to_string(), width: 64, subscript: None };
-    pub static ref r15: Lvalue = Lvalue::Variable{ name: "r15".to_string(), width: 64, subscript: None };
-    pub static ref rsp: Lvalue = Lvalue::Variable{ name: "rsp".to_string(), width: 64, subscript: None };
-    pub static ref rbp: Lvalue = Lvalue::Variable{ name: "rbp".to_string(), width: 64, subscript: None };
-    pub static ref rsi: Lvalue = Lvalue::Variable{ name: "rsi".to_string(), width: 64, subscript: None };
-    pub static ref rdi: Lvalue = Lvalue::Variable{ name: "rdi".to_string(), width: 64, subscript: None };
-    pub static ref rip: Lvalue = Lvalue::Variable{ name: "rip".to_string(), width: 64, subscript: None };
+    pub static ref RAX: Lvalue = Lvalue::Variable{ name: "rax".to_string(), width: 64, subscript: None };
+    pub static ref RBX: Lvalue = Lvalue::Variable{ name: "rbx".to_string(), width: 64, subscript: None };
+    pub static ref RCX: Lvalue = Lvalue::Variable{ name: "rcx".to_string(), width: 64, subscript: None };
+    pub static ref RDX: Lvalue = Lvalue::Variable{ name: "rdx".to_string(), width: 64, subscript: None };
+    pub static ref R8: Lvalue = Lvalue::Variable{ name: "r8".to_string(), width: 64, subscript: None };
+    pub static ref R9: Lvalue = Lvalue::Variable{ name: "r9".to_string(), width: 64, subscript: None };
+    pub static ref R10: Lvalue = Lvalue::Variable{ name: "r10".to_string(), width: 64, subscript: None };
+    pub static ref R11: Lvalue = Lvalue::Variable{ name: "r11".to_string(), width: 64, subscript: None };
+    pub static ref R12: Lvalue = Lvalue::Variable{ name: "r12".to_string(), width: 64, subscript: None };
+    pub static ref R13: Lvalue = Lvalue::Variable{ name: "r13".to_string(), width: 64, subscript: None };
+    pub static ref R14: Lvalue = Lvalue::Variable{ name: "r14".to_string(), width: 64, subscript: None };
+    pub static ref R15: Lvalue = Lvalue::Variable{ name: "r15".to_string(), width: 64, subscript: None };
+    pub static ref RSP: Lvalue = Lvalue::Variable{ name: "rsp".to_string(), width: 64, subscript: None };
+    pub static ref RBP: Lvalue = Lvalue::Variable{ name: "rbp".to_string(), width: 64, subscript: None };
+    pub static ref RSI: Lvalue = Lvalue::Variable{ name: "rsi".to_string(), width: 64, subscript: None };
+    pub static ref RDI: Lvalue = Lvalue::Variable{ name: "rdi".to_string(), width: 64, subscript: None };
+    pub static ref RIP: Lvalue = Lvalue::Variable{ name: "rip".to_string(), width: 64, subscript: None };
 }
 
 // flags
@@ -227,37 +224,37 @@ lazy_static! {
 
 // segment registers
 lazy_static! {
-    pub static ref cs: Lvalue = Lvalue::Variable{ name: "cs".to_string(), width: 16, subscript: None };
-    pub static ref ds: Lvalue = Lvalue::Variable{ name: "ds".to_string(), width: 16, subscript: None };
-    pub static ref fs: Lvalue = Lvalue::Variable{ name: "fs".to_string(), width: 16, subscript: None };
-    pub static ref ss: Lvalue = Lvalue::Variable{ name: "ss".to_string(), width: 16, subscript: None };
-    pub static ref gs: Lvalue = Lvalue::Variable{ name: "gs".to_string(), width: 16, subscript: None };
-    pub static ref es: Lvalue = Lvalue::Variable{ name: "es".to_string(), width: 16, subscript: None };
+    pub static ref CS: Lvalue = Lvalue::Variable{ name: "cs".to_string(), width: 16, subscript: None };
+    pub static ref DS: Lvalue = Lvalue::Variable{ name: "ds".to_string(), width: 16, subscript: None };
+    pub static ref FS: Lvalue = Lvalue::Variable{ name: "fs".to_string(), width: 16, subscript: None };
+    pub static ref SS: Lvalue = Lvalue::Variable{ name: "ss".to_string(), width: 16, subscript: None };
+    pub static ref GS: Lvalue = Lvalue::Variable{ name: "gs".to_string(), width: 16, subscript: None };
+    pub static ref ES: Lvalue = Lvalue::Variable{ name: "es".to_string(), width: 16, subscript: None };
 }
 
 // control registers
 lazy_static! {
-    pub static ref cr0: Lvalue = Lvalue::Variable{ name: "cr0".to_string(), width: 64, subscript: None };
-    pub static ref cr1: Lvalue = Lvalue::Variable{ name: "cr1".to_string(), width: 64, subscript: None };
-    pub static ref cr2: Lvalue = Lvalue::Variable{ name: "cr2".to_string(), width: 64, subscript: None };
-    pub static ref cr3: Lvalue = Lvalue::Variable{ name: "cr3".to_string(), width: 64, subscript: None };
-    pub static ref cr4: Lvalue = Lvalue::Variable{ name: "cr4".to_string(), width: 64, subscript: None };
-    pub static ref cr8: Lvalue = Lvalue::Variable{ name: "cr8".to_string(), width: 64, subscript: None };
-    pub static ref ldtr: Lvalue = Lvalue::Variable{ name: "ldtr".to_string(), width: 64, subscript: None };
-    pub static ref gdtr: Lvalue = Lvalue::Variable{ name: "gdtr".to_string(), width: 64, subscript: None };
-    pub static ref idtr: Lvalue = Lvalue::Variable{ name: "idtr".to_string(), width: 64, subscript: None };
+    pub static ref CR0: Lvalue = Lvalue::Variable{ name: "cr0".to_string(), width: 64, subscript: None };
+    pub static ref CR1: Lvalue = Lvalue::Variable{ name: "cr1".to_string(), width: 64, subscript: None };
+    pub static ref CR2: Lvalue = Lvalue::Variable{ name: "cr2".to_string(), width: 64, subscript: None };
+    pub static ref CR3: Lvalue = Lvalue::Variable{ name: "cr3".to_string(), width: 64, subscript: None };
+    pub static ref CR4: Lvalue = Lvalue::Variable{ name: "cr4".to_string(), width: 64, subscript: None };
+    pub static ref CR8: Lvalue = Lvalue::Variable{ name: "cr8".to_string(), width: 64, subscript: None };
+    pub static ref LDTR: Lvalue = Lvalue::Variable{ name: "ldtr".to_string(), width: 64, subscript: None };
+    pub static ref GDTR: Lvalue = Lvalue::Variable{ name: "gdtr".to_string(), width: 64, subscript: None };
+    pub static ref IDTR: Lvalue = Lvalue::Variable{ name: "idtr".to_string(), width: 64, subscript: None };
 }
 
 // debug registers
 lazy_static! {
-    pub static ref dr0: Lvalue = Lvalue::Variable{ name: "dr0".to_string(), width: 32, subscript: None };
-    pub static ref dr1: Lvalue = Lvalue::Variable{ name: "dr1".to_string(), width: 32, subscript: None };
-    pub static ref dr2: Lvalue = Lvalue::Variable{ name: "dr2".to_string(), width: 32, subscript: None };
-    pub static ref dr3: Lvalue = Lvalue::Variable{ name: "dr3".to_string(), width: 32, subscript: None };
-    pub static ref dr4: Lvalue = Lvalue::Variable{ name: "dr4".to_string(), width: 32, subscript: None };
-    pub static ref dr5: Lvalue = Lvalue::Variable{ name: "dr5".to_string(), width: 32, subscript: None };
-    pub static ref dr6: Lvalue = Lvalue::Variable{ name: "dr6".to_string(), width: 32, subscript: None };
-    pub static ref dr7: Lvalue = Lvalue::Variable{ name: "dr7".to_string(), width: 32, subscript: None };
+    pub static ref DR0: Lvalue = Lvalue::Variable{ name: "dr0".to_string(), width: 32, subscript: None };
+    pub static ref DR1: Lvalue = Lvalue::Variable{ name: "dr1".to_string(), width: 32, subscript: None };
+    pub static ref DR2: Lvalue = Lvalue::Variable{ name: "dr2".to_string(), width: 32, subscript: None };
+    pub static ref DR3: Lvalue = Lvalue::Variable{ name: "dr3".to_string(), width: 32, subscript: None };
+    pub static ref DR4: Lvalue = Lvalue::Variable{ name: "dr4".to_string(), width: 32, subscript: None };
+    pub static ref DR5: Lvalue = Lvalue::Variable{ name: "dr5".to_string(), width: 32, subscript: None };
+    pub static ref DR6: Lvalue = Lvalue::Variable{ name: "dr6".to_string(), width: 32, subscript: None };
+    pub static ref DR7: Lvalue = Lvalue::Variable{ name: "dr7".to_string(), width: 32, subscript: None };
 }
 
 static GLOBAL_AMD64_TEMPVAR_COUNT: AtomicUsize = ATOMIC_USIZE_INIT;
@@ -292,14 +289,14 @@ pub fn disassembler(bits: Mode) -> Rc<Disassembler<Amd64>> {
         });
 
     let rep_prfx = new_disassembler!(Amd64 =>
-        [ 0xf3 ] = |st: &mut State<Amd64>| { true });
+        [ 0xf3 ] = |_: &mut State<Amd64>| { true });
 
     let lock_prfx = new_disassembler!(Amd64 =>
-        [ 0xf0 ] = |st: &mut State<Amd64>| { true });
+        [ 0xf0 ] = |_: &mut State<Amd64>| { true });
 
     let repx_prfx = new_disassembler!(Amd64 =>
-        [ 0xf3 ] = |st: &mut State<Amd64>| { true },
-        [ 0xf2 ] = |st: &mut State<Amd64>| { true });
+        [ 0xf3 ] = |_: &mut State<Amd64>| { true },
+        [ 0xf2 ] = |_: &mut State<Amd64>| { true });
 
     let rex_prfx = new_disassembler!(Amd64 =>
         [ "0100 w@. r@. x@. b@." ] = |st: &mut State<Amd64>| {
@@ -311,12 +308,12 @@ pub fn disassembler(bits: Mode) -> Rc<Disassembler<Amd64>> {
         });
 
     let seg_prfx = new_disassembler!(Amd64 =>
-        [ 0x2e ] = |st: &mut State<Amd64>| { true },
-        [ 0x36 ] = |st: &mut State<Amd64>| { true },
-        [ 0x3e ] = |st: &mut State<Amd64>| { true },
-        [ 0x26 ] = |st: &mut State<Amd64>| { true },
-        [ 0x64 ] = |st: &mut State<Amd64>| { true },
-        [ 0x65 ] = |st: &mut State<Amd64>| { true });
+        [ 0x2e ] = |_: &mut State<Amd64>| { true },
+        [ 0x36 ] = |_: &mut State<Amd64>| { true },
+        [ 0x3e ] = |_: &mut State<Amd64>| { true },
+        [ 0x26 ] = |_: &mut State<Amd64>| { true },
+        [ 0x64 ] = |_: &mut State<Amd64>| { true },
+        [ 0x65 ] = |_: &mut State<Amd64>| { true });
 
     let imm8 = new_disassembler!(Amd64 =>
         [ "imm@........" ] = |st: &mut State<Amd64>| {
@@ -476,7 +473,7 @@ pub fn disassembler(bits: Mode) -> Rc<Disassembler<Amd64>> {
             st.configuration.disp = Some(Rvalue::Constant(st.get_group("disp")));
             true
         },
-        [ "scale@.. index@... base@..." ] = |st: &mut State<Amd64>| { true });
+        [ "scale@.. index@... base@..." ] = |_: &mut State<Amd64>| { true });
 
     fn rm_semantic(_os: Option<OperandSize>) -> Box<Fn(&mut State<Amd64>) -> bool> {
         Box::new(move |st: &mut State<Amd64>| -> bool {

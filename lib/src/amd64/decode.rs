@@ -79,10 +79,10 @@ pub fn decode_rm1(sm: &mut State<Amd64>) -> Rvalue {
 
 pub fn decode_i(sm: &mut State<Amd64>) -> (Rvalue,Rvalue) {
     match &sm.configuration.operand_size {
-        &OperandSize::Eight => (ah.to_rv(),sm.configuration.imm.clone().unwrap()),
-        &OperandSize::Sixteen => (ax.to_rv(),sm.configuration.imm.clone().unwrap()),
-        &OperandSize::ThirtyTwo => (eax.to_rv(),sm.configuration.imm.clone().unwrap()),
-        &OperandSize::SixtyFour => (rax.to_rv(),sm.configuration.imm.clone().unwrap()),
+        &OperandSize::Eight => (AH.to_rv(),sm.configuration.imm.clone().unwrap()),
+        &OperandSize::Sixteen => (AX.to_rv(),sm.configuration.imm.clone().unwrap()),
+        &OperandSize::ThirtyTwo => (EAX.to_rv(),sm.configuration.imm.clone().unwrap()),
+        &OperandSize::SixtyFour => (RAX.to_rv(),sm.configuration.imm.clone().unwrap()),
         &OperandSize::HundredTwentyEight => panic!("No 128 bit register in x86!")
     }
 }
@@ -117,18 +117,18 @@ pub fn decode_msreg(sm: &mut State<Amd64>) -> (Rvalue,Rvalue) {
 
 pub fn decode_sregm(sm: &mut State<Amd64>) -> (Rvalue,Rvalue) {
     if let (&Some(ref reg),&Some(ref rm)) = (&sm.configuration.reg,&sm.configuration.rm) {
-        if *reg == *ax || *reg == *eax  {
-            (es.to_rv(),rm.to_rv())
-        } else if *reg == *cx || *reg == *ecx  {
-            (cs.to_rv(),rm.to_rv())
-        } else if *reg == *dx || *reg == *edx  {
-            (ss.to_rv(),rm.to_rv())
-        } else if *reg == *bx || *reg == *ebx  {
-            (ds.to_rv(),rm.to_rv())
-        } else if *reg == *sp || *reg == *esp  {
-            (fs.to_rv(),rm.to_rv())
-        } else if *reg == *bp || *reg == *ebp  {
-            (gs.to_rv(),rm.to_rv())
+        if *reg == *AX || *reg == *EAX  {
+            (ES.to_rv(),rm.to_rv())
+        } else if *reg == *CX || *reg == *ECX  {
+            (CS.to_rv(),rm.to_rv())
+        } else if *reg == *DX || *reg == *EDX  {
+            (SS.to_rv(),rm.to_rv())
+        } else if *reg == *BX || *reg == *EBX  {
+            (DS.to_rv(),rm.to_rv())
+        } else if *reg == *SP || *reg == *ESP  {
+            (FS.to_rv(),rm.to_rv())
+        } else if *reg == *BP || *reg == *EBP  {
+            (GS.to_rv(),rm.to_rv())
         } else {
             unreachable!()
         }
@@ -139,22 +139,22 @@ pub fn decode_sregm(sm: &mut State<Amd64>) -> (Rvalue,Rvalue) {
 
 pub fn decode_dbgrm(sm: &mut State<Amd64>) -> (Rvalue,Rvalue) {
     if let (&Some(ref reg),&Some(ref rm)) = (&sm.configuration.reg,&sm.configuration.rm) {
-        if *reg == *rax || *reg == *eax  {
-            (dr0.to_rv(),rm.to_rv())
-        } else if *reg == *rcx || *reg == *ecx  {
-            (dr1.to_rv(),rm.to_rv())
-        } else if *reg == *rdx || *reg == *edx  {
-            (dr2.to_rv(),rm.to_rv())
-        } else if *reg == *rbx || *reg == *ebx  {
-            (dr3.to_rv(),rm.to_rv())
-        } else if *reg == *rsp || *reg == *esp  {
-            (dr4.to_rv(),rm.to_rv())
-        } else if *reg == *rbp || *reg == *ebp  {
-            (dr5.to_rv(),rm.to_rv())
-        } else if *reg == *rdi || *reg == *edi  {
-            (dr7.to_rv(),rm.to_rv())
-        } else if *reg == *rsi || *reg == *esi  {
-            (dr6.to_rv(),rm.to_rv())
+        if *reg == *RAX || *reg == *EAX  {
+            (DR0.to_rv(),rm.to_rv())
+        } else if *reg == *RCX || *reg == *ECX  {
+            (DR1.to_rv(),rm.to_rv())
+        } else if *reg == *RDX || *reg == *EDX  {
+            (DR2.to_rv(),rm.to_rv())
+        } else if *reg == *RBX || *reg == *EBX  {
+            (DR3.to_rv(),rm.to_rv())
+        } else if *reg == *RSP || *reg == *ESP  {
+            (DR4.to_rv(),rm.to_rv())
+        } else if *reg == *RBP || *reg == *EBP  {
+            (DR5.to_rv(),rm.to_rv())
+        } else if *reg == *RDI || *reg == *EDI  {
+            (DR7.to_rv(),rm.to_rv())
+        } else if *reg == *RSI || *reg == *ESI  {
+            (DR6.to_rv(),rm.to_rv())
         } else {
             unreachable!()
         }
@@ -170,16 +170,16 @@ pub fn decode_rmdbg(sm: &mut State<Amd64>) -> (Rvalue,Rvalue) {
 
 pub fn decode_ctrlrm(sm: &mut State<Amd64>) -> (Rvalue,Rvalue) {
     if let (&Some(ref reg),&Some(ref rm)) = (&sm.configuration.reg,&sm.configuration.rm) {
-        if *reg == *rax || *reg == *eax  {
-            (cr0.to_rv(),rm.to_rv())
-        } else if *reg == *rdx || *reg == *edx  {
-            (cr2.to_rv(),rm.to_rv())
-        } else if *reg == *rbx || *reg == *ebx  {
-            (cr3.to_rv(),rm.to_rv())
-        } else if *reg == *rsp || *reg == *esp  {
-            (cr4.to_rv(),rm.to_rv())
-        } else if *reg == *r8 || *reg == *r9w  {
-            (cr8.to_rv(),rm.to_rv())
+        if *reg == *RAX || *reg == *EAX  {
+            (CR0.to_rv(),rm.to_rv())
+        } else if *reg == *RDX || *reg == *EDX  {
+            (CR2.to_rv(),rm.to_rv())
+        } else if *reg == *RBX || *reg == *EBX  {
+            (CR3.to_rv(),rm.to_rv())
+        } else if *reg == *RSP || *reg == *ESP  {
+            (CR4.to_rv(),rm.to_rv())
+        } else if *reg == *R8 || *reg == *R9W  {
+            (CR8.to_rv(),rm.to_rv())
         } else {
             unreachable!()
         }
@@ -201,11 +201,11 @@ pub fn decode_mi(sm: &mut State<Amd64>) -> (Rvalue,Rvalue) {
     }
 }
 
-pub fn decode_m1(sm: &mut State<Amd64>) -> (Rvalue,Rvalue) {
+pub fn decode_m1(_: &mut State<Amd64>) -> (Rvalue,Rvalue) {
     unimplemented!();
 }
 
-pub fn decode_mc(sm: &mut State<Amd64>) -> (Rvalue,Rvalue) {
+pub fn decode_mc(_: &mut State<Amd64>) -> (Rvalue,Rvalue) {
     unimplemented!();
 }
 
@@ -217,11 +217,11 @@ pub fn decode_ii(sm: &mut State<Amd64>) -> (Rvalue,Rvalue) {
     }
 }
 
-pub fn decode_rvm(sm: &mut State<Amd64>) -> (Rvalue,Rvalue,Rvalue) {
+pub fn decode_rvm(_: &mut State<Amd64>) -> (Rvalue,Rvalue,Rvalue) {
     unimplemented!();
 }
 
-pub fn decode_rmv(sm: &mut State<Amd64>) -> (Rvalue,Rvalue,Rvalue) {
+pub fn decode_rmv(_: &mut State<Amd64>) -> (Rvalue,Rvalue,Rvalue) {
     unimplemented!();
 }
 
@@ -238,94 +238,94 @@ pub fn decode_mri(sm: &mut State<Amd64>) -> (Rvalue,Rvalue,Rvalue) {
     (b,a,c)
 }
 
-pub fn decode_rvmi(sm: &mut State<Amd64>) -> (Rvalue,Rvalue,Rvalue,Rvalue) {
+pub fn decode_rvmi(_: &mut State<Amd64>) -> (Rvalue,Rvalue,Rvalue,Rvalue) {
     unimplemented!();
 }
 
 pub fn decode_reg8(r_reg: u64,rex: bool) -> Lvalue {
     match r_reg {
-        0 => al.clone(),
-        1 => cl.clone(),
-        2 => dl.clone(),
-        3 => bl.clone(),
-        4 => if rex { spl.clone() } else { ah.clone() },
-        5 => if rex { bpl.clone() } else { ch.clone() },
-        6 => if rex { sil.clone() } else { dh.clone() },
-        7 => if rex { dil.clone() } else { bh.clone() },
-        8 => r8l.clone(),
-        9 => r9l.clone(),
-        10 => r10l.clone(),
-        11 => r11l.clone(),
-        12 => r12l.clone(),
-        13 => r13l.clone(),
-        14 => r14l.clone(),
-        15 => r15l.clone(),
+        0 => AL.clone(),
+        1 => CL.clone(),
+        2 => DL.clone(),
+        3 => BL.clone(),
+        4 => if rex { SPL.clone() } else { AH.clone() },
+        5 => if rex { BPL.clone() } else { CH.clone() },
+        6 => if rex { SIL.clone() } else { DH.clone() },
+        7 => if rex { DIL.clone() } else { BH.clone() },
+        8 => R8L.clone(),
+        9 => R9L.clone(),
+        10 => R10L.clone(),
+        11 => R11L.clone(),
+        12 => R12L.clone(),
+        13 => R13L.clone(),
+        14 => R14L.clone(),
+        15 => R15L.clone(),
         _ => unreachable!()
     }
 }
 
 pub fn decode_reg16(r_reg: u64) -> Lvalue {
     match r_reg {
-        0 => ax.clone(),
-        1 => cx.clone(),
-        2 => dx.clone(),
-        3 => bx.clone(),
-        4 => sp.clone(),
-        5 => bp.clone(),
-        6 => si.clone(),
-        7 => di.clone(),
-        8 => r8w.clone(),
-        9 => r9w.clone(),
-        10 => r10w.clone(),
-        11 => r11w.clone(),
-        12 => r12w.clone(),
-        13 => r13w.clone(),
-        14 => r14w.clone(),
-        15 => r15w.clone(),
+        0 => AX.clone(),
+        1 => CX.clone(),
+        2 => DX.clone(),
+        3 => BX.clone(),
+        4 => SP.clone(),
+        5 => BP.clone(),
+        6 => SI.clone(),
+        7 => DI.clone(),
+        8 => R8W.clone(),
+        9 => R9W.clone(),
+        10 => R10W.clone(),
+        11 => R11W.clone(),
+        12 => R12W.clone(),
+        13 => R13W.clone(),
+        14 => R14W.clone(),
+        15 => R15W.clone(),
         _ => unreachable!()
     }
 }
 
 pub fn decode_reg32(r_reg: u64) -> Lvalue {
     match r_reg {
-        0 => eax.clone(),
-        1 => ecx.clone(),
-        2 => edx.clone(),
-        3 => ebx.clone(),
-        4 => esp.clone(),
-        5 => ebp.clone(),
-        6 => esi.clone(),
-        7 => edi.clone(),
-        8 => r8d.clone(),
-        9 => r9d.clone(),
-        10 => r10d.clone(),
-        11 => r11d.clone(),
-        12 => r12d.clone(),
-        13 => r13d.clone(),
-        14 => r14d.clone(),
-        15 => r15d.clone(),
+        0 => EAX.clone(),
+        1 => ECX.clone(),
+        2 => EDX.clone(),
+        3 => EBX.clone(),
+        4 => ESP.clone(),
+        5 => EBP.clone(),
+        6 => ESI.clone(),
+        7 => EDI.clone(),
+        8 => R8D.clone(),
+        9 => R9D.clone(),
+        10 => R10D.clone(),
+        11 => R11D.clone(),
+        12 => R12D.clone(),
+        13 => R13D.clone(),
+        14 => R14D.clone(),
+        15 => R15D.clone(),
         _ => unreachable!()
     }
 }
 
 pub fn decode_reg64(r_reg: u64) -> Lvalue {
     match r_reg {
-        0 => rax.clone(),
-        1 => rcx.clone(),
-        2 => rdx.clone(),
-        3 => rbx.clone(),
-        4 => rsp.clone(),
-        5 => rbp.clone(),
-        6 => rsi.clone(),
-        7 => rdi.clone(),
-        8 => r8.clone(),
-        9 => r9.clone(),
-        10 => r10.clone(),
-        11 => r11.clone(),
-        12 => r12.clone(),
-        13 => r13.clone(),
-        14 => r14.clone(),
-        15 => r15.clone(),
+        0 => RAX.clone(),
+        1 => RCX.clone(),
+        2 => RDX.clone(),
+        3 => RBX.clone(),
+        4 => RSP.clone(),
+        5 => RBP.clone(),
+        6 => RSI.clone(),
+        7 => RDI.clone(),
+        8 => R8.clone(),
+        9 => R9.clone(),
+        10 => R10.clone(),
+        11 => R11.clone(),
+        12 => R12.clone(),
+        13 => R13.clone(),
+        14 => R14.clone(),
+        15 => R15.clone(),
         _ => unreachable!()
     }
 }
@@ -374,18 +374,18 @@ pub fn decode_modrm(
                         if _mod == 0 {
                             select_mem(&os,disp.unwrap())
                         } else {
-                            c.add_i(&tmp,&select_mem(&os,bp.clone().to_rv()),&disp.unwrap());
+                            c.add_i(&tmp,&select_mem(&os,BP.clone().to_rv()),&disp.unwrap());
                             tmp
                         }
                     } else {
                         let base = select_mem(&os,match b_rm {
-                            0 => { c.add_i(&tmp,&*bx,&*si); tmp.clone() },
-                            1 => { c.add_i(&tmp,&*bx,&*di); tmp.clone() },
-                            2 => { c.add_i(&tmp,&*bp,&*si); tmp.clone() },
-                            3 => { c.add_i(&tmp,&*bp,&*di); tmp.clone() },
-                            4 => si.clone(),
-                            5 => di.clone(),
-                            7 => bx.clone(),
+                            0 => { c.add_i(&tmp,&*BX,&*SI); tmp.clone() },
+                            1 => { c.add_i(&tmp,&*BX,&*DI); tmp.clone() },
+                            2 => { c.add_i(&tmp,&*BP,&*SI); tmp.clone() },
+                            3 => { c.add_i(&tmp,&*BP,&*DI); tmp.clone() },
+                            4 => SI.clone(),
+                            5 => DI.clone(),
+                            7 => BX.clone(),
                             _ => unreachable!(),
                         }.to_rv());
 
@@ -422,13 +422,13 @@ pub fn decode_modrm(
                         if addrsz == AddressSize::SixtyFour {
                             let tmp = new_temp(64);
 
-                            c.add_i(&tmp,disp.as_ref().unwrap(),&*rip);
+                            c.add_i(&tmp,disp.as_ref().unwrap(),&*RIP);
                             c.mod_i(&tmp,&tmp,&Rvalue::Constant(0xffffffffffffffff));
                             select_mem(&os,tmp.to_rv())
                         } else {
                             let tmp = new_temp(32);
 
-                            c.add_i(&tmp,disp.as_ref().unwrap(),&*eip);
+                            c.add_i(&tmp,disp.as_ref().unwrap(),&*EIP);
                             c.mod_i(&tmp,&tmp,&Rvalue::Constant(0xffffffff));
                             select_mem(&os,tmp.to_rv())
                         }
