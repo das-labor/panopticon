@@ -6,10 +6,8 @@ use panopticon::avr::{Mcu,Avr};
 use panopticon::avr::syntax::disassembler;
 use panopticon::function::{ControlFlowTarget,Function};
 use panopticon::disassembler::State;
-use panopticon::value::Rvalue;
 
 use std::path::Path;
-use std::hash::{Hash,Hasher,SipHasher};
 
 use graph_algos::traits::{VertexListGraph,Graph,EdgeListGraph};
 
