@@ -227,37 +227,37 @@ lazy_static! {
 
 // segment registers
 lazy_static! {
-    pub static ref cs: Lvalue = Lvalue::Variable{ name: "cs".to_string(), width: 0, subscript: None };
-    pub static ref ds: Lvalue = Lvalue::Variable{ name: "ds".to_string(), width: 0, subscript: None };
-    pub static ref fs: Lvalue = Lvalue::Variable{ name: "fs".to_string(), width: 0, subscript: None };
-    pub static ref ss: Lvalue = Lvalue::Variable{ name: "ss".to_string(), width: 0, subscript: None };
-    pub static ref gs: Lvalue = Lvalue::Variable{ name: "gs".to_string(), width: 0, subscript: None };
-    pub static ref es: Lvalue = Lvalue::Variable{ name: "es".to_string(), width: 0, subscript: None };
+    pub static ref cs: Lvalue = Lvalue::Variable{ name: "cs".to_string(), width: 16, subscript: None };
+    pub static ref ds: Lvalue = Lvalue::Variable{ name: "ds".to_string(), width: 16, subscript: None };
+    pub static ref fs: Lvalue = Lvalue::Variable{ name: "fs".to_string(), width: 16, subscript: None };
+    pub static ref ss: Lvalue = Lvalue::Variable{ name: "ss".to_string(), width: 16, subscript: None };
+    pub static ref gs: Lvalue = Lvalue::Variable{ name: "gs".to_string(), width: 16, subscript: None };
+    pub static ref es: Lvalue = Lvalue::Variable{ name: "es".to_string(), width: 16, subscript: None };
 }
 
 // control registers
 lazy_static! {
-    pub static ref cr0: Lvalue = Lvalue::Variable{ name: "cr0".to_string(), width: 0, subscript: None };
-    pub static ref cr1: Lvalue = Lvalue::Variable{ name: "cr1".to_string(), width: 0, subscript: None };
-    pub static ref cr2: Lvalue = Lvalue::Variable{ name: "cr2".to_string(), width: 0, subscript: None };
-    pub static ref cr3: Lvalue = Lvalue::Variable{ name: "cr3".to_string(), width: 0, subscript: None };
-    pub static ref cr4: Lvalue = Lvalue::Variable{ name: "cr4".to_string(), width: 0, subscript: None };
-    pub static ref cr8: Lvalue = Lvalue::Variable{ name: "cr8".to_string(), width: 0, subscript: None };
-    pub static ref ldtr: Lvalue = Lvalue::Variable{ name: "ldtr".to_string(), width: 0, subscript: None };
-    pub static ref gdtr: Lvalue = Lvalue::Variable{ name: "gdtr".to_string(), width: 0, subscript: None };
-    pub static ref idtr: Lvalue = Lvalue::Variable{ name: "idtr".to_string(), width: 0, subscript: None };
+    pub static ref cr0: Lvalue = Lvalue::Variable{ name: "cr0".to_string(), width: 64, subscript: None };
+    pub static ref cr1: Lvalue = Lvalue::Variable{ name: "cr1".to_string(), width: 64, subscript: None };
+    pub static ref cr2: Lvalue = Lvalue::Variable{ name: "cr2".to_string(), width: 64, subscript: None };
+    pub static ref cr3: Lvalue = Lvalue::Variable{ name: "cr3".to_string(), width: 64, subscript: None };
+    pub static ref cr4: Lvalue = Lvalue::Variable{ name: "cr4".to_string(), width: 64, subscript: None };
+    pub static ref cr8: Lvalue = Lvalue::Variable{ name: "cr8".to_string(), width: 64, subscript: None };
+    pub static ref ldtr: Lvalue = Lvalue::Variable{ name: "ldtr".to_string(), width: 64, subscript: None };
+    pub static ref gdtr: Lvalue = Lvalue::Variable{ name: "gdtr".to_string(), width: 64, subscript: None };
+    pub static ref idtr: Lvalue = Lvalue::Variable{ name: "idtr".to_string(), width: 64, subscript: None };
 }
 
 // debug registers
 lazy_static! {
-    pub static ref dr0: Lvalue = Lvalue::Variable{ name: "dr0".to_string(), width: 0, subscript: None };
-    pub static ref dr1: Lvalue = Lvalue::Variable{ name: "dr1".to_string(), width: 0, subscript: None };
-    pub static ref dr2: Lvalue = Lvalue::Variable{ name: "dr2".to_string(), width: 0, subscript: None };
-    pub static ref dr3: Lvalue = Lvalue::Variable{ name: "dr3".to_string(), width: 0, subscript: None };
-    pub static ref dr4: Lvalue = Lvalue::Variable{ name: "dr4".to_string(), width: 0, subscript: None };
-    pub static ref dr5: Lvalue = Lvalue::Variable{ name: "dr5".to_string(), width: 0, subscript: None };
-    pub static ref dr6: Lvalue = Lvalue::Variable{ name: "dr6".to_string(), width: 0, subscript: None };
-    pub static ref dr7: Lvalue = Lvalue::Variable{ name: "dr7".to_string(), width: 0, subscript: None };
+    pub static ref dr0: Lvalue = Lvalue::Variable{ name: "dr0".to_string(), width: 32, subscript: None };
+    pub static ref dr1: Lvalue = Lvalue::Variable{ name: "dr1".to_string(), width: 32, subscript: None };
+    pub static ref dr2: Lvalue = Lvalue::Variable{ name: "dr2".to_string(), width: 32, subscript: None };
+    pub static ref dr3: Lvalue = Lvalue::Variable{ name: "dr3".to_string(), width: 32, subscript: None };
+    pub static ref dr4: Lvalue = Lvalue::Variable{ name: "dr4".to_string(), width: 32, subscript: None };
+    pub static ref dr5: Lvalue = Lvalue::Variable{ name: "dr5".to_string(), width: 32, subscript: None };
+    pub static ref dr6: Lvalue = Lvalue::Variable{ name: "dr6".to_string(), width: 32, subscript: None };
+    pub static ref dr7: Lvalue = Lvalue::Variable{ name: "dr7".to_string(), width: 32, subscript: None };
 }
 
 static GLOBAL_AMD64_TEMPVAR_COUNT: AtomicUsize = ATOMIC_USIZE_INIT;
@@ -281,7 +281,7 @@ pub fn disassembler(bits: Mode) -> Rc<Disassembler<Amd64>> {
             true
         });
 
-    let addrsize_prfx = new_disassembler!(Amd64 =>
+    let addrsz_prfx = new_disassembler!(Amd64 =>
         [ 0x67 ] = |st: &mut State<Amd64>| {
             match st.configuration.mode {
                 Mode::Real => st.configuration.address_size = AddressSize::ThirtyTwo,
@@ -309,6 +309,14 @@ pub fn disassembler(bits: Mode) -> Rc<Disassembler<Amd64>> {
             }
             true
         });
+
+    let seg_prfx = new_disassembler!(Amd64 =>
+        [ 0x2e ] = |st: &mut State<Amd64>| { true },
+        [ 0x36 ] = |st: &mut State<Amd64>| { true },
+        [ 0x3e ] = |st: &mut State<Amd64>| { true },
+        [ 0x26 ] = |st: &mut State<Amd64>| { true },
+        [ 0x64 ] = |st: &mut State<Amd64>| { true },
+        [ 0x65 ] = |st: &mut State<Amd64>| { true });
 
     let imm8 = new_disassembler!(Amd64 =>
         [ "imm@........" ] = |st: &mut State<Amd64>| {
@@ -488,7 +496,7 @@ pub fn disassembler(bits: Mode) -> Rc<Disassembler<Amd64>> {
 
             if st.has_group("reg") {
                 let reg = if st.has_group("r") && st.get_group("r") == 1 { 8 } else { 0 } + st.get_group("reg");
-                //st.configuration.reg = select_reg(st.configuration.operand_size,reg,st.configuration.rex);
+                st.configuration.reg = Some(decode::select_reg(&st.configuration.operand_size,reg,st.configuration.rex));
             }
 
             let b_rm = if st.has_group("b") && st.get_group("b") > 0 { 1 << 3 } else { 0 } + st.get_group("rm");
@@ -567,7 +575,8 @@ pub fn disassembler(bits: Mode) -> Rc<Disassembler<Amd64>> {
         [ "mod@01 000 rm@100", sib, disp8  ] = rm_semantic(Some(OperandSize::Eight)),
         [ "mod@01 000 rm@...", disp8       ] = rm_semantic(Some(OperandSize::Eight)),
         [ "mod@10 000 rm@100", sib, disp32 ] = rm_semantic(Some(OperandSize::Eight)),
-        [ "mod@10 000 rm@...", disp32      ] = rm_semantic(Some(OperandSize::Eight)));
+        [ "mod@10 000 rm@...", disp32      ] = rm_semantic(Some(OperandSize::Eight)),
+        [ "mod@11 000 rm@..."              ] = rm_semantic(Some(OperandSize::Eight)));
 
     let rm1 = new_disassembler!(Amd64 =>
         [ "mod@00 001 rm@101", disp32      ] = rm_semantic(None),
@@ -586,7 +595,8 @@ pub fn disassembler(bits: Mode) -> Rc<Disassembler<Amd64>> {
         [ "mod@01 001 rm@100", sib, disp8  ] = rm_semantic(Some(OperandSize::Eight)),
         [ "mod@01 001 rm@...", disp8       ] = rm_semantic(Some(OperandSize::Eight)),
         [ "mod@10 001 rm@100", sib, disp32 ] = rm_semantic(Some(OperandSize::Eight)),
-        [ "mod@10 001 rm@...", disp32      ] = rm_semantic(Some(OperandSize::Eight)));
+        [ "mod@10 001 rm@...", disp32      ] = rm_semantic(Some(OperandSize::Eight)),
+        [ "mod@11 001 rm@..."              ] = rm_semantic(Some(OperandSize::Eight)));
 
     let rm2 = new_disassembler!(Amd64 =>
         [ "mod@00 010 rm@101", disp32      ] = rm_semantic(None),
@@ -605,7 +615,8 @@ pub fn disassembler(bits: Mode) -> Rc<Disassembler<Amd64>> {
         [ "mod@01 010 rm@100", sib, disp8  ] = rm_semantic(Some(OperandSize::Eight)),
         [ "mod@01 010 rm@...", disp8       ] = rm_semantic(Some(OperandSize::Eight)),
         [ "mod@10 010 rm@100", sib, disp32 ] = rm_semantic(Some(OperandSize::Eight)),
-        [ "mod@10 010 rm@...", disp32      ] = rm_semantic(Some(OperandSize::Eight)));
+        [ "mod@10 010 rm@...", disp32      ] = rm_semantic(Some(OperandSize::Eight)),
+        [ "mod@11 010 rm@..."              ] = rm_semantic(Some(OperandSize::Eight)));
 
     let rm3 = new_disassembler!(Amd64 =>
         [ "mod@00 011 rm@101", disp32      ] = rm_semantic(None),
@@ -624,7 +635,8 @@ pub fn disassembler(bits: Mode) -> Rc<Disassembler<Amd64>> {
         [ "mod@01 011 rm@100", sib, disp8  ] = rm_semantic(Some(OperandSize::Eight)),
         [ "mod@01 011 rm@...", disp8       ] = rm_semantic(Some(OperandSize::Eight)),
         [ "mod@10 011 rm@100", sib, disp32 ] = rm_semantic(Some(OperandSize::Eight)),
-        [ "mod@10 011 rm@...", disp32      ] = rm_semantic(Some(OperandSize::Eight)));
+        [ "mod@10 011 rm@...", disp32      ] = rm_semantic(Some(OperandSize::Eight)),
+        [ "mod@11 011 rm@..."              ] = rm_semantic(Some(OperandSize::Eight)));
 
     let rm4 = new_disassembler!(Amd64 =>
         [ "mod@00 100 rm@101", disp32      ] = rm_semantic(None),
@@ -643,7 +655,8 @@ pub fn disassembler(bits: Mode) -> Rc<Disassembler<Amd64>> {
         [ "mod@01 100 rm@100", sib, disp8  ] = rm_semantic(Some(OperandSize::Eight)),
         [ "mod@01 100 rm@...", disp8       ] = rm_semantic(Some(OperandSize::Eight)),
         [ "mod@10 100 rm@100", sib, disp32 ] = rm_semantic(Some(OperandSize::Eight)),
-        [ "mod@10 100 rm@...", disp32      ] = rm_semantic(Some(OperandSize::Eight)));
+        [ "mod@10 100 rm@...", disp32      ] = rm_semantic(Some(OperandSize::Eight)),
+        [ "mod@11 100 rm@..."              ] = rm_semantic(Some(OperandSize::Eight)));
 
     let rm5 = new_disassembler!(Amd64 =>
         [ "mod@00 101 rm@101", disp32      ] = rm_semantic(None),
@@ -662,7 +675,8 @@ pub fn disassembler(bits: Mode) -> Rc<Disassembler<Amd64>> {
         [ "mod@01 101 rm@100", sib, disp8  ] = rm_semantic(Some(OperandSize::Eight)),
         [ "mod@01 101 rm@...", disp8       ] = rm_semantic(Some(OperandSize::Eight)),
         [ "mod@10 101 rm@100", sib, disp32 ] = rm_semantic(Some(OperandSize::Eight)),
-        [ "mod@10 101 rm@...", disp32      ] = rm_semantic(Some(OperandSize::Eight)));
+        [ "mod@10 101 rm@...", disp32      ] = rm_semantic(Some(OperandSize::Eight)),
+        [ "mod@11 101 rm@..."              ] = rm_semantic(Some(OperandSize::Eight)));
 
     let rm6 = new_disassembler!(Amd64 =>
         [ "mod@00 110 rm@101", disp32      ] = rm_semantic(None),
@@ -681,7 +695,8 @@ pub fn disassembler(bits: Mode) -> Rc<Disassembler<Amd64>> {
         [ "mod@01 110 rm@100", sib, disp8  ] = rm_semantic(Some(OperandSize::Eight)),
         [ "mod@01 110 rm@...", disp8       ] = rm_semantic(Some(OperandSize::Eight)),
         [ "mod@10 110 rm@100", sib, disp32 ] = rm_semantic(Some(OperandSize::Eight)),
-        [ "mod@10 110 rm@...", disp32      ] = rm_semantic(Some(OperandSize::Eight)));
+        [ "mod@10 110 rm@...", disp32      ] = rm_semantic(Some(OperandSize::Eight)),
+        [ "mod@11 110 rm@..."              ] = rm_semantic(Some(OperandSize::Eight)));
 
     let rm7 = new_disassembler!(Amd64 =>
         [ "mod@00 111 rm@101", disp32      ] = rm_semantic(None),
@@ -700,11 +715,12 @@ pub fn disassembler(bits: Mode) -> Rc<Disassembler<Amd64>> {
         [ "mod@01 111 rm@100", sib, disp8  ] = rm_semantic(Some(OperandSize::Eight)),
         [ "mod@01 111 rm@...", disp8       ] = rm_semantic(Some(OperandSize::Eight)),
         [ "mod@10 111 rm@100", sib, disp32 ] = rm_semantic(Some(OperandSize::Eight)),
-        [ "mod@10 111 rm@...", disp32      ] = rm_semantic(Some(OperandSize::Eight)));
+        [ "mod@10 111 rm@...", disp32      ] = rm_semantic(Some(OperandSize::Eight)),
+        [ "mod@11 111 rm@..."              ] = rm_semantic(Some(OperandSize::Eight)));
 
     generic::integer_instructions(
         bits,
-        lock_prfx, rep_prfx, repx_prfx, opsize_prfx,
+        lock_prfx, rep_prfx, repx_prfx, opsize_prfx, addrsz_prfx, rex_prfx, seg_prfx,
         imm8, imm16, imm32, imm48, imm64, imm, immlong,
         moffs8, moffs,
         sib,

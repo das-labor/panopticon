@@ -178,7 +178,7 @@ pub fn decode_ctrlrm(sm: &mut State<Amd64>) -> (Rvalue,Rvalue) {
             (cr3.to_rv(),rm.to_rv())
         } else if *reg == *rsp || *reg == *esp  {
             (cr4.to_rv(),rm.to_rv())
-        } else if *reg == *r9 || *reg == *r9w  {
+        } else if *reg == *r8 || *reg == *r9w  {
             (cr8.to_rv(),rm.to_rv())
         } else {
             unreachable!()
@@ -330,7 +330,7 @@ pub fn decode_reg64(r_reg: u64) -> Lvalue {
     }
 }
 
-fn select_reg(os: &OperandSize,r: u64, rex: bool) -> Lvalue {
+pub fn select_reg(os: &OperandSize,r: u64, rex: bool) -> Lvalue {
     match os {
         &OperandSize::Eight => decode_reg8(r,rex),
         &OperandSize::Sixteen => decode_reg16(r),
@@ -471,7 +471,7 @@ fn decode_sib(
         0 => match b_base {
             0 | 1 | 2 | 3 | 4 |
             6 | 7 | 8 | 9 | 10 | 11 | 12 |
-            14 => match x_index {
+            14 | 15 => match x_index {
                 0 | 1 | 2 | 3 | 5...15 => {
                     let base = decode_reg64(b_base);
                     let index = decode_reg64(x_index);
@@ -491,7 +491,7 @@ fn decode_sib(
                 4 => select_mem(&os,Rvalue::Constant((b_base & 7) as u64)),
                 _ => unreachable!()
             },
-            5 | 15 => match x_index {
+            5 | 13 => match x_index {
                 0...3 | 5...15 => {
                     let index = decode_reg64(x_index);
                     let tmp = new_temp(64);
@@ -748,19 +748,38 @@ pub fn binary_vv(opcode: &'static str,
 
 pub fn trinary(opcode: &'static str,
               decode: fn(&mut State<Amd64>) -> (Rvalue,Rvalue,Rvalue),
-              sem: &Fn(&mut CodeGen<Amd64>, Rvalue, Rvalue, Rvalue)
+              sem: fn(&mut CodeGen<Amd64>, Rvalue, Rvalue, Rvalue)
              ) -> Box<Fn(&mut State<Amd64>) -> bool> {
     Box::new(move |st: &mut State<Amd64>| -> bool {
-        false
+        let len = st.tokens.len();
+        let next = st.address + len as u64;
+        let (arg0,arg1,arg2) = decode(st);
+
+        st.mnemonic_dynargs(len,&opcode,"{64}, {64}, {64}",&|c| {
+            sem(c,arg0.clone(),arg1.clone(),arg2.clone());
+            vec![arg0.clone(),arg1.clone(),arg2.clone()]
+        });
+        st.jump(Rvalue::Constant(next),Guard::always());
+        true
     })
 }
 
 pub fn trinary_vr(opcode: &'static str,
                   decode: fn(&mut State<Amd64>) -> (Rvalue,Rvalue),
                   c: &Lvalue,
-                  sem: &Fn(&mut CodeGen<Amd64>, Rvalue, Rvalue, Rvalue)) -> Box<Fn(&mut State<Amd64>) -> bool> {
+                  sem: fn(&mut CodeGen<Amd64>, Rvalue, Rvalue, Rvalue)) -> Box<Fn(&mut State<Amd64>) -> bool> {
+    let arg2 = c.clone();
     Box::new(move |st: &mut State<Amd64>| -> bool {
-        false
+        let len = st.tokens.len();
+        let next = st.address + len as u64;
+        let (arg0,arg1) = decode(st);
+
+        st.mnemonic_dynargs(len,&opcode,"{64}, {64}, {64}",&|c| {
+            sem(c,arg0.clone(),arg1.clone(),arg2.to_rv());
+            vec![arg0.clone(),arg1.clone(),arg2.to_rv()]
+        });
+        st.jump(Rvalue::Constant(next),Guard::always());
+        true
     })
 }
 

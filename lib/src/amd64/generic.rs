@@ -193,8 +193,8 @@ pub fn integer_universial(lock_prfx: Rc<Disassembler<Amd64>>, imm8: Rc<Disassemb
         // IMUL
         [ 0xf6, rmbyte5  ] = unary("imul",decode_m,imul1),
         [ 0xf7, rm5      ] = unary("imul",decode_m,imul1),
-        [ 0x6b, rm, imm8 ] = trinary("imul",decode_rmi,&imul3),
-        [ 0x69, rm, imm  ] = trinary("imul",decode_rmi,&imul3),
+        [ 0x6b, rm, imm8 ] = trinary("imul",decode_rmi,imul3),
+        [ 0x69, rm, imm  ] = trinary("imul",decode_rmi,imul3),
         [ 0x0f, 0xaf, rm ] = binary("imul",decode_rm,imul2),
 
         // IN
@@ -492,8 +492,8 @@ pub fn integer_universial(lock_prfx: Rc<Disassembler<Amd64>>, imm8: Rc<Disassemb
         [ 0x0f, 0x9f, rmbyte ] = unary_box("setg",decode_m,_setcc(Condition::Greater)),
 
         // SHLD
-        [ 0x0f, 0xa4, rm, imm8 ] = trinary("shld",decode_mri,&shld),
-        [ 0x0f, 0xa5, rm       ] = trinary_vr("shld",decode_mr,&*CF,&shld),
+        [ 0x0f, 0xa4, rm, imm8 ] = trinary("shld",decode_mri,shld),
+        [ 0x0f, 0xa5, rm       ] = trinary_vr("shld",decode_mr,&*CF,shld),
 
         // SHR
         [ 0xd0, rmbyte5       ] = binary_vc("shr",decode_m,Rvalue::Constant(1),shr),
@@ -504,8 +504,8 @@ pub fn integer_universial(lock_prfx: Rc<Disassembler<Amd64>>, imm8: Rc<Disassemb
         [ 0xc1, rm5, imm8     ] = binary("shr",decode_mi,shr),
 
         // SHRD
-        [ 0x0f, 0xac, rm, imm8 ] = trinary("shrd",decode_mri,&shrd),
-        [ 0x0f, 0xad, rm       ] = trinary_vr("shrd",decode_mr,&*CF,&shrd),
+        [ 0x0f, 0xac, rm, imm8 ] = trinary("shrd",decode_mri,shrd),
+        [ 0x0f, 0xad, rm       ] = trinary_vr("shrd",decode_mr,&*CF,shrd),
 
         // STC
         [ 0xf9 ] = nonary("stc",stc),
@@ -589,6 +589,10 @@ pub fn integer_rep(lock_prfx: Rc<Disassembler<Amd64>>, imm8: Rc<Disassembler<Amd
         // INS*
         [ 0x6c ] = binary_vr("insb",reg_di,&*dx,ins),
         [ 0x6d ] = binary_vr("ins",reg_di,&*dx,ins),
+
+        // OUTS*
+        [ 0x6e ] = binary_vr("outsb",reg_di,&*dx,outs),
+        [ 0x6f ] = binary_vr("outs",reg_di,&*dx,outs),
 
         // LODS*
         [ 0xac ] = lodsb,
@@ -805,7 +809,8 @@ pub fn integer_32bit_or_less(lock_prfx: Rc<Disassembler<Amd64>>, imm8: Rc<Disass
 pub fn integer_instructions(bits: Mode,
                      lock_prfx: Rc<Disassembler<Amd64>>, rep_prfx: Rc<Disassembler<Amd64>>,
                      repx_prfx: Rc<Disassembler<Amd64>>, opsize_prfx: Rc<Disassembler<Amd64>>,
-                     imm8: Rc<Disassembler<Amd64>>,
+                     addrsz_prfx: Rc<Disassembler<Amd64>>, rex_prfx: Rc<Disassembler<Amd64>>,
+                     seg_prfx: Rc<Disassembler<Amd64>>, imm8: Rc<Disassembler<Amd64>>,
                      imm16: Rc<Disassembler<Amd64>>, imm32: Rc<Disassembler<Amd64>>,
                      imm48: Rc<Disassembler<Amd64>>, imm64: Rc<Disassembler<Amd64>>,
                      imm: Rc<Disassembler<Amd64>>, immlong: Rc<Disassembler<Amd64>>,
@@ -909,11 +914,11 @@ pub fn integer_instructions(bits: Mode,
                 disp8, disp16, disp32, disp64);
 
             new_disassembler!(Amd64 =>
-                [ main ] = |_: &mut State<Amd64>| { true },
-                [ main32 ] = |_: &mut State<Amd64>| { true },
-                [ main16_or_32 ] = |_: &mut State<Amd64>| { true },
-                [ opt!(rep_prfx), opt!(opsize_prfx), opt!(rep_prfx), rep ] = |_: &mut State<Amd64>| { true },
-                [ opt!(rep_prfx), opt!(opsize_prfx), opt!(repx_prfx), repx ] = |_: &mut State<Amd64>| { true })
+                [ opt!(seg_prfx), opt!(opsize_prfx), opt!(addrsz_prfx),  main ] = |_: &mut State<Amd64>| { true },
+                [ opt!(seg_prfx), opt!(opsize_prfx), opt!(addrsz_prfx), main32 ] = |_: &mut State<Amd64>| { true },
+                [ opt!(seg_prfx), opt!(opsize_prfx), opt!(addrsz_prfx), main16_or_32 ] = |_: &mut State<Amd64>| { true },
+                [ opt!(rep_prfx), opt!(seg_prfx), opt!(opsize_prfx), opt!(rep_prfx), rep ] = |_: &mut State<Amd64>| { true },
+                [ opt!(rep_prfx), opt!(seg_prfx), opt!(opsize_prfx), opt!(repx_prfx), repx ] = |_: &mut State<Amd64>| { true })
         },
         Mode::Long => {
             let main64 = integer_64bit(
@@ -939,10 +944,10 @@ pub fn integer_instructions(bits: Mode,
                 disp8, disp16, disp32, disp64);
 
             new_disassembler!(Amd64 =>
-                [ main ] = |_: &mut State<Amd64>| { true },
-                [ opt!(opsize_prfx), main64 ] = |_: &mut State<Amd64>| { true },
-                [ opt!(rep_prfx), opt!(opsize_prfx), opt!(rep_prfx), rep ] = |_: &mut State<Amd64>| { true },
-                [ opt!(rep_prfx), opt!(opsize_prfx), opt!(repx_prfx), repx ] = |_: &mut State<Amd64>| { true })
+                [ opt!(opsize_prfx), opt!(addrsz_prfx), opt!(rex_prfx),  main ] = |_: &mut State<Amd64>| { true },
+                [ opt!(opsize_prfx), opt!(addrsz_prfx), rex_prfx, main64 ] = |_: &mut State<Amd64>| { true },
+                [ opt!(rep_prfx), opt!(opsize_prfx), opt!(rep_prfx), opt!(rex_prfx), rep ] = |_: &mut State<Amd64>| { true },
+                [ opt!(rep_prfx), opt!(opsize_prfx), opt!(repx_prfx), opt!(rex_prfx), repx ] = |_: &mut State<Amd64>| { true })
         }
     }
 }
