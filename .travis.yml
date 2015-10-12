@@ -39,8 +39,7 @@ after_success: |
   kcov --exclude-pattern=/.cargo target/kcov target/debug/panopticon-*
   kcov --exclude-pattern=/.cargo target/kcov target/debug/amd64-*
   kcov --exclude-pattern=/.cargo target/kcov target/debug/avr-*
-  kcov --exclude-pattern=/.cargo target/kcov target/debug/project-*
-  kcov --coveralls-id=$TRAVIS_JOB_ID --exclude-pattern=/.cargo target/kcov target/debug/qtpanopticon-*
+  kcov --coveralls-id=$TRAVIS_JOB_ID --exclude-pattern=/.cargo target/kcov target/debug/project-*
 script: |
    cargo build --verbose &&
    cargo test --no-run --verbose
