@@ -10,7 +10,7 @@ use panopticon::disassembler::State;
 use std::path::Path;
 
 use graph_algos::traits::{VertexListGraph,Graph,EdgeListGraph};
-
+/*
 #[test]
 fn avr_opcodes_01() {
     let reg = Region::open("flash".to_string(),Path::new("tests/data/avr-all-opcodes.bin")).unwrap();
@@ -34,7 +34,7 @@ fn avr_opcodes_01() {
             break;
         }
     }
-}
+}*/
 
 
 #[test]
