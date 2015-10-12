@@ -42,4 +42,7 @@ after_success: |
   kcov --coveralls-id=$TRAVIS_JOB_ID --exclude-pattern=/.cargo target/kcov target/debug/project-*
 script: |
    cargo build --verbose &&
-   cargo test --verbose
+   cargo test --verbose --lib &&
+   cargo test --verbose --test avr &&
+   cargo test --verbose --test amd64 &&
+   cargo test --verbose --test project
