@@ -225,7 +225,7 @@ mod tests {
                 Rvalue::Variable{ name: "a".to_string(), width: 8, subscript: Some(1) })), assignee: Lvalue::Variable{ name: "a".to_string(), width: 8, subscript: Some(3) }});
         let mne1 = Mnemonic::new(0..10,"op1".to_string(),"{8:-:eax} nog".to_string(),ops1.iter(),i1.iter());
 
-        assert_eq!(mne1.format(),"{8:-:eax} nog".to_string());
+        assert_eq!(mne1.format(),"eax nog".to_string());
         assert_eq!(mne1.area, Bound::new(0,10));
         assert_eq!(mne1.opcode, "op1");
         assert_eq!(mne1.operands, ops1);
