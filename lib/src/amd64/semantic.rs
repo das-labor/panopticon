@@ -194,15 +194,24 @@ pub fn aas(cg: &mut CodeGen<Amd64>) {
     cg.assign(&*AL,&y1.to_rv());
 }
 
-pub fn adc(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {
-    //unimplemented!()
-    /*
-    size_t const a_w = bitwidth(a), b_w = (is_Rvalue::Constant(b) ? a_w : bitwidth(b));
-    rvalue const res = a + (a_w == b_w ? b : sign_ext(b,b_w,a_w,m)) + CF;
-    rvalue const res_half = (a % Rvalue::Constant(0x100)) + (b % constant(0x100)) + CF;
+pub fn adc(cg: &mut CodeGen<Amd64>, _a: Rvalue, b: Rvalue) {
+    let aw = bitwidth(&_a);
+    let a = Lvalue::from_rvalue(&_a).unwrap();
+    let bw = if let Rvalue::Constant(_) = b { aw } else { bitwidth(&b) };
+    let res = new_temp(max(aw,bw) + 1);
+    let res_half = new_temp(8);
+    let b_ext = if aw == bw { b.clone() } else { sign_ext(&b,bw,aw,cg) };
 
-    m.assign(to_lvalue(a),res % Rvalue::Constant(1 << a_w));
-    set_arithm_flags(res,res_half,a,b,m);*/
+    cg.add_i(&res,&a.to_rv(),&b_ext);
+    cg.add_i(&res,&res.to_rv(),&*CF);
+    cg.mod_i(&res_half,&res.to_rv(),&Rvalue::Constant(0x100));
+
+    if aw < 64 {
+        cg.mod_i(&a,&res.to_rv(),&Rvalue::Constant(1 << aw));
+    } else {
+        cg.assign(&a,&res);
+    }
+    set_arithm_flags(&res,&res_half.to_rv(),&a.to_rv(),cg);
 }
 
 pub fn add(cg: &mut CodeGen<Amd64>, _a: Rvalue, b: Rvalue) {
