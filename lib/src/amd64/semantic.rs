@@ -6,7 +6,7 @@ use guard::Guard;
 
 fn do_push(v: &Rvalue, mode: Mode, cg: &mut CodeGen<Amd64>) {
     if let &Rvalue::Variable{ width: w, ..} = v {
-	    cg.assign(&Lvalue::Memory{
+        cg.assign(&Lvalue::Memory{
             offset: Box::new(RIP.to_rv()),
             bytes: w / 8,
             endianess: Endianess::Little,
@@ -14,19 +14,19 @@ fn do_push(v: &Rvalue, mode: Mode, cg: &mut CodeGen<Amd64>) {
         },v);
 
         match mode {
-		    Mode::Real => {
+            Mode::Real => {
                 cg.add_i(&*SP,&SP.to_rv(),&Rvalue::Constant(w as u64));
                 cg.mod_i(&*SP,&SP.to_rv(),&Rvalue::Constant(0x10000));
             }
-		    Mode::Protected => {
+            Mode::Protected => {
                 cg.add_i(&*ESP,&ESP.to_rv(),&Rvalue::Constant(w as u64));
                 cg.mod_i(&*ESP,&ESP.to_rv(),&Rvalue::Constant(0x100000000));
             }
 
-		    Mode::Long => {
+            Mode::Long => {
                 cg.add_i(&*RSP,&RSP.to_rv(),&Rvalue::Constant(w as u64));
             }
-	    }
+        }
     } else {
         unreachable!()
     }
@@ -57,13 +57,13 @@ fn sign_ext(v: &Rvalue, from: usize, to: usize, cg: &mut CodeGen<Amd64>) -> Rval
 }
 
 fn set_arithm_flags(res: &Lvalue, res_half: &Rvalue, a: &Rvalue, cg: &mut CodeGen<Amd64>) {
-	let aw = bitwidth(a);
+    let aw = bitwidth(a);
 
     cg.div_i(&*CF,&res.to_rv(),&Rvalue::Constant(1 << aw));
-	cg.div_i(&*AF,res_half,&Rvalue::Constant(0x100));
+    cg.div_i(&*AF,res_half,&Rvalue::Constant(0x100));
     cg.div_i(&*SF,&res.to_rv(),&Rvalue::Constant(1 << (aw - 1)));
-	cg.equal_i(&*ZF,a, &Rvalue::Constant(0));
-	cg.xor_i(&*OF,&CF.to_rv(),&SF.to_rv());
+    cg.equal_i(&*ZF,a, &Rvalue::Constant(0));
+    cg.xor_i(&*OF,&CF.to_rv(),&SF.to_rv());
 
     let tmp = new_temp(aw);
 
@@ -119,12 +119,12 @@ pub fn flagcomp(flag: &Lvalue) -> Box<Fn(&mut CodeGen<Amd64>)> {
 pub fn adc(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {
     //unimplemented!()
     /*
-	size_t const a_w = bitwidth(a), b_w = (is_Rvalue::Constant(b) ? a_w : bitwidth(b));
-	rvalue const res = a + (a_w == b_w ? b : sign_ext(b,b_w,a_w,m)) + CF;
-	rvalue const res_half = (a % Rvalue::Constant(0x100)) + (b % constant(0x100)) + CF;
+    size_t const a_w = bitwidth(a), b_w = (is_Rvalue::Constant(b) ? a_w : bitwidth(b));
+    rvalue const res = a + (a_w == b_w ? b : sign_ext(b,b_w,a_w,m)) + CF;
+    rvalue const res_half = (a % Rvalue::Constant(0x100)) + (b % constant(0x100)) + CF;
 
-	m.assign(to_lvalue(a),res % Rvalue::Constant(1 << a_w));
-	set_arithm_flags(res,res_half,a,b,m);*/
+    m.assign(to_lvalue(a),res % Rvalue::Constant(1 << a_w));
+    set_arithm_flags(res,res_half,a,b,m);*/
 }
 
 pub fn aaa(cg: &mut CodeGen<Amd64>) {
@@ -202,167 +202,152 @@ pub fn aas(cg: &mut CodeGen<Amd64>) {
     cg.assign(&*AL,&y1.to_rv());
 }
 
-pub fn add(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {
-    //unimplemented!()
-    /*
-	size_t const a_w = bitwidth(a), b_w = (is_Rvalue::Constant(b) ? a_w : bitwidth(b));
-	rvalue const res = a + (a_w == b_w ? b : sign_ext(b,b_w,a_w,m));
-	rvalue const res_half = (a % Rvalue::Constant(0x100)) + (b % constant(0x100));
 
-	m.assign(to_lvalue(a),res % Rvalue::Constant(1 << a_w));
-	set_arithm_flags(res,res_half,a,b,m);*/
+pub fn add(cg: &mut CodeGen<Amd64>, a: Rvalue, b: Rvalue) {
+    let aw = bitwidth(&a);
+    let bw = if Rvalue::Constant(c) = b { aw } else { bitwidth(b) };
+    let res = new_temp(max(aw,bw) + 1);
+    let res_half = new_temp(8);
+
+    cg.add_i(&res,&a,if aw == bw { &b } else { &sign_ext(&b,bw,aw,cg) });
+    cg.mod_i(&res_half,&res,&Rvalue::Constant(0x100));
+
+    cg.mod_i(&a.to_rv(),&res,&Rvalue::Constant(1 << aw));
+    set_arithm_flags(&res,&res_half,&a,&b,cg);
 }
 
-pub fn adcx(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {
-    //unimplemented!()
-    /*
-	size_t const a_w = bitwidth(a);
-	rvalue const res = a + b + CF;
+pub fn adcx(cg: &mut CodeGen<Amd64>, a: Rvalue, b: Rvalue) {
+    let aw = bitwidth(&a);
+    let res = new_temp(max(aw,bw) + 1);
 
-	m.assign(to_lvalue(CF), res / Rvalue::Constant(1 << a_w));
-	m.assign(to_lvalue(a),res % Rvalue::Constant(1 << a_w));*/
+    cg.add_i(&res,&a,&b);
+    cg.add_i(&res,&res,&*CF);
+    cg.mod_i(&a,&res,&Rvalue::Constant(1 << aw));
+    cg.div_i(&res,&res,&Rvalue::Constant(1 << aw));
+    cg.equal_i(&*CF,&res,&Rvalue::Constant(1 << aw));
 }
 
-pub fn and(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {
-    //unimplemented!()
-    /*
-	unsigned int a_w = bitwidth(a), b_w = (is_Rvalue::Constant(b) ? a_w : bitwidth(b));
-	rvalue const res = a & (a_w == b_w ? b : sign_ext(b,b_w,a_w,m));
-	rvalue const res_half = (a % Rvalue::Constant(0x100)) & (b % constant(0x100));
+pub fn and(_: &mut CodeGen<Amd64>, a: Rvalue, b: Rvalue) {
+    let aw = bitwidth(&a);
+    let bw = if Rvalue::Constant(c) = b { aw } else { bitwidth(b) };
+    let res = new_temp(max(aw,bw) + 1);
+    let res_half = new_temp(8);
 
-	m.assign(to_lvalue(a),res);
-	set_arithm_flags(res,res_half,a,b,m);*/
+    cg.and_i(&res,&a,if aw == bw { &b } else { &sign_ext(&b,bw,aw,cg) });
+    cg.mod_i(&res_half,&res,&Rvalue::Constant(0x100));
+
+    cg.mod_i(&a.to_rv(),&res,&Rvalue::Constant(1 << aw));
+    set_arithm_flags(&res,&res_half,&a,&b,cg);
 }
 
 pub fn arpl(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
 
 pub fn bound(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
 
-pub fn bsf(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {
-    //unimplemented!()
-    /*
-	using dsl::operator*;
+pub fn bsf(cg: &mut CodeGen<Amd64>, a: Rvalue, b: Rvalue) {
+    let aw = bitwidth(&a);
 
-	size_t const a_w = bitwidth(a);
-	size_t bit = 0;
-	boost::optional<rvalue> prev;
+    cg.equal_i(&*ZF,&b,&Rvalue::Constant(0));
 
-	m.assign(to_lvalue(ZF), equal(Rvalue::Constant(0), b));
+    for bit in (0..aw) {
+        let val = new_temp(aw);
 
-	while(bit < a_w)
-	{
-		rvalue val = (b % (1 << (bit + 1)) / (1 << bit));
-
-		m.assign(to_lvalue(a),Rvalue::Constant(bit + 1) * val);
-		if(prev)
-			prev = *prev | val;
-		else
-			prev = val;
-
-		++bit;
-	}*/
+        cg.mod_i(&val,&b,&Rvalue::Constant(1 << (bit + 1)));
+        cg.div_i(&val,&val,&Rvalue::Constant(1 << bit));
+        cg.mul_i(&a,&val,&Rvalue::Constant(bit + 1));
+    }
 }
 
-pub fn bsr(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {
-    //unimplemented!()
-    /*
-	using dsl::operator*;
+pub fn bsr(cg: &mut CodeGen<Amd64>, a: Rvalue, b: Rvalue) {
+    let aw = bitwidth(&a);
 
-	size_t const a_w = bitwidth(a);
-	size_t bit = a_w - 1;
-	boost::optional<rvalue> prev;
+    cg.equal_i(&*ZF,&b,&Rvalue::Constant(0));
 
-	m.assign(to_lvalue(ZF), equal(Rvalue::Constant(0), b));
+    for bit in (0..aw).iter().rev() {
+        let val = new_temp(aw);
 
-	do
-	{
-		rvalue val = (b % (1 << (bit + 1)) / (1 << bit));
-
-		m.assign(to_lvalue(a),Rvalue::Constant(bit + 1) * val);
-		if(prev)
-			prev = *prev | val;
-		else
-			prev = val;
-	}
-	while(bit--);*/
+        cg.mod_i(&val,&b,&Rvalue::Constant(1 << (bit + 1)));
+        cg.div_i(&val,&val,&Rvalue::Constant(1 << bit));
+        cg.mul_i(&a,&val,&Rvalue::Constant(bit + 1));
+    }
 }
 
 pub fn bswap(_: &mut CodeGen<Amd64>, _: Rvalue) {
     //unimplemented!()
     /*
-	using dsl::operator*;
+    using dsl::operator*;
 
-	size_t const a_w = bitwidth(a);
-	size_t byte = 0;
+    size_t const a_w = bitwidth(a);
+    size_t byte = 0;
 
-	rvalue tmp = undefined();
+    rvalue tmp = undefined();
 
-	while(byte < a_w / 8)
-	{
-		unsigned int lsb = byte * 8;
-		unsigned int div = (1 << lsb), mul = (1 << (a_w - byte * 8));
+    while(byte < a_w / 8)
+    {
+        unsigned int lsb = byte * 8;
+        unsigned int div = (1 << lsb), mul = (1 << (a_w - byte * 8));
 
-		tmp = tmp + (((a / div) % Rvalue::Constant(0x100)) * mul);
-		++byte;
-	}
+        tmp = tmp + (((a / div) % Rvalue::Constant(0x100)) * mul);
+        ++byte;
+    }
 
-	m.assign(to_lvalue(a),tmp);*/
+    m.assign(to_lvalue(a),tmp);*/
 }
 
 pub fn bt(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {
     //unimplemented!()
     /*
-	using dsl::operator<<;
-	rvalue mod = (Rvalue::Constant(1) << (b % constant(bitwidth(a))));
+    using dsl::operator<<;
+    rvalue mod = (Rvalue::Constant(1) << (b % constant(bitwidth(a))));
 
-	m.assign(to_lvalue(CF), (a / mod) % 2);
-	m.assign(to_lvalue(PF), undefined());
-	m.assign(to_lvalue(OF), undefined());
-	m.assign(to_lvalue(SF), undefined());
-	m.assign(to_lvalue(AF), undefined());*/
+    m.assign(to_lvalue(CF), (a / mod) % 2);
+    m.assign(to_lvalue(PF), undefined());
+    m.assign(to_lvalue(OF), undefined());
+    m.assign(to_lvalue(SF), undefined());
+    m.assign(to_lvalue(AF), undefined());*/
 }
 
 pub fn btc(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {
     //unimplemented!()
     /*
-	using dsl::operator<<;
-	rvalue mod = (Rvalue::Constant(1) << (b % constant(bitwidth(a))));
+    using dsl::operator<<;
+    rvalue mod = (Rvalue::Constant(1) << (b % constant(bitwidth(a))));
 
-	m.assign(to_lvalue(CF), (a / mod) % 2);
-	m.assign(to_lvalue(PF), undefined());
-	m.assign(to_lvalue(OF), undefined());
-	m.assign(to_lvalue(SF), undefined());
-	m.assign(to_lvalue(AF), undefined());
-	m.assign(to_lvalue(a),a ^ mod);*/
+    m.assign(to_lvalue(CF), (a / mod) % 2);
+    m.assign(to_lvalue(PF), undefined());
+    m.assign(to_lvalue(OF), undefined());
+    m.assign(to_lvalue(SF), undefined());
+    m.assign(to_lvalue(AF), undefined());
+    m.assign(to_lvalue(a),a ^ mod);*/
 }
 
 pub fn btr(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {
     //unimplemented!()
     /*
-	using dsl::operator<<;
-	size_t const a_w = bitwidth(a);
-	rvalue mod =  ((Rvalue::Constant(1) << (b % constant(bitwidth(a)))));
+    using dsl::operator<<;
+    size_t const a_w = bitwidth(a);
+    rvalue mod =  ((Rvalue::Constant(1) << (b % constant(bitwidth(a)))));
 
-	m.assign(to_lvalue(CF), (a / mod) % 2);
-	m.assign(to_lvalue(PF), undefined());
-	m.assign(to_lvalue(OF), undefined());
-	m.assign(to_lvalue(SF), undefined());
-	m.assign(to_lvalue(AF), undefined());
-	m.assign(to_lvalue(a),(a & (Rvalue::Constant(0xffffffffffffffff) ^ mod)) % constant(1 << a_w));*/
+    m.assign(to_lvalue(CF), (a / mod) % 2);
+    m.assign(to_lvalue(PF), undefined());
+    m.assign(to_lvalue(OF), undefined());
+    m.assign(to_lvalue(SF), undefined());
+    m.assign(to_lvalue(AF), undefined());
+    m.assign(to_lvalue(a),(a & (Rvalue::Constant(0xffffffffffffffff) ^ mod)) % constant(1 << a_w));*/
 }
 
 pub fn bts(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {
     //unimplemented!()
     /*
-	using dsl::operator<<;
-	rvalue mod = (Rvalue::Constant(1) << (b % constant(bitwidth(a))));
+    using dsl::operator<<;
+    rvalue mod = (Rvalue::Constant(1) << (b % constant(bitwidth(a))));
 
-	m.assign(to_lvalue(CF), (a / mod) % 2);
-	m.assign(to_lvalue(PF), undefined());
-	m.assign(to_lvalue(OF), undefined());
-	m.assign(to_lvalue(SF), undefined());
-	m.assign(to_lvalue(AF), undefined());
-	m.assign(to_lvalue(a),a & mod);*/
+    m.assign(to_lvalue(CF), (a / mod) % 2);
+    m.assign(to_lvalue(PF), undefined());
+    m.assign(to_lvalue(OF), undefined());
+    m.assign(to_lvalue(SF), undefined());
+    m.assign(to_lvalue(AF), undefined());
+    m.assign(to_lvalue(a),a & mod);*/
 }
 
 pub fn near_call(cg: &mut CodeGen<Amd64>, a: Rvalue) {
@@ -376,20 +361,20 @@ pub fn near_rcall(cg: &mut CodeGen<Amd64>, a: Rvalue) {
 pub fn near_xcall(cg: &mut CodeGen<Amd64>, a: Rvalue, rel: bool) {
     match cg.configuration.operand_size {
         OperandSize::Sixteen => {
-			let new_ip = if rel {
-				let x = Lvalue::from_rvalue(&sign_ext(&a,32,64,cg)).unwrap();
+            let new_ip = if rel {
+                let x = Lvalue::from_rvalue(&sign_ext(&a,32,64,cg)).unwrap();
                 cg.add_i(&x,&x.to_rv(),&RIP.to_rv());
                 x
             } else {
-				Lvalue::from_rvalue(&sign_ext(&a,32,64,cg)).unwrap()
+                Lvalue::from_rvalue(&sign_ext(&a,32,64,cg)).unwrap()
             };
 
-			do_push(&RIP.to_rv(),Mode::Long,cg);
-			cg.assign(&*RIP, &new_ip);
-			cg.call_i(&Lvalue::Undefined,&new_ip);
-		},
+            do_push(&RIP.to_rv(),Mode::Long,cg);
+            cg.assign(&*RIP, &new_ip);
+            cg.call_i(&Lvalue::Undefined,&new_ip);
+        },
         OperandSize::ThirtyTwo => {
-			let new_ip = if rel {
+            let new_ip = if rel {
                 let x = new_temp(32);
                 cg.add_i(&x,&a,&EIP.to_rv());
                 cg.mod_i(&x,&x,&Rvalue::Constant(0x100000000));
@@ -398,12 +383,12 @@ pub fn near_xcall(cg: &mut CodeGen<Amd64>, a: Rvalue, rel: bool) {
                 Lvalue::from_rvalue(&a).unwrap()
             };
 
-			do_push(&EIP.to_rv(),Mode::Protected,cg);
-			cg.assign(&*EIP, &new_ip);
-			cg.call_i(&Lvalue::Undefined,&new_ip);
-		},
+            do_push(&EIP.to_rv(),Mode::Protected,cg);
+            cg.assign(&*EIP, &new_ip);
+            cg.call_i(&Lvalue::Undefined,&new_ip);
+        },
         OperandSize::SixtyFour => {
-			let new_ip = if rel {
+            let new_ip = if rel {
                 let x = new_temp(16);
                 cg.add_i(&x,&a,&EIP.to_rv());
                 cg.mod_i(&x,&x.to_rv(),&Rvalue::Constant(0x10000));
@@ -414,13 +399,13 @@ pub fn near_xcall(cg: &mut CodeGen<Amd64>, a: Rvalue, rel: bool) {
                 x
             };
 
-			do_push(&RIP.to_rv(),Mode::Real,cg);
-			cg.assign(&*RIP, &new_ip);
-			cg.call_i(&Lvalue::Undefined,&new_ip);
-		}
-	    OperandSize::HundredTwentyEight => unreachable!(),
-		OperandSize::Eight => unreachable!(),
-	}
+            do_push(&RIP.to_rv(),Mode::Real,cg);
+            cg.assign(&*RIP, &new_ip);
+            cg.call_i(&Lvalue::Undefined,&new_ip);
+        }
+        OperandSize::HundredTwentyEight => unreachable!(),
+        OperandSize::Eight => unreachable!(),
+    }
 }
 
 pub fn far_call(cg: &mut CodeGen<Amd64>, a: Rvalue) {
@@ -433,21 +418,21 @@ pub fn far_rcall(cg: &mut CodeGen<Amd64>, a: Rvalue) {
 
 pub fn far_xcall(cg: &mut CodeGen<Amd64>, a: Rvalue, _: bool) {
     match cg.configuration.operand_size {
-		OperandSize::Sixteen => {
-			do_push(&CS.to_rv(),Mode::Real,cg);
-			do_push(&IP.to_rv(),Mode::Real,cg);
-		},
-		OperandSize::ThirtyTwo => {
-			do_push(&CS.to_rv(),Mode::Protected,cg);
-			do_push(&EIP.to_rv(),Mode::Protected,cg);
-		},
-		OperandSize::SixtyFour => {
-			do_push(&CS.to_rv(),Mode::Long,cg);
-			do_push(&RIP.to_rv(),Mode::Long,cg);
-		},
-		OperandSize::HundredTwentyEight => unreachable!(),
-		OperandSize::Eight => unreachable!(),
-	}
+        OperandSize::Sixteen => {
+            do_push(&CS.to_rv(),Mode::Real,cg);
+            do_push(&IP.to_rv(),Mode::Real,cg);
+        },
+        OperandSize::ThirtyTwo => {
+            do_push(&CS.to_rv(),Mode::Protected,cg);
+            do_push(&EIP.to_rv(),Mode::Protected,cg);
+        },
+        OperandSize::SixtyFour => {
+            do_push(&CS.to_rv(),Mode::Long,cg);
+            do_push(&RIP.to_rv(),Mode::Long,cg);
+        },
+        OperandSize::HundredTwentyEight => unreachable!(),
+        OperandSize::Eight => unreachable!(),
+    }
     cg.call_i(&Lvalue::Undefined,&a);
 }
 
@@ -467,20 +452,20 @@ pub fn cmov(cg: &mut CodeGen<Amd64>, _a: Rvalue, b: Rvalue, c: Condition) {
     };
 
     match c {
-		Condition::Overflow => fun(&*OF,cg),
-		Condition::NotOverflow =>  {
+        Condition::Overflow => fun(&*OF,cg),
+        Condition::NotOverflow =>  {
             let nof = new_temp(1);
             cg.not_b(&nof,&OF.to_rv());
             fun(&nof,cg)
         },
-		Condition::Carry => fun(&*CF,cg),
-		Condition::AboveEqual => {
+        Condition::Carry => fun(&*CF,cg),
+        Condition::AboveEqual => {
             let ncf = new_temp(1);
             cg.not_b(&ncf,&CF.to_rv());
             fun(&ncf,cg)
         },
         Condition::Equal => fun(&*ZF,cg),
-		Condition::NotEqual => {
+        Condition::NotEqual => {
             let nzf = new_temp(1);
             cg.not_b(&nzf,&ZF.to_rv());
             fun(&nzf,cg)
@@ -490,32 +475,32 @@ pub fn cmov(cg: &mut CodeGen<Amd64>, _a: Rvalue, b: Rvalue, c: Condition) {
             cg.or_b(&zc,&ZF.to_rv(),&CF.to_rv());
             fun(&zc,cg)
         },
-	    Condition::Above => {
+        Condition::Above => {
             let zc = new_temp(1);
             cg.or_b(&zc,&ZF.to_rv(),&CF.to_rv());
             cg.not_b(&zc,&zc);
             fun(&zc,cg)
         },
-		Condition::Sign => fun(&*SF,cg),
-		Condition::NotSign => {
+        Condition::Sign => fun(&*SF,cg),
+        Condition::NotSign => {
             let nsf = new_temp(1);
             cg.not_b(&nsf,&SF.to_rv());
             fun(&nsf,cg)
         },
         Condition::Parity => fun(&*PF,cg),
-		Condition::NotParity => {
-		    let npf = new_temp(1);
+        Condition::NotParity => {
+            let npf = new_temp(1);
             cg.not_b(&npf,&PF.to_rv());
             fun(&npf,cg)
         },
         Condition::Less => {
-	        let b = new_temp(1);
+            let b = new_temp(1);
             cg.xor_b(&b,&SF.to_rv(),&OF.to_rv());
             cg.not_b(&b,&b.to_rv());
             fun(&b,cg)
         },
         Condition::GreaterEqual => {
-	        let b = new_temp(1);
+            let b = new_temp(1);
             cg.xor_b(&b,&SF.to_rv(),&OF.to_rv());
             fun(&b,cg)
         },
@@ -548,11 +533,11 @@ pub fn cmp(cg: &mut CodeGen<Amd64>, _a: Rvalue, b: Rvalue) {
     cg.sub_i(&res,&a,&b_ext);
     cg.mod_i(&res_half,&res.to_rv(),&Rvalue::Constant(0x100));
 
-	set_arithm_flags(&res,&res_half.to_rv(),&a.to_rv(),cg);
+    set_arithm_flags(&res,&res_half.to_rv(),&a.to_rv(),cg);
 }
 
 pub fn cmps(cg: &mut CodeGen<Amd64>, aoff: Rvalue, boff: Rvalue) {
-	let a = Lvalue::Memory{
+    let a = Lvalue::Memory{
         offset: Box::new(aoff.clone()),
         bytes: 1,
         endianess: Endianess::Little,
@@ -571,7 +556,7 @@ pub fn cmps(cg: &mut CodeGen<Amd64>, aoff: Rvalue, boff: Rvalue) {
     let ndf = new_temp(bitwidth(&aoff));
 
     cg.sub_i(&res,&a.to_rv(),&b.to_rv());
-	set_arithm_flags(&res,&res.to_rv(),&a.to_rv(),cg);
+    set_arithm_flags(&res,&res.to_rv(),&a.to_rv(),cg);
 
     cg.lift_b(&df,&DF.to_rv());
     cg.not_b(&n,&DF.to_rv());
@@ -618,7 +603,7 @@ pub fn or(cg: &mut CodeGen<Amd64>, _a: Rvalue, b: Rvalue) {
     cg.mod_i(&res_half,&res.to_rv(),&Rvalue::Constant(0x100));
 
     cg.assign(&a,&res.to_rv());
-	set_arithm_flags(&res,&res_half.to_rv(),&a.to_rv(),cg);
+    set_arithm_flags(&res,&res_half.to_rv(),&a.to_rv(),cg);
 }
 
 pub fn sbb(cg: &mut CodeGen<Amd64>, _a: Rvalue, b: Rvalue) {
@@ -634,7 +619,7 @@ pub fn sbb(cg: &mut CodeGen<Amd64>, _a: Rvalue, b: Rvalue) {
     cg.mod_i(&res_half,&res.to_rv(),&Rvalue::Constant(0x100));
 
     cg.assign(&a,&res.to_rv());
-	set_arithm_flags(&res,&res_half.to_rv(),&a.to_rv(),cg);
+    set_arithm_flags(&res,&res_half.to_rv(),&a.to_rv(),cg);
 }
 
 pub fn sub(cg: &mut CodeGen<Amd64>, _a: Rvalue, b: Rvalue) {
@@ -649,11 +634,11 @@ pub fn sub(cg: &mut CodeGen<Amd64>, _a: Rvalue, b: Rvalue) {
     cg.mod_i(&res_half,&res.to_rv(),&Rvalue::Constant(0x100));
 
     cg.assign(&a,&res.to_rv());
-	set_arithm_flags(&res,&res_half.to_rv(),&a.to_rv(),cg);
+    set_arithm_flags(&res,&res_half.to_rv(),&a.to_rv(),cg);
 }
 
 pub fn xor(cg: &mut CodeGen<Amd64>, _a: Rvalue, b: Rvalue) {
-	let aw = bitwidth(&_a);
+    let aw = bitwidth(&_a);
     let bw = if let Rvalue::Constant(_) = b { aw } else { bitwidth(&b) };
     let res = new_temp(aw);
     let res_half = new_temp(8);
@@ -664,7 +649,7 @@ pub fn xor(cg: &mut CodeGen<Amd64>, _a: Rvalue, b: Rvalue) {
     cg.mod_i(&res_half,&res.to_rv(),&Rvalue::Constant(0x100));
 
     cg.assign(&a,&res.to_rv());
-	set_arithm_flags(&res,&res_half.to_rv(),&a.to_rv(),cg);
+    set_arithm_flags(&res,&res_half.to_rv(),&a.to_rv(),cg);
 }
 
 pub fn cmpxchg8b(_: &mut CodeGen<Amd64>, _: Rvalue) {}
