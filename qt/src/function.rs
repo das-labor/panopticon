@@ -159,7 +159,6 @@ pub fn control_flow_graph(arg: &Variant) -> Variant {
                                     let mnes = bb.mnemonics.iter().
                                         map(|x| {
                                             let args = x.format();
-                                            println!("args: {}",args);
                                             let cmnt = proj.comments.get(&(fun.region.clone(),x.area.start)).unwrap_or(&"".to_string()).clone();
 
                                             format!("{{
