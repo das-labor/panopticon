@@ -6,7 +6,8 @@ import QtQuick.Controls 1.3
 Item {
 	id: bblock
 
-	readonly property int padding: 5
+	readonly property int xPadding: 5
+	readonly property int yPadding: 2
 	property var contents: [];
 	property int opcodeWidth: 0;
 	property int argsWidth: 0;
@@ -14,12 +15,9 @@ Item {
 	width: childrenRect.width
 	height: childrenRect.height
 
-	Rectangle {
-		height: txt.childrenRect.height + 2 * bblock.padding
-		width: opcodeWidth + argsWidth + 6 + 2 * bblock.padding
-		color: "steelblue";
-		border.width: 1;
-		border.color: "black";
+	Item {
+		height: txt.childrenRect.height
+		width: opcodeWidth + argsWidth + 6 + 2 * bblock.xPadding
 
 		MouseArea {
 			anchors.fill: parent
@@ -29,14 +27,20 @@ Item {
 
 		Column {
 			id: txt
-			x: bblock.padding
-			y: bblock.padding
+			x: bblock.xPadding
 
 			Repeater {
 				model: bblock.contents
 				delegate: Item {
 					width: comment.x + comment.width
-					height: Math.max(opcode.height,Math.max(args.height,comment.height))
+					height: Math.max(opcode.height,Math.max(args.height,comment.height)) + 2 * bblock.yPadding
+
+					Rectangle {
+						color: (index % 2 == 0 ? "#e6f7f4" : "white")
+						height: parent.height
+						x: -1 * bblock.xPadding
+						width: args.x + args.width + 2 * bblock.xPadding
+					}
 
 					Text {
 						id: opcode
@@ -44,6 +48,8 @@ Item {
 						font.family: "Monospace"
 						width: bblock.opcodeWidth
 						height: contentHeight
+						color: "black"
+						y: bblock.yPadding
 
 						Component.onCompleted: {
 							bblock.opcodeWidth = Math.max(bblock.opcodeWidth,opcode.contentWidth)
@@ -58,6 +64,8 @@ Item {
 						height: contentHeight
 						anchors.left: opcode.right
 						anchors.leftMargin: 6
+						color: "black"
+						y: bblock.yPadding
 
 						Component.onCompleted: {
 							bblock.argsWidth = Math.max(bblock.argsWidth,args.contentWidth)
@@ -78,8 +86,9 @@ Item {
 
 					Rectangle {
 						anchors.fill: comment
-						color: "green";
+						color: "#e8ebe7";
 						visible: comment.activeFocus
+						y: bblock.yPadding
 					}
 
 					TextEdit {
@@ -89,6 +98,7 @@ Item {
 						anchors.leftMargin: text == "" && !activeFocus ? 0 : 20
 						width: contentWidth
 						height: contentHeight
+						y: bblock.yPadding
 
 						Keys.priority: Keys.BeforeItem
 						Keys.onReturnPressed: {
@@ -114,6 +124,14 @@ Item {
 					}
 				}
 			}
+		}
+
+		Rectangle {
+			anchors.fill: parent;
+			color: "transparent";
+			border.width: 1;
+			radius: 3
+			border.color: "#666666";
 		}
 	}
 }

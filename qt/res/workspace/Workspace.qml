@@ -68,6 +68,11 @@ Item {
 			Item {
 				clip: true;
 
+				Rectangle {
+					anchors.fill: parent
+					color: "#efefef"
+				}
+
 				Canvas {
 					id: graph
 
@@ -224,7 +229,7 @@ Item {
 							sleep(1);
 						}
 						if (bblock.status == Component.Error) {
-							console.log(bblock.errorString())
+							console.error(bblock.errorString())
 						} else {
 							var obj = bblock.createObject(graph,c);
 
