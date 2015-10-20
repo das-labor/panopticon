@@ -1,6 +1,6 @@
 /*
- * This file is part of Panopticon (http://panopticon.re).
- * Copyright (C) 2014 Kai Michaelis
+ * Panopticon - A libre disassembler (https://panopticon.re/)
+ * Copyright (C) 2014-2015 Kai Michaelis
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
