@@ -900,12 +900,14 @@ fn compute_x_coordinates(order: &Vec<Vec<AdjacencyListVertexDescriptor>>,
 
         for v in graph.vertices() {
             let _r = r[&v];
+            let num = *graph.vertex_label(v).unwrap();
+            let width = if num >= virt_start { 1 } else { dims[&num].0 as usize };
 
             if w.contains_key(&_r) {
                 let val = w[&_r];
-                w.insert(_r,max(val,dims[graph.vertex_label(v).unwrap()].0 as usize));
+                w.insert(_r,max(val,width));
             } else {
-                w.insert(_r,dims[graph.vertex_label(v).unwrap()].0 as usize);
+                w.insert(_r,width);
             }
         }
 
