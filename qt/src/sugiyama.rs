@@ -635,7 +635,7 @@ pub fn mark_type1_conflicts(virt_start: usize,
 
         let mut k0 = 0;
         let mut l = 0;
-        let prev = (i + delta) as usize;
+        let prev = (i - delta) as usize;
 
         for l1 in 0..order[prev].len() {
             let v = order[prev][l1];
