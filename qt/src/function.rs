@@ -259,6 +259,14 @@ struct LayoutOutputPosition {
     y: f32,
 }
 
+#[derive(RustcEncodable,Debug)]
+struct LayoutOutputEdge {
+    x1: f32,
+    y1: f32,
+    x2: f32,
+    y2: f32,
+}
+
 /// Layout a control flow graph.
 ///
 /// Uses a layered graph drawing algorithm (Sugiyama's method) the
@@ -341,11 +349,20 @@ pub fn layout(arg0: &Variant, arg1: &Variant, arg2: &Variant, arg3: &Variant, _c
                                                maybe_entry,
                                                node_spacing as usize,
                                                rank_spacing as usize);
-                    let mut ret = HashMap::<String,LayoutOutputPosition>::new();
-                    for (k,v) in res.iter() {
-                        ret.insert(idents[*k].clone(),LayoutOutputPosition{ x: v.0 as f32, y: v.1 as f32 });
+                    let mut ret_v = HashMap::<String,LayoutOutputPosition>::new();
+                    let mut ret_e = Vec::<LayoutOutputEdge>::new();
+                    for (k,v) in (res.0).iter() {
+                        ret_v.insert(idents[*k].clone(),LayoutOutputPosition{ x: v.0 as f32, y: v.1 as f32 });
                     }
-                    ctrl.emit(LAYOUTED_FUNCTION,&vec![Variant::String(json::encode(&ret).ok().unwrap())]);
+                    for v in (res.1).iter() {
+                        ret_e.push(LayoutOutputEdge{
+                            x1: v.0 as f32,
+                            y1: v.1 as f32,
+                            x2: v.2 as f32,
+                            y2: v.3 as f32,
+                        });
+                    }
+                    ctrl.emit(LAYOUTED_FUNCTION,&vec![Variant::String(json::encode(&(ret_v,ret_e)).ok().unwrap())]);
                 });
             }
         }

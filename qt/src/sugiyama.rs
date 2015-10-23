@@ -44,7 +44,7 @@ pub fn layout(vertices: &Vec<usize>,
               dims: &HashMap<usize,(f32,f32)>,
               entry: Option<usize>,
               node_spacing: usize,
-              rank_spacing: usize) -> HashMap<usize,(f32,f32)> {
+              rank_spacing: usize) -> (HashMap<usize,(f32,f32)>,Vec<(f32,f32,f32,f32)>) {
     let mut graph = AdjacencyList::<usize,()>::new();
     let mut rev = HashMap::<usize,AdjacencyListVertexDescriptor>::new();
     let mut maybe_entry = None;
@@ -92,17 +92,33 @@ pub fn layout(vertices: &Vec<usize>,
         .map(|r| r.iter().fold(0usize,|acc,vx| max(dims.get(graph.vertex_label(*vx).unwrap()).map(|x| x.1).unwrap_or(0.0) as usize,acc)))
         .fold(vec![0usize],|acc,x| { let mut ret = acc.clone(); ret.push(acc.last().unwrap() + x + (rank_spacing as usize)); ret });
 
-    let mut ret = HashMap::new();
+    let mut ret_v = HashMap::new();
     for n in vertices.iter() {
         let vx = rev[n];
         let r = rank[&vx] as usize;
         let rank_start = rank_offsets[r] as f32;
         let rank_end = rank_offsets[r + 1] as f32;
 
-        ret.insert(*n,(x_pos[&vx] as f32,(rank_start + ((rank_end - rank_start) / 2.0)) as f32));
+        ret_v.insert(*n,(x_pos[&vx] as f32,(rank_start + ((rank_end - rank_start) / 2.0)) as f32));
     }
 
-    ret
+    let mut ret_e = Vec::<_>::new();
+    for e in graph.edges() {
+        let s = graph.source(e);
+        let t = graph.target(e);
+        let sx = x_pos[&s];
+        let tx = x_pos[&t];
+        let sr = rank[&s] as usize;
+        let tr = rank[&t] as usize;
+        let srs = rank_offsets[sr] as f32;
+        let sre = rank_offsets[sr + 1] as f32;
+        let trs = rank_offsets[tr] as f32;
+        let tre = rank_offsets[tr + 1] as f32;
+
+        ret_e.push((sx,srs + (sre - srs) / 2.0,tx,trs + (tre - trs) / 2.0));
+    }
+
+    (ret_v,ret_e)
  }
 
 fn depth_first_search(seen: &mut HashSet<AdjacencyListVertexDescriptor>,
