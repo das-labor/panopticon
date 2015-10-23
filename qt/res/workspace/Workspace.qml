@@ -84,7 +84,7 @@ Item {
 			onLoaded: item.selection = root.selection
 
 			Item {
-				clip: true;
+				clip: true
 
 				Rectangle {
 					anchors.fill: parent
@@ -93,6 +93,11 @@ Item {
 
 				Canvas {
 					id: graph
+
+					x: bblockRoot.x + bblockRoot.childrenRect.x
+					y: bblockRoot.y + bblockRoot.childrenRect.y
+					width: bblockRoot.childrenRect.width
+					height: bblockRoot.childrenRect.height
 
 					property var edges: null;
 					property var boxes: null;
@@ -111,12 +116,11 @@ Item {
 
 						if(edges !== null) {
 							for(var i = 0; i < graph.edges.length; i++) {
-								var from = graph.edges[i].from;
-								var to = graph.edges[i].to;
+								var e = graph.edges[i];
 
 								ctx.beginPath();
-								ctx.moveTo(Math.max(1,from.x),Math.max(1,from.y));
-								ctx.lineTo(Math.max(1,to.x),Math.max(1,to.y));
+								ctx.moveTo(e.x1 - bblockRoot.childrenRect.x,e.y1 - bblockRoot.childrenRect.y);
+								ctx.lineTo(e.x2 - bblockRoot.childrenRect.x,e.y2 - bblockRoot.childrenRect.y);
 								ctx.stroke();
 							}
 						}
@@ -126,97 +130,49 @@ Item {
 					onBoxesChanged: requestPaint();
 
 					MouseArea {
-						anchors.fill: parent;
-						drag.target: parent
+						x: -cflow_graph.width
+						y: -cflow_graph.height
+						width: parent.width + 2*cflow_graph.width
+						height: parent.height + 2*cflow_graph.height
+						drag.target: bblockRoot
 						drag.axis: Drag.XAndYAxis
+						drag.minimumX: -bblockRoot.childrenRect.width - bblockRoot.childrenRect.x + 10
+						drag.minimumY: -bblockRoot.childrenRect.height - bblockRoot.childrenRect.y + 10
+						drag.maximumX: cflow_graph.width - bblockRoot.childrenRect.x - 10
+						drag.maximumY: cflow_graph.height - bblockRoot.childrenRect.y - 10
 						cursorShape: containsMouse && pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor
 					}
 				}
 
-				anchors.fill: parent
+				Item {
+					id: bblockRoot
+				}
 
 				property string selection: "";
 				property var bblockList: null;
 
 				Component.onCompleted: {
-					Panopticon.layoutedFunction.connect(function(_pos) {
+					Panopticon.layoutedFunction.connect(function(_res) {
 						var cfg = JSON.parse(Panopticon.functionCfg(selection));
-						var pos = JSON.parse(_pos);
-						var right = 0;
-						var bottom = 0;
-						var obstacles = [];
-						var waypoints = [];
+						var res = JSON.parse(_res);
+						var pos = res[0];
 
 						for (var k in pos) {
 							if(pos.hasOwnProperty(k)) {
 								var obj = bblockList[k];
 
 								obj.visible = true;
-								obj.x = pos[k].x - obj.width / 2 + 100;
-								obj.y = pos[k].y - obj.height / 2 + 100;
-
-
-								right = Math.max(right,obj.x + obj.width);
-								bottom = Math.max(bottom,obj.y + obj.height);
-
-								obstacles.push({"x":obj.x,"y":obj.y,"width":obj.width,"height":obj.height});
-								waypoints.push({"x":obj.x - 3,"y":obj.y - 3});
-								waypoints.push({"x":obj.x - 3,"y":obj.y + obj.height + 3 });
-								waypoints.push({"x":obj.x + obj.width + 3,"y":obj.y - 3});
-								waypoints.push({"x":obj.x + obj.width + 3,"y":obj.y + obj.height + 3});
+								obj.x = pos[k].x - obj.width / 2;
+								obj.y = pos[k].y - obj.height / 2;
 							}
 						}
 
-						var in_degree = {};
-						var out_degree = {};
-
-						for(var i = 0; i < cfg.nodes.length; i++) {
-							in_degree[cfg.nodes[i]] = 0;
-							out_degree[cfg.nodes[i]] = 0;
-						}
-
-						for(var l = 0; l < cfg.edges.length; l++) {
-							if(cfg.edges[l].from != cfg.edges[l].to) {
-								in_degree[cfg.edges[l].to] += 1;
-								out_degree[cfg.edges[l].from] += 1;
-							}
-						}
-
-						var edges = [];
 						for (var i = 0; i < cfg.edges.length; i++) {
 							var from = bblockList[cfg.edges[i].from];
 							var to = bblockList[cfg.edges[i].to];
-
-							waypoints.push({"x": to.x + to.width / 2,"y": to.y - 5});
-							waypoints.push({"x": from.x + from.width / 2,"y": from.y + from.height + 5});
-							edges.push({"from": waypoints.length - 1, "to": waypoints.length - 2});
 						}
 
-
-						graph.width = right + 200;
-						graph.height = bottom + 200;
-
-						graph.y = (cflow_graph.item.height - graph.height) / 2;
-						graph.x = (cflow_graph.item.width - graph.width) / 2;
-
-						Panopticon.dijkstraRoute(JSON.stringify({"obstacles":obstacles,"waypoints":waypoints,"edges":edges}));
-					});
-
-					Panopticon.routedFunction.connect(function(_paths) {
-						var paths = JSON.parse(_paths);
-						var canvas_edges = [];
-
-						for (var j = 0; j < paths.length; j++) {
-							var p = paths[j];
-
-							if (p.length >= 2) {
-								for (var l = 1; l < p.length; l++) {
-									canvas_edges.push({"from":p[l-1],"to":p[l]});
-								}
-							}
-						}
-
-						graph.edges = canvas_edges;
+						graph.edges = res[1];
 					});
 				}
 
@@ -249,7 +205,7 @@ Item {
 						if (bblock.status == Component.Error) {
 							console.error(bblock.errorString())
 						} else {
-							var obj = bblock.createObject(graph,c);
+							var obj = bblock.createObject(bblockRoot,c);
 
 							obj.visible = false;
 							bblockList[node] = obj;
@@ -266,9 +222,6 @@ Item {
 								bblockList[i].visible = true;
 							}
 						}
-
-						graph.y = (cflow_graph.item.height - graph.height) / 2;
-						graph.x = (cflow_graph.item.width - graph.width) / 2;
 					}
 
 					graph.edges = [];
