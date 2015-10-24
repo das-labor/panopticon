@@ -161,6 +161,7 @@ Item {
 						var cfg = JSON.parse(Panopticon.functionCfg(selection));
 						var res = JSON.parse(_res);
 						var pos = res[0];
+						var entry = undefined;
 
 						for (var k in pos) {
 							if(pos.hasOwnProperty(k)) {
@@ -169,6 +170,10 @@ Item {
 								obj.visible = true;
 								obj.x = pos[k].x - obj.width / 2;
 								obj.y = pos[k].y - obj.height / 2;
+
+								if (k == cfg.entry) {
+									entry = obj;
+								}
 							}
 						}
 
@@ -178,6 +183,15 @@ Item {
 						}
 
 						graph.edges = res[1];
+
+						if (entry !== undefined) {
+							var ent_pos = mapFromItem(bblockRoot,entry.x,entry.y);
+							var tab_pos = mapFromItem(cflow_graph,cflow_graph.x,cflow_graph.y);
+							var tab_cent_x = tab_pos.x + cflow_graph.width / 2;
+
+							bblockRoot.x = tab_cent_x - (bblockRoot.childrenRect.width / 2) - bblockRoot.childrenRect.x;
+							bblockRoot.y = tab_pos.y + 100 - bblockRoot.childrenRect.y;
+						}
 					});
 				}
 

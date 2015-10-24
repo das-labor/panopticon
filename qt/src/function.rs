@@ -126,6 +126,7 @@ pub fn metainfo(arg: &Variant) -> Variant {
 /// The JSON will look like this:
 /// ```json
 /// {
+///     "entry": <IDENT>,
 ///     "nodes": [ <IDENT>,... ],
 ///     "edges": [
 ///         {"from": <IDENT>, "to": <IDENT>},
@@ -158,6 +159,17 @@ pub fn control_flow_graph(arg: &Variant) -> Variant {
             if let Some((vx,prog)) = proj.find_call_target_by_uuid(&tgt_uuid) {
                 if let Some(&CallTarget::Concrete(ref fun)) = prog.call_graph.vertex_label(vx) {
                     let cfg = &fun.cflow_graph;
+
+                    // entry
+                    let entry = if let Some(ent) = fun.entry_point {
+                        if let Some(&ControlFlowTarget::Resolved(ref bb_ent)) = cfg.vertex_label(ent) {
+                            Some(format!("\"bb{}\"",bb_ent.area.start))
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    };
 
                     // nodes
                     let nodes = cfg.vertices()
@@ -215,7 +227,11 @@ pub fn control_flow_graph(arg: &Variant) -> Variant {
                             if acc != "" { acc + "," + &x } else { x }
                         });
 
-                    format!("{{\"nodes\":[{}],\"edges\":[{}],\"contents\":{{{}}}}}",nodes,edges,contents)
+                    if let Some(ent) = entry {
+                        format!("{{\"entry\":{},\"nodes\":[{}],\"edges\":[{}],\"contents\":{{{}}}}}",ent,nodes,edges,contents)
+                    } else {
+                        format!("{{\"nodes\":[{}],\"edges\":[{}],\"contents\":{{{}}}}}",nodes,edges,contents)
+                    }
                 } else {
                     // not a concrete call
                     "".to_string()
