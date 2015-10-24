@@ -141,6 +141,11 @@ Item {
 						drag.maximumX: cflow_graph.width - bblockRoot.childrenRect.x - 10
 						drag.maximumY: cflow_graph.height - bblockRoot.childrenRect.y - 10
 						cursorShape: containsMouse && pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor
+
+						onWheel: {
+							bblockRoot.y = Math.max(drag.minimumY,Math.min(drag.maximumY,bblockRoot.y + wheel.angleDelta.y / 10));
+							bblockRoot.x = Math.max(drag.minimumX,Math.min(drag.maximumX,bblockRoot.x + wheel.angleDelta.x / 10));
+						}
 					}
 				}
 
