@@ -104,7 +104,6 @@ impl ToRvalue for u64 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use msgpack;
 
     #[test]
     fn construct() {
@@ -145,28 +144,5 @@ mod tests {
         assert_eq!(ru, Rvalue::from_lvalue(&lu));
         assert_eq!(rv, Rvalue::from_lvalue(&lv));
         assert_eq!(rm, Rvalue::from_lvalue(&lm));
-    }
-
-    #[test]
-    fn marshal() {
-        let a = Rvalue::Undefined;
-        let b = Rvalue::Constant(42);
-        let c = Rvalue::Variable{ name: "test".to_string(), width: 8, subscript: Some(8) };
-        let d = Rvalue::Memory{ offset: Box::new(Rvalue::Constant(5)), bytes: 2, endianess: Endianess::Little, name: "bank1".to_string()};
-
-        let a2 = msgpack::Encoder::to_msgpack(&a).ok().unwrap();
-        let b2 = msgpack::Encoder::to_msgpack(&b).ok().unwrap();
-        let c2 = msgpack::Encoder::to_msgpack(&c).ok().unwrap();
-        let d2 = msgpack::Encoder::to_msgpack(&d).ok().unwrap();
-
-        let a3 = msgpack::from_msgpack(&a2).ok().unwrap();
-        let b3 = msgpack::from_msgpack(&b2).ok().unwrap();
-        let c3 = msgpack::from_msgpack(&c2).ok().unwrap();
-        let d3 = msgpack::from_msgpack(&d2).ok().unwrap();
-
-        assert_eq!(a, a3);
-        assert_eq!(b, b3);
-        assert_eq!(c, c3);
-        assert_eq!(d, d3);
     }
 }

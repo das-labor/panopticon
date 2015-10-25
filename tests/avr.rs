@@ -23,7 +23,7 @@ use panopticon::region::Region;
 use panopticon::avr::{Mcu,Avr};
 use panopticon::avr::syntax::disassembler;
 use panopticon::function::{ControlFlowTarget,Function};
-use panopticon::disassembler::State;
+//use panopticon::disassembler::State;
 
 use std::path::Path;
 

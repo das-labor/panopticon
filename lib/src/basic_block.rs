@@ -71,7 +71,6 @@ mod tests {
     use value::{Rvalue,Lvalue};
     use instr::{Instr,Operation};
     use mnemonic::{Mnemonic,Bound};
-    use msgpack;
 
     #[test]
     fn construct() {
@@ -185,43 +184,5 @@ mod tests {
         });
 
         assert!(ok);
-    }
-
-    #[test]
-    fn marshal() {
-        let ops1 = vec!(Rvalue::Constant(1),Rvalue::Variable{ name: "a".to_string(), width: 3, subscript: None });
-        let i1 = vec!(
-            Instr{ op: Operation::IntAdd(Rvalue::Constant(1),Rvalue::Constant(2)), assignee: Lvalue::Variable{ name: "a".to_string(), width: 8, subscript: Some(2) }},
-            Instr{ op: Operation::IntAdd(Rvalue::Constant(4),Rvalue::Constant(2)), assignee: Lvalue::Variable{ name: "a".to_string(), width: 8, subscript: Some(1) }},
-            Instr{ op: Operation::Phi(vec!(
-                Rvalue::Variable{ name: "a".to_string(), width: 8, subscript: Some(2) },
-                Rvalue::Variable{ name: "a".to_string(), width: 8, subscript: Some(1) })), assignee: Lvalue::Variable{ name: "a".to_string(), width: 8, subscript: Some(3) }});
-        let mne1 = Mnemonic::new(0..10,"op1".to_string(),"{8:-:eax} nog".to_string(),ops1.iter(),i1.iter());
-
-        let ops2 = vec!(Rvalue::Constant(1),Rvalue::Variable{ name: "a".to_string(), width: 3, subscript: None });
-        let i2 = vec!(
-            Instr{ op: Operation::IntAdd(Rvalue::Constant(1),Rvalue::Constant(2)), assignee: Lvalue::Variable{ name: "a".to_string(), width: 8, subscript: Some(2) }},
-            Instr{ op: Operation::IntAdd(Rvalue::Constant(4),Rvalue::Constant(2)), assignee: Lvalue::Variable{ name: "a".to_string(), width: 8, subscript: Some(1) }},
-            Instr{ op: Operation::Phi(vec!(
-                Rvalue::Variable{ name: "a".to_string(), width: 8, subscript: Some(2) },
-                Rvalue::Variable{ name: "a".to_string(), width: 8, subscript: Some(1) })), assignee: Lvalue::Variable{ name: "a".to_string(), width: 8, subscript: Some(3) }});
-        let mne2 = Mnemonic::new(10..13,"op3".to_string(),"{8:-:eax} nog".to_string(),ops2.iter(),i2.iter());
-
-        let ops3 = vec!(Rvalue::Constant(1),Rvalue::Variable{ name: "a".to_string(), width: 3, subscript: None });
-        let i3 = vec!(
-            Instr{ op: Operation::IntAdd(Rvalue::Constant(1),Rvalue::Constant(2)), assignee: Lvalue::Variable{ name: "a".to_string(), width: 8, subscript: Some(2) }},
-            Instr{ op: Operation::IntAdd(Rvalue::Constant(4),Rvalue::Constant(2)), assignee: Lvalue::Variable{ name: "a".to_string(), width: 8, subscript: Some(1) }},
-            Instr{ op: Operation::Phi(vec!(
-                Rvalue::Variable{ name: "a".to_string(), width: 8, subscript: Some(2) },
-                Rvalue::Variable{ name: "a".to_string(), width: 8, subscript: Some(1) })), assignee: Lvalue::Variable{ name: "a".to_string(), width: 8, subscript: Some(3) }});
-        let mne3 = Mnemonic::new(13..20,"op3".to_string(),"{8:-:eax} nog".to_string(),ops3.iter(),i3.iter());
-
-        let ms = vec!(mne1,mne2,mne3);
-        let bb1 = BasicBlock::from_vec(ms);
-
-        let a = msgpack::Encoder::to_msgpack(&bb1).ok().unwrap();
-        let bb2 = msgpack::from_msgpack(&a).ok().unwrap();
-
-        assert_eq!(bb1, bb2);
     }
 }

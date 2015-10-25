@@ -22,8 +22,22 @@ use std::path::Path;
 use panopticon::project::Project;
 
 #[test]
-fn pe() {
+fn project_pe() {
     let maybe_project = Project::pe(Path::new("tests/data/test.exe"));
 
     assert!(maybe_project.is_some());
+}
+
+#[test]
+fn project_open() {
+    let maybe_project = Project::open(Path::new("tests/data/save.panop"));
+
+    assert!(maybe_project.ok().is_some());
+}
+
+#[test]
+fn project_empty() {
+    let maybe_project = Project::open(Path::new("tests/data/empty.panop"));
+
+    assert!(maybe_project.ok().is_none());
 }

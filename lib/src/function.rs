@@ -344,7 +344,6 @@ mod tests {
     use value::Rvalue;
     use layer::OpaqueLayer;
     use disassembler::{ToExpr,State,Architecture};
-    use msgpack;
 
     #[derive(Clone)]
     enum TestArchShort {}
@@ -816,61 +815,6 @@ mod tests {
         assert!(func.cflow_graph.edge(bb0_vx.unwrap(),bb1_vx.unwrap()).is_some());
         assert!(func.cflow_graph.edge(bb1_vx.unwrap(),bb2_vx.unwrap()).is_some());
         assert!(func.cflow_graph.edge(bb2_vx.unwrap(),bb1_vx.unwrap()).is_some());
-    }
-
-    /*
-     *   bb0 ----+
-     *    |  \   |
-     *   bb1  a  |
-     *   /  \    |
-     *   bb2 \   |
-     *   \   /   |
-     * +-bb3---2 |
-     * +/ |      |
-     *    bb4----+
-     */
-    #[test]
-    fn marshal() {
-        let bb0 = BasicBlock::from_vec(vec!(Mnemonic::dummy(0..1),Mnemonic::dummy(1..5)));
-        let bb1 = BasicBlock::from_vec(vec!(Mnemonic::dummy(5..8),Mnemonic::dummy(8..10)));
-        let bb2 = BasicBlock::from_vec(vec!(Mnemonic::dummy(10..12)));
-        let bb3 = BasicBlock::from_vec(vec!(Mnemonic::dummy(12..20)));
-        let bb4 = BasicBlock::from_vec(vec!(Mnemonic::dummy(20..21)));
-        let rv1 = Rvalue::Variable{ name: "a".to_string(), width: 8, subscript: None };
-        let rv2 = Rvalue::Constant(42);
-        let mut fun = Function::new("test_func".to_string(),"ram".to_string());
-
-        let vx0 = fun.cflow_graph.add_vertex(ControlFlowTarget::Resolved(bb0));
-        let vx1 = fun.cflow_graph.add_vertex(ControlFlowTarget::Resolved(bb1));
-        let vx2 = fun.cflow_graph.add_vertex(ControlFlowTarget::Resolved(bb2));
-        let vx3 = fun.cflow_graph.add_vertex(ControlFlowTarget::Resolved(bb3));
-        let vx4 = fun.cflow_graph.add_vertex(ControlFlowTarget::Resolved(bb4));
-        let vx5 = fun.cflow_graph.add_vertex(ControlFlowTarget::Unresolved(rv1));
-        let vx6 = fun.cflow_graph.add_vertex(ControlFlowTarget::Unresolved(rv2));
-
-        fun.cflow_graph.add_edge(Guard::always(),vx0,vx1);
-        fun.cflow_graph.add_edge(Guard::always(),vx0,vx5);
-        fun.cflow_graph.add_edge(Guard::always(),vx1,vx2);
-        fun.cflow_graph.add_edge(Guard::always(),vx2,vx3);
-        fun.cflow_graph.add_edge(Guard::always(),vx1,vx3);
-        fun.cflow_graph.add_edge(Guard::always(),vx3,vx3);
-        fun.cflow_graph.add_edge(Guard::always(),vx3,vx6);
-        fun.cflow_graph.add_edge(Guard::always(),vx3,vx4);
-        fun.cflow_graph.add_edge(Guard::always(),vx4,vx0);
-
-        fun.entry_point = Some(vx0);
-
-        let a = msgpack::Encoder::to_msgpack(&fun).ok().unwrap();
-        let fun_new: Function = msgpack::from_msgpack(&a).ok().unwrap();
-
-        assert_eq!(fun.name, fun_new.name);
-
-        let t1 = Function::index_cflow_graph(fun.cflow_graph);
-        let t2 = Function::index_cflow_graph(fun_new.cflow_graph);
-
-        assert_eq!(t1.0, t2.0);
-        assert_eq!(t1.1.values().fold(0,|acc,x| acc + x.len()),t2.1.values().fold(0,|acc,x| acc + x.len()));
-        assert_eq!(t1.2.values().fold(0,|acc,x| acc + x.len()),t2.2.values().fold(0,|acc,x| acc + x.len()));
     }
 
     #[test]

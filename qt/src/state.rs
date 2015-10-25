@@ -68,16 +68,6 @@ fn set_state(st: &str, ctrl: &mut Object) {
     }
 }
 
-/// Returns the current controller dirty bit.
-pub fn dirty<'a>(ctrl: &Object) -> bool {
-    if let Variant::I64(ret) = ctrl.get_property("dirty") {
-        ret == 1
-    } else {
-        println!("{:?}",ctrl.get_property("dirty"));
-        unreachable!()
-    }
-}
-
 /// Sets the controller dirty bit to `d`.
 pub fn set_dirty(d: bool, ctrl: &mut Object) {
     ctrl.set_property("dirty",Variant::I64(if d { 1 } else { 0 }));

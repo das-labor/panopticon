@@ -186,7 +186,6 @@ mod tests {
     use super::*;
     use value::{Rvalue,Lvalue};
     use instr::{Operation,Instr};
-    use msgpack;
 
     #[test]
     fn parse_format_string() {
@@ -248,23 +247,5 @@ mod tests {
         assert_eq!(mne1.opcode, "op1");
         assert_eq!(mne1.operands, ops1);
         assert_eq!(mne1.instructions, i1);
-    }
-
-    #[test]
-    fn marshal() {
-        let ops1 = vec!(Rvalue::Constant(1),Rvalue::Variable{ name: "a".to_string(), width: 3, subscript: None });
-        let i1 = vec!(
-            Instr{ op: Operation::IntAdd(Rvalue::Constant(1),Rvalue::Constant(2)), assignee: Lvalue::Variable{ name: "a".to_string(), width: 8, subscript: Some(2) }},
-            Instr{ op: Operation::IntAdd(Rvalue::Constant(4),Rvalue::Constant(2)), assignee: Lvalue::Variable{ name: "a".to_string(), width: 8, subscript: Some(1) }},
-            Instr{ op: Operation::Phi(vec!(
-                Rvalue::Variable{ name: "a".to_string(), width: 8, subscript: Some(2) },
-                Rvalue::Variable{ name: "a".to_string(), width: 8, subscript: Some(1) })), assignee: Lvalue::Variable{ name: "a".to_string(), width: 8, subscript: Some(3) }});
-        let mne1 = Mnemonic::new(0..10,"op1".to_string(),"{8:-:eax} nog".to_string(),ops1.iter(),i1.iter());
-
-        let a = msgpack::Encoder::to_msgpack(&mne1).ok().unwrap();
-        println!("{:?}", a);
-        let mne2 = msgpack::from_msgpack(&a).ok().unwrap();
-
-        assert_eq!(mne1, mne2);
     }
 }
