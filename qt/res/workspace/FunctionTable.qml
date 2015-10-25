@@ -76,7 +76,9 @@ Item {
 					return;
 				}
 			}
-			console.error("Error: got finishedFunction() signal w/ unknown function " + uu);
+
+			functionModel.append(obj);
+			functionModel.sort();
 		});
 
 		Panopticon.changedFunction.connect(function(uu) {

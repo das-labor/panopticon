@@ -26,6 +26,13 @@ Item {
 
 	property string selection: "";
 
+	Timer {
+		id: timer;
+		interval: 2
+		running: false;
+		onTriggered: Panopticon.start()
+	}
+
 	Component.onCompleted: {
 		Panopticon.changedFunction.connect(function(uu) {
 			if (uu == selection) {
@@ -41,7 +48,7 @@ Item {
 			}
 		});
 
-		Panopticon.start()
+		timer.running = true;
 	}
 
 	FunctionTable {

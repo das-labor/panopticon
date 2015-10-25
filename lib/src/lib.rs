@@ -141,12 +141,13 @@
 #[macro_use]
 extern crate log;
 
-extern crate msgpack;
-extern crate rustc_serialize;
 extern crate num;
+extern crate rustc_serialize;
+extern crate flate2;
 extern crate graph_algos;
 extern crate tempdir;
 extern crate uuid;
+extern crate rmp_serialize;
 
 #[macro_use]
 extern crate lazy_static;

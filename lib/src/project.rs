@@ -18,6 +18,11 @@
 
 use std::path::Path;
 use std::collections::HashMap;
+use std::fs::File;
+use std::io::Write;
+use std::borrow::Cow;
+use std::fmt::{Arguments,Error};
+use std::fmt::Write as WriteFmt;
 
 use program::{Program,CallGraphRef};
 use region::{Region,Regions};
@@ -25,6 +30,11 @@ use function::Function;
 use pe;
 
 use uuid::Uuid;
+use rmp_serialize::{Encoder,Decoder};
+use rustc_serialize::{Decodable,Encodable};
+use flate2::write::ZlibEncoder;
+use flate2::read::ZlibDecoder;
+use flate2::Compression;
 
 #[derive(RustcDecodable,RustcEncodable)]
 pub struct Project {
@@ -34,6 +44,43 @@ pub struct Project {
     pub sources: Regions,
     pub comments: HashMap<(String,u64),String>,
 }
+
+/*struct StringWrite<'a> {
+    sink: &'a mut ::std::io::Write
+}
+
+impl<'a> StringWrite<'a> {
+    pub fn new(w: &'a mut ::std::io::Write) -> StringWrite<'a> {
+        StringWrite{ sink: w }
+    }
+}
+
+impl<'a> ::std::fmt::Write for StringWrite<'a> {
+    fn write_str(&mut self, s: &str) -> Result<(), Error> {
+        match self.sink.write(s.as_bytes()) {
+            Ok(l) => if l == s.len() { Ok(()) } else { Err(Error) },
+            Err(_) => Err(Error)
+        }
+    }
+
+    fn write_char(&mut self, c: char) -> Result<(), Error> {
+        let mut buf = String::new();
+
+        buf.push(c);
+
+        match self.sink.write(&buf.into_bytes()) {
+            Ok(_l) => Ok(()),
+            Err(_) => Err(Error)
+        }
+    }
+
+    fn write_fmt(&mut self, args: Arguments) -> Result<(), Error> {
+        match self.sink.write_fmt(args) {
+            Ok(_) => Ok(()),
+            Err(_) => Err(Error)
+        }
+    }
+}*/
 
 impl Project {
     pub fn new(s: String,r: Region) -> Project {
@@ -45,8 +92,24 @@ impl Project {
         }
     }
 
-    pub fn open(_: &Path) -> Option<Project> {
-        unimplemented!()
+    pub fn open(p: &Path) -> Result<Project,Cow<str>> {
+        let fd = match File::open(p) {
+            Ok(fd) => fd,
+            Err(e) => return Err(Cow::Owned(format!("failed to open file: {:?}",e)))
+        };
+
+        let mut z = ZlibDecoder::new(fd);
+        /*let j = match Json::from_reader(&mut z) {
+            Ok(j) => j,
+            Err(e) => return Err(Cow::Owned(format!("failed to parse file: {:?}",e))),
+        };*/
+        let mut rmp = Decoder::new(/*j*/&mut z);
+        let res: Result<Project,_> = <Project as Decodable>::decode(&mut rmp);
+
+        match res {
+            Ok(p) => Ok(p),
+            Err(_) => Err(Cow::Borrowed("session encoding failed"))
+        }
     }
 
     pub fn raw(p: &Path) -> Option<Project> {
@@ -114,6 +177,23 @@ impl Project {
         }
 
         None
+    }
+
+    pub fn snapshot(&self,p: &Path) -> Result<(),Cow<str>> {
+        let mut fd = try!(match File::create(p) {
+            Ok(fd) => Ok(fd),
+            Err(e) => Err(Cow::Owned(format!("failed to open save file: {:?}",e)))
+        });
+
+        let mut z = ZlibEncoder::new(fd,Compression::Default);
+        //let mut bridge = StringWrite::new(&mut z);
+        //let mut enc = Encoder::new(&mut bridge);
+        let mut enc = Encoder::new(&mut z);
+
+        match self.encode(&mut enc) {
+            Ok(()) => Ok(()),
+            Err(e) => Err(Cow::Borrowed("failed to write to save file"))
+        }
     }
 }
 

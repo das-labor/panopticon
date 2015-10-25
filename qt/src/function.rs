@@ -36,17 +36,11 @@ use rustc_serialize::json;
 use std::collections::HashMap;
 use controller::{
     LAYOUTED_FUNCTION,
-    ROUTED_FUNCTION,
     CHANGED_FUNCTION
 };
+use state::set_dirty;
 
 use sugiyama;
-use route;
-
-/*
- * emit DISCOVERED_FUNCTION -> emit STARTED_FUNCTION -> emit FINISHED_FUNCTION -> layout(UUID) ->
- * emit LAYOUTED_FUNCTION -> emit ROUTED_FUNCTION
- */
 
 /// JSON describing the function with UUID `arg`.
 ///
@@ -387,110 +381,6 @@ pub fn layout(arg0: &Variant, arg1: &Variant, arg2: &Variant, arg3: &Variant, _c
     Variant::String("{}".to_string())
 }
 
-#[derive(RustcDecodable,Debug)]
-struct RouteInputObstacle {
-    x: f32,
-    y: f32,
-    width: f32,
-    height: f32,
-}
-
-#[derive(RustcEncodable,RustcDecodable,Debug,Clone)]
-struct RouteWaypoint {
-    x: f32,
-    y: f32,
-}
-
-#[derive(RustcDecodable,Debug)]
-struct RouteInputEdge {
-    from: usize,
-    to: usize,
-}
-
-
-#[derive(RustcDecodable,Debug)]
-struct RouteInput {
-    obstacles: Vec<RouteInputObstacle>,
-    waypoints: Vec<RouteWaypoint>,
-    edges: Vec<RouteInputEdge>,
-}
-
-
-/// Route a control flow graph.
-///
-/// Input has to look loke this:
-/// ```json
-/// {
-///     "obstacles": [
-///         {
-///             "x": <NUM>,
-///             "y": <NUM>,
-///             "height": <NUM>,
-///             "width": <NUM,
-///         },
-///         ...
-///     ],
-///     waypoints: [
-///         { "x": <NUM>, "y": <NUM> },
-///         ...
-///     ],
-///     edges: [
-///         { "from": <NUM>, "to": <NUM> }, // refs waypoints
-///         ...
-///     ]
-/// }```
-///
-/// Output:
-/// ```json
-/// [
-///     [[{"x": <NUM>, "y": <NUM>},...]],
-///     ...
-/// ]
-/// }```
-pub fn route(arg0: &Variant, _ctrl: &mut Object) -> Variant {
-    let input = if let &Variant::String(ref st) = arg0 {
-        match json::decode::<RouteInput>(st) {
-            Ok(input) => {
-                input
-            },
-            Err(err) => {
-                println!("can't parse routing request: {}",err);
-                return Variant::String("{}".to_string());
-            }
-        }
-    } else {
-        return Variant::String("{}".to_string());
-    };
-
-    let ctrl = Object::from_ptr(_ctrl.as_ptr());
-
-    thread::spawn(move || {
-        let points = input.waypoints.iter().map(|p| route::Point{ x: p.x, y: p.y }).collect::<Vec<_>>();
-        let segments = input.obstacles.iter().flat_map(|o| {
-            let tl = route::Point{ x: o.x, y: o.y };
-            let tr = route::Point{ x: o.x + o.width, y: o.y };
-            let bl = route::Point{ x: o.x, y: o.y + o.height };
-            let br = route::Point{ x: o.x + o.width, y: o.y + o.height };
-
-            vec![
-                route::Segment{ start: tl.clone(), end: tr.clone() },
-                route::Segment{ start: tr, end: br.clone() },
-                route::Segment{ start: br, end: bl.clone() },
-                route::Segment{ start: bl, end: tl }
-            ].into_iter()
-        }).collect::<Vec<_>>();
-        let graph = route::visibility_graph(&segments,&points);
-
-        let ret = input.edges.iter().map(|e| {
-            route::dijkstra(e.from,e.to,&graph,&points).iter().map(|&w| input.waypoints[w].clone()).collect::<Vec<_>>()
-        }).collect::<Vec<_>>();
-
-        ctrl.emit(ROUTED_FUNCTION,&vec![Variant::String(json::encode(&ret).ok().unwrap())]);
-    });
-
-    Variant::String("{}".to_string())
-}
-
 pub fn comment(arg0: &Variant, arg1: &Variant, arg2: &Variant, ctrl: &mut Object) -> Variant {
     let reg = if let &Variant::String(ref x) = arg0 {
         x.clone()
@@ -528,6 +418,7 @@ pub fn comment(arg0: &Variant, arg1: &Variant, arg2: &Variant, ctrl: &mut Object
                         if func.region == reg {
                             // XXX: check offset?
                             ctrl.emit(CHANGED_FUNCTION,&vec![Variant::String(func.uuid.to_string())]);
+                            set_dirty(true,ctrl);
                         }
                     },
                     _ => {}
@@ -566,6 +457,7 @@ pub fn rename(arg0: &Variant, arg1: &Variant, ctrl: &mut Object) -> Variant {
 
     if let Some(uu) = maybe_uu {
         ctrl.emit(CHANGED_FUNCTION,&vec![Variant::String(uu.to_string())]);
+        set_dirty(true,ctrl);
     }
 
     Variant::String("".to_string())
