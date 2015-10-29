@@ -152,6 +152,8 @@ extern crate rmp_serialize;
 #[macro_use]
 extern crate lazy_static;
 
+extern crate memmap;
+
 // core
 pub mod disassembler;
 pub mod value;
@@ -171,3 +173,4 @@ pub mod avr;
 pub mod amd64;
 
 pub mod pe;
+pub mod elf;
