@@ -32,12 +32,38 @@ mod state;
 mod function;
 mod sugiyama;
 
+use std::env::home_dir;
+use std::fs::File;
+use std::path::Path;
+
 use controller::create_singleton;
 
-pub fn main() {
-    qmlrs::register_singleton_type(&"Panopticon",1,0,&"Panopticon",create_singleton);
+fn main() {
+    let maybe_cur = Some(Path::new(".").to_path_buf());
+    let maybe_repo = Some(Path::new("qt/res").to_path_buf());
+    let maybe_home = home_dir().map(|mut x| { x.push(".panopticon"); x });
+    let maybe_global = Some(Path::new("/usr/share/panopticon").to_path_buf());
+    let search_path = [maybe_repo,maybe_home,maybe_global,maybe_cur];
 
-    let mut engine = qmlrs::Engine::new();
-    engine.load_local_file("qt/res/Window.qml");
-    engine.exec();
+    for p in search_path.into_iter().filter_map(|x| x.clone()) {
+        let mut file = p.clone();
+
+        file.push("Window.qml");
+
+        println!("trying {:?}",file);
+        match File::open(file) {
+            Ok(_) => {
+                qmlrs::register_singleton_type(&"Panopticon",1,0,&"Panopticon",create_singleton);
+
+                let mut engine = qmlrs::Engine::new();
+                engine.load_local_file("qt/res/Window.qml");
+                engine.exec();
+
+                return;
+            },
+            Err(e) => println!("{:?}",e),
+        }
+    }
+
+    unreachable!("No QML files found :(");
 }
