@@ -46,15 +46,15 @@ fn main() {
         x.push("qml");
         x
     });
-    let maybe_global = Some(Path::new("/usr/share/panopticon/qml").to_path_buf());
-    let search_path = [maybe_repo,maybe_home,maybe_global,maybe_cur];
+    let maybe_usr = Some(Path::new("/usr/share/panopticon/qml").to_path_buf());
+    let maybe_local = Some(Path::new("/usr/local/share/panopticon/qml").to_path_buf());
+    let search_path = [maybe_repo,maybe_home,maybe_usr,maybe_local,maybe_cur];
 
     for p in search_path.into_iter().filter_map(|x| x.clone()) {
         let mut file = p.clone();
 
         file.push("Window.qml");
 
-        println!("trying {:?}",file);
         match File::open(file.clone()) {
             Ok(_) => {
                 qmlrs::register_singleton_type(&"Panopticon",1,0,&"Panopticon",create_singleton);
@@ -65,9 +65,15 @@ fn main() {
 
                 return;
             },
-            Err(e) => println!("{:?}",e),
+            Err(_) => {},
         }
     }
 
-    unreachable!("No QML files found :(");
+    println!("Failed to find the QML files. Looked in");
+    for s in search_path.iter() {
+        match s {
+            &Some(ref p) => println!("\t{}",p.to_str().unwrap_or("(encoding error)")),
+            &None => {}
+        }
+    }
 }
