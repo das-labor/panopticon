@@ -39,10 +39,14 @@ use std::path::Path;
 use controller::create_singleton;
 
 fn main() {
-    let maybe_cur = Some(Path::new(".").to_path_buf());
+    let maybe_cur = Some(Path::new("qml").to_path_buf());
     let maybe_repo = Some(Path::new("qt/res").to_path_buf());
-    let maybe_home = home_dir().map(|mut x| { x.push(".panopticon"); x });
-    let maybe_global = Some(Path::new("/usr/share/panopticon").to_path_buf());
+    let maybe_home = home_dir().map(|mut x| {
+        x.push(".panopticon");
+        x.push("qml");
+        x
+    });
+    let maybe_global = Some(Path::new("/usr/share/panopticon/qml").to_path_buf());
     let search_path = [maybe_repo,maybe_home,maybe_global,maybe_cur];
 
     for p in search_path.into_iter().filter_map(|x| x.clone()) {
@@ -51,12 +55,12 @@ fn main() {
         file.push("Window.qml");
 
         println!("trying {:?}",file);
-        match File::open(file) {
+        match File::open(file.clone()) {
             Ok(_) => {
                 qmlrs::register_singleton_type(&"Panopticon",1,0,&"Panopticon",create_singleton);
 
                 let mut engine = qmlrs::Engine::new();
-                engine.load_local_file("qt/res/Window.qml");
+                engine.load_local_file(file);
                 engine.exec();
 
                 return;
