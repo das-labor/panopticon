@@ -183,8 +183,6 @@ Item {
 		id: layoutTask
 		source: "../springy.js"
 		onMessage: {
-			//console.log("MS: " + JSON.stringify(messageObject));
-
 			if(messageObject.type == "tock") {
 				for(var i = 0; i < functionModel.count; i++) {
 					var node = functionModel.get(i);

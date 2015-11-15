@@ -170,8 +170,6 @@ Item {
 						var pos = res[0];
 						var entry = undefined;
 
-						console.log(_res);
-
 						for (var k in pos) {
 							if(pos.hasOwnProperty(k)) {
 								var obj = bblockList[k];
@@ -209,8 +207,6 @@ Item {
 					var func = JSON.parse(Panopticon.functionInfo(selection));
 					var dims = {};
 
-					console.log(JSON.stringify(cfg));
-
 					if(cflow_graph.item.bblockList != null) {
 						for (var i in bblockList) {
 							if(bblockList.hasOwnProperty(i)) {
@@ -243,8 +239,6 @@ Item {
 							dims[node] = {"width":obj.width,"height":obj.height};
 						}
 					}
-
-					console.log(JSON.stringify(dims));
 
 					if(cfg.nodes.length > 1) {
 						Panopticon.sugiyamaLayout(selection,JSON.stringify(dims),100,30);

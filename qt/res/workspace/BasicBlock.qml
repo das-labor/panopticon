@@ -32,7 +32,6 @@ Item {
 
 	width: childrenRect.width - childrenRect.x
 	height: childrenRect.height
-	opacity: 0.3
 
 	Item {
 		height: txt.childrenRect.height

@@ -98,51 +98,12 @@ pub fn layout(vertices: &Vec<usize>,
         assert_eq!(rank[&from] + 1, rank[&to]);
     }
 
-    for v in graph.vertices() {
-        println!("let v{} = graph.add_vertex({});",graph.vertex_label(v).unwrap(),graph.vertex_label(v).unwrap());
-    }
-
-    for e in graph.edges() {
-        println!("graph.add_edge((),v{},v{});",graph.vertex_label(graph.source(e)).unwrap(),graph.vertex_label(graph.target(e)).unwrap());
-    }
-
-    for (v,d) in dims.iter() {
-        println!("dims.insert(v{},({},{}));",graph.vertex_label(*v).unwrap(),d.0 as f32,d.1 as f32);
-    }
-
-    for e in rank.iter() {
-        println!("rank.insert(v{},{});",graph.vertex_label(*e.0).unwrap(),e.1);
-    }
-
     let mut order = initial_ordering(&rank,&head,&graph);
     assert!(order[0].len() == 1 || order[0][0] != order[0][1]);
     optimize_ordering(&mut order,&rank,&graph);
 
-    for e in order.iter() {
-        println!("order.push(vec!{:?});",e.iter().map(|x| format!("v{}",graph.vertex_label(*x).unwrap())).collect::<Vec<_>>());
-    }
+    let x_pos = compute_x_coordinates(&order,&rank,&graph,&dims,node_spacing,virt_start);
 
-    for v in graph.vertices() {
-        println!("auto v{} = G.newNode();",graph.vertex_label(v).unwrap());
-        println!("GA.label(v{}) = {};",graph.vertex_label(v).unwrap(),graph.vertex_label(v).unwrap());
-    }
-
-    for e in graph.edges() {
-        println!("G.newEdge(v{},v{});",graph.vertex_label(graph.source(e)).unwrap(),graph.vertex_label(graph.target(e)).unwrap());
-    }
-
-    for (v,d) in dims.iter() {
-        println!("GA.width(v{}) = {};",graph.vertex_label(*v).unwrap(),d.0 as f32);
-        println!("GA.height(v{}) = {};",graph.vertex_label(*v).unwrap(),d.1 as f32);
-    }
-
-    for e in rank.iter() {
-        println!("rank[v{}] = {};",graph.vertex_label(*e.0).unwrap(),e.1);
-    }
-
-    let x_pos = compute_x_coordinates(&order,&rank,&mut graph,&dims,node_spacing,virt_start);
-
-    assert!(rank_spacing >= 0);
     let rank_offsets = order.iter()
         .map(|r| r.iter().fold(0usize,|acc,vx| max(dims.get(vx).map(|x| { assert!(x.1 >= 0.0); x.1 }).unwrap_or(0.0) as usize,acc)))
         .fold(vec![0usize],|acc,x| { let mut ret = acc.clone(); ret.push(acc.last().unwrap() + x + (rank_spacing as usize)); ret });
@@ -410,8 +371,6 @@ pub fn add_virtual_vertices(rank: &mut HashMap<AdjacencyListVertexDescriptor,isi
         let rank_from = rank.get(&graph.source(e)).unwrap();
         let rank_to = rank.get(&graph.target(e)).unwrap();
 
-        println!("from {:?}: rank {}",graph.source(e),rank_from);
-        println!("to {:?}: rank {}",graph.target(e),rank_to);
         assert!(rank_from <= rank_to);
 
         rank_to - rank_from > 1
@@ -730,11 +689,10 @@ fn solve_integer_program(a: &Vec<Vec<isize>>,
 pub fn mark_type1_conflicts(virt_start: usize,
                             order: &Vec<Vec<AdjacencyListVertexDescriptor>>,
                             rank: &HashMap<AdjacencyListVertexDescriptor,isize>,
-                            graph: &mut AdjacencyList<usize,()>,
+                            graph: &AdjacencyList<usize,()>,
                             up_to_down: bool) -> Vec<(AdjacencyListVertexDescriptor,AdjacencyListVertexDescriptor)> {
 
     let mut ret = Vec::<(AdjacencyListVertexDescriptor,AdjacencyListVertexDescriptor)>::new();
-    let mut del = vec![];
 
     if order.len() < 3 { return ret; }
 
@@ -788,8 +746,6 @@ pub fn mark_type1_conflicts(virt_start: usize,
                                 } else {
                                     ret.push((w,graph.source(e)));
                                 }
-
-                                del.push(e);
                             }
                         }
                     }
@@ -803,10 +759,6 @@ pub fn mark_type1_conflicts(virt_start: usize,
 
         i += delta;
     }
-
-    //for e in del {
-    //    graph.remove_edge(e);
-    //}
     ret
 }
 
@@ -840,8 +792,6 @@ pub fn vertical_alignment(order: &Vec<Vec<AdjacencyListVertexDescriptor>>,
         };
         let mut k = lev_from;
 
-        println!("va: rank {} from {} to {} dir {}",i,lev_from,lev_to,lev_delta);
-
         while k != lev_to {
             assert!(i - delta >= 0 && i - delta < order.len() as isize && i >= 0 && k >= 0);
 
@@ -853,8 +803,6 @@ pub fn vertical_alignment(order: &Vec<Vec<AdjacencyListVertexDescriptor>>,
                 order[prev].iter().filter(|&&w| graph.in_edges(w).any(|e| graph.source(e) == v)).cloned().collect::<Vec<_>>()
             };
 
-            println!("\tva: process {:?}, upper neight {:?}",v,upn);
-
             if upn.len() > 0 {
                 let medians = if upn.len() % 2 == 0 {
                     vec![((upn.len() - 1) as f32 / 2.0).floor(),((upn.len() - 1) as f32 / 2.0).ceil()]
@@ -862,33 +810,23 @@ pub fn vertical_alignment(order: &Vec<Vec<AdjacencyListVertexDescriptor>>,
                     vec![(upn.len() - 1) as f32 / 2.0]
                 };
 
-                println!("\t\tva: medians {:?}",medians);
-
                 for m in medians {
                     if align[&v] == v {
                         assert!(m >= 0.0);
                         let um = upn[m as usize];
                         let pos = order[prev].iter().position(|&x| x == um).unwrap() as isize;
 
-                        println!("\t\t\tva: neight {:?} pos {}",um,pos);
-                        println!("\t\t\tconflict: {}, poscheck {}",
-                                 type1.contains(&(um,v)) || type1.contains(&(v,um)),((left_to_right && r < pos) || (!left_to_right && r > pos)));
-
                         if !type1.contains(&(um,v)) &&
                             !type1.contains(&(v,um)) &&
                             ((left_to_right && r < pos) || (!left_to_right && r > pos)) {
                             align.insert(um,v);
-                            println!("\t\t\tset align of {:?} to {:?}",um,v);
 
                             let a = root[&um];
                             root.insert(v,a);
-                            println!("\t\t\tset root of {:?} to {:?}",v,a);
 
                             let b = root[&v];
                             align.insert(v,b);
-                            println!("\t\t\tset align of {:?} to {:?}",v,b);
                             r = pos;
-                            println!("\t\t\tnew r: {}",r);
 
                         }
                     }
@@ -899,13 +837,6 @@ pub fn vertical_alignment(order: &Vec<Vec<AdjacencyListVertexDescriptor>>,
         }
 
         i += delta;
-    }
-
-    let mut vxs = graph.vertices().collect::<Vec<_>>();
-    vxs.sort_by(|a,b| a.0.cmp(&b.0));
-
-    for v in vxs.iter() {
-        println!("{:?}: root: {:?} align: {:?}",v,root[v],align[v]);
     }
 
     (root,align)
@@ -930,8 +861,6 @@ fn place_block(v: AdjacencyListVertexDescriptor,
         x.insert(v,0);
         let mut w = v;
 
-        println!("placeblock {:?}",v);
-
         loop {
             assert!(rank[&w] >= 0);
             let word: &Vec<AdjacencyListVertexDescriptor> = &order[rank[&w] as usize];
@@ -953,8 +882,6 @@ fn place_block(v: AdjacencyListVertexDescriptor,
                 let sep: isize = ((widths[&u] as isize +
                                    widths[&v] as isize) / 2) as isize;
 
-                println!("sep of {:?} and {:?} is {}",u,v,sep);
-
                 if sink[&v] != sink[&u] {
                     let sinku = sink[&u].clone();
                     let prev = shift[&sinku];
@@ -964,8 +891,6 @@ fn place_block(v: AdjacencyListVertexDescriptor,
                     } else {
                         shift.insert(sinku.clone(),max(prev,x[&v] - x[&u] + node_spacing as isize + sep as isize));
                     }
-
-                    println!("shift of {:?} is {}",sinku,shift[&sinku]);
                 } else {
 
                     let val = if left_to_right {
@@ -975,11 +900,6 @@ fn place_block(v: AdjacencyListVertexDescriptor,
                     };
                     x.insert(v,val);
                 }
-
-                println!("placing {:?}, pred {:?}, root {:?}, pred root {:?}, sink v {:?} sink u {:?}",w,word[pred as usize],v,u,sink[&v],sink[&u]);
-                println!("x(v): {}",x[&v]);
-            } else {
-                println!("not placing {:?} => beginning of layer",w);
             }
 
             assert!(w != align[&w] || align[&w] == v);
@@ -989,8 +909,6 @@ fn place_block(v: AdjacencyListVertexDescriptor,
                 break;
             }
         }
-
-        println!("END placeblock {:?}",v);
     }
 }
 
@@ -1042,8 +960,6 @@ fn horizontal_compaction(order: &Vec<Vec<AdjacencyListVertexDescriptor>>,
         vi += vdelta;
     }
 
-    println!("X {:?}",x);
-
     vi = vfrom;
     let mut d = 0;
     while vi != vto {
@@ -1068,83 +984,26 @@ fn horizontal_compaction(order: &Vec<Vec<AdjacencyListVertexDescriptor>>,
         vi += vdelta;
     }
 
-    println!("SINKS");
     for v in graph.vertices() {
-        if sink[&root[&v]] == v {
-            println!("topmost root of sink {:?}",v);
-            println!("-> shift {}",shift[&v]);
-            println!("-> x: {}",x[&v]);
-        }
-
         let val = x[&root[&v]];
         x.insert(v,val);
     }
 
     for v in graph.vertices() {
         let val = x[&v];
-        println!("val {}, shift {}",val,shift[&sink[&root[&v]]]);
-        x.insert(v,val);// + shift[&sink[&root[&v]]]);
+        x.insert(v,val + shift[&sink[&root[&v]]]);
     }
 
     x
 }
 
-enum Horizontal {
-    LeftToRight,
-    RightToLeft,
-}
-
-enum Vertical {
-    TopToBotton,
-    BottomToTop,
-}
-
 pub fn compute_x_coordinates(order: &Vec<Vec<AdjacencyListVertexDescriptor>>,
                              rank: &HashMap<AdjacencyListVertexDescriptor,isize>,
-                             graph: &mut AdjacencyList<usize,()>,
+                             graph: &AdjacencyList<usize,()>,
                              dims: &HashMap<AdjacencyListVertexDescriptor,(f32,f32)>,
                              node_spacing: usize,
                              virt_start: usize) -> HashMap<AdjacencyListVertexDescriptor,f32> {
 
-    let mut lll = false;
-    for e1 in graph.edges() {
-        let from1 = graph.source(e1);
-        let to1 = graph.target(e1);
-        let from_ord1 = order[rank[&from1] as usize].iter().position(|x| *x == from1).unwrap();
-        let to_ord1 = order[rank[&to1] as usize].iter().position(|x| *x == to1).unwrap();
-
-        for e2 in graph.edges() {
-            let from2 = graph.source(e2);
-            let to2 = graph.target(e2);
-            let from_ord2 = order[rank[&from2] as usize].iter().position(|x| *x == from2).unwrap();
-            let to_ord2 = order[rank[&to2] as usize].iter().position(|x| *x == to2).unwrap();
-
-            if e1 != e2 && ((rank[&from1] == rank[&from2] && ((from_ord1 < from_ord2 && to_ord1 > to_ord2) || (from_ord1 > from_ord2 && to_ord1 < to_ord2)))) {
-                println!("{:?} -> {:?} and {:?} -> {:?} intersect",from1,to1,from2,to2);
-                let from_lb1 = *graph.vertex_label(from1).unwrap();
-                let to_lb1 = *graph.vertex_label(to1).unwrap();
-                let from_lb2 = *graph.vertex_label(from2).unwrap();
-                let to_lb2 = *graph.vertex_label(to2).unwrap();
-                let typ = match (from_lb1 >= virt_start && to_lb1 >= virt_start,from_lb2 >= virt_start && to_lb2 >= virt_start) {
-                    (false,false) => 0,
-                    (true,false) => 1,
-                    (false,true) => 1,
-                    (true,true) => 2,
-                };
-                println!("type {} conflict",typ);
-                lll = true;
-            }
-        }
-    }
-
-    /*if lll {
-        unreachable!();
-    }*/
-
-
-
-
-/*
     let mut root = vec![];
     let mut align = vec![];
     let mut x = vec![];
@@ -1153,25 +1012,14 @@ pub fn compute_x_coordinates(order: &Vec<Vec<AdjacencyListVertexDescriptor>>,
     for k in (0..4) {
         let up_to_down = k <= 1;
         let left_to_right = k % 2 == 0;
-        let type1 = mark_type1_conflicts(virt_start,&order,&rank,&graph,up_to_down);
-        println!("type1 conflict: {:?}",type1);
+        let type1 = mark_type1_conflicts(virt_start,&order,&rank,graph,up_to_down);
         let (r,a) = vertical_alignment(&order,&type1,&graph,up_to_down,left_to_right);
-        let mut vxs: Vec<_> = graph.vertices().map(|v| (v,graph.vertex_label(v).unwrap())).collect();
-
-        vxs.sort_by(|a,b| a.1.cmp(b.1));
-
-        for v in vxs {
-            let ro = graph.vertex_label(r[&v.0]).unwrap();
-            let al = graph.vertex_label(a[&v.0]).unwrap();
-
-            println!("node: {}, root: {}, align: {}",v.1,ro,al);
-        }
         let mut w = HashMap::<AdjacencyListVertexDescriptor,usize>::new();
 
         for v in graph.vertices() {
             let _r = r[&v];
             let width = dims.get(&v).map(|x| x.0 as usize).unwrap_or(1);
-            let val = w.get(&_r).unwrap_or(0);
+            let val = *w.get(&_r).unwrap_or(&0);
 
             w.insert(_r,max(val,width));
         }
@@ -1227,34 +1075,7 @@ pub fn compute_x_coordinates(order: &Vec<Vec<AdjacencyListVertexDescriptor>>,
         let mut sort = (0..4).map(|i| x[i][&v] as f32 + shift[i]).collect::<Vec<_>>();
         assert_eq!(sort.len(),4);
         sort.sort_by(|a, b| a.partial_cmp(b).unwrap_or(Ordering::Equal));
-        println!("sort of {:?}: {:?} => {}",v,sort,0.5f32 * (sort[1] + sort[2]));
         ret.insert(v,0.5f32 * (sort[1] + sort[2]));
-    }
-
-    ret*/
-    let type1 = mark_type1_conflicts(virt_start,&order,&rank,graph,true);
-    println!("type1 conflict: {:?}",type1);
-    let (r,a) = vertical_alignment(&order,&type1,&graph,true,true);
-    let mut w = HashMap::<AdjacencyListVertexDescriptor,usize>::new();
-
-    for v in graph.vertices() {
-        let _r = r[&v];
-        let width = dims.get(&v).map(|x| {
-            assert!(x.0 >= 0.0);
-            x.0 as usize
-        }).unwrap_or(1);
-        let val = w.get(&_r).map(|x| *x).unwrap_or(0);
-
-        w.insert(_r,max(val,width));
-    }
-
-    println!("block widths: {:?}",w);
-
-    let _x = horizontal_compaction(&order,&rank,&graph,&a,&r,&w,node_spacing,true,true);
-    let mut ret = HashMap::<AdjacencyListVertexDescriptor,f32>::new();
-
-    for (vx,x) in _x {
-        ret.insert(vx,x as f32);
     }
 
     ret
