@@ -30,8 +30,9 @@ Item {
 	property int opcodeWidth: 0;
 	property int argsWidth: 0;
 
-	width: childrenRect.width
+	width: childrenRect.width - childrenRect.x
 	height: childrenRect.height
+	opacity: 0.3
 
 	Item {
 		height: txt.childrenRect.height
