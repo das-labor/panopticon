@@ -241,7 +241,7 @@ Item {
 					}
 
 					if(cfg.nodes.length > 1) {
-						Panopticon.sugiyamaLayout(selection,JSON.stringify(dims),100,30);
+						Panopticon.sugiyamaLayout(selection,JSON.stringify(dims),100,30,8);
 					} else {
 						for (var i in bblockList) {
 							if(bblockList.hasOwnProperty(i)) {

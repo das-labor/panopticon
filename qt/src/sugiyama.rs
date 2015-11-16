@@ -44,7 +44,8 @@ pub fn layout(vertices: &Vec<usize>,
               _dims: &HashMap<usize,(f32,f32)>,
               entry: Option<usize>,
               node_spacing: usize,
-              rank_spacing: usize) -> (HashMap<usize,(f32,f32)>,Vec<(f32,f32,f32,f32)>) {
+              rank_spacing: usize,
+              port_spacing: usize) -> (HashMap<usize,(f32,f32)>,Vec<(f32,f32,f32,f32)>) {
     let mut graph = AdjacencyList::<usize,()>::new();
     let mut rev = HashMap::<usize,AdjacencyListVertexDescriptor>::new();
     let mut maybe_entry = None;
@@ -108,6 +109,7 @@ pub fn layout(vertices: &Vec<usize>,
         .map(|r| r.iter().fold(0usize,|acc,vx| max(dims.get(vx).map(|x| { assert!(x.1 >= 0.0); x.1 }).unwrap_or(0.0) as usize,acc)))
         .fold(vec![0usize],|acc,x| { let mut ret = acc.clone(); ret.push(acc.last().unwrap() + x + (rank_spacing as usize)); ret });
 
+    // position original vertices (basic blocks)
     let mut ret_v = HashMap::new();
     for n in vertices.iter() {
         let vx = rev[n];
@@ -115,27 +117,72 @@ pub fn layout(vertices: &Vec<usize>,
         assert!(rank[&vx] >= 0);
         let r = rank[&vx] as usize;
         let rank_start = rank_offsets[r] as f32;
-        let rank_end = rank_offsets[r + 1] as f32;
+        let rank_end = rank_offsets[r + 1] as f32 - rank_spacing as f32;
 
         ret_v.insert(*n,(x_pos[&vx] as f32,(rank_start + ((rank_end - rank_start) / 2.0)) as f32));
     }
 
+    // (source x offset,target x offset)
+    let mut x_off = HashMap::<AdjacencyListEdgeDescriptor,(f32,f32)>::new();
+
+    // offset initial and final edge segments to form node ports
+    for n in vertices.iter() {
+        let vx = rev[n];
+        let mut up = graph.in_edges(vx).map(|x| (x,graph.source(x))).collect::<Vec<_>>();
+        let mut down = graph.out_edges(vx).map(|x| (x,graph.target(x))).collect::<Vec<_>>();
+
+        up.sort_by(|a, b| x_pos[&a.1].partial_cmp(&x_pos[&b.1]).unwrap_or(Ordering::Equal));
+        down.sort_by(|a, b| x_pos[&a.1].partial_cmp(&x_pos[&b.1]).unwrap_or(Ordering::Equal));
+
+        if up.len() > 1 {
+            let mut off = -1.0 * (up.len() as f32) * (port_spacing as f32) / 2.0;
+            for w in up.iter() {
+                off += 8.0;
+                x_off.entry(w.0).or_insert((0.0,0.0)).1 = off;
+            }
+        }
+
+        if down.len() > 1 {
+            let mut off = -1.0 * (down.len() as f32) * (port_spacing as f32) / 2.0;
+            for w in down.iter() {
+                off += 8.0;
+                x_off.entry(w.0).or_insert((0.0,0.0)).0 = off;
+            }
+        }
+    }
+
+    // build edge list
     let mut ret_e = Vec::<_>::new();
     for e in graph.edges() {
         let s = graph.source(e);
         let t = graph.target(e);
-        let sx = x_pos[&s];
-        let tx = x_pos[&t];
+        let sx = x_pos[&s] + x_off.get(&e).map(|x| x.0).unwrap_or(0.0);
+        let tx = x_pos[&t] + x_off.get(&e).map(|x| x.1).unwrap_or(0.0);
+        let mx = sx + (tx - sx) / 2.0;
 
         assert!(rank[&s] >= 0 && rank[&t] >= 0);
+        assert!(rank[&s] == rank[&t] || rank[&s] + 1 == rank[&t]);
         let sr = rank[&s] as usize;
         let tr = rank[&t] as usize;
         let srs = rank_offsets[sr] as f32;
-        let sre = rank_offsets[sr + 1] as f32;
+        let sre = rank_offsets[sr + 1] as f32 - rank_spacing as f32;
         let trs = rank_offsets[tr] as f32;
-        let tre = rank_offsets[tr + 1] as f32;
+        let tre = rank_offsets[tr + 1] as f32 - rank_spacing as f32;
+        let my = sre + (trs - sre) / 2.0;
 
-        ret_e.push((sx,srs + (sre - srs) / 2.0,tx,trs + (tre - trs) / 2.0));
+        if *graph.vertex_label(s).unwrap() < virt_start {
+            ret_e.push((sx,srs + (sre - srs) / 2.0,sx,sre));
+            ret_e.push((sx,sre,mx,my));
+        } else {
+            ret_e.push((sx,srs + (sre - srs) / 2.0,mx,my));
+        }
+
+        if *graph.vertex_label(t).unwrap() < virt_start {
+            ret_e.push((mx,my,tx,trs));
+            ret_e.push((tx,trs,tx,trs + (tre - trs) / 2.0));
+        } else {
+            ret_e.push((mx,my,tx,trs + (tre - trs) / 2.0));
+        }
     }
 
     (ret_v,ret_e)
@@ -1018,7 +1065,7 @@ pub fn compute_x_coordinates(order: &Vec<Vec<AdjacencyListVertexDescriptor>>,
 
         for v in graph.vertices() {
             let _r = r[&v];
-            let width = dims.get(&v).map(|x| x.0 as usize).unwrap_or(1);
+            let width = dims.get(&v).map(|x| x.0 as usize).unwrap_or(2);
             let val = *w.get(&_r).unwrap_or(&0);
 
             w.insert(_r,max(val,width));

@@ -300,7 +300,7 @@ struct LayoutOutputEdge {
 ///         "y": <Y-COORD>
 ///     }
 /// }```
-pub fn layout(arg0: &Variant, arg1: &Variant, arg2: &Variant, arg3: &Variant, _ctrl: &mut Object) -> Variant {
+pub fn layout(arg0: &Variant, arg1: &Variant, arg2: &Variant, arg3: &Variant, arg4: &Variant, _ctrl: &mut Object) -> Variant {
     let dims = if let &Variant::String(ref st) = arg1 {
         match json::decode::<HashMap<String,LayoutInputDimension>>(st) {
             Ok(input) => {
@@ -322,6 +322,12 @@ pub fn layout(arg0: &Variant, arg1: &Variant, arg2: &Variant, arg3: &Variant, _c
     };
 
     let node_spacing = if let &Variant::I64(ref x) = arg3 {
+        *x
+    } else {
+        return Variant::String("{}".to_string());
+    };
+
+    let port_spacing = if let &Variant::I64(ref x) = arg4 {
         *x
     } else {
         return Variant::String("{}".to_string());
@@ -358,7 +364,8 @@ pub fn layout(arg0: &Variant, arg1: &Variant, arg2: &Variant, arg3: &Variant, _c
                                                &dims_transformed,
                                                maybe_entry,
                                                node_spacing as usize,
-                                               rank_spacing as usize);
+                                               rank_spacing as usize,
+                                               port_spacing as usize);
                     let mut ret_v = HashMap::<String,LayoutOutputPosition>::new();
                     let mut ret_e = Vec::<LayoutOutputEdge>::new();
                     for (k,v) in (res.0).iter() {

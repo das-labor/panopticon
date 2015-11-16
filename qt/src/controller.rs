@@ -44,7 +44,7 @@ extern "C" fn controller_slot(this: *mut ffi::QObject, id: c_int, a: *const ffi:
         (FUNCTION_CFG,1) => ::function::control_flow_graph(&args[0]).to_qvariant(ret),
 
         // Self-contained functions
-        (SUGIYAMA_LAYOUT,4) => ::function::layout(&args[0],&args[1],&args[2],&args[3],&mut obj).to_qvariant(ret),
+        (SUGIYAMA_LAYOUT,5) => ::function::layout(&args[0],&args[1],&args[2],&args[3],&args[4],&mut obj).to_qvariant(ret),
 
         // Setter
         (SET_COMMENT,3) => ::function::comment(&args[0],&args[1],&args[2],&mut obj).to_qvariant(ret),
@@ -123,7 +123,7 @@ pub extern "C" fn create_singleton(_: *mut ffi::QQmlEngine, _: *mut ffi::QJSEngi
     assert_eq!(metaobj.add_method("functionCfg(QString)","QString"),FUNCTION_CFG);
 
     // setter
-    assert_eq!(metaobj.add_method("sugiyamaLayout(QString,QString,int,int)","QString"),SUGIYAMA_LAYOUT);
+    assert_eq!(metaobj.add_method("sugiyamaLayout(QString,QString,int,int,int)","QString"),SUGIYAMA_LAYOUT);
 
 
     let mut obj = metaobj.instantiate();
