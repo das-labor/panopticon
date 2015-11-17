@@ -122,13 +122,17 @@ Item {
 						}
 
 						if(edges !== null) {
-							for(var i = 0; i < graph.edges.length; i++) {
-								var e = graph.edges[i];
+							for (var conn in graph.edges) {
+								if(graph.edges.hasOwnProperty(conn)) {
+									for(var i = 0; i < graph.edges[conn].length; i++) {
+										var e = graph.edges[conn][i];
 
-								ctx.beginPath();
-								ctx.moveTo(e.x1 - bblockRoot.childrenRect.x,e.y1 - bblockRoot.childrenRect.y);
-								ctx.lineTo(e.x2 - bblockRoot.childrenRect.x,e.y2 - bblockRoot.childrenRect.y);
-								ctx.stroke();
+										ctx.beginPath();
+										ctx.moveTo(e.x1 - bblockRoot.childrenRect.x,e.y1 - bblockRoot.childrenRect.y);
+										ctx.lineTo(e.x2 - bblockRoot.childrenRect.x,e.y2 - bblockRoot.childrenRect.y);
+										ctx.stroke();
+									}
+								}
 							}
 						}
 					}
