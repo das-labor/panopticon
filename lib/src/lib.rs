@@ -152,7 +152,7 @@ extern crate rmp_serialize;
 #[macro_use]
 extern crate lazy_static;
 
-extern crate memmap;
+extern crate byteorder;
 
 // core
 pub mod disassembler;
