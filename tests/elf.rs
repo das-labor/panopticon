@@ -16,23 +16,34 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-use std::borrow::Cow;
+extern crate panopticon;
 
-pub mod parse;
-pub mod load;
+use panopticon::elf::*;
+use std::path::Path;
+use std::fs::File;
 
-#[derive(Debug)]
-pub struct Error {
-    pub msg: Cow<'static,str>
+#[test]
+fn elf_parse_self() {
+    let mut fd = File::open(Path::new("target/debug/qtpanopticon")).ok().unwrap();
+
+    match parse::Ehdr::read(&mut fd) {
+        Ok(ehdr) => {
+            println!("{:?}",ehdr);
+            for p in ehdr.progam_headers.iter() {
+                println!("{:?}",p);
+            }
+            for s in ehdr.segment_headers.iter() {
+                println!("{:?}",s);
+            }
+        },
+        Err(e) => { panic!(e) }
+    }
 }
 
-impl Error {
-    pub fn new(s: &'static str) -> Error {
-        Error{ msg: Cow::Borrowed(s) }
-    }
-
-    pub fn new_owned(s: String) -> Error {
-        Error{ msg: Cow::Owned(s) }
+#[test]
+fn elf_load_static() {
+    match load::load(Path::new("tests/data/static")) {
+        Ok(proj) => println!("{}",proj.name),
+        Err(_) => panic!()
     }
 }
-

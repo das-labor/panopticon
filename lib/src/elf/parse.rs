@@ -1,3 +1,21 @@
+/*
+ * Panopticon - A libre disassembler
+ * Copyright (C) 2015  Panopticon authors
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 use std::fmt::Debug;
 use std::io::{Seek,SeekFrom,Read};
 use std::convert::From;
@@ -558,7 +576,7 @@ impl Ident {
 }
 
 #[derive(Debug)]
-enum SegmentType {
+pub enum SegmentType {
     Null,
     Load,
     Dynamic,
@@ -604,14 +622,14 @@ impl SegmentType {
 
 #[derive(Debug)]
 pub struct Phdr {
-    seg_type: SegmentType,
-    offset: u64,
-    vaddr: u64,
-    paddr: u64,
-    filesz: u64,
-    flags: usize,
-    align: usize,
-    memsz: u64,
+    pub seg_type: SegmentType,
+    pub offset: u64,
+    pub vaddr: u64,
+    pub paddr: u64,
+    pub filesz: u64,
+    pub flags: usize,
+    pub align: usize,
+    pub memsz: u64,
 }
 
 trait ReadPhdr {
