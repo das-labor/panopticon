@@ -271,6 +271,13 @@ struct LayoutOutputPosition {
 
 #[derive(RustcEncodable,Debug)]
 struct LayoutOutputEdge {
+    segments: Vec<LayoutOutputSegment>,
+    head_offset: LayoutOutputPosition,
+    tail_offset: LayoutOutputPosition,
+}
+
+#[derive(RustcEncodable,Debug)]
+struct LayoutOutputSegment {
     x1: f32,
     y1: f32,
     x2: f32,
@@ -367,18 +374,28 @@ pub fn layout(arg0: &Variant, arg1: &Variant, arg2: &Variant, arg3: &Variant, ar
                                                rank_spacing as usize,
                                                port_spacing as usize);
                     let mut ret_v = HashMap::<String,LayoutOutputPosition>::new();
-                    let mut ret_e = HashMap::<usize,Vec<LayoutOutputEdge>>::new();
+                    let mut ret_e = HashMap::<usize,LayoutOutputEdge>::new();
                     for (k,v) in (res.0).iter() {
                         ret_v.insert(idents[*k].clone(),LayoutOutputPosition{ x: v.0 as f32, y: v.1 as f32 });
                     }
                     for v in (res.1).iter() {
-                        ret_e.insert(*v.0,(v.1).iter().map(|w| {
-                            LayoutOutputEdge{
-                                x1: w.0 as f32,
-                                y1: w.1 as f32,
-                                x2: w.2 as f32,
-                                y2: w.3 as f32,
-                            }}).collect::<Vec<_>>());
+                        ret_e.insert(*v.0,LayoutOutputEdge{
+                            segments: (v.1).0.iter().map(|w| {
+                                LayoutOutputSegment{
+                                    x1: w.0 as f32,
+                                    y1: w.1 as f32,
+                                    x2: w.2 as f32,
+                                    y2: w.3 as f32,
+                                }}).collect::<Vec<_>>(),
+                            tail_offset: LayoutOutputPosition{
+                                x: ((v.1).1).0,
+                                y: ((v.1).1).1,
+                            },
+                            head_offset: LayoutOutputPosition{
+                                x: ((v.1).2).0,
+                                y: ((v.1).2).1,
+                            }
+                        });
                     }
                     ctrl.emit(LAYOUTED_FUNCTION,&vec![Variant::String(json::encode(&(ret_v,ret_e)).ok().unwrap())]);
                 });

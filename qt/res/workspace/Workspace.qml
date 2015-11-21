@@ -124,14 +124,19 @@ Item {
 						if(edges !== null) {
 							for (var conn in graph.edges) {
 								if(graph.edges.hasOwnProperty(conn)) {
-									for(var i = 0; i < graph.edges[conn].length; i++) {
-										var e = graph.edges[conn][i];
+									var segs = graph.edges[conn].segments;
+
+									for(var i = 0; i < segs.length; i++) {
+										var e = segs[i];
 
 										ctx.beginPath();
 										ctx.moveTo(e.x1 - bblockRoot.childrenRect.x,e.y1 - bblockRoot.childrenRect.y);
 										ctx.lineTo(e.x2 - bblockRoot.childrenRect.x,e.y2 - bblockRoot.childrenRect.y);
 										ctx.stroke();
 									}
+
+									ctx.fillRect(graph.edges[conn].head_offset.x - bblockRoot.childrenRect.x - 5,graph.edges[conn].head_offset.y - bblockRoot.childrenRect.y - 5,10,10);
+									//ctx.fillRect(graph.edges[conn].tail_offset.x - bblockRoot.childrenRect.x,graph.edges[conn].tail_offset.y - bblockRoot.childrenRect.y,10,10);
 								}
 							}
 						}
