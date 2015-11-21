@@ -23,24 +23,6 @@ use std::path::Path;
 use std::fs::File;
 
 #[test]
-fn elf_parse_self() {
-    let mut fd = File::open(Path::new("target/debug/qtpanopticon")).ok().unwrap();
-
-    match parse::Ehdr::read(&mut fd) {
-        Ok(ehdr) => {
-            println!("{:?}",ehdr);
-            for p in ehdr.progam_headers.iter() {
-                println!("{:?}",p);
-            }
-            for s in ehdr.segment_headers.iter() {
-                println!("{:?}",s);
-            }
-        },
-        Err(e) => { panic!(e) }
-    }
-}
-
-#[test]
 fn elf_load_static() {
     match load::load(Path::new("tests/data/static")) {
         Ok(proj) => println!("{}",proj.name),
