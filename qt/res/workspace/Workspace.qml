@@ -109,6 +109,23 @@ Item {
 					property var edges: null;
 					property var boxes: null;
 
+					function draw_arrow_head(x,y,ctx) {
+						var dim = 10;
+
+						ctx.save();
+						ctx.translate(x,y);
+						ctx.rotate(Math.PI);
+						ctx.beginPath();
+						ctx.moveTo(0,dim / -2);
+						ctx.lineTo(dim / 2,dim / 2);
+						ctx.lineTo(0,dim / 3);
+						ctx.lineTo(dim / -2,dim / 2);
+						ctx.lineTo(0,dim / -2);
+						ctx.stroke();
+						ctx.fill();
+						ctx.restore();
+					}
+
 					onPaint: {
 						var ctx = graph.getContext('2d');
 						var func = JSON.parse(Panopticon.functionInfo(selection));
@@ -135,8 +152,9 @@ Item {
 										ctx.stroke();
 									}
 
-									ctx.fillRect(graph.edges[conn].head_offset.x - bblockRoot.childrenRect.x - 5,graph.edges[conn].head_offset.y - bblockRoot.childrenRect.y - 5,10,10);
-									//ctx.fillRect(graph.edges[conn].tail_offset.x - bblockRoot.childrenRect.x,graph.edges[conn].tail_offset.y - bblockRoot.childrenRect.y,10,10);
+									draw_arrow_head(
+										graph.edges[conn].head_offset.x - bblockRoot.childrenRect.x,
+										graph.edges[conn].head_offset.y - bblockRoot.childrenRect.y - 5,ctx);
 								}
 							}
 						}

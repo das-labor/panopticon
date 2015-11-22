@@ -194,8 +194,8 @@ pub fn layout(vertices: &Vec<usize>,
     // offset initial and final edge segments to form node ports
     for n in vertices.iter() {
         let vx = rev[n];
-        let mut up = graph.in_edges(vx).map(|x| (x,graph.source(x))).collect::<Vec<_>>();
-        let mut down = graph.out_edges(vx).map(|x| (x,graph.target(x))).collect::<Vec<_>>();
+        let mut up = graph.in_edges(vx).filter_map(|x| if graph.source(x) != vx { Some((x,graph.source(x))) } else { None }).collect::<Vec<_>>();
+        let mut down = graph.out_edges(vx).filter_map(|x| if graph.target(x) != vx { Some((x,graph.target(x))) } else { None }).collect::<Vec<_>>();
 
         up.sort_by(|a, b| x_pos[&a.1].partial_cmp(&x_pos[&b.1]).unwrap_or(Ordering::Equal));
         down.sort_by(|a, b| x_pos[&a.1].partial_cmp(&x_pos[&b.1]).unwrap_or(Ordering::Equal));
@@ -272,7 +272,26 @@ pub fn layout(vertices: &Vec<usize>,
 
         match maybe_e {
             None => {
-                continue;
+                // loops
+                let (w,h) = dims[&start];
+                let x = x_pos[&start] - w / 2.0 + 10.0;
+                let r = rank[&start] as usize;
+                let rs = rank_offsets[r] as f32;
+                let re = rank_offsets[r + 1] as f32 - rank_spacing as f32;
+                let y = rs + (re - rs) / 2.0;
+                let tm = (x,y - h / 2.0 - 10.0);
+                let tl = (x - 20.0,y - h / 2.0 - 10.0);
+                let bl = (x - 20.0,y + h / 2.0 + 10.0);
+                let bm = (x,y + h / 2.0 + 10.0);
+                let segs = vec![
+                    (x,y,tm.0,tm.1),
+                    (tm.0,tm.1,tl.0,tl.1),
+                    (tl.0,tl.1,bl.0,bl.1),
+                    (bl.0,bl.1,bm.0,bm.1),
+                    (bm.0,bm.1,x,y)
+                ];
+
+                ret_e.insert(idx,(segs,(x,y + h / 2.0),(x,y - h / 2.0)));
             },
             Some(mut e) => {
                 loop {
@@ -290,11 +309,13 @@ pub fn layout(vertices: &Vec<usize>,
                     let mx = sx + (tx - sx) / 2.0;
                     let my = sre + (trs - sre) / 2.0;
 
+                    // arrow tail position
                     if start_arrow_off.is_none() {
                         start_arrow_off = Some((sx,srs + (sre - srs) / 2.0 + dims[&s].1 / 2.0));
                     }
 
                     if revd_edge_labels.contains(&lb) {
+                        // back edges
                         if *graph.vertex_label(s).unwrap() < virt_start {
                             ret.push((sx,srs + (sre - srs) / 2.0 + revd_edge_pos[lb].0 / 2.0 + 10.0,sx,srs + (sre - srs) / 2.0));
                         } else {
@@ -319,7 +340,7 @@ pub fn layout(vertices: &Vec<usize>,
                             }
                         }
                     } else {
-
+                        // forward edges
                         if *graph.vertex_label(s).unwrap() < virt_start {
                             ret.push((sx,srs + (sre - srs) / 2.0,sx,sre));
                             ret.push((sx,sre,mx,my));
@@ -335,6 +356,7 @@ pub fn layout(vertices: &Vec<usize>,
                         }
                     }
 
+                    // next segment
                     match graph.out_edges(t).find(|x| *graph.edge_label(*x).unwrap() == idx) {
                         Some(_e) => e = _e,
                         None => {
