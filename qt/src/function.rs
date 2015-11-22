@@ -94,7 +94,7 @@ pub fn metainfo(arg: &Variant) -> Variant {
                     Some(&CallTarget::Symbolic(ref sym,ref uuid)) => {
                         format!("{{\"type\":\"symbol\",\"name\":\"{}\",\"uuid\":\"{}\",\"calls\":{{{}}}}}",sym,uuid,callees)
                     },
-                    Some(&CallTarget::Todo(ref a,ref uuid)) => {
+                    Some(&CallTarget::Todo(ref a,_,ref uuid)) => {
                         format!("{{\"type\":\"todo\",\"start\":{},\"uuid\":\"{}\",\"calls\":{{{}}}}}",a,uuid,callees)
                     },
                     None => {

@@ -36,7 +36,8 @@ impl Architecture for Avr {
 
 #[derive(Clone)]
 pub struct Mcu {
-    pub pc_bits: u16, // width of the program counter in bits (FLASHEND)
+    pub pc_bits: u16,                                   ///< width of the program counter in bits (FLASHEND)
+    pub int_vec: Vec<(&'static str,u64,&'static str)>,  ///< interrupt vector: (name, offset, comment)
     pub skip: Option<(Guard,u64)>,
 }
 
@@ -44,6 +45,7 @@ impl Mcu {
     pub fn new() -> Mcu {
         Mcu {
             pc_bits: 13,
+            int_vec: vec![("RESET",0,"MCU Reset Interrupt")],
             skip: None,
         }
     }
@@ -51,6 +53,34 @@ impl Mcu {
     pub fn atmega88() -> Mcu {
         Mcu {
             pc_bits: 13,
+            int_vec: vec![
+                ("RESET",0,"MCU Reset Interrupt"),
+                ("INT0",2,"External Interrupt Request 0"),
+                ("INT1",4,"External Interrupt Request 1"),
+                ("PCI0",6,"Pin Change Interrupt Request 0"),
+                ("PCI1",8,"Pin Change Interrupt Request 1"),
+                ("PCI2",10,"Pin Change Interrupt Request 2"),
+                ("WDT",12,"Watchdog Time-out Interrupt"),
+                ("OC2A",14,"Timer/Counter2 Compare Match A"),
+                ("OC2B",16,"Timer/Counter2 Compare Match B"),
+                ("OVF2",18,"Timer/Counter2 Overflow"),
+                ("ICP1",20,"Timer/Counter1 Capture Event"),
+                ("OC1A",22,"Timer/Counter1 Compare Match A"),
+                ("OC1B",24,"Timer/Counter1 Compare Match B"),
+                ("OVF1",26,"Timer/Counter1 Overflow"),
+                ("OC0A",28,"TimerCounter0 Compare Match A"),
+                ("OC0B",30,"TimerCounter0 Compare Match B"),// XXX: m88def.inc says 0x1f (words)
+                ("OVF0",32,"Timer/Couner0 Overflow"),
+                ("SPI",34,"SPI Serial Transfer Complete"),
+                ("URXC",36,"USART Rx Complete"),
+                ("UDRE",38,"USART, Data Register Empty"),
+                ("UTXC",40,"USART Tx Complete"),
+                ("ADCC",42,"ADC Conversion Complete"),
+                ("ERDY",44,"EEPROM Ready"),
+                ("ACI",46,"Analog Comparator"),
+                ("TWI",48,"Two-wire Serial Interface"),
+                ("SPMR",50,"Store Program Memory Read")
+            ],
             skip: None,
         }
     }

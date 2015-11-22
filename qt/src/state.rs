@@ -186,10 +186,9 @@ pub fn start_new(_ctrl: &mut Object) -> bool {
     thread::spawn(move || {
         let mut prog = Program::new("prog0");
         let prog_uuid = prog.uuid;
-        let start = 0;
         let dec = avr::syntax::disassembler();
-        let init = avr::Mcu::new();
-        let uu = Uuid::new_v4();
+        let init = avr::Mcu::atmega88();
+        let mut uus = vec![];
 
         // Add empty program
         {
@@ -197,12 +196,21 @@ pub fn start_new(_ctrl: &mut Object) -> bool {
             let proj: &mut Project = write_guard.as_mut().unwrap();
             let root = proj.sources.dependencies.vertex_label(proj.sources.root).unwrap();
 
-            prog.call_graph.add_vertex(CallTarget::Todo(start,uu.clone()));
+            for &(name,off,cmnt) in init.int_vec.iter() {
+                // XXX: function name
+                let uu =  Uuid::new_v4();
+
+                prog.call_graph.add_vertex(CallTarget::Todo(off,Some(name.to_string()),uu.clone()));
+                proj.comments.insert((root.name().clone(),off),cmnt.to_string());
+                uus.push(uu);
+            }
+
             proj.code.push(prog);
-            proj.comments.insert((root.name().clone(),0),"MCU entry point".to_string());
         }
 
-        ctrl.emit(DISCOVERED_FUNCTION,&vec!(Variant::String(uu.to_string())));
+        for uu in uus {
+            ctrl.emit(DISCOVERED_FUNCTION,&vec!(Variant::String(uu.to_string())));
+        }
         set_dirty(true,&mut ctrl);
 
         loop {
@@ -212,15 +220,15 @@ pub fn start_new(_ctrl: &mut Object) -> bool {
                 let prog: &Program = proj.find_program_by_uuid(&prog_uuid).unwrap();
 
                 prog.call_graph.vertices().filter_map(|x| {
-                    if let Some(&CallTarget::Todo(tgt,uuid)) = prog.call_graph.vertex_label(x) {
-                        Some((tgt,uuid))
+                    if let Some(&CallTarget::Todo(tgt,ref name,uuid)) = prog.call_graph.vertex_label(x) {
+                        Some((tgt,name.clone(),uuid))
                     } else {
                         None
                     }
                 }).next()
             };
 
-            if let Some((tgt,uuid)) = maybe_tgt {
+            if let Some((tgt,maybe_name,uuid)) = maybe_tgt {
                 ctrl.emit(STARTED_FUNCTION,&vec!(Variant::String(uuid.to_string())));
                 set_dirty(true,&mut ctrl);
 
@@ -229,7 +237,8 @@ pub fn start_new(_ctrl: &mut Object) -> bool {
                     let pro: &Project = read_guard.as_ref().unwrap();
                     let root = pro.sources.dependencies.vertex_label(pro.sources.root).unwrap();
                     let i = root.iter();
-                    let mut fun = Function::with_uuid(format!("func_{}",tgt),uuid,root.name().clone());
+                    let name = maybe_name.unwrap_or(format!("func_{}",tgt));
+                    let mut fun = Function::with_uuid(name,uuid,root.name().clone());
 
                     fun = Function::disassemble::<avr::Avr>(Some(fun),dec.clone(),init.clone(),i,tgt,root.name().clone());
                     fun.entry_point = fun.find_basic_block_at_address(tgt);

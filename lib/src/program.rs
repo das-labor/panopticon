@@ -30,7 +30,7 @@ use uuid::Uuid;
 pub enum CallTarget {
     Concrete(Function),
     Symbolic(String,Uuid),
-    Todo(u64,Uuid),
+    Todo(u64,Option<String>,Uuid),
 }
 
 impl CallTarget {
@@ -38,7 +38,7 @@ impl CallTarget {
         match self {
             &CallTarget::Concrete(Function{ uuid,..}) => uuid,
             &CallTarget::Symbolic(_,uuid) => uuid,
-            &CallTarget::Todo(_,uuid) => uuid,
+            &CallTarget::Todo(_,_,uuid) => uuid,
         }
     }
 }
@@ -182,7 +182,7 @@ impl Program {
 
             match self.call_graph.vertex_label(*ct) {
                 Some(&CallTarget::Concrete(Function{ uuid: _uu,..})) => _uu == uu,
-                Some(&CallTarget::Todo(_,_uu)) => _uu == uu,
+                Some(&CallTarget::Todo(_,_,_uu)) => _uu == uu,
                 Some(&CallTarget::Symbolic(_,_uu)) => _uu == uu,
                 _ => false
             }
@@ -216,7 +216,7 @@ impl Program {
                             }
                         }
                     },
-                    Some(&CallTarget::Todo(_a,_)) => {
+                    Some(&CallTarget::Todo(_a,_,_)) => {
                         if _a == a {
                             other_funs.push(w);
                             break;
@@ -229,7 +229,7 @@ impl Program {
 
             if l == other_funs.len() {
                 let uu = Uuid::new_v4();
-                let v = self.call_graph.add_vertex(CallTarget::Todo(a,uu));
+                let v = self.call_graph.add_vertex(CallTarget::Todo(a,None,uu));
 
                 self.call_graph.add_edge((),new_vx,v);
                 ret.push(uu);
@@ -291,7 +291,7 @@ mod tests {
         let uu = Uuid::new_v4();
         let mut prog = Program::new("prog_test");
 
-        let tvx = prog.call_graph.add_vertex(CallTarget::Todo(12,uu));
+        let tvx = prog.call_graph.add_vertex(CallTarget::Todo(12,None,uu));
         let vx0 = prog.call_graph.add_vertex(CallTarget::Concrete(Function::new("test".to_string(),"ram".to_string())));
         let vx1 = prog.call_graph.add_vertex(CallTarget::Concrete(Function::new("test2".to_string(),"ram".to_string())));
 
@@ -327,7 +327,7 @@ mod tests {
         let uu2 = Uuid::new_v4();
         let mut prog = Program::new("prog_test");
 
-        let tvx = prog.call_graph.add_vertex(CallTarget::Todo(12,uu1));
+        let tvx = prog.call_graph.add_vertex(CallTarget::Todo(12,None,uu1));
 
         let mut func = Function::with_uuid("test3".to_string(),uu2.clone(),"ram".to_string());
         let ops1 = vec![];
