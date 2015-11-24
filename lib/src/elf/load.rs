@@ -19,20 +19,25 @@
 use std::io::{Seek,SeekFrom,Read};
 use std::fs::File;
 use std::path::Path;
-use std::u64;
+use std::usize;
 
+use program::{Program,DisassembleEvent,CallTarget};
 use project::Project;
 use layer::Layer;
 use region::Region;
 use mnemonic::Bound;
 
+use graph_algos::traits::MutableGraph;
+use uuid::Uuid;
 use elf::*;
 use elf::parse::*;
+
+use avr;
 
 pub fn load(p: &Path) -> Result<Project,Error> {
     let mut fd = File::open(p).ok().unwrap();
     let ehdr = try!(Ehdr::read(&mut fd));
-    let mut reg = Region::undefined("base".to_string(),u64::MAX);
+    let mut reg = Region::undefined("base".to_string(),0x100000);
 
     match ehdr.file_type {
         Type::Core | Type::Executable | Type::Shared => {
