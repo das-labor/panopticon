@@ -18,7 +18,7 @@
 
 use std::collections::HashMap;
 use std::path::Path;
-use std::iter::{Enumerate,Take,Skip,Chain};
+use std::iter::{Enumerate,Take,Skip};
 use std::slice::Iter;
 use std::fs::File;
 use std::io::Read;
@@ -40,7 +40,6 @@ pub enum LayerIter<'a> {
     Concat{ car: Box<LayerIter<'a>>, cdr: Box<LayerIter<'a>> },
     Take(Box<Take<LayerIter<'a>>>),
     Skip(Box<Skip<LayerIter<'a>>>),
-    Chain(Box<Chain<LayerIter<'a>,LayerIter<'a>>>),
 }
 
 impl<'a> Iterator for LayerIter<'a> {
@@ -49,7 +48,7 @@ impl<'a> Iterator for LayerIter<'a> {
     fn next(&mut self) -> Option<Cell> {
         match self {
             &mut LayerIter::Undefined(ref mut r) => r.next().map(|_| None),
-            &mut LayerIter::Defined(ref mut r) => r.cloned().next().map(|x| Some(x)),
+            &mut LayerIter::Defined(ref mut r) => r.next().map(|&x| Some(x)),
             &mut LayerIter::Sparse{ map: ref m, mapped: ref mut i } => {
                 if let Some((idx,covered)) = i.next() {
                     Some(*m.get(&(idx as u64)).unwrap_or(&covered))
@@ -66,7 +65,19 @@ impl<'a> Iterator for LayerIter<'a> {
             },
             &mut LayerIter::Take(ref mut i) => i.next(),
             &mut LayerIter::Skip(ref mut i) => i.next(),
-            &mut LayerIter::Chain(ref mut i) => i.next(),
+        }
+    }
+}
+
+impl<'a> ExactSizeIterator for LayerIter<'a> {
+    fn len(&self) -> usize {
+        match self {
+            &LayerIter::Undefined(ref r) => (r.end - r.start) as usize,
+            &LayerIter::Defined(ref r) => r.len(),
+            &LayerIter::Sparse{ mapped: ref m, .. } => m.len(),
+            &LayerIter::Concat{ car: ref a, cdr: ref b } => a.len() + b.len(),
+            &LayerIter::Take(ref i) => i.len(),
+            &LayerIter::Skip(ref i) => i.len(),
         }
     }
 }
@@ -89,7 +100,7 @@ impl<'a> LayerIter<'a> {
     }
 
     pub fn append(&self, l: LayerIter<'a>) -> LayerIter<'a> {
-        LayerIter::Chain(Box::new(self.clone().chain(l)))
+        LayerIter::Concat{ car: Box::new(self.clone()), cdr: Box::new(l) }
     }
 }
 
@@ -227,11 +238,11 @@ mod tests {
         let l1 = OpaqueLayer::wrap(vec!(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16));
         let mut s1 = l1.iter();
 
-        assert_eq!(s1.clone().count(), 16);
+        assert_eq!(s1.clone().len(), 16);
         assert_eq!(s1.next().unwrap(), Some(1));
         //assert_eq!(s1.idx(13).unwrap(), Some(14));
         assert_eq!(s1.next().unwrap(), Some(2));
-        assert_eq!(s1.clone().count(), 14);
+        assert_eq!(s1.clone().len(), 14);
     }
 
     #[test]
@@ -245,7 +256,7 @@ mod tests {
         l2.write(13,Some(1));
 
         let s = l2.filter(l1.iter());
-        assert_eq!(s.clone().count(), 16);
+        assert_eq!(s.clone().len(), 16);
         assert_eq!(s.collect::<Vec<Cell>>(),e);
     }
 

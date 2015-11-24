@@ -105,8 +105,8 @@ impl Region {
                 tmp = ret.cut(&(0..area.start)).append(tmp)
             }
 
-            if area.end < ret.clone().count() as u64 {
-                tmp = tmp.append(ret.cut(&(area.end..(ret.clone().count() as u64))));
+            if area.end < ret.len() as u64 {
+                tmp = tmp.append(ret.cut(&(area.end..(ret.len() as u64))));
             }
 
             ret = tmp;
@@ -279,7 +279,7 @@ mod tests {
         let r1 = Region::undefined("test".to_string(),128);
         let mut s1 = r1.iter();
 
-        assert_eq!(s1.clone().count(), 128);
+        assert_eq!(s1.len(), 128);
         assert!(s1.all(|x| x.is_none()));
     }
 
@@ -303,7 +303,7 @@ mod tests {
             let s = r1.iter();
             let mut idx = 0;
 
-            assert_eq!(s.clone().count(), 128);
+            assert_eq!(s.len(), 128);
 
             for i in s {
                 if idx >= 1 && idx < 8 {
@@ -342,16 +342,16 @@ mod tests {
 
         assert_eq!(proj.len(), 6);
         assert_eq!(proj[0].0, Bound::new(0,45));
-        assert_eq!(proj[0].1.as_opaque().unwrap().iter().count(), 64);
+        assert_eq!(proj[0].1.as_opaque().unwrap().iter().len(), 64);
         assert_eq!(proj[1].0, Bound::new(45,72));
-        assert_eq!(proj[1].1.as_opaque().unwrap().iter().count(), 27);
+        assert_eq!(proj[1].1.as_opaque().unwrap().iter().len(), 27);
         assert_eq!(proj[2].0, Bound::new(72,80));
-        assert_eq!(proj[2].1.as_opaque().unwrap().iter().count(), 140);
+        assert_eq!(proj[2].1.as_opaque().unwrap().iter().len(), 140);
         assert_eq!(proj[3].0, Bound::new(80,102));
-        assert_eq!(proj[3].1.as_opaque().unwrap().iter().count(), 48);
+        assert_eq!(proj[3].1.as_opaque().unwrap().iter().len(), 48);
         assert_eq!(proj[4].0, Bound::new(102,134));
-        assert_eq!(proj[4].1.as_opaque().unwrap().iter().count(), 32);
+        assert_eq!(proj[4].1.as_opaque().unwrap().iter().len(), 32);
         assert_eq!(proj[5].0, Bound::new(134,140));
-        assert_eq!(proj[5].1.as_opaque().unwrap().iter().count(), 140);
+        assert_eq!(proj[5].1.as_opaque().unwrap().iter().len(), 140);
     }
  }
