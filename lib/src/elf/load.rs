@@ -78,5 +78,15 @@ pub fn load(p: &Path) -> Result<Project,Error> {
         _ => {}
     }
 
-    Ok(Project::new("test".to_string(),reg))
+    let name = p.file_name()
+        .map(|x| x.to_string_lossy().to_string())
+        .unwrap_or("(encoding error)".to_string());
+    let mut prog = Program::new("prog0");
+    let mut proj = Project::new(name.clone(),reg);
+
+    prog.call_graph.add_vertex(CallTarget::Todo(ehdr.entry,Some(name),Uuid::new_v4()));
+    proj.comments.insert(("base".to_string(),ehdr.entry),"main".to_string());
+    proj.code.push(prog);
+
+    Ok(proj)
 }

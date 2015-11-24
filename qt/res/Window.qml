@@ -72,6 +72,18 @@ ApplicationWindow {
 				title: "New..."
 
 				MenuItem {
+					text: "ELF"
+					shortcut: "Ctrl+E"
+					enabled: Panopticon.state == "NEW"
+					onTriggered: {
+						saveStalePanopticon(function() {
+							fileNewDialog.openFunction = Panopticon.createElfSession
+							fileNewDialog.open()
+						})
+					}
+				}
+
+				MenuItem {
 					text: "Relocated AVR image"
 					shortcut: "Ctrl+A"
 					enabled: Panopticon.state == "NEW"

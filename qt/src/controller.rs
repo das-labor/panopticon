@@ -34,6 +34,7 @@ extern "C" fn controller_slot(this: *mut ffi::QObject, id: c_int, a: *const ffi:
         // State transitions
         (CREATE_AVR_SESSION,1) => ::state::create_avr_session(&args[0],&mut obj).to_qvariant(ret),
         (CREATE_RAW_SESSION,1) => ::state::create_raw_session(&args[0],&mut obj).to_qvariant(ret),
+        (CREATE_ELF_SESSION,1) => ::state::create_elf_session(&args[0],&mut obj).to_qvariant(ret),
         (OPEN_SESSION,1) => ::state::open_session(&args[0],&mut obj).to_qvariant(ret),
         (SNAPSHOT_SESSION,1) => ::state::snapshot_session(&args[0],&mut obj).to_qvariant(ret),
         (START,0) => ::state::start(&mut obj).to_qvariant(ret),
@@ -66,20 +67,22 @@ pub const CHANGED_FUNCTION: isize = 6;
 
 pub const CREATE_AVR_SESSION: isize = 7;
 pub const CREATE_RAW_SESSION: isize = 8;
-pub const OPEN_SESSION: isize = 9;
+pub const CREATE_ELF_SESSION: isize = 9;
 
-pub const START: isize = 10;
-pub const DONE: isize = 11;
+pub const OPEN_SESSION: isize = 10;
 
-pub const SET_COMMENT: isize = 12;
-pub const SET_NAME: isize = 13;
+pub const START: isize = 11;
+pub const DONE: isize = 12;
 
-pub const SNAPSHOT_SESSION: isize = 14;
+pub const SET_COMMENT: isize = 13;
+pub const SET_NAME: isize = 14;
 
-pub const FUNCTION_INFO: isize = 15;
-pub const FUNCTION_CFG: isize = 16;
+pub const SNAPSHOT_SESSION: isize = 15;
 
-pub const SUGIYAMA_LAYOUT: isize = 17;
+pub const FUNCTION_INFO: isize = 16;
+pub const FUNCTION_CFG: isize = 17;
+
+pub const SUGIYAMA_LAYOUT: isize = 18;
 
 pub extern "C" fn create_singleton(_: *mut ffi::QQmlEngine, _: *mut ffi::QJSEngine) -> *mut ffi::QObject {
     let mut metaobj = MetaObject::new("Panopticon",controller_slot);
@@ -103,6 +106,7 @@ pub extern "C" fn create_singleton(_: *mut ffi::QQmlEngine, _: *mut ffi::QJSEngi
     // state = NEW -> READY, dirty = -> true
     assert_eq!(metaobj.add_method("createAvrSession(QString)","bool"),CREATE_AVR_SESSION);
     assert_eq!(metaobj.add_method("createRawSession(QString)","bool"),CREATE_RAW_SESSION);
+    assert_eq!(metaobj.add_method("createElfSession(QString)","bool"),CREATE_ELF_SESSION);
     assert_eq!(metaobj.add_method("openSession(QString)","bool"),OPEN_SESSION);
 
     // state = READY -> WORKING

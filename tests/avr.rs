@@ -24,6 +24,7 @@ use panopticon::avr::{Mcu,Avr};
 use panopticon::avr::syntax::disassembler;
 use panopticon::function::{ControlFlowTarget,Function};
 //use panopticon::disassembler::State;
+use panopticon::elf;
 
 use std::path::Path;
 
@@ -93,4 +94,10 @@ fn avr_wrap_around() {
             assert!(bb2.area.end == 2 || bb2.area.end == 8192 );
         }
     }
+}
+
+#[test]
+fn avr_elf() {
+    let proj = elf::load::load(Path::new("tests/data/hello-world")).ok();
+    assert!(proj.is_some());
 }

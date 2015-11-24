@@ -176,23 +176,17 @@ impl Program {
 		ret
 	}
 
-    pub fn insert(&mut self, new_fun: Function) -> Vec<Uuid> {
+    pub fn insert(&mut self, new_ct: CallTarget) -> Vec<Uuid> {
+        let new_uu = new_ct.uuid();
         let maybe_vx = self.call_graph.vertices().find(|ct| {
-            let uu = new_fun.uuid;
-
-            match self.call_graph.vertex_label(*ct) {
-                Some(&CallTarget::Concrete(Function{ uuid: _uu,..})) => _uu == uu,
-                Some(&CallTarget::Todo(_,_,_uu)) => _uu == uu,
-                Some(&CallTarget::Symbolic(_,_uu)) => _uu == uu,
-                _ => false
-            }
+            self.call_graph.vertex_label(*ct).unwrap().uuid() == new_uu
         });
 
         let new_vx = if let Some(vx) = maybe_vx {
-            *self.call_graph.vertex_label_mut(vx).unwrap() = CallTarget::Concrete(new_fun);
+            *self.call_graph.vertex_label_mut(vx).unwrap() = new_ct;
             vx
         } else {
-            self.call_graph.add_vertex(CallTarget::Concrete(new_fun))
+            self.call_graph.add_vertex(new_ct)
         };
 
         let mut other_funs = Vec::new();
@@ -200,7 +194,7 @@ impl Program {
         let calls = if let Some(&CallTarget::Concrete(ref fun)) = self.call_graph.vertex_label(new_vx) {
             fun.collect_calls()
         } else {
-            unreachable!();
+            vec![]
         };
 
         for a in calls {
