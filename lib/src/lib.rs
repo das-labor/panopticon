@@ -167,10 +167,12 @@ pub mod project;
 pub mod region;
 pub mod layer;
 pub mod codegen;
+pub mod target;
 
 // disassembler
 pub mod avr;
 pub mod amd64;
 
+// file formats
 pub mod pe;
 pub mod elf;

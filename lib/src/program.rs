@@ -16,15 +16,16 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-use function::{ControlFlowTarget,Function};
+use std::collections::HashSet;
+
 use graph_algos::{AdjacencyList,GraphTrait,MutableGraphTrait,AdjacencyMatrixGraphTrait};
 use graph_algos::adjacency_list::AdjacencyListVertexDescriptor;
 use graph_algos::VertexListGraphTrait;
-use std::rc::Rc;
-use disassembler::{Architecture,Disassembler};
-use layer::LayerIter;
-use std::collections::HashSet;
 use uuid::Uuid;
+
+use function::{ControlFlowTarget,Function};
+use layer::LayerIter;
+use target::Target;
 
 #[derive(RustcDecodable,RustcEncodable)]
 pub enum CallTarget {
@@ -51,6 +52,7 @@ pub struct Program {
     pub uuid: Uuid,
     pub name: String,
     pub call_graph: CallGraph,
+    pub target: Target,
 }
 
 pub enum DisassembleEvent {
@@ -60,11 +62,12 @@ pub enum DisassembleEvent {
 }
 
 impl Program {
-    pub fn new(n: &str) -> Program {
+    pub fn new(n: &str, t: Target) -> Program {
         Program{
             uuid: Uuid::new_v4(),
             name: n.to_string(),
             call_graph: CallGraph::new(),
+            target: t,
         }
     }
 
@@ -111,14 +114,13 @@ impl Program {
         }
     }
 
-    pub fn disassemble<A: Architecture,F: Fn(DisassembleEvent)>(cont: Option<Program>, dec: Rc<Disassembler<A>>, init: A::Configuration, data: LayerIter,
-                                                                start: u64, reg: String, progress: Option<F>) -> Program {
+    pub fn disassemble<F: Fn(DisassembleEvent)>(cont: Option<Program>, target: Target, data: LayerIter, start: u64, reg: String, progress: Option<F>) -> Program {
         if cont.is_some() && cont.as_ref().map(|x| x.find_function_by_entry(start)).is_some() {
             return cont.unwrap();
         }
 
         let mut worklist = HashSet::new();
-        let mut ret = cont.unwrap_or(Program::new(&format!("prog_{}",start)));
+        let mut ret = cont.unwrap_or(Program::new(&format!("prog_{}",start),target));
 
 		worklist.insert(start);
 
@@ -138,7 +140,7 @@ impl Program {
                 continue;
             }
 
-            let new_fun = Function::disassemble::<A>(None,dec.clone(),init.clone(),data.clone(),tgt,reg.clone());
+            let new_fun = target.disassemble(None,data.clone(),tgt,reg.clone());
 
             if let Some(ref f) = progress {
                 f(DisassembleEvent::Done(tgt));
@@ -264,10 +266,11 @@ mod tests {
     use uuid::Uuid;
     use value::{Lvalue,Rvalue};
     use instr::{Operation,Instr};
+    use target::Target;
 
     #[test]
     fn find_by_entry() {
-        let mut prog = Program::new("prog_test");
+        let mut prog = Program::new("prog_test",Target::__Test);
         let mut func = Function::new("test2".to_string(),"ram".to_string());
 
         let bb0 = BasicBlock::from_vec(vec!(Mnemonic::dummy(0..10)));
@@ -283,7 +286,7 @@ mod tests {
     #[test]
     fn insert_replaces_todo() {
         let uu = Uuid::new_v4();
-        let mut prog = Program::new("prog_test");
+        let mut prog = Program::new("prog_test",Target::__Test);
 
         let tvx = prog.call_graph.add_vertex(CallTarget::Todo(12,None,uu));
         let vx0 = prog.call_graph.add_vertex(CallTarget::Concrete(Function::new("test".to_string(),"ram".to_string())));
@@ -297,7 +300,7 @@ mod tests {
         func.entry_point = Some(func.cflow_graph.add_vertex(ControlFlowTarget::Resolved(bb0)));
         let uuf = func.uuid.clone();
 
-        let new = prog.insert(func);
+        let new = prog.insert(CallTarget::Concrete(func));
 
         assert_eq!(new,vec!());
 
@@ -319,7 +322,7 @@ mod tests {
     fn insert_ignores_new_todo() {
         let uu1 = Uuid::new_v4();
         let uu2 = Uuid::new_v4();
-        let mut prog = Program::new("prog_test");
+        let mut prog = Program::new("prog_test",Target::__Test);
 
         let tvx = prog.call_graph.add_vertex(CallTarget::Todo(12,None,uu1));
 
@@ -331,7 +334,7 @@ mod tests {
         func.entry_point = Some(func.cflow_graph.add_vertex(ControlFlowTarget::Resolved(bb0)));
         let uuf = func.uuid.clone();
 
-        let new = prog.insert(func);
+        let new = prog.insert(CallTarget::Concrete(func));
 
         assert_eq!(new,vec!());
 

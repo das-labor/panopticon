@@ -20,6 +20,7 @@ use panopticon::value::Rvalue;
 use panopticon::project::Project;
 use panopticon::function::{Function,ControlFlowTarget};
 use panopticon::program::CallTarget;
+use panopticon::target::Target;
 
 use std::hash::{Hash,Hasher,SipHasher};
 use std::thread;
@@ -486,4 +487,12 @@ pub fn rename(arg0: &Variant, arg1: &Variant, ctrl: &mut Object) -> Variant {
     }
 
     Variant::String("".to_string())
+}
+
+pub fn targets() -> Variant {
+    Variant::String(format!("[{}]",Target::all()
+                            .iter()
+                            .map(|x| format!("\"{}\"",x.name()))
+                            .fold(None,|acc,x| Some(acc.map(|y| format!("{},{}",y,x)).unwrap_or(x)))
+                            .unwrap_or("".to_string())))
 }

@@ -21,9 +21,10 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::borrow::Cow;
 
-use program::{Program,CallGraphRef};
+use program::{CallTarget,Program,CallGraphRef};
 use region::{Region,Regions};
-use function::Function;
+use function::{Function};
+use target::Target;
 use pe;
 
 use uuid::Uuid;
@@ -32,6 +33,7 @@ use rustc_serialize::{Decodable,Encodable};
 use flate2::write::ZlibEncoder;
 use flate2::read::ZlibDecoder;
 use flate2::Compression;
+use graph_algos::traits::{MutableGraph};
 
 #[derive(RustcDecodable,RustcEncodable)]
 pub struct Project {
@@ -68,15 +70,27 @@ impl Project {
         }
     }
 
-    pub fn raw(p: &Path) -> Option<Project> {
+    pub fn raw(t: Target, p: &Path) -> Option<Project> {
         if let Some(nam) = p.file_name().and_then(|x| x.to_str()).or(p.to_str()) {
             if let Some(r) = Region::open(nam.to_string(),p) {
-                return Some(Project{
+                let mut proj = Project{
                     name: nam.to_string(),
                     code: Vec::new(),
                     sources: Regions::new(r),
                     comments: HashMap::new(),
-                });
+                };
+                let mut prog = Program::new("prog0",t);
+
+                for &(name,off,cmnt) in t.interrupt_vec().iter() {
+                    let uu =  Uuid::new_v4();
+
+                    prog.call_graph.add_vertex(CallTarget::Todo(off,Some(name.to_string()),uu));
+                    proj.comments.insert((nam.to_string(),off),cmnt.to_string());
+                }
+
+                proj.code.push(prog);
+
+                return Some(proj);
             }
         }
 

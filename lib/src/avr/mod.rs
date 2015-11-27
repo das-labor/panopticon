@@ -17,8 +17,6 @@
  */
 
 use disassembler::*;
-use program::{Program,DisassembleEvent};
-use layer::LayerIter;
 use value::{Lvalue,Rvalue,Endianess,ToRvalue};
 use codegen::CodeGen;
 use guard::Guard;
@@ -46,6 +44,67 @@ impl Mcu {
         Mcu {
             pc_bits: 13,
             int_vec: vec![("RESET",0,"MCU Reset Interrupt")],
+            skip: None,
+        }
+    }
+
+    pub fn atmega103() -> Mcu {
+        Mcu {
+            pc_bits: 16,
+            int_vec: vec![
+                ("RESET",0,"MCU Reset Interrupt"),
+                ("INT0",0x02,"External Interrupt 0"),
+                ("INT1",0x04,"External Interrupt 1"),
+                ("INT2",0x06,"External Interrupt 2"),
+                ("INT3",0x08,"External Interrupt 3"),
+                ("INT4",0x0a,"External Interrupt 4"),
+                ("INT5",0x0c,"External Interrupt 5"),
+                ("INT6",0x0e,"External Interrupt 6"),
+                ("INT7",0x10,"External Interrupt 7"),
+                ("OC2",0x12,"Timer/Counter2 Compare Match"),
+                ("OVF2",0x14,"Timer/Counter2 Overflow"),
+                ("ICP1",0x16,"Timer/Counter1 Capture Event"),
+                ("OC1A",0x18,"Timer/Counter1 Compare Match A"),
+                ("OC1B",0x1a,"Timer/Counter1 Compare Match B"),
+                ("OVF1",0x1c,"Timer/Counter1 Overflow"),
+                ("OC0",0x1e,"Timer/Counter0 Compare Match"),
+                ("OVF0",0x20,"Timer/Counter0 Overflow"),
+                ("SPI",0x22,"SPI Serial Transfer Complete"),
+                ("URXC",0x24,"UART, Rx Complete"),
+                ("UDRE",0x26,"UART Data Register Empty"),
+                ("UTXC",0x28,"UART, Tx Complete"),
+                ("ADCC",0x2a,"ADC Conversion Complete"),
+                ("ERDY",0x2c,"EEPROM Ready"),
+                ("ACI",0x2e,"Analog Comparator"),
+            ],
+            skip: None,
+        }
+    }
+
+    pub fn atmega8() -> Mcu {
+        Mcu {
+            pc_bits: 13,
+            int_vec: vec![
+                ("RESET",0,"MCU Reset Interrupt"),
+                ("INT0",0x01,"External Interrupt Request 0"),
+                ("INT1",0x02,"External Interrupt Request 1"),
+                ("OC2",0x03,"Timer/Counter2 Compare Match"),
+                ("OVF2",0x04,"Timer/Counter2 Overflow"),
+                ("ICP1",0x05,"Timer/Counter1 Capture Event"),
+                ("OC1A",0x06,"Timer/Counter1 Compare Match A"),
+                ("OC1B",0x07,"Timer/Counter1 Compare Match B"),
+                ("OVF1",0x08,"Timer/Counter1 Overflow"),
+                ("OVF0",0x09,"Timer/Counter0 Overflow"),
+                ("SPI",0x0a,"Serial Transfer Complete"),
+                ("URXC",0x0b,"USART, Rx Complete"),
+                ("UDRE",0x0c,"USART Data Register Empty"),
+                ("UTXC",0x0d,"USART, Tx Complete"),
+                ("ADCC",0x0e,"ADC Conversion Complete"),
+                ("ERDY",0x0f,"EEPROM Ready"),
+                ("ACI",0x10,"Analog Comparator"),
+                ("TWI",0x11,"2-wire Serial Interface"),
+                ("SPMR",0x12,"Store Program Memory Ready"),
+            ],
             skip: None,
         }
     }
@@ -298,10 +357,6 @@ lazy_static! {
 
     pub static ref EIND: Lvalue = Lvalue::Variable{ name: "EIND".to_string(), width: 8, subscript: None };
     pub static ref RAMPZ: Lvalue = Lvalue::Variable{ name: "RAMPZ".to_string(), width: 8, subscript: None };
-}
-
-pub fn disassemble<F: Fn(DisassembleEvent)>(_: Mcu, data: LayerIter, progress: Option<F>) -> Program {
-    Program::disassemble(None,syntax::disassembler(),Mcu::new(),data,0,"flash".to_string(),progress)
 }
 
 #[cfg(test)]
