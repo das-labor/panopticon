@@ -29,7 +29,7 @@ ApplicationWindow {
 	MessageDialog {
 		id: saveStaleDialog
 		title: "Unsaved changes"
-		text: "Do you want to save the changes made to the current session?"
+		text: "Do you want to save the changes made to the current project?"
 		icon: StandardIcon.Question
 		standardButtons: StandardButton.Yes | StandardButton.No | StandardButton.Abort
 
@@ -37,7 +37,7 @@ ApplicationWindow {
 
 		onYes: {
 			if(mainWindow.savePath != "") {
-				Panopticon.snapshotSession(mainWindow.savePath)
+				Panopticon.snapshotProject(mainWindow.savePath)
 				next()
 			} else {
 				fileSaveDialog.next = saveStaleDialog.next
@@ -122,7 +122,7 @@ ApplicationWindow {
 				enabled: Panopticon.dirty != 0 && Panopticon.state != "NEW"
 				onTriggered: {
 					if(mainWindow.savePath != "") {
-						Panopticon.snapshotSession(mainWindow.savePath)
+						Panopticon.snapshotProject(mainWindow.savePath)
 					} else {
 						fileSaveDialog.open()
 					}
@@ -149,10 +149,10 @@ ApplicationWindow {
 
 	FileDialog {
 		id: fileSaveDialog
-		title: "Save current session to..."
+		title: "Save current project to..."
 		selectExisting: false
 		selectFolder: false
-		nameFilters: [ "Panopticon sessions (*.panop)", "All files (*)" ]
+		nameFilters: [ "Panopticon projects (*.panop)", "All files (*)" ]
 
 		property var next: function() {}
 
@@ -169,27 +169,27 @@ ApplicationWindow {
 				mainWindow.savePath = path;
 			}
 
-			Panopticon.snapshotSession(path)
+			Panopticon.snapshotProject(path)
 			next()
 		}
 	}
 
 	FileDialog {
 		id: fileOpenDialog
-		title: "Open new session..."
+		title: "Open new project..."
 		selectExisting: true
 		selectFolder: false
-		nameFilters: [ "Panopticon sessions (*.panop)", "All files (*)" ]
+		nameFilters: [ "Panopticon projects (*.panop)", "All files (*)" ]
 
 		property var next: function() {}
 
 		onAccepted: {
 			// cut off the "file://" part
 			var path = fileOpenDialog.fileUrls.toString().substring(7)
-			var sess = Panopticon.openSession(path)
+			var sess = Panopticon.openProject(path)
 
 			if(sess == null) {
-				console.log("The file '" + path + "' is not a valid Panopticon session.")
+				console.log("The file '" + path + "' is not a valid Panopticon project.")
 			} else {
 				loader.setSource("workspace/Workspace.qml")
 			}
@@ -200,7 +200,7 @@ ApplicationWindow {
 
 	FileDialog {
 		id: fileNewDialog
-		title: "Start new session..."
+		title: "Start new project..."
 		selectExisting: true
 		selectFolder: false
 

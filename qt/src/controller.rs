@@ -32,11 +32,10 @@ extern "C" fn controller_slot(this: *mut ffi::QObject, id: c_int, a: *const ffi:
 
     match (id as isize,args.len()) {
         // State transitions
-        (CREATE_AVR_SESSION,1) => ::state::create_avr_session(&args[0],&mut obj).to_qvariant(ret),
-        (CREATE_RAW_SESSION,1) => ::state::create_raw_session(&args[0],&mut obj).to_qvariant(ret),
-        (CREATE_ELF_SESSION,1) => ::state::create_elf_session(&args[0],&mut obj).to_qvariant(ret),
-        (OPEN_SESSION,1) => ::state::open_session(&args[0],&mut obj).to_qvariant(ret),
-        (SNAPSHOT_SESSION,1) => ::state::snapshot_session(&args[0],&mut obj).to_qvariant(ret),
+        (CREATE_RAW_PROJECT,2) => ::state::create_raw_project(&args[0],&args[1],&mut obj).to_qvariant(ret),
+        (CREATE_ELF_PROJECT,1) => ::state::create_elf_project(&args[0],&mut obj).to_qvariant(ret),
+        (OPEN_PROJECT,1) => ::state::open_project(&args[0],&mut obj).to_qvariant(ret),
+        (SNAPSHOT_PROJECT,1) => ::state::snapshot_project(&args[0],&mut obj).to_qvariant(ret),
         (START,0) => ::state::start(&mut obj).to_qvariant(ret),
         (DONE,0) => ::state::done(&mut obj).to_qvariant(ret),
 
@@ -65,19 +64,18 @@ pub const FINISHED_FUNCTION: isize = 4;
 pub const LAYOUTED_FUNCTION: isize = 5;
 pub const CHANGED_FUNCTION: isize = 6;
 
-pub const CREATE_AVR_SESSION: isize = 7;
-pub const CREATE_RAW_SESSION: isize = 8;
-pub const CREATE_ELF_SESSION: isize = 9;
+pub const CREATE_RAW_PROJECT: isize = 7;
+pub const CREATE_ELF_PROJECT: isize = 8;
 
-pub const OPEN_SESSION: isize = 10;
+pub const OPEN_PROJECT: isize = 9;
 
-pub const START: isize = 11;
-pub const DONE: isize = 12;
+pub const START: isize = 10;
+pub const DONE: isize = 11;
 
-pub const SET_COMMENT: isize = 13;
-pub const SET_NAME: isize = 14;
+pub const SET_COMMENT: isize = 12;
+pub const SET_NAME: isize = 13;
 
-pub const SNAPSHOT_SESSION: isize = 15;
+pub const SNAPSHOT_PROJECT: isize = 14;
 
 pub const FUNCTION_INFO: isize = 16;
 pub const FUNCTION_CFG: isize = 17;
@@ -104,10 +102,9 @@ pub extern "C" fn create_singleton(_: *mut ffi::QQmlEngine, _: *mut ffi::QJSEngi
     assert_eq!(metaobj.add_signal("changedFunction(QString)"),CHANGED_FUNCTION);
 
     // state = NEW -> READY, dirty = -> true
-    assert_eq!(metaobj.add_method("createAvrSession(QString)","bool"),CREATE_AVR_SESSION);
-    assert_eq!(metaobj.add_method("createRawSession(QString)","bool"),CREATE_RAW_SESSION);
-    assert_eq!(metaobj.add_method("createElfSession(QString)","bool"),CREATE_ELF_SESSION);
-    assert_eq!(metaobj.add_method("openSession(QString)","bool"),OPEN_SESSION);
+    assert_eq!(metaobj.add_method("createRawProject(QString,QString)","bool"),CREATE_RAW_PROJECT);
+    assert_eq!(metaobj.add_method("createElfProject(QString)","bool"),CREATE_ELF_PROJECT);
+    assert_eq!(metaobj.add_method("openProject(QString)","bool"),OPEN_PROJECT);
 
     // state = READY -> WORKING
     assert_eq!(metaobj.add_method("start()","bool"),START);
@@ -120,7 +117,7 @@ pub extern "C" fn create_singleton(_: *mut ffi::QQmlEngine, _: *mut ffi::QJSEngi
     assert_eq!(metaobj.add_method("setName(QString,QString)","QString"),SET_NAME);
 
     // state = (WORKING,DONE), dirty = -> false
-    assert_eq!(metaobj.add_method("snapshotSession(QString)","bool"),SNAPSHOT_SESSION);
+    assert_eq!(metaobj.add_method("snapshotProject(QString)","bool"),SNAPSHOT_PROJECT);
 
     // getter
     assert_eq!(metaobj.add_method("functionInfo(QString)","QString"),FUNCTION_INFO);

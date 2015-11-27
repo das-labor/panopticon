@@ -22,6 +22,7 @@ use panopticon::region::Region;
 use panopticon::program::{Program,CallTarget};
 use panopticon::avr;
 use panopticon::elf;
+use panopticon::target::Target;
 
 use std::path::Path;
 use std::thread;
@@ -76,35 +77,28 @@ pub fn set_dirty(d: bool, ctrl: &mut Object) {
     ctrl.emit(DIRTY_CHANGED,&[]);
 }
 
-/// Prepares to disassemble an AVR dump.
+/// Prepares to disassemble a memory image.
 ///
 /// Returns true on success, false otherwise
-pub fn create_avr_session(_path: &Variant, ctrl: &mut Object) -> Variant {
+pub fn create_raw_project(_path: &Variant, _tgt: &Variant, ctrl: &mut Object) -> Variant {
     Variant::Bool(if state(ctrl) == "NEW" {
         if let &Variant::String(ref s) = _path {
-            let mut proj = Project::new("AVR".to_string(),Region::open("flash".to_string(),&Path::new(s)).unwrap());
-            let mcu = avr::Mcu::atmega88();
+            if let &Variant::String(ref tgt_s) = _tgt {
+                if let Some(tgt) = Target::for_name(tgt_s) {
+                    let mut proj = Project::raw(tgt,&Path::new(s)).unwrap();
+                    *PROJECT.write().unwrap() = Some(proj);
 
-            // Add empty program
-            {
-                let mut prog = Program::new("prog0");
-                let root = proj.sources.dependencies.vertex_label(proj.sources.root).unwrap();
+                    set_state("READY",ctrl);
+                    set_dirty(true,ctrl);
 
-                for &(name,off,cmnt) in mcu.int_vec.iter() {
-                    let uu =  Uuid::new_v4();
-
-                    prog.call_graph.add_vertex(CallTarget::Todo(off,Some(name.to_string()),uu));
-                    proj.comments.insert((root.name().clone(),off),cmnt.to_string());
+                    true
+                } else {
+                    println!("No target named '{}'",tgt_s);
+                    false
                 }
-
-                proj.code.push(prog);
+            } else {
+                false
             }
-            *PROJECT.write().unwrap() = Some(proj);
-
-            set_state("READY",ctrl);
-            set_dirty(true,ctrl);
-
-            true
         } else {
             false
         }
@@ -116,7 +110,7 @@ pub fn create_avr_session(_path: &Variant, ctrl: &mut Object) -> Variant {
 /// Prepares to disassemble an ELF file.
 ///
 /// Returns true on success, false otherwise
-pub fn create_elf_session(_path: &Variant, ctrl: &mut Object) -> Variant {
+pub fn create_elf_project(_path: &Variant, ctrl: &mut Object) -> Variant {
     Variant::Bool(if state(ctrl) == "NEW" {
         if let &Variant::String(ref s) = _path {
             let proj = elf::load::load(Path::new(s)).ok().unwrap();
@@ -134,14 +128,10 @@ pub fn create_elf_session(_path: &Variant, ctrl: &mut Object) -> Variant {
     })
 }
 
-pub fn create_raw_session(_: &Variant, _: &mut Object) -> Variant {
-    unimplemented!();
-}
-
-/// Prepares to open a saved Panopticon session.
+/// Prepares to open a saved Panopticon project.
 ///
 /// Returns true on success, false otherwise
-pub fn open_session(_path: &Variant, ctrl: &mut Object) -> Variant {
+pub fn open_project(_path: &Variant, ctrl: &mut Object) -> Variant {
     Variant::Bool(if state(ctrl) == "NEW" {
         if let &Variant::String(ref s) = _path {
             match Project::open(&Path::new(s)) {
@@ -166,7 +156,7 @@ pub fn open_session(_path: &Variant, ctrl: &mut Object) -> Variant {
     })
 }
 
-pub fn snapshot_session(_path: &Variant, ctrl: &mut Object) -> Variant {
+pub fn snapshot_project(_path: &Variant, ctrl: &mut Object) -> Variant {
     let ret = if let &Variant::String(ref s) = _path {
         let maybe_project: &Option<Project> = &*PROJECT.read().unwrap();
 
