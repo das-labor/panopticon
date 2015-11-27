@@ -17,7 +17,8 @@
  */
 
 import QtQuick.Controls 1.1
-import QtQuick.Dialogs 1.1
+import QtQuick.Dialogs 1.2
+import QtQuick.Layouts 1.1
 import QtQuick 2.1
 import Panopticon 1.0
 
@@ -65,45 +66,58 @@ ApplicationWindow {
 	height: 1000
 	width: 1000
 	visible: true
+
 	menuBar: MenuBar {
 		Menu {
-			title: "File"
+			title: "Project"
 			Menu {
 				title: "New..."
 
 				MenuItem {
-					text: "ELF"
+					text: "...from ELF executable"
 					shortcut: "Ctrl+E"
 					enabled: Panopticon.state == "NEW"
 					onTriggered: {
 						saveStalePanopticon(function() {
-							fileNewDialog.openFunction = Panopticon.createElfSession
+							fileNewDialog.next = function(path) {
+								var sess = Panopticon.createElfProject(path)
+
+								if(sess == null) {
+									console.log("The file '" + path + "' is not a valid ELF file.")
+								} else {
+									loader.setSource("workspace/Workspace.qml")
+								}
+							};
 							fileNewDialog.open()
 						})
 					}
 				}
 
 				MenuItem {
-					text: "Relocated AVR image"
+					text: "...from dump file"
 					shortcut: "Ctrl+A"
 					enabled: Panopticon.state == "NEW"
 					onTriggered: {
 						saveStalePanopticon(function() {
-							fileNewDialog.openFunction = Panopticon.createAvrSession
+							fileNewDialog.next = function(path) {
+								targetSelectionDialog.next = function(target) {
+									var sess = Panopticon.createRawProject(path,target)
+
+									if(sess == null) {
+										console.log("The file '" + path + "' is not a valid dump file.")
+									} else {
+										loader.setSource("workspace/Workspace.qml")
+									}
+								};
+
+								targetSelectionDialog.open();
+								targetSelectionDialog.width = targetSelectionDialog.contentItem.width
+								targetSelectionDialog.height = targetSelectionDialog.contentItem.height
+								targetSelectionDialog.x = (mainWindow.width - targetSelectionDialog.width) / 2
+								targetSelectionDialog.y = (mainWindow.height - targetSelectionDialog.height) / 2
+							}
 							fileNewDialog.open()
 						})
-					}
-				}
-
-				MenuItem {
-					text: "Uninterpreted data"
-					shortcut: "Ctrl+R"
-					enabled: Panopticon.state == "NEW"
-					onTriggered: {
-						saveStalePanopticon(function() {
-							fileNewDialog.openFunction = Panopticon.createRawSession
-							fileNewDialog.open()
-						});
 					}
 				}
 			}
@@ -144,6 +158,30 @@ ApplicationWindow {
 					saveStalePanopticon(Qt.quit)
 				}
 			}
+		}
+	}
+
+	Dialog {
+		id: targetSelectionDialog
+		title: "Select target architecture..."
+		standardButtons: StandardButton.Ok | StandardButton.Cancel
+
+		property var next: function() {}
+
+		RowLayout {
+			Label {
+				text: "Architecture:"
+			}
+
+			ComboBox {
+				id: targetComboBox
+				Layout.preferredWidth: 150
+				model: JSON.parse(Panopticon.allTargets())
+			}
+		}
+
+		onAccepted: {
+			next(targetComboBox.currentText);
 		}
 	}
 
@@ -204,23 +242,12 @@ ApplicationWindow {
 		selectExisting: true
 		selectFolder: false
 
-		property var openFunction: null
-		property var next: function() {}
+		property var next: null
 
 		onAccepted: {
-			console.log("You opened: " + fileNewDialog.fileUrls)
-
 			// cut off the "file://" part
 			var path = fileNewDialog.fileUrls.toString().substring(7)
-			var sess = fileNewDialog.openFunction(path)
-
-			if(sess == null) {
-				console.log("The file '" + path + "' is not a valid Panopticon session.")
-			} else {
-				loader.setSource("workspace/Workspace.qml")
-			}
-
-			next()
+			next(path)
 		}
 	}
 
