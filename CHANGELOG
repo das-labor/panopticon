@@ -1,4 +1,8 @@
-201X-XX-XX: 0.12 (Pentridge)
+2015-11-30: 0.12 (Pentridge)
+ - ELF loader
+ - Primitive x86 disassembling
+ - Various graph view improvments
+ - Disassembles whole AVR interrupt vector table
 
 2015-10-11: 0.11 (Bastille)
  - Partial port from C++ to Rust
