@@ -152,8 +152,35 @@ pub fn layout(vertices: &Vec<usize>,
     assert!(order[0].len() == 1 || order[0][0] != order[0][1]);
     optimize_ordering(&mut order,&rank,&graph);
 
-    // intra-rank positions
+       // intra-rank positions
     let x_pos = compute_x_coordinates(&order,&rank,&graph,&dims,node_spacing,virt_start);
+
+    // check for overlap
+    let mut coll = HashSet::<(_,_)>::new();
+    for (idx,r) in order.iter().enumerate() {
+        for v in r.iter() {
+            let v_lb = graph.vertex_label(*v).unwrap();
+            let v_w = if *v_lb >= virt_start { 10.0 } else { dims[v].0 as f32 };
+            let v_x = x_pos[v];
+
+            for w in r.iter() {
+                if v != w {
+                    let w_lb = graph.vertex_label(*w).unwrap();
+                    let w_w = if *w_lb >= virt_start { 10.0 } else { dims[w].0 as f32 };
+                    let w_x = x_pos[w];
+
+                    if !(v_x + v_w / 2.0 < w_x - w_w / 2.0 || w_x + w_w / 2.0 < v_x - v_w / 2.0) {
+                        if !coll.contains(&(*v,*w)) && !coll.contains(&(*w,*v)) {
+                            println!("in rank {} overlap between {} and {}",idx,v_lb,w_lb);
+                            println!("  {}: pos x: {} w: {}",v_lb,v_x,v_w);
+                            println!("  {}: pos x: {} w: {}",w_lb,w_x,w_w);
+                            coll.insert((*v,*w));
+                        }
+                    }
+                }
+            }
+        }
+    }
 
     let rank_offsets = order.iter()
         .map(|r| r.iter().fold(0usize,|acc,vx| max(dims.get(vx).map(|x| { assert!(x.1 >= 0.0); x.1 }).unwrap_or(0.0) as usize,acc)))
@@ -1300,7 +1327,7 @@ pub fn compute_x_coordinates(order: &Vec<Vec<AdjacencyListVertexDescriptor>>,
 
         for v in graph.vertices() {
             let _r = r[&v];
-            let width = dims.get(&v).map(|x| x.0 as usize).unwrap_or(2);
+            let width = dims.get(&v).map(|x| { assert!(x.0 > 0.0); x.0 as usize }).unwrap_or(2);
             let val = *w.get(&_r).unwrap_or(&0);
 
             w.insert(_r,max(val,width));
@@ -1344,7 +1371,9 @@ pub fn compute_x_coordinates(order: &Vec<Vec<AdjacencyListVertexDescriptor>>,
     let mut shift = vec![];
 
     for k in (0..4) {
-        if k % 2 == 0 {
+        let left_to_right = k % 2 == 0;
+
+        if left_to_right {
             shift.push(min[global_min] - min[k]);
         } else {
             shift.push(max[global_min] - max[k]);
@@ -1358,6 +1387,26 @@ pub fn compute_x_coordinates(order: &Vec<Vec<AdjacencyListVertexDescriptor>>,
         assert_eq!(sort.len(),4);
         sort.sort_by(|a, b| a.partial_cmp(b).unwrap_or(Ordering::Equal));
         ret.insert(v,0.5f32 * (sort[1] + sort[2]));
+    }
+
+    // XXX the impl. seems to have problems with edges spanning a single rank.
+    for (idx,r) in order.iter().enumerate() {
+        let mut right = None;
+
+        for v in r.iter() {
+            let mut x_pos = ret[v];
+            let width = dims.get(v).unwrap_or(&(1.0,0.0)).0;
+
+            match right {
+                Some(other) if other >= x_pos => {
+                    x_pos = other + node_spacing as f32;
+                    ret.insert(*v,x_pos);
+                },
+                _ => {},
+            }
+
+            right = Some(x_pos + width);
+        }
     }
 
     ret
@@ -1559,133 +1608,106 @@ mod tests {
         let mut order: Vec<Vec<AdjacencyListVertexDescriptor>> = vec![];
         let mut graph = AdjacencyList::<usize,usize>::new();
 
-        let v15 = graph.add_vertex(15);
         let v11 = graph.add_vertex(11);
-        let v17 = graph.add_vertex(17);
-        let v5 = graph.add_vertex(5);
         let v16 = graph.add_vertex(16);
-        let v12 = graph.add_vertex(12);
-        let v25 = graph.add_vertex(25);
-        let v7 = graph.add_vertex(7);
-        let v1 = graph.add_vertex(1);
-        let v8 = graph.add_vertex(8);
-        let v14 = graph.add_vertex(14);
-        let v9 = graph.add_vertex(9);
-        let v13 = graph.add_vertex(13);
-        let v19 = graph.add_vertex(19);
-        let v21 = graph.add_vertex(21);
-        let v23 = graph.add_vertex(23);
-        let v0 = graph.add_vertex(0);
         let v10 = graph.add_vertex(10);
-        let v26 = graph.add_vertex(26);
-        let v22 = graph.add_vertex(22);
-        let v20 = graph.add_vertex(20);
-        let v24 = graph.add_vertex(24);
+        let v12 = graph.add_vertex(12);
         let v6 = graph.add_vertex(6);
-        let v18 = graph.add_vertex(18);
+        let v23 = graph.add_vertex(23);
         let v4 = graph.add_vertex(4);
-        let v3 = graph.add_vertex(3);
+        let v8 = graph.add_vertex(8);
+        let v13 = graph.add_vertex(13);
+        let v5 = graph.add_vertex(5);
+        let v15 = graph.add_vertex(15);
+        let v19 = graph.add_vertex(19);
         let v2 = graph.add_vertex(2);
-        graph.add_edge(1,v15,v4);
-        graph.add_edge(2,v26,v12);
-        graph.add_edge(3,v1,v5);
-        graph.add_edge(4,v16,v25);
-        graph.add_edge(5,v21,v13);
-        graph.add_edge(6,v25,v12);
-        graph.add_edge(7,v7,v12);
-        graph.add_edge(8,v4,v16);
-        graph.add_edge(9,v10,v1);
-        graph.add_edge(10,v5,v18);
-        graph.add_edge(11,v24,v13);
-        graph.add_edge(12,v2,v8);
-        graph.add_edge(13,v23,v13);
-        graph.add_edge(14,v11,v14);
-        graph.add_edge(15,v6,v3);
-        graph.add_edge(16,v22,v2);
-        graph.add_edge(17,v16,v7);
-        graph.add_edge(18,v19,v24);
-        graph.add_edge(19,v3,v10);
-        graph.add_edge(20,v20,v15);
-        graph.add_edge(21,v18,v11);
-        graph.add_edge(22,v14,v23);
-        graph.add_edge(23,v0,v26);
-        graph.add_edge(24,v17,v20);
-        graph.add_edge(25,v11,v19);
-        graph.add_edge(26,v13,v2);
-        graph.add_edge(27,v6,v9);
-        graph.add_edge(28,v12,v22);
-        graph.add_edge(29,v19,v21);
-        graph.add_edge(30,v4,v0);
-        graph.add_edge(31,v9,v17);
-        dims.insert(v21,(108.0,260.0));
-        dims.insert(v3,(72.0,20.0));
-        dims.insert(v12,(108.0,120.0));
-        dims.insert(v19,(101.0,120.0));
-        dims.insert(v9,(108.0,520.0));
-        dims.insert(v8,(101.0,180.0));
-        dims.insert(v17,(108.0,380.0));
-        dims.insert(v2,(101.0,40.0));
-        dims.insert(v4,(101.0,120.0));
-        dims.insert(v6,(115.0,80.0));
-        dims.insert(v13,(108.0,100.0));
-        dims.insert(v1,(115.0,380.0));
-        dims.insert(v11,(101.0,100.0));
-        dims.insert(v18,(108.0,700.0));
-        dims.insert(v14,(101.0,140.0));
-        dims.insert(v15,(108.0,700.0));
-        dims.insert(v5,(108.0,180.0));
-        dims.insert(v10,(94.0,20.0));
-        dims.insert(v7,(108.0,300.0));
-        dims.insert(v0,(101.0,140.0));
-        dims.insert(v16,(101.0,160.0));
-        dims.insert(v20,(108.0,180.0));
-        rank.insert(v5,4);
-        rank.insert(v15,4);
-
-        rank.insert(v12,8);
-        rank.insert(v2,10);
-        rank.insert(v1,3);
-        rank.insert(v21,8);
-        rank.insert(v23,8);
-        rank.insert(v18,5);
-        rank.insert(v17,2);
-        rank.insert(v6,0);
-        rank.insert(v0,6);
-        rank.insert(v3,1);
-        rank.insert(v14,7);
-        rank.insert(v16,6);
-        rank.insert(v22,9);
-        rank.insert(v26,7);
-        rank.insert(v7,7);
-        rank.insert(v8,11);
-        rank.insert(v13,9);
-        rank.insert(v25,7);
-        rank.insert(v9,1);
+        let v3 = graph.add_vertex(3);
+        let v17 = graph.add_vertex(17);
+        let v22 = graph.add_vertex(22);
+        let v7 = graph.add_vertex(7);
+        let v0 = graph.add_vertex(0);
+        let v1 = graph.add_vertex(1);
+        let v18 = graph.add_vertex(18);
+        let v9 = graph.add_vertex(9);
+        let v14 = graph.add_vertex(14);
+        graph.add_edge(0,v1,v23);
+        graph.add_edge(0,v3,v14);
+        graph.add_edge(0,v12,v15);
+        graph.add_edge(0,v1,v5);
+        graph.add_edge(0,v10,v17);
+        graph.add_edge(0,v22,v6);
+        graph.add_edge(0,v0,v16);
+        graph.add_edge(0,v3,v1);
+        graph.add_edge(0,v8,v9);
+        graph.add_edge(0,v15,v2);
+        graph.add_edge(0,v19,v22);
+        graph.add_edge(0,v11,v4);
+        graph.add_edge(0,v13,v10);
+        graph.add_edge(0,v8,v7);
+        graph.add_edge(0,v4,v10);
+        graph.add_edge(0,v16,v11);
+        graph.add_edge(0,v16,v12);
+        graph.add_edge(0,v5,v6);
+        graph.add_edge(0,v14,v18);
+        graph.add_edge(0,v17,v1);
+        graph.add_edge(0,v18,v6);
+        graph.add_edge(0,v23,v19);
+        graph.add_edge(0,v10,v3);
+        graph.add_edge(0,v11,v13);
+        graph.add_edge(0,v6,v8);
+        dims.insert(v13,(101.0,40.0));
+        dims.insert(v9,(115.0,340.0));
+        dims.insert(v15,(37.0,20.0));
+        dims.insert(v8,(108.0,60.0));
+        dims.insert(v16,(115.0,180.0));
+        dims.insert(v3,(108.0,20.0));
+        dims.insert(v12,(79.0,80.0));
+        dims.insert(v1,(72.0,20.0));
+        dims.insert(v2,(79.0,40.0));
+        dims.insert(v4,(94.0,20.0));
+        dims.insert(v6,(101.0,120.0));
+        dims.insert(v0,(101.0,20.0));
+        dims.insert(v7,(115.0,340.0));
+        dims.insert(v11,(79.0,20.0));
+        dims.insert(v10,(108.0,20.0));
+        dims.insert(v17,(72.0,20.0));
+        dims.insert(v5,(94.0,20.0));
+        dims.insert(v14,(115.0,340.0));
+        rank.insert(v5,7);
+        rank.insert(v15,3);
+        rank.insert(v18,7);
+        rank.insert(v4,3);
+        rank.insert(v1,6);
+        rank.insert(v13,3);
+        rank.insert(v7,10);
+        rank.insert(v2,4);
+        rank.insert(v12,2);
+        rank.insert(v16,1);
+        rank.insert(v11,2);
+        rank.insert(v9,10);
+        rank.insert(v3,5);
+        rank.insert(v14,6);
+        rank.insert(v8,9);
+        rank.insert(v22,8);
+        rank.insert(v10,4);
+        rank.insert(v6,8);
         rank.insert(v19,7);
-        rank.insert(v20,3);
-        rank.insert(v4,5);
-        rank.insert(v11,6);
-        rank.insert(v10,2);
-        rank.insert(v24,8);
-        order.push(vec![v6]);
-        order.push(vec![v9, v3]);
-        order.push(vec![v17, v10]);
-        //order.push(vec![v20, v1]);
-        order.push(vec![v1, v20]);
-        order.push(vec![v15, v5]);
-        //order.push(vec![v4, v18]);
-        order.push(vec![v18, v4]);
-        //order.push(vec![v16, v0, v11]);
-        order.push(vec![v11, v16, v0]);
-        //order.push(vec![v7, v25, v26, v14, v19]);
-        order.push(vec![v25, v7, v14, v19, v26]);
-        //order.push(vec![v12, v23, v24, v21]);
-        order.push(vec![v12, v21, v23, v24]);
-        //order.push(vec![v22, v13]);
-        order.push(vec![v13, v22]);
-        order.push(vec![v2]);
+        rank.insert(v23,6);
+        rank.insert(v17,5);
+        rank.insert(v0,0);
+        order.push(vec![v0]);
+        order.push(vec![v16]);
+        order.push(vec![v12, v11]);
+        order.push(vec![v15, v13, v4]);
+        order.push(vec![v2, v10]);
+        order.push(vec![v3, v17]);
+        order.push(vec![v1, v23, v14]);
+        order.push(vec![v5, v19, v18]);
+        order.push(vec![v6, v22]);
         order.push(vec![v8]);
-        let virt_start = 22;//add_virtual_vertices(&mut rank,&mut graph);
+        order.push(vec![v7, v9]);
+
+        let virt_start = 18;//add_virtual_vertices(&mut rank,&mut graph);
 
         for o in order.iter() {
             println!("{:?}",o);
