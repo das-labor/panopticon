@@ -40,6 +40,10 @@ fn amd64_opcodes() {
             for mne in match_st.mnemonics {
                 println!("{:x}: {}",mne.area.start,mne.opcode);
                 addr = mne.area.end;
+
+                if addr >= reg.size() {
+                    return;
+                }
             }
         } else if addr < reg.size() {
             unreachable!("failed to match anything at {:x}",addr);
@@ -65,6 +69,10 @@ fn ia32_opcodes() {
             for mne in match_st.mnemonics {
                 println!("{:x}: {}",mne.area.start,mne.opcode);
                 addr = mne.area.end;
+
+                if addr >= reg.size() {
+                    return;
+                }
             }
         } else if addr < reg.size() {
             unreachable!("failed to match anything at {:x}",addr);

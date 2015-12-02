@@ -18,7 +18,6 @@
 
 use std::collections::HashMap;
 use std::path::Path;
-use std::iter::{Enumerate,Take,Skip};
 use std::slice::Iter;
 use std::fs::File;
 use std::io::Read;
@@ -32,14 +31,12 @@ pub enum OpaqueLayer {
     Defined(Box<Vec<u8>>),
 }
 
-#[derive(Clone)]
+#[derive(Clone,Debug)]
 pub enum LayerIter<'a> {
-    Undefined(Range<u64>),
-    Defined(Iter<'a,u8>),
-    Sparse{ map: &'a HashMap<u64,Cell>, mapped: Box<Enumerate<LayerIter<'a>>> },
+    Undefined(u64),
+    Defined(Option<&'a [u8]>),
+    Sparse{ map: &'a HashMap<u64,Cell>, mapped: Box<LayerIter<'a>>, pos: u64 },
     Concat{ car: Box<LayerIter<'a>>, cdr: Box<LayerIter<'a>> },
-    Take(Box<Take<LayerIter<'a>>>),
-    Skip(Box<Skip<LayerIter<'a>>>),
 }
 
 impl<'a> Iterator for LayerIter<'a> {
@@ -47,11 +44,24 @@ impl<'a> Iterator for LayerIter<'a> {
 
     fn next(&mut self) -> Option<Cell> {
         match self {
-            &mut LayerIter::Undefined(ref mut r) => r.next().map(|_| None),
-            &mut LayerIter::Defined(ref mut r) => r.next().map(|&x| Some(x)),
-            &mut LayerIter::Sparse{ map: ref m, mapped: ref mut i } => {
-                if let Some((idx,covered)) = i.next() {
-                    Some(*m.get(&(idx as u64)).unwrap_or(&covered))
+            &mut LayerIter::Undefined(0) => None,
+            &mut LayerIter::Undefined(ref mut r) => { *r -= 1; Some(None) },
+            &mut LayerIter::Defined(None) => None,
+            &mut LayerIter::Defined(ref mut maybe_buf) => {
+                let ret = maybe_buf.unwrap().first();
+                let l = maybe_buf.unwrap().len();
+
+                if l > 1 {
+                    *maybe_buf = Some(&maybe_buf.unwrap()[1..l]);
+                } else {
+                    *maybe_buf = None;
+                }
+                ret.map(|&x| Some(x))
+            },
+            &mut LayerIter::Sparse{ map: ref m, mapped: ref mut i, pos: ref mut p } => {
+                if let Some(covered) = i.next() {
+                    *p += 1;
+                    Some(*m.get(&(*p - 1)).unwrap_or(&covered))
                 } else {
                     None
                 }
@@ -63,37 +73,49 @@ impl<'a> Iterator for LayerIter<'a> {
                     b.next()
                 }
             },
-            &mut LayerIter::Take(ref mut i) => i.next(),
-            &mut LayerIter::Skip(ref mut i) => i.next(),
-        }
-    }
-}
-
-impl<'a> ExactSizeIterator for LayerIter<'a> {
-    fn len(&self) -> usize {
-        match self {
-            &LayerIter::Undefined(ref r) => (r.end - r.start) as usize,
-            &LayerIter::Defined(ref r) => r.len(),
-            &LayerIter::Sparse{ mapped: ref m, .. } => m.len(),
-            &LayerIter::Concat{ car: ref a, cdr: ref b } => a.len() + b.len(),
-            &LayerIter::Take(ref i) => i.len(),
-            &LayerIter::Skip(ref i) => i.len(),
         }
     }
 }
 
 impl<'a> LayerIter<'a> {
     pub fn cut(&self, r: &Range<u64>) -> LayerIter<'a> {
-        if r.start > 0 {
-            LayerIter::Take(Box::new(LayerIter::Skip(Box::new(self.clone().skip(r.start as usize))).clone().take((r.end - r.start) as usize)))
+        if r.start >= r.end {
+            return LayerIter::Defined(None);
+        }
+
+        let real_end = if r.end > self.len() {
+            self.len()
         } else {
-            LayerIter::Take(Box::new(self.clone().take(r.end as usize)))
+            r.end
+        };
+
+        match self {
+            &LayerIter::Undefined(ref l) => LayerIter::Undefined(real_end - r.start),
+            &LayerIter::Defined(None) => LayerIter::Defined(None),
+            &LayerIter::Defined(Some(ref buf)) => LayerIter::Defined(Some(&buf[r.start as usize..real_end as usize])),
+            &LayerIter::Sparse{ map: ref m, mapped: ref i, pos: ref p, .. } => LayerIter::Sparse{
+                map: m,
+                mapped: Box::new(i.cut(r)),
+                pos: p + r.start
+            },
+            &LayerIter::Concat{ car: ref a, cdr: ref b } => {
+                if r.start < a.len() && real_end <= a.len() {
+                    a.cut(r)
+                } else if r.start >= a.len() && real_end > a.len() {
+                    b.cut(&((r.start - a.len())..(real_end - a.len())))
+                } else {
+                    LayerIter::Concat{
+                        car: Box::new(a.cut(&(r.start..a.len()))),
+                        cdr: Box::new(b.cut(&(0..(real_end - a.len())))),
+                    }
+                }
+            },
         }
     }
 
     pub fn seek(&self, p: u64) -> LayerIter<'a> {
         if p > 0 {
-            LayerIter::Skip(Box::new(self.clone().skip(p as usize)))
+            self.cut(&(p..self.len()))
         } else {
             self.clone()
         }
@@ -101,6 +123,16 @@ impl<'a> LayerIter<'a> {
 
     pub fn append(&self, l: LayerIter<'a>) -> LayerIter<'a> {
         LayerIter::Concat{ car: Box::new(self.clone()), cdr: Box::new(l) }
+    }
+
+    pub fn len(&self) -> u64 {
+        match self {
+            &LayerIter::Undefined(r) => r,
+            &LayerIter::Defined(None) => 0,
+            &LayerIter::Defined(Some(ref r)) => r.len() as u64,
+            &LayerIter::Sparse{ mapped: ref m, .. } => m.len(),
+            &LayerIter::Concat{ car: ref a, cdr: ref b } => a.len() + b.len(),
+        }
     }
 }
 
@@ -113,8 +145,8 @@ pub enum Layer {
 impl OpaqueLayer {
     pub fn iter(&self) -> LayerIter {
         match self {
-            &OpaqueLayer::Undefined(ref len) => LayerIter::Undefined(0..*len),
-            &OpaqueLayer::Defined(ref v) => LayerIter::Defined(v.iter()),
+            &OpaqueLayer::Undefined(ref len) => LayerIter::Undefined(*len),
+            &OpaqueLayer::Defined(ref v) => LayerIter::Defined(Some(v)),
         }
     }
 
@@ -157,7 +189,7 @@ impl Layer {
     pub fn filter<'a>(&'a self,i: LayerIter<'a>) -> LayerIter<'a> {
         match self {
             &Layer::Opaque(ref o) => o.iter(),
-            &Layer::Sparse(ref m) => LayerIter::Sparse{ map: m, mapped: Box::new(i.enumerate()) },
+            &Layer::Sparse(ref m) => LayerIter::Sparse{ map: m, mapped: Box::new(i), pos: 0 },
         }
     }
 
@@ -238,11 +270,10 @@ mod tests {
         let l1 = OpaqueLayer::wrap(vec!(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16));
         let mut s1 = l1.iter();
 
-        assert_eq!(s1.clone().len(), 16);
+        assert_eq!(s1.len(), 16);
         assert_eq!(s1.next().unwrap(), Some(1));
-        //assert_eq!(s1.idx(13).unwrap(), Some(14));
         assert_eq!(s1.next().unwrap(), Some(2));
-        assert_eq!(s1.clone().len(), 14);
+        assert_eq!(s1.len(), 14);
     }
 
     #[test]

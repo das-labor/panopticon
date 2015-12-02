@@ -99,16 +99,23 @@ impl Region {
             let &(ref area,ref layer) = s;
 
             let src = ret.cut(&(area.start..area.end));
+            if src.len() != area.end - area.start {
+                println!("{:?}",ret);
+            }
+            assert_eq!(src.len(),area.end - area.start);
+
             let mut tmp = layer.filter(src);
 
             if area.start != 0 {
-                tmp = ret.cut(&(0..area.start)).append(tmp)
+                tmp = ret.cut(&(0..area.start)).append(tmp);
+                assert_eq!(tmp.len(),area.end);
             }
 
-            if area.end < ret.len() as u64 {
-                tmp = tmp.append(ret.cut(&(area.end..(ret.len() as u64))));
+            if area.end < ret.len() {
+                tmp = tmp.append(ret.cut(&(area.end..(ret.len()))));
             }
 
+            assert_eq!(ret.len(), tmp.len());
             ret = tmp;
         }
 
