@@ -838,7 +838,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
             let rd = reg(st,"d");
             let rr = reg(st,"r");
 
-            st.mnemonic(2,"adc","{8}, {8}",vec!(rd.to_rv(),rr.to_rv()),&|cg: &mut CodeGen<Avr>| {
+            st.mnemonic(2,if rd == rr { "rol" } else { "adc" },"{8}, {8}",vec!(rd.to_rv(),rr.to_rv()),&|cg: &mut CodeGen<Avr>| {
                 let cr = new_temp(1);
                 let r = new_temp(9);
 
@@ -1046,33 +1046,6 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
                 cg.lift_b(&t,&*T);
                 cg.mul_i(&t,&t,&mask);
                 cg.or_i(&rd,&rd,&t);
-            });
-            optional_skip(next.clone(),st);
-            st.jump(next,Guard::always());
-            true
-        },
-
-        // ROL
-        [ opt!(skip), "000111 d@.........." ] = |st: &mut State<Avr>| {
-            let rd = reg(st,"d");
-            let next = st.configuration.wrap(st.address + st.tokens.len() as u64 * 2);
-
-            st.mnemonic(2,"rol","{8}",vec!(rd.to_rv()),&|cg: &mut CodeGen<Avr>| {
-                let c = new_temp(1);
-
-                cg.div_i(&c,&rd,&0x80);
-                cg.mul_i(&rd,&rd,&2);
-                cg.add_i(&rd,&rd,&*C);
-                cg.assign(&*C,&c);
-
-                let half_rd = new_temp(8);
-                cg.div_i(&half_rd,&rd,&0x10);
-                cg.mod_i(&half_rd,&half_rd,&2);
-                cg.equal_i(&*H,&half_rd,&1);
-                cg.xor_b(&*S,&*N,&*V);
-                cg.less_i(&*N,&0x7f,&rd);
-                cg.equal_i(&*Z,&rd,&0);
-                cg.xor_b(&*V,&*N,&*C);
             });
             optional_skip(next.clone(),st);
             st.jump(next,Guard::always());
