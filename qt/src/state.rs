@@ -18,7 +18,6 @@
 
 use panopticon::project::Project;
 use panopticon::function::Function;
-use panopticon::region::Region;
 use panopticon::program::{Program,CallTarget};
 use panopticon::avr;
 use panopticon::elf;
@@ -26,9 +25,8 @@ use panopticon::target::Target;
 
 use std::path::Path;
 use std::thread;
-use uuid::Uuid;
 use qmlrs::{Variant,Object};
-use graph_algos::traits::{VertexListGraph,Graph,MutableGraph};
+use graph_algos::traits::{VertexListGraph,Graph};
 use controller::{
     STATE_CHANGED,
     DIRTY_CHANGED,
@@ -85,7 +83,7 @@ pub fn create_raw_project(_path: &Variant, _tgt: &Variant, ctrl: &mut Object) ->
         if let &Variant::String(ref s) = _path {
             if let &Variant::String(ref tgt_s) = _tgt {
                 if let Some(tgt) = Target::for_name(tgt_s) {
-                    let mut proj = Project::raw(tgt,&Path::new(s)).unwrap();
+                    let proj = Project::raw(tgt,&Path::new(s)).unwrap();
                     *PROJECT.write().unwrap() = Some(proj);
 
                     set_state("READY",ctrl);

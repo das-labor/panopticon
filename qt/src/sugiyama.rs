@@ -1390,7 +1390,7 @@ pub fn compute_x_coordinates(order: &Vec<Vec<AdjacencyListVertexDescriptor>>,
     }
 
     // XXX the impl. seems to have problems with edges spanning a single rank.
-    for (idx,r) in order.iter().enumerate() {
+    for r in order.iter() {
         let mut right = None;
 
         for v in r.iter() {
@@ -1423,7 +1423,6 @@ mod tests {
         EdgeListGraphTrait
     };
     use graph_algos::adjacency_list::{
-        AdjacencyListEdgeDescriptor,
         AdjacencyListVertexDescriptor
     };
 

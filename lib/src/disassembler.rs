@@ -18,16 +18,30 @@
 
 #![macro_use]
 
-use value::Rvalue;
-use mnemonic::Mnemonic;
-use guard::Guard;
 use std::rc::Rc;
-use num::traits::{Zero,One,NumCast,cast};
 use std::slice::Iter;
 use std::fmt::Debug;
 use std::ops::{BitAnd,BitOr,Shl,Shr,Not};
 use std::collections::{HashSet,HashMap};
 use std::mem::size_of;
+
+use num::traits::{Zero,One,NumCast,cast};
+use graph_algos::{
+    AdjacencyList,
+    GraphTrait,
+    MutableGraphTrait,
+    IncidenceGraphTrait,
+    VertexListGraphTrait,
+    EdgeListGraphTrait
+};
+use graph_algos::adjacency_list::{
+    AdjacencyListVertexDescriptor
+};
+
+use value::Rvalue;
+use mnemonic::Mnemonic;
+use guard::Guard;
+
 use codegen::CodeGen;
 use layer::LayerIter;
 
@@ -122,13 +136,6 @@ impl<A: Architecture> State<A> {
 }
 
 #[derive(Clone)]
-pub struct Match<A: Architecture> {
-    patterns: Vec<(A::Token,A::Token)>,
-    actions: Vec<Rc<Action<A>>>,
-    groups: Vec<(String,Vec<A::Token>)>
-}
-
-#[derive(Clone)]
 pub enum Expr<A: Architecture> {
     Pattern(String),
     Terminal(A::Token),
@@ -164,10 +171,45 @@ impl<A: Architecture> ToExpr<A> for Expr<A> {
     }
 }
 
-impl<A: Architecture> Expr<A> {
-    pub fn matches(&self) -> Vec<Match<A>> {
-        match self {
-            &Expr::Pattern(ref s) => {
+#[derive(Clone)]
+pub enum Match<A: Architecture> {
+    Epsilon,
+    Character{
+        bits: A::Token,
+        mask: A::Token,
+        capture: Vec<(String,A::Token)>,
+    },
+    Condition(Rc<Action<A>>),
+}
+
+pub struct Disassembler<A: Architecture> {
+    pub start: AdjacencyListVertexDescriptor,
+    pub goals: HashSet<AdjacencyListVertexDescriptor>,
+    pub graph: AdjacencyList<usize,Match<A>>,
+    pub default: Option<Action<A>>,
+    pub next_index: usize,
+}
+
+impl<A: Architecture> Disassembler<A> {
+    pub fn new() -> Disassembler<A> {
+        let mut g = AdjacencyList::<usize,Match<A>>::new();
+
+        Disassembler::<A> {
+            start: g.add_vertex(0),
+            graph: g,
+            goals: HashSet::<AdjacencyListVertexDescriptor>::new(),
+            default: None,
+            next_index: 1,
+        }
+    }
+
+    pub fn set_default(&mut self,f: Action<A>) {
+        self.default = Some(f);
+    }
+
+    fn append_expr(&mut self, prev: AdjacencyListVertexDescriptor, expr: Expr<A>, index: usize) -> AdjacencyListVertexDescriptor {
+        match expr {
+            Expr::Pattern(ref s) => {
                 let mut groups = HashMap::<String,A::Token>::new();
                 let mut cur_group = "".to_string();
                 let mut read_pat = false; // false while reading torwards @
@@ -180,13 +222,11 @@ impl<A: Architecture> Expr<A> {
                         '@' => {
                             if read_pat {
                                 panic!("Pattern syntax error: read '@' w/o name in '{}'",s);
-                                //return Vec::new();
                             } else {
                                 read_pat = true;
 
                                 if cur_group == "" {
                                     panic!("Pattern syntax error: anonymous groups not allowed in '{}'",s);
-                                    //return Vec::new();
                                 }
 
                                 groups.insert(cur_group.clone(),A::Token::zero());
@@ -223,14 +263,12 @@ impl<A: Architecture> Expr<A> {
                         'a'...'z' | 'A'...'Z' => {
                             if read_pat {
                                 panic!("Pattern syntax error: undelimited capture group name in '{}'",s);
-                                //return Vec::new();
                             } else {
                                 cur_group.push(c);
                             }
                         },
                         _ => {
                             panic!("Pattern syntax error: invalid character '{}' in '{}'",c,s);
-                            //return Vec::new();
                         }
                     }
                 }
@@ -239,134 +277,110 @@ impl<A: Architecture> Expr<A> {
                     panic!("Pattern syntax error: invalid pattern length in '{}'",s);
                 }
 
-                vec!(Match::<A>{
-                    patterns: vec!((pat,mask)),
-                    groups: groups.iter().filter_map(|x| {
+                let next = self.graph.add_vertex(index);
+
+                self.graph.add_edge(Match::<A>::Character{
+                    bits: pat,
+                    mask: mask,
+                    capture: groups.iter().filter_map(|x| {
                         if *x.1 != A::Token::zero() {
-                            Some((x.0.clone(),vec!(x.1.clone())))
+                            Some((x.0.clone(),x.1.clone()))
                         } else {
                             None
                         }
                     }).collect(),
-                    actions: vec!()
-                })
+                },prev,next);
+
+                next
             },
-            &Expr::Terminal(ref i) => vec!(Match::<A>{
-                patterns: vec!((i.clone(),!A::Token::zero())),
-                groups: vec!(),
-                actions: vec!(),
-            }),
-            &Expr::Subdecoder(ref m) => m.matches.clone(),
-            &Expr::Optional(ref e) => {
-                let mut ms = e.matches();
-                ms.push(Match::<A>{
-                    patterns: vec!(),
-                    groups: vec!(),
-                    actions: vec!()
-                });
-                ms
-            }
-        }
-    }
-}
+            Expr::Terminal(ref i) => {
+                let next = self.graph.add_vertex(index);
 
-pub struct Disassembler<A: Architecture> {
-    pub matches: Vec<Match<A>>,
-    default: Option<Action<A>>,
-}
+                self.graph.add_edge(Match::<A>::Character{
+                    bits: i.clone(),
+                    mask: !A::Token::zero(),
+                    capture: vec![],
+                },prev,next);
 
-impl<A: Architecture> Disassembler<A> {
-    pub fn new() -> Disassembler<A> {
-        Disassembler::<A> {
-            matches: Vec::new(),
-            default: None,
-        }
-    }
+                next
+            },
+            Expr::Subdecoder(ref m) => {
+                let mut trans = HashMap::<AdjacencyListVertexDescriptor,AdjacencyListVertexDescriptor>::new();
 
-    pub fn set_default(&mut self,f: Action<A>) {
-        self.default = Some(f);
-    }
-
-    /// Returns a || b
-    fn concat_two_matches(a: &Match<A>, b: &Match<A>) -> Match<A> {
-        let patterns = a.patterns.iter().chain(b.patterns.iter()).cloned().collect::<Vec<_>>();
-        let actions = a.actions.iter().chain(b.actions.iter()).cloned().collect::<Vec<_>>();
-        let group_keys = a.groups.iter().map(|x| x.0.clone()).chain(b.groups.iter().map(|x| x.0.clone())).collect::<HashSet<_>>();
-        let mut groups = vec![];
-
-        for key in group_keys {
-            let maybe_a_pos = a.groups.iter().position(|x| x.0 == key);
-            let maybe_b_pos = b.groups.iter().position(|x| x.0 == key);
-            let mut mask: Vec<A::Token>;
-
-            if let Some(p) = maybe_a_pos {
-                mask = a.groups[p].1.clone();
-            } else {
-                mask = (0..a.patterns.len()).map(|_| A::Token::zero()).collect::<Vec<_>>();
-            }
-
-            if let Some(p) = maybe_b_pos {
-                mask = mask.iter().cloned().chain(b.groups[p].1.iter().cloned()).collect::<Vec<_>>();
-            } else {
-                mask = mask.iter().cloned().chain((0..b.patterns.len()).map(|_| A::Token::zero())).collect::<Vec<_>>();
-            }
-
-            assert_eq!(mask.len(),patterns.len());
-            groups.push((key,mask));
-        }
-
-        Match::<A> {
-            patterns: patterns,
-            actions: actions,
-            groups: groups
-        }
-    }
-
-    fn combine_expr(i: Iter<Expr<A>>, a: Action<A>) -> Vec<Match<A>> {
-        let mut ms = i.fold(Vec::<Match<A>>::new(),|acc,x| {
-            let matches = x.matches();
-
-            if matches.is_empty() {
-                acc
-            } else {
-                let mut ret = vec![];
-
-                if acc.is_empty() {
-                    matches
-                } else {
-                    for a in acc.iter() {
-                        for b in matches.iter() {
-                            ret.push(Self::concat_two_matches(a,&b));
-                        }
-                    }
-
-                    ret
+                for vx in m.graph.vertices() {
+                    trans.insert(vx,self.graph.add_vertex(index));
                 }
+
+                for ed in m.graph.edges() {
+                    self.graph.add_edge(m.graph.edge_label(ed).unwrap().clone(),
+                                        trans[&m.graph.source(ed)],
+                                        trans[&m.graph.target(ed)]);
+                }
+
+                self.graph.add_edge(Match::Epsilon::<A>,prev,trans[&m.start]);
+
+                let last = self.graph.add_vertex(index);
+
+                for f in m.goals.iter() {
+                    self.graph.add_edge(Match::Epsilon::<A>,trans[f],last);
+                }
+
+                last
+            },
+            Expr::Optional(ref e) => {
+                let next = self.append_expr(prev,*e.clone(),index);
+                let last = self.graph.add_vertex(index);
+                self.graph.add_edge(Match::Epsilon::<A>,prev,last);
+                self.graph.add_edge(Match::Epsilon::<A>,next,last);
+
+                last
+            },
+        }
+    }
+
+    pub fn append_conjunction(&mut self, e: Vec<Expr<A>>, a: Action<A>) {
+        let mut prev = None;
+        let index = self.next_index;
+
+        for expr in e {
+            let s = self.start.clone();
+            prev = Some(self.append_expr(prev.unwrap_or(s),expr,index));
+        }
+
+        if let Some(p) = prev {
+            let last = self.graph.add_vertex(index);
+            self.graph.add_edge(Match::Condition::<A>(Rc::new(a)),p,last);
+            self.goals.insert(last);
+        }
+
+        self.next_index += 1;
+    }
+
+    pub fn to_dot(&self) {
+        println!("digraph G {{");
+        for v in self.graph.vertices() {
+            let lb = self.graph.vertex_label(v).unwrap();
+
+            if self.goals.contains(&v) {
+                println!("{} [label=\"{}, prio: {}\",shape=doublecircle]",v.0,v.0,lb);
+            } else {
+                println!("{} [label=\"{}, prio: {}\",shape=circle]",v.0,v.0,lb);
             }
-        });
-
-        for mut m in ms.iter_mut() {
-            m.actions.push(Rc::new(a));
         }
-
-        if ms.is_empty() {
-            ms = vec![Match::<A>{
-                patterns: vec!(),
-                actions: vec!(Rc::new(a)),
-                groups: vec!(),
-            }];
+        for e in self.graph.edges() {
+            let lb = match self.graph.edge_label(e) {
+                Some(&Match::Epsilon::<A>) => "*".to_string(),
+                Some(&Match::Character::<A>{ ref bits, ref mask,.. }) => format!("{:?}/{:?}",bits,mask),
+                Some(&Match::Condition::<A>(_)) => "f()".to_string(),
+                None => "".to_string(),
+            };
+            println!("{} -> {} [label=\"{}\"]",self.graph.source(e).0,self.graph.target(e).0,lb);
         }
-
-        ms
+        println!("}}");
     }
 
-    pub fn add_expr(&mut self, e: Vec<Expr<A>>, a: Action<A>) {
-        for x in Self::combine_expr(e.iter(),a) {
-            self.matches.push(x);
-        }
-    }
-
-    pub fn next_match(&self,i: &mut LayerIter, _st: State<A>) -> Option<State<A>> {
+    pub fn next_match(&self,i: &mut LayerIter, offset: u64, cfg: A::Configuration) -> Option<State<A>> {
+        let mut states = HashMap::<AdjacencyListVertexDescriptor,State<A>>::new();
         let mut tokens = Vec::<A::Token>::new();
         let mut j = i.clone();
         let min_len = |len: usize, ts: &mut Vec<A::Token>, j: &mut LayerIter| -> bool {
@@ -394,76 +408,100 @@ impl<A: Architecture> Disassembler<A> {
             }
         };
 
-        for opt in &self.matches {
-            let pattern = &opt.patterns;
-            let actions = &opt.actions;
+        states.insert(self.start,State::<A>::new(offset,cfg.clone()));
 
-            if !min_len(pattern.len(),&mut tokens,&mut j) {
-                continue;
-            }
+        loop {
+            let mut next_states = HashMap::<AdjacencyListVertexDescriptor,State<A>>::new();
+            for (&pos,state) in states.iter() {
+                if self.goals.contains(&pos) {
+                    assert!(self.graph.out_degree(pos) == 0);
+                    next_states.insert(pos,state.clone());
+                } else {
+                    for e in self.graph.out_edges(pos) {
+                        let m = self.graph.edge_label(e).unwrap();
+                        let mut st = state.clone();
+                        let has_match = match m {
+                            &Match::Epsilon::<A> => true,
+                            &Match::Character::<A>{ ref bits, ref mask, ref capture } => {
+                                let l = st.tokens.len();
+                                if min_len(l + 1,&mut tokens,&mut j) && bits.clone() == (tokens[l].clone() & mask.clone()) {
+                                    let t = tokens[l].clone();
+                                    st.tokens.push(t.clone());
 
-            let is_match = pattern.iter().zip(tokens.iter()).all(|p| {
-                let pat = (p.0).0.clone();
-                let msk = (p.0).1.clone();
-                let tok = p.1.clone();
+                                    for &(ref name,ref mask) in capture.iter() {
+                                        let mut res = if let Some(p) = st.groups.iter().position(|x| x.0 == *name) {
+                                            st.groups[p].1
+                                        } else {
+                                            0u64
+                                        };
 
-                (msk & tok) == pat
-            });
+                                        for rbit in (0..(size_of::<A::Token>() * 8)) {
+                                            let bit = (size_of::<A::Token>() * 8) - rbit - 1;
+                                            let bit_mask = if bit > 0 {
+                                                A::Token::one() << bit
+                                            } else {
+                                                A::Token::one()
+                                            };
 
-            if is_match {
-                let mut grps = HashMap::<String,u64>::new();
-                let mut st = _st.clone();
+                                            let a = bit_mask.clone() & mask.clone();
 
-                for cap in &opt.groups {
-                    let masks = &cap.1;
-                    let mut res: u64 = grps.get(&cap.0).unwrap_or(&0).clone();
+                                            if a != A::Token::zero() {
+                                                res <<= 1;
 
-                    for tok_msk in tokens.iter().zip(masks.iter()) {
-                        if *tok_msk.1 != A::Token::zero() {
-                            for rbit in (0..(size_of::<A::Token>() * 8)) {
-                                let bit = (size_of::<A::Token>() * 8) - rbit - 1;
-                                let mask = if bit > 0 {
-                                    A::Token::one() << bit
-                                } else {
-                                    A::Token::one()
-                                };
+                                                if t.clone() & a != A::Token::zero() {
+                                                    res |= 1;
+                                                }
+                                            }
+                                        }
 
-                                let a = mask.clone() & tok_msk.1.clone();
-
-                                if a != A::Token::zero() {
-                                    res <<= 1;
-
-                                    if tok_msk.0.clone() & a != A::Token::zero() {
-                                        res |= 1;
+                                        if let Some(p) = st.groups.iter().position(|x| x.0 == *name) {
+                                            st.groups[p].1 = res;
+                                        } else {
+                                            st.groups.push((name.clone(),res));
+                                        }
                                     }
+
+                                    true
+                                } else {
+                                    false
                                 }
-                            }
+                            },
+                            &Match::Condition::<A>(ref a) => (*a)(&mut st),
+                        };
+
+                        if has_match {
+                            next_states.insert(self.graph.target(e),st);
                         }
                     }
-
-                    grps.insert(cap.0.clone(),res);
                 }
+            }
 
-                st.tokens = tokens.iter().take(pattern.len()).cloned().collect();
-                st.groups = grps.iter().map(|x| (x.0.clone(),x.1.clone())).collect::<Vec<(String,u64)>>();
-
-                if actions.iter().all(|x| x(&mut st)) {
-                    return Some(st);
-                }
+            if states.keys().collect::<HashSet<_>>() == next_states.keys().collect::<HashSet<_>>() {
+                break;
+            } else {
+                states = next_states;
             }
         }
 
-        if self.default.is_some() && min_len(1,&mut tokens,&mut j) {
-            let mut st = _st.clone();
+        if states.len() > 0 {
+            let mut states_vec = states.iter().collect::<Vec<_>>();
+            states_vec.sort_by(|a,b| self.graph.vertex_label(*a.0).unwrap().cmp(self.graph.vertex_label(*b.0).unwrap()));
+            Some(states_vec[0].1.clone())
+        } else {
+            if self.default.is_some() && min_len(1,&mut tokens,&mut j) {
+                let mut st = State::<A>::new(offset,cfg.clone());
 
-            st.tokens = vec!(tokens.iter().next().unwrap().clone());
+                st.tokens = vec!(tokens.iter().next().unwrap().clone());
 
-            if self.default.unwrap()(&mut st) {
-                return Some(st);
+                if self.default.unwrap()(&mut st) {
+                    Some(st)
+                } else {
+                    None
+                }
+            } else {
+                None
             }
         }
-
-        None
     }
 }
 
@@ -484,7 +522,7 @@ macro_rules! new_disassembler {
                 )+
                 fn a(a: &mut ::disassembler::State<$ty>) -> bool { ($f)(a) };
                 let fuc: ::disassembler::Action<$ty> = a;
-                dis.add_expr(__x,fuc);
+                dis.append_conjunction(__x,fuc);
             })+
 
             ::std::rc::Rc::<::disassembler::Disassembler<$ty>>::new(dis)
@@ -501,7 +539,7 @@ macro_rules! new_disassembler {
                 )+
                 fn a(a: &mut State<$ty>) -> bool { ($f)(a) };
                 let fuc: Action<$ty> = a;
-                dis.add_expr(__x,fuc);
+                dis.append_conjunction(__x,fuc);
             })+
 
             fn __def(st: &mut State<$ty>) -> bool { ($def)(st) };
@@ -546,8 +584,38 @@ mod tests {
             [ 3, sub ] = &|_| { true }
         );
 
-        for x in &main.matches {
-            assert!(x.patterns == vec!((3,255),(1,255)) || x.patterns == vec!((3,255),(2,255),(2,255)));
+        main.to_dot();
+        let src = OpaqueLayer::wrap(vec!(3,1,3,2,2));
+
+        {
+            let maybe_res = main.next_match(&mut src.iter(),0,());
+
+            assert!(maybe_res.is_some());
+            let res = maybe_res.unwrap();
+
+            assert_eq!(res.address, 0);
+            assert_eq!(res.tokens.len(), 2);
+            assert_eq!(res.tokens[0], 3);
+            assert_eq!(res.tokens[1], 1);
+            assert_eq!(res.groups.len(), 0);
+            assert_eq!(res.mnemonics.len(), 0);
+            assert_eq!(res.jumps.len(), 0);
+        }
+
+        {
+            let maybe_res = main.next_match(&mut src.iter().seek(2),2,());
+
+            assert!(maybe_res.is_some());
+            let res = maybe_res.unwrap();
+
+            assert_eq!(res.address, 2);
+            assert_eq!(res.tokens.len(), 3);
+            assert_eq!(res.tokens[0], 3);
+            assert_eq!(res.tokens[1], 2);
+            assert_eq!(res.tokens[2], 2);
+            assert_eq!(res.groups.len(), 0);
+            assert_eq!(res.mnemonics.len(), 0);
+            assert_eq!(res.jumps.len(), 0);
         }
     }
 
@@ -603,8 +671,7 @@ mod tests {
     #[test]
     fn single_decoder() {
         let (_,_,main,def) = fixture();
-        let st = State::<TestArchShort>::new(0,());
-        let maybe_res = main.next_match(&mut def.iter(),st);
+        let maybe_res = main.next_match(&mut def.iter(),0,());
 
         assert!(maybe_res.is_some());
         let res = maybe_res.unwrap();
@@ -629,8 +696,7 @@ mod tests {
     #[test]
     fn sub_decoder() {
         let (_,_,main,def) = fixture();
-        let st = State::<TestArchShort>::new(1,());
-        let maybe_res = main.next_match(&mut def.iter().cut(&(1..def.len())),st);
+        let maybe_res = main.next_match(&mut def.iter().cut(&(1..def.len())),1,());
 
         assert!(maybe_res.is_some());
         let res = maybe_res.unwrap();
@@ -656,8 +722,7 @@ mod tests {
     #[test]
     fn semantic_false() {
         let (_,sub2,_,def) = fixture();
-        let st = State::<TestArchShort>::new(7,());
-        let maybe_res = sub2.next_match(&mut def.iter().cut(&(7..def.len())),st);
+        let maybe_res = sub2.next_match(&mut def.iter().cut(&(7..def.len())),7,());
 
         assert!(maybe_res.is_none());
     }
@@ -665,8 +730,7 @@ mod tests {
     #[test]
     fn default_pattern() {
         let (_,_,main,def) = fixture();
-        let st = State::<TestArchShort>::new(7,());
-        let maybe_res = main.next_match(&mut def.iter().cut(&(7..def.len())),st);
+        let maybe_res = main.next_match(&mut def.iter().cut(&(7..def.len())),7,());
 
         assert!(maybe_res.is_some());
         let res = maybe_res.unwrap();
@@ -691,8 +755,7 @@ mod tests {
     #[test]
     fn slice() {
         let (_,_,main,def) = fixture();
-        let st = State::<TestArchShort>::new(1,());
-        let maybe_res = main.next_match(&mut def.iter().cut(&(1..2)),st);
+        let maybe_res = main.next_match(&mut def.iter().cut(&(1..2)),1,());
 
         assert!(maybe_res.is_some());
         let res = maybe_res.unwrap();
@@ -717,8 +780,7 @@ mod tests {
     #[test]
     fn empty() {
         let (_,_,main,def) = fixture();
-        let st = State::<TestArchShort>::new(0,());
-        let maybe_res = main.next_match(&mut def.iter().cut(&(0..0)),st);
+        let maybe_res = main.next_match(&mut def.iter().cut(&(0..0)),0,());
 
         assert!(maybe_res.is_none());
     }
@@ -726,8 +788,7 @@ mod tests {
     #[test]
     fn capture_group() {
         let (_,_,main,def) = fixture();
-        let st = State::<TestArchShort>::new(4,());
-        let maybe_res = main.next_match(&mut def.iter().cut(&(4..def.len())),st);
+        let maybe_res = main.next_match(&mut def.iter().cut(&(4..def.len())),4,());
 
         assert!(maybe_res.is_some());
         let res = maybe_res.unwrap();
@@ -752,7 +813,6 @@ mod tests {
 
     #[test]
     fn empty_capture_group() {
-        let st = State::<TestArchShort>::new(0,());
         let def = OpaqueLayer::wrap(vec!(127));
         let dec = new_disassembler!(TestArchShort =>
             ["01 a@.. 1 b@ c@..."] = |st: &mut State<TestArchShort>| {
@@ -760,7 +820,7 @@ mod tests {
                 true
             }
         );
-        let maybe_res = dec.next_match(&mut def.iter(),st);
+        let maybe_res = dec.next_match(&mut def.iter(),0,());
 
         assert!(maybe_res.is_some());
         let res = maybe_res.unwrap();
@@ -808,7 +868,6 @@ mod tests {
 
     #[test]
     fn wide_token() {
-        let st = State::<TestArchWide>::new(0,());
         let def = OpaqueLayer::wrap(vec!(0x11,0x22,0x33,0x44,0x55,0x44));
         let dec = new_disassembler!(TestArchWide =>
             [0x2211] = |s: &mut State<TestArchWide>|
@@ -835,7 +894,7 @@ mod tests {
             }
         );
 
-        let maybe_res = dec.next_match(&mut def.iter(),st);
+        let maybe_res = dec.next_match(&mut def.iter(),0,());
 
         assert!(maybe_res.is_some());
         let res = maybe_res.unwrap();
@@ -862,13 +921,10 @@ mod tests {
             }
         );
 
-        for x in &dec.matches {
-            println!("{:?}",x.patterns);
-        }
+        dec.to_dot();
 
         {
-            let st = State::<TestArchShort>::new(0,());
-            let maybe_res = dec.next_match(&mut def.iter(),st);
+            let maybe_res = dec.next_match(&mut def.iter(),0,());
 
             assert!(maybe_res.is_some());
             let res = maybe_res.unwrap();
@@ -884,8 +940,7 @@ mod tests {
         }
 
         {
-            let st = State::<TestArchShort>::new(3,());
-            let maybe_res = dec.next_match(&mut def.iter().cut(&(3..5)),st);
+            let maybe_res = dec.next_match(&mut def.iter().cut(&(3..5)),3,());
 
             assert!(maybe_res.is_some());
             let res = maybe_res.unwrap();
@@ -916,14 +971,8 @@ mod tests {
             }
         );
 
-        for x in &dec.matches {
-            println!("{:?}",x.patterns);
-            println!("{:?}",x.groups);
-        }
-
         {
-            let st = State::<TestArchShort>::new(0,());
-            let maybe_res = dec.next_match(&mut def.iter(),st);
+            let maybe_res = dec.next_match(&mut def.iter(),0,());
 
             assert!(maybe_res.is_some());
             let res = maybe_res.unwrap();
@@ -951,11 +1000,7 @@ mod tests {
             }
         );
 
-        for d in &dec.matches {
-            println!("{:?}",d.groups);
-        }
-        let st = State::<TestArchShort>::new(0,());
-        let maybe_res = dec.next_match(&mut def.iter(),st);
+        let maybe_res = dec.next_match(&mut def.iter(),0,());
 
         assert!(maybe_res.is_some());
         let res = maybe_res.unwrap();

@@ -528,18 +528,19 @@ pub fn disassembler(bits: Mode) -> Rc<Disassembler<Amd64>> {
 
             let _mod = st.get_group("mod");
             st.mnemonic(0,"internal-rm","",vec!(),&mut |cg: &mut CodeGen<Amd64>| {
-                cg.configuration.rm = Some(decode::decode_modrm(_mod,
-                                                                b_rm,
-                                                                cg.configuration.disp.clone(),
-                                                                sib,
-                                                                cg.configuration.operand_size,
-                                                                cg.configuration.address_size,
-                                                                cg.configuration.mode,
-                                                                cg.configuration.rex,
-                                                                cg));
-                });
-                true
-            })
+                let maybe_modrm = decode::decode_modrm(_mod,
+                                                       b_rm,
+                                                       cg.configuration.disp.clone(),
+                                                       sib,
+                                                       cg.configuration.operand_size,
+                                                       cg.configuration.address_size,
+                                                       cg.configuration.mode,
+                                                       cg.configuration.rex,
+                                                       cg);
+                cg.configuration.rm = maybe_modrm;
+            });
+            true
+        })
     }
 
     let rm = new_disassembler!(Amd64 =>

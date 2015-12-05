@@ -254,10 +254,8 @@ impl Function {
                 }
             }
 
-            let st = State::<A>::new(addr,init.clone());
             let mut i = data.seek(addr);
-
-            let maybe_match = dec.next_match(&mut i,st);
+            let maybe_match = dec.next_match(&mut i,addr,init.clone());
 
             if let Some(match_st) = maybe_match {
                 for mne in match_st.mnemonics {

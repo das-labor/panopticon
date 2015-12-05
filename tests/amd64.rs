@@ -31,10 +31,8 @@ fn amd64_opcodes() {
     let mut addr = 0;
 
     loop {
-        let st = State::<Amd64>::new(addr,Config::new(Mode::Long));
         let mut i = reg.iter().seek(addr);
-
-        let maybe_match = main.next_match(&mut i,st);
+        let maybe_match = main.next_match(&mut i,addr,Config::new(Mode::Long));
 
         if let Some(match_st) = maybe_match {
             for mne in match_st.mnemonics {
@@ -60,10 +58,8 @@ fn ia32_opcodes() {
     let mut addr = 0;
 
     loop {
-        let st = State::<Amd64>::new(addr,Config::new(Mode::Long));
         let mut i = reg.iter().seek(addr);
-
-        let maybe_match = main.next_match(&mut i,st);
+        let maybe_match = main.next_match(&mut i,addr,Config::new(Mode::Long));
 
         if let Some(match_st) = maybe_match {
             for mne in match_st.mnemonics {
