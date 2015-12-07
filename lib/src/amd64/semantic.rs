@@ -943,3 +943,55 @@ pub fn ud1(_: &mut CodeGen<Amd64>) {}
 pub fn ud2(_: &mut CodeGen<Amd64>) {}
 pub fn xadd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
 pub fn xchg(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+
+pub fn syscall(_: &mut CodeGen<Amd64>) {}
+pub fn sysret(_: &mut CodeGen<Amd64>) {}
+pub fn movapd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn vzeroupper(_: &mut CodeGen<Amd64>) {}
+
+// MMX
+pub fn emms(_: &mut CodeGen<Amd64>) {}
+pub fn packsswb(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn packssdw(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn packuswb(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn paddb(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn paddw(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn paddd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn paddsb(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn paddsw(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn paddusb(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn paddusw(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn pand(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn pandn(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn pcmpeqb(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn pcmpeqw(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn pcmpeqd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn pcmpgtb(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn pcmpgtw(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn pcmpgtd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn pmadwd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn pmulhw(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn pmullw(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn por(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn psraw(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn psrad(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn psrlw(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn psrld(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn psrlq(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn psllw(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn pslld(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn psllq(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn psubb(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn psubw(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn psubd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn psubsb(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn psubsw(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn psubusb(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn psubusw(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn punpckhbw(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn punpckhwd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn punpckhdq(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn punpcklbw(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn punpcklwd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn punpckldq(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn pxor(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
