@@ -406,12 +406,7 @@ pub fn disassembler(bits: Mode) -> Rc<Disassembler<Amd64>> {
         },
         [ "moffs@........", "moffs@........", "moffs@........", "moffs@........" ] = |st: &mut State<Amd64>| {
             st.configuration.moffs = Some(Rvalue::Constant(st.get_group("moffs")));
-            st.configuration.address_size == AddressSize::ThirtyTwo
-        },
-        [ "moffs@........", "moffs@........", "moffs@........", "moffs@........",
-          "moffs@........", "moffs@........", "moffs@........", "moffs@........" ] = |st: &mut State<Amd64>| {
-            st.configuration.moffs = Some(Rvalue::Constant(st.get_group("moffs")));
-            st.configuration.address_size == AddressSize::SixtyFour
+            st.configuration.address_size == AddressSize::ThirtyTwo || st.configuration.address_size == AddressSize::SixtyFour
         });
 
     let moffs8 = new_disassembler!(Amd64 =>
@@ -487,11 +482,13 @@ pub fn disassembler(bits: Mode) -> Rc<Disassembler<Amd64>> {
         });
 
     let sib = new_disassembler!(Amd64 =>
-        [ "scale@.. index@... base@101", "disp@........", "disp@........", "disp@........", "disp@........" ] = |st: &mut State<Amd64>| {
-            st.configuration.disp = Some(Rvalue::Constant(st.get_group("disp")));
-            true
+        [ "scale@.. index@... base@101", "sd@........", "sd@........", "sd@........", "sd@........" ] = |st: &mut State<Amd64>| {
+            st.configuration.disp = Some(Rvalue::Constant(st.get_group("sd")));
+            st.get_group("mod") == 0
         },
-        [ "scale@.. index@... base@..." ] = |_: &mut State<Amd64>| { true });
+        [ "scale@.. index@... base@..." ] = |st: &mut State<Amd64>| {
+            st.get_group("mod") != 0 || st.get_group("base") != 5
+        });
 
     fn rm_semantic(_os: Option<OperandSize>) -> Box<Fn(&mut State<Amd64>) -> bool> {
         Box::new(move |st: &mut State<Amd64>| -> bool {
@@ -539,25 +536,46 @@ pub fn disassembler(bits: Mode) -> Rc<Disassembler<Amd64>> {
                                                        cg);
                 cg.configuration.rm = maybe_modrm;
             });
+
             true
         })
     }
 
     let rm = new_disassembler!(Amd64 =>
-        [ "mod@00 reg@... rm@101", disp32      ] = rm_semantic(None),
-        [ "mod@00 reg@... rm@100", sib         ] = rm_semantic(None),
-        [ "mod@00 reg@... rm@..."              ] = rm_semantic(None),
-        [ "mod@01 reg@... rm@100", sib, disp32 ] = rm_semantic(None),
-        [ "mod@01 reg@... rm@...", disp8       ] = rm_semantic(None),
-        [ "mod@10 reg@... rm@100", sib, disp32 ] = rm_semantic(None),
-        [ "mod@10 reg@... rm@...", disp32      ] = rm_semantic(None),
+        [ "mod@00 reg@... rm@000"         ] = rm_semantic(None),
+        [ "mod@00 reg@... rm@001"         ] = rm_semantic(None),
+        [ "mod@00 reg@... rm@010"         ] = rm_semantic(None),
+        [ "mod@00 reg@... rm@011"         ] = rm_semantic(None),
+        [ "mod@00 reg@... rm@100", sib    ] = rm_semantic(None),
+        [ "mod@00 reg@... rm@101", disp32 ] = rm_semantic(None),
+        [ "mod@00 reg@... rm@110"         ] = rm_semantic(None),
+        [ "mod@00 reg@... rm@111"         ] = rm_semantic(None),
+
+        [ "mod@01 reg@... rm@000", disp8       ] = rm_semantic(None),
+        [ "mod@01 reg@... rm@001", disp8       ] = rm_semantic(None),
+        [ "mod@01 reg@... rm@010", disp8       ] = rm_semantic(None),
+        [ "mod@01 reg@... rm@011", disp8       ] = rm_semantic(None),
+        [ "mod@01 reg@... rm@100", sib, disp8  ] = rm_semantic(None),
+        [ "mod@01 reg@... rm@101", disp8       ] = rm_semantic(None),
+        [ "mod@01 reg@... rm@110", disp8       ] = rm_semantic(None),
+        [ "mod@01 reg@... rm@111", disp8       ] = rm_semantic(None),
+
+        [ "mod@10 reg@... rm@000", disp32       ] = rm_semantic(None),
+        [ "mod@10 reg@... rm@001", disp32       ] = rm_semantic(None),
+        [ "mod@10 reg@... rm@010", disp32       ] = rm_semantic(None),
+        [ "mod@10 reg@... rm@011", disp32       ] = rm_semantic(None),
+        [ "mod@10 reg@... rm@100", sib, disp32  ] = rm_semantic(None),
+        [ "mod@10 reg@... rm@101", disp32       ] = rm_semantic(None),
+        [ "mod@10 reg@... rm@110", disp32       ] = rm_semantic(None),
+        [ "mod@10 reg@... rm@111", disp32       ] = rm_semantic(None),
+
         [ "mod@11 reg@... rm@..."              ] = rm_semantic(None));
 
     let rmlong = new_disassembler!(Amd64 =>
         [ "mod@00 reg@... rm@101", disp32      ] = rm_semantic(Some(OperandSize::SixtyFour)),
         [ "mod@00 reg@... rm@100", sib         ] = rm_semantic(Some(OperandSize::SixtyFour)),
         [ "mod@00 reg@... rm@..."              ] = rm_semantic(Some(OperandSize::SixtyFour)),
-        [ "mod@01 reg@... rm@100", sib, disp32 ] = rm_semantic(Some(OperandSize::SixtyFour)),
+        [ "mod@01 reg@... rm@100", sib, disp8  ] = rm_semantic(Some(OperandSize::SixtyFour)),
         [ "mod@01 reg@... rm@...", disp8       ] = rm_semantic(Some(OperandSize::SixtyFour)),
         [ "mod@10 reg@... rm@100", sib, disp32 ] = rm_semantic(Some(OperandSize::SixtyFour)),
         [ "mod@10 reg@... rm@...", disp32      ] = rm_semantic(Some(OperandSize::SixtyFour)),
@@ -567,7 +585,7 @@ pub fn disassembler(bits: Mode) -> Rc<Disassembler<Amd64>> {
         [ "mod@00 reg@... rm@101", disp32      ] = rm_semantic(Some(OperandSize::Eight)),
         [ "mod@00 reg@... rm@100", sib         ] = rm_semantic(Some(OperandSize::Eight)),
         [ "mod@00 reg@... rm@..."              ] = rm_semantic(Some(OperandSize::Eight)),
-        [ "mod@01 reg@... rm@100", sib, disp32 ] = rm_semantic(Some(OperandSize::Eight)),
+        [ "mod@01 reg@... rm@100", sib, disp8  ] = rm_semantic(Some(OperandSize::Eight)),
         [ "mod@01 reg@... rm@...", disp8       ] = rm_semantic(Some(OperandSize::Eight)),
         [ "mod@10 reg@... rm@100", sib, disp32 ] = rm_semantic(Some(OperandSize::Eight)),
         [ "mod@10 reg@... rm@...", disp32      ] = rm_semantic(Some(OperandSize::Eight)),
