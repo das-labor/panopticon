@@ -161,12 +161,12 @@ impl Mnemonic {
                     } else {
                         match ops.pop() {
                             Some(Rvalue::Constant(c)) => {
-                                let val = c % (1 << w);
+                                let val = if w < 64 { c % (1u64 << w) } else { c };
 
                                 if b {
                                     format!("{}",val)
                                 } else {
-                                    format!("0x{:x}",(val + (1 << w)) % (1 << w))
+                                    format!("0x{:x}",if w < 64 { (val + (1 << w)) % (1 << w) } else { val })
                                 }
                             },
                             Some(Rvalue::Undefined) => "↑".to_string(),
