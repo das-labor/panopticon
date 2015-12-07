@@ -224,9 +224,6 @@ pub fn start_new(_ctrl: &mut Object) -> bool {
             }
             set_dirty(true,&mut ctrl);
 
-            let dec = avr::syntax::disassembler();
-            let init = avr::Mcu::atmega88();
-
             loop {
                 let maybe_tgt = {
                     let read_guard = PROJECT.read().unwrap();
@@ -255,7 +252,7 @@ pub fn start_new(_ctrl: &mut Object) -> bool {
                         let name = maybe_name.unwrap_or(format!("func_{}",tgt));
                         let mut fun = Function::with_uuid(name,uuid,root.name().clone());
 
-                        fun = Function::disassemble::<avr::Avr>(Some(fun),dec.clone(),init.clone(),i,tgt,root.name().clone());
+                        fun = pro.code[0].target.disassemble(Some(fun),i,tgt,root.name().clone());
                         fun.entry_point = fun.find_basic_block_at_address(tgt);
                         fun
                     };
