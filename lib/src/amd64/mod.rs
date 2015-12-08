@@ -326,6 +326,15 @@ pub fn disassembler(bits: Mode) -> Rc<Disassembler<Amd64>> {
             true
         });
 
+    let rexw_prfx = new_disassembler!(Amd64 =>
+        [ "0100 w@1 r@. x@. b@." ] = |st: &mut State<Amd64>| {
+            st.configuration.rex = true;
+            if st.get_group("w") == 1 {
+                st.configuration.operand_size = OperandSize::SixtyFour;
+            }
+            true
+        });
+
     let vex_prfx = new_disassembler!(Amd64 =>
         [ "11000100", "r@. x@. b@. m@.....", "w@. v@.... L@. pp@.." ] = |_: &mut State<Amd64>| { true },
         [ "11000101", "w@. v@.... L@. pp@.." ] = |_: &mut State<Amd64>| { true });
@@ -1079,7 +1088,7 @@ pub fn disassembler(bits: Mode) -> Rc<Disassembler<Amd64>> {
 
     generic::integer_instructions(
         bits,
-        lock_prfx, rep_prfx, repx_prfx, opsize_prfx, addrsz_prfx, rex_prfx, seg_prfx, vex_prfx,
+        lock_prfx, rep_prfx, repx_prfx, opsize_prfx, addrsz_prfx, rex_prfx, rexw_prfx, seg_prfx, vex_prfx,
         imm8, imm16, imm32, imm48, imm64, imm, immlong,
         moffs8, moffs,
         sib,

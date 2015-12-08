@@ -995,3 +995,68 @@ pub fn punpcklbw(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
 pub fn punpcklwd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
 pub fn punpckldq(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
 pub fn pxor(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+
+// SSE 1
+pub fn addps(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn addss(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn andnps(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn andps(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn cmpps(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue, _: Rvalue) {}
+pub fn cmpss(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue, _: Rvalue) {}
+pub fn comiss(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn cvtpi2ps(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn cvtps2pi(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn cvtsi2ss(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn cvtss2si(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn cvttps2pi(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn cvttss2si(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn divps(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn divss(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn ldmxcsr(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn maskmovq(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn maxps(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn maxss(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn minps(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn minss(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn movaps(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn minhps(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn movlps(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn movmskps(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn movntps(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn movntq(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn movss(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn movups(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn mulps(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn mulss(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn orps(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn pavgb(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn pavgw(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn pextrw(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue, _: Rvalue) {}
+pub fn pinsrw(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue, _: Rvalue) {}
+pub fn pmaxsw(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn pmaxub(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn pminsw(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn pminub(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn pmovmskb(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn pmulhuw(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn prefetchnta(_: &mut CodeGen<Amd64>, _: Rvalue) {}
+pub fn prefetcht0(_: &mut CodeGen<Amd64>, _: Rvalue) {}
+pub fn prefetcht1(_: &mut CodeGen<Amd64>, _: Rvalue) {}
+pub fn prefetcht2(_: &mut CodeGen<Amd64>, _: Rvalue) {}
+pub fn psadbw(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn pshufw(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue, _: Rvalue) {}
+pub fn rcpps(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn rcpss(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn rsqrtps(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn rsqrtss(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn sfence(_: &mut CodeGen<Amd64>) {}
+pub fn shufps(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue, _: Rvalue) {}
+pub fn sqrtps(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn sqrtss(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn stmxcsr(_: &mut CodeGen<Amd64>, _: Rvalue) {}
+pub fn subps(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn subss(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn ucomiss(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn unpckhps(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn unpcklps(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn xorps(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}

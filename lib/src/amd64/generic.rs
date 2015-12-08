@@ -775,6 +775,7 @@ pub fn integer_instructions(bits: Mode,
                      lock_prfx: Rc<Disassembler<Amd64>>, rep_prfx: Rc<Disassembler<Amd64>>,
                      repx_prfx: Rc<Disassembler<Amd64>>, opsize_prfx: Rc<Disassembler<Amd64>>,
                      addrsz_prfx: Rc<Disassembler<Amd64>>, rex_prfx: Rc<Disassembler<Amd64>>,
+                     rexw_prfx: Rc<Disassembler<Amd64>>,
                      seg_prfx: Rc<Disassembler<Amd64>>, vex_prfx: Rc<Disassembler<Amd64>>,
                      imm8: Rc<Disassembler<Amd64>>,
                      imm16: Rc<Disassembler<Amd64>>, imm32: Rc<Disassembler<Amd64>>,
@@ -863,6 +864,9 @@ pub fn integer_instructions(bits: Mode,
             let (rep,repx) = integer_rep();
             let sse2 = vector::sse2(rm.clone());
             let avx = vector::avx(vex_prfx.clone(),rm.clone());
+            let sse1 = vector::sse1(
+                rm0.clone(), rm1.clone(), rm2.clone(), rm3.clone(), rm4.clone(), rm5.clone(), rm6.clone(), rm7.clone(),
+                rm.clone(),imm8.clone(),rexw_prfx.clone());
             let mmx = vector::mmx(
                 rm0.clone(), rm1.clone(), rm2.clone(), rm3.clone(), rm4.clone(), rm5.clone(), rm6.clone(), rm7.clone(),
                 rm.clone(),imm8.clone());
@@ -870,9 +874,10 @@ pub fn integer_instructions(bits: Mode,
             new_disassembler!(Amd64 =>
                 [ opt!(opsize_prfx), opt!(addrsz_prfx), opt!(repx_prfx), opt!(seg_prfx), opt!(lock_prfx), opt!(rex_prfx),  main ] = |_: &mut State<Amd64>| { true },
                 [ opt!(opsize_prfx), opt!(addrsz_prfx), opt!(rex_prfx), main64 ] = |_: &mut State<Amd64>| { true },
+                [ mmx ] = |_: &mut State<Amd64>| { true },
+                [ sse1 ] = |_: &mut State<Amd64>| { true },
                 [ sse2 ] = |_: &mut State<Amd64>| { true },
                 [ avx ] = |_: &mut State<Amd64>| { true },
-                [ mmx ] = |_: &mut State<Amd64>| { true },
                 [ opt!(rep_prfx), opt!(opsize_prfx), opt!(rep_prfx), opt!(repx_prfx), opt!(rex_prfx), rep ] = |_: &mut State<Amd64>| { true },
                 [ opt!(rep_prfx), opt!(opsize_prfx), opt!(repx_prfx), opt!(rex_prfx), repx ] = |_: &mut State<Amd64>| { true })
         }
