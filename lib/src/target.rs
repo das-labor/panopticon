@@ -117,7 +117,7 @@ impl Target {
             &Target::Amd64 => Function::disassemble::<Amd64>(cont,amd64::disassembler(Mode::Long),Config::new(Mode::Long),i,start,reg),
             &Target::Ia32 => Function::disassemble::<Amd64>(cont,amd64::disassembler(Mode::Protected),Config::new(Mode::Protected),i,start,reg),
             &Target::Ia16 => Function::disassemble::<Amd64>(cont,amd64::disassembler(Mode::Real),Config::new(Mode::Real),i,start,reg),
-            &Target::Mos6502 => Function::disassemble::<Mos>(cont,mos::syntax::disassembler(),mos::Variant::mos6502(),i,start,reg),
+            &Target::Mos6502 => Function::disassemble::<Mos>(cont,mos::generic::disassembler(),mos::Variant::mos6502(),i,start,reg),
             &Target::__Test => panic!(),
         }
     }
