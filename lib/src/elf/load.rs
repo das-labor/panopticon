@@ -35,7 +35,7 @@ use elf::parse::*;
 pub fn load(p: &Path) -> Result<Project,Error> {
     let mut fd = File::open(p).ok().unwrap();
     let ehdr = try!(Ehdr::read(&mut fd));
-    let mut reg = Region::undefined("base".to_string(),0x100000);
+    let mut reg = Region::undefined("base".to_string(), 0x1000000000000);
 
     match ehdr.file_type {
         Type::Core | Type::Executable | Type::Shared => {
