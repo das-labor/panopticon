@@ -133,7 +133,7 @@ pub fn unary_zr(opcode: &'static str,
 }
 
 
-pub fn unary_xind(opcode: &'static str,
+pub fn unary_izx(opcode: &'static str,
                   sem: fn(&mut CodeGen<Mos>,Rvalue)
                  ) -> Box<Fn(&mut State<Mos>) -> bool> {
     Box::new(move |st: &mut State<Mos>| -> bool {
@@ -153,7 +153,7 @@ pub fn unary_xind(opcode: &'static str,
     })
 }
 
-pub fn unary_indy(opcode: &'static str,
+pub fn unary_izy(opcode: &'static str,
                   sem: fn(&mut CodeGen<Mos>,Rvalue)
                  ) -> Box<Fn(&mut State<Mos>) -> bool> {
     Box::new(move |st: &mut State<Mos>| -> bool {
