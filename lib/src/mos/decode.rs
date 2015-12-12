@@ -224,10 +224,11 @@ pub fn unary_call_a(opcode: &'static str,
         let next = st.address + len as u64;
         if let Some(arg) = _arg {
             st.mnemonic_dynargs(len,&opcode,"L{16}",&|c| {
-                sem(c,arg.clone());
+	        c.call_i(&Lvalue::Undefined, &next);
+	        sem(c,arg.clone());
                 vec![arg.clone()]
             });
-            st.jump(Rvalue::Constant(next), Guard::always());
+            // st.jump(Rvalue::Constant(next), Guard::always());
             st.jump(arg, Guard::always());
             true
         } else {
