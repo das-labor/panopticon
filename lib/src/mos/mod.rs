@@ -23,6 +23,7 @@ use codegen::CodeGen;
 use guard::Guard;
 use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
 
+pub mod load;
 pub mod decode;
 pub mod generic;
 pub mod semantic;
