@@ -79,12 +79,6 @@ pub fn disassembler() -> Rc<Disassembler<Mos>> {
             true
         });
 
-    let izx = new_disassembler!(Mos =>
-        [ "izx@........" ] = |st: &mut State<Mos>| {
-            st.configuration.arg0 = Some(Rvalue::Constant(st.get_group("izx")));
-            true
-        });
-
     // FIXME: Add illegal opcodes.
     new_disassembler!(Mos =>
         // ADC
