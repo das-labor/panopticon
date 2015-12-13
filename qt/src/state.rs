@@ -19,7 +19,6 @@
 use panopticon::project::Project;
 use panopticon::function::Function;
 use panopticon::program::{Program,CallTarget};
-use panopticon::avr;
 use panopticon::elf;
 use panopticon::target::Target;
 

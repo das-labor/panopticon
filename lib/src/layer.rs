@@ -18,7 +18,6 @@
 
 use std::collections::HashMap;
 use std::path::Path;
-use std::slice::Iter;
 use std::fs::File;
 use std::io::Read;
 use std::ops::Range;
