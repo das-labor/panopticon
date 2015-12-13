@@ -19,7 +19,6 @@
 #![macro_use]
 
 use std::rc::Rc;
-use std::slice::Iter;
 use std::fmt::Debug;
 use std::ops::{BitAnd,BitOr,Shl,Shr,Not};
 use std::collections::{HashSet,HashMap};

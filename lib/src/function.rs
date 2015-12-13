@@ -21,7 +21,7 @@ use guard::Guard;
 use graph_algos::{AdjacencyList,GraphTrait,MutableGraphTrait};
 use graph_algos::adjacency_list::AdjacencyListVertexDescriptor;
 use graph_algos::{VertexListGraphTrait,EdgeListGraphTrait};
-use disassembler::{Disassembler,State,Architecture};
+use disassembler::{Disassembler,Architecture};
 use layer::LayerIter;
 use value::Rvalue;
 use std::collections::{HashMap,BTreeMap,BTreeSet};
