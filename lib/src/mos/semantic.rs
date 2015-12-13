@@ -16,13 +16,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-use std::cmp::max;
-
-use value::{Lvalue,Rvalue,Endianess};
+use value::Rvalue;
 use codegen::CodeGen;
-use disassembler::State;
 use mos::*;
-use guard::Guard;
 
 /*
 fn do_push(v: &Rvalue, cg: &mut CodeGen<Mos>) {

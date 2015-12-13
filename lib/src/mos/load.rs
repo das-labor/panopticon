@@ -16,7 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-use std::io::{Seek,SeekFrom,Read};
+use std::io::Read;
 use std::fs::File;
 use std::path::Path;
 

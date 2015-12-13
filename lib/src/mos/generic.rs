@@ -18,7 +18,6 @@
  */
 
 use disassembler::*;
-use codegen::*;
 use value::*;
 use mos::decode::*;
 use mos::semantic::*;

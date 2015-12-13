@@ -17,7 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-use value::{Lvalue,Rvalue,Endianess};
+use value::{Lvalue,Rvalue};
 use disassembler::State;
 use mos::*;
 use codegen::CodeGen;
@@ -42,7 +42,6 @@ pub fn nonary(opcode: &'static str, sem: fn(&mut CodeGen<Mos>)) -> Box<Fn(&mut S
 pub fn nonary_ret(opcode: &'static str, sem: fn(&mut CodeGen<Mos>)) -> Box<Fn(&mut State<Mos>) -> bool> {
     Box::new(move |st: &mut State<Mos>| -> bool {
         let len = st.tokens.len();
-        let next = st.address + len as u64;
 
         st.mnemonic_dynargs(len, &opcode, "", &|c| {
             sem(c);
@@ -243,7 +242,6 @@ pub fn unary_goto_a(opcode: &'static str,
     Box::new(move |st: &mut State<Mos>| -> bool {
         let _arg = st.configuration.arg0.clone();
         let len = st.tokens.len();
-        let next = st.address + len as u64;
         if let Some(arg) = _arg {
             st.mnemonic_dynargs(len,&opcode,"L{16}",&|c| {
                 sem(c,arg.clone());
@@ -263,7 +261,6 @@ pub fn unary_goto_ind(opcode: &'static str,
     Box::new(move |st: &mut State<Mos>| -> bool {
         let _arg = st.configuration.arg0.clone();
         let len = st.tokens.len();
-        let next = st.address + len as u64;
         if let Some(arg) = _arg {
             st.mnemonic_dynargs(len,&opcode,"(D{16})",&|c| {
                 sem(c,arg.clone());

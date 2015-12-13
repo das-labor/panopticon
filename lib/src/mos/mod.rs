@@ -18,10 +18,7 @@
  */
 
 use disassembler::*;
-use value::{Lvalue,Rvalue,Endianess,ToRvalue};
-use codegen::CodeGen;
-use guard::Guard;
-use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
+use value::{Lvalue,Rvalue};
 
 pub mod load;
 pub mod decode;
