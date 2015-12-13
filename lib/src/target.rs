@@ -20,6 +20,8 @@ use amd64;
 use amd64::{Config,Mode,Amd64};
 use avr;
 use avr::{Avr,Mcu};
+use mos;
+use mos::Mos;
 use elf::parse::Machine;
 use function::Function;
 use layer::LayerIter;
@@ -33,6 +35,7 @@ pub enum Target {
     Amd64,
     Ia32,
     Ia16,
+    Mos6502,
 }
 
 impl Target {
@@ -44,6 +47,7 @@ impl Target {
             Target::Amd64,
             Target::Ia32,
             Target::Ia16,
+            Target::Mos6502,
         ]
     }
 
@@ -56,6 +60,7 @@ impl Target {
             "AMD64" => Some(Target::Amd64),
             "IA-32" => Some(Target::Ia32),
             "80286" => Some(Target::Ia16),
+            "MOS 6502" => Some(Target::Mos6502),
             _ => None,
         }
     }
@@ -87,6 +92,7 @@ impl Target {
             &Target::Amd64 => "AMD64",
             &Target::Ia32 => "IA-32",
             &Target::Ia16 => "80286",
+            &Target::Mos6502 => "MOS 6502",
         }
     }
 
@@ -98,6 +104,7 @@ impl Target {
             &Target::Amd64 => vec![("RESET",0xFFFFFFF0,"Reset vector")],
             &Target::Ia32 => vec![("RESET",0xFFFFFFF0,"Reset vector")],
             &Target::Ia16 => vec![("RESET",0xFFFF0,"Reset vector")],
+            &Target::Mos6502 => mos::Variant::mos6502().int_vec,
             &Target::__Test => vec![],
         }
     }
@@ -110,6 +117,7 @@ impl Target {
             &Target::Amd64 => Function::disassemble::<Amd64>(cont,amd64::disassembler(Mode::Long),Config::new(Mode::Long),i,start,reg),
             &Target::Ia32 => Function::disassemble::<Amd64>(cont,amd64::disassembler(Mode::Protected),Config::new(Mode::Protected),i,start,reg),
             &Target::Ia16 => Function::disassemble::<Amd64>(cont,amd64::disassembler(Mode::Real),Config::new(Mode::Real),i,start,reg),
+            &Target::Mos6502 => Function::disassemble::<Mos>(cont,mos::generic::disassembler(),mos::Variant::mos6502(),i,start,reg),
             &Target::__Test => panic!(),
         }
     }

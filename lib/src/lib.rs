@@ -172,6 +172,7 @@ pub mod target;
 // disassembler
 pub mod avr;
 pub mod amd64;
+pub mod mos;
 
 // file formats
 pub mod pe;

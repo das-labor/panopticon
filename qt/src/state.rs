@@ -20,6 +20,7 @@ use panopticon::project::Project;
 use panopticon::function::Function;
 use panopticon::program::{Program,CallTarget};
 use panopticon::elf;
+use panopticon::mos;
 use panopticon::target::Target;
 
 use std::path::Path;
@@ -111,6 +112,24 @@ pub fn create_elf_project(_path: &Variant, ctrl: &mut Object) -> Variant {
     Variant::Bool(if state(ctrl) == "NEW" {
         if let &Variant::String(ref s) = _path {
             let proj = elf::load::load(Path::new(s)).ok().unwrap();
+            *PROJECT.write().unwrap() = Some(proj);
+
+            set_state("READY",ctrl);
+            set_dirty(true,ctrl);
+
+            true
+        } else {
+            false
+        }
+    } else {
+        false
+    })
+}
+
+pub fn create_mos6502_project(_path: &Variant, ctrl: &mut Object) -> Variant {
+    Variant::Bool(if state(ctrl) == "NEW" {
+        if let &Variant::String(ref s) = _path {
+            let proj = mos::load::load(Path::new(s)).ok().unwrap();
             *PROJECT.write().unwrap() = Some(proj);
 
             set_state("READY",ctrl);

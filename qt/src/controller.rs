@@ -34,6 +34,7 @@ extern "C" fn controller_slot(this: *mut ffi::QObject, id: c_int, a: *const ffi:
         // State transitions
         (CREATE_RAW_PROJECT,2) => ::state::create_raw_project(&args[0],&args[1],&mut obj).to_qvariant(ret),
         (CREATE_ELF_PROJECT,1) => ::state::create_elf_project(&args[0],&mut obj).to_qvariant(ret),
+        (CREATE_MOS6502_PROJECT,1) => ::state::create_mos6502_project(&args[0],&mut obj).to_qvariant(ret),
         (OPEN_PROJECT,1) => ::state::open_project(&args[0],&mut obj).to_qvariant(ret),
         (SNAPSHOT_PROJECT,1) => ::state::snapshot_project(&args[0],&mut obj).to_qvariant(ret),
         (START,0) => ::state::start(&mut obj).to_qvariant(ret),
@@ -67,22 +68,24 @@ pub const CHANGED_FUNCTION: isize = 6;
 
 pub const CREATE_RAW_PROJECT: isize = 7;
 pub const CREATE_ELF_PROJECT: isize = 8;
+pub const CREATE_MOS6502_PROJECT: isize = 9;
 
-pub const OPEN_PROJECT: isize = 9;
+pub const OPEN_PROJECT: isize = 10;
 
-pub const START: isize = 10;
-pub const DONE: isize = 11;
+pub const START: isize = 11;
+pub const DONE: isize = 12;
 
-pub const SET_COMMENT: isize = 12;
-pub const SET_NAME: isize = 13;
+pub const SET_COMMENT: isize = 13;
+pub const SET_NAME: isize = 14;
 
-pub const SNAPSHOT_PROJECT: isize = 14;
+pub const SNAPSHOT_PROJECT: isize = 15;
 
-pub const FUNCTION_INFO: isize = 15;
-pub const FUNCTION_CFG: isize = 16;
-pub const ALL_TARGETS: isize = 17;
+pub const FUNCTION_INFO: isize = 16;
+pub const FUNCTION_CFG: isize = 17;
+pub const ALL_TARGETS: isize = 18;
 
-pub const SUGIYAMA_LAYOUT: isize = 18;
+pub const SUGIYAMA_LAYOUT: isize = 19;
+
 
 pub extern "C" fn create_singleton(_: *mut ffi::QQmlEngine, _: *mut ffi::QJSEngine) -> *mut ffi::QObject {
     let mut metaobj = MetaObject::new("Panopticon",controller_slot);
@@ -106,6 +109,7 @@ pub extern "C" fn create_singleton(_: *mut ffi::QQmlEngine, _: *mut ffi::QJSEngi
     // state = NEW -> READY, dirty = -> true
     assert_eq!(metaobj.add_method("createRawProject(QString,QString)","bool"),CREATE_RAW_PROJECT);
     assert_eq!(metaobj.add_method("createElfProject(QString)","bool"),CREATE_ELF_PROJECT);
+    assert_eq!(metaobj.add_method("createMos6502Project(QString)","bool"),CREATE_MOS6502_PROJECT);
     assert_eq!(metaobj.add_method("openProject(QString)","bool"),OPEN_PROJECT);
 
     // state = READY -> WORKING
@@ -138,4 +142,3 @@ pub extern "C" fn create_singleton(_: *mut ffi::QQmlEngine, _: *mut ffi::QJSEngi
     obj.emit(DIRTY_CHANGED,&[]);
     obj.as_ptr()
 }
-

@@ -120,6 +120,28 @@ ApplicationWindow {
 						})
 					}
 				}
+
+				MenuItem {
+					text: "...from MOS-6502 binary image"
+					shortcut: "Ctrl+M"
+					enabled: Panopticon.state == "NEW"
+					onTriggered: {
+						saveStalePanopticon(function() {
+							fileNewDialog.next = function(path) {
+								var sess = Panopticon.createMos6502Project(path)
+
+								if(sess == null) {
+									console.log("The file '" + path + "' is not a valid MOS-6502 file.")
+								} else {
+									loader.setSource("workspace/Workspace.qml")
+								}
+							};
+							fileNewDialog.open()
+						})
+					}
+				}
+
+
 			}
 
 			MenuItem {
