@@ -244,6 +244,14 @@ pub fn decode_rmv(_: &mut State<Amd64>) -> Option<(Rvalue,Rvalue,Rvalue)> {
     None
 }
 
+pub fn decode_rm0(sm: &mut State<Amd64>) -> Option<(Rvalue,Rvalue,Rvalue)> {
+    if let (&Some(ref reg),&Some(ref rm)) = (&sm.configuration.reg,&sm.configuration.rm) {
+        Some((reg.to_rv(),rm.to_rv(),Rvalue::Constant(0)))
+    } else {
+        None
+    }
+}
+
 pub fn decode_rmi(sm: &mut State<Amd64>) -> Option<(Rvalue,Rvalue,Rvalue)> {
     if let (&Some(ref reg),&Some(ref rm),&Some(ref imm)) = (&sm.configuration.reg,&sm.configuration.rm,&sm.configuration.imm) {
         Some((reg.to_rv(),rm.to_rv(),imm.clone()))

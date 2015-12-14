@@ -259,7 +259,7 @@ impl Function {
 
             if let Some(match_st) = maybe_match {
                 for mne in match_st.mnemonics {
-                    //println!("{:x}: {}",mne.area.start,mne.opcode);
+                    println!("{:x}: {} ({:?})",mne.area.start,mne.opcode,match_st.tokens);
                     mnemonics.entry(mne.area.start).or_insert(Vec::new()).push(mne);
 
                 }
@@ -277,7 +277,7 @@ impl Function {
                     }
                 }
             } else {
-                //println!("failed to match anything at {}",addr);
+                println!("failed to match anything at {:x}",addr);
             }
         }
 

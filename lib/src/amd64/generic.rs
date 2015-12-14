@@ -862,6 +862,8 @@ pub fn integer_instructions(bits: Mode,
                 m128.clone());
 
             let (rep,repx) = integer_rep();
+            let sse4 = vector::sse4(
+                rm.clone(),imm8.clone(),rex_prfx.clone(),rexw_prfx.clone());
             let sse2 = vector::sse2(
                 rm0.clone(), rm1.clone(), rm2.clone(), rm3.clone(), rm4.clone(), rm5.clone(), rm6.clone(), rm7.clone(),
                 rm.clone(),imm8.clone(),rex_prfx.clone(),rexw_prfx.clone());
@@ -879,6 +881,7 @@ pub fn integer_instructions(bits: Mode,
                 [ mmx ] = |_: &mut State<Amd64>| { true },
                 [ sse1 ] = |_: &mut State<Amd64>| { true },
                 [ sse2 ] = |_: &mut State<Amd64>| { true },
+                [ sse4 ] = |_: &mut State<Amd64>| { true },
                 [ avx ] = |_: &mut State<Amd64>| { true },
                 [ opt!(rep_prfx), opt!(opsize_prfx), opt!(rep_prfx), opt!(repx_prfx), opt!(rex_prfx), rep ] = |_: &mut State<Amd64>| { true },
                 [ opt!(rep_prfx), opt!(opsize_prfx), opt!(repx_prfx), opt!(rex_prfx), repx ] = |_: &mut State<Amd64>| { true })

@@ -650,6 +650,81 @@ pub fn sse2(rm0: Rc<Disassembler<Amd64>>, rm1: Rc<Disassembler<Amd64>>, rm2: Rc<
         [ 0x66, opt!(rex_prfx), 0x0f, 0x7e, rm ] = binary("movd",decode_mr,mov))
 }
 
+pub fn sse4(rm: Rc<Disassembler<Amd64>>, imm8: Rc<Disassembler<Amd64>>,
+            rex_prfx: Rc<Disassembler<Amd64>>, rexw_prfx: Rc<Disassembler<Amd64>>) -> Rc<Disassembler<Amd64>> {
+    new_disassembler!(Amd64 =>
+        // BLENDPD
+        [ 0x66, opt!(rex_prfx), 0x0f, 0x3a, 0x0c, rm, imm8 ] = trinary("blendpd",decode_rmi,blendpd),
+        [ 0x66, opt!(rex_prfx), 0x0f, 0x38, 0x15, rm ] = trinary("blendpd",decode_rm0,blendps),
+
+        // BLENDPS
+        [ 0x66, opt!(rex_prfx), 0x0f, 0x3a, 0x0d, rm, imm8 ] = trinary("blendps",decode_rmi,blendps),
+        [ 0x66, opt!(rex_prfx), 0x0f, 0x38, 0x14, rm ] = trinary("blendps",decode_rm0,blendps),
+
+        // DPPD
+        [ 0x66, opt!(rex_prfx), 0x0f, 0x3a, 0x41, rm, imm8 ] = trinary("dppd",decode_rmi,dppd),
+
+        // DPPS
+        [ 0x66, opt!(rex_prfx), 0x0f, 0x3a, 0x40, rm, imm8 ] = trinary("dpps",decode_rmi,dpps),
+
+        // EXTRACTPS
+        [ 0x66, opt!(rex_prfx), 0x0f, 0x3a, 0x17, rm, imm8 ] = trinary("extractps",decode_rmi,extractps),
+
+        // INSERTPS
+        [ 0x66, opt!(rex_prfx), 0x0f, 0x3a, 0x21, rm, imm8 ] = trinary("insertps",decode_rmi,insertps),
+
+        // MPSADBW
+        [ 0x66, opt!(rex_prfx), 0x0f, 0x3a, 0x42, rm, imm8 ] = trinary("mpsadbw",decode_rmi,mpsadbw),
+
+        // PBLENDW
+        [ 0x66, opt!(rex_prfx), 0x0f, 0x3a, 0x0e, rm, imm8 ] = trinary("pblendbw",decode_rmi,pblendbw),
+
+        // PCMPESTRI
+        [ 0x66, opt!(rex_prfx), 0x0f, 0x3a, 0x61, rm, imm8 ] = trinary("pcmpestri",decode_rmi,pcmpestri),
+
+        // PCMPESTRM
+        [ 0x66, opt!(rex_prfx), 0x0f, 0x3a, 0x60, rm, imm8 ] = trinary("pcmpestrm",decode_rmi,pcmpestrm),
+
+        // PCMPISTRI
+        [ 0x66, opt!(rex_prfx), 0x0f, 0x3a, 0x63, rm, imm8 ] = trinary("pcmpistri",decode_rmi,pcmpistri),
+
+        // PCMPISTRM
+        [ 0x66, opt!(rex_prfx), 0x0f, 0x3a, 0x62, rm, imm8 ] = trinary("pcmpistrm",decode_rmi,pcmpistrm),
+
+        // PEXTRB
+        [ 0x66, opt!(rex_prfx), 0x0f, 0x3a, 0x14, rm, imm8 ] = trinary("pextrb",decode_mri,pextrb),
+
+        // PEXTRD
+        [ 0x66, opt!(rex_prfx), 0x0f, 0x3a, 0x16, rm, imm8 ] = trinary("extrd",decode_mri,pextrd),
+
+        // PEXTRQ
+        [ 0x66, opt!(rexw_prfx), 0x0f, 0x3a, 0x16, rm, imm8 ] = trinary("extrq",decode_mri,pextrq),
+
+        // PEXTRW
+        [ 0x66, opt!(rex_prfx), 0x0f, 0x3a, 0x15, rm, imm8 ] = trinary("extrw",decode_mri,pextrw),
+
+        // PINSRB
+        [ 0x66, opt!(rex_prfx), 0x0f, 0x3a, 0x20, rm, imm8 ] = trinary("pinsrb",decode_rmi,pinsrb),
+
+        // PINSRD
+        [ 0x66, opt!(rex_prfx), 0x0f, 0x3a, 0x22, rm, imm8 ] = trinary("pinsrd",decode_rmi,pinsrd),
+
+        // PINSRQ
+        [ 0x66, opt!(rexw_prfx), 0x0f, 0x3a, 0x22, rm, imm8 ] = trinary("pinsrq",decode_rmi,pinsrq),
+
+        // ROUNDPD
+        [ 0x66, opt!(rexw_prfx), 0x0f, 0x3a, 0x09, rm, imm8 ] = trinary("roundpd",decode_rmi,roundpd),
+
+        // ROUNDPS
+        [ 0x66, opt!(rexw_prfx), 0x0f, 0x3a, 0x08, rm, imm8 ] = trinary("roundpd",decode_rmi,roundps),
+
+        // ROUNDSD
+        [ 0x66, opt!(rexw_prfx), 0x0f, 0x3a, 0x0b, rm, imm8 ] = trinary("roundpd",decode_rmi,roundsd),
+
+        // ROUNDSS
+        [ 0x66, opt!(rexw_prfx), 0x0f, 0x3a, 0x0a, rm, imm8 ] = trinary("roundpd",decode_rmi,roundss))
+}
+
 pub fn avx(vex_prfx: Rc<Disassembler<Amd64>>, rm: Rc<Disassembler<Amd64>>) -> Rc<Disassembler<Amd64>> {
     new_disassembler!(Amd64 =>
         // VZEROUPPER

@@ -299,7 +299,7 @@ pub fn bsf(cg: &mut CodeGen<Amd64>, _a: Rvalue, b: Rvalue) {
     for bit in (0..aw) {
         let val = new_temp(aw);
 
-        if bit < 64 {
+        if bit < 63 {
             cg.mod_i(&val,&b,&Rvalue::Constant(1 << (bit as u64 + 1)));
             cg.div_i(&val,&val.to_rv(),&Rvalue::Constant(1u64 << bit));
         } else {
@@ -318,7 +318,7 @@ pub fn bsr(cg: &mut CodeGen<Amd64>, _a: Rvalue, b: Rvalue) {
     for bit in (0..aw).rev() {
         let val = new_temp(aw);
 
-        if bit < 64 {
+        if bit < 63 {
             cg.mod_i(&val,&b,&Rvalue::Constant(1u64 << (bit + 1)));
             cg.div_i(&val,&val.to_rv(),&Rvalue::Constant(1u64 << bit));
         } else {
@@ -1137,3 +1137,27 @@ pub fn ucomisd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
 pub fn unpckhpd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
 pub fn unpcklpd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
 pub fn xorpd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+
+// SSE 4
+pub fn blendpd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue, _: Rvalue) {}
+pub fn blendps(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue, _: Rvalue) {}
+pub fn dppd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue, _: Rvalue) {}
+pub fn dpps(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue, _: Rvalue) {}
+pub fn extractps(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue, _: Rvalue) {}
+pub fn insertps(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue, _: Rvalue) {}
+pub fn mpsadbw(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue, _: Rvalue) {}
+pub fn pblendbw(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue, _: Rvalue) {}
+pub fn pcmpestri(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue, _: Rvalue) {}
+pub fn pcmpestrm(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue, _: Rvalue) {}
+pub fn pcmpistri(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue, _: Rvalue) {}
+pub fn pcmpistrm(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue, _: Rvalue) {}
+pub fn pextrb(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue, _: Rvalue) {}
+pub fn pextrd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue, _: Rvalue) {}
+pub fn pextrq(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue, _: Rvalue) {}
+pub fn pinsrb(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue, _: Rvalue) {}
+pub fn pinsrd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue, _: Rvalue) {}
+pub fn pinsrq(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue, _: Rvalue) {}
+pub fn roundpd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue, _: Rvalue) {}
+pub fn roundps(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue, _: Rvalue) {}
+pub fn roundsd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue, _: Rvalue) {}
+pub fn roundss(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue, _: Rvalue) {}

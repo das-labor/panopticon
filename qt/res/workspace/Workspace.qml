@@ -230,7 +230,9 @@ Item {
 				}
 
 				onSelectionChanged: {
-					var cfg = JSON.parse(Panopticon.functionCfg(selection));
+					var cfg_txt = Panopticon.functionCfg(selection);
+					console.log(cfg_txt);
+					var cfg = JSON.parse(cfg_txt);
 					var func = JSON.parse(Panopticon.functionInfo(selection));
 					var dims = {};
 
