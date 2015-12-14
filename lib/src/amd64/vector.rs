@@ -273,6 +273,9 @@ pub fn sse1(rm0: Rc<Disassembler<Amd64>>, rm1: Rc<Disassembler<Amd64>>, rm2: Rc<
         [ 0x0f, 0x18, rm2 ] = unary("prefetcht1",decode_m,prefetcht1),
         [ 0x0f, 0x18, rm3 ] = unary("prefetcht2",decode_m,prefetcht2),
 
+        [ 0x0f, 0x0d, rm1 ] = unary("prefetchw",decode_m,prefetchw),
+        [ 0x0f, 0x0d, rm2 ] = unary("prefetchwt1",decode_m,prefetchwt1),
+
         // PSADBW
         [ 0x0f, 0xf6, rm ] = binary("psadbw",decode_rm,psadbw),
 
@@ -649,6 +652,51 @@ pub fn sse2(rm0: Rc<Disassembler<Amd64>>, rm1: Rc<Disassembler<Amd64>>, rm2: Rc<
         [ 0x66, opt!(rex_prfx), 0x0f, 0x6e, rm ] = binary("movd",decode_rm,mov),
         [ 0x66, opt!(rex_prfx), 0x0f, 0x7e, rm ] = binary("movd",decode_mr,mov))
 }
+
+pub fn sse3(rm: Rc<Disassembler<Amd64>>, imm8: Rc<Disassembler<Amd64>>,
+            rex_prfx: Rc<Disassembler<Amd64>>, rexw_prfx: Rc<Disassembler<Amd64>>) -> Rc<Disassembler<Amd64>> {
+    new_disassembler!(Amd64 =>
+        // ADDSUBPD
+        [ 0x66, opt!(rex_prfx), 0x0f, 0xd0, rm ] = binary("addsubpd",decode_rm,addsubpd),
+
+        // ADDSUBPS
+        [ 0xf2, opt!(rex_prfx), 0x0f, 0xd0, rm ] = binary("addsubps",decode_rm,addsubps),
+
+        // HADDPD
+        [ 0x66, opt!(rex_prfx), 0x0f, 0x7c, rm ] = binary("haddpd",decode_rm,haddpd),
+
+        // HADDPS
+        [ 0xf2, opt!(rex_prfx), 0x0f, 0x7c, rm ] = binary("haddps",decode_rm,haddps),
+
+        // HSUBPD
+        [ 0x66, opt!(rex_prfx), 0x0f, 0x7d, rm ] = binary("hsubpd",decode_rm,hsubpd),
+
+        // HSUBPS
+        [ 0xf2, opt!(rex_prfx), 0x0f, 0x7d, rm ] = binary("hsubps",decode_rm,hsubps),
+
+        // LDDQU
+        [ 0xf2, opt!(rex_prfx), 0x0f, 0xf0, rm ] = binary("lddqu",decode_rm,lddqu),
+
+        // MONITOR
+        [ 0x0f, 0x01, 0xc8 ] = nonary("monitor",monitor),
+
+        // MOVDDUP
+        [ 0xf2, opt!(rex_prfx), 0x0f, 0x12, rm ] = binary("movddup",decode_rm,movddup),
+
+        // MOVSHDUP
+        [ 0xf3, opt!(rex_prfx), 0x0f, 0x16, rm ] = binary("movshdup",decode_rm,movshdup),
+
+        // MUVSLDUP
+        [ 0xf3, opt!(rex_prfx), 0x0f, 0x12, rm ] = binary("movsldup",decode_rm,movsldup),
+
+        // MWAIT
+        [ 0x0f, 0x01, 0xc9 ] = nonary("mwait",mwait),
+
+        // PALIGNR
+        [ opt!(rex_prfx), 0x0f, 0x3a, 0x0f, rm, imm8 ] = trinary("palignr",decode_rmi,palignr),
+        [ 0x66, opt!(rex_prfx), 0x0f, 0x3a, 0x0f, rm, imm8 ] = trinary("palignr",decode_rmi,palignr))
+}
+
 
 pub fn sse4(rm: Rc<Disassembler<Amd64>>, imm8: Rc<Disassembler<Amd64>>,
             rex_prfx: Rc<Disassembler<Amd64>>, rexw_prfx: Rc<Disassembler<Amd64>>) -> Rc<Disassembler<Amd64>> {

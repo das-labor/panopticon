@@ -1043,6 +1043,8 @@ pub fn prefetchnta(_: &mut CodeGen<Amd64>, _: Rvalue) {}
 pub fn prefetcht0(_: &mut CodeGen<Amd64>, _: Rvalue) {}
 pub fn prefetcht1(_: &mut CodeGen<Amd64>, _: Rvalue) {}
 pub fn prefetcht2(_: &mut CodeGen<Amd64>, _: Rvalue) {}
+pub fn prefetchw(_: &mut CodeGen<Amd64>, _: Rvalue) {}
+pub fn prefetchwt1(_: &mut CodeGen<Amd64>, _: Rvalue) {}
 pub fn psadbw(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
 pub fn pshufw(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue, _: Rvalue) {}
 pub fn rcpps(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
@@ -1161,3 +1163,18 @@ pub fn roundpd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue, _: Rvalue) {}
 pub fn roundps(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue, _: Rvalue) {}
 pub fn roundsd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue, _: Rvalue) {}
 pub fn roundss(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue, _: Rvalue) {}
+
+// SSE 3
+pub fn addsubpd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn addsubps(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn haddpd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn haddps(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn hsubpd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn hsubps(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn lddqu(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn monitor(_: &mut CodeGen<Amd64>) {}
+pub fn movddup(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn movshdup(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn movsldup(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn mwait(_: &mut CodeGen<Amd64>) {}
+pub fn palignr(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue, _: Rvalue) {}
