@@ -862,7 +862,9 @@ pub fn integer_instructions(bits: Mode,
                 m128.clone());
 
             let (rep,repx) = integer_rep();
-            let sse2 = vector::sse2(rm.clone());
+            let sse2 = vector::sse2(
+                rm0.clone(), rm1.clone(), rm2.clone(), rm3.clone(), rm4.clone(), rm5.clone(), rm6.clone(), rm7.clone(),
+                rm.clone(),imm8.clone(),rex_prfx.clone(),rexw_prfx.clone());
             let avx = vector::avx(vex_prfx.clone(),rm.clone());
             let sse1 = vector::sse1(
                 rm0.clone(), rm1.clone(), rm2.clone(), rm3.clone(), rm4.clone(), rm5.clone(), rm6.clone(), rm7.clone(),
