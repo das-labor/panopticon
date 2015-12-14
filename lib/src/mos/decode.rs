@@ -93,19 +93,19 @@ pub fn unary_z(opcode: &'static str,
                sem: fn(&mut CodeGen<Mos>,Rvalue)
               ) -> Box<Fn(&mut State<Mos>) -> bool> {
     Box::new(move |st: &mut State<Mos>| -> bool {
-        let _arg = st.configuration.arg0.clone();
         let len = st.tokens.len();
         let next = st.address + len as u64;
-        if let Some(arg) = _arg {
-            st.mnemonic_dynargs(len,&opcode,"Z{8}",&|c| {
-                sem(c,arg.clone());
-                vec![arg.clone()]
-            });
-            st.jump(Rvalue::Constant(next),Guard::always());
-            true
-        } else {
-            false
-        }
+	let arg = st.configuration.arg0.clone();
+        let addr =
+            if let Some(Rvalue::Memory{offset: ref addr,..}) = arg {
+	        (**addr).clone()
+            } else { unreachable!(); };
+	st.mnemonic_dynargs(len,&opcode,"Z{8}", &|c| {
+            sem(c, arg.clone().unwrap());
+            vec![addr.clone()]
+        });
+        st.jump(Rvalue::Constant(next), Guard::always());
+        true
     })
 }
 
@@ -115,19 +115,19 @@ pub fn unary_zr(opcode: &'static str,
                ) -> Box<Fn(&mut State<Mos>) -> bool> {
     let arg1 = _arg1.clone();
     Box::new(move |st: &mut State<Mos>| -> bool {
-        let _arg = st.configuration.arg0.clone();
         let len = st.tokens.len();
         let next = st.address + len as u64;
-        if let Some(arg0) = _arg {
-            st.mnemonic_dynargs(len,&opcode,"Z{8},{8}",&|c| {
-                sem(c,arg0.clone(),arg1.to_rv());
-                vec![arg0.clone(),arg1.to_rv()]
-            });
-            st.jump(Rvalue::Constant(next),Guard::always());
-            true
-        } else {
-            false
-        }
+        let arg = st.configuration.arg0.clone();
+        let addr =
+            if let Some(Rvalue::Memory{offset: ref addr,..}) = arg {
+	        (**addr).clone()
+            } else { unreachable!(); };
+	st.mnemonic_dynargs(len,&opcode,"Z{8},{8}",&|c| {
+            sem(c, arg.clone().unwrap(), arg1.to_rv());
+            vec![addr.clone(), arg1.to_rv()]
+        });
+        st.jump(Rvalue::Constant(next), Guard::always());
+        true
     })
 }
 
@@ -140,8 +140,8 @@ pub fn unary_izx(opcode: &'static str,
         let len = st.tokens.len();
         let next = st.address + len as u64;
         if let Some(arg) = _arg {
-            st.mnemonic_dynargs(len,&opcode,"(Z{8},X)",&|c| {
-                sem(c,arg.clone());
+            st.mnemonic_dynargs(len, &opcode, "(Z{8},X)", &|c| {
+                sem(c, arg.clone());
                 vec![arg.clone()]
             });
             st.jump(Rvalue::Constant(next),Guard::always());
@@ -160,8 +160,8 @@ pub fn unary_izy(opcode: &'static str,
         let len = st.tokens.len();
         let next = st.address + len as u64;
         if let Some(arg) = _arg {
-            st.mnemonic_dynargs(len,&opcode,"(Z{8}),Y",&|c| {
-                sem(c,arg.clone());
+            st.mnemonic_dynargs(len, &opcode, "(Z{8}),Y", &|c| {
+                sem(c, arg.clone());
                 vec![arg.clone()]
             });
             st.jump(Rvalue::Constant(next),Guard::always());
@@ -176,19 +176,19 @@ pub fn unary_a(opcode: &'static str,
                sem: fn(&mut CodeGen<Mos>,Rvalue)
               ) -> Box<Fn(&mut State<Mos>) -> bool> {
     Box::new(move |st: &mut State<Mos>| -> bool {
-        let _arg = st.configuration.arg0.clone();
         let len = st.tokens.len();
         let next = st.address + len as u64;
-        if let Some(arg) = _arg {
-            st.mnemonic_dynargs(len,&opcode,"D{16}",&|c| {
-                sem(c,arg.clone());
-                vec![arg.clone()]
-            });
-            st.jump(Rvalue::Constant(next),Guard::always());
-            true
-        } else {
-            false
-        }
+        let arg = st.configuration.arg0.clone();
+        let addr =
+            if let Some(Rvalue::Memory{offset: ref addr,..}) = arg {
+	        (**addr).clone()
+            } else { unreachable!(); };
+        st.mnemonic_dynargs(len,&opcode,"D{16}",&|c| {
+            sem(c, arg.clone().unwrap());
+            vec![addr.clone()]
+        });
+        st.jump(Rvalue::Constant(next),Guard::always());
+	true
     })
 }
 
@@ -198,19 +198,19 @@ pub fn unary_ar(opcode: &'static str,
               ) -> Box<Fn(&mut State<Mos>) -> bool> {
     let arg1 = _arg1.clone();
     Box::new(move |st: &mut State<Mos>| -> bool {
-        let _arg = st.configuration.arg0.clone();
         let len = st.tokens.len();
         let next = st.address + len as u64;
-        if let Some(arg0) = _arg {
-            st.mnemonic_dynargs(len,&opcode,"D{16},{8}",&|c| {
-                sem(c,arg0.clone(),arg1.to_rv());
-                vec![arg0.clone(),arg1.to_rv()]
-            });
-            st.jump(Rvalue::Constant(next),Guard::always());
-            true
-        } else {
-            false
-        }
+        let arg = st.configuration.arg0.clone();
+        let addr =
+            if let Some(Rvalue::Memory{offset: ref addr,..}) = arg {
+	        (**addr).clone()
+            } else { unreachable!(); };
+        st.mnemonic_dynargs(len,&opcode,"D{16},{8}",&|c| {
+            sem(c, arg.clone().unwrap(), arg1.to_rv());
+            vec![addr.clone(), arg1.to_rv()]
+        });
+        st.jump(Rvalue::Constant(next),Guard::always());
+        true
     })
 }
 
@@ -218,21 +218,21 @@ pub fn unary_call_a(opcode: &'static str,
                sem: fn(&mut CodeGen<Mos>,Rvalue)
               ) -> Box<Fn(&mut State<Mos>) -> bool> {
     Box::new(move |st: &mut State<Mos>| -> bool {
-        let _arg = st.configuration.arg0.clone();
         let len = st.tokens.len();
         let next = st.address + len as u64;
-        if let Some(arg) = _arg {
-            st.mnemonic_dynargs(len,&opcode,"L{16}",&|c| {
-	        c.call_i(&Lvalue::Undefined, &arg);
-	        sem(c,arg.clone());
-                vec![arg.clone()]
-            });
-	    st.jump(Rvalue::Constant(next), Guard::always());
-            // st.jump(arg, Guard::always());
-            true
-        } else {
-            false
-        }
+        let arg = st.configuration.arg0.clone();
+        let addr =
+            if let Some(Rvalue::Memory{offset: ref addr,..}) = arg {
+	        (**addr).clone()
+            } else { unreachable!(); };
+        st.mnemonic_dynargs(len,&opcode,"L{16}",&|c| {
+            c.call_i(&Lvalue::Undefined, &addr);
+            sem(c, arg.clone().unwrap());
+            vec![addr.clone()]
+        });
+        st.jump(Rvalue::Constant(next), Guard::always());
+        // st.jump(arg, Guard::always());
+        true
     })
 }
 
@@ -240,18 +240,18 @@ pub fn unary_goto_a(opcode: &'static str,
                sem: fn(&mut CodeGen<Mos>,Rvalue)
               ) -> Box<Fn(&mut State<Mos>) -> bool> {
     Box::new(move |st: &mut State<Mos>| -> bool {
-        let _arg = st.configuration.arg0.clone();
         let len = st.tokens.len();
-        if let Some(arg) = _arg {
-            st.mnemonic_dynargs(len,&opcode,"L{16}",&|c| {
-                sem(c,arg.clone());
-                vec![arg.clone()]
-            });
-            st.jump(arg, Guard::always());
-            true
-        } else {
-            false
-        }
+        let arg = st.configuration.arg0.clone();
+        let addr =
+            if let Some(Rvalue::Memory{offset: ref addr,..}) = arg {
+	        (**addr).clone()
+            } else { unreachable!(); };
+        st.mnemonic_dynargs(len,&opcode,"L{16}",&|c| {
+            sem(c, arg.clone().unwrap());
+            vec![addr.clone()]
+        });
+        st.jump(addr.clone(), Guard::always());
+        true
     })
 }
 
@@ -259,19 +259,20 @@ pub fn unary_goto_ind(opcode: &'static str,
                sem: fn(&mut CodeGen<Mos>,Rvalue)
               ) -> Box<Fn(&mut State<Mos>) -> bool> {
     Box::new(move |st: &mut State<Mos>| -> bool {
-        let _arg = st.configuration.arg0.clone();
         let len = st.tokens.len();
-        if let Some(arg) = _arg {
-            st.mnemonic_dynargs(len,&opcode,"(D{16})",&|c| {
-                sem(c,arg.clone());
-                vec![arg.clone()]
-            });
-	    // FIXME: Maybe we can read the address out of memory and jump here.
-	    // st.jump(arg, Guard::always());
-            true
-        } else {
-            false
-        }
+        let arg = st.configuration.arg0.clone();
+        let addr =
+            if let Some(Rvalue::Memory{offset: ref addr,..}) = arg {
+	        (**addr).clone()
+            } else { unreachable!(); };
+        st.mnemonic_dynargs(len,&opcode,"(D{16})",&|c| {
+            sem(c, arg.clone().unwrap());
+            vec![addr.clone()]
+        });
+        // FIXME: Maybe we can read the address out of memory and jump here.
+        // Or jump in the semantics at emulation.
+        // st.jump(arg, Guard::always());
+        true
     })
 }
 
