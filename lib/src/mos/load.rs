@@ -27,7 +27,7 @@ use region::Region;
 use mnemonic::Bound;
 use target::Target;
 
-use graph_algos::traits::MutableGraph;
+use graph_algos::traits::{MutableGraph,Graph};
 use uuid::Uuid;
 
 use std::borrow::Cow;
@@ -62,7 +62,6 @@ pub fn load(p: &Path) -> Result<Project,Error> {
     if let Err(_) = fd.read(&mut buf) {
         return Err(Error::new("Failed to read segment"));
     }
-
     reg.cover(Bound::new(addr, addr + size), Layer::wrap(buf));
 
     let name = p.file_name()
@@ -74,6 +73,24 @@ pub fn load(p: &Path) -> Result<Project,Error> {
 
     prog.call_graph.add_vertex(CallTarget::Todo(addr,Some(name),Uuid::new_v4()));
     proj.comments.insert(("base".to_string(),addr),"main".to_string());
+
+    for &(name,off,cmnt) in Target::Mos6502.interrupt_vec().iter() {
+        let uu =  Uuid::new_v4();
+
+	// Interrupt vectors are indirectly addressed on 6502!
+	let root = proj.sources.dependencies.vertex_label(proj.sources.root).unwrap();
+	let _data = root.iter();
+	let mut data = _data.seek(off);
+	if let Some(Some(lo)) = data.next() {
+	    if let Some(Some(hi)) = data.next() {
+                let entry = ((hi as u64) << 8) + lo as u64;
+
+		prog.call_graph.add_vertex(CallTarget::Todo(entry, Some(name.to_string()),uu));
+		proj.comments.insert(("base".to_string(), entry),cmnt.to_string());
+	    }
+        }
+    }
+
     proj.code.push(prog);
 
     Ok(proj)
