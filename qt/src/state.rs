@@ -270,7 +270,7 @@ pub fn start_new(_ctrl: &mut Object) -> bool {
                         let pro: &Project = read_guard.as_ref().unwrap();
                         let root = pro.sources.dependencies.vertex_label(pro.sources.root).unwrap();
                         let i = root.iter();
-                        let name = maybe_name.unwrap_or(format!("func_{}",tgt));
+                        let name = maybe_name.unwrap_or(format!("func_{:x}",tgt));
                         let mut fun = Function::with_uuid(name,uuid,root.name().clone());
 
                         fun = pro.code[0].target.disassemble(Some(fun),i,tgt,root.name().clone());
