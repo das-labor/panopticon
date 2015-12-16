@@ -156,6 +156,12 @@ Item {
 			role: "start"
 			title: "Offset"
 			width: 100
+			delegate: Item {
+				x: 12
+			        Label {
+				        text: "0x" + styleData.value.toString(16)
+				}
+			}
 		}
 		model: functionModel
 		enabled: !edit.visible
