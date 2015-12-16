@@ -82,7 +82,10 @@ impl Variant {
     pub fn mos6502() -> Variant {
         Variant {
 	    arg0: None,
-	    int_vec: vec![("ENTRY", 0, "MOS 6502 Entry")],
+	    int_vec: vec![("NMI", 0xfffa, "NMI vector"),
+                          ("RESET", 0xfffc, "Reset routine"),
+                          ("IRQ/BRK", 0xfffe, "Interrupt routine"),
+			  ],
         }
     }
 
