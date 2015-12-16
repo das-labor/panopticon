@@ -27,7 +27,7 @@ use region::Region;
 use mnemonic::Bound;
 use target::Target;
 
-use graph_algos::traits::MutableGraph;
+use graph_algos::MutableGraphTrait;
 use uuid::Uuid;
 use elf::*;
 use elf::parse::*;

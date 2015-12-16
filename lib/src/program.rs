@@ -261,7 +261,13 @@ mod tests {
     use super::*;
     use function::{ControlFlowTarget,Function};
     use mnemonic::Mnemonic;
-    use graph_algos::traits::{VertexListGraph,Graph,MutableGraph,AdjacencyMatrixGraph,EdgeListGraph};
+    use graph_algos::{
+        VertexListGraphTrait,
+        GraphTrait,
+        MutableGraphTrait,
+        AdjacencyMatrixGraphTrait,
+        EdgeListGraphTrait
+    };
     use basic_block::BasicBlock;
     use uuid::Uuid;
     use value::{Lvalue,Rvalue};

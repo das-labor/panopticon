@@ -25,11 +25,11 @@ use panopticon::target::Target;
 use std::hash::{Hash,Hasher,SipHasher};
 use std::thread;
 use qmlrs::{Object,Variant};
-use graph_algos::traits::{
-    VertexListGraph,
-    Graph,
-    IncidenceGraph,
-    EdgeListGraph
+use graph_algos::{
+    VertexListGraphTrait,
+    GraphTrait,
+    IncidenceGraphTrait,
+    EdgeListGraphTrait
 };
 use uuid::Uuid;
 use controller::PROJECT;

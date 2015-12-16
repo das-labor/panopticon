@@ -33,7 +33,7 @@ use rustc_serialize::{Decodable,Encodable};
 use flate2::write::ZlibEncoder;
 use flate2::read::ZlibDecoder;
 use flate2::Compression;
-use graph_algos::traits::{MutableGraph};
+use graph_algos::MutableGraphTrait;
 
 #[derive(RustcDecodable,RustcEncodable)]
 pub struct Project {

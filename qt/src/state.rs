@@ -26,7 +26,10 @@ use panopticon::target::Target;
 use std::path::Path;
 use std::thread;
 use qmlrs::{Variant,Object};
-use graph_algos::traits::{VertexListGraph,Graph};
+use graph_algos::{
+    VertexListGraphTrait,
+    GraphTrait
+};
 use controller::{
     STATE_CHANGED,
     DIRTY_CHANGED,

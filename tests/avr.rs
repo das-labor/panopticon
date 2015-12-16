@@ -28,7 +28,11 @@ use panopticon::elf;
 
 use std::path::Path;
 
-use graph_algos::traits::{VertexListGraph,Graph,EdgeListGraph};
+use graph_algos::{
+    VertexListGraphTrait,
+    GraphTrait,
+    EdgeListGraphTrait
+};
 /*
 #[test]
 fn avr_opcodes_01() {

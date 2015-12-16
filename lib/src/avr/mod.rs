@@ -369,7 +369,11 @@ mod tests {
 
     use std::hash::{Hash,Hasher,SipHasher};
 
-    use graph_algos::traits::{VertexListGraph,Graph,EdgeListGraph};
+    use graph_algos::{
+        VertexListGraphTrait,
+        GraphTrait,
+        EdgeListGraphTrait
+    };
 
     #[test]
     fn avr_single_skip() {

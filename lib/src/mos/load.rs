@@ -27,7 +27,10 @@ use region::Region;
 use mnemonic::Bound;
 use target::Target;
 
-use graph_algos::traits::{MutableGraph,Graph};
+use graph_algos::{
+    MutableGraphTrait,
+    GraphTrait
+};
 use uuid::Uuid;
 
 use std::borrow::Cow;
