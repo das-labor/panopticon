@@ -19,9 +19,17 @@
 import QtQuick 2.0
 import Panopticon 1.0
 import QtQuick.Controls 1.3
+import QtQuick.Dialogs 1.2
 
 Item {
 	id: root
+
+	MessageDialog {
+		id: errorDialog
+		title: "Error"
+		icon: StandardIcon.Critical
+		standardButtons: StandardButton.Ok
+	}
 
 	signal activated(string uuid);
 
@@ -42,58 +50,85 @@ Item {
 
 	Component.onCompleted: {
 		Panopticon.startedFunction.connect(function(uu) {
-			var obj = eval(Panopticon.functionInfo(uu));
+			var res = JSON.parse(Panopticon.functionInfo(uu));
 
-			obj.name = "<b>Working</b>";
-			for(var i = 0; i < functionModel.count; i++) {
-				var node = functionModel.get(i);
+			if(res.status == "ok") {
+				var obj = res.payload;
 
-				if(node.uuid == obj.uuid) {
-					functionModel.set(i,obj);
-					return;
+				obj.name = "<b>Working</b>";
+				for(var i = 0; i < functionModel.count; i++) {
+					var node = functionModel.get(i);
+
+					if(node.uuid == obj.uuid) {
+						functionModel.set(i,obj);
+						return;
+					}
 				}
-			}
 
-			console.error("Error: got startedFunction() signal w/ unknown function " + uu);
+				console.error("Error: got startedFunction() signal w/ unknown function " + uu);
+			} else {
+				console.error(res.error);
+			}
 		});
 
 		Panopticon.discoveredFunction.connect(function(uu) {
-			var obj = eval(Panopticon.functionInfo(uu));
-			if(obj.type == "todo") {
-				obj.name = "<i>Todo</i>";
+			var res = JSON.parse(Panopticon.functionInfo(uu));
+
+			if(res.status == "ok") {
+				var obj = res.payload;
+
+				if(obj.type == "todo") {
+					obj.name = "<i>Todo</i>";
+				}
+
+				functionModel.append(obj);
+				functionModel.sort();
+			} else {
+				console.error(res.error);
 			}
-			functionModel.append(obj);
-			functionModel.sort();
 		});
 
 		Panopticon.finishedFunction.connect(function(uu) {
-			var obj = eval(Panopticon.functionInfo(uu));
-			for(var i = 0; i < functionModel.count; i++) {
-				var node = functionModel.get(i);
+			var res = JSON.parse(Panopticon.functionInfo(uu));
 
-				if(node.uuid == obj.uuid) {
-					functionModel.set(i,obj);
-					return;
+			if(res.status == "ok") {
+				var obj = res.payload;
+
+				for(var i = 0; i < functionModel.count; i++) {
+					var node = functionModel.get(i);
+
+					if(node.uuid == obj.uuid) {
+						functionModel.set(i,obj);
+						return;
+					}
 				}
-			}
 
-			functionModel.append(obj);
-			functionModel.sort();
+				functionModel.append(obj);
+				functionModel.sort();
+			} else {
+				console.error(res.error);
+			}
 		});
 
 		Panopticon.changedFunction.connect(function(uu) {
-			var obj = eval(Panopticon.functionInfo(uu));
-			for(var i = 0; i < functionModel.count; i++) {
-				var node = functionModel.get(i);
+			var res = JSON.parse(Panopticon.functionInfo(uu));
 
-				if(node.uuid == obj.uuid) {
-					functionModel.set(i,obj);
-					return;
+			if(res.status == "ok") {
+				var obj = res.payload;
+
+				for(var i = 0; i < functionModel.count; i++) {
+					var node = functionModel.get(i);
+
+					if(node.uuid == obj.uuid) {
+						functionModel.set(i,obj);
+						return;
+					}
 				}
+				console.error("Error: got changedFunction() signal w/ unknown function " + uu);
+			} else {
+				console.error(res.error);
 			}
-			console.error("Error: got changedFunction() signal w/ unknown function " + uu);
 		});
-
 	}
 
 	ListModel {
@@ -289,11 +324,16 @@ Item {
 
 			onAccepted: {
 				var row = edit.targetRow.styleData.row;
-				Panopticon.setName(functionModel.get(row).uuid,editField.text);
-				functionTable.renameRow = -1;
-				editField.text = ""
+				var res = JSON.parse(Panopticon.setName(functionModel.get(row).uuid,editField.text));
+
+				if(res.status != "ok") {
+					errorDialog.text = res.error;
+					errorDialog.open()
+				} else {
+					functionTable.renameRow = -1;
+					editField.text = ""
+				}
 			}
 		}
 	}
-
 }

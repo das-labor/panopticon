@@ -18,6 +18,7 @@
 
 import QtQuick 2.0
 import Panopticon 1.0
+import QtQuick.Dialogs 1.2
 import QtQuick.Controls 1.3
 import "."
 
@@ -26,24 +27,45 @@ Item {
 
 	property string selection: "";
 
+	MessageDialog {
+		id: errorDialog
+		title: "Error"
+		icon: StandardIcon.Critical
+		standardButtons: StandardButton.Ok
+	}
+
 	Timer {
 		id: timer;
 		interval: 2
 		running: false;
-		onTriggered: Panopticon.start()
+		onTriggered: {
+			var res = JSON.parse(Panopticon.start())
+
+			if(res.status == "err") {
+				errorDialog.text = res.error;
+				errorDialog.open()
+			}
+		}
 	}
 
 	Component.onCompleted: {
 		Panopticon.changedFunction.connect(function(uu) {
 			if (uu == selection) {
-				var cfg = JSON.parse(Panopticon.functionCfg(selection));
+				var res = JSON.parse(Panopticon.functionCfg(selection));
 
-				if(cflow_graph.item !== null && cflow_graph.item.bblockList !== null) {
-					for (var i in cflow_graph.item.bblockList) {
-						if(cflow_graph.item.bblockList.hasOwnProperty(i) && cfg.contents[i] !== undefined) {
-							cflow_graph.item.bblockList[i].contents = cfg.contents[i];
+				if(res.status == "ok") {
+					var cfg = res.payload;
+
+					if(cflow_graph.item !== null && cflow_graph.item.bblockList !== null) {
+						for (var i in cflow_graph.item.bblockList) {
+							if(cflow_graph.item.bblockList.hasOwnProperty(i) && cfg.contents[i] !== undefined) {
+								cflow_graph.item.bblockList[i].contents = cfg.contents[i];
+							}
 						}
 					}
+				} else {
+					errorDialog.text = res.error;
+					errorDialog.open()
 				}
 			}
 		});
@@ -87,8 +109,11 @@ Item {
 		Tab {
 			id: cflow_graph
 			title: "Control Flow"
+			state: ""
 
 			onLoaded: item.selection = root.selection
+
+			property string errorMessage: ""
 
 			Item {
 				clip: true
@@ -96,6 +121,17 @@ Item {
 				Rectangle {
 					anchors.fill: parent
 					color: "#efefef"
+				}
+
+				Rectangle {
+					anchors.centerIn: parent
+					width: childrenRect.width
+					height: childrenRect.height
+					visible: cflow_graph.state == "ERROR"
+
+					Label {
+						text: errorMessage
+					}
 				}
 
 				Canvas {
@@ -128,8 +164,23 @@ Item {
 
 					onPaint: {
 						var ctx = graph.getContext('2d');
-						var func = JSON.parse(Panopticon.functionInfo(selection));
-						var cfg = JSON.parse(Panopticon.functionCfg(selection));
+						var func_res = JSON.parse(Panopticon.functionInfo(selection));
+						var cfg_res = JSON.parse(Panopticon.functionCfg(selection));
+
+						if (func_res.status != "ok") {
+							cflow_graph.errorMessage = func_res.error
+							cflow_graph.status = "ERROR"
+							return;
+						}
+
+						if (cfg_res.status != "ok") {
+							cflow_graph.errorMessage = cfg_res.error
+							cflow_graph.status = "ERROR"
+							return;
+						}
+
+						var func = func_res.payload;
+						var cfg = cfg_res.payload;
 
 						ctx.clearRect(0,0,width,height);
 
@@ -191,10 +242,18 @@ Item {
 				property var bblockList: null;
 
 				Component.onCompleted: {
-					Panopticon.layoutedFunction.connect(function(_res) {
-						var cfg = JSON.parse(Panopticon.functionCfg(selection));
-						var res = JSON.parse(_res);
-						var pos = res[0];
+					Panopticon.layoutedFunction.connect(function(_layout) {
+						var cfg_res = JSON.parse(Panopticon.functionCfg(selection));
+						var layout = JSON.parse(_layout);
+
+						if (cfg_res.status != "ok") {
+							cflow_graph.errorMessage = cfg_res.error
+							cflow_graph.status = "ERROR"
+							return;
+						}
+
+						var cfg = cfg_res.payload;
+						var pos = layout[0];
 						var entry = undefined;
 
 						for (var k in pos) {
@@ -216,7 +275,7 @@ Item {
 							var to = bblockList[cfg.edges[i].to];
 						}
 
-						graph.edges = res[1];
+						graph.edges = layout[1];
 
 						if (entry !== undefined) {
 							var ent_pos = mapFromItem(bblockRoot,entry.x,entry.y);
@@ -230,11 +289,27 @@ Item {
 				}
 
 				onSelectionChanged: {
-					var cfg_txt = Panopticon.functionCfg(selection);
-					console.log(cfg_txt);
-					var cfg = JSON.parse(cfg_txt);
-					var func = JSON.parse(Panopticon.functionInfo(selection));
+					var cfg_str = Panopticon.functionCfg(selection);
+					console.log(cfg_str);
+					var cfg_res = JSON.parse(cfg_str);
+					var func_res = JSON.parse(Panopticon.functionInfo(selection));
 					var dims = {};
+
+					if (cfg_res.status != "ok") {
+						cflow_graph.errorMessage = cfg_res.error
+						cflow_graph.status = "ERROR"
+						return;
+					}
+
+					var cfg = cfg_res.payload;
+
+					if (func_res.status != "ok") {
+						cflow_graph.errorMessage = func_res.error
+						cflow_graph.status = "ERROR"
+						return;
+					}
+
+					var func = func_res.payload;
 
 					if(cflow_graph.item.bblockList != null) {
 						for (var i in bblockList) {

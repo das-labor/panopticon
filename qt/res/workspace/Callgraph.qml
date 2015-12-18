@@ -19,9 +19,17 @@
 import QtQuick 2.0
 import Panopticon 1.0
 import QtQuick.Controls 1.3
+import QtQuick.Dialogs 1.2
 
 Item {
 	id: root
+
+	MessageDialog {
+		id: errorDialog
+		title: "Error"
+		icon: StandardIcon.Critical
+		standardButtons: StandardButton.Ok
+	}
 
 	signal activated(string uuid);
 
@@ -40,26 +48,38 @@ Item {
 		timer.running = true;
 
 		Panopticon.finishedFunction.connect(function(uu) {
-			var obj = eval(Panopticon.functionInfo(uu));
+			var res = JSON.parse(Panopticon.functionInfo(uu));
 
-			functionModel.append(obj);
-			layoutTask.sendMessage({"type":"add","item":obj});
-			timer.running = true;
-		});
+			if(res.status == "ok") {
+				var obj = res.payload;
 
-		Panopticon.changedFunction.connect(function(uu) {
-			var obj = eval(Panopticon.functionInfo(uu));
-			for(var i = 0; i < functionModel.count; i++) {
-				var node = functionModel.get(i);
-
-				if(node.uuid == obj.uuid) {
-					functionModel.set(i,obj);
-					callgraph.requestPaint()
-					return;
-				}
+				functionModel.append(obj);
+				layoutTask.sendMessage({"type":"add","item":obj});
+				timer.running = true;
+			} else {
+				console.error(res.error);
 			}
 		});
 
+		Panopticon.changedFunction.connect(function(uu) {
+			var res = JSON.parse(Panopticon.functionInfo(uu));
+
+			if(res.status == "ok") {
+				var obj = res.payload;
+
+				for(var i = 0; i < functionModel.count; i++) {
+					var node = functionModel.get(i);
+
+					if(node.uuid == obj.uuid) {
+						functionModel.set(i,obj);
+						callgraph.requestPaint()
+						return;
+					}
+				}
+			} else {
+				console.error(res.error);
+			}
+		});
 	}
 
 	ListModel {

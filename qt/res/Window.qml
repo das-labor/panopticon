@@ -28,6 +28,13 @@ ApplicationWindow {
 	property string savePath: ""
 
 	MessageDialog {
+		id: errorDialog
+		title: "Error"
+		icon: StandardIcon.Critical
+		standardButtons: StandardButton.Ok
+	}
+
+	MessageDialog {
 		id: saveStaleDialog
 		title: "Unsaved changes"
 		text: "Do you want to save the changes made to the current project?"
@@ -38,8 +45,14 @@ ApplicationWindow {
 
 		onYes: {
 			if(mainWindow.savePath != "") {
-				Panopticon.snapshotProject(mainWindow.savePath)
-				next()
+				var res = JSON.parse(Panopticon.snapshotProject(mainWindow.savePath));
+
+				if (res.status == "ok") {
+					next()
+				} else {
+					errorDialog.text = res.error;
+					errorDialog.open()
+				}
 			} else {
 				fileSaveDialog.next = saveStaleDialog.next
 				fileSaveDialog.open()
@@ -80,12 +93,13 @@ ApplicationWindow {
 					onTriggered: {
 						saveStalePanopticon(function() {
 							fileNewDialog.next = function(path) {
-								var sess = Panopticon.createElfProject(path)
+								var res = JSON.parse(Panopticon.createElfProject(path))
 
-								if(sess == null) {
-									console.log("The file '" + path + "' is not a valid ELF file.")
-								} else {
+								if(res.status == "ok") {
 									loader.setSource("workspace/Workspace.qml")
+								} else {
+									errorDialog.text = res.error;
+									errorDialog.open();
 								}
 							};
 							fileNewDialog.open()
@@ -101,12 +115,13 @@ ApplicationWindow {
 						saveStalePanopticon(function() {
 							fileNewDialog.next = function(path) {
 								targetSelectionDialog.next = function(target) {
-									var sess = Panopticon.createRawProject(path,target)
+									var res = JSON.parse(Panopticon.createRawProject(path,target));
 
-									if(sess == null) {
-										console.log("The file '" + path + "' is not a valid dump file.")
-									} else {
+									if(res.status == "ok") {
 										loader.setSource("workspace/Workspace.qml")
+									} else {
+										errorDialog.text = res.error;
+										errorDialog.open();
 									}
 								};
 
@@ -128,12 +143,13 @@ ApplicationWindow {
 					onTriggered: {
 						saveStalePanopticon(function() {
 							fileNewDialog.next = function(path) {
-								var sess = Panopticon.createMos6502Project(path)
+								var res = JSON.parse(Panopticon.createMos6502Project(path))
 
-								if(sess == null) {
-									console.log("The file '" + path + "' is not a valid MOS-6502 file.")
-								} else {
+								if(res.status == "ok") {
 									loader.setSource("workspace/Workspace.qml")
+								} else {
+									errorDialog.text = res.error;
+									errorDialog.open();
 								}
 							};
 							fileNewDialog.open()
@@ -158,7 +174,12 @@ ApplicationWindow {
 				enabled: Panopticon.dirty != 0 && Panopticon.state != "NEW"
 				onTriggered: {
 					if(mainWindow.savePath != "") {
-						Panopticon.snapshotProject(mainWindow.savePath)
+						var res = JSON.parse(Panopticon.snapshotProject(mainWindow.savePath));
+
+						if(res.status == "err") {
+							errorDialog.text = res.error;
+							errorDialog.open();
+						}
 					} else {
 						fileSaveDialog.open()
 					}
@@ -198,7 +219,17 @@ ApplicationWindow {
 			ComboBox {
 				id: targetComboBox
 				Layout.preferredWidth: 150
-				model: JSON.parse(Panopticon.allTargets())
+				model: {
+					console.log(Panopticon.allTargets());
+					var res = JSON.parse(Panopticon.allTargets());
+
+					if(res.status == "ok") {
+						return res.payload;
+					} else {
+						console.log(res.error);
+						return [];
+					}
+				}
 			}
 		}
 
@@ -223,14 +254,18 @@ ApplicationWindow {
 				path += ".panop"
 			}
 
-			console.log("You saved to: " + path)
-
 			if (mainWindow.savePath == "") {
 				mainWindow.savePath = path;
 			}
 
-			Panopticon.snapshotProject(path)
-			next()
+			var res = JSON.parse(Panopticon.snapshotProject(path))
+
+			if(res.state == "ok") {
+				next()
+			} else {
+				errorDialog.text = res.error;
+				errorDialog.open();
+			}
 		}
 	}
 
@@ -246,15 +281,15 @@ ApplicationWindow {
 		onAccepted: {
 			// cut off the "file://" part
 			var path = fileOpenDialog.fileUrls.toString().substring(7)
-			var sess = Panopticon.openProject(path)
+			var res = JSON.parse(Panopticon.openProject(path));
 
-			if(sess == null) {
-				console.log("The file '" + path + "' is not a valid Panopticon project.")
-			} else {
+			if(res.status == "ok") {
 				loader.setSource("workspace/Workspace.qml")
+				next()
+			} else {
+				errorDialog.text = res.error;
+				errorDialog.open();
 			}
-
-			next()
 		}
 	}
 

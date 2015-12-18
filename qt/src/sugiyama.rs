@@ -46,7 +46,7 @@ pub fn layout(vertices: &Vec<usize>,
               entry: Option<usize>,
               node_spacing: usize,
               rank_spacing: usize,
-              port_spacing: usize) -> (HashMap<usize,(f32,f32)>,HashMap<usize,(Vec<(f32,f32,f32,f32)>,(f32,f32),(f32,f32))>) {
+              port_spacing: usize) -> Result<(HashMap<usize,(f32,f32)>,HashMap<usize,(Vec<(f32,f32,f32,f32)>,(f32,f32),(f32,f32))>),&'static str> {
     let mut graph = AdjacencyList::<usize,usize>::new();
     let mut rev = HashMap::<usize,AdjacencyListVertexDescriptor>::new();
     let mut maybe_entry = None;
@@ -60,14 +60,19 @@ pub fn layout(vertices: &Vec<usize>,
             maybe_entry = Some(rev[&n].clone());
         }
 
-        dims.insert(vx,_dims[&n]);
+        match _dims.get(&n) {
+            Some(t) => { dims.insert(vx,*t); },
+            None => return Err("Missing node dimension in input")
+        }
     }
 
     for (idx,e) in edges.iter().enumerate() {
         graph.add_edge(idx,rev[&e.0],rev[&e.1]);
     }
 
-    assert!(is_connected(&graph));
+    if !is_connected(&graph) {
+        return Err("Input graph is not connected");
+    }
 
     // normalize graph to DAG with single entry "head"
     let head = ensure_single_entry(maybe_entry.as_ref(),&mut graph);
@@ -86,7 +91,10 @@ pub fn layout(vertices: &Vec<usize>,
         let lb = *graph.vertex_label(vx).unwrap();
         rank.insert(vx,rank_vec[lb]);
     }
-    assert_eq!(rank.len(), graph.num_vertices());
+
+    if rank.len() != graph.num_vertices() {
+        return Err("Internal error while ranking");
+    }
 
     // split edges spanning multiple ranks
     let virt_start = add_virtual_vertices(&mut rank,&mut graph);
@@ -132,24 +140,36 @@ pub fn layout(vertices: &Vec<usize>,
                 rank.insert(vs,vs_rank);
                 rank.insert(vt,vt_rank);
             },
-            (false,false) => unreachable!()
+            (false,false) => return Err("Internal error while edge inverting")
         }
     }
 
-    assert_eq!(rank.len(), graph.num_vertices());
+    if rank.len() != graph.num_vertices() {
+        return Err("Internal error after edge inverting");
+    }
+
     normalize_rank(&mut rank);
 
-    assert_eq!(rank.len(), graph.num_vertices());
+    if rank.len() != graph.num_vertices() {
+        return Err("Internal error after normalization");
+    }
+
     for e in graph.edges() {
         let from = graph.source(e);
         let to = graph.target(e);
 
-        assert!(rank[&from] + 1 == rank[&to] || rank[&from] == rank[&to]);
+        if !(rank[&from] + 1 == rank[&to] || rank[&from] == rank[&to]) {
+            return Err("Internal error after normalization");
+        }
     }
 
     // logical intra-rank ordering
     let mut order = initial_ordering(&rank,&head,&graph);
-    assert!(order[0].len() == 1 || order[0][0] != order[0][1]);
+
+    if !(order[0].len() == 1 || order[0][0] != order[0][1]) {
+        return Err("Internal error after initial ordering");
+    }
+
     optimize_ordering(&mut order,&rank,&graph);
 
        // intra-rank positions
@@ -207,7 +227,10 @@ pub fn layout(vertices: &Vec<usize>,
     for n in vertices.iter() {
         let vx = rev[n];
 
-        assert!(rank[&vx] >= 0);
+        if !(rank[&vx] >= 0) {
+            return Err("Internal error");
+        }
+
         let r = rank[&vx] as usize;
         let rank_start = rank_offsets[r] as f32;
         let rank_end = rank_offsets[r + 1] as f32 - rank_spacing as f32;
@@ -387,7 +410,9 @@ pub fn layout(vertices: &Vec<usize>,
                     match graph.out_edges(t).find(|x| *graph.edge_label(*x).unwrap() == idx) {
                         Some(_e) => e = _e,
                         None => {
-                            assert!(end_arrow_off.is_none());
+                            if !(end_arrow_off.is_none()) {
+                                return Err("Internal error while final edge routing");
+                            }
 
                             end_arrow_off = Some((tx,trs + (tre - trs) / 2.0 - dims[&t].1 / 2.0));
                             break;
@@ -400,7 +425,7 @@ pub fn layout(vertices: &Vec<usize>,
         }
     }
 
-    (ret_v,ret_e)
+    Ok((ret_v,ret_e))
 }
 
 fn depth_first_search(seen: &mut HashSet<AdjacencyListVertexDescriptor>,

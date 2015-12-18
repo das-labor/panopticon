@@ -19,10 +19,17 @@
 import QtQuick 2.0
 import Panopticon 1.0
 import QtQuick.Controls 1.3
-
+import QtQuick.Dialogs 1.2
 
 Item {
 	id: bblock
+
+	MessageDialog {
+		id: errorDialog
+		title: "Error"
+		icon: StandardIcon.Critical
+		standardButtons: StandardButton.Ok
+	}
 
 	readonly property int xPadding: 5
 	readonly property int yPadding: 2
@@ -123,7 +130,13 @@ Item {
 							if (event.modifiers & Qt.ShiftModifier) {
 								event.accepted = false
 							} else {
-								Panopticon.setComment(modelData.region,modelData.offset,comment.text.replace("\n","\\n"));
+								var res = JSON.parse(Panopticon.setComment(modelData.region,modelData.offset,comment.text.replace("\n","\\n")));
+
+								if(res.status != "ok") {
+									errorDialog.text = res.error;
+									errorDialog.open()
+								}
+
 								comment.focus = false
 							}
 						}

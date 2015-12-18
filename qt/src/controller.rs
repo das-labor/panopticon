@@ -107,23 +107,23 @@ pub extern "C" fn create_singleton(_: *mut ffi::QQmlEngine, _: *mut ffi::QJSEngi
     assert_eq!(metaobj.add_signal("changedFunction(QString)"),CHANGED_FUNCTION);
 
     // state = NEW -> READY, dirty = -> true
-    assert_eq!(metaobj.add_method("createRawProject(QString,QString)","bool"),CREATE_RAW_PROJECT);
-    assert_eq!(metaobj.add_method("createElfProject(QString)","bool"),CREATE_ELF_PROJECT);
-    assert_eq!(metaobj.add_method("createMos6502Project(QString)","bool"),CREATE_MOS6502_PROJECT);
-    assert_eq!(metaobj.add_method("openProject(QString)","bool"),OPEN_PROJECT);
+    assert_eq!(metaobj.add_method("createRawProject(QString,QString)","QString"),CREATE_RAW_PROJECT);
+    assert_eq!(metaobj.add_method("createElfProject(QString)","QString"),CREATE_ELF_PROJECT);
+    assert_eq!(metaobj.add_method("createMos6502Project(QString)","QString"),CREATE_MOS6502_PROJECT);
+    assert_eq!(metaobj.add_method("openProject(QString)","QString"),OPEN_PROJECT);
 
     // state = READY -> WORKING
-    assert_eq!(metaobj.add_method("start()","bool"),START);
+    assert_eq!(metaobj.add_method("start()","QString"),START);
 
     // state = WORKING -> DONE
-    assert_eq!(metaobj.add_method("done()","void"),DONE);
+    assert_eq!(metaobj.add_method("done()","QString"),DONE);
 
     // state = (WORKING,DONE), dirty = -> true
     assert_eq!(metaobj.add_method("setComment(QString,int,QString)","QString"),SET_COMMENT);
     assert_eq!(metaobj.add_method("setName(QString,QString)","QString"),SET_NAME);
 
     // state = (WORKING,DONE), dirty = -> false
-    assert_eq!(metaobj.add_method("snapshotProject(QString)","bool"),SNAPSHOT_PROJECT);
+    assert_eq!(metaobj.add_method("snapshotProject(QString)","QString"),SNAPSHOT_PROJECT);
 
     // getter
     assert_eq!(metaobj.add_method("functionInfo(QString)","QString"),FUNCTION_INFO);

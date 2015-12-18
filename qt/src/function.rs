@@ -76,43 +76,41 @@ pub fn metainfo(arg: &Variant) -> Variant {
 
                 // match function
                 match prog.call_graph.vertex_label(vx) {
-                    Some(&CallTarget::Concrete(Function{ ref uuid, ref name, entry_point: Some(ref ent), cflow_graph: ref cg,..})) => {
-
+                    Some(&CallTarget::Concrete(Function{ ref uuid, ref name, entry_point: Some(ref ent), cflow_graph: ref cg,..})) =>
                         // match entry point
                         match cg.vertex_label(*ent) {
                             Some(&ControlFlowTarget::Resolved(ref bb)) =>
-                                format!("{{\"type\":\"function\",\"name\":\"{}\",\"uuid\":\"{}\",\"start\":{},\"calls\":{{{}}}}}",name,uuid,bb.area.start,callees),
+                                format!("{{\"status\": \"ok\", \"payload\": {{\"type\":\"function\",\"name\":\"{}\",\"uuid\":\"{}\",\"start\":{},\"calls\":{{{}}}}}}}",
+                                        name,uuid,bb.area.start,callees),
                             Some(&ControlFlowTarget::Unresolved(Rvalue::Constant(ref c))) =>
-                                format!("{{\"type\":\"function\",\"name\":\"{}\",\"uuid\":\"{}\",\"start\":{},\"calls\":{{{}}}}}",name,uuid,c,callees),
+                                format!("{{\"status\": \"ok\", \"payload\": {{\"type\":\"function\",\"name\":\"{}\",\"uuid\":\"{}\",\"start\":{},\"calls\":{{{}}}}}}}",
+                                        name,uuid,c,callees),
                             Some(&ControlFlowTarget::Unresolved(_)) =>
-                                format!("{{\"type\":\"function\",\"name\":\"{}\",\"uuid\":\"{}\",\"calls\":{{{}}}}}",name,uuid,callees),
-                            None => unreachable!()
-                        }
-                    },
-                    Some(&CallTarget::Concrete(Function{ ref uuid, ref name, entry_point: None,..})) => {
-                        format!("{{\"type\":\"function\",\"name\":\"{}\",\"uuid\":\"{}\",\"calls\":{{{}}}}}",name,uuid,callees)
-                    },
-                    Some(&CallTarget::Symbolic(ref sym,ref uuid)) => {
-                        format!("{{\"type\":\"symbol\",\"name\":\"{}\",\"uuid\":\"{}\",\"calls\":{{{}}}}}",sym,uuid,callees)
-                    },
-                    Some(&CallTarget::Todo(ref a,_,ref uuid)) => {
-                        format!("{{\"type\":\"todo\",\"start\":{},\"uuid\":\"{}\",\"calls\":{{{}}}}}",a,uuid,callees)
-                    },
-                    None => {
-                        "".to_string()
-                    }
+                                format!("{{\"status\": \"ok\", \"payload\": {{\"type\":\"function\",\"name\":\"{}\",\"uuid\":\"{}\",\"calls\":{{{}}}}}}}",
+                                        name,uuid,callees),
+                            None =>
+                                "{\"status\": \"err\", \"error\": \"Internal error\"}".to_string()
+                        },
+                    Some(&CallTarget::Concrete(Function{ ref uuid, ref name, entry_point: None,..})) =>
+                        format!("{{\"status\": \"ok\", \"payload\": {{\"type\":\"function\",\"name\":\"{}\",\"uuid\":\"{}\",\"calls\":{{{}}}}}}}",
+                                name,uuid,callees),
+                    Some(&CallTarget::Symbolic(ref sym,ref uuid)) =>
+                        format!("{{\"status\": \"ok\", \"payload\": {{\"type\":\"symbol\",\"name\":\"{}\",\"uuid\":\"{}\",\"calls\":{{{}}}}}}}",
+                                sym,uuid,callees),
+                    Some(&CallTarget::Todo(ref a,_,ref uuid)) =>
+                        format!("{{\"status\": \"ok\", \"payload\": {{\"type\":\"todo\",\"start\":{},\"uuid\":\"{}\",\"calls\":{{{}}}}}}}",
+                                a,uuid,callees),
+                    None =>
+                        "{\"status\": \"err\", \"error\": \"Internal error\"}".to_string(),
                 }
             } else {
-                // unknown uuid
-                "".to_string()
+                "{\"status\": \"err\", \"error\": \"No function found for this UUID\"}".to_string()
             }
         } else {
-        // arg not a valid uuid
-        "".to_string()
+            "{\"status\": \"err\", \"error\": \"1st argument is not a valid UUID\"}".to_string()
         }
     } else {
-        // arg not a string
-        "".to_string()
+        "{\"status\": \"err\", \"error\": \"1st argument is not a string\"}".to_string()
     })
 }
 
@@ -223,25 +221,23 @@ pub fn control_flow_graph(arg: &Variant) -> Variant {
                         });
 
                     if let Some(ent) = entry {
-                        format!("{{\"entry\":{},\"nodes\":[{}],\"edges\":[{}],\"contents\":{{{}}}}}",ent,nodes,edges,contents)
+                        format!("{{\"status\": \"ok\", \"payload\": {{\"entry\":{},\"nodes\":[{}],\"edges\":[{}],\"contents\":{{{}}}}}}}",
+                                ent,nodes,edges,contents)
                     } else {
-                        format!("{{\"nodes\":[{}],\"edges\":[{}],\"contents\":{{{}}}}}",nodes,edges,contents)
+                        format!("{{\"status\": \"ok\", \"payload\": {{\"nodes\":[{}],\"edges\":[{}],\"contents\":{{{}}}}}}}",
+                                nodes,edges,contents)
                     }
                 } else {
-                    // not a concrete call
-                    "".to_string()
+                    "{\"status\": \"err\", \"error\": \"No function found for this UUID\"}".to_string()
                 }
             } else {
-                // call not found
-                "".to_string()
+                "{\"status\": \"err\", \"error\": \"No function found for this UUID\"}".to_string()
             }
         } else {
-            // invalid uuid
-            "".to_string()
+            "{\"status\": \"err\", \"error\": \"1st argument is not a valid UUID\"}".to_string()
         }
     } else {
-        // arg is not a string
-        "".to_string()
+        "{\"status\": \"err\", \"error\": \"1st argument is not a string\"}".to_string()
     })
 }
 
@@ -315,30 +311,29 @@ pub fn layout(arg0: &Variant, arg1: &Variant, arg2: &Variant, arg3: &Variant, ar
                 input
             },
             Err(err) => {
-                println!("can't parse layout request: {}",err);
-                return Variant::String("{}".to_string());
+               return Variant::String(format!("{{\"status\": \"err\", \"error\": \"1st argument is not valid JSON: {:?}\"}}",err));
             }
         }
     } else {
-        return Variant::String("{}".to_string());
+        return Variant::String("{\"status\": \"err\", \"error\": \"1st argument is not valid JSON\"}".to_string());
     };
 
     let rank_spacing = if let &Variant::I64(ref x) = arg2 {
         *x
     } else {
-        return Variant::String("{}".to_string());
+        return Variant::String("{\"status\": \"err\", \"error\": \"2nd argument is not an integer\"}".to_string());
     };
 
     let node_spacing = if let &Variant::I64(ref x) = arg3 {
         *x
     } else {
-        return Variant::String("{}".to_string());
+        return Variant::String("{\"status\": \"err\", \"error\": \"3rd argument is not an integer\"}".to_string());
     };
 
     let port_spacing = if let &Variant::I64(ref x) = arg4 {
         *x
     } else {
-        return Variant::String("{}".to_string());
+        return Variant::String("{\"status\": \"err\", \"error\": \"4th argument is not an integer\"}".to_string());
     };
 
     if let &Variant::String(ref st) = arg0 {
@@ -367,63 +362,71 @@ pub fn layout(arg0: &Variant, arg1: &Variant, arg2: &Variant, arg3: &Variant, ar
                 let ctrl = Object::from_ptr(_ctrl.as_ptr());
 
                 thread::spawn(move || {
-                    let res = sugiyama::layout(&(0..vertices.len()).collect::<Vec<usize>>(),
-                                               &edges,
-                                               &dims_transformed,
-                                               maybe_entry,
-                                               node_spacing as usize,
-                                               rank_spacing as usize,
-                                               port_spacing as usize);
-                    let mut ret_v = HashMap::<String,LayoutOutputPosition>::new();
-                    let mut ret_e = HashMap::<usize,LayoutOutputEdge>::new();
-                    for (k,v) in (res.0).iter() {
-                        ret_v.insert(idents[*k].clone(),LayoutOutputPosition{ x: v.0 as f32, y: v.1 as f32 });
-                    }
-                    for v in (res.1).iter() {
-                        ret_e.insert(*v.0,LayoutOutputEdge{
-                            segments: (v.1).0.iter().map(|w| {
-                                LayoutOutputSegment{
-                                    x1: w.0 as f32,
-                                    y1: w.1 as f32,
-                                    x2: w.2 as f32,
-                                    y2: w.3 as f32,
-                                }}).collect::<Vec<_>>(),
-                            tail_offset: LayoutOutputPosition{
-                                x: ((v.1).1).0,
-                                y: ((v.1).1).1,
-                            },
-                            head_offset: LayoutOutputPosition{
-                                x: ((v.1).2).0,
-                                y: ((v.1).2).1,
+                    match sugiyama::layout(&(0..vertices.len()).collect::<Vec<usize>>(),
+                                           &edges,
+                                           &dims_transformed,
+                                           maybe_entry,
+                                           node_spacing as usize,
+                                           rank_spacing as usize,
+                                           port_spacing as usize) {
+                        Ok(res) => {
+                            let mut ret_v = HashMap::<String,LayoutOutputPosition>::new();
+                            let mut ret_e = HashMap::<usize,LayoutOutputEdge>::new();
+                            for (k,v) in (res.0).iter() {
+                                ret_v.insert(idents[*k].clone(),LayoutOutputPosition{ x: v.0 as f32, y: v.1 as f32 });
                             }
-                        });
+                            for v in (res.1).iter() {
+                                ret_e.insert(*v.0,LayoutOutputEdge{
+                                    segments: (v.1).0.iter().map(|w| {
+                                        LayoutOutputSegment{
+                                            x1: w.0 as f32,
+                                            y1: w.1 as f32,
+                                            x2: w.2 as f32,
+                                            y2: w.3 as f32,
+                                        }}).collect::<Vec<_>>(),
+                                    tail_offset: LayoutOutputPosition{
+                                        x: ((v.1).1).0,
+                                        y: ((v.1).1).1,
+                                    },
+                                    head_offset: LayoutOutputPosition{
+                                        x: ((v.1).2).0,
+                                        y: ((v.1).2).1,
+                                    }
+                                });
+                            }
+                            ctrl.emit(LAYOUTED_FUNCTION,&vec![Variant::String(json::encode(&(ret_v,ret_e)).ok().unwrap())]);
+                        },
+                        Err(_) =>
+                            // XXX tell the frontend
+                            ()
                     }
-                    ctrl.emit(LAYOUTED_FUNCTION,&vec![Variant::String(json::encode(&(ret_v,ret_e)).ok().unwrap())]);
                 });
             }
         }
-    }
 
-    Variant::String("{}".to_string())
+        Variant::String("{\"status\": \"ok\"}".to_string())
+    } else {
+        Variant::String("{\"status\": \"err\", \"error\": \"4th argument is not an integer\"}".to_string())
+    }
 }
 
 pub fn comment(arg0: &Variant, arg1: &Variant, arg2: &Variant, ctrl: &mut Object) -> Variant {
     let reg = if let &Variant::String(ref x) = arg0 {
         x.clone()
     } else {
-        return Variant::String("{}".to_string());
+        return Variant::String("{\"status\": \"err\", \"error\": \"1st argument is not a string\"}".to_string());
     };
 
     let offset = if let &Variant::I64(ref x) = arg1 {
         *x as u64
     } else {
-        return Variant::String("{}".to_string());
+        return Variant::String("{\"status\": \"err\", \"error\": \"2nd argument is not an integer\"}".to_string());
     };
 
     let cmnt = if let &Variant::String(ref x) = arg2 {
         x.clone()
     } else {
-        return Variant::String("{}".to_string());
+        return Variant::String("{\"status\": \"err\", \"error\": \"3rd argument is not a string\"}".to_string());
     };
 
     // write comment
@@ -453,14 +456,14 @@ pub fn comment(arg0: &Variant, arg1: &Variant, arg2: &Variant, ctrl: &mut Object
         }
     }
 
-    Variant::String("".to_string())
+    Variant::String("{\"status\": \"ok\"}".to_string())
 }
 
 pub fn rename(arg0: &Variant, arg1: &Variant, ctrl: &mut Object) -> Variant {
     let name = if let &Variant::String(ref x) = arg1 {
         x.clone()
     } else {
-        return Variant::String("{}".to_string());
+        return Variant::String("{\"status\": \"err\", \"error\": \"1st argument is not a string\"}".to_string());
     };
 
     let maybe_uu = if let &Variant::String(ref st) = arg0 {
@@ -484,13 +487,14 @@ pub fn rename(arg0: &Variant, arg1: &Variant, ctrl: &mut Object) -> Variant {
     if let Some(uu) = maybe_uu {
         ctrl.emit(CHANGED_FUNCTION,&vec![Variant::String(uu.to_string())]);
         set_dirty(true,ctrl);
+        Variant::String("{\"status\": \"ok\"}".to_string())
+    } else {
+        Variant::String("{\"status\": \"err\", \"error\": \"No function found for this UUID\"}".to_string())
     }
-
-    Variant::String("".to_string())
 }
 
 pub fn targets() -> Variant {
-    Variant::String(format!("[{}]",Target::all()
+    Variant::String(format!("{{\"status\": \"ok\", \"payload\": [{}]}}",Target::all()
                             .iter()
                             .map(|x| format!("\"{}\"",x.name()))
                             .fold(None,|acc,x| Some(acc.map(|y| format!("{},{}",y,x)).unwrap_or(x)))

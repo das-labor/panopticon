@@ -41,6 +41,9 @@ use controller::{
 };
 
 /// Returns the current controller state.
+///
+/// # panics
+/// If the state is not a string.
 pub fn state<'a>(ctrl: &Object) -> String {
     if let Variant::String(ref ret) = ctrl.get_property("state") {
         ret.to_string()
@@ -79,140 +82,137 @@ pub fn set_dirty(d: bool, ctrl: &mut Object) {
 }
 
 /// Prepares to disassemble a memory image.
-///
-/// Returns true on success, false otherwise
 pub fn create_raw_project(_path: &Variant, _tgt: &Variant, ctrl: &mut Object) -> Variant {
-    Variant::Bool(if state(ctrl) == "NEW" {
+    Variant::String(if state(ctrl) == "NEW" {
         if let &Variant::String(ref s) = _path {
             if let &Variant::String(ref tgt_s) = _tgt {
                 if let Some(tgt) = Target::for_name(tgt_s) {
-                    let proj = Project::raw(tgt,&Path::new(s)).unwrap();
-                    *PROJECT.write().unwrap() = Some(proj);
+                    match Project::raw(tgt,&Path::new(s)) {
+                        Some(proj) => {
+                            *PROJECT.write().unwrap() = Some(proj);
+                            set_state("READY",ctrl);
+                            set_dirty(true,ctrl);
 
-                    set_state("READY",ctrl);
-                    set_dirty(true,ctrl);
-
-                    true
+                            "{\"status\": \"ok\"}".to_string()
+                        },
+                        None =>
+                            "{{\"status\": \"err\", \"error\": \"Can't open project: Unknown error\"}}".to_string()
+                    }
                 } else {
-                    println!("No target named '{}'",tgt_s);
-                    false
+                    format!("{{\"status\": \"err\", \"error\": \"No target named '{}'\"}}",tgt_s)
                 }
             } else {
-                false
+                "{\"status\": \"err\", \"error\": \"2nd argument is not a string\"}".to_string()
             }
         } else {
-            false
+            "{\"status\": \"err\", \"error\": \"1st argument is not a string\"}".to_string()
         }
     } else {
-        false
+        "{\"status\": \"err\", \"error\": \"Wrong state\"}".to_string()
     })
 }
 
 /// Prepares to disassemble an ELF file.
-///
-/// Returns true on success, false otherwise
 pub fn create_elf_project(_path: &Variant, ctrl: &mut Object) -> Variant {
-    Variant::Bool(if state(ctrl) == "NEW" {
+    Variant::String(if state(ctrl) == "NEW" {
         if let &Variant::String(ref s) = _path {
-            let proj = elf::load::load(Path::new(s)).ok().unwrap();
-            *PROJECT.write().unwrap() = Some(proj);
-
-            set_state("READY",ctrl);
-            set_dirty(true,ctrl);
-
-            true
+            match elf::load::load(Path::new(s)) {
+                Ok(proj) => {
+                    *PROJECT.write().unwrap() = Some(proj);
+                    set_state("READY",ctrl);
+                    set_dirty(true,ctrl);
+                    "{\"status\": \"ok\"}".to_string()
+                },
+                Err(e) =>
+                    format!("{{\"status\": \"err\", \"error\": \"Failed to read ELF file: {:?}\"}}",e)
+            }
         } else {
-            false
+            "{\"status\": \"err\", \"error\": \"1st argument is not a string\"}".to_string()
         }
     } else {
-        false
+        "{\"status\": \"err\", \"error\": \"Wrong state\"}".to_string()
     })
 }
 
 pub fn create_mos6502_project(_path: &Variant, ctrl: &mut Object) -> Variant {
-    Variant::Bool(if state(ctrl) == "NEW" {
+    Variant::String(if state(ctrl) == "NEW" {
         if let &Variant::String(ref s) = _path {
-            let proj = mos::load::load(Path::new(s)).ok().unwrap();
-            *PROJECT.write().unwrap() = Some(proj);
-
-            set_state("READY",ctrl);
-            set_dirty(true,ctrl);
-
-            true
+            match mos::load::load(Path::new(s)) {
+                Ok(proj) => {
+                    *PROJECT.write().unwrap() = Some(proj);
+                    set_state("READY",ctrl);
+                    set_dirty(true,ctrl);
+                    "{\"status\": \"ok\"}".to_string()
+                },
+                Err(e) =>
+                    format!("{{\"status\": \"err\", \"error\": \"Failed to read ELF file: {:?}\"}}",e)
+            }
         } else {
-            false
+            "{\"status\": \"err\", \"error\": \"1st argument is not a string\"}".to_string()
         }
     } else {
-        false
+        "{\"status\": \"err\", \"error\": \"Wrong state\"}".to_string()
     })
 }
 
 /// Prepares to open a saved Panopticon project.
-///
-/// Returns true on success, false otherwise
 pub fn open_project(_path: &Variant, ctrl: &mut Object) -> Variant {
-    Variant::Bool(if state(ctrl) == "NEW" {
+    Variant::String(if state(ctrl) == "NEW" {
         if let &Variant::String(ref s) = _path {
             match Project::open(&Path::new(s)) {
                 Ok(p) => {
                     *PROJECT.write().unwrap() = Some(p);
                     set_state("READY_RESUME",ctrl);
                     set_dirty(true,ctrl);
-                    true
+                    "{\"status\": \"ok\"}".to_string()
                 },
-                Err(s) => {
-                    println!("open: {}",s);
-                    false
-                }
+                Err(s) =>
+                    format!("{{\"status\": \"err\", \"error\": \"Failed to open file: {:?}\"}}",s)
             }
         } else {
-            // _path isn't a string
-            false
+            "{\"status\": \"err\", \"error\": \"1st argument is not a string\"}".to_string()
         }
     } else {
-       // wrong controller state
-       false
+        "{\"status\": \"err\", \"error\": \"Wrong state\"}".to_string()
     })
 }
 
 pub fn snapshot_project(_path: &Variant, ctrl: &mut Object) -> Variant {
-    let ret = if let &Variant::String(ref s) = _path {
+    Variant::String(if let &Variant::String(ref s) = _path {
         let maybe_project: &Option<Project> = &*PROJECT.read().unwrap();
 
         if let &Some(ref p) = maybe_project {
             match p.snapshot(&Path::new(s)) {
                 Ok(_) => {
-                    true
+                    set_dirty(false,ctrl);
+                    "{\"status\": \"ok\"}".to_string()
                 },
                 Err(s) => {
-                    println!("snapshot: {}",s);
-                    false
+                    format!("{{\"status\": \"err\", \"error\": \"Failed to save file: {}\"}}",s)
                 }
             }
         } else {
-            false
+            "{\"status\": \"err\", \"error\": \"No project state to save\"}".to_string()
         }
     } else {
-        // _path isn't a string
-        false
-    };
-
-    set_dirty(false,ctrl);
-    Variant::Bool(ret)
-}
-
-pub fn start(ctrl: &mut Object) -> Variant {
-    Variant::Bool(if state(ctrl) == "READY" {
-        start_new(ctrl)
-    } else if state(ctrl) == "READY_RESUME" {
-        start_resume(ctrl)
-    } else {
-        unreachable!("Wrong UI state for start()")
+        "{\"status\": \"err\", \"error\": \"1st argument is not a string\"}".to_string()
     })
 }
 
+pub fn start(ctrl: &mut Object) -> Variant {
+    Variant::String(if state(ctrl) == "READY" {
+        start_new(ctrl);
+        "{\"status\": \"ok\"}"
+    } else if state(ctrl) == "READY_RESUME" {
+        start_resume(ctrl);
+        "{\"status\": \"ok\"}"
+    } else {
+        "{\"status\": \"err\", \"error\": \"Wrong state\"}"
+    }.to_string())
+}
+
 /// Starts disassembly
-pub fn start_new(_ctrl: &mut Object) -> bool {
+pub fn start_new(_ctrl: &mut Object) {
     set_state("WORKING",_ctrl);
 
     let mut ctrl = Object::from_ptr(_ctrl.as_ptr());
@@ -317,11 +317,9 @@ pub fn start_new(_ctrl: &mut Object) -> bool {
 
         ctrl.call(DONE,&[]);
     });
-
-    true
 }
 
-pub fn start_resume(_ctrl: &mut Object) -> bool {
+pub fn start_resume(_ctrl: &mut Object) {
     set_state("WORKING",_ctrl);
 
     let ctrl = Object::from_ptr(_ctrl.as_ptr());
@@ -340,16 +338,14 @@ pub fn start_resume(_ctrl: &mut Object) -> bool {
 
         ctrl.call(DONE,&[]);
     });
-
-    true
 }
 
 /// Change the controller state to DONE
 pub fn done(ctrl: &mut Object) -> Variant {
-    Variant::Bool(if state(ctrl) == "WORKING" {
+    Variant::String(if state(ctrl) == "WORKING" {
         set_state("DONE",ctrl);
-        true
+        "{\"status\": \"ok\"}"
     } else {
-        false
-    })
+        "{\"status\": \"err\", \"error\": \"Wrong state\"}"
+    }.to_string())
 }
