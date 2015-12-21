@@ -35,7 +35,14 @@ use graph_algos::{
     AdjacencyList,
     GraphTrait,
     IncidenceGraphTrait,
-    MutableGraphTrait
+    MutableGraphTrait,
+};
+
+use graph_algos::search::{
+    depth_first_visit,
+    is_connected,
+    VertexEvent,
+    EdgeKind,
 };
 
 use glpk;
@@ -428,120 +435,6 @@ pub fn layout(vertices: &Vec<usize>,
     Ok((ret_v,ret_e))
 }
 
-fn depth_first_search(seen: &mut HashSet<AdjacencyListVertexDescriptor>,
-                      start: &AdjacencyListVertexDescriptor,
-                      graph: &AdjacencyList<usize,usize>) {
-    if seen.contains(start) {
-        return;
-    }
-
-    let mut stack = vec![start.clone()];
-
-    while !stack.is_empty() {
-        let vx = stack.pop().unwrap().clone();
-
-        seen.insert(vx);
-        for out in graph.out_edges(vx) {
-            let s = graph.target(out);
-
-            if !seen.contains(&s) {
-                stack.push(s);
-            }
-        }
-    }
-}
-
-fn is_connected(graph: &AdjacencyList<usize,usize>) -> bool {
-    if let Some(s) = graph.vertices().next() {
-        let mut seen = HashSet::<AdjacencyListVertexDescriptor>::new();
-        let mut stack = vec![s];
-
-        while !stack.is_empty() {
-            let vx = stack.pop().unwrap().clone();
-
-            seen.insert(vx);
-            let ed = graph.out_edges(vx).map(|out| graph.target(out)).chain(
-                graph.in_edges(vx).map(|_in| graph.source(_in))).collect::<Vec<_>>();
-
-            for s in ed {
-                if !seen.contains(&s) {
-                    stack.push(s);
-                }
-            }
-        }
-
-        assert!(seen.len() <= graph.num_vertices());
-        seen.len() == graph.num_vertices()
-    } else {
-        true
-    }
-}
-
-#[derive(PartialEq,Eq)]
-enum EdgeKind {
-    Tree,
-    ForwardOrCross,
-    Backward,
-}
-
-#[derive(PartialEq,Eq)]
-enum VertexEvent {
-    Discovered,
-    Finished,
-}
-
-#[derive(PartialEq,Eq,Hash)]
-enum VertexColor {
-    White,
-    Gray,
-    Black,
-}
-
-fn depth_first_visit(vertex_visitor: &mut FnMut(&AdjacencyListVertexDescriptor,VertexEvent),
-                     edge_visitor: &mut FnMut(&AdjacencyListEdgeDescriptor,EdgeKind),
-                     start: &AdjacencyListVertexDescriptor,
-                     graph: &AdjacencyList<usize,usize>) {
-    let mut color = HashMap::new();
-
-    for v in graph.vertices() {
-        color.insert(v,VertexColor::White);
-    }
-
-    fn visit(vx: AdjacencyListVertexDescriptor,
-             color: &mut HashMap<AdjacencyListVertexDescriptor,VertexColor>,
-             vertex_visitor: &mut FnMut(&AdjacencyListVertexDescriptor,VertexEvent),
-             edge_visitor: &mut FnMut(&AdjacencyListEdgeDescriptor,EdgeKind),
-             graph: &AdjacencyList<usize,usize>) {
-        color.insert(vx,VertexColor::Gray);
-
-        vertex_visitor(&vx,VertexEvent::Discovered);
-
-        for e in graph.out_edges(vx) {
-            let wx = graph.target(e);
-
-            match color[&wx] {
-                VertexColor::White => {
-                    edge_visitor(&e,EdgeKind::Tree);
-                    visit(wx,color,vertex_visitor,edge_visitor,graph);
-                },
-                VertexColor::Gray => edge_visitor(&e,EdgeKind::Backward),
-                VertexColor::Black => edge_visitor(&e,EdgeKind::ForwardOrCross),
-            }
-        }
-
-        color.insert(vx,VertexColor::Black);
-        vertex_visitor(&vx,VertexEvent::Finished);
-    }
-
-    visit(*start,&mut color,vertex_visitor,edge_visitor,graph);
-
-    for v in graph.vertices() {
-        if color[&v] == VertexColor::White {
-            visit(v,&mut color,vertex_visitor,edge_visitor,graph);
-        }
-    }
-}
-
 /// Ensures a cycle-free graph has only a single entry.
 ///
 /// This function checks whenever all vertices in `graph`
@@ -560,7 +453,10 @@ pub fn ensure_single_entry(maybe_entry: Option<&AdjacencyListVertexDescriptor>,
 
     if let Some(entry) = maybe_entry {
         heads.push(*entry);
-        depth_first_search(&mut seen,entry,graph);
+        depth_first_visit(&mut|vx,ev| match ev {
+            VertexEvent::Discovered => { seen.insert(*vx); },
+            _ => {},
+        },&mut|_,_| {},entry,graph);
     }
 
     while seen.len() < graph.num_vertices() {
@@ -570,10 +466,16 @@ pub fn ensure_single_entry(maybe_entry: Option<&AdjacencyListVertexDescriptor>,
 
         if let Some(h) = maybe_h {
             heads.push(h);
-            depth_first_search(&mut seen,&h,graph);
+            depth_first_visit(&mut|vx,ev| match ev {
+                VertexEvent::Discovered => { seen.insert(*vx); },
+                _ => {}
+            },&mut|_,_| {},&h,graph);
         } else {
             if let Some(h) = graph.vertices().find(|x| !seen.contains(x)) {
-                depth_first_search(&mut seen,&h,graph);
+                depth_first_visit(&mut|vx,ev| match ev {
+                    VertexEvent::Discovered => { seen.insert(*vx); },
+                    _ => {}
+                },&mut|_,_| {},&h,graph);
             } else {
                 unreachable!()
             }
@@ -600,7 +502,7 @@ pub fn remove_cycles(head: &AdjacencyListVertexDescriptor,graph: &mut AdjacencyL
     let mut to_flip = vec![];
     let mut ret = HashSet::new();
 
-    depth_first_visit(&mut |_,_| {},&mut |e,k| if k == EdgeKind::Backward { to_flip.push(e.clone()) },head,graph);
+    depth_first_visit::<usize,usize,AdjacencyList<usize,usize>>(&mut |_,_| {},&mut |e,k| if k == EdgeKind::Backward { to_flip.push(e.clone()) },head,graph);
 
     for e in to_flip {
         let from = graph.source(e);
