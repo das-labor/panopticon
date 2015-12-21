@@ -137,10 +137,10 @@ Item {
 				Canvas {
 					id: graph
 
-					x: bblockRoot.x + bblockRoot.childrenRect.x
-					y: bblockRoot.y + bblockRoot.childrenRect.y
-					width: bblockRoot.childrenRect.width
-					height: bblockRoot.childrenRect.height
+					x: bblockRoot.x + bblockRoot.childrenRect.x - 500
+					y: bblockRoot.y + bblockRoot.childrenRect.y - 500
+					width: bblockRoot.childrenRect.width + 1000
+					height: bblockRoot.childrenRect.height + 1000
 
 					property var edges: null;
 					property var boxes: null;
@@ -198,14 +198,14 @@ Item {
 										var e = segs[i];
 
 										ctx.beginPath();
-										ctx.moveTo(e.x1 - bblockRoot.childrenRect.x,e.y1 - bblockRoot.childrenRect.y);
-										ctx.lineTo(e.x2 - bblockRoot.childrenRect.x,e.y2 - bblockRoot.childrenRect.y);
+										ctx.moveTo(e.x1 - bblockRoot.childrenRect.x + 500,e.y1 - bblockRoot.childrenRect.y + 500);
+										ctx.lineTo(e.x2 - bblockRoot.childrenRect.x + 500,e.y2 - bblockRoot.childrenRect.y + 500);
 										ctx.stroke();
 									}
 
 									draw_arrow_head(
-										graph.edges[conn].head_offset.x - bblockRoot.childrenRect.x,
-										graph.edges[conn].head_offset.y - bblockRoot.childrenRect.y - 5,ctx);
+										graph.edges[conn].head_offset.x - bblockRoot.childrenRect.x + 500,
+										graph.edges[conn].head_offset.y - bblockRoot.childrenRect.y - 5 + 500,ctx);
 								}
 							}
 						}

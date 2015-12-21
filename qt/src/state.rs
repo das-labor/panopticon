@@ -124,7 +124,7 @@ pub fn create_elf_project(_path: &Variant, ctrl: &mut Object) -> Variant {
                     "{\"status\": \"ok\"}".to_string()
                 },
                 Err(e) =>
-                    format!("{{\"status\": \"err\", \"error\": \"Failed to read ELF file: {:?}\"}}",e)
+                    "{\"status\": \"err\", \"error\": \"Failed to read ELF file\"}".to_string()
             }
         } else {
             "{\"status\": \"err\", \"error\": \"1st argument is not a string\"}".to_string()
