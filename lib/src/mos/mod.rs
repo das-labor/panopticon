@@ -18,7 +18,8 @@
  */
 
 use disassembler::*;
-use value::{Lvalue,Rvalue};
+use value::{Lvalue,Rvalue,ToRvalue,Endianess};
+use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
 
 pub mod load;
 pub mod decode;
@@ -56,14 +57,30 @@ lazy_static! {
 lazy_static! {
     pub static ref N: Lvalue = Lvalue::Variable{ name: "N".to_string(), width: 1, subscript: None };
     pub static ref V: Lvalue = Lvalue::Variable{ name: "V".to_string(), width: 1, subscript: None };
-    pub static ref U1: Lvalue = Lvalue::Variable{ name: "U1".to_string(), width: 1, subscript: None };
-    pub static ref B: Lvalue = Lvalue::Variable{ name: "B".to_string(), width: 1, subscript: None };
     pub static ref D: Lvalue = Lvalue::Variable{ name: "D".to_string(), width: 1, subscript: None };
     pub static ref I: Lvalue = Lvalue::Variable{ name: "I".to_string(), width: 1, subscript: None };
     pub static ref Z: Lvalue = Lvalue::Variable{ name: "Z".to_string(), width: 1, subscript: None };
     pub static ref C: Lvalue = Lvalue::Variable{ name: "C".to_string(), width: 1, subscript: None };
 }
 
+pub fn ram<A: ToRvalue>(off: &A, width: u16) -> Lvalue {
+    Lvalue::Memory{
+        offset: Box::new(off.to_rv()),
+        name: "ram".to_string(),
+        endianess: Endianess::Little,
+        bytes: width / 8
+    }
+}
+
+static GLOBAL_MOS_TEMPVAR_COUNT: AtomicUsize = ATOMIC_USIZE_INIT;
+
+pub fn new_temp(bits: usize) -> Lvalue {
+    Lvalue::Variable{
+        name: format!("__temp{}",GLOBAL_MOS_TEMPVAR_COUNT.fetch_add(1, Ordering::SeqCst)),
+        width: bits as u16,
+        subscript: None
+    }
+}
 
 #[derive(Clone)]
 pub struct Variant {
