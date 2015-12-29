@@ -48,7 +48,7 @@ impl BasicBlock {
         return BasicBlock{ area: a.unwrap_or(Bound::new(0,0)), mnemonics: ms };
     }
 
-    pub fn execute<F>(&self,mut f: F) where F: FnMut(&Instr) {
+    pub fn execute<'a,F>(&'a self,mut f: F) where F: FnMut(&'a Instr) {
         for mne in self.mnemonics.iter() {
             for i in mne.instructions.iter() {
                 f(&i);

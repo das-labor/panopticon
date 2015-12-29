@@ -44,42 +44,41 @@ pub enum Operation {
     Nop(Rvalue),
 }
 
+impl<'a> Operation {
+    pub fn operands(&'a self) -> Vec<&'a Rvalue> {
+        match self {
+            &Operation::LogicAnd(ref a,ref b) => return vec!(a,b),
+            &Operation::LogicInclusiveOr(ref a,ref b) => return vec!(a,b),
+            &Operation::LogicExclusiveOr(ref a,ref b) => return vec!(a,b),
+            &Operation::LogicNegation(ref a) => return vec!(a),
+            &Operation::LogicLift(ref a) => return vec!(a),
+
+            &Operation::IntAnd(ref a,ref b) => return vec!(a,b),
+            &Operation::IntInclusiveOr(ref a,ref b) => return vec!(a,b),
+            &Operation::IntExclusiveOr(ref a,ref b) => return vec!(a,b),
+            &Operation::IntAdd(ref a,ref b) => return vec!(a,b),
+            &Operation::IntSubtract(ref a,ref b) => return vec!(a,b),
+            &Operation::IntMultiply(ref a,ref b) => return vec!(a,b),
+            &Operation::IntDivide(ref a,ref b) => return vec!(a,b),
+            &Operation::IntModulo(ref a,ref b) => return vec!(a,b),
+            &Operation::IntLess(ref a,ref b) => return vec!(a,b),
+            &Operation::IntEqual(ref a,ref b) => return vec!(a,b),
+            &Operation::IntCall(ref a) => return vec!(a),
+            &Operation::IntRightShift(ref a,ref b) => return vec!(a,b),
+            &Operation::IntLeftShift(ref a,ref b) => return vec!(a,b),
+
+            &Operation::Phi(ref vec) => return vec.iter().collect(),
+            &Operation::Nop(ref a) => return vec!(a),
+        }
+    }
+}
+
 #[derive(Clone,PartialEq,Eq,Debug,RustcEncodable,RustcDecodable)]
 pub struct Instr {
     pub op: Operation,
     pub assignee: Lvalue,
 }
 
-impl Instr {
-    pub fn operands(&self) -> Vec<&Rvalue> {
-        match self.op {
-            Operation::LogicAnd(ref a,ref b) => return vec!(a,b),
-            Operation::LogicInclusiveOr(ref a,ref b) => return vec!(a,b),
-            Operation::LogicExclusiveOr(ref a,ref b) => return vec!(a,b),
-            Operation::LogicNegation(ref a) => return vec!(a),
-            Operation::LogicLift(ref a) => return vec!(a),
-
-            Operation::IntAnd(ref a,ref b) => return vec!(a,b),
-            Operation::IntInclusiveOr(ref a,ref b) => return vec!(a,b),
-            Operation::IntExclusiveOr(ref a,ref b) => return vec!(a,b),
-            Operation::IntAdd(ref a,ref b) => return vec!(a,b),
-            Operation::IntSubtract(ref a,ref b) => return vec!(a,b),
-            Operation::IntMultiply(ref a,ref b) => return vec!(a,b),
-            Operation::IntDivide(ref a,ref b) => return vec!(a,b),
-            Operation::IntModulo(ref a,ref b) => return vec!(a,b),
-            Operation::IntLess(ref a,ref b) => return vec!(a,b),
-            Operation::IntEqual(ref a,ref b) => return vec!(a,b),
-            Operation::IntCall(ref a) => return vec!(a),
-            Operation::IntRightShift(ref a,ref b) => return vec!(a,b),
-            Operation::IntLeftShift(ref a,ref b) => return vec!(a,b),
-
-            Operation::Phi(ref vec) => return vec.iter().collect(),
-            Operation::Nop(ref a) => return vec!(a),
-        }
-    }
-}
-
-#[cfg(test)]
 mod tests {
     use super::*;
     use value::{Rvalue,Lvalue};
@@ -181,27 +180,27 @@ mod tests {
         let phi = Instr{ op: Operation::Phi(Vec::new()), assignee: Lvalue::Undefined };
         let nop = Instr{ op: Operation::Nop(Rvalue::Undefined), assignee: Lvalue::Undefined };
 
-        assert_eq!(logic_and.operands(),vec!(&Rvalue::Undefined,&Rvalue::Undefined));
-        assert_eq!(logic_or.operands(),vec!(&Rvalue::Undefined,&Rvalue::Undefined));
-        assert_eq!(logic_xor.operands(),vec!(&Rvalue::Undefined,&Rvalue::Undefined));
-        assert_eq!(logic_neg.operands(),vec!(&Rvalue::Undefined));
-        assert_eq!(logic_lift.operands(),vec!(&Rvalue::Undefined));
+        assert_eq!(logic_and.op.operands(),vec!(&Rvalue::Undefined,&Rvalue::Undefined));
+        assert_eq!(logic_or.op.operands(),vec!(&Rvalue::Undefined,&Rvalue::Undefined));
+        assert_eq!(logic_xor.op.operands(),vec!(&Rvalue::Undefined,&Rvalue::Undefined));
+        assert_eq!(logic_neg.op.operands(),vec!(&Rvalue::Undefined));
+        assert_eq!(logic_lift.op.operands(),vec!(&Rvalue::Undefined));
 
-        assert_eq!(int_and.operands(),vec!(&Rvalue::Undefined,&Rvalue::Undefined));
-        assert_eq!(int_or.operands(),vec!(&Rvalue::Undefined,&Rvalue::Undefined));
-        assert_eq!(int_xor.operands(),vec!(&Rvalue::Undefined,&Rvalue::Undefined));
-        assert_eq!(int_add.operands(),vec!(&Rvalue::Undefined,&Rvalue::Undefined));
-        assert_eq!(int_sub.operands(),vec!(&Rvalue::Undefined,&Rvalue::Undefined));
-        assert_eq!(int_mul.operands(),vec!(&Rvalue::Undefined,&Rvalue::Undefined));
-        assert_eq!(int_div.operands(),vec!(&Rvalue::Undefined,&Rvalue::Undefined));
-        assert_eq!(int_mod.operands(),vec!(&Rvalue::Undefined,&Rvalue::Undefined));
-        assert_eq!(int_less.operands(),vec!(&Rvalue::Undefined,&Rvalue::Undefined));
-        assert_eq!(int_equal.operands(),vec!(&Rvalue::Undefined,&Rvalue::Undefined));
-        assert_eq!(int_rs.operands(),vec!(&Rvalue::Undefined,&Rvalue::Undefined));
-        assert_eq!(int_ls.operands(),vec!(&Rvalue::Undefined,&Rvalue::Undefined));
-        assert_eq!(int_call.operands(),vec!(&Rvalue::Undefined));
+        assert_eq!(int_and.op.operands(),vec!(&Rvalue::Undefined,&Rvalue::Undefined));
+        assert_eq!(int_or.op.operands(),vec!(&Rvalue::Undefined,&Rvalue::Undefined));
+        assert_eq!(int_xor.op.operands(),vec!(&Rvalue::Undefined,&Rvalue::Undefined));
+        assert_eq!(int_add.op.operands(),vec!(&Rvalue::Undefined,&Rvalue::Undefined));
+        assert_eq!(int_sub.op.operands(),vec!(&Rvalue::Undefined,&Rvalue::Undefined));
+        assert_eq!(int_mul.op.operands(),vec!(&Rvalue::Undefined,&Rvalue::Undefined));
+        assert_eq!(int_div.op.operands(),vec!(&Rvalue::Undefined,&Rvalue::Undefined));
+        assert_eq!(int_mod.op.operands(),vec!(&Rvalue::Undefined,&Rvalue::Undefined));
+        assert_eq!(int_less.op.operands(),vec!(&Rvalue::Undefined,&Rvalue::Undefined));
+        assert_eq!(int_equal.op.operands(),vec!(&Rvalue::Undefined,&Rvalue::Undefined));
+        assert_eq!(int_rs.op.operands(),vec!(&Rvalue::Undefined,&Rvalue::Undefined));
+        assert_eq!(int_ls.op.operands(),vec!(&Rvalue::Undefined,&Rvalue::Undefined));
+        assert_eq!(int_call.op.operands(),vec!(&Rvalue::Undefined));
 
-        assert_eq!(phi.operands(),Vec::<&Rvalue>::new());
-        assert_eq!(nop.operands(),vec!(&Rvalue::Undefined));
+        assert_eq!(phi.op.operands(),Vec::<&Rvalue>::new());
+        assert_eq!(nop.op.operands(),vec!(&Rvalue::Undefined));
     }
 }

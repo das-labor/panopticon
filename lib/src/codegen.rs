@@ -121,7 +121,7 @@ impl<C: Architecture> CodeGen<C> {
             }
         };
 
-        assert!(ret.operands().iter().cloned().all(sanity_check) && sanity_check(&Rvalue::from_lvalue(&assign)));
+        assert!(ret.op.operands().iter().cloned().all(sanity_check) && sanity_check(&Rvalue::from_lvalue(&assign)));
 
         self.instructions.push(ret);
         assign
