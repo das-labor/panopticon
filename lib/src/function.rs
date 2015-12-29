@@ -21,6 +21,10 @@ use guard::Guard;
 use graph_algos::{AdjacencyList,GraphTrait,MutableGraphTrait};
 use graph_algos::adjacency_list::AdjacencyListVertexDescriptor;
 use graph_algos::{VertexListGraphTrait,EdgeListGraphTrait};
+use graph_algos::search::{
+    TraversalOrder,
+    TreeIterator,
+};
 use disassembler::{Disassembler,Architecture};
 use layer::LayerIter;
 use value::Rvalue;
@@ -328,6 +332,12 @@ impl Function {
                 _ => false
             }
         })
+    }
+
+    pub fn postorder(&self) -> Vec<ControlFlowRef> {
+        assert!(self.entry_point.is_some());
+        TreeIterator::new(self.entry_point.unwrap(),TraversalOrder::Postorder,&self.cflow_graph).
+            collect()
     }
 }
 
