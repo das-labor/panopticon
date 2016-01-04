@@ -236,6 +236,10 @@ impl<A: Architecture> Disassembler<A> {
                             cur_group = "".to_string();
                         },
                         '.' => {
+                            if bit <= 0 {
+                                panic!("too long bit pattern");
+                            }
+
                             if read_pat && cur_group != "" {
                                 *groups.get_mut(&cur_group).unwrap() = groups.get(&cur_group).unwrap().clone() | (A::Token::one() << ((bit - 1) as usize));
                             }
@@ -243,6 +247,10 @@ impl<A: Architecture> Disassembler<A> {
                             bit -= 1;
                         },
                         '0' | '1' => {
+                            if bit <= 0 {
+                                panic!("too long bit pattern");
+                            }
+
                             if bit - 1 > 0 {
                                 mask = mask | (A::Token::one() << ((bit - 1) as usize));
                             } else {
