@@ -56,10 +56,10 @@ impl BasicBlock {
         }
     }
 
-    pub fn rewrite<F>(&mut self,f: F) where F: Fn(&Instr) -> Instr {
+    pub fn rewrite<'a,F>(&'a mut self,mut f: F) where F: FnMut(&'a mut Instr) {
         for mne in self.mnemonics.iter_mut() {
             for i in mne.instructions.iter_mut() {
-                *i = f(&i);
+                f(i);
             }
         }
     }
@@ -170,10 +170,12 @@ mod tests {
         let ms = vec!(mne1,mne2);
         let mut bb = BasicBlock::from_vec(ms);
 
-        bb.rewrite(|i| match &i.assignee {
-            &Lvalue::Variable{ name: ref n, width: ref w, subscript: _ } =>
-                Instr{ op: i.op.clone(), assignee: Lvalue::Variable{ name: n.clone(), width: *w, subscript: None } },
-            _ => i.clone()
+        bb.rewrite(|i| {
+            *i = match &i.assignee {
+                &Lvalue::Variable{ name: ref n, width: ref w, subscript: _ } =>
+                    Instr{ op: i.op.clone(), assignee: Lvalue::Variable{ name: n.clone(), width: *w, subscript: None } },
+                _ => i.clone()
+            };
         });
 
         let mut ok = true;

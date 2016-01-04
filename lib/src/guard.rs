@@ -34,9 +34,45 @@ pub enum Relation {
     False,
 }
 
+impl<'a> Relation {
+    pub fn operands(&'a self) -> Vec<&'a Rvalue> {
+        match self {
+            &Relation::UnsignedLessOrEqual(ref a,ref b) => vec![a,b],
+            &Relation::SignedLessOrEqual(ref a,ref b) => vec![a,b],
+            &Relation::UnsignedGreaterOrEqual(ref a,ref b) => vec![a,b],
+            &Relation::SignedGreaterOrEqual(ref a,ref b) => vec![a,b],
+            &Relation::UnsignedLess(ref a,ref b) => vec![a,b],
+            &Relation::SignedLess(ref a,ref b) => vec![a,b],
+            &Relation::UnsignedGreater(ref a,ref b) => vec![a,b],
+            &Relation::SignedGreater(ref a,ref b) => vec![a,b],
+            &Relation::Equal(ref a,ref b) => vec![a,b],
+            &Relation::NotEqual(ref a,ref b) => vec![a,b],
+            &Relation::True => vec![],
+            &Relation::False => vec![],
+        }
+    }
+
+    pub fn operands_mut(&'a mut self) -> Vec<&'a mut Rvalue> {
+        match self {
+            &mut Relation::UnsignedLessOrEqual(ref mut a,ref mut b) => vec![a,b],
+            &mut Relation::SignedLessOrEqual(ref mut a,ref mut b) => vec![a,b],
+            &mut Relation::UnsignedGreaterOrEqual(ref mut a,ref mut b) => vec![a,b],
+            &mut Relation::SignedGreaterOrEqual(ref mut a,ref mut b) => vec![a,b],
+            &mut Relation::UnsignedLess(ref mut a,ref mut b) => vec![a,b],
+            &mut Relation::SignedLess(ref mut a,ref mut b) => vec![a,b],
+            &mut Relation::UnsignedGreater(ref mut a,ref mut b) => vec![a,b],
+            &mut Relation::SignedGreater(ref mut a,ref mut b) => vec![a,b],
+            &mut Relation::Equal(ref mut a,ref mut b) => vec![a,b],
+            &mut Relation::NotEqual(ref mut a,ref mut b) => vec![a,b],
+            &mut Relation::True => vec![],
+            &mut Relation::False => vec![],
+        }
+    }
+}
+
 #[derive(Clone,Debug,PartialEq,RustcDecodable,RustcEncodable)]
 pub struct Guard {
-    relation: Relation,
+    pub relation: Relation,
 }
 
 impl Guard {

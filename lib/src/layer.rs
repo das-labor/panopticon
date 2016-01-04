@@ -89,7 +89,7 @@ impl<'a> LayerIter<'a> {
         };
 
         match self {
-            &LayerIter::Undefined(ref l) => LayerIter::Undefined(real_end - r.start),
+            &LayerIter::Undefined(_) => LayerIter::Undefined(real_end - r.start),
             &LayerIter::Defined(None) => LayerIter::Defined(None),
             &LayerIter::Defined(Some(ref buf)) => LayerIter::Defined(Some(&buf[r.start as usize..real_end as usize])),
             &LayerIter::Sparse{ map: ref m, mapped: ref i, pos: ref p, .. } => LayerIter::Sparse{

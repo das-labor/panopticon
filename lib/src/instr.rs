@@ -71,6 +71,34 @@ impl<'a> Operation {
             &Operation::Nop(ref a) => return vec!(a),
         }
     }
+
+    pub fn operands_mut(&'a mut self) -> Vec<&'a mut Rvalue> {
+        match self {
+            &mut Operation::LogicAnd(ref mut a,ref mut b) => return vec!(a,b),
+            &mut Operation::LogicInclusiveOr(ref mut a,ref mut b) => return vec!(a,b),
+            &mut Operation::LogicExclusiveOr(ref mut a,ref mut b) => return vec!(a,b),
+            &mut Operation::LogicNegation(ref mut a) => return vec!(a),
+            &mut Operation::LogicLift(ref mut a) => return vec!(a),
+
+            &mut Operation::IntAnd(ref mut a,ref mut b) => return vec!(a,b),
+            &mut Operation::IntInclusiveOr(ref mut a,ref mut b) => return vec!(a,b),
+            &mut Operation::IntExclusiveOr(ref mut a,ref mut b) => return vec!(a,b),
+            &mut Operation::IntAdd(ref mut a,ref mut b) => return vec!(a,b),
+            &mut Operation::IntSubtract(ref mut a,ref mut b) => return vec!(a,b),
+            &mut Operation::IntMultiply(ref mut a,ref mut b) => return vec!(a,b),
+            &mut Operation::IntDivide(ref mut a,ref mut b) => return vec!(a,b),
+            &mut Operation::IntModulo(ref mut a,ref mut b) => return vec!(a,b),
+            &mut Operation::IntLess(ref mut a,ref mut b) => return vec!(a,b),
+            &mut Operation::IntEqual(ref mut a,ref mut b) => return vec!(a,b),
+            &mut Operation::IntCall(ref mut a) => return vec!(a),
+            &mut Operation::IntRightShift(ref mut a,ref mut b) => return vec!(a,b),
+            &mut Operation::IntLeftShift(ref mut a,ref mut b) => return vec!(a,b),
+
+            &mut Operation::Phi(ref mut vec) => return vec.iter_mut().collect(),
+            &mut Operation::Nop(ref mut a) => return vec!(a),
+        }
+    }
+
 }
 
 #[derive(Clone,PartialEq,Eq,Debug,RustcEncodable,RustcDecodable)]
