@@ -168,7 +168,7 @@ pub mod region;
 pub mod layer;
 pub mod codegen;
 pub mod target;
-pub mod dflow;
+pub mod dataflow;
 
 // disassembler
 pub mod avr;
