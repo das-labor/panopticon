@@ -44,6 +44,168 @@ pub enum Operation {
     Nop(Rvalue),
 }
 
+fn execute(op: &Operation) -> Rvalue {
+	match op {
+        &Operation::LogicAnd(Rvalue::Constant(a),Rvalue::Constant(b)) =>
+            if a > 0 && b > 0 { Rvalue::Constant(1) } else { Rvalue::Constant(0) },
+        &Operation::LogicAnd(Rvalue::Constant(a),ref b) =>
+            if a > 0 { b.clone() } else { Rvalue::Constant(0) },
+        &Operation::LogicAnd(ref a,Rvalue::Constant(b)) =>
+            if b > 0 { a.clone() } else { Rvalue::Constant(0) },
+        &Operation::LogicAnd(_,_) =>
+            Rvalue::Undefined,
+
+        &Operation::LogicInclusiveOr(Rvalue::Constant(a),Rvalue::Constant(b)) =>
+             if a > 0 || b > 0 { Rvalue::Constant(1) } else { Rvalue::Constant(0) },
+        &Operation::LogicInclusiveOr(Rvalue::Constant(a),ref b) =>
+             if a > 0 { Rvalue::Constant(1) } else { b.clone() },
+        &Operation::LogicInclusiveOr(ref a,Rvalue::Constant(b)) =>
+             if b > 0 { Rvalue::Constant(1) } else { a.clone() },
+        &Operation::LogicInclusiveOr(_,_) =>
+            Rvalue::Undefined,
+
+        &Operation::LogicExclusiveOr(Rvalue::Constant(a),Rvalue::Constant(b)) =>
+             if (a > 0) ^ (b > 0) { Rvalue::Constant(1) } else { Rvalue::Constant(0) },
+        &Operation::LogicExclusiveOr(ref a,ref b) =>
+            if a != &Rvalue::Undefined {
+                if a == b { Rvalue::Constant(0) } else { Rvalue::Constant(1) }
+            } else {
+                Rvalue::Undefined
+            },
+
+        &Operation::LogicNegation(Rvalue::Constant(a)) =>
+            if a > 0 { Rvalue::Constant(0) } else { Rvalue::Constant(1) },
+        &Operation::LogicNegation(_) =>
+             Rvalue::Undefined,
+
+        &Operation::LogicLift(Rvalue::Constant(a)) =>
+            if a > 0 { Rvalue::Constant(1) } else { Rvalue::Constant(0) },
+        &Operation::LogicLift(_) =>
+             Rvalue::Undefined,
+
+        &Operation::IntAnd(Rvalue::Constant(a),Rvalue::Constant(b)) =>
+            Rvalue::Constant(a & b),
+        &Operation::IntAnd(Rvalue::Constant(0),_) =>
+            Rvalue::Constant(0),
+        &Operation::IntAnd(_,Rvalue::Constant(0)) =>
+            Rvalue::Constant(0),
+        &Operation::IntAnd(_,_) =>
+            Rvalue::Undefined,
+
+        &Operation::IntInclusiveOr(Rvalue::Constant(a),Rvalue::Constant(b)) =>
+            Rvalue::Constant(a | b),
+        &Operation::IntInclusiveOr(Rvalue::Constant(0),ref b) =>
+            b.clone(),
+        &Operation::IntInclusiveOr(ref a,Rvalue::Constant(0)) =>
+            a.clone(),
+        &Operation::IntInclusiveOr(_,_) =>
+            Rvalue::Undefined,
+
+        &Operation::IntExclusiveOr(Rvalue::Constant(a),Rvalue::Constant(b)) =>
+            Rvalue::Constant(a ^ b),
+        &Operation::IntExclusiveOr(ref a,ref b) =>
+            if a != &Rvalue::Undefined {
+                if a == b { Rvalue::Constant(0) } else { Rvalue::Constant(1) }
+            } else {
+                Rvalue::Undefined
+            },
+
+        &Operation::IntAdd(Rvalue::Constant(a),Rvalue::Constant(b)) =>
+            Rvalue::Constant(a + b),
+        &Operation::IntAdd(Rvalue::Constant(0),ref b) =>
+            b.clone(),
+        &Operation::IntAdd(ref a,Rvalue::Constant(0)) =>
+            a.clone(),
+        &Operation::IntAdd(_,_) =>
+            Rvalue::Undefined,
+
+        &Operation::IntSubtract(Rvalue::Constant(a),Rvalue::Constant(b)) =>
+            Rvalue::Constant(a - b),
+        &Operation::IntSubtract(ref a,Rvalue::Constant(0)) =>
+            a.clone(),
+        &Operation::IntSubtract(_,_) =>
+            Rvalue::Undefined,
+
+        &Operation::IntMultiply(Rvalue::Constant(a),Rvalue::Constant(b)) =>
+            Rvalue::Constant(a * b),
+        &Operation::IntMultiply(Rvalue::Constant(0),ref b) =>
+            Rvalue::Constant(0),
+        &Operation::IntMultiply(ref a,Rvalue::Constant(0)) =>
+            Rvalue::Constant(0),
+        &Operation::IntMultiply(Rvalue::Constant(1),ref b) =>
+            b.clone(),
+        &Operation::IntMultiply(ref a,Rvalue::Constant(1)) =>
+            a.clone(),
+        &Operation::IntMultiply(_,_) =>
+            Rvalue::Undefined,
+
+        &Operation::IntDivide(Rvalue::Constant(a),Rvalue::Constant(b)) =>
+            if b != 0 { Rvalue::Constant(a / b) } else { Rvalue::Undefined },
+        &Operation::IntDivide(Rvalue::Constant(0),_) =>
+            Rvalue::Constant(0),
+        &Operation::IntDivide(_,Rvalue::Constant(0)) =>
+            Rvalue::Undefined,
+        &Operation::IntDivide(ref a,Rvalue::Constant(1)) =>
+            a.clone(),
+        &Operation::IntDivide(_,_) =>
+            Rvalue::Undefined,
+
+        &Operation::IntModulo(Rvalue::Constant(a),Rvalue::Constant(b)) =>
+            if b != 0 { Rvalue::Constant(a % b) } else { Rvalue::Undefined },
+        &Operation::IntModulo(Rvalue::Constant(0),_) =>
+            Rvalue::Constant(0),
+        &Operation::IntModulo(_,Rvalue::Constant(0)) =>
+            Rvalue::Undefined,
+        &Operation::IntModulo(_,Rvalue::Constant(1)) =>
+            Rvalue::Constant(0),
+        &Operation::IntModulo(_,_) =>
+            Rvalue::Undefined,
+
+        &Operation::IntLess(Rvalue::Constant(a),Rvalue::Constant(b)) =>
+            if a < b { Rvalue::Constant(1) } else { Rvalue::Constant(0) },
+        &Operation::IntLess(_,Rvalue::Constant(0)) =>
+            Rvalue::Constant(0),
+        &Operation::IntLess(_,_) =>
+            Rvalue::Undefined,
+
+        &Operation::IntEqual(ref a,ref b) =>
+            if a != &Rvalue::Undefined {
+                if a == b { Rvalue::Constant(1) } else { Rvalue::Constant(0) }
+            } else {
+                Rvalue::Undefined
+            },
+
+        &Operation::IntCall(_) =>
+            Rvalue::Undefined,
+
+        &Operation::IntRightShift(Rvalue::Constant(a),Rvalue::Constant(b)) =>
+            Rvalue::Constant(a >> b),
+        &Operation::IntRightShift(Rvalue::Constant(0),_) =>
+            Rvalue::Constant(0),
+        &Operation::IntRightShift(ref a,Rvalue::Constant(0)) =>
+            a.clone(),
+        &Operation::IntRightShift(_,_) =>
+            Rvalue::Undefined,
+
+        &Operation::IntLeftShift(Rvalue::Constant(a),Rvalue::Constant(b)) =>
+            Rvalue::Constant(a << b),
+        &Operation::IntLeftShift(Rvalue::Constant(0),_) =>
+            Rvalue::Constant(0),
+        &Operation::IntLeftShift(ref a,Rvalue::Constant(0)) =>
+            a.clone(),
+        &Operation::IntLeftShift(_,_) =>
+            Rvalue::Undefined,
+
+        &Operation::Phi(ref vec) =>
+            match vec.len() {
+                0 => Rvalue::Undefined,
+                1 => vec[0].clone(),
+                _ => if vec.iter().all(|x| vec.first().unwrap() == x) { vec[0].clone() } else { Rvalue::Undefined }
+            },
+        &Operation::Nop(ref a) =>
+            a.clone(),
+    }
+}
 impl<'a> Operation {
     pub fn operands(&'a self) -> Vec<&'a Rvalue> {
         match self {
