@@ -551,4 +551,152 @@ mod tests {
             _ => None,
         }
     }
+
+    #[test]
+    fn all() {
+        let test_vectors = vec![
+            (vec![0x23,0x0c],"add"),
+            // ADC
+            // SUB
+            (vec![0x81,0x50],"subi"),
+            // SBC
+            // SBCI
+            // AND
+            // ANDI
+            // OR
+            // ORI
+            // EOR
+            // COM
+            // NEG
+            // SBR
+            // CBR
+            // INC
+            // DEC
+            // TST
+            // CLR
+            // SER
+            (vec![0x01,0xc0],"rjmp"),
+            // RCALL
+            // RET
+            // RETI
+            (vec![0x12,0x10],"cpse"),
+            // CP
+            // CPC
+            // CPI
+            // SBRC
+            // SBRS
+            // SBIC
+            // SBIS
+            // BRBS
+            // BRBC
+            // BREQ
+            (vec![0xe1,0xf7],"brne"),
+            // BRCS
+            // BRCC
+            // BRSH
+            // BRLO
+            // BRMI
+            // BRPL
+            // BRGE
+            // BRLT
+            // BRHS
+            // BRHC
+            // BRTS
+            // BRTC
+            // BRVS
+            // BRVC
+            // BRIE
+            // BRID
+            (vec![0x0d,0x90],"ld"),
+            (vec![0x01,0x92],"st"),
+            (vec![0x21,0x2c],"mov"),
+            (vec![0x88,0xe0],"ldi"),
+            // IN
+            // OUT
+            // LPM
+            // SBI
+            // CBI
+            // LSL
+            // LSR
+            // ROL
+            // ROR
+            // ASR
+            // SWAP
+            // BSET
+            // BCLR
+            // BST
+            // BLD
+            // SEC
+            // CLC
+            // SEN
+            // CLN
+            // SEZ
+            // CLZ
+            // SEI
+            // CLI
+            // SES
+            // CLS
+            // SEV
+            // CLV
+            // SET
+            // CLT
+            // SEH
+            // CLH
+            // NOP
+            // SLEEP
+            // WDR
+            (vec![0x68,0x96],"adiw"),
+            // SBIW
+            // IJMP
+            // ICALL
+            // LD
+            // LDD
+            // LDS
+            // ST
+            // STD
+            // STS
+            // PUSH
+            // POP
+            // JMP
+            // CALL
+            // ELPM
+            // MUL
+            // MULS
+            // MULSU
+            // FMUL
+            // FMULS
+            // FMULSU
+            (vec![0xde,0x01],"movw"),
+            // LPM
+            // SPM
+            // BREAK
+            // EIJMP
+            // EICALL
+            // XCH
+            // LAS
+            // LAC
+            // LAT
+            // DES
+        ];
+        let main = disassembler();
+
+        for (bytes,opname) in test_vectors {
+            let l = bytes.len();
+            let reg = Region::wrap("base".to_string(),bytes);
+            let mut i = reg.iter().seek(0);
+            let maybe_match = main.next_match(&mut i,0,Mcu::new());
+
+            if let Some(match_st) = maybe_match {
+                assert_eq!(1, match_st.mnemonics.len());
+                
+                let mne = &match_st.mnemonics[0];
+
+                assert_eq!(opname,mne.opcode);
+                assert_eq!(mne.area.start,0);
+                assert_eq!(mne.area.end,l as u64);
+            } else {
+                unreachable!()
+            }
+        }
+    }
 }
