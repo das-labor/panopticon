@@ -148,171 +148,171 @@ pub fn sse1(rm0: Rc<Disassembler<Amd64>>, rm1: Rc<Disassembler<Amd64>>, rm2: Rc<
             rm3: Rc<Disassembler<Amd64>>, rm4: Rc<Disassembler<Amd64>>, rm5: Rc<Disassembler<Amd64>>,
             rm6: Rc<Disassembler<Amd64>>, rm7: Rc<Disassembler<Amd64>>,
             rm: Rc<Disassembler<Amd64>>, imm8: Rc<Disassembler<Amd64>>,
-            rexw_prfx: Rc<Disassembler<Amd64>>) -> Rc<Disassembler<Amd64>> {
+            rex_prfx: Rc<Disassembler<Amd64>>, rexw_prfx: Rc<Disassembler<Amd64>>) -> Rc<Disassembler<Amd64>> {
     new_disassembler!(Amd64 =>
         // ADDPS
-        [ 0x0f, 0x58, rm ] = binary("addps",decode_rm,addps),
+        [ opt!(rex_prfx), 0x0f, 0x58, rm ] = binary("addps",decode_rm,addps),
 
         // ADDSS
-        [ 0xf3, 0x0f, 0x58, rm ] = binary("addss",decode_rm,addss),
+        [ 0xf3, opt!(rex_prfx), 0x0f, 0x58, rm ] = binary("addss",decode_rm,addss),
 
         // ANDNPS
-        [ 0x0f, 0x55, rm ] = binary("andnps",decode_rm,andnps),
+        [ opt!(rex_prfx), 0x0f, 0x55, rm ] = binary("andnps",decode_rm,andnps),
 
         // ANDPS
-        [ 0x0f, 0x54, rm ] = binary("andps",decode_rm,andps),
+        [ opt!(rex_prfx), 0x0f, 0x54, rm ] = binary("andps",decode_rm,andps),
 
         // CMPPS
-        [ 0x0f, 0xc2, rm, imm8 ] = trinary("cmpps",decode_rmi,cmpps),
+        [ opt!(rex_prfx), 0x0f, 0xc2, rm, imm8 ] = trinary("cmpps",decode_rmi,cmpps),
 
         // CMPSS
-        [ 0xf3, 0x0f, 0xc2, rm, imm8 ] = trinary("cmpss",decode_rmi,cmpss),
+        [ 0xf3, opt!(rex_prfx), 0x0f, 0xc2, rm, imm8 ] = trinary("cmpss",decode_rmi,cmpss),
 
         // COMISS
-        [ 0x0f, 0x2f, rm ] = binary("comiss",decode_rm,comiss),
+        [ opt!(rex_prfx), 0x0f, 0x2f, rm ] = binary("comiss",decode_rm,comiss),
 
         // CVTPI2PS
-        [ 0x0f, 0x2a, rm ] = binary("cvtpi2ps",decode_rm,cvtpi2ps),
+        [ opt!(rex_prfx), 0x0f, 0x2a, rm ] = binary("cvtpi2ps",decode_rm,cvtpi2ps),
 
         // CVTPS2PI
-        [ 0x0f, 0x2d, rm ] = binary("cvtps2pi",decode_rm,cvtps2pi),
+        [ opt!(rex_prfx), 0x0f, 0x2d, rm ] = binary("cvtps2pi",decode_rm,cvtps2pi),
 
         // CVTSI2SS
-        [ 0xf3, 0x0f, 0x2a, rm ] = binary("cvtsi2ss",decode_rm,cvtsi2ss),
+        [ 0xf3, opt!(rex_prfx), 0x0f, 0x2a, rm ] = binary("cvtsi2ss",decode_rm,cvtsi2ss),
 
         // CVTSS2SI
-        [ 0xf3, 0x0f, 0x2d, rm ] = binary("cvtss2si",decode_rm,cvtss2si),
+        [ 0xf3, opt!(rex_prfx), 0x0f, 0x2d, rm ] = binary("cvtss2si",decode_rm,cvtss2si),
 
         // CVTTPS2PI
-        [ 0x0f, 0x2c, rm ] = binary("cvttps2pi",decode_rm,cvttps2pi),
+        [ opt!(rex_prfx), 0x0f, 0x2c, rm ] = binary("cvttps2pi",decode_rm,cvttps2pi),
 
         // CVTTSS2SI
         [ 0xf3, opt!(rexw_prfx), 0x0f, 0x2c, rm ] = binary("cvttss2si",decode_rm,cvttss2si),
 
         // DIV*S
-        [ 0x0f, 0x5e, rm ] = binary("divps",decode_rm,divps),
-        [ 0xf3, 0x0f, 0x5e, rm ] = binary("divss",decode_rm,divss),
+        [ opt!(rex_prfx), 0x0f, 0x5e, rm ] = binary("divps",decode_rm,divps),
+        [ 0xf3, opt!(rex_prfx), 0x0f, 0x5e, rm ] = binary("divss",decode_rm,divss),
 
         // LDMXCSR
-        [ 0x0f, 0xae, rm2 ] = binary("ldmxcsr",decode_rm,ldmxcsr),
+        [ opt!(rex_prfx), 0x0f, 0xae, rm2 ] = binary("ldmxcsr",decode_rm,ldmxcsr),
 
         // MASKMOVQ
-        [ 0x0f, 0xf7, rm ] = binary("maskmovq",decode_rm,maskmovq),
+        [ opt!(rex_prfx), 0x0f, 0xf7, rm ] = binary("maskmovq",decode_rm,maskmovq),
 
         // MAX*S
-        [ 0x0f, 0x5f, rm ] = binary("maxps",decode_rm,maxps),
-        [ 0xf3, 0x0f, 0x5f, rm ] = binary("maxss",decode_rm,maxss),
+        [ opt!(rex_prfx), 0x0f, 0x5f, rm ] = binary("maxps",decode_rm,maxps),
+        [ 0xf3, opt!(rex_prfx), 0x0f, 0x5f, rm ] = binary("maxss",decode_rm,maxss),
 
         // MIN*S
-        [ 0x0f, 0x5d, rm ] = binary("minps",decode_rm,minps),
-        [ 0xf3, 0x0f, 0x5d, rm ] = binary("minss",decode_rm,minss),
+        [ opt!(rex_prfx), 0x0f, 0x5d, rm ] = binary("minps",decode_rm,minps),
+        [ 0xf3, opt!(rex_prfx), 0x0f, 0x5d, rm ] = binary("minss",decode_rm,minss),
 
         // MOVAPS
-        [ 0x0f, 0x28, rm ] = binary("movaps",decode_rm,movaps),
-        [ 0x0f, 0x29, rm ] = binary("movaps",decode_mr,movaps),
+        [ opt!(rex_prfx), 0x0f, 0x28, rm ] = binary("movaps",decode_rm,movaps),
+        [ opt!(rex_prfx), 0x0f, 0x29, rm ] = binary("movaps",decode_mr,movaps),
 
         // MOVHPS
-        [ 0x0f, 0x16, rm ] = binary("minhps",decode_rm,minhps),
-        [ 0x0f, 0x17, rm ] = binary("minhps",decode_mr,minhps),
+        [ opt!(rex_prfx), 0x0f, 0x16, rm ] = binary("minhps",decode_rm,minhps),
+        [ opt!(rex_prfx), 0x0f, 0x17, rm ] = binary("minhps",decode_mr,minhps),
 
         // MOVLPS
-        [ 0x0f, 0x12, rm ] = binary("movlps",decode_rm,movlps),
-        [ 0x0f, 0x13, rm ] = binary("movlps",decode_mr,movlps),
+        [ opt!(rex_prfx), 0x0f, 0x12, rm ] = binary("movlps",decode_rm,movlps),
+        [ opt!(rex_prfx), 0x0f, 0x13, rm ] = binary("movlps",decode_mr,movlps),
 
         // MOVMSKPS
-        [ 0x0f, 0x50, rm ] = binary("movmskps",decode_rm,movmskps),
+        [ opt!(rex_prfx), 0x0f, 0x50, rm ] = binary("movmskps",decode_rm,movmskps),
 
         // MOVNTPS
-        [ 0x0f, 0x2b, rm ] = binary("movntps",decode_mr,movntps),
+        [ opt!(rex_prfx), 0x0f, 0x2b, rm ] = binary("movntps",decode_mr,movntps),
 
         // MOVNTQ
-        [ 0x0f, 0xe7, rm ] = binary("movntq",decode_mr,movntq),
+        [ opt!(rex_prfx), 0x0f, 0xe7, rm ] = binary("movntq",decode_mr,movntq),
 
         // MOVSS
-        [ 0xf3, 0x0f, 0x10, rm ] = binary("movss",decode_rm,movss),
-        [ 0xf3, 0x0f, 0x11, rm ] = binary("movss",decode_mr,movss),
+        [ 0xf3, opt!(rex_prfx), 0x0f, 0x10, rm ] = binary("movss",decode_rm,movss),
+        [ 0xf3, opt!(rex_prfx), 0x0f, 0x11, rm ] = binary("movss",decode_mr,movss),
 
         // MOVUPS
-        [ 0x0f, 0x10, rm ] = binary("movups",decode_rm,movups),
-        [ 0x0f, 0x11, rm ] = binary("movups",decode_mr,movups),
+        [ opt!(rex_prfx), 0x0f, 0x10, rm ] = binary("movups",decode_rm,movups),
+        [ opt!(rex_prfx), 0x0f, 0x11, rm ] = binary("movups",decode_mr,movups),
 
         // MUL*S
-        [ 0x0f, 0x59, rm ] = binary("mulps",decode_rm,mulps),
-        [ 0xf3, 0x0f, 0x59, rm ] = binary("mulss",decode_rm,mulss),
+        [ opt!(rex_prfx), 0x0f, 0x59, rm ] = binary("mulps",decode_rm,mulps),
+        [ 0xf3, opt!(rex_prfx), 0x0f, 0x59, rm ] = binary("mulss",decode_rm,mulss),
 
         // ORPS
-        [ 0x0f, 0x56, rm ] = binary("orps",decode_rm,orps),
+        [ opt!(rex_prfx), 0x0f, 0x56, rm ] = binary("orps",decode_rm,orps),
 
         // PAVG*
-        [ 0x0f, 0xe0, rm ] = binary("pavgb",decode_rm,pavgb),
-        [ 0x0f, 0xe3, rm ] = binary("pavgw",decode_rm,pavgw),
+        [ opt!(rex_prfx), 0x0f, 0xe0, rm ] = binary("pavgb",decode_rm,pavgb),
+        [ opt!(rex_prfx), 0x0f, 0xe3, rm ] = binary("pavgw",decode_rm,pavgw),
 
         // PINSRW
-        [ 0x0f, 0xc4, rm, imm8 ] = trinary("pinsrw",decode_rmi,pinsrw),
+        [ opt!(rex_prfx), 0x0f, 0xc4, rm, imm8 ] = trinary("pinsrw",decode_rmi,pinsrw),
 
         // PMAX*
-        [ 0x0f, 0xee, rm ] = binary("pmaxsw",decode_rm,pmaxsw),
-        [ 0x0f, 0xde, rm ] = binary("pmaxub",decode_rm,pmaxub),
+        [ opt!(rex_prfx), 0x0f, 0xee, rm ] = binary("pmaxsw",decode_rm,pmaxsw),
+        [ opt!(rex_prfx), 0x0f, 0xde, rm ] = binary("pmaxub",decode_rm,pmaxub),
 
         // PMIN*
-        [ 0x0f, 0xea, rm ] = binary("pminsw",decode_rm,pminsw),
-        [ 0x0f, 0xda, rm ] = binary("pminub",decode_rm,pminub),
+        [ opt!(rex_prfx), 0x0f, 0xea, rm ] = binary("pminsw",decode_rm,pminsw),
+        [ opt!(rex_prfx), 0x0f, 0xda, rm ] = binary("pminub",decode_rm,pminub),
 
         // PMOVMSKB
-        [ 0x0f, 0xd7, rm ] = binary("pmovmskb",decode_rm,pmovmskb),
+        [ opt!(rex_prfx), 0x0f, 0xd7, rm ] = binary("pmovmskb",decode_rm,pmovmskb),
 
         // PMULHUW
-        [ 0x0f, 0xe4, rm ] = binary("pmulhuw",decode_rm,pmulhuw),
+        [ opt!(rex_prfx), 0x0f, 0xe4, rm ] = binary("pmulhuw",decode_rm,pmulhuw),
 
         // PREFETCH*
-        [ 0x0f, 0x18, rm0 ] = unary("prefetchnta",decode_m,prefetchnta),
-        [ 0x0f, 0x18, rm1 ] = unary("prefetcht0",decode_m,prefetcht0),
-        [ 0x0f, 0x18, rm2 ] = unary("prefetcht1",decode_m,prefetcht1),
-        [ 0x0f, 0x18, rm3 ] = unary("prefetcht2",decode_m,prefetcht2),
+        [ opt!(rex_prfx), 0x0f, 0x18, rm0 ] = unary("prefetchnta",decode_m,prefetchnta),
+        [ opt!(rex_prfx), 0x0f, 0x18, rm1 ] = unary("prefetcht0",decode_m,prefetcht0),
+        [ opt!(rex_prfx), 0x0f, 0x18, rm2 ] = unary("prefetcht1",decode_m,prefetcht1),
+        [ opt!(rex_prfx), 0x0f, 0x18, rm3 ] = unary("prefetcht2",decode_m,prefetcht2),
 
-        [ 0x0f, 0x0d, rm1 ] = unary("prefetchw",decode_m,prefetchw),
-        [ 0x0f, 0x0d, rm2 ] = unary("prefetchwt1",decode_m,prefetchwt1),
+        [ opt!(rex_prfx), 0x0f, 0x0d, rm1 ] = unary("prefetchw",decode_m,prefetchw),
+        [ opt!(rex_prfx), 0x0f, 0x0d, rm2 ] = unary("prefetchwt1",decode_m,prefetchwt1),
 
         // PSADBW
-        [ 0x0f, 0xf6, rm ] = binary("psadbw",decode_rm,psadbw),
+        [ opt!(rex_prfx), 0x0f, 0xf6, rm ] = binary("psadbw",decode_rm,psadbw),
 
         // PSHUFW
-        [ 0x0f, 0x70, rm, imm8 ] = trinary("pshufw",decode_rmi,pshufw),
+        [ opt!(rex_prfx), 0x0f, 0x70, rm, imm8 ] = trinary("pshufw",decode_rmi,pshufw),
 
         // RCP*S
-        [ 0x0f, 0x53, rm ] = binary("rcpps",decode_rm,rcpps),
-        [ 0xf3, 0x0f, 0x53, rm ] = binary("rcpss",decode_rm,rcpss),
+        [ opt!(rex_prfx), 0x0f, 0x53, rm ] = binary("rcpps",decode_rm,rcpps),
+        [ 0xf3, opt!(rex_prfx), 0x0f, 0x53, rm ] = binary("rcpss",decode_rm,rcpss),
 
         // RSQRT*S
-        [ 0x0f, 0x52, rm ] = binary("rsqrtps",decode_rm,rsqrtps),
-        [ 0xf3, 0x0f, 0x52, rm ] = binary("rsqrtss",decode_rm,rsqrtss),
+        [ opt!(rex_prfx), 0x0f, 0x52, rm ] = binary("rsqrtps",decode_rm,rsqrtps),
+        [ 0xf3, opt!(rex_prfx), 0x0f, 0x52, rm ] = binary("rsqrtss",decode_rm,rsqrtss),
 
         // SFENCE
-        [ 0x0f, 0xae, 0xf8 ] = nonary("sfence",sfence),
+        [ opt!(rex_prfx), 0x0f, 0xae, 0xf8 ] = nonary("sfence",sfence),
 
         // SHUFPS
-        [ 0x0f, 0xc6, rm, imm8 ] = trinary("shufps",decode_rmi,shufps),
+        [ opt!(rex_prfx), 0x0f, 0xc6, rm, imm8 ] = trinary("shufps",decode_rmi,shufps),
 
         // SQRT*S
-        [ 0x0f, 0x51, rm ] = binary("sqrtps",decode_rm,sqrtps),
-        [ 0xf3, 0x0f, 0x51, rm ] = binary("sqrtss",decode_rm,sqrtss),
+        [ opt!(rex_prfx), 0x0f, 0x51, rm ] = binary("sqrtps",decode_rm,sqrtps),
+        [ 0xf3, opt!(rex_prfx), 0x0f, 0x51, rm ] = binary("sqrtss",decode_rm,sqrtss),
 
         // STMXCSR
-        [ 0x0f, 0xae, rm3 ] = unary("stmxcsr",decode_m,stmxcsr),
+        [ opt!(rex_prfx), 0x0f, 0xae, rm3 ] = unary("stmxcsr",decode_m,stmxcsr),
 
         // SUB*S
-        [ 0x0f, 0x5c, rm ] = binary("subps",decode_rm,subps),
-        [ 0xf3, 0x0f, 0x5c, rm ] = binary("subss",decode_rm,subss),
+        [ opt!(rex_prfx), 0x0f, 0x5c, rm ] = binary("subps",decode_rm,subps),
+        [ 0xf3, opt!(rex_prfx), 0x0f, 0x5c, rm ] = binary("subss",decode_rm,subss),
 
         // UCOMISS
-        [ 0x0f, 0x2e, rm ] = binary("ucomiss",decode_rm,ucomiss),
+        [ opt!(rex_prfx), 0x0f, 0x2e, rm ] = binary("ucomiss",decode_rm,ucomiss),
 
         // UNPCK*PS
-        [ 0x0f, 0x15, rm ] = binary("unpckhps",decode_rm,unpckhps),
-        [ 0x0f, 0x14, rm ] = binary("unpcklps",decode_rm,unpcklps),
+        [ opt!(rex_prfx), 0x0f, 0x15, rm ] = binary("unpckhps",decode_rm,unpckhps),
+        [ opt!(rex_prfx), 0x0f, 0x14, rm ] = binary("unpcklps",decode_rm,unpcklps),
 
         // XORPS
-        [ 0x0f, 0x57, rm ] = binary("unpckhps",decode_rm,xorps))
+        [ opt!(rex_prfx), 0x0f, 0x57, rm ] = binary("unpckhps",decode_rm,xorps))
 }
 
 pub fn sse2(rm0: Rc<Disassembler<Amd64>>, rm1: Rc<Disassembler<Amd64>>, rm2: Rc<Disassembler<Amd64>>,
@@ -700,9 +700,13 @@ pub fn sse3(rm: Rc<Disassembler<Amd64>>, imm8: Rc<Disassembler<Amd64>>,
         [       opt!(rex_prfx), 0x0f, 0x38, 0x1e, rm ] = binary("pabsd",decode_rm,pabsd),
         [ 0x66, opt!(rex_prfx), 0x0f, 0x38, 0x1c, rm ] = binary("pabsb",decode_rm,pabsb),
         [ 0x66, opt!(rex_prfx), 0x0f, 0x38, 0x1d, rm ] = binary("pabsw",decode_rm,pabsw),
-        [ 0x66, opt!(rex_prfx), 0x0f, 0x38, 0x1e, rm ] = binary("pabsd",decode_rm,pabsd))
+        [ 0x66, opt!(rex_prfx), 0x0f, 0x38, 0x1e, rm ] = binary("pabsd",decode_rm,pabsd),
 
         // PHADD*
+        [       opt!(rex_prfx), 0x0f, 0x38, 0x01, rm ] = binary("phaddw",decode_rm,phaddw),
+        [       opt!(rex_prfx), 0x0f, 0x38, 0x01, rm ] = binary("phaddw",decode_rm,phaddw),
+        [ 0x66, opt!(rex_prfx), 0x0f, 0x38, 0x02, rm ] = binary("phaddd",decode_rm,phaddd),
+        [ 0x66, opt!(rex_prfx), 0x0f, 0x38, 0x02, rm ] = binary("phaddd",decode_rm,phaddd))
 }
 
 
@@ -711,13 +715,13 @@ pub fn sse4(rm: Rc<Disassembler<Amd64>>, imm8: Rc<Disassembler<Amd64>>,
     new_disassembler!(Amd64 =>
         // BLENDPD
         [ 0x66, opt!(rex_prfx), 0x0f, 0x3a, 0x0c, rm, imm8 ] = trinary("blendpd",decode_rmi,blendpd),
-        [ 0x66, opt!(rex_prfx), 0x0f, 0x38, 0x15, rm ] = trinary("blendpd",decode_rm0,blendps),
 
         // BLENDPS
         [ 0x66, opt!(rex_prfx), 0x0f, 0x3a, 0x0d, rm, imm8 ] = trinary("blendps",decode_rmi,blendps),
-        [ 0x66, opt!(rex_prfx), 0x0f, 0x38, 0x14, rm ] = trinary("blendps",decode_rm0,blendps),
 
-        // XXX: PBLENDVB
+        // BLENDVP*
+        [ 0x66, opt!(rex_prfx), 0x0f, 0x38, 0x14, rm ] = trinary("blendvps",decode_rm0,blendvps),
+        [ 0x66, opt!(rex_prfx), 0x0f, 0x38, 0x15, rm ] = trinary("blendvpd",decode_rm0,blendvpd),
 
         // DPPD
         [ 0x66, opt!(rex_prfx), 0x0f, 0x3a, 0x41, rm, imm8 ] = trinary("dppd",decode_rmi,dppd),
@@ -731,13 +735,23 @@ pub fn sse4(rm: Rc<Disassembler<Amd64>>, imm8: Rc<Disassembler<Amd64>>,
         // INSERTPS
         [ 0x66, opt!(rex_prfx), 0x0f, 0x3a, 0x21, rm, imm8 ] = trinary("insertps",decode_rmi,insertps),
 
+        // MOVNTDQA
+        [ 0x66, opt!(rex_prfx), 0x0f, 0x38, 0x0a, rm ] = binary("movntdqa",decode_rm,movntdqa),
+
         // MPSADBW
         [ 0x66, opt!(rex_prfx), 0x0f, 0x3a, 0x42, rm, imm8 ] = trinary("mpsadbw",decode_rmi,mpsadbw),
 
-        // XXX: MOVNTDQA
+        // PACKUSDW
+        [ 0x66, opt!(rex_prfx), 0x0f, 0x38, 0x2b, rm ] = binary("packusdw",decode_rm,packusdw),
+
+        // PBLENDVB
+        [ 0x66, opt!(rex_prfx), 0x0f, 0x38, 0x10, rm ] = binary("pblendvb",decode_rm,pblendvb),
 
         // PBLENDW
         [ 0x66, opt!(rex_prfx), 0x0f, 0x3a, 0x0e, rm, imm8 ] = trinary("pblendbw",decode_rmi,pblendbw),
+
+        // PCMPEQQ
+        [ 0x66, opt!(rex_prfx), 0x0f, 0x38, 0x29, rm ] = binary("pcmpeqq",decode_rm,pcmpeqq),
 
         // PCMPESTRI
         [ 0x66, opt!(rex_prfx), 0x0f, 0x3a, 0x61, rm, imm8 ] = trinary("pcmpestri",decode_rmi,pcmpestri),
@@ -772,6 +786,46 @@ pub fn sse4(rm: Rc<Disassembler<Amd64>>, imm8: Rc<Disassembler<Amd64>>,
         // PINSRQ
         [ 0x66, opt!(rexw_prfx), 0x0f, 0x3a, 0x22, rm, imm8 ] = trinary("pinsrq",decode_rmi,pinsrq),
 
+        // PHMINPUSUW
+        [ 0x66, opt!(rex_prfx), 0x0f, 0x38, 0x41, rm ] = binary("phminpusuw",decode_rm,phminpushuw),
+
+        // PMAX*
+        [ 0x66, opt!(rex_prfx), 0x0f, 0x38, 0x3c, rm ] = binary("pmaxsb",decode_rm,pmaxsb),
+        [ 0x66, opt!(rex_prfx), 0x0f, 0x38, 0x3d, rm ] = binary("pmaxsd",decode_rm,pmaxsd),
+        [ 0x66, opt!(rex_prfx), 0x0f, 0x38, 0x3e, rm ] = binary("pmaxuw",decode_rm,pmaxuw),
+        [ 0x66, opt!(rex_prfx), 0x0f, 0x38, 0x3f, rm ] = binary("pmaxud",decode_rm,pmaxud),
+
+        // PMIN*
+        [ 0x66, opt!(rex_prfx), 0x0f, 0x38, 0x38, rm ] = binary("pminsb",decode_rm,pminsb),
+        [ 0x66, opt!(rex_prfx), 0x0f, 0x38, 0x39, rm ] = binary("pminsd",decode_rm,pminsd),
+        [ 0x66, opt!(rex_prfx), 0x0f, 0x38, 0x3a, rm ] = binary("pminuw",decode_rm,pminuw),
+        [ 0x66, opt!(rex_prfx), 0x0f, 0x38, 0x3b, rm ] = binary("pminud",decode_rm,pminud),
+
+        // PMOVSX
+        [ 0x66, opt!(rex_prfx), 0x0f, 0x38, 0x20, rm ] = binary("pmovsx",decode_rm,pmovsx),
+        [ 0x66, opt!(rex_prfx), 0x0f, 0x38, 0x21, rm ] = binary("pmovsx",decode_rm,pmovsx),
+        [ 0x66, opt!(rex_prfx), 0x0f, 0x38, 0x22, rm ] = binary("pmovsx",decode_rm,pmovsx),
+        [ 0x66, opt!(rex_prfx), 0x0f, 0x38, 0x23, rm ] = binary("pmovsx",decode_rm,pmovsx),
+        [ 0x66, opt!(rex_prfx), 0x0f, 0x38, 0x24, rm ] = binary("pmovsx",decode_rm,pmovsx),
+        [ 0x66, opt!(rex_prfx), 0x0f, 0x38, 0x25, rm ] = binary("pmovsx",decode_rm,pmovsx),
+
+        // PMOVZX
+        [ 0x66, opt!(rex_prfx), 0x0f, 0x38, 0x30, rm ] = binary("pmovzx",decode_rm,pmovzx),
+        [ 0x66, opt!(rex_prfx), 0x0f, 0x38, 0x31, rm ] = binary("pmovzx",decode_rm,pmovzx),
+        [ 0x66, opt!(rex_prfx), 0x0f, 0x38, 0x32, rm ] = binary("pmovzx",decode_rm,pmovzx),
+        [ 0x66, opt!(rex_prfx), 0x0f, 0x38, 0x33, rm ] = binary("pmovzx",decode_rm,pmovzx),
+        [ 0x66, opt!(rex_prfx), 0x0f, 0x38, 0x34, rm ] = binary("pmovzx",decode_rm,pmovzx),
+        [ 0x66, opt!(rex_prfx), 0x0f, 0x38, 0x35, rm ] = binary("pmovzx",decode_rm,pmovzx),
+
+        // PMULDQ
+        [ 0x66, opt!(rex_prfx), 0x0f, 0x38, 0x28, rm ] = binary("pmuldq",decode_rm,pmuldq),
+
+        // PMULLD
+        [ 0x66, opt!(rex_prfx), 0x0f, 0x38, 0x40, rm ] = binary("pmuldq",decode_rm,pmulld),
+
+        // PTEST
+        [ 0x66, opt!(rex_prfx), 0x0f, 0x38, 0x17, rm ] = binary("ptest",decode_rm,ptest),
+
         // ROUNDPD
         [ 0x66, opt!(rexw_prfx), 0x0f, 0x3a, 0x09, rm, imm8 ] = trinary("roundpd",decode_rmi,roundpd),
 
@@ -785,622 +839,637 @@ pub fn sse4(rm: Rc<Disassembler<Amd64>>, imm8: Rc<Disassembler<Amd64>>,
         [ 0x66, opt!(rexw_prfx), 0x0f, 0x3a, 0x0a, rm, imm8 ] = trinary("roundpd",decode_rmi,roundss))
 }
 
-pub fn avx(vex_prfx: Rc<Disassembler<Amd64>>, rm: Rc<Disassembler<Amd64>>) -> Rc<Disassembler<Amd64>> {
+pub fn avx(vex_0f_prfx: Rc<Disassembler<Amd64>>, vex_660f_prfx: Rc<Disassembler<Amd64>>,
+           vex_f20f_prfx: Rc<Disassembler<Amd64>>, vex_f30f_prfx: Rc<Disassembler<Amd64>>,
+           vex_0f38_prfx: Rc<Disassembler<Amd64>>, vex_660f38_prfx: Rc<Disassembler<Amd64>>,
+           vex_f20f38_prfx: Rc<Disassembler<Amd64>>, vex_f30f38_prfx: Rc<Disassembler<Amd64>>,
+           vex_0f3a_prfx: Rc<Disassembler<Amd64>>, vex_660f3a_prfx: Rc<Disassembler<Amd64>>,
+           vex_f20f3a_prfx: Rc<Disassembler<Amd64>>, vex_f30f3a_prfx: Rc<Disassembler<Amd64>>,
+           rm: Rc<Disassembler<Amd64>>,
+           rm0: Rc<Disassembler<Amd64>>, rm1: Rc<Disassembler<Amd64>>, rm2: Rc<Disassembler<Amd64>>,
+           rm3: Rc<Disassembler<Amd64>>, rm4: Rc<Disassembler<Amd64>>, rm5: Rc<Disassembler<Amd64>>,
+           rm6: Rc<Disassembler<Amd64>>, rm7: Rc<Disassembler<Amd64>>,
+           imm8: Rc<Disassembler<Amd64>>, is4: Rc<Disassembler<Amd64>>) -> Rc<Disassembler<Amd64>> {
     new_disassembler!(Amd64 =>
         // VADD*
-        [ vex_prfx, 0x66, 0x0f, 0x58, rm ] = trinary("vaddpd",decode_rvm,vaddpd),
-        [ vex_prfx, 0x0f, 0x58, rm ] = trinary("vaddps",decode_rvm,vaddps),
-        [ vex_prfx, 0xf2, 0x0f, 0x58, rm ] = trinary("vaddsd",decode_rvm,vaddsd),
-        [ vex_prfx, 0xf3, 0x0f, 0x58, rm ] = trinary("vaddss",decode_rvm,vaddss),
+        [ vex_660f_prfx, 0x58, rm ] = trinary("vaddpd",decode_rvm,vaddpd),
+        [ vex_0f_prfx, 0x58, rm ] = trinary("vaddps",decode_rvm,vaddps),
+        [ vex_f20f_prfx, 0x58, rm ] = trinary("vaddsd",decode_rvm,vaddsd),
+        [ vex_f30f_prfx, 0x58, rm ] = trinary("vaddss",decode_rvm,vaddss),
 
         // VADDSUBP*
-        [ vec_prfx, 0x66, 0x0f, 0xd0, rm ] = trinary("vaddsubpd",decode_rvm,vaddsubpd),
-        [ vec_prfx, 0xf2, 0x0f, 0xd0, rm ] = trinary("vaddsubps",decode_rvm,vaddsubps),
+        [ vex_660f_prfx, 0xd0, rm ] = trinary("vaddsubpd",decode_rvm,vaddsubpd),
+        [ vex_f20f_prfx, 0xd0, rm ] = trinary("vaddsubps",decode_rvm,vaddsubps),
 
         // VAES*
-        [ vec_prfx, 0x66, 0x0f, 0x38, 0xde, rm ] = trinary("vaesdec",decode_rvm,vaesdec),
-        [ vec_prfx, 0x66, 0x0f, 0x38, 0xdf, rm ] = trinary("vaesdeclast",decode_rvm,vaesdeclast),
-        [ vec_prfx, 0x66, 0x0f, 0x38, 0xdc, rm ] = trinary("vaesenc",decode_rvm,vaesenc),
-        [ vec_prfx, 0x66, 0x0f, 0x38, 0xdd, rm ] = trinary("vaesenclast",decode_rvm,vaesenclast),
-        [ vec_prfx, 0x66, 0x0f, 0x38, 0xdb, rm ] = trinary("vaesimc",decode_rvm,vaesimc),
-        [ vec_prfx, 0x66, 0x0f, 0x3a, 0xdf, rm ] = trinary("vaeskeygenassist",decode_rvm,vaeskeygenassist),
+        [ vex_660f38_prfx, 0xde, rm ] = trinary("vaesdec",decode_rvm,vaesdec),
+        [ vex_660f38_prfx, 0xdf, rm ] = trinary("vaesdeclast",decode_rvm,vaesdeclast),
+        [ vex_660f38_prfx, 0xdc, rm ] = trinary("vaesenc",decode_rvm,vaesenc),
+        [ vex_660f38_prfx, 0xdd, rm ] = trinary("vaesenclast",decode_rvm,vaesenclast),
+        [ vex_660f38_prfx, 0xdb, rm ] = trinary("vaesimc",decode_rvm,vaesimc),
+        [ vex_660f3a_prfx, 0xdf, rm ] = trinary("vaeskeygenassist",decode_rvm,vaeskeygenassist),
 
         // VANDP*
-        [ vec_prfx, 0x66, 0x0f, 0x54, rm ] = trinary("vandpd",decode_rvm,vandpd),
-        [ vec_prfx, 0x0f, 0x54, rm ] = trinary("vandps",decode_rvm,vandps),
+        [ vex_660f_prfx, 0x54, rm ] = trinary("vandpd",decode_rvm,vandpd),
+        [ vex_0f_prfx, 0x54, rm ] = trinary("vandps",decode_rvm,vandps),
 
         // VANDNP*
-        [ vec_prfx, 0x66, 0x0f, 0x55, rm ] = trinary("vandnpd",decode_rvm,vandnpd),
-        [ vec_prfx, 0x0f, 0x55, rm ] = trinary("vandnps",decode_rvm,vandnps),
+        [ vex_660f_prfx, 0x55, rm ] = trinary("vandnpd",decode_rvm,vandnpd),
+        [ vex_0f_prfx, 0x55, rm ] = trinary("vandnps",decode_rvm,vandnps),
 
         // VBLENDPD
-        [ vec_prfx, 0x66, 0x0f, 0x3a, 0x0d, rm, imm8 ] = quintary("vblendpd",decode_rvmi,vblendpd),
-        [ vec_prfx, 0x0f, 0x3a, 0x0d, rm, imm8 ] = quintary("vblendpd",decode_rvmi,vblendpd),
+        [ vex_660f3a_prfx, 0x0d, rm, imm8 ] = quinary("vblendpd",decode_rvmi,vblendpd),
+        [ vex_0f3a_prfx, 0x0d, rm, imm8 ] = quinary("vblendpd",decode_rvmi,vblendpd),
 
-        // BEXTR
-        [ vec_prfx, 0x0f, 0x38, 0xf7, rm ] = trinary("bextr",decode_rvm,vandps),
+        // VBEXTR
+        [ vex_0f38_prfx, 0xf7, rm ] = trinary("vbextr",decode_rvm,vandps),
 
         // VBLENDPS
-        [ vec_prfx, 0x66, 0x0f, 0x3a, 0x0c, rm, imm8 ] = quintary("vblendps",decode_rvmi,vblendps),
-        [ vec_prfx, 0x0f, 0x3a, 0x0c, rm, imm8 ] = quintary("vblendps",decode_rvmi,vblendps),
+        [ vex_660f3a_prfx, 0x0c, rm, imm8 ] = quinary("vblendps",decode_rvmi,vblendps),
+        [ vex_0f3a_prfx, 0x0c, rm, imm8 ] = quinary("vblendps",decode_rvmi,vblendps),
 
         // VBLENDVP*
-        [ vec_prfx, 0x66, 0x0f, 0x3a, 0x4b, rm, is4 ] = quintary("vblendvpd",decode_rvmr,vblendvpd),
-        [ vec_prfx, 0x66, 0x0f, 0x3a, 0x4a, rm, is4 ] = quintary("vblendvps",decode_rvmr,vblendvps),
+        [ vex_660f3a_prfx, 0x4b, rm, is4 ] = quinary("vblendvpd",decode_rvmr,vblendvpd),
+        [ vex_660f3a_prfx, 0x4a, rm, is4 ] = quinary("vblendvps",decode_rvmr,vblendvps),
 
         // VCMPP*
-        [ vec_prfx, 0x66, 0x0f, 0xc2, rm, imm8 ] = quintary("vcmppd",decode_rvmi,vcmppd),
-        [ vec_prfx, 0x0f, 0xc2, rm, imm8 ] = quintary("vcmpps",decode_rvmi,vcmpps),
+        [ vex_660f_prfx, 0xc2, rm, imm8 ] = quinary("vcmppd",decode_rvmi,vcmppd),
+        [ vex_0f_prfx, 0xc2, rm, imm8 ] = quinary("vcmpps",decode_rvmi,vcmpps),
 
         // VCMPS*
-        [ vec_prfx, 0xf2, 0x0f, 0xc2, rm, imm8 ] = quintary("vcmpsd",decode_rvmi,vcmpsd),
-        [ vec_prfx, 0xf3, 0x0f, 0xc2, rm, imm8 ] = quintary("vcmpss",decode_rvmi,vcmpss),
+        [ vex_f20f_prfx, 0xc2, rm, imm8 ] = quinary("vcmpsd",decode_rvmi,vcmpsd),
+        [ vex_f30f_prfx, 0xc2, rm, imm8 ] = quinary("vcmpss",decode_rvmi,vcmpss),
 
         // VCOMIS*
-        [ vec_prfx, 0x66, 0x0f, 0x2f, rm ] = binary("vcomisd",decode_rm,vcomisd),
-        [ vec_prfx, 0x0f, 0x2f, rm ] = binary("vcomiss",decode_rm,vcomiss),
+        [ vex_660f_prfx, 0x2f, rm ] = binary("vcomisd",decode_rm,vcomisd),
+        [ vex_0f_prfx, 0x2f, rm ] = binary("vcomiss",decode_rm,vcomiss),
 
         // VCVTDQ2PD
-        [ vex_prfx, 0xf3, 0x0f, 0xe6, rm ] = binary("vcvtdq2pd",decode_rm,vcvtdq2pd),
+        [ vex_f30f_prfx, 0xe6, rm ] = binary("vcvtdq2pd",decode_rm,vcvtdq2pd),
 
         // VCVTDQ2PS
-        [ vex_prfx, 0x0f, 0x5b, rm ] = binary("vcvtdq2ps",decode_rm,vcvtdq2ps),
+        [ vex_0f_prfx, 0x5b, rm ] = binary("vcvtdq2ps",decode_rm,vcvtdq2ps),
 
         // VCVTPD2DQ
-        [ vex_prfx, 0xf2, 0x0f, 0xe6, rm ] = binary("vcvtdq2pd",decode_rm,vcvtpd2dq),
+        [ vex_f20f_prfx, 0xe6, rm ] = binary("vcvtdq2pd",decode_rm,vcvtpd2dq),
 
         // VCVTPD2PS
-        [ vex_prfx, 0x66, 0x0f, 0x5a, rm ] = binary("vcvtpd2ps",decode_rm,vcvtpd2ps),
+        [ vex_660f_prfx, 0x5a, rm ] = binary("vcvtpd2ps",decode_rm,vcvtpd2ps),
 
         // VCVTPS2DQ
-        [ vex_prfx, 0x66, 0x0f, 0x5b, rm ] = binary("vcvtps2dq",decode_rm,vcvtps2dq),
+        [ vex_660f_prfx, 0x5b, rm ] = binary("vcvtps2dq",decode_rm,vcvtps2dq),
 
         // VCVTPS2PD
-        [ vex_prfx, 0x0f, 0x5a, rm ] = binary("vcvtps2pd",decode_rm,vcvtps2pd),
+        [ vex_0f_prfx, 0x5a, rm ] = binary("vcvtps2pd",decode_rm,vcvtps2pd),
 
         // VCVTSD2SI
-        [ vex_prfx, 0xf2, 0x0f, 0x2d, rm ] = binary("vcvtsd2si",decode_rm,vcvtsd2si),
+        [ vex_f20f_prfx, 0x2d, rm ] = binary("vcvtsd2si",decode_rm,vcvtsd2si),
 
         // VCVTSD2SS
-        [ vex_prfx, 0xf2, 0x0f, 0x5a, rm ] = binary("vcvtsd2ss",decode_rm,vcvtsd2ss),
+        [ vex_f20f_prfx, 0x5a, rm ] = trinary("vcvtsd2ss",decode_rvm,vcvtsd2ss),
 
         // VCVTSI2SD
-        [ vex_prfx, 0xf2, 0x0f, 0x2a, rm ] = binary("vcvtsi2sd",decode_rm,vcvtsi2sd),
+        [ vex_f20f_prfx, 0x2a, rm ] = trinary("vcvtsi2sd",decode_rvm,vcvtsi2sd),
 
         // VCVTSS2SD
-        [ vex_prfx, 0xf3, 0x0f, 0x5a, rm ] = binary("vcvtss2sd",decode_rm,vcvtss2sd),
+        [ vex_f30f_prfx, 0x5a, rm ] = trinary("vcvtss2sd",decode_rvm,vcvtss2sd),
 
-        //si2sd
-        //si2ss
-        //ss2sd
-        //ss2si
+        // VCVTSI2SD
+        [ vex_f20f_prfx, 0x2a, rm ] = trinary("vcvtsi2sd",decode_rvm,vcvtsi2sd),
+
+        // VCVTSI2SS
+        [ vex_f30f_prfx, 0x2a, rm ] = trinary("vcvtsi2ss",decode_rvm,vcvtsi2ss),
+
+        // VCVTSS2SI
+        [ vex_f20f_prfx, 0x2a, rm ] = trinary("vcvtsi2sd",decode_rvm,vcvtsi2sd),
 
         // VCVTTPD2DQ
-        [ vex_prfx, 0x66, 0x0f, 0xe6, rm ] = binary("vcvttpd2dq",decode_rm,vcvttpd2dq),
+        [ vex_660f_prfx, 0xe6, rm ] = binary("vcvttpd2dq",decode_rm,vcvttpd2dq),
 
         // VCVTTPS2DQ
-        [ vex_prfx, 0xf3, 0x0f, 0x5b, rm ] = binary("vcvttps2dq",decode_rm,vcvttps2dq),
+        [ vex_f30f_prfx, 0x5b, rm ] = binary("vcvttps2dq",decode_rm,vcvttps2dq),
 
         // VCVTTSD2SI
-        [ vex_prfx, 0xf2, 0x0f, 0x2c, rm ] = binary("vcvttsd2si",decode_rm,vcvttsd2si),
+        [ vex_f20f_prfx, 0x2c, rm ] = binary("vcvttsd2si",decode_rm,vcvttsd2si),
 
-        //tss2si
+        // VCVTTSS2SI
+        [ vex_f30f_prfx, 0x2c, rm ] = binary("vcvttsd2si",decode_rm,vcvttss2si),
 
         // VDIV*
-        [ vex_prfx, 0x0f, 0x5e, rm ] = trinary("vdivps",decode_rmv,vdivps),
-        [ vex_prfx, 0x66, 0x0f, 0x5e, rm ] = trinary("vdivpd",decode_rmv,vdivpd),
-        [ vex_prfx, 0xf3, 0x0f, 0x5e, rm ] = trinary("vdivss",decode_rmv,vdivss),
-        [ vex_prfx, 0xf2, 0x0f, 0x5e, rm ] = trinary("vdivsd",decode_rmv,vdivsd),
+        [ vex_0f_prfx, 0x5e, rm ] = trinary("vdivps",decode_rmv,vdivps),
+        [ vex_660f_prfx, 0x5e, rm ] = trinary("vdivpd",decode_rmv,vdivpd),
+        [ vex_f30f_prfx, 0x5e, rm ] = trinary("vdivss",decode_rmv,vdivss),
+        [ vex_f20f_prfx, 0x5e, rm ] = trinary("vdivsd",decode_rmv,vdivsd),
 
         // VDPPD
-        [ vex_prfx, 0x66, 0x0f, 0x3a, 0x41, rm, imm8 ] = quintary("dppd",decode_vrmi,vdppd),
+        [ vex_660f3a_prfx, 0x41, rm, imm8 ] = quinary("vdppd",decode_vrmi,vdppd),
 
         // VDPPS
-        [ vex_prfx, 0x66, 0x0f, 0x3a, 0x40, rm, imm8 ] = quintary("dpps",decode_vrmi,vdpps),
+        [ vex_660f3a_prfx, 0x40, rm, imm8 ] = quinary("vdpps",decode_vrmi,vdpps),
 
         // VEXTRACTPS
-        [ vex_prfx, 0x66, 0x0f, 0x3a, 0x17, rm, imm8 ] = quintary("extractps",decode_vrmi,vextractps),
+        [ vex_660f3a_prfx, 0x17, rm, imm8 ] = quinary("vextractps",decode_vrmi,vextractps),
 
         // VHADDPD
-        [ vex_prfx, 0x66, 0x0f, 0x7c, rm ] = trinary("vhaddpd",decode_rvm,vhaddpd),
+        [ vex_660f_prfx, 0x7c, rm ] = trinary("vhaddpd",decode_rvm,vhaddpd),
 
         // VHADDPS
-        [ vex_prfx, 0xf2, 0x0f, 0x7c, rm ] = trinary("vhaddps",decode_rvm,vhaddps),
+        [ vex_f20f_prfx, 0x7c, rm ] = trinary("vhaddps",decode_rvm,vhaddps),
 
         // VHSUBPD
-        [ vex_prfx, 0x66, 0x0f, 0x7d, rm ] = trinary("vhsubpd",decode_rvm,vhsubpd),
+        [ vex_660f_prfx, 0x7d, rm ] = trinary("vhsubpd",decode_rvm,vhsubpd),
 
         // VHSUBPS
-        [ vex_prfx, 0xf2, 0x0f, 0x7d, rm ] = trinary("vhsubps",decode_rvm,vhsubps),
+        [ vex_f20f_prfx, 0x7d, rm ] = trinary("vhsubps",decode_rvm,vhsubps),
 
         // VINSERTPS
-        [ vex_prfx, 0x66, 0x0f, 0x3a, 0x21, rm, imm8 ] = quintary("insertps",decode_vrmi,vinsertps),
+        [ vex_660f3a_prfx, 0x21, rm, imm8 ] = quinary("vinsertps",decode_vrmi,vinsertps),
 
         // VLDDQU
-        [ vex_prefx, 0xf2, 0x0f, 0xf0, rm ] = binary("vlddqu",decode_rm,vlddqu),
+        [ vex_f20f_prfx, 0xf0, rm ] = binary("vlddqu",decode_rm,vlddqu),
 
         // VLDMXCSR
-        [ vex_prefx, 0x0f, 0xae, rm2 ] = unary("vldmxcsr",decode_m,ldmxcsr),
+        [ vex_0f_prfx, 0xae, rm2 ] = unary("vldmxcsr",decode_m,vldmxcsr),
 
-        // MASKMOVDQU
-        [ vex_prfx, 0x66, 0x0f, 0xf7, rm ] = binary("maskmovdqu",decode_rm,maskmovdqu),
+        // VMASKMOVDQU
+        [ vex_660f_prfx, 0xf7, rm ] = binary("vmaskmovdqu",decode_rm,maskmovdqu),
 
         // VMAX*
-        [ vex_prfx, 0x66, 0x0f, 0x5f, rm ] = trinary("vmaxpd",decode_rvm,vmaxpd),
-        [ vex_prfx, 0xf2, 0x0f, 0x5f, rm ] = trinary("vmaxsd",decode_rvm,vmaxsd),
-        [ vex_prfx, 0x0f, 0x5f, rm       ] = trinary("vmaxps",decode_rvm,vmaxps),
-        [ vex_prfx, 0xf3, 0x0f, 0x5f, rm ] = trinary("vmaxss",decode_rvm,vmaxss),
+        [ vex_660f_prfx, 0x5f, rm ] = trinary("vmaxpd",decode_rvm,vmaxpd),
+        [ vex_f20f_prfx, 0x5f, rm ] = trinary("vmaxsd",decode_rvm,vmaxsd),
+        [ vex_0f_prfx, 0x5f, rm       ] = trinary("vmaxps",decode_rvm,vmaxps),
+        [ vex_f30f_prfx, 0x5f, rm ] = trinary("vmaxss",decode_rvm,vmaxss),
 
         // VMIN*
-        [ vex_prfx, 0x66, 0x0f, 0x5d, rm ] = trinary("vminpd",decode_rvm,vminpd),
-        [ vex_prfx, 0xf2, 0x0f, 0x5d, rm ] = trinary("vminsd",decode_rvm,vminsd),
-        [ vex_prfx, 0x0f, 0x5d, rm       ] = trinary("vminps",decode_rvm,vminps),
-        [ vex_prfx, 0xf3, 0x0f, 0x5d, rm ] = trinary("vminss",decode_rvm,vminss),
+        [ vex_660f_prfx, 0x5d, rm ] = trinary("vminpd",decode_rvm,vminpd),
+        [ vex_f20f_prfx, 0x5d, rm ] = trinary("vminsd",decode_rvm,vminsd),
+        [ vex_0f_prfx, 0x5d, rm       ] = trinary("vminps",decode_rvm,vminps),
+        [ vex_f30f_prfx, 0x5d, rm ] = trinary("vminss",decode_rvm,vminss),
 
-        // MOVAPD
-        [ vex_prfx, 0x66, 0x0f, 0x28, rm ] = binary("movapd",decode_rm,movapd),
-        [ vex_prfx, 0x66, 0x0f, 0x29, rm ] = binary("movapd",decode_mr,movapd),
+        // VMOVAPD
+        [ vex_660f_prfx, 0x28, rm ] = binary("vmovapd",decode_rm,movapd),
+        [ vex_660f_prfx, 0x29, rm ] = binary("vmovapd",decode_mr,movapd),
 
-        // MOVAPS
-        [ vex_prfx, 0x0f, 0x28, rm ] = binary("movaps",decode_rm,movaps),
-        [ vex_prfx, 0x0f, 0x29, rm ] = binary("movaps",decode_mr,movaps),
+        // VMOVAPS
+        [ vex_0f_prfx, 0x28, rm ] = binary("vmovaps",decode_rm,movaps),
+        [ vex_0f_prfx, 0x29, rm ] = binary("vmovaps",decode_mr,movaps),
 
-        // MOVD
-        [ vex_prfx, 0x66, 0x0f, 0x6e, rm ] = binary("movd",decode_rm,movd),
-        [ vex_prfx, 0x66, 0x0f, 0x7e, rm ] = binary("movd",decode_mr,movd),
+        // VMOVD
+        [ vex_660f_prfx, 0x6e, rm ] = binary("vmovd",decode_rm,movd),
+        [ vex_660f_prfx, 0x7e, rm ] = binary("vmovd",decode_mr,movd),
 
-        // MOVDDUP
-        [ vex_prfx, 0xf2, 0x0f, 0x12, rm ] = binary("movddup",decode_rm,movddup),
+        // VMOVDDUP
+        [ vex_f20f_prfx, 0x12, rm ] = binary("vmovddup",decode_rm,movddup),
 
-        // MOVDQA
-        [ vex_prfx, 0x66, 0x0f, 0x6f, rm ] = binary("movdqa",decode_rm,movdaq),
-        [ vex_prfx, 0x66, 0x0f, 0x7f, rm ] = binary("movdqa",decode_mr,movdqa),
+        // VMOVDQA
+        [ vex_660f_prfx, 0x6f, rm ] = binary("vmovdqa",decode_rm,movdaq),
+        [ vex_660f_prfx, 0x7f, rm ] = binary("vmovdqa",decode_mr,movdqa),
 
-        // MOVDQU
-        [ vex_prfx, 0xf3, 0x0f, 0x6f, rm ] = binary("movdqu",decode_rm,movdqu),
-        [ vex_prfx, 0xf3, 0x0f, 0x7f, rm ] = binary("movdqu",decode_mr,movdqu),
-
-        // MOVHPS
-        [ vex_prfx, 0x0f, 0x16, rm ] = binary("minhps",decode_rm,minhps),
-        [ vex_prfx, 0x0f, 0x17, rm ] = binary("minhps",decode_mr,minhps),
-
-        // VMOVHPD
-        [ vex_prfx, 0x66, 0x0f, 0x16, rm ] = trinary("vmovhpd",decode_rvm,vmovhpd),
-        [ vex_prfx, 0x66, 0x0f, 0x17, rm ] = binary("vmovhpd",decode_mr,movhpd),
+        // VMOVDQU
+        [ vex_f30f_prfx, 0x6f, rm ] = binary("vmovdqu",decode_rm,movdqu),
+        [ vex_f30f_prfx, 0x7f, rm ] = binary("vmovdqu",decode_mr,movdqu),
 
         // VMOVHPS
-        [ vex_prfx, 0x0f, 0x16, rm ] = trinary("vmovhps",decode_rvm,vmovhps),
-        [ vex_prfx, 0x0f, 0x17, rm ] = binary("vmovhps",decode_mr,movhps),
+        [ vex_0f_prfx, 0x16, rm ] = binary("vminhps",decode_rm,minhps),
+        [ vex_0f_prfx, 0x17, rm ] = binary("vminhps",decode_mr,minhps),
+
+        // VMOVHPD
+        [ vex_660f_prfx, 0x16, rm ] = trinary("vmovhpd",decode_rvm,vmovhpd),
+        [ vex_660f_prfx, 0x17, rm ] = binary("vmovhpd",decode_mr,movhpd),
+
+        // VMOVHPS
+        [ vex_0f_prfx, 0x16, rm ] = trinary("vmovhps",decode_rvm,vmovhps),
+        [ vex_0f_prfx, 0x17, rm ] = binary("vmovhps",decode_mr,movhps),
 
         // VMOVLPD
-        [ vex_prfx, 0x66, 0x0f, 0x12, rm ] = trinary("vmovlpd",decode_rvm,vmovlpd),
-        [ vex_prfx, 0x66, 0x0f, 0x13, rm ] = binary("movlpd",decode_mr,movlpd),
+        [ vex_660f_prfx, 0x12, rm ] = trinary("vmovlpd",decode_rvm,vmovlpd),
+        [ vex_660f_prfx, 0x13, rm ] = binary("vmovlpd",decode_mr,movlpd),
 
         // VMOVLPS
-        [ vex_prfx, 0x0f, 0x12, rm ] = trinary("vmovlps",decode_rvm,vmovlps),
-        [ vex_prfx, 0x0f, 0x13, rm ] = binary("movlps",decode_mr,movlps),
+        [ vex_0f_prfx, 0x12, rm ] = trinary("vmovlps",decode_rvm,vmovlps),
+        [ vex_0f_prfx, 0x13, rm ] = binary("vmovlps",decode_mr,movlps),
 
-        // MOVMSKPD
-        [ vex_prfx, 0x66, 0x0f, 0x50, rm ] = binary("movmskpd",decode_rm,movmskpd),
+        // VMOVMSKPD
+        [ vex_660f_prfx, 0x50, rm ] = binary("vmovmskpd",decode_rm,movmskpd),
 
-        // MOVMSKPS
-        [ vex_prfx, 0x0f, 0x50, rm ] = binary("movmskps",decode_rm,movmskps),
+        // VMOVMSKPS
+        [ vex_0f_prfx, 0x50, rm ] = binary("vmovmskps",decode_rm,movmskps),
 
-        // MOVNTQA
-        [ vex_prfx, 0x66, 0x0f, 0x38, 0x2a, rm ] = binary("movntqa",decode_rm,movntdqa),
+        // VMOVNTQA
+        [ vex_660f38_prfx, 0x2a, rm ] = binary("vmovntqa",decode_rm,movntdqa),
 
-        // MOVNTDQ
-        [ vex_prfx, 0x0f, 0xe7, rm ] = binary("movntq",decode_mr,movntq),
+        // VMOVNTDQ
+        [ vex_660f_prfx, 0xe7, rm ] = binary("vmovntq",decode_mr,movntq),
 
-        // MOVNTP*
-        [ vex_prfx, 0x66, 0x0f, 0x2b, rm ] = binary("movntpd",decode_mr,movntpd),
-        [ vex_prfx, 0x0f, 0x2b, rm ] = binary("movntps",decode_mr,movntps),
+        // VMOVNTP*
+        [ vex_660f_prfx, 0x2b, rm ] = binary("vmovntpd",decode_mr,movntpd),
+        [ vex_0f_prfx, 0x2b, rm ] = binary("vmovntps",decode_mr,movntps),
 
-        // MOVDQ2Q
-        [ vex_prfx, 0xf2, 0x0f, 0xd6, rm ] = binary("movdq2q",decode_rm,movdq2q),
+        // VMOVDQ2Q
+        [ vex_f20f_prfx, 0xd6, rm ] = binary("vmovdq2q",decode_rm,movdq2q),
 
-        // MOVHPD
-        [ vex_prfx, 0x66, 0x0f, 0x16, rm ] = binary("movhpd",decode_rm,movhpd),
-        [ vex_prfx, 0x66, 0x0f, 0x17, rm ] = binary("movhpd",decode_mr,movhpd),
+        // VMOVHPD
+        [ vex_660f_prfx, 0x16, rm ] = binary("vmovhpd",decode_rm,movhpd),
+        [ vex_660f_prfx, 0x17, rm ] = binary("vmovhpd",decode_mr,movhpd),
 
-        // MOVQ
-        [ vex_prfx, 0xf3, 0x0f, 0x7e, rm ] = binary("movq",decode_rm,movq),
-        [ vex_prfx, 0x66, 0x0f, 0xd6, rm ] = binary("movq",decode_mr,movq),
+        // VMOVQ
+        [ vex_f30f_prfx, 0x7e, rm ] = binary("vmovq",decode_rm,movq),
+        [ vex_660f_prfx, 0xd6, rm ] = binary("vmovq",decode_mr,movq),
 
         // VMOVSD
-        [ vex_prfx, 0xf2, 0x0f, 0x10, rm ] = binary("vmovsd",decode_rvm,vmovsd),
-        [ vex_prfx, 0xf2, 0x0f, 0x11, rm ] = binary("vmovsd",decode_mvr,vmovsd),
+        [ vex_f20f_prfx, 0x10, rm ] = trinary("vmovsd",decode_rvm,vmovsd),
+        [ vex_f20f_prfx, 0x11, rm ] = trinary("vmovsd",decode_mvr,vmovsd),
 
-        // MOVSHDUP
-        [ vex_prfx, 0xf3, 0x0f, 0x16, rm ] = binary("movshdup",decode_rm,movshdup),
+        // VMOVSHDUP
+        [ vex_f30f_prfx, 0x16, rm ] = binary("vmovshdup",decode_rm,movshdup),
 
-        // MUVSLDUP
-        [ vex_prfx, 0xf3, 0x0f, 0x12, rm ] = binary("movsldup",decode_rm,movsldup),
+        // VMUVSLDUP
+        [ vex_f30f_prfx, 0x12, rm ] = binary("vmovsldup",decode_rm,movsldup),
 
         // VMOVSS
-        [ vex_prfx, 0xf3, 0x0f, 0x10, rm ] = binary("vmovss",decode_rvm,vmovss),
-        [ vex_prfx, 0xf3, 0x0f, 0x11, rm ] = binary("vmovss",decode_mvr,vmovss),
+        [ vex_f30f_prfx, 0x10, rm ] = trinary("vmovss",decode_rvm,vmovss),
+        [ vex_f30f_prfx, 0x11, rm ] = trinary("vmovss",decode_mvr,vmovss),
 
-        // MOVUPD
-        [ vex_prfx, 0x66, 0x0f, 0x10, rm ] = binary("movupd",decode_rm,movupd),
-        [ vex_prfx, 0x66, 0x0f, 0x11, rm ] = binary("movupd",decode_mr,movupd),
+        // VMOVUPD
+        [ vex_660f_prfx, 0x10, rm ] = binary("vmovupd",decode_rm,movupd),
+        [ vex_660f_prfx, 0x11, rm ] = binary("vmovupd",decode_mr,movupd),
 
-        // MOVUPS
-        [ vex_prfx, 0x0f, 0x10, rm ] = binary("movups",decode_rm,movups),
-        [ vex_prfx, 0x0f, 0x11, rm ] = binary("movups",decode_mr,movups),
+        // VMOVUPS
+        [ vex_0f_prfx, 0x10, rm ] = binary("vmovups",decode_rm,movups),
+        [ vex_0f_prfx, 0x11, rm ] = binary("vmovups",decode_mr,movups),
 
-        // MPSADBW
-        [ vex_prfx, 0x66, 0x0f, 0x3a, 0x42, rm, imm8 ] = quintary("mpsadbw",decode_vrmi,vmpsadbw),
+        // VMPSADBW
+        [ vex_660f3a_prfx, 0x42, rm, imm8 ] = quinary("vmpsadbw",decode_vrmi,vmpsadbw),
 
-        // MUL*
-        [ vex_prfx, 0x0f, 0x59, rm       ] = trinary("mulps",decode_rvm,mulps),
-        [ vex_prfx, 0xf3, 0x0f, 0x59, rm ] = trinary("mulss",decode_rvm,mulss),
-        [ vex_prfx, 0x66, 0x0f, 0x59, rm ] = trinary("mulpd",decode_rvm,mulpd),
-        [ vex_prfx, 0xf2, 0x0f, 0x59, rm ] = trinary("mulsd",decode_rvm,mulsd),
+        // VMUL*
+        [ vex_0f_prfx, 0x59, rm       ] = trinary("vmulps",decode_rvm,vmulps),
+        [ vex_f30f_prfx, 0x59, rm ] = trinary("vmulss",decode_rvm,vmulss),
+        [ vex_660f_prfx, 0x59, rm ] = trinary("vmulpd",decode_rvm,vmulpd),
+        [ vex_f20f_prfx, 0x59, rm ] = trinary("vmulsd",decode_rvm,vmulsd),
 
         // VORPD
-        [ vex_prfx, 0x66, 0x0f, 0x56, rm ] = binary("vorpd",decode_rvm,vorpd),
+        [ vex_660f_prfx, 0x56, rm ] = trinary("vorpd",decode_rvm,vorpd),
 
         // VORPS
-        [ vex_prfx, 0x0f, 0x56, rm ] = binary("vorps",decode_rvm,vorps),
+        [ vex_0f_prfx, 0x56, rm ] = trinary("vorps",decode_rvm,vorps),
 
         // VPABS*
-        [ vex_prfx, 0x66, 0x0f, 0x38, 0x1c, rm ] = binary("vpabsb",decode_rm,vpabsb),
-        [ vex_prfx, 0x66, 0x0f, 0x38, 0x1d, rm ] = binary("vpabsw",decode_rm,vpabsw),
-        [ vex_prfx, 0x66, 0x0f, 0x38, 0x1e, rm ] = binary("vpabsd",decode_rm,vpabsd),
+        [ vex_660f38_prfx, 0x1c, rm ] = binary("vpabsb",decode_rm,vpabsb),
+        [ vex_660f38_prfx, 0x1d, rm ] = binary("vpabsw",decode_rm,vpabsw),
+        [ vex_660f38_prfx, 0x1e, rm ] = binary("vpabsd",decode_rm,vpabsd),
 
         // VPACKSS*
-        [ vex_prfx, 0x66, 0x0f, 0x63, rm ] = trinary("vpacksswb",decode_rvm,vpacksswb),
-        [ vex_prfx, 0x66, 0x0f, 0x6b, rm ] = trinary("vpackssdw",decode_rvm,vpackssdw),
+        [ vex_660f_prfx, 0x63, rm ] = trinary("vpacksswb",decode_rvm,vpacksswb),
+        [ vex_660f_prfx, 0x6b, rm ] = trinary("vpackssdw",decode_rvm,vpackssdw),
 
         // VPACKUS*
-        [ vex_prfx, 0x66, 0x0f, 0x38, 0x2b, rm ] = trinary("vpackusdw",decode_rvm,vpackusdw),
-        [ vex_prfx, 0x66, 0x0f, 0x67, rm ] = trinary("vpackuswb",decode_rvm,vpackuswb),
+        [ vex_660f38_prfx, 0x2b, rm ] = trinary("vpackusdw",decode_rvm,vpackusdw),
+        [ vex_660f_prfx, 0x67, rm ] = trinary("vpackuswb",decode_rvm,vpackuswb),
 
         // VPADD*
-        [ vex_prfx, 0x66, 0x0f, 0xfc, rm ] = trinary("vpaddb",decode_rvm,vpaddb),
-        [ vex_prfx, 0x66, 0x0f, 0xfd, rm ] = trinary("vpaddw",decode_rvm,vpaddw),
-        [ vex_prfx, 0x66, 0x0f, 0xfe, rm ] = trinary("vpaddd",decode_rvm,vpaddd),
-        [ vex_prfx, 0x66, 0x0f, 0xd4, rm ] = trinary("vpaddq",decode_rvm,vpaddq),
+        [ vex_660f_prfx, 0xfc, rm ] = trinary("vpaddb",decode_rvm,vpaddb),
+        [ vex_660f_prfx, 0xfd, rm ] = trinary("vpaddw",decode_rvm,vpaddw),
+        [ vex_660f_prfx, 0xfe, rm ] = trinary("vpaddd",decode_rvm,vpaddd),
+        [ vex_660f_prfx, 0xd4, rm ] = trinary("vpaddq",decode_rvm,vpaddq),
 
         // VPADDS*
-        [ vex_prfx, 0x66, 0x0f, 0xec, rm ] = binary("vpaddsb",decode_rvm,vpaddsb),
-        [ vex_prfx, 0x66, 0x0f, 0xed, rm ] = binary("vpaddsw",decode_rvm,vpaddsw),
+        [ vex_660f_prfx, 0xec, rm ] = trinary("vpaddsb",decode_rvm,vpaddsb),
+        [ vex_660f_prfx, 0xed, rm ] = trinary("vpaddsw",decode_rvm,vpaddsw),
 
         // VPADDUS*
-        [ vex_prfx, 0x66, 0x0f, 0xdc, rm ] = trinary("vpaddusb",decode_rvm,vpaddusb),
-        [ vex_prfx, 0x66, 0x0f, 0xdd, rm ] = trinary("vpaddusw",decode_rvm,vpaddusw),
+        [ vex_660f_prfx, 0xdc, rm ] = trinary("vpaddusb",decode_rvm,vpaddusb),
+        [ vex_660f_prfx, 0xdd, rm ] = trinary("vpaddusw",decode_rvm,vpaddusw),
 
         // VPALIGNR
-        [ vex_prfx, 0x66, 0x0f, 0x3a, 0x0f, rm, imm8 ] = quinary("vpalignr",decode_rvmi,vpalignr),
+        [ vex_660f3a_prfx, 0x0f, rm, imm8 ] = quinary("vpalignr",decode_rvmi,vpalignr),
 
         // VPAND
-        [ vex_prfx, 0x66, 0x0f, 0xdb, rm ] = trinary("vpand",decode_rvm,vpand),
+        [ vex_660f_prfx, 0xdb, rm ] = trinary("vpand",decode_rvm,vpand),
 
         // VPANDN
-        [ vex_prfx, 0x66, 0x0f, 0xdf, rm ] = trinary("vpandn",decode_rvm,vpandn),
+        [ vex_660f_prfx, 0xdf, rm ] = trinary("vpandn",decode_rvm,vpandn),
 
         // VPAVG*
-        [ vex_prfx, 0x0f, 0xe0, rm ] = trinary("vpavgb",decode_rvm,vpavgb),
-        [ vex_prfx, 0x0f, 0xe3, rm ] = trinary("vpavgw",decode_rvm,vpavgw),
+        [ vex_0f_prfx, 0xe0, rm ] = trinary("vpavgb",decode_rvm,vpavgb),
+        [ vex_0f_prfx, 0xe3, rm ] = trinary("vpavgw",decode_rvm,vpavgw),
 
         // VPBLENDVB
-        [ vex_prfx, 0x66, 0x0f, 0x3a, 0x4c, rm, is4 ] = quinary("vpblendvb",decode_rvmr,vpblendvb),
+        [ vex_660f3a_prfx, 0x4c, rm, is4 ] = quinary("vpblendvb",decode_rvmr,vpblendvb),
 
         // VPBLENDW
-        [ vex_prfx, 0x66, 0x0f, 0x3a, 0x0e, rm, imm8 ] = quinary("vpblendw",decode_rvmi,vpblendw),
+        [ vex_660f3a_prfx, 0x0e, rm, imm8 ] = quinary("vpblendw",decode_rvmi,vpblendw),
 
         // VPCLMULQDQ
-        [ vex_prfx, 0x66, 0x0f, 0x3a, 0x44, rm, imm8 ] = quinary("vpclmulqdq",decode_rvmi,vpclmulqdq),
+        [ vex_660f3a_prfx, 0x44, rm, imm8 ] = quinary("vpclmulqdq",decode_rvmi,vpclmulqdq),
 
         // VPCMPEQ*
-        [ vex_prfx, 0x66, 0x0f, 0x74, rm ] = trinary("vpcmpeqb",decode_rvm,vpcmpeqb),
-        [ vex_prfx, 0x66, 0x0f, 0x75, rm ] = trinary("vpcmpeqw",decode_rvm,vpcmpeqw),
-        [ vex_prfx, 0x66, 0x0f, 0x76, rm ] = trinary("vpcmpeqd",decode_rvm,vpcmpeqd),
-        [ vex_prfx, 0x66, 0x0f, 0x38, 0x29, rm ] = trinary("vpcmpeqd",decode_rvm,vpcmpeqq),
+        [ vex_660f_prfx, 0x74, rm ] = trinary("vpcmpeqb",decode_rvm,vpcmpeqb),
+        [ vex_660f_prfx, 0x75, rm ] = trinary("vpcmpeqw",decode_rvm,vpcmpeqw),
+        [ vex_660f_prfx, 0x76, rm ] = trinary("vpcmpeqd",decode_rvm,vpcmpeqd),
+        [ vex_660f38_prfx, 0x29, rm ] = trinary("vpcmpeqd",decode_rvm,vpcmpeqq),
 
-        // PCMPESTRI
-        [ vex_prfx, 0x66, 0x0f, 0x3a, 0x61, rm, imm8 ] = trinary("pcmpestri",decode_rmi,pcmpestri),
+        // VPCMPESTRI
+        [ vex_660f3a_prfx, 0x61, rm, imm8 ] = trinary("vpcmpestri",decode_rmi,pcmpestri),
 
-        // PCMPESTRM
-        [ vex_prfx, 0x66, 0x0f, 0x3a, 0x60, rm, imm8 ] = trinary("pcmpestrm",decode_rmi,pcmpestrm),
+        // VPCMPESTRM
+        [ vex_660f3a_prfx, 0x60, rm, imm8 ] = trinary("vpcmpestrm",decode_rmi,pcmpestrm),
 
         // VPCMPGT*
-        [ vex_prfx, 0x66, 0x0f, 0x64, rm ] = trinary("vpcmpgtb",decode_rvm,vpcmpgtb),
-        [ vex_prfx, 0x66, 0x0f, 0x65, rm ] = trinary("vpcmpgtw",decode_rvm,vpcmpgtw),
-        [ vex_prfx, 0x66, 0x0f, 0x66, rm ] = trinary("vpcmpgtd",decode_rvm,vpcmpgtd),
-        [ vex_prfx, 0x66, 0x0f, 0x38, 0x37, rm ] = trinary("vpcmpgtq",decode_rvm,vpcmpgtq),
+        [ vex_660f_prfx, 0x64, rm ] = trinary("vpcmpgtb",decode_rvm,vpcmpgtb),
+        [ vex_660f_prfx, 0x65, rm ] = trinary("vpcmpgtw",decode_rvm,vpcmpgtw),
+        [ vex_660f_prfx, 0x66, rm ] = trinary("vpcmpgtd",decode_rvm,vpcmpgtd),
+        [ vex_660f38_prfx, 0x37, rm ] = trinary("vpcmpgtq",decode_rvm,vpcmpgtq),
 
-        // PCMPISTRI
-        [ vex_prfx, 0x66, 0x0f, 0x3a, 0x63, rm, imm8 ] = trinary("pcmpistri",decode_rmi,pcmpistri),
+        // VPCMPISTRI
+        [ vex_660f3a_prfx, 0x63, rm, imm8 ] = trinary("vpcmpistri",decode_rmi,pcmpistri),
 
-        // PCMPISTRM
-        [ vex_prfx, 0x66, 0x0f, 0x3a, 0x62, rm, imm8 ] = trinary("pcmpistrm",decode_rmi,pcmpistrm),
+        // VPCMPISTRM
+        [ vex_660f3a_prfx, 0x62, rm, imm8 ] = trinary("vpcmpistrm",decode_rmi,pcmpistrm),
 
-        // PEXT*
-        [ vex_prfx, 0x66, 0x0f, 0x3a, 0x14, rm, imm8 ] = trinary("pextrb",decode_mri,pextrb),
-        [ vex_prfx, 0x66, 0x0f, 0x3a, 0x16, rm, imm8 ] = trinary("pextrd",decode_mri,pextrd),
-        [ vex_prfx, 0x66, 0x0f, 0x3a, 0x15, rm, imm8 ] = trinary("pextrw",decode_mri,pextrw),
-        [ vex_prfx, 0x66, 0x0f, 0xc5, rm, imm8 ] = trinary("pextrw",decode_rmi,pextrw),
+        // VPEXT*
+        [ vex_660f3a_prfx, 0x14, rm, imm8 ] = trinary("vpextrb",decode_mri,pextrb),
+        [ vex_660f3a_prfx, 0x16, rm, imm8 ] = trinary("vpextrd",decode_mri,pextrd),
+        [ vex_660f3a_prfx, 0x15, rm, imm8 ] = trinary("vpextrw",decode_mri,pextrw),
+        [ vex_660f_prfx, 0xc5, rm, imm8 ] = trinary("vpextrw",decode_rmi,pextrw),
 
         // VHADDW
-        [ vex_prfx, 0x66, 0x0f, 0x38, 0x01, rm ] = trinary("vphaddw",decode_rvm,vphaddw),
+        [ vex_660f38_prfx, 0x01, rm ] = trinary("vphaddw",decode_rvm,vphaddw),
 
         // VHADDD
-        [ vex_prfx, 0x66, 0x0f, 0x38, 0x02, rm ] = trinary("vphaddd",decode_rvm,vphaddd),
+        [ vex_660f38_prfx, 0x02, rm ] = trinary("vphaddd",decode_rvm,vphaddd),
 
         // VHADDSW
-        [ vex_prfx, 0x66, 0x0f, 0x38, 0x03, rm ] = trinary("vphaddsw",decode_rvm,vphaddsw),
+        [ vex_660f38_prfx, 0x03, rm ] = trinary("vphaddsw",decode_rvm,vphaddsw),
 
         // VPHMINPOSUW
-        [ vex_prfx, 0x66, 0x0f, 0x38, 0x41, rm ] = trinary("vphminposuw",decode_rvm,vphminposuw),
+        [ vex_660f38_prfx, 0x41, rm ] = trinary("vphminposuw",decode_rvm,vphminposuw),
 
         // VHSUBW
-        [ vex_prfx, 0x66, 0x0f, 0x38, 0x05, rm ] = trinary("vphsubw",decode_rvm,vphsubw),
+        [ vex_660f38_prfx, 0x05, rm ] = trinary("vphsubw",decode_rvm,vphsubw),
 
         // VHSUBD
-        [ vex_prfx, 0x66, 0x0f, 0x38, 0x06, rm ] = trinary("vphsubd",decode_rvm,vphsubd),
+        [ vex_660f38_prfx, 0x06, rm ] = trinary("vphsubd",decode_rvm,vphsubd),
 
         // VHSUBSW
-        [ vex_prfx, 0x66, 0x0f, 0x38, 0x07, rm ] = trinary("vphsubsw",decode_rvm,vphsubsw),
+        [ vex_660f38_prfx, 0x07, rm ] = trinary("vphsubsw",decode_rvm,vphsubsw),
 
-        // PINSRB
-        [ vex_prfx, 0x66, 0x0f, 0x3a, 0x20, rm, imm8 ] = quinary("vpinsrb",decode_rvmi,vpinsrb),
+        // VPINSRB
+        [ vex_660f3a_prfx, 0x20, rm, imm8 ] = quinary("vpinsrb",decode_rvmi,vpinsrb),
 
-        // PINSRD
-        [ vex_prfx, 0x66, 0x0f, 0x3a, 0x22, rm, imm8 ] = quinary("vpinsrd",decode_rvmi,vpinsrd),
+        // VPINSRD
+        [ vex_660f3a_prfx, 0x22, rm, imm8 ] = quinary("vpinsrd",decode_rvmi,vpinsrd),
 
-        // PINSRW
-        [ vex_prfx, 0x66, 0x0f, 0xc4, rm, imm8 ] = quinary("vpinsrw",decode_rvmi,vpinsrw),
+        // VPINSRW
+        [ vex_660f_prfx, 0xc4, rm, imm8 ] = quinary("vpinsrw",decode_rvmi,vpinsrw),
 
         // VPMADDUBSW
-        [ vex_prfx, 0x66, 0x0f, 0x38, 0x04, rm ] = trinary("vpmaddubsw",decode_rvm,vpmaddubsw),
+        [ vex_660f38_prfx, 0x04, rm ] = trinary("vpmaddubsw",decode_rvm,vpmaddubsw),
 
         // VPMADDWD
-        [ vex_prfx, 0x66, 0x0f, 0xf5, rm ] = trinary("vpmaddwd",decode_rvm,vpmadwd),
+        [ vex_660f_prfx, 0xf5, rm ] = trinary("vpmaddwd",decode_rvm,vpmadwd),
 
         // VPMAX*
-        [ vex_prfx, 0x66, 0x0f, 0x38, 0x3c, rm ] = trinary("vpmaxsb",decode_rvm,vpmaxsb),
-        [ vex_prfx, 0x66, 0x0f, 0x38, 0x3d, rm ] = trinary("vpmaxsd",decode_rvm,vpmaxsd),
-        [ vex_prfx, 0x66, 0x0f, 0xee, rm ] = trinary("vpmaxsw",decode_rvm,vpmaxsw),
-        [ vex_prfx, 0x66, 0x0f, 0xde, rm ] = trinary("vpmaxub",decode_rvm,vpmaxub),
-        [ vex_prfx, 0x66, 0x0f, 0x38, 0x3f, rm ] = trinary("vpmaxud",decode_rvm,vpmaxud),
-        [ vex_prfx, 0x66, 0x0f, 0x38, 0x3e, rm ] = trinary("vpmaxuw",decode_rvm,vpmaxuw),
+        [ vex_660f38_prfx, 0x3c, rm ] = trinary("vpmaxsb",decode_rvm,vpmaxsb),
+        [ vex_660f38_prfx, 0x3d, rm ] = trinary("vpmaxsd",decode_rvm,vpmaxsd),
+        [ vex_660f_prfx, 0xee, rm ] = trinary("vpmaxsw",decode_rvm,vpmaxsw),
+        [ vex_660f_prfx, 0xde, rm ] = trinary("vpmaxub",decode_rvm,vpmaxub),
+        [ vex_660f38_prfx, 0x3f, rm ] = trinary("vpmaxud",decode_rvm,vpmaxud),
+        [ vex_660f38_prfx, 0x3e, rm ] = trinary("vpmaxuw",decode_rvm,vpmaxuw),
 
         // VPMIN*
-        [ vex_prfx, 0x66, 0x0f, 0x38, 0x38, rm ] = trinary("vpminsb",decode_rvm,vpminsb),
-        [ vex_prfx, 0x66, 0x0f, 0x38, 0x39, rm ] = trinary("vpminsd",decode_rvm,vpminsd),
-        [ vex_prfx, 0x66, 0x0f, 0xea, rm ] = trinary("vpminsw",decode_rvm,vpminsw),
-        [ vex_prfx, 0x66, 0x0f, 0xda, rm ] = trinary("vpminub",decode_rvm,vpminub),
-        [ vex_prfx, 0x66, 0x0f, 0x38, 0x3b, rm ] = trinary("vpminud",decode_rvm,vpminud),
-        [ vex_prfx, 0x66, 0x0f, 0x38, 0x3a, rm ] = trinary("vpminuw",decode_rvm,vpminuw),
+        [ vex_660f38_prfx, 0x38, rm ] = trinary("vpminsb",decode_rvm,vpminsb),
+        [ vex_660f38_prfx, 0x39, rm ] = trinary("vpminsd",decode_rvm,vpminsd),
+        [ vex_660f_prfx, 0xea, rm ] = trinary("vpminsw",decode_rvm,vpminsw),
+        [ vex_660f_prfx, 0xda, rm ] = trinary("vpminub",decode_rvm,vpminub),
+        [ vex_660f38_prfx, 0x3b, rm ] = trinary("vpminud",decode_rvm,vpminud),
+        [ vex_660f38_prfx, 0x3a, rm ] = trinary("vpminuw",decode_rvm,vpminuw),
 
-        // PMOVMSKB
-        [ vex_prfx, 0x66, 0x0f, 0xd7, rm ] = binary("pmovmskb",decode_rm,pmovmskb),
+        // VPMOVMSKB
+        [ vex_660f_prfx, 0xd7, rm ] = binary("vpmovmskb",decode_rm,pmovmskb),
 
-        // PMOVSX
-        [ vex_prfx, 0x66, 0x0f, 0x38, 0x20, rm ] = binary("pmovsx",decode_rm,pmovsx),
-        [ vex_prfx, 0x66, 0x0f, 0x38, 0x21, rm ] = binary("pmovsx",decode_rm,pmovsx),
-        [ vex_prfx, 0x66, 0x0f, 0x38, 0x22, rm ] = binary("pmovsx",decode_rm,pmovsx),
-        [ vex_prfx, 0x66, 0x0f, 0x38, 0x23, rm ] = binary("pmovsx",decode_rm,pmovsx),
-        [ vex_prfx, 0x66, 0x0f, 0x38, 0x24, rm ] = binary("pmovsx",decode_rm,pmovsx),
-        [ vex_prfx, 0x66, 0x0f, 0x38, 0x25, rm ] = binary("pmovsx",decode_rm,pmovsx),
+        // VPMOVSX
+        [ vex_660f38_prfx, 0x20, rm ] = binary("vpmovsx",decode_rm,pmovsx),
+        [ vex_660f38_prfx, 0x21, rm ] = binary("vpmovsx",decode_rm,pmovsx),
+        [ vex_660f38_prfx, 0x22, rm ] = binary("vpmovsx",decode_rm,pmovsx),
+        [ vex_660f38_prfx, 0x23, rm ] = binary("vpmovsx",decode_rm,pmovsx),
+        [ vex_660f38_prfx, 0x24, rm ] = binary("vpmovsx",decode_rm,pmovsx),
+        [ vex_660f38_prfx, 0x25, rm ] = binary("vpmovsx",decode_rm,pmovsx),
 
-        // PMOVZX
-        [ vex_prfx, 0x66, 0x0f, 0x38, 0x30, rm ] = binary("pmovzx",decode_rm,pmovzx),
-        [ vex_prfx, 0x66, 0x0f, 0x38, 0x31, rm ] = binary("pmovzx",decode_rm,pmovzx),
-        [ vex_prfx, 0x66, 0x0f, 0x38, 0x32, rm ] = binary("pmovzx",decode_rm,pmovzx),
-        [ vex_prfx, 0x66, 0x0f, 0x38, 0x33, rm ] = binary("pmovzx",decode_rm,pmovzx),
-        [ vex_prfx, 0x66, 0x0f, 0x38, 0x34, rm ] = binary("pmovzx",decode_rm,pmovzx),
-        [ vex_prfx, 0x66, 0x0f, 0x38, 0x35, rm ] = binary("pmovzx",decode_rm,pmovzx),
+        // VPMOVZX
+        [ vex_660f38_prfx, 0x30, rm ] = binary("vpmovzx",decode_rm,pmovzx),
+        [ vex_660f38_prfx, 0x31, rm ] = binary("vpmovzx",decode_rm,pmovzx),
+        [ vex_660f38_prfx, 0x32, rm ] = binary("vpmovzx",decode_rm,pmovzx),
+        [ vex_660f38_prfx, 0x33, rm ] = binary("vpmovzx",decode_rm,pmovzx),
+        [ vex_660f38_prfx, 0x34, rm ] = binary("vpmovzx",decode_rm,pmovzx),
+        [ vex_660f38_prfx, 0x35, rm ] = binary("vpmovzx",decode_rm,pmovzx),
 
-        // PMULDQ
-        [ vex_prfx, 0x66, 0x0f, 0x38, 0x28, rm ] = trinary("pmuldq",decode_rvm,vpmuldq),
+        // VPMULDQ
+        [ vex_660f38_prfx, 0x28, rm ] = trinary("vpmuldq",decode_rvm,vpmuldq),
 
-        // PMULHRSW
-        [ vex_prfx, 0x66, 0x0f, 0x38, 0x0b, rm ] = trinary("pmulhrsw",decode_rvm,vpmulhrsw),
+        // VPMULHRSW
+        [ vex_660f38_prfx, 0x0b, rm ] = trinary("vpmulhrsw",decode_rvm,vpmulhrsw),
 
-        // PMULHUW
-        [ vex_prfx, 0x66, 0x0f, 0xe4, rm ] = trinary("pmulhuw",decode_rvm,vpmulhuw),
+        // VPMULHUW
+        [ vex_660f_prfx, 0xe4, rm ] = trinary("vpmulhuw",decode_rvm,vpmulhuw),
 
-        // PMULHW
-        [ vex_prfx, 0x66, 0x0f, 0xe5, rm ] = trinary("pmulhw",decode_rvm,vpmulhw),
+        // VPMULHW
+        [ vex_660f_prfx, 0xe5, rm ] = trinary("vpmulhw",decode_rvm,vpmulhw),
 
-        // PMULLD
-        [ vex_prfx, 0x66, 0x0f, 0x38, 0x40, rm ] = trinary("pmulld",decode_rvm,vpmulld),
+        // VPMULLD
+        [ vex_660f38_prfx, 0x40, rm ] = trinary("vpmulld",decode_rvm,vpmulld),
 
-        // PMULLW
-        [ vex_prfx, 0x66, 0x0f, 0xd5, rm ] = trinary("pmullw",decode_rvm,vpmullw),
+        // VPMULLW
+        [ vex_660f_prfx, 0xd5, rm ] = trinary("vpmullw",decode_rvm,vpmullw),
 
-        // PMULUDQ
-        [ vex_prfx, 0x66, 0x0f, 0xf4, rm ] = trinary("pmulhd",decode_rvm,vpmuludq),
+        // VPMULUDQ
+        [ vex_660f_prfx, 0xf4, rm ] = trinary("vpmulhd",decode_rvm,vpmuludq),
 
-        // POR
-        [ vex_prfx, 0x66, 0x0f, 0xeb, rm ] = trinary("vpor",decode_rvm,vpor),
+        // VPOR
+        [ vex_660f_prfx, 0xeb, rm ] = trinary("vpor",decode_rvm,vpor),
 
-        // PSADBW
-        [ vex_prfx, 0x66, 0x0f, 0xf6, rm ] = trinary("vpsadbw",decode_rvm,vpsadbw),
+        // VPSADBW
+        [ vex_660f_prfx, 0xf6, rm ] = trinary("vpsadbw",decode_rvm,vpsadbw),
 
-        // PSHUF*
-        [ vex_prfx, 0x66, 0x0f, 0x00, rm ] = trinary("pshufb",decode_rvm,pshufb),
-        [ vex_prfx, 0x66, 0x0f, 0x70, rm, imm8 ] = trinary("pshufd",decode_rmi,pshufd),
-        [ vex_prfx, 0xf3, 0x0f, 0x70, rm, imm8 ] = trinary("pshufhw",decode_rmi,pshufhw),
-        [ vex_prfx, 0xf2, 0x0f, 0x70, rm, imm8 ] = trinary("pshuflw",decode_rmi,pshuflw),
+        // VPSHUF*
+        [ vex_660f38_prfx, 0x00, rm ] = trinary("vpshufb",decode_rvm,pshufb),
+        [ vex_660f_prfx, 0x70, rm, imm8 ] = trinary("vpshufd",decode_rmi,pshufd),
+        [ vex_f30f_prfx, 0x70, rm, imm8 ] = trinary("vpshufhw",decode_rmi,pshufhw),
+        [ vex_f20f_prfx, 0x70, rm, imm8 ] = trinary("vpshuflw",decode_rmi,pshuflw),
 
-        // PSIGN*
-        [ vex_prfx, 0x66, 0x0f, 0x38, 0x08, rm ] = trinary("psignb",decode_rvm,vpsignb),
-        [ vex_prfx, 0x66, 0x0f, 0x38, 0x09, rm ] = trinary("psignw",decode_rvm,vpsignw),
-        [ vex_prfx, 0x66, 0x0f, 0x38, 0x0a, rm ] = trinary("psignd",decode_rvm,vpsignd),
+        // VPSIGN*
+        [ vex_660f38_prfx, 0x08, rm ] = trinary("vpsignb",decode_rvm,vpsignb),
+        [ vex_660f38_prfx, 0x09, rm ] = trinary("vpsignw",decode_rvm,vpsignw),
+        [ vex_660f38_prfx, 0x0a, rm ] = trinary("vpsignd",decode_rvm,vpsignd),
 
-        // PSLLDQ
-        [ vex_prfx, 0x66, 0x0f, 0x73, rm7, imm8 ] = trinary("vpslldq",decode_vmi,vpslldq),
+        // VPSLLDQ
+        [ vex_660f_prfx, 0x73, rm7, imm8 ] = trinary("vpslldq",decode_vmi,vpslldq),
 
-        // PSLL*
-        [ vex_prfx, 0x66, 0x0f, 0xf1, rm        ] = trinary("vpsllw",decode_rvm,vpsllw),
-        [ vex_prfx, 0x66, 0x0f, 0x71, rm6, imm8 ] = trinary("vpsllw",decode_vmi,vpsllw),
-        [ vex_prfx, 0x66, 0x0f, 0xf2, rm        ] = trinary("vpslld",decode_rvm,vpslld),
-        [ vex_prfx, 0x66, 0x0f, 0x72, rm6, imm8 ] = trinary("vpslld",decode_vmi,vpslld),
-        [ vex_prfx, 0x66, 0x0f, 0xf3, rm        ] = trinary("vpsllq",decode_rvm,vpsllq),
-        [ vex_prfx, 0x66, 0x0f, 0x73, rm6, imm8 ] = trinary("vpsllq",decode_vmi,vpsllq),
+        // VPSLL*
+        [ vex_660f_prfx, 0xf1, rm        ] = trinary("vpsllw",decode_rvm,vpsllw),
+        [ vex_660f_prfx, 0x71, rm6, imm8 ] = trinary("vpsllw",decode_vmi,vpsllw),
+        [ vex_660f_prfx, 0xf2, rm        ] = trinary("vpslld",decode_rvm,vpslld),
+        [ vex_660f_prfx, 0x72, rm6, imm8 ] = trinary("vpslld",decode_vmi,vpslld),
+        [ vex_660f_prfx, 0xf3, rm        ] = trinary("vpsllq",decode_rvm,vpsllq),
+        [ vex_660f_prfx, 0x73, rm6, imm8 ] = trinary("vpsllq",decode_vmi,vpsllq),
 
-        // PSRA*
-        [ vex_prfx, 0x66, 0x0f, 0xe2, rm        ] = trinary("vpsrad",decode_rvm,vpsrad),
-        [ vex_prfx, 0x66, 0x0f, 0x72, rm4, imm8 ] = trinary("vpsrad",decode_vmi,vpsrad),
-        [ vex_prfx, 0x66, 0x0f, 0xe1, rm        ] = trinary("vpsraw",decode_rvm,vpsarw),
-        [ vex_prfx, 0x66, 0x0f, 0x71, rm4, imm8 ] = trinary("vpsraw",decode_vmi,vpsarw),
+        // VPSRA*
+        [ vex_660f_prfx, 0xe2, rm        ] = trinary("vpsrad",decode_rvm,vpsrad),
+        [ vex_660f_prfx, 0x72, rm4, imm8 ] = trinary("vpsrad",decode_vmi,vpsrad),
+        [ vex_660f_prfx, 0xe1, rm        ] = trinary("vpsraw",decode_rvm,vpsarw),
+        [ vex_660f_prfx, 0x71, rm4, imm8 ] = trinary("vpsraw",decode_vmi,vpsarw),
 
-        // PSRLDQ
-        [ vex_prfx, 0x66, 0x0f, 0x73, rm3, imm8 ] = trinary("vpsrldq",decode_vmi,vpsrldq),
+        // VPSRLDQ
+        [ vex_660f_prfx, 0x73, rm3, imm8 ] = trinary("vpsrldq",decode_vmi,vpsrldq),
 
-        // PSRL*
-        [ vex_prfx, 0x66, 0x0f, 0xd1, rm        ] = trinary("vpsrlw",decode_rvm,vpsrlw),
-        [ vex_prfx, 0x66, 0x0f, 0x71, rm2, imm8 ] = trinary("vpsrlw",decode_vmi,vpsrlw),
-        [ vex_prfx, 0x66, 0x0f, 0xd2, rm        ] = trinary("vpsrld",decode_rvm,vpsrld),
-        [ vex_prfx, 0x66, 0x0f, 0x72, rm2, imm8 ] = trinary("vpsrld",decode_vmi,vpsrld),
-        [ vex_prfx, 0x66, 0x0f, 0xd3, rm        ] = trinary("vpsrlq",decode_rvm,vpsrlq),
-        [ vex_prfx, 0x66, 0x0f, 0x73, rm2, imm8 ] = trinary("vpsrlq",decode_vmi,vpsrlq),
+        // VPSRL*
+        [ vex_660f_prfx, 0xd1, rm        ] = trinary("vpsrlw",decode_rvm,vpsrlw),
+        [ vex_660f_prfx, 0x71, rm2, imm8 ] = trinary("vpsrlw",decode_vmi,vpsrlw),
+        [ vex_660f_prfx, 0xd2, rm        ] = trinary("vpsrld",decode_rvm,vpsrld),
+        [ vex_660f_prfx, 0x72, rm2, imm8 ] = trinary("vpsrld",decode_vmi,vpsrld),
+        [ vex_660f_prfx, 0xd3, rm        ] = trinary("vpsrlq",decode_rvm,vpsrlq),
+        [ vex_660f_prfx, 0x73, rm2, imm8 ] = trinary("vpsrlq",decode_vmi,vpsrlq),
 
-        // PSUBB
-        [ vex_prfx, 0x66, 0x0f, 0xf8, rm ] = trinary("vpsubb",decode_rvm,vpsubb),
-        [ vex_prfx, 0x66, 0x0f, 0xf9, rm ] = trinary("vpsubw",decode_rvm,vpsubw),
-        [ vex_prfx, 0x66, 0x0f, 0xfa, rm ] = trinary("vpsubd",decode_rvm,vpsubd),
-        [ vex_prfx, 0x66, 0x0f, 0xfb, rm ] = trinary("vpsubq",decode_rvm,vpsubq),
+        // VPSUBB
+        [ vex_660f_prfx, 0xf8, rm ] = trinary("vpsubb",decode_rvm,vpsubb),
+        [ vex_660f_prfx, 0xf9, rm ] = trinary("vpsubw",decode_rvm,vpsubw),
+        [ vex_660f_prfx, 0xfa, rm ] = trinary("vpsubd",decode_rvm,vpsubd),
+        [ vex_660f_prfx, 0xfb, rm ] = trinary("vpsubq",decode_rvm,vpsubq),
 
-        // PSUBS*
-        [ vex_prfx, 0x66, 0x0f, 0xe8, rm ] = binary("vpsubsb",decode_rvm,vpsubsb),
-        [ vex_prfx, 0x66, 0x0f, 0xe9, rm ] = binary("vpsubsw",decode_rvm,vpusbsw),
+        // VPSUBS*
+        [ vex_660f_prfx, 0xe8, rm ] = trinary("vpsubsb",decode_rvm,vpsubsb),
+        [ vex_660f_prfx, 0xe9, rm ] = trinary("vpsubsw",decode_rvm,vpusbsw),
 
-        // PSUBUS*
-        [ vex_prfx, 0x66, 0x0f, 0xd8, rm ] = binary("vpsubusb",decode_rvm,vpsubusb),
-        [ vex_prfx, 0x66, 0x0f, 0xd9, rm ] = binary("vpsubusw",decode_rvm,vpsubusw),
+        // VPSUBUS*
+        [ vex_660f_prfx, 0xd8, rm ] = trinary("vpsubusb",decode_rvm,vpsubusb),
+        [ vex_660f_prfx, 0xd9, rm ] = trinary("vpsubusw",decode_rvm,vpsubusw),
 
-        // PTEST
-        [ vex_prfx, 0x66, 0x0f, 0x38, 0x17 ] = binary("VPTEST",vptest),
+        // VPTEST
+        [ vex_660f38_prfx, 0x17 ] = nonary("vptest",vptest),
 
-        // PUNPCKH*
-        [ vex_prfx, 0x66, 0x0f, 0x68, rm ] = binary("vpunpckhbw",decode_rvm,vpunpckhbw),
-        [ vex_prfx, 0x66, 0x0f, 0x69, rm ] = binary("vpunpckhwd",decode_rvm,vpunckhwd),
-        [ vex_prfx, 0x66, 0x0f, 0x6a, rm ] = binary("vpunpckhwd",decode_rvm,vpunpckhdq),
-        [ vex_prfx, 0x66, 0x0f, 0x6d, rm ] = binary("vpunpckhqdq",decode_rvm,vpunpckhqdq),
+        // VPUNPCKH*
+        [ vex_660f_prfx, 0x68, rm ] = trinary("vpunpckhbw",decode_rvm,vpunpckhbw),
+        [ vex_660f_prfx, 0x69, rm ] = trinary("vpunpckhwd",decode_rvm,vpunckhwd),
+        [ vex_660f_prfx, 0x6a, rm ] = trinary("vpunpckhwd",decode_rvm,vpunpckhdq),
+        [ vex_660f_prfx, 0x6d, rm ] = trinary("vpunpckhqdq",decode_rvm,vpunpckhqdq),
 
-        // PUNPCKL*
-        [ vex_prfx, 0x66, 0x0f, 0x60, rm ] = binary("vpunpcklbw",decode_rvm,vpunpcklbw),
-        [ vex_prfx, 0x66, 0x0f, 0x61, rm ] = binary("vpunpckldq",decode_rvm,vpunpckldq),
-        [ vex_prfx, 0x66, 0x0f, 0x62, rm ] = binary("vpunpcklqdq",decode_rvm,vpuncklqdq),
-        [ vex_prfx, 0x66, 0x0f, 0x6c, rm ] = binary("vpunpcklwd",decode_rvm,vpuncklwd),
+        // VPUNPCKL*
+        [ vex_660f_prfx, 0x60, rm ] = trinary("vpunpcklbw",decode_rvm,vpunpcklbw),
+        [ vex_660f_prfx, 0x61, rm ] = trinary("vpunpckldq",decode_rvm,vpunpckldq),
+        [ vex_660f_prfx, 0x62, rm ] = trinary("vpunpcklqdq",decode_rvm,vpuncklqdq),
+        [ vex_660f_prfx, 0x6c, rm ] = trinary("vpunpcklwd",decode_rvm,vpuncklwd),
 
-        // PXOR
-        [ vex_prfx, 0x66, 0x0f, 0xef, rm ] = binary("vpxor",decode_rvm,vpxor),
+        // VPXOR
+        [ vex_660f_prfx, 0xef, rm ] = trinary("vpxor",decode_rvm,vpxor),
 
-        // RCP*S
-        [ vex_prfx, 0x0f, 0x53, rm ] = binary("rcpps",decode_rm,rcpps),
-        [ vex_prfx, 0xf3, 0x0f, 0x53, rm ] = binary("vrcpps",decode_rvm,vrcpps),
+        // VRCP*S
+        [ vex_0f_prfx, 0x53, rm ] = binary("vrcpps",decode_rm,rcpps),
+        [ vex_f30f_prfx, 0x53, rm ] = trinary("vrcpps",decode_rvm,vrcpps),
 
-        // ROUND*
-        [ vex_prfx, 0x66, 0x0f, 0x3a, 0x09, rm, imm8 ] = quinary("vroundpd",decode_rvmi,vroundpd),
-        [ vex_prfx, 0x66, 0x0f, 0x3a, 0x08, rm, imm8 ] = quinary("vroundps",decode_rvmi,vroundps),
-        [ vex_prfx, 0x66, 0x0f, 0x3a, 0x0b, rm, imm8 ] = quinary("vroundsd",decode_rvmi,vroundsd),
-        [ vex_prfx, 0x66, 0x0f, 0x3a, 0x0a, rm, imm8 ] = quinary("vroundss",decode_rvmi,vroundss),
+        // VROUND*
+        [ vex_660f3a_prfx, 0x09, rm, imm8 ] = quinary("vroundpd",decode_rvmi,vroundpd),
+        [ vex_660f3a_prfx, 0x08, rm, imm8 ] = quinary("vroundps",decode_rvmi,vroundps),
+        [ vex_660f3a_prfx, 0x0b, rm, imm8 ] = quinary("vroundsd",decode_rvmi,vroundsd),
+        [ vex_660f3a_prfx, 0x0a, rm, imm8 ] = quinary("vroundss",decode_rvmi,vroundss),
 
-        // RSQRT*
-        [ vex_prfx, 0x0f, 0x52, rm ] = trinary("vrsqrtps",decode_rvm,vrsqrtps),
-        [ vex_prfx, 0xf3, 0x0f, 0x52, rm ] = trinary("vrsqrtss",decode_rvm,vrsqrtss),
+        // VRSQRT*
+        [ vex_0f_prfx, 0x52, rm ] = trinary("vrsqrtps",decode_rvm,vrsqrtps),
+        [ vex_f30f_prfx, 0x52, rm ] = trinary("vrsqrtss",decode_rvm,vrsqrtss),
 
-        // SHUFP*
-        [ vex_prfx, 0x0f, 0xc6, rm, imm8 ] = quinary("vshufps",decode_rvmi,vshufps),
-        [ vex_prfx, 0x66, 0x0f, 0xc6, rm, imm8 ] = quinary("vshufpd",decode_rvmi,vshufpd),
+        // VSHUFP*
+        [ vex_0f_prfx, 0xc6, rm, imm8 ] = quinary("vshufps",decode_rvmi,vshufps),
+        [ vex_660f_prfx, 0xc6, rm, imm8 ] = quinary("vshufpd",decode_rvmi,vshufpd),
 
-        // SQRT*
-        [ vex_prfx, 0xf2, 0x51, rm ] = binary("sqrtsd",decode_rvm,sqrtsd),
-        [ vex_prfx, 0xf3, 0x51, rm ] = binary("sqrtss",decode_rvm,sqrtss),
-        [ vex_prfx, 0x0f, 0x51, rm ] = trinary("sqrtps",decode_rm,sqrtps),
-        [ vex_prfx, 0xf3, 0x0f, 0x51, rm ] = trinary("sqrtpd",decode_rm,sqrtpd),
+        // VSQRT*
+        [ vex_f20f_prfx, 0x51, rm ] = trinary("vsqrtsd",decode_rvm,vsqrtsd),
+        [ vex_f30f_prfx, 0x51, rm ] = trinary("vsqrtss",decode_rvm,vsqrtss),
+        [ vex_0f_prfx, 0x51, rm ] = binary("vsqrtps",decode_rm,sqrtps),
+        [ vex_f30f_prfx, 0x51, rm ] = binary("vsqrtpd",decode_rm,sqrtpd),
 
-        // STMXCSR
-        [ vex_prfx, 0x0f, 0xae, rm3 ] = unary("stmxcsr",decode_m,stmxcsr),
+        // VSTMXCSR
+        [ vex_0f_prfx, 0xae, rm3 ] = unary("vstmxcsr",decode_m,stmxcsr),
 
-        // SUB*
-        [ vex_prfx, 0x0f, 0x5c, rm ] = trinary("subps",decode_rvm,vsubps),
-        [ vex_prfx, 0xf3, 0x0f, 0x5c, rm ] = trinary("subss",decode_rvm,vsubss),
-        [ vex_prfx, 0x66, 0x0f, 0x5c, rm ] = trinary("subpd",decode_rvm,vsubpd),
-        [ vex_prfx, 0xf2, 0x0f, 0x5c, rm ] = trinary("subsd",decode_rvm,vsubsd),
+        // VSUB*
+        [ vex_0f_prfx, 0x5c, rm ] = trinary("vsubps",decode_rvm,vsubps),
+        [ vex_f30f_prfx, 0x5c, rm ] = trinary("vsubss",decode_rvm,vsubss),
+        [ vex_660f_prfx, 0x5c, rm ] = trinary("vsubpd",decode_rvm,vsubpd),
+        [ vex_f20f_prfx, 0x5c, rm ] = trinary("vsubsd",decode_rvm,vsubsd),
 
-        // UCOMISD
-        [ vex_prfx, 0x66, 0x0f, 0x2e, rm ] = binary("ucomisd",decode_rm,ucomisd),
-        [ vex_prfx, 0x0f, 0x2e, rm ] = binary("ucomiss",decode_rm,ucomiss),
+        // VUCOMISD
+        [ vex_660f_prfx, 0x2e, rm ] = binary("vucomisd",decode_rm,ucomisd),
+        [ vex_0f_prfx, 0x2e, rm ] = binary("vucomiss",decode_rm,ucomiss),
 
-        // UNPCK*PS
-        [ vex_prfx, 0x0f, 0x15, rm ] = trinary("vunpckhps",decode_rvm,vunpckhps),
-        [ vex_prfx, 0x0f, 0x14, rm ] = trinary("vunpcklps",decode_rvm,vunpcklps),
-        [ vex_prfx, 0x66, 0x0f, 0x15, rm ] = trinary("vunpckhpd",decode_rvm,vunpckhpd),
-        [ vex_prfx, 0x66, 0x0f, 0x14, rm ] = trinary("vunpcklpd",decode_rvm,vunpcklpd),
+        // VUNPCK*PS
+        [ vex_0f_prfx, 0x15, rm ] = trinary("vunpckhps",decode_rvm,vunpckhps),
+        [ vex_0f_prfx, 0x14, rm ] = trinary("vunpcklps",decode_rvm,vunpcklps),
+        [ vex_660f_prfx, 0x15, rm ] = trinary("vunpckhpd",decode_rvm,vunpckhpd),
+        [ vex_660f_prfx, 0x14, rm ] = trinary("vunpcklpd",decode_rvm,vunpcklpd),
 
         // VBROADCAST*
-        [ vex_prfx, 0x66, 0x0f, 0x38, 0x18, rm ] = binary("vbroadcastss",decode_rm,vbroadcastss),
-        [ vex_prfx, 0x66, 0x0f, 0x38, 0x19, rm ] = binary("vbroadcastsd",decode_rm,vbroadcastsd),
-        [ vex_prfx, 0x66, 0x0f, 0x38, 0x1a, rm ] = binary("vbroadcastf128",decode_rm,vbroadcastf128),
+        [ vex_660f38_prfx, 0x18, rm ] = binary("vbroadcastss",decode_rm,vbroadcastss),
+        [ vex_660f38_prfx, 0x19, rm ] = binary("vbroadcastsd",decode_rm,vbroadcastsd),
+        [ vex_660f38_prfx, 0x1a, rm ] = binary("vbroadcastf128",decode_rm,vbroadcastf128),
 
         // VEXTRACT*
-        [ vex_prfx, 0x66, 0x0f, 0x3a, 0x19, rm, imm8 ] = binary("vextractf128",decode_mr,vextractf128),
-        [ vex_prfx, 0x66, 0x0f, 0x3a, 0x39, rm, imm8 ] = trinary("vextracti128",decode_rmi,vextracti128),
+        [ vex_660f3a_prfx, 0x19, rm, imm8 ] = binary("vextractf128",decode_mr,vextractf128),
+        [ vex_660f3a_prfx, 0x39, rm, imm8 ] = trinary("vextracti128",decode_rmi,vextracti128),
 
         // VGATHER*
-        [ vex_prfx, 0x66, 0x0f, 0x38, 0x90, rm ] = binary("vgatherdd",decode_rmv,vgatherdd),
-        [ vex_prfx, 0x66, 0x0f, 0x38, 0x91, rm ] = binary("vgatherpd",decode_rmv,vgatherdp),
-        [ vex_prfx, 0x66, 0x0f, 0x38, 0x92, rm ] = binary("vgatherdpd",decode_rmv,vgatherpdp),
-        [ vex_prfx, 0x66, 0x0f, 0x38, 0x93, rm ] = binary("vgatherqpd",decode_rmv,vgatherqpd),
+        [ vex_660f38_prfx, 0x90, rm ] = trinary("vgatherdd",decode_rmv,vgatherdd),
+        [ vex_660f38_prfx, 0x91, rm ] = trinary("vgatherpd",decode_rmv,vgatherdp),
+        [ vex_660f38_prfx, 0x92, rm ] = trinary("vgatherdpd",decode_rmv,vgatherpdp),
+        [ vex_660f38_prfx, 0x93, rm ] = trinary("vgatherqpd",decode_rmv,vgatherqpd),
 
         // VINSERT*
-        [ vex_prfx, 0x66, 0x0f, 0x3a, 0x18, rm, imm8 ] = binary("vinsertf128",decode_rvm,vinsertf128),
-        [ vex_prfx, 0x66, 0x0f, 0x3a, 0x38, rm, imm8 ] = trinary("vinserti128",decode_rvmi,vinserti128),
+        [ vex_660f3a_prfx, 0x18, rm, imm8 ] = trinary("vinsertf128",decode_rvm,vinsertf128),
+        [ vex_660f3a_prfx, 0x38, rm, imm8 ] = quinary("vinserti128",decode_rvmi,vinserti128),
 
         // VMASKMOV*
-        [ vex_prfx, 0x66, 0x0f, 0x38, 0x2c, rm ] = trinary("vmaskmovps",decode_rvm,vmaskmovps),
-        [ vex_prfx, 0x66, 0x0f, 0x38, 0x2d, rm ] = trinary("vmaskmovpd",decode_rvm,vmaskmovpd),
-        [ vex_prfx, 0x66, 0x0f, 0x38, 0x2e, rm ] = trinary("vmaskmovps",decode_rvm,vmaskmovps),
-        [ vex_prfx, 0x66, 0x0f, 0x38, 0x2f, rm ] = trinary("vmaskmovpd",decode_rvm,vmaskmovpd),
+        [ vex_660f38_prfx, 0x2c, rm ] = trinary("vmaskmovps",decode_rvm,vmaskmovps),
+        [ vex_660f38_prfx, 0x2d, rm ] = trinary("vmaskmovpd",decode_rvm,vmaskmovpd),
+        [ vex_660f38_prfx, 0x2e, rm ] = trinary("vmaskmovps",decode_rvm,vmaskmovps),
+        [ vex_660f38_prfx, 0x2f, rm ] = trinary("vmaskmovpd",decode_rvm,vmaskmovpd),
 
         // VBLENDD
-        [ vex_prfx, 0x66, 0x0f, 0x3a, 0x02, rm, imm8 ] = binary("vblendd",decode_rvm,vblendd),
+        [ vex_660f3a_prfx, 0x02, rm, imm8 ] = trinary("vblendd",decode_rvm,vblendd),
 
         // VPBROADCASTB
-        [ vex_prfx, 0x66, 0x0f, 0x38, 0x78, rm ] = binary("vpbroadcastb",decode_rm,vpboradcastb),
-        [ vex_prfx, 0x66, 0x0f, 0x38, 0x79, rm ] = binary("vpbroadcastw",decode_rm,vpboradcastw),
-        [ vex_prfx, 0x66, 0x0f, 0x38, 0x58, rm ] = binary("vpbroadcastd",decode_rm,vpboradcastd),
-        [ vex_prfx, 0x66, 0x0f, 0x38, 0x59, rm ] = binary("vpbroadcastq",decode_rm,vpboradcastq),
-        [ vex_prfx, 0x66, 0x0f, 0x38, 0x5a, rm ] = binary("vpbroadcasti128",decode_rm,vpboradcasti128),
+        [ vex_660f38_prfx, 0x78, rm ] = binary("vpbroadcastb",decode_rm,vpboradcastb),
+        [ vex_660f38_prfx, 0x79, rm ] = binary("vpbroadcastw",decode_rm,vpboradcastw),
+        [ vex_660f38_prfx, 0x58, rm ] = binary("vpbroadcastd",decode_rm,vpboradcastd),
+        [ vex_660f38_prfx, 0x59, rm ] = binary("vpbroadcastq",decode_rm,vpboradcastq),
+        [ vex_660f38_prfx, 0x5a, rm ] = binary("vpbroadcasti128",decode_rm,vpboradcasti128),
 
         // VPERM*
-        [ vex_prfx, 0x66, 0x0f, 0x38, 0x36, rm ] = trinary("vpermd",decode_rvm,vpermd),
-        [ vex_prfx, 0x66, 0x0f, 0x3a, 0x01, rm, imm8 ] = trinary("vpermpd",decode_rmi,vpermpd),
-        [ vex_prfx, 0x66, 0x0f, 0x38, 0x16, rm ] = trinary("vpermps",decode_rvm,vpermps),
-        [ vex_prfx, 0x66, 0x0f, 0x3a, 0x00, rm, imm8 ] = trinary("vpermq",decode_rmi,vpermq),
-        [ vex_prfx, 0x66, 0x0f, 0x3a, 0x46, rm, imm8 ] = quinary("vperm2i128",decode_rvmi,vperm2i128),
-        [ vex_prfx, 0x66, 0x0f, 0x38, 0x0d, rm ] = trinary("vpermilpd",decode_rvm,vpermilpd),
-        [ vex_prfx, 0x66, 0x0f, 0x3a, 0x05, rm, imm8 ] = trinary("vpermilpd",decode_rmi,vpermilpd),
-        [ vex_prfx, 0x66, 0x0f, 0x38, 0x0c, rm ] = trinary("vpermilps",decode_rvm,vpermilps),
-        [ vex_prfx, 0x66, 0x0f, 0x3a, 0x04, rm, imm8 ] = trinary("vpermilps",decode_rmi,vpermilps),
-        [ vex_prfx, 0x66, 0x0f, 0x3a, 0x06, rm, imm8 ] = quinary("vperm2f128",decode_rvmi,vperm2f128),
+        [ vex_660f38_prfx, 0x36, rm ] = trinary("vpermd",decode_rvm,vpermd),
+        [ vex_660f3a_prfx, 0x01, rm, imm8 ] = trinary("vpermpd",decode_rmi,vpermpd),
+        [ vex_660f38_prfx, 0x16, rm ] = trinary("vpermps",decode_rvm,vpermps),
+        [ vex_660f3a_prfx, 0x00, rm, imm8 ] = trinary("vpermq",decode_rmi,vpermq),
+        [ vex_660f3a_prfx, 0x46, rm, imm8 ] = quinary("vperm2i128",decode_rvmi,vperm2i128),
+        [ vex_660f38_prfx, 0x0d, rm ] = trinary("vpermilpd",decode_rvm,vpermilpd),
+        [ vex_660f3a_prfx, 0x05, rm, imm8 ] = trinary("vpermilpd",decode_rmi,vpermilpd),
+        [ vex_660f38_prfx, 0x0c, rm ] = trinary("vpermilps",decode_rvm,vpermilps),
+        [ vex_660f3a_prfx, 0x04, rm, imm8 ] = trinary("vpermilps",decode_rmi,vpermilps),
+        [ vex_660f3a_prfx, 0x06, rm, imm8 ] = quinary("vperm2f128",decode_rvmi,vperm2f128),
 
         // VPMASKMOV*
-        [ vex_prfx, 0x66, 0x0f, 0x38, 0x8c, rm ] = trinary("vpmaskmovd",decode_rvm,vpmaskmovd),
-        [ vex_prfx, 0x66, 0x0f, 0x38, 0x8e, rm ] = trinary("vpmaskmovq",decode_mvr,vpmaskmovq),
+        [ vex_660f38_prfx, 0x8c, rm ] = trinary("vpmaskmovd",decode_rvm,vpmaskmovd),
+        [ vex_660f38_prfx, 0x8e, rm ] = trinary("vpmaskmovq",decode_mvr,vpmaskmovq),
 
         // VPSLLVD
-        [ vex_prfx, 0x66, 0x0f, 0x38, 0x47, rm ] = trinary("vpsllvd",decode_rvm,vpsllvd),
-        [ vex_prfx, 0x66, 0x0f, 0x38, 0x46, rm ] = trinary("vpsravd",decode_rvm,vpsravd),
-        [ vex_prfx, 0x66, 0x0f, 0x38, 0x45, rm ] = trinary("vpsrlvd",decode_rvm,vpsrlvd),
+        [ vex_660f38_prfx, 0x47, rm ] = trinary("vpsllvd",decode_rvm,vpsllvd),
+        [ vex_660f38_prfx, 0x46, rm ] = trinary("vpsravd",decode_rvm,vpsravd),
+        [ vex_660f38_prfx, 0x45, rm ] = trinary("vpsrlvd",decode_rvm,vpsrlvd),
 
         // VTEST*
-        [ vex_prfx, 0x66, 0x0f, 0x38, 0x0e, rm ] = binary("vtestpd",decode_rm,vtestpd),
-        [ vex_prfx, 0x66, 0x0f, 0x38, 0x0f, rm ] = binary("vtestps",decode_rm,vtestps),
+        [ vex_660f38_prfx, 0x0e, rm ] = binary("vtestpd",decode_rm,vtestpd),
+        [ vex_660f38_prfx, 0x0f, rm ] = binary("vtestps",decode_rm,vtestps),
 
         // VZEROALL
-        [ vex_prfx, 0x0f, 0x77 ] = nonary("vzeroall",vzeroall),
+        [ vex_0f_prfx, 0x77 ] = nonary("vzeroall",vzeroall),
 
-        // XOR*
-        [ vex_prfx, 0x0f, 0x57, rm ] = trinary("vpxorps",decode_rvm,vxorps),
-        [ vex_prfx, 0x66, 0x0f, 0x57, rm ] = trinary("vpxorpd",decode_rvm,vxorpd))
+        // VXOR*
+        [ vex_0f_prfx, 0x57, rm ] = trinary("vpxorps",decode_rvm,vxorps),
+        [ vex_660f_prfx, 0x57, rm ] = trinary("vpxorpd",decode_rvm,vxorpd))
 }
 
 fn mpx() {}
@@ -1408,13 +1477,13 @@ fn mpx() {}
 fn bmi1() {/*
     new_disassembler!(Amd64 =>
         // BLSI
-        [ vec_prfx, 0x66, 0x0f, 0x38, 0xf3, rm3 ] = binary("blsi",decode_vm,vblsi),
+        [ vex_prfx, 0x66, 0x0f, 0x38, 0xf3, rm3 ] = binary("blsi",decode_vm,vblsi),
 
         // BLSMSK
-        [ vec_prfx, 0x66, 0x0f, 0x38, 0xf3, rm2 ] = binary("blsmsk",decode_vm,blsmsk),
+        [ vex_prfx, 0x66, 0x0f, 0x38, 0xf3, rm2 ] = binary("blsmsk",decode_vm,blsmsk),
 
         // BLSR
-        [ vec_prfx, 0x66, 0x0f, 0x38, 0xf3, rm1 ] = binary("blsr",decode_vm,blsr))*/
+        [ vex_prfx, 0x66, 0x0f, 0x38, 0xf3, rm1 ] = binary("blsr",decode_vm,blsr))*/
 }
 
 fn bmi2() {

@@ -99,6 +99,7 @@ pub struct Config {
     pub imm: Option<Rvalue>,
     pub disp: Option<Rvalue>,
     pub moffs: Option<Rvalue>,
+    pub vvvv: Option<Lvalue>,
 }
 
 impl Config {
@@ -109,6 +110,7 @@ impl Config {
                 operand_size: OperandSize::Sixteen,
                 mode: m, rex: false, reg: None, rm: None,
                 imm: None, disp: None, moffs: None,
+                vvvv: None,
             },
             // assumes CS.d == 1
             Mode::Protected => Config{
@@ -116,6 +118,7 @@ impl Config {
                 operand_size: OperandSize::ThirtyTwo,
                 mode: m, rex: false, reg: None, rm: None,
                 imm: None, disp: None, moffs: None,
+                vvvv: None,
             },
             // assumes REX.W == 0
             Mode::Long => Config{
@@ -123,6 +126,7 @@ impl Config {
                 operand_size: OperandSize::ThirtyTwo,
                 mode: m, rex: false, reg: None, rm: None,
                 imm: None, disp: None, moffs: None,
+                vvvv: None,
             },
         }
     }
@@ -317,27 +321,63 @@ pub fn disassembler(bits: Mode) -> Rc<Disassembler<Amd64>> {
         [ 0xf3 ] = |_: &mut State<Amd64>| { true },
         [ 0xf2 ] = |_: &mut State<Amd64>| { true });
 
+    fn rex_semantic(st: &mut State<Amd64>) -> bool {
+        st.configuration.rex = true;
+        if st.get_group("w") == 1 {
+            st.configuration.operand_size = OperandSize::SixtyFour;
+        }
+        if st.has_group("vvvv") {
+            st.configuration.vvvv = Some(decode::select_reg(&st.configuration.operand_size,15 ^ st.get_group("vvvv"),st.configuration.rex));
+        }
+        true
+    }
+
     let rex_prfx = new_disassembler!(Amd64 =>
-        [ "0100 w@. r@. x@. b@." ] = |st: &mut State<Amd64>| {
-            st.configuration.rex = true;
-            if st.get_group("w") == 1 {
-                st.configuration.operand_size = OperandSize::SixtyFour;
-            }
-            true
-        });
+        [ "0100 w@. r@. x@. b@." ] = rex_semantic);
 
     let rexw_prfx = new_disassembler!(Amd64 =>
-        [ "0100 w@1 r@. x@. b@." ] = |st: &mut State<Amd64>| {
-            st.configuration.rex = true;
-            if st.get_group("w") == 1 {
-                st.configuration.operand_size = OperandSize::SixtyFour;
-            }
-            true
-        });
+        [ "0100 w@1 r@. x@. b@." ] = rex_semantic);
 
-    let vex_prfx = new_disassembler!(Amd64 =>
-        [ "11000100", "r@. x@. b@. m@.....", "w@. v@.... L@. pp@.." ] = |_: &mut State<Amd64>| { true },
-        [ "11000101", "w@. v@.... L@. pp@.." ] = |_: &mut State<Amd64>| { true });
+    let vex_0f_prfx = new_disassembler!(Amd64 =>
+        [ "11000100", "r@. x@. b@. 00001", "w@. vvvv@.... L@. 00" ] = rex_semantic,
+        [ "11000101", "w@. vvvv@.... L@. 00" ] = rex_semantic);
+
+    let vex_660f_prfx = new_disassembler!(Amd64 =>
+        [ "11000100", "r@. x@. b@. 00001", "w@. vvvv@.... L@. 01" ] = rex_semantic,
+        [ "11000101", "w@. vvvv@.... L@. 01" ] = rex_semantic);
+
+    let vex_f20f_prfx = new_disassembler!(Amd64 =>
+        [ "11000100", "r@. x@. b@. 00001", "w@. vvvv@.... L@. 11" ] = rex_semantic,
+        [ "11000101", "w@. vvvv@.... L@. 11" ] = rex_semantic);
+
+    let vex_f30f_prfx = new_disassembler!(Amd64 =>
+        [ "11000100", "r@. x@. b@. 00001", "w@. vvvv@.... L@. 10" ] = rex_semantic,
+        [ "11000101", "w@. vvvv@.... L@. 10" ] = rex_semantic);
+
+    let vex_0f38_prfx = new_disassembler!(Amd64 =>
+        [ "11000100", "r@. x@. b@. 00010", "w@. vvvv@.... L@. 00" ] = rex_semantic);
+
+    let vex_660f38_prfx = new_disassembler!(Amd64 =>
+        [ "11000100", "r@. x@. b@. 00010", "w@. vvvv@.... L@. 01" ] = rex_semantic);
+
+    let vex_f20f38_prfx = new_disassembler!(Amd64 =>
+        [ "11000100", "r@. x@. b@. 00010", "w@. vvvv@.... L@. 11" ] = rex_semantic);
+
+    let vex_f30f38_prfx = new_disassembler!(Amd64 =>
+        [ "11000100", "r@. x@. b@. 00010", "w@. vvvv@.... L@. 10" ] = rex_semantic);
+
+    let vex_0f3a_prfx = new_disassembler!(Amd64 =>
+        [ "11000100", "r@. x@. b@. 00011", "w@. vvvv@.... L@. 00" ] = rex_semantic);
+
+    let vex_660f3a_prfx = new_disassembler!(Amd64 =>
+        [ "11000100", "r@. x@. b@. 00011", "w@. vvvv@.... L@. 01" ] = rex_semantic);
+
+    let vex_f20f3a_prfx = new_disassembler!(Amd64 =>
+        [ "11000100", "r@. x@. b@. 00011", "w@. vvvv@.... L@. 11" ] = rex_semantic);
+
+    let vex_f30f3a_prfx = new_disassembler!(Amd64 =>
+        [ "11000100", "r@. x@. b@. 00011", "w@. vvvv@.... L@. 10" ] = rex_semantic);
+
 
     let seg_prfx = new_disassembler!(Amd64 =>
         [ 0x2e ] = |_: &mut State<Amd64>| { true },
@@ -499,6 +539,14 @@ pub fn disassembler(bits: Mode) -> Rc<Disassembler<Amd64>> {
         [ "scale@.. index@... base@101", "sd@........", "sd@........", "sd@........", "sd@........" ] = |st: &mut State<Amd64>| {
             st.configuration.disp = Some(Rvalue::Constant(st.get_group("sd")));
             st.get_group("mod") == 0
+        },
+        [ "scale@.. index@... base@..." ] = |st: &mut State<Amd64>| {
+            st.get_group("mod") != 0 || st.get_group("base") != 5
+        });
+
+    let is4 = new_disassembler!(Amd64 =>
+        [ "isfour@........" ] = |st: &mut State<Amd64>| {
+            true
         },
         [ "scale@.. index@... base@..." ] = |st: &mut State<Amd64>| {
             st.get_group("mod") != 0 || st.get_group("base") != 5
@@ -1088,8 +1136,10 @@ pub fn disassembler(bits: Mode) -> Rc<Disassembler<Amd64>> {
 
     generic::integer_instructions(
         bits,
-        lock_prfx, rep_prfx, repx_prfx, opsize_prfx, addrsz_prfx, rex_prfx, rexw_prfx, seg_prfx, vex_prfx,
-        imm8, imm16, imm32, imm48, imm64, imm, immlong,
+        lock_prfx, rep_prfx, repx_prfx, opsize_prfx, addrsz_prfx, rex_prfx, rexw_prfx, seg_prfx,
+        vex_0f_prfx, vex_660f_prfx, vex_f20f_prfx, vex_f30f_prfx, vex_0f38_prfx, vex_660f38_prfx,
+        vex_f20f38_prfx, vex_f30f38_prfx, vex_0f3a_prfx, vex_660f3a_prfx, vex_f20f3a_prfx, vex_f30f3a_prfx,
+        is4, imm8, imm16, imm32, imm48, imm64, imm, immlong,
         moffs8, moffs,
         sib,
         rm, rm0, rm1, rm2, rm3, rm4, rm5, rm6, rm7,

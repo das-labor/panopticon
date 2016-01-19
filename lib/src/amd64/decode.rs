@@ -236,12 +236,16 @@ pub fn decode_ii(sm: &mut State<Amd64>) -> Option<(Rvalue,Rvalue)> {
     }
 }
 
-pub fn decode_rvm(_: &mut State<Amd64>) -> Option<(Rvalue,Rvalue,Rvalue)> {
-    None
+pub fn decode_rvm(sm: &mut State<Amd64>) -> Option<(Rvalue,Rvalue,Rvalue)> {
+    if let (&Some(ref reg),&Some(ref rm),&Some(ref v)) = (&sm.configuration.reg,&sm.configuration.rm,&sm.configuration.vvvv) {
+        Some((reg.to_rv(),rm.to_rv(),v.to_rv()))
+    } else {
+        None
+    }
 }
 
-pub fn decode_rmv(_: &mut State<Amd64>) -> Option<(Rvalue,Rvalue,Rvalue)> {
-    None
+pub fn decode_rmv(sm: &mut State<Amd64>) -> Option<(Rvalue,Rvalue,Rvalue)> {
+    decode_rvm(sm).map(|(a,b,c)| (a,c,b))
 }
 
 pub fn decode_rm0(sm: &mut State<Amd64>) -> Option<(Rvalue,Rvalue,Rvalue)> {
@@ -264,8 +268,40 @@ pub fn decode_mri(sm: &mut State<Amd64>) -> Option<(Rvalue,Rvalue,Rvalue)> {
     decode_rmi(sm).map(|(a,b,c)| (b,a,c))
 }
 
-pub fn decode_rvmi(_: &mut State<Amd64>) -> Option<(Rvalue,Rvalue,Rvalue,Rvalue)> {
-    None
+pub fn decode_mvr(sm: &mut State<Amd64>) -> Option<(Rvalue,Rvalue,Rvalue)> {
+    decode_rvm(sm).map(|(a,b,c)| (c,b,a))
+}
+
+pub fn decode_vmi(sm: &mut State<Amd64>) -> Option<(Rvalue,Rvalue,Rvalue)> {
+    if let (&Some(ref v),&Some(ref rm),&Some(ref imm)) = (&sm.configuration.vvvv,&sm.configuration.rm,&sm.configuration.imm) {
+        Some((v.to_rv(),rm.to_rv(),imm.clone()))
+    } else {
+        None
+    }
+}
+
+pub fn decode_vrmi(sm: &mut State<Amd64>) -> Option<(Rvalue,Rvalue,Rvalue,Rvalue)> {
+    if let (&Some(ref v),&Some(ref r),&Some(ref rm),&Some(ref imm)) = (&sm.configuration.vvvv,&sm.configuration.reg,&sm.configuration.rm,&sm.configuration.imm) {
+        Some((v.to_rv(),r.to_rv(),rm.to_rv(),imm.clone()))
+    } else {
+        None
+    }
+}
+
+pub fn decode_rvmr(sm: &mut State<Amd64>) -> Option<(Rvalue,Rvalue,Rvalue,Rvalue)> {
+    if let (&Some(ref v),&Some(ref r),&Some(ref rm),&Some(ref imm)) = (&sm.configuration.vvvv,&sm.configuration.reg,&sm.configuration.rm,&sm.configuration.imm) {
+        Some((r.to_rv(),v.to_rv(),rm.to_rv(),imm.clone()))
+    } else {
+        None
+    }
+}
+
+pub fn decode_rvmi(sm: &mut State<Amd64>) -> Option<(Rvalue,Rvalue,Rvalue,Rvalue)> {
+    if let (&Some(ref v),&Some(ref r),&Some(ref rm),&Some(ref imm)) = (&sm.configuration.vvvv,&sm.configuration.reg,&sm.configuration.rm,&sm.configuration.imm) {
+        Some((r.to_rv(),v.to_rv(),rm.to_rv(),imm.clone()))
+    } else {
+        None
+    }
 }
 
 pub fn decode_reg8(r_reg: u64,rex: bool) -> Lvalue {
@@ -844,6 +880,26 @@ pub fn trinary_vr(opcode: &'static str,
             st.mnemonic_dynargs(len,&opcode,"{64}, {64}, {64}",&|c| {
                 sem(c,arg0.clone(),arg1.clone(),arg2.to_rv());
                 vec![arg0.clone(),arg1.clone(),arg2.to_rv()]
+            });
+            st.jump(Rvalue::Constant(next),Guard::always());
+            true
+        } else {
+            false
+        }
+    })
+}
+
+pub fn quinary(opcode: &'static str,
+              decode: fn(&mut State<Amd64>) -> Option<(Rvalue,Rvalue,Rvalue,Rvalue)>,
+              sem: fn(&mut CodeGen<Amd64>, Rvalue, Rvalue, Rvalue, Rvalue)
+             ) -> Box<Fn(&mut State<Amd64>) -> bool> {
+    Box::new(move |st: &mut State<Amd64>| -> bool {
+        let len = st.tokens.len();
+        let next = st.address + len as u64;
+        if let Some((arg0,arg1,arg2,arg3)) = decode(st) {
+            st.mnemonic_dynargs(len,&opcode,"{64}, {64}, {64}, {64}",&|c| {
+                sem(c,arg0.clone(),arg1.clone(),arg2.clone(),arg3.clone());
+                vec![arg0.clone(),arg1.clone(),arg2.clone(),arg3.clone()]
             });
             st.jump(Rvalue::Constant(next),Guard::always());
             true

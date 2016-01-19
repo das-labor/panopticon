@@ -25,7 +25,153 @@ use amd64::*;
 
 use std::rc::Rc;
 
-pub fn integer_universial(lock_prfx: Rc<Disassembler<Amd64>>, imm8: Rc<Disassembler<Amd64>>,
+pub fn integer_lockable(imm8: Rc<Disassembler<Amd64>>,
+                          imm16: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>,
+                          _: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>,
+                          imm: Rc<Disassembler<Amd64>>, immlong: Rc<Disassembler<Amd64>>,
+                          moffs8: Rc<Disassembler<Amd64>>, moffs: Rc<Disassembler<Amd64>>,
+                          _: Rc<Disassembler<Amd64>>, rm: Rc<Disassembler<Amd64>>,
+                          rm0: Rc<Disassembler<Amd64>>, rm1: Rc<Disassembler<Amd64>>,
+                          rm2: Rc<Disassembler<Amd64>>, rm3: Rc<Disassembler<Amd64>>,
+                          rm4: Rc<Disassembler<Amd64>>, rm5: Rc<Disassembler<Amd64>>,
+                          rm6: Rc<Disassembler<Amd64>>, rm7: Rc<Disassembler<Amd64>>,
+                          rmbyte: Rc<Disassembler<Amd64>>, rmbyte0: Rc<Disassembler<Amd64>>,
+                          rmbyte1: Rc<Disassembler<Amd64>>, rmbyte2: Rc<Disassembler<Amd64>>,
+                          rmbyte3: Rc<Disassembler<Amd64>>, rmbyte4: Rc<Disassembler<Amd64>>,
+                          rmbyte5: Rc<Disassembler<Amd64>>, rmbyte6: Rc<Disassembler<Amd64>>,
+                          rmbyte7: Rc<Disassembler<Amd64>>, rmlong: Rc<Disassembler<Amd64>>,
+                          m64: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>,
+                          _: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>,
+                          _: Rc<Disassembler<Amd64>>) -> Rc<Disassembler<Amd64>> {
+    new_disassembler!(Amd64 =>
+        // ADC
+        [ 0x14, imm8          ] = binary_rv("adc",&*AL,decode_imm,adc),
+        [ 0x15, imm           ] = binary("adc",decode_i,adc),
+        [ 0x80, rmbyte2, imm8 ] = binary("adc",decode_mi,adc),
+        [ 0x81, rm2, imm      ] = binary("adc",decode_mi,adc),
+        [ 0x83, rm2, imm8     ] = binary("adc",decode_mi,adc),
+        [ 0x10, rmbyte        ] = binary("adc",decode_mr,adc),
+        [ 0x11, rm            ] = binary("adc",decode_mr,adc),
+        [ 0x12, rmbyte        ] = binary("adc",decode_rm,adc),
+        [ 0x13, rm            ] = binary("adc",decode_rm,adc),
+
+        // ADD
+        [ 0x04, imm8          ] = binary_rv("add",&*AL,decode_imm,add),
+        [ 0x05, imm           ] = binary("add",decode_i,add),
+        [ 0x80, rmbyte0, imm8 ] = binary("add",decode_mi,add),
+        [ 0x81, rm0, imm      ] = binary("add",decode_mi,add),
+        [ 0x83, rm0, imm8     ] = binary("add",decode_mi,add),
+        [ 0x00, rmbyte        ] = binary("add",decode_mr,add),
+        [ 0x01, rm            ] = binary("add",decode_mr,add),
+        [ 0x02, rmbyte        ] = binary("add",decode_rm,add),
+        [ 0x03, rm            ] = binary("add",decode_rm,add),
+
+        // AND
+        [ 0x24, imm8          ] = binary_rv("and",&*AL,decode_imm,and),
+        [ 0x25, imm           ] = binary("and",decode_i,and),
+        [ 0x80, rmbyte4, imm8 ] = binary("and",decode_mi,and),
+        [ 0x81, rm4, imm      ] = binary("and",decode_mi,and),
+        [ 0x83, rm4, imm8     ] = binary("and",decode_mi,and),
+        [ 0x20, rmbyte        ] = binary("and",decode_mr,and),
+        [ 0x21, rm            ] = binary("and",decode_mr,and),
+        [ 0x22, rmbyte        ] = binary("and",decode_rm,and),
+        [ 0x23, rm            ] = binary("and",decode_rm,and),
+
+        // BTC
+        [ 0x0f, 0xbb, rm        ] = binary("btc",decode_rm,btc),
+        [ 0x0f, 0xba, rm7, imm8 ] = binary("btc",decode_mi,btc),
+
+        // BTR
+        [ 0x0f, 0xb3, rm        ] = binary("btr",decode_rm,btr),
+        [ 0x0f, 0xba, rm6, imm8 ] = binary("btr",decode_mi,btr),
+
+        // BTS
+        [ 0x0f, 0xab, rm        ] = binary("bts",decode_rm,bts),
+        [ 0x0f, 0xba, rm5, imm8 ] = binary("bts",decode_mi,bts),
+
+        // CMPXCHG
+        [ 0x0f, 0xb0, rmbyte ] = binary("cmpxchg",decode_mr,cmpxchg),
+        [ 0x0f, 0xb1, rm     ] = binary("cmpxchg",decode_mr,cmpxchg),
+
+        // CMPXCHG8B
+        [ 0x0f, 0xc7, rm1, m64 ] = unary("cmpxchg8b",decode_m,cmpxchg8b),
+
+        // DEC
+        [ 0xfe, rmbyte1 ] = unary("dec",decode_m,dec),
+        [ 0xff, rm1     ] = unary("dec",decode_m,dec),
+
+        // INC
+        [ 0xfe, rmbyte0 ] = unary("inc",decode_m,inc),
+        [ 0xff, rm0     ] = unary("inc",decode_m,inc),
+
+        // NEG
+        [ 0xf6, rmbyte3 ] = unary("neg",decode_m,neg),
+        [ 0xf7, rm3     ] = unary("neg",decode_m,neg),
+
+        // NOT
+        [ 0xf6, rmbyte2 ] = unary("not",decode_m,not),
+        [ 0xf7, rm2     ] = unary("not",decode_m,not),
+
+        // OR
+        [ 0x0c, imm8          ] = binary_rv("or",&*AL,decode_imm,or),
+        [ 0x0d, imm           ] = binary("or",decode_i,or),
+        [ 0x80, rmbyte1, imm8 ] = binary("or",decode_mi,or),
+        [ 0x81, rm1, imm      ] = binary("or",decode_mi,or),
+        [ 0x83, rm1, imm8     ] = binary("or",decode_mi,or),
+        [ 0x08, rmbyte        ] = binary("or",decode_mr,or),
+        [ 0x09, rm            ] = binary("or",decode_mr,or),
+        [ 0x0a, rmbyte        ] = binary("or",decode_rm,or),
+        [ 0x0b, rm            ] = binary("or",decode_rm,or),
+
+        // SBB
+        [ 0x1c, imm8          ] = binary_rv("sbb",&*AL,decode_imm,sbb),
+        [ 0x1d, imm           ] = binary("sbb",decode_i,sbb),
+        [ 0x80, rmbyte3, imm8 ] = binary("sbb",decode_mi,sbb),
+        [ 0x81, rm3, imm      ] = binary("sbb",decode_mi,sbb),
+        [ 0x83, rm3, imm8     ] = binary("sbb",decode_mi,sbb),
+        [ 0x18, rmbyte        ] = binary("sbb",decode_mr,sbb),
+        [ 0x19, rm            ] = binary("sbb",decode_mr,sbb),
+        [ 0x1a, rmbyte        ] = binary("sbb",decode_rm,sbb),
+        [ 0x1b, rm            ] = binary("sbb",decode_rm,sbb),
+
+        // SUB
+        [ 0x2c, imm8      ] = binary_rv("sub",&*AL,decode_imm,sub),
+        [ 0x2d, imm       ] = binary("sub",decode_i,sub),
+        [ 0x81, rm5, imm  ] = binary("sub",decode_mi,sub),
+        [ 0x83, rm5, imm8 ] = binary("sub",decode_mi,sub),
+        [ 0x28, rmbyte    ] = binary("sub",decode_mr,sub),
+        [ 0x29, rm        ] = binary("sub",decode_mr,sub),
+        [ 0x2a, rmbyte    ] = binary("sub",decode_rm,sub),
+        [ 0x2b, rm        ] = binary("sub",decode_rm,sub),
+
+        // XADD
+        [ 0x0f, 0xc0, rmbyte ] = binary("xadd",decode_mr,xadd),
+        [ 0x0f, 0xc1, rm     ] = binary("xadd",decode_mr,xadd),
+
+        // XCHG
+        [ 0x90         ] = binary_vv("xchg",regb_a,regd_a,xchg),
+        [ 0x91         ] = binary_vv("xchg",regb_a,regd_c,xchg),
+        [ 0x92         ] = binary_vv("xchg",regb_a,regd_d,xchg),
+        [ 0x93         ] = binary_vv("xchg",regb_a,regd_b,xchg),
+        [ 0x94         ] = binary_vv("xchg",regb_a,regd_sp,xchg),
+        [ 0x95         ] = binary_vv("xchg",regb_a,regd_bp,xchg),
+        [ 0x96         ] = binary_vv("xchg",regb_a,regd_si,xchg),
+        [ 0x97         ] = binary_vv("xchg",regb_a,regd_di,xchg),
+        [ 0x86, rmbyte ] = binary("xchg",decode_mr,xchg),
+        [ 0x87, rm     ] = binary("xchg",decode_mr,xchg),
+
+        // XOR
+        [ 0x34, imm8      ] = binary_rv("xor",&*AL,decode_imm,xor),
+        [ 0x35, imm       ] = binary("xor",decode_i,xor),
+        [ 0x81, rm6, imm  ] = binary("xor",decode_mi,xor),
+        [ 0x83, rm6, imm8 ] = binary("xor",decode_mi,xor),
+        [ 0x30, rmbyte    ] = binary("xor",decode_mr,xor),
+        [ 0x31, rm        ] = binary("xor",decode_mr,xor),
+        [ 0x32, rmbyte    ] = binary("xor",decode_rm,xor),
+        [ 0x33, rm        ] = binary("xor",decode_rm,xor))
+}
+
+pub fn integer_universial(imm8: Rc<Disassembler<Amd64>>,
                           imm16: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>,
                           _: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>,
                           imm: Rc<Disassembler<Amd64>>, immlong: Rc<Disassembler<Amd64>>,
@@ -63,41 +209,8 @@ pub fn integer_universial(lock_prfx: Rc<Disassembler<Amd64>>, imm8: Rc<Disassemb
 
 
     new_disassembler!(Amd64 =>
-        // ADC
-        [ opt!(lock_prfx), 0x14, imm8          ] = binary_rv("adc",&*AL,decode_imm,adc),
-        [ opt!(lock_prfx), 0x15, imm           ] = binary("adc",decode_i,adc),
-        [ opt!(lock_prfx), 0x80, rmbyte2, imm8 ] = binary("adc",decode_mi,adc),
-        [ opt!(lock_prfx), 0x81, rm2, imm      ] = binary("adc",decode_mi,adc),
-        [ opt!(lock_prfx), 0x83, rm2, imm8     ] = binary("adc",decode_mi,adc),
-        [ opt!(lock_prfx), 0x10, rmbyte        ] = binary("adc",decode_mr,adc),
-        [ opt!(lock_prfx), 0x11, rm            ] = binary("adc",decode_mr,adc),
-        [ opt!(lock_prfx), 0x12, rmbyte        ] = binary("adc",decode_rm,adc),
-        [ opt!(lock_prfx), 0x13, rm            ] = binary("adc",decode_rm,adc),
-
-        // ADD
-        [ opt!(lock_prfx), 0x04, imm8          ] = binary_rv("add",&*AL,decode_imm,add),
-        [ opt!(lock_prfx), 0x05, imm           ] = binary("add",decode_i,add),
-        [ opt!(lock_prfx), 0x80, rmbyte0, imm8 ] = binary("add",decode_mi,add),
-        [ opt!(lock_prfx), 0x81, rm0, imm      ] = binary("add",decode_mi,add),
-        [ opt!(lock_prfx), 0x83, rm0, imm8     ] = binary("add",decode_mi,add),
-        [ opt!(lock_prfx), 0x00, rmbyte        ] = binary("add",decode_mr,add),
-        [ opt!(lock_prfx), 0x01, rm            ] = binary("add",decode_mr,add),
-        [ opt!(lock_prfx), 0x02, rmbyte        ] = binary("add",decode_rm,add),
-        [ opt!(lock_prfx), 0x03, rm            ] = binary("add",decode_rm,add),
-
         // ADCX
         [ 0x66, 0x0f, 0x38, 0xf6, rm ] = binary("adcx",decode_rm,adcx),
-
-        // AND
-        [ opt!(lock_prfx), 0x24, imm8          ] = binary_rv("and",&*AL,decode_imm,and),
-        [ opt!(lock_prfx), 0x25, imm           ] = binary("and",decode_i,and),
-        [ opt!(lock_prfx), 0x80, rmbyte4, imm8 ] = binary("and",decode_mi,and),
-        [ opt!(lock_prfx), 0x81, rm4, imm      ] = binary("and",decode_mi,and),
-        [ opt!(lock_prfx), 0x83, rm4, imm8     ] = binary("and",decode_mi,and),
-        [ opt!(lock_prfx), 0x20, rmbyte        ] = binary("and",decode_mr,and),
-        [ opt!(lock_prfx), 0x21, rm            ] = binary("and",decode_mr,and),
-        [ opt!(lock_prfx), 0x22, rmbyte        ] = binary("and",decode_rm,and),
-        [ opt!(lock_prfx), 0x23, rm            ] = binary("and",decode_rm,and),
 
         // BSF
         [ 0x0f, 0xbc, rm ] = binary("bsf",decode_rm,bsf),
@@ -118,18 +231,6 @@ pub fn integer_universial(lock_prfx: Rc<Disassembler<Amd64>>, imm8: Rc<Disassemb
         // BT
         [ 0x0f, 0xa3, rm        ] = binary("bt",decode_rm,bt),
         [ 0x0f, 0xba, rm4, imm8 ] = binary("bt",decode_mi,bt),
-
-        // BTC
-        [ opt!(lock_prfx), 0x0f, 0xbb, rm        ] = binary("btc",decode_rm,btc),
-        [ opt!(lock_prfx), 0x0f, 0xba, rm7, imm8 ] = binary("btc",decode_mi,btc),
-
-        // BTR
-        [ opt!(lock_prfx), 0x0f, 0xb3, rm        ] = binary("btr",decode_rm,btr),
-        [ opt!(lock_prfx), 0x0f, 0xba, rm6, imm8 ] = binary("btr",decode_mi,btr),
-
-        // BTS
-        [ opt!(lock_prfx), 0x0f, 0xab, rm        ] = binary("bts",decode_rm,bts),
-        [ opt!(lock_prfx), 0x0f, 0xba, rm5, imm8 ] = binary("bts",decode_mi,bts),
 
         // CALL
         [ 0xff, rm2   ] = unary("call",decode_m,far_call),
@@ -182,20 +283,8 @@ pub fn integer_universial(lock_prfx: Rc<Disassembler<Amd64>>, imm8: Rc<Disassemb
         [ 0x3a, rmbyte    ] = binary("cmp",decode_rm,cmp),
         [ 0x3b, rm        ] = binary("cmp",decode_rm,cmp),
 
-        // CMPXCHG
-        [ opt!(lock_prfx), 0x0f, 0xb0, rmbyte ] = binary("cmpxchg",decode_mr,cmpxchg),
-        [ opt!(lock_prfx), 0x0f, 0xb1, rm     ] = binary("cmpxchg",decode_mr,cmpxchg),
-
-        // CMPXCHG8B
-        [ opt!(lock_prfx), 0x0f, 0xc7, rm1, m64 ] = unary("cmpxchg8b",decode_m,cmpxchg8b),
-
-
         // CPUID
         [ 0x0f, 0xa2 ] = nonary("cpuid",cpuid),
-
-        // DEC
-        [ opt!(lock_prfx), 0xfe, rmbyte1 ] = unary("dec",decode_m,dec),
-        [ opt!(lock_prfx), 0xff, rm1     ] = unary("dec",decode_m,dec),
 
         // DIV
         [ 0xf6, rmbyte6 ] = unary("div",decode_m,div),
@@ -223,10 +312,6 @@ pub fn integer_universial(lock_prfx: Rc<Disassembler<Amd64>>, imm8: Rc<Disassemb
         [ 0xe5, imm8 ] = binary("in",decode_i,in_),
         [ 0xec       ] = binary_rr("in",&*AL,&*DX,in_),
         [ 0xed       ] = binary_vr("in",reg_a,&*DX,in_),
-
-        // INC
-        [ opt!(lock_prfx), 0xfe, rmbyte0 ] = unary("inc",decode_m,inc),
-        [ opt!(lock_prfx), 0xff, rm0     ] = unary("inc",decode_m,inc),
 
         // INT
         [ 0xcc       ] = unary_c("int",Rvalue::Constant(3),int),
@@ -359,27 +444,8 @@ pub fn integer_universial(lock_prfx: Rc<Disassembler<Amd64>>, imm8: Rc<Disassemb
         [ 0xf6, rmbyte4 ] = unary("mul",decode_m,mul),
         [ 0xf7, rm4     ] = unary("mul",decode_m,mul),
 
-        // NEG
-        [ opt!(lock_prfx), 0xf6, rmbyte3 ] = unary("neg",decode_m,neg),
-        [ opt!(lock_prfx), 0xf7, rm3     ] = unary("neg",decode_m,neg),
-
         // NOP
         [ 0x0f, 0x1f, rm0 ] = nonary("nop",nop),
-
-        // NOT (lock)
-        [ opt!(lock_prfx), 0xf6, rmbyte2 ] = unary("not",decode_m,not),
-        [ opt!(lock_prfx), 0xf7, rm2     ] = unary("not",decode_m,not),
-
-        // OR
-        [ opt!(lock_prfx), 0x0c, imm8          ] = binary_rv("or",&*AL,decode_imm,or),
-        [ opt!(lock_prfx), 0x0d, imm           ] = binary("or",decode_i,or),
-        [ opt!(lock_prfx), 0x80, rmbyte1, imm8 ] = binary("or",decode_mi,or),
-        [ opt!(lock_prfx), 0x81, rm1, imm      ] = binary("or",decode_mi,or),
-        [ opt!(lock_prfx), 0x83, rm1, imm8     ] = binary("or",decode_mi,or),
-        [ opt!(lock_prfx), 0x08, rmbyte        ] = binary("or",decode_mr,or),
-        [ opt!(lock_prfx), 0x09, rm            ] = binary("or",decode_mr,or),
-        [ opt!(lock_prfx), 0x0a, rmbyte        ] = binary("or",decode_rm,or),
-        [ opt!(lock_prfx), 0x0b, rm            ] = binary("or",decode_rm,or),
 
         // OUT
         [ 0xe6, imm8 ] = binary_rv("out",&*AL,decode_imm,out),
@@ -462,6 +528,9 @@ pub fn integer_universial(lock_prfx: Rc<Disassembler<Amd64>>, imm8: Rc<Disassemb
         [ 0xc0, rmbyte1, imm8 ] = binary("ror",decode_mi,ror),
         [ 0xc1, rm1, imm8     ] = binary("ror",decode_mi,ror),
 
+        // RDTSC
+        [ 0x0f, 0x31 ] = nonary("rdtsc",rdtsc),
+
         // SAHF
         [ 0x9e ] = nonary("sahf",sahf),
 
@@ -483,17 +552,6 @@ pub fn integer_universial(lock_prfx: Rc<Disassembler<Amd64>>, imm8: Rc<Disassemb
         [ 0xd3, rm7           ] = binary_vr("sar",decode_m,&*CF,sar),
         [ 0xc0, rmbyte7, imm8 ] = binary("sar",decode_mi,sar),
         [ 0xc1, rm7, imm8     ] = binary("sar",decode_mi,sar),
-
-        // SBB
-        [ opt!(lock_prfx), 0x1c, imm8          ] = binary_rv("sbb",&*AL,decode_imm,sbb),
-        [ opt!(lock_prfx), 0x1d, imm           ] = binary("sbb",decode_i,sbb),
-        [ opt!(lock_prfx), 0x80, rmbyte3, imm8 ] = binary("sbb",decode_mi,sbb),
-        [ opt!(lock_prfx), 0x81, rm3, imm      ] = binary("sbb",decode_mi,sbb),
-        [ opt!(lock_prfx), 0x83, rm3, imm8     ] = binary("sbb",decode_mi,sbb),
-        [ opt!(lock_prfx), 0x18, rmbyte        ] = binary("sbb",decode_mr,sbb),
-        [ opt!(lock_prfx), 0x19, rm            ] = binary("sbb",decode_mr,sbb),
-        [ opt!(lock_prfx), 0x1a, rmbyte        ] = binary("sbb",decode_rm,sbb),
-        [ opt!(lock_prfx), 0x1b, rm            ] = binary("sbb",decode_rm,sbb),
 
         // SETcc
         [ 0x0f, 0x90, rmbyte ] = unary_box("seto",decode_m,_setcc(Condition::Overflow)),
@@ -538,16 +596,6 @@ pub fn integer_universial(lock_prfx: Rc<Disassembler<Amd64>>, imm8: Rc<Disassemb
         // STI
         [ 0xfb ] = nonary("sti",sti),
 
-        // SUB
-        [ opt!(lock_prfx), 0x2c, imm8      ] = binary_rv("sub",&*AL,decode_imm,sub),
-        [ opt!(lock_prfx), 0x2d, imm       ] = binary("sub",decode_i,sub),
-        [ opt!(lock_prfx), 0x81, rm5, imm  ] = binary("sub",decode_mi,sub),
-        [ opt!(lock_prfx), 0x83, rm5, imm8 ] = binary("sub",decode_mi,sub),
-        [ opt!(lock_prfx), 0x28, rmbyte    ] = binary("sub",decode_mr,sub),
-        [ opt!(lock_prfx), 0x29, rm        ] = binary("sub",decode_mr,sub),
-        [ opt!(lock_prfx), 0x2a, rmbyte    ] = binary("sub",decode_rm,sub),
-        [ opt!(lock_prfx), 0x2b, rm        ] = binary("sub",decode_rm,sub),
-
         // TEST
         [ 0xa8, imm8          ] = binary_rv("test",&*AL,decode_imm,test),
         [ 0xa9, imm           ] = binary("test",decode_i,test),
@@ -562,31 +610,9 @@ pub fn integer_universial(lock_prfx: Rc<Disassembler<Amd64>>, imm8: Rc<Disassemb
         // UD2
         [ 0x0f, 0x0b ] = nonary("ud2",ud2),
 
-        // XADD (lock)
-        [ opt!(lock_prfx), 0x0f, 0xc0, rmbyte ] = binary("xadd",decode_mr,xadd),
-        [ opt!(lock_prfx), 0x0f, 0xc1, rm     ] = binary("xadd",decode_mr,xadd),
+        // XGETBV
+        [ 0x0f, 0x01, 0xd0 ] = nonary("xgetbv",xgetbv))
 
-        // XCHG (lock)
-        [ opt!(lock_prfx), 0x90         ] = binary_vv("xchg",regb_a,regd_a,xchg),
-        [ opt!(lock_prfx), 0x91         ] = binary_vv("xchg",regb_a,regd_c,xchg),
-        [ opt!(lock_prfx), 0x92         ] = binary_vv("xchg",regb_a,regd_d,xchg),
-        [ opt!(lock_prfx), 0x93         ] = binary_vv("xchg",regb_a,regd_b,xchg),
-        [ opt!(lock_prfx), 0x94         ] = binary_vv("xchg",regb_a,regd_sp,xchg),
-        [ opt!(lock_prfx), 0x95         ] = binary_vv("xchg",regb_a,regd_bp,xchg),
-        [ opt!(lock_prfx), 0x96         ] = binary_vv("xchg",regb_a,regd_si,xchg),
-        [ opt!(lock_prfx), 0x97         ] = binary_vv("xchg",regb_a,regd_di,xchg),
-        [ opt!(lock_prfx), 0x86, rmbyte ] = binary("xchg",decode_mr,xchg),
-        [ opt!(lock_prfx), 0x87, rm     ] = binary("xchg",decode_mr,xchg),
-
-        // XOR
-        [ opt!(lock_prfx), 0x34, imm8      ] = binary_rv("xor",&*AL,decode_imm,xor),
-        [ opt!(lock_prfx), 0x35, imm       ] = binary("xor",decode_i,xor),
-        [ opt!(lock_prfx), 0x81, rm6, imm  ] = binary("xor",decode_mi,xor),
-        [ opt!(lock_prfx), 0x83, rm6, imm8 ] = binary("xor",decode_mi,xor),
-        [ opt!(lock_prfx), 0x30, rmbyte    ] = binary("xor",decode_mr,xor),
-        [ opt!(lock_prfx), 0x31, rm        ] = binary("xor",decode_mr,xor),
-        [ opt!(lock_prfx), 0x32, rmbyte    ] = binary("xor",decode_rm,xor),
-        [ opt!(lock_prfx), 0x33, rm        ] = binary("xor",decode_rm,xor))
 }
 
 pub fn integer_rep() -> (Rc<Disassembler<Amd64>>,Rc<Disassembler<Amd64>>) {
@@ -658,7 +684,7 @@ pub fn integer_32bit(imm8: Rc<Disassembler<Amd64>>, imm48: Rc<Disassembler<Amd64
         [ 0xff, rm5   ] = unary("jmp",decode_d,jmp))
 }
 
-pub fn integer_64bit(lock_prfx: Rc<Disassembler<Amd64>>, imm8: Rc<Disassembler<Amd64>>,
+pub fn lockable_64bit(imm8: Rc<Disassembler<Amd64>>,
                      moffs: Rc<Disassembler<Amd64>>,
                      rm: Rc<Disassembler<Amd64>>,
                      _: Rc<Disassembler<Amd64>>, rm1: Rc<Disassembler<Amd64>>,
@@ -668,7 +694,20 @@ pub fn integer_64bit(lock_prfx: Rc<Disassembler<Amd64>>, imm8: Rc<Disassembler<A
                      m128: Rc<Disassembler<Amd64>>) -> Rc<Disassembler<Amd64>> {
     new_disassembler!(Amd64 =>
         // CMPXCHG16B
-        [ opt!(lock_prfx), 0x0f, 0xc7, rm1, m128 ] = unary("cmpxchg16b",decode_m,cmpxchg16b),
+        [ 0x0f, 0xc7, rm1, m128 ] = unary("cmpxchg16b",decode_m,cmpxchg16b))
+}
+
+pub fn integer_64bit(imm8: Rc<Disassembler<Amd64>>,
+                     moffs: Rc<Disassembler<Amd64>>,
+                     rm: Rc<Disassembler<Amd64>>,
+                     _: Rc<Disassembler<Amd64>>, rm1: Rc<Disassembler<Amd64>>,
+                     _: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>,
+                     rm4: Rc<Disassembler<Amd64>>, rm5: Rc<Disassembler<Amd64>>,
+                     _: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>,
+                     m128: Rc<Disassembler<Amd64>>) -> Rc<Disassembler<Amd64>> {
+    new_disassembler!(Amd64 =>
+        // CMPXCHG16B
+        [ 0x0f, 0xc7, rm1, m128 ] = unary("cmpxchg16b",decode_m,cmpxchg16b),
 
         // JRCXZ
         [ 0xe3, imm8 ] = unary("jrcxz",decode_imm,jrcxz),
@@ -688,7 +727,37 @@ pub fn integer_64bit(lock_prfx: Rc<Disassembler<Amd64>>, imm8: Rc<Disassembler<A
         [ 0x0f, 0x07   ] = nonary("sysret",sysret))
 }
 
-pub fn integer_32bit_or_less(lock_prfx: Rc<Disassembler<Amd64>>, imm8: Rc<Disassembler<Amd64>>,
+pub fn lockable_32bit_or_less(
+                     imm8: Rc<Disassembler<Amd64>>,
+                     imm48: Rc<Disassembler<Amd64>>,
+                     rm: Rc<Disassembler<Amd64>>,
+                     _: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>,
+                     rm2: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>,
+                     _: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>,
+                     _: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>) -> Rc<Disassembler<Amd64>> {
+    new_disassembler!(Amd64 =>
+        // DEC
+        [ 0x48 ] = unary("dec",reg_a,dec),
+        [ 0x49 ] = unary("dec",reg_c,dec),
+        [ 0x4a ] = unary("dec",reg_d,dec),
+        [ 0x4b ] = unary("dec",reg_b,dec),
+        [ 0x4c ] = unary("dec",reg_sp,dec),
+        [ 0x4d ] = unary("dec",reg_bp,dec),
+        [ 0x4e ] = unary("dec",reg_si,dec),
+        [ 0x4f ] = unary("dec",reg_di,dec),
+
+        // INC
+        [ 0x40 ] = unary("inc",reg_a,inc),
+        [ 0x41 ] = unary("inc",reg_c,inc),
+        [ 0x42 ] = unary("inc",reg_d,inc),
+        [ 0x43 ] = unary("inc",reg_b,inc),
+        [ 0x44 ] = unary("inc",reg_sp,inc),
+        [ 0x45 ] = unary("inc",reg_bp,inc),
+        [ 0x46 ] = unary("inc",reg_si,inc),
+        [ 0x47 ] = unary("inc",reg_di,inc))
+}
+
+pub fn integer_32bit_or_less(imm8: Rc<Disassembler<Amd64>>,
                      imm48: Rc<Disassembler<Amd64>>,
                      rm: Rc<Disassembler<Amd64>>,
                      _: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>,
@@ -721,16 +790,6 @@ pub fn integer_32bit_or_less(lock_prfx: Rc<Disassembler<Amd64>>, imm8: Rc<Disass
         // DAS
         [ 0x2f ] = nonary("das",das),
 
-        // DEC
-        [ opt!(lock_prfx), 0x48 ] = unary("dec",reg_a,dec),
-        [ opt!(lock_prfx), 0x49 ] = unary("dec",reg_c,dec),
-        [ opt!(lock_prfx), 0x4a ] = unary("dec",reg_d,dec),
-        [ opt!(lock_prfx), 0x4b ] = unary("dec",reg_b,dec),
-        [ opt!(lock_prfx), 0x4c ] = unary("dec",reg_sp,dec),
-        [ opt!(lock_prfx), 0x4d ] = unary("dec",reg_bp,dec),
-        [ opt!(lock_prfx), 0x4e ] = unary("dec",reg_si,dec),
-        [ opt!(lock_prfx), 0x4f ] = unary("dec",reg_di,dec),
-
         // DAA
         [ 0x27 ] = nonary("daa",daa),
 
@@ -758,17 +817,7 @@ pub fn integer_32bit_or_less(lock_prfx: Rc<Disassembler<Amd64>>, imm8: Rc<Disass
         [ 0x16 ] = push,
 
         // PUSHA*
-        [ 0x60 ] = pusha,
-
-        // INC
-        [ opt!(lock_prfx), 0x40 ] = unary("inc",reg_a,inc),
-        [ opt!(lock_prfx), 0x41 ] = unary("inc",reg_c,inc),
-        [ opt!(lock_prfx), 0x42 ] = unary("inc",reg_d,inc),
-        [ opt!(lock_prfx), 0x43 ] = unary("inc",reg_b,inc),
-        [ opt!(lock_prfx), 0x44 ] = unary("inc",reg_sp,inc),
-        [ opt!(lock_prfx), 0x45 ] = unary("inc",reg_bp,inc),
-        [ opt!(lock_prfx), 0x46 ] = unary("inc",reg_si,inc),
-        [ opt!(lock_prfx), 0x47 ] = unary("inc",reg_di,inc))
+        [ 0x60 ] = pusha)
 }
 
 pub fn integer_instructions(bits: Mode,
@@ -776,8 +825,14 @@ pub fn integer_instructions(bits: Mode,
                      repx_prfx: Rc<Disassembler<Amd64>>, opsize_prfx: Rc<Disassembler<Amd64>>,
                      addrsz_prfx: Rc<Disassembler<Amd64>>, rex_prfx: Rc<Disassembler<Amd64>>,
                      rexw_prfx: Rc<Disassembler<Amd64>>,
-                     seg_prfx: Rc<Disassembler<Amd64>>, vex_prfx: Rc<Disassembler<Amd64>>,
-                     imm8: Rc<Disassembler<Amd64>>,
+                     seg_prfx: Rc<Disassembler<Amd64>>,
+                     vex_0f_prfx: Rc<Disassembler<Amd64>>, vex_660f_prfx: Rc<Disassembler<Amd64>>,
+                     vex_f20f_prfx: Rc<Disassembler<Amd64>>, vex_f30f_prfx: Rc<Disassembler<Amd64>>,
+                     vex_0f38_prfx: Rc<Disassembler<Amd64>>, vex_660f38_prfx: Rc<Disassembler<Amd64>>,
+                     vex_f20f38_prfx: Rc<Disassembler<Amd64>>, vex_f30f38_prfx: Rc<Disassembler<Amd64>>,
+                     vex_0f3a_prfx: Rc<Disassembler<Amd64>>, vex_660f3a_prfx: Rc<Disassembler<Amd64>>,
+                     vex_f20f3a_prfx: Rc<Disassembler<Amd64>>, vex_f30f3a_prfx: Rc<Disassembler<Amd64>>,
+                     is4: Rc<Disassembler<Amd64>>, imm8: Rc<Disassembler<Amd64>>,
                      imm16: Rc<Disassembler<Amd64>>, imm32: Rc<Disassembler<Amd64>>,
                      imm48: Rc<Disassembler<Amd64>>, imm64: Rc<Disassembler<Amd64>>,
                      imm: Rc<Disassembler<Amd64>>, immlong: Rc<Disassembler<Amd64>>,
@@ -798,7 +853,27 @@ pub fn integer_instructions(bits: Mode,
                      disp64: Rc<Disassembler<Amd64>>) -> Rc<Disassembler<Amd64>> {
 
     let main = integer_universial(
-        lock_prfx.clone(), imm8.clone(),
+        imm8.clone(),
+        imm16.clone(), imm32.clone(),
+        imm48.clone(), imm64.clone(),
+        imm.clone(), immlong.clone(),
+        moffs8.clone(), moffs.clone(),
+        sib.clone(), rm.clone(),
+        rm0.clone(), rm1.clone(),
+        rm2.clone(), rm3.clone(),
+        rm4.clone(), rm5.clone(),
+        rm6.clone(), rm7.clone(),
+        rmbyte.clone(), rmbyte0.clone(),
+        rmbyte1.clone(), rmbyte2.clone(),
+        rmbyte3.clone(), rmbyte4.clone(),
+        rmbyte5.clone(), rmbyte6.clone(),
+        rmbyte7.clone(), rmlong.clone(),
+        m64.clone(), disp8.clone(),
+        disp16.clone(), disp32.clone(),
+        disp64.clone());
+
+     let lockable = integer_lockable(
+        imm8.clone(),
         imm16.clone(), imm32.clone(),
         imm48.clone(), imm64.clone(),
         imm.clone(), immlong.clone(),
@@ -824,14 +899,19 @@ pub fn integer_instructions(bits: Mode,
                 rm0.clone(), rm1.clone(), rm2.clone(), rm3.clone(), rm4.clone(), rm5.clone(), rm6.clone(), rm7.clone());
 
             let main16_or_32 = integer_32bit_or_less(
-                lock_prfx,
+                imm8.clone(), imm48.clone(),
+                rm.clone(), rm0.clone(), rm1.clone(), rm2.clone(), rm3.clone(), rm4.clone(), rm5.clone(), rm6.clone(), rm7.clone());
+
+            let lockable16_or_32 = lockable_32bit_or_less(
                 imm8, imm48,
                 rm, rm0, rm1, rm2, rm3, rm4, rm5, rm6, rm7);
 
             new_disassembler!(Amd64 =>
                 [ main ] = |_: &mut State<Amd64>| { true },
+                [ opt!(lock_prfx), main ] = |_: &mut State<Amd64>| { true },
                 [ main16 ] = |_: &mut State<Amd64>| { true },
-                [ main16_or_32 ] = |_: &mut State<Amd64>| { true })
+                [ main16_or_32 ] = |_: &mut State<Amd64>| { true },
+                [ opt!(lock_prfx), main16_or_32 ] = |_: &mut State<Amd64>| { true })
         },
         Mode::Protected => {
             let main32 = integer_32bit(
@@ -840,27 +920,34 @@ pub fn integer_instructions(bits: Mode,
                 rm0.clone(), rm1.clone(), rm2.clone(), rm3.clone(), rm4.clone(), rm5.clone(), rm6.clone(), rm7.clone());
 
             let main16_or_32 = integer_32bit_or_less(
-                lock_prfx.clone(),
                 imm8.clone(), imm48.clone(),
                 rm.clone(), rm0.clone(), rm1.clone(), rm2.clone(), rm3.clone(), rm4.clone(), rm5.clone(), rm6.clone(), rm7.clone());
 
+            let lockable16_or_32 = lockable_32bit_or_less(
+                imm8, imm48,
+                rm, rm0, rm1, rm2, rm3, rm4, rm5, rm6, rm7);
             let (rep,repx) = integer_rep();
 
             new_disassembler!(Amd64 =>
-                [ opt!(seg_prfx), opt!(opsize_prfx), opt!(addrsz_prfx),  main ] = |_: &mut State<Amd64>| { true },
+                [ opt!(seg_prfx), opt!(opsize_prfx), opt!(addrsz_prfx), main ] = |_: &mut State<Amd64>| { true },
+                [ opt!(lock_prfx), opt!(seg_prfx), opt!(opsize_prfx), opt!(addrsz_prfx),  lockable ] = |_: &mut State<Amd64>| { true },
                 [ opt!(seg_prfx), opt!(opsize_prfx), opt!(addrsz_prfx), main32 ] = |_: &mut State<Amd64>| { true },
                 [ opt!(seg_prfx), opt!(opsize_prfx), opt!(addrsz_prfx), main16_or_32 ] = |_: &mut State<Amd64>| { true },
+                [ opt!(opsize_prfx), opt!(seg_prfx), opt!(addrsz_prfx), opt!(lock_prfx), main16_or_32 ] = |_: &mut State<Amd64>| { true },
                 [ opt!(rep_prfx), opt!(seg_prfx), opt!(opsize_prfx), opt!(rep_prfx), rep ] = |_: &mut State<Amd64>| { true },
                 [ opt!(rep_prfx), opt!(seg_prfx), opt!(opsize_prfx), opt!(repx_prfx), repx ] = |_: &mut State<Amd64>| { true })
         },
         Mode::Long => {
             let main64 = integer_64bit(
-                lock_prfx.clone(),
                 imm8.clone(),
                 moffs.clone(),
                 rm.clone(), rm0.clone(), rm1.clone(), rm2.clone(), rm3.clone(), rm4.clone(), rm5.clone(), rm6.clone(), rm7.clone(),
                 m128.clone());
-
+            let lockable64 = lockable_64bit(
+                imm8.clone(),
+                moffs.clone(),
+                rm.clone(), rm0.clone(), rm1.clone(), rm2.clone(), rm3.clone(), rm4.clone(), rm5.clone(), rm6.clone(), rm7.clone(),
+                m128.clone());
             let (rep,repx) = integer_rep();
             let sse4 = vector::sse4(
                 rm.clone(),imm8.clone(),rex_prfx.clone(),rexw_prfx.clone());
@@ -869,17 +956,26 @@ pub fn integer_instructions(bits: Mode,
             let sse2 = vector::sse2(
                 rm0.clone(), rm1.clone(), rm2.clone(), rm3.clone(), rm4.clone(), rm5.clone(), rm6.clone(), rm7.clone(),
                 rm.clone(),imm8.clone(),rex_prfx.clone(),rexw_prfx.clone());
-            let avx = vector::avx(vex_prfx.clone(),rm.clone());
+            let avx = vector::avx(
+                vex_0f_prfx.clone(), vex_660f_prfx.clone(), vex_f20f_prfx.clone(),
+                vex_f30f_prfx.clone(), vex_0f38_prfx.clone(), vex_660f38_prfx.clone(),
+                vex_f20f38_prfx.clone(), vex_f30f38_prfx.clone(), vex_0f3a_prfx.clone(),
+                vex_660f3a_prfx.clone(), vex_f20f3a_prfx.clone(), vex_f30f3a_prfx.clone(),
+                rm.clone(),
+                rm0.clone(), rm1.clone(), rm2.clone(), rm3.clone(), rm4.clone(), rm5.clone(), rm6.clone(), rm7.clone(),
+                imm8.clone(),is4.clone());
             let sse1 = vector::sse1(
                 rm0.clone(), rm1.clone(), rm2.clone(), rm3.clone(), rm4.clone(), rm5.clone(), rm6.clone(), rm7.clone(),
-                rm.clone(),imm8.clone(),rexw_prfx.clone());
+                rm.clone(),imm8.clone(),rex_prfx.clone(),rexw_prfx.clone());
             let mmx = vector::mmx(
                 rm0.clone(), rm1.clone(), rm2.clone(), rm3.clone(), rm4.clone(), rm5.clone(), rm6.clone(), rm7.clone(),
                 rm.clone(),imm8.clone());
 
             new_disassembler!(Amd64 =>
-                [ opt!(opsize_prfx), opt!(addrsz_prfx), opt!(repx_prfx), opt!(seg_prfx), opt!(lock_prfx), opt!(rex_prfx),  main ] = |_: &mut State<Amd64>| { true },
+                [ opt!(opsize_prfx), opt!(addrsz_prfx), opt!(repx_prfx), opt!(seg_prfx), opt!(rex_prfx), main ] = |_: &mut State<Amd64>| { true },
+                [ opt!(opsize_prfx), opt!(addrsz_prfx), opt!(repx_prfx), opt!(lock_prfx), opt!(seg_prfx), opt!(rex_prfx),  lockable ] = |_: &mut State<Amd64>| { true },
                 [ opt!(opsize_prfx), opt!(addrsz_prfx), opt!(rex_prfx), main64 ] = |_: &mut State<Amd64>| { true },
+                [ opt!(opsize_prfx), opt!(addrsz_prfx), opt!(lock_prfx),  opt!(rex_prfx), lockable64 ] = |_: &mut State<Amd64>| { true },
                 [ mmx ] = |_: &mut State<Amd64>| { true },
                 [ sse1 ] = |_: &mut State<Amd64>| { true },
                 [ sse2 ] = |_: &mut State<Amd64>| { true },
