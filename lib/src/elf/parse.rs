@@ -174,7 +174,7 @@ impl Ehdr {
             let mut phdrs = vec![];
             let mut shdrs = vec![];
 
-            for pidx in (0..phnum) {
+            for pidx in 0..phnum {
                 let off = phoff + pidx * phentsize;
 
                 if fd.seek(SeekFrom::Start(off)).ok() == Some(off) {
@@ -185,7 +185,7 @@ impl Ehdr {
                 }
             }
 
-            for sidx in (0..shnum) {
+            for sidx in 0..shnum {
                 let off = shoff + sidx * shentsize;
 
                 if fd.seek(SeekFrom::Start(off)).ok() == Some(off) {

@@ -397,7 +397,7 @@ impl<A: Architecture> Disassembler<A> {
                 for _ in ts.len()..len {
                     let mut tmp: A::Token = A::Token::zero();
 
-                    for x in (0..size_of::<A::Token>()) {
+                    for x in 0..size_of::<A::Token>() {
                         if let Some(Some(b)) = j.next() {
                             if x != 0 {
                                 tmp = tmp | (cast::<u8,A::Token>(b).unwrap() << 8);
@@ -442,7 +442,7 @@ impl<A: Architecture> Disassembler<A> {
                                             0u64
                                         };
 
-                                        for rbit in (0..(size_of::<A::Token>() * 8)) {
+                                        for rbit in 0..(size_of::<A::Token>() * 8) {
                                             let bit = (size_of::<A::Token>() * 8) - rbit - 1;
                                             let bit_mask = if bit > 0 {
                                                 A::Token::one() << bit

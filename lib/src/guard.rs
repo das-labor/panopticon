@@ -17,25 +17,28 @@
  */
 
 use value::{Rvalue,ToRvalue};
+use rustc_serialize::{Encodable,Decodable};
+use std::hash::Hash;
+use std::fmt::Debug;
 
 #[derive(Debug,Clone,PartialEq,Eq,Hash,RustcDecodable,RustcEncodable)]
-pub enum Relation {
-    UnsignedLessOrEqual(Rvalue,Rvalue),
-    SignedLessOrEqual(Rvalue,Rvalue),
-    UnsignedGreaterOrEqual(Rvalue,Rvalue),
-    SignedGreaterOrEqual(Rvalue,Rvalue),
-    UnsignedLess(Rvalue,Rvalue),
-    SignedLess(Rvalue,Rvalue),
-    UnsignedGreater(Rvalue,Rvalue),
-    SignedGreater(Rvalue,Rvalue),
-    Equal(Rvalue,Rvalue),
-    NotEqual(Rvalue,Rvalue),
+pub enum Relation<Value: Debug + Clone + PartialEq + Eq + Hash + Decodable + Encodable> {
+    UnsignedLessOrEqual(Value,Value),
+    SignedLessOrEqual(Value,Value),
+    UnsignedGreaterOrEqual(Value,Value),
+    SignedGreaterOrEqual(Value,Value),
+    UnsignedLess(Value,Value),
+    SignedLess(Value,Value),
+    UnsignedGreater(Value,Value),
+    SignedGreater(Value,Value),
+    Equal(Value,Value),
+    NotEqual(Value,Value),
     True,
     False,
 }
 
-impl<'a> Relation {
-    pub fn operands(&'a self) -> Vec<&'a Rvalue> {
+impl<'a,Value> Relation<Value> where Value: Debug + Clone + PartialEq + Eq + Hash + Decodable + Encodable {
+    pub fn operands(&'a self) -> Vec<&'a Value> {
         match self {
             &Relation::UnsignedLessOrEqual(ref a,ref b) => vec![a,b],
             &Relation::SignedLessOrEqual(ref a,ref b) => vec![a,b],
@@ -52,7 +55,7 @@ impl<'a> Relation {
         }
     }
 
-    pub fn operands_mut(&'a mut self) -> Vec<&'a mut Rvalue> {
+    pub fn operands_mut(&'a mut self) -> Vec<&'a mut Value> {
         match self {
             &mut Relation::UnsignedLessOrEqual(ref mut a,ref mut b) => vec![a,b],
             &mut Relation::SignedLessOrEqual(ref mut a,ref mut b) => vec![a,b],
@@ -72,11 +75,11 @@ impl<'a> Relation {
 
 #[derive(Clone,Debug,PartialEq,RustcDecodable,RustcEncodable)]
 pub struct Guard {
-    pub relation: Relation,
+    pub relation: Relation<Rvalue>,
 }
 
 impl Guard {
-    pub fn new(r: Relation) -> Guard {
+    pub fn new(r: Relation<Rvalue>) -> Guard {
         Guard{ relation: r }
     }
 

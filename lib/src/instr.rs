@@ -17,34 +17,37 @@
  */
 
 use value::{Lvalue,Rvalue};
+use rustc_serialize::{Encodable,Decodable};
+use std::hash::Hash;
+use std::fmt::Debug;
 
 #[derive(Clone,PartialEq,Eq,Debug,RustcEncodable,RustcDecodable)]
-pub enum Operation {
-    LogicAnd(Rvalue,Rvalue),
-    LogicInclusiveOr(Rvalue,Rvalue),
-    LogicExclusiveOr(Rvalue,Rvalue),
-    LogicNegation(Rvalue),
-    LogicLift(Rvalue),
+pub enum Operation<Value: Clone + PartialEq + Eq + Debug + Encodable + Decodable> {
+    LogicAnd(Value,Value),
+    LogicInclusiveOr(Value,Value),
+    LogicExclusiveOr(Value,Value),
+    LogicNegation(Value),
+    LogicLift(Value),
 
-    IntAnd(Rvalue,Rvalue),
-    IntInclusiveOr(Rvalue,Rvalue),
-    IntExclusiveOr(Rvalue,Rvalue),
-    IntAdd(Rvalue,Rvalue),
-    IntSubtract(Rvalue,Rvalue),
-    IntMultiply(Rvalue,Rvalue),
-    IntDivide(Rvalue,Rvalue),
-    IntModulo(Rvalue,Rvalue),
-    IntLess(Rvalue,Rvalue),
-    IntEqual(Rvalue,Rvalue),
-    IntCall(Rvalue),
-    IntRightShift(Rvalue,Rvalue),
-    IntLeftShift(Rvalue,Rvalue),
+    IntAnd(Value,Value),
+    IntInclusiveOr(Value,Value),
+    IntExclusiveOr(Value,Value),
+    IntAdd(Value,Value),
+    IntSubtract(Value,Value),
+    IntMultiply(Value,Value),
+    IntDivide(Value,Value),
+    IntModulo(Value,Value),
+    IntLess(Value,Value),
+    IntEqual(Value,Value),
+    IntCall(Value),
+    IntRightShift(Value,Value),
+    IntLeftShift(Value,Value),
 
-    Phi(Vec<Rvalue>),
-    Nop(Rvalue),
+    Phi(Vec<Value>),
+    Nop(Value),
 }
 
-fn execute(op: &Operation) -> Rvalue {
+pub fn execute(op: &Operation<Rvalue>) -> Rvalue {
 	match op {
         &Operation::LogicAnd(Rvalue::Constant(a),Rvalue::Constant(b)) =>
             if a > 0 && b > 0 { Rvalue::Constant(1) } else { Rvalue::Constant(0) },
@@ -206,8 +209,9 @@ fn execute(op: &Operation) -> Rvalue {
             a.clone(),
     }
 }
-impl<'a> Operation {
-    pub fn operands(&'a self) -> Vec<&'a Rvalue> {
+
+impl<'a,Value> Operation<Value> where Value: Clone + PartialEq + Eq + Debug + Encodable + Decodable {
+    pub fn operands(&'a self) -> Vec<&'a Value> {
         match self {
             &Operation::LogicAnd(ref a,ref b) => return vec!(a,b),
             &Operation::LogicInclusiveOr(ref a,ref b) => return vec!(a,b),
@@ -234,7 +238,7 @@ impl<'a> Operation {
         }
     }
 
-    pub fn operands_mut(&'a mut self) -> Vec<&'a mut Rvalue> {
+    pub fn operands_mut(&'a mut self) -> Vec<&'a mut Value> {
         match self {
             &mut Operation::LogicAnd(ref mut a,ref mut b) => return vec!(a,b),
             &mut Operation::LogicInclusiveOr(ref mut a,ref mut b) => return vec!(a,b),
@@ -260,12 +264,11 @@ impl<'a> Operation {
             &mut Operation::Nop(ref mut a) => return vec!(a),
         }
     }
-
 }
 
 #[derive(Clone,PartialEq,Eq,Debug,RustcEncodable,RustcDecodable)]
 pub struct Instr {
-    pub op: Operation,
+    pub op: Operation<Rvalue>,
     pub assignee: Lvalue,
 }
 

@@ -109,7 +109,7 @@ impl<C: Architecture> CodeGen<C> {
         self.named(Operation::IntLeftShift(op1.to_rv(),op2.to_rv()),a.clone());
     }
 
-    fn named(&mut self,op: Operation, assign: Lvalue) -> Lvalue {
+    fn named(&mut self,op: Operation<Rvalue>, assign: Lvalue) -> Lvalue {
         let ret = Instr{ op: op, assignee: assign.clone() };
 
         fn sanity_check(v: &Rvalue) -> bool {
