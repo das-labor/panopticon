@@ -908,10 +908,11 @@ pub fn integer_instructions(bits: Mode,
 
             new_disassembler!(Amd64 =>
                 [ main ] = |_: &mut State<Amd64>| { true },
-                [ opt!(lock_prfx), main ] = |_: &mut State<Amd64>| { true },
+                [ opt!(lock_prfx), lockable ] = |_: &mut State<Amd64>| { true },
                 [ main16 ] = |_: &mut State<Amd64>| { true },
                 [ main16_or_32 ] = |_: &mut State<Amd64>| { true },
-                [ opt!(lock_prfx), main16_or_32 ] = |_: &mut State<Amd64>| { true })
+                [ opt!(lock_prfx), lockable16_or_32 ] = |_: &mut State<Amd64>| { true },
+                [ main16_or_32 ] = |_: &mut State<Amd64>| { true })
         },
         Mode::Protected => {
             let main32 = integer_32bit(
@@ -933,6 +934,7 @@ pub fn integer_instructions(bits: Mode,
                 [ opt!(lock_prfx), opt!(seg_prfx), opt!(opsize_prfx), opt!(addrsz_prfx),  lockable ] = |_: &mut State<Amd64>| { true },
                 [ opt!(seg_prfx), opt!(opsize_prfx), opt!(addrsz_prfx), main32 ] = |_: &mut State<Amd64>| { true },
                 [ opt!(seg_prfx), opt!(opsize_prfx), opt!(addrsz_prfx), main16_or_32 ] = |_: &mut State<Amd64>| { true },
+                [ opt!(lock_prfx), opt!(seg_prfx), opt!(opsize_prfx), opt!(addrsz_prfx), lockable16_or_32 ] = |_: &mut State<Amd64>| { true },
                 [ opt!(opsize_prfx), opt!(seg_prfx), opt!(addrsz_prfx), opt!(lock_prfx), main16_or_32 ] = |_: &mut State<Amd64>| { true },
                 [ opt!(rep_prfx), opt!(seg_prfx), opt!(opsize_prfx), opt!(rep_prfx), rep ] = |_: &mut State<Amd64>| { true },
                 [ opt!(rep_prfx), opt!(seg_prfx), opt!(opsize_prfx), opt!(repx_prfx), repx ] = |_: &mut State<Amd64>| { true })
