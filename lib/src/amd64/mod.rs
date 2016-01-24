@@ -1222,10 +1222,12 @@ pub fn disassembler(bits: Mode) -> Rc<Disassembler<Amd64>> {
                 imm8, imm48,
                 rm.clone(), rm0.clone(), rm1.clone(), rm2.clone(), rm3.clone(), rm4.clone(), rm5.clone(), rm6.clone(), rm7.clone());
             let (rep,repx) = integer::integer_rep();
+            let mpx = extensions::mpx(rm.clone());
             let x87 = extensions::fpu(rm, rm0, rm1, rm2, rm3, rm4, rm5, rm6, rm7);
 
             new_disassembler!(Amd64 =>
                 [ x87 ] = |_: &mut State<Amd64>| { true },
+                [ mpx ] = |_: &mut State<Amd64>| { true },
                 [ opt!(seg_prfx), opt!(opsize_prfx), opt!(addrsz_prfx), main ] = |_: &mut State<Amd64>| { true },
                 [ opt!(lock_prfx), opt!(seg_prfx), opt!(opsize_prfx), opt!(addrsz_prfx),  lockable ] = |_: &mut State<Amd64>| { true },
                 [ opt!(seg_prfx), opt!(opsize_prfx), opt!(addrsz_prfx), main32 ] = |_: &mut State<Amd64>| { true },
@@ -1268,10 +1270,12 @@ pub fn disassembler(bits: Mode) -> Rc<Disassembler<Amd64>> {
             let mmx = vector::mmx(
                 rm0.clone(), rm1.clone(), rm2.clone(), rm3.clone(), rm4.clone(), rm5.clone(), rm6.clone(), rm7.clone(),
                 rm.clone(),imm8.clone());
+            let mpx = extensions::mpx(rm.clone());
             let x87 = extensions::fpu(rm, rm0, rm1, rm2, rm3, rm4, rm5, rm6, rm7);
 
             new_disassembler!(Amd64 =>
                 [ opt!(rex_prfx), x87 ] = |_: &mut State<Amd64>| { true },
+                [ opt!(rex_prfx), mpx ] = |_: &mut State<Amd64>| { true },
                 [ opt!(opsize_prfx), opt!(addrsz_prfx), opt!(repx_prfx), opt!(seg_prfx), opt!(rex_prfx), main ] = |_: &mut State<Amd64>| { true },
                 [ opt!(opsize_prfx), opt!(addrsz_prfx), opt!(repx_prfx), opt!(lock_prfx), opt!(seg_prfx), opt!(rex_prfx),  lockable ] = |_: &mut State<Amd64>| { true },
                 [ opt!(opsize_prfx), opt!(addrsz_prfx), opt!(rex_prfx), main64 ] = |_: &mut State<Amd64>| { true },

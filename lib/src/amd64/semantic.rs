@@ -1527,3 +1527,12 @@ pub fn fxch(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
 pub fn fxtract(_: &mut CodeGen<Amd64>) {}
 pub fn fyl2x(_: &mut CodeGen<Amd64>) {}
 pub fn fyl2xp1(_: &mut CodeGen<Amd64>) {}
+
+// MPX
+pub fn bndcl(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn bndcu(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn bndcn(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn bndmov(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn bndmk(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn bndldx(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn bndstx(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}

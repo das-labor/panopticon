@@ -645,19 +645,24 @@ pub fn fpu(rm: Rc<Disassembler<Amd64>>,
         // FYL2XP1
         [ 0xd9, 0xf9 ] = nonary("fyl2xp1",fyl2xp1))
 }
-fn bmi1() {/*
+
+pub fn mpx(rm: Rc<Disassembler<Amd64>>) -> Rc<Disassembler<Amd64>> {
     new_disassembler!(Amd64 =>
-        // BLSI
-        [ vex_prfx, 0x66, 0x0f, 0x38, 0xf3, rm3 ] = binary("blsi",decode_vm,vblsi),
+        // BNDC*
+        [ 0xf2, 0x0f, 0x1a, rm ] = binary("bndcu",decode_rm,bndcu),
+        [ 0xf2, 0x0f, 0x1b, rm ] = binary("bndcn",decode_rm,bndcn),
+        [ 0xf3, 0x0f, 0x1a, rm ] = binary("bndcl",decode_rm,bndcl),
 
-        // BLSMSK
-        [ vex_prfx, 0x66, 0x0f, 0x38, 0xf3, rm2 ] = binary("blsmsk",decode_vm,blsmsk),
+        // BNDLDX
+        [ 0x0f, 0x1a, rm ] = binary("bndldx",decode_rm,bndldx),
 
-        // BLSR
-        [ vex_prfx, 0x66, 0x0f, 0x38, 0xf3, rm1 ] = binary("blsr",decode_vm,blsr))*/
+        // BNDMK
+        [ 0xf3, 0x0f, 0x1b, rm ] = binary("bndmk",decode_rm,bndmk),
+
+        // BNDMOV
+        [ 0x66, 0x0f, 0x1a, rm ] = binary("bndmov",decode_rm,bndmov),
+        [ 0x66, 0x0f, 0x1b, rm ] = binary("bndmov",decode_mr,bndmov),
+
+        // BNDSTX
+        [ 0x0f, 0x1b, rm ] = binary("bndstx",decode_mr,bndstx))
 }
-
-fn bmi2() {
-}
-
-fn fma() {}
