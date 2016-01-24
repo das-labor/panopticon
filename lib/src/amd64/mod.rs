@@ -1,6 +1,6 @@
 /*
  * Panopticon - A libre disassembler
- * Copyright (C) 2014-2015 Kai Michaelis
+ * Copyright (C) 2014, 2015, 2016 Kai Michaelis
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,9 +23,10 @@ use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
 use std::rc::Rc;
 
 pub mod decode;
-pub mod generic;
 pub mod semantic;
+pub mod integer;
 pub mod vector;
+pub mod extensions;
 
 #[derive(Clone)]
 pub enum Amd64 {}
@@ -279,6 +280,19 @@ lazy_static! {
     pub static ref DR6: Lvalue = Lvalue::Variable{ name: "dr6".to_string(), width: 32, subscript: None };
     pub static ref DR7: Lvalue = Lvalue::Variable{ name: "dr7".to_string(), width: 32, subscript: None };
 }
+
+// fpu register stack
+lazy_static! {
+    pub static ref ST0: Lvalue = Lvalue::Variable{ name: "st0".to_string(), width: 80, subscript: None };
+    pub static ref ST1: Lvalue = Lvalue::Variable{ name: "st1".to_string(), width: 80, subscript: None };
+    pub static ref ST2: Lvalue = Lvalue::Variable{ name: "st2".to_string(), width: 80, subscript: None };
+    pub static ref ST3: Lvalue = Lvalue::Variable{ name: "st3".to_string(), width: 80, subscript: None };
+    pub static ref ST4: Lvalue = Lvalue::Variable{ name: "st4".to_string(), width: 80, subscript: None };
+    pub static ref ST5: Lvalue = Lvalue::Variable{ name: "st5".to_string(), width: 80, subscript: None };
+    pub static ref ST6: Lvalue = Lvalue::Variable{ name: "st6".to_string(), width: 80, subscript: None };
+    pub static ref ST7: Lvalue = Lvalue::Variable{ name: "st7".to_string(), width: 80, subscript: None };
+}
+
 
 static GLOBAL_AMD64_TEMPVAR_COUNT: AtomicUsize = ATOMIC_USIZE_INIT;
 
@@ -1134,17 +1148,142 @@ pub fn disassembler(bits: Mode) -> Rc<Disassembler<Amd64>> {
 
         [ "mod@11 111 rm@..."              ] = rm_semantic(Some(OperandSize::Eight)));
 
-    generic::integer_instructions(
-        bits,
-        lock_prfx, rep_prfx, repx_prfx, opsize_prfx, addrsz_prfx, rex_prfx, rexw_prfx, seg_prfx,
-        vex_0f_prfx, vex_660f_prfx, vex_f20f_prfx, vex_f30f_prfx, vex_0f38_prfx, vex_660f38_prfx,
-        vex_f20f38_prfx, vex_f30f38_prfx, vex_0f3a_prfx, vex_660f3a_prfx, vex_f20f3a_prfx, vex_f30f3a_prfx,
-        is4, imm8, imm16, imm32, imm48, imm64, imm, immlong,
-        moffs8, moffs,
-        sib,
-        rm, rm0, rm1, rm2, rm3, rm4, rm5, rm6, rm7,
-        rmbyte, rmbyte0, rmbyte1, rmbyte2, rmbyte3,
-        rmbyte4, rmbyte5, rmbyte6, rmbyte7,
-        rmlong, m64, m128,
-        disp8, disp16, disp32, disp64)
+    let main = integer::integer_universial(
+        imm8.clone(),
+        imm16.clone(), imm32.clone(),
+        imm48.clone(), imm64.clone(),
+        imm.clone(), immlong.clone(),
+        moffs8.clone(), moffs.clone(),
+        sib.clone(), rm.clone(),
+        rm0.clone(), rm1.clone(),
+        rm2.clone(), rm3.clone(),
+        rm4.clone(), rm5.clone(),
+        rm6.clone(), rm7.clone(),
+        rmbyte.clone(), rmbyte0.clone(),
+        rmbyte1.clone(), rmbyte2.clone(),
+        rmbyte3.clone(), rmbyte4.clone(),
+        rmbyte5.clone(), rmbyte6.clone(),
+        rmbyte7.clone(), rmlong.clone(),
+        m64.clone(), disp8.clone(),
+        disp16.clone(), disp32.clone(),
+        disp64.clone());
+
+     let lockable = integer::integer_lockable(
+        imm8.clone(),
+        imm16.clone(), imm32.clone(),
+        imm48.clone(), imm64.clone(),
+        imm.clone(), immlong.clone(),
+        moffs8.clone(), moffs.clone(),
+        sib.clone(), rm.clone(),
+        rm0.clone(), rm1.clone(),
+        rm2.clone(), rm3.clone(),
+        rm4.clone(), rm5.clone(),
+        rm6.clone(), rm7.clone(),
+        rmbyte.clone(), rmbyte0.clone(),
+        rmbyte1.clone(), rmbyte2.clone(),
+        rmbyte3.clone(), rmbyte4.clone(),
+        rmbyte5.clone(), rmbyte6.clone(),
+        rmbyte7.clone(), rmlong.clone(),
+        m64.clone(), disp8.clone(),
+        disp16.clone(), disp32.clone(),
+        disp64.clone());
+
+    match bits {
+        Mode::Real => {
+            let main16 = integer::integer_16bit(imm16.clone(), imm32.clone(),
+                moffs.clone(),
+                rm0.clone(), rm1.clone(), rm2.clone(), rm3.clone(), rm4.clone(), rm5.clone(), rm6.clone(), rm7.clone());
+            let main16_or_32 = integer::integer_32bit_or_less(
+                imm8.clone(), imm48.clone(),
+                rm.clone(), rm0.clone(), rm1.clone(), rm2.clone(), rm3.clone(), rm4.clone(), rm5.clone(), rm6.clone(), rm7.clone());
+            let lockable16_or_32 = integer::lockable_32bit_or_less(
+                imm8, imm48,
+                rm.clone(), rm0.clone(), rm1.clone(), rm2.clone(), rm3.clone(), rm4.clone(), rm5.clone(), rm6.clone(), rm7.clone());
+            let x87 = extensions::fpu(rm, rm0, rm1, rm2, rm3, rm4, rm5, rm6, rm7);
+
+            new_disassembler!(Amd64 =>
+                [ main ] = |_: &mut State<Amd64>| { true },
+                [ x87 ] = |_: &mut State<Amd64>| { true },
+                [ opt!(lock_prfx), lockable ] = |_: &mut State<Amd64>| { true },
+                [ main16 ] = |_: &mut State<Amd64>| { true },
+                [ main16_or_32 ] = |_: &mut State<Amd64>| { true },
+                [ opt!(lock_prfx), lockable16_or_32 ] = |_: &mut State<Amd64>| { true },
+                [ main16_or_32 ] = |_: &mut State<Amd64>| { true })
+        },
+        Mode::Protected => {
+            let main32 = integer::integer_32bit(
+                imm8.clone(), imm48.clone(),
+                moffs.clone(),
+                rm0.clone(), rm1.clone(), rm2.clone(), rm3.clone(), rm4.clone(), rm5.clone(), rm6.clone(), rm7.clone());
+            let main16_or_32 = integer::integer_32bit_or_less(
+                imm8.clone(), imm48.clone(),
+                rm.clone(), rm0.clone(), rm1.clone(), rm2.clone(), rm3.clone(), rm4.clone(), rm5.clone(), rm6.clone(), rm7.clone());
+            let lockable16_or_32 = integer::lockable_32bit_or_less(
+                imm8, imm48,
+                rm.clone(), rm0.clone(), rm1.clone(), rm2.clone(), rm3.clone(), rm4.clone(), rm5.clone(), rm6.clone(), rm7.clone());
+            let (rep,repx) = integer::integer_rep();
+            let x87 = extensions::fpu(rm, rm0, rm1, rm2, rm3, rm4, rm5, rm6, rm7);
+
+            new_disassembler!(Amd64 =>
+                [ x87 ] = |_: &mut State<Amd64>| { true },
+                [ opt!(seg_prfx), opt!(opsize_prfx), opt!(addrsz_prfx), main ] = |_: &mut State<Amd64>| { true },
+                [ opt!(lock_prfx), opt!(seg_prfx), opt!(opsize_prfx), opt!(addrsz_prfx),  lockable ] = |_: &mut State<Amd64>| { true },
+                [ opt!(seg_prfx), opt!(opsize_prfx), opt!(addrsz_prfx), main32 ] = |_: &mut State<Amd64>| { true },
+                [ opt!(seg_prfx), opt!(opsize_prfx), opt!(addrsz_prfx), main16_or_32 ] = |_: &mut State<Amd64>| { true },
+                [ opt!(lock_prfx), opt!(seg_prfx), opt!(opsize_prfx), opt!(addrsz_prfx), lockable16_or_32 ] = |_: &mut State<Amd64>| { true },
+                [ opt!(opsize_prfx), opt!(seg_prfx), opt!(addrsz_prfx), opt!(lock_prfx), main16_or_32 ] = |_: &mut State<Amd64>| { true },
+                [ opt!(rep_prfx), opt!(seg_prfx), opt!(opsize_prfx), opt!(rep_prfx), rep ] = |_: &mut State<Amd64>| { true },
+                [ opt!(rep_prfx), opt!(seg_prfx), opt!(opsize_prfx), opt!(repx_prfx), repx ] = |_: &mut State<Amd64>| { true })
+        },
+        Mode::Long => {
+            let main64 = integer::integer_64bit(
+                imm8.clone(),
+                moffs.clone(),
+                rm.clone(), rm0.clone(), rm1.clone(), rm2.clone(), rm3.clone(), rm4.clone(), rm5.clone(), rm6.clone(), rm7.clone(),
+                m128.clone());
+            let lockable64 = integer::lockable_64bit(
+                imm8.clone(),
+                moffs.clone(),
+                rm.clone(), rm0.clone(), rm1.clone(), rm2.clone(), rm3.clone(), rm4.clone(), rm5.clone(), rm6.clone(), rm7.clone(),
+                m128.clone());
+            let (rep,repx) = integer::integer_rep();
+            let sse4 = vector::sse4(
+                rm.clone(),imm8.clone(),rex_prfx.clone(),rexw_prfx.clone());
+            let sse3 = vector::sse3(
+                rm.clone(),imm8.clone(),rex_prfx.clone(),rexw_prfx.clone());
+            let sse2 = vector::sse2(
+                rm0.clone(), rm1.clone(), rm2.clone(), rm3.clone(), rm4.clone(), rm5.clone(), rm6.clone(), rm7.clone(),
+                rm.clone(),imm8.clone(),rex_prfx.clone(),rexw_prfx.clone());
+            let avx = vector::avx(
+                vex_0f_prfx.clone(), vex_660f_prfx.clone(), vex_f20f_prfx.clone(),
+                vex_f30f_prfx.clone(), vex_0f38_prfx.clone(), vex_660f38_prfx.clone(),
+                vex_f20f38_prfx.clone(), vex_f30f38_prfx.clone(), vex_0f3a_prfx.clone(),
+                vex_660f3a_prfx.clone(), vex_f20f3a_prfx.clone(), vex_f30f3a_prfx.clone(),
+                rm.clone(),
+                rm0.clone(), rm1.clone(), rm2.clone(), rm3.clone(), rm4.clone(), rm5.clone(), rm6.clone(), rm7.clone(),
+                imm8.clone(),is4.clone());
+            let sse1 = vector::sse1(
+                rm0.clone(), rm1.clone(), rm2.clone(), rm3.clone(), rm4.clone(), rm5.clone(), rm6.clone(), rm7.clone(),
+                rm.clone(),imm8.clone(),rex_prfx.clone(),rexw_prfx.clone());
+            let mmx = vector::mmx(
+                rm0.clone(), rm1.clone(), rm2.clone(), rm3.clone(), rm4.clone(), rm5.clone(), rm6.clone(), rm7.clone(),
+                rm.clone(),imm8.clone());
+            let x87 = extensions::fpu(rm, rm0, rm1, rm2, rm3, rm4, rm5, rm6, rm7);
+
+            new_disassembler!(Amd64 =>
+                [ opt!(rex_prfx), x87 ] = |_: &mut State<Amd64>| { true },
+                [ opt!(opsize_prfx), opt!(addrsz_prfx), opt!(repx_prfx), opt!(seg_prfx), opt!(rex_prfx), main ] = |_: &mut State<Amd64>| { true },
+                [ opt!(opsize_prfx), opt!(addrsz_prfx), opt!(repx_prfx), opt!(lock_prfx), opt!(seg_prfx), opt!(rex_prfx),  lockable ] = |_: &mut State<Amd64>| { true },
+                [ opt!(opsize_prfx), opt!(addrsz_prfx), opt!(rex_prfx), main64 ] = |_: &mut State<Amd64>| { true },
+                [ opt!(opsize_prfx), opt!(addrsz_prfx), opt!(lock_prfx),  opt!(rex_prfx), lockable64 ] = |_: &mut State<Amd64>| { true },
+                [ mmx ] = |_: &mut State<Amd64>| { true },
+                [ sse1 ] = |_: &mut State<Amd64>| { true },
+                [ sse2 ] = |_: &mut State<Amd64>| { true },
+                [ sse3 ] = |_: &mut State<Amd64>| { true },
+                [ sse4 ] = |_: &mut State<Amd64>| { true },
+                [ avx ] = |_: &mut State<Amd64>| { true },
+                [ opt!(rep_prfx), opt!(opsize_prfx), opt!(rep_prfx), opt!(repx_prfx), opt!(rex_prfx), rep ] = |_: &mut State<Amd64>| { true },
+                [ opt!(rep_prfx), opt!(opsize_prfx), opt!(repx_prfx), opt!(rex_prfx), repx ] = |_: &mut State<Amd64>| { true })
+        }
+    }
 }

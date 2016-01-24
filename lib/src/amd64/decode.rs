@@ -220,12 +220,20 @@ pub fn decode_mi(sm: &mut State<Amd64>) -> Option<(Rvalue,Rvalue)> {
     }
 }
 
-pub fn decode_m1(_: &mut State<Amd64>) -> Option<(Rvalue,Rvalue)> {
-    None
+pub fn decode_m1(sm: &mut State<Amd64>) -> Option<(Rvalue,Rvalue)> {
+    if let &Some(ref rm) = &sm.configuration.rm {
+        Some((rm.to_rv(),Rvalue::Constant(1)))
+    } else {
+        None
+    }
 }
 
-pub fn decode_mc(_: &mut State<Amd64>) -> Option<(Rvalue,Rvalue)> {
-    None
+pub fn decode_mc(sm: &mut State<Amd64>) -> Option<(Rvalue,Rvalue)> {
+    if let &Some(ref rm) = &sm.configuration.rm {
+        Some((rm.to_rv(),CF.to_rv()))
+    } else {
+        None
+    }
 }
 
 pub fn decode_ii(sm: &mut State<Amd64>) -> Option<(Rvalue,Rvalue)> {
@@ -302,6 +310,92 @@ pub fn decode_rvmi(sm: &mut State<Amd64>) -> Option<(Rvalue,Rvalue,Rvalue,Rvalue
     } else {
         None
     }
+}
+
+pub fn decode_sti(sm: &mut State<Amd64>) -> Option<Rvalue> {
+    if let Some(tok) = sm.tokens.last() {
+        Some(match tok & 15 {
+            0x0 => ST0.to_rv(),
+            0x1 => ST1.to_rv(),
+            0x2 => ST2.to_rv(),
+            0x3 => ST3.to_rv(),
+            0x4 => ST4.to_rv(),
+            0x5 => ST5.to_rv(),
+            0x6 => ST6.to_rv(),
+            0x7 => ST7.to_rv(),
+            0x8 => ST0.to_rv(),
+            0x9 => ST1.to_rv(),
+            0xa => ST2.to_rv(),
+            0xb => ST3.to_rv(),
+            0xc => ST4.to_rv(),
+            0xd => ST5.to_rv(),
+            0xe => ST6.to_rv(),
+            0xf => ST7.to_rv(),
+            _ => unreachable!()
+        })
+    } else {
+        None
+    }
+}
+
+pub fn decode_sti0(sm: &mut State<Amd64>) -> Option<(Rvalue,Rvalue)> {
+    if let Some(st) = decode_sti(sm) {
+        Some((st,ST0.to_rv()))
+    } else {
+        None
+    }
+}
+
+pub fn decode_st0i(sm: &mut State<Amd64>) -> Option<(Rvalue,Rvalue)> {
+    if let Some(st) = decode_sti(sm) {
+        Some((ST0.to_rv(),st))
+    } else {
+        None
+    }
+}
+
+pub fn decode_m64fp(sm: &mut State<Amd64>) -> Option<Rvalue> {
+    sm.configuration.rm.as_ref().map(|x| x.to_rv())
+}
+
+pub fn decode_m32fp(sm: &mut State<Amd64>) -> Option<Rvalue> {
+    sm.configuration.rm.as_ref().map(|x| x.to_rv())
+}
+
+pub fn decode_m80fp(sm: &mut State<Amd64>) -> Option<Rvalue> {
+    sm.configuration.rm.as_ref().map(|x| x.to_rv())
+}
+
+pub fn decode_m16int(sm: &mut State<Amd64>) -> Option<Rvalue> {
+    sm.configuration.rm.as_ref().map(|x| x.to_rv())
+}
+
+pub fn decode_m32int(sm: &mut State<Amd64>) -> Option<Rvalue> {
+    sm.configuration.rm.as_ref().map(|x| x.to_rv())
+}
+
+pub fn decode_m64int(sm: &mut State<Amd64>) -> Option<Rvalue> {
+    sm.configuration.rm.as_ref().map(|x| x.to_rv())
+}
+
+pub fn decode_m2byte(sm: &mut State<Amd64>) -> Option<Rvalue> {
+    sm.configuration.rm.as_ref().map(|x| x.to_rv())
+}
+
+pub fn decode_m14_28byte(sm: &mut State<Amd64>) -> Option<Rvalue> {
+    sm.configuration.rm.as_ref().map(|x| x.to_rv())
+}
+
+pub fn decode_m80bcd(sm: &mut State<Amd64>) -> Option<Rvalue> {
+    sm.configuration.rm.as_ref().map(|x| x.to_rv())
+}
+
+pub fn decode_m80dec(sm: &mut State<Amd64>) -> Option<Rvalue> {
+    sm.configuration.rm.as_ref().map(|x| x.to_rv())
+}
+
+pub fn decode_m94_108byte(sm: &mut State<Amd64>) -> Option<Rvalue> {
+    sm.configuration.rm.as_ref().map(|x| x.to_rv())
 }
 
 pub fn decode_reg8(r_reg: u64,rex: bool) -> Lvalue {
@@ -967,217 +1061,3 @@ regb!(regb_sp,4);
 regb!(regb_bp,5);
 regb!(regb_si,6);
 regb!(regb_di,7);
-
-/*
-sem_action po::amd64::nonary(std::string const& op, std::function<void(cg&)> func)
-{
-    return [op,func](sm &st)
-    {
-        st.mnemonic(st.tokens.size(),op,"",[func,st,op](cg& c)
-        {
-            func(c);
-
-            std::cout << op << std::endl;
-            return std::list<rvalue>({});
-        });
-        st.jump(st.address + st.tokens.size());
-        return true;
-    };
-}
-
-sem_action po::amd64::unary(std::string const& op, std::function<rvalue(sm const&,cg&)> decode, std::function<void(cg&,rvalue)> func)
-{
-    return [op,func,decode](sm &st)
-    {
-        st.mnemonic(st.tokens.size(),op,"{64}",[decode,func,st,op](cg& c)
-        {
-            rvalue a = decode(st,c);
-            func(c,a);
-
-            std::cout << "[ ";
-            for(auto x: st.tokens)
-                std::cout << std::setw(2) << std::hex << (unsigned int)x << " ";
-            std::cout << "] " << op << " " << a << std::endl;
-            return std::list<rvalue>({a});
-        });
-        st.jump(st.address + st.tokens.size());
-        return true;
-    };
-}
-
-sem_action po::amd64::unary(std::string const& op, rvalue arg, std::function<void(cg&,rvalue)> func)
-{
-    return [op,func,arg](sm &st)
-    {
-        st.mnemonic(st.tokens.size(),op,"{64}",[arg,func,st,op](cg& c)
-        {
-            func(c,arg);
-
-            std::cout << "[ ";
-            for(auto x: st.tokens)
-                std::cout << std::setw(2) << std::hex << (unsigned int)x << " ";
-            std::cout << "] " << op << " " << arg << std::endl;
-            return std::list<rvalue>({arg});
-        });
-        st.jump(st.address + st.tokens.size());
-        return true;
-    };
-}
-
-sem_action po::amd64::binary(std::string const& op, std::function<std::pair<rvalue,rvalue>(sm const&,cg&)> decode, std::function<void(cg&,rvalue,rvalue)> func)
-{
-    return [op,func,decode](sm &st)
-    {
-        st.mnemonic(st.tokens.size(),op,"{64} {64}",[decode,func,st,op](cg& c)
-        {
-            rvalue a,b;
-
-            std::tie(a,b) = decode(st,c);
-            func(c,a,b);
-            std::cout << "[ ";
-            for(auto x: st.tokens)
-                std::cout << std::setw(2) << std::hex << (unsigned int)x << " ";
-            std::cout << "] " << op << " " << a << ", " << b << std::endl;
-            return std::list<rvalue>({a,b});
-        });
-
-        st.jump(st.address + st.tokens.size());
-        return true;
-    };
-}
-
-sem_action po::amd64::binary(std::string const& op, std::function<rvalue(sm const&,cg&)> decode, rvalue arg2, std::function<void(cg&,rvalue,rvalue)> func)
-{
-    return [op,func,decode,arg2](sm &st)
-    {
-        st.mnemonic(st.tokens.size(),op,"{64} {64}",[arg2,decode,func,st,op](cg& c)
-        {
-            rvalue arg1 = decode(st,c);
-            func(c,arg1,arg2);
-            std::cout << "[ ";
-            for(auto x: st.tokens)
-                std::cout << std::setw(2) << std::hex << (unsigned int)x << " ";
-            std::cout << "] " << op << " " << arg1 << ", " << arg2 << std::endl;
-            return std::list<rvalue>({arg1,arg2});
-        });
-
-        st.jump(st.address + st.tokens.size());
-        return true;
-    };
-}
-
-sem_action po::amd64::binary(std::string const& op, rvalue arg1, std::function<rvalue(sm const&,cg&)> decode, std::function<void(cg&,rvalue,rvalue)> func)
-{
-    return [op,func,arg1,decode](sm &st)
-    {
-        st.mnemonic(st.tokens.size(),op,"{64} {64}",[arg1,decode,func,st,op](cg& c)
-        {
-            rvalue arg2 = decode(st,c);
-            func(c,arg1,arg2);
-            std::cout << "[ ";
-            for(auto x: st.tokens)
-                std::cout << std::setw(2) << std::hex << (unsigned int)x << " ";
-            std::cout << "] " << op << " " << arg1 << ", " << arg2 << std::endl;
-            return std::list<rvalue>({arg1,arg2});
-        });
-
-        st.jump(st.address + st.tokens.size());
-        return true;
-    };
-}
-
-sem_action po::amd64::binary(std::string const& op, rvalue arg1, rvalue arg2, std::function<void(cg&,rvalue,rvalue)> func)
-{
-    return [op,func,arg1,arg2](sm &st)
-    {
-        st.mnemonic(st.tokens.size(),op,"{64} {64}",[arg1,arg2,func,st,op](cg& c)
-        {
-            func(c,arg1,arg2);
-            std::cout << "[ ";
-            for(auto x: st.tokens)
-                std::cout << std::setw(2) << std::hex << (unsigned int)x << " ";
-            std::cout << "] " << op << " " << arg1 << ", " << arg2 << std::endl;
-            return std::list<rvalue>({arg1,arg2});
-        });
-
-        st.jump(st.address + st.tokens.size());
-        return true;
-    };
-}
-
-sem_action po::amd64::binary(std::string const& op, std::function<rvalue(sm const&,cg&)> decode1, std::function<rvalue(sm const&,cg&)> decode2, std::function<void(cg&,rvalue,rvalue)> func)
-{
-    return [op,func,decode1,decode2](sm &st)
-    {
-        st.mnemonic(st.tokens.size(),op,"{64} {64}",[decode1,decode2,func,st,op](cg& c)
-        {
-            rvalue arg1 = decode1(st,c);
-            rvalue arg2 = decode2(st,c);
-            func(c,arg1,arg2);
-            std::cout << "[ ";
-            for(auto x: st.tokens)
-                std::cout << std::setw(2) << std::hex << (unsigned int)x << " ";
-            std::cout << "] " << op << " " << arg1 << ", " << arg2 << std::endl;
-            return std::list<rvalue>({arg1,arg2});
-        });
-
-        st.jump(st.address + st.tokens.size());
-        return true;
-    };
-}
-
-sem_action po::amd64::branch(std::string const& m, rvalue flag, bool set)
-{
-    return [m,flag,set](sm &st)
-    {
-        /*int64_t _k = st.capture_groups["k"] * 2;
-        guard g(flag,relation::Eq,set ? Rvalue::Constant(1) : Rvalue::Constant(0));
-        Rvalue::Constant k((int8_t)(_k <= 63 ? _k : _k - 128));*/
-
-        st.mnemonic(st.tokens.size() * 2,m,"");
-        st.jump(st.address + st.tokens.size());//,g.negation());
-        //st.jump(undefined(),g);//st.address + k.content() + 2,g);
-        return true;
-    };
-}
-
-sem_action po::amd64::trinary(std::string const& op, std::function<std::tuple<rvalue,rvalue,rvalue>(sm const&,cg&)> decode, std::function<void(cg&,rvalue,rvalue,rvalue)> func)
-{
-    return [op,func,decode](sm &st)
-    {
-        st.mnemonic(st.tokens.size(),op,"{64} {64} {64}",[decode,func,st,op](cg& d)
-        {
-            rvalue a,b,c;
-
-            std::tie(a,b,c) = decode(st,d);
-            func(d,a,b,c);
-
-            std::cout << op << " " << a << ", " << b << ", " << c << std::endl;
-            return std::list<rvalue>({a,b,c});
-        });
-
-        st.jump(st.address + st.tokens.size());
-        return true;
-    };
-}
-
-sem_action po::amd64::trinary(std::string const& op, std::function<std::pair<rvalue,rvalue>(sm const&,cg&)> decode, rvalue arg3, std::function<void(cg&,rvalue,rvalue,rvalue)> func)
-{
-    return [op,func,decode,arg3](sm &st)
-    {
-        st.mnemonic(st.tokens.size(),op,"{64} {64} {64}",[decode,arg3,func,st,op](cg& d)
-        {
-            rvalue a,b;
-
-            std::tie(a,b) = decode(st,d);
-            func(d,a,b,arg3);
-
-            std::cout << op << " " << a << ", " << b << ", " << arg3 << std::endl;
-            return std::list<rvalue>({a,b,arg3});
-        });
-
-        st.jump(st.address + st.tokens.size());
-        return true;
-    };
-}
-*/

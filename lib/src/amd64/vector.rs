@@ -1,6 +1,6 @@
 /*
  * Panopticon - A libre disassembler
- * Copyright (C) 2014-2015 Kai Michaelis
+ * Copyright (C) 2014, 2015, 2016 Kai Michaelis
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1471,22 +1471,3 @@ pub fn avx(vex_0f_prfx: Rc<Disassembler<Amd64>>, vex_660f_prfx: Rc<Disassembler<
         [ vex_0f_prfx, 0x57, rm ] = trinary("vpxorps",decode_rvm,vxorps),
         [ vex_660f_prfx, 0x57, rm ] = trinary("vpxorpd",decode_rvm,vxorpd))
 }
-
-fn mpx() {}
-
-fn bmi1() {/*
-    new_disassembler!(Amd64 =>
-        // BLSI
-        [ vex_prfx, 0x66, 0x0f, 0x38, 0xf3, rm3 ] = binary("blsi",decode_vm,vblsi),
-
-        // BLSMSK
-        [ vex_prfx, 0x66, 0x0f, 0x38, 0xf3, rm2 ] = binary("blsmsk",decode_vm,blsmsk),
-
-        // BLSR
-        [ vex_prfx, 0x66, 0x0f, 0x38, 0xf3, rm1 ] = binary("blsr",decode_vm,blsr))*/
-}
-
-fn bmi2() {
-}
-
-fn fma() {}
