@@ -306,6 +306,47 @@ pub fn new_temp(bits: usize) -> Lvalue {
 
 pub fn disassembler(bits: Mode) -> Rc<Disassembler<Amd64>> {
     let opsize_prfx = new_disassembler!(Amd64 =>
+        [ 0x66, 0x66, 0x66, 0x66, 0x66, 0x66 ] = |st: &mut State<Amd64>| {
+            match st.configuration.mode {
+                Mode::Real => st.configuration.operand_size = OperandSize::ThirtyTwo,
+                Mode::Long => st.configuration.operand_size = OperandSize::Sixteen,
+                Mode::Protected => st.configuration.operand_size = OperandSize::Sixteen,
+            }
+            true
+        },
+        [ 0x66, 0x66, 0x66, 0x66, 0x66 ] = |st: &mut State<Amd64>| {
+            match st.configuration.mode {
+                Mode::Real => st.configuration.operand_size = OperandSize::ThirtyTwo,
+                Mode::Long => st.configuration.operand_size = OperandSize::Sixteen,
+                Mode::Protected => st.configuration.operand_size = OperandSize::Sixteen,
+            }
+            true
+        },
+        [ 0x66, 0x66, 0x66, 0x66 ] = |st: &mut State<Amd64>| {
+            match st.configuration.mode {
+                Mode::Real => st.configuration.operand_size = OperandSize::ThirtyTwo,
+                Mode::Long => st.configuration.operand_size = OperandSize::Sixteen,
+                Mode::Protected => st.configuration.operand_size = OperandSize::Sixteen,
+            }
+            true
+        },
+        [ 0x66, 0x66, 0x66 ] = |st: &mut State<Amd64>| {
+            match st.configuration.mode {
+                Mode::Real => st.configuration.operand_size = OperandSize::ThirtyTwo,
+                Mode::Long => st.configuration.operand_size = OperandSize::Sixteen,
+                Mode::Protected => st.configuration.operand_size = OperandSize::Sixteen,
+            }
+            true
+        },
+
+        [ 0x66, 0x66 ] = |st: &mut State<Amd64>| {
+            match st.configuration.mode {
+                Mode::Real => st.configuration.operand_size = OperandSize::ThirtyTwo,
+                Mode::Long => st.configuration.operand_size = OperandSize::Sixteen,
+                Mode::Protected => st.configuration.operand_size = OperandSize::Sixteen,
+            }
+            true
+        },
         [ 0x66 ] = |st: &mut State<Amd64>| {
             match st.configuration.mode {
                 Mode::Real => st.configuration.operand_size = OperandSize::ThirtyTwo,
@@ -353,43 +394,55 @@ pub fn disassembler(bits: Mode) -> Rc<Disassembler<Amd64>> {
         [ "0100 w@1 r@. x@. b@." ] = rex_semantic);
 
     let vex_0f_prfx = new_disassembler!(Amd64 =>
+        [ "01100010", "r@. x@. b@. rr@. 00 01", "w@. vvvv@.... 1 00", "z@. LL@. L@. b@. Vb@. aaa@..." ] = rex_semantic,
         [ "11000100", "r@. x@. b@. 00001", "w@. vvvv@.... L@. 00" ] = rex_semantic,
         [ "11000101", "w@. vvvv@.... L@. 00" ] = rex_semantic);
 
     let vex_660f_prfx = new_disassembler!(Amd64 =>
+        [ "01100010", "r@. x@. b@. rr@. 00 01", "w@. vvvv@.... 1 01", "z@. LL@. L@. b@. Vb@. aaa@..." ] = rex_semantic,
         [ "11000100", "r@. x@. b@. 00001", "w@. vvvv@.... L@. 01" ] = rex_semantic,
         [ "11000101", "w@. vvvv@.... L@. 01" ] = rex_semantic);
 
     let vex_f20f_prfx = new_disassembler!(Amd64 =>
+        [ "01100010", "r@. x@. b@. rr@. 00 01", "w@. vvvv@.... 1 11", "z@. LL@. L@. b@. Vb@. aaa@..." ] = rex_semantic,
         [ "11000100", "r@. x@. b@. 00001", "w@. vvvv@.... L@. 11" ] = rex_semantic,
         [ "11000101", "w@. vvvv@.... L@. 11" ] = rex_semantic);
 
     let vex_f30f_prfx = new_disassembler!(Amd64 =>
+        [ "01100010", "r@. x@. b@. rr@. 00 01", "w@. vvvv@.... 1 10", "z@. LL@. L@. b@. Vb@. aaa@..." ] = rex_semantic,
         [ "11000100", "r@. x@. b@. 00001", "w@. vvvv@.... L@. 10" ] = rex_semantic,
         [ "11000101", "w@. vvvv@.... L@. 10" ] = rex_semantic);
 
     let vex_0f38_prfx = new_disassembler!(Amd64 =>
+        [ "01100010", "r@. x@. b@. rr@. 00 10", "w@. vvvv@.... 1 00", "z@. LL@. L@. b@. Vb@. aaa@..." ] = rex_semantic,
         [ "11000100", "r@. x@. b@. 00010", "w@. vvvv@.... L@. 00" ] = rex_semantic);
 
     let vex_660f38_prfx = new_disassembler!(Amd64 =>
+        [ "01100010", "r@. x@. b@. rr@. 00 10", "w@. vvvv@.... 1 01", "z@. LL@. L@. b@. Vb@. aaa@..." ] = rex_semantic,
         [ "11000100", "r@. x@. b@. 00010", "w@. vvvv@.... L@. 01" ] = rex_semantic);
 
     let vex_f20f38_prfx = new_disassembler!(Amd64 =>
+        [ "01100010", "r@. x@. b@. rr@. 00 10", "w@. vvvv@.... 1 11", "z@. LL@. L@. b@. Vb@. aaa@..." ] = rex_semantic,
         [ "11000100", "r@. x@. b@. 00010", "w@. vvvv@.... L@. 11" ] = rex_semantic);
 
     let vex_f30f38_prfx = new_disassembler!(Amd64 =>
+        [ "01100010", "r@. x@. b@. rr@. 00 10", "w@. vvvv@.... 1 10", "z@. LL@. L@. b@. Vb@. aaa@..." ] = rex_semantic,
         [ "11000100", "r@. x@. b@. 00010", "w@. vvvv@.... L@. 10" ] = rex_semantic);
 
     let vex_0f3a_prfx = new_disassembler!(Amd64 =>
+        [ "01100010", "r@. x@. b@. rr@. 00 11", "w@. vvvv@.... 1 00", "z@. LL@. L@. b@. Vb@. aaa@..." ] = rex_semantic,
         [ "11000100", "r@. x@. b@. 00011", "w@. vvvv@.... L@. 00" ] = rex_semantic);
 
     let vex_660f3a_prfx = new_disassembler!(Amd64 =>
+        [ "01100010", "r@. x@. b@. rr@. 00 11", "w@. vvvv@.... 1 01", "z@. LL@. L@. b@. Vb@. aaa@..." ] = rex_semantic,
         [ "11000100", "r@. x@. b@. 00011", "w@. vvvv@.... L@. 01" ] = rex_semantic);
 
     let vex_f20f3a_prfx = new_disassembler!(Amd64 =>
+        [ "01100010", "r@. x@. b@. rr@. 00 11", "w@. vvvv@.... 1 11", "z@. LL@. L@. b@. Vb@. aaa@..." ] = rex_semantic,
         [ "11000100", "r@. x@. b@. 00011", "w@. vvvv@.... L@. 11" ] = rex_semantic);
 
     let vex_f30f3a_prfx = new_disassembler!(Amd64 =>
+        [ "01100010", "r@. x@. b@. rr@. 00 11", "w@. vvvv@.... 1 10", "z@. LL@. L@. b@. Vb@. aaa@..." ] = rex_semantic,
         [ "11000100", "r@. x@. b@. 00011", "w@. vvvv@.... L@. 10" ] = rex_semantic);
 
 
