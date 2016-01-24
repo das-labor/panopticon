@@ -1,3 +1,9 @@
+2016-01-24: 0.13 (Insein)
+ - Decode most AMD64 instructions
+ - Basic Abstract Interpretaion framework
+ - SSA conversion of PIL code
+ - MOS-6502 support (thanks to Marcus Brinkmann)
+
 2015-11-30: 0.12 (Pentridge)
  - ELF loader
  - Primitive x86 disassembling

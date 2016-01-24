@@ -5,6 +5,8 @@ Philipp Deppenwiese
 	Gentoo ebuild and supporting files inside pkg/gentoo.
 Dennis Hotson
 	The file  qt/res/springy.js. See LICENSE.springy for full license.
+Marcus Brinkmann
+  MOS-6502 disassembler in lib/src/mos.
 Kai Michaelis
 	Everything not listed above.
 
