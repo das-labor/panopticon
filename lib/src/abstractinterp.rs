@@ -40,7 +40,7 @@ pub trait Avalue: Clone + PartialEq + Eq + Hash + Debug + Encodable + Decodable 
     fn initial() -> Self;
 }
 
-fn approximate<A: Avalue>(func: &Function) -> HashMap<Lvalue,A> {
+pub fn approximate<A: Avalue>(func: &Function) -> HashMap<Lvalue,A> {
     let rpo = {
         let mut ret = func.postorder();
         ret.reverse();
@@ -66,11 +66,11 @@ fn approximate<A: Avalue>(func: &Function) -> HashMap<Lvalue,A> {
                         &Instr{ op: Operation::Phi(ref ops), ref assignee } =>
                             (assignee.clone(),match ops.len() {
                                 0 => panic!("Phi function w/o arguments"),
-                                1 => A::abstraction(&ops[0]),
-                                _ => ops.iter().map(A::abstraction).fold(A::initial(),|acc,x| A::combine(&acc,&x)),
+                                1 => res::<A>(&ops[0],&ret),
+                                _ => ops.iter().map(|x| res::<A>(x,&ret)).fold(A::initial(),|acc,x| A::combine(&acc,&x)),
                             }),
                         &Instr{ op: Operation::Nop(ref a), ref assignee } =>
-                            (assignee.clone(),A::abstraction(a)),
+                            (assignee.clone(),res::<A>(a,&ret)),
 
                         &Instr{ op: Operation::LogicAnd(ref a,ref b), ref assignee } =>
                             (assignee.clone(),A::execute(&Operation::LogicAnd(res::<A>(a,&ret),res::<A>(b,&ret)))),
@@ -110,9 +110,9 @@ fn approximate<A: Avalue>(func: &Function) -> HashMap<Lvalue,A> {
                         &Instr{ op: Operation::IntLeftShift(ref a,ref b), ref assignee } =>
                             (assignee.clone(),A::execute(&Operation::IntLeftShift(res::<A>(a,&ret),res::<A>(b,&ret)))),
                     };
-                    let cur = ret.entry(assignee.clone()).or_insert(A::initial()).clone();
 
-                    if new.more_exact(&cur) {
+                    let cur = ret.get(&assignee).cloned();
+                    if cur.is_none() || new.more_exact(&cur.unwrap()) {
                         fixpoint = false;
                         ret.insert(assignee,new);
                     }
@@ -161,9 +161,17 @@ impl Avalue for KSet {
 mod tests {
     use super::*;
     use instr::{Instr,Operation};
-    use function::{ControlFlowTarget,Function};
-    use guard::Relation;
+    use function::{ControlFlowTarget,Function,ControlFlowGraph};
+    use guard::{Guard,Relation};
     use value::{Lvalue,Rvalue};
+    use mnemonic::{Bound,Mnemonic};
+    use dataflow::ssa_convertion;
+    use basic_block::BasicBlock;
+
+    use graph_algos::{
+        MutableGraphTrait,
+        GraphTrait,
+    };
 
     use rustc_serialize::{Encodable,Decodable};
 
@@ -274,17 +282,55 @@ mod tests {
         }
 
         fn more_exact(&self, b: &Self) -> bool {
-            match (self,b) {
-                (&Sign::Meet,&Sign::Positive) | (&Sign::Meet,&Sign::Negative) | (&Sign::Meet,&Sign::Join) => true,
-                (&Sign::Positive,&Sign::Join) | (&Sign::Negative,&Sign::Join) => true,
-                _ => false
+            self != b && match (self,b) {
+                (&Sign::Meet,&Sign::Positive) | (&Sign::Meet,&Sign::Negative) | (&Sign::Meet,&Sign::Join) => false,
+                (&Sign::Positive,&Sign::Join) | (&Sign::Negative,&Sign::Join) => false,
+                _ => true
             }
         }
     }
 
     #[test]
-    fn signed() {
+    fn signedness_analysis() {
+         let x_var = Lvalue::Variable{ name: "x".to_string(), width: 32, subscript: None };
+         let n_var = Lvalue::Variable{ name: "n".to_string(), width: 32, subscript: None };
+         let bb0 = BasicBlock::from_vec(vec![
+             Mnemonic::new(0..1,"assign x".to_string(),"".to_string(),vec![].iter(),vec![
+                 Instr{ op: Operation::Nop(Rvalue::Constant(0)), assignee: x_var.clone()}].iter()),
+             Mnemonic::new(1..2,"assign n".to_string(),"".to_string(),vec![].iter(),vec![
+                 Instr{ op: Operation::Nop(Rvalue::Constant(1)), assignee: n_var.clone()}].iter())]);
+         let bb1 = BasicBlock::from_vec(vec![
+             Mnemonic::new(2..3,"add x and n".to_string(),"".to_string(),vec![].iter(),vec![
+                 Instr{ op: Operation::IntAdd(x_var.to_rv(),n_var.to_rv()), assignee: x_var.clone()}].iter()),
+             Mnemonic::new(3..4,"inc n".to_string(),"".to_string(),vec![].iter(),vec![
+                 Instr{ op: Operation::IntAdd(n_var.to_rv(),Rvalue::Constant(1)), assignee: n_var.clone()}].iter())]);
+         let bb2 = BasicBlock{ area: Bound::new(4,5), mnemonics: vec![] };
+         let mut cfg = ControlFlowGraph::new();
 
+         let v0 = cfg.add_vertex(ControlFlowTarget::Resolved(bb0));
+         let v1 = cfg.add_vertex(ControlFlowTarget::Resolved(bb1));
+         let v2 = cfg.add_vertex(ControlFlowTarget::Resolved(bb2));
 
+         cfg.add_edge(Guard::sign_leq(&n_var.to_rv(),&Rvalue::Undefined),v0,v1);
+         cfg.add_edge(Guard::sign_leq(&n_var.to_rv(),&Rvalue::Undefined),v1,v1);
+         cfg.add_edge(Guard::sign_gt(&n_var.to_rv(),&Rvalue::Undefined),v0,v2);
+         cfg.add_edge(Guard::sign_gt(&n_var.to_rv(),&Rvalue::Undefined),v1,v2);
+
+         let mut func = Function::new("func".to_string(),"ram".to_string());
+
+         func.cflow_graph = cfg;
+         func.entry_point = Some(v0);
+
+         ssa_convertion(&mut func);
+
+         let vals = approximate::<Sign>(&func);
+         assert_eq!(vals.get(&Lvalue::Variable{ name: "x".to_string(), width: 32, subscript: Some(0) }), Some(&Sign::Zero));
+         assert_eq!(vals.get(&Lvalue::Variable{ name: "n".to_string(), width: 32, subscript: Some(0) }), Some(&Sign::Positive));
+         assert_eq!(vals.get(&Lvalue::Variable{ name: "x".to_string(), width: 32, subscript: Some(1) }), Some(&Sign::Join));
+         assert_eq!(vals.get(&Lvalue::Variable{ name: "n".to_string(), width: 32, subscript: Some(1) }), Some(&Sign::Positive));
+         assert_eq!(vals.get(&Lvalue::Variable{ name: "x".to_string(), width: 32, subscript: Some(2) }), Some(&Sign::Join));
+         assert_eq!(vals.get(&Lvalue::Variable{ name: "n".to_string(), width: 32, subscript: Some(2) }), Some(&Sign::Positive));
+         assert_eq!(vals.get(&Lvalue::Variable{ name: "x".to_string(), width: 32, subscript: Some(3) }), Some(&Sign::Join));
+         assert_eq!(vals.get(&Lvalue::Variable{ name: "n".to_string(), width: 32, subscript: Some(3) }), Some(&Sign::Positive));
     }
 }
