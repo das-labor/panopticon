@@ -26,6 +26,8 @@ use graph_algos::{
     IncidenceGraphTrait,
     MutableGraphTrait,
     BidirectionalGraphTrait,
+    EdgeListGraphTrait,
+    VertexListGraphTrait,
 };
 use graph_algos::dominator::{
     immediate_dominator,
@@ -149,6 +151,48 @@ pub fn liveness(func: &Function) ->  HashMap<ControlFlowRef,HashSet<String>> {
         (k,HashSet::from_iter(v.iter().map(|x| x.to_string()))) }))
 }
 
+pub fn type_check(func: &Function) -> HashMap<String,u16> {
+    let mut ret = HashMap::<String,u16>::new();
+    let cfg = &func.cflow_graph;
+    fn check_or_set_len(v: &Rvalue, ret: &mut HashMap<String,u16>) {
+        match v {
+            &Rvalue::Variable{ ref name, ref width, .. } =>
+                if *ret.entry(name.clone()).or_insert(*width) != *width {
+                    panic!("Type check failed!");
+                },
+            &Rvalue::Memory{ ref offset, .. } =>
+                check_or_set_len(&*offset,ret),
+            _ => {}
+        }
+    }
+
+    for vx in cfg.vertices() {
+        if let Some(&ControlFlowTarget::Resolved(ref bb)) = cfg.vertex_label(vx) {
+            bb.execute(|instr| {
+                let ops = instr.op.operands();
+                match ops.len() {
+                    0 => panic!("Operation w/o arguments"),
+                    _ => for o in ops.iter() {
+                        check_or_set_len(o,&mut ret);
+                    }
+                }
+
+                check_or_set_len(&instr.assignee.to_rv(),&mut ret);
+            });
+        }
+    }
+
+    for ed in cfg.edges() {
+        if let Some(ref g) = cfg.edge_label(ed) {
+            for o in g.relation.operands().iter() {
+                check_or_set_len(o,&mut ret);
+            }
+        }
+    }
+
+    ret
+}
+
 /// returns globals,usage
 pub fn global_names(func: &Function) -> (HashSet<String>,HashMap<String,HashSet<ControlFlowRef>>) {
     let (varkill,uevar) = liveness_sets(func);
@@ -174,6 +218,7 @@ pub fn phi_functions(func: &mut Function) {
     assert!(func.entry_point.is_some());
 
     let (globals,usage) = global_names(func);
+    let lens = type_check(func);
     let mut cfg = &mut func.cflow_graph;
     let idom = immediate_dominator(func.entry_point.unwrap(),cfg);
     let df = dominance_frontiers(&idom,cfg);
@@ -190,17 +235,16 @@ pub fn phi_functions(func: &mut Function) {
                 let arg_num = cfg.in_edges(*d).filter_map(|p| usage.get(v).map(|b| b.contains(&cfg.source(p)))).count();
                 if let Some(&mut ControlFlowTarget::Resolved(ref mut bb)) = cfg.vertex_label_mut(*d) {
                     if !phis.contains(&(v,*d)) {
-                        assert!(!bb.mnemonics.is_empty());
 
-                        let pos = bb.mnemonics.first().unwrap().area.start;
+                        let pos = bb.area.start;
                         let mne = Mnemonic::new(
                             pos..pos,
                             "internal-phi".to_string(),
                             "".to_string(),
                             vec![].iter(),
                             vec![Instr{
-                                op: Operation::Phi(vec![Rvalue::Variable{ width: 0 /* TODO */, name: v.clone(), subscript: None };arg_num]),
-                                assignee: Lvalue::Variable{ width: 0, name: v.clone(), subscript: None }}].iter()
+                                op: Operation::Phi(vec![Rvalue::Variable{ width: lens[v], name: v.clone(), subscript: None };arg_num]),
+                                assignee: Lvalue::Variable{ width: lens[v], name: v.clone(), subscript: None }}].iter()
                         );
 
                         bb.mnemonics.insert(0,mne);
@@ -270,7 +314,10 @@ pub fn rename_variables(func: &mut Function) {
                         &mut Instr{ op: Operation::Phi(ref mut ops),.. } =>
                             for o in ops.iter_mut() {
                                 if let &mut Rvalue::Variable{ ref name, ref mut subscript,.. } = o {
-                                    *subscript = stack[name].last().cloned();
+                                    if subscript.is_none() {
+                                       *subscript = stack[name].last().cloned();
+                                       break;
+                                    }
                                 }
                             },
                         _ => {},
@@ -485,11 +532,11 @@ mod tests {
 
         phi_functions(&mut func);
 
-        let a0 = Lvalue::Variable{ name: "a".to_string(), width: 0, subscript: None };
-        let b0 = Lvalue::Variable{ name: "b".to_string(), width: 0, subscript: None };
-        let c0 = Lvalue::Variable{ name: "c".to_string(), width: 0, subscript: None };
-        let d0 = Lvalue::Variable{ name: "d".to_string(), width: 0, subscript: None };
-        let i0 = Lvalue::Variable{ name: "i".to_string(), width: 0, subscript: None };
+        let a0 = Lvalue::Variable{ name: "a".to_string(), width: 32, subscript: None };
+        let b0 = Lvalue::Variable{ name: "b".to_string(), width: 32, subscript: None };
+        let c0 = Lvalue::Variable{ name: "c".to_string(), width: 32, subscript: None };
+        let d0 = Lvalue::Variable{ name: "d".to_string(), width: 32, subscript: None };
+        let i0 = Lvalue::Variable{ name: "i".to_string(), width: 32, subscript: None };
 
         // bb0
         if let Some(&ControlFlowTarget::Resolved(ref bb)) = func.cflow_graph.vertex_label(v0) {
