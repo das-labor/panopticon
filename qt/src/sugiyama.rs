@@ -579,7 +579,7 @@ pub fn add_virtual_vertices(rank: &mut HashMap<AdjacencyListVertexDescriptor,isi
         let rank_from = *rank.get(&prev).unwrap();
         let rank_to = *rank.get(&last).unwrap();
 
-        for r in ((rank_from + 1)..(rank_to)) {
+        for r in (rank_from + 1)..rank_to {
             let vx = graph.add_vertex(next_label);
 
             rank.insert(vx,r);
@@ -682,7 +682,7 @@ fn optimize_ordering(order: &mut Vec<Vec<AdjacencyListVertexDescriptor>>,
         return;
     }
 
-    for i in (0..6) {
+    for i in 0..6 {
         let mut alt = order.clone();
 
         wmedian(i,&mut alt,rank,graph);
@@ -849,8 +849,8 @@ fn transpose(xings: &mut usize,
     while imp {
         imp = false;
 
-        for order_idx in (0..order.len()) {
-            for rank_idx in (0..(order[order_idx].len()-1)) {
+        for order_idx in 0..order.len() {
+            for rank_idx in 0..(order[order_idx].len() - 1) {
                 let v = order[order_idx][rank_idx];
                 let w = order[order_idx][rank_idx+1];
 
@@ -1245,7 +1245,7 @@ pub fn compute_x_coordinates(order: &Vec<Vec<AdjacencyListVertexDescriptor>>,
     let mut x = vec![];
     let mut widths = vec![];
 
-    for k in (0..4) {
+    for k in 0..4 {
         let up_to_down = k <= 1;
         let left_to_right = k % 2 == 0;
         let type1 = mark_type1_conflicts(virt_start,&order,&rank,graph,up_to_down);
@@ -1273,7 +1273,7 @@ pub fn compute_x_coordinates(order: &Vec<Vec<AdjacencyListVertexDescriptor>>,
     let mut width = vec![];
     let mut global_min = 0;
 
-    for k in (0..4) {
+    for k in 0..4 {
         let mut mi = f32::INFINITY;
         let mut ma = f32::NEG_INFINITY;
 
@@ -1297,7 +1297,7 @@ pub fn compute_x_coordinates(order: &Vec<Vec<AdjacencyListVertexDescriptor>>,
 
     let mut shift = vec![];
 
-    for k in (0..4) {
+    for k in 0..4 {
         let left_to_right = k % 2 == 0;
 
         if left_to_right {
@@ -1523,7 +1523,7 @@ mod tests {
         dims.insert(28,(94.0,96.25));
         dims.insert(29,(52.0,67.5));
         dims.insert(30,(38.0,89.0625));
-        layout(&nodes,&edges,&dims,None,100,30,2);
+        assert!(layout(&nodes,&edges,&dims,None,100,30,2).ok().is_some());
     }
 
     // func_1130

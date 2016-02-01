@@ -123,7 +123,7 @@ pub fn create_elf_project(_path: &Variant, ctrl: &mut Object) -> Variant {
                     set_dirty(true,ctrl);
                     "{\"status\": \"ok\"}".to_string()
                 },
-                Err(e) =>
+                Err(_) =>
                     "{\"status\": \"err\", \"error\": \"Failed to read ELF file\"}".to_string()
             }
         } else {
