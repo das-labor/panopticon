@@ -12,7 +12,7 @@ depends=(
     'qt5-quickcontrols>=5.4')
 makedepends=(
     'rust>=1.4.0'
-    'cargo-bin'
+    'cargo'
     'git>=1'
     'cmake>=2.8.9')
 provides=()
