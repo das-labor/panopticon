@@ -1,6 +1,6 @@
 /*
  * Panopticon - A libre disassembler
- * Copyright (C) 2014-2015 Kai Michaelis
+ * Copyright (C) 2014,2015,2016 Kai Michaelis
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,11 +19,12 @@
 use std::hash::Hash;
 use std::fmt::Debug;
 use std::collections::{HashSet,HashMap};
+use std::iter::FromIterator;
 
 use graph_algos::{GraphTrait};
 
 use value::{Lvalue,Rvalue};
-use instr::{Instr,Operation};
+use instr::{Instr,Operation,execute};
 use function::{ControlFlowTarget,Function};
 use guard::Relation;
 
@@ -124,38 +125,162 @@ pub fn approximate<A: Avalue>(func: &Function) -> HashMap<Lvalue,A> {
     ret
 }
 
-/*
-struct KSet {
-    const MAXIMAL_SIZE: usize = 10;
-    // None -> Top, Some(vec![]) -> Bot
-    val: Option<Vec<Rvalue>>;
+const KSET_MAXIMAL_CARDINALITY: usize = 10;
+
+#[derive(Debug,Clone,PartialEq,Eq,Hash,RustcDecodable,RustcEncodable)]
+enum Kset {
+    Join,
+    Set(Vec<u64>),
+    Meet,
 }
 
-impl Avalue for KSet {
+impl Avalue for Kset {
     fn abstraction(v: &Rvalue) -> Self {
-        Some(vec![v.clone()])
+        if let &Rvalue::Constant(c) = v {
+            Kset::Set(vec![c])
+        } else {
+            Kset::Join
+        }
     }
 
-    fn execute(op: &Operation, env: &HashMap<Rvalue,Self::Value>) -> Self::Value {
-        Some(vec![])
+    fn execute(op: &Operation<Self>) -> Self {
+        fn permute(_a: &Kset, _b: &Kset, f: &Fn(Rvalue,Rvalue) -> Rvalue) -> Kset {
+            match (_a,_b) {
+                (&Kset::Join,_) => Kset::Join,
+                (_,&Kset::Join) => Kset::Join,
+                (&Kset::Set(ref a),&Kset::Set(ref b)) => {
+                    let mut ret = HashSet::<u64>::new();
+                    for _x in a.iter() {
+                        let x = Rvalue::Constant(*_x);
+                        for y in b.iter() {
+                            if let Rvalue::Constant(z) = f(x.clone(),Rvalue::Constant(*y)) {
+                                ret.insert(z);
+                                if ret.len() > KSET_MAXIMAL_CARDINALITY {
+                                    return Kset::Join;
+                                }
+                            }
+                        }
+                    }
+
+                    if ret.is_empty() {
+                        Kset::Meet
+                    } else {
+                        Kset::Set(ret.drain().collect::<Vec<u64>>())
+                    }
+                },
+                _ => Kset::Meet,
+            }
+        };
+        fn map(_a: &Kset, f: &Fn(Rvalue) -> Rvalue) -> Kset {
+            if let &Kset::Set(ref a) = _a {
+                let mut s = HashSet::<u64>::from_iter(
+                    a.iter().filter_map(|a| {
+                        if let Rvalue::Constant(ref c) = f(Rvalue::Constant(*a)) {
+                            Some(*c)
+                        } else {
+                            None
+                        }
+                    }));
+
+                if s.len() > KSET_MAXIMAL_CARDINALITY {
+                    Kset::Join
+                } else {
+                    Kset::Set(s.drain().collect::<Vec<_>>())
+                }
+            } else {
+                _a.clone()
+            }
+        };
+
+        match op {
+            &Operation::LogicAnd(ref a,ref b) =>
+                permute(a,b,&|a,b| execute(&Operation::LogicAnd(a,b))),
+            &Operation::LogicInclusiveOr(ref a,ref b) =>
+                permute(a,b,&|a,b| execute(&Operation::LogicInclusiveOr(a,b))),
+            &Operation::LogicExclusiveOr(ref a,ref b) =>
+                permute(a,b,&|a,b| execute(&Operation::LogicExclusiveOr(a,b))),
+            &Operation::LogicNegation(ref a) =>
+                map(a,&|a| execute(&Operation::LogicNegation(a))),
+            &Operation::LogicLift(ref a) =>
+                map(a,&|a| execute(&Operation::LogicLift(a))),
+
+            &Operation::IntAnd(ref a,ref b) =>
+                permute(a,b,&|a,b| execute(&Operation::IntAnd(a,b))),
+            &Operation::IntInclusiveOr(ref a,ref b) =>
+                permute(a,b,&|a,b| execute(&Operation::IntInclusiveOr(a,b))),
+            &Operation::IntExclusiveOr(ref a,ref b) =>
+                permute(a,b,&|a,b| execute(&Operation::IntExclusiveOr(a,b))),
+            &Operation::IntAdd(ref a,ref b) =>
+                permute(a,b,&|a,b| execute(&Operation::IntAdd(a,b))),
+            &Operation::IntSubtract(ref a,ref b) =>
+                permute(a,b,&|a,b| execute(&Operation::IntSubtract(a,b))),
+            &Operation::IntMultiply(ref a,ref b) =>
+                permute(a,b,&|a,b| execute(&Operation::IntMultiply(a,b))),
+            &Operation::IntDivide(ref a,ref b) =>
+                permute(a,b,&|a,b| execute(&Operation::IntDivide(a,b))),
+            &Operation::IntModulo(ref a,ref b) =>
+                permute(a,b,&|a,b| execute(&Operation::IntModulo(a,b))),
+            &Operation::IntLess(ref a,ref b) =>
+                permute(a,b,&|a,b| execute(&Operation::IntLess(a,b))),
+            &Operation::IntEqual(ref a,ref b) =>
+                permute(a,b,&|a,b| execute(&Operation::IntEqual(a,b))),
+            &Operation::IntCall(ref a) =>
+                map(a,&|a| execute(&Operation::IntCall(a))),
+            &Operation::IntRightShift(ref a,ref b) =>
+                permute(a,b,&|a,b| execute(&Operation::IntRightShift(a,b))),
+            &Operation::IntLeftShift(ref a,ref b) =>
+                permute(a,b,&|a,b| execute(&Operation::IntLeftShift(a,b))),
+
+            &Operation::Phi(ref a) => unreachable!(),
+            &Operation::Nop(ref a) =>
+                map(a,&|a| execute(&Operation::Nop(a))),
+        }
     }
 
-    fn combine(a: &Self::Value, b: &Self::Value) -> Self::Value {
+    fn narrow(_: &Relation<Self>) -> Self {
         unimplemented!()
     }
 
-    fn widen(a: &Self::Value, b: &Self::Value) -> Self::Value {
-        unimplemented!()
+    fn combine(&self,a: &Self) -> Self {
+        match (self,a) {
+            (&Kset::Join,_) => Kset::Join,
+                (_,&Kset::Join) => Kset::Join,
+                (a,&Kset::Meet) => a.clone(),
+                (&Kset::Meet,b) => b.clone(),
+                (&Kset::Set(ref a),&Kset::Set(ref b)) => {
+                    let ret = HashSet::<&u64>::from_iter(a.iter().chain(b.iter()))
+                        .iter().cloned().cloned().collect::<Vec<u64>>();
+                    if ret.is_empty() {
+                        Kset::Meet
+                    } else if ret.len() > KSET_MAXIMAL_CARDINALITY {
+                        Kset::Join
+                    } else {
+                        Kset::Set(ret)
+                    }
+                },
+        }
     }
 
-    fn initial() -> Self::Value {
-        Some(vec![])
+    fn widen(&self,a: &Self) -> Self {
+        Kset::Join
     }
 
-    fn more_exact(_: &Self::Value, _: &Self::Value) -> bool {
-        unimplemented!()
+    fn initial() -> Self {
+        Kset::Meet
     }
-}*/
+
+    fn more_exact(&self, a: &Self) -> bool {
+        match (self,a) {
+            (&Kset::Meet,&Kset::Join) => true,
+                (&Kset::Meet,&Kset::Set(_)) => true,
+                (&Kset::Set(_),&Kset::Join) => true,
+                (&Kset::Set(ref a),&Kset::Set(ref b)) =>
+                    HashSet::<&u64>::from_iter(b.iter())
+                    .is_superset(&HashSet::from_iter(a.iter())),
+                _ => false
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {
