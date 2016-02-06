@@ -19,7 +19,7 @@
 use value::{Rvalue,ToRvalue};
 use rustc_serialize::{Encodable,Decodable};
 use std::hash::Hash;
-use std::fmt::Debug;
+use std::fmt::{Formatter,Display,Error,Debug};
 
 #[derive(Debug,Clone,PartialEq,Eq,Hash,RustcDecodable,RustcEncodable)]
 pub enum Relation<Value: Debug + Clone + PartialEq + Eq + Hash + Decodable + Encodable> {
@@ -69,6 +69,25 @@ impl<'a,Value> Relation<Value> where Value: Debug + Clone + PartialEq + Eq + Has
             &mut Relation::NotEqual(ref mut a,ref mut b) => vec![a,b],
             &mut Relation::True => vec![],
             &mut Relation::False => vec![],
+        }
+    }
+}
+
+impl<Value> Display for Relation<Value> where Value: Debug + Clone + PartialEq + Eq + Hash + Decodable + Encodable + Display + Eq {
+    fn fmt(&self, f: &mut Formatter) -> Result<(), Error> {
+        match self {
+            &Relation::UnsignedLessOrEqual(ref a,ref b) => f.write_fmt(format_args!("{} ≤ᵤ {}",a,b)),
+            &Relation::SignedLessOrEqual(ref a,ref b) => f.write_fmt(format_args!("{} ≤ₛ {}",a,b)),
+            &Relation::UnsignedGreaterOrEqual(ref a,ref b) => f.write_fmt(format_args!("{} ≥ᵤ {}",a,b)),
+            &Relation::SignedGreaterOrEqual(ref a,ref b) => f.write_fmt(format_args!("{} ≥ₛ {}",a,b)),
+            &Relation::UnsignedLess(ref a,ref b) => f.write_fmt(format_args!("{} <ᵤ {}",a,b)),
+            &Relation::SignedLess(ref a,ref b) => f.write_fmt(format_args!("{} <ₛ {}",a,b)),
+            &Relation::UnsignedGreater(ref a,ref b) => f.write_fmt(format_args!("{} >ᵤ {}",a,b)),
+            &Relation::SignedGreater(ref a,ref b) => f.write_fmt(format_args!("{} >ₛ {}",a,b)),
+            &Relation::Equal(ref a,ref b) => f.write_fmt(format_args!("{} = {}",a,b)),
+            &Relation::NotEqual(ref a,ref b) => f.write_fmt(format_args!("{} ≠ {}",a,b)),
+            &Relation::True => f.write_str("true"),
+            &Relation::False => f.write_str("false"),
         }
     }
 }
@@ -146,6 +165,12 @@ impl Guard {
             Relation::True => Relation::False,
             Relation::False => Relation::True,
         })
+    }
+}
+
+impl Display for Guard {
+    fn fmt(&self, f: &mut Formatter) -> Result<(), Error> {
+        f.write_fmt(format_args!("{}",self.relation))
     }
 }
 

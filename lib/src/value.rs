@@ -56,6 +56,7 @@ impl Display for Rvalue {
         match self {
             &Rvalue::Constant(c) => f.write_fmt(format_args!("{:x}",c)),
             &Rvalue::Undefined => f.write_str("undef"),
+            &Rvalue::Variable{ name: ref n, subscript: Some(ref s),.. } => f.write_fmt(format_args!("{}_{}",n,s)),
             &Rvalue::Variable{ name: ref n,.. } => f.write_str(n),
             &Rvalue::Memory{ offset: ref o, name: ref n,..} => f.write_fmt(format_args!("{}[{}]",n,o)),
         }

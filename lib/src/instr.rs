@@ -20,6 +20,7 @@ use value::{Lvalue,Rvalue};
 use rustc_serialize::{Encodable,Decodable};
 use std::hash::Hash;
 use std::fmt::Debug;
+use std::fmt::{Formatter,Display,Error};
 
 #[derive(Clone,PartialEq,Eq,Debug,RustcEncodable,RustcDecodable)]
 pub enum Operation<Value: Clone + PartialEq + Eq + Debug + Encodable + Decodable> {
@@ -266,10 +267,48 @@ impl<'a,Value> Operation<Value> where Value: Clone + PartialEq + Eq + Debug + En
     }
 }
 
+
 #[derive(Clone,PartialEq,Eq,Debug,RustcEncodable,RustcDecodable)]
 pub struct Instr {
     pub op: Operation<Rvalue>,
     pub assignee: Lvalue,
+}
+
+impl Display for Instr {
+    fn fmt(&self, f: &mut Formatter) -> Result<(), Error> {
+        f.write_fmt(format_args!("{} ≔ ",self.assignee.to_rv()));
+        match &self.op {
+            &Operation::LogicAnd(ref a,ref b) => f.write_fmt(format_args!("{} ∧ {}",a,b)),
+            &Operation::LogicInclusiveOr(ref a,ref b) => f.write_fmt(format_args!("{} ∨ {}",a,b)),
+            &Operation::LogicExclusiveOr(ref a,ref b) => f.write_fmt(format_args!("{} ⊕ {}",a,b)),
+            &Operation::LogicNegation(ref a) => f.write_fmt(format_args!("¬{}",a)),
+            &Operation::LogicLift(ref a) => f.write_fmt(format_args!("(bool)({})",a)),
+
+            &Operation::IntAnd(ref a,ref b) => f.write_fmt(format_args!("{} ∧ {}",a,b)),
+            &Operation::IntInclusiveOr(ref a,ref b) => f.write_fmt(format_args!("{} ∨ {}",a,b)),
+            &Operation::IntExclusiveOr(ref a,ref b) => f.write_fmt(format_args!("{} ⊕ {}",a,b)),
+            &Operation::IntAdd(ref a,ref b) => f.write_fmt(format_args!("{} + {}",a,b)),
+            &Operation::IntSubtract(ref a,ref b) => f.write_fmt(format_args!("{} - {}",a,b)),
+            &Operation::IntMultiply(ref a,ref b) => f.write_fmt(format_args!("{} * {}",a,b)),
+            &Operation::IntDivide(ref a,ref b) => f.write_fmt(format_args!("{} / {}",a,b)),
+            &Operation::IntModulo(ref a,ref b) => f.write_fmt(format_args!("{} % {}",a,b)),
+            &Operation::IntLess(ref a,ref b) => f.write_fmt(format_args!("{} < {}",a,b)),
+            &Operation::IntEqual(ref a,ref b) => f.write_fmt(format_args!("{} = {}",a,b)),
+            &Operation::IntCall(ref a) => f.write_fmt(format_args!("call({})",a)),
+            &Operation::IntRightShift(ref a,ref b) => f.write_fmt(format_args!("{} >> {}",a,b)),
+            &Operation::IntLeftShift(ref a,ref b) => f.write_fmt(format_args!("{} << {}",a,b)),
+
+            &Operation::Phi(ref vec) => {
+                f.write_str("Φ(");
+                for (i,x) in vec.iter().enumerate() {
+                    f.write_fmt(format_args!("{}",x));
+                    if i < vec.len() - 1 { f.write_str(", "); }
+                }
+                f.write_str(")")
+            },
+            &Operation::Nop(ref a) => f.write_fmt(format_args!("{}",a)),
+        }
+    }
 }
 
 mod tests {
