@@ -220,6 +220,27 @@ pub fn phi_functions(func: &mut Function) {
     let (globals,usage) = global_names(func);
     let lens = type_check(func);
     let mut cfg = &mut func.cflow_graph;
+
+    // initalize all variables
+    if let Some(&mut ControlFlowTarget::Resolved(ref mut bb)) = cfg.vertex_label_mut(func.entry_point.unwrap()) {
+        let pos = bb.area.start;
+        let instrs = globals.iter().map(|nam| Instr{
+            op: Operation::Nop(Rvalue::Undefined),
+            assignee: Lvalue::Variable{ width: lens[nam], name: nam.clone(), subscript: None }}
+        ).collect::<Vec<_>>();
+
+        let mne = Mnemonic::new(
+            pos..pos,
+            "internal-init".to_string(),
+            "".to_string(),
+            vec![].iter(),
+            instrs.iter());
+
+        bb.mnemonics.insert(0,mne);
+    } else {
+        unreachable!("Entry point is unresolved!");
+    }
+
     let idom = immediate_dominator(func.entry_point.unwrap(),cfg);
     let df = dominance_frontiers(&idom,cfg);
     let mut phis = HashSet::<(&String,ControlFlowRef)>::new();
