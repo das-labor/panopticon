@@ -3,8 +3,8 @@
 <pkgmetadata>
   <herd>tools-portage</herd>
   <maintainer>
-    <email>zaolin@das-labor.org</email>
-    <name>Philipp Deppenwiese</name>
+    <email>seu@panopticon.re</email>
+    <name>Kai Michaelis</name>
   </maintainer>
   <longdescription>
    A disassembler with basic static analysis capabilities and infer invariants for basic blocks.
