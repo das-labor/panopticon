@@ -1,6 +1,6 @@
 /*
  * Panopticon - A libre disassembler
- * Copyright (C) 2014-2015 Kai Michaelis
+ * Copyright (C) 2014,2015,2016 Kai Michaelis
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,6 +23,7 @@ use std::fmt::Debug;
 use std::ops::{BitAnd,BitOr,Shl,Shr,Not};
 use std::collections::{HashSet,HashMap};
 use std::mem::size_of;
+use std::hash::Hash;
 
 use num::traits::{Zero,One,NumCast,cast};
 use graph_algos::{
@@ -135,232 +136,52 @@ impl<A: Architecture> State<A> {
 }
 
 #[derive(Clone)]
-pub enum Expr<A: Architecture> {
-    Pattern(String),
-    Terminal(A::Token),
-    Subdecoder(Rc<Disassembler<A>>),
-    Optional(Box<Expr<A>>),
+pub enum Rule<A: Architecture> {
+	Terminal{
+		mask: A::Token,
+		pattern: A::Token,
+		capture_group: Vec<(String,A::Token)>,
+	},
+	Sub(Rc<Disassembler<A>>),
 }
 
-pub trait ToExpr<A: Architecture> {
-    fn to_expr(&self) -> Expr<A>;
-}
-
-impl<'a,A: Architecture> ToExpr<A> for &'a str {
-    fn to_expr(&self) -> Expr<A> {
-        Expr::Pattern(self.to_string())
+impl<A: Architecture> PartialEq for Rule<A> {
+    fn eq(&self, other: &Rule<A>) -> bool {
+        match (self,other) {
+            (&Rule::Terminal{ mask: ref ma, pattern: ref pa, capture_group: ref ca },
+             &Rule::Terminal{ mask: ref mb, pattern: ref pb, capture_group: ref cb }) =>
+                ma == mb && pa == pb && ca == cb,
+            (&Rule::Sub(ref a),&Rule::Sub(ref b)) =>
+                a.as_ref() as *const Disassembler<A> as usize == b.as_ref() as *const Disassembler<A> as usize,
+            _ => false,
+        }
     }
 }
 
-impl<'a,A: Architecture> ToExpr<A> for Rc<Disassembler<A>> {
-    fn to_expr(&self) -> Expr<A> {
-        Expr::Subdecoder(self.clone())
-    }
-}
-
-impl<A: Architecture> ToExpr<A> for usize {
-    fn to_expr(&self) -> Expr<A> {
-        Expr::Terminal(<A::Token as NumCast>::from::<usize>(*self).unwrap().clone())
-    }
-}
-
-impl<A: Architecture> ToExpr<A> for Expr<A> {
-    fn to_expr(&self) -> Expr<A> {
-        self.clone()
-    }
-}
-
-#[derive(Clone)]
-pub enum Match<A: Architecture> {
-    Epsilon,
-    Character{
-        bits: A::Token,
-        mask: A::Token,
-        capture: Vec<(String,A::Token)>,
-    },
-    Condition(Rc<Action<A>>),
+#[derive(PartialEq,Hash,Eq,Debug)]
+pub enum Symbol {
+	Sparse,
+	Dense(Vec<AdjacencyListVertexDescriptor>),
 }
 
 pub struct Disassembler<A: Architecture> {
-    pub start: AdjacencyListVertexDescriptor,
-    pub goals: HashSet<AdjacencyListVertexDescriptor>,
-    pub graph: AdjacencyList<usize,Match<A>>,
-    pub default: Option<Action<A>>,
-    pub next_index: usize,
+	graph: AdjacencyList<Symbol,Rule<A>>,
+	start: AdjacencyListVertexDescriptor,
+	end: HashMap<AdjacencyListVertexDescriptor,Rc<Action<A>>>,
+    default: Option<Action<A>>,
 }
 
 impl<A: Architecture> Disassembler<A> {
     pub fn new() -> Disassembler<A> {
-        let mut g = AdjacencyList::<usize,Match<A>>::new();
+        let mut g = AdjacencyList::new();
+        let s = g.add_vertex(Symbol::Sparse);
 
-        Disassembler::<A> {
-            start: g.add_vertex(0),
+        Disassembler{
             graph: g,
-            goals: HashSet::<AdjacencyListVertexDescriptor>::new(),
+            start: s,
+            end: HashMap::new(),
             default: None,
-            next_index: 1,
         }
-    }
-
-    pub fn set_default(&mut self,f: Action<A>) {
-        self.default = Some(f);
-    }
-
-    fn append_expr(&mut self, prev: AdjacencyListVertexDescriptor, expr: Expr<A>, index: usize) -> AdjacencyListVertexDescriptor {
-        match expr {
-            Expr::Pattern(ref s) => {
-                let mut groups = HashMap::<String,A::Token>::new();
-                let mut cur_group = "".to_string();
-                let mut read_pat = false; // false while reading torwards @
-                let mut bit: isize = (size_of::<A::Token>() * 8) as isize;
-                let mut mask = A::Token::zero();
-                let mut pat = A::Token::zero();
-
-                for c in s.chars() {
-                    match c {
-                        '@' => {
-                            if read_pat {
-                                panic!("Pattern syntax error: read '@' w/o name in '{}'",s);
-                            } else {
-                                read_pat = true;
-
-                                if cur_group == "" {
-                                    panic!("Pattern syntax error: anonymous groups not allowed in '{}'",s);
-                                }
-
-                                groups.insert(cur_group.clone(),A::Token::zero());
-                            }
-                        },
-                        ' ' => {
-                            read_pat = false;
-                            cur_group = "".to_string();
-                        },
-                        '.' => {
-                            if bit <= 0 {
-                                panic!("too long bit pattern");
-                            }
-
-                            if read_pat && cur_group != "" {
-                                *groups.get_mut(&cur_group).unwrap() = groups.get(&cur_group).unwrap().clone() | (A::Token::one() << ((bit - 1) as usize));
-                            }
-
-                            bit -= 1;
-                        },
-                        '0' | '1' => {
-                            if bit <= 0 {
-                                panic!("too long bit pattern");
-                            }
-
-                            if bit - 1 > 0 {
-                                mask = mask | (A::Token::one() << ((bit - 1) as usize));
-                            } else {
-                                mask = mask | A::Token::one();
-                            }
-
-                            if c == '1' {
-                                pat = pat | (A::Token::one() << ((bit - 1) as usize));
-                            }
-
-                            if read_pat && cur_group != "" {
-                                *groups.get_mut(&cur_group).unwrap() = groups.get(&cur_group).unwrap().clone() | (A::Token::one() << ((bit - 1) as usize));
-                            }
-
-                            bit -= 1;
-                        },
-                        'a'...'z' | 'A'...'Z' => {
-                            if read_pat {
-                                panic!("Pattern syntax error: undelimited capture group name in '{}'",s);
-                            } else {
-                                cur_group.push(c);
-                            }
-                        },
-                        _ => {
-                            panic!("Pattern syntax error: invalid character '{}' in '{}'",c,s);
-                        }
-                    }
-                }
-
-                if bit != 0 {
-                    panic!("Pattern syntax error: invalid pattern length in '{}'",s);
-                }
-
-                let next = self.graph.add_vertex(index);
-
-                self.graph.add_edge(Match::<A>::Character{
-                    bits: pat,
-                    mask: mask,
-                    capture: groups.iter().filter_map(|x| {
-                        if *x.1 != A::Token::zero() {
-                            Some((x.0.clone(),x.1.clone()))
-                        } else {
-                            None
-                        }
-                    }).collect(),
-                },prev,next);
-
-                next
-            },
-            Expr::Terminal(ref i) => {
-                let next = self.graph.add_vertex(index);
-
-                self.graph.add_edge(Match::<A>::Character{
-                    bits: i.clone(),
-                    mask: !A::Token::zero(),
-                    capture: vec![],
-                },prev,next);
-
-                next
-            },
-            Expr::Subdecoder(ref m) => {
-                let mut trans = HashMap::<AdjacencyListVertexDescriptor,AdjacencyListVertexDescriptor>::new();
-
-                for vx in m.graph.vertices() {
-                    trans.insert(vx,self.graph.add_vertex(index));
-                }
-
-                for ed in m.graph.edges() {
-                    self.graph.add_edge(m.graph.edge_label(ed).unwrap().clone(),
-                                        trans[&m.graph.source(ed)],
-                                        trans[&m.graph.target(ed)]);
-                }
-
-                self.graph.add_edge(Match::Epsilon::<A>,prev,trans[&m.start]);
-
-                let last = self.graph.add_vertex(index);
-
-                for f in m.goals.iter() {
-                    self.graph.add_edge(Match::Epsilon::<A>,trans[f],last);
-                }
-
-                last
-            },
-            Expr::Optional(ref e) => {
-                let next = self.append_expr(prev,*e.clone(),index);
-                let last = self.graph.add_vertex(index);
-                self.graph.add_edge(Match::Epsilon::<A>,prev,last);
-                self.graph.add_edge(Match::Epsilon::<A>,next,last);
-
-                last
-            },
-        }
-    }
-
-    pub fn append_conjunction(&mut self, e: Vec<Expr<A>>, a: Action<A>) {
-        let mut prev = None;
-        let index = self.next_index;
-
-        for expr in e {
-            let s = self.start.clone();
-            prev = Some(self.append_expr(prev.unwrap_or(s),expr,index));
-        }
-
-        if let Some(p) = prev {
-            let last = self.graph.add_vertex(index);
-            self.graph.add_edge(Match::Condition::<A>(Rc::new(a)),p,last);
-            self.goals.insert(last);
-        }
-
-        self.next_index += 1;
     }
 
     pub fn to_dot(&self) {
@@ -368,168 +189,378 @@ impl<A: Architecture> Disassembler<A> {
         for v in self.graph.vertices() {
             let lb = self.graph.vertex_label(v).unwrap();
 
-            if self.goals.contains(&v) {
-                println!("{} [label=\"{}, prio: {}\",shape=doublecircle]",v.0,v.0,lb);
+            if self.end.contains_key(&v) {
+                println!("{} [label=\"{}, prio: {:?}\",shape=doublecircle]",v.0,v.0,lb);
             } else {
-                println!("{} [label=\"{}, prio: {}\",shape=circle]",v.0,v.0,lb);
+                println!("{} [label=\"{}, prio: {:?}\",shape=circle]",v.0,v.0,lb);
             }
         }
         for e in self.graph.edges() {
             let lb = match self.graph.edge_label(e) {
-                Some(&Match::Epsilon::<A>) => "*".to_string(),
-                Some(&Match::Character::<A>{ ref bits, ref mask,.. }) => format!("{:?}/{:?}",bits,mask),
-                Some(&Match::Condition::<A>(_)) => "f()".to_string(),
+                Some(&Rule::Sub(ref d)) => "SUB".to_string(),
+                Some(&Rule::Terminal::<A>{ ref pattern, ref mask,.. }) => format!("{:?}/{:?}",pattern,mask),
                 None => "".to_string(),
             };
-            println!("{} -> {} [label=\"{}\"]",self.graph.source(e).0,self.graph.target(e).0,lb);
+            println!("{} -> {} [label={:?}]",self.graph.source(e).0,self.graph.target(e).0,lb);
         }
         println!("}}");
     }
 
-    pub fn next_match(&self,i: &mut LayerIter, offset: u64, cfg: A::Configuration) -> Option<State<A>> {
-        let mut states = HashMap::<AdjacencyListVertexDescriptor,State<A>>::new();
-        let mut tokens = Vec::<A::Token>::new();
-        let mut j = i.clone();
-        let min_len = |len: usize, ts: &mut Vec<A::Token>, j: &mut LayerIter| -> bool {
-            if ts.len() >= len {
-                true
-            } else {
-                for _ in ts.len()..len {
-                    let mut tmp: A::Token = A::Token::zero();
+	pub fn add(&mut self, a: &Vec<Rule<A>>, b: Rc<Action<A>>) {
+        assert!(!a.is_empty());
 
-                    for x in 0..size_of::<A::Token>() {
-                        if let Some(Some(b)) = j.next() {
-                            if x != 0 {
-                                tmp = tmp | (cast::<u8,A::Token>(b).unwrap() << 8);
-                            } else {
-                                tmp = cast(b).unwrap();
-                            }
-                        } else {
-                            return false;
-                        }
-                    }
-                    ts.push(tmp);
-                }
+        let mut v = self.start;
+        for r in a.iter() {
+            let mut found = false;
 
-                (ts.len() >= len)
-            }
-        };
-
-        states.insert(self.start,State::<A>::new(offset,cfg.clone()));
-
-        loop {
-            let mut next_states = HashMap::<AdjacencyListVertexDescriptor,State<A>>::new();
-            for (&pos,state) in states.iter() {
-                if self.goals.contains(&pos) {
-                    assert!(self.graph.out_degree(pos) == 0);
-                    next_states.insert(pos,state.clone());
-                } else {
-                    for e in self.graph.out_edges(pos) {
-                        let m = self.graph.edge_label(e).unwrap();
-                        let mut st = state.clone();
-                        let has_match = match m {
-                            &Match::Epsilon::<A> => true,
-                            &Match::Character::<A>{ ref bits, ref mask, ref capture } => {
-                                let l = st.tokens.len();
-                                if min_len(l + 1,&mut tokens,&mut j) && bits.clone() == (tokens[l].clone() & mask.clone()) {
-                                    let t = tokens[l].clone();
-                                    st.tokens.push(t.clone());
-
-                                    for &(ref name,ref mask) in capture.iter() {
-                                        let mut res = if let Some(p) = st.groups.iter().position(|x| x.0 == *name) {
-                                            st.groups[p].1
-                                        } else {
-                                            0u64
-                                        };
-
-                                        for rbit in 0..(size_of::<A::Token>() * 8) {
-                                            let bit = (size_of::<A::Token>() * 8) - rbit - 1;
-                                            let bit_mask = if bit > 0 {
-                                                A::Token::one() << bit
-                                            } else {
-                                                A::Token::one()
-                                            };
-
-                                            let a = bit_mask.clone() & mask.clone();
-
-                                            if a != A::Token::zero() {
-                                                res <<= 1;
-
-                                                if t.clone() & a != A::Token::zero() {
-                                                    res |= 1;
-                                                }
-                                            }
-                                        }
-
-                                        if let Some(p) = st.groups.iter().position(|x| x.0 == *name) {
-                                            st.groups[p].1 = res;
-                                        } else {
-                                            st.groups.push((name.clone(),res));
-                                        }
-                                    }
-
-                                    true
-                                } else {
-                                    false
-                                }
-                            },
-                            &Match::Condition::<A>(ref a) => (*a)(&mut st),
-                        };
-
-                        if has_match {
-                            next_states.insert(self.graph.target(e),st);
-                        }
+            for out in self.graph.out_edges(v) {
+                if let Some(ref t) = self.graph.edge_label(out) {
+                    if **t == *r {
+                        v = self.graph.target(out);
+                        found = true;
+                        break;
                     }
                 }
             }
 
-            if states.keys().collect::<HashSet<_>>() == next_states.keys().collect::<HashSet<_>>() {
-                break;
-            } else {
-                states = next_states;
+            if !found {
+                let tmp = self.graph.add_vertex(Symbol::Sparse);
+                self.graph.add_edge(r.clone(),v,tmp);
+                v = tmp;
             }
         }
 
-        if states.len() > 0 {
-            let mut states_vec = states.iter().collect::<Vec<_>>();
-            states_vec.sort_by(|a,b| self.graph.vertex_label(*a.0).unwrap().cmp(self.graph.vertex_label(*b.0).unwrap()));
-            Some(states_vec[0].1.clone())
-        } else {
-            if self.default.is_some() && min_len(1,&mut tokens,&mut j) {
-                let mut st = State::<A>::new(offset,cfg.clone());
+        self.end.insert(v,b);
+    }
 
-                st.tokens = vec!(tokens.iter().next().unwrap().clone());
+    pub fn set_default(&mut self,a: Action<A>) {
+        self.default = Some(a);
+    }
 
-                if self.default.unwrap()(&mut st) {
-                    Some(st)
-                } else {
-                    None
+	pub fn next_match<Iter>(&self, i: &mut Iter, offset: u64, cfg: A::Configuration) -> Option<State<A>>
+    where Iter: Iterator<Item=Option<u8>> + Clone, A::Configuration: Clone
+    {
+        let mut matches = self.find(i.clone(),&State::<A>::new(offset,cfg.clone()));
+        let l = matches.len();
+
+        match l {
+            0 => {
+                if let Some(ref def) = self.default {
+                    let mut state = State::<A>::new(offset,cfg);
+                    let mut iter = i.clone();
+                    if let Some(tok) = Self::read_token(&mut iter) {
+                        state.tokens.push(tok);
+
+                        if def(&mut state) {
+                            return Some(state);
+                        }
+                    }
                 }
-            } else {
+
                 None
+            },
+            1 => Some(matches[0].clone().1),
+            _ => {
+                println!("multiple matches!!!");
+                matches.sort_by(|b,a| a.1.tokens.len().cmp(&b.1.tokens.len()));
+                Some(matches[0].clone().1)
             }
+        }
+    }
+
+    fn read_token<Iter>(i: &mut Iter) -> Option<A::Token> where Iter: Iterator<Item=Option<u8>> {
+        let mut tok = A::Token::zero();
+        let cells = {
+            let mut x = i.take(size_of::<A::Token>()).collect::<Vec<_>>();
+            x.reverse();
+            x
+        };
+        let mut j = cells.iter();
+
+        for _ in 0..size_of::<A::Token>() {
+            if tok != A::Token::zero() {
+                tok = tok << 8;
+            }
+            if let Some(&Some(byte)) = j.next() {
+                tok = tok | <A::Token as NumCast>::from(byte).unwrap();
+            } else {
+                return None;
+            }
+        }
+
+        Some(tok)
+    }
+
+	pub fn find<Iter>(&self, i: Iter, initial_state: &State<A>) -> Vec<(Vec<&Symbol>,State<A>,Iter)>
+    where Iter: Iterator<Item=Option<u8>> + Clone, A::Configuration: Clone {
+        let mut states = Vec::<(Vec<&Symbol>,State<A>,AdjacencyListVertexDescriptor,Iter)>::new();
+        let mut ret = vec![];
+
+        states.push((vec![],initial_state.clone(),self.start,i.clone()));
+        while !states.is_empty() {
+            for &(ref pats,ref state,ref v,ref iter) in states.iter() {
+                if let Some(act) = self.end.get(v) {
+                    let mut st = state.clone();
+                    if act(&mut st) {
+                        ret.push((pats.clone(),st,iter.clone()));
+                    }
+                }
+            }
+
+            let mut new_states = Vec::<(Vec<&Symbol>,State<A>,AdjacencyListVertexDescriptor,Iter)>::new();
+
+
+            for &(ref pats,ref state,ref vx,ref iter) in states.iter() {
+                match self.graph.vertex_label(*vx) {
+                    Some(a@&Symbol::Sparse) =>
+                        for e in self.graph.out_edges(*vx) {
+                            match self.graph.edge_label(e) {
+                                Some(&Rule::Terminal{ ref mask, ref pattern, capture_group: ref capture }) => {
+                                    let mut i = iter.clone();
+                                    if let Some(tok) = Self::read_token(&mut i) {
+                                        if mask.clone() & tok.clone() == *pattern {
+                                            let mut p = pats.clone();
+                                            let mut st = state.clone();
+
+                                            // capture group
+                                            for &(ref name,ref mask) in capture.iter() {
+                                                let mut res = if let Some(p) = st.groups.iter().position(|x| x.0 == *name) {
+                                                    st.groups[p].1
+                                                } else {
+                                                    0u64
+                                                };
+
+                                                for rbit in 0..(size_of::<A::Token>() * 8) {
+                                                    let bit = (size_of::<A::Token>() * 8) - rbit - 1;
+                                                    let bit_mask = if bit > 0 {
+                                                        A::Token::one() << bit
+                                                    } else {
+                                                        A::Token::one()
+                                                    };
+
+                                                    let a = bit_mask.clone() & mask.clone();
+
+                                                    if a != A::Token::zero() {
+                                                        res <<= 1;
+
+                                                        if tok.clone() & a != A::Token::zero() {
+                                                            res |= 1;
+                                                        }
+                                                    }
+                                                }
+
+                                                if let Some(p) = st.groups.iter().position(|x| x.0 == *name) {
+                                                    st.groups[p].1 = res;
+                                                } else {
+                                                    st.groups.push((name.clone(),res));
+                                                }
+                                            }
+
+                                            p.push(a.clone());
+                                            st.tokens.push(tok);
+                                            new_states.push((p,st,self.graph.target(e),i));
+                                        }
+                                    }
+                                },
+                                Some(&Rule::Sub(ref sub)) => {
+                                    let mut i = iter.clone();
+                                    let mut v = sub.find(i.clone(),state);
+
+                                    new_states.extend(v.drain(..).map(|(a,b,i)| (a,b,self.graph.target(e),i.clone())));
+                                },
+                                None => {},
+                            };
+                        },
+                    Some(a@&Symbol::Dense(..)) => {
+                        let mut p = pats.clone();
+                        let mut i = iter.clone();
+                        let tok = i.next();
+
+                        p.push(a);
+                        if let &Symbol::Dense(ref v) = a {
+                            new_states.push((p,state.clone(),v[tok.unwrap().unwrap() as usize],i.clone()));
+                        }
+                    },
+                    _ => {},
+                }
+            }
+
+            states = new_states;
+        }
+
+        ret
+    }
+}
+
+impl<A: Architecture> Into<Rule<A>> for usize {
+    fn into(self) -> Rule<A> {
+        Rule::Terminal{
+            mask: !A::Token::zero(),
+            pattern: <A::Token as NumCast>::from(self).unwrap(),
+            capture_group: vec![]
         }
     }
 }
 
-macro_rules! opt {
-    ($e:expr) => { { Expr::Optional(Box::new($e.to_expr())) } };
+impl<A: Architecture> From<Rc<Disassembler<A>>> for Rule<A> {
+    fn from(s: Rc<Disassembler<A>>) -> Self {
+        Rule::Sub(s)
+    }
 }
 
-#[macro_export]
+impl<'a,A: Architecture> Into<Rule<A>> for &'a str {
+    fn into(self) -> Rule<A> {
+        let mut groups = HashMap::<String,A::Token>::new();
+        let mut cur_group = "".to_string();
+        let mut read_pat = false; // false while reading torwards @
+        let mut bit: isize = (size_of::<A::Token>() * 8) as isize;
+        let mut mask = A::Token::zero();
+        let mut pat = A::Token::zero();
+
+        for c in self.chars() {
+            match c {
+                '@' => {
+                    if read_pat {
+                        panic!("Pattern syntax error: read '@' w/o name in '{}'",self);
+                    } else {
+                        read_pat = true;
+
+                        if cur_group == "" {
+                            panic!("Pattern syntax error: anonymous groups not allowed in '{}'",self);
+                        }
+
+                        groups.insert(cur_group.clone(),A::Token::zero());
+                    }
+                },
+                ' ' => {
+                    read_pat = false;
+                    cur_group = "".to_string();
+                },
+                '.' => {
+                    if bit <= 0 {
+                        panic!("too long bit pattern");
+                    }
+
+                    if read_pat && cur_group != "" {
+                        *groups.get_mut(&cur_group).unwrap() = groups.get(&cur_group).unwrap().clone() | (A::Token::one() << ((bit - 1) as usize));
+                    }
+
+                    bit -= 1;
+                },
+                '0' | '1' => {
+                    if bit <= 0 {
+                        panic!("too long bit pattern");
+                    }
+
+                    if bit - 1 > 0 {
+                        mask = mask | (A::Token::one() << ((bit - 1) as usize));
+                    } else {
+                        mask = mask | A::Token::one();
+                    }
+
+                    if c == '1' {
+                        pat = pat | (A::Token::one() << ((bit - 1) as usize));
+                    }
+
+                    if read_pat && cur_group != "" {
+                        *groups.get_mut(&cur_group).unwrap() = groups.get(&cur_group).unwrap().clone() | (A::Token::one() << ((bit - 1) as usize));
+                    }
+
+                    bit -= 1;
+                },
+                'a'...'z' | 'A'...'Z' => {
+                    if read_pat {
+                        panic!("Pattern syntax error: undelimited capture group name in '{}'",self);
+                    } else {
+                        cur_group.push(c);
+                    }
+                },
+                _ => {
+                    panic!("Pattern syntax error: invalid character '{}' in '{}'",c,self);
+                }
+            }
+        }
+
+        if bit != 0 {
+            panic!("Pattern syntax error: invalid pattern length in '{}'",self);
+        }
+
+        Rule::Terminal{
+            pattern: pat,
+            mask: mask,
+            capture_group: groups.iter().filter_map(|x| {
+                if *x.1 != A::Token::zero() {
+                    Some((x.0.clone(),x.1.clone()))
+                } else {
+                    None
+                }
+            }).collect(),
+        }
+    }
+}
+
+pub trait AddToRuleGen<A: Architecture> {
+    fn push(&self,&mut Vec<Vec<Rule<A>>>);
+}
+
+#[derive(Clone)]
+pub struct OptionalRule<A: Architecture>(pub Rule<A>);
+
+impl<A: Architecture> AddToRuleGen<A> for OptionalRule<A> {
+    fn push(&self,rules: &mut Vec<Vec<Rule<A>>>) {
+        let mut copy = rules.clone();
+        for mut c in copy.iter_mut() {
+            c.push(self.0.clone());
+        }
+
+        rules.append(&mut copy);
+    }
+}
+
+impl<A: Architecture, T: Into<Rule<A>> + Clone> AddToRuleGen<A> for T {
+    fn push(&self,rules: &mut Vec<Vec<Rule<A>>>) {
+        for mut c in rules.iter_mut() {
+            let s: Self = self.clone();
+            c.push(s.into());
+        }
+    }
+}
+
+pub struct RuleGen<A: Architecture> {
+    pub rules: Vec<Vec<Rule<A>>>,
+}
+
+impl<A: Architecture> RuleGen<A> {
+    pub fn new() -> RuleGen<A> {
+        RuleGen{
+            rules: vec![vec![]]
+        }
+    }
+
+    pub fn push<T: AddToRuleGen<A>>(&mut self,t: &T) {
+        t.push(&mut self.rules);
+    }
+}
+
+macro_rules! opt {
+    ($e:expr) => { { ::disassembler::OptionalRule($e.clone().into()) } };
+}
+
 macro_rules! new_disassembler {
     ($ty:ty => $( [ $( $t:expr ),+ ] = $f:expr),+) => {
         {
             let mut dis = ::disassembler::Disassembler::<$ty>::new();
-
             $({
-                let mut __x = ::std::vec::Vec::new();
+                let mut gen = ::disassembler::RuleGen::new();
                 $(
-                    __x.push($t.to_expr());
+                    gen.push(&$t);
                 )+
-                fn a(a: &mut ::disassembler::State<$ty>) -> bool { ($f)(a) };
+                fn a(a: &mut State<$ty>) -> bool { ($f)(a) };
                 let fuc: ::disassembler::Action<$ty> = a;
-                dis.append_conjunction(__x,fuc);
+
+                for r in gen.rules {
+                    dis.add(&r,::std::rc::Rc::new(fuc));
+                }
             })+
 
             ::std::rc::Rc::<::disassembler::Disassembler<$ty>>::new(dis)
@@ -537,22 +568,25 @@ macro_rules! new_disassembler {
     };
     ($ty:ty => $( [ $( $t:expr ),+ ] = $f:expr),+, _ = $def:expr) => {
         {
-            let mut dis = Disassembler::<>::new();
-
+           let mut dis = ::disassembler::Disassembler::<$ty>::new();
             $({
-                let mut __x = Vec::new();
+                let mut gen = ::disassembler::RuleGen::new();
                 $(
-                    __x.push($t.to_expr());
+                    gen.push(&$t);
                 )+
                 fn a(a: &mut State<$ty>) -> bool { ($f)(a) };
-                let fuc: Action<$ty> = a;
-                dis.append_conjunction(__x,fuc);
+                let fuc: ::disassembler::Action<$ty> = a;
+
+                for r in gen.rules {
+                    dis.add(&r,::std::rc::Rc::new(fuc));
+                }
             })+
+
 
             fn __def(st: &mut State<$ty>) -> bool { ($def)(st) };
             dis.set_default(__def);
 
-            ::std::rc::Rc::<Disassembler<$ty>>::new(dis)
+            ::std::rc::Rc::<::disassembler::Disassembler<$ty>>::new(dis)
         }
     };
 }
@@ -592,6 +626,7 @@ mod tests {
         );
 
         main.to_dot();
+        sub.to_dot();
         let src = OpaqueLayer::wrap(vec!(3,1,3,2,2));
 
         {

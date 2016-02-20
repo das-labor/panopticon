@@ -388,7 +388,7 @@ mod tests {
     use basic_block::BasicBlock;
     use value::Rvalue;
     use layer::OpaqueLayer;
-    use disassembler::{ToExpr,State,Architecture};
+    use disassembler::{State,Architecture};
 
     #[derive(Clone)]
     enum TestArchShort {}
