@@ -21,14 +21,22 @@ use std::fmt::Debug;
 use std::collections::{HashSet,HashMap};
 use std::iter::FromIterator;
 
-use graph_algos::{GraphTrait};
+use graph_algos::{
+    GraphTrait,
+    IncidenceGraphTrait,
+    VertexListGraphTrait,
+};
+use rustc_serialize::{Encodable,Decodable};
+use graph_algos::dominator::{
+    immediate_dominator,
+};
+
 
 use value::{Lvalue,Rvalue};
 use instr::{Instr,Operation,execute};
 use function::{ControlFlowTarget,Function};
 use guard::Relation;
-
-use rustc_serialize::{Encodable,Decodable};
+use dataflow::liveness;
 
 /// Models both under- and overapproximation
 pub trait Avalue: Clone + PartialEq + Eq + Hash + Debug + Encodable + Decodable {
@@ -113,7 +121,7 @@ pub fn approximate<A: Avalue>(func: &Function) -> HashMap<Lvalue,A> {
                     };
 
                     let cur = ret.get(&assignee).cloned();
-                    if cur.is_none() || new.more_exact(&cur.unwrap()) {
+                    if cur.is_none() || new.more_exact(&cur.clone().unwrap()) {
                         fixpoint = false;
                         ret.insert(assignee,new);
                     }
@@ -125,13 +133,77 @@ pub fn approximate<A: Avalue>(func: &Function) -> HashMap<Lvalue,A> {
     ret
 }
 
+pub fn results<A: Avalue>(func: &Function,vals: &HashMap<Lvalue,A>) -> HashMap<(String,u16),A> {
+    let cfg = &func.cflow_graph;
+    let idom = immediate_dominator(func.entry_point.unwrap(),cfg);
+    let mut ret = HashMap::<(String,u16),A>::new();
+    let mut names = HashSet::<String>::new();
+
+    for vx in cfg.vertices() {
+        if let Some(&ControlFlowTarget::Resolved(ref bb)) = cfg.vertex_label(vx) {
+            bb.execute(|i| {
+                if let Lvalue::Variable{ ref name,.. } = i.assignee {
+                    names.insert(name.clone());
+                }
+            });
+        }
+    }
+
+    for v in cfg.vertices() {
+        if cfg.out_degree(v) == 0 {
+            if let Some(&ControlFlowTarget::Resolved(ref bb)) = cfg.vertex_label(v) {
+                for lv in names.iter() {
+                    let mut bbv = (bb,v);
+
+                    loop {
+                        let mut hit = false;
+                        bb.execute_backwards(|i| {
+                            if let Lvalue::Variable{ ref name, ref width,.. } = i.assignee {
+                                if name == lv {
+                                    hit = true;
+                                    ret.insert((name.clone(),*width),vals.get(&i.assignee).unwrap_or(&A::initial()).clone());
+                                }
+                            }
+                        });
+
+                        if !hit {
+                            if let Some(&w) = idom.get(&bbv.1) {
+                                if let Some(&ControlFlowTarget::Resolved(ref bb)) = cfg.vertex_label(w) {
+                                    bbv = (bb,w);
+                                    continue;
+                                }
+                            }
+                        }
+
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    ret
+}
+
 const KSET_MAXIMAL_CARDINALITY: usize = 10;
 
-#[derive(Debug,Clone,PartialEq,Eq,Hash,RustcDecodable,RustcEncodable)]
-enum Kset {
+#[derive(Debug,Eq,Clone,Hash,RustcDecodable,RustcEncodable)]
+pub enum Kset {
     Join,
     Set(Vec<u64>),
     Meet,
+}
+
+impl PartialEq for Kset {
+    fn eq(&self,other: &Kset) -> bool {
+        match (self,other) {
+            (&Kset::Meet,&Kset::Meet) => true,
+            (&Kset::Set(ref a),&Kset::Set(ref b)) =>
+                a.len() == b.len() && a.iter().zip(b.iter()).all(|(a,b)| a == b),
+                (&Kset::Join,&Kset::Join) => true,
+                _ => false
+        }
+    }
 }
 
 impl Avalue for Kset {
@@ -165,7 +237,9 @@ impl Avalue for Kset {
                     if ret.is_empty() {
                         Kset::Meet
                     } else {
-                        Kset::Set(ret.drain().collect::<Vec<u64>>())
+                        let mut v = ret.drain().collect::<Vec<u64>>();
+                        v.sort();
+                        Kset::Set(v)
                     }
                 },
                 _ => Kset::Meet,
@@ -185,7 +259,9 @@ impl Avalue for Kset {
                 if s.len() > KSET_MAXIMAL_CARDINALITY {
                     Kset::Join
                 } else {
-                    Kset::Set(s.drain().collect::<Vec<_>>())
+                    let mut v = s.drain().collect::<Vec<_>>();
+                    v.sort();
+                    Kset::Set(v)
                 }
             } else {
                 _a.clone()
@@ -244,20 +320,21 @@ impl Avalue for Kset {
     fn combine(&self,a: &Self) -> Self {
         match (self,a) {
             (&Kset::Join,_) => Kset::Join,
-                (_,&Kset::Join) => Kset::Join,
-                (a,&Kset::Meet) => a.clone(),
-                (&Kset::Meet,b) => b.clone(),
-                (&Kset::Set(ref a),&Kset::Set(ref b)) => {
-                    let ret = HashSet::<&u64>::from_iter(a.iter().chain(b.iter()))
-                        .iter().cloned().cloned().collect::<Vec<u64>>();
-                    if ret.is_empty() {
-                        Kset::Meet
-                    } else if ret.len() > KSET_MAXIMAL_CARDINALITY {
-                        Kset::Join
-                    } else {
-                        Kset::Set(ret)
-                    }
-                },
+            (_,&Kset::Join) => Kset::Join,
+            (a,&Kset::Meet) => a.clone(),
+            (&Kset::Meet,b) => b.clone(),
+            (&Kset::Set(ref a),&Kset::Set(ref b)) => {
+                let mut ret = HashSet::<&u64>::from_iter(a.iter().chain(b.iter()))
+                    .iter().cloned().cloned().collect::<Vec<u64>>();
+                ret.sort();
+                if ret.is_empty() {
+                    Kset::Meet
+                } else if ret.len() > KSET_MAXIMAL_CARDINALITY {
+                    Kset::Join
+                } else {
+                    Kset::Set(ret)
+                }
+            },
         }
     }
 
@@ -270,14 +347,17 @@ impl Avalue for Kset {
     }
 
     fn more_exact(&self, a: &Self) -> bool {
-        match (self,a) {
-            (&Kset::Meet,&Kset::Join) => true,
-                (&Kset::Meet,&Kset::Set(_)) => true,
-                (&Kset::Set(_),&Kset::Join) => true,
+        if self == a {
+            false
+        } else {
+            match (self,a) {
+                (&Kset::Join,_) => true,
+                (_,&Kset::Meet) => true,
                 (&Kset::Set(ref a),&Kset::Set(ref b)) =>
-                    HashSet::<&u64>::from_iter(b.iter())
-                    .is_superset(&HashSet::from_iter(a.iter())),
-                _ => false
+                    HashSet::<&u64>::from_iter(a.iter())
+                    .is_superset(&HashSet::from_iter(b.iter())),
+                    _ => false,
+            }
         }
     }
 }
@@ -417,45 +497,126 @@ mod tests {
 
     #[test]
     fn signedness_analysis() {
-         let x_var = Lvalue::Variable{ name: "x".to_string(), width: 32, subscript: None };
-         let n_var = Lvalue::Variable{ name: "n".to_string(), width: 32, subscript: None };
-         let bb0 = BasicBlock::from_vec(vec![
-             Mnemonic::new(0..1,"assign x".to_string(),"".to_string(),vec![].iter(),vec![
-                 Instr{ op: Operation::Nop(Rvalue::Constant(0)), assignee: x_var.clone()}].iter()),
-             Mnemonic::new(1..2,"assign n".to_string(),"".to_string(),vec![].iter(),vec![
-                 Instr{ op: Operation::Nop(Rvalue::Constant(1)), assignee: n_var.clone()}].iter())]);
-         let bb1 = BasicBlock::from_vec(vec![
-             Mnemonic::new(2..3,"add x and n".to_string(),"".to_string(),vec![].iter(),vec![
-                 Instr{ op: Operation::IntAdd(x_var.to_rv(),n_var.to_rv()), assignee: x_var.clone()}].iter()),
-             Mnemonic::new(3..4,"inc n".to_string(),"".to_string(),vec![].iter(),vec![
-                 Instr{ op: Operation::IntAdd(n_var.to_rv(),Rvalue::Constant(1)), assignee: n_var.clone()}].iter())]);
-         let bb2 = BasicBlock{ area: Bound::new(4,5), mnemonics: vec![] };
-         let mut cfg = ControlFlowGraph::new();
+        let x_var = Lvalue::Variable{ name: "x".to_string(), width: 32, subscript: None };
+        let n_var = Lvalue::Variable{ name: "n".to_string(), width: 32, subscript: None };
+        let bb0 = BasicBlock::from_vec(vec![
+                                       Mnemonic::new(0..1,"assign x".to_string(),"".to_string(),vec![].iter(),vec![
+                                                     Instr{ op: Operation::Nop(Rvalue::Constant(0)), assignee: x_var.clone()}].iter()),
+                                                     Mnemonic::new(1..2,"assign n".to_string(),"".to_string(),vec![].iter(),vec![
+                                                                   Instr{ op: Operation::Nop(Rvalue::Constant(1)), assignee: n_var.clone()}].iter())]);
+        let bb1 = BasicBlock::from_vec(vec![
+                                       Mnemonic::new(2..3,"add x and n".to_string(),"".to_string(),vec![].iter(),vec![
+                                                     Instr{ op: Operation::IntAdd(x_var.to_rv(),n_var.to_rv()), assignee: x_var.clone()}].iter()),
+                                                     Mnemonic::new(3..4,"inc n".to_string(),"".to_string(),vec![].iter(),vec![
+                                                                   Instr{ op: Operation::IntAdd(n_var.to_rv(),Rvalue::Constant(1)), assignee: n_var.clone()}].iter())]);
+        let bb2 = BasicBlock{ area: Bound::new(4,5), mnemonics: vec![] };
+        let mut cfg = ControlFlowGraph::new();
 
-         let v0 = cfg.add_vertex(ControlFlowTarget::Resolved(bb0));
-         let v1 = cfg.add_vertex(ControlFlowTarget::Resolved(bb1));
-         let v2 = cfg.add_vertex(ControlFlowTarget::Resolved(bb2));
+        let v0 = cfg.add_vertex(ControlFlowTarget::Resolved(bb0));
+        let v1 = cfg.add_vertex(ControlFlowTarget::Resolved(bb1));
+        let v2 = cfg.add_vertex(ControlFlowTarget::Resolved(bb2));
 
-         cfg.add_edge(Guard::sign_leq(&n_var.to_rv(),&Rvalue::Undefined),v0,v1);
-         cfg.add_edge(Guard::sign_leq(&n_var.to_rv(),&Rvalue::Undefined),v1,v1);
-         cfg.add_edge(Guard::sign_gt(&n_var.to_rv(),&Rvalue::Undefined),v0,v2);
-         cfg.add_edge(Guard::sign_gt(&n_var.to_rv(),&Rvalue::Undefined),v1,v2);
+        cfg.add_edge(Guard::sign_leq(&n_var.to_rv(),&Rvalue::Undefined),v0,v1);
+        cfg.add_edge(Guard::sign_leq(&n_var.to_rv(),&Rvalue::Undefined),v1,v1);
+        cfg.add_edge(Guard::sign_gt(&n_var.to_rv(),&Rvalue::Undefined),v0,v2);
+        cfg.add_edge(Guard::sign_gt(&n_var.to_rv(),&Rvalue::Undefined),v1,v2);
 
-         let mut func = Function::new("func".to_string(),"ram".to_string());
+        let mut func = Function::new("func".to_string(),"ram".to_string());
 
-         func.cflow_graph = cfg;
-         func.entry_point = Some(v0);
+        func.cflow_graph = cfg;
+        func.entry_point = Some(v0);
 
-         ssa_convertion(&mut func);
+        ssa_convertion(&mut func);
 
-         let vals = approximate::<Sign>(&func);
-         assert_eq!(vals.get(&Lvalue::Variable{ name: "x".to_string(), width: 32, subscript: Some(1) }), Some(&Sign::Zero));
-         assert_eq!(vals.get(&Lvalue::Variable{ name: "n".to_string(), width: 32, subscript: Some(1) }), Some(&Sign::Positive));
-         assert_eq!(vals.get(&Lvalue::Variable{ name: "x".to_string(), width: 32, subscript: Some(2) }), Some(&Sign::Join));
-         assert_eq!(vals.get(&Lvalue::Variable{ name: "n".to_string(), width: 32, subscript: Some(2) }), Some(&Sign::Positive));
-         assert_eq!(vals.get(&Lvalue::Variable{ name: "x".to_string(), width: 32, subscript: Some(3) }), Some(&Sign::Join));
-         assert_eq!(vals.get(&Lvalue::Variable{ name: "n".to_string(), width: 32, subscript: Some(3) }), Some(&Sign::Positive));
-         assert_eq!(vals.get(&Lvalue::Variable{ name: "x".to_string(), width: 32, subscript: Some(4) }), Some(&Sign::Join));
-         assert_eq!(vals.get(&Lvalue::Variable{ name: "n".to_string(), width: 32, subscript: Some(4) }), Some(&Sign::Positive));
+        let vals = approximate::<Sign>(&func);
+        assert_eq!(vals.get(&Lvalue::Variable{ name: "x".to_string(), width: 32, subscript: Some(1) }), Some(&Sign::Zero));
+        assert_eq!(vals.get(&Lvalue::Variable{ name: "n".to_string(), width: 32, subscript: Some(1) }), Some(&Sign::Positive));
+        assert_eq!(vals.get(&Lvalue::Variable{ name: "x".to_string(), width: 32, subscript: Some(2) }), Some(&Sign::Join));
+        assert_eq!(vals.get(&Lvalue::Variable{ name: "n".to_string(), width: 32, subscript: Some(2) }), Some(&Sign::Positive));
+        assert_eq!(vals.get(&Lvalue::Variable{ name: "x".to_string(), width: 32, subscript: Some(3) }), Some(&Sign::Join));
+        assert_eq!(vals.get(&Lvalue::Variable{ name: "n".to_string(), width: 32, subscript: Some(3) }), Some(&Sign::Positive));
+        assert_eq!(vals.get(&Lvalue::Variable{ name: "x".to_string(), width: 32, subscript: Some(4) }), Some(&Sign::Join));
+        assert_eq!(vals.get(&Lvalue::Variable{ name: "n".to_string(), width: 32, subscript: Some(4) }), Some(&Sign::Positive));
     }
+
+    /*
+     * a = 10
+     * b = 0
+     * c = undef
+     * if (c == 1) {
+     *   a += 5;
+     *   b = a * c;
+     *   c = 2
+     * } else {
+     *   while(a > 0) {
+     *     a -= 1
+     *     b += 3
+     *     c = 3
+     *   }
+     * }
+     * x = a + b;
+     */
+    #[test]
+    fn kset_test() {
+        let a_var = Lvalue::Variable{ name: "a".to_string(), width: 32, subscript: None };
+        let b_var = Lvalue::Variable{ name: "b".to_string(), width: 32, subscript: None };
+        let c_var = Lvalue::Variable{ name: "c".to_string(), width: 32, subscript: None };
+        let x_var = Lvalue::Variable{ name: "x".to_string(), width: 32, subscript: None };
+        let bb0 = BasicBlock::from_vec(vec![
+                                       Mnemonic::new(0..1,"assign a".to_string(),"".to_string(),vec![].iter(),vec![
+                                                     Instr{ op: Operation::Nop(Rvalue::Constant(10)), assignee: a_var.clone()}].iter()),
+                                                     Mnemonic::new(1..2,"assign b".to_string(),"".to_string(),vec![].iter(),vec![
+                                                                   Instr{ op: Operation::Nop(Rvalue::Constant(0)), assignee: b_var.clone()}].iter()),
+                                                                   Mnemonic::new(2..3,"assign c".to_string(),"".to_string(),vec![].iter(),vec![
+                                                                                 Instr{ op: Operation::Nop(Rvalue::Undefined), assignee: c_var.clone()}].iter())]);
+        let bb1 = BasicBlock::from_vec(vec![
+                                       Mnemonic::new(3..4,"add a and 5".to_string(),"".to_string(),vec![].iter(),vec![
+                                                     Instr{ op: Operation::IntAdd(a_var.to_rv(),Rvalue::Constant(5)), assignee: a_var.clone()}].iter()),
+                                                     Mnemonic::new(4..5,"mul a and c".to_string(),"".to_string(),vec![].iter(),vec![
+                                                                   Instr{ op: Operation::IntAdd(a_var.to_rv(),c_var.to_rv()), assignee: b_var.clone()}].iter()),
+                                                                   Mnemonic::new(4..5,"assign c".to_string(),"".to_string(),vec![].iter(),vec![
+                                                                                 Instr{ op: Operation::Nop(Rvalue::Constant(2)), assignee: c_var.clone()}].iter())]);
+        let bb2 = BasicBlock::from_vec(vec![
+                                       Mnemonic::new(5..6,"dec a".to_string(),"".to_string(),vec![].iter(),vec![
+                                                     Instr{ op: Operation::IntSubtract(a_var.to_rv(),Rvalue::Constant(1)), assignee: a_var.clone()}].iter()),
+                                                     Mnemonic::new(6..7,"add 3 to b".to_string(),"".to_string(),vec![].iter(),vec![
+                                                                   Instr{ op: Operation::IntAdd(b_var.to_rv(),Rvalue::Constant(3)), assignee: b_var.clone()}].iter()),
+                                                                   Mnemonic::new(8..9,"assign c".to_string(),"".to_string(),vec![].iter(),vec![
+                                                                                 Instr{ op: Operation::Nop(Rvalue::Constant(3)), assignee: c_var.clone()}].iter())]);
+        let bb3 = BasicBlock::from_vec(vec![
+                                       Mnemonic::new(7..8,"add a and b".to_string(),"".to_string(),vec![].iter(),vec![
+                                                     Instr{ op: Operation::IntAdd(a_var.to_rv(),b_var.to_rv()), assignee: x_var.clone()}].iter())]);
+        let bb4 = BasicBlock{ area: Bound::new(8,9), mnemonics: vec![] };
+
+        let mut cfg = ControlFlowGraph::new();
+
+        let v0 = cfg.add_vertex(ControlFlowTarget::Resolved(bb0));
+        let v1 = cfg.add_vertex(ControlFlowTarget::Resolved(bb1));
+        let v2 = cfg.add_vertex(ControlFlowTarget::Resolved(bb2));
+        let v3 = cfg.add_vertex(ControlFlowTarget::Resolved(bb3));
+        let v4 = cfg.add_vertex(ControlFlowTarget::Resolved(bb4));
+
+        cfg.add_edge(Guard::eq(&c_var.to_rv(),&Rvalue::Constant(1)),v0,v1);
+        cfg.add_edge(Guard::neq(&c_var.to_rv(),&Rvalue::Constant(1)),v0,v4);
+        cfg.add_edge(Guard::sign_gt(&a_var.to_rv(),&Rvalue::Constant(0)),v4,v2);
+        cfg.add_edge(Guard::sign_leq(&a_var.to_rv(),&Rvalue::Constant(0)),v4,v3);
+        cfg.add_edge(Guard::always(),v2,v4);
+        cfg.add_edge(Guard::always(),v1,v3);
+
+        let mut func = Function::new("func".to_string(),"ram".to_string());
+
+        func.cflow_graph = cfg;
+        func.entry_point = Some(v0);
+
+        ssa_convertion(&mut func);
+
+        let vals = approximate::<Kset>(&func);
+        let res = results::<Kset>(&func,&vals);
+
+        assert_eq!(res[&("a".to_string(),32)],Kset::Join);
+        assert_eq!(res[&("b".to_string(),32)],Kset::Join);
+        assert_eq!(res[&("c".to_string(),32)],Kset::Set(vec![2,3]));
+        assert_eq!(res[&("x".to_string(),32)],Kset::Join);
+    }
+
 }

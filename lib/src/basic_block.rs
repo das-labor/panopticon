@@ -48,6 +48,14 @@ impl BasicBlock {
         return BasicBlock{ area: a.unwrap_or(Bound::new(0,0)), mnemonics: ms };
     }
 
+    pub fn execute_backwards<'a,F>(&'a self,mut f: F) where F: FnMut(&'a Instr) {
+        for mne in self.mnemonics.iter().rev() {
+            for i in mne.instructions.iter().rev() {
+                f(&i);
+            }
+        }
+    }
+
     pub fn execute<'a,F>(&'a self,mut f: F) where F: FnMut(&'a Instr) {
         for mne in self.mnemonics.iter() {
             for i in mne.instructions.iter() {
