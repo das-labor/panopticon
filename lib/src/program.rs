@@ -22,16 +22,18 @@ use graph_algos::{AdjacencyList,GraphTrait,MutableGraphTrait,AdjacencyMatrixGrap
 use graph_algos::adjacency_list::AdjacencyListVertexDescriptor;
 use graph_algos::VertexListGraphTrait;
 use uuid::Uuid;
+use byteorder::{BigEndian, LittleEndian, ReadBytesExt};
 
 use function::{ControlFlowTarget,Function};
 use layer::LayerIter;
 use target::Target;
+use value::{Endianess,Rvalue};
 
 #[derive(RustcDecodable,RustcEncodable)]
 pub enum CallTarget {
     Concrete(Function),
     Symbolic(String,Uuid),
-    Todo(u64,Option<String>,Uuid),
+    Todo(Rvalue,Option<String>,Uuid),
 }
 
 impl CallTarget {
@@ -157,14 +159,38 @@ impl Program {
 
                 if let Some(&CallTarget::Concrete(ref fun)) = ret.call_graph.vertex_label(new_vx) {
                     // insert call edges and new procedures to disassemble
-                    for a in fun.collect_calls() {
-                        if let Some(other_fun) = ret.find_function_by_entry(a) {
-                            new.push(other_fun);
-                        } else {
-                            if let Some(ref f) = progress {
-                                f(DisassembleEvent::Discovered(a))
+                    for call in fun.collect_calls() {
+                        fn resolv(rv: &Rvalue,d: &LayerIter,n: &String) -> Option<u64> {
+                            match rv {
+                                &Rvalue::Undefined => None,
+                                &Rvalue::Variable{ .. } => None,
+                                &Rvalue::Constant(ref c) => Some(*c),
+                                &Rvalue::Memory{ ref offset, ref bytes, ref endianess, ref name } => {
+                                    if name == n {
+                                        if let Some(o) = resolv(offset,d,n) {
+                                            match (*bytes,endianess) {
+                                                (1,_) => d.clone().next().and_then(|x| x.map(|x| x as u64)),
+                                                (2,&Endianess::Little) => ReadBytesExt::read_u16::<LittleEndian>(&mut d.clone()).ok().map(|x| x as u64),
+                                                _ => None,
+                                            }
+                                        } else {
+                                            None
+                                        }
+                                    } else {
+                                        None
+                                    }
+                                },
                             }
-                            worklist.insert(a);
+                        }
+                        if let Some(address) = resolv(&call,&data,&reg) {
+                            if let Some(other_fun) = ret.find_function_by_entry(address) {
+                                new.push(other_fun);
+                            } else {
+                                if let Some(ref f) = progress {
+                                    f(DisassembleEvent::Discovered(address))
+                                }
+                                worklist.insert(address);
+                            }
                         }
                     }
                 }
@@ -206,14 +232,14 @@ impl Program {
                 match self.call_graph.vertex_label(w) {
                     Some(&CallTarget::Concrete(Function{ cflow_graph: ref cg, entry_point: Some(ent),.. })) => {
                         if let Some(&ControlFlowTarget::Resolved(ref bb)) = cg.vertex_label(ent) {
-                            if bb.area.start == a {
+                            if Rvalue::Constant(bb.area.start) == a {
                                 other_funs.push(w);
                                 break;
                             }
                         }
                     },
-                    Some(&CallTarget::Todo(_a,_,_)) => {
-                        if _a == a {
+                    Some(&CallTarget::Todo(ref _a,_,_)) => {
+                        if *_a == a {
                             other_funs.push(w);
                             break;
                         }
@@ -294,7 +320,7 @@ mod tests {
         let uu = Uuid::new_v4();
         let mut prog = Program::new("prog_test",Target::__Test);
 
-        let tvx = prog.call_graph.add_vertex(CallTarget::Todo(12,None,uu));
+        let tvx = prog.call_graph.add_vertex(CallTarget::Todo(Rvalue::Constant(12),None,uu));
         let vx0 = prog.call_graph.add_vertex(CallTarget::Concrete(Function::new("test".to_string(),"ram".to_string())));
         let vx1 = prog.call_graph.add_vertex(CallTarget::Concrete(Function::new("test2".to_string(),"ram".to_string())));
 
@@ -330,7 +356,7 @@ mod tests {
         let uu2 = Uuid::new_v4();
         let mut prog = Program::new("prog_test",Target::__Test);
 
-        let tvx = prog.call_graph.add_vertex(CallTarget::Todo(12,None,uu1));
+        let tvx = prog.call_graph.add_vertex(CallTarget::Todo(Rvalue::Constant(12),None,uu1));
 
         let mut func = Function::with_uuid("test3".to_string(),uu2.clone(),"ram".to_string());
         let ops1 = vec![];

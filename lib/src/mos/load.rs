@@ -26,6 +26,7 @@ use layer::Layer;
 use region::Region;
 use mnemonic::Bound;
 use target::Target;
+use value::Rvalue;
 
 use graph_algos::{
     MutableGraphTrait,
@@ -74,25 +75,13 @@ pub fn load(p: &Path) -> Result<Project,Error> {
     let mut prog = Program::new("prog0", Target::Mos6502);
     let mut proj = Project::new(name.clone(),reg);
 
-    prog.call_graph.add_vertex(CallTarget::Todo(addr,Some(name),Uuid::new_v4()));
+    prog.call_graph.add_vertex(CallTarget::Todo(Rvalue::Constant(addr),Some(name),Uuid::new_v4()));
     proj.comments.insert(("base".to_string(),addr),"main".to_string());
 
-    for &(name,off,cmnt) in Target::Mos6502.interrupt_vec().iter() {
+    for &(name,ref off,cmnt) in Target::Mos6502.interrupt_vec().iter() {
         let uu =  Uuid::new_v4();
-
-	// Interrupt vectors are indirectly addressed on 6502!
-	let root = proj.sources.dependencies.vertex_label(proj.sources.root).unwrap();
-	let _data = root.iter();
-	let mut data = _data.seek(off);
-	if let Some(Some(lo)) = data.next() {
-	    if let Some(Some(hi)) = data.next() {
-                let entry = ((hi as u64) << 8) + lo as u64;
-
-		prog.call_graph.add_vertex(CallTarget::Todo(entry, Some(name.to_string()),uu));
-		proj.comments.insert(("base".to_string(), entry),cmnt.to_string());
-	    }
-        }
-    }
+		prog.call_graph.add_vertex(CallTarget::Todo(off.clone(), Some(name.to_string()),uu));
+	}
 
     proj.code.push(prog);
 

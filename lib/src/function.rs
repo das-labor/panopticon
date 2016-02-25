@@ -308,13 +308,13 @@ impl Function {
         }
     }
 
-    pub fn collect_calls(&self) -> Vec<u64> {
+    pub fn collect_calls(&self) -> Vec<Rvalue> {
         let mut ret = Vec::new();
 
         for vx in self.cflow_graph.vertices() {
             if let Some(&ControlFlowTarget::Resolved(ref bb)) = self.cflow_graph.vertex_label(vx) {
                 bb.execute(|i| match i {
-                    &Instr{ op: Operation::IntCall(Rvalue::Constant(ref c)), ..} => ret.push(*c),
+                    &Instr{ op: Operation::IntCall(ref t), ..} => ret.push(t.clone()),
                     _ => {}
                 });
             }

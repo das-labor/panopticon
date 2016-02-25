@@ -81,11 +81,10 @@ impl Project {
                 };
                 let mut prog = Program::new("prog0",t);
 
-                for &(name,off,cmnt) in t.interrupt_vec().iter() {
+                for &(name,ref off,cmnt) in t.interrupt_vec().iter() {
                     let uu =  Uuid::new_v4();
 
-                    prog.call_graph.add_vertex(CallTarget::Todo(off,Some(name.to_string()),uu));
-                    proj.comments.insert((nam.to_string(),off),cmnt.to_string());
+                    prog.call_graph.add_vertex(CallTarget::Todo(off.clone(),Some(name.to_string()),uu));
                 }
 
                 proj.code.push(prog);

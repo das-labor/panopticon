@@ -22,6 +22,7 @@ use panopticon::program::{Program,CallTarget};
 use panopticon::elf;
 use panopticon::mos;
 use panopticon::target::Target;
+use panopticon::value::Rvalue;
 
 use std::path::Path;
 use std::thread;
@@ -253,15 +254,15 @@ pub fn start_new(_ctrl: &mut Object) {
                     let prog: &Program = proj.find_program_by_uuid(&prog_uuid).unwrap();
 
                     prog.call_graph.vertices().filter_map(|x| {
-                        if let Some(&CallTarget::Todo(tgt,ref name,uuid)) = prog.call_graph.vertex_label(x) {
-                            Some((tgt,name.clone(),uuid))
+                        if let Some(&CallTarget::Todo(ref tgt,ref name,uuid)) = prog.call_graph.vertex_label(x) {
+                            Some((tgt.clone(),name.clone(),uuid))
                         } else {
                             None
                         }
                     }).next()
                 };
 
-                if let Some((tgt,maybe_name,uuid)) = maybe_tgt {
+                if let Some((Rvalue::Constant(tgt),maybe_name,uuid)) = maybe_tgt {
                     ctrl.emit(STARTED_FUNCTION,&vec!(Variant::String(uuid.to_string())));
                     set_dirty(true,&mut ctrl);
 

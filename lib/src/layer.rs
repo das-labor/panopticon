@@ -19,7 +19,7 @@
 use std::collections::HashMap;
 use std::path::Path;
 use std::fs::File;
-use std::io::Read;
+use std::io::{Result,Read};
 use std::ops::Range;
 
 pub type Cell = Option<u8>;
@@ -73,6 +73,20 @@ impl<'a> Iterator for LayerIter<'a> {
                 }
             },
         }
+    }
+}
+
+impl<'a> Read for LayerIter<'a> {
+    fn read(&mut self,buf: &mut [u8]) -> Result<usize> {
+        for idx in 0..buf.len() {
+            if let Some(Some(b)) = Self::next(self) {
+                buf[idx] = b;
+            } else {
+                return Ok(idx);
+            }
+        }
+
+        Ok(0)
     }
 }
 

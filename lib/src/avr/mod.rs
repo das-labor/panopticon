@@ -16,11 +16,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
 use disassembler::*;
 use value::{Lvalue,Rvalue,Endianess,ToRvalue};
 use codegen::CodeGen;
 use guard::Guard;
-use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
 
 pub mod syntax;
 
@@ -35,7 +35,7 @@ impl Architecture for Avr {
 #[derive(Clone)]
 pub struct Mcu {
     pub pc_bits: u16,                                   ///< width of the program counter in bits (FLASHEND)
-    pub int_vec: Vec<(&'static str,u64,&'static str)>,  ///< interrupt vector: (name, offset, comment)
+    pub int_vec: Vec<(&'static str,Rvalue,&'static str)>,  ///< interrupt vector: (name, offset, comment)
     pub skip: Option<(Guard,u64)>,
 }
 
@@ -43,7 +43,7 @@ impl Mcu {
     pub fn new() -> Mcu {
         Mcu {
             pc_bits: 13,
-            int_vec: vec![("RESET",0,"MCU Reset Interrupt")],
+            int_vec: vec![("RESET",Rvalue::Constant(0),"MCU Reset Interrupt")],
             skip: None,
         }
     }
@@ -52,30 +52,30 @@ impl Mcu {
         Mcu {
             pc_bits: 16,
             int_vec: vec![
-                ("RESET",0,"MCU Reset Interrupt"),
-                ("INT0",0x02,"External Interrupt 0"),
-                ("INT1",0x04,"External Interrupt 1"),
-                ("INT2",0x06,"External Interrupt 2"),
-                ("INT3",0x08,"External Interrupt 3"),
-                ("INT4",0x0a,"External Interrupt 4"),
-                ("INT5",0x0c,"External Interrupt 5"),
-                ("INT6",0x0e,"External Interrupt 6"),
-                ("INT7",0x10,"External Interrupt 7"),
-                ("OC2",0x12,"Timer/Counter2 Compare Match"),
-                ("OVF2",0x14,"Timer/Counter2 Overflow"),
-                ("ICP1",0x16,"Timer/Counter1 Capture Event"),
-                ("OC1A",0x18,"Timer/Counter1 Compare Match A"),
-                ("OC1B",0x1a,"Timer/Counter1 Compare Match B"),
-                ("OVF1",0x1c,"Timer/Counter1 Overflow"),
-                ("OC0",0x1e,"Timer/Counter0 Compare Match"),
-                ("OVF0",0x20,"Timer/Counter0 Overflow"),
-                ("SPI",0x22,"SPI Serial Transfer Complete"),
-                ("URXC",0x24,"UART, Rx Complete"),
-                ("UDRE",0x26,"UART Data Register Empty"),
-                ("UTXC",0x28,"UART, Tx Complete"),
-                ("ADCC",0x2a,"ADC Conversion Complete"),
-                ("ERDY",0x2c,"EEPROM Ready"),
-                ("ACI",0x2e,"Analog Comparator"),
+                ("RESET",Rvalue::Constant(0),"MCU Reset Interrupt"),
+                ("INT0",Rvalue::Constant(0x02),"External Interrupt 0"),
+                ("INT1",Rvalue::Constant(0x04),"External Interrupt 1"),
+                ("INT2",Rvalue::Constant(0x06),"External Interrupt 2"),
+                ("INT3",Rvalue::Constant(0x08),"External Interrupt 3"),
+                ("INT4",Rvalue::Constant(0x0a),"External Interrupt 4"),
+                ("INT5",Rvalue::Constant(0x0c),"External Interrupt 5"),
+                ("INT6",Rvalue::Constant(0x0e),"External Interrupt 6"),
+                ("INT7",Rvalue::Constant(0x10),"External Interrupt 7"),
+                ("OC2",Rvalue::Constant(0x12),"Timer/Counter2 Compare Match"),
+                ("OVF2",Rvalue::Constant(0x14),"Timer/Counter2 Overflow"),
+                ("ICP1",Rvalue::Constant(0x16),"Timer/Counter1 Capture Event"),
+                ("OC1A",Rvalue::Constant(0x18),"Timer/Counter1 Compare Match A"),
+                ("OC1B",Rvalue::Constant(0x1a),"Timer/Counter1 Compare Match B"),
+                ("OVF1",Rvalue::Constant(0x1c),"Timer/Counter1 Overflow"),
+                ("OC0",Rvalue::Constant(0x1e),"Timer/Counter0 Compare Match"),
+                ("OVF0",Rvalue::Constant(0x20),"Timer/Counter0 Overflow"),
+                ("SPI",Rvalue::Constant(0x22),"SPI Serial Transfer Complete"),
+                ("URXC",Rvalue::Constant(0x24),"UART, Rx Complete"),
+                ("UDRE",Rvalue::Constant(0x26),"UART Data Register Empty"),
+                ("UTXC",Rvalue::Constant(0x28),"UART, Tx Complete"),
+                ("ADCC",Rvalue::Constant(0x2a),"ADC Conversion Complete"),
+                ("ERDY",Rvalue::Constant(0x2c),"EEPROM Ready"),
+                ("ACI",Rvalue::Constant(0x2e),"Analog Comparator"),
             ],
             skip: None,
         }
@@ -85,25 +85,25 @@ impl Mcu {
         Mcu {
             pc_bits: 13,
             int_vec: vec![
-                ("RESET",0,"MCU Reset Interrupt"),
-                ("INT0",0x01,"External Interrupt Request 0"),
-                ("INT1",0x02,"External Interrupt Request 1"),
-                ("OC2",0x03,"Timer/Counter2 Compare Match"),
-                ("OVF2",0x04,"Timer/Counter2 Overflow"),
-                ("ICP1",0x05,"Timer/Counter1 Capture Event"),
-                ("OC1A",0x06,"Timer/Counter1 Compare Match A"),
-                ("OC1B",0x07,"Timer/Counter1 Compare Match B"),
-                ("OVF1",0x08,"Timer/Counter1 Overflow"),
-                ("OVF0",0x09,"Timer/Counter0 Overflow"),
-                ("SPI",0x0a,"Serial Transfer Complete"),
-                ("URXC",0x0b,"USART, Rx Complete"),
-                ("UDRE",0x0c,"USART Data Register Empty"),
-                ("UTXC",0x0d,"USART, Tx Complete"),
-                ("ADCC",0x0e,"ADC Conversion Complete"),
-                ("ERDY",0x0f,"EEPROM Ready"),
-                ("ACI",0x10,"Analog Comparator"),
-                ("TWI",0x11,"2-wire Serial Interface"),
-                ("SPMR",0x12,"Store Program Memory Ready"),
+                ("RESET",Rvalue::Constant(0),"MCU Reset Interrupt"),
+                ("INT0",Rvalue::Constant(0x01),"External Interrupt Request 0"),
+                ("INT1",Rvalue::Constant(0x02),"External Interrupt Request 1"),
+                ("OC2",Rvalue::Constant(0x03),"Timer/Counter2 Compare Match"),
+                ("OVF2",Rvalue::Constant(0x04),"Timer/Counter2 Overflow"),
+                ("ICP1",Rvalue::Constant(0x05),"Timer/Counter1 Capture Event"),
+                ("OC1A",Rvalue::Constant(0x06),"Timer/Counter1 Compare Match A"),
+                ("OC1B",Rvalue::Constant(0x07),"Timer/Counter1 Compare Match B"),
+                ("OVF1",Rvalue::Constant(0x08),"Timer/Counter1 Overflow"),
+                ("OVF0",Rvalue::Constant(0x09),"Timer/Counter0 Overflow"),
+                ("SPI",Rvalue::Constant(0x0a),"Serial Transfer Complete"),
+                ("URXC",Rvalue::Constant(0x0b),"USART, Rx Complete"),
+                ("UDRE",Rvalue::Constant(0x0c),"USART Data Register Empty"),
+                ("UTXC",Rvalue::Constant(0x0d),"USART, Tx Complete"),
+                ("ADCC",Rvalue::Constant(0x0e),"ADC Conversion Complete"),
+                ("ERDY",Rvalue::Constant(0x0f),"EEPROM Ready"),
+                ("ACI",Rvalue::Constant(0x10),"Analog Comparator"),
+                ("TWI",Rvalue::Constant(0x11),"2-wire Serial Interface"),
+                ("SPMR",Rvalue::Constant(0x12),"Store Program Memory Ready"),
             ],
             skip: None,
         }
@@ -113,32 +113,32 @@ impl Mcu {
         Mcu {
             pc_bits: 13,
             int_vec: vec![
-                ("RESET",0,"MCU Reset Interrupt"),
-                ("INT0",2,"External Interrupt Request 0"),
-                ("INT1",4,"External Interrupt Request 1"),
-                ("PCI0",6,"Pin Change Interrupt Request 0"),
-                ("PCI1",8,"Pin Change Interrupt Request 1"),
-                ("PCI2",10,"Pin Change Interrupt Request 2"),
-                ("WDT",12,"Watchdog Time-out Interrupt"),
-                ("OC2A",14,"Timer/Counter2 Compare Match A"),
-                ("OC2B",16,"Timer/Counter2 Compare Match B"),
-                ("OVF2",18,"Timer/Counter2 Overflow"),
-                ("ICP1",20,"Timer/Counter1 Capture Event"),
-                ("OC1A",22,"Timer/Counter1 Compare Match A"),
-                ("OC1B",24,"Timer/Counter1 Compare Match B"),
-                ("OVF1",26,"Timer/Counter1 Overflow"),
-                ("OC0A",28,"TimerCounter0 Compare Match A"),
-                ("OC0B",30,"TimerCounter0 Compare Match B"),// XXX: m88def.inc says 0x1f (words)
-                ("OVF0",32,"Timer/Couner0 Overflow"),
-                ("SPI",34,"SPI Serial Transfer Complete"),
-                ("URXC",36,"USART Rx Complete"),
-                ("UDRE",38,"USART, Data Register Empty"),
-                ("UTXC",40,"USART Tx Complete"),
-                ("ADCC",42,"ADC Conversion Complete"),
-                ("ERDY",44,"EEPROM Ready"),
-                ("ACI",46,"Analog Comparator"),
-                ("TWI",48,"Two-wire Serial Interface"),
-                ("SPMR",50,"Store Program Memory Read")
+                ("RESET",Rvalue::Constant(0),"MCU Reset Interrupt"),
+                ("INT0",Rvalue::Constant(2),"External Interrupt Request 0"),
+                ("INT1",Rvalue::Constant(4),"External Interrupt Request 1"),
+                ("PCI0",Rvalue::Constant(6),"Pin Change Interrupt Request 0"),
+                ("PCI1",Rvalue::Constant(8),"Pin Change Interrupt Request 1"),
+                ("PCI2",Rvalue::Constant(10),"Pin Change Interrupt Request 2"),
+                ("WDT",Rvalue::Constant(12),"Watchdog Time-out Interrupt"),
+                ("OC2A",Rvalue::Constant(14),"Timer/Counter2 Compare Match A"),
+                ("OC2B",Rvalue::Constant(16),"Timer/Counter2 Compare Match B"),
+                ("OVF2",Rvalue::Constant(18),"Timer/Counter2 Overflow"),
+                ("ICP1",Rvalue::Constant(20),"Timer/Counter1 Capture Event"),
+                ("OC1A",Rvalue::Constant(22),"Timer/Counter1 Compare Match A"),
+                ("OC1B",Rvalue::Constant(24),"Timer/Counter1 Compare Match B"),
+                ("OVF1",Rvalue::Constant(26),"Timer/Counter1 Overflow"),
+                ("OC0A",Rvalue::Constant(28),"TimerCounter0 Compare Match A"),
+                ("OC0B",Rvalue::Constant(30),"TimerCounter0 Compare Match B"),// XXX: m88def.inc says 0x1f (words)
+                ("OVF0",Rvalue::Constant(32),"Timer/Couner0 Overflow"),
+                ("SPI",Rvalue::Constant(34),"SPI Serial Transfer Complete"),
+                ("URXC",Rvalue::Constant(36),"USART Rx Complete"),
+                ("UDRE",Rvalue::Constant(38),"USART, Data Register Empty"),
+                ("UTXC",Rvalue::Constant(40),"USART Tx Complete"),
+                ("ADCC",Rvalue::Constant(42),"ADC Conversion Complete"),
+                ("ERDY",Rvalue::Constant(44),"EEPROM Ready"),
+                ("ACI",Rvalue::Constant(46),"Analog Comparator"),
+                ("TWI",Rvalue::Constant(48),"Two-wire Serial Interface"),
+                ("SPMR",Rvalue::Constant(50),"Store Program Memory Read")
             ],
             skip: None,
         }

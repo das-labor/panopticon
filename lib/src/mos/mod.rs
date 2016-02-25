@@ -85,24 +85,25 @@ pub fn new_temp(bits: usize) -> Lvalue {
 #[derive(Clone)]
 pub struct Variant {
     pub arg0: Option<Rvalue>,
-    pub int_vec: Vec<(&'static str,u64,&'static str)>
+    pub int_vec: Vec<(&'static str,Rvalue,&'static str)>
 }
 
 impl Variant {
     pub fn new() -> Variant {
         Variant {
 	    arg0: None,
-            int_vec: vec![("ENTRY", 0, "MCU Entry")],
+            int_vec: vec![("ENTRY", Rvalue::Constant(0), "MCU Entry")],
         }
     }
 
     pub fn mos6502() -> Variant {
         Variant {
-	    arg0: None,
-	    int_vec: vec![("NMI", 0xfffa, "NMI vector"),
-                          ("RESET", 0xfffc, "Reset routine"),
-                          ("IRQ/BRK", 0xfffe, "Interrupt routine"),
-			  ],
+            arg0: None,
+            int_vec: vec![
+                ("NMI",Rvalue::Memory{ offset: Box::new(Rvalue::Constant(0xfffa)), bytes: 2, endianess: Endianess::Little, name: "ram".to_string() }, "NMI vector"),
+                ("RESET",Rvalue::Memory{ offset: Box::new(Rvalue::Constant(0xfffc)), bytes: 2, endianess: Endianess::Little, name: "ram".to_string() }, "Reset routine"),
+                ("IRQ/BRK",Rvalue::Memory{ offset: Box::new(Rvalue::Constant(0xfffe)), bytes: 2, endianess: Endianess::Little, name: "ram".to_string() }, "Interrupt routine")
+            ],
         }
     }
 
