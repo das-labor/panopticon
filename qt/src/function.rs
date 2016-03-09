@@ -24,6 +24,8 @@ use panopticon::target::Target;
 
 use std::hash::{Hash,Hasher,SipHasher};
 use std::thread;
+use std::fs;
+use std::path::Path;
 use qmlrs::{Object,Variant};
 use graph_algos::{
     VertexListGraphTrait,
@@ -235,6 +237,62 @@ pub fn control_flow_graph(arg: &Variant) -> Variant {
             }
         } else {
             "{\"status\": \"err\", \"error\": \"1st argument is not a valid UUID\"}".to_string()
+        }
+    } else {
+        "{\"status\": \"err\", \"error\": \"1st argument is not a string\"}".to_string()
+    })
+}
+
+#[derive(Clone,RustcEncodable)]
+struct DirectoryEntry {
+    path: String,
+    name: String,
+    category: String,
+    details: String,
+}
+
+pub fn read_directory(arg: &Variant) -> Variant {
+    Variant::String(if let &Variant::String(ref p) = arg {
+        let path = Path::new(p);
+        let mut ret = vec![];
+
+        match fs::read_dir(path) {
+            Ok(iter) => {
+                for maybe_ent in iter {
+                    match maybe_ent {
+                        Ok(ent) => {
+                            if let Some(s) = ent.file_name().to_str() {
+                                if let Ok(m) = ent.metadata() {
+                                    let mut full = path.to_path_buf();
+                                    full.push(s);
+                                    if let Some(f) = full.to_str() {
+                                        ret.push(DirectoryEntry{
+                                            path: f.to_string(),
+                                            name: s.to_string(),
+                                            category: if m.is_dir() {
+                                                "folder".to_string()
+                                            } else {
+                                                "misc".to_string()
+                                            },
+                                            details: "".to_string()
+                                        });
+                                    }
+                                }
+                            }
+                        },
+                        Err(_) => {},
+                    }
+                }
+            },
+            Err(_) => {},
+        }
+
+        let parent = path.parent().and_then(|x| x.to_str()).unwrap_or("/").to_string();
+        match json::encode(&ret) {
+            Ok(input) =>
+                format!("{{\"status\": \"ok\", \"payload\": {{\"current\":\"{}\",\"parent\":\"{}\",\"listing\":{}}}}}",p,parent,input),
+            Err(err) =>
+               format!("{{\"status\": \"err\", \"error\": \"1st argument is not valid JSON: {:?}\"}}",err),
         }
     } else {
         "{\"status\": \"err\", \"error\": \"1st argument is not a string\"}".to_string()

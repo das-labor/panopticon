@@ -62,10 +62,11 @@ fn set_state(st: &str, ctrl: &mut Object) {
         let _cur = state(ctrl);
         let cur = _cur.as_ref();
 
-        (cur,st) == ("NEW","READY_RESUME") ||
-        (cur,st) == ("NEW","READY") ||
-        (cur,st) == ("READY","WORKING") ||
-        (cur,st) == ("WORKING","DONE")
+        (cur,st) == ("NEW","SYNC") ||
+        (cur,st) == ("NEW","DIRTY") ||
+        (cur,st) == ("DIRTY","SYNC") ||
+        (cur,st) == ("SYNC","DIRTY") ||
+        (cur,st) == ("SYNC","NEW")
     };
 
     if ok {

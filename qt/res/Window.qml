@@ -1,6 +1,6 @@
 /*
  * Panopticon - A libre disassembler (https://panopticon.re/)
- * Copyright (C) 2014-2015 Kai Michaelis
+ * Copyright (C) 2014,2015,2016 Kai Michaelis
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,57 +21,23 @@ import QtQuick.Dialogs 1.2
 import QtQuick.Layouts 1.1
 import QtQuick 2.1
 import Panopticon 1.0
+import "workspace";
+import "popup";
 
 ApplicationWindow {
 	id: mainWindow
 
-	property string savePath: ""
+	property bool enabled: true
 
-	MessageDialog {
-		id: errorDialog
-		title: "Error"
-		icon: StandardIcon.Critical
-		standardButtons: StandardButton.Ok
-	}
-
-	MessageDialog {
-		id: saveStaleDialog
-		title: "Unsaved changes"
-		text: "Do you want to save the changes made to the current project?"
-		icon: StandardIcon.Question
-		standardButtons: StandardButton.Yes | StandardButton.No | StandardButton.Abort
-
-		property var next: function() {}
-
-		onYes: {
-			if(mainWindow.savePath != "") {
-				var res = JSON.parse(Panopticon.snapshotProject(mainWindow.savePath));
-
-				if (res.status == "ok") {
-					next()
-				} else {
-					errorDialog.text = res.error;
-					errorDialog.open()
-				}
-			} else {
-				fileSaveDialog.next = saveStaleDialog.next
-				fileSaveDialog.open()
-			}
-		}
-
-		onNo: {
-			next()
-		}
-
-		onRejected: {}
-	}
-
-	function saveStalePanopticon(next) {
+	function saveStaleSession() {
 		if(Panopticon.state != "NEW" && Panopticon.dirty != 0) {
-			saveStaleDialog.next = next
-			saveStaleDialog.open()
-		} else {
-			next()
+			var res = JSON.parse(Panopticon.snapshotProject(Panopticon.savePath));
+
+			if (res.status == "ok") {
+				next()
+			} else {
+				errorPopup.displayError(res.error);
+			}
 		}
 	}
 
@@ -80,9 +46,19 @@ ApplicationWindow {
 	width: 1000
 	visible: true
 
+	ErrorPopup {
+		id: errorPopup
+	}
+
+	FileBrowser {
+		id: fileBrowser
+	}
+
 	menuBar: MenuBar {
 		Menu {
 			title: "Project"
+			id: projectMenu
+
 			Menu {
 				title: "New..."
 
@@ -91,6 +67,7 @@ ApplicationWindow {
 					shortcut: "Ctrl+E"
 					enabled: Panopticon.state == "NEW"
 					onTriggered: {
+						fileBrowser.newFile();
 						saveStalePanopticon(function() {
 							fileNewDialog.next = function(path) {
 								var res = JSON.parse(Panopticon.createElfProject(path))
@@ -98,8 +75,7 @@ ApplicationWindow {
 								if(res.status == "ok") {
 									loader.setSource("workspace/Workspace.qml")
 								} else {
-									errorDialog.text = res.error;
-									errorDialog.open();
+									errorPopup.displayError(res.error);
 								}
 							};
 							fileNewDialog.open()
@@ -120,8 +96,7 @@ ApplicationWindow {
 									if(res.status == "ok") {
 										loader.setSource("workspace/Workspace.qml")
 									} else {
-										errorDialog.text = res.error;
-										errorDialog.open();
+										errorPopup.displayError(res.error);
 									}
 								};
 
@@ -148,8 +123,7 @@ ApplicationWindow {
 								if(res.status == "ok") {
 									loader.setSource("workspace/Workspace.qml")
 								} else {
-									errorDialog.text = res.error;
-									errorDialog.open();
+									errorPopup.displayError(res.error);
 								}
 							};
 							fileNewDialog.open()
@@ -165,6 +139,7 @@ ApplicationWindow {
 				shortcut: "Ctrl+O"
 				enabled: Panopticon.state == "NEW"
 				onTriggered: {
+					fileBrowser.openFile();
 					saveStalePanopticon(fileOpenDialog.open);
 				}
 			}
@@ -173,15 +148,18 @@ ApplicationWindow {
 				shortcut: "Ctrl+S"
 				enabled: Panopticon.dirty != 0 && Panopticon.state != "NEW"
 				onTriggered: {
+					if(mainWindow.savePath == "") {
+						if(fileBrowser.saveFile() == 1) {
+							mainWindow.savePath = fileBrowser.selectedFile;
+						}
+					}
+
 					if(mainWindow.savePath != "") {
 						var res = JSON.parse(Panopticon.snapshotProject(mainWindow.savePath));
 
 						if(res.status == "err") {
-							errorDialog.text = res.error;
-							errorDialog.open();
+							errorPopup.displayError(res.error);
 						}
-					} else {
-						fileSaveDialog.open()
 					}
 				}
 			}
@@ -238,7 +216,7 @@ ApplicationWindow {
 		}
 	}
 
-	FileDialog {
+	/*FileDialog {
 		id: fileSaveDialog
 		title: "Save current project to..."
 		selectExisting: false
@@ -306,7 +284,7 @@ ApplicationWindow {
 			var path = fileNewDialog.fileUrls.toString().substring(7)
 			next(path)
 		}
-	}
+	}*/
 
 	Loader {
 		focus: true
@@ -342,6 +320,17 @@ ApplicationWindow {
 	Component.onCompleted: {
 		if(Panopticon.state != "NEW") {
 			loader.setSource("workspace/Workspace.qml")
+		}
+	}
+
+	onEnabledChanged: {
+		for(var i = 0; i < mainWindow.children.length; i++) {
+			if(mainWindow.children[i] != errorPopup &&
+			   mainWindow.children[i] != fileBrowser &&
+			   mainWindow.children[i] != saveStalePopup)
+			{
+				mainWindow.children[i].enabled = enabled;
+			}
 		}
 	}
 }
