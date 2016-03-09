@@ -17,9 +17,12 @@
  */
 
 use std::str::{Chars,FromStr};
-use value::Rvalue;
-use instr::Instr;
 use std::ops::Range;
+use std::borrow::Cow;
+
+use Rvalue;
+use Statement;
+use Result;
 
 #[derive(Debug,Clone,PartialEq,Eq,RustcEncodable,RustcDecodable)]
 pub struct Bound {
@@ -36,85 +39,65 @@ impl Bound {
 #[derive(Clone,Debug,PartialEq,Eq,RustcEncodable,RustcDecodable)]
 pub enum MnemonicFormatToken {
     Literal(char),
-    Variable{ has_sign: bool, width: u16, alias: Option<String> },
+    Variable{ has_sign: bool },
+    Pointer{ is_code: bool, bank: String },
 }
 
+/// format := '{' type '}'
+/// type := 'u' | # unsigned
+///         's' | # signed
+///         'p' ':' bank |  # data pointer
+///         'c' ':' bank |  # code pointer
 impl MnemonicFormatToken {
-    fn parse_modifiers<'a>(i: &Chars<'a>,w: &u16) -> Option<(Chars<'a>,MnemonicFormatToken)> {
-        let mut j = i.clone();
-        let mut q = j.clone().peekable();
-        let maybe_s = q.peek();
-        let s = maybe_s.is_some() && maybe_s.unwrap() == &'-';
+    fn parse_bank<'a>(i: Chars<'a>) -> Result<(String,Chars<'a>)> {
+        let p = i.clone().position(|x| x == '}');
 
-        if s {
-            j.next();
-        }
-
-        match j.next() {
-            Some(':') => Self::parse_alias(&j,&w,&s),
-            Some('}') => Some((j,MnemonicFormatToken::Variable{ has_sign: s, width: *w, alias: None })),
-            _ => None,
-        }
-    }
-
-    fn parse_alias<'a>(i: &Chars<'a>,w: &u16, s: &bool) -> Option<(Chars<'a>,MnemonicFormatToken)> {
-        let mut j = i.clone();
-
-        match j.position(|x| x == '}') {
-            Some(0) => Some((j,MnemonicFormatToken::Variable{ has_sign: *s, width: *w, alias: None })),
-            Some(p) => {
-                let a = i.clone().take(p).collect::<String>();
-                Some((j,MnemonicFormatToken::Variable{ has_sign: *s, width: *w, alias: Some(a) }))
-            }
-            None => None
-        }
-    }
-
-    fn parse_width<'a>(i: &Chars<'a>) -> Option<(Chars<'a>,MnemonicFormatToken)> {
-        let mut j = i.clone();
-        let p = i.clone().position(|x| !(x >= '0' && x <= '9'));
-
-        if !p.is_some() {
-            None
+        if p.is_none() {
+            Err("Mnemonic format string parse error. Bank name is invalid.".into())
         } else {
-            let d = i.clone().take(p.unwrap()).collect::<String>();
-            match u16::from_str(&d) {
-                Ok(u) => match j.nth(p.unwrap()) {
-                    Some(':') => Self::parse_modifiers(&j,&u),
-                    Some('}') => Some((j,MnemonicFormatToken::Variable{ has_sign: false, width: u, alias: None })),
-                    _ => None
-                },
-                Err(_) => None
-            }
+            let b = i.clone().take(p.unwrap()).collect::<String>();
+            let mut j = i.clone();
+
+            match j.nth(p.unwrap()) {
+                    Some('}') => Ok((b,j)),
+                    _ => Err("Mnemonic format string parse error. Expecting '}'.".into()),
+                }
         }
     }
 
-    pub fn parse(i: &Chars) -> Vec<MnemonicFormatToken> {
-        let mut j = i.clone();
+    pub fn parse(mut j: Chars) -> Result<Vec<MnemonicFormatToken>> {
+        let mut ret = vec![];
 
-        match j.next() {
-            None => Vec::new(),
-            Some(a) => {
-                let p = if a == '{' {
-                    match Self::parse_width(&j) {
-                        Some((k,tok)) => {
-                            j = k;
-                            Some(tok)
+        loop {
+            match j.next() {
+                None => break,
+                Some('{') => {
+                    match j.next() {
+                        Some('{') => ret.push(MnemonicFormatToken::Literal('{')),
+                        Some('u') => {
+                            ret.push(MnemonicFormatToken::Variable{ has_sign: false });
                         },
-                        None => return Vec::new()
+                        Some('s') => {
+                            ret.push(MnemonicFormatToken::Variable{ has_sign: true });
+                        },
+                        Some('p') => {
+                            let (bank,k) = try!(Self::parse_bank(j));
+                            ret.push(MnemonicFormatToken::Pointer{ is_code: false, bank: bank });
+                            j = k;
+                        }
+                        Some('c') => {
+                            let (bank,k) = try!(Self::parse_bank(j));
+                            ret.push(MnemonicFormatToken::Pointer{ is_code: true, bank: bank });
+                            j = k;
+                        }
+                        _ => return Err("Mnemonic format string parse error. Unknown format identifier.".into())
                     }
-                } else {
-                    Some(MnemonicFormatToken::Literal(a))
-                };
-
-                let mut ret = Self::parse(&j);
-
-                if let Some(x) = p {
-                    ret.insert(0,x);
                 }
-                ret
-            },
+                Some(a) => ret.push(MnemonicFormatToken::Literal(a)),
+            }
         }
+
+        Ok(ret)
     }
 }
 
@@ -123,20 +106,20 @@ pub struct Mnemonic {
     pub area: Bound,
     pub opcode: String,
     pub operands: Vec<Rvalue>,
-    pub instructions: Vec<Instr>,
+    pub instructions: Vec<Statement>,
     pub format_string: Vec<MnemonicFormatToken>,
 }
 
 impl Mnemonic {
-    pub fn new<'a,I1,I2> (a: Range<u64>, code: String, fmt: String, ops: I1, instr: I2) -> Mnemonic
-        where I1: Iterator<Item=&'a Rvalue>,I2: Iterator<Item=&'a Instr> {
-        Mnemonic{
+    pub fn new<'a,I1,I2> (a: Range<u64>, code: String, fmt: String, ops: I1, instr: I2) -> Result<Mnemonic>
+        where I1: Iterator<Item=&'a Rvalue>,I2: Iterator<Item=&'a Statement> {
+        Ok(Mnemonic{
             area: Bound::new(a.start,a.end),
             opcode: code,
             operands: ops.cloned().collect(),
             instructions: instr.cloned().collect(),
-            format_string: MnemonicFormatToken::parse(&fmt.chars()),
-        }
+            format_string: try!(MnemonicFormatToken::parse(fmt.chars())),
+        })
     }
 
     #[cfg(test)]
@@ -149,100 +132,74 @@ impl Mnemonic {
             format_string: vec!(),
         }
     }
-
-    pub fn format(&self) -> String {
-        let mut ops = self.operands.iter().rev().cloned().collect::<Vec<_>>();
-        self.format_string.iter().map(|x| -> String {
-            match x {
-                &MnemonicFormatToken::Literal(ref s) => s.to_string(),
-                &MnemonicFormatToken::Variable{ has_sign: b, width: w, alias: ref a } => {
-                    if let &Some(ref al) = a {
-                        al.clone()
-                    } else {
-                        match ops.pop() {
-                            Some(Rvalue::Constant(c)) => {
-                                let val = if w < 64 { c % (1u64 << w) } else { c };
-
-                                if b {
-                                    format!("{}",val)
-                                } else {
-                                    format!("0x{:x}",if w < 64 { (val + (1 << w)) % (1 << w) } else { val })
-                                }
-                            },
-                            Some(Rvalue::Undefined) => "↑".to_string(),
-                            Some(Rvalue::Variable{ name: n, .. }) => n.clone(),
-                            Some(Rvalue::Memory{ .. }) => "(memref)".to_string(),
-                            None => unreachable!(),
-                        }
-                    }
-                }
-            }
-        }).fold("".to_string(),|acc,x| if acc == "" { x } else { acc + &x })
-    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use value::{Rvalue,Lvalue};
-    use instr::{Operation,Instr};
+    use std::borrow::Cow;
+    use {
+        Rvalue,
+        Lvalue,
+        Operation,
+        Statement,
+    };
 
     #[test]
     fn parse_format_string() {
         let fmt = "doe{69::eax3}io{8:-}øiq{88:-:sss}   {9::} sasq {32:}".to_string();
-        let val = MnemonicFormatToken::parse(&fmt.chars());
+        let val = MnemonicFormatToken::parse(fmt.chars());
 
-        assert_eq!(vec!(
+        assert_eq!(Some(vec!(
                 MnemonicFormatToken::Literal('d'),
                 MnemonicFormatToken::Literal('o'),
                 MnemonicFormatToken::Literal('e'),
-                MnemonicFormatToken::Variable{ has_sign: false, width: 69, alias: Some("eax3".to_string()) },
+                MnemonicFormatToken::Variable{ has_sign: false },
                 MnemonicFormatToken::Literal('i'),
                 MnemonicFormatToken::Literal('o'),
-                MnemonicFormatToken::Variable{ has_sign: true, width: 8, alias: None },
+                MnemonicFormatToken::Variable{ has_sign: true },
                 MnemonicFormatToken::Literal('ø'),
                 MnemonicFormatToken::Literal('i'),
                 MnemonicFormatToken::Literal('q'),
-                MnemonicFormatToken::Variable{ has_sign: true, width: 88, alias: Some("sss".to_string()) },
+                MnemonicFormatToken::Variable{ has_sign: true },
                 MnemonicFormatToken::Literal(' '),
                 MnemonicFormatToken::Literal(' '),
                 MnemonicFormatToken::Literal(' '),
-                MnemonicFormatToken::Variable{ has_sign: false, width: 9, alias: None },
+                MnemonicFormatToken::Variable{ has_sign: false },
                 MnemonicFormatToken::Literal(' '),
                 MnemonicFormatToken::Literal('s'),
                 MnemonicFormatToken::Literal('a'),
                 MnemonicFormatToken::Literal('s'),
                 MnemonicFormatToken::Literal('q'),
                 MnemonicFormatToken::Literal(' '),
-                MnemonicFormatToken::Variable{ has_sign: false, width: 32, alias: None }
-            ),val);
+                MnemonicFormatToken::Variable{ has_sign: false },
+            )),val.ok());
 
-        assert_eq!(MnemonicFormatToken::parse(&"{69:+}".to_string().chars()),Vec::new());
-        assert_eq!(MnemonicFormatToken::parse(&"{-69:+}".to_string().chars()),Vec::new());
-        assert_eq!(MnemonicFormatToken::parse(&"{69::".to_string().chars()),Vec::new());
-        assert_eq!(MnemonicFormatToken::parse(&"{}".to_string().chars()),Vec::new());
-        assert_eq!(MnemonicFormatToken::parse(&"{".to_string().chars()),Vec::new());
-        assert_eq!(MnemonicFormatToken::parse(&"{69".to_string().chars()),Vec::new());
-        assert_eq!(MnemonicFormatToken::parse(&"{69:".to_string().chars()),Vec::new());
-        assert_eq!(MnemonicFormatToken::parse(&"{69:-".to_string().chars()),Vec::new());
-        assert_eq!(MnemonicFormatToken::parse(&"{69::".to_string().chars()),Vec::new());
-        assert_eq!(MnemonicFormatToken::parse(&"{69:-:".to_string().chars()),Vec::new());
-        assert_eq!(MnemonicFormatToken::parse(&"{69::ddd".to_string().chars()),Vec::new());
-        assert_eq!(MnemonicFormatToken::parse(&"{69}".to_string().chars()),vec!(MnemonicFormatToken::Variable{ has_sign: false, width: 69, alias: None }));
+        assert!(MnemonicFormatToken::parse("{69:+}".to_string().chars()).is_err());
+        assert!(MnemonicFormatToken::parse("{-69:+}".to_string().chars()).is_err());
+        assert!(MnemonicFormatToken::parse("{69::".to_string().chars()).is_err());
+        assert!(MnemonicFormatToken::parse("{}".to_string().chars()).is_err());
+        assert!(MnemonicFormatToken::parse("{".to_string().chars()).is_err());
+        assert!(MnemonicFormatToken::parse("{69".to_string().chars()).is_err());
+        assert!(MnemonicFormatToken::parse("{69:".to_string().chars()).is_err());
+        assert!(MnemonicFormatToken::parse("{69:-".to_string().chars()).is_err());
+        assert!(MnemonicFormatToken::parse("{69::".to_string().chars()).is_err());
+        assert!(MnemonicFormatToken::parse("{69:-:".to_string().chars()).is_err());
+        assert!(MnemonicFormatToken::parse("{69::ddd".to_string().chars()).is_err());
+        assert_eq!(MnemonicFormatToken::parse("{69}".to_string().chars()).ok(),Some(vec!(MnemonicFormatToken::Variable{ has_sign: false })));
     }
 
     #[test]
     fn construct() {
-        let ops1 = vec!(Rvalue::Constant(1),Rvalue::Variable{ name: "a".to_string(), width: 3, subscript: None });
+        let ops1 = vec!(Rvalue::new_u8(1),Rvalue::Variable{ name: Cow::Borrowed("a"), size: 3, offset: 0, subscript: None });
         let i1 = vec!(
-            Instr{ op: Operation::IntAdd(Rvalue::Constant(1),Rvalue::Constant(2)), assignee: Lvalue::Variable{ name: "a".to_string(), width: 8, subscript: Some(2) }},
-            Instr{ op: Operation::IntAdd(Rvalue::Constant(4),Rvalue::Constant(2)), assignee: Lvalue::Variable{ name: "a".to_string(), width: 8, subscript: Some(1) }},
-            Instr{ op: Operation::Phi(vec!(
-                Rvalue::Variable{ name: "a".to_string(), width: 8, subscript: Some(2) },
-                Rvalue::Variable{ name: "a".to_string(), width: 8, subscript: Some(1) })), assignee: Lvalue::Variable{ name: "a".to_string(), width: 8, subscript: Some(3) }});
-        let mne1 = Mnemonic::new(0..10,"op1".to_string(),"{8:-:eax} nog".to_string(),ops1.iter(),i1.iter());
+            Statement{ op: Operation::Add(Rvalue::new_u8(1),Rvalue::new_u8(2)), assignee: Lvalue::Variable{ name: Cow::Borrowed("a"), size: 8, offset: 0, subscript: Some(2) }},
+            Statement{ op: Operation::Add(Rvalue::new_u8(4),Rvalue::new_u8(2)), assignee: Lvalue::Variable{ name: Cow::Borrowed("a"), size: 8, offset: 0, subscript: Some(1) }},
+            Statement{ op: Operation::Phi(vec!(
+                Rvalue::Variable{ name: Cow::Borrowed("a"), size: 8, offset: 0, subscript: Some(2) },
+                Rvalue::Variable{ name: Cow::Borrowed("a"), size: 8, offset: 0, subscript: Some(1) })), assignee: Lvalue::Variable{ name: Cow::Borrowed("a"), size: 8, offset: 0, subscript: Some(3) }});
+        let mne1 = Mnemonic::new(0..10,"op1".to_string(),"{8:-:eax} nog".to_string(),ops1.iter(),i1.iter()).ok().unwrap();
 
-        assert_eq!(mne1.format(),"eax nog".to_string());
         assert_eq!(mne1.area, Bound::new(0,10));
         assert_eq!(mne1.opcode, "op1");
         assert_eq!(mne1.operands, ops1);

@@ -21,11 +21,10 @@
 use std::rc::Rc;
 use std::fmt::Debug;
 use std::ops::{BitAnd,BitOr,Shl,Shr,Not};
-use std::collections::{HashSet,HashMap};
+use std::collections::HashMap;
 use std::mem::size_of;
-use std::hash::Hash;
 
-use num::traits::{Zero,One,NumCast,cast};
+use num::traits::{Zero,One,NumCast};
 use graph_algos::{
     AdjacencyList,
     GraphTrait,
@@ -38,12 +37,12 @@ use graph_algos::adjacency_list::{
     AdjacencyListVertexDescriptor
 };
 
-use value::Rvalue;
-use mnemonic::Mnemonic;
-use guard::Guard;
-
-use codegen::CodeGen;
-use layer::LayerIter;
+use {
+    Rvalue,
+    Mnemonic,
+    Guard,
+    CodeGen,
+};
 
 pub trait Architecture: Clone
 {
@@ -120,7 +119,7 @@ impl<A: Architecture> State<A> {
                 n.to_string(),
                 fmt.to_string(),
                 ops.iter(),
-                cg.instructions.iter()));
+                cg.statements.iter()).ok().unwrap());
         self.jump_origin = self.mnemonic_origin;
         self.mnemonic_origin += len as u64;
     }
@@ -197,7 +196,7 @@ impl<A: Architecture> Disassembler<A> {
         }
         for e in self.graph.edges() {
             let lb = match self.graph.edge_label(e) {
-                Some(&Rule::Sub(ref d)) => "SUB".to_string(),
+                Some(&Rule::Sub(_)) => "SUB".to_string(),
                 Some(&Rule::Terminal::<A>{ ref pattern, ref mask,.. }) => format!("{:?}/{:?}",pattern,mask),
                 None => "".to_string(),
             };
@@ -363,7 +362,7 @@ impl<A: Architecture> Disassembler<A> {
                                     }
                                 },
                                 Some(&Rule::Sub(ref sub)) => {
-                                    let mut i = iter.clone();
+                                    let i = iter.clone();
                                     let mut v = sub.find(i.clone(),state);
 
                                     new_states.extend(v.drain(..).map(|(a,b,i)| (a,b,self.graph.target(e),i.clone())));
@@ -438,7 +437,7 @@ impl<'a,A: Architecture> Into<Rule<A>> for &'a str {
                 },
                 '.' => {
                     if bit <= 0 {
-                        panic!("too long bit pattern");
+                        panic!("too long bit pattern: '{}'",self);
                     }
 
                     if read_pat && cur_group != "" {
@@ -449,7 +448,7 @@ impl<'a,A: Architecture> Into<Rule<A>> for &'a str {
                 },
                 '0' | '1' => {
                     if bit <= 0 {
-                        panic!("too long bit pattern");
+                        panic!("too long bit pattern: '{}'",self);
                     }
 
                     if bit - 1 > 0 {
@@ -595,10 +594,12 @@ macro_rules! new_disassembler {
 mod tests {
     use super::*;
     use std::rc::Rc;
-    use layer::OpaqueLayer;
-    use guard::Guard;
-    use value::Rvalue;
-    use mnemonic::Bound;
+    use {
+        OpaqueLayer,
+        Guard,
+        Rvalue,
+        Bound,
+    };
 
     #[derive(Clone)]
     enum TestArchShort {}
@@ -679,7 +680,7 @@ mod tests {
             [ 2 ] = |st: &mut State<TestArchShort>| {
                 let next = st.address;
                 st.mnemonic(2,"BA","",vec!(),&|_| {});
-                st.jump(Rvalue::Constant(next + 2),Guard::always());
+                st.jump(Rvalue::new_u64(next + 2),Guard::always());
                 true
             });
         let sub2 = new_disassembler!(TestArchShort =>
@@ -690,19 +691,19 @@ mod tests {
             [ 1 ] = |st: &mut State<TestArchShort>| {
                 let next = st.address;
                 st.mnemonic(1,"A","",vec!(),&|_| {});
-                st.jump(Rvalue::Constant(next + 1),Guard::always());
+                st.jump(Rvalue::new_u64(next + 1),Guard::always());
                 true
             },
             [ "0 k@..... 11" ] = |st: &mut State<TestArchShort>| {
                 let next = st.address;
                 st.mnemonic(1,"C","",vec!(),&|_| {});
-                st.jump(Rvalue::Constant(next + 1),Guard::always());
+                st.jump(Rvalue::new_u64(next + 1),Guard::always());
                 true
             },
             _ = |st: &mut State<TestArchShort>| {
                 let next = st.address;
                 st.mnemonic(1,"UNK","",vec!(),&|_| {});
-                st.jump(Rvalue::Constant(next + 1),Guard::always());
+                st.jump(Rvalue::new_u64(next + 1),Guard::always());
                 true
             }
 		);
@@ -728,7 +729,7 @@ mod tests {
         assert_eq!(res.mnemonics[0].instructions.len(), 0);
         assert_eq!(res.jumps.len(), 1);
 
-        if let &(0,Rvalue::Constant(1),ref g) = &res.jumps[0] {
+        if let &(0,Rvalue::Constant{ value: 1, size: 64 },ref g) = &res.jumps[0] {
             assert_eq!(g, &Guard::always());
         } else {
             assert!(false);
@@ -754,7 +755,7 @@ mod tests {
         assert_eq!(res.mnemonics[0].instructions.len(), 0);
         assert_eq!(res.jumps.len(), 1);
 
-        if let &(1,Rvalue::Constant(3),ref g) = &res.jumps[0] {
+        if let &(1,Rvalue::Constant{ value: 3, size: 64 },ref g) = &res.jumps[0] {
             assert_eq!(g, &Guard::always());
         } else {
             assert!(false);
@@ -787,7 +788,7 @@ mod tests {
         assert_eq!(res.mnemonics[0].instructions.len(), 0);
         assert_eq!(res.jumps.len(), 1);
 
-        if let &(7,Rvalue::Constant(8),ref g) = &res.jumps[0] {
+        if let &(7,Rvalue::Constant{ value: 8, size: 64 },ref g) = &res.jumps[0] {
             assert_eq!(g, &Guard::always());
         } else {
             assert!(false);
@@ -812,7 +813,7 @@ mod tests {
         assert_eq!(res.mnemonics[0].instructions.len(), 0);
         assert_eq!(res.jumps.len(), 1);
 
-        if let &(1,Rvalue::Constant(2),ref g) = &res.jumps[0] {
+        if let &(1,Rvalue::Constant{ value: 2, size: 64 },ref g) = &res.jumps[0] {
             assert_eq!(g, &Guard::always());
         } else {
             assert!(false);
@@ -846,7 +847,7 @@ mod tests {
         assert_eq!(res.mnemonics[0].instructions.len(), 0);
         assert_eq!(res.jumps.len(), 1);
 
-        if let &(4,Rvalue::Constant(5),ref g) = &res.jumps[0] {
+        if let &(4,Rvalue::Constant{ value: 5, size: 64 },ref g) = &res.jumps[0] {
             assert_eq!(g, &Guard::always());
         } else {
             assert!(false);
@@ -916,7 +917,7 @@ mod tests {
             {
                 let a = s.address;
                 s.mnemonic(2,"A","",vec!(),&|_| {});
-                s.jump(Rvalue::Constant(a + 2),Guard::always());
+                s.jump(Rvalue::new_u64(a + 2),Guard::always());
                 true
             },
 
@@ -924,8 +925,8 @@ mod tests {
             {
                 let a = s.address;
                 s.mnemonic(2,"B","",vec!(),&|_| {});
-                s.jump(Rvalue::Constant(a + 2),Guard::always());
-                s.jump(Rvalue::Constant(a + 4),Guard::always());
+                s.jump(Rvalue::new_u64(a + 2),Guard::always());
+                s.jump(Rvalue::new_u64(a + 4),Guard::always());
                 true
             },
 

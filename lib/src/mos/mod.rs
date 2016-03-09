@@ -18,14 +18,15 @@
  */
 
 use disassembler::*;
-use value::{Lvalue,Rvalue,ToRvalue,Endianess};
+use {Lvalue,Rvalue};
+use std::borrow::Cow;
 use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
-
+/*
 pub mod load;
 pub mod decode;
 pub mod generic;
 pub mod semantic;
-
+*/
 #[derive(Clone)]
 pub enum Mos {}
 
@@ -38,48 +39,50 @@ impl Architecture for Mos {
 
 // 8 bit main register
 lazy_static! {
-    pub static ref A: Lvalue = Lvalue::Variable{ name: "a".to_string(), width: 8, subscript: None };
+    pub static ref A: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("a"), size: 8, offset: 0, subscript: None };
 }
 
 // 8 bit index registers
 lazy_static! {
-    pub static ref X: Lvalue = Lvalue::Variable{ name: "x".to_string(), width: 8, subscript: None };
-    pub static ref Y: Lvalue = Lvalue::Variable{ name: "y".to_string(), width: 8, subscript: None };
-    pub static ref SP: Lvalue = Lvalue::Variable{ name: "sp".to_string(), width: 8, subscript: None };
+    pub static ref X: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("x"), size: 8, offset: 0, subscript: None };
+    pub static ref Y: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("y"), size: 8, offset: 0, subscript: None };
+    pub static ref SP: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("sp"), size: 8, offset: 0, subscript: None };
 }
 
 // 16 bit program counter
 lazy_static! {
-    pub static ref PC: Lvalue = Lvalue::Variable{ name: "pc".to_string(), width: 16, subscript: None };
+    pub static ref PC: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("pc"), size: 16, offset: 0, subscript: None };
 }
 
 // flags
 lazy_static! {
-    pub static ref N: Lvalue = Lvalue::Variable{ name: "N".to_string(), width: 1, subscript: None };
-    pub static ref V: Lvalue = Lvalue::Variable{ name: "V".to_string(), width: 1, subscript: None };
-    pub static ref D: Lvalue = Lvalue::Variable{ name: "D".to_string(), width: 1, subscript: None };
-    pub static ref I: Lvalue = Lvalue::Variable{ name: "I".to_string(), width: 1, subscript: None };
-    pub static ref Z: Lvalue = Lvalue::Variable{ name: "Z".to_string(), width: 1, subscript: None };
-    pub static ref C: Lvalue = Lvalue::Variable{ name: "C".to_string(), width: 1, subscript: None };
+    pub static ref N: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("N"), size: 1, offset: 0, subscript: None };
+    pub static ref V: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("V"), size: 1, offset: 0, subscript: None };
+    pub static ref D: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("D"), size: 1, offset: 0, subscript: None };
+    pub static ref I: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("I"), size: 1, offset: 0, subscript: None };
+    pub static ref Z: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("Z"), size: 1, offset: 0, subscript: None };
+    pub static ref C: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("C"), size: 1, offset: 0, subscript: None };
 }
 
-pub fn ram<A: ToRvalue>(off: &A, width: u16) -> Lvalue {
-    Lvalue::Memory{
+pub fn ram<A: Into<Rvalue>>(off: &A, width: u16) -> Lvalue {
+    unimplemented!()
+    /*Lvalue::Memory{
         offset: Box::new(off.to_rv()),
         name: "ram".to_string(),
         endianess: Endianess::Little,
         bytes: width / 8
-    }
+    }*/
 }
 
 static GLOBAL_MOS_TEMPVAR_COUNT: AtomicUsize = ATOMIC_USIZE_INIT;
 
 pub fn new_temp(bits: usize) -> Lvalue {
-    Lvalue::Variable{
+    unimplemented!()
+    /*Lvalue::Variable{
         name: format!("__temp{}",GLOBAL_MOS_TEMPVAR_COUNT.fetch_add(1, Ordering::SeqCst)),
         width: bits as u16,
         subscript: None
-    }
+    }*/
 }
 
 #[derive(Clone)]
@@ -92,7 +95,7 @@ impl Variant {
     pub fn new() -> Variant {
         Variant {
 	    arg0: None,
-            int_vec: vec![("ENTRY", Rvalue::Constant(0), "MCU Entry")],
+            int_vec: vec![/*("ENTRY", Rvalue::Constant(0), "MCU Entry")*/],
         }
     }
 
@@ -100,19 +103,19 @@ impl Variant {
         Variant {
             arg0: None,
             int_vec: vec![
-                ("NMI",Rvalue::Memory{ offset: Box::new(Rvalue::Constant(0xfffa)), bytes: 2, endianess: Endianess::Little, name: "ram".to_string() }, "NMI vector"),
+              /*  ("NMI",Rvalue::Memory{ offset: Box::new(Rvalue::Constant(0xfffa)), bytes: 2, endianess: Endianess::Little, name: "ram".to_string() }, "NMI vector"),
                 ("RESET",Rvalue::Memory{ offset: Box::new(Rvalue::Constant(0xfffc)), bytes: 2, endianess: Endianess::Little, name: "ram".to_string() }, "Reset routine"),
-                ("IRQ/BRK",Rvalue::Memory{ offset: Box::new(Rvalue::Constant(0xfffe)), bytes: 2, endianess: Endianess::Little, name: "ram".to_string() }, "Interrupt routine")
+                ("IRQ/BRK",Rvalue::Memory{ offset: Box::new(Rvalue::Constant(0xfffe)), bytes: 2, endianess: Endianess::Little, name: "ram".to_string() }, "Interrupt routine")*/
             ],
         }
     }
 
     pub fn wrap(&self, addr: u64) -> Rvalue {
-        Rvalue::Constant(addr % (1u64 << 16))
+        Rvalue::new_u64(addr % (1u64 << 16))
     }
 
     pub fn wrap_signed(&self, addr: i64) -> Rvalue {
         let mask = 1i64 << 16;
-        Rvalue::Constant((((addr % mask) + mask) % mask) as u64)
+        Rvalue::new_u64((((addr % mask) + mask) % mask) as u64)
     }
 }

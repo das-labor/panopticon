@@ -1,6 +1,6 @@
 /*
  * Panopticon - A libre disassembler
- * Copyright (C) 2014-2015 Kai Michaelis
+ * Copyright (C) 2015 Marcus Brinkmann
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-use value::{Rvalue,Lvalue,ToRvalue};
-use codegen::CodeGen;
+use std::convert::Into;
+use {Rvalue,Lvalue,CodeGen};
 use mos::*;
 
 pub fn _sp(cg: &mut CodeGen<Mos>) -> Lvalue {
@@ -38,7 +38,7 @@ fn _pop(cg: &mut CodeGen<Mos>, dst: &Lvalue) {
     cg.add_i(&*SP, &SP.to_rv(), &1);
 }
 
-fn _pushf<A: ToRvalue>(cg: &mut CodeGen<Mos>, b: &A) {
+fn _pushf<A: Into<Rvalue>>(cg: &mut CodeGen<Mos>, b: &A) {
   let flags = new_temp(8);
 
   cg.add_i(&flags, &flags, &*N);

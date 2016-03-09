@@ -20,13 +20,16 @@ use std::io::Read;
 use std::fs::File;
 use std::path::Path;
 
-use program::{Program,CallTarget};
-use project::Project;
-use layer::Layer;
-use region::Region;
-use mnemonic::Bound;
-use target::Target;
-use value::Rvalue;
+use {
+    Program,
+    CallTarget,
+    Project,
+    Layer,
+    Region,
+    Bound,
+    Target,
+    Rvalue,
+};
 
 use graph_algos::{
     MutableGraphTrait,

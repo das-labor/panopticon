@@ -1,6 +1,6 @@
 /*
  * Panopticon - A libre disassembler
- * Copyright (C) 2014-2015 Kai Michaelis
+ * Copyright (C) 2014,2015,2016 Kai Michaelis
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,13 +16,16 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
+use std::convert::Into;
+use std::borrow::Cow;
+
 use disassembler::*;
-use value::{Lvalue,Rvalue,Endianess,ToRvalue};
-use codegen::CodeGen;
-use guard::Guard;
+use {Lvalue,Rvalue};
+use CodeGen;
+use Guard;
 
 pub mod syntax;
+pub mod semantic;
 
 #[derive(Clone)]
 pub enum Avr {}
@@ -43,7 +46,7 @@ impl Mcu {
     pub fn new() -> Mcu {
         Mcu {
             pc_bits: 13,
-            int_vec: vec![("RESET",Rvalue::Constant(0),"MCU Reset Interrupt")],
+            int_vec: vec![/*("RESET",Rvalue::Constant(0),"MCU Reset Interrupt")*/],
             skip: None,
         }
     }
@@ -52,7 +55,7 @@ impl Mcu {
         Mcu {
             pc_bits: 16,
             int_vec: vec![
-                ("RESET",Rvalue::Constant(0),"MCU Reset Interrupt"),
+                /*("RESET",Rvalue::Constant(0),"MCU Reset Interrupt"),
                 ("INT0",Rvalue::Constant(0x02),"External Interrupt 0"),
                 ("INT1",Rvalue::Constant(0x04),"External Interrupt 1"),
                 ("INT2",Rvalue::Constant(0x06),"External Interrupt 2"),
@@ -75,7 +78,7 @@ impl Mcu {
                 ("UTXC",Rvalue::Constant(0x28),"UART, Tx Complete"),
                 ("ADCC",Rvalue::Constant(0x2a),"ADC Conversion Complete"),
                 ("ERDY",Rvalue::Constant(0x2c),"EEPROM Ready"),
-                ("ACI",Rvalue::Constant(0x2e),"Analog Comparator"),
+                ("ACI",Rvalue::Constant(0x2e),"Analog Comparator"),*/
             ],
             skip: None,
         }
@@ -85,7 +88,7 @@ impl Mcu {
         Mcu {
             pc_bits: 13,
             int_vec: vec![
-                ("RESET",Rvalue::Constant(0),"MCU Reset Interrupt"),
+               /* ("RESET",Rvalue::Constant(0),"MCU Reset Interrupt"),
                 ("INT0",Rvalue::Constant(0x01),"External Interrupt Request 0"),
                 ("INT1",Rvalue::Constant(0x02),"External Interrupt Request 1"),
                 ("OC2",Rvalue::Constant(0x03),"Timer/Counter2 Compare Match"),
@@ -103,7 +106,7 @@ impl Mcu {
                 ("ERDY",Rvalue::Constant(0x0f),"EEPROM Ready"),
                 ("ACI",Rvalue::Constant(0x10),"Analog Comparator"),
                 ("TWI",Rvalue::Constant(0x11),"2-wire Serial Interface"),
-                ("SPMR",Rvalue::Constant(0x12),"Store Program Memory Ready"),
+                ("SPMR",Rvalue::Constant(0x12),"Store Program Memory Ready"),*/
             ],
             skip: None,
         }
@@ -113,7 +116,7 @@ impl Mcu {
         Mcu {
             pc_bits: 13,
             int_vec: vec![
-                ("RESET",Rvalue::Constant(0),"MCU Reset Interrupt"),
+              /*  ("RESET",Rvalue::Constant(0),"MCU Reset Interrupt"),
                 ("INT0",Rvalue::Constant(2),"External Interrupt Request 0"),
                 ("INT1",Rvalue::Constant(4),"External Interrupt Request 1"),
                 ("PCI0",Rvalue::Constant(6),"Pin Change Interrupt Request 0"),
@@ -138,20 +141,35 @@ impl Mcu {
                 ("ERDY",Rvalue::Constant(44),"EEPROM Ready"),
                 ("ACI",Rvalue::Constant(46),"Analog Comparator"),
                 ("TWI",Rvalue::Constant(48),"Two-wire Serial Interface"),
-                ("SPMR",Rvalue::Constant(50),"Store Program Memory Read")
+                ("SPMR",Rvalue::Constant(50),"Store Program Memory Read")*/
             ],
             skip: None,
         }
     }
 
     pub fn wrap(&self, addr: u64) -> Rvalue {
-        Rvalue::Constant(addr % (1u64 << self.pc_bits))
+        Rvalue::new_u64(addr % (1u64 << self.pc_bits))
     }
 
     pub fn wrap_signed(&self, addr: i64) -> Rvalue {
         let mask = 1i64 << self.pc_bits;
-        Rvalue::Constant((((addr % mask) + mask) % mask) as u64)
+        Rvalue::new_u64((((addr % mask) + mask) % mask) as u64)
     }
+}
+
+#[derive(PartialEq)]
+pub enum AddressRegister {
+    X,
+    Y,
+    Z,
+}
+
+#[derive(PartialEq)]
+pub enum AddressOffset {
+    None,
+    Predecrement,
+    Postincrement,
+    Displacement,
 }
 
 pub fn reg(st: &State<Avr>, cap: &str) -> Lvalue {
@@ -227,13 +245,14 @@ pub fn ioreg(st: &State<Avr>, cap: &str) -> Lvalue {
     };
 
     Lvalue::Variable{
-        name: name.to_string(),
-        width: 8,
+        name: Cow::Borrowed(name),
+        size: 8,
+        offset: 0,
         subscript: None
     }
 }
-
-pub fn sram<A: ToRvalue>(off: &A) -> Lvalue {
+/*
+pub fn sram<A: Into<Rvalue>>(off: &A) -> Lvalue {
     Lvalue::Memory{
         offset: Box::new(off.to_rv()),
         name: "sram".to_string(),
@@ -242,7 +261,7 @@ pub fn sram<A: ToRvalue>(off: &A) -> Lvalue {
     }
 }
 
-pub fn flash<A: ToRvalue>(off: &A) -> Lvalue {
+pub fn flash<A: Into<Rvalue>>(off: &A) -> Lvalue {
     Lvalue::Memory{
         offset: Box::new(off.to_rv()),
         name: "flash".to_string(),
@@ -269,7 +288,7 @@ pub fn get_sp(cg: &mut CodeGen<Avr>) -> Lvalue {
     sram(&sp)
 }
 
-pub fn set_sp<A: ToRvalue>(v: &A, cg: &mut CodeGen<Avr>) {
+pub fn set_sp<A: Into<Rvalue>>(v: &A, cg: &mut CodeGen<Avr>) {
     let sp = new_temp(16);
     let spl = Lvalue::Variable{
         name: "spl".to_string(),
@@ -285,17 +304,43 @@ pub fn set_sp<A: ToRvalue>(v: &A, cg: &mut CodeGen<Avr>) {
     cg.mul_i(&sp,&sph,&0x100);
     cg.add_i(&sp,&spl,&sp);
     cg.assign(&sram(&sp),v);
-}
+}*/
 
 pub fn resolv(r: u64) -> Lvalue {
-    if r > 31 {
-        panic!("can't decode register {}",r);
-    } else {
-        Lvalue::Variable{
-            name: format!("r{}",r),
-            width: 8,
-            subscript: None
-        }
+    match r {
+        0 => rreil_lvalue!{ R0:8 },
+        1 => rreil_lvalue!{ R1:8 },
+        2 => rreil_lvalue!{ R2:8 },
+        3 => rreil_lvalue!{ R3:8 },
+        4 => rreil_lvalue!{ R4:8 },
+        5 => rreil_lvalue!{ R5:8 },
+        6 => rreil_lvalue!{ R6:8 },
+        7 => rreil_lvalue!{ R7:8 },
+        8 => rreil_lvalue!{ R8:8 },
+        9 => rreil_lvalue!{ R9:8 },
+        10 => rreil_lvalue!{ R10:8 },
+        11 => rreil_lvalue!{ R11:8 },
+        12 => rreil_lvalue!{ R12:8 },
+        13 => rreil_lvalue!{ R13:8 },
+        14 => rreil_lvalue!{ R14:8 },
+        15 => rreil_lvalue!{ R15:8 },
+        16 => rreil_lvalue!{ R16:8 },
+        17 => rreil_lvalue!{ R17:8 },
+        18 => rreil_lvalue!{ R18:8 },
+        19 => rreil_lvalue!{ R19:8 },
+        20 => rreil_lvalue!{ R20:8 },
+        21 => rreil_lvalue!{ R21:8 },
+        22 => rreil_lvalue!{ R22:8 },
+        23 => rreil_lvalue!{ R23:8 },
+        24 => rreil_lvalue!{ R24:8 },
+        25 => rreil_lvalue!{ R25:8 },
+        26 => rreil_lvalue!{ R26:8 },
+        27 => rreil_lvalue!{ R27:8 },
+        28 => rreil_lvalue!{ R28:8 },
+        29 => rreil_lvalue!{ R29:8 },
+        30 => rreil_lvalue!{ R30:8 },
+        31 => rreil_lvalue!{ R31:8 },
+        _ => unreachable!("can't decode register {}",r),
     }
 }
 
@@ -306,57 +351,231 @@ pub fn optional_skip(next: Rvalue, st: &mut State<Avr>) {
     }
 }
 
-static GLOBAL_AVR_TEMPVAR_COUNT: AtomicUsize = ATOMIC_USIZE_INIT;
+pub fn skip(n: &'static str, expect: bool) -> Box<Fn(&mut State<Avr>) -> bool> {
+    Box::new(move |st: &mut State<Avr>| {
+        let bit = st.get_group("sb") as u8;
+        let b = Rvalue::new_u8(bit);
+        let _rr = if st.has_group("sr") { reg(st,"sr") } else { ioreg(st,"sA") };
+        let rr = if let Lvalue::Variable{ ref name,.. } = _rr {
+            Lvalue::Variable{ name: name.clone(), size: 1, subscript: None, offset: bit as usize }
+        } else {
+            unreachable!()
+        };
 
-pub fn new_temp(bits: usize) -> Lvalue {
-    Lvalue::Variable{
-        name: format!("__temp{}",GLOBAL_AVR_TEMPVAR_COUNT.fetch_add(1, Ordering::SeqCst)),
-        width: bits as u16,
-        subscript: None
-    }
+        st.mnemonic(2,n,"{u}, {u}",vec![rr.clone().into(),b.clone()],&|cg: &mut CodeGen<Avr>| {
+            let rr = rr.clone();
+            rreil!{cg:
+                mov skip_flag:1, (rr);
+            }
+        });
+
+        let fallthru = st.configuration.wrap(st.address + 2);
+        let skip = st.configuration.wrap(st.address + 4);
+        let g = {
+            let tmp = Guard::from_flag(&rreil_rvalue!{ skip_flag:1 }).ok().unwrap();
+            if !expect { tmp.negation() } else { tmp }
+        };
+
+        if st.tokens.len() == 1 {
+            st.jump(skip,g.clone());
+        } else {
+            st.configuration.skip = Some((g.clone(),st.address));
+        }
+
+        st.jump(fallthru,g.negation());
+        true
+    })
 }
 
-lazy_static! {
-    pub static ref R0: Lvalue = Lvalue::Variable{ name: "r0".to_string(), width: 8, subscript: None };
-    pub static ref R1: Lvalue = Lvalue::Variable{ name: "r1".to_string(), width: 8, subscript: None };
-    pub static ref R2: Lvalue = Lvalue::Variable{ name: "r2".to_string(), width: 8, subscript: None };
-    pub static ref R3: Lvalue = Lvalue::Variable{ name: "r3".to_string(), width: 8, subscript: None };
-    pub static ref R4: Lvalue = Lvalue::Variable{ name: "r4".to_string(), width: 8, subscript: None };
-    pub static ref R5: Lvalue = Lvalue::Variable{ name: "r5".to_string(), width: 8, subscript: None };
-    pub static ref R6: Lvalue = Lvalue::Variable{ name: "r6".to_string(), width: 8, subscript: None };
-    pub static ref R7: Lvalue = Lvalue::Variable{ name: "r7".to_string(), width: 8, subscript: None };
-    pub static ref R8: Lvalue = Lvalue::Variable{ name: "r8".to_string(), width: 8, subscript: None };
-    pub static ref R9: Lvalue = Lvalue::Variable{ name: "r9".to_string(), width: 8, subscript: None };
+pub fn binary(n: &'static str,sem: fn(Lvalue,Rvalue,&mut CodeGen<Avr>)) -> Box<Fn(&mut State<Avr>) -> bool>{
+    Box::new(move |st: &mut State<Avr>| {
+        let rd = reg(st,"d");
+        let rr = if st.has_group("r") { reg(st,"r").into() } else { Rvalue::new_u8(st.get_group("K") as u8) };
+        let next = st.configuration.wrap(st.address + st.tokens.len() as u64 * 2);
+
+        st.mnemonic(2,n,"{u}, {u}",vec!(rd.clone().into(),rr.clone()),&|cg: &mut CodeGen<Avr>| {
+            sem(rd.clone(),rr.clone(),cg)
+        });
+        optional_skip(next.clone(),st);
+        st.jump(next,Guard::always());
+        true
+    })
 }
 
-lazy_static! {
-    pub static ref R10: Lvalue = Lvalue::Variable{ name: "r10".to_string(), width: 8, subscript: None };
-    pub static ref R11: Lvalue = Lvalue::Variable{ name: "r11".to_string(), width: 8, subscript: None };
-    pub static ref R12: Lvalue = Lvalue::Variable{ name: "r12".to_string(), width: 8, subscript: None };
-    pub static ref R13: Lvalue = Lvalue::Variable{ name: "r13".to_string(), width: 8, subscript: None };
-    pub static ref R14: Lvalue = Lvalue::Variable{ name: "r14".to_string(), width: 8, subscript: None };
-    pub static ref R15: Lvalue = Lvalue::Variable{ name: "r15".to_string(), width: 8, subscript: None };
-    pub static ref R26: Lvalue = Lvalue::Variable{ name: "r26".to_string(), width: 8, subscript: None };
-    pub static ref R27: Lvalue = Lvalue::Variable{ name: "r27".to_string(), width: 8, subscript: None };
-    pub static ref R28: Lvalue = Lvalue::Variable{ name: "r28".to_string(), width: 8, subscript: None };
-    pub static ref R29: Lvalue = Lvalue::Variable{ name: "r29".to_string(), width: 8, subscript: None };
+pub fn binary_imm(n: &'static str,sem: fn(Lvalue,u64,&mut CodeGen<Avr>)) -> Box<Fn(&mut State<Avr>) -> bool>{
+    Box::new(move |st: &mut State<Avr>| {
+        let rd = reg(st,"d");
+        let (k,kc) = if st.has_group("k") {
+            (st.get_group("k"),Rvalue::new_u8(st.get_group("k") as u8))
+        } else {
+            (st.get_group("b"),Rvalue::Constant{ value: st.get_group("b"), size: 3 })
+        };
+        let next = st.configuration.wrap(st.address + st.tokens.len() as u64 * 2);
+
+        st.mnemonic(2,n,"{u}, {u}",vec![rd.clone().into(),kc.clone()],&|cg: &mut CodeGen<Avr>| {
+            sem(rd.clone(),k,cg)
+        });
+        optional_skip(next.clone(),st);
+        st.jump(next,Guard::always());
+        true
+    })
 }
 
-lazy_static! {
-    pub static ref R30: Lvalue = Lvalue::Variable{ name: "r30".to_string(), width: 8, subscript: None };
-    pub static ref R31: Lvalue = Lvalue::Variable{ name: "r31".to_string(), width: 8, subscript: None };
+pub fn binary_ptr(n: &'static str,sem: fn(Lvalue,Lvalue,&mut CodeGen<Avr>),ar: AddressRegister,off: AddressOffset,ptr_first: bool) -> Box<Fn(&mut State<Avr>) -> bool> {
+    Box::new(move |st: &mut State<Avr>| {
+        let maybe_q = st.groups.iter().find(|x| x.0 == "q").cloned();
+        let reg_str = match (&ar,&off) {
+            (&AddressRegister::X,&AddressOffset::None) => "X".to_string(),
+            (&AddressRegister::X,&AddressOffset::Predecrement) => "-X".to_string(),
+            (&AddressRegister::X,&AddressOffset::Postincrement) => "X+".to_string(),
+            (&AddressRegister::Y,&AddressOffset::None) => "Y".to_string(),
+            (&AddressRegister::Y,&AddressOffset::Predecrement) => "-Y".to_string(),
+            (&AddressRegister::Y,&AddressOffset::Postincrement) => "Y+".to_string(),
+            (&AddressRegister::Y,&AddressOffset::Displacement) => format!("Y+{}",maybe_q.clone().unwrap().1),
+            (&AddressRegister::Z,&AddressOffset::None) => "Z".to_string(),
+            (&AddressRegister::Z,&AddressOffset::Predecrement) => "-Z".to_string(),
+            (&AddressRegister::Z,&AddressOffset::Postincrement) => "Z+".to_string(),
+            (&AddressRegister::Z,&AddressOffset::Displacement) => format!("Z+{}",maybe_q.clone().unwrap().1),
+            _ => unreachable!(),
+        };
+        let addr_reg = Lvalue::Variable{
+            name: Cow::Owned(reg_str),
+            size: 16,
+            subscript: None,
+            offset: 0,
+        };
+        let reg = if st.has_group("d") { reg(st,"d") } else { reg(st,"r") };
+        let next = st.configuration.wrap(st.address + st.tokens.len() as u64 * 2);
 
-    pub static ref C: Lvalue = Lvalue::Variable{ name: "C".to_string(), width: 1, subscript: None };
-    pub static ref V: Lvalue = Lvalue::Variable{ name: "V".to_string(), width: 1, subscript: None };
-    pub static ref I: Lvalue = Lvalue::Variable{ name: "I".to_string(), width: 1, subscript: None };
-    pub static ref H: Lvalue = Lvalue::Variable{ name: "I".to_string(), width: 1, subscript: None };
-    pub static ref T: Lvalue = Lvalue::Variable{ name: "T".to_string(), width: 1, subscript: None };
-    pub static ref N: Lvalue = Lvalue::Variable{ name: "N".to_string(), width: 1, subscript: None };
-    pub static ref S: Lvalue = Lvalue::Variable{ name: "S".to_string(), width: 1, subscript: None };
-    pub static ref Z: Lvalue = Lvalue::Variable{ name: "Z".to_string(), width: 1, subscript: None };
+        st.mnemonic(0,"__addr_reg","",vec![],&|cg: &mut CodeGen<Avr>| {
+            let (r1,r2) = match ar {
+                AddressRegister::X => (rreil_lvalue!{ R26:8 },rreil_lvalue!{ R27:8 }),
+                AddressRegister::Y => (rreil_lvalue!{ R28:8 },rreil_lvalue!{ R29:8 }),
+                AddressRegister::Z => (rreil_lvalue!{ R30:8 },rreil_lvalue!{ R31:8 }),
+            };
 
-    pub static ref EIND: Lvalue = Lvalue::Variable{ name: "EIND".to_string(), width: 8, subscript: None };
-    pub static ref RAMPZ: Lvalue = Lvalue::Variable{ name: "RAMPZ".to_string(), width: 8, subscript: None };
+            rreil!{cg:
+                zext/16 (addr_reg), (r1);
+                mov (addr_reg.extract(8,8).ok().unwrap()), (r2);
+            }
+        });
+
+        let (fmt,rd,rr) = if ptr_first {
+            ("{p}, {u}",addr_reg.clone().into(),reg.clone().into())
+        } else {
+            ("{u}, {p}",reg.clone().into(),addr_reg.clone().into())
+        };
+
+        st.mnemonic(2,n,fmt,vec!(rd,rr),&|cg: &mut CodeGen<Avr>| {
+            if off == AddressOffset::Predecrement {
+                rreil!{cg:
+                    sub (addr_reg), (addr_reg), [1]:8;
+                }
+            }
+
+            sem(addr_reg.clone(),reg.clone(),cg);
+
+            if off == AddressOffset::Postincrement {
+                rreil!{cg:
+                    add (addr_reg), (addr_reg), [1]:8;
+                }
+            } else if off == AddressOffset::Displacement {
+                rreil!{cg:
+                    add (addr_reg), (addr_reg), (Rvalue::new_u8(maybe_q.clone().unwrap().1 as u8));
+                }
+            }
+        });
+
+        st.mnemonic(0,"__addr_reg","",vec![],&|cg: &mut CodeGen<Avr>| {
+            let (r1,r2) = match ar {
+                AddressRegister::X => (rreil_lvalue!{ R26:8 },rreil_lvalue!{ R27:8 }),
+                AddressRegister::Y => (rreil_lvalue!{ R28:8 },rreil_lvalue!{ R29:8 }),
+                AddressRegister::Z => (rreil_lvalue!{ R30:8 },rreil_lvalue!{ R31:8 }),
+            };
+
+            rreil!{cg:
+                mov (r1), (addr_reg.extract(8,0).ok().unwrap());
+                mov (r2), (addr_reg.extract(8,8).ok().unwrap());
+            }
+        });
+
+        optional_skip(next.clone(),st);
+        st.jump(next,Guard::always());
+        true
+    })
+}
+
+pub fn nonary(n: &'static str,sem: fn(&mut CodeGen<Avr>)) -> Box<Fn(&mut State<Avr>) -> bool>{
+    Box::new(move |st: &mut State<Avr>| {
+        let next = st.configuration.wrap(st.address + st.tokens.len() as u64 * 2);
+
+        st.mnemonic(2,n,"",vec![],&sem);
+        optional_skip(next.clone(),st);
+        st.jump(next,Guard::always());
+        true
+    })
+}
+
+pub fn unary(n: &'static str,sem: fn(Lvalue,&mut CodeGen<Avr>)) -> Box<Fn(&mut State<Avr>) -> bool>{
+    Box::new(move |st: &mut State<Avr>| {
+        let rd = if st.has_group("d") { reg(st,"d") } else { reg(st,"r") };
+        let next = st.configuration.wrap(st.address + st.tokens.len() as u64 * 2);
+
+        st.mnemonic(2,n,"{u}",vec!(rd.clone().into()),&|cg: &mut CodeGen<Avr>| {
+            sem(rd.clone(),cg)
+        });
+        optional_skip(next.clone(),st);
+        st.jump(next,Guard::always());
+        true
+    })
+}
+
+pub fn flag(n: &'static str,_f: &Lvalue,val: bool) -> Box<Fn(&mut State<Avr>) -> bool>{
+    let f = _f.clone();
+    Box::new(move |st: &mut State<Avr>| -> bool {
+        let next = st.configuration.wrap(st.address + st.tokens.len() as u64 * 2);
+
+        st.mnemonic(2,n,"{u}",vec!(f.clone().into()),&|cg: &mut CodeGen<Avr>| {
+            let bit = if val { 1 } else { 0 };
+
+            rreil!{cg:
+                mov (f.clone()), [bit]:1;
+            }
+        });
+        optional_skip(next.clone(),st);
+        st.jump(next,Guard::always());
+        true
+    })
+}
+
+pub fn branch(n: &'static str,_f: &Lvalue,val: bool) -> Box<Fn(&mut State<Avr>) -> bool>{
+    let f = _f.clone();
+    Box::new(move |st: &mut State<Avr>| -> bool {
+        let _k = st.get_group("k") as u8; // 6 bits, signed
+        let k = (if _k >= 0x20 { (0xE0 | _k) as i8 } else { _k as i8 } * 2) as i64;
+        let jump = st.configuration.wrap_signed(st.address as i64 + st.tokens.len() as i64 + k);
+        let fallthru = st.configuration.wrap(st.address + st.tokens.len() as u64 * 2);
+
+        st.mnemonic(2,n,"{c:flash}",vec!(jump.clone().into()),&|cg: &mut CodeGen<Avr>| {
+            let bit = if val { 1 } else { 0 };
+
+            rreil!{cg:
+                mov (f), [bit]:1;
+            }
+        });
+
+        optional_skip(fallthru.clone(),st);
+        let g = Guard::from_flag(&f.clone().into()).ok().unwrap();
+
+        if val {
+            st.jump(fallthru,g.negation());
+            st.jump(jump,g);
+        } else {
+            st.jump(jump,g.negation());
+            st.jump(fallthru,g);
+        }
+        true
+    })
 }
 
 #[cfg(test)]
@@ -365,7 +584,8 @@ mod tests {
     use region::Region;
     use super::syntax::disassembler;
     use function::{ControlFlowTarget,Function};
-    use value::Rvalue;
+    use Rvalue;
+    use std::borrow::Cow;
 
     use std::hash::{Hash,Hasher,SipHasher};
 
@@ -542,7 +762,7 @@ mod tests {
     fn to_ident(t: Option<&ControlFlowTarget>) -> Option<String> {
         match t {
             Some(&ControlFlowTarget::Resolved(ref bb)) => Some(format!("\"bb{}\"",bb.area.start)),
-            Some(&ControlFlowTarget::Unresolved(Rvalue::Constant(ref c))) => Some(format!("\"v{}\"",c)),
+            Some(&ControlFlowTarget::Unresolved(Rvalue::Constant{ ref value,.. })) => Some(format!("\"v{}\"",*value)),
             Some(&ControlFlowTarget::Unresolved(ref c)) => {
                 let ref mut h = SipHasher::new();
                 c.hash::<SipHasher>(h);
@@ -555,49 +775,46 @@ mod tests {
     #[test]
     fn all() {
         let test_vectors = vec![
-            (vec![0x23,0x0c],"add"),
-            // ADC
-            // SUB
-            (vec![0x81,0x50],"subi"),
-            // SBC
-            // SBCI
-            // AND
-            // ANDI
-            // OR
-            // ORI
-            // EOR
-            // COM
+            (vec![0xec,0x0e],"add",vec![rreil_rvalue!{ R14:8 },rreil_rvalue!{ R28:8 }]),
+            (vec![0xe1,0x1c],"adc",vec![rreil_rvalue!{ R14:8 }, rreil_rvalue!{ R1:8 }]),
+            (vec![0x49,0x5f],"subi",vec![rreil_rvalue!{ R20:8 },Rvalue::new_u8(0xF9)]),
+            (vec![0x48,0x1b],"sub",vec![rreil_rvalue!{ R20:8 }, rreil_rvalue!{ R24:8 }]),
+            (vec![0x59,0x0b],"sbc",vec![rreil_rvalue!{ R21:8 }, rreil_rvalue!{ R25:8 }]),
+            (vec![0x50,0x40],"sbci",vec![rreil_rvalue!{ R21:8 }, Rvalue::new_u8(0x00)]),
+            (vec![0x88,0x23],"and",vec![rreil_rvalue!{ R24:8 }, rreil_rvalue!{ R24:8 }]),
+            (vec![0x8c,0x7f],"andi",vec![rreil_rvalue!{ R24:8 }, Rvalue::new_u8(0xFC)]),
+            (vec![0x35,0x2b],"or",vec![rreil_rvalue!{ R19:8 }, rreil_rvalue!{ R21:8 }]),
+            (vec![0x9c,0x66],"ori",vec![rreil_rvalue!{ R25:8 }, Rvalue::new_u8(0x6c)]),
+            (vec![0xff,0x24],"eor",vec![rreil_rvalue!{ R15:8 }, rreil_rvalue!{ R15:8 }]),
+            (vec![0x80,0x95],"com",vec![rreil_rvalue!{ R24:8 }]),
             // NEG
             // SBR
             // CBR
-            // INC
-            // DEC
-            // TST
+            (vec![0xf3,0x94],"inc",vec![rreil_rvalue!{ R15:8 }]),
+            (vec![0xfa,0x94],"dec",vec![rreil_rvalue!{ R15:8 }]),
             // CLR
             // SER
-            (vec![0x01,0xc0],"rjmp"),
-            // RCALL
-            // RET
+            (vec![0x29,0xc0],"rjmp",vec![Rvalue::new_u16(0xa34)]),
+            (vec![0x00,0xd0],"rcall",vec![Rvalue::new_u16(0x149c)]),
+            (vec![0x08,0x95],"ret",vec![]),
             // RETI
-            (vec![0x12,0x10],"cpse"),
-            // CP
-            // CPC
-            // CPI
-            // SBRC
+            // CPSE
+            (vec![0x28,0x17],"cp",vec![rreil_rvalue!{ R18:8 }, rreil_rvalue!{ R24:8 }]),
+            (vec![0x39,0x07],"cpc",vec![rreil_rvalue!{ R19:8 }, rreil_rvalue!{ R25:8 }]),
+            (vec![0x61,0x31],"cpi",vec![rreil_rvalue!{ R22:8 }, Rvalue::new_u8(0x11)]),
+            (vec![0x80,0xfd],"sbrc",vec![rreil_rvalue!{ R24:8 },rreil_rvalue!{ [0]:8 }]),
             // SBRS
-            // SBIC
+            (vec![0xb0,0x99],"sbic",vec![rreil_rvalue!{ [0x16]:8 },rreil_rvalue!{ [0]:8 }]),
             // SBIS
             // BRBS
             // BRBC
-            // BREQ
-            (vec![0xe1,0xf7],"brne"),
-            // BRCS
-            // BRCC
-            // BRSH
-            // BRLO
+            (vec![0x39, 0xf1],"breq",vec![Rvalue::new_u16(0x16ac)]),
+            // BRNE
+            (vec![0x28, 0xf0],"brlo",vec![Rvalue::new_u16(0x164a)]),
+            (vec![0xc8, 0xf7],"brsh",vec![Rvalue::new_u16(0x1e00)]),
             // BRMI
             // BRPL
-            // BRGE
+            (vec![0x54, 0xf4],"brge",vec![Rvalue::new_u16(0x1d0e)]),
             // BRLT
             // BRHS
             // BRHC
@@ -607,33 +824,40 @@ mod tests {
             // BRVC
             // BRIE
             // BRID
-            (vec![0x0d,0x90],"ld"),
-            (vec![0x01,0x92],"st"),
-            (vec![0x21,0x2c],"mov"),
-            (vec![0x88,0xe0],"ldi"),
-            // IN
-            // OUT
-            // LPM
-            // SBI
-            // CBI
+            (vec![0x9c,0x91],"ld",vec![rreil_rvalue!{ R25:8 }, Rvalue::Variable{ name: Cow::Borrowed("X"), size: 16, offset: 0, subscript: None }]),
+            (vec![0x8d,0x91],"ld",vec![rreil_rvalue!{ R24:8 }, Rvalue::Variable{ name: Cow::Borrowed("X+"), size: 16, offset: 0, subscript: None }]),
+            (vec![0x88,0x81],"ld",vec![rreil_rvalue!{ R24:8 }, Rvalue::Variable{ name: Cow::Borrowed("Y"), size: 16, offset: 0, subscript: None }]),
+            (vec![0xb0,0x81],"ld",vec![rreil_rvalue!{ R27:8 }, Rvalue::Variable{ name: Cow::Borrowed("Z"), size: 16, offset: 0, subscript: None }]),
+            (vec![0x01,0x90],"ld",vec![rreil_rvalue!{ R0:8 }, Rvalue::Variable{ name: Cow::Borrowed("Z+"), size: 16, offset: 0, subscript: None }]),
+            (vec![0x0d,0x92],"st",vec![Rvalue::Variable{ name: Cow::Borrowed("X+"), size: 16, offset: 0, subscript: None }, rreil_rvalue!{ R0:8 }]),
+            (vec![0x88,0x83],"st",vec![Rvalue::Variable{ name: Cow::Borrowed("Y"), size: 16, offset: 0, subscript: None }, rreil_rvalue!{ R24:8 }]),
+            (vec![0x80,0x83],"st",vec![Rvalue::Variable{ name: Cow::Borrowed("Z"), size: 16, offset: 0, subscript: None }, rreil_rvalue!{ R24:8 }]),
+            (vec![0x81,0x93],"st",vec![Rvalue::Variable{ name: Cow::Borrowed("Z+"), size: 16, offset: 0, subscript: None }, rreil_rvalue!{ R24:8 }]),
+            (vec![0x03,0x2e],"mov",vec![rreil_rvalue!{ R0:8 },rreil_rvalue!{ R19:8 }]),
+            (vec![0x10 ,0xe0],"ldi",vec![rreil_rvalue!{ R17:8 }, Rvalue::new_u8(0x00)]),
+            (vec![0xcd,0xb7],"in",vec![rreil_rvalue!{ R28:8 }, Rvalue::new_u8(0x3d)]),
+            (vec![0xde ,0xbf],"out",vec![rreil_rvalue!{ [0x3e]:8 }, rreil_rvalue!{ R29:8 }]),
+            (vec![0xc8 ,0x95],"lpm",vec![]),
+            (vec![0xc0 ,0x9a],"sbi",vec![rreil_rvalue!{ [0x18]:8 }, Rvalue::new_u8(0)]),
+            (vec![0xc0 ,0x98],"cbi",vec![rreil_rvalue!{ [0x18]:8 }, Rvalue::new_u8(0)]),
             // LSL
-            // LSR
+            (vec![0x76 ,0x95],"lsr",vec![rreil_rvalue!{ R23:8 }]),
             // ROL
-            // ROR
+            (vec![0x87 ,0x95],"ror",vec![rreil_rvalue!{ R24:8 }]),
             // ASR
-            // SWAP
+            (vec![0x82, 0x95],"swap",vec![rreil_rvalue!{ R24:8 }]),
             // BSET
             // BCLR
             // BST
             // BLD
-            // SEC
-            // CLC
+            (vec![0x08 ,0x94],"sec",vec![]),
+            (vec![0x88 ,0x94],"clc",vec![]),
             // SEN
             // CLN
             // SEZ
             // CLZ
             // SEI
-            // CLI
+            (vec![0xf8 ,0x94],"cli",vec![]),
             // SES
             // CLS
             // SEV
@@ -645,20 +869,20 @@ mod tests {
             // NOP
             // SLEEP
             // WDR
-            (vec![0x68,0x96],"adiw"),
-            // SBIW
-            // IJMP
+            (vec![0x01, 0x96],"adiw",vec![rreil_rvalue!{ R24:8 }, Rvalue::new_u8(0x01)]),
+            (vec![0x13, 0x97],"sbiw",vec![rreil_rvalue!{ R26:8 }, Rvalue::new_u8(0x03)]),
+            (vec![0x09, 0x94],"ijmp",vec![]),
             // ICALL
-            // LD
-            // LDD
-            // LDS
-            // ST
-            // STD
-            // STS
-            // PUSH
-            // POP
-            // JMP
-            // CALL
+            (vec![0x2a ,0x88],"ldd",vec![rreil_rvalue!{ R2:8 }, Rvalue::Variable{ name: Cow::Borrowed("Y+18"), size: 16, offset: 0, subscript: None }]),
+            (vec![0x87 ,0x81],"ldd",vec![rreil_rvalue!{ R24:8 }, Rvalue::Variable{ name: Cow::Borrowed("Z+7"), size: 16, offset: 0, subscript: None }]),
+            (vec![0x80,0x91,0x62,0x00],"lds",vec![rreil_rvalue!{ R24:8 }, Rvalue::new_u16(0x0062)]),
+            (vec![0x99 ,0x83],"std",vec![Rvalue::Variable{ name: Cow::Borrowed("Y+1"), size: 16, offset: 0, subscript: None }, rreil_rvalue!{ R25:8 }]),
+            (vec![0x84 ,0x83],"std",vec![Rvalue::Variable{ name: Cow::Borrowed("Z+4"), size: 16, offset: 0, subscript: None }, rreil_rvalue!{ R24:8 }]),
+            (vec![0x90,0x93,0x7c,0x00],"sts",vec![Rvalue::new_u16(0x007C),rreil_rvalue!{ R25:8 }]),
+            (vec![0xcf,0x93],"push",vec![rreil_rvalue!{ R28:8 }]),
+            (vec![0xcf,0x91],"pop",vec![rreil_rvalue!{ R28:8 }]),
+            (vec![0x0c,0x94,0xe9,0x0e],"jmp", vec![Rvalue::new_u16(0x1dd2)]),
+            (vec![0x0e,0x94,0xa4,0x0a],"call", vec![Rvalue::new_u16(0x1548)]),
             // ELPM
             // MUL
             // MULS
@@ -666,8 +890,8 @@ mod tests {
             // FMUL
             // FMULS
             // FMULSU
-            (vec![0xde,0x01],"movw"),
-            // LPM
+            (vec![0x4a ,0x01],"movw",vec![rreil_rvalue!{ r8:8 }, rreil_rvalue!{ R20:8 }]),
+            (vec![0xc8 ,0x95],"lpm",vec![]),
             // SPM
             // BREAK
             // EIJMP
@@ -680,7 +904,9 @@ mod tests {
         ];
         let main = disassembler();
 
-        for (bytes,opname) in test_vectors {
+        for (bytes,opname,args) in test_vectors {
+            println!("check '{}'",opname);
+
             let l = bytes.len();
             let reg = Region::wrap("base".to_string(),bytes);
             let mut i = reg.iter().seek(0);
@@ -688,7 +914,7 @@ mod tests {
 
             if let Some(match_st) = maybe_match {
                 assert_eq!(1, match_st.mnemonics.len());
-                
+
                 let mne = &match_st.mnemonics[0];
 
                 assert_eq!(opname,mne.opcode);

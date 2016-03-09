@@ -16,11 +16,14 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-use value::{Lvalue,Rvalue,Endianess};
-use disassembler::State;
+use {
+    Lvalue,
+    Rvalue,
+    State,
+    CodeGen,
+    Guard,
+};
 use amd64::*;
-use codegen::CodeGen;
-use guard::Guard;
 
 fn byte(o: Rvalue) -> Lvalue {
     Lvalue::Memory{

@@ -20,17 +20,21 @@ use std::io::{Seek,SeekFrom,Read};
 use std::fs::File;
 use std::path::Path;
 
-use program::{Program,CallTarget};
-use project::Project;
-use layer::Layer;
-use region::Region;
-use mnemonic::Bound;
-use target::Target;
-use value::Rvalue;
-use result::Result;
-
 use graph_algos::MutableGraphTrait;
 use uuid::Uuid;
+
+use {
+    Program,
+    CallTarget,
+    Project,
+    Layer,
+    Region,
+    Bound,
+    Target,
+    Rvalue,
+    Result,
+};
+
 use elf::*;
 use elf::parse::*;
 
@@ -85,7 +89,7 @@ pub fn load(p: &Path) -> Result<Project> {
         let mut prog = Program::new("prog0",*target);
         let mut proj = Project::new(name.clone(),reg);
 
-        prog.call_graph.add_vertex(CallTarget::Todo(Rvalue::Constant(ehdr.entry),Some(name),Uuid::new_v4()));
+        prog.call_graph.add_vertex(CallTarget::Todo(Rvalue::new_u64(ehdr.entry),Some(name),Uuid::new_v4()));
         proj.comments.insert(("base".to_string(),ehdr.entry),"main".to_string());
         proj.code.push(prog);
 

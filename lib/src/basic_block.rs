@@ -18,8 +18,11 @@
 
 use std::cmp::{min,max};
 
-use mnemonic::{Mnemonic,Bound};
-use instr::Instr;
+use {
+    Mnemonic,
+    Bound,
+    Statement
+};
 
 #[derive(PartialEq,Eq,Debug,RustcEncodable,RustcDecodable)]
 pub struct BasicBlock {
@@ -48,7 +51,7 @@ impl BasicBlock {
         return BasicBlock{ area: a.unwrap_or(Bound::new(0,0)), mnemonics: ms };
     }
 
-    pub fn execute_backwards<'a,F>(&'a self,mut f: F) where F: FnMut(&'a Instr) {
+    pub fn execute_backwards<'a,F>(&'a self,mut f: F) where F: FnMut(&'a Statement) {
         for mne in self.mnemonics.iter().rev() {
             for i in mne.instructions.iter().rev() {
                 f(&i);
@@ -56,7 +59,7 @@ impl BasicBlock {
         }
     }
 
-    pub fn execute<'a,F>(&'a self,mut f: F) where F: FnMut(&'a Instr) {
+    pub fn execute<'a,F>(&'a self,mut f: F) where F: FnMut(&'a Statement) {
         for mne in self.mnemonics.iter() {
             for i in mne.instructions.iter() {
                 f(&i);
@@ -64,7 +67,7 @@ impl BasicBlock {
         }
     }
 
-    pub fn rewrite<'a,F>(&'a mut self,mut f: F) where F: FnMut(&'a mut Instr) {
+    pub fn rewrite<'a,F>(&'a mut self,mut f: F) where F: FnMut(&'a mut Statement) {
         for mne in self.mnemonics.iter_mut() {
             for i in mne.instructions.iter_mut() {
                 f(i);
@@ -76,38 +79,44 @@ impl BasicBlock {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use value::{Rvalue,Lvalue};
-    use instr::{Instr,Operation};
-    use mnemonic::{Mnemonic,Bound};
+    use std::borrow::Cow;
+    use {
+        Rvalue,
+        Lvalue,
+        Statement,
+        Operation,
+        Mnemonic,
+        Bound,
+    };
 
     #[test]
     fn construct() {
-        let ops1 = vec!(Rvalue::Constant(1),Rvalue::Variable{ name: "a".to_string(), width: 3, subscript: None });
+        let ops1 = vec!(Rvalue::new_u8(1),Rvalue::Variable{ name: Cow::Borrowed("a"), offset: 0, size: 3, subscript: None });
         let i1 = vec!(
-            Instr{ op: Operation::IntAdd(Rvalue::Constant(1),Rvalue::Constant(2)), assignee: Lvalue::Variable{ name: "a".to_string(), width: 8, subscript: Some(2) }},
-            Instr{ op: Operation::IntAdd(Rvalue::Constant(4),Rvalue::Constant(2)), assignee: Lvalue::Variable{ name: "a".to_string(), width: 8, subscript: Some(1) }},
-            Instr{ op: Operation::Phi(vec!(
-                Rvalue::Variable{ name: "a".to_string(), width: 8, subscript: Some(2) },
-                Rvalue::Variable{ name: "a".to_string(), width: 8, subscript: Some(1) })), assignee: Lvalue::Variable{ name: "a".to_string(), width: 8, subscript: Some(3) }});
-        let mne1 = Mnemonic::new(0..10,"op1".to_string(),"{8:-:eax} nog".to_string(),ops1.iter(),i1.iter());
+            Statement{ op: Operation::Add(Rvalue::new_u8(1),Rvalue::new_u8(2)), assignee: Lvalue::Variable{ name: Cow::Borrowed("a"), offset: 0, size: 8, subscript: Some(2) }},
+            Statement{ op: Operation::Add(Rvalue::new_u8(4),Rvalue::new_u8(2)), assignee: Lvalue::Variable{ name: Cow::Borrowed("a"), offset: 0, size: 8, subscript: Some(1) }},
+            Statement{ op: Operation::Phi(vec!(
+                Rvalue::Variable{ name: Cow::Borrowed("a"), offset: 0, size: 8, subscript: Some(2) },
+                Rvalue::Variable{ name: Cow::Borrowed("a"), offset: 0, size: 8, subscript: Some(1) })), assignee: Lvalue::Variable{ name: Cow::Borrowed("a"), offset: 0, size: 8, subscript: Some(3) }});
+        let mne1 = Mnemonic::new(0..10,"op1".to_string(),"{8:-:eax} nog".to_string(),ops1.iter(),i1.iter()).ok().unwrap();
 
-        let ops2 = vec!(Rvalue::Constant(1),Rvalue::Variable{ name: "a".to_string(), width: 3, subscript: None });
+        let ops2 = vec!(Rvalue::new_u8(1),Rvalue::Variable{ name: Cow::Borrowed("a"), offset: 0, size: 3, subscript: None });
         let i2 = vec!(
-            Instr{ op: Operation::IntAdd(Rvalue::Constant(1),Rvalue::Constant(2)), assignee: Lvalue::Variable{ name: "a".to_string(), width: 8, subscript: Some(2) }},
-            Instr{ op: Operation::IntAdd(Rvalue::Constant(4),Rvalue::Constant(2)), assignee: Lvalue::Variable{ name: "a".to_string(), width: 8, subscript: Some(1) }},
-            Instr{ op: Operation::Phi(vec!(
-                Rvalue::Variable{ name: "a".to_string(), width: 8, subscript: Some(2) },
-                Rvalue::Variable{ name: "a".to_string(), width: 8, subscript: Some(1) })), assignee: Lvalue::Variable{ name: "a".to_string(), width: 8, subscript: Some(3) }});
-        let mne2 = Mnemonic::new(10..13,"op3".to_string(),"{8:-:eax} nog".to_string(),ops2.iter(),i2.iter());
+            Statement{ op: Operation::Add(Rvalue::new_u8(1),Rvalue::new_u8(2)), assignee: Lvalue::Variable{ name: Cow::Borrowed("a"), offset: 0, size: 8, subscript: Some(2) }},
+            Statement{ op: Operation::Add(Rvalue::new_u8(4),Rvalue::new_u8(2)), assignee: Lvalue::Variable{ name: Cow::Borrowed("a"), offset: 0, size: 8, subscript: Some(1) }},
+            Statement{ op: Operation::Phi(vec!(
+                Rvalue::Variable{ name: Cow::Borrowed("a"), offset: 0, size: 8, subscript: Some(2) },
+                Rvalue::Variable{ name: Cow::Borrowed("a"), offset: 0, size: 8, subscript: Some(1) })), assignee: Lvalue::Variable{ name: Cow::Borrowed("a"), offset: 0, size: 8, subscript: Some(3) }});
+        let mne2 = Mnemonic::new(10..13,"op3".to_string(),"{8:-:eax} nog".to_string(),ops2.iter(),i2.iter()).ok().unwrap();
 
-        let ops3 = vec!(Rvalue::Constant(1),Rvalue::Variable{ name: "a".to_string(), width: 3, subscript: None });
+        let ops3 = vec!(Rvalue::new_u8(1),Rvalue::Variable{ name: Cow::Borrowed("a"), offset: 0, size: 3, subscript: None });
         let i3 = vec!(
-            Instr{ op: Operation::IntAdd(Rvalue::Constant(1),Rvalue::Constant(2)), assignee: Lvalue::Variable{ name: "a".to_string(), width: 8, subscript: Some(2) }},
-            Instr{ op: Operation::IntAdd(Rvalue::Constant(4),Rvalue::Constant(2)), assignee: Lvalue::Variable{ name: "a".to_string(), width: 8, subscript: Some(1) }},
-            Instr{ op: Operation::Phi(vec!(
-                Rvalue::Variable{ name: "a".to_string(), width: 8, subscript: Some(2) },
-                Rvalue::Variable{ name: "a".to_string(), width: 8, subscript: Some(1) })), assignee: Lvalue::Variable{ name: "a".to_string(), width: 8, subscript: Some(3) }});
-        let mne3 = Mnemonic::new(13..20,"op3".to_string(),"{8:-:eax} nog".to_string(),ops3.iter(),i3.iter());
+            Statement{ op: Operation::Add(Rvalue::new_u8(1),Rvalue::new_u8(2)), assignee: Lvalue::Variable{ name: Cow::Borrowed("a"), offset: 0, size: 8, subscript: Some(2) }},
+            Statement{ op: Operation::Add(Rvalue::new_u8(4),Rvalue::new_u8(2)), assignee: Lvalue::Variable{ name: Cow::Borrowed("a"), offset: 0, size: 8, subscript: Some(1) }},
+            Statement{ op: Operation::Phi(vec!(
+                Rvalue::Variable{ name: Cow::Borrowed("a"), offset: 0, size: 8, subscript: Some(2) },
+                Rvalue::Variable{ name: Cow::Borrowed("a"), offset: 0, size: 8, subscript: Some(1) })), assignee: Lvalue::Variable{ name: Cow::Borrowed("a"), offset: 0, size: 8, subscript: Some(3) }});
+        let mne3 = Mnemonic::new(13..20,"op3".to_string(),"{8:-:eax} nog".to_string(),ops3.iter(),i3.iter()).ok().unwrap();
 
         let ms = vec!(mne1,mne2,mne3);
         let bb1 = BasicBlock::from_vec(ms);
@@ -123,28 +132,28 @@ mod tests {
 
     #[test]
     fn execute() {
-        let ops1 = vec!(Rvalue::Constant(1),Rvalue::Variable{ name: "a".to_string(), width: 3, subscript: None });
+        let ops1 = vec!(Rvalue::new_u8(1),Rvalue::Variable{ name: Cow::Borrowed("a"), offset: 0, size: 3, subscript: None });
         let i1 = vec!(
-            Instr{ op: Operation::IntAdd(Rvalue::Constant(1),Rvalue::Constant(2)), assignee: Lvalue::Variable{ name: "a".to_string(), width: 8, subscript: Some(2) }},
-            Instr{ op: Operation::IntAdd(Rvalue::Constant(4),Rvalue::Constant(2)), assignee: Lvalue::Variable{ name: "a".to_string(), width: 8, subscript: Some(1) }},
-            Instr{ op: Operation::Phi(vec!(
-                Rvalue::Variable{ name: "a".to_string(), width: 8, subscript: Some(2) },
-                Rvalue::Variable{ name: "a".to_string(), width: 8, subscript: Some(1) })), assignee: Lvalue::Variable{ name: "a".to_string(), width: 8, subscript: Some(3) }});
-        let mne1 = Mnemonic::new(0..10,"op1".to_string(),"{8:-:eax} nog".to_string(),ops1.iter(),i1.iter());
+            Statement{ op: Operation::Add(Rvalue::new_u8(1),Rvalue::new_u8(2)), assignee: Lvalue::Variable{ name: Cow::Borrowed("a"), offset: 0, size: 8, subscript: Some(2) }},
+            Statement{ op: Operation::Add(Rvalue::new_u8(4),Rvalue::new_u8(2)), assignee: Lvalue::Variable{ name: Cow::Borrowed("a"), offset: 0, size: 8, subscript: Some(1) }},
+            Statement{ op: Operation::Phi(vec!(
+                Rvalue::Variable{ name: Cow::Borrowed("a"), offset: 0, size: 8, subscript: Some(2) },
+                Rvalue::Variable{ name: Cow::Borrowed("a"), offset: 0, size: 8, subscript: Some(1) })), assignee: Lvalue::Variable{ name: Cow::Borrowed("a"), offset: 0, size: 8, subscript: Some(3) }});
+        let mne1 = Mnemonic::new(0..10,"op1".to_string(),"{8:-:eax} nog".to_string(),ops1.iter(),i1.iter()).ok().unwrap();
 
-        let ops2 = vec!(Rvalue::Constant(1),Rvalue::Variable{ name: "a".to_string(), width: 3, subscript: None });
+        let ops2 = vec!(Rvalue::new_u8(1),Rvalue::Variable{ name: Cow::Borrowed("a"), offset: 0, size: 3, subscript: None });
         let i2 = vec!(
-            Instr{ op: Operation::IntAdd(Rvalue::Constant(1),Rvalue::Constant(2)), assignee: Lvalue::Variable{ name: "a".to_string(), width: 8, subscript: Some(2) }},
-            Instr{ op: Operation::IntAdd(Rvalue::Constant(4),Rvalue::Constant(2)), assignee: Lvalue::Variable{ name: "a".to_string(), width: 8, subscript: Some(1) }},
-            Instr{ op: Operation::Phi(vec!(
-                Rvalue::Variable{ name: "a".to_string(), width: 8, subscript: Some(2) },
-                Rvalue::Variable{ name: "a".to_string(), width: 8, subscript: Some(1) })), assignee: Lvalue::Variable{ name: "a".to_string(), width: 8, subscript: Some(3) }});
-        let mne2 = Mnemonic::new(10..13,"op3".to_string(),"{8:-:eax} nog".to_string(),ops2.iter(),i2.iter());
+            Statement{ op: Operation::Add(Rvalue::new_u8(1),Rvalue::new_u8(2)), assignee: Lvalue::Variable{ name: Cow::Borrowed("a"), offset: 0, size: 8, subscript: Some(2) }},
+            Statement{ op: Operation::Add(Rvalue::new_u8(4),Rvalue::new_u8(2)), assignee: Lvalue::Variable{ name: Cow::Borrowed("a"), offset: 0, size: 8, subscript: Some(1) }},
+            Statement{ op: Operation::Phi(vec!(
+                Rvalue::Variable{ name: Cow::Borrowed("a"), offset: 0, size: 8, subscript: Some(2) },
+                Rvalue::Variable{ name: Cow::Borrowed("a"), offset: 0, size: 8, subscript: Some(1) })), assignee: Lvalue::Variable{ name: Cow::Borrowed("a"), offset: 0, size: 8, subscript: Some(3) }});
+        let mne2 = Mnemonic::new(10..13,"op3".to_string(),"{8:-:eax} nog".to_string(),ops2.iter(),i2.iter()).ok().unwrap();
 
         let ms = vec!(mne1,mne2);
         let bb = BasicBlock::from_vec(ms);
         let mut vs2 = i1;
-        let mut vs1 = Vec::<Instr>::new();
+        let mut vs1 = Vec::<Statement>::new();
 
         bb.execute(|i| vs1.push(i.clone()));
 
@@ -157,31 +166,31 @@ mod tests {
 
     #[test]
     fn rewrite() {
-        let ops1 = vec!(Rvalue::Constant(1),Rvalue::Variable{ name: "a".to_string(), width: 3, subscript: None });
+        let ops1 = vec!(Rvalue::new_u8(1),Rvalue::Variable{ name: Cow::Borrowed("a"), offset: 0, size: 3, subscript: None });
         let i1 = vec!(
-            Instr{ op: Operation::IntAdd(Rvalue::Constant(1),Rvalue::Constant(2)), assignee: Lvalue::Variable{ name: "a".to_string(), width: 8, subscript: Some(2) }},
-            Instr{ op: Operation::IntAdd(Rvalue::Constant(4),Rvalue::Constant(2)), assignee: Lvalue::Variable{ name: "a".to_string(), width: 8, subscript: Some(1) }},
-            Instr{ op: Operation::Phi(vec!(
-                Rvalue::Variable{ name: "a".to_string(), width: 8, subscript: Some(2) },
-                Rvalue::Variable{ name: "a".to_string(), width: 8, subscript: Some(1) })), assignee: Lvalue::Variable{ name: "a".to_string(), width: 8, subscript: Some(3) }});
-        let mne1 = Mnemonic::new(0..10,"op1".to_string(),"{8:-:eax} nog".to_string(),ops1.iter(),i1.iter());
+            Statement{ op: Operation::Add(Rvalue::new_u8(1),Rvalue::new_u8(2)), assignee: Lvalue::Variable{ name: Cow::Borrowed("a"), offset: 0, size: 8, subscript: Some(2) }},
+            Statement{ op: Operation::Add(Rvalue::new_u8(4),Rvalue::new_u8(2)), assignee: Lvalue::Variable{ name: Cow::Borrowed("a"), offset: 0, size: 8, subscript: Some(1) }},
+            Statement{ op: Operation::Phi(vec!(
+                Rvalue::Variable{ name: Cow::Borrowed("a"), offset: 0, size: 8, subscript: Some(2) },
+                Rvalue::Variable{ name: Cow::Borrowed("a"), offset: 0, size: 8, subscript: Some(1) })), assignee: Lvalue::Variable{ name: Cow::Borrowed("a"), offset: 0, size: 8, subscript: Some(3) }});
+        let mne1 = Mnemonic::new(0..10,"op1".to_string(),"{8:-:eax} nog".to_string(),ops1.iter(),i1.iter()).ok().unwrap();
 
-        let ops2 = vec!(Rvalue::Constant(1),Rvalue::Variable{ name: "a".to_string(), width: 3, subscript: None });
+        let ops2 = vec!(Rvalue::new_u8(1),Rvalue::Variable{ name: Cow::Borrowed("a"), offset: 0, size: 3, subscript: None });
         let i2 = vec!(
-            Instr{ op: Operation::IntAdd(Rvalue::Constant(1),Rvalue::Constant(2)), assignee: Lvalue::Variable{ name: "a".to_string(), width: 8, subscript: Some(2) }},
-            Instr{ op: Operation::IntAdd(Rvalue::Constant(4),Rvalue::Constant(2)), assignee: Lvalue::Variable{ name: "a".to_string(), width: 8, subscript: Some(1) }},
-            Instr{ op: Operation::Phi(vec!(
-                Rvalue::Variable{ name: "a".to_string(), width: 8, subscript: Some(2) },
-                Rvalue::Variable{ name: "a".to_string(), width: 8, subscript: Some(1) })), assignee: Lvalue::Variable{ name: "a".to_string(), width: 8, subscript: Some(3) }});
-        let mne2 = Mnemonic::new(10..13,"op3".to_string(),"{8:-:eax} nog".to_string(),ops2.iter(),i2.iter());
+            Statement{ op: Operation::Add(Rvalue::new_u8(1),Rvalue::new_u8(2)), assignee: Lvalue::Variable{ name: Cow::Borrowed("a"), offset: 0, size: 8, subscript: Some(2) }},
+            Statement{ op: Operation::Add(Rvalue::new_u8(4),Rvalue::new_u8(2)), assignee: Lvalue::Variable{ name: Cow::Borrowed("a"), offset: 0, size: 8, subscript: Some(1) }},
+            Statement{ op: Operation::Phi(vec!(
+                Rvalue::Variable{ name: Cow::Borrowed("a"), offset: 0, size: 8, subscript: Some(2) },
+                Rvalue::Variable{ name: Cow::Borrowed("a"), offset: 0, size: 8, subscript: Some(1) })), assignee: Lvalue::Variable{ name: Cow::Borrowed("a"), offset: 0, size: 8, subscript: Some(3) }});
+        let mne2 = Mnemonic::new(10..13,"op3".to_string(),"{8:-:eax} nog".to_string(),ops2.iter(),i2.iter()).ok().unwrap();
 
         let ms = vec!(mne1,mne2);
         let mut bb = BasicBlock::from_vec(ms);
 
         bb.rewrite(|i| {
             *i = match &i.assignee {
-                &Lvalue::Variable{ name: ref n, width: ref w, subscript: _ } =>
-                    Instr{ op: i.op.clone(), assignee: Lvalue::Variable{ name: n.clone(), width: *w, subscript: None } },
+                &Lvalue::Variable{ name: ref n, offset: 0, size: ref w, subscript: _ } =>
+                    Statement{ op: i.op.clone(), assignee: Lvalue::Variable{ name: n.clone(), offset: 0, size: *w, subscript: None } },
                 _ => i.clone()
             };
         });

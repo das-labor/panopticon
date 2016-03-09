@@ -16,8 +16,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-use basic_block::BasicBlock;
-use guard::Guard;
+use std::collections::{HashMap,BTreeMap,BTreeSet};
+use std::rc::Rc;
+
 use graph_algos::{AdjacencyList,GraphTrait,MutableGraphTrait};
 use graph_algos::adjacency_list::AdjacencyListVertexDescriptor;
 use graph_algos::{VertexListGraphTrait,EdgeListGraphTrait};
@@ -25,14 +26,19 @@ use graph_algos::search::{
     TraversalOrder,
     TreeIterator,
 };
-use disassembler::{Disassembler,Architecture};
-use layer::LayerIter;
-use value::Rvalue;
-use std::collections::{HashMap,BTreeMap,BTreeSet};
-use mnemonic::Mnemonic;
-use std::rc::Rc;
-use instr::{Instr,Operation};
 use uuid::Uuid;
+
+use {
+    BasicBlock,
+    Guard,
+    Disassembler,
+    Architecture,
+    LayerIter,
+    Rvalue,
+    Mnemonic,
+    Statement,
+    Operation,
+};
 
 #[derive(RustcDecodable,RustcEncodable,Debug)]
 pub enum ControlFlowTarget {
@@ -105,12 +111,12 @@ impl Function {
                     by_source.entry(last).or_insert(Vec::new()).push((Some(tgt_bb.area.start),gu.clone()));
                     by_destination.entry(tgt_bb.area.start).or_insert(Vec::new()).push((Some(last),gu));
                 },
-                (Some(&ControlFlowTarget::Resolved(ref src_bb)),Some(&ControlFlowTarget::Unresolved(Rvalue::Constant(ref c)))) => {
+                (Some(&ControlFlowTarget::Resolved(ref src_bb)),Some(&ControlFlowTarget::Unresolved(Rvalue::Constant{ value: ref c,.. }))) => {
                     let last = src_bb.mnemonics.last().map_or(src_bb.area.start,|mne| mne.area.start);
                     by_source.entry(last).or_insert(Vec::new()).push((Some(*c),gu.clone()));
                     by_destination.entry(*c).or_insert(Vec::new()).push((Some(last),gu));
                 },
-                (Some(&ControlFlowTarget::Unresolved(Rvalue::Constant(ref c))),Some(&ControlFlowTarget::Resolved(ref tgt_bb))) => {
+                (Some(&ControlFlowTarget::Unresolved(Rvalue::Constant{ value: ref c,.. })),Some(&ControlFlowTarget::Resolved(ref tgt_bb))) => {
                     by_source.entry(*c).or_insert(Vec::new()).push((Some(tgt_bb.area.start),gu.clone()));
                     by_destination.entry(tgt_bb.area.start).or_insert(Vec::new()).push((Some(*c),gu));
                 },
@@ -197,7 +203,7 @@ impl Function {
                                 }
                             }
 
-                            let vx = ret.add_vertex(ControlFlowTarget::Unresolved(Rvalue::Constant(*src_off)));
+                            let vx = ret.add_vertex(ControlFlowTarget::Unresolved(Rvalue::new_u64(*src_off)));
                             ret.add_edge(gu.clone(),vx,to);
                         },
                         (Some(from),None) => {
@@ -207,7 +213,7 @@ impl Function {
                                 }
                             }
 
-                            let vx = ret.add_vertex(ControlFlowTarget::Unresolved(Rvalue::Constant(opt_tgt.unwrap())));
+                            let vx = ret.add_vertex(ControlFlowTarget::Unresolved(Rvalue::new_u64(opt_tgt.unwrap())));
                             ret.add_edge(gu.clone(),from,vx);
                         },
                         _ => error!("jump from {} to {} doesn't hit any blocks",src_off,opt_tgt.unwrap()),
@@ -270,7 +276,7 @@ impl Function {
 
                 for (origin,tgt,gu) in match_st.jumps {
                     match tgt {
-                        Rvalue::Constant(ref c) => {
+                        Rvalue::Constant{ value: ref c,.. } => {
                             by_source.entry(origin).or_insert(Vec::new()).push((Some(*c),gu.clone()));
                             by_destination.entry(*c).or_insert(Vec::new()).push((Some(origin),gu.clone()));
                             todo.insert(*c);
@@ -314,7 +320,7 @@ impl Function {
         for vx in self.cflow_graph.vertices() {
             if let Some(&ControlFlowTarget::Resolved(ref bb)) = self.cflow_graph.vertex_label(vx) {
                 bb.execute(|i| match i {
-                    &Instr{ op: Operation::IntCall(ref t), ..} => ret.push(t.clone()),
+                    &Statement{ op: Operation::Call(ref t), ..} => ret.push(t.clone()),
                     _ => {}
                 });
             }
@@ -381,14 +387,19 @@ impl Function {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::borrow::Cow;
     use graph_algos::{VertexListGraphTrait,EdgeListGraphTrait,AdjacencyMatrixGraphTrait};
     use graph_algos::{GraphTrait,MutableGraphTrait};
-    use guard::Guard;
-    use mnemonic::{Mnemonic,Bound};
-    use basic_block::BasicBlock;
-    use value::Rvalue;
-    use layer::OpaqueLayer;
-    use disassembler::{State,Architecture};
+    use {
+        Guard,
+        Mnemonic,
+        Bound,
+        BasicBlock,
+        Rvalue,
+        OpaqueLayer,
+        State,
+        Architecture
+    };
 
     #[derive(Clone)]
     enum TestArchShort {}
@@ -492,9 +503,9 @@ mod tests {
 
         let vx0 = cfg.add_vertex(ControlFlowTarget::Resolved(bb0));
         let vx1 = cfg.add_vertex(ControlFlowTarget::Resolved(bb1));
-        let vx2 = cfg.add_vertex(ControlFlowTarget::Unresolved(Rvalue::Constant(42)));
-        let vx3 = cfg.add_vertex(ControlFlowTarget::Unresolved(Rvalue::Constant(23)));
-        let vx4 = cfg.add_vertex(ControlFlowTarget::Unresolved(Rvalue::Variable{ name: "a".to_string(), width:8, subscript: None }));
+        let vx2 = cfg.add_vertex(ControlFlowTarget::Unresolved(Rvalue::new_u32(42)));
+        let vx3 = cfg.add_vertex(ControlFlowTarget::Unresolved(Rvalue::new_u32(23)));
+        let vx4 = cfg.add_vertex(ControlFlowTarget::Unresolved(Rvalue::Variable{ name: Cow::Borrowed("a"), size: 8, offset: 0, subscript: None }));
 
         cfg.add_edge(Guard::always(),vx0,vx1);
         cfg.add_edge(Guard::always(),vx2,vx1);
@@ -520,7 +531,7 @@ mod tests {
                         (bb.area.start == 10 && bb.area.end == 11)
                     );
                 },
-                Some(&ControlFlowTarget::Unresolved(Rvalue::Constant(ref c))) => {
+                Some(&ControlFlowTarget::Unresolved(Rvalue::Constant{ value: ref c, size: 64 })) => {
                     assert!(*c == 42 || *c == 23);
                 },
                 _ => { unreachable!(); }
@@ -565,37 +576,37 @@ mod tests {
             [ 0 ] = |st: &mut State<TestArchShort>| {
                 let next = st.address;
                 st.mnemonic(1,"test0","",vec!(),&|_| {});
-                st.jump(Rvalue::Constant(next + 1),Guard::always());
+                st.jump(Rvalue::new_u64(next + 1),Guard::always());
                 true
             },
             [ 1 ] = |st: &mut State<TestArchShort>| {
                 let next = st.address;
                 st.mnemonic(1,"test1","",vec!(),&|_| {});
-                st.jump(Rvalue::Constant(next + 1),Guard::always());
+                st.jump(Rvalue::new_u64(next + 1),Guard::always());
                 true
             },
             [ 2 ] = |st: &mut State<TestArchShort>| {
                 let next = st.address;
                 st.mnemonic(1,"test2","",vec!(),&|_| {});
-                st.jump(Rvalue::Constant(next + 1),Guard::always());
+                st.jump(Rvalue::new_u64(next + 1),Guard::always());
                 true
             },
             [ 3 ] = |st: &mut State<TestArchShort>| {
                 let next = st.address;
                 st.mnemonic(1,"test3","",vec!(),&|_| {});
-                st.jump(Rvalue::Constant(next + 1),Guard::always());
+                st.jump(Rvalue::new_u64(next + 1),Guard::always());
                 true
             },
             [ 4 ] = |st: &mut State<TestArchShort>| {
                 let next = st.address;
                 st.mnemonic(1,"test4","",vec!(),&|_| {});
-                st.jump(Rvalue::Constant(next + 1),Guard::always());
+                st.jump(Rvalue::new_u64(next + 1),Guard::always());
                 true
             },
             [ 5 ] = |st: &mut State<TestArchShort>| {
                 let next = st.address;
                 st.mnemonic(1,"test5","",vec!(),&|_| {});
-                st.jump(Rvalue::Constant(next + 1),Guard::always());
+                st.jump(Rvalue::new_u64(next + 1),Guard::always());
                 true
             }
         );
@@ -626,7 +637,7 @@ mod tests {
                 assert_eq!(bb.mnemonics[5].area, Bound::new(5,6));
                 assert_eq!(bb.area, Bound::new(0,6));
                 bb_vx = Some(vx);
-            } else if let Some(&ControlFlowTarget::Unresolved(Rvalue::Constant(c))) = func.cflow_graph.vertex_label(vx) {
+            } else if let Some(&ControlFlowTarget::Unresolved(Rvalue::Constant{ value: c, size: 64 })) = func.cflow_graph.vertex_label(vx) {
                 assert_eq!(c, 6);
                 ures_vx = Some(vx);
             } else {
@@ -645,18 +656,18 @@ mod tests {
         let main = new_disassembler!(TestArchShort =>
             [ 0 ] = |st: &mut State<TestArchShort>| {
                 st.mnemonic(1,"test0","",vec!(),&|_| {});
-                st.jump(Rvalue::Constant(1),Guard::always());
-                st.jump(Rvalue::Constant(2),Guard::always());
+                st.jump(Rvalue::new_u32(1),Guard::always());
+                st.jump(Rvalue::new_u32(2),Guard::always());
                 true
             },
             [ 1 ] = |st: &mut State<TestArchShort>| {
                 st.mnemonic(1,"test1","",vec!(),&|_| {});
-                st.jump(Rvalue::Constant(3),Guard::always());
+                st.jump(Rvalue::new_u32(3),Guard::always());
                 true
             },
             [ 2 ] = |st: &mut State<TestArchShort>| {
                 st.mnemonic(1,"test2","",vec!(),&|_| {});
-                st.jump(Rvalue::Constant(1),Guard::always());
+                st.jump(Rvalue::new_u32(1),Guard::always());
                 true
             }
         );
@@ -695,7 +706,7 @@ mod tests {
                 } else {
                     unreachable!();
                 }
-            } else if let Some(&ControlFlowTarget::Unresolved(Rvalue::Constant(c))) = func.cflow_graph.vertex_label(vx) {
+            } else if let Some(&ControlFlowTarget::Unresolved(Rvalue::Constant{ value: c, size: 64 })) = func.cflow_graph.vertex_label(vx) {
                 assert_eq!(c, 3);
                 ures_vx = Some(vx);
             } else {
@@ -717,17 +728,17 @@ mod tests {
       let main = new_disassembler!(TestArchShort =>
             [ 0 ] = |st: &mut State<TestArchShort>| {
                 st.mnemonic(1,"test0","",vec!(),&|_| {});
-                st.jump(Rvalue::Constant(1),Guard::always());
+                st.jump(Rvalue::new_u32(1),Guard::always());
                 true
             },
             [ 1 ] = |st: &mut State<TestArchShort>| {
                 st.mnemonic(1,"test1","",vec!(),&|_| {});
-                st.jump(Rvalue::Constant(2),Guard::always());
+                st.jump(Rvalue::new_u32(2),Guard::always());
                 true
             },
             [ 2 ] = |st: &mut State<TestArchShort>| {
                 st.mnemonic(1,"test2","",vec!(),&|_| {});
-                st.jump(Rvalue::Constant(0),Guard::always());
+                st.jump(Rvalue::new_u32(0),Guard::always());
                 true
             }
         );
@@ -764,17 +775,17 @@ mod tests {
         let main = new_disassembler!(TestArchShort =>
             [ 0 ] = |st: &mut State<TestArchShort>| {
                 st.mnemonic(1,"test0","",vec!(),&|_| {});
-                st.jump(Rvalue::Constant(1),Guard::always());
+                st.jump(Rvalue::new_u32(1),Guard::always());
                 true
             },
             [ 1 ] = |st: &mut State<TestArchShort>| {
                 st.mnemonic(1,"test1","",vec!(),&|_| {});
-                st.jump(Rvalue::Constant(2),Guard::always());
+                st.jump(Rvalue::new_u32(2),Guard::always());
                 true
             },
             [ 2 ] = |st: &mut State<TestArchShort>| {
                 st.mnemonic(1,"test2","",vec!(),&|_| {});
-                st.jump(Rvalue::Constant(0),Guard::always());
+                st.jump(Rvalue::new_u32(0),Guard::always());
                 true
             }
         );
@@ -793,7 +804,7 @@ mod tests {
         let bb = BasicBlock::from_vec(vec!(Mnemonic::dummy(0..1),Mnemonic::dummy(1..2)));
         let mut fun = Function::new("test_func".to_string(),"ram".to_string());
         let vx0 = fun.cflow_graph.add_vertex(ControlFlowTarget::Resolved(bb));
-        let vx1 = fun.cflow_graph.add_vertex(ControlFlowTarget::Unresolved(Rvalue::Constant(2)));
+        let vx1 = fun.cflow_graph.add_vertex(ControlFlowTarget::Unresolved(Rvalue::new_u32(2)));
 
         fun.entry_point = Some(vx0);
         fun.cflow_graph.add_edge(Guard::always(),vx0,vx1);
@@ -801,17 +812,17 @@ mod tests {
         let main = new_disassembler!(TestArchShort =>
             [ 0 ] = |st: &mut State<TestArchShort>| {
                 st.mnemonic(1,"test0","",vec!(),&|_| {});
-                st.jump(Rvalue::Constant(1),Guard::always());
+                st.jump(Rvalue::new_u32(1),Guard::always());
                 true
             },
             [ 1 ] = |st: &mut State<TestArchShort>| {
                 st.mnemonic(1,"test1","",vec!(),&|_| {});
-                st.jump(Rvalue::Constant(2),Guard::always());
+                st.jump(Rvalue::new_u32(2),Guard::always());
                 true
             },
             [ 2 ] = |st: &mut State<TestArchShort>| {
                 st.mnemonic(1,"test2","",vec!(),&|_| {});
-                st.jump(Rvalue::Constant(1),Guard::always());
+                st.jump(Rvalue::new_u32(1),Guard::always());
                 true
             }
         );
@@ -870,7 +881,7 @@ mod tests {
             {
                 let a = s.address;
                 s.mnemonic(2,"A","",vec!(),&|_| {});
-                s.jump(Rvalue::Constant(a + 2),Guard::always());
+                s.jump(Rvalue::new_u64(a + 2),Guard::always());
                 true
             },
 
@@ -878,8 +889,8 @@ mod tests {
             {
                 let a = s.address;
                 s.mnemonic(2,"B","",vec!(),&|_| {});
-                s.jump(Rvalue::Constant(a + 2),Guard::always());
-                s.jump(Rvalue::Constant(a + 4),Guard::always());
+                s.jump(Rvalue::new_u64(a + 2),Guard::always());
+                s.jump(Rvalue::new_u64(a + 4),Guard::always());
                 true
             },
 
@@ -913,7 +924,7 @@ mod tests {
                         unreachable!();
                     }
                 },
-                Some(&ControlFlowTarget::Unresolved(Rvalue::Constant(6))) => {},
+                Some(&ControlFlowTarget::Unresolved(Rvalue::Constant{ value: 6, size: 64 })) => {},
                 _ => unreachable!()
             }
         }
@@ -927,17 +938,17 @@ mod tests {
         let main = new_disassembler!(TestArchShort =>
             [ 0 ] = |st: &mut State<TestArchShort>| {
                 st.mnemonic(1,"test0","",vec!(),&|_| {});
-                st.jump(Rvalue::Constant(1),Guard::always());
+                st.jump(Rvalue::new_u32(1),Guard::always());
                 true
             },
             [ 1 ] = |st: &mut State<TestArchShort>| {
                 st.mnemonic(1,"test1","",vec!(),&|_| {});
-                st.jump(Rvalue::Constant(2),Guard::always());
+                st.jump(Rvalue::new_u32(2),Guard::always());
                 true
             },
             [ 2 ] = |st: &mut State<TestArchShort>| {
                 st.mnemonic(1,"test2","",vec!(),&|_| {});
-                st.jump(Rvalue::Constant(0),Guard::always());
+                st.jump(Rvalue::new_u32(0),Guard::always());
                 true
             }
         );

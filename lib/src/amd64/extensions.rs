@@ -18,7 +18,6 @@
 
 use disassembler::*;
 use codegen::*;
-use value::*;
 use amd64::decode::*;
 use amd64::semantic::*;
 use amd64::*;

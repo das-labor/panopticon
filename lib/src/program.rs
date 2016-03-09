@@ -24,10 +24,13 @@ use graph_algos::VertexListGraphTrait;
 use uuid::Uuid;
 use byteorder::{BigEndian, LittleEndian, ReadBytesExt};
 
-use function::{ControlFlowTarget,Function};
-use layer::LayerIter;
-use target::Target;
-use value::{Endianess,Rvalue};
+use {
+    ControlFlowTarget,
+    Function,
+    LayerIter,
+    Target,
+    Rvalue
+};
 
 #[derive(RustcDecodable,RustcEncodable)]
 pub enum CallTarget {
@@ -164,22 +167,7 @@ impl Program {
                             match rv {
                                 &Rvalue::Undefined => None,
                                 &Rvalue::Variable{ .. } => None,
-                                &Rvalue::Constant(ref c) => Some(*c),
-                                &Rvalue::Memory{ ref offset, ref bytes, ref endianess, ref name } => {
-                                    if name == n {
-                                        if let Some(o) = resolv(offset,d,n) {
-                                            match (*bytes,endianess) {
-                                                (1,_) => d.clone().next().and_then(|x| x.map(|x| x as u64)),
-                                                (2,&Endianess::Little) => ReadBytesExt::read_u16::<LittleEndian>(&mut d.clone()).ok().map(|x| x as u64),
-                                                _ => None,
-                                            }
-                                        } else {
-                                            None
-                                        }
-                                    } else {
-                                        None
-                                    }
-                                },
+                                &Rvalue::Constant{ value: ref c,.. } => Some(*c),
                             }
                         }
                         if let Some(address) = resolv(&call,&data,&reg) {
@@ -232,9 +220,11 @@ impl Program {
                 match self.call_graph.vertex_label(w) {
                     Some(&CallTarget::Concrete(Function{ cflow_graph: ref cg, entry_point: Some(ent),.. })) => {
                         if let Some(&ControlFlowTarget::Resolved(ref bb)) = cg.vertex_label(ent) {
-                            if Rvalue::Constant(bb.area.start) == a {
-                                other_funs.push(w);
-                                break;
+                            if let Rvalue::Constant{ ref value,.. } = a {
+                                if *value == bb.area.start {
+                                    other_funs.push(w);
+                                    break;
+                                }
                             }
                         }
                     },
@@ -285,8 +275,7 @@ impl Program {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use function::{ControlFlowTarget,Function};
-    use mnemonic::Mnemonic;
+    use uuid::Uuid;
     use graph_algos::{
         VertexListGraphTrait,
         GraphTrait,
@@ -294,11 +283,16 @@ mod tests {
         AdjacencyMatrixGraphTrait,
         EdgeListGraphTrait
     };
-    use basic_block::BasicBlock;
-    use uuid::Uuid;
-    use value::{Lvalue,Rvalue};
-    use instr::{Operation,Instr};
-    use target::Target;
+    use {
+        ControlFlowTarget,
+        Function,
+        Mnemonic,
+        BasicBlock,
+        Lvalue,Rvalue,
+        Operation,
+        Statement,
+        Target,
+    };
 
     #[test]
     fn find_by_entry() {
@@ -320,7 +314,7 @@ mod tests {
         let uu = Uuid::new_v4();
         let mut prog = Program::new("prog_test",Target::__Test);
 
-        let tvx = prog.call_graph.add_vertex(CallTarget::Todo(Rvalue::Constant(12),None,uu));
+        let tvx = prog.call_graph.add_vertex(CallTarget::Todo(Rvalue::new_u64(12),None,uu));
         let vx0 = prog.call_graph.add_vertex(CallTarget::Concrete(Function::new("test".to_string(),"ram".to_string())));
         let vx1 = prog.call_graph.add_vertex(CallTarget::Concrete(Function::new("test2".to_string(),"ram".to_string())));
 
@@ -356,12 +350,12 @@ mod tests {
         let uu2 = Uuid::new_v4();
         let mut prog = Program::new("prog_test",Target::__Test);
 
-        let tvx = prog.call_graph.add_vertex(CallTarget::Todo(Rvalue::Constant(12),None,uu1));
+        let tvx = prog.call_graph.add_vertex(CallTarget::Todo(Rvalue::new_u64(12),None,uu1));
 
         let mut func = Function::with_uuid("test3".to_string(),uu2.clone(),"ram".to_string());
         let ops1 = vec![];
-        let i1 = vec![Instr{ op: Operation::IntCall(Rvalue::Constant(12)), assignee: Lvalue::Undefined}];
-        let mne1 = Mnemonic::new(0..10,"call".to_string(),"12".to_string(),ops1.iter(),i1.iter());
+        let i1 = vec![Statement{ op: Operation::Call(Rvalue::new_u64(12)), assignee: Lvalue::Undefined}];
+        let mne1 = Mnemonic::new(0..10,"call".to_string(),"12".to_string(),ops1.iter(),i1.iter()).ok().unwrap();
         let bb0 = BasicBlock::from_vec(vec!(mne1));
         func.entry_point = Some(func.cflow_graph.add_vertex(ControlFlowTarget::Resolved(bb0)));
         let uuf = func.uuid.clone();

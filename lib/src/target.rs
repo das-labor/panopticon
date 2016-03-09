@@ -23,9 +23,11 @@ use avr::{Avr,Mcu};
 use mos;
 use mos::Mos;
 use elf::parse::Machine;
-use function::Function;
-use layer::LayerIter;
-use value::Rvalue;
+use {
+    Function,
+    LayerIter,
+    Rvalue,
+};
 
 #[derive(RustcEncodable,RustcDecodable,Clone,Copy,PartialEq)]
 pub enum Target {
@@ -102,9 +104,9 @@ impl Target {
             &Target::Atmega103 => Mcu::atmega103().int_vec,
             &Target::Atmega88 => Mcu::atmega88().int_vec,
             &Target::Atmega8 => Mcu::atmega8().int_vec,
-            &Target::Amd64 => vec![("RESET",Rvalue::Constant(0xFFFFFFF0),"Reset vector")],
-            &Target::Ia32 => vec![("RESET",Rvalue::Constant(0xFFFFFFF0),"Reset vector")],
-            &Target::Ia16 => vec![("RESET",Rvalue::Constant(0xFFFF0),"Reset vector")],
+            &Target::Amd64 => vec![("RESET",Rvalue::new_u64(0xFFFFFFF0),"Reset vector")],
+            &Target::Ia32 => vec![("RESET",Rvalue::new_u32(0xFFFFFFF0),"Reset vector")],
+            &Target::Ia16 => vec![("RESET",Rvalue::new_u16(0xFFFF0),"Reset vector")],
             &Target::Mos6502 => mos::Variant::mos6502().int_vec,
             &Target::__Test => vec![],
         }
@@ -118,7 +120,7 @@ impl Target {
             &Target::Amd64 => Function::disassemble::<Amd64>(cont,amd64::disassembler(Mode::Long),Config::new(Mode::Long),i,start,reg),
             &Target::Ia32 => Function::disassemble::<Amd64>(cont,amd64::disassembler(Mode::Protected),Config::new(Mode::Protected),i,start,reg),
             &Target::Ia16 => Function::disassemble::<Amd64>(cont,amd64::disassembler(Mode::Real),Config::new(Mode::Real),i,start,reg),
-            &Target::Mos6502 => Function::disassemble::<Mos>(cont,mos::generic::disassembler(),mos::Variant::mos6502(),i,start,reg),
+            &Target::Mos6502 => unimplemented!(),//Function::disassemble::<Mos>(cont,mos::generic::disassembler(),mos::Variant::mos6502(),i,start,reg),
             &Target::__Test => panic!(),
         }
     }

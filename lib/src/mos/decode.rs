@@ -17,13 +17,13 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-use value::{Lvalue,Rvalue};
-use disassembler::State;
-use mos::*;
-use codegen::CodeGen;
-use guard::Guard;
 use std::num::Wrapping;
 
+use mos::*;
+use {Lvalue,Rvalue};
+use State;
+use CodeGen;
+use Guard;
 
 pub fn nonary(opcode: &'static str, sem: fn(&mut CodeGen<Mos>)) -> Box<Fn(&mut State<Mos>) -> bool> {
     Box::new(move |st: &mut State<Mos>| -> bool {

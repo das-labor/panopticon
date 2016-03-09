@@ -21,16 +21,6 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::io::{Read,Write};
 
-use program::{CallTarget,Program,CallGraphRef};
-use region::{Region,Regions};
-use layer::{OpaqueLayer,Layer};
-use function::{Function};
-use target::Target;
-use result::Result;
-use value::Rvalue;
-use mnemonic::Bound;
-use pe;
-
 use uuid::Uuid;
 use rmp_serialize::{Encoder,Decoder};
 use rustc_serialize::{Decodable,Encodable};
@@ -42,6 +32,21 @@ use byteorder::{
     ReadBytesExt,
     WriteBytesExt,
     BigEndian,
+};
+
+use {
+    CallTarget,
+    Program,
+    CallGraphRef,
+    Region,Regions,
+    Function,
+    OpaqueLayer,
+    Rvalue,
+    Bound,
+    Layer,
+    Target,
+    Result,
+    pe
 };
 
 #[derive(RustcDecodable,RustcEncodable)]
@@ -107,7 +112,7 @@ impl Project {
 
                 if let Some(e) = entry {
                     let uu =  Uuid::new_v4();
-                    prog.call_graph.add_vertex(CallTarget::Todo(Rvalue::Constant(e),Some("main".to_string()),uu));
+                    prog.call_graph.add_vertex(CallTarget::Todo(Rvalue::new_u64(e),Some("main".to_string()),uu));
                 } else {
                     for &(name,ref off,cmnt) in t.interrupt_vec().iter() {
                         let uu =  Uuid::new_v4();

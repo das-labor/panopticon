@@ -138,6 +138,8 @@
 //! This makes memory management easier and save us from implementing dozens of
 //! QObject subclasses.
 
+#![recursion_limit="100"]
+
 #[macro_use]
 extern crate log;
 
@@ -156,21 +158,75 @@ extern crate byteorder;
 
 // core
 pub mod disassembler;
-pub mod value;
-pub mod instr;
-pub mod guard;
-pub mod mnemonic;
-pub mod basic_block;
-pub mod function;
-pub mod program;
-pub mod project;
-pub mod region;
-pub mod layer;
+pub use disassembler::{
+    State,
+    Architecture,
+    Disassembler,
+};
+
+pub mod il;
+pub use il::{
+    Rvalue,
+    Lvalue,
+    Guard,
+    Statement,
+    Operation,
+};
+
 pub mod codegen;
-pub mod target;
-pub mod dataflow;
-pub mod abstractinterp;
+pub use codegen::CodeGen;
+
+pub mod mnemonic;
+pub use mnemonic::{
+    Mnemonic,
+    Bound,
+};
+pub mod basic_block;
+pub use basic_block::{
+    BasicBlock,
+};
+
+pub mod function;
+pub use function::{
+    Function,
+    ControlFlowTarget,
+    ControlFlowRef,
+    ControlFlowGraph,
+};
+
+pub mod program;
+pub use program::{
+    Program,
+    CallTarget,
+    CallGraph,
+    CallGraphRef,
+    DisassembleEvent,
+};
+
+pub mod project;
+pub use project::Project;
+
+pub mod region;
+pub use region::{
+    Region,
+    Regions,
+};
+
+pub mod layer;
+pub use layer::{
+    Layer,
+    OpaqueLayer,
+    LayerIter,
+};
+
 pub mod result;
+pub use result::Result;
+
+pub mod target;
+pub use target::Target;
+
+//pub mod dataflow;
+//pub mod abstractinterp;
 
 // disassembler
 pub mod avr;

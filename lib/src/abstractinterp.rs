@@ -55,6 +55,7 @@ pub trait Avalue: Clone + PartialEq + Eq + Hash + Debug + Encodable + Decodable 
     fn narrow(&self,&Self) -> Self;
     fn combine(&self,&Self) -> Self;
     fn widen(&self,&Self) -> Self;
+    fn narrow(&self,&Self) -> Self;
     fn more_exact(&self,&Self) -> bool;
     fn initial() -> Self;
 }
