@@ -170,6 +170,7 @@ pub mod codegen;
 pub mod target;
 pub mod dataflow;
 pub mod abstractinterp;
+pub mod result;
 
 // disassembler
 pub mod avr;

@@ -19,12 +19,12 @@
 use std::path::Path;
 use std::collections::HashMap;
 use std::fs::File;
-use std::borrow::Cow;
 
 use program::{CallTarget,Program,CallGraphRef};
 use region::{Region,Regions};
 use function::{Function};
 use target::Target;
+use result::Result;
 use pe;
 
 use uuid::Uuid;
@@ -54,19 +54,19 @@ impl Project {
         }
     }
 
-    pub fn open(p: &Path) -> Result<Project,Cow<str>> {
+    pub fn open(p: &Path) -> Result<Project> {
         let fd = match File::open(p) {
             Ok(fd) => fd,
-            Err(e) => return Err(Cow::Owned(format!("failed to open file: {:?}",e)))
+            Err(e) => return Err(format!("failed to open file: {:?}",e).into())
         };
 
         let mut z = ZlibDecoder::new(fd);
         let mut rmp = Decoder::new(&mut z);
-        let res: Result<Project,_> = <Project as Decodable>::decode(&mut rmp);
+        let res = <Project as Decodable>::decode(&mut rmp);
 
         match res {
             Ok(p) => Ok(p),
-            Err(_) => Err(Cow::Borrowed("session encoding failed"))
+            Err(_) => Err("session encoding failed".into())
         }
     }
 
@@ -148,18 +148,14 @@ impl Project {
         None
     }
 
-    pub fn snapshot(&self,p: &Path) -> Result<(),Cow<str>> {
-        let fd = try!(match File::create(p) {
-            Ok(fd) => Ok(fd),
-            Err(e) => Err(Cow::Owned(format!("failed to open save file: {:?}",e)))
-        });
-
+    pub fn snapshot(&self,p: &Path) -> Result<()> {
+        let fd = try!(File::create(p));
         let mut z = ZlibEncoder::new(fd,Compression::Default);
         let mut enc = Encoder::new(&mut z);
 
         match self.encode(&mut enc) {
             Ok(()) => Ok(()),
-            Err(_) => Err(Cow::Borrowed("failed to write to save file"))
+            Err(_) => Err("failed to write to save file".into())
         }
     }
 }

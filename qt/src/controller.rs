@@ -16,78 +16,88 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+use std::sync::{
+    PoisonError,
+    RwLock,
+    RwLockReadGuard,
+    RwLockWriteGuard,
+};
+use std::collections::BTreeMap;
+use std::path::{PathBuf,Path};
+use std::iter::FromIterator;
+use std::ops::DerefMut;
+
 use libc::c_int;
-use std::sync::RwLock;
+use qmlrs::{ffi,MetaObject,Variant,Object,ToQVariant,unpack_varlist};
+use rustc_serialize::{json,Encodable};
+use tempdir::TempDir;
+use std::error::Error;
+use std::convert::Into;
 
 use panopticon::project::Project;
-use qmlrs::{ffi,MetaObject,Variant,Object,ToQVariant,unpack_varlist};
+use panopticon::result::{
+    Result,
+};
 
-lazy_static! {
-    pub static ref PROJECT: RwLock<Option<Project>> = RwLock::new(None);
-}
+use project;
 
 extern "C" fn controller_slot(this: *mut ffi::QObject, id: c_int, a: *const ffi::QVariantList, ret: *mut ffi::QVariant) {
-    let mut obj = Object::from_ptr(this);
     let args = unpack_varlist(a);
 
     match (id as isize,args.len()) {
         // State transitions: NEW -> SYNC
-        (CREATE_RAW_PROJECT,2) => ::state::create_raw_project(&args[0],&args[1],&mut obj).to_qvariant(ret),
-        (CREATE_ELF_PROJECT,1) => ::state::create_elf_project(&args[0],&mut obj).to_qvariant(ret),
-        (CREATE_MOS6502_PROJECT,1) => ::state::create_mos6502_project(&args[0],&mut obj).to_qvariant(ret),
-        (OPEN_PROJECT,1) => ::state::open_project(&args[0],&mut obj).to_qvariant(ret),
+        (CREATE_RAW_PROJECT,2) => project::create_raw_project(&args[0],&args[1]).to_qvariant(ret),
+        (CREATE_ELF_PROJECT,1) => project::create_elf_project(&args[0]).to_qvariant(ret),
+        (CREATE_MOS6502_PROJECT,1) => project::create_mos6502_project(&args[0]).to_qvariant(ret),
+        (OPEN_PROJECT,1) => project::open_project(&args[0]).to_qvariant(ret),
 
         // State transition: DIRTY -> SYNC
-        (SNAPSHOT_PROJECT,1) => ::state::snapshot_project(&args[0],&mut obj).to_qvariant(ret),
+        (SNAPSHOT_PROJECT,1) => project::snapshot_project(&args[0]).to_qvariant(ret),
 
         // Getter in SYNC & DIRTY state
         (FUNCTION_INFO,1) => ::function::metainfo(&args[0]).to_qvariant(ret),
         (FUNCTION_CFG,1) => ::function::control_flow_graph(&args[0]).to_qvariant(ret),
-        (SUGIYAMA_LAYOUT,5) => ::function::layout(&args[0],&args[1],&args[2],&args[3],&args[4],&mut obj).to_qvariant(ret),
+        (SUGIYAMA_LAYOUT,5) => ::function::layout(&args[0],&args[1],&args[2],&args[3],&args[4]).to_qvariant(ret),
 
         // Stateless getter
         (ALL_TARGETS,0) => ::function::targets().to_qvariant(ret),
         (READ_DIRECTORY,1) => ::function::read_directory(&args[0]).to_qvariant(ret),
 
         // State transitions: SYNC -> DIRTY or DIRTY -> DIRTY
-        (SET_COMMENT,3) => ::function::comment(&args[0],&args[1],&args[2],&mut obj).to_qvariant(ret),
-        (SET_NAME,2) => ::function::rename(&args[0],&args[1],&mut obj).to_qvariant(ret),
+        (SET_COMMENT,3) => ::function::comment(&args[0],&args[1],&args[2]).to_qvariant(ret),
+        (SET_NAME,2) => ::function::rename(&args[0],&args[1]).to_qvariant(ret),
 
         _ => panic!("Unknown controller call id '{}' with {} arguments.",id,args.len())
     }
 }
 
-pub const STATE_CHANGED: isize = 0;
-pub const DIRTY_CHANGED: isize = 1;
-pub const PATH_CHANGED: isize = 2;
+const STATE_CHANGED: isize = 0;
+const PATH_CHANGED: isize = 1;
 
-pub const DISCOVERED_FUNCTION: isize = 3;
-pub const STARTED_FUNCTION: isize = 4;
-pub const FINISHED_FUNCTION: isize = 5;
+pub const DISCOVERED_FUNCTION: isize = 2;
+pub const STARTED_FUNCTION: isize = 3;
+pub const FINISHED_FUNCTION: isize = 4;
 
-pub const LAYOUTED_FUNCTION: isize = 6;
-pub const CHANGED_FUNCTION: isize = 7;
+pub const LAYOUTED_FUNCTION: isize = 5;
+pub const CHANGED_FUNCTION: isize = 6;
 
-pub const CREATE_RAW_PROJECT: isize = 8;
-pub const CREATE_ELF_PROJECT: isize = 9;
-pub const CREATE_MOS6502_PROJECT: isize = 10;
+pub const CREATE_RAW_PROJECT: isize = 7;
+pub const CREATE_ELF_PROJECT: isize = 8;
+pub const CREATE_MOS6502_PROJECT: isize = 9;
 
-pub const OPEN_PROJECT: isize = 11;
+pub const OPEN_PROJECT: isize = 10;
 
-pub const START: isize = 12;
-pub const DONE: isize = 13;
+pub const SET_COMMENT: isize = 11;
+pub const SET_NAME: isize = 12;
 
-pub const SET_COMMENT: isize = 14;
-pub const SET_NAME: isize = 15;
+pub const SNAPSHOT_PROJECT: isize = 13;
 
-pub const SNAPSHOT_PROJECT: isize = 16;
+pub const FUNCTION_INFO: isize = 14;
+pub const FUNCTION_CFG: isize = 15;
+pub const ALL_TARGETS: isize = 16;
+pub const READ_DIRECTORY: isize = 17;
 
-pub const FUNCTION_INFO: isize = 17;
-pub const FUNCTION_CFG: isize = 18;
-pub const ALL_TARGETS: isize = 19;
-pub const READ_DIRECTORY: isize = 20;
-
-pub const SUGIYAMA_LAYOUT: isize = 21;
+pub const SUGIYAMA_LAYOUT: isize = 18;
 
 
 pub extern "C" fn create_singleton(_: *mut ffi::QQmlEngine, _: *mut ffi::QJSEngine) -> *mut ffi::QObject {
@@ -99,9 +109,6 @@ pub extern "C" fn create_singleton(_: *mut ffi::QQmlEngine, _: *mut ffi::QJSEngi
 
     assert_eq!(metaobj.add_signal("savePathChanged()"),PATH_CHANGED);
     metaobj.add_property("savePath","QString",Some("savePathChanged()"));
-
-    assert_eq!(metaobj.add_signal("dirtyChanged()"),DIRTY_CHANGED);
-    metaobj.add_property("dirty","int",Some("dirtyChanged()"));
 
     // WORKING signals
     assert_eq!(metaobj.add_signal("discoveredFunction(QString)"),DISCOVERED_FUNCTION);
@@ -117,12 +124,6 @@ pub extern "C" fn create_singleton(_: *mut ffi::QQmlEngine, _: *mut ffi::QJSEngi
     assert_eq!(metaobj.add_method("createElfProject(QString)","QString"),CREATE_ELF_PROJECT);
     assert_eq!(metaobj.add_method("createMos6502Project(QString)","QString"),CREATE_MOS6502_PROJECT);
     assert_eq!(metaobj.add_method("openProject(QString)","QString"),OPEN_PROJECT);
-
-    // state = READY -> WORKING
-    assert_eq!(metaobj.add_method("start()","QString"),START);
-
-    // state = WORKING -> DONE
-    assert_eq!(metaobj.add_method("done()","QString"),DONE);
 
     // state = (WORKING,DONE), dirty = -> true
     assert_eq!(metaobj.add_method("setComment(QString,int,QString)","QString"),SET_COMMENT);
@@ -145,9 +146,181 @@ pub extern "C" fn create_singleton(_: *mut ffi::QQmlEngine, _: *mut ffi::QJSEngi
 
     obj.set_property("state",Variant::String("NEW".to_string()));
     obj.emit(STATE_CHANGED,&[]);
-    obj.set_property("dirty",Variant::I64(0));
-    obj.emit(DIRTY_CHANGED,&[]);
     obj.set_property("savePath",Variant::String("".to_string()));
     obj.emit(PATH_CHANGED,&[]);
+
+    assert!(Controller::instantiate_singleton(metaobj,Object::from_ptr(obj.as_ptr())).is_ok());
+
     obj.as_ptr()
+}
+
+#[derive(RustcEncodable)]
+pub struct Return<T: Encodable> {
+    status: String,
+    payload: T,
+}
+
+pub fn return_json<T: Encodable>(r: Result<T>) -> String {
+    match r {
+        Ok(t) => json::encode(&Return::<T>{ status: "ok".to_string(), payload: t }),
+        Err(e) => json::encode(&BTreeMap::from_iter(vec![("status".to_string(),"err".to_string()),
+                                                        ("error".to_string(),e.description().to_string())])),
+    }.unwrap_or(format!("{{ \"status\": \"err\", \"error\": \"Failed to render JSON response\"}}"))
+}
+
+lazy_static! {
+    pub static ref CONTROLLER: RwLock<Controller> = RwLock::new(Controller::Empty);
+}
+
+pub enum Controller {
+    Empty,
+    New{
+        //metaObject: MetaObject,
+        singletonObject: Object,
+    },
+    Set{
+        //metaObject: MetaObject,
+        singletonObject: Object,
+        project: Project,
+        backing_file: PathBuf,
+        is_dirty: bool,
+    },
+}
+
+pub trait ToVariant {
+    fn to_variant(self) -> Variant;
+}
+
+impl ToVariant for i64 {
+    fn to_variant(self) -> Variant {
+        Variant::I64(self)
+    }
+}
+
+impl ToVariant for String {
+    fn to_variant(self) -> Variant {
+        Variant::String(self)
+    }
+}
+
+impl Controller {
+    pub fn instantiate_singleton(_: MetaObject, s: Object) -> Result<()> {
+        let mut guard = try!(CONTROLLER.write());
+        let is_empty = if let &Controller::Empty = &*guard { true } else { false };
+
+        if is_empty {
+            *guard = Controller::New{
+                //metaObject: m,
+                singletonObject: s,
+            };
+
+            Ok(())
+        } else {
+            Err("Tried to instantiate another singleton".into())
+        }
+    }
+
+    pub fn read<A,F: FnOnce(&Project) -> A>(f: F) -> Result<A> {
+        let guard = try!(CONTROLLER.read());
+        if let &Controller::Set{ ref project,.. } = &*guard {
+            Ok(f(project))
+        } else {
+            Err("Controller in wrong state (read)".into())
+        }
+    }
+
+    pub fn modify<A,F: FnOnce(&mut Project) -> A>(f: F) -> Result<A> {
+        let mut guard = try!(CONTROLLER.write());
+        if let &mut Controller::Set{ ref mut project, ref mut is_dirty,.. } = &mut *guard {
+            let ret: Result<A> = Ok(f(project));
+
+            *is_dirty = true;
+            ret
+        } else {
+            Err("Controller in wrong state (modify)".into())
+        }
+    }
+
+    pub fn sync() -> Result<()> {
+        let mut guard = try!(CONTROLLER.write());
+        if let &mut Controller::Set{ ref mut project, ref mut is_dirty, ref backing_file,.. } = &mut *guard {
+            try!(project.snapshot(&Path::new(backing_file)));
+            *is_dirty = false;
+            Ok(())
+        } else {
+            Err("Controller in wrong state (sync)".into())
+        }
+    }
+
+    pub fn replace(p: Project,q: Option<&Path>) -> Result<()> {
+        let mut guard = try!(CONTROLLER.write());
+        let bf = if let Some(p) = q {
+            p.to_path_buf()
+        } else {
+            try!(TempDir::new_in(".","panop-backing")).path().to_path_buf()
+        };
+
+        match &mut *guard {
+            &mut Controller::Set{ ref mut project, ref mut is_dirty, ref mut backing_file,.. } => {
+                *project = p;
+                *is_dirty = false;
+                *backing_file = bf;
+                Ok(())
+            },
+            ctrl@&mut Controller::New{ ..} => {
+                let so = if let &mut Controller::New{ /*ref metaObject,*/ ref mut singletonObject,.. } = ctrl {
+                    singletonObject.as_ptr()
+                } else {
+                    unreachable!()
+                };
+
+                *ctrl = Controller::Set{
+                    //metaObject: metaObject,
+                    singletonObject: Object::from_ptr(so),
+                    project: p,
+                    is_dirty: false,
+                    backing_file: bf,
+                };
+                Ok(())
+            },
+            &mut Controller::Empty => {
+                Err("Controller is in empty state".into())
+            }
+        }
+    }
+
+    pub fn set_backing(p: &Path) -> Result<()> {
+        let mut guard = try!(CONTROLLER.write());
+        if let &mut Controller::Set{ ref mut is_dirty, ref mut backing_file,.. } = &mut *guard {
+            *backing_file = p.to_path_buf();
+            *is_dirty = true;
+            Ok(())
+        } else {
+            Err("Controller is in empty state".into())
+        }
+    }
+
+    pub fn emit0(s: isize) -> Result<()> {
+        let guard = try!(CONTROLLER.read());
+
+        match &*guard {
+            &Controller::New{ ref singletonObject } => singletonObject.emit(s,&[]),
+            &Controller::Set{ ref singletonObject,.. } => singletonObject.emit(s,&[]),
+            &Controller::Empty => return Err("Controller is in empty state".into()),
+        }
+
+        Ok(())
+    }
+
+    pub fn emit1<A: ToVariant + Clone>(s: isize, a: &A) -> Result<()> {
+        let guard = try!(CONTROLLER.read());
+
+        match &*guard {
+            &Controller::New{ ref singletonObject } => singletonObject.emit(s,&[a.clone().to_variant()]),
+            &Controller::Set{ ref singletonObject,.. } => singletonObject.emit(s,&[a.clone().to_variant()]),
+            &Controller::Empty => return Err("Controller is in empty state".into()),
+        }
+
+        Ok(())
+    }
 }
