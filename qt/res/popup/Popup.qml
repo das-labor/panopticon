@@ -38,7 +38,7 @@ Item {
 		spy.wait(9999999999999999999999999)
 		root.opacity = 0
 
-		return spy.signalArguments[0]
+		return spy.signalArguments[0][0]
 	}
 
 	id: root

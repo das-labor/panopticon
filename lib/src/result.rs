@@ -1,3 +1,21 @@
+/*
+ * Panopticon - A libre disassembler
+ * Copyright (C) 2016  Panopticon authors
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 use std::borrow::Cow;
 use std::error;
 use std::result;
@@ -15,6 +33,8 @@ use rustc_serialize::json::{
     EncoderError,
     DecoderError,
 };
+
+use byteorder as bo;
 
 #[derive(Debug)]
 pub struct Error(pub Cow<'static,str>);
@@ -74,5 +94,14 @@ impl From<DecoderError> for Error {
 impl From<EncoderError> for Error {
     fn from(e: EncoderError) -> Error {
         Error(Cow::Owned(format!("JSON encoder error: {}",e)))
+    }
+}
+
+impl From<bo::Error> for Error {
+    fn from(r: bo::Error) -> Error {
+        match r {
+            bo::Error::UnexpectedEOF => Error(Cow::Borrowed("Premature end of file")),
+            bo::Error::Io(e) => Error::from(e),
+        }
     }
 }

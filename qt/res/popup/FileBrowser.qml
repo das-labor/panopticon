@@ -27,31 +27,26 @@ import QtQuick.Layouts 1.2
 Popup {
 	id: browser
 
-	// NEW, OPEN or SAVE
-	property string mode: "NEW"
+	// READ or WRITE
+	property string mode: "READ"
 	property bool valid: false
 	property string willOverwrite: ""
-	property string selectedFile: ""
+	property string selectedFile: currentPath + "/" + currentFile
+	property string currentPath: ""
+	property string currentFile: ""
 
-	function newFile() {
-		browser.mode = "NEW"
-		return show()
+	function readFile() {
+		browser.mode = "READ";
+		return show();
 	}
 
-	function openFile() {
-		browser.mode = "OPEN"
-		return show()
-	}
-
-	function saveFile() {
-		browser.mode = "SAVE"
-		return show()
+	function writeFile() {
+		browser.mode = "WRITE"
+		return show();
 	}
 
 	buttons: {
-		if(browser.mode == "NEW") {
-			return [{"title":"Cancel","enabled":"true"}]
-		} else if (browser.mode == "OPEN") {
+		if (browser.mode == "READ") {
 			return [{"title":"Open","enabled":browser.valid},{"title":"Cancel","enabled":"true"}]
 		} else {
 			return [{
@@ -83,13 +78,11 @@ Popup {
 
 				if(res.status == "ok") {
 					res.payload.listing.sort(function(a,b) {
-						if(a.category == b.category) {
-							var r = a.name.localeCompare(b.name);
+						if(a.is_folder == b.is_folder) {
+							return a.name.localeCompare(b.name);
 						} else {
-							var ord = ["folder","file","misc"];
-							var r = ord.indexOf(a.category) - ord.indexOf(b.category);
+							return (a.is_folder ? 0 : 1) - (b.is_folder ? 0 : 1);
 						}
-						return r;
 					});
 
 					for(var i = 0; i < res.payload.listing.length; i++) {
@@ -100,6 +93,7 @@ Popup {
 
 					folderView.currentIndex = -1;
 					pathInput.text = res.payload.current
+					browser.currentPath = res.payload.current
 					upButton.parentPath = res.payload.parent
 				} else {
 					errorPopup.displayMessage("Failed to open directory: " + res.error);
@@ -110,6 +104,7 @@ Popup {
 
 			function mark(p) {
 				fileInput.text = p
+				browser.currentFile = p
 				console.log("mark() '" + p.toString() + "'");
 			}
 
@@ -157,16 +152,23 @@ Popup {
 					frameVisible: true
 
 					ListView {
+						property int titleWidth: 0;
+
 						id: folderView
 						anchors.fill: parent
 						model: ListModel {
 							id: folder
 						}
-						section.property: "category"
+						section.property: "is_folder"
 						section.criteria: ViewSection.FullString
 						delegate: Item {
-							height: shortLabel.height + detailsLabel.height
+							Behavior on height {
+								SmoothedAnimation { velocity: 300 }
+							}
+
 							width: parent.width
+							height: detailsLabel.y + detailsLabel.height
+							clip: true
 
 							Rectangle {
 								anchors.fill: parent
@@ -181,75 +183,78 @@ Popup {
 								visible: parent.ListView.isCurrentItem
 							}
 
-							Text {
-								x: 3
-								height: shortLabel.height
-								verticalAlignment: Text.AlignVCenter;
-								font.family: "FontAwesome"
-								text: {
-									if(category == "folder") {
-										return (parent.ListView.isCurrentItem ? "\uf07b" : "\uf114");
-									} else if(category == "file") {
-										return (parent.ListView.isCurrentItem ? "\uf15c" : "\uf0f6");
-									} else {
-										return (parent.ListView.isCurrentItem ? "\uf15b" : "\uf016");
-									}
-								}
-							}
-
-							Label {
-								id: shortLabel
-								x: 25
-								text: name
-								width: parent.width
-							}
-
 							RowLayout {
-								id: detailsLabel
-								anchors.top: shortLabel.bottom
-								anchors.topMargin: 3
-								anchors.bottomMargin: 5
-								x: 25
-								clip: true;
-								height: { parent.ListView.isCurrentItem && category != "folder" && browser.mode == "NEW" ? childrenRect.height + 5 : 0 }
-								width: parent.width
-								visible: browser.mode == "NEW"
+								id: entry
+								anchors.left: parent.left
+								anchors.right: parent.right
+								anchors.leftMargin: 3
+								anchors.rightMargin: 3
+								height: childrenRect.height
 
-								Behavior on height {
-									SmoothedAnimation { velocity: 300 }
-								}
-
-								Column {
-									Repeater {
-										model: details.length
-										Label {
-											text: details[index]
+								Text {
+									verticalAlignment: Text.AlignVCenter;
+									font.family: "FontAwesome"
+									font.pixelSize: 16
+									text: {
+										if(is_folder) {
+											return (parent.ListView.isCurrentItem ? "\uf07b" : "\uf114");
+										} else {
+											return (parent.ListView.isCurrentItem ? "\uf15b" : "\uf016");
 										}
 									}
 								}
 
-								Button {
-									Layout.alignment: (details.length === "0" ? Qt.AlignLeft : Qt.AlignRight)
-									Layout.rightMargin: 50
-									Layout.bottomMargin: 10
+								Label {
+									id: entryName
+									Layout.fillWidth: true
+									text: name
+								}
 
-									text: "Open"
-									menu: Menu {
-										MenuItem {
-											text: "...as ELF"
-										}
+								Label {
+									text: {
+										if(!is_folder) {
+											var res = JSON.parse(Panopticon.fileDetails(path));
+											if(res.status == "ok") {
+												if(res.payload.format == "elf") {
+													return "ELF";
+												} else if(res.payload.format == "panop") {
+													return "Panopticon Project";
+												} else if(res.payload.format == "pe") {
+													return "PE";
+												} else {
+													return "";
+												}
 
-										MenuItem {
-											text: "...as raw data"
+												return res.payload.format;
+											}
 										}
+										return ""
+									}
+								}
+							}
 
-										MenuItem {
-											text: "...as AVR image"
-										}
+							Column {
+								id: detailsLabel
+								anchors.top: entry.bottom
+								anchors.left: parent.left
+								anchors.right: parent.right
+								anchors.topMargin: 3
+								anchors.leftMargin: entryName.x
+								clip: true;
 
-										MenuItem {
-											text: "...as MOS 6502 image"
+								Repeater {
+									model: {
+										if(!is_folder) {
+											var res = JSON.parse(Panopticon.fileDetails(path));
+											if(res.status == "ok") {
+												return res.payload.info;
+											}
 										}
+										return [];
+									}
+									Label {
+										height: (parent.parent.ListView.isCurrentItem ? contentHeight : 0)
+										text: modelData
 									}
 								}
 							}
@@ -257,16 +262,21 @@ Popup {
 							MouseArea {
 								id: mousearea
 								hoverEnabled: true
-								anchors.fill: shortLabel
+								anchors.fill: entry
 
 								onDoubleClicked: {
+									folderView.currentIndex = index
+									if(is_folder) {
+										chdir(path);
+									} else {
+										mark(name)
+									}
 									fileInput.accept()
 								}
 
 								onClicked: {
-									console.log(JSON.stringify(details));
 									folderView.currentIndex = index
-									if(category == "folder") {
+									if(is_folder) {
 										chdir(path);
 									} else {
 										mark(name)
@@ -288,7 +298,7 @@ Popup {
 
 					function accept() {
 						if(browser.valid) {
-							if(browser.willOverwrite != "") {
+							if(browser.willOverwrite != "" && browser.mode == "WRITE") {
 								for(var i = 0; i < browser.children.length; i++) {
 									if(browser.children[i] != errorPopup &&
 										browser.children[i] != confirmOverwrite) {
@@ -303,11 +313,10 @@ Popup {
 								}
 
 								if(res == 0) {
-									browser.done(0);
+									return;
 								}
 							}
-							browser.selectedFile = pathInput.text + "/" + fileInput.text
-							browser.done(1)
+							browser.done(0)
 						}
 					}
 
@@ -322,13 +331,16 @@ Popup {
 
 						for(var i = 0; i < folder.count; i++) {
 							if(folder.get(i).name == text) {
-								if(folder.get(i).category == "folder") {
+								if(folder.get(i).is_folder) {
 									browser.valid = false;
 								} else {
 									browser.willOverwrite = text
+									browser.currentFile = text;
+									return;
 								}
 							}
 						}
+						browser.currentFile = text;
 					}
 				}
 			}

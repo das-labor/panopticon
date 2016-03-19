@@ -23,196 +23,43 @@ import QtQuick 2.1
 import Panopticon 1.0
 import "workspace";
 import "popup";
+import "action" as Act;
 
 ApplicationWindow {
 	id: mainWindow
 
 	property bool enabled: true
-
-	function saveStaleSession() {
-		if(Panopticon.state != "NEW" && Panopticon.dirty != 0) {
-			var res = JSON.parse(Panopticon.snapshotProject(Panopticon.savePath));
-
-			if (res.status == "ok") {
-				next()
-			} else {
-				errorPopup.displayError(res.error);
-			}
-		}
-	}
+	property bool workspaceLoaded: false
 
 	title: "Panopticon"
 	height: 1000
 	width: 1000
 	visible: true
 
-	ErrorPopup {
-		id: errorPopup
-	}
-
-	FileBrowser {
-		id: fileBrowser
-	}
-
 	menuBar: MenuBar {
 		Menu {
 			title: "Project"
 			id: projectMenu
 
-			Menu {
-				title: "New..."
-
-				MenuItem {
-					text: "...from ELF executable"
-					shortcut: "Ctrl+E"
-					enabled: Panopticon.state == "NEW"
-					onTriggered: {
-						fileBrowser.newFile();
-						saveStalePanopticon(function() {
-							fileNewDialog.next = function(path) {
-								var res = JSON.parse(Panopticon.createElfProject(path))
-
-								if(res.status == "ok") {
-									loader.setSource("workspace/Workspace.qml")
-								} else {
-									errorPopup.displayError(res.error);
-								}
-							};
-							fileNewDialog.open()
-						})
-					}
+			MenuItem {
+				action: Act.Open {
+					window: mainWindow
 				}
-
-				MenuItem {
-					text: "...from dump file"
-					shortcut: "Ctrl+A"
-					enabled: Panopticon.state == "NEW"
-					onTriggered: {
-						saveStalePanopticon(function() {
-							fileNewDialog.next = function(path) {
-								targetSelectionDialog.next = function(target) {
-									var res = JSON.parse(Panopticon.createRawProject(path,target));
-
-									if(res.status == "ok") {
-										loader.setSource("workspace/Workspace.qml")
-									} else {
-										errorPopup.displayError(res.error);
-									}
-								};
-
-								targetSelectionDialog.open();
-								targetSelectionDialog.width = targetSelectionDialog.contentItem.width
-								targetSelectionDialog.height = targetSelectionDialog.contentItem.height
-								targetSelectionDialog.x = (mainWindow.width - targetSelectionDialog.width) / 2
-								targetSelectionDialog.y = (mainWindow.height - targetSelectionDialog.height) / 2
-							}
-							fileNewDialog.open()
-						})
-					}
-				}
-
-				MenuItem {
-					text: "...from MOS-6502 binary image"
-					shortcut: "Ctrl+M"
-					enabled: Panopticon.state == "NEW"
-					onTriggered: {
-						saveStalePanopticon(function() {
-							fileNewDialog.next = function(path) {
-								var res = JSON.parse(Panopticon.createMos6502Project(path))
-
-								if(res.status == "ok") {
-									loader.setSource("workspace/Workspace.qml")
-								} else {
-									errorPopup.displayError(res.error);
-								}
-							};
-							fileNewDialog.open()
-						})
-					}
-				}
-
-
 			}
 
 			MenuItem {
-				text: "Open"
-				shortcut: "Ctrl+O"
-				enabled: Panopticon.state == "NEW"
-				onTriggered: {
-					fileBrowser.openFile();
-					saveStalePanopticon(fileOpenDialog.open);
+				action: Act.SaveAs {
+					window: mainWindow
 				}
-			}
-			MenuItem {
-				text: "Save"
-				shortcut: "Ctrl+S"
-				enabled: Panopticon.dirty != 0 && Panopticon.state != "NEW"
-				onTriggered: {
-					if(mainWindow.savePath == "") {
-						if(fileBrowser.saveFile() == 1) {
-							mainWindow.savePath = fileBrowser.selectedFile;
-						}
-					}
-
-					if(mainWindow.savePath != "") {
-						var res = JSON.parse(Panopticon.snapshotProject(mainWindow.savePath));
-
-						if(res.status == "err") {
-							errorPopup.displayError(res.error);
-						}
-					}
-				}
-			}
-			MenuItem {
-				text: "Save As"
-				shortcut: "Ctrl+Shift+S"
-				enabled: Panopticon.state != "NEW"
-				onTriggered: { fileSaveDialog.open() }
 			}
 
 			MenuSeparator {}
 
 			MenuItem {
-				text: "Quit"
-				shortcut: "Ctrl+Q"
-				onTriggered: {
-					saveStalePanopticon(Qt.quit)
+				action: Act.Quit {
+					window: mainWindow
 				}
 			}
-		}
-	}
-
-	Dialog {
-		id: targetSelectionDialog
-		title: "Select target architecture..."
-		standardButtons: StandardButton.Ok | StandardButton.Cancel
-
-		property var next: function() {}
-
-		RowLayout {
-			Label {
-				text: "Architecture:"
-			}
-
-			ComboBox {
-				id: targetComboBox
-				Layout.preferredWidth: 150
-				model: {
-					console.log(Panopticon.allTargets());
-					var res = JSON.parse(Panopticon.allTargets());
-
-					if(res.status == "ok") {
-						return res.payload;
-					} else {
-						console.log(res.error);
-						return [];
-					}
-				}
-			}
-		}
-
-		onAccepted: {
-			next(targetComboBox.currentText);
 		}
 	}
 
@@ -286,11 +133,10 @@ ApplicationWindow {
 		}
 	}*/
 
-	Loader {
-		focus: true
-		id: loader
-		anchors.fill: parent
-		sourceComponent: Item {
+	Component {
+		id: welcomeScreen
+
+		Item {
 			anchors.fill: parent
 
 			Item {
@@ -317,20 +163,36 @@ ApplicationWindow {
 		}
 	}
 
-	Component.onCompleted: {
-		if(Panopticon.state != "NEW") {
-			loader.setSource("workspace/Workspace.qml")
-		}
+	Loader {
+		focus: true
+		id: loader
+		anchors.fill: parent
+		sourceComponent: welcomeScreen
 	}
 
-	onEnabledChanged: {
-		for(var i = 0; i < mainWindow.children.length; i++) {
-			if(mainWindow.children[i] != errorPopup &&
-			   mainWindow.children[i] != fileBrowser &&
-			   mainWindow.children[i] != saveStalePopup)
-			{
-				mainWindow.children[i].enabled = enabled;
+	Component.onCompleted: {
+		Panopticon.onStateChanged.connect(function() {
+			switch(Panopticon.state) {
+				case "":
+				case "NEW": {
+					workspaceLoaded = false;
+					loader.sourceComponent = welcomeScreen;
+					break;
+				}
+
+				case "SYNC":
+				case "DIRTY": {
+					if(!mainWindow.workspaceLoaded) {
+						workspaceLoaded = true;
+						loader.setSource("workspace/Workspace.qml")
+					}
+					break;
+				}
+
+				default: {
+					console.error("Unknown state: " + Panopticon.state);
+				}
 			}
-		}
+		})
 	}
 }

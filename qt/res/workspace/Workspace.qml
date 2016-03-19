@@ -34,20 +34,6 @@ Item {
 		standardButtons: StandardButton.Ok
 	}
 
-	Timer {
-		id: timer;
-		interval: 2
-		running: false;
-		onTriggered: {
-			var res = JSON.parse(Panopticon.start())
-
-			if(res.status == "err") {
-				errorDialog.text = res.error;
-				errorDialog.open()
-			}
-		}
-	}
-
 	Component.onCompleted: {
 		Panopticon.changedFunction.connect(function(uu) {
 			if (uu == selection) {
@@ -69,8 +55,6 @@ Item {
 				}
 			}
 		});
-
-		timer.running = true;
 	}
 
 	FunctionTable {

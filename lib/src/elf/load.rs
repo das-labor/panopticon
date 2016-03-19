@@ -27,13 +27,14 @@ use region::Region;
 use mnemonic::Bound;
 use target::Target;
 use value::Rvalue;
+use result::Result;
 
 use graph_algos::MutableGraphTrait;
 use uuid::Uuid;
 use elf::*;
 use elf::parse::*;
 
-pub fn load(p: &Path) -> Result<Project,Error> {
+pub fn load(p: &Path) -> Result<Project> {
     let mut fd = File::open(p).ok().unwrap();
     let ehdr = try!(Ehdr::read(&mut fd));
     let mut reg = Region::undefined("base".to_string(), 0x1000000000000);
@@ -47,19 +48,19 @@ pub fn load(p: &Path) -> Result<Project,Error> {
                         if fd.seek(SeekFrom::Start(ph.offset)).ok() == Some(ph.offset) {
                             let mut buf = vec![0u8; ph.filesz as usize];
                             if let Err(_) = fd.read(&mut buf) {
-                                return Err(Error::new("Failed to read segment"));
+                                return Err("Failed to read segment".into());
                             }
 
                             reg.cover(Bound::new(ph.vaddr,ph.vaddr + ph.filesz),Layer::wrap(buf));
                         } else {
-                            return Err(Error::new("Failed to read segment"));
+                            return Err("Failed to read segment".into());
                         }
                     },
                     SegmentType::Interp => {
                         if fd.seek(SeekFrom::Start(ph.offset)).ok() == Some(ph.offset) {
                             let mut interp = vec![0u8; ph.filesz as usize];
                             if let Err(_) = fd.read(&mut interp) {
-                                return Err(Error::new("Failed to read interpreter path"));
+                                return Err("Failed to read interpreter path".into());
                             }
 
                             match String::from_utf8(interp) {
@@ -67,7 +68,7 @@ pub fn load(p: &Path) -> Result<Project,Error> {
                                 Err(_) => println!("load intepreter (encoding error)"),
                             }
                         } else {
-                            return Err(Error::new("Failed to read interpreter path"));
+                            return Err("Failed to read interpreter path".into());
                         }
                     },
                     _ => {},
@@ -90,6 +91,6 @@ pub fn load(p: &Path) -> Result<Project,Error> {
 
         Ok(proj)
     } else {
-        Err(Error::new("Unknown ELF machine type"))
+        Err("Unknown ELF machine type".into())
     }
 }

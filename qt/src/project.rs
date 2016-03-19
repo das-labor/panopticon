@@ -20,7 +20,7 @@ use panopticon::project::Project;
 use panopticon::function::Function;
 use panopticon::program::{Program,CallTarget};
 use panopticon::elf;
-use panopticon::mos;
+use panopticon::pe;
 use panopticon::target::Target;
 use panopticon::value::Rvalue;
 use panopticon::result::Result;
@@ -41,16 +41,28 @@ use controller::{
 };
 
 /// Prepares to disassemble a memory image.
-pub fn create_raw_project(_path: &Variant, _tgt: &Variant) -> Variant {
+pub fn create_raw_project(_path: &Variant, _tgt: &Variant, _base: &Variant, _entry: &Variant) -> Variant {
     Variant::String(if let &Variant::String(ref s) = _path {
         if let &Variant::String(ref tgt_s) = _tgt {
             if let Some(tgt) = Target::for_name(tgt_s) {
-                match Project::raw(tgt,&Path::new(s)) {
-                    Some(proj) => return_json(Controller::replace(proj,None)),
-                    None => return_json::<()>(Err("Can't open project: Unknown error".into())),
+                if let &Variant::I64(ref base) = _base {
+                    if let &Variant::I64(ref entry) = _entry {
+                        match Project::raw(&Path::new(s),tgt,*base as u64,if *entry >= 0 { Some(*entry as u64) } else { None }) {
+                            Some(proj) => {
+                                let ret = return_json(Controller::replace(proj,None));
+                                spawn_disassembler();
+                                ret
+                            },
+                            None => return_json::<()>(Err("Can't open project: Unknown error".into())),
+                        }
+                    } else {
+                        return_json::<()>(Err("4th argument is not an integer".into()))
+                    }
+                } else {
+                    return_json::<()>(Err("3rd argument is not an integer".into()))
                 }
             } else {
-                return_json::<()>(Err("No target".into()))
+                return_json::<()>(Err("No such target".into()))
             }
         } else {
             return_json::<()>(Err("2nd argument is not a string".into()))
@@ -76,15 +88,16 @@ pub fn create_elf_project(_path: &Variant) -> Variant {
     })
 }
 
-pub fn create_mos6502_project(_path: &Variant) -> Variant {
+/// Prepares to disassemble an PE file.
+pub fn create_pe_project(_path: &Variant) -> Variant {
     Variant::String(if let &Variant::String(ref s) = _path {
-        match mos::load::load(Path::new(s)) {
-            Ok(proj) => {
+        match pe::pe(Path::new(s)) {
+            Some(proj) => {
                 let ret = return_json(Controller::replace(proj,None));
                 spawn_disassembler();
                 ret
             },
-            Err(_) => return_json::<()>(Err("Failed to read MOS-6502 image file".into())),
+            None => return_json::<()>(Err("Failed to read PE file".into())),
         }
     } else {
         return_json::<()>(Err("1st argument is not a string".into()))
@@ -109,7 +122,9 @@ pub fn open_project(_path: &Variant) -> Variant {
 
 pub fn snapshot_project(_path: &Variant) -> Variant {
     Variant::String(if let &Variant::String(ref s) = _path {
-        return_json(Controller::sync())
+        return_json(Controller::set_backing(&Path::new(s)).and_then(|_| {
+            Controller::sync()
+        }))
     } else {
         return_json::<()>(Err("1st argument is not a string".into()))
     })

@@ -25,12 +25,20 @@ use panopticon::result::{
     Error,
     Result,
 };
+use panopticon::elf;
 
 use std::hash::{Hash,Hasher,SipHasher};
 use std::thread;
 use std::fs;
 use std::path::Path;
 use std::iter::FromIterator;
+use std::collections::HashMap;
+use std::io::{
+    SeekFrom,
+    Seek,
+    Read,
+};
+
 use qmlrs::{Object,Variant};
 use graph_algos::{
     VertexListGraphTrait,
@@ -40,7 +48,7 @@ use graph_algos::{
 };
 use uuid::Uuid;
 use rustc_serialize::json;
-use std::collections::HashMap;
+use byteorder::{BigEndian,ReadBytesExt};
 use controller::{
     LAYOUTED_FUNCTION,
     CHANGED_FUNCTION,
@@ -271,8 +279,7 @@ pub fn control_flow_graph(arg: &Variant) -> Variant {
 struct DirectoryEntry {
     path: String,
     name: String,
-    category: String,
-    details: String,
+    is_folder: bool,
 }
 
 #[derive(Clone,RustcEncodable)]
@@ -299,12 +306,7 @@ pub fn read_directory(arg: &Variant) -> Variant {
                                     ret.push(DirectoryEntry{
                                         path: f.to_string(),
                                         name: s.to_string(),
-                                        category: if m.is_dir() {
-                                            "folder".to_string()
-                                        } else {
-                                            "misc".to_string()
-                                        },
-                                        details: "".to_string()
+                                        is_folder: m.is_dir(),
                                     });
                                 }
                             }
@@ -322,6 +324,62 @@ pub fn read_directory(arg: &Variant) -> Variant {
         }
     } else {
         return_json::<()>(Err("1st argument is not a string".into()))
+    })
+}
+
+#[derive(RustcEncodable)]
+struct FileDetails {
+    format: String, // elf, pe, raw
+    info: Vec<String>,
+}
+
+pub fn file_details(arg: &Variant) -> Variant {
+    Variant::String(if let &Variant::String(ref p) = arg {
+        let path = Path::new(p);
+        let ret = fs::File::open(path).and_then(|mut fd| {
+            if let Ok(id) = elf::parse::Ident::read(&mut fd) {
+                Ok(FileDetails{
+                    format: "elf".to_string(),
+                    info: vec![format!("{:?}, {:?}",id.class,id.data)],
+                })
+            } else {
+                let mut buf = [0u8;2];
+
+                try!(fd.seek(SeekFrom::Start(0)));
+                try!(fd.read(&mut buf));
+
+                if buf == [0x4d,0x5a] {
+                    Ok(FileDetails{
+                        format: "pe".to_string(),
+                        info: vec!["PE".to_string()],
+                    })
+                } else {
+                    let mut magic = [0u8;10];
+
+                    try!(fd.seek(SeekFrom::Start(0)));
+                    if try!(fd.read(&mut magic)) == 10 && magic == *b"PANOPTICON" {
+                        let version = try!(fd.read_u32::<BigEndian>());
+
+                        Ok(FileDetails{
+                            format: "panop".to_string(),
+                            info: vec![format!("Version {}",version)],
+                        })
+                    } else {
+                        Ok(FileDetails{
+                            format: "raw".to_string(),
+                            info: vec![],
+                        })
+                    }
+                }
+            }
+        });
+
+        match ret {
+            Ok(f) => return_json(Ok(f)),
+            Err(err) => return_json::<FileDetails>(Err(err.into())),
+        }
+    } else {
+        return_json::<FileDetails>(Err("1st argument is not a string".into()))
     })
 }
 

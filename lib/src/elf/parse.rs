@@ -1,6 +1,6 @@
 /*
  * Panopticon - A libre disassembler
- * Copyright (C) 2015  Panopticon authors
+ * Copyright (C) 2015,2016  Panopticon authors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,16 +22,7 @@ use std::convert::From;
 use num::traits::ToPrimitive;
 use byteorder as bo;
 
-use elf::Error;
-
-impl From<bo::Error> for Error {
-    fn from(r: bo::Error) -> Error {
-        match r {
-            bo::Error::UnexpectedEOF => Error::new("Premature end of file"),
-            bo::Error::Io(e) => Error::new_owned(format!("{:?}",e)),
-        }
-    }
-}
+use result::Result;
 
 pub trait ElfClass {
     type Addr: ToPrimitive + Copy + Debug + PartialEq;
@@ -153,10 +144,10 @@ pub struct Ehdr {
 }
 
 impl Ehdr {
-    pub fn read<R: bo::ReadBytesExt + Seek>(fd: &mut R) -> Result<Ehdr,Error> {
+    pub fn read<R: bo::ReadBytesExt + Seek>(fd: &mut R) -> Result<Ehdr> {
         let id = try!(Ident::read(fd));
 
-        fn read<C: ElfClass + ReadPhdr,B: bo::ByteOrder,R: bo::ReadBytesExt + Seek>(fd: &mut R, ident: Ident) -> Result<Ehdr,Error> {
+        fn read<C: ElfClass + ReadPhdr,B: bo::ByteOrder,R: bo::ReadBytesExt + Seek>(fd: &mut R, ident: Ident) -> Result<Ehdr> {
             let file_type = try!(C::read_half::<B,R>(fd));
             let machine = try!(C::read_half::<B,R>(fd));
             let version = try!(C::read_word::<B,R>(fd));
@@ -181,7 +172,7 @@ impl Ehdr {
                     phdrs.push(try!(<C as ReadPhdr>::read::<B,R>(fd)));
 
                 } else {
-                    return Err(Error::new("Premature end of file while reading program headers"));
+                    return Err("Premature end of file while reading program headers".into());
                 }
             }
 
@@ -192,7 +183,7 @@ impl Ehdr {
                     shdrs.push(try!(Shdr::read::<C,B,R>(fd)));
 
                 } else {
-                    return Err(Error::new("Premature end of file while reading segment headers"));
+                    return Err("Premature end of file while reading segment headers".into());
                 }
             }
 
@@ -213,12 +204,12 @@ impl Ehdr {
             (&Class::ELF64,&Data::LittleEndian) => read::<Elf64,bo::LittleEndian,R>(fd,id),
             (&Class::ELF32,&Data::BigEndian) => read::<Elf32,bo::BigEndian,R>(fd,id),
             (&Class::ELF64,&Data::BigEndian) => read::<Elf64,bo::BigEndian,R>(fd,id),
-            _ => return Err(Error::new("Invalid byte order and/or ELF class")),
+            _ => return Err("Invalid byte order and/or ELF class".into()),
         };
 
         match maybe_ret {
             Ok(r) => Ok(r),
-            Err(_) => Err(Error::new("Parsing failed")),
+            Err(_) => Err("Parsing failed".into()),
         }
     }
 }
@@ -522,38 +513,38 @@ pub struct Ident {
 }
 
 impl Ident {
-    pub fn read<R: Read>(strm: &mut R) -> Result<Ident,Error> {
+    pub fn read<R: Read>(strm: &mut R) -> Result<Ident> {
         let mut e_ident = [0u8; 16];
 
         if let Err(_) = strm.read(&mut e_ident) {
-            return Err(Error::new("Failed to read ident"));
+            return Err("Failed to read ident".into());
         }
 
         if e_ident[0..4] != MAGIC {
-            return Err(Error::new("Invalid magic number"));
+            return Err("Invalid magic number".into());
         }
 
         if e_ident[EI_PAD..16].iter().any(|&x| x != 0) {
-            return Err(Error::new("Invalid padding"));
+            return Err("Invalid padding".into());
         }
 
         if e_ident[EI_VERSION] != 1 {
-            return Err(Error::new("Invalid ELF version"));
+            return Err("Invalid ELF version".into());
         }
 
         let cls = Class::new(e_ident[EI_CLASS]);
         if let Class::Unknown(_) = cls {
-            return Err(Error::new("Invalid file class"));
+            return Err("Invalid file class".into());
         }
 
         let dat = Data::new(e_ident[EI_DATA]);
         if let Data::Unknown(_) = dat {
-            return Err(Error::new("Invalid data encoding"));
+            return Err("Invalid data encoding".into());
         }
 
         let abi = ABI::new(e_ident[EI_OSABI]);
         if let ABI::Unknown(_) = abi {
-            return Err(Error::new("Invalid ABI"));
+            return Err("Invalid ABI".into());
         }
 
         Ok(Ident{
@@ -634,11 +625,11 @@ pub struct Phdr {
 }
 
 trait ReadPhdr {
-    fn read<B: bo::ByteOrder,R: bo::ReadBytesExt>(fd: &mut R) -> Result<Phdr,Error>;
+    fn read<B: bo::ByteOrder,R: bo::ReadBytesExt>(fd: &mut R) -> Result<Phdr>;
 }
 
 impl ReadPhdr for Elf32 {
-    fn read<B: bo::ByteOrder,R: bo::ReadBytesExt>(fd: &mut R) -> Result<Phdr,Error> {
+    fn read<B: bo::ByteOrder,R: bo::ReadBytesExt>(fd: &mut R) -> Result<Phdr> {
         let segtype = try!(Elf32::read_word::<B,R>(fd));
         let offset = try!(Elf32::read_off::<B,R>(fd));
         let vaddr = try!(Elf32::read_addr::<B,R>(fd));
@@ -662,7 +653,7 @@ impl ReadPhdr for Elf32 {
 }
 
 impl ReadPhdr for Elf64 {
-    fn read<B: bo::ByteOrder,R: bo::ReadBytesExt>(fd: &mut R) -> Result<Phdr,Error> {
+    fn read<B: bo::ByteOrder,R: bo::ReadBytesExt>(fd: &mut R) -> Result<Phdr> {
         let segtype = try!(Elf64::read_word::<B,R>(fd));
         let flags = try!(Elf64::read_word::<B,R>(fd));
         let offset = try!(Elf64::read_off::<B,R>(fd));
@@ -754,7 +745,7 @@ pub struct Shdr {
 }
 
 impl Shdr {
-    pub fn read<C: ElfClass,B: bo::ByteOrder,R: bo::ReadBytesExt>(fd: &mut R) -> Result<Shdr,Error> {
+    pub fn read<C: ElfClass,B: bo::ByteOrder,R: bo::ReadBytesExt>(fd: &mut R) -> Result<Shdr> {
         let name = try!(C::read_word::<B,R>(fd));
         let sectype = try!(C::read_word::<B,R>(fd));
         let flags = try!(C::read_yword::<B,R>(fd));

@@ -16,23 +16,5 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-use std::borrow::Cow;
-
 pub mod parse;
 pub mod load;
-
-#[derive(Debug)]
-pub struct Error {
-    pub msg: Cow<'static,str>
-}
-
-impl Error {
-    pub fn new(s: &'static str) -> Error {
-        Error{ msg: Cow::Borrowed(s) }
-    }
-
-    pub fn new_owned(s: String) -> Error {
-        Error{ msg: Cow::Owned(s) }
-    }
-}
-
