@@ -62,7 +62,7 @@ pub fn create_raw_project(_path: &Variant, _tgt: &Variant, _base: &Variant, _ent
                     return_json::<()>(Err("3rd argument is not an integer".into()))
                 }
             } else {
-                return_json::<()>(Err("No such target".into()))
+                return_json::<()>(Err(format!("No such target '{}'",tgt_s).into()))
             }
         } else {
             return_json::<()>(Err("2nd argument is not a string".into()))

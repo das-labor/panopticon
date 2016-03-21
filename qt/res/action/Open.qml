@@ -24,6 +24,7 @@ Action {
 	property var window: null
 	property var fileBrowser: Qt.createComponent("../popup/FileBrowser.qml");
 	property var errorPopup: Qt.createComponent("../popup/ErrorPopup.qml");
+	property var targetPopup: Qt.createComponent("../popup/TargetPopup.qml");
 
 	function displayError(msg) {
 		window.enabled = false;
@@ -65,53 +66,51 @@ Action {
 				if(res.status == "ok") {
 					switch(res.payload.format) {
 						case "raw": {
-							if(targetSelection.show() == 1) {
-								var res = Panopticon.createRawProject(
-									fb.selectedFile,
-									targetSelection.target,
-									targetSelection.base,
-									targetSelection.entry_point);
+							var tp = targetPopup.createObject(window);
 
-									if(res.status == "err") {
-										displayError(res.error);
-									}
-								}
-								break;
-							}
-							case "elf": {
-								var res = Panopticon.createElfProject(fb.selectedFile)
+							if(tp.show() == 0) {
+								var res = JSON.parse(tp.openFunction(fb.selectedFile));
+
 								if(res.status == "err") {
 									displayError(res.error);
 								}
-								break;
-							}
-							case "pe": {
-								var res = Panopticon.createPeProject(fb.selectedFile)
-								if(res.status == "err") {
-									displayError(res.error);
-								}
-								break;
-							}
-							case "panop": {
-								var res = Panopticon.openProject(fb.selectedFile)
-								if(res.status == "err") {
-									displayError(res.error);
-								}
-								break;
-							}
-							default: {
-								displayError("Internal error: Unknown format");
 								break;
 							}
 						}
-					} else {
-						displayError(res.error);
+						case "elf": {
+							var res = Panopticon.createElfProject(fb.selectedFile)
+							if(res.status == "err") {
+								displayError(res.error);
+							}
+							break;
+						}
+						case "pe": {
+							var res = Panopticon.createPeProject(fb.selectedFile)
+							if(res.status == "err") {
+								displayError(res.error);
+							}
+							break;
+						}
+						case "panop": {
+							var res = Panopticon.openProject(fb.selectedFile)
+							if(res.status == "err") {
+								displayError(res.error);
+							}
+							break;
+						}
+						default: {
+							displayError("Internal error: Unknown format");
+							break;
+						}
 					}
+				} else {
+					displayError(res.error);
 				}
-				window.enabled = true;
-			} catch(e) {
-				window.enabled = true;
-				throw e;
 			}
+			window.enabled = true;
+		} catch(e) {
+			window.enabled = true;
+			throw e;
 		}
 	}
+}
