@@ -72,11 +72,11 @@ struct Metainfo {
 /// The JSON looks like this:
 /// ```json
 /// {
-///     "type": "function", // or "symbol" or "todo"
-///     "name": "func_001", // not present if type is "todo"
-///     "uuid": arg,
-///     "entry_point": 0x1002,    // optional: entry point
-///     "calls": [          // outgoing calls
+///     "kind": "function",     // or "symbol" or "todo"
+///     "name": "func_001",     // not present if type is "todo"
+///     "uuid": <UUID>,
+///     "entry_point": 0x1002,  // optional: entry point
+///     "calls": [              // outgoing calls
 ///         <UUID>,
 ///         <UUID>,
 ///         ...

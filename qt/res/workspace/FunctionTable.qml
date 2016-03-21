@@ -50,7 +50,9 @@ Item {
 
 	Component.onCompleted: {
 		Panopticon.startedFunction.connect(function(uu) {
-			var res = JSON.parse(Panopticon.functionInfo(uu));
+			var _res = Panopticon.functionInfo(uu);
+			//console.log(_res);
+			var res = JSON.parse(_res);
 
 			if(res.status == "ok") {
 				var obj = res.payload;
@@ -72,12 +74,14 @@ Item {
 		});
 
 		Panopticon.discoveredFunction.connect(function(uu) {
-			var res = JSON.parse(Panopticon.functionInfo(uu));
+			var _res = Panopticon.functionInfo(uu);
+			//console.log(_res);
+			var res = JSON.parse(_res);
 
 			if(res.status == "ok") {
 				var obj = res.payload;
 
-				if(obj.type == "todo") {
+				if(obj.kind == "todo") {
 					obj.name = "<i>Todo</i>";
 				}
 
@@ -89,7 +93,9 @@ Item {
 		});
 
 		Panopticon.finishedFunction.connect(function(uu) {
-			var res = JSON.parse(Panopticon.functionInfo(uu));
+			var _res = Panopticon.functionInfo(uu);
+			//console.log(_res);
+			var res = JSON.parse(_res);
 
 			if(res.status == "ok") {
 				var obj = res.payload;
@@ -111,7 +117,9 @@ Item {
 		});
 
 		Panopticon.changedFunction.connect(function(uu) {
-			var res = JSON.parse(Panopticon.functionInfo(uu));
+			var _res = Panopticon.functionInfo(uu);
+			//console.log(_res);
+			var res = JSON.parse(_res);
 
 			if(res.status == "ok") {
 				var obj = res.payload;
@@ -133,7 +141,7 @@ Item {
 
 	ListModel {
 		function sortBy(a,b) {
-			return parseInt(a.start,10) < parseInt(b.start,10);
+			return parseInt(a.entry_point,10) < parseInt(b.entry_point,10);
 		}
 
 		id: functionModel
@@ -145,23 +153,22 @@ Item {
 
 			var qsort = function(left, right) {
 				if (left < right) {
-					var pivot = JSON.parse(JSON.stringify(get(right)));
+					var pivot = parseInt(get(right).entry_point);
 					var i = left - 1;
 					var j = right + 1;
 
 					while (true) {
 						do {
 							j -= 1;
-						} while (sortBy(pivot,get(j)));
+						} while (pivot < parseInt(get(j).entry_point));
 
 						do {
 							i += 1;
-						} while (sortBy(get(i),pivot));
+						} while (parseInt(get(i).entry_point) < pivot);
 
 						if (i < j) {
-							var t = JSON.parse(JSON.stringify(get(i)));
-							set(i,JSON.parse(JSON.stringify(get(j))));
-							set(j,t);
+							move(i,j,1);
+							move(j-1,i,1);
 						} else {
 							break;
 						}
@@ -188,7 +195,7 @@ Item {
 			width: 100
     }
     TableViewColumn {
-			role: "start"
+			role: "entry_point"
 			title: "Offset"
 			width: 100
 			delegate: Item {
