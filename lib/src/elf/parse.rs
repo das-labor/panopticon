@@ -17,6 +17,7 @@
  */
 
 use std::fmt::Debug;
+use std::io;
 use std::io::{Seek,SeekFrom,Read};
 use std::convert::From;
 use num::traits::ToPrimitive;
@@ -34,13 +35,13 @@ pub trait ElfClass {
     type Yword: ToPrimitive + Copy + Debug + PartialEq;
 
     fn class() -> Class;
-    fn read_addr<B: bo::ByteOrder, R: bo::ReadBytesExt>(fd: &mut R) -> bo::Result<Self::Addr>;
-    fn read_half<B: bo::ByteOrder, R: bo::ReadBytesExt>(fd: &mut R) -> bo::Result<Self::Half>;
-    fn read_off<B: bo::ByteOrder, R: bo::ReadBytesExt>(fd: &mut R) -> bo::Result<Self::Off>;
-    fn read_sword<B: bo::ByteOrder, R: bo::ReadBytesExt>(fd: &mut R) -> bo::Result<Self::Sword>;
-    fn read_word<B: bo::ByteOrder, R: bo::ReadBytesExt>(fd: &mut R) -> bo::Result<Self::Word>;
-    fn read_xword<B: bo::ByteOrder, R: bo::ReadBytesExt>(fd: &mut R) -> bo::Result<Self::Xword>;
-    fn read_yword<B: bo::ByteOrder, R: bo::ReadBytesExt>(fd: &mut R) -> bo::Result<Self::Yword>;
+    fn read_addr<B: bo::ByteOrder, R: bo::ReadBytesExt>(fd: &mut R) -> io::Result<Self::Addr>;
+    fn read_half<B: bo::ByteOrder, R: bo::ReadBytesExt>(fd: &mut R) -> io::Result<Self::Half>;
+    fn read_off<B: bo::ByteOrder, R: bo::ReadBytesExt>(fd: &mut R) -> io::Result<Self::Off>;
+    fn read_sword<B: bo::ByteOrder, R: bo::ReadBytesExt>(fd: &mut R) -> io::Result<Self::Sword>;
+    fn read_word<B: bo::ByteOrder, R: bo::ReadBytesExt>(fd: &mut R) -> io::Result<Self::Word>;
+    fn read_xword<B: bo::ByteOrder, R: bo::ReadBytesExt>(fd: &mut R) -> io::Result<Self::Xword>;
+    fn read_yword<B: bo::ByteOrder, R: bo::ReadBytesExt>(fd: &mut R) -> io::Result<Self::Yword>;
 }
 
 pub struct Elf32;
@@ -58,31 +59,31 @@ impl ElfClass for Elf32 {
         Class::ELF32
     }
 
-    fn read_addr<B: bo::ByteOrder, R: bo::ReadBytesExt>(fd: &mut R) -> bo::Result<Self::Addr> {
+    fn read_addr<B: bo::ByteOrder, R: bo::ReadBytesExt>(fd: &mut R) -> io::Result<Self::Addr> {
         fd.read_u32::<B>()
     }
 
-    fn read_half<B: bo::ByteOrder, R: bo::ReadBytesExt>(fd: &mut R) -> bo::Result<Self::Half> {
+    fn read_half<B: bo::ByteOrder, R: bo::ReadBytesExt>(fd: &mut R) -> io::Result<Self::Half> {
         fd.read_u16::<B>()
     }
 
-    fn read_off<B: bo::ByteOrder, R: bo::ReadBytesExt>(fd: &mut R) -> bo::Result<Self::Off> {
+    fn read_off<B: bo::ByteOrder, R: bo::ReadBytesExt>(fd: &mut R) -> io::Result<Self::Off> {
         fd.read_u32::<B>()
     }
 
-    fn read_sword<B: bo::ByteOrder, R: bo::ReadBytesExt>(fd: &mut R) -> bo::Result<Self::Sword> {
+    fn read_sword<B: bo::ByteOrder, R: bo::ReadBytesExt>(fd: &mut R) -> io::Result<Self::Sword> {
         fd.read_i32::<B>()
     }
 
-    fn read_word<B: bo::ByteOrder, R: bo::ReadBytesExt>(fd: &mut R) -> bo::Result<Self::Word> {
+    fn read_word<B: bo::ByteOrder, R: bo::ReadBytesExt>(fd: &mut R) -> io::Result<Self::Word> {
         fd.read_u32::<B>()
     }
 
-    fn read_xword<B: bo::ByteOrder, R: bo::ReadBytesExt>(fd: &mut R) -> bo::Result<Self::Xword> {
+    fn read_xword<B: bo::ByteOrder, R: bo::ReadBytesExt>(fd: &mut R) -> io::Result<Self::Xword> {
         fd.read_u64::<B>()
     }
 
-    fn read_yword<B: bo::ByteOrder, R: bo::ReadBytesExt>(fd: &mut R) -> bo::Result<Self::Yword> {
+    fn read_yword<B: bo::ByteOrder, R: bo::ReadBytesExt>(fd: &mut R) -> io::Result<Self::Yword> {
         fd.read_u32::<B>()
     }
 }
@@ -102,31 +103,31 @@ impl ElfClass for Elf64 {
         Class::ELF64
     }
 
-    fn read_addr<B: bo::ByteOrder, R: bo::ReadBytesExt>(fd: &mut R) -> bo::Result<Self::Addr> {
+    fn read_addr<B: bo::ByteOrder, R: bo::ReadBytesExt>(fd: &mut R) -> io::Result<Self::Addr> {
         fd.read_u64::<B>()
     }
 
-    fn read_half<B: bo::ByteOrder, R: bo::ReadBytesExt>(fd: &mut R) -> bo::Result<Self::Half> {
+    fn read_half<B: bo::ByteOrder, R: bo::ReadBytesExt>(fd: &mut R) -> io::Result<Self::Half> {
         fd.read_u16::<B>()
     }
 
-    fn read_off<B: bo::ByteOrder, R: bo::ReadBytesExt>(fd: &mut R) -> bo::Result<Self::Off> {
+    fn read_off<B: bo::ByteOrder, R: bo::ReadBytesExt>(fd: &mut R) -> io::Result<Self::Off> {
         fd.read_u64::<B>()
     }
 
-    fn read_sword<B: bo::ByteOrder, R: bo::ReadBytesExt>(fd: &mut R) -> bo::Result<Self::Sword> {
+    fn read_sword<B: bo::ByteOrder, R: bo::ReadBytesExt>(fd: &mut R) -> io::Result<Self::Sword> {
         fd.read_i32::<B>()
     }
 
-    fn read_word<B: bo::ByteOrder, R: bo::ReadBytesExt>(fd: &mut R) -> bo::Result<Self::Word> {
+    fn read_word<B: bo::ByteOrder, R: bo::ReadBytesExt>(fd: &mut R) -> io::Result<Self::Word> {
         fd.read_u32::<B>()
     }
 
-    fn read_xword<B: bo::ByteOrder, R: bo::ReadBytesExt>(fd: &mut R) -> bo::Result<Self::Xword> {
+    fn read_xword<B: bo::ByteOrder, R: bo::ReadBytesExt>(fd: &mut R) -> io::Result<Self::Xword> {
         fd.read_u64::<B>()
     }
 
-    fn read_yword<B: bo::ByteOrder, R: bo::ReadBytesExt>(fd: &mut R) -> bo::Result<Self::Yword> {
+    fn read_yword<B: bo::ByteOrder, R: bo::ReadBytesExt>(fd: &mut R) -> io::Result<Self::Yword> {
         fd.read_u64::<B>()
     }
 }

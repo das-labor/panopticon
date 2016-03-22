@@ -34,8 +34,6 @@ use rustc_serialize::json::{
     DecoderError,
 };
 
-use byteorder as bo;
-
 #[derive(Debug)]
 pub struct Error(pub Cow<'static,str>);
 pub type Result<T> = result::Result<T,Error>;
@@ -94,14 +92,5 @@ impl From<DecoderError> for Error {
 impl From<EncoderError> for Error {
     fn from(e: EncoderError) -> Error {
         Error(Cow::Owned(format!("JSON encoder error: {}",e)))
-    }
-}
-
-impl From<bo::Error> for Error {
-    fn from(r: bo::Error) -> Error {
-        match r {
-            bo::Error::UnexpectedEOF => Error(Cow::Borrowed("Premature end of file")),
-            bo::Error::Io(e) => Error::from(e),
-        }
     }
 }
