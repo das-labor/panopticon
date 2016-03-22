@@ -329,48 +329,87 @@ pub fn read_directory(arg: &Variant) -> Variant {
 
 #[derive(RustcEncodable)]
 struct FileDetails {
-    format: String, // elf, pe, raw
+    state: String, // writable, readable, directory, free, inaccessable
+    format: Option<String>, // elf, pe, raw
     info: Vec<String>,
 }
 
 pub fn file_details(arg: &Variant) -> Variant {
     Variant::String(if let &Variant::String(ref p) = arg {
         let path = Path::new(p);
-        let ret = fs::File::open(path).and_then(|mut fd| {
-            if let Ok(id) = elf::parse::Ident::read(&mut fd) {
+        let ret: Result<FileDetails> = fs::File::open(path).and_then(|mut fd| {
+            let meta = try!(fd.metadata());
+
+            if meta.is_dir() {
                 Ok(FileDetails{
-                    format: "elf".to_string(),
-                    info: vec![format!("{:?}, {:?}",id.class,id.data)],
+                    state: "directory".to_string(),
+                    format: None,
+                    info: vec![],
                 })
             } else {
-                let mut buf = [0u8;2];
+                let ro = meta.permissions().readonly();
 
-                try!(fd.seek(SeekFrom::Start(0)));
-                try!(fd.read(&mut buf));
-
-                if buf == [0x4d,0x5a] {
+                if let Ok(id) = elf::parse::Ident::read(&mut fd) {
                     Ok(FileDetails{
-                        format: "pe".to_string(),
-                        info: vec!["PE".to_string()],
+                        state: if ro { "readable" } else { "writable" }.to_string(),
+                        format: Some("elf".to_string()),
+                        info: vec![format!("{:?}, {:?}",id.class,id.data)],
                     })
                 } else {
-                    let mut magic = [0u8;10];
+                    let mut buf = [0u8;2];
 
                     try!(fd.seek(SeekFrom::Start(0)));
-                    if try!(fd.read(&mut magic)) == 10 && magic == *b"PANOPTICON" {
-                        let version = try!(fd.read_u32::<BigEndian>());
+                    try!(fd.read(&mut buf));
 
+                    if buf == [0x4d,0x5a] {
                         Ok(FileDetails{
-                            format: "panop".to_string(),
-                            info: vec![format!("Version {}",version)],
+                            state: if ro { "readable" } else { "writable" }.to_string(),
+                            format: Some("pe".to_string()),
+                            info: vec!["PE".to_string()],
                         })
                     } else {
-                        Ok(FileDetails{
-                            format: "raw".to_string(),
-                            info: vec![],
-                        })
+                        let mut magic = [0u8;10];
+
+                        try!(fd.seek(SeekFrom::Start(0)));
+                        if try!(fd.read(&mut magic)) == 10 && magic == *b"PANOPTICON" {
+                            let version = try!(fd.read_u32::<BigEndian>());
+
+                            Ok(FileDetails{
+                                state: if ro { "readable" } else { "writable" }.to_string(),
+                                format: Some("panop".to_string()),
+                                info: vec![format!("Version {}",version)],
+                            })
+                        } else {
+                            Ok(FileDetails{
+                                state: if ro { "readable" } else { "writable" }.to_string(),
+                                format: Some("raw".to_string()),
+                                info: vec![],
+                            })
+                        }
                     }
                 }
+            }
+        }).or_else(|_| {
+            if let Some(parent) = path.parent() {
+                if let Ok(fd) = fs::File::open(parent) {
+                    Ok(FileDetails{
+                        state: if try!(fd.metadata()).permissions().readonly() { "inaccessible" } else { "free" }.to_string(),
+                        format: None,
+                        info: vec![],
+                    })
+                } else {
+                    Ok(FileDetails{
+                        state: "inaccessible".to_string(),
+                        format: None,
+                        info: vec![],
+                    })
+                }
+            } else {
+                Ok(FileDetails{
+                    state: "inaccessible".to_string(),
+                    format: None,
+                    info: vec![],
+                })
             }
         });
 

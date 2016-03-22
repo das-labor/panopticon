@@ -34,6 +34,7 @@ Popup {
 	property string selectedFile: currentPath + "/" + currentFile
 	property string currentPath: ""
 	property string currentFile: ""
+	property string message: ""
 
 	function readFile() {
 		browser.mode = "READ";
@@ -95,8 +96,10 @@ Popup {
 					pathInput.text = res.payload.current
 					browser.currentPath = res.payload.current
 					upButton.parentPath = res.payload.parent
+					view.state = "FOLDER";
 				} else {
-					errorPopup.displayMessage("Failed to open directory: " + res.error);
+					view.state = "ERROR";
+					errorView.text = "Failed to open directory";
 				}
 
 				console.log("chdir() to '" + path.toString() + "'");
@@ -143,143 +146,163 @@ Popup {
 					}
 				}
 
-				ScrollView {
+				Item {
+					id: view
 					Layout.row: 1
 					Layout.column: 0
 					Layout.columnSpan: 2
 					Layout.fillWidth: true
 					Layout.fillHeight: true
-					frameVisible: true
 
-					ListView {
-						property int titleWidth: 0;
+					// FOLDER or ERROR
+					state: "FOLDER"
 
-						id: folderView
+					Label {
+						id: errorView
 						anchors.fill: parent
-						model: ListModel {
-							id: folder
-						}
-						section.property: "is_folder"
-						section.criteria: ViewSection.FullString
-						delegate: Item {
-							Behavior on height {
-								SmoothedAnimation { velocity: 300 }
+						visible: parent.state == "ERROR"
+						horizontalAlignment: Text.AlignHCenter
+						verticalAlignment: Text.AlignVCenter
+						wrapMode: Text.WordWrap
+						font.pixelSize: 21
+						color: "#333"
+					}
+
+					ScrollView {
+						frameVisible: true
+						anchors.fill: parent
+						visible: parent.state == "FOLDER"
+
+						ListView {
+							property int titleWidth: 0;
+
+							id: folderView
+							anchors.fill: parent
+							model: ListModel {
+								id: folder
 							}
-
-							width: parent.width
-							height: detailsLabel.y + detailsLabel.height
-							clip: true
-
-							Rectangle {
-								anchors.fill: parent
-								border.color: "lightsteelblue"
-								border.width: 1
-								visible: mousearea.containsMouse
-							}
-
-							Rectangle {
-								anchors.fill: parent
-								color: "lightsteelblue"
-								visible: parent.ListView.isCurrentItem
-							}
-
-							RowLayout {
-								id: entry
-								anchors.left: parent.left
-								anchors.right: parent.right
-								anchors.leftMargin: 3
-								anchors.rightMargin: 3
-								height: childrenRect.height
-
-								Text {
-									verticalAlignment: Text.AlignVCenter;
-									font.family: "FontAwesome"
-									font.pixelSize: 16
-									text: {
-										if(is_folder) {
-											return (parent.ListView.isCurrentItem ? "\uf07b" : "\uf114");
-										} else {
-											return (parent.ListView.isCurrentItem ? "\uf15b" : "\uf016");
-										}
-									}
+							section.property: "is_folder"
+							section.criteria: ViewSection.FullString
+							delegate: Item {
+								Behavior on height {
+									SmoothedAnimation { velocity: 300 }
 								}
 
-								Label {
-									id: entryName
-									Layout.fillWidth: true
-									text: name
+								width: parent.width
+								height: detailsLabel.y + detailsLabel.height
+								clip: true
+
+								Rectangle {
+									anchors.fill: parent
+									border.color: "lightsteelblue"
+									border.width: 1
+									visible: mousearea.containsMouse
 								}
 
-								Label {
-									text: {
-										if(!is_folder) {
-											var res = JSON.parse(Panopticon.fileDetails(path));
-											if(res.status == "ok") {
-												if(res.payload.format == "elf") {
-													return "ELF";
-												} else if(res.payload.format == "panop") {
-													return "Panopticon Project";
-												} else if(res.payload.format == "pe") {
-													return "PE";
-												} else {
-													return "";
-												}
+								Rectangle {
+									anchors.fill: parent
+									color: "lightsteelblue"
+									visible: parent.ListView.isCurrentItem
+								}
 
-												return res.payload.format;
+								RowLayout {
+									id: entry
+									anchors.left: parent.left
+									anchors.right: parent.right
+									anchors.leftMargin: 3
+									anchors.rightMargin: 3
+									height: childrenRect.height
+
+									Text {
+										verticalAlignment: Text.AlignVCenter;
+										font.family: "FontAwesome"
+										font.pixelSize: 16
+										text: {
+											if(is_folder) {
+												return (parent.ListView.isCurrentItem ? "\uf07b" : "\uf114");
+											} else {
+												return (parent.ListView.isCurrentItem ? "\uf15b" : "\uf016");
 											}
 										}
-										return ""
 									}
-								}
-							}
 
-							Column {
-								id: detailsLabel
-								anchors.top: entry.bottom
-								anchors.left: parent.left
-								anchors.right: parent.right
-								anchors.topMargin: 3
-								anchors.leftMargin: entryName.x
-								clip: true;
-
-								Repeater {
-									model: {
-										if(!is_folder) {
-											var res = JSON.parse(Panopticon.fileDetails(path));
-											if(res.status == "ok") {
-												return res.payload.info;
-											}
-										}
-										return [];
-									}
 									Label {
-										height: (parent.parent.ListView.isCurrentItem ? contentHeight : 0)
-										text: modelData
+										id: entryName
+										Layout.fillWidth: true
+										text: name
+									}
+
+									Label {
+										text: {
+											if(!is_folder) {
+												var res = JSON.parse(Panopticon.fileDetails(path));
+												if(res.status == "ok") {
+													if(res.payload.format == "elf") {
+														return "ELF";
+													} else if(res.payload.format == "panop") {
+														return "Panopticon Project";
+													} else if(res.payload.format == "pe") {
+														return "PE";
+													} else {
+														return "";
+													}
+
+													return res.payload.format;
+												}
+											}
+											return ""
+										}
 									}
 								}
-							}
 
-							MouseArea {
-								id: mousearea
-								hoverEnabled: true
-								anchors.fill: entry
+								Column {
+									id: detailsLabel
+									anchors.top: entry.bottom
+									anchors.left: parent.left
+									anchors.right: parent.right
+									anchors.topMargin: 3
+									anchors.leftMargin: entryName.x
+									clip: true;
 
-								onDoubleClicked: {
-									folderView.currentIndex = index
-									if(is_folder) {
-										chdir(path);
-									} else {
-										mark(name)
+									Repeater {
+										model: {
+											if(!is_folder) {
+												var res = JSON.parse(Panopticon.fileDetails(path));
+												if(res.status == "ok") {
+													return res.payload.info;
+												}
+											}
+											return [];
+										}
+										Label {
+											height: (parent.parent.ListView.isCurrentItem ? contentHeight : 0)
+											text: modelData
+										}
 									}
-									fileInput.accept()
 								}
 
-								onClicked: {
-									folderView.currentIndex = index
-									if(is_folder) {
-										chdir(path);
-									} else {
-										mark(name)
+								MouseArea {
+									id: mousearea
+									hoverEnabled: true
+									anchors.fill: entry
+
+									onDoubleClicked: {
+										folderView.currentIndex = index
+										if(is_folder) {
+											chdir(path);
+										} else {
+											mark(name)
+										}
+										fileInput.accept()
+									}
+
+									onClicked: {
+										folderView.currentIndex = index
+										if(is_folder) {
+											chdir(path);
+										} else {
+											mark(name)
+										}
 									}
 								}
 							}
@@ -294,73 +317,146 @@ Popup {
 					Layout.columnSpan: 2
 					Layout.fillWidth: true
 
+					textColor: (browser.valid ? "#000" : "#ff0000")
 					placeholderText: "Filename"
 
 					function accept() {
-						if(browser.valid) {
-							if(browser.willOverwrite != "" && browser.mode == "WRITE") {
-								for(var i = 0; i < browser.children.length; i++) {
-									if(browser.children[i] != errorPopup &&
-										browser.children[i] != confirmOverwrite) {
-										browser.children[i].enabled = false;
-									}
-								}
-
-								var res = confirmOverwrite.displayMessage("Overwrite '" + browser.willOverwrite + "'?");
-
-								for(i = 0; i < browser.children.length; i++) {
-									browser.children[i].enabled = true;
-								}
-
-								if(res == 0) {
-									return;
-								}
-							}
+						if(browser.valid && !(browser.willOverwrite != "" && browser.mode == "WRITE")) {
 							browser.done(0)
 						}
 					}
 
 					onAccepted: accept()
-					onTextChanged: {
-						browser.valid = (text != "")
-						browser.willOverwrite = ""
+					onDisplayTextChanged: {
+						if (displayText != "") {
+							var res = JSON.parse(Panopticon.fileDetails(currentPath + "/" + displayText))
 
-						if(text == "." || text == "..") {
-							browser.valid = false;
-						}
+							console.log(JSON.stringify(res));
 
-						for(var i = 0; i < folder.count; i++) {
-							if(folder.get(i).name == text) {
-								if(folder.get(i).is_folder) {
-									browser.valid = false;
-								} else {
-									browser.willOverwrite = text
-									browser.currentFile = text;
-									return;
+							if(res.status == "ok") {
+								switch(res.payload.state) {
+									case "readable": {
+										browser.valid = (browser.mode == "READ");
+										browser.willOverwrite = displayText
+										browser.message = (browser.mode == "READ" ? "" : "File exists and can't be overwritten.")
+										break;
+									}
+									case "writable": {
+										browser.valid = true;
+										browser.willOverwrite = displayText
+										browser.message = "";
+										break;
+									}
+									case "directory": {
+										browser.valid = false;
+										browser.willOverwrite = displayText
+										browser.message = "There already exists a directory with that name."
+										break;
+									}
+									case "inaccessible": {
+										browser.valid = false;
+										browser.willOverwrite = ""
+										browser.message = "No write permissions."
+										break;
+									}
+									case "free": {
+										browser.valid = (browser.mode == "WRITE");
+										browser.willOverwrite = ""
+										browser.message = (browser.mode == "WRITE" ? "" : "No such file.")
+										break;
+									}
+									default: {
+										console.error("Invalid state '" + res.payload.state.toString() + "'")
+									}
 								}
+							} else {
+								console.error(res.error);
 							}
+						} else {
+							browser.valid = false;
+							browser.willOverwrite = ""
+							browser.message = ""
 						}
-						browser.currentFile = text;
+
+						browser.currentFile = displayText;
+					}
+
+					Canvas {
+						readonly property int tipHeight: 12
+						readonly property int bubblePadding: 8
+						readonly property int bubbleRadius: 4
+
+						id: edit
+						width: messageLabel.width + 2 * bubblePadding
+						height: messageLabel.height + 2 * bubblePadding + tipHeight
+						anchors.top: parent.bottom
+						anchors.left: parent.left
+						visible: browser.message !== ""
+
+						onVisibleChanged: requestPaint()
+
+						onPaint: {
+							var ctx = edit.getContext('2d');
+
+							const corner_sz = edit.bubbleRadius;
+							const tip_apex = 25;
+							const tip_w = 20;
+							const tip_h = edit.tipHeight;
+
+							/*
+							 *       tip_apex
+							 *          /\
+							 * .-------'  `-----. - top
+							 * |       | tip_end|
+							 * |    tip_start   |
+							 * '----------------' - bottom
+							 */
+
+							const top = tip_h;
+							const bottom = edit.height - 1;
+							const tip_start = tip_apex - tip_w / 2;
+							const tip_end = tip_start + tip_w;
+							const end = edit.width - 1;
+
+
+							ctx.fillStyle = "#efecca";
+							ctx.strokeStyle = "black";
+							ctx.lineWidth = 0.5;
+
+							ctx.clearRect(0,0,width,height);
+							ctx.beginPath();
+
+							ctx.moveTo(1 + corner_sz,top);
+							ctx.lineTo(tip_start,top);
+							ctx.lineTo(tip_apex,0);
+							ctx.lineTo(tip_end,top);
+							ctx.lineTo(end - corner_sz,top);
+							ctx.arc(end - corner_sz,top + corner_sz,corner_sz,1.5 * Math.PI,0,false);
+							ctx.lineTo(end,bottom - corner_sz);
+							ctx.arc(end - corner_sz,bottom - corner_sz,corner_sz,0,0.5 * Math.PI,false);
+							ctx.lineTo(1 + corner_sz,bottom);
+							ctx.arc(1 + corner_sz,bottom - corner_sz,corner_sz,0.5 * Math.PI,Math.PI,false);
+							ctx.lineTo(1,top + corner_sz);
+							ctx.arc(1 + corner_sz,top + corner_sz,corner_sz,Math.PI,1.5 * Math.PI,false);
+
+							ctx.fill();
+							ctx.stroke();
+						}
+					}
+
+					Label {
+						id: messageLabel
+						text: browser.message
+						anchors.top: parent.bottom
+						anchors.left: parent.left
+						anchors.topMargin: 12 + 8
+						anchors.leftMargin: 8
+						width: contentWidth
+						height: contentHeight
+						visible: browser.message != ""
 					}
 				}
 			}
 		}
-	}
-
-	ErrorPopup {
-		id: confirmOverwrite
-		title: "Overwrite?"
-		buttons: [{
-			"title": "Overwrite",
-			"enabled": true
-		},{
-			"title": "Don't overwrite",
-			"enabled": true
-		}]
-	}
-
-	ErrorPopup {
-		id: errorPopup
-		title: "Error while browsing"
 	}
 }
