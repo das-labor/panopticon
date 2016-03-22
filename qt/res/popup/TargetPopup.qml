@@ -59,7 +59,8 @@ Popup {
 							id: formatBox
 							Layout.preferredWidth: 150
 							Layout.leftMargin: 20
-							model: ["Unrecognized", "Memory Image", "ELF", "PE", "COM"]
+							model: ["Unrecognized", "Memory Image", "COM"]
+							currentIndex: 1
 							onCurrentIndexChanged: {
 								switch(currentIndex) {
 									case 0: {
@@ -70,18 +71,6 @@ Popup {
 									}
 									case 1: {
 										pageLoader.sourceComponent = rawPage;
-										break;
-									}
-									case 2: {
-										pageLoader.sourceComponent = emptyPage;
-										root.valid = true;
-										root.openFunction = function(path) { return Panopticon.createElfProject(path) };
-										break;
-									}
-									case 3: {
-										pageLoader.sourceComponent = emptyPage;
-										root.valid = true;
-										root.openFunction = function(path) { return Panopticon.createPeProject(path) };
 										break;
 									}
 									case 4: {
@@ -101,7 +90,7 @@ Popup {
 
 					Loader {
 						id: pageLoader
-						sourceComponent: emptyPage
+						sourceComponent: rawPage
 					}
 				}
 			}
