@@ -89,12 +89,21 @@ Item {
 			horizontalAlignment: Text.AlignHCenter
 		}
 
-		Rectangle {
+		Text {
 			Layout.column: 1
 			Layout.row: 0
-			color: "red"
 			width: titleLabel.height
 			height: titleLabel.height
+			verticalAlignment: Text.AlignVCenter;
+			horizontalAlignment: Text.AlignHCenter;
+			font.family: "FontAwesome"
+			font.pixelSize: 16
+			text: "\uf00d"
+
+			MouseArea {
+				anchors.fill: parent
+				onClicked: root.done(-1)
+			}
 		}
 
 		Loader {
@@ -115,7 +124,6 @@ Item {
 				model: root.buttons.length
 
 				Button {
-
 					text: root.buttons[index].title
 					enabled: root.buttons[index].enabled
 					menu: {
