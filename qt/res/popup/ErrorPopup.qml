@@ -1,6 +1,6 @@
 /*
- * Panopticon - A libre disassembler
- * Copyright (C) 2015  Panopticon authors
+ * Panopticon - A libre disassembler (https://panopticon.re/)
+ * Copyright (C) 2016 Kai Michaelis
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,5 +16,30 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-pub mod parse;
-pub mod load;
+import QtQuick 2.3
+import QtQuick.Controls 1.2
+
+Popup {
+	id: popup
+
+	property string message:"Blarg I'm dead :("
+
+	function displayMessage(msg) {
+		popup.message = msg;
+		show()
+	}
+
+	title: "An Error Occurred"
+	component: Component {
+		Item {
+			height: label.height + 50
+			width: label.width + 50
+
+			Label {
+				id: label
+				anchors.centerIn: parent
+				text: popup.message
+			}
+		}
+	}
+}

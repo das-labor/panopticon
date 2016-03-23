@@ -53,9 +53,14 @@ Item {
 			if(res.status == "ok") {
 				var obj = res.payload;
 
+				obj.calls = JSON.stringify(obj.calls);
+
 				functionModel.append(obj);
+				functionModel.updateEdges();
 				layoutTask.sendMessage({"type":"add","item":obj});
 				timer.running = true;
+
+
 			} else {
 				console.error(res.error);
 			}
@@ -71,7 +76,10 @@ Item {
 					var node = functionModel.get(i);
 
 					if(node.uuid == obj.uuid) {
+						obj.calls = JSON.stringify(obj.calls);
+
 						functionModel.set(i,obj);
+						functionModel.updateEdges();
 						callgraph.requestPaint()
 						return;
 					}
@@ -83,6 +91,31 @@ Item {
 	}
 
 	ListModel {
+		property var edges: [];
+
+		function updateEdges() {
+			edges = [];
+
+			for(var i = 0; i < functionModel.count; ++i) {
+				var from = functionModel.get(i);
+				var calls = JSON.parse(from.calls);
+
+				for(var e = 0; e < calls.length; ++e) {
+					var edge = calls[e];
+
+					for(var j = 0; j < functionModel.count; ++j) {
+						var to = functionModel.get(j);
+
+						if(to.uuid == edge) {
+							edges.push({"from":i,"to":j});
+						}
+					}
+				}
+			}
+
+			console.log(JSON.stringify(edges));
+		}
+
 		id: functionModel
 	}
 
@@ -121,21 +154,13 @@ Item {
 
 				// edges
 				ctx.beginPath();
-				for(var i = 0; i < functionModel.count; ++i) {
-					var from = functionModel.get(i);
+				for(var i = 0; i < functionModel.edges.length; ++i) {
+					var e = functionModel.edges[i];
+					var from = functionModel.get(e.from);
+					var to = functionModel.get(e.to);
 
-					for(var e in from.calls) {
-						var edge = from.calls[e];
-
-						for(var j = 0; j < functionModel.count; ++j) {
-							var to = functionModel.get(j);
-
-							if(to.uuid == edge) {
-								ctx.moveTo(from.x,from.y);
-								ctx.lineTo(to.x,to.y);
-							}
-						}
-					}
+					ctx.moveTo(from.x,from.y);
+					ctx.lineTo(to.x,to.y);
 				}
 				ctx.strokeStyle = root.edgeColor;
 				ctx.lineWidth = root.edgeWidth;

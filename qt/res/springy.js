@@ -727,13 +727,14 @@ WorkerScript.onMessage = function(msg) {
 		height = msg.height;
 	} else if(msg.type == "add") {
 		layout.graph.addNodes(msg.item.uuid);
+		var calls = JSON.parse(msg.item.calls);
 
-		for(var e in msg.item.calls) {
+		for(var e = 0; e < calls.length; e++) {
 			try {
-				layout.graph.addEdges([msg.item.uuid,msg.item.calls[e]]);
+				layout.graph.addEdges([msg.item.uuid,calls[e]]);
 			} catch(ex) {
-				layout.graph.addNodes(msg.item.calls[e]);
-				layout.graph.addEdges([msg.item.uuid,msg.item.calls[e]]);
+				layout.graph.addNodes(calls[e]);
+				layout.graph.addEdges([msg.item.uuid,calls[e]]);
 			}
 		}
 

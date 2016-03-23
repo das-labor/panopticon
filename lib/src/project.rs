@@ -19,12 +19,16 @@
 use std::path::Path;
 use std::collections::HashMap;
 use std::fs::File;
-use std::borrow::Cow;
+use std::io::{Read,Write};
 
 use program::{CallTarget,Program,CallGraphRef};
 use region::{Region,Regions};
+use layer::{OpaqueLayer,Layer};
 use function::{Function};
 use target::Target;
+use result::Result;
+use value::Rvalue;
+use mnemonic::Bound;
 use pe;
 
 use uuid::Uuid;
@@ -34,6 +38,11 @@ use flate2::write::ZlibEncoder;
 use flate2::read::ZlibDecoder;
 use flate2::Compression;
 use graph_algos::MutableGraphTrait;
+use byteorder::{
+    ReadBytesExt,
+    WriteBytesExt,
+    BigEndian,
+};
 
 #[derive(RustcDecodable,RustcEncodable)]
 pub struct Project {
@@ -54,42 +63,62 @@ impl Project {
         }
     }
 
-    pub fn open(p: &Path) -> Result<Project,Cow<str>> {
-        let fd = match File::open(p) {
+    pub fn open(p: &Path) -> Result<Project> {
+        let mut fd = match File::open(p) {
             Ok(fd) => fd,
-            Err(e) => return Err(Cow::Owned(format!("failed to open file: {:?}",e)))
+            Err(e) => return Err(format!("failed to open file: {:?}",e).into())
         };
+        let mut magic = [0u8;10];
 
-        let mut z = ZlibDecoder::new(fd);
-        let mut rmp = Decoder::new(&mut z);
-        let res: Result<Project,_> = <Project as Decodable>::decode(&mut rmp);
+        if try!(fd.read(&mut magic)) == 10 && magic == *b"PANOPTICON" {
+            let version = try!(fd.read_u32::<BigEndian>());
 
-        match res {
-            Ok(p) => Ok(p),
-            Err(_) => Err(Cow::Borrowed("session encoding failed"))
+            if version == 0 {
+                let mut z = ZlibDecoder::new(fd);
+                let mut rmp = Decoder::new(&mut z);
+                let res = <Project as Decodable>::decode(&mut rmp);
+
+                match res {
+                    Ok(p) => Ok(p),
+                    Err(_) => Err("project decoding failed".into())
+                }
+            } else {
+                Err("wrong version".into())
+            }
+        } else {
+            Err("wrong magic number".into())
         }
     }
 
-    pub fn raw(t: Target, p: &Path) -> Option<Project> {
+    pub fn raw(p: &Path, t: Target,base: u64, entry: Option<u64>) -> Option<Project> {
         if let Some(nam) = p.file_name().and_then(|x| x.to_str()).or(p.to_str()) {
-            if let Some(r) = Region::open(nam.to_string(),p) {
+            if let Some(b) = OpaqueLayer::open(p) {
+                let mut reg = Region::undefined(nam.to_string(),b.iter().len() + base);
+
+                reg.cover(Bound::new(base,base + b.iter().len()),Layer::Opaque(b));
+
                 let mut proj = Project{
                     name: nam.to_string(),
                     code: Vec::new(),
-                    sources: Regions::new(r),
+                    sources: Regions::new(reg),
                     comments: HashMap::new(),
                 };
                 let mut prog = Program::new("prog0",t);
 
-                for &(name,ref off,cmnt) in t.interrupt_vec().iter() {
+                if let Some(e) = entry {
                     let uu =  Uuid::new_v4();
+                    prog.call_graph.add_vertex(CallTarget::Todo(Rvalue::Constant(e),Some("main".to_string()),uu));
+                } else {
+                    for &(name,ref off,cmnt) in t.interrupt_vec().iter() {
+                        let uu =  Uuid::new_v4();
 
-                    prog.call_graph.add_vertex(CallTarget::Todo(off.clone(),Some(name.to_string()),uu));
+                        prog.call_graph.add_vertex(CallTarget::Todo(off.clone(),Some(name.to_string()),uu));
+                    }
                 }
 
                 proj.code.push(prog);
 
-                return Some(proj);
+               return Some(proj);
             }
         }
 
@@ -148,18 +177,24 @@ impl Project {
         None
     }
 
-    pub fn snapshot(&self,p: &Path) -> Result<(),Cow<str>> {
-        let fd = try!(match File::create(p) {
-            Ok(fd) => Ok(fd),
-            Err(e) => Err(Cow::Owned(format!("failed to open save file: {:?}",e)))
-        });
+    /**
+     * [u8;10] magic
+     * u32     version
+     * (rest)
+     */
+    pub fn snapshot(&self,p: &Path) -> Result<()> {
+        println!("snapshot to {:?}",p);
+        let mut fd = try!(File::create(p));
+
+        try!(fd.write(b"PANOPTICON"));
+        try!(fd.write_u32::<BigEndian>(0));
 
         let mut z = ZlibEncoder::new(fd,Compression::Default);
         let mut enc = Encoder::new(&mut z);
 
         match self.encode(&mut enc) {
             Ok(()) => Ok(()),
-            Err(_) => Err(Cow::Borrowed("failed to write to save file"))
+            Err(_) => Err("failed to write to save file".into())
         }
     }
 }

@@ -1,6 +1,6 @@
 /*
  * Panopticon - A libre disassembler (https://panopticon.re/)
- * Copyright (C) 2014-2015 Kai Michaelis
+ * Copyright (C) 2014,2015,2016 Kai Michaelis
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,59 +21,15 @@ import QtQuick.Dialogs 1.2
 import QtQuick.Layouts 1.1
 import QtQuick 2.1
 import Panopticon 1.0
+import "workspace";
+import "popup";
+import "action" as Act;
 
 ApplicationWindow {
 	id: mainWindow
 
-	property string savePath: ""
-
-	MessageDialog {
-		id: errorDialog
-		title: "Error"
-		icon: StandardIcon.Critical
-		standardButtons: StandardButton.Ok
-	}
-
-	MessageDialog {
-		id: saveStaleDialog
-		title: "Unsaved changes"
-		text: "Do you want to save the changes made to the current project?"
-		icon: StandardIcon.Question
-		standardButtons: StandardButton.Yes | StandardButton.No | StandardButton.Abort
-
-		property var next: function() {}
-
-		onYes: {
-			if(mainWindow.savePath != "") {
-				var res = JSON.parse(Panopticon.snapshotProject(mainWindow.savePath));
-
-				if (res.status == "ok") {
-					next()
-				} else {
-					errorDialog.text = res.error;
-					errorDialog.open()
-				}
-			} else {
-				fileSaveDialog.next = saveStaleDialog.next
-				fileSaveDialog.open()
-			}
-		}
-
-		onNo: {
-			next()
-		}
-
-		onRejected: {}
-	}
-
-	function saveStalePanopticon(next) {
-		if(Panopticon.state != "NEW" && Panopticon.dirty != 0) {
-			saveStaleDialog.next = next
-			saveStaleDialog.open()
-		} else {
-			next()
-		}
-	}
+	property bool enabled: true
+	property bool workspaceLoaded: false
 
 	title: "Panopticon"
 	height: 1000
@@ -83,162 +39,31 @@ ApplicationWindow {
 	menuBar: MenuBar {
 		Menu {
 			title: "Project"
-			Menu {
-				title: "New..."
+			id: projectMenu
 
-				MenuItem {
-					text: "...from ELF executable"
-					shortcut: "Ctrl+E"
-					enabled: Panopticon.state == "NEW"
-					onTriggered: {
-						saveStalePanopticon(function() {
-							fileNewDialog.next = function(path) {
-								var res = JSON.parse(Panopticon.createElfProject(path))
-
-								if(res.status == "ok") {
-									loader.setSource("workspace/Workspace.qml")
-								} else {
-									errorDialog.text = res.error;
-									errorDialog.open();
-								}
-							};
-							fileNewDialog.open()
-						})
-					}
+			MenuItem {
+				action: Act.Open {
+					window: mainWindow
 				}
-
-				MenuItem {
-					text: "...from dump file"
-					shortcut: "Ctrl+A"
-					enabled: Panopticon.state == "NEW"
-					onTriggered: {
-						saveStalePanopticon(function() {
-							fileNewDialog.next = function(path) {
-								targetSelectionDialog.next = function(target) {
-									var res = JSON.parse(Panopticon.createRawProject(path,target));
-
-									if(res.status == "ok") {
-										loader.setSource("workspace/Workspace.qml")
-									} else {
-										errorDialog.text = res.error;
-										errorDialog.open();
-									}
-								};
-
-								targetSelectionDialog.open();
-								targetSelectionDialog.width = targetSelectionDialog.contentItem.width
-								targetSelectionDialog.height = targetSelectionDialog.contentItem.height
-								targetSelectionDialog.x = (mainWindow.width - targetSelectionDialog.width) / 2
-								targetSelectionDialog.y = (mainWindow.height - targetSelectionDialog.height) / 2
-							}
-							fileNewDialog.open()
-						})
-					}
-				}
-
-				MenuItem {
-					text: "...from MOS-6502 binary image"
-					shortcut: "Ctrl+M"
-					enabled: Panopticon.state == "NEW"
-					onTriggered: {
-						saveStalePanopticon(function() {
-							fileNewDialog.next = function(path) {
-								var res = JSON.parse(Panopticon.createMos6502Project(path))
-
-								if(res.status == "ok") {
-									loader.setSource("workspace/Workspace.qml")
-								} else {
-									errorDialog.text = res.error;
-									errorDialog.open();
-								}
-							};
-							fileNewDialog.open()
-						})
-					}
-				}
-
-
 			}
 
 			MenuItem {
-				text: "Open"
-				shortcut: "Ctrl+O"
-				enabled: Panopticon.state == "NEW"
-				onTriggered: {
-					saveStalePanopticon(fileOpenDialog.open);
+				action: Act.SaveAs {
+					window: mainWindow
 				}
-			}
-			MenuItem {
-				text: "Save"
-				shortcut: "Ctrl+S"
-				enabled: Panopticon.dirty != 0 && Panopticon.state != "NEW"
-				onTriggered: {
-					if(mainWindow.savePath != "") {
-						var res = JSON.parse(Panopticon.snapshotProject(mainWindow.savePath));
-
-						if(res.status == "err") {
-							errorDialog.text = res.error;
-							errorDialog.open();
-						}
-					} else {
-						fileSaveDialog.open()
-					}
-				}
-			}
-			MenuItem {
-				text: "Save As"
-				shortcut: "Ctrl+Shift+S"
-				enabled: Panopticon.state != "NEW"
-				onTriggered: { fileSaveDialog.open() }
 			}
 
 			MenuSeparator {}
 
 			MenuItem {
-				text: "Quit"
-				shortcut: "Ctrl+Q"
-				onTriggered: {
-					saveStalePanopticon(Qt.quit)
+				action: Act.Quit {
+					window: mainWindow
 				}
 			}
 		}
 	}
 
-	Dialog {
-		id: targetSelectionDialog
-		title: "Select target architecture..."
-		standardButtons: StandardButton.Ok | StandardButton.Cancel
-
-		property var next: function() {}
-
-		RowLayout {
-			Label {
-				text: "Architecture:"
-			}
-
-			ComboBox {
-				id: targetComboBox
-				Layout.preferredWidth: 150
-				model: {
-					console.log(Panopticon.allTargets());
-					var res = JSON.parse(Panopticon.allTargets());
-
-					if(res.status == "ok") {
-						return res.payload;
-					} else {
-						console.log(res.error);
-						return [];
-					}
-				}
-			}
-		}
-
-		onAccepted: {
-			next(targetComboBox.currentText);
-		}
-	}
-
-	FileDialog {
+	/*FileDialog {
 		id: fileSaveDialog
 		title: "Save current project to..."
 		selectExisting: false
@@ -306,13 +131,12 @@ ApplicationWindow {
 			var path = fileNewDialog.fileUrls.toString().substring(7)
 			next(path)
 		}
-	}
+	}*/
 
-	Loader {
-		focus: true
-		id: loader
-		anchors.fill: parent
-		sourceComponent: Item {
+	Component {
+		id: welcomeScreen
+
+		Item {
 			anchors.fill: parent
 
 			Item {
@@ -339,9 +163,36 @@ ApplicationWindow {
 		}
 	}
 
+	Loader {
+		focus: true
+		id: loader
+		anchors.fill: parent
+		sourceComponent: welcomeScreen
+	}
+
 	Component.onCompleted: {
-		if(Panopticon.state != "NEW") {
-			loader.setSource("workspace/Workspace.qml")
-		}
+		Panopticon.onStateChanged.connect(function() {
+			switch(Panopticon.state) {
+				case "":
+				case "NEW": {
+					workspaceLoaded = false;
+					loader.sourceComponent = welcomeScreen;
+					break;
+				}
+
+				case "SYNC":
+				case "DIRTY": {
+					if(!mainWindow.workspaceLoaded) {
+						workspaceLoaded = true;
+						loader.setSource("workspace/Workspace.qml")
+					}
+					break;
+				}
+
+				default: {
+					console.error("Unknown state: " + Panopticon.state);
+				}
+			}
+		})
 	}
 }

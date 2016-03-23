@@ -34,20 +34,6 @@ Item {
 		standardButtons: StandardButton.Ok
 	}
 
-	Timer {
-		id: timer;
-		interval: 2
-		running: false;
-		onTriggered: {
-			var res = JSON.parse(Panopticon.start())
-
-			if(res.status == "err") {
-				errorDialog.text = res.error;
-				errorDialog.open()
-			}
-		}
-	}
-
 	Component.onCompleted: {
 		Panopticon.changedFunction.connect(function(uu) {
 			if (uu == selection) {
@@ -69,8 +55,6 @@ Item {
 				}
 			}
 		});
-
-		timer.running = true;
 	}
 
 	FunctionTable {
@@ -123,17 +107,6 @@ Item {
 					color: "#efefef"
 				}
 
-				Rectangle {
-					anchors.centerIn: parent
-					width: childrenRect.width
-					height: childrenRect.height
-					visible: cflow_graph.state == "ERROR"
-
-					Label {
-						text: errorMessage
-					}
-				}
-
 				Canvas {
 					id: graph
 
@@ -169,14 +142,18 @@ Item {
 
 						if (func_res.status != "ok") {
 							cflow_graph.errorMessage = func_res.error
-							cflow_graph.status = "ERROR"
+							cflow_graph.state = "ERROR"
 							return;
+						} else {
+							cflow_graph.state = ""
 						}
 
 						if (cfg_res.status != "ok") {
 							cflow_graph.errorMessage = cfg_res.error
-							cflow_graph.status = "ERROR"
+							cflow_graph.state = "ERROR"
 							return;
+						} else {
+							cflow_graph.state = ""
 						}
 
 						var func = func_res.payload;
@@ -238,6 +215,24 @@ Item {
 					id: bblockRoot
 				}
 
+				Rectangle {
+					anchors.fill: parent
+					width: childrenRect.width
+					height: childrenRect.height
+					visible: cflow_graph.state == "ERROR"
+					color: "#efefef"
+
+					Label {
+						anchors.fill: parent
+						horizontalAlignment: Text.AlignHCenter
+						verticalAlignment: Text.AlignVCenter
+						wrapMode: Text.WordWrap
+						font.pixelSize: 21
+						color: "#333"
+						text: errorMessage
+					}
+				}
+
 				property string selection: "";
 				property var bblockList: null;
 
@@ -248,8 +243,10 @@ Item {
 
 						if (cfg_res.status != "ok") {
 							cflow_graph.errorMessage = cfg_res.error
-							cflow_graph.status = "ERROR"
+							cflow_graph.state = "ERROR"
 							return;
+						} else {
+							cflow_graph.state = ""
 						}
 
 						var cfg = cfg_res.payload;
@@ -297,16 +294,20 @@ Item {
 
 					if (cfg_res.status != "ok") {
 						cflow_graph.errorMessage = cfg_res.error
-						cflow_graph.status = "ERROR"
+						cflow_graph.state = "ERROR"
 						return;
+					} else {
+						cflow_graph.state = ""
 					}
 
 					var cfg = cfg_res.payload;
 
 					if (func_res.status != "ok") {
 						cflow_graph.errorMessage = func_res.error
-						cflow_graph.status = "ERROR"
+						cflow_graph.state = "ERROR"
 						return;
+					} else {
+							cflow_graph.state = ""
 					}
 
 					var func = func_res.payload;
@@ -324,10 +325,20 @@ Item {
 					var bblock = Qt.createComponent("BasicBlock.qml");
 					for(var i = 0; i < cfg.nodes.length; i++) {
 						var node = cfg.nodes[i];
-						var c = {
-							"contents":cfg.contents[node] ,
-							"color":(node == cfg.head ? "red" : "steelblue"),
-						};
+
+						if(cfg.code[node] != undefined) {
+							var c = {
+								"code":cfg.code[node] ,
+								"mode":"RESOLVED",
+							};
+						} else if(cfg.targets[node] != undefined) {
+							var c = {
+								"target":cfg.targets[node],
+								"mode":"UNRESOLVED",
+							};
+						} else {
+							console.error("Node '" + node.toString() + "' has neither code nor target");
+						}
 
 						while (bblock.status != Component.Ready && bblock.status != Component.Error) {
 							sleep(1);
