@@ -112,7 +112,7 @@ Popup {
 			}
 
 			Component.onCompleted: {
-				chdir("file:///")
+				chdir("")
 			}
 
 			width: 650; height: 450

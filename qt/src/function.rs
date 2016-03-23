@@ -30,7 +30,7 @@ use panopticon::elf;
 use std::hash::{Hash,Hasher,SipHasher};
 use std::thread;
 use std::fs;
-use std::path::Path;
+use std::path::{PathBuf,Path};
 use std::iter::FromIterator;
 use std::collections::HashMap;
 use std::io::{
@@ -38,6 +38,7 @@ use std::io::{
     Seek,
     Read,
 };
+use std::env::home_dir;
 
 use qmlrs::{Object,Variant};
 use graph_algos::{
@@ -291,10 +292,19 @@ struct DirectoryListing {
 
 pub fn read_directory(arg: &Variant) -> Variant {
     Variant::String(if let &Variant::String(ref p) = arg {
-        let path = Path::new(p);
+        println!("git {}",p);
+        let path = if p == "" {
+            if let Some(ref home) = home_dir() {
+                home.clone()
+            } else {
+                PathBuf::from("/")
+            }
+        } else {
+            PathBuf::from(p)
+        };
         let mut ret = vec![];
 
-        match fs::read_dir(path) {
+        match fs::read_dir(&path) {
             Ok(iter) => {
                 for maybe_ent in iter {
                     if let Ok(ent) = maybe_ent {
@@ -315,7 +325,7 @@ pub fn read_directory(arg: &Variant) -> Variant {
                 }
 
                 return_json(Ok(DirectoryListing{
-                    current: p.clone(),
+                    current: path.to_str().unwrap_or(p).to_string(),
                     parent: path.parent().and_then(|x| x.to_str()).unwrap_or("/").to_string(),
                     listing: ret,
                 }))
@@ -336,8 +346,8 @@ struct FileDetails {
 
 pub fn file_details(arg: &Variant) -> Variant {
     Variant::String(if let &Variant::String(ref p) = arg {
-        let path = Path::new(p);
-        let ret: Result<FileDetails> = fs::File::open(path).and_then(|mut fd| {
+        let path = PathBuf::from(p);
+        let ret: Result<FileDetails> = fs::File::open(&path).and_then(|mut fd| {
             let meta = try!(fd.metadata());
 
             if meta.is_dir() {

@@ -107,17 +107,6 @@ Item {
 					color: "#efefef"
 				}
 
-				Rectangle {
-					anchors.centerIn: parent
-					width: childrenRect.width
-					height: childrenRect.height
-					visible: cflow_graph.state == "ERROR"
-
-					Label {
-						text: errorMessage
-					}
-				}
-
 				Canvas {
 					id: graph
 
@@ -153,14 +142,18 @@ Item {
 
 						if (func_res.status != "ok") {
 							cflow_graph.errorMessage = func_res.error
-							cflow_graph.status = "ERROR"
+							cflow_graph.state = "ERROR"
 							return;
+						} else {
+							cflow_graph.state = ""
 						}
 
 						if (cfg_res.status != "ok") {
 							cflow_graph.errorMessage = cfg_res.error
-							cflow_graph.status = "ERROR"
+							cflow_graph.state = "ERROR"
 							return;
+						} else {
+							cflow_graph.state = ""
 						}
 
 						var func = func_res.payload;
@@ -222,6 +215,24 @@ Item {
 					id: bblockRoot
 				}
 
+				Rectangle {
+					anchors.fill: parent
+					width: childrenRect.width
+					height: childrenRect.height
+					visible: cflow_graph.state == "ERROR"
+					color: "#efefef"
+
+					Label {
+						anchors.fill: parent
+						horizontalAlignment: Text.AlignHCenter
+						verticalAlignment: Text.AlignVCenter
+						wrapMode: Text.WordWrap
+						font.pixelSize: 21
+						color: "#333"
+						text: errorMessage
+					}
+				}
+
 				property string selection: "";
 				property var bblockList: null;
 
@@ -232,8 +243,10 @@ Item {
 
 						if (cfg_res.status != "ok") {
 							cflow_graph.errorMessage = cfg_res.error
-							cflow_graph.status = "ERROR"
+							cflow_graph.state = "ERROR"
 							return;
+						} else {
+							cflow_graph.state = ""
 						}
 
 						var cfg = cfg_res.payload;
@@ -281,16 +294,20 @@ Item {
 
 					if (cfg_res.status != "ok") {
 						cflow_graph.errorMessage = cfg_res.error
-						cflow_graph.status = "ERROR"
+						cflow_graph.state = "ERROR"
 						return;
+					} else {
+						cflow_graph.state = ""
 					}
 
 					var cfg = cfg_res.payload;
 
 					if (func_res.status != "ok") {
 						cflow_graph.errorMessage = func_res.error
-						cflow_graph.status = "ERROR"
+						cflow_graph.state = "ERROR"
 						return;
+					} else {
+							cflow_graph.state = ""
 					}
 
 					var func = func_res.payload;
