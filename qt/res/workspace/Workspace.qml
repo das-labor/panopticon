@@ -325,10 +325,20 @@ Item {
 					var bblock = Qt.createComponent("BasicBlock.qml");
 					for(var i = 0; i < cfg.nodes.length; i++) {
 						var node = cfg.nodes[i];
-						var c = {
-							"contents":cfg.contents[node] ,
-							"color":(node == cfg.head ? "red" : "steelblue"),
-						};
+
+						if(cfg.code[node] != undefined) {
+							var c = {
+								"code":cfg.code[node] ,
+								"mode":"RESOLVED",
+							};
+						} else if(cfg.targets[node] != undefined) {
+							var c = {
+								"target":cfg.targets[node],
+								"mode":"UNRESOLVED",
+							};
+						} else {
+							console.error("Node '" + node.toString() + "' has neither code nor target");
+						}
 
 						while (bblock.status != Component.Ready && bblock.status != Component.Error) {
 							sleep(1);

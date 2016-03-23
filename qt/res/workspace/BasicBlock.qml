@@ -24,38 +24,51 @@ import QtQuick.Dialogs 1.2
 Item {
 	id: bblock
 
-	MessageDialog {
-		id: errorDialog
-		title: "Error"
-		icon: StandardIcon.Critical
-		standardButtons: StandardButton.Ok
-	}
-
 	readonly property int xPadding: 5
 	readonly property int yPadding: 2
-	property var contents: [];
+	property var code: [];
+	property string target: "";
+	property string mode;
 	property int opcodeWidth: 0;
 	property int argsWidth: 0;
 
 	width: childrenRect.width - childrenRect.x
 	height: childrenRect.height
 
-	Item {
-		height: txt.childrenRect.height
-		width: opcodeWidth + argsWidth + 6 + 2 * bblock.xPadding
+	MouseArea {
+		anchors.fill: parent
+		cursorShape: Qt.ArrowCursor
+		enabled: false
+	}
 
-		MouseArea {
+	Rectangle {
+		width: Math.max(tgt.contentWidth + 2 * bblock.xPadding,tgt.contentHeight + 2 * bblock.yPadding)
+		height: width
+		visible: mode == "UNRESOLVED"
+		radius: width / 2
+		color: "white";
+		border.width: 1;
+		border.color: "#666666";
+
+		Label {
+			id: tgt
 			anchors.fill: parent
-			cursorShape: Qt.ArrowCursor
-			enabled: false
+			text: target
+			verticalAlignment: Text.AlignVCenter;
+			horizontalAlignment: Text.AlignHCenter;
 		}
+	}
 
+	Item {
+		visible: mode == "RESOLVED"
+		height: Math.max(txt.childrenRect.height,tgt.height)
+		width: Math.max(opcodeWidth + argsWidth + 6 + 2 * bblock.xPadding,tgt.width)
 		Column {
 			id: txt
 			x: bblock.xPadding
 
 			Repeater {
-				model: bblock.contents
+				model: bblock.code
 				delegate: Item {
 					width: comment.x + comment.width
 					height: Math.max(opcode.height,Math.max(args.height,comment.height)) + 2 * bblock.yPadding
@@ -83,7 +96,7 @@ Item {
 
 					Text {
 						id: args
-						text: modelData.args
+						text: modelData.args.join(", ")
 						font.family: "Monospace"
 						width: bblock.argsWidth
 						height: contentHeight

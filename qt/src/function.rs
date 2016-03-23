@@ -155,7 +155,8 @@ struct ControlFlowGraph {
     entry_point: Option<String>,
     nodes: Vec<String>,
     edges: Vec<CfgEdge>,
-    contents: HashMap<String,Vec<CfgMnemonic>>,
+    code: HashMap<String,Vec<CfgMnemonic>>,
+    targets: HashMap<String,String>,
 }
 
 /// JSON-encoded control flow graph of the function w/ UUID `arg`.
@@ -215,8 +216,7 @@ pub fn control_flow_graph(arg: &Variant) -> Variant {
 
 
                         // basic block contents
-                        // XXX: skips unresolved control transfers
-                        let contents = cfg.vertices().filter_map(|x| {
+                        let code = cfg.vertices().filter_map(|x| {
                             let lb = cfg.vertex_label(x);
                             match lb {
                                 Some(&ControlFlowTarget::Resolved(ref bb)) => {
@@ -236,6 +236,15 @@ pub fn control_flow_graph(arg: &Variant) -> Variant {
                                 _ => None,
                             }
                         });
+                        let targets = cfg.vertices().filter_map(|x| {
+                            let lb = cfg.vertex_label(x);
+                            match lb {
+                                Some(&ControlFlowTarget::Unresolved(ref rv)) =>
+                                    Some((to_ident(lb.unwrap()),format!("{}",rv))),
+                                _ => None,
+                            }
+                        });
+
 
                         // control flow edges
                         let edges = cfg.edges().filter_map(|x| {
@@ -255,7 +264,8 @@ pub fn control_flow_graph(arg: &Variant) -> Variant {
                             entry_point: entry,
                             nodes: nodes,
                             edges: edges,
-                            contents: HashMap::from_iter(contents),
+                            code: HashMap::from_iter(code),
+                            targets: HashMap::from_iter(targets),
                         }))
                     } else {
                         return_json::<()>(Err("This function is unresolved".into()))
