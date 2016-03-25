@@ -21,6 +21,7 @@ use std::{f32,isize,usize};
 use std::ptr;
 use std::cmp::{min,max,Ordering};
 use std::mem::swap;
+use std::iter::FromIterator;
 use libc::{c_int,c_double};
 
 use graph_algos::adjacency_list::{
@@ -85,18 +86,19 @@ pub fn layout(vertices: &Vec<usize>,
     let head = ensure_single_entry(maybe_entry.as_ref(),&mut graph);
     let revd_edge_labels = remove_cycles(&head,&mut graph);
     remove_loops(&mut graph);
-    remove_parallel_edges(&mut graph);
+    let revd_parallel_edge = remove_parallel_edges(&mut graph);
 
-    // rank assignment
-    let rank_vec = {
+    // Desc -> Rank
+    let mut rank = {
         let (a,b,c,lb,ub) = build_ranking_integer_program(&graph);
-        solve_integer_program(&a,&b,&c,&lb,&ub).iter().take(graph.num_vertices()).cloned().collect::<Vec<isize>>()
+        let res = solve_integer_program(&a,&b,&c,&lb,&ub);
+
+        HashMap::from_iter(graph.vertices().zip(res.iter().map(|&x| x)))
     };
 
-    let mut rank = HashMap::new();  // Desc -> Rank
-    for vx in graph.vertices() {
-        let lb = *graph.vertex_label(vx).unwrap();
-        rank.insert(vx,rank_vec[lb]);
+    // restore parallel edges
+    for e in revd_parallel_edge {
+        graph.add_edge(e.0,e.1,e.2);
     }
 
     if rank.len() != graph.num_vertices() {
@@ -104,8 +106,8 @@ pub fn layout(vertices: &Vec<usize>,
     }
 
     // split edges spanning multiple ranks
-    let virt_start = add_virtual_vertices(&mut rank,&mut graph);
-    let mut next_virt = graph.edges().map(|x| graph.edge_label(x).unwrap()).max().unwrap() + 1;
+    let (virt_start,mut next_virt) = add_virtual_vertices(&mut rank,&mut graph);
+    assert!(virt_start <= next_virt);
 
     // add vertices for edges going from higher to lower ranks
     let to_extend = graph.edges().filter(|&e| {
@@ -179,7 +181,7 @@ pub fn layout(vertices: &Vec<usize>,
 
     optimize_ordering(&mut order,&rank,&graph);
 
-       // intra-rank positions
+    // intra-rank positions
     let x_pos = compute_x_coordinates(&order,&rank,&graph,&dims,node_spacing,virt_start);
 
     // check for overlap
@@ -525,21 +527,29 @@ pub fn remove_loops(graph: &mut AdjacencyList<usize,usize>) {
     }
 }
 
-pub fn remove_parallel_edges(graph: &mut AdjacencyList<usize,usize>) {
+pub fn remove_parallel_edges(graph: &mut AdjacencyList<usize,usize>) -> Vec<(usize,AdjacencyListVertexDescriptor,AdjacencyListVertexDescriptor)> {
     let mut seen_edges = HashSet::<(usize,usize)>::new();
-    let to_rm = graph.edges().filter(|&e| {
+    let to_rm = graph.edges().filter_map(|e| {
         let from = graph.vertex_label(graph.source(e)).unwrap();
         let to = graph.vertex_label(graph.target(e)).unwrap();
 
-        !seen_edges.insert((*from,*to))
+
+        if !seen_edges.insert((*from,*to)) {
+            Some((e,*graph.edge_label(e).unwrap(),graph.source(e),graph.target(e)))
+        } else {
+            None
+        }
     }).collect::<Vec<_>>();
 
-    for e in to_rm {
-        graph.remove_edge(e);
+    for e in to_rm.iter() {
+        graph.remove_edge(e.0);
     }
+
+    to_rm.iter().map(|&(_,a,b,c)| (a,b,c)).collect::<Vec<_>>()
 }
 
 fn build_ranking_integer_program<'a>(graph: &AdjacencyList<usize,usize>) -> (Vec<Vec<isize>>,Vec<isize>,Vec<isize>,Vec<isize>,Vec<isize>) {
+    let vx_ord = HashMap::<usize,usize>::from_iter(graph.vertices().enumerate().map(|(i,v)| (*graph.vertex_label(v).unwrap(),i)));
     let mut a = Vec::new();
     let b = (0..graph.num_edges()).map(|_| 0).collect::<Vec<_>>();
     let c = (0..graph.num_vertices()).map(|_| 0).chain((0..graph.num_edges()).map(|_| 1)).collect::<Vec<_>>();
@@ -551,8 +561,8 @@ fn build_ranking_integer_program<'a>(graph: &AdjacencyList<usize,usize>) -> (Vec
         let from = *graph.vertex_label(graph.source(e)).unwrap();
         let to = *graph.vertex_label(graph.target(e)).unwrap();
 
-        a_row[from] = -1;
-        a_row[to] = 1;
+        a_row[vx_ord[&from]] = -1;
+        a_row[vx_ord[&to]] = 1;
         a_row[graph.num_vertices() + i] = -1;
         a.push(a_row);
 	}
@@ -560,7 +570,7 @@ fn build_ranking_integer_program<'a>(graph: &AdjacencyList<usize,usize>) -> (Vec
     (a,b,c,lb,ub)
 }
 
-pub fn add_virtual_vertices(rank: &mut HashMap<AdjacencyListVertexDescriptor,isize>,graph: &mut AdjacencyList<usize,usize>) -> usize {
+pub fn add_virtual_vertices(rank: &mut HashMap<AdjacencyListVertexDescriptor,isize>,graph: &mut AdjacencyList<usize,usize>) -> (usize,usize) {
     let to_replace = graph.edges().filter(|&e| {
         let rank_from = rank.get(&graph.source(e)).unwrap();
         let rank_to = rank.get(&graph.target(e)).unwrap();
@@ -593,7 +603,7 @@ pub fn add_virtual_vertices(rank: &mut HashMap<AdjacencyListVertexDescriptor,isi
         graph.remove_edge(e);
     }
 
-    ret
+    (ret,next_label)
 }
 
 fn normalize_rank(rank: &mut HashMap<AdjacencyListVertexDescriptor,isize>) {
@@ -1680,6 +1690,96 @@ mod tests {
                     }
                 }
             }
+        }
+    }
+
+    #[test]
+    fn edge_routing() {
+        let mut dims = HashMap::<usize,(f32,f32)>::new();
+        let mut edges = vec![];
+
+        let bb84 = 84;
+        let bb0 = 0;
+        let bb128 = 128;
+        let bb114 = 114;
+        let bb130 = 130;
+        let bb120 = 120;
+        let bb7718 = 7718;
+        let bb7716 = 7716;
+        let bb136 = 136;
+        let bb108 = 108;
+
+        let nodes = vec![
+            bb84, bb0, bb128, bb114, bb130,
+            bb120, bb7718, bb7716, bb136, bb108
+        ];
+
+        edges.push((bb114,bb120));
+        edges.push((bb84,bb114));
+        edges.push((bb7718,bb7718));
+        edges.push((bb120,bb130));
+        edges.push((bb128,bb130));
+        edges.push((bb130,bb128));
+        edges.push((bb0,bb84));
+        edges.push((bb7716,bb7718));
+        edges.push((bb130,bb136));
+        edges.push((bb136,bb7716));
+        edges.push((bb114,bb108));
+        edges.push((bb108,bb114));
+
+        dims.insert(bb84,(144.0,240.0));
+        dims.insert(bb0,(87.0,20.0));
+        dims.insert(bb128,(80.0,20.0));
+        dims.insert(bb114,(137.0,60.0));
+        dims.insert(bb130,(137.0,60.0));
+        dims.insert(bb120,(137.0,80.0));
+        dims.insert(bb7718,(115.0,20.0));
+        dims.insert(bb7716,(80.0,20.0));
+        dims.insert(bb136,(123.0,40.0));
+        dims.insert(bb108,(137.0,60.0));
+
+        // Result<(HashMap<usize,(f32,f32)>,HashMap<usize,(Vec<(f32,f32,f32,f32)>,(f32,f32),(f32,f32))>),&'static str> {
+        let (pos,segs) = layout(&nodes,&edges,&dims,Some(bb0),10,10,10).ok().unwrap();
+
+        assert_eq!(pos.len(), nodes.len());
+        for v in nodes.iter() {
+            assert!(pos.get(v).is_some());
+        }
+
+        assert_eq!(segs.len(), edges.len());
+        for (e_idx,(lines,entry,exit)) in segs {
+            let (start,end) = edges[e_idx];
+            let start_pos = pos[&start];
+            let start_dim = dims[&start];
+            let end_pos = pos[&end];
+            let end_dim = dims[&end];
+
+            println!("check {:?} -> {:?}",start,end);
+            assert!(lines.len() >= 2);
+
+            println!("from: ({}.{})x({},{})",start_pos.0,start_pos.1,start_pos.0 + start_dim.0,start_pos.1 + start_dim.1);
+            println!("to: ({}.{})x({},{})",end_pos.0,end_pos.1,end_pos.0 + end_dim.0,end_pos.1 + end_dim.1);
+
+            for l in lines.iter() {
+                println!("    ({},{}) -> ({},{})",l.0,l.1,l.2,l.3);
+            }
+
+            let found_start = lines.iter().any(|l| {
+                ((start_pos.0 - start_dim.0 / 2. <= l.0 && start_pos.0 + start_dim.0 / 2. >= l.0) &&
+                (start_pos.1 - start_dim.1 / 2. <= l.1 && start_pos.1 + start_dim.1 / 2. >= l.1)) ||
+                ((start_pos.0 - start_dim.0 / 2. <= l.2 && start_pos.0 + start_dim.0 / 2. >= l.2) &&
+                (start_pos.1 - start_dim.1 / 2. <= l.3 && start_pos.1 + start_dim.1 / 2. >= l.3))
+
+            });
+            let found_end = lines.iter().any(|l| {
+                ((end_pos.0 - end_dim.0 / 2. <= l.0 && end_pos.0 + end_dim.0 / 2. >= l.0) &&
+                (end_pos.1 - end_dim.1 / 2. <= l.1 && end_pos.1 + end_dim.1 / 2. >= l.1)) ||
+                ((end_pos.0 - end_dim.0 / 2. <= l.2 && end_pos.0 + end_dim.0 / 2. >= l.2) &&
+                (end_pos.1 - end_dim.1 / 2. <= l.3 && end_pos.1 + end_dim.1 / 2. >= l.3))
+            });
+
+            assert!(found_start);
+            assert!(found_end);
         }
     }
 }
