@@ -557,7 +557,9 @@ pub fn layout(arg0: &Variant, arg1: &Variant, arg2: &Variant, arg3: &Variant, ar
                         dims_transformed.insert(_k,(v.width as f32,v.height as f32));
                     }
                     let maybe_entry = func.entry_point.map(|k| vertices.iter().position(|&x| x == k).unwrap());
-                    let idents = func.cflow_graph.vertices().map(|x| to_ident(func.cflow_graph.vertex_label(x).unwrap())).collect::<Vec<_>>();
+                    let idents = vertices.iter().map(|x| to_ident(func.cflow_graph.vertex_label(*x).unwrap())).collect::<Vec<_>>();
+
+                    assert!(idents.len() == vertices.len() && dims_transformed.len() == vertices.len());
 
                     Some((maybe_entry,idents,dims_transformed,vertices,edges))
                 } else {

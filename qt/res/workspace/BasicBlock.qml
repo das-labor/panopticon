@@ -42,16 +42,13 @@ Item {
 	}
 
 	Rectangle {
-		width: Math.max(tgt.contentWidth + 2 * bblock.xPadding,tgt.contentHeight + 2 * bblock.yPadding)
-		height: width
-		visible: mode == "UNRESOLVED"
-		radius: width / 2
-		color: "white";
-		border.width: 1;
-		border.color: "#666666";
+		width: tgt.contentWidth + 2 * bblock.xPadding
+		height: tgt.contentHeight + 2 * bblock.yPadding
+		color: "#efefef"
 
 		Label {
 			id: tgt
+			visible: mode == "UNRESOLVED"
 			anchors.fill: parent
 			text: target
 			verticalAlignment: Text.AlignVCenter;
@@ -82,7 +79,7 @@ Item {
 
 					Text {
 						id: opcode
-						text: modelData.opcode
+						text: modelData.offset.toString() + ": " + modelData.opcode
 						font.family: "Monospace"
 						width: bblock.opcodeWidth
 						height: contentHeight
