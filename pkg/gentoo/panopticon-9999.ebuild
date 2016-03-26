@@ -17,11 +17,8 @@ IUSE="debug test"
 
 RDEPEND="
 	sci-mathematics/glpk
-	( dev-qt/qtgui:5
-	  dev-qt/qtwidgets:5
-	  dev-qt/qtdeclarative:5
-	  dev-qt/qtquickcontrols:5[widgets] )
-	"
+	dev-qt/qtgraphicaleffects:5
+	dev-qt/qtquickcontrols:5[widgets]"
 DEPEND="${RDEPEND}
 	dev-lang/rust
 	dev-util/cargo
