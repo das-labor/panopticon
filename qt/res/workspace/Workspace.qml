@@ -20,12 +20,16 @@ import QtQuick 2.0
 import Panopticon 1.0
 import QtQuick.Dialogs 1.2
 import QtQuick.Controls 1.3
-import "."
 
 Item {
 	id: root
 
 	property string selection: "";
+
+	Component {
+		id: basicBlock
+		BasicBlock {}
+	}
 
 	MessageDialog {
 		id: errorDialog
@@ -322,7 +326,6 @@ Item {
 					}
 
 					bblockList = {};
-					var bblock = Qt.createComponent("BasicBlock.qml");
 					for(var i = 0; i < cfg.nodes.length; i++) {
 						var node = cfg.nodes[i];
 
@@ -340,19 +343,12 @@ Item {
 							console.error("Node '" + node.toString() + "' has neither code nor target");
 						}
 
-						while (bblock.status != Component.Ready && bblock.status != Component.Error) {
-							sleep(1);
-						}
-						if (bblock.status == Component.Error) {
-							console.error(bblock.errorString())
-						} else {
-							var obj = bblock.createObject(bblockRoot,c);
+						var obj = basicBlock.createObject(bblockRoot,c);
 
-							obj.visible = false;
-							bblockList[node] = obj;
+						obj.visible = false;
+						bblockList[node] = obj;
 
-							dims[node] = {"width":obj.width,"height":obj.height};
-						}
+						dims[node] = {"width":obj.width,"height":obj.height};
 					}
 
 					if(cfg.nodes.length > 1) {

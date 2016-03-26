@@ -20,13 +20,26 @@ import QtQuick.Controls 1.1
 import QtQuick.Dialogs 1.2
 import QtQuick.Layouts 1.1
 import QtQuick 2.1
+
 import Panopticon 1.0
-import "workspace";
-import "popup";
-import "action" as Act;
 
 ApplicationWindow {
 	id: mainWindow
+
+	Component {
+		id: fileBrowser
+		FileBrowser {}
+	}
+
+	Component {
+		id: targetPopup
+		TargetPopup {}
+	}
+
+	Component {
+		id: errorPopup
+		ErrorPopup {}
+	}
 
 	property bool enabled: true
 	property bool workspaceLoaded: false
@@ -42,96 +55,32 @@ ApplicationWindow {
 			id: projectMenu
 
 			MenuItem {
-				action: Act.Open {
+				action: Open {
 					window: mainWindow
+					fileBrowser: fileBrowser;
+					errorPopup: errorPopup;
+					targetPopup: targetPopup;
 				}
 			}
 
 			MenuItem {
-				action: Act.SaveAs {
+				action: SaveAs {
 					window: mainWindow
+					fileBrowser: fileBrowser;
+					errorPopup: errorPopup;
 				}
 			}
 
 			MenuSeparator {}
 
 			MenuItem {
-				action: Act.Quit {
+				action: Quit {
 					window: mainWindow
+					errorPopup: errorPopup;
 				}
 			}
 		}
 	}
-
-	/*FileDialog {
-		id: fileSaveDialog
-		title: "Save current project to..."
-		selectExisting: false
-		selectFolder: false
-		nameFilters: [ "Panopticon projects (*.panop)", "All files (*)" ]
-
-		property var next: function() {}
-
-		onAccepted: {
-			var path = fileSaveDialog.fileUrls.toString().substring(7)
-
-			if (path.substring(path.length - 6) != ".panop") {
-				path += ".panop"
-			}
-
-			if (mainWindow.savePath == "") {
-				mainWindow.savePath = path;
-			}
-
-			var res = JSON.parse(Panopticon.snapshotProject(path))
-
-			if(res.state == "ok") {
-				next()
-			} else {
-				errorDialog.text = res.error;
-				errorDialog.open();
-			}
-		}
-	}
-
-	FileDialog {
-		id: fileOpenDialog
-		title: "Open new project..."
-		selectExisting: true
-		selectFolder: false
-		nameFilters: [ "Panopticon projects (*.panop)", "All files (*)" ]
-
-		property var next: function() {}
-
-		onAccepted: {
-			// cut off the "file://" part
-			var path = fileOpenDialog.fileUrls.toString().substring(7)
-			var res = JSON.parse(Panopticon.openProject(path));
-
-			if(res.status == "ok") {
-				loader.setSource("workspace/Workspace.qml")
-				next()
-			} else {
-				errorDialog.text = res.error;
-				errorDialog.open();
-			}
-		}
-	}
-
-	FileDialog {
-		id: fileNewDialog
-		title: "Start new project..."
-		selectExisting: true
-		selectFolder: false
-
-		property var next: null
-
-		onAccepted: {
-			// cut off the "file://" part
-			var path = fileNewDialog.fileUrls.toString().substring(7)
-			next(path)
-		}
-	}*/
 
 	Component {
 		id: welcomeScreen
@@ -170,6 +119,11 @@ ApplicationWindow {
 		sourceComponent: welcomeScreen
 	}
 
+	Component {
+		id: workspace
+		Workspace {}
+	}
+
 	Component.onCompleted: {
 		Panopticon.onStateChanged.connect(function() {
 			switch(Panopticon.state) {
@@ -184,7 +138,7 @@ ApplicationWindow {
 				case "DIRTY": {
 					if(!mainWindow.workspaceLoaded) {
 						workspaceLoaded = true;
-						loader.setSource("workspace/Workspace.qml")
+						loader.sourceComponent = workspace;
 					}
 					break;
 				}

@@ -1,0 +1,14 @@
+module Panopticon
+
+Workspace 1.0 workspace/Workspace.qml
+
+Open 1.0 action/Open.qml
+Quit 1.0 action/Quit.qml
+SaveAs 1.0 action/SaveAs.qml
+
+FileBrowser 1.0 popup/FileBrowser.qml
+ErrorPopup 1.0 popup/ErrorPopup.qml
+Popup 1.0 popup/Popup.qml
+TargetPopup 1.0 popup/TargetPopup.qml
+
+BasicBlock 1.0 workspace/BasicBlock.qml

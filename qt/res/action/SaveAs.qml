@@ -22,8 +22,8 @@ import Panopticon 1.0
 
 Action {
 	property var window: null
-	property var fileBrowser: Qt.createComponent("../popup/FileBrowser.qml");
-	property var errorPopup: Qt.createComponent("../popup/ErrorPopup.qml");
+	property var fileBrowser: null;
+	property var errorPopup: null;
 
 	function displayError(msg) {
 		window.enabled = false;

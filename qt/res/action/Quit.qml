@@ -22,7 +22,7 @@ import Panopticon 1.0
 
 Action {
 	property var window: null
-	property var errorPopup: Qt.createComponent("../popup/ErrorPopup.qml");
+	property var errorPopup: null;
 
 	function displayError(msg) {
 		window.enabled = false;
