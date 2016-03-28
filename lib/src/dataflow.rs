@@ -299,21 +299,37 @@ pub fn rename_variables(func: &mut Function) {
                     *subscript = Some(new_name(name,counter,stack)),
                 _ => {},
             });
-            bb.rewrite(|i| {
-                let &mut Instr{ ref mut op, ref mut assignee } = i;
 
-                if let &mut Operation::Phi(_) = op {} else {
-                    for o in op.operands_mut() {
+            for mne in bb.mnemonics.iter_mut() {
+                if mne.opcode != "__phi" {
+                    for o in mne.operands.iter_mut() {
                         if let &mut Rvalue::Variable{ ref name, ref mut subscript,.. } = o {
-                            *subscript = stack[name].last().cloned();
+                            *subscript = stack.get(name).and_then(|x| x.last()).cloned();
+                            if !stack.contains_key(name) {
+                                println!("Mnemonic {} has {} as arguments but does not read it",mne.opcode,name);
+                            }
                         }
                     }
 
-                    if let &mut Lvalue::Variable{ ref name, ref mut subscript,.. } = assignee {
-                        *subscript = Some(new_name(name,counter,stack));
+                    for i in mne.instructions.iter_mut() {
+                        let &mut Instr{ ref mut op, ref mut assignee } = i;
+
+                        if let &mut Operation::Phi(_) = op {
+                            unreachable!("Phi instruction outside __phi mnemonic");
+                        } else {
+                            for o in op.operands_mut() {
+                                if let &mut Rvalue::Variable{ ref name, ref mut subscript,.. } = o {
+                                    *subscript = stack[name].last().cloned();
+                                }
+                            }
+
+                            if let &mut Lvalue::Variable{ ref name, ref mut subscript,.. } = assignee {
+                                *subscript = Some(new_name(name,counter,stack));
+                            }
+                        }
                     }
                 }
-            });
+            }
         }
 
         let mut succ = cfg.out_edges(b).collect::<Vec<_>>();
