@@ -231,7 +231,7 @@ pub fn phi_functions(func: &mut Function) {
 
         let mne = Mnemonic::new(
             pos..pos,
-            "internal-init".to_string(),
+            "__init".to_string(),
             "".to_string(),
             vec![].iter(),
             instrs.iter());
@@ -260,7 +260,7 @@ pub fn phi_functions(func: &mut Function) {
                         let pos = bb.area.start;
                         let mne = Mnemonic::new(
                             pos..pos,
-                            "internal-phi".to_string(),
+                            "__phi".to_string(),
                             "".to_string(),
                             vec![].iter(),
                             vec![Instr{
@@ -561,19 +561,19 @@ mod tests {
 
         // bb0
         if let Some(&ControlFlowTarget::Resolved(ref bb)) = func.cflow_graph.vertex_label(v0) {
-            assert!(bb.mnemonics[0].opcode != "internal-phi".to_string());
+            assert!(bb.mnemonics[0].opcode != "__phi".to_string());
         } else {
             unreachable!()
         }
 
         // bb1
         if let Some(&ControlFlowTarget::Resolved(ref bb)) = func.cflow_graph.vertex_label(v1) {
-            assert_eq!(bb.mnemonics[0].opcode, "internal-phi".to_string());
-            assert_eq!(bb.mnemonics[1].opcode, "internal-phi".to_string());
-            assert_eq!(bb.mnemonics[2].opcode, "internal-phi".to_string());
-            assert_eq!(bb.mnemonics[3].opcode, "internal-phi".to_string());
-            assert_eq!(bb.mnemonics[4].opcode, "internal-phi".to_string());
-            assert!(bb.mnemonics[5].opcode != "internal-phi".to_string());
+            assert_eq!(bb.mnemonics[0].opcode, "__phi".to_string());
+            assert_eq!(bb.mnemonics[1].opcode, "__phi".to_string());
+            assert_eq!(bb.mnemonics[2].opcode, "__phi".to_string());
+            assert_eq!(bb.mnemonics[3].opcode, "__phi".to_string());
+            assert_eq!(bb.mnemonics[4].opcode, "__phi".to_string());
+            assert!(bb.mnemonics[5].opcode != "__phi".to_string());
 
             let mut tmp = HashSet::<Lvalue>::new();
             tmp.insert(bb.mnemonics[0].instructions[0].assignee.clone());
@@ -594,18 +594,18 @@ mod tests {
 
         // bb2
         if let Some(&ControlFlowTarget::Resolved(ref bb)) = func.cflow_graph.vertex_label(v2) {
-            assert!(bb.mnemonics[0].opcode != "internal-phi".to_string());
+            assert!(bb.mnemonics[0].opcode != "__phi".to_string());
         } else {
             unreachable!()
         }
 
         // bb3
         if let Some(&ControlFlowTarget::Resolved(ref bb)) = func.cflow_graph.vertex_label(v3) {
-            assert_eq!(bb.mnemonics[0].opcode, "internal-phi".to_string());
-            assert_eq!(bb.mnemonics[1].opcode, "internal-phi".to_string());
-            assert_eq!(bb.mnemonics[2].opcode, "internal-phi".to_string());
-            assert_eq!(bb.mnemonics[3].opcode, "internal-phi".to_string());
-            assert!(bb.mnemonics[4].opcode != "internal-phi".to_string());
+            assert_eq!(bb.mnemonics[0].opcode, "__phi".to_string());
+            assert_eq!(bb.mnemonics[1].opcode, "__phi".to_string());
+            assert_eq!(bb.mnemonics[2].opcode, "__phi".to_string());
+            assert_eq!(bb.mnemonics[3].opcode, "__phi".to_string());
+            assert!(bb.mnemonics[4].opcode != "__phi".to_string());
 
             let mut tmp = HashSet::<Lvalue>::new();
             tmp.insert(bb.mnemonics[0].instructions[0].assignee.clone());
@@ -624,30 +624,30 @@ mod tests {
 
         // bb4
         if let Some(&ControlFlowTarget::Resolved(ref bb)) = func.cflow_graph.vertex_label(v4) {
-            assert!(bb.mnemonics[0].opcode != "internal-phi".to_string());
+            assert!(bb.mnemonics[0].opcode != "__phi".to_string());
         } else {
             unreachable!()
         }
 
         // bb5
         if let Some(&ControlFlowTarget::Resolved(ref bb)) = func.cflow_graph.vertex_label(v5) {
-            assert!(bb.mnemonics[0].opcode != "internal-phi".to_string());
+            assert!(bb.mnemonics[0].opcode != "__phi".to_string());
         } else {
             unreachable!()
         }
 
         // bb6
         if let Some(&ControlFlowTarget::Resolved(ref bb)) = func.cflow_graph.vertex_label(v6) {
-            assert!(bb.mnemonics[0].opcode != "internal-phi".to_string());
+            assert!(bb.mnemonics[0].opcode != "__phi".to_string());
         } else {
             unreachable!()
         }
 
         // bb7
         if let Some(&ControlFlowTarget::Resolved(ref bb)) = func.cflow_graph.vertex_label(v7) {
-            assert_eq!(bb.mnemonics[0].opcode, "internal-phi".to_string());
-            assert_eq!(bb.mnemonics[1].opcode, "internal-phi".to_string());
-            assert!(bb.mnemonics[2].opcode != "internal-phi".to_string());
+            assert_eq!(bb.mnemonics[0].opcode, "__phi".to_string());
+            assert_eq!(bb.mnemonics[1].opcode, "__phi".to_string());
+            assert!(bb.mnemonics[2].opcode != "__phi".to_string());
 
             let mut tmp = HashSet::<Lvalue>::new();
             tmp.insert(bb.mnemonics[0].instructions[0].assignee.clone());
