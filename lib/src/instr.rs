@@ -115,7 +115,7 @@ pub fn execute(op: &Operation<Rvalue>) -> Rvalue {
             },
 
         &Operation::IntAdd(Rvalue::Constant(a),Rvalue::Constant(b)) =>
-            Rvalue::Constant(a + b),
+            Rvalue::Constant(a.wrapping_add(b)),
         &Operation::IntAdd(Rvalue::Constant(0),ref b) =>
             b.clone(),
         &Operation::IntAdd(ref a,Rvalue::Constant(0)) =>
@@ -124,14 +124,14 @@ pub fn execute(op: &Operation<Rvalue>) -> Rvalue {
             Rvalue::Undefined,
 
         &Operation::IntSubtract(Rvalue::Constant(a),Rvalue::Constant(b)) =>
-            Rvalue::Constant(a - b),
+            Rvalue::Constant(a.wrapping_sub(b)),
         &Operation::IntSubtract(ref a,Rvalue::Constant(0)) =>
             a.clone(),
         &Operation::IntSubtract(_,_) =>
             Rvalue::Undefined,
 
         &Operation::IntMultiply(Rvalue::Constant(a),Rvalue::Constant(b)) =>
-            Rvalue::Constant(a * b),
+            Rvalue::Constant(a.wrapping_mul(b)),
         &Operation::IntMultiply(Rvalue::Constant(0),ref b) =>
             Rvalue::Constant(0),
         &Operation::IntMultiply(ref a,Rvalue::Constant(0)) =>
@@ -144,7 +144,7 @@ pub fn execute(op: &Operation<Rvalue>) -> Rvalue {
             Rvalue::Undefined,
 
         &Operation::IntDivide(Rvalue::Constant(a),Rvalue::Constant(b)) =>
-            if b != 0 { Rvalue::Constant(a / b) } else { Rvalue::Undefined },
+            if b != 0 { Rvalue::Constant(a.wrapping_div(b)) } else { Rvalue::Undefined },
         &Operation::IntDivide(Rvalue::Constant(0),_) =>
             Rvalue::Constant(0),
         &Operation::IntDivide(_,Rvalue::Constant(0)) =>
@@ -155,7 +155,7 @@ pub fn execute(op: &Operation<Rvalue>) -> Rvalue {
             Rvalue::Undefined,
 
         &Operation::IntModulo(Rvalue::Constant(a),Rvalue::Constant(b)) =>
-            if b != 0 { Rvalue::Constant(a % b) } else { Rvalue::Undefined },
+            if b != 0 { Rvalue::Constant(a.wrapping_rem(b)) } else { Rvalue::Undefined },
         &Operation::IntModulo(Rvalue::Constant(0),_) =>
             Rvalue::Constant(0),
         &Operation::IntModulo(_,Rvalue::Constant(0)) =>
@@ -183,7 +183,7 @@ pub fn execute(op: &Operation<Rvalue>) -> Rvalue {
             Rvalue::Undefined,
 
         &Operation::IntRightShift(Rvalue::Constant(a),Rvalue::Constant(b)) =>
-            Rvalue::Constant(a >> b),
+            Rvalue::Constant(a.wrapping_shr(b as u32)),
         &Operation::IntRightShift(Rvalue::Constant(0),_) =>
             Rvalue::Constant(0),
         &Operation::IntRightShift(ref a,Rvalue::Constant(0)) =>
@@ -192,7 +192,7 @@ pub fn execute(op: &Operation<Rvalue>) -> Rvalue {
             Rvalue::Undefined,
 
         &Operation::IntLeftShift(Rvalue::Constant(a),Rvalue::Constant(b)) =>
-            Rvalue::Constant(a << b),
+            Rvalue::Constant(a.wrapping_shl(b as u32)),
         &Operation::IntLeftShift(Rvalue::Constant(0),_) =>
             Rvalue::Constant(0),
         &Operation::IntLeftShift(ref a,Rvalue::Constant(0)) =>
