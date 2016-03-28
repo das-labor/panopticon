@@ -325,19 +325,30 @@ Item {
 						}
 					}
 
+					var res = JSON.parse(Panopticon.functionApproximate(selection));
+					if(res.status == "ok") {
+						console.log(JSON.stringify(res));
+						var approx = res.payload;
+					} else {
+						console.error(res.error);
+						var approx = [];
+					}
+
 					bblockList = {};
 					for(var i = 0; i < cfg.nodes.length; i++) {
 						var node = cfg.nodes[i];
 
 						if(cfg.code[node] != undefined) {
 							var c = {
-								"code":cfg.code[node] ,
+								"code":cfg.code[node],
 								"mode":"RESOLVED",
+								"approx": approx,
 							};
 						} else if(cfg.targets[node] != undefined) {
 							var c = {
 								"target":cfg.targets[node],
 								"mode":"UNRESOLVED",
+								"approx": approx,
 							};
 						} else {
 							console.error("Node '" + node.toString() + "' has neither code nor target");

@@ -20,6 +20,7 @@ import QtQuick 2.0
 import Panopticon 1.0
 import QtQuick.Controls 1.3
 import QtQuick.Dialogs 1.2
+import QtQuick.Layouts 1.2
 
 Item {
 	id: bblock
@@ -31,6 +32,7 @@ Item {
 	property string mode;
 	property int opcodeWidth: 0;
 	property int argsWidth: 0;
+	property var approx: [];
 
 	width: childrenRect.width - childrenRect.x
 	height: childrenRect.height
@@ -91,22 +93,49 @@ Item {
 						}
 					}
 
-					Text {
+					Row {
 						id: args
-						text: modelData.args.join(", ")
-						font.family: "Monospace"
+
 						width: bblock.argsWidth
-						height: contentHeight
+						height: childrenRect.height
 						anchors.left: opcode.right
 						anchors.leftMargin: 6
-						color: "black"
 						y: bblock.yPadding
 
+						Repeater {
+							model: modelData.args
+
+							Text {
+								width: contentWidth
+								text: {
+									for(var i = 0; i < approx.length; i++) {
+										if(approx[i][0] == modelData.data) {
+											return modelData.display + "(" + approx[i][1] + ")"
+										}
+									}
+									return modelData.display
+								}
+								font.family: "Monospace"
+								color: "black"
+
+								onTextChanged: {
+									bblock.argsWidth = Math.max(bblock.argsWidth,args.childrenRect.width)
+								}
+
+								MouseArea {
+									anchors.fill: parent
+									onClicked: {
+										console.log(JSON.stringify(modelData));
+									}
+								}
+							}
+						}
+
 						Component.onCompleted: {
-							bblock.argsWidth = Math.max(bblock.argsWidth,args.contentWidth)
+							bblock.argsWidth = Math.max(bblock.argsWidth,args.childrenRect.width)
 						}
 					}
-
+/*
 					MouseArea {
 						anchors.top: parent.top
 						anchors.bottom: parent.bottom
@@ -117,7 +146,7 @@ Item {
 							comment.focus = true;
 							comment.forceActiveFocus();
 						}
-					}
+					}*/
 
 					Rectangle {
 						anchors.fill: comment

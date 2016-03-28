@@ -16,16 +16,21 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-use panopticon::value::Rvalue;
+use panopticon::value::{Rvalue,Lvalue};
 use panopticon::project::Project;
 use panopticon::function::{Function,ControlFlowTarget};
 use panopticon::program::CallTarget;
 use panopticon::target::Target;
+use panopticon::mnemonic::{MnemonicFormatToken};
 use panopticon::result::{
     Error,
     Result,
 };
 use panopticon::elf;
+use panopticon::abstractinterp;
+use panopticon::abstractinterp::{
+    Kset,
+};
 
 use std::hash::{Hash,Hasher,SipHasher};
 use std::thread;
@@ -147,7 +152,14 @@ struct CfgMnemonic {
     region: String,
     offset: u64,
     comment: String,
-    args: Vec<String>,
+    args: Vec<CfgOperand>,
+}
+
+#[derive(RustcEncodable)]
+struct CfgOperand {
+    kind: &'static str, // constant, variable, function, literal
+    display: String, // string to display
+    data: String, // constant: value, variable: ssa var, function: UUID, literal: empty string
 }
 
 #[derive(RustcEncodable)]
@@ -220,15 +232,60 @@ pub fn control_flow_graph(arg: &Variant) -> Variant {
                             let lb = cfg.vertex_label(x);
                             match lb {
                                 Some(&ControlFlowTarget::Resolved(ref bb)) => {
-                                    let mnes = bb.mnemonics.iter().map(|x| {
-                                        let args = x.format();
-                                        let cmnt = proj.comments.get(&(fun.region.clone(),x.area.start)).unwrap_or(&"".to_string()).clone();
-                                        CfgMnemonic{
-                                            opcode: x.opcode.clone(),
-                                            args: vec![args.clone()],
-                                            region: fun.region.clone(),
-                                            offset: x.area.start,
-                                            comment: cmnt,
+                                    let mnes = bb.mnemonics.iter().filter_map(|x| {
+                                        if x.opcode.starts_with("__") {
+                                            None
+                                        } else {
+                                            let mut ops = x.operands.clone();
+                                            ops.reverse();
+                                            let args = x.format_string.iter().map(|x| match x {
+                                                &MnemonicFormatToken::Literal(ref s) =>
+                                                    CfgOperand{
+                                                        kind: "literal",
+                                                        display: s.to_string(),
+                                                        data: "".to_string(),
+                                                    },
+                                                &MnemonicFormatToken::Variable{ ref has_sign, ref width, ref alias } =>
+                                                    match ops.pop() {
+                                                        Some(Rvalue::Constant(c)) => {
+                                                            let val = if *width < 64 { c % (1u64 << *width) } else { c };
+                                                            let sign_bit = if *width < 64 { 1u64 << (*width - 1) } else { 0x8000000000000000 };
+                                                            let s = if !has_sign || val & sign_bit == 0 {
+                                                                format!("{}",val)
+                                                            } else {
+                                                                format!("{}",(val as i64).wrapping_neg())
+                                                            };
+                                                            CfgOperand{
+                                                                kind: "constant",
+                                                                display: s.clone(),
+                                                                data: s,
+                                                            }
+                                                        },
+                                                        Some(Rvalue::Variable{ ref name, ref subscript, ref width }) =>
+                                                            CfgOperand{
+                                                                kind: "variable",
+                                                                display: alias.clone().unwrap_or(name.clone()),
+                                                                data: format!("{}",Rvalue::Variable{
+                                                                    name: name.clone(),
+                                                                    subscript: subscript.clone(),
+                                                                    width: *width }),
+                                                            },
+                                                        a =>
+                                                            CfgOperand{
+                                                                kind: "variable",
+                                                                display: alias.clone().unwrap_or(format!("{:?}",a)),
+                                                                data: "".to_string(),
+                                                            },
+                                                    },
+                                            });
+                                            let cmnt = proj.comments.get(&(fun.region.clone(),x.area.start)).unwrap_or(&"".to_string()).clone();
+                                            Some(CfgMnemonic{
+                                                opcode: x.opcode.clone(),
+                                                args: args.collect(),
+                                                region: fun.region.clone(),
+                                                offset: x.area.start,
+                                                comment: cmnt,
+                                            })
                                         }
                                     });
                                     Some((to_ident(lb.unwrap()),mnes.collect()))
@@ -283,6 +340,44 @@ pub fn control_flow_graph(arg: &Variant) -> Variant {
         }
     } else {
         return_json::<()>(Err("1st argument is not a string".into()))
+    })
+}
+
+pub fn approximate(arg: &Variant) -> Variant {
+    Variant::String(if let &Variant::String(ref uuid_str) = arg {
+        if let Some(tgt_uuid) = Uuid::parse_str(uuid_str).ok() {
+            let ret = Controller::read(|proj| {
+                if let Some((vx,prog)) = proj.find_call_target_by_uuid(&tgt_uuid) {
+                    if let Some(&CallTarget::Concrete(ref fun)) = prog.call_graph.vertex_label(vx) {
+                        let vals = abstractinterp::approximate::<Kset>(&fun).iter().filter_map(|(k,v)| {
+                            if let &Lvalue::Variable{ ref name, subscript: Some(ref subscript),.. } = k {
+                                if let &Kset::Set(ref s) = v {
+                                    if s.len() == 1 {
+                                        return Some((format!("{}_{}",*name,*subscript),format!("{}",s[0])));
+                                    } else if s.len() > 1 {
+                                        return Some((format!("{}_{}",*name,*subscript),format!("{:?}",s)));
+                                    }
+                                }
+                            }
+                            return None;
+                        }).collect::<Vec<_>>();
+                        return_json(Ok(vals))
+                    } else {
+                        return_json::<String>(Err("This function is unresolved".into()))
+                    }
+                } else {
+                    return_json::<String>(Err("No function found for this UUID".into()))
+                }
+            });
+            match ret {
+                Ok(s) => s,
+                e@Err(_) => return_json::<String>(e),
+            }
+        } else {
+            return_json::<String>(Err("1st argument is not a valid UUID".into()))
+        }
+    } else {
+        return_json::<String>(Err("1st argument is not a string".into()))
     })
 }
 

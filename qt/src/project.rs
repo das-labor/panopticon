@@ -24,6 +24,7 @@ use panopticon::pe;
 use panopticon::target::Target;
 use panopticon::value::Rvalue;
 use panopticon::result::Result;
+use panopticon::dataflow::ssa_convertion;
 
 use std::path::Path;
 use std::thread;
@@ -178,6 +179,12 @@ pub fn spawn_disassembler() {
 
                         fun = proj.code[0].target.disassemble(Some(fun),i,tgt,root.name().clone());
                         fun.entry_point = fun.find_basic_block_at_address(tgt);
+
+                        if fun.entry_point.is_some() && fun.cflow_graph.num_vertices() > 0 {
+                            println!("{}",fun.to_dot());
+
+                            ssa_convertion(&mut fun);
+                        }
                         fun
                     }));
 

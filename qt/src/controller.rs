@@ -58,6 +58,7 @@ extern "C" fn controller_slot(this: *mut ffi::QObject, id: c_int, a: *const ffi:
         // Getter in SYNC & DIRTY state
         (FUNCTION_INFO,1) => ::function::metainfo(&args[0]).to_qvariant(ret),
         (FUNCTION_CFG,1) => ::function::control_flow_graph(&args[0]).to_qvariant(ret),
+        (FUNCTION_APPROX,1) => ::function::approximate(&args[0]).to_qvariant(ret),
         (SUGIYAMA_LAYOUT,5) => ::function::layout(&args[0],&args[1],&args[2],&args[3],&args[4]).to_qvariant(ret),
 
         // Stateless getter
@@ -96,11 +97,13 @@ pub const SNAPSHOT_PROJECT: isize = 13;
 
 pub const FUNCTION_INFO: isize = 14;
 pub const FUNCTION_CFG: isize = 15;
-pub const ALL_TARGETS: isize = 16;
-pub const READ_DIRECTORY: isize = 17;
-pub const FILE_DETAILS: isize = 18;
+pub const FUNCTION_APPROX: isize = 16;
 
-pub const SUGIYAMA_LAYOUT: isize = 19;
+pub const ALL_TARGETS: isize = 17;
+pub const READ_DIRECTORY: isize = 18;
+pub const FILE_DETAILS: isize = 19;
+
+pub const SUGIYAMA_LAYOUT: isize = 20;
 
 
 pub extern "C" fn create_singleton(_: *mut ffi::QQmlEngine, _: *mut ffi::QJSEngine) -> *mut ffi::QObject {
@@ -138,6 +141,8 @@ pub extern "C" fn create_singleton(_: *mut ffi::QQmlEngine, _: *mut ffi::QJSEngi
     // getter
     assert_eq!(metaobj.add_method("functionInfo(QString)","QString"),FUNCTION_INFO);
     assert_eq!(metaobj.add_method("functionCfg(QString)","QString"),FUNCTION_CFG);
+    assert_eq!(metaobj.add_method("functionApproximate(QString)","QString"),FUNCTION_APPROX);
+
     assert_eq!(metaobj.add_method("allTargets()","QString"),ALL_TARGETS);
     assert_eq!(metaobj.add_method("readDirectory(QString)","QString"),READ_DIRECTORY);
     assert_eq!(metaobj.add_method("fileDetails(QString)","QString"),FILE_DETAILS);
