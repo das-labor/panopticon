@@ -22,155 +22,174 @@ use std::hash::Hash;
 use std::fmt::{Formatter,Display,Error,Debug};
 
 #[derive(Debug,Clone,PartialEq,Eq,Hash,RustcDecodable,RustcEncodable)]
-pub enum Relation<Value: Debug + Clone + PartialEq + Eq + Hash + Decodable + Encodable> {
-    UnsignedLessOrEqual(Value,Value),
-    SignedLessOrEqual(Value,Value),
-    UnsignedGreaterOrEqual(Value,Value),
-    SignedGreaterOrEqual(Value,Value),
-    UnsignedLess(Value,Value),
-    SignedLess(Value,Value),
-    UnsignedGreater(Value,Value),
-    SignedGreater(Value,Value),
-    Equal(Value,Value),
-    NotEqual(Value,Value),
+pub enum Relation {
+    NotEqual,
+    Equal,
+    UnsignedLess,
+    UnsignedLessOrEqual,
+    UnsignedGreater,
+    UnsignedGreaterOrEqual,
+    SignedLess,
+    SignedLessOrEqual,
+    SignedGreater,
+    SignedGreaterOrEqual,
+}
+
+impl Relation {
+    pub fn negation(&self) -> Relation {
+        match self {
+            &Relation::UnsignedLessOrEqual => Relation::UnsignedGreater,
+            &Relation::SignedLessOrEqual => Relation::SignedGreater,
+            &Relation::UnsignedGreaterOrEqual => Relation::UnsignedLess,
+            &Relation::SignedGreaterOrEqual => Relation::SignedLess,
+            &Relation::UnsignedLess => Relation::UnsignedGreaterOrEqual,
+            &Relation::SignedLess => Relation::SignedGreaterOrEqual,
+            &Relation::UnsignedGreater => Relation::UnsignedLessOrEqual,
+            &Relation::SignedGreater => Relation::SignedLessOrEqual,
+            &Relation::Equal => Relation::NotEqual,
+            &Relation::NotEqual => Relation::Equal,
+        }
+    }
+}
+
+#[derive(Debug,Clone,PartialEq,Eq,Hash,RustcDecodable,RustcEncodable)]
+pub enum Constraint {
+    Predicate{ relation: Relation, left: Rvalue, right: Rvalue },
     True,
     False,
 }
 
-impl<'a,Value> Relation<Value> where Value: Debug + Clone + PartialEq + Eq + Hash + Decodable + Encodable {
-    pub fn operands(&'a self) -> Vec<&'a Value> {
-        match self {
-            &Relation::UnsignedLessOrEqual(ref a,ref b) => vec![a,b],
-            &Relation::SignedLessOrEqual(ref a,ref b) => vec![a,b],
-            &Relation::UnsignedGreaterOrEqual(ref a,ref b) => vec![a,b],
-            &Relation::SignedGreaterOrEqual(ref a,ref b) => vec![a,b],
-            &Relation::UnsignedLess(ref a,ref b) => vec![a,b],
-            &Relation::SignedLess(ref a,ref b) => vec![a,b],
-            &Relation::UnsignedGreater(ref a,ref b) => vec![a,b],
-            &Relation::SignedGreater(ref a,ref b) => vec![a,b],
-            &Relation::Equal(ref a,ref b) => vec![a,b],
-            &Relation::NotEqual(ref a,ref b) => vec![a,b],
-            &Relation::True => vec![],
-            &Relation::False => vec![],
+
+impl Constraint {
+    pub fn operands<'a>(&'a self) -> Vec<&'a Rvalue> {
+        if let &Constraint::Predicate{ ref left, ref right,.. } = self {
+            vec![left,right]
+        } else {
+            vec![]
         }
     }
 
-    pub fn operands_mut(&'a mut self) -> Vec<&'a mut Value> {
-        match self {
-            &mut Relation::UnsignedLessOrEqual(ref mut a,ref mut b) => vec![a,b],
-            &mut Relation::SignedLessOrEqual(ref mut a,ref mut b) => vec![a,b],
-            &mut Relation::UnsignedGreaterOrEqual(ref mut a,ref mut b) => vec![a,b],
-            &mut Relation::SignedGreaterOrEqual(ref mut a,ref mut b) => vec![a,b],
-            &mut Relation::UnsignedLess(ref mut a,ref mut b) => vec![a,b],
-            &mut Relation::SignedLess(ref mut a,ref mut b) => vec![a,b],
-            &mut Relation::UnsignedGreater(ref mut a,ref mut b) => vec![a,b],
-            &mut Relation::SignedGreater(ref mut a,ref mut b) => vec![a,b],
-            &mut Relation::Equal(ref mut a,ref mut b) => vec![a,b],
-            &mut Relation::NotEqual(ref mut a,ref mut b) => vec![a,b],
-            &mut Relation::True => vec![],
-            &mut Relation::False => vec![],
+    pub fn operands_mut<'a>(&'a mut self) -> Vec<&'a mut Rvalue> {
+        if let &mut Constraint::Predicate{ ref mut left, ref mut right,.. } = self {
+            vec![left,right]
+        } else {
+            vec![]
         }
     }
 }
 
-impl<Value> Display for Relation<Value> where Value: Debug + Clone + PartialEq + Eq + Hash + Decodable + Encodable + Display + Eq {
+impl Display for Constraint {
     fn fmt(&self, f: &mut Formatter) -> Result<(), Error> {
         match self {
-            &Relation::UnsignedLessOrEqual(ref a,ref b) => f.write_fmt(format_args!("{} ≤ᵤ {}",a,b)),
-            &Relation::SignedLessOrEqual(ref a,ref b) => f.write_fmt(format_args!("{} ≤ₛ {}",a,b)),
-            &Relation::UnsignedGreaterOrEqual(ref a,ref b) => f.write_fmt(format_args!("{} ≥ᵤ {}",a,b)),
-            &Relation::SignedGreaterOrEqual(ref a,ref b) => f.write_fmt(format_args!("{} ≥ₛ {}",a,b)),
-            &Relation::UnsignedLess(ref a,ref b) => f.write_fmt(format_args!("{} <ᵤ {}",a,b)),
-            &Relation::SignedLess(ref a,ref b) => f.write_fmt(format_args!("{} <ₛ {}",a,b)),
-            &Relation::UnsignedGreater(ref a,ref b) => f.write_fmt(format_args!("{} >ᵤ {}",a,b)),
-            &Relation::SignedGreater(ref a,ref b) => f.write_fmt(format_args!("{} >ₛ {}",a,b)),
-            &Relation::Equal(ref a,ref b) => f.write_fmt(format_args!("{} = {}",a,b)),
-            &Relation::NotEqual(ref a,ref b) => f.write_fmt(format_args!("{} ≠ {}",a,b)),
-            &Relation::True => f.write_str("true"),
-            &Relation::False => f.write_str("false"),
+            &Constraint::Predicate{ ref relation, ref left, ref right } => match relation {
+                &Relation::UnsignedLessOrEqual => f.write_fmt(format_args!("{} ≤ᵤ {}",left,right)),
+                &Relation::SignedLessOrEqual => f.write_fmt(format_args!("{} ≤ₛ {}",left,right)),
+                &Relation::UnsignedGreaterOrEqual => f.write_fmt(format_args!("{} ≥ᵤ {}",left,right)),
+                &Relation::SignedGreaterOrEqual => f.write_fmt(format_args!("{} ≥ₛ {}",left,right)),
+                &Relation::UnsignedLess => f.write_fmt(format_args!("{} <ᵤ {}",left,right)),
+                &Relation::SignedLess => f.write_fmt(format_args!("{} <ₛ {}",left,right)),
+                &Relation::UnsignedGreater => f.write_fmt(format_args!("{} >ᵤ {}",left,right)),
+                &Relation::SignedGreater => f.write_fmt(format_args!("{} >ₛ {}",left,right)),
+                &Relation::Equal => f.write_fmt(format_args!("{} = {}",left,right)),
+                &Relation::NotEqual => f.write_fmt(format_args!("{} ≠ {}",left,right)),
+            },
+            &Constraint::True => f.write_str("true"),
+            &Constraint::False => f.write_str("false"),
         }
     }
 }
 
 #[derive(Clone,Debug,PartialEq,RustcDecodable,RustcEncodable)]
 pub struct Guard {
-    pub relation: Relation<Rvalue>,
+    pub constraint: Constraint,
 }
 
 impl Guard {
-    pub fn new(r: Relation<Rvalue>) -> Guard {
-        Guard{ relation: r }
+    pub fn new(r: Constraint) -> Guard {
+        Guard{ constraint: r }
     }
 
     pub fn never() -> Guard {
-        Guard{ relation: Relation::False }
+        Guard{ constraint: Constraint::False }
     }
 
     pub fn always() -> Guard {
-        Guard{ relation: Relation::True }
+        Guard{ constraint: Constraint::True }
     }
 
     pub fn eq<A: ToRvalue, B: ToRvalue>(a: &A, b: &B) -> Guard {
-        Guard{ relation: Relation::Equal(a.to_rv(),b.to_rv()) }
+        Guard{ constraint: Constraint::Predicate{
+            relation: Relation::Equal, left: a.to_rv(), right: b.to_rv() }
+        }
     }
 
     pub fn neq<A: ToRvalue, B: ToRvalue>(a: &A, b: &B) -> Guard {
-        Guard{ relation: Relation::NotEqual(a.to_rv(),b.to_rv()) }
+        Guard{ constraint: Constraint::Predicate{
+            relation: Relation::NotEqual, left: a.to_rv(), right: b.to_rv() }
+        }
     }
 
     pub fn sign_gt<A: ToRvalue, B: ToRvalue>(a: &A, b: &B) -> Guard {
-        Guard{ relation: Relation::SignedGreater(a.to_rv(),b.to_rv()) }
+        Guard{ constraint: Constraint::Predicate{
+            relation: Relation::SignedGreater, left: a.to_rv(), right: b.to_rv() }
+        }
     }
 
     pub fn unsi_gt<A: ToRvalue, B: ToRvalue>(a: &A, b: &B) -> Guard {
-        Guard{ relation: Relation::UnsignedGreater(a.to_rv(),b.to_rv()) }
+        Guard{ constraint: Constraint::Predicate{
+            relation: Relation::UnsignedGreater, left: a.to_rv(), right: b.to_rv() }
+        }
     }
 
     pub fn sign_less<A: ToRvalue, B: ToRvalue>(a: &A, b: &B) -> Guard {
-        Guard{ relation: Relation::SignedLess(a.to_rv(),b.to_rv()) }
+        Guard{ constraint: Constraint::Predicate{
+            relation: Relation::SignedLess, left: a.to_rv(), right: b.to_rv() }
+        }
     }
 
     pub fn unsi_less<A: ToRvalue, B: ToRvalue>(a: &A, b: &B) -> Guard {
-        Guard{ relation: Relation::UnsignedLess(a.to_rv(),b.to_rv()) }
+        Guard{ constraint: Constraint::Predicate{
+            relation: Relation::UnsignedLess, left: a.to_rv(), right: b.to_rv() }
+        }
     }
 
     pub fn sign_geq<A: ToRvalue, B: ToRvalue>(a: &A, b: &B) -> Guard {
-        Guard{ relation: Relation::SignedGreaterOrEqual(a.to_rv(),b.to_rv()) }
+        Guard{ constraint: Constraint::Predicate{
+            relation: Relation::SignedGreaterOrEqual, left: a.to_rv(), right: b.to_rv() }
+        }
     }
 
     pub fn unsi_geq<A: ToRvalue, B: ToRvalue>(a: &A, b: &B) -> Guard {
-        Guard{ relation: Relation::UnsignedGreaterOrEqual(a.to_rv(),b.to_rv()) }
+        Guard{ constraint: Constraint::Predicate{
+            relation: Relation::UnsignedGreaterOrEqual, left: a.to_rv(), right: b.to_rv() }
+        }
     }
 
     pub fn sign_leq<A: ToRvalue, B: ToRvalue>(a: &A, b: &B) -> Guard {
-        Guard{ relation: Relation::SignedLessOrEqual(a.to_rv(),b.to_rv()) }
+        Guard{ constraint: Constraint::Predicate{
+            relation: Relation::SignedLessOrEqual, left: a.to_rv(), right: b.to_rv() }
+        }
     }
 
     pub fn unsi_leq<A: ToRvalue, B: ToRvalue>(a: &A, b: &B) -> Guard {
-        Guard{ relation: Relation::UnsignedLessOrEqual(a.to_rv(),b.to_rv()) }
+        Guard{ constraint: Constraint::Predicate{
+            relation: Relation::UnsignedLessOrEqual, left: a.to_rv(), right: b.to_rv() }
+        }
     }
 
     pub fn negation(&self) -> Guard {
-        Guard::new(match self.relation {
-            Relation::UnsignedLessOrEqual(ref a,ref b) => Relation::UnsignedGreater(a.clone(),b.clone()),
-            Relation::SignedLessOrEqual(ref a,ref b) => Relation::SignedGreater(a.clone(),b.clone()),
-            Relation::UnsignedGreaterOrEqual(ref a,ref b) => Relation::UnsignedLess(a.clone(),b.clone()),
-            Relation::SignedGreaterOrEqual(ref a,ref b) => Relation::SignedLess(a.clone(),b.clone()),
-            Relation::UnsignedLess(ref a,ref b) => Relation::UnsignedGreaterOrEqual(a.clone(),b.clone()),
-            Relation::SignedLess(ref a,ref b) => Relation::SignedGreaterOrEqual(a.clone(),b.clone()),
-            Relation::UnsignedGreater(ref a,ref b) => Relation::UnsignedLessOrEqual(a.clone(),b.clone()),
-            Relation::SignedGreater(ref a,ref b) => Relation::SignedLessOrEqual(a.clone(),b.clone()),
-            Relation::Equal(ref a,ref b) => Relation::NotEqual(a.clone(),b.clone()),
-            Relation::NotEqual(ref a,ref b) => Relation::Equal(a.clone(),b.clone()),
-            Relation::True => Relation::False,
-            Relation::False => Relation::True,
+        Guard::new(match &self.constraint {
+            &Constraint::Predicate{ ref relation, ref left, ref right } =>
+                Constraint::Predicate{ relation: relation.negation(), left: left.clone(), right: right.clone() },
+            &Constraint::True => Constraint::False,
+            &Constraint::False => Constraint::True,
         })
     }
 }
 
 impl Display for Guard {
     fn fmt(&self, f: &mut Formatter) -> Result<(), Error> {
-        f.write_fmt(format_args!("{}",self.relation))
+        f.write_fmt(format_args!("{}",self.constraint))
     }
 }
 
@@ -181,26 +200,40 @@ mod tests {
 
     #[test]
     fn construct() {
-        let g = Guard::new(Relation::UnsignedGreater(Rvalue::Undefined,Rvalue::Undefined));
-        let g2 = Guard::new(Relation::Equal(Rvalue::Undefined,Rvalue::Undefined));
+        let g = Guard::new(Constraint::Predicate{
+            relation: Relation::UnsignedGreater, left: Rvalue::Undefined, right: Rvalue::Undefined
+        });
+        let g2 = Guard::new(Constraint::Predicate{
+            relation: Relation::Equal, left: Rvalue::Undefined, right: Rvalue::Undefined
+        });
 
         assert!(g != g2);
     }
 
     #[test]
     fn negation() {
-        let g1 = Guard::new(Relation::UnsignedLessOrEqual(Rvalue::Undefined,Rvalue::Undefined));
-        let g2 = Guard::new(Relation::SignedLessOrEqual(Rvalue::Undefined,Rvalue::Undefined));
-        let g3 = Guard::new(Relation::UnsignedGreaterOrEqual(Rvalue::Undefined,Rvalue::Undefined));
-        let g4 = Guard::new(Relation::SignedGreaterOrEqual(Rvalue::Undefined,Rvalue::Undefined));
-        let g5 = Guard::new(Relation::UnsignedLess(Rvalue::Undefined,Rvalue::Undefined));
-        let g6 = Guard::new(Relation::SignedLess(Rvalue::Undefined,Rvalue::Undefined));
-        let g7 = Guard::new(Relation::UnsignedGreater(Rvalue::Undefined,Rvalue::Undefined));
-        let g8 = Guard::new(Relation::SignedGreater(Rvalue::Undefined,Rvalue::Undefined));
-        let g9 = Guard::new(Relation::Equal(Rvalue::Undefined,Rvalue::Undefined));
-        let g10 = Guard::new(Relation::NotEqual(Rvalue::Undefined,Rvalue::Undefined));
-        let g11 = Guard::new(Relation::True);
-        let g12 = Guard::new(Relation::False);
+        let g1 = Guard::new(Constraint::Predicate{ relation:
+            Relation::UnsignedLessOrEqual, left: Rvalue::Undefined, right: Rvalue::Undefined });
+        let g2 = Guard::new(Constraint::Predicate{ relation:
+            Relation::SignedLessOrEqual, left: Rvalue::Undefined, right: Rvalue::Undefined });
+        let g3 = Guard::new(Constraint::Predicate{ relation:
+            Relation::UnsignedGreaterOrEqual, left: Rvalue::Undefined, right: Rvalue::Undefined });
+        let g4 = Guard::new(Constraint::Predicate{ relation:
+            Relation::SignedGreaterOrEqual, left: Rvalue::Undefined, right: Rvalue::Undefined });
+        let g5 = Guard::new(Constraint::Predicate{ relation:
+            Relation::UnsignedLess, left: Rvalue::Undefined, right: Rvalue::Undefined });
+        let g6 = Guard::new(Constraint::Predicate{ relation:
+            Relation::SignedLess, left: Rvalue::Undefined, right: Rvalue::Undefined });
+        let g7 = Guard::new(Constraint::Predicate{ relation:
+            Relation::UnsignedGreater, left: Rvalue::Undefined, right: Rvalue::Undefined });
+        let g8 = Guard::new(Constraint::Predicate{ relation:
+            Relation::SignedGreater, left: Rvalue::Undefined, right: Rvalue::Undefined });
+        let g9 = Guard::new(Constraint::Predicate{ relation:
+            Relation::Equal, left: Rvalue::Undefined, right: Rvalue::Undefined });
+        let g10 = Guard::new(Constraint::Predicate{ relation:
+            Relation::NotEqual, left: Rvalue::Undefined, right: Rvalue::Undefined });
+        let g11 = Guard::new(Constraint::True);
+        let g12 = Guard::new(Constraint::False);
 
         let not_g1 = g1.negation();
         let not_g2 = g2.negation();

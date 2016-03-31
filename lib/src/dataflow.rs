@@ -86,7 +86,7 @@ pub fn liveness_sets(func: &Function) ->  (HashMap<ControlFlowRef,HashSet<String
 
         for e in cfg.out_edges(vx) {
             let g = cfg.edge_label(e).unwrap();
-            for op in g.relation.operands() {
+            for op in g.constraint.operands() {
                 if let &Rvalue::Variable{ ref name,.. } = op {
                     if !vk.contains(name) {
                         uev.insert(name);
@@ -184,7 +184,7 @@ pub fn type_check(func: &Function) -> HashMap<String,u16> {
 
     for ed in cfg.edges() {
         if let Some(ref g) = cfg.edge_label(ed) {
-            for o in g.relation.operands().iter() {
+            for o in g.constraint.operands().iter() {
                 check_or_set_len(o,&mut ret);
             }
         }
@@ -336,8 +336,8 @@ pub fn rename_variables(func: &mut Function) {
         succ.sort();
 
         for s in succ {
-            if let Some(&mut Guard{ ref mut relation }) = cfg.edge_label_mut(s) {
-                for rv in relation.operands_mut() {
+            if let Some(&mut Guard{ ref mut constraint }) = cfg.edge_label_mut(s) {
+                for rv in constraint.operands_mut() {
                     if let &mut Rvalue::Variable{ ref name, ref mut subscript,.. } = rv {
                         *subscript = stack[name].last().cloned();
                     }
