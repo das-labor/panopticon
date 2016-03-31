@@ -28,18 +28,14 @@ install:
     fi
 after_success: |
   sudo apt-get install libcurl4-openssl-dev libelf-dev libdw-dev &&
-  wget https://github.com/SimonKagstrom/kcov/archive/v29.tar.gz
-  tar xzf v29.tar.gz && mkdir kcov-29/build && cd kcov-29/build && cmake .. && make &&
+  wget https://github.com/SimonKagstrom/kcov/archive/v30.tar.gz
+  tar xzf v30.tar.gz && mkdir kcov-30/build && cd kcov-30/build && cmake .. && make &&
   sudo make install && cd ../.. &&
-  kcov --exclude-pattern=/.cargo target/kcov target/debug/panopticon-*
-  kcov --exclude-pattern=/.cargo target/kcov target/debug/amd64-*
-  kcov --exclude-pattern=/.cargo target/kcov target/debug/avr-*
-  kcov --exclude-pattern=/.cargo target/kcov target/debug/elf-*
-  kcov --coveralls-id=$TRAVIS_JOB_ID --exclude-pattern=/.cargo target/kcov target/debug/project-*
+  for I in amd64 avr elf panopticon qtpanopticon project
+  do
+    kcov --verify --include-path=lib,qt target/cov-"$I" target/debug/"$I"-*
+  done &&
+  kcov --coveralls-id=$TRAVIS_JOB_ID --include-path=lib,qt target/kcov target/cov-*
 script: |
    cargo build --verbose &&
-   cargo test --verbose --lib &&
-   cargo test --verbose --test avr &&
-   cargo test --verbose --test amd64 &&
-   cargo test --verbose --test elf &&
-   cargo test --verbose --test project
+   cargo test --verbose

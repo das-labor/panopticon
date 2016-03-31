@@ -23,7 +23,7 @@ uuid = "*"
 glpk-sys = "*"
 flate2 = "*"
 rmp-serialize = "*"
-byteorder = "0.4"
+byteorder = "*"
 
 [dependencies.qmlrs]
 git = "https://github.com/flanfly/qmlrs"
