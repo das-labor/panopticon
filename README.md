@@ -26,8 +26,8 @@ Install Qt using your package manager.
 Ubuntu 13.10 and 14.04:
 ```bash
 sudo apt-get install qt5-default qtdeclarative5-dev libqt5qml-quickcontrols \
-                     qtdeclarative5-folderlistmodel-plugin qtdeclarative5-settings-plugin \
-                     libglpk-dev
+                     qtbase5-private-dev pkg-config \
+                     libglpk-dev git build-essential cmake
 ```
 
 Fedora 20:

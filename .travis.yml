@@ -1,33 +1,29 @@
+sudo: required
+dist: trusty
 language: rust
 rust:
    - stable
 addons:
   apt:
-    sources:
-    - ubuntu-sdk-team
-    - kalakris-cmake
-    - ubuntu-toolchain-r-test
     packages:
+    # panopticon
     - cmake
-install:
-  - if [ "${TRAVIS_OS_NAME}" = "linux" ]; then
-         sudo apt-add-repository -y ppa:beineri/opt-qt542
-      && sudo apt-get -qq update
-      && sudo apt-get -qq install g++-4.8 libc6-i386 qt54tools qt54base qt54declarative qt54quickcontrols kcov libglpk-dev
-      && export CXX="g++-4.8"
-      && export CC="gcc-4.8"
-      && export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/opt/qt54/lib/pkgconfig/
-      && export CMAKE_PREFIX_PATH=$CMAKE_PREFIX_PATH:/opt/qt54
-      ;
-    else
-         brew update
-      && brew install qt5
-      && brew install qt5-qmake
-      && chmod -R 755 /usr/local/opt/qt5/*
-      ;
-    fi
+    - qt5-default
+    - qtdeclarative5-dev
+    - libqt5qml-quickcontrols
+    - qtbase5-private-dev
+    - pkg-config
+    - libglpk-dev
+    - git
+    - build-essential
+    # kcov
+    - libelf-dev
+    - libcurl4-openssl-dev
+    - libbfd-dev
+    - libiberty-dev
+    - libdw-dev
 after_success: |
-  sudo apt-get install libcurl4-openssl-dev libelf-dev libdw-dev &&
+  # send coverage report to coveralls.io
   wget https://github.com/SimonKagstrom/kcov/archive/v30.tar.gz
   tar xzf v30.tar.gz && mkdir kcov-30/build && cd kcov-30/build && cmake .. && make &&
   sudo make install && cd ../.. &&
@@ -35,7 +31,7 @@ after_success: |
   do
     kcov --verify --include-path=lib,qt target/cov-"$I" target/debug/"$I"-*
   done &&
-  kcov --coveralls-id=$TRAVIS_JOB_ID --include-path=lib,qt target/kcov target/cov-*
+  kcov --merge --coveralls-id=$TRAVIS_JOB_ID --include-path=lib,qt target/kcov target/cov-*
 script: |
    cargo build --verbose &&
    cargo test --verbose
