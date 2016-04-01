@@ -10,7 +10,7 @@ addons:
     - cmake
     - qt5-default
     - qtdeclarative5-dev
-    - libqt5qml-quickcontrols
+    - libqt5qml-quickcontrols # not approved
     - qtbase5-private-dev
     - pkg-config
     - libglpk-dev
@@ -19,9 +19,11 @@ addons:
     # kcov
     - libelf-dev
     - libcurl4-openssl-dev
-    - libbfd-dev
-    - libiberty-dev
+    - libbfd-de # not approved
+    - libiberty-de # not approved
     - libdw-dev
+install: |
+  sudo apt-get -qq install libbfd-dev libqt5qml-quickcontrols libiberty-dev
 after_success: |
   # send coverage report to coveralls.io
   wget https://github.com/SimonKagstrom/kcov/archive/v30.tar.gz
