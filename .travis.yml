@@ -19,8 +19,8 @@ addons:
     # kcov
     - libelf-dev
     - libcurl4-openssl-dev
-    - libbfd-de # not approved
-    - libiberty-de # not approved
+    - libbfd-dev # not approved
+    - libiberty-dev # not approved
     - libdw-dev
 install: |
   sudo apt-get -qq install libbfd-dev libqt5qml-quickcontrols libiberty-dev
