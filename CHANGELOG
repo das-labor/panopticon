@@ -1,3 +1,9 @@
+2016-04-01: 0.14 (Crematoria)
+ - Implement Kset abstract domain
+ - Speed-up disassembly
+ - Major rework of save, load and open dialogs
+ - Fix various bugs in AI and graph layouting
+
 2016-01-24: 0.13 (Insein)
  - Decode most AMD64 instructions
  - Basic Abstract Interpretaion framework
