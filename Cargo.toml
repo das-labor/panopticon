@@ -13,17 +13,17 @@ name = "qtpanopticon"
 path = "qt/src/main.rs"
 
 [dependencies]
-log = "*"
-rustc-serialize = "*"
-num = "*"
-tempdir = "*"
-lazy_static = "*"
-libc = "*"
-uuid = "*"
-glpk-sys = "*"
-flate2 = "*"
-rmp-serialize = "*"
-byteorder = "*"
+log = "0.3.6"
+rustc-serialize = "0.3.19"
+num = "0.1.31"
+tempdir = "0.3.4"
+lazy_static = "0.1.16"
+libc = "0.2.9"
+uuid = { version = "0.2.0", features = ["rustc-serialize", "v4"]}
+glpk-sys = "0.1.0"
+flate2 = "0.2.13"
+rmp-serialize = "0.7.0"
+byteorder = "0.5.1"
 
 [dependencies.qmlrs]
 git = "https://github.com/flanfly/qmlrs"
