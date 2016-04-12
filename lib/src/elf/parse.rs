@@ -325,8 +325,8 @@ impl Type {
             2 => Type::Executable,
             3 => Type::Shared,
             4 => Type::Core,
-            0xfe00...0xff00 => Type::OsSpecific(v.to_u16().unwrap()),
-            0xff00...0x10000 => Type::ProcessorSpecific(v.to_u16().unwrap()),
+            a @ 0xfe00...0xff00 => Type::OsSpecific(a),
+            a @ 0xff00...0xffff => Type::ProcessorSpecific(a),
             a => Type::Unknown(a),
         }
     }
