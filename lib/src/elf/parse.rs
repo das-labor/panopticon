@@ -325,7 +325,7 @@ impl Type {
             2 => Type::Executable,
             3 => Type::Shared,
             4 => Type::Core,
-            a @ 0xfe00...0xff00 => Type::OsSpecific(a),
+            a @ 0xfe00...0xfeff => Type::OsSpecific(a),
             a @ 0xff00...0xffff => Type::ProcessorSpecific(a),
             a => Type::Unknown(a),
         }
