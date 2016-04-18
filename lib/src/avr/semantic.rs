@@ -10,8 +10,8 @@ use {
 use super::*;
 
 pub fn cpse(st: &mut State<Avr>) -> bool {
-    let rd = reg(st,"d");
-    let rr = reg(st,"r");
+    let rd = reg(st,"cd");
+    let rr = reg(st,"cr");
     let fallthru = st.configuration.wrap(st.address + 2);
     let skip = st.configuration.wrap(st.address + 4);
     let g = Guard::from_flag(&rreil_rvalue!{ skip_flag:1 }).ok().unwrap();
@@ -134,10 +134,10 @@ pub fn add(rd: Lvalue, rr: Rvalue, cg: &mut CodeGen<Avr>) {
 }
 
 pub fn adiw(st: &mut State<Avr>) -> bool {
-    let rd1 = reg(st,"d");
-    let rd2 = resolv(st.get_group("d") + 1);
+    let rd1 = resolv(st.get_group("d") * 2 + 24);
+    let rd2 = resolv(st.get_group("d") * 2 + 25);
     let rd = rreil_lvalue!{ reg:16 };
-    let k = Rvalue::new_u8(st.get_group("k") as u8);
+    let k = Rvalue::new_u8(st.get_group("K") as u8);
 
     st.mnemonic(0,"__wide_reg","",vec![],&|cg: &mut CodeGen<Avr>| {
         rreil!{cg:
@@ -146,7 +146,7 @@ pub fn adiw(st: &mut State<Avr>) -> bool {
         }
     });
 
-    st.mnemonic(2,"adiw","{u:16}, {u:8}",vec!(rd.clone().into(),k.clone()),&|cg: &mut CodeGen<Avr>| {
+    st.mnemonic(2,"adiw","{u:8}, {u:8}",vec!(rd1.clone().into(),k.clone()),&|cg: &mut CodeGen<Avr>| {
         rreil!{cg:
             zext/16 imm:16, (k);
             add res:16, reg:16, imm:16;
@@ -157,16 +157,16 @@ pub fn adiw(st: &mut State<Avr>) -> bool {
             // negative flag
             cmples N:1, res:16, [0]:16;
 
-            // caky
-            cmpltu C:1, res:8, reg:16;
+            // carry
+            cmpltu C:1, res:16, reg:16;
 
             // overflow flag
             cmples s1:1, [0]:16, reg:16;
-            cmples s2:1, [0]:16, (k);
+            cmples s2:1, [0]:16, imm:16;
             cmplts s3:1, res:16, [0]:16;
 
             cmplts t1:1, reg:16, [0]:16;
-            cmplts t2:1, (k), [0]:16;
+            cmplts t2:1, imm:16, [0]:16;
             cmples t3:1, [0]:16, res:16;
 
             and v1:1, s1:1, s2:1;
@@ -577,10 +577,19 @@ pub fn ijmp(st: &mut State<Avr>) -> bool {
     true
 }
 
-pub fn _in(rd: Lvalue, rr: Rvalue, cg: &mut CodeGen<Avr>) {
-    rreil!{cg:
-        mov (rd), (rr);
-    }
+pub fn _in(st: &mut State<Avr>) -> bool {
+    let rd = reg(st,"D");
+    let rr = Rvalue::Constant{ value: st.get_group("A"), size: 6 };
+    let next = st.configuration.wrap(st.address + st.tokens.len() as u64 * 2);
+
+    st.mnemonic(2,"in","{u}, {u}",vec!(rd.clone().into(),rr.clone().into()),&|cg: &mut CodeGen<Avr>| {
+        rreil!{cg:
+            load/io (rd), (rr);
+        }
+    });
+    optional_skip(next.clone(),st);
+    st.jump(next,Guard::always());
+    true
 }
 
 pub fn inc(rd: Lvalue, cg: &mut CodeGen<Avr>) {
@@ -596,7 +605,7 @@ pub fn inc(rd: Lvalue, cg: &mut CodeGen<Avr>) {
 pub fn jmp(st: &mut State<Avr>) -> bool {
     let pc_mod = 1 << st.configuration.pc_bits;
     let _k = (st.get_group("k") % pc_mod) * 2;
-    let k = Rvalue::Constant{ value: _k, size: 24 };
+    let k = Rvalue::Constant{ value: _k, size: 22 };
 
     st.mnemonic(4,"jmp","{c:flash}",vec!(k.clone()),&|_: &mut CodeGen<Avr>| {});
     optional_skip(st.configuration.wrap(st.address + st.tokens.len() as u64 * 2),st);
@@ -641,17 +650,39 @@ pub fn ldi(rd: Lvalue, k: u64, cg: &mut CodeGen<Avr>) {
     }
 }
 
-pub fn lds1(rd: Lvalue, k: u64, cg: &mut CodeGen<Avr>) {
-    rreil!{cg:
-        load/sram (rd), [k]:16;
-    }
+pub fn lds1(st: &mut State<Avr>) -> bool {
+    let rd = reg(st,"D");
+    let k = Rvalue::new_u16(st.get_group("k") as u16);
+
+    st.mnemonic(4,"lds","{p:sram}, {u}",vec![rd.clone().into(),k.clone().into()],&|cg: &mut CodeGen<Avr>| {
+        rreil!{cg:
+            load/sram (rd), (k);
+        }
+    });
+
+    let next = st.configuration.wrap(st.address + st.tokens.len() as u64 * 2);
+
+    optional_skip(next.clone(),st);
+    st.jump(next,Guard::always());
+    true
 }
 
-pub fn lds2(rd: Lvalue, k: u64, cg: &mut CodeGen<Avr>) {
-    let j = if k <= 0x1F { k + 0x20 } else { k };
-    rreil!{cg:
-        load/sram (rd), [j]:16;
-    }
+pub fn lds2(st: &mut State<Avr>) -> bool {
+    let rd = resolv(st.get_group("d") + 16);
+    let _k = st.get_group("k") as u16;
+    let k = Rvalue::new_u16(if _k <= 0x1F { _k + 0x20 } else { _k });
+
+    st.mnemonic(2,"lds","{u}, {p:sram}",vec![rd.clone().into(),k.clone().into()],&|cg: &mut CodeGen<Avr>| {
+        rreil!{cg:
+            load/sram (rd), (k);
+        }
+    });
+
+    let next = st.configuration.wrap(st.address + st.tokens.len() as u64 * 2);
+
+    optional_skip(next.clone(),st);
+    st.jump(next,Guard::always());
+    true
 }
 
 pub fn lpm(rd: Lvalue, off: usize, st: &mut State<Avr>) -> bool {
@@ -718,10 +749,23 @@ pub fn mov(rd: Lvalue, rr: Rvalue, cg: &mut CodeGen<Avr>) {
     }
 }
 
-pub fn movw(rd: Lvalue, rr: Rvalue, cg: &mut CodeGen<Avr>) {
-    rreil!{cg:
-        mov (rd), (rr);
-    }
+pub fn movw(st: &mut State<Avr>) -> bool {
+    let rd1 = resolv(st.get_group("d") * 2);
+    let rd2 = resolv(st.get_group("d") * 2 + 1);
+    let rr1 = resolv(st.get_group("r") * 2);
+    let rr2 = resolv(st.get_group("r") * 2 + 1);
+    let next = st.configuration.wrap(st.address + st.tokens.len() as u64 * 2);
+
+    st.mnemonic(2,"movw","{u}, {u}",vec!(rd1.clone().into(),rr1.clone().into()),&|cg: &mut CodeGen<Avr>| {
+        rreil!{cg:
+            mov (rd1), (rr1);
+            mov (rd2), (rr2);
+        }
+    });
+
+    optional_skip(next.clone(),st);
+    st.jump(next,Guard::always());
+    true
 }
 
 pub fn mul(rd: Lvalue, rr: Rvalue, cg: &mut CodeGen<Avr>) {
@@ -800,37 +844,48 @@ pub fn or(rd: Lvalue, rr: Rvalue, cg: &mut CodeGen<Avr>) {
     }
 }
 
-pub fn out(rd: Lvalue, rr: Rvalue, cg: &mut CodeGen<Avr>) {
-    rreil!{cg:
-        mov (rd), (rr);
-    }
-}
 
+pub fn out(st: &mut State<Avr>) -> bool {
+    let rd = Rvalue::Constant{ value: st.get_group("A"), size: 6 };
+    let rr = reg(st,"R");
+    let next = st.configuration.wrap(st.address + st.tokens.len() as u64 * 2);
+
+    st.mnemonic(2,"out","{u}, {u}",vec!(rd.clone().into(),rr.clone().into()),&|cg: &mut CodeGen<Avr>| {
+        rreil!{cg:
+            store/io (rr), (rd);
+        }
+    });
+    optional_skip(next.clone(),st);
+    st.jump(next,Guard::always());
+    true
+}
 
 pub fn pop(rd: Lvalue, cg: &mut CodeGen<Avr>) {
     rreil!{cg:
         zext/16 stack:16, spl:8;
-        mov stack:16/8, sph:8;
+        mov stack:8/8, sph:8;
         add stack:16, stack:16, [1]:16;
         load/ram (rd), stack:16;
         mov spl:8, stack:8;
-        mov sph:8, stack:16/8;
+        mov sph:8, stack:8/8;
     }
 }
 
 pub fn push(rd: Lvalue, cg: &mut CodeGen<Avr>) {
     rreil!{cg:
         zext/16 stack:16, spl:8;
-        mov stack:16/8, sph:8;
+        mov stack:8/8, sph:8;
         load/ram (rd), stack:16;
         sub stack:16, stack:16, [1]:16;
         mov spl:8, stack:8;
-        mov sph:8, stack:16/8;
+        mov sph:8, stack:8/8;
     }
 }
 
 pub fn rcall(st: &mut State<Avr>) -> bool {
-    let k = st.configuration.wrap(st.get_group("k") * 2 + st.address);
+    let pc_mod = 1 << st.configuration.pc_bits;
+    let _k = (st.get_group("k") % pc_mod) * 2;
+    let k = Rvalue::Constant{ value: _k, size: 24 };
     let next = st.configuration.wrap(st.address + st.tokens.len() as u64 * 2);
 
     st.mnemonic(2,"rcall","{c:flash}",vec![k.clone()],&|cg: &mut CodeGen<Avr>| {
@@ -938,10 +993,10 @@ pub fn sbi(rd: Lvalue, b: u64, cg: &mut CodeGen<Avr>) {
 }
 
 pub fn sbiw(st: &mut State<Avr>) -> bool {
-        let rd1 = reg(st,"d");
-    let rd2 = resolv(st.get_group("d") + 1);
+    let rd1 = resolv(st.get_group("d") * 2 + 24);
+    let rd2 = resolv(st.get_group("d") * 2 + 25);
     let rd = rreil_lvalue!{ reg:16 };
-    let k = Rvalue::new_u8(st.get_group("k") as u8);
+    let k = Rvalue::new_u8(st.get_group("K") as u8);
 
     st.mnemonic(0,"__wide_reg","",vec![],&|cg: &mut CodeGen<Avr>| {
         rreil!{cg:
@@ -950,33 +1005,32 @@ pub fn sbiw(st: &mut State<Avr>) -> bool {
         }
     });
 
-    st.mnemonic(2,"sbiw","{u:16}, {u:8}",vec!(rd.clone().into(),k.clone()),&|cg: &mut CodeGen<Avr>| {
+    st.mnemonic(2,"sbiw","{u:8}, {u:8}",vec!(rd1.clone().into(),k.clone()),&|cg: &mut CodeGen<Avr>| {
         rreil!{cg:
-        zext/16 reg:16, (rd1);
-        mov reg:8/8, (rd2);
+            zext/16 reg:16, (rd1);
+            mov reg:8/8, (rd2);
+            zext/16 imm:16, k:8;
 
-        zext/16 carry:16, C:1;
-        sub res:16, reg:16, reg:16;
-        sub res:16, res:16, carry:16;
+            sub res:16, reg:16, imm:16;
 
-        // zero flag
-        cmpeq Z:1, res:16, [0]:16;
+            // zero flag
+            cmpeq Z:1, res:16, [0]:16;
 
-        // negative flag
-        cmples N:1, res:16, [0]:8;
+            // negative flag
+            cmples N:1, res:16, [0]:16;
 
-        // carry
-        cmpltu C:1, reg:16, k:8;
+            // carry
+            cmpltu C:1, reg:16, imm:16;
 
-        // overflow flag
-        cmplts V:1, res:16, k:8;
+            // overflow flag
+            cmplts V:1, res:16, imm:16;
 
-        // sign test flag
-        xor S:1, N:1, V:1;
+            // sign test flag
+            xor S:1, N:1, V:1;
 
-        mov (rd1), res:8;
-        mov (rd2), res:8/8;
-    }
+            mov (rd1), res:8;
+            mov (rd2), res:8/8;
+        }
     });
 
     let next = st.configuration.wrap(st.address + st.tokens.len() as u64 * 2);
@@ -1020,6 +1074,10 @@ pub fn spm(rd: Lvalue, off: usize, st: &mut State<Avr>) -> bool {
         });
     }
 
+    let next = st.configuration.wrap(st.address + st.tokens.len() as u64 * 2);
+
+    optional_skip(next.clone(),st);
+    st.jump(next,Guard::always());
     true
 }
 
@@ -1041,17 +1099,39 @@ pub fn st(ptr: Lvalue, reg: Lvalue, cg: &mut CodeGen<Avr>) {
     }
 }
 
-pub fn sts1(rd: Lvalue, k: u64, cg: &mut CodeGen<Avr>) {
-    rreil!{cg:
-        load/sram (rd), [k]:16;
-    }
+pub fn sts1(st: &mut State<Avr>) -> bool {
+    let rd = reg(st,"R");
+    let k = Rvalue::new_u16(st.get_group("k") as u16);
+
+    st.mnemonic(4,"sts","{p:sram}, {u}",vec![k.clone().into(),rd.clone().into()],&|cg: &mut CodeGen<Avr>| {
+        rreil!{cg:
+            store/sram (rd), (k);
+        }
+    });
+
+    let next = st.configuration.wrap(st.address + st.tokens.len() as u64 * 2);
+
+    optional_skip(next.clone(),st);
+    st.jump(next,Guard::always());
+    true
 }
 
-pub fn sts2(rd: Lvalue, k: u64, cg: &mut CodeGen<Avr>) {
-    let j = if k <= 0x1F { k + 0x20 } else { k };
-    rreil!{cg:
-        load/sram (rd), [j]:16;
-    }
+pub fn sts2(st: &mut State<Avr>) -> bool {
+    let rd = resolv(st.get_group("r") + 16);
+    let _k = st.get_group("k") as u16;
+    let k = Rvalue::new_u16(if _k <= 0x1F { _k + 0x20 } else { _k });
+
+    st.mnemonic(2,"sts","{p:sram}, {u}",vec![k.clone().into(),rd.clone().into()],&|cg: &mut CodeGen<Avr>| {
+        rreil!{cg:
+            store/sram (rd), (k);
+        }
+    });
+
+    let next = st.configuration.wrap(st.address + st.tokens.len() as u64 * 2);
+
+    optional_skip(next.clone(),st);
+    st.jump(next,Guard::always());
+    true
 }
 
 pub fn sub(rd: Lvalue, rr: Rvalue, cg: &mut CodeGen<Avr>) {

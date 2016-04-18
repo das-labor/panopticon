@@ -45,7 +45,7 @@ pub struct Mcu {
 impl Mcu {
     pub fn new() -> Mcu {
         Mcu {
-            pc_bits: 13,
+            pc_bits: 22,
             int_vec: vec![/*("RESET",Rvalue::Constant(0),"MCU Reset Interrupt")*/],
             skip: None,
         }
@@ -148,12 +148,12 @@ impl Mcu {
     }
 
     pub fn wrap(&self, addr: u64) -> Rvalue {
-        Rvalue::new_u64(addr % (1u64 << self.pc_bits))
+        Rvalue::Constant{ value: addr % (1u64 << self.pc_bits), size: self.pc_bits as usize }
     }
 
     pub fn wrap_signed(&self, addr: i64) -> Rvalue {
         let mask = 1i64 << self.pc_bits;
-        Rvalue::new_u64((((addr % mask) + mask) % mask) as u64)
+        Rvalue::Constant{ value: (((addr % mask) + mask) % mask) as u64, size: self.pc_bits as usize }
     }
 }
 
@@ -175,136 +175,6 @@ pub enum AddressOffset {
 pub fn reg(st: &State<Avr>, cap: &str) -> Lvalue {
     resolv(st.get_group(cap))
 }
-
-pub fn ioreg(st: &State<Avr>, cap: &str) -> Lvalue {
-    let r = st.get_group(cap);
-    let name = match r {
-	    0x00 => "ubrr1",
-		0x01 => "ucsr1b",
-		0x02 => "ucsr1a",
-		0x03 => "udr1",
-		0x05 => "pine",
-		0x06 => "ddre",
-		0x07 => "porte",
-		0x08 => "acsr",
-		0x09 => "ubrr0",
-		0x0A => "ucsr0b",
-		0x0B => "ucsr0a",
-		0x0C => "udr0",
-		0x0D => "spcr",
-		0x0E => "spsr",
-		0x0F => "spdr",
-		0x10 => "pind",
-		0x11 => "ddrd",
-		0x12 => "portd",
-		0x13 => "pinc",
-		0x14 => "ddrc",
-		0x15 => "portc",
-		0x16 => "pinb",
-		0x17 => "ddrb",
-		0x18 => "portb",
-		0x19 => "pina",
-		0x1A => "ddra",
-		0x1B => "porta",
-		0x1C => "eecr",
-		0x1D => "eedr",
-		0x1E => "eearl",
-		0x1F => "eearh",
-		0x20 => "ubrrh",
-		0x21 => "wdtcr",
-		0x22 => "ocr2",
-		0x23 => "tcnt2",
-		0x24 => "icr1l",
-		0x25 => "icr1h",
-		0x26 => "assr",
-		0x27 => "tccr2",
-		0x28 => "ocr1bl",
-		0x29 => "ocr1bh",
-		0x2A => "ocr1al",
-		0x2B => "ocr1ah",
-		0x2C => "tcnt1l",
-		0x2D => "tcnt1h",
-		0x2E => "tccr1b",
-		0x2F => "tccr1a",
-		0x30 => "sfior",
-		0x31 => "ocr0",
-		0x32 => "tcnt0",
-		0x33 => "tccr0",
-		0x34 => "mcusr",
-		0x35 => "mcucr",
-		0x36 => "emcucr",
-		0x37 => "spmcr",
-		0x38 => "tifr",
-		0x39 => "timsk",
-		0x3A => "gifr",
-		0x3B => "gimsk",
-		0x3D => "spl",
-		0x3E => "sph",
-		0x3F => "sreg",
-        _ => "unknown_ioreg",
-    };
-
-    Lvalue::Variable{
-        name: Cow::Borrowed(name),
-        size: 8,
-        offset: 0,
-        subscript: None
-    }
-}
-/*
-pub fn sram<A: Into<Rvalue>>(off: &A) -> Lvalue {
-    Lvalue::Memory{
-        offset: Box::new(off.to_rv()),
-        name: "sram".to_string(),
-        endianess: Endianess::Big,
-        bytes: 1
-    }
-}
-
-pub fn flash<A: Into<Rvalue>>(off: &A) -> Lvalue {
-    Lvalue::Memory{
-        offset: Box::new(off.to_rv()),
-        name: "flash".to_string(),
-        endianess: Endianess::Big,
-        bytes: 2
-    }
-}
-
-pub fn get_sp(cg: &mut CodeGen<Avr>) -> Lvalue {
-    let sp = new_temp(16);
-    let spl = Lvalue::Variable{
-        name: "spl".to_string(),
-        width: 8,
-        subscript: None
-    };
-    let sph = Lvalue::Variable{
-        name: "sph".to_string(),
-        width: 8,
-        subscript: None
-    };
-
-    cg.mul_i(&sp,&sph,&0x100);
-    cg.add_i(&sp,&spl,&sp);
-    sram(&sp)
-}
-
-pub fn set_sp<A: Into<Rvalue>>(v: &A, cg: &mut CodeGen<Avr>) {
-    let sp = new_temp(16);
-    let spl = Lvalue::Variable{
-        name: "spl".to_string(),
-        width: 8,
-        subscript: None
-    };
-    let sph = Lvalue::Variable{
-        name: "sph".to_string(),
-        width: 8,
-        subscript: None
-    };
-
-    cg.mul_i(&sp,&sph,&0x100);
-    cg.add_i(&sp,&spl,&sp);
-    cg.assign(&sram(&sp),v);
-}*/
 
 pub fn resolv(r: u64) -> Lvalue {
     match r {
@@ -355,14 +225,26 @@ pub fn skip(n: &'static str, expect: bool) -> Box<Fn(&mut State<Avr>) -> bool> {
     Box::new(move |st: &mut State<Avr>| {
         let bit = st.get_group("sb") as u8;
         let b = Rvalue::new_u8(bit);
-        let _rr = if st.has_group("sr") { reg(st,"sr") } else { ioreg(st,"sA") };
-        let rr = if let Lvalue::Variable{ ref name,.. } = _rr {
-            Lvalue::Variable{ name: name.clone(), size: 1, subscript: None, offset: bit as usize }
+        let (rr,_rr) = if st.has_group("sr") {
+            let reg = reg(st,"sr");
+            if let Lvalue::Variable{ ref name,.. } = reg {
+                (Lvalue::Variable{ name: name.clone(), size: 1, subscript: None, offset: bit as usize },reg.clone().into())
+            } else {
+                unreachable!()
+            }
         } else {
-            unreachable!()
+            let A = Rvalue::Constant{ value: st.get_group("sA"), size: 6 };
+
+            st.mnemonic(0,"__io_reg","",vec![],&|cg: &mut CodeGen<Avr>| {
+                rreil!{cg:
+                    load/io ioreg:8, (A);
+                }
+            });
+
+            (Lvalue::Variable{ name: Cow::Borrowed("ioreg"), size: 1, offset: bit as usize, subscript: None },A)
         };
 
-        st.mnemonic(2,n,"{u}, {u}",vec![rr.clone().into(),b.clone()],&|cg: &mut CodeGen<Avr>| {
+        st.mnemonic(2,n,"{u}, {u}",vec![_rr.clone().into(),b.clone()],&|cg: &mut CodeGen<Avr>| {
             let rr = rr.clone();
             rreil!{cg:
                 mov skip_flag:1, (rr);
@@ -389,8 +271,18 @@ pub fn skip(n: &'static str, expect: bool) -> Box<Fn(&mut State<Avr>) -> bool> {
 
 pub fn binary(n: &'static str,sem: fn(Lvalue,Rvalue,&mut CodeGen<Avr>)) -> Box<Fn(&mut State<Avr>) -> bool>{
     Box::new(move |st: &mut State<Avr>| {
-        let rd = reg(st,"d");
-        let rr = if st.has_group("r") { reg(st,"r").into() } else { Rvalue::new_u8(st.get_group("K") as u8) };
+        let rd = if st.has_group("D") {
+            reg(st,"D")
+        } else {
+            resolv(st.get_group("d") + 16).into()
+        };
+        let rr = if st.has_group("R") {
+            reg(st,"R").into()
+        } else if st.has_group("r") {
+            resolv(st.get_group("r") + 16).into()
+        } else {
+            Rvalue::new_u8(st.get_group("K") as u8)
+        };
         let next = st.configuration.wrap(st.address + st.tokens.len() as u64 * 2);
 
         st.mnemonic(2,n,"{u}, {u}",vec!(rd.clone().into(),rr.clone()),&|cg: &mut CodeGen<Avr>| {
@@ -404,15 +296,30 @@ pub fn binary(n: &'static str,sem: fn(Lvalue,Rvalue,&mut CodeGen<Avr>)) -> Box<F
 
 pub fn binary_imm(n: &'static str,sem: fn(Lvalue,u64,&mut CodeGen<Avr>)) -> Box<Fn(&mut State<Avr>) -> bool>{
     Box::new(move |st: &mut State<Avr>| {
-        let rd = reg(st,"d");
+        let (rd,rd_rv) = if st.has_group("D") {
+            (reg(st,"D"),None)
+        } else if st.has_group("d") {
+            (resolv(st.get_group("d") + 16),None)
+        } else {
+            let A = Rvalue::Constant{ value: st.get_group("A"), size: 6 };
+
+            st.mnemonic(0,"__io_reg","",vec![],&|cg: &mut CodeGen<Avr>| {
+                rreil!{cg:
+                    load/io ioreg:8, (A);
+                }
+            });
+
+            (Lvalue::Variable{ name: Cow::Borrowed("ioreg"), size: 8, offset: 0, subscript: None },Some(A))
+        };
         let (k,kc) = if st.has_group("k") {
             (st.get_group("k"),Rvalue::new_u8(st.get_group("k") as u8))
         } else {
             (st.get_group("b"),Rvalue::Constant{ value: st.get_group("b"), size: 3 })
         };
         let next = st.configuration.wrap(st.address + st.tokens.len() as u64 * 2);
+        let len = st.tokens.len() * 2;
 
-        st.mnemonic(2,n,"{u}, {u}",vec![rd.clone().into(),kc.clone()],&|cg: &mut CodeGen<Avr>| {
+        st.mnemonic(len,n,"{u}, {u}",vec![rd_rv.unwrap_or(rd.clone().into()),kc.clone()],&|cg: &mut CodeGen<Avr>| {
             sem(rd.clone(),k,cg)
         });
         optional_skip(next.clone(),st);
@@ -444,7 +351,15 @@ pub fn binary_ptr(n: &'static str,sem: fn(Lvalue,Lvalue,&mut CodeGen<Avr>),ar: A
             subscript: None,
             offset: 0,
         };
-        let reg = if st.has_group("d") { reg(st,"d") } else { reg(st,"r") };
+        let reg = if st.has_group("D") {
+            reg(st,"D")
+        } else if st.has_group("d") {
+            resolv(st.get_group("d") + 16)
+        } else if st.has_group("R") {
+            reg(st,"R")
+        } else {
+            resolv(st.get_group("r") + 16)
+        };
         let next = st.configuration.wrap(st.address + st.tokens.len() as u64 * 2);
 
         st.mnemonic(0,"__addr_reg","",vec![],&|cg: &mut CodeGen<Avr>| {
@@ -469,7 +384,7 @@ pub fn binary_ptr(n: &'static str,sem: fn(Lvalue,Lvalue,&mut CodeGen<Avr>),ar: A
         st.mnemonic(2,n,fmt,vec!(rd,rr),&|cg: &mut CodeGen<Avr>| {
             if off == AddressOffset::Predecrement {
                 rreil!{cg:
-                    sub (addr_reg), (addr_reg), [1]:8;
+                    sub (addr_reg), (addr_reg), [1]:16;
                 }
             }
 
@@ -477,11 +392,11 @@ pub fn binary_ptr(n: &'static str,sem: fn(Lvalue,Lvalue,&mut CodeGen<Avr>),ar: A
 
             if off == AddressOffset::Postincrement {
                 rreil!{cg:
-                    add (addr_reg), (addr_reg), [1]:8;
+                    add (addr_reg), (addr_reg), [1]:16;
                 }
             } else if off == AddressOffset::Displacement {
                 rreil!{cg:
-                    add (addr_reg), (addr_reg), (Rvalue::new_u8(maybe_q.clone().unwrap().1 as u8));
+                    add (addr_reg), (addr_reg), (Rvalue::new_u16(maybe_q.clone().unwrap().1 as u16));
                 }
             }
         });
@@ -518,7 +433,7 @@ pub fn nonary(n: &'static str,sem: fn(&mut CodeGen<Avr>)) -> Box<Fn(&mut State<A
 
 pub fn unary(n: &'static str,sem: fn(Lvalue,&mut CodeGen<Avr>)) -> Box<Fn(&mut State<Avr>) -> bool>{
     Box::new(move |st: &mut State<Avr>| {
-        let rd = if st.has_group("d") { reg(st,"d") } else { reg(st,"r") };
+        let rd = if st.has_group("D") { reg(st,"D") } else { resolv(st.get_group("d") + 16) };
         let next = st.configuration.wrap(st.address + st.tokens.len() as u64 * 2);
 
         st.mnemonic(2,n,"{u}",vec!(rd.clone().into()),&|cg: &mut CodeGen<Avr>| {
@@ -535,7 +450,7 @@ pub fn flag(n: &'static str,_f: &Lvalue,val: bool) -> Box<Fn(&mut State<Avr>) ->
     Box::new(move |st: &mut State<Avr>| -> bool {
         let next = st.configuration.wrap(st.address + st.tokens.len() as u64 * 2);
 
-        st.mnemonic(2,n,"{u}",vec!(f.clone().into()),&|cg: &mut CodeGen<Avr>| {
+        st.mnemonic(2,n,"",vec!(),&|cg: &mut CodeGen<Avr>| {
             let bit = if val { 1 } else { 0 };
 
             rreil!{cg:
@@ -787,43 +702,37 @@ mod tests {
             (vec![0x9c,0x66],"ori",vec![rreil_rvalue!{ R25:8 }, Rvalue::new_u8(0x6c)]),
             (vec![0xff,0x24],"eor",vec![rreil_rvalue!{ R15:8 }, rreil_rvalue!{ R15:8 }]),
             (vec![0x80,0x95],"com",vec![rreil_rvalue!{ R24:8 }]),
-            // NEG
-            // SBR
-            // CBR
+            (vec![0x41,0x94],"neg",vec![rreil_rvalue!{ R4:8 }]),
             (vec![0xf3,0x94],"inc",vec![rreil_rvalue!{ R15:8 }]),
             (vec![0xfa,0x94],"dec",vec![rreil_rvalue!{ R15:8 }]),
-            // CLR
-            // SER
-            (vec![0x29,0xc0],"rjmp",vec![Rvalue::new_u16(0xa34)]),
-            (vec![0x00,0xd0],"rcall",vec![Rvalue::new_u16(0x149c)]),
+            (vec![0x29,0xc0],"rjmp",vec![rreil_rvalue!{ [82]:24 }]),
+            (vec![0x00,0xd0],"rcall",vec![rreil_rvalue!{ [0]:24 }]),
             (vec![0x08,0x95],"ret",vec![]),
-            // RETI
-            // CPSE
+            (vec![0x18,0x95],"reti",vec![]),
+            (vec![0xff,0x13],"cpse",vec![rreil_rvalue!{ R31:8 },rreil_rvalue!{ R31:8 }]),
             (vec![0x28,0x17],"cp",vec![rreil_rvalue!{ R18:8 }, rreil_rvalue!{ R24:8 }]),
             (vec![0x39,0x07],"cpc",vec![rreil_rvalue!{ R19:8 }, rreil_rvalue!{ R25:8 }]),
             (vec![0x61,0x31],"cpi",vec![rreil_rvalue!{ R22:8 }, Rvalue::new_u8(0x11)]),
             (vec![0x80,0xfd],"sbrc",vec![rreil_rvalue!{ R24:8 },rreil_rvalue!{ [0]:8 }]),
-            // SBRS
-            (vec![0xb0,0x99],"sbic",vec![rreil_rvalue!{ [0x16]:8 },rreil_rvalue!{ [0]:8 }]),
-            // SBIS
-            // BRBS
-            // BRBC
-            (vec![0x39, 0xf1],"breq",vec![Rvalue::new_u16(0x16ac)]),
-            // BRNE
-            (vec![0x28, 0xf0],"brlo",vec![Rvalue::new_u16(0x164a)]),
-            (vec![0xc8, 0xf7],"brsh",vec![Rvalue::new_u16(0x1e00)]),
-            // BRMI
-            // BRPL
-            (vec![0x54, 0xf4],"brge",vec![Rvalue::new_u16(0x1d0e)]),
-            // BRLT
-            // BRHS
-            // BRHC
-            // BRTS
-            // BRTC
-            // BRVS
-            // BRVC
-            // BRIE
-            // BRID
+            (vec![0x65,0xfe],"sbrs",vec![rreil_rvalue!{ R6:8 },Rvalue::new_u8(5)]),
+            (vec![0xb0,0x99],"sbic",vec![rreil_rvalue!{ [0x16]:6 },rreil_rvalue!{ [0]:8 }]),
+            (vec![0xce,0x9b],"sbis",vec![rreil_rvalue!{ [0x19]:6 },rreil_rvalue!{ [6]:8 }]),
+            (vec![0xf1,0xf3],"breq",vec![Rvalue::Constant{ value: (0b1111111111111111111111-2), size: 22 }]),
+            (vec![0xb1,0xf7],"brne",vec![Rvalue::Constant{ value: (0b1111111111111111111111-18), size: 22 }]),
+            (vec![0xf8,0xf3],"brlo",vec![Rvalue::Constant{ value: (0b1111111111111111111111-0), size: 22 }]),
+            (vec![0xc8,0xf7],"brsh",vec![Rvalue::Constant{ value: (0b1111111111111111111111-12), size: 22 }]),
+            (vec![0xea,0xf3],"brmi",vec![Rvalue::Constant{ value: (0b1111111111111111111111-4), size: 22 }]),
+            (vec![0xaa,0xf7],"brpl",vec![Rvalue::Constant{ value: (0b1111111111111111111111-20), size: 22 }]),
+            (vec![0x54,0xf4],"brge",vec![Rvalue::Constant{ value: 21, size: 22 }]),
+            (vec![0xdc,0xf3],"brlt",vec![Rvalue::Constant{ value: (0b1111111111111111111111-8), size: 22 }]),
+            (vec![0xd5,0xf3],"brhs",vec![Rvalue::Constant{ value: (0b1111111111111111111111-10), size: 22 }]),
+            (vec![0x95,0xf7],"brhc",vec![Rvalue::Constant{ value: (0b1111111111111111111111-26), size: 22 }]),
+            (vec![0xce,0xf3],"brts",vec![Rvalue::Constant{ value: (0b1111111111111111111111-12), size: 22 }]),
+            (vec![0x8e,0xf7],"brtc",vec![Rvalue::Constant{ value: (0b1111111111111111111111-28), size: 22 }]),
+            (vec![0xe3,0xf3],"brvs",vec![Rvalue::Constant{ value: (0b1111111111111111111111-6), size: 22 }]),
+            (vec![0xa3,0xf7],"brvc",vec![Rvalue::Constant{ value: (0b1111111111111111111111-22), size: 22 }]),
+            (vec![0xc7,0xf3],"brie",vec![Rvalue::Constant{ value: (0b1111111111111111111111-14), size: 22 }]),
+            (vec![0x87,0xf7],"brid",vec![Rvalue::Constant{ value: (0b1111111111111111111111-30), size: 22 }]),
             (vec![0x9c,0x91],"ld",vec![rreil_rvalue!{ R25:8 }, Rvalue::Variable{ name: Cow::Borrowed("X"), size: 16, offset: 0, subscript: None }]),
             (vec![0x8d,0x91],"ld",vec![rreil_rvalue!{ R24:8 }, Rvalue::Variable{ name: Cow::Borrowed("X+"), size: 16, offset: 0, subscript: None }]),
             (vec![0x88,0x81],"ld",vec![rreil_rvalue!{ R24:8 }, Rvalue::Variable{ name: Cow::Borrowed("Y"), size: 16, offset: 0, subscript: None }]),
@@ -834,66 +743,61 @@ mod tests {
             (vec![0x80,0x83],"st",vec![Rvalue::Variable{ name: Cow::Borrowed("Z"), size: 16, offset: 0, subscript: None }, rreil_rvalue!{ R24:8 }]),
             (vec![0x81,0x93],"st",vec![Rvalue::Variable{ name: Cow::Borrowed("Z+"), size: 16, offset: 0, subscript: None }, rreil_rvalue!{ R24:8 }]),
             (vec![0x03,0x2e],"mov",vec![rreil_rvalue!{ R0:8 },rreil_rvalue!{ R19:8 }]),
-            (vec![0x10 ,0xe0],"ldi",vec![rreil_rvalue!{ R17:8 }, Rvalue::new_u8(0x00)]),
-            (vec![0xcd,0xb7],"in",vec![rreil_rvalue!{ R28:8 }, Rvalue::new_u8(0x3d)]),
-            (vec![0xde ,0xbf],"out",vec![rreil_rvalue!{ [0x3e]:8 }, rreil_rvalue!{ R29:8 }]),
-            (vec![0xc8 ,0x95],"lpm",vec![]),
-            (vec![0xc0 ,0x9a],"sbi",vec![rreil_rvalue!{ [0x18]:8 }, Rvalue::new_u8(0)]),
-            (vec![0xc0 ,0x98],"cbi",vec![rreil_rvalue!{ [0x18]:8 }, Rvalue::new_u8(0)]),
-            // LSL
-            (vec![0x76 ,0x95],"lsr",vec![rreil_rvalue!{ R23:8 }]),
-            // ROL
-            (vec![0x87 ,0x95],"ror",vec![rreil_rvalue!{ R24:8 }]),
-            // ASR
-            (vec![0x82, 0x95],"swap",vec![rreil_rvalue!{ R24:8 }]),
-            // BSET
-            // BCLR
-            // BST
-            // BLD
-            (vec![0x08 ,0x94],"sec",vec![]),
-            (vec![0x88 ,0x94],"clc",vec![]),
-            // SEN
-            // CLN
-            // SEZ
-            // CLZ
-            // SEI
-            (vec![0xf8 ,0x94],"cli",vec![]),
-            // SES
-            // CLS
-            // SEV
-            // CLV
-            // SET
-            // CLT
-            // SEH
-            // CLH
-            // NOP
-            // SLEEP
-            // WDR
-            (vec![0x01, 0x96],"adiw",vec![rreil_rvalue!{ R24:8 }, Rvalue::new_u8(0x01)]),
-            (vec![0x13, 0x97],"sbiw",vec![rreil_rvalue!{ R26:8 }, Rvalue::new_u8(0x03)]),
-            (vec![0x09, 0x94],"ijmp",vec![]),
-            // ICALL
-            (vec![0x2a ,0x88],"ldd",vec![rreil_rvalue!{ R2:8 }, Rvalue::Variable{ name: Cow::Borrowed("Y+18"), size: 16, offset: 0, subscript: None }]),
-            (vec![0x87 ,0x81],"ldd",vec![rreil_rvalue!{ R24:8 }, Rvalue::Variable{ name: Cow::Borrowed("Z+7"), size: 16, offset: 0, subscript: None }]),
+            (vec![0x10,0xe0],"ldi",vec![rreil_rvalue!{ R17:8 }, Rvalue::new_u8(0x00)]),
+            (vec![0xcd,0xb7],"in",vec![rreil_rvalue!{ R28:8 }, rreil_rvalue!{ [0x3d]:6 }]),
+            (vec![0xde,0xbf],"out",vec![rreil_rvalue!{ [0x3e]:6 }, rreil_rvalue!{ R29:8 }]),
+            (vec![0xc8,0x95],"lpm",vec![]),
+            (vec![0xc0,0x9a],"sbi",vec![rreil_rvalue!{ [0x18]:6 }, rreil_rvalue!{ [0]:3}]),
+            (vec![0xc0,0x98],"cbi",vec![rreil_rvalue!{ [0x18]:6 }, rreil_rvalue!{ [0]:3}]),
+            (vec![0x76,0x95],"lsr",vec![rreil_rvalue!{ R23:8 }]),
+            (vec![0x87,0x95],"ror",vec![rreil_rvalue!{ R24:8 }]),
+            (vec![0x82,0x95],"swap",vec![rreil_rvalue!{ R24:8 }]),
+            (vec![0x70,0xfa],"bst",vec![rreil_rvalue!{ R7:8 },rreil_rvalue!{ [0]:3}]),
+            (vec![0xf7,0xf9],"bld",vec![rreil_rvalue!{ R31:8 }, rreil_rvalue!{ [7]:3}]),
+            (vec![0x08,0x94],"sec",vec![]),
+            (vec![0x88,0x94],"clc",vec![]),
+            (vec![0x28,0x94],"sen",vec![]),
+            (vec![0xa8,0x94],"cln",vec![]),
+            (vec![0x18,0x94],"sez",vec![]),
+            (vec![0x98,0x94],"clz",vec![]),
+            (vec![0x78,0x94],"sei",vec![]),
+            (vec![0xf8,0x94],"cli",vec![]),
+            (vec![0x48,0x94],"ses",vec![]),
+            (vec![0xc8,0x94],"cls",vec![]),
+            (vec![0x38,0x94],"sev",vec![]),
+            (vec![0xb8,0x94],"clv",vec![]),
+            (vec![0x68,0x94],"set",vec![]),
+            (vec![0xe8,0x94],"clt",vec![]),
+            (vec![0x58,0x94],"seh",vec![]),
+            (vec![0xd8,0x94],"clh",vec![]),
+            (vec![0x00,0x00],"nop",vec![]),
+            (vec![0x88,0x95],"sleep",vec![]),
+            (vec![0xa8,0x95],"wdr",vec![]),
+            (vec![0x01,0x96],"adiw",vec![rreil_rvalue!{ R24:8 }, Rvalue::new_u8(0x01)]),
+            (vec![0x13,0x97],"sbiw",vec![rreil_rvalue!{ R26:8 }, Rvalue::new_u8(0x03)]),
+            (vec![0x09,0x94],"ijmp",vec![]),
+            (vec![0x09,0x95],"icall",vec![]),
+            (vec![0x2a,0x88],"ldd",vec![rreil_rvalue!{ R2:8 }, Rvalue::Variable{ name: Cow::Borrowed("Y+18"), size: 16, offset: 0, subscript: None }]),
+            (vec![0x87,0x81],"ldd",vec![rreil_rvalue!{ R24:8 }, Rvalue::Variable{ name: Cow::Borrowed("Z+7"), size: 16, offset: 0, subscript: None }]),
             (vec![0x80,0x91,0x62,0x00],"lds",vec![rreil_rvalue!{ R24:8 }, Rvalue::new_u16(0x0062)]),
-            (vec![0x99 ,0x83],"std",vec![Rvalue::Variable{ name: Cow::Borrowed("Y+1"), size: 16, offset: 0, subscript: None }, rreil_rvalue!{ R25:8 }]),
-            (vec![0x84 ,0x83],"std",vec![Rvalue::Variable{ name: Cow::Borrowed("Z+4"), size: 16, offset: 0, subscript: None }, rreil_rvalue!{ R24:8 }]),
+            (vec![0x99,0x83],"std",vec![Rvalue::Variable{ name: Cow::Borrowed("Y+1"), size: 16, offset: 0, subscript: None }, rreil_rvalue!{ R25:8 }]),
+            (vec![0x84,0x83],"std",vec![Rvalue::Variable{ name: Cow::Borrowed("Z+4"), size: 16, offset: 0, subscript: None }, rreil_rvalue!{ R24:8 }]),
             (vec![0x90,0x93,0x7c,0x00],"sts",vec![Rvalue::new_u16(0x007C),rreil_rvalue!{ R25:8 }]),
             (vec![0xcf,0x93],"push",vec![rreil_rvalue!{ R28:8 }]),
             (vec![0xcf,0x91],"pop",vec![rreil_rvalue!{ R28:8 }]),
-            (vec![0x0c,0x94,0xe9,0x0e],"jmp", vec![Rvalue::new_u16(0x1dd2)]),
-            (vec![0x0e,0x94,0xa4,0x0a],"call", vec![Rvalue::new_u16(0x1548)]),
-            // ELPM
-            // MUL
-            // MULS
-            // MULSU
-            // FMUL
-            // FMULS
-            // FMULSU
-            (vec![0x4a ,0x01],"movw",vec![rreil_rvalue!{ r8:8 }, rreil_rvalue!{ R20:8 }]),
-            (vec![0xc8 ,0x95],"lpm",vec![]),
-            // SPM
-            // BREAK
+            (vec![0x0c,0x94,0xe9,0x0e],"jmp", vec![rreil_rvalue!{ [0x1dd2]:22 }]),
+            (vec![0x0e,0x94,0xa4,0x0a],"call", vec![rreil_rvalue!{ [0x1548]:22 }]),
+            (vec![0xd8,0x95],"elpm",vec![]),
+            (vec![0x31,0x9c],"mul",vec![rreil_rvalue!{ R3:8 },rreil_rvalue!{ R1:8 }]),
+            (vec![0xd5,0x02],"muls",vec![rreil_rvalue!{ R29:8 },rreil_rvalue!{ R21:8 }]),
+            (vec![0x55,0x03],"mulsu",vec![rreil_rvalue!{ R21:8 },rreil_rvalue!{ R21:8 }]),
+            (vec![0x5c,0x03],"fmul",vec![rreil_rvalue!{ R21:8 },rreil_rvalue!{ R20:8 }]),
+            (vec![0x90,0x03],"fmuls",vec![rreil_rvalue!{ R17:8 },rreil_rvalue!{ R16:8 }]),
+            (vec![0xff,0x03],"fmulsu",vec![rreil_rvalue!{ R23:8 },rreil_rvalue!{ R23:8 }]),
+            (vec![0x4a,0x01],"movw",vec![rreil_rvalue!{ R8:8 }, rreil_rvalue!{ R20:8 }]),
+            (vec![0xc8,0x95],"lpm",vec![]),
+            (vec![0xe8,0x95],"spm",vec![]),
+            (vec![0x98,0x95],"break",vec![]),
             // EIJMP
             // EICALL
             // XCH
@@ -913,13 +817,16 @@ mod tests {
             let maybe_match = main.next_match(&mut i,0,Mcu::new());
 
             if let Some(match_st) = maybe_match {
-                assert_eq!(1, match_st.mnemonics.len());
+                assert!(match_st.mnemonics.len() >= 1);
 
-                let mne = &match_st.mnemonics[0];
-
-                assert_eq!(opname,mne.opcode);
-                assert_eq!(mne.area.start,0);
-                assert_eq!(mne.area.end,l as u64);
+                for m in match_st.mnemonics.iter() {
+                    if m.area.start != m.area.end {
+                        assert_eq!(opname,m.opcode);
+                        assert_eq!(m.area.start,0);
+                        assert_eq!(m.area.end,l as u64);
+                        assert_eq!(m.operands,args);
+                    }
+                }
             } else {
                 unreachable!()
             }
