@@ -60,9 +60,8 @@ impl Rvalue {
     pub fn size(&self) -> Option<usize> {
         match self {
             &Rvalue::Constant{ ref size,.. } => Some(*size),
-            &Rvalue::Variable{ ref size, ref offset,.. } => {
-                assert!(*size > *offset);
-                Some(*size - *offset)
+            &Rvalue::Variable{ ref size,.. } => {
+                Some(*size)
             },
             &Rvalue::Undefined => None,
         }
@@ -161,8 +160,7 @@ impl Lvalue {
     pub fn size(&self) -> Option<usize> {
         match self {
             &Lvalue::Variable{ ref size, ref offset,.. } => {
-                assert!(*size > *offset);
-                Some(*size - *offset)
+                Some(*size)
             },
             &Lvalue::Undefined => None,
         }
@@ -483,7 +481,7 @@ pub fn execute(op: &Operation<Rvalue>) -> Rvalue {
                 Rvalue::Constant{ value: 0, size: 1 }
             }
         },
-        &Operation::LessOrEqualUnsigned(Rvalue::Constant{ value: 0,.. },_) => 
+        &Operation::LessOrEqualUnsigned(Rvalue::Constant{ value: 0,.. },_) =>
             Rvalue::Constant{ value: 1, size: 1 },
         &Operation::LessOrEqualUnsigned(_,_) =>
             Rvalue::Undefined,

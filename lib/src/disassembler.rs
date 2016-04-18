@@ -19,7 +19,7 @@
 #![macro_use]
 
 use std::rc::Rc;
-use std::fmt::Debug;
+use std::fmt::{Debug};
 use std::ops::{BitAnd,BitOr,Shl,Shr,Not};
 use std::collections::HashMap;
 use std::mem::size_of;
@@ -428,7 +428,9 @@ impl<'a,A: Architecture> Into<Rule<A>> for &'a str {
                             panic!("Pattern syntax error: anonymous groups not allowed in '{}'",self);
                         }
 
-                        groups.insert(cur_group.clone(),A::Token::zero());
+                        if !groups.contains_key(&cur_group) {
+                            groups.insert(cur_group.clone(),A::Token::zero());
+                        }
                     }
                 },
                 ' ' => {
@@ -708,7 +710,7 @@ mod tests {
             }
 		);
 
-        (sub,sub2,main,OpaqueLayer::wrap(vec!(1,1,2,1,3,8,1,8)))
+        (sub,sub2,main,OpaqueLayer::wrap(vec!(1,1,2,1,0b10111,8,1,8)))
 	}
 
     #[test]
@@ -838,9 +840,9 @@ mod tests {
 
         assert_eq!(res.address, 4);
         assert_eq!(res.tokens.len(), 1);
-        assert_eq!(res.tokens[0], 3);
+        assert_eq!(res.tokens[0], 0b10111);
         assert_eq!(res.groups.len(), 1);
-        assert_eq!(res.groups, vec!(("k".to_string(),0)));
+        assert_eq!(res.groups, vec!(("k".to_string(),0b101)));
         assert_eq!(res.mnemonics.len(), 1);
         assert_eq!(res.mnemonics[0].opcode, "C".to_string());
         assert_eq!(res.mnemonics[0].area, Bound::new(4,5));

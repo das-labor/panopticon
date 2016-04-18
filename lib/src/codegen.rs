@@ -42,18 +42,19 @@ impl<C: Architecture> CodeGen<C> {
     pub fn push(&mut self, stmt: Statement) {
         // check that argument sizes match
         let typecheck_binop = |a: &Rvalue,b: &Rvalue,assignee: &Lvalue| -> () {
-           assert!(a.size() == None || b.size() == None || a.size() == b.size(),"Argument sizes mismatch");
-           assert!(assignee.size() == None || Some(max(a.size().unwrap_or(0),b.size().unwrap_or(0))) == assignee.size(),"Operation result and assingnee sizes mismatch");
+            assert!(a.size() == None || b.size() == None || a.size() == b.size(),"Argument sizes mismatch");
+            assert!(assignee.size() == None || Some(max(a.size().unwrap_or(0),b.size().unwrap_or(0))) == assignee.size(),"Operation result and assingnee sizes mismatch");
         };
         let typecheck_cmpop = |a: &Rvalue,b: &Rvalue,assignee: &Lvalue| -> () {
-           assert!(a.size() == None || b.size() == None || a.size() == b.size(),"Argument sizes mismatch");
-           assert!(assignee.size() == None || assignee.size() == Some(1),"Compare operation assingnee not a flag");
+            assert!(a.size() == None || b.size() == None || a.size() == b.size(),"Argument sizes mismatch");
+            assert!(assignee.size() == None || assignee.size() == Some(1),"Compare operation assingnee not a flag");
         };
         let typecheck_unop = |a: &Rvalue,sz: Option<usize>,assignee: &Lvalue| -> () {
             if sz.is_none() {
-               assert!(a.size() == None || assignee.size() == None || assignee.size() == a.size(),"Operation result and assingnee sizes mismatch");
+                // zext?
+                assert!(a.size() == None || assignee.size() == None || assignee.size() == a.size(),"Operation result and assingnee sizes mismatch");
             } else {
-               assert!(a.size() == None || assignee.size() == None || assignee.size() == sz,"Operation result and assingnee sizes mismatch");
+                assert!(a.size() == None || assignee.size() == None || assignee.size() == sz,"Operation result and assingnee sizes mismatch");
             }
         };
 
@@ -84,9 +85,9 @@ impl<C: Architecture> CodeGen<C> {
             &Statement{ op: Operation::Call(_), ref assignee } =>
                 assert!(assignee == &Lvalue::Undefined,"Call operation can only be assigned to Undefined"),
             &Statement{ op: Operation::Load(_,_), ref assignee } =>
-                assert!(assignee.size().is_none(),"Memory operation with undefined size"),
+                assert!(assignee.size().is_some(),"Memory operation with undefined size"),
             &Statement{ op: Operation::Store(_,_), ref assignee } =>
-                assert!(assignee.size().is_none(),"Memory operation with undefined size"),
+                assert!(assignee.size().is_some(),"Memory operation with undefined size"),
 
             &Statement{ op: Operation::Phi(ref vec), ref assignee } =>
                 assert!(vec.iter().all(|rv| rv.size() == assignee.size()) && assignee.size() != None,"Phi arguments must have equal sizes and can't be Undefined"),
