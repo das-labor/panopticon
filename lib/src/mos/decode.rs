@@ -25,20 +25,22 @@ use State;
 use CodeGen;
 use Guard;
 
+// No argument
 pub fn nonary(opcode: &'static str, sem: fn(&mut CodeGen<Mos>)) -> Box<Fn(&mut State<Mos>) -> bool> {
     Box::new(move |st: &mut State<Mos>| -> bool {
         let len = st.tokens.len();
-        let next = st.address + len as u64;
+        let next = st.address + len as u16;
 
         st.mnemonic_dynargs(len, &opcode, "", &|c| {
             sem(c);
             vec![]
         });
-        st.jump(Rvalue::Constant(next), Guard::always());
+        st.jump(Rvalue::new_u16(next), Guard::always());
         true
     })
 }
 
+// RT*
 pub fn nonary_ret(opcode: &'static str, sem: fn(&mut CodeGen<Mos>)) -> Box<Fn(&mut State<Mos>) -> bool> {
     Box::new(move |st: &mut State<Mos>| -> bool {
         let len = st.tokens.len();
@@ -51,7 +53,7 @@ pub fn nonary_ret(opcode: &'static str, sem: fn(&mut CodeGen<Mos>)) -> Box<Fn(&m
     })
 }
 
-
+// Implied register argument
 pub fn unary_r(opcode: &'static str,
                _arg0: &Lvalue,
                sem: fn(&mut CodeGen<Mos>, Rvalue)
@@ -59,29 +61,30 @@ pub fn unary_r(opcode: &'static str,
     let arg0 = _arg0.clone();
     Box::new(move |st: &mut State<Mos>| -> bool {
         let len = st.tokens.len();
-        let next = st.address + len as u64;
-        st.mnemonic_dynargs(len, &opcode, "{8}", &|c| {
+        let next = st.address + len as u16;
+        st.mnemonic_dynargs(len, &opcode, "{u}", &|c| {
             sem(c,arg0.to_rv());
             vec![arg0.to_rv()]
         });
-        st.jump(Rvalue::Constant(next),Guard::always());
+        st.jump(Rvalue::new_u16(next),Guard::always());
         true
     })
 }
 
+// Immediate
 pub fn unary_i(opcode: &'static str,
                sem: fn(&mut CodeGen<Mos>,Rvalue)
               ) -> Box<Fn(&mut State<Mos>) -> bool> {
     Box::new(move |st: &mut State<Mos>| -> bool {
         let _arg = st.configuration.arg0.clone();
         let len = st.tokens.len();
-        let next = st.address + len as u64;
+        let next = st.address + len as u16;
         if let Some(arg) = _arg {
-            st.mnemonic_dynargs(len,&opcode,"#{8}",&|c| {
+            st.mnemonic_dynargs(len,&opcode,"#{u}",&|c| {
                 sem(c,arg.clone());
                 vec![arg.clone()]
             });
-            st.jump(Rvalue::Constant(next),Guard::always());
+            st.jump(Rvalue::new_u16(next),Guard::always());
             true
         } else {
             false
@@ -89,44 +92,54 @@ pub fn unary_i(opcode: &'static str,
     })
 }
 
+// Index into Zero Page
 pub fn unary_z(opcode: &'static str,
                sem: fn(&mut CodeGen<Mos>,Rvalue)
               ) -> Box<Fn(&mut State<Mos>) -> bool> {
     Box::new(move |st: &mut State<Mos>| -> bool {
         let len = st.tokens.len();
-        let next = st.address + len as u64;
-	let arg = st.configuration.arg0.clone();
-        let addr =
-            if let Some(Rvalue::Memory{offset: ref addr,..}) = arg {
-	        (**addr).clone()
-            } else { unreachable!(); };
-	st.mnemonic_dynargs(len,&opcode,"Z{8}", &|c| {
-            sem(c, arg.clone().unwrap());
+        let next = st.address + len as u16;
+        let addr = &st.configuration.arg0;
+
+        st.mnemonic_dynargs(len,&opcode,"Z{p}", &|c| {
+            rreil!{c:
+                zext/16 addr:16, (addr);
+                load/ram val:8, addr:16;
+            }
+
+            sem(c, rreil_rvalue!{ val:8 });
+
             vec![addr.clone()]
         });
-        st.jump(Rvalue::Constant(next), Guard::always());
+        st.jump(Rvalue::new_u16(next), Guard::always());
         true
     })
 }
 
+// Index into Zero Page with register offset
 pub fn unary_zr(opcode: &'static str,
                _arg1: &Lvalue,
-                sem: fn(&mut CodeGen<Mos>,Rvalue,Rvalue)
+                sem: fn(&mut CodeGen<Mos>,Rvalue)
                ) -> Box<Fn(&mut State<Mos>) -> bool> {
     let arg1 = _arg1.clone();
     Box::new(move |st: &mut State<Mos>| -> bool {
         let len = st.tokens.len();
-        let next = st.address + len as u64;
+        let next = st.address + len as u16;
         let arg = st.configuration.arg0.clone();
-        let addr =
-            if let Some(Rvalue::Memory{offset: ref addr,..}) = arg {
-	        (**addr).clone()
-            } else { unreachable!(); };
-	st.mnemonic_dynargs(len,&opcode,"Z{8},{8}",&|c| {
-            sem(c, arg.clone().unwrap(), arg1.to_rv());
+
+	st.mnemonic_dynargs(len,&opcode,"{p},{u}",&|c| {
+        rreil!{c:
+                add short_addr:8, (_arg1), (arg);
+                zext/16 addr:16, short_addr:8;
+                add addr:16, addr:16, _
+                load/ram val:8, addr:16;
+            }
+
+            sem(c, rreil_rvalue!{ val:8 });
+
             vec![addr.clone(), arg1.to_rv()]
         });
-        st.jump(Rvalue::Constant(next), Guard::always());
+        st.jump(Rvalue::new_u16(next), Guard::always());
         true
     })
 }
@@ -138,13 +151,13 @@ pub fn unary_izx(opcode: &'static str,
     Box::new(move |st: &mut State<Mos>| -> bool {
         let _arg = st.configuration.arg0.clone();
         let len = st.tokens.len();
-        let next = st.address + len as u64;
+        let next = st.address + len as u16;
         if let Some(arg) = _arg {
             st.mnemonic_dynargs(len, &opcode, "(Z{8},X)", &|c| {
                 sem(c, arg.clone());
                 vec![arg.clone()]
             });
-            st.jump(Rvalue::Constant(next),Guard::always());
+            st.jump(Rvalue::new_u16(next),Guard::always());
             true
         } else {
             false
@@ -158,13 +171,13 @@ pub fn unary_izy(opcode: &'static str,
     Box::new(move |st: &mut State<Mos>| -> bool {
         let _arg = st.configuration.arg0.clone();
         let len = st.tokens.len();
-        let next = st.address + len as u64;
+        let next = st.address + len as u16;
         if let Some(arg) = _arg {
             st.mnemonic_dynargs(len, &opcode, "(Z{8}),Y", &|c| {
                 sem(c, arg.clone());
                 vec![arg.clone()]
             });
-            st.jump(Rvalue::Constant(next),Guard::always());
+            st.jump(Rvalue::new_u16(next),Guard::always());
             true
         } else {
             false
@@ -177,7 +190,7 @@ pub fn unary_a(opcode: &'static str,
               ) -> Box<Fn(&mut State<Mos>) -> bool> {
     Box::new(move |st: &mut State<Mos>| -> bool {
         let len = st.tokens.len();
-        let next = st.address + len as u64;
+        let next = st.address + len as u16;
         let arg = st.configuration.arg0.clone();
         let addr =
             if let Some(Rvalue::Memory{offset: ref addr,..}) = arg {
@@ -187,7 +200,7 @@ pub fn unary_a(opcode: &'static str,
             sem(c, arg.clone().unwrap());
             vec![addr.clone()]
         });
-        st.jump(Rvalue::Constant(next),Guard::always());
+        st.jump(Rvalue::new_u16(next),Guard::always());
 	true
     })
 }
@@ -199,7 +212,7 @@ pub fn unary_ar(opcode: &'static str,
     let arg1 = _arg1.clone();
     Box::new(move |st: &mut State<Mos>| -> bool {
         let len = st.tokens.len();
-        let next = st.address + len as u64;
+        let next = st.address + len as u16;
         let arg = st.configuration.arg0.clone();
         let addr =
             if let Some(Rvalue::Memory{offset: ref addr,..}) = arg {
@@ -209,7 +222,7 @@ pub fn unary_ar(opcode: &'static str,
             sem(c, arg.clone().unwrap(), arg1.to_rv());
             vec![addr.clone(), arg1.to_rv()]
         });
-        st.jump(Rvalue::Constant(next),Guard::always());
+        st.jump(Rvalue::new_u16(next),Guard::always());
         true
     })
 }
@@ -219,7 +232,7 @@ pub fn unary_call_a(opcode: &'static str,
               ) -> Box<Fn(&mut State<Mos>) -> bool> {
     Box::new(move |st: &mut State<Mos>| -> bool {
         let len = st.tokens.len();
-        let next = st.address + len as u64;
+        let next = st.address + len as u16;
         let arg = st.configuration.arg0.clone();
         let addr =
             if let Some(Rvalue::Memory{offset: ref addr,..}) = arg {
@@ -230,7 +243,7 @@ pub fn unary_call_a(opcode: &'static str,
             sem(c, arg.clone().unwrap());
             vec![addr.clone()]
         });
-        st.jump(Rvalue::Constant(next), Guard::always());
+        st.jump(Rvalue::new_u16(next), Guard::always());
         // st.jump(arg, Guard::always());
         true
     })
@@ -288,7 +301,7 @@ pub fn unary_b(opcode: &'static str,
     Box::new(move |st: &mut State<Mos>| -> bool {
         let _arg = st.configuration.arg0.clone();
         let len = st.tokens.len();
-        let next = st.address + len as u64;
+        let next = st.address + len as u16;
 
         let g = Guard::eq(&flag, &set);
 	let fallthru = st.configuration.wrap(next);

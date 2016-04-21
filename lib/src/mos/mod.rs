@@ -21,18 +21,16 @@ use disassembler::*;
 use {Lvalue,Rvalue};
 use std::borrow::Cow;
 use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
-/*
+
 pub mod load;
 pub mod decode;
 pub mod generic;
 pub mod semantic;
-*/
+
 #[derive(Clone)]
 pub enum Mos {}
 
 impl Architecture for Mos {
-    // FIXME: There should be a more useful error than crashing thread with shift overflow in libcore
-    // when a bit pattern is larger than the Token size.
     type Token = u8;
     type Configuration = Variant;
 }
@@ -64,27 +62,6 @@ lazy_static! {
     pub static ref C: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("C"), size: 1, offset: 0, subscript: None };
 }
 
-pub fn ram<A: Into<Rvalue>>(off: &A, width: u16) -> Lvalue {
-    unimplemented!()
-    /*Lvalue::Memory{
-        offset: Box::new(off.to_rv()),
-        name: "ram".to_string(),
-        endianess: Endianess::Little,
-        bytes: width / 8
-    }*/
-}
-
-static GLOBAL_MOS_TEMPVAR_COUNT: AtomicUsize = ATOMIC_USIZE_INIT;
-
-pub fn new_temp(bits: usize) -> Lvalue {
-    unimplemented!()
-    /*Lvalue::Variable{
-        name: format!("__temp{}",GLOBAL_MOS_TEMPVAR_COUNT.fetch_add(1, Ordering::SeqCst)),
-        width: bits as u16,
-        subscript: None
-    }*/
-}
-
 #[derive(Clone)]
 pub struct Variant {
     pub arg0: Option<Rvalue>,
@@ -108,15 +85,6 @@ impl Variant {
                 ("IRQ/BRK",Rvalue::Memory{ offset: Box::new(Rvalue::Constant(0xfffe)), bytes: 2, endianess: Endianess::Little, name: "ram".to_string() }, "Interrupt routine")*/
             ],
         }
-    }
-
-    pub fn wrap(&self, addr: u64) -> Rvalue {
-        Rvalue::new_u64(addr % (1u64 << 16))
-    }
-
-    pub fn wrap_signed(&self, addr: i64) -> Rvalue {
-        let mask = 1i64 << 16;
-        Rvalue::new_u64((((addr % mask) + mask) % mask) as u64)
     }
 }
 
