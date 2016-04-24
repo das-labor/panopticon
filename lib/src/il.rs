@@ -157,6 +157,20 @@ pub enum Lvalue {
 }
 
 impl Lvalue {
+    pub fn from_rvalue(rv: Rvalue) -> Option<Lvalue> {
+        match rv {
+            Rvalue::Undefined => Some(Lvalue::Undefined),
+            Rvalue::Variable{ name, subscript, offset, size } =>
+                Some(Lvalue::Variable{
+                    name: name,
+                    subscript: subscript,
+                    offset: offset,
+                    size: size
+                }),
+            _ => None,
+        }
+    }
+
     pub fn size(&self) -> Option<usize> {
         match self {
             &Lvalue::Variable{ ref size, ref offset,.. } => {

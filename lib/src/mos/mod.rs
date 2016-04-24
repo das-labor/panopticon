@@ -17,14 +17,19 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-use disassembler::*;
-use {Lvalue,Rvalue};
+use {
+    Lvalue,
+    Rvalue,
+    Guard,
+    CodeGen,
+    State,
+    Architecture,
+};
 use std::borrow::Cow;
 use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
 
 pub mod load;
-pub mod decode;
-pub mod generic;
+pub mod syntax;
 pub mod semantic;
 
 #[derive(Clone)]
@@ -37,19 +42,19 @@ impl Architecture for Mos {
 
 // 8 bit main register
 lazy_static! {
-    pub static ref A: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("a"), size: 8, offset: 0, subscript: None };
+    pub static ref A: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("A"), size: 8, offset: 0, subscript: None };
 }
 
 // 8 bit index registers
 lazy_static! {
-    pub static ref X: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("x"), size: 8, offset: 0, subscript: None };
-    pub static ref Y: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("y"), size: 8, offset: 0, subscript: None };
-    pub static ref SP: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("sp"), size: 8, offset: 0, subscript: None };
+    pub static ref X: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("X"), size: 8, offset: 0, subscript: None };
+    pub static ref Y: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("Y"), size: 8, offset: 0, subscript: None };
+    pub static ref SP: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("SP"), size: 8, offset: 0, subscript: None };
 }
 
 // 16 bit program counter
 lazy_static! {
-    pub static ref PC: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("pc"), size: 16, offset: 0, subscript: None };
+    pub static ref PC: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("PC"), size: 16, offset: 0, subscript: None };
 }
 
 // flags
@@ -64,21 +69,24 @@ lazy_static! {
 
 #[derive(Clone)]
 pub struct Variant {
-    pub arg0: Option<Rvalue>,
+    pub arg: Option<Rvalue>,
+    pub rel: Option<i16>,
     pub int_vec: Vec<(&'static str,Rvalue,&'static str)>
 }
 
 impl Variant {
     pub fn new() -> Variant {
         Variant {
-	    arg0: None,
+	    arg: None,
+	    rel: None,
             int_vec: vec![/*("ENTRY", Rvalue::Constant(0), "MCU Entry")*/],
         }
     }
 
     pub fn mos6502() -> Variant {
         Variant {
-            arg0: None,
+            arg: None,
+            rel: None,
             int_vec: vec![
               /*  ("NMI",Rvalue::Memory{ offset: Box::new(Rvalue::Constant(0xfffa)), bytes: 2, endianess: Endianess::Little, name: "ram".to_string() }, "NMI vector"),
                 ("RESET",Rvalue::Memory{ offset: Box::new(Rvalue::Constant(0xfffc)), bytes: 2, endianess: Endianess::Little, name: "ram".to_string() }, "Reset routine"),
@@ -86,6 +94,255 @@ impl Variant {
             ],
         }
     }
+}
+
+// No argument
+pub fn nonary(opcode: &'static str, sem: fn(&mut CodeGen<Mos>)) -> Box<Fn(&mut State<Mos>) -> bool> {
+    Box::new(move |st: &mut State<Mos>| -> bool {
+        let len = st.tokens.len();
+        let next = (st.address + len as u64) as u16;
+
+        st.mnemonic_dynargs(len, &opcode, "", &|c| {
+            sem(c);
+            vec![]
+        });
+        st.jump(Rvalue::new_u16(next), Guard::always());
+        true
+    })
+}
+
+// RT*
+pub fn ret(opcode: &'static str) -> Box<Fn(&mut State<Mos>) -> bool> {
+    Box::new(move |st: &mut State<Mos>| -> bool {
+        let len = st.tokens.len();
+        st.mnemonic(len, &opcode, "", vec![], &|c| {});
+        true
+    })
+}
+
+// Implied register argument
+pub fn implied(opcode: &'static str,
+               _arg0: &Lvalue,
+               sem: fn(&mut CodeGen<Mos>, Rvalue)
+              ) -> Box<Fn(&mut State<Mos>) -> bool> {
+    let arg0 = _arg0.clone();
+    Box::new(move |st: &mut State<Mos>| -> bool {
+        let len = st.tokens.len();
+        let next = (st.address + len as u64) as u16;
+        st.mnemonic(len, &opcode, "", vec![], &|c| {
+            sem(c,arg0.clone().into());
+        });
+        st.jump(Rvalue::new_u16(next),Guard::always());
+        true
+    })
+}
+
+// Immediate
+pub fn immediate(opcode: &'static str,
+               sem: fn(&mut CodeGen<Mos>,Rvalue)
+              ) -> Box<Fn(&mut State<Mos>) -> bool> {
+    Box::new(move |st: &mut State<Mos>| -> bool {
+        let _arg = st.configuration.arg.clone();
+        let len = st.tokens.len();
+        let next = (st.address + len as u64) as u16;
+        if let Some(arg) = _arg {
+            st.mnemonic_dynargs(len,&opcode,"#{u}",&|c| {
+                sem(c,arg.clone());
+                vec![arg.clone()]
+            });
+            st.jump(Rvalue::new_u16(next),Guard::always());
+            true
+        } else {
+            false
+        }
+    })
+}
+
+// Index into Zero Page
+pub fn zpage(opcode: &'static str,
+             sem: fn(&mut CodeGen<Mos>,Rvalue)
+            ) -> Box<Fn(&mut State<Mos>) -> bool> {
+    Box::new(move |st: &mut State<Mos>| -> bool {
+        let len = st.tokens.len();
+        let next = (st.address + len as u64) as u16;
+        let base = st.configuration.arg.clone().unwrap();
+
+        st.mnemonic(len,&opcode,"{p}",vec![base.clone()], &|c| {
+            rreil!{c:
+                zext/16 addr:16, (base);
+                load/ram val:8, addr:16;
+            }
+
+            sem(c, rreil_rvalue!{ val:8 });
+        });
+        st.jump(Rvalue::new_u16(next), Guard::always());
+        true
+    })
+}
+
+// Index into Zero Page with register offset
+pub fn zpage_offset(opcode: &'static str,
+               _arg1: &Lvalue,
+                sem: fn(&mut CodeGen<Mos>,Rvalue)
+               ) -> Box<Fn(&mut State<Mos>) -> bool> {
+    let index = _arg1.clone();
+    Box::new(move |st: &mut State<Mos>| -> bool {
+        let len = st.tokens.len();
+        let next = (st.address + len as u64) as u16;
+        let base = st.configuration.arg.clone().unwrap();
+        let base_val =
+            if let Rvalue::Constant{ ref value,.. } = base { *value } else { unreachable!() };
+        let index_nam =
+            if let Lvalue::Variable{ ref name,.. } = index { name.clone() } else { unreachable!() };
+        let addr = Lvalue::Variable{
+            name: Cow::Owned(format!("${:02X},{}",base_val,index_nam)),
+            size: 16,
+            subscript: None,
+            offset: 0
+        };
+
+        st.mnemonic(0,"__load","",vec![],&|c| {
+            rreil!{c:
+                add short_addr:8, (base), (index);
+                zext/16 (addr), short_addr:8;
+                load/ram val:8, (addr);
+            }
+        });
+
+        st.mnemonic(len,&opcode,"{p}",vec![addr.clone().into()],&|c| {
+            sem(c, rreil_rvalue!{ val:8 });
+        });
+
+        st.jump(Rvalue::new_u16(next), Guard::always());
+        true
+    })
+}
+
+
+pub fn zpage_index(opcode: &'static str,
+                   _arg1: Lvalue,
+                   sem: fn(&mut CodeGen<Mos>,Rvalue)) -> Box<Fn(&mut State<Mos>) -> bool> {
+    let index = _arg1.clone();
+    Box::new(move |st: &mut State<Mos>| -> bool {
+        let len = st.tokens.len();
+        let next = (st.address + len as u64) as u16;
+        let base = st.configuration.arg.clone().unwrap();
+        let base_val =
+            if let Rvalue::Constant{ ref value,.. } = base { *value } else { unreachable!() };
+        let index_nam =
+            if let Lvalue::Variable{ ref name,.. } = index { name.clone() } else { unreachable!() };
+        let addr = if index == rreil_lvalue!{ X:8 } {
+            Lvalue::Variable{
+            name: Cow::Owned(format!("(${:02X},{})",base_val,index_nam)),
+            size: 16,
+            subscript: None,
+            offset: 0
+            }
+        } else {
+Lvalue::Variable{
+            name: Cow::Owned(format!("(${:02X}),{}",base_val,index_nam)),
+            size: 16,
+            subscript: None,
+            offset: 0
+            }
+        };
+
+        st.mnemonic(0,"__load","",vec![],&|c| {
+            rreil!{c:
+                add short_addr:8, (base), (index);
+                zext/16 addr:16, short_addr:8;
+                load/ram (addr), addr:16;
+                load/ram val:8, (addr);
+            }
+        });
+
+        st.mnemonic(len,&opcode,"{p}",vec![addr.clone().into()],&|c| {
+            sem(c, rreil_rvalue!{ val:8 });
+        });
+        st.jump(Rvalue::new_u16(next),Guard::always());
+        true
+    })
+}
+
+pub fn absolute(opcode: &'static str,
+               sem: fn(&mut CodeGen<Mos>,Rvalue)
+              ) -> Box<Fn(&mut State<Mos>) -> bool> {
+    Box::new(move |st: &mut State<Mos>| -> bool {
+        let len = st.tokens.len();
+        let next = (st.address + len as u64) as u16;
+        let base = st.configuration.arg.clone().unwrap();
+
+        st.mnemonic(len,&opcode,"{p}",vec![base.clone()], &|c| {
+            rreil!{c:
+                load/ram val:8, (base);
+            }
+
+                sem(c, rreil_rvalue!{ val:8 });
+        });
+        st.jump(Rvalue::new_u16(next),Guard::always());
+	true
+    })
+}
+
+pub fn absolute_offset(opcode: &'static str,
+               _arg1: &Lvalue,
+               sem: fn(&mut CodeGen<Mos>,Rvalue)
+              ) -> Box<Fn(&mut State<Mos>) -> bool> {
+    let index = _arg1.clone();
+    Box::new(move |st: &mut State<Mos>| -> bool {
+        let len = st.tokens.len();
+        let next = (st.address + len as u64) as u16;
+        let base = st.configuration.arg.clone().unwrap();
+        let base_val =
+            if let Rvalue::Constant{ ref value,.. } = base { *value } else { unreachable!() };
+        let index_nam =
+            if let Lvalue::Variable{ ref name,.. } = index { name.clone() } else { unreachable!() };
+        let addr = Lvalue::Variable{
+            name: Cow::Owned(format!("${:04X},{}",base_val,index_nam)),
+            size: 16,
+            subscript: None,
+            offset: 0
+        };
+
+        st.mnemonic(0,"__load","",vec![],&|c| {
+            rreil!{c:
+                zext/16 (addr), (index);
+                add (addr), (addr), (base);
+                load/ram val:8, (addr);
+            }
+        });
+
+        st.mnemonic(len,&opcode,"{p}",vec![addr.clone().into()],&|c| {
+            sem(c, rreil_rvalue!{ val:8 });
+        });
+        st.jump(Rvalue::new_u16(next),Guard::always());
+        true
+    })
+}
+
+/* Relative branch.  */
+pub fn branch(opcode: &'static str, _flag: &Lvalue,
+              _set: bool) -> Box<Fn(&mut State<Mos>) -> bool> {
+    let flag = _flag.clone();
+    let set = if _set { rreil_rvalue!{ [1]:1 } } else { rreil_rvalue!{ [0]:1 } };
+
+    Box::new(move |st: &mut State<Mos>| -> bool {
+        let rel = st.configuration.rel.unwrap();
+        let len = st.tokens.len();
+        let fallthru = (st.address + len as u64) as u16;
+        let g = Guard::from_flag(&flag.clone().into()).ok().unwrap();
+        let k = (st.address as i16).wrapping_add(rel) as u16;
+
+        st.mnemonic(2,opcode,"{c}", vec![rreil_rvalue!{ [k]:16 }], &|c| {
+            rreil!{c:
+                cmpeq flag:1, (set), (flag);
+            }
+        });
+
+        st.jump(Rvalue::new_u16(fallthru), g.negation());
+        st.jump(Rvalue::new_u16(k), g);
+        true
+    })
 }
 
 #[cfg(test)]
@@ -113,7 +370,7 @@ mod tests {
             (vec![0xad,0x0e,0xab],"lda",vec![rreil_rvalue!{ [0xab0e]:16 }]),
             (vec![0xbd,0x00,0x80],"lda",vec![Rvalue::Variable{ name: Cow::Borrowed("$8000,X"), subscript: None, size: 16, offset: 0 }]),
             (vec![0xb9,0x00,0x80],"lda",vec![Rvalue::Variable{ name: Cow::Borrowed("$8000,Y"), subscript: None, size: 16, offset: 0 }]),
-            (vec![0xa5,0x80],"lda",vec![Rvalue::Variable{ name: Cow::Borrowed("$80"), subscript: None, size: 16, offset: 0 }]),
+            (vec![0xa5,0x80],"lda",vec![Rvalue::Constant{ value: 0x80, size: 8 }]),
             (vec![0xb5,0x80],"lda",vec![Rvalue::Variable{ name: Cow::Borrowed("$80,X"), subscript: None, size: 16, offset: 0 }]),
             (vec![0xa1,0x80],"lda",vec![Rvalue::Variable{ name: Cow::Borrowed("($80,X)"), subscript: None, size: 16, offset: 0 }]),
             (vec![0xb1,0x80],"lda",vec![Rvalue::Variable{ name: Cow::Borrowed("($80),Y"), subscript: None, size: 16, offset: 0 }]),
@@ -122,34 +379,34 @@ mod tests {
             (vec![0xa2,0x0e],"ldx",vec![rreil_rvalue!{ [0x0e]:8 }]),
             (vec![0xae,0x0e,0xab],"ldx",vec![rreil_rvalue!{ [0xab0e]:16 }]),
             (vec![0xbe,0x00,0x80],"ldx",vec![Rvalue::Variable{ name: Cow::Borrowed("$8000,Y"), subscript: None, size: 16, offset: 0 }]),
-            (vec![0xa6,0x80],"ldx",vec![Rvalue::Variable{ name: Cow::Borrowed("$80"), subscript: None, size: 16, offset: 0 }]),
+            (vec![0xa6,0x80],"ldx",vec![Rvalue::Constant{ value: 0x80, size: 8 }]),
             (vec![0xb6,0x80],"ldx",vec![Rvalue::Variable{ name: Cow::Borrowed("$80,Y"), subscript: None, size: 16, offset: 0 }]),
 
             // LDY
             (vec![0xa0,0x0e],"ldy",vec![rreil_rvalue!{ [0x0e]:8 }]),
             (vec![0xac,0x0e,0xab],"ldy",vec![rreil_rvalue!{ [0xab0e]:16 }]),
             (vec![0xbc,0x00,0x80],"ldy",vec![Rvalue::Variable{ name: Cow::Borrowed("$8000,X"), subscript: None, size: 16, offset: 0 }]),
-            (vec![0xa4,0x80],"ldy",vec![Rvalue::Variable{ name: Cow::Borrowed("$80"), subscript: None, size: 16, offset: 0 }]),
+            (vec![0xa4,0x80],"ldy",vec![Rvalue::Constant{ value: 0x80, size: 8 }]),
             (vec![0xb4,0x80],"ldy",vec![Rvalue::Variable{ name: Cow::Borrowed("$80,X"), subscript: None, size: 16, offset: 0 }]),
 
             // STA
             (vec![0x8d,0x0e,0xab],"sta",vec![rreil_rvalue!{ [0xab0e]:16 }]),
             (vec![0x9d,0x00,0x80],"sta",vec![Rvalue::Variable{ name: Cow::Borrowed("$8000,X"), subscript: None, size: 16, offset: 0 }]),
             (vec![0x99,0x00,0x80],"sta",vec![Rvalue::Variable{ name: Cow::Borrowed("$8000,Y"), subscript: None, size: 16, offset: 0 }]),
-            (vec![0x85,0x80],"sta",vec![Rvalue::Variable{ name: Cow::Borrowed("$80"), subscript: None, size: 16, offset: 0 }]),
+            (vec![0x85,0x80],"sta",vec![Rvalue::Constant{ value: 0x80, size: 8 }]),
             (vec![0x95,0x80],"sta",vec![Rvalue::Variable{ name: Cow::Borrowed("$80,X"), subscript: None, size: 16, offset: 0 }]),
             (vec![0x81,0x80],"sta",vec![Rvalue::Variable{ name: Cow::Borrowed("($80,X)"), subscript: None, size: 16, offset: 0 }]),
             (vec![0x91,0x80],"sta",vec![Rvalue::Variable{ name: Cow::Borrowed("($80),Y"), subscript: None, size: 16, offset: 0 }]),
 
             // STX
             (vec![0x8e,0x0e,0xab],"stx",vec![rreil_rvalue!{ [0xab0e]:16 }]),
-            (vec![0x86,0x80],"stx",vec![Rvalue::Variable{ name: Cow::Borrowed("$80"), subscript: None, size: 16, offset: 0 }]),
+            (vec![0x86,0x80],"stx",vec![Rvalue::Constant{ value: 0x80, size: 8 }]),
             (vec![0x96,0x80],"stx",vec![Rvalue::Variable{ name: Cow::Borrowed("$80,Y"), subscript: None, size: 16, offset: 0 }]),
 
             // STY
             (vec![0x8c,0x0e,0xab],"sty",vec![rreil_rvalue!{ [0xab0e]:16 }]),
-            (vec![0x84,0x80],"stx",vec![Rvalue::Variable{ name: Cow::Borrowed("$80"), subscript: None, size: 16, offset: 0 }]),
-            (vec![0x94,0x80],"stx",vec![Rvalue::Variable{ name: Cow::Borrowed("$80,X"), subscript: None, size: 16, offset: 0 }]),
+            (vec![0x84,0x80],"sty",vec![Rvalue::Constant{ value: 0x80, size: 8 }]),
+            (vec![0x94,0x80],"sty",vec![Rvalue::Variable{ name: Cow::Borrowed("$80,X"), subscript: None, size: 16, offset: 0 }]),
 
             // T**
             (vec![0xaa],"tax",vec![]),
@@ -164,7 +421,7 @@ mod tests {
             (vec![0x2d,0x0e,0xab],"and",vec![rreil_rvalue!{ [0xab0e]:16 }]),
             (vec![0x3d,0x00,0x80],"and",vec![Rvalue::Variable{ name: Cow::Borrowed("$8000,X"), subscript: None, size: 16, offset: 0 }]),
             (vec![0x39,0x00,0x80],"and",vec![Rvalue::Variable{ name: Cow::Borrowed("$8000,Y"), subscript: None, size: 16, offset: 0 }]),
-            (vec![0x25,0x80],"and",vec![Rvalue::Variable{ name: Cow::Borrowed("$80"), subscript: None, size: 16, offset: 0 }]),
+            (vec![0x25,0x80],"and",vec![Rvalue::Constant{ value: 0x80, size: 8 }]),
             (vec![0x35,0x80],"and",vec![Rvalue::Variable{ name: Cow::Borrowed("$80,X"), subscript: None, size: 16, offset: 0 }]),
             (vec![0x21,0x80],"and",vec![Rvalue::Variable{ name: Cow::Borrowed("($80,X)"), subscript: None, size: 16, offset: 0 }]),
             (vec![0x31,0x80],"and",vec![Rvalue::Variable{ name: Cow::Borrowed("($80),Y"), subscript: None, size: 16, offset: 0 }]),
@@ -174,7 +431,7 @@ mod tests {
             (vec![0x0d,0x0e,0xab],"ora",vec![rreil_rvalue!{ [0xab0e]:16 }]),
             (vec![0x1d,0x00,0x80],"ora",vec![Rvalue::Variable{ name: Cow::Borrowed("$8000,X"), subscript: None, size: 16, offset: 0 }]),
             (vec![0x19,0x00,0x80],"ora",vec![Rvalue::Variable{ name: Cow::Borrowed("$8000,Y"), subscript: None, size: 16, offset: 0 }]),
-            (vec![0x05,0x80],"ora",vec![Rvalue::Variable{ name: Cow::Borrowed("$80"), subscript: None, size: 16, offset: 0 }]),
+            (vec![0x05,0x80],"ora",vec![Rvalue::Constant{ value: 0x80, size: 8 }]),
             (vec![0x15,0x80],"ora",vec![Rvalue::Variable{ name: Cow::Borrowed("$80,X"), subscript: None, size: 16, offset: 0 }]),
             (vec![0x01,0x80],"ora",vec![Rvalue::Variable{ name: Cow::Borrowed("($80,X)"), subscript: None, size: 16, offset: 0 }]),
             (vec![0x11,0x80],"ora",vec![Rvalue::Variable{ name: Cow::Borrowed("($80),Y"), subscript: None, size: 16, offset: 0 }]),
@@ -184,7 +441,7 @@ mod tests {
             (vec![0x4d,0x0e,0xab],"eor",vec![rreil_rvalue!{ [0xab0e]:16 }]),
             (vec![0x5d,0x00,0x80],"eor",vec![Rvalue::Variable{ name: Cow::Borrowed("$8000,X"), subscript: None, size: 16, offset: 0 }]),
             (vec![0x59,0x00,0x80],"eor",vec![Rvalue::Variable{ name: Cow::Borrowed("$8000,Y"), subscript: None, size: 16, offset: 0 }]),
-            (vec![0x45,0x80],"eor",vec![Rvalue::Variable{ name: Cow::Borrowed("$80"), subscript: None, size: 16, offset: 0 }]),
+            (vec![0x45,0x80],"eor",vec![Rvalue::Constant{ value: 0x80, size: 8 }]),
             (vec![0x55,0x80],"eor",vec![Rvalue::Variable{ name: Cow::Borrowed("$80,X"), subscript: None, size: 16, offset: 0 }]),
             (vec![0x41,0x80],"eor",vec![Rvalue::Variable{ name: Cow::Borrowed("($80,X)"), subscript: None, size: 16, offset: 0 }]),
             (vec![0x51,0x80],"eor",vec![Rvalue::Variable{ name: Cow::Borrowed("($80),Y"), subscript: None, size: 16, offset: 0 }]),
@@ -194,7 +451,7 @@ mod tests {
             (vec![0x6d,0x0e,0xab],"adc",vec![rreil_rvalue!{ [0xab0e]:16 }]),
             (vec![0x7d,0x00,0x80],"adc",vec![Rvalue::Variable{ name: Cow::Borrowed("$8000,X"), subscript: None, size: 16, offset: 0 }]),
             (vec![0x79,0x00,0x80],"adc",vec![Rvalue::Variable{ name: Cow::Borrowed("$8000,Y"), subscript: None, size: 16, offset: 0 }]),
-            (vec![0x65,0x80],"adc",vec![Rvalue::Variable{ name: Cow::Borrowed("$80"), subscript: None, size: 16, offset: 0 }]),
+            (vec![0x65,0x80],"adc",vec![Rvalue::Constant{ value: 0x80, size: 8 }]),
             (vec![0x75,0x80],"adc",vec![Rvalue::Variable{ name: Cow::Borrowed("$80,X"), subscript: None, size: 16, offset: 0 }]),
             (vec![0x61,0x80],"adc",vec![Rvalue::Variable{ name: Cow::Borrowed("($80,X)"), subscript: None, size: 16, offset: 0 }]),
             (vec![0x71,0x80],"adc",vec![Rvalue::Variable{ name: Cow::Borrowed("($80),Y"), subscript: None, size: 16, offset: 0 }]),
@@ -204,7 +461,7 @@ mod tests {
             (vec![0xed,0x0e,0xab],"sbc",vec![rreil_rvalue!{ [0xab0e]:16 }]),
             (vec![0xfd,0x00,0x80],"sbc",vec![Rvalue::Variable{ name: Cow::Borrowed("$8000,X"), subscript: None, size: 16, offset: 0 }]),
             (vec![0xf9,0x00,0x80],"sbc",vec![Rvalue::Variable{ name: Cow::Borrowed("$8000,Y"), subscript: None, size: 16, offset: 0 }]),
-            (vec![0xe5,0x80],"sbc",vec![Rvalue::Variable{ name: Cow::Borrowed("$80"), subscript: None, size: 16, offset: 0 }]),
+            (vec![0xe5,0x80],"sbc",vec![Rvalue::Constant{ value: 0x80, size: 8 }]),
             (vec![0xf5,0x80],"sbc",vec![Rvalue::Variable{ name: Cow::Borrowed("$80,X"), subscript: None, size: 16, offset: 0 }]),
             (vec![0xe1,0x80],"sbc",vec![Rvalue::Variable{ name: Cow::Borrowed("($80,X)"), subscript: None, size: 16, offset: 0 }]),
             (vec![0xf1,0x80],"sbc",vec![Rvalue::Variable{ name: Cow::Borrowed("($80),Y"), subscript: None, size: 16, offset: 0 }]),
@@ -212,13 +469,13 @@ mod tests {
             // INC
             (vec![0xee,0x0e,0xab],"inc",vec![rreil_rvalue!{ [0xab0e]:16 }]),
             (vec![0xfe,0x00,0x80],"inc",vec![Rvalue::Variable{ name: Cow::Borrowed("$8000,X"), subscript: None, size: 16, offset: 0 }]),
-            (vec![0xe6,0x80],"inc",vec![Rvalue::Variable{ name: Cow::Borrowed("$80"), subscript: None, size: 16, offset: 0 }]),
+            (vec![0xe6,0x80],"inc",vec![Rvalue::Constant{ value: 0x80, size: 8 }]),
             (vec![0xf6,0x80],"inc",vec![Rvalue::Variable{ name: Cow::Borrowed("$80,X"), subscript: None, size: 16, offset: 0 }]),
 
             // DEC
             (vec![0xce,0x0e,0xab],"dec",vec![rreil_rvalue!{ [0xab0e]:16 }]),
             (vec![0xde,0x00,0x80],"dec",vec![Rvalue::Variable{ name: Cow::Borrowed("$8000,X"), subscript: None, size: 16, offset: 0 }]),
-            (vec![0xc6,0x80],"dec",vec![Rvalue::Variable{ name: Cow::Borrowed("$80"), subscript: None, size: 16, offset: 0 }]),
+            (vec![0xc6,0x80],"dec",vec![Rvalue::Constant{ value: 0x80, size: 8 }]),
             (vec![0xd6,0x80],"dec",vec![Rvalue::Variable{ name: Cow::Borrowed("$80,X"), subscript: None, size: 16, offset: 0 }]),
 
             // IN*
@@ -233,28 +490,28 @@ mod tests {
             (vec![0x0a],"asl",vec![]),
             (vec![0x0e,0x0e,0xab],"asl",vec![rreil_rvalue!{ [0xab0e]:16 }]),
             (vec![0x1e,0x00,0x80],"asl",vec![Rvalue::Variable{ name: Cow::Borrowed("$8000,X"), subscript: None, size: 16, offset: 0 }]),
-            (vec![0x06,0x80],"asl",vec![Rvalue::Variable{ name: Cow::Borrowed("$80"), subscript: None, size: 16, offset: 0 }]),
+            (vec![0x06,0x80],"asl",vec![Rvalue::Constant{ value: 0x80, size: 8 }]),
             (vec![0x16,0x80],"asl",vec![Rvalue::Variable{ name: Cow::Borrowed("$80,X"), subscript: None, size: 16, offset: 0 }]),
 
             // LSR
             (vec![0x4a],"lsr",vec![]),
             (vec![0x4e,0x0e,0xab],"lsr",vec![rreil_rvalue!{ [0xab0e]:16 }]),
             (vec![0x5e,0x00,0x80],"lsr",vec![Rvalue::Variable{ name: Cow::Borrowed("$8000,X"), subscript: None, size: 16, offset: 0 }]),
-            (vec![0x46,0x80],"lsr",vec![Rvalue::Variable{ name: Cow::Borrowed("$80"), subscript: None, size: 16, offset: 0 }]),
+            (vec![0x46,0x80],"lsr",vec![Rvalue::Constant{ value: 0x80, size: 8 }]),
             (vec![0x56,0x80],"lsr",vec![Rvalue::Variable{ name: Cow::Borrowed("$80,X"), subscript: None, size: 16, offset: 0 }]),
 
             // ROL
-            (vec![0x2a],"asl",vec![]),
+            (vec![0x2a],"rol",vec![]),
             (vec![0x2e,0x0e,0xab],"rol",vec![rreil_rvalue!{ [0xab0e]:16 }]),
             (vec![0x3e,0x00,0x80],"rol",vec![Rvalue::Variable{ name: Cow::Borrowed("$8000,X"), subscript: None, size: 16, offset: 0 }]),
-            (vec![0x26,0x80],"rol",vec![Rvalue::Variable{ name: Cow::Borrowed("$80"), subscript: None, size: 16, offset: 0 }]),
+            (vec![0x26,0x80],"rol",vec![Rvalue::Constant{ value: 0x80, size: 8 }]),
             (vec![0x36,0x80],"rol",vec![Rvalue::Variable{ name: Cow::Borrowed("$80,X"), subscript: None, size: 16, offset: 0 }]),
 
             // ROR
-            (vec![0x6a],"asl",vec![]),
+            (vec![0x6a],"ror",vec![]),
             (vec![0x6e,0x0e,0xab],"ror",vec![rreil_rvalue!{ [0xab0e]:16 }]),
             (vec![0x7e,0x00,0x80],"ror",vec![Rvalue::Variable{ name: Cow::Borrowed("$8000,X"), subscript: None, size: 16, offset: 0 }]),
-            (vec![0x66,0x80],"ror",vec![Rvalue::Variable{ name: Cow::Borrowed("$80"), subscript: None, size: 16, offset: 0 }]),
+            (vec![0x66,0x80],"ror",vec![Rvalue::Constant{ value: 0x80, size: 8 }]),
             (vec![0x76,0x80],"ror",vec![Rvalue::Variable{ name: Cow::Borrowed("$80,X"), subscript: None, size: 16, offset: 0 }]),
 
             // CMP
@@ -262,7 +519,7 @@ mod tests {
             (vec![0xcd,0x0e,0xab],"cmp",vec![rreil_rvalue!{ [0xab0e]:16 }]),
             (vec![0xdd,0x00,0x80],"cmp",vec![Rvalue::Variable{ name: Cow::Borrowed("$8000,X"), subscript: None, size: 16, offset: 0 }]),
             (vec![0xd9,0x00,0x80],"cmp",vec![Rvalue::Variable{ name: Cow::Borrowed("$8000,Y"), subscript: None, size: 16, offset: 0 }]),
-            (vec![0xc5,0x80],"cmp",vec![Rvalue::Variable{ name: Cow::Borrowed("$80"), subscript: None, size: 16, offset: 0 }]),
+            (vec![0xc5,0x80],"cmp",vec![Rvalue::Constant{ value: 0x80, size: 8 }]),
             (vec![0xd5,0x80],"cmp",vec![Rvalue::Variable{ name: Cow::Borrowed("$80,X"), subscript: None, size: 16, offset: 0 }]),
             (vec![0xc1,0x80],"cmp",vec![Rvalue::Variable{ name: Cow::Borrowed("($80,X)"), subscript: None, size: 16, offset: 0 }]),
             (vec![0xd1,0x80],"cmp",vec![Rvalue::Variable{ name: Cow::Borrowed("($80),Y"), subscript: None, size: 16, offset: 0 }]),
@@ -270,16 +527,16 @@ mod tests {
             // CPX
             (vec![0xe0,0x0e],"cpx",vec![rreil_rvalue!{ [0x0e]:8 }]),
             (vec![0xec,0x0e,0xab],"cpx",vec![rreil_rvalue!{ [0xab0e]:16 }]),
-            (vec![0xe4,0x80],"cpx",vec![Rvalue::Variable{ name: Cow::Borrowed("$80"), subscript: None, size: 16, offset: 0 }]),
+            (vec![0xe4,0x80],"cpx",vec![Rvalue::Constant{ value: 0x80, size: 8 }]),
 
             // CPY
             (vec![0xc0,0x0e],"cpy",vec![rreil_rvalue!{ [0x0e]:8 }]),
             (vec![0xcc,0x0e,0xab],"cpy",vec![rreil_rvalue!{ [0xab0e]:16 }]),
-            (vec![0xc4,0x80],"cpy",vec![Rvalue::Variable{ name: Cow::Borrowed("$80"), subscript: None, size: 16, offset: 0 }]),
+            (vec![0xc4,0x80],"cpy",vec![Rvalue::Constant{ value: 0x80, size: 8 }]),
 
             // BIT
             (vec![0x2c,0x0e,0xab],"bit",vec![rreil_rvalue!{ [0xab0e]:16 }]),
-            (vec![0x24,0x80],"bit",vec![Rvalue::Variable{ name: Cow::Borrowed("$80"), subscript: None, size: 16, offset: 0 }]),
+            (vec![0x24,0x80],"bit",vec![Rvalue::Constant{ value: 0x80, size: 8 }]),
 
             // JMP
             (vec![0x4c,0x0e,0xab],"jmp",vec![rreil_rvalue!{ [0xab0e]:16 }]),
@@ -293,14 +550,14 @@ mod tests {
             (vec![0x40],"rti",vec![]),
 
             // B**
-            (vec![0x90,0x0e],"bcc",vec![rreil_rvalue!{ [0x0e]:8 }]),
-            (vec![0xb0,0x0e],"bcs",vec![rreil_rvalue!{ [0x0e]:8 }]),
-            (vec![0xd0,0x0e],"bne",vec![rreil_rvalue!{ [0x0e]:8 }]),
-            (vec![0xf0,0x0e],"beq",vec![rreil_rvalue!{ [0x0e]:8 }]),
-            (vec![0x10,0x0e],"bpl",vec![rreil_rvalue!{ [0x0e]:8 }]),
-            (vec![0x30,0x0e],"bmi",vec![rreil_rvalue!{ [0x0e]:8 }]),
-            (vec![0x50,0x0e],"bvc",vec![rreil_rvalue!{ [0x0e]:8 }]),
-            (vec![0x70,0x0e],"bvs",vec![rreil_rvalue!{ [0x0e]:8 }]),
+            (vec![0x90,0x0e],"bcc",vec![rreil_rvalue!{ [0x0e]:16 }]),
+            (vec![0xb0,0x0e],"bcs",vec![rreil_rvalue!{ [0x0e]:16 }]),
+            (vec![0xd0,0x0e],"bne",vec![rreil_rvalue!{ [0x0e]:16 }]),
+            (vec![0xf0,0x0e],"beq",vec![rreil_rvalue!{ [0x0e]:16 }]),
+            (vec![0x10,0x0e],"bpl",vec![rreil_rvalue!{ [0x0e]:16 }]),
+            (vec![0x30,0x0e],"bmi",vec![rreil_rvalue!{ [0x0e]:16 }]),
+            (vec![0x50,0x0e],"bvc",vec![rreil_rvalue!{ [0x0e]:16 }]),
+            (vec![0x70,0x0e],"bvs",vec![rreil_rvalue!{ [0x0e]:16 }]),
 
             // SE*
             (vec![0x38],"sec",vec![]),
@@ -323,7 +580,7 @@ mod tests {
             (vec![0x08],"php",vec![]),
 
             // BRK
-            (vec![0x00],"brk",vec![]),
+            (vec![0x00,0x00],"brk",vec![]),
         ];
         let main = disassembler();
 
@@ -333,16 +590,17 @@ mod tests {
             let l = bytes.len();
             let reg = Region::wrap("base".to_string(),bytes);
             let mut i = reg.iter().seek(0);
-            let maybe_match = main.next_match(&mut i,0,Mcu::new());
+            let maybe_match = main.next_match(&mut i,0,Variant::mos6502());
 
             if let Some(match_st) = maybe_match {
-                assert_eq!(1, match_st.mnemonics.len());
+                assert!(match_st.mnemonics.len() >= 1);
 
-                let mne = &match_st.mnemonics[0];
+                let mne = &match_st.mnemonics.last().unwrap();
 
                 assert_eq!(opname,mne.opcode);
                 assert_eq!(mne.area.start,0);
                 assert_eq!(mne.area.end,l as u64);
+                assert_eq!(mne.operands,args);
             } else {
                 unreachable!()
             }
