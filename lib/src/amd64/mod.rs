@@ -16,7 +16,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
 use std::rc::Rc;
 use std::borrow::Cow;
 
@@ -27,13 +26,11 @@ use {
     CodeGen,
 };
 
-/*
 pub mod decode;
 pub mod semantic;
 pub mod integer;
 pub mod vector;
 pub mod extensions;
-*/
 
 #[derive(Clone)]
 pub enum Amd64 {}
@@ -300,20 +297,8 @@ lazy_static! {
     pub static ref ST7: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("st7"), size: 80, offset: 0, subscript: None };
 }
 
-
-static GLOBAL_AMD64_TEMPVAR_COUNT: AtomicUsize = ATOMIC_USIZE_INIT;
-
-pub fn new_temp(bits: usize) -> Lvalue {
-    unimplemented!()
-        /*Lvalue::Variable{
-        name: format!("__temp{}",GLOBAL_AMD64_TEMPVAR_COUNT.fetch_add(1, Ordering::SeqCst)),
-        width: bits as u16,
-        subscript: None
-    }*/
-}
-
 pub fn disassembler(bits: Mode) -> Rc<Disassembler<Amd64>> {
-  /*  let opsize_prfx = new_disassembler!(Amd64 =>
+    let opsize_prfx = new_disassembler!(Amd64 =>
         [ 0x66, 0x66, 0x66, 0x66, 0x66, 0x66 ] = |st: &mut State<Amd64>| {
             match st.configuration.mode {
                 Mode::Real => st.configuration.operand_size = OperandSize::ThirtyTwo,
@@ -464,19 +449,19 @@ pub fn disassembler(bits: Mode) -> Rc<Disassembler<Amd64>> {
 
     let imm8 = new_disassembler!(Amd64 =>
         [ "imm@........" ] = |st: &mut State<Amd64>| {
-            st.configuration.imm = Some(Rvalue::Constant(st.get_group("imm")));
+            st.configuration.imm = Some(Rvalue::new_u64(st.get_group("imm")));
             true
         });
 
     let imm16 = new_disassembler!(Amd64 =>
         [ imm8, "imm@........" ] = |st: &mut State<Amd64>| {
-            st.configuration.imm = Some(Rvalue::Constant(st.get_group("imm")));
+            st.configuration.imm = Some(Rvalue::new_u64(st.get_group("imm")));
             true
         });
 
     let imm32 = new_disassembler!(Amd64 =>
         [ imm16, "imm@........", "imm@........" ] = |st: &mut State<Amd64>| {
-            st.configuration.imm = Some(Rvalue::Constant(st.get_group("imm")));
+            st.configuration.imm = Some(Rvalue::new_u64(st.get_group("imm")));
             true
         });
 
@@ -485,134 +470,152 @@ pub fn disassembler(bits: Mode) -> Rc<Disassembler<Amd64>> {
             // XXX
             //uint64_t a = st.capture_groups.at("imm") & 0xffff;
             //st.state.imm = constant((a << 32) | st.capture_groups.at("imm") >> 16);
-            st.configuration.imm = Some(Rvalue::Constant(st.get_group("imm")));
+            st.configuration.imm = Some(Rvalue::new_u64(st.get_group("imm")));
             true
         });
 
     let imm64 = new_disassembler!(Amd64 =>
         [ imm32, "imm@........", "imm@........", "imm@........", "imm@........" ] = |st: &mut State<Amd64>| {
-            st.configuration.imm = Some(Rvalue::Constant(st.get_group("imm")));
+            st.configuration.imm = Some(Rvalue::new_u64(st.get_group("imm")));
             true
         });
 
     let imm = new_disassembler!(Amd64 =>
         [ "imm@........" ] = |st: &mut State<Amd64>| {
-            st.configuration.imm = Some(Rvalue::Constant(st.get_group("imm")));
+            st.configuration.imm = Some(Rvalue::new_u64(st.get_group("imm")));
             st.configuration.operand_size == OperandSize::Eight
         },
         [ "imm@........", "imm@........" ] = |st: &mut State<Amd64>| {
-            st.configuration.imm = Some(Rvalue::Constant(st.get_group("imm")));
+            st.configuration.imm = Some(Rvalue::new_u64(st.get_group("imm")));
             st.configuration.operand_size == OperandSize::Sixteen
         },
         [ "imm@........", "imm@........", "imm@........", "imm@........" ] = |st: &mut State<Amd64>| {
-            st.configuration.imm = Some(Rvalue::Constant(st.get_group("imm")));
+            st.configuration.imm = Some(Rvalue::new_u64(st.get_group("imm")));
             st.configuration.operand_size == OperandSize::ThirtyTwo || st.configuration.operand_size == OperandSize::SixtyFour
         });
 
     let immlong = new_disassembler!(Amd64 =>
         [ "imm@........" ] = |st: &mut State<Amd64>| {
-            st.configuration.imm = Some(Rvalue::Constant(st.get_group("imm")));
+            st.configuration.imm = Some(Rvalue::new_u64(st.get_group("imm")));
             st.configuration.operand_size == OperandSize::Eight
         },
         [ "imm@........", "imm@........" ] = |st: &mut State<Amd64>| {
-            st.configuration.imm = Some(Rvalue::Constant(st.get_group("imm")));
+            st.configuration.imm = Some(Rvalue::new_u64(st.get_group("imm")));
             st.configuration.operand_size == OperandSize::Sixteen
         },
         [ "imm@........", "imm@........", "imm@........", "imm@........" ] = |st: &mut State<Amd64>| {
-            st.configuration.imm = Some(Rvalue::Constant(st.get_group("imm")));
+            st.configuration.imm = Some(Rvalue::new_u64(st.get_group("imm")));
             st.configuration.operand_size == OperandSize::ThirtyTwo
         },
         [ "imm@........", "imm@........", "imm@........", "imm@........",
           "imm@........", "imm@........", "imm@........", "imm@........" ] = |st: &mut State<Amd64>| {
-            st.configuration.imm = Some(Rvalue::Constant(st.get_group("imm")));
+            st.configuration.imm = Some(Rvalue::new_u64(st.get_group("imm")));
             st.configuration.operand_size == OperandSize::SixtyFour
         });
 
     let moffs = new_disassembler!(Amd64 =>
         [ "moffs@........", "moffs@........" ] = |st: &mut State<Amd64>| {
-            st.configuration.moffs = Some(Rvalue::Constant(st.get_group("moffs")));
+            st.configuration.moffs = Some(Rvalue::new_u64(st.get_group("moffs")));
             st.configuration.address_size == AddressSize::Sixteen
         },
         [ "moffs@........", "moffs@........", "moffs@........", "moffs@........" ] = |st: &mut State<Amd64>| {
-            st.configuration.moffs = Some(Rvalue::Constant(st.get_group("moffs")));
+            st.configuration.moffs = Some(Rvalue::new_u64(st.get_group("moffs")));
             st.configuration.address_size == AddressSize::ThirtyTwo || st.configuration.address_size == AddressSize::SixtyFour
         });
 
     let moffs8 = new_disassembler!(Amd64 =>
         [ "moffs@........", "moffs@........" ] = |st: &mut State<Amd64>| {
-            st.configuration.moffs = Some(Rvalue::Constant(st.get_group("moffs")));
+            st.configuration.moffs = Some(Rvalue::new_u64(st.get_group("moffs")));
             st.configuration.operand_size = OperandSize::Eight;
             st.configuration.address_size == AddressSize::Sixteen
         },
         [ "moffs@........", "moffs@........", "moffs@........", "moffs@........" ] = |st: &mut State<Amd64>| {
-            st.configuration.moffs = Some(Rvalue::Constant(st.get_group("moffs")));
+            st.configuration.moffs = Some(Rvalue::new_u64(st.get_group("moffs")));
             st.configuration.operand_size = OperandSize::Eight;
             st.configuration.address_size == AddressSize::ThirtyTwo
         },
         [ "moffs@........", "moffs@........", "moffs@........", "moffs@........",
           "moffs@........", "moffs@........", "moffs@........", "moffs@........" ] = |st: &mut State<Amd64>| {
-            st.configuration.moffs = Some(Rvalue::Constant(st.get_group("moffs")));
+            st.configuration.moffs = Some(Rvalue::new_u64(st.get_group("moffs")));
             st.configuration.operand_size = OperandSize::Eight;
             st.configuration.address_size == AddressSize::SixtyFour
         });
 
     let m64 = new_disassembler!(Amd64 =>
         [ "mq@........", "mq@........" ] = |st: &mut State<Amd64>| {
-            st.configuration.rm = Some(decode::select_mem(&OperandSize::SixtyFour,Rvalue::Constant(st.get_group("mq"))));
+            let md = Rvalue::new_u64(st.get_group("md"));
+            st.mnemonic(0,"__decode_m64","",vec![],&move |cg: &mut CodeGen<Amd64>| {
+                cg.configuration.rm = Some(decode::select_mem(&OperandSize::SixtyFour,md.clone(),cg))
+            });
             st.configuration.address_size == AddressSize::Sixteen
         },
         [ "mq@........", "mq@........", "mq@........", "mq@........" ] = |st: &mut State<Amd64>| {
-            st.configuration.rm = Some(decode::select_mem(&OperandSize::SixtyFour,Rvalue::Constant(st.get_group("mq"))));
+            let md = Rvalue::new_u64(st.get_group("md"));
+            st.mnemonic(0,"__decode_m64","",vec![],&move |cg: &mut CodeGen<Amd64>| {
+                cg.configuration.rm = Some(decode::select_mem(&OperandSize::SixtyFour,md.clone(),cg))
+            });
             st.configuration.address_size == AddressSize::ThirtyTwo
         },
         [ "mq@........", "mq@........", "mq@........", "mq@........",
           "mq@........", "mq@........", "mq@........", "mq@........" ] = |st: &mut State<Amd64>| {
-            st.configuration.rm = Some(decode::select_mem(&OperandSize::SixtyFour,Rvalue::Constant(st.get_group("mq"))));
+            let md = Rvalue::new_u64(st.get_group("md"));
+            st.mnemonic(0,"__decode_m64","",vec![],&move |cg: &mut CodeGen<Amd64>| {
+                cg.configuration.rm = Some(decode::select_mem(&OperandSize::SixtyFour,md.clone(),cg))
+            });
             st.configuration.address_size == AddressSize::SixtyFour
         });
 
     let m128 = new_disassembler!(Amd64 =>
         [ "mdq@........", "mdq@........" ] = |st: &mut State<Amd64>| {
-            st.configuration.rm = Some(decode::select_mem(&OperandSize::HundredTwentyEight,Rvalue::Constant(st.get_group("mdq"))));
+            let mdq = Rvalue::new_u64(st.get_group("mdq"));
+            st.mnemonic(0,"__decode_m128","",vec![],&move |cg: &mut CodeGen<Amd64>| {
+                cg.configuration.rm = Some(decode::select_mem(&OperandSize::HundredTwentyEight,mdq.clone(),cg));
+            });
             st.configuration.address_size == AddressSize::Sixteen
         },
         [ "mdq@........", "mdq@........", "mdq@........", "mdq@........" ] = |st: &mut State<Amd64>| {
-            st.configuration.rm = Some(decode::select_mem(&OperandSize::HundredTwentyEight,Rvalue::Constant(st.get_group("mdq"))));
+            let mdq = Rvalue::new_u64(st.get_group("mdq"));
+            st.mnemonic(0,"__decode_m128","",vec![],&move |cg: &mut CodeGen<Amd64>| {
+                cg.configuration.rm = Some(decode::select_mem(&OperandSize::HundredTwentyEight,mdq.clone(),cg));
+            });
             st.configuration.address_size == AddressSize::ThirtyTwo
         },
         [ "mdq@........", "mdq@........", "mdq@........", "mdq@........",
           "mdq@........", "mdq@........", "mdq@........", "mdq@........" ] = |st: &mut State<Amd64>| {
-            st.configuration.rm = Some(decode::select_mem(&OperandSize::HundredTwentyEight,Rvalue::Constant(st.get_group("mdq"))));
+            let mdq = Rvalue::new_u64(st.get_group("mdq"));
+            st.mnemonic(0,"__decode_m128","",vec![],&move |cg: &mut CodeGen<Amd64>| {
+                cg.configuration.rm = Some(decode::select_mem(&OperandSize::HundredTwentyEight,mdq.clone(),cg));
+            });
             st.configuration.address_size == AddressSize::SixtyFour
         });
 
     let disp8 = new_disassembler!(Amd64 =>
         [ "disp@........" ] = |st: &mut State<Amd64>| {
-            st.configuration.disp = Some(Rvalue::Constant(st.get_group("disp")));
+            st.configuration.disp = Some(Rvalue::new_u64(st.get_group("disp")));
             true
         });
 
     let disp16 = new_disassembler!(Amd64 =>
         [ disp8, "disp@........" ] = |st: &mut State<Amd64>| {
-            st.configuration.disp = Some(Rvalue::Constant(st.get_group("disp")));
+            st.configuration.disp = Some(Rvalue::new_u64(st.get_group("disp")));
             true
         });
 
     let disp32 = new_disassembler!(Amd64 =>
         [ disp16, "disp@........", "disp@........" ] = |st: &mut State<Amd64>| {
-            st.configuration.disp = Some(Rvalue::Constant(st.get_group("disp")));
+            st.configuration.disp = Some(Rvalue::new_u64(st.get_group("disp")));
             true
         });
 
     let disp64 = new_disassembler!(Amd64 =>
         [ disp32, "disp@........", "disp@........", "disp@........", "disp@........" ] = |st: &mut State<Amd64>| {
-            st.configuration.disp = Some(Rvalue::Constant(st.get_group("disp")));
+            st.configuration.disp = Some(Rvalue::new_u64(st.get_group("disp")));
             true
         });
 
     let sib = new_disassembler!(Amd64 =>
         [ "scale@.. index@... base@101", "sd@........", "sd@........", "sd@........", "sd@........" ] = |st: &mut State<Amd64>| {
-            st.configuration.disp = Some(Rvalue::Constant(st.get_group("sd")));
+            st.configuration.disp = Some(Rvalue::new_u64(st.get_group("sd")));
             st.get_group("mod") == 0
         },
         [ "scale@.. index@... base@..." ] = |st: &mut State<Amd64>| {
@@ -1350,7 +1353,5 @@ pub fn disassembler(bits: Mode) -> Rc<Disassembler<Amd64>> {
                 [ opt!(rep_prfx), opt!(opsize_prfx), opt!(rep_prfx), opt!(repx_prfx), opt!(rex_prfx), rep ] = |_: &mut State<Amd64>| { true },
                 [ opt!(rep_prfx), opt!(opsize_prfx), opt!(repx_prfx), opt!(rex_prfx), repx ] = |_: &mut State<Amd64>| { true })
         }
-    }*/
-
-    unimplemented!()
+    }
 }

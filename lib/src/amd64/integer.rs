@@ -16,8 +16,14 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-use disassembler::*;
-use codegen::*;
+use {
+    Disassembler,
+    State,
+    CodeGen,
+    Rvalue,
+    Lvalue,
+};
+
 use amd64::decode::*;
 use amd64::semantic::*;
 use amd64::*;
@@ -194,12 +200,6 @@ pub fn integer_universial(imm8: Rc<Disassembler<Amd64>>,
         })
     }
 
-    fn _jcc(cond: Condition) -> Box<Fn(&mut CodeGen<Amd64>,Rvalue)> {
-        Box::new(move |cg: &mut CodeGen<Amd64>,a: Rvalue| {
-            jcc(cg,a,cond)
-        })
-    }
-
     fn _setcc(cond: Condition) -> Box<Fn(&mut CodeGen<Amd64>,Rvalue)> {
         Box::new(move |cg: &mut CodeGen<Amd64>,a: Rvalue| {
             setcc(cg,a,cond)
@@ -313,7 +313,7 @@ pub fn integer_universial(imm8: Rc<Disassembler<Amd64>>,
         [ 0xed       ] = binary_vr("in",reg_a,&*DX,in_),
 
         // INT
-        [ 0xcc       ] = unary_c("int",Rvalue::Constant(3),int),
+        [ 0xcc       ] = unary_c("int",Rvalue::new_u64(3),int),
         [ 0xce       ] = nonary("into",into),
         [ 0xcd, imm8 ] = unary("int",decode_imm,int),
 
@@ -324,39 +324,39 @@ pub fn integer_universial(imm8: Rc<Disassembler<Amd64>>,
         [ 0xcf ] = iret,
 
         // Jcc
-        [ 0x70, imm8      ] = unary_box("jo",decode_imm,_jcc(Condition::Overflow)),
-        [ 0x71, imm8      ] = unary_box("jno",decode_imm,_jcc(Condition::NotOverflow)),
-        [ 0x72, imm8      ] = unary_box("jc",decode_imm,_jcc(Condition::Carry)),
-        [ 0x73, imm8      ] = unary_box("jae",decode_imm,_jcc(Condition::AboveEqual)),
-        [ 0x74, imm8      ] = unary_box("je",decode_imm,_jcc(Condition::Equal)),
-        [ 0x75, imm8      ] = unary_box("jne",decode_imm,_jcc(Condition::NotEqual)),
-        [ 0x76, imm8      ] = unary_box("jbe",decode_imm,_jcc(Condition::BelowEqual)),
-        [ 0x77, imm8      ] = unary_box("ja",decode_imm,_jcc(Condition::Above)),
-        [ 0x78, imm8      ] = unary_box("js",decode_imm,_jcc(Condition::Sign)),
-        [ 0x79, imm8      ] = unary_box("jns",decode_imm,_jcc(Condition::NotSign)),
-        [ 0x7a, imm8      ] = unary_box("jp",decode_imm,_jcc(Condition::Parity)),
-        [ 0x7b, imm8      ] = unary_box("jnp",decode_imm,_jcc(Condition::NotParity)),
-        [ 0x7c, imm8      ] = unary_box("jl",decode_imm,_jcc(Condition::Less)),
-        [ 0x7d, imm8      ] = unary_box("jge",decode_imm,_jcc(Condition::GreaterEqual)),
-        [ 0x7e, imm8      ] = unary_box("jle",decode_imm,_jcc(Condition::LessEqual)),
-        [ 0x7f, imm8      ] = unary_box("jg",decode_imm,_jcc(Condition::Greater)),
+        [ 0x70, imm8      ] = branch("jo",decode_imm,Condition::Overflow),
+        [ 0x71, imm8      ] = branch("jno",decode_imm,Condition::NotOverflow),
+        [ 0x72, imm8      ] = branch("jc",decode_imm,Condition::Carry),
+        [ 0x73, imm8      ] = branch("jae",decode_imm,Condition::AboveEqual),
+        [ 0x74, imm8      ] = branch("je",decode_imm,Condition::Equal),
+        [ 0x75, imm8      ] = branch("jne",decode_imm,Condition::NotEqual),
+        [ 0x76, imm8      ] = branch("jbe",decode_imm,Condition::BelowEqual),
+        [ 0x77, imm8      ] = branch("ja",decode_imm,Condition::Above),
+        [ 0x78, imm8      ] = branch("js",decode_imm,Condition::Sign),
+        [ 0x79, imm8      ] = branch("jns",decode_imm,Condition::NotSign),
+        [ 0x7a, imm8      ] = branch("jp",decode_imm,Condition::Parity),
+        [ 0x7b, imm8      ] = branch("jnp",decode_imm,Condition::NotParity),
+        [ 0x7c, imm8      ] = branch("jl",decode_imm,Condition::Less),
+        [ 0x7d, imm8      ] = branch("jge",decode_imm,Condition::GreaterEqual),
+        [ 0x7e, imm8      ] = branch("jle",decode_imm,Condition::LessEqual),
+        [ 0x7f, imm8      ] = branch("jg",decode_imm,Condition::Greater),
 
-        [ 0x0f, 0x80, imm ] = unary_box("jo",decode_imm,_jcc(Condition::Overflow)),
-        [ 0x0f, 0x81, imm ] = unary_box("jno",decode_imm,_jcc(Condition::NotOverflow)),
-        [ 0x0f, 0x82, imm ] = unary_box("jc",decode_imm,_jcc(Condition::Carry)),
-        [ 0x0f, 0x83, imm ] = unary_box("jae",decode_imm,_jcc(Condition::AboveEqual)),
-        [ 0x0f, 0x84, imm ] = unary_box("je",decode_imm,_jcc(Condition::Equal)),
-        [ 0x0f, 0x85, imm ] = unary_box("jne",decode_imm,_jcc(Condition::NotEqual)),
-        [ 0x0f, 0x86, imm ] = unary_box("jbe",decode_imm,_jcc(Condition::BelowEqual)),
-        [ 0x0f, 0x87, imm ] = unary_box("ja",decode_imm,_jcc(Condition::Above)),
-        [ 0x0f, 0x88, imm ] = unary_box("js",decode_imm,_jcc(Condition::Sign)),
-        [ 0x0f, 0x89, imm ] = unary_box("jns",decode_imm,_jcc(Condition::NotSign)),
-        [ 0x0f, 0x8a, imm ] = unary_box("jp",decode_imm,_jcc(Condition::Parity)),
-        [ 0x0f, 0x8b, imm ] = unary_box("jnp",decode_imm,_jcc(Condition::NotParity)),
-        [ 0x0f, 0x8c, imm ] = unary_box("jl",decode_imm,_jcc(Condition::Less)),
-        [ 0x0f, 0x8d, imm ] = unary_box("jge",decode_imm,_jcc(Condition::GreaterEqual)),
-        [ 0x0f, 0x8e, imm ] = unary_box("jle",decode_imm,_jcc(Condition::LessEqual)),
-        [ 0x0f, 0x8f, imm ] = unary_box("jg",decode_imm,_jcc(Condition::Greater)),
+        [ 0x0f, 0x80, imm ] = branch("jo",decode_imm,Condition::Overflow),
+        [ 0x0f, 0x81, imm ] = branch("jno",decode_imm,Condition::NotOverflow),
+        [ 0x0f, 0x82, imm ] = branch("jc",decode_imm,Condition::Carry),
+        [ 0x0f, 0x83, imm ] = branch("jae",decode_imm,Condition::AboveEqual),
+        [ 0x0f, 0x84, imm ] = branch("je",decode_imm,Condition::Equal),
+        [ 0x0f, 0x85, imm ] = branch("jne",decode_imm,Condition::NotEqual),
+        [ 0x0f, 0x86, imm ] = branch("jbe",decode_imm,Condition::BelowEqual),
+        [ 0x0f, 0x87, imm ] = branch("ja",decode_imm,Condition::Above),
+        [ 0x0f, 0x88, imm ] = branch("js",decode_imm,Condition::Sign),
+        [ 0x0f, 0x89, imm ] = branch("jns",decode_imm,Condition::NotSign),
+        [ 0x0f, 0x8a, imm ] = branch("jp",decode_imm,Condition::Parity),
+        [ 0x0f, 0x8b, imm ] = branch("jnp",decode_imm,Condition::NotParity),
+        [ 0x0f, 0x8c, imm ] = branch("jl",decode_imm,Condition::Less),
+        [ 0x0f, 0x8d, imm ] = branch("jge",decode_imm,Condition::GreaterEqual),
+        [ 0x0f, 0x8e, imm ] = branch("jle",decode_imm,Condition::LessEqual),
+        [ 0x0f, 0x8f, imm ] = branch("jg",decode_imm,Condition::Greater),
 
         // JMP
         [ 0xeb, imm8   ] = unary("jmp",decode_d,jmp),
@@ -490,38 +490,38 @@ pub fn integer_universial(imm8: Rc<Disassembler<Amd64>>,
         [ 0x9d ] = unary("push",decode_m,pushf),
 
         // RCL
-        [ 0xd0, rmbyte2       ] = binary_vc("rcl",decode_m,Rvalue::Constant(1),rcl),
-        [ 0xd1, rm2           ] = binary_vc("rcl",decode_m,Rvalue::Constant(1),rcl),
+        [ 0xd0, rmbyte2       ] = binary_vc("rcl",decode_m,Rvalue::new_u64(1),rcl),
+        [ 0xd1, rm2           ] = binary_vc("rcl",decode_m,Rvalue::new_u64(1),rcl),
         [ 0xd2, rmbyte2       ] = binary_vr("rcl",decode_m,&*CF,rcl),
         [ 0xd3, rm2           ] = binary_vr("rcl",decode_m,&*CF,rcl),
         [ 0xc0, rmbyte2, imm8 ] = binary("rcl",decode_mi,rcl),
         [ 0xc1, rm2, imm8     ] = binary("rcl",decode_mi,rcl),
 
         // RCR
-        [ 0xd0, rmbyte3       ] = binary_vc("rcr",decode_m,Rvalue::Constant(1),rcr),
-        [ 0xd1, rm3           ] = binary_vc("rcr",decode_m,Rvalue::Constant(1),rcr),
+        [ 0xd0, rmbyte3       ] = binary_vc("rcr",decode_m,Rvalue::new_u64(1),rcr),
+        [ 0xd1, rm3           ] = binary_vc("rcr",decode_m,Rvalue::new_u64(1),rcr),
         [ 0xd2, rmbyte3       ] = binary_vr("rcr",decode_m,&*CF,rcr),
         [ 0xd3, rm3           ] = binary_vr("rcr",decode_m,&*CF,rcr),
         [ 0xc0, rmbyte3, imm8 ] = binary("rcr",decode_mi,rcr),
         [ 0xc1, rm3, imm8     ] = binary("rcr",decode_mi,rcr),
 
         // RET*
-        [ 0xc3        ] = unary_c("ret",Rvalue::Constant(0),ret),
-        [ 0xcb        ] = unary_c("retf",Rvalue::Constant(0),retf),
+        [ 0xc3        ] = unary_c("ret",Rvalue::new_u64(0),ret),
+        [ 0xcb        ] = unary_c("retf",Rvalue::new_u64(0),retf),
         [ 0xc2, imm16 ] = unary("ret",decode_imm,ret),
         [ 0xca, imm16 ] = unary("retf",decode_imm,retf),
 
         // ROL
-        [ 0xd0, rmbyte0       ] = binary_vc("rol",decode_m,Rvalue::Constant(1),rol),
-        [ 0xd1, rm0           ] = binary_vc("rol",decode_m,Rvalue::Constant(1),rol),
+        [ 0xd0, rmbyte0       ] = binary_vc("rol",decode_m,Rvalue::new_u64(1),rol),
+        [ 0xd1, rm0           ] = binary_vc("rol",decode_m,Rvalue::new_u64(1),rol),
         [ 0xd2, rmbyte0       ] = binary_vr("rol",decode_m,&*CF,rol),
         [ 0xd3, rm0           ] = binary_vr("rol",decode_m,&*CF,rol),
         [ 0xc0, rmbyte0, imm8 ] = binary("rol",decode_mi,rol),
         [ 0xc1, rm0, imm8     ] = binary("rol",decode_mi,rol),
 
         // ROR
-        [ 0xd0, rmbyte1       ] = binary_vc("ror",decode_m,Rvalue::Constant(1),ror),
-        [ 0xd1, rm1           ] = binary_vc("ror",decode_m,Rvalue::Constant(1),ror),
+        [ 0xd0, rmbyte1       ] = binary_vc("ror",decode_m,Rvalue::new_u64(1),ror),
+        [ 0xd1, rm1           ] = binary_vc("ror",decode_m,Rvalue::new_u64(1),ror),
         [ 0xd2, rmbyte1       ] = binary_vr("ror",decode_m,&*CF,ror),
         [ 0xd3, rm1           ] = binary_vr("ror",decode_m,&*CF,ror),
         [ 0xc0, rmbyte1, imm8 ] = binary("ror",decode_mi,ror),
@@ -534,8 +534,8 @@ pub fn integer_universial(imm8: Rc<Disassembler<Amd64>>,
         [ 0x9e ] = nonary("sahf",sahf),
 
         // SAL
-        [ 0xd0, rmbyte4       ] = binary_vc("sal",decode_m,Rvalue::Constant(1),sal),
-        [ 0xd1, rm4           ] = binary_vc("sal",decode_m,Rvalue::Constant(1),sal),
+        [ 0xd0, rmbyte4       ] = binary_vc("sal",decode_m,Rvalue::new_u64(1),sal),
+        [ 0xd1, rm4           ] = binary_vc("sal",decode_m,Rvalue::new_u64(1),sal),
         [ 0xd2, rmbyte4       ] = binary_vr("sal",decode_m,&*CF,sal),
         [ 0xd3, rm4           ] = binary_vr("sal",decode_m,&*CF,sal),
         [ 0xc0, rmbyte4, imm8 ] = binary("sal",decode_mi,sal),
@@ -545,8 +545,8 @@ pub fn integer_universial(imm8: Rc<Disassembler<Amd64>>,
         [ 0xd6 ] = nonary("salc",salc),
 
         // SAR
-        [ 0xd0, rmbyte7       ] = binary_vc("sar",decode_m,Rvalue::Constant(1),sar),
-        [ 0xd1, rm7           ] = binary_vc("sar",decode_m,Rvalue::Constant(1),sar),
+        [ 0xd0, rmbyte7       ] = binary_vc("sar",decode_m,Rvalue::new_u64(1),sar),
+        [ 0xd1, rm7           ] = binary_vc("sar",decode_m,Rvalue::new_u64(1),sar),
         [ 0xd2, rmbyte7       ] = binary_vr("sar",decode_m,&*CF,sar),
         [ 0xd3, rm7           ] = binary_vr("sar",decode_m,&*CF,sar),
         [ 0xc0, rmbyte7, imm8 ] = binary("sar",decode_mi,sar),
@@ -575,8 +575,8 @@ pub fn integer_universial(imm8: Rc<Disassembler<Amd64>>,
         [ 0x0f, 0xa5, rm       ] = trinary_vr("shld",decode_mr,&*CF,shld),
 
         // SHR
-        [ 0xd0, rmbyte5       ] = binary_vc("shr",decode_m,Rvalue::Constant(1),shr),
-        [ 0xd1, rm5           ] = binary_vc("shr",decode_m,Rvalue::Constant(1),shr),
+        [ 0xd0, rmbyte5       ] = binary_vc("shr",decode_m,Rvalue::new_u64(1),shr),
+        [ 0xd1, rm5           ] = binary_vc("shr",decode_m,Rvalue::new_u64(1),shr),
         [ 0xd2, rmbyte5       ] = binary_vr("shr",decode_m,&*CF,shr),
         [ 0xd3, rm5           ] = binary_vr("shr",decode_m,&*CF,shr),
         [ 0xc0, rmbyte5, imm8 ] = binary("shr",decode_mi,shr),
