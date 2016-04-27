@@ -225,8 +225,11 @@ pub use result::Result;
 pub mod target;
 pub use target::Target;
 
-//pub mod dataflow;
-//pub mod abstractinterp;
+pub mod dataflow;
+pub use dataflow::*;
+
+pub mod abstractinterp;
+pub use abstractinterp::*;
 
 // disassembler
 pub mod avr;

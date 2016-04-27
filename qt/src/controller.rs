@@ -42,9 +42,9 @@ use qmlrs::{ffi,MetaObject,Variant,Object,ToQVariant,unpack_varlist};
 use rustc_serialize::{json,Encodable};
 use tempdir::TempDir;
 
-use panopticon::project::Project;
 use panopticon::result;
-use panopticon::result::{
+use panopticon::{
+    Project,
     Result,
 };
 

@@ -20,7 +20,10 @@ use std::collections::{HashMap,BTreeMap,BTreeSet};
 use std::rc::Rc;
 
 use graph_algos::{AdjacencyList,GraphTrait,MutableGraphTrait};
-use graph_algos::adjacency_list::AdjacencyListVertexDescriptor;
+use graph_algos::adjacency_list::{
+    AdjacencyListVertexDescriptor,
+    AdjacencyListEdgeDescriptor,
+};
 use graph_algos::{VertexListGraphTrait,EdgeListGraphTrait};
 use graph_algos::search::{
     TraversalOrder,
@@ -48,6 +51,7 @@ pub enum ControlFlowTarget {
 
 pub type ControlFlowGraph = AdjacencyList<ControlFlowTarget,Guard>;
 pub type ControlFlowRef = AdjacencyListVertexDescriptor;
+pub type ControlFlowEdge = AdjacencyListEdgeDescriptor;
 
 #[derive(RustcDecodable,RustcEncodable)]
 pub struct Function {

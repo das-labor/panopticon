@@ -36,26 +36,33 @@ use graph_algos::order::{
     HierarchicalOrdering,
 };
 
-use value::{Lvalue,Rvalue};
-use instr::{Instr,Operation,execute};
-use function::{
+use {
+    Lvalue,Rvalue,
+    Statement,Operation,execute,
     ControlFlowTarget,
     ControlFlowRef,
     ControlFlowGraph,
-    Function
+    Function,
+    Guard,Constraint,Relation,
+    liveness,
 };
-use guard::{Guard,Constraint,Relation};
-use dataflow::liveness;
+
+pub enum Constraint {
+    Equal(Rvalue),
+    LessUnsigned(Rvalue),
+    LessOrEqualUnsigned(Rvalue),
+    LessSigned(Rvalue),
+    LessOrEqualSigned(Rvalue),
+};
 
 /// Models both under- and overapproximation
 pub trait Avalue: Clone + PartialEq + Eq + Hash + Debug + Encodable + Decodable {
-    fn abstraction(&Rvalue) -> Self;
-    fn constraint(&Relation,&Rvalue) -> Self;
+    fn abstract_value(&Rvalue) -> Self;
+    fn abstract_constraint(&Constraint) -> Self;
     fn execute(&Operation<Self>) -> Self;
     fn narrow(&self,&Self) -> Self;
     fn combine(&self,&Self) -> Self;
     fn widen(&self,&Self) -> Self;
-    fn narrow(&self,&Self) -> Self;
     fn more_exact(&self,&Self) -> bool;
     fn initial() -> Self;
 }
@@ -63,7 +70,9 @@ pub trait Avalue: Clone + PartialEq + Eq + Hash + Debug + Encodable + Decodable 
 /// Bourdoncle: "Efficient chaotic iteration strategies with widenings"
 pub fn approximate<A: Avalue>(func: &Function) -> HashMap<Lvalue,A> {
     let wto = weak_topo_order(func.entry_point.unwrap(),&func.cflow_graph);
-    fn stabilize<A: Avalue>(h: &Vec<Box<HierarchicalOrdering<ControlFlowRef>>>, graph: &ControlFlowGraph, ret: &mut HashMap<Lvalue,A>) {
+    let edge_ops = edge_operations(func);
+    fn stabilize<A: Avalue>(h: &Vec<Box<HierarchicalOrdering<ControlFlowRef>>>, graph: &ControlFlowGraph,
+                            constr: &mut HashMap<Lvalue,A>, ret: &mut HashMap<Lvalue,A>) {
         println!("stablilize {:?}",h);
         let mut stable = true;
         let mut iter_cnt = 0;
@@ -86,20 +95,7 @@ pub fn approximate<A: Avalue>(func: &Function) -> HashMap<Lvalue,A> {
             }
 
             if stable {
-                let mut c = vec![];
-                for e in graph.in_edges(*head) {
-                    if let Some(&Guard{ constraint: Constraint::Predicate{ ref relation, ref left, ref right } }) = graph.edge_label(e) {
-                        match (left,right) {
-                            (&Rvalue::Variable{..},&Rvalue::Constant(_)) =>
-                                c.push((Lvalue::from_rvalue(left).unwrap(),A::constraint(relation,left))),
-                            (&Rvalue::Constant(_),&Rvalue::Variable{..}) =>
-                                c.push((Lvalue::from_rvalue(right).unwrap(),A::constraint(&relation.negation(),right))),
-                            _ => {},
-                        }
-                    }
-                }
-
-                for (lv,a) in c {
+                for (lv,a) in constr.iter() {
                     if let Some(ref mut x) = ret.get_mut(&lv) {
                         let n = x.narrow(&a);
                         **x = n;
@@ -114,58 +110,93 @@ pub fn approximate<A: Avalue>(func: &Function) -> HashMap<Lvalue,A> {
             iter_cnt += 1;
         }
     }
-    fn execute<A: Avalue>(t: ControlFlowRef, do_widen: bool, graph: &ControlFlowGraph, ret: &mut HashMap<Lvalue,A>) -> bool {
+    fn execute<A: Avalue>(t: ControlFlowRef, do_widen: bool, graph: &ControlFlowGraph,
+                          constr: &mut HashMap<Lvalue,A>, ret: &mut HashMap<Lvalue,A>) -> bool {
         println!("execute {:?}",t);
         if let Some(&ControlFlowTarget::Resolved(ref bb)) = graph.vertex_label(t) {
             let mut change = false;
             bb.execute(|i| {
                 let (assignee,new) = match i {
-                    &Instr{ op: Operation::Phi(ref ops), ref assignee } =>
+                    &Statement{ op: Operation::Phi(ref ops), ref assignee } =>
                         (assignee.clone(),match ops.len() {
                             0 => panic!("Phi function w/o arguments"),
                             1 => res::<A>(&ops[0],&ret),
                             _ => ops.iter().map(|x| res::<A>(x,&ret)).fold(A::initial(),|acc,x| A::combine(&acc,&x)),
                         }),
-                    &Instr{ op: Operation::Nop(ref a), ref assignee } =>
+                    &Statement{ op: Operation::Move(ref a), ref assignee } =>
                         (assignee.clone(),res::<A>(a,&ret)),
+    Add(V,V),
+    Subtract(V,V),
+    Multiply(V,V),
+    DivideUnsigned(V,V),
+    DivideSigned(V,V),
+    ShiftLeft(V,V),
+    ShiftRightUnsigned(V,V),
+    ShiftRightSigned(V,V),
+    Modulo(V,V),
+    And(V,V),
+    InclusiveOr(V,V), 
+    ExclusiveOr(V,V),
 
-                    &Instr{ op: Operation::LogicAnd(ref a,ref b), ref assignee } =>
-                        (assignee.clone(),A::execute(&Operation::LogicAnd(res::<A>(a,&ret),res::<A>(b,&ret)))),
-                    &Instr{ op: Operation::LogicInclusiveOr(ref a,ref b), ref assignee } =>
-                        (assignee.clone(),A::execute(&Operation::LogicInclusiveOr(res::<A>(a,&ret),res::<A>(b,&ret)))),
-                    &Instr{ op: Operation::LogicExclusiveOr(ref a,ref b), ref assignee } =>
-                        (assignee.clone(),A::execute(&Operation::LogicExclusiveOr(res::<A>(a,&ret),res::<A>(b,&ret)))),
-                    &Instr{ op: Operation::LogicNegation(ref a), ref assignee } =>
-                        (assignee.clone(),A::execute(&Operation::LogicNegation(res::<A>(a,&ret)))),
-                    &Instr{ op: Operation::LogicLift(ref a), ref assignee } =>
-                        (assignee.clone(),A::execute(&Operation::LogicLift(res::<A>(a,&ret)))),
+    Equal(V,V),
+    LessOrEqualUnsigned(V,V),
+    LessOrEqualSigned(V,V),
+    LessUnsigned(V,V),
+    LessSigned(V,V),
 
-                    &Instr{ op: Operation::IntAnd(ref a,ref b), ref assignee } =>
-                        (assignee.clone(),A::execute(&Operation::IntAnd(res::<A>(a,&ret),res::<A>(b,&ret)))),
-                    &Instr{ op: Operation::IntInclusiveOr(ref a,ref b), ref assignee } =>
-                        (assignee.clone(),A::execute(&Operation::IntInclusiveOr(res::<A>(a,&ret),res::<A>(b,&ret)))),
-                    &Instr{ op: Operation::IntExclusiveOr(ref a,ref b), ref assignee } =>
-                        (assignee.clone(),A::execute(&Operation::IntExclusiveOr(res::<A>(a,&ret),res::<A>(b,&ret)))),
-                    &Instr{ op: Operation::IntAdd(ref a,ref b), ref assignee } =>
-                        (assignee.clone(),A::execute(&Operation::IntAdd(res::<A>(a,&ret),res::<A>(b,&ret)))),
-                    &Instr{ op: Operation::IntSubtract(ref a,ref b), ref assignee } =>
-                        (assignee.clone(),A::execute(&Operation::IntSubtract(res::<A>(a,&ret),res::<A>(b,&ret)))),
-                    &Instr{ op: Operation::IntMultiply(ref a,ref b), ref assignee } =>
-                        (assignee.clone(),A::execute(&Operation::IntMultiply(res::<A>(a,&ret),res::<A>(b,&ret)))),
-                    &Instr{ op: Operation::IntDivide(ref a,ref b), ref assignee } =>
-                        (assignee.clone(),A::execute(&Operation::IntDivide(res::<A>(a,&ret),res::<A>(b,&ret)))),
-                    &Instr{ op: Operation::IntModulo(ref a,ref b), ref assignee } =>
-                        (assignee.clone(),A::execute(&Operation::IntModulo(res::<A>(a,&ret),res::<A>(b,&ret)))),
-                    &Instr{ op: Operation::IntLess(ref a,ref b), ref assignee } =>
-                        (assignee.clone(),A::execute(&Operation::IntLess(res::<A>(a,&ret),res::<A>(b,&ret)))),
-                    &Instr{ op: Operation::IntEqual(ref a,ref b), ref assignee } =>
-                        (assignee.clone(),A::execute(&Operation::IntEqual(res::<A>(a,&ret),res::<A>(b,&ret)))),
-                    &Instr{ op: Operation::IntCall(ref a), ref assignee } =>
+    ZeroExtend(usize,V),
+    SignExtend(usize,V),
+    Move(V),
+    Call(V),
+
+    Load(Cow<'static,str>,V),
+    Store(Cow<'static,str>,V),
+
+    Phi(Vec<V>),
+
+                    &Statement{ op: Operation::Add(ref a,ref b), ref assignee } =>
+                        (assignee.clone(),A::execute(&Operation::Add(res::<A>(a,&ret),res::<A>(b,&ret)))),
+
+                    &Statement{ op: Operation::Subtract(ref a,ref b), ref assignee } =>
+                        (assignee.clone(),A::execute(&Operation::Subtract(res::<A>(a,&ret),res::<A>(b,&ret)))),
+
+                    &Statement{ op: Operation::Multiply(ref a,ref b), ref assignee } =>
+                        (assignee.clone(),A::execute(&Operation::Multiply(res::<A>(a,&ret),res::<A>(b,&ret)))),
+
+                    &Statement{ op: Operation::DivideUnsigned(ref a,ref b), ref assignee } =>
+                        (assignee.clone(),A::execute(&Operation::DivideSigned(res::<A>(a,&ret),res::<A>(b,&ret)))),
+
+                    &Statement{ op: Operation::ShiftLeft(ref a,ref b), ref assignee } =>
+                        (assignee.clone(),A::execute(&Operation::ShiftLeft(res::<A>(a,&ret),res::<A>(b,&ret)))),
+
+                    &Statement{ op: Operation::ShiftRightUnsigned(ref a,ref b), ref assignee } =>
+                        (assignee.clone(),A::execute(&Operation::ShiftRightUnsigned(res::<A>(a,&ret),res::<A>(b,&ret)))),
+
+                    &Statement{ op: Operation::ShiftRightSigned(ref a,ref b), ref assignee } =>
+                        (assignee.clone(),A::execute(&Operation::ShiftRightSigned(res::<A>(a,&ret),res::<A>(b,&ret)))),
+
+                    &Statement{ op: Operation::Modulo(ref a,ref b), ref assignee } =>
+                        (assignee.clone(),A::execute(&Operation::Modulo(res::<A>(a,&ret),res::<A>(b,&ret)))),
+
+                    &Statement{ op: Operation::And(ref a,ref b), ref assignee } =>
+                        (assignee.clone(),A::execute(&Operation::And(res::<A>(a,&ret),res::<A>(b,&ret)))),
+
+                    &Statement{ op: Operation::InclusiveOr(ref a,ref b), ref assignee } =>
+                        (assignee.clone(),A::execute(&Operation::InclusiveOr(res::<A>(a,&ret),res::<A>(b,&ret)))),
+
+                    &Statement{ op: Operation::ExclusiveOr(ref a,ref b), ref assignee } =>
+                        (assignee.clone(),A::execute(&Operation::ExclusiveOr(res::<A>(a,&ret),res::<A>(b,&ret)))),
+
+                    &Statement{ op: Operation::Call(ref a), ref assignee } =>
+                        (assignee.clone(),A::execute(&Operation::Call(res::<A>(a,&ret)))),
+                        
+                    &Statement{ op: Operation::Move(ref a), ref assignee } =>
+                        (assignee.clone(),A::execute(&Operation::Move(res::<A>(a,&ret)))),
+
+                    &Statement{ op: Operation::ZeroExtend(ref a), ref assignee } =>
                         (assignee.clone(),A::execute(&Operation::IntCall(res::<A>(a,&ret)))),
-                    &Instr{ op: Operation::IntRightShift(ref a,ref b), ref assignee } =>
-                        (assignee.clone(),A::execute(&Operation::IntRightShift(res::<A>(a,&ret),res::<A>(b,&ret)))),
-                    &Instr{ op: Operation::IntLeftShift(ref a,ref b), ref assignee } =>
-                        (assignee.clone(),A::execute(&Operation::IntLeftShift(res::<A>(a,&ret),res::<A>(b,&ret)))),
+
+
                 };
 
                 let cur = ret.get(&assignee).cloned();
@@ -197,18 +228,46 @@ pub fn approximate<A: Avalue>(func: &Function) -> HashMap<Lvalue,A> {
         if let Some(ref lv) = Lvalue::from_rvalue(v) {
             env.get(lv).unwrap_or(&A::initial()).clone()
         } else {
-            A::abstraction(v)
+            A::abstract_value(v)
         }
     };
     let mut ret = HashMap::<Lvalue,A>::new();
-    //let constr = HashMap::<Lvalue,A>::from_iter(
+    let mut constr = HashMap::<Lvalue,A>::new();
+    
+    for e in graph.in_edges(*head) {
+        if let Some(&Guard::Predicate{ ref flag, ref expected }) = graph.edge_label(e) {
+            match edge_ops.get(flag) {
+                Some(Operation::Equal(left@Rvalue::Constant{ .. },right@Rvalue::Variable{ .. })) =>
+                    constr.insert(Lvalue::from_rvalue(right).unwrap(),A::abstract_constraint(&Constraint::Equal(left.clone()))),
+                Some(Operation::Equal(Rvalue::Variable{ . },Rvalue::Constant{ .. })) =>
+                    constr.insert(Lvalue::from_rvalue(left).unwrap(),A::abstract_constraint(&Constraint::Equal(right.clone()))),
+                Some(Operation::LessUnsigned(left@Rvalue::Constant{ .. },right@Rvalue::Variable{ .. })) =>
+                    constr.insert(Lvalue::from_rvalue(right).unwrap(),A::abstract_constraint(&Constraint::LessUnsigned(left.clone()))),
+                Some(Operation::LessUnsigned(Rvalue::Variable{ . },Rvalue::Constant{ .. })) =>
+                    constr.insert(Lvalue::from_rvalue(left).unwrap(),A::abstract_constraint(&Constraint::LessUnsigned(right.clone()))),
+                Some(Operation::LessSigned(left@Rvalue::Constant{ .. },right@Rvalue::Variable{ .. })) =>
+                    constr.insert(Lvalue::from_rvalue(right).unwrap(),A::abstract_constraint(&Constraint::LessSigned(left.clone()))),
+                Some(Operation::LessSigned(Rvalue::Variable{ . },Rvalue::Constant{ .. })) =>
+                    constr.insert(Lvalue::from_rvalue(left).unwrap(),A::abstract_constraint(&Constraint::LessSigned(right.clone()))),
+                Some(Operation::LessOrEqualUnsigned(left@Rvalue::Constant{ .. },right@Rvalue::Variable{ .. })) =>
+                    constr.insert(Lvalue::from_rvalue(right).unwrap(),A::abstract_constraint(&Constraint::LessOrEqualUnsigned(left.clone()))),
+                Some(Operation::LessOrEqualUnsigned(Rvalue::Variable{ . },Rvalue::Constant{ .. })) =>
+                    constr.insert(Lvalue::from_rvalue(left).unwrap(),A::abstract_constraint(&Constraint::LessOrEqualUnsigned(right.clone()))),
+                Some(Operation::LessOrEqualSigned(left@Rvalue::Constant{ .. },right@Rvalue::Variable{ .. })) =>
+                    constr.insert(Lvalue::from_rvalue(right).unwrap(),A::abstract_constraint(&Constraint::LessOrEqualSigned(left.clone()))),
+                Some(Operation::LessOrEqualSigned(Rvalue::Variable{ . },Rvalue::Constant{ .. })) =>
+                    constr.insert(Lvalue::from_rvalue(left).unwrap(),A::abstract_constraint(&Constraint::LessOrEqualSigned(right.clone()))),
+                _ => {},
+            }
+        }
+    }
 
     match wto {
         HierarchicalOrdering::Component(ref v) => {
-            stabilize(v,&func.cflow_graph,&mut ret);
+            stabilize(v,&func.cflow_graph,&constr,&mut ret);
         },
         HierarchicalOrdering::Element(ref v) => {
-            execute(*v,false,&func.cflow_graph,&mut ret);
+            execute(*v,false,&func.cflow_graph,&constr,&mut ret);
         },
     }
 
@@ -294,7 +353,7 @@ impl PartialEq for Kset {
 }
 
 impl Avalue for Kset {
-    fn abstraction(v: &Rvalue) -> Self {
+    fn abstract_value(v: &Rvalue) -> Self {
         if let &Rvalue::Constant(c) = v {
             Kset::Set(vec![c])
         } else {
@@ -302,7 +361,7 @@ impl Avalue for Kset {
         }
     }
 
-    fn constraint(rel: &Relation, bnd: &Rvalue) -> Self {
+    fn abstract_constraint(rel: &Relation, bnd: &Rvalue) -> Self {
         if let (&Relation::Equal,&Rvalue::Constant(c)) = (rel,bnd) {
             Kset::Set(vec![c])
         } else {
@@ -473,13 +532,15 @@ impl Avalue for Kset {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use instr::{Instr,Operation};
-    use function::{ControlFlowTarget,Function,ControlFlowGraph};
-    use guard::{Guard,Relation};
-    use value::{Lvalue,Rvalue};
-    use mnemonic::{Bound,Mnemonic};
-    use dataflow::ssa_convertion;
-    use basic_block::BasicBlock;
+    use {
+        Statement,Operation,
+        ControlFlowTarget,Function,ControlFlowGraph,
+        Guard,Relation,
+        Lvalue,Rvalue,
+        Bound,Mnemonic,
+        ssa_convertion,
+        BasicBlock,
+    };
 
     use graph_algos::{
         MutableGraphTrait,
@@ -498,7 +559,7 @@ mod tests {
     }
 
     impl Avalue for Sign {
-        fn abstraction(v: &Rvalue) -> Self {
+        fn abstract_value(v: &Rvalue) -> Self {
             match v {
                 &Rvalue::Constant(c) if c > 0 => Sign::Positive,
                 &Rvalue::Constant(c) if c < 0 => Sign::Negative,
@@ -507,7 +568,7 @@ mod tests {
             }
         }
 
-        fn constraint(rel: &Relation, bnd: &Rvalue) -> Self {
+        fn abstract_constraint(rel: &Relation, bnd: &Rvalue) -> Self {
             match (rel,bnd) {
                 (&Relation::UnsignedLessOrEqual,&Rvalue::Constant(0xffffffffffffffff)) => Sign::Negative,
                 (&Relation::SignedLessOrEqual,&Rvalue::Constant(0xffffffffffffffff)) => Sign::Negative,
@@ -646,14 +707,14 @@ mod tests {
         let n_var = Lvalue::Variable{ name: "n".to_string(), width: 32, subscript: None };
         let bb0 = BasicBlock::from_vec(vec![
                                        Mnemonic::new(0..1,"assign x".to_string(),"".to_string(),vec![].iter(),vec![
-                                                     Instr{ op: Operation::Nop(Rvalue::Constant(0)), assignee: x_var.clone()}].iter()),
+                                                     Statement{ op: Operation::Nop(Rvalue::Constant(0)), assignee: x_var.clone()}].iter()),
                                        Mnemonic::new(1..2,"assign n".to_string(),"".to_string(),vec![].iter(),vec![
-                                                     Instr{ op: Operation::Nop(Rvalue::Constant(1)), assignee: n_var.clone()}].iter())]);
+                                                     Statement{ op: Operation::Nop(Rvalue::Constant(1)), assignee: n_var.clone()}].iter())]);
         let bb1 = BasicBlock::from_vec(vec![
                                        Mnemonic::new(2..3,"add x and n".to_string(),"".to_string(),vec![].iter(),vec![
-                                                     Instr{ op: Operation::IntAdd(x_var.to_rv(),n_var.to_rv()), assignee: x_var.clone()}].iter()),
+                                                     Statement{ op: Operation::IntAdd(x_var.to_rv(),n_var.to_rv()), assignee: x_var.clone()}].iter()),
                                        Mnemonic::new(3..4,"inc n".to_string(),"".to_string(),vec![].iter(),vec![
-                                                     Instr{ op: Operation::IntAdd(n_var.to_rv(),Rvalue::Constant(1)), assignee: n_var.clone()}].iter())]);
+                                                     Statement{ op: Operation::IntAdd(n_var.to_rv(),Rvalue::Constant(1)), assignee: n_var.clone()}].iter())]);
         let bb2 = BasicBlock{ area: Bound::new(4,5), mnemonics: vec![] };
         let mut cfg = ControlFlowGraph::new();
 
@@ -694,19 +755,19 @@ mod tests {
         let b_var = Lvalue::Variable{ name: "b".to_string(), width: 32, subscript: None };
         let bb0 = BasicBlock::from_vec(vec![
                                        Mnemonic::new(0..1,"assign a".to_string(),"".to_string(),vec![].iter(),vec![
-                                                     Instr{ op: Operation::Nop(Rvalue::Constant(0xffffffffffffff00)), assignee: a_var.clone()}].iter()),
+                                                     Statement{ op: Operation::Nop(Rvalue::Constant(0xffffffffffffff00)), assignee: a_var.clone()}].iter()),
                                        Mnemonic::new(1..2,"assign b".to_string(),"".to_string(),vec![].iter(),vec![
-                                                     Instr{ op: Operation::Nop(Rvalue::Undefined), assignee: b_var.clone()}].iter())]);
+                                                     Statement{ op: Operation::Nop(Rvalue::Undefined), assignee: b_var.clone()}].iter())]);
         let bb1 = BasicBlock::from_vec(vec![
                                        Mnemonic::new(2..3,"inc a".to_string(),"".to_string(),vec![].iter(),vec![
-                                                     Instr{ op: Operation::IntAdd(a_var.to_rv(),Rvalue::Constant(1)), assignee: a_var.clone()}].iter()),
+                                                     Statement{ op: Operation::IntAdd(a_var.to_rv(),Rvalue::Constant(1)), assignee: a_var.clone()}].iter()),
                                        Mnemonic::new(4..5,"mul a".to_string(),"".to_string(),vec![].iter(),vec![
-                                                     Instr{ op: Operation::IntMultiply(a_var.to_rv(),Rvalue::Constant(2)), assignee: b_var.clone()}].iter())]);
+                                                     Statement{ op: Operation::IntMultiply(a_var.to_rv(),Rvalue::Constant(2)), assignee: b_var.clone()}].iter())]);
         let bb2 = BasicBlock::from_vec(vec![
                                        Mnemonic::new(5..6,"use a".to_string(),"".to_string(),vec![].iter(),vec![
-                                                     Instr{ op: Operation::Nop(a_var.to_rv()), assignee: a_var.clone()}].iter()),
+                                                     Statement{ op: Operation::Nop(a_var.to_rv()), assignee: a_var.clone()}].iter()),
                                        Mnemonic::new(6..7,"use b".to_string(),"".to_string(),vec![].iter(),vec![
-                                                     Instr{ op: Operation::Nop(b_var.to_rv()), assignee: b_var.clone()}].iter())]);
+                                                     Statement{ op: Operation::Nop(b_var.to_rv()), assignee: b_var.clone()}].iter())]);
         let mut cfg = ControlFlowGraph::new();
         let v0 = cfg.add_vertex(ControlFlowTarget::Resolved(bb0));
         let v1 = cfg.add_vertex(ControlFlowTarget::Resolved(bb1));
@@ -759,28 +820,28 @@ mod tests {
         let x_var = Lvalue::Variable{ name: "x".to_string(), width: 32, subscript: None };
         let bb0 = BasicBlock::from_vec(vec![
                                        Mnemonic::new(0..1,"assign a".to_string(),"".to_string(),vec![].iter(),vec![
-                                                     Instr{ op: Operation::Nop(Rvalue::Constant(10)), assignee: a_var.clone()}].iter()),
+                                                     Statement{ op: Operation::Nop(Rvalue::Constant(10)), assignee: a_var.clone()}].iter()),
                                        Mnemonic::new(1..2,"assign b".to_string(),"".to_string(),vec![].iter(),vec![
-                                                     Instr{ op: Operation::Nop(Rvalue::Constant(0)), assignee: b_var.clone()}].iter()),
+                                                     Statement{ op: Operation::Nop(Rvalue::Constant(0)), assignee: b_var.clone()}].iter()),
                                        Mnemonic::new(2..3,"assign c".to_string(),"".to_string(),vec![].iter(),vec![
-                                                     Instr{ op: Operation::Nop(Rvalue::Undefined), assignee: c_var.clone()}].iter())]);
+                                                     Statement{ op: Operation::Nop(Rvalue::Undefined), assignee: c_var.clone()}].iter())]);
         let bb1 = BasicBlock::from_vec(vec![
                                        Mnemonic::new(3..4,"add a and 5".to_string(),"".to_string(),vec![].iter(),vec![
-                                                     Instr{ op: Operation::IntAdd(a_var.to_rv(),Rvalue::Constant(5)), assignee: a_var.clone()}].iter()),
+                                                     Statement{ op: Operation::IntAdd(a_var.to_rv(),Rvalue::Constant(5)), assignee: a_var.clone()}].iter()),
                                        Mnemonic::new(4..5,"mul a and c".to_string(),"".to_string(),vec![].iter(),vec![
-                                                     Instr{ op: Operation::IntAdd(a_var.to_rv(),c_var.to_rv()), assignee: b_var.clone()}].iter()),
+                                                     Statement{ op: Operation::IntAdd(a_var.to_rv(),c_var.to_rv()), assignee: b_var.clone()}].iter()),
                                        Mnemonic::new(4..5,"assign c".to_string(),"".to_string(),vec![].iter(),vec![
-                                                     Instr{ op: Operation::Nop(Rvalue::Constant(2)), assignee: c_var.clone()}].iter())]);
+                                                     Statement{ op: Operation::Nop(Rvalue::Constant(2)), assignee: c_var.clone()}].iter())]);
         let bb2 = BasicBlock::from_vec(vec![
                                        Mnemonic::new(5..6,"dec a".to_string(),"".to_string(),vec![].iter(),vec![
-                                                     Instr{ op: Operation::IntSubtract(a_var.to_rv(),Rvalue::Constant(1)), assignee: a_var.clone()}].iter()),
+                                                     Statement{ op: Operation::IntSubtract(a_var.to_rv(),Rvalue::Constant(1)), assignee: a_var.clone()}].iter()),
                                        Mnemonic::new(6..7,"add 3 to b".to_string(),"".to_string(),vec![].iter(),vec![
-                                                     Instr{ op: Operation::IntAdd(b_var.to_rv(),Rvalue::Constant(3)), assignee: b_var.clone()}].iter()),
+                                                     Statement{ op: Operation::IntAdd(b_var.to_rv(),Rvalue::Constant(3)), assignee: b_var.clone()}].iter()),
                                        Mnemonic::new(8..9,"assign c".to_string(),"".to_string(),vec![].iter(),vec![
-                                                     Instr{ op: Operation::Nop(Rvalue::Constant(3)), assignee: c_var.clone()}].iter())]);
+                                                     Statement{ op: Operation::Nop(Rvalue::Constant(3)), assignee: c_var.clone()}].iter())]);
         let bb3 = BasicBlock::from_vec(vec![
                                        Mnemonic::new(7..8,"add a and b".to_string(),"".to_string(),vec![].iter(),vec![
-                                                     Instr{ op: Operation::IntAdd(a_var.to_rv(),b_var.to_rv()), assignee: x_var.clone()}].iter())]);
+                                                     Statement{ op: Operation::IntAdd(a_var.to_rv(),b_var.to_rv()), assignee: x_var.clone()}].iter())]);
         let bb4 = BasicBlock{ area: Bound::new(8,9), mnemonics: vec![] };
 
         let mut cfg = ControlFlowGraph::new();

@@ -33,19 +33,16 @@ use graph_algos::dominator::{
     immediate_dominator,
     dominance_frontiers,
 };
-use mnemonic::Mnemonic;
-use guard::Guard;
-use function::{
+use {
+    Mnemonic,
+    Guard,
     Function,
     ControlFlowTarget,
     ControlFlowRef,
+    ControlFlowEdge,
     ControlFlowGraph,
-};
-use instr::{
     Operation,
-    Instr,
-};
-use value::{
+    Statement,
     Rvalue,
     Lvalue,
 };
@@ -64,7 +61,7 @@ pub fn liveness_sets(func: &Function) ->  (HashMap<ControlFlowRef,HashSet<String
 
         if let Some(&ControlFlowTarget::Resolved(ref bb)) = cfg.vertex_label(vx) {
             bb.execute(|instr| {
-                let &Instr{ ref op, ref assignee } = instr;
+                let &Statement{ ref op, ref assignee } = instr;
 
                 if let &Operation::Phi(_) = op {
                     ;
@@ -224,7 +221,7 @@ pub fn phi_functions(func: &mut Function) {
     // initalize all variables
     if let Some(&mut ControlFlowTarget::Resolved(ref mut bb)) = cfg.vertex_label_mut(func.entry_point.unwrap()) {
         let pos = bb.area.start;
-        let instrs = globals.iter().map(|nam| Instr{
+        let instrs = globals.iter().map(|nam| Statement{
             op: Operation::Nop(Rvalue::Undefined),
             assignee: Lvalue::Variable{ width: lens[nam], name: nam.clone(), subscript: None }}
         ).collect::<Vec<_>>();
@@ -263,7 +260,7 @@ pub fn phi_functions(func: &mut Function) {
                             "__phi".to_string(),
                             "".to_string(),
                             vec![].iter(),
-                            vec![Instr{
+                            vec![Statement{
                                 op: Operation::Phi(vec![Rvalue::Variable{ width: lens[v], name: v.clone(), subscript: None };arg_num]),
                                 assignee: Lvalue::Variable{ width: lens[v], name: v.clone(), subscript: None }}].iter()
                         );
@@ -295,7 +292,7 @@ pub fn rename_variables(func: &mut Function) {
     fn rename(b: ControlFlowRef, counter: &mut HashMap<String,u32>, stack: &mut HashMap<String,Vec<u32>>, cfg: &mut ControlFlowGraph, idom: &HashMap<ControlFlowRef,ControlFlowRef>) {
         if let Some(&mut ControlFlowTarget::Resolved(ref mut bb)) = cfg.vertex_label_mut(b) {
             bb.rewrite(|i| match i {
-                &mut Instr{ op: Operation::Phi(_), assignee: Lvalue::Variable{ ref name, ref mut subscript,.. } } =>
+                &mut Statement{ op: Operation::Phi(_), assignee: Lvalue::Variable{ ref name, ref mut subscript,.. } } =>
                     *subscript = Some(new_name(name,counter,stack)),
                 _ => {},
             });
@@ -312,7 +309,7 @@ pub fn rename_variables(func: &mut Function) {
                     }
 
                     for i in mne.instructions.iter_mut() {
-                        let &mut Instr{ ref mut op, ref mut assignee } = i;
+                        let &mut Statement{ ref mut op, ref mut assignee } = i;
 
                         if let &mut Operation::Phi(_) = op {
                             unreachable!("Phi instruction outside __phi mnemonic");
@@ -348,7 +345,7 @@ pub fn rename_variables(func: &mut Function) {
             match cfg.vertex_label_mut(v) {
                 Some(&mut ControlFlowTarget::Resolved(ref mut bb)) => {
                     bb.rewrite(|i| match i {
-                        &mut Instr{ op: Operation::Phi(ref mut ops),.. } =>
+                        &mut Statement{ op: Operation::Phi(ref mut ops),.. } =>
                             for o in ops.iter_mut() {
                                 if let &mut Rvalue::Variable{ ref name, ref mut subscript,.. } = o {
                                     if subscript.is_none() {
@@ -374,7 +371,7 @@ pub fn rename_variables(func: &mut Function) {
 
         if let Some(&mut ControlFlowTarget::Resolved(ref mut bb)) = cfg.vertex_label_mut(b) {
             bb.execute(|i| match i {
-                &Instr{ assignee: Lvalue::Variable{ ref name,.. },.. } => {
+                &Statement{ assignee: Lvalue::Variable{ ref name,.. },.. } => {
                     stack.get_mut(name).map(|x| x.pop());
                 },
                 _ => {}
@@ -390,6 +387,37 @@ pub fn ssa_convertion(func: &mut Function) {
     rename_variables(func);
 }
 
+pub fn flag_operations(func: &Function) -> HashMap<ControlFlowEdge,Operation> {
+    let mut ret = HashMap::new();
+
+    for e in func.cflow_graph.edges() {
+        if !ret.contains_key(e) {
+            if let Some(Guard::Predicate{ ref flag,.. }) = func.cflow_graph(e) {
+                let maybe_bb = func.cflow_graph.vertex_label(func.cflow_graph.source(e));
+                if let Some(ControlFlowTarget::Resolved(ref bb)) = maybe_bb {
+                    let mut maybe_stmt = None;
+                    bb.execute(&|s| {
+                        if s.assignee == flag {
+                            match s.op {
+                                &Operation::Equal(_,_) | &Operation::LessOrEqualUnsigned(_,_) |
+                                &Operation::LessOrEqualSigned(_,_) | &Operation::LessUnsigned(_,_) |
+                                &Operation::LessSigned(_,_) => maybe_stmt = Some(s.op.clone()),
+                                _ => {}
+                            }
+                        }
+                    });
+
+                    if maybe_stmt.is_some() {
+                        ret.insert(e.clone(),maybe_stmt.unwrap());
+                    }
+                }
+            }
+        }
+    }
+
+    ret
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -400,35 +428,31 @@ mod tests {
         VertexListGraphTrait,
         MutableGraphTrait,
     };
-    use mnemonic::Mnemonic;
-    use guard::Guard;
-    use function::{
+    use {
+        Mnemonic,
+        Guard,
         Function,
         ControlFlowTarget,
         ControlFlowGraph,
-    };
-    use instr::{
         Operation,
-        Instr,
-    };
-    use value::{
+        Statement,
         Rvalue,
         Lvalue,
+        BasicBlock,
     };
-    use basic_block::BasicBlock;
 
     #[test]
     fn live() {
         let i = Lvalue::Variable{ name: "i".to_string(), width: 32, subscript: None };
         let s = Lvalue::Variable{ name: "s".to_string(), width: 32, subscript: None };
         let x = Lvalue::Variable{ name: "x".to_string(), width: 1, subscript: None };
-        let mne0 = Mnemonic::new(0..1,"b0".to_string(),"".to_string(),vec![].iter(),vec![Instr{ op: Operation::Nop(Rvalue::Constant(1)), assignee: i.clone() }].iter());
-        let mne1 = Mnemonic::new(1..2,"b1".to_string(),"".to_string(),vec![].iter(),vec![Instr{ op: Operation::IntLess(i.to_rv(),Rvalue::Constant(1)), assignee: x.clone() }].iter());
-        let mne2 = Mnemonic::new(2..3,"b2".to_string(),"".to_string(),vec![].iter(),vec![Instr{ op: Operation::Nop(Rvalue::Constant(0)), assignee: s.clone() }].iter());
-        let mne30 = Mnemonic::new(3..4,"b3.0".to_string(),"".to_string(),vec![].iter(),vec![Instr{ op: Operation::IntAdd(i.to_rv(),s.to_rv()), assignee: s.clone() }].iter());
-        let mne31 = Mnemonic::new(4..5,"b3.1".to_string(),"".to_string(),vec![].iter(),vec![Instr{ op: Operation::IntAdd(i.to_rv(),i.to_rv()), assignee: i.clone() }].iter());
-        let mne32 = Mnemonic::new(5..6,"b3.2".to_string(),"".to_string(),vec![].iter(),vec![Instr{ op: Operation::IntLess(i.to_rv(),Rvalue::Constant(1)), assignee: x.clone() }].iter());
-        let mne4 = Mnemonic::new(6..7,"b4".to_string(),"".to_string(),vec![].iter(),vec![Instr{ op: Operation::Nop(s.to_rv()), assignee: Lvalue::Undefined }].iter());
+        let mne0 = Mnemonic::new(0..1,"b0".to_string(),"".to_string(),vec![].iter(),vec![Statement{ op: Operation::Nop(Rvalue::Constant(1)), assignee: i.clone() }].iter());
+        let mne1 = Mnemonic::new(1..2,"b1".to_string(),"".to_string(),vec![].iter(),vec![Statement{ op: Operation::IntLess(i.to_rv(),Rvalue::Constant(1)), assignee: x.clone() }].iter());
+        let mne2 = Mnemonic::new(2..3,"b2".to_string(),"".to_string(),vec![].iter(),vec![Statement{ op: Operation::Nop(Rvalue::Constant(0)), assignee: s.clone() }].iter());
+        let mne30 = Mnemonic::new(3..4,"b3.0".to_string(),"".to_string(),vec![].iter(),vec![Statement{ op: Operation::IntAdd(i.to_rv(),s.to_rv()), assignee: s.clone() }].iter());
+        let mne31 = Mnemonic::new(4..5,"b3.1".to_string(),"".to_string(),vec![].iter(),vec![Statement{ op: Operation::IntAdd(i.to_rv(),i.to_rv()), assignee: i.clone() }].iter());
+        let mne32 = Mnemonic::new(5..6,"b3.2".to_string(),"".to_string(),vec![].iter(),vec![Statement{ op: Operation::IntLess(i.to_rv(),Rvalue::Constant(1)), assignee: x.clone() }].iter());
+        let mne4 = Mnemonic::new(6..7,"b4".to_string(),"".to_string(),vec![].iter(),vec![Statement{ op: Operation::Nop(s.to_rv()), assignee: Lvalue::Undefined }].iter());
         let bb0 = BasicBlock::from_vec(vec![mne0]);
         let bb1 = BasicBlock::from_vec(vec![mne1]);
         let bb2 = BasicBlock::from_vec(vec![mne2]);
@@ -492,42 +516,42 @@ mod tests {
         let i = Lvalue::Variable{ name: "i".to_string(), width: 32, subscript: None };
 
         let mne0 = Mnemonic::new(0..1,"b0".to_string(),"".to_string(),vec![].iter(),vec![
-                                Instr{ op: Operation::Nop(Rvalue::Constant(1)), assignee: i.clone() }].iter());
+                                Statement{ op: Operation::Nop(Rvalue::Constant(1)), assignee: i.clone() }].iter());
 
         let mne10 = Mnemonic::new(1..2,"b1.0".to_string(),"".to_string(),vec![].iter(),vec![
-                                 Instr{ op: Operation::Nop(Rvalue::Undefined), assignee: a.clone() }].iter());
+                                 Statement{ op: Operation::Nop(Rvalue::Undefined), assignee: a.clone() }].iter());
         let mne11 = Mnemonic::new(2..3,"b1.1".to_string(),"".to_string(),vec![].iter(),vec![
-                                 Instr{ op: Operation::Nop(Rvalue::Undefined), assignee: c.clone() }].iter());
+                                 Statement{ op: Operation::Nop(Rvalue::Undefined), assignee: c.clone() }].iter());
 
         let mne20 = Mnemonic::new(3..4,"b2.0".to_string(),"".to_string(),vec![].iter(),vec![
-                                 Instr{ op: Operation::Nop(Rvalue::Undefined), assignee: b.clone() }].iter());
+                                 Statement{ op: Operation::Nop(Rvalue::Undefined), assignee: b.clone() }].iter());
         let mne21 = Mnemonic::new(4..5,"b2.1".to_string(),"".to_string(),vec![].iter(),vec![
-                                 Instr{ op: Operation::Nop(Rvalue::Undefined), assignee: c.clone() }].iter());
+                                 Statement{ op: Operation::Nop(Rvalue::Undefined), assignee: c.clone() }].iter());
         let mne22 = Mnemonic::new(5..6,"b2.2".to_string(),"".to_string(),vec![].iter(),vec![
-                                 Instr{ op: Operation::Nop(Rvalue::Undefined), assignee: d.clone() }].iter());
+                                 Statement{ op: Operation::Nop(Rvalue::Undefined), assignee: d.clone() }].iter());
 
         let mne30 = Mnemonic::new(6..7,"b3.0".to_string(),"".to_string(),vec![].iter(),vec![
-                                  Instr{ op: Operation::IntAdd(a.to_rv(),b.to_rv()), assignee: y.clone() }].iter());
+                                  Statement{ op: Operation::IntAdd(a.to_rv(),b.to_rv()), assignee: y.clone() }].iter());
         let mne31 = Mnemonic::new(7..8,"b3.1".to_string(),"".to_string(),vec![].iter(),vec![
-                                  Instr{ op: Operation::IntAdd(c.to_rv(),d.to_rv()), assignee: z.clone() }].iter());
+                                  Statement{ op: Operation::IntAdd(c.to_rv(),d.to_rv()), assignee: z.clone() }].iter());
         let mne32 = Mnemonic::new(8..9,"b3.2".to_string(),"".to_string(),vec![].iter(),vec![
-                                  Instr{ op: Operation::IntAdd(i.to_rv(),i.to_rv()), assignee: i.clone() }].iter());
+                                  Statement{ op: Operation::IntAdd(i.to_rv(),i.to_rv()), assignee: i.clone() }].iter());
 
         let mne4 = Mnemonic::new(9..10,"b4".to_string(),"".to_string(),vec![].iter(),vec![].iter());
 
         let mne50 = Mnemonic::new(10..11,"b5.0".to_string(),"".to_string(),vec![].iter(),vec![
-                                  Instr{ op: Operation::Nop(Rvalue::Undefined), assignee: a.clone() }].iter());
+                                  Statement{ op: Operation::Nop(Rvalue::Undefined), assignee: a.clone() }].iter());
         let mne51 = Mnemonic::new(11..12,"b5.1".to_string(),"".to_string(),vec![].iter(),vec![
-                                  Instr{ op: Operation::Nop(Rvalue::Undefined), assignee: d.clone() }].iter());
+                                  Statement{ op: Operation::Nop(Rvalue::Undefined), assignee: d.clone() }].iter());
 
         let mne6 = Mnemonic::new(12..13,"b6".to_string(),"".to_string(),vec![].iter(),vec![
-                                  Instr{ op: Operation::Nop(Rvalue::Undefined), assignee: d.clone() }].iter());
+                                  Statement{ op: Operation::Nop(Rvalue::Undefined), assignee: d.clone() }].iter());
 
         let mne7 = Mnemonic::new(13..14,"b7".to_string(),"".to_string(),vec![].iter(),vec![
-                                  Instr{ op: Operation::Nop(Rvalue::Undefined), assignee: b.clone() }].iter());
+                                  Statement{ op: Operation::Nop(Rvalue::Undefined), assignee: b.clone() }].iter());
 
         let mne8 = Mnemonic::new(14..15,"b8".to_string(),"".to_string(),vec![].iter(),vec![
-                                  Instr{ op: Operation::Nop(Rvalue::Undefined), assignee: c.clone() }].iter());
+                                  Statement{ op: Operation::Nop(Rvalue::Undefined), assignee: c.clone() }].iter());
 
         let bb0 = BasicBlock::from_vec(vec![mne0]);
         let bb1 = BasicBlock::from_vec(vec![mne10,mne11]);
@@ -688,42 +712,42 @@ mod tests {
         let i = Lvalue::Variable{ name: "i".to_string(), width: 32, subscript: None };
 
         let mne0 = Mnemonic::new(0..1,"b0".to_string(),"".to_string(),vec![].iter(),vec![
-                                 Instr{ op: Operation::Nop(Rvalue::Constant(1)), assignee: i.clone() }].iter());
+                                 Statement{ op: Operation::Nop(Rvalue::Constant(1)), assignee: i.clone() }].iter());
 
         let mne10 = Mnemonic::new(1..2,"b1.0".to_string(),"".to_string(),vec![].iter(),vec![
-                                  Instr{ op: Operation::Nop(Rvalue::Undefined), assignee: a.clone() }].iter());
+                                  Statement{ op: Operation::Nop(Rvalue::Undefined), assignee: a.clone() }].iter());
         let mne11 = Mnemonic::new(2..3,"b1.1".to_string(),"".to_string(),vec![].iter(),vec![
-                                  Instr{ op: Operation::Nop(Rvalue::Undefined), assignee: c.clone() }].iter());
+                                  Statement{ op: Operation::Nop(Rvalue::Undefined), assignee: c.clone() }].iter());
 
         let mne20 = Mnemonic::new(3..4,"b2.0".to_string(),"".to_string(),vec![].iter(),vec![
-                                  Instr{ op: Operation::Nop(Rvalue::Undefined), assignee: b.clone() }].iter());
+                                  Statement{ op: Operation::Nop(Rvalue::Undefined), assignee: b.clone() }].iter());
         let mne21 = Mnemonic::new(4..5,"b2.1".to_string(),"".to_string(),vec![].iter(),vec![
-                                  Instr{ op: Operation::Nop(Rvalue::Undefined), assignee: c.clone() }].iter());
+                                  Statement{ op: Operation::Nop(Rvalue::Undefined), assignee: c.clone() }].iter());
         let mne22 = Mnemonic::new(5..6,"b2.2".to_string(),"".to_string(),vec![].iter(),vec![
-                                  Instr{ op: Operation::Nop(Rvalue::Undefined), assignee: d.clone() }].iter());
+                                  Statement{ op: Operation::Nop(Rvalue::Undefined), assignee: d.clone() }].iter());
 
         let mne30 = Mnemonic::new(6..7,"b3.0".to_string(),"".to_string(),vec![].iter(),vec![
-                                  Instr{ op: Operation::IntAdd(a.to_rv(),b.to_rv()), assignee: y.clone() }].iter());
+                                  Statement{ op: Operation::IntAdd(a.to_rv(),b.to_rv()), assignee: y.clone() }].iter());
         let mne31 = Mnemonic::new(7..8,"b3.1".to_string(),"".to_string(),vec![].iter(),vec![
-                                  Instr{ op: Operation::IntAdd(c.to_rv(),d.to_rv()), assignee: z.clone() }].iter());
+                                  Statement{ op: Operation::IntAdd(c.to_rv(),d.to_rv()), assignee: z.clone() }].iter());
         let mne32 = Mnemonic::new(8..9,"b3.2".to_string(),"".to_string(),vec![].iter(),vec![
-                                  Instr{ op: Operation::IntAdd(i.to_rv(),i.to_rv()), assignee: i.clone() }].iter());
+                                  Statement{ op: Operation::IntAdd(i.to_rv(),i.to_rv()), assignee: i.clone() }].iter());
 
         let mne4 = Mnemonic::new(9..10,"b4".to_string(),"".to_string(),vec![].iter(),vec![].iter());
 
         let mne50 = Mnemonic::new(10..11,"b5.0".to_string(),"".to_string(),vec![].iter(),vec![
-                                  Instr{ op: Operation::Nop(Rvalue::Undefined), assignee: a.clone() }].iter());
+                                  Statement{ op: Operation::Nop(Rvalue::Undefined), assignee: a.clone() }].iter());
         let mne51 = Mnemonic::new(11..12,"b5.1".to_string(),"".to_string(),vec![].iter(),vec![
-                                  Instr{ op: Operation::Nop(Rvalue::Undefined), assignee: d.clone() }].iter());
+                                  Statement{ op: Operation::Nop(Rvalue::Undefined), assignee: d.clone() }].iter());
 
         let mne6 = Mnemonic::new(12..13,"b6".to_string(),"".to_string(),vec![].iter(),vec![
-                                 Instr{ op: Operation::Nop(Rvalue::Undefined), assignee: d.clone() }].iter());
+                                 Statement{ op: Operation::Nop(Rvalue::Undefined), assignee: d.clone() }].iter());
 
         let mne7 = Mnemonic::new(13..14,"b7".to_string(),"".to_string(),vec![].iter(),vec![
-                                 Instr{ op: Operation::Nop(Rvalue::Undefined), assignee: b.clone() }].iter());
+                                 Statement{ op: Operation::Nop(Rvalue::Undefined), assignee: b.clone() }].iter());
 
         let mne8 = Mnemonic::new(14..15,"b8".to_string(),"".to_string(),vec![].iter(),vec![
-                                 Instr{ op: Operation::Nop(Rvalue::Undefined), assignee: c.clone() }].iter());
+                                 Statement{ op: Operation::Nop(Rvalue::Undefined), assignee: c.clone() }].iter());
 
         let bb0 = BasicBlock::from_vec(vec![mne0]);
         let bb1 = BasicBlock::from_vec(vec![mne10,mne11]);

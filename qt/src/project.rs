@@ -16,15 +16,17 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-use panopticon::project::Project;
-use panopticon::function::Function;
-use panopticon::program::{Program,CallTarget};
-use panopticon::elf;
-use panopticon::pe;
-use panopticon::target::Target;
-use panopticon::value::Rvalue;
-use panopticon::result::Result;
-use panopticon::dataflow::ssa_convertion;
+use panopticon::{
+    Project,
+    Function,
+    Program,CallTarget,
+    elf,
+    pe,
+    Target,
+    Rvalue,
+    Result,
+    ssa_convertion,
+};
 
 use std::path::Path;
 use std::thread;

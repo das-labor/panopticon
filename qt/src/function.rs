@@ -16,19 +16,16 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-use panopticon::value::{Rvalue,Lvalue};
-use panopticon::project::Project;
-use panopticon::function::{Function,ControlFlowTarget};
-use panopticon::program::CallTarget;
-use panopticon::target::Target;
-use panopticon::mnemonic::{MnemonicFormatToken};
-use panopticon::result::{
+use panopticon::{
+    Rvalue,Lvalue,
+    Project,
+    Function,ControlFlowTarget,
+    CallTarget,
+    Target,
+    MnemonicFormatToken,
     Error,
     Result,
-};
-use panopticon::elf;
-use panopticon::abstractinterp;
-use panopticon::abstractinterp::{
+    elf,
     Kset,
 };
 
