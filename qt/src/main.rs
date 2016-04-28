@@ -26,6 +26,9 @@ extern crate glpk_sys as glpk;
 extern crate tempdir;
 extern crate byteorder;
 
+#[cfg(unix)]
+extern crate xdg;
+
 #[macro_use]
 extern crate lazy_static;
 
@@ -34,48 +37,61 @@ mod project;
 mod function;
 mod sugiyama;
 
-use std::env::home_dir;
+#[cfg(windows)]
+use std::env;
+
 use std::fs::File;
-use std::path::Path;
+use std::path::{PathBuf,Path};
+use std::borrow::Cow;
+use std::error::Error;
+
+#[cfg(unix)]
+use xdg::BaseDirectories;
+
+use panopticon::result;
+use panopticon::result::Result;
 
 use controller::create_singleton;
 
-fn main() {
-    let maybe_cur = Some(Path::new("qml").to_path_buf());
-    let maybe_repo = Some(Path::new("qt/res").to_path_buf());
-    let maybe_home = home_dir().map(|mut x| {
-        x.push(".panopticon");
-        x.push("qml");
-        x
-    });
-    let maybe_usr = Some(Path::new("/usr/share/panopticon/qml").to_path_buf());
-    let maybe_local = Some(Path::new("/usr/local/share/panopticon/qml").to_path_buf());
-    let search_path = [maybe_repo,maybe_home,maybe_usr,maybe_local,maybe_cur];
-
-    for p in search_path.into_iter().filter_map(|x| x.clone()) {
-        let mut file = p.clone();
-
-        file.push("Window.qml");
-
-        match File::open(file.clone()) {
-            Ok(_) => {
-                qmlrs::register_singleton_type(&"Panopticon",1,0,&"Panopticon",create_singleton);
-
-                let mut engine = qmlrs::Engine::new();
-                engine.load_local_file(file);
-                engine.exec();
-
-                return;
-            },
-            Err(_) => {},
-        }
+#[cfg(unix)]
+fn find_data_file(p: &Path) -> Result<Option<PathBuf>> {
+    match BaseDirectories::with_prefix("panopticon") {
+        Ok(dirs) => Ok(dirs.find_data_file(p).or(Some(Path::new(".").join(p)))),
+        Err(e) => Err(result::Error(Cow::Owned(e.description().to_string()))),
     }
+}
 
-    println!("Failed to find the QML files. Looked in");
-    for s in search_path.iter() {
-        match s {
-            &Some(ref p) => println!("\t{}",p.to_str().unwrap_or("(encoding error)")),
-            &None => {}
-        }
+#[cfg(windows)]
+fn find_data_file(p: &Path) -> Result<Option<PathBuf>> {
+    match env::current_exe() {
+        Ok(path) => Ok(Some(path.join("AppData/Local/Panopticon/Panopticon").join(p))),
+        Err(e) => Err(result::Error(Cow::Owned(e.description().to_string()))),
+    }
+}
+
+fn main() {
+    match find_data_file(Path::new("qml/Window.qml")) {
+        Ok(Some(qml_main)) => {
+            match File::open(&qml_main) {
+                Ok(_) => {
+                    qmlrs::register_singleton_type(&"Panopticon",1,0,&"Panopticon",create_singleton);
+
+                    let mut engine = qmlrs::Engine::new();
+                    engine.load_local_file(qml_main);
+                    engine.exec();
+
+                    return;
+                },
+                Err(e) => {
+                    println!("Failed to open the QML files: {}",e);
+                }
+            }
+        },
+        Ok(None) => {
+                    println!("Failed to open the QML files: Not Found");
+        },
+        Err(e) => {
+            println!("Failed to find the QML files: {}",e);
+        },
     }
 }

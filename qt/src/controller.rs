@@ -27,15 +27,23 @@ use std::path::{PathBuf,Path};
 use std::iter::FromIterator;
 use std::ops::DerefMut;
 use std::fs::remove_file;
+use std::error::Error;
+use std::borrow::Cow;
+use std::convert::Into;
+
+#[cfg(windows)]
+use std::env;
+
+#[cfg(unix)]
+use xdg::BaseDirectories;
 
 use libc::c_int;
 use qmlrs::{ffi,MetaObject,Variant,Object,ToQVariant,unpack_varlist};
 use rustc_serialize::{json,Encodable};
 use tempdir::TempDir;
-use std::error::Error;
-use std::convert::Into;
 
 use panopticon::project::Project;
+use panopticon::result;
 use panopticon::result::{
     Result,
 };
@@ -226,6 +234,22 @@ impl ToVariant for String {
     }
 }
 
+#[cfg(unix)]
+fn session_directory() -> Result<PathBuf> {
+    match BaseDirectories::with_prefix("panopticon") {
+        Ok(dirs) => Ok(dirs.get_data_home().join("sessions")),
+        Err(e) => Err(result::Error(Cow::Owned(e.description().to_string()))),
+    }
+}
+
+#[cfg(windows)]
+fn session_directory(p: &Path) -> Result<PathBuf> {
+    match env::current_exe() {
+        Ok(path) => Ok(Some(path.join("AppData/Local/Panopticon/Panopticon/sessions").join(p))),
+        Err(e) => Err(result::Error(Cow::Owned(e.description().to_string()))),
+    }
+}
+
 impl Controller {
     pub fn instantiate_singleton(_: MetaObject, s: Object) -> Result<()> {
         {
@@ -302,7 +326,7 @@ impl Controller {
             let bf = if let Some(p) = q {
                 Backing::Named(p.to_path_buf())
             } else {
-                Backing::Unnamed(try!(TempDir::new_in(".","panop-backing")).path().to_path_buf())
+                Backing::Unnamed(try!(TempDir::new_in(try!(session_directory()),"panop-backing")).path().to_path_buf())
             };
 
             match &mut *guard {
