@@ -243,9 +243,9 @@ fn session_directory() -> Result<PathBuf> {
 }
 
 #[cfg(windows)]
-fn session_directory(p: &Path) -> Result<PathBuf> {
+fn session_directory() -> Result<PathBuf> {
     match env::current_exe() {
-        Ok(path) => Ok(Some(path.join("AppData/Local/Panopticon/Panopticon/sessions").join(p))),
+        Ok(path) => Ok(path.join("AppData/Local/Panopticon/Panopticon/sessions")),
         Err(e) => Err(result::Error(Cow::Owned(e.description().to_string()))),
     }
 }
