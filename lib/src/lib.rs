@@ -171,6 +171,7 @@ pub use il::{
     Guard,
     Statement,
     Operation,
+    execute,
 };
 
 pub mod codegen;
@@ -191,6 +192,7 @@ pub use function::{
     Function,
     ControlFlowTarget,
     ControlFlowRef,
+    ControlFlowEdge,
     ControlFlowGraph,
 };
 
