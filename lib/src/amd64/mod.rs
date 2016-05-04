@@ -591,19 +591,19 @@ pub fn disassembler(bits: Mode) -> Rc<Disassembler<Amd64>> {
 
     let disp8 = new_disassembler!(Amd64 =>
         [ "disp@........" ] = |st: &mut State<Amd64>| {
-            st.configuration.disp = Some(Rvalue::new_u64(st.get_group("disp")));
+            st.configuration.disp = Some(Rvalue::new_u8(st.get_group("disp") as u8));
             true
         });
 
     let disp16 = new_disassembler!(Amd64 =>
         [ disp8, "disp@........" ] = |st: &mut State<Amd64>| {
-            st.configuration.disp = Some(Rvalue::new_u64(st.get_group("disp")));
+            st.configuration.disp = Some(Rvalue::new_u16(st.get_group("disp") as u16));
             true
         });
 
     let disp32 = new_disassembler!(Amd64 =>
         [ disp16, "disp@........", "disp@........" ] = |st: &mut State<Amd64>| {
-            st.configuration.disp = Some(Rvalue::new_u64(st.get_group("disp")));
+            st.configuration.disp = Some(Rvalue::new_u32(st.get_group("disp") as u32));
             true
         });
 

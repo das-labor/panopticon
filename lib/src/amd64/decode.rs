@@ -514,6 +514,8 @@ pub fn decode_modrm(
                                 select_mem(&os,d,c)
                             } else {
                                 let t = select_mem(&os,BP.clone().into(),c);
+                                assert_eq!(t.size(), Some(16));
+                                assert_eq!(d.size(), Some(16));
                                 rreil!{c:
                                     add (tmp), (t), (d);
                                 }
@@ -538,6 +540,8 @@ pub fn decode_modrm(
                             Some(base)
                         } else {
                             if let Some(ref d) = disp {
+                                assert_eq!(base.size(), Some(16));
+                                assert_eq!(d.size(), Some(16));
                                 rreil!{c:
                                     add (tmp), (base), (d);
                                 }
@@ -562,7 +566,7 @@ pub fn decode_modrm(
                         Some(select_reg(&os,b_rm,rex))
                     } else {
                         if let Some((scale,index,base)) = sib {
-                            decode_sib(_mod,scale,index,base,disp.clone(),os.clone(),c)
+                            decode_sib(_mod,scale,index,base,disp.clone(),os.clone(),rex,c)
                         } else {
                             None
                         }
@@ -575,12 +579,14 @@ pub fn decode_modrm(
                                 let tmp = rreil_lvalue!{ tmp:64 };
 
                                 rreil!{c:
-                                    add (tmp), (d), RIP:64;
+                                    zext/64 longd:64, (d);
+                                    add (tmp), longd:64, RIP:64;
                                 }
                                 select_mem(&os,tmp.into(),c)
                             } else {
                                 let tmp = rreil_lvalue!{ tmp:32 };
 
+                                assert_eq!(d.size(), Some(32));
                                 rreil!{c:
                                     add (tmp), (d), EIP:32;
                                 }
@@ -603,15 +609,17 @@ pub fn decode_modrm(
                     0 => Some(select_mem(&os,base.clone().into(),c)),
                     1 | 2 => {
                         if let Some(ref d) = disp {
+                            let sz = base.size().unwrap();
                             let tmp = Lvalue::Variable{
                                 name: Cow::Borrowed("tmp"),
-                                size: os.num_bits(),
+                                size: sz,
                                 offset: 0,
                                 subscript: None,
                             };
 
                             rreil!{c:
-                                add (tmp), (base), (d);
+                                zext/sz d:sz, (d);
+                                add (tmp), (base), d:sz;
                             }
                             Some(select_mem(&os,tmp.into(),c))
                         } else {
@@ -635,18 +643,27 @@ fn decode_sib(
     b_base: u64,
     disp: Option<Rvalue>,
     os: OperandSize,
+    rex: bool,
     c: &mut CodeGen<Amd64>) -> Option<Lvalue>
 {
+    let bits = os.num_bits();
+
+    if disp.is_some() {
+        rreil!{c:
+            zext/bits disp:bits, (disp.clone().unwrap());
+        }
+    }
+
     match _mod {
         0 => match b_base {
             0 | 1 | 2 | 3 | 4 |
             6 | 7 | 8 | 9 | 10 | 11 | 12 |
             14 | 15 => match x_index {
                 0 | 1 | 2 | 3 | 5...15 => {
-                    let base = decode_reg64(b_base);
-                    let index = decode_reg64(x_index);
-                    let s = Rvalue::new_u64((1 << (scale & 3)) / 2);
-                    let tmp = rreil_lvalue!{ tmp:64 };
+                    let base = select_reg(&os,b_base,rex);
+                    let index = select_reg(&os,x_index,rex);
+                    let s = Rvalue::Constant{ value: (1 << (scale & 3)) / 2, size: bits };
+                    let tmp = rreil_lvalue!{ tmp:bits };
 
                     Some(if scale > 0 {
                         rreil!{c:
@@ -663,20 +680,20 @@ fn decode_sib(
                         select_mem(&os,tmp.into(),c)
                     })
                 },
-                4 => Some(select_mem(&os,Rvalue::new_u64((b_base & 7) as u64),c)),
+                4 => Some(select_mem(&os,Rvalue::Constant{ value: (b_base & 7) as u64, size: bits },c)),
                 _ => None
             },
             5 | 13 => match x_index {
                 0...3 | 5...15 => {
-                    let index = decode_reg64(x_index);
-                    let s = Rvalue::new_u64((1 << (scale & 3)) / 2);
-                    let tmp = rreil_lvalue!{ tmp:64 };
+                    let index = select_reg(&os,x_index,rex);
+                    let s = Rvalue::Constant{ value: (1 << (scale & 3)) / 2, size: bits };
+                    let tmp = rreil_lvalue!{ tmp:bits };
 
                     if let Some(ref d) = disp {
                         Some(if scale > 0 {
                             rreil!{c:
                                 mul (tmp), (index), (s);
-                                add (tmp), (d), (tmp);
+                                add (tmp), disp:bits, (tmp);
                             }
 
                             select_mem(&os,tmp.into(),c)
@@ -691,23 +708,23 @@ fn decode_sib(
                         None
                     }
                 },
-                4 => if let Some(d) = disp { Some(select_mem(&os,d,c)) } else { None },
+                4 => if let Some(d) = disp { Some(select_mem(&os,rreil_rvalue!{ disp:bits },c)) } else { None },
                 _ => None
             },
             _ => None
         },
         1 | 2 => match x_index {
             0...3 | 5...15 => {
-                let base = decode_reg64(b_base);
-                let index = decode_reg64(x_index);
-                let tmp = rreil_lvalue!{ tmp:64 };
-                let s = Rvalue::new_u64((1 << (scale & 3)) / 2);
+                let base = select_reg(&os,b_base,rex);
+                let index = select_reg(&os,x_index,rex);
+                let tmp = rreil_lvalue!{ tmp:bits };
+                let s = Rvalue::Constant{ value: (1 << (scale & 3)) / 2, size: bits };
 
                 if let Some(d) = disp {
                     Some(if scale > 0 {
                         rreil!{c:
                             mul (tmp), (index), (s);
-                            add (tmp), (tmp), (d);
+                            add (tmp), (tmp), disp:bits;
                             add (tmp), (base), (tmp);
                         }
 
@@ -726,9 +743,9 @@ fn decode_sib(
             },
             4 => if let Some(d) = disp {
                 rreil!{c:
-                    add tmp:64, (decode_reg64(b_base)), (d);
+                    add tmp:bits, (select_reg(&os,b_base,rex)), disp:bits;
                 }
-                Some(select_mem(&os,rreil_rvalue!{ tmp:64 },c))
+                Some(select_mem(&os,rreil_rvalue!{ tmp:bits },c))
             } else {
                 None
             },
@@ -760,7 +777,7 @@ pub fn unary(opcode: &'static str,
         let len = st.tokens.len();
         let next = st.address + len as u64;
         if let Some(arg) = decode(st) {
-            st.mnemonic_dynargs(len,&opcode,"{64}",&|c| {
+            st.mnemonic_dynargs(len,&opcode,"{u}",&|c| {
                 sem(c,arg.clone());
                 vec![arg.clone()]
             });
@@ -871,7 +888,7 @@ pub fn unary_box(opcode: &'static str,
         let len = st.tokens.len();
         let next = st.address + len as u64;
         if let Some(arg) = decode(st) {
-            st.mnemonic_dynargs(len,&opcode,"{64}",&|c| {
+            st.mnemonic_dynargs(len,&opcode,"{u}",&|c| {
                 sem(c,arg.clone());
                 vec![arg.clone()]
             });
@@ -891,7 +908,7 @@ pub fn unary_c(opcode: &'static str,
         let len = st.tokens.len();
         let next = st.address + len as u64;
 
-        st.mnemonic_dynargs(len,&opcode,"{64}",&|c| {
+        st.mnemonic_dynargs(len,&opcode,"{u}",&|c| {
             sem(c,arg.clone());
             vec![arg.clone()]
         });
@@ -909,7 +926,7 @@ pub fn binary(opcode: &'static str,
         let len = st.tokens.len();
         let next = st.address + len as u64;
         if let Some((arg0,arg1)) = decode(st) {
-            st.mnemonic_dynargs(len,&opcode,"{64}, {64}",&|c| {
+            st.mnemonic_dynargs(len,&opcode,"{u}, {u}",&|c| {
                 sem(c,arg0.clone(),arg1.clone());
                 vec![arg0.clone(),arg1.clone()]
             });
@@ -929,7 +946,7 @@ pub fn binary_box(opcode: &'static str,
         let len = st.tokens.len();
         let next = st.address + len as u64;
         if let Some((arg0,arg1)) = decode(st) {
-            st.mnemonic_dynargs(len,&opcode,"{64}, {64}",&|c| {
+            st.mnemonic_dynargs(len,&opcode,"{u}, {u}",&|c| {
                 sem(c,arg0.clone(),arg1.clone());
                 vec![arg0.clone(),arg1.clone()]
             });
@@ -951,7 +968,7 @@ pub fn binary_rv(opcode: &'static str,
         let len = st.tokens.len();
         let next = st.address + len as u64;
         if let Some(arg1) = decode(st) {
-            st.mnemonic_dynargs(len,&opcode,"{64}, {64}",&|c| {
+            st.mnemonic_dynargs(len,&opcode,"{u}, {u}",&|c| {
                 sem(c,arg0.clone().into(),arg1.clone());
                 vec![arg0.clone().into(),arg1.clone()]
             });
@@ -973,7 +990,7 @@ pub fn binary_vr(opcode: &'static str,
         let len = st.tokens.len();
         let next = st.address + len as u64;
         if let Some(arg0) = decode(st) {
-            st.mnemonic_dynargs(len,&opcode,"{64}, {64}",&|c| {
+            st.mnemonic_dynargs(len,&opcode,"{u}, {u}",&|c| {
                 sem(c,arg0.clone(),arg1.clone().into());
                 vec![arg0.clone(),arg1.clone().into()]
             });
@@ -994,7 +1011,7 @@ pub fn binary_vc(opcode: &'static str,
         let len = st.tokens.len();
         let next = st.address + len as u64;
         if let Some(arg0) = decode(st) {
-            st.mnemonic_dynargs(len,&opcode,"{64}, {64}",&|c| {
+            st.mnemonic_dynargs(len,&opcode,"{u}, {u}",&|c| {
                 sem(c,arg0.clone(),arg1.clone());
                 vec![arg0.clone(),arg1.clone()]
             });
@@ -1017,7 +1034,7 @@ pub fn binary_rr(opcode: &'static str,
         let len = st.tokens.len();
         let next = st.address + len as u64;
 
-        st.mnemonic_dynargs(len,&opcode,"{64}, {64}",&|c| {
+        st.mnemonic_dynargs(len,&opcode,"{u}, {u}",&|c| {
             sem(c,arg0.clone().into(),arg1.clone().into());
             vec![arg0.clone().into(),arg1.clone().into()]
         });
@@ -1035,7 +1052,7 @@ pub fn binary_vv(opcode: &'static str,
         let len = st.tokens.len();
         let next = st.address + len as u64;
         if let (Some(arg0),Some(arg1)) = (decodea(st),decodeb(st)) {
-            st.mnemonic_dynargs(len,&opcode,"{64}, {64}",&|c| {
+            st.mnemonic_dynargs(len,&opcode,"{u}, {u}",&|c| {
                 sem(c,arg0.clone(),arg1.clone());
                 vec![arg0.clone(),arg1.clone()]
             });
@@ -1055,7 +1072,7 @@ pub fn trinary(opcode: &'static str,
         let len = st.tokens.len();
         let next = st.address + len as u64;
         if let Some((arg0,arg1,arg2)) = decode(st) {
-            st.mnemonic_dynargs(len,&opcode,"{64}, {64}, {64}",&|c| {
+            st.mnemonic_dynargs(len,&opcode,"{u}, {u}, {u}",&|c| {
                 sem(c,arg0.clone(),arg1.clone(),arg2.clone());
                 vec![arg0.clone(),arg1.clone(),arg2.clone()]
             });
@@ -1076,7 +1093,7 @@ pub fn trinary_vr(opcode: &'static str,
         let len = st.tokens.len();
         let next = st.address + len as u64;
         if let Some((arg0,arg1)) = decode(st) {
-            st.mnemonic_dynargs(len,&opcode,"{64}, {64}, {64}",&|c| {
+            st.mnemonic_dynargs(len,&opcode,"{u}, {u}, {u}",&|c| {
                 sem(c,arg0.clone(),arg1.clone(),arg2.clone().into());
                 vec![arg0.clone(),arg1.clone(),arg2.clone().into()]
             });
@@ -1096,7 +1113,7 @@ pub fn quinary(opcode: &'static str,
         let len = st.tokens.len();
         let next = st.address + len as u64;
         if let Some((arg0,arg1,arg2,arg3)) = decode(st) {
-            st.mnemonic_dynargs(len,&opcode,"{64}, {64}, {64}, {64}",&|c| {
+            st.mnemonic_dynargs(len,&opcode,"{u}, {u}, {u}, {u}",&|c| {
                 sem(c,arg0.clone(),arg1.clone(),arg2.clone(),arg3.clone());
                 vec![arg0.clone(),arg1.clone(),arg2.clone(),arg3.clone()]
             });

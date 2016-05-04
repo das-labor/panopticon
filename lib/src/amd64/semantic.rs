@@ -153,7 +153,7 @@ fn set_carry_flag(cg: &mut CodeGen<Amd64>, res: &Lvalue, a: &Rvalue) {
     rreil!{cg:
         cmpeq cf1:1, (res), (a);
         cmpltu cf2:1, (res), (a);
-        and cf1:1, cf1:2, CF:1;
+        and cf1:1, cf1:1, CF:1;
         or CF:1, cf1:1, cf2:1;
     }
 }
@@ -190,7 +190,7 @@ fn set_overflow_flag(cg: &mut CodeGen<Amd64>, res: &Lvalue, a: &Rvalue, b: &Rval
         and ov2:1, t1:1, t2:1;
         and ov2:1, ov2:1, t3:1;
 
-        or OV:1, ov1:1, ov:2;
+        or OV:1, ov1:1, ov2:1;
     };
 }
 
@@ -273,7 +273,7 @@ pub fn adc(cg: &mut CodeGen<Amd64>, _a: Rvalue, _b: Rvalue) {
     rreil!{cg:
         add res:sz, (a), (b);
         zext/sz cf:sz, CF:1;
-        add res:sz, res:sz, CF:1;
+        add res:sz, res:sz, cf:sz;
         cmplts SF:1, res:sz, [0]:sz;
         cmpeq ZF:1, res:sz, [0]:sz;
     }
@@ -449,19 +449,19 @@ pub fn near_rcall(cg: &mut CodeGen<Amd64>, a: Rvalue) {
     match cg.configuration.operand_size {
         OperandSize::Sixteen => {
             rreil!{cg:
-                add tmp:16, RIP:16, (a);
-                zext/64 new_rip:64, tmp:32;
+                add tmp:16, IP:16, (a.extract(16,0).ok().unwrap());
+                zext/64 new_rip:64, tmp:16;
             }
         },
         OperandSize::ThirtyTwo => {
             rreil!{cg:
-                add tmp:32, RIP:32, (a);
+                add tmp:32, RIP:32, (a.extract(32,0).ok().unwrap());
                 zext/64 new_rip:64, tmp:32;
             }
         },
         OperandSize::SixtyFour => {
             rreil!{cg:
-                sext/64 new_rip:64, (a);
+                sext/64 new_rip:64, (a.extract(64,0).ok().unwrap());
                 add new_rip:64, new_rip:64, RIP:64;
             }
         }
@@ -484,19 +484,15 @@ pub fn far_rcall(cg: &mut CodeGen<Amd64>, a: Rvalue) {
 }
 
 pub fn far_xcall(cg: &mut CodeGen<Amd64>, a: Rvalue, _: bool) {
-    let (seg,ptr,sz) = if let Rvalue::Constant{ ref value, ref size } = a {
-        assert!(*size >= 32);
-
-        (*value >> (size - 16),*value % (1 << (size - 16)),size)
-    } else {
-        unreachable!()
-    };
+    let sz = a.size().unwrap();
 
     rreil!{cg:
-        mov CS:16, [seg]:16;
+        //mov seg:16, (a.extract(16,sz - 16).ok().unwrap());
+        //mov CS:16, seg:16;
+        mov new_ip:sz, (a);
     }
 
-    near_call(cg,Rvalue::Constant{ value: ptr, size: sz - 16 });
+    near_call(cg,rreil_rvalue!{ new_ip:sz });
 }
 
 pub fn cmov(cg: &mut CodeGen<Amd64>, _a: Rvalue, b: Rvalue, c: Condition) {
@@ -730,7 +726,7 @@ pub fn conv(st: &mut State<Amd64>) -> bool {
     let next = st.address + (st.tokens.len() as u64);
     let len = st.tokens.len();
 
-    st.mnemonic(len,"conv","{}",vec![],&|_: &mut CodeGen<Amd64>| {} );
+    st.mnemonic(len,"conv","{u}",vec![],&|_: &mut CodeGen<Amd64>| {} );
     st.jump(Rvalue::new_u64(next),Guard::always());
     true
 }
@@ -739,7 +735,7 @@ pub fn conv2(st: &mut State<Amd64>) -> bool {
     let next = st.address + (st.tokens.len() as u64);
     let len = st.tokens.len();
 
-    st.mnemonic(len,"conv2","{}",vec![],&|_: &mut CodeGen<Amd64>| {} );
+    st.mnemonic(len,"conv2","{u}",vec![],&|_: &mut CodeGen<Amd64>| {} );
     st.jump(Rvalue::new_u64(next),Guard::always());
     true
 }
@@ -765,7 +761,7 @@ pub fn iret(st: &mut State<Amd64>) -> bool {
     let next = st.address + (st.tokens.len() as u64);
     let len = st.tokens.len();
 
-    st.mnemonic(len,"iret","{}",vec![],&|_: &mut CodeGen<Amd64>| {} );
+    st.mnemonic(len,"iret","{u}",vec![],&|_: &mut CodeGen<Amd64>| {} );
     st.jump(Rvalue::new_u64(next),Guard::always());
     true
 }
@@ -788,7 +784,7 @@ pub fn leave(st: &mut State<Amd64>) -> bool {
     let next = st.address + (st.tokens.len() as u64);
     let len = st.tokens.len();
 
-    st.mnemonic(len,"leave","{}",vec![],&|_: &mut CodeGen<Amd64>| {} );
+    st.mnemonic(len,"leave","{u}",vec![],&|_: &mut CodeGen<Amd64>| {} );
     st.jump(Rvalue::new_u64(next),Guard::always());
     true
 }
@@ -797,7 +793,7 @@ pub fn lodsb(st: &mut State<Amd64>) -> bool {
     let next = st.address + (st.tokens.len() as u64);
     let len = st.tokens.len();
 
-    st.mnemonic(len,"lodsb","{}",vec![],&|_: &mut CodeGen<Amd64>| {} );
+    st.mnemonic(len,"lodsb","{u}",vec![],&|_: &mut CodeGen<Amd64>| {} );
     st.jump(Rvalue::new_u64(next),Guard::always());
     true
 }
@@ -806,7 +802,7 @@ pub fn lods(st: &mut State<Amd64>) -> bool {
     let next = st.address + (st.tokens.len() as u64);
     let len = st.tokens.len();
 
-    st.mnemonic(len,"lods","{}",vec![],&|_: &mut CodeGen<Amd64>| {} );
+    st.mnemonic(len,"lods","{u}",vec![],&|_: &mut CodeGen<Amd64>| {} );
     st.jump(Rvalue::new_u64(next),Guard::always());
     true
 }
@@ -815,7 +811,7 @@ pub fn loop_(st: &mut State<Amd64>) -> bool {
     let next = st.address + (st.tokens.len() as u64);
     let len = st.tokens.len();
 
-    st.mnemonic(len,"loop","{}",vec![],&|_: &mut CodeGen<Amd64>| {} );
+    st.mnemonic(len,"loop","{u}",vec![],&|_: &mut CodeGen<Amd64>| {} );
     st.jump(Rvalue::new_u64(next),Guard::always());
     true
 }
@@ -824,7 +820,7 @@ pub fn loope(st: &mut State<Amd64>) -> bool {
     let next = st.address + (st.tokens.len() as u64);
     let len = st.tokens.len();
 
-    st.mnemonic(len,"loope","{}",vec![],&|_: &mut CodeGen<Amd64>| {} );
+    st.mnemonic(len,"loope","{u}",vec![],&|_: &mut CodeGen<Amd64>| {} );
     st.jump(Rvalue::new_u64(next),Guard::always());
     true
 }
@@ -833,7 +829,7 @@ pub fn loopne(st: &mut State<Amd64>) -> bool {
     let next = st.address + (st.tokens.len() as u64);
     let len = st.tokens.len();
 
-    st.mnemonic(len,"loopne","{}",vec![],&|_: &mut CodeGen<Amd64>| {} );
+    st.mnemonic(len,"loopne","{u}",vec![],&|_: &mut CodeGen<Amd64>| {} );
     st.jump(Rvalue::new_u64(next),Guard::always());
     true
 }
@@ -845,7 +841,7 @@ pub fn movsb(st: &mut State<Amd64>) -> bool {
     let next = st.address + (st.tokens.len() as u64);
     let len = st.tokens.len();
 
-    st.mnemonic(len,"movsb","{}",vec![],&|_: &mut CodeGen<Amd64>| {} );
+    st.mnemonic(len,"movsb","{u}",vec![],&|_: &mut CodeGen<Amd64>| {} );
     st.jump(Rvalue::new_u64(next),Guard::always());
     true
 }
@@ -854,7 +850,7 @@ pub fn movs(st: &mut State<Amd64>) -> bool {
     let next = st.address + (st.tokens.len() as u64);
     let len = st.tokens.len();
 
-    st.mnemonic(len,"movs","{}",vec![],&|_: &mut CodeGen<Amd64>| {} );
+    st.mnemonic(len,"movs","{u}",vec![],&|_: &mut CodeGen<Amd64>| {} );
     st.jump(Rvalue::new_u64(next),Guard::always());
     true
 }
@@ -873,7 +869,7 @@ pub fn pop(st: &mut State<Amd64>) -> bool {
     let next = st.address + (st.tokens.len() as u64);
     let len = st.tokens.len();
 
-    st.mnemonic(len,"pop","{}",vec![],&|_: &mut CodeGen<Amd64>| {} );
+    st.mnemonic(len,"pop","{u}",vec![],&|_: &mut CodeGen<Amd64>| {} );
     st.jump(Rvalue::new_u64(next),Guard::always());
     true
 }
@@ -882,7 +878,7 @@ pub fn popa(st: &mut State<Amd64>) -> bool {
     let next = st.address + (st.tokens.len() as u64);
     let len = st.tokens.len();
 
-    st.mnemonic(len,"popa","{}",vec![],&|_: &mut CodeGen<Amd64>| {} );
+    st.mnemonic(len,"popa","{u}",vec![],&|_: &mut CodeGen<Amd64>| {} );
     st.jump(Rvalue::new_u64(next),Guard::always());
     true
 }
@@ -894,7 +890,7 @@ pub fn push(st: &mut State<Amd64>) -> bool {
     let next = st.address + (st.tokens.len() as u64);
     let len = st.tokens.len();
 
-    st.mnemonic(len,"push","{}",vec![],&|_: &mut CodeGen<Amd64>| {} );
+    st.mnemonic(len,"push","{u}",vec![],&|_: &mut CodeGen<Amd64>| {} );
     st.jump(Rvalue::new_u64(next),Guard::always());
     true
 }
@@ -903,7 +899,7 @@ pub fn pusha(st: &mut State<Amd64>) -> bool {
     let next = st.address + (st.tokens.len() as u64);
     let len = st.tokens.len();
 
-    st.mnemonic(len,"pusha","{}",vec![],&|_: &mut CodeGen<Amd64>| {} );
+    st.mnemonic(len,"pusha","{u}",vec![],&|_: &mut CodeGen<Amd64>| {} );
     st.jump(Rvalue::new_u64(next),Guard::always());
     true
 }
@@ -924,7 +920,7 @@ pub fn scas(st: &mut State<Amd64>) -> bool {
     let next = st.address + (st.tokens.len() as u64);
     let len = st.tokens.len();
 
-    st.mnemonic(len,"scas","{}",vec![],&|_: &mut CodeGen<Amd64>| {} );
+    st.mnemonic(len,"scas","{u}",vec![],&|_: &mut CodeGen<Amd64>| {} );
     st.jump(Rvalue::new_u64(next),Guard::always());
     true
 }
@@ -939,7 +935,7 @@ pub fn stos(st: &mut State<Amd64>) -> bool {
     let next = st.address + (st.tokens.len() as u64);
     let len = st.tokens.len();
 
-    st.mnemonic(len,"stos","{}",vec![],&|_: &mut CodeGen<Amd64>| {} );
+    st.mnemonic(len,"stos","{u}",vec![],&|_: &mut CodeGen<Amd64>| {} );
     st.jump(Rvalue::new_u64(next),Guard::always());
     true
 }
