@@ -170,7 +170,7 @@ pub fn spawn_disassembler() {
                     }).next()
                 }));
 
-                if let Some((Rvalue::Constant(tgt),maybe_name,uuid)) = maybe_tgt {
+                if let Some((Rvalue::Constant{ value: tgt,.. },maybe_name,uuid)) = maybe_tgt {
                     try!(Controller::emit1(STARTED_FUNCTION,&uuid.to_string()));
 
                     let name = maybe_name.unwrap_or(format!("func_{:x}",tgt));

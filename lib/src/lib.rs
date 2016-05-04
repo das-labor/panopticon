@@ -180,6 +180,7 @@ pub use codegen::CodeGen;
 pub mod mnemonic;
 pub use mnemonic::{
     Mnemonic,
+    MnemonicFormatToken,
     Bound,
 };
 pub mod basic_block;
@@ -222,7 +223,10 @@ pub use layer::{
 };
 
 pub mod result;
-pub use result::Result;
+pub use result::{
+    Result,
+    Error,
+};
 
 pub mod target;
 pub use target::Target;
@@ -231,7 +235,10 @@ pub mod dataflow;
 pub use dataflow::*;
 
 pub mod abstractinterp;
-pub use abstractinterp::*;
+pub use abstractinterp::{
+    Kset,
+    approximate,
+};
 
 // disassembler
 pub mod avr;

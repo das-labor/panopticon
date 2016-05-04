@@ -52,7 +52,7 @@ impl<C: Architecture> CodeGen<C> {
         let typecheck_unop = |a: &Rvalue,sz: Option<usize>,assignee: &Lvalue| -> () {
             if sz.is_none() {
                 // zext?
-                assert!(a.size() == None || assignee.size() == None || assignee.size() == a.size(),"Operation result and assingnee sizes mismatch");
+                assert!(a.size() == None || assignee.size() == None || assignee.size() <= a.size(),"Operation result and assingnee sizes mismatch");
             } else {
                 assert!(a.size() == None || assignee.size() == None || assignee.size() == sz,"Operation result and assingnee sizes mismatch");
             }

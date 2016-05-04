@@ -16,6 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+use panopticon;
 use panopticon::{
     Rvalue,Lvalue,
     Project,
@@ -105,8 +106,8 @@ pub fn metainfo(arg: &Variant) -> Variant {
                             match cg.vertex_label(*ent) {
                                 Some(&ControlFlowTarget::Resolved(ref bb)) =>
                                     return_json(Ok(Metainfo{ kind: "function", name: Some(name.clone()), uuid: uuid.to_string(), entry_point: Some(bb.area.start), calls: calls })),
-                                Some(&ControlFlowTarget::Unresolved(Rvalue::Constant(ref c))) =>
-                                    return_json(Ok(Metainfo{ kind: "function", name: Some(name.clone()), uuid: uuid.to_string(), entry_point: Some(*c), calls: calls })),
+                                Some(&ControlFlowTarget::Unresolved(Rvalue::Constant{ value: c,.. })) =>
+                                    return_json(Ok(Metainfo{ kind: "function", name: Some(name.clone()), uuid: uuid.to_string(), entry_point: Some(c), calls: calls })),
                                 _ =>
                                     return_json(Ok(Metainfo{ kind: "function", name: Some(name.clone()), uuid: uuid.to_string(), entry_point: None, calls: calls })),
                             },
@@ -114,8 +115,8 @@ pub fn metainfo(arg: &Variant) -> Variant {
                             return_json(Ok(Metainfo{ kind: "function", name: Some(name.clone()), uuid: uuid.to_string(), entry_point: None, calls: calls })),
                         Some(&CallTarget::Symbolic(ref sym,ref uuid)) =>
                             return_json(Ok(Metainfo{ kind: "symbol", name: Some(sym.clone()), uuid: uuid.to_string(), entry_point: None, calls: calls })),
-                        Some(&CallTarget::Todo(Rvalue::Constant(ref a),_,ref uuid)) =>
-                            return_json(Ok(Metainfo{ kind: "todo", name: None, uuid: uuid.to_string(), entry_point: Some(*a), calls: calls })),
+                        Some(&CallTarget::Todo(Rvalue::Constant{ value: a,.. },_,ref uuid)) =>
+                            return_json(Ok(Metainfo{ kind: "todo", name: None, uuid: uuid.to_string(), entry_point: Some(a), calls: calls })),
                         Some(&CallTarget::Todo(_,_,ref uuid)) =>
                             return_json(Ok(Metainfo{ kind: "todo", name: None, uuid: uuid.to_string(), entry_point: None, calls: calls })),
                         None =>
@@ -242,11 +243,11 @@ pub fn control_flow_graph(arg: &Variant) -> Variant {
                                                         display: s.to_string(),
                                                         data: "".to_string(),
                                                     },
-                                                &MnemonicFormatToken::Variable{ ref has_sign, ref width, ref alias } =>
+                                                &MnemonicFormatToken::Variable{ ref has_sign } =>
                                                     match ops.pop() {
-                                                        Some(Rvalue::Constant(c)) => {
-                                                            let val = if *width < 64 { c % (1u64 << *width) } else { c };
-                                                            let sign_bit = if *width < 64 { 1u64 << (*width - 1) } else { 0x8000000000000000 };
+                                                        Some(Rvalue::Constant{ value: c, size: s }) => {
+                                                            let val = if s < 64 { c % (1u64 << s) } else { c };
+                                                            let sign_bit = if s < 64 { 1u64 << (s - 1) } else { 0x8000000000000000 };
                                                             let s = if !has_sign || val & sign_bit == 0 {
                                                                 format!("{}",val)
                                                             } else {
@@ -258,21 +259,29 @@ pub fn control_flow_graph(arg: &Variant) -> Variant {
                                                                 data: s,
                                                             }
                                                         },
-                                                        Some(Rvalue::Variable{ ref name, ref subscript, ref width }) =>
+                                                        Some(Rvalue::Variable{ ref name, ref subscript, ref size, ref offset }) =>
                                                             CfgOperand{
                                                                 kind: "variable",
-                                                                display: alias.clone().unwrap_or(name.clone()),
+                                                                display: name.to_string(),
                                                                 data: format!("{}",Rvalue::Variable{
                                                                     name: name.clone(),
                                                                     subscript: subscript.clone(),
-                                                                    width: *width }),
+                                                                    size: *size,
+                                                                    offset: *offset
+                                                                }),
                                                             },
-                                                        a =>
+                                                        _ =>
                                                             CfgOperand{
                                                                 kind: "variable",
-                                                                display: alias.clone().unwrap_or(format!("{:?}",a)),
+                                                                display: "?".to_string(),
                                                                 data: "".to_string(),
                                                             },
+                                                    },
+                                                &MnemonicFormatToken::Pointer{ ref is_code, ref bank } =>
+                                                    CfgOperand{
+                                                        kind: "pointer",
+                                                        display: "?".to_string(),
+                                                        data: "".to_string(),
                                                     },
                                             });
                                             let cmnt = proj.comments.get(&(fun.region.clone(),x.area.start)).unwrap_or(&"".to_string()).clone();
@@ -346,7 +355,7 @@ pub fn approximate(arg: &Variant) -> Variant {
             let ret = Controller::read(|proj| {
                 if let Some((vx,prog)) = proj.find_call_target_by_uuid(&tgt_uuid) {
                     if let Some(&CallTarget::Concrete(ref fun)) = prog.call_graph.vertex_label(vx) {
-                        let vals = abstractinterp::approximate::<Kset>(&fun).iter().filter_map(|(k,v)| {
+                        let vals = panopticon::approximate::<Kset>(&fun).iter().filter_map(|(k,v)| {
                             if let &Lvalue::Variable{ ref name, subscript: Some(ref subscript),.. } = k {
                                 if let &Kset::Set(ref s) = v {
                                     if s.len() == 1 {
