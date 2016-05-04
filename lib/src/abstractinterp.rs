@@ -364,7 +364,7 @@ impl PartialEq for Kset {
 impl Avalue for Kset {
     fn abstract_value(v: &Rvalue) -> Self {
         if let &Rvalue::Constant{ ref value, ref size } = v {
-            Kset::Set(vec![*value % (1 << *size)])
+            Kset::Set(vec![if *size < 64 { *value % (1u64 << *size) } else { *value }])
         } else {
             Kset::Join
         }
@@ -372,7 +372,7 @@ impl Avalue for Kset {
 
     fn abstract_constraint(constr: &Constraint) -> Self {
         if let &Constraint::Equal(Rvalue::Constant{ ref value, ref size }) = constr {
-            Kset::Set(vec![*value % (1 << *size)])
+            Kset::Set(vec![if *size < 64 { *value % (1u64 << *size) } else { *value }])
         } else {
             Kset::Join
         }
@@ -590,11 +590,14 @@ mod tests {
 
         fn abstract_constraint(c: &Constraint) -> Self {
             match c {
-                &Constraint::Equal(Rvalue::Constant{ value: 0,.. }) => Sign::Negative,
+                &Constraint::Equal(Rvalue::Constant{ value: 0,.. }) => Sign::Zero,
                 &Constraint::LessUnsigned(Rvalue::Constant{ value: 1,.. }) => Sign::Zero,
                 &Constraint::LessOrEqualUnsigned(Rvalue::Constant{ value: 0,.. }) => Sign::Zero,
                 &Constraint::LessSigned(Rvalue::Constant{ value: 0,.. }) => Sign::Negative,
-                &Constraint::LessOrEqualSigned(Rvalue::Constant{ value: v, size: s }) if v & (1 << (s-1)) != 0 => Sign::Negative,
+                &Constraint::LessOrEqualSigned(Rvalue::Constant{ value: v, size: s })
+                    if s <= 64 && v & (1 << (s-1)) != 0 => Sign::Negative,
+                &Constraint::LessSigned(Rvalue::Constant{ value: v, size: s })
+                    if s <= 64 && v & (1 << (s-1)) != 0 => Sign::Negative,
                 _ => Sign::Join,
             }
         }
@@ -671,6 +674,11 @@ mod tests {
                 &Operation::Modulo(ref a,Sign::Meet) => a.clone(),
                 &Operation::Modulo(Sign::Meet,ref b) => b.clone(),
 
+                &Operation::Move(ref a) => a.clone(),
+                &Operation::ZeroExtend(_,Sign::Negative) => Sign::Join,
+                &Operation::ZeroExtend(_,ref a) => a.clone(),
+                &Operation::SignExtend(_,ref a) => a.clone(),
+
                 _ => Sign::Join,
             }
         }
@@ -703,7 +711,11 @@ mod tests {
         }
 
         fn widen(&self, b: &Self) -> Self {
-            Sign::Join
+            if *b == *self {
+                self.clone() 
+            } else {
+                Sign::Join
+            }
         }
 
 
@@ -860,31 +872,38 @@ mod tests {
         let b_var = Lvalue::Variable{ name: Cow::Borrowed("b"), size: 32, subscript: None, offset: 0 };
         let c_var = Lvalue::Variable{ name: Cow::Borrowed("c"), size: 32, subscript: None, offset: 0 };
         let x_var = Lvalue::Variable{ name: Cow::Borrowed("x"), size: 32, subscript: None, offset: 0 };
+        let flag = Lvalue::Variable{ name: Cow::Borrowed("flag"), size: 1, subscript: None, offset: 0 };
         let bb0 = BasicBlock::from_vec(vec![
                                        Mnemonic::new(0..1,"assign a".to_string(),"".to_string(),vec![].iter(),vec![
-                                                     Statement{ op: Operation::Move(Rvalue::new_u64(10)), assignee: a_var.clone()}].iter()).ok().unwrap(),
+                                                     Statement{ op: Operation::Move(Rvalue::new_u32(10)), assignee: a_var.clone()}].iter()).ok().unwrap(),
                                        Mnemonic::new(1..2,"assign b".to_string(),"".to_string(),vec![].iter(),vec![
-                                                     Statement{ op: Operation::Move(Rvalue::new_u64(0)), assignee: b_var.clone()}].iter()).ok().unwrap(),
+                                                     Statement{ op: Operation::Move(Rvalue::new_u32(0)), assignee: b_var.clone()}].iter()).ok().unwrap(),
                                        Mnemonic::new(2..3,"assign c".to_string(),"".to_string(),vec![].iter(),vec![
-                                                     Statement{ op: Operation::Move(Rvalue::Undefined), assignee: c_var.clone()}].iter()).ok().unwrap()]);
+                                                     Statement{ op: Operation::Move(Rvalue::Undefined), assignee: c_var.clone()}].iter()).ok().unwrap(),
+                                       Mnemonic::new(3..4,"cmp c".to_string(),"".to_string(),vec![].iter(),vec![
+                                                     Statement{ op: Operation::Equal(c_var.clone().into(),Rvalue::new_u32(1)), assignee: flag.clone()}].iter()).ok().unwrap()]);
+
         let bb1 = BasicBlock::from_vec(vec![
-                                       Mnemonic::new(3..4,"add a and 5".to_string(),"".to_string(),vec![].iter(),vec![
-                                                     Statement{ op: Operation::Add(a_var.clone().into(),Rvalue::new_u64(5)), assignee: a_var.clone()}].iter()).ok().unwrap(),
-                                       Mnemonic::new(4..5,"mul a and c".to_string(),"".to_string(),vec![].iter(),vec![
+                                       Mnemonic::new(4..5,"add a and 5".to_string(),"".to_string(),vec![].iter(),vec![
+                                                     Statement{ op: Operation::Add(a_var.clone().into(),Rvalue::new_u32(5)), assignee: a_var.clone()}].iter()).ok().unwrap(),
+                                       Mnemonic::new(5..6,"mul a and c".to_string(),"".to_string(),vec![].iter(),vec![
                                                      Statement{ op: Operation::Add(a_var.clone().into(),c_var.clone().into()), assignee: b_var.clone()}].iter()).ok().unwrap(),
-                                       Mnemonic::new(4..5,"assign c".to_string(),"".to_string(),vec![].iter(),vec![
-                                                     Statement{ op: Operation::Move(Rvalue::new_u64(2)), assignee: c_var.clone()}].iter()).ok().unwrap()]);
+                                       Mnemonic::new(6..7,"assign c".to_string(),"".to_string(),vec![].iter(),vec![
+                                                     Statement{ op: Operation::Move(Rvalue::new_u32(2)), assignee: c_var.clone()}].iter()).ok().unwrap()]);
         let bb2 = BasicBlock::from_vec(vec![
-                                       Mnemonic::new(5..6,"dec a".to_string(),"".to_string(),vec![].iter(),vec![
-                                                     Statement{ op: Operation::Subtract(a_var.clone().into(),Rvalue::new_u64(1)), assignee: a_var.clone()}].iter()).ok().unwrap(),
-                                       Mnemonic::new(6..7,"add 3 to b".to_string(),"".to_string(),vec![].iter(),vec![
-                                                     Statement{ op: Operation::Add(b_var.clone().into(),Rvalue::new_u64(3)), assignee: b_var.clone()}].iter()).ok().unwrap(),
-                                       Mnemonic::new(8..9,"assign c".to_string(),"".to_string(),vec![].iter(),vec![
-                                                     Statement{ op: Operation::Move(Rvalue::new_u64(3)), assignee: c_var.clone()}].iter()).ok().unwrap()]);
+                                       Mnemonic::new(7..8,"dec a".to_string(),"".to_string(),vec![].iter(),vec![
+                                                     Statement{ op: Operation::Subtract(a_var.clone().into(),Rvalue::new_u32(1)), assignee: a_var.clone()}].iter()).ok().unwrap(),
+                                       Mnemonic::new(8..9,"add 3 to b".to_string(),"".to_string(),vec![].iter(),vec![
+                                                     Statement{ op: Operation::Add(b_var.clone().into(),Rvalue::new_u32(3)), assignee: b_var.clone()}].iter()).ok().unwrap(),
+                                       Mnemonic::new(9..10,"assign c".to_string(),"".to_string(),vec![].iter(),vec![
+                                                     Statement{ op: Operation::Move(Rvalue::new_u32(3)), assignee: c_var.clone()}].iter()).ok().unwrap()]);
         let bb3 = BasicBlock::from_vec(vec![
-                                       Mnemonic::new(7..8,"add a and b".to_string(),"".to_string(),vec![].iter(),vec![
+                                       Mnemonic::new(10..11,"add a and b".to_string(),"".to_string(),vec![].iter(),vec![
                                                      Statement{ op: Operation::Add(a_var.clone().into(),b_var.clone().into()), assignee: x_var.clone()}].iter()).ok().unwrap()]);
-        let bb4 = BasicBlock{ area: Bound::new(8,9), mnemonics: vec![] };
+        let bb4 = BasicBlock::from_vec(vec![
+                                       Mnemonic::new(11..12,"cmp a".to_string(),"".to_string(),vec![].iter(),vec![
+                                                     Statement{ op: Operation::LessOrEqualSigned(a_var.clone().into(),Rvalue::new_u32(0)), assignee: flag.clone()}].iter()).ok().unwrap()]);
+
 
         let mut cfg = ControlFlowGraph::new();
 
@@ -894,12 +913,14 @@ mod tests {
         let v3 = cfg.add_vertex(ControlFlowTarget::Resolved(bb3));
         let v4 = cfg.add_vertex(ControlFlowTarget::Resolved(bb4));
 
-/*        cfg.add_edge(Guard::from_flag(eq(&c_var.clone().into(),&Rvalue::Constant{ value: 1, )),v0,v1);
-        cfg.add_edge(Guard::neq(&c_var.clone().into(),&Rvalue::Constant(1)),v0,v4);
-        cfg.add_edge(Guard::sign_gt(&a_var.clone().into(),&Rvalue::Constant(0)),v4,v2);
-        cfg.add_edge(Guard::sign_leq(&a_var.clone().into(),&Rvalue::Constant(0)),v4,v3);
+        let g = Guard::from_flag(&flag.into()).ok().unwrap();
+
+        cfg.add_edge(g.clone(),v0,v1);
+        cfg.add_edge(g.negation(),v0,v4);
+        cfg.add_edge(g.negation(),v4,v2);
+        cfg.add_edge(g.clone(),v4,v3);
         cfg.add_edge(Guard::always(),v2,v4);
-        cfg.add_edge(Guard::always(),v1,v3);*/
+        cfg.add_edge(Guard::always(),v1,v3);
 
         let mut func = Function::new("func".to_string(),"ram".to_string());
 

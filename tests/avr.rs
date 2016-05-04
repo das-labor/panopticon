@@ -23,7 +23,6 @@ use panopticon::region::Region;
 use panopticon::avr::{Mcu,Avr};
 use panopticon::avr::syntax::disassembler;
 use panopticon::function::{ControlFlowTarget,Function};
-//use panopticon::disassembler::State;
 use panopticon::elf;
 
 use std::path::Path;
@@ -33,32 +32,6 @@ use graph_algos::{
     GraphTrait,
     EdgeListGraphTrait
 };
-/*
-#[test]
-fn avr_opcodes_01() {
-    let reg = Region::open("flash".to_string(),Path::new("tests/data/avr-all-opcodes.bin")).unwrap();
-    let main = disassembler();
-    let mut addr = 0;
-
-    loop {
-        let st = State::<Avr>::new(addr,Mcu::new());
-        let mut i = reg.iter().seek(addr);
-
-        let maybe_match = main.next_match(&mut i,st);
-
-        if let Some(match_st) = maybe_match {
-            for mne in match_st.mnemonics {
-                println!("{:x}: {}",mne.area.start,mne.opcode);
-                addr = mne.area.end;
-            }
-        } else if addr < reg.size() {
-            unreachable!("failed to match anything at {:x}",addr);
-        } else {
-            break;
-        }
-    }
-}*/
-
 
 #[test]
 fn avr_jmp_overflow() {
@@ -92,6 +65,7 @@ fn avr_wrap_around() {
     let mut vxs = fun.cflow_graph.vertices();
     if let Some(&ControlFlowTarget::Resolved(ref bb1)) = fun.cflow_graph.vertex_label(vxs.next().unwrap()) {
         if let Some(&ControlFlowTarget::Resolved(ref bb2)) = fun.cflow_graph.vertex_label(vxs.next().unwrap()) {
+            println!("bb1: {:?}, bb2: {:?}",bb1.area,bb2.area);
             assert!(bb1.area.start == 0 || bb1.area.start == 8190);
             assert!(bb2.area.start == 0 || bb2.area.start == 8190);
             assert!(bb1.area.end == 2 || bb1.area.end == 8192 );

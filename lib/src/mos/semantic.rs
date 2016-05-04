@@ -614,7 +614,7 @@ pub fn tya(cg: &mut CodeGen<Mos>) {
 pub fn jmp_direct(st: &mut State<Mos>) -> bool {
     let next = Rvalue::new_u16(st.get_group("immlo") as u16 | ((st.get_group("immhi") as u16) << 8));
 
-    st.mnemonic(3,"jmp","{c}",vec![next.clone()],&|cg: &mut CodeGen<Mos>| {});
+    st.mnemonic(3,"jmp","{c:ram}",vec![next.clone()],&|cg: &mut CodeGen<Mos>| {});
     st.jump(next,Guard::always());
 
     true
@@ -631,7 +631,7 @@ pub fn jmp_indirect(st: &mut State<Mos>) -> bool {
 
     let next = rreil_rvalue!{ res:16 };
 
-    st.mnemonic(3,"jmp","{p}",vec![ptr.clone()],&|cg: &mut CodeGen<Mos>| {});
+    st.mnemonic(3,"jmp","{p:ram}",vec![ptr.clone()],&|cg: &mut CodeGen<Mos>| {});
     st.jump(next,Guard::always());
 
     true
@@ -641,7 +641,7 @@ pub fn jsr(st: &mut State<Mos>) -> bool {
     let next = Rvalue::new_u16(st.address as u16 + 3);
     let target = Rvalue::new_u16(st.get_group("immlo") as u16 | ((st.get_group("immhi") as u16) << 8));
 
-    st.mnemonic(3,"jsr","{c}",vec![target.clone()],&|cg: &mut CodeGen<Mos>| {
+    st.mnemonic(3,"jsr","{c:ram}",vec![target.clone()],&|cg: &mut CodeGen<Mos>| {
         rreil!{cg:
             call ?, (target);
         }

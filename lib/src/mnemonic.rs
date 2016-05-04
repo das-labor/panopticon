@@ -49,19 +49,17 @@ pub enum MnemonicFormatToken {
 ///         'p' ':' bank |  # data pointer
 ///         'c' ':' bank |  # code pointer
 impl MnemonicFormatToken {
-    fn parse_bank<'a>(i: Chars<'a>) -> Result<(String,Chars<'a>)> {
-        let p = i.clone().position(|x| x == '}');
-
-        if p.is_none() {
-            Err("Mnemonic format string parse error. Bank name is invalid.".into())
+    fn parse_bank<'a>(mut i: Chars<'a>) -> Result<(String,Chars<'a>)> {
+        let mut j = i.clone();
+        if i.next() == Some(':') {
+            if let Some(p) = i.clone().position(|x| x == '}') {
+                j.nth(p + 1);
+                Ok((i.clone().take(p).collect::<String>(),j))
+            } else {
+                Err("Mnemonic format string parse error. Expecting '}'.".into())
+            }
         } else {
-            let b = i.clone().take(p.unwrap()).collect::<String>();
-            let mut j = i.clone();
-
-            match j.nth(p.unwrap()) {
-                    Some('}') => Ok((b,j)),
-                    _ => Err("Mnemonic format string parse error. Expecting '}'.".into()),
-                }
+            Err("Mnemonic format string parse error. Bank name is invalid.".into())
         }
     }
 
@@ -76,11 +74,14 @@ impl MnemonicFormatToken {
                         Some('{') => ret.push(MnemonicFormatToken::Literal('{')),
                         Some('u') => {
                             ret.push(MnemonicFormatToken::Variable{ has_sign: false });
+                            j.next();
                         },
                         Some('s') => {
                             ret.push(MnemonicFormatToken::Variable{ has_sign: true });
+                            j.next();
                         },
                         Some('p') => {
+
                             let (bank,k) = try!(Self::parse_bank(j));
                             ret.push(MnemonicFormatToken::Pointer{ is_code: false, bank: bank });
                             j = k;
@@ -147,7 +148,7 @@ mod tests {
 
     #[test]
     fn parse_format_string() {
-        let fmt = "doe{69::eax3}io{8:-}øiq{88:-:sss}   {9::} sasq {32:}".to_string();
+        let fmt = "doe{u}io{s}øiq{s}   {p:te33} sasq {c:test}".to_string();
         let val = MnemonicFormatToken::parse(fmt.chars());
 
         assert_eq!(Some(vec!(
@@ -165,14 +166,14 @@ mod tests {
                 MnemonicFormatToken::Literal(' '),
                 MnemonicFormatToken::Literal(' '),
                 MnemonicFormatToken::Literal(' '),
-                MnemonicFormatToken::Variable{ has_sign: false },
+                MnemonicFormatToken::Pointer{ is_code: false, bank: "te33".to_string() },
                 MnemonicFormatToken::Literal(' '),
                 MnemonicFormatToken::Literal('s'),
                 MnemonicFormatToken::Literal('a'),
                 MnemonicFormatToken::Literal('s'),
                 MnemonicFormatToken::Literal('q'),
                 MnemonicFormatToken::Literal(' '),
-                MnemonicFormatToken::Variable{ has_sign: false },
+                MnemonicFormatToken::Pointer{ is_code: true, bank: "test".to_string() },
             )),val.ok());
 
         assert!(MnemonicFormatToken::parse("{69:+}".to_string().chars()).is_err());
@@ -186,7 +187,7 @@ mod tests {
         assert!(MnemonicFormatToken::parse("{69::".to_string().chars()).is_err());
         assert!(MnemonicFormatToken::parse("{69:-:".to_string().chars()).is_err());
         assert!(MnemonicFormatToken::parse("{69::ddd".to_string().chars()).is_err());
-        assert_eq!(MnemonicFormatToken::parse("{69}".to_string().chars()).ok(),Some(vec!(MnemonicFormatToken::Variable{ has_sign: false })));
+        assert_eq!(MnemonicFormatToken::parse("{u}".to_string().chars()).ok(),Some(vec!(MnemonicFormatToken::Variable{ has_sign: false })));
     }
 
     #[test]
@@ -198,7 +199,7 @@ mod tests {
             Statement{ op: Operation::Phi(vec!(
                 Rvalue::Variable{ name: Cow::Borrowed("a"), size: 8, offset: 0, subscript: Some(2) },
                 Rvalue::Variable{ name: Cow::Borrowed("a"), size: 8, offset: 0, subscript: Some(1) })), assignee: Lvalue::Variable{ name: Cow::Borrowed("a"), size: 8, offset: 0, subscript: Some(3) }});
-        let mne1 = Mnemonic::new(0..10,"op1".to_string(),"{8:-:eax} nog".to_string(),ops1.iter(),i1.iter()).ok().unwrap();
+        let mne1 = Mnemonic::new(0..10,"op1".to_string(),"{s} nog".to_string(),ops1.iter(),i1.iter()).ok().unwrap();
 
         assert_eq!(mne1.area, Bound::new(0,10));
         assert_eq!(mne1.opcode, "op1");

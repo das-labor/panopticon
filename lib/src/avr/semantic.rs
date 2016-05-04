@@ -605,7 +605,7 @@ pub fn inc(rd: Lvalue, cg: &mut CodeGen<Avr>) {
 pub fn jmp(st: &mut State<Avr>) -> bool {
     let pc_mod = 1 << st.configuration.pc_bits;
     let _k = (st.get_group("k") % pc_mod) * 2;
-    let k = Rvalue::Constant{ value: _k, size: 22 };
+    let k = Rvalue::Constant{ value: _k, size: st.configuration.pc_bits as usize };
 
     st.mnemonic(4,"jmp","{c:flash}",vec!(k.clone()),&|_: &mut CodeGen<Avr>| {});
     optional_skip(st.configuration.wrap(st.address + st.tokens.len() as u64 * 2),st);
@@ -884,8 +884,12 @@ pub fn push(rd: Lvalue, cg: &mut CodeGen<Avr>) {
 
 pub fn rcall(st: &mut State<Avr>) -> bool {
     let pc_mod = 1 << st.configuration.pc_bits;
-    let _k = (st.get_group("k") % pc_mod) * 2;
-    let k = Rvalue::Constant{ value: _k, size: 24 };
+    let sign_bit = 1 << (st.configuration.pc_bits - 1);
+    let grp = st.get_group("k");
+    let _k = st.address as isize +
+             if grp & sign_bit != 0 { 0xFFFFFFFFFFFFFFFF ^ !grp } else { grp } as isize * 2 +
+             2;
+    let k = Rvalue::Constant{ value: _k as u64 % pc_mod, size: st.configuration.pc_bits as usize };
     let next = st.configuration.wrap(st.address + st.tokens.len() as u64 * 2);
 
     st.mnemonic(2,"rcall","{c:flash}",vec![k.clone()],&|cg: &mut CodeGen<Avr>| {
@@ -903,8 +907,13 @@ pub fn ret(cg: &mut CodeGen<Avr>) {}
 
 pub fn rjmp(st: &mut State<Avr>) -> bool {
     let pc_mod = 1 << st.configuration.pc_bits;
-    let _k = (st.get_group("k") % pc_mod) * 2;
-    let k = Rvalue::Constant{ value: _k, size: 24 };
+    let sign_bit = 1 << (st.configuration.pc_bits - 1);
+    let grp = st.get_group("k");
+    let _k = st.address as isize +
+             if grp & sign_bit != 0 { 0xFFFFFFFFFFFFFFFF ^ !grp } else { grp } as isize * 2 +
+             2;
+    let k = Rvalue::Constant{ value: _k as u64 % pc_mod, size: st.configuration.pc_bits as usize };
+    let next = st.configuration.wrap(st.address + st.tokens.len() as u64 * 2);
 
     st.mnemonic(2,"rjmp","{c:flash}",vec!(k.clone()),&|_: &mut CodeGen<Avr>| {});
     optional_skip(st.configuration.wrap(st.address + st.tokens.len() as u64 * 2),st);

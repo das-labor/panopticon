@@ -376,9 +376,9 @@ pub fn binary_ptr(n: &'static str,sem: fn(Lvalue,Lvalue,&mut CodeGen<Avr>),ar: A
         });
 
         let (fmt,rd,rr) = if ptr_first {
-            ("{p}, {u}",addr_reg.clone().into(),reg.clone().into())
+            ("{p:ram}, {u}",addr_reg.clone().into(),reg.clone().into())
         } else {
-            ("{u}, {p}",reg.clone().into(),addr_reg.clone().into())
+            ("{u}, {p:ram}",reg.clone().into(),addr_reg.clone().into())
         };
 
         st.mnemonic(2,n,fmt,vec!(rd,rr),&|cg: &mut CodeGen<Avr>| {
@@ -705,8 +705,8 @@ mod tests {
             (vec![0x41,0x94],"neg",vec![rreil_rvalue!{ R4:8 }]),
             (vec![0xf3,0x94],"inc",vec![rreil_rvalue!{ R15:8 }]),
             (vec![0xfa,0x94],"dec",vec![rreil_rvalue!{ R15:8 }]),
-            (vec![0x29,0xc0],"rjmp",vec![rreil_rvalue!{ [82]:24 }]),
-            (vec![0x00,0xd0],"rcall",vec![rreil_rvalue!{ [0]:24 }]),
+            (vec![0x29,0xc0],"rjmp",vec![rreil_rvalue!{ [84]:22 }]),
+            (vec![0x00,0xd0],"rcall",vec![rreil_rvalue!{ [2]:22 }]),
             (vec![0x08,0x95],"ret",vec![]),
             (vec![0x18,0x95],"reti",vec![]),
             (vec![0xff,0x13],"cpse",vec![rreil_rvalue!{ R31:8 },rreil_rvalue!{ R31:8 }]),

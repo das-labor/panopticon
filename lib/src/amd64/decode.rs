@@ -795,7 +795,7 @@ pub fn branch(opcode: &'static str,
         let len = st.tokens.len();
         let next = st.address + len as u64;
         if let Some(arg) = decode(st) {
-            st.mnemonic(len,&opcode,"{c}",vec![arg.clone()],&|cg| {
+            st.mnemonic(len,&opcode,"{c:ram}",vec![arg.clone()],&|cg| {
                 match cc {
                     Condition::Overflow =>
                         rreil!{cg:

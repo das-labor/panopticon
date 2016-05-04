@@ -98,7 +98,7 @@ mod tests {
             Statement{ op: Operation::Phi(vec!(
                 Rvalue::Variable{ name: Cow::Borrowed("a"), offset: 0, size: 8, subscript: Some(2) },
                 Rvalue::Variable{ name: Cow::Borrowed("a"), offset: 0, size: 8, subscript: Some(1) })), assignee: Lvalue::Variable{ name: Cow::Borrowed("a"), offset: 0, size: 8, subscript: Some(3) }});
-        let mne1 = Mnemonic::new(0..10,"op1".to_string(),"{8:-:eax} nog".to_string(),ops1.iter(),i1.iter()).ok().unwrap();
+        let mne1 = Mnemonic::new(0..10,"op1".to_string(),"{s} nog".to_string(),ops1.iter(),i1.iter()).ok().unwrap();
 
         let ops2 = vec!(Rvalue::new_u8(1),Rvalue::Variable{ name: Cow::Borrowed("a"), offset: 0, size: 3, subscript: None });
         let i2 = vec!(
@@ -107,7 +107,7 @@ mod tests {
             Statement{ op: Operation::Phi(vec!(
                 Rvalue::Variable{ name: Cow::Borrowed("a"), offset: 0, size: 8, subscript: Some(2) },
                 Rvalue::Variable{ name: Cow::Borrowed("a"), offset: 0, size: 8, subscript: Some(1) })), assignee: Lvalue::Variable{ name: Cow::Borrowed("a"), offset: 0, size: 8, subscript: Some(3) }});
-        let mne2 = Mnemonic::new(10..13,"op3".to_string(),"{8:-:eax} nog".to_string(),ops2.iter(),i2.iter()).ok().unwrap();
+        let mne2 = Mnemonic::new(10..13,"op3".to_string(),"{s} nog".to_string(),ops2.iter(),i2.iter()).ok().unwrap();
 
         let ops3 = vec!(Rvalue::new_u8(1),Rvalue::Variable{ name: Cow::Borrowed("a"), offset: 0, size: 3, subscript: None });
         let i3 = vec!(
@@ -116,7 +116,7 @@ mod tests {
             Statement{ op: Operation::Phi(vec!(
                 Rvalue::Variable{ name: Cow::Borrowed("a"), offset: 0, size: 8, subscript: Some(2) },
                 Rvalue::Variable{ name: Cow::Borrowed("a"), offset: 0, size: 8, subscript: Some(1) })), assignee: Lvalue::Variable{ name: Cow::Borrowed("a"), offset: 0, size: 8, subscript: Some(3) }});
-        let mne3 = Mnemonic::new(13..20,"op3".to_string(),"{8:-:eax} nog".to_string(),ops3.iter(),i3.iter()).ok().unwrap();
+        let mne3 = Mnemonic::new(13..20,"op3".to_string(),"{s} nog".to_string(),ops3.iter(),i3.iter()).ok().unwrap();
 
         let ms = vec!(mne1,mne2,mne3);
         let bb1 = BasicBlock::from_vec(ms);
@@ -139,7 +139,7 @@ mod tests {
             Statement{ op: Operation::Phi(vec!(
                 Rvalue::Variable{ name: Cow::Borrowed("a"), offset: 0, size: 8, subscript: Some(2) },
                 Rvalue::Variable{ name: Cow::Borrowed("a"), offset: 0, size: 8, subscript: Some(1) })), assignee: Lvalue::Variable{ name: Cow::Borrowed("a"), offset: 0, size: 8, subscript: Some(3) }});
-        let mne1 = Mnemonic::new(0..10,"op1".to_string(),"{8:-:eax} nog".to_string(),ops1.iter(),i1.iter()).ok().unwrap();
+        let mne1 = Mnemonic::new(0..10,"op1".to_string(),"{s} nog".to_string(),ops1.iter(),i1.iter()).ok().unwrap();
 
         let ops2 = vec!(Rvalue::new_u8(1),Rvalue::Variable{ name: Cow::Borrowed("a"), offset: 0, size: 3, subscript: None });
         let i2 = vec!(
@@ -148,7 +148,7 @@ mod tests {
             Statement{ op: Operation::Phi(vec!(
                 Rvalue::Variable{ name: Cow::Borrowed("a"), offset: 0, size: 8, subscript: Some(2) },
                 Rvalue::Variable{ name: Cow::Borrowed("a"), offset: 0, size: 8, subscript: Some(1) })), assignee: Lvalue::Variable{ name: Cow::Borrowed("a"), offset: 0, size: 8, subscript: Some(3) }});
-        let mne2 = Mnemonic::new(10..13,"op3".to_string(),"{8:-:eax} nog".to_string(),ops2.iter(),i2.iter()).ok().unwrap();
+        let mne2 = Mnemonic::new(10..13,"op3".to_string(),"{s} nog".to_string(),ops2.iter(),i2.iter()).ok().unwrap();
 
         let ms = vec!(mne1,mne2);
         let bb = BasicBlock::from_vec(ms);
@@ -173,7 +173,7 @@ mod tests {
             Statement{ op: Operation::Phi(vec!(
                 Rvalue::Variable{ name: Cow::Borrowed("a"), offset: 0, size: 8, subscript: Some(2) },
                 Rvalue::Variable{ name: Cow::Borrowed("a"), offset: 0, size: 8, subscript: Some(1) })), assignee: Lvalue::Variable{ name: Cow::Borrowed("a"), offset: 0, size: 8, subscript: Some(3) }});
-        let mne1 = Mnemonic::new(0..10,"op1".to_string(),"{8:-:eax} nog".to_string(),ops1.iter(),i1.iter()).ok().unwrap();
+        let mne1 = Mnemonic::new(0..10,"op1".to_string(),"{s} nog".to_string(),ops1.iter(),i1.iter()).ok().unwrap();
 
         let ops2 = vec!(Rvalue::new_u8(1),Rvalue::Variable{ name: Cow::Borrowed("a"), offset: 0, size: 3, subscript: None });
         let i2 = vec!(
@@ -182,7 +182,7 @@ mod tests {
             Statement{ op: Operation::Phi(vec!(
                 Rvalue::Variable{ name: Cow::Borrowed("a"), offset: 0, size: 8, subscript: Some(2) },
                 Rvalue::Variable{ name: Cow::Borrowed("a"), offset: 0, size: 8, subscript: Some(1) })), assignee: Lvalue::Variable{ name: Cow::Borrowed("a"), offset: 0, size: 8, subscript: Some(3) }});
-        let mne2 = Mnemonic::new(10..13,"op3".to_string(),"{8:-:eax} nog".to_string(),ops2.iter(),i2.iter()).ok().unwrap();
+        let mne2 = Mnemonic::new(10..13,"op3".to_string(),"{s} nog".to_string(),ops2.iter(),i2.iter()).ok().unwrap();
 
         let ms = vec!(mne1,mne2);
         let mut bb = BasicBlock::from_vec(ms);

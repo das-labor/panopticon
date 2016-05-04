@@ -167,7 +167,7 @@ pub fn zpage(opcode: &'static str,
         let next = (st.address + len as u64) as u16;
         let base = st.configuration.arg.clone().unwrap();
 
-        st.mnemonic(len,&opcode,"{p}",vec![base.clone()], &|c| {
+        st.mnemonic(len,&opcode,"{p:ram}",vec![base.clone()], &|c| {
             rreil!{c:
                 zext/16 addr:16, (base);
                 load/ram val:8, addr:16;
@@ -209,7 +209,7 @@ pub fn zpage_offset(opcode: &'static str,
             }
         });
 
-        st.mnemonic(len,&opcode,"{p}",vec![addr.clone().into()],&|c| {
+        st.mnemonic(len,&opcode,"{p:ram}",vec![addr.clone().into()],&|c| {
             sem(c, rreil_rvalue!{ val:8 });
         });
 
@@ -256,7 +256,7 @@ Lvalue::Variable{
             }
         });
 
-        st.mnemonic(len,&opcode,"{p}",vec![addr.clone().into()],&|c| {
+        st.mnemonic(len,&opcode,"{p:ram}",vec![addr.clone().into()],&|c| {
             sem(c, rreil_rvalue!{ val:8 });
         });
         st.jump(Rvalue::new_u16(next),Guard::always());
@@ -272,7 +272,7 @@ pub fn absolute(opcode: &'static str,
         let next = (st.address + len as u64) as u16;
         let base = st.configuration.arg.clone().unwrap();
 
-        st.mnemonic(len,&opcode,"{p}",vec![base.clone()], &|c| {
+        st.mnemonic(len,&opcode,"{p:ram}",vec![base.clone()], &|c| {
             rreil!{c:
                 load/ram val:8, (base);
             }
@@ -312,7 +312,7 @@ pub fn absolute_offset(opcode: &'static str,
             }
         });
 
-        st.mnemonic(len,&opcode,"{p}",vec![addr.clone().into()],&|c| {
+        st.mnemonic(len,&opcode,"{p:ram}",vec![addr.clone().into()],&|c| {
             sem(c, rreil_rvalue!{ val:8 });
         });
         st.jump(Rvalue::new_u16(next),Guard::always());
@@ -333,7 +333,7 @@ pub fn branch(opcode: &'static str, _flag: &Lvalue,
         let g = Guard::from_flag(&flag.clone().into()).ok().unwrap();
         let k = (st.address as i16).wrapping_add(rel) as u16;
 
-        st.mnemonic(2,opcode,"{c}", vec![rreil_rvalue!{ [k]:16 }], &|c| {
+        st.mnemonic(2,opcode,"{c:ram}", vec![rreil_rvalue!{ [k]:16 }], &|c| {
             rreil!{c:
                 cmpeq flag:1, (set), (flag);
             }

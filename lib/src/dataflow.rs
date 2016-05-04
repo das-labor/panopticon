@@ -465,7 +465,7 @@ mod tests {
         let v3 = cfg.add_vertex(ControlFlowTarget::Resolved(bb3));
         let v4 = cfg.add_vertex(ControlFlowTarget::Resolved(bb4));
 
-        let g = Guard::from_flag(&i.clone().into()).ok().unwrap();
+        let g = Guard::from_flag(&x.clone().into()).ok().unwrap();
 
         cfg.add_edge(Guard::always(),v0,v1);
         cfg.add_edge(g.negation(),v1,v2);
