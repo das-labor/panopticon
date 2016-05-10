@@ -44,6 +44,15 @@ cd panopticon
 cargo build
 ```
 
+Gentoo:
+
+```bash
+layman -a rust
+layman -f -o https://raw.github.com/das-labor/labor-overlay/master/labor-overlay -a labor-overlay
+
+emerge -av panopticon
+```
+
 Windows
 -------
 
