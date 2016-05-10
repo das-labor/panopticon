@@ -72,7 +72,6 @@ Popup {
 				var path = (p.substr(0,7) == "file://" ? p.substr(7) : p);
 				var _res = Panopticon.readDirectory(path);
 
-				console.log(_res);
 				folder.clear();
 
 				var res = JSON.parse(_res);
@@ -188,7 +187,7 @@ Popup {
 									SmoothedAnimation { velocity: 300 }
 								}
 
-								width: parent.width
+								width: parent == null ? 1 : parent.width
 								height: detailsLabel.y + detailsLabel.height
 								clip: true
 
@@ -330,8 +329,6 @@ Popup {
 					onDisplayTextChanged: {
 						if (displayText != "") {
 							var res = JSON.parse(Panopticon.fileDetails(currentPath + "/" + displayText))
-
-							console.log(JSON.stringify(res));
 
 							if(res.status == "ok") {
 								switch(res.payload.state) {

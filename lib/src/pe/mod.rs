@@ -50,12 +50,12 @@ struct Mz {
 }
 
 const MZ_MAGIC: u16 = 0x5a4d;
-
+/*
 #[repr(C,packed)]
 struct MzReloc {
     offset: u16,
     segment: u16,
-}
+}*/
 
 #[repr(C,packed)]
 struct Pe {
@@ -135,12 +135,12 @@ struct PeOptional64 {
     loader_flags: u32,
     datadir_entries: u32,
 }
-
+/*
 #[repr(C,packed)]
 struct PeDataDirectory {
     rva: i32,
     size: u32,
-}
+}*/
 
 #[repr(C,packed)]
 struct PeSection {
@@ -218,7 +218,7 @@ pub fn pe(p: &Path) -> Option<Project> {
         assert_eq!(PE32_SIZE, mem::size_of::<PeOptional32>());
         assert_eq!(PE64_SIZE, mem::size_of::<PeOptional64>());
 
-        let (img_base,datadir_entries) = if opt_magic == [0xb,0x1] {
+        let (img_base,_) = if opt_magic == [0xb,0x1] {
             let mut peopt_raw = [0; PE32_SIZE];
 
             if Some(PE32_SIZE) != fd.read(&mut peopt_raw).ok() {

@@ -17,16 +17,12 @@
  */
 
 use std::sync::{
-    PoisonError,
     RwLock,
-    RwLockReadGuard,
-    RwLockWriteGuard,
 };
 use std::collections::BTreeMap;
 use std::path::{PathBuf,Path};
 use std::iter::FromIterator;
-use std::ops::DerefMut;
-use std::fs::remove_file;
+use std::fs::{remove_file,DirBuilder};
 use std::error::Error;
 use std::borrow::Cow;
 use std::convert::Into;
@@ -50,7 +46,7 @@ use panopticon::{
 
 use project;
 
-extern "C" fn controller_slot(this: *mut ffi::QObject, id: c_int, a: *const ffi::QVariantList, ret: *mut ffi::QVariant) {
+extern "C" fn controller_slot(_: *mut ffi::QObject, id: c_int, a: *const ffi::QVariantList, ret: *mut ffi::QVariant) {
     let args = unpack_varlist(a);
 
     match (id as isize,args.len()) {
@@ -70,7 +66,6 @@ extern "C" fn controller_slot(this: *mut ffi::QObject, id: c_int, a: *const ffi:
         (SUGIYAMA_LAYOUT,5) => ::function::layout(&args[0],&args[1],&args[2],&args[3],&args[4]).to_qvariant(ret),
 
         // Stateless getter
-        (ALL_TARGETS,0) => ::function::targets().to_qvariant(ret),
         (READ_DIRECTORY,1) => ::function::read_directory(&args[0]).to_qvariant(ret),
         (FILE_DETAILS,1) => ::function::file_details(&args[0]).to_qvariant(ret),
 
@@ -107,11 +102,10 @@ pub const FUNCTION_INFO: isize = 14;
 pub const FUNCTION_CFG: isize = 15;
 pub const FUNCTION_APPROX: isize = 16;
 
-pub const ALL_TARGETS: isize = 17;
-pub const READ_DIRECTORY: isize = 18;
-pub const FILE_DETAILS: isize = 19;
+pub const READ_DIRECTORY: isize = 17;
+pub const FILE_DETAILS: isize = 18;
 
-pub const SUGIYAMA_LAYOUT: isize = 20;
+pub const SUGIYAMA_LAYOUT: isize = 19;
 
 
 pub extern "C" fn create_singleton(_: *mut ffi::QQmlEngine, _: *mut ffi::QJSEngine) -> *mut ffi::QObject {
@@ -151,7 +145,6 @@ pub extern "C" fn create_singleton(_: *mut ffi::QQmlEngine, _: *mut ffi::QJSEngi
     assert_eq!(metaobj.add_method("functionCfg(QString)","QString"),FUNCTION_CFG);
     assert_eq!(metaobj.add_method("functionApproximate(QString)","QString"),FUNCTION_APPROX);
 
-    assert_eq!(metaobj.add_method("allTargets()","QString"),ALL_TARGETS);
     assert_eq!(metaobj.add_method("readDirectory(QString)","QString"),READ_DIRECTORY);
     assert_eq!(metaobj.add_method("fileDetails(QString)","QString"),FILE_DETAILS);
 
@@ -189,7 +182,7 @@ lazy_static! {
     pub static ref CONTROLLER: RwLock<Controller> = RwLock::new(Controller::Empty);
 }
 
-enum Backing {
+pub enum Backing {
     Unnamed(PathBuf),
     Named(PathBuf),
 }
@@ -207,11 +200,11 @@ pub enum Controller {
     Empty,
     New{
         //metaObject: MetaObject,
-        singletonObject: Object,
+        singleton_object: Object,
     },
     Set{
         //metaObject: MetaObject,
-        singletonObject: Object,
+        singleton_object: Object,
         project: Project,
         backing_file: Backing,
         is_dirty: bool,
@@ -237,7 +230,13 @@ impl ToVariant for String {
 #[cfg(unix)]
 fn session_directory() -> Result<PathBuf> {
     match BaseDirectories::with_prefix("panopticon") {
-        Ok(dirs) => Ok(dirs.get_data_home().join("sessions")),
+        Ok(dirs) => {
+            let ret = dirs.get_data_home().join("sessions");
+            try!(DirBuilder::new()
+                    .recursive(true)
+                    .create(ret.clone()));
+            Ok(ret)
+        },
         Err(e) => Err(result::Error(Cow::Owned(e.description().to_string()))),
     }
 }
@@ -245,7 +244,13 @@ fn session_directory() -> Result<PathBuf> {
 #[cfg(windows)]
 fn session_directory() -> Result<PathBuf> {
     match env::current_exe() {
-        Ok(path) => Ok(path.join("AppData/Local/Panopticon/Panopticon/sessions")),
+        Ok(path) => {
+            let ret = path.join("AppData/Local/Panopticon/Panopticon/sessions");
+            DirBuilder::new()
+                    .recursive(true)
+                    .create(ret.clone());
+            Ok(ret)
+        },
         Err(e) => Err(result::Error(Cow::Owned(e.description().to_string()))),
     }
 }
@@ -259,7 +264,7 @@ impl Controller {
             if is_empty {
                 *guard = Controller::New{
                     //metaObject: m,
-                    singletonObject: s,
+                    singleton_object: s,
                 };
 
                 Ok(())
@@ -314,10 +319,10 @@ impl Controller {
 
     pub fn replace(p: Project,q: Option<&Path>) -> Result<()> {
         {
-            let mut obj = try!(Controller::instance());
+            let obj = try!(Controller::instance());
             let mut guard = try!(CONTROLLER.write());
 
-            *guard = Controller::New{ singletonObject: obj };
+            *guard = Controller::New{ singleton_object: obj };
             Ok(())
         }.and_then(|_| {
             Controller::update_state()
@@ -326,7 +331,9 @@ impl Controller {
             let bf = if let Some(p) = q {
                 Backing::Named(p.to_path_buf())
             } else {
-                Backing::Unnamed(try!(TempDir::new_in(try!(session_directory()),"panop-backing")).path().to_path_buf())
+                let dir = try!(session_directory());
+
+                               Backing::Unnamed(try!(TempDir::new_in(dir,"panop-backing")).path().to_path_buf())
             };
 
             match &mut *guard {
@@ -337,15 +344,15 @@ impl Controller {
                     Ok(())
                 },
                 ctrl@&mut Controller::New{ ..} => {
-                    let so = if let &mut Controller::New{ /*ref metaObject,*/ ref mut singletonObject,.. } = ctrl {
-                        singletonObject.as_ptr()
+                    let so = if let &mut Controller::New{ /*ref metaObject,*/ ref mut singleton_object,.. } = ctrl {
+                        singleton_object.as_ptr()
                     } else {
                         unreachable!()
                     };
 
                     *ctrl = Controller::Set{
                         //metaObject: metaObject,
-                        singletonObject: Object::from_ptr(so),
+                        singleton_object: Object::from_ptr(so),
                         project: p,
                         is_dirty: false,
                         backing_file: bf,
@@ -366,7 +373,7 @@ impl Controller {
             let mut guard = try!(CONTROLLER.write());
             if let &mut Controller::Set{ ref mut is_dirty, ref mut backing_file,.. } = &mut *guard {
                 if let &mut Backing::Unnamed(ref p) = backing_file {
-                    remove_file(p);
+                    try!(remove_file(p));
                 }
                 *backing_file = Backing::Named(p.to_path_buf());
                 *is_dirty = true;
@@ -379,24 +386,12 @@ impl Controller {
         })
     }
 
-    pub fn emit0(s: isize) -> Result<()> {
+    pub fn emit<A: ToVariant + Clone>(s: isize, a: &A) -> Result<()> {
         let guard = try!(CONTROLLER.read());
 
         match &*guard {
-            &Controller::New{ ref singletonObject } => singletonObject.emit(s,&[]),
-            &Controller::Set{ ref singletonObject,.. } => singletonObject.emit(s,&[]),
-            &Controller::Empty => return Err("Controller is in empty state".into()),
-        }
-
-        Ok(())
-    }
-
-    pub fn emit1<A: ToVariant + Clone>(s: isize, a: &A) -> Result<()> {
-        let guard = try!(CONTROLLER.read());
-
-        match &*guard {
-            &Controller::New{ ref singletonObject } => singletonObject.emit(s,&[a.clone().to_variant()]),
-            &Controller::Set{ ref singletonObject,.. } => singletonObject.emit(s,&[a.clone().to_variant()]),
+            &Controller::New{ ref singleton_object } => singleton_object.emit(s,&[a.clone().to_variant()]),
+            &Controller::Set{ ref singleton_object,.. } => singleton_object.emit(s,&[a.clone().to_variant()]),
             &Controller::Empty => return Err("Controller is in empty state".into()),
         }
 
@@ -407,8 +402,8 @@ impl Controller {
         let mut guard = try!(CONTROLLER.write());
         match &mut *guard {
             &mut Controller::Empty => Err("Controller is in empty state".into()),
-            &mut Controller::New{ ref mut singletonObject,.. } => Ok(Object::from_ptr(singletonObject.as_ptr())),
-            &mut Controller::Set{ ref mut singletonObject,.. } => Ok(Object::from_ptr(singletonObject.as_ptr())),
+            &mut Controller::New{ ref mut singleton_object,.. } => Ok(Object::from_ptr(singleton_object.as_ptr())),
+            &mut Controller::Set{ ref mut singleton_object,.. } => Ok(Object::from_ptr(singleton_object.as_ptr())),
         }
     }
 

@@ -16,9 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-use std::str::{Chars,FromStr};
+use std::str::Chars;
 use std::ops::Range;
-use std::borrow::Cow;
 
 use Rvalue;
 use Statement;
@@ -33,6 +32,10 @@ pub struct Bound {
 impl Bound {
     pub fn new(a: u64, b: u64) -> Bound {
         Bound{ start: a, end: b }
+    }
+
+    pub fn len(&self) -> u64 {
+        self.end - self.start
     }
 }
 

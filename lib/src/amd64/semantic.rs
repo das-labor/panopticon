@@ -17,7 +17,6 @@
  */
 
 use std::cmp::max;
-use std::borrow::Cow;
 
 use {
     Lvalue,
@@ -42,7 +41,7 @@ pub fn flagcomp(flag: &Lvalue) -> Box<Fn(&mut CodeGen<Amd64>)> {
     })
 }
 */
-pub fn aaa(cg: &mut CodeGen<Amd64>) {
+pub fn aaa(_: &mut CodeGen<Amd64>) {
   /*  rreil!{cg:
         and y:8, AL:8, [0xf]:8;
 
@@ -72,7 +71,7 @@ pub fn aaa(cg: &mut CodeGen<Amd64>) {
     cg.mod_i(&AX,&AX.clone().into(),&Rvalue::Constant(0x100));*/
 }
 
-pub fn aam(cg: &mut CodeGen<Amd64>, a: Rvalue) {
+pub fn aam(_: &mut CodeGen<Amd64>, _: Rvalue) {
  /*   let temp_al = new_temp(16);
 
     cg.assign(&temp_al,&AL.clone().into());
@@ -80,7 +79,7 @@ pub fn aam(cg: &mut CodeGen<Amd64>, a: Rvalue) {
     cg.mod_i(&*AL,&temp_al,&a);*/
 }
 
-pub fn aad(cg: &mut CodeGen<Amd64>, a: Rvalue) {
+pub fn aad(_: &mut CodeGen<Amd64>, _: Rvalue) {
  /*   let x = new_temp(16);
 
     cg.mul_i(&x,&AH.clone().into(),&a);
@@ -88,7 +87,7 @@ pub fn aad(cg: &mut CodeGen<Amd64>, a: Rvalue) {
     cg.assign(&*AH,&Rvalue::new_bit(0));*/
 }
 
-pub fn aas(cg: &mut CodeGen<Amd64>) {
+pub fn aas(_: &mut CodeGen<Amd64>) {
  /*   let y1 = new_temp(16);
     let x1 = new_temp(1);
     let x2 = new_temp(1);
@@ -200,14 +199,14 @@ fn sign_extend(cg: &mut CodeGen<Amd64>, a: &Rvalue, b: &Rvalue) -> (Rvalue,Rvalu
     let ext = |x: &Rvalue,s: usize| -> Rvalue {
         match x {
             &Rvalue::Undefined => Rvalue::Undefined,
-            &Rvalue::Variable{ ref name, ref subscript, ref size, ref offset } =>
+            &Rvalue::Variable{ ref name, ref subscript, ref offset,.. } =>
                 Rvalue::Variable{
                     name: name.clone(),
                     subscript: subscript.clone(),
                     size: s + *offset,
                     offset: *offset
                 },
-            &Rvalue::Constant{ ref value, ref size } =>
+            &Rvalue::Constant{ ref value,.. } =>
                 Rvalue::Constant{ value: *value, size: s },
         }
     };
@@ -241,7 +240,7 @@ fn sign_extend(cg: &mut CodeGen<Amd64>, a: &Rvalue, b: &Rvalue) -> (Rvalue,Rvalu
     (ext_a,ext_b,sz)
 }
 
-fn write_reg(cg: &mut CodeGen<Amd64>, _reg: &Rvalue, res: &Rvalue, sz: usize) {
+fn write_reg(cg: &mut CodeGen<Amd64>, _reg: &Rvalue, _: &Rvalue, sz: usize) {
     if let Some(ref reg) = Lvalue::from_rvalue(_reg.clone()) {
         if sz < 64 {
             if let &Lvalue::Variable{ ref name,.. } = reg {
@@ -337,7 +336,7 @@ pub fn arpl(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
 pub fn bound(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
 
 pub fn bsf(cg: &mut CodeGen<Amd64>, _a: Rvalue, _b: Rvalue) {
-    let (a,b,sz) = sign_extend(cg,&_a,&_b);
+    let (_,b,sz) = sign_extend(cg,&_a,&_b);
     let res = rreil_lvalue!{ res:sz };
 
     rreil!{cg:
@@ -349,7 +348,7 @@ pub fn bsf(cg: &mut CodeGen<Amd64>, _a: Rvalue, _b: Rvalue) {
 }
 
 pub fn bsr(cg: &mut CodeGen<Amd64>, _a: Rvalue, _b: Rvalue) {
-    let (a,b,sz) = sign_extend(cg,&_a,&_b);
+    let (_,b,sz) = sign_extend(cg,&_a,&_b);
     let res = rreil_lvalue!{ res:sz };
 
     rreil!{cg:
@@ -495,7 +494,7 @@ pub fn far_xcall(cg: &mut CodeGen<Amd64>, a: Rvalue, _: bool) {
     near_call(cg,rreil_rvalue!{ new_ip:sz });
 }
 
-pub fn cmov(cg: &mut CodeGen<Amd64>, _a: Rvalue, b: Rvalue, c: Condition) {
+pub fn cmov(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue, _: Condition) {
  /*   let a = Lvalue::from_rvalue(&_a).unwrap();
     let fun = |f: &Lvalue,cg: &mut CodeGen<Amd64>| {
         let l = new_temp(bitwidth(&a.clone().into()));
@@ -581,7 +580,7 @@ pub fn cmov(cg: &mut CodeGen<Amd64>, _a: Rvalue, b: Rvalue, c: Condition) {
     }*/
 }
 
-pub fn cmp(cg: &mut CodeGen<Amd64>, _a: Rvalue, b: Rvalue) {
+pub fn cmp(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {
  /*   let aw = bitwidth(&_a);
     let bw = if let Rvalue::Constant(_) = b { aw } else { bitwidth(&b) };
     let res = new_temp(aw);
@@ -595,7 +594,7 @@ pub fn cmp(cg: &mut CodeGen<Amd64>, _a: Rvalue, b: Rvalue) {
     set_arithm_flags(&res,&res_half.clone().into(),&a.clone().into(),cg);*/
 }
 
-pub fn cmps(cg: &mut CodeGen<Amd64>, aoff: Rvalue, boff: Rvalue) {
+pub fn cmps(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {
  /*   let a = Lvalue::Memory{
         offset: Box::new(aoff.clone()),
         bytes: 1,
@@ -629,7 +628,7 @@ pub fn cmps(cg: &mut CodeGen<Amd64>, aoff: Rvalue, boff: Rvalue) {
     cg.add_i(&bo,&boff,&off);*/
 }
 
-pub fn cmpxchg(cg: &mut CodeGen<Amd64>, a: Rvalue, b: Rvalue) {
+pub fn cmpxchg(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {
  /*   cg.equal_i(&*ZF,&a,&EAX.clone().into());
 
     let n = new_temp(1);
@@ -650,7 +649,7 @@ pub fn cmpxchg(cg: &mut CodeGen<Amd64>, a: Rvalue, b: Rvalue) {
     cg.add_i(&*EAX,&zf,&nzf);*/
 }
 
-pub fn or(cg: &mut CodeGen<Amd64>, _a: Rvalue, b: Rvalue) {
+pub fn or(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {
  /*   let aw = bitwidth(&_a);
     let bw = if let Rvalue::Constant(_) = b { aw } else { bitwidth(&b) };
     let res = new_temp(aw);
@@ -665,7 +664,7 @@ pub fn or(cg: &mut CodeGen<Amd64>, _a: Rvalue, b: Rvalue) {
     set_arithm_flags(&res,&res_half.clone().into(),&a.clone().into(),cg);*/
 }
 
-pub fn sbb(cg: &mut CodeGen<Amd64>, _a: Rvalue, b: Rvalue) {
+pub fn sbb(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {
  /*   let aw = bitwidth(&_a);
     let bw = if let Rvalue::Constant(_) = b { aw } else { bitwidth(&b) };
     let res = new_temp(aw);
@@ -681,7 +680,7 @@ pub fn sbb(cg: &mut CodeGen<Amd64>, _a: Rvalue, b: Rvalue) {
     set_arithm_flags(&res,&res_half.clone().into(),&a.clone().into(),cg);*/
 }
 
-pub fn sub(cg: &mut CodeGen<Amd64>, _a: Rvalue, b: Rvalue) {
+pub fn sub(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {
  /*   let aw = bitwidth(&_a);
     let bw = if let Rvalue::Constant(_) = b { aw } else { bitwidth(&b) };
     let res = new_temp(aw);
@@ -696,7 +695,7 @@ pub fn sub(cg: &mut CodeGen<Amd64>, _a: Rvalue, b: Rvalue) {
     set_arithm_flags(&res,&res_half.clone().into(),&a.clone().into(),cg);*/
 }
 
-pub fn xor(cg: &mut CodeGen<Amd64>, _a: Rvalue, b: Rvalue) {
+pub fn xor(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {
  /*   let aw = bitwidth(&_a);
     let bw = if let Rvalue::Constant(_) = b { aw } else { bitwidth(&b) };
     let res = new_temp(aw);

@@ -16,19 +16,19 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-use std::collections::HashSet;
-
-use graph_algos::{AdjacencyList,GraphTrait,MutableGraphTrait,AdjacencyMatrixGraphTrait};
+use graph_algos::{
+    AdjacencyList,
+    GraphTrait,
+    MutableGraphTrait,
+    AdjacencyMatrixGraphTrait,
+    VertexListGraphTrait,
+};
 use graph_algos::adjacency_list::AdjacencyListVertexDescriptor;
-use graph_algos::VertexListGraphTrait;
 use uuid::Uuid;
-use byteorder::{BigEndian, LittleEndian, ReadBytesExt};
 
 use {
     ControlFlowTarget,
     Function,
-    LayerIter,
-    Target,
     Rvalue
 };
 
@@ -57,7 +57,6 @@ pub struct Program {
     pub uuid: Uuid,
     pub name: String,
     pub call_graph: CallGraph,
-    pub target: Target,
 }
 
 pub enum DisassembleEvent {
@@ -67,12 +66,11 @@ pub enum DisassembleEvent {
 }
 
 impl Program {
-    pub fn new(n: &str, t: Target) -> Program {
+    pub fn new(n: &str) -> Program {
         Program{
             uuid: Uuid::new_v4(),
             name: n.to_string(),
             call_graph: CallGraph::new(),
-            target: t,
         }
     }
 
@@ -118,79 +116,6 @@ impl Program {
             _ => None
         }
     }
-
-    pub fn disassemble<F: Fn(DisassembleEvent)>(cont: Option<Program>, target: Target, data: LayerIter, start: u64, reg: String, progress: Option<F>) -> Program {
-        if cont.is_some() && cont.as_ref().map(|x| x.find_function_by_entry(start)).is_some() {
-            return cont.unwrap();
-        }
-
-        let mut worklist = HashSet::new();
-        let mut ret = cont.unwrap_or(Program::new(&format!("prog_{}",start),target));
-
-		worklist.insert(start);
-
-        if let Some(ref f) = progress {
-            f(DisassembleEvent::Discovered(start))
-        }
-
-		while !worklist.is_empty() {
-			let tgt = *worklist.iter().next().unwrap();
-			worklist.remove(&tgt);
-
-            if let Some(ref f) = progress {
-                f(DisassembleEvent::Started(tgt))
-            }
-
-            if ret.find_function_by_entry(tgt).is_some() {
-                continue;
-            }
-
-            let new_fun = target.disassemble(None,data.clone(),tgt,reg.clone());
-
-            if let Some(ref f) = progress {
-                f(DisassembleEvent::Done(tgt));
-            }
-
-            if new_fun.cflow_graph.num_vertices() > 0 {
-				// XXX: compute dominance tree
-				// XXX: compute liveness information
-				// XXX: resolve indirect calls
-
-				// add to call graph
-				let new_vx = ret.call_graph.add_vertex(CallTarget::Concrete(new_fun));
-                let mut new = Vec::new();
-
-                if let Some(&CallTarget::Concrete(ref fun)) = ret.call_graph.vertex_label(new_vx) {
-                    // insert call edges and new procedures to disassemble
-                    for call in fun.collect_calls() {
-                        fn resolv(rv: &Rvalue,d: &LayerIter,n: &String) -> Option<u64> {
-                            match rv {
-                                &Rvalue::Undefined => None,
-                                &Rvalue::Variable{ .. } => None,
-                                &Rvalue::Constant{ value: ref c,.. } => Some(*c),
-                            }
-                        }
-                        if let Some(address) = resolv(&call,&data,&reg) {
-                            if let Some(other_fun) = ret.find_function_by_entry(address) {
-                                new.push(other_fun);
-                            } else {
-                                if let Some(ref f) = progress {
-                                    f(DisassembleEvent::Discovered(address))
-                                }
-                                worklist.insert(address);
-                            }
-                        }
-                    }
-                }
-
-                for other_fun in new {
-                    ret.call_graph.add_edge((),new_vx,other_fun);
-                }
-            }
-		}
-
-		ret
-	}
 
     pub fn insert(&mut self, new_ct: CallTarget) -> Vec<Uuid> {
         let new_uu = new_ct.uuid();
@@ -291,12 +216,11 @@ mod tests {
         Lvalue,Rvalue,
         Operation,
         Statement,
-        Target,
     };
 
     #[test]
     fn find_by_entry() {
-        let mut prog = Program::new("prog_test",Target::__Test);
+        let mut prog = Program::new("prog_test");
         let mut func = Function::new("test2".to_string(),"ram".to_string());
 
         let bb0 = BasicBlock::from_vec(vec!(Mnemonic::dummy(0..10)));
@@ -312,7 +236,7 @@ mod tests {
     #[test]
     fn insert_replaces_todo() {
         let uu = Uuid::new_v4();
-        let mut prog = Program::new("prog_test",Target::__Test);
+        let mut prog = Program::new("prog_test");
 
         let tvx = prog.call_graph.add_vertex(CallTarget::Todo(Rvalue::new_u64(12),None,uu));
         let vx0 = prog.call_graph.add_vertex(CallTarget::Concrete(Function::new("test".to_string(),"ram".to_string())));
@@ -348,7 +272,7 @@ mod tests {
     fn insert_ignores_new_todo() {
         let uu1 = Uuid::new_v4();
         let uu2 = Uuid::new_v4();
-        let mut prog = Program::new("prog_test",Target::__Test);
+        let mut prog = Program::new("prog_test");
 
         let tvx = prog.call_graph.add_vertex(CallTarget::Todo(Rvalue::new_u64(12),None,uu1));
 

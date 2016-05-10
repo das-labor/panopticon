@@ -146,31 +146,32 @@ impl Function {
         let mut bblock = Vec::<Mnemonic>::new();
 
         for (_,mnes) in mnemonics.iter() {
-            for mne in mnes {
-                if bblock.len() > 0 {
-                    let last_mne = &bblock.last().unwrap().clone();
-                    // if next mnemonics aren't adjacent
-                    let mut new_bb = bblock.last().unwrap().area.end != mne.area.start;
+            if !bblock.is_empty() && !mnes.is_empty() {
+                let mne = mnes.first().unwrap();
+                let last_mne = &bblock.last().unwrap().clone();
 
-					// or any following jumps aren't to adjacent mnemonics
-                    new_bb |= by_source.get(&last_mne.area.start).unwrap_or(&Vec::new()).iter().any(|&(ref opt_dest,_)| {
-                        opt_dest.is_some() && opt_dest.unwrap() != mne.area.start });
+                // if next mnemonics aren't adjacent
+                let mut new_bb = bblock.last().unwrap().area.end != mne.area.start;
 
-					// or any jumps pointing to the next that aren't from here
-                    new_bb |= by_destination.get(&mne.area.start).unwrap_or(&Vec::new()).iter().any(|&(ref opt_src,_)| {
-                        opt_src.is_some() && opt_src.unwrap() != last_mne.area.start });
+                // or any following jumps aren't to adjacent mnemonics
+                new_bb |= by_source.get(&last_mne.area.start).unwrap_or(&Vec::new()).iter().any(|&(ref opt_dest,_)| {
+                    opt_dest.is_some() && opt_dest.unwrap() != mne.area.start });
 
-                    // or the entry point does not point here
-                    new_bb |= mne.area.start == start;
+                // or any jumps pointing to the next that aren't from here
+                new_bb |= by_destination.get(&mne.area.start).unwrap_or(&Vec::new()).iter().any(|&(ref opt_src,_)| {
+                    opt_src.is_some() && opt_src.unwrap() != last_mne.area.start });
 
-                    if new_bb {
-                        let bb = BasicBlock::from_vec(bblock.clone());
+                // or the entry point does not point here
+                new_bb |= mne.area.start == start;
 
-                        bblock.clear();
-                        ret.add_vertex(ControlFlowTarget::Resolved(bb));
-                    }
+                if new_bb {
+                    let bb = BasicBlock::from_vec(bblock.clone());
+
+                    bblock.clear();
+                    ret.add_vertex(ControlFlowTarget::Resolved(bb));
                 }
-
+            }
+            for mne in mnes {
                 bblock.push(mne.clone());
             }
         }
@@ -188,12 +189,14 @@ impl Function {
                     let from_bb = ret.vertices().find(|&t| {
                         match ret.vertex_label(t) {
                             Some(&ControlFlowTarget::Resolved(ref bb)) => bb.mnemonics.last().map_or(false,|x| x.area.start == *src_off),
+                            Some(&ControlFlowTarget::Unresolved(Rvalue::Constant{ value: v,.. })) => v == *src_off,
                             _ => false
                         }
                     });
                     let to_bb = ret.vertices().find(|&t| {
                         match ret.vertex_label(t) {
                             Some(&ControlFlowTarget::Resolved(ref bb)) => bb.area.start == opt_tgt.unwrap(),
+                            Some(&ControlFlowTarget::Unresolved(Rvalue::Constant{ value: v,.. })) => v == opt_tgt.unwrap(),
                             _ => false
                         }
                     });
@@ -392,6 +395,7 @@ impl Function {
 mod tests {
     use super::*;
     use std::borrow::Cow;
+    use std::rc::Rc;
     use graph_algos::{VertexListGraphTrait,EdgeListGraphTrait,AdjacencyMatrixGraphTrait};
     use graph_algos::{GraphTrait,MutableGraphTrait};
     use {
@@ -401,8 +405,11 @@ mod tests {
         BasicBlock,
         Rvalue,
         OpaqueLayer,
+        LayerIter,
+        Result,
         State,
-        Architecture
+        Architecture,
+        Disassembler,
     };
 
     #[derive(Clone)]
@@ -410,6 +417,14 @@ mod tests {
     impl Architecture for TestArchShort {
         type Token = u8;
         type Configuration = ();
+
+        fn prepare(_: LayerIter,_: &Self::Configuration) -> Result<Vec<(&'static str,u64,&'static str)>> {
+            unimplemented!()
+        }
+
+        fn disassembler(_: &Self::Configuration) -> Rc<Disassembler<Self>> {
+            unimplemented!()
+        }
     }
 
     #[derive(Clone)]
@@ -417,6 +432,14 @@ mod tests {
     impl Architecture for TestArchWide {
         type Token = u16;
         type Configuration = ();
+
+        fn prepare(_: LayerIter,_: &Self::Configuration) -> Result<Vec<(&'static str,u64,&'static str)>> {
+            unimplemented!()
+        }
+
+        fn disassembler(_: &Self::Configuration) -> Rc<Disassembler<Self>> {
+            unimplemented!()
+        }
     }
 
     #[test]

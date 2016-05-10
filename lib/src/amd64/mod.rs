@@ -24,6 +24,8 @@ use {
     Lvalue,
     Rvalue,
     CodeGen,
+    Result,
+    LayerIter,
 };
 
 pub mod decode;
@@ -36,16 +38,14 @@ pub mod extensions;
 pub enum Amd64 {}
 
 #[derive(Clone,PartialEq,Copy)]
-pub enum AddressSize
-{
+pub enum AddressSize {
     SixtyFour,
     ThirtyTwo,
     Sixteen,
 }
 
 #[derive(Clone,PartialEq,Copy)]
-pub enum OperandSize
-{
+pub enum OperandSize {
     HundredTwentyEight,
     SixtyFour,
     ThirtyTwo,
@@ -86,8 +86,7 @@ pub enum Condition {
 }
 
 #[derive(Clone,PartialEq,Copy)]
-pub enum Mode
-{
+pub enum Mode {
     Real,       // Real mode / Virtual 8086 mode
     Protected,  // Protected mode / Long compatibility mode
     Long,       // Long 64-bit mode
@@ -140,6 +139,17 @@ impl Config {
 impl Architecture for Amd64 {
     type Token = u8;
     type Configuration = Config;
+
+    fn prepare(_: LayerIter,cfg: &Self::Configuration) -> Result<Vec<(&'static str,u64,&'static str)>> {
+        match cfg.mode {
+            Mode::Real => Ok(vec![("RESET",0xFFFF0,"Reset vector")]),
+            Mode::Protected => Ok(vec![("RESET",0xFFFFFFF0,"Reset vector")]),
+            Mode::Long => Ok(vec![("RESET",0xFFFFFFF0,"Reset vector")]),
+        }
+    }
+    fn disassembler(cfg: &Self::Configuration) -> Rc<Disassembler<Self>> {
+        disassembler(cfg.mode)
+    }
 }
 
 // 8 bit gp registers
@@ -623,7 +633,7 @@ pub fn disassembler(bits: Mode) -> Rc<Disassembler<Amd64>> {
         });
 
     let is4 = new_disassembler!(Amd64 =>
-        [ "isfour@........" ] = |st: &mut State<Amd64>| {
+        [ "isfour@........" ] = |_: &mut State<Amd64>| {
             true
         },
         [ "scale@.. index@... base@..." ] = |st: &mut State<Amd64>| {

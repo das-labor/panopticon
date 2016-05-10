@@ -112,8 +112,6 @@ Item {
 					}
 				}
 			}
-
-			console.log(JSON.stringify(edges));
 		}
 
 		id: functionModel

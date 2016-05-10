@@ -20,6 +20,7 @@ use std::collections::{
     HashMap,
     HashSet,
 };
+use std::cmp::max;
 use std::iter::FromIterator;
 use std::borrow::Cow;
 use graph_algos::{
@@ -149,12 +150,12 @@ pub fn liveness(func: &Function) ->  HashMap<ControlFlowRef,HashSet<Cow<'static,
 pub fn type_check(func: &Function) -> HashMap<Cow<'static,str>,usize> {
     let mut ret = HashMap::<Cow<'static,str>,usize>::new();
     let cfg = &func.cflow_graph;
-    fn check_or_set_len(v: &Rvalue, ret: &mut HashMap<Cow<'static,str>,usize>) {
+    fn set_len(v: &Rvalue, ret: &mut HashMap<Cow<'static,str>,usize>) {
         match v {
-            &Rvalue::Variable{ ref name, ref size, .. } =>
-                if *ret.entry(name.clone()).or_insert(*size) != *size {
-                    panic!("Type check failed!");
-                },
+            &Rvalue::Variable{ ref name, ref size, .. } => {
+                let val = *max(ret.get(name).unwrap_or(&0),size);
+                ret.insert(name.clone(),val);
+            },
             _ => {}
         }
     }
@@ -166,18 +167,18 @@ pub fn type_check(func: &Function) -> HashMap<Cow<'static,str>,usize> {
                 match ops.len() {
                     0 => panic!("Operation w/o arguments"),
                     _ => for o in ops.iter() {
-                        check_or_set_len(o,&mut ret);
+                        set_len(o,&mut ret);
                     }
                 }
 
-                check_or_set_len(&instr.assignee.clone().into(),&mut ret);
+                set_len(&instr.assignee.clone().into(),&mut ret);
             });
         }
     }
 
     for ed in cfg.edges() {
         if let Some(&Guard::Predicate{ ref flag,.. }) = cfg.edge_label(ed) {
-            check_or_set_len(flag,&mut ret);
+            set_len(flag,&mut ret);
         }
     }
 

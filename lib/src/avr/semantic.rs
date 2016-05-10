@@ -33,7 +33,7 @@ pub fn cpse(st: &mut State<Avr>) -> bool {
 }
 
 pub fn adc(rd: Lvalue, rr: Rvalue, cg: &mut CodeGen<Avr>) {
-    let half_rd = if let &Lvalue::Variable{ ref name, size: 8, ref subscript, offset: 0 } = &rd {
+    let half_rd = if let &Lvalue::Variable{ ref name, size: 8, offset: 0,.. } = &rd {
         Lvalue::Variable{
             name: name.clone(),
             size: 4,
@@ -136,7 +136,6 @@ pub fn add(rd: Lvalue, rr: Rvalue, cg: &mut CodeGen<Avr>) {
 pub fn adiw(st: &mut State<Avr>) -> bool {
     let rd1 = resolv(st.get_group("d") * 2 + 24);
     let rd2 = resolv(st.get_group("d") * 2 + 25);
-    let rd = rreil_lvalue!{ reg:16 };
     let k = Rvalue::new_u8(st.get_group("K") as u8);
 
     st.mnemonic(0,"__wide_reg","",vec![],&|cg: &mut CodeGen<Avr>| {
@@ -216,7 +215,7 @@ pub fn asr(rd: Lvalue, cg: &mut CodeGen<Avr>) {
     }
 }
 
-pub fn _break(cg: &mut CodeGen<Avr>) {}
+pub fn _break(_: &mut CodeGen<Avr>) {}
 
 pub fn bld(rd: Lvalue, b: u64, cg: &mut CodeGen<Avr>) {
     let r = rd.extract(1,b as usize).ok().unwrap();
@@ -270,7 +269,6 @@ pub fn com(rd: Lvalue, cg: &mut CodeGen<Avr>) {
 
 pub fn cp(rd: Lvalue, rr: Rvalue, cg: &mut CodeGen<Avr>) {
     let half_rd = rd.extract(4,0).ok().unwrap();
-    let half_rr = rr.extract(4,0).ok().unwrap();
 
     rreil!{cg:
         sub res:8, (rd), (rr);
@@ -306,7 +304,6 @@ pub fn cp(rd: Lvalue, rr: Rvalue, cg: &mut CodeGen<Avr>) {
 
 pub fn cpc(rd: Lvalue, rr: Rvalue, cg: &mut CodeGen<Avr>) {
     let half_rd = rd.extract(4,0).ok().unwrap();
-    let half_rr = rr.extract(4,0).ok().unwrap();
 
     rreil!{cg:
         zext/8 carry:8, C:1;
@@ -435,23 +432,21 @@ pub fn elpm(rd: Lvalue, off: usize, st: &mut State<Avr>) -> bool {
         }
     });
 
-    st.mnemonic(0,"elpm","{p:sram}",vec![zreg.clone().into()],&|cg: &mut CodeGen<Avr>| {
+    st.mnemonic(2,"elpm","{p:sram}",vec![zreg.clone().into()],&|cg: &mut CodeGen<Avr>| {
         rreil!{cg:
             load/sram ptr:24, (zreg);
             load/flash (rd), ptr:24;
         }
-    });
 
-    if off <= 1 {
-        st.mnemonic(0,"__inc_wide_reg","",vec![],&|cg: &mut CodeGen<Avr>| {
+        if off <= 1 {
             rreil!{cg:
                 add (zreg), (zreg), [1]:24;
                 mov R30:8, (zreg.extract(8,0).ok().unwrap());
                 mov R31:8, (zreg.extract(8,8).ok().unwrap());
                 mov RAMPZ:8, (zreg.extract(8,16).ok().unwrap());
             }
-        });
-    }
+        }
+    });
 
     true
 }
@@ -545,7 +540,7 @@ pub fn icall(st: &mut State<Avr>) -> bool {
         }
     });
 
-    st.mnemonic(0,"icall","{p:sram}",vec![zreg.clone().into()],&|cg: &mut CodeGen<Avr>| {
+    st.mnemonic(2,"icall","{p:sram}",vec![zreg.clone().into()],&|cg: &mut CodeGen<Avr>| {
         rreil!{cg:
             load/sram ptr:24, (zreg);
             call ?, ptr:24;
@@ -700,22 +695,20 @@ pub fn lpm(rd: Lvalue, off: usize, st: &mut State<Avr>) -> bool {
         }
     });
 
-    st.mnemonic(0,"lpm","{p:sram}",vec![zreg.clone().into()],&|cg: &mut CodeGen<Avr>| {
+    st.mnemonic(2,"lpm","{p:sram}",vec![zreg.clone().into()],&|cg: &mut CodeGen<Avr>| {
         rreil!{cg:
             load/sram ptr:16, (zreg);
             load/flash (rd), ptr:16;
         }
-    });
 
-    if off <= 1 {
-        st.mnemonic(0,"__inc_wide_reg","",vec![],&|cg: &mut CodeGen<Avr>| {
+        if off <= 1 {
             rreil!{cg:
                 add (zreg), (zreg), [1]:16;
                 mov R30:8, (zreg.extract(8,0).ok().unwrap());
                 mov R31:8, (zreg.extract(8,8).ok().unwrap());
             }
-        });
-    }
+        }
+    });
 
     true
 }
@@ -829,7 +822,7 @@ pub fn neg(rd: Lvalue, cg: &mut CodeGen<Avr>) {
     }
 }
 
-pub fn nop(cg: &mut CodeGen<Avr>) {}
+pub fn nop(_: &mut CodeGen<Avr>) {}
 
 pub fn or(rd: Lvalue, rr: Rvalue, cg: &mut CodeGen<Avr>) {
     rreil!{cg:
@@ -903,7 +896,7 @@ pub fn rcall(st: &mut State<Avr>) -> bool {
     true
 }
 
-pub fn ret(cg: &mut CodeGen<Avr>) {}
+pub fn ret(_: &mut CodeGen<Avr>) {}
 
 pub fn rjmp(st: &mut State<Avr>) -> bool {
     let pc_mod = 1 << st.configuration.pc_bits;
@@ -913,7 +906,6 @@ pub fn rjmp(st: &mut State<Avr>) -> bool {
              if grp & sign_bit != 0 { 0xFFFFFFFFFFFFFFFF ^ !grp } else { grp } as isize * 2 +
              2;
     let k = Rvalue::Constant{ value: _k as u64 % pc_mod, size: st.configuration.pc_bits as usize };
-    let next = st.configuration.wrap(st.address + st.tokens.len() as u64 * 2);
 
     st.mnemonic(2,"rjmp","{c:flash}",vec!(k.clone()),&|_: &mut CodeGen<Avr>| {});
     optional_skip(st.configuration.wrap(st.address + st.tokens.len() as u64 * 2),st);
@@ -1004,7 +996,6 @@ pub fn sbi(rd: Lvalue, b: u64, cg: &mut CodeGen<Avr>) {
 pub fn sbiw(st: &mut State<Avr>) -> bool {
     let rd1 = resolv(st.get_group("d") * 2 + 24);
     let rd2 = resolv(st.get_group("d") * 2 + 25);
-    let rd = rreil_lvalue!{ reg:16 };
     let k = Rvalue::new_u8(st.get_group("K") as u8);
 
     st.mnemonic(0,"__wide_reg","",vec![],&|cg: &mut CodeGen<Avr>| {
@@ -1049,15 +1040,16 @@ pub fn sbiw(st: &mut State<Avr>) -> bool {
     true
 }
 
-pub fn sleep(cg: &mut CodeGen<Avr>) {}
+pub fn sleep(_: &mut CodeGen<Avr>) {}
 
 pub fn spm(rd: Lvalue, off: usize, st: &mut State<Avr>) -> bool {
     let zreg = Lvalue::Variable{
-        name: Cow::Borrowed("Z"),
+        name: if off == 0 { Cow::Borrowed("Z") } else { Cow::Borrowed("Z+") },
         size: 16,
         subscript: None,
         offset: 0,
     };
+    let len = st.tokens.len() * 2;
 
     st.mnemonic(0,"__wide_reg","",vec![],&|cg: &mut CodeGen<Avr>| {
         rreil!{cg:
@@ -1066,22 +1058,21 @@ pub fn spm(rd: Lvalue, off: usize, st: &mut State<Avr>) -> bool {
         }
     });
 
-    st.mnemonic(0,"spm","{p:sram}",vec![zreg.clone().into()],&|cg: &mut CodeGen<Avr>| {
+    let arg = if off == 0 { vec![] } else { vec![zreg.clone().into()] };
+    st.mnemonic(len,"spm","{p:sram}",arg,&|cg: &mut CodeGen<Avr>| {
         rreil!{cg:
             load/sram ptr:16, (zreg);
             load/flash ptr:16, (rd);
         }
-    });
 
-    if off <= 1 {
-        st.mnemonic(0,"__inc_wide_reg","",vec![],&|cg: &mut CodeGen<Avr>| {
+        if off <= 1 {
             rreil!{cg:
                 add (zreg), (zreg), [1]:16;
                 mov R30:8, (zreg.extract(8,0).ok().unwrap());
                 mov R31:8, (zreg.extract(8,8).ok().unwrap());
             }
-        });
-    }
+        }
+    });
 
     let next = st.configuration.wrap(st.address + st.tokens.len() as u64 * 2);
 
@@ -1199,7 +1190,7 @@ pub fn swap(rd: Lvalue, cg: &mut CodeGen<Avr>) {
     }
 }
 
-pub fn wdr(cg: &mut CodeGen<Avr>) {}
+pub fn wdr(_: &mut CodeGen<Avr>) {}
 
 pub fn xch(ptr: Lvalue, reg: Lvalue, cg: &mut CodeGen<Avr>) {
     rreil!{cg:

@@ -45,7 +45,6 @@ use {
     ControlFlowGraph,
     Function,
     Guard,
-    liveness,
     flag_operations,
 };
 
@@ -75,7 +74,6 @@ pub fn approximate<A: Avalue>(func: &Function) -> HashMap<Lvalue,A> {
     let edge_ops = flag_operations(func);
     fn stabilize<A: Avalue>(h: &Vec<Box<HierarchicalOrdering<ControlFlowRef>>>, graph: &ControlFlowGraph,
                             constr: &HashMap<Lvalue,A>, ret: &mut HashMap<Lvalue,A>) {
-        println!("stablilize {:?}",h);
         let mut stable = true;
         let mut iter_cnt = 0;
         let head = if let &HierarchicalOrdering::Element(ref vx) = &**h.first().unwrap() {
@@ -113,8 +111,7 @@ pub fn approximate<A: Avalue>(func: &Function) -> HashMap<Lvalue,A> {
         }
     }
     fn execute<A: Avalue>(t: ControlFlowRef, do_widen: bool, graph: &ControlFlowGraph,
-                          constr: &HashMap<Lvalue,A>, ret: &mut HashMap<Lvalue,A>) -> bool {
-        println!("execute {:?}",t);
+                          _: &HashMap<Lvalue,A>, ret: &mut HashMap<Lvalue,A>) -> bool {
         if let Some(&ControlFlowTarget::Resolved(ref bb)) = graph.vertex_label(t) {
             let mut change = false;
             bb.execute(|i| {
@@ -233,7 +230,7 @@ pub fn approximate<A: Avalue>(func: &Function) -> HashMap<Lvalue,A> {
 
     for vx in func.cflow_graph.vertices() {
         for e in func.cflow_graph.in_edges(vx) {
-            if let Some(&Guard::Predicate{ ref flag, ref expected }) = func.cflow_graph.edge_label(e) {
+            if let Some(&Guard::Predicate{ .. }) = func.cflow_graph.edge_label(e) {
                 match edge_ops.get(&e).cloned() {
                     Some(Operation::Equal(left@Rvalue::Constant{ .. },right@Rvalue::Variable{ .. })) => {
                         constr.insert(Lvalue::from_rvalue(right).unwrap(),A::abstract_constraint(&Constraint::Equal(left.clone())));
@@ -482,7 +479,7 @@ impl Avalue for Kset {
             &Operation::Store(ref r,ref a) =>
                 map(a,&|a| execute(&Operation::Store(r.clone(),a))),
 
-            &Operation::Phi(ref a) => unreachable!(),
+            &Operation::Phi(_) => unreachable!(),
         }
     }
 
@@ -524,7 +521,7 @@ impl Avalue for Kset {
         }
     }
 
-    fn widen(&self,a: &Self) -> Self {
+    fn widen(&self,_: &Self) -> Self {
         Kset::Join
     }
 
@@ -563,11 +560,8 @@ mod tests {
 
     use graph_algos::{
         MutableGraphTrait,
-        GraphTrait,
     };
     use std::borrow::Cow;
-
-    use rustc_serialize::{Encodable,Decodable};
 
     #[derive(Debug,Clone,PartialEq,Eq,Hash,RustcDecodable,RustcEncodable)]
     enum Sign {
@@ -582,7 +576,6 @@ mod tests {
         fn abstract_value(v: &Rvalue) -> Self {
             match v {
                 &Rvalue::Constant{ value: c,.. } if c > 0 => Sign::Positive,
-                &Rvalue::Constant{ value: c,.. } if c < 0 => Sign::Negative,
                 &Rvalue::Constant{ value: 0,.. } => Sign::Zero,
                 _ => Sign::Join,
             }

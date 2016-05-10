@@ -228,9 +228,6 @@ pub use result::{
     Error,
 };
 
-pub mod target;
-pub use target::Target;
-
 pub mod dataflow;
 pub use dataflow::*;
 

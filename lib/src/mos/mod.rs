@@ -24,11 +24,13 @@ use {
     CodeGen,
     State,
     Architecture,
+    LayerIter,
+    Result,
+    Disassembler,
 };
+use std::rc::Rc;
 use std::borrow::Cow;
-use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
 
-pub mod load;
 pub mod syntax;
 pub mod semantic;
 
@@ -38,6 +40,34 @@ pub enum Mos {}
 impl Architecture for Mos {
     type Token = u8;
     type Configuration = Variant;
+
+    fn prepare(i: LayerIter,_: &Self::Configuration) -> Result<Vec<(&'static str,u64,&'static str)>> {
+        let iv = vec![
+            ("NMI",0xfffa, "NMI vector"),
+            ("RESET",0xfffc, "Reset routine"),
+            ("IRQ/BRK",0xfffe, "Interrupt routine")
+        ];
+        let mut ret = vec![];
+
+        for v in iv {
+            let mut j = i.clone();
+
+            j.seek(v.1);
+            let maybe_lo = j.next();
+            let maybe_hi = j.next();
+            if let (Some(Some(hi)),Some(Some(lo))) = (maybe_hi,maybe_lo) {
+                let addr = ((hi as u64) << 8) | (lo as u64);
+
+                ret.push((v.0,addr,v.2))
+            }
+        }
+
+        Ok(ret)
+    }
+
+    fn disassembler(_: &Self::Configuration) -> Rc<Disassembler<Self>> {
+        syntax::disassembler()
+    }
 }
 
 // 8 bit main register
@@ -71,27 +101,13 @@ lazy_static! {
 pub struct Variant {
     pub arg: Option<Rvalue>,
     pub rel: Option<i16>,
-    pub int_vec: Vec<(&'static str,Rvalue,&'static str)>
 }
 
 impl Variant {
-    pub fn new() -> Variant {
-        Variant {
-	    arg: None,
-	    rel: None,
-            int_vec: vec![/*("ENTRY", Rvalue::Constant(0), "MCU Entry")*/],
-        }
-    }
-
     pub fn mos6502() -> Variant {
         Variant {
             arg: None,
             rel: None,
-            int_vec: vec![
-              /*  ("NMI",Rvalue::Memory{ offset: Box::new(Rvalue::Constant(0xfffa)), bytes: 2, endianess: Endianess::Little, name: "ram".to_string() }, "NMI vector"),
-                ("RESET",Rvalue::Memory{ offset: Box::new(Rvalue::Constant(0xfffc)), bytes: 2, endianess: Endianess::Little, name: "ram".to_string() }, "Reset routine"),
-                ("IRQ/BRK",Rvalue::Memory{ offset: Box::new(Rvalue::Constant(0xfffe)), bytes: 2, endianess: Endianess::Little, name: "ram".to_string() }, "Interrupt routine")*/
-            ],
         }
     }
 }
@@ -115,7 +131,7 @@ pub fn nonary(opcode: &'static str, sem: fn(&mut CodeGen<Mos>)) -> Box<Fn(&mut S
 pub fn ret(opcode: &'static str) -> Box<Fn(&mut State<Mos>) -> bool> {
     Box::new(move |st: &mut State<Mos>| -> bool {
         let len = st.tokens.len();
-        st.mnemonic(len, &opcode, "", vec![], &|c| {});
+        st.mnemonic(len, &opcode, "", vec![], &|_| {});
         true
     })
 }
@@ -350,19 +366,10 @@ mod tests {
     use super::*;
     use region::Region;
     use super::syntax::disassembler;
-    use function::{ControlFlowTarget,Function};
     use Rvalue;
     use std::borrow::Cow;
 
-    use std::hash::{Hash,Hasher,SipHasher};
-
-    use graph_algos::{
-        VertexListGraphTrait,
-        GraphTrait,
-        EdgeListGraphTrait
-    };
-
-  #[test]
+    #[test]
     fn all() {
         let test_vectors = vec![
             // LDA

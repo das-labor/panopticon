@@ -184,7 +184,7 @@ pub fn bit(cg: &mut CodeGen<Mos>, r: Rvalue) {
 }
 
 
-pub fn brk(cg: &mut CodeGen<Mos>) {
+pub fn brk(_: &mut CodeGen<Mos>) {
     /* Well.  We could simulate BRK up to the indirect jump at the NMI vector.
        So we add the code to do that here.  But without the ROM, this is useless
        (and with user-provided NMI handlers it would be very dynamic).
@@ -420,28 +420,28 @@ pub fn plp(cg: &mut CodeGen<Mos>) {
 pub fn rol(cg: &mut CodeGen<Mos>, _r: Rvalue) {
     let r = Lvalue::from_rvalue(_r).unwrap();
     rreil!{cg:
-        mov hb:1, A:1/7;
-        shl A:8, A:8, [1]:8;
-        mov A:1/7, C:1;
+        mov hb:1, (r.extract(1,7).unwrap());
+        shl (r), (r), [1]:8;
+        mov (r.extract(1,7).unwrap()), C:1;
         mov C:1, hb:1;
-        cmpeq Z:1, A:8, [0]:8;
-        cmples N:1, A:8, [0]:8;
+        cmpeq Z:1, (r), [0]:8;
+        cmples N:1, (r), [0]:8;
     }
 }
 
 pub fn ror(cg: &mut CodeGen<Mos>, _r: Rvalue) {
     let r = Lvalue::from_rvalue(_r).unwrap();
     rreil!{cg:
-        mov lb:1, A:1;
-        shr A:8, A:8, [1]:8;
-        mov A:1/7, C:1;
+        mov lb:1, (r.extract(1,0).unwrap());
+        shr (r), (r), [1]:8;
+        mov (r.extract(1,7).unwrap()), C:1;
         mov C:1, lb:1;
-        cmpeq Z:1, A:8, [0]:8;
-        cmples N:1, A:8, [0]:8;
+        cmpeq Z:1, (r), [0]:8;
+        cmples N:1, (r), [0]:8;
     }
 }
 
-pub fn rts(cg: &mut CodeGen<Mos>) {
+pub fn rts(_: &mut CodeGen<Mos>) {
     /* FIXME: Pop PC-1 from stack (so that the next instruction is fetched
        from TOS+1 */
 }
@@ -614,7 +614,7 @@ pub fn tya(cg: &mut CodeGen<Mos>) {
 pub fn jmp_direct(st: &mut State<Mos>) -> bool {
     let next = Rvalue::new_u16(st.get_group("immlo") as u16 | ((st.get_group("immhi") as u16) << 8));
 
-    st.mnemonic(3,"jmp","{c:ram}",vec![next.clone()],&|cg: &mut CodeGen<Mos>| {});
+    st.mnemonic(3,"jmp","{c:ram}",vec![next.clone()],&|_: &mut CodeGen<Mos>| {});
     st.jump(next,Guard::always());
 
     true
@@ -631,7 +631,7 @@ pub fn jmp_indirect(st: &mut State<Mos>) -> bool {
 
     let next = rreil_rvalue!{ res:16 };
 
-    st.mnemonic(3,"jmp","{p:ram}",vec![ptr.clone()],&|cg: &mut CodeGen<Mos>| {});
+    st.mnemonic(3,"jmp","{p:ram}",vec![ptr.clone()],&|_: &mut CodeGen<Mos>| {});
     st.jump(next,Guard::always());
 
     true

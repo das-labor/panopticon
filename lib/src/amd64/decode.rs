@@ -708,7 +708,7 @@ fn decode_sib(
                         None
                     }
                 },
-                4 => if let Some(d) = disp { Some(select_mem(&os,rreil_rvalue!{ disp:bits },c)) } else { None },
+                4 => if let Some(_) = disp { Some(select_mem(&os,rreil_rvalue!{ disp:bits },c)) } else { None },
                 _ => None
             },
             _ => None
@@ -741,7 +741,7 @@ fn decode_sib(
                     None
                 }
             },
-            4 => if let Some(d) = disp {
+            4 => if let Some(_) = disp {
                 rreil!{c:
                     add tmp:bits, (select_reg(&os,b_base,rex)), disp:bits;
                 }

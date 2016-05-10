@@ -19,7 +19,6 @@
 use std::fmt::Debug;
 use std::io;
 use std::io::{Seek,SeekFrom,Read};
-use std::convert::From;
 use num::traits::ToPrimitive;
 use byteorder as bo;
 
@@ -155,13 +154,13 @@ impl Ehdr {
             let entry = try!(C::read_addr::<B,R>(fd));
             let phoff = try!(C::read_off::<B,R>(fd)).to_u64().unwrap();
             let shoff = try!(C::read_off::<B,R>(fd)).to_u64().unwrap();
-            let flags = try!(C::read_word::<B,R>(fd));
-            let ehsize = try!(C::read_half::<B,R>(fd));
+            /*let flags =*/ try!(C::read_word::<B,R>(fd));
+            /*let ehsize =*/ try!(C::read_half::<B,R>(fd));
             let phentsize = try!(C::read_half::<B,R>(fd)).to_u64().unwrap();
             let phnum = try!(C::read_half::<B,R>(fd)).to_u64().unwrap();
             let shentsize = try!(C::read_half::<B,R>(fd)).to_u64().unwrap();
             let shnum = try!(C::read_half::<B,R>(fd)).to_u64().unwrap();
-            let shstridx = try!(C::read_half::<B,R>(fd));
+            /*let shstridx =*/ try!(C::read_half::<B,R>(fd));
 
             let mut phdrs = vec![];
             let mut shdrs = vec![];
@@ -262,6 +261,7 @@ impl Data {
     }
 }
 
+#[allow(non_camel_case_types)]
 #[derive(Debug)]
 pub enum ABI {
     SystemV,
@@ -747,7 +747,7 @@ pub struct Shdr {
 
 impl Shdr {
     pub fn read<C: ElfClass,B: bo::ByteOrder,R: bo::ReadBytesExt>(fd: &mut R) -> Result<Shdr> {
-        let name = try!(C::read_word::<B,R>(fd));
+        /*let name =*/ try!(C::read_word::<B,R>(fd));
         let sectype = try!(C::read_word::<B,R>(fd));
         let flags = try!(C::read_yword::<B,R>(fd));
         let addr = try!(C::read_addr::<B,R>(fd));
@@ -755,7 +755,7 @@ impl Shdr {
         let size = try!(C::read_yword::<B,R>(fd));
         let link = try!(C::read_word::<B,R>(fd));
         let info = try!(C::read_word::<B,R>(fd));
-        let align = try!(C::read_yword::<B,R>(fd));
+        /*let align =*/ try!(C::read_yword::<B,R>(fd));
         let entsize = try!(C::read_yword::<B,R>(fd));
 
         Ok(Shdr{

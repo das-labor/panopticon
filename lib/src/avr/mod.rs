@@ -18,11 +18,18 @@
 
 use std::convert::Into;
 use std::borrow::Cow;
+use std::rc::Rc;
 
-use disassembler::*;
-use {Lvalue,Rvalue};
-use CodeGen;
-use Guard;
+use {
+    Lvalue,Rvalue,
+    CodeGen,
+    Guard,
+    Result,
+    LayerIter,
+    Disassembler,
+    State,
+    Architecture,
+};
 
 pub mod syntax;
 pub mod semantic;
@@ -33,12 +40,20 @@ pub enum Avr {}
 impl Architecture for Avr {
     type Token = u16;
     type Configuration = Mcu;
+
+    fn prepare(_: LayerIter,cfg: &Self::Configuration) -> Result<Vec<(&'static str,u64,&'static str)>> {
+        Ok(cfg.int_vec.clone())
+    }
+
+    fn disassembler(_: &Self::Configuration) -> Rc<Disassembler<Self>> {
+        syntax::disassembler()
+    }
 }
 
 #[derive(Clone)]
 pub struct Mcu {
-    pub pc_bits: u16,                                   ///< width of the program counter in bits (FLASHEND)
-    pub int_vec: Vec<(&'static str,Rvalue,&'static str)>,  ///< interrupt vector: (name, offset, comment)
+    pub pc_bits: u16,                                       ///< width of the program counter in bits (FLASHEND)
+    pub int_vec: Vec<(&'static str,u64,&'static str)>,   ///< interrupt vector: (name, offset, comment)
     pub skip: Option<(Guard,u64)>,
 }
 
@@ -46,7 +61,7 @@ impl Mcu {
     pub fn new() -> Mcu {
         Mcu {
             pc_bits: 22,
-            int_vec: vec![/*("RESET",Rvalue::Constant(0),"MCU Reset Interrupt")*/],
+            int_vec: vec![("RESET",0,"MCU Reset Interrupt")],
             skip: None,
         }
     }
@@ -55,30 +70,30 @@ impl Mcu {
         Mcu {
             pc_bits: 16,
             int_vec: vec![
-                /*("RESET",Rvalue::Constant(0),"MCU Reset Interrupt"),
-                ("INT0",Rvalue::Constant(0x02),"External Interrupt 0"),
-                ("INT1",Rvalue::Constant(0x04),"External Interrupt 1"),
-                ("INT2",Rvalue::Constant(0x06),"External Interrupt 2"),
-                ("INT3",Rvalue::Constant(0x08),"External Interrupt 3"),
-                ("INT4",Rvalue::Constant(0x0a),"External Interrupt 4"),
-                ("INT5",Rvalue::Constant(0x0c),"External Interrupt 5"),
-                ("INT6",Rvalue::Constant(0x0e),"External Interrupt 6"),
-                ("INT7",Rvalue::Constant(0x10),"External Interrupt 7"),
-                ("OC2",Rvalue::Constant(0x12),"Timer/Counter2 Compare Match"),
-                ("OVF2",Rvalue::Constant(0x14),"Timer/Counter2 Overflow"),
-                ("ICP1",Rvalue::Constant(0x16),"Timer/Counter1 Capture Event"),
-                ("OC1A",Rvalue::Constant(0x18),"Timer/Counter1 Compare Match A"),
-                ("OC1B",Rvalue::Constant(0x1a),"Timer/Counter1 Compare Match B"),
-                ("OVF1",Rvalue::Constant(0x1c),"Timer/Counter1 Overflow"),
-                ("OC0",Rvalue::Constant(0x1e),"Timer/Counter0 Compare Match"),
-                ("OVF0",Rvalue::Constant(0x20),"Timer/Counter0 Overflow"),
-                ("SPI",Rvalue::Constant(0x22),"SPI Serial Transfer Complete"),
-                ("URXC",Rvalue::Constant(0x24),"UART, Rx Complete"),
-                ("UDRE",Rvalue::Constant(0x26),"UART Data Register Empty"),
-                ("UTXC",Rvalue::Constant(0x28),"UART, Tx Complete"),
-                ("ADCC",Rvalue::Constant(0x2a),"ADC Conversion Complete"),
-                ("ERDY",Rvalue::Constant(0x2c),"EEPROM Ready"),
-                ("ACI",Rvalue::Constant(0x2e),"Analog Comparator"),*/
+                ("RESET",0,"MCU Reset Interrupt"),
+                ("INT0",0x02,"External Interrupt 0"),
+                ("INT1",0x04,"External Interrupt 1"),
+                ("INT2",0x06,"External Interrupt 2"),
+                ("INT3",0x08,"External Interrupt 3"),
+                ("INT4",0x0a,"External Interrupt 4"),
+                ("INT5",0x0c,"External Interrupt 5"),
+                ("INT6",0x0e,"External Interrupt 6"),
+                ("INT7",0x10,"External Interrupt 7"),
+                ("OC2",0x12,"Timer/Counter2 Compare Match"),
+                ("OVF2",0x14,"Timer/Counter2 Overflow"),
+                ("ICP1",0x16,"Timer/Counter1 Capture Event"),
+                ("OC1A",0x18,"Timer/Counter1 Compare Match A"),
+                ("OC1B",0x1a,"Timer/Counter1 Compare Match B"),
+                ("OVF1",0x1c,"Timer/Counter1 Overflow"),
+                ("OC0",0x1e,"Timer/Counter0 Compare Match"),
+                ("OVF0",0x20,"Timer/Counter0 Overflow"),
+                ("SPI",0x22,"SPI Serial Transfer Complete"),
+                ("URXC",0x24,"UART, Rx Complete"),
+                ("UDRE",0x26,"UART Data Register Empty"),
+                ("UTXC",0x28,"UART, Tx Complete"),
+                ("ADCC",0x2a,"ADC Conversion Complete"),
+                ("ERDY",0x2c,"EEPROM Ready"),
+                ("ACI",0x2e,"Analog Comparator"),
             ],
             skip: None,
         }
@@ -88,25 +103,25 @@ impl Mcu {
         Mcu {
             pc_bits: 13,
             int_vec: vec![
-               /* ("RESET",Rvalue::Constant(0),"MCU Reset Interrupt"),
-                ("INT0",Rvalue::Constant(0x01),"External Interrupt Request 0"),
-                ("INT1",Rvalue::Constant(0x02),"External Interrupt Request 1"),
-                ("OC2",Rvalue::Constant(0x03),"Timer/Counter2 Compare Match"),
-                ("OVF2",Rvalue::Constant(0x04),"Timer/Counter2 Overflow"),
-                ("ICP1",Rvalue::Constant(0x05),"Timer/Counter1 Capture Event"),
-                ("OC1A",Rvalue::Constant(0x06),"Timer/Counter1 Compare Match A"),
-                ("OC1B",Rvalue::Constant(0x07),"Timer/Counter1 Compare Match B"),
-                ("OVF1",Rvalue::Constant(0x08),"Timer/Counter1 Overflow"),
-                ("OVF0",Rvalue::Constant(0x09),"Timer/Counter0 Overflow"),
-                ("SPI",Rvalue::Constant(0x0a),"Serial Transfer Complete"),
-                ("URXC",Rvalue::Constant(0x0b),"USART, Rx Complete"),
-                ("UDRE",Rvalue::Constant(0x0c),"USART Data Register Empty"),
-                ("UTXC",Rvalue::Constant(0x0d),"USART, Tx Complete"),
-                ("ADCC",Rvalue::Constant(0x0e),"ADC Conversion Complete"),
-                ("ERDY",Rvalue::Constant(0x0f),"EEPROM Ready"),
-                ("ACI",Rvalue::Constant(0x10),"Analog Comparator"),
-                ("TWI",Rvalue::Constant(0x11),"2-wire Serial Interface"),
-                ("SPMR",Rvalue::Constant(0x12),"Store Program Memory Ready"),*/
+                ("RESET",0,"MCU Reset Interrupt"),
+                ("INT0",0x01,"External Interrupt Request 0"),
+                ("INT1",0x02,"External Interrupt Request 1"),
+                ("OC2",0x03,"Timer/Counter2 Compare Match"),
+                ("OVF2",0x04,"Timer/Counter2 Overflow"),
+                ("ICP1",0x05,"Timer/Counter1 Capture Event"),
+                ("OC1A",0x06,"Timer/Counter1 Compare Match A"),
+                ("OC1B",0x07,"Timer/Counter1 Compare Match B"),
+                ("OVF1",0x08,"Timer/Counter1 Overflow"),
+                ("OVF0",0x09,"Timer/Counter0 Overflow"),
+                ("SPI",0x0a,"Serial Transfer Complete"),
+                ("URXC",0x0b,"USART, Rx Complete"),
+                ("UDRE",0x0c,"USART Data Register Empty"),
+                ("UTXC",0x0d,"USART, Tx Complete"),
+                ("ADCC",0x0e,"ADC Conversion Complete"),
+                ("ERDY",0x0f,"EEPROM Ready"),
+                ("ACI",0x10,"Analog Comparator"),
+                ("TWI",0x11,"2-wire Serial Interface"),
+                ("SPMR",0x12,"Store Program Memory Ready"),
             ],
             skip: None,
         }
@@ -116,32 +131,32 @@ impl Mcu {
         Mcu {
             pc_bits: 13,
             int_vec: vec![
-              /*  ("RESET",Rvalue::Constant(0),"MCU Reset Interrupt"),
-                ("INT0",Rvalue::Constant(2),"External Interrupt Request 0"),
-                ("INT1",Rvalue::Constant(4),"External Interrupt Request 1"),
-                ("PCI0",Rvalue::Constant(6),"Pin Change Interrupt Request 0"),
-                ("PCI1",Rvalue::Constant(8),"Pin Change Interrupt Request 1"),
-                ("PCI2",Rvalue::Constant(10),"Pin Change Interrupt Request 2"),
-                ("WDT",Rvalue::Constant(12),"Watchdog Time-out Interrupt"),
-                ("OC2A",Rvalue::Constant(14),"Timer/Counter2 Compare Match A"),
-                ("OC2B",Rvalue::Constant(16),"Timer/Counter2 Compare Match B"),
-                ("OVF2",Rvalue::Constant(18),"Timer/Counter2 Overflow"),
-                ("ICP1",Rvalue::Constant(20),"Timer/Counter1 Capture Event"),
-                ("OC1A",Rvalue::Constant(22),"Timer/Counter1 Compare Match A"),
-                ("OC1B",Rvalue::Constant(24),"Timer/Counter1 Compare Match B"),
-                ("OVF1",Rvalue::Constant(26),"Timer/Counter1 Overflow"),
-                ("OC0A",Rvalue::Constant(28),"TimerCounter0 Compare Match A"),
-                ("OC0B",Rvalue::Constant(30),"TimerCounter0 Compare Match B"),// XXX: m88def.inc says 0x1f (words)
-                ("OVF0",Rvalue::Constant(32),"Timer/Couner0 Overflow"),
-                ("SPI",Rvalue::Constant(34),"SPI Serial Transfer Complete"),
-                ("URXC",Rvalue::Constant(36),"USART Rx Complete"),
-                ("UDRE",Rvalue::Constant(38),"USART, Data Register Empty"),
-                ("UTXC",Rvalue::Constant(40),"USART Tx Complete"),
-                ("ADCC",Rvalue::Constant(42),"ADC Conversion Complete"),
-                ("ERDY",Rvalue::Constant(44),"EEPROM Ready"),
-                ("ACI",Rvalue::Constant(46),"Analog Comparator"),
-                ("TWI",Rvalue::Constant(48),"Two-wire Serial Interface"),
-                ("SPMR",Rvalue::Constant(50),"Store Program Memory Read")*/
+                ("RESET",0,"MCU Reset Interrupt"),
+                ("INT0",2,"External Interrupt Request 0"),
+                ("INT1",4,"External Interrupt Request 1"),
+                ("PCI0",6,"Pin Change Interrupt Request 0"),
+                ("PCI1",8,"Pin Change Interrupt Request 1"),
+                ("PCI2",10,"Pin Change Interrupt Request 2"),
+                ("WDT",12,"Watchdog Time-out Interrupt"),
+                ("OC2A",14,"Timer/Counter2 Compare Match A"),
+                ("OC2B",16,"Timer/Counter2 Compare Match B"),
+                ("OVF2",18,"Timer/Counter2 Overflow"),
+                ("ICP1",20,"Timer/Counter1 Capture Event"),
+                ("OC1A",22,"Timer/Counter1 Compare Match A"),
+                ("OC1B",24,"Timer/Counter1 Compare Match B"),
+                ("OVF1",26,"Timer/Counter1 Overflow"),
+                ("OC0A",28,"TimerCounter0 Compare Match A"),
+                ("OC0B",30,"TimerCounter0 Compare Match B"),// XXX: m88def.inc says 0x1f (words)
+                ("OVF0",32,"Timer/Couner0 Overflow"),
+                ("SPI",34,"SPI Serial Transfer Complete"),
+                ("URXC",36,"USART Rx Complete"),
+                ("UDRE",38,"USART, Data Register Empty"),
+                ("UTXC",40,"USART Tx Complete"),
+                ("ADCC",42,"ADC Conversion Complete"),
+                ("ERDY",44,"EEPROM Ready"),
+                ("ACI",46,"Analog Comparator"),
+                ("TWI",48,"Two-wire Serial Interface"),
+                ("SPMR",50,"Store Program Memory Read")
             ],
             skip: None,
         }
@@ -233,15 +248,15 @@ pub fn skip(n: &'static str, expect: bool) -> Box<Fn(&mut State<Avr>) -> bool> {
                 unreachable!()
             }
         } else {
-            let A = Rvalue::Constant{ value: st.get_group("sA"), size: 6 };
+            let a = Rvalue::Constant{ value: st.get_group("sA"), size: 6 };
 
             st.mnemonic(0,"__io_reg","",vec![],&|cg: &mut CodeGen<Avr>| {
                 rreil!{cg:
-                    load/io ioreg:8, (A);
+                    load/io ioreg:8, (a);
                 }
             });
 
-            (Lvalue::Variable{ name: Cow::Borrowed("ioreg"), size: 1, offset: bit as usize, subscript: None },A)
+            (Lvalue::Variable{ name: Cow::Borrowed("ioreg"), size: 1, offset: bit as usize, subscript: None },a)
         };
 
         st.mnemonic(2,n,"{u}, {u}",vec![_rr.clone().into(),b.clone()],&|cg: &mut CodeGen<Avr>| {
@@ -301,15 +316,15 @@ pub fn binary_imm(n: &'static str,sem: fn(Lvalue,u64,&mut CodeGen<Avr>)) -> Box<
         } else if st.has_group("d") {
             (resolv(st.get_group("d") + 16),None)
         } else {
-            let A = Rvalue::Constant{ value: st.get_group("A"), size: 6 };
+            let a = Rvalue::Constant{ value: st.get_group("A"), size: 6 };
 
             st.mnemonic(0,"__io_reg","",vec![],&|cg: &mut CodeGen<Avr>| {
                 rreil!{cg:
-                    load/io ioreg:8, (A);
+                    load/io ioreg:8, (a);
                 }
             });
 
-            (Lvalue::Variable{ name: Cow::Borrowed("ioreg"), size: 8, offset: 0, subscript: None },Some(A))
+            (Lvalue::Variable{ name: Cow::Borrowed("ioreg"), size: 8, offset: 0, subscript: None },Some(a))
         };
         let (k,kc) = if st.has_group("k") {
             (st.get_group("k"),Rvalue::new_u8(st.get_group("k") as u8))
@@ -399,9 +414,7 @@ pub fn binary_ptr(n: &'static str,sem: fn(Lvalue,Lvalue,&mut CodeGen<Avr>),ar: A
                     add (addr_reg), (addr_reg), (Rvalue::new_u16(maybe_q.clone().unwrap().1 as u16));
                 }
             }
-        });
 
-        st.mnemonic(0,"__addr_reg","",vec![],&|cg: &mut CodeGen<Avr>| {
             let (r1,r2) = match ar {
                 AddressRegister::X => (rreil_lvalue!{ R26:8 },rreil_lvalue!{ R27:8 }),
                 AddressRegister::Y => (rreil_lvalue!{ R28:8 },rreil_lvalue!{ R29:8 }),
@@ -468,7 +481,7 @@ pub fn branch(n: &'static str,_f: &Lvalue,val: bool) -> Box<Fn(&mut State<Avr>) 
     Box::new(move |st: &mut State<Avr>| -> bool {
         let _k = st.get_group("k") as u8; // 6 bits, signed
         let k = (if _k >= 0x20 { (0xE0 | _k) as i8 } else { _k as i8 } * 2) as i64;
-        let jump = st.configuration.wrap_signed(st.address as i64 + st.tokens.len() as i64 + k);
+        let jump = st.configuration.wrap((st.address as i64 + st.tokens.len() as i64 + k) as u64);
         let fallthru = st.configuration.wrap(st.address + st.tokens.len() as u64 * 2);
 
         st.mnemonic(2,n,"{c:flash}",vec!(jump.clone().into()),&|cg: &mut CodeGen<Avr>| {
@@ -505,9 +518,11 @@ mod tests {
     use std::hash::{Hash,Hasher,SipHasher};
 
     use graph_algos::{
-        VertexListGraphTrait,
         GraphTrait,
-        EdgeListGraphTrait
+        VertexListGraphTrait,
+        EdgeListGraphTrait,
+        IncidenceGraphTrait,
+        BidirectionalGraphTrait,
     };
 
     #[test]
@@ -645,21 +660,78 @@ mod tests {
     fn avr_brne() {
         let reg = Region::wrap("flash".to_string(),
             vec!(
-                0xde,0x01, //  0: movw
-                0x11,0x96, //  2: adiw
-                0x88,0xe0, //  4: ldi
-                0x0d,0x90, //  6: ld
-                0x01,0x92, //  8: st
-                0x81,0x50, // 10: subi
-                0xe1,0xf7, // 12: brne
-                0x81,0xe0, // 14: ldi
-                0x01,0xc0, // 16: rjmp
-                0x80,0xe0, // 18: ldi
-                0x68,0x96, // 20: adiw
-                0xe4,0xe0  // 22: ldi
+                0x95,0xC8, //        lpm
+                0x96,0x31, //        adiw    r30, 1
+                0x92,0x0D, //        st      X+, r0
+                0x36,0xA2, //        cpi     r26, 0x62 ; 'b'
+                0x07,0xB1, //        cpc     r27, r17
+                0xF7,0xD1, //        brne    start
+                0xE0,0x10, //        ldi     r17, 0
+                0xE6,0xA2, //        ldi     r26, 0x62 ; 'b'
+                0xE0,0xB0, //        ldi     r27, 0
             ));
         let main = disassembler();
         let fun = Function::disassemble::<Avr>(None,main,Mcu::new(),reg.iter(),0,reg.name().to_string());
+        let cfg = &fun.cflow_graph;
+
+        assert_eq!(cfg.num_vertices(),3);
+        assert_eq!(cfg.num_edges(),3);
+
+        for v in cfg.vertices() {
+            match cfg.vertex_label(v) {
+                Some(&ControlFlowTarget::Resolved(ref bb)) => {
+                    if bb.area.start == 0 {
+                        assert_eq!(bb.mnemonics.len(), 6);
+                        assert_eq!(bb.area.end, 12);
+                        assert_eq!(cfg.out_degree(v), 2);
+                        assert_eq!(cfg.in_degree(v), 1);
+
+                        for e in cfg.out_edges(v) {
+                            if let Some(&ControlFlowTarget::Resolved(ref cc)) = cfg.vertex_label(cfg.target(e)) {
+                                assert!(cc.area.start == 0 || cc.area.start == 12);
+                            } else {
+                                unreachable!();
+                            }
+                        }
+
+                        for e in cfg.in_edges(v) {
+                            if let Some(&ControlFlowTarget::Resolved(ref cc)) = cfg.vertex_label(cfg.target(e)) {
+                                assert!(cc.area.start == 0);
+                            } else {
+                                unreachable!();
+                            }
+                        }
+                    } else if bb.area.start == 12 {
+                        assert_eq!(bb.mnemonics.len(), 3);
+                        assert_eq!(bb.area.end, 18);
+                        assert_eq!(cfg.out_degree(v), 1);
+                        assert_eq!(cfg.in_degree(v), 1);
+
+                        for e in cfg.out_edges(v) {
+                            if let Some(&ControlFlowTarget::Unresolved(Rvalue::Constant{ value: v,.. })) = cfg.vertex_label(cfg.target(e)) {
+                                assert!(v == 18);
+                            } else {
+                                unreachable!();
+                            }
+                        }
+
+                        for e in cfg.in_edges(v) {
+                            if let Some(&ControlFlowTarget::Resolved(ref cc)) = cfg.vertex_label(cfg.target(e)) {
+                                assert!(cc.area.start == 0);
+                            } else {
+                                unreachable!();
+                            }
+                        }
+                    } else {
+                        unreachable!();
+                    }
+                },
+                Some(&ControlFlowTarget::Unresolved(Rvalue::Constant{ value: v,.. })) => {
+                    assert_eq!(v, 18);
+                }
+                _ => unreachable!(),
+            }
+        }
 
         for x in fun.cflow_graph.edges() {
             let cg = &fun.cflow_graph;

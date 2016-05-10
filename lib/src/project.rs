@@ -27,7 +27,6 @@ use rustc_serialize::{Decodable,Encodable};
 use flate2::write::ZlibEncoder;
 use flate2::read::ZlibDecoder;
 use flate2::Compression;
-use graph_algos::MutableGraphTrait;
 use byteorder::{
     ReadBytesExt,
     WriteBytesExt,
@@ -35,16 +34,10 @@ use byteorder::{
 };
 
 use {
-    CallTarget,
     Program,
     CallGraphRef,
     Region,Regions,
     Function,
-    OpaqueLayer,
-    Rvalue,
-    Bound,
-    Layer,
-    Target,
     Result,
     pe
 };
@@ -93,41 +86,6 @@ impl Project {
         } else {
             Err("wrong magic number".into())
         }
-    }
-
-    pub fn raw(p: &Path, t: Target,base: u64, entry: Option<u64>) -> Option<Project> {
-        if let Some(nam) = p.file_name().and_then(|x| x.to_str()).or(p.to_str()) {
-            if let Some(b) = OpaqueLayer::open(p) {
-                let mut reg = Region::undefined(nam.to_string(),b.iter().len() + base);
-
-                reg.cover(Bound::new(base,base + b.iter().len()),Layer::Opaque(b));
-
-                let mut proj = Project{
-                    name: nam.to_string(),
-                    code: Vec::new(),
-                    sources: Regions::new(reg),
-                    comments: HashMap::new(),
-                };
-                let mut prog = Program::new("prog0",t);
-
-                if let Some(e) = entry {
-                    let uu =  Uuid::new_v4();
-                    prog.call_graph.add_vertex(CallTarget::Todo(Rvalue::new_u64(e),Some("main".to_string()),uu));
-                } else {
-                    for &(name,ref off,cmnt) in t.interrupt_vec().iter() {
-                        let uu =  Uuid::new_v4();
-
-                        prog.call_graph.add_vertex(CallTarget::Todo(off.clone(),Some(name.to_string()),uu));
-                    }
-                }
-
-                proj.code.push(prog);
-
-               return Some(proj);
-            }
-        }
-
-        None
     }
 
     pub fn pe(p: &Path) -> Option<Project> {

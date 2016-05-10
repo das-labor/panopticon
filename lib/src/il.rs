@@ -21,7 +21,6 @@ use std::convert::From;
 use std::borrow::Cow;
 use std::num::Wrapping;
 use std::u64;
-use std::hash::Hash;
 use std::str::{SplitWhitespace,FromStr};
 use std::result;
 
@@ -173,7 +172,7 @@ impl Lvalue {
 
     pub fn size(&self) -> Option<usize> {
         match self {
-            &Lvalue::Variable{ ref size, ref offset,.. } => {
+            &Lvalue::Variable{ ref size,.. } => {
                 Some(*size)
             },
             &Lvalue::Undefined => None,
@@ -753,10 +752,10 @@ mod tests {
 
     #[test]
     fn construct_guard() {
-        let g = Guard::from_flag(&Rvalue::Undefined).ok().unwrap();
-        let g2 = Guard::always();
+        Guard::from_flag(&Rvalue::Undefined).ok().unwrap();
+        let g1 = Guard::always();
         let g2 = Guard::never();
 
-        assert!(g != g2);
+        assert!(g1 != g2);
     }
 }

@@ -113,7 +113,10 @@ Popup {
 
 					Component.onCompleted: {
 						updateValid()
-						root.openFunction = function(path) { return Panopticon.createRawProject(path,targetSelect.currentText,loadAddress.text,singleEntry.checked ? entryPoint.text : -1) };
+						root.openFunction = function(path) {
+							var tgt = targetModel.get(targetSelect.currentIndex).ident
+							return Panopticon.createRawProject(path,tgt,loadAddress.text,singleEntry.checked ? entryPoint.text : -1)
+						};
 					}
 
 					Label {
@@ -134,14 +137,25 @@ Popup {
 						Layout.bottomMargin: 20
 						Layout.preferredWidth: 150
 						id: targetSelect
-						model: {
-							var _res = Panopticon.allTargets();
-							console.log(_res)
-							var res = JSON.parse(_res);
-							if(res.status == "ok") {
-								return res.payload;
-							} else {
-								return [];
+						model: targetModel
+
+						ListModel {
+							id: targetModel
+							ListElement {
+								text: "MOS 6502"
+								ident: "mos6502"
+							}
+							ListElement {
+								text: "ATmega103"
+								ident: "atmega103"
+							}
+							ListElement {
+								text: "ATmega8"
+								ident: "atmega8"
+							}
+							ListElement {
+								text: "ATmega88"
+								ident: "atmega88"
 							}
 						}
 					}

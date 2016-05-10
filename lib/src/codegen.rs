@@ -191,7 +191,11 @@ mod tests {
         Rvalue,
         Lvalue,
         Architecture,
+        LayerIter,
+        Result,
+        Disassembler,
     };
+    use std::rc::Rc;
     use std::borrow::Cow;
 
     #[derive(Clone)]
@@ -199,6 +203,14 @@ mod tests {
     impl Architecture for TestArchShort {
         type Token = u8;
         type Configuration = ();
+
+        fn prepare(_: LayerIter,_: &Self::Configuration) -> Result<Vec<(&'static str,u64,&'static str)>> {
+            unimplemented!()
+        }
+
+        fn disassembler(_: &Self::Configuration) -> Rc<Disassembler<Self>> {
+            unimplemented!()
+        }
     }
 
     #[test]

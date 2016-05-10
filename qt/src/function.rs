@@ -19,10 +19,8 @@
 use panopticon;
 use panopticon::{
     Rvalue,Lvalue,
-    Project,
     Function,ControlFlowTarget,
     CallTarget,
-    Target,
     MnemonicFormatToken,
     Error,
     Result,
@@ -33,9 +31,9 @@ use panopticon::{
 use std::hash::{Hash,Hasher,SipHasher};
 use std::thread;
 use std::fs;
-use std::path::{PathBuf,Path};
+use std::path::{PathBuf};
 use std::iter::FromIterator;
-use std::collections::HashMap;
+use std::collections::{HashSet,HashMap};
 use std::io::{
     SeekFrom,
     Seek,
@@ -43,7 +41,7 @@ use std::io::{
 };
 use std::env::home_dir;
 
-use qmlrs::{Object,Variant};
+use qmlrs::{Variant};
 use graph_algos::{
     VertexListGraphTrait,
     GraphTrait,
@@ -277,7 +275,7 @@ pub fn control_flow_graph(arg: &Variant) -> Variant {
                                                                 data: "".to_string(),
                                                             },
                                                     },
-                                                &MnemonicFormatToken::Pointer{ ref is_code, ref bank } =>
+                                                &MnemonicFormatToken::Pointer{ .. } =>
                                                     CfgOperand{
                                                         kind: "pointer",
                                                         display: "?".to_string(),
@@ -649,26 +647,32 @@ pub fn layout(arg0: &Variant, arg1: &Variant, arg2: &Variant, arg3: &Variant, ar
                         (f,t)
                     }).collect::<Vec<_>>();
                     let mut dims_transformed = HashMap::<usize,(f32,f32)>::new();
+                    let mut unseen_verts = HashSet::<_>::from_iter(vertices.iter().map(|v|
+                        to_ident(func.cflow_graph.vertex_label(*v).unwrap())));
 
                     for (k,v) in dims.iter() {
                         let _k = vertices.iter().position(|&x| {
                             let a = to_ident(func.cflow_graph.vertex_label(x).unwrap());
                             a == *k
                         }).unwrap();
+                        unseen_verts.remove(&to_ident(func.cflow_graph.vertex_label(vertices[_k]).unwrap()));
                         dims_transformed.insert(_k,(v.width as f32,v.height as f32));
                     }
                     let maybe_entry = func.entry_point.map(|k| vertices.iter().position(|&x| x == k).unwrap());
                     let idents = vertices.iter().map(|x| to_ident(func.cflow_graph.vertex_label(*x).unwrap())).collect::<Vec<_>>();
 
-                    assert!(idents.len() == vertices.len() && dims_transformed.len() == vertices.len());
-
-                    Some((maybe_entry,idents,dims_transformed,vertices,edges))
+                    Some((maybe_entry,idents,dims_transformed,vertices,edges,unseen_verts))
                 } else {
                     None
                 }
             });
 
-            if let Ok(Some((maybe_entry,idents,dims_transformed,vertices,edges))) = ret {
+            if let Ok(Some((maybe_entry,idents,dims_transformed,vertices,edges,unseen_verts))) = ret {
+                if !unseen_verts.is_empty() {
+                    let e = format!("Missing dimension for {:?}",unseen_verts);
+                    return Variant::String(return_json::<()>(Err(e.into())));
+                }
+
                 thread::spawn(move || -> Result<()> {
                     match sugiyama::layout(&(0..vertices.len()).collect::<Vec<usize>>(),
                                            &edges,
@@ -702,10 +706,13 @@ pub fn layout(arg0: &Variant, arg1: &Variant, arg2: &Variant, arg3: &Variant, ar
                                     }
                                 });
                             }
-                            Controller::emit1(LAYOUTED_FUNCTION,&try!(json::encode(&(ret_v,ret_e))))
+                            Controller::emit(LAYOUTED_FUNCTION,&try!(json::encode(&(ret_v,ret_e))))
                         },
                         // XXX tell the frontend
-                        Err(e) => Err(Error(e.into())),
+                        Err(e) => {
+                            println!("layouting thread failed with '{:?}'",e);
+                            Err(Error(e.into()))
+                        },
                     }
                 });
                 Variant::String(return_json(Ok(())))
@@ -749,14 +756,15 @@ pub fn comment(arg0: &Variant, arg1: &Variant, arg2: &Variant) -> Variant {
                     Some(&CallTarget::Concrete(ref func)) => {
                         if func.region == reg {
                             // XXX: check offset?
-                            Controller::emit1(CHANGED_FUNCTION,&func.uuid.to_string());
+                            try!(Controller::emit(CHANGED_FUNCTION,&func.uuid.to_string()));
                         }
                     },
-                    _ => {}
+                    _ => {},
                 }
             }
         }
-    }))))
+        Ok(())
+    }).and_then(|x| x))))
 }
 
 pub fn rename(arg0: &Variant, arg1: &Variant) -> Variant {
@@ -784,13 +792,8 @@ pub fn rename(arg0: &Variant, arg1: &Variant) -> Variant {
     };
 
     if let Some(Some(uu)) = maybe_uu {
-        Controller::emit1(CHANGED_FUNCTION,&uu.to_string());
-        Variant::String(return_json(Ok(())))
+        Variant::String(return_json(Controller::emit(CHANGED_FUNCTION,&uu.to_string())))
     } else {
         Variant::String(return_json::<()>(Err("No function found for this UUID".into())))
     }
-}
-
-pub fn targets() -> Variant {
-    Variant::String(return_json(Ok(Target::all().iter().map(|x| x.name()).collect::<Vec<_>>())))
 }

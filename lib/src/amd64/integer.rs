@@ -21,7 +21,6 @@ use {
     State,
     CodeGen,
     Rvalue,
-    Lvalue,
 };
 
 use amd64::decode::*;
@@ -31,10 +30,10 @@ use amd64::*;
 use std::rc::Rc;
 
 pub fn integer_lockable(imm8: Rc<Disassembler<Amd64>>,
-                          imm16: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>,
                           _: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>,
-                          imm: Rc<Disassembler<Amd64>>, immlong: Rc<Disassembler<Amd64>>,
-                          moffs8: Rc<Disassembler<Amd64>>, moffs: Rc<Disassembler<Amd64>>,
+                          _: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>,
+                          imm: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>,
+                          _: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>,
                           _: Rc<Disassembler<Amd64>>, rm: Rc<Disassembler<Amd64>>,
                           rm0: Rc<Disassembler<Amd64>>, rm1: Rc<Disassembler<Amd64>>,
                           rm2: Rc<Disassembler<Amd64>>, rm3: Rc<Disassembler<Amd64>>,
@@ -43,8 +42,8 @@ pub fn integer_lockable(imm8: Rc<Disassembler<Amd64>>,
                           rmbyte: Rc<Disassembler<Amd64>>, rmbyte0: Rc<Disassembler<Amd64>>,
                           rmbyte1: Rc<Disassembler<Amd64>>, rmbyte2: Rc<Disassembler<Amd64>>,
                           rmbyte3: Rc<Disassembler<Amd64>>, rmbyte4: Rc<Disassembler<Amd64>>,
-                          rmbyte5: Rc<Disassembler<Amd64>>, rmbyte6: Rc<Disassembler<Amd64>>,
-                          rmbyte7: Rc<Disassembler<Amd64>>, rmlong: Rc<Disassembler<Amd64>>,
+                          _: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>,
+                          _: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>,
                           m64: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>,
                           _: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>,
                           _: Rc<Disassembler<Amd64>>) -> Rc<Disassembler<Amd64>> {
@@ -191,7 +190,7 @@ pub fn integer_universial(imm8: Rc<Disassembler<Amd64>>,
                           rmbyte3: Rc<Disassembler<Amd64>>, rmbyte4: Rc<Disassembler<Amd64>>,
                           rmbyte5: Rc<Disassembler<Amd64>>, rmbyte6: Rc<Disassembler<Amd64>>,
                           rmbyte7: Rc<Disassembler<Amd64>>, rmlong: Rc<Disassembler<Amd64>>,
-                          m64: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>,
+                          _: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>,
                           _: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>,
                           _: Rc<Disassembler<Amd64>>) -> Rc<Disassembler<Amd64>> {
     fn cmovcc(cond: Condition) -> Box<Fn(&mut CodeGen<Amd64>,Rvalue,Rvalue)> {
@@ -683,12 +682,12 @@ pub fn integer_32bit(imm8: Rc<Disassembler<Amd64>>, imm48: Rc<Disassembler<Amd64
         [ 0xff, rm5   ] = unary("jmp",decode_d,jmp))
 }
 
-pub fn lockable_64bit(imm8: Rc<Disassembler<Amd64>>,
-                     moffs: Rc<Disassembler<Amd64>>,
-                     rm: Rc<Disassembler<Amd64>>,
+pub fn lockable_64bit(_: Rc<Disassembler<Amd64>>,
+                     _: Rc<Disassembler<Amd64>>,
+                     _: Rc<Disassembler<Amd64>>,
                      _: Rc<Disassembler<Amd64>>, rm1: Rc<Disassembler<Amd64>>,
                      _: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>,
-                     rm4: Rc<Disassembler<Amd64>>, rm5: Rc<Disassembler<Amd64>>,
+                     _: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>,
                      _: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>,
                      m128: Rc<Disassembler<Amd64>>) -> Rc<Disassembler<Amd64>> {
     new_disassembler!(Amd64 =>
@@ -727,11 +726,11 @@ pub fn integer_64bit(imm8: Rc<Disassembler<Amd64>>,
 }
 
 pub fn lockable_32bit_or_less(
-                     imm8: Rc<Disassembler<Amd64>>,
-                     imm48: Rc<Disassembler<Amd64>>,
-                     rm: Rc<Disassembler<Amd64>>,
+                     _: Rc<Disassembler<Amd64>>,
+                     _: Rc<Disassembler<Amd64>>,
+                     _: Rc<Disassembler<Amd64>>,
                      _: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>,
-                     rm2: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>,
+                     _: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>,
                      _: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>,
                      _: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>) -> Rc<Disassembler<Amd64>> {
     new_disassembler!(Amd64 =>

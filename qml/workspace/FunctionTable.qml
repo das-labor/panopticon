@@ -51,7 +51,6 @@ Item {
 	Component.onCompleted: {
 		Panopticon.startedFunction.connect(function(uu) {
 			var _res = Panopticon.functionInfo(uu);
-			//console.log(_res);
 			var res = JSON.parse(_res);
 
 			if(res.status == "ok") {
@@ -75,7 +74,6 @@ Item {
 
 		Panopticon.discoveredFunction.connect(function(uu) {
 			var _res = Panopticon.functionInfo(uu);
-			//console.log(_res);
 			var res = JSON.parse(_res);
 
 			if(res.status == "ok") {
@@ -94,7 +92,6 @@ Item {
 
 		Panopticon.finishedFunction.connect(function(uu) {
 			var _res = Panopticon.functionInfo(uu);
-			//console.log(_res);
 			var res = JSON.parse(_res);
 
 			if(res.status == "ok") {
@@ -118,7 +115,6 @@ Item {
 
 		Panopticon.changedFunction.connect(function(uu) {
 			var _res = Panopticon.functionInfo(uu);
-			//console.log(_res);
 			var res = JSON.parse(_res);
 
 			if(res.status == "ok") {

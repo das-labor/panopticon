@@ -42,6 +42,8 @@ use {
     Mnemonic,
     Guard,
     CodeGen,
+    LayerIter,
+    Result,
 };
 
 pub trait Architecture: Clone
@@ -58,7 +60,10 @@ pub trait Architecture: Clone
                 Shr<usize,Output=Self::Token> +
                 PartialEq +
                 Eq;
-    type Configuration: Clone;
+    type Configuration: Clone + Send;
+
+    fn prepare(LayerIter,&Self::Configuration) -> Result<Vec<(&'static str,u64,&'static str)>>;
+    fn disassembler(&Self::Configuration) -> Rc<Disassembler<Self>>;
 }
 
 pub type Action<A> = fn(&mut State<A>) -> bool;
@@ -125,6 +130,8 @@ impl<A: Architecture> State<A> {
     }
 
     pub fn jump(&mut self,v: Rvalue,g: Guard) {
+        assert!(self.mnemonics.is_empty() || self.mnemonics.last().unwrap().area.len() > 0,
+                "A basic block mustn't end w/ a zero sized mnemonic");
         let o = self.jump_origin;
         self.jump_from(o,v,g);
     }
@@ -601,6 +608,8 @@ mod tests {
         Guard,
         Rvalue,
         Bound,
+        LayerIter,
+        Result,
     };
 
     #[derive(Clone)]
@@ -608,6 +617,14 @@ mod tests {
     impl Architecture for TestArchShort {
         type Token = u8;
         type Configuration = ();
+
+        fn prepare(_: LayerIter,_: &Self::Configuration) -> Result<Vec<(&'static str,u64,&'static str)>> {
+            unimplemented!()
+        }
+
+        fn disassembler(_: &Self::Configuration) -> Rc<Disassembler<Self>> {
+            unimplemented!()
+        }
     }
 
     #[derive(Clone)]
@@ -615,6 +632,14 @@ mod tests {
     impl Architecture for TestArchWide {
         type Token = u16;
         type Configuration = ();
+
+        fn prepare(_: LayerIter,_: &Self::Configuration) -> Result<Vec<(&'static str,u64,&'static str)>> {
+            unimplemented!()
+        }
+
+        fn disassembler(_: &Self::Configuration) -> Rc<Disassembler<Self>> {
+            unimplemented!()
+        }
     }
 
     #[test]
