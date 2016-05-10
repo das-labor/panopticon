@@ -30,6 +30,14 @@ sudo apt-get install qt5-default qtdeclarative5-dev libqt5qml-quickcontrols \
                      libglpk-dev git build-essential cmake
 ```
 
+Ubuntu 16.04:
+```bash
+sudo apt install qt5-default qtdeclarative5-dev \
+                 qml-module-qtquick-controls qml-module-qtquick-dialogs \
+                 qtbase5-private-dev pkg-config \
+                 libglpk-dev git build-essential cmake
+```
+
 Fedora 20:
 ```bash
 sudo yum install qt5-qtdeclarative-devel qt5-qtquickcontrols glpk-devel
