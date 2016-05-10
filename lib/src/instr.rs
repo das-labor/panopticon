@@ -49,220 +49,220 @@ pub enum Operation<Value: Clone + PartialEq + Eq + Debug + Encodable + Decodable
 }
 
 pub fn execute(op: &Operation<Rvalue>) -> Rvalue {
-	match op {
-        &Operation::LogicAnd(Rvalue::Constant(a),Rvalue::Constant(b)) =>
+	match *op {
+        Operation::LogicAnd(Rvalue::Constant(a),Rvalue::Constant(b)) =>
             if a > 0 && b > 0 { Rvalue::Constant(1) } else { Rvalue::Constant(0) },
-        &Operation::LogicAnd(Rvalue::Constant(a),ref b) =>
+        Operation::LogicAnd(Rvalue::Constant(a),ref b) =>
             if a > 0 { b.clone() } else { Rvalue::Constant(0) },
-        &Operation::LogicAnd(ref a,Rvalue::Constant(b)) =>
+        Operation::LogicAnd(ref a,Rvalue::Constant(b)) =>
             if b > 0 { a.clone() } else { Rvalue::Constant(0) },
-        &Operation::LogicAnd(_,_) =>
+        Operation::LogicAnd(_,_) =>
             Rvalue::Undefined,
 
-        &Operation::LogicInclusiveOr(Rvalue::Constant(a),Rvalue::Constant(b)) =>
+        Operation::LogicInclusiveOr(Rvalue::Constant(a),Rvalue::Constant(b)) =>
              if a > 0 || b > 0 { Rvalue::Constant(1) } else { Rvalue::Constant(0) },
-        &Operation::LogicInclusiveOr(Rvalue::Constant(a),ref b) =>
+        Operation::LogicInclusiveOr(Rvalue::Constant(a),ref b) =>
              if a > 0 { Rvalue::Constant(1) } else { b.clone() },
-        &Operation::LogicInclusiveOr(ref a,Rvalue::Constant(b)) =>
+        Operation::LogicInclusiveOr(ref a,Rvalue::Constant(b)) =>
              if b > 0 { Rvalue::Constant(1) } else { a.clone() },
-        &Operation::LogicInclusiveOr(_,_) =>
+        Operation::LogicInclusiveOr(_,_) =>
             Rvalue::Undefined,
 
-        &Operation::LogicExclusiveOr(Rvalue::Constant(a),Rvalue::Constant(b)) =>
+        Operation::LogicExclusiveOr(Rvalue::Constant(a),Rvalue::Constant(b)) =>
              if (a > 0) ^ (b > 0) { Rvalue::Constant(1) } else { Rvalue::Constant(0) },
-        &Operation::LogicExclusiveOr(ref a,ref b) =>
+        Operation::LogicExclusiveOr(ref a,ref b) =>
             if a != &Rvalue::Undefined {
                 if a == b { Rvalue::Constant(0) } else { Rvalue::Constant(1) }
             } else {
                 Rvalue::Undefined
             },
 
-        &Operation::LogicNegation(Rvalue::Constant(a)) =>
+        Operation::LogicNegation(Rvalue::Constant(a)) =>
             if a > 0 { Rvalue::Constant(0) } else { Rvalue::Constant(1) },
-        &Operation::LogicNegation(_) =>
+        Operation::LogicNegation(_) =>
              Rvalue::Undefined,
 
-        &Operation::LogicLift(Rvalue::Constant(a)) =>
+        Operation::LogicLift(Rvalue::Constant(a)) =>
             if a > 0 { Rvalue::Constant(1) } else { Rvalue::Constant(0) },
-        &Operation::LogicLift(_) =>
+        Operation::LogicLift(_) =>
              Rvalue::Undefined,
 
-        &Operation::IntAnd(Rvalue::Constant(a),Rvalue::Constant(b)) =>
+        Operation::IntAnd(Rvalue::Constant(a),Rvalue::Constant(b)) =>
             Rvalue::Constant(a & b),
-        &Operation::IntAnd(Rvalue::Constant(0),_) =>
+        Operation::IntAnd(Rvalue::Constant(0),_) =>
             Rvalue::Constant(0),
-        &Operation::IntAnd(_,Rvalue::Constant(0)) =>
+        Operation::IntAnd(_,Rvalue::Constant(0)) =>
             Rvalue::Constant(0),
-        &Operation::IntAnd(_,_) =>
+        Operation::IntAnd(_,_) =>
             Rvalue::Undefined,
 
-        &Operation::IntInclusiveOr(Rvalue::Constant(a),Rvalue::Constant(b)) =>
+        Operation::IntInclusiveOr(Rvalue::Constant(a),Rvalue::Constant(b)) =>
             Rvalue::Constant(a | b),
-        &Operation::IntInclusiveOr(Rvalue::Constant(0),ref b) =>
+        Operation::IntInclusiveOr(Rvalue::Constant(0),ref b) =>
             b.clone(),
-        &Operation::IntInclusiveOr(ref a,Rvalue::Constant(0)) =>
+        Operation::IntInclusiveOr(ref a,Rvalue::Constant(0)) =>
             a.clone(),
-        &Operation::IntInclusiveOr(_,_) =>
+        Operation::IntInclusiveOr(_,_) =>
             Rvalue::Undefined,
 
-        &Operation::IntExclusiveOr(Rvalue::Constant(a),Rvalue::Constant(b)) =>
+        Operation::IntExclusiveOr(Rvalue::Constant(a),Rvalue::Constant(b)) =>
             Rvalue::Constant(a ^ b),
-        &Operation::IntExclusiveOr(ref a,ref b) =>
+        Operation::IntExclusiveOr(ref a,ref b) =>
             if a != &Rvalue::Undefined {
                 if a == b { Rvalue::Constant(0) } else { Rvalue::Constant(1) }
             } else {
                 Rvalue::Undefined
             },
 
-        &Operation::IntAdd(Rvalue::Constant(a),Rvalue::Constant(b)) =>
+        Operation::IntAdd(Rvalue::Constant(a),Rvalue::Constant(b)) =>
             Rvalue::Constant(a.wrapping_add(b)),
-        &Operation::IntAdd(Rvalue::Constant(0),ref b) =>
+        Operation::IntAdd(Rvalue::Constant(0),ref b) =>
             b.clone(),
-        &Operation::IntAdd(ref a,Rvalue::Constant(0)) =>
+        Operation::IntAdd(ref a,Rvalue::Constant(0)) =>
             a.clone(),
-        &Operation::IntAdd(_,_) =>
+        Operation::IntAdd(_,_) =>
             Rvalue::Undefined,
 
-        &Operation::IntSubtract(Rvalue::Constant(a),Rvalue::Constant(b)) =>
+        Operation::IntSubtract(Rvalue::Constant(a),Rvalue::Constant(b)) =>
             Rvalue::Constant(a.wrapping_sub(b)),
-        &Operation::IntSubtract(ref a,Rvalue::Constant(0)) =>
+        Operation::IntSubtract(ref a,Rvalue::Constant(0)) =>
             a.clone(),
-        &Operation::IntSubtract(_,_) =>
+        Operation::IntSubtract(_,_) =>
             Rvalue::Undefined,
 
-        &Operation::IntMultiply(Rvalue::Constant(a),Rvalue::Constant(b)) =>
+        Operation::IntMultiply(Rvalue::Constant(a),Rvalue::Constant(b)) =>
             Rvalue::Constant(a.wrapping_mul(b)),
-        &Operation::IntMultiply(Rvalue::Constant(0),ref b) =>
+        Operation::IntMultiply(Rvalue::Constant(0),ref b) =>
             Rvalue::Constant(0),
-        &Operation::IntMultiply(ref a,Rvalue::Constant(0)) =>
+        Operation::IntMultiply(ref a,Rvalue::Constant(0)) =>
             Rvalue::Constant(0),
-        &Operation::IntMultiply(Rvalue::Constant(1),ref b) =>
+        Operation::IntMultiply(Rvalue::Constant(1),ref b) =>
             b.clone(),
-        &Operation::IntMultiply(ref a,Rvalue::Constant(1)) =>
+        Operation::IntMultiply(ref a,Rvalue::Constant(1)) =>
             a.clone(),
-        &Operation::IntMultiply(_,_) =>
+        Operation::IntMultiply(_,_) =>
             Rvalue::Undefined,
 
-        &Operation::IntDivide(Rvalue::Constant(a),Rvalue::Constant(b)) =>
+        Operation::IntDivide(Rvalue::Constant(a),Rvalue::Constant(b)) =>
             if b != 0 { Rvalue::Constant(a.wrapping_div(b)) } else { Rvalue::Undefined },
-        &Operation::IntDivide(Rvalue::Constant(0),_) =>
+        Operation::IntDivide(Rvalue::Constant(0),_) =>
             Rvalue::Constant(0),
-        &Operation::IntDivide(_,Rvalue::Constant(0)) =>
+        Operation::IntDivide(_,Rvalue::Constant(0)) =>
             Rvalue::Undefined,
-        &Operation::IntDivide(ref a,Rvalue::Constant(1)) =>
+        Operation::IntDivide(ref a,Rvalue::Constant(1)) =>
             a.clone(),
-        &Operation::IntDivide(_,_) =>
+        Operation::IntDivide(_,_) =>
             Rvalue::Undefined,
 
-        &Operation::IntModulo(Rvalue::Constant(a),Rvalue::Constant(b)) =>
+        Operation::IntModulo(Rvalue::Constant(a),Rvalue::Constant(b)) =>
             if b != 0 { Rvalue::Constant(a.wrapping_rem(b)) } else { Rvalue::Undefined },
-        &Operation::IntModulo(Rvalue::Constant(0),_) =>
+        Operation::IntModulo(Rvalue::Constant(0),_) =>
             Rvalue::Constant(0),
-        &Operation::IntModulo(_,Rvalue::Constant(0)) =>
+        Operation::IntModulo(_,Rvalue::Constant(0)) =>
             Rvalue::Undefined,
-        &Operation::IntModulo(_,Rvalue::Constant(1)) =>
+        Operation::IntModulo(_,Rvalue::Constant(1)) =>
             Rvalue::Constant(0),
-        &Operation::IntModulo(_,_) =>
+        Operation::IntModulo(_,_) =>
             Rvalue::Undefined,
 
-        &Operation::IntLess(Rvalue::Constant(a),Rvalue::Constant(b)) =>
+        Operation::IntLess(Rvalue::Constant(a),Rvalue::Constant(b)) =>
             if a < b { Rvalue::Constant(1) } else { Rvalue::Constant(0) },
-        &Operation::IntLess(_,Rvalue::Constant(0)) =>
+        Operation::IntLess(_,Rvalue::Constant(0)) =>
             Rvalue::Constant(0),
-        &Operation::IntLess(_,_) =>
+        Operation::IntLess(_,_) =>
             Rvalue::Undefined,
 
-        &Operation::IntEqual(ref a,ref b) =>
+        Operation::IntEqual(ref a,ref b) =>
             if a != &Rvalue::Undefined {
                 if a == b { Rvalue::Constant(1) } else { Rvalue::Constant(0) }
             } else {
                 Rvalue::Undefined
             },
 
-        &Operation::IntCall(_) =>
+        Operation::IntCall(_) =>
             Rvalue::Undefined,
 
-        &Operation::IntRightShift(Rvalue::Constant(a),Rvalue::Constant(b)) =>
+        Operation::IntRightShift(Rvalue::Constant(a),Rvalue::Constant(b)) =>
             Rvalue::Constant(a.wrapping_shr(b as u32)),
-        &Operation::IntRightShift(Rvalue::Constant(0),_) =>
+        Operation::IntRightShift(Rvalue::Constant(0),_) =>
             Rvalue::Constant(0),
-        &Operation::IntRightShift(ref a,Rvalue::Constant(0)) =>
+        Operation::IntRightShift(ref a,Rvalue::Constant(0)) =>
             a.clone(),
-        &Operation::IntRightShift(_,_) =>
+        Operation::IntRightShift(_,_) =>
             Rvalue::Undefined,
 
-        &Operation::IntLeftShift(Rvalue::Constant(a),Rvalue::Constant(b)) =>
+        Operation::IntLeftShift(Rvalue::Constant(a),Rvalue::Constant(b)) =>
             Rvalue::Constant(a.wrapping_shl(b as u32)),
-        &Operation::IntLeftShift(Rvalue::Constant(0),_) =>
+        Operation::IntLeftShift(Rvalue::Constant(0),_) =>
             Rvalue::Constant(0),
-        &Operation::IntLeftShift(ref a,Rvalue::Constant(0)) =>
+        Operation::IntLeftShift(ref a,Rvalue::Constant(0)) =>
             a.clone(),
-        &Operation::IntLeftShift(_,_) =>
+        Operation::IntLeftShift(_,_) =>
             Rvalue::Undefined,
 
-        &Operation::Phi(ref vec) =>
+        Operation::Phi(ref vec) =>
             match vec.len() {
                 0 => Rvalue::Undefined,
                 1 => vec[0].clone(),
                 _ => if vec.iter().all(|x| vec.first().unwrap() == x) { vec[0].clone() } else { Rvalue::Undefined }
             },
-        &Operation::Nop(ref a) =>
+        Operation::Nop(ref a) =>
             a.clone(),
     }
 }
 
 impl<'a,Value> Operation<Value> where Value: Clone + PartialEq + Eq + Debug + Encodable + Decodable {
     pub fn operands(&'a self) -> Vec<&'a Value> {
-        match self {
-            &Operation::LogicAnd(ref a,ref b) => return vec!(a,b),
-            &Operation::LogicInclusiveOr(ref a,ref b) => return vec!(a,b),
-            &Operation::LogicExclusiveOr(ref a,ref b) => return vec!(a,b),
-            &Operation::LogicNegation(ref a) => return vec!(a),
-            &Operation::LogicLift(ref a) => return vec!(a),
+        match *self {
+            Operation::LogicAnd(ref a,ref b) => return vec!(a,b),
+            Operation::LogicInclusiveOr(ref a,ref b) => return vec!(a,b),
+            Operation::LogicExclusiveOr(ref a,ref b) => return vec!(a,b),
+            Operation::LogicNegation(ref a) => return vec!(a),
+            Operation::LogicLift(ref a) => return vec!(a),
+            
+            Operation::IntAnd(ref a,ref b) => return vec!(a,b),
+            Operation::IntInclusiveOr(ref a,ref b) => return vec!(a,b),
+            Operation::IntExclusiveOr(ref a,ref b) => return vec!(a,b),
+            Operation::IntAdd(ref a,ref b) => return vec!(a,b),
+            Operation::IntSubtract(ref a,ref b) => return vec!(a,b),
+            Operation::IntMultiply(ref a,ref b) => return vec!(a,b),
+            Operation::IntDivide(ref a,ref b) => return vec!(a,b),
+            Operation::IntModulo(ref a,ref b) => return vec!(a,b),
+            Operation::IntLess(ref a,ref b) => return vec!(a,b),
+            Operation::IntEqual(ref a,ref b) => return vec!(a,b),
+            Operation::IntCall(ref a) => return vec!(a),
+            Operation::IntRightShift(ref a,ref b) => return vec!(a,b),
+            Operation::IntLeftShift(ref a,ref b) => return vec!(a,b),
 
-            &Operation::IntAnd(ref a,ref b) => return vec!(a,b),
-            &Operation::IntInclusiveOr(ref a,ref b) => return vec!(a,b),
-            &Operation::IntExclusiveOr(ref a,ref b) => return vec!(a,b),
-            &Operation::IntAdd(ref a,ref b) => return vec!(a,b),
-            &Operation::IntSubtract(ref a,ref b) => return vec!(a,b),
-            &Operation::IntMultiply(ref a,ref b) => return vec!(a,b),
-            &Operation::IntDivide(ref a,ref b) => return vec!(a,b),
-            &Operation::IntModulo(ref a,ref b) => return vec!(a,b),
-            &Operation::IntLess(ref a,ref b) => return vec!(a,b),
-            &Operation::IntEqual(ref a,ref b) => return vec!(a,b),
-            &Operation::IntCall(ref a) => return vec!(a),
-            &Operation::IntRightShift(ref a,ref b) => return vec!(a,b),
-            &Operation::IntLeftShift(ref a,ref b) => return vec!(a,b),
-
-            &Operation::Phi(ref vec) => return vec.iter().collect(),
-            &Operation::Nop(ref a) => return vec!(a),
+            Operation::Phi(ref vec) => return vec.iter().collect(),
+            Operation::Nop(ref a) => return vec!(a),
         }
     }
 
     pub fn operands_mut(&'a mut self) -> Vec<&'a mut Value> {
-        match self {
-            &mut Operation::LogicAnd(ref mut a,ref mut b) => return vec!(a,b),
-            &mut Operation::LogicInclusiveOr(ref mut a,ref mut b) => return vec!(a,b),
-            &mut Operation::LogicExclusiveOr(ref mut a,ref mut b) => return vec!(a,b),
-            &mut Operation::LogicNegation(ref mut a) => return vec!(a),
-            &mut Operation::LogicLift(ref mut a) => return vec!(a),
+        match *self {
+            Operation::LogicAnd(ref mut a,ref mut b) => return vec!(a,b),
+            Operation::LogicInclusiveOr(ref mut a,ref mut b) => return vec!(a,b),
+            Operation::LogicExclusiveOr(ref mut a,ref mut b) => return vec!(a,b),
+            Operation::LogicNegation(ref mut a) => return vec!(a),
+            Operation::LogicLift(ref mut a) => return vec!(a),
 
-            &mut Operation::IntAnd(ref mut a,ref mut b) => return vec!(a,b),
-            &mut Operation::IntInclusiveOr(ref mut a,ref mut b) => return vec!(a,b),
-            &mut Operation::IntExclusiveOr(ref mut a,ref mut b) => return vec!(a,b),
-            &mut Operation::IntAdd(ref mut a,ref mut b) => return vec!(a,b),
-            &mut Operation::IntSubtract(ref mut a,ref mut b) => return vec!(a,b),
-            &mut Operation::IntMultiply(ref mut a,ref mut b) => return vec!(a,b),
-            &mut Operation::IntDivide(ref mut a,ref mut b) => return vec!(a,b),
-            &mut Operation::IntModulo(ref mut a,ref mut b) => return vec!(a,b),
-            &mut Operation::IntLess(ref mut a,ref mut b) => return vec!(a,b),
-            &mut Operation::IntEqual(ref mut a,ref mut b) => return vec!(a,b),
-            &mut Operation::IntCall(ref mut a) => return vec!(a),
-            &mut Operation::IntRightShift(ref mut a,ref mut b) => return vec!(a,b),
-            &mut Operation::IntLeftShift(ref mut a,ref mut b) => return vec!(a,b),
+            Operation::IntAnd(ref mut a,ref mut b) => return vec!(a,b),
+            Operation::IntInclusiveOr(ref mut a,ref mut b) => return vec!(a,b),
+            Operation::IntExclusiveOr(ref mut a,ref mut b) => return vec!(a,b),
+            Operation::IntAdd(ref mut a,ref mut b) => return vec!(a,b),
+            Operation::IntSubtract(ref mut a,ref mut b) => return vec!(a,b),
+            Operation::IntMultiply(ref mut a,ref mut b) => return vec!(a,b),
+            Operation::IntDivide(ref mut a,ref mut b) => return vec!(a,b),
+            Operation::IntModulo(ref mut a,ref mut b) => return vec!(a,b),
+            Operation::IntLess(ref mut a,ref mut b) => return vec!(a,b),
+            Operation::IntEqual(ref mut a,ref mut b) => return vec!(a,b),
+            Operation::IntCall(ref mut a) => return vec!(a),
+            Operation::IntRightShift(ref mut a,ref mut b) => return vec!(a,b),
+            Operation::IntLeftShift(ref mut a,ref mut b) => return vec!(a,b),
 
-            &mut Operation::Phi(ref mut vec) => return vec.iter_mut().collect(),
-            &mut Operation::Nop(ref mut a) => return vec!(a),
+            Operation::Phi(ref mut vec) => return vec.iter_mut().collect(),
+            Operation::Nop(ref mut a) => return vec!(a),
         }
     }
 }
@@ -277,28 +277,28 @@ pub struct Instr {
 impl Display for Instr {
     fn fmt(&self, f: &mut Formatter) -> Result<(), Error> {
         f.write_fmt(format_args!("{} ≔ ",self.assignee.to_rv()));
-        match &self.op {
-            &Operation::LogicAnd(ref a,ref b) => f.write_fmt(format_args!("{} ∧ {}",a,b)),
-            &Operation::LogicInclusiveOr(ref a,ref b) => f.write_fmt(format_args!("{} ∨ {}",a,b)),
-            &Operation::LogicExclusiveOr(ref a,ref b) => f.write_fmt(format_args!("{} ⊕ {}",a,b)),
-            &Operation::LogicNegation(ref a) => f.write_fmt(format_args!("¬{}",a)),
-            &Operation::LogicLift(ref a) => f.write_fmt(format_args!("(bool)({})",a)),
+        match self.op {
+            Operation::LogicAnd(ref a,ref b) => f.write_fmt(format_args!("{} ∧ {}",a,b)),
+            Operation::LogicInclusiveOr(ref a,ref b) => f.write_fmt(format_args!("{} ∨ {}",a,b)),
+            Operation::LogicExclusiveOr(ref a,ref b) => f.write_fmt(format_args!("{} ⊕ {}",a,b)),
+            Operation::LogicNegation(ref a) => f.write_fmt(format_args!("¬{}",a)),
+            Operation::LogicLift(ref a) => f.write_fmt(format_args!("(bool)({})",a)),
 
-            &Operation::IntAnd(ref a,ref b) => f.write_fmt(format_args!("{} ∧ {}",a,b)),
-            &Operation::IntInclusiveOr(ref a,ref b) => f.write_fmt(format_args!("{} ∨ {}",a,b)),
-            &Operation::IntExclusiveOr(ref a,ref b) => f.write_fmt(format_args!("{} ⊕ {}",a,b)),
-            &Operation::IntAdd(ref a,ref b) => f.write_fmt(format_args!("{} + {}",a,b)),
-            &Operation::IntSubtract(ref a,ref b) => f.write_fmt(format_args!("{} - {}",a,b)),
-            &Operation::IntMultiply(ref a,ref b) => f.write_fmt(format_args!("{} * {}",a,b)),
-            &Operation::IntDivide(ref a,ref b) => f.write_fmt(format_args!("{} / {}",a,b)),
-            &Operation::IntModulo(ref a,ref b) => f.write_fmt(format_args!("{} % {}",a,b)),
-            &Operation::IntLess(ref a,ref b) => f.write_fmt(format_args!("{} < {}",a,b)),
-            &Operation::IntEqual(ref a,ref b) => f.write_fmt(format_args!("{} = {}",a,b)),
-            &Operation::IntCall(ref a) => f.write_fmt(format_args!("call({})",a)),
-            &Operation::IntRightShift(ref a,ref b) => f.write_fmt(format_args!("{} >> {}",a,b)),
-            &Operation::IntLeftShift(ref a,ref b) => f.write_fmt(format_args!("{} << {}",a,b)),
+            Operation::IntAnd(ref a,ref b) => f.write_fmt(format_args!("{} ∧ {}",a,b)),
+            Operation::IntInclusiveOr(ref a,ref b) => f.write_fmt(format_args!("{} ∨ {}",a,b)),
+            Operation::IntExclusiveOr(ref a,ref b) => f.write_fmt(format_args!("{} ⊕ {}",a,b)),
+            Operation::IntAdd(ref a,ref b) => f.write_fmt(format_args!("{} + {}",a,b)),
+            Operation::IntSubtract(ref a,ref b) => f.write_fmt(format_args!("{} - {}",a,b)),
+            Operation::IntMultiply(ref a,ref b) => f.write_fmt(format_args!("{} * {}",a,b)),
+            Operation::IntDivide(ref a,ref b) => f.write_fmt(format_args!("{} / {}",a,b)),
+            Operation::IntModulo(ref a,ref b) => f.write_fmt(format_args!("{} % {}",a,b)),
+            Operation::IntLess(ref a,ref b) => f.write_fmt(format_args!("{} < {}",a,b)),
+            Operation::IntEqual(ref a,ref b) => f.write_fmt(format_args!("{} = {}",a,b)),
+            Operation::IntCall(ref a) => f.write_fmt(format_args!("call({})",a)),
+            Operation::IntRightShift(ref a,ref b) => f.write_fmt(format_args!("{} >> {}",a,b)),
+            Operation::IntLeftShift(ref a,ref b) => f.write_fmt(format_args!("{} << {}",a,b)),
 
-            &Operation::Phi(ref vec) => {
+            Operation::Phi(ref vec) => {
                 f.write_str("Φ(");
                 for (i,x) in vec.iter().enumerate() {
                     f.write_fmt(format_args!("{}",x));
@@ -306,7 +306,7 @@ impl Display for Instr {
                 }
                 f.write_str(")")
             },
-            &Operation::Nop(ref a) => f.write_fmt(format_args!("{}",a)),
+            Operation::Nop(ref a) => f.write_fmt(format_args!("{}",a)),
         }
     }
 }
