@@ -43,6 +43,15 @@ Fedora 20:
 sudo yum install qt5-qtdeclarative-devel qt5-qtquickcontrols glpk-devel
 ```
 
+```
+
+Fedora 23:
+```bash
+sudo dnf install qt5-qtdeclarative-devel qt5-qtquickcontrols qt5-qtgraphicaleffects glpk-devel
+```
+
+```
+
 After that clone the repository onto disk and use cargo to build
 everything.
 
