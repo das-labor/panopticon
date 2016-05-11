@@ -276,6 +276,7 @@ impl<A: Architecture> Disassembler<A> {
 
     fn read_token<Iter>(i: &mut Iter) -> Option<A::Token> where Iter: Iterator<Item=Option<u8>> {
         let mut tok = A::Token::zero();
+        // XXX: Hardcoded to little endian for AVR. Make configurable in Architecture trait
         let cells = {
             let mut x = i.take(size_of::<A::Token>()).collect::<Vec<_>>();
             x.reverse();

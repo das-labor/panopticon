@@ -481,7 +481,7 @@ pub fn branch(n: &'static str,_f: &Lvalue,val: bool) -> Box<Fn(&mut State<Avr>) 
     Box::new(move |st: &mut State<Avr>| -> bool {
         let _k = st.get_group("k") as u8; // 6 bits, signed
         let k = (if _k >= 0x20 { (0xE0 | _k) as i8 } else { _k as i8 } * 2) as i64;
-        let jump = st.configuration.wrap((st.address as i64 + st.tokens.len() as i64 + k) as u64);
+        let jump = st.configuration.wrap((st.address as i64 + st.tokens.len() as i64 * 2 + k) as u64);
         let fallthru = st.configuration.wrap(st.address + st.tokens.len() as u64 * 2);
 
         st.mnemonic(2,n,"{c:flash}",vec!(jump.clone().into()),&|cg: &mut CodeGen<Avr>| {
@@ -660,15 +660,15 @@ mod tests {
     fn avr_brne() {
         let reg = Region::wrap("flash".to_string(),
             vec!(
-                0x95,0xC8, //        lpm
-                0x96,0x31, //        adiw    r30, 1
-                0x92,0x0D, //        st      X+, r0
-                0x36,0xA2, //        cpi     r26, 0x62 ; 'b'
-                0x07,0xB1, //        cpc     r27, r17
-                0xF7,0xD1, //        brne    start
-                0xE0,0x10, //        ldi     r17, 0
-                0xE6,0xA2, //        ldi     r26, 0x62 ; 'b'
-                0xE0,0xB0, //        ldi     r27, 0
+                0xC8,0x95, //       00 lpm
+                0x31,0x96, //       02 adiw    r30, 1
+                0x0D,0x92, //       04 st      X+, r0
+                0xA2,0x36, //       06 cpi     r26, 0x62
+                0xB1,0x07, //       08 cpc     r27, r17
+                0xD1,0xF7, //       0a brne    start
+                0x10,0xE0, //       0c ldi     r17, 0
+                0xA2,0xE6, //       0e ldi     r26, 0x62
+                0xB0,0xE0, //       10 ldi     r27, 0
             ));
         let main = disassembler();
         let fun = Function::disassemble::<Avr>(None,main,Mcu::new(),reg.iter(),0,reg.name().to_string());
@@ -681,7 +681,7 @@ mod tests {
             match cfg.vertex_label(v) {
                 Some(&ControlFlowTarget::Resolved(ref bb)) => {
                     if bb.area.start == 0 {
-                        assert_eq!(bb.mnemonics.len(), 6);
+                        assert_eq!(bb.mnemonics.len(), 9);
                         assert_eq!(bb.area.end, 12);
                         assert_eq!(cfg.out_degree(v), 2);
                         assert_eq!(cfg.in_degree(v), 1);
@@ -695,7 +695,7 @@ mod tests {
                         }
 
                         for e in cfg.in_edges(v) {
-                            if let Some(&ControlFlowTarget::Resolved(ref cc)) = cfg.vertex_label(cfg.target(e)) {
+                            if let Some(&ControlFlowTarget::Resolved(ref cc)) = cfg.vertex_label(cfg.source(e)) {
                                 assert!(cc.area.start == 0);
                             } else {
                                 unreachable!();
@@ -716,7 +716,7 @@ mod tests {
                         }
 
                         for e in cfg.in_edges(v) {
-                            if let Some(&ControlFlowTarget::Resolved(ref cc)) = cfg.vertex_label(cfg.target(e)) {
+                            if let Some(&ControlFlowTarget::Resolved(ref cc)) = cfg.vertex_label(cfg.source(e)) {
                                 assert!(cc.area.start == 0);
                             } else {
                                 unreachable!();

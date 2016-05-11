@@ -710,6 +710,10 @@ pub fn lpm(rd: Lvalue, off: usize, st: &mut State<Avr>) -> bool {
         }
     });
 
+    let next = st.configuration.wrap(st.address + st.tokens.len() as u64 * 2);
+
+    optional_skip(next.clone(),st);
+    st.jump(next,Guard::always());
     true
 }
 
