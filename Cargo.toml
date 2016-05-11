@@ -26,7 +26,7 @@ rmp-serialize = "0.7.0"
 byteorder = "0.5.1"
 
 [dependencies.qmlrs]
-git = "https://github.com/flanfly/qmlrs"
+git = "https://github.com/zv/qmlrs"
 
 [dependencies.graph_algos]
 git = "https://github.com/flanfly/rust-graph-algos.git"
