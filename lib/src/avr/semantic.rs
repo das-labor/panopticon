@@ -432,7 +432,8 @@ pub fn elpm(rd: Lvalue, off: usize, st: &mut State<Avr>) -> bool {
         }
     });
 
-    st.mnemonic(2,"elpm","{p:sram}",vec![zreg.clone().into()],&|cg: &mut CodeGen<Avr>| {
+    let arg = if rd == rreil_lvalue!{ R0:8 } { vec![] } else { vec![zreg.clone().into()] };
+    st.mnemonic(2,"elpm","{p:sram}",arg,&|cg: &mut CodeGen<Avr>| {
         rreil!{cg:
             load/sram ptr:24, (zreg);
             load/flash (rd), ptr:24;
@@ -448,6 +449,9 @@ pub fn elpm(rd: Lvalue, off: usize, st: &mut State<Avr>) -> bool {
         }
     });
 
+    let next = st.configuration.wrap(st.address + st.tokens.len() as u64 * 2);
+    optional_skip(next.clone(),st);
+    st.jump(next,Guard::always());
     true
 }
 
@@ -540,13 +544,16 @@ pub fn icall(st: &mut State<Avr>) -> bool {
         }
     });
 
-    st.mnemonic(2,"icall","{p:sram}",vec![zreg.clone().into()],&|cg: &mut CodeGen<Avr>| {
+    st.mnemonic(2,"icall","{p:sram}",vec![],&|cg: &mut CodeGen<Avr>| {
         rreil!{cg:
             load/sram ptr:24, (zreg);
             call ?, ptr:24;
         }
     });
 
+    let next = st.configuration.wrap(st.address + st.tokens.len() as u64 * 2);
+    optional_skip(next.clone(),st);
+    st.jump(next,Guard::always());
     true
 }
 
@@ -575,13 +582,14 @@ pub fn ijmp(st: &mut State<Avr>) -> bool {
 pub fn _in(st: &mut State<Avr>) -> bool {
     let rd = reg(st,"D");
     let rr = Rvalue::Constant{ value: st.get_group("A"), size: 6 };
-    let next = st.configuration.wrap(st.address + st.tokens.len() as u64 * 2);
 
     st.mnemonic(2,"in","{u}, {u}",vec!(rd.clone().into(),rr.clone().into()),&|cg: &mut CodeGen<Avr>| {
         rreil!{cg:
             load/io (rd), (rr);
         }
     });
+
+    let next = st.configuration.wrap(st.address + st.tokens.len() as u64 * 2);
     optional_skip(next.clone(),st);
     st.jump(next,Guard::always());
     true
@@ -695,7 +703,8 @@ pub fn lpm(rd: Lvalue, off: usize, st: &mut State<Avr>) -> bool {
         }
     });
 
-    st.mnemonic(2,"lpm","{p:sram}",vec![zreg.clone().into()],&|cg: &mut CodeGen<Avr>| {
+    let arg = if rd == rreil_lvalue!{ R0:8 } { vec![] } else { vec![zreg.clone().into()] };
+    st.mnemonic(2,"lpm","{p:sram}",arg,&|cg: &mut CodeGen<Avr>| {
         rreil!{cg:
             load/sram ptr:16, (zreg);
             load/flash (rd), ptr:16;
