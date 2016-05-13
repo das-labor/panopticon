@@ -31,5 +31,14 @@ git = "https://github.com/flanfly/qmlrs"
 [dependencies.graph_algos]
 git = "https://github.com/flanfly/rust-graph-algos.git"
 
-[target.'cfg(unix)'.dependencies]
+[target.i686-unknown-linux-gnu.dependencies]
+xdg = "^2.0"
+
+[target.x86_64-unknown-linux-gnu.dependencies]
+xdg = "^2.0"
+
+[target.x86_64-apple-darwin.dependencies]
+xdg = "^2.0"
+
+[target.i686-apple-darwin.dependencies]
 xdg = "^2.0"
