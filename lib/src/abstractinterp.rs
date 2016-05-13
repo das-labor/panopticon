@@ -428,58 +428,58 @@ impl Avalue for Kset {
             }
         };
 
-        match op {
-            &Operation::And(ref a,ref b) =>
-                permute(a,b,&|a,b| execute(&Operation::And(a,b))),
-            &Operation::InclusiveOr(ref a,ref b) =>
-                permute(a,b,&|a,b| execute(&Operation::InclusiveOr(a,b))),
-            &Operation::ExclusiveOr(ref a,ref b) =>
-                permute(a,b,&|a,b| execute(&Operation::ExclusiveOr(a,b))),
-            &Operation::Add(ref a,ref b) =>
-                permute(a,b,&|a,b| execute(&Operation::Add(a,b))),
-            &Operation::Subtract(ref a,ref b) =>
-                permute(a,b,&|a,b| execute(&Operation::Subtract(a,b))),
-            &Operation::Multiply(ref a,ref b) =>
-                permute(a,b,&|a,b| execute(&Operation::Multiply(a,b))),
-            &Operation::DivideSigned(ref a,ref b) =>
-                permute(a,b,&|a,b| execute(&Operation::DivideSigned(a,b))),
-            &Operation::DivideUnsigned(ref a,ref b) =>
-                permute(a,b,&|a,b| execute(&Operation::DivideUnsigned(a,b))),
-            &Operation::Modulo(ref a,ref b) =>
-                permute(a,b,&|a,b| execute(&Operation::Modulo(a,b))),
-            &Operation::ShiftRightSigned(ref a,ref b) =>
-                permute(a,b,&|a,b| execute(&Operation::ShiftRightSigned(a,b))),
-            &Operation::ShiftRightUnsigned(ref a,ref b) =>
-                permute(a,b,&|a,b| execute(&Operation::ShiftRightUnsigned(a,b))),
-            &Operation::ShiftLeft(ref a,ref b) =>
-                permute(a,b,&|a,b| execute(&Operation::ShiftLeft(a,b))),
+        match *op {
+            Operation::And(ref a,ref b) =>
+                permute(a,b,&|a,b| execute(Operation::And(a,b))),
+            Operation::InclusiveOr(ref a,ref b) =>
+                permute(a,b,&|a,b| execute(Operation::InclusiveOr(a,b))),
+            Operation::ExclusiveOr(ref a,ref b) =>
+                permute(a,b,&|a,b| execute(Operation::ExclusiveOr(a,b))),
+            Operation::Add(ref a,ref b) =>
+                permute(a,b,&|a,b| execute(Operation::Add(a,b))),
+            Operation::Subtract(ref a,ref b) =>
+                permute(a,b,&|a,b| execute(Operation::Subtract(a,b))),
+            Operation::Multiply(ref a,ref b) =>
+                permute(a,b,&|a,b| execute(Operation::Multiply(a,b))),
+            Operation::DivideSigned(ref a,ref b) =>
+                permute(a,b,&|a,b| execute(Operation::DivideSigned(a,b))),
+            Operation::DivideUnsigned(ref a,ref b) =>
+                permute(a,b,&|a,b| execute(Operation::DivideUnsigned(a,b))),
+            Operation::Modulo(ref a,ref b) =>
+                permute(a,b,&|a,b| execute(Operation::Modulo(a,b))),
+            Operation::ShiftRightSigned(ref a,ref b) =>
+                permute(a,b,&|a,b| execute(Operation::ShiftRightSigned(a,b))),
+            Operation::ShiftRightUnsigned(ref a,ref b) =>
+                permute(a,b,&|a,b| execute(Operation::ShiftRightUnsigned(a,b))),
+            Operation::ShiftLeft(ref a,ref b) =>
+                permute(a,b,&|a,b| execute(Operation::ShiftLeft(a,b))),
 
-            &Operation::LessOrEqualSigned(ref a,ref b) =>
-                permute(a,b,&|a,b| execute(&Operation::LessOrEqualSigned(a,b))),
-            &Operation::LessOrEqualUnsigned(ref a,ref b) =>
-                permute(a,b,&|a,b| execute(&Operation::LessOrEqualUnsigned(a,b))),
-            &Operation::LessSigned(ref a,ref b) =>
-                permute(a,b,&|a,b| execute(&Operation::LessSigned(a,b))),
-            &Operation::LessUnsigned(ref a,ref b) =>
-                permute(a,b,&|a,b| execute(&Operation::LessUnsigned(a,b))),
-            &Operation::Equal(ref a,ref b) =>
-                permute(a,b,&|a,b| execute(&Operation::Equal(a,b))),
+            Operation::LessOrEqualSigned(ref a,ref b) =>
+                permute(a,b,&|a,b| execute(Operation::LessOrEqualSigned(a,b))),
+            Operation::LessOrEqualUnsigned(ref a,ref b) =>
+                permute(a,b,&|a,b| execute(Operation::LessOrEqualUnsigned(a,b))),
+            Operation::LessSigned(ref a,ref b) =>
+                permute(a,b,&|a,b| execute(Operation::LessSigned(a,b))),
+            Operation::LessUnsigned(ref a,ref b) =>
+                permute(a,b,&|a,b| execute(Operation::LessUnsigned(a,b))),
+            Operation::Equal(ref a,ref b) =>
+                permute(a,b,&|a,b| execute(Operation::Equal(a,b))),
 
-            &Operation::Move(ref a) =>
-                map(a,&|a| execute(&Operation::Move(a))),
-            &Operation::Call(ref a) =>
-                map(a,&|a| execute(&Operation::Call(a))),
-            &Operation::ZeroExtend(ref sz,ref a) =>
-                map(a,&|a| execute(&Operation::ZeroExtend(*sz,a))),
-            &Operation::SignExtend(ref sz,ref a) =>
-                map(a,&|a| execute(&Operation::SignExtend(*sz,a))),
+            Operation::Move(ref a) =>
+                map(a,&|a| execute(Operation::Move(a))),
+            Operation::Call(ref a) =>
+                map(a,&|a| execute(Operation::Call(a))),
+            Operation::ZeroExtend(ref sz,ref a) =>
+                map(a,&|a| execute(Operation::ZeroExtend(*sz,a))),
+            Operation::SignExtend(ref sz,ref a) =>
+                map(a,&|a| execute(Operation::SignExtend(*sz,a))),
 
-            &Operation::Load(ref r,ref a) =>
-                map(a,&|a| execute(&Operation::Load(r.clone(),a))),
-            &Operation::Store(ref r,ref a) =>
-                map(a,&|a| execute(&Operation::Store(r.clone(),a))),
+            Operation::Load(ref r,ref a) =>
+                map(a,&|a| execute(Operation::Load(r.clone(),a))),
+            Operation::Store(ref r,ref a) =>
+                map(a,&|a| execute(Operation::Store(r.clone(),a))),
 
-            &Operation::Phi(_) => unreachable!(),
+            Operation::Phi(_) => unreachable!(),
         }
     }
 

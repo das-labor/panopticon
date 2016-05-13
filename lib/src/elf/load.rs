@@ -33,8 +33,12 @@ use {
     Rvalue,
     Result,
 };
-
-use elf::*;
+use elf::{
+    Machine,
+    Ehdr,
+    Type,
+    SegmentType,
+};
 
 pub fn load(p: &Path) -> Result<(Project,Machine)> {
     let mut fd = File::open(p).ok().unwrap();

@@ -290,9 +290,9 @@ pub struct Statement {
     pub op: Operation<Rvalue>,
 }
 
-pub fn execute(op: &Operation<Rvalue>) -> Rvalue {
+pub fn execute(op: Operation<Rvalue>) -> Rvalue {
 	match op {
-        &Operation::Add(Rvalue::Constant{ value: _a, size: s },Rvalue::Constant{ value: _b, size: _s }) => {
+        Operation::Add(Rvalue::Constant{ value: _a, size: s },Rvalue::Constant{ value: _b, size: _s }) => {
             debug_assert!(s == _s);
 
             let a = Wrapping(_a);
@@ -300,13 +300,13 @@ pub fn execute(op: &Operation<Rvalue>) -> Rvalue {
             let mask = Wrapping(if s < 64 { (1u64 << s) - 1 } else { u64::MAX });
             Rvalue::Constant{ value: ((a + b) & mask).0, size: s }
         }
-        &Operation::Add(Rvalue::Constant{ value: 0,.. },ref b) =>
+        Operation::Add(Rvalue::Constant{ value: 0,.. },ref b) =>
             b.clone(),
-        &Operation::Add(ref a,Rvalue::Constant{ value: 0,.. }) =>
+        Operation::Add(ref a,Rvalue::Constant{ value: 0,.. }) =>
             a.clone(),
-        &Operation::Add(_,_) =>
+        Operation::Add(_,_) =>
             Rvalue::Undefined,
-        &Operation::Subtract(Rvalue::Constant{ value: _a, size: s },Rvalue::Constant{ value: _b, size: _s }) => {
+        Operation::Subtract(Rvalue::Constant{ value: _a, size: s },Rvalue::Constant{ value: _b, size: _s }) => {
             debug_assert!(s == _s);
 
             let a = Wrapping(_a);
@@ -314,12 +314,12 @@ pub fn execute(op: &Operation<Rvalue>) -> Rvalue {
             let mask = Wrapping(if s < 64 { (1u64 << s) - 1 } else { u64::MAX });
             Rvalue::Constant{ value: ((a - b) & mask).0, size: s }
         }
-        &Operation::Subtract(ref a,Rvalue::Constant{ value: 0,.. }) =>
+        Operation::Subtract(ref a,Rvalue::Constant{ value: 0,.. }) =>
             a.clone(),
-        &Operation::Subtract(_,_) =>
+        Operation::Subtract(_,_) =>
             Rvalue::Undefined,
 
-        &Operation::Multiply(Rvalue::Constant{ value: _a, size: s },Rvalue::Constant{ value: _b, size: _s }) => {
+        Operation::Multiply(Rvalue::Constant{ value: _a, size: s },Rvalue::Constant{ value: _b, size: _s }) => {
             debug_assert!(s == _s);
 
             let a = Wrapping(_a);
@@ -327,20 +327,20 @@ pub fn execute(op: &Operation<Rvalue>) -> Rvalue {
             let mask = Wrapping(if s < 64 { (1u64 << s) - 1 } else { u64::MAX });
             Rvalue::Constant{ value: ((a * b) & mask).0, size: s }
         }
-        &Operation::Multiply(Rvalue::Constant{ value: 0, size: s },_) =>
+        Operation::Multiply(Rvalue::Constant{ value: 0, size: s },_) =>
             Rvalue::Constant{ value: 0, size: s },
-        &Operation::Multiply(_,Rvalue::Constant{ value: 0, size: s }) =>
+        Operation::Multiply(_,Rvalue::Constant{ value: 0, size: s }) =>
             Rvalue::Constant{ value: 0, size: s },
-        &Operation::Multiply(Rvalue::Constant{ value: 1,.. },ref b) =>
+        Operation::Multiply(Rvalue::Constant{ value: 1,.. },ref b) =>
             b.clone(),
-        &Operation::Multiply(ref a,Rvalue::Constant{ value: 1,.. }) =>
+        Operation::Multiply(ref a,Rvalue::Constant{ value: 1,.. }) =>
             a.clone(),
-        &Operation::Multiply(_,_) =>
+        Operation::Multiply(_,_) =>
             Rvalue::Undefined,
 
-        &Operation::DivideUnsigned(_,Rvalue::Constant{ value: 0,.. }) =>
+        Operation::DivideUnsigned(_,Rvalue::Constant{ value: 0,.. }) =>
             Rvalue::Undefined,
-        &Operation::DivideUnsigned(Rvalue::Constant{ value: _a, size: s },Rvalue::Constant{ value: _b, size: _s }) => {
+        Operation::DivideUnsigned(Rvalue::Constant{ value: _a, size: s },Rvalue::Constant{ value: _b, size: _s }) => {
             debug_assert!(s == _s);
 
             let a = Wrapping(_a);
@@ -348,16 +348,16 @@ pub fn execute(op: &Operation<Rvalue>) -> Rvalue {
             let mask = Wrapping(if s < 64 { (1u64 << s) - 1 } else { u64::MAX });
             Rvalue::Constant{ value: ((a * b) & mask).0, size: s }
         }
-        &Operation::DivideUnsigned(ref a,Rvalue::Constant{ value: 1,.. }) =>
+        Operation::DivideUnsigned(ref a,Rvalue::Constant{ value: 1,.. }) =>
             a.clone(),
-        &Operation::DivideUnsigned(Rvalue::Constant{ value: 0, size: s },_) =>
+        Operation::DivideUnsigned(Rvalue::Constant{ value: 0, size: s },_) =>
             Rvalue::Constant{ value: 0, size: s },
-        &Operation::DivideUnsigned(_,_) =>
+        Operation::DivideUnsigned(_,_) =>
             Rvalue::Undefined,
 
-        &Operation::DivideSigned(_,Rvalue::Constant{ value: 0,.. }) =>
+        Operation::DivideSigned(_,Rvalue::Constant{ value: 0,.. }) =>
             Rvalue::Undefined,
-        &Operation::DivideSigned(Rvalue::Constant{ value: _a, size: s },Rvalue::Constant{ value: _b, size: _s }) => {
+        Operation::DivideSigned(Rvalue::Constant{ value: _a, size: s },Rvalue::Constant{ value: _b, size: _s }) => {
             debug_assert!(s == _s);
 
             let a = Wrapping(_a);
@@ -366,57 +366,57 @@ pub fn execute(op: &Operation<Rvalue>) -> Rvalue {
             let sign_mask = Wrapping(if s < 64 { 1u64 << s } else { 0u64 });
             Rvalue::Constant{ value: (((a * b) & mask) | ((a ^ b) & sign_mask)).0 , size: s }
         }
-        &Operation::DivideSigned(ref a,Rvalue::Constant{ value: 1,.. }) =>
+        Operation::DivideSigned(ref a,Rvalue::Constant{ value: 1,.. }) =>
             a.clone(),
-        &Operation::DivideSigned(Rvalue::Constant{ value: 0, size: s },_) =>
+        Operation::DivideSigned(Rvalue::Constant{ value: 0, size: s },_) =>
             Rvalue::Constant{ value: 0, size: s },
-        &Operation::DivideSigned(_,_) =>
+        Operation::DivideSigned(_,_) =>
             Rvalue::Undefined,
 
-        &Operation::Modulo(_,Rvalue::Constant{ value: 0,.. }) =>
+        Operation::Modulo(_,Rvalue::Constant{ value: 0,.. }) =>
             Rvalue::Undefined,
-        &Operation::Modulo(Rvalue::Constant{ value: a, size: s },Rvalue::Constant{ value: b, size: _s }) => {
+        Operation::Modulo(Rvalue::Constant{ value: a, size: s },Rvalue::Constant{ value: b, size: _s }) => {
             debug_assert!(s == _s);
 
             let mask = if s < 64 { (1u64 << s) - 1 } else { u64::MAX };
             Rvalue::Constant{ value: (a % b) & mask, size: s }
         }
-        &Operation::Modulo(Rvalue::Constant{ value: 0, size: s },_) =>
+        Operation::Modulo(Rvalue::Constant{ value: 0, size: s },_) =>
             Rvalue::Constant{ value: 0, size: s },
-        &Operation::Modulo(_,Rvalue::Constant{ value: 1, size: s }) =>
+        Operation::Modulo(_,Rvalue::Constant{ value: 1, size: s }) =>
             Rvalue::Constant{ value: 0, size: s },
-        &Operation::Modulo(_,_) =>
+        Operation::Modulo(_,_) =>
             Rvalue::Undefined,
 
-        &Operation::ShiftLeft(Rvalue::Constant{ value: _a, size: s },Rvalue::Constant{ value: b, size: _s }) => {
+        Operation::ShiftLeft(Rvalue::Constant{ value: _a, size: s },Rvalue::Constant{ value: b, size: _s }) => {
             debug_assert!(s == _s);
 
             let a = Wrapping(_a);
             let mask = Wrapping(if s < 64 { (1u64 << s) - 1 } else { u64::MAX });
             Rvalue::Constant{ value: ((a << (b as usize)) & mask).0, size: s }
         },
-        &Operation::ShiftLeft(Rvalue::Constant{ value: 0, size: s },_) =>
+        Operation::ShiftLeft(Rvalue::Constant{ value: 0, size: s },_) =>
             Rvalue::Constant{ value: 0, size: s },
-        &Operation::ShiftLeft(ref a,Rvalue::Constant{ value: 0,.. }) =>
+        Operation::ShiftLeft(ref a,Rvalue::Constant{ value: 0,.. }) =>
             a.clone(),
-        &Operation::ShiftLeft(_,_) =>
+        Operation::ShiftLeft(_,_) =>
             Rvalue::Undefined,
 
-        &Operation::ShiftRightUnsigned(Rvalue::Constant{ value: _a, size: s },Rvalue::Constant{ value: b, size: _s }) => {
+        Operation::ShiftRightUnsigned(Rvalue::Constant{ value: _a, size: s },Rvalue::Constant{ value: b, size: _s }) => {
             debug_assert!(s == _s);
 
             let a = Wrapping(_a);
             let mask = Wrapping(if s < 64 { (1u64 << s) - 1 } else { u64::MAX });
             Rvalue::Constant{ value: ((a >> (b as usize)) & mask).0, size: s }
         },
-        &Operation::ShiftRightUnsigned(Rvalue::Constant{ value: 0, size: s },_) =>
+        Operation::ShiftRightUnsigned(Rvalue::Constant{ value: 0, size: s },_) =>
             Rvalue::Constant{ value: 0, size: s },
-        &Operation::ShiftRightUnsigned(ref a,Rvalue::Constant{ value: 0,.. }) =>
+        Operation::ShiftRightUnsigned(ref a,Rvalue::Constant{ value: 0,.. }) =>
             a.clone(),
-        &Operation::ShiftRightUnsigned(_,_) =>
+        Operation::ShiftRightUnsigned(_,_) =>
             Rvalue::Undefined,
 
-        &Operation::ShiftRightSigned(Rvalue::Constant{ value: _a, size: s },Rvalue::Constant{ value: b, size: _s }) => {
+        Operation::ShiftRightSigned(Rvalue::Constant{ value: _a, size: s },Rvalue::Constant{ value: b, size: _s }) => {
             debug_assert!(s == _s);
 
             let a = Wrapping(_a);
@@ -424,52 +424,52 @@ pub fn execute(op: &Operation<Rvalue>) -> Rvalue {
             let sign = Wrapping(if s < 64 { 1u64 << (s - 1) } else { 0 });
             Rvalue::Constant{ value: ((((a & mask) >> (b as usize)) & mask) | (a & sign)).0, size: s }
         },
-        &Operation::ShiftRightSigned(Rvalue::Constant{ value: 0, size: s },_) =>
+        Operation::ShiftRightSigned(Rvalue::Constant{ value: 0, size: s },_) =>
             Rvalue::Constant{ value: 0, size: s },
-        &Operation::ShiftRightSigned(ref a,Rvalue::Constant{ value: 0,.. }) =>
+        Operation::ShiftRightSigned(ref a,Rvalue::Constant{ value: 0,.. }) =>
             a.clone(),
-        &Operation::ShiftRightSigned(_,_) =>
+        Operation::ShiftRightSigned(_,_) =>
             Rvalue::Undefined,
 
-        &Operation::And(Rvalue::Constant{ value: _a, size: s },Rvalue::Constant{ value: _b, size: _s }) => {
+        Operation::And(Rvalue::Constant{ value: _a, size: s },Rvalue::Constant{ value: _b, size: _s }) => {
             debug_assert!(s == _s);
 
             let a = Wrapping(_a);
             let b = Wrapping(_b);
             Rvalue::Constant{ value: (a & b).0, size: s }
         },
-        &Operation::And(_,Rvalue::Constant{ value: 0, size: s }) =>
+        Operation::And(_,Rvalue::Constant{ value: 0, size: s }) =>
             Rvalue::Constant{ value: 0, size: s },
-        &Operation::And(Rvalue::Constant{ value: 0, size: s },_) =>
+        Operation::And(Rvalue::Constant{ value: 0, size: s },_) =>
             Rvalue::Constant{ value: 0, size: s },
-        &Operation::And(_,_) =>
+        Operation::And(_,_) =>
             Rvalue::Undefined,
 
-        &Operation::InclusiveOr(Rvalue::Constant{ value: _a, size: s },Rvalue::Constant{ value: _b, size: _s }) => {
+        Operation::InclusiveOr(Rvalue::Constant{ value: _a, size: s },Rvalue::Constant{ value: _b, size: _s }) => {
             debug_assert!(s == _s);
 
             let a = Wrapping(_a);
             let b = Wrapping(_b);
             Rvalue::Constant{ value: (a | b).0, size: s }
         },
-        &Operation::InclusiveOr(ref a,Rvalue::Constant{ value: 0,.. }) =>
+        Operation::InclusiveOr(ref a,Rvalue::Constant{ value: 0,.. }) =>
             a.clone(),
-        &Operation::InclusiveOr(Rvalue::Constant{ value: 0,.. },ref b) =>
+        Operation::InclusiveOr(Rvalue::Constant{ value: 0,.. },ref b) =>
             b.clone(),
-        &Operation::InclusiveOr(_,_) =>
+        Operation::InclusiveOr(_,_) =>
             Rvalue::Undefined,
 
-        &Operation::ExclusiveOr(Rvalue::Constant{ value: _a, size: s },Rvalue::Constant{ value: _b, size: _s }) => {
+        Operation::ExclusiveOr(Rvalue::Constant{ value: _a, size: s },Rvalue::Constant{ value: _b, size: _s }) => {
             debug_assert!(s == _s);
 
             let a = Wrapping(_a);
             let b = Wrapping(_b);
             Rvalue::Constant{ value: (a ^ b).0, size: s }
         },
-        &Operation::ExclusiveOr(_,_) =>
+        Operation::ExclusiveOr(_,_) =>
             Rvalue::Undefined,
 
-        &Operation::Equal(Rvalue::Constant{ value: _a, size: s },Rvalue::Constant{ value: _b, size: _s }) => {
+        Operation::Equal(Rvalue::Constant{ value: _a, size: s },Rvalue::Constant{ value: _b, size: _s }) => {
             debug_assert!(s == _s);
 
             let a = Wrapping(_a);
@@ -480,10 +480,10 @@ pub fn execute(op: &Operation<Rvalue>) -> Rvalue {
                 Rvalue::Constant{ value: 0, size: 1 }
             }
         },
-        &Operation::Equal(_,_) =>
+        Operation::Equal(_,_) =>
             Rvalue::Undefined,
 
-        &Operation::LessOrEqualUnsigned(Rvalue::Constant{ value: _a, size: s },Rvalue::Constant{ value: _b, size: _s }) => {
+        Operation::LessOrEqualUnsigned(Rvalue::Constant{ value: _a, size: s },Rvalue::Constant{ value: _b, size: _s }) => {
             debug_assert!(s == _s);
 
             let a = Wrapping(_a);
@@ -494,12 +494,12 @@ pub fn execute(op: &Operation<Rvalue>) -> Rvalue {
                 Rvalue::Constant{ value: 0, size: 1 }
             }
         },
-        &Operation::LessOrEqualUnsigned(Rvalue::Constant{ value: 0,.. },_) =>
+        Operation::LessOrEqualUnsigned(Rvalue::Constant{ value: 0,.. },_) =>
             Rvalue::Constant{ value: 1, size: 1 },
-        &Operation::LessOrEqualUnsigned(_,_) =>
+        Operation::LessOrEqualUnsigned(_,_) =>
             Rvalue::Undefined,
 
-        &Operation::LessOrEqualSigned(Rvalue::Constant{ value: _a, size: s },Rvalue::Constant{ value: _b, size: _s }) => {
+        Operation::LessOrEqualSigned(Rvalue::Constant{ value: _a, size: s },Rvalue::Constant{ value: _b, size: _s }) => {
             debug_assert!(s == _s);
 
             let a = Wrapping(_a);
@@ -512,10 +512,10 @@ pub fn execute(op: &Operation<Rvalue>) -> Rvalue {
                 Rvalue::Constant{ value: if (a & mask) <= (b & mask) { 1 } else { 0 }, size: 1 }
             }
         },
-        &Operation::LessOrEqualSigned(_,_) =>
+        Operation::LessOrEqualSigned(_,_) =>
             Rvalue::Undefined,
 
-        &Operation::LessUnsigned(Rvalue::Constant{ value: _a, size: s },Rvalue::Constant{ value: _b, size: _s }) => {
+        Operation::LessUnsigned(Rvalue::Constant{ value: _a, size: s },Rvalue::Constant{ value: _b, size: _s }) => {
             debug_assert!(s == _s);
 
             let a = Wrapping(_a);
@@ -526,10 +526,10 @@ pub fn execute(op: &Operation<Rvalue>) -> Rvalue {
                 Rvalue::Constant{ value: 0, size: 1 }
             }
         },
-        &Operation::LessUnsigned(_,_) =>
+        Operation::LessUnsigned(_,_) =>
             Rvalue::Undefined,
 
-        &Operation::LessSigned(Rvalue::Constant{ value: _a, size: s },Rvalue::Constant{ value: _b, size: _s }) => {
+        Operation::LessSigned(Rvalue::Constant{ value: _a, size: s },Rvalue::Constant{ value: _b, size: _s }) => {
             debug_assert!(s == _s);
 
             let a = Wrapping(_a);
@@ -542,42 +542,42 @@ pub fn execute(op: &Operation<Rvalue>) -> Rvalue {
                 Rvalue::Constant{ value: if (a & mask) < (b & mask) { 1 } else { 0 }, size: 1 }
             }
         },
-        &Operation::LessSigned(_,_) =>
+        Operation::LessSigned(_,_) =>
             Rvalue::Undefined,
 
-        &Operation::ZeroExtend(s,Rvalue::Constant{ value: v,.. }) => {
+        Operation::ZeroExtend(s,Rvalue::Constant{ value: v,.. }) => {
             let mask = if s < 64 { (1u64 << s) - 1 } else { u64::MAX };
             Rvalue::Constant{ value: v & mask, size: s }
         },
-        &Operation::ZeroExtend(s,Rvalue::Variable{ ref name, ref subscript,.. }) =>
+        Operation::ZeroExtend(s,Rvalue::Variable{ ref name, ref subscript,.. }) =>
             Rvalue::Variable{ name: name.clone(), subscript: subscript.clone(), offset: 0, size: s },
-        &Operation::ZeroExtend(_,Rvalue::Undefined) =>
+        Operation::ZeroExtend(_,Rvalue::Undefined) =>
             Rvalue::Undefined,
 
-        &Operation::SignExtend(t,Rvalue::Constant{ value: v, size: s,.. }) => {
+        Operation::SignExtend(t,Rvalue::Constant{ value: v, size: s,.. }) => {
             let mask = if s < 64 { (1u64 << t) - 1 } else { u64::MAX };
             let sign_mask = if s < 64 { 1u64 << (s - 1) } else { 0 };
             let sign = if t < 64 { 1u64 << (t - 1) } else { 0 };
             Rvalue::Constant{ value: (v & mask) | (if v & sign_mask != 0 { sign } else { 0 }) , size: s }
         },
-        &Operation::SignExtend(s,Rvalue::Variable{ ref name, ref subscript,.. }) =>
+        Operation::SignExtend(s,Rvalue::Variable{ ref name, ref subscript,.. }) =>
             Rvalue::Variable{ name: name.clone(), subscript: subscript.clone(), offset: 0, size: s },
-        &Operation::SignExtend(_,Rvalue::Undefined) =>
+        Operation::SignExtend(_,Rvalue::Undefined) =>
             Rvalue::Undefined,
 
-        &Operation::Move(ref a) =>
+        Operation::Move(ref a) =>
             a.clone(),
 
-        &Operation::Call(_) =>
+        Operation::Call(_) =>
             Rvalue::Undefined,
 
-        &Operation::Load(_,_) =>
+        Operation::Load(_,_) =>
             Rvalue::Undefined,
 
-        &Operation::Store(_,_) =>
+        Operation::Store(_,_) =>
             Rvalue::Undefined,
 
-        &Operation::Phi(ref vec) =>
+        Operation::Phi(ref vec) =>
             match vec.len() {
                 0 => Rvalue::Undefined,
                 1 => vec[0].clone(),
@@ -588,35 +588,35 @@ pub fn execute(op: &Operation<Rvalue>) -> Rvalue {
 
 impl<'a,V> Operation<V> where V: Clone + PartialEq + Eq + Debug + Encodable + Decodable {
     pub fn operands(&'a self) -> Vec<&'a V> {
-        match self {
-            &Operation::Add(ref a,ref b) => return vec!(a,b),
-            &Operation::Subtract(ref a,ref b) => return vec!(a,b),
-            &Operation::Multiply(ref a,ref b) => return vec!(a,b),
-            &Operation::DivideUnsigned(ref a,ref b) => return vec!(a,b),
-            &Operation::DivideSigned(ref a,ref b) => return vec!(a,b),
-            &Operation::ShiftLeft(ref a,ref b) => return vec!(a,b),
-            &Operation::ShiftRightUnsigned(ref a,ref b) => return vec!(a,b),
-            &Operation::ShiftRightSigned(ref a,ref b) => return vec!(a,b),
-            &Operation::Modulo(ref a,ref b) => return vec!(a,b),
-            &Operation::And(ref a,ref b) => return vec!(a,b),
-            &Operation::InclusiveOr(ref a,ref b) => return vec!(a,b),
-            &Operation::ExclusiveOr(ref a,ref b) => return vec!(a,b),
+        match *self {
+            Operation::Add(ref a,ref b) => return vec!(a,b),
+            Operation::Subtract(ref a,ref b) => return vec!(a,b),
+            Operation::Multiply(ref a,ref b) => return vec!(a,b),
+            Operation::DivideUnsigned(ref a,ref b) => return vec!(a,b),
+            Operation::DivideSigned(ref a,ref b) => return vec!(a,b),
+            Operation::ShiftLeft(ref a,ref b) => return vec!(a,b),
+            Operation::ShiftRightUnsigned(ref a,ref b) => return vec!(a,b),
+            Operation::ShiftRightSigned(ref a,ref b) => return vec!(a,b),
+            Operation::Modulo(ref a,ref b) => return vec!(a,b),
+            Operation::And(ref a,ref b) => return vec!(a,b),
+            Operation::InclusiveOr(ref a,ref b) => return vec!(a,b),
+            Operation::ExclusiveOr(ref a,ref b) => return vec!(a,b),
 
-            &Operation::Equal(ref a,ref b) => return vec!(a,b),
-            &Operation::LessOrEqualUnsigned(ref a,ref b) => return vec!(a,b),
-            &Operation::LessOrEqualSigned(ref a,ref b) => return vec!(a,b),
-            &Operation::LessUnsigned(ref a,ref b) => return vec!(a,b),
-            &Operation::LessSigned(ref a,ref b) => return vec!(a,b),
+            Operation::Equal(ref a,ref b) => return vec!(a,b),
+            Operation::LessOrEqualUnsigned(ref a,ref b) => return vec!(a,b),
+            Operation::LessOrEqualSigned(ref a,ref b) => return vec!(a,b),
+            Operation::LessUnsigned(ref a,ref b) => return vec!(a,b),
+            Operation::LessSigned(ref a,ref b) => return vec!(a,b),
 
-            &Operation::ZeroExtend(_,ref a) => return vec!(a),
-            &Operation::SignExtend(_,ref a) => return vec!(a),
-            &Operation::Move(ref a) => return vec!(a),
-            &Operation::Call(ref a) => return vec!(a),
+            Operation::ZeroExtend(_,ref a) => return vec!(a),
+            Operation::SignExtend(_,ref a) => return vec!(a),
+            Operation::Move(ref a) => return vec!(a),
+            Operation::Call(ref a) => return vec!(a),
 
-            &Operation::Load(_,ref b) => return vec!(b),
-            &Operation::Store(_,ref b) => return vec!(b),
+            Operation::Load(_,ref b) => return vec!(b),
+            Operation::Store(_,ref b) => return vec!(b),
 
-            &Operation::Phi(ref vec) => return vec.iter().collect(),
+            Operation::Phi(ref vec) => return vec.iter().collect(),
         }
     }
 
@@ -656,35 +656,35 @@ impl<'a,V> Operation<V> where V: Clone + PartialEq + Eq + Debug + Encodable + De
 
 impl Display for Statement {
     fn fmt(&self, f: &mut Formatter) -> result::Result<(), Error> {
-        match &self.op {
-            &Operation::Add(ref a,ref b) => f.write_fmt(format_args!("add {}, {}, {}",self.assignee,a,b)),
-            &Operation::Subtract(ref a,ref b) => f.write_fmt(format_args!("sub {}, {}, {}",self.assignee,a,b)),
-            &Operation::Multiply(ref a,ref b) => f.write_fmt(format_args!("mul {}, {}, {}",self.assignee,a,b)),
-            &Operation::DivideUnsigned(ref a,ref b) => f.write_fmt(format_args!("divu {}, {}, {}",self.assignee,a,b)),
-            &Operation::DivideSigned(ref a,ref b) => f.write_fmt(format_args!("divs {}, {}, {}",self.assignee,a,b)),
-            &Operation::ShiftLeft(ref a,ref b) => f.write_fmt(format_args!("shl {}, {}, {}",self.assignee,a,b)),
-            &Operation::ShiftRightUnsigned(ref a,ref b) => f.write_fmt(format_args!("shru {}, {}, {}",self.assignee,a,b)),
-            &Operation::ShiftRightSigned(ref a,ref b) => f.write_fmt(format_args!("shrs {}, {}, {}",self.assignee,a,b)),
-            &Operation::Modulo(ref a,ref b) => f.write_fmt(format_args!("mod {}, {}, {}",self.assignee,a,b)),
-            &Operation::And(ref a,ref b) => f.write_fmt(format_args!("and {}, {}, {}",self.assignee,a,b)),
-            &Operation::InclusiveOr(ref a,ref b) => f.write_fmt(format_args!("or {}, {}, {}",self.assignee,a,b)),
-            &Operation::ExclusiveOr(ref a,ref b) => f.write_fmt(format_args!("xor {}, {}, {}",self.assignee,a,b)),
+        match self.op {
+            Operation::Add(ref a,ref b) => f.write_fmt(format_args!("add {}, {}, {}",self.assignee,a,b)),
+            Operation::Subtract(ref a,ref b) => f.write_fmt(format_args!("sub {}, {}, {}",self.assignee,a,b)),
+            Operation::Multiply(ref a,ref b) => f.write_fmt(format_args!("mul {}, {}, {}",self.assignee,a,b)),
+            Operation::DivideUnsigned(ref a,ref b) => f.write_fmt(format_args!("divu {}, {}, {}",self.assignee,a,b)),
+            Operation::DivideSigned(ref a,ref b) => f.write_fmt(format_args!("divs {}, {}, {}",self.assignee,a,b)),
+            Operation::ShiftLeft(ref a,ref b) => f.write_fmt(format_args!("shl {}, {}, {}",self.assignee,a,b)),
+            Operation::ShiftRightUnsigned(ref a,ref b) => f.write_fmt(format_args!("shru {}, {}, {}",self.assignee,a,b)),
+            Operation::ShiftRightSigned(ref a,ref b) => f.write_fmt(format_args!("shrs {}, {}, {}",self.assignee,a,b)),
+            Operation::Modulo(ref a,ref b) => f.write_fmt(format_args!("mod {}, {}, {}",self.assignee,a,b)),
+            Operation::And(ref a,ref b) => f.write_fmt(format_args!("and {}, {}, {}",self.assignee,a,b)),
+            Operation::InclusiveOr(ref a,ref b) => f.write_fmt(format_args!("or {}, {}, {}",self.assignee,a,b)),
+            Operation::ExclusiveOr(ref a,ref b) => f.write_fmt(format_args!("xor {}, {}, {}",self.assignee,a,b)),
 
-            &Operation::Equal(ref a,ref b) => f.write_fmt(format_args!("cmpeq {}, {}, {}",self.assignee,a,b)),
-            &Operation::LessOrEqualUnsigned(ref a,ref b) => f.write_fmt(format_args!("cmpleu {}, {}, {}",self.assignee,a,b)),
-            &Operation::LessOrEqualSigned(ref a,ref b) => f.write_fmt(format_args!("cmples {}, {}, {}",self.assignee,a,b)),
-            &Operation::LessUnsigned(ref a,ref b) => f.write_fmt(format_args!("cmplu {}, {}, {}",self.assignee,a,b)),
-            &Operation::LessSigned(ref a,ref b) => f.write_fmt(format_args!("cmpls {}, {}, {}",self.assignee,a,b)),
+            Operation::Equal(ref a,ref b) => f.write_fmt(format_args!("cmpeq {}, {}, {}",self.assignee,a,b)),
+            Operation::LessOrEqualUnsigned(ref a,ref b) => f.write_fmt(format_args!("cmpleu {}, {}, {}",self.assignee,a,b)),
+            Operation::LessOrEqualSigned(ref a,ref b) => f.write_fmt(format_args!("cmples {}, {}, {}",self.assignee,a,b)),
+            Operation::LessUnsigned(ref a,ref b) => f.write_fmt(format_args!("cmplu {}, {}, {}",self.assignee,a,b)),
+            Operation::LessSigned(ref a,ref b) => f.write_fmt(format_args!("cmpls {}, {}, {}",self.assignee,a,b)),
 
-            &Operation::ZeroExtend(s,ref a) => f.write_fmt(format_args!("convert_{} {}, {}",s,self.assignee,a)),
-            &Operation::SignExtend(s,ref a) => f.write_fmt(format_args!("sign-extend_{} {}, {}",s,self.assignee,a)),
-            &Operation::Move(ref a) => f.write_fmt(format_args!("mov {}, {}",self.assignee,a)),
-            &Operation::Call(ref a) => f.write_fmt(format_args!("call {}, {}",self.assignee,a)),
+            Operation::ZeroExtend(s,ref a) => f.write_fmt(format_args!("convert_{} {}, {}",s,self.assignee,a)),
+            Operation::SignExtend(s,ref a) => f.write_fmt(format_args!("sign-extend_{} {}, {}",s,self.assignee,a)),
+            Operation::Move(ref a) => f.write_fmt(format_args!("mov {}, {}",self.assignee,a)),
+            Operation::Call(ref a) => f.write_fmt(format_args!("call {}, {}",self.assignee,a)),
 
-            &Operation::Load(ref r,ref b) => f.write_fmt(format_args!("load_{} {}, {}",r,self.assignee,b)),
-            &Operation::Store(ref r,ref b) => f.write_fmt(format_args!("store_{} {}, {}",r,self.assignee,b)),
+            Operation::Load(ref r,ref b) => f.write_fmt(format_args!("load_{} {}, {}",r,self.assignee,b)),
+            Operation::Store(ref r,ref b) => f.write_fmt(format_args!("store_{} {}, {}",r,self.assignee,b)),
 
-            &Operation::Phi(ref vec) => {
+            Operation::Phi(ref vec) => {
                 try!(f.write_fmt(format_args!("phi {}",self.assignee)));
                 for (i,x) in vec.iter().enumerate() {
                     try!(f.write_fmt(format_args!("{}",x)));
