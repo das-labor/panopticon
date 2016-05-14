@@ -27,8 +27,8 @@ Ubuntu 15.10 and 16.04:
 ```bash
 sudo apt install qt5-default qtdeclarative5-dev \
                  qml-module-qtquick-controls qml-module-qttest \
-								 qml-module-qtquick2 qml-module-qtquick-layouts \
-								 qml-module-qtgraphicaleffects \
+                 qml-module-qtquick2 qml-module-qtquick-layouts \
+                 qml-module-qtgraphicaleffects \
                  qtbase5-private-dev pkg-config \
                  libglpk-dev git build-essential cmake
 ```
@@ -37,8 +37,6 @@ Fedora 22 and 23:
 ```bash
 sudo dnf install qt5-qtdeclarative-devel qt5-qtquickcontrols \
                  qt5-qtgraphicaleffects glpk-devel
-```
-
 ```
 
 After that clone the repository onto disk and use cargo to build
@@ -62,14 +60,15 @@ emerge -av panopticon
 Windows
 -------
 
-Install the Qt 5.4 SDK, GLPK for Windows and the Rust toolchain Panopticon can be build using ``cargo build``.
+Install the Qt 5.4 SDK, GLPK for Windows and the Rust toolchain
+Panopticon can be build using ``cargo build``.
 
 Running
 =======
 
 The current version only supports AVR and has no ELF or PE loader yet.
-To test Panopticon you need relocated AVR code. Such a file is prepared in
-``tests/data/sosse``.
+To test Panopticon you need relocated AVR code. Such a file is
+prepared in ``tests/data/sosse``.
 
 Contributing
 ============
