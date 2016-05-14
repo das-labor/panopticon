@@ -16,21 +16,35 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-use panopticon::project::Project;
-use panopticon::function::Function;
-use panopticon::program::{Program,CallTarget};
-use panopticon::elf;
-use panopticon::pe;
-use panopticon::target::Target;
-use panopticon::value::Rvalue;
-use panopticon::result::Result;
-use panopticon::dataflow::ssa_convertion;
+use panopticon::{
+    Project,
+    Function,
+    Program,CallTarget,
+    elf,
+    pe,
+    Rvalue,
+    Result,
+    ssa_convertion,
+    Architecture,
+    OpaqueLayer,
+    Layer,
+    Region,
+    Bound,
+    Regions,
+};
+use panopticon::amd64;
+use panopticon::mos;
+use panopticon::mos::{Mos};
+use panopticon::avr::{Avr,Mcu};
 
 use std::path::Path;
 use std::thread;
-use qmlrs::{Variant,Object};
+use std::collections::HashMap;
+
+use qmlrs::{Variant};
 use graph_algos::{
     VertexListGraphTrait,
+    MutableGraphTrait,
     GraphTrait
 };
 use controller::{
@@ -40,33 +54,82 @@ use controller::{
     Controller,
     return_json,
 };
+use uuid::Uuid;
 
 /// Prepares to disassemble a memory image.
 pub fn create_raw_project(_path: &Variant, _tgt: &Variant, _base: &Variant, _entry: &Variant) -> Variant {
     Variant::String(if let &Variant::String(ref s) = _path {
-        if let &Variant::String(ref tgt_s) = _tgt {
-            if let Some(tgt) = Target::for_name(tgt_s) {
-                if let &Variant::I64(ref base) = _base {
-                    if let &Variant::I64(ref entry) = _entry {
-                        match Project::raw(&Path::new(s),tgt,*base as u64,if *entry >= 0 { Some(*entry as u64) } else { None }) {
-                            Some(proj) => {
+        let p = Path::new(s);
+        if let &Variant::I64(base) = _base {
+            if let &Variant::I64(entry) = _entry {
+                if let Some(nam) = p.file_name().and_then(|x| x.to_str()).or(p.to_str()) {
+                    if let Some(b) = OpaqueLayer::open(p) {
+                        let mut reg = Region::undefined(nam.to_string(),b.iter().len() + base as u64);
+
+                        reg.cover(Bound::new(base as u64,base as u64 + b.iter().len()),Layer::Opaque(b));
+
+                        if let &Variant::String(ref tgt_s) = _tgt {
+                            let iv = {
+                                let i = reg.iter();
+                                match tgt_s.as_str() {
+                                    "mos6502" => Mos::prepare(i,&mos::Variant::mos6502()),
+                                    "atmega103" => Avr::prepare(i,&Mcu::atmega103()),
+                                    "atmega8" => Avr::prepare(i,&Mcu::atmega8()),
+                                    "atmega88" => Avr::prepare(i,&Mcu::atmega88()),
+                                    _ => Err(format!("No such target '{}'",tgt_s).into()),
+                                }
+                            };
+
+                            if let Ok(ref iv) = iv {
+                                let mut proj = Project{
+                                    name: nam.to_string(),
+                                    code: Vec::new(),
+                                    sources: Regions::new(reg),
+                                    comments: HashMap::new(),
+                                };
+                                let mut prog = Program::new("prog0");
+
+                                if entry >= 0 {
+                                    let uu =  Uuid::new_v4();
+                                    prog.call_graph.add_vertex(CallTarget::Todo(Rvalue::new_u64(entry as u64),Some("Entry point".to_string()),uu));
+                                    proj.comments.insert((nam.to_string(),entry as u64),"User supplied entry point".to_string());
+                                } else {
+                                    for &(name,off,cmnt) in iv.iter() {
+                                        let uu =  Uuid::new_v4();
+                                        prog.call_graph.add_vertex(CallTarget::Todo(Rvalue::new_u64(off),Some(name.to_string()),uu));
+                                        proj.comments.insert((nam.to_string(),off),cmnt.to_string());
+                                    }
+                                }
+
+                                proj.code.push(prog);
+
                                 let ret = return_json(Controller::replace(proj,None));
-                                spawn_disassembler();
+                                match tgt_s.as_str() {
+                                    "mos6502" => spawn_disassembler::<Mos>(mos::Variant::mos6502()),
+                                    "atmega103" => spawn_disassembler::<Avr>(Mcu::atmega103()),
+                                    "atmega8" => spawn_disassembler::<Avr>(Mcu::atmega8()),
+                                    "atmega88" => spawn_disassembler::<Avr>(Mcu::atmega88()),
+                                    _ => unreachable!()
+                                }
+
                                 ret
-                            },
-                            None => return_json::<()>(Err("Can't open project: Unknown error".into())),
+                            } else {
+                                return_json::<()>(Err(iv.err().unwrap()))
+                            }
+                        } else {
+                            return_json::<()>(Err("2nd argument is not a string".into()))
                         }
                     } else {
-                        return_json::<()>(Err("4th argument is not an integer".into()))
+                        return_json::<()>(Err("Can't open file".into()))
                     }
                 } else {
-                    return_json::<()>(Err("3rd argument is not an integer".into()))
+                    return_json::<()>(Err("Can't get file name".into()))
                 }
             } else {
-                return_json::<()>(Err(format!("No such target '{}'",tgt_s).into()))
+                return_json::<()>(Err("4th argument is not an integer".into()))
             }
         } else {
-            return_json::<()>(Err("2nd argument is not a string".into()))
+            return_json::<()>(Err("3rd argument is not an integer".into()))
         }
     } else {
         return_json::<()>(Err("1st argument is not a string".into()))
@@ -77,10 +140,14 @@ pub fn create_raw_project(_path: &Variant, _tgt: &Variant, _base: &Variant, _ent
 pub fn create_elf_project(_path: &Variant) -> Variant {
     Variant::String(if let &Variant::String(ref s) = _path {
         match elf::load::load(Path::new(s)) {
-            Ok(proj) => {
-                let ret = return_json(Controller::replace(proj,None));
-                spawn_disassembler();
-                ret
+            Ok((proj,m)) => {
+                match m {
+                    elf::Machine::i386 => spawn_disassembler::<amd64::Amd64>(amd64::Config::new(amd64::Mode::Protected)),
+                    elf::Machine::X86_64 => spawn_disassembler::<amd64::Amd64>(amd64::Config::new(amd64::Mode::Long)),
+                    _ => return Variant::String(return_json::<()>(Err("Unsupported architecture".into()))),
+                }
+
+                return_json(Controller::replace(proj,None))
             },
             Err(_) => return_json::<()>(Err("Failed to read ELF file".into())),
         }
@@ -93,10 +160,8 @@ pub fn create_elf_project(_path: &Variant) -> Variant {
 pub fn create_pe_project(_path: &Variant) -> Variant {
     Variant::String(if let &Variant::String(ref s) = _path {
         match pe::pe(Path::new(s)) {
-            Some(proj) => {
-                let ret = return_json(Controller::replace(proj,None));
-                spawn_disassembler();
-                ret
+            Some(_) => {
+                return Variant::String(return_json::<()>(Err("Unsupported format".into())));
             },
             None => return_json::<()>(Err("Failed to read PE file".into())),
         }
@@ -132,14 +197,14 @@ pub fn snapshot_project(_path: &Variant) -> Variant {
 }
 
 /// Starts disassembly
-pub fn spawn_disassembler() {
+pub fn spawn_disassembler<A: 'static + Architecture>(cfg: A::Configuration) {
     thread::spawn(move || -> Result<()> {
         let maybe_prog_uuid = try!(Controller::read(|proj| {
             proj.code.first().map(|x| x.uuid)
         }));
 
         if let Some(prog_uuid) = maybe_prog_uuid {
-            let todo_funcs = try!(Controller::read(|proj| {
+          let todo_funcs = try!(Controller::read(|proj| {
                 let prog: &Program = proj.find_program_by_uuid(&prog_uuid).unwrap();
 
                 prog.call_graph.vertices().filter_map(|x| {
@@ -152,8 +217,10 @@ pub fn spawn_disassembler() {
             }));
 
             for uu in todo_funcs {
-                Controller::emit1(DISCOVERED_FUNCTION,&uu.to_string());
+                try!(Controller::emit(DISCOVERED_FUNCTION,&uu.to_string()));
             }
+
+            let dec = A::disassembler(&cfg);
 
             loop {
                 let maybe_tgt = try!(Controller::read(|proj| {
@@ -168,8 +235,8 @@ pub fn spawn_disassembler() {
                     }).next()
                 }));
 
-                if let Some((Rvalue::Constant(tgt),maybe_name,uuid)) = maybe_tgt {
-                    try!(Controller::emit1(STARTED_FUNCTION,&uuid.to_string()));
+                if let Some((Rvalue::Constant{ value: tgt,.. },maybe_name,uuid)) = maybe_tgt {
+                    try!(Controller::emit(STARTED_FUNCTION,&uuid.to_string()));
 
                     let name = maybe_name.unwrap_or(format!("func_{:x}",tgt));
                     let new_fun = try!(Controller::read(|proj| {
@@ -177,7 +244,7 @@ pub fn spawn_disassembler() {
                         let i = root.iter();
                         let mut fun = Function::with_uuid(name,uuid,root.name().clone());
 
-                        fun = proj.code[0].target.disassemble(Some(fun),i,tgt,root.name().clone());
+                        fun = Function::disassemble::<A>(Some(fun),dec.clone(),cfg.clone(),i,tgt,root.name().clone());
                         fun.entry_point = fun.find_basic_block_at_address(tgt);
 
                         if fun.entry_point.is_some() && fun.cflow_graph.num_vertices() > 0 {
@@ -196,10 +263,10 @@ pub fn spawn_disassembler() {
                             prog.insert(CallTarget::Concrete(new_fun))
                         }));
 
-                        Controller::emit1(FINISHED_FUNCTION,&fun_uuid.to_string());
+                        try!(Controller::emit(FINISHED_FUNCTION,&fun_uuid.to_string()));
 
                         for a in new_tgt {
-                            Controller::emit1(DISCOVERED_FUNCTION,&a.to_string());
+                            try!(Controller::emit(DISCOVERED_FUNCTION,&a.to_string()));
                         }
                     } else {
                         println!("failed to disassemble for {}",new_fun.name);
@@ -209,7 +276,7 @@ pub fn spawn_disassembler() {
                             prog.insert(CallTarget::Symbolic(new_fun.name.clone(),new_fun.uuid));
                         }));
 
-                        try!(Controller::emit1(FINISHED_FUNCTION,&new_fun.uuid.to_string()));
+                        try!(Controller::emit(FINISHED_FUNCTION,&new_fun.uuid.to_string()));
                     }
                 } else {
                     break;
@@ -229,7 +296,7 @@ pub fn spawn_discoverer() {
         }));
 
         for uu in uuids {
-            try!(Controller::emit1(FINISHED_FUNCTION,&uu.to_string()));
+            try!(Controller::emit(FINISHED_FUNCTION,&uu.to_string()));
         }
 
         Ok(())

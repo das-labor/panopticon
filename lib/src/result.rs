@@ -21,9 +21,6 @@ use std::error;
 use std::result;
 use std::sync::{
     PoisonError,
-    RwLock,
-    RwLockReadGuard,
-    RwLockWriteGuard,
 };
 use std::convert::From;
 use std::fmt;

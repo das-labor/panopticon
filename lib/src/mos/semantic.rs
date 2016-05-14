@@ -1,6 +1,6 @@
 /*
  * Panopticon - A libre disassembler
- * Copyright (C) 2014-2015 Kai Michaelis
+ * Copyright (C) 2015 Marcus Brinkmann
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,142 +16,43 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-use value::{Rvalue,Lvalue,ToRvalue};
-use codegen::CodeGen;
+use std::convert::Into;
+use {
+    Rvalue,
+    Lvalue,
+    CodeGen,
+    State,
+    Guard,
+};
 use mos::*;
-
-pub fn _sp(cg: &mut CodeGen<Mos>) -> Lvalue {
-    let sp = new_temp(16);
-    cg.add_i(&sp, &SP.to_rv(), &0x100);
-    ram(&sp, 8)
-}
-
-fn _push(cg: &mut CodeGen<Mos>, v: &Rvalue) {
-    let sp = _sp(cg);
-    cg.assign(&sp, v);
-    cg.sub_i(&*SP, &SP.to_rv(), &1);
-}
-
-fn _pop(cg: &mut CodeGen<Mos>, dst: &Lvalue) {
-    let sp = _sp(cg);
-    cg.assign(dst, &sp.to_rv());
-    cg.add_i(&*SP, &SP.to_rv(), &1);
-}
-
-fn _pushf<A: ToRvalue>(cg: &mut CodeGen<Mos>, b: &A) {
-  let flags = new_temp(8);
-
-  cg.add_i(&flags, &flags, &*N);
-  cg.lshift_i(&flags, &flags, &1);
-  cg.add_i(&flags, &flags, &*V);
-  cg.lshift_i(&flags, &flags, &1);
-
-  cg.add_i(&flags, &flags, &1); // Unused bit is always 1
-  cg.lshift_i(&flags, &flags, &1);
-  cg.add_i(&flags, &flags, &b.to_rv()); // B is always 1 through php
-  cg.lshift_i(&flags, &flags, &1);
-
-  cg.add_i(&flags, &flags, &*D);
-  cg.lshift_i(&flags, &flags, &1);
-  cg.add_i(&flags, &flags, &*I);
-  cg.lshift_i(&flags, &flags, &1);
-  cg.add_i(&flags, &flags, &*Z);
-  cg.lshift_i(&flags, &flags, &1);
-  cg.add_i(&flags, &flags, &*C);
-
-  _push(cg, &flags.to_rv());
-}
-
-fn _set_nz(cg: &mut CodeGen<Mos>, r: &Rvalue) {
-    cg.less_i(&*N, &0x7f, r);
-    cg.equal_i(&*Z, r, &0);
-}
-
-
-fn _izx(cg: &mut CodeGen<Mos>, r: &Rvalue) -> Lvalue {
-    let lo_addr = new_temp(8);
-    let hi_addr = new_temp(8);
-
-    cg.assign(&lo_addr, r);
-    cg.add_i(&lo_addr, &lo_addr.to_rv(), &X.to_rv());
-    /* Many emulators get this wrong.  Wrap around the zero page, always.
-       Confirmed with Visual 6502 (transistor simulator).  */
-    cg.add_i(&hi_addr, &lo_addr.to_rv(), &1);
-
-    let lo = ram(&lo_addr, 8);
-    let hi = ram(&hi_addr, 8);
-    let addr = new_temp(16);
-
-    cg.assign(&addr, &hi.to_rv());
-    cg.lshift_i(&addr, &addr, &8);
-    cg.add_i(&addr, &addr, &lo.to_rv());
-
-    ram(&addr, 8)
-}
-
-
-fn _izy(cg: &mut CodeGen<Mos>, r: &Rvalue) -> Lvalue {
-    let lo_addr = new_temp(8);
-    let hi_addr = new_temp(8);
-
-    cg.assign(&lo_addr, r);
-    /* Possibly wrap.  */
-    cg.add_i(&hi_addr, &lo_addr.to_rv(), &1);
-
-    let lo = ram(&lo_addr, 8);
-    let hi = ram(&hi_addr, 8);
-    let addr = new_temp(16);
-
-    cg.assign(&addr, &hi.to_rv());
-    cg.lshift_i(&addr, &addr, &8);
-    cg.add_i(&addr, &addr, &lo.to_rv());
-
-    cg.add_i(&addr, &addr.to_rv(), &Y.to_rv());
-
-    ram(&addr, 8)
-}
-
-
-fn _zpi(cg: &mut CodeGen<Mos>, r: &Rvalue, o: &Rvalue) -> Lvalue {
-    let addr = new_temp(16);
-    if let &Rvalue::Memory{offset: ref _addr,..} = r {
-        cg.add_i(&addr, &**_addr, o);
-        cg.and_i(&addr, &addr.to_rv(), &0xff);
-    } else {
-        panic!("this is a terrible mistake!");
-    }
-    ram(&addr, 8)
-}
-
-
-fn _idx(cg: &mut CodeGen<Mos>, r: &Rvalue, o: &Rvalue) -> Lvalue {
-    let addr = new_temp(16);
-    if let &Rvalue::Memory{offset: ref _addr,..} = r {
-        cg.add_i(&addr, &**_addr, o);
-    } else {
-        panic!("this is a terrible mistake!");
-    }
-    ram(&addr, 8)
-}
-
-fn _select(cg: &mut CodeGen<Mos>, a: &Lvalue, v1: &Rvalue, v2: &Rvalue, flag: &Rvalue)
-{
-    // res = f ? v2 : v1 = f*v1+(1-f)*v2 = f*(v1-v2) + v2
-    cg.assign(a, v1);
-    cg.sub_i(a, &a.to_rv(), v2);
-    cg.mul_i(a, &a.to_rv(), flag);
-    cg.add_i(a, &a.to_rv(), v2);
-}
-
 
 pub fn nop(_: &mut CodeGen<Mos>) {}
 
 pub fn nop_r(_: &mut CodeGen<Mos>, _: Rvalue) {}
 
-pub fn nop_rr(_: &mut CodeGen<Mos>, _: Rvalue, _: Rvalue) {}
-
-
 pub fn adc(cg: &mut CodeGen<Mos>, r: Rvalue) {
+    rreil!{cg:
+        zext/8 carry:8, C:1;
+        add res:8, A:8, (r);
+        add res:8, res:8, carry:8;
+
+        cmpeq Z:1, [0]:8, res:8;
+
+        cmpleu c1:1, res:8, A:8;
+        cmpeq c2:1, res:8, A:8;
+        and c2:1, c2:1, C:1;
+        and C:1, c1:1, c2:1;
+
+        cmples N:1, res:8, [0]:8;
+
+        cmples v1:1, res:8, A:8;
+        cmpeq v2:1, res:8, A:8;
+        and v2:1, v2:1, C:1;
+        and V:1, v1:1, v2:1;
+
+        mov A:8, res:8;
+    }
+    /*
     // This will contain our result.  Bit 8 is carry.
     let result = new_temp(16);
     let result_c6 = new_temp(8);
@@ -253,465 +154,322 @@ pub fn adc(cg: &mut CodeGen<Mos>, r: Rvalue) {
     cg.rshift_i(&*C, &result.to_rv(), &8);
     cg.assign(&*N, &result_n.to_rv());
     cg.xor_i(&*V, &result_c6.to_rv(), &C.to_rv());
-    cg.equal_i(&*Z, &A.to_rv(), &0);
+    cg.equal_i(&*Z, &A.to_rv(), &0);*/
 }
-
-pub fn adc_zpi(cg: &mut CodeGen<Mos>, r: Rvalue, o: Rvalue) {
-    let addr = _zpi(cg, &r, &o);
-    adc(cg, addr.to_rv());
-}
-
-pub fn adc_idx(cg: &mut CodeGen<Mos>, r: Rvalue, o: Rvalue) {
-    let addr = _idx(cg, &r, &o);
-    adc(cg, addr.to_rv());
-}
-
-pub fn adc_izx(cg: &mut CodeGen<Mos>, r: Rvalue) {
-    let addr = _izx(cg, &r);
-    adc(cg, addr.to_rv());
-}
-
-pub fn adc_izy(cg: &mut CodeGen<Mos>, r: Rvalue) {
-    let addr = _izy(cg, &r);
-    adc(cg, addr.to_rv());
-}
-
 
 pub fn and(cg: &mut CodeGen<Mos>, r: Rvalue) {
-    cg.and_i(&*A, &A.to_rv(), &r);
-    _set_nz(cg, &A.to_rv());
+    rreil!{cg:
+        and A:8, A:8, (r);
+        cmpeq Z:1, A:8, [0]:8;
+        cmples N:1, A:8, [0]:8;
+    }
 }
-
-pub fn and_zpi(cg: &mut CodeGen<Mos>, r: Rvalue, o: Rvalue) {
-    let addr = _zpi(cg, &r, &o);
-    and(cg, addr.to_rv());
-}
-
-pub fn and_idx(cg: &mut CodeGen<Mos>, r: Rvalue, o: Rvalue) {
-    let addr = _idx(cg, &r, &o);
-    and(cg, addr.to_rv());
-}
-
-pub fn and_izx(cg: &mut CodeGen<Mos>, r: Rvalue) {
-    let addr = _izx(cg, &r);
-    and(cg, addr.to_rv());
-}
-
-pub fn and_izy(cg: &mut CodeGen<Mos>, r: Rvalue) {
-    let addr = _izy(cg, &r);
-    and(cg, addr.to_rv());
-}
-
 
 pub fn asl(cg: &mut CodeGen<Mos>, _r: Rvalue) {
-    let r = Lvalue::from_rvalue(&_r).unwrap();
-
-    cg.rshift_i(&*C, &r.to_rv(), &7);
-    cg.lshift_i(&*A, &r.to_rv(), &1);
-    _set_nz(cg, &A.to_rv());
+    rreil!{cg:
+        mov C:1, A:1/7;
+        shl A:8, A:8, [1]:8;
+        cmpeq Z:1, A:8, [0]:8;
+        cmples N:1, A:8, [0]:8;
+    }
 }
-
-pub fn asl_zpi(cg: &mut CodeGen<Mos>, r: Rvalue, o: Rvalue) {
-    let addr = _zpi(cg, &r, &o);
-    asl(cg, addr.to_rv());
-}
-
-pub fn asl_idx(cg: &mut CodeGen<Mos>, r: Rvalue, o: Rvalue) {
-    let addr = _idx(cg, &r, &o);
-    asl(cg, addr.to_rv());
-}
-
 
 pub fn bit(cg: &mut CodeGen<Mos>, r: Rvalue) {
-    cg.rshift_i(&*N, &r, &7);
-    cg.rshift_i(&*V, &r, &6);
-
-    let _and = new_temp(8);
-    cg.and_i(&_and, &A.to_rv(), &r);
-    cg.equal_i(&*Z, &_and.to_rv(), &0);
+    rreil!{cg:
+        and res:8, A:8, (r);
+        cmpeq Z:1, res:8, [0]:8;
+        cmples N:1, res:8, [0]:8;
+        mov V:1, res:1/7;
+    }
 }
 
 
-pub fn brk(cg: &mut CodeGen<Mos>, r: Rvalue) {
+pub fn brk(_: &mut CodeGen<Mos>) {
     /* Well.  We could simulate BRK up to the indirect jump at the NMI vector.
        So we add the code to do that here.  But without the ROM, this is useless
        (and with user-provided NMI handlers it would be very dynamic).
        For now, it seems simpler to just ignore the BRK instruction and all its
        side effects.  */
-/*
-    let reg = new_temp(8);
-    cg.assign(&reg, &PC.to_rvalue());
-    _push(cg, &reg.to_rv());
-    cg.rshift_i(&pc, &PC.to_rvalue(), &8);
-    _push(cg, &reg.to_rv());
-    _pushf(cg, &0);
-*/
+    /*
+       let reg = new_temp(8);
+       cg.assign(&reg, &PC.to_rvalue());
+       _push(cg, &reg.to_rv());
+       cg.rshift_i(&pc, &PC.to_rvalue(), &8);
+       _push(cg, &reg.to_rv());
+       _pushf(cg, &0);
+       */
 }
 
 pub fn clc(cg: &mut CodeGen<Mos>) {
-    cg.assign(&*C, &Rvalue::Constant(0));
+    rreil!{cg:
+        mov C:1, [0]:1;
+    }
 }
 
 pub fn cli(cg: &mut CodeGen<Mos>) {
-    cg.assign(&*I, &Rvalue::Constant(0));
+    rreil!{cg:
+        mov I:1, [0]:1;
+    }
 }
 
 pub fn cld(cg: &mut CodeGen<Mos>) {
-    cg.assign(&*D, &Rvalue::Constant(0));
+    rreil!{cg:
+        mov D:1, [0]:1;
+    }
 }
 
 pub fn sec(cg: &mut CodeGen<Mos>) {
-    cg.assign(&*C, &Rvalue::Constant(1));
+    rreil!{cg:
+        mov C:1, [1]:1;
+    }
 }
 
 pub fn sei(cg: &mut CodeGen<Mos>) {
-    cg.assign(&*I, &Rvalue::Constant(0));
+    rreil!{cg:
+        mov I:1, [1]:1;
+    }
 }
 
 pub fn clv(cg: &mut CodeGen<Mos>) {
-    cg.assign(&*V, &Rvalue::Constant(0));
+    rreil!{cg:
+        mov V:1, [0]:1;
+    }
 }
 
 pub fn sed(cg: &mut CodeGen<Mos>) {
-    cg.assign(&*D, &Rvalue::Constant(1));
+    rreil!{cg:
+        mov D:1, [1]:1;
+    }
 }
 
-
-fn _cmp(cg: &mut CodeGen<Mos>, reg: &Rvalue, r: Rvalue) {
-    let result = new_temp(16);
-
-    cg.xor_i(&result, &r, &0xff);
-    cg.add_i(&result, &result.to_rv(), reg);
-    cg.add_i(&result, &result.to_rv(), &1);
-
-    // Common results.
-    cg.rshift_i(&*C, &result.to_rv(), &8);
-    cg.and_i(&result, &result.to_rv(), &0xff);
-    _set_nz(cg, &result.to_rv());
+fn cmp(cg: &mut CodeGen<Mos>, r1: Rvalue, r2: Rvalue) {
+    rreil!{cg:
+        cmpltu C:1, (r1), (r2);
+        mov N:1, C:1;
+        cmpeq Z:1, (r1), (r2);
+    }
 }
 
-pub fn cmp(cg: &mut CodeGen<Mos>, r: Rvalue)
-{
-    _cmp(cg, &A.to_rv(), r);
+pub fn cpx(cg: &mut CodeGen<Mos>, r: Rvalue) {
+    cmp(cg, rreil_rvalue!{ X:8 },r)
 }
 
-pub fn cmp_zpi(cg: &mut CodeGen<Mos>, r: Rvalue, o: Rvalue) {
-    let addr = _zpi(cg, &r, &o);
-    cmp(cg, addr.to_rv());
+pub fn cpy(cg: &mut CodeGen<Mos>, r: Rvalue) {
+    cmp(cg, rreil_rvalue!{ Y:8 },r)
 }
 
-pub fn cmp_idx(cg: &mut CodeGen<Mos>, r: Rvalue, o: Rvalue) {
-    let addr = _idx(cg, &r, &o);
-    cmp(cg, addr.to_rv());
+pub fn cpa(cg: &mut CodeGen<Mos>, r: Rvalue) {
+    cmp(cg, rreil_rvalue!{ A:8 },r)
 }
 
-pub fn cmp_izx(cg: &mut CodeGen<Mos>, r: Rvalue) {
-    let addr = _izx(cg, &r);
-    cmp(cg, addr.to_rv());
+fn dec(cg: &mut CodeGen<Mos>, l: Lvalue, r: Rvalue) {
+    rreil!{cg:
+        sub (l), (r), [1]:8;
+        cmpeq Z:1, (l), [0]:8;
+        cmplts N:1, (r), [0]:8;
+    }
 }
 
-pub fn cmp_izy(cg: &mut CodeGen<Mos>, r: Rvalue) {
-    let addr = _izy(cg, &r);
-    cmp(cg, addr.to_rv());
-}
-
-pub fn cpx(cg: &mut CodeGen<Mos>, r: Rvalue)
-{
-    _cmp(cg, &X.to_rv(), r);
-}
-
-pub fn cpy(cg: &mut CodeGen<Mos>, r: Rvalue)
-{
-    _cmp(cg, &Y.to_rv(), r);
-}
-
-
-fn _dec(cg: &mut CodeGen<Mos>, r: &Lvalue)
-{
-    cg.sub_i(r, &r.to_rv(), &1);
-    _set_nz(cg, &r.to_rv());
-}
-
-pub fn dec(cg: &mut CodeGen<Mos>, _r: Rvalue)
-{
-    let r = Lvalue::from_rvalue(&_r).unwrap();
-    _dec(cg, &r);
-}
-
-pub fn dec_zpi(cg: &mut CodeGen<Mos>, r: Rvalue, o: Rvalue) {
-    let addr = _zpi(cg, &r, &o);
-    dec(cg, addr.to_rv());
-}
-
-pub fn dec_idx(cg: &mut CodeGen<Mos>, r: Rvalue, o: Rvalue) {
-    let addr = _idx(cg, &r, &o);
-    dec(cg, addr.to_rv());
+pub fn dea(cg: &mut CodeGen<Mos>, r: Rvalue) {
+    dec(cg, rreil_lvalue!{ A:8 }, r)
 }
 
 pub fn dex(cg: &mut CodeGen<Mos>) {
-    _dec(cg, &X);
+    dec(cg, rreil_lvalue!{ X:8 }, rreil_rvalue!{ X:8 })
 }
 
 pub fn dey(cg: &mut CodeGen<Mos>) {
-    _dec(cg, &Y);
+    dec(cg, rreil_lvalue!{ Y:8 }, rreil_rvalue!{ Y:8 })
 }
-
 
 pub fn eor(cg: &mut CodeGen<Mos>, r: Rvalue) {
-    cg.xor_i(&*A, &A.to_rv(), &r);
-    _set_nz(cg, &A.to_rv());
+    rreil!{cg:
+        xor A:8, (r), A:8;
+        cmpeq Z:1, A:8, [0]:8;
+        cmplts N:1, A:8, [0]:8;
+    }
 }
 
-pub fn eor_zpi(cg: &mut CodeGen<Mos>, r: Rvalue, o: Rvalue) {
-    let addr = _zpi(cg, &r, &o);
-    eor(cg, addr.to_rv());
+fn inc(cg: &mut CodeGen<Mos>, l: Lvalue, r: Rvalue) {
+    rreil!{cg:
+        add (l), (r), [1]:8;
+        cmpeq Z:1, (l), [0]:8;
+        cmplts N:1, (l), [0]:8;
+    }
 }
 
-pub fn eor_idx(cg: &mut CodeGen<Mos>, r: Rvalue, o: Rvalue) {
-    let addr = _idx(cg, &r, &o);
-    eor(cg, addr.to_rv());
-}
-
-pub fn eor_izx(cg: &mut CodeGen<Mos>, r: Rvalue) {
-    let addr = _izx(cg, &r);
-    eor(cg, addr.to_rv());
-}
-
-pub fn eor_izy(cg: &mut CodeGen<Mos>, r: Rvalue) {
-    let addr = _izy(cg, &r);
-    eor(cg, addr.to_rv());
-}
-
-
-fn _inc(cg: &mut CodeGen<Mos>, r: &Lvalue)
-{
-    cg.add_i(r, &r.to_rv(), &1);
-    _set_nz(cg, &r.to_rv());
-}
-
-pub fn inc(cg: &mut CodeGen<Mos>, _r: Rvalue) {
-    let r = Lvalue::from_rvalue(&_r).unwrap();
-    _inc(cg, &r);
-}
-  
-pub fn inc_zpi(cg: &mut CodeGen<Mos>, r: Rvalue, o: Rvalue) {
-    let addr = _zpi(cg, &r, &o);
-    inc(cg, addr.to_rv());
-}
-
-pub fn inc_idx(cg: &mut CodeGen<Mos>, r: Rvalue, o: Rvalue) {
-    let addr = _idx(cg, &r, &o);
-    inc(cg, addr.to_rv());
+pub fn ina(cg: &mut CodeGen<Mos>, r: Rvalue) {
+    inc(cg, rreil_lvalue!{ A:8 },r)
 }
 
 pub fn inx(cg: &mut CodeGen<Mos>) {
-    _inc(cg, &X);
+    inc(cg, rreil_lvalue!{ X:8 }, rreil_rvalue!{ X:8 })
 }
 
 pub fn iny(cg: &mut CodeGen<Mos>) {
-    _inc(cg, &Y);
+    inc(cg, rreil_lvalue!{ Y:8 }, rreil_rvalue!{ Y:8 })
 }
 
-
-pub fn jsr(cg: &mut CodeGen<Mos>, r: Rvalue) {
-    /* FIXME: Push PC-1 to stack.  */
+fn ld(cg: &mut CodeGen<Mos>, l: Lvalue, r: Rvalue) {
+    rreil!{cg:
+        mov (l), (r);
+        cmpeq Z:1, (l), [0]:8;
+        cmplts N:1, (l), [0]:8;
+    }
 }
-
 
 pub fn lda(cg: &mut CodeGen<Mos>, r: Rvalue) {
-    cg.assign(&*A, &r);
-    _set_nz(cg, &A.to_rv());
+    ld(cg, rreil_lvalue!{ A:8 }, r)
 }
-
-pub fn lda_zpi(cg: &mut CodeGen<Mos>, r: Rvalue, o: Rvalue) {
-    let addr = _zpi(cg, &r, &o);
-    lda(cg, addr.to_rv());
-}
-
-pub fn lda_idx(cg: &mut CodeGen<Mos>, r: Rvalue, o: Rvalue) {
-    let addr = _idx(cg, &r, &o);
-    lda(cg, addr.to_rv());
-}
-
-pub fn lda_izx(cg: &mut CodeGen<Mos>, r: Rvalue) {
-    let addr = _izx(cg, &r);
-    lda(cg, addr.to_rv());
-}
-
-pub fn lda_izy(cg: &mut CodeGen<Mos>, r: Rvalue) {
-    let addr = _izy(cg, &r);
-    lda(cg, addr.to_rv());
-}
-
 
 pub fn ldx(cg: &mut CodeGen<Mos>, r: Rvalue) {
-    cg.assign(&*X, &r);
-    _set_nz(cg, &X.to_rv());
+    ld(cg, rreil_lvalue!{ X:8 }, r)
 }
-
-pub fn ldx_zpi(cg: &mut CodeGen<Mos>, r: Rvalue, o: Rvalue) {
-    let addr = _zpi(cg, &r, &o);
-    ldx(cg, addr.to_rv());
-}
-
-pub fn ldx_idx(cg: &mut CodeGen<Mos>, r: Rvalue, o: Rvalue) {
-    let addr = _idx(cg, &r, &o);
-    ldx(cg, addr.to_rv());
-}
-
 
 pub fn ldy(cg: &mut CodeGen<Mos>, r: Rvalue) {
-    cg.assign(&*Y, &r);
-    _set_nz(cg, &Y.to_rv());
+    ld(cg, rreil_lvalue!{ Y:8 }, r)
 }
 
-pub fn ldy_zpi(cg: &mut CodeGen<Mos>, r: Rvalue, o: Rvalue) {
-    let addr = _zpi(cg, &r, &o);
-    ldy(cg, addr.to_rv());
+pub fn lsr(cg: &mut CodeGen<Mos>, r: Rvalue) {
+    rreil!{cg:
+        mov C:1, A:1;
+        shl A:8, A:8, (r);
+        cmpeq Z:1, A:8, [0]:8;
+        mov N:1, [0]:1;
+    }
 }
-
-pub fn ldy_idx(cg: &mut CodeGen<Mos>, r: Rvalue, o: Rvalue) {
-    let addr = _idx(cg, &r, &o);
-    ldy(cg, addr.to_rv());
-}
-
-
-pub fn lsr(cg: &mut CodeGen<Mos>, _r: Rvalue) {
-    let r = Lvalue::from_rvalue(&_r).unwrap();
-
-    cg.assign(&*C, &r.to_rv());
-    cg.rshift_i(&*A, &r.to_rv(), &1);
-    _set_nz(cg, &A.to_rv());
-}
-
-pub fn lsr_zpi(cg: &mut CodeGen<Mos>, r: Rvalue, o: Rvalue) {
-    let addr = _zpi(cg, &r, &o);
-    lsr(cg, addr.to_rv());
-}
-
-pub fn lsr_idx(cg: &mut CodeGen<Mos>, r: Rvalue, o: Rvalue) {
-    let addr = _idx(cg, &r, &o);
-    lsr(cg, addr.to_rv());
-}
-
 
 pub fn ora(cg: &mut CodeGen<Mos>, r: Rvalue) {
-    cg.or_i(&*A, &A.to_rv(), &r);
-    _set_nz(cg, &A.to_rv());
+    rreil!{cg:
+        or A:8, (r), A:8;
+        cmpeq Z:1, A:8, [0]:8;
+        cmplts N:1, A:8, [0]:8;
+    }
 }
-
-pub fn ora_zpi(cg: &mut CodeGen<Mos>, r: Rvalue, o: Rvalue) {
-    let addr = _zpi(cg, &r, &o);
-    ora(cg, addr.to_rv());
-}
-
-pub fn ora_idx(cg: &mut CodeGen<Mos>, r: Rvalue, o: Rvalue) {
-    let addr = _idx(cg, &r, &o);
-    ora(cg, addr.to_rv());
-}
-
-pub fn ora_izx(cg: &mut CodeGen<Mos>, r: Rvalue) {
-    let addr = _izx(cg, &r);
-    ora(cg, addr.to_rv());
-}
-
-pub fn ora_izy(cg: &mut CodeGen<Mos>, r: Rvalue) {
-    let addr = _izy(cg, &r);
-    ora(cg, addr.to_rv());
-}
-
 
 pub fn pha(cg: &mut CodeGen<Mos>) {
-  _push(cg, &A.to_rv());
+    rreil!{cg:
+        zext/9 sp:9, S:8;
+        add sp:9, sp:9, [0x100]:9;
+
+        store/ram sp:9, A:8;
+
+        add sp:9, sp:9, [1]:9;
+        mov S:8, sp:8;
+    }
 }
 
 pub fn php(cg: &mut CodeGen<Mos>) {
-  _pushf(cg, &1);
+    rreil!{cg:
+        zext/9 sp:9, S:8;
+        add sp:9, sp:9, [0x100]:9;
+
+        zext/8 flags:8, C:1;
+        mov flags:1/1, Z:1;
+        mov flags:1/2, I:1;
+        mov flags:1/3, D:1;
+        mov flags:1/4, B:1;
+        mov flags:1/5, ?;
+        mov flags:1/6, V:1;
+        mov flags:1/7, N:1;
+
+        store/ram sp:9, flags:8;
+        add sp:9, sp:9, [1]:9;
+        mov S:8, sp:8;
+    }
 }
 
 pub fn pla(cg: &mut CodeGen<Mos>) {
-  _pop(cg, &*A);
-  _set_nz(cg, &A.to_rv());
+    rreil!{cg:
+        zext/9 sp:9, S:8;
+        add sp:9, sp:9, [0x100]:9;
+
+        add sp:9, sp:9, [1]:9;
+        load/ram A:8, sp:9;
+
+        mov S:8, sp:8;
+
+        cmpeq Z:1, A:8, [0]:8;
+        cmplts N:1, A:8, [0]:8;
+    }
 }
 
 pub fn plp(cg: &mut CodeGen<Mos>) {
-  let flags = new_temp(8);
-  _pop(cg, &flags);
+    rreil!{cg:
+        zext/9 sp:9, S:8;
+        add sp:9, sp:9, [0x100]:9;
 
-  cg.and_i(&*C, &flags.to_rv(), &1);
-  cg.rshift_i(&flags, &flags, &1);
-  cg.and_i(&*Z, &flags.to_rv(), &1);
-  cg.rshift_i(&flags, &flags, &1);
-  cg.and_i(&*I, &flags.to_rv(), &1);
-  cg.rshift_i(&flags, &flags, &1);
-  cg.and_i(&*D, &flags.to_rv(), &1);
-  cg.rshift_i(&flags, &flags, &3); // B and unused are ignored.
+        add sp:9, sp:9, [1]:9;
+        load/ram flags:8, sp:9;
 
-  cg.and_i(&*V, &flags.to_rv(), &1);
-  cg.rshift_i(&flags, &flags, &1);
-  cg.and_i(&*N, &flags.to_rv(), &1);
+        mov C:1, flags:1;
+        mov Z:1, flags:1/1;
+        mov I:1, flags:1/2;
+        mov D:1, flags:1/3;
+        mov V:1, flags:1/6;
+        mov N:1, flags:1/7;
+
+        mov S:8, sp:8;
+
+        cmpeq Z:1, A:8, [0]:8;
+        cmplts N:1, A:8, [0]:8;
+    }
 }
 
-
-fn _rol(cg: &mut CodeGen<Mos>, r: &Lvalue)
-{
-    let c = new_temp(8);
-    cg.rshift_i(&c, &r.to_rv(), &7);
-    cg.lshift_i(&r, &r.to_rv(), &1);
-    cg.or_i(&r, &r.to_rv(), &C.to_rv());
-    cg.assign(&*C, &c.to_rv());
-    _set_nz(cg, &r.to_rv());
-}
 
 pub fn rol(cg: &mut CodeGen<Mos>, _r: Rvalue) {
-    let r = Lvalue::from_rvalue(&_r).unwrap();
-    _rol(cg, &r);
-}
-  
-pub fn rol_zpi(cg: &mut CodeGen<Mos>, r: Rvalue, o: Rvalue) {
-    let addr = _zpi(cg, &r, &o);
-    rol(cg, addr.to_rv());
-}
-
-pub fn rol_idx(cg: &mut CodeGen<Mos>, r: Rvalue, o: Rvalue) {
-    let addr = _idx(cg, &r, &o);
-    rol(cg, addr.to_rv());
-}
-
-
-fn _ror(cg: &mut CodeGen<Mos>, r: &Lvalue)
-{
-    let c = new_temp(8);
-    cg.lshift_i(&c, &C.to_rv(), &7); /* FIXME: Can PLI do this?  */
-    cg.assign(&*C, &r.to_rv());
-    cg.rshift_i(&r, &r.to_rv(), &1);
-    cg.or_i(&r, &r.to_rv(), &c.to_rv());
-    _set_nz(cg, &r.to_rv());
+    let r = Lvalue::from_rvalue(_r).unwrap();
+    rreil!{cg:
+        mov hb:1, (r.extract(1,7).unwrap());
+        shl (r), (r), [1]:8;
+        mov (r.extract(1,7).unwrap()), C:1;
+        mov C:1, hb:1;
+        cmpeq Z:1, (r), [0]:8;
+        cmples N:1, (r), [0]:8;
+    }
 }
 
 pub fn ror(cg: &mut CodeGen<Mos>, _r: Rvalue) {
-    let r = Lvalue::from_rvalue(&_r).unwrap();
-    _ror(cg, &r);
-}
-  
-pub fn ror_zpi(cg: &mut CodeGen<Mos>, r: Rvalue, o: Rvalue) {
-    let addr = _zpi(cg, &r, &o);
-    ror(cg, addr.to_rv());
-}
-
-pub fn ror_idx(cg: &mut CodeGen<Mos>, r: Rvalue, o: Rvalue) {
-    let addr = _idx(cg, &r, &o);
-    ror(cg, addr.to_rv());
+    let r = Lvalue::from_rvalue(_r).unwrap();
+    rreil!{cg:
+        mov lb:1, (r.extract(1,0).unwrap());
+        shr (r), (r), [1]:8;
+        mov (r.extract(1,7).unwrap()), C:1;
+        mov C:1, lb:1;
+        cmpeq Z:1, (r), [0]:8;
+        cmples N:1, (r), [0]:8;
+    }
 }
 
-
-pub fn rts(cg: &mut CodeGen<Mos>) {
+pub fn rts(_: &mut CodeGen<Mos>) {
     /* FIXME: Pop PC-1 from stack (so that the next instruction is fetched
        from TOS+1 */
 }
 
 
 pub fn sbc(cg: &mut CodeGen<Mos>, r: Rvalue) {
+    rreil!{cg:
+        zext/8 carry:8, C:1;
+        sub res:8, A:8, (r);
+        add res:8, res:8, carry:8;
+
+        cmpeq Z:1, [0]:8, res:8;
+
+        cmpleu c1:1, res:8, A:8;
+        cmpeq c2:1, res:8, A:8;
+        and c2:1, c2:1, C:1;
+        and C:1, c1:1, c2:1;
+
+        cmples N:1, res:8, [0]:8;
+
+        cmples v1:1, res:8, A:8;
+        cmpeq v2:1, res:8, A:8;
+        and v2:1, v2:1, C:1;
+        and V:1, v1:1, v2:1;
+
+        mov A:8, res:8;
+    }
+    /*
     // This will contain our result.  Bit 8 is carry.
     let result = new_temp(16);
     let result_c = new_temp(8);
@@ -733,7 +491,7 @@ pub fn sbc(cg: &mut CodeGen<Mos>, r: Rvalue) {
     cg.xor_i(&_addend, &r, &0xff);
     cg.add_i(&normal, &normal.to_rv(), &_addend.to_rv());
     cg.add_i(&normal, &normal.to_rv(), &C.to_rv());
- 
+
     // Common results.
     cg.rshift_i(&result_c, &normal.to_rv(), &8);
     cg.rshift_i(&result_n, &normal.to_rv(), &7);
@@ -800,114 +558,94 @@ pub fn sbc(cg: &mut CodeGen<Mos>, r: Rvalue) {
     cg.assign(&*C, &result_c.to_rv());
     cg.assign(&*V, &result_v.to_rv());
     cg.assign(&*N, &result_n.to_rv());
-    cg.equal_i(&*Z, &A.to_rv(), &0);
+    cg.equal_i(&*Z, &A.to_rv(), &0);*/
 }
 
-pub fn sbc_zpi(cg: &mut CodeGen<Mos>, r: Rvalue, o: Rvalue) {
-    let addr = _zpi(cg, &r, &o);
-    sbc(cg, addr.to_rv());
+fn st(cg: &mut CodeGen<Mos>, reg: Lvalue, ptr: Rvalue) {
+    rreil!{cg:
+        store/ram (reg), (ptr);
+    }
 }
 
-pub fn sbc_idx(cg: &mut CodeGen<Mos>, r: Rvalue, o: Rvalue) {
-    let addr = _idx(cg, &r, &o);
-    sbc(cg, addr.to_rv());
+pub fn sta(cg: &mut CodeGen<Mos>, r: Rvalue) {
+    st(cg, rreil_lvalue!{ A:8 }, r)
 }
 
-pub fn sbc_izx(cg: &mut CodeGen<Mos>, r: Rvalue) {
-    let addr = _izx(cg, &r);
-    sbc(cg, addr.to_rv());
+pub fn stx(cg: &mut CodeGen<Mos>, r: Rvalue) {
+    st(cg, rreil_lvalue!{ X:8 }, r)
 }
 
-pub fn sbc_izy(cg: &mut CodeGen<Mos>, r: Rvalue) {
-    let addr = _izy(cg, &r);
-    sbc(cg, addr.to_rv());
+pub fn sty(cg: &mut CodeGen<Mos>, r: Rvalue) {
+    st(cg, rreil_lvalue!{ Y:8 }, r)
 }
 
-
-pub fn _sta(cg: &mut CodeGen<Mos>, r: Lvalue) {
-    cg.assign(&r, &A.to_rv());
-}
-
-pub fn sta(cg: &mut CodeGen<Mos>, _r: Rvalue) {
-    let r = Lvalue::from_rvalue(&_r).unwrap();
-    _sta(cg, r);
-}
-
-pub fn sta_zpi(cg: &mut CodeGen<Mos>, r: Rvalue, o: Rvalue) {
-    let addr = _zpi(cg, &r, &o);
-    _sta(cg, addr);
-}
-
-pub fn sta_idx(cg: &mut CodeGen<Mos>, r: Rvalue, o: Rvalue) {
-    let addr = _idx(cg, &r, &o);
-    _sta(cg, addr);
-}
-
-pub fn sta_izx(cg: &mut CodeGen<Mos>, r: Rvalue) {
-    let addr = _izx(cg, &r);
-    _sta(cg, addr);
-}
-
-pub fn sta_izy(cg: &mut CodeGen<Mos>, r: Rvalue) {
-    let addr = _izy(cg, &r);
-    _sta(cg, addr);
-}
-
-pub fn _stx(cg: &mut CodeGen<Mos>, r: Lvalue) {
-    cg.assign(&r, &X.to_rv());
-}
-
-pub fn stx(cg: &mut CodeGen<Mos>, _r: Rvalue) {
-    let r = Lvalue::from_rvalue(&_r).unwrap();
-    _stx(cg, r);
-}
-
-pub fn stx_zpi(cg: &mut CodeGen<Mos>, r: Rvalue, o: Rvalue) {
-    let addr = _zpi(cg, &r, &o);
-    _stx(cg, addr);
-}
-
-pub fn _sty(cg: &mut CodeGen<Mos>, r: Lvalue) {
-    cg.assign(&r, &Y.to_rv());
-}
-
-pub fn sty(cg: &mut CodeGen<Mos>, _r: Rvalue) {
-    let r = Lvalue::from_rvalue(&_r).unwrap();
-    _sty(cg, r);
-}
-
-pub fn sty_zpi(cg: &mut CodeGen<Mos>, r: Rvalue, o: Rvalue) {
-    let addr = _zpi(cg, &r, &o);
-    _sty(cg, addr);
-}
-
-
-pub fn _trr(cg: &mut CodeGen<Mos>, src: &Lvalue, dst: &Lvalue)
-{
-    cg.assign(dst, &src.to_rv());
-    _set_nz(cg, &dst.to_rv());
+pub fn trr(cg: &mut CodeGen<Mos>, src: &Lvalue, dst: &Lvalue) {
+    rreil!{cg:
+        mov (dst), (src);
+        cmpeq Z:1, (dst), [0]:8;
+        cmplts N:1, (dst), [0]:8;
+    }
 }
 
 pub fn tax(cg: &mut CodeGen<Mos>) {
-    _trr(cg, &A, &X);
+    trr(cg, &A, &X);
 }
 
 pub fn tay(cg: &mut CodeGen<Mos>) {
-    _trr(cg, &A, &Y);
+    trr(cg, &A, &Y);
 }
 
 pub fn tsx(cg: &mut CodeGen<Mos>) {
-    _trr(cg, &SP, &X);
+    trr(cg, &SP, &X);
 }
 
 pub fn txa(cg: &mut CodeGen<Mos>) {
-    _trr(cg, &X, &A);
+    trr(cg, &X, &A);
 }
 
 pub fn txs(cg: &mut CodeGen<Mos>) {
-    _trr(cg, &X, &SP);
+    trr(cg, &X, &SP);
 }
 
 pub fn tya(cg: &mut CodeGen<Mos>) {
-    _trr(cg, &Y, &A);
+    trr(cg, &Y, &A);
+}
+
+pub fn jmp_direct(st: &mut State<Mos>) -> bool {
+    let next = Rvalue::new_u16(st.get_group("immlo") as u16 | ((st.get_group("immhi") as u16) << 8));
+
+    st.mnemonic(3,"jmp","{c:ram}",vec![next.clone()],&|_: &mut CodeGen<Mos>| {});
+    st.jump(next,Guard::always());
+
+    true
+}
+
+pub fn jmp_indirect(st: &mut State<Mos>) -> bool {
+    let ptr = Rvalue::new_u16(st.get_group("immlo") as u16 | ((st.get_group("immhi") as u16) << 8));
+
+    st.mnemonic(0,"__fetch","",vec![],&|cg: &mut CodeGen<Mos>| {
+        rreil!{cg:
+            load/ram res:16, (ptr);
+        }
+    });
+
+    let next = rreil_rvalue!{ res:16 };
+
+    st.mnemonic(3,"jmp","{p:ram}",vec![ptr.clone()],&|_: &mut CodeGen<Mos>| {});
+    st.jump(next,Guard::always());
+
+    true
+}
+
+pub fn jsr(st: &mut State<Mos>) -> bool {
+    let next = Rvalue::new_u16(st.address as u16 + 3);
+    let target = Rvalue::new_u16(st.get_group("immlo") as u16 | ((st.get_group("immhi") as u16) << 8));
+
+    st.mnemonic(3,"jsr","{c:ram}",vec![target.clone()],&|cg: &mut CodeGen<Mos>| {
+        rreil!{cg:
+            call ?, (target);
+        }
+    });
+    st.jump(next,Guard::always());
+    true
 }

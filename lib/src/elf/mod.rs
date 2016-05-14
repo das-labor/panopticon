@@ -17,4 +17,18 @@
  */
 
 pub mod parse;
+pub use elf::parse::{
+    Machine,
+    Ident,
+    Ehdr,
+    Type,
+    Phdr,
+    Shdr,
+    Class,
+    Data,
+    ABI,
+    SegmentType,
+};
+
 pub mod load;
+pub use elf::load::load;

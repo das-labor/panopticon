@@ -20,21 +20,27 @@ use std::io::{Seek,SeekFrom,Read};
 use std::fs::File;
 use std::path::Path;
 
-use program::{Program,CallTarget};
-use project::Project;
-use layer::Layer;
-use region::Region;
-use mnemonic::Bound;
-use target::Target;
-use value::Rvalue;
-use result::Result;
-
 use graph_algos::MutableGraphTrait;
 use uuid::Uuid;
-use elf::*;
-use elf::parse::*;
 
-pub fn load(p: &Path) -> Result<Project> {
+use {
+    Program,
+    CallTarget,
+    Project,
+    Layer,
+    Region,
+    Bound,
+    Rvalue,
+    Result,
+};
+use elf::{
+    Machine,
+    Ehdr,
+    Type,
+    SegmentType,
+};
+
+pub fn load(p: &Path) -> Result<(Project,Machine)> {
     let mut fd = File::open(p).ok().unwrap();
     let ehdr = try!(Ehdr::read(&mut fd));
     let mut reg = Region::undefined("base".to_string(), 0x1000000000000);
@@ -81,16 +87,13 @@ pub fn load(p: &Path) -> Result<Project> {
     let name = p.file_name()
         .map(|x| x.to_string_lossy().to_string())
         .unwrap_or("(encoding error)".to_string());
-    if let Some(target) = Target::for_elf(ehdr.machine).first() {
-        let mut prog = Program::new("prog0",*target);
-        let mut proj = Project::new(name.clone(),reg);
 
-        prog.call_graph.add_vertex(CallTarget::Todo(Rvalue::Constant(ehdr.entry),Some(name),Uuid::new_v4()));
-        proj.comments.insert(("base".to_string(),ehdr.entry),"main".to_string());
-        proj.code.push(prog);
+    let mut prog = Program::new("prog0");
+    let mut proj = Project::new(name.clone(),reg);
 
-        Ok(proj)
-    } else {
-        Err("Unknown ELF machine type".into())
-    }
+    prog.call_graph.add_vertex(CallTarget::Todo(Rvalue::new_u64(ehdr.entry),Some(name),Uuid::new_v4()));
+    proj.comments.insert(("base".to_string(),ehdr.entry),"main".to_string());
+    proj.code.push(prog);
+
+    Ok((proj,ehdr.machine))
 }

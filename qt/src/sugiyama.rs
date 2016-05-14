@@ -19,6 +19,7 @@
 use std::collections::{HashSet,HashMap};
 use std::{f32,isize,usize};
 use std::ptr;
+use std::borrow::Cow;
 use std::cmp::{min,max,Ordering};
 use std::mem::swap;
 use std::iter::FromIterator;
@@ -54,7 +55,7 @@ pub fn layout(vertices: &Vec<usize>,
               entry: Option<usize>,
               node_spacing: usize,
               rank_spacing: usize,
-              port_spacing: usize) -> Result<(HashMap<usize,(f32,f32)>,HashMap<usize,(Vec<(f32,f32,f32,f32)>,(f32,f32),(f32,f32))>),&'static str> {
+              port_spacing: usize) -> Result<(HashMap<usize,(f32,f32)>,HashMap<usize,(Vec<(f32,f32,f32,f32)>,(f32,f32),(f32,f32))>),Cow<'static,str>> {
     let mut graph = AdjacencyList::<usize,usize>::new();
     let mut rev = HashMap::<usize,AdjacencyListVertexDescriptor>::new();
     let mut maybe_entry = None;
@@ -70,7 +71,7 @@ pub fn layout(vertices: &Vec<usize>,
 
         match _dims.get(&n) {
             Some(t) => { dims.insert(vx,*t); },
-            None => return Err("Missing node dimension in input")
+            None => return Err(format!("Missing dimension of {}",n).into())
         }
     }
 
@@ -79,7 +80,7 @@ pub fn layout(vertices: &Vec<usize>,
     }
 
     if !is_connected(&graph) {
-        return Err("Input graph is not connected");
+        return Err("Input graph is not connected".into());
     }
 
     // normalize graph to DAG with single entry "head"
@@ -102,7 +103,7 @@ pub fn layout(vertices: &Vec<usize>,
     }
 
     if rank.len() != graph.num_vertices() {
-        return Err("Internal error while ranking");
+        return Err("Internal error while ranking".into());
     }
 
     // split edges spanning multiple ranks
@@ -149,18 +150,18 @@ pub fn layout(vertices: &Vec<usize>,
                 rank.insert(vs,vs_rank);
                 rank.insert(vt,vt_rank);
             },
-            (false,false) => return Err("Internal error while edge inverting")
+            (false,false) => return Err("Internal error while edge inverting".into())
         }
     }
 
     if rank.len() != graph.num_vertices() {
-        return Err("Internal error after edge inverting");
+        return Err("Internal error after edge inverting".into());
     }
 
     normalize_rank(&mut rank);
 
     if rank.len() != graph.num_vertices() {
-        return Err("Internal error after normalization");
+        return Err("Internal error after normalization".into());
     }
 
     for e in graph.edges() {
@@ -168,7 +169,7 @@ pub fn layout(vertices: &Vec<usize>,
         let to = graph.target(e);
 
         if !(rank[&from] + 1 == rank[&to] || rank[&from] == rank[&to]) {
-            return Err("Internal error after normalization");
+            return Err("Internal error after normalization".into());
         }
     }
 
@@ -176,7 +177,7 @@ pub fn layout(vertices: &Vec<usize>,
     let mut order = initial_ordering(&rank,&head,&graph);
 
     if !(order[0].len() == 1 || order[0][0] != order[0][1]) {
-        return Err("Internal error after initial ordering");
+        return Err("Internal error after initial ordering".into());
     }
 
     optimize_ordering(&mut order,&rank,&graph);
@@ -237,7 +238,7 @@ pub fn layout(vertices: &Vec<usize>,
         let vx = rev[n];
 
         if !(rank[&vx] >= 0) {
-            return Err("Internal error");
+            return Err("Internal error".into());
         }
 
         let r = rank[&vx] as usize;
@@ -420,7 +421,7 @@ pub fn layout(vertices: &Vec<usize>,
                         Some(_e) => e = _e,
                         None => {
                             if !(end_arrow_off.is_none()) {
-                                return Err("Internal error while final edge routing");
+                                return Err("Internal error while final edge routing".into());
                             }
 
                             end_arrow_off = Some((tx,trs + (tre - trs) / 2.0 - dims[&t].1 / 2.0));
@@ -1747,7 +1748,7 @@ mod tests {
         }
 
         assert_eq!(segs.len(), edges.len());
-        for (e_idx,(lines,entry,exit)) in segs {
+        for (e_idx,(lines,_,_)) in segs {
             let (start,end) = edges[e_idx];
             let start_pos = pos[&start];
             let start_dim = dims[&start];

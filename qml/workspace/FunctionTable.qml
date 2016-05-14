@@ -16,20 +16,13 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import QtQuick 2.0
+import QtQuick 2.3
+import QtQuick.Controls 1.2
+
 import Panopticon 1.0
-import QtQuick.Controls 1.3
-import QtQuick.Dialogs 1.2
 
 Item {
 	id: root
-
-	MessageDialog {
-		id: errorDialog
-		title: "Error"
-		icon: StandardIcon.Critical
-		standardButtons: StandardButton.Ok
-	}
 
 	signal activated(string uuid);
 
@@ -51,7 +44,6 @@ Item {
 	Component.onCompleted: {
 		Panopticon.startedFunction.connect(function(uu) {
 			var _res = Panopticon.functionInfo(uu);
-			//console.log(_res);
 			var res = JSON.parse(_res);
 
 			if(res.status == "ok") {
@@ -75,7 +67,6 @@ Item {
 
 		Panopticon.discoveredFunction.connect(function(uu) {
 			var _res = Panopticon.functionInfo(uu);
-			//console.log(_res);
 			var res = JSON.parse(_res);
 
 			if(res.status == "ok") {
@@ -94,7 +85,6 @@ Item {
 
 		Panopticon.finishedFunction.connect(function(uu) {
 			var _res = Panopticon.functionInfo(uu);
-			//console.log(_res);
 			var res = JSON.parse(_res);
 
 			if(res.status == "ok") {
@@ -118,7 +108,6 @@ Item {
 
 		Panopticon.changedFunction.connect(function(uu) {
 			var _res = Panopticon.functionInfo(uu);
-			//console.log(_res);
 			var res = JSON.parse(_res);
 
 			if(res.status == "ok") {
@@ -334,8 +323,7 @@ Item {
 				var res = JSON.parse(Panopticon.setName(functionModel.get(row).uuid,editField.text));
 
 				if(res.status != "ok") {
-					errorDialog.text = res.error;
-					errorDialog.open()
+					console.error(res.error);
 				} else {
 					functionTable.renameRow = -1;
 					editField.text = ""

@@ -19,8 +19,7 @@
 extern crate panopticon;
 
 use panopticon::region::Region;
-use panopticon::amd64::{disassembler,Amd64,Config,Mode};
-use panopticon::disassembler::State;
+use panopticon::amd64::{disassembler,Config,Mode};
 
 use std::path::Path;
 

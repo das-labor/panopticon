@@ -17,17 +17,15 @@
  */
 
 use disassembler::*;
-use codegen::*;
-use value::*;
 use amd64::decode::*;
 use amd64::semantic::*;
 use amd64::*;
 
 use std::rc::Rc;
 
-pub fn mmx(rm0: Rc<Disassembler<Amd64>>, rm1: Rc<Disassembler<Amd64>>, rm2: Rc<Disassembler<Amd64>>,
-           rm3: Rc<Disassembler<Amd64>>, rm4: Rc<Disassembler<Amd64>>, rm5: Rc<Disassembler<Amd64>>,
-           rm6: Rc<Disassembler<Amd64>>, rm7: Rc<Disassembler<Amd64>>,
+pub fn mmx(_: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>, rm2: Rc<Disassembler<Amd64>>,
+           _: Rc<Disassembler<Amd64>>, rm4: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>,
+           rm6: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>,
            rm: Rc<Disassembler<Amd64>>, imm8: Rc<Disassembler<Amd64>>) -> Rc<Disassembler<Amd64>> {
     new_disassembler!(Amd64 =>
         // EMMS
@@ -145,8 +143,8 @@ pub fn mmx(rm0: Rc<Disassembler<Amd64>>, rm1: Rc<Disassembler<Amd64>>, rm2: Rc<D
 }
 
 pub fn sse1(rm0: Rc<Disassembler<Amd64>>, rm1: Rc<Disassembler<Amd64>>, rm2: Rc<Disassembler<Amd64>>,
-            rm3: Rc<Disassembler<Amd64>>, rm4: Rc<Disassembler<Amd64>>, rm5: Rc<Disassembler<Amd64>>,
-            rm6: Rc<Disassembler<Amd64>>, rm7: Rc<Disassembler<Amd64>>,
+            rm3: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>,
+            _: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>,
             rm: Rc<Disassembler<Amd64>>, imm8: Rc<Disassembler<Amd64>>,
             rex_prfx: Rc<Disassembler<Amd64>>, rexw_prfx: Rc<Disassembler<Amd64>>) -> Rc<Disassembler<Amd64>> {
     new_disassembler!(Amd64 =>
@@ -315,8 +313,8 @@ pub fn sse1(rm0: Rc<Disassembler<Amd64>>, rm1: Rc<Disassembler<Amd64>>, rm2: Rc<
         [ opt!(rex_prfx), 0x0f, 0x57, rm ] = binary("unpckhps",decode_rm,xorps))
 }
 
-pub fn sse2(rm0: Rc<Disassembler<Amd64>>, rm1: Rc<Disassembler<Amd64>>, rm2: Rc<Disassembler<Amd64>>,
-            rm3: Rc<Disassembler<Amd64>>, rm4: Rc<Disassembler<Amd64>>, rm5: Rc<Disassembler<Amd64>>,
+pub fn sse2(_: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>, rm2: Rc<Disassembler<Amd64>>,
+            rm3: Rc<Disassembler<Amd64>>, rm4: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>,
             rm6: Rc<Disassembler<Amd64>>, rm7: Rc<Disassembler<Amd64>>,
             rm: Rc<Disassembler<Amd64>>, imm8: Rc<Disassembler<Amd64>>,
             rex_prfx: Rc<Disassembler<Amd64>>, rexw_prfx: Rc<Disassembler<Amd64>>) -> Rc<Disassembler<Amd64>> {
@@ -652,7 +650,7 @@ pub fn sse2(rm0: Rc<Disassembler<Amd64>>, rm1: Rc<Disassembler<Amd64>>, rm2: Rc<
 }
 
 pub fn sse3(rm: Rc<Disassembler<Amd64>>, imm8: Rc<Disassembler<Amd64>>,
-            rex_prfx: Rc<Disassembler<Amd64>>, rexw_prfx: Rc<Disassembler<Amd64>>) -> Rc<Disassembler<Amd64>> {
+            rex_prfx: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>) -> Rc<Disassembler<Amd64>> {
     new_disassembler!(Amd64 =>
         // ADDSUBPD
         [ 0x66, opt!(rex_prfx), 0x0f, 0xd0, rm ] = binary("addsubpd",decode_rm,addsubpd),
@@ -842,12 +840,12 @@ pub fn sse4(rm: Rc<Disassembler<Amd64>>, imm8: Rc<Disassembler<Amd64>>,
 pub fn avx(vex_0f_prfx: Rc<Disassembler<Amd64>>, vex_660f_prfx: Rc<Disassembler<Amd64>>,
            vex_f20f_prfx: Rc<Disassembler<Amd64>>, vex_f30f_prfx: Rc<Disassembler<Amd64>>,
            vex_0f38_prfx: Rc<Disassembler<Amd64>>, vex_660f38_prfx: Rc<Disassembler<Amd64>>,
-           vex_f20f38_prfx: Rc<Disassembler<Amd64>>, vex_f30f38_prfx: Rc<Disassembler<Amd64>>,
+           _: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>,
+           _: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>,
            vex_0f3a_prfx: Rc<Disassembler<Amd64>>, vex_660f3a_prfx: Rc<Disassembler<Amd64>>,
-           vex_f20f3a_prfx: Rc<Disassembler<Amd64>>, vex_f30f3a_prfx: Rc<Disassembler<Amd64>>,
            rm: Rc<Disassembler<Amd64>>,
-           rm0: Rc<Disassembler<Amd64>>, rm1: Rc<Disassembler<Amd64>>, rm2: Rc<Disassembler<Amd64>>,
-           rm3: Rc<Disassembler<Amd64>>, rm4: Rc<Disassembler<Amd64>>, rm5: Rc<Disassembler<Amd64>>,
+           _: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>, rm2: Rc<Disassembler<Amd64>>,
+           rm3: Rc<Disassembler<Amd64>>, rm4: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>,
            rm6: Rc<Disassembler<Amd64>>, rm7: Rc<Disassembler<Amd64>>,
            imm8: Rc<Disassembler<Amd64>>, is4: Rc<Disassembler<Amd64>>) -> Rc<Disassembler<Amd64>> {
     new_disassembler!(Amd64 =>

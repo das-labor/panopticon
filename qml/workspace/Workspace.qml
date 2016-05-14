@@ -16,10 +16,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import QtQuick 2.0
+import QtQuick 2.3
+import QtQuick.Controls 1.2
+
 import Panopticon 1.0
-import QtQuick.Dialogs 1.2
-import QtQuick.Controls 1.3
+import ".."
 
 Item {
 	id: root
@@ -31,11 +32,20 @@ Item {
 		BasicBlock {}
 	}
 
-	MessageDialog {
-		id: errorDialog
-		title: "Error"
-		icon: StandardIcon.Critical
-		standardButtons: StandardButton.Ok
+	Component {
+		id: errorPopup
+		ErrorPopup {}
+	}
+
+	function displayError(msg) {
+		window.enabled = false;
+		try {
+			errorPopup.createObject(window).displayMessage(msg);
+		} catch(e) {
+			window.enabled = true;
+			throw e;
+		}
+		window.enabled = true;
 	}
 
 	Component.onCompleted: {
@@ -54,8 +64,7 @@ Item {
 						}
 					}
 				} else {
-					errorDialog.text = res.error;
-					errorDialog.open()
+					displayError(res.error);
 				}
 			}
 		});
@@ -242,6 +251,7 @@ Item {
 
 				Component.onCompleted: {
 					Panopticon.layoutedFunction.connect(function(_layout) {
+						console.log("layouted!")
 						var cfg_res = JSON.parse(Panopticon.functionCfg(selection));
 						var layout = JSON.parse(_layout);
 
@@ -256,6 +266,7 @@ Item {
 						var cfg = cfg_res.payload;
 						var pos = layout[0];
 						var entry = undefined;
+						var num_blocks = 0;
 
 						for (var k in pos) {
 							if(pos.hasOwnProperty(k)) {
@@ -268,8 +279,12 @@ Item {
 								if (k == cfg.entry) {
 									entry = obj;
 								}
+
+								num_blocks += 1;
 							}
 						}
+
+						console.error(num_blocks.toString() + " blocks!");
 
 						for (var i = 0; i < cfg.edges.length; i++) {
 							var from = bblockList[cfg.edges[i].from];
@@ -291,7 +306,6 @@ Item {
 
 				onSelectionChanged: {
 					var cfg_str = Panopticon.functionCfg(selection);
-					console.log(cfg_str);
 					var cfg_res = JSON.parse(cfg_str);
 					var func_res = JSON.parse(Panopticon.functionInfo(selection));
 					var dims = {};
@@ -327,7 +341,6 @@ Item {
 
 					var res = JSON.parse(Panopticon.functionApproximate(selection));
 					if(res.status == "ok") {
-						console.log(JSON.stringify(res));
 						var approx = res.payload;
 					} else {
 						console.error(res.error);
@@ -361,9 +374,16 @@ Item {
 
 						dims[node] = {"width":obj.width,"height":obj.height};
 					}
+					console.log(JSON.stringify(cfg.nodes));
 
 					if(cfg.nodes.length > 1) {
-						Panopticon.sugiyamaLayout(selection,JSON.stringify(dims),100,30,8);
+						var res = JSON.parse(Panopticon.sugiyamaLayout(selection,JSON.stringify(dims),100,30,8));
+						console.log(JSON.stringify(res));
+						if(res.status != "ok") {
+							cflow_graph.errorMessage = res.error
+							cflow_graph.state = "ERROR"
+							console.error(res.error);
+						}
 					} else {
 						for (var i in bblockList) {
 							if(bblockList.hasOwnProperty(i)) {

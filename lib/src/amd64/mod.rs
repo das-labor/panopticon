@@ -16,11 +16,17 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-use disassembler::*;
-use value::{Lvalue,Rvalue};
-use codegen::CodeGen;
-use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
 use std::rc::Rc;
+use std::borrow::Cow;
+
+use disassembler::*;
+use {
+    Lvalue,
+    Rvalue,
+    CodeGen,
+    Result,
+    LayerIter,
+};
 
 pub mod decode;
 pub mod semantic;
@@ -32,16 +38,14 @@ pub mod extensions;
 pub enum Amd64 {}
 
 #[derive(Clone,PartialEq,Copy)]
-pub enum AddressSize
-{
+pub enum AddressSize {
     SixtyFour,
     ThirtyTwo,
     Sixteen,
 }
 
 #[derive(Clone,PartialEq,Copy)]
-pub enum OperandSize
-{
+pub enum OperandSize {
     HundredTwentyEight,
     SixtyFour,
     ThirtyTwo,
@@ -82,8 +86,7 @@ pub enum Condition {
 }
 
 #[derive(Clone,PartialEq,Copy)]
-pub enum Mode
-{
+pub enum Mode {
     Real,       // Real mode / Virtual 8086 mode
     Protected,  // Protected mode / Long compatibility mode
     Long,       // Long 64-bit mode
@@ -136,172 +139,172 @@ impl Config {
 impl Architecture for Amd64 {
     type Token = u8;
     type Configuration = Config;
+
+    fn prepare(_: LayerIter,cfg: &Self::Configuration) -> Result<Vec<(&'static str,u64,&'static str)>> {
+        match cfg.mode {
+            Mode::Real => Ok(vec![("RESET",0xFFFF0,"Reset vector")]),
+            Mode::Protected => Ok(vec![("RESET",0xFFFFFFF0,"Reset vector")]),
+            Mode::Long => Ok(vec![("RESET",0xFFFFFFF0,"Reset vector")]),
+        }
+    }
+    fn disassembler(cfg: &Self::Configuration) -> Rc<Disassembler<Self>> {
+        disassembler(cfg.mode)
+    }
 }
 
 // 8 bit gp registers
 lazy_static! {
-    pub static ref AL: Lvalue = Lvalue::Variable{ name: "al".to_string(), width: 8, subscript: None };
-    pub static ref BL: Lvalue = Lvalue::Variable{ name: "bl".to_string(), width: 8, subscript: None };
-    pub static ref CL: Lvalue = Lvalue::Variable{ name: "cl".to_string(), width: 8, subscript: None };
-    pub static ref DL: Lvalue = Lvalue::Variable{ name: "dl".to_string(), width: 8, subscript: None };
-    pub static ref R8L: Lvalue = Lvalue::Variable{ name: "r8l".to_string(), width: 8, subscript: None };
-    pub static ref R9L: Lvalue = Lvalue::Variable{ name: "r9l".to_string(), width: 8, subscript: None };
-    pub static ref R10L: Lvalue = Lvalue::Variable{ name: "r10l".to_string(), width: 8, subscript: None };
-    pub static ref R11L: Lvalue = Lvalue::Variable{ name: "r11l".to_string(), width: 8, subscript: None };
-    pub static ref R12L: Lvalue = Lvalue::Variable{ name: "r12l".to_string(), width: 8, subscript: None };
-    pub static ref R13L: Lvalue = Lvalue::Variable{ name: "r13l".to_string(), width: 8, subscript: None };
-    pub static ref R14L: Lvalue = Lvalue::Variable{ name: "r14l".to_string(), width: 8, subscript: None };
-    pub static ref R15L: Lvalue = Lvalue::Variable{ name: "r15l".to_string(), width: 8, subscript: None };
-    pub static ref SPL: Lvalue = Lvalue::Variable{ name: "spl".to_string(), width: 8, subscript: None };
-    pub static ref BPL: Lvalue = Lvalue::Variable{ name: "bpl".to_string(), width: 8, subscript: None };
-    pub static ref SIL: Lvalue = Lvalue::Variable{ name: "sil".to_string(), width: 8, subscript: None };
-    pub static ref DIL: Lvalue = Lvalue::Variable{ name: "dil".to_string(), width: 8, subscript: None };
-    pub static ref AH: Lvalue = Lvalue::Variable{ name: "ah".to_string(), width: 8, subscript: None };
-    pub static ref BH: Lvalue = Lvalue::Variable{ name: "bh".to_string(), width: 8, subscript: None };
-    pub static ref CH: Lvalue = Lvalue::Variable{ name: "ch".to_string(), width: 8, subscript: None };
-    pub static ref DH: Lvalue = Lvalue::Variable{ name: "dh".to_string(), width: 8, subscript: None };
+    pub static ref AL: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("al"), size: 8, offset: 0, subscript: None };
+    pub static ref BL: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("bl"), size: 8, offset: 0, subscript: None };
+    pub static ref CL: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("cl"), size: 8, offset: 0, subscript: None };
+    pub static ref DL: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("dl"), size: 8, offset: 0, subscript: None };
+    pub static ref R8L: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r8l"), size: 8, offset: 0, subscript: None };
+    pub static ref R9L: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r9l"), size: 8, offset: 0, subscript: None };
+    pub static ref R10L: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r10l"), size: 8, offset: 0, subscript: None };
+    pub static ref R11L: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r11l"), size: 8, offset: 0, subscript: None };
+    pub static ref R12L: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r12l"), size: 8, offset: 0, subscript: None };
+    pub static ref R13L: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r13l"), size: 8, offset: 0, subscript: None };
+    pub static ref R14L: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r14l"), size: 8, offset: 0, subscript: None };
+    pub static ref R15L: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r15l"), size: 8, offset: 0, subscript: None };
+    pub static ref SPL: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("spl"), size: 8, offset: 0, subscript: None };
+    pub static ref BPL: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("bpl"), size: 8, offset: 0, subscript: None };
+    pub static ref SIL: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("sil"), size: 8, offset: 0, subscript: None };
+    pub static ref DIL: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("dil"), size: 8, offset: 0, subscript: None };
+    pub static ref AH: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("ah"), size: 8, offset: 0, subscript: None };
+    pub static ref BH: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("bh"), size: 8, offset: 0, subscript: None };
+    pub static ref CH: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("ch"), size: 8, offset: 0, subscript: None };
+    pub static ref DH: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("dh"), size: 8, offset: 0, subscript: None };
 }
 
 // 16 bit gp registers
 lazy_static! {
-    pub static ref AX: Lvalue = Lvalue::Variable{ name: "ax".to_string(), width: 16, subscript: None };
-    pub static ref BX: Lvalue = Lvalue::Variable{ name: "bx".to_string(), width: 16, subscript: None };
-    pub static ref CX: Lvalue = Lvalue::Variable{ name: "cx".to_string(), width: 16, subscript: None };
-    pub static ref DX: Lvalue = Lvalue::Variable{ name: "dx".to_string(), width: 16, subscript: None };
-    pub static ref R8W: Lvalue = Lvalue::Variable{ name: "r8w".to_string(), width: 16, subscript: None };
-    pub static ref R9W: Lvalue = Lvalue::Variable{ name: "r9w".to_string(), width: 16, subscript: None };
-    pub static ref R10W: Lvalue = Lvalue::Variable{ name: "r10w".to_string(), width: 16, subscript: None };
-    pub static ref R11W: Lvalue = Lvalue::Variable{ name: "r11w".to_string(), width: 16, subscript: None };
-    pub static ref R12W: Lvalue = Lvalue::Variable{ name: "r12w".to_string(), width: 16, subscript: None };
-    pub static ref R13W: Lvalue = Lvalue::Variable{ name: "r13w".to_string(), width: 16, subscript: None };
-    pub static ref R14W: Lvalue = Lvalue::Variable{ name: "r14w".to_string(), width: 16, subscript: None };
-    pub static ref R15W: Lvalue = Lvalue::Variable{ name: "r15w".to_string(), width: 16, subscript: None };
-    pub static ref SP: Lvalue = Lvalue::Variable{ name: "sp".to_string(), width: 16, subscript: None };
-    pub static ref BP: Lvalue = Lvalue::Variable{ name: "bp".to_string(), width: 16, subscript: None };
-    pub static ref SI: Lvalue = Lvalue::Variable{ name: "si".to_string(), width: 16, subscript: None };
-    pub static ref DI: Lvalue = Lvalue::Variable{ name: "di".to_string(), width: 16, subscript: None };
-    pub static ref IP: Lvalue = Lvalue::Variable{ name: "ip".to_string(), width: 16, subscript: None };
+    pub static ref AX: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("ax"), size: 16, offset: 0, subscript: None };
+    pub static ref BX: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("bx"), size: 16, offset: 0, subscript: None };
+    pub static ref CX: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("cx"), size: 16, offset: 0, subscript: None };
+    pub static ref DX: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("dx"), size: 16, offset: 0, subscript: None };
+    pub static ref R8W: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r8w"), size: 16, offset: 0, subscript: None };
+    pub static ref R9W: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r9w"), size: 16, offset: 0, subscript: None };
+    pub static ref R10W: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r10w"), size: 16, offset: 0, subscript: None };
+    pub static ref R11W: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r11w"), size: 16, offset: 0, subscript: None };
+    pub static ref R12W: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r12w"), size: 16, offset: 0, subscript: None };
+    pub static ref R13W: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r13w"), size: 16, offset: 0, subscript: None };
+    pub static ref R14W: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r14w"), size: 16, offset: 0, subscript: None };
+    pub static ref R15W: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r15w"), size: 16, offset: 0, subscript: None };
+    pub static ref SP: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("sp"), size: 16, offset: 0, subscript: None };
+    pub static ref BP: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("bp"), size: 16, offset: 0, subscript: None };
+    pub static ref SI: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("si"), size: 16, offset: 0, subscript: None };
+    pub static ref DI: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("di"), size: 16, offset: 0, subscript: None };
+    pub static ref IP: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("ip"), size: 16, offset: 0, subscript: None };
 }
 
 // 32 bit gp registers
 lazy_static! {
-    pub static ref EAX: Lvalue = Lvalue::Variable{ name: "eax".to_string(), width: 32, subscript: None };
-    pub static ref EBX: Lvalue = Lvalue::Variable{ name: "ebx".to_string(), width: 32, subscript: None };
-    pub static ref ECX: Lvalue = Lvalue::Variable{ name: "ecx".to_string(), width: 32, subscript: None };
-    pub static ref EDX: Lvalue = Lvalue::Variable{ name: "edx".to_string(), width: 32, subscript: None };
-    pub static ref R8D: Lvalue = Lvalue::Variable{ name: "r8d".to_string(), width: 32, subscript: None };
-    pub static ref R9D: Lvalue = Lvalue::Variable{ name: "r9d".to_string(), width: 32, subscript: None };
-    pub static ref R10D: Lvalue = Lvalue::Variable{ name: "r10d".to_string(), width: 32, subscript: None };
-    pub static ref R11D: Lvalue = Lvalue::Variable{ name: "r11d".to_string(), width: 32, subscript: None };
-    pub static ref R12D: Lvalue = Lvalue::Variable{ name: "r12d".to_string(), width: 32, subscript: None };
-    pub static ref R13D: Lvalue = Lvalue::Variable{ name: "r13d".to_string(), width: 32, subscript: None };
-    pub static ref R14D: Lvalue = Lvalue::Variable{ name: "r14d".to_string(), width: 32, subscript: None };
-    pub static ref R15D: Lvalue = Lvalue::Variable{ name: "r15d".to_string(), width: 32, subscript: None };
-    pub static ref ESP: Lvalue = Lvalue::Variable{ name: "esp".to_string(), width: 32, subscript: None };
-    pub static ref EBP: Lvalue = Lvalue::Variable{ name: "ebp".to_string(), width: 32, subscript: None };
-    pub static ref ESI: Lvalue = Lvalue::Variable{ name: "esi".to_string(), width: 32, subscript: None };
-    pub static ref EDI: Lvalue = Lvalue::Variable{ name: "edi".to_string(), width: 32, subscript: None };
-    pub static ref EIP: Lvalue = Lvalue::Variable{ name: "eip".to_string(), width: 32, subscript: None };
+    pub static ref EAX: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("eax"), size: 32, offset: 0, subscript: None };
+    pub static ref EBX: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("ebx"), size: 32, offset: 0, subscript: None };
+    pub static ref ECX: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("ecx"), size: 32, offset: 0, subscript: None };
+    pub static ref EDX: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("edx"), size: 32, offset: 0, subscript: None };
+    pub static ref R8D: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r8d"), size: 32, offset: 0, subscript: None };
+    pub static ref R9D: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r9d"), size: 32, offset: 0, subscript: None };
+    pub static ref R10D: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r10d"), size: 32, offset: 0, subscript: None };
+    pub static ref R11D: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r11d"), size: 32, offset: 0, subscript: None };
+    pub static ref R12D: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r12d"), size: 32, offset: 0, subscript: None };
+    pub static ref R13D: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r13d"), size: 32, offset: 0, subscript: None };
+    pub static ref R14D: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r14d"), size: 32, offset: 0, subscript: None };
+    pub static ref R15D: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r15d"), size: 32, offset: 0, subscript: None };
+    pub static ref ESP: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("esp"), size: 32, offset: 0, subscript: None };
+    pub static ref EBP: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("ebp"), size: 32, offset: 0, subscript: None };
+    pub static ref ESI: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("esi"), size: 32, offset: 0, subscript: None };
+    pub static ref EDI: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("edi"), size: 32, offset: 0, subscript: None };
+    pub static ref EIP: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("eip"), size: 32, offset: 0, subscript: None };
 }
 
 // 64 bit gp registers
 lazy_static! {
-    pub static ref RAX: Lvalue = Lvalue::Variable{ name: "rax".to_string(), width: 64, subscript: None };
-    pub static ref RBX: Lvalue = Lvalue::Variable{ name: "rbx".to_string(), width: 64, subscript: None };
-    pub static ref RCX: Lvalue = Lvalue::Variable{ name: "rcx".to_string(), width: 64, subscript: None };
-    pub static ref RDX: Lvalue = Lvalue::Variable{ name: "rdx".to_string(), width: 64, subscript: None };
-    pub static ref R8: Lvalue = Lvalue::Variable{ name: "r8".to_string(), width: 64, subscript: None };
-    pub static ref R9: Lvalue = Lvalue::Variable{ name: "r9".to_string(), width: 64, subscript: None };
-    pub static ref R10: Lvalue = Lvalue::Variable{ name: "r10".to_string(), width: 64, subscript: None };
-    pub static ref R11: Lvalue = Lvalue::Variable{ name: "r11".to_string(), width: 64, subscript: None };
-    pub static ref R12: Lvalue = Lvalue::Variable{ name: "r12".to_string(), width: 64, subscript: None };
-    pub static ref R13: Lvalue = Lvalue::Variable{ name: "r13".to_string(), width: 64, subscript: None };
-    pub static ref R14: Lvalue = Lvalue::Variable{ name: "r14".to_string(), width: 64, subscript: None };
-    pub static ref R15: Lvalue = Lvalue::Variable{ name: "r15".to_string(), width: 64, subscript: None };
-    pub static ref RSP: Lvalue = Lvalue::Variable{ name: "rsp".to_string(), width: 64, subscript: None };
-    pub static ref RBP: Lvalue = Lvalue::Variable{ name: "rbp".to_string(), width: 64, subscript: None };
-    pub static ref RSI: Lvalue = Lvalue::Variable{ name: "rsi".to_string(), width: 64, subscript: None };
-    pub static ref RDI: Lvalue = Lvalue::Variable{ name: "rdi".to_string(), width: 64, subscript: None };
-    pub static ref RIP: Lvalue = Lvalue::Variable{ name: "rip".to_string(), width: 64, subscript: None };
+    pub static ref RAX: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("rax"), size: 64, offset: 0, subscript: None };
+    pub static ref RBX: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("rbx"), size: 64, offset: 0, subscript: None };
+    pub static ref RCX: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("rcx"), size: 64, offset: 0, subscript: None };
+    pub static ref RDX: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("rdx"), size: 64, offset: 0, subscript: None };
+    pub static ref R8: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r8"), size: 64, offset: 0, subscript: None };
+    pub static ref R9: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r9"), size: 64, offset: 0, subscript: None };
+    pub static ref R10: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r10"), size: 64, offset: 0, subscript: None };
+    pub static ref R11: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r11"), size: 64, offset: 0, subscript: None };
+    pub static ref R12: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r12"), size: 64, offset: 0, subscript: None };
+    pub static ref R13: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r13"), size: 64, offset: 0, subscript: None };
+    pub static ref R14: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r14"), size: 64, offset: 0, subscript: None };
+    pub static ref R15: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r15"), size: 64, offset: 0, subscript: None };
+    pub static ref RSP: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("rsp"), size: 64, offset: 0, subscript: None };
+    pub static ref RBP: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("rbp"), size: 64, offset: 0, subscript: None };
+    pub static ref RSI: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("rsi"), size: 64, offset: 0, subscript: None };
+    pub static ref RDI: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("rdi"), size: 64, offset: 0, subscript: None };
+    pub static ref RIP: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("rip"), size: 64, offset: 0, subscript: None };
 }
 
 // flags
 lazy_static! {
-    pub static ref CF: Lvalue = Lvalue::Variable{ name: "CF".to_string(), width: 1, subscript: None };
-    pub static ref PF: Lvalue = Lvalue::Variable{ name: "PF".to_string(), width: 1, subscript: None };
-    pub static ref AF: Lvalue = Lvalue::Variable{ name: "AF".to_string(), width: 1, subscript: None };
-    pub static ref ZF: Lvalue = Lvalue::Variable{ name: "ZF".to_string(), width: 1, subscript: None };
-    pub static ref SF: Lvalue = Lvalue::Variable{ name: "SF".to_string(), width: 1, subscript: None };
-    pub static ref TF: Lvalue = Lvalue::Variable{ name: "TF".to_string(), width: 1, subscript: None };
-    pub static ref IF: Lvalue = Lvalue::Variable{ name: "IF".to_string(), width: 1, subscript: None };
-    pub static ref DF: Lvalue = Lvalue::Variable{ name: "DF".to_string(), width: 1, subscript: None };
-    pub static ref OF: Lvalue = Lvalue::Variable{ name: "OF".to_string(), width: 1, subscript: None };
-    pub static ref RF: Lvalue = Lvalue::Variable{ name: "RF".to_string(), width: 1, subscript: None };
-    pub static ref IOPL: Lvalue = Lvalue::Variable{ name: "IOPL".to_string(), width: 0, subscript: None };
-    pub static ref NT: Lvalue = Lvalue::Variable{ name: "NT".to_string(), width: 0, subscript: None };
-    pub static ref VM: Lvalue = Lvalue::Variable{ name: "VM".to_string(), width: 0, subscript: None };
-    pub static ref AC: Lvalue = Lvalue::Variable{ name: "AC".to_string(), width: 0, subscript: None };
-    pub static ref VIF: Lvalue = Lvalue::Variable{ name: "VIF".to_string(), width: 0, subscript: None };
-    pub static ref VIP: Lvalue = Lvalue::Variable{ name: "VIP".to_string(), width: 0, subscript: None };
-    pub static ref ID: Lvalue = Lvalue::Variable{ name: "ID".to_string(), width: 0, subscript: None };
+    pub static ref CF: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("CF"), size: 1, offset: 0, subscript: None };
+    pub static ref PF: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("PF"), size: 1, offset: 0, subscript: None };
+    pub static ref AF: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("AF"), size: 1, offset: 0, subscript: None };
+    pub static ref ZF: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("ZF"), size: 1, offset: 0, subscript: None };
+    pub static ref SF: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("SF"), size: 1, offset: 0, subscript: None };
+    pub static ref TF: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("TF"), size: 1, offset: 0, subscript: None };
+    pub static ref IF: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("IF"), size: 1, offset: 0, subscript: None };
+    pub static ref DF: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("DF"), size: 1, offset: 0, subscript: None };
+    pub static ref OF: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("OF"), size: 1, offset: 0, subscript: None };
+    pub static ref RF: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("RF"), size: 1, offset: 0, subscript: None };
+    pub static ref IOPL: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("IOPL"), size: 0, offset: 0, subscript: None };
+    pub static ref NT: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("NT"), size: 0, offset: 0, subscript: None };
+    pub static ref VM: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("VM"), size: 0, offset: 0, subscript: None };
+    pub static ref AC: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("AC"), size: 0, offset: 0, subscript: None };
+    pub static ref VIF: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("VIF"), size: 0, offset: 0, subscript: None };
+    pub static ref VIP: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("VIP"), size: 0, offset: 0, subscript: None };
+    pub static ref ID: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("ID"), size: 0, offset: 0, subscript: None };
 }
 
 // segment registers
 lazy_static! {
-    pub static ref CS: Lvalue = Lvalue::Variable{ name: "cs".to_string(), width: 16, subscript: None };
-    pub static ref DS: Lvalue = Lvalue::Variable{ name: "ds".to_string(), width: 16, subscript: None };
-    pub static ref FS: Lvalue = Lvalue::Variable{ name: "fs".to_string(), width: 16, subscript: None };
-    pub static ref SS: Lvalue = Lvalue::Variable{ name: "ss".to_string(), width: 16, subscript: None };
-    pub static ref GS: Lvalue = Lvalue::Variable{ name: "gs".to_string(), width: 16, subscript: None };
-    pub static ref ES: Lvalue = Lvalue::Variable{ name: "es".to_string(), width: 16, subscript: None };
+    pub static ref CS: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("cs"), size: 16, offset: 0, subscript: None };
+    pub static ref DS: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("ds"), size: 16, offset: 0, subscript: None };
+    pub static ref FS: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("fs"), size: 16, offset: 0, subscript: None };
+    pub static ref SS: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("ss"), size: 16, offset: 0, subscript: None };
+    pub static ref GS: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("gs"), size: 16, offset: 0, subscript: None };
+    pub static ref ES: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("es"), size: 16, offset: 0, subscript: None };
 }
 
 // control registers
 lazy_static! {
-    pub static ref CR0: Lvalue = Lvalue::Variable{ name: "cr0".to_string(), width: 64, subscript: None };
-    pub static ref CR1: Lvalue = Lvalue::Variable{ name: "cr1".to_string(), width: 64, subscript: None };
-    pub static ref CR2: Lvalue = Lvalue::Variable{ name: "cr2".to_string(), width: 64, subscript: None };
-    pub static ref CR3: Lvalue = Lvalue::Variable{ name: "cr3".to_string(), width: 64, subscript: None };
-    pub static ref CR4: Lvalue = Lvalue::Variable{ name: "cr4".to_string(), width: 64, subscript: None };
-    pub static ref CR8: Lvalue = Lvalue::Variable{ name: "cr8".to_string(), width: 64, subscript: None };
-    pub static ref LDTR: Lvalue = Lvalue::Variable{ name: "ldtr".to_string(), width: 64, subscript: None };
-    pub static ref GDTR: Lvalue = Lvalue::Variable{ name: "gdtr".to_string(), width: 64, subscript: None };
-    pub static ref IDTR: Lvalue = Lvalue::Variable{ name: "idtr".to_string(), width: 64, subscript: None };
+    pub static ref CR0: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("cr0"), size: 64, offset: 0, subscript: None };
+    pub static ref CR1: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("cr1"), size: 64, offset: 0, subscript: None };
+    pub static ref CR2: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("cr2"), size: 64, offset: 0, subscript: None };
+    pub static ref CR3: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("cr3"), size: 64, offset: 0, subscript: None };
+    pub static ref CR4: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("cr4"), size: 64, offset: 0, subscript: None };
+    pub static ref CR8: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("cr8"), size: 64, offset: 0, subscript: None };
+    pub static ref LDTR: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("ldtr"), size: 64, offset: 0, subscript: None };
+    pub static ref GDTR: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("gdtr"), size: 64, offset: 0, subscript: None };
+    pub static ref IDTR: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("idtr"), size: 64, offset: 0, subscript: None };
 }
 
 // debug registers
 lazy_static! {
-    pub static ref DR0: Lvalue = Lvalue::Variable{ name: "dr0".to_string(), width: 32, subscript: None };
-    pub static ref DR1: Lvalue = Lvalue::Variable{ name: "dr1".to_string(), width: 32, subscript: None };
-    pub static ref DR2: Lvalue = Lvalue::Variable{ name: "dr2".to_string(), width: 32, subscript: None };
-    pub static ref DR3: Lvalue = Lvalue::Variable{ name: "dr3".to_string(), width: 32, subscript: None };
-    pub static ref DR4: Lvalue = Lvalue::Variable{ name: "dr4".to_string(), width: 32, subscript: None };
-    pub static ref DR5: Lvalue = Lvalue::Variable{ name: "dr5".to_string(), width: 32, subscript: None };
-    pub static ref DR6: Lvalue = Lvalue::Variable{ name: "dr6".to_string(), width: 32, subscript: None };
-    pub static ref DR7: Lvalue = Lvalue::Variable{ name: "dr7".to_string(), width: 32, subscript: None };
+    pub static ref DR0: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("dr0"), size: 32, offset: 0, subscript: None };
+    pub static ref DR1: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("dr1"), size: 32, offset: 0, subscript: None };
+    pub static ref DR2: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("dr2"), size: 32, offset: 0, subscript: None };
+    pub static ref DR3: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("dr3"), size: 32, offset: 0, subscript: None };
+    pub static ref DR4: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("dr4"), size: 32, offset: 0, subscript: None };
+    pub static ref DR5: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("dr5"), size: 32, offset: 0, subscript: None };
+    pub static ref DR6: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("dr6"), size: 32, offset: 0, subscript: None };
+    pub static ref DR7: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("dr7"), size: 32, offset: 0, subscript: None };
 }
 
 // fpu register stack
 lazy_static! {
-    pub static ref ST0: Lvalue = Lvalue::Variable{ name: "st0".to_string(), width: 80, subscript: None };
-    pub static ref ST1: Lvalue = Lvalue::Variable{ name: "st1".to_string(), width: 80, subscript: None };
-    pub static ref ST2: Lvalue = Lvalue::Variable{ name: "st2".to_string(), width: 80, subscript: None };
-    pub static ref ST3: Lvalue = Lvalue::Variable{ name: "st3".to_string(), width: 80, subscript: None };
-    pub static ref ST4: Lvalue = Lvalue::Variable{ name: "st4".to_string(), width: 80, subscript: None };
-    pub static ref ST5: Lvalue = Lvalue::Variable{ name: "st5".to_string(), width: 80, subscript: None };
-    pub static ref ST6: Lvalue = Lvalue::Variable{ name: "st6".to_string(), width: 80, subscript: None };
-    pub static ref ST7: Lvalue = Lvalue::Variable{ name: "st7".to_string(), width: 80, subscript: None };
-}
-
-
-static GLOBAL_AMD64_TEMPVAR_COUNT: AtomicUsize = ATOMIC_USIZE_INIT;
-
-pub fn new_temp(bits: usize) -> Lvalue {
-    Lvalue::Variable{
-        name: format!("__temp{}",GLOBAL_AMD64_TEMPVAR_COUNT.fetch_add(1, Ordering::SeqCst)),
-        width: bits as u16,
-        subscript: None
-    }
+    pub static ref ST0: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("st0"), size: 80, offset: 0, subscript: None };
+    pub static ref ST1: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("st1"), size: 80, offset: 0, subscript: None };
+    pub static ref ST2: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("st2"), size: 80, offset: 0, subscript: None };
+    pub static ref ST3: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("st3"), size: 80, offset: 0, subscript: None };
+    pub static ref ST4: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("st4"), size: 80, offset: 0, subscript: None };
+    pub static ref ST5: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("st5"), size: 80, offset: 0, subscript: None };
+    pub static ref ST6: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("st6"), size: 80, offset: 0, subscript: None };
+    pub static ref ST7: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("st7"), size: 80, offset: 0, subscript: None };
 }
 
 pub fn disassembler(bits: Mode) -> Rc<Disassembler<Amd64>> {
@@ -456,19 +459,19 @@ pub fn disassembler(bits: Mode) -> Rc<Disassembler<Amd64>> {
 
     let imm8 = new_disassembler!(Amd64 =>
         [ "imm@........" ] = |st: &mut State<Amd64>| {
-            st.configuration.imm = Some(Rvalue::Constant(st.get_group("imm")));
+            st.configuration.imm = Some(Rvalue::new_u64(st.get_group("imm")));
             true
         });
 
     let imm16 = new_disassembler!(Amd64 =>
         [ imm8, "imm@........" ] = |st: &mut State<Amd64>| {
-            st.configuration.imm = Some(Rvalue::Constant(st.get_group("imm")));
+            st.configuration.imm = Some(Rvalue::new_u64(st.get_group("imm")));
             true
         });
 
     let imm32 = new_disassembler!(Amd64 =>
         [ imm16, "imm@........", "imm@........" ] = |st: &mut State<Amd64>| {
-            st.configuration.imm = Some(Rvalue::Constant(st.get_group("imm")));
+            st.configuration.imm = Some(Rvalue::new_u64(st.get_group("imm")));
             true
         });
 
@@ -477,134 +480,152 @@ pub fn disassembler(bits: Mode) -> Rc<Disassembler<Amd64>> {
             // XXX
             //uint64_t a = st.capture_groups.at("imm") & 0xffff;
             //st.state.imm = constant((a << 32) | st.capture_groups.at("imm") >> 16);
-            st.configuration.imm = Some(Rvalue::Constant(st.get_group("imm")));
+            st.configuration.imm = Some(Rvalue::new_u64(st.get_group("imm")));
             true
         });
 
     let imm64 = new_disassembler!(Amd64 =>
         [ imm32, "imm@........", "imm@........", "imm@........", "imm@........" ] = |st: &mut State<Amd64>| {
-            st.configuration.imm = Some(Rvalue::Constant(st.get_group("imm")));
+            st.configuration.imm = Some(Rvalue::new_u64(st.get_group("imm")));
             true
         });
 
     let imm = new_disassembler!(Amd64 =>
         [ "imm@........" ] = |st: &mut State<Amd64>| {
-            st.configuration.imm = Some(Rvalue::Constant(st.get_group("imm")));
+            st.configuration.imm = Some(Rvalue::new_u64(st.get_group("imm")));
             st.configuration.operand_size == OperandSize::Eight
         },
         [ "imm@........", "imm@........" ] = |st: &mut State<Amd64>| {
-            st.configuration.imm = Some(Rvalue::Constant(st.get_group("imm")));
+            st.configuration.imm = Some(Rvalue::new_u64(st.get_group("imm")));
             st.configuration.operand_size == OperandSize::Sixteen
         },
         [ "imm@........", "imm@........", "imm@........", "imm@........" ] = |st: &mut State<Amd64>| {
-            st.configuration.imm = Some(Rvalue::Constant(st.get_group("imm")));
+            st.configuration.imm = Some(Rvalue::new_u64(st.get_group("imm")));
             st.configuration.operand_size == OperandSize::ThirtyTwo || st.configuration.operand_size == OperandSize::SixtyFour
         });
 
     let immlong = new_disassembler!(Amd64 =>
         [ "imm@........" ] = |st: &mut State<Amd64>| {
-            st.configuration.imm = Some(Rvalue::Constant(st.get_group("imm")));
+            st.configuration.imm = Some(Rvalue::new_u64(st.get_group("imm")));
             st.configuration.operand_size == OperandSize::Eight
         },
         [ "imm@........", "imm@........" ] = |st: &mut State<Amd64>| {
-            st.configuration.imm = Some(Rvalue::Constant(st.get_group("imm")));
+            st.configuration.imm = Some(Rvalue::new_u64(st.get_group("imm")));
             st.configuration.operand_size == OperandSize::Sixteen
         },
         [ "imm@........", "imm@........", "imm@........", "imm@........" ] = |st: &mut State<Amd64>| {
-            st.configuration.imm = Some(Rvalue::Constant(st.get_group("imm")));
+            st.configuration.imm = Some(Rvalue::new_u64(st.get_group("imm")));
             st.configuration.operand_size == OperandSize::ThirtyTwo
         },
         [ "imm@........", "imm@........", "imm@........", "imm@........",
           "imm@........", "imm@........", "imm@........", "imm@........" ] = |st: &mut State<Amd64>| {
-            st.configuration.imm = Some(Rvalue::Constant(st.get_group("imm")));
+            st.configuration.imm = Some(Rvalue::new_u64(st.get_group("imm")));
             st.configuration.operand_size == OperandSize::SixtyFour
         });
 
     let moffs = new_disassembler!(Amd64 =>
         [ "moffs@........", "moffs@........" ] = |st: &mut State<Amd64>| {
-            st.configuration.moffs = Some(Rvalue::Constant(st.get_group("moffs")));
+            st.configuration.moffs = Some(Rvalue::new_u64(st.get_group("moffs")));
             st.configuration.address_size == AddressSize::Sixteen
         },
         [ "moffs@........", "moffs@........", "moffs@........", "moffs@........" ] = |st: &mut State<Amd64>| {
-            st.configuration.moffs = Some(Rvalue::Constant(st.get_group("moffs")));
+            st.configuration.moffs = Some(Rvalue::new_u64(st.get_group("moffs")));
             st.configuration.address_size == AddressSize::ThirtyTwo || st.configuration.address_size == AddressSize::SixtyFour
         });
 
     let moffs8 = new_disassembler!(Amd64 =>
         [ "moffs@........", "moffs@........" ] = |st: &mut State<Amd64>| {
-            st.configuration.moffs = Some(Rvalue::Constant(st.get_group("moffs")));
+            st.configuration.moffs = Some(Rvalue::new_u64(st.get_group("moffs")));
             st.configuration.operand_size = OperandSize::Eight;
             st.configuration.address_size == AddressSize::Sixteen
         },
         [ "moffs@........", "moffs@........", "moffs@........", "moffs@........" ] = |st: &mut State<Amd64>| {
-            st.configuration.moffs = Some(Rvalue::Constant(st.get_group("moffs")));
+            st.configuration.moffs = Some(Rvalue::new_u64(st.get_group("moffs")));
             st.configuration.operand_size = OperandSize::Eight;
             st.configuration.address_size == AddressSize::ThirtyTwo
         },
         [ "moffs@........", "moffs@........", "moffs@........", "moffs@........",
           "moffs@........", "moffs@........", "moffs@........", "moffs@........" ] = |st: &mut State<Amd64>| {
-            st.configuration.moffs = Some(Rvalue::Constant(st.get_group("moffs")));
+            st.configuration.moffs = Some(Rvalue::new_u64(st.get_group("moffs")));
             st.configuration.operand_size = OperandSize::Eight;
             st.configuration.address_size == AddressSize::SixtyFour
         });
 
     let m64 = new_disassembler!(Amd64 =>
         [ "mq@........", "mq@........" ] = |st: &mut State<Amd64>| {
-            st.configuration.rm = Some(decode::select_mem(&OperandSize::SixtyFour,Rvalue::Constant(st.get_group("mq"))));
+            let md = Rvalue::new_u64(st.get_group("md"));
+            st.mnemonic(0,"__decode_m64","",vec![],&move |cg: &mut CodeGen<Amd64>| {
+                cg.configuration.rm = Some(decode::select_mem(&OperandSize::SixtyFour,md.clone(),cg))
+            });
             st.configuration.address_size == AddressSize::Sixteen
         },
         [ "mq@........", "mq@........", "mq@........", "mq@........" ] = |st: &mut State<Amd64>| {
-            st.configuration.rm = Some(decode::select_mem(&OperandSize::SixtyFour,Rvalue::Constant(st.get_group("mq"))));
+            let md = Rvalue::new_u64(st.get_group("md"));
+            st.mnemonic(0,"__decode_m64","",vec![],&move |cg: &mut CodeGen<Amd64>| {
+                cg.configuration.rm = Some(decode::select_mem(&OperandSize::SixtyFour,md.clone(),cg))
+            });
             st.configuration.address_size == AddressSize::ThirtyTwo
         },
         [ "mq@........", "mq@........", "mq@........", "mq@........",
           "mq@........", "mq@........", "mq@........", "mq@........" ] = |st: &mut State<Amd64>| {
-            st.configuration.rm = Some(decode::select_mem(&OperandSize::SixtyFour,Rvalue::Constant(st.get_group("mq"))));
+            let md = Rvalue::new_u64(st.get_group("md"));
+            st.mnemonic(0,"__decode_m64","",vec![],&move |cg: &mut CodeGen<Amd64>| {
+                cg.configuration.rm = Some(decode::select_mem(&OperandSize::SixtyFour,md.clone(),cg))
+            });
             st.configuration.address_size == AddressSize::SixtyFour
         });
 
     let m128 = new_disassembler!(Amd64 =>
         [ "mdq@........", "mdq@........" ] = |st: &mut State<Amd64>| {
-            st.configuration.rm = Some(decode::select_mem(&OperandSize::HundredTwentyEight,Rvalue::Constant(st.get_group("mdq"))));
+            let mdq = Rvalue::new_u64(st.get_group("mdq"));
+            st.mnemonic(0,"__decode_m128","",vec![],&move |cg: &mut CodeGen<Amd64>| {
+                cg.configuration.rm = Some(decode::select_mem(&OperandSize::HundredTwentyEight,mdq.clone(),cg));
+            });
             st.configuration.address_size == AddressSize::Sixteen
         },
         [ "mdq@........", "mdq@........", "mdq@........", "mdq@........" ] = |st: &mut State<Amd64>| {
-            st.configuration.rm = Some(decode::select_mem(&OperandSize::HundredTwentyEight,Rvalue::Constant(st.get_group("mdq"))));
+            let mdq = Rvalue::new_u64(st.get_group("mdq"));
+            st.mnemonic(0,"__decode_m128","",vec![],&move |cg: &mut CodeGen<Amd64>| {
+                cg.configuration.rm = Some(decode::select_mem(&OperandSize::HundredTwentyEight,mdq.clone(),cg));
+            });
             st.configuration.address_size == AddressSize::ThirtyTwo
         },
         [ "mdq@........", "mdq@........", "mdq@........", "mdq@........",
           "mdq@........", "mdq@........", "mdq@........", "mdq@........" ] = |st: &mut State<Amd64>| {
-            st.configuration.rm = Some(decode::select_mem(&OperandSize::HundredTwentyEight,Rvalue::Constant(st.get_group("mdq"))));
+            let mdq = Rvalue::new_u64(st.get_group("mdq"));
+            st.mnemonic(0,"__decode_m128","",vec![],&move |cg: &mut CodeGen<Amd64>| {
+                cg.configuration.rm = Some(decode::select_mem(&OperandSize::HundredTwentyEight,mdq.clone(),cg));
+            });
             st.configuration.address_size == AddressSize::SixtyFour
         });
 
     let disp8 = new_disassembler!(Amd64 =>
         [ "disp@........" ] = |st: &mut State<Amd64>| {
-            st.configuration.disp = Some(Rvalue::Constant(st.get_group("disp")));
+            st.configuration.disp = Some(Rvalue::new_u8(st.get_group("disp") as u8));
             true
         });
 
     let disp16 = new_disassembler!(Amd64 =>
         [ disp8, "disp@........" ] = |st: &mut State<Amd64>| {
-            st.configuration.disp = Some(Rvalue::Constant(st.get_group("disp")));
+            st.configuration.disp = Some(Rvalue::new_u16(st.get_group("disp") as u16));
             true
         });
 
     let disp32 = new_disassembler!(Amd64 =>
         [ disp16, "disp@........", "disp@........" ] = |st: &mut State<Amd64>| {
-            st.configuration.disp = Some(Rvalue::Constant(st.get_group("disp")));
+            st.configuration.disp = Some(Rvalue::new_u32(st.get_group("disp") as u32));
             true
         });
 
     let disp64 = new_disassembler!(Amd64 =>
         [ disp32, "disp@........", "disp@........", "disp@........", "disp@........" ] = |st: &mut State<Amd64>| {
-            st.configuration.disp = Some(Rvalue::Constant(st.get_group("disp")));
+            st.configuration.disp = Some(Rvalue::new_u64(st.get_group("disp")));
             true
         });
 
     let sib = new_disassembler!(Amd64 =>
         [ "scale@.. index@... base@101", "sd@........", "sd@........", "sd@........", "sd@........" ] = |st: &mut State<Amd64>| {
-            st.configuration.disp = Some(Rvalue::Constant(st.get_group("sd")));
+            st.configuration.disp = Some(Rvalue::new_u64(st.get_group("sd")));
             st.get_group("mod") == 0
         },
         [ "scale@.. index@... base@..." ] = |st: &mut State<Amd64>| {
@@ -612,7 +633,7 @@ pub fn disassembler(bits: Mode) -> Rc<Disassembler<Amd64>> {
         });
 
     let is4 = new_disassembler!(Amd64 =>
-        [ "isfour@........" ] = |st: &mut State<Amd64>| {
+        [ "isfour@........" ] = |_: &mut State<Amd64>| {
             true
         },
         [ "scale@.. index@... base@..." ] = |st: &mut State<Amd64>| {

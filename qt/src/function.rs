@@ -16,28 +16,24 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-use panopticon::value::{Rvalue,Lvalue};
-use panopticon::project::Project;
-use panopticon::function::{Function,ControlFlowTarget};
-use panopticon::program::CallTarget;
-use panopticon::target::Target;
-use panopticon::mnemonic::{MnemonicFormatToken};
-use panopticon::result::{
+use panopticon;
+use panopticon::{
+    Rvalue,Lvalue,
+    Function,ControlFlowTarget,
+    CallTarget,
+    MnemonicFormatToken,
     Error,
     Result,
-};
-use panopticon::elf;
-use panopticon::abstractinterp;
-use panopticon::abstractinterp::{
+    elf,
     Kset,
 };
 
 use std::hash::{Hash,Hasher,SipHasher};
 use std::thread;
 use std::fs;
-use std::path::{PathBuf,Path};
+use std::path::{PathBuf};
 use std::iter::FromIterator;
-use std::collections::HashMap;
+use std::collections::{HashSet,HashMap};
 use std::io::{
     SeekFrom,
     Seek,
@@ -45,7 +41,7 @@ use std::io::{
 };
 use std::env::home_dir;
 
-use qmlrs::{Object,Variant};
+use qmlrs::{Variant};
 use graph_algos::{
     VertexListGraphTrait,
     GraphTrait,
@@ -108,8 +104,8 @@ pub fn metainfo(arg: &Variant) -> Variant {
                             match cg.vertex_label(*ent) {
                                 Some(&ControlFlowTarget::Resolved(ref bb)) =>
                                     return_json(Ok(Metainfo{ kind: "function", name: Some(name.clone()), uuid: uuid.to_string(), entry_point: Some(bb.area.start), calls: calls })),
-                                Some(&ControlFlowTarget::Unresolved(Rvalue::Constant(ref c))) =>
-                                    return_json(Ok(Metainfo{ kind: "function", name: Some(name.clone()), uuid: uuid.to_string(), entry_point: Some(*c), calls: calls })),
+                                Some(&ControlFlowTarget::Unresolved(Rvalue::Constant{ value: c,.. })) =>
+                                    return_json(Ok(Metainfo{ kind: "function", name: Some(name.clone()), uuid: uuid.to_string(), entry_point: Some(c), calls: calls })),
                                 _ =>
                                     return_json(Ok(Metainfo{ kind: "function", name: Some(name.clone()), uuid: uuid.to_string(), entry_point: None, calls: calls })),
                             },
@@ -117,8 +113,8 @@ pub fn metainfo(arg: &Variant) -> Variant {
                             return_json(Ok(Metainfo{ kind: "function", name: Some(name.clone()), uuid: uuid.to_string(), entry_point: None, calls: calls })),
                         Some(&CallTarget::Symbolic(ref sym,ref uuid)) =>
                             return_json(Ok(Metainfo{ kind: "symbol", name: Some(sym.clone()), uuid: uuid.to_string(), entry_point: None, calls: calls })),
-                        Some(&CallTarget::Todo(Rvalue::Constant(ref a),_,ref uuid)) =>
-                            return_json(Ok(Metainfo{ kind: "todo", name: None, uuid: uuid.to_string(), entry_point: Some(*a), calls: calls })),
+                        Some(&CallTarget::Todo(Rvalue::Constant{ value: a,.. },_,ref uuid)) =>
+                            return_json(Ok(Metainfo{ kind: "todo", name: None, uuid: uuid.to_string(), entry_point: Some(a), calls: calls })),
                         Some(&CallTarget::Todo(_,_,ref uuid)) =>
                             return_json(Ok(Metainfo{ kind: "todo", name: None, uuid: uuid.to_string(), entry_point: None, calls: calls })),
                         None =>
@@ -245,11 +241,11 @@ pub fn control_flow_graph(arg: &Variant) -> Variant {
                                                         display: s.to_string(),
                                                         data: "".to_string(),
                                                     },
-                                                &MnemonicFormatToken::Variable{ ref has_sign, ref width, ref alias } =>
+                                                &MnemonicFormatToken::Variable{ ref has_sign } =>
                                                     match ops.pop() {
-                                                        Some(Rvalue::Constant(c)) => {
-                                                            let val = if *width < 64 { c % (1u64 << *width) } else { c };
-                                                            let sign_bit = if *width < 64 { 1u64 << (*width - 1) } else { 0x8000000000000000 };
+                                                        Some(Rvalue::Constant{ value: c, size: s }) => {
+                                                            let val = if s < 64 { c % (1u64 << s) } else { c };
+                                                            let sign_bit = if s < 64 { 1u64 << (s - 1) } else { 0x8000000000000000 };
                                                             let s = if !has_sign || val & sign_bit == 0 {
                                                                 format!("{}",val)
                                                             } else {
@@ -261,21 +257,29 @@ pub fn control_flow_graph(arg: &Variant) -> Variant {
                                                                 data: s,
                                                             }
                                                         },
-                                                        Some(Rvalue::Variable{ ref name, ref subscript, ref width }) =>
+                                                        Some(Rvalue::Variable{ ref name, ref subscript, ref size, ref offset }) =>
                                                             CfgOperand{
                                                                 kind: "variable",
-                                                                display: alias.clone().unwrap_or(name.clone()),
+                                                                display: name.to_string(),
                                                                 data: format!("{}",Rvalue::Variable{
                                                                     name: name.clone(),
                                                                     subscript: subscript.clone(),
-                                                                    width: *width }),
+                                                                    size: *size,
+                                                                    offset: *offset
+                                                                }),
                                                             },
-                                                        a =>
+                                                        _ =>
                                                             CfgOperand{
                                                                 kind: "variable",
-                                                                display: alias.clone().unwrap_or(format!("{:?}",a)),
+                                                                display: "?".to_string(),
                                                                 data: "".to_string(),
                                                             },
+                                                    },
+                                                &MnemonicFormatToken::Pointer{ .. } =>
+                                                    CfgOperand{
+                                                        kind: "pointer",
+                                                        display: "?".to_string(),
+                                                        data: "".to_string(),
                                                     },
                                             });
                                             let cmnt = proj.comments.get(&(fun.region.clone(),x.area.start)).unwrap_or(&"".to_string()).clone();
@@ -349,7 +353,7 @@ pub fn approximate(arg: &Variant) -> Variant {
             let ret = Controller::read(|proj| {
                 if let Some((vx,prog)) = proj.find_call_target_by_uuid(&tgt_uuid) {
                     if let Some(&CallTarget::Concrete(ref fun)) = prog.call_graph.vertex_label(vx) {
-                        let vals = abstractinterp::approximate::<Kset>(&fun).iter().filter_map(|(k,v)| {
+                        let vals = panopticon::approximate::<Kset>(&fun).iter().filter_map(|(k,v)| {
                             if let &Lvalue::Variable{ ref name, subscript: Some(ref subscript),.. } = k {
                                 if let &Kset::Set(ref s) = v {
                                     if s.len() == 1 {
@@ -397,7 +401,6 @@ struct DirectoryListing {
 
 pub fn read_directory(arg: &Variant) -> Variant {
     Variant::String(if let &Variant::String(ref p) = arg {
-        println!("git {}",p);
         let path = if p == "" {
             if let Some(ref home) = home_dir() {
                 home.clone()
@@ -643,26 +646,32 @@ pub fn layout(arg0: &Variant, arg1: &Variant, arg2: &Variant, arg3: &Variant, ar
                         (f,t)
                     }).collect::<Vec<_>>();
                     let mut dims_transformed = HashMap::<usize,(f32,f32)>::new();
+                    let mut unseen_verts = HashSet::<_>::from_iter(vertices.iter().map(|v|
+                        to_ident(func.cflow_graph.vertex_label(*v).unwrap())));
 
                     for (k,v) in dims.iter() {
                         let _k = vertices.iter().position(|&x| {
                             let a = to_ident(func.cflow_graph.vertex_label(x).unwrap());
                             a == *k
                         }).unwrap();
+                        unseen_verts.remove(&to_ident(func.cflow_graph.vertex_label(vertices[_k]).unwrap()));
                         dims_transformed.insert(_k,(v.width as f32,v.height as f32));
                     }
                     let maybe_entry = func.entry_point.map(|k| vertices.iter().position(|&x| x == k).unwrap());
                     let idents = vertices.iter().map(|x| to_ident(func.cflow_graph.vertex_label(*x).unwrap())).collect::<Vec<_>>();
 
-                    assert!(idents.len() == vertices.len() && dims_transformed.len() == vertices.len());
-
-                    Some((maybe_entry,idents,dims_transformed,vertices,edges))
+                    Some((maybe_entry,idents,dims_transformed,vertices,edges,unseen_verts))
                 } else {
                     None
                 }
             });
 
-            if let Ok(Some((maybe_entry,idents,dims_transformed,vertices,edges))) = ret {
+            if let Ok(Some((maybe_entry,idents,dims_transformed,vertices,edges,unseen_verts))) = ret {
+                if !unseen_verts.is_empty() {
+                    let e = format!("Missing dimension for {:?}",unseen_verts);
+                    return Variant::String(return_json::<()>(Err(e.into())));
+                }
+
                 thread::spawn(move || -> Result<()> {
                     match sugiyama::layout(&(0..vertices.len()).collect::<Vec<usize>>(),
                                            &edges,
@@ -696,10 +705,13 @@ pub fn layout(arg0: &Variant, arg1: &Variant, arg2: &Variant, arg3: &Variant, ar
                                     }
                                 });
                             }
-                            Controller::emit1(LAYOUTED_FUNCTION,&try!(json::encode(&(ret_v,ret_e))))
+                            Controller::emit(LAYOUTED_FUNCTION,&try!(json::encode(&(ret_v,ret_e))))
                         },
                         // XXX tell the frontend
-                        Err(e) => Err(Error(e.into())),
+                        Err(e) => {
+                            println!("layouting thread failed with '{:?}'",e);
+                            Err(Error(e.into()))
+                        },
                     }
                 });
                 Variant::String(return_json(Ok(())))
@@ -743,14 +755,15 @@ pub fn comment(arg0: &Variant, arg1: &Variant, arg2: &Variant) -> Variant {
                     Some(&CallTarget::Concrete(ref func)) => {
                         if func.region == reg {
                             // XXX: check offset?
-                            Controller::emit1(CHANGED_FUNCTION,&func.uuid.to_string());
+                            try!(Controller::emit(CHANGED_FUNCTION,&func.uuid.to_string()));
                         }
                     },
-                    _ => {}
+                    _ => {},
                 }
             }
         }
-    }))))
+        Ok(())
+    }).and_then(|x| x))))
 }
 
 pub fn rename(arg0: &Variant, arg1: &Variant) -> Variant {
@@ -778,13 +791,8 @@ pub fn rename(arg0: &Variant, arg1: &Variant) -> Variant {
     };
 
     if let Some(Some(uu)) = maybe_uu {
-        Controller::emit1(CHANGED_FUNCTION,&uu.to_string());
-        Variant::String(return_json(Ok(())))
+        Variant::String(return_json(Controller::emit(CHANGED_FUNCTION,&uu.to_string())))
     } else {
         Variant::String(return_json::<()>(Err("No function found for this UUID".into())))
     }
-}
-
-pub fn targets() -> Variant {
-    Variant::String(return_json(Ok(Target::all().iter().map(|x| x.name()).collect::<Vec<_>>())))
 }

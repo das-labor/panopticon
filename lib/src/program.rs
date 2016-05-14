@@ -16,18 +16,21 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-use std::collections::HashSet;
-
-use graph_algos::{AdjacencyList,GraphTrait,MutableGraphTrait,AdjacencyMatrixGraphTrait};
+use graph_algos::{
+    AdjacencyList,
+    GraphTrait,
+    MutableGraphTrait,
+    AdjacencyMatrixGraphTrait,
+    VertexListGraphTrait,
+};
 use graph_algos::adjacency_list::AdjacencyListVertexDescriptor;
-use graph_algos::VertexListGraphTrait;
 use uuid::Uuid;
-use byteorder::{BigEndian, LittleEndian, ReadBytesExt};
 
-use function::{ControlFlowTarget,Function};
-use layer::LayerIter;
-use target::Target;
-use value::{Endianess,Rvalue};
+use {
+    ControlFlowTarget,
+    Function,
+    Rvalue
+};
 
 #[derive(RustcDecodable,RustcEncodable)]
 pub enum CallTarget {
@@ -54,7 +57,6 @@ pub struct Program {
     pub uuid: Uuid,
     pub name: String,
     pub call_graph: CallGraph,
-    pub target: Target,
 }
 
 pub enum DisassembleEvent {
@@ -64,12 +66,11 @@ pub enum DisassembleEvent {
 }
 
 impl Program {
-    pub fn new(n: &str, t: Target) -> Program {
+    pub fn new(n: &str) -> Program {
         Program{
             uuid: Uuid::new_v4(),
             name: n.to_string(),
             call_graph: CallGraph::new(),
-            target: t,
         }
     }
 
@@ -116,94 +117,6 @@ impl Program {
         }
     }
 
-    pub fn disassemble<F: Fn(DisassembleEvent)>(cont: Option<Program>, target: Target, data: LayerIter, start: u64, reg: String, progress: Option<F>) -> Program {
-        if cont.is_some() && cont.as_ref().map(|x| x.find_function_by_entry(start)).is_some() {
-            return cont.unwrap();
-        }
-
-        let mut worklist = HashSet::new();
-        let mut ret = cont.unwrap_or(Program::new(&format!("prog_{}",start),target));
-
-		worklist.insert(start);
-
-        if let Some(ref f) = progress {
-            f(DisassembleEvent::Discovered(start))
-        }
-
-		while !worklist.is_empty() {
-			let tgt = *worklist.iter().next().unwrap();
-			worklist.remove(&tgt);
-
-            if let Some(ref f) = progress {
-                f(DisassembleEvent::Started(tgt))
-            }
-
-            if ret.find_function_by_entry(tgt).is_some() {
-                continue;
-            }
-
-            let new_fun = target.disassemble(None,data.clone(),tgt,reg.clone());
-
-            if let Some(ref f) = progress {
-                f(DisassembleEvent::Done(tgt));
-            }
-
-            if new_fun.cflow_graph.num_vertices() > 0 {
-				// XXX: compute dominance tree
-				// XXX: compute liveness information
-				// XXX: resolve indirect calls
-
-				// add to call graph
-				let new_vx = ret.call_graph.add_vertex(CallTarget::Concrete(new_fun));
-                let mut new = Vec::new();
-
-                if let Some(&CallTarget::Concrete(ref fun)) = ret.call_graph.vertex_label(new_vx) {
-                    // insert call edges and new procedures to disassemble
-                    for call in fun.collect_calls() {
-                        fn resolv(rv: &Rvalue,d: &LayerIter,n: &String) -> Option<u64> {
-                            match rv {
-                                &Rvalue::Undefined => None,
-                                &Rvalue::Variable{ .. } => None,
-                                &Rvalue::Constant(ref c) => Some(*c),
-                                &Rvalue::Memory{ ref offset, ref bytes, ref endianess, ref name } => {
-                                    if name == n {
-                                        if let Some(o) = resolv(offset,d,n) {
-                                            match (*bytes,endianess) {
-                                                (1,_) => d.clone().next().and_then(|x| x.map(|x| x as u64)),
-                                                (2,&Endianess::Little) => ReadBytesExt::read_u16::<LittleEndian>(&mut d.clone()).ok().map(|x| x as u64),
-                                                _ => None,
-                                            }
-                                        } else {
-                                            None
-                                        }
-                                    } else {
-                                        None
-                                    }
-                                },
-                            }
-                        }
-                        if let Some(address) = resolv(&call,&data,&reg) {
-                            if let Some(other_fun) = ret.find_function_by_entry(address) {
-                                new.push(other_fun);
-                            } else {
-                                if let Some(ref f) = progress {
-                                    f(DisassembleEvent::Discovered(address))
-                                }
-                                worklist.insert(address);
-                            }
-                        }
-                    }
-                }
-
-                for other_fun in new {
-                    ret.call_graph.add_edge((),new_vx,other_fun);
-                }
-            }
-		}
-
-		ret
-	}
-
     pub fn insert(&mut self, new_ct: CallTarget) -> Vec<Uuid> {
         let new_uu = new_ct.uuid();
         let maybe_vx = self.call_graph.vertices().find(|ct| {
@@ -232,9 +145,11 @@ impl Program {
                 match self.call_graph.vertex_label(w) {
                     Some(&CallTarget::Concrete(Function{ cflow_graph: ref cg, entry_point: Some(ent),.. })) => {
                         if let Some(&ControlFlowTarget::Resolved(ref bb)) = cg.vertex_label(ent) {
-                            if Rvalue::Constant(bb.area.start) == a {
-                                other_funs.push(w);
-                                break;
+                            if let Rvalue::Constant{ ref value,.. } = a {
+                                if *value == bb.area.start {
+                                    other_funs.push(w);
+                                    break;
+                                }
                             }
                         }
                     },
@@ -285,8 +200,7 @@ impl Program {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use function::{ControlFlowTarget,Function};
-    use mnemonic::Mnemonic;
+    use uuid::Uuid;
     use graph_algos::{
         VertexListGraphTrait,
         GraphTrait,
@@ -294,15 +208,19 @@ mod tests {
         AdjacencyMatrixGraphTrait,
         EdgeListGraphTrait
     };
-    use basic_block::BasicBlock;
-    use uuid::Uuid;
-    use value::{Lvalue,Rvalue};
-    use instr::{Operation,Instr};
-    use target::Target;
+    use {
+        ControlFlowTarget,
+        Function,
+        Mnemonic,
+        BasicBlock,
+        Lvalue,Rvalue,
+        Operation,
+        Statement,
+    };
 
     #[test]
     fn find_by_entry() {
-        let mut prog = Program::new("prog_test",Target::__Test);
+        let mut prog = Program::new("prog_test");
         let mut func = Function::new("test2".to_string(),"ram".to_string());
 
         let bb0 = BasicBlock::from_vec(vec!(Mnemonic::dummy(0..10)));
@@ -318,9 +236,9 @@ mod tests {
     #[test]
     fn insert_replaces_todo() {
         let uu = Uuid::new_v4();
-        let mut prog = Program::new("prog_test",Target::__Test);
+        let mut prog = Program::new("prog_test");
 
-        let tvx = prog.call_graph.add_vertex(CallTarget::Todo(Rvalue::Constant(12),None,uu));
+        let tvx = prog.call_graph.add_vertex(CallTarget::Todo(Rvalue::new_u64(12),None,uu));
         let vx0 = prog.call_graph.add_vertex(CallTarget::Concrete(Function::new("test".to_string(),"ram".to_string())));
         let vx1 = prog.call_graph.add_vertex(CallTarget::Concrete(Function::new("test2".to_string(),"ram".to_string())));
 
@@ -354,14 +272,14 @@ mod tests {
     fn insert_ignores_new_todo() {
         let uu1 = Uuid::new_v4();
         let uu2 = Uuid::new_v4();
-        let mut prog = Program::new("prog_test",Target::__Test);
+        let mut prog = Program::new("prog_test");
 
-        let tvx = prog.call_graph.add_vertex(CallTarget::Todo(Rvalue::Constant(12),None,uu1));
+        let tvx = prog.call_graph.add_vertex(CallTarget::Todo(Rvalue::new_u64(12),None,uu1));
 
         let mut func = Function::with_uuid("test3".to_string(),uu2.clone(),"ram".to_string());
         let ops1 = vec![];
-        let i1 = vec![Instr{ op: Operation::IntCall(Rvalue::Constant(12)), assignee: Lvalue::Undefined}];
-        let mne1 = Mnemonic::new(0..10,"call".to_string(),"12".to_string(),ops1.iter(),i1.iter());
+        let i1 = vec![Statement{ op: Operation::Call(Rvalue::new_u64(12)), assignee: Lvalue::Undefined}];
+        let mne1 = Mnemonic::new(0..10,"call".to_string(),"12".to_string(),ops1.iter(),i1.iter()).ok().unwrap();
         let bb0 = BasicBlock::from_vec(vec!(mne1));
         func.entry_point = Some(func.cflow_graph.add_vertex(ControlFlowTarget::Resolved(bb0)));
         let uuf = func.uuid.clone();

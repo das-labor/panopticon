@@ -16,13 +16,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import Panopticon 1.0
 import QtQuick 2.3
-import QtQuick.Dialogs 1.2
 import QtQuick.Controls 1.2
-import QtQuick.Window 2.2
-import Qt.labs.folderlistmodel 2.1
-import QtQuick.Layouts 1.2
+import QtQuick.Layouts 1.1
+
+import Panopticon 1.0
 
 Popup {
 	id: browser
@@ -72,7 +70,6 @@ Popup {
 				var path = (p.substr(0,7) == "file://" ? p.substr(7) : p);
 				var _res = Panopticon.readDirectory(path);
 
-				console.log(_res);
 				folder.clear();
 
 				var res = JSON.parse(_res);
@@ -188,7 +185,7 @@ Popup {
 									SmoothedAnimation { velocity: 300 }
 								}
 
-								width: parent.width
+								width: parent == null ? 1 : parent.width
 								height: detailsLabel.y + detailsLabel.height
 								clip: true
 
@@ -330,8 +327,6 @@ Popup {
 					onDisplayTextChanged: {
 						if (displayText != "") {
 							var res = JSON.parse(Panopticon.fileDetails(currentPath + "/" + displayText))
-
-							console.log(JSON.stringify(res));
 
 							if(res.status == "ok") {
 								switch(res.payload.state) {

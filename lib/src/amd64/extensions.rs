@@ -17,15 +17,13 @@
  */
 
 use disassembler::*;
-use codegen::*;
-use value::*;
 use amd64::decode::*;
 use amd64::semantic::*;
 use amd64::*;
 
 use std::rc::Rc;
 
-pub fn fpu(rm: Rc<Disassembler<Amd64>>,
+pub fn fpu(_: Rc<Disassembler<Amd64>>,
            rm0: Rc<Disassembler<Amd64>>, rm1: Rc<Disassembler<Amd64>>,
            rm2: Rc<Disassembler<Amd64>>, rm3: Rc<Disassembler<Amd64>>,
            rm4: Rc<Disassembler<Amd64>>, rm5: Rc<Disassembler<Amd64>>,
