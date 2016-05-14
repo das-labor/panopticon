@@ -137,6 +137,9 @@ Item {
 						Menu {
 							MenuItem {
 								text: (root.buttons[index].confirm !== undefined ? root.buttons[index].confirm : "")
+								onTriggered: {
+									root.done(index)
+								}
 							}
 						}
 					}
