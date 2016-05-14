@@ -257,16 +257,11 @@ pub fn control_flow_graph(arg: &Variant) -> Variant {
                                                                 data: s,
                                                             }
                                                         },
-                                                        Some(Rvalue::Variable{ ref name, ref subscript, ref size, ref offset }) =>
+                                                        Some(Rvalue::Variable{ ref name, subscript: Some(ref subscript),.. }) =>
                                                             CfgOperand{
                                                                 kind: "variable",
                                                                 display: name.to_string(),
-                                                                data: format!("{}",Rvalue::Variable{
-                                                                    name: name.clone(),
-                                                                    subscript: subscript.clone(),
-                                                                    size: *size,
-                                                                    offset: *offset
-                                                                }),
+                                                                data: format!("{}_{}",*name,*subscript),
                                                             },
                                                         _ =>
                                                             CfgOperand{
@@ -275,11 +270,42 @@ pub fn control_flow_graph(arg: &Variant) -> Variant {
                                                                 data: "".to_string(),
                                                             },
                                                     },
-                                                &MnemonicFormatToken::Pointer{ .. } =>
-                                                    CfgOperand{
-                                                        kind: "pointer",
-                                                        display: "?".to_string(),
-                                                        data: "".to_string(),
+                                                &MnemonicFormatToken::Pointer{ is_code,.. } =>
+                                                    match ops.pop() {
+                                                        Some(Rvalue::Constant{ value: c, size: s }) => {
+                                                            let val = if s < 64 { c % (1u64 << s) } else { c };
+                                                            let (display,data) = if is_code {
+                                                                if let Some(vx) = prog.find_function_by_entry(val) {
+                                                                    if let Some(&CallTarget::Concrete(Function{ ref name, ref uuid,.. })) = prog.call_graph.vertex_label(vx) {
+                                                                        (name.clone(),format!("{}",uuid))
+                                                                    } else {
+                                                                        (format!("{}",val),"".to_string())
+                                                                    }
+                                                                } else {
+                                                                    (format!("{}",val),"".to_string())
+                                                                }
+                                                            } else {
+                                                                (format!("{}",val),"".to_string())
+                                                            };
+
+                                                            CfgOperand{
+                                                                kind: "pointer",
+                                                                display: display,
+                                                                data: data,
+                                                            }
+                                                        },
+                                                        Some(Rvalue::Variable{ ref name, subscript: Some(ref subscript),.. }) =>
+                                                            CfgOperand{
+                                                                kind: "pointer",
+                                                                display: name.to_string(),
+                                                                data: "".to_string(),
+                                                            },
+                                                        _ =>
+                                                            CfgOperand{
+                                                                kind: "pointer",
+                                                                display: "?".to_string(),
+                                                                data: "".to_string(),
+                                                            },
                                                     },
                                             });
                                             let cmnt = proj.comments.get(&(fun.region.clone(),x.area.start)).unwrap_or(&"".to_string()).clone();
