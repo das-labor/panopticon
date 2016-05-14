@@ -401,7 +401,6 @@ struct DirectoryListing {
 
 pub fn read_directory(arg: &Variant) -> Variant {
     Variant::String(if let &Variant::String(ref p) = arg {
-        println!("git {}",p);
         let path = if p == "" {
             if let Some(ref home) = home_dir() {
                 home.clone()

@@ -373,7 +373,7 @@ impl Controller {
             let mut guard = try!(CONTROLLER.write());
             if let &mut Controller::Set{ ref mut is_dirty, ref mut backing_file,.. } = &mut *guard {
                 if let &mut Backing::Unnamed(ref p) = backing_file {
-                    try!(remove_file(p));
+                    let _ = remove_file(p);
                 }
                 *backing_file = Backing::Named(p.to_path_buf());
                 *is_dirty = true;
