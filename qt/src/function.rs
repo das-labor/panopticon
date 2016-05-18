@@ -383,9 +383,9 @@ pub fn approximate(arg: &Variant) -> Variant {
                             if let &Lvalue::Variable{ ref name, subscript: Some(ref subscript),.. } = k {
                                 if let &Kset::Set(ref s) = v {
                                     if s.len() == 1 {
-                                        return Some((format!("{}_{}",*name,*subscript),format!("{}",s[0])));
+                                        return Some((format!("{}_{}",*name,*subscript),format!("{}",s[0].0)));
                                     } else if s.len() > 1 {
-                                        return Some((format!("{}_{}",*name,*subscript),format!("{:?}",s)));
+                                        return Some((format!("{}_{}",*name,*subscript),format!("{:?}",s.iter().map(|&(a,_)| a).collect::<Vec<_>>())));
                                     }
                                 }
                             }

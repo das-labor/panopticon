@@ -83,10 +83,10 @@ impl Function {
         }
     }
 
-    fn index_cflow_graph(g: ControlFlowGraph) -> (BTreeMap<u64,Vec<Mnemonic>>,HashMap<u64,Vec<(Option<u64>,Guard)>>,HashMap<u64,Vec<(Option<u64>,Guard)>>) {
+    fn index_cflow_graph(g: ControlFlowGraph) -> (BTreeMap<u64,Vec<Mnemonic>>,HashMap<u64,Vec<(Rvalue,Guard)>>,HashMap<u64,Vec<(Rvalue,Guard)>>) {
         let mut mnemonics = BTreeMap::new();
-        let mut by_source = HashMap::<u64,Vec<(Option<u64>,Guard)>>::new();
-        let mut by_destination = HashMap::<u64,Vec<(Option<u64>,Guard)>>::new();
+        let mut by_source = HashMap::<u64,Vec<(Rvalue,Guard)>>::new();
+        let mut by_destination = HashMap::<u64,Vec<(Rvalue,Guard)>>::new();
 
         for v in g.vertices() {
             if let Some(&ControlFlowTarget::Resolved(ref bb)) = g.vertex_label(v) {
@@ -96,8 +96,8 @@ impl Function {
                     mnemonics.entry(mne.area.start).or_insert(Vec::new()).push(mne.clone());
 
                     if let Some(prev) = prev_mne {
-                        by_source.entry(prev).or_insert(Vec::new()).push((Some(mne.area.start),Guard::always()));
-                        by_destination.entry(mne.area.start).or_insert(Vec::new()).push((Some(prev),Guard::always()));
+                        by_source.entry(prev).or_insert(Vec::new()).push((Rvalue::new_u64(mne.area.start),Guard::always()));
+                        by_destination.entry(mne.area.start).or_insert(Vec::new()).push((Rvalue::new_u64(prev),Guard::always()));
                     }
                     prev_mne = Some(mne.area.start);
                 }
@@ -112,23 +112,23 @@ impl Function {
             match (src,tgt) {
                 (Some(&ControlFlowTarget::Resolved(ref src_bb)),Some(&ControlFlowTarget::Resolved(ref tgt_bb))) => {
                     let last = src_bb.mnemonics.last().map_or(src_bb.area.start,|mne| mne.area.start);
-                    by_source.entry(last).or_insert(Vec::new()).push((Some(tgt_bb.area.start),gu.clone()));
-                    by_destination.entry(tgt_bb.area.start).or_insert(Vec::new()).push((Some(last),gu));
+                    by_source.entry(last).or_insert(Vec::new()).push((Rvalue::new_u64(tgt_bb.area.start),gu.clone()));
+                    by_destination.entry(tgt_bb.area.start).or_insert(Vec::new()).push((Rvalue::new_u64(last),gu));
                 },
                 (Some(&ControlFlowTarget::Resolved(ref src_bb)),Some(&ControlFlowTarget::Unresolved(Rvalue::Constant{ value: ref c,.. }))) => {
                     let last = src_bb.mnemonics.last().map_or(src_bb.area.start,|mne| mne.area.start);
-                    by_source.entry(last).or_insert(Vec::new()).push((Some(*c),gu.clone()));
-                    by_destination.entry(*c).or_insert(Vec::new()).push((Some(last),gu));
+                    by_source.entry(last).or_insert(Vec::new()).push((Rvalue::new_u64(*c),gu.clone()));
+                    by_destination.entry(*c).or_insert(Vec::new()).push((Rvalue::new_u64(last),gu));
                 },
                 (Some(&ControlFlowTarget::Unresolved(Rvalue::Constant{ value: ref c,.. })),Some(&ControlFlowTarget::Resolved(ref tgt_bb))) => {
-                    by_source.entry(*c).or_insert(Vec::new()).push((Some(tgt_bb.area.start),gu.clone()));
-                    by_destination.entry(tgt_bb.area.start).or_insert(Vec::new()).push((Some(*c),gu));
+                    by_source.entry(*c).or_insert(Vec::new()).push((Rvalue::new_u64(tgt_bb.area.start),gu.clone()));
+                    by_destination.entry(tgt_bb.area.start).or_insert(Vec::new()).push((Rvalue::new_u64(*c),gu));
                 },
-                (Some(&ControlFlowTarget::Resolved(ref src_bb)),Some(&ControlFlowTarget::Unresolved(_))) => {
-                    by_source.entry(src_bb.area.start).or_insert(Vec::new()).push((None,gu));
+                (Some(&ControlFlowTarget::Resolved(ref src_bb)),Some(&ControlFlowTarget::Unresolved(ref r))) => {
+                    by_source.entry(src_bb.area.start).or_insert(Vec::new()).push((r.clone(),gu));
                 },
-                (Some(&ControlFlowTarget::Unresolved(_)),Some(&ControlFlowTarget::Resolved(ref tgt_bb))) => {
-                    by_destination.entry(tgt_bb.area.start).or_insert(Vec::new()).push((None,gu));
+                (Some(&ControlFlowTarget::Unresolved(ref t)),Some(&ControlFlowTarget::Resolved(ref tgt_bb))) => {
+                    by_destination.entry(tgt_bb.area.start).or_insert(Vec::new()).push((t.clone(),gu));
                 },
                 _ => {}
             }
@@ -138,8 +138,8 @@ impl Function {
     }
 
     fn assemble_cflow_graph(mnemonics: BTreeMap<u64,Vec<Mnemonic>>,
-                            by_source: HashMap<u64,Vec<(Option<u64>,Guard)>>,
-                            by_destination: HashMap<u64,Vec<(Option<u64>,Guard)>>,
+                            by_source: HashMap<u64,Vec<(Rvalue,Guard)>>,
+                            by_destination: HashMap<u64,Vec<(Rvalue,Guard)>>,
                             start: u64) -> ControlFlowGraph
     {
         let mut ret = ControlFlowGraph::new();
@@ -155,11 +155,11 @@ impl Function {
 
                 // or any following jumps aren't to adjacent mnemonics
                 new_bb |= by_source.get(&last_mne.area.start).unwrap_or(&Vec::new()).iter().any(|&(ref opt_dest,_)| {
-                    opt_dest.is_some() && opt_dest.unwrap() != mne.area.start });
+                    if let &Rvalue::Constant{ value,.. } = opt_dest { value != mne.area.start } else { false } });
 
                 // or any jumps pointing to the next that aren't from here
                 new_bb |= by_destination.get(&mne.area.start).unwrap_or(&Vec::new()).iter().any(|&(ref opt_src,_)| {
-                    opt_src.is_some() && opt_src.unwrap() != last_mne.area.start });
+                    if let &Rvalue::Constant{ value,.. } = opt_src { value != last_mne.area.start } else { false } });
 
                 // or the entry point does not point here
                 new_bb |= mne.area.start == start;
@@ -183,8 +183,7 @@ impl Function {
 
         // connect basic blocks
         for (src_off,tgts) in by_source.iter() {
-            for &(ref opt_tgt,ref gu) in tgts {
-                if opt_tgt.is_some() {
+            for &(ref tgt,ref gu) in tgts {
 
                     let from_bb = ret.vertices().find(|&t| {
                         match ret.vertex_label(t) {
@@ -194,9 +193,9 @@ impl Function {
                         }
                     });
                     let to_bb = ret.vertices().find(|&t| {
-                        match ret.vertex_label(t) {
-                            Some(&ControlFlowTarget::Resolved(ref bb)) => bb.area.start == opt_tgt.unwrap(),
-                            Some(&ControlFlowTarget::Unresolved(Rvalue::Constant{ value: v,.. })) => v == opt_tgt.unwrap(),
+                        match (tgt,ret.vertex_label(t)) {
+                            (&Rvalue::Constant{ value,.. },Some(&ControlFlowTarget::Resolved(ref bb))) => bb.area.start == value,
+                            (rv,Some(&ControlFlowTarget::Unresolved(ref v))) => *v == *rv,
                             _ => false
                         }
                     });
@@ -215,17 +214,18 @@ impl Function {
                         },
                         (Some(from),None) => {
                             if let Some(&ControlFlowTarget::Resolved(ref bb)) = ret.vertex_label(from) {
-                                if bb.area.start <= opt_tgt.unwrap() && bb.area.end > opt_tgt.unwrap() {
-                                    continue;
+                                if let &Rvalue::Constant{ value,.. } = tgt {
+                                    if bb.area.start <= value && bb.area.end > value {
+                                        continue;
+                                    }
                                 }
                             }
 
-                            let vx = ret.add_vertex(ControlFlowTarget::Unresolved(Rvalue::new_u64(opt_tgt.unwrap())));
+                            let vx = ret.add_vertex(ControlFlowTarget::Unresolved(tgt.clone()));
                             ret.add_edge(gu.clone(),from,vx);
                         },
-                        _ => error!("jump from {} to {} doesn't hit any blocks",src_off,opt_tgt.unwrap()),
+                        _ => error!("jump from {} to {} doesn't hit any blocks",src_off,tgt),
                     }
-                }
             }
         }
 
@@ -276,7 +276,7 @@ impl Function {
 
             if let Some(match_st) = maybe_match {
                 for mne in match_st.mnemonics {
-                    println!("{:x}: {} ({:?})",mne.area.start,mne.opcode,match_st.tokens);
+                    //println!("{:x}: {} ({:?})",mne.area.start,mne.opcode,match_st.tokens);
                     mnemonics.entry(mne.area.start).or_insert(Vec::new()).push(mne);
 
                 }
@@ -284,12 +284,12 @@ impl Function {
                 for (origin,tgt,gu) in match_st.jumps {
                     match tgt {
                         Rvalue::Constant{ value: ref c,.. } => {
-                            by_source.entry(origin).or_insert(Vec::new()).push((Some(*c),gu.clone()));
-                            by_destination.entry(*c).or_insert(Vec::new()).push((Some(origin),gu.clone()));
+                            by_source.entry(origin).or_insert(Vec::new()).push((tgt.clone(),gu.clone()));
+                            by_destination.entry(*c).or_insert(Vec::new()).push((Rvalue::new_u64(origin),gu.clone()));
                             todo.insert(*c);
                         },
                         _ => {
-                            by_source.entry(origin).or_insert(Vec::new()).push((None,gu.clone()));
+                            by_source.entry(origin).or_insert(Vec::new()).push((tgt,gu.clone()));
                         }
                     }
                 }
@@ -733,7 +733,7 @@ mod tests {
                 } else {
                     unreachable!();
                 }
-            } else if let Some(&ControlFlowTarget::Unresolved(Rvalue::Constant{ value: c, size: 64 })) = func.cflow_graph.vertex_label(vx) {
+            } else if let Some(&ControlFlowTarget::Unresolved(Rvalue::Constant{ value: c, size: 32 })) = func.cflow_graph.vertex_label(vx) {
                 assert_eq!(c, 3);
                 ures_vx = Some(vx);
             } else {

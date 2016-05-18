@@ -243,7 +243,7 @@ pub fn skip(n: &'static str, expect: bool) -> Box<Fn(&mut State<Avr>) -> bool> {
         let (rr,_rr) = if st.has_group("sr") {
             let reg = reg(st,"sr");
             if let Lvalue::Variable{ ref name,.. } = reg {
-                (Lvalue::Variable{ name: name.clone(), size: 1, subscript: None, offset: bit as usize },reg.clone().into())
+                (Rvalue::Variable{ name: name.clone(), size: 1, subscript: None, offset: bit as usize },reg.clone().into())
             } else {
                 unreachable!()
             }
@@ -256,7 +256,7 @@ pub fn skip(n: &'static str, expect: bool) -> Box<Fn(&mut State<Avr>) -> bool> {
                 }
             });
 
-            (Lvalue::Variable{ name: Cow::Borrowed("ioreg"), size: 1, offset: bit as usize, subscript: None },a)
+            (Rvalue::Variable{ name: Cow::Borrowed("ioreg"), size: 1, offset: bit as usize, subscript: None },a)
         };
 
         st.mnemonic(2,n,"{u}, {u}",vec![_rr.clone().into(),b.clone()],&|cg: &mut CodeGen<Avr>| {
@@ -324,7 +324,7 @@ pub fn binary_imm(n: &'static str,sem: fn(Lvalue,u64,&mut CodeGen<Avr>)) -> Box<
                 }
             });
 
-            (Lvalue::Variable{ name: Cow::Borrowed("ioreg"), size: 8, offset: 0, subscript: None },Some(a))
+            (Lvalue::Variable{ name: Cow::Borrowed("ioreg"), size: 8, subscript: None },Some(a))
         };
         let (k,kc) = if st.has_group("k") {
             (st.get_group("k"),Rvalue::new_u8(st.get_group("k") as u8))
@@ -364,7 +364,6 @@ pub fn binary_ptr(n: &'static str,sem: fn(Lvalue,Lvalue,&mut CodeGen<Avr>),ar: A
             name: Cow::Owned(reg_str),
             size: 16,
             subscript: None,
-            offset: 0,
         };
         let reg = if st.has_group("D") {
             reg(st,"D")
@@ -386,7 +385,7 @@ pub fn binary_ptr(n: &'static str,sem: fn(Lvalue,Lvalue,&mut CodeGen<Avr>),ar: A
 
             rreil!{cg:
                 zext/16 (addr_reg), (r1);
-                mov (addr_reg.extract(8,8).ok().unwrap()), (r2);
+                sel/8 (addr_reg), (r2);
             }
         });
 

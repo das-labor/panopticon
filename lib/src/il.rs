@@ -98,11 +98,11 @@ impl From<Lvalue> for Rvalue {
     fn from(lv: Lvalue) -> Rvalue {
         match lv {
             Lvalue::Undefined => Rvalue::Undefined,
-            Lvalue::Variable{ name, subscript, offset, size } => Rvalue::Variable{
+            Lvalue::Variable{ name, subscript, size } => Rvalue::Variable{
                 name: name,
                 subscript: subscript,
-                offset: offset,
-                size: size
+                size: size,
+                offset: 0
             },
         }
     }
@@ -152,21 +152,40 @@ impl Display for Rvalue {
 #[derive(Clone,PartialEq,Eq,Debug,RustcEncodable,RustcDecodable,Hash)]
 pub enum Lvalue {
     Undefined,
-    Variable{ name: Cow<'static,str>, subscript: Option<usize>, offset: usize, size: usize },
+    Variable{ name: Cow<'static,str>, subscript: Option<usize>, size: usize },
 }
 
 impl Lvalue {
     pub fn from_rvalue(rv: Rvalue) -> Option<Lvalue> {
         match rv {
             Rvalue::Undefined => Some(Lvalue::Undefined),
-            Rvalue::Variable{ name, subscript, offset, size } =>
+            Rvalue::Variable{ name, subscript, size, offset: 0 } =>
                 Some(Lvalue::Variable{
                     name: name,
                     subscript: subscript,
-                    offset: offset,
                     size: size
                 }),
             _ => None,
+        }
+    }
+
+    pub fn extract(&self,s: usize,o: usize) -> Result<Rvalue> {
+        if s <= 0 { return Err("can't extract zero bits".into()) }
+
+        match self {
+            &Lvalue::Variable{ ref size, ref name, ref subscript } => {
+                if *size >= s + o {
+                    Ok(Rvalue::Variable{
+                        name: name.clone(),
+                        subscript: subscript.clone(),
+                        size: s,
+                        offset: o,
+                    })
+                } else {
+                    Err("Rvalue::extract: invalid argument".into())
+                }
+            },
+            &Lvalue::Undefined => Ok(Rvalue::Undefined),
         }
     }
 
@@ -176,26 +195,6 @@ impl Lvalue {
                 Some(*size)
             },
             &Lvalue::Undefined => None,
-        }
-    }
-
-    pub fn extract(&self,s: usize,o: usize) -> Result<Lvalue> {
-        if s <= 0 { return Err("can't extract zero bits".into()) }
-
-        match self {
-            &Lvalue::Variable{ ref size, ref offset, ref name, ref subscript } => {
-                if *size >= s + o {
-                    Ok(Lvalue::Variable{
-                        name: name.clone(),
-                        subscript: subscript.clone(),
-                        size: s,
-                        offset: *offset + o,
-                    })
-                } else {
-                    Err("Lvalue::extract: invalid argument".into())
-                }
-            },
-            &Lvalue::Undefined => Ok(Lvalue::Undefined),
         }
     }
 }
@@ -277,6 +276,7 @@ pub enum Operation<V: Clone + PartialEq + Eq + Debug + Encodable + Decodable> {
     SignExtend(usize,V),
     Move(V),
     Call(V),
+    Select(usize,V,V),
 
     Load(Cow<'static,str>,V),
     Store(Cow<'static,str>,V),
@@ -571,6 +571,17 @@ pub fn execute(op: Operation<Rvalue>) -> Rvalue {
         Operation::Call(_) =>
             Rvalue::Undefined,
 
+        Operation::Select(off,Rvalue::Constant{ value: _a, size: s },Rvalue::Constant{ value: _b, size: _s }) => {
+            debug_assert!(off + _s <= s);
+
+            let hi = _a >> (off + _s);
+            let lo = _a % (1 << off);
+
+            Rvalue::Constant{ value: lo | (_b << off) | (hi << (off + _s)), size: s }
+        },
+        Operation::Select(_,_,_) =>
+            Rvalue::Undefined,
+
         Operation::Load(_,_) =>
             Rvalue::Undefined,
 
@@ -612,6 +623,7 @@ impl<'a,V> Operation<V> where V: Clone + PartialEq + Eq + Debug + Encodable + De
             Operation::SignExtend(_,ref a) => return vec!(a),
             Operation::Move(ref a) => return vec!(a),
             Operation::Call(ref a) => return vec!(a),
+            Operation::Select(_,ref a,ref b) => return vec!(a,b),
 
             Operation::Load(_,ref b) => return vec!(b),
             Operation::Store(_,ref b) => return vec!(b),
@@ -645,6 +657,7 @@ impl<'a,V> Operation<V> where V: Clone + PartialEq + Eq + Debug + Encodable + De
             &mut Operation::SignExtend(_,ref mut a) => return vec!(a),
             &mut Operation::Move(ref mut a) => return vec!(a),
             &mut Operation::Call(ref mut a) => return vec!(a),
+            &mut Operation::Select(_,ref mut a,ref mut b) => return vec!(a,b),
 
             &mut Operation::Load(_,ref mut b) => return vec!(b),
             &mut Operation::Store(_,ref mut b) => return vec!(b),
@@ -678,6 +691,7 @@ impl Display for Statement {
 
             Operation::ZeroExtend(s,ref a) => f.write_fmt(format_args!("convert_{} {}, {}",s,self.assignee,a)),
             Operation::SignExtend(s,ref a) => f.write_fmt(format_args!("sign-extend_{} {}, {}",s,self.assignee,a)),
+            Operation::Select(s,ref a,ref b) => f.write_fmt(format_args!("select_{} {}, {}, {}",s,self.assignee,a,b)),
             Operation::Move(ref a) => f.write_fmt(format_args!("mov {}, {}",self.assignee,a)),
             Operation::Call(ref a) => f.write_fmt(format_args!("call {}, {}",self.assignee,a)),
 
@@ -724,6 +738,7 @@ mod tests {
 
             Statement{ op: Operation::ZeroExtend(32,Rvalue::Undefined), assignee: Lvalue::Undefined },
             Statement{ op: Operation::SignExtend(32,Rvalue::Undefined), assignee: Lvalue::Undefined },
+            Statement{ op: Operation::Select(8,Rvalue::Undefined,Rvalue::Undefined), assignee: Lvalue::Undefined },
             Statement{ op: Operation::Move(Rvalue::Undefined), assignee: Lvalue::Undefined },
             Statement{ op: Operation::Call(Rvalue::Undefined), assignee: Lvalue::Undefined },
 

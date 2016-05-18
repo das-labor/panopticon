@@ -365,13 +365,13 @@ pub fn php(cg: &mut CodeGen<Mos>) {
         add sp:9, sp:9, [0x100]:9;
 
         zext/8 flags:8, C:1;
-        mov flags:1/1, Z:1;
-        mov flags:1/2, I:1;
-        mov flags:1/3, D:1;
-        mov flags:1/4, B:1;
-        mov flags:1/5, ?;
-        mov flags:1/6, V:1;
-        mov flags:1/7, N:1;
+        sel/1 flags:8, Z:1;
+        sel/2 flags:8, I:1;
+        sel/3 flags:8, D:1;
+        sel/4 flags:8, B:1;
+        sel/5 flags:8, ?;
+        sel/6 flags:8, V:1;
+        sel/7 flags:8, N:1;
 
         store/ram sp:9, flags:8;
         add sp:9, sp:9, [1]:9;
@@ -422,7 +422,7 @@ pub fn rol(cg: &mut CodeGen<Mos>, _r: Rvalue) {
     rreil!{cg:
         mov hb:1, (r.extract(1,7).unwrap());
         shl (r), (r), [1]:8;
-        mov (r.extract(1,7).unwrap()), C:1;
+        sel/7 (r), C:1;
         mov C:1, hb:1;
         cmpeq Z:1, (r), [0]:8;
         cmples N:1, (r), [0]:8;
@@ -434,7 +434,7 @@ pub fn ror(cg: &mut CodeGen<Mos>, _r: Rvalue) {
     rreil!{cg:
         mov lb:1, (r.extract(1,0).unwrap());
         shr (r), (r), [1]:8;
-        mov (r.extract(1,7).unwrap()), C:1;
+        sel/7 (r), C:1;
         mov C:1, lb:1;
         cmpeq Z:1, (r), [0]:8;
         cmples N:1, (r), [0]:8;

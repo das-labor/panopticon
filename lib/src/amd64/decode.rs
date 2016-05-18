@@ -613,7 +613,6 @@ pub fn decode_modrm(
                             let tmp = Lvalue::Variable{
                                 name: Cow::Borrowed("tmp"),
                                 size: sz,
-                                offset: 0,
                                 subscript: None,
                             };
 

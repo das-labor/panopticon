@@ -20,17 +20,21 @@ use panopticon::{
     Project,
     Function,
     Program,CallTarget,
+    ControlFlowTarget,
     elf,
     pe,
     Rvalue,
     Result,
     ssa_convertion,
+    Lvalue,
     Architecture,
     OpaqueLayer,
     Layer,
     Region,
     Bound,
     Regions,
+    approximate,
+    Kset,
 };
 use panopticon::amd64;
 use panopticon::mos;
@@ -239,7 +243,7 @@ pub fn spawn_disassembler<A: 'static + Architecture>(cfg: A::Configuration) {
                     try!(Controller::emit(STARTED_FUNCTION,&uuid.to_string()));
 
                     let name = maybe_name.unwrap_or(format!("func_{:x}",tgt));
-                    let new_fun = try!(Controller::read(|proj| {
+                    let mut new_fun = try!(Controller::read(|proj| {
                         let root = proj.sources.dependencies.vertex_label(proj.sources.root).unwrap();
                         let i = root.iter();
                         let mut fun = Function::with_uuid(name,uuid,root.name().clone());
@@ -248,14 +252,53 @@ pub fn spawn_disassembler<A: 'static + Architecture>(cfg: A::Configuration) {
                         fun.entry_point = fun.find_basic_block_at_address(tgt);
 
                         if fun.entry_point.is_some() && fun.cflow_graph.num_vertices() > 0 {
-                            println!("{}",fun.to_dot());
-
                             ssa_convertion(&mut fun);
                         }
                         fun
                     }));
 
                     if new_fun.cflow_graph.num_vertices() > 0 {
+                        let mut fixpoint = false;
+
+                        while !fixpoint {
+                            let vals = approximate::<Kset>(&new_fun);
+                            let vxs = { new_fun.cflow_graph.vertices().collect::<Vec<_>>() };
+                            let mut new_tgts = vec![];
+
+                            println!("{:?}",vals);
+                            fixpoint = false;
+
+                            for &vx in vxs.iter() {
+                                if let Some(&mut ControlFlowTarget::Unresolved(ref mut var@Rvalue::Variable{..})) = new_fun.cflow_graph.vertex_label_mut(vx) {
+                                    if let Some(&Kset::Set(ref v)) = vals.get(&Lvalue::from_rvalue(var.clone()).unwrap()) {
+                                        if let Some(&(val,sz)) = v.first() {
+                                            println!("resolved {:?} to {:?}",var,val);
+                                            *var = Rvalue::Constant{ value: val, size: sz };
+                                            fixpoint = true;
+                                            new_tgts.push(val);
+                                        }
+                                    }
+                                }
+                            }
+
+                            for tgt in new_tgts {
+                                new_fun = try!(Controller::read(|proj| {
+                                    let root = proj.sources.dependencies.vertex_label(proj.sources.root).unwrap();
+                                    let i = root.iter();
+
+                                    let mut fun = Function::disassemble::<A>(Some(new_fun),dec.clone(),cfg.clone(),i,tgt,root.name().clone());
+                                    fun.entry_point = fun.find_basic_block_at_address(tgt);
+
+                                    if fun.entry_point.is_some() && fun.cflow_graph.num_vertices() > 0 {
+                                 //       ssa_convertion(&mut fun);
+                                    }
+                                    fun
+                                }));
+                            }
+
+                            break;
+                        }
+
                         let fun_uuid = new_fun.uuid.clone();
                         let new_tgt = try!(Controller::modify(|proj| {
                             let mut prog: &mut Program = proj.find_program_by_uuid_mut(&prog_uuid).unwrap();

@@ -863,294 +863,6 @@ macro_rules! rreil_binop {
         }
     };
 
-    // off := noff, noff
-    ($cg:ident : $op:ident # $a:tt : $a_w:tt / $a_o:tt, $x:tt : $x_w:tt , $y:tt : $y_w:tt ; $($cdr:tt)*) => {
-        {
-            $cg.push($crate::Statement{ op: ::Operation::$op(rreil_rvalue!($x : $x_w),rreil_rvalue!($y : $y_w)), assignee: rreil_lvalue!($a : $a_w / $a_o)});
-            rreil!($cg : $($cdr)*);
-        }
-    };
-
-    // off := noff, off
-    ($cg:ident : $op:ident # $a:tt : $a_w:tt / $a_o:tt, $x:tt : $x_w:tt , $y:tt : $y_w:tt / $y_o:tt ; $($cdr:tt)*) => {
-        {
-            $cg.push($crate::Statement{ op: ::Operation::$op(rreil_rvalue!($x : $x_w),rreil_rvalue!($y : $y_w / $y_o)), assignee: rreil_lvalue!($a : $a_w / $a_o)});
-            rreil!($cg : $($cdr)*);
-        }
-    };
-
-    // off := noff, lit
-    ($cg:ident : $op:ident # $a:tt : $a_w:tt / $a_o:tt, $x:tt : $x_w:tt , ( $y:expr ) ; $($cdr:tt)*) => {
-        {
-            $cg.push($crate::Statement{ op: ::Operation::$op(rreil_rvalue!($x : $x_w),rreil_rvalue!(( $y ))), assignee: rreil_lvalue!($a : $a_w / $a_o)});
-            rreil!($cg : $($cdr)*);
-        }
-    };
-
-    // off := noff, litw
-    ($cg:ident : $op:ident # $a:tt : $a_w:tt / $a_o:tt, $x:tt : $x_w:tt , ( $y:expr ) : $y_w:tt ; $($cdr:tt)*) => {
-        {
-            $cg.push($crate::Statement{ op: ::Operation::$op(rreil_rvalue!($x : $x_w),rreil_rvalue!(( $y ) : $y_w)), assignee: rreil_lvalue!($a : $a_w / $a_o)});
-            rreil!($cg : $($cdr)*);
-        }
-    };
-
-    // off := noff, const
-    ($cg:ident : $op:ident # $a:tt : $a_w:tt / $a_o:tt, $x:tt : $x_w:tt , [ $y:tt ] : $y_w:tt ; $($cdr:tt)*) => {
-        {
-            $cg.push($crate::Statement{ op: ::Operation::$op(rreil_rvalue!($x : $x_w),rreil_rvalue!([ $y ] : $y_w)), assignee: rreil_lvalue!($a : $a_w / $a_o)});
-            rreil!($cg : $($cdr)*);
-        }
-    };
-
-    // off := noff, undef
-    ($cg:ident : $op:ident # $a:tt : $a_w:tt / $a_o:tt, $x:tt : $x_w:tt , ? ; $($cdr:tt)*) => {
-        {
-            $cg.push($crate::Statement{ op: ::Operation::$op(rreil_rvalue!($x : $x_w),rreil_rvalue!(?)), assignee: rreil_lvalue!($a : $a_w / $a_o)});
-            rreil!($cg : $($cdr)*);
-        }
-    };
-
-    // off := off, noff
-    ($cg:ident : $op:ident # $a:tt : $a_w:tt / $a_o:tt, $x:tt : $x_w:tt / $x_o:tt , $y:tt : $y_w:tt ; $($cdr:tt)*) => {
-        {
-            $cg.push($crate::Statement{ op: ::Operation::$op(rreil_rvalue!($x : $x_w / $x_o),rreil_rvalue!($y : $y_w)), assignee: rreil_lvalue!($a : $a_w / $a_o)});
-            rreil!($cg : $($cdr)*);
-        }
-    };
-
-    // off := off, off
-    ($cg:ident : $op:ident # $a:tt : $a_w:tt / $a_o:tt, $x:tt : $x_w:tt / $x_o:tt , $y:tt : $y_w:tt / $y_o:tt ; $($cdr:tt)*) => {
-        {
-            $cg.push($crate::Statement{ op: ::Operation::$op(rreil_rvalue!($x : $x_w / $x_o),rreil_rvalue!($y : $y_w / $y_o)), assignee: rreil_lvalue!($a : $a_w / $a_o)});
-            rreil!($cg : $($cdr)*);
-        }
-    };
-
-    // off := off, lit
-    ($cg:ident : $op:ident # $a:tt : $a_w:tt / $a_o:tt, $x:tt : $x_w:tt / $x_o:tt , ( $y:expr ) ; $($cdr:tt)*) => {
-        {
-            $cg.push($crate::Statement{ op: ::Operation::$op(rreil_rvalue!($x : $x_w / $x_o),rreil_rvalue!(( $y ))), assignee: rreil_lvalue!($a : $a_w / $a_o)});
-            rreil!($cg : $($cdr)*);
-        }
-    };
-
-    // off := off, litw
-    ($cg:ident : $op:ident # $a:tt : $a_w:tt / $a_o:tt, $x:tt : $x_w:tt / $x_o:tt , ( $y:expr ) : $y_w:tt ; $($cdr:tt)*) => {
-        {
-            $cg.push($crate::Statement{ op: ::Operation::$op(rreil_rvalue!($x : $x_w / $x_o),rreil_rvalue!(( $y ) : $y_w)), assignee: rreil_lvalue!($a : $a_w / $a_o)});
-            rreil!($cg : $($cdr)*);
-        }
-    };
-
-    // off := off, const
-    ($cg:ident : $op:ident # $a:tt : $a_w:tt / $a_o:tt, $x:tt : $x_w:tt / $x_o:tt , [ $y:tt ] : $y_w:tt ; $($cdr:tt)*) => {
-        {
-            $cg.push($crate::Statement{ op: ::Operation::$op(rreil_rvalue!($x : $x_w / $x_o),rreil_rvalue!([ $y ] : $y_w)), assignee: rreil_lvalue!($a : $a_w / $a_o)});
-            rreil!($cg : $($cdr)*);
-        }
-    };
-
-    // off := off, undef
-    ($cg:ident : $op:ident # $a:tt : $a_w:tt / $a_o:tt, $x:tt : $x_w:tt / $x_o:tt , ? ; $($cdr:tt)*) => {
-        {
-            $cg.push($crate::Statement{ op: ::Operation::$op(rreil_rvalue!($x : $x_w / $x_o),rreil_rvalue!(?)), assignee: rreil_lvalue!($a : $a_w / $a_o)});
-            rreil!($cg : $($cdr)*);
-        }
-    };
-
-    // off := lit, noff
-    ($cg:ident : $op:ident # $a:tt : $a_w:tt / $a_o:tt, ( $x:expr ) , $y:tt : $y_w:tt ; $($cdr:tt)*) => {
-        {
-            $cg.push($crate::Statement{ op: ::Operation::$op(rreil_rvalue!(( $x )),rreil_rvalue!($y : $y_w)), assignee: rreil_lvalue!($a : $a_w / $a_o)});
-            rreil!($cg : $($cdr)*);
-        }
-    };
-
-    // off := lit, off
-    ($cg:ident : $op:ident # $a:tt : $a_w:tt / $a_o:tt, ( $x:expr ) , $y:tt : $y_w:tt / $y_o:tt ; $($cdr:tt)*) => {
-        {
-            $cg.push($crate::Statement{ op: ::Operation::$op(rreil_rvalue!(( $x )),rreil_rvalue!($y : $y_w / $y_o)), assignee: rreil_lvalue!($a : $a_w / $a_o)});
-            rreil!($cg : $($cdr)*);
-        }
-    };
-
-    // off := lit, lit
-    ($cg:ident : $op:ident # $a:tt : $a_w:tt / $a_o:tt, ( $x:expr ) , ( $y:expr ) ; $($cdr:tt)*) => {
-        {
-            $cg.push($crate::Statement{ op: ::Operation::$op(rreil_rvalue!(( $x )),rreil_rvalue!(( $y ))), assignee: rreil_lvalue!($a : $a_w / $a_o)});
-            rreil!($cg : $($cdr)*);
-        }
-    };
-
-    // off := lit, litw
-    ($cg:ident : $op:ident # $a:tt : $a_w:tt / $a_o:tt, ( $x:expr ) , ( $y:expr ) : $y_w:tt ; $($cdr:tt)*) => {
-        {
-            $cg.push($crate::Statement{ op: ::Operation::$op(rreil_rvalue!(( $x )),rreil_rvalue!(( $y ) : $y_w)), assignee: rreil_lvalue!($a : $a_w / $a_o)});
-            rreil!($cg : $($cdr)*);
-        }
-    };
-
-    // off := lit, const
-    ($cg:ident : $op:ident # $a:tt : $a_w:tt / $a_o:tt, ( $x:expr ) , [ $y:tt ] : $y_w:tt ; $($cdr:tt)*) => {
-        {
-            $cg.push($crate::Statement{ op: ::Operation::$op(rreil_rvalue!(( $x )),rreil_rvalue!([ $y ] : $y_w)), assignee: rreil_lvalue!($a : $a_w / $a_o)});
-            rreil!($cg : $($cdr)*);
-        }
-    };
-
-    // off := lit, undef
-    ($cg:ident : $op:ident # $a:tt : $a_w:tt / $a_o:tt, ( $x:expr ) , ? ; $($cdr:tt)*) => {
-        {
-            $cg.push($crate::Statement{ op: ::Operation::$op(rreil_rvalue!(( $x )),rreil_rvalue!(?)), assignee: rreil_lvalue!($a : $a_w / $a_o)});
-            rreil!($cg : $($cdr)*);
-        }
-    };
-
-    // off := litw, noff
-    ($cg:ident : $op:ident # $a:tt : $a_w:tt / $a_o:tt, ( $x:expr ) : $x_w:tt , $y:tt : $y_w:tt ; $($cdr:tt)*) => {
-        {
-            $cg.push($crate::Statement{ op: ::Operation::$op(rreil_rvalue!(( $x ) : $x_w),rreil_rvalue!($y : $y_w)), assignee: rreil_lvalue!($a : $a_w / $a_o)});
-            rreil!($cg : $($cdr)*);
-        }
-    };
-
-    // off := litw, off
-    ($cg:ident : $op:ident # $a:tt : $a_w:tt / $a_o:tt, ( $x:expr ) : $x_w:tt , $y:tt : $y_w:tt / $y_o:tt ; $($cdr:tt)*) => {
-        {
-            $cg.push($crate::Statement{ op: ::Operation::$op(rreil_rvalue!(( $x ) : $x_w),rreil_rvalue!($y : $y_w / $y_o)), assignee: rreil_lvalue!($a : $a_w / $a_o)});
-            rreil!($cg : $($cdr)*);
-        }
-    };
-
-    // off := litw, lit
-    ($cg:ident : $op:ident # $a:tt : $a_w:tt / $a_o:tt, ( $x:expr ) : $x_w:tt , ( $y:expr ) ; $($cdr:tt)*) => {
-        {
-            $cg.push($crate::Statement{ op: ::Operation::$op(rreil_rvalue!(( $x ) : $x_w),rreil_rvalue!(( $y ))), assignee: rreil_lvalue!($a : $a_w / $a_o)});
-            rreil!($cg : $($cdr)*);
-        }
-    };
-
-    // off := litw, litw
-    ($cg:ident : $op:ident # $a:tt : $a_w:tt / $a_o:tt, ( $x:expr ) : $x_w:tt , ( $y:expr ) : $y_w:tt ; $($cdr:tt)*) => {
-        {
-            $cg.push($crate::Statement{ op: ::Operation::$op(rreil_rvalue!(( $x ) : $x_w),rreil_rvalue!(( $y ) : $y_w)), assignee: rreil_lvalue!($a : $a_w / $a_o)});
-            rreil!($cg : $($cdr)*);
-        }
-    };
-
-    // off := litw, const
-    ($cg:ident : $op:ident # $a:tt : $a_w:tt / $a_o:tt, ( $x:expr ) : $x_w:tt , [ $y:tt ] : $y_w:tt ; $($cdr:tt)*) => {
-        {
-            $cg.push($crate::Statement{ op: ::Operation::$op(rreil_rvalue!(( $x ) : $x_w),rreil_rvalue!([ $y ] : $y_w)), assignee: rreil_lvalue!($a : $a_w / $a_o)});
-            rreil!($cg : $($cdr)*);
-        }
-    };
-
-    // off := litw, undef
-    ($cg:ident : $op:ident # $a:tt : $a_w:tt / $a_o:tt, ( $x:expr ) : $x_w:tt , ? ; $($cdr:tt)*) => {
-        {
-            $cg.push($crate::Statement{ op: ::Operation::$op(rreil_rvalue!(( $x ) : $x_w),rreil_rvalue!(?)), assignee: rreil_lvalue!($a : $a_w / $a_o)});
-            rreil!($cg : $($cdr)*);
-        }
-    };
-
-    // off := const, noff
-    ($cg:ident : $op:ident # $a:tt : $a_w:tt / $a_o:tt, [ $x:tt ] : $x_w:tt , $y:tt : $y_w:tt ; $($cdr:tt)*) => {
-        {
-            $cg.push($crate::Statement{ op: ::Operation::$op(rreil_rvalue!([ $x ] : $x_w),rreil_rvalue!($y : $y_w)), assignee: rreil_lvalue!($a : $a_w / $a_o)});
-            rreil!($cg : $($cdr)*);
-        }
-    };
-
-    // off := const, off
-    ($cg:ident : $op:ident # $a:tt : $a_w:tt / $a_o:tt, [ $x:tt ] : $x_w:tt , $y:tt : $y_w:tt / $y_o:tt ; $($cdr:tt)*) => {
-        {
-            $cg.push($crate::Statement{ op: ::Operation::$op(rreil_rvalue!([ $x ] : $x_w),rreil_rvalue!($y : $y_w / $y_o)), assignee: rreil_lvalue!($a : $a_w / $a_o)});
-            rreil!($cg : $($cdr)*);
-        }
-    };
-
-    // off := const, lit
-    ($cg:ident : $op:ident # $a:tt : $a_w:tt / $a_o:tt, [ $x:tt ] : $x_w:tt , ( $y:expr ) ; $($cdr:tt)*) => {
-        {
-            $cg.push($crate::Statement{ op: ::Operation::$op(rreil_rvalue!([ $x ] : $x_w),rreil_rvalue!(( $y ))), assignee: rreil_lvalue!($a : $a_w / $a_o)});
-            rreil!($cg : $($cdr)*);
-        }
-    };
-
-    // off := const, litw
-    ($cg:ident : $op:ident # $a:tt : $a_w:tt / $a_o:tt, [ $x:tt ] : $x_w:tt , ( $y:expr ) : $y_w:tt ; $($cdr:tt)*) => {
-        {
-            $cg.push($crate::Statement{ op: ::Operation::$op(rreil_rvalue!([ $x ] : $x_w),rreil_rvalue!(( $y ) : $y_w)), assignee: rreil_lvalue!($a : $a_w / $a_o)});
-            rreil!($cg : $($cdr)*);
-        }
-    };
-
-    // off := const, const
-    ($cg:ident : $op:ident # $a:tt : $a_w:tt / $a_o:tt, [ $x:tt ] : $x_w:tt , [ $y:tt ] : $y_w:tt ; $($cdr:tt)*) => {
-        {
-            $cg.push($crate::Statement{ op: ::Operation::$op(rreil_rvalue!([ $x ] : $x_w),rreil_rvalue!([ $y ] : $y_w)), assignee: rreil_lvalue!($a : $a_w / $a_o)});
-            rreil!($cg : $($cdr)*);
-        }
-    };
-
-    // off := const, undef
-    ($cg:ident : $op:ident # $a:tt : $a_w:tt / $a_o:tt, [ $x:tt ] : $x_w:tt , ? ; $($cdr:tt)*) => {
-        {
-            $cg.push($crate::Statement{ op: ::Operation::$op(rreil_rvalue!([ $x ] : $x_w),rreil_rvalue!(?)), assignee: rreil_lvalue!($a : $a_w / $a_o)});
-            rreil!($cg : $($cdr)*);
-        }
-    };
-
-    // off := undef, noff
-    ($cg:ident : $op:ident # $a:tt : $a_w:tt / $a_o:tt, ? , $y:tt : $y_w:tt ; $($cdr:tt)*) => {
-        {
-            $cg.push($crate::Statement{ op: ::Operation::$op(rreil_rvalue!(?),rreil_rvalue!($y : $y_w)), assignee: rreil_lvalue!($a : $a_w / $a_o)});
-            rreil!($cg : $($cdr)*);
-        }
-    };
-
-    // off := undef, off
-    ($cg:ident : $op:ident # $a:tt : $a_w:tt / $a_o:tt, ? , $y:tt : $y_w:tt / $y_o:tt ; $($cdr:tt)*) => {
-        {
-            $cg.push($crate::Statement{ op: ::Operation::$op(rreil_rvalue!(?),rreil_rvalue!($y : $y_w / $y_o)), assignee: rreil_lvalue!($a : $a_w / $a_o)});
-            rreil!($cg : $($cdr)*);
-        }
-    };
-
-    // off := undef, lit
-    ($cg:ident : $op:ident # $a:tt : $a_w:tt / $a_o:tt, ? , ( $y:expr ) ; $($cdr:tt)*) => {
-        {
-            $cg.push($crate::Statement{ op: ::Operation::$op(rreil_rvalue!(?),rreil_rvalue!(( $y ))), assignee: rreil_lvalue!($a : $a_w / $a_o)});
-            rreil!($cg : $($cdr)*);
-        }
-    };
-
-    // off := undef, litw
-    ($cg:ident : $op:ident # $a:tt : $a_w:tt / $a_o:tt, ? , ( $y:expr ) : $y_w:tt ; $($cdr:tt)*) => {
-        {
-            $cg.push($crate::Statement{ op: ::Operation::$op(rreil_rvalue!(?),rreil_rvalue!(( $y ) : $y_w)), assignee: rreil_lvalue!($a : $a_w / $a_o)});
-            rreil!($cg : $($cdr)*);
-        }
-    };
-
-    // off := undef, const
-    ($cg:ident : $op:ident # $a:tt : $a_w:tt / $a_o:tt, ? , [ $y:tt ] : $y_w:tt ; $($cdr:tt)*) => {
-        {
-            $cg.push($crate::Statement{ op: ::Operation::$op(rreil_rvalue!(?),rreil_rvalue!([ $y ] : $y_w)), assignee: rreil_lvalue!($a : $a_w / $a_o)});
-            rreil!($cg : $($cdr)*);
-        }
-    };
-
-    // off := undef, undef
-    ($cg:ident : $op:ident # $a:tt : $a_w:tt / $a_o:tt, ? , ? ; $($cdr:tt)*) => {
-        {
-            $cg.push($crate::Statement{ op: ::Operation::$op(rreil_rvalue!(?),rreil_rvalue!(?)), assignee: rreil_lvalue!($a : $a_w / $a_o)});
-            rreil!($cg : $($cdr)*);
-        }
-    };
-
     // undef := noff, noff
     ($cg:ident : $op:ident # ?, $x:tt : $x_w:tt , $y:tt : $y_w:tt ; $($cdr:tt)*) => {
         {
@@ -1586,54 +1298,6 @@ macro_rules! rreil_unop {
         }
     };
 
-    // off := noff
-    ($cg:ident : $op:ident # $a:tt : $a_w:tt / $a_o:tt, $x:tt : $x_w:tt ; $($cdr:tt)*) => {
-        {
-            $cg.push($crate::Statement{ op: ::Operation::$op(rreil_rvalue!($x : $x_w)), assignee: rreil_lvalue!($a : $a_w / $a_o)});
-            rreil!($cg : $($cdr)*);
-        }
-    };
-
-    // off := off
-    ($cg:ident : $op:ident # $a:tt : $a_w:tt / $a_o:tt, $x:tt : $x_w:tt / $x_o:tt ; $($cdr:tt)*) => {
-        {
-            $cg.push($crate::Statement{ op: ::Operation::$op(rreil_rvalue!($x : $x_w / $x_o)), assignee: rreil_lvalue!($a : $a_w / $a_o)});
-            rreil!($cg : $($cdr)*);
-        }
-    };
-
-    // off := lit
-    ($cg:ident : $op:ident # $a:tt : $a_w:tt / $a_o:tt, ( $x:expr ) ; $($cdr:tt)*) => {
-        {
-            $cg.push($crate::Statement{ op: ::Operation::$op(rreil_rvalue!(( $x ))), assignee: rreil_lvalue!($a : $a_w / $a_o)});
-            rreil!($cg : $($cdr)*);
-        }
-    };
-
-    // off := litw
-    ($cg:ident : $op:ident # $a:tt : $a_w:tt / $a_o:tt, ( $x:expr ) : $x_w:tt ; $($cdr:tt)*) => {
-        {
-            $cg.push($crate::Statement{ op: ::Operation::$op(rreil_rvalue!(( $x ) : $x_w)), assignee: rreil_lvalue!($a : $a_w / $a_o)});
-            rreil!($cg : $($cdr)*);
-        }
-    };
-
-    // off := const
-    ($cg:ident : $op:ident # $a:tt : $a_w:tt / $a_o:tt, [ $x:tt ] : $x_w:tt ; $($cdr:tt)*) => {
-        {
-            $cg.push($crate::Statement{ op: ::Operation::$op(rreil_rvalue!([ $x ] : $x_w)), assignee: rreil_lvalue!($a : $a_w / $a_o)});
-            rreil!($cg : $($cdr)*);
-        }
-    };
-
-    // off := undef
-    ($cg:ident : $op:ident # $a:tt : $a_w:tt / $a_o:tt, ? ; $($cdr:tt)*) => {
-        {
-            $cg.push($crate::Statement{ op: ::Operation::$op(rreil_rvalue!(?)), assignee: rreil_lvalue!($a : $a_w / $a_o)});
-            rreil!($cg : $($cdr)*);
-        }
-    };
-
     // undef := noff
     ($cg:ident : $op:ident # ?, $x:tt : $x_w:tt ; $($cdr:tt)*) => {
         {
@@ -1825,54 +1489,6 @@ macro_rules! rreil_memop {
     ($cg:ident : $op:ident # $bank:ident # $a:tt : $a_w:tt, ? ; $($cdr:tt)*) => {
         {
             $cg.push($crate::Statement{ op: ::Operation::$op(::std::borrow::Cow::Borrowed(stringify!($bank)),rreil_rvalue!(?)), assignee: rreil_lvalue!($a : $a_w)});
-            rreil!($cg : $($cdr)*);
-        }
-    };
-
-    // off := noff
-    ($cg:ident : $op:ident # $bank:ident # $a:tt : $a_w:tt / $a_o:tt, $x:tt : $x_w:tt ; $($cdr:tt)*) => {
-        {
-            $cg.push($crate::Statement{ op: ::Operation::$op(::std::borrow::Cow::Borrowed(stringify!($bank)),rreil_rvalue!($x : $x_w)), assignee: rreil_lvalue!($a : $a_w / $a_o)});
-            rreil!($cg : $($cdr)*);
-        }
-    };
-
-    // off := off
-    ($cg:ident : $op:ident # $bank:ident # $a:tt : $a_w:tt / $a_o:tt, $x:tt : $x_w:tt / $x_o:tt ; $($cdr:tt)*) => {
-        {
-            $cg.push($crate::Statement{ op: ::Operation::$op(::std::borrow::Cow::Borrowed(stringify!($bank)),rreil_rvalue!($x : $x_w / $x_o)), assignee: rreil_lvalue!($a : $a_w / $a_o)});
-            rreil!($cg : $($cdr)*);
-        }
-    };
-
-    // off := lit
-    ($cg:ident : $op:ident # $bank:ident # $a:tt : $a_w:tt / $a_o:tt, ( $x:expr ) ; $($cdr:tt)*) => {
-        {
-            $cg.push($crate::Statement{ op: ::Operation::$op(::std::borrow::Cow::Borrowed(stringify!($bank)),rreil_rvalue!(( $x ))), assignee: rreil_lvalue!($a : $a_w / $a_o)});
-            rreil!($cg : $($cdr)*);
-        }
-    };
-
-    // off := litw
-    ($cg:ident : $op:ident # $bank:ident # $a:tt : $a_w:tt / $a_o:tt, ( $x:expr ) : $x_w:tt ; $($cdr:tt)*) => {
-        {
-            $cg.push($crate::Statement{ op: ::Operation::$op(::std::borrow::Cow::Borrowed(stringify!($bank)),rreil_rvalue!(( $x ) : $x_w)), assignee: rreil_lvalue!($a : $a_w / $a_o)});
-            rreil!($cg : $($cdr)*);
-        }
-    };
-
-    // off := const
-    ($cg:ident : $op:ident # $bank:ident # $a:tt : $a_w:tt / $a_o:tt, [ $x:tt ] : $x_w:tt ; $($cdr:tt)*) => {
-        {
-            $cg.push($crate::Statement{ op: ::Operation::$op(::std::borrow::Cow::Borrowed(stringify!($bank)),rreil_rvalue!([ $x ] : $x_w)), assignee: rreil_lvalue!($a : $a_w / $a_o)});
-            rreil!($cg : $($cdr)*);
-        }
-    };
-
-    // off := undef
-    ($cg:ident : $op:ident # $bank:ident # $a:tt : $a_w:tt / $a_o:tt, ? ; $($cdr:tt)*) => {
-        {
-            $cg.push($crate::Statement{ op: ::Operation::$op(::std::borrow::Cow::Borrowed(stringify!($bank)),rreil_rvalue!(?)), assignee: rreil_lvalue!($a : $a_w / $a_o)});
             rreil!($cg : $($cdr)*);
         }
     };
@@ -2072,54 +1688,6 @@ macro_rules! rreil_extop {
         }
     };
 
-    // off := noff
-    ($cg:ident : $op:ident # $sz:tt # $a:tt : $a_w:tt / $a_o:tt, $x:tt : $x_w:tt ; $($cdr:tt)*) => {
-        {
-            $cg.push($crate::Statement{ op: ::Operation::$op(rreil_imm!($sz),rreil_rvalue!($x : $x_w)), assignee: rreil_lvalue!($a : $a_w / $a_o)});
-            rreil!($cg : $($cdr)*);
-        }
-    };
-
-    // off := off
-    ($cg:ident : $op:ident # $sz:tt # $a:tt : $a_w:tt / $a_o:tt, $x:tt : $x_w:tt / $x_o:tt ; $($cdr:tt)*) => {
-        {
-            $cg.push($crate::Statement{ op: ::Operation::$op(rreil_imm!($sz),rreil_rvalue!($x : $x_w / $x_o)), assignee: rreil_lvalue!($a : $a_w / $a_o)});
-            rreil!($cg : $($cdr)*);
-        }
-    };
-
-    // off := lit
-    ($cg:ident : $op:ident # $sz:tt # $a:tt : $a_w:tt / $a_o:tt, ( $x:expr ) ; $($cdr:tt)*) => {
-        {
-            $cg.push($crate::Statement{ op: ::Operation::$op(rreil_imm!($sz),rreil_rvalue!(( $x ))), assignee: rreil_lvalue!($a : $a_w / $a_o)});
-            rreil!($cg : $($cdr)*);
-        }
-    };
-
-    // off := litw
-    ($cg:ident : $op:ident # $sz:tt # $a:tt : $a_w:tt / $a_o:tt, ( $x:expr ) : $x_w:tt ; $($cdr:tt)*) => {
-        {
-            $cg.push($crate::Statement{ op: ::Operation::$op(rreil_imm!($sz),rreil_rvalue!(( $x ) : $x_w)), assignee: rreil_lvalue!($a : $a_w / $a_o)});
-            rreil!($cg : $($cdr)*);
-        }
-    };
-
-    // off := const
-    ($cg:ident : $op:ident # $sz:tt # $a:tt : $a_w:tt / $a_o:tt, [ $x:tt ] : $x_w:tt ; $($cdr:tt)*) => {
-        {
-            $cg.push($crate::Statement{ op: ::Operation::$op(rreil_imm!($sz),rreil_rvalue!([ $x ] : $x_w)), assignee: rreil_lvalue!($a : $a_w / $a_o)});
-            rreil!($cg : $($cdr)*);
-        }
-    };
-
-    // off := undef
-    ($cg:ident : $op:ident # $sz:tt # $a:tt : $a_w:tt / $a_o:tt, ? ; $($cdr:tt)*) => {
-        {
-            $cg.push($crate::Statement{ op: ::Operation::$op(rreil_imm!($sz),rreil_rvalue!(?)), assignee: rreil_lvalue!($a : $a_w / $a_o)});
-            rreil!($cg : $($cdr)*);
-        }
-    };
-
     // undef := noff
     ($cg:ident : $op:ident # $sz:tt # ?, $x:tt : $x_w:tt ; $($cdr:tt)*) => {
         {
@@ -2169,3 +1737,199 @@ macro_rules! rreil_extop {
     };
 
 }
+
+macro_rules! rreil_selop {
+    // lit := noff
+    ($cg:ident : $op:ident # $sz:tt # ( $a:expr ), $x:tt : $x_w:tt ; $($cdr:tt)*) => {
+        {
+            $cg.push($crate::Statement{ op: ::Operation::$op(rreil_imm!($sz),rreil_rvalue!(( $a )),rreil_rvalue!($x : $x_w)), assignee: rreil_lvalue!(( $a ))});
+            rreil!($cg : $($cdr)*);
+        }
+    };
+
+    // lit := off
+    ($cg:ident : $op:ident # $sz:tt # ( $a:expr ), $x:tt : $x_w:tt / $x_o:tt ; $($cdr:tt)*) => {
+        {
+            $cg.push($crate::Statement{ op: ::Operation::$op(rreil_imm!($sz),rreil_rvalue!(( $a )),rreil_rvalue!($x : $x_w / $x_o)), assignee: rreil_lvalue!(( $a ))});
+            rreil!($cg : $($cdr)*);
+        }
+    };
+
+    // lit := lit
+    ($cg:ident : $op:ident # $sz:tt # ( $a:expr ), ( $x:expr ) ; $($cdr:tt)*) => {
+        {
+            $cg.push($crate::Statement{ op: ::Operation::$op(rreil_imm!($sz),rreil_rvalue!(( $a )),rreil_rvalue!(( $x ))), assignee: rreil_lvalue!(( $a ))});
+            rreil!($cg : $($cdr)*);
+        }
+    };
+
+    // lit := litw
+    ($cg:ident : $op:ident # $sz:tt # ( $a:expr ), ( $x:expr ) : $x_w:tt ; $($cdr:tt)*) => {
+        {
+            $cg.push($crate::Statement{ op: ::Operation::$op(rreil_imm!($sz),rreil_rvalue!(( $a )),rreil_rvalue!(( $x ) : $x_w)), assignee: rreil_lvalue!(( $a ))});
+            rreil!($cg : $($cdr)*);
+        }
+    };
+
+    // lit := const
+    ($cg:ident : $op:ident # $sz:tt # ( $a:expr ), [ $x:tt ] : $x_w:tt ; $($cdr:tt)*) => {
+        {
+            $cg.push($crate::Statement{ op: ::Operation::$op(rreil_imm!($sz),rreil_rvalue!(( $a )),rreil_rvalue!([ $x ] : $x_w)), assignee: rreil_lvalue!(( $a ))});
+            rreil!($cg : $($cdr)*);
+        }
+    };
+
+    // lit := undef
+    ($cg:ident : $op:ident # $sz:tt # ( $a:expr ), ? ; $($cdr:tt)*) => {
+        {
+            $cg.push($crate::Statement{ op: ::Operation::$op(rreil_imm!($sz),rreil_rvalue!(( $a )),rreil_rvalue!(?)), assignee: rreil_lvalue!(( $a ))});
+            rreil!($cg : $($cdr)*);
+        }
+    };
+
+    // litw := noff
+    ($cg:ident : $op:ident # $sz:tt # ( $a:expr ) : $a_w:tt, $x:tt : $x_w:tt ; $($cdr:tt)*) => {
+        {
+            $cg.push($crate::Statement{ op: ::Operation::$op(rreil_imm!($sz),rreil_rvalue!(( $a ) : $a_w),rreil_rvalue!($x : $x_w)), assignee: rreil_lvalue!(( $a ) : $a_w)});
+            rreil!($cg : $($cdr)*);
+        }
+    };
+
+    // litw := off
+    ($cg:ident : $op:ident # $sz:tt # ( $a:expr ) : $a_w:tt, $x:tt : $x_w:tt / $x_o:tt ; $($cdr:tt)*) => {
+        {
+            $cg.push($crate::Statement{ op: ::Operation::$op(rreil_imm!($sz),rreil_rvalue!(( $a ) : $a_w),rreil_rvalue!($x : $x_w / $x_o)), assignee: rreil_lvalue!(( $a ) : $a_w)});
+            rreil!($cg : $($cdr)*);
+        }
+    };
+
+    // litw := lit
+    ($cg:ident : $op:ident # $sz:tt # ( $a:expr ) : $a_w:tt, ( $x:expr ) ; $($cdr:tt)*) => {
+        {
+            $cg.push($crate::Statement{ op: ::Operation::$op(rreil_imm!($sz),rreil_rvalue!(( $a ) : $a_w),rreil_rvalue!(( $x ))), assignee: rreil_lvalue!(( $a ) : $a_w)});
+            rreil!($cg : $($cdr)*);
+        }
+    };
+
+    // litw := litw
+    ($cg:ident : $op:ident # $sz:tt # ( $a:expr ) : $a_w:tt, ( $x:expr ) : $x_w:tt ; $($cdr:tt)*) => {
+        {
+            $cg.push($crate::Statement{ op: ::Operation::$op(rreil_imm!($sz),rreil_rvalue!(( $a ) : $a_w),rreil_rvalue!(( $x ) : $x_w)), assignee: rreil_lvalue!(( $a ) : $a_w)});
+            rreil!($cg : $($cdr)*);
+        }
+    };
+
+    // litw := const
+    ($cg:ident : $op:ident # $sz:tt # ( $a:expr ) : $a_w:tt, [ $x:tt ] : $x_w:tt ; $($cdr:tt)*) => {
+        {
+            $cg.push($crate::Statement{ op: ::Operation::$op(rreil_imm!($sz),rreil_rvalue!(( $a ) : $a_w),rreil_rvalue!([ $x ] : $x_w)), assignee: rreil_lvalue!(( $a ) : $a_w)});
+            rreil!($cg : $($cdr)*);
+        }
+    };
+
+    // litw := undef
+    ($cg:ident : $op:ident # $sz:tt # ( $a:expr ) : $a_w:tt, ? ; $($cdr:tt)*) => {
+        {
+            $cg.push($crate::Statement{ op: ::Operation::$op(rreil_imm!($sz),rreil_rvalue!(( $a ) : $a_w),rreil_rvalue!(?)), assignee: rreil_lvalue!(( $a ) : $a_w)});
+            rreil!($cg : $($cdr)*);
+        }
+    };
+
+    // noff := noff
+    ($cg:ident : $op:ident # $sz:tt # $a:tt : $a_w:tt, $x:tt : $x_w:tt ; $($cdr:tt)*) => {
+        {
+            $cg.push($crate::Statement{ op: ::Operation::$op(rreil_imm!($sz),rreil_rvalue!($a : $a_w),rreil_rvalue!($x : $x_w)), assignee: rreil_lvalue!($a : $a_w)});
+            rreil!($cg : $($cdr)*);
+        }
+    };
+
+    // noff := off
+    ($cg:ident : $op:ident # $sz:tt # $a:tt : $a_w:tt, $x:tt : $x_w:tt / $x_o:tt ; $($cdr:tt)*) => {
+        {
+            $cg.push($crate::Statement{ op: ::Operation::$op(rreil_imm!($sz),rreil_rvalue!($a : $a_w),rreil_rvalue!($x : $x_w / $x_o)), assignee: rreil_lvalue!($a : $a_w)});
+            rreil!($cg : $($cdr)*);
+        }
+    };
+
+    // noff := lit
+    ($cg:ident : $op:ident # $sz:tt # $a:tt : $a_w:tt, ( $x:expr ) ; $($cdr:tt)*) => {
+        {
+            $cg.push($crate::Statement{ op: ::Operation::$op(rreil_imm!($sz),rreil_rvalue!($a : $a_w),rreil_rvalue!(( $x ))), assignee: rreil_lvalue!($a : $a_w)});
+            rreil!($cg : $($cdr)*);
+        }
+    };
+
+    // noff := litw
+    ($cg:ident : $op:ident # $sz:tt # $a:tt : $a_w:tt, ( $x:expr ) : $x_w:tt ; $($cdr:tt)*) => {
+        {
+            $cg.push($crate::Statement{ op: ::Operation::$op(rreil_imm!($sz),rreil_rvalue!($a : $a_w),rreil_rvalue!(( $x ) : $x_w)), assignee: rreil_lvalue!($a : $a_w)});
+            rreil!($cg : $($cdr)*);
+        }
+    };
+
+    // noff := const
+    ($cg:ident : $op:ident # $sz:tt # $a:tt : $a_w:tt, [ $x:tt ] : $x_w:tt ; $($cdr:tt)*) => {
+        {
+            $cg.push($crate::Statement{ op: ::Operation::$op(rreil_imm!($sz),rreil_rvalue!($a : $a_w),rreil_rvalue!([ $x ] : $x_w)), assignee: rreil_lvalue!($a : $a_w)});
+            rreil!($cg : $($cdr)*);
+        }
+    };
+
+    // noff := undef
+    ($cg:ident : $op:ident # $sz:tt # $a:tt : $a_w:tt, ? ; $($cdr:tt)*) => {
+        {
+            $cg.push($crate::Statement{ op: ::Operation::$op(rreil_imm!($sz),rreil_rvalue!($a : $a_w),rreil_rvalue!(?)), assignee: rreil_lvalue!($a : $a_w)});
+            rreil!($cg : $($cdr)*);
+        }
+    };
+
+    // undef := noff
+    ($cg:ident : $op:ident # $sz:tt # ?, $x:tt : $x_w:tt ; $($cdr:tt)*) => {
+        {
+            $cg.push($crate::Statement{ op: ::Operation::$op(rreil_imm!($sz),rreil_rvalue!(?),rreil_rvalue!($x : $x_w)), assignee: rreil_lvalue!(?)});
+            rreil!($cg : $($cdr)*);
+        }
+    };
+
+    // undef := off
+    ($cg:ident : $op:ident # $sz:tt # ?, $x:tt : $x_w:tt / $x_o:tt ; $($cdr:tt)*) => {
+        {
+            $cg.push($crate::Statement{ op: ::Operation::$op(rreil_imm!($sz),rreil_rvalue!(?),rreil_rvalue!($x : $x_w / $x_o)), assignee: rreil_lvalue!(?)});
+            rreil!($cg : $($cdr)*);
+        }
+    };
+
+    // undef := lit
+    ($cg:ident : $op:ident # $sz:tt # ?, ( $x:expr ) ; $($cdr:tt)*) => {
+        {
+            $cg.push($crate::Statement{ op: ::Operation::$op(rreil_imm!($sz),rreil_rvalue!(?),rreil_rvalue!(( $x ))), assignee: rreil_lvalue!(?)});
+            rreil!($cg : $($cdr)*);
+        }
+    };
+
+    // undef := litw
+    ($cg:ident : $op:ident # $sz:tt # ?, ( $x:expr ) : $x_w:tt ; $($cdr:tt)*) => {
+        {
+            $cg.push($crate::Statement{ op: ::Operation::$op(rreil_imm!($sz),rreil_rvalue!(?),rreil_rvalue!(( $x ) : $x_w)), assignee: rreil_lvalue!(?)});
+            rreil!($cg : $($cdr)*);
+        }
+    };
+
+    // undef := const
+    ($cg:ident : $op:ident # $sz:tt # ?, [ $x:tt ] : $x_w:tt ; $($cdr:tt)*) => {
+        {
+            $cg.push($crate::Statement{ op: ::Operation::$op(rreil_imm!($sz),rreil_rvalue!(?),rreil_rvalue!([ $x ] : $x_w)), assignee: rreil_lvalue!(?)});
+            rreil!($cg : $($cdr)*);
+        }
+    };
+
+    // undef := undef
+    ($cg:ident : $op:ident # $sz:tt # ?, ? ; $($cdr:tt)*) => {
+        {
+            $cg.push($crate::Statement{ op: ::Operation::$op(rreil_imm!($sz),rreil_rvalue!(?),rreil_rvalue!(?)), assignee: rreil_lvalue!(?)});
+            rreil!($cg : $($cdr)*);
+        }
+    };
+
+}
+

@@ -34,7 +34,7 @@ get_strings() {
 
 echo "macro_rules! rreil_binop {"
 
-for A in lit litw noff off undef
+for A in lit litw noff undef
 do
    get_strings $A a
    A_MATCH="$MATCH"
@@ -68,7 +68,7 @@ echo "}"
 echo ""
 echo "macro_rules! rreil_unop {"
 
-for A in lit litw noff off undef
+for A in lit litw noff undef
 do
    get_strings $A a
    A_MATCH="$MATCH"
@@ -95,7 +95,7 @@ echo "}"
 echo ""
 echo "macro_rules! rreil_memop {"
 
-for A in lit litw noff off undef
+for A in lit litw noff undef
 do
    get_strings $A a
    A_MATCH="$MATCH"
@@ -122,7 +122,7 @@ echo "}"
 echo ""
 echo "macro_rules! rreil_extop {"
 
-for A in lit litw noff off undef
+for A in lit litw noff undef
 do
    get_strings $A a
    A_MATCH="$MATCH"
@@ -146,3 +146,31 @@ do
 done
 
 echo "}"
+echo ""
+echo "macro_rules! rreil_selop {"
+
+for A in lit litw noff undef
+do
+   get_strings $A a
+   A_MATCH="$MATCH"
+   A_ARG="$ARG"
+
+   for X in noff off lit litw const undef
+   do
+      get_strings $X x
+      X_MATCH="$MATCH"
+      X_ARG="$ARG"
+
+      echo "    // $A := $X"
+      echo "    (\$cg:ident : \$op:ident # \$sz:tt # $A_MATCH, $X_MATCH ; \$(\$cdr:tt)*) => {"
+      echo "        {"
+			echo "            \$cg.push(\$crate::Statement{ op: $crate::Operation::\$op(rreil_imm!(\$sz),rreil_rvalue!($A_ARG),rreil_rvalue!($X_ARG)), assignee: rreil_lvalue!($A_ARG)});"
+      echo "            rreil!(\$cg : \$(\$cdr)*);"
+      echo "        }"
+      echo "    };"
+      echo ""
+   done
+done
+
+echo "}"
+echo ""

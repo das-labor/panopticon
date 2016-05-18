@@ -72,29 +72,29 @@ impl Architecture for Mos {
 
 // 8 bit main register
 lazy_static! {
-    pub static ref A: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("A"), size: 8, offset: 0, subscript: None };
+    pub static ref A: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("A"), size: 8, subscript: None };
 }
 
 // 8 bit index registers
 lazy_static! {
-    pub static ref X: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("X"), size: 8, offset: 0, subscript: None };
-    pub static ref Y: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("Y"), size: 8, offset: 0, subscript: None };
-    pub static ref SP: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("SP"), size: 8, offset: 0, subscript: None };
+    pub static ref X: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("X"), size: 8, subscript: None };
+    pub static ref Y: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("Y"), size: 8, subscript: None };
+    pub static ref SP: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("SP"), size: 8, subscript: None };
 }
 
 // 16 bit program counter
 lazy_static! {
-    pub static ref PC: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("PC"), size: 16, offset: 0, subscript: None };
+    pub static ref PC: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("PC"), size: 16, subscript: None };
 }
 
 // flags
 lazy_static! {
-    pub static ref N: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("N"), size: 1, offset: 0, subscript: None };
-    pub static ref V: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("V"), size: 1, offset: 0, subscript: None };
-    pub static ref D: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("D"), size: 1, offset: 0, subscript: None };
-    pub static ref I: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("I"), size: 1, offset: 0, subscript: None };
-    pub static ref Z: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("Z"), size: 1, offset: 0, subscript: None };
-    pub static ref C: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("C"), size: 1, offset: 0, subscript: None };
+    pub static ref N: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("N"), size: 1, subscript: None };
+    pub static ref V: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("V"), size: 1, subscript: None };
+    pub static ref D: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("D"), size: 1, subscript: None };
+    pub static ref I: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("I"), size: 1, subscript: None };
+    pub static ref Z: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("Z"), size: 1, subscript: None };
+    pub static ref C: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("C"), size: 1, subscript: None };
 }
 
 #[derive(Clone)]
@@ -214,7 +214,6 @@ pub fn zpage_offset(opcode: &'static str,
             name: Cow::Owned(format!("${:02X},{}",base_val,index_nam)),
             size: 16,
             subscript: None,
-            offset: 0
         };
 
         st.mnemonic(0,"__load","",vec![],&|c| {
@@ -252,14 +251,12 @@ pub fn zpage_index(opcode: &'static str,
             name: Cow::Owned(format!("(${:02X},{})",base_val,index_nam)),
             size: 16,
             subscript: None,
-            offset: 0
             }
         } else {
 Lvalue::Variable{
             name: Cow::Owned(format!("(${:02X}),{}",base_val,index_nam)),
             size: 16,
             subscript: None,
-            offset: 0
             }
         };
 
@@ -317,7 +314,6 @@ pub fn absolute_offset(opcode: &'static str,
             name: Cow::Owned(format!("${:04X},{}",base_val,index_nam)),
             size: 16,
             subscript: None,
-            offset: 0
         };
 
         st.mnemonic(0,"__load","",vec![],&|c| {

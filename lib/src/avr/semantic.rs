@@ -33,12 +33,11 @@ pub fn cpse(st: &mut State<Avr>) -> bool {
 }
 
 pub fn adc(rd: Lvalue, rr: Rvalue, cg: &mut CodeGen<Avr>) {
-    let half_rd = if let &Lvalue::Variable{ ref name, size: 8, offset: 0,.. } = &rd {
+    let half_rd = if let &Lvalue::Variable{ ref name, size: 8,.. } = &rd {
         Lvalue::Variable{
             name: name.clone(),
             size: 4,
             subscript: None,
-            offset: 0,
         }
     } else {
         unreachable!()
@@ -141,7 +140,7 @@ pub fn adiw(st: &mut State<Avr>) -> bool {
     st.mnemonic(0,"__wide_reg","",vec![],&|cg: &mut CodeGen<Avr>| {
         rreil!{cg:
             zext/16 reg:16, (rd1);
-            mov reg:8/8, (rd2);
+            sel/8 reg:16, (rd2);
         }
     });
 
@@ -200,13 +199,11 @@ pub fn and(rd: Lvalue, rr: Rvalue, cg: &mut CodeGen<Avr>) {
 }
 
 pub fn asr(rd: Lvalue, cg: &mut CodeGen<Avr>) {
-    let lsb_rd = rd.extract(1,0).ok().unwrap();
-
     rreil!{cg:
         mov lsb:1, C:1;
         cmpltu C:1, [0x7f]:8, (rd);
         shl (rd), (rd), [1]:8;
-        mov (lsb_rd), lsb:1;
+        sel/0 (rd), lsb:1;
 
         cmpeq Z:1, res:8, [0]:8;
         cmples N:1, res:8, [0]:8;
@@ -218,15 +215,13 @@ pub fn asr(rd: Lvalue, cg: &mut CodeGen<Avr>) {
 pub fn _break(_: &mut CodeGen<Avr>) {}
 
 pub fn bld(rd: Lvalue, b: u64, cg: &mut CodeGen<Avr>) {
-    let r = rd.extract(1,b as usize).ok().unwrap();
-
     rreil!{cg:
-        mov (r), T:1;
+        sel/b (rd), T:1;
     }
 }
 
 pub fn bst(rd: Lvalue, b: u64, cg: &mut CodeGen<Avr>) {
-    let r = rd.extract(1,b as usize).ok().unwrap();
+    let r: Rvalue = rd.extract(1,b as usize).ok().unwrap();
 
     rreil!{cg:
         mov T:1, (r);
@@ -249,10 +244,8 @@ pub fn call(st: &mut State<Avr>) -> bool {
 }
 
 pub fn cbx(rd: Lvalue, b: u64, cg: &mut CodeGen<Avr>) {
-    let r = rd.extract(1,b as usize).ok().unwrap();
-
     rreil!{cg:
-        mov (r), [0]:1;
+        sel/b (rd), [0]:1;
     }
 }
 
@@ -268,7 +261,7 @@ pub fn com(rd: Lvalue, cg: &mut CodeGen<Avr>) {
 }
 
 pub fn cp(rd: Lvalue, rr: Rvalue, cg: &mut CodeGen<Avr>) {
-    let half_rd = rd.extract(4,0).ok().unwrap();
+    let half_rd: Rvalue = rd.extract(4,0).ok().unwrap();
 
     rreil!{cg:
         sub res:8, (rd), (rr);
@@ -303,7 +296,7 @@ pub fn cp(rd: Lvalue, rr: Rvalue, cg: &mut CodeGen<Avr>) {
 }
 
 pub fn cpc(rd: Lvalue, rr: Rvalue, cg: &mut CodeGen<Avr>) {
-    let half_rd = rd.extract(4,0).ok().unwrap();
+    let half_rd: Rvalue = rd.extract(4,0).ok().unwrap();
 
     rreil!{cg:
         zext/8 carry:8, C:1;
@@ -387,8 +380,8 @@ let next = st.configuration.wrap(st.address + st.tokens.len() as u64 * 2);
 pub fn eicall(cg: &mut CodeGen<Avr>) {
     rreil!{cg:
         zext/22 p:22, R30:8;
-        mov p:8/8, R31:8;
-        mov p:6/16, EIND:6;
+        sel/8 p:22, R31:8;
+        sel/16 p:22, EIND:6;
         load/sram q:22, p:22;
         call ?, q:22;
     }
@@ -398,8 +391,8 @@ pub fn eijmp(st: &mut State<Avr>) -> bool {
     st.mnemonic(2,"eijmp","",vec![],&|cg: &mut CodeGen<Avr>| {
         rreil!{cg:
             zext/22 p:22, R30:8;
-            mov p:8/8, R31:8;
-            mov p:6/16, EIND:6;
+            sel/8 p:22, R31:8;
+            sel/16 p:22, EIND:6;
             load/sram q:22, p:22;
         }
     });
@@ -421,14 +414,13 @@ pub fn elpm(rd: Lvalue, off: usize, st: &mut State<Avr>) -> bool {
         name: Cow::Borrowed("Z"),
         size: 24,
         subscript: None,
-        offset: 0,
     };
 
     st.mnemonic(0,"__wide_reg","",vec![],&|cg: &mut CodeGen<Avr>| {
         rreil!{cg:
             zext/24 (zreg), R30:8;
-            mov (zreg.extract(8,8).ok().unwrap()), R31:8;
-            mov (zreg.extract(8,16).ok().unwrap()), RAMPZ:8;
+            sel/8 (zreg), R31:8;
+            sel/16 (zreg), RAMPZ:8;
         }
     });
 
@@ -534,13 +526,12 @@ pub fn icall(st: &mut State<Avr>) -> bool {
         name: Cow::Borrowed("Z"),
         size: 16,
         subscript: None,
-        offset: 0,
     };
 
     st.mnemonic(0,"__wide_reg","",vec![],&|cg: &mut CodeGen<Avr>| {
         rreil!{cg:
             zext/16 (zreg), R30:8;
-            mov (zreg.extract(8,8).ok().unwrap()), R31:8;
+            sel/8 (zreg), R31:8;
         }
     });
 
@@ -558,24 +549,22 @@ pub fn icall(st: &mut State<Avr>) -> bool {
 }
 
 pub fn ijmp(st: &mut State<Avr>) -> bool {
-    st.mnemonic(2,"ijmp","",vec![],&|cg: &mut CodeGen<Avr>| {
-    rreil!{cg:
-        zext/22 p:22, R30:8;
-        mov p:8/8, R31:8;
-        mov p:6/16, EIND:6;
-        load/sram q:22, p:22;
-    }
-    });
-
-    let next = Rvalue::Variable{
-        name: Cow::Borrowed("q"),
+    let next = Lvalue::Variable{
+        name: Cow::Borrowed("R30:R31"),
         size: 22,
         subscript: None,
-        offset: 0
     };
+    st.mnemonic(2,"ijmp","",vec![],&|cg: &mut CodeGen<Avr>| {
+        rreil!{cg:
+            zext/22 p:22, R30:8;
+            sel/8 p:22, R31:8;
+            sel/16 p:22, [0]:6;
+            mov (next), p:22;
+        }
+    });
 
-    optional_skip(next.clone(),st);
-    st.jump(next,Guard::always());
+    optional_skip(next.clone().into(),st);
+    st.jump(next.into(),Guard::always());
     true
 }
 
@@ -693,13 +682,12 @@ pub fn lpm(rd: Lvalue, off: usize, st: &mut State<Avr>) -> bool {
         name: Cow::Borrowed("Z"),
         size: 16,
         subscript: None,
-        offset: 0,
     };
 
     st.mnemonic(0,"__wide_reg","",vec![],&|cg: &mut CodeGen<Avr>| {
         rreil!{cg:
             zext/16 (zreg), R30:8;
-            mov (zreg.extract(8,8).ok().unwrap()), R31:8;
+            sel/8 (zreg), R31:8;
         }
     });
 
@@ -869,7 +857,7 @@ pub fn out(st: &mut State<Avr>) -> bool {
 pub fn pop(rd: Lvalue, cg: &mut CodeGen<Avr>) {
     rreil!{cg:
         zext/16 stack:16, spl:8;
-        mov stack:8/8, sph:8;
+        sel/8 stack:16, sph:8;
         add stack:16, stack:16, [1]:16;
         load/ram (rd), stack:16;
         mov spl:8, stack:8;
@@ -880,7 +868,7 @@ pub fn pop(rd: Lvalue, cg: &mut CodeGen<Avr>) {
 pub fn push(rd: Lvalue, cg: &mut CodeGen<Avr>) {
     rreil!{cg:
         zext/16 stack:16, spl:8;
-        mov stack:8/8, sph:8;
+        sel/8 stack:16, sph:8;
         load/ram (rd), stack:16;
         sub stack:16, stack:16, [1]:16;
         mov spl:8, stack:8;
@@ -930,7 +918,7 @@ pub fn ror(rd: Lvalue, cg: &mut CodeGen<Avr>) {
  rreil!{cg:
         mov nc:1, (rd.extract(1,7).ok().unwrap());
         shr (rd), (rd), [1]:8;
-        mov (rd.extract(1,0).ok().unwrap()), C:1;
+        sel/1 (rd), C:1;
         mov C:1, nc:1;
         mov N:1, [0]:1;
         cmpeq Z:1, (rd), [0]:8;
@@ -999,10 +987,8 @@ pub fn sbci(rd: Lvalue, k: u64, cg: &mut CodeGen<Avr>) {
 }
 
 pub fn sbi(rd: Lvalue, b: u64, cg: &mut CodeGen<Avr>) {
-    let r = rd.extract(1,b as usize).ok().unwrap();
-
     rreil!{cg:
-        mov (r), [1]:1;
+        sel/b (rd), [1]:1;
     }
 }
 
@@ -1014,14 +1000,14 @@ pub fn sbiw(st: &mut State<Avr>) -> bool {
     st.mnemonic(0,"__wide_reg","",vec![],&|cg: &mut CodeGen<Avr>| {
         rreil!{cg:
             zext/16 reg:16, (rd1);
-            mov reg:8/8, (rd2);
+            sel/8 reg:16, (rd2);
         }
     });
 
     st.mnemonic(2,"sbiw","{u:8}, {u:8}",vec!(rd1.clone().into(),k.clone()),&|cg: &mut CodeGen<Avr>| {
         rreil!{cg:
             zext/16 reg:16, (rd1);
-            mov reg:8/8, (rd2);
+            sel/8 reg:16, (rd2);
             zext/16 imm:16, k:8;
 
             sub res:16, reg:16, imm:16;
@@ -1060,14 +1046,13 @@ pub fn spm(rd: Lvalue, off: usize, st: &mut State<Avr>) -> bool {
         name: if off == 0 { Cow::Borrowed("Z") } else { Cow::Borrowed("Z+") },
         size: 16,
         subscript: None,
-        offset: 0,
     };
     let len = st.tokens.len() * 2;
 
     st.mnemonic(0,"__wide_reg","",vec![],&|cg: &mut CodeGen<Avr>| {
         rreil!{cg:
             zext/16 (zreg), R30:8;
-            mov (zreg.extract(8,8).ok().unwrap()), R31:8;
+            sel/8 (zreg), R31:8;
         }
     });
 
@@ -1198,8 +1183,8 @@ pub fn subi(rd: Lvalue, k: u64, cg: &mut CodeGen<Avr>) {
 pub fn swap(rd: Lvalue, cg: &mut CodeGen<Avr>) {
     rreil!{cg:
         mov tmp:4, (rd.extract(4,0).ok().unwrap());
-        mov (rd.extract(4,0).ok().unwrap()), (rd.extract(4,4).ok().unwrap());
-        mov (rd.extract(4,4).ok().unwrap()), tmp:4;
+        sel/0 (rd), (rd.extract(4,4).ok().unwrap());
+        sel/4 (rd), tmp:4;
     }
 }
 

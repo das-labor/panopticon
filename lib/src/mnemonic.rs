@@ -197,11 +197,11 @@ mod tests {
     fn construct() {
         let ops1 = vec!(Rvalue::new_u8(1),Rvalue::Variable{ name: Cow::Borrowed("a"), size: 3, offset: 0, subscript: None });
         let i1 = vec!(
-            Statement{ op: Operation::Add(Rvalue::new_u8(1),Rvalue::new_u8(2)), assignee: Lvalue::Variable{ name: Cow::Borrowed("a"), size: 8, offset: 0, subscript: Some(2) }},
-            Statement{ op: Operation::Add(Rvalue::new_u8(4),Rvalue::new_u8(2)), assignee: Lvalue::Variable{ name: Cow::Borrowed("a"), size: 8, offset: 0, subscript: Some(1) }},
+            Statement{ op: Operation::Add(Rvalue::new_u8(1),Rvalue::new_u8(2)), assignee: Lvalue::Variable{ name: Cow::Borrowed("a"), size: 8, subscript: Some(2) }},
+            Statement{ op: Operation::Add(Rvalue::new_u8(4),Rvalue::new_u8(2)), assignee: Lvalue::Variable{ name: Cow::Borrowed("a"), size: 8, subscript: Some(1) }},
             Statement{ op: Operation::Phi(vec!(
                 Rvalue::Variable{ name: Cow::Borrowed("a"), size: 8, offset: 0, subscript: Some(2) },
-                Rvalue::Variable{ name: Cow::Borrowed("a"), size: 8, offset: 0, subscript: Some(1) })), assignee: Lvalue::Variable{ name: Cow::Borrowed("a"), size: 8, offset: 0, subscript: Some(3) }});
+                Rvalue::Variable{ name: Cow::Borrowed("a"), size: 8, offset: 0, subscript: Some(1) })), assignee: Lvalue::Variable{ name: Cow::Borrowed("a"), size: 8, subscript: Some(3) }});
         let mne1 = Mnemonic::new(0..10,"op1".to_string(),"{s} nog".to_string(),ops1.iter(),i1.iter()).ok().unwrap();
 
         assert_eq!(mne1.area, Bound::new(0,10));

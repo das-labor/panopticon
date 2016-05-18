@@ -81,6 +81,8 @@ impl<C: Architecture> CodeGen<C> {
             &Statement{ op: Operation::SignExtend(ref a,ref b), ref assignee } => typecheck_unop(b,Some(*a),assignee),
             &Statement{ op: Operation::ZeroExtend(ref a,ref b), ref assignee } => typecheck_unop(b,Some(*a),assignee),
             &Statement{ op: Operation::Move(ref a), ref assignee } => typecheck_unop(a,None,assignee),
+            &Statement{ op: Operation::Select(ref off,ref a,ref b), ref assignee } =>
+                assert!(assignee.size() == a.size() && *off + b.size().unwrap_or(0) <= a.size().unwrap_or(0)),
 
             &Statement{ op: Operation::Call(_), ref assignee } =>
                 assert!(assignee == &Lvalue::Undefined,"Call operation can only be assigned to Undefined"),
@@ -120,6 +122,7 @@ macro_rules! rreil {
     ( $cg:ident : cmpltu $($cdr:tt)* ) => { rreil_binop!($cg : LessUnsigned # $($cdr)*); };
     ( $cg:ident : cmplts $($cdr:tt)* ) => { rreil_binop!($cg : LessSigned # $($cdr)*); };
 
+    ( $cg:ident : sel / $off:tt $($cdr:tt)* ) => { rreil_selop!($cg : Select # $off # $($cdr)*); };
     ( $cg:ident : sext / $sz:tt $($cdr:tt)* ) => { rreil_extop!($cg : SignExtend # $sz # $($cdr)*); };
     ( $cg:ident : zext / $sz:tt $($cdr:tt)* ) => { rreil_extop!($cg : ZeroExtend # $sz # $($cdr)*); };
     ( $cg:ident : mov $($cdr:tt)* ) => { rreil_unop!($cg : Move # $($cdr)*); };
@@ -136,18 +139,10 @@ macro_rules! rreil_lvalue {
         { $crate::Lvalue::Undefined };
     ( ( $a:expr ) ) =>
         { ($a).clone().into() };
-    ($a:ident : $a_w:tt / $a_o:tt) => {
-        $crate::Lvalue::Variable{
-            name: ::std::borrow::Cow::Borrowed(stringify!($a)),
-            subscript: None,
-            offset: rreil_imm!($a_o),
-            size: rreil_imm!($a_w) }
-    };
     ($a:ident : $a_w:tt) => {
         $crate::Lvalue::Variable{
             name: ::std::borrow::Cow::Borrowed(stringify!($a)),
             subscript: None,
-            offset: 0,
             size: rreil_imm!($a_w)
         }
     };
@@ -216,7 +211,7 @@ mod tests {
     #[test]
     fn rreil_macro() {
         let mut cg = CodeGen::<TestArchShort>::new(&());
-        let t0 = Lvalue::Variable{ name: Cow::Borrowed("t0"), subscript: None, offset: 0, size: 12 };
+        let t0 = Lvalue::Variable{ name: Cow::Borrowed("t0"), subscript: None, size: 12 };
         let eax = Rvalue::Variable{ name: Cow::Borrowed("eax"), subscript: None, offset: 0, size: 12 };
         let val = Rvalue::Constant{ value: 1223, size: 12 };
 
@@ -225,7 +220,7 @@ mod tests {
             add (t0) , (val), (eax);
             and t0 : 32 , [ 2147483648 ]: 32, eax : 32;
             and t1 : 32 , [2147483648] : 32, ebx : 32;
-            sub t2 : 32 / 32 , ebx : 32 , eax : 32;
+            sub t2 : 32 , ebx : 32 , eax : 32;
             and t3 : 32 , [2147483648]:32, t2 : 32/32;
             shr SF : 8 , [31] : 8 , t3 : 8/24;
             xor t4 : 32 , t1 : 32 , t0 : 32;
@@ -236,6 +231,7 @@ mod tests {
             shr CF : 8 , [32] : 8 , t7 : 8;
             and t8 : 32 , [4294967295] : 32, t2 : 32/32;
             xor t9 : 8 , OF : 8 , SF : 8;
+            sel/32 rax:64, ebx:32;
         }
 
         rreil!{
@@ -253,7 +249,7 @@ mod tests {
         rreil!{
             cg:
             sub rax:32, rax:32, [1]:32;
-            mov rax:32/32, [0]:32;
+            mov rax:32, [0]:32;
         }
 
         rreil!{

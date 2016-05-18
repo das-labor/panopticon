@@ -154,157 +154,157 @@ impl Architecture for Amd64 {
 
 // 8 bit gp registers
 lazy_static! {
-    pub static ref AL: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("al"), size: 8, offset: 0, subscript: None };
-    pub static ref BL: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("bl"), size: 8, offset: 0, subscript: None };
-    pub static ref CL: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("cl"), size: 8, offset: 0, subscript: None };
-    pub static ref DL: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("dl"), size: 8, offset: 0, subscript: None };
-    pub static ref R8L: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r8l"), size: 8, offset: 0, subscript: None };
-    pub static ref R9L: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r9l"), size: 8, offset: 0, subscript: None };
-    pub static ref R10L: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r10l"), size: 8, offset: 0, subscript: None };
-    pub static ref R11L: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r11l"), size: 8, offset: 0, subscript: None };
-    pub static ref R12L: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r12l"), size: 8, offset: 0, subscript: None };
-    pub static ref R13L: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r13l"), size: 8, offset: 0, subscript: None };
-    pub static ref R14L: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r14l"), size: 8, offset: 0, subscript: None };
-    pub static ref R15L: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r15l"), size: 8, offset: 0, subscript: None };
-    pub static ref SPL: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("spl"), size: 8, offset: 0, subscript: None };
-    pub static ref BPL: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("bpl"), size: 8, offset: 0, subscript: None };
-    pub static ref SIL: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("sil"), size: 8, offset: 0, subscript: None };
-    pub static ref DIL: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("dil"), size: 8, offset: 0, subscript: None };
-    pub static ref AH: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("ah"), size: 8, offset: 0, subscript: None };
-    pub static ref BH: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("bh"), size: 8, offset: 0, subscript: None };
-    pub static ref CH: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("ch"), size: 8, offset: 0, subscript: None };
-    pub static ref DH: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("dh"), size: 8, offset: 0, subscript: None };
+    pub static ref AL: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("al"), size: 8, subscript: None };
+    pub static ref BL: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("bl"), size: 8, subscript: None };
+    pub static ref CL: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("cl"), size: 8, subscript: None };
+    pub static ref DL: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("dl"), size: 8, subscript: None };
+    pub static ref R8L: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r8l"), size: 8, subscript: None };
+    pub static ref R9L: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r9l"), size: 8, subscript: None };
+    pub static ref R10L: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r10l"), size: 8, subscript: None };
+    pub static ref R11L: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r11l"), size: 8, subscript: None };
+    pub static ref R12L: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r12l"), size: 8, subscript: None };
+    pub static ref R13L: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r13l"), size: 8, subscript: None };
+    pub static ref R14L: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r14l"), size: 8, subscript: None };
+    pub static ref R15L: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r15l"), size: 8, subscript: None };
+    pub static ref SPL: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("spl"), size: 8, subscript: None };
+    pub static ref BPL: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("bpl"), size: 8, subscript: None };
+    pub static ref SIL: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("sil"), size: 8, subscript: None };
+    pub static ref DIL: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("dil"), size: 8, subscript: None };
+    pub static ref AH: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("ah"), size: 8, subscript: None };
+    pub static ref BH: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("bh"), size: 8, subscript: None };
+    pub static ref CH: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("ch"), size: 8, subscript: None };
+    pub static ref DH: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("dh"), size: 8, subscript: None };
 }
 
 // 16 bit gp registers
 lazy_static! {
-    pub static ref AX: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("ax"), size: 16, offset: 0, subscript: None };
-    pub static ref BX: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("bx"), size: 16, offset: 0, subscript: None };
-    pub static ref CX: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("cx"), size: 16, offset: 0, subscript: None };
-    pub static ref DX: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("dx"), size: 16, offset: 0, subscript: None };
-    pub static ref R8W: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r8w"), size: 16, offset: 0, subscript: None };
-    pub static ref R9W: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r9w"), size: 16, offset: 0, subscript: None };
-    pub static ref R10W: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r10w"), size: 16, offset: 0, subscript: None };
-    pub static ref R11W: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r11w"), size: 16, offset: 0, subscript: None };
-    pub static ref R12W: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r12w"), size: 16, offset: 0, subscript: None };
-    pub static ref R13W: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r13w"), size: 16, offset: 0, subscript: None };
-    pub static ref R14W: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r14w"), size: 16, offset: 0, subscript: None };
-    pub static ref R15W: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r15w"), size: 16, offset: 0, subscript: None };
-    pub static ref SP: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("sp"), size: 16, offset: 0, subscript: None };
-    pub static ref BP: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("bp"), size: 16, offset: 0, subscript: None };
-    pub static ref SI: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("si"), size: 16, offset: 0, subscript: None };
-    pub static ref DI: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("di"), size: 16, offset: 0, subscript: None };
-    pub static ref IP: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("ip"), size: 16, offset: 0, subscript: None };
+    pub static ref AX: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("ax"), size: 16, subscript: None };
+    pub static ref BX: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("bx"), size: 16, subscript: None };
+    pub static ref CX: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("cx"), size: 16, subscript: None };
+    pub static ref DX: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("dx"), size: 16, subscript: None };
+    pub static ref R8W: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r8w"), size: 16, subscript: None };
+    pub static ref R9W: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r9w"), size: 16, subscript: None };
+    pub static ref R10W: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r10w"), size: 16, subscript: None };
+    pub static ref R11W: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r11w"), size: 16, subscript: None };
+    pub static ref R12W: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r12w"), size: 16, subscript: None };
+    pub static ref R13W: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r13w"), size: 16, subscript: None };
+    pub static ref R14W: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r14w"), size: 16, subscript: None };
+    pub static ref R15W: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r15w"), size: 16, subscript: None };
+    pub static ref SP: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("sp"), size: 16, subscript: None };
+    pub static ref BP: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("bp"), size: 16, subscript: None };
+    pub static ref SI: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("si"), size: 16, subscript: None };
+    pub static ref DI: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("di"), size: 16, subscript: None };
+    pub static ref IP: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("ip"), size: 16, subscript: None };
 }
 
 // 32 bit gp registers
 lazy_static! {
-    pub static ref EAX: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("eax"), size: 32, offset: 0, subscript: None };
-    pub static ref EBX: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("ebx"), size: 32, offset: 0, subscript: None };
-    pub static ref ECX: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("ecx"), size: 32, offset: 0, subscript: None };
-    pub static ref EDX: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("edx"), size: 32, offset: 0, subscript: None };
-    pub static ref R8D: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r8d"), size: 32, offset: 0, subscript: None };
-    pub static ref R9D: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r9d"), size: 32, offset: 0, subscript: None };
-    pub static ref R10D: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r10d"), size: 32, offset: 0, subscript: None };
-    pub static ref R11D: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r11d"), size: 32, offset: 0, subscript: None };
-    pub static ref R12D: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r12d"), size: 32, offset: 0, subscript: None };
-    pub static ref R13D: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r13d"), size: 32, offset: 0, subscript: None };
-    pub static ref R14D: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r14d"), size: 32, offset: 0, subscript: None };
-    pub static ref R15D: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r15d"), size: 32, offset: 0, subscript: None };
-    pub static ref ESP: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("esp"), size: 32, offset: 0, subscript: None };
-    pub static ref EBP: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("ebp"), size: 32, offset: 0, subscript: None };
-    pub static ref ESI: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("esi"), size: 32, offset: 0, subscript: None };
-    pub static ref EDI: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("edi"), size: 32, offset: 0, subscript: None };
-    pub static ref EIP: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("eip"), size: 32, offset: 0, subscript: None };
+    pub static ref EAX: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("eax"), size: 32, subscript: None };
+    pub static ref EBX: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("ebx"), size: 32, subscript: None };
+    pub static ref ECX: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("ecx"), size: 32, subscript: None };
+    pub static ref EDX: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("edx"), size: 32, subscript: None };
+    pub static ref R8D: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r8d"), size: 32, subscript: None };
+    pub static ref R9D: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r9d"), size: 32, subscript: None };
+    pub static ref R10D: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r10d"), size: 32, subscript: None };
+    pub static ref R11D: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r11d"), size: 32, subscript: None };
+    pub static ref R12D: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r12d"), size: 32, subscript: None };
+    pub static ref R13D: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r13d"), size: 32, subscript: None };
+    pub static ref R14D: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r14d"), size: 32, subscript: None };
+    pub static ref R15D: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r15d"), size: 32, subscript: None };
+    pub static ref ESP: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("esp"), size: 32, subscript: None };
+    pub static ref EBP: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("ebp"), size: 32, subscript: None };
+    pub static ref ESI: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("esi"), size: 32, subscript: None };
+    pub static ref EDI: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("edi"), size: 32, subscript: None };
+    pub static ref EIP: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("eip"), size: 32, subscript: None };
 }
 
 // 64 bit gp registers
 lazy_static! {
-    pub static ref RAX: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("rax"), size: 64, offset: 0, subscript: None };
-    pub static ref RBX: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("rbx"), size: 64, offset: 0, subscript: None };
-    pub static ref RCX: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("rcx"), size: 64, offset: 0, subscript: None };
-    pub static ref RDX: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("rdx"), size: 64, offset: 0, subscript: None };
-    pub static ref R8: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r8"), size: 64, offset: 0, subscript: None };
-    pub static ref R9: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r9"), size: 64, offset: 0, subscript: None };
-    pub static ref R10: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r10"), size: 64, offset: 0, subscript: None };
-    pub static ref R11: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r11"), size: 64, offset: 0, subscript: None };
-    pub static ref R12: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r12"), size: 64, offset: 0, subscript: None };
-    pub static ref R13: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r13"), size: 64, offset: 0, subscript: None };
-    pub static ref R14: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r14"), size: 64, offset: 0, subscript: None };
-    pub static ref R15: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r15"), size: 64, offset: 0, subscript: None };
-    pub static ref RSP: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("rsp"), size: 64, offset: 0, subscript: None };
-    pub static ref RBP: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("rbp"), size: 64, offset: 0, subscript: None };
-    pub static ref RSI: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("rsi"), size: 64, offset: 0, subscript: None };
-    pub static ref RDI: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("rdi"), size: 64, offset: 0, subscript: None };
-    pub static ref RIP: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("rip"), size: 64, offset: 0, subscript: None };
+    pub static ref RAX: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("rax"), size: 64, subscript: None };
+    pub static ref RBX: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("rbx"), size: 64, subscript: None };
+    pub static ref RCX: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("rcx"), size: 64, subscript: None };
+    pub static ref RDX: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("rdx"), size: 64, subscript: None };
+    pub static ref R8: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r8"), size: 64, subscript: None };
+    pub static ref R9: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r9"), size: 64, subscript: None };
+    pub static ref R10: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r10"), size: 64, subscript: None };
+    pub static ref R11: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r11"), size: 64, subscript: None };
+    pub static ref R12: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r12"), size: 64, subscript: None };
+    pub static ref R13: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r13"), size: 64, subscript: None };
+    pub static ref R14: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r14"), size: 64, subscript: None };
+    pub static ref R15: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("r15"), size: 64, subscript: None };
+    pub static ref RSP: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("rsp"), size: 64, subscript: None };
+    pub static ref RBP: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("rbp"), size: 64, subscript: None };
+    pub static ref RSI: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("rsi"), size: 64, subscript: None };
+    pub static ref RDI: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("rdi"), size: 64, subscript: None };
+    pub static ref RIP: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("rip"), size: 64, subscript: None };
 }
 
 // flags
 lazy_static! {
-    pub static ref CF: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("CF"), size: 1, offset: 0, subscript: None };
-    pub static ref PF: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("PF"), size: 1, offset: 0, subscript: None };
-    pub static ref AF: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("AF"), size: 1, offset: 0, subscript: None };
-    pub static ref ZF: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("ZF"), size: 1, offset: 0, subscript: None };
-    pub static ref SF: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("SF"), size: 1, offset: 0, subscript: None };
-    pub static ref TF: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("TF"), size: 1, offset: 0, subscript: None };
-    pub static ref IF: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("IF"), size: 1, offset: 0, subscript: None };
-    pub static ref DF: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("DF"), size: 1, offset: 0, subscript: None };
-    pub static ref OF: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("OF"), size: 1, offset: 0, subscript: None };
-    pub static ref RF: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("RF"), size: 1, offset: 0, subscript: None };
-    pub static ref IOPL: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("IOPL"), size: 0, offset: 0, subscript: None };
-    pub static ref NT: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("NT"), size: 0, offset: 0, subscript: None };
-    pub static ref VM: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("VM"), size: 0, offset: 0, subscript: None };
-    pub static ref AC: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("AC"), size: 0, offset: 0, subscript: None };
-    pub static ref VIF: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("VIF"), size: 0, offset: 0, subscript: None };
-    pub static ref VIP: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("VIP"), size: 0, offset: 0, subscript: None };
-    pub static ref ID: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("ID"), size: 0, offset: 0, subscript: None };
+    pub static ref CF: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("CF"), size: 1, subscript: None };
+    pub static ref PF: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("PF"), size: 1, subscript: None };
+    pub static ref AF: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("AF"), size: 1, subscript: None };
+    pub static ref ZF: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("ZF"), size: 1, subscript: None };
+    pub static ref SF: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("SF"), size: 1, subscript: None };
+    pub static ref TF: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("TF"), size: 1, subscript: None };
+    pub static ref IF: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("IF"), size: 1, subscript: None };
+    pub static ref DF: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("DF"), size: 1, subscript: None };
+    pub static ref OF: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("OF"), size: 1, subscript: None };
+    pub static ref RF: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("RF"), size: 1, subscript: None };
+    pub static ref IOPL: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("IOPL"), size: 0, subscript: None };
+    pub static ref NT: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("NT"), size: 0, subscript: None };
+    pub static ref VM: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("VM"), size: 0, subscript: None };
+    pub static ref AC: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("AC"), size: 0, subscript: None };
+    pub static ref VIF: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("VIF"), size: 0, subscript: None };
+    pub static ref VIP: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("VIP"), size: 0, subscript: None };
+    pub static ref ID: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("ID"), size: 0, subscript: None };
 }
 
 // segment registers
 lazy_static! {
-    pub static ref CS: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("cs"), size: 16, offset: 0, subscript: None };
-    pub static ref DS: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("ds"), size: 16, offset: 0, subscript: None };
-    pub static ref FS: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("fs"), size: 16, offset: 0, subscript: None };
-    pub static ref SS: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("ss"), size: 16, offset: 0, subscript: None };
-    pub static ref GS: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("gs"), size: 16, offset: 0, subscript: None };
-    pub static ref ES: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("es"), size: 16, offset: 0, subscript: None };
+    pub static ref CS: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("cs"), size: 16, subscript: None };
+    pub static ref DS: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("ds"), size: 16, subscript: None };
+    pub static ref FS: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("fs"), size: 16, subscript: None };
+    pub static ref SS: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("ss"), size: 16, subscript: None };
+    pub static ref GS: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("gs"), size: 16, subscript: None };
+    pub static ref ES: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("es"), size: 16, subscript: None };
 }
 
 // control registers
 lazy_static! {
-    pub static ref CR0: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("cr0"), size: 64, offset: 0, subscript: None };
-    pub static ref CR1: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("cr1"), size: 64, offset: 0, subscript: None };
-    pub static ref CR2: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("cr2"), size: 64, offset: 0, subscript: None };
-    pub static ref CR3: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("cr3"), size: 64, offset: 0, subscript: None };
-    pub static ref CR4: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("cr4"), size: 64, offset: 0, subscript: None };
-    pub static ref CR8: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("cr8"), size: 64, offset: 0, subscript: None };
-    pub static ref LDTR: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("ldtr"), size: 64, offset: 0, subscript: None };
-    pub static ref GDTR: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("gdtr"), size: 64, offset: 0, subscript: None };
-    pub static ref IDTR: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("idtr"), size: 64, offset: 0, subscript: None };
+    pub static ref CR0: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("cr0"), size: 64, subscript: None };
+    pub static ref CR1: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("cr1"), size: 64, subscript: None };
+    pub static ref CR2: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("cr2"), size: 64, subscript: None };
+    pub static ref CR3: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("cr3"), size: 64, subscript: None };
+    pub static ref CR4: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("cr4"), size: 64, subscript: None };
+    pub static ref CR8: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("cr8"), size: 64, subscript: None };
+    pub static ref LDTR: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("ldtr"), size: 64, subscript: None };
+    pub static ref GDTR: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("gdtr"), size: 64, subscript: None };
+    pub static ref IDTR: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("idtr"), size: 64, subscript: None };
 }
 
 // debug registers
 lazy_static! {
-    pub static ref DR0: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("dr0"), size: 32, offset: 0, subscript: None };
-    pub static ref DR1: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("dr1"), size: 32, offset: 0, subscript: None };
-    pub static ref DR2: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("dr2"), size: 32, offset: 0, subscript: None };
-    pub static ref DR3: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("dr3"), size: 32, offset: 0, subscript: None };
-    pub static ref DR4: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("dr4"), size: 32, offset: 0, subscript: None };
-    pub static ref DR5: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("dr5"), size: 32, offset: 0, subscript: None };
-    pub static ref DR6: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("dr6"), size: 32, offset: 0, subscript: None };
-    pub static ref DR7: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("dr7"), size: 32, offset: 0, subscript: None };
+    pub static ref DR0: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("dr0"), size: 32, subscript: None };
+    pub static ref DR1: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("dr1"), size: 32, subscript: None };
+    pub static ref DR2: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("dr2"), size: 32, subscript: None };
+    pub static ref DR3: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("dr3"), size: 32, subscript: None };
+    pub static ref DR4: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("dr4"), size: 32, subscript: None };
+    pub static ref DR5: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("dr5"), size: 32, subscript: None };
+    pub static ref DR6: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("dr6"), size: 32, subscript: None };
+    pub static ref DR7: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("dr7"), size: 32, subscript: None };
 }
 
 // fpu register stack
 lazy_static! {
-    pub static ref ST0: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("st0"), size: 80, offset: 0, subscript: None };
-    pub static ref ST1: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("st1"), size: 80, offset: 0, subscript: None };
-    pub static ref ST2: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("st2"), size: 80, offset: 0, subscript: None };
-    pub static ref ST3: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("st3"), size: 80, offset: 0, subscript: None };
-    pub static ref ST4: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("st4"), size: 80, offset: 0, subscript: None };
-    pub static ref ST5: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("st5"), size: 80, offset: 0, subscript: None };
-    pub static ref ST6: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("st6"), size: 80, offset: 0, subscript: None };
-    pub static ref ST7: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("st7"), size: 80, offset: 0, subscript: None };
+    pub static ref ST0: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("st0"), size: 80, subscript: None };
+    pub static ref ST1: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("st1"), size: 80, subscript: None };
+    pub static ref ST2: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("st2"), size: 80, subscript: None };
+    pub static ref ST3: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("st3"), size: 80, subscript: None };
+    pub static ref ST4: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("st4"), size: 80, subscript: None };
+    pub static ref ST5: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("st5"), size: 80, subscript: None };
+    pub static ref ST6: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("st6"), size: 80, subscript: None };
+    pub static ref ST7: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("st7"), size: 80, subscript: None };
 }
 
 pub fn disassembler(bits: Mode) -> Rc<Disassembler<Amd64>> {

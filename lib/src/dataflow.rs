@@ -218,7 +218,7 @@ pub fn phi_functions(func: &mut Function) {
         let pos = bb.area.start;
         let instrs = globals.iter().map(|nam| Statement{
             op: Operation::Move(Rvalue::Undefined),
-            assignee: Lvalue::Variable{ size: lens[nam], offset: 0, name: nam.clone(), subscript: None }}
+            assignee: Lvalue::Variable{ size: lens[nam], name: nam.clone(), subscript: None }}
         ).collect::<Vec<_>>();
 
         let mne = Mnemonic::new(
@@ -257,7 +257,7 @@ pub fn phi_functions(func: &mut Function) {
                             vec![].iter(),
                             vec![Statement{
                                 op: Operation::Phi(vec![Rvalue::Variable{ offset: 0, size: lens[v], name: v.clone(), subscript: None };arg_num]),
-                                assignee: Lvalue::Variable{ offset: 0, size: lens[v], name: v.clone(), subscript: None }}].iter()
+                                assignee: Lvalue::Variable{ size: lens[v], name: v.clone(), subscript: None }}].iter()
                         ).ok().unwrap();
 
                         bb.mnemonics.insert(0,mne);
@@ -436,9 +436,9 @@ mod tests {
 
     #[test]
     fn live() {
-        let i = Lvalue::Variable{ name: Cow::Borrowed("i"), size: 32, subscript: None, offset: 0 };
-        let s = Lvalue::Variable{ name: Cow::Borrowed("s"), size: 32, subscript: None, offset: 0 };
-        let x = Lvalue::Variable{ name: Cow::Borrowed("x"), size: 1, subscript: None, offset: 0 };
+        let i = Lvalue::Variable{ name: Cow::Borrowed("i"), size: 32, subscript: None };
+        let s = Lvalue::Variable{ name: Cow::Borrowed("s"), size: 32, subscript: None };
+        let x = Lvalue::Variable{ name: Cow::Borrowed("x"), size: 1, subscript: None };
         let mne0 = Mnemonic::new(0..1,"b0".to_string(),"".to_string(),vec![].iter(),vec![
                                  Statement{ op: Operation::Move(Rvalue::new_u32(1)), assignee: i.clone() }].iter()).ok().unwrap();
         let mne1 = Mnemonic::new(1..2,"b1".to_string(),"".to_string(),vec![].iter(),vec![
@@ -509,14 +509,14 @@ mod tests {
 
     #[test]
     fn phi() {
-        let a = Lvalue::Variable{ name: Cow::Borrowed("a"), size: 32, subscript: None, offset: 0 };
-        let b = Lvalue::Variable{ name: Cow::Borrowed("b"), size: 32, subscript: None, offset: 0 };
-        let c = Lvalue::Variable{ name: Cow::Borrowed("c"), size: 32, subscript: None, offset: 0 };
-        let d = Lvalue::Variable{ name: Cow::Borrowed("d"), size: 32, subscript: None, offset: 0 };
-        let y = Lvalue::Variable{ name: Cow::Borrowed("y"), size: 32, subscript: None, offset: 0 };
-        let z = Lvalue::Variable{ name: Cow::Borrowed("z"), size: 32, subscript: None, offset: 0 };
-        let i = Lvalue::Variable{ name: Cow::Borrowed("i"), size: 32, subscript: None, offset: 0 };
-        let f = Lvalue::Variable{ name: Cow::Borrowed("f"), size: 1, subscript: None, offset: 0 };
+        let a = Lvalue::Variable{ name: Cow::Borrowed("a"), size: 32, subscript: None };
+        let b = Lvalue::Variable{ name: Cow::Borrowed("b"), size: 32, subscript: None };
+        let c = Lvalue::Variable{ name: Cow::Borrowed("c"), size: 32, subscript: None };
+        let d = Lvalue::Variable{ name: Cow::Borrowed("d"), size: 32, subscript: None };
+        let y = Lvalue::Variable{ name: Cow::Borrowed("y"), size: 32, subscript: None };
+        let z = Lvalue::Variable{ name: Cow::Borrowed("z"), size: 32, subscript: None };
+        let i = Lvalue::Variable{ name: Cow::Borrowed("i"), size: 32, subscript: None };
+        let f = Lvalue::Variable{ name: Cow::Borrowed("f"), size: 1, subscript: None };
 
         let mne0 = Mnemonic::new(0..1,"b0".to_string(),"".to_string(),vec![].iter(),vec![
                                  Statement{ op: Operation::Move(Rvalue::new_u32(1)), assignee: i.clone() }].iter()).ok().unwrap();
@@ -610,11 +610,11 @@ mod tests {
 
         phi_functions(&mut func);
 
-        let a0 = Lvalue::Variable{ name: Cow::Borrowed("a"), size: 32, subscript: None, offset: 0 };
-        let b0 = Lvalue::Variable{ name: Cow::Borrowed("b"), size: 32, subscript: None, offset: 0 };
-        let c0 = Lvalue::Variable{ name: Cow::Borrowed("c"), size: 32, subscript: None, offset: 0 };
-        let d0 = Lvalue::Variable{ name: Cow::Borrowed("d"), size: 32, subscript: None, offset: 0 };
-        let i0 = Lvalue::Variable{ name: Cow::Borrowed("i"), size: 32, subscript: None, offset: 0 };
+        let a0 = Lvalue::Variable{ name: Cow::Borrowed("a"), size: 32, subscript: None };
+        let b0 = Lvalue::Variable{ name: Cow::Borrowed("b"), size: 32, subscript: None };
+        let c0 = Lvalue::Variable{ name: Cow::Borrowed("c"), size: 32, subscript: None };
+        let d0 = Lvalue::Variable{ name: Cow::Borrowed("d"), size: 32, subscript: None };
+        let i0 = Lvalue::Variable{ name: Cow::Borrowed("i"), size: 32, subscript: None };
 
         // bb0
         if let Some(&ControlFlowTarget::Resolved(ref bb)) = func.cflow_graph.vertex_label(v0) {
@@ -720,14 +720,14 @@ mod tests {
 
     #[test]
     fn rename() {
-        let a = Lvalue::Variable{ name: Cow::Borrowed("a"), size: 32, subscript: None, offset: 0 };
-        let b = Lvalue::Variable{ name: Cow::Borrowed("b"), size: 32, subscript: None, offset: 0 };
-        let c = Lvalue::Variable{ name: Cow::Borrowed("c"), size: 32, subscript: None, offset: 0 };
-        let d = Lvalue::Variable{ name: Cow::Borrowed("d"), size: 32, subscript: None, offset: 0 };
-        let y = Lvalue::Variable{ name: Cow::Borrowed("y"), size: 32, subscript: None, offset: 0 };
-        let z = Lvalue::Variable{ name: Cow::Borrowed("z"), size: 32, subscript: None, offset: 0 };
-        let i = Lvalue::Variable{ name: Cow::Borrowed("i"), size: 32, subscript: None, offset: 0 };
-        let f = Lvalue::Variable{ name: Cow::Borrowed("f"), size: 1, subscript: None, offset: 0 };
+        let a = Lvalue::Variable{ name: Cow::Borrowed("a"), size: 32, subscript: None };
+        let b = Lvalue::Variable{ name: Cow::Borrowed("b"), size: 32, subscript: None };
+        let c = Lvalue::Variable{ name: Cow::Borrowed("c"), size: 32, subscript: None };
+        let d = Lvalue::Variable{ name: Cow::Borrowed("d"), size: 32, subscript: None };
+        let y = Lvalue::Variable{ name: Cow::Borrowed("y"), size: 32, subscript: None };
+        let z = Lvalue::Variable{ name: Cow::Borrowed("z"), size: 32, subscript: None };
+        let i = Lvalue::Variable{ name: Cow::Borrowed("i"), size: 32, subscript: None };
+        let f = Lvalue::Variable{ name: Cow::Borrowed("f"), size: 1, subscript: None };
 
         let mne0 = Mnemonic::new(0..1,"b0".to_string(),"".to_string(),vec![].iter(),vec![
                                  Statement{ op: Operation::Move(Rvalue::new_u32(1)), assignee: i.clone() }].iter()).ok().unwrap();
