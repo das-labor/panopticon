@@ -62,25 +62,35 @@ pub fn liveness_sets(func: &Function) ->  (HashMap<ControlFlowRef,HashSet<Cow<'s
         let vk = varkill.entry(vx).or_insert(HashSet::<Cow<'static,str>>::new());
 
         if let Some(&ControlFlowTarget::Resolved(ref bb)) = cfg.vertex_label(vx) {
-            bb.execute(|instr| {
-                let &Statement{ ref op, ref assignee } = instr;
-
-                if let &Operation::Phi(_) = op {
-                    ;
-                } else {
-                    for &rv in op.operands().iter() {
-                        if let &Rvalue::Variable{ ref name,.. } = rv {
-                            if !vk.contains(name) {
-                                uev.insert(name);
-                            }
+            for mne in bb.mnemonics.iter() {
+                for rv in mne.operands.iter() {
+                    if let &Rvalue::Variable{ ref name,.. } = rv {
+                        if !vk.contains(name) {
+                            uev.insert(name);
                         }
                     }
+                }
 
-                    if let &Lvalue::Variable{ ref name,.. } = assignee {
-                        vk.insert(name.clone());
+                for instr in mne.instructions.iter() {
+                    let &Statement{ ref op, ref assignee } = instr;
+
+                    if let &Operation::Phi(_) = op {
+                        ;
+                    } else {
+                        for &rv in op.operands().iter() {
+                            if let &Rvalue::Variable{ ref name,.. } = rv {
+                                if !vk.contains(name) {
+                                    uev.insert(name);
+                                }
+                            }
+                        }
+
+                        if let &Lvalue::Variable{ ref name,.. } = assignee {
+                            vk.insert(name.clone());
+                        }
                     }
                 }
-            });
+            }
         }
 
         for e in cfg.out_edges(vx) {
@@ -294,12 +304,10 @@ pub fn rename_variables(func: &mut Function) {
 
             for mne in bb.mnemonics.iter_mut() {
                 if mne.opcode != "__phi" {
+                    let cpy = mne.clone();
                     for o in mne.operands.iter_mut() {
                         if let &mut Rvalue::Variable{ ref name, ref mut subscript,.. } = o {
                             *subscript = stack.get(name).and_then(|x| x.last()).cloned();
-                            if !stack.contains_key(name) {
-                                println!("Mnemonic {} has {} as arguments but does not read it",mne.opcode,name);
-                            }
                         }
                     }
 
