@@ -452,11 +452,11 @@ pub fn elpm1(st: &mut State<Avr>) -> bool {
 }
 
 pub fn elpm2(st: &mut State<Avr>) -> bool {
-    elpm(reg(st,"d"),0,st)
+    elpm(reg(st,"D"),0,st)
 }
 
 pub fn elpm3(st: &mut State<Avr>) -> bool {
-    elpm(reg(st,"d"),1,st)
+    elpm(reg(st,"D"),1,st)
 }
 
 pub fn eor(rd: Lvalue, rr: Rvalue, cg: &mut CodeGen<Avr>) {
@@ -719,11 +719,11 @@ pub fn lpm1(st: &mut State<Avr>) -> bool {
 }
 
 pub fn lpm2(st: &mut State<Avr>) -> bool {
-    lpm(reg(st,"d"),0,st)
+    lpm(reg(st,"D"),0,st)
 }
 
 pub fn lpm3(st: &mut State<Avr>) -> bool {
-    lpm(reg(st,"d"),1,st)
+    lpm(reg(st,"D"),1,st)
 }
 
 pub fn lsr(rd: Lvalue, cg: &mut CodeGen<Avr>) {
@@ -1084,11 +1084,11 @@ pub fn spm1(st: &mut State<Avr>) -> bool {
 }
 
 pub fn spm2(st: &mut State<Avr>) -> bool {
-    spm(reg(st,"d"),0,st)
+    spm(reg(st,"D"),0,st)
 }
 
 pub fn spm3(st: &mut State<Avr>) -> bool {
-    spm(reg(st,"d"),1,st)
+    spm(reg(st,"D"),1,st)
 }
 
 pub fn st(ptr: Lvalue, reg: Lvalue, cg: &mut CodeGen<Avr>) {
