@@ -379,7 +379,7 @@ pub fn approximate(arg: &Variant) -> Variant {
             let ret = Controller::read(|proj| {
                 if let Some((vx,prog)) = proj.find_call_target_by_uuid(&tgt_uuid) {
                     if let Some(&CallTarget::Concrete(ref fun)) = prog.call_graph.vertex_label(vx) {
-                        let vals = panopticon::approximate::<Kset>(&fun).iter().filter_map(|(k,v)| {
+                        return_json(panopticon::approximate::<Kset>(&fun).and_then(|x| Ok(x.iter().filter_map(|(k,v)| {
                             if let &Lvalue::Variable{ ref name, subscript: Some(ref subscript),.. } = k {
                                 if let &Kset::Set(ref s) = v {
                                     if s.len() == 1 {
@@ -390,8 +390,7 @@ pub fn approximate(arg: &Variant) -> Variant {
                                 }
                             }
                             return None;
-                        }).collect::<Vec<_>>();
-                        return_json(Ok(vals))
+                        }).collect::<Vec<_>>())))
                     } else {
                         return_json::<String>(Err("This function is unresolved".into()))
                     }

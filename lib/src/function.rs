@@ -18,6 +18,7 @@
 
 use std::collections::{HashMap,BTreeMap,BTreeSet};
 use std::rc::Rc;
+use std::fmt::Debug;
 
 use graph_algos::{AdjacencyList,GraphTrait,MutableGraphTrait};
 use graph_algos::adjacency_list::{
@@ -232,7 +233,8 @@ impl Function {
         ret
     }
 
-    pub fn disassemble<A: Architecture>(cont: Option<Function>, dec: Rc<Disassembler<A>>, init: A::Configuration, data: LayerIter, start: u64, reg: String) -> Function {
+    pub fn disassemble<A: Architecture>(cont: Option<Function>, dec: Rc<Disassembler<A>>, init: A::Configuration, data: LayerIter, start: u64, reg: String) -> Function
+    where A: Debug, A::Configuration: Debug {
         let name = cont.as_ref().map_or(format!("func_{}",start),|x| x.name.clone());
         let uuid = cont.as_ref().map_or(Uuid::new_v4(),|x| x.uuid.clone());
         let maybe_entry = if let Some(Function{ entry_point: ent, cflow_graph: ref cfg, ..}) = cont {

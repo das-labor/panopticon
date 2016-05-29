@@ -43,7 +43,11 @@ use panopticon::avr::{Avr,Mcu};
 
 use std::path::Path;
 use std::thread;
-use std::collections::HashMap;
+use std::collections::{
+    HashMap,
+    HashSet,
+};
+use std::fmt::Debug;
 
 use qmlrs::{Variant};
 use graph_algos::{
@@ -203,14 +207,14 @@ pub fn snapshot_project(_path: &Variant) -> Variant {
 }
 
 /// Starts disassembly
-pub fn spawn_disassembler<A: 'static + Architecture>(cfg: A::Configuration) {
+pub fn spawn_disassembler<A: 'static + Architecture + Debug>(cfg: A::Configuration) where A::Configuration: Debug {
     thread::spawn(move || -> Result<()> {
         let maybe_prog_uuid = try!(Controller::read(|proj| {
             proj.code.first().map(|x| x.uuid)
         }));
 
         if let Some(prog_uuid) = maybe_prog_uuid {
-          let todo_funcs = try!(Controller::read(|proj| {
+            let todo_funcs = try!(Controller::read(|proj| {
                 let prog: &Program = proj.find_program_by_uuid(&prog_uuid).unwrap();
 
                 prog.call_graph.vertices().filter_map(|x| {
@@ -244,89 +248,101 @@ pub fn spawn_disassembler<A: 'static + Architecture>(cfg: A::Configuration) {
                 if let Some((Rvalue::Constant{ value: tgt,.. },maybe_name,uuid)) = maybe_tgt {
                     try!(Controller::emit(STARTED_FUNCTION,&uuid.to_string()));
 
-                    let name = maybe_name.unwrap_or(format!("func_{:x}",tgt));
-                    let mut new_fun = try!(Controller::read(|proj| {
+                    let entry = tgt;
+                    let mut func = try!(Controller::read(|proj| {
+                        let name = maybe_name.unwrap_or(format!("func_{:x}",tgt));
                         let root = proj.sources.dependencies.vertex_label(proj.sources.root).unwrap();
-                        let i = root.iter();
-                        let mut fun = Function::with_uuid(name,uuid,root.name().clone());
-
-                        fun = Function::disassemble::<A>(Some(fun),dec.clone(),cfg.clone(),i,tgt,root.name().clone());
-                        fun.entry_point = fun.find_basic_block_at_address(tgt);
-
-                        if fun.entry_point.is_some() && fun.cflow_graph.num_vertices() > 0 {
-                            ssa_convertion(&mut fun);
-                        }
-                        fun
+                        Function::with_uuid(name,uuid,root.name().clone())
                     }));
 
-                    if new_fun.cflow_graph.num_vertices() > 0 {
-                        let mut fixpoint = false;
+                    println!("start new function {:?} at {:?}",uuid,entry);
 
-                        while !fixpoint {
-                            let vals = approximate::<Kset>(&new_fun);
-                            let vxs = { new_fun.cflow_graph.vertices().collect::<Vec<_>>() };
-                            let mut new_tgts = vec![];
+                    func = try!(Controller::read(|proj| {
+                        let root = proj.sources.dependencies.vertex_label(proj.sources.root).unwrap();
+                        let i = root.iter();
+                        let mut func = Function::disassemble::<A>(Some(func),dec.clone(),cfg.clone(),i,entry,root.name().clone());
 
-                            println!("{:?}",vals);
-                            fixpoint = false;
+                        func.entry_point = func.find_basic_block_at_address(entry);
 
-                            for &vx in vxs.iter() {
-                                if let Some(&mut ControlFlowTarget::Unresolved(ref mut var@Rvalue::Variable{..})) = new_fun.cflow_graph.vertex_label_mut(vx) {
-                                    if let Some(&Kset::Set(ref v)) = vals.get(&Lvalue::from_rvalue(var.clone()).unwrap()) {
-                                        if let Some(&(val,sz)) = v.first() {
-                                            println!("resolved {:?} to {:?}",var,val);
-                                            *var = Rvalue::Constant{ value: val, size: sz };
-                                            fixpoint = true;
-                                            new_tgts.push(val);
-                                        }
-                                    }
-                                }
-                            }
+                        func
+                    }));
 
-                            for tgt in new_tgts {
-                                new_fun = try!(Controller::read(|proj| {
-                                    let root = proj.sources.dependencies.vertex_label(proj.sources.root).unwrap();
-                                    let i = root.iter();
-
-                                    let mut fun = Function::disassemble::<A>(Some(new_fun),dec.clone(),cfg.clone(),i,tgt,root.name().clone());
-                                    fun.entry_point = fun.find_basic_block_at_address(tgt);
-
-                                    if fun.entry_point.is_some() && fun.cflow_graph.num_vertices() > 0 {
-                                 //       ssa_convertion(&mut fun);
-                                    }
-                                    fun
-                                }));
-                            }
-
-                            break;
-                        }
-
-                        let fun_uuid = new_fun.uuid.clone();
-                        let new_tgt = try!(Controller::modify(|proj| {
-                            let mut prog: &mut Program = proj.find_program_by_uuid_mut(&prog_uuid).unwrap();
-
-                            prog.insert(CallTarget::Concrete(new_fun))
-                        }));
-
-                        try!(Controller::emit(FINISHED_FUNCTION,&fun_uuid.to_string()));
-
-                        for a in new_tgt {
-                            try!(Controller::emit(DISCOVERED_FUNCTION,&a.to_string()));
-                        }
-                    } else {
-                        println!("failed to disassemble for {}",new_fun.name);
+                    if func.cflow_graph.num_vertices() == 0 || func.entry_point.is_none() {
+                        println!("failed to disassemble for {}",func.name);
 
                         try!(Controller::modify(|proj| {
                             let mut prog: &mut Program = proj.find_program_by_uuid_mut(&prog_uuid).unwrap();
-                            prog.insert(CallTarget::Symbolic(new_fun.name.clone(),new_fun.uuid));
+                            prog.insert(CallTarget::Symbolic(func.name.clone(),uuid));
                         }));
 
-                        try!(Controller::emit(FINISHED_FUNCTION,&new_fun.uuid.to_string()));
+                        try!(Controller::emit(FINISHED_FUNCTION,&func.uuid.to_string()));
+                        println!("");
+                        continue;
                     }
+
+                    println!("primary pass done");
+
+                    let mut fixpoint = false;
+
+                    while !fixpoint {
+                        fixpoint = true;
+                        ssa_convertion(&mut func);
+
+                        let vals = try!(approximate::<Kset>(&func));
+                        let vxs = { func.cflow_graph.vertices().collect::<Vec<_>>() };
+                        let mut resolved_jumps = HashSet::<u64>::new();
+
+                        for &vx in vxs.iter() {
+                            if let Some(&mut ControlFlowTarget::Unresolved(ref mut var@Rvalue::Variable{..})) = func.cflow_graph.vertex_label_mut(vx) {
+                                if let Some(&Kset::Set(ref v)) = vals.get(&Lvalue::from_rvalue(var.clone()).unwrap()) {
+                                    if let Some(&(val,sz)) = v.first() {
+                                        *var = Rvalue::Constant{ value: val, size: sz };
+                                        fixpoint = true;
+                                        println!("resolved {:?} to {:?}",var,val);
+                                        resolved_jumps.insert(val);
+                                    }
+                                }
+                            }
+                        }
+
+                        for addr in resolved_jumps {
+                            println!("continue at {:?}",addr);
+                            func = try!(Controller::read(|proj| {
+                                let root = proj.sources.dependencies.vertex_label(proj.sources.root).unwrap();
+                                let i = root.iter();
+                                let mut func = Function::disassemble::<A>(Some(func),dec.clone(),cfg.clone(),i,addr,root.name().clone());
+
+                                func.entry_point = func.find_basic_block_at_address(entry);
+
+                                func
+                            }));
+                        }
+
+                        println!("secondary pass done");
+                    }
+
+                    let new_functions = try!(Controller::modify(|proj| {
+                        let mut prog: &mut Program = proj.find_program_by_uuid_mut(&prog_uuid).unwrap();
+
+                        prog.insert(CallTarget::Concrete(func))
+                    }));
+
+                    println!("function finished");
+
+                    try!(Controller::emit(FINISHED_FUNCTION,&uuid.to_string()));
+
+                    for a in new_functions {
+                        println!("found new func at {:?}",a);
+                        try!(Controller::emit(DISCOVERED_FUNCTION,&a.to_string()));
+                    }
+                    println!("");
                 } else {
+                    println!("");
                     break;
                 }
             }
+        } else {
+            unreachable!()
         }
 
         Ok(())

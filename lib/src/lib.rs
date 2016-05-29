@@ -139,6 +139,7 @@ pub use il::{
     Statement,
     Operation,
     execute,
+    lift,
 };
 
 pub mod codegen;
