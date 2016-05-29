@@ -595,8 +595,8 @@ pub fn inc(rd: Lvalue, cg: &mut CodeGen<Avr>) {
 }
 
 pub fn jmp(st: &mut State<Avr>) -> bool {
-    let pc_mod = 1 << st.configuration.pc_bits;
-    let _k = (st.get_group("k") % pc_mod) * 2;
+    let pc_mod = ((st.configuration.flashend + 1) * 2) as u64;
+    let _k = (st.get_group("k") * 2) % pc_mod;
     let k = Rvalue::Constant{ value: _k, size: st.configuration.pc_bits as usize };
 
     st.mnemonic(4,"jmp","{c:flash}",vec!(k.clone()),&|_: &mut CodeGen<Avr>| {});
@@ -877,13 +877,9 @@ pub fn push(rd: Lvalue, cg: &mut CodeGen<Avr>) {
 }
 
 pub fn rcall(st: &mut State<Avr>) -> bool {
-    let pc_mod = 1 << st.configuration.pc_bits;
-    let sign_bit = 1 << (st.configuration.pc_bits - 1);
-    let grp = st.get_group("k");
-    let _k = st.address as isize +
-             if grp & sign_bit != 0 { 0xFFFFFFFFFFFFFFFF ^ !grp } else { grp } as isize * 2 +
-             2;
-    let k = Rvalue::Constant{ value: _k as u64 % pc_mod, size: st.configuration.pc_bits as usize };
+    let pc_mod = ((st.configuration.flashend + 1) * 2) as u64;
+    let _k = (st.address + st.get_group("k") * 2 + 2) % pc_mod;
+    let k = Rvalue::Constant{ value: _k, size: st.configuration.pc_bits };
     let next = st.configuration.wrap(st.address + st.tokens.len() as u64 * 2);
 
     st.mnemonic(2,"rcall","{c:flash}",vec![k.clone()],&|cg: &mut CodeGen<Avr>| {
@@ -900,13 +896,9 @@ pub fn rcall(st: &mut State<Avr>) -> bool {
 pub fn ret(_: &mut CodeGen<Avr>) {}
 
 pub fn rjmp(st: &mut State<Avr>) -> bool {
-    let pc_mod = 1 << st.configuration.pc_bits;
-    let sign_bit = 1 << (st.configuration.pc_bits - 1);
-    let grp = st.get_group("k");
-    let _k = st.address as isize +
-             if grp & sign_bit != 0 { 0xFFFFFFFFFFFFFFFF ^ !grp } else { grp } as isize * 2 +
-             2;
-    let k = Rvalue::Constant{ value: _k as u64 % pc_mod, size: st.configuration.pc_bits as usize };
+    let pc_mod = ((st.configuration.flashend + 1) * 2) as u64;
+    let _k = (st.address + st.get_group("k") * 2 + 2) % pc_mod;
+    let k = Rvalue::Constant{ value: _k, size: st.configuration.pc_bits };
 
     st.mnemonic(2,"rjmp","{c:flash}",vec!(k.clone()),&|_: &mut CodeGen<Avr>| {});
     optional_skip(st.configuration.wrap(st.address + st.tokens.len() as u64 * 2),st);

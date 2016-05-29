@@ -151,6 +151,10 @@ Popup {
 								ident: "atmega103"
 							}
 							ListElement {
+								text: "ATmega16"
+								ident: "atmega16"
+							}
+							ListElement {
 								text: "ATmega8"
 								ident: "atmega8"
 							}

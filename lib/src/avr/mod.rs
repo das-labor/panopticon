@@ -50,125 +50,136 @@ impl Architecture for Avr {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone,Debug)]
 pub struct Mcu {
-    pub pc_bits: u16,                                       ///< width of the program counter in bits (FLASHEND)
+    pub pc_bits: usize,                                 ///< width of the program counter in bits
+    pub flashend: usize,                                ///< address of the last word in the flash (FLASHEND)
     pub int_vec: Vec<(&'static str,u64,&'static str)>,   ///< interrupt vector: (name, offset, comment)
     pub skip: Option<(Guard,u64)>,
 }
 
 impl Mcu {
-    pub fn new() -> Mcu {
+    pub fn new(flashend: usize, iv: Vec<(&'static str,u64,&'static str)>) -> Mcu {
         Mcu {
-            pc_bits: 22,
-            int_vec: vec![("RESET",0,"MCU Reset Interrupt")],
+            pc_bits: if flashend >= 0x10000 { 22 } else { 16 },
+            flashend: flashend,
+            int_vec: iv,
             skip: None,
         }
     }
 
     pub fn atmega103() -> Mcu {
-        Mcu {
-            pc_bits: 16,
-            int_vec: vec![
-                ("RESET",0,"MCU Reset Interrupt"),
-                ("INT0",0x02,"External Interrupt 0"),
-                ("INT1",0x04,"External Interrupt 1"),
-                ("INT2",0x06,"External Interrupt 2"),
-                ("INT3",0x08,"External Interrupt 3"),
-                ("INT4",0x0a,"External Interrupt 4"),
-                ("INT5",0x0c,"External Interrupt 5"),
-                ("INT6",0x0e,"External Interrupt 6"),
-                ("INT7",0x10,"External Interrupt 7"),
-                ("OC2",0x12,"Timer/Counter2 Compare Match"),
-                ("OVF2",0x14,"Timer/Counter2 Overflow"),
-                ("ICP1",0x16,"Timer/Counter1 Capture Event"),
-                ("OC1A",0x18,"Timer/Counter1 Compare Match A"),
-                ("OC1B",0x1a,"Timer/Counter1 Compare Match B"),
-                ("OVF1",0x1c,"Timer/Counter1 Overflow"),
-                ("OC0",0x1e,"Timer/Counter0 Compare Match"),
-                ("OVF0",0x20,"Timer/Counter0 Overflow"),
-                ("SPI",0x22,"SPI Serial Transfer Complete"),
-                ("URXC",0x24,"UART, Rx Complete"),
-                ("UDRE",0x26,"UART Data Register Empty"),
-                ("UTXC",0x28,"UART, Tx Complete"),
-                ("ADCC",0x2a,"ADC Conversion Complete"),
-                ("ERDY",0x2c,"EEPROM Ready"),
-                ("ACI",0x2e,"Analog Comparator"),
-            ],
-            skip: None,
-        }
+        Self::new(0xffff,vec![
+            ("RESET",0,"MCU Reset Interrupt"),
+            ("INT0",4,"External Interrupt 0"),
+            ("INT1",8,"External Interrupt 1"),
+            ("INT2",12,"External Interrupt 2"),
+            ("INT3",16,"External Interrupt 3"),
+            ("INT4",20,"External Interrupt 4"),
+            ("INT5",24,"External Interrupt 5"),
+            ("INT6",0x0e,"External Interrupt 6"),
+            ("INT7",0x10,"External Interrupt 7"),
+            ("OC2",0x12,"Timer/Counter2 Compare Match"),
+            ("OVF2",0x14,"Timer/Counter2 Overflow"),
+            ("ICP1",0x16,"Timer/Counter1 Capture Event"),
+            ("OC1A",0x18,"Timer/Counter1 Compare Match A"),
+            ("OC1B",0x1a,"Timer/Counter1 Compare Match B"),
+            ("OVF1",0x1c,"Timer/Counter1 Overflow"),
+            ("OC0",0x1e,"Timer/Counter0 Compare Match"),
+            ("OVF0",0x20,"Timer/Counter0 Overflow"),
+            ("SPI",0x22,"SPI Serial Transfer Complete"),
+            ("URXC",0x24,"UART, Rx Complete"),
+            ("UDRE",0x26,"UART Data Register Empty"),
+            ("UTXC",0x28,"UART, Tx Complete"),
+            ("ADCC",0x2a,"ADC Conversion Complete"),
+            ("ERDY",0x2c,"EEPROM Ready"),
+            ("ACI",0x2e,"Analog Comparator"),
+        ])
     }
 
     pub fn atmega8() -> Mcu {
-        Mcu {
-            pc_bits: 13,
-            int_vec: vec![
-                ("RESET",0,"MCU Reset Interrupt"),
-                ("INT0",0x01,"External Interrupt Request 0"),
-                ("INT1",0x02,"External Interrupt Request 1"),
-                ("OC2",0x03,"Timer/Counter2 Compare Match"),
-                ("OVF2",0x04,"Timer/Counter2 Overflow"),
-                ("ICP1",0x05,"Timer/Counter1 Capture Event"),
-                ("OC1A",0x06,"Timer/Counter1 Compare Match A"),
-                ("OC1B",0x07,"Timer/Counter1 Compare Match B"),
-                ("OVF1",0x08,"Timer/Counter1 Overflow"),
-                ("OVF0",0x09,"Timer/Counter0 Overflow"),
-                ("SPI",0x0a,"Serial Transfer Complete"),
-                ("URXC",0x0b,"USART, Rx Complete"),
-                ("UDRE",0x0c,"USART Data Register Empty"),
-                ("UTXC",0x0d,"USART, Tx Complete"),
-                ("ADCC",0x0e,"ADC Conversion Complete"),
-                ("ERDY",0x0f,"EEPROM Ready"),
-                ("ACI",0x10,"Analog Comparator"),
-                ("TWI",0x11,"2-wire Serial Interface"),
-                ("SPMR",0x12,"Store Program Memory Ready"),
-            ],
-            skip: None,
-        }
+        Self::new(0xfff,vec![
+            ("RESET",0,"MCU Reset Interrupt"),
+            ("INT0",0x02,"External Interrupt Request 0"),
+            ("INT1",0x04,"External Interrupt Request 1"),
+            ("OC2",0x06,"Timer/Counter2 Compare Match"),
+            ("OVF2",0x08,"Timer/Counter2 Overflow"),
+            ("ICP1",0x0a,"Timer/Counter1 Capture Event"),
+            ("OC1A",0x0c,"Timer/Counter1 Compare Match A"),
+            ("OC1B",0x0e,"Timer/Counter1 Compare Match B"),
+            ("OVF1",0x10,"Timer/Counter1 Overflow"),
+            ("OVF0",0x12,"Timer/Counter0 Overflow"),
+            ("SPI",0x14,"Serial Transfer Complete"),
+            ("URXC",0x16,"USART, Rx Complete"),
+            ("UDRE",0x18,"USART Data Register Empty"),
+            ("UTXC",0x1a,"USART, Tx Complete"),
+            ("ADCC",0x1c,"ADC Conversion Complete"),
+            ("ERDY",0x1e,"EEPROM Ready"),
+            ("ACI",0x20,"Analog Comparator"),
+            ("TWI",0x22,"2-wire Serial Interface"),
+            ("SPMR",0x24,"Store Program Memory Ready"),
+        ])
     }
 
     pub fn atmega88() -> Mcu {
-        Mcu {
-            pc_bits: 13,
-            int_vec: vec![
-                ("RESET",0,"MCU Reset Interrupt"),
-                ("INT0",2,"External Interrupt Request 0"),
-                ("INT1",4,"External Interrupt Request 1"),
-                ("PCI0",6,"Pin Change Interrupt Request 0"),
-                ("PCI1",8,"Pin Change Interrupt Request 1"),
-                ("PCI2",10,"Pin Change Interrupt Request 2"),
-                ("WDT",12,"Watchdog Time-out Interrupt"),
-                ("OC2A",14,"Timer/Counter2 Compare Match A"),
-                ("OC2B",16,"Timer/Counter2 Compare Match B"),
-                ("OVF2",18,"Timer/Counter2 Overflow"),
-                ("ICP1",20,"Timer/Counter1 Capture Event"),
-                ("OC1A",22,"Timer/Counter1 Compare Match A"),
-                ("OC1B",24,"Timer/Counter1 Compare Match B"),
-                ("OVF1",26,"Timer/Counter1 Overflow"),
-                ("OC0A",28,"TimerCounter0 Compare Match A"),
-                ("OC0B",30,"TimerCounter0 Compare Match B"),// XXX: m88def.inc says 0x1f (words)
-                ("OVF0",32,"Timer/Couner0 Overflow"),
-                ("SPI",34,"SPI Serial Transfer Complete"),
-                ("URXC",36,"USART Rx Complete"),
-                ("UDRE",38,"USART, Data Register Empty"),
-                ("UTXC",40,"USART Tx Complete"),
-                ("ADCC",42,"ADC Conversion Complete"),
-                ("ERDY",44,"EEPROM Ready"),
-                ("ACI",46,"Analog Comparator"),
-                ("TWI",48,"Two-wire Serial Interface"),
-                ("SPMR",50,"Store Program Memory Read")
-            ],
-            skip: None,
-        }
+        Self::new(0xfff,vec![
+            ("RESET",0,"MCU Reset Interrupt"),
+            ("INT0",2,"External Interrupt Request 0"),
+            ("INT1",4,"External Interrupt Request 1"),
+            ("PCI0",6,"Pin Change Interrupt Request 0"),
+            ("PCI1",8,"Pin Change Interrupt Request 1"),
+            ("PCI2",10,"Pin Change Interrupt Request 2"),
+            ("WDT",12,"Watchdog Time-out Interrupt"),
+            ("OC2A",14,"Timer/Counter2 Compare Match A"),
+            ("OC2B",16,"Timer/Counter2 Compare Match B"),
+            ("OVF2",18,"Timer/Counter2 Overflow"),
+            ("ICP1",20,"Timer/Counter1 Capture Event"),
+            ("OC1A",22,"Timer/Counter1 Compare Match A"),
+            ("OC1B",24,"Timer/Counter1 Compare Match B"),
+            ("OVF1",26,"Timer/Counter1 Overflow"),
+            ("OC0A",28,"TimerCounter0 Compare Match A"),
+            ("OC0B",30,"TimerCounter0 Compare Match B"),// XXX: m88def.inc says 0x1f (words)
+            ("OVF0",32,"Timer/Couner0 Overflow"),
+            ("SPI",34,"SPI Serial Transfer Complete"),
+            ("URXC",36,"USART Rx Complete"),
+            ("UDRE",38,"USART, Data Register Empty"),
+            ("UTXC",40,"USART Tx Complete"),
+            ("ADCC",42,"ADC Conversion Complete"),
+            ("ERDY",44,"EEPROM Ready"),
+            ("ACI",46,"Analog Comparator"),
+            ("TWI",48,"Two-wire Serial Interface"),
+            ("SPMR",50,"Store Program Memory Read")
+        ])
+    }
+
+    pub fn atmega16() -> Mcu {
+        Self::new(0x1fff,vec![
+            ("RESET",0,"MCU Reset Interrupt"),
+            ("INT0", 0x0004,"External Interrupt Request 0"),
+            ("INT1", 0x0008,"External Interrupt Request 1"),
+            ("OC2", 0x000c,"Timer/Counter2 Compare Match"),
+            ("OVF2", 0x0010,"Timer/Counter2 Overflow"),
+            ("ICP1", 0x0014,"Timer/Counter1 Capture Event"),
+            ("OC1A", 0x0018,"Timer/Counter1 Compare Match A"),
+            ("OC1B", 0x001c,"Timer/Counter1 Compare Match B"),
+            ("OVF1", 0x0020,"Timer/Counter1 Overflow"),
+            ("OVF0", 0x0024,"Timer/Counter0 Overflow"),
+            ("SPI", 0x0028,"Serial Transfer Complete"),
+            ("URXC", 0x002c,"USART, Rx Complete"),
+            ("UDRE", 0x0030,"USART Data Register Empty"),
+            ("UTXC", 0x0034,"USART, Tx Complete"),
+            ("ADCC", 0x0038,"ADC Conversion Complete"),
+            ("ERDY", 0x003c,"EEPROM Ready"),
+            ("ACI", 0x0040,"Analog Comparator"),
+            ("TWI", 0x0044,"2-wire Serial Interface"),
+            ("INT2", 0x0048,"External Interrupt Request 2"),
+            ("OC0", 0x004c,"Timer/Counter0 Compare Match"),
+            ("SPMR", 0x0050,"Store Program Memory Ready")
+        ])
     }
 
     pub fn wrap(&self, addr: u64) -> Rvalue {
-        Rvalue::Constant{ value: addr % (1u64 << self.pc_bits), size: self.pc_bits as usize }
-    }
-
-    pub fn wrap_signed(&self, addr: i64) -> Rvalue {
-        let mask = 1i64 << self.pc_bits;
-        Rvalue::Constant{ value: (((addr % mask) + mask) % mask) as u64, size: self.pc_bits as usize }
+        Rvalue::Constant{ value: addr % (self.flashend * 2 + 2) as u64, size: self.pc_bits as usize }
     }
 }
 

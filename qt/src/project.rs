@@ -80,6 +80,7 @@ pub fn create_raw_project(_path: &Variant, _tgt: &Variant, _base: &Variant, _ent
                                     "atmega103" => Avr::prepare(i,&Mcu::atmega103()),
                                     "atmega8" => Avr::prepare(i,&Mcu::atmega8()),
                                     "atmega88" => Avr::prepare(i,&Mcu::atmega88()),
+                                    "atmega16" => Avr::prepare(i,&Mcu::atmega16()),
                                     _ => Err(format!("No such target '{}'",tgt_s).into()),
                                 }
                             };
@@ -113,6 +114,7 @@ pub fn create_raw_project(_path: &Variant, _tgt: &Variant, _base: &Variant, _ent
                                     "atmega103" => spawn_disassembler::<Avr>(Mcu::atmega103()),
                                     "atmega8" => spawn_disassembler::<Avr>(Mcu::atmega8()),
                                     "atmega88" => spawn_disassembler::<Avr>(Mcu::atmega88()),
+                                    "atmega16" => spawn_disassembler::<Avr>(Mcu::atmega16()),
                                     _ => unreachable!()
                                 }
 
