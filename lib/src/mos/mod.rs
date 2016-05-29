@@ -34,7 +34,7 @@ use std::borrow::Cow;
 pub mod syntax;
 pub mod semantic;
 
-#[derive(Clone)]
+#[derive(Clone,Debug)]
 pub enum Mos {}
 
 impl Architecture for Mos {
@@ -97,7 +97,7 @@ lazy_static! {
     pub static ref C: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("C"), size: 1, subscript: None };
 }
 
-#[derive(Clone)]
+#[derive(Clone,Debug)]
 pub struct Variant {
     pub arg: Option<Rvalue>,
     pub rel: Option<i16>,

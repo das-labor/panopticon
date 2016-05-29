@@ -597,6 +597,38 @@ pub fn execute(op: Operation<Rvalue>) -> Rvalue {
     }
 }
 
+pub fn lift<V: Clone + PartialEq + Eq + Debug + Encodable + Decodable,W: Clone + PartialEq + Eq + Debug + Encodable + Decodable,F: Fn(&V) -> W>(op: &Operation<V>, m: &F) -> Operation<W> {
+    let args = op.operands().iter().cloned().map(m).collect::<Vec<_>>();
+    match op {
+        &Operation::Phi(_) => Operation::Phi(args),
+        &Operation::Load(ref s,_) => Operation::Load(s.clone(),args[0].clone()),
+        &Operation::Store(ref s,_) => Operation::Store(s.clone(),args[0].clone()),
+        &Operation::Add(_,_) => Operation::Add(args[0].clone(),args[1].clone()),
+        &Operation::Subtract(_,_) => Operation::Subtract(args[0].clone(),args[1].clone()),
+        &Operation::Multiply(_,_) => Operation::Multiply(args[0].clone(),args[1].clone()),
+        &Operation::DivideUnsigned(_,_) => Operation::DivideUnsigned(args[0].clone(),args[1].clone()),
+        &Operation::DivideSigned(_,_) => Operation::DivideSigned(args[0].clone(),args[1].clone()),
+        &Operation::ShiftLeft(_,_) => Operation::ShiftLeft(args[0].clone(),args[1].clone()),
+        &Operation::ShiftRightUnsigned(_,_) => Operation::ShiftRightUnsigned(args[0].clone(),args[1].clone()),
+        &Operation::ShiftRightSigned(_,_) => Operation::ShiftRightSigned(args[0].clone(),args[1].clone()),
+        &Operation::Modulo(_,_) => Operation::Modulo(args[0].clone(),args[1].clone()),
+        &Operation::And(_,_) => Operation::And(args[0].clone(),args[1].clone()),
+        &Operation::InclusiveOr(_,_) => Operation::InclusiveOr(args[0].clone(),args[1].clone()),
+        &Operation::ExclusiveOr(_,_) => Operation::ExclusiveOr(args[0].clone(),args[1].clone()),
+        &Operation::Equal(_,_) => Operation::Equal(args[0].clone(),args[1].clone()),
+        &Operation::LessUnsigned(_,_) => Operation::LessUnsigned(args[0].clone(),args[1].clone()),
+        &Operation::LessSigned(_,_) => Operation::LessSigned(args[0].clone(),args[1].clone()),
+        &Operation::LessOrEqualUnsigned(_,_) => Operation::LessOrEqualUnsigned(args[0].clone(),args[1].clone()),
+        &Operation::LessOrEqualSigned(_,_) => Operation::LessOrEqualSigned(args[0].clone(),args[1].clone()),
+        &Operation::Call(_) => Operation::Call(args[0].clone()),
+        &Operation::Move(_) => Operation::Move(args[0].clone()),
+        &Operation::Select(ref off, _, _) => Operation::Select(*off,args[0].clone(),args[1].clone()),
+        &Operation::ZeroExtend(ref sz, _) => Operation::ZeroExtend(*sz,args[0].clone()),
+        &Operation::SignExtend(ref sz,_) => Operation::SignExtend(*sz,args[0].clone()),
+    }
+}
+
+
 impl<'a,V> Operation<V> where V: Clone + PartialEq + Eq + Debug + Encodable + Decodable {
     pub fn operands(&'a self) -> Vec<&'a V> {
         match *self {

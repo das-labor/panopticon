@@ -34,17 +34,17 @@ pub mod integer;
 pub mod vector;
 pub mod extensions;
 
-#[derive(Clone)]
+#[derive(Clone,Debug)]
 pub enum Amd64 {}
 
-#[derive(Clone,PartialEq,Copy)]
+#[derive(Clone,PartialEq,Copy,Debug)]
 pub enum AddressSize {
     SixtyFour,
     ThirtyTwo,
     Sixteen,
 }
 
-#[derive(Clone,PartialEq,Copy)]
+#[derive(Clone,PartialEq,Copy,Debug)]
 pub enum OperandSize {
     HundredTwentyEight,
     SixtyFour,
@@ -85,14 +85,14 @@ pub enum Condition {
     Greater,
 }
 
-#[derive(Clone,PartialEq,Copy)]
+#[derive(Clone,PartialEq,Copy,Debug)]
 pub enum Mode {
     Real,       // Real mode / Virtual 8086 mode
     Protected,  // Protected mode / Long compatibility mode
     Long,       // Long 64-bit mode
 }
 
-#[derive(Clone)]
+#[derive(Clone,Debug)]
 pub struct Config {
     pub address_size: AddressSize,
     pub operand_size: OperandSize,

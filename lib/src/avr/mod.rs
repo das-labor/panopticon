@@ -34,7 +34,7 @@ use {
 pub mod syntax;
 pub mod semantic;
 
-#[derive(Clone)]
+#[derive(Clone,Debug)]
 pub enum Avr {}
 
 impl Architecture for Avr {

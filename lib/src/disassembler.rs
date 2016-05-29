@@ -244,7 +244,7 @@ impl<A: Architecture> Disassembler<A> {
     }
 
 	pub fn next_match<Iter>(&self, i: &mut Iter, offset: u64, cfg: A::Configuration) -> Option<State<A>>
-    where Iter: Iterator<Item=Option<u8>> + Clone, A::Configuration: Clone
+    where Iter: Iterator<Item=Option<u8>> + Clone, A::Configuration: Clone + Debug, A: Debug
     {
         let mut matches = self.find(i.clone(),&State::<A>::new(offset,cfg.clone()));
         let l = matches.len();
@@ -267,7 +267,7 @@ impl<A: Architecture> Disassembler<A> {
             },
             1 => Some(matches[0].clone().1),
             _ => {
-                println!("multiple matches!!!");
+                // return longest match
                 matches.sort_by(|b,a| a.1.tokens.len().cmp(&b.1.tokens.len()));
                 Some(matches[0].clone().1)
             }

@@ -46,6 +46,8 @@ use {
     ControlFlowGraph,
     Function,
     Guard,
+    lift,
+    Result,
     flag_operations,
 };
 
@@ -57,41 +59,50 @@ pub enum Constraint {
     LessOrEqualSigned(Rvalue),
 }
 
+#[derive(Debug,PartialEq,Eq,Clone,RustcDecodable,RustcEncodable,PartialOrd,Ord,Hash)]
+pub struct ProgramPoint {
+    address: u64,
+    position: usize,
+}
+
 /// Models both under- and overapproximation
 pub trait Avalue: Clone + PartialEq + Eq + Hash + Debug + Encodable + Decodable {
     fn abstract_value(&Rvalue) -> Self;
     fn abstract_constraint(&Constraint) -> Self;
-    fn execute(&Operation<Self>) -> Self;
+    fn execute(&ProgramPoint,&Operation<Self>) -> Self;
     fn narrow(&self,&Self) -> Self;
-    fn combine(&self,&Self) -> Self;
     fn widen(&self,other: &Self) -> Self;
+    fn combine(&self,&Self) -> Self;
     fn more_exact(&self,other: &Self) -> bool;
     fn initial() -> Self;
     fn extract(&self,size: usize,offset: usize) -> Self;
 }
 
 /// Bourdoncle: "Efficient chaotic iteration strategies with widenings"
-pub fn approximate<A: Avalue>(func: &Function) -> HashMap<Lvalue,A> {
+pub fn approximate<A: Avalue>(func: &Function) -> Result<HashMap<Lvalue,A>> {
     let wto = weak_topo_order(func.entry_point.unwrap(),&func.cflow_graph);
     let edge_ops = flag_operations(func);
     fn stabilize<A: Avalue>(h: &Vec<Box<HierarchicalOrdering<ControlFlowRef>>>, graph: &ControlFlowGraph,
                             constr: &HashMap<Lvalue,A>, sizes: &HashMap<Cow<'static,str>,usize>,
-                            ret: &mut HashMap<(Cow<'static,str>,usize),A>) {
+                            ret: &mut HashMap<(Cow<'static,str>,usize),A>) -> Result<()> {
         let mut stable = true;
         let mut iter_cnt = 0;
-        let head = if let &HierarchicalOrdering::Element(ref vx) = &**h.first().unwrap() {
-            vx
+        let head = if let Some(h) = h.first() {
+            match &**h {
+                &HierarchicalOrdering::Element(ref vx) => vx.clone(),
+                &HierarchicalOrdering::Component(ref vec) => return stabilize(vec,graph,constr,sizes,ret),
+            }
         } else {
-            unreachable!("Component of wto does not start with an element")
+            return Ok(())
         };
 
         loop {
             for x in h.iter() {
                 match &**x {
                     &HierarchicalOrdering::Element(ref vx) =>
-                        stable &= !execute(*vx,iter_cnt >= 2 && vx == head,graph,constr,sizes,ret),
+                        stable &= !try!(execute(*vx,iter_cnt >= 2 && *vx == head,graph,constr,sizes,ret)),
                     &HierarchicalOrdering::Component(ref vec) => {
-                        stabilize(&*vec,graph,constr,sizes,ret);
+                        try!(stabilize(&*vec,graph,constr,sizes,ret));
                         stable = true;
                     },
                 }
@@ -108,103 +119,28 @@ pub fn approximate<A: Avalue>(func: &Function) -> HashMap<Lvalue,A> {
                 }
 
                 //execute(*vx,do_widen && vx == head,graph,ret),
-                return;
+                return Ok(());
             }
 
             stable = true;
             iter_cnt += 1;
         }
+
+        Ok(())
     }
     fn execute<A: Avalue>(t: ControlFlowRef, do_widen: bool, graph: &ControlFlowGraph,
                           _: &HashMap<Lvalue,A>, sizes: &HashMap<Cow<'static,str>,usize>,
-                          ret: &mut HashMap<(Cow<'static,str>,usize),A>) -> bool {
+                          ret: &mut HashMap<(Cow<'static,str>,usize),A>) -> Result<bool> {
         if let Some(&ControlFlowTarget::Resolved(ref bb)) = graph.vertex_label(t) {
             let mut change = false;
+            let mut pos = 0usize;
             bb.execute(|i| {
                 if let Statement{ ref op, assignee: Lvalue::Variable{ ref name, ref size, subscript: Some(ref subscript) } } = *i {
-                    let new = match i {
-                        &Statement{ op: Operation::Phi(ref ops),.. } =>
-                            match ops.len() {
-                                0 => panic!("Phi function w/o arguments"),
-                                1 => res::<A>(&ops[0],sizes,&ret),
-                                _ => ops.iter().map(|x| res::<A>(x,sizes,&ret)).fold(A::initial(),|acc,x| A::combine(&acc,&x)),
-                            },
-
-                        &Statement{ op: Operation::Load(ref s,ref a),.. } =>
-                            A::execute(&Operation::Load(s.clone(),res::<A>(a,sizes,&ret))),
-
-                        &Statement{ op: Operation::Store(ref s,ref a),.. } =>
-                            A::execute(&Operation::Store(s.clone(),res::<A>(a,sizes,&ret))),
-
-                        &Statement{ op: Operation::Add(ref a,ref b),.. } =>
-                            A::execute(&Operation::Add(res::<A>(a,sizes,&ret),res::<A>(b,sizes,&ret))),
-
-                        &Statement{ op: Operation::Subtract(ref a,ref b),.. } =>
-                            A::execute(&Operation::Subtract(res::<A>(a,sizes,&ret),res::<A>(b,sizes,&ret))),
-
-                        &Statement{ op: Operation::Multiply(ref a,ref b),.. } =>
-                            A::execute(&Operation::Multiply(res::<A>(a,sizes,&ret),res::<A>(b,sizes,&ret))),
-
-                        &Statement{ op: Operation::DivideUnsigned(ref a,ref b),.. } =>
-                            A::execute(&Operation::DivideUnsigned(res::<A>(a,sizes,&ret),res::<A>(b,sizes,&ret))),
-
-                        &Statement{ op: Operation::DivideSigned(ref a,ref b),.. } =>
-                            A::execute(&Operation::DivideSigned(res::<A>(a,sizes,&ret),res::<A>(b,sizes,&ret))),
-
-                        &Statement{ op: Operation::ShiftLeft(ref a,ref b),.. } =>
-                            A::execute(&Operation::ShiftLeft(res::<A>(a,sizes,&ret),res::<A>(b,sizes,&ret))),
-
-                        &Statement{ op: Operation::ShiftRightUnsigned(ref a,ref b),.. } =>
-                            A::execute(&Operation::ShiftRightUnsigned(res::<A>(a,sizes,&ret),res::<A>(b,sizes,&ret))),
-
-                        &Statement{ op: Operation::ShiftRightSigned(ref a,ref b),.. } =>
-                            A::execute(&Operation::ShiftRightSigned(res::<A>(a,sizes,&ret),res::<A>(b,sizes,&ret))),
-
-                        &Statement{ op: Operation::Modulo(ref a,ref b),.. } =>
-                            A::execute(&Operation::Modulo(res::<A>(a,sizes,&ret),res::<A>(b,sizes,&ret))),
-
-                        &Statement{ op: Operation::And(ref a,ref b),.. } =>
-                            A::execute(&Operation::And(res::<A>(a,sizes,&ret),res::<A>(b,sizes,&ret))),
-
-                        &Statement{ op: Operation::InclusiveOr(ref a,ref b),.. } =>
-                            A::execute(&Operation::InclusiveOr(res::<A>(a,sizes,&ret),res::<A>(b,sizes,&ret))),
-
-                        &Statement{ op: Operation::ExclusiveOr(ref a,ref b),.. } =>
-                            A::execute(&Operation::ExclusiveOr(res::<A>(a,sizes,&ret),res::<A>(b,sizes,&ret))),
-
-                        &Statement{ op: Operation::Equal(ref a,ref b),.. } =>
-                            A::execute(&Operation::Equal(res::<A>(a,sizes,&ret),res::<A>(b,sizes,&ret))),
-
-                        &Statement{ op: Operation::LessUnsigned(ref a,ref b),.. } =>
-                            A::execute(&Operation::LessUnsigned(res::<A>(a,sizes,&ret),res::<A>(b,sizes,&ret))),
-
-                        &Statement{ op: Operation::LessSigned(ref a,ref b),.. } =>
-                            A::execute(&Operation::LessSigned(res::<A>(a,sizes,&ret),res::<A>(b,sizes,&ret))),
-
-                        &Statement{ op: Operation::LessOrEqualUnsigned(ref a,ref b),.. } =>
-                            A::execute(&Operation::LessOrEqualUnsigned(res::<A>(a,sizes,&ret),res::<A>(b,sizes,&ret))),
-
-                        &Statement{ op: Operation::LessOrEqualSigned(ref a,ref b),.. } =>
-                            A::execute(&Operation::LessOrEqualSigned(res::<A>(a,sizes,&ret),res::<A>(b,sizes,&ret))),
-
-                        &Statement{ op: Operation::Call(ref a),.. } =>
-                            A::execute(&Operation::Call(res::<A>(a,sizes,&ret))),
-
-                        &Statement{ op: Operation::Move(ref a),.. } =>
-                            A::execute(&Operation::Move(res::<A>(a,sizes,&ret))),
-
-                        &Statement{ op: Operation::Select(ref off, ref a, ref b),.. } =>
-                            A::execute(&Operation::Select(*off,res::<A>(a,sizes,&ret),res::<A>(b,sizes,&ret))),
-
-                        &Statement{ op: Operation::ZeroExtend(ref sz, ref a),.. } =>
-                            A::execute(&Operation::ZeroExtend(*sz,res::<A>(a,sizes,&ret))),
-
-                        &Statement{ op: Operation::SignExtend(ref sz,ref a),.. } =>
-                            A::execute(&Operation::SignExtend(*sz,res::<A>(a,sizes,&ret))),
-                    };
-
+                    let pp = ProgramPoint{ address: bb.area.start, position: pos };
+                    let new = A::execute(&pp,&lift(op,&|x| res::<A>(x,sizes,&ret)));
                     let assignee = (name.clone(),*subscript);
                     let cur = ret.get(&assignee).cloned();
+
                     if cur.is_none() {
                         change = true;
                         ret.insert(assignee,new);
@@ -223,11 +159,13 @@ pub fn approximate<A: Avalue>(func: &Function) -> HashMap<Lvalue,A> {
                         }
                     }
                 }
+
+                pos += 1;
             });
 
-            change
+            Ok(change)
         } else {
-            false
+            Ok(false)
         }
     }
     fn res<A: Avalue>(v: &Rvalue, sizes: &HashMap<Cow<'static,str>,usize>, env: &HashMap<(Cow<'static,str>,usize),A>) -> A {
@@ -302,14 +240,14 @@ pub fn approximate<A: Avalue>(func: &Function) -> HashMap<Lvalue,A> {
 
     match wto {
         HierarchicalOrdering::Component(ref v) => {
-            stabilize(v,&func.cflow_graph,&constr,&sizes,&mut ret);
+            try!(stabilize(v,&func.cflow_graph,&constr,&sizes,&mut ret));
         },
         HierarchicalOrdering::Element(ref v) => {
-            execute(*v,false,&func.cflow_graph,&constr,&sizes,&mut ret);
+            try!(execute(*v,false,&func.cflow_graph,&constr,&sizes,&mut ret));
         },
     }
 
-    HashMap::from_iter(ret.iter().filter_map(|(&(ref name,ref subscript),val)| {
+    Ok(HashMap::from_iter(ret.iter().filter_map(|(&(ref name,ref subscript),val)| {
         if let Some(sz) = sizes.get(name) {
             Some((Lvalue::Variable{
                 name: name.clone(),
@@ -319,7 +257,7 @@ pub fn approximate<A: Avalue>(func: &Function) -> HashMap<Lvalue,A> {
         } else {
             None
         }
-    }))
+    })))
 }
 
 pub fn results<A: Avalue>(func: &Function,vals: &HashMap<Lvalue,A>) -> HashMap<(Cow<'static,str>,usize),A> {
@@ -417,7 +355,7 @@ impl Avalue for Kset {
         }
     }
 
-    fn execute(op: &Operation<Self>) -> Self {
+    fn execute(_: &ProgramPoint, op: &Operation<Self>) -> Self {
         fn permute(_a: &Kset, _b: &Kset, f: &Fn(Rvalue,Rvalue) -> Rvalue) -> Kset {
             match (_a,_b) {
                 (&Kset::Join,_) => Kset::Join,
@@ -526,7 +464,13 @@ impl Avalue for Kset {
             Operation::Store(ref r,ref a) =>
                 map(a,&|a| execute(Operation::Store(r.clone(),a))),
 
-            Operation::Phi(_) => unreachable!(),
+            Operation::Phi(ref ops) => {
+                match ops.len() {
+                    0 => unreachable!("Phi function w/o arguments"),
+                    1 => ops[0].clone(),
+                    _ => ops.iter().fold(Kset::Meet,|acc,x| acc.combine(&x))
+                }
+            }
         }
     }
 
@@ -603,6 +547,92 @@ impl Avalue for Kset {
     }
 }
 
+/// Mihaila et.al. Widening Point cofibered domain
+#[derive(Debug,PartialEq,Eq,Clone,Hash,RustcDecodable,RustcEncodable)]
+pub struct Widening<A: Avalue> {
+    value: A,
+    point: Option<ProgramPoint>,
+}
+
+impl<A: Avalue> Avalue for Widening<A> {
+    fn abstract_value(v: &Rvalue) -> Self {
+        Widening{
+            value: A::abstract_value(v),
+            point: None,
+        }
+    }
+
+    fn abstract_constraint(c: &Constraint) -> Self {
+        Widening{
+            value: A::abstract_constraint(c),
+            point: None,
+        }
+    }
+
+    fn execute(pp: &ProgramPoint, op: &Operation<Self>) -> Self {
+        match op {
+            &Operation::Phi(ref ops) => {
+                let widen = ops.iter().map(|x| x.point.clone().unwrap_or(pp.clone())).max() > Some(pp.clone());
+
+                Widening{
+                    value: match ops.len() {
+                        0 => unreachable!("Phi function w/o arguments"),
+                        1 => ops[0].value.clone(),
+                        _ => ops.iter().map(|x| x.value.clone()).fold(A::initial(),|acc,x| {
+                            if widen {
+                                acc.widen(&x)
+                            } else {
+                                acc.combine(&x)
+                            }
+                        }),
+                    },
+                    point: Some(pp.clone()),
+                }
+            },
+            _ => Widening{
+                value: A::execute(pp,&lift(op,&|x| x.value.clone())),
+                point: Some(pp.clone()),
+            }
+        }
+    }
+
+    fn widen(&self,s: &Self) -> Self {
+        Widening{
+            value: self.value.widen(&s.value),
+            point: self.point.clone(),
+        }
+    }
+
+    fn combine(&self,s: &Self) -> Self {
+        Widening{
+            value: self.value.combine(&s.value),
+            point: self.point.clone(),
+        }
+    }
+
+    fn narrow(&self, _: &Self) -> Self {
+        self.clone()
+    }
+
+    fn initial() -> Self {
+        Widening{
+            value: A::initial(),
+            point: None,
+        }
+    }
+
+    fn more_exact(&self, a: &Self) -> bool {
+        self.value.more_exact(&a.value)
+    }
+
+    fn extract(&self,size: usize,offset: usize) -> Self {
+        Widening{
+            value: self.value.extract(size,offset),
+            point: self.point.clone(),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -653,7 +683,7 @@ mod tests {
             }
         }
 
-        fn execute(op: &Operation<Self>) -> Self {
+        fn execute(_: &ProgramPoint, op: &Operation<Self>) -> Self {
             match op {
                 &Operation::Add(Sign::Positive,Sign::Positive) => Sign::Positive,
                 &Operation::Add(Sign::Positive,Sign::Zero) => Sign::Positive,
@@ -840,7 +870,7 @@ mod tests {
 
         ssa_convertion(&mut func);
 
-        let vals = approximate::<Sign>(&func);
+        let vals = approximate::<Sign>(&func).ok().unwrap();
         let res = results::<Sign>(&func,&vals);
 
         assert_eq!(res[&(Cow::Borrowed("x"),32)],Sign::Join);
@@ -900,7 +930,7 @@ mod tests {
 
         ssa_convertion(&mut func);
 
-        let vals = approximate::<Sign>(&func);
+        let vals = approximate::<Sign>(&func).ok().unwrap();
         let res = results::<Sign>(&func,&vals);
 
         println!("vals: {:?}",vals);
@@ -990,7 +1020,7 @@ mod tests {
 
         ssa_convertion(&mut func);
 
-        let vals = approximate::<Kset>(&func);
+        let vals = approximate::<Kset>(&func).ok().unwrap();
         let res = results::<Kset>(&func,&vals);
 
         assert_eq!(res[&(Cow::Borrowed("a"),32)],Kset::Join);
@@ -1034,7 +1064,7 @@ mod tests {
 
         ssa_convertion(&mut func);
 
-        let vals = approximate::<Kset>(&func);
+        let vals = approximate::<Kset>(&func).ok().unwrap();
 
         for i in vals {
             println!("{:?}",i);
