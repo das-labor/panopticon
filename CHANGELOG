@@ -1,3 +1,11 @@
+Ongoing: 0.16 (Pentonville)
+
+2016-05-29: 0.15 (Modelo)
+ - Unit test for AVR and MOS 6502 decoders
+ - Move analysis engine from PIL to RREIL
+ - Factor out widening into cofibered domain
+ - Use Kset for indirect jump resolution
+
 2016-04-01: 0.14 (Crematoria)
  - Implement Kset abstract domain
  - Speed-up disassembly
