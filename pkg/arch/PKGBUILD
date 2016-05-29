@@ -1,6 +1,6 @@
 # Maintainer: Kai Michaelis <seu@panopticon.re>
 pkgname=panopticon
-pkgver=0.14.0
+pkgver=0.15.0
 pkgrel=1
 pkgdesc="A libre cross platform disassembler"
 arch=('x86_64' 'i686')
@@ -12,7 +12,7 @@ depends=(
   'qt5-quickcontrols>=5.4'
   'qt5-graphicaleffects>=5.4')
 makedepends=(
-  'rust>=1.4.0'
+  'rust>=1.7.0'
   'cargo'
   'git>=1'
   'cmake>=2.8.9')
@@ -23,7 +23,7 @@ backup=()
 options=()
 install=
 changelog=
-source=($pkgname-$pkgver::git+https://github.com/das-labor/panopticon.git#branch=master)
+source=($pkgname-$pkgver::git+https://github.com/das-labor/panopticon.git#branch=0.15.0)
 noextract=()
 md5sums=('SKIP')
 
