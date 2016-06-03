@@ -760,6 +760,14 @@ mod tests {
                 &Operation::ZeroExtend(_,ref a) => a.clone(),
                 &Operation::SignExtend(_,ref a) => a.clone(),
 
+                &Operation::Phi(ref ops) => {
+                    match ops.len() {
+                        0 => unreachable!("Phi function w/o arguments"),
+                        1 => ops[0].clone(),
+                        _ => ops.iter().fold(Sign::Meet,|acc,x| acc.combine(&x))
+                    }
+                },
+
                 _ => Sign::Join,
             }
         }

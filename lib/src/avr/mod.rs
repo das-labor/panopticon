@@ -179,7 +179,8 @@ impl Mcu {
     }
 
     pub fn wrap(&self, addr: u64) -> Rvalue {
-        Rvalue::Constant{ value: addr % (self.flashend * 2 + 2) as u64, size: self.pc_bits as usize }
+        let pc_mod = ((self.flashend + 1) * 2) as u64;
+        Rvalue::Constant{ value: addr % pc_mod, size: self.pc_bits as usize }
     }
 }
 
@@ -545,7 +546,7 @@ mod tests {
             0x21,0x2c, // 6:8 mov
         ));
         let main = disassembler();
-        let fun = Function::disassemble::<Avr>(None,main,Mcu::new(),reg.iter(),0,reg.name().to_string());
+        let fun = Function::disassemble::<Avr>(None,main,Mcu::atmega8(),reg.iter(),0,reg.name().to_string());
         let cg = &fun.cflow_graph;
 
         for x in cg.vertices() {
@@ -588,7 +589,7 @@ mod tests {
             0x21,0x2c, // 6:8 mov
         ));
         let main = disassembler();
-        let fun = Function::disassemble::<Avr>(None,main,Mcu::new(),reg.iter(),0,reg.name().to_string());
+        let fun = Function::disassemble::<Avr>(None,main,Mcu::atmega8(),reg.iter(),0,reg.name().to_string());
         let cg = &fun.cflow_graph;
 
         for x in cg.vertices() {
@@ -633,7 +634,7 @@ mod tests {
             0x21,0x2c, // 6:8 mov
         ));
         let main = disassembler();
-        let fun = Function::disassemble::<Avr>(None,main,Mcu::new(),reg.iter(),0,reg.name().to_string());
+        let fun = Function::disassemble::<Avr>(None,main,Mcu::atmega8(),reg.iter(),0,reg.name().to_string());
         let cg = &fun.cflow_graph;
 
         for x in cg.vertices() {
@@ -681,7 +682,7 @@ mod tests {
                 0xB0,0xE0, //       10 ldi     r27, 0
             ));
         let main = disassembler();
-        let fun = Function::disassemble::<Avr>(None,main,Mcu::new(),reg.iter(),0,reg.name().to_string());
+        let fun = Function::disassemble::<Avr>(None,main,Mcu::atmega8(),reg.iter(),0,reg.name().to_string());
         let cfg = &fun.cflow_graph;
 
         assert_eq!(cfg.num_vertices(),3);
@@ -787,8 +788,8 @@ mod tests {
             (vec![0x41,0x94],"neg",vec![rreil_rvalue!{ R4:8 }]),
             (vec![0xf3,0x94],"inc",vec![rreil_rvalue!{ R15:8 }]),
             (vec![0xfa,0x94],"dec",vec![rreil_rvalue!{ R15:8 }]),
-            (vec![0x29,0xc0],"rjmp",vec![rreil_rvalue!{ [84]:22 }]),
-            (vec![0x00,0xd0],"rcall",vec![rreil_rvalue!{ [2]:22 }]),
+            (vec![0x29,0xc0],"rjmp",vec![rreil_rvalue!{ [84]:16 }]),
+            (vec![0x00,0xd0],"rcall",vec![rreil_rvalue!{ [2]:16 }]),
             (vec![0x08,0x95],"ret",vec![]),
             (vec![0x18,0x95],"reti",vec![]),
             (vec![0xff,0x13],"cpse",vec![rreil_rvalue!{ R31:8 },rreil_rvalue!{ R31:8 }]),
@@ -799,22 +800,22 @@ mod tests {
             (vec![0x65,0xfe],"sbrs",vec![rreil_rvalue!{ R6:8 },Rvalue::new_u8(5)]),
             (vec![0xb0,0x99],"sbic",vec![rreil_rvalue!{ [0x16]:6 },rreil_rvalue!{ [0]:8 }]),
             (vec![0xce,0x9b],"sbis",vec![rreil_rvalue!{ [0x19]:6 },rreil_rvalue!{ [6]:8 }]),
-            (vec![0xf1,0xf3],"breq",vec![Rvalue::Constant{ value: (0b1111111111111111111111-2+1), size: 22 }]),
-            (vec![0xb1,0xf7],"brne",vec![Rvalue::Constant{ value: (0b1111111111111111111111-18+1), size: 22 }]),
-            (vec![0xf8,0xf3],"brlo",vec![Rvalue::Constant{ value: 0, size: 22 }]),
-            (vec![0xc8,0xf7],"brsh",vec![Rvalue::Constant{ value: (0b1111111111111111111111-12+1), size: 22 }]),
-            (vec![0xea,0xf3],"brmi",vec![Rvalue::Constant{ value: (0b1111111111111111111111-4+1), size: 22 }]),
-            (vec![0xaa,0xf7],"brpl",vec![Rvalue::Constant{ value: (0b1111111111111111111111-20+1), size: 22 }]),
-            (vec![0x54,0xf4],"brge",vec![Rvalue::Constant{ value: 22, size: 22 }]),
-            (vec![0xdc,0xf3],"brlt",vec![Rvalue::Constant{ value: (0b1111111111111111111111-8+1), size: 22 }]),
-            (vec![0xd5,0xf3],"brhs",vec![Rvalue::Constant{ value: (0b1111111111111111111111-10+1), size: 22 }]),
-            (vec![0x95,0xf7],"brhc",vec![Rvalue::Constant{ value: (0b1111111111111111111111-26+1), size: 22 }]),
-            (vec![0xce,0xf3],"brts",vec![Rvalue::Constant{ value: (0b1111111111111111111111-12+1), size: 22 }]),
-            (vec![0x8e,0xf7],"brtc",vec![Rvalue::Constant{ value: (0b1111111111111111111111-28+1), size: 22 }]),
-            (vec![0xe3,0xf3],"brvs",vec![Rvalue::Constant{ value: (0b1111111111111111111111-6+1), size: 22 }]),
-            (vec![0xa3,0xf7],"brvc",vec![Rvalue::Constant{ value: (0b1111111111111111111111-22+1), size: 22 }]),
-            (vec![0xc7,0xf3],"brie",vec![Rvalue::Constant{ value: (0b1111111111111111111111-14+1), size: 22 }]),
-            (vec![0x87,0xf7],"brid",vec![Rvalue::Constant{ value: (0b1111111111111111111111-30+1), size: 22 }]),
+            (vec![0xf1,0xf3],"breq",vec![Rvalue::Constant{ value: (0b1111111111111111111111-2+1) % 0x20000, size: 16 }]),
+            (vec![0xb1,0xf7],"brne",vec![Rvalue::Constant{ value: (0b1111111111111111111111-18+1) % 0x20000, size: 16 }]),
+            (vec![0xf8,0xf3],"brlo",vec![Rvalue::Constant{ value: 0, size: 16 }]),
+            (vec![0xc8,0xf7],"brsh",vec![Rvalue::Constant{ value: (0b1111111111111111111111-12+1) % 0x20000, size: 16 }]),
+            (vec![0xea,0xf3],"brmi",vec![Rvalue::Constant{ value: (0b1111111111111111111111-4+1) % 0x20000, size: 16 }]),
+            (vec![0xaa,0xf7],"brpl",vec![Rvalue::Constant{ value: (0b1111111111111111111111-20+1) % 0x20000, size: 16 }]),
+            (vec![0x54,0xf4],"brge",vec![Rvalue::Constant{ value: 22, size: 16 }]),
+            (vec![0xdc,0xf3],"brlt",vec![Rvalue::Constant{ value: (0b1111111111111111111111-8+1) % 0x20000, size: 16 }]),
+            (vec![0xd5,0xf3],"brhs",vec![Rvalue::Constant{ value: (0b1111111111111111111111-10+1) % 0x20000, size: 16 }]),
+            (vec![0x95,0xf7],"brhc",vec![Rvalue::Constant{ value: (0b1111111111111111111111-26+1) % 0x20000, size: 16 }]),
+            (vec![0xce,0xf3],"brts",vec![Rvalue::Constant{ value: (0b1111111111111111111111-12+1) % 0x20000, size: 16 }]),
+            (vec![0x8e,0xf7],"brtc",vec![Rvalue::Constant{ value: (0b1111111111111111111111-28+1) % 0x20000, size: 16 }]),
+            (vec![0xe3,0xf3],"brvs",vec![Rvalue::Constant{ value: (0b1111111111111111111111-6+1) % 0x20000, size: 16 }]),
+            (vec![0xa3,0xf7],"brvc",vec![Rvalue::Constant{ value: (0b1111111111111111111111-22+1) % 0x20000, size: 16 }]),
+            (vec![0xc7,0xf3],"brie",vec![Rvalue::Constant{ value: (0b1111111111111111111111-14+1) % 0x20000, size: 16 }]),
+            (vec![0x87,0xf7],"brid",vec![Rvalue::Constant{ value: (0b1111111111111111111111-30+1) % 0x20000, size: 16 }]),
             (vec![0x9c,0x91],"ld",vec![rreil_rvalue!{ R25:8 }, Rvalue::Variable{ name: Cow::Borrowed("X"), size: 16, offset: 0, subscript: None }]),
             (vec![0x8d,0x91],"ld",vec![rreil_rvalue!{ R24:8 }, Rvalue::Variable{ name: Cow::Borrowed("X+"), size: 16, offset: 0, subscript: None }]),
             (vec![0x88,0x81],"ld",vec![rreil_rvalue!{ R24:8 }, Rvalue::Variable{ name: Cow::Borrowed("Y"), size: 16, offset: 0, subscript: None }]),
@@ -867,8 +868,8 @@ mod tests {
             (vec![0x90,0x93,0x7c,0x00],"sts",vec![Rvalue::new_u16(0x007C),rreil_rvalue!{ R25:8 }]),
             (vec![0xcf,0x93],"push",vec![rreil_rvalue!{ R28:8 }]),
             (vec![0xcf,0x91],"pop",vec![rreil_rvalue!{ R28:8 }]),
-            (vec![0x0c,0x94,0xe9,0x0e],"jmp", vec![rreil_rvalue!{ [0x1dd2]:22 }]),
-            (vec![0x0e,0x94,0xa4,0x0a],"call", vec![rreil_rvalue!{ [0x1548]:22 }]),
+            (vec![0x0c,0x94,0xe9,0x0e],"jmp", vec![rreil_rvalue!{ [0x1dd2]:16 }]),
+            (vec![0x0e,0x94,0xa4,0x0a],"call", vec![rreil_rvalue!{ [0x1548]:16 }]),
             (vec![0xd8,0x95],"elpm",vec![]),
             (vec![0x31,0x9c],"mul",vec![rreil_rvalue!{ R3:8 },rreil_rvalue!{ R1:8 }]),
             (vec![0xd5,0x02],"muls",vec![rreil_rvalue!{ R29:8 },rreil_rvalue!{ R21:8 }]),
@@ -895,7 +896,7 @@ mod tests {
             let l = bytes.len();
             let reg = Region::wrap("base".to_string(),bytes);
             let mut i = reg.iter().seek(0);
-            let maybe_match = main.next_match(&mut i,0,Mcu::new());
+            let maybe_match = main.next_match(&mut i,0,Mcu::atmega103());
 
             if let Some(match_st) = maybe_match {
                 assert!(match_st.mnemonics.len() >= 1);

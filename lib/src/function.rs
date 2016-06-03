@@ -414,7 +414,7 @@ mod tests {
         Disassembler,
     };
 
-    #[derive(Clone)]
+    #[derive(Clone,Debug)]
     enum TestArchShort {}
     impl Architecture for TestArchShort {
         type Token = u8;
@@ -429,7 +429,7 @@ mod tests {
         }
     }
 
-    #[derive(Clone)]
+    #[derive(Clone,Debug)]
     enum TestArchWide {}
     impl Architecture for TestArchWide {
         type Token = u16;
