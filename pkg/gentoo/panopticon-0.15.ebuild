@@ -47,9 +47,9 @@ src_compile() {
 
 src_install() {
     install -D -s -m 555 "${WORKDIR}/${P}/target/release/qtpanopticon" "$D/usr/bin/qtpanopticon"
-	install -m 755 -d "${D}/usr/share/panopticon/qml"
-	cp -R "${WORKDIR}/${P}/qt/res/"* "${D}/usr/share/panopticon/qml"
-	chown -R root:root "${D}/usr/share/panopticon/qml"
+	install -m 755 -d "${D}/usr/share/panopticon"
+	cp -R "${WORKDIR}/${P}/qml" "${D}/usr/share/panopticon"
+	chown -R root:root "${D}/usr/share/panopticon"
 }
 
 src_test() {
