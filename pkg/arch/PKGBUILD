@@ -22,7 +22,7 @@ replaces=()
 backup=()
 options=()
 install=
-changelog=
+changelog="src/$pkgname-$pkgver/CHANGELOG"
 source=($pkgname-$pkgver::git+https://github.com/das-labor/panopticon.git#branch=0.15.0)
 noextract=()
 md5sums=('SKIP')
@@ -35,7 +35,7 @@ build() {
 package() {
 	install -d -m 755 "$pkgdir/usr/bin"
  	install -D -s -m 555 "$pkgname-$pkgver/target/release/qtpanopticon" "$pkgdir/usr/bin/qtpanopticon"
-	install -m 755 -d "$pkgdir/usr/share/panopticon/qml"
-	cp -R "$pkgname-$pkgver/qt/res/"* "$pkgdir/usr/share/panopticon/qml"
-	chown -R root:root "$pkgdir/usr/share/panopticon/qml"
+	install -m 755 -d "$pkgdir/usr/share/panopticon"
+	cp -R "$pkgname-$pkgver/qml" "$pkgdir/usr/share/panopticon"
+	chown -R root:root "$pkgdir/usr/share/panopticon"
 }
