@@ -76,3 +76,9 @@ Contributing
 Panopticon is licensed under GPLv3 and is Free Software. Hackers are
 always welcome. See https://panopticon.re for our project documentation.
 Panopticon uses Github for issue tracking: https://github.com/das-labor/panopticon/issues
+
+Contact
+=======
+
+IRC: #panopticon on Freenode.
+Twitter: @_cibo_
