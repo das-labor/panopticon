@@ -81,4 +81,4 @@ Contact
 =======
 
 IRC: #panopticon on Freenode.
-Twitter: @_cibo_
+Twitter: ```@_cibo_```
