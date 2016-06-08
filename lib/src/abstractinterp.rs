@@ -541,7 +541,7 @@ impl Avalue for Kset {
             &Kset::Meet => Kset::Meet,
             &Kset::Set(ref v) =>
                 Kset::Set(v.iter().map(|&(v,sz)| {
-                    ((v >> offset) % 1 << (size - 1),size)
+                    ((v >> offset) % (1 << (size - 1)),size)
                 }).collect::<Vec<_>>()),
         }
     }
