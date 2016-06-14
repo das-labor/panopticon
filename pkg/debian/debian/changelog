@@ -1,0 +1,58 @@
+panopticon (0.15) trusty; urgency=low
+
+  * Unit test for AVR and MOS 6502 decoders
+  * Move analysis engine from PIL to RREIL
+  * Factor out widening into cofibered domain
+  * Use Kset for indirect jump resolution
+
+ -- seu <seu@panopticon.re>  Fri, 13 May 2016 00:00:00 +0200
+
+panopticon (0.14) trusty; urgency=low
+
+  * Implement Kset abstract domain
+  * Speed-up disassembly
+  * Major rework of save, load and open dialogs
+  * Fix various bugs in AI and graph layouting
+
+ -- seu <seu@panopticon.re>  Sun, 13 Mar 2016 00:00:00 +0200
+
+panopticon (0.13) trusty; urgency=low
+
+  * Decode most AMD64 instructions
+  * Basic Abstract Interpretaion framework
+  * SSA conversion of PIL code
+  * MOS-6502 support (thanks to Marcus Brinkmann)
+
+ -- seu <seu@panopticon.re>  Sun, 24 Jan 2016 00:00:00 +0200
+
+panopticon (0.12) trusty; urgency=low
+
+  * ELF loader
+  * Primitive x86 disassembling
+  * Various graph view improvments
+  * Disassembles whole AVR interrupt vector table
+
+ -- seu <seu@panopticon.re>  Mon, 30 Nov 2015 00:00:00 +0200
+
+panopticon (0.11) trusty; urgency=low
+
+  * Partial port from C++ to Rust
+  * Layout control flow graphs in QML
+  * Add function call graph
+  * Add comment function in graph view (double click on row to comment)
+  * Functions can be renamed by double clicking them in the function table
+
+ -- seu <seu@panopticon.re>  Sun, 11 Oct 2016 00:00:00 +0200
+
+panopticon (0.10) trusty; urgency=low
+
+  * Prototype AMD64 disassembler
+
+ -- seu <seu@panopticon.re>  Wed, 3 Jun 2015 00:00:00 +0200
+
+panopticon (0.9) trusty; urgency=low
+
+  * Initial release
+
+ -- seu <seu@panopticon.re>  Tue, 13 Jan 2015 10:07:00 +0200
+
