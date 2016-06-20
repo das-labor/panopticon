@@ -1,0 +1,21 @@
+FROM ubuntu:xenial
+
+MAINTAINER seu <seu@panopticon.re>
+
+RUN apt-get -y update && \
+    DEBIAN_FRONTEND=noninteractive apt-get -y upgrade && \
+    DEBIAN_FRONTEND=noninteractive apt-get -y install \
+        qt5-default qtdeclarative5-dev \
+	qml-module-qtquick-controls qml-module-qttest \
+	qml-module-qtquick2 qml-module-qtquick-layouts \
+	qml-module-qtgraphicaleffects \
+	qtbase5-private-dev pkg-config \
+	libglpk-dev git build-essential cmake \
+        rustc cargo git dpkg-dev lintian debhelper cdbs
+
+COPY entrypoint.sh /entrypoint.sh
+
+ENV PANOPTICON_URL="https://github.com/das-labor/panopticon"
+ENV PANOPTICON_BRANCH="master"
+
+CMD /entrypoint.sh

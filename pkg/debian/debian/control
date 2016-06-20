@@ -1,0 +1,23 @@
+Source: panopticon
+Maintainer: seu <seu@panopticon.re>
+Build-Depends: debhelper (>= 9.0), cdbs, cmake (>= 2.8.9), rustc, cargo, qtdeclarative5-dev, qtbase5-private-dev, pkg-config, libglpk-dev
+Homepage: http://panopticon.re/
+Priority: optional
+Standards-Version: 3.9.5.0
+Section: editors
+
+Package: panopticon
+Architecture: amd64 i386
+Description: Qt 5 frontend of Panopticon
+ Graphical interface for browsing and manipulating binary programs.
+Depends: ${misc:Depends}, ${shlibs:Depends}, qml-module-qtquick-controls, qml-module-qttest, qml-module-qtquick2, qml-module-qtquick-layouts, qml-module-qtgraphicaleffects
+Priority: optional
+Section: editors
+
+Package: panopticon-doc
+Architecture: all
+Description: API and usage documentation for Panopticon
+ Documents the internals of the panopticon library.
+Depends: ${misc:Depends}
+Priority: optional
+Section: doc
