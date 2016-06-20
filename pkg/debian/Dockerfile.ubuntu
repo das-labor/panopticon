@@ -14,4 +14,8 @@ RUN apt-get -y update && \
         rustc cargo git dpkg-dev lintian debhelper cdbs
 
 COPY entrypoint.sh /entrypoint.sh
+
+ENV PANOPTICON_URL="https://github.com/das-labor/panopticon"
+ENV PANOPTICON_BRANCH="master"
+
 CMD /entrypoint.sh

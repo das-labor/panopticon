@@ -69,8 +69,9 @@ fn find_data_file(p: &Path) -> Result<Option<PathBuf>> {
 
 fn main() {
     // workaround bug #165
-    #![cfg(unix)]
-    env::set_var("UBUNTU_MENUPROXY","");
+    if cfg!(unix) {
+        env::set_var("UBUNTU_MENUPROXY","");
+    }
 
     match find_data_file(Path::new("qml/Window.qml")) {
         Ok(Some(qml_main)) => {

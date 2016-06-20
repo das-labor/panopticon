@@ -1,7 +1,7 @@
 #!/bin/bash
-git clone https://github.com/flanfly/panopticon
+git clone $PANOPTICON_URL
 cd panopticon
-git checkout feature/debian-pkg
+git checkout $PANOPTICON_BRANCH
 cd pkg/debian
 dpkg-buildpackage
 lintian ../*.deb
