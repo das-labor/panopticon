@@ -251,13 +251,13 @@ fn session_directory() -> Result<PathBuf> {
 
 #[cfg(windows)]
 fn session_directory() -> Result<PathBuf> {
-    match env::current_exe() {
-        Ok(path) => {
-            let ret = path.join("AppData/Local/Panopticon/Panopticon/sessions");
-            DirBuilder::new()
-                    .recursive(true)
-                    .create(ret.clone());
-            Ok(ret)
+    match env::var("APPDATA") {
+        Ok(appdata) => {
+            let ret = Path::new(&appdata).join("Panopticon").join("sessions");
+			try!(DirBuilder::new()
+				.recursive(true)
+				.create(ret.clone()));
+			Ok(ret)
         },
         Err(e) => Err(result::Error(Cow::Owned(e.description().to_string()))),
     }
