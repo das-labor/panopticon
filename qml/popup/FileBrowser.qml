@@ -29,7 +29,7 @@ Popup {
 	property string mode: "READ"
 	property bool valid: false
 	property string willOverwrite: ""
-	property string selectedFile: currentPath + "/" + currentFile
+	property string selectedFile: currentPath + Panopticon.pathDelimiter + currentFile
 	property string currentPath: ""
 	property string currentFile: ""
 	property string message: ""
@@ -326,7 +326,7 @@ Popup {
 					onAccepted: accept()
 					onDisplayTextChanged: {
 						if (displayText != "") {
-							var res = JSON.parse(Panopticon.fileDetails(currentPath + "/" + displayText))
+							var res = JSON.parse(Panopticon.fileDetails(currentPath + Panopticon.pathDelimiter + displayText))
 
 							if(res.status == "ok") {
 								switch(res.payload.state) {

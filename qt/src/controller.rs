@@ -118,6 +118,8 @@ pub extern "C" fn create_singleton(_: *mut ffi::QQmlEngine, _: *mut ffi::QJSEngi
     assert_eq!(metaobj.add_signal("savePathChanged()"),PATH_CHANGED);
     metaobj.add_property("savePath","QString",Some("savePathChanged()"));
 
+    metaobj.add_property("pathDelimiter","QString",None);
+
     // WORKING signals
     assert_eq!(metaobj.add_signal("discoveredFunction(QString)"),DISCOVERED_FUNCTION);
     assert_eq!(metaobj.add_signal("startedFunction(QString)"),STARTED_FUNCTION);
@@ -158,6 +160,12 @@ pub extern "C" fn create_singleton(_: *mut ffi::QQmlEngine, _: *mut ffi::QJSEngi
     obj.emit(STATE_CHANGED,&[]);
     obj.set_property("savePath",Variant::String("".to_string()));
     obj.emit(PATH_CHANGED,&[]);
+
+    if cfg!(windows) {
+        obj.set_property("pathDelimiter",Variant::String("\\".to_string()));
+    } else {
+        obj.set_property("pathDelimiter",Variant::String("/".to_string()));
+    }
 
     assert!(Controller::instantiate_singleton(metaobj,Object::from_ptr(obj.as_ptr())).is_ok());
 
