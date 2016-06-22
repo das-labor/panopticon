@@ -62,7 +62,7 @@ fn find_data_file(p: &Path) -> Result<Option<PathBuf>> {
 #[cfg(windows)]
 fn find_data_file(p: &Path) -> Result<Option<PathBuf>> {
     match env::current_exe() {
-        Ok(path) => Ok(Some(path.join("AppData/Local/Panopticon/Panopticon").join(p))),
+        Ok(path) => Ok(path.parent().map(|x| x.join(p))),
         Err(e) => Err(result::Error(Cow::Owned(e.description().to_string()))),
     }
 }
@@ -73,14 +73,14 @@ fn main() {
         env::set_var("UBUNTU_MENUPROXY","");
     }
 
-    match find_data_file(Path::new("qml/Window.qml")) {
+    match find_data_file(&Path::new("qml").join("Window.qml")) {
         Ok(Some(qml_main)) => {
             match File::open(&qml_main) {
                 Ok(_) => {
                     qmlrs::register_singleton_type(&"Panopticon",1,0,&"Panopticon",create_singleton);
 
                     let mut engine = qmlrs::Engine::new();
-                    engine.load_local_file(qml_main);
+                    engine.load_local_file(&format!("{}",qml_main.display()));
                     engine.exec();
 
                     return;
