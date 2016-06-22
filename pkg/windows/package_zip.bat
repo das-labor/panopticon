@@ -21,6 +21,7 @@ copy ..\..\target\release\qtpanopticon.exe out\qtpanopticon.exe
 copy %GLPKDIR%\w64\glpk_4_58.dll out\glpk_4_58.dll
 xcopy /e /i /s /y ..\..\qml out\qml
 %QTDIR%\bin\windeployqt.exe --release --qmldir out\qml out\qtpanopticon.exe
+copy %QTDIR%\bin\Qt5QuickTest.dll out\Qt5QuickTest.dll
 %P7ZDIR% a panopticon.zip .\out\*
 
 rmdir /s /q out
