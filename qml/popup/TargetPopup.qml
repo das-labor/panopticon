@@ -40,7 +40,7 @@ Popup {
 
 						Label {
 							font.pixelSize: 20
-							Layout.bottomMargin: 10
+							//Layout.bottomMargin: 10
 							text: "Overview"
 						}
 
@@ -50,7 +50,7 @@ Popup {
 						}
 
 						Label {
-							Layout.leftMargin: 20
+							//Layout.leftMargin: 20
 							Layout.maximumWidth: 400
 							wrapMode: Text.WordWrap
 							text: "Select how the contents of the file should be interpreted."
@@ -59,7 +59,7 @@ Popup {
 						ComboBox {
 							id: formatBox
 							Layout.preferredWidth: 150
-							Layout.leftMargin: 20
+							//Layout.leftMargin: 20
 							model: ["Unrecognized", "Memory Image", "COM"]
 							currentIndex: 1
 							onCurrentIndexChanged: {
@@ -121,21 +121,21 @@ Popup {
 					}
 
 					Label {
-						Layout.topMargin: 20
+						//Layout.topMargin: 20
 						text: "Basic"
 						font.pixelSize: 16
 					}
 
 					Label {
-						Layout.leftMargin: 20
+						//Layout.leftMargin: 20
 						Layout.maximumWidth: 400
 						wrapMode: Text.WordWrap
 						text: "<strong>Microcontroller to assume for analysis</strong>. This option defines what instructions are supported and the size of the Program Counter register."
 					}
 
 					ComboBox {
-						Layout.leftMargin: 20
-						Layout.bottomMargin: 20
+						//Layout.leftMargin: 20
+						//Layout.bottomMargin: 20
 						Layout.preferredWidth: 150
 						id: targetSelect
 						model: targetModel
@@ -166,15 +166,15 @@ Popup {
 					}
 
 					Label {
-						Layout.leftMargin: 20
+						//Layout.leftMargin: 20
 						Layout.maximumWidth: 400
 						wrapMode: Text.WordWrap
 						text: "<strong>Image load address</strong>. Start of the image inside uC flash. Setting the to something other than 0 is useful if the file to analyse isn't a complete flash dump but needs to be loaded at a certain address. You may need to change the entry point too."
 					}
 
 					TextField {
-						Layout.leftMargin: 20
-						Layout.bottomMargin: 20
+						//Layout.leftMargin: 20
+						//Layout.bottomMargin: 20
 						id: loadAddress
 						text: "0"
 						state: ""
@@ -197,14 +197,14 @@ Popup {
 					}
 
 					Label {
-						Layout.leftMargin: 20
+						//Layout.leftMargin: 20
 						Layout.maximumWidth: 400
 						wrapMode: Text.WordWrap
 						text: "<strong>Entry point(s) of the image.</strong> This option sets the starting point(s) for disassembly. The default is to expect the standard interrupt vector table at the start of the image. In case the image is not a full flash dump a single entry point can be set here."
 					}
 
 					ColumnLayout {
-						Layout.leftMargin: 20
+						//Layout.leftMargin: 20
 						ExclusiveGroup { id: entryPointGroup }
 						RadioButton {
 							text: "Interrupt Vector Table"
@@ -221,8 +221,8 @@ Popup {
 						}
 
 						TextField {
-							Layout.leftMargin: 18
-							Layout.bottomMargin: 20
+							//Layout.leftMargin: 18
+							//Layout.bottomMargin: 20
 
 							enabled: singleEntry.checked
 							id: entryPoint
