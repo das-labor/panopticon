@@ -235,7 +235,7 @@ impl ToVariant for String {
     }
 }
 
-#[cfg(unix)]
+#[cfg(all(unix,not(target_os = "macos")))]
 fn session_directory() -> Result<PathBuf> {
     match BaseDirectories::with_prefix("panopticon") {
         Ok(dirs) => {
@@ -244,6 +244,23 @@ fn session_directory() -> Result<PathBuf> {
                     .recursive(true)
                     .create(ret.clone()));
             Ok(ret)
+        },
+        Err(e) => Err(result::Error(Cow::Owned(e.description().to_string()))),
+    }
+}
+
+#[cfg(all(unix,target_os = "macos"))]
+fn session_directory() -> Result<PathBuf> {
+    match env::var("HOME") {
+        Ok(home) => {
+            let ret = Path::new(&home).join("Library")
+                .join("Application Support")
+                .join("Panopticon")
+                .join("sessions");
+			try!(DirBuilder::new()
+				.recursive(true)
+				.create(ret.clone()));
+			Ok(ret)
         },
         Err(e) => Err(result::Error(Cow::Owned(e.description().to_string()))),
     }

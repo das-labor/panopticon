@@ -51,10 +51,18 @@ use panopticon::result::Result;
 
 use controller::create_singleton;
 
-#[cfg(unix)]
+#[cfg(all(unix,not(target_os = "macos")))]
 fn find_data_file(p: &Path) -> Result<Option<PathBuf>> {
     match BaseDirectories::with_prefix("panopticon") {
         Ok(dirs) => Ok(dirs.find_data_file(p).or(Some(Path::new(".").join(p)))),
+        Err(e) => Err(result::Error(Cow::Owned(e.description().to_string()))),
+    }
+}
+
+#[cfg(all(unix,target_os = "macos"))]
+fn find_data_file(p: &Path) -> Result<Option<PathBuf>> {
+    match env::current_exe() {
+        Ok(path) => Ok(path.parent().and_then(|x| x.join("Resources").join(p))),
         Err(e) => Err(result::Error(Cow::Owned(e.description().to_string()))),
     }
 }
