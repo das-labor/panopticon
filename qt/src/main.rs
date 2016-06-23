@@ -64,7 +64,8 @@ fn find_data_file(p: &Path) -> Result<Option<PathBuf>> {
 #[cfg(all(unix,target_os = "macos"))]
 fn find_data_file(p: &Path) -> Result<Option<PathBuf>> {
     match env::current_exe() {
-        Ok(path) => Ok(path.parent().and_then(|x| x.join("Resources").join(p))),
+        Ok(path) => Ok(path.parent().and_then(|x| x.parent()).
+		map(|x| x.join("Resources").join(p))),
         Err(e) => Err(result::Error(Cow::Owned(e.description().to_string()))),
     }
 }
@@ -96,7 +97,7 @@ fn main() {
                     return;
                 },
                 Err(e) => {
-                    println!("Failed to open the QML files: {}",e);
+                    println!("Failed to open the QML files in {} ({})",qml_main.display(),e);
                 }
             }
         },
