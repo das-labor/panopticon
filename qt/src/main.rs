@@ -37,7 +37,9 @@ mod project;
 mod function;
 mod sugiyama;
 
+#[cfg(any(windows,target_os = "macos"))]
 use std::env;
+
 use std::fs::File;
 use std::path::{PathBuf,Path};
 use std::borrow::Cow;

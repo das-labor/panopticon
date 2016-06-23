@@ -27,7 +27,7 @@ use std::error::Error;
 use std::borrow::Cow;
 use std::convert::Into;
 
-#[cfg(windows)]
+#[cfg(any(windows,target_os = "macos"))]
 use std::env;
 
 #[cfg(unix)]
