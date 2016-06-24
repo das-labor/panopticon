@@ -638,6 +638,8 @@ fn initial_ordering(rank: &HashMap<AdjacencyListVertexDescriptor,isize>,
     ret
 }
 
+/// collects all edge pairs that need to be checked for crossings
+/// TODO: This does not need to be O(n^2)
 fn bipartite_subgraphs(rank: &HashMap<AdjacencyListVertexDescriptor,isize>,
                        graph: &AdjacencyList<usize,usize>)
                        -> HashMap<(usize,usize),Vec<(AdjacencyListEdgeDescriptor,AdjacencyListEdgeDescriptor)>> {
@@ -652,29 +654,25 @@ fn bipartite_subgraphs(rank: &HashMap<AdjacencyListVertexDescriptor,isize>,
         let e1_end_rank = rank[&e1tgt] as usize;
 
         for e2 in graph.edges() {
-            let e2src = graph.source(e2);
-            let e2tgt = graph.target(e2);
+            if e1 != e2 {
+                let e2src = graph.source(e2);
+                let e2tgt = graph.target(e2);
 
-            assert!(rank[&e2src] >= 0 && rank[&e2tgt] >= 0);
-            let e2_start_rank = rank[&e2src] as usize;
-            let e2_end_rank = rank[&e2tgt] as usize;
-            let mut ranks = vec![e1_start_rank,e2_start_rank,e1_end_rank,e2_end_rank];
+                assert!(rank[&e2src] >= 0 && rank[&e2tgt] >= 0);
+                let e2_start_rank = rank[&e2src] as usize;
+                let e2_end_rank = rank[&e2tgt] as usize;
+                let mut ranks = vec![e1_start_rank,e2_start_rank,e1_end_rank,e2_end_rank];
 
-            ranks.sort();
-            ranks.iter().fold(vec![],|mut acc,x| {
-                match acc.iter().position(|&y| y == x) {
-                    Some(_) => {},
-                    None => acc.push(x),
+                ranks.sort();
+                ranks.dedup();
+
+                match ranks.len() {
+                    0 => unreachable!(),
+                    1 => ret.entry((ranks[0],ranks[0])).or_insert(vec![]).push((e1,e2)),
+                    2 if ranks[1] - ranks[0] == 1 =>
+                        ret.entry((ranks[0],ranks[1])).or_insert(vec![]).push((e1,e2)),
+                    _ => {},
                 }
-                acc
-            });
-
-            match ranks.len() {
-                0 => unreachable!(),
-                1 => ret.entry((ranks[0],ranks[1])).or_insert(vec![]).push((e1,e2)),
-                2 if (ranks[0] as isize - ranks[1] as isize).abs() == 1 =>
-                    ret.entry((ranks[0],ranks[1])).or_insert(vec![]).push((e1,e2)),
-                _ => {}
             }
         }
     }
@@ -712,55 +710,64 @@ fn optimize_ordering(order: &mut Vec<Vec<AdjacencyListVertexDescriptor>>,
     }
 }
 
+/// Computes the number of edge crossings in graph.
 fn crossings(bipartite: &HashMap<(usize,usize),Vec<(AdjacencyListEdgeDescriptor,AdjacencyListEdgeDescriptor)>>,
              order: &Vec<Vec<AdjacencyListVertexDescriptor>>,
              graph: &AdjacencyList<usize,usize>) -> usize {
     let mut ret = 0;
 
     for (&(r_top,r_bot),v) in bipartite.iter() {
-        assert!(r_top < r_bot);
+        assert!(r_top <= r_bot);
 
         let ord_top = &order[r_top];
         let ord_bot = &order[r_bot];
 
+        // sum #crossings of all edge pairs between adjacent ranks
         for &(e1,e2) in v.iter() {
             let e1src = graph.source(e1);
             let e1tgt = graph.target(e1);
             let e2src = graph.source(e2);
             let e2tgt = graph.target(e2);
 
-            let mut a = vec![];
-            let mut b = vec![];
+            // edges can't cross if they share a vertex
+            if !(e1src == e2src || e1src == e2tgt || e1tgt == e2src || e1tgt == e2tgt) {
+                let mut vert_set1 = vec![];
+                let mut vert_set2 = vec![];
 
-            for v in vec![e1src,e1tgt,e2src,e2tgt] {
-                if let Some(o) = ord_top.iter().position(|&x| x == v) {
-                    a.push((o,v));
-                } else {
-                    b.push((ord_bot.iter().position(|&x| x == v).unwrap(),v));
+                // sort vertices from the upper rank into vert_set1 and from the lower into vert_set2
+                // contents of the vectors are pairs (order,edge)
+                for (v,e) in vec![(e1src,e1),(e1tgt,e1),(e2src,e2),(e2tgt,e2)] {
+                    if let Some(o) = ord_top.iter().position(|&x| x == v) {
+                        vert_set1.push((o,e));
+                    } else {
+                        vert_set2.push((ord_bot.iter().position(|&x| x == v).unwrap(),e));
+                    }
                 }
-            }
 
-            a.sort_by(|x,y| x.0.cmp(&y.0));
-            b.sort_by(|x,y| x.0.cmp(&y.0));
+                // sort by x
+                vert_set1.sort_by(|x,y| x.0.cmp(&y.0));
+                vert_set2.sort_by(|x,y| x.0.cmp(&y.0));
 
-            if a.len() > b.len() {
-                swap(&mut a,&mut b);
-            }
+                // ensure |vert_set1| < |vert_set2|. This saves cases in the following match
+                if vert_set1.len() > vert_set2.len() {
+                    swap(&mut vert_set1,&mut vert_set2);
+                }
 
-            let has_crossing = match (a.len(),b.len()) {
-                (0,4) => b[0].1 == b[2].1,
-                (1,3) => a[0].1 != b[1].1 && b[0].1 == b[2].1 && a[0].1 == b[1].1,
-                (2,2) => b[0].1 == a[1].1 && b[1].1 == a[0].1,
-                _ => unreachable!()
-            };
+                // case split based on how the vertices are distributed along the adjacent ranks.
+                // a and b are the resp. endpoints of the two edges.
+                let has_crossing = match (vert_set1.len(),vert_set2.len()) {
+                    // all vertices are in the same rank, edges cross if [a,b,a,b]
+                    (0,4) => vert_set2[0].1 == vert_set2[2].1,
+                    // all but one vertex are in the same rank, edges cross if [b] and [a,b,a]
+                    (1,3) => vert_set1[0].1 == vert_set2[1].1,
+                    // edges are split even between the two ranks, edges cross if [a,b] and [b,a]
+                    (2,2) => vert_set2[0].1 == vert_set1[1].1 && vert_set2[1].1 == vert_set1[0].1,
+                    _ => unreachable!()
+                };
 
-            let has_overlap = a.iter().chain(b.iter())
-                .collect::<Vec<_>>()
-                .windows(2)
-                .all(|x| x[0].0 != x[1].0);
-
-            if has_crossing && !has_overlap {
-                ret += 1;
+                if has_crossing {
+                    ret += 1;
+                }
             }
         }
     }
