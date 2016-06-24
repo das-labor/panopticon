@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleName</key>
+	<string>Panopticon</string>
+	<key>CFBundleIdentifier</key>
+	<string>re.panopticon</string>
+	<key>CFBundleVersion</key>
+	<string>0.14.0</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleSignature</key>
+	<string>panopticon</string>
+	<key>CFBundleExecutable</key>
+	<string>Panopticon</string>
+</dict>
+</plist>

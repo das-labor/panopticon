@@ -54,6 +54,7 @@ ApplicationWindow {
 			id: projectMenu
 
 			MenuItem {
+				text: action.text
 				action: Open {
 					window: mainWindow
 					fileBrowser: fileBrowser;
@@ -63,6 +64,7 @@ ApplicationWindow {
 			}
 
 			MenuItem {
+				text: action.text
 				action: SaveAs {
 					window: mainWindow
 					fileBrowser: fileBrowser;
@@ -73,6 +75,7 @@ ApplicationWindow {
 			MenuSeparator {}
 
 			MenuItem {
+				text: action.text
 				action: Quit {
 					window: mainWindow
 					errorPopup: errorPopup;
