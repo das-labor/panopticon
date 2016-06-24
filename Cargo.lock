@@ -4,7 +4,7 @@ version = "0.15.0"
 dependencies = [
  "byteorder 0.5.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "flate2 0.2.14 (registry+https://github.com/rust-lang/crates.io-index)",
- "glpk-sys 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "glpk-sys 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "graph_algos 0.10.2 (git+https://github.com/flanfly/rust-graph-algos.git)",
  "lazy_static 0.1.16 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.2.12 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -57,7 +57,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "glpk-sys"
-version = "0.1.0"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "libc 0.1.12 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -175,7 +175,7 @@ source = "git+https://github.com/alexcrichton/pkg-config-rs#d6be22c784ea67a06676
 [[package]]
 name = "qmlrs"
 version = "0.2.1"
-source = "git+https://github.com/flanfly/qmlrs#6a03ff53750334003f10fcb4aa8208fb072b75bd"
+source = "git+https://github.com/flanfly/qmlrs#dfd41ada30e3f147ba04784e731f07bedb2e69a5"
 dependencies = [
  "libc 0.2.12 (registry+https://github.com/rust-lang/crates.io-index)",
  "pkg-config 0.3.8 (git+https://github.com/alexcrichton/pkg-config-rs)",
