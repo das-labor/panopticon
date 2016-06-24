@@ -8,6 +8,12 @@ matrix:
       rust: 1.7.0
       env: TARGET=x86_64-unknown-linux-gnu
 sudo: required
+notifications:
+  irc:
+    channels:
+      - "chat.freenode.net#panopticon"
+    on_success: change
+    on_failure: always
 language: rust
 addons:
   apt:
