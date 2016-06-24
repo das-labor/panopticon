@@ -2,4 +2,3 @@
 *.swp
 doc/html
 /target
-Cargo.lock
