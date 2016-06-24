@@ -1,8 +1,14 @@
+matrix:
+  include:
+    - os: osx
+      rust: 1.7.0
+      env: TARGET=x86_64-apple-darwin
+    - os: linux
+      dist: trusty
+      rust: 1.7.0
+      env: TARGET=x86_64-unknown-linux-gnu
 sudo: required
-dist: trusty
 language: rust
-rust:
-   - stable
 addons:
   apt:
     packages:
@@ -22,18 +28,24 @@ addons:
     - libbfd-dev # not approved
     - libiberty-dev # not approved
     - libdw-dev
-install: |
-  sudo apt-get -qq install libbfd-dev libqt5qml-quickcontrols libiberty-dev
+before_install:
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update; fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install homebrew/science/glpk; fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install homebrew/versions/qt55; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get -qq install libbfd-dev libqt5qml-quickcontrols libiberty-dev; fi
 after_success: |
   # send coverage report to coveralls.io
-  wget https://github.com/SimonKagstrom/kcov/archive/v30.tar.gz
-  tar xzf v30.tar.gz && mkdir kcov-30/build && cd kcov-30/build && cmake .. && make &&
-  sudo make install && cd ../.. &&
-  for I in amd64 avr elf panopticon qtpanopticon project
-  do
-    kcov --verify --include-path=lib,qt target/cov-"$I" target/debug/"$I"-*
-  done &&
-  kcov --merge --coveralls-id=$TRAVIS_JOB_ID --include-path=lib,qt target/kcov target/cov-*
+  if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
+      wget https://github.com/SimonKagstrom/kcov/archive/v30.tar.gz
+      tar xzf v30.tar.gz && mkdir kcov-30/build && cd kcov-30/build && cmake .. && make &&
+      sudo make install && cd ../.. &&
+      for I in amd64 avr elf panopticon qtpanopticon project
+      do
+        kcov --verify --include-path=lib,qt target/cov-"$I" target/debug/"$I"-*
+      done &&
+      kcov --merge --coveralls-id=$TRAVIS_JOB_ID --include-path=lib,qt target/kcov target/cov-*
+  fi
 script: |
-   cargo build --verbose &&
-   cargo test --verbose
+  if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then export QTDIR64=`brew --prefix qt55`; fi &&
+  cargo build --verbose &&
+  cargo test --verbose
