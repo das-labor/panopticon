@@ -118,6 +118,8 @@ pub extern "C" fn create_singleton(_: *mut ffi::QQmlEngine, _: *mut ffi::QJSEngi
     assert_eq!(metaobj.add_signal("savePathChanged()"),PATH_CHANGED);
     metaobj.add_property("savePath","QString",Some("savePathChanged()"));
 
+    metaobj.add_property("pathDelimiter","QString",None);
+
     // WORKING signals
     assert_eq!(metaobj.add_signal("discoveredFunction(QString)"),DISCOVERED_FUNCTION);
     assert_eq!(metaobj.add_signal("startedFunction(QString)"),STARTED_FUNCTION);
@@ -158,6 +160,12 @@ pub extern "C" fn create_singleton(_: *mut ffi::QQmlEngine, _: *mut ffi::QJSEngi
     obj.emit(STATE_CHANGED,&[]);
     obj.set_property("savePath",Variant::String("".to_string()));
     obj.emit(PATH_CHANGED,&[]);
+
+    if cfg!(windows) {
+        obj.set_property("pathDelimiter",Variant::String("\\".to_string()));
+    } else {
+        obj.set_property("pathDelimiter",Variant::String("/".to_string()));
+    }
 
     assert!(Controller::instantiate_singleton(metaobj,Object::from_ptr(obj.as_ptr())).is_ok());
 
@@ -243,13 +251,13 @@ fn session_directory() -> Result<PathBuf> {
 
 #[cfg(windows)]
 fn session_directory() -> Result<PathBuf> {
-    match env::current_exe() {
-        Ok(path) => {
-            let ret = path.join("AppData/Local/Panopticon/Panopticon/sessions");
-            DirBuilder::new()
-                    .recursive(true)
-                    .create(ret.clone());
-            Ok(ret)
+    match env::var("APPDATA") {
+        Ok(appdata) => {
+            let ret = Path::new(&appdata).join("Panopticon").join("sessions");
+			try!(DirBuilder::new()
+				.recursive(true)
+				.create(ret.clone()));
+			Ok(ret)
         },
         Err(e) => Err(result::Error(Cow::Owned(e.description().to_string()))),
     }
