@@ -22,7 +22,7 @@ extern crate libc;
 extern crate graph_algos;
 extern crate uuid;
 extern crate rustc_serialize;
-extern crate glpk_sys as glpk;
+extern crate cassowary;
 extern crate tempdir;
 extern crate byteorder;
 

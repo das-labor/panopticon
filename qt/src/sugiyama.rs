@@ -47,8 +47,6 @@ use graph_algos::search::{
     EdgeKind,
 };
 
-use glpk;
-
 pub fn layout(vertices: &Vec<usize>,
               edges: &Vec<(usize,usize)>,
               _dims: &HashMap<usize,(f32,f32)>,
@@ -90,12 +88,7 @@ pub fn layout(vertices: &Vec<usize>,
     let revd_parallel_edge = remove_parallel_edges(&mut graph);
 
     // Desc -> Rank
-    let mut rank = {
-        let (a,b,c,lb,ub) = build_ranking_integer_program(&graph);
-        let res = solve_integer_program(&a,&b,&c,&lb,&ub);
-
-        HashMap::from_iter(graph.vertices().zip(res.iter().map(|&x| x)))
-    };
+    let mut rank = compute_ranking(&graph);
 
     // restore parallel edges
     for e in revd_parallel_edge {
@@ -549,26 +542,42 @@ pub fn remove_parallel_edges(graph: &mut AdjacencyList<usize,usize>) -> Vec<(usi
     to_rm.iter().map(|&(_,a,b,c)| (a,b,c)).collect::<Vec<_>>()
 }
 
-fn build_ranking_integer_program<'a>(graph: &AdjacencyList<usize,usize>) -> (Vec<Vec<isize>>,Vec<isize>,Vec<isize>,Vec<isize>,Vec<isize>) {
-    let vx_ord = HashMap::<usize,usize>::from_iter(graph.vertices().enumerate().map(|(i,v)| (*graph.vertex_label(v).unwrap(),i)));
-    let mut a = Vec::new();
-    let b = (0..graph.num_edges()).map(|_| 0).collect::<Vec<_>>();
-    let c = (0..graph.num_vertices()).map(|_| 0).chain((0..graph.num_edges()).map(|_| 1)).collect::<Vec<_>>();
-    let lb = (0..graph.num_vertices()).map(|_| 0).chain((0..graph.num_edges()).map(|_| 1)).collect::<Vec<_>>();
-    let ub = (0..(graph.num_edges() + graph.num_vertices())).map(|_| graph.num_vertices() as isize).collect::<Vec<_>>();
+/// Computes the ranks for all vertices.
+fn compute_ranking(graph: &AdjacencyList<usize,usize>) -> HashMap<AdjacencyListVertexDescriptor,isize> {
+    use cassowary::{ Solver, Variable };
+    use cassowary::WeightedRelation::*;
+    use cassowary::strength::{ WEAK, MEDIUM, STRONG, REQUIRED };
 
-    for (i,e) in graph.edges().enumerate() {
-        let mut a_row = (0..(graph.num_edges() + graph.num_vertices())).map(|_| 0).collect::<Vec<_>>();
-        let from = *graph.vertex_label(graph.source(e)).unwrap();
-        let to = *graph.vertex_label(graph.target(e)).unwrap();
+    let mut vx2var = HashMap::new();
+    let mut solver = Solver::new();
 
-        a_row[vx_ord[&from]] = -1;
-        a_row[vx_ord[&to]] = 1;
-        a_row[graph.num_vertices() + i] = -1;
-        a.push(a_row);
-	}
+    for vx in graph.vertices() {
+        let var = Variable::new();
 
-    (a,b,c,lb,ub)
+        // First rank is 0
+        solver.add_constraint(var | GE(REQUIRED) | 0.0);
+
+        // Minimize ranks
+        solver.add_constraint(var | EQ(WEAK) | 0.0);
+
+        vx2var.insert(vx,var);
+    }
+
+    for e in graph.edges() {
+        let from_vx = vx2var[&graph.source(e)];
+        let to_vx = vx2var[&graph.target(e)];
+
+        // Adjacent vertices are at least on rank apart
+        solver.add_constraint(to_vx - from_vx | GE(REQUIRED) | 1.0);
+    }
+
+    solver.update_variables();
+
+    HashMap::from_iter(vx2var.iter().map(|(&vx,&var)| {
+        let rank = solver.value_for(var);
+
+        (vx,rank.unwrap_or(0.0) as isize)
+    }))
 }
 
 pub fn add_virtual_vertices(rank: &mut HashMap<AdjacencyListVertexDescriptor,isize>,graph: &mut AdjacencyList<usize,usize>) -> (usize,usize) {
@@ -889,54 +898,6 @@ fn transpose(xings: &mut usize,
                 }
             }
         }
-    }
-}
-
-fn solve_integer_program(a: &Vec<Vec<isize>>,
-                         b: &Vec<isize>,
-                         c: &Vec<isize>,
-                         lb: &Vec<isize>,
-                         ub: &Vec<isize>) -> Vec<isize> {
-    unsafe {
-        glpk::glp_term_out(0 as c_int); // GLP_OFF
-        let lp = glpk::glp_create_prob();
-
-        assert_eq!(a.len(), b.len());
-        assert_eq!(lb.len(), ub.len());
-        assert_eq!(lb.len(), c.len());
-
-        glpk::glp_set_obj_dir(lp, 1); // GLP_MIN
-        glpk::glp_add_rows(lp, (a.len() + 1) as c_int);
-        glpk::glp_add_cols(lp, a[0].len() as c_int);
-
-        for (j,(l,u)) in lb.iter().zip(ub.iter()).enumerate() {
-            glpk::glp_set_col_bnds(lp, (j + 1) as c_int, 4, *l as c_double, *u as c_double); // GLP_DB
-            glpk::glp_set_obj_coef(lp, (j + 1) as c_int, c[j] as c_double);
-        }
-
-        for (i,&x) in b.iter().enumerate() {
-            glpk::glp_set_row_bnds(lp, (i + 1) as c_int, 5 as c_int, x as c_double, x as c_double); // GLP_FX
-        }
-
-        for (i,row) in a.iter().enumerate() {
-            let conv = [0].iter().chain(row.iter()).map(|x| *x as c_double).collect::<Vec<c_double>>();
-            let idx = (0..(row.len()+1)).map(|x| x as c_int).collect::<Vec<c_int>>();
-
-            assert_eq!(row.len(), c.len());
-            assert_eq!(conv.len(),idx.len());
-
-            glpk::glp_set_mat_row(lp, (i+1) as c_int, (conv.len() - 1) as c_int, idx.as_ptr(), conv.as_ptr());
-        }
-
-        glpk::glp_simplex(lp, ptr::null());
-
-        let ret = a[0].iter().enumerate().map(|(j,_)| {
-            glpk::glp_get_col_prim(lp, (j + 1) as c_int) as isize
-        }).collect::<Vec<isize>>();
-
-        glpk::glp_delete_prob(lp);
-
-        ret
     }
 }
 
