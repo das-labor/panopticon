@@ -20,7 +20,7 @@ tempdir = "0.3.4"
 lazy_static = "0.1.16"
 libc = "0.2.9"
 uuid = { version = "0.2.0", features = ["rustc-serialize", "v4"]}
-glpk-sys = "0.2"
+cassowary = "0.1.0"
 flate2 = "0.2.13"
 rmp-serialize = "0.7.0"
 byteorder = "0.5.1"
