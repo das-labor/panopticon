@@ -25,7 +25,6 @@ addons:
     - libqt5qml-quickcontrols # not approved
     - qtbase5-private-dev
     - pkg-config
-    - libglpk-dev
     - git
     - build-essential
     # kcov
@@ -36,7 +35,6 @@ addons:
     - libdw-dev
 before_install:
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update; fi
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install homebrew/science/glpk; fi
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install homebrew/versions/qt55; fi
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get -qq install libbfd-dev libqt5qml-quickcontrols libiberty-dev; fi
 after_success: |
