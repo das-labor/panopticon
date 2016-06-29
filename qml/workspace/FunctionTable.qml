@@ -18,8 +18,9 @@
 
 import QtQuick 2.3
 import QtQuick.Controls 1.2
-
+import QtQml.Models 2.1
 import Panopticon 1.0
+import ".."
 
 Item {
 	id: root
@@ -41,99 +42,16 @@ Item {
 		}
 	}
 
-	Component.onCompleted: {
-		Panopticon.startedFunction.connect(function(uu) {
-			var _res = Panopticon.functionInfo(uu);
-			var res = JSON.parse(_res);
-
-			if(res.status == "ok") {
-				var obj = res.payload;
-
-				obj.name = "<b>Working</b>";
-				for(var i = 0; i < functionModel.count; i++) {
-					var node = functionModel.get(i);
-
-					if(node.uuid == obj.uuid) {
-						functionModel.set(i,obj);
-						return;
-					}
-				}
-
-				console.error("Error: got startedFunction() signal w/ unknown function " + uu);
-			} else {
-				console.error(res.error);
-			}
-		});
-
-		Panopticon.discoveredFunction.connect(function(uu) {
-			var _res = Panopticon.functionInfo(uu);
-			var res = JSON.parse(_res);
-
-			if(res.status == "ok") {
-				var obj = res.payload;
-
-				if(obj.kind == "todo") {
-					obj.name = "<i>Todo</i>";
-				}
-
-				functionModel.append(obj);
-				functionModel.sort();
-			} else {
-				console.error(res.error);
-			}
-		});
-
-		Panopticon.finishedFunction.connect(function(uu) {
-			var _res = Panopticon.functionInfo(uu);
-			var res = JSON.parse(_res);
-
-			if(res.status == "ok") {
-				var obj = res.payload;
-
-				for(var i = 0; i < functionModel.count; i++) {
-					var node = functionModel.get(i);
-
-					if(node.uuid == obj.uuid) {
-						functionModel.set(i,obj);
-						return;
-					}
-				}
-
-				functionModel.append(obj);
-				functionModel.sort();
-			} else {
-				console.error(res.error);
-			}
-		});
-
-		Panopticon.changedFunction.connect(function(uu) {
-			var _res = Panopticon.functionInfo(uu);
-			var res = JSON.parse(_res);
-
-			if(res.status == "ok") {
-				var obj = res.payload;
-
-				for(var i = 0; i < functionModel.count; i++) {
-					var node = functionModel.get(i);
-
-					if(node.uuid == obj.uuid) {
-						functionModel.set(i,obj);
-						return;
-					}
-				}
-				console.error("Error: got changedFunction() signal w/ unknown function " + uu);
-			} else {
-				console.error(res.error);
-			}
-		});
-	}
-
 	ListModel {
-		function sortBy(a,b) {
-			return parseInt(a.entry_point,10) < parseInt(b.entry_point,10);
+		function lessThan(i,j) {
+			var a = get(i)
+			var b = get(j)
+
+			return a.entry_point < b.entry_point;
 		}
 
 		id: functionModel
+		dynamicRoles: true
 
 		function sort() {
 			if (count < 2) {
@@ -142,18 +60,18 @@ Item {
 
 			var qsort = function(left, right) {
 				if (left < right) {
-					var pivot = parseInt(get(right).entry_point);
+					var pivot = right;
 					var i = left - 1;
 					var j = right + 1;
 
 					while (true) {
 						do {
 							j -= 1;
-						} while (pivot < parseInt(get(j).entry_point));
+						} while (lessThan(pivot,j));
 
 						do {
 							i += 1;
-						} while (parseInt(get(i).entry_point) < pivot);
+						} while (lessThan(i,pivot));
 
 						if (i < j) {
 							move(i,j,1);
@@ -170,165 +88,86 @@ Item {
 
 			qsort(0,count-1)
 		}
+
+		Component.onCompleted: {
+			Functions.added.connect(function(row) {
+				var obj = JSON.parse(JSON.stringify(Functions.get(row)));
+
+				obj.row = row;
+
+				if(obj.failed || obj.empty) {
+					return;
+				}
+
+				functionModel.append(obj);
+				sort()
+			})
+			Functions.changed.connect(function(row) {
+				var obj = JSON.parse(JSON.stringify(Functions.get(row)));
+
+				obj.row = row;
+
+				for(var i = 0; i < count; i++) {
+					if(get(i).row == row) {
+						if(obj.failed || obj.empty) {
+							functionModel.remove(i,1);
+						} else {
+							functionModel.set(i,obj);
+							sort();
+						}
+						return;
+					}
+				}
+
+				if(!(obj.failed || obj.empty)) {
+					functionModel.append(obj);
+					sort()
+				}
+			})
+		}
 	}
 
 	TableView {
-		property int renameRow: -1
-
 		id: functionTable
 		anchors.fill: parent
 
-    TableViewColumn {
+		TableViewColumn {
 			role: "name"
 			title: "Name"
 			width: 100
-    }
-    TableViewColumn {
+			delegate: Item {
+				x: 12
+				Label {
+					text: styleData.value != undefined ? styleData.value : ""
+				}
+			}
+		}
+
+		TableViewColumn {
 			role: "entry_point"
 			title: "Offset"
 			width: 100
 			delegate: Item {
 				x: 12
-			        Label {
-				        text: "0x" + styleData.value.toString(16)
+				Label {
+					text: styleData.value != undefined ? "0x" + styleData.value.toString(16) : "-"
 				}
 			}
 		}
 		model: functionModel
-		enabled: !edit.visible
-		focus: !edit.visible
 
 		onClicked: {
 			root.selection = functionModel.get(row).uuid;
+			console.log(JSON.stringify(functionModel.get(row)));
 		}
 
 		onActivated: {
 			root.activated(functionModel.get(row).uuid);
+			console.log(JSON.stringify(functionModel.get(row)));
 		}
 
 		onDoubleClicked: {
-			functionTable.renameRow = row
-		}
-
-		itemDelegate: Item {
-			x: 12
-
-			Label {
-				id: view
-				text: styleData.value
-			}
-
-			Binding {
-				when: (functionTable.renameRow == styleData.row && styleData.column == 0)
-				value: parent
-				target: edit
-				property: "targetRow"
-			}
-
-			Binding {
-				when: !(functionTable.renameRow == styleData.row && styleData.column == 0)
-				value: null
-				target: edit
-				property: "targetRow"
-			}
-
-		}
-	}
-
-	Canvas {
-		property var targetRow: null;
-
-		readonly property int tipHeight: 12
-		readonly property int bubblePadding: 8
-		readonly property int bubbleRadius: 4
-
-		id: edit
-		x: (targetRow === null ? 0 : mapFromItem(targetRow,targetRow.x + 20,0).x)
-		y: (targetRow === null ? 0 : mapFromItem(targetRow,0,targetRow.y + targetRow.height).y)
-		width: editField.width + 2 * bubblePadding
-		height: editField.height + 2 * bubblePadding + tipHeight
-		visible: targetRow !== null
-
-		onPaint: {
-			var ctx = edit.getContext('2d');
-
-			const corner_sz = edit.bubbleRadius;
-			const tip_apex = 25;
-			const tip_w = 20;
-			const tip_h = edit.tipHeight;
-
-			/*
-			 *       tip_apex
-			 *          /\
-			 * .-------'  `-----. - top
-			 * |       | tip_end|
-			 * |    tip_start   |
-			 * '----------------' - bottom
-			 */
-
-			const top = tip_h;
-			const bottom = edit.height - 1;
-			const tip_start = tip_apex - tip_w / 2;
-			const tip_end = tip_start + tip_w;
-			const end = edit.width - 1;
-
-
-			ctx.fillStyle = "#efecca";
-			ctx.strokeStyle = "black";
-			ctx.lineWidth = 0.5;
-
-			ctx.clearRect(0,0,width,height);
-			ctx.beginPath();
-
-			ctx.moveTo(1 + corner_sz,top);
-			ctx.lineTo(tip_start,top);
-			ctx.lineTo(tip_apex,0);
-			ctx.lineTo(tip_end,top);
-			ctx.lineTo(end - corner_sz,top);
-			ctx.arc(end - corner_sz,top + corner_sz,corner_sz,1.5 * Math.PI,0,false);
-			ctx.lineTo(end,bottom - corner_sz);
-			ctx.arc(end - corner_sz,bottom - corner_sz,corner_sz,0,0.5 * Math.PI,false);
-			ctx.lineTo(1 + corner_sz,bottom);
-			ctx.arc(1 + corner_sz,bottom - corner_sz,corner_sz,0.5 * Math.PI,Math.PI,false);
-			ctx.lineTo(1,top + corner_sz);
-			ctx.arc(1 + corner_sz,top + corner_sz,corner_sz,Math.PI,1.5 * Math.PI,false);
-
-			ctx.fill();
-			ctx.stroke();
-		}
-
-		TextField {
-			id: editField
-			x: edit.bubblePadding
-			y: edit.bubblePadding + edit.tipHeight
-			focus: edit.visible
-			validator: RegExpValidator {
-				regExp: /[a-zA-Z0-9 .;:|<>,@{}\[\]!$%&*()-]+/
-			}
-
-			onVisibleChanged: {
-				if (edit.targetRow !== null) {
-					text = edit.targetRow.styleData.value
-					selectAll()
-				}
-			}
-
-			onEditingFinished: {
-				functionTable.renameRow = -1;
-				editField.text = ""
-			}
-
-			onAccepted: {
-				var row = edit.targetRow.styleData.row;
-				var res = JSON.parse(Panopticon.setName(functionModel.get(row).uuid,editField.text));
-
-				if(res.status != "ok") {
-					console.error(res.error);
-				} else {
-					functionTable.renameRow = -1;
-					editField.text = ""
-				}
-			}
+			root.activated(functionModel.get(row).uuid);
 		}
 	}
 }

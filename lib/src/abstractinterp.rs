@@ -80,6 +80,10 @@ pub trait Avalue: Clone + PartialEq + Eq + Hash + Debug + Encodable + Decodable 
 
 /// Bourdoncle: "Efficient chaotic iteration strategies with widenings"
 pub fn approximate<A: Avalue>(func: &Function) -> Result<HashMap<Lvalue,A>> {
+    if func.entry_point.is_none() {
+        return Err("function has no entry point".into());
+    }
+
     let wto = weak_topo_order(func.entry_point.unwrap(),&func.cflow_graph);
     let edge_ops = flag_operations(func);
     fn stabilize<A: Avalue>(h: &Vec<Box<HierarchicalOrdering<ControlFlowRef>>>, graph: &ControlFlowGraph,

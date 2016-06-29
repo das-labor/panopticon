@@ -18,7 +18,7 @@
 
 use std::convert::Into;
 use std::borrow::Cow;
-use std::rc::Rc;
+use std::sync::Arc;
 
 use {
     Lvalue,Rvalue,
@@ -45,7 +45,7 @@ impl Architecture for Avr {
         Ok(cfg.int_vec.clone())
     }
 
-    fn disassembler(_: &Self::Configuration) -> Rc<Disassembler<Self>> {
+    fn disassembler(_: &Self::Configuration) -> Arc<Disassembler<Self>> {
         syntax::disassembler()
     }
 }
@@ -556,6 +556,9 @@ mod tests {
                         println!("{:?}: {}",mne.area,mne.opcode);
                     }
                 },
+                Some(&ControlFlowTarget::Failed(ref pos, ref msg)) => {
+                    println!("{:?}: {:?}",pos,msg);
+                },
                 Some(&ControlFlowTarget::Unresolved(ref v)) => {
                     println!("{:?}",v);
                 },
@@ -584,9 +587,9 @@ mod tests {
         vec!(
             0x12,0x2c, // 0:2 mov
             0x12,0x10, // 2:4 cpse
-            0x12,0x10, // 2:4 cpse
-            0x23,0x0c, // 4:6 add
-            0x21,0x2c, // 6:8 mov
+            0x12,0x10, // 4:6 cpse
+            0x23,0x0c, // 6:8 add
+            0x21,0x2c, // 8:10 mov
         ));
         let main = disassembler();
         let fun = Function::disassemble::<Avr>(None,main,Mcu::atmega8(),reg.iter(),0,reg.name().to_string());
@@ -598,6 +601,9 @@ mod tests {
                     for mne in bb.mnemonics.iter() {
                         println!("{:?}: {}",mne.area,mne.opcode);
                     }
+                },
+                Some(&ControlFlowTarget::Failed(ref pos, ref msg)) => {
+                    println!("{:?}: {:?}",pos,msg);
                 },
                 Some(&ControlFlowTarget::Unresolved(ref v)) => {
                     println!("{:?}",v);
@@ -643,6 +649,9 @@ mod tests {
                     for mne in bb.mnemonics.iter() {
                         println!("{:?}: {}",mne.area,mne.opcode);
                     }
+                },
+                Some(&ControlFlowTarget::Failed(ref pos, ref msg)) => {
+                    println!("{:?}: {:?}",pos,msg);
                 },
                 Some(&ControlFlowTarget::Unresolved(ref v)) => {
                     println!("{:?}",v);
@@ -719,7 +728,7 @@ mod tests {
                         assert_eq!(cfg.in_degree(v), 1);
 
                         for e in cfg.out_edges(v) {
-                            if let Some(&ControlFlowTarget::Unresolved(Rvalue::Constant{ value: v,.. })) = cfg.vertex_label(cfg.target(e)) {
+                            if let Some(&ControlFlowTarget::Failed(v,_)) = cfg.vertex_label(cfg.target(e)) {
                                 assert!(v == 18);
                             } else {
                                 unreachable!();
@@ -737,9 +746,9 @@ mod tests {
                         unreachable!();
                     }
                 },
-                Some(&ControlFlowTarget::Unresolved(Rvalue::Constant{ value: v,.. })) => {
-                    assert_eq!(v, 18);
-                }
+                Some(&ControlFlowTarget::Failed(pos,_)) => {
+                    assert_eq!(pos, 0x12);
+                },
                 _ => unreachable!(),
             }
         }

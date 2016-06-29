@@ -16,7 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-use std::rc::Rc;
+use std::sync::Arc;
 use std::borrow::Cow;
 
 use disassembler::*;
@@ -147,7 +147,7 @@ impl Architecture for Amd64 {
             Mode::Long => Ok(vec![("RESET",0xFFFFFFF0,"Reset vector")]),
         }
     }
-    fn disassembler(cfg: &Self::Configuration) -> Rc<Disassembler<Self>> {
+    fn disassembler(cfg: &Self::Configuration) -> Arc<Disassembler<Self>> {
         disassembler(cfg.mode)
     }
 }
@@ -307,7 +307,7 @@ lazy_static! {
     pub static ref ST7: Lvalue = Lvalue::Variable{ name: Cow::Borrowed("st7"), size: 80, subscript: None };
 }
 
-pub fn disassembler(bits: Mode) -> Rc<Disassembler<Amd64>> {
+pub fn disassembler(bits: Mode) -> Arc<Disassembler<Amd64>> {
     let opsize_prfx = new_disassembler!(Amd64 =>
         [ 0x66, 0x66, 0x66, 0x66, 0x66, 0x66 ] = |st: &mut State<Amd64>| {
             match st.configuration.mode {

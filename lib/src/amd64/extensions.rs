@@ -21,14 +21,14 @@ use amd64::decode::*;
 use amd64::semantic::*;
 use amd64::*;
 
-use std::rc::Rc;
+use std::sync::Arc;
 
-pub fn fpu(_: Rc<Disassembler<Amd64>>,
-           rm0: Rc<Disassembler<Amd64>>, rm1: Rc<Disassembler<Amd64>>,
-           rm2: Rc<Disassembler<Amd64>>, rm3: Rc<Disassembler<Amd64>>,
-           rm4: Rc<Disassembler<Amd64>>, rm5: Rc<Disassembler<Amd64>>,
-           rm6: Rc<Disassembler<Amd64>>, rm7: Rc<Disassembler<Amd64>>
-           ) -> Rc<Disassembler<Amd64>> {
+pub fn fpu(_: Arc<Disassembler<Amd64>>,
+           rm0: Arc<Disassembler<Amd64>>, rm1: Arc<Disassembler<Amd64>>,
+           rm2: Arc<Disassembler<Amd64>>, rm3: Arc<Disassembler<Amd64>>,
+           rm4: Arc<Disassembler<Amd64>>, rm5: Arc<Disassembler<Amd64>>,
+           rm6: Arc<Disassembler<Amd64>>, rm7: Arc<Disassembler<Amd64>>
+           ) -> Arc<Disassembler<Amd64>> {
     new_disassembler!(Amd64 =>
         // F2XM1
         [ 0xd9, 0xf0 ] = nonary("f2xm1",f2xm1),
@@ -644,7 +644,7 @@ pub fn fpu(_: Rc<Disassembler<Amd64>>,
         [ 0xd9, 0xf9 ] = nonary("fyl2xp1",fyl2xp1))
 }
 
-pub fn mpx(rm: Rc<Disassembler<Amd64>>) -> Rc<Disassembler<Amd64>> {
+pub fn mpx(rm: Arc<Disassembler<Amd64>>) -> Arc<Disassembler<Amd64>> {
     new_disassembler!(Amd64 =>
         // BNDC*
         [ 0xf2, 0x0f, 0x1a, rm ] = binary("bndcu",decode_rm,bndcu),

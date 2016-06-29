@@ -27,26 +27,26 @@ use amd64::decode::*;
 use amd64::semantic::*;
 use amd64::*;
 
-use std::rc::Rc;
+use std::sync::Arc;
 
-pub fn integer_lockable(imm8: Rc<Disassembler<Amd64>>,
-                          _: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>,
-                          _: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>,
-                          imm: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>,
-                          _: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>,
-                          _: Rc<Disassembler<Amd64>>, rm: Rc<Disassembler<Amd64>>,
-                          rm0: Rc<Disassembler<Amd64>>, rm1: Rc<Disassembler<Amd64>>,
-                          rm2: Rc<Disassembler<Amd64>>, rm3: Rc<Disassembler<Amd64>>,
-                          rm4: Rc<Disassembler<Amd64>>, rm5: Rc<Disassembler<Amd64>>,
-                          rm6: Rc<Disassembler<Amd64>>, rm7: Rc<Disassembler<Amd64>>,
-                          rmbyte: Rc<Disassembler<Amd64>>, rmbyte0: Rc<Disassembler<Amd64>>,
-                          rmbyte1: Rc<Disassembler<Amd64>>, rmbyte2: Rc<Disassembler<Amd64>>,
-                          rmbyte3: Rc<Disassembler<Amd64>>, rmbyte4: Rc<Disassembler<Amd64>>,
-                          _: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>,
-                          _: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>,
-                          m64: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>,
-                          _: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>,
-                          _: Rc<Disassembler<Amd64>>) -> Rc<Disassembler<Amd64>> {
+pub fn integer_lockable(imm8: Arc<Disassembler<Amd64>>,
+                          _: Arc<Disassembler<Amd64>>, _: Arc<Disassembler<Amd64>>,
+                          _: Arc<Disassembler<Amd64>>, _: Arc<Disassembler<Amd64>>,
+                          imm: Arc<Disassembler<Amd64>>, _: Arc<Disassembler<Amd64>>,
+                          _: Arc<Disassembler<Amd64>>, _: Arc<Disassembler<Amd64>>,
+                          _: Arc<Disassembler<Amd64>>, rm: Arc<Disassembler<Amd64>>,
+                          rm0: Arc<Disassembler<Amd64>>, rm1: Arc<Disassembler<Amd64>>,
+                          rm2: Arc<Disassembler<Amd64>>, rm3: Arc<Disassembler<Amd64>>,
+                          rm4: Arc<Disassembler<Amd64>>, rm5: Arc<Disassembler<Amd64>>,
+                          rm6: Arc<Disassembler<Amd64>>, rm7: Arc<Disassembler<Amd64>>,
+                          rmbyte: Arc<Disassembler<Amd64>>, rmbyte0: Arc<Disassembler<Amd64>>,
+                          rmbyte1: Arc<Disassembler<Amd64>>, rmbyte2: Arc<Disassembler<Amd64>>,
+                          rmbyte3: Arc<Disassembler<Amd64>>, rmbyte4: Arc<Disassembler<Amd64>>,
+                          _: Arc<Disassembler<Amd64>>, _: Arc<Disassembler<Amd64>>,
+                          _: Arc<Disassembler<Amd64>>, _: Arc<Disassembler<Amd64>>,
+                          m64: Arc<Disassembler<Amd64>>, _: Arc<Disassembler<Amd64>>,
+                          _: Arc<Disassembler<Amd64>>, _: Arc<Disassembler<Amd64>>,
+                          _: Arc<Disassembler<Amd64>>) -> Arc<Disassembler<Amd64>> {
     new_disassembler!(Amd64 =>
         // ADC
         [ 0x14, imm8          ] = binary_rv("adc",&*AL,decode_imm,adc),
@@ -175,24 +175,24 @@ pub fn integer_lockable(imm8: Rc<Disassembler<Amd64>>,
         [ 0x33, rm        ] = binary("xor",decode_rm,xor))
 }
 
-pub fn integer_universial(imm8: Rc<Disassembler<Amd64>>,
-                          imm16: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>,
-                          _: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>,
-                          imm: Rc<Disassembler<Amd64>>, immlong: Rc<Disassembler<Amd64>>,
-                          moffs8: Rc<Disassembler<Amd64>>, moffs: Rc<Disassembler<Amd64>>,
-                          _: Rc<Disassembler<Amd64>>, rm: Rc<Disassembler<Amd64>>,
-                          rm0: Rc<Disassembler<Amd64>>, rm1: Rc<Disassembler<Amd64>>,
-                          rm2: Rc<Disassembler<Amd64>>, rm3: Rc<Disassembler<Amd64>>,
-                          rm4: Rc<Disassembler<Amd64>>, rm5: Rc<Disassembler<Amd64>>,
-                          rm6: Rc<Disassembler<Amd64>>, rm7: Rc<Disassembler<Amd64>>,
-                          rmbyte: Rc<Disassembler<Amd64>>, rmbyte0: Rc<Disassembler<Amd64>>,
-                          rmbyte1: Rc<Disassembler<Amd64>>, rmbyte2: Rc<Disassembler<Amd64>>,
-                          rmbyte3: Rc<Disassembler<Amd64>>, rmbyte4: Rc<Disassembler<Amd64>>,
-                          rmbyte5: Rc<Disassembler<Amd64>>, rmbyte6: Rc<Disassembler<Amd64>>,
-                          rmbyte7: Rc<Disassembler<Amd64>>, rmlong: Rc<Disassembler<Amd64>>,
-                          _: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>,
-                          _: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>,
-                          _: Rc<Disassembler<Amd64>>) -> Rc<Disassembler<Amd64>> {
+pub fn integer_universial(imm8: Arc<Disassembler<Amd64>>,
+                          imm16: Arc<Disassembler<Amd64>>, _: Arc<Disassembler<Amd64>>,
+                          _: Arc<Disassembler<Amd64>>, _: Arc<Disassembler<Amd64>>,
+                          imm: Arc<Disassembler<Amd64>>, immlong: Arc<Disassembler<Amd64>>,
+                          moffs8: Arc<Disassembler<Amd64>>, moffs: Arc<Disassembler<Amd64>>,
+                          _: Arc<Disassembler<Amd64>>, rm: Arc<Disassembler<Amd64>>,
+                          rm0: Arc<Disassembler<Amd64>>, rm1: Arc<Disassembler<Amd64>>,
+                          rm2: Arc<Disassembler<Amd64>>, rm3: Arc<Disassembler<Amd64>>,
+                          rm4: Arc<Disassembler<Amd64>>, rm5: Arc<Disassembler<Amd64>>,
+                          rm6: Arc<Disassembler<Amd64>>, rm7: Arc<Disassembler<Amd64>>,
+                          rmbyte: Arc<Disassembler<Amd64>>, rmbyte0: Arc<Disassembler<Amd64>>,
+                          rmbyte1: Arc<Disassembler<Amd64>>, rmbyte2: Arc<Disassembler<Amd64>>,
+                          rmbyte3: Arc<Disassembler<Amd64>>, rmbyte4: Arc<Disassembler<Amd64>>,
+                          rmbyte5: Arc<Disassembler<Amd64>>, rmbyte6: Arc<Disassembler<Amd64>>,
+                          rmbyte7: Arc<Disassembler<Amd64>>, rmlong: Arc<Disassembler<Amd64>>,
+                          _: Arc<Disassembler<Amd64>>, _: Arc<Disassembler<Amd64>>,
+                          _: Arc<Disassembler<Amd64>>, _: Arc<Disassembler<Amd64>>,
+                          _: Arc<Disassembler<Amd64>>) -> Arc<Disassembler<Amd64>> {
     fn cmovcc(cond: Condition) -> Box<Fn(&mut CodeGen<Amd64>,Rvalue,Rvalue)> {
         Box::new(move |cg: &mut CodeGen<Amd64>,a: Rvalue,b: Rvalue| {
             cmov(cg,a,b,cond)
@@ -613,7 +613,7 @@ pub fn integer_universial(imm8: Rc<Disassembler<Amd64>>,
 
 }
 
-pub fn integer_rep() -> (Rc<Disassembler<Amd64>>,Rc<Disassembler<Amd64>>) {
+pub fn integer_rep() -> (Arc<Disassembler<Amd64>>,Arc<Disassembler<Amd64>>) {
     let rep = new_disassembler!(Amd64 =>
         // INS*
         [ 0x6c ] = binary_vr("insb",reg_di,&*DX,ins),
@@ -648,12 +648,12 @@ pub fn integer_rep() -> (Rc<Disassembler<Amd64>>,Rc<Disassembler<Amd64>>) {
 }
 
 
-pub fn integer_16bit(imm8: Rc<Disassembler<Amd64>>, imm32: Rc<Disassembler<Amd64>>,
-                     moffs: Rc<Disassembler<Amd64>>,
-                     _: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>,
-                     _: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>,
-                     rm4: Rc<Disassembler<Amd64>>, rm5: Rc<Disassembler<Amd64>>,
-                     _: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>) -> Rc<Disassembler<Amd64>> {
+pub fn integer_16bit(imm8: Arc<Disassembler<Amd64>>, imm32: Arc<Disassembler<Amd64>>,
+                     moffs: Arc<Disassembler<Amd64>>,
+                     _: Arc<Disassembler<Amd64>>, _: Arc<Disassembler<Amd64>>,
+                     _: Arc<Disassembler<Amd64>>, _: Arc<Disassembler<Amd64>>,
+                     rm4: Arc<Disassembler<Amd64>>, rm5: Arc<Disassembler<Amd64>>,
+                     _: Arc<Disassembler<Amd64>>, _: Arc<Disassembler<Amd64>>) -> Arc<Disassembler<Amd64>> {
     new_disassembler!(Amd64 =>
         // JCXZ
         [ 0xe3, imm8 ] = unary("jcxz",decode_imm,jcxz),
@@ -665,12 +665,12 @@ pub fn integer_16bit(imm8: Rc<Disassembler<Amd64>>, imm32: Rc<Disassembler<Amd64
         [ 0xff, rm5   ] = unary("jmp",decode_d,jmp))
 }
 
-pub fn integer_32bit(imm8: Rc<Disassembler<Amd64>>, imm48: Rc<Disassembler<Amd64>>,
-                     moffs: Rc<Disassembler<Amd64>>,
-                     _: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>,
-                     _: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>,
-                     rm4: Rc<Disassembler<Amd64>>, rm5: Rc<Disassembler<Amd64>>,
-                     _: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>) -> Rc<Disassembler<Amd64>> {
+pub fn integer_32bit(imm8: Arc<Disassembler<Amd64>>, imm48: Arc<Disassembler<Amd64>>,
+                     moffs: Arc<Disassembler<Amd64>>,
+                     _: Arc<Disassembler<Amd64>>, _: Arc<Disassembler<Amd64>>,
+                     _: Arc<Disassembler<Amd64>>, _: Arc<Disassembler<Amd64>>,
+                     rm4: Arc<Disassembler<Amd64>>, rm5: Arc<Disassembler<Amd64>>,
+                     _: Arc<Disassembler<Amd64>>, _: Arc<Disassembler<Amd64>>) -> Arc<Disassembler<Amd64>> {
     new_disassembler!(Amd64 =>
         // JECX
         [ 0xe3, imm8 ] = unary("jecxz",decode_imm,jecxz),
@@ -682,27 +682,27 @@ pub fn integer_32bit(imm8: Rc<Disassembler<Amd64>>, imm48: Rc<Disassembler<Amd64
         [ 0xff, rm5   ] = unary("jmp",decode_d,jmp))
 }
 
-pub fn lockable_64bit(_: Rc<Disassembler<Amd64>>,
-                     _: Rc<Disassembler<Amd64>>,
-                     _: Rc<Disassembler<Amd64>>,
-                     _: Rc<Disassembler<Amd64>>, rm1: Rc<Disassembler<Amd64>>,
-                     _: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>,
-                     _: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>,
-                     _: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>,
-                     m128: Rc<Disassembler<Amd64>>) -> Rc<Disassembler<Amd64>> {
+pub fn lockable_64bit(_: Arc<Disassembler<Amd64>>,
+                     _: Arc<Disassembler<Amd64>>,
+                     _: Arc<Disassembler<Amd64>>,
+                     _: Arc<Disassembler<Amd64>>, rm1: Arc<Disassembler<Amd64>>,
+                     _: Arc<Disassembler<Amd64>>, _: Arc<Disassembler<Amd64>>,
+                     _: Arc<Disassembler<Amd64>>, _: Arc<Disassembler<Amd64>>,
+                     _: Arc<Disassembler<Amd64>>, _: Arc<Disassembler<Amd64>>,
+                     m128: Arc<Disassembler<Amd64>>) -> Arc<Disassembler<Amd64>> {
     new_disassembler!(Amd64 =>
         // CMPXCHG16B
         [ 0x0f, 0xc7, rm1, m128 ] = unary("cmpxchg16b",decode_m,cmpxchg16b))
 }
 
-pub fn integer_64bit(imm8: Rc<Disassembler<Amd64>>,
-                     moffs: Rc<Disassembler<Amd64>>,
-                     rm: Rc<Disassembler<Amd64>>,
-                     _: Rc<Disassembler<Amd64>>, rm1: Rc<Disassembler<Amd64>>,
-                     _: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>,
-                     rm4: Rc<Disassembler<Amd64>>, rm5: Rc<Disassembler<Amd64>>,
-                     _: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>,
-                     m128: Rc<Disassembler<Amd64>>) -> Rc<Disassembler<Amd64>> {
+pub fn integer_64bit(imm8: Arc<Disassembler<Amd64>>,
+                     moffs: Arc<Disassembler<Amd64>>,
+                     rm: Arc<Disassembler<Amd64>>,
+                     _: Arc<Disassembler<Amd64>>, rm1: Arc<Disassembler<Amd64>>,
+                     _: Arc<Disassembler<Amd64>>, _: Arc<Disassembler<Amd64>>,
+                     rm4: Arc<Disassembler<Amd64>>, rm5: Arc<Disassembler<Amd64>>,
+                     _: Arc<Disassembler<Amd64>>, _: Arc<Disassembler<Amd64>>,
+                     m128: Arc<Disassembler<Amd64>>) -> Arc<Disassembler<Amd64>> {
     new_disassembler!(Amd64 =>
         // CMPXCHG16B
         [ 0x0f, 0xc7, rm1, m128 ] = unary("cmpxchg16b",decode_m,cmpxchg16b),
@@ -726,13 +726,13 @@ pub fn integer_64bit(imm8: Rc<Disassembler<Amd64>>,
 }
 
 pub fn lockable_32bit_or_less(
-                     _: Rc<Disassembler<Amd64>>,
-                     _: Rc<Disassembler<Amd64>>,
-                     _: Rc<Disassembler<Amd64>>,
-                     _: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>,
-                     _: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>,
-                     _: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>,
-                     _: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>) -> Rc<Disassembler<Amd64>> {
+                     _: Arc<Disassembler<Amd64>>,
+                     _: Arc<Disassembler<Amd64>>,
+                     _: Arc<Disassembler<Amd64>>,
+                     _: Arc<Disassembler<Amd64>>, _: Arc<Disassembler<Amd64>>,
+                     _: Arc<Disassembler<Amd64>>, _: Arc<Disassembler<Amd64>>,
+                     _: Arc<Disassembler<Amd64>>, _: Arc<Disassembler<Amd64>>,
+                     _: Arc<Disassembler<Amd64>>, _: Arc<Disassembler<Amd64>>) -> Arc<Disassembler<Amd64>> {
     new_disassembler!(Amd64 =>
         // DEC
         [ 0x48 ] = unary("dec",reg_a,dec),
@@ -755,13 +755,13 @@ pub fn lockable_32bit_or_less(
         [ 0x47 ] = unary("inc",reg_di,inc))
 }
 
-pub fn integer_32bit_or_less(imm8: Rc<Disassembler<Amd64>>,
-                     imm48: Rc<Disassembler<Amd64>>,
-                     rm: Rc<Disassembler<Amd64>>,
-                     _: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>,
-                     rm2: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>,
-                     _: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>,
-                     _: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>) -> Rc<Disassembler<Amd64>> {
+pub fn integer_32bit_or_less(imm8: Arc<Disassembler<Amd64>>,
+                     imm48: Arc<Disassembler<Amd64>>,
+                     rm: Arc<Disassembler<Amd64>>,
+                     _: Arc<Disassembler<Amd64>>, _: Arc<Disassembler<Amd64>>,
+                     rm2: Arc<Disassembler<Amd64>>, _: Arc<Disassembler<Amd64>>,
+                     _: Arc<Disassembler<Amd64>>, _: Arc<Disassembler<Amd64>>,
+                     _: Arc<Disassembler<Amd64>>, _: Arc<Disassembler<Amd64>>) -> Arc<Disassembler<Amd64>> {
     new_disassembler!(Amd64 =>
         // AAA
         [ 0x37 ] = nonary("aaa",aaa),

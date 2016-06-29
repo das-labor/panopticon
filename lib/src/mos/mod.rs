@@ -28,7 +28,7 @@ use {
     Result,
     Disassembler,
 };
-use std::rc::Rc;
+use std::sync::Arc;
 use std::borrow::Cow;
 
 pub mod syntax;
@@ -65,7 +65,7 @@ impl Architecture for Mos {
         Ok(ret)
     }
 
-    fn disassembler(_: &Self::Configuration) -> Rc<Disassembler<Self>> {
+    fn disassembler(_: &Self::Configuration) -> Arc<Disassembler<Self>> {
         syntax::disassembler()
     }
 }
