@@ -21,12 +21,12 @@ use amd64::decode::*;
 use amd64::semantic::*;
 use amd64::*;
 
-use std::rc::Rc;
+use std::sync::Arc;
 
-pub fn mmx(_: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>, rm2: Rc<Disassembler<Amd64>>,
-           _: Rc<Disassembler<Amd64>>, rm4: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>,
-           rm6: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>,
-           rm: Rc<Disassembler<Amd64>>, imm8: Rc<Disassembler<Amd64>>) -> Rc<Disassembler<Amd64>> {
+pub fn mmx(_: Arc<Disassembler<Amd64>>, _: Arc<Disassembler<Amd64>>, rm2: Arc<Disassembler<Amd64>>,
+           _: Arc<Disassembler<Amd64>>, rm4: Arc<Disassembler<Amd64>>, _: Arc<Disassembler<Amd64>>,
+           rm6: Arc<Disassembler<Amd64>>, _: Arc<Disassembler<Amd64>>,
+           rm: Arc<Disassembler<Amd64>>, imm8: Arc<Disassembler<Amd64>>) -> Arc<Disassembler<Amd64>> {
     new_disassembler!(Amd64 =>
         // EMMS
         [ 0x0f, 0x77 ] = nonary("emms",emms),
@@ -142,11 +142,11 @@ pub fn mmx(_: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>, rm2: Rc<Disas
         [ 0x0f, 0x7e, rm ] = binary("movd",decode_mr,mov))
 }
 
-pub fn sse1(rm0: Rc<Disassembler<Amd64>>, rm1: Rc<Disassembler<Amd64>>, rm2: Rc<Disassembler<Amd64>>,
-            rm3: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>,
-            _: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>,
-            rm: Rc<Disassembler<Amd64>>, imm8: Rc<Disassembler<Amd64>>,
-            rex_prfx: Rc<Disassembler<Amd64>>, rexw_prfx: Rc<Disassembler<Amd64>>) -> Rc<Disassembler<Amd64>> {
+pub fn sse1(rm0: Arc<Disassembler<Amd64>>, rm1: Arc<Disassembler<Amd64>>, rm2: Arc<Disassembler<Amd64>>,
+            rm3: Arc<Disassembler<Amd64>>, _: Arc<Disassembler<Amd64>>, _: Arc<Disassembler<Amd64>>,
+            _: Arc<Disassembler<Amd64>>, _: Arc<Disassembler<Amd64>>,
+            rm: Arc<Disassembler<Amd64>>, imm8: Arc<Disassembler<Amd64>>,
+            rex_prfx: Arc<Disassembler<Amd64>>, rexw_prfx: Arc<Disassembler<Amd64>>) -> Arc<Disassembler<Amd64>> {
     new_disassembler!(Amd64 =>
         // ADDPS
         [ opt!(rex_prfx), 0x0f, 0x58, rm ] = binary("addps",decode_rm,addps),
@@ -313,11 +313,11 @@ pub fn sse1(rm0: Rc<Disassembler<Amd64>>, rm1: Rc<Disassembler<Amd64>>, rm2: Rc<
         [ opt!(rex_prfx), 0x0f, 0x57, rm ] = binary("unpckhps",decode_rm,xorps))
 }
 
-pub fn sse2(_: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>, rm2: Rc<Disassembler<Amd64>>,
-            rm3: Rc<Disassembler<Amd64>>, rm4: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>,
-            rm6: Rc<Disassembler<Amd64>>, rm7: Rc<Disassembler<Amd64>>,
-            rm: Rc<Disassembler<Amd64>>, imm8: Rc<Disassembler<Amd64>>,
-            rex_prfx: Rc<Disassembler<Amd64>>, rexw_prfx: Rc<Disassembler<Amd64>>) -> Rc<Disassembler<Amd64>> {
+pub fn sse2(_: Arc<Disassembler<Amd64>>, _: Arc<Disassembler<Amd64>>, rm2: Arc<Disassembler<Amd64>>,
+            rm3: Arc<Disassembler<Amd64>>, rm4: Arc<Disassembler<Amd64>>, _: Arc<Disassembler<Amd64>>,
+            rm6: Arc<Disassembler<Amd64>>, rm7: Arc<Disassembler<Amd64>>,
+            rm: Arc<Disassembler<Amd64>>, imm8: Arc<Disassembler<Amd64>>,
+            rex_prfx: Arc<Disassembler<Amd64>>, rexw_prfx: Arc<Disassembler<Amd64>>) -> Arc<Disassembler<Amd64>> {
     new_disassembler!(Amd64 =>
         // MOVAPD
         [ 0x66, opt!(rex_prfx), 0x0f, 0x28, rm ] = binary("movapd",decode_rm,movapd),
@@ -649,8 +649,8 @@ pub fn sse2(_: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>, rm2: Rc<Disa
         [ 0x66, opt!(rex_prfx), 0x0f, 0x7e, rm ] = binary("movd",decode_mr,mov))
 }
 
-pub fn sse3(rm: Rc<Disassembler<Amd64>>, imm8: Rc<Disassembler<Amd64>>,
-            rex_prfx: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>) -> Rc<Disassembler<Amd64>> {
+pub fn sse3(rm: Arc<Disassembler<Amd64>>, imm8: Arc<Disassembler<Amd64>>,
+            rex_prfx: Arc<Disassembler<Amd64>>, _: Arc<Disassembler<Amd64>>) -> Arc<Disassembler<Amd64>> {
     new_disassembler!(Amd64 =>
         // ADDSUBPD
         [ 0x66, opt!(rex_prfx), 0x0f, 0xd0, rm ] = binary("addsubpd",decode_rm,addsubpd),
@@ -708,8 +708,8 @@ pub fn sse3(rm: Rc<Disassembler<Amd64>>, imm8: Rc<Disassembler<Amd64>>,
 }
 
 
-pub fn sse4(rm: Rc<Disassembler<Amd64>>, imm8: Rc<Disassembler<Amd64>>,
-            rex_prfx: Rc<Disassembler<Amd64>>, rexw_prfx: Rc<Disassembler<Amd64>>) -> Rc<Disassembler<Amd64>> {
+pub fn sse4(rm: Arc<Disassembler<Amd64>>, imm8: Arc<Disassembler<Amd64>>,
+            rex_prfx: Arc<Disassembler<Amd64>>, rexw_prfx: Arc<Disassembler<Amd64>>) -> Arc<Disassembler<Amd64>> {
     new_disassembler!(Amd64 =>
         // BLENDPD
         [ 0x66, opt!(rex_prfx), 0x0f, 0x3a, 0x0c, rm, imm8 ] = trinary("blendpd",decode_rmi,blendpd),
@@ -837,17 +837,17 @@ pub fn sse4(rm: Rc<Disassembler<Amd64>>, imm8: Rc<Disassembler<Amd64>>,
         [ 0x66, opt!(rexw_prfx), 0x0f, 0x3a, 0x0a, rm, imm8 ] = trinary("roundpd",decode_rmi,roundss))
 }
 
-pub fn avx(vex_0f_prfx: Rc<Disassembler<Amd64>>, vex_660f_prfx: Rc<Disassembler<Amd64>>,
-           vex_f20f_prfx: Rc<Disassembler<Amd64>>, vex_f30f_prfx: Rc<Disassembler<Amd64>>,
-           vex_0f38_prfx: Rc<Disassembler<Amd64>>, vex_660f38_prfx: Rc<Disassembler<Amd64>>,
-           _: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>,
-           _: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>,
-           vex_0f3a_prfx: Rc<Disassembler<Amd64>>, vex_660f3a_prfx: Rc<Disassembler<Amd64>>,
-           rm: Rc<Disassembler<Amd64>>,
-           _: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>, rm2: Rc<Disassembler<Amd64>>,
-           rm3: Rc<Disassembler<Amd64>>, rm4: Rc<Disassembler<Amd64>>, _: Rc<Disassembler<Amd64>>,
-           rm6: Rc<Disassembler<Amd64>>, rm7: Rc<Disassembler<Amd64>>,
-           imm8: Rc<Disassembler<Amd64>>, is4: Rc<Disassembler<Amd64>>) -> Rc<Disassembler<Amd64>> {
+pub fn avx(vex_0f_prfx: Arc<Disassembler<Amd64>>, vex_660f_prfx: Arc<Disassembler<Amd64>>,
+           vex_f20f_prfx: Arc<Disassembler<Amd64>>, vex_f30f_prfx: Arc<Disassembler<Amd64>>,
+           vex_0f38_prfx: Arc<Disassembler<Amd64>>, vex_660f38_prfx: Arc<Disassembler<Amd64>>,
+           _: Arc<Disassembler<Amd64>>, _: Arc<Disassembler<Amd64>>,
+           _: Arc<Disassembler<Amd64>>, _: Arc<Disassembler<Amd64>>,
+           vex_0f3a_prfx: Arc<Disassembler<Amd64>>, vex_660f3a_prfx: Arc<Disassembler<Amd64>>,
+           rm: Arc<Disassembler<Amd64>>,
+           _: Arc<Disassembler<Amd64>>, _: Arc<Disassembler<Amd64>>, rm2: Arc<Disassembler<Amd64>>,
+           rm3: Arc<Disassembler<Amd64>>, rm4: Arc<Disassembler<Amd64>>, _: Arc<Disassembler<Amd64>>,
+           rm6: Arc<Disassembler<Amd64>>, rm7: Arc<Disassembler<Amd64>>,
+           imm8: Arc<Disassembler<Amd64>>, is4: Arc<Disassembler<Amd64>>) -> Arc<Disassembler<Amd64>> {
     new_disassembler!(Amd64 =>
         // VADD*
         [ vex_660f_prfx, 0x58, rm ] = trinary("vaddpd",decode_rvm,vaddpd),

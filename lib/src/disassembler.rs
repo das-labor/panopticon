@@ -18,7 +18,7 @@
 
 #![macro_use]
 
-use std::rc::Rc;
+use std::sync::Arc;
 use std::fmt::{Debug};
 use std::ops::{BitAnd,BitOr,Shl,Shr,Not};
 use std::collections::HashMap;
@@ -59,11 +59,12 @@ pub trait Architecture: Clone
                 Shl<usize,Output=Self::Token> +
                 Shr<usize,Output=Self::Token> +
                 PartialEq +
-                Eq;
+                Eq +
+                Send + Sync;
     type Configuration: Clone + Send;
 
     fn prepare(LayerIter,&Self::Configuration) -> Result<Vec<(&'static str,u64,&'static str)>>;
-    fn disassembler(&Self::Configuration) -> Rc<Disassembler<Self>>;
+    fn disassembler(&Self::Configuration) -> Arc<Disassembler<Self>>;
 }
 
 pub type Action<A> = fn(&mut State<A>) -> bool;
@@ -148,7 +149,7 @@ pub enum Rule<A: Architecture> {
 		pattern: A::Token,
 		capture_group: Vec<(String,A::Token)>,
 	},
-	Sub(Rc<Disassembler<A>>),
+	Sub(Arc<Disassembler<A>>),
 }
 
 impl<A: Architecture> PartialEq for Rule<A> {
@@ -173,7 +174,7 @@ pub enum Symbol {
 pub struct Disassembler<A: Architecture> {
 	graph: AdjacencyList<Symbol,Rule<A>>,
 	start: AdjacencyListVertexDescriptor,
-	end: HashMap<AdjacencyListVertexDescriptor,Rc<Action<A>>>,
+	end: HashMap<AdjacencyListVertexDescriptor,Arc<Action<A>>>,
     default: Option<Action<A>>,
 }
 
@@ -212,7 +213,7 @@ impl<A: Architecture> Disassembler<A> {
         println!("}}");
     }
 
-	pub fn add(&mut self, a: &Vec<Rule<A>>, b: Rc<Action<A>>) {
+	pub fn add(&mut self, a: &Vec<Rule<A>>, b: Arc<Action<A>>) {
         assert!(!a.is_empty());
 
         let mut v = self.start;
@@ -409,8 +410,8 @@ impl<A: Architecture> Into<Rule<A>> for usize {
     }
 }
 
-impl<A: Architecture> From<Rc<Disassembler<A>>> for Rule<A> {
-    fn from(s: Rc<Disassembler<A>>) -> Self {
+impl<A: Architecture> From<Arc<Disassembler<A>>> for Rule<A> {
+    fn from(s: Arc<Disassembler<A>>) -> Self {
         Rule::Sub(s)
     }
 }
@@ -568,11 +569,11 @@ macro_rules! new_disassembler {
                 let fuc: ::disassembler::Action<$ty> = a;
 
                 for r in gen.rules {
-                    dis.add(&r,::std::rc::Rc::new(fuc));
+                    dis.add(&r,::std::sync::Arc::new(fuc));
                 }
             })+
 
-            ::std::rc::Rc::<::disassembler::Disassembler<$ty>>::new(dis)
+            ::std::sync::Arc::<::disassembler::Disassembler<$ty>>::new(dis)
         }
     };
     ($ty:ty => $( [ $( $t:expr ),+ ] = $f:expr),+, _ = $def:expr) => {
@@ -587,7 +588,7 @@ macro_rules! new_disassembler {
                 let fuc: ::disassembler::Action<$ty> = a;
 
                 for r in gen.rules {
-                    dis.add(&r,::std::rc::Rc::new(fuc));
+                    dis.add(&r,::std::sync::Arc::new(fuc));
                 }
             })+
 
@@ -595,7 +596,7 @@ macro_rules! new_disassembler {
             fn __def(st: &mut State<$ty>) -> bool { ($def)(st) };
             dis.set_default(__def);
 
-            ::std::rc::Rc::<::disassembler::Disassembler<$ty>>::new(dis)
+            ::std::sync::Arc::<::disassembler::Disassembler<$ty>>::new(dis)
         }
     };
 }
@@ -603,7 +604,7 @@ macro_rules! new_disassembler {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::rc::Rc;
+    use std::sync::Arc;
     use {
         OpaqueLayer,
         Guard,
@@ -623,7 +624,7 @@ mod tests {
             unimplemented!()
         }
 
-        fn disassembler(_: &Self::Configuration) -> Rc<Disassembler<Self>> {
+        fn disassembler(_: &Self::Configuration) -> Arc<Disassembler<Self>> {
             unimplemented!()
         }
     }
@@ -638,7 +639,7 @@ mod tests {
             unimplemented!()
         }
 
-        fn disassembler(_: &Self::Configuration) -> Rc<Disassembler<Self>> {
+        fn disassembler(_: &Self::Configuration) -> Arc<Disassembler<Self>> {
             unimplemented!()
         }
     }
@@ -703,7 +704,7 @@ mod tests {
         );
     }
 
-    fn fixture() -> (Rc<Disassembler<TestArchShort>>,Rc<Disassembler<TestArchShort>>,Rc<Disassembler<TestArchShort>>,OpaqueLayer) {
+    fn fixture() -> (Arc<Disassembler<TestArchShort>>,Arc<Disassembler<TestArchShort>>,Arc<Disassembler<TestArchShort>>,OpaqueLayer) {
         let sub = new_disassembler!(TestArchShort =>
             [ 2 ] = |st: &mut State<TestArchShort>| {
                 let next = st.address;

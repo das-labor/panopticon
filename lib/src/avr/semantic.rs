@@ -22,6 +22,8 @@ pub fn cpse(st: &mut State<Avr>) -> bool {
         }
     });
 
+    optional_skip(fallthru.clone(),st);
+
     if st.tokens.len() == 1 {
         st.jump(skip,g.clone());
     } else {

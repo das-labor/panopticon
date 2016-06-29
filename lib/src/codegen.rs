@@ -190,7 +190,7 @@ mod tests {
         Result,
         Disassembler,
     };
-    use std::rc::Rc;
+    use std::sync::Arc;
     use std::borrow::Cow;
 
     #[derive(Clone)]
@@ -203,7 +203,7 @@ mod tests {
             unimplemented!()
         }
 
-        fn disassembler(_: &Self::Configuration) -> Rc<Disassembler<Self>> {
+        fn disassembler(_: &Self::Configuration) -> Arc<Disassembler<Self>> {
             unimplemented!()
         }
     }

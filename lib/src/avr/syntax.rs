@@ -16,13 +16,13 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-use std::rc::Rc;
+use std::sync::Arc;
 
 use disassembler::*;
 use super::*;
 use super::semantic::*;
 
-pub fn disassembler() -> Rc<Disassembler<Avr>> {
+pub fn disassembler() -> Arc<Disassembler<Avr>> {
     let skip = new_disassembler!(Avr =>
         [ "1111 110 sr@..... 0 sb@..." ] = skip("sbrc",false),
         [ "1111 111 sr@..... 0 sb@..." ] = skip("sbrs",true),
@@ -166,7 +166,7 @@ pub fn disassembler() -> Rc<Disassembler<Avr>> {
     );
 
     new_disassembler!(Avr =>
-        [ opt!(skip), main ] = |_: &mut State<Avr>| { true },
+        [ main ] = |_: &mut State<Avr>| { true },
         [ skip ] = |_: &mut State<Avr>| { true }
     )
 }

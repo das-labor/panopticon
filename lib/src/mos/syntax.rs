@@ -26,7 +26,7 @@ use {
     Rvalue,
 };
 
-use std::rc::Rc;
+use std::sync::Arc;
 
 /* use value::{Lvalue,Rvalue,ToRvalue};
 use guard::Guard;
@@ -43,7 +43,7 @@ use super::*;
 */
 
 #[allow(overflowing_literals)]
-pub fn disassembler() -> Rc<Disassembler<Mos>> {
+pub fn disassembler() -> Arc<Disassembler<Mos>> {
     let imm8 = new_disassembler!(Mos =>
         [ "imm@........" ] = |st: &mut State<Mos>| {
             st.configuration.arg = Some(Rvalue::new_u8(st.get_group("imm") as u8));

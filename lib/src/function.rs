@@ -16,16 +16,23 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-use std::collections::{HashMap,BTreeMap,BTreeSet};
-use std::rc::Rc;
+use std::collections::{HashMap,BTreeMap,HashSet};
+use std::sync::Arc;
+use std::borrow::Cow;
 use std::fmt::Debug;
 
-use graph_algos::{AdjacencyList,GraphTrait,MutableGraphTrait};
+use graph_algos::{
+    AdjacencyList,
+    GraphTrait,
+    MutableGraphTrait,
+    VertexListGraphTrait,
+    EdgeListGraphTrait,
+    BidirectionalGraphTrait,
+};
 use graph_algos::adjacency_list::{
     AdjacencyListVertexDescriptor,
     AdjacencyListEdgeDescriptor,
 };
-use graph_algos::{VertexListGraphTrait,EdgeListGraphTrait};
 use graph_algos::search::{
     TraversalOrder,
     TreeIterator,
@@ -233,7 +240,7 @@ impl Function {
         ret
     }
 
-    pub fn disassemble<A: Architecture>(cont: Option<Function>, dec: Rc<Disassembler<A>>, init: A::Configuration, data: LayerIter, start: u64, reg: String) -> Function
+    pub fn disassemble<A: Architecture>(cont: Option<Function>, dec: Arc<Disassembler<A>>, init: A::Configuration, data: LayerIter, start: u64, reg: String) -> Function
     where A: Debug, A::Configuration: Debug {
         let name = cont.as_ref().map_or(format!("func_{}",start),|x| x.name.clone());
         let uuid = cont.as_ref().map_or(Uuid::new_v4(),|x| x.uuid.clone());
@@ -397,7 +404,7 @@ impl Function {
 mod tests {
     use super::*;
     use std::borrow::Cow;
-    use std::rc::Rc;
+    use std::sync::Arc;
     use graph_algos::{VertexListGraphTrait,EdgeListGraphTrait,AdjacencyMatrixGraphTrait};
     use graph_algos::{GraphTrait,MutableGraphTrait};
     use {
@@ -424,7 +431,7 @@ mod tests {
             unimplemented!()
         }
 
-        fn disassembler(_: &Self::Configuration) -> Rc<Disassembler<Self>> {
+        fn disassembler(_: &Self::Configuration) -> Arc<Disassembler<Self>> {
             unimplemented!()
         }
     }
@@ -439,7 +446,7 @@ mod tests {
             unimplemented!()
         }
 
-        fn disassembler(_: &Self::Configuration) -> Rc<Disassembler<Self>> {
+        fn disassembler(_: &Self::Configuration) -> Arc<Disassembler<Self>> {
             unimplemented!()
         }
     }
