@@ -127,6 +127,7 @@ Item {
 					y: bblockRoot.y + bblockRoot.childrenRect.y - 500
 					width: bblockRoot.childrenRect.width + 1000
 					height: bblockRoot.childrenRect.height + 1000
+					visible: cflow_graph.state !== "ERROR"
 
 					property var edges: null;
 					property var boxes: null;
@@ -225,6 +226,7 @@ Item {
 				}
 
 				Item {
+					visible: cflow_graph.state !== "ERROR"
 					id: bblockRoot
 				}
 
@@ -232,7 +234,7 @@ Item {
 					anchors.fill: parent
 					width: childrenRect.width
 					height: childrenRect.height
-					visible: cflow_graph.state == "ERROR"
+					visible: cflow_graph.state === "ERROR"
 					color: "#efefef"
 
 					Label {
@@ -259,8 +261,6 @@ Item {
 							cflow_graph.errorMessage = cfg_res.error
 							cflow_graph.state = "ERROR"
 							return;
-						} else {
-							cflow_graph.state = ""
 						}
 
 						var cfg = cfg_res.payload;
@@ -310,34 +310,49 @@ Item {
 					var func_res = JSON.parse(Panopticon.functionInfo(selection));
 					var dims = {};
 
+					cflow_graph.state = ""
+					cflow_graph.errorMessage = ""
+
+					if(cflow_graph.item.bblockList != null) {
+						for (var i in bblockList) {
+							if(bblockList.hasOwnProperty(i)) {
+								try {
+									bblockList[i].visible = false;
+									bblockList[i].destroy();
+								} catch (e) {
+									console.error(e);
+								}
+							}
+						}
+					}
+
 					if (cfg_res.status != "ok") {
 						cflow_graph.errorMessage = cfg_res.error
 						cflow_graph.state = "ERROR"
 						return;
-					} else {
-						cflow_graph.state = ""
 					}
 
 					var cfg = cfg_res.payload;
+
+					if (cfg.nodes.length == 0) {
+						cflow_graph.errorMessage = "Function is empty"
+						cflow_graph.state = "ERROR"
+						return;
+					}
+
+					if (cfg.nodes.length == 1 && cfg.nodes[0].substr(0,3) == "err") {
+						cflow_graph.errorMessage = "Disassembly failed: " + cfg.errors[cfg.nodes[0]];
+						cflow_graph.state = "ERROR"
+						return;
+					}
 
 					if (func_res.status != "ok") {
 						cflow_graph.errorMessage = func_res.error
 						cflow_graph.state = "ERROR"
 						return;
-					} else {
-							cflow_graph.state = ""
 					}
 
 					var func = func_res.payload;
-
-					if(cflow_graph.item.bblockList != null) {
-						for (var i in bblockList) {
-							if(bblockList.hasOwnProperty(i)) {
-								bblockList[i].visible = false;
-								bblockList[i].destroy();
-							}
-						}
-					}
 
 					var res = JSON.parse(Panopticon.functionApproximate(selection));
 					if(res.status == "ok") {
