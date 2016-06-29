@@ -106,8 +106,11 @@ pub fn metainfo(arg: &Variant) -> Variant {
                                     return_json(Ok(Metainfo{ kind: "function", name: Some(name.clone()), uuid: uuid.to_string(), entry_point: Some(bb.area.start), calls: calls })),
                                 Some(&ControlFlowTarget::Unresolved(Rvalue::Constant{ value: c,.. })) =>
                                     return_json(Ok(Metainfo{ kind: "function", name: Some(name.clone()), uuid: uuid.to_string(), entry_point: Some(c), calls: calls })),
-                                _ =>
+                                Some(&ControlFlowTarget::Unresolved(_)) =>
                                     return_json(Ok(Metainfo{ kind: "function", name: Some(name.clone()), uuid: uuid.to_string(), entry_point: None, calls: calls })),
+                                Some(&ControlFlowTarget::Failed(pos,_)) =>
+                                    return_json(Ok(Metainfo{ kind: "function", name: Some(name.clone()), uuid: uuid.to_string(), entry_point: Some(pos), calls: calls })),
+                                None => unreachable!(),
                             },
                         Some(&CallTarget::Concrete(Function{ ref uuid, ref name, entry_point: None,..})) =>
                             return_json(Ok(Metainfo{ kind: "function", name: Some(name.clone()), uuid: uuid.to_string(), entry_point: None, calls: calls })),
@@ -165,6 +168,7 @@ struct ControlFlowGraph {
     edges: Vec<CfgEdge>,
     code: HashMap<String,Vec<CfgMnemonic>>,
     targets: HashMap<String,String>,
+    errors: HashMap<String,String>,
 }
 
 /// JSON-encoded control flow graph of the function w/ UUID `arg`.
@@ -179,7 +183,7 @@ struct ControlFlowGraph {
 ///         {"from": <IDENT>, "to": <IDENT>},
 ///         ...
 ///     ],
-///     "contents": {
+///     "code": {
 ///         <IDENT>: [{
 ///             "opcode": "mov",
 ///             "reg": "ram",
@@ -195,6 +199,14 @@ struct ControlFlowGraph {
 ///         ],
 ///         ...
 ///     }
+///     "targets": {
+///         <IDENT>: <TARGET>,
+///         ...
+///     },
+///     "errors": {
+///         <IDENT>: <MSG>,
+///         ...
+///     },
 /// }```
 pub fn control_flow_graph(arg: &Variant) -> Variant {
     Variant::String(if let &Variant::String(ref uuid_str) = arg {
@@ -331,6 +343,14 @@ pub fn control_flow_graph(arg: &Variant) -> Variant {
                                 _ => None,
                             }
                         });
+                        let errors = cfg.vertices().filter_map(|x| {
+                            let lb = cfg.vertex_label(x);
+                            match lb {
+                                Some(&ControlFlowTarget::Failed(_,ref msg)) =>
+                                    Some((to_ident(lb.unwrap()),format!("{}",msg))),
+                                _ => None,
+                            }
+                        });
 
 
                         // control flow edges
@@ -353,6 +373,7 @@ pub fn control_flow_graph(arg: &Variant) -> Variant {
                             edges: edges,
                             code: HashMap::from_iter(code),
                             targets: HashMap::from_iter(targets),
+                            errors: HashMap::from_iter(errors),
                         }))
                     } else {
                         return_json::<()>(Err("This function is unresolved".into()))
@@ -575,6 +596,8 @@ fn to_ident(t: &ControlFlowTarget) -> String {
             c.hash::<SipHasher>(h);
             format!("c{}",h.finish())
         }
+        &ControlFlowTarget::Failed(ref pos,_) =>
+            format!("err{}",pos),
     }
 }
 

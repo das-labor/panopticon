@@ -55,6 +55,7 @@ use {
 pub enum ControlFlowTarget {
     Resolved(BasicBlock),
     Unresolved(Rvalue),
+    Failed(u64,Cow<'static,str>),
 }
 
 pub type ControlFlowGraph = AdjacencyList<ControlFlowTarget,Guard>;
@@ -68,6 +69,12 @@ pub struct Function {
     pub cflow_graph: ControlFlowGraph,
     pub entry_point: Option<ControlFlowRef>,
     pub region: String,
+}
+
+#[derive(Clone,PartialEq,Eq,Debug)]
+enum MnemonicOrError {
+    Mnemonic(Mnemonic),
+    Error(u64,Cow<'static,str>),
 }
 
 impl Function {
@@ -91,24 +98,31 @@ impl Function {
         }
     }
 
-    fn index_cflow_graph(g: ControlFlowGraph) -> (BTreeMap<u64,Vec<Mnemonic>>,HashMap<u64,Vec<(Rvalue,Guard)>>,HashMap<u64,Vec<(Rvalue,Guard)>>) {
+    fn index_cflow_graph(g: ControlFlowGraph) -> (BTreeMap<u64,Vec<MnemonicOrError>>,HashMap<u64,Vec<(Rvalue,Guard)>>,HashMap<u64,Vec<(Rvalue,Guard)>>) {
         let mut mnemonics = BTreeMap::new();
         let mut by_source = HashMap::<u64,Vec<(Rvalue,Guard)>>::new();
         let mut by_destination = HashMap::<u64,Vec<(Rvalue,Guard)>>::new();
 
         for v in g.vertices() {
-            if let Some(&ControlFlowTarget::Resolved(ref bb)) = g.vertex_label(v) {
-                let mut prev_mne = None;
+            match g.vertex_label(v) {
+                Some(&ControlFlowTarget::Resolved(ref bb)) => {
+                    let mut prev_mne = None;
 
-                for mne in &bb.mnemonics {
-                    mnemonics.entry(mne.area.start).or_insert(Vec::new()).push(mne.clone());
+                    for mne in &bb.mnemonics {
+                        mnemonics.entry(mne.area.start).or_insert(Vec::new()).push(MnemonicOrError::Mnemonic(mne.clone()));
 
-                    if let Some(prev) = prev_mne {
-                        by_source.entry(prev).or_insert(Vec::new()).push((Rvalue::new_u64(mne.area.start),Guard::always()));
-                        by_destination.entry(mne.area.start).or_insert(Vec::new()).push((Rvalue::new_u64(prev),Guard::always()));
+                        if let Some(prev) = prev_mne {
+                            by_source.entry(prev).or_insert(Vec::new()).push((Rvalue::new_u64(mne.area.start),Guard::always()));
+                            by_destination.entry(mne.area.start).or_insert(Vec::new()).push((Rvalue::new_u64(prev),Guard::always()));
+                        }
+                        prev_mne = Some(mne.area.start);
                     }
-                    prev_mne = Some(mne.area.start);
+                },
+                Some(&ControlFlowTarget::Failed(ref pos,ref msg)) => {
+                    mnemonics.entry(*pos).or_insert(Vec::new()).push(MnemonicOrError::Error(*pos,msg.clone()));
                 }
+                Some(&ControlFlowTarget::Unresolved(_)) => {},
+                None => unreachable!(),
             }
         }
 
@@ -118,34 +132,75 @@ impl Function {
             let tgt = g.vertex_label(g.target(e));
 
             match (src,tgt) {
+                // Resolved -> Resolved
                 (Some(&ControlFlowTarget::Resolved(ref src_bb)),Some(&ControlFlowTarget::Resolved(ref tgt_bb))) => {
                     let last = src_bb.mnemonics.last().map_or(src_bb.area.start,|mne| mne.area.start);
                     by_source.entry(last).or_insert(Vec::new()).push((Rvalue::new_u64(tgt_bb.area.start),gu.clone()));
                     by_destination.entry(tgt_bb.area.start).or_insert(Vec::new()).push((Rvalue::new_u64(last),gu));
                 },
+                // Resolved -> Unresolved(Constant)
                 (Some(&ControlFlowTarget::Resolved(ref src_bb)),Some(&ControlFlowTarget::Unresolved(Rvalue::Constant{ value: ref c,.. }))) => {
                     let last = src_bb.mnemonics.last().map_or(src_bb.area.start,|mne| mne.area.start);
                     by_source.entry(last).or_insert(Vec::new()).push((Rvalue::new_u64(*c),gu.clone()));
                     by_destination.entry(*c).or_insert(Vec::new()).push((Rvalue::new_u64(last),gu));
                 },
+                // Unresolved(Constant) -> Resolved
                 (Some(&ControlFlowTarget::Unresolved(Rvalue::Constant{ value: ref c,.. })),Some(&ControlFlowTarget::Resolved(ref tgt_bb))) => {
                     by_source.entry(*c).or_insert(Vec::new()).push((Rvalue::new_u64(tgt_bb.area.start),gu.clone()));
                     by_destination.entry(tgt_bb.area.start).or_insert(Vec::new()).push((Rvalue::new_u64(*c),gu));
                 },
+                // Resolved -> Unresolved
                 (Some(&ControlFlowTarget::Resolved(ref src_bb)),Some(&ControlFlowTarget::Unresolved(ref r))) => {
                     by_source.entry(src_bb.area.start).or_insert(Vec::new()).push((r.clone(),gu));
                 },
+                // Unresolved -> Resolved
                 (Some(&ControlFlowTarget::Unresolved(ref t)),Some(&ControlFlowTarget::Resolved(ref tgt_bb))) => {
                     by_destination.entry(tgt_bb.area.start).or_insert(Vec::new()).push((t.clone(),gu));
                 },
-                _ => {}
+                // Failed -> Resolved
+                (Some(&ControlFlowTarget::Failed(ref src_pos,_)),Some(&ControlFlowTarget::Resolved(ref tgt_bb))) => {
+                    by_source.entry(*src_pos).or_insert(Vec::new()).push((Rvalue::new_u64(tgt_bb.area.start),gu.clone()));
+                    by_destination.entry(tgt_bb.area.start).or_insert(Vec::new()).push((Rvalue::new_u64(*src_pos),gu));
+                },
+                // Resolved -> Failed
+                (Some(&ControlFlowTarget::Resolved(ref src_bb)),Some(&ControlFlowTarget::Failed(ref tgt_pos,_))) => {
+                    let last = src_bb.mnemonics.last().map_or(src_bb.area.start,|mne| mne.area.start);
+                    by_source.entry(last).or_insert(Vec::new()).push((Rvalue::new_u64(*tgt_pos),gu.clone()));
+                    by_destination.entry(*tgt_pos).or_insert(Vec::new()).push((Rvalue::new_u64(last),gu));
+                },
+                // Failed -> Failed
+                (Some(&ControlFlowTarget::Failed(ref src_pos,_)),Some(&ControlFlowTarget::Failed(ref tgt_pos,_))) => {
+                    by_source.entry(*src_pos).or_insert(Vec::new()).push((Rvalue::new_u64(*tgt_pos),gu.clone()));
+                    by_destination.entry(*tgt_pos).or_insert(Vec::new()).push((Rvalue::new_u64(*src_pos),gu));
+                },
+                // Failed -> Unresolved(Constant)
+                (Some(&ControlFlowTarget::Failed(ref src_pos,_)),Some(&ControlFlowTarget::Unresolved(Rvalue::Constant{ value: ref c,.. }))) => {
+                    by_source.entry(*src_pos).or_insert(Vec::new()).push((Rvalue::new_u64(*c),gu.clone()));
+                    by_destination.entry(*c).or_insert(Vec::new()).push((Rvalue::new_u64(*src_pos),gu));
+                },
+                // Unresolved(Constant) -> Failed
+                (Some(&ControlFlowTarget::Unresolved(Rvalue::Constant{ value: ref c,.. })),Some(&ControlFlowTarget::Failed(ref tgt_pos,_))) => {
+                    by_source.entry(*c).or_insert(Vec::new()).push((Rvalue::new_u64(*tgt_pos),gu.clone()));
+                    by_destination.entry(*tgt_pos).or_insert(Vec::new()).push((Rvalue::new_u64(*c),gu));
+                },
+                // Failed -> Unresolved
+                (Some(&ControlFlowTarget::Failed(ref src_pos,_)),Some(&ControlFlowTarget::Unresolved(ref r))) => {
+                    by_source.entry(*src_pos).or_insert(Vec::new()).push((r.clone(),gu));
+                },
+                // Unresolved -> Failed
+                (Some(&ControlFlowTarget::Unresolved(ref t)),Some(&ControlFlowTarget::Failed(ref tgt_pos,_))) => {
+                    by_destination.entry(*tgt_pos).or_insert(Vec::new()).push((t.clone(),gu));
+                },
+                // Unresolved -> Unresolved
+                (Some(&ControlFlowTarget::Unresolved(_)),Some(&ControlFlowTarget::Unresolved(_))) => {},
+                (None,_) | (_,None) => unreachable!()
             }
         }
 
         (mnemonics,by_source,by_destination)
     }
 
-    fn assemble_cflow_graph(mnemonics: BTreeMap<u64,Vec<Mnemonic>>,
+    fn assemble_cflow_graph(mut mnemonics: BTreeMap<u64,Vec<MnemonicOrError>>,
                             by_source: HashMap<u64,Vec<(Rvalue,Guard)>>,
                             by_destination: HashMap<u64,Vec<(Rvalue,Guard)>>,
                             start: u64) -> ControlFlowGraph
@@ -153,34 +208,43 @@ impl Function {
         let mut ret = ControlFlowGraph::new();
         let mut bblock = Vec::<Mnemonic>::new();
 
-        for (_,mnes) in mnemonics.iter() {
+        for (_,mnes) in mnemonics.iter_mut() {
             if !bblock.is_empty() && !mnes.is_empty() {
-                let mne = mnes.first().unwrap();
-                let last_mne = &bblock.last().unwrap().clone();
+                if let Some(&MnemonicOrError::Mnemonic(ref mne)) = mnes.first() {
+                    let last_mne = &bblock.last().unwrap().clone();
 
-                // if next mnemonics aren't adjacent
-                let mut new_bb = bblock.last().unwrap().area.end != mne.area.start;
+                    // if next mnemonics aren't adjacent
+                    let mut new_bb = bblock.last().unwrap().area.end != mne.area.start;
 
-                // or any following jumps aren't to adjacent mnemonics
-                new_bb |= by_source.get(&last_mne.area.start).unwrap_or(&Vec::new()).iter().any(|&(ref opt_dest,_)| {
-                    if let &Rvalue::Constant{ value,.. } = opt_dest { value != mne.area.start } else { false } });
+                    // or any following jumps aren't to adjacent mnemonics
+                    new_bb |= by_source.get(&last_mne.area.start).unwrap_or(&Vec::new()).iter().any(|&(ref opt_dest,_)| {
+                        if let &Rvalue::Constant{ value,.. } = opt_dest { value != mne.area.start } else { false } });
 
-                // or any jumps pointing to the next that aren't from here
-                new_bb |= by_destination.get(&mne.area.start).unwrap_or(&Vec::new()).iter().any(|&(ref opt_src,_)| {
-                    if let &Rvalue::Constant{ value,.. } = opt_src { value != last_mne.area.start } else { false } });
+                    // or any jumps pointing to the next that aren't from here
+                    new_bb |= by_destination.get(&mne.area.start).unwrap_or(&Vec::new()).iter().any(|&(ref opt_src,_)| {
+                        if let &Rvalue::Constant{ value,.. } = opt_src { value != last_mne.area.start } else { false } });
 
-                // or the entry point does not point here
-                new_bb |= mne.area.start == start;
+                    // or the entry point does not point here
+                    new_bb |= mne.area.start == start;
 
-                if new_bb {
-                    let bb = BasicBlock::from_vec(bblock.clone());
+                    if new_bb {
+                        let bb = BasicBlock::from_vec(bblock.clone());
 
-                    bblock.clear();
-                    ret.add_vertex(ControlFlowTarget::Resolved(bb));
+                        bblock.clear();
+                        ret.add_vertex(ControlFlowTarget::Resolved(bb));
+                    }
                 }
             }
-            for mne in mnes {
-                bblock.push(mne.clone());
+
+            for moe in mnes.drain(..) {
+                match moe {
+                    MnemonicOrError::Mnemonic(mne) => {
+                        bblock.push(mne);
+                    },
+                    MnemonicOrError::Error(pos,msg) => {
+                        ret.add_vertex(ControlFlowTarget::Failed(pos,msg));
+                    }
+                }
             }
         }
 
@@ -197,13 +261,17 @@ impl Function {
                         match ret.vertex_label(t) {
                             Some(&ControlFlowTarget::Resolved(ref bb)) => bb.mnemonics.last().map_or(false,|x| x.area.start == *src_off),
                             Some(&ControlFlowTarget::Unresolved(Rvalue::Constant{ value: v,.. })) => v == *src_off,
-                            _ => false
+                            Some(&ControlFlowTarget::Unresolved(_)) => false,
+                            Some(&ControlFlowTarget::Failed(pos,_)) => pos == *src_off,
+                            None => unreachable!()
                         }
                     });
                     let to_bb = ret.vertices().find(|&t| {
                         match (tgt,ret.vertex_label(t)) {
                             (&Rvalue::Constant{ value,.. },Some(&ControlFlowTarget::Resolved(ref bb))) => bb.area.start == value,
+                            (&Rvalue::Constant{ value,.. },Some(&ControlFlowTarget::Failed(pos,_))) => pos == value,
                             (rv,Some(&ControlFlowTarget::Unresolved(ref v))) => *v == *rv,
+                            (_,None) => unreachable!(),
                             _ => false
                         }
                     });
@@ -258,52 +326,69 @@ impl Function {
         };
         let (mut mnemonics,mut by_source,mut by_destination) = cont.map_or(
             (BTreeMap::new(),HashMap::new(),HashMap::new()),|x| Self::index_cflow_graph(x.cflow_graph));
-        let mut todo = BTreeSet::<u64>::new();
+        let mut todo = HashSet::<u64>::new();
 
         todo.insert(start);
 
-        while !todo.is_empty() {
-            let addr = todo.iter().next().unwrap().clone();
+        while let Some(addr) = todo.iter().next().cloned() {
             let maybe_mnes = mnemonics.iter().find(|x| *x.0 >= addr).map(|x| x.1.clone());
 
-            todo.remove(&addr);
+            assert!(todo.remove(&addr));
 
             if let Some(mnes) = maybe_mnes {
                 if !mnes.is_empty() {
-                    let a = mnes.first().unwrap().area.clone();
-                    if a.start < addr && a.end > addr {
-                        println!("jump inside mnemonic at {}",addr);
-                    } else if a.start == addr {
-                        // else: already disassembled
-                        continue;
+                    match mnes.first() {
+                        Some(&MnemonicOrError::Mnemonic(ref mne)) => {
+                            if mne.area.start < addr && mne.area.end > addr {
+                                mnemonics.entry(addr).or_insert(Vec::new()).push(MnemonicOrError::Error(addr,"Jump inside instruction".into()));
+                                continue;
+                            } else if mne.area.start == addr {
+                                continue;
+                            }
+                        },
+                        Some(&MnemonicOrError::Error(ref pos,_)) => {
+                            if *pos == addr {
+                                continue;
+                            }
+                        },
+                        None => unreachable!(),
                     }
                 }
             }
 
             let mut i = data.seek(addr);
-            let maybe_match = dec.next_match(&mut i,addr,init.clone());
 
-            if let Some(match_st) = maybe_match {
-                for mne in match_st.mnemonics {
-                    //println!("{:x}: {} ({:?})",mne.area.start,mne.opcode,match_st.tokens);
-                    mnemonics.entry(mne.area.start).or_insert(Vec::new()).push(mne);
+            if i.len() > 0 {
+                let maybe_match = dec.next_match(&mut i,addr,init.clone());
 
-                }
-
-                for (origin,tgt,gu) in match_st.jumps {
-                    match tgt {
-                        Rvalue::Constant{ value: ref c,.. } => {
-                            by_source.entry(origin).or_insert(Vec::new()).push((tgt.clone(),gu.clone()));
-                            by_destination.entry(*c).or_insert(Vec::new()).push((Rvalue::new_u64(origin),gu.clone()));
-                            todo.insert(*c);
-                        },
-                        _ => {
-                            by_source.entry(origin).or_insert(Vec::new()).push((tgt,gu.clone()));
+                if let Some(match_st) = maybe_match {
+                    if match_st.mnemonics.is_empty() {
+                        mnemonics.entry(addr).or_insert(Vec::new()).push(MnemonicOrError::Error(addr,"Unrecognized instruction".into()));
+                    } else {
+                        for mne in match_st.mnemonics {
+                            debug!("{:x}: {} ({:?})",mne.area.start,mne.opcode,match_st.tokens);
+                            mnemonics.entry(mne.area.start).or_insert(Vec::new()).push(MnemonicOrError::Mnemonic(mne));
                         }
                     }
+
+                    for (origin,tgt,gu) in match_st.jumps {
+                        debug!("jump to {:?}",tgt);
+                        match tgt {
+                            Rvalue::Constant{ value: ref c,.. } => {
+                                by_source.entry(origin).or_insert(Vec::new()).push((tgt.clone(),gu.clone()));
+                                by_destination.entry(*c).or_insert(Vec::new()).push((Rvalue::new_u64(origin),gu.clone()));
+                                todo.insert(*c);
+                            },
+                            _ => {
+                                by_source.entry(origin).or_insert(Vec::new()).push((tgt,gu.clone()));
+                            }
+                        }
+                    }
+                } else {
+                    mnemonics.entry(addr).or_insert(Vec::new()).push(MnemonicOrError::Error(addr,"Unrecognized instruction".into()));
                 }
             } else {
-                println!("failed to match anything at {:x}",addr);
+                mnemonics.entry(addr).or_insert(Vec::new()).push(MnemonicOrError::Error(addr,"Address not mapped".into()));
             }
         }
 
@@ -673,7 +758,7 @@ mod tests {
                 assert_eq!(bb.mnemonics[5].area, Bound::new(5,6));
                 assert_eq!(bb.area, Bound::new(0,6));
                 bb_vx = Some(vx);
-            } else if let Some(&ControlFlowTarget::Unresolved(Rvalue::Constant{ value: c, size: 64 })) = func.cflow_graph.vertex_label(vx) {
+            } else if let Some(&ControlFlowTarget::Failed(c,_)) = func.cflow_graph.vertex_label(vx) {
                 assert_eq!(c, 6);
                 ures_vx = Some(vx);
             } else {
@@ -742,7 +827,7 @@ mod tests {
                 } else {
                     unreachable!();
                 }
-            } else if let Some(&ControlFlowTarget::Unresolved(Rvalue::Constant{ value: c, size: 32 })) = func.cflow_graph.vertex_label(vx) {
+            } else if let Some(&ControlFlowTarget::Failed(c,_)) = func.cflow_graph.vertex_label(vx) {
                 assert_eq!(c, 3);
                 ures_vx = Some(vx);
             } else {
@@ -829,10 +914,15 @@ mod tests {
         let data = OpaqueLayer::wrap(vec!());
         let func = Function::disassemble(None,main,(),data.iter(),0,"ram".to_string());
 
-        assert_eq!(func.cflow_graph.num_vertices(), 0);
+        assert_eq!(func.cflow_graph.num_vertices(), 1);
         assert_eq!(func.cflow_graph.num_edges(), 0);
         assert_eq!(func.name, "func_0".to_string());
         assert_eq!(func.entry_point,None);
+
+        let vx = func.cflow_graph.vertices().next().unwrap();
+        if let Some(&ControlFlowTarget::Failed(v,_)) = func.cflow_graph.vertex_label(vx) {
+            assert_eq!(v,0);
+        }
     }
 
     #[test]
@@ -960,7 +1050,7 @@ mod tests {
                         unreachable!();
                     }
                 },
-                Some(&ControlFlowTarget::Unresolved(Rvalue::Constant{ value: 6, size: 64 })) => {},
+                Some(&ControlFlowTarget::Failed(6,_)) => {},
                 _ => unreachable!()
             }
         }
