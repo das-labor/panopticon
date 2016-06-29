@@ -22,6 +22,8 @@ import QtQuick.Layouts 1.1
 
 import Panopticon 1.0
 
+import "."
+
 ApplicationWindow {
 	id: mainWindow
 

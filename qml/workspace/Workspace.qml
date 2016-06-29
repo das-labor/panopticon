@@ -363,6 +363,12 @@ Item {
 								"mode":"UNRESOLVED",
 								"approx": approx,
 							};
+						} else if(cfg.errors[node] != undefined) {
+							var c = {
+								"target":cfg.errors[node],
+								"mode":"UNRESOLVED",
+								"approx": approx,
+							};
 						} else {
 							console.error("Node '" + node.toString() + "' has neither code nor target");
 						}
