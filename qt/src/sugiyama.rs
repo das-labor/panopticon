@@ -18,12 +18,10 @@
 
 use std::collections::{HashSet,HashMap};
 use std::{f32,isize,usize};
-use std::ptr;
 use std::borrow::Cow;
 use std::cmp::{min,max,Ordering};
 use std::mem::swap;
 use std::iter::FromIterator;
-use libc::{c_int,c_double};
 
 use graph_algos::adjacency_list::{
     AdjacencyListEdgeDescriptor,
@@ -546,7 +544,7 @@ pub fn remove_parallel_edges(graph: &mut AdjacencyList<usize,usize>) -> Vec<(usi
 fn compute_ranking(graph: &AdjacencyList<usize,usize>) -> HashMap<AdjacencyListVertexDescriptor,isize> {
     use cassowary::{ Solver, Variable };
     use cassowary::WeightedRelation::*;
-    use cassowary::strength::{ WEAK, MEDIUM, STRONG, REQUIRED };
+    use cassowary::strength::{ WEAK, REQUIRED };
 
     let mut vx2var = HashMap::new();
     let mut solver = Solver::new();
@@ -555,10 +553,10 @@ fn compute_ranking(graph: &AdjacencyList<usize,usize>) -> HashMap<AdjacencyListV
         let var = Variable::new();
 
         // First rank is 0
-        solver.add_constraint(var | GE(REQUIRED) | 0.0);
+        let _ = solver.add_constraint(var | GE(REQUIRED) | 0.0);
 
         // Minimize ranks
-        solver.add_constraint(var | EQ(WEAK) | 0.0);
+        let _ = solver.add_constraint(var | EQ(WEAK) | 0.0);
 
         vx2var.insert(vx,var);
     }
@@ -568,7 +566,7 @@ fn compute_ranking(graph: &AdjacencyList<usize,usize>) -> HashMap<AdjacencyListV
         let to_vx = vx2var[&graph.target(e)];
 
         // Adjacent vertices are at least on rank apart
-        solver.add_constraint(to_vx - from_vx | GE(REQUIRED) | 1.0);
+        let _ = solver.add_constraint(to_vx - from_vx | GE(REQUIRED) | 1.0);
     }
 
     solver.update_variables();

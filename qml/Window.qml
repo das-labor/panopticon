@@ -92,25 +92,37 @@ ApplicationWindow {
 		Item {
 			anchors.fill: parent
 
-			Item {
-				anchors.centerIn: parent
-				height: childrenRect.height
-				width: childrenRect.width
+			Grid {
+				columns: 2
+				spacing: 10
 
-				Image {
-					id: panopLogo
-					source: "panop.png"
+				Item {
+					id: logo
+					anchors.centerIn: parent
+					height: childrenRect.height
+					width: childrenRect.width
+
+					Image {
+						id: panopLogo
+						source: "panop.png"
+					}
+
+					Text {
+						anchors.verticalCenter: panopLogo.verticalCenter
+						anchors.left: panopLogo.right
+						anchors.leftMargin: 10
+						text: "PANOPTICON"
+						color: "#1e1e1e";
+						font {
+							pixelSize: panopLogo.height
+						}
+					}
 				}
 
-				Text {
-					anchors.verticalCenter: panopLogo.verticalCenter
-					anchors.left: panopLogo.right
-					anchors.leftMargin: 10
-					text: "PANOPTICON"
-					color: "#1e1e1e";
-					font {
-						pixelSize: panopLogo.height
-					}
+				Rectangle {
+					width: 500
+					height: 100
+					color: "green"
 				}
 			}
 		}

@@ -306,7 +306,7 @@ pub fn control_flow_graph(arg: &Variant) -> Variant {
                                                                 data: data,
                                                             }
                                                         },
-                                                        Some(Rvalue::Variable{ ref name, subscript: Some(ref subscript),.. }) =>
+                                                        Some(Rvalue::Variable{ ref name, subscript: Some(_),.. }) =>
                                                             CfgOperand{
                                                                 kind: "pointer",
                                                                 display: name.to_string(),

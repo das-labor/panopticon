@@ -304,7 +304,6 @@ pub fn rename_variables(func: &mut Function) {
 
             for mne in bb.mnemonics.iter_mut() {
                 if mne.opcode != "__phi" {
-                    let cpy = mne.clone();
                     for o in mne.operands.iter_mut() {
                         if let &mut Rvalue::Variable{ ref name, ref mut subscript,.. } = o {
                             *subscript = stack.get(name).and_then(|x| x.last()).cloned();

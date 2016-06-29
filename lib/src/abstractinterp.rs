@@ -129,8 +129,6 @@ pub fn approximate<A: Avalue>(func: &Function) -> Result<HashMap<Lvalue,A>> {
             stable = true;
             iter_cnt += 1;
         }
-
-        Ok(())
     }
     fn execute<A: Avalue>(t: ControlFlowRef, do_widen: bool, graph: &ControlFlowGraph,
                           _: &HashMap<Lvalue,A>, sizes: &HashMap<Cow<'static,str>,usize>,
@@ -139,7 +137,7 @@ pub fn approximate<A: Avalue>(func: &Function) -> Result<HashMap<Lvalue,A>> {
             let mut change = false;
             let mut pos = 0usize;
             bb.execute(|i| {
-                if let Statement{ ref op, assignee: Lvalue::Variable{ ref name, ref size, subscript: Some(ref subscript) } } = *i {
+                if let Statement{ ref op, assignee: Lvalue::Variable{ ref name, subscript: Some(ref subscript),.. } } = *i {
                     let pp = ProgramPoint{ address: bb.area.start, position: pos };
                     let new = A::execute(&pp,&lift(op,&|x| res::<A>(x,sizes,&ret)));
                     let assignee = (name.clone(),*subscript);
@@ -544,7 +542,7 @@ impl Avalue for Kset {
             &Kset::Join => Kset::Join,
             &Kset::Meet => Kset::Meet,
             &Kset::Set(ref v) =>
-                Kset::Set(v.iter().map(|&(v,sz)| {
+                Kset::Set(v.iter().map(|&(v,_)| {
                     ((v >> offset) % (1 << (size - 1)),size)
                 }).collect::<Vec<_>>()),
         }
