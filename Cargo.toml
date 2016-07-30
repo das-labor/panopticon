@@ -24,6 +24,8 @@ cassowary = "0.1.0"
 flate2 = "0.2.13"
 rmp-serialize = "0.7.0"
 byteorder = "0.5.1"
+chrono = "0.2"
+chrono-humanize = "0.0.6"
 
 [dependencies.qmlrs]
 git = "https://github.com/flanfly/qmlrs"

@@ -28,6 +28,8 @@ extern crate rustc_serialize;
 extern crate cassowary;
 extern crate tempdir;
 extern crate byteorder;
+extern crate chrono;
+extern crate chrono_humanize;
 
 #[cfg(unix)]
 extern crate xdg;
@@ -85,7 +87,7 @@ fn main() {
         env::set_var("UBUNTU_MENUPROXY","");
     }
 
-    match find_data_file(&Path::new("qml").join("Window.qml")) {
+    match find_data_file(&Path::new("qml").join("Title.qml")) {
         Ok(Some(qml_main)) => {
             match File::open(&qml_main) {
                 Ok(_) => {

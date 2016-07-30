@@ -56,6 +56,7 @@ use controller::{
     CHANGED_FUNCTION,
     return_json,
     Controller,
+    session_directory,
 };
 
 use sugiyama;
@@ -843,4 +844,67 @@ pub fn rename(arg0: &Variant, arg1: &Variant) -> Variant {
     } else {
         Variant::String(return_json::<()>(Err("No function found for this UUID".into())))
     }
+}
+
+#[derive(RustcEncodable,Debug)]
+struct SessionInfo {
+    title: String,
+    age: String,
+    file: String,
+}
+
+pub fn sessions() -> Variant {
+    use std::time::SystemTime;
+    use chrono;
+    use chrono_humanize::HumanTime;
+
+    let p = session_directory().and_then(|p| {
+        fs::read_dir(p).and_then(|dir| {
+            Ok(dir.filter_map(|f| {
+                match f {
+                    Ok(f) => {
+                        let ts = f.metadata().ok().and_then(|t| {
+                            t.modified().ok().and_then(|t| {
+                                t.elapsed().ok().and_then(|x| {
+                                    chrono::Duration::from_std(x).ok().and_then(|x| {
+                                        chrono::Duration::zero().checked_sub(&x)
+                                    })
+                                })
+                            })
+                        });
+
+                        match ts {
+                            Some(ts) => Some(SessionInfo{
+                                title: f.file_name().to_str().unwrap_or("(error)").to_string(),
+                                age: format!("{}",HumanTime::from(ts)),
+                                file: f.file_name().to_str().unwrap_or("(error)").to_string(),
+                            }),
+                            _ => None,
+                        }
+                    },
+                    Err(_) => None,
+                }
+            }).collect::<Vec<_>>())
+        }).map_err(|e| e.into())
+    }).ok();
+
+    match p {
+        Some(p) => Variant::String(return_json::<Vec<SessionInfo>>(Ok(p))),
+        None => Variant::String(return_json::<Vec<SessionInfo>>(Ok(vec![]))),
+    }
+}
+
+pub fn delete_session(arg0: &Variant) -> Variant {
+    let name = if let &Variant::String(ref x) = arg0 {
+        x.clone()
+    } else {
+        return Variant::String(return_json::<()>(Err("1st argument is not a string".into())));
+    };
+
+    let p: Result<()> = session_directory().and_then(|mut p| {
+        p.push(name);
+        fs::remove_file(p).map_err(|e| e.into())
+    });
+
+    Variant::String(return_json::<()>(p))
 }

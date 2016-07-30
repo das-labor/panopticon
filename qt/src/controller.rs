@@ -69,6 +69,10 @@ extern "C" fn controller_slot(_: *mut ffi::QObject, id: c_int, a: *const ffi::QV
         (READ_DIRECTORY,1) => ::function::read_directory(&args[0]).to_qvariant(ret),
         (FILE_DETAILS,1) => ::function::file_details(&args[0]).to_qvariant(ret),
 
+        // Session handling
+        (SESSIONS,0) => ::function::sessions().to_qvariant(ret),
+        (DELETE_SESSION,1) => ::function::delete_session(&args[0]).to_qvariant(ret),
+
         // State transitions: SYNC -> DIRTY or DIRTY -> DIRTY
         (SET_COMMENT,3) => ::function::comment(&args[0],&args[1],&args[2]).to_qvariant(ret),
         (SET_NAME,2) => ::function::rename(&args[0],&args[1]).to_qvariant(ret),
@@ -104,8 +108,10 @@ pub const FUNCTION_APPROX: isize = 16;
 
 pub const READ_DIRECTORY: isize = 17;
 pub const FILE_DETAILS: isize = 18;
+pub const SESSIONS: isize = 19;
+pub const DELETE_SESSION: isize = 20;
 
-pub const SUGIYAMA_LAYOUT: isize = 19;
+pub const SUGIYAMA_LAYOUT: isize = 21;
 
 
 pub extern "C" fn create_singleton(_: *mut ffi::QQmlEngine, _: *mut ffi::QJSEngine) -> *mut ffi::QObject {
@@ -149,6 +155,8 @@ pub extern "C" fn create_singleton(_: *mut ffi::QQmlEngine, _: *mut ffi::QJSEngi
 
     assert_eq!(metaobj.add_method("readDirectory(QString)","QString"),READ_DIRECTORY);
     assert_eq!(metaobj.add_method("fileDetails(QString)","QString"),FILE_DETAILS);
+    assert_eq!(metaobj.add_method("sessions()","QString"),SESSIONS);
+    assert_eq!(metaobj.add_method("deleteSession(QString)","QString"),DELETE_SESSION);
 
     // setter
     assert_eq!(metaobj.add_method("sugiyamaLayout(QString,QString,int,int,int)","QString"),SUGIYAMA_LAYOUT);
@@ -236,7 +244,7 @@ impl ToVariant for String {
 }
 
 #[cfg(all(unix,not(target_os = "macos")))]
-fn session_directory() -> Result<PathBuf> {
+pub fn session_directory() -> Result<PathBuf> {
     match BaseDirectories::with_prefix("panopticon") {
         Ok(dirs) => {
             let ret = dirs.get_data_home().join("sessions");
@@ -250,7 +258,7 @@ fn session_directory() -> Result<PathBuf> {
 }
 
 #[cfg(all(unix,target_os = "macos"))]
-fn session_directory() -> Result<PathBuf> {
+pub fn session_directory() -> Result<PathBuf> {
     match env::var("HOME") {
         Ok(home) => {
             let ret = Path::new(&home).join("Library")
@@ -267,7 +275,7 @@ fn session_directory() -> Result<PathBuf> {
 }
 
 #[cfg(windows)]
-fn session_directory() -> Result<PathBuf> {
+pub fn session_directory() -> Result<PathBuf> {
     match env::var("APPDATA") {
         Ok(appdata) => {
             let ret = Path::new(&appdata).join("Panopticon").join("sessions");
