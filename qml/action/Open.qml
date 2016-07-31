@@ -42,6 +42,7 @@ Action {
 	text: "&Open"
 	shortcut: StandardKey.Open
 	iconName: "document-open"
+	tooltip: "Disassemble a new file"
 	enabled: window.enabled && fileBrowser.status == Component.Ready && errorPopup.status == Component.Ready
 	onTriggered: {
 		window.enabled = false;

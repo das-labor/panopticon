@@ -86,83 +86,23 @@ ApplicationWindow {
 		}
 	}
 
-	Component {
-		id: welcomeScreen
-
-		Item {
-			anchors.fill: parent
-
-			Grid {
-				columns: 2
-				spacing: 10
-
-				Item {
-					id: logo
-					anchors.centerIn: parent
-					height: childrenRect.height
-					width: childrenRect.width
-
-					Image {
-						id: panopLogo
-						source: "panop.png"
-					}
-
-					Text {
-						anchors.verticalCenter: panopLogo.verticalCenter
-						anchors.left: panopLogo.right
-						anchors.leftMargin: 10
-						text: "PANOPTICON"
-						color: "#1e1e1e";
-						font {
-							pixelSize: panopLogo.height
-						}
-					}
-				}
-
-				Rectangle {
-					width: 500
-					height: 100
-					color: "green"
-				}
-			}
-		}
-	}
-
-	Loader {
-		focus: true
-		id: loader
+	Workspace {
 		anchors.fill: parent
-		sourceComponent: welcomeScreen
-	}
-
-	Component {
 		id: workspace
-		Workspace {}
 	}
 
 	Component.onCompleted: {
-		Panopticon.onStateChanged.connect(function() {
-			switch(Panopticon.state) {
-				case "":
-				case "NEW": {
-					workspaceLoaded = false;
-					loader.sourceComponent = welcomeScreen;
-					break;
-				}
-
-				case "SYNC":
-				case "DIRTY": {
-					if(!mainWindow.workspaceLoaded) {
-						workspaceLoaded = true;
-						loader.sourceComponent = workspace;
+		if(Panopticon.state == "NEW") {
+			switch(Panopticon.requestType) {
+				case "project": {
+					var res = Panopticon.openProject(Panopticon.requestPath)
+					if(res.status == "err") {
+						displayError(res.error);
 					}
 					break;
 				}
-
-				default: {
-					console.error("Unknown state: " + Panopticon.state);
-				}
+				default:
 			}
-		})
+		}
 	}
 }

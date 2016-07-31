@@ -21,10 +21,6 @@ import QtQuick.Controls 1.3
 import QtQuick.Layouts 1.1
 import QtQuick.Window 2.1
 
-import Panopticon 1.0
-
-import "."
-
 Window {
 	flags: Qt.Dialog
 	visible: true
@@ -32,6 +28,10 @@ Window {
 	x: (Screen.desktopAvailableWidth - width) / 2
 	width: 790
 	height: 400
+
+	onClosing: {
+		sessionView.deleteSessions();
+	}
 
 	Rectangle {
 		anchors.fill: parent
@@ -55,7 +55,7 @@ Window {
 	Image {
 		y: 51
 		anchors.horizontalCenter: parent.horizontalCenter
-		source: "logo.svg"
+		source: "icons/logo.svg"
 	}
 
 	Row {
@@ -71,42 +71,55 @@ Window {
 
 			Repeater {
 				model: ListModel {
-					ListElement { title: "Open"; description: "Start disassembly of a new file"; icon: "open-icon.svg" }
-					ListElement { title: "Sandbox"; description: "Open an empty workspace"; icon: "sandbox-icon.svg" }
-					ListElement { title: "Example"; description: "Try out Panopticon"; icon: "example-icon.svg" }
+					ListElement { title: "Open"; description: "Start disassembly of a new file"; icon: "icons/open-icon.svg" }
+					ListElement { title: "Sandbox"; description: "Open an empty workspace"; icon: "icons/sandbox-icon.svg" }
+					ListElement { title: "Example"; description: "Try out Panopticon"; icon: "icons/example-icon.svg" }
 				}
 				delegate: MouseArea {
+					id: root
 					width: childrenRect.width
 					height: childrenRect.height
+					hoverEnabled: true
 
 					GridLayout {
+						id: grid
 						columnSpacing: 14
 						rowSpacing: 0
 
-						Image {
+						Item {
+							height: img.height
+							width: img.width
 							Layout.rowSpan: 2
-							source: icon
-						}
 
+							Image {
+								id: img
+								source: icon
+							}
+						}
 						Label {
 							Layout.column: 1
 							Layout.row: 0
 							Layout.alignment: Qt.AlignBottom | Qt.AlignLeft
+							Layout.fillWidth: true
 							text: title
 							font {
 								pointSize: 13
 								weight: Font.DemiBold
 								family: "Source Sans Pro"
+								underline: root.containsMouse
 							}
 						}
+
 						Label {
 							Layout.column: 1
 							Layout.row: 1
 							Layout.alignment: Qt.AlignTop | Qt.AlignLeft
+							Layout.fillWidth: true
 							text: description
 							font {
 								pointSize: 13
 								family: "Source Sans Pro"
+								underline: root.containsMouse
 							}
 						}
 					}
@@ -125,6 +138,18 @@ Window {
 			}
 
 			ListView {
+				property var toDelete: []
+
+				function deleteSessions() {
+					for(var i = 0; i < toDelete.length; i++) {
+						var res = JSON.parse(Panopticon.deleteSession(toDelete[i]));
+
+						if(res.status == "err") {
+							console.error(res.error);
+						}
+					}
+				}
+
 				id: sessionView
 				width: 330
 				height: menu.height
@@ -139,7 +164,7 @@ Window {
 					hoverEnabled: true
 
 					GridLayout {
-						columnSpacing: 14
+						columnSpacing: 10
 						rowSpacing: 0
 
 						Label {
@@ -149,9 +174,22 @@ Window {
 							Layout.maximumWidth: 190
 							font {
 								strikeout: elem.state == "DELETE"
-								pointSize: 13
+								pointSize: 11
 								weight: Font.DemiBold
 								family: "Source Sans Pro"
+								underline: openArea.containsMouse
+							}
+
+							MouseArea {
+								id: openArea
+								anchors.fill: parent
+								hoverEnabled: true
+
+								onClicked: {
+									Panopticon.path = path
+									Panopticon.type = "project"
+									Qt.quit()
+								}
 							}
 						}
 
@@ -160,22 +198,29 @@ Window {
 							color: "#b3b3b3"
 							font {
 								strikeout: elem.state == "DELETE"
-								pointSize: 13
+								pointSize: 11
 								family: "Source Sans Pro"
 							}
 						}
 
 						Image {
 							opacity: elem.containsMouse ? 1.0 : 0.0
-							source: "delete-icon.svg"
+							source: "icons/delete-icon.svg"
 
 							MouseArea {
 								id: deleteArea
 								anchors.fill: parent
+								hoverEnabled: true
 								onClicked: {
 									if(elem.state == "") {
 										elem.state = "DELETE"
+										sessionView.toDelete.push(file)
 									} else {
+										var idx = sessionView.toDelete.indexOf(file);
+
+										if(idx >= 0) {
+											sessionView.toDelete.splice(idx,1)
+										}
 										elem.state = ""
 									}
 								}
@@ -190,7 +235,12 @@ Window {
 					if(res.status === "ok") {
 						for(var i = 0; i < res.payload.length; i++) {
 							var t = res.payload[i];
-							sessionModel.append({"title": t.title, "age": t.age});
+							sessionModel.append({
+								"title": t.title,
+								"age": t.age,
+								"file": t.file,
+								"path": t.path
+							});
 						}
 					} else {
 						console.error(res.error)

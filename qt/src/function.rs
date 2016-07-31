@@ -851,6 +851,7 @@ struct SessionInfo {
     title: String,
     age: String,
     file: String,
+    path: String,
 }
 
 pub fn sessions() -> Variant {
@@ -878,6 +879,7 @@ pub fn sessions() -> Variant {
                                 title: f.file_name().to_str().unwrap_or("(error)").to_string(),
                                 age: format!("{}",HumanTime::from(ts)),
                                 file: f.file_name().to_str().unwrap_or("(error)").to_string(),
+                                path: f.path().to_str().unwrap_or("(error)").to_string(),
                             }),
                             _ => None,
                         }

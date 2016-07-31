@@ -51,10 +51,16 @@ use std::error::Error;
 #[cfg(unix)]
 use xdg::BaseDirectories;
 
+use qmlrs::{Variant};
+
 use panopticon::result;
 use panopticon::result::Result;
 
-use controller::create_singleton;
+use controller::{
+    create_singleton,
+    create_request,
+    Controller,
+};
 
 #[cfg(all(unix,not(target_os = "macos")))]
 fn find_data_file(p: &Path) -> Result<Option<PathBuf>> {
@@ -87,28 +93,39 @@ fn main() {
         env::set_var("UBUNTU_MENUPROXY","");
     }
 
-    match find_data_file(&Path::new("qml").join("Title.qml")) {
-        Ok(Some(qml_main)) => {
-            match File::open(&qml_main) {
-                Ok(_) => {
-                    qmlrs::register_singleton_type(&"Panopticon",1,0,&"Panopticon",create_singleton);
+    let title_screen = find_data_file(&Path::new("qml").join("Title.qml"));
+    let main_window = find_data_file(&Path::new("qml").join("Window.qml"));
 
-                    let mut engine = qmlrs::Engine::new();
-                    engine.load_local_file(&format!("{}",qml_main.display()));
-                    engine.exec();
+    match (title_screen,main_window) {
+        (Ok(Some(title)),Ok(Some(window))) => {
 
-                    return;
-                },
-                Err(e) => {
-                    println!("Failed to open the QML files in {} ({})",qml_main.display(),e);
+            {
+                let mut engine = qmlrs::Engine::new();
+                let mut req = create_request();
+
+                engine.set_property("Panopticon",&req);
+                engine.load_local_file(&format!("{}",title.display()));
+                engine.exec();
+
+                if let Variant::String(ref path) = req.get_property("path") {
+                    if let Variant::String(ref typ) = req.get_property("type") {
+                        let _ = Controller::set_request(path,typ);
+                    }
                 }
             }
+
+            {
+                qmlrs::register_singleton_type(&"Panopticon",1,0,&"Panopticon",create_singleton);
+
+                let mut engine = qmlrs::Engine::new();
+                engine.load_local_file(&format!("{}",window.display()));
+                engine.exec();
+            }
+
+            return;
         },
-        Ok(None) => {
-                    println!("Failed to open the QML files: Not Found");
-        },
-        Err(e) => {
-            println!("Failed to find the QML files: {}",e);
+        _ => {
+            println!("Failed to open the QML files")
         },
     }
 }
