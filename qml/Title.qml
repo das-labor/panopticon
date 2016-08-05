@@ -206,7 +206,7 @@ Window {
 						var res = JSON.parse(Panopticon.deleteSession(toDelete[i]));
 
 						if(res.status == "err") {
-							console.error(res.error);
+							console.exception(res.error);
 						}
 					}
 				}
@@ -312,7 +312,7 @@ Window {
 							});
 						}
 					} else {
-						console.error(res.error)
+						console.exception(res.error)
 					}
 				}
 			}

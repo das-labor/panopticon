@@ -33,7 +33,7 @@ ListModel {
 								 },true);
 				} else {
 					obj.failed = true;
-					console.error(info.error);
+					console.exception(info.error);
 				}
 			}
 
@@ -53,7 +53,7 @@ ListModel {
 			model.added(model.count - 1);
 			return model.count - 1;
 		} else {
-			console.error(info.error);
+			console.exception(info.error);
 			return -1;
 		}
 	}

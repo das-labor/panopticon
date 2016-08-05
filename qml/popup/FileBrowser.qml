@@ -361,11 +361,11 @@ Popup {
 										break;
 									}
 									default: {
-										console.error("Invalid state '" + res.payload.state.toString() + "'")
+										console.exception("Invalid state '" + res.payload.state.toString() + "'")
 									}
 								}
 							} else {
-								console.error(res.error);
+								console.exception(res.error);
 							}
 						} else {
 							browser.valid = false;

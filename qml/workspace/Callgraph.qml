@@ -55,7 +55,7 @@ Item {
 
 
 			} else {
-				console.error(res.error);
+				console.exception(res.error);
 			}
 		});
 
@@ -78,7 +78,7 @@ Item {
 					}
 				}
 			} else {
-				console.error(res.error);
+				console.exception(res.error);
 			}
 		});
 	}
