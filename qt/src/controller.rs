@@ -27,12 +27,6 @@ use std::error::Error;
 use std::borrow::Cow;
 use std::convert::Into;
 
-#[cfg(any(windows,target_os = "macos"))]
-use std::env;
-
-#[cfg(unix)]
-use xdg::BaseDirectories;
-
 use libc::c_int;
 use qmlrs::{ffi,MetaObject,Variant,Object,ToQVariant,unpack_varlist};
 use rustc_serialize::{json,Encodable};
@@ -413,6 +407,8 @@ impl Controller {
     }
 
     pub fn replace(p: Project,q: Option<&Path>) -> Result<()> {
+        use paths::session_directory;
+
         {
             let obj = try!(Controller::instance());
             let mut guard = try!(CONTROLLER.write());

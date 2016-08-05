@@ -41,15 +41,7 @@ mod controller;
 mod project;
 mod function;
 mod sugiyama;
-
-use std::env;
-use std::fs::File;
-use std::path::{PathBuf,Path};
-use std::borrow::Cow;
-use std::error::Error;
-
-#[cfg(unix)]
-use xdg::BaseDirectories;
+mod paths;
 
 use qmlrs::{Variant};
 
@@ -58,36 +50,17 @@ use panopticon::result::Result;
 
 use controller::{
     create_singleton,
-    create_request,
     Controller,
 };
 
-#[cfg(all(unix,not(target_os = "macos")))]
-fn find_data_file(p: &Path) -> Result<Option<PathBuf>> {
-    match BaseDirectories::with_prefix("panopticon") {
-        Ok(dirs) => Ok(dirs.find_data_file(p).or(Some(Path::new(".").join(p)))),
-        Err(e) => Err(result::Error(Cow::Owned(e.description().to_string()))),
-    }
-}
-
-#[cfg(all(unix,target_os = "macos"))]
-fn find_data_file(p: &Path) -> Result<Option<PathBuf>> {
-    match env::current_exe() {
-        Ok(path) => Ok(path.parent().and_then(|x| x.parent()).
-		map(|x| x.join("Resources").join(p))),
-        Err(e) => Err(result::Error(Cow::Owned(e.description().to_string()))),
-    }
-}
-
-#[cfg(windows)]
-fn find_data_file(p: &Path) -> Result<Option<PathBuf>> {
-    match env::current_exe() {
-        Ok(path) => Ok(path.parent().map(|x| x.join(p))),
-        Err(e) => Err(result::Error(Cow::Owned(e.description().to_string()))),
-    }
-}
+use paths::find_data_file;
 
 fn main() {
+    use std::path::Path;
+
+    #[cfg(unix)]
+    use std::env;
+
     // workaround bug #165
     if cfg!(unix) {
         env::set_var("UBUNTU_MENUPROXY","");

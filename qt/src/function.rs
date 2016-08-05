@@ -56,7 +56,6 @@ use controller::{
     CHANGED_FUNCTION,
     return_json,
     Controller,
-    session_directory,
 };
 
 use sugiyama;
@@ -858,6 +857,7 @@ pub fn sessions() -> Variant {
     use std::time::SystemTime;
     use chrono;
     use chrono_humanize::HumanTime;
+    use paths::session_directory;
 
     let p = session_directory().and_then(|p| {
         fs::read_dir(p).and_then(|dir| {
@@ -897,6 +897,8 @@ pub fn sessions() -> Variant {
 }
 
 pub fn delete_session(arg0: &Variant) -> Variant {
+    use paths::session_directory;
+
     let name = if let &Variant::String(ref x) = arg0 {
         x.clone()
     } else {
