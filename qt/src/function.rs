@@ -912,3 +912,18 @@ pub fn delete_session(arg0: &Variant) -> Variant {
 
     Variant::String(return_json::<()>(p))
 }
+
+pub fn find_data_file(arg0: &Variant) -> Variant {
+    use paths;
+    use std::path::Path;
+
+    let path = if let &Variant::String(ref x) = arg0 {
+        x.clone()
+    } else {
+        return Variant::String(return_json::<()>(Err("1st argument is not a string".into())));
+    };
+
+    let res = paths::find_data_file(&Path::new(&path));
+
+    Variant::String(return_json(res.map(|x| x.map(|x| x.to_string_lossy().into_owned()))))
+}

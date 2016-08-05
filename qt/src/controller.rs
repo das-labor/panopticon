@@ -62,6 +62,7 @@ extern "C" fn controller_slot(_: *mut ffi::QObject, id: c_int, a: *const ffi::QV
         // Stateless getter
         (READ_DIRECTORY,1) => ::function::read_directory(&args[0]).to_qvariant(ret),
         (FILE_DETAILS,1) => ::function::file_details(&args[0]).to_qvariant(ret),
+        (FIND_DATA_FILE,1) => ::function::find_data_file(&args[0]).to_qvariant(ret),
 
         // State transitions: SYNC -> DIRTY or DIRTY -> DIRTY
         (SET_COMMENT,3) => ::function::comment(&args[0],&args[1],&args[2]).to_qvariant(ret),
@@ -134,6 +135,7 @@ pub extern "C" fn create_singleton(_: *mut ffi::QQmlEngine, _: *mut ffi::QJSEngi
     // WORKING and DONE signals
     assert_eq!(metaobj.add_signal("layoutedFunction(QString)"),LAYOUTED_FUNCTION);
     assert_eq!(metaobj.add_signal("changedFunction(QString)"),CHANGED_FUNCTION);
+    assert_eq!(metaobj.add_signal("removedFunction(QString)"),REMOVED_FUNCTION);
 
     // state = NEW -> READY, dirty = -> true
     assert_eq!(metaobj.add_method("createRawProject(QString,QString,int,int)","QString"),CREATE_RAW_PROJECT);
