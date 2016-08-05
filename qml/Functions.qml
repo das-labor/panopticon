@@ -10,6 +10,7 @@ ListModel {
 
 	signal added(int row)
 	signal changed(int row)
+	signal removed(int row)
 
 	function upsert(uu,ev) {
 		var _info = Panopticon.functionInfo(uu);
@@ -33,7 +34,7 @@ ListModel {
 								 },true);
 				} else {
 					obj.failed = true;
-					console.error(info.error);
+					console.exception(info.error);
 				}
 			}
 
@@ -53,12 +54,23 @@ ListModel {
 			model.added(model.count - 1);
 			return model.count - 1;
 		} else {
-			console.error(info.error);
+			console.exception(info.error);
 			return -1;
 		}
 	}
 
 	Component.onCompleted: {
+		Panopticon.onStateChanged.connect(function() {
+			switch(Panopticon.state) {
+				case "NEW":{
+					for(var i = 0; i < model.count; i++) {
+						model.removed(i);
+					}
+					model.clear();
+				}
+			}
+		});
+
 		Panopticon.startedFunction.connect(function(uu) {
 			upsert(uu,"started");
 		});

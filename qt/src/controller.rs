@@ -27,12 +27,6 @@ use std::error::Error;
 use std::borrow::Cow;
 use std::convert::Into;
 
-#[cfg(any(windows,target_os = "macos"))]
-use std::env;
-
-#[cfg(unix)]
-use xdg::BaseDirectories;
-
 use libc::c_int;
 use qmlrs::{ffi,MetaObject,Variant,Object,ToQVariant,unpack_varlist};
 use rustc_serialize::{json,Encodable};
@@ -68,11 +62,19 @@ extern "C" fn controller_slot(_: *mut ffi::QObject, id: c_int, a: *const ffi::QV
         // Stateless getter
         (READ_DIRECTORY,1) => ::function::read_directory(&args[0]).to_qvariant(ret),
         (FILE_DETAILS,1) => ::function::file_details(&args[0]).to_qvariant(ret),
+        (FIND_DATA_FILE,1) => ::function::find_data_file(&args[0]).to_qvariant(ret),
 
         // State transitions: SYNC -> DIRTY or DIRTY -> DIRTY
         (SET_COMMENT,3) => ::function::comment(&args[0],&args[1],&args[2]).to_qvariant(ret),
         (SET_NAME,2) => ::function::rename(&args[0],&args[1]).to_qvariant(ret),
 
+        // Requests
+        (SET_REQUEST,1) => project::set_request(&args[0]).to_qvariant(ret),
+        (REQUEST,0) => project::request().to_qvariant(ret),
+
+        // Session handling
+        (SESSIONS,0) => ::function::sessions().to_qvariant(ret),
+        (DELETE_SESSION,1) => ::function::delete_session(&args[0]).to_qvariant(ret),
         _ => panic!("Unknown controller call id '{}' with {} arguments.",id,args.len())
     }
 }
@@ -86,32 +88,37 @@ pub const FINISHED_FUNCTION: isize = 4;
 
 pub const LAYOUTED_FUNCTION: isize = 5;
 pub const CHANGED_FUNCTION: isize = 6;
+pub const REMOVED_FUNCTION: isize = 7;
 
-pub const CREATE_RAW_PROJECT: isize = 7;
-pub const CREATE_ELF_PROJECT: isize = 8;
-pub const CREATE_PE_PROJECT: isize = 9;
+pub const CREATE_RAW_PROJECT: isize = 8;
+pub const CREATE_ELF_PROJECT: isize = 9;
+pub const CREATE_PE_PROJECT: isize = 10;
 
-pub const OPEN_PROJECT: isize = 10;
+pub const OPEN_PROJECT: isize = 11;
 
-pub const SET_COMMENT: isize = 11;
-pub const SET_NAME: isize = 12;
+pub const SET_COMMENT: isize = 12;
+pub const SET_NAME: isize = 13;
 
-pub const SNAPSHOT_PROJECT: isize = 13;
+pub const SNAPSHOT_PROJECT: isize = 14;
 
-pub const FUNCTION_INFO: isize = 14;
-pub const FUNCTION_CFG: isize = 15;
-pub const FUNCTION_APPROX: isize = 16;
+pub const FUNCTION_INFO: isize = 15;
+pub const FUNCTION_CFG: isize = 16;
+pub const FUNCTION_APPROX: isize = 17;
 
-pub const READ_DIRECTORY: isize = 17;
-pub const FILE_DETAILS: isize = 18;
+pub const READ_DIRECTORY: isize = 18;
+pub const FILE_DETAILS: isize = 19;
 
-pub const SUGIYAMA_LAYOUT: isize = 19;
-
+pub const SUGIYAMA_LAYOUT: isize = 20;
+pub const REQUEST: isize = 21;
+pub const SET_REQUEST: isize = 22;
+pub const SESSIONS: isize = 23;
+pub const DELETE_SESSION: isize = 24;
+pub const FIND_DATA_FILE: isize = 25;
 
 pub extern "C" fn create_singleton(_: *mut ffi::QQmlEngine, _: *mut ffi::QJSEngine) -> *mut ffi::QObject {
     let mut metaobj = MetaObject::new("Panopticon",controller_slot);
 
-    // universial signals
+    // properties and their signals
     assert_eq!(metaobj.add_signal("stateChanged()"),STATE_CHANGED);
     metaobj.add_property("state","QString",Some("stateChanged()"));
 
@@ -128,6 +135,7 @@ pub extern "C" fn create_singleton(_: *mut ffi::QQmlEngine, _: *mut ffi::QJSEngi
     // WORKING and DONE signals
     assert_eq!(metaobj.add_signal("layoutedFunction(QString)"),LAYOUTED_FUNCTION);
     assert_eq!(metaobj.add_signal("changedFunction(QString)"),CHANGED_FUNCTION);
+    assert_eq!(metaobj.add_signal("removedFunction(QString)"),REMOVED_FUNCTION);
 
     // state = NEW -> READY, dirty = -> true
     assert_eq!(metaobj.add_method("createRawProject(QString,QString,int,int)","QString"),CREATE_RAW_PROJECT);
@@ -153,6 +161,13 @@ pub extern "C" fn create_singleton(_: *mut ffi::QQmlEngine, _: *mut ffi::QJSEngi
     // setter
     assert_eq!(metaobj.add_method("sugiyamaLayout(QString,QString,int,int,int)","QString"),SUGIYAMA_LAYOUT);
 
+    assert_eq!(metaobj.add_method("request()","QString"),REQUEST);
+    assert_eq!(metaobj.add_method("setRequest(QString)","QString"),SET_REQUEST);
+
+    assert_eq!(metaobj.add_method("sessions()","QString"),SESSIONS);
+    assert_eq!(metaobj.add_method("deleteSession(QString)","QString"),DELETE_SESSION);
+
+    assert_eq!(metaobj.add_method("findDataFile(QString)","QString"),FIND_DATA_FILE);
 
     let mut obj = metaobj.instantiate();
 
@@ -187,7 +202,7 @@ pub fn return_json<T: Encodable>(r: Result<T>) -> String {
 }
 
 lazy_static! {
-    pub static ref CONTROLLER: RwLock<Controller> = RwLock::new(Controller::Empty);
+    pub static ref CONTROLLER: RwLock<Controller> = RwLock::new(Controller::Empty{ request: None });
 }
 
 pub enum Backing {
@@ -204,11 +219,20 @@ impl Backing {
     }
 }
 
+#[derive(RustcEncodable,RustcDecodable,Clone)]
+pub struct Request {
+    kind: String,
+    path: String,
+}
+
 pub enum Controller {
-    Empty,
+    Empty{
+        request: Option<Request>,
+    },
     New{
         //metaObject: MetaObject,
         singleton_object: Object,
+        request: Option<Request>,
     },
     Set{
         //metaObject: MetaObject,
@@ -235,68 +259,60 @@ impl ToVariant for String {
     }
 }
 
-#[cfg(all(unix,not(target_os = "macos")))]
-fn session_directory() -> Result<PathBuf> {
-    match BaseDirectories::with_prefix("panopticon") {
-        Ok(dirs) => {
-            let ret = dirs.get_data_home().join("sessions");
-            try!(DirBuilder::new()
-                    .recursive(true)
-                    .create(ret.clone()));
-            Ok(ret)
-        },
-        Err(e) => Err(result::Error(Cow::Owned(e.description().to_string()))),
-    }
-}
-
-#[cfg(all(unix,target_os = "macos"))]
-fn session_directory() -> Result<PathBuf> {
-    match env::var("HOME") {
-        Ok(home) => {
-            let ret = Path::new(&home).join("Library")
-                .join("Application Support")
-                .join("Panopticon")
-                .join("sessions");
-			try!(DirBuilder::new()
-				.recursive(true)
-				.create(ret.clone()));
-			Ok(ret)
-        },
-        Err(e) => Err(result::Error(Cow::Owned(e.description().to_string()))),
-    }
-}
-
-#[cfg(windows)]
-fn session_directory() -> Result<PathBuf> {
-    match env::var("APPDATA") {
-        Ok(appdata) => {
-            let ret = Path::new(&appdata).join("Panopticon").join("sessions");
-			try!(DirBuilder::new()
-				.recursive(true)
-				.create(ret.clone()));
-			Ok(ret)
-        },
-        Err(e) => Err(result::Error(Cow::Owned(e.description().to_string()))),
-    }
-}
-
 impl Controller {
-    pub fn instantiate_singleton(_: MetaObject, s: Object) -> Result<()> {
+    pub fn request() -> Result<Option<Request>> {
+        let guard = try!(CONTROLLER.read());
+        match &*guard {
+            &Controller::Empty{ ref request } => Ok(request.clone()),
+            &Controller::New{ ref request,.. } => Ok(request.clone()),
+            &Controller::Set{ .. } => Err("Controller is in set state".into()),
+        }
+    }
+
+    pub fn set_request(json: &String) -> Result<()> {
+        let req = try!(json::decode::<Request>(json));
+
+        let mut guard = try!(CONTROLLER.write());
+        match &mut *guard {
+            &mut Controller::Empty{ ref mut request } => {
+                *request = Some(req);
+                Ok(())
+            },
+            &mut Controller::New{ ref mut request,.. } => {
+                *request = Some(req);
+                Ok(())
+            },
+            &mut Controller::Set{ .. } => Err("Controller is in set state".into()),
+        }
+    }
+
+    pub fn instantiate_singleton(_: MetaObject, mut s: Object) -> Result<()> {
         {
             let mut guard = try!(CONTROLLER.write());
-            let is_empty = if let &Controller::Empty = &*guard { true } else { false };
 
-            if is_empty {
-                *guard = Controller::New{
-                    //metaObject: m,
-                    singleton_object: s,
-                };
+            match &mut *guard {
+                ctrl@&mut Controller::Empty{ .. }  => {
+                    let req: Option<Request> = if let &mut Controller::Empty{ ref request } = ctrl {
+                        (*request).clone()
+                    } else {
+                        unreachable!()
+                    };
 
-                Ok(())
-            } else {
-                Err("Tried to instantiate another singleton".into())
+                    *ctrl = Controller::New{
+                        //metaObject: m,
+                        singleton_object: s,
+                        request: req,
+                    };
+                },
+                &mut Controller::New{ ref mut singleton_object,.. } => {
+                    *singleton_object = s;
+                },
+                &mut Controller::Set{ ref mut singleton_object,.. } => {
+                    *singleton_object = s;
+                },
             }
-        }.and_then(|_| {
+            Ok(())
+        }.and_then(|t| {
             Controller::update_state()
         })
     }
@@ -343,11 +359,13 @@ impl Controller {
     }
 
     pub fn replace(p: Project,q: Option<&Path>) -> Result<()> {
+        use paths::session_directory;
+
         {
             let obj = try!(Controller::instance());
             let mut guard = try!(CONTROLLER.write());
 
-            *guard = Controller::New{ singleton_object: obj };
+            *guard = Controller::New{ singleton_object: obj, request: None };
             Ok(())
         }.and_then(|_| {
             Controller::update_state()
@@ -357,8 +375,7 @@ impl Controller {
                 Backing::Named(p.to_path_buf())
             } else {
                 let dir = try!(session_directory());
-
-                               Backing::Unnamed(try!(TempDir::new_in(dir,"panop-backing")).path().to_path_buf())
+                Backing::Unnamed(try!(TempDir::new_in(dir,"panop-backing")).path().to_path_buf())
             };
 
             match &mut *guard {
@@ -368,7 +385,7 @@ impl Controller {
                     *backing_file = bf;
                     Ok(())
                 },
-                ctrl@&mut Controller::New{ ..} => {
+                ctrl@&mut Controller::New{ .. } => {
                     let so = if let &mut Controller::New{ /*ref metaObject,*/ ref mut singleton_object,.. } = ctrl {
                         singleton_object.as_ptr()
                     } else {
@@ -384,7 +401,7 @@ impl Controller {
                     };
                     Ok(())
                 },
-                &mut Controller::Empty => {
+                &mut Controller::Empty{ .. } => {
                     Err("Controller is in empty state".into())
                 }
             }
@@ -415,9 +432,9 @@ impl Controller {
         let guard = try!(CONTROLLER.read());
 
         match &*guard {
-            &Controller::New{ ref singleton_object } => singleton_object.emit(s,&[a.clone().to_variant()]),
+            &Controller::New{ ref singleton_object,.. } => singleton_object.emit(s,&[a.clone().to_variant()]),
             &Controller::Set{ ref singleton_object,.. } => singleton_object.emit(s,&[a.clone().to_variant()]),
-            &Controller::Empty => return Err("Controller is in empty state".into()),
+            &Controller::Empty{ .. } => return Err("Controller is in empty state".into()),
         }
 
         Ok(())
@@ -426,7 +443,7 @@ impl Controller {
     fn instance() -> Result<Object> {
         let mut guard = try!(CONTROLLER.write());
         match &mut *guard {
-            &mut Controller::Empty => Err("Controller is in empty state".into()),
+            &mut Controller::Empty{ .. } => Err("Controller is in empty state".into()),
             &mut Controller::New{ ref mut singleton_object,.. } => Ok(Object::from_ptr(singleton_object.as_ptr())),
             &mut Controller::Set{ ref mut singleton_object,.. } => Ok(Object::from_ptr(singleton_object.as_ptr())),
         }
@@ -436,7 +453,7 @@ impl Controller {
         let mut obj = try!(Controller::instance());
         let mut guard = try!(CONTROLLER.write());
         let (nstate,nback) = match &mut *guard {
-            &mut Controller::Empty => ("".to_string(),"".to_string()),
+            &mut Controller::Empty{ .. } => ("".to_string(),"".to_string()),
             &mut Controller::New{ .. } => ("NEW".to_string(),"".to_string()),
             &mut Controller::Set{ is_dirty: true, ref backing_file,.. } =>
                 ("DIRTY".to_string(),backing_file.path().to_str().unwrap_or("").to_string()),

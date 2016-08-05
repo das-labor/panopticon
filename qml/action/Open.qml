@@ -42,6 +42,7 @@ Action {
 	text: "&Open"
 	shortcut: StandardKey.Open
 	iconName: "document-open"
+	tooltip: "Disassemble a new file"
 	enabled: window.enabled && fileBrowser.status == Component.Ready && errorPopup.status == Component.Ready
 	onTriggered: {
 		window.enabled = false;
@@ -57,52 +58,21 @@ Action {
 			var fb = fileBrowser.createObject(window);
 			var code = fb.readFile();
 
-			console.log("code: " + JSON.stringify(code));
-			console.log("open: " + fb.selectedFile);
 			if(code == 0) {
-				var _res = Panopticon.fileDetails(fb.selectedFile);
-				console.log(_res);
-				var res = JSON.parse(_res);
+				var res = JSON.parse(Panopticon.fileDetails(fb.selectedFile));
 
 				if(res.status == "ok") {
-					switch(res.payload.format) {
-						case "raw": {
-							var tp = targetPopup.createObject(window);
+					var req = {
+						"kind": res.payload.format,
+						"path": fb.selectedFile
+					};
 
-							if(tp.show() == 0) {
-								var res = JSON.parse(tp.openFunction(fb.selectedFile));
-
-								if(res.status == "err") {
-									displayError(res.error);
-								}
-								break;
-							}
-						}
-						case "elf": {
-							var res = Panopticon.createElfProject(fb.selectedFile)
-							if(res.status == "err") {
-								displayError(res.error);
-							}
-							break;
-						}
-						case "pe": {
-							var res = Panopticon.createPeProject(fb.selectedFile)
-							if(res.status == "err") {
-								displayError(res.error);
-							}
-							break;
-						}
-						case "panop": {
-							var res = Panopticon.openProject(fb.selectedFile)
-							if(res.status == "err") {
-								displayError(res.error);
-							}
-							break;
-						}
-						default: {
-							displayError("Internal error: Unknown format");
-							break;
-						}
+					console.log(Panopticon.request());
+					var res = JSON.parse(Panopticon.request());
+					if(res.status == "ok" && res.payload == null) {
+						Panopticon.setRequest(JSON.stringify(req));
+					} else {
+						window.serveRequest(req);
 					}
 				} else {
 					displayError(res.error);

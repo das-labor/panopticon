@@ -5,7 +5,7 @@ environment:
   RUST_INSTALL_DIR: C:\Rust
   matrix:
     - RUST_INSTALL_TRIPLE: x86_64-pc-windows-msvc
-      RUST_VERSION: 1.7.0
+      RUST_VERSION: 1.10.0
 install:
    # Rust
   - ps: Start-FileDownload "https://static.rust-lang.org/dist/rust-$Env:RUST_VERSION-$Env:RUST_INSTALL_TRIPLE.msi"

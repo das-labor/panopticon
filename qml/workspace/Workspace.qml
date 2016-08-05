@@ -284,7 +284,7 @@ Item {
 							}
 						}
 
-						console.error(num_blocks.toString() + " blocks!");
+						console.exception(num_blocks.toString() + " blocks!");
 
 						for (var i = 0; i < cfg.edges.length; i++) {
 							var from = bblockList[cfg.edges[i].from];
@@ -320,7 +320,7 @@ Item {
 									bblockList[i].visible = false;
 									bblockList[i].destroy();
 								} catch (e) {
-									console.error(e);
+									console.exception(e);
 								}
 							}
 						}
@@ -358,7 +358,7 @@ Item {
 					if(res.status == "ok") {
 						var approx = res.payload;
 					} else {
-						console.error(res.error);
+						console.exception(res.error);
 						var approx = [];
 					}
 
@@ -385,7 +385,7 @@ Item {
 								"approx": approx,
 							};
 						} else {
-							console.error("Node '" + node.toString() + "' has neither code nor target");
+							console.exception("Node '" + node.toString() + "' has neither code nor target");
 						}
 
 						var obj = basicBlock.createObject(bblockRoot,c);
@@ -403,7 +403,7 @@ Item {
 						if(res.status != "ok") {
 							cflow_graph.errorMessage = res.error
 							cflow_graph.state = "ERROR"
-							console.error(res.error);
+							console.exception(res.error);
 						}
 					} else {
 						for (var i in bblockList) {
