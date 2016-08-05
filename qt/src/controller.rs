@@ -67,20 +67,27 @@ extern "C" fn controller_slot(_: *mut ffi::QObject, id: c_int, a: *const ffi::QV
         (SET_COMMENT,3) => ::function::comment(&args[0],&args[1],&args[2]).to_qvariant(ret),
         (SET_NAME,2) => ::function::rename(&args[0],&args[1]).to_qvariant(ret),
 
+        // Requests
+        (SET_REQUEST,1) => project::set_request(&args[0]).to_qvariant(ret),
+        (REQUEST,0) => project::request().to_qvariant(ret),
+
+        // Session handling
+        (SESSIONS,0) => ::function::sessions().to_qvariant(ret),
+        (DELETE_SESSION,1) => ::function::delete_session(&args[0]).to_qvariant(ret),
         _ => panic!("Unknown controller call id '{}' with {} arguments.",id,args.len())
     }
 }
 
 const STATE_CHANGED: isize = 0;
 const PATH_CHANGED: isize = 1;
-const REQUEST_CHANGED: isize = 2;
 
-pub const DISCOVERED_FUNCTION: isize = 3;
-pub const STARTED_FUNCTION: isize = 4;
-pub const FINISHED_FUNCTION: isize = 5;
+pub const DISCOVERED_FUNCTION: isize = 2;
+pub const STARTED_FUNCTION: isize = 3;
+pub const FINISHED_FUNCTION: isize = 4;
 
-pub const LAYOUTED_FUNCTION: isize = 6;
-pub const CHANGED_FUNCTION: isize = 7;
+pub const LAYOUTED_FUNCTION: isize = 5;
+pub const CHANGED_FUNCTION: isize = 6;
+pub const REMOVED_FUNCTION: isize = 7;
 
 pub const CREATE_RAW_PROJECT: isize = 8;
 pub const CREATE_ELF_PROJECT: isize = 9;
@@ -101,6 +108,11 @@ pub const READ_DIRECTORY: isize = 18;
 pub const FILE_DETAILS: isize = 19;
 
 pub const SUGIYAMA_LAYOUT: isize = 20;
+pub const REQUEST: isize = 21;
+pub const SET_REQUEST: isize = 22;
+pub const SESSIONS: isize = 23;
+pub const DELETE_SESSION: isize = 24;
+pub const FIND_DATA_FILE: isize = 25;
 
 pub extern "C" fn create_singleton(_: *mut ffi::QQmlEngine, _: *mut ffi::QJSEngine) -> *mut ffi::QObject {
     let mut metaobj = MetaObject::new("Panopticon",controller_slot);
@@ -113,11 +125,6 @@ pub extern "C" fn create_singleton(_: *mut ffi::QQmlEngine, _: *mut ffi::QJSEngi
     metaobj.add_property("savePath","QString",Some("savePathChanged()"));
 
     metaobj.add_property("pathDelimiter","QString",None);
-    metaobj.add_property("requestPath","QString",None);
-    metaobj.add_property("requestType","QString",None);
-
-    assert_eq!(metaobj.add_signal("requestChanged()"),REQUEST_CHANGED);
-    metaobj.add_property("request","QString",Some("requestChanged()"));
 
     // WORKING signals
     assert_eq!(metaobj.add_signal("discoveredFunction(QString)"),DISCOVERED_FUNCTION);
@@ -152,14 +159,20 @@ pub extern "C" fn create_singleton(_: *mut ffi::QQmlEngine, _: *mut ffi::QJSEngi
     // setter
     assert_eq!(metaobj.add_method("sugiyamaLayout(QString,QString,int,int,int)","QString"),SUGIYAMA_LAYOUT);
 
+    assert_eq!(metaobj.add_method("request()","QString"),REQUEST);
+    assert_eq!(metaobj.add_method("setRequest(QString)","QString"),SET_REQUEST);
+
+    assert_eq!(metaobj.add_method("sessions()","QString"),SESSIONS);
+    assert_eq!(metaobj.add_method("deleteSession(QString)","QString"),DELETE_SESSION);
+
+    assert_eq!(metaobj.add_method("findDataFile(QString)","QString"),FIND_DATA_FILE);
+
     let mut obj = metaobj.instantiate();
 
     obj.set_property("state",Variant::String("NEW".to_string()));
     obj.emit(STATE_CHANGED,&[]);
     obj.set_property("savePath",Variant::String("".to_string()));
     obj.emit(PATH_CHANGED,&[]);
-    obj.set_property("request",Variant::String("".to_string()));
-    obj.emit(REQUEST_CHANGED,&[]);
 
     if cfg!(windows) {
         obj.set_property("pathDelimiter",Variant::String("\\".to_string()));
@@ -170,47 +183,6 @@ pub extern "C" fn create_singleton(_: *mut ffi::QQmlEngine, _: *mut ffi::QJSEngi
     assert!(Controller::instantiate_singleton(metaobj,Object::from_ptr(obj.as_ptr())).is_ok());
 
     obj.as_ptr()
-}
-
-const REQ_PATH_CHANGED: isize = 0;
-const REQ_TYPE_CHANGED: isize = 1;
-
-const REQ_SESSIONS: isize = 2;
-const REQ_DELETE_SESSION: isize = 3;
-
-extern "C" fn request_slot(_: *mut ffi::QObject, id: c_int, a: *const ffi::QVariantList, ret: *mut ffi::QVariant) {
-  let args = unpack_varlist(a);
-
-    match (id as isize,args.len()) {
-        // Session handling
-        (REQ_SESSIONS,0) => ::function::sessions().to_qvariant(ret),
-        (REQ_DELETE_SESSION,1) => ::function::delete_session(&args[0]).to_qvariant(ret),
-
-        _ => panic!("Unknown request call id '{}' with {} arguments.",id,args.len())
-    }
-}
-
-pub fn create_request() -> Object {
-    let mut metaobj = MetaObject::new("Request",request_slot);
-
-    // properties and their signals
-    assert_eq!(metaobj.add_signal("pathChanged()"),REQ_PATH_CHANGED);
-    metaobj.add_property("path","QString",Some("pathChanged()"));
-
-    assert_eq!(metaobj.add_signal("typeChanged()"),REQ_TYPE_CHANGED);
-    metaobj.add_property("type","QString",Some("typeChanged()"));
-
-    assert_eq!(metaobj.add_method("sessions()","QString"),REQ_SESSIONS);
-    assert_eq!(metaobj.add_method("deleteSession(QString)","QString"),REQ_DELETE_SESSION);
-
-    let mut obj = metaobj.instantiate();
-
-    obj.set_property("path",Variant::String("".to_string()));
-    obj.emit(0,&[]);
-    obj.set_property("type",Variant::String("".to_string()));
-    obj.emit(1,&[]);
-
-    obj
 }
 
 #[derive(RustcEncodable)]
@@ -245,13 +217,20 @@ impl Backing {
     }
 }
 
+#[derive(RustcEncodable,RustcDecodable,Clone)]
+pub struct Request {
+    kind: String,
+    path: String,
+}
+
 pub enum Controller {
     Empty{
-        request: Option<(String,String)>,
+        request: Option<Request>,
     },
     New{
         //metaObject: MetaObject,
         singleton_object: Object,
+        request: Option<Request>,
     },
     Set{
         //metaObject: MetaObject,
@@ -278,61 +257,30 @@ impl ToVariant for String {
     }
 }
 
-#[cfg(all(unix,not(target_os = "macos")))]
-pub fn session_directory() -> Result<PathBuf> {
-    match BaseDirectories::with_prefix("panopticon") {
-        Ok(dirs) => {
-            let ret = dirs.get_data_home().join("sessions");
-            try!(DirBuilder::new()
-                    .recursive(true)
-                    .create(ret.clone()));
-            Ok(ret)
-        },
-        Err(e) => Err(result::Error(Cow::Owned(e.description().to_string()))),
-    }
-}
-
-#[cfg(all(unix,target_os = "macos"))]
-pub fn session_directory() -> Result<PathBuf> {
-    match env::var("HOME") {
-        Ok(home) => {
-            let ret = Path::new(&home).join("Library")
-                .join("Application Support")
-                .join("Panopticon")
-                .join("sessions");
-			try!(DirBuilder::new()
-				.recursive(true)
-				.create(ret.clone()));
-			Ok(ret)
-        },
-        Err(e) => Err(result::Error(Cow::Owned(e.description().to_string()))),
-    }
-}
-
-#[cfg(windows)]
-pub fn session_directory() -> Result<PathBuf> {
-    match env::var("APPDATA") {
-        Ok(appdata) => {
-            let ret = Path::new(&appdata).join("Panopticon").join("sessions");
-			try!(DirBuilder::new()
-				.recursive(true)
-				.create(ret.clone()));
-			Ok(ret)
-        },
-        Err(e) => Err(result::Error(Cow::Owned(e.description().to_string()))),
-    }
-}
-
 impl Controller {
-    pub fn set_request(path: &String, typ: &String) -> Result<()> {
+    pub fn request() -> Result<Option<Request>> {
+        let guard = try!(CONTROLLER.read());
+        match &*guard {
+            &Controller::Empty{ ref request } => Ok(request.clone()),
+            &Controller::New{ ref request,.. } => Ok(request.clone()),
+            &Controller::Set{ .. } => Err("Controller is in set state".into()),
+        }
+    }
+
+    pub fn set_request(json: &String) -> Result<()> {
+        let req = try!(json::decode::<Request>(json));
+
         let mut guard = try!(CONTROLLER.write());
         match &mut *guard {
             &mut Controller::Empty{ ref mut request } => {
-                *request = Some((path.clone(),typ.clone()));
+                *request = Some(req);
                 Ok(())
             },
-            &mut Controller::New{ .. } => Err("Controller is not in empty state".into()),
-            &mut Controller::Set{ .. } => Err("Controller is not in empty state".into()),
+            &mut Controller::New{ ref mut request,.. } => {
+                *request = Some(req);
+                Ok(())
+            },
+            &mut Controller::Set{ .. } => Err("Controller is in set state".into()),
         }
     }
 
@@ -342,17 +290,19 @@ impl Controller {
 
             match &mut *guard {
                 ctrl@&mut Controller::Empty{ .. }  => {
-                    if let &mut Controller::Empty{ request: Some((ref path,ref typ)) } = ctrl {
-                        s.set_property("requestPath",Variant::String(path.clone()));
-                        s.set_property("requestType",Variant::String(typ.clone()));
-                    }
+                    let req: Option<Request> = if let &mut Controller::Empty{ ref request } = ctrl {
+                        (*request).clone()
+                    } else {
+                        unreachable!()
+                    };
 
                     *ctrl = Controller::New{
                         //metaObject: m,
                         singleton_object: s,
+                        request: req,
                     };
                 },
-                &mut Controller::New{ ref mut singleton_object } => {
+                &mut Controller::New{ ref mut singleton_object,.. } => {
                     *singleton_object = s;
                 },
                 &mut Controller::Set{ ref mut singleton_object,.. } => {
@@ -413,7 +363,7 @@ impl Controller {
             let obj = try!(Controller::instance());
             let mut guard = try!(CONTROLLER.write());
 
-            *guard = Controller::New{ singleton_object: obj };
+            *guard = Controller::New{ singleton_object: obj, request: None };
             Ok(())
         }.and_then(|_| {
             Controller::update_state()
@@ -433,7 +383,7 @@ impl Controller {
                     *backing_file = bf;
                     Ok(())
                 },
-                ctrl@&mut Controller::New{ ..} => {
+                ctrl@&mut Controller::New{ .. } => {
                     let so = if let &mut Controller::New{ /*ref metaObject,*/ ref mut singleton_object,.. } = ctrl {
                         singleton_object.as_ptr()
                     } else {
@@ -480,7 +430,7 @@ impl Controller {
         let guard = try!(CONTROLLER.read());
 
         match &*guard {
-            &Controller::New{ ref singleton_object } => singleton_object.emit(s,&[a.clone().to_variant()]),
+            &Controller::New{ ref singleton_object,.. } => singleton_object.emit(s,&[a.clone().to_variant()]),
             &Controller::Set{ ref singleton_object,.. } => singleton_object.emit(s,&[a.clone().to_variant()]),
             &Controller::Empty{ .. } => return Err("Controller is in empty state".into()),
         }

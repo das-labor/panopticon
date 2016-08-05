@@ -206,6 +206,18 @@ pub fn snapshot_project(_path: &Variant) -> Variant {
     })
 }
 
+pub fn request() -> Variant {
+    Variant::String(return_json(Controller::request()))
+}
+
+pub fn set_request(_req: &Variant) -> Variant {
+    Variant::String(if let &Variant::String(ref s) = _req {
+        return_json(Controller::set_request(s))
+    } else {
+        return_json::<()>(Err("1st argument is not a string".into()))
+    })
+}
+
 /// Starts disassembly
 pub fn spawn_disassembler<A: 'static + Architecture + Debug>(_cfg: A::Configuration) where A::Configuration: Debug + Sync, A::Token: Sync + Send {
     use std::sync::Mutex;

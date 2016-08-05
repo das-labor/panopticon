@@ -20,8 +20,13 @@ import QtQuick 2.4
 import QtQuick.Controls 1.3
 import QtQuick.Layouts 1.1
 import QtQuick.Window 2.1
+import QtQuick.Dialogs 1.2
+import Panopticon 1.0
 
 Window {
+	property bool enabled: true
+
+	id: titleScreen
 	flags: Qt.Dialog
 	visible: true
 	y: (Screen.desktopAvailableHeight - height) / 2
@@ -31,6 +36,23 @@ Window {
 
 	onClosing: {
 		sessionView.deleteSessions();
+	}
+
+	Component {
+		id: fileBrowser
+		FileBrowser {}
+	}
+
+	Component {
+		id: errorPopup
+		ErrorPopup {}
+	}
+
+	Open {
+		id: openAct
+		window: titleScreen
+		fileBrowser: fileBrowser;
+		errorPopup: errorPopup;
 	}
 
 	Rectangle {
@@ -71,15 +93,54 @@ Window {
 
 			Repeater {
 				model: ListModel {
-					ListElement { title: "Open"; description: "Start disassembly of a new file"; icon: "icons/open-icon.svg" }
-					ListElement { title: "Sandbox"; description: "Open an empty workspace"; icon: "icons/sandbox-icon.svg" }
-					ListElement { title: "Example"; description: "Try out Panopticon"; icon: "icons/example-icon.svg" }
+					ListElement { title: "Open"; description: "Start disassembly of a new file"; icon: "icons/open-icon.svg"; semantic: "open" }
+					ListElement { title: "Sandbox"; description: "Open an empty workspace"; icon: "icons/sandbox-icon.svg"; semantic: "sandbox" }
+					ListElement { title: "Example"; description: "Try out Panopticon"; icon: "icons/example-icon.svg"; semantic: "example" }
 				}
 				delegate: MouseArea {
 					id: root
 					width: childrenRect.width
 					height: childrenRect.height
 					hoverEnabled: true
+					enabled: titleScreen.enabled
+					onClicked: {
+						switch(semantic) {
+							case "open": {
+								openAct.trigger(menu)
+								var res = JSON.parse(Panopticon.request());
+
+								if(res.status == "ok" && res.payload != null) {
+									Qt.quit()
+								}
+								break;
+							}
+							case "sandbox": {
+								var res = {
+									"kind": "sandbox",
+									"path": ""
+								};
+								var res = JSON.parse(Panopticon.setRequest(JSON.stringify(res)));
+								if(res.status == "ok") {
+									Qt.quit()
+								}
+								break;
+							}
+							case "example": {
+								var res = JSON.parse(Panopticon.findDataFile("examples" + Panopticon.pathDelimiter + "sosse"))
+								if(res.status == "ok") {
+									var res = {
+										"kind": "avr",
+										"path": res.payload
+									};
+									var res = JSON.parse(Panopticon.setRequest(JSON.stringify(res)));
+									if(res.status == "ok") {
+										Qt.quit()
+									}
+								}
+								break;
+							}
+						}
+					}
 
 					GridLayout {
 						id: grid
@@ -162,6 +223,7 @@ Window {
 					width: childrenRect.width
 					height: childrenRect.height + 23
 					hoverEnabled: true
+					enabled: titleScreen.enabled
 
 					GridLayout {
 						columnSpacing: 10
@@ -184,11 +246,17 @@ Window {
 								id: openArea
 								anchors.fill: parent
 								hoverEnabled: true
+								enabled: titleScreen.enabled
 
 								onClicked: {
-									Panopticon.path = path
-									Panopticon.type = "project"
-									Qt.quit()
+									var res = {
+										"kind": "panop",
+										"path": path
+									};
+									var res = JSON.parse(Panopticon.setRequest(JSON.stringify(res)));
+									if(res.status == "ok") {
+										Qt.quit()
+									}
 								}
 							}
 						}
@@ -211,6 +279,7 @@ Window {
 								id: deleteArea
 								anchors.fill: parent
 								hoverEnabled: true
+								enabled: titleScreen.enabled
 								onClicked: {
 									if(elem.state == "") {
 										elem.state = "DELETE"
@@ -253,6 +322,7 @@ Window {
 				anchors.leftMargin: 10
 				opacity: sessionView.moving ? 1.0 : 0.2
 				y: sessionView.visibleArea.yPosition * sessionView.height
+				visible: sessionView.contentHeight > sessionView.height
 				width: 4
 				height: sessionView.visibleArea.heightRatio * sessionView.height
 				color: "#aaaaaa"

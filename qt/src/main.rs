@@ -71,31 +71,19 @@ fn main() {
 
     match (title_screen,main_window) {
         (Ok(Some(title)),Ok(Some(window))) => {
+            qmlrs::register_singleton_type(&"Panopticon",1,0,&"Panopticon",create_singleton);
 
             {
                 let mut engine = qmlrs::Engine::new();
-                let mut req = create_request();
-
-                engine.set_property("Panopticon",&req);
                 engine.load_local_file(&format!("{}",title.display()));
                 engine.exec();
-
-                if let Variant::String(ref path) = req.get_property("path") {
-                    if let Variant::String(ref typ) = req.get_property("type") {
-                        let _ = Controller::set_request(path,typ);
-                    }
-                }
             }
 
-            {
-                qmlrs::register_singleton_type(&"Panopticon",1,0,&"Panopticon",create_singleton);
-
+            if Controller::request().ok().unwrap_or(None).is_some() {
                 let mut engine = qmlrs::Engine::new();
                 engine.load_local_file(&format!("{}",window.display()));
                 engine.exec();
             }
-
-            return;
         },
         _ => {
             println!("Failed to open the QML files")
