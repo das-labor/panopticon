@@ -45,7 +45,7 @@ everything.
 ```bash
 git clone https://github.com/das-labor/panopticon.git
 cd panopticon
-cargo build
+cargo build --release
 ```
 
 Gentoo:
@@ -61,7 +61,7 @@ Windows
 -------
 
 Install the Qt 5.4 SDK and the Rust toolchain
-Panopticon can be build using ``cargo build``.
+Panopticon can be build using ``cargo build --release``.
 
 Running
 =======
