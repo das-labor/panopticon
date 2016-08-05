@@ -376,69 +376,6 @@ Popup {
 						browser.currentFile = displayText;
 					}
 
-					Canvas {
-						readonly property int tipHeight: 12
-						readonly property int bubblePadding: 8
-						readonly property int bubbleRadius: 4
-
-						id: edit
-						width: messageLabel.width + 2 * bubblePadding
-						height: messageLabel.height + 2 * bubblePadding + tipHeight
-						anchors.top: parent.bottom
-						anchors.left: parent.left
-						visible: browser.message !== ""
-
-						onVisibleChanged: requestPaint()
-
-						onPaint: {
-							var ctx = edit.getContext('2d');
-
-							const corner_sz = edit.bubbleRadius;
-							const tip_apex = 25;
-							const tip_w = 20;
-							const tip_h = edit.tipHeight;
-
-							/*
-							 *       tip_apex
-							 *          /\
-							 * .-------'  `-----. - top
-							 * |       | tip_end|
-							 * |    tip_start   |
-							 * '----------------' - bottom
-							 */
-
-							const top = tip_h;
-							const bottom = edit.height - 1;
-							const tip_start = tip_apex - tip_w / 2;
-							const tip_end = tip_start + tip_w;
-							const end = edit.width - 1;
-
-
-							ctx.fillStyle = "#efecca";
-							ctx.strokeStyle = "black";
-							ctx.lineWidth = 0.5;
-
-							ctx.clearRect(0,0,width,height);
-							ctx.beginPath();
-
-							ctx.moveTo(1 + corner_sz,top);
-							ctx.lineTo(tip_start,top);
-							ctx.lineTo(tip_apex,0);
-							ctx.lineTo(tip_end,top);
-							ctx.lineTo(end - corner_sz,top);
-							ctx.arc(end - corner_sz,top + corner_sz,corner_sz,1.5 * Math.PI,0,false);
-							ctx.lineTo(end,bottom - corner_sz);
-							ctx.arc(end - corner_sz,bottom - corner_sz,corner_sz,0,0.5 * Math.PI,false);
-							ctx.lineTo(1 + corner_sz,bottom);
-							ctx.arc(1 + corner_sz,bottom - corner_sz,corner_sz,0.5 * Math.PI,Math.PI,false);
-							ctx.lineTo(1,top + corner_sz);
-							ctx.arc(1 + corner_sz,top + corner_sz,corner_sz,Math.PI,1.5 * Math.PI,false);
-
-							ctx.fill();
-							ctx.stroke();
-						}
-					}
-
 					Label {
 						id: messageLabel
 						text: browser.message

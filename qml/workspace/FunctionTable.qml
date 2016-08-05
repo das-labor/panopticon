@@ -124,6 +124,15 @@ Item {
 					sort()
 				}
 			})
+			Functions.removed.connect(function(row) {
+				for(var i = 0; i < count; i++) {
+					if(get(i).row == row) {
+						functionModel.remove(i);
+						return;
+					}
+				}
+			})
+
 		}
 	}
 

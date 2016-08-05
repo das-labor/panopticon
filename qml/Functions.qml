@@ -10,6 +10,7 @@ ListModel {
 
 	signal added(int row)
 	signal changed(int row)
+	signal removed(int row)
 
 	function upsert(uu,ev) {
 		var _info = Panopticon.functionInfo(uu);
@@ -59,6 +60,17 @@ ListModel {
 	}
 
 	Component.onCompleted: {
+		Panopticon.onStateChanged.connect(function() {
+			switch(Panopticon.state) {
+				case "NEW":{
+					for(var i = 0; i < model.count; i++) {
+						model.removed(i);
+					}
+					model.clear();
+				}
+			}
+		});
+
 		Panopticon.startedFunction.connect(function(uu) {
 			upsert(uu,"started");
 		});
