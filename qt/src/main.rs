@@ -57,8 +57,6 @@ use paths::find_data_file;
 
 fn main() {
     use std::path::Path;
-
-    #[cfg(unix)]
     use std::env;
 
     // workaround bug #165
