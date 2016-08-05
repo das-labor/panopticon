@@ -16,7 +16,7 @@ Building
 ========
 
 Panopticon builds with Rust stable. The only dependencies aside from
-a working Rust 1.7 toolchain and Cargo you need Qt 5.4 installed.
+a working Rust 1.10.0 toolchain and Cargo you need Qt 5.4 installed.
 
 Linux
 -----
