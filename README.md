@@ -66,6 +66,10 @@ Panopticon can be build using ``cargo build --release``.
 Running
 =======
 
+```bash
+cargo run --release
+```
+
 The current version only supports AVR and has no ELF or PE loader yet.
 To test Panopticon you need relocated AVR code. Such a file is
 prepared in ``tests/data/sosse``.
