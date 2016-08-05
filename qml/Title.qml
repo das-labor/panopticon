@@ -32,7 +32,7 @@ Window {
 	y: (Screen.desktopAvailableHeight - height) / 2
 	x: (Screen.desktopAvailableWidth - width) / 2
 	width: 790
-	height: 400
+	height: 550
 
 	onClosing: {
 		sessionView.deleteSessions();
@@ -75,21 +75,21 @@ Window {
 
 	// Panopticon logo font
 	Image {
-		y: 51
+		y: 100
 		anchors.horizontalCenter: parent.horizontalCenter
 		source: "icons/logo.svg"
 	}
 
 	Row {
-		y: 154
+		y: 250
 		spacing: 74
 		anchors.horizontalCenter: parent.horizontalCenter
-		height: parent.height - 154
+		height: parent.height - 250
 
 		// Menu
 		Column {
 			id: menu
-			spacing: 27
+			spacing: 30
 
 			Repeater {
 				model: ListModel {
