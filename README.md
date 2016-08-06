@@ -45,7 +45,7 @@ everything.
 ```bash
 git clone https://github.com/das-labor/panopticon.git
 cd panopticon
-cargo build
+cargo build --release
 ```
 
 Gentoo:
@@ -61,10 +61,14 @@ Windows
 -------
 
 Install the Qt 5.4 SDK and the Rust toolchain
-Panopticon can be build using ``cargo build``.
+Panopticon can be build using ``cargo build --release``.
 
 Running
 =======
+
+```bash
+cargo run --release
+```
 
 The current version only supports AVR and has no ELF or PE loader yet.
 To test Panopticon you need relocated AVR code. Such a file is
