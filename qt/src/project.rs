@@ -32,7 +32,7 @@ use panopticon::{
     Layer,
     Region,
     Bound,
-    Regions,
+    World,
     approximate,
     Kset,
 };
@@ -91,7 +91,7 @@ pub fn create_raw_project(_path: &Variant, _tgt: &Variant, _base: &Variant, _ent
                                 let mut proj = Project{
                                     name: nam.to_string(),
                                     code: Vec::new(),
-                                    sources: Regions::new(reg),
+                                    data: World::new(reg),
                                     comments: HashMap::new(),
                                 };
                                 let mut prog = Program::new("prog0");

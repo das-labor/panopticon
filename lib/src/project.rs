@@ -36,7 +36,7 @@ use byteorder::{
 use {
     Program,
     CallGraphRef,
-    Region,Regions,
+    Region,World,
     Function,
     Result,
     pe
@@ -46,8 +46,7 @@ use {
 pub struct Project {
     pub name: String,
     pub code: Vec<Program>,
-    //data: Vec<Structure>,
-    pub sources: Regions,
+    pub data: World,
     pub comments: HashMap<(String,u64),String>,
 }
 
@@ -56,7 +55,7 @@ impl Project {
         Project{
             name: s,
             code: Vec::new(),
-            sources: Regions::new(r),
+            data: World::new(r),
             comments: HashMap::new(),
         }
     }
