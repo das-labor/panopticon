@@ -134,6 +134,14 @@ Item {
 											 lb_w + root.nodePadding * 2,root.labelHeight + root.nodePadding * 2);
 			}
 
+			onHeightChanged: {
+				layoutTask.sendMessage({"type":"resize","width":callgraph.width,"height":callgraph.height});
+			}
+
+			onWidthChanged: {
+				layoutTask.sendMessage({"type":"resize","width":callgraph.width,"height":callgraph.height});
+			}
+
 			onPaint: {
 				var ctx = callgraph.getContext('2d');
 				ctx.textAlign = "center";
