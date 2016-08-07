@@ -59,9 +59,12 @@ fn main() {
     use std::path::Path;
     use std::env;
 
-    // workaround bug #165
     if cfg!(unix) {
+        // workaround bug #165
         env::set_var("UBUNTU_MENUPROXY","");
+
+        // workaround bug #183
+        env::set_var("QT_QPA_PLATFORMTHEME","");
     }
 
     let title_screen = find_data_file(&Path::new("qml").join("Title.qml"));

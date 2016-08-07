@@ -33,10 +33,12 @@ sudo apt install qt5-default qtdeclarative5-dev \
                  git build-essential cmake
 ```
 
-Fedora 22 and 23:
+Fedora 22, 23 and 24:
 ```bash
 sudo dnf install qt5-qtdeclarative-devel qt5-qtquickcontrols \
-                 qt5-qtgraphicaleffects
+                 qt5-qtgraphicaleffects qt5-qtsvg \
+								 adobe-source-sans-pro-font \
+								 adobe-source-code-pro-font
 ```
 
 After that clone the repository onto disk and use cargo to build

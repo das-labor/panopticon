@@ -2,6 +2,8 @@ module Panopticon
 
 Workspace 1.0 workspace/Workspace.qml
 singleton Functions 1.0 Functions.qml
+Label 1.0 Label.qml
+Monospace 1.0 Monospace.qml
 
 Open 1.0 action/Open.qml
 Quit 1.0 action/Quit.qml

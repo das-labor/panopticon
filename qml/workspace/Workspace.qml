@@ -17,7 +17,7 @@
  */
 
 import QtQuick 2.3
-import QtQuick.Controls 1.2
+import QtQuick.Controls 1.2 as Ctrl
 
 import Panopticon 1.0
 import ".."
@@ -86,13 +86,13 @@ Item {
 		}
 	}
 
-	TabView {
+	Ctrl.TabView {
 		id: tabs
 		height: root.height
 		width: root.width - 300
 		x: 300
 
-		Tab {
+		Ctrl.Tab {
 			id: callgraph
 			title: "Call Graph"
 
@@ -103,7 +103,7 @@ Item {
 			}
 		}
 
-		Tab {
+		Ctrl.Tab {
 			id: cflow_graph
 			title: "Control Flow"
 			state: ""

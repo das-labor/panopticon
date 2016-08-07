@@ -17,10 +17,11 @@
  */
 
 import QtQuick 2.3
-import QtQuick.Controls 1.2
+import QtQuick.Controls 1.2 as Ctrl
 import QtQuick.Layouts 1.1
 
 import Panopticon 1.0
+import ".."
 
 Popup {
 	id: browser
@@ -120,7 +121,7 @@ Popup {
 				anchors.fill: parent
 				anchors.margins: 5
 
-				Button {
+				Ctrl.Button {
 					property string parentPath: "/"
 
 					id: upButton
@@ -130,7 +131,7 @@ Popup {
 					onClicked: chdir(parentPath)
 				}
 
-				TextField {
+				Ctrl.TextField {
 					id: pathInput
 					Layout.row: 0
 					Layout.column: 1
@@ -165,7 +166,7 @@ Popup {
 						color: "#333"
 					}
 
-					ScrollView {
+					Ctrl.ScrollView {
 						frameVisible: true
 						anchors.fill: parent
 						visible: parent.state == "FOLDER"
@@ -307,7 +308,7 @@ Popup {
 					}
 				}
 
-				TextField {
+				Ctrl.TextField {
 					id: fileInput
 					Layout.row: 2
 					Layout.column: 0
