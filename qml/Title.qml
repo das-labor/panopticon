@@ -17,7 +17,6 @@
  */
 
 import QtQuick 2.4
-import QtQuick.Controls 1.3
 import QtQuick.Layouts 1.1
 import QtQuick.Window 2.1
 import QtQuick.Dialogs 1.2
@@ -69,7 +68,6 @@ Window {
 		text: "v0.15.0"
 		font {
 			pointSize: 11
-			family: "Source Sans Pro"
 		}
 	}
 
@@ -166,7 +164,6 @@ Window {
 							font {
 								pointSize: 13
 								weight: Font.DemiBold
-								family: "Source Sans Pro"
 								underline: root.containsMouse
 							}
 						}
@@ -179,7 +176,6 @@ Window {
 							text: description
 							font {
 								pointSize: 13
-								family: "Source Sans Pro"
 								underline: root.containsMouse
 							}
 						}
@@ -238,7 +234,6 @@ Window {
 								strikeout: elem.state == "DELETE"
 								pointSize: 11
 								weight: Font.DemiBold
-								family: "Source Sans Pro"
 								underline: openArea.containsMouse
 							}
 
@@ -267,7 +262,6 @@ Window {
 							font {
 								strikeout: elem.state == "DELETE"
 								pointSize: 11
-								family: "Source Sans Pro"
 							}
 						}
 

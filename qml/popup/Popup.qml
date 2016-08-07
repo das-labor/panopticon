@@ -17,12 +17,13 @@
  */
 
 import QtQuick 2.3
-import QtQuick.Controls 1.2
+import QtQuick.Controls 1.2 as Ctrl
 import QtQuick.Layouts 1.1
 import QtTest 1.1
 import QtGraphicalEffects 1.0
 
 import Panopticon 1.0
+import ".."
 
 Item {
 	property var component: null
@@ -121,7 +122,7 @@ Item {
 			Repeater {
 				model: root.buttons.length
 
-				Button {
+				Ctrl.Button {
 					text: root.buttons[index].title
 					enabled: root.buttons[index].enabled
 					menu: {
@@ -134,8 +135,8 @@ Item {
 
 					Component {
 						id: confirmMenu
-						Menu {
-							MenuItem {
+						Ctrl.Menu {
+							Ctrl.MenuItem {
 								text: (root.buttons[index].confirm !== undefined ? root.buttons[index].confirm : "")
 								onTriggered: {
 									root.done(index)

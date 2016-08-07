@@ -17,14 +17,14 @@
  */
 
 import QtQuick 2.4
-import QtQuick.Controls 1.3
+import QtQuick.Controls 1.3 as Ctrl
 import QtQuick.Layouts 1.1
 
 import Panopticon 1.0
 
 import "."
 
-ApplicationWindow {
+Ctrl.ApplicationWindow {
 	id: mainWindow
 
 	function serveRequest(req) {
@@ -90,12 +90,12 @@ ApplicationWindow {
 	width: 1000
 	visible: true
 
-	menuBar: MenuBar {
-		Menu {
+	menuBar: Ctrl.MenuBar {
+		Ctrl.Menu {
 			title: "Project"
 			id: projectMenu
 
-			MenuItem {
+			Ctrl.MenuItem {
 				text: action.text
 				action: Open {
 					window: mainWindow
@@ -104,7 +104,7 @@ ApplicationWindow {
 				}
 			}
 
-			MenuItem {
+			Ctrl.MenuItem {
 				text: action.text
 				action: SaveAs {
 					window: mainWindow
@@ -113,9 +113,9 @@ ApplicationWindow {
 				}
 			}
 
-			MenuSeparator {}
+			Ctrl.MenuSeparator {}
 
-			MenuItem {
+			Ctrl.MenuItem {
 				text: action.text
 				action: Quit {
 					window: mainWindow
@@ -162,7 +162,6 @@ ApplicationWindow {
 					Label {
 						text: "Cannot recognize file type"
 						font {
-							family: "Source Sans Pro"
 							pointSize: 28
 						}
 						color: "#555555"
@@ -184,12 +183,11 @@ ApplicationWindow {
 						text: "<strong>Microcontroller to assume for analysis</strong>. This option defines what instructions are supported and the size of the Program Counter register."
 						wrapMode: Text.WordWrap
 						font {
-							family: "Source Sans Pro"
 							pointSize: 12
 						}
 					}
 
-					ComboBox {
+					Ctrl.ComboBox {
 						id: targetCombobox
 						model: targetModel
 						width: 140
@@ -220,7 +218,7 @@ ApplicationWindow {
 					}
 				}
 
-				Button {
+				Ctrl.Button {
 					anchors.right: parent.right
 					text: "Apply"
 

@@ -17,10 +17,11 @@
  */
 
 import QtQuick 2.3
-import QtQuick.Controls 1.2
+import QtQuick.Controls 1.2 as Ctrl
 import QtQuick.Layouts 1.1
 
 import Panopticon 1.0
+import ".."
 
 Item {
 	id: bblock
@@ -79,13 +80,11 @@ Item {
 						width: args.x + args.width + 2 * bblock.xPadding
 					}
 
-					Text {
+					Monospace {
 						id: opcode
 						text: modelData.offset.toString() + ": " + modelData.opcode
-						font.family: "Monospace"
 						width: bblock.opcodeWidth
 						height: contentHeight
-						color: "black"
 						y: bblock.yPadding
 
 						Component.onCompleted: {
@@ -105,7 +104,7 @@ Item {
 						Repeater {
 							model: modelData.args
 
-							Text {
+							Monospace {
 								width: contentWidth
 								text: {
 									for(var i = 0; i < approx.length; i++) {
@@ -115,8 +114,6 @@ Item {
 									}
 									return modelData.display
 								}
-								font.family: "Monospace"
-								color: "black"
 
 								onTextChanged: {
 									bblock.argsWidth = Math.max(bblock.argsWidth,args.childrenRect.width)

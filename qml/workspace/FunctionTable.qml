@@ -17,7 +17,7 @@
  */
 
 import QtQuick 2.3
-import QtQuick.Controls 1.2
+import QtQuick.Controls 1.2 as Ctrl
 import QtQml.Models 2.1
 import Panopticon 1.0
 import ".."
@@ -136,11 +136,11 @@ Item {
 		}
 	}
 
-	TableView {
+	Ctrl.TableView {
 		id: functionTable
 		anchors.fill: parent
 
-		TableViewColumn {
+		Ctrl.TableViewColumn {
 			role: "name"
 			title: "Name"
 			width: 100
@@ -152,7 +152,7 @@ Item {
 			}
 		}
 
-		TableViewColumn {
+		Ctrl.TableViewColumn {
 			role: "entry_point"
 			title: "Offset"
 			width: 100
