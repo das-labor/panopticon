@@ -37,8 +37,8 @@ Fedora 22, 23 and 24:
 ```bash
 sudo dnf install gcc-c++ cmake qt5-qtdeclarative-devel qt5-qtquickcontrols \
                  qt5-qtgraphicaleffects qt5-qtsvg \
-								 adobe-source-sans-pro-font \
-								 adobe-source-code-pro-font
+                 adobe-source-sans-pro-font \
+                 adobe-source-code-pro-font
 ```
 
 After that clone the repository onto disk and use cargo to build
