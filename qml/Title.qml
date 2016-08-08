@@ -194,6 +194,18 @@ Window {
 				id: sessionModel
 			}
 
+			Label {
+				width: sessionView.width
+				height: sessionView.height
+				verticalAlignment: Text.AlignVCenter
+				horizontalAlignment: Text.AlignHCenter
+				visible: !sessionView.visible
+				text: "No recent sessions"
+				font.pointSize: 13
+				font.italic: true
+				color: "#333"
+			}
+
 			ListView {
 				property var toDelete: []
 
@@ -214,6 +226,7 @@ Window {
 				maximumFlickVelocity: 500
 				boundsBehavior: Flickable.StopAtBounds
 				model: sessionModel
+				visible: sessionModel.count > 0
 				delegate: MouseArea {
 					id: elem
 					width: childrenRect.width
