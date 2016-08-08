@@ -16,7 +16,7 @@ Building
 ========
 
 Panopticon builds with Rust stable. The only dependencies aside from
-a working Rust 1.10.0 toolchain and Cargo you need Qt 5.4 installed.
+a working Rust 1.10.0 toolchain and Cargo you need Qt 5.4 or higher installed.
 
 Linux
 -----
@@ -35,10 +35,10 @@ sudo apt install qt5-default qtdeclarative5-dev \
 
 Fedora 22, 23 and 24:
 ```bash
-sudo dnf install qt5-qtdeclarative-devel qt5-qtquickcontrols \
+sudo dnf install gcc-c++ cmake qt5-qtdeclarative-devel qt5-qtquickcontrols \
                  qt5-qtgraphicaleffects qt5-qtsvg \
-								 adobe-source-sans-pro-font \
-								 adobe-source-code-pro-font
+                 adobe-source-sans-pro-font \
+                 adobe-source-code-pro-font
 ```
 
 After that clone the repository onto disk and use cargo to build
@@ -62,8 +62,18 @@ emerge -av panopticon
 Windows
 -------
 
-Install the Qt 5.4 SDK and the Rust toolchain
+Install the [Qt 5.4 SDK](http://download.qt.io/official_releases/online_installers/qt-unified-windows-x86-online.exe), the [Rust toolchain](https://static.rust-lang.org/dist/rust-1.10.0-x86_64-pc-windows-gnu.msi) and [CMake](https://cmake.org/files/v3.6/cmake-3.6.1-win64-x64.msi).
 Panopticon can be build using ``cargo build --release``.
+
+OS X
+----
+
+Install [Homebrew](http://brew.sh/) and get Qt 5.5, CMake and the Rust toolchain. Then, compile Panopticon using cargo.
+
+```bash
+brew install homebrew/versions/qt55 cmake rust
+QTDIR64=`brew --prefix qt55` cargo build --release
+```
 
 Running
 =======
