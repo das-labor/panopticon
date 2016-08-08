@@ -66,6 +66,7 @@
 //! can decrypt parts of a `Region` or replace individual `Cell`s with new
 //! ones.
 //!
+
 //! In normal operation there is one `Region` for each memory address space, one on
 //! Von-Neumann machines two on Harvard architectures. Other uses for `Region`s are
 //! applying functions to `Cell` array where the result is not equal in size to the
