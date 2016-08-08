@@ -73,30 +73,44 @@ pub fn session_directory() -> Result<PathBuf> {
     }
 }
 
-#[cfg(all(unix,not(target_os = "macos")))]
 pub fn find_data_file(p: &Path) -> Result<Option<PathBuf>> {
+    match find_data_file_impl(p) {
+        r@Ok(Some(_)) => r,
+        Ok(None) => {
+            let q = try!(env::current_exe())
+                     .parent().unwrap()
+                     .parent().unwrap()
+                     .parent().unwrap().join(p);
+            if q.exists() {
+                Ok(Some(q))
+            } else {
+                Ok(None)
+            }
+        },
+        e@Err(_) => e,
+    }
+}
+
+#[cfg(all(unix,not(target_os = "macos")))]
+fn find_data_file_impl(p: &Path) -> Result<Option<PathBuf>> {
     use std::env;
     match BaseDirectories::with_prefix("panopticon") {
-        Ok(dirs) => Ok(dirs.find_data_file(p).or(
-                Some(try!(env::current_exe())
-                     .parent().unwrap()
-                     .parent().unwrap()
-                     .parent().unwrap().join(p)))),
+        Ok(dirs) => Ok(dirs.find_data_file(p)),
         Err(e) => Err(result::Error(Cow::Owned(e.description().to_string()))),
     }
 }
 
 #[cfg(all(unix,target_os = "macos"))]
-pub fn find_data_file(p: &Path) -> Result<Option<PathBuf>> {
+fn find_data_file_impl(p: &Path) -> Result<Option<PathBuf>> {
     match env::current_exe() {
         Ok(path) => Ok(path.parent().and_then(|x| x.parent()).
-        map(|x| x.join("Resources").join(p))),
+                    map(|x| x.join("Resources").join(p))),
         Err(e) => Err(result::Error(Cow::Owned(e.description().to_string()))),
     }
 }
 
 #[cfg(windows)]
-pub fn find_data_file(p: &Path) -> Result<Option<PathBuf>> {
+fn find_data_file_impl(p: &Path) -> Result<Option<PathBuf>> {
     match env::current_exe() {
         Ok(path) => Ok(path.parent().map(|x| x.join(p))),
         Err(e) => Err(result::Error(Cow::Owned(e.description().to_string()))),
