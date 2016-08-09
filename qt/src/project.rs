@@ -71,7 +71,7 @@ pub fn create_raw_project(_path: &Variant, _tgt: &Variant, _base: &Variant, _ent
         if let &Variant::I64(base) = _base {
             if let &Variant::I64(entry) = _entry {
                 if let Some(nam) = p.file_name().and_then(|x| x.to_str()).or(p.to_str()) {
-                    if let Some(b) = OpaqueLayer::open(p) {
+                    if let Ok(b) = OpaqueLayer::open(p) {
                         let mut reg = Region::undefined(nam.to_string(),b.iter().len() + base as u64);
 
                         reg.cover(Bound::new(base as u64,base as u64 + b.iter().len()),Layer::Opaque(b));

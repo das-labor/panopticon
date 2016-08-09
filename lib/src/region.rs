@@ -51,12 +51,9 @@ pub struct Regions {
 }
 
 impl Region {
-    pub fn open(s: String, p: &Path) -> Option<Region> {
-        if let Some(l) = OpaqueLayer::open(p) {
-            Some(Region::new(s.clone(),l))
-        } else {
-            None
-        }
+    pub fn open(s: String, p: &Path) -> Result<Region, ::std::io::Error> {
+        let layer = try!(OpaqueLayer::open(p));
+        Ok(Region::new(s.clone(), layer))
     }
 
     pub fn wrap(s: String, d: Vec<u8>) -> Region {
