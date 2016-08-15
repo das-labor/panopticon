@@ -103,8 +103,10 @@ fn find_data_file_impl(p: &Path) -> Result<Option<PathBuf>> {
 #[cfg(all(unix,target_os = "macos"))]
 fn find_data_file_impl(p: &Path) -> Result<Option<PathBuf>> {
     match env::current_exe() {
-        Ok(path) => Ok(path.parent().and_then(|x| x.parent()).
-                    map(|x| x.join("Resources").join(p))),
+        Ok(path) => Ok(path.parent()
+                           .and_then(|x| x.parent())
+                           .map(|x| x.join("Resources").join(p))
+                           .and_then(|x| if x.exists() { Some(x) } else { None })),
         Err(e) => Err(result::Error(Cow::Owned(e.description().to_string()))),
     }
 }
@@ -112,7 +114,9 @@ fn find_data_file_impl(p: &Path) -> Result<Option<PathBuf>> {
 #[cfg(windows)]
 fn find_data_file_impl(p: &Path) -> Result<Option<PathBuf>> {
     match env::current_exe() {
-        Ok(path) => Ok(path.parent().map(|x| x.join(p))),
+        Ok(path) => Ok(path.parent()
+                           .map(|x| x.join(p))
+                           .and_then(|x| if x.exists() { Some(x) } else { None })),
         Err(e) => Err(result::Error(Cow::Owned(e.description().to_string()))),
     }
 }
