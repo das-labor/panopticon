@@ -27,6 +27,9 @@ byteorder = "0.5.1"
 chrono = "0.2"
 chrono-humanize = "0.0.6"
 
+[dependencies.goblin]
+git = "https://github.com/m4b/goblin"
+
 [dependencies.qmlrs]
 git = "https://github.com/flanfly/qmlrs"
 
