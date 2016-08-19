@@ -40,6 +40,22 @@ use elf::{
     Machine,
 };
 
+macro_rules! extract_data { ($elf:expr, $fd:expr, $interp:expr, $entry:expr, $reg:expr) => {
+    $entry = $elf.entry;
+    $interp = $elf.interpreter;
+    println!("Soname: {:?} with interpreter: {:?}", $elf.soname, $interp);
+    // psst i don't really know what this is doing semantically, just copied from old code
+    for ph in $elf.program_headers {
+        let mut buf = vec![0u8; ph.p_filesz as usize];
+        if $fd.seek(SeekFrom::Start(ph.p_offset as u64)).ok() == Some(ph.p_offset as u64) {
+            $reg.cover(Bound::new(ph.p_vaddr as u64, (ph.p_vaddr + ph.p_filesz) as u64), Layer::wrap(buf));
+        }
+        else {
+            return Err("Failed to read segment".into())
+        }
+    }
+};}
+
 pub fn load(p: &Path) -> Result<(Project,Machine)> {
     let mut entry = 0x0;
     let mut interp = None;
@@ -47,23 +63,12 @@ pub fn load(p: &Path) -> Result<(Project,Machine)> {
     let mut reg = Region::undefined("base".to_string(), 0x1000000000000);
     match goblin::elf::from_fd(&mut fd) {
         Ok(Binary::Elf64(elf)) => {
-            entry = elf.entry;
-            interp = elf.interpreter;
-            println!("Soname: {:?} with interpreter: {:?}", elf.soname, interp);
-            for ph in elf.program_headers {
-                let mut buf = vec![0u8; ph.p_filesz as usize];
-                if fd.seek(SeekFrom::Start(ph.p_offset)).ok() == Some(ph.p_offset) {
-                    reg.cover(Bound::new(ph.p_vaddr, ph.p_vaddr + ph.p_filesz), Layer::wrap(buf));
-                }
-                else {
-                    return Err("Failed to read segment".into())
-                }
-            }
+            extract_data!(elf, fd, interp, entry, reg);
         },
-        Ok(Binary::Elf32(_elf)) => {
-            unimplemented!();
+        Ok(Binary::Elf32(elf)) => {
+            extract_data!(elf, fd, interp, entry, reg);
         },
-        _ => {} // error out here
+        _ => {}
     }
 
     let name = p.file_name()
