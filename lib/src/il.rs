@@ -23,6 +23,7 @@ use std::num::Wrapping;
 use std::u64;
 use std::str::{SplitWhitespace,FromStr};
 use std::result;
+use std::cmp;
 
 use Result;
 
@@ -288,6 +289,111 @@ pub enum Operation<V: Clone + PartialEq + Eq + Debug + Encodable + Decodable> {
 pub struct Statement {
     pub assignee: Lvalue,
     pub op: Operation<Rvalue>,
+}
+
+impl Statement {
+    pub fn sanity_check(&self) -> Result<()> {
+        // check that argument sizes match
+        let typecheck_binop = |a: &Rvalue,b: &Rvalue,assignee: &Lvalue| -> Result<()> {
+            if !(a.size() == None || b.size() == None || a.size() == b.size()) {
+                return Err("Argument sizes mismatch".into())
+            }
+
+            if !(assignee.size() == None || Some(cmp::max(a.size().unwrap_or(0),b.size().unwrap_or(0))) == assignee.size()) {
+                return Err("Operation result and assingnee sizes mismatch".into())
+            }
+
+            Ok(())
+        };
+        let typecheck_cmpop = |a: &Rvalue,b: &Rvalue,assignee: &Lvalue| -> Result<()> {
+            if !(a.size() == None || b.size() == None || a.size() == b.size()) {
+                return Err("Argument sizes mismatch".into())
+            }
+
+            if !(assignee.size() == None || assignee.size() == Some(1)) {
+                return Err("Compare operation assingnee not a flag".into())
+            }
+
+            Ok(())
+        };
+        let typecheck_unop = |a: &Rvalue,sz: Option<usize>,assignee: &Lvalue| -> Result<()> {
+            if sz.is_none() {
+                // zext?
+                if !(a.size() == None || assignee.size() == None || assignee.size() <= a.size()) {
+                    return Err("Operation result and assingnee sizes mismatch".into())
+                }
+            } else {
+                if !(a.size() == None || assignee.size() == None || assignee.size() == sz) {
+                    return Err("Operation result and assingnee sizes mismatch".into())
+                }
+            }
+            Ok(())
+        };
+
+        try!(match self {
+            &Statement{ op: Operation::Add(ref a,ref b), ref assignee } => typecheck_binop(a,b,assignee),
+            &Statement{ op: Operation::Subtract(ref a,ref b), ref assignee } => typecheck_binop(a,b,assignee),
+            &Statement{ op: Operation::Multiply(ref a,ref b), ref assignee } => typecheck_binop(a,b,assignee),
+            &Statement{ op: Operation::DivideUnsigned(ref a,ref b), ref assignee } => typecheck_binop(a,b,assignee),
+            &Statement{ op: Operation::DivideSigned(ref a,ref b), ref assignee } => typecheck_binop(a,b,assignee),
+            &Statement{ op: Operation::ShiftLeft(ref a,ref b), ref assignee } => typecheck_binop(a,b,assignee),
+            &Statement{ op: Operation::ShiftRightUnsigned(ref a,ref b), ref assignee } => typecheck_binop(a,b,assignee),
+            &Statement{ op: Operation::ShiftRightSigned(ref a,ref b), ref assignee } => typecheck_binop(a,b,assignee),
+            &Statement{ op: Operation::Modulo(ref a,ref b), ref assignee } => typecheck_binop(a,b,assignee),
+            &Statement{ op: Operation::And(ref a,ref b), ref assignee } => typecheck_binop(a,b,assignee),
+            &Statement{ op: Operation::ExclusiveOr(ref a,ref b), ref assignee } => typecheck_binop(a,b,assignee),
+            &Statement{ op: Operation::InclusiveOr(ref a,ref b), ref assignee } => typecheck_binop(a,b,assignee),
+
+            &Statement{ op: Operation::Equal(ref a,ref b), ref assignee } => typecheck_cmpop(a,b,assignee),
+            &Statement{ op: Operation::LessOrEqualUnsigned(ref a,ref b), ref assignee } => typecheck_cmpop(a,b,assignee),
+            &Statement{ op: Operation::LessOrEqualSigned(ref a,ref b), ref assignee } => typecheck_cmpop(a,b,assignee),
+            &Statement{ op: Operation::LessUnsigned(ref a,ref b), ref assignee } => typecheck_cmpop(a,b,assignee),
+            &Statement{ op: Operation::LessSigned(ref a,ref b), ref assignee } => typecheck_cmpop(a,b,assignee),
+
+            &Statement{ op: Operation::SignExtend(ref a,ref b), ref assignee } => typecheck_unop(b,Some(*a),assignee),
+            &Statement{ op: Operation::ZeroExtend(ref a,ref b), ref assignee } => typecheck_unop(b,Some(*a),assignee),
+            &Statement{ op: Operation::Move(ref a), ref assignee } => typecheck_unop(a,None,assignee),
+            &Statement{ op: Operation::Select(ref off,ref a,ref b), ref assignee } =>
+                if !(assignee.size() == a.size() && *off + b.size().unwrap_or(0) <= a.size().unwrap_or(0)) {
+                    return Err("Ill-sized Select operation".into());
+                } else {
+                    Ok(())
+                },
+
+            &Statement{ op: Operation::Call(_), ref assignee } =>
+                if !(assignee == &Lvalue::Undefined) {
+                    return Err("Call operation can only be assigned to Undefined".into());
+                } else {
+                    Ok(())
+                },
+
+            &Statement{ op: Operation::Load(_,_), ref assignee } =>
+                if !(assignee.size().is_some()) {
+                    return Err("Memory operation with undefined size".into());
+                } else {
+                    Ok(())
+                },
+            &Statement{ op: Operation::Store(_,_), ref assignee } =>
+                if !(assignee.size().is_some()) {
+                    return Err("Memory operation with undefined size".into());
+                } else {
+                    Ok(())
+                },
+
+            &Statement{ op: Operation::Phi(ref vec), ref assignee } =>
+                if !(vec.iter().all(|rv| rv.size() == assignee.size()) && assignee.size() != None) {
+                    return Err("Phi arguments must have equal sizes and can't be Undefined".into());
+                } else {
+                    Ok(())
+                },
+        });
+
+        if !(self.op.operands().iter().all(|rv| rv.size() != Some(0)) && self.assignee.size() != Some(0)) {
+            return Err("Operation argument and/or assignee has size 0".into());
+        }
+
+        Ok(())
+    }
 }
 
 pub fn execute(op: Operation<Rvalue>) -> Rvalue {
@@ -628,7 +734,6 @@ pub fn lift<V: Clone + PartialEq + Eq + Debug + Encodable + Decodable,W: Clone +
     }
 }
 
-
 impl<'a,V> Operation<V> where V: Clone + PartialEq + Eq + Debug + Encodable + Decodable {
     pub fn operands(&'a self) -> Vec<&'a V> {
         match *self {
@@ -742,10 +847,170 @@ impl Display for Statement {
     }
 }
 
+macro_rules! rreil {
+    ( ) => {vec![]};
+    ( add $($cdr:tt)* ) => { rreil_binop!(Add # $($cdr)*); };
+    ( sub $($cdr:tt)* ) => { rreil_binop!(Subtract # $($cdr)*); };
+    ( mul $($cdr:tt)* ) => { rreil_binop!(Multiply # $($cdr)*); };
+    ( div $($cdr:tt)* ) => { rreil_binop!(DivideUnsigned # $($cdr)*); };
+    ( divs $($cdr:tt)* ) => { rreil_binop!(DivideSigned # $($cdr)*); };
+    ( shl $($cdr:tt)* ) => { rreil_binop!(ShiftLeft # $($cdr)*); };
+    ( shr $($cdr:tt)* ) => { rreil_binop!(ShiftRightUnsigned # $($cdr)*); };
+    ( shrs $($cdr:tt)* ) => { rreil_binop!(ShiftRightSigned # $($cdr)*); };
+    ( mod $($cdr:tt)* ) => { rreil_binop!(Modulo # $($cdr)*); };
+    ( and $($cdr:tt)* ) => { rreil_binop!(And # $($cdr)*); };
+    ( xor $($cdr:tt)* ) => { rreil_binop!(ExclusiveOr # $($cdr)*); };
+    ( or $($cdr:tt)* ) => { rreil_binop!(InclusiveOr # $($cdr)*); };
+
+    ( cmpeq $($cdr:tt)* ) => { rreil_binop!(Equal # $($cdr)*); };
+    ( cmpleu $($cdr:tt)* ) => { rreil_binop!(LessOrEqualUnsigned # $($cdr)*); };
+    ( cmples $($cdr:tt)* ) => { rreil_binop!(LessOrEqualSigned # $($cdr)*); };
+    ( cmpltu $($cdr:tt)* ) => { rreil_binop!(LessUnsigned # $($cdr)*); };
+    ( cmplts $($cdr:tt)* ) => { rreil_binop!(LessSigned # $($cdr)*); };
+
+    ( sel / $off:tt $($cdr:tt)* ) => { rreil_selop!(Select # $off # $($cdr)*); };
+    ( sext / $sz:tt $($cdr:tt)* ) => { rreil_extop!(SignExtend # $sz # $($cdr)*); };
+    ( zext / $sz:tt $($cdr:tt)* ) => { rreil_extop!(ZeroExtend # $sz # $($cdr)*); };
+    ( mov $($cdr:tt)* ) => { rreil_unop!(Move # $($cdr)*); };
+    ( call $($cdr:tt)* ) => { rreil_unop!(Call # $($cdr)*); };
+
+    ( load / $r:ident   $($cdr:tt)* ) => { rreil_memop!(Load # $r # $($cdr)*); };
+    ( store / $r:ident $($cdr:tt)* ) => { rreil_memop!(Store # $r # $($cdr)*); };
+}
+
+include!("rreil.rs");
+
+macro_rules! rreil_lvalue {
+    (?) =>
+        { $crate::Lvalue::Undefined };
+    ( ( $a:expr ) ) =>
+        { ($a).clone().into() };
+    ($a:ident : $a_w:tt) => {
+        $crate::Lvalue::Variable{
+            name: ::std::borrow::Cow::Borrowed(stringify!($a)),
+            subscript: None,
+            size: rreil_imm!($a_w)
+        }
+    };
+}
+
+macro_rules! rreil_rvalue {
+    (?) => { $crate::Rvalue::Undefined };
+    ( ( $a:expr ) ) => { ($a).clone().into() };
+    ( [ $a:tt ] : $a_w:tt ) => {
+        $crate::Rvalue::Constant{
+            value: rreil_imm!($a) as u64,
+            size: rreil_imm!($a_w)
+        }
+    };
+    ($a:ident : $a_w:tt / $a_o:tt) => {
+        $crate::Rvalue::Variable{
+            name: ::std::borrow::Cow::Borrowed(stringify!($a)),
+            subscript: None,
+            offset: rreil_imm!($a_o),
+            size: rreil_imm!($a_w)
+        }
+    };
+    ($a:ident : $a_w:tt) => {
+        $crate::Rvalue::Variable{
+            name: ::std::borrow::Cow::Borrowed(stringify!($a)),
+            subscript: None,
+            offset: 0,
+            size: rreil_imm!($a_w)
+        }
+    };
+}
+
+macro_rules! rreil_imm {
+    ($x:expr) => ($x as usize);
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use {
+        Rvalue,
+        Lvalue,
+        Architecture,
+        LayerIter,
+        Result,
+        Disassembler,
+    };
+    use std::sync::Arc;
     use std::borrow::Cow;
+
+    #[derive(Clone)]
+    enum TestArchShort {}
+    impl Architecture for TestArchShort {
+        type Token = u8;
+        type Configuration = ();
+
+        fn prepare(_: LayerIter,_: &Self::Configuration) -> Result<Vec<(&'static str,u64,&'static str)>> {
+            unimplemented!()
+        }
+
+        fn disassembler(_: &Self::Configuration) -> Arc<Disassembler<Self>> {
+            unimplemented!()
+        }
+    }
+
+    #[test]
+    fn rreil_macro() {
+        let mut cg = CodeGen::<TestArchShort>::new(0,&());
+        let t0 = Lvalue::Variable{ name: Cow::Borrowed("t0"), subscript: None, size: 12 };
+        let eax = Rvalue::Variable{ name: Cow::Borrowed("eax"), subscript: None, offset: 0, size: 12 };
+        let val = Rvalue::Constant{ value: 1223, size: 12 };
+
+        rreil!{
+            cg:
+            add (t0) , (val), (eax);
+            and t0 : 32 , [ 2147483648 ]: 32, eax : 32;
+            and t1 : 32 , [2147483648] : 32, ebx : 32;
+            sub t2 : 32 , ebx : 32 , eax : 32;
+            and t3 : 32 , [2147483648]:32, t2 : 32/32;
+            shr SF : 8 , [31] : 8 , t3 : 8/24;
+            xor t4 : 32 , t1 : 32 , t0 : 32;
+            xor t5 : 32 , t3 : 32 , t0 : 32;
+            and t6 : 32 , t5 : 32 , t4 : 32;
+            shr OF : 8 , [31] : 8 , t6 : 8/24;
+            and t7 : 64 , [4294967296] : 64, t2 : 64;
+            shr CF : 8 , [32] : 8 , t7 : 8;
+            and t8 : 32 , [4294967295] : 32, t2 : 32/32;
+            xor t9 : 8 , OF : 8 , SF : 8;
+            sel/32 rax:64, ebx:32;
+        }
+
+        rreil!{
+            cg:
+            sub t0:32, eax:32, ebx:32;
+            cmpltu CF:1, eax:32, ebx:32;
+            cmpleu CForZF:1, eax:32, ebx:32;
+            cmplts SFxorOF:1, eax:32, ebx:32;
+            cmples SFxorOForZF:1, eax:32, ebx:32;
+            cmpeq  ZF:1, eax:32, ebx:32;
+            cmplts SF:1, t0:32, [0]:32;
+            xor OF:1, SFxorOF:1, SF:1;
+        }
+
+        rreil!{
+            cg:
+            sub rax:32, rax:32, [1]:32;
+            mov rax:32, [0]:32;
+        }
+
+        rreil!{
+            cg:
+            store/ram rax:32, [0]:32;
+            load/ram rax:32, [0]:32;
+        }
+
+        rreil!{
+            cg:
+            sext/32 rax:32, ax:16;
+            zext/32 rax:32, ax:16;
+            mov rax:32, tbx:32;
+        }
+    }
 
     fn setup() -> Vec<Statement> {
         vec![

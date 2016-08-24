@@ -47,8 +47,58 @@ pub fn decode_imm(sm: &mut State<Amd64>) -> Option<Rvalue> {
     sm.configuration.imm.clone()
 }
 
+pub fn decode_rel(sm: &mut State<Amd64>) -> Option<Rvalue> {
+    match (sm.configuration.imm.clone(),sm.configuration.mode) {
+        (Some(Rvalue::Constant{ value, size: 8 }),Mode::Long) => {
+            let ext = if value >= 128 {
+                (value as u64 | 0x8000_0000_0000_0000) & 0xFFFF_FFFF_FFFF_FF7F
+            } else {
+                value as u64
+            }.wrapping_add(sm.address);
+            Some(Rvalue::Constant{ value: ext, size: 64 })
+        }
+        (Some(Rvalue::Constant{ value, size: 32 }),Mode::Long) => {
+            let ext = if value >= 0x7FFF_FFFF {
+                (value as u64 | 0x8000_0000_0000_0000) & 0xFFFF_FFFF_7FFF_FFFF
+            } else {
+                value as u64
+            }.wrapping_add(sm.address);
+            Some(Rvalue::Constant{ value: ext, size: 64 })
+        }
+        (Some(Rvalue::Constant{ value, size: 8 }),Mode::Protected) => {
+            let ext = if value >= 128 {
+                (value as u32 | 0x8000_0000) & 0xFFFF_FF7F
+            } else {
+                value as u32
+            }.wrapping_add(sm.address as u32) as u64;
+            Some(Rvalue::Constant{ value: ext, size: 32 })
+        }
+        (Some(Rvalue::Constant{ value, size: 32 }),Mode::Protected) => {
+            let ext = (value as u32).wrapping_add(sm.address as u32) as u64;
+            Some(Rvalue::Constant{ value: ext, size: 32 })
+        }
+        (Some(Rvalue::Constant{ value, size: 8 }),Mode::Real) => {
+            let ext = if value >= 128 {
+                (value as u16 | 0x8000) & 0xFF7F
+            } else {
+                value as u16
+            }.wrapping_add(sm.address as u16) as u64;
+            Some(Rvalue::Constant{ value: ext, size: 16 })
+        }
+        (Some(Rvalue::Constant{ value, size: 16 }),Mode::Real) => {
+            let ext = (value as u16).wrapping_add(sm.address as u16) as u64;
+            Some(Rvalue::Constant{ value: ext, size: 16 })
+        }
+        _ => None
+    }
+}
+
 pub fn decode_moffs(sm: &mut State<Amd64>) -> Option<Rvalue> {
-    sm.configuration.moffs.clone()
+    if let &Some(Rvalue::Constant{ value, size }) = &sm.configuration.moffs {
+        Some(Rvalue::Constant{ value: value + sm.address + sm.tokens.len() as u64, size: size })
+    } else {
+        None
+    }
 }
 
 pub fn decode_rm1(sm: &mut State<Amd64>) -> Option<Rvalue> {
@@ -730,7 +780,8 @@ fn decode_sib(
                         select_mem(&os,tmp.into(),c)
                     } else {
                         rreil!{c:
-                            add (tmp), (index), (d);
+                            zext/bits d:bits, (d);
+                            add (tmp), (index), d:bits;
                             add (tmp), (base), (tmp);
                         }
 
@@ -870,6 +921,7 @@ pub fn branch(opcode: &'static str,
             });
 
             let g = Guard::from_flag(&rreil_rvalue!{ flag:1 }).ok().unwrap();
+            println!("jump {:?}",arg);
             st.jump(Rvalue::new_u64(next),g.clone());
             st.jump(arg,g.negation());
             true

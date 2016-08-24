@@ -26,8 +26,10 @@ use {
     Guard,
     Result,
     LayerIter,
+    Region,
     Disassembler,
     State,
+    Match,
     Architecture,
 };
 
@@ -41,12 +43,12 @@ impl Architecture for Avr {
     type Token = u16;
     type Configuration = Mcu;
 
-    fn prepare(_: LayerIter,cfg: &Self::Configuration) -> Result<Vec<(&'static str,u64,&'static str)>> {
+    fn prepare(_: &Region,cfg: &Self::Configuration) -> Result<Vec<(&'static str,u64,&'static str)>> {
         Ok(cfg.int_vec.clone())
     }
 
-    fn disassembler(_: &Self::Configuration) -> Arc<Disassembler<Self>> {
-        syntax::disassembler()
+   fn decode(reg: &Region,start: u64,_: &Self::Configuration) -> Result<Match<Self>> {
+        Err("todo".into())
     }
 }
 

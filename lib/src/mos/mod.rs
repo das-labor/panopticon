@@ -25,8 +25,10 @@ use {
     State,
     Architecture,
     LayerIter,
+    Region,
     Result,
     Disassembler,
+    Match,
 };
 use std::sync::Arc;
 use std::borrow::Cow;
@@ -41,7 +43,8 @@ impl Architecture for Mos {
     type Token = u8;
     type Configuration = Variant;
 
-    fn prepare(i: LayerIter,_: &Self::Configuration) -> Result<Vec<(&'static str,u64,&'static str)>> {
+    fn prepare(reg: &Region,_: &Self::Configuration) -> Result<Vec<(&'static str,u64,&'static str)>> {
+        let mut i = reg.iter();
         let iv = vec![
             ("NMI",0xfffa, "NMI vector"),
             ("RESET",0xfffc, "Reset routine"),
@@ -65,8 +68,8 @@ impl Architecture for Mos {
         Ok(ret)
     }
 
-    fn disassembler(_: &Self::Configuration) -> Arc<Disassembler<Self>> {
-        syntax::disassembler()
+    fn decode(reg: &Region,start: u64,_: &Self::Configuration) -> Result<Match<Self>> {
+        Err("todo".into())
     }
 }
 

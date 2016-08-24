@@ -41,9 +41,10 @@ use {
     Rvalue,
     Mnemonic,
     Guard,
-    CodeGen,
+    Region,
     LayerIter,
     Result,
+    Statement,
 };
 
 pub trait Architecture: Clone
@@ -63,8 +64,32 @@ pub trait Architecture: Clone
                 Send + Sync;
     type Configuration: Clone + Send;
 
-    fn prepare(LayerIter,&Self::Configuration) -> Result<Vec<(&'static str,u64,&'static str)>>;
-    fn disassembler(&Self::Configuration) -> Arc<Disassembler<Self>>;
+    fn prepare(&Region,&Self::Configuration) -> Result<Vec<(&'static str,u64,&'static str)>>;
+    fn decode(&Region,u64,&Self::Configuration) -> Result<Match<Self>>;
+}
+
+pub struct CodeGen<A: Architecture> {
+    pub statements: Vec<Statement>,
+    pub configuration: A::Configuration,
+}
+
+impl<C: Architecture> CodeGen<C> {
+    pub fn new(cfg: &C::Configuration) -> CodeGen<C> {
+        CodeGen{
+            statements: Vec::new(),
+            configuration: cfg.clone(),
+        }
+    }
+}
+
+#[derive(Debug,Clone)]
+pub struct Match<A: Architecture> {
+    pub tokens: Vec<A::Token>,
+
+    pub mnemonics: Vec<Mnemonic>,
+    pub jumps: Vec<(u64,Rvalue,Guard)>,
+
+    pub configuration: A::Configuration,
 }
 
 pub type Action<A> = fn(&mut State<A>) -> bool;

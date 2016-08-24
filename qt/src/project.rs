@@ -37,9 +37,9 @@ use panopticon::{
     Kset,
 };
 use panopticon::amd64;
-use panopticon::mos;
-use panopticon::mos::{Mos};
-use panopticon::avr::{Avr,Mcu};
+//use panopticon::mos;
+//use panopticon::mos::{Mos};
+//use panopticon::avr::{Avr,Mcu};
 
 use std::path::Path;
 use std::thread;
@@ -77,14 +77,13 @@ pub fn create_raw_project(_path: &Variant, _tgt: &Variant, _base: &Variant, _ent
                         reg.cover(Bound::new(base as u64,base as u64 + b.iter().len()),Layer::Opaque(b));
 
                         if let &Variant::String(ref tgt_s) = _tgt {
-                            let iv = {
-                                let i = reg.iter();
+                            let iv: Result<Vec<(&'static str,u64,&'static str)>> = {
                                 match tgt_s.as_str() {
-                                    "mos6502" => Mos::prepare(i,&mos::Variant::mos6502()),
-                                    "atmega103" => Avr::prepare(i,&Mcu::atmega103()),
-                                    "atmega8" => Avr::prepare(i,&Mcu::atmega8()),
-                                    "atmega88" => Avr::prepare(i,&Mcu::atmega88()),
-                                    "atmega16" => Avr::prepare(i,&Mcu::atmega16()),
+                                    //"mos6502" => Mos::prepare(&reg,&mos::Variant::mos6502()),
+                                    //"atmega103" => Avr::prepare(&reg,&Mcu::atmega103()),
+                                    //"atmega8" => Avr::prepare(&reg,&Mcu::atmega8()),
+                                    //"atmega88" => Avr::prepare(&reg,&Mcu::atmega88()),
+                                    //"atmega16" => Avr::prepare(&reg,&Mcu::atmega16()),
                                     _ => Err(format!("No such target '{}'",tgt_s).into()),
                                 }
                             };
@@ -114,11 +113,11 @@ pub fn create_raw_project(_path: &Variant, _tgt: &Variant, _base: &Variant, _ent
 
                                 let ret = return_json(Controller::replace(proj,None));
                                 match tgt_s.as_str() {
-                                    "mos6502" => spawn_disassembler::<Mos>(mos::Variant::mos6502()),
-                                    "atmega103" => spawn_disassembler::<Avr>(Mcu::atmega103()),
-                                    "atmega8" => spawn_disassembler::<Avr>(Mcu::atmega8()),
-                                    "atmega88" => spawn_disassembler::<Avr>(Mcu::atmega88()),
-                                    "atmega16" => spawn_disassembler::<Avr>(Mcu::atmega16()),
+                                    //"mos6502" => spawn_disassembler::<Mos>(mos::Variant::mos6502()),
+                                    //"atmega103" => spawn_disassembler::<Avr>(Mcu::atmega103()),
+                                    //"atmega8" => spawn_disassembler::<Avr>(Mcu::atmega8()),
+                                    //"atmega88" => spawn_disassembler::<Avr>(Mcu::atmega88()),
+                                    //"atmega16" => spawn_disassembler::<Avr>(Mcu::atmega16()),
                                     _ => unreachable!()
                                 }
 
@@ -148,12 +147,13 @@ pub fn create_raw_project(_path: &Variant, _tgt: &Variant, _base: &Variant, _ent
 
 /// Prepares to disassemble an ELF file.
 pub fn create_elf_project(_path: &Variant) -> Variant {
+   // use panopticon::avr;
     Variant::String(if let &Variant::String(ref s) = _path {
-       match elf::load(Path::new(s)) {
+        match elf::load(Path::new(s)) {
             Ok((proj,f)) => {
                 match f {
-                    elf::Machine::Ia32 => spawn_disassembler::<amd64::Amd64>(amd64::Config::new(amd64::Mode::Protected)),
-                    elf::Machine::Amd64 => spawn_disassembler::<amd64::Amd64>(amd64::Config::new(amd64::Mode::Long)),
+                    elf::Machine::Ia32 => spawn_disassembler::<amd64::Amd64>(amd64::Mode::Protected),
+                    elf::Machine::Amd64 => spawn_disassembler::<amd64::Amd64>(amd64::Mode::Long),
                     //elf::Machine::Avr => spawn_disassembler::<avr::Avr>(avr::Mcu::atmega88()),
                     _ => return Variant::String(return_json::<()>(Err("Unsupported architecture".into()))),
                 }
@@ -245,9 +245,6 @@ pub fn spawn_disassembler<A: 'static + Architecture + Debug>(_cfg: A::Configurat
                 try!(Controller::emit(DISCOVERED_FUNCTION,&uu.to_string()));
             }
 
-
-            let _dec = A::disassembler(&_cfg);
-
             loop {
                 let maybe_tgt = try!(Controller::read(|proj| {
                     let prog: &Program = proj.find_program_by_uuid(&prog_uuid).unwrap();
@@ -265,7 +262,6 @@ pub fn spawn_disassembler<A: 'static + Architecture + Debug>(_cfg: A::Configurat
                     try!(Controller::emit(STARTED_FUNCTION,&uuid.to_string()));
 
                     let cfg = _cfg.clone();
-                    let dec = Mutex::new(_dec.clone());
                     let th = thread::spawn(move || -> Result<Vec<Uuid>> {
                         let entry = tgt;
                         let mut func = try!(Controller::read(|proj| {
@@ -278,10 +274,8 @@ pub fn spawn_disassembler<A: 'static + Architecture + Debug>(_cfg: A::Configurat
 
                         func = try!(Controller::read(|proj| {
                             let root = proj.sources.dependencies.vertex_label(proj.sources.root).unwrap();
-                            let i = root.iter();
                             let mut func = {
-                                let d = dec.lock().ok().unwrap();
-                                Function::disassemble::<A>(Some(func),(*d).clone(),cfg.clone(),i,entry,root.name().clone())
+                                Function::disassemble::<A>(Some(func),cfg.clone(),&root,entry)
                             };
 
                             func.entry_point = func.find_basic_block_at_address(entry);
@@ -332,10 +326,8 @@ pub fn spawn_disassembler<A: 'static + Architecture + Debug>(_cfg: A::Configurat
                                 println!("continue at {:?}",addr);
                                 func = try!(Controller::read(|proj| {
                                     let root = proj.sources.dependencies.vertex_label(proj.sources.root).unwrap();
-                                    let i = root.iter();
                                     let mut func = {
-                                        let d = dec.lock().ok().unwrap();
-                                        Function::disassemble::<A>(Some(func),(*d).clone(),cfg.clone(),i,addr,root.name().clone())
+                                        Function::disassemble::<A>(Some(func),cfg.clone(),&root,addr)
                                     };
 
                                     func.entry_point = func.find_basic_block_at_address(entry);

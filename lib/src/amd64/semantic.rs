@@ -222,8 +222,6 @@ fn sign_extend(cg: &mut CodeGen<Amd64>, a: &Rvalue, b: &Rvalue) -> (Rvalue,Rvalu
             rreil!{cg:
                 sext/sz (lv), (a);
             }
-        } else {
-            unreachable!()
         }
     }
 
@@ -232,8 +230,6 @@ fn sign_extend(cg: &mut CodeGen<Amd64>, a: &Rvalue, b: &Rvalue) -> (Rvalue,Rvalu
             rreil!{cg:
                 sext/sz (lv), (b);
             }
-        } else {
-            unreachable!()
         }
     }
 
@@ -445,31 +441,9 @@ pub fn near_call(cg: &mut CodeGen<Amd64>, a: Rvalue) {
 }
 
 pub fn near_rcall(cg: &mut CodeGen<Amd64>, a: Rvalue) {
-    match cg.configuration.operand_size {
-        OperandSize::Sixteen => {
-            rreil!{cg:
-                add tmp:16, IP:16, (a.extract(16,0).ok().unwrap());
-                zext/64 new_rip:64, tmp:16;
-            }
-        },
-        OperandSize::ThirtyTwo => {
-            rreil!{cg:
-                add tmp:32, RIP:32, (a.extract(32,0).ok().unwrap());
-                zext/64 new_rip:64, tmp:32;
-            }
-        },
-        OperandSize::SixtyFour => {
-            rreil!{cg:
-                sext/64 new_rip:64, (a.extract(64,0).ok().unwrap());
-                add new_rip:64, new_rip:64, RIP:64;
-            }
-        }
-        OperandSize::HundredTwentyEight => unreachable!(),
-        OperandSize::Eight => unreachable!(),
-    }
-
+    let bits = cg.configuration.operand_size.num_bits();
     rreil!{cg:
-        call ?, new_rip:64;
+        call ?, (a.extract(bits,0).ok().unwrap());
     }
 
 }
@@ -744,7 +718,13 @@ pub fn das(_: &mut CodeGen<Amd64>) {}
 pub fn dec(_: &mut CodeGen<Amd64>, _: Rvalue) {}
 pub fn div(_: &mut CodeGen<Amd64>, _: Rvalue) {}
 pub fn enter(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn hlt(_: &mut CodeGen<Amd64>) {}
+
+pub fn hlt(st: &mut State<Amd64>) -> bool {
+    let len = st.tokens.len();
+    st.mnemonic(len,"hlt","",vec![],&|_: &mut CodeGen<Amd64>| {} );
+    true
+}
+
 pub fn idiv(_: &mut CodeGen<Amd64>, _: Rvalue) {}
 pub fn imul1(_: &mut CodeGen<Amd64>, _: Rvalue) {}
 pub fn imul2(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
@@ -757,11 +737,8 @@ pub fn int(_: &mut CodeGen<Amd64>, _: Rvalue) {}
 pub fn into(_: &mut CodeGen<Amd64>) {}
 
 pub fn iret(st: &mut State<Amd64>) -> bool {
-    let next = st.address + (st.tokens.len() as u64);
     let len = st.tokens.len();
-
     st.mnemonic(len,"iret","{u}",vec![],&|_: &mut CodeGen<Amd64>| {} );
-    st.jump(Rvalue::new_u64(next),Guard::always());
     true
 }
 
@@ -877,7 +854,7 @@ pub fn popa(st: &mut State<Amd64>) -> bool {
     let next = st.address + (st.tokens.len() as u64);
     let len = st.tokens.len();
 
-    st.mnemonic(len,"popa","{u}",vec![],&|_: &mut CodeGen<Amd64>| {} );
+    st.mnemonic(len,"popa","",vec![],&|_: &mut CodeGen<Amd64>| {} );
     st.jump(Rvalue::new_u64(next),Guard::always());
     true
 }
@@ -898,7 +875,7 @@ pub fn pusha(st: &mut State<Amd64>) -> bool {
     let next = st.address + (st.tokens.len() as u64);
     let len = st.tokens.len();
 
-    st.mnemonic(len,"pusha","{u}",vec![],&|_: &mut CodeGen<Amd64>| {} );
+    st.mnemonic(len,"pusha","",vec![],&|_: &mut CodeGen<Amd64>| {} );
     st.jump(Rvalue::new_u64(next),Guard::always());
     true
 }
@@ -906,8 +883,39 @@ pub fn pusha(st: &mut State<Amd64>) -> bool {
 pub fn pushf(_: &mut CodeGen<Amd64>, _: Rvalue) {}
 pub fn rcl(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
 pub fn rcr(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn ret(_: &mut CodeGen<Amd64>, _: Rvalue) {}
-pub fn retf(_: &mut CodeGen<Amd64>, _: Rvalue) {}
+
+pub fn ret(st: &mut State<Amd64>) -> bool {
+    let len = st.tokens.len();
+    st.mnemonic(len,"ret","",vec![],&|_: &mut CodeGen<Amd64>| {} );
+    true
+}
+
+pub fn retf(st: &mut State<Amd64>) -> bool {
+    let len = st.tokens.len();
+    st.mnemonic(len,"retf","",vec![],&|_: &mut CodeGen<Amd64>| {} );
+    true
+}
+
+pub fn retn(st: &mut State<Amd64>) -> bool {
+    let len = st.tokens.len();
+    if let Some(d) = decode::decode_imm(st) {
+        st.mnemonic(len,"retn","{u}",vec![d],&|_: &mut CodeGen<Amd64>| {} );
+        true
+    } else {
+        false
+    }
+}
+
+pub fn retnf(st: &mut State<Amd64>) -> bool {
+    let len = st.tokens.len();
+    if let Some(d) = decode::decode_imm(st) {
+        st.mnemonic(len,"retnf","{u}",vec![d],&|_: &mut CodeGen<Amd64>| {} );
+        true
+    } else {
+        false
+    }
+}
+
 pub fn ror(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
 pub fn rol(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
 pub fn sahf(_: &mut CodeGen<Amd64>) {}

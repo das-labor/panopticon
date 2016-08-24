@@ -80,6 +80,7 @@ impl Ident {
         if e_ident[EI_VERSION] != 1 {
             return Err("Invalid ELF version".into());
         }
+
         Ok(Ident{
             magic: [e_ident[0],e_ident[1],e_ident[2],e_ident[3]],
             class: e_ident[EI_CLASS],

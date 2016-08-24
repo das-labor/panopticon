@@ -172,17 +172,23 @@ pub fn type_check(func: &Function) -> HashMap<Cow<'static,str>,usize> {
 
     for vx in cfg.vertices() {
         if let Some(&ControlFlowTarget::Resolved(ref bb)) = cfg.vertex_label(vx) {
-            bb.execute(|instr| {
-                let ops = instr.op.operands();
-                match ops.len() {
-                    0 => panic!("Operation w/o arguments"),
-                    _ => for o in ops.iter() {
-                        set_len(o,&mut ret);
-                    }
+            for mne in bb.mnemonics.iter() {
+                for o in mne.operands.iter() {
+                    set_len(o,&mut ret);
                 }
 
-                set_len(&instr.assignee.clone().into(),&mut ret);
-            });
+                for instr in mne.instructions.iter() {
+                    let ops = instr.op.operands();
+                    match ops.len() {
+                        0 => panic!("Operation w/o arguments"),
+                        _ => for o in ops.iter() {
+                            set_len(o,&mut ret);
+                        }
+                    }
+
+                    set_len(&instr.assignee.clone().into(),&mut ret);
+                }
+            }
         }
     }
 
@@ -219,16 +225,18 @@ pub fn global_names(func: &Function) -> (HashSet<Cow<'static,str>>,HashMap<Cow<'
 pub fn phi_functions(func: &mut Function) {
     assert!(func.entry_point.is_some());
 
-    let (globals,usage) = global_names(func);
     let lens = type_check(func);
+    let (globals,usage) = global_names(func);
     let mut cfg = &mut func.cflow_graph;
 
     // initalize all variables
     if let Some(&mut ControlFlowTarget::Resolved(ref mut bb)) = cfg.vertex_label_mut(func.entry_point.unwrap()) {
         let pos = bb.area.start;
-        let instrs = globals.iter().map(|nam| Statement{
+        let instrs = globals.iter().map(|nam| {
+            Statement{
             op: Operation::Move(Rvalue::Undefined),
             assignee: Lvalue::Variable{ size: lens[nam], name: nam.clone(), subscript: None }}
+        }
         ).collect::<Vec<_>>();
 
         let mne = Mnemonic::new(

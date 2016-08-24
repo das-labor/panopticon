@@ -124,10 +124,10 @@ Window {
 								break;
 							}
 							case "example": {
-								var res = JSON.parse(Panopticon.findDataFile("examples" + Panopticon.pathDelimiter + "sosse"))
+								var res = JSON.parse(Panopticon.findDataFile("examples" + Panopticon.pathDelimiter + "static"))
 								if(res.status == "ok") {
 									var res = {
-										"kind": "avr",
+										"kind": "elf",
 										"path": res.payload
 									};
 									var res = JSON.parse(Panopticon.setRequest(JSON.stringify(res)));

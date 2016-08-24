@@ -42,6 +42,7 @@ use uuid::Uuid;
 use {
     BasicBlock,
     Guard,
+    Region,
     Disassembler,
     Architecture,
     LayerIter,
@@ -308,7 +309,7 @@ impl Function {
         ret
     }
 
-    pub fn disassemble<A: Architecture>(cont: Option<Function>, dec: Arc<Disassembler<A>>, init: A::Configuration, data: LayerIter, start: u64, reg: String) -> Function
+    pub fn disassemble<A: Architecture>(cont: Option<Function>, init: A::Configuration, reg: &Region, start: u64) -> Function
     where A: Debug, A::Configuration: Debug {
         let name = cont.as_ref().map_or(format!("func_{}",start),|x| x.name.clone());
         let uuid = cont.as_ref().map_or(Uuid::new_v4(),|x| x.uuid.clone());
@@ -330,6 +331,7 @@ impl Function {
 
         todo.insert(start);
 
+     
         while let Some(addr) = todo.iter().next().cloned() {
             let maybe_mnes = mnemonics.iter().find(|x| *x.0 >= addr).map(|x| x.1.clone());
 
@@ -356,39 +358,33 @@ impl Function {
                 }
             }
 
-            let mut i = data.seek(addr);
+            let maybe_match = A::decode(reg,addr,&init);
 
-            if i.len() > 0 {
-                let maybe_match = dec.next_match(&mut i,addr,init.clone());
-
-                if let Some(match_st) = maybe_match {
-                    if match_st.mnemonics.is_empty() {
-                        mnemonics.entry(addr).or_insert(Vec::new()).push(MnemonicOrError::Error(addr,"Unrecognized instruction".into()));
-                    } else {
-                        for mne in match_st.mnemonics {
-                            debug!("{:x}: {} ({:?})",mne.area.start,mne.opcode,match_st.tokens);
-                            mnemonics.entry(mne.area.start).or_insert(Vec::new()).push(MnemonicOrError::Mnemonic(mne));
-                        }
-                    }
-
-                    for (origin,tgt,gu) in match_st.jumps {
-                        debug!("jump to {:?}",tgt);
-                        match tgt {
-                            Rvalue::Constant{ value: ref c,.. } => {
-                                by_source.entry(origin).or_insert(Vec::new()).push((tgt.clone(),gu.clone()));
-                                by_destination.entry(*c).or_insert(Vec::new()).push((Rvalue::new_u64(origin),gu.clone()));
-                                todo.insert(*c);
-                            },
-                            _ => {
-                                by_source.entry(origin).or_insert(Vec::new()).push((tgt,gu.clone()));
-                            }
-                        }
-                    }
-                } else {
+            if let Ok(match_st) = maybe_match {
+                if match_st.mnemonics.is_empty() {
                     mnemonics.entry(addr).or_insert(Vec::new()).push(MnemonicOrError::Error(addr,"Unrecognized instruction".into()));
+                } else {
+                    for mne in match_st.mnemonics {
+                        debug!("{:x}: {} ({:?})",mne.area.start,mne.opcode,match_st.tokens);
+                        mnemonics.entry(mne.area.start).or_insert(Vec::new()).push(MnemonicOrError::Mnemonic(mne));
+                    }
+                }
+
+                for (origin,tgt,gu) in match_st.jumps {
+                    debug!("jump to {:?}",tgt);
+                    match tgt {
+                        Rvalue::Constant{ value: ref c,.. } => {
+                            by_source.entry(origin).or_insert(Vec::new()).push((tgt.clone(),gu.clone()));
+                            by_destination.entry(*c).or_insert(Vec::new()).push((Rvalue::new_u64(origin),gu.clone()));
+                            todo.insert(*c);
+                        },
+                        _ => {
+                            by_source.entry(origin).or_insert(Vec::new()).push((tgt,gu.clone()));
+                        }
+                    }
                 }
             } else {
-                mnemonics.entry(addr).or_insert(Vec::new()).push(MnemonicOrError::Error(addr,"Address not mapped".into()));
+                mnemonics.entry(addr).or_insert(Vec::new()).push(MnemonicOrError::Error(addr,"Unrecognized instruction".into()));
             }
         }
 
@@ -411,7 +407,7 @@ impl Function {
             name: name,
             cflow_graph: cfg,
             entry_point: e,
-            region: reg,
+            region: reg.name().clone(),
         }
     }
 
