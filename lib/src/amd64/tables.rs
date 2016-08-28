@@ -297,22 +297,22 @@ pub static ONEBYTE_TABLE: [Opcode; 256] = [
     opcode!("dec"; eBP; Invalid64),            // 0x4d: dec
     opcode!("dec"; eSI; Invalid64),            // 0x4e: dec
     opcode!("dec"; eDI; Invalid64),            // 0x4f: dec
-    opcode!("push"; rAX; Default64),           // 0x50: push
-    opcode!("push"; rCX; Default64),           // 0x51: push
-    opcode!("push"; rDX; Default64),           // 0x52: push
-    opcode!("push"; rBX; Default64),           // 0x53: push
-    opcode!("push"; rSP; Default64),           // 0x54: push
-    opcode!("push"; rBP; Default64),           // 0x55: push
-    opcode!("push"; rSI; Default64),           // 0x56: push
-    opcode!("push"; rDI; Default64),           // 0x57: push
-    opcode!("pop"; rAX; Default64),            // 0x58: pop
-    opcode!("pop"; rCX; Default64),            // 0x59: pop
-    opcode!("pop"; rDX; Default64),            // 0x5a: pop
-    opcode!("pop"; rBX; Default64),            // 0x5b: pop
-    opcode!("pop"; rSP; Default64),            // 0x5c: pop
-    opcode!("pop"; rBP; Default64),            // 0x5d: pop
-    opcode!("pop"; rSI; Default64),            // 0x5e: pop
-    opcode!("pop"; rDI; Default64),            // 0x5f: pop
+    opcode!("push"; rAXr8; Default64),           // 0x50: push
+    opcode!("push"; rCXr9; Default64),           // 0x51: push
+    opcode!("push"; rDXr10; Default64),           // 0x52: push
+    opcode!("push"; rBXr11; Default64),           // 0x53: push
+    opcode!("push"; rSPr12; Default64),           // 0x54: push
+    opcode!("push"; rBPr13; Default64),           // 0x55: push
+    opcode!("push"; rSIr14; Default64),           // 0x56: push
+    opcode!("push"; rDIr15; Default64),           // 0x57: push
+    opcode!("pop"; rAXr8; Default64),            // 0x58: pop
+    opcode!("pop"; rCXr9; Default64),            // 0x59: pop
+    opcode!("pop"; rDXr10; Default64),            // 0x5a: pop
+    opcode!("pop"; rBXr11; Default64),            // 0x5b: pop
+    opcode!("pop"; rSPr12; Default64),            // 0x5c: pop
+    opcode!("pop"; rBPr13; Default64),            // 0x5d: pop
+    opcode!("pop"; rSIr14; Default64),            // 0x5e: pop
+    opcode!("pop"; rDIr15; Default64),            // 0x5f: pop
     opcode!("pusha"; ;Invalid64),             // 0x60: pusha
     opcode!("popa"; ;Invalid64),              // 0x61: popa
     opcode!("bound"; G/v, M/a; Invalid64),     // 0x62: bound
@@ -333,8 +333,8 @@ pub static ONEBYTE_TABLE: [Opcode; 256] = [
     opcode!("jno"; J/b; Force64),            // 0x71: jno
     opcode!("jb"; J/b; Force64),             // 0x72: jb
     opcode!("jae"; J/b; Force64),            // 0x73: jae
-    opcode!("jz"; J/b; Force64),             // 0x74: jz
-    opcode!("jnz"; J/b; Force64),            // 0x75: jnz
+    opcode!("je"; J/b; Force64),             // 0x74: jz
+    opcode!("jne"; J/b; Force64),            // 0x75: jnz
     opcode!("jbe"; J/b; Force64),            // 0x76: jbe
     opcode!("ja"; J/b; Force64),             // 0x77: ja
     opcode!("js"; J/b; Force64),             // 0x78: js
@@ -361,14 +361,14 @@ pub static ONEBYTE_TABLE: [Opcode; 256] = [
     opcode!("lea"; G/v, M/None),    // 0x8d: lea
     opcode!("mov"; S/w, E/w),       // 0x8e: mov
     opcode!(group 101; E/v),          // 0x8f: group 1a
-    opcode!("xchg"; rAX, rAX),      // 0x90: xchg
-    opcode!("xchg"; rCX, rAX),      // 0x91: xchg
-    opcode!("xchg"; rDX, rAX),      // 0x92: xchg
-    opcode!("xchg"; rBX, rAX),      // 0x93: xchg
-    opcode!("xchg"; rSP, rAX),      // 0x94: xchg
-    opcode!("xchg"; rBP, rAX),      // 0x95: xchg
-    opcode!("xchg"; rSI, rAX),      // 0x96: xchg
-    opcode!("xchg"; rDI, rAX),      // 0x97: xchg
+    opcode!("xchg"; rAXr8, rAX),      // 0x90: xchg
+    opcode!("xchg"; rCXr9, rAX),      // 0x91: xchg
+    opcode!("xchg"; rDXr10, rAX),      // 0x92: xchg
+    opcode!("xchg"; rBXr11, rAX),      // 0x93: xchg
+    opcode!("xchg"; rSPr12, rAX),      // 0x94: xchg
+    opcode!("xchg"; rBPr13, rAX),      // 0x95: xchg
+    opcode!("xchg"; rSIr14, rAX),      // 0x96: xchg
+    opcode!("xchg"; rDIr15, rAX),      // 0x97: xchg
     opcode!("cbw"; ),               // 0x98: cbw
     opcode!("cwd"; ),               // 0x99: cwd
     opcode!("call"; A/v; Invalid64),           // 0x9a: call
@@ -393,22 +393,22 @@ pub static ONEBYTE_TABLE: [Opcode; 256] = [
     opcode!("lodsw"; ),             // 0xad: lodsw
     opcode!("scasb"; ),             // 0xae: scasb
     opcode!("scasw"; ),             // 0xaf: scasw
-    opcode!("mov"; AL, I/b),        // 0xb0: mov
-    opcode!("mov"; CL, I/b),        // 0xb1: mov
-    opcode!("mov"; DL, I/b),        // 0xb2: mov
-    opcode!("mov"; BL, I/b),        // 0xb3: mov
-    opcode!("mov"; AH, I/b),        // 0xb4: mov
-    opcode!("mov"; CH, I/b),        // 0xb5: mov
-    opcode!("mov"; DH, I/b),        // 0xb6: mov
-    opcode!("mov"; BH, I/b),        // 0xb7: mov
-    opcode!("mov"; rAX, I/v),       // 0xb8: mov
-    opcode!("mov"; rCX, I/v),       // 0xb9: mov
-    opcode!("mov"; rDX, I/v),       // 0xba: mov
-    opcode!("mov"; rBX, I/v),       // 0xbb: mov
-    opcode!("mov"; rSP, I/v),       // 0xbc: mov
-    opcode!("mov"; rBP, I/v),       // 0xbd: mov
-    opcode!("mov"; rSI, I/v),       // 0xbe: mov
-    opcode!("mov"; rDI, I/v),       // 0xbf: mov
+    opcode!("mov"; ALR8L, I/b),        // 0xb0: mov
+    opcode!("mov"; CLR9L, I/b),        // 0xb1: mov
+    opcode!("mov"; DLR10L, I/b),        // 0xb2: mov
+    opcode!("mov"; BLR11L, I/b),        // 0xb3: mov
+    opcode!("mov"; AHR12L, I/b),        // 0xb4: mov
+    opcode!("mov"; CHR13L, I/b),        // 0xb5: mov
+    opcode!("mov"; DHR14L, I/b),        // 0xb6: mov
+    opcode!("mov"; BHR15L, I/b),        // 0xb7: mov
+    opcode!("mov"; rAXr8, I/v),       // 0xb8: mov
+    opcode!("mov"; rCXr9, I/v),       // 0xb9: mov
+    opcode!("mov"; rDXr10, I/v),       // 0xba: mov
+    opcode!("mov"; rBXr11, I/v),       // 0xbb: mov
+    opcode!("mov"; rSPr12, I/v),       // 0xbc: mov
+    opcode!("mov"; rBPr13, I/v),       // 0xbd: mov
+    opcode!("mov"; rSIr14, I/v),       // 0xbe: mov
+    opcode!("mov"; rDIr15, I/v),       // 0xbf: mov
     opcode!(group 2; E/b, I/b),     // 0xc0: rcl
     opcode!(group 2; E/v, I/b),     // 0xc1: rcl
     opcode!("ret"; I/w; Force64),            // 0xc2: ret
@@ -608,8 +608,8 @@ pub static TWOBYTE_TABLE: [Opcode; 256] = [
     opcode!("jno"; J/z; Force64),            // 0x81: jno
     opcode!("jb"; J/z; Force64),             // 0x82: jb
     opcode!("jae"; J/z; Force64),            // 0x83: jae
-    opcode!("jz"; J/z; Force64),             // 0x84: jz
-    opcode!("jnz"; J/z; Force64),            // 0x85: jnz
+    opcode!("je"; J/z; Force64),             // 0x84: jz
+    opcode!("jne"; J/z; Force64),            // 0x85: jnz
     opcode!("jbe"; J/z; Force64),            // 0x86: jbe
     opcode!("ja"; J/z; Force64),             // 0x87: ja
     opcode!("js"; J/z; Force64),             // 0x88: js
