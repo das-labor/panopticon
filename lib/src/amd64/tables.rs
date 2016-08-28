@@ -1,183 +1,190 @@
-use amd64::{Opcode,Operand,OperandType,AddressingMethod,Mnemonic,OpcodeOption};
+use amd64::{
+    Opcode,
+    OperandSpec,
+    OperandType,
+    AddressingMethod,
+    Mnemonic,
+    OpcodeOption
+};
 
 macro_rules! opcode {
   ($mne:expr ; ; $opt:ident) => {
        Opcode{
             mnemonic: Mnemonic::Single($mne),
-            operand_a: Operand::None,
-            operand_b: Operand::None,
-            operand_c: Operand::None,
-            operand_d: Operand::None,
+            operand_a: OperandSpec::None,
+            operand_b: OperandSpec::None,
+            operand_c: OperandSpec::None,
+            operand_d: OperandSpec::None,
             option: OpcodeOption::$opt,
         }
     };
   (group $grp:expr; $addr1:ident / $type1:ident , $addr2:ident / $type2:ident) => {
         Opcode{
             mnemonic: Mnemonic::ModRM($grp),
-            operand_a: Operand::Present(AddressingMethod::$addr1,OperandType::$type1),
-            operand_b: Operand::Present(AddressingMethod::$addr2,OperandType::$type2),
-            operand_c: Operand::None,
-            operand_d: Operand::None,
+            operand_a: OperandSpec::Present(AddressingMethod::$addr1,OperandType::$type1),
+            operand_b: OperandSpec::Present(AddressingMethod::$addr2,OperandType::$type2),
+            operand_c: OperandSpec::None,
+            operand_d: OperandSpec::None,
             option: OpcodeOption::None,
         }
     };
    ($mne:expr; $addr1:ident / $type1:ident , $addr2:ident / $type2:ident; $opt:ident) => {
         Opcode{
             mnemonic: Mnemonic::Single($mne),
-            operand_a: Operand::Present(AddressingMethod::$addr1,OperandType::$type1),
-            operand_b: Operand::Present(AddressingMethod::$addr2,OperandType::$type2),
-            operand_c: Operand::None,
-            operand_d: Operand::None,
+            operand_a: OperandSpec::Present(AddressingMethod::$addr1,OperandType::$type1),
+            operand_b: OperandSpec::Present(AddressingMethod::$addr2,OperandType::$type2),
+            operand_c: OperandSpec::None,
+            operand_d: OperandSpec::None,
             option: OpcodeOption::$opt,
         }
     };
    ($mne:expr; $addr1:ident / $type1:ident , $addr2:ident / $type2:ident) => {
         Opcode{
             mnemonic: Mnemonic::Single($mne),
-            operand_a: Operand::Present(AddressingMethod::$addr1,OperandType::$type1),
-            operand_b: Operand::Present(AddressingMethod::$addr2,OperandType::$type2),
-            operand_c: Operand::None,
-            operand_d: Operand::None,
+            operand_a: OperandSpec::Present(AddressingMethod::$addr1,OperandType::$type1),
+            operand_b: OperandSpec::Present(AddressingMethod::$addr2,OperandType::$type2),
+            operand_c: OperandSpec::None,
+            operand_d: OperandSpec::None,
             option: OpcodeOption::None,
         }
     };
     ($mne:expr; $addr1:ident / $type1:ident , $addr2:ident / $type2:ident , $addr3:ident / $type3:ident) => {
         Opcode{
             mnemonic: Mnemonic::Single($mne),
-            operand_a: Operand::Present(AddressingMethod::$addr1,OperandType::$type1),
-            operand_b: Operand::Present(AddressingMethod::$addr2,OperandType::$type2),
-            operand_c: Operand::Present(AddressingMethod::$addr3,OperandType::$type3),
-            operand_d: Operand::None,
+            operand_a: OperandSpec::Present(AddressingMethod::$addr1,OperandType::$type1),
+            operand_b: OperandSpec::Present(AddressingMethod::$addr2,OperandType::$type2),
+            operand_c: OperandSpec::Present(AddressingMethod::$addr3,OperandType::$type3),
+            operand_d: OperandSpec::None,
             option: OpcodeOption::None,
         }
     };
     ($mne:expr; $addr1:ident / $type1:ident , $addr2:ident / $type2:ident , $addr3:ident / $type3:ident , $addr4:ident / $type4:ident) => {
         Opcode{
             mnemonic: Mnemonic::Single($mne),
-            operand_a: Operand::Present(AddressingMethod::$addr1,OperandType::$type1),
-            operand_b: Operand::Present(AddressingMethod::$addr2,OperandType::$type2),
-            operand_c: Operand::Present(AddressingMethod::$addr3,OperandType::$type3),
-            operand_d: Operand::Present(AddressingMethod::$addr4,OperandType::$type4),
+            operand_a: OperandSpec::Present(AddressingMethod::$addr1,OperandType::$type1),
+            operand_b: OperandSpec::Present(AddressingMethod::$addr2,OperandType::$type2),
+            operand_c: OperandSpec::Present(AddressingMethod::$addr3,OperandType::$type3),
+            operand_d: OperandSpec::Present(AddressingMethod::$addr4,OperandType::$type4),
             option: OpcodeOption::None,
         }
     };
     ($mne:expr; $addr1:ident / $type1:ident , $addr2:ident / $type2:ident , $type3:ident) => {
         Opcode{
             mnemonic: Mnemonic::Single($mne),
-            operand_a: Operand::Present(AddressingMethod::$addr1,OperandType::$type1),
-            operand_b: Operand::Present(AddressingMethod::$addr2,OperandType::$type2),
-            operand_c: Operand::Present(AddressingMethod::None,OperandType::$type3),
-            operand_d: Operand::None,
+            operand_a: OperandSpec::Present(AddressingMethod::$addr1,OperandType::$type1),
+            operand_b: OperandSpec::Present(AddressingMethod::$addr2,OperandType::$type2),
+            operand_c: OperandSpec::Present(AddressingMethod::None,OperandType::$type3),
+            operand_d: OperandSpec::None,
             option: OpcodeOption::None,
         }
     };
     ($mne:expr; $type1:ident , $addr2:ident / $type2:ident) => {
         Opcode{
             mnemonic: Mnemonic::Single($mne),
-            operand_a: Operand::Present(AddressingMethod::None,OperandType::$type1),
-            operand_b: Operand::Present(AddressingMethod::$addr2,OperandType::$type2),
-            operand_c: Operand::None,
-            operand_d: Operand::None,
+            operand_a: OperandSpec::Present(AddressingMethod::None,OperandType::$type1),
+            operand_b: OperandSpec::Present(AddressingMethod::$addr2,OperandType::$type2),
+            operand_c: OperandSpec::None,
+            operand_d: OperandSpec::None,
             option: OpcodeOption::None,
         }
     };
       ($mne:expr; $addr1:ident / $type1:ident , $type2:ident) => {
         Opcode{
             mnemonic: Mnemonic::Single($mne),
-            operand_a: Operand::Present(AddressingMethod::$addr1,OperandType::$type1),
-            operand_b: Operand::Present(AddressingMethod::None,OperandType::$type2),
-            operand_c: Operand::None,
-            operand_d: Operand::None,
+            operand_a: OperandSpec::Present(AddressingMethod::$addr1,OperandType::$type1),
+            operand_b: OperandSpec::Present(AddressingMethod::None,OperandType::$type2),
+            operand_c: OperandSpec::None,
+            operand_d: OperandSpec::None,
             option: OpcodeOption::None,
         }
     };
     ($mne:expr; $type1:ident , $type2:ident) => {
         Opcode{
             mnemonic: Mnemonic::Single($mne),
-            operand_a: Operand::Present(AddressingMethod::None,OperandType::$type1),
-            operand_b: Operand::Present(AddressingMethod::None,OperandType::$type2),
-            operand_c: Operand::None,
-            operand_d: Operand::None,
+            operand_a: OperandSpec::Present(AddressingMethod::None,OperandType::$type1),
+            operand_b: OperandSpec::Present(AddressingMethod::None,OperandType::$type2),
+            operand_c: OperandSpec::None,
+            operand_d: OperandSpec::None,
             option: OpcodeOption::None,
         }
     };
     ($mne:expr; $addr1:ident / $type1:ident; $opt:ident) => {
        Opcode{
             mnemonic: Mnemonic::Single($mne),
-            operand_a: Operand::Present(AddressingMethod::$addr1,OperandType::$type1),
-            operand_b: Operand::None,
-            operand_c: Operand::None,
-            operand_d: Operand::None,
+            operand_a: OperandSpec::Present(AddressingMethod::$addr1,OperandType::$type1),
+            operand_b: OperandSpec::None,
+            operand_c: OperandSpec::None,
+            operand_d: OperandSpec::None,
             option: OpcodeOption::$opt,
         }
     };
   ($mne:expr; $addr1:ident / $type1:ident) => {
        Opcode{
             mnemonic: Mnemonic::Single($mne),
-            operand_a: Operand::Present(AddressingMethod::$addr1,OperandType::$type1),
-            operand_b: Operand::None,
-            operand_c: Operand::None,
-            operand_d: Operand::None,
+            operand_a: OperandSpec::Present(AddressingMethod::$addr1,OperandType::$type1),
+            operand_b: OperandSpec::None,
+            operand_c: OperandSpec::None,
+            operand_d: OperandSpec::None,
             option: OpcodeOption::None,
         }
     };
     (group $grp:expr ; $addr1:ident / $type1:ident) => {
         Opcode{
             mnemonic: Mnemonic::ModRM($grp),
-            operand_a: Operand::Present(AddressingMethod::$addr1,OperandType::$type1),
-            operand_b: Operand::None,
-            operand_c: Operand::None,
-            operand_d: Operand::None,
+            operand_a: OperandSpec::Present(AddressingMethod::$addr1,OperandType::$type1),
+            operand_b: OperandSpec::None,
+            operand_c: OperandSpec::None,
+            operand_d: OperandSpec::None,
             option: OpcodeOption::None,
         }
     };
     (group $grp:expr; $addr1:ident / $type1:ident , $type2:ident) => {
         Opcode{
             mnemonic: Mnemonic::ModRM($grp),
-            operand_a: Operand::Present(AddressingMethod::$addr1,OperandType::$type1),
-            operand_b: Operand::Present(AddressingMethod::None,OperandType::$type2),
-            operand_c: Operand::None,
-            operand_d: Operand::None,
+            operand_a: OperandSpec::Present(AddressingMethod::$addr1,OperandType::$type1),
+            operand_b: OperandSpec::Present(AddressingMethod::None,OperandType::$type2),
+            operand_c: OperandSpec::None,
+            operand_d: OperandSpec::None,
             option: OpcodeOption::None,
         }
     };
     ($mne:expr; $type1:ident; $opt:ident) => {
        Opcode{
             mnemonic: Mnemonic::Single($mne),
-            operand_a: Operand::Present(AddressingMethod::None,OperandType::$type1),
-            operand_b: Operand::None,
-            operand_c: Operand::None,
-            operand_d: Operand::None,
+            operand_a: OperandSpec::Present(AddressingMethod::None,OperandType::$type1),
+            operand_b: OperandSpec::None,
+            operand_c: OperandSpec::None,
+            operand_d: OperandSpec::None,
             option: OpcodeOption::$opt,
         }
     };
        ($mne:expr; $type1:ident) => {
        Opcode{
             mnemonic: Mnemonic::Single($mne),
-            operand_a: Operand::Present(AddressingMethod::None,OperandType::$type1),
-            operand_b: Operand::None,
-            operand_c: Operand::None,
-            operand_d: Operand::None,
+            operand_a: OperandSpec::Present(AddressingMethod::None,OperandType::$type1),
+            operand_b: OperandSpec::None,
+            operand_c: OperandSpec::None,
+            operand_d: OperandSpec::None,
             option: OpcodeOption::None,
         }
     };
     ($mne:expr; ) => {
        Opcode{
             mnemonic: Mnemonic::Single($mne),
-            operand_a: Operand::None,
-            operand_b: Operand::None,
-            operand_c: Operand::None,
-            operand_d: Operand::None,
+            operand_a: OperandSpec::None,
+            operand_b: OperandSpec::None,
+            operand_c: OperandSpec::None,
+            operand_d: OperandSpec::None,
             option: OpcodeOption::None,
         }
     };
     (group $grp:expr; ) => {
        Opcode{
             mnemonic: Mnemonic::ModRM($grp),
-            operand_a: Operand::None,
-            operand_b: Operand::None,
-            operand_c: Operand::None,
-            operand_d: Operand::None,
+            operand_a: OperandSpec::None,
+            operand_b: OperandSpec::None,
+            operand_c: OperandSpec::None,
+            operand_d: OperandSpec::None,
             option: OpcodeOption::None,
         }
     };
@@ -187,10 +194,10 @@ macro_rules! unused {
     () => {
         Opcode{
             mnemonic: Mnemonic::Undefined,
-            operand_a: Operand::None,
-            operand_b: Operand::None,
-            operand_c: Operand::None,
-            operand_d: Operand::None,
+            operand_a: OperandSpec::None,
+            operand_b: OperandSpec::None,
+            operand_c: OperandSpec::None,
+            operand_d: OperandSpec::None,
             option: OpcodeOption::None,
         }
     };
@@ -200,10 +207,10 @@ macro_rules! escape {
     () => {
         Opcode{
             mnemonic: Mnemonic::Escape,
-            operand_a: Operand::None,
-            operand_b: Operand::None,
-            operand_c: Operand::None,
-            operand_d: Operand::None,
+            operand_a: OperandSpec::None,
+            operand_b: OperandSpec::None,
+            operand_c: OperandSpec::None,
+            operand_d: OperandSpec::None,
             option: OpcodeOption::None,
         }
     };
@@ -1262,7 +1269,7 @@ pub static TWOBYTE_F2_TABLE: [Opcode; 256] = [
     unused!(),                      // 0x0d
     unused!(),                      // 0x0e
     unused!(),                      // 0x0f
-    opcode!("vmovsd"; V/x, W/x, W/sd),       // 0x10: movsd
+    opcode!("vmovsd"; V/x, H/x, W/sd),       // 0x10: movsd
     opcode!("vmovsd"; W/sd, H/x, V/sd),         // 0x11: movsd
     opcode!("vmovddup"; V/x, W/x),       // 0x12: movddup
     unused!(),                      // 0x13
@@ -4510,11 +4517,11 @@ pub static GROUP4_OPCFE: [Opcode; 8] = [
 pub static GROUP5_OPCFF: [Opcode; 8] = [
     opcode!("inc"; E/v),        // 0x00: inc
     opcode!("dec"; E/v),        // 0x01: dec
-    opcode!("call"; E/v),       // 0x02: call
-    opcode!("call"; M/p),       // 0x03: call
-    opcode!("jmp"; E/v),        // 0x04: jmp
-    opcode!("jmp"; M/p),        // 0x05: jmp
-    opcode!("push"; E/v),       // 0x06: push
+    opcode!("call"; E/v; Force64),       // 0x02: call
+    opcode!("call"; E/p),       // 0x03: call
+    opcode!("jmp"; E/v; Force64),        // 0x04: jmp
+    opcode!("jmp"; M/p; Default64),        // 0x05: jmp
+    opcode!("push"; E/v; Default64),       // 0x06: push
     unused!(),                  // 0x07
 ];
 
