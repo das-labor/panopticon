@@ -199,7 +199,7 @@ fn set_overflow_flag(res: &Lvalue, a: &Rvalue, b: &Rvalue, sz: usize) -> Result<
 }
 
 /// Returns (a/sz, b/sz, sz) w/ s = max(a.size,b.size)
-fn sign_extend(a: &Rvalue, b: &Rvalue) -> (Rvalue,Rvalue,usize) {
+fn sign_extend(a: &Rvalue, b: &Rvalue) -> Result<(Rvalue,Rvalue,usize,Vec<Statement>)> {
     let sz = max(a.size().unwrap_or(0),b.size().unwrap_or(0));
     let ext = |x: &Rvalue,s: usize| -> Rvalue {
         match x {
@@ -218,30 +218,31 @@ fn sign_extend(a: &Rvalue, b: &Rvalue) -> (Rvalue,Rvalue,usize) {
 
     let ext_a = ext(a,sz);
     let ext_b = ext(b,sz);
+    let mut stmts = vec![];
 
     assert!(sz > 0);
     assert!(ext_a.size() == None || ext_b.size() == None || ext_a.size() == ext_b.size());
 
     if a.size() != ext_a.size() {
         if let Some(lv) = Lvalue::from_rvalue(ext_a.clone()) {
-            rreil!{
+            stmts = try!(rreil!{
                 sext/sz (lv), (a);
-            };
+            });
         }
     }
 
     if b.size() != ext_b.size() {
         if let Some(lv) = Lvalue::from_rvalue(ext_b.clone()) {
-            rreil!{
+            stmts.append(&mut try!(rreil!{
                 sext/sz (lv), (b);
-            };
+            }));
         }
     }
 
-    (ext_a,ext_b,sz)
+    Ok((ext_a,ext_b,sz,stmts))
 }
 
-fn write_reg(_reg: &Rvalue, _: &Rvalue, sz: usize) {
+fn write_reg(_reg: &Rvalue, _: &Rvalue, sz: usize) -> Result<Vec<Statement>> {
     if let Some(ref reg) = Lvalue::from_rvalue(_reg.clone()) {
         if sz < 64 {
             if let &Lvalue::Variable{ ref name,.. } = reg {
@@ -251,89 +252,88 @@ fn write_reg(_reg: &Rvalue, _: &Rvalue, sz: usize) {
                    name == "R9" || name == "R10" || name == "R11" ||
                    name == "R12" || name == "R13" || name == "R14" ||
                    name == "R15" {
-                    rreil!{
+                    return rreil!{
                         zext/64 reg:64, res:sz;
                     };
-                    return
                 }
             }
         }
         rreil!{
             mov reg:sz, res:sz;
-        };
+        }
     } else {
         unreachable!()
     }
 }
 
 pub fn adc(_a: Rvalue, _b: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> {
-    return Ok((vec![],JumpSpec::FallThru));
-    let (a,b,sz) = sign_extend(&_a,&_b);
+    let (a,b,sz,mut stmts) = try!(sign_extend(&_a,&_b));
     let res = rreil_lvalue!{ res:sz };
 
-    rreil!{
+    stmts.append(&mut try!(rreil!{
         add res:sz, (a), (b);
         zext/sz cf:sz, CF:1;
         add res:sz, res:sz, cf:sz;
         cmplts SF:1, res:sz, [0]:sz;
         cmpeq ZF:1, res:sz, [0]:sz;
-    };
+    }));
+    stmts.append(&mut try!(set_carry_flag(&res,&a)));
+    stmts.append(&mut try!(set_aux_flag(&res,&a)));
+    stmts.append(&mut try!(set_overflow_flag(&res,&a,&b,sz)));
+    stmts.append(&mut try!(set_parity_flag(&res)));
+    stmts.append(&mut try!(write_reg(&_a,&res.clone().into(),sz)));
 
-    set_carry_flag(&res,&a);
-    set_aux_flag(&res,&a);
-    set_overflow_flag(&res,&a,&b,sz);
-    set_parity_flag(&res);
-    write_reg(&_a,&res.clone().into(),sz);
+    Ok((stmts,JumpSpec::FallThru))
 }
 
 pub fn add(_a: Rvalue, _b: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> {
-    return Ok((vec![],JumpSpec::FallThru));
-    let (a,b,sz) = sign_extend(&_a,&_b);
+    let (a,b,sz,mut stmts) = try!(sign_extend(&_a,&_b));
     let res = rreil_lvalue!{ res:sz };
 
-    rreil!{
+    stmts.append(&mut try!(rreil!{
         add res:sz, (a), (b);
         cmplts SF:1, res:sz, [0]:sz;
         cmpeq ZF:1, res:sz, [0]:sz;
-    };
+    }));
+    stmts.append(&mut try!(set_carry_flag(&res,&a)));
+    stmts.append(&mut try!(set_aux_flag(&res,&a)));
+    stmts.append(&mut try!(set_overflow_flag(&res,&a,&b,sz)));
+    stmts.append(&mut try!(set_parity_flag(&res)));
+    stmts.append(&mut try!(write_reg(&_a,&res.clone().into(),sz)));
 
-    set_carry_flag(&res,&a);
-    set_aux_flag(&res,&a);
-    set_overflow_flag(&res,&a,&b,sz);
-    set_parity_flag(&res);
-    write_reg(&_a,&res.clone().into(),sz);
+    Ok((stmts,JumpSpec::FallThru))
 }
 
 pub fn adcx(_a: Rvalue, _b: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> {
-    return Ok((vec![],JumpSpec::FallThru));
-    let (a,b,sz) = sign_extend(&_a,&_b);
+    let (a,b,sz,mut stmts) = try!(sign_extend(&_a,&_b));
     let res = rreil_lvalue!{ res:sz };
 
-    rreil!{
+    stmts.append(&mut try!(rreil!{
         add res:sz, (a), (b);
         zext/sz cf:sz, CF:1;
         add res:sz, res:sz, cf:sz;
-    };
+    }));
+    stmts.append(&mut try!(set_carry_flag(&res,&a)));
+    stmts.append(&mut try!(write_reg(&_a,&res.clone().into(),sz)));
 
-    set_carry_flag(&res,&a);
-    write_reg(&_a,&res.clone().into(),sz);
+    Ok((stmts,JumpSpec::FallThru))
 }
 
 pub fn and(_a: Rvalue, _b: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> {
-    return Ok((vec![],JumpSpec::FallThru));
-    let (a,b,sz) = sign_extend(&_a,&_b);
+    let (a,b,sz,mut stmts) = try!(sign_extend(&_a,&_b));
     let res = rreil_lvalue!{ res:sz };
 
-    rreil!{
+    stmts.append(&mut try!(rreil!{
         and res:sz, (a), (b);
         cmplts SF:1, res:sz, [0]:sz;
         cmpeq ZF:1, res:sz, [0]:sz;
         mov CF:1, [0]:1;
         mov OF:1, [0]:1;
-    };
+    }));
+    stmts.append(&mut try!(set_parity_flag(&res)));
+    stmts.append(&mut try!(write_reg(&_a,&res.clone().into(),sz)));
 
-    set_parity_flag(&res);
-    write_reg(&_a,&res.clone().into(),sz);
+    Ok((stmts,JumpSpec::FallThru))
 }
 
 pub fn arpl(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
@@ -342,28 +342,28 @@ pub fn bound(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((ve
 
 pub fn bsf(_a: Rvalue, _b: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> {
     return Ok((vec![],JumpSpec::FallThru));
-    let (_,b,sz) = sign_extend(&_a,&_b);
+    let (_,b,sz,_) = try!(sign_extend(&_a,&_b));
     let res = rreil_lvalue!{ res:sz };
-
-    rreil!{
+    let mut stmts = try!(rreil!{
         cmpeq ZF:1, (b), [0]:sz;
         mov res:sz, ?;
-    };
+    });
 
-    write_reg(&_a,&res.clone().into(),sz);
+    stmts.append(&mut try!(write_reg(&_a,&res.clone().into(),sz)));
+    Ok((stmts,JumpSpec::FallThru))
 }
 
 pub fn bsr(_a: Rvalue, _b: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> {
     return Ok((vec![],JumpSpec::FallThru));
-    let (_,b,sz) = sign_extend(&_a,&_b);
+    let (_,b,sz,_) = try!(sign_extend(&_a,&_b));
     let res = rreil_lvalue!{ res:sz };
-
-    rreil!{
+    let mut stmts = try!(rreil!{
         cmpeq ZF:1, (b), [0]:sz;
         mov res:sz, ?;
-    };
+    });
 
-    write_reg(&_a,&res.clone().into(),sz);
+    stmts.append(&mut try!(write_reg(&_a,&res.clone().into(),sz)));
+    Ok((stmts,JumpSpec::FallThru))
 }
 
 pub fn bswap(_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> {
