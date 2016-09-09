@@ -301,7 +301,7 @@ impl Function {
                             let vx = ret.add_vertex(ControlFlowTarget::Unresolved(tgt.clone()));
                             ret.add_edge(gu.clone(),from,vx);
                         },
-                        _ => error!("jump from {} to {} doesn't hit any blocks",src_off,tgt),
+                        _ => trace!("jump from 0x{:x} to {} doesn't hit any blocks",src_off,tgt),
                     }
             }
         }
@@ -331,7 +331,6 @@ impl Function {
 
         todo.insert(start);
 
-     
         while let Some(addr) = todo.iter().next().cloned() {
             let maybe_mnes = mnemonics.iter().find(|x| *x.0 >= addr).map(|x| x.1.clone());
 
@@ -360,31 +359,35 @@ impl Function {
 
             let maybe_match = A::decode(reg,addr,&init);
 
-            if let Ok(match_st) = maybe_match {
-                if match_st.mnemonics.is_empty() {
-                    mnemonics.entry(addr).or_insert(Vec::new()).push(MnemonicOrError::Error(addr,"Unrecognized instruction".into()));
-                } else {
-                    for mne in match_st.mnemonics {
-                        debug!("{:x}: {} ({:?})",mne.area.start,mne.opcode,match_st.tokens);
-                        mnemonics.entry(mne.area.start).or_insert(Vec::new()).push(MnemonicOrError::Mnemonic(mne));
+            match maybe_match {
+                Ok(match_st) => {
+                    if match_st.mnemonics.is_empty() {
+                        mnemonics.entry(addr).or_insert(Vec::new()).push(MnemonicOrError::Error(addr,"Unrecognized instruction".into()));
+                    } else {
+                        for mne in match_st.mnemonics {
+                            debug!("{:x}: {} ({:?})",mne.area.start,mne.opcode,match_st.tokens);
+                            mnemonics.entry(mne.area.start).or_insert(Vec::new()).push(MnemonicOrError::Mnemonic(mne));
+                        }
                     }
-                }
 
-                for (origin,tgt,gu) in match_st.jumps {
-                    debug!("jump to {:?}",tgt);
-                    match tgt {
-                        Rvalue::Constant{ value: ref c,.. } => {
-                            by_source.entry(origin).or_insert(Vec::new()).push((tgt.clone(),gu.clone()));
-                            by_destination.entry(*c).or_insert(Vec::new()).push((Rvalue::new_u64(origin),gu.clone()));
-                            todo.insert(*c);
-                        },
-                        _ => {
-                            by_source.entry(origin).or_insert(Vec::new()).push((tgt,gu.clone()));
+                    for (origin,tgt,gu) in match_st.jumps {
+                        debug!("jump to {:?}",tgt);
+                        match tgt {
+                            Rvalue::Constant{ value: ref c,.. } => {
+                                by_source.entry(origin).or_insert(Vec::new()).push((tgt.clone(),gu.clone()));
+                                by_destination.entry(*c).or_insert(Vec::new()).push((Rvalue::new_u64(origin),gu.clone()));
+                                todo.insert(*c);
+                            },
+                            _ => {
+                                by_source.entry(origin).or_insert(Vec::new()).push((tgt,gu.clone()));
+                            }
                         }
                     }
                 }
-            } else {
-                mnemonics.entry(addr).or_insert(Vec::new()).push(MnemonicOrError::Error(addr,"Unrecognized instruction".into()));
+                Err(e) => {
+                    error!("failed to disassemble: {}",e);
+                    mnemonics.entry(addr).or_insert(Vec::new()).push(MnemonicOrError::Error(addr,"Unrecognized instruction".into()));
+                }
             }
         }
 
@@ -423,6 +426,7 @@ impl Function {
             }
         }
 
+        debug!("collected calls: {:?}",ret);
         ret
     }
 

@@ -84,7 +84,7 @@ Item {
 
 					Monospace {
 						id: opcode
-						text: modelData.offset.toString() + ": " + modelData.opcode
+						text: "0x" + modelData.offset.toString(16) + ": " + modelData.opcode
 						width: bblock.opcodeWidth
 						height: contentHeight
 						y: bblock.yPadding

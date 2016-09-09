@@ -296,7 +296,7 @@ impl Statement {
         // check that argument sizes match
         let typecheck_binop = |a: &Rvalue,b: &Rvalue,assignee: &Lvalue| -> Result<()> {
             if !(a.size() == None || b.size() == None || a.size() == b.size()) {
-                return Err("Argument sizes mismatch".into())
+                return Err(format!("Argument sizes mismatch: {} vs. {}",a,b).into())
             }
 
             if !(assignee.size() == None || Some(cmp::max(a.size().unwrap_or(0),b.size().unwrap_or(0))) == assignee.size()) {
@@ -848,34 +848,34 @@ impl Display for Statement {
 }
 
 macro_rules! rreil {
-    ( ) => {vec![]};
-    ( add $($cdr:tt)* ) => { rreil_binop!(Add # $($cdr)*); };
-    ( sub $($cdr:tt)* ) => { rreil_binop!(Subtract # $($cdr)*); };
-    ( mul $($cdr:tt)* ) => { rreil_binop!(Multiply # $($cdr)*); };
-    ( div $($cdr:tt)* ) => { rreil_binop!(DivideUnsigned # $($cdr)*); };
-    ( divs $($cdr:tt)* ) => { rreil_binop!(DivideSigned # $($cdr)*); };
-    ( shl $($cdr:tt)* ) => { rreil_binop!(ShiftLeft # $($cdr)*); };
-    ( shr $($cdr:tt)* ) => { rreil_binop!(ShiftRightUnsigned # $($cdr)*); };
-    ( shrs $($cdr:tt)* ) => { rreil_binop!(ShiftRightSigned # $($cdr)*); };
-    ( mod $($cdr:tt)* ) => { rreil_binop!(Modulo # $($cdr)*); };
-    ( and $($cdr:tt)* ) => { rreil_binop!(And # $($cdr)*); };
-    ( xor $($cdr:tt)* ) => { rreil_binop!(ExclusiveOr # $($cdr)*); };
-    ( or $($cdr:tt)* ) => { rreil_binop!(InclusiveOr # $($cdr)*); };
+    ( ) => {Ok(vec![])};
+    ( add $($cdr:tt)* ) => { rreil_binop!(Add # $($cdr)*) };
+    ( sub $($cdr:tt)* ) => { rreil_binop!(Subtract # $($cdr)*) };
+    ( mul $($cdr:tt)* ) => { rreil_binop!(Multiply # $($cdr)*) };
+    ( div $($cdr:tt)* ) => { rreil_binop!(DivideUnsigned # $($cdr)*) };
+    ( divs $($cdr:tt)* ) => { rreil_binop!(DivideSigned # $($cdr)*) };
+    ( shl $($cdr:tt)* ) => { rreil_binop!(ShiftLeft # $($cdr)*) };
+    ( shr $($cdr:tt)* ) => { rreil_binop!(ShiftRightUnsigned # $($cdr)*) };
+    ( shrs $($cdr:tt)* ) => { rreil_binop!(ShiftRightSigned # $($cdr)*) };
+    ( mod $($cdr:tt)* ) => { rreil_binop!(Modulo # $($cdr)*) };
+    ( and $($cdr:tt)* ) => { rreil_binop!(And # $($cdr)*) };
+    ( xor $($cdr:tt)* ) => { rreil_binop!(ExclusiveOr # $($cdr)*) };
+    ( or $($cdr:tt)* ) => { rreil_binop!(InclusiveOr # $($cdr)*) };
 
-    ( cmpeq $($cdr:tt)* ) => { rreil_binop!(Equal # $($cdr)*); };
-    ( cmpleu $($cdr:tt)* ) => { rreil_binop!(LessOrEqualUnsigned # $($cdr)*); };
-    ( cmples $($cdr:tt)* ) => { rreil_binop!(LessOrEqualSigned # $($cdr)*); };
-    ( cmpltu $($cdr:tt)* ) => { rreil_binop!(LessUnsigned # $($cdr)*); };
-    ( cmplts $($cdr:tt)* ) => { rreil_binop!(LessSigned # $($cdr)*); };
+    ( cmpeq $($cdr:tt)* ) => { rreil_binop!(Equal # $($cdr)*) };
+    ( cmpleu $($cdr:tt)* ) => { rreil_binop!(LessOrEqualUnsigned # $($cdr)*) };
+    ( cmples $($cdr:tt)* ) => { rreil_binop!(LessOrEqualSigned # $($cdr)*) };
+    ( cmpltu $($cdr:tt)* ) => { rreil_binop!(LessUnsigned # $($cdr)*) };
+    ( cmplts $($cdr:tt)* ) => { rreil_binop!(LessSigned # $($cdr)*) };
 
-    ( sel / $off:tt $($cdr:tt)* ) => { rreil_selop!(Select # $off # $($cdr)*); };
-    ( sext / $sz:tt $($cdr:tt)* ) => { rreil_extop!(SignExtend # $sz # $($cdr)*); };
-    ( zext / $sz:tt $($cdr:tt)* ) => { rreil_extop!(ZeroExtend # $sz # $($cdr)*); };
-    ( mov $($cdr:tt)* ) => { rreil_unop!(Move # $($cdr)*); };
-    ( call $($cdr:tt)* ) => { rreil_unop!(Call # $($cdr)*); };
+    ( sel / $off:tt $($cdr:tt)* ) => { rreil_selop!(Select # $off # $($cdr)*) };
+    ( sext / $sz:tt $($cdr:tt)* ) => { rreil_extop!(SignExtend # $sz # $($cdr)*) };
+    ( zext / $sz:tt $($cdr:tt)* ) => { rreil_extop!(ZeroExtend # $sz # $($cdr)*) };
+    ( mov $($cdr:tt)* ) => { rreil_unop!(Move # $($cdr)*) };
+    ( call $($cdr:tt)* ) => { rreil_unop!(Call # $($cdr)*) };
 
-    ( load / $r:ident   $($cdr:tt)* ) => { rreil_memop!(Load # $r # $($cdr)*); };
-    ( store / $r:ident $($cdr:tt)* ) => { rreil_memop!(Store # $r # $($cdr)*); };
+    ( load / $r:ident   $($cdr:tt)* ) => { rreil_memop!(Load # $r # $($cdr)*) };
+    ( store / $r:ident $($cdr:tt)* ) => { rreil_memop!(Store # $r # $($cdr)*) };
 }
 
 include!("rreil.rs");

@@ -281,27 +281,27 @@ Rectangle {
 			}
 		}
 
-	 Rectangle {
-		 anchors.fill: parent
-		 width: childrenRect.width
-		 height: childrenRect.height
-		 visible: root.state === "ERROR"
-		 color: "#efefef"
+		Rectangle {
+			anchors.fill: parent
+			width: childrenRect.width
+			height: childrenRect.height
+			visible: root.state === "ERROR"
+			color: "#efefef"
 
-		 Label {
-			 anchors.fill: parent
-			 horizontalAlignment: Text.AlignHCenter
-			 verticalAlignment: Text.AlignVCenter
-			 wrapMode: Text.WordWrap
-			 font.pixelSize: 21
-			 color: "#333"
-			 text: errorMessage
-		 }
-	 }
+			Label {
+				anchors.fill: parent
+				horizontalAlignment: Text.AlignHCenter
+				verticalAlignment: Text.AlignVCenter
+				wrapMode: Text.WordWrap
+				font.pixelSize: 21
+				color: "#333"
+				text: errorMessage
+			}
+		}
 
 		Canvas {
-		 	property var edges: null;
-		 	property int xCorrection: 0;
+			property var edges: null;
+			property int xCorrection: 0;
 			property int yCorrection: 0;
 			readonly property int margin: 5000;
 

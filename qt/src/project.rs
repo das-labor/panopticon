@@ -250,7 +250,7 @@ pub fn spawn_disassembler<A: 'static + Architecture + Debug>(_cfg: A::Configurat
                     let prog: &Program = proj.find_program_by_uuid(&prog_uuid).unwrap();
 
                     prog.call_graph.vertices().filter_map(|x| {
-                        if let Some(&CallTarget::Todo(ref tgt,ref name,uuid)) = prog.call_graph.vertex_label(x) {
+                        if let Some(&CallTarget::Todo(ref tgt@Rvalue::Constant{ .. },ref name,uuid)) = prog.call_graph.vertex_label(x) {
                             Some((tgt.clone(),name.clone(),uuid))
                         } else {
                             None
@@ -258,124 +258,124 @@ pub fn spawn_disassembler<A: 'static + Architecture + Debug>(_cfg: A::Configurat
                     }).next()
                 }));
 
-                if let Some((Rvalue::Constant{ value: tgt,.. },maybe_name,uuid)) = maybe_tgt {
-                    try!(Controller::emit(STARTED_FUNCTION,&uuid.to_string()));
+                match maybe_tgt {
+                    Some((Rvalue::Constant{ value: tgt,.. },maybe_name,uuid)) => {
+                        try!(Controller::emit(STARTED_FUNCTION,&uuid.to_string()));
 
-                    let cfg = _cfg.clone();
-                    let th = thread::spawn(move || -> Result<Vec<Uuid>> {
-                        let entry = tgt;
-                        let mut func = try!(Controller::read(|proj| {
-                            let name = maybe_name.unwrap_or(format!("func_{:x}",tgt));
-                            let root = proj.sources.dependencies.vertex_label(proj.sources.root).unwrap();
-                            Function::with_uuid(name,uuid,root.name().clone())
-                        }));
-
-                        println!("start new function {:?} at {:?}",uuid,entry);
-
-                        func = try!(Controller::read(|proj| {
-                            let root = proj.sources.dependencies.vertex_label(proj.sources.root).unwrap();
-                            let mut func = {
-                                Function::disassemble::<A>(Some(func),cfg.clone(),&root,entry)
-                            };
-
-                            func.entry_point = func.find_basic_block_at_address(entry);
-
-                            func
-                        }));
-
-                        if func.cflow_graph.num_vertices() == 0 || func.entry_point.is_none() {
-                            println!("failed to disassemble for {}",func.name);
-
-                            let uu = func.uuid.clone();
-                            try!(Controller::modify(|proj| {
-                                let mut prog: &mut Program = proj.find_program_by_uuid_mut(&prog_uuid).unwrap();
-                                prog.insert(CallTarget::Concrete(func));
+                        let cfg = _cfg.clone();
+                        let th = thread::spawn(move || -> Result<Vec<Uuid>> {
+                            let entry = tgt;
+                            let mut func = try!(Controller::read(|proj| {
+                                let name = maybe_name.unwrap_or(format!("func_{:x}",tgt));
+                                let root = proj.sources.dependencies.vertex_label(proj.sources.root).unwrap();
+                                Function::with_uuid(name,uuid,root.name().clone())
                             }));
 
-                            try!(Controller::emit(FINISHED_FUNCTION,&uu.to_string()));
-                            println!("");
-                            return Ok(vec![]);
-                        }
+                            debug!("start new function {:?} at {:?}",uuid,entry);
 
-                        println!("primary pass done");
+                            func = try!(Controller::read(|proj| {
+                                let root = proj.sources.dependencies.vertex_label(proj.sources.root).unwrap();
+                                let mut func = {
+                                    Function::disassemble::<A>(Some(func),cfg.clone(),&root,entry)
+                                };
 
-                        let mut fixpoint = false;
+                                func.entry_point = func.find_basic_block_at_address(entry);
 
-                        while !fixpoint {
-                            fixpoint = true;
-                            ssa_convertion(&mut func);
+                                func
+                            }));
 
-                            let vals = try!(approximate::<Kset>(&func));
-                            let vxs = { func.cflow_graph.vertices().collect::<Vec<_>>() };
-                            let mut resolved_jumps = HashSet::<u64>::new();
+                            if func.cflow_graph.num_vertices() == 0 || func.entry_point.is_none() {
+                                debug!("failed to disassemble for {}",func.name);
 
-                            for &vx in vxs.iter() {
-                                if let Some(&mut ControlFlowTarget::Unresolved(ref mut var@Rvalue::Variable{..})) = func.cflow_graph.vertex_label_mut(vx) {
-                                    if let Some(&Kset::Set(ref v)) = vals.get(&Lvalue::from_rvalue(var.clone()).unwrap()) {
-                                        if let Some(&(val,sz)) = v.first() {
-                                            *var = Rvalue::Constant{ value: val, size: sz };
-                                            fixpoint = true;
-                                            println!("resolved {:?} to {:?}",var,val);
-                                            resolved_jumps.insert(val);
+                                let uu = func.uuid.clone();
+                                try!(Controller::modify(|proj| {
+                                    let mut prog: &mut Program = proj.find_program_by_uuid_mut(&prog_uuid).unwrap();
+                                    prog.insert(CallTarget::Concrete(func));
+                                }));
+
+                                try!(Controller::emit(FINISHED_FUNCTION,&uu.to_string()));
+                                return Ok(vec![]);
+                            }
+
+                            debug!("primary pass done");
+
+                            let mut fixpoint = false;
+
+                            while !fixpoint {
+                                fixpoint = true;
+                                ssa_convertion(&mut func);
+
+                                let vals = try!(approximate::<Kset>(&func));
+                                let vxs = { func.cflow_graph.vertices().collect::<Vec<_>>() };
+                                let mut resolved_jumps = HashSet::<u64>::new();
+
+                                for &vx in vxs.iter() {
+                                    if let Some(&mut ControlFlowTarget::Unresolved(ref mut var@Rvalue::Variable{..})) = func.cflow_graph.vertex_label_mut(vx) {
+                                        if let Some(&Kset::Set(ref v)) = vals.get(&Lvalue::from_rvalue(var.clone()).unwrap()) {
+                                            if let Some(&(val,sz)) = v.first() {
+                                                *var = Rvalue::Constant{ value: val, size: sz };
+                                                fixpoint = true;
+                                                debug!("resolved {:?} to {:?}",var,val);
+                                                resolved_jumps.insert(val);
+                                            }
                                         }
                                     }
                                 }
+
+                                for addr in resolved_jumps {
+                                    debug!("continue at {:?}",addr);
+                                    func = try!(Controller::read(|proj| {
+                                        let root = proj.sources.dependencies.vertex_label(proj.sources.root).unwrap();
+                                        let mut func = {
+                                            Function::disassemble::<A>(Some(func),cfg.clone(),&root,addr)
+                                        };
+
+                                        func.entry_point = func.find_basic_block_at_address(entry);
+
+                                        func
+                                    }));
+                                }
+
+                                debug!("secondary pass done");
                             }
 
-                            for addr in resolved_jumps {
-                                println!("continue at {:?}",addr);
-                                func = try!(Controller::read(|proj| {
-                                    let root = proj.sources.dependencies.vertex_label(proj.sources.root).unwrap();
-                                    let mut func = {
-                                        Function::disassemble::<A>(Some(func),cfg.clone(),&root,addr)
-                                    };
+                            let new_functions = try!(Controller::modify(|proj| {
+                                let mut prog: &mut Program = proj.find_program_by_uuid_mut(&prog_uuid).unwrap();
 
-                                    func.entry_point = func.find_basic_block_at_address(entry);
+                                prog.insert(CallTarget::Concrete(func))
+                            }));
 
-                                    func
-                                }));
-                            }
+                            debug!("function finished");
 
-                            println!("secondary pass done");
+                            Ok(new_functions)
+                        });
+
+                        match th.join() {
+                            Ok(Ok(ref new_functions)) => {
+                                try!(Controller::emit(FINISHED_FUNCTION,&uuid.to_string()));
+                                for a in new_functions {
+                                    debug!("found new func at {:?}",a);
+                                    try!(Controller::emit(DISCOVERED_FUNCTION,&a.to_string()));
+                                }
+                            },
+                            Err(e) => {
+                                error!("error while disassembling {:?}: {:?}",uuid,e);
+                                try!(Controller::emit(FINISHED_FUNCTION,&uuid.to_string()))
+                            },
+                            Ok(Err(e)) => {
+                                error!("error while disassembling {:?}: {:?}",uuid,e);
+                                try!(Controller::emit(FINISHED_FUNCTION,&uuid.to_string()))
+                            },
                         }
-
-                        let new_functions = try!(Controller::modify(|proj| {
-                            let mut prog: &mut Program = proj.find_program_by_uuid_mut(&prog_uuid).unwrap();
-
-                            prog.insert(CallTarget::Concrete(func))
-                        }));
-
-                        println!("function finished");
-
-                        Ok(new_functions)
-                    });
-
-                    match th.join() {
-                        Ok(Ok(ref new_functions)) => {
-                            try!(Controller::emit(FINISHED_FUNCTION,&uuid.to_string()));
-                            for a in new_functions {
-                                println!("found new func at {:?}",a);
-                                try!(Controller::emit(DISCOVERED_FUNCTION,&a.to_string()));
-                            }
-                        },
-                        Err(e) => {
-                            error!("error while disassembling {:?}: {:?}",uuid,e);
-                            try!(Controller::emit(FINISHED_FUNCTION,&uuid.to_string()))
-                        },
-                        Ok(Err(e)) => {
-                            error!("error while disassembling {:?}: {:?}",uuid,e);
-                            try!(Controller::emit(FINISHED_FUNCTION,&uuid.to_string()))
-                        },
                     }
-
-                    println!("");
-                } else {
-                    println!("");
-                    break;
+                    Some((rv,maybe_name,uuid)) => {
+                        debug!("skip call to {:?} ({:?},{:?})",rv,maybe_name,uuid);
+                    }
+                    None => {
+                        break;
+                    }
                 }
             }
-
-
         } else {
             unreachable!()
         }
