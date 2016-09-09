@@ -32,6 +32,22 @@ get_strings() {
    esac
 }
 
+print_tail() {
+	echo "let ret: \$crate::result::Result<Vec<\$crate::il::Statement>> = match stmt[0].sanity_check() {"
+	echo "	Ok(()) => {"
+	echo "    let mut tail: \$crate::result::Result<Vec<\$crate::il::Statement>> = { rreil!( \$(\$cdr)*) };"
+	echo "    match tail {"
+	echo "		  Ok(ref mut other) => {"
+	echo "			  stmt.extend(other.drain(..));"
+	echo "		  	Ok(stmt)"
+	echo "		  }"
+	echo "		  Err(e) => Err(e),"
+	echo "	  }"
+	echo "  },"
+	echo "	Err(e) => Err(e).into(),"
+	echo "}; ret"
+}
+
 echo "macro_rules! rreil_binop {"
 
 for A in lit litw noff undef
@@ -56,9 +72,7 @@ do
          echo "    ( \$op:ident # $A_MATCH, $X_MATCH , $Y_MATCH ; \$(\$cdr:tt)*) => {"
          echo "        {"
 				 echo "            let mut stmt = vec![\$crate::Statement{ op: $crate::Operation::\$op(rreil_rvalue!($X_ARG),rreil_rvalue!($Y_ARG)), assignee: rreil_lvalue!($A_ARG)}];"
-				 echo "            let _ = try!(stmt[0].sanity_check());"
-				 echo "            stmt.append(&mut rreil!(\$(\$cdr)*));"
-				 echo "            stmt"
+				 print_tail
          echo "        }"
          echo "    };"
          echo ""
@@ -86,9 +100,7 @@ do
       echo "    ( \$op:ident # $A_MATCH, $X_MATCH ; \$(\$cdr:tt)*) => {"
       echo "        {"
       echo "            let mut stmt = vec![\$crate::Statement{ op: $crate::Operation::\$op(rreil_rvalue!($X_ARG)), assignee: rreil_lvalue!($A_ARG)}];"
-			echo "            let _ = try!(stmt[0].sanity_check());"
-			echo "            stmt.append(&mut rreil!( \$(\$cdr)*));"
-			echo "            stmt"
+			print_tail
       echo "        }"
       echo "    };"
       echo ""
@@ -115,9 +127,7 @@ do
       echo "    ( \$op:ident # \$bank:ident # $A_MATCH, $X_MATCH ; \$(\$cdr:tt)*) => {"
       echo "        {"
       echo "            let mut stmt = vec![\$crate::Statement{ op: $crate::Operation::\$op(::std::borrow::Cow::Borrowed(stringify!(\$bank)),rreil_rvalue!($X_ARG)), assignee: rreil_lvalue!($A_ARG)}];"
-			echo "            let _ = try!(stmt[0].sanity_check());"
-			echo "            stmt.append(&mut rreil!( \$(\$cdr)*));"
-			echo "            stmt"
+			print_tail
       echo "        }"
       echo "    };"
       echo ""
@@ -144,11 +154,9 @@ do
       echo "    ( \$op:ident # \$sz:tt # $A_MATCH, $X_MATCH ; \$(\$cdr:tt)*) => {"
       echo "        {"
       echo "            let mut stmt = vec![\$crate::Statement{ op: $crate::Operation::\$op(rreil_imm!(\$sz),rreil_rvalue!($X_ARG)), assignee: rreil_lvalue!($A_ARG)}];"
-			echo "            let _ = try!(stmt[0].sanity_check());"
-			echo "            stmt.append(&mut rreil!( \$(\$cdr)*));"
-			echo "            stmt"
+			print_tail
       echo "        }"
-      echo "    };"
+			echo "    };"
       echo ""
    done
 done
@@ -173,9 +181,7 @@ do
       echo "    ( \$op:ident # \$sz:tt # $A_MATCH, $X_MATCH ; \$(\$cdr:tt)*) => {"
       echo "        {"
 			echo "            let mut stmt = vec![\$crate::Statement{ op: $crate::Operation::\$op(rreil_imm!(\$sz),rreil_rvalue!($A_ARG),rreil_rvalue!($X_ARG)), assignee: rreil_lvalue!($A_ARG)}];"
-			echo "            let _ = try!(stmt[0].sanity_check());"
-			echo "            stmt.append(&mut rreil!( \$(\$cdr)*));"
-			echo "            stmt"
+			print_tail
       echo "        }"
       echo "    };"
       echo ""

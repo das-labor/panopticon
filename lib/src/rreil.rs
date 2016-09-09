@@ -3,9 +3,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ( $a:expr ), $x:tt : $x_w:tt , $y:tt : $y_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!($x : $x_w),rreil_rvalue!($y : $y_w)), assignee: rreil_lvalue!(( $a ))}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -13,9 +23,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ( $a:expr ), $x:tt : $x_w:tt , $y:tt : $y_w:tt / $y_o:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!($x : $x_w),rreil_rvalue!($y : $y_w / $y_o)), assignee: rreil_lvalue!(( $a ))}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -23,9 +43,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ( $a:expr ), $x:tt : $x_w:tt , ( $y:expr ) ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!($x : $x_w),rreil_rvalue!(( $y ))), assignee: rreil_lvalue!(( $a ))}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -33,9 +63,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ( $a:expr ), $x:tt : $x_w:tt , ( $y:expr ) : $y_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!($x : $x_w),rreil_rvalue!(( $y ) : $y_w)), assignee: rreil_lvalue!(( $a ))}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -43,9 +83,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ( $a:expr ), $x:tt : $x_w:tt , [ $y:tt ] : $y_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!($x : $x_w),rreil_rvalue!([ $y ] : $y_w)), assignee: rreil_lvalue!(( $a ))}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -53,9 +103,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ( $a:expr ), $x:tt : $x_w:tt , ? ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!($x : $x_w),rreil_rvalue!(?)), assignee: rreil_lvalue!(( $a ))}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -63,9 +123,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ( $a:expr ), $x:tt : $x_w:tt / $x_o:tt , $y:tt : $y_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!($x : $x_w / $x_o),rreil_rvalue!($y : $y_w)), assignee: rreil_lvalue!(( $a ))}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -73,9 +143,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ( $a:expr ), $x:tt : $x_w:tt / $x_o:tt , $y:tt : $y_w:tt / $y_o:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!($x : $x_w / $x_o),rreil_rvalue!($y : $y_w / $y_o)), assignee: rreil_lvalue!(( $a ))}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -83,9 +163,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ( $a:expr ), $x:tt : $x_w:tt / $x_o:tt , ( $y:expr ) ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!($x : $x_w / $x_o),rreil_rvalue!(( $y ))), assignee: rreil_lvalue!(( $a ))}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -93,9 +183,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ( $a:expr ), $x:tt : $x_w:tt / $x_o:tt , ( $y:expr ) : $y_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!($x : $x_w / $x_o),rreil_rvalue!(( $y ) : $y_w)), assignee: rreil_lvalue!(( $a ))}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -103,9 +203,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ( $a:expr ), $x:tt : $x_w:tt / $x_o:tt , [ $y:tt ] : $y_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!($x : $x_w / $x_o),rreil_rvalue!([ $y ] : $y_w)), assignee: rreil_lvalue!(( $a ))}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -113,9 +223,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ( $a:expr ), $x:tt : $x_w:tt / $x_o:tt , ? ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!($x : $x_w / $x_o),rreil_rvalue!(?)), assignee: rreil_lvalue!(( $a ))}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -123,9 +243,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ( $a:expr ), ( $x:expr ) , $y:tt : $y_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!(( $x )),rreil_rvalue!($y : $y_w)), assignee: rreil_lvalue!(( $a ))}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -133,9 +263,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ( $a:expr ), ( $x:expr ) , $y:tt : $y_w:tt / $y_o:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!(( $x )),rreil_rvalue!($y : $y_w / $y_o)), assignee: rreil_lvalue!(( $a ))}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -143,9 +283,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ( $a:expr ), ( $x:expr ) , ( $y:expr ) ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!(( $x )),rreil_rvalue!(( $y ))), assignee: rreil_lvalue!(( $a ))}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -153,9 +303,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ( $a:expr ), ( $x:expr ) , ( $y:expr ) : $y_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!(( $x )),rreil_rvalue!(( $y ) : $y_w)), assignee: rreil_lvalue!(( $a ))}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -163,9 +323,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ( $a:expr ), ( $x:expr ) , [ $y:tt ] : $y_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!(( $x )),rreil_rvalue!([ $y ] : $y_w)), assignee: rreil_lvalue!(( $a ))}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -173,9 +343,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ( $a:expr ), ( $x:expr ) , ? ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!(( $x )),rreil_rvalue!(?)), assignee: rreil_lvalue!(( $a ))}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -183,9 +363,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ( $a:expr ), ( $x:expr ) : $x_w:tt , $y:tt : $y_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!(( $x ) : $x_w),rreil_rvalue!($y : $y_w)), assignee: rreil_lvalue!(( $a ))}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -193,9 +383,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ( $a:expr ), ( $x:expr ) : $x_w:tt , $y:tt : $y_w:tt / $y_o:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!(( $x ) : $x_w),rreil_rvalue!($y : $y_w / $y_o)), assignee: rreil_lvalue!(( $a ))}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -203,9 +403,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ( $a:expr ), ( $x:expr ) : $x_w:tt , ( $y:expr ) ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!(( $x ) : $x_w),rreil_rvalue!(( $y ))), assignee: rreil_lvalue!(( $a ))}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -213,9 +423,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ( $a:expr ), ( $x:expr ) : $x_w:tt , ( $y:expr ) : $y_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!(( $x ) : $x_w),rreil_rvalue!(( $y ) : $y_w)), assignee: rreil_lvalue!(( $a ))}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -223,9 +443,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ( $a:expr ), ( $x:expr ) : $x_w:tt , [ $y:tt ] : $y_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!(( $x ) : $x_w),rreil_rvalue!([ $y ] : $y_w)), assignee: rreil_lvalue!(( $a ))}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -233,9 +463,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ( $a:expr ), ( $x:expr ) : $x_w:tt , ? ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!(( $x ) : $x_w),rreil_rvalue!(?)), assignee: rreil_lvalue!(( $a ))}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -243,9 +483,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ( $a:expr ), [ $x:tt ] : $x_w:tt , $y:tt : $y_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!([ $x ] : $x_w),rreil_rvalue!($y : $y_w)), assignee: rreil_lvalue!(( $a ))}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -253,9 +503,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ( $a:expr ), [ $x:tt ] : $x_w:tt , $y:tt : $y_w:tt / $y_o:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!([ $x ] : $x_w),rreil_rvalue!($y : $y_w / $y_o)), assignee: rreil_lvalue!(( $a ))}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -263,9 +523,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ( $a:expr ), [ $x:tt ] : $x_w:tt , ( $y:expr ) ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!([ $x ] : $x_w),rreil_rvalue!(( $y ))), assignee: rreil_lvalue!(( $a ))}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -273,9 +543,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ( $a:expr ), [ $x:tt ] : $x_w:tt , ( $y:expr ) : $y_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!([ $x ] : $x_w),rreil_rvalue!(( $y ) : $y_w)), assignee: rreil_lvalue!(( $a ))}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -283,9 +563,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ( $a:expr ), [ $x:tt ] : $x_w:tt , [ $y:tt ] : $y_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!([ $x ] : $x_w),rreil_rvalue!([ $y ] : $y_w)), assignee: rreil_lvalue!(( $a ))}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -293,9 +583,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ( $a:expr ), [ $x:tt ] : $x_w:tt , ? ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!([ $x ] : $x_w),rreil_rvalue!(?)), assignee: rreil_lvalue!(( $a ))}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -303,9 +603,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ( $a:expr ), ? , $y:tt : $y_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!(?),rreil_rvalue!($y : $y_w)), assignee: rreil_lvalue!(( $a ))}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -313,9 +623,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ( $a:expr ), ? , $y:tt : $y_w:tt / $y_o:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!(?),rreil_rvalue!($y : $y_w / $y_o)), assignee: rreil_lvalue!(( $a ))}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -323,9 +643,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ( $a:expr ), ? , ( $y:expr ) ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!(?),rreil_rvalue!(( $y ))), assignee: rreil_lvalue!(( $a ))}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -333,9 +663,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ( $a:expr ), ? , ( $y:expr ) : $y_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!(?),rreil_rvalue!(( $y ) : $y_w)), assignee: rreil_lvalue!(( $a ))}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -343,9 +683,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ( $a:expr ), ? , [ $y:tt ] : $y_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!(?),rreil_rvalue!([ $y ] : $y_w)), assignee: rreil_lvalue!(( $a ))}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -353,9 +703,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ( $a:expr ), ? , ? ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!(?),rreil_rvalue!(?)), assignee: rreil_lvalue!(( $a ))}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -363,9 +723,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ( $a:expr ) : $a_w:tt, $x:tt : $x_w:tt , $y:tt : $y_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!($x : $x_w),rreil_rvalue!($y : $y_w)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -373,9 +743,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ( $a:expr ) : $a_w:tt, $x:tt : $x_w:tt , $y:tt : $y_w:tt / $y_o:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!($x : $x_w),rreil_rvalue!($y : $y_w / $y_o)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -383,9 +763,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ( $a:expr ) : $a_w:tt, $x:tt : $x_w:tt , ( $y:expr ) ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!($x : $x_w),rreil_rvalue!(( $y ))), assignee: rreil_lvalue!(( $a ) : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -393,9 +783,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ( $a:expr ) : $a_w:tt, $x:tt : $x_w:tt , ( $y:expr ) : $y_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!($x : $x_w),rreil_rvalue!(( $y ) : $y_w)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -403,9 +803,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ( $a:expr ) : $a_w:tt, $x:tt : $x_w:tt , [ $y:tt ] : $y_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!($x : $x_w),rreil_rvalue!([ $y ] : $y_w)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -413,9 +823,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ( $a:expr ) : $a_w:tt, $x:tt : $x_w:tt , ? ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!($x : $x_w),rreil_rvalue!(?)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -423,9 +843,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ( $a:expr ) : $a_w:tt, $x:tt : $x_w:tt / $x_o:tt , $y:tt : $y_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!($x : $x_w / $x_o),rreil_rvalue!($y : $y_w)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -433,9 +863,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ( $a:expr ) : $a_w:tt, $x:tt : $x_w:tt / $x_o:tt , $y:tt : $y_w:tt / $y_o:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!($x : $x_w / $x_o),rreil_rvalue!($y : $y_w / $y_o)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -443,9 +883,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ( $a:expr ) : $a_w:tt, $x:tt : $x_w:tt / $x_o:tt , ( $y:expr ) ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!($x : $x_w / $x_o),rreil_rvalue!(( $y ))), assignee: rreil_lvalue!(( $a ) : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -453,9 +903,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ( $a:expr ) : $a_w:tt, $x:tt : $x_w:tt / $x_o:tt , ( $y:expr ) : $y_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!($x : $x_w / $x_o),rreil_rvalue!(( $y ) : $y_w)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -463,9 +923,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ( $a:expr ) : $a_w:tt, $x:tt : $x_w:tt / $x_o:tt , [ $y:tt ] : $y_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!($x : $x_w / $x_o),rreil_rvalue!([ $y ] : $y_w)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -473,9 +943,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ( $a:expr ) : $a_w:tt, $x:tt : $x_w:tt / $x_o:tt , ? ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!($x : $x_w / $x_o),rreil_rvalue!(?)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -483,9 +963,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ( $a:expr ) : $a_w:tt, ( $x:expr ) , $y:tt : $y_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!(( $x )),rreil_rvalue!($y : $y_w)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -493,9 +983,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ( $a:expr ) : $a_w:tt, ( $x:expr ) , $y:tt : $y_w:tt / $y_o:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!(( $x )),rreil_rvalue!($y : $y_w / $y_o)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -503,9 +1003,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ( $a:expr ) : $a_w:tt, ( $x:expr ) , ( $y:expr ) ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!(( $x )),rreil_rvalue!(( $y ))), assignee: rreil_lvalue!(( $a ) : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -513,9 +1023,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ( $a:expr ) : $a_w:tt, ( $x:expr ) , ( $y:expr ) : $y_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!(( $x )),rreil_rvalue!(( $y ) : $y_w)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -523,9 +1043,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ( $a:expr ) : $a_w:tt, ( $x:expr ) , [ $y:tt ] : $y_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!(( $x )),rreil_rvalue!([ $y ] : $y_w)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -533,9 +1063,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ( $a:expr ) : $a_w:tt, ( $x:expr ) , ? ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!(( $x )),rreil_rvalue!(?)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -543,9 +1083,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ( $a:expr ) : $a_w:tt, ( $x:expr ) : $x_w:tt , $y:tt : $y_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!(( $x ) : $x_w),rreil_rvalue!($y : $y_w)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -553,9 +1103,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ( $a:expr ) : $a_w:tt, ( $x:expr ) : $x_w:tt , $y:tt : $y_w:tt / $y_o:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!(( $x ) : $x_w),rreil_rvalue!($y : $y_w / $y_o)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -563,9 +1123,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ( $a:expr ) : $a_w:tt, ( $x:expr ) : $x_w:tt , ( $y:expr ) ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!(( $x ) : $x_w),rreil_rvalue!(( $y ))), assignee: rreil_lvalue!(( $a ) : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -573,9 +1143,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ( $a:expr ) : $a_w:tt, ( $x:expr ) : $x_w:tt , ( $y:expr ) : $y_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!(( $x ) : $x_w),rreil_rvalue!(( $y ) : $y_w)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -583,9 +1163,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ( $a:expr ) : $a_w:tt, ( $x:expr ) : $x_w:tt , [ $y:tt ] : $y_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!(( $x ) : $x_w),rreil_rvalue!([ $y ] : $y_w)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -593,9 +1183,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ( $a:expr ) : $a_w:tt, ( $x:expr ) : $x_w:tt , ? ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!(( $x ) : $x_w),rreil_rvalue!(?)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -603,9 +1203,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ( $a:expr ) : $a_w:tt, [ $x:tt ] : $x_w:tt , $y:tt : $y_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!([ $x ] : $x_w),rreil_rvalue!($y : $y_w)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -613,9 +1223,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ( $a:expr ) : $a_w:tt, [ $x:tt ] : $x_w:tt , $y:tt : $y_w:tt / $y_o:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!([ $x ] : $x_w),rreil_rvalue!($y : $y_w / $y_o)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -623,9 +1243,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ( $a:expr ) : $a_w:tt, [ $x:tt ] : $x_w:tt , ( $y:expr ) ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!([ $x ] : $x_w),rreil_rvalue!(( $y ))), assignee: rreil_lvalue!(( $a ) : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -633,9 +1263,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ( $a:expr ) : $a_w:tt, [ $x:tt ] : $x_w:tt , ( $y:expr ) : $y_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!([ $x ] : $x_w),rreil_rvalue!(( $y ) : $y_w)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -643,9 +1283,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ( $a:expr ) : $a_w:tt, [ $x:tt ] : $x_w:tt , [ $y:tt ] : $y_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!([ $x ] : $x_w),rreil_rvalue!([ $y ] : $y_w)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -653,9 +1303,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ( $a:expr ) : $a_w:tt, [ $x:tt ] : $x_w:tt , ? ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!([ $x ] : $x_w),rreil_rvalue!(?)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -663,9 +1323,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ( $a:expr ) : $a_w:tt, ? , $y:tt : $y_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!(?),rreil_rvalue!($y : $y_w)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -673,9 +1343,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ( $a:expr ) : $a_w:tt, ? , $y:tt : $y_w:tt / $y_o:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!(?),rreil_rvalue!($y : $y_w / $y_o)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -683,9 +1363,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ( $a:expr ) : $a_w:tt, ? , ( $y:expr ) ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!(?),rreil_rvalue!(( $y ))), assignee: rreil_lvalue!(( $a ) : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -693,9 +1383,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ( $a:expr ) : $a_w:tt, ? , ( $y:expr ) : $y_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!(?),rreil_rvalue!(( $y ) : $y_w)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -703,9 +1403,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ( $a:expr ) : $a_w:tt, ? , [ $y:tt ] : $y_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!(?),rreil_rvalue!([ $y ] : $y_w)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -713,9 +1423,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ( $a:expr ) : $a_w:tt, ? , ? ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!(?),rreil_rvalue!(?)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -723,9 +1443,19 @@ macro_rules! rreil_binop {
     ( $op:ident # $a:tt : $a_w:tt, $x:tt : $x_w:tt , $y:tt : $y_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!($x : $x_w),rreil_rvalue!($y : $y_w)), assignee: rreil_lvalue!($a : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -733,9 +1463,19 @@ macro_rules! rreil_binop {
     ( $op:ident # $a:tt : $a_w:tt, $x:tt : $x_w:tt , $y:tt : $y_w:tt / $y_o:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!($x : $x_w),rreil_rvalue!($y : $y_w / $y_o)), assignee: rreil_lvalue!($a : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -743,9 +1483,19 @@ macro_rules! rreil_binop {
     ( $op:ident # $a:tt : $a_w:tt, $x:tt : $x_w:tt , ( $y:expr ) ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!($x : $x_w),rreil_rvalue!(( $y ))), assignee: rreil_lvalue!($a : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -753,9 +1503,19 @@ macro_rules! rreil_binop {
     ( $op:ident # $a:tt : $a_w:tt, $x:tt : $x_w:tt , ( $y:expr ) : $y_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!($x : $x_w),rreil_rvalue!(( $y ) : $y_w)), assignee: rreil_lvalue!($a : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -763,9 +1523,19 @@ macro_rules! rreil_binop {
     ( $op:ident # $a:tt : $a_w:tt, $x:tt : $x_w:tt , [ $y:tt ] : $y_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!($x : $x_w),rreil_rvalue!([ $y ] : $y_w)), assignee: rreil_lvalue!($a : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -773,9 +1543,19 @@ macro_rules! rreil_binop {
     ( $op:ident # $a:tt : $a_w:tt, $x:tt : $x_w:tt , ? ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!($x : $x_w),rreil_rvalue!(?)), assignee: rreil_lvalue!($a : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -783,9 +1563,19 @@ macro_rules! rreil_binop {
     ( $op:ident # $a:tt : $a_w:tt, $x:tt : $x_w:tt / $x_o:tt , $y:tt : $y_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!($x : $x_w / $x_o),rreil_rvalue!($y : $y_w)), assignee: rreil_lvalue!($a : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -793,9 +1583,19 @@ macro_rules! rreil_binop {
     ( $op:ident # $a:tt : $a_w:tt, $x:tt : $x_w:tt / $x_o:tt , $y:tt : $y_w:tt / $y_o:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!($x : $x_w / $x_o),rreil_rvalue!($y : $y_w / $y_o)), assignee: rreil_lvalue!($a : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -803,9 +1603,19 @@ macro_rules! rreil_binop {
     ( $op:ident # $a:tt : $a_w:tt, $x:tt : $x_w:tt / $x_o:tt , ( $y:expr ) ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!($x : $x_w / $x_o),rreil_rvalue!(( $y ))), assignee: rreil_lvalue!($a : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -813,9 +1623,19 @@ macro_rules! rreil_binop {
     ( $op:ident # $a:tt : $a_w:tt, $x:tt : $x_w:tt / $x_o:tt , ( $y:expr ) : $y_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!($x : $x_w / $x_o),rreil_rvalue!(( $y ) : $y_w)), assignee: rreil_lvalue!($a : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -823,9 +1643,19 @@ macro_rules! rreil_binop {
     ( $op:ident # $a:tt : $a_w:tt, $x:tt : $x_w:tt / $x_o:tt , [ $y:tt ] : $y_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!($x : $x_w / $x_o),rreil_rvalue!([ $y ] : $y_w)), assignee: rreil_lvalue!($a : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -833,9 +1663,19 @@ macro_rules! rreil_binop {
     ( $op:ident # $a:tt : $a_w:tt, $x:tt : $x_w:tt / $x_o:tt , ? ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!($x : $x_w / $x_o),rreil_rvalue!(?)), assignee: rreil_lvalue!($a : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -843,9 +1683,19 @@ macro_rules! rreil_binop {
     ( $op:ident # $a:tt : $a_w:tt, ( $x:expr ) , $y:tt : $y_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!(( $x )),rreil_rvalue!($y : $y_w)), assignee: rreil_lvalue!($a : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -853,9 +1703,19 @@ macro_rules! rreil_binop {
     ( $op:ident # $a:tt : $a_w:tt, ( $x:expr ) , $y:tt : $y_w:tt / $y_o:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!(( $x )),rreil_rvalue!($y : $y_w / $y_o)), assignee: rreil_lvalue!($a : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -863,9 +1723,19 @@ macro_rules! rreil_binop {
     ( $op:ident # $a:tt : $a_w:tt, ( $x:expr ) , ( $y:expr ) ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!(( $x )),rreil_rvalue!(( $y ))), assignee: rreil_lvalue!($a : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -873,9 +1743,19 @@ macro_rules! rreil_binop {
     ( $op:ident # $a:tt : $a_w:tt, ( $x:expr ) , ( $y:expr ) : $y_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!(( $x )),rreil_rvalue!(( $y ) : $y_w)), assignee: rreil_lvalue!($a : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -883,9 +1763,19 @@ macro_rules! rreil_binop {
     ( $op:ident # $a:tt : $a_w:tt, ( $x:expr ) , [ $y:tt ] : $y_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!(( $x )),rreil_rvalue!([ $y ] : $y_w)), assignee: rreil_lvalue!($a : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -893,9 +1783,19 @@ macro_rules! rreil_binop {
     ( $op:ident # $a:tt : $a_w:tt, ( $x:expr ) , ? ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!(( $x )),rreil_rvalue!(?)), assignee: rreil_lvalue!($a : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -903,9 +1803,19 @@ macro_rules! rreil_binop {
     ( $op:ident # $a:tt : $a_w:tt, ( $x:expr ) : $x_w:tt , $y:tt : $y_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!(( $x ) : $x_w),rreil_rvalue!($y : $y_w)), assignee: rreil_lvalue!($a : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -913,9 +1823,19 @@ macro_rules! rreil_binop {
     ( $op:ident # $a:tt : $a_w:tt, ( $x:expr ) : $x_w:tt , $y:tt : $y_w:tt / $y_o:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!(( $x ) : $x_w),rreil_rvalue!($y : $y_w / $y_o)), assignee: rreil_lvalue!($a : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -923,9 +1843,19 @@ macro_rules! rreil_binop {
     ( $op:ident # $a:tt : $a_w:tt, ( $x:expr ) : $x_w:tt , ( $y:expr ) ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!(( $x ) : $x_w),rreil_rvalue!(( $y ))), assignee: rreil_lvalue!($a : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -933,9 +1863,19 @@ macro_rules! rreil_binop {
     ( $op:ident # $a:tt : $a_w:tt, ( $x:expr ) : $x_w:tt , ( $y:expr ) : $y_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!(( $x ) : $x_w),rreil_rvalue!(( $y ) : $y_w)), assignee: rreil_lvalue!($a : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -943,9 +1883,19 @@ macro_rules! rreil_binop {
     ( $op:ident # $a:tt : $a_w:tt, ( $x:expr ) : $x_w:tt , [ $y:tt ] : $y_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!(( $x ) : $x_w),rreil_rvalue!([ $y ] : $y_w)), assignee: rreil_lvalue!($a : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -953,9 +1903,19 @@ macro_rules! rreil_binop {
     ( $op:ident # $a:tt : $a_w:tt, ( $x:expr ) : $x_w:tt , ? ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!(( $x ) : $x_w),rreil_rvalue!(?)), assignee: rreil_lvalue!($a : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -963,9 +1923,19 @@ macro_rules! rreil_binop {
     ( $op:ident # $a:tt : $a_w:tt, [ $x:tt ] : $x_w:tt , $y:tt : $y_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!([ $x ] : $x_w),rreil_rvalue!($y : $y_w)), assignee: rreil_lvalue!($a : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -973,9 +1943,19 @@ macro_rules! rreil_binop {
     ( $op:ident # $a:tt : $a_w:tt, [ $x:tt ] : $x_w:tt , $y:tt : $y_w:tt / $y_o:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!([ $x ] : $x_w),rreil_rvalue!($y : $y_w / $y_o)), assignee: rreil_lvalue!($a : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -983,9 +1963,19 @@ macro_rules! rreil_binop {
     ( $op:ident # $a:tt : $a_w:tt, [ $x:tt ] : $x_w:tt , ( $y:expr ) ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!([ $x ] : $x_w),rreil_rvalue!(( $y ))), assignee: rreil_lvalue!($a : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -993,9 +1983,19 @@ macro_rules! rreil_binop {
     ( $op:ident # $a:tt : $a_w:tt, [ $x:tt ] : $x_w:tt , ( $y:expr ) : $y_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!([ $x ] : $x_w),rreil_rvalue!(( $y ) : $y_w)), assignee: rreil_lvalue!($a : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1003,9 +2003,19 @@ macro_rules! rreil_binop {
     ( $op:ident # $a:tt : $a_w:tt, [ $x:tt ] : $x_w:tt , [ $y:tt ] : $y_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!([ $x ] : $x_w),rreil_rvalue!([ $y ] : $y_w)), assignee: rreil_lvalue!($a : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1013,9 +2023,19 @@ macro_rules! rreil_binop {
     ( $op:ident # $a:tt : $a_w:tt, [ $x:tt ] : $x_w:tt , ? ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!([ $x ] : $x_w),rreil_rvalue!(?)), assignee: rreil_lvalue!($a : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1023,9 +2043,19 @@ macro_rules! rreil_binop {
     ( $op:ident # $a:tt : $a_w:tt, ? , $y:tt : $y_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!(?),rreil_rvalue!($y : $y_w)), assignee: rreil_lvalue!($a : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1033,9 +2063,19 @@ macro_rules! rreil_binop {
     ( $op:ident # $a:tt : $a_w:tt, ? , $y:tt : $y_w:tt / $y_o:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!(?),rreil_rvalue!($y : $y_w / $y_o)), assignee: rreil_lvalue!($a : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1043,9 +2083,19 @@ macro_rules! rreil_binop {
     ( $op:ident # $a:tt : $a_w:tt, ? , ( $y:expr ) ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!(?),rreil_rvalue!(( $y ))), assignee: rreil_lvalue!($a : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1053,9 +2103,19 @@ macro_rules! rreil_binop {
     ( $op:ident # $a:tt : $a_w:tt, ? , ( $y:expr ) : $y_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!(?),rreil_rvalue!(( $y ) : $y_w)), assignee: rreil_lvalue!($a : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1063,9 +2123,19 @@ macro_rules! rreil_binop {
     ( $op:ident # $a:tt : $a_w:tt, ? , [ $y:tt ] : $y_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!(?),rreil_rvalue!([ $y ] : $y_w)), assignee: rreil_lvalue!($a : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1073,9 +2143,19 @@ macro_rules! rreil_binop {
     ( $op:ident # $a:tt : $a_w:tt, ? , ? ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!(?),rreil_rvalue!(?)), assignee: rreil_lvalue!($a : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1083,9 +2163,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ?, $x:tt : $x_w:tt , $y:tt : $y_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!($x : $x_w),rreil_rvalue!($y : $y_w)), assignee: rreil_lvalue!(?)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1093,9 +2183,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ?, $x:tt : $x_w:tt , $y:tt : $y_w:tt / $y_o:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!($x : $x_w),rreil_rvalue!($y : $y_w / $y_o)), assignee: rreil_lvalue!(?)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1103,9 +2203,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ?, $x:tt : $x_w:tt , ( $y:expr ) ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!($x : $x_w),rreil_rvalue!(( $y ))), assignee: rreil_lvalue!(?)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1113,9 +2223,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ?, $x:tt : $x_w:tt , ( $y:expr ) : $y_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!($x : $x_w),rreil_rvalue!(( $y ) : $y_w)), assignee: rreil_lvalue!(?)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1123,9 +2243,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ?, $x:tt : $x_w:tt , [ $y:tt ] : $y_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!($x : $x_w),rreil_rvalue!([ $y ] : $y_w)), assignee: rreil_lvalue!(?)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1133,9 +2263,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ?, $x:tt : $x_w:tt , ? ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!($x : $x_w),rreil_rvalue!(?)), assignee: rreil_lvalue!(?)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1143,9 +2283,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ?, $x:tt : $x_w:tt / $x_o:tt , $y:tt : $y_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!($x : $x_w / $x_o),rreil_rvalue!($y : $y_w)), assignee: rreil_lvalue!(?)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1153,9 +2303,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ?, $x:tt : $x_w:tt / $x_o:tt , $y:tt : $y_w:tt / $y_o:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!($x : $x_w / $x_o),rreil_rvalue!($y : $y_w / $y_o)), assignee: rreil_lvalue!(?)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1163,9 +2323,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ?, $x:tt : $x_w:tt / $x_o:tt , ( $y:expr ) ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!($x : $x_w / $x_o),rreil_rvalue!(( $y ))), assignee: rreil_lvalue!(?)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1173,9 +2343,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ?, $x:tt : $x_w:tt / $x_o:tt , ( $y:expr ) : $y_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!($x : $x_w / $x_o),rreil_rvalue!(( $y ) : $y_w)), assignee: rreil_lvalue!(?)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1183,9 +2363,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ?, $x:tt : $x_w:tt / $x_o:tt , [ $y:tt ] : $y_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!($x : $x_w / $x_o),rreil_rvalue!([ $y ] : $y_w)), assignee: rreil_lvalue!(?)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1193,9 +2383,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ?, $x:tt : $x_w:tt / $x_o:tt , ? ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!($x : $x_w / $x_o),rreil_rvalue!(?)), assignee: rreil_lvalue!(?)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1203,9 +2403,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ?, ( $x:expr ) , $y:tt : $y_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!(( $x )),rreil_rvalue!($y : $y_w)), assignee: rreil_lvalue!(?)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1213,9 +2423,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ?, ( $x:expr ) , $y:tt : $y_w:tt / $y_o:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!(( $x )),rreil_rvalue!($y : $y_w / $y_o)), assignee: rreil_lvalue!(?)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1223,9 +2443,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ?, ( $x:expr ) , ( $y:expr ) ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!(( $x )),rreil_rvalue!(( $y ))), assignee: rreil_lvalue!(?)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1233,9 +2463,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ?, ( $x:expr ) , ( $y:expr ) : $y_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!(( $x )),rreil_rvalue!(( $y ) : $y_w)), assignee: rreil_lvalue!(?)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1243,9 +2483,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ?, ( $x:expr ) , [ $y:tt ] : $y_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!(( $x )),rreil_rvalue!([ $y ] : $y_w)), assignee: rreil_lvalue!(?)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1253,9 +2503,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ?, ( $x:expr ) , ? ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!(( $x )),rreil_rvalue!(?)), assignee: rreil_lvalue!(?)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1263,9 +2523,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ?, ( $x:expr ) : $x_w:tt , $y:tt : $y_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!(( $x ) : $x_w),rreil_rvalue!($y : $y_w)), assignee: rreil_lvalue!(?)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1273,9 +2543,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ?, ( $x:expr ) : $x_w:tt , $y:tt : $y_w:tt / $y_o:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!(( $x ) : $x_w),rreil_rvalue!($y : $y_w / $y_o)), assignee: rreil_lvalue!(?)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1283,9 +2563,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ?, ( $x:expr ) : $x_w:tt , ( $y:expr ) ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!(( $x ) : $x_w),rreil_rvalue!(( $y ))), assignee: rreil_lvalue!(?)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1293,9 +2583,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ?, ( $x:expr ) : $x_w:tt , ( $y:expr ) : $y_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!(( $x ) : $x_w),rreil_rvalue!(( $y ) : $y_w)), assignee: rreil_lvalue!(?)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1303,9 +2603,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ?, ( $x:expr ) : $x_w:tt , [ $y:tt ] : $y_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!(( $x ) : $x_w),rreil_rvalue!([ $y ] : $y_w)), assignee: rreil_lvalue!(?)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1313,9 +2623,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ?, ( $x:expr ) : $x_w:tt , ? ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!(( $x ) : $x_w),rreil_rvalue!(?)), assignee: rreil_lvalue!(?)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1323,9 +2643,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ?, [ $x:tt ] : $x_w:tt , $y:tt : $y_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!([ $x ] : $x_w),rreil_rvalue!($y : $y_w)), assignee: rreil_lvalue!(?)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1333,9 +2663,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ?, [ $x:tt ] : $x_w:tt , $y:tt : $y_w:tt / $y_o:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!([ $x ] : $x_w),rreil_rvalue!($y : $y_w / $y_o)), assignee: rreil_lvalue!(?)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1343,9 +2683,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ?, [ $x:tt ] : $x_w:tt , ( $y:expr ) ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!([ $x ] : $x_w),rreil_rvalue!(( $y ))), assignee: rreil_lvalue!(?)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1353,9 +2703,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ?, [ $x:tt ] : $x_w:tt , ( $y:expr ) : $y_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!([ $x ] : $x_w),rreil_rvalue!(( $y ) : $y_w)), assignee: rreil_lvalue!(?)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1363,9 +2723,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ?, [ $x:tt ] : $x_w:tt , [ $y:tt ] : $y_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!([ $x ] : $x_w),rreil_rvalue!([ $y ] : $y_w)), assignee: rreil_lvalue!(?)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1373,9 +2743,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ?, [ $x:tt ] : $x_w:tt , ? ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!([ $x ] : $x_w),rreil_rvalue!(?)), assignee: rreil_lvalue!(?)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1383,9 +2763,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ?, ? , $y:tt : $y_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!(?),rreil_rvalue!($y : $y_w)), assignee: rreil_lvalue!(?)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1393,9 +2783,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ?, ? , $y:tt : $y_w:tt / $y_o:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!(?),rreil_rvalue!($y : $y_w / $y_o)), assignee: rreil_lvalue!(?)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1403,9 +2803,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ?, ? , ( $y:expr ) ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!(?),rreil_rvalue!(( $y ))), assignee: rreil_lvalue!(?)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1413,9 +2823,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ?, ? , ( $y:expr ) : $y_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!(?),rreil_rvalue!(( $y ) : $y_w)), assignee: rreil_lvalue!(?)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1423,9 +2843,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ?, ? , [ $y:tt ] : $y_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!(?),rreil_rvalue!([ $y ] : $y_w)), assignee: rreil_lvalue!(?)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1433,9 +2863,19 @@ macro_rules! rreil_binop {
     ( $op:ident # ?, ? , ? ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!(?),rreil_rvalue!(?)), assignee: rreil_lvalue!(?)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!($($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1446,9 +2886,19 @@ macro_rules! rreil_unop {
     ( $op:ident # ( $a:expr ), $x:tt : $x_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!($x : $x_w)), assignee: rreil_lvalue!(( $a ))}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1456,9 +2906,19 @@ macro_rules! rreil_unop {
     ( $op:ident # ( $a:expr ), $x:tt : $x_w:tt / $x_o:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!($x : $x_w / $x_o)), assignee: rreil_lvalue!(( $a ))}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1466,9 +2926,19 @@ macro_rules! rreil_unop {
     ( $op:ident # ( $a:expr ), ( $x:expr ) ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!(( $x ))), assignee: rreil_lvalue!(( $a ))}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1476,9 +2946,19 @@ macro_rules! rreil_unop {
     ( $op:ident # ( $a:expr ), ( $x:expr ) : $x_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!(( $x ) : $x_w)), assignee: rreil_lvalue!(( $a ))}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1486,9 +2966,19 @@ macro_rules! rreil_unop {
     ( $op:ident # ( $a:expr ), [ $x:tt ] : $x_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!([ $x ] : $x_w)), assignee: rreil_lvalue!(( $a ))}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1496,9 +2986,19 @@ macro_rules! rreil_unop {
     ( $op:ident # ( $a:expr ), ? ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!(?)), assignee: rreil_lvalue!(( $a ))}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1506,9 +3006,19 @@ macro_rules! rreil_unop {
     ( $op:ident # ( $a:expr ) : $a_w:tt, $x:tt : $x_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!($x : $x_w)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1516,9 +3026,19 @@ macro_rules! rreil_unop {
     ( $op:ident # ( $a:expr ) : $a_w:tt, $x:tt : $x_w:tt / $x_o:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!($x : $x_w / $x_o)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1526,9 +3046,19 @@ macro_rules! rreil_unop {
     ( $op:ident # ( $a:expr ) : $a_w:tt, ( $x:expr ) ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!(( $x ))), assignee: rreil_lvalue!(( $a ) : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1536,9 +3066,19 @@ macro_rules! rreil_unop {
     ( $op:ident # ( $a:expr ) : $a_w:tt, ( $x:expr ) : $x_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!(( $x ) : $x_w)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1546,9 +3086,19 @@ macro_rules! rreil_unop {
     ( $op:ident # ( $a:expr ) : $a_w:tt, [ $x:tt ] : $x_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!([ $x ] : $x_w)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1556,9 +3106,19 @@ macro_rules! rreil_unop {
     ( $op:ident # ( $a:expr ) : $a_w:tt, ? ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!(?)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1566,9 +3126,19 @@ macro_rules! rreil_unop {
     ( $op:ident # $a:tt : $a_w:tt, $x:tt : $x_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!($x : $x_w)), assignee: rreil_lvalue!($a : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1576,9 +3146,19 @@ macro_rules! rreil_unop {
     ( $op:ident # $a:tt : $a_w:tt, $x:tt : $x_w:tt / $x_o:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!($x : $x_w / $x_o)), assignee: rreil_lvalue!($a : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1586,9 +3166,19 @@ macro_rules! rreil_unop {
     ( $op:ident # $a:tt : $a_w:tt, ( $x:expr ) ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!(( $x ))), assignee: rreil_lvalue!($a : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1596,9 +3186,19 @@ macro_rules! rreil_unop {
     ( $op:ident # $a:tt : $a_w:tt, ( $x:expr ) : $x_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!(( $x ) : $x_w)), assignee: rreil_lvalue!($a : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1606,9 +3206,19 @@ macro_rules! rreil_unop {
     ( $op:ident # $a:tt : $a_w:tt, [ $x:tt ] : $x_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!([ $x ] : $x_w)), assignee: rreil_lvalue!($a : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1616,9 +3226,19 @@ macro_rules! rreil_unop {
     ( $op:ident # $a:tt : $a_w:tt, ? ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!(?)), assignee: rreil_lvalue!($a : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1626,9 +3246,19 @@ macro_rules! rreil_unop {
     ( $op:ident # ?, $x:tt : $x_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!($x : $x_w)), assignee: rreil_lvalue!(?)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1636,9 +3266,19 @@ macro_rules! rreil_unop {
     ( $op:ident # ?, $x:tt : $x_w:tt / $x_o:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!($x : $x_w / $x_o)), assignee: rreil_lvalue!(?)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1646,9 +3286,19 @@ macro_rules! rreil_unop {
     ( $op:ident # ?, ( $x:expr ) ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!(( $x ))), assignee: rreil_lvalue!(?)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1656,9 +3306,19 @@ macro_rules! rreil_unop {
     ( $op:ident # ?, ( $x:expr ) : $x_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!(( $x ) : $x_w)), assignee: rreil_lvalue!(?)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1666,9 +3326,19 @@ macro_rules! rreil_unop {
     ( $op:ident # ?, [ $x:tt ] : $x_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!([ $x ] : $x_w)), assignee: rreil_lvalue!(?)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1676,9 +3346,19 @@ macro_rules! rreil_unop {
     ( $op:ident # ?, ? ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_rvalue!(?)), assignee: rreil_lvalue!(?)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1689,9 +3369,19 @@ macro_rules! rreil_memop {
     ( $op:ident # $bank:ident # ( $a:expr ), $x:tt : $x_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(::std::borrow::Cow::Borrowed(stringify!($bank)),rreil_rvalue!($x : $x_w)), assignee: rreil_lvalue!(( $a ))}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1699,9 +3389,19 @@ macro_rules! rreil_memop {
     ( $op:ident # $bank:ident # ( $a:expr ), $x:tt : $x_w:tt / $x_o:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(::std::borrow::Cow::Borrowed(stringify!($bank)),rreil_rvalue!($x : $x_w / $x_o)), assignee: rreil_lvalue!(( $a ))}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1709,9 +3409,19 @@ macro_rules! rreil_memop {
     ( $op:ident # $bank:ident # ( $a:expr ), ( $x:expr ) ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(::std::borrow::Cow::Borrowed(stringify!($bank)),rreil_rvalue!(( $x ))), assignee: rreil_lvalue!(( $a ))}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1719,9 +3429,19 @@ macro_rules! rreil_memop {
     ( $op:ident # $bank:ident # ( $a:expr ), ( $x:expr ) : $x_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(::std::borrow::Cow::Borrowed(stringify!($bank)),rreil_rvalue!(( $x ) : $x_w)), assignee: rreil_lvalue!(( $a ))}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1729,9 +3449,19 @@ macro_rules! rreil_memop {
     ( $op:ident # $bank:ident # ( $a:expr ), [ $x:tt ] : $x_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(::std::borrow::Cow::Borrowed(stringify!($bank)),rreil_rvalue!([ $x ] : $x_w)), assignee: rreil_lvalue!(( $a ))}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1739,9 +3469,19 @@ macro_rules! rreil_memop {
     ( $op:ident # $bank:ident # ( $a:expr ), ? ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(::std::borrow::Cow::Borrowed(stringify!($bank)),rreil_rvalue!(?)), assignee: rreil_lvalue!(( $a ))}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1749,9 +3489,19 @@ macro_rules! rreil_memop {
     ( $op:ident # $bank:ident # ( $a:expr ) : $a_w:tt, $x:tt : $x_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(::std::borrow::Cow::Borrowed(stringify!($bank)),rreil_rvalue!($x : $x_w)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1759,9 +3509,19 @@ macro_rules! rreil_memop {
     ( $op:ident # $bank:ident # ( $a:expr ) : $a_w:tt, $x:tt : $x_w:tt / $x_o:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(::std::borrow::Cow::Borrowed(stringify!($bank)),rreil_rvalue!($x : $x_w / $x_o)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1769,9 +3529,19 @@ macro_rules! rreil_memop {
     ( $op:ident # $bank:ident # ( $a:expr ) : $a_w:tt, ( $x:expr ) ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(::std::borrow::Cow::Borrowed(stringify!($bank)),rreil_rvalue!(( $x ))), assignee: rreil_lvalue!(( $a ) : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1779,9 +3549,19 @@ macro_rules! rreil_memop {
     ( $op:ident # $bank:ident # ( $a:expr ) : $a_w:tt, ( $x:expr ) : $x_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(::std::borrow::Cow::Borrowed(stringify!($bank)),rreil_rvalue!(( $x ) : $x_w)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1789,9 +3569,19 @@ macro_rules! rreil_memop {
     ( $op:ident # $bank:ident # ( $a:expr ) : $a_w:tt, [ $x:tt ] : $x_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(::std::borrow::Cow::Borrowed(stringify!($bank)),rreil_rvalue!([ $x ] : $x_w)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1799,9 +3589,19 @@ macro_rules! rreil_memop {
     ( $op:ident # $bank:ident # ( $a:expr ) : $a_w:tt, ? ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(::std::borrow::Cow::Borrowed(stringify!($bank)),rreil_rvalue!(?)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1809,9 +3609,19 @@ macro_rules! rreil_memop {
     ( $op:ident # $bank:ident # $a:tt : $a_w:tt, $x:tt : $x_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(::std::borrow::Cow::Borrowed(stringify!($bank)),rreil_rvalue!($x : $x_w)), assignee: rreil_lvalue!($a : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1819,9 +3629,19 @@ macro_rules! rreil_memop {
     ( $op:ident # $bank:ident # $a:tt : $a_w:tt, $x:tt : $x_w:tt / $x_o:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(::std::borrow::Cow::Borrowed(stringify!($bank)),rreil_rvalue!($x : $x_w / $x_o)), assignee: rreil_lvalue!($a : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1829,9 +3649,19 @@ macro_rules! rreil_memop {
     ( $op:ident # $bank:ident # $a:tt : $a_w:tt, ( $x:expr ) ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(::std::borrow::Cow::Borrowed(stringify!($bank)),rreil_rvalue!(( $x ))), assignee: rreil_lvalue!($a : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1839,9 +3669,19 @@ macro_rules! rreil_memop {
     ( $op:ident # $bank:ident # $a:tt : $a_w:tt, ( $x:expr ) : $x_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(::std::borrow::Cow::Borrowed(stringify!($bank)),rreil_rvalue!(( $x ) : $x_w)), assignee: rreil_lvalue!($a : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1849,9 +3689,19 @@ macro_rules! rreil_memop {
     ( $op:ident # $bank:ident # $a:tt : $a_w:tt, [ $x:tt ] : $x_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(::std::borrow::Cow::Borrowed(stringify!($bank)),rreil_rvalue!([ $x ] : $x_w)), assignee: rreil_lvalue!($a : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1859,9 +3709,19 @@ macro_rules! rreil_memop {
     ( $op:ident # $bank:ident # $a:tt : $a_w:tt, ? ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(::std::borrow::Cow::Borrowed(stringify!($bank)),rreil_rvalue!(?)), assignee: rreil_lvalue!($a : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1869,9 +3729,19 @@ macro_rules! rreil_memop {
     ( $op:ident # $bank:ident # ?, $x:tt : $x_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(::std::borrow::Cow::Borrowed(stringify!($bank)),rreil_rvalue!($x : $x_w)), assignee: rreil_lvalue!(?)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1879,9 +3749,19 @@ macro_rules! rreil_memop {
     ( $op:ident # $bank:ident # ?, $x:tt : $x_w:tt / $x_o:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(::std::borrow::Cow::Borrowed(stringify!($bank)),rreil_rvalue!($x : $x_w / $x_o)), assignee: rreil_lvalue!(?)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1889,9 +3769,19 @@ macro_rules! rreil_memop {
     ( $op:ident # $bank:ident # ?, ( $x:expr ) ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(::std::borrow::Cow::Borrowed(stringify!($bank)),rreil_rvalue!(( $x ))), assignee: rreil_lvalue!(?)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1899,9 +3789,19 @@ macro_rules! rreil_memop {
     ( $op:ident # $bank:ident # ?, ( $x:expr ) : $x_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(::std::borrow::Cow::Borrowed(stringify!($bank)),rreil_rvalue!(( $x ) : $x_w)), assignee: rreil_lvalue!(?)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1909,9 +3809,19 @@ macro_rules! rreil_memop {
     ( $op:ident # $bank:ident # ?, [ $x:tt ] : $x_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(::std::borrow::Cow::Borrowed(stringify!($bank)),rreil_rvalue!([ $x ] : $x_w)), assignee: rreil_lvalue!(?)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1919,9 +3829,19 @@ macro_rules! rreil_memop {
     ( $op:ident # $bank:ident # ?, ? ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(::std::borrow::Cow::Borrowed(stringify!($bank)),rreil_rvalue!(?)), assignee: rreil_lvalue!(?)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1932,9 +3852,19 @@ macro_rules! rreil_extop {
     ( $op:ident # $sz:tt # ( $a:expr ), $x:tt : $x_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_imm!($sz),rreil_rvalue!($x : $x_w)), assignee: rreil_lvalue!(( $a ))}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1942,9 +3872,19 @@ macro_rules! rreil_extop {
     ( $op:ident # $sz:tt # ( $a:expr ), $x:tt : $x_w:tt / $x_o:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_imm!($sz),rreil_rvalue!($x : $x_w / $x_o)), assignee: rreil_lvalue!(( $a ))}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1952,9 +3892,19 @@ macro_rules! rreil_extop {
     ( $op:ident # $sz:tt # ( $a:expr ), ( $x:expr ) ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_imm!($sz),rreil_rvalue!(( $x ))), assignee: rreil_lvalue!(( $a ))}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1962,9 +3912,19 @@ macro_rules! rreil_extop {
     ( $op:ident # $sz:tt # ( $a:expr ), ( $x:expr ) : $x_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_imm!($sz),rreil_rvalue!(( $x ) : $x_w)), assignee: rreil_lvalue!(( $a ))}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1972,9 +3932,19 @@ macro_rules! rreil_extop {
     ( $op:ident # $sz:tt # ( $a:expr ), [ $x:tt ] : $x_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_imm!($sz),rreil_rvalue!([ $x ] : $x_w)), assignee: rreil_lvalue!(( $a ))}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1982,9 +3952,19 @@ macro_rules! rreil_extop {
     ( $op:ident # $sz:tt # ( $a:expr ), ? ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_imm!($sz),rreil_rvalue!(?)), assignee: rreil_lvalue!(( $a ))}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -1992,9 +3972,19 @@ macro_rules! rreil_extop {
     ( $op:ident # $sz:tt # ( $a:expr ) : $a_w:tt, $x:tt : $x_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_imm!($sz),rreil_rvalue!($x : $x_w)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -2002,9 +3992,19 @@ macro_rules! rreil_extop {
     ( $op:ident # $sz:tt # ( $a:expr ) : $a_w:tt, $x:tt : $x_w:tt / $x_o:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_imm!($sz),rreil_rvalue!($x : $x_w / $x_o)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -2012,9 +4012,19 @@ macro_rules! rreil_extop {
     ( $op:ident # $sz:tt # ( $a:expr ) : $a_w:tt, ( $x:expr ) ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_imm!($sz),rreil_rvalue!(( $x ))), assignee: rreil_lvalue!(( $a ) : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -2022,9 +4032,19 @@ macro_rules! rreil_extop {
     ( $op:ident # $sz:tt # ( $a:expr ) : $a_w:tt, ( $x:expr ) : $x_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_imm!($sz),rreil_rvalue!(( $x ) : $x_w)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -2032,9 +4052,19 @@ macro_rules! rreil_extop {
     ( $op:ident # $sz:tt # ( $a:expr ) : $a_w:tt, [ $x:tt ] : $x_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_imm!($sz),rreil_rvalue!([ $x ] : $x_w)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -2042,9 +4072,19 @@ macro_rules! rreil_extop {
     ( $op:ident # $sz:tt # ( $a:expr ) : $a_w:tt, ? ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_imm!($sz),rreil_rvalue!(?)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -2052,9 +4092,19 @@ macro_rules! rreil_extop {
     ( $op:ident # $sz:tt # $a:tt : $a_w:tt, $x:tt : $x_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_imm!($sz),rreil_rvalue!($x : $x_w)), assignee: rreil_lvalue!($a : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -2062,9 +4112,19 @@ macro_rules! rreil_extop {
     ( $op:ident # $sz:tt # $a:tt : $a_w:tt, $x:tt : $x_w:tt / $x_o:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_imm!($sz),rreil_rvalue!($x : $x_w / $x_o)), assignee: rreil_lvalue!($a : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -2072,9 +4132,19 @@ macro_rules! rreil_extop {
     ( $op:ident # $sz:tt # $a:tt : $a_w:tt, ( $x:expr ) ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_imm!($sz),rreil_rvalue!(( $x ))), assignee: rreil_lvalue!($a : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -2082,9 +4152,19 @@ macro_rules! rreil_extop {
     ( $op:ident # $sz:tt # $a:tt : $a_w:tt, ( $x:expr ) : $x_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_imm!($sz),rreil_rvalue!(( $x ) : $x_w)), assignee: rreil_lvalue!($a : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -2092,9 +4172,19 @@ macro_rules! rreil_extop {
     ( $op:ident # $sz:tt # $a:tt : $a_w:tt, [ $x:tt ] : $x_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_imm!($sz),rreil_rvalue!([ $x ] : $x_w)), assignee: rreil_lvalue!($a : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -2102,9 +4192,19 @@ macro_rules! rreil_extop {
     ( $op:ident # $sz:tt # $a:tt : $a_w:tt, ? ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_imm!($sz),rreil_rvalue!(?)), assignee: rreil_lvalue!($a : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -2112,9 +4212,19 @@ macro_rules! rreil_extop {
     ( $op:ident # $sz:tt # ?, $x:tt : $x_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_imm!($sz),rreil_rvalue!($x : $x_w)), assignee: rreil_lvalue!(?)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -2122,9 +4232,19 @@ macro_rules! rreil_extop {
     ( $op:ident # $sz:tt # ?, $x:tt : $x_w:tt / $x_o:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_imm!($sz),rreil_rvalue!($x : $x_w / $x_o)), assignee: rreil_lvalue!(?)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -2132,9 +4252,19 @@ macro_rules! rreil_extop {
     ( $op:ident # $sz:tt # ?, ( $x:expr ) ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_imm!($sz),rreil_rvalue!(( $x ))), assignee: rreil_lvalue!(?)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -2142,9 +4272,19 @@ macro_rules! rreil_extop {
     ( $op:ident # $sz:tt # ?, ( $x:expr ) : $x_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_imm!($sz),rreil_rvalue!(( $x ) : $x_w)), assignee: rreil_lvalue!(?)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -2152,9 +4292,19 @@ macro_rules! rreil_extop {
     ( $op:ident # $sz:tt # ?, [ $x:tt ] : $x_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_imm!($sz),rreil_rvalue!([ $x ] : $x_w)), assignee: rreil_lvalue!(?)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -2162,9 +4312,19 @@ macro_rules! rreil_extop {
     ( $op:ident # $sz:tt # ?, ? ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_imm!($sz),rreil_rvalue!(?)), assignee: rreil_lvalue!(?)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -2175,9 +4335,19 @@ macro_rules! rreil_selop {
     ( $op:ident # $sz:tt # ( $a:expr ), $x:tt : $x_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_imm!($sz),rreil_rvalue!(( $a )),rreil_rvalue!($x : $x_w)), assignee: rreil_lvalue!(( $a ))}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -2185,9 +4355,19 @@ macro_rules! rreil_selop {
     ( $op:ident # $sz:tt # ( $a:expr ), $x:tt : $x_w:tt / $x_o:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_imm!($sz),rreil_rvalue!(( $a )),rreil_rvalue!($x : $x_w / $x_o)), assignee: rreil_lvalue!(( $a ))}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -2195,9 +4375,19 @@ macro_rules! rreil_selop {
     ( $op:ident # $sz:tt # ( $a:expr ), ( $x:expr ) ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_imm!($sz),rreil_rvalue!(( $a )),rreil_rvalue!(( $x ))), assignee: rreil_lvalue!(( $a ))}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -2205,9 +4395,19 @@ macro_rules! rreil_selop {
     ( $op:ident # $sz:tt # ( $a:expr ), ( $x:expr ) : $x_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_imm!($sz),rreil_rvalue!(( $a )),rreil_rvalue!(( $x ) : $x_w)), assignee: rreil_lvalue!(( $a ))}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -2215,9 +4415,19 @@ macro_rules! rreil_selop {
     ( $op:ident # $sz:tt # ( $a:expr ), [ $x:tt ] : $x_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_imm!($sz),rreil_rvalue!(( $a )),rreil_rvalue!([ $x ] : $x_w)), assignee: rreil_lvalue!(( $a ))}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -2225,9 +4435,19 @@ macro_rules! rreil_selop {
     ( $op:ident # $sz:tt # ( $a:expr ), ? ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_imm!($sz),rreil_rvalue!(( $a )),rreil_rvalue!(?)), assignee: rreil_lvalue!(( $a ))}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -2235,9 +4455,19 @@ macro_rules! rreil_selop {
     ( $op:ident # $sz:tt # ( $a:expr ) : $a_w:tt, $x:tt : $x_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_imm!($sz),rreil_rvalue!(( $a ) : $a_w),rreil_rvalue!($x : $x_w)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -2245,9 +4475,19 @@ macro_rules! rreil_selop {
     ( $op:ident # $sz:tt # ( $a:expr ) : $a_w:tt, $x:tt : $x_w:tt / $x_o:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_imm!($sz),rreil_rvalue!(( $a ) : $a_w),rreil_rvalue!($x : $x_w / $x_o)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -2255,9 +4495,19 @@ macro_rules! rreil_selop {
     ( $op:ident # $sz:tt # ( $a:expr ) : $a_w:tt, ( $x:expr ) ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_imm!($sz),rreil_rvalue!(( $a ) : $a_w),rreil_rvalue!(( $x ))), assignee: rreil_lvalue!(( $a ) : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -2265,9 +4515,19 @@ macro_rules! rreil_selop {
     ( $op:ident # $sz:tt # ( $a:expr ) : $a_w:tt, ( $x:expr ) : $x_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_imm!($sz),rreil_rvalue!(( $a ) : $a_w),rreil_rvalue!(( $x ) : $x_w)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -2275,9 +4535,19 @@ macro_rules! rreil_selop {
     ( $op:ident # $sz:tt # ( $a:expr ) : $a_w:tt, [ $x:tt ] : $x_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_imm!($sz),rreil_rvalue!(( $a ) : $a_w),rreil_rvalue!([ $x ] : $x_w)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -2285,9 +4555,19 @@ macro_rules! rreil_selop {
     ( $op:ident # $sz:tt # ( $a:expr ) : $a_w:tt, ? ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_imm!($sz),rreil_rvalue!(( $a ) : $a_w),rreil_rvalue!(?)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -2295,9 +4575,19 @@ macro_rules! rreil_selop {
     ( $op:ident # $sz:tt # $a:tt : $a_w:tt, $x:tt : $x_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_imm!($sz),rreil_rvalue!($a : $a_w),rreil_rvalue!($x : $x_w)), assignee: rreil_lvalue!($a : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -2305,9 +4595,19 @@ macro_rules! rreil_selop {
     ( $op:ident # $sz:tt # $a:tt : $a_w:tt, $x:tt : $x_w:tt / $x_o:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_imm!($sz),rreil_rvalue!($a : $a_w),rreil_rvalue!($x : $x_w / $x_o)), assignee: rreil_lvalue!($a : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -2315,9 +4615,19 @@ macro_rules! rreil_selop {
     ( $op:ident # $sz:tt # $a:tt : $a_w:tt, ( $x:expr ) ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_imm!($sz),rreil_rvalue!($a : $a_w),rreil_rvalue!(( $x ))), assignee: rreil_lvalue!($a : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -2325,9 +4635,19 @@ macro_rules! rreil_selop {
     ( $op:ident # $sz:tt # $a:tt : $a_w:tt, ( $x:expr ) : $x_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_imm!($sz),rreil_rvalue!($a : $a_w),rreil_rvalue!(( $x ) : $x_w)), assignee: rreil_lvalue!($a : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -2335,9 +4655,19 @@ macro_rules! rreil_selop {
     ( $op:ident # $sz:tt # $a:tt : $a_w:tt, [ $x:tt ] : $x_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_imm!($sz),rreil_rvalue!($a : $a_w),rreil_rvalue!([ $x ] : $x_w)), assignee: rreil_lvalue!($a : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -2345,9 +4675,19 @@ macro_rules! rreil_selop {
     ( $op:ident # $sz:tt # $a:tt : $a_w:tt, ? ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_imm!($sz),rreil_rvalue!($a : $a_w),rreil_rvalue!(?)), assignee: rreil_lvalue!($a : $a_w)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -2355,9 +4695,19 @@ macro_rules! rreil_selop {
     ( $op:ident # $sz:tt # ?, $x:tt : $x_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_imm!($sz),rreil_rvalue!(?),rreil_rvalue!($x : $x_w)), assignee: rreil_lvalue!(?)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -2365,9 +4715,19 @@ macro_rules! rreil_selop {
     ( $op:ident # $sz:tt # ?, $x:tt : $x_w:tt / $x_o:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_imm!($sz),rreil_rvalue!(?),rreil_rvalue!($x : $x_w / $x_o)), assignee: rreil_lvalue!(?)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -2375,9 +4735,19 @@ macro_rules! rreil_selop {
     ( $op:ident # $sz:tt # ?, ( $x:expr ) ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_imm!($sz),rreil_rvalue!(?),rreil_rvalue!(( $x ))), assignee: rreil_lvalue!(?)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -2385,9 +4755,19 @@ macro_rules! rreil_selop {
     ( $op:ident # $sz:tt # ?, ( $x:expr ) : $x_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_imm!($sz),rreil_rvalue!(?),rreil_rvalue!(( $x ) : $x_w)), assignee: rreil_lvalue!(?)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -2395,9 +4775,19 @@ macro_rules! rreil_selop {
     ( $op:ident # $sz:tt # ?, [ $x:tt ] : $x_w:tt ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_imm!($sz),rreil_rvalue!(?),rreil_rvalue!([ $x ] : $x_w)), assignee: rreil_lvalue!(?)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
@@ -2405,9 +4795,19 @@ macro_rules! rreil_selop {
     ( $op:ident # $sz:tt # ?, ? ; $($cdr:tt)*) => {
         {
             let mut stmt = vec![$crate::Statement{ op: ::Operation::$op(rreil_imm!($sz),rreil_rvalue!(?),rreil_rvalue!(?)), assignee: rreil_lvalue!(?)}];
-            let _ = try!(stmt[0].sanity_check());
-            stmt.append(&mut rreil!( $($cdr)*));
-            stmt
+let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
+	Ok(()) => {
+    let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
+    match tail {
+		  Ok(ref mut other) => {
+			  stmt.extend(other.drain(..));
+		  	Ok(stmt)
+		  }
+		  Err(e) => Err(e),
+	  }
+  },
+	Err(e) => Err(e).into(),
+}; ret
         }
     };
 
