@@ -265,14 +265,14 @@ pub fn spawn_disassembler<A: 'static + Architecture + Debug>(_cfg: A::Configurat
                             let entry = tgt;
                             let mut func = try!(Controller::read(|proj| {
                                 let name = maybe_name.unwrap_or(format!("func_{:x}",tgt));
-                                let root = proj.sources.dependencies.vertex_label(proj.sources.root).unwrap();
+                                let root = proj.data.dependencies.vertex_label(proj.data.root).unwrap();
                                 Function::with_uuid(name,uuid,root.name().clone())
                             }));
 
                             debug!("start new function {:?} at {:?}",uuid,entry);
 
                             func = try!(Controller::read(|proj| {
-                                let root = proj.sources.dependencies.vertex_label(proj.sources.root).unwrap();
+                                let root = proj.data.dependencies.vertex_label(proj.data.root).unwrap();
                                 let mut func = {
                                     Function::disassemble::<A>(Some(func),cfg.clone(),&root,entry)
                                 };
@@ -323,7 +323,7 @@ pub fn spawn_disassembler<A: 'static + Architecture + Debug>(_cfg: A::Configurat
                                 for addr in resolved_jumps {
                                     debug!("continue at {:?}",addr);
                                     func = try!(Controller::read(|proj| {
-                                        let root = proj.sources.dependencies.vertex_label(proj.sources.root).unwrap();
+                                        let root = proj.data.dependencies.vertex_label(proj.data.root).unwrap();
                                         let mut func = {
                                             Function::disassemble::<A>(Some(func),cfg.clone(),&root,addr)
                                         };

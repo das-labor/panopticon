@@ -43,10 +43,14 @@
 
 use std::collections::HashSet;
 use std::path::Path;
-use mnemonic::Bound;
-use layer::{Layer,OpaqueLayer,LayerIter};
 use graph_algos::adjacency_list::{AdjacencyListEdgeDescriptor,AdjacencyListVertexDescriptor};
 use graph_algos::{AdjacencyList,GraphTrait,VertexListGraphTrait,MutableGraphTrait,IncidenceGraphTrait};
+
+use {
+    Bound,
+    Layer,OpaqueLayer,LayerIter,
+    Result,
+};
 
 /// A continuous sequcence of `Cell`s
 ///
@@ -81,15 +85,9 @@ pub struct World {
 
 impl Region {
     /// Creates a new `Region` called `name` that is filled with the contents of the file at `path`.
-    ///
-    /// # Returns
-    /// `Some(_)` on success, None if the file could not be read.
-    pub fn open(name: String, path: &Path) -> Option<Region> {
-        if let Some(l) = OpaqueLayer::open(path) {
-            Some(Region::new(name,l))
-        } else {
-            None
-        }
+    pub fn open(s: String, p: &Path) -> Result<Region> {
+        let layer = try!(OpaqueLayer::open(p));
+        Ok(Region::new(s.clone(), layer))
     }
 
     /// Creates a new `Region` called `name`, filled with `data`.

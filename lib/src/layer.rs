@@ -43,6 +43,10 @@ use std::fs::File;
 use std::io::Read;
 use std::ops::Range;
 
+use {
+    Result
+};
+
 /// A cell represents a single, possible undefined, byte.
 pub type Cell = Option<u8>;
 
@@ -223,26 +227,10 @@ impl OpaqueLayer {
 
     /// Create a new `Layer` that replaces overlapped `Cell`s with the contents of the file at
     /// `path`. The `Layer` will have the size of the file.
-    ///
-    /// # Returns
-    /// None if the file could not be opened.
-    pub fn open(path: &Path) -> Option<OpaqueLayer> {
-        let fd = File::open(path);
-
-        if fd.is_ok() {
-            let mut buf = Vec::<u8>::new();
-            let len = fd.unwrap().read_to_end(&mut buf);
-
-            if len.is_ok() {
-                Some(Self::wrap(buf))
-            } else {
-                error!("can't read file '{:?}': {:?}",path,len);
-                None
-            }
-        } else {
-            error!("can't open file '{:?}",path);
-            None
-        }
+    pub fn open(p: &Path) -> Result<OpaqueLayer> {
+        let mut buf: Vec<u8> = Vec::new();
+        try!(File::open(p).map(|ref mut f| f.read_to_end(&mut buf)));
+        Ok(Self::wrap(buf))
     }
 
     /// Create a new `Layer` that replaces overlapped `Cell`s with the contents of `data`.
@@ -285,7 +273,7 @@ impl Layer {
 
     /// Create a new `Layer` that replaces overlapped `Cell`s with the contents of the file at
     /// `path`. The `Layer` will have the size of the file.
-    pub fn open(p: &Path) -> Result<Layer, ::std::io::Error> {
+    pub fn open(p: &Path) -> Result<Layer> {
         OpaqueLayer::open(p).map(|x| Layer::Opaque(x))
     }
 
