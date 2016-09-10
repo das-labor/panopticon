@@ -43,51 +43,8 @@ Item {
 	}
 
 	ListModel {
-		function lessThan(i,j) {
-			var a = get(i)
-			var b = get(j)
-
-			return a.entry_point < b.entry_point;
-		}
-
 		id: functionModel
 		dynamicRoles: true
-
-		function sort() {
-			if (count < 2) {
-				return;
-			}
-
-			var qsort = function(left, right) {
-				if (left < right) {
-					var pivot = right;
-					var i = left - 1;
-					var j = right + 1;
-
-					while (true) {
-						do {
-							j -= 1;
-						} while (lessThan(pivot,j));
-
-						do {
-							i += 1;
-						} while (lessThan(i,pivot));
-
-						if (i < j) {
-							move(i,j,1);
-							move(j-1,i,1);
-						} else {
-							break;
-						}
-					}
-
-					qsort(left,j-1)
-					qsort(j+1,right)
-				}
-			};
-
-			qsort(0,count-1)
-		}
 
 		Component.onCompleted: {
 			Functions.added.connect(function(row) {
@@ -95,35 +52,53 @@ Item {
 
 				obj.row = row;
 
-				if(obj.failed || obj.empty) {
+				if(obj.failed || obj.empty || obj.kind == "todo") {
 					return;
 				}
 
+				if(obj.entry_point !== undefined) {
+					for(var j = 0; j < functionModel.count; j++) {
+						var ent = get(j).entry_point;
+						if(ent !== undefined && ent > obj.entry_point) {
+							functionModel.insert(j,obj);
+							return;
+						}
+					}
+				}
+
 				functionModel.append(obj);
-				sort()
 			})
+
 			Functions.changed.connect(function(row) {
 				var obj = JSON.parse(JSON.stringify(Functions.get(row)));
 
 				obj.row = row;
 
-				for(var i = 0; i < count; i++) {
+				for(var i = 0; i < functionModel.count; i++) {
 					if(get(i).row == row) {
-						if(obj.failed || obj.empty) {
-							functionModel.remove(i,1);
-						} else {
-							functionModel.set(i,obj);
-							sort();
-						}
-						return;
+						functionModel.remove(i,1);
+						break;
 					}
 				}
 
-				if(!(obj.failed || obj.empty)) {
-					functionModel.append(obj);
-					sort()
+				if(!obj.failed && !obj.empty) {
+					for(var j = 0; j < functionModel.count; j++) {
+						var ent = get(j).entry_point;
+						if(ent !== undefined && ent > obj.entry_point) {
+							functionModel.insert(j,obj);
+
+							if(root.selection === "") {
+								root.selection = obj.uuid;
+								root.activated(obj.uuid);
+							}
+
+							return;
+						}
+					}
+					functionModel.insert(functionModel.count,obj);
 				}
 			})
+
 			Functions.removed.connect(function(row) {
 				for(var i = 0; i < count; i++) {
 					if(get(i).row == row) {
@@ -132,7 +107,6 @@ Item {
 					}
 				}
 			})
-
 		}
 	}
 
@@ -167,12 +141,10 @@ Item {
 
 		onClicked: {
 			root.selection = functionModel.get(row).uuid;
-			console.log(JSON.stringify(functionModel.get(row)));
 		}
 
 		onActivated: {
 			root.activated(functionModel.get(row).uuid);
-			console.log(JSON.stringify(functionModel.get(row)));
 		}
 
 		onDoubleClicked: {

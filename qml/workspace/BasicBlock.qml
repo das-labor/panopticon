@@ -34,9 +34,11 @@ Item {
 	property int opcodeWidth: 0;
 	property int argsWidth: 0;
 	property var approx: [];
+	property var name: "";
 
 	width: childrenRect.width - childrenRect.x
 	height: childrenRect.height
+	antialiasing: true
 
 	MouseArea {
 		anchors.fill: parent
