@@ -7,7 +7,7 @@ dependencies = [
  "chrono 0.2.22 (registry+https://github.com/rust-lang/crates.io-index)",
  "chrono-humanize 0.0.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "flate2 0.2.14 (registry+https://github.com/rust-lang/crates.io-index)",
- "goblin 0.0.1 (git+https://github.com/m4b/goblin)",
+ "goblin 0.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "graph_algos 0.10.2 (git+https://github.com/flanfly/rust-graph-algos.git)",
  "lazy_static 0.1.16 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.2.12 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -82,8 +82,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "goblin"
-version = "0.0.1"
-source = "git+https://github.com/m4b/goblin#7d6f51ca4b1593847702107170e9338ad6ebdc92"
+version = "0.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "byteorder 0.5.3 (registry+https://github.com/rust-lang/crates.io-index)",
 ]

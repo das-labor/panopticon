@@ -149,11 +149,12 @@ pub fn create_raw_project(_path: &Variant, _tgt: &Variant, _base: &Variant, _ent
 /// Prepares to disassemble an ELF file.
 pub fn create_elf_project(_path: &Variant) -> Variant {
     Variant::String(if let &Variant::String(ref s) = _path {
-        match elf::load::load(Path::new(s)) {
-            Ok((proj,m)) => {
-                match m {
-                    elf::Machine::i386 => spawn_disassembler::<amd64::Amd64>(amd64::Config::new(amd64::Mode::Protected)),
-                    elf::Machine::X86_64 => spawn_disassembler::<amd64::Amd64>(amd64::Config::new(amd64::Mode::Long)),
+       match elf::load(Path::new(s)) {
+            Ok((proj,f)) => {
+                match f {
+                    elf::Machine::Ia32 => spawn_disassembler::<amd64::Amd64>(amd64::Config::new(amd64::Mode::Protected)),
+                    elf::Machine::Amd64 => spawn_disassembler::<amd64::Amd64>(amd64::Config::new(amd64::Mode::Long)),
+                    //elf::Machine::Avr => spawn_disassembler::<avr::Avr>(avr::Mcu::atmega88()),
                     _ => return Variant::String(return_json::<()>(Err("Unsupported architecture".into()))),
                 }
 

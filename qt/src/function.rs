@@ -513,7 +513,7 @@ pub fn file_details(arg: &Variant) -> Variant {
             } else {
                 let ro = meta.permissions().readonly();
 
-                if let Ok(id) = elf::parse::Ident::read(&mut fd) {
+                if let Ok(id) = elf::Ident::read(&mut fd) {
                     Ok(FileDetails{
                         state: if ro { "readable" } else { "writable" }.to_string(),
                         format: Some("elf".to_string()),
