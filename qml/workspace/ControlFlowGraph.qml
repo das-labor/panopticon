@@ -46,20 +46,33 @@ Rectangle {
 	MouseArea {
 		anchors.fill: parent
 		hoverEnabled: true
-		onWheel: {
-			if(wheel.angleDelta.y < 0) {
-				nodeScale.xScale *= 0.95
-				nodeScale.yScale *= 0.95
+		cursorShape: {
+			if(pressed && containsMouse) {
+				return Qt.ClosedHandCursor;
 			} else {
-				nodeScale.xScale *= 1.05
-				nodeScale.yScale *= 1.05
+				return Qt.OpenHandCursor;
 			}
+		}
+		onWheel: {
+			if(wheel.modifiers & Qt.ControlModifier) {
+				if(wheel.angleDelta.y < 0) {
+					nodeScale.xScale *= 0.95
+					nodeScale.yScale *= 0.95
+				} else {
+					nodeScale.xScale *= 1.05
+					nodeScale.yScale *= 1.05
+				}
 
-			nodeScale.xScale = Math.min(nodeScale.xScale,1);
-			nodeScale.yScale = Math.min(nodeScale.yScale,1);
-			nodeScale.xScale = Math.max(nodeScale.xScale,0.000001);
-			nodeScale.yScale = Math.max(nodeScale.yScale,0.000001);
-
+				nodeScale.xScale = Math.min(nodeScale.xScale,1);
+				nodeScale.yScale = Math.min(nodeScale.yScale,1);
+				nodeScale.xScale = Math.max(nodeScale.xScale,0.000001);
+				nodeScale.yScale = Math.max(nodeScale.yScale,0.000001);
+			} else if(wheel.modifiers === 0) {
+				nodeRoot.y += wheel.angleDelta.y * 1 / nodeScale.yScale;
+				nodeRoot.x += wheel.angleDelta.x * 1 / nodeScale.xScale;
+			} else {
+				wheel.accepted = false
+			}
 		}
 
 		property int fixX: 0
@@ -69,6 +82,8 @@ Rectangle {
 			if(mouse.buttons & Qt.LeftButton != 0) {
 				nodeRoot.x += (mouse.x - fixX) * 1 / nodeScale.xScale;
 				nodeRoot.y += (mouse.y - fixY) * 1 / nodeScale.yScale;
+			} else {
+				wheel.accepted = false
 			}
 			fixX = mouse.x;
 			fixY = mouse.y;
@@ -291,6 +306,7 @@ Rectangle {
 			readonly property int margin: 5000;
 
 			id: edgeCanvas
+			antialiasing: true
 			x: nodeRoot.x - margin
 			y: nodeRoot.y - margin
 			width: nodeRoot.width + 2 * margin
@@ -379,8 +395,8 @@ Rectangle {
 				visible: root.state == "LOADED"
 				transform: Scale {
 					id: nodeScale
-					xScale: 0.3
-					yScale: 0.3
+					xScale: 1
+					yScale: 1
 					origin {
 						x: parent.width / 2 - nodeRoot.x
 						y: parent.height / 2 - nodeRoot.y

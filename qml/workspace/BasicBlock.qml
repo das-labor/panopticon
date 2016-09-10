@@ -38,6 +38,7 @@ Item {
 
 	width: childrenRect.width - childrenRect.x
 	height: childrenRect.height
+	antialiasing: true
 
 	MouseArea {
 		anchors.fill: parent
