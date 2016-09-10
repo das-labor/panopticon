@@ -118,6 +118,8 @@ extern crate tempdir;
 extern crate uuid;
 extern crate rmp_serialize;
 
+extern crate goblin;
+
 #[macro_use]
 extern crate lazy_static;
 

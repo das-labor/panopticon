@@ -16,12 +16,15 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+extern crate goblin;
+
 use std::io::{Seek,SeekFrom,Read};
 use std::fs::File;
 use std::path::Path;
 
 use graph_algos::MutableGraphTrait;
 use uuid::Uuid;
+use goblin::elf::Binary;
 
 use {
     Program,
@@ -35,51 +38,35 @@ use {
 };
 use elf::{
     Machine,
-    Ehdr,
-    Type,
-    SegmentType,
 };
 
+macro_rules! extract_data { ($elf:expr, $fd:expr, $interp:expr, $entry:expr, $reg:expr) => {
+    $entry = $elf.entry;
+    $interp = $elf.interpreter;
+    println!("Soname: {:?} with interpreter: {:?}", $elf.soname, $interp);
+    // psst i don't really know what this is doing semantically, just copied from old code
+    for ph in $elf.program_headers {
+        let mut buf = vec![0u8; ph.p_filesz as usize];
+        if $fd.seek(SeekFrom::Start(ph.p_offset as u64)).ok() == Some(ph.p_offset as u64) {
+            $reg.cover(Bound::new(ph.p_vaddr as u64, (ph.p_vaddr + ph.p_filesz) as u64), Layer::wrap(buf));
+        }
+        else {
+            return Err("Failed to read segment".into())
+        }
+    }
+};}
+
 pub fn load(p: &Path) -> Result<(Project,Machine)> {
+    let mut entry = 0x0;
+    let mut interp = None;
     let mut fd = File::open(p).ok().unwrap();
-    let ehdr = try!(Ehdr::read(&mut fd));
     let mut reg = Region::undefined("base".to_string(), 0x1000000000000);
-
-    match ehdr.file_type {
-        Type::Core | Type::Executable | Type::Shared => {
-            for ph in ehdr.progam_headers.iter() {
-                match ph.seg_type {
-                    SegmentType::Load => {
-                        println!("load segment of {} bytes from {:x} to {:x}",ph.filesz,ph.offset,ph.vaddr);
-                        if fd.seek(SeekFrom::Start(ph.offset)).ok() == Some(ph.offset) {
-                            let mut buf = vec![0u8; ph.filesz as usize];
-                            if let Err(_) = fd.read(&mut buf) {
-                                return Err("Failed to read segment".into());
-                            }
-
-                            reg.cover(Bound::new(ph.vaddr,ph.vaddr + ph.filesz),Layer::wrap(buf));
-                        } else {
-                            return Err("Failed to read segment".into());
-                        }
-                    },
-                    SegmentType::Interp => {
-                        if fd.seek(SeekFrom::Start(ph.offset)).ok() == Some(ph.offset) {
-                            let mut interp = vec![0u8; ph.filesz as usize];
-                            if let Err(_) = fd.read(&mut interp) {
-                                return Err("Failed to read interpreter path".into());
-                            }
-
-                            match String::from_utf8(interp) {
-                                Ok(s) => println!("load interpreter {}",s),
-                                Err(_) => println!("load intepreter (encoding error)"),
-                            }
-                        } else {
-                            return Err("Failed to read interpreter path".into());
-                        }
-                    },
-                    _ => {},
-                }
-            }
+    match goblin::elf::from_fd(&mut fd) {
+        Ok(Binary::Elf64(elf)) => {
+            extract_data!(elf, fd, interp, entry, reg);
+        },
+        Ok(Binary::Elf32(elf)) => {
+            extract_data!(elf, fd, interp, entry, reg);
         },
         _ => {}
     }
@@ -91,9 +78,13 @@ pub fn load(p: &Path) -> Result<(Project,Machine)> {
     let mut prog = Program::new("prog0");
     let mut proj = Project::new(name.clone(),reg);
 
-    prog.call_graph.add_vertex(CallTarget::Todo(Rvalue::new_u64(ehdr.entry),Some(name),Uuid::new_v4()));
-    proj.comments.insert(("base".to_string(),ehdr.entry),"main".to_string());
+    prog.call_graph.add_vertex(CallTarget::Todo(Rvalue::new_u64(entry as u64),Some(name),Uuid::new_v4()));
+    proj.comments.insert(("base".to_string(),entry as u64),"main".to_string());
     proj.code.push(prog);
 
-    Ok((proj,ehdr.machine))
+    // TODO: add proper ELF machine -> Enum translation here
+    // my guess is you'll want to pull out the Machine::* value
+    // from the appropriate ELF datastructure and add it to generic project data
+    // since machine type is independent of binary format and could be used for mach, pe, etc.
+    Ok((proj,Machine::X86_64))
 }
