@@ -4,7 +4,8 @@ use {
     Guard,
     Rvalue,
     Lvalue,
-    CodeGen,
+    Result,
+    Statement,
     State,
 };
 use super::*;
@@ -16,8 +17,8 @@ pub fn cpse(st: &mut State<Avr>) -> bool {
     let skip = st.configuration.wrap(st.address + 4);
     let g = Guard::from_flag(&rreil_rvalue!{ skip_flag:1 }).ok().unwrap();
 
-    st.mnemonic(2,"cpse","{u}, {u}",vec!(rd.clone().into(),rr.clone().into()),&|cg: &mut CodeGen<Avr>| {
-        rreil!{cg:
+    st.mnemonic(2,"cpse","{u}, {u}",vec!(rd.clone().into(),rr.clone().into()),&|cg: &mut Mcu| {
+        rreil!{
             cmpeq skip_flag:1, (rr.clone()), (rd.clone());
         }
     });
@@ -34,7 +35,7 @@ pub fn cpse(st: &mut State<Avr>) -> bool {
     true
 }
 
-pub fn adc(rd: Lvalue, rr: Rvalue, cg: &mut CodeGen<Avr>) {
+pub fn adc(rd: Lvalue, rr: Rvalue, cg: &mut Mcu) -> Result<Vec<Statement>> {
     let half_rd = if let &Lvalue::Variable{ ref name, size: 8,.. } = &rd {
         Lvalue::Variable{
             name: name.clone(),
@@ -45,7 +46,7 @@ pub fn adc(rd: Lvalue, rr: Rvalue, cg: &mut CodeGen<Avr>) {
         unreachable!()
     };
 
-    rreil!{cg:
+    rreil!{
         zext/8 carry:8, C:1;
         add res:8, (rd), (rr);
         add res:8, res:8, carry:8;
@@ -92,10 +93,10 @@ pub fn adc(rd: Lvalue, rr: Rvalue, cg: &mut CodeGen<Avr>) {
     }
 }
 
-pub fn add(rd: Lvalue, rr: Rvalue, cg: &mut CodeGen<Avr>) {
+pub fn add(rd: Lvalue, rr: Rvalue, cg: &mut Mcu) -> Result<Vec<Statement>> {
     let half_rd = rd.extract(4,0).ok().unwrap();
 
-    rreil!{cg:
+    rreil!{
         add res:8, (rd), (rr);
 
         // zero flag
@@ -139,15 +140,15 @@ pub fn adiw(st: &mut State<Avr>) -> bool {
     let rd2 = resolv(st.get_group("d") * 2 + 25);
     let k = Rvalue::new_u8(st.get_group("K") as u8);
 
-    st.mnemonic(0,"__wide_reg","",vec![],&|cg: &mut CodeGen<Avr>| {
-        rreil!{cg:
+    st.mnemonic(0,"__wide_reg","",vec![],&|cg: &mut Mcu| {
+        rreil!{
             zext/16 reg:16, (rd1);
             sel/8 reg:16, (rd2);
         }
     });
 
-    st.mnemonic(2,"adiw","{u:8}, {u:8}",vec!(rd1.clone().into(),k.clone()),&|cg: &mut CodeGen<Avr>| {
-        rreil!{cg:
+    st.mnemonic(2,"adiw","{u:8}, {u:8}",vec!(rd1.clone().into(),k.clone()),&|cg: &mut Mcu| {
+        rreil!{
             zext/16 imm:16, (k);
             add res:16, reg:16, imm:16;
 
@@ -189,8 +190,8 @@ pub fn adiw(st: &mut State<Avr>) -> bool {
     true
 }
 
-pub fn and(rd: Lvalue, rr: Rvalue, cg: &mut CodeGen<Avr>) {
-    rreil!{cg:
+pub fn and(rd: Lvalue, rr: Rvalue, cg: &mut Mcu) -> Result<Vec<Statement>> {
+    rreil!{
         and res:8, (rd), (rr);
 
         mov V:1, [0]:1;
@@ -200,8 +201,8 @@ pub fn and(rd: Lvalue, rr: Rvalue, cg: &mut CodeGen<Avr>) {
     }
 }
 
-pub fn asr(rd: Lvalue, cg: &mut CodeGen<Avr>) {
-    rreil!{cg:
+pub fn asr(rd: Lvalue, cg: &mut Mcu) -> Result<Vec<Statement>> {
+    rreil!{
         mov lsb:1, C:1;
         cmpltu C:1, [0x7f]:8, (rd);
         shl (rd), (rd), [1]:8;
@@ -214,18 +215,18 @@ pub fn asr(rd: Lvalue, cg: &mut CodeGen<Avr>) {
     }
 }
 
-pub fn _break(_: &mut CodeGen<Avr>) {}
+pub fn _break(_: &mut Mcu) -> Result<Vec<Statement>> { Ok(vec![]) }
 
-pub fn bld(rd: Lvalue, b: u64, cg: &mut CodeGen<Avr>) {
-    rreil!{cg:
+pub fn bld(rd: Lvalue, b: u64, cg: &mut Mcu) -> Result<Vec<Statement>> {
+    rreil!{
         sel/b (rd), T:1;
     }
 }
 
-pub fn bst(rd: Lvalue, b: u64, cg: &mut CodeGen<Avr>) {
+pub fn bst(rd: Lvalue, b: u64, cg: &mut Mcu) -> Result<Vec<Statement>> {
     let r: Rvalue = rd.extract(1,b as usize).ok().unwrap();
 
-    rreil!{cg:
+    rreil!{
         mov T:1, (r);
     }
 }
@@ -234,8 +235,8 @@ pub fn call(st: &mut State<Avr>) -> bool {
     let k = st.configuration.wrap(st.get_group("k") * 2);
     let next = st.configuration.wrap(st.address + st.tokens.len() as u64 * 2);
 
-    st.mnemonic(4,"call","{c:flash}",vec![k.clone()],&|cg: &mut CodeGen<Avr>| {
-        rreil!{cg:
+    st.mnemonic(4,"call","{c:flash}",vec![k.clone()],&|cg: &mut Mcu| {
+        rreil!{
             call ?, (k);
         }
     });
@@ -245,14 +246,14 @@ pub fn call(st: &mut State<Avr>) -> bool {
     true
 }
 
-pub fn cbx(rd: Lvalue, b: u64, cg: &mut CodeGen<Avr>) {
-    rreil!{cg:
+pub fn cbx(rd: Lvalue, b: u64, cg: &mut Mcu) -> Result<Vec<Statement>> {
+    rreil!{
         sel/b (rd), [0]:1;
     }
 }
 
-pub fn com(rd: Lvalue, cg: &mut CodeGen<Avr>) {
-    rreil!{cg:
+pub fn com(rd: Lvalue, cg: &mut Mcu) -> Result<Vec<Statement>> {
+    rreil!{
         sub res:8, [0xff]:8, (rd);
         mov C:1, [0]:1;
         cmpeq Z:1, [0]:8, res:8;
@@ -262,10 +263,10 @@ pub fn com(rd: Lvalue, cg: &mut CodeGen<Avr>) {
     }
 }
 
-pub fn cp(rd: Lvalue, rr: Rvalue, cg: &mut CodeGen<Avr>) {
+pub fn cp(rd: Lvalue, rr: Rvalue, cg: &mut Mcu) -> Result<Vec<Statement>> {
     let half_rd: Rvalue = rd.extract(4,0).ok().unwrap();
 
-    rreil!{cg:
+    rreil!{
         sub res:8, (rd), (rr);
 
         // carry
@@ -297,10 +298,10 @@ pub fn cp(rd: Lvalue, rr: Rvalue, cg: &mut CodeGen<Avr>) {
     }
 }
 
-pub fn cpc(rd: Lvalue, rr: Rvalue, cg: &mut CodeGen<Avr>) {
+pub fn cpc(rd: Lvalue, rr: Rvalue, cg: &mut Mcu) -> Result<Vec<Statement>> {
     let half_rd: Rvalue = rd.extract(4,0).ok().unwrap();
 
-    rreil!{cg:
+    rreil!{
         zext/8 carry:8, C:1;
         sub res:8, (rd), (rr);
         sub res:8, res:8, carry:8;
@@ -340,8 +341,8 @@ pub fn cpc(rd: Lvalue, rr: Rvalue, cg: &mut CodeGen<Avr>) {
     }
 }
 
-pub fn dec(rd: Lvalue, cg: &mut CodeGen<Avr>) {
-    rreil!{cg:
+pub fn dec(rd: Lvalue, cg: &mut Mcu) -> Result<Vec<Statement>> {
+    rreil!{
         cmpeq V:1, (rd), [0x80]:8;
         sub (rd), (rd), [1]:8;
         cmpeq Z:1, res:8, [0]:8;
@@ -352,8 +353,8 @@ pub fn dec(rd: Lvalue, cg: &mut CodeGen<Avr>) {
 
 pub fn des(st: &mut State<Avr>) -> bool {
     let k = Rvalue::new_u8(st.get_group("K") as u8);
-    st.mnemonic(2,"des","{u}",vec![k],&|cg: &mut CodeGen<Avr>| {
-    rreil!{cg:
+    st.mnemonic(2,"des","{u}",vec![k],&|cg: &mut Mcu| {
+    rreil!{
         mov R0:8, ?;
         mov R1:8, ?;
         mov R2:8, ?;
@@ -379,8 +380,8 @@ let next = st.configuration.wrap(st.address + st.tokens.len() as u64 * 2);
     true
 }
 
-pub fn eicall(cg: &mut CodeGen<Avr>) {
-    rreil!{cg:
+pub fn eicall(cg: &mut Mcu) -> Result<Vec<Statement>> {
+    rreil!{
         zext/22 p:22, R30:8;
         sel/8 p:22, R31:8;
         sel/16 p:22, EIND:6;
@@ -390,8 +391,8 @@ pub fn eicall(cg: &mut CodeGen<Avr>) {
 }
 
 pub fn eijmp(st: &mut State<Avr>) -> bool {
-    st.mnemonic(2,"eijmp","",vec![],&|cg: &mut CodeGen<Avr>| {
-        rreil!{cg:
+    st.mnemonic(2,"eijmp","",vec![],&|cg: &mut Mcu| {
+        rreil!{
             zext/22 p:22, R30:8;
             sel/8 p:22, R31:8;
             sel/16 p:22, EIND:6;
@@ -418,8 +419,8 @@ pub fn elpm(rd: Lvalue, off: usize, st: &mut State<Avr>) -> bool {
         subscript: None,
     };
 
-    st.mnemonic(0,"__wide_reg","",vec![],&|cg: &mut CodeGen<Avr>| {
-        rreil!{cg:
+    st.mnemonic(0,"__wide_reg","",vec![],&|cg: &mut Mcu| {
+        rreil!{
             zext/24 (zreg), R30:8;
             sel/8 (zreg), R31:8;
             sel/16 (zreg), RAMPZ:8;
@@ -427,20 +428,22 @@ pub fn elpm(rd: Lvalue, off: usize, st: &mut State<Avr>) -> bool {
     });
 
     let arg = if rd == rreil_lvalue!{ R0:8 } { vec![] } else { vec![zreg.clone().into()] };
-    st.mnemonic(2,"elpm","{p:sram}",arg,&|cg: &mut CodeGen<Avr>| {
-        rreil!{cg:
+    st.mnemonic(2,"elpm","{p:sram}",arg,&|cg: &mut Mcu| {
+        let mut stmts = try!(rreil!{
             load/sram ptr:24, (zreg);
             load/flash (rd), ptr:24;
-        }
+        });
 
         if off <= 1 {
-            rreil!{cg:
+            stmts.append(&mut try!(rreil!{
                 add (zreg), (zreg), [1]:24;
                 mov R30:8, (zreg.extract(8,0).ok().unwrap());
                 mov R31:8, (zreg.extract(8,8).ok().unwrap());
                 mov RAMPZ:8, (zreg.extract(8,16).ok().unwrap());
-            }
+            }));
         }
+
+        Ok(stmts)
     });
 
     let next = st.configuration.wrap(st.address + st.tokens.len() as u64 * 2);
@@ -461,8 +464,8 @@ pub fn elpm3(st: &mut State<Avr>) -> bool {
     elpm(reg(st,"D"),1,st)
 }
 
-pub fn eor(rd: Lvalue, rr: Rvalue, cg: &mut CodeGen<Avr>) {
-    rreil!{cg:
+pub fn eor(rd: Lvalue, rr: Rvalue, cg: &mut Mcu) -> Result<Vec<Statement>> {
+    rreil!{
         xor res:8, (rd), (rr);
 
         mov V:1, [0]:1;
@@ -472,8 +475,8 @@ pub fn eor(rd: Lvalue, rr: Rvalue, cg: &mut CodeGen<Avr>) {
     }
 }
 
-pub fn fmul(rd: Lvalue, rr: Rvalue, cg: &mut CodeGen<Avr>) {
-    rreil!{cg:
+pub fn fmul(rd: Lvalue, rr: Rvalue, cg: &mut Mcu) -> Result<Vec<Statement>> {
+    rreil!{
         zext/16 rd:16, (rd);
         zext/16 rr:16, (rr);
 
@@ -489,8 +492,8 @@ pub fn fmul(rd: Lvalue, rr: Rvalue, cg: &mut CodeGen<Avr>) {
     }
 }
 
-pub fn fmuls(rd: Lvalue, rr: Rvalue, cg: &mut CodeGen<Avr>) {
-    rreil!{cg:
+pub fn fmuls(rd: Lvalue, rr: Rvalue, cg: &mut Mcu) -> Result<Vec<Statement>> {
+    rreil!{
         sext/16 rd:16, (rd);
         sext/16 rr:16, (rr);
 
@@ -506,8 +509,8 @@ pub fn fmuls(rd: Lvalue, rr: Rvalue, cg: &mut CodeGen<Avr>) {
     }
 }
 
-pub fn fmulsu(rd: Lvalue, rr: Rvalue, cg: &mut CodeGen<Avr>) {
-    rreil!{cg:
+pub fn fmulsu(rd: Lvalue, rr: Rvalue, cg: &mut Mcu) -> Result<Vec<Statement>> {
+    rreil!{
         sext/16 rd:16, (rd);
         zext/16 rr:16, (rr);
 
@@ -530,15 +533,15 @@ pub fn icall(st: &mut State<Avr>) -> bool {
         subscript: None,
     };
 
-    st.mnemonic(0,"__wide_reg","",vec![],&|cg: &mut CodeGen<Avr>| {
-        rreil!{cg:
+    st.mnemonic(0,"__wide_reg","",vec![],&|cg: &mut Mcu| {
+        rreil!{
             zext/16 (zreg), R30:8;
             sel/8 (zreg), R31:8;
         }
     });
 
-    st.mnemonic(2,"icall","{p:sram}",vec![],&|cg: &mut CodeGen<Avr>| {
-        rreil!{cg:
+    st.mnemonic(2,"icall","{p:sram}",vec![],&|cg: &mut Mcu| {
+        rreil!{
             load/sram ptr:24, (zreg);
             call ?, ptr:24;
         }
@@ -556,8 +559,8 @@ pub fn ijmp(st: &mut State<Avr>) -> bool {
         size: 22,
         subscript: None,
     };
-    st.mnemonic(2,"ijmp","",vec![],&|cg: &mut CodeGen<Avr>| {
-        rreil!{cg:
+    st.mnemonic(2,"ijmp","",vec![],&|cg: &mut Mcu| {
+        rreil!{
             zext/22 p:22, R30:8;
             sel/8 p:22, R31:8;
             sel/16 p:22, [0]:6;
@@ -574,8 +577,8 @@ pub fn _in(st: &mut State<Avr>) -> bool {
     let rd = reg(st,"D");
     let rr = Rvalue::Constant{ value: st.get_group("A"), size: 6 };
 
-    st.mnemonic(2,"in","{u}, {u}",vec!(rd.clone().into(),rr.clone().into()),&|cg: &mut CodeGen<Avr>| {
-        rreil!{cg:
+    st.mnemonic(2,"in","{u}, {u}",vec!(rd.clone().into(),rr.clone().into()),&|cg: &mut Mcu| {
+        rreil!{
             load/io (rd), (rr);
         }
     });
@@ -586,8 +589,8 @@ pub fn _in(st: &mut State<Avr>) -> bool {
     true
 }
 
-pub fn inc(rd: Lvalue, cg: &mut CodeGen<Avr>) {
-    rreil!{cg:
+pub fn inc(rd: Lvalue, cg: &mut Mcu) -> Result<Vec<Statement>> {
+    rreil!{
         cmpeq V:1, (rd), [0x80]:8;
         add (rd), (rd), [1]:8;
         cmpeq Z:1, res:8, [0]:8;
@@ -601,14 +604,14 @@ pub fn jmp(st: &mut State<Avr>) -> bool {
     let _k = (st.get_group("k") * 2) % pc_mod;
     let k = Rvalue::Constant{ value: _k, size: st.configuration.pc_bits as usize };
 
-    st.mnemonic(4,"jmp","{c:flash}",vec!(k.clone()),&|_: &mut CodeGen<Avr>| {});
+    st.mnemonic(4,"jmp","{c:flash}",vec!(k.clone()),&|_: &mut Mcu| { Ok(vec![]) });
     optional_skip(st.configuration.wrap(st.address + st.tokens.len() as u64 * 2),st);
     st.jump(k,Guard::always());
     true
 }
 
-pub fn lac(ptr: Lvalue, reg: Lvalue, cg: &mut CodeGen<Avr>) {
-    rreil!{cg:
+pub fn lac(ptr: Lvalue, reg: Lvalue, cg: &mut Mcu) -> Result<Vec<Statement>> {
+    rreil!{
         load/sram zcont:8, (ptr);
         xor nreg:8, (reg), [0xff]:8;
         and (reg), zcont:8, nreg:8;
@@ -616,30 +619,30 @@ pub fn lac(ptr: Lvalue, reg: Lvalue, cg: &mut CodeGen<Avr>) {
     }
 }
 
-pub fn las(ptr: Lvalue, reg: Lvalue, cg: &mut CodeGen<Avr>) {
-    rreil!{cg:
+pub fn las(ptr: Lvalue, reg: Lvalue, cg: &mut Mcu) -> Result<Vec<Statement>> {
+    rreil!{
         load/sram zcont:8, (ptr);
         or (reg), (reg), zcont:8;
         store/sram (ptr), (reg);
     }
 }
 
-pub fn lat(ptr: Lvalue, reg: Lvalue, cg: &mut CodeGen<Avr>) {
-    rreil!{cg:
+pub fn lat(ptr: Lvalue, reg: Lvalue, cg: &mut Mcu) -> Result<Vec<Statement>> {
+    rreil!{
         load/sram zcont:8, (ptr);
         xor (reg), (reg), zcont:8;
         store/sram (ptr), (reg);
     }
 }
 
-pub fn ld(ptr: Lvalue, reg: Lvalue, cg: &mut CodeGen<Avr>) {
-    rreil!{cg:
+pub fn ld(ptr: Lvalue, reg: Lvalue, cg: &mut Mcu) -> Result<Vec<Statement>> {
+    rreil!{
         load/sram (reg), (ptr);
     }
 }
 
-pub fn ldi(rd: Lvalue, k: u64, cg: &mut CodeGen<Avr>) {
-    rreil!{cg:
+pub fn ldi(rd: Lvalue, k: u64, cg: &mut Mcu) -> Result<Vec<Statement>> {
+    rreil!{
         mov (rd), [k]:8;
     }
 }
@@ -648,8 +651,8 @@ pub fn lds1(st: &mut State<Avr>) -> bool {
     let rd = reg(st,"D");
     let k = Rvalue::new_u16(st.get_group("k") as u16);
 
-    st.mnemonic(4,"lds","{p:sram}, {u}",vec![rd.clone().into(),k.clone().into()],&|cg: &mut CodeGen<Avr>| {
-        rreil!{cg:
+    st.mnemonic(4,"lds","{p:sram}, {u}",vec![rd.clone().into(),k.clone().into()],&|cg: &mut Mcu| {
+        rreil!{
             load/sram (rd), (k);
         }
     });
@@ -666,8 +669,8 @@ pub fn lds2(st: &mut State<Avr>) -> bool {
     let _k = st.get_group("k") as u16;
     let k = Rvalue::new_u16(if _k <= 0x1F { _k + 0x20 } else { _k });
 
-    st.mnemonic(2,"lds","{u}, {p:sram}",vec![rd.clone().into(),k.clone().into()],&|cg: &mut CodeGen<Avr>| {
-        rreil!{cg:
+    st.mnemonic(2,"lds","{u}, {p:sram}",vec![rd.clone().into(),k.clone().into()],&|cg: &mut Mcu| {
+        rreil!{
             load/sram (rd), (k);
         }
     });
@@ -686,27 +689,29 @@ pub fn lpm(rd: Lvalue, off: usize, st: &mut State<Avr>) -> bool {
         subscript: None,
     };
 
-    st.mnemonic(0,"__wide_reg","",vec![],&|cg: &mut CodeGen<Avr>| {
-        rreil!{cg:
+    st.mnemonic(0,"__wide_reg","",vec![],&|cg: &mut Mcu| {
+        rreil!{
             zext/16 (zreg), R30:8;
             sel/8 (zreg), R31:8;
         }
     });
 
     let arg = if rd == rreil_lvalue!{ R0:8 } { vec![] } else { vec![zreg.clone().into()] };
-    st.mnemonic(2,"lpm","{p:sram}",arg,&|cg: &mut CodeGen<Avr>| {
-        rreil!{cg:
+    st.mnemonic(2,"lpm","{p:sram}",arg,&|cg: &mut Mcu| {
+        let mut stmts = try!(rreil!{
             load/sram ptr:16, (zreg);
             load/flash (rd), ptr:16;
-        }
+        });
 
         if off <= 1 {
-            rreil!{cg:
+            stmts.append(&mut try!(rreil!{
                 add (zreg), (zreg), [1]:16;
                 mov R30:8, (zreg.extract(8,0).ok().unwrap());
                 mov R31:8, (zreg.extract(8,8).ok().unwrap());
-            }
+            }));
         }
+
+        Ok(stmts)
     });
 
     let next = st.configuration.wrap(st.address + st.tokens.len() as u64 * 2);
@@ -728,8 +733,8 @@ pub fn lpm3(st: &mut State<Avr>) -> bool {
     lpm(reg(st,"D"),1,st)
 }
 
-pub fn lsr(rd: Lvalue, cg: &mut CodeGen<Avr>) {
-    rreil!{cg:
+pub fn lsr(rd: Lvalue, cg: &mut Mcu) -> Result<Vec<Statement>> {
+    rreil!{
         mov C:1, (rd.extract(1,0).ok().unwrap());
         shr (rd), (rd), [1]:8;
         mov N:1, [0]:1;
@@ -739,8 +744,8 @@ pub fn lsr(rd: Lvalue, cg: &mut CodeGen<Avr>) {
     }
 }
 
-pub fn mov(rd: Lvalue, rr: Rvalue, cg: &mut CodeGen<Avr>) {
-    rreil!{cg:
+pub fn mov(rd: Lvalue, rr: Rvalue, cg: &mut Mcu) -> Result<Vec<Statement>> {
+    rreil!{
         mov (rd), (rr);
     }
 }
@@ -752,8 +757,8 @@ pub fn movw(st: &mut State<Avr>) -> bool {
     let rr2 = resolv(st.get_group("r") * 2 + 1);
     let next = st.configuration.wrap(st.address + st.tokens.len() as u64 * 2);
 
-    st.mnemonic(2,"movw","{u}, {u}",vec!(rd1.clone().into(),rr1.clone().into()),&|cg: &mut CodeGen<Avr>| {
-        rreil!{cg:
+    st.mnemonic(2,"movw","{u}, {u}",vec!(rd1.clone().into(),rr1.clone().into()),&|cg: &mut Mcu| {
+        rreil!{
             mov (rd1), (rr1);
             mov (rd2), (rr2);
         }
@@ -764,8 +769,8 @@ pub fn movw(st: &mut State<Avr>) -> bool {
     true
 }
 
-pub fn mul(rd: Lvalue, rr: Rvalue, cg: &mut CodeGen<Avr>) {
-    rreil!{cg:
+pub fn mul(rd: Lvalue, rr: Rvalue, cg: &mut Mcu) -> Result<Vec<Statement>> {
+    rreil!{
         zext/16 rd:16, (rd);
         zext/16 rr:16, (rr);
 
@@ -779,8 +784,8 @@ pub fn mul(rd: Lvalue, rr: Rvalue, cg: &mut CodeGen<Avr>) {
     }
 }
 
-pub fn muls(rd: Lvalue, rr: Rvalue, cg: &mut CodeGen<Avr>) {
-    rreil!{cg:
+pub fn muls(rd: Lvalue, rr: Rvalue, cg: &mut Mcu) -> Result<Vec<Statement>> {
+    rreil!{
         sext/16 rd:16, (rd);
         sext/16 rr:16, (rr);
 
@@ -795,8 +800,8 @@ pub fn muls(rd: Lvalue, rr: Rvalue, cg: &mut CodeGen<Avr>) {
     }
 }
 
-pub fn mulsu(rd: Lvalue, rr: Rvalue, cg: &mut CodeGen<Avr>) {
-    rreil!{cg:
+pub fn mulsu(rd: Lvalue, rr: Rvalue, cg: &mut Mcu) -> Result<Vec<Statement>> {
+    rreil!{
         sext/16 rd:16, (rd);
         zext/16 rr:16, (rr);
 
@@ -811,8 +816,8 @@ pub fn mulsu(rd: Lvalue, rr: Rvalue, cg: &mut CodeGen<Avr>) {
     }
 }
 
-pub fn neg(rd: Lvalue, cg: &mut CodeGen<Avr>) {
-    rreil!{cg:
+pub fn neg(rd: Lvalue, cg: &mut Mcu) -> Result<Vec<Statement>> {
+    rreil!{
         sub res:8, [0]:8, (rd);
 
         cmplts N:1, res:8, [0]:8;
@@ -825,10 +830,10 @@ pub fn neg(rd: Lvalue, cg: &mut CodeGen<Avr>) {
     }
 }
 
-pub fn nop(_: &mut CodeGen<Avr>) {}
+pub fn nop(_: &mut Mcu) -> Result<Vec<Statement>> { Ok(vec![]) }
 
-pub fn or(rd: Lvalue, rr: Rvalue, cg: &mut CodeGen<Avr>) {
-    rreil!{cg:
+pub fn or(rd: Lvalue, rr: Rvalue, cg: &mut Mcu) -> Result<Vec<Statement>> {
+    rreil!{
         or res:8, (rd), (rr);
 
         cmplts N:1, res:8, [0]:8;
@@ -846,8 +851,8 @@ pub fn out(st: &mut State<Avr>) -> bool {
     let rr = reg(st,"R");
     let next = st.configuration.wrap(st.address + st.tokens.len() as u64 * 2);
 
-    st.mnemonic(2,"out","{u}, {u}",vec!(rd.clone().into(),rr.clone().into()),&|cg: &mut CodeGen<Avr>| {
-        rreil!{cg:
+    st.mnemonic(2,"out","{u}, {u}",vec!(rd.clone().into(),rr.clone().into()),&|cg: &mut Mcu| {
+        rreil!{
             store/io (rr), (rd);
         }
     });
@@ -856,8 +861,8 @@ pub fn out(st: &mut State<Avr>) -> bool {
     true
 }
 
-pub fn pop(rd: Lvalue, cg: &mut CodeGen<Avr>) {
-    rreil!{cg:
+pub fn pop(rd: Lvalue, cg: &mut Mcu) -> Result<Vec<Statement>> {
+    rreil!{
         zext/16 stack:16, spl:8;
         sel/8 stack:16, sph:8;
         add stack:16, stack:16, [1]:16;
@@ -867,8 +872,8 @@ pub fn pop(rd: Lvalue, cg: &mut CodeGen<Avr>) {
     }
 }
 
-pub fn push(rd: Lvalue, cg: &mut CodeGen<Avr>) {
-    rreil!{cg:
+pub fn push(rd: Lvalue, cg: &mut Mcu) -> Result<Vec<Statement>> {
+    rreil!{
         zext/16 stack:16, spl:8;
         sel/8 stack:16, sph:8;
         load/ram (rd), stack:16;
@@ -884,8 +889,8 @@ pub fn rcall(st: &mut State<Avr>) -> bool {
     let k = Rvalue::Constant{ value: _k, size: st.configuration.pc_bits };
     let next = st.configuration.wrap(st.address + st.tokens.len() as u64 * 2);
 
-    st.mnemonic(2,"rcall","{c:flash}",vec![k.clone()],&|cg: &mut CodeGen<Avr>| {
-    rreil!{cg:
+    st.mnemonic(2,"rcall","{c:flash}",vec![k.clone()],&|cg: &mut Mcu| {
+    rreil!{
         call ?, (k);
     }
     });
@@ -895,21 +900,21 @@ pub fn rcall(st: &mut State<Avr>) -> bool {
     true
 }
 
-pub fn ret(_: &mut CodeGen<Avr>) {}
+pub fn ret(_: &mut Mcu) -> Result<Vec<Statement>> { Ok(vec![]) }
 
 pub fn rjmp(st: &mut State<Avr>) -> bool {
     let pc_mod = ((st.configuration.flashend + 1) * 2) as u64;
     let _k = (st.address + st.get_group("k") * 2 + 2) % pc_mod;
     let k = Rvalue::Constant{ value: _k, size: st.configuration.pc_bits };
 
-    st.mnemonic(2,"rjmp","{c:flash}",vec!(k.clone()),&|_: &mut CodeGen<Avr>| {});
+    st.mnemonic(2,"rjmp","{c:flash}",vec!(k.clone()),&|_: &mut Mcu| { Ok(vec![]) });
     optional_skip(st.configuration.wrap(st.address + st.tokens.len() as u64 * 2),st);
     st.jump(k,Guard::always());
     true
 }
 
-pub fn ror(rd: Lvalue, cg: &mut CodeGen<Avr>) {
- rreil!{cg:
+pub fn ror(rd: Lvalue, cg: &mut Mcu) -> Result<Vec<Statement>> {
+ rreil!{
         mov nc:1, (rd.extract(1,7).ok().unwrap());
         shr (rd), (rd), [1]:8;
         sel/1 (rd), C:1;
@@ -921,8 +926,8 @@ pub fn ror(rd: Lvalue, cg: &mut CodeGen<Avr>) {
     }
 }
 
-pub fn sbc(rd: Lvalue, rr: Rvalue, cg: &mut CodeGen<Avr>) {
-    rreil!{cg:
+pub fn sbc(rd: Lvalue, rr: Rvalue, cg: &mut Mcu) -> Result<Vec<Statement>> {
+    rreil!{
         zext/8 carry:8, C:1;
         sub res:8, (rd), (rr);
         sub res:8, res:8, carry:8;
@@ -950,8 +955,8 @@ pub fn sbc(rd: Lvalue, rr: Rvalue, cg: &mut CodeGen<Avr>) {
     }
 }
 
-pub fn sbci(rd: Lvalue, k: u64, cg: &mut CodeGen<Avr>) {
-    rreil!{cg:
+pub fn sbci(rd: Lvalue, k: u64, cg: &mut Mcu) -> Result<Vec<Statement>> {
+    rreil!{
         mov k:8, [k]:8;
         zext/8 carry:8, C:1;
         sub res:8, (rd), k:8;
@@ -980,8 +985,8 @@ pub fn sbci(rd: Lvalue, k: u64, cg: &mut CodeGen<Avr>) {
     }
 }
 
-pub fn sbi(rd: Lvalue, b: u64, cg: &mut CodeGen<Avr>) {
-    rreil!{cg:
+pub fn sbi(rd: Lvalue, b: u64, cg: &mut Mcu) -> Result<Vec<Statement>> {
+    rreil!{
         sel/b (rd), [1]:1;
     }
 }
@@ -991,15 +996,15 @@ pub fn sbiw(st: &mut State<Avr>) -> bool {
     let rd2 = resolv(st.get_group("d") * 2 + 25);
     let k = Rvalue::new_u8(st.get_group("K") as u8);
 
-    st.mnemonic(0,"__wide_reg","",vec![],&|cg: &mut CodeGen<Avr>| {
-        rreil!{cg:
+    st.mnemonic(0,"__wide_reg","",vec![],&|cg: &mut Mcu| {
+        rreil!{
             zext/16 reg:16, (rd1);
             sel/8 reg:16, (rd2);
         }
     });
 
-    st.mnemonic(2,"sbiw","{u:8}, {u:8}",vec!(rd1.clone().into(),k.clone()),&|cg: &mut CodeGen<Avr>| {
-        rreil!{cg:
+    st.mnemonic(2,"sbiw","{u:8}, {u:8}",vec!(rd1.clone().into(),k.clone()),&|cg: &mut Mcu| {
+        rreil!{
             zext/16 reg:16, (rd1);
             sel/8 reg:16, (rd2);
             zext/16 imm:16, k:8;
@@ -1033,7 +1038,7 @@ pub fn sbiw(st: &mut State<Avr>) -> bool {
     true
 }
 
-pub fn sleep(_: &mut CodeGen<Avr>) {}
+pub fn sleep(_: &mut Mcu) -> Result<Vec<Statement>> { Ok(vec![]) }
 
 pub fn spm(rd: Lvalue, off: usize, st: &mut State<Avr>) -> bool {
     let zreg = Lvalue::Variable{
@@ -1043,27 +1048,29 @@ pub fn spm(rd: Lvalue, off: usize, st: &mut State<Avr>) -> bool {
     };
     let len = st.tokens.len() * 2;
 
-    st.mnemonic(0,"__wide_reg","",vec![],&|cg: &mut CodeGen<Avr>| {
-        rreil!{cg:
+    st.mnemonic(0,"__wide_reg","",vec![],&|cg: &mut Mcu| {
+        rreil!{
             zext/16 (zreg), R30:8;
             sel/8 (zreg), R31:8;
         }
     });
 
     let arg = if off == 0 { vec![] } else { vec![zreg.clone().into()] };
-    st.mnemonic(len,"spm","{p:sram}",arg,&|cg: &mut CodeGen<Avr>| {
-        rreil!{cg:
+    st.mnemonic(len,"spm","{p:sram}",arg,&|cg: &mut Mcu| {
+        let mut stmts = try!(rreil!{
             load/sram ptr:16, (zreg);
             load/flash ptr:16, (rd);
-        }
+        });
 
         if off <= 1 {
-            rreil!{cg:
+            stmts.append(&mut try!(rreil!{
                 add (zreg), (zreg), [1]:16;
                 mov R30:8, (zreg.extract(8,0).ok().unwrap());
                 mov R31:8, (zreg.extract(8,8).ok().unwrap());
-            }
+            }));
         }
+
+        Ok(stmts)
     });
 
     let next = st.configuration.wrap(st.address + st.tokens.len() as u64 * 2);
@@ -1085,8 +1092,8 @@ pub fn spm3(st: &mut State<Avr>) -> bool {
     spm(reg(st,"D"),1,st)
 }
 
-pub fn st(ptr: Lvalue, reg: Lvalue, cg: &mut CodeGen<Avr>) {
-    rreil!{cg:
+pub fn st(ptr: Lvalue, reg: Lvalue, cg: &mut Mcu) -> Result<Vec<Statement>> {
+    rreil!{
         load/sram (ptr), (reg);
     }
 }
@@ -1095,8 +1102,8 @@ pub fn sts1(st: &mut State<Avr>) -> bool {
     let rd = reg(st,"R");
     let k = Rvalue::new_u16(st.get_group("k") as u16);
 
-    st.mnemonic(4,"sts","{p:sram}, {u}",vec![k.clone().into(),rd.clone().into()],&|cg: &mut CodeGen<Avr>| {
-        rreil!{cg:
+    st.mnemonic(4,"sts","{p:sram}, {u}",vec![k.clone().into(),rd.clone().into()],&|cg: &mut Mcu| {
+        rreil!{
             store/sram (rd), (k);
         }
     });
@@ -1113,8 +1120,8 @@ pub fn sts2(st: &mut State<Avr>) -> bool {
     let _k = st.get_group("k") as u16;
     let k = Rvalue::new_u16(if _k <= 0x1F { _k + 0x20 } else { _k });
 
-    st.mnemonic(2,"sts","{p:sram}, {u}",vec![k.clone().into(),rd.clone().into()],&|cg: &mut CodeGen<Avr>| {
-        rreil!{cg:
+    st.mnemonic(2,"sts","{p:sram}, {u}",vec![k.clone().into(),rd.clone().into()],&|cg: &mut Mcu| {
+        rreil!{
             store/sram (rd), (k);
         }
     });
@@ -1126,8 +1133,8 @@ pub fn sts2(st: &mut State<Avr>) -> bool {
     true
 }
 
-pub fn sub(rd: Lvalue, rr: Rvalue, cg: &mut CodeGen<Avr>) {
-    rreil!{cg:
+pub fn sub(rd: Lvalue, rr: Rvalue, cg: &mut Mcu) -> Result<Vec<Statement>> {
+    rreil!{
         sub res:8, (rd), (rr);
 
         // zero flag
@@ -1150,8 +1157,8 @@ pub fn sub(rd: Lvalue, rr: Rvalue, cg: &mut CodeGen<Avr>) {
     }
 }
 
-pub fn subi(rd: Lvalue, k: u64, cg: &mut CodeGen<Avr>) {
-    rreil!{cg:
+pub fn subi(rd: Lvalue, k: u64, cg: &mut Mcu) -> Result<Vec<Statement>> {
+    rreil!{
         sub res:8, (rd), [k]:8;
 
         // zero flag
@@ -1174,18 +1181,18 @@ pub fn subi(rd: Lvalue, k: u64, cg: &mut CodeGen<Avr>) {
     }
 }
 
-pub fn swap(rd: Lvalue, cg: &mut CodeGen<Avr>) {
-    rreil!{cg:
+pub fn swap(rd: Lvalue, cg: &mut Mcu) -> Result<Vec<Statement>> {
+    rreil!{
         mov tmp:4, (rd.extract(4,0).ok().unwrap());
         sel/0 (rd), (rd.extract(4,4).ok().unwrap());
         sel/4 (rd), tmp:4;
     }
 }
 
-pub fn wdr(_: &mut CodeGen<Avr>) {}
+pub fn wdr(_: &mut Mcu) -> Result<Vec<Statement>> { Ok(vec![]) }
 
-pub fn xch(ptr: Lvalue, reg: Lvalue, cg: &mut CodeGen<Avr>) {
-    rreil!{cg:
+pub fn xch(ptr: Lvalue, reg: Lvalue, cg: &mut Mcu) -> Result<Vec<Statement>> {
+    rreil!{
         load/sram zcont:8, (ptr);
         store/sram (ptr), (reg);
         mov (reg), zcont:8;

@@ -37,9 +37,8 @@ use panopticon::{
     Kset,
 };
 use panopticon::amd64;
-//use panopticon::mos;
-//use panopticon::mos::{Mos};
-//use panopticon::avr::{Avr,Mcu};
+use panopticon::mos;
+use panopticon::avr;
 
 use std::path::Path;
 use std::thread;
@@ -154,8 +153,7 @@ pub fn create_elf_project(_path: &Variant) -> Variant {
                 match f {
                     elf::Machine::Ia32 => spawn_disassembler::<amd64::Amd64>(amd64::Mode::Protected),
                     elf::Machine::Amd64 => spawn_disassembler::<amd64::Amd64>(amd64::Mode::Long),
-                    //elf::Machine::Avr => spawn_disassembler::<avr::Avr>(avr::Mcu::atmega88()),
-                    _ => return Variant::String(return_json::<()>(Err("Unsupported architecture".into()))),
+                    elf::Machine::Avr => spawn_disassembler::<avr::Avr>(avr::Mcu::atmega88()),
                 }
 
                 return_json(Controller::replace(proj,None))

@@ -206,9 +206,9 @@ pub use abstractinterp::{
 };
 
 // disassembler
-//pub mod avr;
+pub mod avr;
 pub mod amd64;
-//pub mod mos;
+pub mod mos;
 
 // file formats
 pub mod pe;

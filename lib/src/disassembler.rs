@@ -132,38 +132,44 @@ impl<A: Architecture> State<A> {
         self.groups.iter().find(|x| x.0 == n.to_string()).is_some()
     }
 
-    pub fn mnemonic<'a,F: Fn(&mut CodeGen<A>) -> ()>(&mut self,len: usize, n: &str, fmt: &str, ops: Vec<Rvalue>, f: &F) {
-        self.mnemonic_dynargs(len,n,fmt,&|cg: &mut CodeGen<A>| -> Vec<Rvalue> {
-            f(cg);
-            ops.clone()
-        });
+    pub fn mnemonic<'a,F>(&mut self,len: usize, n: &str, fmt: &str, ops: Vec<Rvalue>, f: &F) -> Result<()>
+    where F: Fn(&mut A::Configuration) -> Result<Vec<Statement>> {
+        self.mnemonic_dynargs(len,n,fmt,&|cfg: &mut A::Configuration| -> Result<(Vec<Rvalue>,Vec<Statement>)> {
+            let stmts = try!(f(cfg));
+            Ok((ops.clone(),stmts))
+        })
     }
 
-    pub fn mnemonic_dynargs<F>(&mut self,len: usize, n: &str, fmt: &str, f: &F)
-    where F: Fn(&mut CodeGen<A>) -> Vec<Rvalue> {
-        let mut cg = CodeGen::new(&self.configuration);
-        let ops = f(&mut cg);
+    pub fn mnemonic_dynargs<F>(&mut self,len: usize, n: &str, fmt: &str, f: &F) -> Result<()>
+    where F: Fn(&mut A::Configuration) -> Result<(Vec<Rvalue>,Vec<Statement>)> {
+        let (ops,stmts) = try!(f(&mut self.configuration));
 
-        self.configuration = cg.configuration;
-        self.mnemonics.push(Mnemonic::new(
+        self.mnemonics.push(try!(Mnemonic::new(
                 self.mnemonic_origin..(self.mnemonic_origin + (len as u64)),
                 n.to_string(),
                 fmt.to_string(),
                 ops.iter(),
-                cg.statements.iter()).ok().unwrap());
+                stmts.iter())));
         self.jump_origin = self.mnemonic_origin;
         self.mnemonic_origin += len as u64;
+
+        Ok(())
     }
 
-    pub fn jump(&mut self,v: Rvalue,g: Guard) {
-        assert!(self.mnemonics.is_empty() || self.mnemonics.last().unwrap().area.len() > 0,
-                "A basic block mustn't end w/ a zero sized mnemonic");
+    pub fn jump(&mut self,v: Rvalue,g: Guard) -> Result<()> {
+        if !(self.mnemonics.is_empty() || self.mnemonics.last().unwrap().area.len() > 0) {
+            return Err("A basic block mustn't end w/ a zero sized mnemonic".into());
+        }
+
         let o = self.jump_origin;
         self.jump_from(o,v,g);
+
+        Ok(())
     }
 
-    pub fn jump_from(&mut self,origin: u64,v: Rvalue,g: Guard) {
+    pub fn jump_from(&mut self,origin: u64,v: Rvalue,g: Guard) -> Result<()> {
         self.jumps.push((origin,v,g));
+        Ok(())
     }
 }
 
