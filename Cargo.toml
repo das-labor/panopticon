@@ -29,9 +29,6 @@ chrono = "0.2"
 chrono-humanize = "0.0.6"
 goblin = "0.0.2"
 
-[dependencies.goblin]
-git = "https://github.com/m4b/goblin.git"
-
 [dependencies.qmlrs]
 git = "https://github.com/flanfly/qmlrs"
 
