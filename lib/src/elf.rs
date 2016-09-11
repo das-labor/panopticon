@@ -16,14 +16,13 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-extern crate goblin;
-
 use std::io::{Seek,SeekFrom,Read};
 use std::fs::File;
 use std::path::Path;
 
 use graph_algos::MutableGraphTrait;
 use uuid::Uuid;
+use goblin;
 use goblin::elf::{program_header,Binary};
 
 use {
