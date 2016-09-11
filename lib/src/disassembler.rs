@@ -19,7 +19,8 @@
 #![macro_use]
 
 use std::sync::Arc;
-use std::fmt::{Debug};
+use std::fmt;
+use std::fmt::Debug;
 use std::ops::{BitAnd,BitOr,Shl,Shr,Not};
 use std::collections::HashMap;
 use std::mem::size_of;
@@ -68,20 +69,6 @@ pub trait Architecture: Clone
     fn decode(&Region,u64,&Self::Configuration) -> Result<Match<Self>>;
 }
 
-pub struct CodeGen<A: Architecture> {
-    pub statements: Vec<Statement>,
-    pub configuration: A::Configuration,
-}
-
-impl<C: Architecture> CodeGen<C> {
-    pub fn new(cfg: &C::Configuration) -> CodeGen<C> {
-        CodeGen{
-            statements: Vec::new(),
-            configuration: cfg.clone(),
-        }
-    }
-}
-
 #[derive(Debug,Clone)]
 pub struct Match<A: Architecture> {
     pub tokens: Vec<A::Token>,
@@ -90,6 +77,17 @@ pub struct Match<A: Architecture> {
     pub jumps: Vec<(u64,Rvalue,Guard)>,
 
     pub configuration: A::Configuration,
+}
+
+impl<A: Architecture> From<State<A>> for Match<A> {
+    fn from(st: State<A>) -> Self {
+        Match::<A>{
+            tokens: st.tokens,
+            mnemonics: st.mnemonics,
+            jumps: st.jumps,
+            configuration: st.configuration,
+        }
+    }
 }
 
 pub type Action<A> = fn(&mut State<A>) -> bool;
@@ -431,6 +429,12 @@ impl<A: Architecture> Disassembler<A> {
     }
 }
 
+impl<A: Architecture> Debug for Disassembler<A> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Disassembler")
+    }
+}
+
 impl<A: Architecture> Into<Rule<A>> for usize {
     fn into(self) -> Rule<A> {
         Rule::Terminal{
@@ -640,6 +644,7 @@ mod tests {
         OpaqueLayer,
         Guard,
         Rvalue,
+        Region,
         Bound,
         LayerIter,
         Result,
@@ -651,11 +656,11 @@ mod tests {
         type Token = u8;
         type Configuration = ();
 
-        fn prepare(_: LayerIter,_: &Self::Configuration) -> Result<Vec<(&'static str,u64,&'static str)>> {
+        fn prepare(_: &Region,_: &Self::Configuration) -> Result<Vec<(&'static str,u64,&'static str)>> {
             unimplemented!()
         }
 
-        fn disassembler(_: &Self::Configuration) -> Arc<Disassembler<Self>> {
+        fn decode(_: &Region,_: u64,_: &Self::Configuration) -> Result<Match<Self>> {
             unimplemented!()
         }
     }
@@ -666,11 +671,11 @@ mod tests {
         type Token = u16;
         type Configuration = ();
 
-        fn prepare(_: LayerIter,_: &Self::Configuration) -> Result<Vec<(&'static str,u64,&'static str)>> {
+        fn prepare(_: &Region,_: &Self::Configuration) -> Result<Vec<(&'static str,u64,&'static str)>> {
             unimplemented!()
         }
 
-        fn disassembler(_: &Self::Configuration) -> Arc<Disassembler<Self>> {
+        fn decode(_: &Region,_: u64,_: &Self::Configuration) -> Result<Match<Self>> {
             unimplemented!()
         }
     }
@@ -739,7 +744,7 @@ mod tests {
         let sub = new_disassembler!(TestArchShort =>
             [ 2 ] = |st: &mut State<TestArchShort>| {
                 let next = st.address;
-                st.mnemonic(2,"BA","",vec!(),&|_| {});
+                st.mnemonic(2,"BA","",vec!(),&|_| { Ok(vec![]) });
                 st.jump(Rvalue::new_u64(next + 2),Guard::always());
                 true
             });
@@ -750,19 +755,19 @@ mod tests {
             [ 1, sub ] = &|_| true,
             [ 1 ] = |st: &mut State<TestArchShort>| {
                 let next = st.address;
-                st.mnemonic(1,"A","",vec!(),&|_| {});
+                st.mnemonic(1,"A","",vec!(),&|_| { Ok(vec![]) });
                 st.jump(Rvalue::new_u64(next + 1),Guard::always());
                 true
             },
             [ "0 k@..... 11" ] = |st: &mut State<TestArchShort>| {
                 let next = st.address;
-                st.mnemonic(1,"C","",vec!(),&|_| {});
+                st.mnemonic(1,"C","",vec!(),&|_| { Ok(vec![]) });
                 st.jump(Rvalue::new_u64(next + 1),Guard::always());
                 true
             },
             _ = |st: &mut State<TestArchShort>| {
                 let next = st.address;
-                st.mnemonic(1,"UNK","",vec!(),&|_| {});
+                st.mnemonic(1,"UNK","",vec!(),&|_| { Ok(vec![]) });
                 st.jump(Rvalue::new_u64(next + 1),Guard::always());
                 true
             }
@@ -919,7 +924,7 @@ mod tests {
         let def = OpaqueLayer::wrap(vec!(127));
         let dec = new_disassembler!(TestArchShort =>
             ["01 a@.. 1 b@ c@..."] = |st: &mut State<TestArchShort>| {
-                st.mnemonic(1, "1","",vec!(),&|_| {});
+                st.mnemonic(1, "1","",vec!(),&|_| { Ok(vec![]) });
                 true
             }
         );
@@ -976,7 +981,7 @@ mod tests {
             [0x2211] = |s: &mut State<TestArchWide>|
             {
                 let a = s.address;
-                s.mnemonic(2,"A","",vec!(),&|_| {});
+                s.mnemonic(2,"A","",vec!(),&|_| { Ok(vec![]) });
                 s.jump(Rvalue::new_u64(a + 2),Guard::always());
                 true
             },
@@ -984,7 +989,7 @@ mod tests {
             [0x4433] = |s: &mut State<TestArchWide>|
             {
                 let a = s.address;
-                s.mnemonic(2,"B","",vec!(),&|_| {});
+                s.mnemonic(2,"B","",vec!(),&|_| { Ok(vec![]) });
                 s.jump(Rvalue::new_u64(a + 2),Guard::always());
                 s.jump(Rvalue::new_u64(a + 4),Guard::always());
                 true
@@ -992,7 +997,7 @@ mod tests {
 
             [0x4455] = |s: &mut State<TestArchWide>|
             {
-                s.mnemonic(2, "C","",vec!(),&|_| {});
+                s.mnemonic(2, "C","",vec!(),&|_| { Ok(vec![]) });
                 true
             }
         );
@@ -1019,7 +1024,7 @@ mod tests {
             [127, opt!(126), 125] = |st: &mut State<TestArchShort>|
             {
                 let l = st.tokens.len();
-                st.mnemonic(l, "1", "", vec!(),&|_| {});
+                st.mnemonic(l, "1", "", vec!(),&|_| { Ok(vec![]) });
                 true
             }
         );
@@ -1069,7 +1074,7 @@ mod tests {
                 assert_eq!(st.get_group("c"),1);
 
                 let l = st.tokens.len();
-                st.mnemonic(l, "1", "", vec!(),&|_| {});
+                st.mnemonic(l, "1", "", vec!(),&|_| { Ok(vec![]) });
                 true
             }
         );
@@ -1098,7 +1103,7 @@ mod tests {
             [ "01111111", "a@11111111" ] = |st: &mut State<TestArchShort>|
             {
                 let l = st.tokens.len();
-                st.mnemonic(l, "1", "", vec!(),&|_| {});
+                st.mnemonic(l, "1", "", vec!(),&|_| { Ok(vec![]) });
                 true
             }
         );

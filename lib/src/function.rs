@@ -490,6 +490,7 @@ mod tests {
     use super::*;
     use std::borrow::Cow;
     use std::sync::Arc;
+    use std::fmt;
     use graph_algos::{VertexListGraphTrait,EdgeListGraphTrait,AdjacencyMatrixGraphTrait};
     use graph_algos::{GraphTrait,MutableGraphTrait};
     use {
@@ -497,6 +498,8 @@ mod tests {
         Mnemonic,
         Bound,
         BasicBlock,
+        Region,
+        Match,
         Rvalue,
         OpaqueLayer,
         LayerIter,
@@ -510,14 +513,18 @@ mod tests {
     enum TestArchShort {}
     impl Architecture for TestArchShort {
         type Token = u8;
-        type Configuration = ();
+        type Configuration = Arc<Disassembler<TestArchShort>>;
 
-        fn prepare(_: LayerIter,_: &Self::Configuration) -> Result<Vec<(&'static str,u64,&'static str)>> {
+        fn prepare(_: &Region,_: &Self::Configuration) -> Result<Vec<(&'static str,u64,&'static str)>> {
             unimplemented!()
         }
 
-        fn disassembler(_: &Self::Configuration) -> Arc<Disassembler<Self>> {
-            unimplemented!()
+        fn decode(reg: &Region, addr: u64, cfg: &Self::Configuration) -> Result<Match<Self>> {
+            if let Some(s) = cfg.next_match(&mut reg.iter().cut(&(addr..reg.size())),addr,cfg.clone()) {
+                Ok(s.into())
+            } else {
+                Err("No match".into())
+            }
         }
     }
 
@@ -525,14 +532,18 @@ mod tests {
     enum TestArchWide {}
     impl Architecture for TestArchWide {
         type Token = u16;
-        type Configuration = ();
+        type Configuration = Arc<Disassembler<TestArchWide>>;
 
-        fn prepare(_: LayerIter,_: &Self::Configuration) -> Result<Vec<(&'static str,u64,&'static str)>> {
+        fn prepare(_: &Region,_: &Self::Configuration) -> Result<Vec<(&'static str,u64,&'static str)>> {
             unimplemented!()
         }
 
-        fn disassembler(_: &Self::Configuration) -> Arc<Disassembler<Self>> {
-            unimplemented!()
+        fn decode(reg: &Region, addr: u64, cfg: &Self::Configuration) -> Result<Match<Self>> {
+            if let Some(s) = cfg.next_match(&mut reg.iter().cut(&(addr..reg.size())),addr,cfg.clone()) {
+                Ok(s.into())
+            } else {
+                Err("No match".into())
+            }
         }
     }
 
@@ -664,12 +675,13 @@ mod tests {
     fn add_single() {
         let main = new_disassembler!(TestArchShort =>
             [ 0 ] = |st: &mut State<TestArchShort>| {
-                st.mnemonic(1,"A","",vec!(),&|_| {});
+                st.mnemonic(1,"A","",vec!(),&|_| { Ok(vec![]) });
                 true
             }
 		);
         let data = OpaqueLayer::wrap(vec!(0));
-        let func = Function::disassemble(None,main,(),data.iter(),0,"ram".to_string());
+        let reg = Region::new("".to_string(),data);
+        let func = Function::disassemble::<TestArchShort>(None,main,&reg,0);
 
         assert_eq!(func.cflow_graph.num_vertices(), 1);
         assert_eq!(func.cflow_graph.num_edges(), 0);
@@ -696,44 +708,45 @@ mod tests {
         let main = new_disassembler!(TestArchShort =>
             [ 0 ] = |st: &mut State<TestArchShort>| {
                 let next = st.address;
-                st.mnemonic(1,"test0","",vec!(),&|_| {});
+                st.mnemonic(1,"test0","",vec!(),&|_| { Ok(vec![]) });
                 st.jump(Rvalue::new_u64(next + 1),Guard::always());
                 true
             },
             [ 1 ] = |st: &mut State<TestArchShort>| {
                 let next = st.address;
-                st.mnemonic(1,"test1","",vec!(),&|_| {});
+                st.mnemonic(1,"test1","",vec!(),&|_| { Ok(vec![]) });
                 st.jump(Rvalue::new_u64(next + 1),Guard::always());
                 true
             },
             [ 2 ] = |st: &mut State<TestArchShort>| {
                 let next = st.address;
-                st.mnemonic(1,"test2","",vec!(),&|_| {});
+                st.mnemonic(1,"test2","",vec!(),&|_| { Ok(vec![]) });
                 st.jump(Rvalue::new_u64(next + 1),Guard::always());
                 true
             },
             [ 3 ] = |st: &mut State<TestArchShort>| {
                 let next = st.address;
-                st.mnemonic(1,"test3","",vec!(),&|_| {});
+                st.mnemonic(1,"test3","",vec!(),&|_| { Ok(vec![]) });
                 st.jump(Rvalue::new_u64(next + 1),Guard::always());
                 true
             },
             [ 4 ] = |st: &mut State<TestArchShort>| {
                 let next = st.address;
-                st.mnemonic(1,"test4","",vec!(),&|_| {});
+                st.mnemonic(1,"test4","",vec!(),&|_| { Ok(vec![]) });
                 st.jump(Rvalue::new_u64(next + 1),Guard::always());
                 true
             },
             [ 5 ] = |st: &mut State<TestArchShort>| {
                 let next = st.address;
-                st.mnemonic(1,"test5","",vec!(),&|_| {});
+                st.mnemonic(1,"test5","",vec!(),&|_| { Ok(vec![]) });
                 st.jump(Rvalue::new_u64(next + 1),Guard::always());
                 true
             }
         );
 
         let data = OpaqueLayer::wrap(vec!(0,1,2,3,4,5));
-        let func = Function::disassemble(None,main,(),data.iter(),0,"ram".to_string());
+        let reg = Region::new("".to_string(),data);
+        let func = Function::disassemble::<TestArchShort>(None,main,&reg,0);
 
         assert_eq!(func.cflow_graph.num_vertices(), 2);
         assert_eq!(func.cflow_graph.num_edges(), 1);
@@ -776,25 +789,26 @@ mod tests {
     fn branch() {
         let main = new_disassembler!(TestArchShort =>
             [ 0 ] = |st: &mut State<TestArchShort>| {
-                st.mnemonic(1,"test0","",vec!(),&|_| {});
+                st.mnemonic(1,"test0","",vec!(),&|_| { Ok(vec![]) });
                 st.jump(Rvalue::new_u32(1),Guard::always());
                 st.jump(Rvalue::new_u32(2),Guard::always());
                 true
             },
             [ 1 ] = |st: &mut State<TestArchShort>| {
-                st.mnemonic(1,"test1","",vec!(),&|_| {});
+                st.mnemonic(1,"test1","",vec!(),&|_| { Ok(vec![]) });
                 st.jump(Rvalue::new_u32(3),Guard::always());
                 true
             },
             [ 2 ] = |st: &mut State<TestArchShort>| {
-                st.mnemonic(1,"test2","",vec!(),&|_| {});
+                st.mnemonic(1,"test2","",vec!(),&|_| { Ok(vec![]) });
                 st.jump(Rvalue::new_u32(1),Guard::always());
                 true
             }
         );
 
         let data = OpaqueLayer::wrap(vec!(0,1,2));
-        let func = Function::disassemble(None,main,(),data.iter(),0,"ram".to_string());
+        let reg = Region::new("".to_string(),data);
+        let func = Function::disassemble::<TestArchShort>(None,main,&reg,0);
 
         assert_eq!(func.cflow_graph.num_vertices(), 4);
         assert_eq!(func.cflow_graph.num_edges(), 4);
@@ -848,24 +862,25 @@ mod tests {
     fn function_loop() {
       let main = new_disassembler!(TestArchShort =>
             [ 0 ] = |st: &mut State<TestArchShort>| {
-                st.mnemonic(1,"test0","",vec!(),&|_| {});
+                st.mnemonic(1,"test0","",vec!(),&|_| { Ok(vec![]) });
                 st.jump(Rvalue::new_u32(1),Guard::always());
                 true
             },
             [ 1 ] = |st: &mut State<TestArchShort>| {
-                st.mnemonic(1,"test1","",vec!(),&|_| {});
+                st.mnemonic(1,"test1","",vec!(),&|_| { Ok(vec![]) });
                 st.jump(Rvalue::new_u32(2),Guard::always());
                 true
             },
             [ 2 ] = |st: &mut State<TestArchShort>| {
-                st.mnemonic(1,"test2","",vec!(),&|_| {});
+                st.mnemonic(1,"test2","",vec!(),&|_| { Ok(vec![]) });
                 st.jump(Rvalue::new_u32(0),Guard::always());
                 true
             }
         );
 
         let data = OpaqueLayer::wrap(vec!(0,1,2));
-        let func = Function::disassemble(None,main,(),data.iter(),0,"ram".to_string());
+        let reg = Region::new("".to_string(),data);
+        let func = Function::disassemble::<TestArchShort>(None,main,&reg,0);
 
         assert_eq!(func.cflow_graph.num_vertices(), 1);
         assert_eq!(func.cflow_graph.num_edges(), 1);
@@ -895,24 +910,25 @@ mod tests {
     fn empty() {
         let main = new_disassembler!(TestArchShort =>
             [ 0 ] = |st: &mut State<TestArchShort>| {
-                st.mnemonic(1,"test0","",vec!(),&|_| {});
+                st.mnemonic(1,"test0","",vec!(),&|_| { Ok(vec![]) });
                 st.jump(Rvalue::new_u32(1),Guard::always());
                 true
             },
             [ 1 ] = |st: &mut State<TestArchShort>| {
-                st.mnemonic(1,"test1","",vec!(),&|_| {});
+                st.mnemonic(1,"test1","",vec!(),&|_| { Ok(vec![]) });
                 st.jump(Rvalue::new_u32(2),Guard::always());
                 true
             },
             [ 2 ] = |st: &mut State<TestArchShort>| {
-                st.mnemonic(1,"test2","",vec!(),&|_| {});
+                st.mnemonic(1,"test2","",vec!(),&|_| { Ok(vec![]) });
                 st.jump(Rvalue::new_u32(0),Guard::always());
                 true
             }
         );
 
         let data = OpaqueLayer::wrap(vec!());
-        let func = Function::disassemble(None,main,(),data.iter(),0,"ram".to_string());
+        let reg = Region::new("".to_string(),data);
+        let func = Function::disassemble::<TestArchShort>(None,main,&reg,0);
 
         assert_eq!(func.cflow_graph.num_vertices(), 1);
         assert_eq!(func.cflow_graph.num_edges(), 0);
@@ -937,24 +953,25 @@ mod tests {
 
         let main = new_disassembler!(TestArchShort =>
             [ 0 ] = |st: &mut State<TestArchShort>| {
-                st.mnemonic(1,"test0","",vec!(),&|_| {});
+                st.mnemonic(1,"test0","",vec!(),&|_| { Ok(vec![]) });
                 st.jump(Rvalue::new_u32(1),Guard::always());
                 true
             },
             [ 1 ] = |st: &mut State<TestArchShort>| {
-                st.mnemonic(1,"test1","",vec!(),&|_| {});
+                st.mnemonic(1,"test1","",vec!(),&|_| { Ok(vec![]) });
                 st.jump(Rvalue::new_u32(2),Guard::always());
                 true
             },
             [ 2 ] = |st: &mut State<TestArchShort>| {
-                st.mnemonic(1,"test2","",vec!(),&|_| {});
+                st.mnemonic(1,"test2","",vec!(),&|_| { Ok(vec![]) });
                 st.jump(Rvalue::new_u32(1),Guard::always());
                 true
             }
         );
 
         let data = OpaqueLayer::wrap(vec!(0,1,2));
-        let func = Function::disassemble(Some(fun),main,(),data.iter(),2,"ram".to_string());
+        let reg = Region::new("".to_string(),data);
+        let func = Function::disassemble::<TestArchShort>(Some(fun),main,&reg,2);
 
         assert_eq!(func.cflow_graph.num_vertices(), 3);
         assert_eq!(func.cflow_graph.num_edges(), 3);
@@ -1002,11 +1019,12 @@ mod tests {
     #[test]
     fn wide_token() {
         let def = OpaqueLayer::wrap(vec!(0x11,0x22,0x33,0x44,0x55,0x44));
+        let reg = Region::new("".to_string(),def);
         let dec = new_disassembler!(TestArchWide =>
             [0x2211] = |s: &mut State<TestArchWide>|
             {
                 let a = s.address;
-                s.mnemonic(2,"A","",vec!(),&|_| {});
+                s.mnemonic(2,"A","",vec!(),&|_| { Ok(vec![]) });
                 s.jump(Rvalue::new_u64(a + 2),Guard::always());
                 true
             },
@@ -1014,7 +1032,7 @@ mod tests {
             [0x4433] = |s: &mut State<TestArchWide>|
             {
                 let a = s.address;
-                s.mnemonic(2,"B","",vec!(),&|_| {});
+                s.mnemonic(2,"B","",vec!(),&|_| { Ok(vec![]) });
                 s.jump(Rvalue::new_u64(a + 2),Guard::always());
                 s.jump(Rvalue::new_u64(a + 4),Guard::always());
                 true
@@ -1022,12 +1040,12 @@ mod tests {
 
             [0x4455] = |s: &mut State<TestArchWide>|
             {
-                s.mnemonic(2, "C","",vec!(),&|_| {});
+                s.mnemonic(2, "C","",vec!(),&|_| { Ok(vec![]) });
                 true
             }
         );
 
-        let func = Function::disassemble(None,dec,(),def.iter(),0,"ram".to_string());
+        let func = Function::disassemble::<TestArchWide>(None,dec,&reg,0);
 
         assert_eq!(func.cflow_graph.num_vertices(), 3);
         assert_eq!(func.cflow_graph.num_edges(), 2);
@@ -1063,24 +1081,25 @@ mod tests {
     fn issue_51_treat_entry_point_as_incoming_edge() {
         let main = new_disassembler!(TestArchShort =>
             [ 0 ] = |st: &mut State<TestArchShort>| {
-                st.mnemonic(1,"test0","",vec!(),&|_| {});
+                st.mnemonic(1,"test0","",vec!(),&|_| { Ok(vec![]) });
                 st.jump(Rvalue::new_u32(1),Guard::always());
                 true
             },
             [ 1 ] = |st: &mut State<TestArchShort>| {
-                st.mnemonic(1,"test1","",vec!(),&|_| {});
+                st.mnemonic(1,"test1","",vec!(),&|_| { Ok(vec![]) });
                 st.jump(Rvalue::new_u32(2),Guard::always());
                 true
             },
             [ 2 ] = |st: &mut State<TestArchShort>| {
-                st.mnemonic(1,"test2","",vec!(),&|_| {});
+                st.mnemonic(1,"test2","",vec!(),&|_| { Ok(vec![]) });
                 st.jump(Rvalue::new_u32(0),Guard::always());
                 true
             }
         );
 
         let data = OpaqueLayer::wrap(vec!(0,1,2));
-        let func = Function::disassemble(None,main,(),data.iter(),1,"ram".to_string());
+        let reg = Region::new("".to_string(),data);
+        let func = Function::disassemble::<TestArchShort>(None,main,&reg,1);
 
         assert_eq!(func.cflow_graph.num_vertices(), 2);
         assert_eq!(func.cflow_graph.num_edges(), 2);

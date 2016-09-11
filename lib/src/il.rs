@@ -929,12 +929,12 @@ macro_rules! rreil_imm {
 mod tests {
     use super::*;
     use {
-        Rvalue,
-        Lvalue,
         Architecture,
         LayerIter,
         Result,
         Disassembler,
+        Region,
+        Match,
     };
     use std::sync::Arc;
     use std::borrow::Cow;
@@ -945,24 +945,22 @@ mod tests {
         type Token = u8;
         type Configuration = ();
 
-        fn prepare(_: LayerIter,_: &Self::Configuration) -> Result<Vec<(&'static str,u64,&'static str)>> {
+        fn prepare(_: &Region,_: &Self::Configuration) -> Result<Vec<(&'static str,u64,&'static str)>> {
             unimplemented!()
         }
 
-        fn disassembler(_: &Self::Configuration) -> Arc<Disassembler<Self>> {
+        fn decode(_: &Region,_: u64,_: &Self::Configuration) -> Result<Match<Self>> {
             unimplemented!()
         }
     }
 
     #[test]
     fn rreil_macro() {
-        let mut cg = CodeGen::<TestArchShort>::new(0,&());
         let t0 = Lvalue::Variable{ name: Cow::Borrowed("t0"), subscript: None, size: 12 };
         let eax = Rvalue::Variable{ name: Cow::Borrowed("eax"), subscript: None, offset: 0, size: 12 };
         let val = Rvalue::Constant{ value: 1223, size: 12 };
 
-        rreil!{
-            cg:
+        let _ = rreil!{
             add (t0) , (val), (eax);
             and t0 : 32 , [ 2147483648 ]: 32, eax : 32;
             and t1 : 32 , [2147483648] : 32, ebx : 32;
@@ -978,10 +976,9 @@ mod tests {
             and t8 : 32 , [4294967295] : 32, t2 : 32/32;
             xor t9 : 8 , OF : 8 , SF : 8;
             sel/32 rax:64, ebx:32;
-        }
+        };
 
-        rreil!{
-            cg:
+        let _ = rreil!{
             sub t0:32, eax:32, ebx:32;
             cmpltu CF:1, eax:32, ebx:32;
             cmpleu CForZF:1, eax:32, ebx:32;
@@ -990,26 +987,23 @@ mod tests {
             cmpeq  ZF:1, eax:32, ebx:32;
             cmplts SF:1, t0:32, [0]:32;
             xor OF:1, SFxorOF:1, SF:1;
-        }
+        };
 
-        rreil!{
-            cg:
+        let _ = rreil!{
             sub rax:32, rax:32, [1]:32;
             mov rax:32, [0]:32;
-        }
+        };
 
-        rreil!{
-            cg:
+        let _ = rreil!{
             store/ram rax:32, [0]:32;
             load/ram rax:32, [0]:32;
-        }
+        };
 
-        rreil!{
-            cg:
+        let _ = rreil!{
             sext/32 rax:32, ax:16;
             zext/32 rax:32, ax:16;
             mov rax:32, tbx:32;
-        }
+        };
     }
 
     fn setup() -> Vec<Statement> {

@@ -551,8 +551,7 @@ mod tests {
             0x23,0x0c, // 4:6 add
             0x21,0x2c, // 6:8 mov
         ));
-        let main = disassembler();
-        let fun = Function::disassemble::<Avr>(None,main,Mcu::atmega8(),reg.iter(),0,reg.name().to_string());
+        let fun = Function::disassemble::<Avr>(None,Mcu::atmega8(),&reg,0);
         let cg = &fun.cflow_graph;
 
         for x in cg.vertices() {
@@ -597,8 +596,7 @@ mod tests {
             0x23,0x0c, // 6:8 add
             0x21,0x2c, // 8:10 mov
         ));
-        let main = disassembler();
-        let fun = Function::disassemble::<Avr>(None,main,Mcu::atmega8(),reg.iter(),0,reg.name().to_string());
+        let fun = Function::disassemble::<Avr>(None,Mcu::atmega8(),&reg,0);
         let cg = &fun.cflow_graph;
 
         for x in cg.vertices() {
@@ -645,8 +643,7 @@ mod tests {
             0x23,0x0c, // 4:6 add
             0x21,0x2c, // 6:8 mov
         ));
-        let main = disassembler();
-        let fun = Function::disassemble::<Avr>(None,main,Mcu::atmega8(),reg.iter(),0,reg.name().to_string());
+        let fun = Function::disassemble::<Avr>(None,Mcu::atmega8(),&reg,0);
         let cg = &fun.cflow_graph;
 
         for x in cg.vertices() {
@@ -696,8 +693,7 @@ mod tests {
                 0xA2,0xE6, //       0e ldi     r26, 0x62
                 0xB0,0xE0, //       10 ldi     r27, 0
             ));
-        let main = disassembler();
-        let fun = Function::disassemble::<Avr>(None,main,Mcu::atmega8(),reg.iter(),0,reg.name().to_string());
+        let fun = Function::disassemble::<Avr>(None,Mcu::atmega8(),&reg,0);
         let cfg = &fun.cflow_graph;
 
         assert_eq!(cfg.num_vertices(),3);
@@ -910,7 +906,7 @@ mod tests {
 
             let l = bytes.len();
             let reg = Region::wrap("base".to_string(),bytes);
-            let mut i = reg.iter().seek(0);
+            let mut i = reg.iter();
             let maybe_match = main.next_match(&mut i,0,Mcu::atmega103());
 
             if let Some(match_st) = maybe_match {
