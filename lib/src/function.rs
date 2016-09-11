@@ -520,7 +520,7 @@ mod tests {
         }
 
         fn decode(reg: &Region, addr: u64, cfg: &Self::Configuration) -> Result<Match<Self>> {
-            if let Some(s) = cfg.next_match(&mut reg.iter().cut(&(addr..reg.size())),addr,cfg.clone()) {
+            if let Some(s) = cfg.next_match(&mut reg.iter().seek(addr),addr,cfg.clone()) {
                 Ok(s.into())
             } else {
                 Err("No match".into())
@@ -539,7 +539,7 @@ mod tests {
         }
 
         fn decode(reg: &Region, addr: u64, cfg: &Self::Configuration) -> Result<Match<Self>> {
-            if let Some(s) = cfg.next_match(&mut reg.iter().cut(&(addr..reg.size())),addr,cfg.clone()) {
+            if let Some(s) = cfg.next_match(&mut reg.iter().seek(addr),addr,cfg.clone()) {
                 Ok(s.into())
             } else {
                 Err("No match".into())
