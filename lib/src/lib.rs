@@ -130,8 +130,10 @@ pub use disassembler::{
     State,
     Architecture,
     Disassembler,
+    Match,
 };
 
+#[macro_use]
 pub mod il;
 pub use il::{
     Rvalue,
@@ -142,9 +144,6 @@ pub use il::{
     execute,
     lift,
 };
-
-pub mod codegen;
-pub use codegen::CodeGen;
 
 pub mod mnemonic;
 pub use mnemonic::{

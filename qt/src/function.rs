@@ -259,9 +259,9 @@ pub fn control_flow_graph(arg: &Variant) -> Variant {
                                                             let val = if s < 64 { c % (1u64 << s) } else { c };
                                                             let sign_bit = if s < 64 { 1u64 << (s - 1) } else { 0x8000000000000000 };
                                                             let s = if !has_sign || val & sign_bit == 0 {
-                                                                format!("{}",val)
+                                                                format!("{:x}",val)
                                                             } else {
-                                                                format!("{}",(val as i64).wrapping_neg())
+                                                                format!("{:x}",(val as i64).wrapping_neg())
                                                             };
                                                             CfgOperand{
                                                                 kind: "constant",
@@ -721,6 +721,7 @@ pub fn layout(arg0: &Variant, arg1: &Variant, arg2: &Variant, arg3: &Variant, ar
                 }
 
                 thread::spawn(move || -> Result<()> {
+                    println!("start layout");
                     match sugiyama::layout(&(0..vertices.len()).collect::<Vec<usize>>(),
                                            &edges,
                                            &dims_transformed,
@@ -753,6 +754,7 @@ pub fn layout(arg0: &Variant, arg1: &Variant, arg2: &Variant, arg3: &Variant, ar
                                     }
                                 });
                             }
+                            println!("end layout");
                             Controller::emit(LAYOUTED_FUNCTION,&try!(json::encode(&(ret_v,ret_e))))
                         },
                         // XXX tell the frontend

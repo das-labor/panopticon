@@ -36,8 +36,7 @@ use graph_algos::{
 #[test]
 fn avr_jmp_overflow() {
     let reg = Region::open("flash".to_string(),Path::new("tests/data/avr-jmp-overflow.bin")).unwrap();
-    let main = disassembler();
-    let fun = Function::disassemble::<Avr>(None,main,Mcu::atmega88(),reg.iter(),0,reg.name().to_string());
+    let fun = Function::disassemble::<Avr>(None,Mcu::atmega88(),&reg,0);
 
     assert_eq!(fun.cflow_graph.num_vertices(), 2);
     assert_eq!(fun.cflow_graph.num_edges(), 2);
@@ -56,8 +55,7 @@ fn avr_jmp_overflow() {
 #[test]
 fn avr_wrap_around() {
     let reg = Region::open("flash".to_string(),Path::new("tests/data/avr-overflow.bin")).unwrap();
-    let main = disassembler();
-    let fun = Function::disassemble::<Avr>(None,main,Mcu::atmega88(),reg.iter(),0,reg.name().to_string());
+    let fun = Function::disassemble::<Avr>(None,Mcu::atmega88(),&reg,0);
 
     assert_eq!(fun.cflow_graph.num_vertices(), 2);
     assert_eq!(fun.cflow_graph.num_edges(), 2);
@@ -76,6 +74,6 @@ fn avr_wrap_around() {
 
 #[test]
 fn avr_elf() {
-    let proj = elf::load::load(Path::new("tests/data/hello-world")).ok();
+    let proj = elf::load(Path::new("tests/data/hello-world")).ok();
     assert!(proj.is_some());
 }

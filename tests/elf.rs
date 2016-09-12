@@ -18,12 +18,12 @@
 
 extern crate panopticon;
 
-use panopticon::elf::*;
+use panopticon::elf;
 use std::path::Path;
 
 #[test]
 fn elf_load_static() {
-    match load::load(Path::new("tests/data/static")) {
+    match elf::load(Path::new("tests/data/static")) {
         Ok((proj,_)) => println!("{}",proj.name),
         Err(_) => panic!()
     }

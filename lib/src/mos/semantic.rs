@@ -20,18 +20,19 @@ use std::convert::Into;
 use {
     Rvalue,
     Lvalue,
-    CodeGen,
+    Statement,
     State,
+    Result,
     Guard,
 };
 use mos::*;
 
-pub fn nop(_: &mut CodeGen<Mos>) {}
+pub fn nop(_: &mut Variant) -> Result<Vec<Statement>> { Ok(vec![]) }
 
-pub fn nop_r(_: &mut CodeGen<Mos>, _: Rvalue) {}
+pub fn nop_r(_: &mut Variant, _: Rvalue) -> Result<Vec<Statement>> { Ok(vec![]) }
 
-pub fn adc(cg: &mut CodeGen<Mos>, r: Rvalue) {
-    rreil!{cg:
+pub fn adc(cg: &mut Variant, r: Rvalue) -> Result<Vec<Statement>> {
+    rreil!{
         zext/8 carry:8, C:1;
         add res:8, A:8, (r);
         add res:8, res:8, carry:8;
@@ -157,16 +158,16 @@ pub fn adc(cg: &mut CodeGen<Mos>, r: Rvalue) {
     cg.equal_i(&*Z, &A.to_rv(), &0);*/
 }
 
-pub fn and(cg: &mut CodeGen<Mos>, r: Rvalue) {
-    rreil!{cg:
+pub fn and(cg: &mut Variant, r: Rvalue) -> Result<Vec<Statement>> {
+    rreil!{
         and A:8, A:8, (r);
         cmpeq Z:1, A:8, [0]:8;
         cmples N:1, A:8, [0]:8;
     }
 }
 
-pub fn asl(cg: &mut CodeGen<Mos>, _r: Rvalue) {
-    rreil!{cg:
+pub fn asl(cg: &mut Variant, _r: Rvalue) -> Result<Vec<Statement>> {
+    rreil!{
         mov C:1, A:1/7;
         shl A:8, A:8, [1]:8;
         cmpeq Z:1, A:8, [0]:8;
@@ -174,8 +175,8 @@ pub fn asl(cg: &mut CodeGen<Mos>, _r: Rvalue) {
     }
 }
 
-pub fn bit(cg: &mut CodeGen<Mos>, r: Rvalue) {
-    rreil!{cg:
+pub fn bit(cg: &mut Variant, r: Rvalue) -> Result<Vec<Statement>> {
+    rreil!{
         and res:8, A:8, (r);
         cmpeq Z:1, res:8, [0]:8;
         cmples N:1, res:8, [0]:8;
@@ -184,7 +185,7 @@ pub fn bit(cg: &mut CodeGen<Mos>, r: Rvalue) {
 }
 
 
-pub fn brk(_: &mut CodeGen<Mos>) {
+pub fn brk(_: &mut Variant) -> Result<Vec<Statement>> {
     /* Well.  We could simulate BRK up to the indirect jump at the NMI vector.
        So we add the code to do that here.  But without the ROM, this is useless
        (and with user-provided NMI handlers it would be very dynamic).
@@ -198,140 +199,141 @@ pub fn brk(_: &mut CodeGen<Mos>) {
        _push(cg, &reg.to_rv());
        _pushf(cg, &0);
        */
+    Ok(vec![])
 }
 
-pub fn clc(cg: &mut CodeGen<Mos>) {
-    rreil!{cg:
+pub fn clc(cg: &mut Variant) -> Result<Vec<Statement>> {
+    rreil!{
         mov C:1, [0]:1;
     }
 }
 
-pub fn cli(cg: &mut CodeGen<Mos>) {
-    rreil!{cg:
+pub fn cli(cg: &mut Variant) -> Result<Vec<Statement>> {
+    rreil!{
         mov I:1, [0]:1;
     }
 }
 
-pub fn cld(cg: &mut CodeGen<Mos>) {
-    rreil!{cg:
+pub fn cld(cg: &mut Variant) -> Result<Vec<Statement>> {
+    rreil!{
         mov D:1, [0]:1;
     }
 }
 
-pub fn sec(cg: &mut CodeGen<Mos>) {
-    rreil!{cg:
+pub fn sec(cg: &mut Variant) -> Result<Vec<Statement>> {
+    rreil!{
         mov C:1, [1]:1;
     }
 }
 
-pub fn sei(cg: &mut CodeGen<Mos>) {
-    rreil!{cg:
+pub fn sei(cg: &mut Variant) -> Result<Vec<Statement>> {
+    rreil!{
         mov I:1, [1]:1;
     }
 }
 
-pub fn clv(cg: &mut CodeGen<Mos>) {
-    rreil!{cg:
+pub fn clv(cg: &mut Variant) -> Result<Vec<Statement>> {
+    rreil!{
         mov V:1, [0]:1;
     }
 }
 
-pub fn sed(cg: &mut CodeGen<Mos>) {
-    rreil!{cg:
+pub fn sed(cg: &mut Variant) -> Result<Vec<Statement>> {
+    rreil!{
         mov D:1, [1]:1;
     }
 }
 
-fn cmp(cg: &mut CodeGen<Mos>, r1: Rvalue, r2: Rvalue) {
-    rreil!{cg:
+fn cmp(cg: &mut Variant, r1: Rvalue, r2: Rvalue) -> Result<Vec<Statement>> {
+    rreil!{
         cmpltu C:1, (r1), (r2);
         mov N:1, C:1;
         cmpeq Z:1, (r1), (r2);
     }
 }
 
-pub fn cpx(cg: &mut CodeGen<Mos>, r: Rvalue) {
+pub fn cpx(cg: &mut Variant, r: Rvalue) -> Result<Vec<Statement>> {
     cmp(cg, rreil_rvalue!{ X:8 },r)
 }
 
-pub fn cpy(cg: &mut CodeGen<Mos>, r: Rvalue) {
+pub fn cpy(cg: &mut Variant, r: Rvalue) -> Result<Vec<Statement>> {
     cmp(cg, rreil_rvalue!{ Y:8 },r)
 }
 
-pub fn cpa(cg: &mut CodeGen<Mos>, r: Rvalue) {
+pub fn cpa(cg: &mut Variant, r: Rvalue) -> Result<Vec<Statement>> {
     cmp(cg, rreil_rvalue!{ A:8 },r)
 }
 
-fn dec(cg: &mut CodeGen<Mos>, l: Lvalue, r: Rvalue) {
-    rreil!{cg:
+fn dec(cg: &mut Variant, l: Lvalue, r: Rvalue) -> Result<Vec<Statement>> {
+    rreil!{
         sub (l), (r), [1]:8;
         cmpeq Z:1, (l), [0]:8;
         cmplts N:1, (r), [0]:8;
     }
 }
 
-pub fn dea(cg: &mut CodeGen<Mos>, r: Rvalue) {
+pub fn dea(cg: &mut Variant, r: Rvalue) -> Result<Vec<Statement>> {
     dec(cg, rreil_lvalue!{ A:8 }, r)
 }
 
-pub fn dex(cg: &mut CodeGen<Mos>) {
+pub fn dex(cg: &mut Variant) -> Result<Vec<Statement>> {
     dec(cg, rreil_lvalue!{ X:8 }, rreil_rvalue!{ X:8 })
 }
 
-pub fn dey(cg: &mut CodeGen<Mos>) {
+pub fn dey(cg: &mut Variant) -> Result<Vec<Statement>> {
     dec(cg, rreil_lvalue!{ Y:8 }, rreil_rvalue!{ Y:8 })
 }
 
-pub fn eor(cg: &mut CodeGen<Mos>, r: Rvalue) {
-    rreil!{cg:
+pub fn eor(cg: &mut Variant, r: Rvalue) -> Result<Vec<Statement>> {
+    rreil!{
         xor A:8, (r), A:8;
         cmpeq Z:1, A:8, [0]:8;
         cmplts N:1, A:8, [0]:8;
     }
 }
 
-fn inc(cg: &mut CodeGen<Mos>, l: Lvalue, r: Rvalue) {
-    rreil!{cg:
+fn inc(cg: &mut Variant, l: Lvalue, r: Rvalue) -> Result<Vec<Statement>> {
+    rreil!{
         add (l), (r), [1]:8;
         cmpeq Z:1, (l), [0]:8;
         cmplts N:1, (l), [0]:8;
     }
 }
 
-pub fn ina(cg: &mut CodeGen<Mos>, r: Rvalue) {
+pub fn ina(cg: &mut Variant, r: Rvalue) -> Result<Vec<Statement>> {
     inc(cg, rreil_lvalue!{ A:8 },r)
 }
 
-pub fn inx(cg: &mut CodeGen<Mos>) {
+pub fn inx(cg: &mut Variant) -> Result<Vec<Statement>> {
     inc(cg, rreil_lvalue!{ X:8 }, rreil_rvalue!{ X:8 })
 }
 
-pub fn iny(cg: &mut CodeGen<Mos>) {
+pub fn iny(cg: &mut Variant) -> Result<Vec<Statement>> {
     inc(cg, rreil_lvalue!{ Y:8 }, rreil_rvalue!{ Y:8 })
 }
 
-fn ld(cg: &mut CodeGen<Mos>, l: Lvalue, r: Rvalue) {
-    rreil!{cg:
+fn ld(cg: &mut Variant, l: Lvalue, r: Rvalue) -> Result<Vec<Statement>> {
+    rreil!{
         mov (l), (r);
         cmpeq Z:1, (l), [0]:8;
         cmplts N:1, (l), [0]:8;
     }
 }
 
-pub fn lda(cg: &mut CodeGen<Mos>, r: Rvalue) {
+pub fn lda(cg: &mut Variant, r: Rvalue) -> Result<Vec<Statement>> {
     ld(cg, rreil_lvalue!{ A:8 }, r)
 }
 
-pub fn ldx(cg: &mut CodeGen<Mos>, r: Rvalue) {
+pub fn ldx(cg: &mut Variant, r: Rvalue) -> Result<Vec<Statement>> {
     ld(cg, rreil_lvalue!{ X:8 }, r)
 }
 
-pub fn ldy(cg: &mut CodeGen<Mos>, r: Rvalue) {
+pub fn ldy(cg: &mut Variant, r: Rvalue) -> Result<Vec<Statement>> {
     ld(cg, rreil_lvalue!{ Y:8 }, r)
 }
 
-pub fn lsr(cg: &mut CodeGen<Mos>, r: Rvalue) {
-    rreil!{cg:
+pub fn lsr(cg: &mut Variant, r: Rvalue) -> Result<Vec<Statement>> {
+    rreil!{
         mov C:1, A:1;
         shl A:8, A:8, (r);
         cmpeq Z:1, A:8, [0]:8;
@@ -339,16 +341,16 @@ pub fn lsr(cg: &mut CodeGen<Mos>, r: Rvalue) {
     }
 }
 
-pub fn ora(cg: &mut CodeGen<Mos>, r: Rvalue) {
-    rreil!{cg:
+pub fn ora(cg: &mut Variant, r: Rvalue) -> Result<Vec<Statement>> {
+    rreil!{
         or A:8, (r), A:8;
         cmpeq Z:1, A:8, [0]:8;
         cmplts N:1, A:8, [0]:8;
     }
 }
 
-pub fn pha(cg: &mut CodeGen<Mos>) {
-    rreil!{cg:
+pub fn pha(cg: &mut Variant) -> Result<Vec<Statement>> {
+    rreil!{
         zext/9 sp:9, S:8;
         add sp:9, sp:9, [0x100]:9;
 
@@ -359,8 +361,8 @@ pub fn pha(cg: &mut CodeGen<Mos>) {
     }
 }
 
-pub fn php(cg: &mut CodeGen<Mos>) {
-    rreil!{cg:
+pub fn php(cg: &mut Variant) -> Result<Vec<Statement>> {
+    rreil!{
         zext/9 sp:9, S:8;
         add sp:9, sp:9, [0x100]:9;
 
@@ -379,8 +381,8 @@ pub fn php(cg: &mut CodeGen<Mos>) {
     }
 }
 
-pub fn pla(cg: &mut CodeGen<Mos>) {
-    rreil!{cg:
+pub fn pla(cg: &mut Variant) -> Result<Vec<Statement>> {
+    rreil!{
         zext/9 sp:9, S:8;
         add sp:9, sp:9, [0x100]:9;
 
@@ -394,8 +396,8 @@ pub fn pla(cg: &mut CodeGen<Mos>) {
     }
 }
 
-pub fn plp(cg: &mut CodeGen<Mos>) {
-    rreil!{cg:
+pub fn plp(cg: &mut Variant) -> Result<Vec<Statement>> {
+    rreil!{
         zext/9 sp:9, S:8;
         add sp:9, sp:9, [0x100]:9;
 
@@ -417,9 +419,9 @@ pub fn plp(cg: &mut CodeGen<Mos>) {
 }
 
 
-pub fn rol(cg: &mut CodeGen<Mos>, _r: Rvalue) {
+pub fn rol(cg: &mut Variant, _r: Rvalue) -> Result<Vec<Statement>> {
     let r = Lvalue::from_rvalue(_r).unwrap();
-    rreil!{cg:
+    rreil!{
         mov hb:1, (r.extract(1,7).unwrap());
         shl (r), (r), [1]:8;
         sel/7 (r), C:1;
@@ -429,9 +431,9 @@ pub fn rol(cg: &mut CodeGen<Mos>, _r: Rvalue) {
     }
 }
 
-pub fn ror(cg: &mut CodeGen<Mos>, _r: Rvalue) {
+pub fn ror(cg: &mut Variant, _r: Rvalue) -> Result<Vec<Statement>> {
     let r = Lvalue::from_rvalue(_r).unwrap();
-    rreil!{cg:
+    rreil!{
         mov lb:1, (r.extract(1,0).unwrap());
         shr (r), (r), [1]:8;
         sel/7 (r), C:1;
@@ -441,14 +443,15 @@ pub fn ror(cg: &mut CodeGen<Mos>, _r: Rvalue) {
     }
 }
 
-pub fn rts(_: &mut CodeGen<Mos>) {
+pub fn rts(_: &mut Variant) -> Result<Vec<Statement>> {
     /* FIXME: Pop PC-1 from stack (so that the next instruction is fetched
        from TOS+1 */
+    Ok(vec![])
 }
 
 
-pub fn sbc(cg: &mut CodeGen<Mos>, r: Rvalue) {
-    rreil!{cg:
+pub fn sbc(cg: &mut Variant, r: Rvalue) -> Result<Vec<Statement>> {
+    rreil!{
         zext/8 carry:8, C:1;
         sub res:8, A:8, (r);
         add res:8, res:8, carry:8;
@@ -561,60 +564,60 @@ pub fn sbc(cg: &mut CodeGen<Mos>, r: Rvalue) {
     cg.equal_i(&*Z, &A.to_rv(), &0);*/
 }
 
-fn st(cg: &mut CodeGen<Mos>, reg: Lvalue, ptr: Rvalue) {
-    rreil!{cg:
+fn st(cg: &mut Variant, reg: Lvalue, ptr: Rvalue) -> Result<Vec<Statement>> {
+    rreil!{
         store/ram (reg), (ptr);
     }
 }
 
-pub fn sta(cg: &mut CodeGen<Mos>, r: Rvalue) {
+pub fn sta(cg: &mut Variant, r: Rvalue) -> Result<Vec<Statement>> {
     st(cg, rreil_lvalue!{ A:8 }, r)
 }
 
-pub fn stx(cg: &mut CodeGen<Mos>, r: Rvalue) {
+pub fn stx(cg: &mut Variant, r: Rvalue) -> Result<Vec<Statement>> {
     st(cg, rreil_lvalue!{ X:8 }, r)
 }
 
-pub fn sty(cg: &mut CodeGen<Mos>, r: Rvalue) {
+pub fn sty(cg: &mut Variant, r: Rvalue) -> Result<Vec<Statement>> {
     st(cg, rreil_lvalue!{ Y:8 }, r)
 }
 
-pub fn trr(cg: &mut CodeGen<Mos>, src: &Lvalue, dst: &Lvalue) {
-    rreil!{cg:
+pub fn trr(cg: &mut Variant, src: &Lvalue, dst: &Lvalue) -> Result<Vec<Statement>> {
+    rreil!{
         mov (dst), (src);
         cmpeq Z:1, (dst), [0]:8;
         cmplts N:1, (dst), [0]:8;
     }
 }
 
-pub fn tax(cg: &mut CodeGen<Mos>) {
-    trr(cg, &A, &X);
+pub fn tax(cg: &mut Variant) -> Result<Vec<Statement>> {
+    trr(cg, &A, &X)
 }
 
-pub fn tay(cg: &mut CodeGen<Mos>) {
-    trr(cg, &A, &Y);
+pub fn tay(cg: &mut Variant) -> Result<Vec<Statement>> {
+    trr(cg, &A, &Y)
 }
 
-pub fn tsx(cg: &mut CodeGen<Mos>) {
-    trr(cg, &SP, &X);
+pub fn tsx(cg: &mut Variant) -> Result<Vec<Statement>> {
+    trr(cg, &SP, &X)
 }
 
-pub fn txa(cg: &mut CodeGen<Mos>) {
-    trr(cg, &X, &A);
+pub fn txa(cg: &mut Variant) -> Result<Vec<Statement>> {
+    trr(cg, &X, &A)
 }
 
-pub fn txs(cg: &mut CodeGen<Mos>) {
-    trr(cg, &X, &SP);
+pub fn txs(cg: &mut Variant) -> Result<Vec<Statement>> {
+    trr(cg, &X, &SP)
 }
 
-pub fn tya(cg: &mut CodeGen<Mos>) {
-    trr(cg, &Y, &A);
+pub fn tya(cg: &mut Variant) -> Result<Vec<Statement>> {
+    trr(cg, &Y, &A)
 }
 
 pub fn jmp_direct(st: &mut State<Mos>) -> bool {
     let next = Rvalue::new_u16(st.get_group("immlo") as u16 | ((st.get_group("immhi") as u16) << 8));
 
-    st.mnemonic(3,"jmp","{c:ram}",vec![next.clone()],&|_: &mut CodeGen<Mos>| {});
+    st.mnemonic(3,"jmp","{c:ram}",vec![next.clone()],&|_: &mut Variant| -> Result<Vec<Statement>> { Ok(vec![]) });
     st.jump(next,Guard::always());
 
     true
@@ -623,15 +626,15 @@ pub fn jmp_direct(st: &mut State<Mos>) -> bool {
 pub fn jmp_indirect(st: &mut State<Mos>) -> bool {
     let ptr = Rvalue::new_u16(st.get_group("immlo") as u16 | ((st.get_group("immhi") as u16) << 8));
 
-    st.mnemonic(0,"__fetch","",vec![],&|cg: &mut CodeGen<Mos>| {
-        rreil!{cg:
+    st.mnemonic(0,"__fetch","",vec![],&|cg: &mut Variant| -> Result<Vec<Statement>> {
+        rreil!{
             load/ram res:16, (ptr);
         }
     });
 
     let next = rreil_rvalue!{ res:16 };
 
-    st.mnemonic(3,"jmp","{p:ram}",vec![ptr.clone()],&|_: &mut CodeGen<Mos>| {});
+    st.mnemonic(3,"jmp","{p:ram}",vec![ptr.clone()],&|_: &mut Variant| -> Result<Vec<Statement>> { Ok(vec![]) });
     st.jump(next,Guard::always());
 
     true
@@ -641,8 +644,8 @@ pub fn jsr(st: &mut State<Mos>) -> bool {
     let next = Rvalue::new_u16(st.address as u16 + 3);
     let target = Rvalue::new_u16(st.get_group("immlo") as u16 | ((st.get_group("immhi") as u16) << 8));
 
-    st.mnemonic(3,"jsr","{c:ram}",vec![target.clone()],&|cg: &mut CodeGen<Mos>| {
-        rreil!{cg:
+    st.mnemonic(3,"jsr","{c:ram}",vec![target.clone()],&|cg: &mut Variant| -> Result<Vec<Statement>> {
+        rreil!{
             call ?, (target);
         }
     });

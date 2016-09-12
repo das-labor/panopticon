@@ -21,12 +21,14 @@ use {
     Lvalue,
     Rvalue,
     Guard,
-    CodeGen,
     State,
+    Statement,
     Architecture,
     LayerIter,
+    Region,
     Result,
     Disassembler,
+    Match,
 };
 use std::sync::Arc;
 use std::borrow::Cow;
@@ -41,7 +43,8 @@ impl Architecture for Mos {
     type Token = u8;
     type Configuration = Variant;
 
-    fn prepare(i: LayerIter,_: &Self::Configuration) -> Result<Vec<(&'static str,u64,&'static str)>> {
+    fn prepare(reg: &Region,_: &Self::Configuration) -> Result<Vec<(&'static str,u64,&'static str)>> {
+        let mut i = reg.iter();
         let iv = vec![
             ("NMI",0xfffa, "NMI vector"),
             ("RESET",0xfffc, "Reset routine"),
@@ -65,8 +68,16 @@ impl Architecture for Mos {
         Ok(ret)
     }
 
-    fn disassembler(_: &Self::Configuration) -> Arc<Disassembler<Self>> {
-        syntax::disassembler()
+    fn decode(reg: &Region, addr: u64, cfg: &Self::Configuration) -> Result<Match<Self>> {
+        info!("disass @ {:x}",addr);
+        let disass = syntax::disassembler();
+
+        if let Some(st) = disass.next_match(&mut reg.iter().seek(addr),addr,cfg.clone()) {
+            info!("    res: {:?}",st);
+            Ok(st.into())
+        } else {
+            Err("Unrecognized instruction".into())
+        }
     }
 }
 
@@ -113,14 +124,15 @@ impl Variant {
 }
 
 // No argument
-pub fn nonary(opcode: &'static str, sem: fn(&mut CodeGen<Mos>)) -> Box<Fn(&mut State<Mos>) -> bool> {
+pub fn nonary(opcode: &'static str,
+              sem: fn(&mut Variant) -> Result<Vec<Statement>>
+             ) -> Box<Fn(&mut State<Mos>) -> bool> {
     Box::new(move |st: &mut State<Mos>| -> bool {
         let len = st.tokens.len();
         let next = (st.address + len as u64) as u16;
 
-        st.mnemonic_dynargs(len, &opcode, "", &|c| {
-            sem(c);
-            vec![]
+        st.mnemonic_dynargs(len, &opcode, "", &|c| -> Result<(Vec<Rvalue>,Vec<Statement>)> {
+            Ok((vec![],try!(sem(c))))
         });
         st.jump(Rvalue::new_u16(next), Guard::always());
         true
@@ -131,7 +143,7 @@ pub fn nonary(opcode: &'static str, sem: fn(&mut CodeGen<Mos>)) -> Box<Fn(&mut S
 pub fn ret(opcode: &'static str) -> Box<Fn(&mut State<Mos>) -> bool> {
     Box::new(move |st: &mut State<Mos>| -> bool {
         let len = st.tokens.len();
-        st.mnemonic(len, &opcode, "", vec![], &|_| {});
+        st.mnemonic(len, &opcode, "", vec![], &|_| -> Result<Vec<Statement>> { Ok(vec![]) });
         true
     })
 }
@@ -139,14 +151,14 @@ pub fn ret(opcode: &'static str) -> Box<Fn(&mut State<Mos>) -> bool> {
 // Implied register argument
 pub fn implied(opcode: &'static str,
                _arg0: &Lvalue,
-               sem: fn(&mut CodeGen<Mos>, Rvalue)
+               sem: fn(&mut Variant, Rvalue) -> Result<Vec<Statement>>
               ) -> Box<Fn(&mut State<Mos>) -> bool> {
     let arg0 = _arg0.clone();
     Box::new(move |st: &mut State<Mos>| -> bool {
         let len = st.tokens.len();
         let next = (st.address + len as u64) as u16;
-        st.mnemonic(len, &opcode, "", vec![], &|c| {
-            sem(c,arg0.clone().into());
+        st.mnemonic(len, &opcode, "", vec![], &|c| -> Result<Vec<Statement>> {
+            sem(c,arg0.clone().into())
         });
         st.jump(Rvalue::new_u16(next),Guard::always());
         true
@@ -155,16 +167,15 @@ pub fn implied(opcode: &'static str,
 
 // Immediate
 pub fn immediate(opcode: &'static str,
-               sem: fn(&mut CodeGen<Mos>,Rvalue)
+               sem: fn(&mut Variant,Rvalue) -> Result<Vec<Statement>>
               ) -> Box<Fn(&mut State<Mos>) -> bool> {
     Box::new(move |st: &mut State<Mos>| -> bool {
         let _arg = st.configuration.arg.clone();
         let len = st.tokens.len();
         let next = (st.address + len as u64) as u16;
         if let Some(arg) = _arg {
-            st.mnemonic_dynargs(len,&opcode,"#{u}",&|c| {
-                sem(c,arg.clone());
-                vec![arg.clone()]
+            st.mnemonic_dynargs(len,&opcode,"#{u}",&|c| -> Result<(Vec<Rvalue>,Vec<Statement>)> {
+                Ok((vec![arg.clone()],try!(sem(c,arg.clone()))))
             });
             st.jump(Rvalue::new_u16(next),Guard::always());
             true
@@ -176,20 +187,22 @@ pub fn immediate(opcode: &'static str,
 
 // Index into Zero Page
 pub fn zpage(opcode: &'static str,
-             sem: fn(&mut CodeGen<Mos>,Rvalue)
+             sem: fn(&mut Variant,Rvalue) -> Result<Vec<Statement>>
             ) -> Box<Fn(&mut State<Mos>) -> bool> {
     Box::new(move |st: &mut State<Mos>| -> bool {
         let len = st.tokens.len();
         let next = (st.address + len as u64) as u16;
         let base = st.configuration.arg.clone().unwrap();
 
-        st.mnemonic(len,&opcode,"{p:ram}",vec![base.clone()], &|c| {
-            rreil!{c:
+        st.mnemonic(len,&opcode,"{p:ram}",vec![base.clone()], &|c| -> Result<Vec<Statement>> {
+            let mut stmts = try!(rreil!{
                 zext/16 addr:16, (base);
                 load/ram val:8, addr:16;
-            }
+            });
 
-            sem(c, rreil_rvalue!{ val:8 });
+            stmts.append(&mut try!(sem(c, rreil_rvalue!{ val:8 })));
+
+            Ok(stmts)
         });
         st.jump(Rvalue::new_u16(next), Guard::always());
         true
@@ -199,7 +212,7 @@ pub fn zpage(opcode: &'static str,
 // Index into Zero Page with register offset
 pub fn zpage_offset(opcode: &'static str,
                _arg1: &Lvalue,
-                sem: fn(&mut CodeGen<Mos>,Rvalue)
+                sem: fn(&mut Variant,Rvalue) -> Result<Vec<Statement>>
                ) -> Box<Fn(&mut State<Mos>) -> bool> {
     let index = _arg1.clone();
     Box::new(move |st: &mut State<Mos>| -> bool {
@@ -216,16 +229,16 @@ pub fn zpage_offset(opcode: &'static str,
             subscript: None,
         };
 
-        st.mnemonic(0,"__load","",vec![],&|c| {
-            rreil!{c:
+        st.mnemonic(0,"__load","",vec![],&|c| -> Result<Vec<Statement>> {
+            rreil!{
                 add short_addr:8, (base), (index);
                 zext/16 (addr), short_addr:8;
                 load/ram val:8, (addr);
             }
         });
 
-        st.mnemonic(len,&opcode,"{p:ram}",vec![addr.clone().into()],&|c| {
-            sem(c, rreil_rvalue!{ val:8 });
+        st.mnemonic(len,&opcode,"{p:ram}",vec![addr.clone().into()],&|c| -> Result<Vec<Statement>> {
+            sem(c, rreil_rvalue!{ val:8 })
         });
 
         st.jump(Rvalue::new_u16(next), Guard::always());
@@ -236,7 +249,8 @@ pub fn zpage_offset(opcode: &'static str,
 
 pub fn zpage_index(opcode: &'static str,
                    _arg1: Lvalue,
-                   sem: fn(&mut CodeGen<Mos>,Rvalue)) -> Box<Fn(&mut State<Mos>) -> bool> {
+                   sem: fn(&mut Variant,Rvalue) -> Result<Vec<Statement>>
+                  ) -> Box<Fn(&mut State<Mos>) -> bool> {
     let index = _arg1.clone();
     Box::new(move |st: &mut State<Mos>| -> bool {
         let len = st.tokens.len();
@@ -248,20 +262,20 @@ pub fn zpage_index(opcode: &'static str,
             if let Lvalue::Variable{ ref name,.. } = index { name.clone() } else { unreachable!() };
         let addr = if index == rreil_lvalue!{ X:8 } {
             Lvalue::Variable{
-            name: Cow::Owned(format!("(${:02X},{})",base_val,index_nam)),
-            size: 16,
-            subscript: None,
+                name: Cow::Owned(format!("(${:02X},{})",base_val,index_nam)),
+                size: 16,
+                subscript: None,
             }
         } else {
-Lvalue::Variable{
-            name: Cow::Owned(format!("(${:02X}),{}",base_val,index_nam)),
-            size: 16,
-            subscript: None,
+            Lvalue::Variable{
+                name: Cow::Owned(format!("(${:02X}),{}",base_val,index_nam)),
+                size: 16,
+                subscript: None,
             }
         };
 
-        st.mnemonic(0,"__load","",vec![],&|c| {
-            rreil!{c:
+        st.mnemonic(0,"__load","",vec![],&|c| -> Result<Vec<Statement>> {
+            rreil!{
                 add short_addr:8, (base), (index);
                 zext/16 addr:16, short_addr:8;
                 load/ram (addr), addr:16;
@@ -269,8 +283,8 @@ Lvalue::Variable{
             }
         });
 
-        st.mnemonic(len,&opcode,"{p:ram}",vec![addr.clone().into()],&|c| {
-            sem(c, rreil_rvalue!{ val:8 });
+        st.mnemonic(len,&opcode,"{p:ram}",vec![addr.clone().into()],&|c| -> Result<Vec<Statement>> {
+            sem(c, rreil_rvalue!{ val:8 })
         });
         st.jump(Rvalue::new_u16(next),Guard::always());
         true
@@ -278,19 +292,21 @@ Lvalue::Variable{
 }
 
 pub fn absolute(opcode: &'static str,
-               sem: fn(&mut CodeGen<Mos>,Rvalue)
+               sem: fn(&mut Variant,Rvalue) -> Result<Vec<Statement>>
               ) -> Box<Fn(&mut State<Mos>) -> bool> {
     Box::new(move |st: &mut State<Mos>| -> bool {
         let len = st.tokens.len();
         let next = (st.address + len as u64) as u16;
         let base = st.configuration.arg.clone().unwrap();
 
-        st.mnemonic(len,&opcode,"{p:ram}",vec![base.clone()], &|c| {
-            rreil!{c:
+        st.mnemonic(len,&opcode,"{p:ram}",vec![base.clone()], &|c| -> Result<Vec<Statement>> {
+            let mut stmts = try!(rreil!{
                 load/ram val:8, (base);
-            }
+            });
 
-                sem(c, rreil_rvalue!{ val:8 });
+            stmts.append(&mut try!(sem(c, rreil_rvalue!{ val:8 })));
+
+            Ok(stmts)
         });
         st.jump(Rvalue::new_u16(next),Guard::always());
 	true
@@ -299,7 +315,7 @@ pub fn absolute(opcode: &'static str,
 
 pub fn absolute_offset(opcode: &'static str,
                _arg1: &Lvalue,
-               sem: fn(&mut CodeGen<Mos>,Rvalue)
+               sem: fn(&mut Variant,Rvalue) -> Result<Vec<Statement>>
               ) -> Box<Fn(&mut State<Mos>) -> bool> {
     let index = _arg1.clone();
     Box::new(move |st: &mut State<Mos>| -> bool {
@@ -317,15 +333,15 @@ pub fn absolute_offset(opcode: &'static str,
         };
 
         st.mnemonic(0,"__load","",vec![],&|c| {
-            rreil!{c:
+            rreil!{
                 zext/16 (addr), (index);
                 add (addr), (addr), (base);
                 load/ram val:8, (addr);
             }
         });
 
-        st.mnemonic(len,&opcode,"{p:ram}",vec![addr.clone().into()],&|c| {
-            sem(c, rreil_rvalue!{ val:8 });
+        st.mnemonic(len,&opcode,"{p:ram}",vec![addr.clone().into()],&|c| -> Result<Vec<Statement>> {
+            sem(c, rreil_rvalue!{ val:8 })
         });
         st.jump(Rvalue::new_u16(next),Guard::always());
         true
@@ -345,8 +361,8 @@ pub fn branch(opcode: &'static str, _flag: &Lvalue,
         let g = Guard::from_flag(&flag.clone().into()).ok().unwrap();
         let k = (st.address as i16).wrapping_add(rel) as u16;
 
-        st.mnemonic(2,opcode,"{c:ram}", vec![rreil_rvalue!{ [k]:16 }], &|c| {
-            rreil!{c:
+        st.mnemonic(2,opcode,"{c:ram}", vec![rreil_rvalue!{ [k]:16 }], &|c| -> Result<Vec<Statement>> {
+            rreil!{
                 cmpeq flag:1, (set), (flag);
             }
         });

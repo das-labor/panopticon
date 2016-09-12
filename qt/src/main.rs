@@ -18,6 +18,7 @@
 
 #[macro_use]
 extern crate log;
+extern crate env_logger;
 
 extern crate panopticon;
 extern crate qmlrs;
@@ -58,6 +59,8 @@ use paths::find_data_file;
 fn main() {
     use std::path::Path;
     use std::env;
+
+    env_logger::init().unwrap();
 
     if cfg!(unix) {
         // workaround bug #165

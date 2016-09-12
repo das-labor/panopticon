@@ -22,12 +22,14 @@ use std::sync::Arc;
 
 use {
     Lvalue,Rvalue,
-    CodeGen,
     Guard,
     Result,
     LayerIter,
+    Region,
     Disassembler,
     State,
+    Match,
+    Statement,
     Architecture,
 };
 
@@ -41,13 +43,21 @@ impl Architecture for Avr {
     type Token = u16;
     type Configuration = Mcu;
 
-    fn prepare(_: LayerIter,cfg: &Self::Configuration) -> Result<Vec<(&'static str,u64,&'static str)>> {
+    fn prepare(_: &Region,cfg: &Self::Configuration) -> Result<Vec<(&'static str,u64,&'static str)>> {
         Ok(cfg.int_vec.clone())
     }
 
-    fn disassembler(_: &Self::Configuration) -> Arc<Disassembler<Self>> {
-        syntax::disassembler()
-    }
+   fn decode(reg: &Region, addr: u64, cfg: &Self::Configuration) -> Result<Match<Self>> {
+        info!("disass @ {:x}",addr);
+        let disass = syntax::disassembler();
+
+        if let Some(st) = disass.next_match(&mut reg.iter().seek(addr),addr,cfg.clone()) {
+            info!("    res: {:?}",st);
+            Ok(st.into())
+        } else {
+            Err("Unrecognized instruction".into())
+        }
+   }
 }
 
 #[derive(Clone,Debug)]
@@ -262,8 +272,8 @@ pub fn skip(n: &'static str, expect: bool) -> Box<Fn(&mut State<Avr>) -> bool> {
         } else {
             let a = Rvalue::Constant{ value: st.get_group("sA"), size: 6 };
 
-            st.mnemonic(0,"__io_reg","",vec![],&|cg: &mut CodeGen<Avr>| {
-                rreil!{cg:
+            st.mnemonic(0,"__io_reg","",vec![],&|cg: &mut Mcu| {
+                rreil!{
                     load/io ioreg:8, (a);
                 }
             });
@@ -271,9 +281,9 @@ pub fn skip(n: &'static str, expect: bool) -> Box<Fn(&mut State<Avr>) -> bool> {
             (Rvalue::Variable{ name: Cow::Borrowed("ioreg"), size: 1, offset: bit as usize, subscript: None },a)
         };
 
-        st.mnemonic(2,n,"{u}, {u}",vec![_rr.clone().into(),b.clone()],&|cg: &mut CodeGen<Avr>| {
+        st.mnemonic(2,n,"{u}, {u}",vec![_rr.clone().into(),b.clone()],&|cg: &mut Mcu| {
             let rr = rr.clone();
-            rreil!{cg:
+            rreil!{
                 mov skip_flag:1, (rr);
             }
         });
@@ -296,7 +306,7 @@ pub fn skip(n: &'static str, expect: bool) -> Box<Fn(&mut State<Avr>) -> bool> {
     })
 }
 
-pub fn binary(n: &'static str,sem: fn(Lvalue,Rvalue,&mut CodeGen<Avr>)) -> Box<Fn(&mut State<Avr>) -> bool>{
+pub fn binary(n: &'static str,sem: fn(Lvalue,Rvalue,&mut Mcu) -> Result<Vec<Statement>>) -> Box<Fn(&mut State<Avr>) -> bool>{
     Box::new(move |st: &mut State<Avr>| {
         let rd = if st.has_group("D") {
             reg(st,"D")
@@ -312,7 +322,7 @@ pub fn binary(n: &'static str,sem: fn(Lvalue,Rvalue,&mut CodeGen<Avr>)) -> Box<F
         };
         let next = st.configuration.wrap(st.address + st.tokens.len() as u64 * 2);
 
-        st.mnemonic(2,n,"{u}, {u}",vec!(rd.clone().into(),rr.clone()),&|cg: &mut CodeGen<Avr>| {
+        st.mnemonic(2,n,"{u}, {u}",vec!(rd.clone().into(),rr.clone()),&|cg: &mut Mcu| {
             sem(rd.clone(),rr.clone(),cg)
         });
         optional_skip(next.clone(),st);
@@ -321,7 +331,7 @@ pub fn binary(n: &'static str,sem: fn(Lvalue,Rvalue,&mut CodeGen<Avr>)) -> Box<F
     })
 }
 
-pub fn binary_imm(n: &'static str,sem: fn(Lvalue,u64,&mut CodeGen<Avr>)) -> Box<Fn(&mut State<Avr>) -> bool>{
+pub fn binary_imm(n: &'static str,sem: fn(Lvalue,u64,&mut Mcu) -> Result<Vec<Statement>>) -> Box<Fn(&mut State<Avr>) -> bool>{
     Box::new(move |st: &mut State<Avr>| {
         let (rd,rd_rv) = if st.has_group("D") {
             (reg(st,"D"),None)
@@ -330,8 +340,8 @@ pub fn binary_imm(n: &'static str,sem: fn(Lvalue,u64,&mut CodeGen<Avr>)) -> Box<
         } else {
             let a = Rvalue::Constant{ value: st.get_group("A"), size: 6 };
 
-            st.mnemonic(0,"__io_reg","",vec![],&|cg: &mut CodeGen<Avr>| {
-                rreil!{cg:
+            st.mnemonic(0,"__io_reg","",vec![],&|cg: &mut Mcu| {
+                rreil!{
                     load/io ioreg:8, (a);
                 }
             });
@@ -346,7 +356,7 @@ pub fn binary_imm(n: &'static str,sem: fn(Lvalue,u64,&mut CodeGen<Avr>)) -> Box<
         let next = st.configuration.wrap(st.address + st.tokens.len() as u64 * 2);
         let len = st.tokens.len() * 2;
 
-        st.mnemonic(len,n,"{u}, {u}",vec![rd_rv.unwrap_or(rd.clone().into()),kc.clone()],&|cg: &mut CodeGen<Avr>| {
+        st.mnemonic(len,n,"{u}, {u}",vec![rd_rv.unwrap_or(rd.clone().into()),kc.clone()],&|cg: &mut Mcu| {
             sem(rd.clone(),k,cg)
         });
         optional_skip(next.clone(),st);
@@ -355,7 +365,7 @@ pub fn binary_imm(n: &'static str,sem: fn(Lvalue,u64,&mut CodeGen<Avr>)) -> Box<
     })
 }
 
-pub fn binary_ptr(n: &'static str,sem: fn(Lvalue,Lvalue,&mut CodeGen<Avr>),ar: AddressRegister,off: AddressOffset,ptr_first: bool) -> Box<Fn(&mut State<Avr>) -> bool> {
+pub fn binary_ptr(n: &'static str,sem: fn(Lvalue,Lvalue,&mut Mcu) -> Result<Vec<Statement>>,ar: AddressRegister,off: AddressOffset,ptr_first: bool) -> Box<Fn(&mut State<Avr>) -> bool> {
     Box::new(move |st: &mut State<Avr>| {
         let maybe_q = st.groups.iter().find(|x| x.0 == "q").cloned();
         let reg_str = match (&ar,&off) {
@@ -388,14 +398,14 @@ pub fn binary_ptr(n: &'static str,sem: fn(Lvalue,Lvalue,&mut CodeGen<Avr>),ar: A
         };
         let next = st.configuration.wrap(st.address + st.tokens.len() as u64 * 2);
 
-        st.mnemonic(0,"__addr_reg","",vec![],&|cg: &mut CodeGen<Avr>| {
+        st.mnemonic(0,"__addr_reg","",vec![],&|cg: &mut Mcu| {
             let (r1,r2) = match ar {
                 AddressRegister::X => (rreil_lvalue!{ R26:8 },rreil_lvalue!{ R27:8 }),
                 AddressRegister::Y => (rreil_lvalue!{ R28:8 },rreil_lvalue!{ R29:8 }),
                 AddressRegister::Z => (rreil_lvalue!{ R30:8 },rreil_lvalue!{ R31:8 }),
             };
 
-            rreil!{cg:
+            rreil!{
                 zext/16 (addr_reg), (r1);
                 sel/8 (addr_reg), (r2);
             }
@@ -407,23 +417,25 @@ pub fn binary_ptr(n: &'static str,sem: fn(Lvalue,Lvalue,&mut CodeGen<Avr>),ar: A
             ("{u}, {p:ram}",reg.clone().into(),addr_reg.clone().into())
         };
 
-        st.mnemonic(2,n,fmt,vec!(rd,rr),&|cg: &mut CodeGen<Avr>| {
+        st.mnemonic(2,n,fmt,vec!(rd,rr),&|cg: &mut Mcu| {
+            let mut stmts = vec![];
+
             if off == AddressOffset::Predecrement {
-                rreil!{cg:
+                stmts.append(&mut try!(rreil!{
                     sub (addr_reg), (addr_reg), [1]:16;
-                }
+                }));
             }
 
-            sem(addr_reg.clone(),reg.clone(),cg);
+            stmts.append(&mut try!(sem(addr_reg.clone(),reg.clone(),cg)));
 
             if off == AddressOffset::Postincrement {
-                rreil!{cg:
+                stmts.append(&mut try!(rreil!{
                     add (addr_reg), (addr_reg), [1]:16;
-                }
+                }));
             } else if off == AddressOffset::Displacement {
-                rreil!{cg:
+                stmts.append(&mut try!(rreil!{
                     add (addr_reg), (addr_reg), (Rvalue::new_u16(maybe_q.clone().unwrap().1 as u16));
-                }
+                }));
             }
 
             let (r1,r2) = match ar {
@@ -432,10 +444,12 @@ pub fn binary_ptr(n: &'static str,sem: fn(Lvalue,Lvalue,&mut CodeGen<Avr>),ar: A
                 AddressRegister::Z => (rreil_lvalue!{ R30:8 },rreil_lvalue!{ R31:8 }),
             };
 
-            rreil!{cg:
+            stmts.append(&mut try!(rreil!{
                 mov (r1), (addr_reg.extract(8,0).ok().unwrap());
                 mov (r2), (addr_reg.extract(8,8).ok().unwrap());
-            }
+            }));
+
+            Ok(stmts)
         });
 
         optional_skip(next.clone(),st);
@@ -444,7 +458,7 @@ pub fn binary_ptr(n: &'static str,sem: fn(Lvalue,Lvalue,&mut CodeGen<Avr>),ar: A
     })
 }
 
-pub fn nonary(n: &'static str,sem: fn(&mut CodeGen<Avr>)) -> Box<Fn(&mut State<Avr>) -> bool>{
+pub fn nonary(n: &'static str,sem: fn(&mut Mcu) -> Result<Vec<Statement>>) -> Box<Fn(&mut State<Avr>) -> bool>{
     Box::new(move |st: &mut State<Avr>| {
         let next = st.configuration.wrap(st.address + st.tokens.len() as u64 * 2);
 
@@ -455,12 +469,12 @@ pub fn nonary(n: &'static str,sem: fn(&mut CodeGen<Avr>)) -> Box<Fn(&mut State<A
     })
 }
 
-pub fn unary(n: &'static str,sem: fn(Lvalue,&mut CodeGen<Avr>)) -> Box<Fn(&mut State<Avr>) -> bool>{
+pub fn unary(n: &'static str,sem: fn(Lvalue,&mut Mcu) -> Result<Vec<Statement>>) -> Box<Fn(&mut State<Avr>) -> bool>{
     Box::new(move |st: &mut State<Avr>| {
         let rd = if st.has_group("D") { reg(st,"D") } else { resolv(st.get_group("d") + 16) };
         let next = st.configuration.wrap(st.address + st.tokens.len() as u64 * 2);
 
-        st.mnemonic(2,n,"{u}",vec!(rd.clone().into()),&|cg: &mut CodeGen<Avr>| {
+        st.mnemonic(2,n,"{u}",vec!(rd.clone().into()),&|cg: &mut Mcu| -> Result<Vec<Statement>> {
             sem(rd.clone(),cg)
         });
         optional_skip(next.clone(),st);
@@ -474,10 +488,10 @@ pub fn flag(n: &'static str,_f: &Lvalue,val: bool) -> Box<Fn(&mut State<Avr>) ->
     Box::new(move |st: &mut State<Avr>| -> bool {
         let next = st.configuration.wrap(st.address + st.tokens.len() as u64 * 2);
 
-        st.mnemonic(2,n,"",vec!(),&|cg: &mut CodeGen<Avr>| {
+        st.mnemonic(2,n,"",vec!(),&|cg: &mut Mcu| {
             let bit = if val { 1 } else { 0 };
 
-            rreil!{cg:
+            rreil!{
                 mov (f.clone()), [bit]:1;
             }
         });
@@ -495,10 +509,10 @@ pub fn branch(n: &'static str,_f: &Lvalue,val: bool) -> Box<Fn(&mut State<Avr>) 
         let jump = st.configuration.wrap((st.address as i64 + st.tokens.len() as i64 * 2 + k) as u64);
         let fallthru = st.configuration.wrap(st.address + st.tokens.len() as u64 * 2);
 
-        st.mnemonic(2,n,"{c:flash}",vec!(jump.clone().into()),&|cg: &mut CodeGen<Avr>| {
+        st.mnemonic(2,n,"{c:flash}",vec!(jump.clone().into()),&|cg: &mut Mcu| -> Result<Vec<Statement>> {
             let bit = if val { 1 } else { 0 };
 
-            rreil!{cg:
+            rreil!{
                 mov (f), [bit]:1;
             }
         });
@@ -545,8 +559,7 @@ mod tests {
             0x23,0x0c, // 4:6 add
             0x21,0x2c, // 6:8 mov
         ));
-        let main = disassembler();
-        let fun = Function::disassemble::<Avr>(None,main,Mcu::atmega8(),reg.iter(),0,reg.name().to_string());
+        let fun = Function::disassemble::<Avr>(None,Mcu::atmega8(),&reg,0);
         let cg = &fun.cflow_graph;
 
         for x in cg.vertices() {
@@ -591,8 +604,7 @@ mod tests {
             0x23,0x0c, // 6:8 add
             0x21,0x2c, // 8:10 mov
         ));
-        let main = disassembler();
-        let fun = Function::disassemble::<Avr>(None,main,Mcu::atmega8(),reg.iter(),0,reg.name().to_string());
+        let fun = Function::disassemble::<Avr>(None,Mcu::atmega8(),&reg,0);
         let cg = &fun.cflow_graph;
 
         for x in cg.vertices() {
@@ -639,8 +651,7 @@ mod tests {
             0x23,0x0c, // 4:6 add
             0x21,0x2c, // 6:8 mov
         ));
-        let main = disassembler();
-        let fun = Function::disassemble::<Avr>(None,main,Mcu::atmega8(),reg.iter(),0,reg.name().to_string());
+        let fun = Function::disassemble::<Avr>(None,Mcu::atmega8(),&reg,0);
         let cg = &fun.cflow_graph;
 
         for x in cg.vertices() {
@@ -690,8 +701,7 @@ mod tests {
                 0xA2,0xE6, //       0e ldi     r26, 0x62
                 0xB0,0xE0, //       10 ldi     r27, 0
             ));
-        let main = disassembler();
-        let fun = Function::disassemble::<Avr>(None,main,Mcu::atmega8(),reg.iter(),0,reg.name().to_string());
+        let fun = Function::disassemble::<Avr>(None,Mcu::atmega8(),&reg,0);
         let cfg = &fun.cflow_graph;
 
         assert_eq!(cfg.num_vertices(),3);
@@ -904,7 +914,7 @@ mod tests {
 
             let l = bytes.len();
             let reg = Region::wrap("base".to_string(),bytes);
-            let mut i = reg.iter().seek(0);
+            let mut i = reg.iter();
             let maybe_match = main.next_match(&mut i,0,Mcu::atmega103());
 
             if let Some(match_st) = maybe_match {

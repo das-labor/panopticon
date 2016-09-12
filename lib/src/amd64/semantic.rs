@@ -1,6 +1,6 @@
 /*
  * Panopticon - A libre disassembler
- * Copyright (C) 2014-2015 Kai Michaelis
+ * Copyright (C) 2014,2015,2016 Kai Michaelis
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,28 +21,30 @@ use std::cmp::max;
 use {
     Lvalue,
     Rvalue,
-    CodeGen,
     State,
     Guard,
+    Result,
+    Statement,
 };
 use amd64::*;
 /*
 pub fn flagwr(flag: &Lvalue, val: bool) -> Box<Fn(&mut CodeGen<Amd64>)> {
     let f = flag.clone();
-    Box::new(move |cg: &mut CodeGen<Amd64>| {
+    Box::new(move || {
         cg.assign(&f,&Rvalue::Constant(if val { 1 } else { 0 }));
     })
 }
 
 pub fn flagcomp(flag: &Lvalue) -> Box<Fn(&mut CodeGen<Amd64>)> {
     let f = flag.clone();
-    Box::new(move |cg: &mut CodeGen<Amd64>| {
+    Box::new(move || {
         cg.not_b(&f,&f);
     })
 }
 */
-pub fn aaa(_: &mut CodeGen<Amd64>) {
-  /*  rreil!{cg:
+pub fn aaa() -> Result<(Vec<Statement>,JumpSpec)> {
+    return Ok((vec![],JumpSpec::FallThru));
+  /*  rreil!{
         and y:8, AL:8, [0xf]:8;
 
         // TODO
@@ -71,7 +73,8 @@ pub fn aaa(_: &mut CodeGen<Amd64>) {
     cg.mod_i(&AX,&AX.clone().into(),&Rvalue::Constant(0x100));*/
 }
 
-pub fn aam(_: &mut CodeGen<Amd64>, _: Rvalue) {
+pub fn aam(_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> {
+    return Ok((vec![],JumpSpec::FallThru));
  /*   let temp_al = new_temp(16);
 
     cg.assign(&temp_al,&AL.clone().into());
@@ -79,7 +82,8 @@ pub fn aam(_: &mut CodeGen<Amd64>, _: Rvalue) {
     cg.mod_i(&*AL,&temp_al,&a);*/
 }
 
-pub fn aad(_: &mut CodeGen<Amd64>, _: Rvalue) {
+pub fn aad(_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> {
+    return Ok((vec![],JumpSpec::FallThru));
  /*   let x = new_temp(16);
 
     cg.mul_i(&x,&AH.clone().into(),&a);
@@ -87,7 +91,8 @@ pub fn aad(_: &mut CodeGen<Amd64>, _: Rvalue) {
     cg.assign(&*AH,&Rvalue::new_bit(0));*/
 }
 
-pub fn aas(_: &mut CodeGen<Amd64>) {
+pub fn aas() -> Result<(Vec<Statement>,JumpSpec)> {
+    return Ok((vec![],JumpSpec::FallThru));
  /*   let y1 = new_temp(16);
     let x1 = new_temp(1);
     let x2 = new_temp(1);
@@ -123,8 +128,8 @@ pub fn aas(_: &mut CodeGen<Amd64>) {
 }
 
 /// res := a ? ?
-fn set_aux_flag(cg: &mut CodeGen<Amd64>, res: &Lvalue, a: &Rvalue) {
-    rreil!{cg:
+fn set_aux_flag(res: &Lvalue, a: &Rvalue) -> Result<Vec<Statement>> {
+    rreil!{
         mov half_res:4, (res);
         mov half_a:4, (a);
         cmpeq af1:1, half_res:4, half_a:4;
@@ -134,8 +139,8 @@ fn set_aux_flag(cg: &mut CodeGen<Amd64>, res: &Lvalue, a: &Rvalue) {
     }
 }
 
-fn set_parity_flag(cg: &mut CodeGen<Amd64>, res: &Lvalue) {
-    rreil!{cg:
+fn set_parity_flag(res: &Lvalue) -> Result<Vec<Statement>> {
+    rreil!{
         mov half_res:8, (res);
         xor PF:1, res:1, res:1/1;
         xor PF:1, PF:1, half_res:1/2;
@@ -148,8 +153,8 @@ fn set_parity_flag(cg: &mut CodeGen<Amd64>, res: &Lvalue) {
 }
 
 /// res := a ? ?
-fn set_carry_flag(cg: &mut CodeGen<Amd64>, res: &Lvalue, a: &Rvalue) {
-    rreil!{cg:
+fn set_carry_flag(res: &Lvalue, a: &Rvalue) -> Result<Vec<Statement>> {
+    rreil!{
         cmpeq cf1:1, (res), (a);
         cmpltu cf2:1, (res), (a);
         and cf1:1, cf1:1, CF:1;
@@ -158,7 +163,7 @@ fn set_carry_flag(cg: &mut CodeGen<Amd64>, res: &Lvalue, a: &Rvalue) {
 }
 
 /// Assumes res := a ? b
-fn set_overflow_flag(cg: &mut CodeGen<Amd64>, res: &Lvalue, a: &Rvalue, b: &Rvalue, sz: usize) {
+fn set_overflow_flag(res: &Lvalue, a: &Rvalue, b: &Rvalue, sz: usize) -> Result<Vec<Statement>> {
     /*
      * The rules for turning on the overflow flag in binary/integer math are two:
      *
@@ -174,7 +179,7 @@ fn set_overflow_flag(cg: &mut CodeGen<Amd64>, res: &Lvalue, a: &Rvalue, b: &Rval
      *
      * Otherwise, the overflow flag is turned off.
      */
-    rreil!{cg:
+    rreil!{
         cmples s1:1, [0]:sz, (a);
         cmples s2:1, [0]:sz, (b);
         cmplts s3:1, (res), [0]:sz;
@@ -190,11 +195,11 @@ fn set_overflow_flag(cg: &mut CodeGen<Amd64>, res: &Lvalue, a: &Rvalue, b: &Rval
         and ov2:1, ov2:1, t3:1;
 
         or OV:1, ov1:1, ov2:1;
-    };
+    }
 }
 
 /// Returns (a/sz, b/sz, sz) w/ s = max(a.size,b.size)
-fn sign_extend(cg: &mut CodeGen<Amd64>, a: &Rvalue, b: &Rvalue) -> (Rvalue,Rvalue,usize) {
+fn sign_extend(a: &Rvalue, b: &Rvalue) -> Result<(Rvalue,Rvalue,usize,Vec<Statement>)> {
     let sz = max(a.size().unwrap_or(0),b.size().unwrap_or(0));
     let ext = |x: &Rvalue,s: usize| -> Rvalue {
         match x {
@@ -213,34 +218,31 @@ fn sign_extend(cg: &mut CodeGen<Amd64>, a: &Rvalue, b: &Rvalue) -> (Rvalue,Rvalu
 
     let ext_a = ext(a,sz);
     let ext_b = ext(b,sz);
+    let mut stmts = vec![];
 
     assert!(sz > 0);
     assert!(ext_a.size() == None || ext_b.size() == None || ext_a.size() == ext_b.size());
 
     if a.size() != ext_a.size() {
         if let Some(lv) = Lvalue::from_rvalue(ext_a.clone()) {
-            rreil!{cg:
+            stmts = try!(rreil!{
                 sext/sz (lv), (a);
-            }
-        } else {
-            unreachable!()
+            });
         }
     }
 
     if b.size() != ext_b.size() {
         if let Some(lv) = Lvalue::from_rvalue(ext_b.clone()) {
-            rreil!{cg:
+            stmts.append(&mut try!(rreil!{
                 sext/sz (lv), (b);
-            }
-        } else {
-            unreachable!()
+            }));
         }
     }
 
-    (ext_a,ext_b,sz)
+    Ok((ext_a,ext_b,sz,stmts))
 }
 
-fn write_reg(cg: &mut CodeGen<Amd64>, _reg: &Rvalue, _: &Rvalue, sz: usize) {
+fn write_reg(_reg: &Rvalue, _: &Rvalue, sz: usize) -> Result<Vec<Statement>> {
     if let Some(ref reg) = Lvalue::from_rvalue(_reg.clone()) {
         if sz < 64 {
             if let &Lvalue::Variable{ ref name,.. } = reg {
@@ -250,116 +252,122 @@ fn write_reg(cg: &mut CodeGen<Amd64>, _reg: &Rvalue, _: &Rvalue, sz: usize) {
                    name == "R9" || name == "R10" || name == "R11" ||
                    name == "R12" || name == "R13" || name == "R14" ||
                    name == "R15" {
-                    rreil!{cg:
+                    return rreil!{
                         zext/64 reg:64, res:sz;
-                    }
-                    return
+                    };
                 }
             }
         }
-        rreil!{cg:
+        rreil!{
             mov reg:sz, res:sz;
-        };
+        }
     } else {
         unreachable!()
     }
 }
 
-pub fn adc(cg: &mut CodeGen<Amd64>, _a: Rvalue, _b: Rvalue) {
-    let (a,b,sz) = sign_extend(cg,&_a,&_b);
+pub fn adc(_a: Rvalue, _b: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> {
+    let (a,b,sz,mut stmts) = try!(sign_extend(&_a,&_b));
     let res = rreil_lvalue!{ res:sz };
 
-    rreil!{cg:
+    stmts.append(&mut try!(rreil!{
         add res:sz, (a), (b);
         zext/sz cf:sz, CF:1;
         add res:sz, res:sz, cf:sz;
         cmplts SF:1, res:sz, [0]:sz;
         cmpeq ZF:1, res:sz, [0]:sz;
-    }
+    }));
+    stmts.append(&mut try!(set_carry_flag(&res,&a)));
+    stmts.append(&mut try!(set_aux_flag(&res,&a)));
+    stmts.append(&mut try!(set_overflow_flag(&res,&a,&b,sz)));
+    stmts.append(&mut try!(set_parity_flag(&res)));
+    stmts.append(&mut try!(write_reg(&_a,&res.clone().into(),sz)));
 
-    set_carry_flag(cg,&res,&a);
-    set_aux_flag(cg,&res,&a);
-    set_overflow_flag(cg,&res,&a,&b,sz);
-    set_parity_flag(cg,&res);
-    write_reg(cg,&_a,&res.clone().into(),sz);
+    Ok((stmts,JumpSpec::FallThru))
 }
 
-pub fn add(cg: &mut CodeGen<Amd64>, _a: Rvalue, _b: Rvalue) {
-    let (a,b,sz) = sign_extend(cg,&_a,&_b);
+pub fn add(_a: Rvalue, _b: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> {
+    let (a,b,sz,mut stmts) = try!(sign_extend(&_a,&_b));
     let res = rreil_lvalue!{ res:sz };
 
-    rreil!{cg:
+    stmts.append(&mut try!(rreil!{
         add res:sz, (a), (b);
         cmplts SF:1, res:sz, [0]:sz;
         cmpeq ZF:1, res:sz, [0]:sz;
-    }
+    }));
+    stmts.append(&mut try!(set_carry_flag(&res,&a)));
+    stmts.append(&mut try!(set_aux_flag(&res,&a)));
+    stmts.append(&mut try!(set_overflow_flag(&res,&a,&b,sz)));
+    stmts.append(&mut try!(set_parity_flag(&res)));
+    stmts.append(&mut try!(write_reg(&_a,&res.clone().into(),sz)));
 
-    set_carry_flag(cg,&res,&a);
-    set_aux_flag(cg,&res,&a);
-    set_overflow_flag(cg,&res,&a,&b,sz);
-    set_parity_flag(cg,&res);
-    write_reg(cg,&_a,&res.clone().into(),sz);
+    Ok((stmts,JumpSpec::FallThru))
 }
 
-pub fn adcx(cg: &mut CodeGen<Amd64>, _a: Rvalue, _b: Rvalue) {
-    let (a,b,sz) = sign_extend(cg,&_a,&_b);
+pub fn adcx(_a: Rvalue, _b: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> {
+    let (a,b,sz,mut stmts) = try!(sign_extend(&_a,&_b));
     let res = rreil_lvalue!{ res:sz };
 
-    rreil!{cg:
+    stmts.append(&mut try!(rreil!{
         add res:sz, (a), (b);
         zext/sz cf:sz, CF:1;
         add res:sz, res:sz, cf:sz;
-    }
+    }));
+    stmts.append(&mut try!(set_carry_flag(&res,&a)));
+    stmts.append(&mut try!(write_reg(&_a,&res.clone().into(),sz)));
 
-    set_carry_flag(cg,&res,&a);
-    write_reg(cg,&_a,&res.clone().into(),sz);
+    Ok((stmts,JumpSpec::FallThru))
 }
 
-pub fn and(cg: &mut CodeGen<Amd64>, _a: Rvalue, _b: Rvalue) {
-    let (a,b,sz) = sign_extend(cg,&_a,&_b);
+pub fn and(_a: Rvalue, _b: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> {
+    let (a,b,sz,mut stmts) = try!(sign_extend(&_a,&_b));
     let res = rreil_lvalue!{ res:sz };
 
-    rreil!{cg:
+    stmts.append(&mut try!(rreil!{
         and res:sz, (a), (b);
         cmplts SF:1, res:sz, [0]:sz;
         cmpeq ZF:1, res:sz, [0]:sz;
         mov CF:1, [0]:1;
         mov OF:1, [0]:1;
-    }
+    }));
+    stmts.append(&mut try!(set_parity_flag(&res)));
+    stmts.append(&mut try!(write_reg(&_a,&res.clone().into(),sz)));
 
-    set_parity_flag(cg,&res);
-    write_reg(cg,&_a,&res.clone().into(),sz);
+    Ok((stmts,JumpSpec::FallThru))
 }
 
-pub fn arpl(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn arpl(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
 
-pub fn bound(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn bound(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
 
-pub fn bsf(cg: &mut CodeGen<Amd64>, _a: Rvalue, _b: Rvalue) {
-    let (_,b,sz) = sign_extend(cg,&_a,&_b);
+pub fn bsf(_a: Rvalue, _b: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> {
+    return Ok((vec![],JumpSpec::FallThru));
+    let (_,b,sz,_) = try!(sign_extend(&_a,&_b));
     let res = rreil_lvalue!{ res:sz };
-
-    rreil!{cg:
+    let mut stmts = try!(rreil!{
         cmpeq ZF:1, (b), [0]:sz;
         mov res:sz, ?;
-    }
+    });
 
-    write_reg(cg,&_a,&res.clone().into(),sz);
+    stmts.append(&mut try!(write_reg(&_a,&res.clone().into(),sz)));
+    Ok((stmts,JumpSpec::FallThru))
 }
 
-pub fn bsr(cg: &mut CodeGen<Amd64>, _a: Rvalue, _b: Rvalue) {
-    let (_,b,sz) = sign_extend(cg,&_a,&_b);
+pub fn bsr(_a: Rvalue, _b: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> {
+    return Ok((vec![],JumpSpec::FallThru));
+    let (_,b,sz,_) = try!(sign_extend(&_a,&_b));
     let res = rreil_lvalue!{ res:sz };
-
-    rreil!{cg:
+    let mut stmts = try!(rreil!{
         cmpeq ZF:1, (b), [0]:sz;
         mov res:sz, ?;
-    }
+    });
 
-    write_reg(cg,&_a,&res.clone().into(),sz);
+    stmts.append(&mut try!(write_reg(&_a,&res.clone().into(),sz)));
+    Ok((stmts,JumpSpec::FallThru))
 }
 
-pub fn bswap(_: &mut CodeGen<Amd64>, _: Rvalue) {
+pub fn bswap(_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> {
+    return Ok((vec![],JumpSpec::FallThru));
     //unimplemented!()
     /*
     using dsl::operator*;
@@ -381,7 +389,8 @@ pub fn bswap(_: &mut CodeGen<Amd64>, _: Rvalue) {
     m.assign(to_lvalue(a),tmp);*/
 }
 
-pub fn bt(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {
+pub fn bt(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> {
+    return Ok((vec![],JumpSpec::FallThru));
     //unimplemented!()
     /*
     using dsl::operator<<;
@@ -394,7 +403,8 @@ pub fn bt(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {
     m.assign(to_lvalue(AF), undefined());*/
 }
 
-pub fn btc(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {
+pub fn btc(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> {
+    return Ok((vec![],JumpSpec::FallThru));
     //unimplemented!()
     /*
     using dsl::operator<<;
@@ -408,7 +418,8 @@ pub fn btc(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {
     m.assign(to_lvalue(a),a ^ mod);*/
 }
 
-pub fn btr(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {
+pub fn btr(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> {
+    return Ok((vec![],JumpSpec::FallThru));
     //unimplemented!()
     /*
     using dsl::operator<<;
@@ -423,7 +434,8 @@ pub fn btr(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {
     m.assign(to_lvalue(a),(a & (Rvalue::Constant(0xffffffffffffffff) ^ mod)) % constant(1 << a_w));*/
 }
 
-pub fn bts(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {
+pub fn bts(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> {
+    return Ok((vec![],JumpSpec::FallThru));
     //unimplemented!()
     /*
     using dsl::operator<<;
@@ -437,66 +449,21 @@ pub fn bts(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {
     m.assign(to_lvalue(a),a & mod);*/
 }
 
-pub fn near_call(cg: &mut CodeGen<Amd64>, a: Rvalue) {
-       rreil!{cg:
+pub fn call(a: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> {
+    /*let stmts = try!(rreil!{
         zext/64 new_rip:64, (a);
         call ?, new_rip:64;
-    }
+    });*/
+    let stmts = try!(rreil!{
+        call ?, (a);
+    });
+    Ok((stmts,JumpSpec::FallThru))
 }
 
-pub fn near_rcall(cg: &mut CodeGen<Amd64>, a: Rvalue) {
-    match cg.configuration.operand_size {
-        OperandSize::Sixteen => {
-            rreil!{cg:
-                add tmp:16, IP:16, (a.extract(16,0).ok().unwrap());
-                zext/64 new_rip:64, tmp:16;
-            }
-        },
-        OperandSize::ThirtyTwo => {
-            rreil!{cg:
-                add tmp:32, RIP:32, (a.extract(32,0).ok().unwrap());
-                zext/64 new_rip:64, tmp:32;
-            }
-        },
-        OperandSize::SixtyFour => {
-            rreil!{cg:
-                sext/64 new_rip:64, (a.extract(64,0).ok().unwrap());
-                add new_rip:64, new_rip:64, RIP:64;
-            }
-        }
-        OperandSize::HundredTwentyEight => unreachable!(),
-        OperandSize::Eight => unreachable!(),
-    }
-
-    rreil!{cg:
-        call ?, new_rip:64;
-    }
-
-}
-
-pub fn far_call(cg: &mut CodeGen<Amd64>, a: Rvalue) {
-    far_xcall(cg,a,false)
-}
-
-pub fn far_rcall(cg: &mut CodeGen<Amd64>, a: Rvalue) {
-    far_xcall(cg,a,true)
-}
-
-pub fn far_xcall(cg: &mut CodeGen<Amd64>, a: Rvalue, _: bool) {
-    let sz = a.size().unwrap();
-
-    rreil!{cg:
-        //mov seg:16, (a.extract(16,sz - 16).ok().unwrap());
-        //mov CS:16, seg:16;
-        mov new_ip:sz, (a);
-    }
-
-    near_call(cg,rreil_rvalue!{ new_ip:sz });
-}
-
-pub fn cmov(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue, _: Condition) {
+pub fn cmov(_: Rvalue, _: Rvalue, _: Condition) -> Result<(Vec<Statement>,JumpSpec)> {
+    return Ok((vec![],JumpSpec::FallThru));
  /*   let a = Lvalue::from_rvalue(&_a).unwrap();
-    let fun = |f: &Lvalue,cg: &mut CodeGen<Amd64>| {
+    let fun = |f: &Lvalue,| {
         let l = new_temp(bitwidth(&a.clone().into()));
         let nl = new_temp(bitwidth(&a.clone().into()));
         let n = new_temp(1);
@@ -580,7 +547,8 @@ pub fn cmov(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue, _: Condition) {
     }*/
 }
 
-pub fn cmp(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {
+pub fn cmp(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> {
+    return Ok((vec![],JumpSpec::FallThru));
  /*   let aw = bitwidth(&_a);
     let bw = if let Rvalue::Constant(_) = b { aw } else { bitwidth(&b) };
     let res = new_temp(aw);
@@ -594,7 +562,11 @@ pub fn cmp(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {
     set_arithm_flags(&res,&res_half.clone().into(),&a.clone().into(),cg);*/
 }
 
-pub fn cmps(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {
+pub fn cmpsw() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn cmpsb() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+
+pub fn cmps(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> {
+    return Ok((vec![],JumpSpec::FallThru));
  /*   let a = Lvalue::Memory{
         offset: Box::new(aoff.clone()),
         bytes: 1,
@@ -628,7 +600,8 @@ pub fn cmps(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {
     cg.add_i(&bo,&boff,&off);*/
 }
 
-pub fn cmpxchg(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {
+pub fn cmpxchg(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> {
+    return Ok((vec![],JumpSpec::FallThru));
  /*   cg.equal_i(&*ZF,&a,&EAX.clone().into());
 
     let n = new_temp(1);
@@ -649,7 +622,8 @@ pub fn cmpxchg(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {
     cg.add_i(&*EAX,&zf,&nzf);*/
 }
 
-pub fn or(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {
+pub fn or(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> {
+    return Ok((vec![],JumpSpec::FallThru));
  /*   let aw = bitwidth(&_a);
     let bw = if let Rvalue::Constant(_) = b { aw } else { bitwidth(&b) };
     let res = new_temp(aw);
@@ -664,7 +638,8 @@ pub fn or(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {
     set_arithm_flags(&res,&res_half.clone().into(),&a.clone().into(),cg);*/
 }
 
-pub fn sbb(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {
+pub fn sbb(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> {
+    return Ok((vec![],JumpSpec::FallThru));
  /*   let aw = bitwidth(&_a);
     let bw = if let Rvalue::Constant(_) = b { aw } else { bitwidth(&b) };
     let res = new_temp(aw);
@@ -680,7 +655,8 @@ pub fn sbb(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {
     set_arithm_flags(&res,&res_half.clone().into(),&a.clone().into(),cg);*/
 }
 
-pub fn sub(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {
+pub fn sub(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> {
+    return Ok((vec![],JumpSpec::FallThru));
  /*   let aw = bitwidth(&_a);
     let bw = if let Rvalue::Constant(_) = b { aw } else { bitwidth(&b) };
     let res = new_temp(aw);
@@ -695,7 +671,8 @@ pub fn sub(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {
     set_arithm_flags(&res,&res_half.clone().into(),&a.clone().into(),cg);*/
 }
 
-pub fn xor(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {
+pub fn xor(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> {
+    return Ok((vec![],JumpSpec::FallThru));
  /*   let aw = bitwidth(&_a);
     let bw = if let Rvalue::Constant(_) = b { aw } else { bitwidth(&b) };
     let res = new_temp(aw);
@@ -710,830 +687,1268 @@ pub fn xor(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {
     set_arithm_flags(&res,&res_half.clone().into(),&a.clone().into(),cg);*/
 }
 
-pub fn cmpxchg8b(_: &mut CodeGen<Amd64>, _: Rvalue) {}
-pub fn cmpxchg16b(_: &mut CodeGen<Amd64>, _: Rvalue) {}
-pub fn cpuid(_: &mut CodeGen<Amd64>) {}
-pub fn clc(_: &mut CodeGen<Amd64>) {}
-pub fn cld(_: &mut CodeGen<Amd64>) {}
-pub fn cli(_: &mut CodeGen<Amd64>) {}
-pub fn cmc(_: &mut CodeGen<Amd64>) {}
-pub fn std(_: &mut CodeGen<Amd64>) {}
-pub fn sti(_: &mut CodeGen<Amd64>) {}
-pub fn stc(_: &mut CodeGen<Amd64>) {}
+pub fn cmpxchg8b(_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn cmpxchg16b(_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn cpuid() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn clc() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn cld() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn cli() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn cmc() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn std() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn sti() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn stc() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
 
-pub fn conv(st: &mut State<Amd64>) -> bool {
+pub fn cbw() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn cwd() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn clts() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+
+pub fn conv() -> Result<(Vec<Statement>,JumpSpec)> {
+    /*let next = st.address + (st.tokens.len() as u64);
+    let len = st.tokens.len();
+
+    st.mnemonic(len,"conv","{u}",Ok((vec![],JumpSpec::FallThru)),&|| {} );
+    st.jump(Rvalue::new_u64(next),Guard::always());
+    true*/
+    Ok((vec![],JumpSpec::FallThru))
+}
+
+pub fn conv2() -> Result<(Vec<Statement>,JumpSpec)> {
+    /*
     let next = st.address + (st.tokens.len() as u64);
     let len = st.tokens.len();
 
-    st.mnemonic(len,"conv","{u}",vec![],&|_: &mut CodeGen<Amd64>| {} );
+    st.mnemonic(len,"conv2","{u}",Ok((vec![],JumpSpec::FallThru)),&|| {} );
     st.jump(Rvalue::new_u64(next),Guard::always());
     true
+    */
+    Ok((vec![],JumpSpec::FallThru))
 }
 
-pub fn conv2(st: &mut State<Amd64>) -> bool {
+pub fn daa() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn das() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn dec(_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn div(_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn enter(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+
+pub fn hlt() -> Result<(Vec<Statement>,JumpSpec)> {
+    /*let len = st.tokens.len();
+    st.mnemonic(len,"hlt","",Ok((vec![],JumpSpec::FallThru)),&|| {} );
+    true*/
+    Ok((vec![],JumpSpec::DeadEnd))
+}
+
+pub fn int3() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn int1() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn invd() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn idiv(_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn imul1(_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn imul2(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn imul3(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn in_(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn icebp() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn inc(_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn insb() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn insw() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn int(_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn into() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+
+pub fn iretw() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::DeadEnd)) }
+
+pub fn iret() -> Result<(Vec<Statement>,JumpSpec)> {
+    /*let len = st.tokens.len();
+    st.mnemonic(len,"iret","{u}",Ok((vec![],JumpSpec::FallThru)),&|| {} );
+    true*/
+    Ok((vec![],JumpSpec::DeadEnd))
+}
+
+pub fn setcc(_: Rvalue, _: Condition) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn seto(a: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { setcc(a,Condition::Overflow) }
+pub fn setno(a: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { setcc(a,Condition::NotOverflow) }
+pub fn setb(a: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { setcc(a,Condition::Below) }
+pub fn setae(a: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { setcc(a,Condition::AboveEqual) }
+pub fn setz(a: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { setcc(a,Condition::Equal) }
+pub fn setnz(a: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { setcc(a,Condition::NotEqual) }
+pub fn setbe(a: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { setcc(a,Condition::BelowEqual) }
+pub fn seta(a: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { setcc(a,Condition::Above) }
+pub fn sets(a: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { setcc(a,Condition::Sign) }
+pub fn setns(a: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { setcc(a,Condition::NotSign) }
+pub fn setp(a: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { setcc(a,Condition::Parity) }
+pub fn setnp(a: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { setcc(a,Condition::NotParity) }
+pub fn setl(a: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { setcc(a,Condition::Less) }
+pub fn setle(a: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { setcc(a,Condition::LessEqual) }
+pub fn setg(a: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { setcc(a,Condition::Greater) }
+pub fn setge(a: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { setcc(a,Condition::GreaterEqual) }
+
+pub fn cmovcc(_: Rvalue, _: Condition) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn cmovo(a: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { cmovcc(a,Condition::Overflow) }
+pub fn cmovno(a: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { cmovcc(a,Condition::NotOverflow) }
+pub fn cmovb(a: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { cmovcc(a,Condition::Below) }
+pub fn cmovae(a: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { cmovcc(a,Condition::AboveEqual) }
+pub fn cmovz(a: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { cmovcc(a,Condition::Equal) }
+pub fn cmovnz(a: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { cmovcc(a,Condition::NotEqual) }
+pub fn cmovbe(a: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { cmovcc(a,Condition::BelowEqual) }
+pub fn cmova(a: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { cmovcc(a,Condition::Above) }
+pub fn cmovs(a: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { cmovcc(a,Condition::Sign) }
+pub fn cmovns(a: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { cmovcc(a,Condition::NotSign) }
+pub fn cmovp(a: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { cmovcc(a,Condition::Parity) }
+pub fn cmovnp(a: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { cmovcc(a,Condition::NotParity) }
+pub fn cmovl(a: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { cmovcc(a,Condition::Less) }
+pub fn cmovle(a: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { cmovcc(a,Condition::LessEqual) }
+pub fn cmovg(a: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { cmovcc(a,Condition::Greater) }
+pub fn cmovge(a: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { cmovcc(a,Condition::GreaterEqual) }
+
+
+pub fn jmp(a: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> {
+    Ok((vec![],JumpSpec::Jump(a)))
+}
+
+pub fn jcc(a: Rvalue, _: Condition) -> Result<(Vec<Statement>,JumpSpec)> {
+    Ok((vec![],JumpSpec::Branch(a,Guard::always())))
+}
+
+pub fn jo(a: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { jcc(a,Condition::Overflow) }
+pub fn jno(a: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { jcc(a,Condition::NotOverflow) }
+pub fn jb(a: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { jcc(a,Condition::Below) }
+pub fn jae(a: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { jcc(a,Condition::AboveEqual) }
+pub fn je(a: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { jcc(a,Condition::Equal) }
+pub fn jne(a: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { jcc(a,Condition::NotEqual) }
+pub fn jbe(a: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { jcc(a,Condition::BelowEqual) }
+pub fn ja(a: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { jcc(a,Condition::Above) }
+pub fn js(a: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { jcc(a,Condition::Sign) }
+pub fn jns(a: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { jcc(a,Condition::NotSign) }
+pub fn jp(a: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { jcc(a,Condition::Parity) }
+pub fn jnp(a: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { jcc(a,Condition::NotParity) }
+pub fn jl(a: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { jcc(a,Condition::Less) }
+pub fn jle(a: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { jcc(a,Condition::LessEqual) }
+pub fn jg(a: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { jcc(a,Condition::Greater) }
+pub fn jge(a: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { jcc(a,Condition::GreaterEqual) }
+
+pub fn jcxz(_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn jecxz(_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn jrcxz(_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+
+pub fn lahf() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn lsl(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn lar(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn lds(a: Rvalue, b: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { lxs(a,b,rreil_rvalue!{ DS:16 }) }
+pub fn les(a: Rvalue, b: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { lxs(a,b,rreil_rvalue!{ ES:16 }) }
+pub fn lss(a: Rvalue, b: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { lxs(a,b,rreil_rvalue!{ SS:16 }) }
+pub fn lfs(a: Rvalue, b: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { lxs(a,b,rreil_rvalue!{ FS:16 }) }
+pub fn lgs(a: Rvalue, b: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { lxs(a,b,rreil_rvalue!{ GS:16 }) }
+pub fn lxs(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn lea(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+
+pub fn leave() -> Result<(Vec<Statement>,JumpSpec)> {
+    /*
     let next = st.address + (st.tokens.len() as u64);
     let len = st.tokens.len();
 
-    st.mnemonic(len,"conv2","{u}",vec![],&|_: &mut CodeGen<Amd64>| {} );
+    st.mnemonic(len,"leave","{u}",Ok((vec![],JumpSpec::FallThru)),&|| {} );
     st.jump(Rvalue::new_u64(next),Guard::always());
-    true
+    true*/
+    Ok((vec![],JumpSpec::FallThru))
 }
 
-pub fn daa(_: &mut CodeGen<Amd64>) {}
-pub fn das(_: &mut CodeGen<Amd64>) {}
-pub fn dec(_: &mut CodeGen<Amd64>, _: Rvalue) {}
-pub fn div(_: &mut CodeGen<Amd64>, _: Rvalue) {}
-pub fn enter(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn hlt(_: &mut CodeGen<Amd64>) {}
-pub fn idiv(_: &mut CodeGen<Amd64>, _: Rvalue) {}
-pub fn imul1(_: &mut CodeGen<Amd64>, _: Rvalue) {}
-pub fn imul2(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn imul3(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn in_(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn icebp(_: &mut CodeGen<Amd64>) {}
-pub fn inc(_: &mut CodeGen<Amd64>, _: Rvalue) {}
-pub fn ins(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn int(_: &mut CodeGen<Amd64>, _: Rvalue) {}
-pub fn into(_: &mut CodeGen<Amd64>) {}
+pub fn lodsw() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
 
-pub fn iret(st: &mut State<Amd64>) -> bool {
+pub fn lodsb() -> Result<(Vec<Statement>,JumpSpec)> {
+    /*
     let next = st.address + (st.tokens.len() as u64);
     let len = st.tokens.len();
 
-    st.mnemonic(len,"iret","{u}",vec![],&|_: &mut CodeGen<Amd64>| {} );
+    st.mnemonic(len,"lodsb","{u}",Ok((vec![],JumpSpec::FallThru)),&|| {} );
     st.jump(Rvalue::new_u64(next),Guard::always());
-    true
+    true*/
+    Ok((vec![],JumpSpec::FallThru))
 }
 
-pub fn jmp(_: &mut CodeGen<Amd64>, _: Rvalue) {}
-pub fn jcxz(_: &mut CodeGen<Amd64>, _: Rvalue) {}
-pub fn jecxz(_: &mut CodeGen<Amd64>, _: Rvalue) {}
-pub fn jrcxz(_: &mut CodeGen<Amd64>, _: Rvalue) {}
-pub fn lahf(_: &mut CodeGen<Amd64>) {}
-pub fn lar(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn lds(cg: &mut CodeGen<Amd64>, a: Rvalue, b: Rvalue) { lxs(cg,a,b,DS.clone().into()) }
-pub fn les(cg: &mut CodeGen<Amd64>, a: Rvalue, b: Rvalue) { lxs(cg,a,b,ES.clone().into()) }
-pub fn lss(cg: &mut CodeGen<Amd64>, a: Rvalue, b: Rvalue) { lxs(cg,a,b,SS.clone().into()) }
-pub fn lfs(cg: &mut CodeGen<Amd64>, a: Rvalue, b: Rvalue) { lxs(cg,a,b,FS.clone().into()) }
-pub fn lgs(cg: &mut CodeGen<Amd64>, a: Rvalue, b: Rvalue) { lxs(cg,a,b,GS.clone().into()) }
-pub fn lxs(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn lea(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn lods() -> Result<(Vec<Statement>,JumpSpec)> {
+    /*let next = st.address + (st.tokens.len() as u64);
+    let len = st.tokens.len();
 
-pub fn leave(st: &mut State<Amd64>) -> bool {
+    st.mnemonic(len,"lods","{u}",Ok((vec![],JumpSpec::FallThru)),&|| {} );
+    st.jump(Rvalue::new_u64(next),Guard::always());
+    true*/
+    Ok((vec![],JumpSpec::FallThru))
+}
+
+pub fn loop_(_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> {
+    /*
     let next = st.address + (st.tokens.len() as u64);
     let len = st.tokens.len();
 
-    st.mnemonic(len,"leave","{u}",vec![],&|_: &mut CodeGen<Amd64>| {} );
+    st.mnemonic(len,"loop","{u}",Ok((vec![],JumpSpec::FallThru)),&|| {} );
     st.jump(Rvalue::new_u64(next),Guard::always());
-    true
+    true*/
+    Ok((vec![],JumpSpec::FallThru))
 }
 
-pub fn lodsb(st: &mut State<Amd64>) -> bool {
+pub fn loope(_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> {
+    /*
     let next = st.address + (st.tokens.len() as u64);
     let len = st.tokens.len();
 
-    st.mnemonic(len,"lodsb","{u}",vec![],&|_: &mut CodeGen<Amd64>| {} );
+    st.mnemonic(len,"loope","{u}",Ok((vec![],JumpSpec::FallThru)),&|| {} );
     st.jump(Rvalue::new_u64(next),Guard::always());
-    true
+    true*/
+    Ok((vec![],JumpSpec::FallThru))
 }
 
-pub fn lods(st: &mut State<Amd64>) -> bool {
+pub fn loopne(_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> {
+    /*
     let next = st.address + (st.tokens.len() as u64);
     let len = st.tokens.len();
 
-    st.mnemonic(len,"lods","{u}",vec![],&|_: &mut CodeGen<Amd64>| {} );
+    st.mnemonic(len,"loopne","{u}",Ok((vec![],JumpSpec::FallThru)),&|| {} );
     st.jump(Rvalue::new_u64(next),Guard::always());
-    true
+    true*/
+    Ok((vec![],JumpSpec::FallThru))
 }
 
-pub fn loop_(st: &mut State<Amd64>) -> bool {
+pub fn mov(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn movbe(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+
+pub fn movsb() -> Result<(Vec<Statement>,JumpSpec)> {
+    /*
     let next = st.address + (st.tokens.len() as u64);
     let len = st.tokens.len();
 
-    st.mnemonic(len,"loop","{u}",vec![],&|_: &mut CodeGen<Amd64>| {} );
+    st.mnemonic(len,"movsb","{u}",Ok((vec![],JumpSpec::FallThru)),&|| {} );
     st.jump(Rvalue::new_u64(next),Guard::always());
-    true
+    true*/
+    Ok((vec![],JumpSpec::FallThru))
 }
 
-pub fn loope(st: &mut State<Amd64>) -> bool {
+pub fn movsw() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+
+pub fn movs() -> Result<(Vec<Statement>,JumpSpec)> {
+    /*let next = st.address + (st.tokens.len() as u64);
+    let len = st.tokens.len();
+
+    st.mnemonic(len,"movs","{u}",Ok((vec![],JumpSpec::FallThru)),&|| {} );
+    st.jump(Rvalue::new_u64(next),Guard::always());
+    true*/
+    Ok((vec![],JumpSpec::FallThru))
+}
+
+pub fn movsx(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn movzx(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn mul(_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn neg(_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn nop(_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn lock() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn rep() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn repne() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn not(_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn out(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+
+pub fn outsb() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn outsw() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+
+pub fn popfw() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pushfw() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pop(_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> {
+    /*
     let next = st.address + (st.tokens.len() as u64);
     let len = st.tokens.len();
 
-    st.mnemonic(len,"loope","{u}",vec![],&|_: &mut CodeGen<Amd64>| {} );
+    st.mnemonic(len,"pop","{u}",Ok((vec![],JumpSpec::FallThru)),&|| {} );
     st.jump(Rvalue::new_u64(next),Guard::always());
-    true
+    true*/
+    Ok((vec![],JumpSpec::FallThru))
 }
 
-pub fn loopne(st: &mut State<Amd64>) -> bool {
+pub fn popa() -> Result<(Vec<Statement>,JumpSpec)> {
+    /*
     let next = st.address + (st.tokens.len() as u64);
     let len = st.tokens.len();
 
-    st.mnemonic(len,"loopne","{u}",vec![],&|_: &mut CodeGen<Amd64>| {} );
+    st.mnemonic(len,"popa","",Ok((vec![],JumpSpec::FallThru)),&|| {} );
     st.jump(Rvalue::new_u64(next),Guard::always());
-    true
+    true*/
+    Ok((vec![],JumpSpec::FallThru))
 }
 
-pub fn mov(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn movbe(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn popcnt(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn popf(_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
 
-pub fn movsb(st: &mut State<Amd64>) -> bool {
+pub fn push(_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> {
+    /*
     let next = st.address + (st.tokens.len() as u64);
     let len = st.tokens.len();
 
-    st.mnemonic(len,"movsb","{u}",vec![],&|_: &mut CodeGen<Amd64>| {} );
+    st.mnemonic(len,"push","{u}",Ok((vec![],JumpSpec::FallThru)),&|| {} );
     st.jump(Rvalue::new_u64(next),Guard::always());
-    true
+    true*/
+    Ok((vec![],JumpSpec::FallThru))
 }
 
-pub fn movs(st: &mut State<Amd64>) -> bool {
-    let next = st.address + (st.tokens.len() as u64);
+pub fn pusha() -> Result<(Vec<Statement>,JumpSpec)> {
+    /*let next = st.address + (st.tokens.len() as u64);
     let len = st.tokens.len();
 
-    st.mnemonic(len,"movs","{u}",vec![],&|_: &mut CodeGen<Amd64>| {} );
+    st.mnemonic(len,"pusha","",Ok((vec![],JumpSpec::FallThru)),&|| {} );
     st.jump(Rvalue::new_u64(next),Guard::always());
-    true
+    true*/
+    Ok((vec![],JumpSpec::FallThru))
 }
 
-pub fn movsx(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn movzx(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn mul(_: &mut CodeGen<Amd64>, _: Rvalue) {}
-pub fn neg(_: &mut CodeGen<Amd64>, _: Rvalue) {}
-pub fn nop(_: &mut CodeGen<Amd64>) {}
-pub fn not(_: &mut CodeGen<Amd64>, _: Rvalue) {}
-pub fn out(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn pushf(_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn rcl(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn rcr(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
 
-pub fn outs(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn ret() -> Result<(Vec<Statement>,JumpSpec)> {
+    /*let len = st.tokens.len();
+    st.mnemonic(len,"ret","",Ok((vec![],JumpSpec::FallThru)),&|| {} );
+    true*/
+    Ok((vec![],JumpSpec::DeadEnd))
+}
 
-pub fn pop(st: &mut State<Amd64>) -> bool {
-    let next = st.address + (st.tokens.len() as u64);
+pub fn retn(_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> {
+    /*let len = st.tokens.len();
+    st.mnemonic(len,"ret","",Ok((vec![],JumpSpec::FallThru)),&|| {} );
+    true*/
+    Ok((vec![],JumpSpec::DeadEnd))
+}
+
+pub fn retf() -> Result<(Vec<Statement>,JumpSpec)> {
+    /*let len = st.tokens.len();
+    st.mnemonic(len,"retf","",Ok((vec![],JumpSpec::FallThru)),&|| {} );
+    true*/
+    Ok((vec![],JumpSpec::DeadEnd))
+}
+
+pub fn retnf(_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> {
+    /*let len = st.tokens.len();
+    if let Some(d) = decode::decode_imm(st) {
+        st.mnemonic(len,"retnf","{u}",vec![d],&|| {} );
+        true
+    } else {
+        false
+    }*/
+    Ok((vec![],JumpSpec::DeadEnd))
+}
+
+pub fn ror(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn rol(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn sahf() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn sal(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn salc() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn sar(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+
+pub fn scasw() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn scasb() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+
+pub fn scas() -> Result<(Vec<Statement>,JumpSpec)> {
+    /*let next = st.address + (st.tokens.len() as u64);
     let len = st.tokens.len();
 
-    st.mnemonic(len,"pop","{u}",vec![],&|_: &mut CodeGen<Amd64>| {} );
+    st.mnemonic(len,"scas","{u}",Ok((vec![],JumpSpec::FallThru)),&|| {} );
     st.jump(Rvalue::new_u64(next),Guard::always());
-    true
+    true*/
+    Ok((vec![],JumpSpec::FallThru))
 }
 
-pub fn popa(st: &mut State<Amd64>) -> bool {
-    let next = st.address + (st.tokens.len() as u64);
+pub fn shl(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn shr(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn shld(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn shrd(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+
+pub fn stosb() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn stosw() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn stos() -> Result<(Vec<Statement>,JumpSpec)> {
+    /*let next = st.address + (st.tokens.len() as u64);
     let len = st.tokens.len();
 
-    st.mnemonic(len,"popa","{u}",vec![],&|_: &mut CodeGen<Amd64>| {} );
+    st.mnemonic(len,"stos","{u}",Ok((vec![],JumpSpec::FallThru)),&|| {} );
     st.jump(Rvalue::new_u64(next),Guard::always());
-    true
+    true*/
+    Ok((vec![],JumpSpec::FallThru))
 }
 
-pub fn popcnt(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn popf(_: &mut CodeGen<Amd64>, _: Rvalue) {}
+pub fn test(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn ud1() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn ud2() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn xadd(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn xchg(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn rdtsc() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn xgetbv(_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn xlatb() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn wait() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn wbinvd() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn prefetch(_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn movsxd(_: Rvalue, _:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
 
-pub fn push(st: &mut State<Amd64>) -> bool {
-    let next = st.address + (st.tokens.len() as u64);
-    let len = st.tokens.len();
+pub fn syscall() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn sysret() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
 
-    st.mnemonic(len,"push","{u}",vec![],&|_: &mut CodeGen<Amd64>| {} );
-    st.jump(Rvalue::new_u64(next),Guard::always());
-    true
-}
+pub fn movapd(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn wrmsr() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn rdmsr() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn rdpmc() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn sysenter() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn sysexit() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn getsec() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vmread(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vmwrite(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vmenter() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vmexit() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
 
-pub fn pusha(st: &mut State<Amd64>) -> bool {
-    let next = st.address + (st.tokens.len() as u64);
-    let len = st.tokens.len();
+pub fn montmul() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn xcryptecb() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn rsm() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pmaddwd(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn tzcnt(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn lzcnt(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn crc32(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
 
-    st.mnemonic(len,"pusha","{u}",vec![],&|_: &mut CodeGen<Amd64>| {} );
-    st.jump(Rvalue::new_u64(next),Guard::always());
-    true
-}
+pub fn vmcall() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vmlaunch() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vmresume() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vmxoff() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn clac() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn stac() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn encls() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn xsetbv() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vmfunc() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn xend() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn xtest() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn enclu() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn swapgs() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn rdtscp() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn rdrand(_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn rdseed(_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn rdpid(_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn cmpxch8b(_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vmptrld(_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vmptrst(_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vmclear(_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vmxon(_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn xabort(_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn xbegin(_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn rdfsbase(_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn rdgsbase(_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn wrfsbase(_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn wrgsbase(_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fxsave() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fxstor() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn xsave() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn xrstor() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn xsaveopt() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn clflush() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn blsr(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn blsmsk(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn blsi(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
 
-pub fn pushf(_: &mut CodeGen<Amd64>, _: Rvalue) {}
-pub fn rcl(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn rcr(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn ret(_: &mut CodeGen<Amd64>, _: Rvalue) {}
-pub fn retf(_: &mut CodeGen<Amd64>, _: Rvalue) {}
-pub fn ror(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn rol(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn sahf(_: &mut CodeGen<Amd64>) {}
-pub fn sal(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn salc(_: &mut CodeGen<Amd64>) {}
-pub fn sar(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-
-pub fn scas(st: &mut State<Amd64>) -> bool {
-    let next = st.address + (st.tokens.len() as u64);
-    let len = st.tokens.len();
-
-    st.mnemonic(len,"scas","{u}",vec![],&|_: &mut CodeGen<Amd64>| {} );
-    st.jump(Rvalue::new_u64(next),Guard::always());
-    true
-}
-
-pub fn setcc(_: &mut CodeGen<Amd64>, _: Rvalue, _: Condition) {}
-pub fn shl(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn shr(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn shld(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn shrd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue, _: Rvalue) {}
-
-pub fn stos(st: &mut State<Amd64>) -> bool {
-    let next = st.address + (st.tokens.len() as u64);
-    let len = st.tokens.len();
-
-    st.mnemonic(len,"stos","{u}",vec![],&|_: &mut CodeGen<Amd64>| {} );
-    st.jump(Rvalue::new_u64(next),Guard::always());
-    true
-}
-
-pub fn test(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn ud1(_: &mut CodeGen<Amd64>) {}
-pub fn ud2(_: &mut CodeGen<Amd64>) {}
-pub fn xadd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn xchg(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn rdtsc(_: &mut CodeGen<Amd64>) {}
-pub fn xgetbv(_: &mut CodeGen<Amd64>) {}
-
-pub fn syscall(_: &mut CodeGen<Amd64>) {}
-pub fn sysret(_: &mut CodeGen<Amd64>) {}
-pub fn movapd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn vzeroupper(_: &mut CodeGen<Amd64>) {}
+pub fn andn(_: Rvalue, _:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn bextr(_: Rvalue, _:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn blendd(_: Rvalue, _:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn blendvb(_: Rvalue, _:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn bzhi(_: Rvalue, _:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn clgi() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn cvtph2ps(_: Rvalue, _:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn extracti128(_: Rvalue, _:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fist(_: Rvalue, _:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fldl2g() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fperm() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fperm1() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn frndintx() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fsubrp(_: Rvalue, _:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn gatherdd(_: Rvalue, _:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn gatherdps(_: Rvalue, _:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn gatherqd(_: Rvalue, _:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn gatherqps(_: Rvalue, _:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn inserti128(_: Rvalue, _:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn invept(_: Rvalue, _:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn invlpg(_:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn invpcid(_: Rvalue, _:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn invvpid(_: Rvalue, _:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn lgdt(_:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn lidt(_:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn lldt(_:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn lmsw(_:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn ltr(_:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn maskmovpd(_: Rvalue, _:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn maskmovps(_: Rvalue, _:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pavgusb(_: Rvalue, _:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pblendw(_: Rvalue, _:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pclmulqdq(_: Rvalue, _:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pcmpgtq(_: Rvalue, _:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn perm2f128(_: Rvalue, _:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn perm2i128(_: Rvalue, _:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn permd(_: Rvalue, _:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn permilp(_: Rvalue, _:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn permilpd(_: Rvalue, _:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn permilps(_: Rvalue, _:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn permpd(_: Rvalue, _:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn permq(_: Rvalue, _:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pf2id(_: Rvalue, _:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pf2iw(_: Rvalue, _:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pfacc(_: Rvalue, _:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pfadd(_: Rvalue, _:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pfcmpeq(_: Rvalue, _:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pfcmpge(_: Rvalue, _:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pfcmpgt(_: Rvalue, _:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pfmax(_: Rvalue, _:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pfmin(_: Rvalue, _:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pfmul(_: Rvalue, _:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pfnacc(_: Rvalue, _:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pfpnacc(_: Rvalue, _:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pfrcp(_: Rvalue, _:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pfrcpit1(_: Rvalue, _:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pfrcpit2(_: Rvalue, _:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pfrsqit1(_: Rvalue, _:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pfrsqrt(_: Rvalue, _:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pfsub(_: Rvalue, _:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pfsubr(_: Rvalue, _:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn phminposuw(_: Rvalue, _:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pi2fd(_: Rvalue, _:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pi2fw(_: Rvalue, _:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pmaddubsw(_: Rvalue, _:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pmaskmovd(_: Rvalue, _:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pmovsxbd(_: Rvalue, _:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pmovsxbq(_: Rvalue, _:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pmovsxbw(_: Rvalue, _:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pmovsxdq(_: Rvalue, _:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pmovsxwd(_: Rvalue, _:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pmovsxwq(_: Rvalue, _:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pmovzxbd(_: Rvalue, _:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pmovzxbq(_: Rvalue, _:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pmovzxbw(_: Rvalue, _:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pmovzxdq(_: Rvalue, _:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pmovzxwd(_: Rvalue, _:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pmovzxwq(_: Rvalue, _:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pmulhrsw(_: Rvalue, _:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pmulhrw(_: Rvalue, _:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn psignb(_: Rvalue, _:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn psignd(_: Rvalue, _:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn psignw(_: Rvalue, _:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pswapd(_: Rvalue, _:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn punpckldq(_: Rvalue, _:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn sgdt(_:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn sha1msg1(_: Rvalue, _:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn sha1msg2(_: Rvalue, _:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn sha1nexte(_: Rvalue, _:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn sha1rnds4(_: Rvalue, _:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn sha256msg1(_: Rvalue, _:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn sha256msg2(_: Rvalue, _:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn sha256rnds2(_: Rvalue, _:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn shlx(_: Rvalue, _:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn sidt(_:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn sldt(_:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn smsw(_:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn str(_:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn testpd(_: Rvalue, _:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn testps(_: Rvalue, _:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn verr(_:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn verw(_:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
 
 // MMX
-pub fn emms(_: &mut CodeGen<Amd64>) {}
-pub fn packsswb(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn packssdw(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn packuswb(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn paddb(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn paddw(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn paddd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn paddsb(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn paddsw(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn paddusb(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn paddusw(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn pand(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn pandn(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn pcmpeqb(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn pcmpeqw(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn pcmpeqd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn pcmpgtb(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn pcmpgtw(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn pcmpgtd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn pmadwd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn pmulhw(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn pmullw(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn por(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn psraw(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn psrad(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn psrlw(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn psrld(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn psrlq(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn psllw(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn pslld(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn psllq(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn psubb(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn psubw(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn psubd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn psubsb(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn psubsw(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn psubusb(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn psubusw(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn punpckhbw(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn punpckhwd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn punpckhdq(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn punpcklbw(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn punpcklwd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn punpckldq(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn pxor(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn emms() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn packsswb(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn packssdw(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn packuswb(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn paddb(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn paddw(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn paddd(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn paddsb(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn paddsw(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn paddusb(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn paddusw(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pand(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pandn(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pcmpeqb(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pcmpeqw(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pcmpeqd(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pcmpgtb(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pcmpgtw(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pcmpgtd(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pmadwd(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pmulhw(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pmullw(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn por(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn psraw(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn psrad(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn psrlw(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn psrld(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn psrlq(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn psllw(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pslld(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn psllq(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn psubb(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn psubw(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn psubd(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn psubsb(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn psubsw(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn psubusb(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn psubusw(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn punpckhbw(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn punpckhwd(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn punpckhdq(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn punpcklbw(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn punpcklwd(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn punpcklqdq(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pxor(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
 
 // SSE 1
-pub fn addps(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn addss(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn andnps(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn andps(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn cmpps(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn cmpss(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn comiss(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn cvtpi2ps(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn cvtps2pi(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn cvtsi2ss(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn cvtss2si(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn cvttps2pi(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn cvttss2si(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn divps(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn divss(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn ldmxcsr(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn maskmovq(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn maxps(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn maxss(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn minps(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn minss(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn movaps(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn minhps(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn movlps(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn movmskps(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn movntps(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn movntq(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn movss(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn movups(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn mulps(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn mulss(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn orps(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn pavgb(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn pavgw(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn pextrw(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn pinsrw(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn pmaxsw(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn pmaxub(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn pminsw(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn pminub(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn pmovmskb(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn pmulhuw(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn prefetchnta(_: &mut CodeGen<Amd64>, _: Rvalue) {}
-pub fn prefetcht0(_: &mut CodeGen<Amd64>, _: Rvalue) {}
-pub fn prefetcht1(_: &mut CodeGen<Amd64>, _: Rvalue) {}
-pub fn prefetcht2(_: &mut CodeGen<Amd64>, _: Rvalue) {}
-pub fn prefetchw(_: &mut CodeGen<Amd64>, _: Rvalue) {}
-pub fn prefetchwt1(_: &mut CodeGen<Amd64>, _: Rvalue) {}
-pub fn psadbw(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn pshufw(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn pshufb(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn rcpps(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn rcpss(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn rsqrtps(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn rsqrtss(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn sfence(_: &mut CodeGen<Amd64>) {}
-pub fn shufps(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn sqrtps(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn sqrtss(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn stmxcsr(_: &mut CodeGen<Amd64>, _: Rvalue) {}
-pub fn subps(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn subss(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn ucomiss(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn unpckhps(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn unpcklps(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn xorps(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn addps(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn addss(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn andnps(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn andps(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn cmpps(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn cmpss(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn comiss(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn cvtpi2ps(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn cvtps2pi(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn cvtsi2ss(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn cvtss2si(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn cvttps2pi(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn cvttss2si(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn divps(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn divss(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn ldmxcsr() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn maskmovq(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn maxps(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn maxss(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn minps(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn minss(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn movaps(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn minhps(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn movlps(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn movmskps(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn movntps(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn movntq(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn movss(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn movups(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn mulps(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn mulss(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn orps(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pavgb(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pavgw(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pextrw(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pinsrw(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pmaxsw(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pmaxub(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pminsw(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pminub(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pmovmskb(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pmulhuw(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn prefetchnta(_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn prefetcht0(_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn prefetcht1(_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn prefetcht2(_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn prefetchw(_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn prefetchwt1(_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn psadbw(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pshufw(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pshufb(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn rcpps(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn rcpss(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn rsqrtps(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn rsqrtss(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn sfence() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn shufps(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn sqrtps(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn sqrtss(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn stmxcsr() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn subps(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn subss(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn ucomiss(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn unpckhps(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn unpcklps(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn xorps(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
 
 // SSE 2
-pub fn addpd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn addsd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn andnpd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn andpd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn cflush(_: &mut CodeGen<Amd64>, _: Rvalue) {}
-pub fn cmppd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn cmpsd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn comisd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn cvtdq2pd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn cvtdq2ps(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn cvtpd2dq(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn cvtpd2pi(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn cvtpd2ps(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn cvtpi2pd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn cvtps2dq(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn cvtps2pd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn cvtsd2si(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn cvtsd2ss(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn cvtsi2sd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn cvtss2sd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn cvttpd2dq(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn cvttpd2pi(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn cvttps2dq(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn cvttsd2si(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn divpd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn divsd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn lfence(_: &mut CodeGen<Amd64>) {}
-pub fn maskmovdqu(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn maxpd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn maxsd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn mfence(_: &mut CodeGen<Amd64>) {}
-pub fn minpd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn minsd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn movd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn movdq2q(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn movdaq(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn movdqa(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn movdqu(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn movhpd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn movhps(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn movlpd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn movmskpd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn movntdq(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn movntdqa(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn movnti(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn movntpd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn movq(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn movq2dq(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn movsd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn movupd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn mulpd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn mulsd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn orpd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn pabsb(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn pabsw(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn pabsd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn paddq(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn pause(_: &mut CodeGen<Amd64>) {}
-pub fn pmuludq(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn pshufd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn pshufhw(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn pshuflw(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn pslldq(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn psarw(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn psrldq(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn psubq(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn pusbsw(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn punckhwd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn punpckhqdq(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn puncklqdq(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn puncklwd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn shufpd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn sqrtpd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn sqrtsd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn subpd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn subsd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn ucomisd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn unpckhpd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn unpcklpd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn xorpd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn addpd(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn addsd(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn andnpd(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn andpd(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn cflush(_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn cmppd(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn cmpsd(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn comisd(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn cvtdq2pd(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn cvtdq2ps(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn cvtpd2dq(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn cvtpd2pi(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn cvtpd2ps(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn cvtpi2pd(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn cvtps2dq(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn cvtps2pd(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn cvtsd2si(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn cvtsd2ss(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn cvtsi2sd(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn cvtss2sd(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn cvttpd2dq(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn cvttpd2pi(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn cvttps2dq(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn cvttsd2si(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn divpd(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn divsd(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn lfence() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn maskmovdqu(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn maxpd(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn maxsd(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn mfence() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn minpd(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn minsd(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn movd(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn movdq2q(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn movdaq(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn movdqa(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn movdqu(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn movhpd(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn movhps(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn movlpd(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn movmskpd(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn movntdq(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn movntdqa(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn movnti(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn movntpd(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn movq(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn movq2dq(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn movsd(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn movupd(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn mulpd(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn mulsd(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn orpd(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pabsb(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pabsw(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pabsd(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn paddq(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pause() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pmuludq(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pshufd(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pshufhw(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pshuflw(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pslldq(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn psarw(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn psrldq(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn psubq(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pusbsw(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn punckhwd(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn punpckhqdq(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn puncklqdq(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn puncklwd(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn shufpd(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn sqrtpd(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn sqrtsd(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn subpd(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn subsd(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn ucomisd(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn unpckhpd(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn unpcklpd(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn xorpd(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
 
 // SSE 4
-pub fn blendpd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn blendps(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn blendvpd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn blendvps(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn dppd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn dpps(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn extractps(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn insertps(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn mpsadbw(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn pblendbw(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn pcmpestri(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn pcmpestrm(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn pcmpistri(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn pcmpistrm(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn pextrb(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn pextrd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn pextrq(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn pinsrb(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn pinsrd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn pinsrq(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn roundpd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn roundps(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn roundsd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn roundss(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn pmovsx(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn pmovzx(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn pminsd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn pminsb(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn pminud(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn pminuw(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn pmaxsd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn pmaxsb(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn pmaxud(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn pmaxuw(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn ptest(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn pmulld(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn pmuldq(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn phaddw(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn phaddd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn packusdw(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn pblendvb(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn pcmpeqq(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn phminpushuw(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn blendpd(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn blendps(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn blendvpd(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn blendvps(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn dppd(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn dpps(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn extractps(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn insertps(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn mpsadbw(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pblendbw(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pcmpestri(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pcmpestrm(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pcmpistri(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pcmpistrm(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pextrb(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pextrd(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pextrq(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pinsrb(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pinsrd(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pinsrq(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn roundpd(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn roundps(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn roundsd(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn roundss(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pmovsx(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pmovzx(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pminsd(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pminsb(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pminud(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pminuw(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pmaxsd(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pmaxsb(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pmaxud(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pmaxuw(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn ptest(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pmulld(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pmuldq(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn phaddw(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn phaddsw(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn phaddd(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn phsubw(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn phsubsw(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn phsubd(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn packusdw(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pblendvb(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pcmpeqq(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn phminpushuw(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
 
 // SSE 3
-pub fn addsubpd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn addsubps(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn haddpd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn haddps(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn hsubpd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn hsubps(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn lddqu(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn monitor(_: &mut CodeGen<Amd64>) {}
-pub fn movddup(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn movshdup(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn movsldup(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn mwait(_: &mut CodeGen<Amd64>) {}
-pub fn palignr(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue, _: Rvalue) {}
+pub fn addsubpd(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn addsubps(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn haddpd(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn haddps(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn hsubpd(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn hsubps(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn lddqu(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn monitor() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn movddup(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn movshdup(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn movsldup(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn mwait() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn palignr(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
 
 // AVX
-pub fn vaddpd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vaddps(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vaddsd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vaddss(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vaddsubpd(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vaddsubps(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vaesdec(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vaesdeclast(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vaesenc(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vaesenclast(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vaesimc(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vaeskeygenassist(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vandpd(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vandps(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vandnpd(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vandnps(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vblendpd(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vblendps(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vblendvpd(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vblendvps(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vcmppd(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vcmpps(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vcmpsd(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vcmpss(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vcomisd(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue) {}
-pub fn vcomiss(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue) {}
-pub fn vcvtdq2pd(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue) {}
-pub fn vcvtdq2ps(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue) {}
-pub fn vcvtpd2dq(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue) {}
-pub fn vcvtpd2ps(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue) {}
-pub fn vcvtps2dq(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue) {}
-pub fn vcvtps2pd(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue) {}
-pub fn vcvtsd2si(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue) {}
-pub fn vcvtsd2ss(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vcvtsi2sd(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vcvtss2sd(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vcvtsi2ss(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vcvttpd2dq(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue) {}
-pub fn vcvttps2dq(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue) {}
-pub fn vcvttsd2si(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue) {}
-pub fn vcvttss2si(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue) {}
-pub fn vdivps(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vdivpd(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vdivss(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vdivsd(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vdppd(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vdpps(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vextractps(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vhaddpd(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vhaddps(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vhsubpd(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vhsubps(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vinsertps(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vlddqu(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue) {}
-pub fn vldmxcsr(_: &mut CodeGen<Amd64>, _:Rvalue) {}
-pub fn vmaxpd(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vmaxsd(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vmaxps(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vmaxss(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vminpd(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vminsd(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vminps(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vminss(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vmovhpd(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vmovhps(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vmovlpd(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vmovlps(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vmovsd(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vmovss(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vmpsadbw(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _:Rvalue, _: Rvalue) {}
-pub fn vorpd(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vorps(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpabsb(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue) {}
-pub fn vpabsw(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue) {}
-pub fn vpabsd(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue) {}
-pub fn vpacksswb(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpackssdw(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpackusdw(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpackuswb(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpaddb(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpaddw(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpaddd(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpaddq(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpaddsb(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpaddsw(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpaddusb(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpaddusw(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpalignr(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpand(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpandn(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpavgb(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpavgw(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpblendvb(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpblendw(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpclmulqdq(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpcmpeqb(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpcmpeqw(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpcmpeqd(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpcmpeqq(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpcmpgtb(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpcmpgtw(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpcmpgtd(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpcmpgtq(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vphaddw(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vphaddd(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vphaddsw(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vphminposuw(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vphsubw(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vphsubd(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vphsubsw(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpinsrb(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpinsrd(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpinsrw(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpmaddubsw(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpmadwd(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpmaxsb(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpmaxsd(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpmaxsw(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpmaxub(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpmaxud(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpmaxuw(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpminsb(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpminsd(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpminsw(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpminub(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpminud(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpminuw(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpmuldq(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpmulhrsw(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpmulhuw(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpmulhw(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpmulld(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpmullw(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpmuludq(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpor(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpsadbw(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpsignb(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpsignw(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpsignd(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpslldq(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpsllw(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpslld(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpsllq(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpsrad(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpsarw(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpsrldq(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpsrlw(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpsrld(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpsrlq(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpsubb(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpsubw(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpsubd(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpsubq(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpsubsb(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpusbsw(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpsubusb(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpsubusw(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vptest(_: &mut CodeGen<Amd64>) {}
-pub fn vpunpckhbw(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpunckhwd(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpunpckhdq(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpunpckhqdq(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpunpcklbw(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpunpckldq(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpuncklqdq(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpuncklwd(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpxor(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vrcpps(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vroundpd(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vroundps(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vroundsd(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vroundss(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vrsqrtps(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vrsqrtss(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vsqrtss(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vsqrtsd(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vshufps(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vshufpd(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vsubps(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vsubss(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vsubpd(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vsubsd(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vunpckhps(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vunpcklps(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vunpckhpd(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vunpcklpd(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vbroadcastss(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue) {}
-pub fn vbroadcastsd(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue) {}
-pub fn vbroadcastf128(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue) {}
-pub fn vextractf128(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue) {}
-pub fn vextracti128(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vgatherdd(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vgatherdp(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vgatherpdp(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vgatherqpd(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vinsertf128(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vinserti128(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vmaskmovps(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vmaskmovpd(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vmulps(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vmulss(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vmulpd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vmulsd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vblendd(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpboradcastb(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue) {}
-pub fn vpboradcastw(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue) {}
-pub fn vpboradcastd(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue) {}
-pub fn vpboradcastq(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue) {}
-pub fn vpboradcasti128(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue) {}
-pub fn vpermd(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpermpd(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpermps(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpermq(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vperm2i128(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpermilpd(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpermilps(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vperm2f128(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpmaskmovd(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpmaskmovq(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpsllvd(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpsravd(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vpsrlvd(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vtestpd(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue) {}
-pub fn vtestps(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue) {}
-pub fn vzeroall(_: &mut CodeGen<Amd64>) {}
-pub fn vxorps(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
-pub fn vxorpd(_: &mut CodeGen<Amd64>, _:Rvalue, _: Rvalue, _: Rvalue) {}
+pub fn aesdec(_:Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vmovd(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn aesdeclast(_:Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn aesenc(_:Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn aesenclast(_:Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn aesimc(_:Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn aeskeygenassist(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vboradcastss(_:Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vboradcastsd(_:Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vboradcastf128(_:Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vzeroupper() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
 
 // FPU
-pub fn f2xm1(_: &mut CodeGen<Amd64>) {}
-pub fn fabs(_: &mut CodeGen<Amd64>) {}
-pub fn fadd(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn faddp(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn fiadd(_: &mut CodeGen<Amd64>, _: Rvalue) {}
-pub fn fbld(_: &mut CodeGen<Amd64>, _: Rvalue) {}
-pub fn fbstp(_: &mut CodeGen<Amd64>, _: Rvalue) {}
-pub fn fchs(_: &mut CodeGen<Amd64>) {}
-pub fn fclex(_: &mut CodeGen<Amd64>) {}
-pub fn fnclex(_: &mut CodeGen<Amd64>) {}
-pub fn fcmovb(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn fcmove(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn fcmovbe(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn fcmovu(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn fcmovnb(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn fcmovne(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn fcmovnbe(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn fcmovnu(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn fcom(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn fcomp(_: &mut CodeGen<Amd64>, _: Rvalue) {}
-pub fn fcompp(_: &mut CodeGen<Amd64>) {}
-pub fn fcomi(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn fcomip(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn fucomi(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn fucomip(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn fcos(_: &mut CodeGen<Amd64>) {}
-pub fn fdecstp(_: &mut CodeGen<Amd64>) {}
-pub fn fdiv(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn fdivp(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn fidiv(_: &mut CodeGen<Amd64>, _: Rvalue) {}
-pub fn fdivr(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn fdivrp(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn fidivr(_: &mut CodeGen<Amd64>, _: Rvalue) {}
-pub fn ffree(_: &mut CodeGen<Amd64>) {}
-pub fn ficom(_: &mut CodeGen<Amd64>, _: Rvalue) {}
-pub fn ficomp(_: &mut CodeGen<Amd64>, _: Rvalue) {}
-pub fn fild(_: &mut CodeGen<Amd64>, _: Rvalue) {}
-pub fn fincstp(_: &mut CodeGen<Amd64>) {}
-pub fn finit(_: &mut CodeGen<Amd64>) {}
-pub fn fninit(_: &mut CodeGen<Amd64>) {}
-pub fn fistp(_: &mut CodeGen<Amd64>, _: Rvalue) {}
-pub fn fisttp(_: &mut CodeGen<Amd64>, _: Rvalue) {}
-pub fn fld(_: &mut CodeGen<Amd64>, _: Rvalue) {}
-pub fn fld1(_: &mut CodeGen<Amd64>) {}
-pub fn fldl2t(_: &mut CodeGen<Amd64>) {}
-pub fn fldl2e(_: &mut CodeGen<Amd64>) {}
-pub fn fldpi(_: &mut CodeGen<Amd64>) {}
-pub fn fldlg2(_: &mut CodeGen<Amd64>) {}
-pub fn fldln2(_: &mut CodeGen<Amd64>) {}
-pub fn fldz(_: &mut CodeGen<Amd64>) {}
-pub fn fldcw(_: &mut CodeGen<Amd64>, _: Rvalue) {}
-pub fn fmul(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn fmulp(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn fimul(_: &mut CodeGen<Amd64>, _: Rvalue) {}
-pub fn fnop(_: &mut CodeGen<Amd64>) {}
-pub fn fpatan(_: &mut CodeGen<Amd64>) {}
-pub fn fprem(_: &mut CodeGen<Amd64>) {}
-pub fn fprem1(_: &mut CodeGen<Amd64>) {}
-pub fn fptan(_: &mut CodeGen<Amd64>) {}
-pub fn frndint(_: &mut CodeGen<Amd64>) {}
-pub fn frstor(_: &mut CodeGen<Amd64>, _: Rvalue) {}
-pub fn fsave(_: &mut CodeGen<Amd64>, _: Rvalue) {}
-pub fn fnsave(_: &mut CodeGen<Amd64>, _: Rvalue) {}
-pub fn fscale(_: &mut CodeGen<Amd64>) {}
-pub fn fsin(_: &mut CodeGen<Amd64>) {}
-pub fn fsincos(_: &mut CodeGen<Amd64>) {}
-pub fn fsqrt(_: &mut CodeGen<Amd64>) {}
-pub fn fst(_: &mut CodeGen<Amd64>, _: Rvalue) {}
-pub fn fstp(_: &mut CodeGen<Amd64>, _: Rvalue) {}
-pub fn fstcw(_: &mut CodeGen<Amd64>, _: Rvalue) {}
-pub fn fldenv(_: &mut CodeGen<Amd64>, _: Rvalue) {}
-pub fn fstenv(_: &mut CodeGen<Amd64>, _: Rvalue) {}
-pub fn fnstenv(_: &mut CodeGen<Amd64>, _: Rvalue) {}
-pub fn fstsw(_: &mut CodeGen<Amd64>, _: Rvalue) {}
-pub fn fnstsw(_: &mut CodeGen<Amd64>, _: Rvalue) {}
-pub fn fsub(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn fsubp(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn fisub(_: &mut CodeGen<Amd64>, _: Rvalue) {}
-pub fn fsubr(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn fisubr(_: &mut CodeGen<Amd64>, _: Rvalue) {}
-pub fn ftst(_: &mut CodeGen<Amd64>) {}
-pub fn fucom(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn fucomp(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn fucompp(_: &mut CodeGen<Amd64>) {}
-pub fn fxam(_: &mut CodeGen<Amd64>) {}
-pub fn fxch(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn fxtract(_: &mut CodeGen<Amd64>) {}
-pub fn fyl2x(_: &mut CodeGen<Amd64>) {}
-pub fn fyl2xp1(_: &mut CodeGen<Amd64>) {}
+pub fn f2xm1() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fabs() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fadd(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn faddp(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fiadd(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fbld(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fbstp(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fchs() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fclex() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fnclex(_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fcmovb(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fcmove(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fcmovbe(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fcmovu(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fcmovnb(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fcmovne(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fcmovnbe(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fcmovnu(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fcom(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fcomp(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fcompp() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fcomi(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fcomip(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fucomi(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fucomip(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fcos() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fdecstp() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fdiv(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fdivp(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fidiv(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fdivr(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fdivrp(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fidivr(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn ffree(_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn ficom(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn ficomp(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fild(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fincstp() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn finit() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fninit(_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fistp(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fisttp(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fld(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fld1() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fldl2t() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fldl2e() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fldpi() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fldlg2() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fldln2() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fldz() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fldcw(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fmul(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fmulp(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fimul(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fnop() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fpatan() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fprem() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fprem1() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fptan() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn frndint() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn frstor(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fsave(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fnsave(_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fscale() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fsin() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fsincos() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fsqrt() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fst1(_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fst2(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fstp(_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fstcw(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fldenv(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fstenv(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fnstenv(_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fstsw1(_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fstsw2(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fnstsw(_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fsub(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fsubp(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fisub(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fsubr(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fisubr(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn ftst() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fucom(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fucomp(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fucompp() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fxam() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fxch(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fxtract() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fyl2x() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fyl2xp1() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
 
 // MPX
-pub fn bndcl(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn bndcu(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn bndcn(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn bndmov(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn bndmk(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn bndldx(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
-pub fn bndstx(_: &mut CodeGen<Amd64>, _: Rvalue, _: Rvalue) {}
+pub fn bndcl(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn bndcu(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn bndcn(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn bndmov(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn bndmk(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn bndldx(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn bndstx(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+
+pub fn noop() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn noop_unary(_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn noop_binary(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+
+// FMA
+pub fn fmadd132ps(_: Rvalue, _:Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fmadd132ss(_: Rvalue, _:Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fmadd213ps(_: Rvalue, _:Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fmadd213ss(_: Rvalue, _:Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fmadd231ps(_: Rvalue, _:Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fmadd231ss(_: Rvalue, _:Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fmaddsub132ps(_: Rvalue, _:Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fmaddsub231ps(_: Rvalue, _:Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fmaddsub232ps(_: Rvalue, _:Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fmnadd132ps(_: Rvalue, _:Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fmnsub132ps(_: Rvalue, _:Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fmsub132ps(_: Rvalue, _:Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fmsub132ss(_: Rvalue, _:Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fmsub213ps(_: Rvalue, _:Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fmsub213ss(_: Rvalue, _:Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fmsub231ps(_: Rvalue, _:Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fmsub231ss(_: Rvalue, _:Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fmsubadd132ps(_: Rvalue, _:Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fmsubadd231ps(_: Rvalue, _:Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fmsubadd232ps(_: Rvalue, _:Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fnmadd213ps(_: Rvalue, _:Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fnmadd213ss(_: Rvalue, _:Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fnmadd231ps(_: Rvalue, _:Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fnmadd231ss(_: Rvalue, _:Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fnmsub213ps(_: Rvalue, _:Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fnmsub213ss(_: Rvalue, _:Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fnmsub231ps(_: Rvalue, _:Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fnmsub231ss(_: Rvalue, _:Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+
+// AVX
+pub fn vaddpd(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vaddps(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vaddsd(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vaddss(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vaddsubpd(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vaddsubps(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vaesdec(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vaesdeclast(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vaesenc(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vaesenclast(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vaesimc(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vaeskeygenassist(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vandpd(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vandps(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vandnpd(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vandnps(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vblendpd(_:Rvalue, _: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vblendps(_:Rvalue, _: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vblendvpd(_:Rvalue, _: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vblendvps(_:Rvalue, _: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vcmppd(_:Rvalue, _: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vcmpps(_:Rvalue, _: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vcmpsd(_:Rvalue, _: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vcmpss(_:Rvalue, _: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vcomisd(_:Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vcomiss(_:Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vcvtdq2pd(_:Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vcvtdq2ps(_:Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vcvtpd2dq(_:Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vcvtpd2ps(_:Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vcvtps2dq(_:Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vcvtps2pd(_:Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vcvtsd2si(_:Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vcvtsd2ss(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vcvtsi2sd(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vcvtss2sd(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vcvtsi2ss(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vcvttpd2dq(_:Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vcvttps2dq(_:Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vcvttsd2si(_:Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vcvttss2si(_:Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vdivps(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vdivpd(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vdivss(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vdivsd(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vdppd(_:Rvalue, _: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vdpps(_:Rvalue, _: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vextractps(_:Rvalue, _: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vhaddpd(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vhaddps(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vhsubpd(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vhsubps(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vinsertps(_:Rvalue, _: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vlddqu(_:Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vldmxcsr(_:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vmaxpd(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vmaxsd(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vmaxps(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vmaxss(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vminpd(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vminsd(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vminps(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vminss(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vmovhpd(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vmovhps(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vmovlpd(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vmovlps(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vmovsd(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vmovss(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vmpsadbw(_:Rvalue, _: Rvalue, _:Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vorpd(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vorps(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpabsb(_:Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpabsw(_:Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpabsd(_:Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpacksswb(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpackssdw(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpackusdw(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpackuswb(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpaddb(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpaddw(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpaddd(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpaddq(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpaddsb(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpaddsw(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpaddusb(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpaddusw(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpalignr(_: Rvalue, _: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpand(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpandn(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpavgb(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpavgw(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpblendvb(_:Rvalue, _: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpblendw(_:Rvalue, _: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpclmulqdq(_:Rvalue, _: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpcmpeqb(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpcmpeqw(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpcmpeqd(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpcmpeqq(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpcmpgtb(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpcmpgtw(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpcmpgtd(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpcmpgtq(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vphaddw(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vphaddd(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vphaddsw(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vphminposuw(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vphsubw(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vphsubd(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vphsubsw(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpinsrb(_:Rvalue, _: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpinsrd(_:Rvalue, _: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpinsrw(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpmaddubsw(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpmadwd(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpmaxsb(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpmaxsd(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpmaxsw(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpmaxub(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpmaxud(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpmaxuw(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpminsb(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpminsd(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpminsw(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpminub(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpminud(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpminuw(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpmuldq(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpmulhrsw(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpmulhuw(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpmulhw(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpmulld(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpmullw(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpmuludq(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpor(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpsadbw(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpsignb(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpsignw(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpsignd(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpslldq(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpsllw(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpslld(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpsllq(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpsrad(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpsarw(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpsrldq(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpsrlw(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpsrld(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpsrlq(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpsubb(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpsubw(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpsubd(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpsubq(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpsubsb(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpusbsw(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpsubusb(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpsubusw(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vptest() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpunpckhbw(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpunckhwd(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpunpckhdq(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpunpckhqdq(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpunpcklbw(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpunpckldq(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpuncklqdq(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpuncklwd(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpxor(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vrcpps(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vroundpd(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vroundps(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vroundsd(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vroundss(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vrsqrtps(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vrsqrtss(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vsqrtss(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vsqrtsd(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vshufps(_:Rvalue, _: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vshufpd(_:Rvalue, _: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vsubps(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vsubss(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vsubpd(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vsubsd(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vunpckhps(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vunpcklps(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vunpckhpd(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vunpcklpd(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vbroadcastss(_:Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vbroadcastsd(_:Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vbroadcastf128(_:Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vextractf128(_:Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vextracti128(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vgatherdd(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vgatherdp(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vgatherpdp(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vgatherqpd(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vinsertf128(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vinserti128(_:Rvalue, _: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vmaskmovps(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vmaskmovpd(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vmulps(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vmulss(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vmulpd(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vmulsd(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vblendd(_: Rvalue, _:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpboradcastb(_:Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpboradcastw(_:Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpboradcastd(_:Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpboradcastq(_:Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpboradcasti128(_:Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpermd(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpermpd(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpermps(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpermq(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vperm2i128(_:Rvalue, _: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpermilpd(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpermilps(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vperm2f128(_:Rvalue, _: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpmaskmovd(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpmaskmovq(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpsllvd(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpsravd(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpsrlvd(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vtestpd(_:Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vtestps(_:Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vzeroall() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vxorps(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vxorpd(_:Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+
+pub fn broadcastf128(_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn broadcasti128(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn broadcastsd(_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn broadcastss(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fst(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fstp1(_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn fstp2(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pboradcastw(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pbroadcastb(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pbroadcastd(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn pbroadcastq(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vandn(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vbextr(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vblendvb(_: Rvalue, _: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vbzhi(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vcvtph2ps(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vfmadd132ps(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vfmadd132ss(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vfmadd213ps(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vfmadd213ss(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vfmadd231ps(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vfmadd231ss(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vfmaddsub132ps(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vfmaddsub231ps(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vfmaddsub232ps(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vfmnadd132ps(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vfmnsub132ps(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vfmsub132ps(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vfmsub132ss(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vfmsub213ps(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vfmsub213ss(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vfmsub231ps(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vfmsub231ss(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vfmsubadd132ps(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vfmsubadd231ps(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vfmsubadd232ps(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vfnmadd213ps(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vfnmadd213ss(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vfnmadd231ps(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vfnmadd231ss(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vfnmsub213ps(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vfnmsub213ss(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vfnmsub231ps(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vfnmsub231ss(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vgatherdps(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vgatherqd(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vgatherqps(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vmovq2dq(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpcmpestri(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpcmpestrm(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpcmpistri(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpcmpistrm(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpermilp(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpextrw(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpmaddwd(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpshufb(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpshufd(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpshufhw(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpshuflw(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpshufw(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpsraw(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpsubsw(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpunpckhwd(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpunpcklqdq(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vpunpcklwd(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vrcpss(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vsha1rnds4(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vshld(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vshlx(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn vshrd(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
