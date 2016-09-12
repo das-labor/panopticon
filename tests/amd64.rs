@@ -17,6 +17,7 @@
  */
 
 extern crate panopticon;
+extern crate env_logger;
 
 use panopticon::{
     Region,
@@ -53,11 +54,13 @@ fn amd64_opcodes() {
 
 #[test]
 fn ia32_opcodes() {
+    env_logger::init().unwrap();
+
     let reg = Region::open("com".to_string(),Path::new("tests/data/ia32.com")).unwrap();
     let mut addr = 0;
 
     loop {
-        let maybe_match = amd64::Amd64::decode(&reg,addr,&amd64::Mode::Long);
+        let maybe_match = amd64::Amd64::decode(&reg,addr,&amd64::Mode::Protected);
 
         if let Ok(match_st) = maybe_match {
             for mne in match_st.mnemonics {

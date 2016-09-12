@@ -68,8 +68,16 @@ impl Architecture for Mos {
         Ok(ret)
     }
 
-    fn decode(reg: &Region,start: u64,_: &Self::Configuration) -> Result<Match<Self>> {
-        Err("todo".into())
+    fn decode(reg: &Region, addr: u64, cfg: &Self::Configuration) -> Result<Match<Self>> {
+        info!("disass @ {:x}",addr);
+        let disass = syntax::disassembler();
+
+        if let Some(st) = disass.next_match(&mut reg.iter().seek(addr),addr,cfg.clone()) {
+            info!("    res: {:?}",st);
+            Ok(st.into())
+        } else {
+            Err("Unrecognized instruction".into())
+        }
     }
 }
 

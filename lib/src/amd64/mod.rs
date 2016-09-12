@@ -114,7 +114,7 @@ impl Architecture for Amd64 {
 
         info!("disass @ {:x}: {:?}",p,buf);
 
-        let ret = ::amd64::read(::amd64::Mode::Long,&buf,p).and_then(|(len,mne,mut jmp)| {
+        let ret = ::amd64::read(*cfg,&buf,p).and_then(|(len,mne,mut jmp)| {
             Ok(Match::<Amd64> {
                 tokens: buf[0..len as usize].to_vec(),
                 mnemonics: vec![mne],
@@ -664,6 +664,7 @@ fn read_spec_register(op: OperandType,opsz: usize,rex_b: bool) -> Result<Operand
         OperandType::GS => Ok(Operand::Register(Register::GS)),
         OperandType::SS => Ok(Operand::Register(Register::SS)),
         OperandType::CS => Ok(Operand::Register(Register::CS)),
+        OperandType::DS => Ok(Operand::Register(Register::DS)),
 
         OperandType::ST0 => Ok(Operand::Register(Register::ST0)),
         OperandType::ST1 => Ok(Operand::Register(Register::ST1)),
@@ -856,6 +857,8 @@ fn read_operand(spec: &OperandSpec, tail: &mut Tail,
             read_ctrl_register(tail.modrm(rex).ok().unwrap().1,32),
         (&OperandSpec::Present(AddressingMethod::D,OperandType::d),_) =>
             read_debug_register(tail.modrm(rex).ok().unwrap().1,32),
+
+        // E
         (&OperandSpec::Present(AddressingMethod::E,OperandType::v),opsz) =>
             read_effective_address(mode,seg,tail,rex,opsz,addrsz,addr,opsz),
         (&OperandSpec::Present(AddressingMethod::E,OperandType::z),_) =>
@@ -967,10 +970,14 @@ fn read_operand(spec: &OperandSpec, tail: &mut Tail,
             read_memory(Operand::Immediate(tail.read_u16().ok().unwrap() as u64,addrsz),seg,addrsz,8),
         (&OperandSpec::Present(AddressingMethod::O,OperandType::b),_) if addrsz == 32 =>
             read_memory(Operand::Immediate(tail.read_u32().ok().unwrap() as u64,addrsz),seg,addrsz,8),
+        (&OperandSpec::Present(AddressingMethod::O,OperandType::b),_) if addrsz == 64 =>
+            read_memory(Operand::Immediate(tail.read_u64().ok().unwrap() as u64,addrsz),seg,addrsz,8),
         (&OperandSpec::Present(AddressingMethod::O,OperandType::v),opsz) if addrsz == 16 =>
             read_memory(Operand::Immediate(tail.read_u16().ok().unwrap() as u64,addrsz),seg,addrsz,opsz),
         (&OperandSpec::Present(AddressingMethod::O,OperandType::v),opsz) if addrsz == 32 =>
             read_memory(Operand::Immediate(tail.read_u32().ok().unwrap() as u64,addrsz),seg,addrsz,opsz),
+        (&OperandSpec::Present(AddressingMethod::O,OperandType::v),opsz) if addrsz == 64 =>
+            read_memory(Operand::Immediate(tail.read_u64().ok().unwrap() as u64,addrsz),seg,addrsz,opsz),
         (&OperandSpec::Present(AddressingMethod::P,OperandType::pi),_) =>
             read_simd_register(tail.modrm(rex).ok().unwrap().1,rex.is_some(),64),
         (&OperandSpec::Present(AddressingMethod::P,OperandType::ps),_) =>
@@ -2091,7 +2098,7 @@ pub fn read(mode: Mode, buf: &[u8], addr: u64) -> Result<(u64,Mnemonic,Vec<(Rval
         };
 
         let opc = match (prefix.opcode_escape,prefix.simd_prefix) {
-            (OpcodeEscape::None,_) if b == 0x63 =>
+            (OpcodeEscape::None,_) if b == 0x63 && mode == Mode::Long =>
                 Opcode::Binary(
                     MnemonicSpec::Single("movsxd"),
                     OpcodeOption::Only64,
