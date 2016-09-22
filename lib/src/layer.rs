@@ -23,17 +23,17 @@
 //!
 //! # Examples
 //! ```
-//! // All accessable RAM is modeled as a single region
-//! let mut reg = Region::undefined("ram",0xc0000000);
+//! use std::path::Path;
+//! use panopticon::{Region,OpaqueLayer,Bound,Layer};
 //!
-//! // The file that's being loaded
-//! blob com("/path/to/file.com");
+//! // All accessable RAM is modeled as a single region
+//! let mut reg = Region::undefined("ram".to_string(),0xc0000000);
 //!
 //! // The layer that simulates mapping the COM file into RAM
-//! let mapping = Layer::wrap("file.com",com);
+//! let mapping = OpaqueLayer::open(Path::new("path/to/file.com")).ok().unwrap();
 //!
 //! // COM files are always mapped at 0100h
-//! reg.add(bound(0x100,0x100 + com.size()),mapping);
+//! reg.cover(Bound::new(0x100,0x100 + mapping.len()),Layer::Opaque(mapping));
 //! ```
 //! Loading a Windows COM file.
 

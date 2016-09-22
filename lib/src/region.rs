@@ -26,18 +26,22 @@
 //!
 //! # Examples
 //! ```
-//! let file_region = Region::wrap("file",blob("path/to/file"));
+//! use std::path::Path;
+//! use panopticon::Region;
+//! let file_region = Region::open("file".to_string(),Path::new("path/to/file"));
 //! ```
 //! This region is named "file" and is filled with the contents of "path/to/file"
 //!
 //! ```
+//! use panopticon::Region;
 //! let buf = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 0];
-//! let buf_region = Region::wrap("buf",buf);
+//! let buf_region = Region::wrap("buf".to_string(),buf);
 //! ```
 //! This region is named "buf" and is initialized with the contents of buf.
 //!
 //! ```
-//! let undefined_region = Region::undefined("undef",4096);
+//! use panopticon::Region;
+//! let undefined_region = Region::undefined("undef".to_string(),4096);
 //! ```
 //! This region is named "undef" and is just 4k of undefined cells
 
