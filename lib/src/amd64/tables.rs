@@ -374,14 +374,14 @@ pub static ONEBYTE_TABLE: [Opcode; 256] = [
     opcode!(lodsw; ),             // 0xad: lodsw
     opcode!(scasb; ),             // 0xae: scasb
     opcode!(scasw; ),             // 0xaf: scasw
-    opcode!(mov; ALR8L, I/b),        // 0xb0: mov
-    opcode!(mov; CLR9L, I/b),        // 0xb1: mov
-    opcode!(mov; DLR10L, I/b),        // 0xb2: mov
-    opcode!(mov; BLR11L, I/b),        // 0xb3: mov
-    opcode!(mov; AHR12L, I/b),        // 0xb4: mov
-    opcode!(mov; CHR13L, I/b),        // 0xb5: mov
-    opcode!(mov; DHR14L, I/b),        // 0xb6: mov
-    opcode!(mov; BHR15L, I/b),        // 0xb7: mov
+    opcode!(mov; ALR8B, I/b),        // 0xb0: mov
+    opcode!(mov; CLR9B, I/b),        // 0xb1: mov
+    opcode!(mov; DLR10B, I/b),        // 0xb2: mov
+    opcode!(mov; BLR11B, I/b),        // 0xb3: mov
+    opcode!(mov; AHR12B, I/b),        // 0xb4: mov
+    opcode!(mov; CHR13B, I/b),        // 0xb5: mov
+    opcode!(mov; DHR14B, I/b),        // 0xb6: mov
+    opcode!(mov; BHR15B, I/b),        // 0xb7: mov
     opcode!(mov; rAXr8, I/v),       // 0xb8: mov
     opcode!(mov; rCXr9, I/v),       // 0xb9: mov
     opcode!(mov; rDXr10, I/v),       // 0xba: mov
