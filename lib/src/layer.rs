@@ -22,7 +22,7 @@
 //! with new ones.
 //!
 //! # Examples
-//! ```
+//! ```no_run
 //! use std::path::Path;
 //! use panopticon::{Region,OpaqueLayer,Bound,Layer};
 //!
