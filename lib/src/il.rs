@@ -16,6 +16,135 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+//! Intermediate Language
+//! =====================
+//!
+//! Panopticon uses a language called RREIL to model mnemonic semantics.
+//!
+//! Conventional disassembler translate machine code from its binary representation to into a list
+//! of mnemonics similar to the format assemblers accept. The only knowledge the disassembler has
+//! of the opcode is its textual form (for example `mov`) and the number and type (constant vs.
+//! register) of operands. These information are purely "syntactic" – they are only about
+//! shape. Advanced disassembler like distorm or IDA Pro add limited semantic information to an
+//! mnemonic like whenever it's a jump or how executing it effects the stack pointer. This ultimately
+//! limits the scope and accuracy of analysis a disassembler can do.
+//!
+//! Reverse engineering is about understanding code. Most of the time the analyst interprets assembler
+//! instructions by "executing" them in his or her head. Good reverse engineers can do
+//! this faster and more accurately than others. In order to help human analysts in this labours task
+//! the disassembler needs to understand the semantics of each mnemonic.
+//!
+//! Panopticon uses a simple and well defined programming language (called RREIL) to model the
+//! semantics of mnemonics in a machine readable manner. This intermediate languages is emitted
+//! by the disassembler part of Panopticon and used by all analysis algorithms. This way the analysis
+//! implementation is decoupled from the details of the instruction set.
+//!
+//! Basic structure
+//! ~~~~~~~~~~~~~~~
+//!
+//! A RREIL program modeling the AVR "adc rd, rr" instruction looks as this:
+//!
+//! ```rreil
+//! zext/8 carry:8, C:1;
+//! add res:8, rd:8, rr:8;
+//! add res:8, res:8, carry:8;
+//!
+//! // zero flag
+//! cmpeq Z:1, res:8, 0:8;
+//!
+//! // negative flag
+//! cmples N:1, res:8, 0:8;
+//!
+//! // carry
+//! cmpeq cf1:1, res:8, rd:8;
+//! cmpltu cf2:1, res:8, rd:8;
+//! and cf1:1, cf1:1, C:1;
+//! or C:1, cf1:1, cf2:1;
+//!
+//! // half carry
+//! cmpeq h1:1, res:4, half_rd:4;
+//! cmpltu h2:1, res:4, half_rd:4;
+//! and h1:1, h1:1, H:1;
+//! or H:1, h1:1, h2:1;
+//!
+//! // overflow flag
+//! cmples s1:1, 0:8, rd:8;
+//! cmples s2:1, 0:8, rr:8;
+//! cmplts s3:1, res:8, 0:8;
+//!
+//! cmplts t1:1, rd:8, 0:8;
+//! cmplts t2:1, rr:8, 0:8;
+//! cmples t3:1, 0:8, res:8;
+//!
+//! and v1:1, s1:1, s2:1;
+//! and v1:1, v1:1, s3:1;
+//!
+//! and v2:1, t1:1, t2:1;
+//! and v2:1, v2:1, t3:1;
+//!
+//! or V:1, v1:1, v2:1;
+//!
+//! // sign test flag
+//! xor S:1, N:1, V:1;
+//!
+//! mov rd:8, res:8;
+//! ```
+//! Each RREIL program is a sequence of instructions. The first argument of each instructions is
+//! assigned its result. The remaining arguments are only read. Arguments can be constants, variables
+//! of a special undefined value `?`. Except for the undefined value all arguments are integers with
+//! a fixed size.
+//!
+//! Memory in RREIL programs is modeled as an array of memory cells. The are accessed by the `load`
+//! and `store` instructions.
+//!
+//! Control Flow
+//! ~~~~~~~~~~~~
+//!
+//! The RREIL programs produced by the disassemblers are sequences of instructions. No jump or optional
+//! instructions are allowed inside a mnemonic. After each mnemonic an unlimited number of jumps is allowed.
+//! Each jump is associated with a guard which is a one bit large variable or constant. If the guard is `1`,
+//! the jump is taken.
+//!
+//! The RREIL implemented in Panopticon has a `call` instruction. This instruction has a single argument
+//! that specifies the address where a new function begins. No "return" instruction exists. Functions
+//! terminate after a sequence with no outgoing jumps is reached.
+//!
+//! Generating Code
+//! ~~~~~~~~~~~~~~~
+//!
+//! Internally, RREIL code is a `Vec<_>` of `Statement` instances while the arguemnts are either
+//! `Lvalue` (writeable) or `Rvalue` (read only). To make generating RREIL easier
+//! one can use the `rreil!` macro which translates slightly modified RREIL code into a
+//! `Result<Vec<Statement>>` instance.
+//!
+//! The `rreil!` macro expects constants to be delimited by brackets (`[`/`]`). Rust values can be
+//! embedded into RREIL code by enclosing them in parens.
+//!
+//! The following code generates RREIL code that implements the first part of the AVR `adc R0, R1`
+//! instruction.
+//!
+//! ```
+//! #[macro_use] extern crate panopticon;
+//! # use panopticon::{Rvalue,Lvalue,State,Statement,Result};
+//! # fn main() {
+//! # fn inner() -> Result<()> {
+//! let rd = Lvalue::Variable{ name: "R0".into(), size: 8, subscript: None };
+//! let rr = Rvalue::Variable{ name: "R1".into(), size: 8, subscript: None, offset: 0 };
+//! let stmts = try!(rreil!{
+//!     zext/8 carry:8, C:1;
+//!     add res:8, (rd), (rr);
+//!     add res:8, res:8, carry:8;
+//!
+//!     // zero flag
+//!     cmpeq Z:1, res:8, [0]:8;
+//! });
+//! # Ok(())
+//! # }
+//! # inner();
+//! # }
+//! ```
+
+
 use std::fmt::{Formatter,Display,Error,Debug};
 use std::convert::From;
 use std::borrow::Cow;
@@ -29,34 +158,58 @@ use Result;
 
 use rustc_serialize::{Encodable,Decodable};
 
+/// A readable RREIL value.
 #[derive(Clone,PartialEq,Eq,Debug,RustcEncodable,RustcDecodable,Hash)]
 pub enum Rvalue {
+    /// Undefined value of unknown length
     Undefined,
-    Variable{ name: Cow<'static,str>, subscript: Option<usize>, offset: usize, size: usize },
-    Constant{ value: u64, size: usize },
+    /// Variable reference
+    Variable{
+        /// Variable name. Names starting with "__" are reserved.
+        name: Cow<'static,str>,
+        /// SSA subscript. This can be set to None in most cases.
+        subscript: Option<usize>,
+        /// First bit of the variable we want to read. Can be set to 0 in most cases.
+        offset: usize,
+        /// Number of bits we want to read.
+        size: usize
+    },
+    /// Constant
+    Constant{
+        /// Value
+        value: u64,
+        /// Size in bits
+        size: usize
+    },
 }
 
 impl Rvalue {
+    /// Returns a new constant value `v` of size 1
     pub fn new_bit(v: usize) -> Rvalue {
         Rvalue::Constant{ value: v as u64, size: 1 }
     }
 
+    /// Returns a new constant value `v` of size 8
     pub fn new_u8(v: u8) -> Rvalue {
         Rvalue::Constant{ value: v as u64, size: 8 }
     }
 
+    /// Returns a new constant value `v` of size 16
     pub fn new_u16(v: u16) -> Rvalue {
         Rvalue::Constant{ value: v as u64, size: 16 }
     }
 
+    /// Returns a new constant value `v` of size 32
     pub fn new_u32(v: u32) -> Rvalue {
         Rvalue::Constant{ value: v as u64, size: 32 }
     }
 
+    /// Returns a new constant value `v` of size 64
     pub fn new_u64(v: u64) -> Rvalue {
         Rvalue::Constant{ value: v, size: 64 }
     }
 
+    /// Returns the size of the value in bits or None if its undefined.
     pub fn size(&self) -> Option<usize> {
         match self {
             &Rvalue::Constant{ ref size,.. } => Some(*size),
@@ -67,6 +220,7 @@ impl Rvalue {
         }
     }
 
+    /// Returns a new Rvalue with the first `s` starting at `o`.
     pub fn extract(&self,s: usize,o: usize) -> Result<Rvalue> {
         if s <= 0 { return Err("can't extract zero bits".into()) }
 
@@ -150,13 +304,24 @@ impl Display for Rvalue {
     }
 }
 
+/// A writeable RREIL value.
 #[derive(Clone,PartialEq,Eq,Debug,RustcEncodable,RustcDecodable,Hash)]
 pub enum Lvalue {
+    /// Undefined value of unknown length
     Undefined,
-    Variable{ name: Cow<'static,str>, subscript: Option<usize>, size: usize },
+    /// Variable reference
+    Variable{
+        /// Variable name. Names starting with "__" are reserved.
+        name: Cow<'static,str>,
+        /// SSA subscript. This can be set to None in most cases.
+        subscript: Option<usize>,
+        /// Size of the variable in bits.
+        size: usize
+    },
 }
 
 impl Lvalue {
+    /// Create a new Lvalue from Rvalue `rv`. Returns None if `rv` is a constant.
     pub fn from_rvalue(rv: Rvalue) -> Option<Lvalue> {
         match rv {
             Rvalue::Undefined => Some(Lvalue::Undefined),
@@ -170,6 +335,7 @@ impl Lvalue {
         }
     }
 
+    /// Returns a new Rvalue with the first `s` starting at `o`.
     pub fn extract(&self,s: usize,o: usize) -> Result<Rvalue> {
         if s <= 0 { return Err("can't extract zero bits".into()) }
 
@@ -190,6 +356,7 @@ impl Lvalue {
         }
     }
 
+    /// Returns the size of the value in bits or None if its undefined.
     pub fn size(&self) -> Option<usize> {
         match self {
             &Lvalue::Variable{ ref size,.. } => {
@@ -206,14 +373,25 @@ impl Display for Lvalue {
     }
 }
 
+/// Branch condition
 #[derive(Clone,PartialEq,Eq,Debug,RustcEncodable,RustcDecodable)]
 pub enum Guard {
+    /// Guard is constant true
     True,
+    /// Guard is constant false
     False,
-    Predicate{ flag: Rvalue, expected: bool }
+    /// Guard depends on a one bit RREIL value.
+    Predicate{
+        /// Flag value. Must be `0` or `1`.
+        flag: Rvalue,
+        /// Expected value of `flag`. If `flag` is `1` and `expected` is true or if
+        /// `flag` is `1` and `expected` is true the guard is true. Otherwise its false.
+        expected: bool
+    }
 }
 
 impl Guard {
+    /// Create a guard that is true if `f` is `1`.
     pub fn from_flag(f: &Rvalue) -> Result<Guard> {
         match f {
             &Rvalue::Undefined => Ok(Guard::Predicate{ flag: f.clone(), expected: true }),
@@ -224,14 +402,17 @@ impl Guard {
         }
     }
 
+    /// Guard that is always false
     pub fn never() -> Guard {
         Guard::False
     }
 
+    /// Guard that is always true
     pub fn always() -> Guard {
         Guard::True
     }
 
+    /// Negation of self
     pub fn negation(&self) -> Guard {
         match self {
             &Guard::True => Guard::False,
@@ -252,46 +433,83 @@ impl Display for Guard {
     }
 }
 
+/// A RREIL operation.
 #[derive(Clone,PartialEq,Eq,Debug,RustcEncodable,RustcDecodable)]
 pub enum Operation<V: Clone + PartialEq + Eq + Debug + Encodable + Decodable> {
+    /// Integer addition
     Add(V,V),
+    /// Integer subtraction
     Subtract(V,V),
+    /// Unsigned integer multiplication
     Multiply(V,V),
+    /// Unsigned integer division
     DivideUnsigned(V,V),
+    /// Signed integer division
     DivideSigned(V,V),
+    /// Bitwise left shift
     ShiftLeft(V,V),
+    /// Bitwise logical right shift
     ShiftRightUnsigned(V,V),
+    /// Bitwise arithmetic right shift
     ShiftRightSigned(V,V),
+    /// Integer modulo
     Modulo(V,V),
+    /// Bitwise logical and
     And(V,V),
+    /// Bitwise logical or
     InclusiveOr(V,V),
+    /// Bitwise logical xor
     ExclusiveOr(V,V),
 
+    /// Compare both operands for equality and returns `1` or `0`
     Equal(V,V),
+    /// Returns `1` if the first operand is less than or equal to the second and `0` otherwise.
+    /// Comparison assumes unsigned values.
     LessOrEqualUnsigned(V,V),
+    /// Returns `1` if the first operand is less than or equal to the second and `0` otherwise.
+    /// Comparison assumes signed values.
     LessOrEqualSigned(V,V),
+    /// Returns `1` if the first operand is less than the second and `0` otherwise.
+    /// Comparison assumes unsigned values.
     LessUnsigned(V,V),
+    /// Returns `1` if the first operand is less than the second and `0` otherwise.
+    /// Comparison assumes signed values.
     LessSigned(V,V),
 
+    /// Zero extends the operand.
     ZeroExtend(usize,V),
+    /// Sign extends the operand.
     SignExtend(usize,V),
+    /// Copies the operand without modification.
     Move(V),
+    /// Calls the function located at the address pointed to by the operand.
     Call(V),
+    /// Copies only a range of bit from the operand.
     Select(usize,V,V),
 
+    /// Reads a memory cell
     Load(Cow<'static,str>,V),
+    /// Writes a memory cell
     Store(Cow<'static,str>,V),
 
+    /// SSA Phi function
     Phi(Vec<V>),
 }
 
+/// A single RREIL statement.
 #[derive(Clone,PartialEq,Eq,Debug,RustcEncodable,RustcDecodable)]
 pub struct Statement {
+    /// Value that the operation result is assigned to
     pub assignee: Lvalue,
+    /// Operation and its arguments
     pub op: Operation<Rvalue>,
 }
 
 impl Statement {
+    /// Does a simple sanity check. The functions returns Err if
+    /// - The argument size are not equal
+    /// - The result has not the same size as `assignee`
+    /// - The select operation arguments are out of range
     pub fn sanity_check(&self) -> Result<()> {
         // check that argument sizes match
         let typecheck_binop = |a: &Rvalue,b: &Rvalue,assignee: &Lvalue| -> Result<()> {
@@ -396,6 +614,7 @@ impl Statement {
     }
 }
 
+/// Executes a RREIL operation returning the result.
 pub fn execute(op: Operation<Rvalue>) -> Rvalue {
 	match op {
         Operation::Add(Rvalue::Constant{ value: _a, size: s },Rvalue::Constant{ value: _b, size: _s }) => {
@@ -703,6 +922,7 @@ pub fn execute(op: Operation<Rvalue>) -> Rvalue {
     }
 }
 
+/// Maps the function `m` over all operands of `op`.
 pub fn lift<V: Clone + PartialEq + Eq + Debug + Encodable + Decodable,W: Clone + PartialEq + Eq + Debug + Encodable + Decodable,F: Fn(&V) -> W>(op: &Operation<V>, m: &F) -> Operation<W> {
     let args = op.operands().iter().cloned().map(m).collect::<Vec<_>>();
     match op {
@@ -735,6 +955,7 @@ pub fn lift<V: Clone + PartialEq + Eq + Debug + Encodable + Decodable,W: Clone +
 }
 
 impl<'a,V> Operation<V> where V: Clone + PartialEq + Eq + Debug + Encodable + Decodable {
+    /// Returns its operands
     pub fn operands(&'a self) -> Vec<&'a V> {
         match *self {
             Operation::Add(ref a,ref b) => return vec!(a,b),
@@ -769,6 +990,7 @@ impl<'a,V> Operation<V> where V: Clone + PartialEq + Eq + Debug + Encodable + De
         }
     }
 
+    /// Returns its operands
     pub fn operands_mut(&'a mut self) -> Vec<&'a mut V> {
         match self {
             &mut Operation::Add(ref mut a,ref mut b) => return vec!(a,b),
@@ -847,6 +1069,7 @@ impl Display for Statement {
     }
 }
 
+#[macro_export]
 macro_rules! rreil {
     ( ) => {Ok(vec![])};
     ( add $($cdr:tt)* ) => { rreil_binop!(Add # $($cdr)*) };
@@ -880,6 +1103,7 @@ macro_rules! rreil {
 
 include!("rreil.rs");
 
+#[macro_export]
 macro_rules! rreil_lvalue {
     (?) =>
         { $crate::Lvalue::Undefined };
@@ -894,6 +1118,7 @@ macro_rules! rreil_lvalue {
     };
 }
 
+#[macro_export]
 macro_rules! rreil_rvalue {
     (?) => { $crate::Rvalue::Undefined };
     ( ( $a:expr ) ) => { ($a).clone().into() };
@@ -921,6 +1146,7 @@ macro_rules! rreil_rvalue {
     };
 }
 
+#[macro_export]
 macro_rules! rreil_imm {
     ($x:expr) => ($x as usize);
 }
