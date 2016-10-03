@@ -841,9 +841,10 @@ pub fn execute(op: Operation<Rvalue>) -> Rvalue {
         Operation::LessSigned(_,_) =>
             Rvalue::Undefined,
 
-        Operation::ZeroExtend(s,Rvalue::Constant{ value: v,.. }) => {
-            let mask = if s < 64 { (1u64 << s) - 1 } else { u64::MAX };
-            Rvalue::Constant{ value: v & mask, size: s }
+        Operation::ZeroExtend(s1,Rvalue::Constant{ value: v, size: s0 }) => {
+            let mask1 = if s1 < 64 { (1u64 << s1) - 1 } else { u64::MAX };
+            let mask0 = if s0 < 64 { (1u64 << s0) - 1 } else { u64::MAX };
+            Rvalue::Constant{ value: (v & mask0) & mask1, size: s1 }
         },
         Operation::ZeroExtend(s,Rvalue::Variable{ ref name, ref subscript,.. }) =>
             Rvalue::Variable{ name: name.clone(), subscript: subscript.clone(), offset: 0, size: s },
@@ -851,16 +852,32 @@ pub fn execute(op: Operation<Rvalue>) -> Rvalue {
             Rvalue::Undefined,
 
         Operation::SignExtend(t,Rvalue::Constant{ value: v, size: s,.. }) => {
-            let mask = if s < 64 { (1u64 << t) - 1 } else { u64::MAX };
-            let sign_mask = if s < 64 { 1u64 << (s - 1) } else { 0 };
-            let sign = if t < 64 { 1u64 << (t - 1) } else { 0 };
-            Rvalue::Constant{ value: (v & mask) | (if v & sign_mask != 0 { sign } else { 0 }) , size: s }
+            let mask0 = if s < 64 { (1u64 << s) - 1 } else { u64::MAX };
+            let mask1 = if t < 64 { (1u64 << t) - 1 } else { u64::MAX };
+            let sign = if s < 64 { 1u64 << (s - 1) } else { 0 };
+
+            println!("{:?} & {:?} = {:?}",v,sign, v & sign);
+
+            if v & sign == 0 {
+                Rvalue::Constant{ value: (v & mask0) & mask1, size: t }
+            } else {
+                let mask = mask1 & !mask0;
+                println!("mask: {:?}, sx: {:?}",mask,(v & mask0) | mask);
+                Rvalue::Constant{ value: (v & mask0) | mask, size: t }
+            }
         },
         Operation::SignExtend(s,Rvalue::Variable{ ref name, ref subscript,.. }) =>
             Rvalue::Variable{ name: name.clone(), subscript: subscript.clone(), offset: 0, size: s },
         Operation::SignExtend(_,Rvalue::Undefined) =>
             Rvalue::Undefined,
 
+        Operation::Move(Rvalue::Constant{ ref value, ref size }) => {
+            if *size < 64 {
+                Rvalue::Constant{ value: *value & ((1u64 << size) - 1), size: *size }
+            } else {
+                Rvalue::Constant{ value: *value, size: *size }
+            }
+        }
         Operation::Move(ref a) =>
             a.clone(),
 
