@@ -158,6 +158,7 @@ struct PeSection {
     flags: u32,
 }
 
+/// Loads a PE file from disk and create a project from it.
 pub fn pe(p: &Path) -> Option<Project> {
     let name = p.file_name().and_then(|x| x.to_str()).or(p.to_str()).unwrap_or("unknown pe");
 
