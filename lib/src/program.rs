@@ -16,6 +16,18 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+//! A graph of functions and symbolic references.
+//!
+//! The edges of the function graph (call graph) signify that one function calls another. Aside
+//! from functions symbolic references are also part of the call graph. These are placeholders for
+//! external functions imported from dynamic libraries.
+//!
+//! Program instances also have a human-readable name and a unique ID.
+//!
+//! Unlike the basic block graph of a function, a call graph has no error nodes. If disassembling a
+//! function fails, it will still be added to the call graph. The function will only have a single
+//! error node.
+
 use graph_algos::{
     AdjacencyList,
     GraphTrait,
@@ -32,14 +44,19 @@ use {
     Rvalue
 };
 
+/// Node of the program call graph.
 #[derive(RustcDecodable,RustcEncodable)]
 pub enum CallTarget {
+    /// Resolved and disassembled function.
     Concrete(Function),
+    /// Reference to an external symbol.
     Symbolic(String,Uuid),
+    /// Resolved but not yet disassembled function.
     Todo(Rvalue,Option<String>,Uuid),
 }
 
 impl CallTarget {
+    /// Returns the UUID of the call graph node.
     pub fn uuid(&self) -> Uuid {
         match self {
             &CallTarget::Concrete(Function{ uuid,..}) => uuid,
@@ -49,23 +66,24 @@ impl CallTarget {
     }
 }
 
+/// Graph of functions/symbolic references
 pub type CallGraph = AdjacencyList<CallTarget,()>;
+/// Stable reference to a call graph node
 pub type CallGraphRef = AdjacencyListVertexDescriptor;
 
+/// A collection of functions calling each other.
 #[derive(RustcDecodable,RustcEncodable)]
 pub struct Program {
+    /// Unique, immutable identifier
     pub uuid: Uuid,
+    /// Human-readable name
     pub name: String,
+    /// Graph of functions
     pub call_graph: CallGraph,
 }
 
-pub enum DisassembleEvent {
-    Discovered(u64),
-    Started(u64),
-    Done(u64),
-}
-
 impl Program {
+    /// Create a new, empty `Program` named `n`.
     pub fn new(n: &str) -> Program {
         Program{
             uuid: Uuid::new_v4(),
@@ -74,6 +92,7 @@ impl Program {
         }
     }
 
+    /// Returns a reference to the function with an entry point starting at `a`.
     pub fn find_function_by_entry(&self, a: u64) -> Option<CallGraphRef> {
         self.call_graph.vertices().find(|&x| match self.call_graph.vertex_label(x) {
             Some(&CallTarget::Concrete(ref s)) => {
@@ -91,6 +110,7 @@ impl Program {
         })
     }
 
+    /// Returns the function with UUID `a`.
     pub fn find_function_by_uuid<'a>(&'a self, a: &Uuid) -> Option<&'a Function> {
         self.call_graph.vertices().find(|&x| match self.call_graph.vertex_label(x) {
             Some(&CallTarget::Concrete(ref s)) => s.uuid == *a,
@@ -101,6 +121,7 @@ impl Program {
         })
     }
 
+    /// Returns the function with UUID `a`.
     pub fn find_function_by_uuid_mut<'a>(&'a mut self, a: &Uuid) -> Option<&'a mut Function> {
         let ct = self.call_graph.vertices().find(|&x| match self.call_graph.vertex_label(x) {
             Some(&CallTarget::Concrete(ref s)) => s.uuid == *a,
@@ -117,6 +138,8 @@ impl Program {
         }
     }
 
+    /// Puts function/reference `new_ct` into the call graph, returning the UUIDs of all functions
+    /// that are called by `new_ct` and call `new_ct`.
     pub fn insert(&mut self, new_ct: CallTarget) -> Vec<Uuid> {
         let new_uu = new_ct.uuid();
         let maybe_vx = self.call_graph.vertices().find(|ct| {
@@ -182,6 +205,7 @@ impl Program {
         ret
     }
 
+    /// Returns the function, todo item or symbolic reference with UUID `uu`.
     pub fn find_call_target_by_uuid<'a>(&'a self,uu: &Uuid) -> Option<CallGraphRef> {
         for vx in self.call_graph.vertices() {
             if let Some(lb) = self.call_graph.vertex_label(vx) {
