@@ -17,6 +17,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+//! MOS 6502 disassembler.
+//!
+//! This disassembler handles all documented opcode of the MOS Technology 6502 microprocessor.
+
+#![allow(missing_docs)]
+
 use {
     Lvalue,
     Rvalue,

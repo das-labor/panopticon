@@ -16,6 +16,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+//! Collection of data flow algorithms.
+//!
+//! This module contains algorithms to convert RREIL code into SSA form. Aside from SSA form this
+//! module implements functions to compute liveness sets and basic reverse data flow information.
+
 use std::collections::{
     HashMap,
     HashSet,
@@ -49,7 +54,8 @@ use {
     Lvalue,
 };
 
-/// returns (varkill,uevar)
+/// Computes the set of killed (VarKill) and upward exposed variables (UEvar) for each basic block
+/// in `func`. Returns (VarKill,UEvar).
 pub fn liveness_sets(func: &Function) ->  (HashMap<ControlFlowRef,HashSet<Cow<'static,str>>>,HashMap<ControlFlowRef,HashSet<Cow<'static,str>>>) {
     let mut uevar = HashMap::<ControlFlowRef,HashSet<&str>>::new();
     let mut varkill = HashMap::<ControlFlowRef,HashSet<Cow<'static,str>>>::new();
@@ -106,6 +112,8 @@ pub fn liveness_sets(func: &Function) ->  (HashMap<ControlFlowRef,HashSet<Cow<'s
         (k,HashSet::from_iter(v.iter().map(|x| Cow::Owned(x.to_string())))) })))
 }
 
+/// Computes for each basic block in `func` the set of live variables using simple fixed point
+/// iteration.
 pub fn liveness(func: &Function) ->  HashMap<ControlFlowRef,HashSet<Cow<'static,str>>> {
     let (varkill,uevar) = liveness_sets(func);
     let mut liveout = HashMap::<ControlFlowRef,HashSet<&str>>::new();
@@ -157,6 +165,8 @@ pub fn liveness(func: &Function) ->  HashMap<ControlFlowRef,HashSet<Cow<'static,
         (k,HashSet::from_iter(v.iter().map(|x| Cow::Owned(x.to_string())))) }))
 }
 
+/// Does a simple sanity check on all RREIL statements in `func`, returns every variable name
+/// found and its maximal size in bits.
 pub fn type_check(func: &Function) -> HashMap<Cow<'static,str>,usize> {
     let mut ret = HashMap::<Cow<'static,str>,usize>::new();
     let cfg = &func.cflow_graph;
@@ -201,7 +211,8 @@ pub fn type_check(func: &Function) -> HashMap<Cow<'static,str>,usize> {
     ret
 }
 
-/// returns globals,usage
+/// Computes the set of gloable variables in `func` and their points of usage. Globales are
+/// variables that are used in multiple basic blocks. Returns (Globals,Usage).
 pub fn global_names(func: &Function) -> (HashSet<Cow<'static,str>>,HashMap<Cow<'static,str>,HashSet<ControlFlowRef>>) {
     let (varkill,uevar) = liveness_sets(func);
     let mut usage = HashMap::<Cow<'static,str>,HashSet<ControlFlowRef>>::new();
@@ -222,6 +233,8 @@ pub fn global_names(func: &Function) -> (HashSet<Cow<'static,str>>,HashMap<Cow<'
     (globals,usage)
 }
 
+/// Inserts SSA Phi functions at junction points in the control flow graph of `func`. The
+/// algorithm produces the semi-pruned SSA form found in Cooper, Torczon: "Engineering a Compiler".
 pub fn phi_functions(func: &mut Function) {
     assert!(func.entry_point.is_some());
 
@@ -288,6 +301,9 @@ pub fn phi_functions(func: &mut Function) {
     }
 }
 
+/// Sets the SSA subscripts of all variables in `func`. Follows the algorithm outlined
+/// Cooper, Torczon: "Engineering a Compiler". The function expects that Phi functions to be
+/// already inserted.
 pub fn rename_variables(func: &mut Function) {
     let (globals,_) = global_names(func);
     let mut cfg = &mut func.cflow_graph;
@@ -388,11 +404,14 @@ pub fn rename_variables(func: &mut Function) {
     rename(func.entry_point.unwrap(),&mut counter,&mut stack,cfg,&idom);
 }
 
+/// Convert `func` into semi-pruned SSA form.
 pub fn ssa_convertion(func: &mut Function) {
     phi_functions(func);
     rename_variables(func);
 }
 
+/// Computes for every control flow guard the dependend RREIL operation via reverse data flow
+/// analysis.
 pub fn flag_operations(func: &Function) -> HashMap<ControlFlowEdge,Operation<Rvalue>> {
     let mut ret = HashMap::new();
 

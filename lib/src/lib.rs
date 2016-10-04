@@ -71,20 +71,9 @@
 //! Von-Neumann machines two on Harvard architectures. Other uses for `Region`s are
 //! applying functions to `Cell` array where the result is not equal in size to the
 //! input (for example uncompressing parts of the executable image).
-//!
-//! # Graphical UI
-//!
-//! The qtpanopticon application uses the functionality implemented in the
-//! panopticon crate to allow browsing the disassembled code.
-//!
-//! The UI widgets are mostly implemented in QML ("qml/"), with glue functions written
-//! in Rust to connect the QML code to panopticon.
-//!
-//! Moving data to QML is done by JSON RPC.
-//! This makes memory management easier and save us from implementing dozens of
-//! QObject subclasses.
 
 #![recursion_limit="100"]
+#![warn(missing_docs)]
 
 #[macro_use]
 extern crate log;
@@ -150,7 +139,6 @@ pub use program::{
     CallTarget,
     CallGraph,
     CallGraphRef,
-    DisassembleEvent,
 };
 
 pub mod project;

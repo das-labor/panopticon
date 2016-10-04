@@ -16,6 +16,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+//! Result type used throughout the library.
+//!
+//! The error type is simply a string.
+
 use std::borrow::Cow;
 use std::error;
 use std::result;
@@ -31,8 +35,10 @@ use rustc_serialize::json::{
     DecoderError,
 };
 
+/// Panopticon error type
 #[derive(Debug)]
 pub struct Error(pub Cow<'static,str>);
+/// Panopticon result type
 pub type Result<T> = result::Result<T,Error>;
 
 impl fmt::Display for Error {

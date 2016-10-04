@@ -16,6 +16,17 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+//! Abstract Interpretation Framework.
+//!
+//! Abstract Interpretation executes an program over sets of concrete values. Each operation is
+//! extended to work on some kind of abstract value called abstract domain that approximates a
+//! set of concrete values (called the concrete domain). A simple example is the domain of signs.
+//! Each value can either be positive, negative, both or none. An abstract interpretation will first
+//! replace all constant values with their signs and then execute all basic blocks using the
+//! abstract sign domain. For example multiplying two positive values yields a positive value.
+//! Adding a positive and a negative sign yields an abstract value representing both signs (called
+//! join).
+
 use std::hash::Hash;
 use std::fmt::Debug;
 use std::collections::{HashSet,HashMap};
@@ -51,34 +62,53 @@ use {
     flag_operations,
 };
 
+/// Linear constraint.
 pub enum Constraint {
+    /// True if equal to.
     Equal(Rvalue),
+    /// True if less than (unsigned).
     LessUnsigned(Rvalue),
+    /// True if less than or equal to (unsigned).
     LessOrEqualUnsigned(Rvalue),
+    /// True if less than (signed).
     LessSigned(Rvalue),
+    /// True if less than or equal to (signed).
     LessOrEqualSigned(Rvalue),
 }
 
+/// A program point is a unique RREIL instruction inside a function.
 #[derive(Debug,PartialEq,Eq,Clone,RustcDecodable,RustcEncodable,PartialOrd,Ord,Hash)]
 pub struct ProgramPoint {
     address: u64,
     position: usize,
 }
 
-/// Models both under- and overapproximation
+/// Abstract Domain. Models both under- and over-approximation.
 pub trait Avalue: Clone + PartialEq + Eq + Hash + Debug + Encodable + Decodable {
+    /// Alpha function. Returns domain element that approximates the concrete value the best
     fn abstract_value(&Rvalue) -> Self;
+    /// Alpha function. Returns domain element that approximates the concrete value that fullfil
+    /// the constraint the best.
     fn abstract_constraint(&Constraint) -> Self;
+    /// Execute the abstract version of the operation, yielding the result.
     fn execute(&ProgramPoint,&Operation<Self>) -> Self;
+    /// Narrows `self` with the argument.
     fn narrow(&self,&Self) -> Self;
+    /// Widens `self` with the argument.
     fn widen(&self,other: &Self) -> Self;
+    /// Computes the lowest upper bound of self and the argument.
     fn combine(&self,&Self) -> Self;
+    /// Returns true if `other` <= `self`.
     fn more_exact(&self,other: &Self) -> bool;
+    /// Returns the meet of the domain
     fn initial() -> Self;
+    /// Mimics the Select operation.
     fn extract(&self,size: usize,offset: usize) -> Self;
 }
 
-/// Bourdoncle: "Efficient chaotic iteration strategies with widenings"
+/// Does an abstract interpretation of `func` using the abstract domain `A`. The function uses a
+/// fixed point iteration and the widening strategy outlined in
+/// Bourdoncle: "Efficient chaotic iteration strategies with widenings".
 pub fn approximate<A: Avalue>(func: &Function) -> Result<HashMap<Lvalue,A>> {
     if func.entry_point.is_none() {
         return Err("function has no entry point".into());
@@ -262,6 +292,8 @@ pub fn approximate<A: Avalue>(func: &Function) -> Result<HashMap<Lvalue,A>> {
     })))
 }
 
+/// Given a function and an abstract interpretation result this functions returns that variable
+/// names and abstract values that live after the function returns.
 pub fn results<A: Avalue>(func: &Function,vals: &HashMap<Lvalue,A>) -> HashMap<(Cow<'static,str>,usize),A> {
     let cfg = &func.cflow_graph;
     let idom = immediate_dominator(func.entry_point.unwrap(),cfg);
@@ -319,12 +351,20 @@ pub fn results<A: Avalue>(func: &Function,vals: &HashMap<Lvalue,A>) -> HashMap<(
     ret
 }
 
+/// Largest Kset cardinality before Join.
 const KSET_MAXIMAL_CARDINALITY: usize = 10;
 
+/// Kindler et.al style Kset domain. Domain elements are sets of concrete values. Sets have a
+/// maximum cardinality. Every set larger than that is equal the lattice join. The partial order is
+/// set inclusion.
 #[derive(Debug,Eq,Clone,Hash,RustcDecodable,RustcEncodable)]
 pub enum Kset {
+    /// Lattice join. Sets larger than `KSET_MAXIMAL_CARDINALITY`.
     Join,
+    /// Set of concrete values and their size in bits. The set is never empty and never larger than
+    /// `KSET_MAXIMAL_CARDINALITY`.
     Set(Vec<(u64,usize)>),
+    /// Lattice meet, equal to the empty set.
     Meet,
 }
 
@@ -549,7 +589,8 @@ impl Avalue for Kset {
     }
 }
 
-/// Mihaila et.al. Widening Point cofibered domain
+/// Mihaila et.al. Widening Point inferring cofibered domain. This domain is parameterized with a
+/// child domain.
 #[derive(Debug,PartialEq,Eq,Clone,Hash,RustcDecodable,RustcEncodable)]
 pub struct Widening<A: Avalue> {
     value: A,

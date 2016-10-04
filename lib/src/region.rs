@@ -16,15 +16,19 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-//! A regions model continuous memory like RAM, flash memory or files. A region has an unique
-//! name that is used to reference it and a size. The size is the number of `Cell`s in
-//! a region. A cell either has a value between 0 and 255 or is undefined. `Cell`s are
-//! numbered in ascending order starting at 0.
+//! A regions model continuous memory like RAM, flash memory or files.
+//!
+//! A region has an unique name that is used to reference it and a size. The
+//! size is the number of `Cell`s in a region. A cell either has a value
+//! between 0 and 255 or is undefined. `Cell`s are numbered in ascending
+//! order starting at 0.
 //!
 //! Regions can be constructed from files or buffers in memory or be filled with
 //! undefined values.
 //!
-//! # Examples
+//! Examples
+//! --------
+//!
 //! ```
 //! use std::path::Path;
 //! use panopticon::Region;
@@ -68,7 +72,9 @@ pub struct Region {
     size: u64,
 }
 
+/// Graph that models overlapping regions.
 pub type RegionGraph = AdjacencyList<Region,Bound>;
+/// Stable reference for a node in a region graph.
 pub type RegionRef = AdjacencyListVertexDescriptor;
 
 /// A set of `Region`s

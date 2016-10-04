@@ -16,6 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+//! Loader for 32 and 64-bit ELF files.
+
 use std::io::{Seek,SeekFrom,Read};
 use std::fs::File;
 use std::path::Path;

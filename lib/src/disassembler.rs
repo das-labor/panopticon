@@ -16,11 +16,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-//! Disassembler
-//! ============
-//!
 //! A disassembler in Panopticon is responsible to translate a sequence of tokens
-//! into mnemonics. A token is a fixed width byte sequence. The width depends on the
+//! into mnemonics.
+//!
+//! A token is a fixed width byte sequence. The width depends on the
 //! instruction set architection and is the shortest possible machine code
 //! instruction (on IA32 this would be 1 byte, on ARM 4 bytes). A mnemonic includes
 //! the syntax of the machine code instruction, its semantics in RREIL and a collection

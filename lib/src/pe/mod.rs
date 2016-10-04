@@ -16,6 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+//! Loader for PE32 and PE32+ files.
+
 use std::path::Path;
 use std::mem;
 use std::fs::File;

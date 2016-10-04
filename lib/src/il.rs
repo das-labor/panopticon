@@ -16,9 +16,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-//! Intermediate Language
-//! =====================
-//!
 //! Panopticon uses a language called RREIL to model mnemonic semantics.
 //!
 //! Conventional disassembler translate machine code from its binary representation to into a list
@@ -40,54 +37,19 @@
 //! implementation is decoupled from the details of the instruction set.
 //!
 //! Basic structure
-//! ~~~~~~~~~~~~~~~
+//! ---------------
 //!
 //! A RREIL program modeling the AVR "adc rd, rr" instruction looks as this:
 //!
 //! ```rreil
-//! zext/8 carry:8, C:1;
-//! add res:8, rd:8, rr:8;
-//! add res:8, res:8, carry:8;
+//! zext carry:8, C:1
+//! add res:8, rd:8, rr:8
+//! add res:8, res:8, carry:8
 //!
 //! // zero flag
-//! cmpeq Z:1, res:8, 0:8;
+//! cmpeq Z:1, res:8, 0:8
 //!
-//! // negative flag
-//! cmples N:1, res:8, 0:8;
-//!
-//! // carry
-//! cmpeq cf1:1, res:8, rd:8;
-//! cmpltu cf2:1, res:8, rd:8;
-//! and cf1:1, cf1:1, C:1;
-//! or C:1, cf1:1, cf2:1;
-//!
-//! // half carry
-//! cmpeq h1:1, res:4, half_rd:4;
-//! cmpltu h2:1, res:4, half_rd:4;
-//! and h1:1, h1:1, H:1;
-//! or H:1, h1:1, h2:1;
-//!
-//! // overflow flag
-//! cmples s1:1, 0:8, rd:8;
-//! cmples s2:1, 0:8, rr:8;
-//! cmplts s3:1, res:8, 0:8;
-//!
-//! cmplts t1:1, rd:8, 0:8;
-//! cmplts t2:1, rr:8, 0:8;
-//! cmples t3:1, 0:8, res:8;
-//!
-//! and v1:1, s1:1, s2:1;
-//! and v1:1, v1:1, s3:1;
-//!
-//! and v2:1, t1:1, t2:1;
-//! and v2:1, v2:1, t3:1;
-//!
-//! or V:1, v1:1, v2:1;
-//!
-//! // sign test flag
-//! xor S:1, N:1, V:1;
-//!
-//! mov rd:8, res:8;
+//! mov rd:8, res:8
 //! ```
 //! Each RREIL program is a sequence of instructions. The first argument of each instructions is
 //! assigned its result. The remaining arguments are only read. Arguments can be constants, variables
@@ -98,7 +60,7 @@
 //! and `store` instructions.
 //!
 //! Control Flow
-//! ~~~~~~~~~~~~
+//! ------------
 //!
 //! The RREIL programs produced by the disassemblers are sequences of instructions. No jump or optional
 //! instructions are allowed inside a mnemonic. After each mnemonic an unlimited number of jumps is allowed.
@@ -110,7 +72,7 @@
 //! terminate after a sequence with no outgoing jumps is reached.
 //!
 //! Generating Code
-//! ~~~~~~~~~~~~~~~
+//! ---------------
 //!
 //! Internally, RREIL code is a `Vec<_>` of `Statement` instances while the arguemnts are either
 //! `Lvalue` (writeable) or `Rvalue` (read only). To make generating RREIL easier

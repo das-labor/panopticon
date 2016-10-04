@@ -15,13 +15,15 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 //
 
-//! A [`Layer`] spans parts of a region and transforms the content of cells inside.
-//! `Layer`s can overlap with other `Layer`s below that are in the same `Region`.
+//! A layer spans parts of a region and transforms the content of cells inside.
 //!
+//! `Layer`s can overlap with other `Layer`s below that are in the same `Region`.
 //! `Layer` can be used to modify `Region`s by overlaying parts of the original `Cell`s
 //! with new ones.
 //!
-//! # Examples
+//! Examples
+//! --------
+//!
 //! ```no_run
 //! use std::path::Path;
 //! use panopticon::{Region,OpaqueLayer,Bound,Layer};
@@ -53,22 +55,33 @@ pub type Cell = Option<u8>;
 /// Layer that replace all overlapped `Cell`s.
 #[derive(Debug,RustcDecodable,RustcEncodable)]
 pub enum OpaqueLayer {
+    /// Layer consisting of undefined cells.
     Undefined(u64),
+    /// Layer consisting of fixed byte values.
     Defined(Box<Vec<u8>>),
 }
 
 /// Iterator over a range of `Cell`s.
 #[derive(Clone,Debug)]
 pub enum LayerIter<'a> {
+    /// Layer consisting of undefined cells.
     Undefined(u64),
+    /// Layer consisting of fixed byte values.
     Defined(Option<&'a [u8]>),
+    /// Layer overwriting single cells with new values.
     Sparse {
+        /// New cells
         map: &'a HashMap<u64, Cell>,
+        /// Layer to be overwritten
         mapped: Box<LayerIter<'a>>,
+        /// Starting point
         pos: u64,
     },
+    /// Concatenation of two layers
     Concat {
+        /// First layer
         car: Box<LayerIter<'a>>,
+        /// Second layer
         cdr: Box<LayerIter<'a>>,
     },
 }
@@ -204,7 +217,9 @@ impl<'a> LayerIter<'a> {
 /// size. `Layer`s can overlap other `Layer`s or `Region`s.
 #[derive(Debug,RustcDecodable,RustcEncodable)]
 pub enum Layer {
+    /// Layer consisting of fixed byte values.
     Opaque(OpaqueLayer),
+    /// Layer overwriting single cells with new values.
     Sparse(HashMap<u64, Cell>),
 }
 

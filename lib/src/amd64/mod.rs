@@ -16,6 +16,14 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+//! Intel x86 and AMD64 disassembler.
+//!
+//! This disassembler handles the Intel x86 instruction set from the 16-bit 8086 over 32-bit x86 to
+//! 64-bit AMD64 instructions, including MMX, SSE1-4, AVX, x87 and miscellaneous instruction set
+//! extensions.
+
+#![allow(missing_docs)]
+
 use std::sync::Arc;
 use std::borrow::Cow;
 use std::cmp;
@@ -37,6 +45,7 @@ use {
     Statement,
     Guard,
 };
+
 
 #[macro_use]
 mod tables;

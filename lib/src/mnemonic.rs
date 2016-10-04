@@ -16,15 +16,15 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-//! Mnemonics are signle CPU instructions. The consist of an opcode, a number of arguments, and a
-//! sequence of RREIL instructions descibing the mnemonic semantics.
+//! A Mnemonic is a single CPU instruction.
+//!
+//! The consist of an opcode, a number of arguments, and a sequence of RREIL instructions
+//! descibing the mnemonic semantics.
 //!
 //! Mnemonics are CPU specific and Panopticon models them as simple as possible. Opcode are only
 //! strings and the operands only a list of RREIL values. In order to display the mnemonics
 //! correctly on the front-end mnemonics come with a format string. These tell Panopticon whenever
-//! a operand is a pointer or a value. They look like this:
-//!
-//! `{c:ram}, {u}`
+//! a operand is a pointer or a value. They look like this: `{c:ram}, {u}`.
 //!
 //! This formats the first operand as a code pointer into the "ram" and the second as an unsigned
 //! value. Other formattings are `{d:<region>}` for data pointer into <region> and `{s}` for
