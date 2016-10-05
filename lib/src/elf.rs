@@ -124,7 +124,10 @@ macro_rules! load_impl {
             if ph.p_type == program_header::PT_LOAD {
                 let mut buf = vec![0u8; ph.p_filesz as usize];
 
+                debug!("Load ELF {} bytes segment to {:#x}",ph.p_filesz,ph.p_vaddr);
+
                 if $fd.seek(SeekFrom::Start(ph.p_offset as u64)).ok() == Some(ph.p_offset as u64) {
+                    try!($fd.read_exact(&mut buf));
                     $reg.cover(Bound::new(ph.p_vaddr as u64, (ph.p_vaddr + ph.p_filesz) as u64), Layer::wrap(buf));
                 } else {
                     return Err("Failed to read segment".into())
