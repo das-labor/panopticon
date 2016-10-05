@@ -16,6 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+//! Loader for 32 and 64-bit ELF files.
+
 use std::io::{Seek,SeekFrom,Read};
 use std::fs::File;
 use std::path::Path;
@@ -36,21 +38,33 @@ use {
     Result,
 };
 
+/// CPU the ELF file is intended for.
 #[derive(Clone,Copy,Debug)]
 pub enum Machine {
+    /// 8-bit AVR
     Avr,
+    /// AMD64
     Amd64,
+    /// Intel x86
     Ia32,
 }
 
+/// Initial ELF identifier section
 #[derive(Debug)]
 pub struct Ident {
+    /// ELF magic number. Must be `ELF\177`
     pub magic: [u8; 4],
+    /// Whenever ELF32 or ELF64
     pub class: u8,
+    /// Endianess of the CPU
     pub data: u8,
+    /// ELF version. Must be 0.
     pub version: usize,
+    /// Application Binary Interface of the code inside. CPU depend.
     pub abi: u8,
+    /// Version of the Application Binary Interface.
     pub abi_ver: usize,
+    /// Padding bytes. Must be 0.
     pub pad: [u8; 7],
 }
 
@@ -62,6 +76,7 @@ const EI_ABIVERSION: usize = 8;
 const EI_PAD: usize = 9;
 
 impl Ident {
+    /// Reads and sanity checks a ELF identifier section from `R`.
     pub fn read<R: Read>(strm: &mut R) -> Result<Ident> {
         let mut e_ident = [0u8; 16];
 
@@ -121,6 +136,8 @@ macro_rules! load_impl {
     }}
 }
 
+/// Load an ELF file from disk and creates a `Project` from it. Returns the `Project` instance and
+/// the CPU its intended for.
 pub fn load(p: &Path) -> Result<(Project,Machine)> {
     let mut fd = File::open(p).ok().unwrap();
 

@@ -16,6 +16,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+//! 8-bit AVR disassembler.
+//!
+//! This disassembler handles the 8-bit AVR microcontroller instruction set including XMEGA.
+
+#![allow(missing_docs)]
+
 use std::convert::Into;
 use std::borrow::Cow;
 use std::sync::Arc;

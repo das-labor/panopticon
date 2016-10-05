@@ -16,6 +16,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+//! A basic block is a sequence of Mnemonics that aren't interrupted by incoming or outgoing
+//! jumps/branches.
+//!
+//! Basic blocks always occupy a continuous byte range.
+
 use std::cmp::{min,max};
 
 use {
@@ -24,13 +29,17 @@ use {
     Statement
 };
 
+/// A basic block: a continiuous sequence of mnemonics without any branches in between.
 #[derive(PartialEq,Eq,Debug,RustcEncodable,RustcDecodable)]
 pub struct BasicBlock {
+    /// Area the basic block occupies in memory.
     pub area: Bound,
+    /// List of mnemonics in to order of execution.
     pub mnemonics: Vec<Mnemonic>,
 }
 
 impl BasicBlock {
+    /// Returns a new, empty basic block.
     pub fn new() -> BasicBlock {
         BasicBlock{
             area: Bound::new(0,0),
@@ -38,6 +47,8 @@ impl BasicBlock {
         }
     }
 
+    /// Moves `ms` into a new basic block. Panics if the mnemonics do not occupy a continuous
+    /// address range.
     pub fn from_vec(ms: Vec<Mnemonic>) -> BasicBlock {
         let a = ms.iter().fold(None,|acc: Option<Bound>,m| {
             if acc == None {
@@ -51,6 +62,7 @@ impl BasicBlock {
         return BasicBlock{ area: a.unwrap_or(Bound::new(0,0)), mnemonics: ms };
     }
 
+    /// Calls `f` on all RREIL instructions starting from the last.
     pub fn execute_backwards<'a,F>(&'a self,mut f: F) where F: FnMut(&'a Statement) {
         for mne in self.mnemonics.iter().rev() {
             for i in mne.instructions.iter().rev() {
@@ -59,6 +71,7 @@ impl BasicBlock {
         }
     }
 
+    /// Calls `f` on all RREIL instructions starting from the first.
     pub fn execute<'a,F>(&'a self,mut f: F) where F: FnMut(&'a Statement) {
         for mne in self.mnemonics.iter() {
             for i in mne.instructions.iter() {
@@ -67,6 +80,7 @@ impl BasicBlock {
         }
     }
 
+    /// Calls `f` on all RREIL instructions starting from the first.
     pub fn rewrite<'a,F>(&'a mut self,mut f: F) where F: FnMut(&'a mut Statement) {
         for mne in self.mnemonics.iter_mut() {
             for i in mne.instructions.iter_mut() {

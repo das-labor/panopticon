@@ -16,6 +16,17 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+//! Functions are a graph of `BasicBlock`s connected with conditional jumps.
+//!
+//! Functions have an optial entry point, a (non-unique) name and an unique identifier. Functions
+//! do not share basic blocks. In case functions overlap in the binary, the basic blocks are copied
+//! by the disassembler.
+//!
+//! Functions have the concept of unresolved basic blocks. These are inserted into the graph if a
+//! indirect branch could not be resolved. If disassembly failes for example because an unknown
+//! instruction was found, an error node is inserted into the graph to allow displaying a message
+//! on the front-end.
+
 use std::collections::{HashMap,BTreeMap,HashSet};
 use std::sync::Arc;
 use std::borrow::Cow;
@@ -52,23 +63,36 @@ use {
     Operation,
 };
 
+/// Node of the function graph.
 #[derive(RustcDecodable,RustcEncodable,Debug)]
 pub enum ControlFlowTarget {
+    /// A basic block
     Resolved(BasicBlock),
+    /// An unresolved indirect jump
     Unresolved(Rvalue),
+    /// An error occured while disassembling
     Failed(u64,Cow<'static,str>),
 }
 
+/// Graph of basic blocks and jumps
 pub type ControlFlowGraph = AdjacencyList<ControlFlowTarget,Guard>;
+/// Stable reference to a node in the `ControlFlowGraph`
 pub type ControlFlowRef = AdjacencyListVertexDescriptor;
+/// Stable reference to an edge in the `ControlFlowGraph`
 pub type ControlFlowEdge = AdjacencyListEdgeDescriptor;
 
+/// A set of basic blocks connected by conditional jumps
 #[derive(RustcDecodable,RustcEncodable)]
 pub struct Function {
+    /// Unique, immutable identifier for this function.
     pub uuid: Uuid,
+    /// Display name of the function.
     pub name: String,
+    /// Graph of basic blocks and jumps
     pub cflow_graph: ControlFlowGraph,
+    /// Optional function entry point
     pub entry_point: Option<ControlFlowRef>,
+    /// Name of the memory region the function is part of
     pub region: String,
 }
 
@@ -79,6 +103,7 @@ enum MnemonicOrError {
 }
 
 impl Function {
+    /// New function with name `a`, inside memory region `reg` and a random UUID.
     pub fn new(a: String, reg: String) -> Function {
         Function{
             uuid: Uuid::new_v4(),
@@ -89,6 +114,7 @@ impl Function {
         }
     }
 
+    /// New function with name `a`, inside memory region `reg` and UUID `uu`.
     pub fn with_uuid(a: String,uu: Uuid, reg: String) -> Function {
         Function{
             uuid: uu,
@@ -309,6 +335,9 @@ impl Function {
         ret
     }
 
+    /// Start or continue disassembly a address `start` inside region `reg` with CPU state `init`.
+    /// If `cont` is a function new mnemonics are appended to it, otherwise a new function is
+    /// created.
     pub fn disassemble<A: Architecture>(cont: Option<Function>, init: A::Configuration, reg: &Region, start: u64) -> Function
     where A: Debug, A::Configuration: Debug {
         let name = cont.as_ref().map_or(format!("func_{}",start),|x| x.name.clone());
@@ -414,6 +443,7 @@ impl Function {
         }
     }
 
+    /// Returns all call targets.
     pub fn collect_calls(&self) -> Vec<Rvalue> {
         let mut ret = Vec::new();
 
@@ -430,6 +460,7 @@ impl Function {
         ret
     }
 
+    /// Returns the basic block that occupies `a`.
     pub fn find_basic_block_at_address(&self,a: u64) -> Option<ControlFlowRef> {
         self.cflow_graph.vertices().find(|&x| {
             match self.cflow_graph.vertex_label(x) {
@@ -441,12 +472,14 @@ impl Function {
         })
     }
 
+    /// Returns all nodes in the graph of this function in post order.
     pub fn postorder(&self) -> Vec<ControlFlowRef> {
         assert!(self.entry_point.is_some());
         TreeIterator::new(self.entry_point.unwrap(),TraversalOrder::Postorder,&self.cflow_graph).
             collect()
     }
 
+    /// Returns the functions basic block graph in graphivz's DOT format. Useful for debugging.
     pub fn to_dot(&self) -> String {
         let mut ret = "digraph G {".to_string();
 

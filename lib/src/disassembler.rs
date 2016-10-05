@@ -16,6 +16,72 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+//! A disassembler in Panopticon is responsible to translate a sequence of tokens
+//! into mnemonics.
+//!
+//! A token is a fixed width byte sequence. The width depends on the
+//! instruction set architection and is the shortest possible machine code
+//! instruction (on IA32 this would be 1 byte, on ARM 4 bytes). A mnemonic includes
+//! the syntax of the machine code instruction, its semantics in RREIL and a collection
+//! of locations where the CPU will look for the next instruction to execute. For each
+//! supported instruction set architecture a seperate disassembler needs to be
+//! implemented.
+//!
+//! Implementer can either built their own diassembler or use the `Disassembler` type.
+//! The type parameter identifies the instruction set. When machine code
+//! needs to be disassembled, a new instance of `Disassembler` is allocated and its
+//! :try_match()` method is repeantly called. Each call returns either a set of mnemonics
+//! and a set of new locations of an error. Disassembly is finished when no new locations
+//! are left.
+//!
+//! The `Disassembler` type provides fuctions to make disassembly easier.
+//! The programmer only need to write one decode function for each instruction in
+//! the instruction set. This decode function translates the byte representation
+//! into one or more mnemonic instances with instruction name, operand count and
+//! instruction semantics expressed as a RREIL instruction sequence. Each decode
+//! functions is paired with a token pattern. The disassembler instance will look
+//! for this pattern and call the decode function for each match. The menmonic
+//! instances allocated in the decode function are assembled into a program.
+//!
+//! Token Patterns
+//! --------------
+//!
+//! The token pattern is a string that defines sequence on bits to look for. Each
+//! bit in a pattern is either ``0``, ``1`` or ``.`` when we accept both. The pattern
+//! ``10001001`` matches the byte ``0x89``, the pattern ``11.100.0`` matches ``0xd0``
+//! (``11010000``), ``0xd2`` (``11010010``), ``0xf0`` (``11110000``) and ``0xf2`` (``11110010``). Pattern must
+//! have one pattern character for each bit in the token. Patters allow named groups
+//! of bits so called capture groups. These start with a character except ``0``, ``1``,
+//! ``.`` and `` `` (space), followed by a ``@``, followed by a pattern. The capture group
+//! extend until the next space character or the end of the pattern string. The
+//! pattern ``10 a@110 011`` has the capture group named `a` that is always equal to
+//! ``0x6`` (``110``). The pattern ``001 a@.....`` matches all tokens larger than or equal to
+//! ``0x20``, the least significant 5 bits form the capture group `a`. When a pattern is
+//! paired with a decode function in the disassembler the function receives the
+//! contents of capture groups a an argument.
+//!
+//! Example
+//! -------
+//!
+//! An example pair of decoder function token pattern for the AVR ``pop`` instruction
+//! looks like this:
+//!
+//! ```
+//! #[macro_use] extern crate panopticon;
+//! # use panopticon::{Rvalue,State,Statement,Result};
+//! # use panopticon::avr::Avr;
+//! # fn main() {
+//! let main = new_disassembler!(Avr =>
+//!    ["1001000 d@..... 1111"] = |st: &mut State<Avr>| {
+//!       let val = Rvalue::Variable{ name: format!("R{}",st.get_group("d")).into(),
+//!                                   size: 8, offset: 0, subscript: None };
+//!       st.mnemonic(2,"pop","{u}",vec![val],&|_| -> Result<Vec<Statement>> { Ok(vec![]) });
+//!       true
+//!    }
+//! );
+//! # }
+//! ```
+
 #![macro_use]
 
 use std::sync::Arc;
@@ -48,8 +114,11 @@ use {
     Statement,
 };
 
+/// CPU architecture and instruction set.
 pub trait Architecture: Clone
 {
+    /// Unsigned integer type. This is tells [`Disassembler`] whenever mnemonics are read byte or
+    /// word wise.
     type Token: Not<Output=Self::Token> +
                 Clone +
                 Zero +
@@ -63,19 +132,31 @@ pub trait Architecture: Clone
                 PartialEq +
                 Eq +
                 Send + Sync;
+
+    /// This type can describes the CPU state. For x86 this would be the mode, for ARM whenever
+    /// Thumb is active.
     type Configuration: Clone + Send;
 
+    /// Given a memory image and a configuration the functions extracts a set of entry points.
+    /// # Return
+    /// Tuples of entry point name, offset form the start of the region and optional comment.
     fn prepare(&Region,&Self::Configuration) -> Result<Vec<(&'static str,u64,&'static str)>>;
+
+    /// Start to disassemble a single Opcode inside a given region at a given address.
     fn decode(&Region,u64,&Self::Configuration) -> Result<Match<Self>>;
 }
 
+/// Result of a single disassembly operation.
 #[derive(Debug,Clone)]
 pub struct Match<A: Architecture> {
+    /// Matched tokens
     pub tokens: Vec<A::Token>,
-
+    /// Recognized mnemonics
     pub mnemonics: Vec<Mnemonic>,
+    /// Jumps/branches originating from the recovered mnemonics
     pub jumps: Vec<(u64,Rvalue,Guard)>,
 
+    /// New CPU state
     pub configuration: A::Configuration,
 }
 
@@ -90,25 +171,37 @@ impl<A: Architecture> From<State<A>> for Match<A> {
     }
 }
 
+/// Semantic action function type. See [`Disassembler`].
 pub type Action<A> = fn(&mut State<A>) -> bool;
 
+/// Disassembler state. This struct passes data about matched tokes from the Disassembler to the
+/// semantic function. The function also uses the type to pass back recognized mnemonics and jumps.
+/// See [`Disassembler`].
 #[derive(Debug,Clone)]
 pub struct State<A: Architecture> {
     // in
+    /// Start of the token sequence
     pub address: u64,
+    /// Matched tokens
     pub tokens: Vec<A::Token>,
+    /// Extracted capture groups
     pub groups: Vec<(String,u64)>,
 
     // out
+    /// Mnemonics recognized in the token sequence
     pub mnemonics: Vec<Mnemonic>,
+    /// Jumps/branches originating from the recognized mnemonics
     pub jumps: Vec<(u64,Rvalue,Guard)>,
 
     mnemonic_origin: u64,
     jump_origin: u64,
+
+    /// Current CPU state
     pub configuration: A::Configuration,
 }
 
 impl<A: Architecture> State<A> {
+    /// Create a new `State` for a token sequence starting at `a`.
     pub fn new(a: u64,c: A::Configuration) -> State<A> {
         State{
             address: a,
@@ -122,14 +215,24 @@ impl<A: Architecture> State<A> {
         }
     }
 
+    /// Returns the value of capture group `n`.
+    /// # Panics
+    /// Panics if no such capture group was defined.
     pub fn get_group(&self,n: &str) -> u64 {
         self.groups.iter().find(|x| x.0 == n.to_string()).unwrap().1.clone()
     }
 
+    /// Returns true if capture group `n` was defined.
     pub fn has_group(&self,n: &str) -> bool {
         self.groups.iter().find(|x| x.0 == n.to_string()).is_some()
     }
 
+    /// Append a new mnemonic.
+    /// The mnemonic starts after the end of the last, or the start of the matched token sequence
+    /// if it is the first. The new mnemonic `n` will be `len` *bytes* in size.
+    /// Arguments for the mnemonic are given in `ops` and formatted according to `fmt`. The
+    /// function `f` is called with the current CPU state and expected to return the IL statementes
+    /// that implement the mnemonic.
     pub fn mnemonic<'a,F>(&mut self,len: usize, n: &str, fmt: &str, ops: Vec<Rvalue>, f: &F) -> Result<()>
     where F: Fn(&mut A::Configuration) -> Result<Vec<Statement>> {
         self.mnemonic_dynargs(len,n,fmt,&|cfg: &mut A::Configuration| -> Result<(Vec<Rvalue>,Vec<Statement>)> {
@@ -138,6 +241,8 @@ impl<A: Architecture> State<A> {
         })
     }
 
+    /// Append a new mnemonic
+    /// Same a `mnemonic` but with `f` returning the mnemonic IL and the arguments.
     pub fn mnemonic_dynargs<F>(&mut self,len: usize, n: &str, fmt: &str, f: &F) -> Result<()>
     where F: Fn(&mut A::Configuration) -> Result<(Vec<Rvalue>,Vec<Statement>)> {
         let (ops,stmts) = try!(f(&mut self.configuration));
@@ -154,6 +259,7 @@ impl<A: Architecture> State<A> {
         Ok(())
     }
 
+    /// Append a jump/branch from the end of the last mnemonic to `v`, guarded by `g`.
     pub fn jump(&mut self,v: Rvalue,g: Guard) -> Result<()> {
         if !(self.mnemonics.is_empty() || self.mnemonics.last().unwrap().area.len() > 0) {
             return Err("A basic block mustn't end w/ a zero sized mnemonic".into());
@@ -165,19 +271,26 @@ impl<A: Architecture> State<A> {
         Ok(())
     }
 
+    /// Append a jump/branch from `origin` to `v`, guarded by `g`.
     pub fn jump_from(&mut self,origin: u64,v: Rvalue,g: Guard) -> Result<()> {
         self.jumps.push((origin,v,g));
         Ok(())
     }
 }
 
+/// Single matching rule.
 #[derive(Clone)]
 pub enum Rule<A: Architecture> {
+    /// Matches a fixed set of bits of a single token
 	Terminal{
+        /// Bit mask of all fixed bits in the pattern
 		mask: A::Token,
+        /// Bit pattern we are looking for
 		pattern: A::Token,
+        /// Pair of capture group name and bit mask
 		capture_group: Vec<(String,A::Token)>,
 	},
+    /// Matches one of the sub-disassemblers' rules
 	Sub(Arc<Disassembler<A>>),
 }
 
@@ -195,11 +308,15 @@ impl<A: Architecture> PartialEq for Rule<A> {
 }
 
 #[derive(PartialEq,Hash,Eq,Debug)]
-pub enum Symbol {
+enum Symbol {
 	Sparse,
 	Dense(Vec<AdjacencyListVertexDescriptor>),
 }
 
+/// Ready made disassembler for simple instruction sets.
+///
+/// Disassembler instances are creates using the `new_disassembler!` macro. The resulting
+/// disassembler can then be used to produce `Match`es.
 pub struct Disassembler<A: Architecture> {
 	graph: AdjacencyList<Symbol,Rule<A>>,
 	start: AdjacencyListVertexDescriptor,
@@ -208,6 +325,8 @@ pub struct Disassembler<A: Architecture> {
 }
 
 impl<A: Architecture> Disassembler<A> {
+    /// Creates a new, empty, disassembler instance. You probably want to use `new_disassembler!`
+    /// instead.
     pub fn new() -> Disassembler<A> {
         let mut g = AdjacencyList::new();
         let s = g.add_vertex(Symbol::Sparse);
@@ -220,7 +339,7 @@ impl<A: Architecture> Disassembler<A> {
         }
     }
 
-    pub fn to_dot(&self) {
+    fn to_dot(&self) {
         println!("digraph G {{");
         for v in self.graph.vertices() {
             let lb = self.graph.vertex_label(v).unwrap();
@@ -242,6 +361,8 @@ impl<A: Architecture> Disassembler<A> {
         println!("}}");
     }
 
+    /// Adds the matching rule and associated semantic action.
+    /// Panics if a is empty.
 	pub fn add(&mut self, a: &Vec<Rule<A>>, b: Arc<Action<A>>) {
         assert!(!a.is_empty());
 
@@ -269,10 +390,14 @@ impl<A: Architecture> Disassembler<A> {
         self.end.insert(v,b);
     }
 
+    /// Sets the default semantic action. This action will be called for each token that failed to
+    /// match.
     pub fn set_default(&mut self,a: Action<A>) {
         self.default = Some(a);
     }
 
+    /// Trys to match the token sequence `i`. If successful, the state after the semantic function
+    /// was called is returned and None otherwise.
 	pub fn next_match<Iter>(&self, i: &mut Iter, offset: u64, cfg: A::Configuration) -> Option<State<A>>
     where Iter: Iterator<Item=Option<u8>> + Clone, A::Configuration: Clone + Debug, A: Debug
     {
@@ -328,7 +453,7 @@ impl<A: Architecture> Disassembler<A> {
         Some(tok)
     }
 
-	pub fn find<Iter>(&self, i: Iter, initial_state: &State<A>) -> Vec<(Vec<&Symbol>,State<A>,Iter)>
+	fn find<Iter>(&self, i: Iter, initial_state: &State<A>) -> Vec<(Vec<&Symbol>,State<A>,Iter)>
     where Iter: Iterator<Item=Option<u8>> + Clone, A::Configuration: Clone {
         let mut states = Vec::<(Vec<&Symbol>,State<A>,AdjacencyListVertexDescriptor,Iter)>::new();
         let mut ret = vec![];
@@ -544,11 +669,14 @@ impl<'a,A: Architecture> Into<Rule<A>> for &'a str {
     }
 }
 
+/// Internal to `new_disassembler!`
 pub trait AddToRuleGen<A: Architecture> {
+    /// Internal to `new_disassembler!`
     fn push(&self,&mut Vec<Vec<Rule<A>>>);
 }
 
 #[derive(Clone)]
+/// Internal to `new_disassembler!`
 pub struct OptionalRule<A: Architecture>(pub Rule<A>);
 
 impl<A: Architecture> AddToRuleGen<A> for OptionalRule<A> {
@@ -571,56 +699,62 @@ impl<A: Architecture, T: Into<Rule<A>> + Clone> AddToRuleGen<A> for T {
     }
 }
 
+/// Internal to `new_disassembler!`
 pub struct RuleGen<A: Architecture> {
+    /// Internal to `new_disassembler!`
     pub rules: Vec<Vec<Rule<A>>>,
 }
 
 impl<A: Architecture> RuleGen<A> {
+    /// Internal to `new_disassembler!`
     pub fn new() -> RuleGen<A> {
         RuleGen{
             rules: vec![vec![]]
         }
     }
 
+    /// Internal to `new_disassembler!`
     pub fn push<T: AddToRuleGen<A>>(&mut self,t: &T) {
         t.push(&mut self.rules);
     }
 }
 
+#[macro_export]
 macro_rules! opt {
     ($e:expr) => { { ::disassembler::OptionalRule($e.clone().into()) } };
 }
 
+#[macro_export]
 macro_rules! new_disassembler {
     ($ty:ty => $( [ $( $t:expr ),+ ] = $f:expr),+) => {
         {
-            let mut dis = ::disassembler::Disassembler::<$ty>::new();
+            let mut dis = $crate::disassembler::Disassembler::<$ty>::new();
             $({
-                let mut gen = ::disassembler::RuleGen::new();
+                let mut gen = $crate::disassembler::RuleGen::new();
                 $(
                     gen.push(&$t);
                 )+
                 fn a(a: &mut State<$ty>) -> bool { ($f)(a) };
-                let fuc: ::disassembler::Action<$ty> = a;
+                let fuc: $crate::disassembler::Action<$ty> = a;
 
                 for r in gen.rules {
                     dis.add(&r,::std::sync::Arc::new(fuc));
                 }
             })+
 
-            ::std::sync::Arc::<::disassembler::Disassembler<$ty>>::new(dis)
+            ::std::sync::Arc::<$crate::disassembler::Disassembler<$ty>>::new(dis)
         }
     };
     ($ty:ty => $( [ $( $t:expr ),+ ] = $f:expr),+, _ = $def:expr) => {
         {
-           let mut dis = ::disassembler::Disassembler::<$ty>::new();
+           let mut dis = $crate::disassembler::Disassembler::<$ty>::new();
             $({
-                let mut gen = ::disassembler::RuleGen::new();
+                let mut gen = $crate::disassembler::RuleGen::new();
                 $(
                     gen.push(&$t);
                 )+
                 fn a(a: &mut State<$ty>) -> bool { ($f)(a) };
-                let fuc: ::disassembler::Action<$ty> = a;
+                let fuc: $crate::disassembler::Action<$ty> = a;
 
                 for r in gen.rules {
                     dis.add(&r,::std::sync::Arc::new(fuc));
@@ -631,7 +765,7 @@ macro_rules! new_disassembler {
             fn __def(st: &mut State<$ty>) -> bool { ($def)(st) };
             dis.set_default(__def);
 
-            ::std::sync::Arc::<::disassembler::Disassembler<$ty>>::new(dis)
+            ::std::sync::Arc::<$crate::disassembler::Disassembler<$ty>>::new(dis)
         }
     };
 }

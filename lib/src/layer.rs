@@ -15,31 +15,73 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 //
 
+//! A layer spans parts of a region and transforms the content of cells inside.
+//!
+//! `Layer`s can overlap with other `Layer`s below that are in the same `Region`.
+//! `Layer` can be used to modify `Region`s by overlaying parts of the original `Cell`s
+//! with new ones.
+//!
+//! Examples
+//! --------
+//!
+//! ```no_run
+//! use std::path::Path;
+//! use panopticon::{Region,OpaqueLayer,Bound,Layer};
+//!
+//! // All accessable RAM is modeled as a single region
+//! let mut reg = Region::undefined("ram".to_string(),0xc0000000);
+//!
+//! // The layer that simulates mapping the COM file into RAM
+//! let mapping = OpaqueLayer::open(Path::new("path/to/file.com")).ok().unwrap();
+//!
+//! // COM files are always mapped at 0100h
+//! reg.cover(Bound::new(0x100,0x100 + mapping.len()),Layer::Opaque(mapping));
+//! ```
+//! Loading a Windows COM file.
+
 use std::collections::HashMap;
 use std::path::Path;
 use std::fs::File;
 use std::io::Read;
 use std::ops::Range;
 
+use {
+    Result
+};
+
+/// A cell represents a single, possible undefined, byte.
 pub type Cell = Option<u8>;
 
+/// Layer that replace all overlapped `Cell`s.
 #[derive(Debug,RustcDecodable,RustcEncodable)]
 pub enum OpaqueLayer {
+    /// Layer consisting of undefined cells.
     Undefined(u64),
+    /// Layer consisting of fixed byte values.
     Defined(Box<Vec<u8>>),
 }
 
+/// Iterator over a range of `Cell`s.
 #[derive(Clone,Debug)]
 pub enum LayerIter<'a> {
+    /// Layer consisting of undefined cells.
     Undefined(u64),
+    /// Layer consisting of fixed byte values.
     Defined(Option<&'a [u8]>),
+    /// Layer overwriting single cells with new values.
     Sparse {
+        /// New cells
         map: &'a HashMap<u64, Cell>,
+        /// Layer to be overwritten
         mapped: Box<LayerIter<'a>>,
+        /// Starting point
         pos: u64,
     },
+    /// Concatenation of two layers
     Concat {
+        /// First layer
         car: Box<LayerIter<'a>>,
+        /// Second layer
         cdr: Box<LayerIter<'a>>,
     },
 }
@@ -100,6 +142,7 @@ impl<'a> ::std::io::Read for LayerIter<'a> {
 }
 
 impl<'a> LayerIter<'a> {
+    /// Returns a new iterator for only the values inside `r`
     pub fn cut(&self, r: &Range<u64>) -> LayerIter<'a> {
         if r.start >= r.end {
             return LayerIter::Defined(None);
@@ -139,6 +182,7 @@ impl<'a> LayerIter<'a> {
         }
     }
 
+    /// Moves the iterator forward by `p` `Cell`s
     pub fn seek(&self, p: u64) -> LayerIter<'a> {
         if p > 0 {
             self.cut(&(p..self.len()))
@@ -147,6 +191,7 @@ impl<'a> LayerIter<'a> {
         }
     }
 
+    /// Appends `l` to the end of `self`
     pub fn append(&self, l: LayerIter<'a>) -> LayerIter<'a> {
         LayerIter::Concat {
             car: Box::new(self.clone()),
@@ -154,6 +199,7 @@ impl<'a> LayerIter<'a> {
         }
     }
 
+    /// Number of `Cell`s until the end is reached
     pub fn len(&self) -> u64 {
         match *self {
             LayerIter::Undefined(r) => r,
@@ -165,13 +211,20 @@ impl<'a> LayerIter<'a> {
     }
 }
 
+/// `Layer` transform ranges of `Cell`s
+///
+/// `Layer` overlaps a continuous range of `Cell`s and returns a new range of `Cell`s of equal
+/// size. `Layer`s can overlap other `Layer`s or `Region`s.
 #[derive(Debug,RustcDecodable,RustcEncodable)]
 pub enum Layer {
+    /// Layer consisting of fixed byte values.
     Opaque(OpaqueLayer),
+    /// Layer overwriting single cells with new values.
     Sparse(HashMap<u64, Cell>),
 }
 
 impl OpaqueLayer {
+    /// Iterator over all `Cell` inside the `Layer`
     pub fn iter(&self) -> LayerIter {
         match *self {
             OpaqueLayer::Undefined(ref len) => LayerIter::Undefined(*len),
@@ -179,6 +232,7 @@ impl OpaqueLayer {
         }
     }
 
+    /// Number of `Cell`s overlapped by the `Layer`
     pub fn len(&self) -> u64 {
         match *self {
             OpaqueLayer::Undefined(ref len) => *len,
@@ -186,22 +240,28 @@ impl OpaqueLayer {
         }
     }
 
-    pub fn open(p: &Path) -> Result<OpaqueLayer, ::std::io::Error> {
+    /// Create a new `Layer` that replaces overlapped `Cell`s with the contents of the file at
+    /// `path`. The `Layer` will have the size of the file.
+    pub fn open(p: &Path) -> Result<OpaqueLayer> {
         let mut buf: Vec<u8> = Vec::new();
         try!(File::open(p).map(|ref mut f| f.read_to_end(&mut buf)));
         Ok(Self::wrap(buf))
     }
 
-    pub fn wrap(d: Vec<u8>) -> OpaqueLayer {
-        OpaqueLayer::Defined(Box::new(d))
+    /// Create a new `Layer` that replaces overlapped `Cell`s with the contents of `data`.
+    /// The `Layer` will have the size of the vector.
+    pub fn wrap(data: Vec<u8>) -> OpaqueLayer {
+        OpaqueLayer::Defined(Box::new(data))
     }
 
-    pub fn undefined(l: u64) -> OpaqueLayer {
-        OpaqueLayer::Undefined(l)
+    /// Create a new `Layer` of size `len` that replaces overlapped `Cell`s undefined ones.
+    pub fn undefined(len: u64) -> OpaqueLayer {
+        OpaqueLayer::Undefined(len)
     }
 }
 
 impl Layer {
+    /// Reads `Cell`s from `i` and transforms them. Returns a iterator to the transformed `Cell`s.
     pub fn filter<'a>(&'a self, i: LayerIter<'a>) -> LayerIter<'a> {
         match *self {
             Layer::Opaque(ref o) => o.iter(),
@@ -215,22 +275,30 @@ impl Layer {
         }
     }
 
-    pub fn wrap(d: Vec<u8>) -> Layer {
-        Layer::Opaque(OpaqueLayer::wrap(d))
+    /// Create a new `Layer` that replaces overlapped `Cell`s with the contents of `data`.
+    /// The `Layer` will have the size of the vector.
+    pub fn wrap(data: Vec<u8>) -> Layer {
+        Layer::Opaque(OpaqueLayer::wrap(data))
     }
 
-    pub fn undefined(l: u64) -> Layer {
-        Layer::Opaque(OpaqueLayer::undefined(l))
+    /// Create a new `Layer` of size `len` that replaces overlapped `Cell`s undefined ones.
+    pub fn undefined(len: u64) -> Layer {
+        Layer::Opaque(OpaqueLayer::undefined(len))
     }
 
-    pub fn open(p: &Path) -> Result<Layer, ::std::io::Error> {
+    /// Create a new `Layer` that replaces overlapped `Cell`s with the contents of the file at
+    /// `path`. The `Layer` will have the size of the file.
+    pub fn open(p: &Path) -> Result<Layer> {
         OpaqueLayer::open(p).map(|x| Layer::Opaque(x))
     }
 
+    /// Returns a new `Layer` that allows sparse replacement of `Cell`s
     pub fn writable() -> Layer {
         Layer::Sparse(HashMap::new())
     }
 
+    /// Sets `Cell` at `p` to `c`. Returns true if this is a writable `Layer` and the operation
+    /// succeeded, false otherwise.
     pub fn write(&mut self, p: u64, c: Cell) -> bool {
         match *self {
             Layer::Sparse(ref mut m) => {
@@ -241,6 +309,7 @@ impl Layer {
         }
     }
 
+    /// Returns true if all `Cell`s of the `Layer` are undefined
     pub fn is_undefined(&self) -> bool {
         if let Layer::Opaque(OpaqueLayer::Undefined(_)) = *self {
             true
@@ -249,6 +318,7 @@ impl Layer {
         }
     }
 
+    /// Returns true if the `Layer` is writable
     pub fn is_writeable(&self) -> bool {
         if let Layer::Sparse(_) = *self {
             true
@@ -257,6 +327,7 @@ impl Layer {
         }
     }
 
+    /// Converts the `Layer` into `OpaqueLayer`, returns None on error.
     pub fn as_opaque<'a>(&'a self) -> Option<&'a OpaqueLayer> {
         match *self {
             Layer::Opaque(ref o) => Some(o),

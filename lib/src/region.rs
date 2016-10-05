@@ -16,24 +16,55 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+//! A regions model continuous memory like RAM, flash memory or files.
+//!
+//! A region has an unique name that is used to reference it and a size. The
+//! size is the number of `Cell`s in a region. A cell either has a value
+//! between 0 and 255 or is undefined. `Cell`s are numbered in ascending
+//! order starting at 0.
+//!
+//! Regions can be constructed from files or buffers in memory or be filled with
+//! undefined values.
+//!
+//! Examples
+//! --------
+//!
+//! ```
+//! use std::path::Path;
+//! use panopticon::Region;
+//! let file_region = Region::open("file".to_string(),Path::new("path/to/file"));
+//! ```
+//! This region is named "file" and is filled with the contents of "path/to/file"
+//!
+//! ```
+//! use panopticon::Region;
+//! let buf = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 0];
+//! let buf_region = Region::wrap("buf".to_string(),buf);
+//! ```
+//! This region is named "buf" and is initialized with the contents of buf.
+//!
+//! ```
+//! use panopticon::Region;
+//! let undefined_region = Region::undefined("undef".to_string(),4096);
+//! ```
+//! This region is named "undef" and is just 4k of undefined cells
+
 use std::collections::HashSet;
 use std::path::Path;
-use mnemonic::Bound;
-use layer::{Layer,OpaqueLayer,LayerIter};
 use graph_algos::adjacency_list::{AdjacencyListEdgeDescriptor,AdjacencyListVertexDescriptor};
 use graph_algos::{AdjacencyList,GraphTrait,VertexListGraphTrait,MutableGraphTrait,IncidenceGraphTrait};
 
-/// Regions model continuous memory like RAM, flash memory or files. A region has a unique
-/// name that is used to reference it and a size. The size is the number of cells in
-/// a region. A cell either has a value between 0 and 255 or is undefined. Cells are
-/// numbered in ascending order starting at 0.
+use {
+    Bound,
+    Layer,OpaqueLayer,LayerIter,
+    Result,
+};
+
+/// A continuous sequcence of `Cell`s
 ///
-/// Regions can be constructed from files or buffers in memory or be filled with
-/// undefined values.
-///
-/// Reading from a region is done by calling :cpp:func:`read` on it. The function returns a
-/// :cpp:class:`slab` instance that is a range of cells. Each cell is a :cpp:class:`tryte`
-/// instance.
+/// `Region`s are a stack of [`Layer`](../layer/index.html) inside a single address space. The
+/// `Region` is the primary way panopticon handles data. They can be created from files or
+/// in-memory buffers.
 #[derive(Debug,RustcDecodable,RustcEncodable)]
 pub struct Region {
     stack: Vec<(Bound,Layer)>,
@@ -41,39 +72,60 @@ pub struct Region {
     size: u64,
 }
 
+/// Graph that models overlapping regions.
 pub type RegionGraph = AdjacencyList<Region,Bound>;
+/// Stable reference for a node in a region graph.
 pub type RegionRef = AdjacencyListVertexDescriptor;
 
+/// A set of `Region`s
+///
+/// All `Region`s of a `Project` are collected into a `World` structure. The `Region`s in a `World`
+/// can overlap. Unlike `Layer`s, overlapping `Region`s do not map `Cell`s one-to-one. The overlapping
+/// `Region` has a different size than the area it overlaps. Also, iterating over the overlapped part
+/// will not yield `Cell`s from the overlapping `Region`. For example, a compressed file inside a `Region`
+/// would be overlapped with a new, larger `Region` that holds the result after decompression. A `Program`
+/// inside the overlapped `Region` would still see only the compressed version.
 #[derive(RustcDecodable,RustcEncodable)]
-pub struct Regions {
+pub struct World {
+    ///< Graph of all `Region`s with edges pointing from the overlapping to the overlapped `Region`.
     pub dependencies: RegionGraph,
+    /// Lowest `Region` in the stack.
     pub root: RegionRef,
 }
 
 impl Region {
-    pub fn open(s: String, p: &Path) -> Result<Region, ::std::io::Error> {
+    /// Creates a new `Region` called `name` that is filled with the contents of the file at `path`.
+    pub fn open(s: String, p: &Path) -> Result<Region> {
         let layer = try!(OpaqueLayer::open(p));
         Ok(Region::new(s.clone(), layer))
     }
 
-    pub fn wrap(s: String, d: Vec<u8>) -> Region {
-        Region::new(s.clone(),OpaqueLayer::Defined(Box::new(d)))
+    /// Creates a new `Region` called `name`, filled with `data`.
+    pub fn wrap(name: String, data: Vec<u8>) -> Region {
+        Region::new(name,OpaqueLayer::Defined(Box::new(data)))
     }
 
-    pub fn undefined(s: String, l: u64) -> Region {
-        Region::new(s.clone(),OpaqueLayer::Undefined(l))
+    /// Creates a new `Region` called `name`, of size `len` with all `Cell`s undefined.
+    pub fn undefined(name: String, len: u64) -> Region {
+        Region::new(name,OpaqueLayer::Undefined(len))
     }
 
-    pub fn new(s: String, r: OpaqueLayer) -> Region {
-        let l = r.len();
-        let b = Layer::Opaque(r);
+    /// Creates a new `Region` called `name` with the contens of `root`.
+    pub fn new(name: String, root: OpaqueLayer) -> Region {
+        let l = root.len();
+        let b = Layer::Opaque(root);
         Region{
             stack: vec!((Bound::new(0,l),b)),
-            name: s,
+            name: name,
             size: l,
         }
     }
 
+    /// Applies `layer` to the cells inside `area`.
+    ///
+    /// # Returns
+    /// `false` if `area` is outside of `0..self.size()` of not compatible with `layer`, `true`
+    /// otherwise.
     pub fn cover(&mut self, b: Bound, l: Layer) -> bool {
         if b.end <= self.stack[0].0.end {
             if let Some(o) = l.as_opaque() {
@@ -89,6 +141,7 @@ impl Region {
         }
     }
 
+    /// Iterator over all `Cell`s, starting at 0.
     pub fn iter(&self) -> LayerIter {
         let mut ret = self.stack[0].1.as_opaque().unwrap().iter();
 
@@ -96,9 +149,6 @@ impl Region {
             let &(ref area,ref layer) = s;
 
             let src = ret.cut(&(area.start..area.end));
-            if src.len() != area.end - area.start {
-                println!("{:?}",ret);
-            }
             assert_eq!(src.len(),area.end - area.start);
 
             let mut tmp = layer.filter(src);
@@ -155,6 +205,7 @@ impl Region {
         ret
     }
 
+    /// Vector of all uncovered parts.
     pub fn flatten(&self) -> Vec<(Bound,&Layer)> {
         let mut ret = Vec::new();
         for x in self.stack.iter() {
@@ -164,30 +215,35 @@ impl Region {
         ret
     }
 
+    /// Stack of all `Layer` and covered area.
     pub fn stack(&self) -> &Vec<(Bound,Layer)> {
         &self.stack
     }
 
+    /// Number of `Cell`s.
     pub fn size(&self) -> u64 {
         self.size
     }
 
+    /// Name of the `Region`
     pub fn name(&self) -> &String {
         &self.name
     }
 }
 
-impl Regions {
-    pub fn new(r: Region) -> Regions {
+impl World {
+    /// Creates a new `World` with a single `Region` `reg`
+    pub fn new(reg: Region) -> World {
         let mut g = RegionGraph::new();
-        let b = g.add_vertex(r);
+        let b = g.add_vertex(reg);
 
-        Regions{
+        World{
             dependencies: g,
             root: b
         }
     }
 
+    /// Vector of all `Region` in `self` and their uncovered area
     pub fn projection(&self) -> Vec<(Bound,RegionRef)> {
         let mut ret = Vec::<(Bound,RegionRef)>::new();
         let mut visited = HashSet::<RegionRef>::new();
@@ -238,8 +294,8 @@ mod tests {
     use std::path::Path;
     use std::io::Write;
 
-    fn fixture<'a>() -> (RegionRef,RegionRef,RegionRef,Regions) {
-        let mut regs = Regions::new(Region::undefined("base".to_string(),128));
+    fn fixture<'a>() -> (RegionRef,RegionRef,RegionRef,World) {
+        let mut regs = World::new(Region::undefined("base".to_string(),128));
         let r1 = regs.root;
         let r2 = regs.dependencies.add_vertex(Region::undefined("zlib".to_string(),64));
         let r3 = regs.dependencies.add_vertex(Region::undefined("aes".to_string(),48));

@@ -16,6 +16,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+//! The root of a Panopticon session.
+//!
+//! Projects are a set of `Program`s, associated memory `Region`s and comments.
+
 use std::path::Path;
 use std::collections::HashMap;
 use std::fs::File;
@@ -36,31 +40,37 @@ use byteorder::{
 use {
     Program,
     CallGraphRef,
-    Region,Regions,
+    Region,World,
     Function,
     Result,
     pe
 };
 
+/// Complete Panopticon session
 #[derive(RustcDecodable,RustcEncodable)]
 pub struct Project {
+    /// Human-readable name
     pub name: String,
+    /// Recognized code
     pub code: Vec<Program>,
-    //data: Vec<Structure>,
-    pub sources: Regions,
+    /// Memory regions
+    pub data: World,
+    /// Comments
     pub comments: HashMap<(String,u64),String>,
 }
 
 impl Project {
+    /// Returns a new `Project` named `s` from memory `Region` `r`.
     pub fn new(s: String,r: Region) -> Project {
         Project{
             name: s,
             code: Vec::new(),
-            sources: Regions::new(r),
+            data: World::new(r),
             comments: HashMap::new(),
         }
     }
 
+    /// Reads a serialized project from disk.
     pub fn open(p: &Path) -> Result<Project> {
         let mut fd = match File::open(p) {
             Ok(fd) => fd,
@@ -88,18 +98,22 @@ impl Project {
         }
     }
 
+    /// Creates a new project from a Windows PE file.
     pub fn pe(p: &Path) -> Option<Project> {
         pe::pe(p)
     }
 
+    /// Returns the program with UUID `uu`
     pub fn find_program_by_uuid(&self,uu: &Uuid) -> Option<&Program> {
         self.code.iter().find(|x| x.uuid == *uu)
     }
 
+    /// Returns the program with UUID `uu`
     pub fn find_program_by_uuid_mut(&mut self,uu: &Uuid) -> Option<&mut Program> {
         self.code.iter_mut().find(|x| x.uuid == *uu)
     }
 
+    /// Returns function and enclosing program with UUID `uu`
     pub fn find_function_by_uuid<'a>(&'a self,uu: &Uuid) -> Option<&'a Function> {
         for p in self.code.iter() {
             if let Some(f) = p.find_function_by_uuid::<'a>(uu) {
@@ -110,6 +124,7 @@ impl Project {
         None
     }
 
+    /// Returns function and enclosing program with UUID `uu`
     pub fn find_function_by_uuid_mut<'a>(&'a mut self,uu: &Uuid) -> Option<&'a mut Function> {
         for p in self.code.iter_mut() {
             if let Some(f) = p.find_function_by_uuid_mut::<'a>(uu) {
@@ -120,6 +135,7 @@ impl Project {
         None
     }
 
+    /// Returns function/reference and enclosing program with UUID `uu`
     pub fn find_call_target_by_uuid<'a>(&'a self,uu: &Uuid) -> Option<(CallGraphRef,&'a Program)> {
         for p in self.code.iter() {
             if let Some(ct) = p.find_call_target_by_uuid::<'a>(uu) {
@@ -130,6 +146,7 @@ impl Project {
         None
     }
 
+    /// Returns function/reference and enclosing program with UUID `uu`
     pub fn find_call_target_by_uuid_mut<'a>(&'a mut self,uu: &Uuid) -> Option<(CallGraphRef,&'a mut Program)> {
         for p in self.code.iter_mut() {
             if let Some(ct) = p.find_call_target_by_uuid::<'a>(uu) {
@@ -140,11 +157,10 @@ impl Project {
         None
     }
 
-    /**
-     * [u8;10] magic
-     * u32     version
-     * (rest)
-     */
+    /// Serializes the project into the file at `p`. The format looks like this:
+    /// [u8;10] magic = "PANOPTICON"
+    /// u32     version = 0
+    /// zlib compressed MsgPack
     pub fn snapshot(&self,p: &Path) -> Result<()> {
         println!("snapshot to {:?}",p);
         let mut fd = try!(File::create(p));

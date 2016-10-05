@@ -16,6 +16,20 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+//! A Mnemonic is a single CPU instruction.
+//!
+//! The consist of an opcode, a number of arguments, and a sequence of RREIL instructions
+//! descibing the mnemonic semantics.
+//!
+//! Mnemonics are CPU specific and Panopticon models them as simple as possible. Opcode are only
+//! strings and the operands only a list of RREIL values. In order to display the mnemonics
+//! correctly on the front-end mnemonics come with a format string. These tell Panopticon whenever
+//! a operand is a pointer or a value. They look like this: `{c:ram}, {u}`.
+//!
+//! This formats the first operand as a code pointer into the "ram" and the second as an unsigned
+//! value. Other formattings are `{d:<region>}` for data pointer into <region> and `{s}` for
+//! signed values.
+
 use std::str::Chars;
 use std::ops::Range;
 
@@ -23,34 +37,46 @@ use Rvalue;
 use Statement;
 use Result;
 
+/// A non-empty address range [start,end).
 #[derive(Debug,Clone,PartialEq,Eq,RustcEncodable,RustcDecodable)]
 pub struct Bound {
+    /// Address of the first byte inside the range.
     pub start: u64,
+    /// Address of the first byte outside the range.
     pub end: u64
 }
 
 impl Bound {
+    /// Returns a `Bound` for [a,b)
     pub fn new(a: u64, b: u64) -> Bound {
         Bound{ start: a, end: b }
     }
 
+    /// Size of the range in bytes.
     pub fn len(&self) -> u64 {
         self.end - self.start
     }
 }
 
+/// Internal to `Mnemonic`
 #[derive(Clone,Debug,PartialEq,Eq,RustcEncodable,RustcDecodable)]
 pub enum MnemonicFormatToken {
+    /// Internal to `Mnemonic`
     Literal(char),
-    Variable{ has_sign: bool },
-    Pointer{ is_code: bool, bank: String },
+    /// Internal to `Mnemonic`
+    Variable{
+        /// Internal to `Mnemonic`
+        has_sign: bool
+    },
+    /// Internal to `Mnemonic`
+    Pointer{
+        /// Internal to `Mnemonic`
+        is_code: bool,
+        /// Internal to `Mnemonic`
+        bank: String
+    },
 }
 
-/// format := '{' type '}'
-/// type := 'u' | # unsigned
-///         's' | # signed
-///         'p' ':' bank |  # data pointer
-///         'c' ':' bank |  # code pointer
 impl MnemonicFormatToken {
     fn parse_bank<'a>(mut i: Chars<'a>) -> Result<(String,Chars<'a>)> {
         let mut j = i.clone();
@@ -66,6 +92,11 @@ impl MnemonicFormatToken {
         }
     }
 
+    /// format := '{' type '}'
+    /// type := 'u' | # unsigned
+    ///         's' | # signed
+    ///         'p' ':' bank |  # data pointer
+    ///         'c' ':' bank |  # code pointer
     pub fn parse(mut j: Chars) -> Result<Vec<MnemonicFormatToken>> {
         let mut ret = vec![];
 
@@ -105,16 +136,23 @@ impl MnemonicFormatToken {
     }
 }
 
+/// A single Mnemonic.
 #[derive(Clone,PartialEq,Eq,Debug,RustcEncodable,RustcDecodable)]
 pub struct Mnemonic {
+    /// Range of bytes the mnemonic occupies
     pub area: Bound,
+    /// Opcode part
     pub opcode: String,
+    /// Operands
     pub operands: Vec<Rvalue>,
+    /// RREIL code implementing the mnemonic
     pub instructions: Vec<Statement>,
+    /// Describes how the operands need to be printed
     pub format_string: Vec<MnemonicFormatToken>,
 }
 
 impl Mnemonic {
+    /// Create a new mnemonic `code`.
     pub fn new<'a,I1,I2> (a: Range<u64>, code: String, fmt: String, ops: I1, instr: I2) -> Result<Mnemonic>
         where I1: Iterator<Item=&'a Rvalue>,I2: Iterator<Item=&'a Statement> {
         Ok(Mnemonic{
@@ -126,6 +164,7 @@ impl Mnemonic {
         })
     }
 
+    /// For testing only
     #[cfg(test)]
     pub fn dummy(a: Range<u64>) -> Mnemonic {
         Mnemonic{
