@@ -121,7 +121,7 @@ impl Architecture for Amd64 {
             }
         }
 
-        info!("disass @ {:x}: {:?}",p,buf);
+        info!("disass @ {:#x}: {:?}",p,buf);
 
         let ret = ::amd64::read(*cfg,&buf,p).and_then(|(len,mne,mut jmp)| {
             Ok(Match::<Amd64> {
