@@ -25,7 +25,7 @@ use std::path::Path;
 use graph_algos::MutableGraphTrait;
 use uuid::Uuid;
 use goblin;
-use goblin::elf::{program_header,Binary};
+use goblin::elf::{self,header,program_header,Binary};
 
 use {
     Program,
@@ -47,6 +47,16 @@ pub enum Machine {
     Amd64,
     /// Intel x86
     Ia32,
+}
+
+fn get_machine(machine: u16) -> Result<Machine> {
+    use goblin::elf::header::*;
+    match machine {
+        EM_X86_64 => Ok(Machine::Amd64),
+        EM_AVR => Ok(Machine::Avr),
+        EM_386 => Ok(Machine::Ia32),
+        _ => Err(format!("Invalid ELF machine code: {}", machine).into())
+    }
 }
 
 /// Initial ELF identifier section
@@ -117,14 +127,14 @@ impl Ident {
 }
 
 macro_rules! load_impl {
-    ($elf:expr, $fd:expr, $interp:expr, $entry:expr, $reg:expr) => {{
+    ($elf:expr, $fd:expr, $reg:expr) => {{
         info!("Soname: {:?} with interpreter: {:?}", $elf.soname, $elf.interpreter);
 
         for ph in $elf.program_headers {
             if ph.p_type == program_header::PT_LOAD {
                 let mut buf = vec![0u8; ph.p_filesz as usize];
 
-                debug!("Load ELF {} bytes segment to {:#x}",ph.p_filesz,ph.p_vaddr);
+                debug!("Load ELF {} bytes segment to {:#x}",ph.p_filesz, ph.p_vaddr);
 
                 if $fd.seek(SeekFrom::Start(ph.p_offset as u64)).ok() == Some(ph.p_offset as u64) {
                     try!($fd.read_exact(&mut buf));
@@ -135,8 +145,30 @@ macro_rules! load_impl {
             }
         }
 
-        ($elf.entry,$elf.interpreter)
+        let mut entry_name = "prog0".to_owned();
+        for sym in &$elf.syms {
+            if sym.st_value as usize == $elf.entry {
+                entry_name = (&$elf.strtab[sym.st_name as usize]).to_owned();
+                break;
+            }
+        }
+
+        ($elf.entry,entry_name,$elf.interpreter)
     }}
+}
+
+fn init_region(machine: &Machine) -> Region {
+    match *machine {
+        Machine::Amd64 => {
+            Region::undefined("RAM".to_string(), 0xFFFF_FFFF_FFFF_FFFF)
+        },
+        Machine::Ia32 => {
+            Region::undefined("RAM".to_string(), 0x1_0000_0000)
+        },
+        Machine::Avr => {
+            Region::undefined("Flash".to_string(), 0x2_0000)
+        }
+    }
 }
 
 /// Load an ELF file from disk and creates a `Project` from it. Returns the `Project` instance and
@@ -145,24 +177,29 @@ pub fn load(p: &Path) -> Result<(Project,Machine)> {
     let mut fd = File::open(p).ok().unwrap();
 
     // consider endianess
-    let ((entry,interp),machine,reg) = match goblin::elf::from_fd(&mut fd) {
-        Ok(Binary::Elf64(elf)) => match elf.header.e_machine {
-            62 => {
-                let mut reg = Region::undefined("RAM".to_string(), 0xFFFF_FFFF_FFFF_FFFF);
-                (load_impl!(elf, fd, interp, entry, reg),Machine::Amd64,reg)
+    let ((entry, entry_name, _interp), machine, reg) = match goblin::elf::from_fd(&mut fd) {
+        Ok(Binary::Elf64(elf)) => {
+            let machine = try!(get_machine(elf.header.e_machine));
+            let mut reg = init_region(&machine);
+            match machine {
+                Machine::Amd64 => {
+                    (load_impl!(elf, fd, reg),machine,reg)
+                },
+                _ => return Err("Unsupported class/data combination".into()),
             }
-            _ => return Err("Unsupported class/data combination".into()),
         },
-        Ok(Binary::Elf32(elf)) => match elf.header.e_machine {
-            3 => {
-                let mut reg = Region::undefined("RAM".to_string(), 0x1_0000_0000);
-                (load_impl!(elf, fd, interp, entry, reg),Machine::Ia32,reg)
+        Ok(Binary::Elf32(elf)) => {
+            let machine = try!(get_machine(elf.header.e_machine));
+            let mut reg = init_region(&machine);
+            match machine {
+                Machine::Ia32 => {
+                    (load_impl!(elf, fd, reg),machine,reg)
+                },
+                Machine::Avr => {
+                    (load_impl!(elf, fd, reg),machine,reg)
+                },
+                _ => return Err("Unsupported class/data combination".into()),
             }
-            83 => {
-                let mut reg = Region::undefined("Flash".to_string(), 0x2_0000);
-                (load_impl!(elf, fd, interp, entry, reg),Machine::Avr,reg)
-            }
-            _ => return Err("Unsupported class/data combination".into()),
         },
         _ => return Err("Unsupported class/data combination".into()),
     };
@@ -171,7 +208,7 @@ pub fn load(p: &Path) -> Result<(Project,Machine)> {
         .map(|x| x.to_string_lossy().to_string())
         .unwrap_or("(encoding error)".to_string());
 
-    let mut prog = Program::new("prog0");
+    let mut prog = Program::new(&entry_name);
     let mut proj = Project::new(name.clone(),reg);
 
     prog.call_graph.add_vertex(CallTarget::Todo(Rvalue::new_u64(entry as u64),Some(name),Uuid::new_v4()));
