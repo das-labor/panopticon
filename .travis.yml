@@ -1,5 +1,7 @@
 matrix:
+  fast_finish: true
   include:
+      # CI targets
     - os: osx
       rust: 1.10.0
       env: TARGET=x86_64-apple-darwin
@@ -7,7 +9,35 @@ matrix:
       dist: trusty
       rust: 1.10.0
       env: TARGET=x86_64-unknown-linux-gnu
+      # nightly builds
+    - os: linux
+      rust: 1.10.0
+      env:
+        - TARGET=x86_64-unknown-linux-gnu
+        - PACKAGE=ubuntu
+      branches:
+        only:
+          - master
+    - os: linux
+      rust: 1.10.0
+      env:
+        - TARGET=x86_64-unknown-linux-gnu
+        - PACKAGE=debian
+      branches:
+        only:
+          - master
+    - os: osx
+      rust: 1.10.0
+      env:
+        - TARGET=x86_64-apple-darwin
+        - PACKAGE=osx
+      branches:
+        only:
+          - master
+
 sudo: required
+services:
+  - docker
 notifications:
   irc:
     channels:
@@ -36,10 +66,10 @@ addons:
 before_install:
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update; fi
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install homebrew/versions/qt55; fi
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get -qq install libbfd-dev libqt5qml-quickcontrols libiberty-dev; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" && "$PACKAGE" == "" ]]; then sudo apt-get -qq install libbfd-dev libqt5qml-quickcontrols libiberty-dev; fi
 after_success: |
   # send coverage report to coveralls.io
-  if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
+  if [[ "$TRAVIS_OS_NAME" == "linux" && "$PACKAGE" == "" ]]; then
       wget https://github.com/SimonKagstrom/kcov/archive/v30.tar.gz
       tar xzf v30.tar.gz && mkdir kcov-30/build && cd kcov-30/build && cmake .. && make &&
       sudo make install && cd ../.. &&
@@ -50,6 +80,32 @@ after_success: |
       kcov --merge --coveralls-id=$TRAVIS_JOB_ID --include-path=lib,qt target/kcov target/cov-*
   fi
 script: |
-  if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then export QTDIR64=`brew --prefix qt55`; fi &&
-  cargo build --verbose &&
-  cargo test --verbose
+  if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then export QTDIR64=`brew --prefix qt55`; fi
+  if [[ "$PACKAGE" == "" ]]
+  then
+    cargo build --verbose &&
+    cargo test --verbose
+  else
+    case "$TRAVIS_OS_NAME" in
+    "osx")
+      cd pkg/osx/
+      ./package_dmg.sh
+      find .
+      ;;
+    "ubuntu")
+      cd pkg/debian
+      docker build -t panopticon-build -f Dockerfile.ubuntu .
+      docker run -v `pwd`:/out panopticon-build
+      find .
+      ;;
+    "debian")
+      cd pkg/debian
+      docker build -t panopticon-build -f Dockerfile.debian .
+      docker run -v `pwd`:/out panopticon-build
+      find .
+      ;;
+    *)
+      exit
+      ;;
+    esac
+  fi
