@@ -74,10 +74,12 @@ cargo run --release
 ## Contributing
 
 Panopticon is licensed under GPLv3 and is Free Software. Hackers are
-always welcome. See https://panopticon.re for our project documentation.
-Panopticon uses Github for issue tracking: https://github.com/das-labor/panopticon/issues
+always welcome.
+
+- [Issue Tracker](https://github.com/das-labor/panopticon/issues)
+- [API Documentation](https://panopticon.re/panopticon/index.html).
 
 ## Contact
 
-IRC: #panopticon on Freenode.<br>
-Twitter: [```@panopticon_re```](https://twitter.com/@panopticon_re)
+- IRC: #panopticon on Freenode.
+- Twitter: [```@panopticon_re```](https://twitter.com/@panopticon_re)
