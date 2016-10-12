@@ -1,15 +1,15 @@
 matrix:
   fast_finish: true
   include:
-      # CI targets
-      #    - os: osx
-      #rust: 1.10.0
-      #env: TARGET=x86_64-apple-darwin
-      #- os: linux
-      #dist: trusty
-      #rust: 1.10.0
-      #env: TARGET=x86_64-unknown-linux-gnu
-      # nightly builds
+    # CI targets
+    - os: osx
+      rust: 1.10.0
+      env: TARGET=x86_64-apple-darwin
+    - os: linux
+      dist: trusty
+      rust: 1.10.0
+      env: TARGET=x86_64-unknown-linux-gnu
+    # nightly builds
     - os: linux
       dist: trusty
       rust: 1.10.0
@@ -20,23 +20,25 @@ matrix:
       branches:
         only:
           - master
-      #- os: linux
-      #dist: trusty
-      #rust: 1.10.0
-      ##env:
-      #  - TARGET=x86_64-unknown-linux-gnu
-      #  - PACKAGE=debian
-      #branches:
-      #  only:
-      #    - master
-      #- os: osx
-      #rust: 1.10.0
-      #env:
-      #  - TARGET=x86_64-apple-darwin
-      #  - PACKAGE=osx
-      #branches:
-      #  only:
-      #    - master
+      - os: linux
+      dist: trusty
+      rust: 1.10.0
+      env:
+        - TARGET=x86_64-unknown-linux-gnu
+        - PACKAGE=debian
+        - secure: "HwY2nRi7xuAQTkuVWgUupdVcJmutiiq+A4iDCbC4NI/vRB7WKCifxlzivCeTJMBu22LSLPJBMoaQ0S7w1PLaPkuG2d0qqFhublmhzk5sLaQt6AiwpEnJaHLqGy6aDVPDbqd4EWlPZ1MMCV+uXhtHzsg9XmrlZH9l5hMGx3mUDJw="
+      branches:
+        only:
+          - master
+      - os: osx
+      rust: 1.10.0
+      env:
+        - TARGET=x86_64-apple-darwin
+        - PACKAGE=osx
+        - secure: "HwY2nRi7xuAQTkuVWgUupdVcJmutiiq+A4iDCbC4NI/vRB7WKCifxlzivCeTJMBu22LSLPJBMoaQ0S7w1PLaPkuG2d0qqFhublmhzk5sLaQt6AiwpEnJaHLqGy6aDVPDbqd4EWlPZ1MMCV+uXhtHzsg9XmrlZH9l5hMGx3mUDJw="
+      branches:
+        only:
+          - master
 
 sudo: required
 services:
@@ -88,20 +90,19 @@ script: |
   "osx")
     cd pkg/osx/
     ./package_dmg.sh
-    find .
+    curl -T Panopticon.dmg -u upload:$FTP_PASSWD -Q "-SITE CHMOD 664 panopticon-master-$TRAVIS_COMMIT.dmg" ftp://ftp.panopticon.re/panopticon-master-$TRAVIS_COMMIT.dmg
     ;;
   "ubuntu")
     cd pkg/debian
     docker build -t panopticon-build -f Dockerfile.ubuntu .
     docker run -v `pwd`:/out panopticon-build
-    find .
-    curl -T panopticon_0.15_amd64.deb -u upload:$FTP_PASSWD -Q "-SITE CHMOD 664 panopticon-master-$TRAVIS_COMMIT.deb" ftp://ftp.panopticon.re/panopticon-master-$TRAVIS_COMMIT.deb
+    curl -T panopticon_0.15_amd64.deb -u upload:$FTP_PASSWD -Q "-SITE CHMOD 664 panopticon-master-xenial-$TRAVIS_COMMIT.deb" ftp://ftp.panopticon.re/panopticon-master-xenial-$TRAVIS_COMMIT.deb
     ;;
   "debian")
     cd pkg/debian
     docker build -t panopticon-build -f Dockerfile.debian .
     docker run -v `pwd`:/out panopticon-build
-    find .
+    curl -T panopticon_0.15_amd64.deb -u upload:$FTP_PASSWD -Q "-SITE CHMOD 664 panopticon-master-stretch-$TRAVIS_COMMIT.deb" ftp://ftp.panopticon.re/panopticon-master-stretch-$TRAVIS_COMMIT.deb
     ;;
   "")
     cargo build --verbose &&
