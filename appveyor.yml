@@ -13,7 +13,7 @@ environment:
         secure: DBE4nt5J/zQUXTGe8QTOJg==
 install:
   - if [%PACKAGE%]==[win] (
-      if [%APPVEYOR_REPO_BRANCH%] (
+      if NOT [%APPVEYOR_REPO_BRANCH%]==[master] (
         set SKIP_BUILD=1
       )
     )
