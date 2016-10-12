@@ -17,14 +17,13 @@ install:
         set SKIP_BUILD=1
       )
     )
-  # Rust
+  # Rust & Qt
   - ps: Start-FileDownload "https://static.rust-lang.org/dist/rust-$Env:RUST_VERSION-$Env:RUST_INSTALL_TRIPLE.msi"
   - if NOT [%SKIP_BUILD%]==[1] (
       start /wait msiexec /i rust-%RUST_VERSION%-%RUST_INSTALL_TRIPLE%.msi INSTALLDIR="%RUST_INSTALL_DIR%" /quiet /qn /norestart &
       set PATH=%PATH%;%RUST_INSTALL_DIR%\bin &
       rustc --version &
       cargo --version &
-      # Qt
       set QTDIR=C:\Qt\5.4\msvc2013_64_opengl &
       set PATH=%QTDIR%\bin;%PATH% &
       set CMAKE_PREFIX_PATH=%QTDIR%;%CMAKE_PREFIX_PATH%
