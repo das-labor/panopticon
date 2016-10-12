@@ -11,9 +11,10 @@ RUN apt-get -y update && \
 	qml-module-qtgraphicaleffects \
 	qtbase5-private-dev pkg-config \
 	libglpk-dev git build-essential cmake \
-        rustc cargo git dpkg-dev lintian debhelper cdbs
+  git dpkg-dev lintian debhelper cdbs file curl
 
 COPY entrypoint.sh /entrypoint.sh
+COPY rustup.sh /tmp/rustup.sh
 
 ENV PANOPTICON_URL="https://github.com/das-labor/panopticon"
 ENV PANOPTICON_BRANCH="master"
