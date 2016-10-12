@@ -9,17 +9,17 @@ instruction sets and open ELF files.
 Panopticon comes with Qt GUI for browsing and annotating control flow graphs,
 
 ## Install
-The Panopticon distributes binary builds of the current master for GNU/Linux,
-Windows and Mac OSX.
+The Panopticon project distributes binary builds of the current master for GNU/Linux,
+Windows and OS X.
 
 - [Ubuntu Xenial](https://files.panopticon.re/panopticon-master-xenial.deb)
 - [Debian Stretch](https://files.panopticon.re/panopticon-master-stretch.deb)
-- [OSX Yosemite](https://files.panopticon.re/panopticon-master.dmg)
+- [OS X Yosemite](https://files.panopticon.re/panopticon-master.dmg)
 - [Windows x64](https://files.panopticon.re/panopticon-master.zip)
 
 ## Building
 Panopticon builds with Rust stable. The only dependencies aside from
-a working Rust 1.10.0 toolchain and Cargo you need Qt 5.4 or higher installed.
+a working Rust 1.10.0 toolchain and Cargo you need is Qt 5.4 or higher.
 
 **Ubuntu 15.10 and 16.04**
 ```bash
@@ -58,10 +58,12 @@ emerge -av panopticon
 ```
 
 **Windows**
+
 Install the [Qt 5.4 SDK](http://download.qt.io/official_releases/online_installers/qt-unified-windows-x86-online.exe), the [Rust toolchain](https://static.rust-lang.org/dist/rust-1.10.0-x86_64-pc-windows-gnu.msi) and [CMake](https://cmake.org/files/v3.6/cmake-3.6.1-win64-x64.msi).
 Panopticon can be build using ``cargo build --release``.
 
 **OS X**
+
 Install [Homebrew](http://brew.sh/) and get Qt 5.5, CMake and the Rust toolchain. Then, compile Panopticon using cargo.
 
 ```bash
