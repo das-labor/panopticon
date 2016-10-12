@@ -25,8 +25,11 @@ build_script:
   - if [%PACKAGE%]==[] (
       cargo build --verbose
     ) else (
-      cd pkg\windows
-      package_zip.bat
+      dir
+      cd pkg
+      cd windows
+      call package_zip.bat
+      dir
     )
 test_script:
   - if [%PACKAGE%]==[] (
