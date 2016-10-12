@@ -9,6 +9,14 @@ matrix:
       dist: trusty
       rust: 1.10.0
       env: TARGET=x86_64-unknown-linux-gnu
+    # rustdoc
+    - os: linux
+      dist: trusty
+      rust: 1.10.0
+      env:
+        - TARGET=x86_64-unknown-linux-gnu
+        - PACKAGE=doc
+        - secure: "J9YvYryNyAZZSfJfXw64xHGmuwbwjPWxfvQ1vaLoC3ZXla2Nf1tEQN7P0UgnJkC3MZYop/yIZFa0bbdTG0Kef7+RHeD15Yp70bI6fyP9i048KRQYLPubTOHWIm5Ow6qIMo5hKZsVO3z+Lg7s3/y6L+DR5bT3PXWdZHovhe1QlA8="
     # nightly builds
     - os: linux
       dist: trusty
@@ -85,24 +93,30 @@ after_success: |
       kcov --merge --coveralls-id=$TRAVIS_JOB_ID --include-path=lib,qt target/kcov target/cov-*
   fi
 script: |
-  if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then export QTDIR64=`brew --prefix qt55`; fi
+  if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then export QTDIR64=`brew --prefix qt55`; fi &&
   case "$PACKAGE" in
   "osx")
-    cd pkg/osx/
-    ./package_dmg.sh
-    curl -T Panopticon.dmg -u upload:$FTP_PASSWD -Q "-SITE CHMOD 664 panopticon-master-$TRAVIS_COMMIT.dmg" ftp://ftp.panopticon.re/panopticon-master-$TRAVIS_COMMIT.dmg
+    cd pkg/osx/ &&
+    ./package_dmg.sh &&
+    curl -T Panopticon.dmg -u upload:$FTP_PASSWD -Q "-SITE CHMOD 664 panopticon-master.dmg" ftp://ftp.panopticon.re/panopticon-master.dmg
     ;;
   "ubuntu")
-    cd pkg/debian
-    docker build -t panopticon-build -f Dockerfile.ubuntu .
-    docker run -v `pwd`:/out panopticon-build
-    curl -T panopticon_0.15_amd64.deb -u upload:$FTP_PASSWD -Q "-SITE CHMOD 664 panopticon-master-xenial-$TRAVIS_COMMIT.deb" ftp://ftp.panopticon.re/panopticon-master-xenial-$TRAVIS_COMMIT.deb
+    cd pkg/debian &&
+    docker build -t panopticon-build -f Dockerfile.ubuntu . &&
+    docker run -v `pwd`:/out panopticon-build &&
+    curl -T panopticon_0.15_amd64.deb -u upload:$FTP_PASSWD -Q "-SITE CHMOD 664 panopticon-master-xenial.deb" ftp://ftp.panopticon.re/panopticon-master-xenial.deb
+    ;;
+  "doc")
+    cargo doc &&
+    cd target/doc &&
+    tar cvf ../../doc.tar * &&
+    curl -H "X-Token: $DOC_TOKEN" --data-binary @../../doc.tar doc.panopticon.re/update
     ;;
   "debian")
-    cd pkg/debian
-    docker build -t panopticon-build -f Dockerfile.debian .
-    docker run -v `pwd`:/out panopticon-build
-    curl -T panopticon_0.15_amd64.deb -u upload:$FTP_PASSWD -Q "-SITE CHMOD 664 panopticon-master-stretch-$TRAVIS_COMMIT.deb" ftp://ftp.panopticon.re/panopticon-master-stretch-$TRAVIS_COMMIT.deb
+    cd pkg/debian &&
+    docker build -t panopticon-build -f Dockerfile.debian . &&
+    docker run -v `pwd`:/out panopticon-build &&
+    curl -T panopticon_0.15_amd64.deb -u upload:$FTP_PASSWD -Q "-SITE CHMOD 664 panopticon-master-stretch.deb" ftp://ftp.panopticon.re/panopticon-master-stretch.deb
     ;;
   "")
     cargo build --verbose &&
