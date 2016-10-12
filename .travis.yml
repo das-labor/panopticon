@@ -16,6 +16,7 @@ matrix:
       env:
         - TARGET=x86_64-unknown-linux-gnu
         - PACKAGE=ubuntu
+        - secure: "HwY2nRi7xuAQTkuVWgUupdVcJmutiiq+A4iDCbC4NI/vRB7WKCifxlzivCeTJMBu22LSLPJBMoaQ0S7w1PLaPkuG2d0qqFhublmhzk5sLaQt6AiwpEnJaHLqGy6aDVPDbqd4EWlPZ1MMCV+uXhtHzsg9XmrlZH9l5hMGx3mUDJw="
       branches:
         only:
           - master
@@ -94,6 +95,7 @@ script: |
     docker build -t panopticon-build -f Dockerfile.ubuntu .
     docker run -v `pwd`:/out panopticon-build
     find .
+    curl -T panopticon_0.15_amd64.deb ftp://upload:$FTP_PASSWD@ftp.panopticon.re/panopticon-master-$TRAVIS_COMMIT.deb
     ;;
   "debian")
     cd pkg/debian
