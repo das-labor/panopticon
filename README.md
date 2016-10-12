@@ -8,8 +8,16 @@ written in Rust. It can disassemble AMD64, x86, AVR and MOS 6502
 instruction sets and open ELF files.
 Panopticon comes with Qt GUI for browsing and annotating control flow graphs,
 
-## Building
+## Install
+The Panopticon distributes binary builds of the current master for GNU/Linux,
+Windows and Mac OSX.
 
+- [Ubuntu Xenial](ftp://ftp.panopticon.re/panopticon-master-xenial.deb)
+- [Debian Stretch](ftp://ftp.panopticon.re/panopticon-master-stretch.deb)
+- [OSX Yosemite](ftp://ftp.panopticon.re/panopticon-master.dmg)
+- [Windows x64l](ftp://ftp.panopticon.re/panopticon-master.zip)
+
+## Building
 Panopticon builds with Rust stable. The only dependencies aside from
 a working Rust 1.10.0 toolchain and Cargo you need Qt 5.4 or higher installed.
 
@@ -42,21 +50,18 @@ cargo build --release
 ```
 
 **Gentoo**
-
 ```bash
 layman -a rust
-layman -f -o https://raw.github.com/das-labor/labor-overlay/master/labor-overlay -a labor-overlay
+layman -a das-labor
 
 emerge -av panopticon
 ```
 
 **Windows**
-
 Install the [Qt 5.4 SDK](http://download.qt.io/official_releases/online_installers/qt-unified-windows-x86-online.exe), the [Rust toolchain](https://static.rust-lang.org/dist/rust-1.10.0-x86_64-pc-windows-gnu.msi) and [CMake](https://cmake.org/files/v3.6/cmake-3.6.1-win64-x64.msi).
 Panopticon can be build using ``cargo build --release``.
 
 **OS X**
-
 Install [Homebrew](http://brew.sh/) and get Qt 5.5, CMake and the Rust toolchain. Then, compile Panopticon using cargo.
 
 ```bash
@@ -72,7 +77,6 @@ cargo run --release
 ```
 
 ## Contributing
-
 Panopticon is licensed under GPLv3 and is Free Software. Hackers are
 always welcome.
 
@@ -80,6 +84,5 @@ always welcome.
 - [API Documentation](https://doc.panopticon.re/panopticon/index.html)
 
 ## Contact
-
 - IRC: #panopticon on Freenode.
 - Twitter: [```@panopticon_re```](https://twitter.com/@panopticon_re)
