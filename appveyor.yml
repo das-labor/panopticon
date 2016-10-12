@@ -9,6 +9,8 @@ environment:
     - RUST_INSTALL_TRIPLE: x86_64-pc-windows-msvc
       RUST_VERSION: 1.10.0
       PACKAGE: win
+      FTP_PASSWD:
+        secure: DBE4nt5J/zQUXTGe8QTOJg==
 install:
    # Rust
   - ps: Start-FileDownload "https://static.rust-lang.org/dist/rust-$Env:RUST_VERSION-$Env:RUST_INSTALL_TRIPLE.msi"
@@ -25,10 +27,9 @@ build_script:
   - if [%PACKAGE%]==[] (
       cargo build --verbose
     ) else (
-      dir &
       cd pkg\windows &
       call package_zip.bat &
-      dir
+      curl -T panopticon-0.15.zip -u upload:$FTP_PASSWD -Q "-SITE CHMOD 664 panopticon-master.zip" ftp://ftp.panopticon.re/panopticon-master.zip
     )
 test_script:
   - if [%PACKAGE%]==[] (
