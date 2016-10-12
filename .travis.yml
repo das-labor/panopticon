@@ -66,7 +66,7 @@ addons:
 before_install:
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update; fi
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install homebrew/versions/qt55; fi
-  - if [[ "$TRAVIS_OS_NAME" == "linux" && "$PACKAGE" == "" ]]; then sudo apt-get -qq install libbfd-dev libqt5qml-quickcontrols libiberty-dev; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get -qq install libbfd-dev libqt5qml-quickcontrols libiberty-dev; fi
 after_success: |
   # send coverage report to coveralls.io
   if [[ "$TRAVIS_OS_NAME" == "linux" && "$PACKAGE" == "" ]]; then
