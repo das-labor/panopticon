@@ -95,7 +95,7 @@ script: |
     docker build -t panopticon-build -f Dockerfile.ubuntu .
     docker run -v `pwd`:/out panopticon-build
     find .
-    curl -T panopticon_0.15_amd64.deb -u upload:$FTP_PASSWD -v ftp://ftp.panopticon.re/panopticon-master-$TRAVIS_COMMIT.deb
+    curl -T panopticon_0.15_amd64.deb -u upload:$FTP_PASSWD -Q "-SITE CHMOD 664 panopticon-master-$TRAVIS_COMMIT.deb" ftp://ftp.panopticon.re/panopticon-master-$TRAVIS_COMMIT.deb
     ;;
   "debian")
     cd pkg/debian
