@@ -15,7 +15,7 @@ Windows and Mac OSX.
 - [Ubuntu Xenial](ftp://ftp.panopticon.re/panopticon-master-xenial.deb)
 - [Debian Stretch](ftp://ftp.panopticon.re/panopticon-master-stretch.deb)
 - [OSX Yosemite](ftp://ftp.panopticon.re/panopticon-master.dmg)
-- [Windows x64l](ftp://ftp.panopticon.re/panopticon-master.zip)
+- <a href="ftp://ftp.panopticon.re/panopticon-master.zip">Windows x64</a>
 
 ## Building
 Panopticon builds with Rust stable. The only dependencies aside from
