@@ -2,13 +2,13 @@ matrix:
   fast_finish: true
   include:
       # CI targets
-    - os: osx
-      rust: 1.10.0
-      env: TARGET=x86_64-apple-darwin
-    - os: linux
-      dist: trusty
-      rust: 1.10.0
-      env: TARGET=x86_64-unknown-linux-gnu
+      #    - os: osx
+      #rust: 1.10.0
+      #env: TARGET=x86_64-apple-darwin
+      #- os: linux
+      #dist: trusty
+      #rust: 1.10.0
+      #env: TARGET=x86_64-unknown-linux-gnu
       # nightly builds
     - os: linux
       dist: trusty
@@ -19,23 +19,23 @@ matrix:
       branches:
         only:
           - master
-    - os: linux
-      dist: trusty
-      rust: 1.10.0
-      env:
-        - TARGET=x86_64-unknown-linux-gnu
-        - PACKAGE=debian
-      branches:
-        only:
-          - master
-    - os: osx
-      rust: 1.10.0
-      env:
-        - TARGET=x86_64-apple-darwin
-        - PACKAGE=osx
-      branches:
-        only:
-          - master
+      #- os: linux
+      #dist: trusty
+      #rust: 1.10.0
+      ##env:
+      #  - TARGET=x86_64-unknown-linux-gnu
+      #  - PACKAGE=debian
+      #branches:
+      #  only:
+      #    - master
+      #- os: osx
+      #rust: 1.10.0
+      #env:
+      #  - TARGET=x86_64-apple-darwin
+      #  - PACKAGE=osx
+      #branches:
+      #  only:
+      #    - master
 
 sudo: required
 services:
