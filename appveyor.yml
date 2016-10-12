@@ -25,14 +25,13 @@ build_script:
   - if [%PACKAGE%]==[] (
       cargo build --verbose
     ) else (
-      dir;
-      cd pkg;
-      cd windows;
-      call package_zip.bat;
+      dir &
+      cd pkg\windows &
+      call package_zip.bat &
       dir
     )
 test_script:
   - if [%PACKAGE%]==[] (
-      call "C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\vcvarsall.bat" x64;
+      call "C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\vcvarsall.bat" x64 &
       cargo test --verbose
     )
