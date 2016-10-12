@@ -1832,6 +1832,8 @@ fn select_opcode_ext(grp: isize, opc: usize, modrm: usize, pfx: SimdPrefix,mode:
 }
 
 pub fn read(mode: Mode, buf: &[u8], addr: u64) -> Result<(u64,Mnemonic,Vec<(Rvalue,Guard)>)> {
+    use amd64::tables::*;
+
     let mut i = 0;
     let mut prefix = Prefix::default();
     let mut vexxop_present = false;
@@ -2050,8 +2052,6 @@ pub fn read(mode: Mode, buf: &[u8], addr: u64) -> Result<(u64,Mnemonic,Vec<(Rval
             None => return Err("Premature buffer end".into()),
         }
     }
-
-    use amd64::tables::*;
 
     trace!("prefix: {:?}, opcode: {:?}",prefix,buf.get(i).cloned());
 
