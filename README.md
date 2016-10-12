@@ -12,11 +12,10 @@ Panopticon comes with Qt GUI for browsing and annotating control flow graphs,
 The Panopticon distributes binary builds of the current master for GNU/Linux,
 Windows and Mac OSX.
 
-- [Ubuntu Xenial](ftp://ftp.panopticon.re/panopticon-master-xenial.deb)
-- [Debian Stretch](ftp://ftp.panopticon.re/panopticon-master-stretch.deb)
-- [OSX Yosemite](ftp://ftp.panopticon.re/panopticon-master.dmg)
-
-<a href="ftp://ftp.panopticon.re/panopticon-master.zip">Windows x64</a>
+- [Ubuntu Xenial](https://files.panopticon.re/panopticon-master-xenial.deb)
+- [Debian Stretch](https://files.panopticon.re/panopticon-master-stretch.deb)
+- [OSX Yosemite](https://files.panopticon.re/panopticon-master.dmg)
+- [Windows x64](https://files.panopticon.re/panopticon-master.zip)
 
 ## Building
 Panopticon builds with Rust stable. The only dependencies aside from
