@@ -158,7 +158,7 @@ pub fn create_elf_project(_path: &Variant) -> Variant {
 
                 return_json(Controller::replace(proj,None))
             },
-            Err(_) => return_json::<()>(Err("Failed to read ELF file".into())),
+            Err(err) => return_json::<()>(Err(format!("Failed to read ELF file: {:?}", err).into())),
         }
     } else {
         return_json::<()>(Err("1st argument is not a string".into()))

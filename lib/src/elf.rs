@@ -24,8 +24,7 @@ use std::path::Path;
 
 use graph_algos::MutableGraphTrait;
 use uuid::Uuid;
-use goblin;
-use goblin::elf::{self,header,program_header,Binary};
+use goblin::elf::{self,program_header};
 
 use {
     Program,
@@ -49,92 +48,15 @@ pub enum Machine {
     Ia32,
 }
 
-fn get_machine(machine: u16) -> Result<Machine> {
-    use goblin::elf::header::*;
-    match machine {
-        EM_X86_64 => Ok(Machine::Amd64),
-        EM_AVR => Ok(Machine::Avr),
-        EM_386 => Ok(Machine::Ia32),
-        _ => Err(format!("Invalid ELF machine code: {}", machine).into())
-    }
-}
-
-/// Initial ELF identifier section
-#[derive(Debug)]
-pub struct Ident {
-    /// ELF magic number. Must be `ELF\177`
-    pub magic: [u8; 4],
-    /// Whenever ELF32 or ELF64
-    pub class: u8,
-    /// Endianess of the CPU
-    pub data: u8,
-    /// ELF version. Must be 0.
-    pub version: usize,
-    /// Application Binary Interface of the code inside. CPU depend.
-    pub abi: u8,
-    /// Version of the Application Binary Interface.
-    pub abi_ver: usize,
-    /// Padding bytes. Must be 0.
-    pub pad: [u8; 7],
-}
-
-const EI_CLASS: usize = 4;
-const EI_DATA: usize = 5;
-const EI_VERSION: usize = 6;
-const EI_OSABI: usize = 7;
-const EI_ABIVERSION: usize = 8;
-const EI_PAD: usize = 9;
-
-impl Ident {
-    /// Reads and sanity checks a ELF identifier section from `R`.
-    pub fn read<R: Read>(strm: &mut R) -> Result<Ident> {
-        let mut e_ident = [0u8; 16];
-
-        if let Err(_) = strm.read(&mut e_ident) {
-            return Err("Failed to read ident".into());
-        }
-
-        if e_ident[0..4] != [0x7f, 0x45, 0x4c, 0x46] {
-            return Err("Invalid magic number".into());
-        }
-
-        if e_ident[EI_PAD..16].iter().any(|&x| x != 0) {
-            return Err("Invalid padding".into());
-        }
-
-        if e_ident[EI_VERSION] != 1 {
-            return Err("Invalid ELF version".into());
-        }
-
-        Ok(Ident{
-            magic: [e_ident[0],e_ident[1],e_ident[2],e_ident[3]],
-            class: e_ident[EI_CLASS],
-            data: e_ident[EI_DATA],
-            version: e_ident[EI_VERSION] as usize,
-            abi: e_ident[EI_OSABI],
-            abi_ver: e_ident[EI_ABIVERSION] as usize,
-            pad: [
-                  e_ident[EI_PAD+0],
-                  e_ident[EI_PAD+1],
-                  e_ident[EI_PAD+2],
-                  e_ident[EI_PAD+3],
-                  e_ident[EI_PAD+4],
-                  e_ident[EI_PAD+5],
-                  e_ident[EI_PAD+6]
-            ],
-        })
-    }
-}
-
 macro_rules! load_impl {
-    ($elf:expr, $fd:expr, $reg:expr) => {{
+    ($elf:expr, $fd:expr, $interp:expr, $entry:expr, $reg:expr) => {{
         info!("Soname: {:?} with interpreter: {:?}", $elf.soname, $elf.interpreter);
 
         for ph in $elf.program_headers {
             if ph.p_type == program_header::PT_LOAD {
                 let mut buf = vec![0u8; ph.p_filesz as usize];
 
-                debug!("Load ELF {} bytes segment to {:#x}",ph.p_filesz, ph.p_vaddr);
+                debug!("Load ELF {} bytes segment to {:#x}",ph.p_filesz,ph.p_vaddr);
 
                 if $fd.seek(SeekFrom::Start(ph.p_offset as u64)).ok() == Some(ph.p_offset as u64) {
                     try!($fd.read_exact(&mut buf));
@@ -145,30 +67,8 @@ macro_rules! load_impl {
             }
         }
 
-        let mut entry_name = "prog0".to_owned();
-        for sym in &$elf.syms {
-            if sym.st_value as usize == $elf.entry {
-                entry_name = (&$elf.strtab[sym.st_name as usize]).to_owned();
-                break;
-            }
-        }
-
-        ($elf.entry,entry_name,$elf.interpreter)
+        ($elf.entry,$elf.interpreter)
     }}
-}
-
-fn init_region(machine: &Machine) -> Region {
-    match *machine {
-        Machine::Amd64 => {
-            Region::undefined("RAM".to_string(), 0xFFFF_FFFF_FFFF_FFFF)
-        },
-        Machine::Ia32 => {
-            Region::undefined("RAM".to_string(), 0x1_0000_0000)
-        },
-        Machine::Avr => {
-            Region::undefined("Flash".to_string(), 0x2_0000)
-        }
-    }
 }
 
 /// Load an ELF file from disk and creates a `Project` from it. Returns the `Project` instance and
@@ -176,43 +76,57 @@ fn init_region(machine: &Machine) -> Region {
 pub fn load(p: &Path) -> Result<(Project,Machine)> {
     let mut fd = File::open(p).ok().unwrap();
 
-    // consider endianess
-    let ((entry, entry_name, _interp), machine, reg) = match goblin::elf::from_fd(&mut fd) {
-        Ok(Binary::Elf64(elf)) => {
-            let machine = try!(get_machine(elf.header.e_machine));
-            let mut reg = init_region(&machine);
-            match machine {
-                Machine::Amd64 => {
-                    (load_impl!(elf, fd, reg),machine,reg)
-                },
-                _ => return Err("Unsupported class/data combination".into()),
-            }
+    let binary = try!(elf::from_fd(&mut fd));
+    let entry = binary.entry();
+    let (machine, mut reg) = match binary.header().e_machine() {
+        elf::header::EM_X86_64 => {
+            let reg = Region::undefined("RAM".to_string(), 0xFFFF_FFFF_FFFF_FFFF);
+            (Machine::Amd64,reg)
         },
-        Ok(Binary::Elf32(elf)) => {
-            let machine = try!(get_machine(elf.header.e_machine));
-            let mut reg = init_region(&machine);
-            match machine {
-                Machine::Ia32 => {
-                    (load_impl!(elf, fd, reg),machine,reg)
-                },
-                Machine::Avr => {
-                    (load_impl!(elf, fd, reg),machine,reg)
-                },
-                _ => return Err("Unsupported class/data combination".into()),
-            }
+        elf::header::EM_386 => {
+            let reg = Region::undefined("RAM".to_string(), 0x1_0000_0000);
+            (Machine::Ia32,reg)
         },
-        _ => return Err("Unsupported class/data combination".into()),
+        elf::header::EM_AVR => {
+            let reg = Region::undefined("Flash".to_string(), 0x2_0000);
+            (Machine::Avr,reg)
+        },
+        machine => return Err(format!("Unsupported machine: {}", machine).into())
     };
+
+    for ph in binary.program_headers() {
+        if ph.p_type() == program_header::PT_LOAD {
+            let mut buf = vec![0u8; ph.p_filesz() as usize];
+
+            debug!("Load ELF {} bytes segment to {:#x}",ph.p_filesz(),ph.p_vaddr());
+
+            if fd.seek(SeekFrom::Start(ph.p_offset() as u64)).ok() == Some(ph.p_offset() as u64) {
+                try!(fd.read_exact(&mut buf));
+                reg.cover(Bound::new(ph.p_vaddr() as u64, (ph.p_vaddr() + ph.p_filesz()) as u64), Layer::wrap(buf));
+            } else {
+                return Err("Failed to read segment".into())
+            }
+        }
+    }
 
     let name = p.file_name()
         .map(|x| x.to_string_lossy().to_string())
         .unwrap_or("(encoding error)".to_string());
 
-    let mut prog = Program::new(&entry_name);
+    let mut prog = Program::new("prog0");
     let mut proj = Project::new(name.clone(),reg);
 
     prog.call_graph.add_vertex(CallTarget::Todo(Rvalue::new_u64(entry as u64),Some(name),Uuid::new_v4()));
-    proj.comments.insert(("base".to_string(),entry as u64),"main".to_string());
+
+    let dynstrtab = binary.dynstrtab();
+    for sym in binary.dynsyms() {
+        let name = dynstrtab[sym.st_name()].to_string();
+        let addr = sym.st_value().wrapping_add(binary.bias());
+        debug!("{} @ 0x{:x}: {:?}", name, addr, sym);
+        prog.call_graph.add_vertex(CallTarget::Todo(Rvalue::new_u64(addr),Some(name),Uuid::new_v4()));
+    }
+
+    proj.comments.insert(("base".to_string(),entry),"main".to_string());
     proj.code.push(prog);
 
     Ok((proj,machine))
