@@ -20,7 +20,7 @@ matrix:
       branches:
         only:
           - master
-      - os: linux
+    - os: linux
       dist: trusty
       rust: 1.10.0
       env:
@@ -30,7 +30,7 @@ matrix:
       branches:
         only:
           - master
-      - os: osx
+    - os: osx
       rust: 1.10.0
       env:
         - TARGET=x86_64-apple-darwin
