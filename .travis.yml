@@ -83,31 +83,29 @@ after_success: |
   fi
 script: |
   if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then export QTDIR64=`brew --prefix qt55`; fi
-  if [[ "$PACKAGE" == "" ]]
-  then
+  case "$PACKAGE" in
+  "osx")
+    cd pkg/osx/
+    ./package_dmg.sh
+    find .
+    ;;
+  "ubuntu")
+    cd pkg/debian
+    docker build -t panopticon-build -f Dockerfile.ubuntu .
+    docker run -v `pwd`:/out panopticon-build
+    find .
+    ;;
+  "debian")
+    cd pkg/debian
+    docker build -t panopticon-build -f Dockerfile.debian .
+    docker run -v `pwd`:/out panopticon-build
+    find .
+    ;;
+  "")
     cargo build --verbose &&
     cargo test --verbose
-  else
-    case "$TRAVIS_OS_NAME" in
-    "osx")
-      cd pkg/osx/
-      ./package_dmg.sh
-      find .
-      ;;
-    "ubuntu")
-      cd pkg/debian
-      docker build -t panopticon-build -f Dockerfile.ubuntu .
-      docker run -v `pwd`:/out panopticon-build
-      find .
-      ;;
-    "debian")
-      cd pkg/debian
-      docker build -t panopticon-build -f Dockerfile.debian .
-      docker run -v `pwd`:/out panopticon-build
-      find .
-      ;;
-    *)
-      exit
-      ;;
-    esac
-  fi
+    ;;
+  *)
+    exit
+    ;;
+  esac
