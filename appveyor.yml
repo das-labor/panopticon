@@ -6,6 +6,9 @@ environment:
   matrix:
     - RUST_INSTALL_TRIPLE: x86_64-pc-windows-msvc
       RUST_VERSION: 1.10.0
+    - RUST_INSTALL_TRIPLE: x86_64-pc-windows-msvc
+      RUST_VERSION: 1.10.0
+      PACKAGE: win
 install:
    # Rust
   - ps: Start-FileDownload "https://static.rust-lang.org/dist/rust-$Env:RUST_VERSION-$Env:RUST_INSTALL_TRIPLE.msi"
@@ -19,7 +22,14 @@ install:
   - set CMAKE_PREFIX_PATH=%QTDIR%;%CMAKE_PREFIX_PATH%
 build_script:
   - call "C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\vcvarsall.bat" x64
-  - cargo build --verbose
+  - if [%PACKAGE%]==[] (
+      cargo build --verbose
+    ) else (
+      cd pkg\windows
+      package_zip.bat
+    )
 test_script:
-  - call "C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\vcvarsall.bat" x64
-  - cargo test --verbose
+  - if [%PACKAGE%]==[] (
+      call "C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\vcvarsall.bat" x64
+      cargo test --verbose
+    )
