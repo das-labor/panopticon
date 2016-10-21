@@ -64,11 +64,11 @@ Panopticon can be build using ``cargo build --release``.
 
 **OS X**
 
-Install [Homebrew](http://brew.sh/) and get Qt 5.5, CMake and the Rust toolchain. Then, compile Panopticon using cargo.
+Install [Homebrew](http://brew.sh/) and get Qt 5, CMake and the Rust toolchain. Then, compile Panopticon using cargo.
 
 ```bash
-brew install homebrew/versions/qt55 cmake rust
-QTDIR64=`brew --prefix qt55` cargo build --release
+brew install qt5 cmake rust
+QTDIR64=`brew --prefix qt5` cargo build --release
 ```
 
 ## Running
