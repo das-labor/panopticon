@@ -93,36 +93,41 @@ after_success: |
       kcov --merge --coveralls-id=$TRAVIS_JOB_ID --include-path=lib,qt target/kcov target/cov-*
   fi
 script: |
-  if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then export QTDIR64=`brew --prefix qt55`; fi &&
-  case "$PACKAGE" in
-  "osx")
-    cd pkg/osx/ &&
-    ./package_dmg.sh &&
-    curl -T Panopticon.dmg -u upload:$FTP_PASSWD -Q "-SITE CHMOD 664 panopticon-master.dmg" ftp://files.panopticon.re/panopticon-master.dmg
-    ;;
-  "ubuntu")
-    cd pkg/debian &&
-    docker build -t panopticon-build -f Dockerfile.ubuntu . &&
-    docker run -v `pwd`:/out panopticon-build &&
-    curl -T panopticon_0.15_amd64.deb -u upload:$FTP_PASSWD -Q "-SITE CHMOD 664 panopticon-master-xenial.deb" ftp://files.panopticon.re/panopticon-master-xenial.deb
-    ;;
-  "doc")
-    cargo doc &&
-    cd target/doc &&
-    tar cvf ../../doc.tar * &&
-    curl -H "X-Token: $DOC_TOKEN" --data-binary @../../doc.tar https://doc.panopticon.re/update
-    ;;
-  "debian")
-    cd pkg/debian &&
-    docker build -t panopticon-build -f Dockerfile.debian . &&
-    docker run -v `pwd`:/out panopticon-build &&
-    curl -T panopticon_0.15_amd64.deb -u upload:$FTP_PASSWD -Q "-SITE CHMOD 664 panopticon-master-stretch.deb" ftp://files.panopticon.re/panopticon-master-stretch.deb
-    ;;
-  "")
-    cargo build --verbose &&
-    cargo test --verbose
-    ;;
-  *)
-    exit
-    ;;
-  esac
+  if [[ "$PACKAGE" != "" && ( "$TRAVIS_BRANCH" != "master" || "$TRAVIS_PULL_REQUEST" != "false" ) ]]
+  then
+    ;
+  else
+    if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then export QTDIR64=`brew --prefix qt55`; fi &&
+    case "$PACKAGE" in
+    "osx")
+      cd pkg/osx/ &&
+      ./package_dmg.sh &&
+      curl -vT Panopticon.dmg -u upload:$FTP_PASSWD -Q "-SITE CHMOD 664 panopticon-master.dmg" ftp://files.panopticon.re/panopticon-master.dmg
+      ;;
+    "ubuntu")
+      cd pkg/debian &&
+      docker build -t panopticon-build -f Dockerfile.ubuntu . &&
+      docker run -v `pwd`:/out panopticon-build &&
+      curl -vT panopticon_0.15_amd64.deb -u upload:$FTP_PASSWD -Q "-SITE CHMOD 664 panopticon-master-xenial.deb" ftp://files.panopticon.re/panopticon-master-xenial.deb
+      ;;
+    "doc")
+      cargo doc &&
+      cd target/doc &&
+      tar cvf ../../doc.tar * &&
+      curl -H "X-Token: $DOC_TOKEN" --data-binary @../../doc.tar https://doc.panopticon.re/update
+      ;;
+    "debian")
+      cd pkg/debian &&
+      docker build -t panopticon-build -f Dockerfile.debian . &&
+      docker run -v `pwd`:/out panopticon-build &&
+      curl -vT panopticon_0.15_amd64.deb -u upload:$FTP_PASSWD -Q "-SITE CHMOD 664 panopticon-master-stretch.deb" ftp://files.panopticon.re/panopticon-master-stretch.deb
+      ;;
+    "")
+      cargo build --verbose &&
+      cargo test --verbose
+      ;;
+    *)
+      exit
+      ;;
+    esac
+  fi
