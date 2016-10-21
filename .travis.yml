@@ -95,7 +95,7 @@ after_success: |
 script: |
   if [[ "$PACKAGE" != "" && ( "$TRAVIS_BRANCH" != "master" || "$TRAVIS_PULL_REQUEST" != "false" ) ]]
   then
-    ;
+    echo ""
   else
     if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then export QTDIR64=`brew --prefix qt55`; fi &&
     case "$PACKAGE" in
