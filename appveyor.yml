@@ -31,10 +31,13 @@ build_script:
   - if [%PACKAGE%]==[] (
       cargo build --verbose
     ) else (
-      if [
-      cd pkg\windows &
-      call package_zip.bat &
-      curl -T panopticon-0.15.zip -u upload:%FTP_PASSWD% -Q "-SITE CHMOD 664 panopticon-master.zip" ftp://files.panopticon.re/panopticon-master.zip
+      if [%APPVEYOR_PULL_REQUEST_NUMBER%]==[] (
+        if [%APPVEYOR_REPO_BRANCH%]==[master] (
+          cd pkg\windows &
+          call package_zip.bat &
+          curl -T panopticon-0.15.zip -u upload:%FTP_PASSWD% -Q "-SITE CHMOD 664 panopticon-master.zip" ftp://files.panopticon.re/panopticon-master.zip
+        )
+      )
     )
 test_script:
   - if [%PACKAGE%]==[] (
