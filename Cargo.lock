@@ -230,7 +230,7 @@ source = "git+https://github.com/alexcrichton/pkg-config-rs#627c5ffd05a7ad9b31f3
 [[package]]
 name = "qmlrs"
 version = "0.2.1"
-source = "git+https://github.com/flanfly/qmlrs#1bdeaac0348a341e5374216ef03c9e9b53c03d1c"
+source = "git+https://github.com/flanfly/qmlrs#598887d09117e14c3ac059882fe50c499f4d7b37"
 dependencies = [
  "libc 0.2.17 (registry+https://github.com/rust-lang/crates.io-index)",
  "pkg-config 0.3.8 (git+https://github.com/alexcrichton/pkg-config-rs)",
