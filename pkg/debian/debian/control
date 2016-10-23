@@ -10,7 +10,7 @@ Package: panopticon
 Architecture: amd64 i386
 Description: Qt 5 frontend of Panopticon
  Graphical interface for browsing and manipulating binary programs.
-Depends: ${misc:Depends}, ${shlibs:Depends}, qml-module-qtquick-controls, qml-module-qttest, qml-module-qtquick2, qml-module-qtquick-layouts, qml-module-qtgraphicaleffects
+Depends: ${misc:Depends}, ${shlibs:Depends}, qml-module-qtquick-controls, qml-module-qttest, qml-module-qtquick2, qml-module-qtquick-layouts, qml-module-qtgraphicaleffects, qml-module-qtqml-models2, qml-module-qtquick-dialogs
 Priority: optional
 Section: editors
 
