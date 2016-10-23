@@ -9,7 +9,7 @@ RUN apt-get -y update && \
 	qml-module-qtquick-controls qml-module-qttest \
 	qml-module-qtquick2 qml-module-qtquick-layouts \
 	qml-module-qtgraphicaleffects \
-	qtbase5-private-dev pkg-config \
+	qlibqt5svg5-dev tbase5-private-dev pkg-config \
 	libglpk-dev git build-essential cmake \
   git dpkg-dev lintian debhelper cdbs file curl
 
