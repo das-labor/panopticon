@@ -67,6 +67,7 @@ addons:
     - qtdeclarative5-dev
     - libqt5qml-quickcontrols # not approved
     - qtbase5-private-dev
+    - libqt5svg5-dev
     - pkg-config
     - git
     - build-essential
