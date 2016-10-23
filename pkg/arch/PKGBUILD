@@ -1,6 +1,6 @@
 # Maintainer: Kai Michaelis <seu@panopticon.re>
-pkgname=panopticon
-pkgver=0.15.0
+pkgname=panopticon-git
+pkgver=0.15.0.1246
 pkgrel=1
 pkgdesc="A libre cross platform disassembler"
 arch=('x86_64' 'i686')
@@ -8,34 +8,34 @@ url="https://panopticon.re/"
 license=('GPL3')
 groups=('devel')
 depends=(
-  'glpk>=4'
-  'qt5-quickcontrols>=5.4'
-  'qt5-graphicaleffects>=5.4')
+    'qt5-quickcontrols>=5.4'
+    'qt5-svg>=5.4'
+	'qt5-graphicaleffects>=5.4')
 makedepends=(
-  'rust>=1.7.0'
-  'cargo'
-  'git>=1'
-  'cmake>=2.8.9')
-provides=()
-conflicts=()
-replaces=()
-backup=()
-options=()
-install=
-changelog="src/$pkgname-$pkgver/CHANGELOG"
-source=($pkgname-$pkgver::git+https://github.com/das-labor/panopticon.git#branch=0.15.0)
-noextract=()
+    'rust'
+    'cargo'
+    'git>=1'
+    'cmake>=2.8.9')
+provides=('panopticon')
+conflicts=('panopticon')
+source=($pkgname::git+https://github.com/das-labor/panopticon.git)
 md5sums=('SKIP')
 
+pkgver() {
+    cd $pkgname
+    echo "0.15.0.$(git rev-list --count HEAD)"
+}
+
 build() {
-  cd "$pkgname-$pkgver"
-  cargo build --release
+    cd $pkgname
+    cargo build --release
 }
 
 package() {
-	install -d -m 755 "$pkgdir/usr/bin"
- 	install -D -s -m 555 "$pkgname-$pkgver/target/release/qtpanopticon" "$pkgdir/usr/bin/qtpanopticon"
-	install -m 755 -d "$pkgdir/usr/share/panopticon"
-	cp -R "$pkgname-$pkgver/qml" "$pkgdir/usr/share/panopticon"
-	chown -R root:root "$pkgdir/usr/share/panopticon"
+	cd $pkgname
+	install -d -m755 "$pkgdir/usr/bin"
+	install -D -s -m555 "$srcdir/$pkgname/target/release/qtpanopticon" "$pkgdir/usr/bin/qtpanopticon"
+	install -m755 -d "$pkgdir/usr/share/panopticon/qml"
+	cp -R "qml/"* "$pkgdir/usr/share/panopticon/qml"
+	chown -R root:root "$pkgdir/usr/share/panopticon/qml"
 }
