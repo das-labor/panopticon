@@ -48,35 +48,11 @@ pub enum Machine {
     Ia32,
 }
 
-macro_rules! load_impl {
-    ($elf:expr, $fd:expr, $interp:expr, $entry:expr, $reg:expr) => {{
-        info!("Soname: {:?} with interpreter: {:?}", $elf.soname, $elf.interpreter);
-
-        for ph in $elf.program_headers {
-            if ph.p_type == program_header::PT_LOAD {
-                let mut buf = vec![0u8; ph.p_filesz as usize];
-
-                debug!("Load ELF {} bytes segment to {:#x}",ph.p_filesz,ph.p_vaddr);
-
-                if $fd.seek(SeekFrom::Start(ph.p_offset as u64)).ok() == Some(ph.p_offset as u64) {
-                    try!($fd.read_exact(&mut buf));
-                    $reg.cover(Bound::new(ph.p_vaddr as u64, (ph.p_vaddr + ph.p_filesz) as u64), Layer::wrap(buf));
-                } else {
-                    return Err("Failed to read segment".into())
-                }
-            }
-        }
-
-        ($elf.entry,$elf.interpreter)
-    }}
-}
-
 /// Load an ELF file from disk and creates a `Project` from it. Returns the `Project` instance and
 /// the CPU its intended for.
 pub fn load(p: &Path) -> Result<(Project,Machine)> {
-    let mut fd = File::open(p).ok().unwrap();
-
-    let binary = try!(elf::from_fd(&mut fd));
+    let mut fd = try!(File::open(p));
+    let binary = try!(elf::parse(&mut fd));
     let entry = binary.entry();
     let (machine, mut reg) = match binary.header().e_machine() {
         elf::header::EM_X86_64 => {
@@ -109,9 +85,22 @@ pub fn load(p: &Path) -> Result<(Project,Machine)> {
         }
     }
 
-    let name = p.file_name()
-        .map(|x| x.to_string_lossy().to_string())
-        .unwrap_or("(encoding error)".to_string());
+    let name =
+        if let &Some(ref soname) = binary.soname() {
+            soname.to_owned()
+        } else {
+            p.file_name()
+                .map(|x| x.to_string_lossy().to_string())
+                .unwrap_or("(encoding error)".to_string())
+        };
+
+    if let Some(dynamic) = binary.dynamic() {
+        for dyn in dynamic {
+            println!("{:?}", dyn);
+        }
+    }
+
+    println!("interpreter: {:?}", binary.interpreter());
 
     let mut prog = Program::new("prog0");
     let mut proj = Project::new(name.clone(),reg);
@@ -121,9 +110,15 @@ pub fn load(p: &Path) -> Result<(Project,Machine)> {
     let dynstrtab = binary.dynstrtab();
     for sym in binary.dynsyms() {
         let name = dynstrtab[sym.st_name()].to_string();
-        let addr = sym.st_value().wrapping_add(binary.bias());
-        debug!("{} @ 0x{:x}: {:?}", name, addr, sym);
-        prog.call_graph.add_vertex(CallTarget::Todo(Rvalue::new_u64(addr),Some(name),Uuid::new_v4()));
+        let addr = sym.st_value();
+        println!("{} @ 0x{:x}: {:?}", name, addr, sym);
+        if sym.is_function() {
+            if sym.is_import() {
+                prog.call_graph.add_vertex(CallTarget::Symbolic(name,Uuid::new_v4()));
+            } else {
+                prog.call_graph.add_vertex(CallTarget::Todo(Rvalue::new_u64(addr),Some(name),Uuid::new_v4()));
+            }
+        }
     }
 
     proj.comments.insert(("base".to_string(),entry),"main".to_string());
