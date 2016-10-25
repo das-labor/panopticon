@@ -2,20 +2,15 @@
 
 ![Panopticon](https://raw.githubusercontent.com/das-labor/panopticon/master/logo.png)
 
-# Panopticon - A Libre Cross Plaform Disassembler
-Panopticon is a cross platform disassembler for reverse engineering
-written in Rust. It can disassemble AMD64, x86, AVR and MOS 6502
-instruction sets and open ELF files.
-Panopticon comes with Qt GUI for browsing and annotating control flow graphs,
+# Panopticon - A Libre Cross Platform Disassembler
+Panopticon is a cross platform disassembler for reverse engineering written in
+Rust. It can disassemble AMD64, x86, AVR and MOS 6502 instruction sets and open
+ELF files. Panopticon comes with Qt GUI for browsing and annotating control
+flow graphs,
 
 ## Install
-The Panopticon project distributes binary builds of the current master for GNU/Linux,
-Windows and OS X.
-
-- [Ubuntu Xenial](https://files.panopticon.re/panopticon-master-xenial.deb)
-- [Debian Stretch](https://files.panopticon.re/panopticon-master-stretch.deb)
-- [OS X Yosemite](https://files.panopticon.re/panopticon-master.dmg)
-- [Windows x64](https://files.panopticon.re/panopticon-master.zip)
+If you simply want to use Panopticon follow the
+[install instructions](https://panopticon.re/get) on the website.
 
 ## Building
 Panopticon builds with Rust stable. The only dependencies aside from
@@ -40,6 +35,14 @@ sudo dnf install gcc-c++ cmake qt5-qtdeclarative-devel qt5-qtquickcontrols \
                  adobe-source-code-pro-fonts
 ```
 
+**Gentoo**
+```bash
+layman -a rust
+
+USE=widgets sudo -E emerge -av qtgraphicaleffects:5 qtsvg:5 qtquickcontrols:5 \
+                               rust cargo cmake
+```
+
 After that clone the repository onto disk and use cargo to build
 everything.
 
@@ -49,22 +52,17 @@ cd panopticon
 cargo build --release
 ```
 
-**Gentoo**
-```bash
-layman -a rust
-layman -a das-labor
-
-emerge -av panopticon
-```
-
 **Windows**
 
-Install the [Qt 5.4 SDK](http://download.qt.io/official_releases/online_installers/qt-unified-windows-x86-online.exe), the [Rust toolchain](https://static.rust-lang.org/dist/rust-1.10.0-x86_64-pc-windows-gnu.msi) and [CMake](https://cmake.org/files/v3.6/cmake-3.6.1-win64-x64.msi).
+Install the [Qt 5.4 SDK](http://download.qt.io/official_releases/online_installers/qt-unified-windows-x86-online.exe),
+the [Rust toolchain](https://static.rust-lang.org/dist/rust-1.10.0-x86_64-pc-windows-gnu.msi)
+and [CMake](https://cmake.org/files/v3.6/cmake-3.6.1-win64-x64.msi).
 Panopticon can be build using ``cargo build --release``.
 
 **OS X**
 
-Install [Homebrew](http://brew.sh/) and get Qt 5, CMake and the Rust toolchain. Then, compile Panopticon using cargo.
+Install [Homebrew](http://brew.sh/) and get Qt 5, CMake and the Rust toolchain.
+Then, compile Panopticon using cargo.
 
 ```bash
 brew install qt5 cmake rust
@@ -72,15 +70,16 @@ QTDIR64=`brew --prefix qt5` cargo build --release
 ```
 
 ## Running
-After installation start the ``qtpanopticon`` binary. If you build it from source you can type:
+After installation start the ``qtpanopticon`` binary. If you build it from
+source you can type:
 
 ```bash
 cargo run --release
 ```
 
 ## Contributing
-Panopticon is licensed under GPLv3 and is Free Software. Hackers are
-always welcome.
+Panopticon is licensed under GPLv3 and is Free Software. Hackers are always
+welcome.
 
 - [Issue Tracker](https://github.com/das-labor/panopticon/issues)
 - [API Documentation](https://doc.panopticon.re/panopticon/index.html)
