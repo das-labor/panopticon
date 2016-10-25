@@ -77,6 +77,9 @@ source you can type:
 cargo run --release
 ```
 
+For detailed usage information see the
+[user documentaion](https://panopticon.re/usage).
+
 ## Contributing
 Panopticon is licensed under GPLv3 and is Free Software. Hackers are always
 welcome.
