@@ -27,7 +27,7 @@ rmp-serialize = "0.7.0"
 byteorder = "0.5.1"
 chrono = "0.2"
 chrono-humanize = "0.0.6"
-goblin = "0.0.3"
+goblin = "0.0.4"
 
 [dependencies.qmlrs]
 git = "https://github.com/flanfly/qmlrs"
