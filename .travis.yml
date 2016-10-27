@@ -109,7 +109,7 @@ script: |
       cd pkg/debian &&
       docker build -t panopticon-build -f Dockerfile.ubuntu . &&
       docker run -v `pwd`:/out panopticon-build &&
-      curl -vT panopticon_0.15_amd64.deb -u upload:$FTP_PASSWD -Q "-SITE CHMOD 664 panopticon-master-xenial.deb" ftp://files.panopticon.re/panopticon-master-xenial.deb
+      curl -vT panopticon_0.16_amd64.deb -u upload:$FTP_PASSWD -Q "-SITE CHMOD 664 panopticon-master-xenial.deb" ftp://files.panopticon.re/panopticon-master-xenial.deb
       ;;
     "doc")
       cargo doc &&
@@ -121,7 +121,7 @@ script: |
       cd pkg/debian &&
       docker build -t panopticon-build -f Dockerfile.debian . &&
       docker run -v `pwd`:/out panopticon-build &&
-      curl -vT panopticon_0.15_amd64.deb -u upload:$FTP_PASSWD -Q "-SITE CHMOD 664 panopticon-master-stretch.deb" ftp://files.panopticon.re/panopticon-master-stretch.deb
+      curl -vT panopticon_0.16_amd64.deb -u upload:$FTP_PASSWD -Q "-SITE CHMOD 664 panopticon-master-stretch.deb" ftp://files.panopticon.re/panopticon-master-stretch.deb
       ;;
     "")
       cargo build --verbose &&
