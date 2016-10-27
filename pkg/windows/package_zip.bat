@@ -4,7 +4,7 @@ rem set RUSTDIR=C:\Program Files\Rust stable MSVC 1.10
 rem set CMAKEDIR=C:\Program Files (x86)\CMake
 rem set VSDIR=C:\Program Files (x86)\Microsoft Visual Studio 12.0
 rem set P7ZDIR="C:\Program Files\7-Zip\7z.exe"
-set VERSION="0.15"
+set VERSION="0.16"
 
 rem Aux var setup
 rem set PATH=%GLPKDIR%\w64;%RUSTDIR%\bin;%CMAKEDIR%\bin;%QTDIR%\bin;%PATH%

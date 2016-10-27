@@ -1,4 +1,11 @@
-Ongoing: 0.16 (Pentonville)
+2016-10-: 0.16 (Pentonville)
+ - Remove dependency on GLPK
+ - Provide packages for Debian, Ubuntu, Windows and OS X
+ - Display errors in the control flow graph
+ - Add title screen
+ - Add API documentation
+ - Speed up AMD64 disassembler
+ - Fix major bug in graph layout drawing
 
 2016-05-29: 0.15 (Modelo)
  - Unit test for AVR and MOS 6502 decoders

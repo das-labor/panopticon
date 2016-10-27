@@ -1,3 +1,15 @@
+panopticon (0.16) trusty; urgency=low
+
+  * Remove dependency on GLPK
+  * Provide packages for Debian, Ubuntu, Windows and OS X
+  * Display errors in the control flow graph
+  * Add title screen
+  * Add API documentation
+  * Speed up AMD64 disassembler
+  * Fix major bug in graph layout drawing  * Unit test for AVR and MOS 6502 decoders
+
+ -- seu <seu@panopticon.re>  Fri, 27 Oct 2016 00:00:00 +0200
+
 panopticon (0.15) trusty; urgency=low
 
   * Unit test for AVR and MOS 6502 decoders

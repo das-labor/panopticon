@@ -1,6 +1,6 @@
 # Maintainer: Kai Michaelis <seu@panopticon.re>
 pkgname=panopticon-git
-pkgver=0.15.0.1246
+pkgver=0.16.0.1246
 pkgrel=1
 pkgdesc="A libre cross platform disassembler"
 arch=('x86_64' 'i686')
@@ -23,7 +23,7 @@ md5sums=('SKIP')
 
 pkgver() {
     cd $pkgname
-    echo "0.15.0.$(git rev-list --count HEAD)"
+    echo "0.16.0.$(git rev-list --count HEAD)"
 }
 
 build() {

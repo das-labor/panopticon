@@ -65,7 +65,7 @@ Window {
 		anchors.right: parent.right
 		anchors.rightMargin: 6
 
-		text: "v0.15.0"
+		text: "v0.16.0"
 		font {
 			pointSize: 11
 		}
