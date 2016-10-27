@@ -190,7 +190,7 @@ pub fn type_check(func: &Function) -> HashMap<Cow<'static,str>,usize> {
                 for instr in mne.instructions.iter() {
                     let ops = instr.op.operands();
                     match ops.len() {
-                        0 => panic!("Operation w/o arguments"),
+                        0 => unreachable!("Operation w/o arguments"),
                         _ => for o in ops.iter() {
                             set_len(o,&mut ret);
                         }
