@@ -32,6 +32,7 @@ Window {
 	x: (Screen.desktopAvailableWidth - width) / 2
 	width: 790
 	height: 550
+	title: "Panopticon"
 
 	onClosing: {
 		sessionView.deleteSessions();
