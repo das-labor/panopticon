@@ -31,6 +31,7 @@ extern crate tempdir;
 extern crate byteorder;
 extern crate chrono;
 extern crate chrono_humanize;
+extern crate goblin;
 
 #[cfg(unix)]
 extern crate xdg;

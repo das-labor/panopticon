@@ -59,6 +59,7 @@ use controller::{
 };
 
 use sugiyama;
+use goblin;
 
 #[derive(RustcEncodable)]
 struct Metainfo {
@@ -513,11 +514,12 @@ pub fn file_details(arg: &Variant) -> Variant {
             } else {
                 let ro = meta.permissions().readonly();
 
-                if let Ok(id) = elf::Ident::read(&mut fd) {
+                if let Ok((class, is_lsb)) = goblin::elf::header::peek(&mut fd) {
+                    let endianness = if is_lsb { "LittleEndian" } else { "BigEndian" };
                     Ok(FileDetails{
                         state: if ro { "readable" } else { "writable" }.to_string(),
                         format: Some("elf".to_string()),
-                        info: vec![format!("{:?}, {:?}",id.class,id.data)],
+                        info: vec![format!("{:?}, {:?}",goblin::elf::header::class_to_str(class),endianness)],
                     })
                 } else {
                     let mut buf = [0u8;2];
