@@ -29,8 +29,8 @@ sudo apt install qt5-default qtdeclarative5-dev libqt5svg5-dev \
 
 **Fedora 22, 23 and 24**
 ```bash
-sudo dnf install gcc-c++ cmake qt5-qtdeclarative-devel qt5-qtquickcontrols \
-                 qt5-qtgraphicaleffects qt5-qtsvg \
+sudo dnf install gcc-c++ cmake make qt5-qtdeclarative-devel qt5-qtquickcontrols \
+                 qt5-qtgraphicaleffects qt5-qtsvg-devel \
                  adobe-source-sans-pro-fonts \
                  adobe-source-code-pro-fonts
 ```
