@@ -18,7 +18,7 @@ a working Rust 1.13.0 toolchain and Cargo you need is Qt 5.4 or higher.
 
 **Ubuntu 15.10 and 16.04**
 ```bash
-sudo apt install qt5-default qtdeclarative5-dev \
+sudo apt install qt5-default qtdeclarative5-dev libqt5svg5-dev \
                  qml-module-qtquick-controls qml-module-qttest \
                  qml-module-qtquick2 qml-module-qtquick-layouts \
                  qml-module-qtgraphicaleffects qml-module-qtqml-models2 \
@@ -29,8 +29,8 @@ sudo apt install qt5-default qtdeclarative5-dev \
 
 **Fedora 22, 23 and 24**
 ```bash
-sudo dnf install gcc-c++ cmake qt5-qtdeclarative-devel qt5-qtquickcontrols \
-                 qt5-qtgraphicaleffects qt5-qtsvg \
+sudo dnf install gcc-c++ cmake make qt5-qtdeclarative-devel qt5-qtquickcontrols \
+                 qt5-qtgraphicaleffects qt5-qtsvg-devel \
                  adobe-source-sans-pro-fonts \
                  adobe-source-code-pro-fonts
 ```
