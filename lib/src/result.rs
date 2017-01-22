@@ -35,6 +35,8 @@ use rustc_serialize::json::{
     DecoderError,
 };
 
+use goblin;
+
 /// Panopticon error type
 #[derive(Debug)]
 pub struct Error(pub Cow<'static,str>);
@@ -95,5 +97,11 @@ impl From<DecoderError> for Error {
 impl From<EncoderError> for Error {
     fn from(e: EncoderError) -> Error {
         Error(Cow::Owned(format!("JSON encoder error: {}",e)))
+    }
+}
+
+impl From<goblin::error::Error> for Error {
+    fn from(e: goblin::error::Error) -> Error {
+        Error(Cow::Owned(format!("Goblin error: {}",e)))
     }
 }

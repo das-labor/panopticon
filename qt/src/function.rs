@@ -499,6 +499,7 @@ struct FileDetails {
     info: Vec<String>,
 }
 
+// this logic could use some love <3
 pub fn file_details(arg: &Variant) -> Variant {
     Variant::String(if let &Variant::String(ref p) = arg {
         let path = PathBuf::from(p);
@@ -513,8 +514,11 @@ pub fn file_details(arg: &Variant) -> Variant {
                 })
             } else {
                 let ro = meta.permissions().readonly();
-
-                if let Ok((class, is_lsb)) = goblin::elf::header::peek(&mut fd) {
+                // e.g., i think we can refactor all the magic checking into a single [0u8; 10] read and then pattern match
+                let mut magic = [0u8; goblin::elf::header::SIZEOF_IDENT];
+                fd.seek(SeekFrom::Start(0))?;
+                fd.read_exact(&mut magic)?;
+                if let Ok((class, is_lsb)) = goblin::elf::header::peek(&magic) {
                     let endianness = if is_lsb { "LittleEndian" } else { "BigEndian" };
                     Ok(FileDetails{
                         state: if ro { "readable" } else { "writable" }.to_string(),

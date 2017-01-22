@@ -169,8 +169,10 @@ pub fn create_elf_project(_path: &Variant) -> Variant {
 pub fn create_pe_project(_path: &Variant) -> Variant {
     Variant::String(if let &Variant::String(ref s) = _path {
         match pe::pe(Path::new(s)) {
-            Some(_) => {
-                return Variant::String(return_json::<()>(Err("Unsupported format".into())));
+            Some(proj) => {
+                spawn_disassembler::<amd64::Amd64>(amd64::Mode::Protected);
+                return_json(Controller::replace(proj,None))
+                //return Variant::String(return_json::<()>(Err("Unsupported format".into())));
             },
             None => return_json::<()>(Err("Failed to read PE file".into())),
         }

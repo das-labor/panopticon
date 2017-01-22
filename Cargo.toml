@@ -27,7 +27,11 @@ rmp-serialize = "0.7.0"
 byteorder = "0.5.1"
 chrono = "0.2"
 chrono-humanize = "0.0.6"
-goblin = "0.0.5"
+
+[dependencies.goblin]
+git = "https://github.com/m4b/goblin"
+branch = "pe"
+version = "0.0.7"
 
 [dev-dependencies]
 regex = "0.1"

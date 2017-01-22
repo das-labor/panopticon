@@ -57,7 +57,7 @@ pub fn load(p: &Path) -> Result<(Project,Machine)> {
     let mut bytes = Vec::new();
     try!(fd.read_to_end(&mut bytes));
     let mut cursor = Cursor::new(&bytes);
-    let binary = try!(elf::Elf::parse(&mut cursor));
+    let binary = elf::Elf::parse(&bytes)?;
     let entry = binary.entry;
     let (machine, mut reg) = match binary.header.e_machine() {
         elf::header::EM_X86_64 => {
