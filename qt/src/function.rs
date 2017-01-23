@@ -24,7 +24,6 @@ use panopticon::{
     MnemonicFormatToken,
     Error,
     Result,
-    elf,
     Kset,
 };
 
@@ -514,10 +513,17 @@ pub fn file_details(arg: &Variant) -> Variant {
             } else {
                 let ro = meta.permissions().readonly();
                 let state = if ro { "readable" } else { "writable" }.to_string();
-                // TODO: don't unwrap, too lazy/busy to figure out error mapping here
-                let peek = goblin::peek(&mut fd).unwrap();
+                let peek = goblin::peek(&mut fd);
                 debug!("peek: {:?}", &peek);
-                match peek {
+                // TODO: make this prettier, a big hack right now
+                if peek.is_err() {
+                    return Ok(FileDetails{
+                        state: "bad file".to_string(),
+                        format: None,
+                        info: vec![],
+                    })
+                }
+                match peek.unwrap() {
                     Hint::Elf(data) => {
                         let endianness = if data.is_lsb { "LittleEndian" } else { "BigEndian" };
                         let class =

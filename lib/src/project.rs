@@ -43,7 +43,6 @@ use {
     Region,World,
     Function,
     Result,
-    pe
 };
 
 /// Complete Panopticon session
@@ -96,11 +95,6 @@ impl Project {
         } else {
             Err("wrong magic number".into())
         }
-    }
-
-    /// Creates a new project from a Windows PE file.
-    pub fn pe(p: &Path) -> Option<Project> {
-        pe::pe(p)
     }
 
     /// Returns the program with UUID `uu`

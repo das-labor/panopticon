@@ -21,8 +21,6 @@ use panopticon::{
     Function,
     Program,CallTarget,
     ControlFlowTarget,
-    elf,
-    pe,
     Rvalue,
     Result,
     ssa_convertion,
@@ -39,6 +37,7 @@ use panopticon::{
 use panopticon::amd64;
 use panopticon::mos;
 use panopticon::avr;
+use panopticon::loader;
 
 use std::path::Path;
 use std::thread;
@@ -144,37 +143,20 @@ pub fn create_raw_project(_path: &Variant, _tgt: &Variant, _base: &Variant, _ent
     })
 }
 
-/// Prepares to disassemble an ELF file.
-pub fn create_elf_project(_path: &Variant) -> Variant {
-   // use panopticon::avr;
+/// Prepares to disassemble an ELF or PE file.
+pub fn create_project(_path: &Variant) -> Variant {
     Variant::String(if let &Variant::String(ref s) = _path {
-        match elf::load(Path::new(s)) {
-            Ok((proj,f)) => {
-                match f {
-                    elf::Machine::Ia32 => spawn_disassembler::<amd64::Amd64>(amd64::Mode::Protected),
-                    elf::Machine::Amd64 => spawn_disassembler::<amd64::Amd64>(amd64::Mode::Long),
-                    elf::Machine::Avr => spawn_disassembler::<avr::Avr>(avr::Mcu::atmega88()),
+        match loader::load(Path::new(s)) {
+            Ok((proj,machine)) => {
+                match machine {
+                    loader::Machine::Ia32 => spawn_disassembler::<amd64::Amd64>(amd64::Mode::Protected),
+                    loader::Machine::Amd64 => spawn_disassembler::<amd64::Amd64>(amd64::Mode::Long),
+                    loader::Machine::Avr => spawn_disassembler::<avr::Avr>(avr::Mcu::atmega88()),
                 }
 
                 return_json(Controller::replace(proj,None))
             },
-            Err(err) => return_json::<()>(Err(format!("Failed to read ELF file: {:?}", err).into())),
-        }
-    } else {
-        return_json::<()>(Err("1st argument is not a string".into()))
-    })
-}
-
-/// Prepares to disassemble an PE file.
-pub fn create_pe_project(_path: &Variant) -> Variant {
-    Variant::String(if let &Variant::String(ref s) = _path {
-        match pe::pe(Path::new(s)) {
-            Some(proj) => {
-                spawn_disassembler::<amd64::Amd64>(amd64::Mode::Protected);
-                return_json(Controller::replace(proj,None))
-                //return Variant::String(return_json::<()>(Err("Unsupported format".into())));
-            },
-            None => return_json::<()>(Err("Failed to read PE file".into())),
+            Err(err) => return_json::<()>(Err(format!("Failed to read file: {:?}", err).into())),
         }
     } else {
         return_json::<()>(Err("1st argument is not a string".into()))

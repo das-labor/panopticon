@@ -178,5 +178,4 @@ pub mod amd64;
 pub mod mos;
 
 // file formats
-pub mod pe;
-pub mod elf;
+pub mod loader;
