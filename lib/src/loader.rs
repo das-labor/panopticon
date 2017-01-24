@@ -136,27 +136,29 @@ fn load_pe(fd: &mut File, name: String) -> Result<(Project, Machine)> {
     for section in &pe.sections {
         let name = String::from_utf8_lossy(&section.name);
         debug!("section: {}", name);
-        let size = section.size_of_raw_data as usize;
         let virtual_address = section.virtual_address as u64;
         let offset = section.pointer_to_raw_data as usize;
-        let l =
+        let (layer, size) = {
+            let vsize = section.virtual_size as u64;
+            let size = section.size_of_raw_data as usize;
             if size > 0 {
                 if offset + size >= bytes.len() {
                     debug!("bad section pointer: {:#x} + {:#x} >= {:#x}", offset, size, bytes.len());
-                    Layer::undefined(section.virtual_size as u64)
-                    //return None;
+                    (Layer::undefined(0), 0)
                 } else {
-                    debug!("mapped '{}'",name);
-                    Layer::wrap(bytes[offset..offset+size].to_vec())
+                    debug!("mapped '{}': {:?}",name, offset..offset+size);
+                    (Layer::wrap(bytes[offset..offset+size].to_vec()), size as u64)
                 }
             } else {
-                debug!("not mapped '{}'",name);
-                Layer::undefined(section.virtual_size as u64)
-            };
+                debug!("bss '{}'",name);
+                (Layer::undefined(vsize), vsize)
+            }
+        };
         let begin = image_base + virtual_address;
         let end = image_base + virtual_address + size as u64;
         let bound = Bound::new(begin, end);
-        if !ram.cover(bound, l) {
+        debug!("bound: {:?}", &bound);
+        if !ram.cover(bound, layer) {
             debug!("bad cover");
             return Err(format!("Cannot cover bound: {:?}", Bound::new(begin, end)).into());
         }
