@@ -58,7 +58,7 @@ use controller::{
 };
 
 use sugiyama;
-use goblin::{self, Hint, HintData};
+use goblin::{self, Hint};
 
 #[derive(RustcEncodable)]
 struct Metainfo {
