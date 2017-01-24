@@ -170,6 +170,11 @@ fn load_pe(fd: &mut File, name: String) -> Result<(Project, Machine)> {
 
     prog.call_graph.add_vertex(CallTarget::Todo(Rvalue::new_u64(entry),Some(name.to_string()),Uuid::new_v4()));
 
+    for export in pe.exports {
+        debug!("adding export: {:?}", &export);
+        prog.call_graph.add_vertex(CallTarget::Todo(Rvalue::new_u64(export.rva as u64 + image_base),Some(export.name),Uuid::new_v4()));
+    }
+
     proj.comments.insert(("base".to_string(),entry),"main".to_string());
     proj.code.push(prog);
     Ok((proj, Machine::Ia32))
