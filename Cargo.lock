@@ -1,6 +1,6 @@
 [root]
 name = "panopticon"
-version = "0.15.0"
+version = "0.16.0"
 dependencies = [
  "byteorder 0.5.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "cassowary 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -8,7 +8,7 @@ dependencies = [
  "chrono-humanize 0.0.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "env_logger 0.3.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "flate2 0.2.14 (registry+https://github.com/rust-lang/crates.io-index)",
- "goblin 0.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "goblin 0.0.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "graph_algos 0.10.2 (git+https://github.com/flanfly/rust-graph-algos.git)",
  "lazy_static 0.1.16 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.2.16 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -102,7 +102,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "goblin"
-version = "0.0.2"
+version = "0.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "byteorder 0.5.3 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -371,7 +371,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum env_logger 0.3.4 (registry+https://github.com/rust-lang/crates.io-index)" = "82dcb9ceed3868a03b335657b85a159736c961900f7e7747d3b0b97b9ccb5ccb"
 "checksum flate2 0.2.14 (registry+https://github.com/rust-lang/crates.io-index)" = "3eeb481e957304178d2e782f2da1257f1434dfecbae883bafb61ada2a9fea3bb"
 "checksum gcc 0.3.35 (registry+https://github.com/rust-lang/crates.io-index)" = "91ecd03771effb0c968fd6950b37e89476a578aaf1c70297d8e92b6516ec3312"
-"checksum goblin 0.0.2 (registry+https://github.com/rust-lang/crates.io-index)" = "836737747be93a839b487c56f9b081972f46e4716e44a1efdec9c23ca2fafbc0"
+"checksum goblin 0.0.5 (registry+https://github.com/rust-lang/crates.io-index)" = "0c930d9f8abb2e85d2824c6fb849718967ba921602d444947f5d63d9d21d27d3"
 "checksum graph_algos 0.10.2 (git+https://github.com/flanfly/rust-graph-algos.git)" = "<none>"
 "checksum kernel32-sys 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)" = "7507624b29483431c0ba2d82aece8ca6cdba9382bff4ddd0f7490560c056098d"
 "checksum lazy_static 0.1.16 (registry+https://github.com/rust-lang/crates.io-index)" = "cf186d1a8aa5f5bee5fd662bc9c1b949e0259e1bcc379d1f006847b0080c7417"

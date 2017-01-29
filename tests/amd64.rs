@@ -449,7 +449,7 @@ fn rappel_xcheck(mnemonic: &str, sem: fn(Rvalue,Rvalue) -> Result<(Vec<Statement
     let regs_re = Regex::new(r"(rax|rbx|rcx|rdx|rsi|rdi|r8 |r9 |r10|r11|r12|r13|r14|r15): (.......)?(0x................)").unwrap();
     let flags_re = Regex::new(r"(cf|zf|of|sf|pf|af):(.)").unwrap();
     let mut stmts = vec![];
-    let mut child = Command::new("./rappel")
+    let mut child = Command::new("rappel")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::inherit())
@@ -664,6 +664,7 @@ macro_rules! rappel_xcheck {
         }
 
         #[test]
+        #[cfg_attr(not(feature = "cross_check_amd64"), ignore)]
         fn $func() {
             use quickcheck::QuickCheck;
 

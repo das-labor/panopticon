@@ -241,131 +241,128 @@ fn extend(a: &Rvalue, b: &Rvalue,sign_ext: bool) -> Result<(Rvalue,Rvalue,usize,
     Ok((ext_a,ext_b,sz,stmts))
 }
 
-fn reg_variants(name: &str) -> (Lvalue,Lvalue,Lvalue,Lvalue,Lvalue) {
+fn reg_variants(name: &str) -> Option<(Lvalue,Lvalue,Lvalue,Lvalue,Lvalue)> {
     match name {
-        "AL" | "AH" | "AX" | "EAX" | "RAX" => {(
+        "AL" | "AH" | "AX" | "EAX" | "RAX" => {Some((
                 rreil_lvalue!{ AL:8 },
                 rreil_lvalue!{ AH:8 },
                 rreil_lvalue!{ AX:16 },
                 rreil_lvalue!{ EAX:32 },
-                rreil_lvalue!{ RAX:64 })
+                rreil_lvalue!{ RAX:64 }))
         },
-        "BL" | "BH" | "BX" | "EBX" | "RBX" => {(
+        "BL" | "BH" | "BX" | "EBX" | "RBX" => {Some((
                 rreil_lvalue!{ BL:8 },
                 rreil_lvalue!{ BH:8 },
                 rreil_lvalue!{ BX:16 },
                 rreil_lvalue!{ EBX:32 },
-                rreil_lvalue!{ RBX:64 })
+                rreil_lvalue!{ RBX:64 }))
         },
-        "CL" | "CH" | "CX" | "ECX" | "RCX" => {(
+        "CL" | "CH" | "CX" | "ECX" | "RCX" => {Some((
                 rreil_lvalue!{ CL:8 },
                 rreil_lvalue!{ CH:8 },
                 rreil_lvalue!{ CX:16 },
                 rreil_lvalue!{ ECX:32 },
-                rreil_lvalue!{ RCX:64 })
+                rreil_lvalue!{ RCX:64 }))
         },
-        "DL" | "DH" | "DX" | "EDX" | "RDX" => {(
+        "DL" | "DH" | "DX" | "EDX" | "RDX" => {Some((
                 rreil_lvalue!{ DL:8 },
                 rreil_lvalue!{ DH:8 },
                 rreil_lvalue!{ DX:16 },
                 rreil_lvalue!{ EDX:32 },
-                rreil_lvalue!{ RDX:64 })
+                rreil_lvalue!{ RDX:64 }))
         },
-        "SIL" | "SIH" | "SI" | "ESI" | "RSI" => {(
+        "SIL" | "SIH" | "SI" | "ESI" | "RSI" => {Some((
                 rreil_lvalue!{ SIL:8 },
                 rreil_lvalue!{ SIH:8 },
                 rreil_lvalue!{ SI:16 },
                 rreil_lvalue!{ ESI:32 },
-                rreil_lvalue!{ RSI:64 })
+                rreil_lvalue!{ RSI:64 }))
         },
-        "DIL" | "DIH" | "DI" | "EDI" | "RDI" => {(
+        "DIL" | "DIH" | "DI" | "EDI" | "RDI" => {Some((
                 rreil_lvalue!{ DIL:8 },
                 rreil_lvalue!{ DIH:8 },
                 rreil_lvalue!{ DI:16 },
                 rreil_lvalue!{ EDI:32 },
-                rreil_lvalue!{ RDI:64 })
+                rreil_lvalue!{ RDI:64 }))
         },
-        "BPL" | "BP" | "EBP" | "RBP" => {(
+        "BPL" | "BP" | "EBP" | "RBP" => {Some((
                 rreil_lvalue!{ BPL:8 },
                 rreil_lvalue!{ ? },
                 rreil_lvalue!{ BP:16 },
                 rreil_lvalue!{ EBP:32 },
-                rreil_lvalue!{ RBP:64 })
+                rreil_lvalue!{ RBP:64 }))
         },
-        "SPL" | "SP" | "ESP" | "RSP" => {(
+        "SPL" | "SP" | "ESP" | "RSP" => {Some((
                 rreil_lvalue!{ SPL:8 },
                 rreil_lvalue!{ ? },
                 rreil_lvalue!{ SP:16 },
                 rreil_lvalue!{ ESP:32 },
-                rreil_lvalue!{ RSP:64 })
+                rreil_lvalue!{ RSP:64 }))
         },
-        "IP" | "EIP" | "RIP" => {(
+        "IP" | "EIP" | "RIP" => {Some((
                 rreil_lvalue!{ ? },
                 rreil_lvalue!{ ? },
                 rreil_lvalue!{ IP:16 },
                 rreil_lvalue!{ EIP:32 },
-                rreil_lvalue!{ RIP:64 })
+                rreil_lvalue!{ RIP:64 }))
         },
-        "R8B" | "R8W" | "R8D" | "R8" => {(
+        "R8B" | "R8W" | "R8D" | "R8" => {Some((
                 rreil_lvalue!{ R8B:8 },
                 rreil_lvalue!{ ? },
                 rreil_lvalue!{ R8W:16 },
                 rreil_lvalue!{ R8D:32 },
-                rreil_lvalue!{ R8:64 })
+                rreil_lvalue!{ R8:64 }))
         },
-        "R9B" | "R9W" | "R9D" | "R9" => {(
+        "R9B" | "R9W" | "R9D" | "R9" => {Some((
                 rreil_lvalue!{ R9B:8 },
                 rreil_lvalue!{ ? },
                 rreil_lvalue!{ R9W:16 },
                 rreil_lvalue!{ R9D:32 },
-                rreil_lvalue!{ R9:64 })
+                rreil_lvalue!{ R9:64 }))
         },
-        "R10B" | "R10W" | "R10D" | "R10" => {(
+        "R10B" | "R10W" | "R10D" | "R10" => {Some((
                 rreil_lvalue!{ R10B:8 },
                 rreil_lvalue!{ ? },
                 rreil_lvalue!{ R10W:16 },
                 rreil_lvalue!{ R10D:32 },
-                rreil_lvalue!{ R10:64 })
+                rreil_lvalue!{ R10:64 }))
         },
-        "R11B" | "R11W" | "R11D" | "R11" => {(
+        "R11B" | "R11W" | "R11D" | "R11" => {Some((
                 rreil_lvalue!{ R11B:8 },
                 rreil_lvalue!{ ? },
                 rreil_lvalue!{ R11W:16 },
                 rreil_lvalue!{ R11D:32 },
-                rreil_lvalue!{ R11:64 })
+                rreil_lvalue!{ R11:64 }))
         },
-        "R12B" | "R12W" | "R12D" | "R12" => {(
+        "R12B" | "R12W" | "R12D" | "R12" => {Some((
                 rreil_lvalue!{ R12B:8 },
                 rreil_lvalue!{ ? },
                 rreil_lvalue!{ R12W:16 },
                 rreil_lvalue!{ R12D:32 },
-                rreil_lvalue!{ R12:64 })
+                rreil_lvalue!{ R12:64 }))
         },
-        "R13B" | "R13W" | "R13D" | "R13" => {(
+        "R13B" | "R13W" | "R13D" | "R13" => {Some((
                 rreil_lvalue!{ R13B:8 },
                 rreil_lvalue!{ ? },
                 rreil_lvalue!{ R13W:16 },
                 rreil_lvalue!{ R13D:32 },
-                rreil_lvalue!{ R13:64 })
+                rreil_lvalue!{ R13:64 }))
         },
-        "R14B" | "R14W" | "R14D" | "R14" => {(
+        "R14B" | "R14W" | "R14D" | "R14" => {Some((
                 rreil_lvalue!{ R14B:8 },
                 rreil_lvalue!{ ? },
                 rreil_lvalue!{ R14W:16 },
                 rreil_lvalue!{ R14D:32 },
-                rreil_lvalue!{ R14:64 })
+                rreil_lvalue!{ R14:64 }))
         },
-        "R15B" | "R15W" | "R15D" | "R15" => {(
+        "R15B" | "R15W" | "R15D" | "R15" => {Some((
                 rreil_lvalue!{ R15B:8 },
                 rreil_lvalue!{ ? },
                 rreil_lvalue!{ R15W:16 },
                 rreil_lvalue!{ R15D:32 },
-                rreil_lvalue!{ R15:64 })
+                rreil_lvalue!{ R15:64 }))
         },
-        _ => {
-            println!("reg {}",name);
-            unimplemented!()
-        }
+        _ => None
     }
 }
 
@@ -373,116 +370,123 @@ fn write_reg(reg: &Rvalue, val: &Rvalue, sz: usize) -> Result<Vec<Statement>> {
     use std::cmp;
     use std::num::Wrapping;
 
-    if let &Rvalue::Variable{ ref name, ref size, ref offset,.. }  = reg {
+    if let &Rvalue::Variable{ ref name, ref size, ref offset,.. } = reg {
         let mut hi = *offset + *size;
         let mut lo = *offset;
-        let (reg8l,reg8h,reg16,reg32,reg64) = reg_variants(name);
         let mut stmts = vec![];
 
-        if *reg == reg8h.clone().into() {
-            hi += 8;
-            lo += 8;
-        }
-
-        if lo == 0 && hi == 64 && val.size() == Some(64) {
-            stmts = try!(rreil!{
-                mov val:64, (val);
-            });
-        } else {
-            stmts = try!(rreil!{
-                zext/64 val:64, (val);
-            });
-        }
-
-        if lo > 0 {
-            let shft = 1 << lo;
-            stmts.append(&mut try!(rreil!{
-                mul val:64, val:64, [shft]:64;
-            }));
-        }
-
-        // *L
-        if lo <= 7 {
-            let msk = !((0xff << lo) % (1 << cmp::min(8,hi))) & 0xff;
-
-            if msk == 0 {
-                stmts.append(&mut try!(rreil!{
-                    mov (reg8l), val:8;
-                }));
-            } else if msk < 0xff {
-                 stmts.append(&mut try!(rreil!{
-                    and (reg8l), (reg8l), [msk]:8;
-                    or (reg8l), (reg8l), val:8;
-                }));
+        if let Some((reg8l,reg8h,reg16,reg32,reg64)) = reg_variants(name) {
+            if *reg == reg8h.clone().into() {
+                hi += 8;
+                lo += 8;
             }
-        }
 
-        // *H
-        if hi >= 9 && lo <= 15 && reg8h != Lvalue::Undefined {
-            let msk = (!((0xffff << lo) % (1u64 << cmp::min(16,hi))) & 0xffff) >> 8;
-            if msk == 0 {
-                stmts.append(&mut try!(rreil!{
-                    mov (reg8h), val:8/8;
-                }));
-            } else if msk < 0xff {
-                 stmts.append(&mut try!(rreil!{
-                    and (reg8h), (reg8h), [msk]:8;
-                    or (reg8h), (reg8h), val:8/8;
-                }));
-            }
-        }
-
-        // *X
-        if lo <= 15 {
-            let msk = !((0xffff << lo) % (1u64 << cmp::min(16,hi))) & 0xffff;
-
-            if msk == 0 {
-                stmts.append(&mut try!(rreil!{
-                    mov (reg16), val:16;
-                }));
-            } else if msk < 0xffff {
-                 stmts.append(&mut try!(rreil!{
-                    and (reg16), (reg16), [msk]:16;
-                    or (reg16), (reg16), val:16;
-                }));
-            }
-        }
-
-        // E*X
-        if lo <= 31 {
-            let msk = !((0xffffffff << lo) % (1u64 << cmp::min(32,hi))) & 0xffffffff;
-
-            if msk == 0 {
-                stmts.append(&mut try!(rreil!{
-                    mov (reg32), val:32;
-                }));
-            } else if msk < 0xffffffff {
-                 stmts.append(&mut try!(rreil!{
-                    and (reg32), (reg32), [msk]:32;
-                    or (reg32), (reg32), val:32;
-                }));
-            }
-        }
-
-        // R*X
-        if lo <= 64 {
-            let msk = if hi < 64 {
-                !((Wrapping(0xffffffffffffffffu64) << lo).0 % (1 << hi))
+            if lo == 0 && hi == 64 && val.size() == Some(64) {
+                stmts = try!(rreil!{
+                    mov val:64, (val);
+                });
             } else {
-                !(Wrapping(0xffffffffffffffffu64) << lo).0
-            };
+                stmts = try!(rreil!{
+                    zext/64 val:64, (val);
+                });
+            }
 
-            if msk == 0 || (lo == 0 && hi == 32) {
+            if lo > 0 {
+                let shft = 1 << lo;
                 stmts.append(&mut try!(rreil!{
-                    mov (reg64), val:64;
-                }));
-            } else if msk < 0xffffffffffffffff {
-                 stmts.append(&mut try!(rreil!{
-                    and (reg64), (reg64), [msk]:64;
-                    or (reg64), (reg64), val:64;
+                    mul val:64, val:64, [shft]:64;
                 }));
             }
+
+            // *L
+            if lo <= 7 {
+                let msk = !((0xff << lo) % (1 << cmp::min(8,hi))) & 0xff;
+
+                if msk == 0 {
+                    stmts.append(&mut try!(rreil!{
+                        mov (reg8l), val:8;
+                    }));
+                } else if msk < 0xff {
+                     stmts.append(&mut try!(rreil!{
+                        and (reg8l), (reg8l), [msk]:8;
+                        or (reg8l), (reg8l), val:8;
+                    }));
+                }
+            }
+
+            // *H
+            if hi >= 9 && lo <= 15 && reg8h != Lvalue::Undefined {
+                let msk = (!((0xffff << lo) % (1u64 << cmp::min(16,hi))) & 0xffff) >> 8;
+                if msk == 0 {
+                    stmts.append(&mut try!(rreil!{
+                        mov (reg8h), val:8/8;
+                    }));
+                } else if msk < 0xff {
+                     stmts.append(&mut try!(rreil!{
+                        and (reg8h), (reg8h), [msk]:8;
+                        or (reg8h), (reg8h), val:8/8;
+                    }));
+                }
+            }
+
+            // *X
+            if lo <= 15 {
+                let msk = !((0xffff << lo) % (1u64 << cmp::min(16,hi))) & 0xffff;
+
+                if msk == 0 {
+                    stmts.append(&mut try!(rreil!{
+                        mov (reg16), val:16;
+                    }));
+                } else if msk < 0xffff {
+                     stmts.append(&mut try!(rreil!{
+                        and (reg16), (reg16), [msk]:16;
+                        or (reg16), (reg16), val:16;
+                    }));
+                }
+            }
+
+            // E*X
+            if lo <= 31 {
+                let msk = !((0xffffffff << lo) % (1u64 << cmp::min(32,hi))) & 0xffffffff;
+
+                if msk == 0 {
+                    stmts.append(&mut try!(rreil!{
+                        mov (reg32), val:32;
+                    }));
+                } else if msk < 0xffffffff {
+                     stmts.append(&mut try!(rreil!{
+                        and (reg32), (reg32), [msk]:32;
+                        or (reg32), (reg32), val:32;
+                    }));
+                }
+            }
+
+            // R*X
+            if lo <= 64 {
+                let msk = if hi < 64 {
+                    !((Wrapping(0xffffffffffffffffu64) << lo).0 % (1 << hi))
+                } else {
+                    !(Wrapping(0xffffffffffffffffu64) << lo).0
+                };
+
+                if msk == 0 || (lo == 0 && hi == 32) {
+                    stmts.append(&mut try!(rreil!{
+                        mov (reg64), val:64;
+                    }));
+                } else if msk < 0xffffffffffffffff {
+                     stmts.append(&mut try!(rreil!{
+                        and (reg64), (reg64), [msk]:64;
+                        or (reg64), (reg64), val:64;
+                    }));
+                }
+            }
+        } else {
+            let lv = Lvalue::Variable{ name: name.clone(), size: *size, subscript: None };
+            stmts = try!(rreil!{
+                mov (lv),(val);
+            });
         }
+
         Ok(stmts)
     } else {
         Err(format!("Internal error: called write_reg with {:?}",reg).into())
@@ -1436,7 +1440,7 @@ pub fn retnf(_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> {
 
 pub fn ror(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
 pub fn rol(a_: Rvalue, b_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> {
-    let (a,b,sz,mut stmts) = try!(sign_extend(&a_,&b_));
+/*    let (a,b,sz,mut stmts) = try!(sign_extend(&a_,&b_));
     let res = rreil_lvalue!{ res:sz };
     let mut stmts = vec![];
     let msb = sz - 1;
@@ -1456,8 +1460,9 @@ pub fn rol(a_: Rvalue, b_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> {
     stmts.append(&mut try!(write_reg(&a_,&res.clone().into(),sz)));
 
     Ok((stmts,JumpSpec::FallThru))
-
-   Ok((vec![],JumpSpec::FallThru)) }
+*/
+   Ok((vec![],JumpSpec::FallThru))
+}
 
 pub fn sal(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
 pub fn salc() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }

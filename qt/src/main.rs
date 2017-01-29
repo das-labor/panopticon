@@ -79,13 +79,13 @@ fn main() {
             qmlrs::register_singleton_type(&"Panopticon",1,0,&"Panopticon",create_singleton);
 
             {
-                let mut engine = qmlrs::Engine::new("Panopticon");
+                let mut engine = qmlrs::Engine::new();
                 engine.load_local_file(&format!("{}",title.display()));
                 engine.exec();
             }
 
             if Controller::request().ok().unwrap_or(None).is_some() {
-                let mut engine = qmlrs::Engine::new("Panopticon");
+                let mut engine = qmlrs::Engine::new();
                 engine.load_local_file(&format!("{}",window.display()));
                 engine.exec();
             }
