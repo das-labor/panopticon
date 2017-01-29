@@ -21,6 +21,17 @@
 //! This disassembler handles the Intel x86 instruction set from the 16-bit 8086 over 32-bit x86 to
 //! 64-bit AMD64 instructions, including MMX, SSE1-4, AVX, x87 and miscellaneous instruction set
 //! extensions.
+//!
+//! Decoding instructions is done my a hierarchy of tables defined in `tables.rs`. For each
+//! mnemonic a function is defined in `semantic.rs` that emits RREIL code implementing it.
+//!
+//! Instruction decoding is done in `read`. It expects a 15 bytes of code and will decode
+//! instruction prefixes, opcode (including escapes) and opcode arguments encoded in the MODR/M
+//! byte and/or immediates.
+//!
+//! All functions in `semantic.rs` follow the same structure. They get the decoded opcode arguments
+//! as input and return a vector of RREIL statements and a `JumpSpec` instance that tells the
+//! disassembler where to continue.
 
 #![allow(missing_docs)]
 
@@ -1516,11 +1527,19 @@ pub enum MnemonicSpec {
     ModRM(isize),
 }
 
+/// Describes how control flow continues after an opcode. We only care about single functions, so a
+/// return instructions stops execution.
 #[derive(Clone,Debug)]
 pub enum JumpSpec {
+    /// Execution stops after this opcode. Examples `hlt`, `ret` and `reti`.
     DeadEnd,
+    /// Execute the opcode that follows after the current one.
     FallThru,
+    /// Execution forks and continues at the address defined by the `Rvalue` instance iff the Guard
+    /// instance is true, otherwise execution falls thru and continues with the opcode following
+    /// the current one.
     Branch(Rvalue,Guard),
+    /// Execution continues at the address defined by the `Rvalue` instance.
     Jump(Rvalue),
 }
 

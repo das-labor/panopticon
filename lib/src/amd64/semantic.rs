@@ -16,6 +16,39 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+//! RREIL code generator for Intel x86 and AMD64.
+//!
+//! This module defines a function for each Intel mnemonic recognized by Panopticon. This function
+//! returns RREIL statements implementing the opcode semantics and a `JumpSpec` instance
+//! that tells the disassembler where to continue.
+//!
+//! The RREIL code can be generated using the `rreil!` macro. It returns `Result<Vec<Statement>>`.
+//!
+//! This modules has some helper functions to make things easier (and results more correct) for the
+//! casual contributor. For setting various arithmetic flags use the `set_*_flag` functions. Assign
+//! register values using `write_reg`. This makes sure that e.g. EAX, AX, AH and AL are written
+//! when RAX is. Also, remember to sign extend input Rvalue instance using `sign_extend`. RREIL
+//! does not extend values automatically.
+//!
+//! RREIL has no traps, software interrupts of CPU exceptions, this part of the Intel CPUs can be
+//! ignored for now. Also, no paging or segmentation is implemented. Memory addresses are used
+//! as-is.
+//!
+//! When implementing opcodes the instruction set reference in volume 2 of the Intel Software
+//! Developer's Manual should be the primary source of inspiration ;-). Aside from that other
+//! (RREIL) code generator are worth a look e.g.
+//!
+//!  * https://github.com/Cr4sh/openreil
+//!  * https://github.com/StanfordPL/stoke
+//!  * https://github.com/snf/synthir
+//!  * https://github.com/c01db33f/reil
+//!
+//! Simple opcodes that do not require memory access and/or jump/branch can be verified against
+//! the CPU directly using a `QuickCheck` harness that's part of the Panopticon test suite. See
+//! `tests/amd64.rs` for how to use it.
+//!
+//! In case you add opcode semantics please update issue #36.
+
 use std::cmp::max;
 
 use {
@@ -27,107 +60,8 @@ use {
     Statement,
 };
 use amd64::*;
-/*
-pub fn flagwr(flag: &Lvalue, val: bool) -> Box<Fn(&mut CodeGen<Amd64>)> {
-    let f = flag.clone();
-    Box::new(move || {
-        cg.assign(&f,&Rvalue::Constant(if val { 1 } else { 0 }));
-    })
-}
 
-pub fn flagcomp(flag: &Lvalue) -> Box<Fn(&mut CodeGen<Amd64>)> {
-    let f = flag.clone();
-    Box::new(move || {
-        cg.not_b(&f,&f);
-    })
-}
-*/
-pub fn aaa() -> Result<(Vec<Statement>,JumpSpec)> {
-    return Ok((vec![],JumpSpec::FallThru));
-  /*  rreil!{
-        and y:8, AL:8, [0xf]:8;
-
-        // TODO
-    }
-
-    let y = new_temp(16);
-    let x1 = new_temp(1);
-    let x2 = new_temp(1);
-
-    cg.and_b(&y,&*AL,&Rvalue::Constant(0x0f));
-
-    // x1 = !(y <= 9) || AF
-    cg.equal_i(&x1,&y.clone().into(),&Rvalue::Constant(9));
-    cg.less_i(&x2,&y.clone().into(),&Rvalue::Constant(9));
-    cg.or_b(&x1,&x1.clone().into(),&x2.clone().into());
-    cg.not_b(&x1,&x1.clone().into());
-    cg.or_b(&x1,&x1.clone().into(),&AF.clone().into());
-
-    cg.assign(&*AF,&x1.clone().into());
-    cg.assign(&*CF,&x1.clone().into());
-
-    // AX = (AX + x1 * 0x106) % 0x100
-    cg.lift_b(&y,&x1.clone().into());
-    cg.mul_i(&y,&y.clone().into(),&Rvalue::Constant(0x106));
-    cg.add_i(&AX,&AX.clone().into(),&y.clone().into());
-    cg.mod_i(&AX,&AX.clone().into(),&Rvalue::Constant(0x100));*/
-}
-
-pub fn aam(_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> {
-    return Ok((vec![],JumpSpec::FallThru));
- /*   let temp_al = new_temp(16);
-
-    cg.assign(&temp_al,&AL.clone().into());
-    cg.div_i(&*AH,&temp_al,&a);
-    cg.mod_i(&*AL,&temp_al,&a);*/
-}
-
-pub fn aad(_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> {
-    return Ok((vec![],JumpSpec::FallThru));
- /*   let x = new_temp(16);
-
-    cg.mul_i(&x,&AH.clone().into(),&a);
-    cg.add_i(&*AL,&x,&AL.clone().into());
-    cg.assign(&*AH,&Rvalue::new_bit(0));*/
-}
-
-pub fn aas() -> Result<(Vec<Statement>,JumpSpec)> {
-    return Ok((vec![],JumpSpec::FallThru));
- /*   let y1 = new_temp(16);
-    let x1 = new_temp(1);
-    let x2 = new_temp(1);
-
-    cg.and_b(&y1,&*AL,&Rvalue::Constant(0x0f));
-
-    // x1 = !(y <= 9) || AF
-    cg.equal_i(&x1,&y1.clone().into(),&Rvalue::Constant(9));
-    cg.less_i(&x2,&y1.clone().into(),&Rvalue::Constant(9));
-    cg.or_b(&x1,&x1.clone().into(),&x2.clone().into());
-    cg.not_b(&x1,&x1.clone().into());
-    cg.or_b(&x1,&x1.clone().into(),&AF.clone().into());
-
-    cg.assign(&*AF,&x1.clone().into());
-    cg.assign(&*CF,&x1.clone().into());
-
-    let y2 = new_temp(16);
-
-    // AX = (AX - x1 * 6) % 0x100
-    cg.lift_b(&y2,&x1.clone().into());
-    cg.mul_i(&y2,&y2.clone().into(),&Rvalue::Constant(6));
-    cg.sub_i(&AX,&AX.clone().into(),&y2.clone().into());
-    cg.mod_i(&AX,&AX.clone().into(),&Rvalue::Constant(0x100));
-
-    let z = new_temp(16);
-
-    // AH = (AH - x1) % 0x10
-    cg.lift_b(&z,&x1.clone().into());
-    cg.sub_i(&AH,&AH.clone().into(),&z.clone().into());
-    cg.mod_i(&AH,&AH.clone().into(),&Rvalue::Constant(0x10));
-
-    cg.assign(&*AL,&y1.clone().into());*/
-}
-
-/// res := a ? ?
+/// Sets the auxiliary flag AF.
 fn set_aux_flag(res: &Lvalue, a: &Rvalue) -> Result<Vec<Statement>> {
     rreil!{
         mov half_res:4, (res);
@@ -139,6 +73,7 @@ fn set_aux_flag(res: &Lvalue, a: &Rvalue) -> Result<Vec<Statement>> {
     }
 }
 
+/// Sets the parity flag PF.
 fn set_parity_flag(res: &Lvalue) -> Result<Vec<Statement>> {
     rreil!{
         mov half_res:8, (res);
@@ -152,7 +87,7 @@ fn set_parity_flag(res: &Lvalue) -> Result<Vec<Statement>> {
     }
 }
 
-/// res := a ? ?
+/// Sets the carry flag CF
 fn set_carry_flag(res: &Lvalue, a: &Rvalue) -> Result<Vec<Statement>> {
     rreil!{
         cmpeq cf1:1, (res), (a);
@@ -162,7 +97,7 @@ fn set_carry_flag(res: &Lvalue, a: &Rvalue) -> Result<Vec<Statement>> {
     }
 }
 
-/// Assumes res := a ? b
+/// Sets the overflow flag OF. Assumes res := a ? b.
 fn set_overflow_flag(res: &Lvalue, a: &Rvalue, b: &Rvalue, sz: usize) -> Result<Vec<Statement>> {
     /*
      * The rules for turning on the overflow flag in binary/integer math are two:
@@ -264,6 +199,106 @@ fn write_reg(_reg: &Rvalue, _: &Rvalue, sz: usize) -> Result<Vec<Statement>> {
     } else {
         unreachable!()
     }
+}
+
+/*
+pub fn flagwr(flag: &Lvalue, val: bool) -> Box<Fn(&mut CodeGen<Amd64>)> {
+    let f = flag.clone();
+    Box::new(move || {
+        cg.assign(&f,&Rvalue::Constant(if val { 1 } else { 0 }));
+    })
+}
+
+pub fn flagcomp(flag: &Lvalue) -> Box<Fn(&mut CodeGen<Amd64>)> {
+    let f = flag.clone();
+    Box::new(move || {
+        cg.not_b(&f,&f);
+    })
+}
+*/
+pub fn aaa() -> Result<(Vec<Statement>,JumpSpec)> {
+    return Ok((vec![],JumpSpec::FallThru));
+  /*  rreil!{
+        and y:8, AL:8, [0xf]:8;
+
+        // TODO
+    }
+
+    let y = new_temp(16);
+    let x1 = new_temp(1);
+    let x2 = new_temp(1);
+
+    cg.and_b(&y,&*AL,&Rvalue::Constant(0x0f));
+
+    // x1 = !(y <= 9) || AF
+    cg.equal_i(&x1,&y.clone().into(),&Rvalue::Constant(9));
+    cg.less_i(&x2,&y.clone().into(),&Rvalue::Constant(9));
+    cg.or_b(&x1,&x1.clone().into(),&x2.clone().into());
+    cg.not_b(&x1,&x1.clone().into());
+    cg.or_b(&x1,&x1.clone().into(),&AF.clone().into());
+
+    cg.assign(&*AF,&x1.clone().into());
+    cg.assign(&*CF,&x1.clone().into());
+
+    // AX = (AX + x1 * 0x106) % 0x100
+    cg.lift_b(&y,&x1.clone().into());
+    cg.mul_i(&y,&y.clone().into(),&Rvalue::Constant(0x106));
+    cg.add_i(&AX,&AX.clone().into(),&y.clone().into());
+    cg.mod_i(&AX,&AX.clone().into(),&Rvalue::Constant(0x100));*/
+}
+
+pub fn aam(_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> {
+    return Ok((vec![],JumpSpec::FallThru));
+ /*   let temp_al = new_temp(16);
+
+    cg.assign(&temp_al,&AL.clone().into());
+    cg.div_i(&*AH,&temp_al,&a);
+    cg.mod_i(&*AL,&temp_al,&a);*/
+}
+
+pub fn aad(_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> {
+    return Ok((vec![],JumpSpec::FallThru));
+ /*   let x = new_temp(16);
+
+    cg.mul_i(&x,&AH.clone().into(),&a);
+    cg.add_i(&*AL,&x,&AL.clone().into());
+    cg.assign(&*AH,&Rvalue::new_bit(0));*/
+}
+
+pub fn aas() -> Result<(Vec<Statement>,JumpSpec)> {
+    return Ok((vec![],JumpSpec::FallThru));
+ /*   let y1 = new_temp(16);
+    let x1 = new_temp(1);
+    let x2 = new_temp(1);
+
+    cg.and_b(&y1,&*AL,&Rvalue::Constant(0x0f));
+
+    // x1 = !(y <= 9) || AF
+    cg.equal_i(&x1,&y1.clone().into(),&Rvalue::Constant(9));
+    cg.less_i(&x2,&y1.clone().into(),&Rvalue::Constant(9));
+    cg.or_b(&x1,&x1.clone().into(),&x2.clone().into());
+    cg.not_b(&x1,&x1.clone().into());
+    cg.or_b(&x1,&x1.clone().into(),&AF.clone().into());
+
+    cg.assign(&*AF,&x1.clone().into());
+    cg.assign(&*CF,&x1.clone().into());
+
+    let y2 = new_temp(16);
+
+    // AX = (AX - x1 * 6) % 0x100
+    cg.lift_b(&y2,&x1.clone().into());
+    cg.mul_i(&y2,&y2.clone().into(),&Rvalue::Constant(6));
+    cg.sub_i(&AX,&AX.clone().into(),&y2.clone().into());
+    cg.mod_i(&AX,&AX.clone().into(),&Rvalue::Constant(0x100));
+
+    let z = new_temp(16);
+
+    // AH = (AH - x1) % 0x10
+    cg.lift_b(&z,&x1.clone().into());
+    cg.sub_i(&AH,&AH.clone().into(),&z.clone().into());
+    cg.mod_i(&AH,&AH.clone().into(),&Rvalue::Constant(0x10));
+
+    cg.assign(&*AL,&y1.clone().into());*/
 }
 
 pub fn adc(_a: Rvalue, _b: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> {
