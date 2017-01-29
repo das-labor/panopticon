@@ -21,6 +21,17 @@
 //! This disassembler handles the Intel x86 instruction set from the 16-bit 8086 over 32-bit x86 to
 //! 64-bit AMD64 instructions, including MMX, SSE1-4, AVX, x87 and miscellaneous instruction set
 //! extensions.
+//!
+//! Decoding instructions is done my a hierarchy of tables defined in `tables.rs`. For each
+//! mnemonic a function is defined in `semantic.rs` that emits RREIL code implementing it.
+//!
+//! Instruction decoding is done in `read`. It expects a 15 bytes of code and will decode
+//! instruction prefixes, opcode (including escapes) and opcode arguments encoded in the MODR/M
+//! byte and/or immediates.
+//!
+//! All functions in `semantic.rs` follow the same structure. They get the decoded opcode arguments
+//! as input and return a vector of RREIL statements and a `JumpSpec` instance that tells the
+//! disassembler where to continue.
 
 #![allow(missing_docs)]
 
@@ -48,8 +59,8 @@ use {
 
 
 #[macro_use]
-mod tables;
-mod semantic;
+pub mod tables;
+pub mod semantic;
 
 #[derive(Clone,Debug)]
 pub enum Amd64 {}
@@ -139,7 +150,7 @@ impl Architecture for Amd64 {
 }
 
 #[derive(PartialEq,Clone,Copy,Debug)]
-enum SegmentOverride {
+pub enum SegmentOverride {
     None, Cs, Ss, Ds, Es, Fs, Gs,
 }
 
@@ -197,7 +208,7 @@ pub enum Register {
     AX, BX, CX, DX, DI, SI, SP, BP, IP,
     R8W, R9W, R10W, R11W, R12W, R13W, R14W, R15W,
     AL, BL, CL, DL, SPL, BPL, SIL, DIL,
-    R8L, R9L, R10L, R11L, R12L, R13L, R14L, R15L,
+    R8B, R9B, R10B, R11B, R12B, R13B, R14B, R15B,
     AH, BH, CH, DH,
     ST0, ST1, ST2, ST3, ST4, ST5, ST6, ST7,
     ES, GS, DS, SS, CS, FS,
@@ -274,14 +285,14 @@ impl Display for Register {
             Register::BL => "BL",
             Register::CL => "CL",
             Register::DL => "DL",
-            Register::R8L => "R8L",
-            Register::R9L => "R9L",
-            Register::R10L => "R10L",
-            Register::R11L => "R11L",
-            Register::R12L => "R12L",
-            Register::R13L => "R13L",
-            Register::R14L => "R14L",
-            Register::R15L => "R15L",
+            Register::R8B => "R8B",
+            Register::R9B => "R9B",
+            Register::R10B => "R10B",
+            Register::R11B => "R11B",
+            Register::R12B => "R12B",
+            Register::R13B => "R13B",
+            Register::R14B => "R14B",
+            Register::R15B => "R15B",
             Register::DIL => "DIL",
             Register::SIL => "SIL",
             Register::SPL => "SPL",
@@ -397,11 +408,7 @@ impl Display for Register {
             Register::None => "",
         };
 
-        if !f.alternate() {
-            f.write_str(&s.to_lowercase())
-        } else {
-            f.write_str(&s.to_uppercase())
-        }
+        f.write_str(&s)
     }
 }
 
@@ -466,14 +473,14 @@ impl Register {
             Register::BL => 8,
             Register::CL => 8,
             Register::DL => 8,
-            Register::R8L => 8,
-            Register::R9L => 8,
-            Register::R10L => 8,
-            Register::R11L => 8,
-            Register::R12L => 8,
-            Register::R13L => 8,
-            Register::R14L => 8,
-            Register::R15L => 8,
+            Register::R8B => 8,
+            Register::R9B => 8,
+            Register::R10B => 8,
+            Register::R11B => 8,
+            Register::R12B => 8,
+            Register::R13B => 8,
+            Register::R14B => 8,
+            Register::R15B => 8,
             Register::DIL => 8,
             Register::SIL => 8,
             Register::SPL => 8,
@@ -607,8 +614,8 @@ pub enum OperandType {
     AX, BX, CX, DX, DI, SI, SP, BP, IP,
     AL, BL, CL, DL,
     AH, BH, CH, DH,
-    ALR8L, BLR11L, CLR9L, DLR10L,
-    AHR12L, BHR15L, CHR13L, DHR14L,
+    ALR8B, BLR11B, CLR9B, DLR10B,
+    AHR12B, BHR15B, CHR13B, DHR14B,
     rAX, rBX, rCX, rDX, rDI, rSI, rSP, rBP,
     rAXr8, rCXr9, rDXr10, rBXr11, rSPr12, rBPr13, rSIr14, rDIr15,
     eAX, eBX, eCX, eDX, eDI, eSI, eSP, eBP,
@@ -618,7 +625,7 @@ pub enum OperandType {
     NTA, T0, T1, T2,
 }
 
-fn read_spec_register(op: OperandType,opsz: usize,rex_b: bool) -> Result<Operand> {
+pub fn read_spec_register(op: OperandType,opsz: usize,rex_b: bool) -> Result<Operand> {
     match op {
         OperandType::RAX => Ok(Operand::Register(Register::RAX)),
         OperandType::RBX => Ok(Operand::Register(Register::RBX)),
@@ -659,14 +666,14 @@ fn read_spec_register(op: OperandType,opsz: usize,rex_b: bool) -> Result<Operand
         OperandType::CH => Ok(Operand::Register(Register::CH)),
         OperandType::DH => Ok(Operand::Register(Register::DH)),
 
-        OperandType::ALR8L => Ok(Operand::Register(if rex_b { Register::R8L } else { Register::AL })),
-        OperandType::CLR9L => Ok(Operand::Register(if rex_b { Register::R9L } else { Register::CL })),
-        OperandType::DLR10L => Ok(Operand::Register(if rex_b { Register::R10L } else { Register::DL })),
-        OperandType::BLR11L => Ok(Operand::Register(if rex_b { Register::R11L } else { Register::BL })),
-        OperandType::AHR12L => Ok(Operand::Register(if rex_b { Register::R12L } else { Register::AH })),
-        OperandType::CHR13L => Ok(Operand::Register(if rex_b { Register::R13L } else { Register::CH })),
-        OperandType::DHR14L => Ok(Operand::Register(if rex_b { Register::R14L } else { Register::DH })),
-        OperandType::BHR15L => Ok(Operand::Register(if rex_b { Register::R15L } else { Register::BH })),
+        OperandType::ALR8B => Ok(Operand::Register(if rex_b { Register::R8B } else { Register::AL })),
+        OperandType::CLR9B => Ok(Operand::Register(if rex_b { Register::R9B } else { Register::CL })),
+        OperandType::DLR10B => Ok(Operand::Register(if rex_b { Register::R10B } else { Register::DL })),
+        OperandType::BLR11B => Ok(Operand::Register(if rex_b { Register::R11B } else { Register::BL })),
+        OperandType::AHR12B => Ok(Operand::Register(if rex_b { Register::R12B } else { Register::AH })),
+        OperandType::CHR13B => Ok(Operand::Register(if rex_b { Register::R13B } else { Register::CH })),
+        OperandType::DHR14B => Ok(Operand::Register(if rex_b { Register::R14B } else { Register::DH })),
+        OperandType::BHR15B => Ok(Operand::Register(if rex_b { Register::R15B } else { Register::BH })),
 
         OperandType::ES => Ok(Operand::Register(Register::ES)),
         OperandType::FS => Ok(Operand::Register(Register::FS)),
@@ -749,7 +756,7 @@ pub enum OperandSpec {
 }
 
 #[derive(Clone,Debug)]
-enum Operand {
+pub enum Operand {
     Register(Register),
     Immediate(u64,usize), // Value, Width (Bits)
     Indirect(SegmentOverride,Register,Register,usize,(u64,usize),usize), // Segment Override, Base, Index, Scale, Disp, Width (Bits)
@@ -1304,14 +1311,14 @@ fn read_register(reg: u8, rex_present: bool, opsz: usize) -> Result<Operand> {
         (0b0101,8) => if !rex_present { Ok(Operand::Register(Register::CH)) } else { Ok(Operand::Register(Register::BPL)) },
         (0b0110,8) => if !rex_present { Ok(Operand::Register(Register::DH)) } else { Ok(Operand::Register(Register::SIL)) },
         (0b0111,8) => if !rex_present { Ok(Operand::Register(Register::BH)) } else { Ok(Operand::Register(Register::DIL)) },
-        (0b1000,8) => Ok(Operand::Register(Register::R8L)),
-        (0b1001,8) => Ok(Operand::Register(Register::R9L)),
-        (0b1010,8) => Ok(Operand::Register(Register::R10L)),
-        (0b1011,8) => Ok(Operand::Register(Register::R11L)),
-        (0b1100,8) => Ok(Operand::Register(Register::R12L)),
-        (0b1101,8) => Ok(Operand::Register(Register::R13L)),
-        (0b1110,8) => Ok(Operand::Register(Register::R14L)),
-        (0b1111,8) => Ok(Operand::Register(Register::R15L)),
+        (0b1000,8) => Ok(Operand::Register(Register::R8B)),
+        (0b1001,8) => Ok(Operand::Register(Register::R9B)),
+        (0b1010,8) => Ok(Operand::Register(Register::R10B)),
+        (0b1011,8) => Ok(Operand::Register(Register::R11B)),
+        (0b1100,8) => Ok(Operand::Register(Register::R12B)),
+        (0b1101,8) => Ok(Operand::Register(Register::R13B)),
+        (0b1110,8) => Ok(Operand::Register(Register::R14B)),
+        (0b1111,8) => Ok(Operand::Register(Register::R15B)),
 
         (0b0000,16) => Ok(Operand::Register(Register::AX)),
         (0b0001,16) => Ok(Operand::Register(Register::CX)),
@@ -1516,11 +1523,19 @@ pub enum MnemonicSpec {
     ModRM(isize),
 }
 
+/// Describes how control flow continues after an opcode. We only care about single functions, so a
+/// return instructions stops execution.
 #[derive(Clone,Debug)]
 pub enum JumpSpec {
+    /// Execution stops after this opcode. Examples `hlt`, `ret` and `reti`.
     DeadEnd,
+    /// Execute the opcode that follows after the current one.
     FallThru,
+    /// Execution forks and continues at the address defined by the `Rvalue` instance iff the Guard
+    /// instance is true, otherwise execution falls thru and continues with the opcode following
+    /// the current one.
     Branch(Rvalue,Guard),
+    /// Execution continues at the address defined by the `Rvalue` instance.
     Jump(Rvalue),
 }
 

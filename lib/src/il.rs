@@ -189,7 +189,7 @@ impl Rvalue {
         match self {
             &Rvalue::Constant{ ref size, ref value } => {
                 if *size >= s + o {
-                    Ok(Rvalue::Constant{ size: s, value: (*value >> o) % (1 << (s - 1)) })
+                    Ok(Rvalue::Constant{ size: s, value: (*value >> o) % (1 << s) })
                 } else {
                     Err("Rvalue::extract: invalid argument".into())
                 }
@@ -721,8 +721,8 @@ pub fn execute(op: Operation<Rvalue>) -> Rvalue {
         Operation::And(Rvalue::Constant{ value: _a, size: s },Rvalue::Constant{ value: _b, size: _s }) => {
             debug_assert!(s == _s);
 
-            let a = Wrapping(_a);
-            let b = Wrapping(_b);
+            let a = if s < 64 { Wrapping(_a & ((1 << s) - 1)) } else { Wrapping(_a) };
+            let b = if s < 64 { Wrapping(_b & ((1 << s) - 1)) } else { Wrapping(_b) };
             Rvalue::Constant{ value: (a & b).0, size: s }
         },
         Operation::And(_,Rvalue::Constant{ value: 0, size: s }) =>
@@ -735,8 +735,8 @@ pub fn execute(op: Operation<Rvalue>) -> Rvalue {
         Operation::InclusiveOr(Rvalue::Constant{ value: _a, size: s },Rvalue::Constant{ value: _b, size: _s }) => {
             debug_assert!(s == _s);
 
-            let a = Wrapping(_a);
-            let b = Wrapping(_b);
+            let a = if s < 64 { Wrapping(_a & ((1 << s) - 1)) } else { Wrapping(_a) };
+            let b = if s < 64 { Wrapping(_b & ((1 << s) - 1)) } else { Wrapping(_b) };
             Rvalue::Constant{ value: (a | b).0, size: s }
         },
         Operation::InclusiveOr(ref a,Rvalue::Constant{ value: 0,.. }) =>
@@ -749,8 +749,8 @@ pub fn execute(op: Operation<Rvalue>) -> Rvalue {
         Operation::ExclusiveOr(Rvalue::Constant{ value: _a, size: s },Rvalue::Constant{ value: _b, size: _s }) => {
             debug_assert!(s == _s);
 
-            let a = Wrapping(_a);
-            let b = Wrapping(_b);
+            let a = if s < 64 { Wrapping(_a & ((1 << s) - 1)) } else { Wrapping(_a) };
+            let b = if s < 64 { Wrapping(_b & ((1 << s) - 1)) } else { Wrapping(_b) };
             Rvalue::Constant{ value: (a ^ b).0, size: s }
         },
         Operation::ExclusiveOr(_,_) =>
@@ -759,8 +759,8 @@ pub fn execute(op: Operation<Rvalue>) -> Rvalue {
         Operation::Equal(Rvalue::Constant{ value: _a, size: s },Rvalue::Constant{ value: _b, size: _s }) => {
             debug_assert!(s == _s);
 
-            let a = Wrapping(_a);
-            let b = Wrapping(_b);
+            let a = if s < 64 { Wrapping(_a & ((1 << s) - 1)) } else { Wrapping(_a) };
+            let b = if s < 64 { Wrapping(_b & ((1 << s) - 1)) } else { Wrapping(_b) };
             if a == b {
                 Rvalue::Constant{ value: 1, size: 1 }
             } else {
@@ -773,8 +773,8 @@ pub fn execute(op: Operation<Rvalue>) -> Rvalue {
         Operation::LessOrEqualUnsigned(Rvalue::Constant{ value: _a, size: s },Rvalue::Constant{ value: _b, size: _s }) => {
             debug_assert!(s == _s);
 
-            let a = Wrapping(_a);
-            let b = Wrapping(_b);
+            let a = if s < 64 { Wrapping(_a & ((1 << s) - 1)) } else { Wrapping(_a) };
+            let b = if s < 64 { Wrapping(_b & ((1 << s) - 1)) } else { Wrapping(_b) };
             if a <= b {
                 Rvalue::Constant{ value: 1, size: 1 }
             } else {
@@ -805,8 +805,8 @@ pub fn execute(op: Operation<Rvalue>) -> Rvalue {
         Operation::LessUnsigned(Rvalue::Constant{ value: _a, size: s },Rvalue::Constant{ value: _b, size: _s }) => {
             debug_assert!(s == _s);
 
-            let a = Wrapping(_a);
-            let b = Wrapping(_b);
+            let a = if s < 64 { Wrapping(_a & ((1 << s) - 1)) } else { Wrapping(_a) };
+            let b = if s < 64 { Wrapping(_b & ((1 << s) - 1)) } else { Wrapping(_b) };
             if a < b {
                 Rvalue::Constant{ value: 1, size: 1 }
             } else {
@@ -819,22 +819,32 @@ pub fn execute(op: Operation<Rvalue>) -> Rvalue {
         Operation::LessSigned(Rvalue::Constant{ value: _a, size: s },Rvalue::Constant{ value: _b, size: _s }) => {
             debug_assert!(s == _s);
 
-            let a = Wrapping(_a);
-            let b = Wrapping(_b);
-            let mask = Wrapping(if s < 64 { (1u64 << (s - 1)) - 1 } else { u64::MAX });
-            let sign_mask = Wrapping(if s < 64 { 1u64 << (s - 1) } else { 0 });
-            if (a & sign_mask) ^ (b & sign_mask) != Wrapping(0) {
-                Rvalue::Constant{ value: if a & sign_mask != Wrapping(0) { 1 } else { 0 }, size: 1 }
+            let mut a = Wrapping(_a as i64);
+            let mut b = Wrapping(_b as i64);
+
+            if s < 64 {
+                let sign_bit = Wrapping(1 << (s - 1));
+                let m = Wrapping(1 << s);
+
+                if sign_bit & a != Wrapping(0) { a = a - m; }
+                if sign_bit & b != Wrapping(0) { b = b - m; }
+                a = a % m;
+                b = b % m;
+            }
+
+            if a < b {
+                Rvalue::Constant{ value: 1, size: 1 }
             } else {
-                Rvalue::Constant{ value: if (a & mask) < (b & mask) { 1 } else { 0 }, size: 1 }
+                Rvalue::Constant{ value: 0, size: 1 }
             }
         },
         Operation::LessSigned(_,_) =>
             Rvalue::Undefined,
 
-        Operation::ZeroExtend(s,Rvalue::Constant{ value: v,.. }) => {
-            let mask = if s < 64 { (1u64 << s) - 1 } else { u64::MAX };
-            Rvalue::Constant{ value: v & mask, size: s }
+        Operation::ZeroExtend(s1,Rvalue::Constant{ value: v, size: s0 }) => {
+            let mask1 = if s1 < 64 { (1u64 << s1) - 1 } else { u64::MAX };
+            let mask0 = if s0 < 64 { (1u64 << s0) - 1 } else { u64::MAX };
+            Rvalue::Constant{ value: (v & mask0) & mask1, size: s1 }
         },
         Operation::ZeroExtend(s,Rvalue::Variable{ ref name, ref subscript,.. }) =>
             Rvalue::Variable{ name: name.clone(), subscript: subscript.clone(), offset: 0, size: s },
@@ -842,16 +852,32 @@ pub fn execute(op: Operation<Rvalue>) -> Rvalue {
             Rvalue::Undefined,
 
         Operation::SignExtend(t,Rvalue::Constant{ value: v, size: s,.. }) => {
-            let mask = if s < 64 { (1u64 << t) - 1 } else { u64::MAX };
-            let sign_mask = if s < 64 { 1u64 << (s - 1) } else { 0 };
-            let sign = if t < 64 { 1u64 << (t - 1) } else { 0 };
-            Rvalue::Constant{ value: (v & mask) | (if v & sign_mask != 0 { sign } else { 0 }) , size: s }
+            let mask0 = if s < 64 { (1u64 << s) - 1 } else { u64::MAX };
+            let mask1 = if t < 64 { (1u64 << t) - 1 } else { u64::MAX };
+            let sign = if s < 64 { 1u64 << (s - 1) } else { 0 };
+
+            println!("{:?} & {:?} = {:?}",v,sign, v & sign);
+
+            if v & sign == 0 {
+                Rvalue::Constant{ value: (v & mask0) & mask1, size: t }
+            } else {
+                let mask = mask1 & !mask0;
+                println!("mask: {:?}, sx: {:?}",mask,(v & mask0) | mask);
+                Rvalue::Constant{ value: (v & mask0) | mask, size: t }
+            }
         },
         Operation::SignExtend(s,Rvalue::Variable{ ref name, ref subscript,.. }) =>
             Rvalue::Variable{ name: name.clone(), subscript: subscript.clone(), offset: 0, size: s },
         Operation::SignExtend(_,Rvalue::Undefined) =>
             Rvalue::Undefined,
 
+        Operation::Move(Rvalue::Constant{ ref value, ref size }) => {
+            if *size < 64 {
+                Rvalue::Constant{ value: *value & ((1u64 << size) - 1), size: *size }
+            } else {
+                Rvalue::Constant{ value: *value, size: *size }
+            }
+        }
         Operation::Move(ref a) =>
             a.clone(),
 

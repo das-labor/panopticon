@@ -29,6 +29,10 @@ chrono = "0.2"
 chrono-humanize = "0.0.6"
 goblin = "0.0.5"
 
+[dev-dependencies]
+regex = "0.1"
+quickcheck = "0.3"
+
 [dependencies.qmlrs]
 git = "https://github.com/flanfly/qmlrs"
 
@@ -46,3 +50,8 @@ xdg = "^2.0"
 
 [target.i686-apple-darwin.dependencies]
 xdg = "^2.0"
+
+[features]
+# Cross checks the x86/AMD64 simulator against the CPU. Needs the rappel tool
+# installed (https://github.com/yrp604/rappel).
+cross-check-amd64 = []

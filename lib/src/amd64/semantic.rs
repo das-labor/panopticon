@@ -16,6 +16,39 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+//! RREIL code generator for Intel x86 and AMD64.
+//!
+//! This module defines a function for each Intel mnemonic recognized by Panopticon. This function
+//! returns RREIL statements implementing the opcode semantics and a `JumpSpec` instance
+//! that tells the disassembler where to continue.
+//!
+//! The RREIL code can be generated using the `rreil!` macro. It returns `Result<Vec<Statement>>`.
+//!
+//! This modules has some helper functions to make things easier (and results more correct) for the
+//! casual contributor. For setting various arithmetic flags use the `set_*_flag` functions. Assign
+//! register values using `write_reg`. This makes sure that e.g. EAX, AX, AH and AL are written
+//! when RAX is. Also, remember to sign or zero extend input Rvalue instance using `sign_extend`/`zero_extend`. RREIL
+//! does not extend values automatically.
+//!
+//! RREIL has no traps, software interrupts of CPU exceptions, this part of the Intel CPUs can be
+//! ignored for now. Also, no paging or segmentation is implemented. Memory addresses are used
+//! as-is.
+//!
+//! When implementing opcodes the instruction set reference in volume 2 of the Intel Software
+//! Developer's Manual should be the primary source of inspiration ;-). Aside from that other
+//! (RREIL) code generator are worth a look e.g.
+//!
+//!  * https://github.com/Cr4sh/openreil
+//!  * https://github.com/StanfordPL/stoke
+//!  * https://github.com/snf/synthir
+//!  * https://github.com/c01db33f/reil
+//!
+//! Simple opcodes that do not require memory access and/or jump/branch can be verified against
+//! the CPU directly using a `QuickCheck` harness that's part of the Panopticon test suite. See
+//! `tests/amd64.rs` for how to use it.
+//!
+//! In case you add opcode semantics please update issue #36.
+
 use std::cmp::max;
 
 use {
@@ -27,21 +60,444 @@ use {
     Statement,
 };
 use amd64::*;
-/*
-pub fn flagwr(flag: &Lvalue, val: bool) -> Box<Fn(&mut CodeGen<Amd64>)> {
-    let f = flag.clone();
-    Box::new(move || {
-        cg.assign(&f,&Rvalue::Constant(if val { 1 } else { 0 }));
-    })
+
+/// Sets the adjust flag AF after an addition. Assumes res := a + ?.
+fn set_adj_flag(res: &Lvalue, a: &Rvalue) -> Result<Vec<Statement>> {
+    rreil!{
+        //cmpeq af1:1, (res.extract(4,0).unwrap()), (a.extract(4,0).unwrap());
+        cmpltu AF:1, (res.extract(4,0).unwrap()), (a.extract(4,0).unwrap());
+        and af1:1, af1:1, AF:1;
+        //or AF:1, af1:1, af2:1;
+    }
 }
 
-pub fn flagcomp(flag: &Lvalue) -> Box<Fn(&mut CodeGen<Amd64>)> {
-    let f = flag.clone();
-    Box::new(move || {
-        cg.not_b(&f,&f);
-    })
+/// Sets the adjust flag AF after a subtraction. Assumes res := a - ?.
+fn set_sub_adj_flag(res: &Lvalue, a: &Rvalue) -> Result<Vec<Statement>> {
+    rreil!{
+        //cmpeq af1:1, (res.extract(4,0).unwrap()), (a.extract(4,0).unwrap());
+        cmpltu AF:1, (a.extract(4,0).unwrap()), (res.extract(4,0).unwrap());
+        //and af1:1, af1:1, AF:1;
+        //or AF:1, af1:1, af2:1;
+    }
 }
-*/
+
+/// Sets the parity flag PF.
+fn set_parity_flag(res: &Lvalue) -> Result<Vec<Statement>> {
+    rreil!{
+        mov half_res:8, (res.extract(8,0).unwrap());
+        mov PF:1, half_res:1;
+        xor PF:1, PF:1, half_res:1/1;
+        xor PF:1, PF:1, half_res:1/2;
+        xor PF:1, PF:1, half_res:1/3;
+        xor PF:1, PF:1, half_res:1/4;
+        xor PF:1, PF:1, half_res:1/5;
+        xor PF:1, PF:1, half_res:1/6;
+        xor PF:1, PF:1, half_res:1/7;
+        xor PF:1, PF:1, [1]:1;
+    }
+}
+
+/// Sets the carry flag CF after an addition. Assumes res := a + ?.
+fn set_carry_flag(res: &Lvalue, a: &Rvalue) -> Result<Vec<Statement>> {
+    rreil!{
+        cmpeq cf1:1, (res), (a);
+        cmpltu cf2:1, (res), (a);
+        and cf1:1, cf1:1, CF:1;
+        or CF:1, cf1:1, cf2:1;
+    }
+}
+
+/// Sets the carry flag CF after a subtraction. Assumes res := a + ?.
+fn set_sub_carry_flag(res: &Lvalue, a: &Rvalue) -> Result<Vec<Statement>> {
+    rreil!{
+        cmpeq cf1:1, (res), (a);
+        cmpltu cf2:1, (a), (res);
+        and cf1:1, cf1:1, CF:1;
+        or CF:1, cf1:1, cf2:1;
+    }
+}
+
+/// Sets the overflow flag OF. Assumes res := a ? b.
+fn set_overflow_flag(res: &Lvalue, a: &Rvalue, b: &Rvalue, sz: usize) -> Result<Vec<Statement>> {
+    /*
+     * The rules for turning on the overflow flag in binary/integer math are two:
+     *
+     * 1. If the sum of two numbers with the sign bits off yields a result number
+     *    with the sign bit on, the "overflow" flag is turned on.
+     *
+     *    0100 + 0100 = 1000 (overflow flag is turned on)
+     *
+     * 2. If the sum of two numbers with the sign bits on yields a result number
+     *    with the sign bit off, the "overflow" flag is turned on.
+     *
+     *    1000 + 1000 = 0000 (overflow flag is turned on)
+     *
+     * Otherwise, the overflow flag is turned off.
+     */
+    let msb = sz - 1;
+    rreil!{
+        xor of1:sz, (a), (b);
+        xor of1:sz, of1:sz, [0xffffffffffffffff]:sz;
+        xor of2:sz, (a), (res);
+        and OF:1, of1:1/msb, of2:1/msb;
+    }
+}
+
+/// Assumes res := a ? b
+fn set_sub_overflow_flag(res: &Lvalue, a: &Rvalue, b: &Rvalue, sz: usize) -> Result<Vec<Statement>> {
+    /*
+     * The rules for turning on the overflow flag in binary/integer math are two:
+     *
+     * 1. If the sum of two numbers with the sign bits off yields a result number
+     *    with the sign bit on, the "overflow" flag is turned on.
+     *
+     *    0100 + 0100 = 1000 (overflow flag is turned on)
+     *
+     * 2. If the sum of two numbers with the sign bits on yields a result number
+     *    with the sign bit off, the "overflow" flag is turned on.
+     *
+     *    1000 + 1000 = 0000 (overflow flag is turned on)
+     *
+     * Otherwise, the overflow flag is turned off.
+     */
+    let msb = sz - 1;
+    rreil!{
+        xor of1:sz, (a), (b);
+        xor of2:sz, (b), (res);
+        xor of2:sz, of2:sz, [0xffffffffffffffff]:sz;
+        and OF:1, of1:1/msb, of2:1/msb;
+    }
+}
+
+/// Sign extends `a` and `b` to `max(a.size,b.size)`.
+fn sign_extend(a: &Rvalue, b: &Rvalue) -> Result<(Rvalue,Rvalue,usize,Vec<Statement>)> {
+    extend(a,b,true)
+}
+
+fn zero_extend(a: &Rvalue, b: &Rvalue) -> Result<(Rvalue,Rvalue,usize,Vec<Statement>)> {
+    extend(a,b,false)
+}
+
+/// Returns (a/sz, b/sz, sz) w/ s = max(a.size,b.size)
+fn extend(a: &Rvalue, b: &Rvalue,sign_ext: bool) -> Result<(Rvalue,Rvalue,usize,Vec<Statement>)> {
+    let sz = max(a.size().unwrap_or(0),b.size().unwrap_or(0));
+    let ext = |x: &Rvalue,s: usize| -> Rvalue {
+        match x {
+            &Rvalue::Undefined => Rvalue::Undefined,
+            &Rvalue::Variable{ ref name, ref subscript, ref offset, ref size } => {
+                if *size != s {
+                    Rvalue::Variable{
+                        name: format!("{}_ext",name).into(),
+                        subscript: None,
+                        size: s + *offset,
+                        offset: *offset
+                    }
+                } else {
+                    x.clone()
+                }
+            }
+            &Rvalue::Constant{ ref value, ref size } => {
+                if *size != s {
+                    Rvalue::Constant{ value: *value, size: s }
+                } else {
+                    x.clone()
+                }
+            }
+        }
+    };
+
+    let ext_a = ext(a,sz);
+    let ext_b = ext(b,sz);
+    let mut stmts = vec![];
+
+    assert!(sz > 0);
+    assert!(ext_a.size() == None || ext_b.size() == None || ext_a.size() == ext_b.size());
+
+    if a.size() != ext_a.size() {
+        if let Some(lv) = Lvalue::from_rvalue(ext_a.clone()) {
+            stmts = if sign_ext {
+                try!(rreil!{
+                    sext/sz (lv), (a);
+                })
+            } else {
+                try!(rreil!{
+                    zext/sz (lv), (a);
+                })
+            };
+        }
+    }
+
+    if b.size() != ext_b.size() {
+        if let Some(lv) = Lvalue::from_rvalue(ext_b.clone()) {
+            stmts.append(&mut if sign_ext {
+                try!(rreil!{
+                    sext/sz (lv), (b);
+                })
+            } else {
+                try!(rreil!{
+                    zext/sz (lv), (b);
+                })
+            });
+        }
+    }
+
+    Ok((ext_a,ext_b,sz,stmts))
+}
+
+/// Returns all sub- and super registers for `name` or None if `name` isn't a register.
+fn reg_variants(name: &str) -> Option<(Lvalue,Lvalue,Lvalue,Lvalue,Lvalue)> {
+    match name {
+        "AL" | "AH" | "AX" | "EAX" | "RAX" => {Some((
+                rreil_lvalue!{ AL:8 },
+                rreil_lvalue!{ AH:8 },
+                rreil_lvalue!{ AX:16 },
+                rreil_lvalue!{ EAX:32 },
+                rreil_lvalue!{ RAX:64 }))
+        },
+        "BL" | "BH" | "BX" | "EBX" | "RBX" => {Some((
+                rreil_lvalue!{ BL:8 },
+                rreil_lvalue!{ BH:8 },
+                rreil_lvalue!{ BX:16 },
+                rreil_lvalue!{ EBX:32 },
+                rreil_lvalue!{ RBX:64 }))
+        },
+        "CL" | "CH" | "CX" | "ECX" | "RCX" => {Some((
+                rreil_lvalue!{ CL:8 },
+                rreil_lvalue!{ CH:8 },
+                rreil_lvalue!{ CX:16 },
+                rreil_lvalue!{ ECX:32 },
+                rreil_lvalue!{ RCX:64 }))
+        },
+        "DL" | "DH" | "DX" | "EDX" | "RDX" => {Some((
+                rreil_lvalue!{ DL:8 },
+                rreil_lvalue!{ DH:8 },
+                rreil_lvalue!{ DX:16 },
+                rreil_lvalue!{ EDX:32 },
+                rreil_lvalue!{ RDX:64 }))
+        },
+        "SIL" | "SIH" | "SI" | "ESI" | "RSI" => {Some((
+                rreil_lvalue!{ SIL:8 },
+                rreil_lvalue!{ SIH:8 },
+                rreil_lvalue!{ SI:16 },
+                rreil_lvalue!{ ESI:32 },
+                rreil_lvalue!{ RSI:64 }))
+        },
+        "DIL" | "DIH" | "DI" | "EDI" | "RDI" => {Some((
+                rreil_lvalue!{ DIL:8 },
+                rreil_lvalue!{ DIH:8 },
+                rreil_lvalue!{ DI:16 },
+                rreil_lvalue!{ EDI:32 },
+                rreil_lvalue!{ RDI:64 }))
+        },
+        "BPL" | "BP" | "EBP" | "RBP" => {Some((
+                rreil_lvalue!{ BPL:8 },
+                rreil_lvalue!{ ? },
+                rreil_lvalue!{ BP:16 },
+                rreil_lvalue!{ EBP:32 },
+                rreil_lvalue!{ RBP:64 }))
+        },
+        "SPL" | "SP" | "ESP" | "RSP" => {Some((
+                rreil_lvalue!{ SPL:8 },
+                rreil_lvalue!{ ? },
+                rreil_lvalue!{ SP:16 },
+                rreil_lvalue!{ ESP:32 },
+                rreil_lvalue!{ RSP:64 }))
+        },
+        "IP" | "EIP" | "RIP" => {Some((
+                rreil_lvalue!{ ? },
+                rreil_lvalue!{ ? },
+                rreil_lvalue!{ IP:16 },
+                rreil_lvalue!{ EIP:32 },
+                rreil_lvalue!{ RIP:64 }))
+        },
+        "R8B" | "R8W" | "R8D" | "R8" => {Some((
+                rreil_lvalue!{ R8B:8 },
+                rreil_lvalue!{ ? },
+                rreil_lvalue!{ R8W:16 },
+                rreil_lvalue!{ R8D:32 },
+                rreil_lvalue!{ R8:64 }))
+        },
+        "R9B" | "R9W" | "R9D" | "R9" => {Some((
+                rreil_lvalue!{ R9B:8 },
+                rreil_lvalue!{ ? },
+                rreil_lvalue!{ R9W:16 },
+                rreil_lvalue!{ R9D:32 },
+                rreil_lvalue!{ R9:64 }))
+        },
+        "R10B" | "R10W" | "R10D" | "R10" => {Some((
+                rreil_lvalue!{ R10B:8 },
+                rreil_lvalue!{ ? },
+                rreil_lvalue!{ R10W:16 },
+                rreil_lvalue!{ R10D:32 },
+                rreil_lvalue!{ R10:64 }))
+        },
+        "R11B" | "R11W" | "R11D" | "R11" => {Some((
+                rreil_lvalue!{ R11B:8 },
+                rreil_lvalue!{ ? },
+                rreil_lvalue!{ R11W:16 },
+                rreil_lvalue!{ R11D:32 },
+                rreil_lvalue!{ R11:64 }))
+        },
+        "R12B" | "R12W" | "R12D" | "R12" => {Some((
+                rreil_lvalue!{ R12B:8 },
+                rreil_lvalue!{ ? },
+                rreil_lvalue!{ R12W:16 },
+                rreil_lvalue!{ R12D:32 },
+                rreil_lvalue!{ R12:64 }))
+        },
+        "R13B" | "R13W" | "R13D" | "R13" => {Some((
+                rreil_lvalue!{ R13B:8 },
+                rreil_lvalue!{ ? },
+                rreil_lvalue!{ R13W:16 },
+                rreil_lvalue!{ R13D:32 },
+                rreil_lvalue!{ R13:64 }))
+        },
+        "R14B" | "R14W" | "R14D" | "R14" => {Some((
+                rreil_lvalue!{ R14B:8 },
+                rreil_lvalue!{ ? },
+                rreil_lvalue!{ R14W:16 },
+                rreil_lvalue!{ R14D:32 },
+                rreil_lvalue!{ R14:64 }))
+        },
+        "R15B" | "R15W" | "R15D" | "R15" => {Some((
+                rreil_lvalue!{ R15B:8 },
+                rreil_lvalue!{ ? },
+                rreil_lvalue!{ R15W:16 },
+                rreil_lvalue!{ R15D:32 },
+                rreil_lvalue!{ R15:64 }))
+        },
+        _ => None
+    }
+}
+
+/// Assigns `val:sz` to `reg`. This function makes sure all that e.g. EAX is written when RAX is.
+fn write_reg(reg: &Rvalue, val: &Rvalue, sz: usize) -> Result<Vec<Statement>> {
+    use std::cmp;
+    use std::num::Wrapping;
+
+    if let &Rvalue::Variable{ ref name, ref size, ref offset,.. } = reg {
+        let mut hi = *offset + *size;
+        let mut lo = *offset;
+        let mut stmts = vec![];
+
+        if let Some((reg8l,reg8h,reg16,reg32,reg64)) = reg_variants(name) {
+            if *reg == reg8h.clone().into() {
+                hi += 8;
+                lo += 8;
+            }
+
+            if lo == 0 && hi == 64 && val.size() == Some(64) {
+                stmts = try!(rreil!{
+                    mov val:64, (val);
+                });
+            } else {
+                stmts = try!(rreil!{
+                    zext/64 val:64, (val);
+                });
+            }
+
+            if lo > 0 {
+                let shft = 1 << lo;
+                stmts.append(&mut try!(rreil!{
+                    mul val:64, val:64, [shft]:64;
+                }));
+            }
+
+            // *L
+            if lo <= 7 {
+                let msk = !((0xff << lo) % (1 << cmp::min(8,hi))) & 0xff;
+
+                if msk == 0 {
+                    stmts.append(&mut try!(rreil!{
+                        mov (reg8l), val:8;
+                    }));
+                } else if msk < 0xff {
+                     stmts.append(&mut try!(rreil!{
+                        and (reg8l), (reg8l), [msk]:8;
+                        or (reg8l), (reg8l), val:8;
+                    }));
+                }
+            }
+
+            // *H
+            if hi >= 9 && lo <= 15 && reg8h != Lvalue::Undefined {
+                let msk = (!((0xffff << lo) % (1u64 << cmp::min(16,hi))) & 0xffff) >> 8;
+                if msk == 0 {
+                    stmts.append(&mut try!(rreil!{
+                        mov (reg8h), val:8/8;
+                    }));
+                } else if msk < 0xff {
+                     stmts.append(&mut try!(rreil!{
+                        and (reg8h), (reg8h), [msk]:8;
+                        or (reg8h), (reg8h), val:8/8;
+                    }));
+                }
+            }
+
+            // *X
+            if lo <= 15 {
+                let msk = !((0xffff << lo) % (1u64 << cmp::min(16,hi))) & 0xffff;
+
+                if msk == 0 {
+                    stmts.append(&mut try!(rreil!{
+                        mov (reg16), val:16;
+                    }));
+                } else if msk < 0xffff {
+                     stmts.append(&mut try!(rreil!{
+                        and (reg16), (reg16), [msk]:16;
+                        or (reg16), (reg16), val:16;
+                    }));
+                }
+            }
+
+            // E*X
+            if lo <= 31 {
+                let msk = !((0xffffffff << lo) % (1u64 << cmp::min(32,hi))) & 0xffffffff;
+
+                if msk == 0 {
+                    stmts.append(&mut try!(rreil!{
+                        mov (reg32), val:32;
+                    }));
+                } else if msk < 0xffffffff {
+                     stmts.append(&mut try!(rreil!{
+                        and (reg32), (reg32), [msk]:32;
+                        or (reg32), (reg32), val:32;
+                    }));
+                }
+            }
+
+            // R*X
+            if lo <= 64 {
+                let msk = if hi < 64 {
+                    !((Wrapping(0xffffffffffffffffu64) << lo).0 % (1 << hi))
+                } else {
+                    !(Wrapping(0xffffffffffffffffu64) << lo).0
+                };
+
+                if msk == 0 || (lo == 0 && hi == 32) {
+                    stmts.append(&mut try!(rreil!{
+                        mov (reg64), val:64;
+                    }));
+                } else if msk < 0xffffffffffffffff {
+                     stmts.append(&mut try!(rreil!{
+                        and (reg64), (reg64), [msk]:64;
+                        or (reg64), (reg64), val:64;
+                    }));
+                }
+            }
+        } else {
+            let lv = Lvalue::Variable{ name: name.clone(), size: *size, subscript: None };
+            stmts = try!(rreil!{
+                mov (lv),(val);
+            });
+        }
+
+        Ok(stmts)
+    } else {
+        Err(format!("Internal error: called write_reg with {:?}",reg).into())
+    }
+}
+
 pub fn aaa() -> Result<(Vec<Statement>,JumpSpec)> {
     return Ok((vec![],JumpSpec::FallThru));
   /*  rreil!{
@@ -127,185 +583,52 @@ pub fn aas() -> Result<(Vec<Statement>,JumpSpec)> {
     cg.assign(&*AL,&y1.clone().into());*/
 }
 
-/// res := a ? ?
-fn set_aux_flag(res: &Lvalue, a: &Rvalue) -> Result<Vec<Statement>> {
-    rreil!{
-        mov half_res:4, (res);
-        mov half_a:4, (a);
-        cmpeq af1:1, half_res:4, half_a:4;
-        cmpltu af2:1, half_res:4, half_a:4;
+pub fn adc(a_: Rvalue, b_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> {
+    let (a,b,sz,mut stmts) = try!(sign_extend(&a_,&b_));
+    let res = rreil_lvalue!{ res:sz };
+
+    stmts.append(&mut try!(rreil!{
+        add res:sz, (a), (b);
+        zext/sz cf:sz, CF:1;
+        add res:sz, res:sz, cf:sz;
+        cmplts SF:1, res:sz, [0]:sz;
+        cmpeq ZF:1, res:sz, [0]:sz;
+
+        cmpeq af1:1, (res.extract(4,0).unwrap()), (a.extract(4,0).unwrap());
+        cmpltu af2:1, (res.extract(4,0).unwrap()), (a.extract(4,0).unwrap());
         and af1:1, af1:1, CF:1;
         or AF:1, af1:1, af2:1;
-    }
+
+    }));
+    stmts.append(&mut try!(set_carry_flag(&res,&a)));
+    stmts.append(&mut try!(set_overflow_flag(&res,&a,&b,sz)));
+    stmts.append(&mut try!(set_parity_flag(&res)));
+    stmts.append(&mut try!(write_reg(&a_,&res.clone().into(),sz)));
+
+    Ok((stmts,JumpSpec::FallThru))
 }
 
-fn set_parity_flag(res: &Lvalue) -> Result<Vec<Statement>> {
-    rreil!{
-        mov half_res:8, (res);
-        xor PF:1, res:1, res:1/1;
-        xor PF:1, PF:1, half_res:1/2;
-        xor PF:1, PF:1, half_res:1/3;
-        xor PF:1, PF:1, half_res:1/4;
-        xor PF:1, PF:1, half_res:1/5;
-        xor PF:1, PF:1, half_res:1/6;
-        xor PF:1, PF:1, half_res:1/7;
-    }
-}
-
-/// res := a ? ?
-fn set_carry_flag(res: &Lvalue, a: &Rvalue) -> Result<Vec<Statement>> {
-    rreil!{
-        cmpeq cf1:1, (res), (a);
-        cmpltu cf2:1, (res), (a);
-        and cf1:1, cf1:1, CF:1;
-        or CF:1, cf1:1, cf2:1;
-    }
-}
-
-/// Assumes res := a ? b
-fn set_overflow_flag(res: &Lvalue, a: &Rvalue, b: &Rvalue, sz: usize) -> Result<Vec<Statement>> {
-    /*
-     * The rules for turning on the overflow flag in binary/integer math are two:
-     *
-     * 1. If the sum of two numbers with the sign bits off yields a result number
-     *    with the sign bit on, the "overflow" flag is turned on.
-     *
-     *    0100 + 0100 = 1000 (overflow flag is turned on)
-     *
-     * 2. If the sum of two numbers with the sign bits on yields a result number
-     *    with the sign bit off, the "overflow" flag is turned on.
-     *
-     *    1000 + 1000 = 0000 (overflow flag is turned on)
-     *
-     * Otherwise, the overflow flag is turned off.
-     */
-    rreil!{
-        cmples s1:1, [0]:sz, (a);
-        cmples s2:1, [0]:sz, (b);
-        cmplts s3:1, (res), [0]:sz;
-
-        cmplts t1:1, (a), [0]:sz;
-        cmplts t2:1, (b), [0]:sz;
-        cmples t3:1, [0]:sz, (res);
-
-        and ov1:1, s1:1, s2:1;
-        and ov1:1, ov1:1, s3:1;
-
-        and ov2:1, t1:1, t2:1;
-        and ov2:1, ov2:1, t3:1;
-
-        or OV:1, ov1:1, ov2:1;
-    }
-}
-
-/// Returns (a/sz, b/sz, sz) w/ s = max(a.size,b.size)
-fn sign_extend(a: &Rvalue, b: &Rvalue) -> Result<(Rvalue,Rvalue,usize,Vec<Statement>)> {
-    let sz = max(a.size().unwrap_or(0),b.size().unwrap_or(0));
-    let ext = |x: &Rvalue,s: usize| -> Rvalue {
-        match x {
-            &Rvalue::Undefined => Rvalue::Undefined,
-            &Rvalue::Variable{ ref name, ref subscript, ref offset,.. } =>
-                Rvalue::Variable{
-                    name: name.clone(),
-                    subscript: subscript.clone(),
-                    size: s + *offset,
-                    offset: *offset
-                },
-            &Rvalue::Constant{ ref value,.. } =>
-                Rvalue::Constant{ value: *value, size: s },
-        }
-    };
-
-    let ext_a = ext(a,sz);
-    let ext_b = ext(b,sz);
+pub fn add(a_: Rvalue, b_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> {
+    let (a,b,sz,mut stmts) = try!(sign_extend(&a_,&b_));
+    let res = rreil_lvalue!{ res:sz };
     let mut stmts = vec![];
 
-    assert!(sz > 0);
-    assert!(ext_a.size() == None || ext_b.size() == None || ext_a.size() == ext_b.size());
-
-    if a.size() != ext_a.size() {
-        if let Some(lv) = Lvalue::from_rvalue(ext_a.clone()) {
-            stmts = try!(rreil!{
-                sext/sz (lv), (a);
-            });
-        }
-    }
-
-    if b.size() != ext_b.size() {
-        if let Some(lv) = Lvalue::from_rvalue(ext_b.clone()) {
-            stmts.append(&mut try!(rreil!{
-                sext/sz (lv), (b);
-            }));
-        }
-    }
-
-    Ok((ext_a,ext_b,sz,stmts))
-}
-
-fn write_reg(_reg: &Rvalue, _: &Rvalue, sz: usize) -> Result<Vec<Statement>> {
-    if let Some(ref reg) = Lvalue::from_rvalue(_reg.clone()) {
-        if sz < 64 {
-            if let &Lvalue::Variable{ ref name,.. } = reg {
-                if name == "RAX" || name == "RBX" || name == "RCX" ||
-                   name == "RDX" || name == "RDI" || name == "RSI" ||
-                   name == "RBP" || name == "RSP" || name == "R8" ||
-                   name == "R9" || name == "R10" || name == "R11" ||
-                   name == "R12" || name == "R13" || name == "R14" ||
-                   name == "R15" {
-                    return rreil!{
-                        zext/64 reg:64, res:sz;
-                    };
-                }
-            }
-        }
-        rreil!{
-            mov reg:sz, res:sz;
-        }
-    } else {
-        unreachable!()
-    }
-}
-
-pub fn adc(_a: Rvalue, _b: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> {
-    let (a,b,sz,mut stmts) = try!(sign_extend(&_a,&_b));
-    let res = rreil_lvalue!{ res:sz };
-
-    stmts.append(&mut try!(rreil!{
-        add res:sz, (a), (b);
-        zext/sz cf:sz, CF:1;
-        add res:sz, res:sz, cf:sz;
-        cmplts SF:1, res:sz, [0]:sz;
-        cmpeq ZF:1, res:sz, [0]:sz;
-    }));
-    stmts.append(&mut try!(set_carry_flag(&res,&a)));
-    stmts.append(&mut try!(set_aux_flag(&res,&a)));
-    stmts.append(&mut try!(set_overflow_flag(&res,&a,&b,sz)));
-    stmts.append(&mut try!(set_parity_flag(&res)));
-    stmts.append(&mut try!(write_reg(&_a,&res.clone().into(),sz)));
-
-    Ok((stmts,JumpSpec::FallThru))
-}
-
-pub fn add(_a: Rvalue, _b: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> {
-    let (a,b,sz,mut stmts) = try!(sign_extend(&_a,&_b));
-    let res = rreil_lvalue!{ res:sz };
-
     stmts.append(&mut try!(rreil!{
         add res:sz, (a), (b);
         cmplts SF:1, res:sz, [0]:sz;
         cmpeq ZF:1, res:sz, [0]:sz;
+        cmpltu CF:1, (res), (a);
     }));
-    stmts.append(&mut try!(set_carry_flag(&res,&a)));
-    stmts.append(&mut try!(set_aux_flag(&res,&a)));
+    stmts.append(&mut try!(set_adj_flag(&res,&a)));
     stmts.append(&mut try!(set_overflow_flag(&res,&a,&b,sz)));
     stmts.append(&mut try!(set_parity_flag(&res)));
-    stmts.append(&mut try!(write_reg(&_a,&res.clone().into(),sz)));
+    stmts.append(&mut try!(write_reg(&a_,&res.clone().into(),sz)));
 
     Ok((stmts,JumpSpec::FallThru))
 }
 
-pub fn adcx(_a: Rvalue, _b: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> {
-    let (a,b,sz,mut stmts) = try!(sign_extend(&_a,&_b));
+pub fn adcx(a_: Rvalue, b_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> {
+    let (a,b,sz,mut stmts) = try!(sign_extend(&a_,&b_));
     let res = rreil_lvalue!{ res:sz };
 
     stmts.append(&mut try!(rreil!{
@@ -314,13 +637,13 @@ pub fn adcx(_a: Rvalue, _b: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> {
         add res:sz, res:sz, cf:sz;
     }));
     stmts.append(&mut try!(set_carry_flag(&res,&a)));
-    stmts.append(&mut try!(write_reg(&_a,&res.clone().into(),sz)));
+    stmts.append(&mut try!(write_reg(&a_,&res.clone().into(),sz)));
 
     Ok((stmts,JumpSpec::FallThru))
 }
 
-pub fn and(_a: Rvalue, _b: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> {
-    let (a,b,sz,mut stmts) = try!(sign_extend(&_a,&_b));
+pub fn and(a_: Rvalue, b_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> {
+    let (a,b,sz,mut stmts) = try!(sign_extend(&a_,&b_));
     let res = rreil_lvalue!{ res:sz };
 
     stmts.append(&mut try!(rreil!{
@@ -329,9 +652,10 @@ pub fn and(_a: Rvalue, _b: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> {
         cmpeq ZF:1, res:sz, [0]:sz;
         mov CF:1, [0]:1;
         mov OF:1, [0]:1;
+        mov AF:1, ?;
     }));
     stmts.append(&mut try!(set_parity_flag(&res)));
-    stmts.append(&mut try!(write_reg(&_a,&res.clone().into(),sz)));
+    stmts.append(&mut try!(write_reg(&a_,&res.clone().into(),sz)));
 
     Ok((stmts,JumpSpec::FallThru))
 }
@@ -547,19 +871,21 @@ pub fn cmov(_: Rvalue, _: Rvalue, _: Condition) -> Result<(Vec<Statement>,JumpSp
     }*/
 }
 
-pub fn cmp(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> {
-    return Ok((vec![],JumpSpec::FallThru));
- /*   let aw = bitwidth(&_a);
-    let bw = if let Rvalue::Constant(_) = b { aw } else { bitwidth(&b) };
-    let res = new_temp(aw);
-    let res_half = new_temp(8);
-    let a = Lvalue::from_rvalue(&_a).unwrap();
-    let b_ext = if aw == bw { b.clone() } else { sign_ext(&b,bw,aw,cg) };
+pub fn cmp(a_: Rvalue, b_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> {
+    let (a,b,sz,mut stmts) = try!(sign_extend(&a_,&b_));
+    let res = rreil_lvalue!{ res:sz };
 
-    cg.sub_i(&res,&a,&b_ext);
-    cg.mod_i(&res_half,&res.clone().into(),&Rvalue::Constant(0x100));
+    stmts.append(&mut try!(rreil!{
+        sub res:sz, (a), (b);
+        cmplts SF:1, res:sz, [0]:sz;
+        cmpeq ZF:1, res:sz, [0]:sz;
+    }));
+    stmts.append(&mut try!(set_sub_carry_flag(&res,&a)));
+    stmts.append(&mut try!(set_sub_adj_flag(&res,&a)));
+    stmts.append(&mut try!(set_sub_overflow_flag(&res,&a,&b,sz)));
+    stmts.append(&mut try!(set_parity_flag(&res)));
 
-    set_arithm_flags(&res,&res_half.clone().into(),&a.clone().into(),cg);*/
+    Ok((stmts,JumpSpec::FallThru))
 }
 
 pub fn cmpsw() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
@@ -622,69 +948,82 @@ pub fn cmpxchg(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> {
     cg.add_i(&*EAX,&zf,&nzf);*/
 }
 
-pub fn or(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> {
-    return Ok((vec![],JumpSpec::FallThru));
- /*   let aw = bitwidth(&_a);
-    let bw = if let Rvalue::Constant(_) = b { aw } else { bitwidth(&b) };
-    let res = new_temp(aw);
-    let res_half = new_temp(8);
-    let a = Lvalue::from_rvalue(&_a).unwrap();
-    let b_ext = if aw == bw { b.clone() } else { sign_ext(&b,bw,aw,cg) };
+pub fn or(a_: Rvalue, b_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> {
+    let (a,b,sz,mut stmts) = try!(sign_extend(&a_,&b_));
+    let res = rreil_lvalue!{ res:sz };
 
-    cg.or_i(&res,&a,&b_ext);
-    cg.mod_i(&res_half,&res.clone().into(),&Rvalue::Constant(0x100));
+    stmts.append(&mut try!(rreil!{
+        or res:sz, (a), (b);
+        cmplts SF:1, res:sz, [0]:sz;
+        cmpeq ZF:1, res:sz, [0]:sz;
+        mov CF:1, [0]:1;
+        mov OF:1, [0]:1;
+        mov AF:1, ?;
+    }));
+    stmts.append(&mut try!(set_parity_flag(&res)));
+    stmts.append(&mut try!(write_reg(&a_,&res.clone().into(),sz)));
 
-    cg.assign(&a,&res.clone().into());
-    set_arithm_flags(&res,&res_half.clone().into(),&a.clone().into(),cg);*/
+    Ok((stmts,JumpSpec::FallThru))
 }
 
-pub fn sbb(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> {
-    return Ok((vec![],JumpSpec::FallThru));
- /*   let aw = bitwidth(&_a);
-    let bw = if let Rvalue::Constant(_) = b { aw } else { bitwidth(&b) };
-    let res = new_temp(aw);
-    let res_half = new_temp(8);
-    let a = Lvalue::from_rvalue(&_a).unwrap();
-    let b_ext = if aw == bw { b.clone() } else { sign_ext(&b,bw,aw,cg) };
+pub fn sbb(a_: Rvalue, b_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> {
+    let (a,b,sz,mut stmts) = try!(sign_extend(&a_,&b_));
+    let res = rreil_lvalue!{ res:sz };
 
-    cg.sub_i(&res,&a,&b_ext);
-    cg.sub_i(&res,&res.clone().into(),&CF.clone().into());
-    cg.mod_i(&res_half,&res.clone().into(),&Rvalue::Constant(0x100));
+    stmts.append(&mut try!(rreil!{
+        sub res:sz, (a), (b);
+        zext/sz cf:sz, CF:1;
+        sub res:sz, res:sz, cf:sz;
+        cmplts SF:1, res:sz, [0]:sz;
+        cmpeq ZF:1, res:sz, [0]:sz;
 
-    cg.assign(&a,&res.clone().into());
-    set_arithm_flags(&res,&res_half.clone().into(),&a.clone().into(),cg);*/
+        cmpeq af1:1, (res.extract(4,0).unwrap()), (a.extract(4,0).unwrap());
+        cmpltu af2:1, (a.extract(4,0).unwrap()), (res.extract(4,0).unwrap());
+        and af1:1, af1:1, CF:1;
+        or AF:1, af1:1, af2:1;
+    }));
+    stmts.append(&mut try!(set_sub_carry_flag(&res,&a)));
+    stmts.append(&mut try!(set_sub_overflow_flag(&res,&a,&b,sz)));
+    stmts.append(&mut try!(set_parity_flag(&res)));
+    stmts.append(&mut try!(write_reg(&a_,&res.clone().into(),sz)));
+
+    Ok((stmts,JumpSpec::FallThru))
 }
 
-pub fn sub(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> {
-    return Ok((vec![],JumpSpec::FallThru));
- /*   let aw = bitwidth(&_a);
-    let bw = if let Rvalue::Constant(_) = b { aw } else { bitwidth(&b) };
-    let res = new_temp(aw);
-    let res_half = new_temp(8);
-    let a = Lvalue::from_rvalue(&_a).unwrap();
-    let b_ext = if aw == bw { b.clone() } else { sign_ext(&b,bw,aw,cg) };
+pub fn sub(a_: Rvalue, b_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> {
+    let (a,b,sz,mut stmts) = try!(sign_extend(&a_,&b_));
+    let res = rreil_lvalue!{ res:sz };
 
-    cg.sub_i(&res,&a,&b_ext);
-    cg.mod_i(&res_half,&res.clone().into(),&Rvalue::Constant(0x100));
+    stmts.append(&mut try!(rreil!{
+        sub res:sz, (a), (b);
+        cmplts SF:1, res:sz, [0]:sz;
+        cmpeq ZF:1, res:sz, [0]:sz;
+    }));
+    stmts.append(&mut try!(set_sub_carry_flag(&res,&a)));
+    stmts.append(&mut try!(set_sub_adj_flag(&res,&a)));
+    stmts.append(&mut try!(set_sub_overflow_flag(&res,&a,&b,sz)));
+    stmts.append(&mut try!(set_parity_flag(&res)));
+    stmts.append(&mut try!(write_reg(&a_,&res.clone().into(),sz)));
 
-    cg.assign(&a,&res.clone().into());
-    set_arithm_flags(&res,&res_half.clone().into(),&a.clone().into(),cg);*/
+    Ok((stmts,JumpSpec::FallThru))
 }
 
-pub fn xor(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> {
-    return Ok((vec![],JumpSpec::FallThru));
- /*   let aw = bitwidth(&_a);
-    let bw = if let Rvalue::Constant(_) = b { aw } else { bitwidth(&b) };
-    let res = new_temp(aw);
-    let res_half = new_temp(8);
-    let a = Lvalue::from_rvalue(&_a).unwrap();
-    let b_ext = if aw == bw { b.clone() } else { sign_ext(&b,bw,aw,cg) };
+pub fn xor(a_: Rvalue, b_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> {
+    let (a,b,sz,mut stmts) = try!(sign_extend(&a_,&b_));
+    let res = rreil_lvalue!{ res:sz };
 
-    cg.xor_i(&res,&a,&b_ext);
-    cg.mod_i(&res_half,&res.clone().into(),&Rvalue::Constant(0x100));
+    stmts.append(&mut try!(rreil!{
+        xor res:sz, (a), (b);
+        cmplts SF:1, res:sz, [0]:sz;
+        cmpeq ZF:1, res:sz, [0]:sz;
+        mov CF:1, [0]:1;
+        mov OF:1, [0]:1;
+        mov AF:1, ?;
+    }));
+    stmts.append(&mut try!(set_parity_flag(&res)));
+    stmts.append(&mut try!(write_reg(&a_,&res.clone().into(),sz)));
 
-    cg.assign(&a,&res.clone().into());
-    set_arithm_flags(&res,&res_half.clone().into(),&a.clone().into(),cg);*/
+    Ok((stmts,JumpSpec::FallThru))
 }
 
 pub fn cmpxchg8b(_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
@@ -742,7 +1081,33 @@ pub fn int1() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallTh
 pub fn invd() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
 pub fn idiv(_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
 pub fn imul1(_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
-pub fn imul2(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+
+pub fn imul2(a_: Rvalue, b_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> {
+    let (a,b,sz,mut stmts) = try!(sign_extend(&a_,&b_));
+    let res = rreil_lvalue!{ res:sz };
+    let mut stmts = vec![];
+    let hsz = sz / 2;
+    let dsz = sz * 2;
+    let max = (1u64 << (sz - 1)) - 1;
+
+    stmts.append(&mut try!(rreil!{
+        zext/dsz aa:dsz, (a);
+        zext/dsz bb:dsz, (b);
+        mul dres:dsz, aa:dsz, bb:dsz;
+        mov res:sz, dres:dsz;
+        cmplts SF:1, res:sz, [0]:sz;
+        mov ZF:1, ?;
+        mov AF:1, ?;
+        mov PF:1, ?;
+        cmpltu CF:1, [max]:dsz, dres:dsz;
+        mov OF:1, CF:1;
+    }));
+    stmts.append(&mut try!(write_reg(&a_,&res.clone().into(),sz)));
+
+    Ok((stmts,JumpSpec::FallThru))
+
+}
+
 pub fn imul3(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
 pub fn in_(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
 pub fn icebp() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
@@ -828,6 +1193,19 @@ pub fn jecxz(_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSp
 pub fn jrcxz(_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
 
 pub fn lahf() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+
+pub fn sahf() -> Result<(Vec<Statement>,JumpSpec)> {
+    let stmts = try!(rreil!{
+        mov CF:1, AH:1;
+        mov PF:1, AH:1/2;
+        mov AF:1, AH:1/4;
+        mov ZF:1, AH:1/6;
+        mov SF:1, AH:1/7;
+    });
+
+    Ok((stmts,JumpSpec::FallThru))
+}
+
 pub fn lsl(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
 pub fn lar(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
 pub fn lds(a: Rvalue, b: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { lxs(a,b,rreil_rvalue!{ DS:16 }) }
@@ -905,7 +1283,14 @@ pub fn loopne(_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> {
     Ok((vec![],JumpSpec::FallThru))
 }
 
-pub fn mov(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn mov(a_: Rvalue, b_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> {
+    let (_,b,sz,mut stmts) = try!(zero_extend(&a_,&b_));
+
+    stmts.append(&mut try!(write_reg(&a_,&b,sz)));
+
+    Ok((stmts,JumpSpec::FallThru))
+}
+
 pub fn movbe(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
 
 pub fn movsb() -> Result<(Vec<Statement>,JumpSpec)> {
@@ -931,8 +1316,22 @@ pub fn movs() -> Result<(Vec<Statement>,JumpSpec)> {
     Ok((vec![],JumpSpec::FallThru))
 }
 
-pub fn movsx(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
-pub fn movzx(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn movsx(a_: Rvalue, b_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> {
+    let (_,b,sz,mut stmts) = try!(sign_extend(&a_,&b_));
+
+    stmts.append(&mut try!(write_reg(&a_,&b,sz)));
+
+    Ok((stmts,JumpSpec::FallThru))
+}
+
+pub fn movzx(a_: Rvalue, b_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> {
+    let (_,b,sz,mut stmts) = try!(zero_extend(&a_,&b_));
+
+    stmts.append(&mut try!(write_reg(&a_,&b,sz)));
+
+    Ok((stmts,JumpSpec::FallThru))
+}
+
 pub fn mul(_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
 pub fn neg(_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
 pub fn nop(_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
@@ -1030,8 +1429,31 @@ pub fn retnf(_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> {
 }
 
 pub fn ror(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
-pub fn rol(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
-pub fn sahf() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+pub fn rol(a_: Rvalue, b_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> {
+/*    let (a,b,sz,mut stmts) = try!(sign_extend(&a_,&b_));
+    let res = rreil_lvalue!{ res:sz };
+    let mut stmts = vec![];
+    let msb = sz - 1;
+
+    stmts.append(&mut try!(rreil!{
+        mov msb:1, (a.extract(1,sz - 1).unwrap());
+        zext/dsz bb:dsz, (b);
+        mul dres:dsz, aa:dsz, bb:dsz;
+        mov res:sz, dres:dsz;
+        cmplts SF:1, res:sz, [0]:sz;
+        mov ZF:1, ?;
+        mov AF:1, ?;
+        mov PF:1, ?;
+        cmpltu CF:1, [max]:dsz, dres:dsz;
+        mov OF:1, CF:1;
+    }));
+    stmts.append(&mut try!(write_reg(&a_,&res.clone().into(),sz)));
+
+    Ok((stmts,JumpSpec::FallThru))
+*/
+   Ok((vec![],JumpSpec::FallThru))
+}
+
 pub fn sal(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
 pub fn salc() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
 pub fn sar(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
@@ -1077,7 +1499,13 @@ pub fn xlatb() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallT
 pub fn wait() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
 pub fn wbinvd() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
 pub fn prefetch(_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
-pub fn movsxd(_: Rvalue, _:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
+
+pub fn movsxd(a_: Rvalue, b_:Rvalue) -> Result<(Vec<Statement>,JumpSpec)> {
+    let (_,b,sz,mut stmts) = try!(sign_extend(&a_,&b_));
+    stmts.append(&mut try!(write_reg(&a_,&b,sz)));
+
+    Ok((stmts,JumpSpec::FallThru))
+}
 
 pub fn syscall() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
 pub fn sysret() -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
