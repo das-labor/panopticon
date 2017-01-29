@@ -27,7 +27,7 @@
 //! This modules has some helper functions to make things easier (and results more correct) for the
 //! casual contributor. For setting various arithmetic flags use the `set_*_flag` functions. Assign
 //! register values using `write_reg`. This makes sure that e.g. EAX, AX, AH and AL are written
-//! when RAX is. Also, remember to sign extend input Rvalue instance using `sign_extend`. RREIL
+//! when RAX is. Also, remember to sign or zero extend input Rvalue instance using `sign_extend`/`zero_extend`. RREIL
 //! does not extend values automatically.
 //!
 //! RREIL has no traps, software interrupts of CPU exceptions, this part of the Intel CPUs can be
@@ -61,7 +61,7 @@ use {
 };
 use amd64::*;
 
-/// Sets the adjust flag AF. Assumes res := a ? ?.
+/// Sets the adjust flag AF after an addition. Assumes res := a + ?.
 fn set_adj_flag(res: &Lvalue, a: &Rvalue) -> Result<Vec<Statement>> {
     rreil!{
         //cmpeq af1:1, (res.extract(4,0).unwrap()), (a.extract(4,0).unwrap());
@@ -71,6 +71,7 @@ fn set_adj_flag(res: &Lvalue, a: &Rvalue) -> Result<Vec<Statement>> {
     }
 }
 
+/// Sets the adjust flag AF after a subtraction. Assumes res := a - ?.
 fn set_sub_adj_flag(res: &Lvalue, a: &Rvalue) -> Result<Vec<Statement>> {
     rreil!{
         //cmpeq af1:1, (res.extract(4,0).unwrap()), (a.extract(4,0).unwrap());
@@ -96,7 +97,7 @@ fn set_parity_flag(res: &Lvalue) -> Result<Vec<Statement>> {
     }
 }
 
-/// Sets the carry flag CF
+/// Sets the carry flag CF after an addition. Assumes res := a + ?.
 fn set_carry_flag(res: &Lvalue, a: &Rvalue) -> Result<Vec<Statement>> {
     rreil!{
         cmpeq cf1:1, (res), (a);
@@ -106,6 +107,7 @@ fn set_carry_flag(res: &Lvalue, a: &Rvalue) -> Result<Vec<Statement>> {
     }
 }
 
+/// Sets the carry flag CF after a subtraction. Assumes res := a + ?.
 fn set_sub_carry_flag(res: &Lvalue, a: &Rvalue) -> Result<Vec<Statement>> {
     rreil!{
         cmpeq cf1:1, (res), (a);
@@ -167,6 +169,7 @@ fn set_sub_overflow_flag(res: &Lvalue, a: &Rvalue, b: &Rvalue, sz: usize) -> Res
     }
 }
 
+/// Sign extends `a` and `b` to `max(a.size,b.size)`.
 fn sign_extend(a: &Rvalue, b: &Rvalue) -> Result<(Rvalue,Rvalue,usize,Vec<Statement>)> {
     extend(a,b,true)
 }
@@ -241,6 +244,7 @@ fn extend(a: &Rvalue, b: &Rvalue,sign_ext: bool) -> Result<(Rvalue,Rvalue,usize,
     Ok((ext_a,ext_b,sz,stmts))
 }
 
+/// Returns all sub- and super registers for `name` or None if `name` isn't a register.
 fn reg_variants(name: &str) -> Option<(Lvalue,Lvalue,Lvalue,Lvalue,Lvalue)> {
     match name {
         "AL" | "AH" | "AX" | "EAX" | "RAX" => {Some((
@@ -366,6 +370,7 @@ fn reg_variants(name: &str) -> Option<(Lvalue,Lvalue,Lvalue,Lvalue,Lvalue)> {
     }
 }
 
+/// Assigns `val:sz` to `reg`. This function makes sure all that e.g. EAX is written when RAX is.
 fn write_reg(reg: &Rvalue, val: &Rvalue, sz: usize) -> Result<Vec<Statement>> {
     use std::cmp;
     use std::num::Wrapping;
@@ -493,21 +498,6 @@ fn write_reg(reg: &Rvalue, val: &Rvalue, sz: usize) -> Result<Vec<Statement>> {
     }
 }
 
-/*
-pub fn flagwr(flag: &Lvalue, val: bool) -> Box<Fn(&mut CodeGen<Amd64>)> {
-    let f = flag.clone();
-    Box::new(move || {
-        cg.assign(&f,&Rvalue::Constant(if val { 1 } else { 0 }));
-    })
-}
-
-pub fn flagcomp(flag: &Lvalue) -> Box<Fn(&mut CodeGen<Amd64>)> {
-    let f = flag.clone();
-    Box::new(move || {
-        cg.not_b(&f,&f);
-    })
-}
-*/
 pub fn aaa() -> Result<(Vec<Statement>,JumpSpec)> {
     return Ok((vec![],JumpSpec::FallThru));
   /*  rreil!{

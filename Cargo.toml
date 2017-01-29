@@ -50,3 +50,8 @@ xdg = "^2.0"
 
 [target.i686-apple-darwin.dependencies]
 xdg = "^2.0"
+
+[features]
+# Cross checks the x86/AMD64 simulator against the CPU. Needs the rappel tool
+# installed (https://github.com/yrp604/rappel).
+cross-check-amd64 = []

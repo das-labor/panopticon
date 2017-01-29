@@ -1,6 +1,6 @@
 /*
  * Panopticon - A libre disassembler
- * Copyright (C) 2015  Panopticon authors
+ * Copyright (C) 2015, 2017  Panopticon authors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -492,37 +492,60 @@ fn rappel_xcheck(mnemonic: &str, sem: fn(Rvalue,Rvalue) -> Result<(Vec<Statement
         _ => unreachable!()
     }
 
-    if let (&mut Some(ref mut stdin),&Some(_)) = (&mut child.stdin,&child.stdout) {
-        let _ = try!(stdin.write(&format!("mov ah, 0x{:x}\n",start.flags).into_bytes()));
+      if let (&mut Some(ref mut stdin),&Some(_)) = (&mut child.stdin,&child.stdout) {
+    let mov = &|nam: &str,val: u64,sz: usize, stdin: &mut Write| -> Result<()> {
+        match sz {
+            8 => { try!(stdin.write(&format!("mov {}, 0x{:02x}\n",nam,val).into_bytes())); },
+            16 => { try!(stdin.write(&format!("mov {}, 0x{:04x}\n",nam,val).into_bytes())); },
+            32 => { try!(stdin.write(&format!("mov {}, 0x{:08x}\n",nam,val).into_bytes())); },
+            64 => { try!(stdin.write(&format!("mov {}, 0x{:016x}\n",nam,val).into_bytes())); },
+            _ => unreachable!()
+        }
+        Ok(())
+    };
+
+      try!(mov("ah",start.flags as u64,8,stdin));
         let _ = try!(stdin.write(b"sahf\n"));
-        let _ = try!(stdin.write(&format!("mov rax, 0x{:x}\n",start.rax).into_bytes()));
-        let _ = try!(stdin.write(&format!("mov rbx, 0x{:x}\n",start.rbx).into_bytes()));
-        let _ = try!(stdin.write(&format!("mov rcx, 0x{:x}\n",start.rcx).into_bytes()));
-        let _ = try!(stdin.write(&format!("mov rdx, 0x{:x}\n",start.rdx).into_bytes()));
-        let _ = try!(stdin.write(&format!("mov rsi, 0x{:x}\n",start.rsi).into_bytes()));
-        let _ = try!(stdin.write(&format!("mov rdi, 0x{:x}\n",start.rdi).into_bytes()));
-        let _ = try!(stdin.write(&format!("mov rbp, 0x{:x}\n",start.rbp).into_bytes()));
-        let _ = try!(stdin.write(&format!("mov r8, 0x{:x}\n",start.r8).into_bytes()));
-        let _ = try!(stdin.write(&format!("mov r9, 0x{:x}\n",start.r9).into_bytes()));
-        let _ = try!(stdin.write(&format!("mov r10, 0x{:x}\n",start.r10).into_bytes()));
-        let _ = try!(stdin.write(&format!("mov r11, 0x{:x}\n",start.r11).into_bytes()));
-        let _ = try!(stdin.write(&format!("mov r12, 0x{:x}\n",start.r12).into_bytes()));
-        let _ = try!(stdin.write(&format!("mov r13, 0x{:x}\n",start.r13).into_bytes()));
-        let _ = try!(stdin.write(&format!("mov r14, 0x{:x}\n",start.r14).into_bytes()));
-        let _ = try!(stdin.write(&format!("mov r15, 0x{:x}\n",start.r15).into_bytes()));
+        try!(mov("rax",start.rax,64,stdin));
+        try!(mov("rbx",start.rbx,64,stdin));
+        try!(mov("rcx",start.rcx,64,stdin));
+        try!(mov("rdx",start.rdx,64,stdin));
+        try!(mov("rsi",start.rsi,64,stdin));
+        try!(mov("rdi",start.rdi,64,stdin));
+        try!(mov("rbp",start.rbp,64,stdin));
+        try!(mov("r8",start.r8,64,stdin));
+        try!(mov("r9",start.r9,64,stdin));
+        try!(mov("r10",start.r10,64,stdin));
+        try!(mov("r11",start.r11,64,stdin));
+        try!(mov("r12",start.r12,64,stdin));
+        try!(mov("r13",start.r13,64,stdin));
+        try!(mov("r14",start.r14,64,stdin));
+        try!(mov("r15",start.r15,64,stdin));
 
         match (&a,&b) {
-            (&SampledOperand::Register(ref nam1,ref val1,_),&SampledOperand::Register(ref nam2,ref val2,_)) => {
-                let _ = try!(stdin.write(&format!("mov {}, 0x{:x}\n",nam1,val1).into_bytes()));
-                let _ = try!(stdin.write(&format!("mov {}, 0x{:x}\n",nam2,val2).into_bytes()));
+            (&SampledOperand::Register(ref nam1,ref val1,ref sz1),&SampledOperand::Register(ref nam2,ref val2,ref sz2)) => {
+                try!(mov(nam1,*val1,*sz1,stdin));
+                try!(mov(nam2,*val2,*sz2,stdin));
                 let _ = try!(stdin.write(&format!("{} {}, {}\n",mnemonic,nam1,nam2).into_bytes()));
 
+                match *sz1 {
+                    8 => println!("mov {}, 0x{:02x}\n",nam1,*val1),
+                    16 => println!("mov {}, 0x{:04x}\n",nam1,*val1),
+                    32 => println!("mov {}, 0x{:08x}\n",nam1,*val1),
+                    64 => println!("mov {}, 0x{:016x}\n",nam1,*val1),
+                    _ => unreachable!()
+                }
                 println!("{} {}, {}",mnemonic,nam1,nam2);
             }
-            (&SampledOperand::Register(ref nam1,ref val1,_),&SampledOperand::Immediate(ref val2,_)) => {
-                let _ = try!(stdin.write(&format!("mov {}, 0x{:x}\n",nam1,val1).into_bytes()));
-                let _ = try!(stdin.write(&format!("{} {}, 0x{:x}\n",mnemonic,nam1,val2).into_bytes()));
-
+            (&SampledOperand::Register(ref nam1,ref val1,ref sz1),&SampledOperand::Immediate(ref val2,ref sz2)) => {
+                try!(mov(nam1,*val1,*sz1,stdin));
+                match *sz2 {
+                    8 => { try!(stdin.write(&format!("{} {}, 0x{:02x}\n",mnemonic,nam1,*val2).into_bytes())); },
+                    16 => { try!(stdin.write(&format!("{} {}, 0x{:04x}\n",mnemonic,nam1,*val2).into_bytes())); },
+                    32 => { try!(stdin.write(&format!("{} {}, 0x{:08x}\n",mnemonic,nam1,*val2).into_bytes())); },
+                    64 => { try!(stdin.write(&format!("{} {}, 0x{:016x}\n",mnemonic,nam1,*val2).into_bytes())); },
+                    _ => unreachable!()
+                }
                 println!("{} {}, 0x{:x}",mnemonic,nam1,val2);
             }
             _ => unreachable!()
@@ -664,7 +687,7 @@ macro_rules! rappel_xcheck {
         }
 
         #[test]
-        #[cfg_attr(not(feature = "cross_check_amd64"), ignore)]
+        #[cfg_attr(not(feature = "cross-check-amd64"), ignore)]
         fn $func() {
             use quickcheck::QuickCheck;
 
