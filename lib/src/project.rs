@@ -47,7 +47,7 @@ use {
 };
 
 /// Complete Panopticon session
-#[derive(RustcDecodable,RustcEncodable)]
+#[derive(RustcDecodable,RustcEncodable,Debug)]
 pub struct Project {
     /// Human-readable name
     pub name: String,
