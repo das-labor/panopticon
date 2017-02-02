@@ -85,7 +85,7 @@ pub type RegionRef = AdjacencyListVertexDescriptor;
 /// will not yield `Cell`s from the overlapping `Region`. For example, a compressed file inside a `Region`
 /// would be overlapped with a new, larger `Region` that holds the result after decompression. A `Program`
 /// inside the overlapped `Region` would still see only the compressed version.
-#[derive(RustcDecodable,RustcEncodable)]
+#[derive(RustcDecodable,RustcEncodable,Debug)]
 pub struct World {
     ///< Graph of all `Region`s with edges pointing from the overlapping to the overlapped `Region`.
     pub dependencies: RegionGraph,

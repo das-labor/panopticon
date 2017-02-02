@@ -82,7 +82,7 @@ pub type ControlFlowRef = AdjacencyListVertexDescriptor;
 pub type ControlFlowEdge = AdjacencyListEdgeDescriptor;
 
 /// A set of basic blocks connected by conditional jumps
-#[derive(RustcDecodable,RustcEncodable)]
+#[derive(RustcDecodable,RustcEncodable,Debug)]
 pub struct Function {
     /// Unique, immutable identifier for this function.
     pub uuid: Uuid,

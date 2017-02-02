@@ -45,7 +45,7 @@ use {
 };
 
 /// Node of the program call graph.
-#[derive(RustcDecodable,RustcEncodable)]
+#[derive(RustcDecodable,RustcEncodable,Debug)]
 pub enum CallTarget {
     /// Resolved and disassembled function.
     Concrete(Function),
@@ -72,7 +72,7 @@ pub type CallGraph = AdjacencyList<CallTarget,()>;
 pub type CallGraphRef = AdjacencyListVertexDescriptor;
 
 /// A collection of functions calling each other.
-#[derive(RustcDecodable,RustcEncodable)]
+#[derive(RustcDecodable,RustcEncodable,Debug)]
 pub struct Program {
     /// Unique, immutable identifier
     pub uuid: Uuid,
