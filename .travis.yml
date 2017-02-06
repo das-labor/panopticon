@@ -3,16 +3,16 @@ matrix:
   include:
     # CI targets
     - os: osx
-      rust: 1.12.0
+      rust: 1.15.0
       env: TARGET=x86_64-apple-darwin
     - os: linux
       dist: trusty
-      rust: 1.12.0
+      rust: 1.15.0
       env: TARGET=x86_64-unknown-linux-gnu
     # rustdoc
     - os: linux
       dist: trusty
-      rust: 1.12.0
+      rust: 1.15.0
       env:
         - TARGET=x86_64-unknown-linux-gnu
         - PACKAGE=doc
@@ -20,7 +20,7 @@ matrix:
     # nightly builds
     - os: linux
       dist: trusty
-      rust: 1.12.0
+      rust: 1.15.0
       env:
         - TARGET=x86_64-unknown-linux-gnu
         - PACKAGE=ubuntu
@@ -30,7 +30,7 @@ matrix:
           - master
     - os: linux
       dist: trusty
-      rust: 1.12.0
+      rust: 1.15.0
       env:
         - TARGET=x86_64-unknown-linux-gnu
         - PACKAGE=debian
@@ -39,7 +39,7 @@ matrix:
         only:
           - master
     - os: osx
-      rust: 1.12.0
+      rust: 1.15.0
       env:
         - TARGET=x86_64-apple-darwin
         - PACKAGE=osx
