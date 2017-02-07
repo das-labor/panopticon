@@ -46,8 +46,8 @@ extern "C" fn controller_slot(_: *mut ffi::QObject, id: c_int, a: *const ffi::QV
     match (id as isize,args.len()) {
         // State transitions: NEW -> SYNC
         (CREATE_RAW_PROJECT,4) => project::create_raw_project(&args[0],&args[1],&args[2],&args[3]).to_qvariant(ret),
-        (CREATE_ELF_PROJECT,1) => project::create_elf_project(&args[0]).to_qvariant(ret),
-        (CREATE_PE_PROJECT,1) => project::create_pe_project(&args[0]).to_qvariant(ret),
+        (CREATE_ELF_PROJECT,1) => project::create_project(&args[0]).to_qvariant(ret),
+        (CREATE_PE_PROJECT,1) => project::create_project(&args[0]).to_qvariant(ret),
         (OPEN_PROJECT,1) => project::open_project(&args[0]).to_qvariant(ret),
 
         // State transition: DIRTY -> SYNC

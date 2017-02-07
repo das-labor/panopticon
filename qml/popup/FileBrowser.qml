@@ -241,6 +241,10 @@ Popup {
 														return "Panopticon Project";
 													} else if(res.payload.format == "pe") {
 														return "PE";
+													} else if(res.payload.format == "archive") {
+														return "Archive";
+													} else if(res.payload.format == "mach-o") {
+														return "Mach-o";
 													} else {
 														return "";
 													}

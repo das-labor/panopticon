@@ -23,7 +23,7 @@ use panopticon::region::Region;
 use panopticon::avr::{Mcu,Avr};
 use panopticon::avr::syntax::disassembler;
 use panopticon::function::{ControlFlowTarget,Function};
-use panopticon::elf;
+use panopticon::loader;
 
 use std::path::Path;
 
@@ -74,6 +74,6 @@ fn avr_wrap_around() {
 
 #[test]
 fn avr_elf() {
-    let proj = elf::load(Path::new("tests/data/hello-world")).ok();
+    let proj = loader::load(Path::new("tests/data/hello-world")).ok();
     assert!(proj.is_some());
 }

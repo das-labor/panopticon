@@ -24,7 +24,6 @@ use panopticon::{
     MnemonicFormatToken,
     Error,
     Result,
-    elf,
     Kset,
 };
 
@@ -59,7 +58,7 @@ use controller::{
 };
 
 use sugiyama;
-use goblin;
+use goblin::{self, Hint};
 
 #[derive(RustcEncodable)]
 struct Metainfo {
@@ -513,27 +512,58 @@ pub fn file_details(arg: &Variant) -> Variant {
                 })
             } else {
                 let ro = meta.permissions().readonly();
-
-                if let Ok((class, is_lsb)) = goblin::elf::header::peek(&mut fd) {
-                    let endianness = if is_lsb { "LittleEndian" } else { "BigEndian" };
-                    Ok(FileDetails{
-                        state: if ro { "readable" } else { "writable" }.to_string(),
-                        format: Some("elf".to_string()),
-                        info: vec![format!("{:?}, {:?}",goblin::elf::header::class_to_str(class),endianness)],
+                let state = if ro { "readable" } else { "writable" }.to_string();
+                let peek = goblin::peek(&mut fd);
+                debug!("peek: {:?}", &peek);
+                // TODO: make this prettier, a big hack right now
+                if peek.is_err() {
+                    return Ok(FileDetails{
+                        state: "bad file".to_string(),
+                        format: None,
+                        info: vec![],
                     })
-                } else {
-                    let mut buf = [0u8;2];
-
-                    try!(fd.seek(SeekFrom::Start(0)));
-                    try!(fd.read(&mut buf));
-
-                    if buf == [0x4d,0x5a] {
+                }
+                match peek.unwrap() {
+                    Hint::Elf(data) => {
+                        let endianness = if data.is_lsb { "LittleEndian" } else { "BigEndian" };
+                        let class =
+                            if let Some(is_64) = data.is_64 {
+                                if is_64  {
+                                    "ELF64"
+                                } else {
+                                    "ELF32"
+                                }
+                            } else {
+                                "UNKNOWN"
+                            };
                         Ok(FileDetails{
-                            state: if ro { "readable" } else { "writable" }.to_string(),
+                            state: state,
+                            format: Some("elf".to_string()),
+                            info: vec![format!("{:?}, {:?}", class, endianness)]
+                        })
+                    },
+                    Hint::PE => {
+                        Ok(FileDetails{
+                            state: state,
                             format: Some("pe".to_string()),
                             info: vec!["PE".to_string()],
                         })
-                    } else {
+                    },
+                    Hint::Mach => {
+                        Ok(FileDetails{
+                            state: state,
+                            format: Some("mach-o".to_string()),
+                            info: vec!["Mach-o".to_string()],
+                        })
+                    },
+                    Hint::Archive => {
+                        Ok(FileDetails{
+                            state: state,
+                            format: Some("archive".to_string()),
+                            info: vec!["Archive".to_string()],
+                        })
+                    },
+                    Hint::Unknown => {
                         let mut magic = [0u8;10];
 
                         try!(fd.seek(SeekFrom::Start(0)));

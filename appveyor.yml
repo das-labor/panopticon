@@ -5,9 +5,9 @@ environment:
   RUST_INSTALL_DIR: C:\Rust
   matrix:
     - RUST_INSTALL_TRIPLE: x86_64-pc-windows-msvc
-      RUST_VERSION: 1.12.0
+      RUST_VERSION: 1.15.0
     - RUST_INSTALL_TRIPLE: x86_64-pc-windows-msvc
-      RUST_VERSION: 1.12.0
+      RUST_VERSION: 1.15.0
       PACKAGE: win
       FTP_PASSWD:
         secure: DBE4nt5J/zQUXTGe8QTOJg==
