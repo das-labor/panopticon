@@ -125,10 +125,14 @@ impl Function {
         }
     }
 
-    fn index_cflow_graph(g: ControlFlowGraph) -> (BTreeMap<u64,Vec<MnemonicOrError>>,HashMap<u64,Vec<(Rvalue,Guard)>>,HashMap<u64,Vec<(Rvalue,Guard)>>) {
+    fn index_cflow_graph(g: ControlFlowGraph, maybe_entry: Option<u64>) -> (BTreeMap<u64,Vec<MnemonicOrError>>,HashMap<u64,Vec<(Rvalue,Guard)>>,HashMap<u64,Vec<(Rvalue,Guard)>>) {
         let mut mnemonics = BTreeMap::new();
         let mut by_source = HashMap::<u64,Vec<(Rvalue,Guard)>>::new();
         let mut by_destination = HashMap::<u64,Vec<(Rvalue,Guard)>>::new();
+
+        if let Some(entry) = maybe_entry {
+            by_destination.insert(entry,vec![(Rvalue::Undefined,Guard::always())]);
+        }
 
         for v in g.vertices() {
             match g.vertex_label(v) {
@@ -355,7 +359,7 @@ impl Function {
             Some(start)
         };
         let (mut mnemonics,mut by_source,mut by_destination) = cont.map_or(
-            (BTreeMap::new(),HashMap::new(),HashMap::new()),|x| Self::index_cflow_graph(x.cflow_graph));
+            (BTreeMap::new(),HashMap::new(),HashMap::new()),|x| Self::index_cflow_graph(x.cflow_graph,maybe_entry));
         let mut todo = HashSet::<u64>::new();
 
         todo.insert(start);
@@ -616,7 +620,7 @@ mod tests {
         cfg.add_edge(Guard::always(),vx1,vx2);
         cfg.add_edge(Guard::always(),vx2,vx0);
 
-        let (mnes,src,dest) = Function::index_cflow_graph(cfg);
+        let (mnes,src,dest) = Function::index_cflow_graph(cfg,None);
 
         assert_eq!(mnes.len(),9);
         assert_eq!(src.values().fold(0,|acc,x| acc + x.len()),10);
@@ -677,7 +681,7 @@ mod tests {
         cfg.add_edge(Guard::always(),vx3,vx0);
         cfg.add_edge(Guard::always(),vx4,vx3);
 
-        let (mnes,src,dest) = Function::index_cflow_graph(cfg);
+        let (mnes,src,dest) = Function::index_cflow_graph(cfg,None);
 
         assert_eq!(mnes.len(),2);
         assert_eq!(src.values().fold(0,|acc,x| acc + x.len()),3);
