@@ -52,6 +52,7 @@ use {
     Statement,
     Rvalue,
     Lvalue,
+    Result,
 };
 
 /// Computes the set of killed (VarKill) and upward exposed variables (UEvar) for each basic block
@@ -167,7 +168,7 @@ pub fn liveness(func: &Function) ->  HashMap<ControlFlowRef,HashSet<Cow<'static,
 
 /// Does a simple sanity check on all RREIL statements in `func`, returns every variable name
 /// found and its maximal size in bits.
-pub fn type_check(func: &Function) -> HashMap<Cow<'static,str>,usize> {
+pub fn type_check(func: &Function) -> Result<HashMap<Cow<'static,str>,usize>> {
     let mut ret = HashMap::<Cow<'static,str>,usize>::new();
     let cfg = &func.cflow_graph;
     fn set_len(v: &Rvalue, ret: &mut HashMap<Cow<'static,str>,usize>) {
@@ -190,7 +191,7 @@ pub fn type_check(func: &Function) -> HashMap<Cow<'static,str>,usize> {
                 for instr in mne.instructions.iter() {
                     let ops = instr.op.operands();
                     match ops.len() {
-                        0 => unreachable!("Operation w/o arguments"),
+                        0 => return Err("Operation w/o arguments".into()),
                         _ => for o in ops.iter() {
                             set_len(o,&mut ret);
                         }
@@ -208,7 +209,7 @@ pub fn type_check(func: &Function) -> HashMap<Cow<'static,str>,usize> {
         }
     }
 
-    ret
+    Ok(ret)
 }
 
 /// Computes the set of gloable variables in `func` and their points of usage. Globales are
@@ -235,10 +236,10 @@ pub fn global_names(func: &Function) -> (HashSet<Cow<'static,str>>,HashMap<Cow<'
 
 /// Inserts SSA Phi functions at junction points in the control flow graph of `func`. The
 /// algorithm produces the semi-pruned SSA form found in Cooper, Torczon: "Engineering a Compiler".
-pub fn phi_functions(func: &mut Function) {
-    assert!(func.entry_point.is_some());
+pub fn phi_functions(func: &mut Function) -> Result<()> {
+    if func.entry_point.is_none() { return Err("Function has no entry point".into()); }
 
-    let lens = type_check(func);
+    let lens = try!(type_check(func));
     let (globals,usage) = global_names(func);
     let mut cfg = &mut func.cflow_graph;
 
@@ -246,12 +247,20 @@ pub fn phi_functions(func: &mut Function) {
     if let Some(&mut ControlFlowTarget::Resolved(ref mut bb)) = cfg.vertex_label_mut(func.entry_point.unwrap()) {
         let pos = bb.area.start;
         let instrs = globals.iter().map(|nam| {
-            Statement{
-            op: Operation::Move(Rvalue::Undefined),
-            assignee: Lvalue::Variable{ size: lens[nam], name: nam.clone(), subscript: None }}
-        }
-        ).collect::<Vec<_>>();
+            let len = try!(lens.get(nam).ok_or(format!("No length for variable {}",nam)));
 
+            Ok(Statement{
+                op: Operation::Move(Rvalue::Undefined),
+                assignee: Lvalue::Variable{ size: *len, name: nam.clone(), subscript: None }
+            })
+        }).collect::<Vec<_>>();
+
+        if instrs.iter().find(|x| x.is_err()).is_some() {
+            let e = instrs.into_iter().find(|x| x.is_err());
+            return Err(e.unwrap().err().unwrap());
+        }
+
+        let instrs = instrs.into_iter().map(|x| x.ok().unwrap()).collect::<Vec<_>>();
         let mne = Mnemonic::new(
             pos..pos,
             "__init".to_string(),
@@ -261,10 +270,15 @@ pub fn phi_functions(func: &mut Function) {
 
         bb.mnemonics.insert(0,mne);
     } else {
-        unreachable!("Entry point is unresolved!");
+        return Err("Function entry point is unresolved!".into());
     }
 
     let idom = immediate_dominator(func.entry_point.unwrap(),cfg);
+
+    if idom.len() != cfg.num_vertices() {
+        return Err("No all basic blocks are reachable from function entry point".into());
+    }
+
     let df = dominance_frontiers(&idom,cfg);
     let mut phis = HashSet::<(&Cow<'static,str>,ControlFlowRef)>::new();
 
@@ -273,22 +287,24 @@ pub fn phi_functions(func: &mut Function) {
 
         while !worklist.is_empty() {
             let w = worklist.iter().next().unwrap().clone();
+            let frontiers = try!(df.get(&w).ok_or("Incomplete dominance frontier set"));
 
             worklist.remove(&w);
-            for d in df[&w].iter() {
+            for d in frontiers.iter() {
                 let arg_num = cfg.in_edges(*d).filter_map(|p| usage.get(v).map(|b| b.contains(&cfg.source(p)))).count();
                 if let Some(&mut ControlFlowTarget::Resolved(ref mut bb)) = cfg.vertex_label_mut(*d) {
                     if !phis.contains(&(v,*d)) {
 
                         let pos = bb.area.start;
+                        let len = try!(lens.get(v).ok_or(format!("No length for variable {}",v)));
                         let mne = Mnemonic::new(
                             pos..pos,
                             "__phi".to_string(),
                             "".to_string(),
                             vec![].iter(),
                             vec![Statement{
-                                op: Operation::Phi(vec![Rvalue::Variable{ offset: 0, size: lens[v], name: v.clone(), subscript: None };arg_num]),
-                                assignee: Lvalue::Variable{ size: lens[v], name: v.clone(), subscript: None }}].iter()
+                                op: Operation::Phi(vec![Rvalue::Variable{ offset: 0, size: *len, name: v.clone(), subscript: None };arg_num]),
+                                assignee: Lvalue::Variable{ size: *len, name: v.clone(), subscript: None }}].iter()
                         ).ok().unwrap();
 
                         bb.mnemonics.insert(0,mne);
@@ -299,17 +315,26 @@ pub fn phi_functions(func: &mut Function) {
             }
         }
     }
+
+    Ok(())
 }
 
 /// Sets the SSA subscripts of all variables in `func`. Follows the algorithm outlined
 /// Cooper, Torczon: "Engineering a Compiler". The function expects that Phi functions to be
 /// already inserted.
-pub fn rename_variables(func: &mut Function) {
+pub fn rename_variables(func: &mut Function) -> Result<()> {
+    if func.entry_point.is_none() { return Err("Function has no entry point".into()); }
+
     let (globals,_) = global_names(func);
     let mut cfg = &mut func.cflow_graph;
     let mut stack = HashMap::<Cow<'static,str>,Vec<usize>>::from_iter(globals.iter().map(|x| (x.clone(),Vec::new())));
     let mut counter = HashMap::<Cow<'static,str>,usize>::new();
     let idom = immediate_dominator(func.entry_point.unwrap(),cfg);
+
+    if idom.len() != cfg.num_vertices() {
+        return Err("No all basic blocks are reachable from function entry point".into());
+    }
+
     fn new_name(n: &Cow<'static,str>, counter: &mut HashMap<Cow<'static,str>,usize>, stack: &mut HashMap<Cow<'static,str>,Vec<usize>>) -> usize {
         let i = *counter.entry(n.clone()).or_insert(0);
 
@@ -318,7 +343,7 @@ pub fn rename_variables(func: &mut Function) {
 
         i
     }
-    fn rename(b: ControlFlowRef, counter: &mut HashMap<Cow<'static,str>,usize>, stack: &mut HashMap<Cow<'static,str>,Vec<usize>>, cfg: &mut ControlFlowGraph, idom: &HashMap<ControlFlowRef,ControlFlowRef>) {
+    fn rename(b: ControlFlowRef, counter: &mut HashMap<Cow<'static,str>,usize>, stack: &mut HashMap<Cow<'static,str>,Vec<usize>>, cfg: &mut ControlFlowGraph, idom: &HashMap<ControlFlowRef,ControlFlowRef>) -> Result<()> {
         if let Some(&mut ControlFlowTarget::Resolved(ref mut bb)) = cfg.vertex_label_mut(b) {
             bb.rewrite(|i| match i {
                 &mut Statement{ op: Operation::Phi(_), assignee: Lvalue::Variable{ ref name, ref mut subscript,.. } } =>
@@ -338,7 +363,7 @@ pub fn rename_variables(func: &mut Function) {
                         let &mut Statement{ ref mut op, ref mut assignee } = i;
 
                         if let &mut Operation::Phi(_) = op {
-                            unreachable!("Phi instruction outside __phi mnemonic");
+                            return Err("Phi instruction outside __phi mnemonic".into());
                         } else {
                             for o in op.operands_mut() {
                                 if let &mut Rvalue::Variable{ ref name, ref mut subscript,.. } = o {
@@ -387,7 +412,7 @@ pub fn rename_variables(func: &mut Function) {
 
         for (k,_) in idom.iter().filter(|&(_,&v)| v == b) {
             if *k != b {
-                rename(*k,counter,stack,cfg,idom);
+                try!(rename(*k,counter,stack,cfg,idom));
             }
         }
 
@@ -399,15 +424,17 @@ pub fn rename_variables(func: &mut Function) {
                 _ => {}
             });
         }
+
+        Ok(())
     }
 
-    rename(func.entry_point.unwrap(),&mut counter,&mut stack,cfg,&idom);
+    rename(func.entry_point.unwrap(),&mut counter,&mut stack,cfg,&idom)
 }
 
 /// Convert `func` into semi-pruned SSA form.
-pub fn ssa_convertion(func: &mut Function) {
-    phi_functions(func);
-    rename_variables(func);
+pub fn ssa_convertion(func: &mut Function) -> Result<()> {
+    try!(phi_functions(func));
+    rename_variables(func)
 }
 
 /// Computes for every control flow guard the dependend RREIL operation via reverse data flow
