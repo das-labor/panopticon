@@ -2294,10 +2294,19 @@ pub fn read(mode: Mode, buf: &[u8], addr: u64) -> Result<(u64,Mnemonic,Vec<(Rval
                 };
                 stmts.append(&mut op_stmts);
 
+                let fmt =
+                    match s {
+                        "call" => "{c:text}",
+                        "jmp" => "{c:text}",
+                        "je" => "{c:text}",
+                        "jne" => "{c:text}",
+                        _ => "{u}",
+                    };
+
                 let len = tail.fd.position() + i as u64 + 1;
                 let mne = try!(match ops.len() {
                     0 => Mnemonic::new((addr..addr+len),format!("{}",s),"".to_string(),ops.iter(),stmts.iter()),
-                    1 => Mnemonic::new((addr..addr+len),format!("{}",s),"{u}".to_string(),ops.iter(),stmts.iter()),
+                    1 => Mnemonic::new((addr..addr+len),format!("{}",s),fmt.to_string(),ops.iter(),stmts.iter()),
                     2 => Mnemonic::new((addr..addr+len),format!("{}",s),"{u}, {u}".to_string(),ops.iter(),stmts.iter()),
                     3 => Mnemonic::new((addr..addr+len),format!("{}",s),"{u}, {u}, {u}".to_string(),ops.iter(),stmts.iter()),
                     4 => Mnemonic::new((addr..addr+len),format!("{}",s),"{u}, {u}, {u}, {u}".to_string(),ops.iter(),stmts.iter()),
