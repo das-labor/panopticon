@@ -261,7 +261,7 @@ pub fn spawn_disassembler<A: 'static + Architecture + Debug>(_cfg: A::Configurat
                                     Function::disassemble::<A>(Some(func),cfg.clone(),&root,entry)
                                 };
 
-                                func.entry_point = func.find_basic_block_at_address(entry);
+                                func.entry_point = func.find_basic_block_by_start(entry);
 
                                 func
                             }));
@@ -312,7 +312,7 @@ pub fn spawn_disassembler<A: 'static + Architecture + Debug>(_cfg: A::Configurat
                                             Function::disassemble::<A>(Some(func),cfg.clone(),&root,addr)
                                         };
 
-                                        func.entry_point = func.find_basic_block_at_address(entry);
+                                        func.entry_point = func.find_basic_block_by_start(entry);
 
                                         func
                                     }));

@@ -464,12 +464,12 @@ impl Function {
         ret
     }
 
-    /// Returns the basic block that occupies `a`.
-    pub fn find_basic_block_at_address(&self,a: u64) -> Option<ControlFlowRef> {
+    /// Returns the basic block that begins at `a`.
+    pub fn find_basic_block_by_start(&self,a: u64) -> Option<ControlFlowRef> {
         self.cflow_graph.vertices().find(|&x| {
             match self.cflow_graph.vertex_label(x) {
                 Some(&ControlFlowTarget::Resolved(ref bb)) => {
-                    bb.area.start <= a && bb.area.end > a
+                    bb.area.start == a && bb.area.end > a
                 },
                 _ => false
             }
