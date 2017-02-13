@@ -698,13 +698,12 @@ fn optimize_ordering(order: &mut Vec<Vec<AdjacencyListVertexDescriptor>>,
         return;
     }
 
-    for i in 0..6 {
+    for i in 0..20 {
         let mut alt = order.clone();
 
         wmedian(i,&mut alt,rank,graph);
 
-        let mut alt_xings = crossings(&bipartite,&alt,graph);
-        transpose(&mut alt_xings,&mut alt,&bipartite,graph);
+        let alt_xings = crossings(&bipartite,&alt,graph);
 
         if alt_xings < xings {
             *order = alt;
@@ -859,41 +858,6 @@ fn wmedian(iter: usize,
                 break;
             } else {
                 rank_idx -= 1;
-            }
-        }
-    }
-}
-
-fn transpose(xings: &mut usize,
-             order: &mut Vec<Vec<AdjacencyListVertexDescriptor>>,
-             bipartite: &HashMap<(usize,usize),Vec<(AdjacencyListEdgeDescriptor,AdjacencyListEdgeDescriptor)>>,
-             graph: &AdjacencyList<usize,usize>) {
-    let mut imp = true;
-    let mut alt = order.clone();
-
-    while imp {
-        imp = false;
-
-        for order_idx in 0..order.len() {
-            for rank_idx in 0..(order[order_idx].len() - 1) {
-                let v = order[order_idx][rank_idx];
-                let w = order[order_idx][rank_idx+1];
-
-                alt[order_idx][rank_idx] = w;
-                alt[order_idx][rank_idx+1] = v;
-
-                let alt_xings = crossings(bipartite,&alt,graph);
-
-                if alt_xings < *xings {
-                    order[order_idx][rank_idx] = w;
-                    order[order_idx][rank_idx+1] = v;
-
-                    *xings = alt_xings;
-                    imp = true;
-                } else {
-                    alt[order_idx][rank_idx] = v;
-                    alt[order_idx][rank_idx+1] = w;
-                }
             }
         }
     }
