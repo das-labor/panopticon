@@ -57,6 +57,11 @@ use controller::{
 
 use paths::find_data_file;
 
+use std::fs::File;
+use std::path::PathBuf;
+
+const USAGE: &'static str = "USAGE:\npanopticon [file]";
+
 fn main() {
     use std::path::Path;
     use std::env;
@@ -74,8 +79,40 @@ fn main() {
     let title_screen = find_data_file(&Path::new("qml").join("Title.qml"));
     let main_window = find_data_file(&Path::new("qml").join("Window.qml"));
 
-    match (title_screen,main_window) {
-        (Ok(Some(title)),Ok(Some(window))) => {
+    let args = env::args().skip(1).collect::<Vec<String>>();
+    let start_with_file = args.len() > 0;
+
+    match (title_screen,main_window,start_with_file) {
+        (_,Ok(Some(window)),true) => {
+            qmlrs::register_singleton_type(&"Panopticon",1,0,&"Panopticon",create_singleton);
+
+            let input_file_path = match filepath_from_args(args) {
+                Some(v) => v,
+                None => return
+            };
+            let filetype = match function::file_details_of_path(PathBuf::from(&input_file_path)) {
+                Ok(details) => {
+                    match details.into_format() {
+                        Some(format) => format,
+                        None => {
+                            println!("no format");
+                            return;
+                        }
+                    }
+                },
+                Err(e) => {
+                    println!("invalid format: {}", e);
+                    return;
+                }
+            };
+
+            let request = format!("{{\"kind\": \"{}\", \"path\": \"{}\"}}", filetype, input_file_path);
+            Controller::set_request(&request);
+            let mut engine = qmlrs::Engine::new("Panopticon");
+            engine.load_local_file(&format!("{}",window.display()));
+            engine.exec();
+        }
+        (Ok(Some(title)),Ok(Some(window)),false) => {
             qmlrs::register_singleton_type(&"Panopticon",1,0,&"Panopticon",create_singleton);
 
             {
@@ -93,5 +130,30 @@ fn main() {
         _ => {
             println!("Failed to open the QML files")
         },
+    }
+}
+
+fn filepath_from_args(args_vec: Vec<String>) -> Option<String> {
+    match args_vec.into_iter().next(){
+        Some(filepath) => {
+            if filepath == "--help" || filepath == "-h"{
+                println!("{}", USAGE);
+                return None;
+            }
+            match File::open(&filepath){
+                Ok(_) => {
+
+                    return Some(filepath);
+                },
+                Err(e) => {
+                    println!("IO Error: {}", e);
+                    return None;
+                }
+            }
+        },
+        None => {
+            println!("{}", USAGE);
+            return None;
+        }
     }
 }
