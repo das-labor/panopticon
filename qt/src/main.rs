@@ -57,8 +57,10 @@ use controller::{
 
 use paths::find_data_file;
 
-use std::fs::File;
-use std::path::PathBuf;
+use std::path::{
+    Path,
+    PathBuf
+};
 
 const USAGE: &'static str = "USAGE:\npanopticon [file]";
 
@@ -140,15 +142,12 @@ fn filepath_from_args(args_vec: Vec<String>) -> Option<String> {
                 println!("{}", USAGE);
                 return None;
             }
-            match File::open(&filepath){
-                Ok(_) => {
-
-                    return Some(filepath);
-                },
-                Err(e) => {
-                    println!("IO Error: {}", e);
-                    return None;
-                }
+            if Path::new(&filepath).is_file() {
+                return Some(filepath);
+            }
+            else {
+                println!("'{}': no such file", filepath);
+                return None;
             }
         },
         None => {
