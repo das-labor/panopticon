@@ -92,12 +92,13 @@ fn main() {
                 Some(v) => v,
                 None => return
             };
-            let filetype = match function::file_details_of_path(PathBuf::from(&input_file_path)) {
+            let fileformat = match function::file_details_of_path(PathBuf::from(&input_file_path)) {
                 Ok(details) => {
-                    match details.into_format() {
+                    match details.format().clone() {
                         Some(format) => format,
                         None => {
-                            println!("no format");
+                            let filestate = details.state();
+                            println!("no format (file state: {})", filestate.to_string());
                             return;
                         }
                     }
@@ -108,7 +109,9 @@ fn main() {
                 }
             };
 
-            let request = format!("{{\"kind\": \"{}\", \"path\": \"{}\"}}", filetype, input_file_path);
+            let request = format!("{{\"kind\": \"{}\", \"path\": \"{}\"}}",
+                fileformat.to_string(),
+                input_file_path);
             Controller::set_request(&request);
             let mut engine = qmlrs::Engine::new("Panopticon");
             engine.load_local_file(&format!("{}",window.display()));

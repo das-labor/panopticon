@@ -38,7 +38,9 @@ use std::io::{
     Seek,
     Read,
 };
+use std::string::ToString;
 use std::env::home_dir;
+use std::convert::Into;
 
 use qmlrs::{Variant};
 use graph_algos::{
@@ -48,7 +50,11 @@ use graph_algos::{
     EdgeListGraphTrait
 };
 use uuid::Uuid;
-use rustc_serialize::json;
+use rustc_serialize::{
+    json,
+    Encodable,
+    Encoder
+};
 use byteorder::{BigEndian,ReadBytesExt};
 use controller::{
     LAYOUTED_FUNCTION,
@@ -493,14 +499,81 @@ pub fn read_directory(arg: &Variant) -> Variant {
 
 #[derive(RustcEncodable)]
 pub struct FileDetails {
-    state: String, // writable, readable, directory, free, inaccessable
-    format: Option<String>, // elf, pe, raw
+    state: FileState,
+    format: Option<FileFormat>,
     info: Vec<String>,
 }
 
 impl FileDetails {
-    pub fn into_format(self) -> Option<String> {
-        self.format
+    pub fn format(&self) -> &Option<FileFormat> {
+        &self.format
+    }
+
+    pub fn state(&self) -> &FileState {
+        &self.state
+    }
+}
+
+pub enum FileState {
+    Directory,
+    BadFile,
+    Readable,
+    Writable,
+    Inaccessible,
+    Free
+}
+
+impl ToString for FileState {
+    fn to_string(&self) -> String {
+        match *self {
+            FileState::Directory => "directory",
+            FileState::BadFile => "bad file",
+            FileState::Readable => "readable",
+            FileState::Writable => "writable",
+            FileState::Inaccessible => "inaccessible",
+            FileState::Free => "free"
+        }.to_string()
+    }
+}
+
+impl Encodable for FileState {
+    fn encode<S: Encoder>(&self, s: &mut S) -> ::std::result::Result<(), S::Error> {
+        try!(s.emit_str(
+            &self.to_string()
+        ));
+        Ok(())
+    }
+}
+
+#[derive(Clone)]
+pub enum FileFormat {
+    ELF,
+    PE,
+    MachO,
+    Archive,
+    Panop,
+    Raw
+}
+
+impl ToString for FileFormat {
+    fn to_string(&self) -> String {
+        match *self {
+            FileFormat::ELF => "elf",
+            FileFormat::PE => "pe",
+            FileFormat::MachO => "mach-o",
+            FileFormat::Archive => "archive",
+            FileFormat::Panop => "panop",
+            FileFormat::Raw => "raw"
+        }.to_string()
+    }
+}
+
+impl Encodable for FileFormat {
+    fn encode<S: Encoder>(&self, s: &mut S) -> ::std::result::Result<(), S::Error> {
+        try!(s.emit_str(
+            &self.to_string()
+        ));
+        Ok(())
     }
 }
 
@@ -523,19 +596,24 @@ pub fn file_details_of_path(path: PathBuf) -> Result<FileDetails> {
 
         if meta.is_dir() {
             Ok(FileDetails{
-                state: "directory".to_string(),
+                state: FileState::Directory,
                 format: None,
                 info: vec![],
             })
         } else {
             let ro = meta.permissions().readonly();
-            let state = if ro { "readable" } else { "writable" }.to_string();
+            let state = if ro {
+                FileState::Readable
+            }
+            else {
+                FileState::Writable
+            };
             let peek = goblin::peek(&mut fd);
             debug!("peek: {:?}", &peek);
             // TODO: make this prettier, a big hack right now
             if peek.is_err() {
                 return Ok(FileDetails{
-                    state: "bad file".to_string(),
+                    state: FileState::BadFile,
                     format: None,
                     info: vec![],
                 })
@@ -555,28 +633,28 @@ pub fn file_details_of_path(path: PathBuf) -> Result<FileDetails> {
                         };
                     Ok(FileDetails{
                         state: state,
-                        format: Some("elf".to_string()),
+                        format: Some(FileFormat::ELF),
                         info: vec![format!("{:?}, {:?}", class, endianness)]
                     })
                 },
                 Hint::PE => {
                     Ok(FileDetails{
                         state: state,
-                        format: Some("pe".to_string()),
+                        format: Some(FileFormat::PE),
                         info: vec!["PE".to_string()],
                     })
                 },
                 Hint::Mach => {
                     Ok(FileDetails{
                         state: state,
-                        format: Some("mach-o".to_string()),
+                        format: Some(FileFormat::MachO),
                         info: vec!["Mach-o".to_string()],
                     })
                 },
                 Hint::Archive => {
                     Ok(FileDetails{
                         state: state,
-                        format: Some("archive".to_string()),
+                        format: Some(FileFormat::Archive),
                         info: vec!["Archive".to_string()],
                     })
                 },
@@ -588,14 +666,14 @@ pub fn file_details_of_path(path: PathBuf) -> Result<FileDetails> {
                         let version = try!(fd.read_u32::<BigEndian>());
 
                         Ok(FileDetails{
-                            state: if ro { "readable" } else { "writable" }.to_string(),
-                            format: Some("panop".to_string()),
+                            state: state,
+                            format: Some(FileFormat::Panop),
                             info: vec![format!("Version {}",version)],
                         })
                     } else {
                         Ok(FileDetails{
-                            state: if ro { "readable" } else { "writable" }.to_string(),
-                            format: Some("raw".to_string()),
+                            state: state,
+                            format: Some(FileFormat::Raw),
                             info: vec![],
                         })
                     }
@@ -605,21 +683,27 @@ pub fn file_details_of_path(path: PathBuf) -> Result<FileDetails> {
     }).or_else(|_| {
         if let Some(parent) = path.parent() {
             if let Ok(fd) = fs::File::open(parent) {
+                let state = if try!(fd.metadata()).permissions().readonly() {
+                    FileState::Inaccessible
+                }
+                else {
+                    FileState::Free
+                };
                 Ok(FileDetails{
-                    state: if try!(fd.metadata()).permissions().readonly() { "inaccessible" } else { "free" }.to_string(),
+                    state: state,
                     format: None,
                     info: vec![],
                 })
             } else {
                 Ok(FileDetails{
-                    state: "inaccessible".to_string(),
+                    state: FileState::Inaccessible,
                     format: None,
                     info: vec![],
                 })
             }
         } else {
             Ok(FileDetails{
-                state: "inaccessible".to_string(),
+                state: FileState::Inaccessible,
                 format: None,
                 info: vec![],
             })
