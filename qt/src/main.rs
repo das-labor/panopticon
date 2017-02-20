@@ -32,6 +32,7 @@ extern crate byteorder;
 extern crate chrono;
 extern crate chrono_humanize;
 extern crate goblin;
+extern crate clap;
 
 #[cfg(unix)]
 extern crate xdg;
@@ -45,10 +46,10 @@ mod function;
 mod sugiyama;
 mod paths;
 
-use qmlrs::{Variant};
-
-use panopticon::result;
-use panopticon::result::Result;
+use clap::{
+    App,
+    Arg
+};
 
 use controller::{
     create_singleton,
@@ -61,8 +62,6 @@ use std::path::{
     Path,
     PathBuf
 };
-
-const USAGE: &'static str = "USAGE:\npanopticon [file]";
 
 fn main() {
     use std::path::Path;
@@ -81,17 +80,23 @@ fn main() {
     let title_screen = find_data_file(&Path::new("qml").join("Title.qml"));
     let main_window = find_data_file(&Path::new("qml").join("Window.qml"));
 
-    let args = env::args().skip(1).collect::<Vec<String>>();
-    let start_with_file = args.len() > 0;
+    let matches = App::new("Panopticon")
+                        .about("A libre cross-platform disassembler.")
+                        .arg(Arg::with_name("INPUT")
+                            .help("File to disassemble")
+                            .validator(exists_path_val)
+                            .index(1))
+                        .get_matches();
+
+    let (start_with_file, input_file_path) = match matches.value_of("INPUT") {
+        Some(v) => (true, v),
+        None => (false, "")
+    };
 
     match (title_screen,main_window,start_with_file) {
         (_,Ok(Some(window)),true) => {
             qmlrs::register_singleton_type(&"Panopticon",1,0,&"Panopticon",create_singleton);
 
-            let input_file_path = match filepath_from_args(args) {
-                Some(v) => v,
-                None => return
-            };
             let fileformat = match function::file_details_of_path(PathBuf::from(&input_file_path)) {
                 Ok(details) => {
                     match details.format().clone() {
@@ -138,24 +143,9 @@ fn main() {
     }
 }
 
-fn filepath_from_args(args_vec: Vec<String>) -> Option<String> {
-    match args_vec.into_iter().next(){
-        Some(filepath) => {
-            if filepath == "--help" || filepath == "-h"{
-                println!("{}", USAGE);
-                return None;
-            }
-            if Path::new(&filepath).is_file() {
-                return Some(filepath);
-            }
-            else {
-                println!("'{}': no such file", filepath);
-                return None;
-            }
-        },
-        None => {
-            println!("{}", USAGE);
-            return None;
-        }
+fn exists_path_val(filepath: String) -> Result<(), String> {
+    match Path::new(&filepath).is_file() {
+        true => Ok(()),
+        false => Err(format!("'{}': no such file", filepath))
     }
 }
