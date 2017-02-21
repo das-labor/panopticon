@@ -28,6 +28,7 @@ byteorder = "0.5.1"
 chrono = "0.2"
 chrono-humanize = "0.0.6"
 goblin = "0.0.7"
+clap = "2.20.5"
 
 [dev-dependencies]
 regex = "0.1"

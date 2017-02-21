@@ -38,7 +38,9 @@ use std::io::{
     Seek,
     Read,
 };
+use std::string::ToString;
 use std::env::home_dir;
+use std::convert::Into;
 
 use qmlrs::{Variant};
 use graph_algos::{
@@ -48,7 +50,11 @@ use graph_algos::{
     EdgeListGraphTrait
 };
 use uuid::Uuid;
-use rustc_serialize::json;
+use rustc_serialize::{
+    json,
+    Encodable,
+    Encoder
+};
 use byteorder::{BigEndian,ReadBytesExt};
 use controller::{
     LAYOUTED_FUNCTION,
@@ -492,123 +498,89 @@ pub fn read_directory(arg: &Variant) -> Variant {
 }
 
 #[derive(RustcEncodable)]
-struct FileDetails {
-    state: String, // writable, readable, directory, free, inaccessable
-    format: Option<String>, // elf, pe, raw
+pub struct FileDetails {
+    state: FileState,
+    format: Option<FileFormat>,
     info: Vec<String>,
+}
+
+impl FileDetails {
+    pub fn format(&self) -> &Option<FileFormat> {
+        &self.format
+    }
+
+    pub fn state(&self) -> &FileState {
+        &self.state
+    }
+}
+
+pub enum FileState {
+    Directory,
+    BadFile,
+    Readable,
+    Writable,
+    Inaccessible,
+    Free
+}
+
+impl ToString for FileState {
+    fn to_string(&self) -> String {
+        match *self {
+            FileState::Directory => "directory",
+            FileState::BadFile => "bad file",
+            FileState::Readable => "readable",
+            FileState::Writable => "writable",
+            FileState::Inaccessible => "inaccessible",
+            FileState::Free => "free"
+        }.to_string()
+    }
+}
+
+impl Encodable for FileState {
+    fn encode<S: Encoder>(&self, s: &mut S) -> ::std::result::Result<(), S::Error> {
+        try!(s.emit_str(
+            &self.to_string()
+        ));
+        Ok(())
+    }
+}
+
+#[derive(Clone)]
+pub enum FileFormat {
+    ELF,
+    PE,
+    MachO,
+    Archive,
+    Panop,
+    Raw
+}
+
+impl ToString for FileFormat {
+    fn to_string(&self) -> String {
+        match *self {
+            FileFormat::ELF => "elf",
+            FileFormat::PE => "pe",
+            FileFormat::MachO => "mach-o",
+            FileFormat::Archive => "archive",
+            FileFormat::Panop => "panop",
+            FileFormat::Raw => "raw"
+        }.to_string()
+    }
+}
+
+impl Encodable for FileFormat {
+    fn encode<S: Encoder>(&self, s: &mut S) -> ::std::result::Result<(), S::Error> {
+        try!(s.emit_str(
+            &self.to_string()
+        ));
+        Ok(())
+    }
 }
 
 pub fn file_details(arg: &Variant) -> Variant {
     Variant::String(if let &Variant::String(ref p) = arg {
         let path = PathBuf::from(p);
-        let ret: Result<FileDetails> = fs::File::open(&path).and_then(|mut fd| {
-            let meta = try!(fd.metadata());
-
-            if meta.is_dir() {
-                Ok(FileDetails{
-                    state: "directory".to_string(),
-                    format: None,
-                    info: vec![],
-                })
-            } else {
-                let ro = meta.permissions().readonly();
-                let state = if ro { "readable" } else { "writable" }.to_string();
-                let peek = goblin::peek(&mut fd);
-                debug!("peek: {:?}", &peek);
-                // TODO: make this prettier, a big hack right now
-                if peek.is_err() {
-                    return Ok(FileDetails{
-                        state: "bad file".to_string(),
-                        format: None,
-                        info: vec![],
-                    })
-                }
-                match peek.unwrap() {
-                    Hint::Elf(data) => {
-                        let endianness = if data.is_lsb { "LittleEndian" } else { "BigEndian" };
-                        let class =
-                            if let Some(is_64) = data.is_64 {
-                                if is_64  {
-                                    "ELF64"
-                                } else {
-                                    "ELF32"
-                                }
-                            } else {
-                                "UNKNOWN"
-                            };
-                        Ok(FileDetails{
-                            state: state,
-                            format: Some("elf".to_string()),
-                            info: vec![format!("{:?}, {:?}", class, endianness)]
-                        })
-                    },
-                    Hint::PE => {
-                        Ok(FileDetails{
-                            state: state,
-                            format: Some("pe".to_string()),
-                            info: vec!["PE".to_string()],
-                        })
-                    },
-                    Hint::Mach => {
-                        Ok(FileDetails{
-                            state: state,
-                            format: Some("mach-o".to_string()),
-                            info: vec!["Mach-o".to_string()],
-                        })
-                    },
-                    Hint::Archive => {
-                        Ok(FileDetails{
-                            state: state,
-                            format: Some("archive".to_string()),
-                            info: vec!["Archive".to_string()],
-                        })
-                    },
-                    Hint::Unknown => {
-                        let mut magic = [0u8;10];
-
-                        try!(fd.seek(SeekFrom::Start(0)));
-                        if try!(fd.read(&mut magic)) == 10 && magic == *b"PANOPTICON" {
-                            let version = try!(fd.read_u32::<BigEndian>());
-
-                            Ok(FileDetails{
-                                state: if ro { "readable" } else { "writable" }.to_string(),
-                                format: Some("panop".to_string()),
-                                info: vec![format!("Version {}",version)],
-                            })
-                        } else {
-                            Ok(FileDetails{
-                                state: if ro { "readable" } else { "writable" }.to_string(),
-                                format: Some("raw".to_string()),
-                                info: vec![],
-                            })
-                        }
-                    }
-                }
-            }
-        }).or_else(|_| {
-            if let Some(parent) = path.parent() {
-                if let Ok(fd) = fs::File::open(parent) {
-                    Ok(FileDetails{
-                        state: if try!(fd.metadata()).permissions().readonly() { "inaccessible" } else { "free" }.to_string(),
-                        format: None,
-                        info: vec![],
-                    })
-                } else {
-                    Ok(FileDetails{
-                        state: "inaccessible".to_string(),
-                        format: None,
-                        info: vec![],
-                    })
-                }
-            } else {
-                Ok(FileDetails{
-                    state: "inaccessible".to_string(),
-                    format: None,
-                    info: vec![],
-                })
-            }
-        });
-
+        let ret = file_details_of_path(path);
         match ret {
             Ok(f) => return_json(Ok(f)),
             Err(err) => return_json::<FileDetails>(Err(err.into())),
@@ -616,6 +588,128 @@ pub fn file_details(arg: &Variant) -> Variant {
     } else {
         return_json::<FileDetails>(Err("1st argument is not a string".into()))
     })
+}
+
+pub fn file_details_of_path(path: PathBuf) -> Result<FileDetails> {
+    let ret = fs::File::open(&path).and_then(|mut fd| {
+        let meta = try!(fd.metadata());
+
+        if meta.is_dir() {
+            Ok(FileDetails{
+                state: FileState::Directory,
+                format: None,
+                info: vec![],
+            })
+        } else {
+            let ro = meta.permissions().readonly();
+            let state = if ro {
+                FileState::Readable
+            }
+            else {
+                FileState::Writable
+            };
+            let peek = goblin::peek(&mut fd);
+            debug!("peek: {:?}", &peek);
+            // TODO: make this prettier, a big hack right now
+            if peek.is_err() {
+                return Ok(FileDetails{
+                    state: FileState::BadFile,
+                    format: None,
+                    info: vec![],
+                })
+            }
+            match peek.unwrap() {
+                Hint::Elf(data) => {
+                    let endianness = if data.is_lsb { "LittleEndian" } else { "BigEndian" };
+                    let class =
+                        if let Some(is_64) = data.is_64 {
+                            if is_64  {
+                                "ELF64"
+                            } else {
+                                "ELF32"
+                            }
+                        } else {
+                            "UNKNOWN"
+                        };
+                    Ok(FileDetails{
+                        state: state,
+                        format: Some(FileFormat::ELF),
+                        info: vec![format!("{:?}, {:?}", class, endianness)]
+                    })
+                },
+                Hint::PE => {
+                    Ok(FileDetails{
+                        state: state,
+                        format: Some(FileFormat::PE),
+                        info: vec!["PE".to_string()],
+                    })
+                },
+                Hint::Mach => {
+                    Ok(FileDetails{
+                        state: state,
+                        format: Some(FileFormat::MachO),
+                        info: vec!["Mach-o".to_string()],
+                    })
+                },
+                Hint::Archive => {
+                    Ok(FileDetails{
+                        state: state,
+                        format: Some(FileFormat::Archive),
+                        info: vec!["Archive".to_string()],
+                    })
+                },
+                Hint::Unknown => {
+                    let mut magic = [0u8;10];
+
+                    try!(fd.seek(SeekFrom::Start(0)));
+                    if try!(fd.read(&mut magic)) == 10 && magic == *b"PANOPTICON" {
+                        let version = try!(fd.read_u32::<BigEndian>());
+
+                        Ok(FileDetails{
+                            state: state,
+                            format: Some(FileFormat::Panop),
+                            info: vec![format!("Version {}",version)],
+                        })
+                    } else {
+                        Ok(FileDetails{
+                            state: state,
+                            format: Some(FileFormat::Raw),
+                            info: vec![],
+                        })
+                    }
+                }
+            }
+        }
+    }).or_else(|_| {
+        if let Some(parent) = path.parent() {
+            if let Ok(fd) = fs::File::open(parent) {
+                let state = if try!(fd.metadata()).permissions().readonly() {
+                    FileState::Inaccessible
+                }
+                else {
+                    FileState::Free
+                };
+                Ok(FileDetails{
+                    state: state,
+                    format: None,
+                    info: vec![],
+                })
+            } else {
+                Ok(FileDetails{
+                    state: FileState::Inaccessible,
+                    format: None,
+                    info: vec![],
+                })
+            }
+        } else {
+            Ok(FileDetails{
+                state: FileState::Inaccessible,
+                format: None,
+                info: vec![],
+            })
+        }
+    });
+    ret
 }
 
 /// Returns the unique string identifier for `t`.
