@@ -59,8 +59,9 @@ fn load_elf(fd: &mut File, name: String) -> Result<(Project,Machine)> {
     let mut cursor = Cursor::new(&bytes);
     let binary = elf::Elf::parse(&bytes)?;
     debug!("elf: {:#?}", &binary);
+
     let entry = binary.entry;
-    let (machine, mut reg) = match binary.header.e_machine() {
+    let (machine, mut reg) = match binary.header.e_machine {
         elf::header::EM_X86_64 => {
             let reg = Region::undefined("RAM".to_string(), 0xFFFF_FFFF_FFFF_FFFF);
             (Machine::Amd64,reg)
@@ -76,15 +77,15 @@ fn load_elf(fd: &mut File, name: String) -> Result<(Project,Machine)> {
         machine => return Err(format!("Unsupported machine: {}", machine).into())
     };
 
-    for ph in binary.program_headers {
-        if ph.p_type() == program_header::PT_LOAD {
-            let mut buf = vec![0u8; ph.p_filesz() as usize];
+    for ph in &binary.program_headers {
+        if ph.p_type == program_header::PT_LOAD {
+            let mut buf = vec![0u8; ph.p_filesz as usize];
 
-            debug!("Load ELF {} bytes segment to {:#x}",ph.p_filesz(),ph.p_vaddr());
+            debug!("Load ELF {} bytes segment to {:#x}",ph.p_filesz,ph.p_vaddr);
 
-            if cursor.seek(SeekFrom::Start(ph.p_offset() as u64)).ok() == Some(ph.p_offset() as u64) {
+            if cursor.seek(SeekFrom::Start(ph.p_offset)).ok() == Some(ph.p_offset) {
                 try!(cursor.read_exact(&mut buf));
-                reg.cover(Bound::new(ph.p_vaddr() as u64, (ph.p_vaddr() + ph.p_filesz()) as u64), Layer::wrap(buf));
+                reg.cover(Bound::new(ph.p_vaddr, ph.p_vaddr + ph.p_filesz), Layer::wrap(buf));
             } else {
                 return Err("Failed to read segment".into())
             }
@@ -92,7 +93,7 @@ fn load_elf(fd: &mut File, name: String) -> Result<(Project,Machine)> {
     }
 
     let name =
-        if let Some(soname) = binary.soname {
+        if let &Some(ref soname) = &binary.soname {
             soname.to_owned()
         } else {
             name
@@ -105,11 +106,10 @@ fn load_elf(fd: &mut File, name: String) -> Result<(Project,Machine)> {
 
     prog.call_graph.add_vertex(CallTarget::Todo(Rvalue::new_u64(entry as u64),Some(name),Uuid::new_v4()));
 
-    let dynstrtab = binary.dynstrtab;
-    for sym in binary.dynsyms {
-        let name = dynstrtab[sym.st_name() as usize].to_string();
-        let addr = sym.st_value();
-        debug!("{} @ 0x{:x}: {:?}", name, addr, sym);
+    let add_sym = |prog: &mut Program, sym: &elf::Sym, strtab: &goblin::strtab::Strtab| {
+        let name = strtab[sym.st_name].to_string();
+        let addr = sym.st_value;
+        debug!("Symbol: {} @ 0x{:x}: {:?}", name, addr, sym);
         if sym.is_function() {
             if sym.is_import() {
                 prog.call_graph.add_vertex(CallTarget::Symbolic(name,Uuid::new_v4()));
@@ -117,6 +117,38 @@ fn load_elf(fd: &mut File, name: String) -> Result<(Project,Machine)> {
                 prog.call_graph.add_vertex(CallTarget::Todo(Rvalue::new_u64(addr),Some(name),Uuid::new_v4()));
             }
         }
+    };
+
+    let resolve_import_address = |proj: &mut Project, relocs: &[elf::Reloc], name: &str| {
+        for reloc in relocs {
+            let pltsym = &binary.dynsyms[reloc.r_sym];
+            let pltname = &binary.dynstrtab[pltsym.st_name];
+            if pltname == name {
+                debug!("Import match {}: {:#x} {:?}", name, reloc.r_offset, pltsym);
+                proj.imports.insert(reloc.r_offset as u64, name.to_string());
+                return true;
+            }
+        }
+        false
+    };
+
+    // add dynamic symbol information (non-strippable)
+    for sym in &binary.dynsyms {
+        add_sym(&mut prog, sym, &binary.dynstrtab);
+        if sym.is_function () && sym.is_import() {
+            let name = &binary.dynstrtab[sym.st_name];
+            if !resolve_import_address(&mut proj, &binary.pltrelocs, name) {
+                if !resolve_import_address(&mut proj, &binary.dynrelas, name) {
+                    resolve_import_address(&mut proj, &binary.dynrels,  name);
+                }
+            }
+        }
+    }
+    debug!("Imports: {:#?}", &proj.imports);
+
+    // if they have syms, let's use them (strippable)
+    for sym in &binary.syms {
+        add_sym(&mut prog, sym, &binary.strtab);
     }
 
     proj.comments.insert(("base".to_string(),entry),"main".to_string());

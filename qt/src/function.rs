@@ -658,7 +658,7 @@ pub fn file_details_of_path(path: PathBuf) -> Result<FileDetails> {
                         info: vec!["Archive".to_string()],
                     })
                 },
-                Hint::Unknown => {
+                Hint::Unknown(_) => {
                     let mut magic = [0u8;10];
 
                     try!(fd.seek(SeekFrom::Start(0)));

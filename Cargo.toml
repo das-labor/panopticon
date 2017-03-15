@@ -27,7 +27,7 @@ rmp-serialize = "0.8"
 byteorder = "0.5.1"
 chrono = "0.2"
 chrono-humanize = "0.0.6"
-goblin = "0.0.7"
+goblin = "0.0.8"
 clap = "2.20.5"
 
 [dev-dependencies]
