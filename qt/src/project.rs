@@ -77,11 +77,11 @@ pub fn create_raw_project(_path: &Variant, _tgt: &Variant, _base: &Variant, _ent
                         if let &Variant::String(ref tgt_s) = _tgt {
                             let iv: Result<Vec<(&'static str,u64,&'static str)>> = {
                                 match tgt_s.as_str() {
-                                    //"mos6502" => Mos::prepare(&reg,&mos::Variant::mos6502()),
-                                    //"atmega103" => Avr::prepare(&reg,&Mcu::atmega103()),
-                                    //"atmega8" => Avr::prepare(&reg,&Mcu::atmega8()),
-                                    //"atmega88" => Avr::prepare(&reg,&Mcu::atmega88()),
-                                    //"atmega16" => Avr::prepare(&reg,&Mcu::atmega16()),
+                                    "mos6502" => mos::Mos::prepare(&reg,&mos::Variant::mos6502()),
+                                    "atmega103" => avr::Avr::prepare(&reg,&avr::Mcu::atmega103()),
+                                    "atmega8" => avr::Avr::prepare(&reg,&avr::Mcu::atmega8()),
+                                    "atmega88" => avr::Avr::prepare(&reg,&avr::Mcu::atmega88()),
+                                    "atmega16" => avr::Avr::prepare(&reg,&avr::Mcu::atmega16()),
                                     _ => Err(format!("No such target '{}'",tgt_s).into()),
                                 }
                             };
@@ -111,11 +111,11 @@ pub fn create_raw_project(_path: &Variant, _tgt: &Variant, _base: &Variant, _ent
 
                                 let ret = return_json(Controller::replace(proj,None));
                                 match tgt_s.as_str() {
-                                    //"mos6502" => spawn_disassembler::<Mos>(mos::Variant::mos6502()),
-                                    //"atmega103" => spawn_disassembler::<Avr>(Mcu::atmega103()),
-                                    //"atmega8" => spawn_disassembler::<Avr>(Mcu::atmega8()),
-                                    //"atmega88" => spawn_disassembler::<Avr>(Mcu::atmega88()),
-                                    //"atmega16" => spawn_disassembler::<Avr>(Mcu::atmega16()),
+                                    "mos6502" => spawn_disassembler::<mos::Mos>(mos::Variant::mos6502()),
+                                    "atmega103" => spawn_disassembler::<avr::Avr>(avr::Mcu::atmega103()),
+                                    "atmega8" => spawn_disassembler::<avr::Avr>(avr::Mcu::atmega8()),
+                                    "atmega88" => spawn_disassembler::<avr::Avr>(avr::Mcu::atmega88()),
+                                    "atmega16" => spawn_disassembler::<avr::Avr>(avr::Mcu::atmega16()),
                                     _ => unreachable!()
                                 }
 
