@@ -24,8 +24,14 @@ use std::path::Path;
 #[test]
 fn elf_load_static() {
     match loader::load(Path::new("tests/data/static")) {
-        Ok((proj,_)) => println!("{}",proj.name),
-        Err(_) => panic!()
+        Ok((proj,_)) => {
+            println!("{}",proj.name);
+            assert_eq!(proj.imports.len(), 0);
+        },
+        Err(error) => {
+            println!("{:?}", error);
+            assert!(false);
+        }
     }
 }
 
