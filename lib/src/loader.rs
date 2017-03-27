@@ -135,7 +135,7 @@ fn load_elf(fd: &mut File, name: String) -> Result<(Project,Machine)> {
     // add dynamic symbol information (non-strippable)
     for sym in &binary.dynsyms {
         add_sym(&mut prog, sym, &binary.dynstrtab);
-        if sym.is_function () && sym.is_import() {
+        if sym.is_function () {
             let name = &binary.dynstrtab[sym.st_name];
             if !resolve_import_address(&mut proj, &binary.pltrelocs, name) {
                 if !resolve_import_address(&mut proj, &binary.dynrelas, name) {

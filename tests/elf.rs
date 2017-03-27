@@ -36,7 +36,7 @@ fn elf_load_dynamic() {
             println!("{:?}", &proj);
             assert_eq!(proj.name, "libfoo.so");
             assert_eq!(proj.code.len(), 1);
-            assert_eq!(proj.imports.len(), 3);
+            assert_eq!(proj.imports.len(), 6);
         },
         Err(error) => {
             println!("{:?}", error);
