@@ -146,10 +146,11 @@ fn load_elf(fd: &mut File, name: String) -> Result<(Project,Machine)> {
     }
     debug!("Imports: {:#?}", &proj.imports);
 
-    // if they have syms, let's use them (strippable)
-    for sym in &binary.syms {
-        add_sym(&mut prog, sym, &binary.strtab);
-    }
+    // for now we comment adding symbols from strippable symbol table:
+    // we don't have an easy way/API to check if duplicate symbol/function targest have been added
+    // for sym in &binary.syms {
+    //     add_sym(&mut prog, sym, &binary.strtab);
+    // }
 
     proj.comments.insert(("base".to_string(),entry),"main".to_string());
     proj.code.push(prog);
