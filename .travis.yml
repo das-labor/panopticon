@@ -78,7 +78,7 @@ addons:
     - libdw-dev
 before_install: |
    if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
-      brew update; fi
+      brew update
       brew install homebrew/versions/qt55
    fi
    # XXX: remove when libqt5qml-quickcontrols is approved
