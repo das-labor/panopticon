@@ -58,6 +58,7 @@ notifications:
     on_success: change
     on_failure: always
 language: rust
+cache: cargo
 addons:
   apt:
     packages:
@@ -74,25 +75,28 @@ addons:
     # kcov
     - libelf-dev
     - libcurl4-openssl-dev
-    - libbfd-dev # not approved
-    - libiberty-dev # not approved
     - libdw-dev
-before_install:
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update; fi
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install homebrew/versions/qt55; fi
-  - if [[ "$TRAVIS_OS_NAME" == "linux"  && "$PACKAGE" == "" ]]; then sudo apt-get -qq install libbfd-dev libqt5qml-quickcontrols libiberty-dev; fi
+before_install: |
+   if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
+      brew update; fi
+      brew install homebrew/versions/qt55
+   fi
+   # XXX: remove when libqt5qml-quickcontrols is approved
+   if [[ "$TRAVIS_OS_NAME" == "linux"  && "$PACKAGE" == "" ]]; then
+      sudo apt-get -qq install libqt5qml-quickcontrols
+   fi
 after_success: |
-  # send coverage report to coveralls.io
-  if [[ "$TRAVIS_OS_NAME" == "linux" && "$PACKAGE" == "" ]]; then
-      wget https://github.com/SimonKagstrom/kcov/archive/v30.tar.gz
-      tar xzf v30.tar.gz && mkdir kcov-30/build && cd kcov-30/build && cmake .. && make &&
-      sudo make install && cd ../.. &&
-      for I in amd64 avr elf panopticon qtpanopticon project
-      do
-        kcov --verify --include-path=lib,qt target/cov-"$I" target/debug/"$I"-*
-      done &&
-      kcov --merge --coveralls-id=$TRAVIS_JOB_ID --include-path=lib,qt target/kcov target/cov-*
-  fi
+   # send coverage report to codecov.io
+   if [[ "$TRAVIS_OS_NAME" == "linux" && "$PACKAGE" == "" ]]; then
+      cargo coverage --verbose
+      codecov --file target/kcov/kcov-merged/cobertura.xml
+   fi
+before_script: |
+   if [[ "$TRAVIS_OS_NAME" == "linux" && "$PACKAGE" == "" ]]; then
+      cargo install cargo-travis
+      pip install codecov
+      export PATH=$HOME/.cargo/bin:$HOME/.local/bin:$PATH
+   fi
 script: |
   if [[ "$PACKAGE" != "" && ( "$TRAVIS_BRANCH" != "master" || "$TRAVIS_PULL_REQUEST" != "false" ) ]]
   then
