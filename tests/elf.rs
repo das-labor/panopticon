@@ -24,7 +24,29 @@ use std::path::Path;
 #[test]
 fn elf_load_static() {
     match loader::load(Path::new("tests/data/static")) {
-        Ok((proj,_)) => println!("{}",proj.name),
-        Err(_) => panic!()
+        Ok((proj,_)) => {
+            println!("{}",proj.name);
+            assert_eq!(proj.imports.len(), 0);
+        },
+        Err(error) => {
+            println!("{:?}", error);
+            assert!(false);
+        }
+    }
+}
+
+#[test]
+fn elf_load_dynamic() {
+    match loader::load(Path::new("tests/data/libfoo.so")) {
+        Ok((proj,_)) => {
+            println!("{:?}", &proj);
+            assert_eq!(proj.name, "libfoo.so");
+            assert_eq!(proj.code.len(), 1);
+            assert_eq!(proj.imports.len(), 6);
+        },
+        Err(error) => {
+            println!("{:?}", error);
+            assert!(false);
+        }
     }
 }

@@ -87,12 +87,7 @@ pub fn create_raw_project(_path: &Variant, _tgt: &Variant, _base: &Variant, _ent
                             };
 
                             if let Ok(ref iv) = iv {
-                                let mut proj = Project{
-                                    name: nam.to_string(),
-                                    code: Vec::new(),
-                                    data: World::new(reg),
-                                    comments: HashMap::new(),
-                                };
+                                let mut proj = Project::new(nam.to_string(), reg);
                                 let mut prog = Program::new("prog0");
 
                                 if entry >= 0 {

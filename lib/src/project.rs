@@ -56,6 +56,8 @@ pub struct Project {
     pub data: World,
     /// Comments
     pub comments: HashMap<(String,u64),String>,
+    /// Symbolic References (Imports)
+    pub imports: HashMap<u64, String>,
 }
 
 impl Project {
@@ -66,6 +68,7 @@ impl Project {
             code: Vec::new(),
             data: World::new(r),
             comments: HashMap::new(),
+            imports: HashMap::new(),
         }
     }
 
