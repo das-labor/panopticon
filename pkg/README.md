@@ -11,13 +11,13 @@ These are the steps of creating a release:
 
 ## Bumping version numbers
 This means ***everywhere***:
- - in `.travis.yml` lines 112, 124
- - in `appveyor.yml` lines 1, 38
- - in `Cargo.toml` line 3
- - in `pkg/arch/PKGBUILD` lines 3, 26
- - in `pkg/osx/Info.plist` line 10
- - in `pkg/windows/package_zip.bat` line 7
- - in `qml/Title.qml` line 69
+ - in `.travis.yml`
+ - in `appveyor.yml`
+ - in `Cargo.toml`
+ - in `pkg/arch/PKGBUILD`
+ - in `pkg/osx/Info.plist`
+ - in `pkg/windows/package_zip.bat`
+ - in `qml/Title.qml`
 
 ## Adding new sections to the changelogs
 Several packages as well as the project itself contain a changelog. New entries have to be added to the following files:
@@ -30,6 +30,7 @@ To make sure that the version bump didn't corrupt the codebase, build the projec
 ## Creating a tag
 If everything changed before is correctly committed, you now have to create a tag with the following format:
 `<major>.<minor>.<patch>` e.g. `0.12.6`, `2.13.54`
+Also remember to crop all trailing zeros.
 
 After creating the tag it has to be pushed as well to make sure it can be referenced to in a changelog.
 
