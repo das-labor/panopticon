@@ -10,13 +10,14 @@ matrix:
       rust: 1.15.0
       env: TARGET=x86_64-unknown-linux-gnu
     # rustdoc
-    - os: linux
-      dist: trusty
-      rust: 1.15.0
-      env:
-        - TARGET=x86_64-unknown-linux-gnu
-        - PACKAGE=doc
-        - secure: "J9YvYryNyAZZSfJfXw64xHGmuwbwjPWxfvQ1vaLoC3ZXla2Nf1tEQN7P0UgnJkC3MZYop/yIZFa0bbdTG0Kef7+RHeD15Yp70bI6fyP9i048KRQYLPubTOHWIm5Ow6qIMo5hKZsVO3z+Lg7s3/y6L+DR5bT3PXWdZHovhe1QlA8="
+    # disabled: #265
+    #- os: linux
+    #  dist: trusty
+    #  rust: 1.15.0
+    #  env:
+    #    - TARGET=x86_64-unknown-linux-gnu
+    #    - PACKAGE=doc
+    #    - secure: "J9YvYryNyAZZSfJfXw64xHGmuwbwjPWxfvQ1vaLoC3ZXla2Nf1tEQN7P0UgnJkC3MZYop/yIZFa0bbdTG0Kef7+RHeD15Yp70bI6fyP9i048KRQYLPubTOHWIm5Ow6qIMo5hKZsVO3z+Lg7s3/y6L+DR5bT3PXWdZHovhe1QlA8="
     # nightly builds
     - os: linux
       dist: trusty
