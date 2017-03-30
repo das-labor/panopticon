@@ -550,6 +550,7 @@ pub enum FileFormat {
     ELF,
     PE,
     MachO,
+    MachFat,
     Archive,
     Panop,
     Raw
@@ -561,6 +562,7 @@ impl ToString for FileFormat {
             FileFormat::ELF => "elf",
             FileFormat::PE => "pe",
             FileFormat::MachO => "mach-o",
+            FileFormat::MachFat => "mach-fat",
             FileFormat::Archive => "archive",
             FileFormat::Panop => "panop",
             FileFormat::Raw => "raw"
@@ -644,11 +646,18 @@ pub fn file_details_of_path(path: PathBuf) -> Result<FileDetails> {
                         info: vec!["PE".to_string()],
                     })
                 },
-                Hint::Mach => {
+                Hint::Mach(_) => {
                     Ok(FileDetails{
                         state: state,
                         format: Some(FileFormat::MachO),
                         info: vec!["Mach-o".to_string()],
+                    })
+                },
+                Hint::MachFat => {
+                    Ok(FileDetails{
+                        state: state,
+                        format: Some(FileFormat::MachFat),
+                        info: vec!["Fat Mach-o".to_string()],
                     })
                 },
                 Hint::Archive => {

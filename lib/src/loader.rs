@@ -49,6 +49,89 @@ pub enum Machine {
     Ia32,
 }
 
+/// Load a Mach-o binary from disk and creates a `Project` from it. Returns the `Project` instance and
+/// the CPU its intended for.
+fn load_mach(fd: &mut File, name: String) -> Result<(Project,Machine)> {
+    let mut bytes = Vec::new();
+    try!(fd.read_to_end(&mut bytes));
+    let mach = mach::Mach::parse(&bytes)?;
+    debug!("mach: {:#?}", &mach);
+    let mut base = 0x0;
+    match mach {
+        mach::Mach::Binary(binary) => {
+            let cputype = binary.header.cputype;
+            let (machine, mut reg) = match cputype {
+                mach::cputype::CPU_TYPE_X86    => {
+                    let reg = Region::undefined("RAM".to_string(), 0x1_0000_0000);
+                    (Machine::Ia32,reg)
+                },
+                mach::cputype::CPU_TYPE_X86_64 => {
+                    let reg = Region::undefined("RAM".to_string(), 0xFFFF_FFFF_FFFF_FFFF);
+                    (Machine::Amd64,reg)
+                },
+                machine => return Err(format!("Unsupported machine ({:#x}): {}", machine, mach::cputype::cpu_type_to_str(machine)).into())
+            };
+
+            for segment in &binary.segments {
+                let offset = segment.fileoff as usize;
+                let filesize = segment.filesize as usize;
+                if offset + filesize > bytes.len () {
+                    return Err(format!("Failed to read segment: range {:?} greater than len {}", offset..offset+filesize, bytes.len()).into())
+                }
+                let section = &bytes[offset..offset + filesize];
+                let start = segment.vmaddr;
+                let end = start + segment.vmsize;
+                let name = segment.name()?;
+                debug!("Load mach segment {:?}: {} bytes segment to {:#x}", name, segment.vmsize, start);
+                reg.cover(Bound::new(start, end), Layer::wrap(Vec::from(section)));
+                if name == "__TEXT" {
+                    base = segment.vmaddr;
+                    debug!("Setting vm address base to {:#x}", base);
+                }
+            }
+
+            let name =
+                if let &Some(ref name) = &binary.name {
+                    name.to_string()
+                } else {
+                    name
+                };
+
+            // debug!("interpreter: {:?}", &binary.interpreter);
+
+            let mut prog = Program::new("prog0");
+            let mut proj = Project::new(name.clone(),reg);
+
+            let entry = binary.entry;
+
+            if entry != 0 {
+                prog.call_graph.add_vertex(CallTarget::Todo(Rvalue::new_u64(entry as u64),Some(name),Uuid::new_v4()));
+            }
+
+            for export in binary.exports()? {
+                if export.offset != 0 {
+                    debug!("adding: {:?}", &export);
+                    prog.call_graph.add_vertex(CallTarget::Todo(Rvalue::new_u64
+                                                                (export.offset as u64 + base),Some(export.name),Uuid::new_v4()));
+                }
+            }
+
+            for import in binary.imports()? {
+                debug!("Import {}: {:#x}", import.name, import.offset);
+                proj.imports.insert(import.offset, import.name.to_string());
+            }
+
+            proj.comments.insert(("base".to_string(),entry),"main".to_string());
+            proj.code.push(prog);
+
+            Ok((proj,machine))
+        },
+        _ => {
+            Err("Cannot directly load a fat architecture (e.g., which one do I load?)".into())
+        }
+    }
+}
+
 /// Load an ELF file from disk and creates a `Project` from it. Returns the `Project` instance and
 /// the CPU its intended for.
 fn load_elf(fd: &mut File, name: String) -> Result<(Project,Machine)> {
@@ -232,14 +315,12 @@ pub fn load(path: &Path) -> Result<(Project,Machine)> {
         Hint::PE => {
             load_pe(&mut fd, name)
         },
-        // wip
-        Hint::Mach => {
-            let mach = mach::Mach::try_from(&mut fd)?;
-            debug!("mach: {:#?}", &mach);
-            Err("Tried to load a mach file, unsupported format".into())
+        Hint::Mach(_) => {
+            load_mach(&mut fd, name)
         },
         Hint::Archive => {
-            let archive = archive::Archive::try_from(&mut fd)?;
+            let bytes = { let mut v = Vec::new(); fd.read_to_end(&mut v)?; v};
+            let archive = archive::Archive::parse(&bytes)?;
             debug!("archive: {:#?}", &archive);
             Err("Tried to load an archive, unsupported format".into())
         },

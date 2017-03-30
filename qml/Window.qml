@@ -38,15 +38,22 @@ Ctrl.ApplicationWindow {
 				}
 				break;
 			}
+			case "mach-o": {
+				var res = JSON.parse(Panopticon.createProject(req.path))
+				if(res.status == "err") {
+					console.exception(res.error);
+				}
+				break;
+			}
 			case "elf": {
-				var res = JSON.parse(Panopticon.createElfProject(req.path))
+				var res = JSON.parse(Panopticon.createProject(req.path))
 				if(res.status == "err") {
 					console.exception(res.error);
 				}
 				break;
 			}
 			case "pe": {
-				var res = JSON.parse(Panopticon.createPeProject(req.path))
+				var res = JSON.parse(Panopticon.createProject(req.path))
 				if(res.status == "err") {
 					console.exception(res.error);
 				}
