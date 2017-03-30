@@ -16,6 +16,8 @@ This means ***everywhere***:
  - in `Cargo.toml`
  - in `pkg/arch/PKGBUILD`
  - in `pkg/osx/Info.plist`
+ - in `pkg/fedora/package.sh`
+ - in `pkg/fedora/panopticon.spec`
  - in `pkg/windows/package_zip.bat`
  - in `qml/Title.qml`
 
