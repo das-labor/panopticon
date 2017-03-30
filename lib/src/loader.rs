@@ -72,7 +72,7 @@ fn load_mach(fd: &mut File, name: String) -> Result<(Project,Machine)> {
                 machine => return Err(format!("Unsupported machine ({:#x}): {}", machine, mach::cputype::cpu_type_to_str(machine)).into())
             };
 
-            for segment in &binary.segments {
+            for segment in &*binary.segments {
                 let offset = segment.fileoff as usize;
                 let filesize = segment.filesize as usize;
                 if offset + filesize > bytes.len () {
