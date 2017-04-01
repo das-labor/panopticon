@@ -19,6 +19,9 @@ BuildRequires: cargo
 
 Requires:      adobe-source-sans-pro-fonts
 Requires:      adobe-source-code-pro-fonts
+Requires:      qt5-qtquickcontrols
+Requires:      qt5-qtgraphicaleffects
+Requires:      qt5-qtsvg
 
 %description
 Panopticon is a cross platform disassembler for reverse engineering written in
