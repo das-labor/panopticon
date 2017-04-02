@@ -16,7 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-//! Loader for 32 and 64-bit ELF and PE files.
+//! Loader for 32 and 64-bit ELF, PE, and Mach-o files.
 
 use std::io::{Seek,SeekFrom,Read,Cursor};
 use std::fs::File;
@@ -49,11 +49,9 @@ pub enum Machine {
     Ia32,
 }
 
-/// Load a Mach-o binary from disk and creates a `Project` from it. Returns the `Project` instance and
+/// Parses a non-fat Mach-o binary from `bytes` and creates a `Project` from it. Returns the `Project` instance and
 /// the CPU its intended for.
-fn load_mach(fd: &mut File, name: String) -> Result<(Project,Machine)> {
-    let mut bytes = Vec::new();
-    try!(fd.read_to_end(&mut bytes));
+fn load_mach(bytes: &[u8], name: String) -> Result<(Project,Machine)> {
     let mach = mach::Mach::parse(&bytes)?;
     debug!("mach: {:#?}", &mach);
     let mut base = 0x0;
@@ -132,13 +130,9 @@ fn load_mach(fd: &mut File, name: String) -> Result<(Project,Machine)> {
     }
 }
 
-/// Load an ELF file from disk and creates a `Project` from it. Returns the `Project` instance and
+/// Parses an ELF 32/64-bit binary from `bytes` and creates a `Project` from it. Returns the `Project` instance and
 /// the CPU its intended for.
-fn load_elf(fd: &mut File, name: String) -> Result<(Project,Machine)> {
-    // it seems more efficient to load all bytes into in-memory buffer and parse those...
-    // for larger binaries we should perhaps let the elf parser read from the fd though
-    let mut bytes = Vec::new();
-    try!(fd.read_to_end(&mut bytes));
+fn load_elf(bytes: &[u8], name: String) -> Result<(Project,Machine)> {
     let mut cursor = Cursor::new(&bytes);
     let binary = elf::Elf::parse(&bytes)?;
     debug!("elf: {:#?}", &binary);
@@ -241,11 +235,9 @@ fn load_elf(fd: &mut File, name: String) -> Result<(Project,Machine)> {
     Ok((proj,machine))
 }
 
-/// Loads a PE file from disk and create a project from it.
-fn load_pe(fd: &mut File, name: String) -> Result<(Project, Machine)> {
-    let mut bytes = Vec::new();
-    fd.read_to_end(&mut bytes)?;
-    let pe = pe::PE::from_bytes(&bytes)?;
+/// Parses a PE32/PE32+ file from `bytes` and create a project from it.
+fn load_pe(bytes: &[u8], name: String) -> Result<(Project, Machine)> {
+    let pe = pe::PE::parse(&bytes)?;
     debug!("pe: {:#?}", &pe);
     let image_base = pe.image_base as u64;
     let mut ram = Region::undefined("RAM".to_string(),0x100000000);
@@ -308,24 +300,31 @@ pub fn load(path: &Path) -> Result<(Project,Machine)> {
         .map(|x| x.to_string_lossy().to_string())
         .unwrap_or("(encoding error)".to_string());
     let mut fd = File::open(path)?;
-    match goblin::peek(&mut fd)? {
-        Hint::Elf(_) => {
-            load_elf(&mut fd, name)
-        },
-        Hint::PE => {
-            load_pe(&mut fd, name)
-        },
-        Hint::Mach(_) => {
-            load_mach(&mut fd, name)
-        },
-        Hint::Archive => {
-            let bytes = { let mut v = Vec::new(); fd.read_to_end(&mut v)?; v};
-            let archive = archive::Archive::parse(&bytes)?;
-            debug!("archive: {:#?}", &archive);
-            Err("Tried to load an archive, unsupported format".into())
-        },
-        _ => {
-            Err("Tried to load an unknown file".into())
+    let peek = goblin::peek(&mut fd)?;
+    if let Hint::Unknown(magic) = peek {
+        Err(format!("Tried to load an unknown file. Magic: {}", magic).into())
+    } else {
+        let mut bytes = Vec::new();
+        fd.read_to_end(&mut bytes)?;
+        match peek {
+            Hint::Elf(_) => {
+                load_elf(&bytes, name)
+            },
+            Hint::PE => {
+                load_pe(&bytes, name)
+            },
+            Hint::Mach(_) => {
+                load_mach(&bytes, name)
+            },
+            Hint::Archive => {
+                let archive = archive::Archive::parse(&bytes)?;
+                debug!("archive: {:#?}", &archive);
+                Err("Tried to load an archive, unsupported format".into())
+            },
+            _ => {
+                println!("Loader branch hit wildcard, should be unreachable (a new variant must have been added but code was not updated)");
+                unreachable!()
+            }
         }
     }
 }
