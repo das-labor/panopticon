@@ -119,6 +119,8 @@ fn load_mach(bytes: &[u8], name: String) -> Result<(Project,Machine)> {
                 proj.imports.insert(import.offset, import.name.to_string());
             }
 
+            debug!("Imports: {:?}", &proj.imports);
+
             proj.comments.insert(("base".to_string(),entry),"main".to_string());
             proj.code.push(prog);
 
