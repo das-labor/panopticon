@@ -758,8 +758,12 @@ pub enum OperandSpec {
 #[derive(Clone,Debug)]
 pub enum Operand {
     Register(Register),
-    Immediate(u64,usize), // Value, Width (Bits)
-    Indirect(SegmentOverride,Register,Register,usize,(u64,usize),usize), // Segment Override, Base, Index, Scale, Disp, Width (Bits)
+    // Value, Width (Bits)
+    Immediate(u64,usize),
+    // Segment Override, Base, Index, Scale, Disp, Width (Bits)
+    Indirect(SegmentOverride,Register,Register,usize,(u64,usize),usize),
+    // Segment Override, Base, Index, Scale, Disp
+    Address(SegmentOverride,Register,Register,usize,(u64,usize)),
     Optional,
 }
 
@@ -785,6 +789,9 @@ impl Display for Operand {
                     _ => "UNK",
                 });
 
+                write!(f,"{}",Operand::Address(seg.clone(),base.clone(),index.clone(),scale.clone(),disp.clone()))
+            },
+            Operand::Address(ref seg, ref base,ref index,ref scale,ref disp) => {
                 let _ = try!(match *seg {
                     SegmentOverride::None => write!(f,"["),
                     SegmentOverride::Cs => write!(f,"cs:["),
@@ -876,19 +883,19 @@ fn read_operand(spec: &OperandSpec, tail: &mut Tail,
 
         // E
         (&OperandSpec::Present(AddressingMethod::E,OperandType::v),opsz) =>
-            read_effective_address(mode,seg,tail,rex,opsz,addrsz,addr,opsz),
+            indirect(try!(read_effective_address(mode,seg,tail,rex,opsz,addrsz,addr)),seg,addrsz,opsz),
         (&OperandSpec::Present(AddressingMethod::E,OperandType::z),_) =>
-            read_effective_address(mode,seg,tail,rex,cmp::min(32,opsz),addrsz,addr,opsz),
+            indirect(try!(read_effective_address(mode,seg,tail,rex,cmp::min(32,opsz),addrsz,addr)),seg,addrsz,cmp::min(32,opsz)),
         (&OperandSpec::Present(AddressingMethod::E,OperandType::y),opsz) =>
-            read_effective_address(mode,seg,tail,rex,cmp::max(32,opsz),addrsz,addr,opsz),
+            indirect(try!(read_effective_address(mode,seg,tail,rex,cmp::max(32,opsz),addrsz,addr)),seg,addrsz,cmp::max(32,opsz)),
         (&OperandSpec::Present(AddressingMethod::E,OperandType::b),_) =>
-            read_effective_address(mode,seg,tail,rex,8,addrsz,addr,opsz),
+            indirect(try!(read_effective_address(mode,seg,tail,rex,8,addrsz,addr)),seg,addrsz,8),
         (&OperandSpec::Present(AddressingMethod::E,OperandType::w),_) =>
-            read_effective_address(mode,seg,tail,rex,16,addrsz,addr,opsz),
+            indirect(try!(read_effective_address(mode,seg,tail,rex,16,addrsz,addr)),seg,addrsz,16),
         (&OperandSpec::Present(AddressingMethod::E,OperandType::d),_) =>
-            read_effective_address(mode,seg,tail,rex,32,addrsz,addr,opsz),
+            indirect(try!(read_effective_address(mode,seg,tail,rex,32,addrsz,addr)),seg,addrsz,32),
         (&OperandSpec::Present(AddressingMethod::E,OperandType::dq),_) =>
-            read_effective_address(mode,seg,tail,rex,64,addrsz,addr,opsz),
+            indirect(try!(read_effective_address(mode,seg,tail,rex,64,addrsz,addr)),seg,addrsz,64),
 
         // G
         (&OperandSpec::Present(AddressingMethod::G,OperandType::dq),_) =>
@@ -951,35 +958,35 @@ fn read_operand(spec: &OperandSpec, tail: &mut Tail,
         (&OperandSpec::Present(AddressingMethod::L,OperandType::x),_) =>
             read_simd_register(tail.read_u8().ok().unwrap() & 0b1111,rex.is_some(),simdsz),
         (&OperandSpec::Present(AddressingMethod::M,OperandType::p),16) =>
-            read_effective_address(mode,seg,tail,rex,16,addrsz,addr,32),
+            read_effective_address(mode,seg,tail,rex,16,addrsz,addr),
         (&OperandSpec::Present(AddressingMethod::M,OperandType::p),32) =>
-            read_effective_address(mode,seg,tail,rex,32,addrsz,addr,48),
+            read_effective_address(mode,seg,tail,rex,32,addrsz,addr),
         (&OperandSpec::Present(AddressingMethod::M,OperandType::p),64) =>
-            read_effective_address(mode,seg,tail,rex,64,addrsz,addr,80),
+            read_effective_address(mode,seg,tail,rex,64,addrsz,addr),
         (&OperandSpec::Present(AddressingMethod::M,OperandType::w),opsz) =>
-            read_effective_address(mode,seg,tail,rex,opsz,addrsz,addr,16),
+            read_effective_address(mode,seg,tail,rex,16,addrsz,addr),
         (&OperandSpec::Present(AddressingMethod::M,OperandType::d),opsz) =>
-            read_effective_address(mode,seg,tail,rex,opsz,addrsz,addr,32),
+            read_effective_address(mode,seg,tail,rex,32,addrsz,addr),
         (&OperandSpec::Present(AddressingMethod::M,OperandType::q),opsz) =>
-            read_effective_address(mode,seg,tail,rex,opsz,addrsz,addr,64),
+            read_effective_address(mode,seg,tail,rex,64,addrsz,addr),
         (&OperandSpec::Present(AddressingMethod::M,OperandType::s),64) =>
-            read_effective_address(mode,seg,tail,rex,opsz,addrsz,addr,80),
+            read_effective_address(mode,seg,tail,rex,80,addrsz,addr),
         (&OperandSpec::Present(AddressingMethod::M,OperandType::s),_) =>
-            read_effective_address(mode,seg,tail,rex,opsz,addrsz,addr,48),
+            read_effective_address(mode,seg,tail,rex,48,addrsz,addr),
         (&OperandSpec::Present(AddressingMethod::M,OperandType::b),_) =>
-            read_effective_address(mode,seg,tail,rex,opsz,addrsz,addr,8),
+            read_effective_address(mode,seg,tail,rex,8,addrsz,addr),
         (&OperandSpec::Present(AddressingMethod::M,OperandType::None),opsz) =>
-            read_effective_address(mode,seg,tail,rex,opsz,addrsz,addr,opsz),
+            read_effective_address(mode,seg,tail,rex,opsz,addrsz,addr),
         (&OperandSpec::Present(AddressingMethod::M,OperandType::a),32) =>
-            read_effective_address(mode,seg,tail,rex,opsz,addrsz,addr,64),
+            read_effective_address(mode,seg,tail,rex,64,addrsz,addr),
         (&OperandSpec::Present(AddressingMethod::M,OperandType::a),16) =>
-            read_effective_address(mode,seg,tail,rex,opsz,addrsz,addr,32),
+            read_effective_address(mode,seg,tail,rex,32,addrsz,addr),
         (&OperandSpec::Present(AddressingMethod::M,OperandType::y),opsz) =>
-            read_effective_address(mode,seg,tail,rex,opsz,addrsz,addr,cmp::min(32,opsz)),
+            read_effective_address(mode,seg,tail,rex,cmp::min(32,opsz),addrsz,addr),
         (&OperandSpec::Present(AddressingMethod::M,OperandType::x),32) =>
-            read_effective_address(mode,seg,tail,rex,opsz,addrsz,addr,128),
+            read_effective_address(mode,seg,tail,rex,128,addrsz,addr),
         (&OperandSpec::Present(AddressingMethod::M,OperandType::x),64) =>
-            read_effective_address(mode,seg,tail,rex,opsz,addrsz,addr,256),
+            read_effective_address(mode,seg,tail,rex,256,addrsz,addr),
         (&OperandSpec::Present(AddressingMethod::N,OperandType::q),_) =>
             read_simd_register(tail.modrm(rex).ok().unwrap().2,rex.is_some(),64),
         (&OperandSpec::Present(AddressingMethod::O,OperandType::b),_) if addrsz == 16 =>
@@ -1003,11 +1010,11 @@ fn read_operand(spec: &OperandSpec, tail: &mut Tail,
         (&OperandSpec::Present(AddressingMethod::P,OperandType::d),_) =>
             read_simd_register(tail.modrm(rex).ok().unwrap().1,rex.is_some(),32),
         (&OperandSpec::Present(AddressingMethod::Q,OperandType::d),_) =>
-            read_effective_simd_address(mode,seg,tail,rex,opsz,addrsz,addr,32),
+            indirect(try!(read_effective_simd_address(mode,seg,tail,rex,opsz,addrsz,addr,32)),seg,addrsz,32),
         (&OperandSpec::Present(AddressingMethod::Q,OperandType::pi),_) =>
-            read_effective_simd_address(mode,seg,tail,rex,opsz,addrsz,addr,simdsz),
+            indirect(try!(read_effective_simd_address(mode,seg,tail,rex,opsz,addrsz,addr,simdsz)),seg,addrsz,simdsz),
         (&OperandSpec::Present(AddressingMethod::Q,OperandType::q),_) =>
-            read_effective_simd_address(mode,seg,tail,rex,opsz,addrsz,addr,32),
+            indirect(try!(read_effective_simd_address(mode,seg,tail,rex,opsz,addrsz,addr,32)),seg,addrsz,32),
         (&OperandSpec::Present(AddressingMethod::S,OperandType::w),_) =>
             read_memory(Operand::Immediate(tail.read_u16().ok().unwrap() as u64,addrsz),seg,addrsz,16),
         (&OperandSpec::Present(AddressingMethod::R,OperandType::d),_) =>
@@ -1047,21 +1054,21 @@ fn read_operand(spec: &OperandSpec, tail: &mut Tail,
         (&OperandSpec::Present(AddressingMethod::V,OperandType::y),opsz) =>
             read_simd_register(tail.modrm(rex).ok().unwrap().1,rex.is_some(),cmp::min(32,opsz)),
         (&OperandSpec::Present(AddressingMethod::W,OperandType::pd),_) =>
-            read_effective_simd_address(mode,seg,tail,rex,opsz,addrsz,addr,simdsz),
+            indirect(try!(read_effective_simd_address(mode,seg,tail,rex,opsz,addrsz,addr,simdsz)),seg,addrsz,simdsz),
         (&OperandSpec::Present(AddressingMethod::W,OperandType::ps),_) =>
-            read_effective_simd_address(mode,seg,tail,rex,opsz,addrsz,addr,simdsz),
+            indirect(try!(read_effective_simd_address(mode,seg,tail,rex,opsz,addrsz,addr,simdsz)),seg,addrsz,simdsz),
         (&OperandSpec::Present(AddressingMethod::W,OperandType::q),_) =>
-            read_effective_simd_address(mode,seg,tail,rex,opsz,addrsz,addr,64),
+            indirect(try!(read_effective_simd_address(mode,seg,tail,rex,opsz,addrsz,addr,64)),seg,addrsz,64),
         (&OperandSpec::Present(AddressingMethod::W,OperandType::dq),_) =>
-            read_effective_simd_address(mode,seg,tail,rex,opsz,addrsz,addr,128),
+            indirect(try!(read_effective_simd_address(mode,seg,tail,rex,opsz,addrsz,addr,128)),seg,addrsz,128),
         (&OperandSpec::Present(AddressingMethod::W,OperandType::x),32) =>
-            read_effective_simd_address(mode,seg,tail,rex,opsz,addrsz,addr,128),
+            indirect(try!(read_effective_simd_address(mode,seg,tail,rex,opsz,addrsz,addr,128)),seg,addrsz,128),
         (&OperandSpec::Present(AddressingMethod::W,OperandType::x),64) =>
-            read_effective_simd_address(mode,seg,tail,rex,opsz,addrsz,addr,256),
+            indirect(try!(read_effective_simd_address(mode,seg,tail,rex,opsz,addrsz,addr,256)),seg,addrsz,256),
         (&OperandSpec::Present(AddressingMethod::W,OperandType::sd),_) =>
-            read_effective_simd_address(mode,seg,tail,rex,opsz,addrsz,addr,128),
+            indirect(try!(read_effective_simd_address(mode,seg,tail,rex,opsz,addrsz,addr,128)),seg,addrsz,128),
         (&OperandSpec::Present(AddressingMethod::W,OperandType::ss),_) =>
-            read_effective_simd_address(mode,seg,tail,rex,opsz,addrsz,addr,128),
+            indirect(try!(read_effective_simd_address(mode,seg,tail,rex,opsz,addrsz,addr,128)),seg,addrsz,128),
         _ => {
             error!("can't decode {:?}/{}",spec,opsz);
             Err(format!("can't decode {:?}/{}",spec,opsz).into())
@@ -1096,27 +1103,27 @@ fn read_effective_simd_address(mode: Mode, seg: SegmentOverride, tail: &mut Tail
         // mod = 00
         (0b00,0b000) | (0b00,0b001) | (0b00,0b010) |
         (0b00,0b011) | (0b00,0b110) | (0b00,0b111) =>
-            read_memory(try!(read_register(rm,rex.is_some(),addrsz)),seg,addrsz,simdsz),
+            read_simd_register(rm,rex.is_some(),addrsz),
         (0b00,0b100) =>
-            tail.sib(mod_,seg,rex,addrsz,opsz),
+            tail.sib(mod_,seg,rex,addrsz),
         (0b00,0b101) if mode == Mode::Long =>
-            Ok(Operand::Indirect(seg,Register::RIP,Register::None,0,(sign_ext_u32(try!(tail.read_u32()),addrsz),32),opsz)),
+            Ok(Operand::Address(seg,Register::None,Register::None,0,(ip + sign_ext_u32(try!(tail.read_u32()),addrsz),addrsz))),
         (0b00,0b101) if mode != Mode::Long =>
-            Ok(Operand::Indirect(seg,Register::None,Register::None,0,(sign_ext_u32(try!(tail.read_u32()),addrsz),32),opsz)),
+            Ok(Operand::Address(seg,Register::None,Register::None,0,(sign_ext_u32(try!(tail.read_u32()),addrsz),addrsz))),
 
         // mod = 01
         (0b01,0b000) | (0b01,0b001) | (0b01,0b010) | (0b01,0b011) |
         (0b01,0b101) | (0b01,0b110) | (0b01,0b111) =>
             if let Ok(Operand::Register(reg)) = read_register(rm,rex.is_some(),addrsz) {
-                Ok(Operand::Indirect(seg,reg,Register::None,0,(sign_ext_u8(try!(tail.read_u8()),addrsz),8),simdsz))
+                Ok(Operand::Address(seg,reg,Register::None,0,(sign_ext_u8(try!(tail.read_u8()),addrsz),addrsz)))
             } else {
                 error!("Failed to decode SIB byte");
                 Err("Failed to decode SIB byte".into())
             },
         (0b01,0b100) =>
-            if let Operand::Indirect(e,b,i,s,_,w) = try!(tail.sib(mod_,seg,rex,addrsz,opsz)) {
+            if let Operand::Address(e,b,i,s,_) = try!(tail.sib(mod_,seg,rex,addrsz)) {
                 let d = sign_ext_u8(try!(tail.read_u8()),opsz);
-                Ok(Operand::Indirect(e,b,i,s,(d as u64,8),w))
+                Ok(Operand::Address(e,b,i,s,(d as u64,8)))
             } else {
                 error!("Internal error: read_sib did not return indirect operand");
                 Err("Internal error: read_sib did not return indirect operand".into())
@@ -1126,15 +1133,15 @@ fn read_effective_simd_address(mode: Mode, seg: SegmentOverride, tail: &mut Tail
         (0b10,0b000) | (0b10,0b001) | (0b10,0b010) | (0b10,0b011) |
         (0b10,0b101) | (0b10,0b110) | (0b10,0b111) =>
             if let Ok(Operand::Register(reg)) = read_register(rm,rex.is_some(),addrsz) {
-                Ok(Operand::Indirect(seg,reg,Register::None,0,(sign_ext_u32(try!(tail.read_u32()),addrsz),32),simdsz))
+                Ok(Operand::Address(seg,reg,Register::None,0,(sign_ext_u32(try!(tail.read_u32()),addrsz),addrsz)))
             } else {
                 error!("Failed to decode SIB byte");
                 Err("Failed to decode SIB byte".into())
             },
        (0b10,0b100) =>
-            if let Operand::Indirect(e,b,i,s,_,w) = try!(tail.sib(mod_,seg,rex,addrsz,opsz)) {
+            if let Operand::Address(e,b,i,s,_) = try!(tail.sib(mod_,seg,rex,addrsz)) {
                 let d = sign_ext_u32(try!(tail.read_u32()),addrsz);
-                Ok(Operand::Indirect(e,b,i,s,(d as u64,32),w))
+                Ok(Operand::Address(e,b,i,s,(d as u64,32)))
             } else {
                 error!("Internal error: read_sib did not return indirect operand");
                 Err("Internal error: read_sib did not return indirect operand".into())
@@ -1152,39 +1159,42 @@ fn read_effective_simd_address(mode: Mode, seg: SegmentOverride, tail: &mut Tail
 
 fn read_effective_address(mode: Mode, seg: SegmentOverride, tail: &mut Tail,
                           rex: Option<(bool,bool,bool,bool)>,
-                          opsz: usize, addrsz: usize, ip: u64, simdsz: usize) -> Result<Operand> {
+                          opsz: usize, addrsz: usize, ip: u64) -> Result<Operand> {
     let (mod_,reg,rm) = try!(tail.modrm(rex));
 
     match (mod_,rm & 0b111) {
         // mod = 00
         (0b00,0b000) | (0b00,0b001) | (0b00,0b010) |
         (0b00,0b011) | (0b00,0b110) | (0b00,0b111) =>
-            read_memory(try!(read_register(rm,rex.is_some(),addrsz)),seg,addrsz,opsz),
+            read_register(rm,rex.is_some(),addrsz),
         (0b00,0b100) =>
-            tail.sib(mod_,seg,rex,addrsz,opsz),
-        (0b00,0b101) if mode == Mode::Long =>
-            Ok(Operand::Indirect(seg,Register::RIP,Register::None,0,(sign_ext_u32(try!(tail.read_u32()),addrsz),32),opsz)),
+            tail.sib(mod_,seg,rex,addrsz),
+        (0b00,0b101) if mode == Mode::Long => {
+            let imm = sign_ext_u32(try!(tail.read_u32()),addrsz);
+            let len = tail.fd.position() as u64;
+            Ok(Operand::Address(seg,Register::None,Register::None,0,(ip + len + imm,32)))
+        }
         (0b00,0b101) if mode != Mode::Long =>
-            Ok(Operand::Indirect(seg,Register::None,Register::None,0,(sign_ext_u32(try!(tail.read_u32()),addrsz),32),opsz)),
+            Ok(Operand::Address(seg,Register::None,Register::None,0,(sign_ext_u32(try!(tail.read_u32()),addrsz),32))),
 
         // mod = 01
         (0b01,0b000) | (0b01,0b001) | (0b01,0b010) | (0b01,0b011) |
         (0b01,0b101) | (0b01,0b110) | (0b01,0b111) =>
             if let Ok(Operand::Register(reg)) = read_register(rm,rex.is_some(),addrsz) {
-                Ok(Operand::Indirect(seg,reg,Register::None,0,(sign_ext_u8(try!(tail.read_u8()),addrsz),8),opsz))
+                Ok(Operand::Address(seg,reg,Register::None,0,(sign_ext_u8(try!(tail.read_u8()),addrsz),8)))
             } else {
                 error!("Failed to decode r/m byte");
                 Err("Failed to decode r/m byte".into())
             },
         (0b01,0b100) =>
-            match tail.sib(mod_,seg,rex,addrsz,opsz) {
-                Ok(Operand::Indirect(e,b,i,s,_,w)) => {
+            match tail.sib(mod_,seg,rex,addrsz) {
+                Ok(Operand::Address(e,b,i,s,_)) => {
                     let d = sign_ext_u8(try!(tail.read_u8()),addrsz);
-                    Ok(Operand::Indirect(e,b,i,s,(d as u64,8),w))
+                    Ok(Operand::Address(e,b,i,s,(d as u64,8)))
                 }
                 Ok(_) => {
-                    error!("Failed to decode SIB byte: No Indirect");
-                    Err("Failed to decode SIB byte: No Indirect".into())
+                    error!("Failed to decode SIB byte: No Address");
+                    Err("Failed to decode SIB byte: No Address".into())
                 }
                 Err(e) => {
                     error!("Failed to decode SIB byte: {}",e);
@@ -1196,15 +1206,15 @@ fn read_effective_address(mode: Mode, seg: SegmentOverride, tail: &mut Tail,
         (0b10,0b000) | (0b10,0b001) | (0b10,0b010) | (0b10,0b011) |
         (0b10,0b101) | (0b10,0b110) | (0b10,0b111) =>
             if let Ok(Operand::Register(reg)) = read_register(rm,rex.is_some(),addrsz) {
-                Ok(Operand::Indirect(seg,reg,Register::None,0,(sign_ext_u32(try!(tail.read_u32()),addrsz),32),opsz))
+                Ok(Operand::Address(seg,reg,Register::None,0,(sign_ext_u32(try!(tail.read_u32()),addrsz),addrsz)))
             } else {
                 error!("Failed to decode SIB byte");
                 Err("Failed to decode SIB byte".into())
             },
         (0b10,0b100) =>
-            if let Operand::Indirect(e,b,i,s,_,w) = try!(tail.sib(mod_,seg,rex,addrsz,opsz)) {
+            if let Operand::Address(e,b,i,s,_) = try!(tail.sib(mod_,seg,rex,addrsz)) {
                 let d = sign_ext_u32(try!(tail.read_u32()),addrsz);
-                Ok(Operand::Indirect(e,b,i,s,(d as u64,32),w))
+                Ok(Operand::Address(e,b,i,s,(d as u64,32)))
             } else {
                 error!("Internal error: read_sib did not return indirect operand");
                 Err("Internal error: read_sib did not return indirect operand".into())
@@ -1220,10 +1230,19 @@ fn read_effective_address(mode: Mode, seg: SegmentOverride, tail: &mut Tail,
     }
 }
 
+fn indirect(op: Operand, seg: SegmentOverride, addrsz: usize, width: usize) -> Result<Operand> {
+    if let Operand::Address(_,_,_,_,_) = op {
+        read_memory(op,seg,addrsz,width)
+    } else {
+        Ok(op)
+    }
+}
+
 fn read_memory(op: Operand, seg: SegmentOverride, addrsz: usize, width: usize) -> Result<Operand> {
     match op {
         Operand::Register(reg) => Ok(Operand::Indirect(seg,reg,Register::None,0,(0,0),width)),
         Operand::Immediate(imm,w) => Ok(Operand::Indirect(seg,Register::None,Register::None,0,(imm,w),width)),
+        Operand::Address(seg,base,index,scale,disp) => Ok(Operand::Indirect(seg,base,index,scale,disp,width)),
         Operand::Indirect(_,_,_,_,_,_) => {
             error!("Tried to contruct doubly indirect operand");
             Err("Tried to contruct doubly indirect operand".into())
@@ -1236,7 +1255,7 @@ fn read_memory(op: Operand, seg: SegmentOverride, addrsz: usize, width: usize) -
 }
 
 fn read_sib<R: ReadBytesExt>(fd: &mut R, mod_: u8, seg: SegmentOverride, rex: Option<(bool,bool,bool,bool)>,
-            addrsz: usize,width: usize) -> Result<Operand> {
+            addrsz: usize) -> Result<Operand> {
     let sib = try!(fd.read_u8());
     let scale = sib >> 6;
     let mut index = (sib >> 3) & 0b111;
@@ -1282,7 +1301,7 @@ fn read_sib<R: ReadBytesExt>(fd: &mut R, mod_: u8, seg: SegmentOverride, rex: Op
     };
 
     // disp handled by calling function
-    Ok(Operand::Indirect(seg,ret_base,ret_index,ret_scale,ret_disp,width))
+    Ok(Operand::Address(seg,ret_base,ret_index,ret_scale,ret_disp))
 }
 
 fn read_modrm<R: ReadBytesExt>(fd: &mut R,rex: Option<(bool,bool,bool,bool)>) -> Result<(u8,u8,u8)> {
@@ -1651,9 +1670,9 @@ impl<'a> Tail<'a> {
     }
 
     pub fn sib(&mut self,mod_: u8,seg: SegmentOverride,rex: Option<(bool,bool,bool,bool)>,
-               addrsz: usize, width: usize) -> Result<Operand> {
+               addrsz: usize) -> Result<Operand> {
         if self.sib.is_none() {
-            self.sib = Some(try!(read_sib(&mut self.fd,mod_,seg,rex,addrsz,width)));
+            self.sib = Some(try!(read_sib(&mut self.fd,mod_,seg,rex,addrsz)));
         }
         Ok(self.sib.clone().unwrap())
     }
@@ -2337,6 +2356,29 @@ fn to_rreil(op: Operand) -> Result<(Rvalue,Vec<Statement>)> {
         Operand::Register(ref name) => Ok((Rvalue::Variable{ name: format!("{}",name).into(), size: name.width(), offset: 0, subscript: None },vec![])),
         Operand::Immediate(ref value,ref size) => Ok((Rvalue::Constant{ value: *value, size: *size },vec![])),
         Operand::Indirect(ref seg,ref base,ref index,ref scale,ref disp,ref width) => {
+            let (tgt,mut stmts) = try!(to_rreil(Operand::Address(seg.clone(),base.clone(),index.clone(),scale.clone(),disp.clone())));
+            let ret = Lvalue::Variable{ name: format!("{}",op).into(), size: *width, subscript: None };
+
+            stmts.append(&mut try!(match *width {
+                8 => rreil!{
+                    load/RAM (ret), (tgt);
+                },
+                16 => rreil!{
+                    load/RAM (ret), (tgt);
+                },
+                32 => rreil!{
+                    load/RAM (ret), (tgt);
+                },
+                64 => rreil!{
+                    load/RAM (ret), (tgt);
+                },
+                _ => unimplemented!(),
+            }
+            ));
+
+            Ok((ret.into(),stmts))
+        },
+        Operand::Address(ref seg,ref base,ref index,ref scale,ref disp) => {
             let mut stmts = vec![];
             let mut ret = Rvalue::Undefined;
 
@@ -2375,13 +2417,6 @@ fn to_rreil(op: Operand) -> Result<(Rvalue,Vec<Statement>)> {
                     ret = Rvalue::Constant{ value: disp.0, size: disp.1 };
                 }
             }
-
-            let tgt = Lvalue::Variable{ name: format!("{}",op).into(), size: *width, subscript: None };
-
-            stmts.append(&mut try!(rreil!{
-                load/ram (tgt), (ret);
-            }));
-            ret = tgt.into();
 
             Ok((ret,stmts))
         },
