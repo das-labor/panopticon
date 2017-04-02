@@ -168,9 +168,14 @@ pub use dataflow::*;
 
 pub mod abstractinterp;
 pub use abstractinterp::{
-    Kset,
+    Avalue,
+    Constraint,
+    ProgramPoint,
     approximate,
+    results,
 };
+pub use abstractinterp::bounded_addr_track::BoundedAddrTrack;
+pub use abstractinterp::kset::Kset;
 
 // disassembler
 pub mod avr;
