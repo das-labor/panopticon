@@ -1,46 +1,41 @@
-/*
- * Panopticon - A libre disassembler
- * Copyright (C) 2014-2015 Kai Michaelis
- * Copyright (C) 2015 Marcus Brinkmann
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
+// Panopticon - A libre disassembler
+// Copyright (C) 2014-2015 Kai Michaelis
+// Copyright (C) 2015 Marcus Brinkmann
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <http://www.gnu.org/licenses/>.
+//
 
 use mos::semantic::*;
 use mos::*;
 
-use {
-    State,
-    Disassembler,
-    Rvalue,
-};
+use {State, Disassembler, Rvalue};
 
 use std::sync::Arc;
 
-/* use value::{Lvalue,Rvalue,ToRvalue};
-use guard::Guard;
-use std::num::Wrapping;
-use super::*;
-*/
+// use value::{Lvalue,Rvalue,ToRvalue};
+// use guard::Guard;
+// use std::num::Wrapping;
+// use super::*;
+//
 
-/* Tests:
-   http://visual6502.org/wiki/index.php?title=6502TestPrograms
-   specifically:
-   https://github.com/kingcons/cl-6502/blob/b0087903428ec2a3794ba4219494005174d1b09f/tests/6502_functional_test.a65
-   http://www.6502.org/tutorials/deaimal_mode.html
-   http://6502org.wikidot.com/errata-other-deamode
-*/
+// Tests:
+// http://visual6502.org/wiki/index.php?title=6502TestPrograms
+// specifically:
+// https://github.com/kingcons/cl-6502/blob/b0087903428ec2a3794ba4219494005174d1b09f/tests/6502_functional_test.a65
+// http://www.6502.org/tutorials/deaimal_mode.html
+// http://6502org.wikidot.com/errata-other-deamode
+//
 
 #[allow(overflowing_literals)]
 pub fn disassembler() -> Arc<Disassembler<Mos>> {

@@ -45,9 +45,7 @@ use std::fs::File;
 use std::io::Read;
 use std::ops::Range;
 
-use {
-    Result
-};
+use Result;
 
 /// A cell represents a single, possible undefined, byte.
 pub type Cell = Option<u8>;
@@ -157,9 +155,7 @@ impl<'a> LayerIter<'a> {
         match *self {
             LayerIter::Undefined(_) => LayerIter::Undefined(real_end - r.start),
             LayerIter::Defined(None) => LayerIter::Defined(None),
-            LayerIter::Defined(Some(ref buf)) => {
-                LayerIter::Defined(Some(&buf[r.start as usize..real_end as usize]))
-            }
+            LayerIter::Defined(Some(ref buf)) => LayerIter::Defined(Some(&buf[r.start as usize..real_end as usize])),
             LayerIter::Sparse { map: ref m, mapped: ref i, pos: ref p, .. } => {
                 LayerIter::Sparse {
                     map: m,
@@ -359,8 +355,7 @@ mod tests {
         let s1 = l1.iter().append(l2.iter()).append(l3.iter()).append(l4.iter());
 
         assert_eq!(s1.collect::<Vec<Cell>>(),
-                   vec![None, None, None, None, None, None, Some(1), Some(2), Some(3), Some(1),
-                        Some(2), Some(3), Some(13), Some(23), Some(33), Some(6), Some(7)]);
+                   vec![None, None, None, None, None, None, Some(1), Some(2), Some(3), Some(1), Some(2), Some(3), Some(13), Some(23), Some(33), Some(6), Some(7)]);
     }
 
     #[test]
@@ -378,8 +373,7 @@ mod tests {
     fn mutable() {
         let l1 = OpaqueLayer::wrap(vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]);
         let mut l2 = Layer::writable();
-        let e = vec![Some(1), Some(2), Some(3), Some(4), Some(5), Some(1), Some(1), Some(8),
-                     Some(9), Some(10), Some(11), Some(12), Some(13), Some(1), Some(15), Some(16)];
+        let e = vec![Some(1), Some(2), Some(3), Some(4), Some(5), Some(1), Some(1), Some(8), Some(9), Some(10), Some(11), Some(12), Some(13), Some(1), Some(15), Some(16)];
 
         l2.write(5, Some(1));
         l2.write(6, Some(1));

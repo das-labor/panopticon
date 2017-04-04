@@ -1,20 +1,19 @@
-/*
- * Panopticon - A libre disassembler
- * Copyright (C) 2015, 2017  Panopticon authors
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
+// Panopticon - A libre disassembler
+// Copyright (C) 2015, 2017  Panopticon authors
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <http://www.gnu.org/licenses/>.
+//
 
 #[macro_use]
 extern crate panopticon;
@@ -25,46 +24,25 @@ extern crate regex;
 #[macro_use]
 extern crate quickcheck;
 
-use panopticon::{
-    Region,
-    Architecture,
-    amd64,
-    Result,
-    Rvalue,
-    Lvalue,
-    execute,
-    lift,
-    Statement,
-};
-use panopticon::amd64::{
-    tables,
-    semantic,
-    Opcode,
-    MnemonicSpec,
-    OperandSpec,
-    AddressingMethod,
-    OperandType,
-    JumpSpec,
-    Operand,
-    read_spec_register,
-};
+use panopticon::{Region, Architecture, amd64, Result, Rvalue, Lvalue, execute, lift, Statement};
+use panopticon::amd64::{tables, semantic, Opcode, MnemonicSpec, OperandSpec, AddressingMethod, OperandType, JumpSpec, Operand, read_spec_register};
 
-use quickcheck::{Arbitrary,Gen,TestResult,Testable};
+use quickcheck::{Arbitrary, Gen, TestResult, Testable};
 use std::path::Path;
 use std::cmp;
 use std::borrow::Cow;
 
 #[test]
 fn amd64_opcodes() {
-    let reg = Region::open("com".to_string(),Path::new("tests/data/amd64.com")).unwrap();
+    let reg = Region::open("com".to_string(), Path::new("tests/data/amd64.com")).unwrap();
     let mut addr = 0;
 
     loop {
-        let maybe_match = <amd64::Amd64 as Architecture>::decode(&reg,addr,&amd64::Mode::Long);
+        let maybe_match = <amd64::Amd64 as Architecture>::decode(&reg, addr, &amd64::Mode::Long);
 
         if let Ok(match_st) = maybe_match {
             for mne in match_st.mnemonics {
-                println!("{:x}: {}",mne.area.start,mne.opcode);
+                println!("{:x}: {}", mne.area.start, mne.opcode);
                 addr = mne.area.end;
 
                 if addr >= reg.size() {
@@ -72,7 +50,7 @@ fn amd64_opcodes() {
                 }
             }
         } else if addr < reg.size() {
-            unreachable!("failed to match anything at {:x}",addr);
+            unreachable!("failed to match anything at {:x}", addr);
         } else {
             break;
         }
@@ -83,15 +61,15 @@ fn amd64_opcodes() {
 fn ia32_opcodes() {
     env_logger::init().unwrap();
 
-    let reg = Region::open("com".to_string(),Path::new("tests/data/ia32.com")).unwrap();
+    let reg = Region::open("com".to_string(), Path::new("tests/data/ia32.com")).unwrap();
     let mut addr = 0;
 
     loop {
-        let maybe_match = amd64::Amd64::decode(&reg,addr,&amd64::Mode::Protected);
+        let maybe_match = amd64::Amd64::decode(&reg, addr, &amd64::Mode::Protected);
 
         if let Ok(match_st) = maybe_match {
             for mne in match_st.mnemonics {
-                println!("{:x}: {}",mne.area.start,mne.opcode);
+                println!("{:x}: {}", mne.area.start, mne.opcode);
                 addr = mne.area.end;
 
                 if addr >= reg.size() {
@@ -99,7 +77,7 @@ fn ia32_opcodes() {
                 }
             }
         } else if addr < reg.size() {
-            unreachable!("failed to match anything at {:x}",addr);
+            unreachable!("failed to match anything at {:x}", addr);
         } else {
             break;
         }
@@ -128,7 +106,7 @@ struct Context {
 
 impl Arbitrary for Context {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
-        Context{
+        Context {
             rax: g.gen(),
             rbx: g.gen(),
             rcx: g.gen(),
@@ -151,81 +129,105 @@ impl Arbitrary for Context {
 
 #[derive(Debug,Clone)]
 enum SampledOperand {
-    Register(Cow<'static,str>,u64,usize),
-    Immediate(u64,usize),
+    Register(Cow<'static, str>, u64, usize),
+    Immediate(u64, usize),
 }
 
 fn sample_register<G: Gen>(g: &mut G, opsz: usize) -> Result<SampledOperand> {
     Ok(match opsz {
         8 => {
-            SampledOperand::Register(
-                g.choose(&[
-                    //"AH","BH","CH","DH",
-                    "AL","BL","CL","DL","SIL","DIL","BPL",
-                    "R8B","R9B","R10B","R11B","R12B","R13B","R14B","R15B"]).unwrap().to_string().into(),
-                g.gen::<u8>() as u64,8)
+            SampledOperand::Register(g.choose(&[//"AH","BH","CH","DH",
+                                                   "AL",
+                                                   "BL",
+                                                   "CL",
+                                                   "DL",
+                                                   "SIL",
+                                                   "DIL",
+                                                   "BPL",
+                                                   "R8B",
+                                                   "R9B",
+                                                   "R10B",
+                                                   "R11B",
+                                                   "R12B",
+                                                   "R13B",
+                                                   "R14B",
+                                                   "R15B"])
+                                         .unwrap()
+                                         .to_string()
+                                         .into(),
+                                     g.gen::<u8>() as u64,
+                                     8)
         }
         16 => {
-            SampledOperand::Register(
-                g.choose(&[
-                    "AX","BX","CX","DX","SI","DI","BP",
-                    "R8W","R9W","R10W","R11W","R12W","R13W","R14W","R15W"]).unwrap().to_string().into(),
-                g.gen::<u16>() as u64,16)
+            SampledOperand::Register(g.choose(&["AX", "BX", "CX", "DX", "SI", "DI", "BP", "R8W", "R9W", "R10W", "R11W", "R12W", "R13W", "R14W", "R15W"])
+                                         .unwrap()
+                                         .to_string()
+                                         .into(),
+                                     g.gen::<u16>() as u64,
+                                     16)
         }
         32 => {
-            SampledOperand::Register(
-                g.choose(&[
-                    "EAX","EBX","ECX","EDX","ESI","EDI","EBP",
-                    "R8D","R9D","R10D","R11D","R12D","R13D","R14D","R15D"]).unwrap().to_string().into(),
-                g.gen::<u32>() as u64,32)
+            SampledOperand::Register(g.choose(&["EAX", "EBX", "ECX", "EDX", "ESI", "EDI", "EBP", "R8D", "R9D", "R10D", "R11D", "R12D", "R13D", "R14D", "R15D"])
+                                         .unwrap()
+                                         .to_string()
+                                         .into(),
+                                     g.gen::<u32>() as u64,
+                                     32)
         }
         64 => {
-            SampledOperand::Register(
-                g.choose(&[
-                    "RAX","RBX","RCX","RDX","RSI","RDI","RBP",
-                    "R8","R9","R10","R11","R12","R13","R14","R15"]).unwrap().to_string().into(),
-                g.gen::<u64>(),64)
+            SampledOperand::Register(g.choose(&["RAX", "RBX", "RCX", "RDX", "RSI", "RDI", "RBP", "R8", "R9", "R10", "R11", "R12", "R13", "R14", "R15"])
+                                         .unwrap()
+                                         .to_string()
+                                         .into(),
+                                     g.gen::<u64>(),
+                                     64)
         }
-        _ => return Err("Invalid operator size".into())
+        _ => return Err("Invalid operator size".into()),
     })
 }
 
 fn sample_simd_register<G: Gen>(g: &mut G, opsz: usize) -> Result<SampledOperand> {
     Ok(match opsz {
         32 => {
-            SampledOperand::Register(
-                g.choose(&[
-                    "MM0","MM1","MM2","MM3","MM4","MM5", "MM6", "MM7"]).unwrap().to_string().into(),
-                g.gen::<u32>() as u64,32)
+            SampledOperand::Register(g.choose(&["MM0", "MM1", "MM2", "MM3", "MM4", "MM5", "MM6", "MM7"])
+                                         .unwrap()
+                                         .to_string()
+                                         .into(),
+                                     g.gen::<u32>() as u64,
+                                     32)
         }
         64 => {
-            SampledOperand::Register(
-                g.choose(&[
-                    "MMX0","MMX1","MMX2","MMX3","MMX4","MMX5", "MMX6", "MMX7"]).unwrap().to_string().into(),
-                g.gen::<u64>(),64)
+            SampledOperand::Register(g.choose(&["MMX0", "MMX1", "MMX2", "MMX3", "MMX4", "MMX5", "MMX6", "MMX7"])
+                                         .unwrap()
+                                         .to_string()
+                                         .into(),
+                                     g.gen::<u64>(),
+                                     64)
         }
         128 => {
-            SampledOperand::Register(
-                g.choose(&[
-                    "XMM0","XMM1","XMM2","XMM3","XMM4","XMM5","XMM6","XMM7",
-                    "XMM8","XMM9","XMM10","XMM11","XMM12","XMM13","XMM14","XMM15"]).unwrap().to_string().into(),
-                g.gen::<u64>(),128)
+            SampledOperand::Register(g.choose(&["XMM0", "XMM1", "XMM2", "XMM3", "XMM4", "XMM5", "XMM6", "XMM7", "XMM8", "XMM9", "XMM10", "XMM11", "XMM12", "XMM13", "XMM14", "XMM15"])
+                                         .unwrap()
+                                         .to_string()
+                                         .into(),
+                                     g.gen::<u64>(),
+                                     128)
         }
         256 => {
-            SampledOperand::Register(
-                g.choose(&[
-                    "YMM0","YMM1","YMM2","YMM3","YMM4","YMM5","YMM6","YMM7",
-                    "YMM8","YMM9","YMM10","YMM11","YMM12","YMM13","YMM14","YMM15"]).unwrap().to_string().into(),
-                g.gen::<u64>(),256)
+            SampledOperand::Register(g.choose(&["YMM0", "YMM1", "YMM2", "YMM3", "YMM4", "YMM5", "YMM6", "YMM7", "YMM8", "YMM9", "YMM10", "YMM11", "YMM12", "YMM13", "YMM14", "YMM15"])
+                                         .unwrap()
+                                         .to_string()
+                                         .into(),
+                                     g.gen::<u64>(),
+                                     256)
         }
-        _ => return Err("Invalid operator size".into())
+        _ => return Err("Invalid operator size".into()),
     })
 }
 
-fn sample_register_variant<G: Gen>(reg: &OperandType,opsz: usize, g: &mut G) -> Result<SampledOperand> {
-    read_spec_register(reg.clone(),opsz,g.gen::<bool>()).map(|x| {
+fn sample_register_variant<G: Gen>(reg: &OperandType, opsz: usize, g: &mut G) -> Result<SampledOperand> {
+    read_spec_register(reg.clone(), opsz, g.gen::<bool>()).map(|x| {
         if let &Operand::Register(ref reg) = &x {
-            SampledOperand::Register(format!("{}",x).into(),g.gen::<u64>(),reg.width())
+            SampledOperand::Register(format!("{}", x).into(), g.gen::<u64>(), reg.width())
         } else {
             unreachable!()
         }
@@ -392,59 +394,85 @@ fn sample_operand<G: Gen>(spec: &OperandSpec, opsz: usize, simdsz: usize, g: &mu
 }
 
 fn operand_specs(mnemonic: &'static str) -> Vec<Vec<&'static OperandSpec>> {
-    let tables_8 = &[
-        &tables::GROUP1_OPC80, &tables::GROUP1_OPC81, &tables::GROUP1_OPC82, &tables::GROUP1_OPC83,
-        &tables::GROUP101_OPC8F, &tables::GROUP2_OPCC0, &tables::GROUP2_OPCC1, &tables::GROUP2_OPCD0,
-        &tables::GROUP2_OPCD1, &tables::GROUP2_OPCD2, &tables::GROUP2_OPCD3, &tables::GROUP3_OPCF6,
-        &tables::GROUP3_OPCF7, &tables::GROUP4_OPCFE, &tables::GROUP5_OPCFF, &tables::GROUP6_OPC00,
-        &tables::GROUP7_OPC01_MEM, &tables::GROUP7_OPC01_MEM, &tables::GROUP7_OPC01_MEM, &tables::GROUP8_OPCBA,
-        &tables::GROUP10_OPCB9, &tables::GROUP11_OPCC6, &tables::GROUP11_OPCC7, &tables::GROUP12_OPC71,
-        &tables::GROUP12_OPC6671, &tables::GROUP13_OPC72, &tables::GROUP13_OPC6672, &tables::GROUP14_OPC73,
-        &tables::GROUP14_OPC6673, &tables::GROUP102_OPC01
-    ];
-    let tables_256 = &[
-        &tables::ONEBYTE_TABLE,
-        &tables::TWOBYTE_TABLE, &tables::TWOBYTE_F2_TABLE, &tables::TWOBYTE_F3_TABLE, &tables::TWOBYTE_66_TABLE,
-        &tables::THREEBYTE_3A_TABLE, &tables::THREEBYTE_3AF2_TABLE, &tables::THREEBYTE_3A66_TABLE,
-        &tables::THREEBYTE_38_TABLE, &tables::THREEBYTE_38F3_TABLE, &tables::THREEBYTE_38F2_TABLE, &tables::THREEBYTE_3866_TABLE
-    ];
+    let tables_8 = &[&tables::GROUP1_OPC80,
+                     &tables::GROUP1_OPC81,
+                     &tables::GROUP1_OPC82,
+                     &tables::GROUP1_OPC83,
+                     &tables::GROUP101_OPC8F,
+                     &tables::GROUP2_OPCC0,
+                     &tables::GROUP2_OPCC1,
+                     &tables::GROUP2_OPCD0,
+                     &tables::GROUP2_OPCD1,
+                     &tables::GROUP2_OPCD2,
+                     &tables::GROUP2_OPCD3,
+                     &tables::GROUP3_OPCF6,
+                     &tables::GROUP3_OPCF7,
+                     &tables::GROUP4_OPCFE,
+                     &tables::GROUP5_OPCFF,
+                     &tables::GROUP6_OPC00,
+                     &tables::GROUP7_OPC01_MEM,
+                     &tables::GROUP7_OPC01_MEM,
+                     &tables::GROUP7_OPC01_MEM,
+                     &tables::GROUP8_OPCBA,
+                     &tables::GROUP10_OPCB9,
+                     &tables::GROUP11_OPCC6,
+                     &tables::GROUP11_OPCC7,
+                     &tables::GROUP12_OPC71,
+                     &tables::GROUP12_OPC6671,
+                     &tables::GROUP13_OPC72,
+                     &tables::GROUP13_OPC6672,
+                     &tables::GROUP14_OPC73,
+                     &tables::GROUP14_OPC6673,
+                     &tables::GROUP102_OPC01];
+    let tables_256 = &[&tables::ONEBYTE_TABLE,
+                       &tables::TWOBYTE_TABLE,
+                       &tables::TWOBYTE_F2_TABLE,
+                       &tables::TWOBYTE_F3_TABLE,
+                       &tables::TWOBYTE_66_TABLE,
+                       &tables::THREEBYTE_3A_TABLE,
+                       &tables::THREEBYTE_3AF2_TABLE,
+                       &tables::THREEBYTE_3A66_TABLE,
+                       &tables::THREEBYTE_38_TABLE,
+                       &tables::THREEBYTE_38F3_TABLE,
+                       &tables::THREEBYTE_38F2_TABLE,
+                       &tables::THREEBYTE_3866_TABLE];
 
     let mut ret = vec![];
 
     fn _impl(cell: &'static Opcode, mnemonic: &'static str, ret: &mut Vec<Vec<&'static OperandSpec>>) {
         match cell {
-            &Opcode::Nonary(MnemonicSpec::Single(ref mne),_,_) if *mne == mnemonic => ret.push(vec![]),
-            &Opcode::Unary(MnemonicSpec::Single(ref mne),_,_,ref op) if *mne == mnemonic => ret.push(vec![op]),
-            &Opcode::Binary(MnemonicSpec::Single(ref mne),_,_,ref op1,ref op2) if *mne == mnemonic => ret.push(vec![op1,op2]),
-            &Opcode::Trinary(MnemonicSpec::Single(ref mne),_,_,ref op1,ref op2,ref op3) if *mne == mnemonic => ret.push(vec![op1,op2,op3]),
-            &Opcode::Quaternary(MnemonicSpec::Single(ref mne),_,_,ref op1,ref op2,ref op3,ref op4) if *mne == mnemonic => ret.push(vec![op1,op2,op3,op4]),
+            &Opcode::Nonary(MnemonicSpec::Single(ref mne), _, _) if *mne == mnemonic => ret.push(vec![]),
+            &Opcode::Unary(MnemonicSpec::Single(ref mne), _, _, ref op) if *mne == mnemonic => ret.push(vec![op]),
+            &Opcode::Binary(MnemonicSpec::Single(ref mne), _, _, ref op1, ref op2) if *mne == mnemonic => ret.push(vec![op1, op2]),
+            &Opcode::Trinary(MnemonicSpec::Single(ref mne), _, _, ref op1, ref op2, ref op3) if *mne == mnemonic => ret.push(vec![op1, op2, op3]),
+            &Opcode::Quaternary(MnemonicSpec::Single(ref mne), _, _, ref op1, ref op2, ref op3, ref op4) if *mne == mnemonic => ret.push(vec![op1, op2, op3, op4]),
             _ => {}
         }
     }
 
     for tbl in tables_8.iter() {
         for cell in tbl.iter() {
-            _impl(cell,mnemonic,&mut ret);
+            _impl(cell, mnemonic, &mut ret);
         }
     }
 
     for tbl in tables_256.iter() {
         for cell in tbl.iter() {
-            _impl(cell,mnemonic,&mut ret);
+            _impl(cell, mnemonic, &mut ret);
         }
     }
 
     ret
 }
 
-fn rappel_xcheck(mnemonic: &str, sem: fn(Rvalue,Rvalue) -> Result<(Vec<Statement>,JumpSpec)>, a: SampledOperand, b: SampledOperand,start: Context) -> Result<bool> {
-    use std::process::{Stdio,Command};
-    use std::io::{Read,Write};
+fn rappel_xcheck(mnemonic: &str, sem: fn(Rvalue, Rvalue) -> Result<(Vec<Statement>, JumpSpec)>, a: SampledOperand, b: SampledOperand, start: Context) -> Result<bool> {
+    use std::process::{Stdio, Command};
+    use std::io::{Read, Write};
     use regex::Regex;
     use std::collections::HashMap;
     use std::borrow::Cow;
 
-    println!("{:?}",start);
+    println!("{:?}", start);
 
     let regs_re = Regex::new(r"(rax|rbx|rcx|rdx|rsi|rdi|r8 |r9 |r10|r11|r12|r13|r14|r15): (.......)?(0x................)").unwrap();
     let flags_re = Regex::new(r"(cf|zf|of|sf|pf|af):(.)").unwrap();
@@ -453,8 +481,11 @@ fn rappel_xcheck(mnemonic: &str, sem: fn(Rvalue,Rvalue) -> Result<(Vec<Statement
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::inherit())
-        .spawn().ok().unwrap();
-    stmts.append(&mut try!(semantic::mov(rreil_rvalue!( AH:8 ),Rvalue::new_u8(start.flags)).map(|x| x.0)));
+        .spawn()
+        .ok()
+        .unwrap();
+    stmts.append(&mut try!(semantic::mov(rreil_rvalue!( AH:8 ), Rvalue::new_u8(start.flags))
+            .map(|x| x.0)));
     stmts.append(&mut try!(semantic::sahf().map(|x| x.0)));
     stmts.append(&mut try!(semantic::mov(rreil_rvalue!( RAX:64 ),Rvalue::new_u64(start.rax)).map(|x| x.0)));
     stmts.append(&mut try!(semantic::mov(rreil_rvalue!( RBX:64 ),Rvalue::new_u64(start.rbx)).map(|x| x.0)));
@@ -473,38 +504,64 @@ fn rappel_xcheck(mnemonic: &str, sem: fn(Rvalue,Rvalue) -> Result<(Vec<Statement
     stmts.append(&mut try!(semantic::mov(rreil_rvalue!( R15:64 ),Rvalue::new_u64(start.r15)).map(|x| x.0)));
     stmts.append(&mut try!(semantic::mov(rreil_rvalue!( R15:64 ),Rvalue::new_u64(start.r15)).map(|x| x.0)));
 
-    match (&a,&b) {
-        (&SampledOperand::Register(ref nam1,ref val1,ref sz1),&SampledOperand::Register(ref nam2,ref val2,ref sz2)) => {
-            let a_var = Rvalue::Variable{ name: nam1.clone().into(), size: *sz1, subscript: None, offset: 0 };
-            let b_var = Rvalue::Variable{ name: nam2.clone().into(), size: *sz2, subscript: None, offset: 0 };
+    match (&a, &b) {
+        (&SampledOperand::Register(ref nam1, ref val1, ref sz1), &SampledOperand::Register(ref nam2, ref val2, ref sz2)) => {
+            let a_var = Rvalue::Variable {
+                name: nam1.clone().into(),
+                size: *sz1,
+                subscript: None,
+                offset: 0,
+            };
+            let b_var = Rvalue::Variable {
+                name: nam2.clone().into(),
+                size: *sz2,
+                subscript: None,
+                offset: 0,
+            };
 
             stmts.append(&mut try!(semantic::mov(a_var.clone(),Rvalue::Constant{ value: *val1, size: *sz1 }).map(|x| x.0)));
             stmts.append(&mut try!(semantic::mov(b_var.clone(),Rvalue::Constant{ value: *val2, size: *sz2 }).map(|x| x.0)));
             stmts.append(&mut try!(sem(a_var,b_var)).0);
         }
-        (&SampledOperand::Register(ref nam1,ref val1,ref sz1),&SampledOperand::Immediate(ref val2,ref sz2)) => {
-            let a_var = Rvalue::Variable{ name: nam1.clone().into(), size: *sz1, subscript: None, offset: 0 };
-            let b_val = Rvalue::Constant{ value: *val2, size: *sz2 };
+        (&SampledOperand::Register(ref nam1, ref val1, ref sz1), &SampledOperand::Immediate(ref val2, ref sz2)) => {
+            let a_var = Rvalue::Variable {
+                name: nam1.clone().into(),
+                size: *sz1,
+                subscript: None,
+                offset: 0,
+            };
+            let b_val = Rvalue::Constant {
+                value: *val2,
+                size: *sz2,
+            };
 
             stmts.append(&mut try!(semantic::mov(a_var.clone(),Rvalue::Constant{ value: *val1, size: *sz1 }).map(|x| x.0)));
             stmts.append(&mut try!(sem(a_var,b_val)).0);
         }
-        _ => unreachable!()
+        _ => unreachable!(),
     }
 
-      if let (&mut Some(ref mut stdin),&Some(_)) = (&mut child.stdin,&child.stdout) {
-    let mov = &|nam: &str,val: u64,sz: usize, stdin: &mut Write| -> Result<()> {
-        match sz {
-            8 => { try!(stdin.write(&format!("mov {}, 0x{:02x}\n",nam,val).into_bytes())); },
-            16 => { try!(stdin.write(&format!("mov {}, 0x{:04x}\n",nam,val).into_bytes())); },
-            32 => { try!(stdin.write(&format!("mov {}, 0x{:08x}\n",nam,val).into_bytes())); },
-            64 => { try!(stdin.write(&format!("mov {}, 0x{:016x}\n",nam,val).into_bytes())); },
-            _ => unreachable!()
-        }
-        Ok(())
-    };
+    if let (&mut Some(ref mut stdin), &Some(_)) = (&mut child.stdin, &child.stdout) {
+        let mov = &|nam: &str, val: u64, sz: usize, stdin: &mut Write| -> Result<()> {
+            match sz {
+                8 => {
+                    try!(stdin.write(&format!("mov {}, 0x{:02x}\n",nam,val).into_bytes()));
+                }
+                16 => {
+                    try!(stdin.write(&format!("mov {}, 0x{:04x}\n",nam,val).into_bytes()));
+                }
+                32 => {
+                    try!(stdin.write(&format!("mov {}, 0x{:08x}\n",nam,val).into_bytes()));
+                }
+                64 => {
+                    try!(stdin.write(&format!("mov {}, 0x{:016x}\n",nam,val).into_bytes()));
+                }
+                _ => unreachable!(),
+            }
+            Ok(())
+        };
 
-      try!(mov("ah",start.flags as u64,8,stdin));
+        try!(mov("ah",start.flags as u64,8,stdin));
         let _ = try!(stdin.write(b"sahf\n"));
         try!(mov("rax",start.rax,64,stdin));
         try!(mov("rbx",start.rbx,64,stdin));
@@ -522,8 +579,8 @@ fn rappel_xcheck(mnemonic: &str, sem: fn(Rvalue,Rvalue) -> Result<(Vec<Statement
         try!(mov("r14",start.r14,64,stdin));
         try!(mov("r15",start.r15,64,stdin));
 
-        match (&a,&b) {
-            (&SampledOperand::Register(ref nam1,ref val1,ref sz1),&SampledOperand::Register(ref nam2,ref val2,ref sz2)) => {
+        match (&a, &b) {
+            (&SampledOperand::Register(ref nam1, ref val1, ref sz1), &SampledOperand::Register(ref nam2, ref val2, ref sz2)) => {
                 try!(mov(nam1,*val1,*sz1,stdin));
                 try!(mov(nam2,*val2,*sz2,stdin));
                 let _ = try!(stdin.write(&format!("{} {}, {}\n",mnemonic,nam1,nam2).into_bytes()));
@@ -533,22 +590,30 @@ fn rappel_xcheck(mnemonic: &str, sem: fn(Rvalue,Rvalue) -> Result<(Vec<Statement
                     16 => println!("mov {}, 0x{:04x}\n",nam1,*val1),
                     32 => println!("mov {}, 0x{:08x}\n",nam1,*val1),
                     64 => println!("mov {}, 0x{:016x}\n",nam1,*val1),
-                    _ => unreachable!()
+                    _ => unreachable!(),
                 }
                 println!("{} {}, {}",mnemonic,nam1,nam2);
             }
-            (&SampledOperand::Register(ref nam1,ref val1,ref sz1),&SampledOperand::Immediate(ref val2,ref sz2)) => {
+            (&SampledOperand::Register(ref nam1, ref val1, ref sz1), &SampledOperand::Immediate(ref val2, ref sz2)) => {
                 try!(mov(nam1,*val1,*sz1,stdin));
                 match *sz2 {
-                    8 => { try!(stdin.write(&format!("{} {}, 0x{:02x}\n",mnemonic,nam1,*val2).into_bytes())); },
-                    16 => { try!(stdin.write(&format!("{} {}, 0x{:04x}\n",mnemonic,nam1,*val2).into_bytes())); },
-                    32 => { try!(stdin.write(&format!("{} {}, 0x{:08x}\n",mnemonic,nam1,*val2).into_bytes())); },
-                    64 => { try!(stdin.write(&format!("{} {}, 0x{:016x}\n",mnemonic,nam1,*val2).into_bytes())); },
-                    _ => unreachable!()
+                    8 => {
+                        try!(stdin.write(&format!("{} {}, 0x{:02x}\n",mnemonic,nam1,*val2).into_bytes()));
+                    }
+                    16 => {
+                        try!(stdin.write(&format!("{} {}, 0x{:04x}\n",mnemonic,nam1,*val2).into_bytes()));
+                    }
+                    32 => {
+                        try!(stdin.write(&format!("{} {}, 0x{:08x}\n",mnemonic,nam1,*val2).into_bytes()));
+                    }
+                    64 => {
+                        try!(stdin.write(&format!("{} {}, 0x{:016x}\n",mnemonic,nam1,*val2).into_bytes()));
+                    }
+                    _ => unreachable!(),
                 }
                 println!("{} {}, 0x{:x}",mnemonic,nam1,val2);
             }
-            _ => unreachable!()
+            _ => unreachable!(),
         }
     }
 
@@ -558,40 +623,51 @@ fn rappel_xcheck(mnemonic: &str, sem: fn(Rvalue,Rvalue) -> Result<(Vec<Statement
 
     let mut out = String::new();
     let _ = try!(child.stdout.ok_or("No output")).read_to_string(&mut out);
-    //println!("{}",out);
-    let regs = regs_re.captures_iter(&out).filter_map(|x| {
-        if let (Some(ref nam),Some(ref s)) = (x.at(1),x.at(3)) {
-            if let Ok(val) = u64::from_str_radix(&s[2..],16) {
-                Some((nam.to_string(),val))
+    // println!("{}",out);
+    let regs = regs_re.captures_iter(&out)
+        .filter_map(|x| {
+            if let (Some(ref nam), Some(ref s)) = (x.at(1), x.at(3)) {
+                if let Ok(val) = u64::from_str_radix(&s[2..], 16) {
+                    Some((nam.to_string(), val))
+                } else {
+                    None
+                }
             } else {
                 None
             }
-        } else {
-            None
-        }
-    }).collect::<Vec<_>>();
-    let flags = flags_re.captures_iter(&out).filter_map(|x| {
-        if let (Some(ref nam),Some(ref s)) = (x.at(1),x.at(2)) {
-            Some((nam.to_string(),*s != "0".to_string()))
-        } else {
-            None
-        }
-    }).collect::<Vec<_>>();
+        })
+        .collect::<Vec<_>>();
+    let flags = flags_re.captures_iter(&out)
+        .filter_map(|x| {
+            if let (Some(ref nam), Some(ref s)) = (x.at(1), x.at(2)) {
+                Some((nam.to_string(), *s != "0".to_string()))
+            } else {
+                None
+            }
+        })
+        .collect::<Vec<_>>();
 
     assert_eq!(regs.len(), 14);
     assert_eq!(flags.len(), 6);
     println!("regs: {:?}",regs);
 
-    let mut ctx = HashMap::<Cow<'static,str>,u64>::new();
+    let mut ctx = HashMap::<Cow<'static, str>, u64>::new();
 
     for stmt in stmts {
-        let s = lift(&stmt.op,&|rv| {
-            if let &Rvalue::Variable{ ref name, ref offset, ref size,.. } = rv {
+        let s = lift(&stmt.op,
+                     &|rv| {
+            if let &Rvalue::Variable { ref name, ref offset, ref size, .. } = rv {
                 if let Some(val) = ctx.get(name.as_ref()) {
                     if *size < 64 {
-                        Rvalue::Constant{ value: (*val >> *offset as usize) % (1 << *size), size: *size }
+                        Rvalue::Constant {
+                            value: (*val >> *offset as usize) % (1 << *size),
+                            size: *size,
+                        }
                     } else {
-                        Rvalue::Constant{ value: (*val >> *offset), size: *size }
+                        Rvalue::Constant {
+                            value: (*val >> *offset),
+                            size: *size,
+                        }
                     }
                 } else {
                     rv.clone()
@@ -603,13 +679,13 @@ fn rappel_xcheck(mnemonic: &str, sem: fn(Rvalue,Rvalue) -> Result<(Vec<Statement
 
         println!("{}",Statement{ assignee: stmt.assignee.clone(), op: s.clone() });
 
-        if let Lvalue::Variable{ ref name,.. } = stmt.assignee {
-            let res =  execute(s);
+        if let Lvalue::Variable { ref name, .. } = stmt.assignee {
+            let res = execute(s);
             println!("\t-> {}",res);
 
             match res {
-                Rvalue::Constant{ ref value,.. } => {
-                    ctx.insert(name.clone(),*value);
+                Rvalue::Constant { ref value, .. } => {
+                    ctx.insert(name.clone(), *value);
                 }
                 Rvalue::Undefined => {
                     ctx.remove(name);
@@ -621,7 +697,7 @@ fn rappel_xcheck(mnemonic: &str, sem: fn(Rvalue,Rvalue) -> Result<(Vec<Statement
 
     println!("{:?}",ctx);
 
-    for (name,val) in regs {
+    for (name, val) in regs {
         let key = Cow::Owned(name.trim().clone().to_uppercase());
 
         if Some(val) != ctx.get(&key).map(|x| *x as u64) {
@@ -630,7 +706,7 @@ fn rappel_xcheck(mnemonic: &str, sem: fn(Rvalue,Rvalue) -> Result<(Vec<Statement
         }
     }
 
-    for (name,val) in flags {
+    for (name, val) in flags {
         let key = Cow::Owned(name.trim().clone().to_uppercase());
         let soft = ctx.get(&key).map(|x| *x as u64);
 
@@ -706,11 +782,11 @@ rappel_xcheck!(xor,xcheck_xor,Xor);
 rappel_xcheck!(and,xcheck_and,And);
 rappel_xcheck!(or,xcheck_or,Or);
 rappel_xcheck!(cmp,xcheck_cmp,Cmp);
-//rappel_xcheck!(mul,xcheck_mul,Mul,mul2);
+// rappel_xcheck!(mul,xcheck_mul,Mul,mul2);
 rappel_xcheck!(mov,xcheck_mov,Mov);
 rappel_xcheck!(movsx,xcheck_movsx,Movsx);
 rappel_xcheck!(movzx,xcheck_movzx,Movzx);
-//rappel_xcheck!(imul,xcheck_imul,Imul,imul2);
+// rappel_xcheck!(imul,xcheck_imul,Imul,imul2);
 rappel_xcheck!(rol,xcheck_rol,Rol);
 rappel_xcheck!(sar,xcheck_sar,Sar);
 rappel_xcheck!(shl,xcheck_shl,Shl);
