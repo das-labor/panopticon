@@ -1008,20 +1008,32 @@ pub fn sub(a_: Rvalue, b_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> {
     Ok((stmts,JumpSpec::FallThru))
 }
 
-pub fn xor(a_: Rvalue, b_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> {
-    let (a,b,sz,mut stmts) = try!(sign_extend(&a_,&b_));
+pub fn xor(_a: Rvalue, _b: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> {
+    let (a,b,sz,mut stmts) = try!(sign_extend(&_a,&_b));
     let res = rreil_lvalue!{ res:sz };
 
-    stmts.append(&mut try!(rreil!{
-        xor res:sz, (a), (b);
-        cmplts SF:1, res:sz, [0]:sz;
-        cmpeq ZF:1, res:sz, [0]:sz;
-        mov CF:1, [0]:1;
-        mov OF:1, [0]:1;
-        mov AF:1, ?;
-    }));
+    if a == b {
+        stmts.append(&mut try!(rreil!{
+            mov res:sz, [0]:sz;
+            mov SF:1, [0]:1;
+            mov ZF:1, [1]:1;
+            mov CF:1, [0]:1;
+            mov OF:1, [0]:1;
+            mov AF:1, ?;
+        }));
+    } else {
+        stmts.append(&mut try!(rreil!{
+            xor res:sz, (a), (b);
+            cmplts SF:1, res:sz, [0]:sz;
+            cmpeq ZF:1, res:sz, [0]:sz;
+            mov CF:1, [0]:1;
+            mov OF:1, [0]:1;
+            mov AF:1, ?;
+        }));
+    }
+
     stmts.append(&mut try!(set_parity_flag(&res)));
-    stmts.append(&mut try!(write_reg(&a_,&res.clone().into(),sz)));
+    stmts.append(&mut try!(write_reg(&_a,&res.clone().into(),sz)));
 
     Ok((stmts,JumpSpec::FallThru))
 }
