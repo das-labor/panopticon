@@ -1,20 +1,19 @@
-/*
- * Panopticon - A libre disassembler
- * Copyright (C) 2014,2015,2016 Kai Michaelis
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
+// Panopticon - A libre disassembler
+// Copyright (C) 2014,2015,2016 Kai Michaelis
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <http://www.gnu.org/licenses/>.
+//
 
 //! A library for disassembling and analysing binary code.
 //!
@@ -94,83 +93,40 @@ extern crate goblin;
 
 // core
 pub mod disassembler;
-pub use disassembler::{
-    State,
-    Architecture,
-    Disassembler,
-    Match,
-};
+pub use disassembler::{State, Architecture, Disassembler, Match};
 
 #[macro_use]
 pub mod il;
-pub use il::{
-    Rvalue,
-    Lvalue,
-    Guard,
-    Statement,
-    Operation,
-    execute,
-    lift,
-};
+pub use il::{Rvalue, Lvalue, Guard, Statement, Operation, execute, lift};
 
 pub mod mnemonic;
-pub use mnemonic::{
-    Mnemonic,
-    MnemonicFormatToken,
-    Bound,
-};
+pub use mnemonic::{Mnemonic, MnemonicFormatToken, Bound};
 pub mod basic_block;
-pub use basic_block::{
-    BasicBlock,
-};
+pub use basic_block::BasicBlock;
 
 pub mod function;
-pub use function::{
-    Function,
-    ControlFlowTarget,
-    ControlFlowRef,
-    ControlFlowEdge,
-    ControlFlowGraph,
-};
+pub use function::{Function, ControlFlowTarget, ControlFlowRef, ControlFlowEdge, ControlFlowGraph};
 
 pub mod program;
-pub use program::{
-    Program,
-    CallTarget,
-    CallGraph,
-    CallGraphRef,
-};
+pub use program::{Program, CallTarget, CallGraph, CallGraphRef};
 
 pub mod project;
 pub use project::Project;
 
 pub mod region;
-pub use region::{
-    Region,
-    World,
-};
+pub use region::{Region, World};
 
 pub mod layer;
-pub use layer::{
-    Layer,
-    OpaqueLayer,
-    LayerIter,
-};
+pub use layer::{Layer, OpaqueLayer, LayerIter};
 
 pub mod result;
-pub use result::{
-    Result,
-    Error,
-};
+pub use result::{Result, Error};
 
 pub mod dataflow;
 pub use dataflow::*;
 
 pub mod abstractinterp;
-pub use abstractinterp::{
-    Kset,
-    approximate,
-};
+pub use abstractinterp::{Kset, approximate};
 
 // disassembler
 pub mod avr;
