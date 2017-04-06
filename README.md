@@ -82,7 +82,7 @@ For detailed usage information see the
 
 ## Contributing
 Panopticon is licensed under GPLv3 and is Free Software. Hackers are always
-welcome.
+welcome. Please check out [`CONTRIBUTING.md`](https://github.com/das-labor/panopticon/blob/master/CONTRIBUTING.md).
 
 - [Issue Tracker](https://github.com/das-labor/panopticon/issues)
 - [API Documentation](https://doc.panopticon.re/panopticon/index.html)
