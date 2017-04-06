@@ -92,6 +92,9 @@ extern crate lazy_static;
 extern crate byteorder;
 extern crate goblin;
 
+#[macro_use]
+extern crate quickcheck;
+
 // core
 pub mod disassembler;
 pub use disassembler::{
