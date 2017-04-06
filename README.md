@@ -14,7 +14,7 @@ If you simply want to use Panopticon follow the
 
 ## Building
 Panopticon builds with Rust stable. The only dependencies aside from
-a working Rust Stable toolchain and Cargo you need is Qt 5.5 or higher.
+a working Rust stable toolchain and Cargo you need is Qt 5.5 or higher.
 
 **Ubuntu 15.10 and 16.04**
 ```bash
