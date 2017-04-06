@@ -1002,10 +1002,13 @@ pub fn execute(op: Operation<Rvalue>) -> Rvalue {
         Operation::Select(off,Rvalue::Constant{ value: _a, size: s },Rvalue::Constant{ value: _b, size: _s }) => {
             debug_assert!(off + _s <= s);
 
-            let hi = _a >> (off + _s);
-            let lo = _a % (1 << off);
-
-            Rvalue::Constant{ value: lo | (_b << off) | (hi << (off + _s)), size: s }
+            if off + _s <= 64 {
+                let hi = _a >> (off + _s);
+                let lo = _a % (1 << off);
+                Rvalue::Constant{ value: lo | (_b << off) | (hi << (off + _s)), size: s }
+            } else {
+                Rvalue::Undefined
+            }
         },
         Operation::Select(_,_,_) =>
             Rvalue::Undefined,
