@@ -12,7 +12,7 @@
  1. Assume good faith.
  1. Please have fun, nobody is paid for developing Panopticon.
  1. Everything is up to debate, none of the following guidelines are set in stone.
- 1. Check Whether contributed code:
+ 1. Check whether contributed code:
      1. scales reasonably well,
      1. has no (obvious) security problems,
      1. isn't reimplementing features that already exist in Panopticon,
