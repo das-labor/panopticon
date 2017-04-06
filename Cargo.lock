@@ -9,7 +9,7 @@ dependencies = [
  "clap 2.20.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "env_logger 0.3.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "flate2 0.2.17 (registry+https://github.com/rust-lang/crates.io-index)",
- "goblin 0.0.8 (git+https://github.com/m4b/goblin)",
+ "goblin 0.0.9 (registry+https://github.com/rust-lang/crates.io-index)",
  "graph_algos 0.11.0 (git+https://github.com/flanfly/rust-graph-algos.git)",
  "lazy_static 0.1.16 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.2.21 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -128,11 +128,11 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "goblin"
-version = "0.0.8"
-source = "git+https://github.com/m4b/goblin#fa7c0a8486a8fad9723559b856de00e41e41a1f5"
+version = "0.0.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "scroll 0.4.0 (git+https://github.com/m4b/scroll)",
- "scroll_derive 0.3.0 (git+https://github.com/m4b/scroll_derive)",
+ "scroll 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "scroll_derive 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -336,15 +336,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "scroll"
 version = "0.4.0"
-source = "git+https://github.com/m4b/scroll#997a142596075d6b49edd006b7b10478eb588476"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "scroll_derive"
-version = "0.3.0"
-source = "git+https://github.com/m4b/scroll_derive#d2429be9bb48ff1446463d6fefd96ba488c56bd0"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "quote 0.3.15 (registry+https://github.com/rust-lang/crates.io-index)",
- "syn 0.10.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "syn 0.11.9 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -354,10 +354,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "syn"
-version = "0.10.8"
+version = "0.11.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "quote 0.3.15 (registry+https://github.com/rust-lang/crates.io-index)",
+ "synom 0.11.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "unicode-xid 0.0.4 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "synom"
+version = "0.11.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
  "unicode-xid 0.0.4 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -471,7 +480,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum env_logger 0.3.5 (registry+https://github.com/rust-lang/crates.io-index)" = "15abd780e45b3ea4f76b4e9a26ff4843258dd8a3eed2775a0e7368c2e7936c2f"
 "checksum flate2 0.2.17 (registry+https://github.com/rust-lang/crates.io-index)" = "d4e4d0c15ef829cbc1b7cda651746be19cceeb238be7b1049227b14891df9e25"
 "checksum gcc 0.3.43 (registry+https://github.com/rust-lang/crates.io-index)" = "c07c758b972368e703a562686adb39125707cc1ef3399da8c019fc6c2498a75d"
-"checksum goblin 0.0.8 (git+https://github.com/m4b/goblin)" = "<none>"
+"checksum goblin 0.0.9 (registry+https://github.com/rust-lang/crates.io-index)" = "4023288fcdb49f38f7b15887078b922bb9e96b9d9b33dbb17eb61cb7b2578ba2"
 "checksum graph_algos 0.11.0 (git+https://github.com/flanfly/rust-graph-algos.git)" = "<none>"
 "checksum kernel32-sys 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)" = "7507624b29483431c0ba2d82aece8ca6cdba9382bff4ddd0f7490560c056098d"
 "checksum lazy_static 0.1.16 (registry+https://github.com/rust-lang/crates.io-index)" = "cf186d1a8aa5f5bee5fd662bc9c1b949e0259e1bcc379d1f006847b0080c7417"
@@ -497,10 +506,11 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum rmp 0.8.4 (registry+https://github.com/rust-lang/crates.io-index)" = "e59917c01f49718a59c644a621a4848aafc6577c4a47d66270d78951a807541a"
 "checksum rmp-serialize 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)" = "54d9fa965323a18d5d81fa6cafa10cb5c0e4ba60e88acecf958f2ac427181cba"
 "checksum rustc-serialize 0.3.22 (registry+https://github.com/rust-lang/crates.io-index)" = "237546c689f20bb44980270c73c3b9edd0891c1be49cc1274406134a66d3957b"
-"checksum scroll 0.4.0 (git+https://github.com/m4b/scroll)" = "<none>"
-"checksum scroll_derive 0.3.0 (git+https://github.com/m4b/scroll_derive)" = "<none>"
+"checksum scroll 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)" = "3e09f3f4f5020f5458681b99896accb0c78527fc91e6c57371a4c4bfcb9eb400"
+"checksum scroll_derive 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)" = "686ef1d49b34827d6aed93e0bbe9e53023b26e25f54dead31859974067400f19"
 "checksum strsim 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)" = "b4d15c810519a91cf877e7e36e63fe068815c678181439f2f29e2562147c3694"
-"checksum syn 0.10.8 (registry+https://github.com/rust-lang/crates.io-index)" = "58fd09df59565db3399efbba34ba8a2fec1307511ebd245d0061ff9d42691673"
+"checksum syn 0.11.9 (registry+https://github.com/rust-lang/crates.io-index)" = "480c834701caba3548aa991e54677281be3a5414a9d09ddbdf4ed74a569a9d19"
+"checksum synom 0.11.3 (registry+https://github.com/rust-lang/crates.io-index)" = "a393066ed9010ebaed60b9eafa373d4b1baac186dd7e008555b0f702b51945b6"
 "checksum tempdir 0.3.5 (registry+https://github.com/rust-lang/crates.io-index)" = "87974a6f5c1dfb344d733055601650059a3363de2a6104819293baff662132d6"
 "checksum term_size 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)" = "07b6c1ac5b3fffd75073276bca1ceed01f67a28537097a2a9539e116e50fb21a"
 "checksum thread-id 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "a9539db560102d1cef46b8b78ce737ff0bb64e7e18d35b2a5688f7d097d0ff03"
