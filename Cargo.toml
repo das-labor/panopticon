@@ -29,10 +29,10 @@ chrono = "0.2"
 chrono-humanize = "0.0.6"
 goblin = "0.0.8"
 clap = "2.20.5"
+quickcheck = "0.3"
 
 [dev-dependencies]
 regex = "0.1"
-quickcheck = "0.3"
 
 [dependencies.qmlrs]
 git = "https://github.com/flanfly/qmlrs"
