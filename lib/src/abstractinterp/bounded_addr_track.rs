@@ -366,13 +366,14 @@ impl Avalue for BoundedAddrTrack {
             false
         } else {
             match (self,a) {
-                (&BoundedAddrTrack::Join,_) => true,
-                (_,&BoundedAddrTrack::Join) => false,
-                (_,&BoundedAddrTrack::Meet) => true,
-                (&BoundedAddrTrack::Meet,_) => false,
-                (&BoundedAddrTrack::Region{ .. },&BoundedAddrTrack::Offset{ .. }) => true,
-                (&BoundedAddrTrack::Offset{ .. },&BoundedAddrTrack::Region{ .. }) => false,
-                _ => unreachable!(),
+                (&BoundedAddrTrack::Join,_) => false,
+                (_,&BoundedAddrTrack::Join) => true,
+                (_,&BoundedAddrTrack::Meet) => false,
+                (&BoundedAddrTrack::Meet,_) => true,
+                (&BoundedAddrTrack::Region{ .. },&BoundedAddrTrack::Offset{ .. }) => false,
+                (&BoundedAddrTrack::Offset{ .. },&BoundedAddrTrack::Region{ .. }) => true,
+                (&BoundedAddrTrack::Region{ .. },&BoundedAddrTrack::Region{ .. }) => false,
+                (&BoundedAddrTrack::Offset{ .. },&BoundedAddrTrack::Offset{ .. }) => false,
             }
         }
     }
@@ -384,6 +385,81 @@ impl Avalue for BoundedAddrTrack {
             &BoundedAddrTrack::Region{ region: ref r } => BoundedAddrTrack::Region{ region: r.clone() },
             &BoundedAddrTrack::Offset{ region: ref r, offset: ref v,.. } =>
                 BoundedAddrTrack::Offset{ region: r.clone(), offset: (v >> offset) % (1 << (size - 1)), offset_size: size },
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use lift;
+    use quickcheck::{Arbitrary,Gen,TestResult,Testable};
+    use quickcheck::QuickCheck;
+
+    impl Arbitrary for BoundedAddrTrack {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            let variant = g.gen_range(0,4);
+            match variant {
+                0 => BoundedAddrTrack::Meet,
+                1 | 2 => {
+                    let reg = if g.gen::<bool>() {
+                        let n = Cow::Owned(g.gen_ascii_chars().take(1).collect());
+                        let o = g.gen_range(0,11);
+
+                        Some((n,o))
+                    } else {
+                        None
+                    };
+
+                    match variant {
+                        1 => BoundedAddrTrack::Offset{
+                            region: reg,
+                            offset: g.gen_range(0,11),
+                            offset_size: *g.choose(&[8,16,32,64]).unwrap(),
+                        },
+                        2 => BoundedAddrTrack::Region{
+                            region: reg,
+                        },
+                        _ => unreachable!()
+                    }
+                }
+                3 => BoundedAddrTrack::Join,
+                _ => unreachable!()
+            }
+        }
+    }
+
+    quickcheck! {
+        fn qc_combine(a: BoundedAddrTrack, b: BoundedAddrTrack) -> bool {
+            let c = a.combine(&b);
+
+            debug!("a={:?}, b={:?}, c={:?}",a,b,c);
+            !c.more_exact(&a) && !c.more_exact(&b)
+        }
+    }
+
+    quickcheck! {
+        fn qc_widen(a: BoundedAddrTrack, b: BoundedAddrTrack) -> TestResult {
+            // widening op is only defined for increasing sequences
+            if a.more_exact(&b) {
+                let c = a.widen(&b);
+
+                debug!("a={:?}, b={:?}, c={:?}",a,b,c);
+                // a <= (a V b) >= b
+                TestResult::from_bool(!c.more_exact(&a) && !c.more_exact(&b))
+            } else {
+                TestResult::discard()
+            }
+        }
+    }
+
+    quickcheck! {
+        fn qc_execute(op: Operation<Rvalue>) -> bool {
+            let pp = ProgramPoint{ address: 0, position: 0 };
+            let aop = lift(&op,&|x| BoundedAddrTrack::abstract_value(x));
+            BoundedAddrTrack::execute(&pp,&aop);
+            // XXX: more?
+            true
         }
     }
 }
