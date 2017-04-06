@@ -3,17 +3,17 @@ matrix:
   include:
     # CI targets
     - os: osx
-      rust: 1.15.0
+      rust: stable
       env: TARGET=x86_64-apple-darwin
     - os: linux
       dist: trusty
-      rust: 1.15.0
+      rust: stable
       env: TARGET=x86_64-unknown-linux-gnu
     # rustdoc
     # disabled: #265
     #- os: linux
     #  dist: trusty
-    #  rust: 1.15.0
+    #  rust: stable
     #  env:
     #    - TARGET=x86_64-unknown-linux-gnu
     #    - PACKAGE=doc
@@ -21,7 +21,7 @@ matrix:
     # nightly builds
     - os: linux
       dist: trusty
-      rust: 1.15.0
+      rust: stable
       env:
         - TARGET=x86_64-unknown-linux-gnu
         - PACKAGE=ubuntu
@@ -31,7 +31,7 @@ matrix:
           - master
     - os: linux
       dist: trusty
-      rust: 1.15.0
+      rust: stable
       env:
         - TARGET=x86_64-unknown-linux-gnu
         - PACKAGE=debian
@@ -41,7 +41,7 @@ matrix:
           - master
     - os: linux
       dist: trusty
-      rust: 1.15.0
+      rust: stable
       env:
         - TARGET=x86_64-unknown-linux-gnu
         - PACKAGE=fedora
@@ -50,7 +50,7 @@ matrix:
         only:
           - master
     - os: osx
-      rust: 1.15.0
+      rust: stable
       env:
         - TARGET=x86_64-apple-darwin
         - PACKAGE=osx
@@ -59,7 +59,7 @@ matrix:
         only:
           - master
 
-sudo: required
+sudo: false
 services:
   - docker
 notifications:
@@ -80,7 +80,7 @@ addons:
     - cmake
     - qt5-default
     - qtdeclarative5-dev
-    - libqt5qml-quickcontrols # not approved
+    - libqt5qml-quickcontrols
     - qtbase5-private-dev
     - libqt5svg5-dev
     - pkg-config
@@ -94,10 +94,6 @@ before_install: |
    if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
       brew update
       brew install homebrew/versions/qt55
-   fi
-   # XXX: remove when libqt5qml-quickcontrols is approved
-   if [[ "$TRAVIS_OS_NAME" == "linux"  && "$PACKAGE" == "" ]]; then
-      sudo apt-get -qq install libqt5qml-quickcontrols
    fi
 before_script: |
    if [[ "$TRAVIS_OS_NAME" == "linux" && "$PACKAGE" == "" ]]; then
