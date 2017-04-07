@@ -12,6 +12,8 @@ Marcus Brinkmann
   	MOS-6502 disassembler in lib/src/mos.
 Kai Michaelis
 	Everything not listed above.
+m4b
+	The binary file loader in lib/src/loader.rs
 
 All other contributors
 ======================
