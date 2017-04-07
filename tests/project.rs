@@ -20,19 +20,6 @@ extern crate panopticon;
 
 use std::path::Path;
 use panopticon::project::Project;
-use panopticon::loader;
-
-#[test]
-fn load_pe() {
-    let project = loader::load(Path::new("tests/data/test.exe"));
-    match project {
-        Err(err) => {
-            println!("err: {:?}", &err);
-            assert!(false)
-        },
-        Ok(_) => {assert!(true)}
-    }
-}
 
 #[test]
 fn project_open() {
