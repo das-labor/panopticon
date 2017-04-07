@@ -49,87 +49,78 @@ pub enum Machine {
     Ia32,
 }
 
-/// Parses a non-fat Mach-o binary from `bytes` and creates a `Project` from it. Returns the `Project` instance and
+/// Parses a non-fat Mach-o binary from `bytes` at `offset` and creates a `Project` from it. Returns the `Project` instance and
 /// the CPU its intended for.
-fn load_mach(bytes: &[u8], name: String) -> Result<(Project,Machine)> {
-    let mach = mach::Mach::parse(&bytes)?;
-    debug!("mach: {:#?}", &mach);
+pub fn load_mach(bytes: &[u8], offset: usize, name: String) -> Result<(Project,Machine)> {
+    let binary = mach::MachO::parse(&bytes, offset)?;
+    debug!("mach: {:#?}", &binary);
     let mut base = 0x0;
-    match mach {
-        mach::Mach::Binary(binary) => {
-            let cputype = binary.header.cputype;
-            let (machine, mut reg) = match cputype {
-                mach::cputype::CPU_TYPE_X86    => {
-                    let reg = Region::undefined("RAM".to_string(), 0x1_0000_0000);
-                    (Machine::Ia32,reg)
-                },
-                mach::cputype::CPU_TYPE_X86_64 => {
-                    let reg = Region::undefined("RAM".to_string(), 0xFFFF_FFFF_FFFF_FFFF);
-                    (Machine::Amd64,reg)
-                },
-                machine => return Err(format!("Unsupported machine ({:#x}): {}", machine, mach::cputype::cpu_type_to_str(machine)).into())
-            };
-
-            for segment in &*binary.segments {
-                let offset = segment.fileoff as usize;
-                let filesize = segment.filesize as usize;
-                if offset + filesize > bytes.len () {
-                    return Err(format!("Failed to read segment: range {:?} greater than len {}", offset..offset+filesize, bytes.len()).into())
-                }
-                let section = &bytes[offset..offset + filesize];
-                let start = segment.vmaddr;
-                let end = start + segment.vmsize;
-                let name = segment.name()?;
-                debug!("Load mach segment {:?}: {} bytes segment to {:#x}", name, segment.vmsize, start);
-                reg.cover(Bound::new(start, end), Layer::wrap(Vec::from(section)));
-                if name == "__TEXT" {
-                    base = segment.vmaddr;
-                    debug!("Setting vm address base to {:#x}", base);
-                }
-            }
-
-            let name =
-                if let &Some(ref name) = &binary.name {
-                    name.to_string()
-                } else {
-                    name
-                };
-
-            // debug!("interpreter: {:?}", &binary.interpreter);
-
-            let mut prog = Program::new("prog0");
-            let mut proj = Project::new(name.clone(),reg);
-
-            let entry = binary.entry;
-
-            if entry != 0 {
-                prog.call_graph.add_vertex(CallTarget::Todo(Rvalue::new_u64(entry as u64),Some(name),Uuid::new_v4()));
-            }
-
-            for export in binary.exports()? {
-                if export.offset != 0 {
-                    debug!("adding: {:?}", &export);
-                    prog.call_graph.add_vertex(CallTarget::Todo(Rvalue::new_u64
-                                                                (export.offset as u64 + base),Some(export.name),Uuid::new_v4()));
-                }
-            }
-
-            for import in binary.imports()? {
-                debug!("Import {}: {:#x}", import.name, import.offset);
-                proj.imports.insert(import.offset, import.name.to_string());
-            }
-
-            debug!("Imports: {:?}", &proj.imports);
-
-            proj.comments.insert(("base".to_string(),entry),"main".to_string());
-            proj.code.push(prog);
-
-            Ok((proj,machine))
+    let cputype = binary.header.cputype;
+    let (machine, mut reg) = match cputype {
+        mach::cputype::CPU_TYPE_X86    => {
+            let reg = Region::undefined("RAM".to_string(), 0x1_0000_0000);
+            (Machine::Ia32,reg)
         },
-        _ => {
-            Err("Cannot directly load a fat architecture (e.g., which one do I load?)".into())
+        mach::cputype::CPU_TYPE_X86_64 => {
+            let reg = Region::undefined("RAM".to_string(), 0xFFFF_FFFF_FFFF_FFFF);
+            (Machine::Amd64,reg)
+        },
+        machine => return Err(format!("Unsupported machine ({:#x}): {}", machine, mach::cputype::cpu_type_to_str(machine)).into())
+    };
+
+    for segment in &*binary.segments {
+        let offset = segment.fileoff as usize;
+        let filesize = segment.filesize as usize;
+        if offset + filesize > bytes.len () {
+            return Err(format!("Failed to read segment: range {:?} greater than len {}", offset..offset+filesize, bytes.len()).into())
+        }
+        let section = &bytes[offset..offset + filesize];
+        let start = segment.vmaddr;
+        let end = start + segment.vmsize;
+        let name = segment.name()?;
+        debug!("Load mach segment {:?}: {} bytes segment to {:#x}", name, segment.vmsize, start);
+        reg.cover(Bound::new(start, end), Layer::wrap(Vec::from(section)));
+        if name == "__TEXT" {
+            base = segment.vmaddr;
+            debug!("Setting vm address base to {:#x}", base);
         }
     }
+
+    let name =
+        if let &Some(ref name) = &binary.name {
+            name.to_string()
+        } else {
+            name
+        };
+
+    let mut prog = Program::new("prog0");
+    let mut proj = Project::new(name.clone(),reg);
+
+    let entry = binary.entry;
+
+    if entry != 0 {
+        prog.call_graph.add_vertex(CallTarget::Todo(Rvalue::new_u64(entry as u64),Some(name),Uuid::new_v4()));
+    }
+
+    for export in binary.exports()? {
+        if export.offset != 0 {
+            debug!("adding: {:?}", &export);
+            prog.call_graph.add_vertex(CallTarget::Todo(Rvalue::new_u64
+                                                        (export.offset as u64 + base),Some(export.name),Uuid::new_v4()));
+        }
+    }
+
+    for import in binary.imports()? {
+        debug!("Import {}: {:#x}", import.name, import.offset);
+        proj.imports.insert(import.offset, import.name.to_string());
+    }
+
+    debug!("Imports: {:?}", &proj.imports);
+
+    proj.comments.insert(("base".to_string(),entry),"main".to_string());
+    proj.code.push(prog);
+
+    Ok((proj,machine))
 }
 
 /// Parses an ELF 32/64-bit binary from `bytes` and creates a `Project` from it. Returns the `Project` instance and
@@ -316,7 +307,10 @@ pub fn load(path: &Path) -> Result<(Project,Machine)> {
                 load_pe(&bytes, name)
             },
             Hint::Mach(_) => {
-                load_mach(&bytes, name)
+                load_mach(&bytes, 0, name)
+            },
+            Hint::MachFat(_) => {
+                Err("Cannot directly load a fat mach-o binary (e.g., which one do I load?)".into())
             },
             Hint::Archive => {
                 let archive = archive::Archive::parse(&bytes)?;
