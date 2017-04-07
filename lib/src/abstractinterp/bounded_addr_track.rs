@@ -18,7 +18,19 @@
 
 //! Bounded Address Tracking.
 //!
-//! TODO
+//! This abstract domain is used to resolve indirect jumps. Domain elements have the form
+//! `<register> +/- <integer>`. For example `eax + 3" or "rbp - 5`. A special GLOBAL register is
+//! used to represent absolute values. The (absolute) address 0x11223344 would be handled as
+//! `GLOABL + 0x11223344`.
+//!
+//! For a complete description of Bounded Address Tracking see the original paper "Precise Static
+//! Analysis of Untrusted Driver Binaries" by J. Kinder and H. Veith.
+//!
+//! # Note
+//! This implementation derivates from the original by adding a version to each region. When an
+//! operation would return join, the version is increased by one and `<register>,<version + 1> + 0`
+//! is returned instead. This delays reaching join and helps to get past edge cases like
+//! `and rsp, 0xffff0000`.
 
 use std::borrow::Cow;
 use std::ops::Range;
@@ -36,7 +48,10 @@ use {
 
 pub const VERSION_LIMIT: usize = 10;
 
-// None == global region
+/// Bounded Address Tracking domain element
+///
+/// Follows Kinder et.al. except for adding a `version` and `offset_size`. The GLOBAL region is
+/// represented by None.
 #[derive(Debug,PartialEq,Eq,Clone,Hash,RustcDecodable,RustcEncodable)]
 pub enum BoundedAddrTrack {
     Join,
