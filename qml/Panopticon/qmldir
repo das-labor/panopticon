@@ -1,0 +1,6 @@
+module Panopticon
+
+ColumnHeader 1.0 ColumnHeader.qml
+Sidebar 1.0 Sidebar.qml
+Welcome 1.0 Welcome.qml
+Window 1.0 Window.qml
