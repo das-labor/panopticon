@@ -1,6 +1,6 @@
 /*
  * Panopticon - A libre disassembler
- * Copyright (C) 2015  Panopticon authors
+ * Copyright (C) 2015,2017  Panopticon authors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,12 +16,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#[macro_use]
-extern crate log;
-extern crate env_logger;
+#![recursion_limit = "1024"]
 
+extern crate env_logger;
 extern crate panopticon;
-extern crate qmlrs;
 extern crate libc;
 extern crate graph_algos;
 extern crate uuid;
@@ -37,31 +35,45 @@ extern crate clap;
 #[cfg(unix)]
 extern crate xdg;
 
-#[macro_use]
-extern crate lazy_static;
+#[macro_use] extern crate lazy_static;
+#[macro_use] extern crate qml;
+#[macro_use] extern crate log;
+#[macro_use] extern crate error_chain;
 
-mod controller;
-mod project;
-mod function;
-mod sugiyama;
+//mod controller;
+//mod project;
+//mod function;
+//mod sugiyama;
+mod singleton;
 mod paths;
+mod errors {
+    error_chain! {
+        foreign_links {
+            Panopticon(::panopticon::Error);
+            Time(::std::time::SystemTimeError);
+            Io(::std::io::Error);
+        }
+    }
+}
 
+use errors::*;
 use clap::{
     App,
     Arg
 };
 
-use controller::{
-    create_singleton,
-    Controller,
-};
-
 use paths::find_data_file;
+use singleton::{
+    Panopticon,
+    QPanopticon,
+};
 
 use std::path::{
     Path,
     PathBuf
 };
+
+use qml::QObjectMacro;
 
 fn main() {
     use std::path::Path;
@@ -77,6 +89,44 @@ fn main() {
         env::set_var("QT_QPA_PLATFORMTHEME","");
     }
 
+    let mut engine = qml::QmlEngine::new();
+    let mut panop = Panopticon::default();
+
+    let cwd = env::current_dir().unwrap();
+    let qrecent = panop.recentSessions.get_qvar();
+    let has_recent = !panop.recentSessions.view_data().is_empty();
+//    let qfunctions = panop.functions.get_qvar();
+//    let qtasks = panop.tasks.get_qvar();
+//    let qcontrolflownodes = panop.controlFlowNodes.get_qvar();
+//    let qcontrolflowedges = panop.controlFlowEdges.get_qvar();
+
+    let mut panop = QPanopticon::new(
+        panop,
+        qrecent,
+        has_recent,
+//        qfunctions,
+//        qtasks,
+//        "".to_string(),
+//        qcontrolflownodes,
+//        qcontrolflowedges,
+//        "".to_string(),
+//        "".to_string(),
+//        3,
+//        8,
+//        17,
+//        8,
+//        26,
+//        150,
+//        false,
+//        false
+        );
+
+    engine.set_and_store_property("Panopticon", panop.get_qobj());
+    engine.add_import_path(&format!("{}",cwd.join("qml").display()));
+    engine.load_file(&format!("{}",cwd.join("qml").join("Panopticon").join("Window.qml").display()));
+    engine.exec();
+
+    /*
     let title_screen = find_data_file(&Path::new("qml").join("Title.qml"));
     let main_window = find_data_file(&Path::new("qml").join("Window.qml"));
 
@@ -141,11 +191,14 @@ fn main() {
             println!("Failed to open the QML files")
         },
     }
+    */
 }
 
+/*
 fn exists_path_val(filepath: String) -> Result<(), String> {
     match Path::new(&filepath).is_file() {
         true => Ok(()),
         false => Err(format!("'{}': no such file", filepath))
     }
 }
+*/

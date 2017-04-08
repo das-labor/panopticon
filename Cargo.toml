@@ -30,12 +30,14 @@ chrono-humanize = "0.0.6"
 goblin = "0.0.9"
 clap = "2.20.5"
 quickcheck = "0.3"
+error-chain = "0.8"
 
 [dev-dependencies]
 regex = "0.1"
 
-[dependencies.qmlrs]
-git = "https://github.com/flanfly/qmlrs"
+[dependencies.qml]
+git = "https://github.com/flanfly/qml-rust.git"
+branch = "qvar-properties"
 
 [dependencies.graph_algos]
 git = "https://github.com/flanfly/rust-graph-algos.git"

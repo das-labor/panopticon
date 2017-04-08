@@ -20,14 +20,60 @@ use qml::{
     QObject,
     QVariant,
     QMetaType,
+    QMetaTypable,
     QObjectMacro,
+    QListModel,
+    emit_signal,
 };
+use paths::{
+    session_directory
+};
+use std::fs;
+use panopticon::{
+    Project
+};
+use errors::*;
 
-pub struct Panopticon;
+Q_LISTMODEL! {
+    pub QRecentSessions {
+        timestamp: i32,
+        title: String,
+        typ: String,
+        path: String
+    }
+}
+
+pub struct Panopticon {
+    // QML
+    pub recentSessions: QRecentSessions,
+}
+
+impl Panopticon {
+    fn read_recent_sessions() -> Result<QRecentSessions> {
+        let path = session_directory()?;
+        let mut ret = QRecentSessions::new();
+
+        if let Ok(dir) = fs::read_dir(path) {
+
+            for ent in dir.filter_map(|x| x.ok()) {
+                if let Ok(ref project) = Project::open(&ent.path()) {
+                    if let Ok(ref md) = ent.metadata() {
+                        let mtime = md.modified()?.duration_since(::std::time::UNIX_EPOCH)?.as_secs() as i32;
+                        let fname = ent.path().file_name().map(|x| x.to_string_lossy().to_string()).unwrap_or("(error)".to_string());
+                        ret.append_row(mtime,project.name.clone(),"".to_string(),fname);
+                    }
+                }
+            }
+        }
+        Ok(ret)
+    }
+}
 
 impl Default for Panopticon {
     fn default() -> Panopticon {
-        Panopticon
+        Panopticon{
+            recentSessions: Self::read_recent_sessions().unwrap_or_else(|_| QRecentSessions::new()),
+        }
     }
 }
 
@@ -36,4 +82,7 @@ pub Panopticon as QPanopticon {
     signals:
     slots:
     properties:
+        // recent sessions
+        recentSessions: QVariant; read: get_recent_sessions, write: set_recent_sessions, notify: recent_sessions_changed;
+        haveRecentSessions: bool; read: get_have_recent_sessions, write: set_have_recent_sessions, notify: have_recent_sessions_changed;
 });
