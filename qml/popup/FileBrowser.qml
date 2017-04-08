@@ -245,6 +245,8 @@ Popup {
 														return "Archive";
 													} else if(res.payload.format == "mach-o") {
 														return "Mach-o";
+													} else if(res.payload.format == "mach-fat") {
+														return "Multi-Arch Mach-o";
 													} else {
 														return "";
 													}

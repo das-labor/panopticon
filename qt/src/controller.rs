@@ -46,8 +46,7 @@ extern "C" fn controller_slot(_: *mut ffi::QObject, id: c_int, a: *const ffi::QV
     match (id as isize,args.len()) {
         // State transitions: NEW -> SYNC
         (CREATE_RAW_PROJECT,4) => project::create_raw_project(&args[0],&args[1],&args[2],&args[3]).to_qvariant(ret),
-        (CREATE_ELF_PROJECT,1) => project::create_project(&args[0]).to_qvariant(ret),
-        (CREATE_PE_PROJECT,1) => project::create_project(&args[0]).to_qvariant(ret),
+        (CREATE_PROJECT,1) => project::create_project(&args[0]).to_qvariant(ret),
         (OPEN_PROJECT,1) => project::open_project(&args[0]).to_qvariant(ret),
 
         // State transition: DIRTY -> SYNC
@@ -91,8 +90,8 @@ pub const CHANGED_FUNCTION: isize = 6;
 pub const REMOVED_FUNCTION: isize = 7;
 
 pub const CREATE_RAW_PROJECT: isize = 8;
-pub const CREATE_ELF_PROJECT: isize = 9;
-pub const CREATE_PE_PROJECT: isize = 10;
+pub const CREATE_PROJECT: isize = 9;
+pub const CREATE_MACH_FAT_PROJECT: isize = 10;
 
 pub const OPEN_PROJECT: isize = 11;
 
@@ -139,8 +138,8 @@ pub extern "C" fn create_singleton(_: *mut ffi::QQmlEngine, _: *mut ffi::QJSEngi
 
     // state = NEW -> READY, dirty = -> true
     assert_eq!(metaobj.add_method("createRawProject(QString,QString,int,int)","QString"),CREATE_RAW_PROJECT);
-    assert_eq!(metaobj.add_method("createElfProject(QString)","QString"),CREATE_ELF_PROJECT);
-    assert_eq!(metaobj.add_method("createPeProject(QString)","QString"),CREATE_PE_PROJECT);
+    assert_eq!(metaobj.add_method("createProject(QString)","QString"),CREATE_PROJECT);
+    assert_eq!(metaobj.add_method("createMachFatProject(QString, int)","QString"),CREATE_MACH_FAT_PROJECT);
     assert_eq!(metaobj.add_method("openProject(QString)","QString"),OPEN_PROJECT);
 
     // state = (WORKING,DONE), dirty = -> true

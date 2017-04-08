@@ -550,6 +550,7 @@ pub enum FileFormat {
     ELF,
     PE,
     MachO,
+    MachFat,
     Archive,
     Panop,
     Raw
@@ -561,6 +562,7 @@ impl ToString for FileFormat {
             FileFormat::ELF => "elf",
             FileFormat::PE => "pe",
             FileFormat::MachO => "mach-o",
+            FileFormat::MachFat => "mach-fat",
             FileFormat::Archive => "archive",
             FileFormat::Panop => "panop",
             FileFormat::Raw => "raw"
@@ -644,11 +646,29 @@ pub fn file_details_of_path(path: PathBuf) -> Result<FileDetails> {
                         info: vec!["PE".to_string()],
                     })
                 },
-                Hint::Mach => {
+                Hint::Mach(data) => {
+                    let endianness = if data.is_lsb { "LittleEndian" } else { "BigEndian" };
+                    let class =
+                        if let Some(is_64) = data.is_64 {
+                            if is_64  {
+                                "Mach64"
+                            } else {
+                                "Mach32"
+                            }
+                        } else {
+                            "Unknown Mach"
+                        };
                     Ok(FileDetails{
                         state: state,
                         format: Some(FileFormat::MachO),
-                        info: vec!["Mach-o".to_string()],
+                        info: vec![format!("{:?}, {:?}", class, endianness)]
+                    })
+                },
+                Hint::MachFat(narches) => {
+                    Ok(FileDetails{
+                        state: state,
+                        format: Some(FileFormat::MachFat),
+                        info: vec![format!("Fat Mach-o ({})", narches)],
                     })
                 },
                 Hint::Archive => {
