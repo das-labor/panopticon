@@ -3,7 +3,6 @@ import QtQuick.Controls 1.3 as Ctrl
 import QtQuick.Layouts 1.1
 
 Rectangle {
-	signal showCallGraph(string uuid)
 	signal showControlFlowGraph(string uuid)
 
 	id: root
@@ -42,46 +41,11 @@ Rectangle {
 
 		visible: listView.count > 0
 
-		Rectangle {
-			id: searchBar
-
-			anchors.left: parent.left
-			anchors.right: parent.right
-			anchors.top: parent.top
-
-			height: 50
-
-			color: "white"
-
-
-			Row {
-				anchors.centerIn: parent
-				spacing: 10
-			Image {
-				source: "../icons/search.svg"
-				fillMode: Image.PreserveAspectFit
-				width: 18
-				mipmap: true
-			}
-
-			Label {
-				height: 18
-				width: 140
-				text: "Search"
-				font {
-					pointSize: 11
-				}
-					color: "#a2a2a2"
-				verticalAlignment: Text.AlignVCenter
-			}
-		}
-		}
-
 		ListView {
 			id: listView
 			anchors.left: parent.left
 			anchors.right: parent.right
-			anchors.top: searchBar.bottom
+			anchors.top: parent.top
 			anchors.bottom: parent.bottom
 			anchors.topMargin: 10
 			anchors.leftMargin: 5
@@ -97,7 +61,7 @@ Rectangle {
 					anchors.fill: parent
 
 					Ctrl.Label {
-						Layout.leftMargin: 5 + hierarchy * 15
+						Layout.leftMargin: 20
 
 						id: titleLabel
 						text: title
@@ -110,9 +74,9 @@ Rectangle {
 							x: 0; width: titleLabel.width + 5 + subtitleLabel.width
 							hoverEnabled: true
 							onClicked: {
-																console.log("display cfg for " + uuid);
-									root.showControlFlowGraph(uuid);
-														}
+								console.log("display cfg for " + uuid);
+								root.showControlFlowGraph(uuid);
+							}
 						}
 
 						Rectangle {
@@ -128,49 +92,13 @@ Rectangle {
 
 					Ctrl.Label {
 						Layout.leftMargin: 5
-						Layout.fillWidth: hierarchy > 0
+						Layout.fillWidth: true
 
 						id: subtitleLabel
 						text: subtitle
 						color: "#316460"
 						font { pointSize: 11; family: "Source Code Pro" }
 						horizontalAlignment: Text.AlignLeft
-					}
-
-					Item {
-						Layout.leftMargin: 10
-						Layout.rightMargin: 10
-						Layout.preferredHeight: 15
-						Layout.preferredWidth: 15
-						Layout.fillWidth: true
-
-						visible: hierarchy == 0
-
-						Rectangle {
-							anchors.margins: -5
-							anchors.fill: icon
-							color: "#eee"
-							radius: width / 2
-							visible: collapseMouseArea.containsMouse
-						}
-
-						MouseArea {
-							id: collapseMouseArea
-							anchors.fill: icon
-							hoverEnabled: true
-							onClicked: {
-								Panopticon.toggle_sidebar_item(index)
-							}
-						}
-
-						Image {
-							id: icon
-							anchors.top: parent.top
-							anchors.bottom: parent.bottom
-							anchors.right: parent.right
-							source: (childrenCollapsed ? "../icons/chevron-up.svg" : "../icons/chevron-down.svg")
-							fillMode: Image.PreserveAspectFit
-						}
 					}
 				}
 			}

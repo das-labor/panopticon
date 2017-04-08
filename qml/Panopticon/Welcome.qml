@@ -151,7 +151,7 @@ Rectangle {
 							hoverEnabled: true
 							cursorShape: (containsMouse ? Qt.PointingHandCursor : Qt.ArrowCursor)
 							onClicked: {
-								console.log("activate " + title)
+								Panopticon.open_program(path)
 							}
 						}
 					}

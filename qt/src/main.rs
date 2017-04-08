@@ -95,16 +95,16 @@ fn main() {
     let cwd = env::current_dir().unwrap();
     let qrecent = panop.recentSessions.get_qvar();
     let has_recent = !panop.recentSessions.view_data().is_empty();
-//    let qfunctions = panop.functions.get_qvar();
+    let qfunctions = panop.functions.get_qvar();
 //    let qtasks = panop.tasks.get_qvar();
-//    let qcontrolflownodes = panop.controlFlowNodes.get_qvar();
-//    let qcontrolflowedges = panop.controlFlowEdges.get_qvar();
+    let qcontrolflownodes = panop.controlFlowNodes.get_qvar();
+    let qcontrolflowedges = panop.controlFlowEdges.get_qvar();
 
     let mut panop = QPanopticon::new(
         panop,
         qrecent,
         has_recent,
-//        qfunctions,
+        qfunctions,
 //        qtasks,
 //        "".to_string(),
 //        qcontrolflownodes,
