@@ -31,7 +31,6 @@
 //! operation would return join, the version is increased by one and `<register>,<version + 1> + 0`
 //! is returned instead. This delays reaching join and helps to get past edge cases like
 //! `and rsp, 0xffff0000`.
-#![allow(missing_docs)]
 
 use std::borrow::Cow;
 
