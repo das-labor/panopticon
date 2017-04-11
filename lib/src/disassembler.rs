@@ -306,19 +306,12 @@ impl<A: Architecture> PartialEq for Rule<A> {
     }
 }
 
-#[derive(PartialEq,Hash,Eq,Debug)]
-enum Symbol {
-	Sparse,
-    // another broken warning; this variant is directly accessed in a private function, which is used by a public facing function, hence its bunk
-	Dense(Vec<AdjacencyListVertexDescriptor>),
-}
-
 /// Ready made disassembler for simple instruction sets.
 ///
 /// Disassembler instances are creates using the `new_disassembler!` macro. The resulting
 /// disassembler can then be used to produce `Match`es.
 pub struct Disassembler<A: Architecture> {
-	graph: AdjacencyList<Symbol,Rule<A>>,
+	graph: AdjacencyList<(),Rule<A>>,
 	start: AdjacencyListVertexDescriptor,
 	end: HashMap<AdjacencyListVertexDescriptor,Arc<Action<A>>>,
     default: Option<Action<A>>,
@@ -329,7 +322,7 @@ impl<A: Architecture> Disassembler<A> {
     /// instead.
     pub fn new() -> Disassembler<A> {
         let mut g = AdjacencyList::new();
-        let s = g.add_vertex(Symbol::Sparse);
+        let s = g.add_vertex(());
 
         Disassembler{
             graph: g,
@@ -381,7 +374,7 @@ impl<A: Architecture> Disassembler<A> {
             }
 
             if !found {
-                let tmp = self.graph.add_vertex(Symbol::Sparse);
+                let tmp = self.graph.add_vertex(());
                 self.graph.add_edge(r.clone(),v,tmp);
                 v = tmp;
             }
@@ -453,9 +446,9 @@ impl<A: Architecture> Disassembler<A> {
         Some(tok)
     }
 
-	fn find<Iter>(&self, i: Iter, initial_state: &State<A>) -> Vec<(Vec<&Symbol>,State<A>,Iter)>
+	fn find<Iter>(&self, i: Iter, initial_state: &State<A>) -> Vec<(Vec<&()>,State<A>,Iter)>
     where Iter: Iterator<Item=Option<u8>> + Clone, A::Configuration: Clone {
-        let mut states = Vec::<(Vec<&Symbol>,State<A>,AdjacencyListVertexDescriptor,Iter)>::new();
+        let mut states = Vec::<(Vec<&()>,State<A>,AdjacencyListVertexDescriptor,Iter)>::new();
         let mut ret = vec![];
 
         states.push((vec![],initial_state.clone(),self.start,i.clone()));
@@ -469,81 +462,69 @@ impl<A: Architecture> Disassembler<A> {
                 }
             }
 
-            let mut new_states = Vec::<(Vec<&Symbol>,State<A>,AdjacencyListVertexDescriptor,Iter)>::new();
+            let mut new_states = Vec::<(Vec<&()>,State<A>,AdjacencyListVertexDescriptor,Iter)>::new();
 
 
             for &(ref pats,ref state,ref vx,ref iter) in states.iter() {
-                match self.graph.vertex_label(*vx) {
-                    Some(a@&Symbol::Sparse) =>
-                        for e in self.graph.out_edges(*vx) {
-                            match self.graph.edge_label(e) {
-                                Some(&Rule::Terminal{ ref mask, ref pattern, capture_group: ref capture }) => {
-                                    let mut i = iter.clone();
-                                    if let Some(tok) = Self::read_token(&mut i) {
-                                        if mask.clone() & tok.clone() == *pattern {
-                                            let mut p = pats.clone();
-                                            let mut st = state.clone();
+                if let Some(a) = self.graph.vertex_label(*vx) {
+                    for e in self.graph.out_edges(*vx) {
+                        match self.graph.edge_label(e) {
+                            Some(&Rule::Terminal{ ref mask, ref pattern, capture_group: ref capture }) => {
+                                let mut i = iter.clone();
+                                if let Some(tok) = Self::read_token(&mut i) {
+                                    if mask.clone() & tok.clone() == *pattern {
+                                        let mut p = pats.clone();
+                                        let mut st = state.clone();
 
-                                            // capture group
-                                            for &(ref name,ref mask) in capture.iter() {
-                                                let mut res = if let Some(p) = st.groups.iter().position(|x| x.0 == *name) {
-                                                    st.groups[p].1
+                                        // capture group
+                                        for &(ref name,ref mask) in capture.iter() {
+                                            let mut res = if let Some(p) = st.groups.iter().position(|x| x.0 == *name) {
+                                                st.groups[p].1
+                                            } else {
+                                                0u64
+                                            };
+
+                                            for rbit in 0..(size_of::<A::Token>() * 8) {
+                                                let bit = (size_of::<A::Token>() * 8) - rbit - 1;
+                                                let bit_mask = if bit > 0 {
+                                                    A::Token::one() << bit
                                                 } else {
-                                                    0u64
+                                                    A::Token::one()
                                                 };
 
-                                                for rbit in 0..(size_of::<A::Token>() * 8) {
-                                                    let bit = (size_of::<A::Token>() * 8) - rbit - 1;
-                                                    let bit_mask = if bit > 0 {
-                                                        A::Token::one() << bit
-                                                    } else {
-                                                        A::Token::one()
-                                                    };
+                                                let a = bit_mask.clone() & mask.clone();
 
-                                                    let a = bit_mask.clone() & mask.clone();
+                                                if a != A::Token::zero() {
+                                                    res <<= 1;
 
-                                                    if a != A::Token::zero() {
-                                                        res <<= 1;
-
-                                                        if tok.clone() & a != A::Token::zero() {
-                                                            res |= 1;
-                                                        }
+                                                    if tok.clone() & a != A::Token::zero() {
+                                                        res |= 1;
                                                     }
-                                                }
-
-                                                if let Some(p) = st.groups.iter().position(|x| x.0 == *name) {
-                                                    st.groups[p].1 = res;
-                                                } else {
-                                                    st.groups.push((name.clone(),res));
                                                 }
                                             }
 
-                                            p.push(a.clone());
-                                            st.tokens.push(tok);
-                                            new_states.push((p,st,self.graph.target(e),i));
+                                            if let Some(p) = st.groups.iter().position(|x| x.0 == *name) {
+                                                st.groups[p].1 = res;
+                                            } else {
+                                                st.groups.push((name.clone(),res));
+                                            }
                                         }
+
+                                        p.push(a);
+                                        st.tokens.push(tok);
+                                        new_states.push((p,st,self.graph.target(e),i));
                                     }
-                                },
-                                Some(&Rule::Sub(ref sub)) => {
-                                    let i = iter.clone();
-                                    let mut v = sub.find(i.clone(),state);
+                                }
+                            },
+                            Some(&Rule::Sub(ref sub)) => {
+                                let i = iter.clone();
+                                let mut v = sub.find(i.clone(),state);
 
-                                    new_states.extend(v.drain(..).map(|(a,b,i)| (a,b,self.graph.target(e),i.clone())));
-                                },
-                                None => {},
-                            };
-                        },
-                    Some(a@&Symbol::Dense(..)) => {
-                        let mut p = pats.clone();
-                        let mut i = iter.clone();
-                        let tok = i.next();
-
-                        p.push(a);
-                        if let &Symbol::Dense(ref v) = a {
-                            new_states.push((p,state.clone(),v[tok.unwrap().unwrap() as usize],i.clone()));
-                        }
-                    },
-                    _ => {},
+                                new_states.extend(v.drain(..).map(|(a,b,i)| (a,b,self.graph.target(e),i.clone())));
+                            },
+                            None => {},
+                        };
+                    }
                 }
             }
 
@@ -780,7 +761,6 @@ mod tests {
         Rvalue,
         Region,
         Bound,
-        LayerIter,
         Result,
     };
 
@@ -878,8 +858,8 @@ mod tests {
         let sub = new_disassembler!(TestArchShort =>
             [ 2 ] = |st: &mut State<TestArchShort>| {
                 let next = st.address;
-                st.mnemonic(2,"BA","",vec!(),&|_| { Ok(vec![]) });
-                st.jump(Rvalue::new_u64(next + 2),Guard::always());
+                st.mnemonic(2,"BA","",vec!(),&|_| { Ok(vec![]) }).unwrap();
+                st.jump(Rvalue::new_u64(next + 2),Guard::always()).unwrap();
                 true
             });
         let sub2 = new_disassembler!(TestArchShort =>
@@ -889,20 +869,20 @@ mod tests {
             [ 1, sub ] = &|_| true,
             [ 1 ] = |st: &mut State<TestArchShort>| {
                 let next = st.address;
-                st.mnemonic(1,"A","",vec!(),&|_| { Ok(vec![]) });
-                st.jump(Rvalue::new_u64(next + 1),Guard::always());
+                st.mnemonic(1,"A","",vec!(),&|_| { Ok(vec![]) }).unwrap();
+                st.jump(Rvalue::new_u64(next + 1),Guard::always()).unwrap();
                 true
             },
             [ "0 k@..... 11" ] = |st: &mut State<TestArchShort>| {
                 let next = st.address;
-                st.mnemonic(1,"C","",vec!(),&|_| { Ok(vec![]) });
-                st.jump(Rvalue::new_u64(next + 1),Guard::always());
+                st.mnemonic(1,"C","",vec!(),&|_| { Ok(vec![]) }).unwrap();
+                st.jump(Rvalue::new_u64(next + 1),Guard::always()).unwrap();
                 true
             },
             _ = |st: &mut State<TestArchShort>| {
                 let next = st.address;
-                st.mnemonic(1,"UNK","",vec!(),&|_| { Ok(vec![]) });
-                st.jump(Rvalue::new_u64(next + 1),Guard::always());
+                st.mnemonic(1,"UNK","",vec!(),&|_| { Ok(vec![]) }).unwrap();
+                st.jump(Rvalue::new_u64(next + 1),Guard::always()).unwrap();
                 true
             }
 		);
@@ -1058,7 +1038,7 @@ mod tests {
         let def = OpaqueLayer::wrap(vec!(127));
         let dec = new_disassembler!(TestArchShort =>
             ["01 a@.. 1 b@ c@..."] = |st: &mut State<TestArchShort>| {
-                st.mnemonic(1, "1","",vec!(),&|_| { Ok(vec![]) });
+                st.mnemonic(1, "1","",vec!(),&|_| { Ok(vec![]) }).unwrap();
                 true
             }
         );
@@ -1115,23 +1095,23 @@ mod tests {
             [0x2211] = |s: &mut State<TestArchWide>|
             {
                 let a = s.address;
-                s.mnemonic(2,"A","",vec!(),&|_| { Ok(vec![]) });
-                s.jump(Rvalue::new_u64(a + 2),Guard::always());
+                s.mnemonic(2,"A","",vec!(),&|_| { Ok(vec![]) }).unwrap();
+                s.jump(Rvalue::new_u64(a + 2),Guard::always()).unwrap();
                 true
             },
 
             [0x4433] = |s: &mut State<TestArchWide>|
             {
                 let a = s.address;
-                s.mnemonic(2,"B","",vec!(),&|_| { Ok(vec![]) });
-                s.jump(Rvalue::new_u64(a + 2),Guard::always());
-                s.jump(Rvalue::new_u64(a + 4),Guard::always());
+                s.mnemonic(2,"B","",vec!(),&|_| { Ok(vec![]) }).unwrap();
+                s.jump(Rvalue::new_u64(a + 2),Guard::always()).unwrap();
+                s.jump(Rvalue::new_u64(a + 4),Guard::always()).unwrap();
                 true
             },
 
             [0x4455] = |s: &mut State<TestArchWide>|
             {
-                s.mnemonic(2, "C","",vec!(),&|_| { Ok(vec![]) });
+                s.mnemonic(2, "C","",vec!(),&|_| { Ok(vec![]) }).unwrap();
                 true
             }
         );
@@ -1158,7 +1138,7 @@ mod tests {
             [127, opt!(126), 125] = |st: &mut State<TestArchShort>|
             {
                 let l = st.tokens.len();
-                st.mnemonic(l, "1", "", vec!(),&|_| { Ok(vec![]) });
+                st.mnemonic(l, "1", "", vec!(),&|_| { Ok(vec![]) }).unwrap();
                 true
             }
         );
@@ -1208,7 +1188,7 @@ mod tests {
                 assert_eq!(st.get_group("c"),1);
 
                 let l = st.tokens.len();
-                st.mnemonic(l, "1", "", vec!(),&|_| { Ok(vec![]) });
+                st.mnemonic(l, "1", "", vec!(),&|_| { Ok(vec![]) }).unwrap();
                 true
             }
         );
@@ -1237,7 +1217,7 @@ mod tests {
             [ "01111111", "a@11111111" ] = |st: &mut State<TestArchShort>|
             {
                 let l = st.tokens.len();
-                st.mnemonic(l, "1", "", vec!(),&|_| { Ok(vec![]) });
+                st.mnemonic(l, "1", "", vec!(),&|_| { Ok(vec![]) }).unwrap();
                 true
             }
         );

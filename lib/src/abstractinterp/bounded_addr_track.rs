@@ -407,8 +407,7 @@ impl Avalue for BoundedAddrTrack {
 mod tests {
     use super::*;
     use lift;
-    use quickcheck::{Arbitrary,Gen,TestResult,Testable};
-    use quickcheck::QuickCheck;
+    use quickcheck::{Arbitrary,Gen,TestResult};
 
     impl Arbitrary for BoundedAddrTrack {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {

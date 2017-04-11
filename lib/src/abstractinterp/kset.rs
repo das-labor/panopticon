@@ -278,7 +278,7 @@ mod tests {
         ControlFlowTarget,Function,ControlFlowGraph,
         Guard,
         Lvalue,Rvalue,
-        Bound,Mnemonic,
+        Mnemonic,
         ssa_convertion,
         BasicBlock,
         approximate,
@@ -368,7 +368,7 @@ mod tests {
         func.cflow_graph = cfg;
         func.entry_point = Some(v0);
 
-        ssa_convertion(&mut func);
+        assert!(ssa_convertion(&mut func).is_ok());
 
         let vals = approximate::<Kset>(&func).ok().unwrap();
         let res = results::<Kset>(&func,&vals);
@@ -412,7 +412,7 @@ mod tests {
         func.cflow_graph = cfg;
         func.entry_point = Some(v0);
 
-        ssa_convertion(&mut func);
+        assert!(ssa_convertion(&mut func).is_ok());
 
         let vals = approximate::<Kset>(&func).ok().unwrap();
 

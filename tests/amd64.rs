@@ -21,8 +21,6 @@ extern crate panopticon;
 
 extern crate env_logger;
 extern crate regex;
-
-#[macro_use]
 extern crate quickcheck;
 
 use panopticon::{

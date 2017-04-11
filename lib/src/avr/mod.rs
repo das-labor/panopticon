@@ -543,7 +543,8 @@ mod tests {
     use Rvalue;
     use std::borrow::Cow;
 
-    use std::hash::{Hash,Hasher,SipHasher};
+    use std::hash::{Hash,Hasher};
+    use std::collections::hash_map::DefaultHasher;
 
     use graph_algos::{
         GraphTrait,
@@ -563,7 +564,7 @@ mod tests {
             0x21,0x2c, // 6:8 mov
         ));
         let fun = Function::disassemble::<Avr>(None,Mcu::atmega8(),&reg,0);
-        let _cg = &fun.cflow_graph;
+        let cg = &fun.cflow_graph;
 
         for x in cg.vertices() {
             match cg.vertex_label(x) {
@@ -784,8 +785,8 @@ mod tests {
             Some(&ControlFlowTarget::Resolved(ref bb)) => Some(format!("\"bb{}\"",bb.area.start)),
             Some(&ControlFlowTarget::Unresolved(Rvalue::Constant{ ref value,.. })) => Some(format!("\"v{}\"",*value)),
             Some(&ControlFlowTarget::Unresolved(ref c)) => {
-                let ref mut h = SipHasher::new();
-                c.hash::<SipHasher>(h);
+                let ref mut h = DefaultHasher::new();
+                c.hash::<DefaultHasher>(h);
                 Some(format!("\"c{}\"",h.finish()))
             },
             _ => None,

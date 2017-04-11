@@ -119,7 +119,6 @@ use std::cmp;
 use Result;
 
 use rustc_serialize::{Encodable,Decodable};
-use quickcheck::{Arbitrary,Gen};
 
 /// A readable RREIL value.
 #[derive(Clone,PartialEq,Eq,Debug,RustcEncodable,RustcDecodable,Hash)]
@@ -267,24 +266,6 @@ impl Display for Rvalue {
     }
 }
 
-impl Arbitrary for Rvalue {
-    fn arbitrary<G: Gen>(g: &mut G) -> Self {
-        match g.gen_range(0,3) {
-            0 => Rvalue::Undefined,
-            1 => Rvalue::Variable{
-                name: Cow::Owned(g.gen_ascii_chars().take(2).collect()),
-                size: g.gen_range(1,513),
-                subscript: Some(g.gen_range(0,5)),
-                offset: g.gen_range(0,512),
-            },
-            2 => Rvalue::Constant{
-                value: g.gen(),
-                size: g.gen_range(1,513),
-            },
-            _ => unreachable!(),
-        }
-    }
-}
 
 /// A writeable RREIL value.
 #[derive(Clone,PartialEq,Eq,Debug,RustcEncodable,RustcDecodable,Hash)]
@@ -352,20 +333,6 @@ impl Lvalue {
 impl Display for Lvalue {
     fn fmt(&self, f: &mut Formatter) -> result::Result<(), Error> {
         f.write_fmt(format_args!("{}",Rvalue::from(self.clone())))
-    }
-}
-
-impl Arbitrary for Lvalue {
-    fn arbitrary<G: Gen>(g: &mut G) -> Self {
-        match g.gen_range(0,2) {
-            0 => Lvalue::Undefined,
-            1 => Lvalue::Variable{
-                name: Cow::Owned(g.gen_ascii_chars().take(2).collect()),
-                size: g.gen_range(1,513),
-                subscript: Some(g.gen_range(0,5)),
-            },
-            _ => unreachable!()
-        }
     }
 }
 
@@ -607,87 +574,6 @@ impl Statement {
         }
 
         Ok(())
-    }
-}
-
-impl Arbitrary for Operation<Rvalue> {
-    fn arbitrary<G: Gen>(g: &mut G) -> Self {
-        let mut op = match g.gen_range(0,24) {
-            0 => Operation::Add(Rvalue::arbitrary(g),Rvalue::arbitrary(g)),
-            1 => Operation::Subtract(Rvalue::arbitrary(g),Rvalue::arbitrary(g)),
-            2 => Operation::Multiply(Rvalue::arbitrary(g),Rvalue::arbitrary(g)),
-            3 => Operation::DivideUnsigned(Rvalue::arbitrary(g),Rvalue::arbitrary(g)),
-            4 => Operation::DivideSigned(Rvalue::arbitrary(g),Rvalue::arbitrary(g)),
-            5 => Operation::ShiftLeft(Rvalue::arbitrary(g),Rvalue::arbitrary(g)),
-            6 => Operation::ShiftRightUnsigned(Rvalue::arbitrary(g),Rvalue::arbitrary(g)),
-            7 => Operation::ShiftRightSigned(Rvalue::arbitrary(g),Rvalue::arbitrary(g)),
-            8 => Operation::Modulo(Rvalue::arbitrary(g),Rvalue::arbitrary(g)),
-            9 => Operation::InclusiveOr(Rvalue::arbitrary(g),Rvalue::arbitrary(g)),
-            10 => Operation::ExclusiveOr(Rvalue::arbitrary(g),Rvalue::arbitrary(g)),
-
-            11 => Operation::Equal(Rvalue::arbitrary(g),Rvalue::arbitrary(g)),
-            12 => Operation::LessOrEqualUnsigned(Rvalue::arbitrary(g),Rvalue::arbitrary(g)),
-            13 => Operation::LessOrEqualSigned(Rvalue::arbitrary(g),Rvalue::arbitrary(g)),
-            14 => Operation::LessUnsigned(Rvalue::arbitrary(g),Rvalue::arbitrary(g)),
-            15 => Operation::LessSigned(Rvalue::arbitrary(g),Rvalue::arbitrary(g)),
-
-            16 => Operation::ZeroExtend(g.gen(),Rvalue::arbitrary(g)),
-            17 => Operation::SignExtend(g.gen(),Rvalue::arbitrary(g)),
-
-            18 => Operation::Move(Rvalue::arbitrary(g)),
-            19 => Operation::Call(Rvalue::arbitrary(g)),
-
-            20 => Operation::Select(g.gen(),Rvalue::arbitrary(g),Rvalue::arbitrary(g)),
-
-            21 => Operation::Load(g.gen_ascii_chars().take(1).collect(),Rvalue::arbitrary(g)),
-            22 => Operation::Store(g.gen_ascii_chars().take(1).collect(),Rvalue::arbitrary(g)),
-
-            23 => {
-                let cnt = g.gen_range(1,6);
-                // XXX: make sizes equal?
-                let i = (0..cnt).into_iter().map(|_| Rvalue::arbitrary(g));
-                Operation::Phi(i.collect())
-            }
-
-            _ => unreachable!(),
-        };
-
-        match op {
-            Operation::Add(_,_) | Operation::Subtract(_,_) | Operation::Multiply(_,_) |
-            Operation::DivideUnsigned(_,_) | Operation::DivideSigned(_,_) | Operation::Modulo(_,_) |
-            Operation::ShiftLeft(_,_) | Operation::ShiftRightUnsigned(_,_) | Operation::ShiftRightSigned(_,_) |
-            Operation::And(_,_) | Operation::InclusiveOr(_,_) | Operation::ExclusiveOr(_,_) |
-            Operation::Equal(_,_) | Operation::LessOrEqualUnsigned(_,_) | Operation::LessOrEqualSigned(_,_) |
-            Operation::LessUnsigned(_,_) | Operation::LessSigned(_,_) => {
-                let mut sz = None;
-                for o in op.operands_mut() {
-                    if sz.is_none() {
-                        sz = o.size();
-                    } else {
-                    match o {
-                        &mut Rvalue::Undefined => {}
-                        &mut Rvalue::Constant{ ref mut size,.. } => { *size = sz.unwrap() }
-                        &mut Rvalue::Variable{ ref mut size,.. } => { *size = sz.unwrap() }
-                    }
-                    }
-                }
-            }
-            Operation::Select(ref mut off,ref mut rv1,ref mut rv2) => {
-                if let (Some(sz1),Some(sz2)) = (rv1.size(),rv2.size()) {
-                    if sz2 > sz1 {
-                        let t2 = rv1.clone();
-                        *rv1 = rv2.clone();
-                        *rv2 = t2;
-                    }
-                }
-                if let (Some(sz1),Some(sz2)) = (rv1.size(),rv2.size()) {
-                    *off = g.gen_range(0,sz1 - sz2 + 1);
-                }
-            }
-            _ => {},
-        }
-
-        op
     }
 }
 
@@ -1262,14 +1148,126 @@ mod tests {
     use super::*;
     use {
         Architecture,
-        LayerIter,
         Result,
-        Disassembler,
         Region,
         Match,
     };
-    use std::sync::Arc;
     use std::borrow::Cow;
+    use quickcheck::{Arbitrary,Gen};
+
+    impl Arbitrary for Rvalue {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            match g.gen_range(0,3) {
+                0 => Rvalue::Undefined,
+                1 => Rvalue::Variable{
+                    name: Cow::Owned(g.gen_ascii_chars().take(2).collect()),
+                    size: g.gen_range(1,513),
+                    subscript: Some(g.gen_range(0,5)),
+                    offset: g.gen_range(0,512),
+                },
+                2 => Rvalue::Constant{
+                    value: g.gen(),
+                    size: g.gen_range(1,513),
+                },
+                _ => unreachable!(),
+            }
+        }
+    }
+
+    impl Arbitrary for Lvalue {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            match g.gen_range(0,2) {
+                0 => Lvalue::Undefined,
+                1 => Lvalue::Variable{
+                    name: Cow::Owned(g.gen_ascii_chars().take(2).collect()),
+                    size: g.gen_range(1,513),
+                    subscript: Some(g.gen_range(0,5)),
+                },
+                _ => unreachable!()
+            }
+        }
+    }
+
+    impl Arbitrary for Operation<Rvalue> {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            let mut op = match g.gen_range(0,24) {
+                0 => Operation::Add(Rvalue::arbitrary(g),Rvalue::arbitrary(g)),
+                1 => Operation::Subtract(Rvalue::arbitrary(g),Rvalue::arbitrary(g)),
+                2 => Operation::Multiply(Rvalue::arbitrary(g),Rvalue::arbitrary(g)),
+                3 => Operation::DivideUnsigned(Rvalue::arbitrary(g),Rvalue::arbitrary(g)),
+                4 => Operation::DivideSigned(Rvalue::arbitrary(g),Rvalue::arbitrary(g)),
+                5 => Operation::ShiftLeft(Rvalue::arbitrary(g),Rvalue::arbitrary(g)),
+                6 => Operation::ShiftRightUnsigned(Rvalue::arbitrary(g),Rvalue::arbitrary(g)),
+                7 => Operation::ShiftRightSigned(Rvalue::arbitrary(g),Rvalue::arbitrary(g)),
+                8 => Operation::Modulo(Rvalue::arbitrary(g),Rvalue::arbitrary(g)),
+                9 => Operation::InclusiveOr(Rvalue::arbitrary(g),Rvalue::arbitrary(g)),
+                10 => Operation::ExclusiveOr(Rvalue::arbitrary(g),Rvalue::arbitrary(g)),
+
+                11 => Operation::Equal(Rvalue::arbitrary(g),Rvalue::arbitrary(g)),
+                12 => Operation::LessOrEqualUnsigned(Rvalue::arbitrary(g),Rvalue::arbitrary(g)),
+                13 => Operation::LessOrEqualSigned(Rvalue::arbitrary(g),Rvalue::arbitrary(g)),
+                14 => Operation::LessUnsigned(Rvalue::arbitrary(g),Rvalue::arbitrary(g)),
+                15 => Operation::LessSigned(Rvalue::arbitrary(g),Rvalue::arbitrary(g)),
+
+                16 => Operation::ZeroExtend(g.gen(),Rvalue::arbitrary(g)),
+                17 => Operation::SignExtend(g.gen(),Rvalue::arbitrary(g)),
+
+                18 => Operation::Move(Rvalue::arbitrary(g)),
+                19 => Operation::Call(Rvalue::arbitrary(g)),
+
+                20 => Operation::Select(g.gen(),Rvalue::arbitrary(g),Rvalue::arbitrary(g)),
+
+                21 => Operation::Load(g.gen_ascii_chars().take(1).collect(),Rvalue::arbitrary(g)),
+                22 => Operation::Store(g.gen_ascii_chars().take(1).collect(),Rvalue::arbitrary(g)),
+
+                23 => {
+                    let cnt = g.gen_range(1,6);
+                    // XXX: make sizes equal?
+                    let i = (0..cnt).into_iter().map(|_| Rvalue::arbitrary(g));
+                    Operation::Phi(i.collect())
+                }
+
+                _ => unreachable!(),
+            };
+
+            match op {
+                Operation::Add(_,_) | Operation::Subtract(_,_) | Operation::Multiply(_,_) |
+                    Operation::DivideUnsigned(_,_) | Operation::DivideSigned(_,_) | Operation::Modulo(_,_) |
+                    Operation::ShiftLeft(_,_) | Operation::ShiftRightUnsigned(_,_) | Operation::ShiftRightSigned(_,_) |
+                    Operation::And(_,_) | Operation::InclusiveOr(_,_) | Operation::ExclusiveOr(_,_) |
+                    Operation::Equal(_,_) | Operation::LessOrEqualUnsigned(_,_) | Operation::LessOrEqualSigned(_,_) |
+                    Operation::LessUnsigned(_,_) | Operation::LessSigned(_,_) => {
+                        let mut sz = None;
+                        for o in op.operands_mut() {
+                            if sz.is_none() {
+                                sz = o.size();
+                            } else {
+                                match o {
+                                    &mut Rvalue::Undefined => {}
+                                    &mut Rvalue::Constant{ ref mut size,.. } => { *size = sz.unwrap() }
+                                    &mut Rvalue::Variable{ ref mut size,.. } => { *size = sz.unwrap() }
+                                }
+                            }
+                        }
+                    }
+                Operation::Select(ref mut off,ref mut rv1,ref mut rv2) => {
+                    if let (Some(sz1),Some(sz2)) = (rv1.size(),rv2.size()) {
+                        if sz2 > sz1 {
+                            let t2 = rv1.clone();
+                            *rv1 = rv2.clone();
+                            *rv2 = t2;
+                        }
+                    }
+                    if let (Some(sz1),Some(sz2)) = (rv1.size(),rv2.size()) {
+                        *off = g.gen_range(0,sz1 - sz2 + 1);
+                    }
+                }
+                _ => {},
+            }
+
+            op
+        }
+    }
 
     #[derive(Clone)]
     enum TestArchShort {}

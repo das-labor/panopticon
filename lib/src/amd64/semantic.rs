@@ -378,7 +378,7 @@ fn write_reg(reg: &Rvalue, val: &Rvalue, _sz: usize) -> Result<Vec<Statement>> {
         let mut hi = *offset + *size;
         let mut lo = *offset;
         // this warning seems totally spurious, wtf...
-        let mut stmts = vec![];
+        let mut stmts;
 
         if let Some((reg8l,reg8h,reg16,reg32,reg64)) = reg_variants(name) {
             if *reg == reg8h.clone().into() {

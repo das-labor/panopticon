@@ -92,6 +92,7 @@ extern crate lazy_static;
 extern crate byteorder;
 extern crate goblin;
 
+#[cfg(test)]
 #[macro_use]
 extern crate quickcheck;
 

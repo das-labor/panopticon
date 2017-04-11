@@ -523,7 +523,6 @@ mod tests {
     use super::*;
     use std::borrow::Cow;
     use std::sync::Arc;
-    use std::fmt;
     use graph_algos::{VertexListGraphTrait,EdgeListGraphTrait,AdjacencyMatrixGraphTrait};
     use graph_algos::{GraphTrait,MutableGraphTrait};
     use {
@@ -535,7 +534,6 @@ mod tests {
         Match,
         Rvalue,
         OpaqueLayer,
-        LayerIter,
         Result,
         State,
         Architecture,
@@ -708,7 +706,7 @@ mod tests {
     fn add_single() {
         let main = new_disassembler!(TestArchShort =>
             [ 0 ] = |st: &mut State<TestArchShort>| {
-                st.mnemonic(1,"A","",vec!(),&|_| { Ok(vec![]) });
+                st.mnemonic(1,"A","",vec!(),&|_| { Ok(vec![]) }).unwrap();
                 true
             }
 		);
@@ -741,38 +739,38 @@ mod tests {
         let main = new_disassembler!(TestArchShort =>
             [ 0 ] = |st: &mut State<TestArchShort>| {
                 let next = st.address;
-                st.mnemonic(1,"test0","",vec!(),&|_| { Ok(vec![]) });
-                st.jump(Rvalue::new_u64(next + 1),Guard::always());
+                st.mnemonic(1,"test0","",vec!(),&|_| { Ok(vec![]) }).unwrap();
+                st.jump(Rvalue::new_u64(next + 1),Guard::always()).unwrap();
                 true
             },
             [ 1 ] = |st: &mut State<TestArchShort>| {
                 let next = st.address;
-                st.mnemonic(1,"test1","",vec!(),&|_| { Ok(vec![]) });
-                st.jump(Rvalue::new_u64(next + 1),Guard::always());
+                st.mnemonic(1,"test1","",vec!(),&|_| { Ok(vec![]) }).unwrap();
+                st.jump(Rvalue::new_u64(next + 1),Guard::always()).unwrap();
                 true
             },
             [ 2 ] = |st: &mut State<TestArchShort>| {
                 let next = st.address;
-                st.mnemonic(1,"test2","",vec!(),&|_| { Ok(vec![]) });
-                st.jump(Rvalue::new_u64(next + 1),Guard::always());
+                st.mnemonic(1,"test2","",vec!(),&|_| { Ok(vec![]) }).unwrap();
+                st.jump(Rvalue::new_u64(next + 1),Guard::always()).unwrap();
                 true
             },
             [ 3 ] = |st: &mut State<TestArchShort>| {
                 let next = st.address;
-                st.mnemonic(1,"test3","",vec!(),&|_| { Ok(vec![]) });
-                st.jump(Rvalue::new_u64(next + 1),Guard::always());
+                st.mnemonic(1,"test3","",vec!(),&|_| { Ok(vec![]) }).unwrap();
+                st.jump(Rvalue::new_u64(next + 1),Guard::always()).unwrap();
                 true
             },
             [ 4 ] = |st: &mut State<TestArchShort>| {
                 let next = st.address;
-                st.mnemonic(1,"test4","",vec!(),&|_| { Ok(vec![]) });
-                st.jump(Rvalue::new_u64(next + 1),Guard::always());
+                st.mnemonic(1,"test4","",vec!(),&|_| { Ok(vec![]) }).unwrap();
+                st.jump(Rvalue::new_u64(next + 1),Guard::always()).unwrap();
                 true
             },
             [ 5 ] = |st: &mut State<TestArchShort>| {
                 let next = st.address;
-                st.mnemonic(1,"test5","",vec!(),&|_| { Ok(vec![]) });
-                st.jump(Rvalue::new_u64(next + 1),Guard::always());
+                st.mnemonic(1,"test5","",vec!(),&|_| { Ok(vec![]) }).unwrap();
+                st.jump(Rvalue::new_u64(next + 1),Guard::always()).unwrap();
                 true
             }
         );
@@ -822,19 +820,19 @@ mod tests {
     fn branch() {
         let main = new_disassembler!(TestArchShort =>
             [ 0 ] = |st: &mut State<TestArchShort>| {
-                st.mnemonic(1,"test0","",vec!(),&|_| { Ok(vec![]) });
-                st.jump(Rvalue::new_u32(1),Guard::always());
-                st.jump(Rvalue::new_u32(2),Guard::always());
+                st.mnemonic(1,"test0","",vec!(),&|_| { Ok(vec![]) }).unwrap();
+                st.jump(Rvalue::new_u32(1),Guard::always()).unwrap();
+                st.jump(Rvalue::new_u32(2),Guard::always()).unwrap();
                 true
             },
             [ 1 ] = |st: &mut State<TestArchShort>| {
-                st.mnemonic(1,"test1","",vec!(),&|_| { Ok(vec![]) });
-                st.jump(Rvalue::new_u32(3),Guard::always());
+                st.mnemonic(1,"test1","",vec!(),&|_| { Ok(vec![]) }).unwrap();
+                st.jump(Rvalue::new_u32(3),Guard::always()).unwrap();
                 true
             },
             [ 2 ] = |st: &mut State<TestArchShort>| {
-                st.mnemonic(1,"test2","",vec!(),&|_| { Ok(vec![]) });
-                st.jump(Rvalue::new_u32(1),Guard::always());
+                st.mnemonic(1,"test2","",vec!(),&|_| { Ok(vec![]) }).unwrap();
+                st.jump(Rvalue::new_u32(1),Guard::always()).unwrap();
                 true
             }
         );
@@ -895,18 +893,18 @@ mod tests {
     fn function_loop() {
       let main = new_disassembler!(TestArchShort =>
             [ 0 ] = |st: &mut State<TestArchShort>| {
-                st.mnemonic(1,"test0","",vec!(),&|_| { Ok(vec![]) });
-                st.jump(Rvalue::new_u32(1),Guard::always());
+                st.mnemonic(1,"test0","",vec!(),&|_| { Ok(vec![]) }).unwrap();
+                st.jump(Rvalue::new_u32(1),Guard::always()).unwrap();
                 true
             },
             [ 1 ] = |st: &mut State<TestArchShort>| {
-                st.mnemonic(1,"test1","",vec!(),&|_| { Ok(vec![]) });
-                st.jump(Rvalue::new_u32(2),Guard::always());
+                st.mnemonic(1,"test1","",vec!(),&|_| { Ok(vec![]) }).unwrap();
+                st.jump(Rvalue::new_u32(2),Guard::always()).unwrap();
                 true
             },
             [ 2 ] = |st: &mut State<TestArchShort>| {
-                st.mnemonic(1,"test2","",vec!(),&|_| { Ok(vec![]) });
-                st.jump(Rvalue::new_u32(0),Guard::always());
+                st.mnemonic(1,"test2","",vec!(),&|_| { Ok(vec![]) }).unwrap();
+                st.jump(Rvalue::new_u32(0),Guard::always()).unwrap();
                 true
             }
         );
@@ -943,18 +941,18 @@ mod tests {
     fn empty() {
         let main = new_disassembler!(TestArchShort =>
             [ 0 ] = |st: &mut State<TestArchShort>| {
-                st.mnemonic(1,"test0","",vec!(),&|_| { Ok(vec![]) });
-                st.jump(Rvalue::new_u32(1),Guard::always());
+                st.mnemonic(1,"test0","",vec!(),&|_| { Ok(vec![]) }).unwrap();
+                st.jump(Rvalue::new_u32(1),Guard::always()).unwrap();
                 true
             },
             [ 1 ] = |st: &mut State<TestArchShort>| {
-                st.mnemonic(1,"test1","",vec!(),&|_| { Ok(vec![]) });
-                st.jump(Rvalue::new_u32(2),Guard::always());
+                st.mnemonic(1,"test1","",vec!(),&|_| { Ok(vec![]) }).unwrap();
+                st.jump(Rvalue::new_u32(2),Guard::always()).unwrap();
                 true
             },
             [ 2 ] = |st: &mut State<TestArchShort>| {
-                st.mnemonic(1,"test2","",vec!(),&|_| { Ok(vec![]) });
-                st.jump(Rvalue::new_u32(0),Guard::always());
+                st.mnemonic(1,"test2","",vec!(),&|_| { Ok(vec![]) }).unwrap();
+                st.jump(Rvalue::new_u32(0),Guard::always()).unwrap();
                 true
             }
         );
@@ -986,18 +984,18 @@ mod tests {
 
         let main = new_disassembler!(TestArchShort =>
             [ 0 ] = |st: &mut State<TestArchShort>| {
-                st.mnemonic(1,"test0","",vec!(),&|_| { Ok(vec![]) });
-                st.jump(Rvalue::new_u32(1),Guard::always());
+                st.mnemonic(1,"test0","",vec!(),&|_| { Ok(vec![]) }).unwrap();
+                st.jump(Rvalue::new_u32(1),Guard::always()).unwrap();
                 true
             },
             [ 1 ] = |st: &mut State<TestArchShort>| {
-                st.mnemonic(1,"test1","",vec!(),&|_| { Ok(vec![]) });
-                st.jump(Rvalue::new_u32(2),Guard::always());
+                st.mnemonic(1,"test1","",vec!(),&|_| { Ok(vec![]) }).unwrap();
+                st.jump(Rvalue::new_u32(2),Guard::always()).unwrap();
                 true
             },
             [ 2 ] = |st: &mut State<TestArchShort>| {
-                st.mnemonic(1,"test2","",vec!(),&|_| { Ok(vec![]) });
-                st.jump(Rvalue::new_u32(1),Guard::always());
+                st.mnemonic(1,"test2","",vec!(),&|_| { Ok(vec![]) }).unwrap();
+                st.jump(Rvalue::new_u32(1),Guard::always()).unwrap();
                 true
             }
         );
@@ -1057,23 +1055,23 @@ mod tests {
             [0x2211] = |s: &mut State<TestArchWide>|
             {
                 let a = s.address;
-                s.mnemonic(2,"A","",vec!(),&|_| { Ok(vec![]) });
-                s.jump(Rvalue::new_u64(a + 2),Guard::always());
+                s.mnemonic(2,"A","",vec!(),&|_| { Ok(vec![]) }).unwrap();
+                s.jump(Rvalue::new_u64(a + 2),Guard::always()).unwrap();
                 true
             },
 
             [0x4433] = |s: &mut State<TestArchWide>|
             {
                 let a = s.address;
-                s.mnemonic(2,"B","",vec!(),&|_| { Ok(vec![]) });
-                s.jump(Rvalue::new_u64(a + 2),Guard::always());
-                s.jump(Rvalue::new_u64(a + 4),Guard::always());
+                s.mnemonic(2,"B","",vec!(),&|_| { Ok(vec![]) }).unwrap();
+                s.jump(Rvalue::new_u64(a + 2),Guard::always()).unwrap();
+                s.jump(Rvalue::new_u64(a + 4),Guard::always()).unwrap();
                 true
             },
 
             [0x4455] = |s: &mut State<TestArchWide>|
             {
-                s.mnemonic(2, "C","",vec!(),&|_| { Ok(vec![]) });
+                s.mnemonic(2, "C","",vec!(),&|_| { Ok(vec![]) }).unwrap();
                 true
             }
         );
@@ -1114,18 +1112,18 @@ mod tests {
     fn issue_51_treat_entry_point_as_incoming_edge() {
         let main = new_disassembler!(TestArchShort =>
             [ 0 ] = |st: &mut State<TestArchShort>| {
-                st.mnemonic(1,"test0","",vec!(),&|_| { Ok(vec![]) });
-                st.jump(Rvalue::new_u32(1),Guard::always());
+                st.mnemonic(1,"test0","",vec!(),&|_| { Ok(vec![]) }).unwrap();
+                st.jump(Rvalue::new_u32(1),Guard::always()).unwrap();
                 true
             },
             [ 1 ] = |st: &mut State<TestArchShort>| {
-                st.mnemonic(1,"test1","",vec!(),&|_| { Ok(vec![]) });
-                st.jump(Rvalue::new_u32(2),Guard::always());
+                st.mnemonic(1,"test1","",vec!(),&|_| { Ok(vec![]) }).unwrap();
+                st.jump(Rvalue::new_u32(2),Guard::always()).unwrap();
                 true
             },
             [ 2 ] = |st: &mut State<TestArchShort>| {
-                st.mnemonic(1,"test2","",vec!(),&|_| { Ok(vec![]) });
-                st.jump(Rvalue::new_u32(0),Guard::always());
+                st.mnemonic(1,"test2","",vec!(),&|_| { Ok(vec![]) }).unwrap();
+                st.jump(Rvalue::new_u32(0),Guard::always()).unwrap();
                 true
             }
         );
@@ -1168,18 +1166,18 @@ mod tests {
     fn issue_232_overlap_with_entry_point() {
         let main = new_disassembler!(TestArchShort =>
             [ 0, 1 ] = |st: &mut State<TestArchShort>| {
-                st.mnemonic(2,"test01","",vec!(),&|_| { Ok(vec![]) });
-                st.jump(Rvalue::new_u32(2),Guard::always());
+                st.mnemonic(2,"test01","",vec!(),&|_| { Ok(vec![]) }).unwrap();
+                st.jump(Rvalue::new_u32(2),Guard::always()).unwrap();
                 true
             },
             [ 1 ] = |st: &mut State<TestArchShort>| {
-                st.mnemonic(1,"test1","",vec!(),&|_| { Ok(vec![]) });
-                st.jump(Rvalue::new_u32(2),Guard::always());
+                st.mnemonic(1,"test1","",vec!(),&|_| { Ok(vec![]) }).unwrap();
+                st.jump(Rvalue::new_u32(2),Guard::always()).unwrap();
                 true
             },
             [ 2 ] = |st: &mut State<TestArchShort>| {
-                st.mnemonic(1,"test2","",vec!(),&|_| { Ok(vec![]) });
-                st.jump(Rvalue::new_u32(0),Guard::always());
+                st.mnemonic(1,"test2","",vec!(),&|_| { Ok(vec![]) }).unwrap();
+                st.jump(Rvalue::new_u32(0),Guard::always()).unwrap();
                 true
             }
         );
