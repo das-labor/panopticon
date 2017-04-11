@@ -30,7 +30,6 @@ use panopticon::{
     Layer,
     Region,
     Bound,
-    World,
     approximate,
     Kset,
 };
@@ -42,7 +41,6 @@ use panopticon::loader;
 use std::path::Path;
 use std::thread;
 use std::collections::{
-    HashMap,
     HashSet,
 };
 use std::fmt::Debug;
@@ -198,8 +196,6 @@ pub fn set_request(_req: &Variant) -> Variant {
 
 /// Starts disassembly
 pub fn spawn_disassembler<A: 'static + Architecture + Debug>(_cfg: A::Configuration) where A::Configuration: Debug + Sync, A::Token: Sync + Send {
-    use std::sync::Mutex;
-
     thread::spawn(move || -> Result<()> {
         let maybe_prog_uuid = try!(Controller::read(|proj| {
             proj.code.first().map(|x| x.uuid)
@@ -280,7 +276,7 @@ pub fn spawn_disassembler<A: 'static + Architecture + Debug>(_cfg: A::Configurat
 
                             while !fixpoint {
                                 fixpoint = true;
-                                ssa_convertion(&mut func);
+                                ssa_convertion(&mut func).unwrap();
 
                                 let vals = try!(approximate::<Kset>(&func));
                                 let vxs = { func.cflow_graph.vertices().collect::<Vec<_>>() };

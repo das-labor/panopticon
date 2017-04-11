@@ -22,9 +22,8 @@ use std::sync::{
 use std::collections::BTreeMap;
 use std::path::{PathBuf,Path};
 use std::iter::FromIterator;
-use std::fs::{remove_file,DirBuilder};
+use std::fs::{remove_file};
 use std::error::Error;
-use std::borrow::Cow;
 use std::convert::Into;
 
 use libc::c_int;
@@ -32,7 +31,6 @@ use qmlrs::{ffi,MetaObject,Variant,Object,ToQVariant,unpack_varlist};
 use rustc_serialize::{json,Encodable};
 use tempdir::TempDir;
 
-use panopticon::result;
 use panopticon::{
     Project,
     Result,
@@ -285,7 +283,7 @@ impl Controller {
         }
     }
 
-    pub fn instantiate_singleton(_: MetaObject, mut s: Object) -> Result<()> {
+    pub fn instantiate_singleton(_: MetaObject, s: Object) -> Result<()> {
         {
             let mut guard = try!(CONTROLLER.write());
 
@@ -311,7 +309,7 @@ impl Controller {
                 },
             }
             Ok(())
-        }.and_then(|t| {
+        }.and_then(|_t| {
             Controller::update_state()
         })
     }

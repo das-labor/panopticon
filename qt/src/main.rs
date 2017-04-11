@@ -117,7 +117,7 @@ fn main() {
             let request = format!("{{\"kind\": \"{}\", \"path\": \"{}\"}}",
                 fileformat.to_string(),
                 input_file_path);
-            Controller::set_request(&request);
+            Controller::set_request(&request).unwrap();
             let mut engine = qmlrs::Engine::new("Panopticon");
             engine.load_local_file(&format!("{}",window.display()));
             engine.exec();

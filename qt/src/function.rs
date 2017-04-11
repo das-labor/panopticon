@@ -27,7 +27,8 @@ use panopticon::{
     Kset,
 };
 
-use std::hash::{Hash,Hasher,SipHasher};
+use std::hash::{Hash,Hasher};
+use std::collections::hash_map::DefaultHasher;
 use std::thread;
 use std::fs;
 use std::path::{PathBuf};
@@ -738,8 +739,8 @@ fn to_ident(t: &ControlFlowTarget) -> String {
         &ControlFlowTarget::Resolved(ref bb) =>
             format!("bb{}",bb.area.start),
         &ControlFlowTarget::Unresolved(ref c) => {
-            let ref mut h = SipHasher::new();
-            c.hash::<SipHasher>(h);
+            let ref mut h = DefaultHasher::new();
+            c.hash::<DefaultHasher>(h);
             format!("c{}",h.finish())
         }
         &ControlFlowTarget::Failed(ref pos,_) =>
@@ -1002,7 +1003,6 @@ struct SessionInfo {
 }
 
 pub fn sessions() -> Variant {
-    use std::time::SystemTime;
     use chrono;
     use chrono_humanize::HumanTime;
     use paths::session_directory;

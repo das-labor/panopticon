@@ -54,7 +54,6 @@ use std::cmp::max;
 use {
     Lvalue,
     Rvalue,
-    State,
     Guard,
     Result,
     Statement,
@@ -184,7 +183,7 @@ fn extend(a: &Rvalue, b: &Rvalue,sign_ext: bool) -> Result<(Rvalue,Rvalue,usize,
     let ext = |x: &Rvalue,s: usize| -> Rvalue {
         match x {
             &Rvalue::Undefined => Rvalue::Undefined,
-            &Rvalue::Variable{ ref name, ref subscript, ref offset, ref size } => {
+            &Rvalue::Variable{ ref name, ref offset, ref size, .. } => {
                 if *size != s {
                     Rvalue::Variable{
                         name: format!("{}_ext",name).into(),
@@ -371,13 +370,14 @@ fn reg_variants(name: &str) -> Option<(Lvalue,Lvalue,Lvalue,Lvalue,Lvalue)> {
 }
 
 /// Assigns `val:sz` to `reg`. This function makes sure all that e.g. EAX is written when RAX is.
-fn write_reg(reg: &Rvalue, val: &Rvalue, sz: usize) -> Result<Vec<Statement>> {
+fn write_reg(reg: &Rvalue, val: &Rvalue, _sz: usize) -> Result<Vec<Statement>> {
     use std::cmp;
     use std::num::Wrapping;
 
     if let &Rvalue::Variable{ ref name, ref size, ref offset,.. } = reg {
         let mut hi = *offset + *size;
         let mut lo = *offset;
+        // this warning seems totally spurious, wtf...
         let mut stmts = vec![];
 
         if let Some((reg8l,reg8h,reg16,reg32,reg64)) = reg_variants(name) {
@@ -609,9 +609,10 @@ pub fn adc(a_: Rvalue, b_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> {
 }
 
 pub fn add(a_: Rvalue, b_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> {
-    let (a,b,sz,mut stmts) = try!(sign_extend(&a_,&b_));
+    // TODO: use this stmts or below? this is worrisome...
+    let (a,b,sz, mut stmts) = try!(sign_extend(&a_,&b_));
     let res = rreil_lvalue!{ res:sz };
-    let mut stmts = vec![];
+    //let mut stmts = vec![];
 
     stmts.append(&mut try!(rreil!{
         add res:sz, (a), (b);
@@ -666,28 +667,28 @@ pub fn bound(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((ve
 
 pub fn bsf(_a: Rvalue, _b: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> {
     return Ok((vec![],JumpSpec::FallThru));
-    let (_,b,sz,_) = try!(sign_extend(&_a,&_b));
-    let res = rreil_lvalue!{ res:sz };
-    let mut stmts = try!(rreil!{
-        cmpeq ZF:1, (b), [0]:sz;
-        mov res:sz, ?;
-    });
+    // let (_,b,sz,_) = try!(sign_extend(&_a,&_b));
+    // let res = rreil_lvalue!{ res:sz };
+    // let mut stmts = try!(rreil!{
+    //     cmpeq ZF:1, (b), [0]:sz;
+    //     mov res:sz, ?;
+    // });
 
-    stmts.append(&mut try!(write_reg(&_a,&res.clone().into(),sz)));
-    Ok((stmts,JumpSpec::FallThru))
+    // stmts.append(&mut try!(write_reg(&_a,&res.clone().into(),sz)));
+    // Ok((stmts,JumpSpec::FallThru))
 }
 
 pub fn bsr(_a: Rvalue, _b: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> {
     return Ok((vec![],JumpSpec::FallThru));
-    let (_,b,sz,_) = try!(sign_extend(&_a,&_b));
-    let res = rreil_lvalue!{ res:sz };
-    let mut stmts = try!(rreil!{
-        cmpeq ZF:1, (b), [0]:sz;
-        mov res:sz, ?;
-    });
+    // let (_,b,sz,_) = try!(sign_extend(&_a,&_b));
+    // let res = rreil_lvalue!{ res:sz };
+    // let mut stmts = try!(rreil!{
+    //     cmpeq ZF:1, (b), [0]:sz;
+    //     mov res:sz, ?;
+    // });
 
-    stmts.append(&mut try!(write_reg(&_a,&res.clone().into(),sz)));
-    Ok((stmts,JumpSpec::FallThru))
+    // stmts.append(&mut try!(write_reg(&_a,&res.clone().into(),sz)));
+    // Ok((stmts,JumpSpec::FallThru))
 }
 
 pub fn bswap(_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> {
@@ -1095,10 +1096,12 @@ pub fn idiv(_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpe
 pub fn imul1(_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
 
 pub fn imul2(a_: Rvalue, b_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> {
+    // TODO: use this stmts or below? this seems dangerous...
     let (a,b,sz,mut stmts) = try!(sign_extend(&a_,&b_));
     let res = rreil_lvalue!{ res:sz };
-    let mut stmts = vec![];
-    let hsz = sz / 2;
+    //let mut stmts = vec![];
+    // unused
+    let _hsz = sz / 2;
     let dsz = sz * 2;
     let max = (1u64 << (sz - 1)) - 1;
 
@@ -1441,7 +1444,7 @@ pub fn retnf(_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> {
 }
 
 pub fn ror(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
-pub fn rol(a_: Rvalue, b_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> {
+pub fn rol(_a: Rvalue, _b: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> {
 /*    let (a,b,sz,mut stmts) = try!(sign_extend(&a_,&b_));
     let res = rreil_lvalue!{ res:sz };
     let mut stmts = vec![];

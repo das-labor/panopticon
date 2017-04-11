@@ -35,8 +35,6 @@
 
 #![allow(missing_docs)]
 
-use std::sync::Arc;
-use std::borrow::Cow;
 use std::cmp;
 use std::fmt::{Error,Display,Formatter};
 use std::result;
@@ -48,7 +46,6 @@ use {
     Lvalue,
     Rvalue,
     Result,
-    LayerIter,
     Match,
     Architecture,
     Region,
@@ -120,10 +117,10 @@ impl Architecture for Amd64 {
     }
 
     fn decode(reg: &Region,start: u64, cfg: &Self::Configuration) -> Result<Match<Self>> {
-        let mut data = reg.iter();
+        let data = reg.iter();
         let mut buf: Vec<u8> = vec![];
         let mut i = data.seek(start);
-        let mut p = start;
+        let p = start;
 
         while let Some(Some(b)) = i.next() {
             buf.push(b);
@@ -787,7 +784,7 @@ impl Display for Operand {
                     32 => "DWORD",
                     64 => "QWORD",
                     _ => "UNK",
-                });
+                })?;
 
                 write!(f,"{}",Operand::Address(seg.clone(),base.clone(),index.clone(),scale.clone(),disp.clone()))
             },
@@ -804,39 +801,39 @@ impl Display for Operand {
 
                 if *base != Register::None {
                     if f.alternate() {
-                        write!(f,"{:#}",base);
+                        write!(f,"{:#}",base)?;
                     } else {
-                        write!(f,"{}",base);
+                        write!(f,"{}",base)?;
                     }
                 }
 
                 if *scale > 0 && *index != Register::None {
                     if *base != Register::None {
-                        write!(f,"+");
+                        write!(f,"+")?;
                     }
 
                     if f.alternate() {
-                        write!(f,"{:#}*{}",index,scale);
+                        write!(f,"{:#}*{}",index,scale)?;
                     } else {
-                        write!(f,"{}*{}",index,scale);
+                        write!(f,"{}*{}",index,scale)?;
                     }
                 }
 
                 if disp.0 > 0 {
                     if disp.0 & 0x8000_0000_0000_0000 != 0 {
                         if disp.1 < 64 {
-                            write!(f,"-{:#x}",(disp.0 ^ 0xFFFF_FFFF_FFFF_FFFF).wrapping_add(1) % (1 << disp.1));
+                            write!(f,"-{:#x}",(disp.0 ^ 0xFFFF_FFFF_FFFF_FFFF).wrapping_add(1) % (1 << disp.1))?;
                         } else {
-                            write!(f,"-{:#x}",(disp.0 ^ 0xFFFF_FFFF_FFFF_FFFF).wrapping_add(1));
+                            write!(f,"-{:#x}",(disp.0 ^ 0xFFFF_FFFF_FFFF_FFFF).wrapping_add(1))?;
                         }
                     } else {
                         if *base != Register::None || (*scale > 0 && *index != Register::None) {
-                            write!(f,"+");
+                            write!(f,"+")?;
                         }
                         if disp.1 < 64 {
-                            write!(f,"{:#x}",disp.0 % (1 << disp.1));
+                            write!(f,"{:#x}",disp.0 % (1 << disp.1))?;
                         } else {
-                            write!(f,"{:#x}",disp.0);
+                            write!(f,"{:#x}",disp.0)?;
                         }
                     }
 
@@ -963,11 +960,11 @@ fn read_operand(spec: &OperandSpec, tail: &mut Tail,
             read_effective_address(mode,seg,tail,rex,32,addrsz,addr),
         (&OperandSpec::Present(AddressingMethod::M,OperandType::p),64) =>
             read_effective_address(mode,seg,tail,rex,64,addrsz,addr),
-        (&OperandSpec::Present(AddressingMethod::M,OperandType::w),opsz) =>
+        (&OperandSpec::Present(AddressingMethod::M,OperandType::w),_opsz) =>
             read_effective_address(mode,seg,tail,rex,16,addrsz,addr),
-        (&OperandSpec::Present(AddressingMethod::M,OperandType::d),opsz) =>
+        (&OperandSpec::Present(AddressingMethod::M,OperandType::d),_opsz) =>
             read_effective_address(mode,seg,tail,rex,32,addrsz,addr),
-        (&OperandSpec::Present(AddressingMethod::M,OperandType::q),opsz) =>
+        (&OperandSpec::Present(AddressingMethod::M,OperandType::q),_opsz) =>
             read_effective_address(mode,seg,tail,rex,64,addrsz,addr),
         (&OperandSpec::Present(AddressingMethod::M,OperandType::s),64) =>
             read_effective_address(mode,seg,tail,rex,80,addrsz,addr),
@@ -1097,7 +1094,7 @@ fn sign_ext_u32(val: u32, w: usize) -> u64 {
 fn read_effective_simd_address(mode: Mode, seg: SegmentOverride, tail: &mut Tail,
                                rex: Option<(bool,bool,bool,bool)>,
                                opsz: usize, addrsz: usize, ip: u64, simdsz: usize) -> Result<Operand> {
-    let (mod_,reg,rm) = try!(tail.modrm(rex));
+    let (mod_,_reg,rm) = try!(tail.modrm(rex));
 
     match (mod_,rm & 0b111) {
         // mod = 00
@@ -1160,7 +1157,7 @@ fn read_effective_simd_address(mode: Mode, seg: SegmentOverride, tail: &mut Tail
 fn read_effective_address(mode: Mode, seg: SegmentOverride, tail: &mut Tail,
                           rex: Option<(bool,bool,bool,bool)>,
                           opsz: usize, addrsz: usize, ip: u64) -> Result<Operand> {
-    let (mod_,reg,rm) = try!(tail.modrm(rex));
+    let (mod_,_reg,rm) = try!(tail.modrm(rex));
 
     match (mod_,rm & 0b111) {
         // mod = 00
@@ -1238,7 +1235,7 @@ fn indirect(op: Operand, seg: SegmentOverride, addrsz: usize, width: usize) -> R
     }
 }
 
-fn read_memory(op: Operand, seg: SegmentOverride, addrsz: usize, width: usize) -> Result<Operand> {
+fn read_memory(op: Operand, seg: SegmentOverride, _addrsz: usize, width: usize) -> Result<Operand> {
     match op {
         Operand::Register(reg) => Ok(Operand::Indirect(seg,reg,Register::None,0,(0,0),width)),
         Operand::Immediate(imm,w) => Ok(Operand::Indirect(seg,Register::None,Register::None,0,(imm,w),width)),
@@ -1311,7 +1308,7 @@ fn read_modrm<R: ReadBytesExt>(fd: &mut R,rex: Option<(bool,bool,bool,bool)>) ->
     let mut rm = modrm & 0b111;
     let sib_present = mod_ != 0b11 && rm == 0b100;
 
-    if let Some((w,r,x,b)) = rex {
+    if let Some((_w,r,_x,b)) = rex {
         if b && !sib_present { rm |= 0b1000 }
         if r { reg |= 0b1000 }
     }
@@ -1405,7 +1402,7 @@ fn read_register(reg: u8, rex_present: bool, opsz: usize) -> Result<Operand> {
         }
     }
 }
-fn read_simd_register(reg: u8, rex_present: bool, opsz: usize) -> Result<Operand> {
+fn read_simd_register(reg: u8, _rex_present: bool, opsz: usize) -> Result<Operand> {
     match (reg,opsz) {
        (0b0000,32) => Ok(Operand::Register(Register::MM0)),
        (0b0001,32) => Ok(Operand::Register(Register::MM1)),
@@ -1677,9 +1674,9 @@ impl<'a> Tail<'a> {
         Ok(self.sib.clone().unwrap())
     }
 
-    pub fn position(&self) -> usize {
-        self.fd.position() as usize
-    }
+    // pub fn position(&self) -> usize {
+    //     self.fd.position() as usize
+    // }
 
     pub fn read_u8(&mut self) -> Result<u8> {
         Ok(try!(self.fd.read_u8()))
@@ -2195,7 +2192,7 @@ pub fn read(mode: Mode, buf: &[u8], addr: u64) -> Result<(u64,Mnemonic,Vec<(Rval
         trace!("res: {:?}",opc);
 
         let opc = match opc.mnemonic() {
-            &MnemonicSpec::Single(s) => {
+            &MnemonicSpec::Single(_s) => {
                 opc
             }
             &MnemonicSpec::Undefined => return Err("Unknown instruction".into()),
@@ -2346,7 +2343,7 @@ pub fn read(mode: Mode, buf: &[u8], addr: u64) -> Result<(u64,Mnemonic,Vec<(Rval
                 trace!("");
                 Ok((len,mne,next))
             }
-            e => Err("Internal error".into()),
+            e => Err(format!("Internal error: {:?}", e).into()),
         }
     }
 }
@@ -2378,7 +2375,7 @@ fn to_rreil(op: Operand) -> Result<(Rvalue,Vec<Statement>)> {
 
             Ok((ret.into(),stmts))
         },
-        Operand::Address(ref seg,ref base,ref index,ref scale,ref disp) => {
+        Operand::Address(_,ref base,ref index,ref scale,ref disp) => {
             let mut stmts = vec![];
             let mut ret = Rvalue::Undefined;
 

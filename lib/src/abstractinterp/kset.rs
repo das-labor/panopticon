@@ -20,10 +20,8 @@
 //!
 //! TODO
 
-use std::borrow::Cow;
-use std::collections::{HashSet,HashMap};
+use std::collections::{HashSet};
 use std::iter::FromIterator;
-use std::ops::Range;
 
 use {
     Rvalue,
@@ -32,7 +30,6 @@ use {
     ProgramPoint,
     Operation,
     execute,
-    Region,
 };
 
 /// Largest Kset cardinality before Join.

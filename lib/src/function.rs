@@ -28,7 +28,6 @@
 //! on the front-end.
 
 use std::collections::{HashMap,BTreeMap,HashSet};
-use std::sync::Arc;
 use std::borrow::Cow;
 use std::fmt::Debug;
 
@@ -38,7 +37,6 @@ use graph_algos::{
     MutableGraphTrait,
     VertexListGraphTrait,
     EdgeListGraphTrait,
-    BidirectionalGraphTrait,
 };
 use graph_algos::adjacency_list::{
     AdjacencyListVertexDescriptor,
@@ -54,9 +52,7 @@ use {
     BasicBlock,
     Guard,
     Region,
-    Disassembler,
     Architecture,
-    LayerIter,
     Rvalue,
     Mnemonic,
     Statement,

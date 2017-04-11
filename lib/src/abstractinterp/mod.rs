@@ -54,7 +54,7 @@ use graph_algos::order::{
 
 use {
     Lvalue,Rvalue,
-    Statement,Operation,execute,
+    Statement,Operation,
     ControlFlowTarget,
     ControlFlowRef,
     ControlFlowGraph,

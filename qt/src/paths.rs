@@ -20,7 +20,7 @@ use panopticon::result;
 use panopticon::result::Result;
 
 use std::env;
-use std::fs::{File,DirBuilder};
+use std::fs::{DirBuilder};
 use std::path::{PathBuf,Path};
 use std::borrow::Cow;
 use std::error::Error;
@@ -93,7 +93,6 @@ pub fn find_data_file(p: &Path) -> Result<Option<PathBuf>> {
 
 #[cfg(all(unix,not(target_os = "macos")))]
 fn find_data_file_impl(p: &Path) -> Result<Option<PathBuf>> {
-    use std::env;
     match BaseDirectories::with_prefix("panopticon") {
         Ok(dirs) => Ok(dirs.find_data_file(p)),
         Err(e) => Err(result::Error(Cow::Owned(e.description().to_string()))),

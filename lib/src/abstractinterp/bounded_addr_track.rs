@@ -31,10 +31,9 @@
 //! operation would return join, the version is increased by one and `<register>,<version + 1> + 0`
 //! is returned instead. This delays reaching join and helps to get past edge cases like
 //! `and rsp, 0xffff0000`.
+#![allow(missing_docs)]
 
 use std::borrow::Cow;
-use std::ops::Range;
-use std::collections::HashMap;
 
 use {
     Rvalue,
@@ -43,9 +42,9 @@ use {
     ProgramPoint,
     Operation,
     il,
-    Region,
 };
 
+/// Maximum global version limit for each region
 pub const VERSION_LIMIT: usize = 10;
 
 /// Bounded Address Tracking domain element
@@ -65,13 +64,13 @@ macro_rules! addrtrack_op {
         let r1 = $r1; let r2 = $r2; let val1 = $val1; let val2 = $val2;
         let sz1 = $sz1; let sz2 = $sz2;
         if r1.is_some() || r2.is_some() {
-            let (rX,verX) = if r1.is_some() { r1.clone().unwrap() } else { r2.clone().unwrap() };
+            let (rx,verx) = if r1.is_some() { r1.clone().unwrap() } else { r2.clone().unwrap() };
 
-            if verX < VERSION_LIMIT {
+            if verx < VERSION_LIMIT {
                 let tmp = il::execute($t(Rvalue::Constant{ value: *val1, size: *sz1 },
                                                     Rvalue::Constant{ value: *val2, size: *sz2 }));
                 if let Rvalue::Constant{ ref value, ref size } = tmp {
-                    BoundedAddrTrack::Offset{ region: Some((rX.clone(),verX + 1)), offset: *value, offset_size: *size }
+                    BoundedAddrTrack::Offset{ region: Some((rx.clone(),verx + 1)), offset: *value, offset_size: *size }
                 } else {
                     BoundedAddrTrack::Join
                 }
@@ -101,7 +100,7 @@ impl Avalue for BoundedAddrTrack {
         }
     }
 
-    fn execute(pp: &ProgramPoint, op: &Operation<Self>/*, reg: Option<&Region>,
+    fn execute(_pp: &ProgramPoint, op: &Operation<Self>/*, reg: Option<&Region>,
                symbolic: &HashMap<Range<u64>,Cow<'static,str>>, initial: &HashMap<(Cow<'static,str>,usize),Self>*/) -> Self {
         fn execute(op: Operation<Rvalue>) -> BoundedAddrTrack {
             let tmp = il::execute(op);
@@ -147,11 +146,11 @@ impl Avalue for BoundedAddrTrack {
             Operation::Add(BoundedAddrTrack::Offset{ region: ref r1, offset: ref val1, offset_size: ref sz1 },
                            BoundedAddrTrack::Offset{ region: ref r2, offset: ref val2, offset_size: ref sz2 })
             if r1.is_some() || r2.is_some() => {
-                let (rX,verX) = if r1.is_some() { r1.clone().unwrap() } else { r2.clone().unwrap() };
+                let (rx,verx) = if r1.is_some() { r1.clone().unwrap() } else { r2.clone().unwrap() };
                 let tmp = il::execute(Operation::Add(Rvalue::Constant{ value: *val1, size: *sz1 },
                                                      Rvalue::Constant{ value: *val2, size: *sz2 }));
                 if let Rvalue::Constant{ ref value, ref size } = tmp {
-                    BoundedAddrTrack::Offset{ region: Some((rX.clone(),verX)), offset: *value, offset_size: *size }
+                    BoundedAddrTrack::Offset{ region: Some((rx.clone(),verx)), offset: *value, offset_size: *size }
                 } else {
                     BoundedAddrTrack::Join
                 }

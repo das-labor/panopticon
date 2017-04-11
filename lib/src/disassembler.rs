@@ -109,7 +109,6 @@ use {
     Mnemonic,
     Guard,
     Region,
-    LayerIter,
     Result,
     Statement,
 };
@@ -266,7 +265,7 @@ impl<A: Architecture> State<A> {
         }
 
         let o = self.jump_origin;
-        self.jump_from(o,v,g);
+        self.jump_from(o,v,g)?;
 
         Ok(())
     }
@@ -310,6 +309,7 @@ impl<A: Architecture> PartialEq for Rule<A> {
 #[derive(PartialEq,Hash,Eq,Debug)]
 enum Symbol {
 	Sparse,
+    // another broken warning; this variant is directly accessed in a private function, which is used by a public facing function, hence its bunk
 	Dense(Vec<AdjacencyListVertexDescriptor>),
 }
 
@@ -338,8 +338,8 @@ impl<A: Architecture> Disassembler<A> {
             default: None,
         }
     }
-
-    fn to_dot(&self) {
+    /// Converts to a dot file; useful for debugging
+    pub fn to_dot(&self) {
         println!("digraph G {{");
         for v in self.graph.vertices() {
             let lb = self.graph.vertex_label(v).unwrap();

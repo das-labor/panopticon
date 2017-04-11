@@ -31,7 +31,7 @@ pub fn nop(_: &mut Variant) -> Result<Vec<Statement>> { Ok(vec![]) }
 
 pub fn nop_r(_: &mut Variant, _: Rvalue) -> Result<Vec<Statement>> { Ok(vec![]) }
 
-pub fn adc(cg: &mut Variant, r: Rvalue) -> Result<Vec<Statement>> {
+pub fn adc(_cg: &mut Variant, r: Rvalue) -> Result<Vec<Statement>> {
     rreil!{
         zext/8 carry:8, C:1;
         add res:8, A:8, (r);
@@ -73,92 +73,92 @@ pub fn adc(cg: &mut Variant, r: Rvalue) -> Result<Vec<Statement>> {
     let _v2 = new_temp(8);
 
     // Normal mode.
-    cg.assign(&normal, &*A);
-    cg.add_i(&normal, &normal.to_rv(), &r);
-    cg.add_i(&normal, &normal.to_rv(), &C.to_rv());
-    cg.rshift_i(&normal_n, &normal.to_rv(), &7);
-    cg.and_i(&normal_n, &normal_n.to_rv(), &1);
+    _cg.assign(&normal, &*A);
+    _cg.add_i(&normal, &normal.to_rv(), &r);
+    _cg.add_i(&normal, &normal.to_rv(), &C.to_rv());
+    _cg.rshift_i(&normal_n, &normal.to_rv(), &7);
+    _cg.and_i(&normal_n, &normal_n.to_rv(), &1);
 
-    cg.and_i(&_v1, &A.to_rv(), &0x7f);
-    cg.and_i(&_v2, &r, &0x7f);
-    cg.add_i(&_v1, &_v1.to_rv(), &_v2.to_rv());
-    cg.add_i(&_v1, &_v1.to_rv(), &C.to_rv());
-    cg.rshift_i(&normal_c6, &_v1.to_rv(), &7);
+    _cg.and_i(&_v1, &A.to_rv(), &0x7f);
+    _cg.and_i(&_v2, &r, &0x7f);
+    _cg.add_i(&_v1, &_v1.to_rv(), &_v2.to_rv());
+    _cg.add_i(&_v1, &_v1.to_rv(), &C.to_rv());
+    _cg.rshift_i(&normal_c6, &_v1.to_rv(), &7);
 
 
     // Decimal mode.  It's complicated: http://www.6502.org/tutorials/decimal_mode.html
 
     // 1a. Decimal
     let al = new_temp(8);
-    cg.assign(&al, &*A);
-    cg.and_i(&al, &al.to_rv(), &0xf);
+    _cg.assign(&al, &*A);
+    _cg.and_i(&al, &al.to_rv(), &0xf);
 
     let lo = new_temp(8);
-    cg.assign(&lo, &r);
-    cg.and_i(&lo, &lo.to_rv(), &0xf);
+    _cg.assign(&lo, &r);
+    _cg.and_i(&lo, &lo.to_rv(), &0xf);
 
-    cg.add_i(&al, &al.to_rv(), &lo);
-    cg.add_i(&al, &al.to_rv(), &C.to_rv());
+    _cg.add_i(&al, &al.to_rv(), &lo);
+    _cg.add_i(&al, &al.to_rv(), &C.to_rv());
 
     // 1b. We have now al = (A & $0F) + (R & $0F) + C <= 0x1f and have to compare to >= 0x0a.
     let adjust = new_temp(8);
-    cg.add_i(&adjust, &al.to_rv(), &0xe6);        // -a in 2-complement
-    cg.rshift_i(&adjust, &adjust.to_rv(), &7);    // N bit means >= 0x0a
+    _cg.add_i(&adjust, &al.to_rv(), &0xe6);        // -a in 2-complement
+    _cg.rshift_i(&adjust, &adjust.to_rv(), &7);    // N bit means >= 0x0a
 
     let adjusted = new_temp(8);
-    cg.assign(&adjusted, &al.to_rv());
-    cg.add_i(&adjusted, &adjusted.to_rv(), &6);
-    cg.and_i(&adjusted, &adjusted.to_rv(), &0xf);
-    cg.or_i(&adjusted, &adjusted.to_rv(), &0x10);
+    _cg.assign(&adjusted, &al.to_rv());
+    _cg.add_i(&adjusted, &adjusted.to_rv(), &6);
+    _cg.and_i(&adjusted, &adjusted.to_rv(), &0xf);
+    _cg.or_i(&adjusted, &adjusted.to_rv(), &0x10);
 
-    _select(cg, &lo, &al.to_rv(), &adjusted.to_rv(), &adjust.to_rv());
-    cg.assign(&al, &lo.to_rv());
+    _select(_cg, &lo, &al.to_rv(), &adjusted.to_rv(), &adjust.to_rv());
+    _cg.assign(&al, &lo.to_rv());
 
     // 1c.
     let _decimal = new_temp(16);
-    cg.and_i(&_decimal, &A.to_rv(), &0xf0);
-    cg.add_i(&_decimal, &_decimal.to_rv(), &r);
-    cg.and_i(&_decimal, &_decimal.to_rv(), &0x1f0);
-    cg.add_i(&_decimal, &_decimal.to_rv(), &al.to_rv());
+    _cg.and_i(&_decimal, &A.to_rv(), &0xf0);
+    _cg.add_i(&_decimal, &_decimal.to_rv(), &r);
+    _cg.and_i(&_decimal, &_decimal.to_rv(), &0x1f0);
+    _cg.add_i(&_decimal, &_decimal.to_rv(), &al.to_rv());
 
     // In decimal mode, the negative flag is the 8th bit of the previous addition (1c).
-    cg.rshift_i(&decimal_n, &_decimal.to_rv(), &7);
-    cg.and_i(&decimal_n, &decimal_n.to_rv(), &1);
+    _cg.rshift_i(&decimal_n, &_decimal.to_rv(), &7);
+    _cg.and_i(&decimal_n, &decimal_n.to_rv(), &1);
 
     // In decimal mode, the overflow flag is the C6 of the previous addition (1c).
-    cg.and_i(&_v1, &A.to_rv(), &0x70);
-    cg.and_i(&_v2, &r, &0x70);
-    cg.add_i(&_v1, &_v1.to_rv(), &_v2.to_rv());
-    cg.add_i(&_v1, &_v1.to_rv(), &al.to_rv());
-    cg.rshift_i(&decimal_c6, &_v1.to_rv(), &7);
+    _cg.and_i(&_v1, &A.to_rv(), &0x70);
+    _cg.and_i(&_v2, &r, &0x70);
+    _cg.add_i(&_v1, &_v1.to_rv(), &_v2.to_rv());
+    _cg.add_i(&_v1, &_v1.to_rv(), &al.to_rv());
+    _cg.rshift_i(&decimal_c6, &_v1.to_rv(), &7);
 
     // 1e. Compare to 0xa0.  Note that _decimal is max. 0x1ff (because al is max. 0x1f)
     let hiadjust = new_temp(16);
-    cg.add_i(&hiadjust, &_decimal.to_rv(), &0xfe60);  // -a0 in 2-complement
-    cg.rshift_i(&hiadjust, &hiadjust.to_rv(), &15);   // N bit means > 0xa0.  This is also the new carry!
+    _cg.add_i(&hiadjust, &_decimal.to_rv(), &0xfe60);  // -a0 in 2-complement
+    _cg.rshift_i(&hiadjust, &hiadjust.to_rv(), &15);   // N bit means > 0xa0.  This is also the new carry!
 
     let hiadjusted = new_temp(16);
-    cg.assign(&adjusted, &_decimal.to_rv());
-    cg.add_i(&hiadjusted, &hiadjusted.to_rv(), &0x60);
-    cg.and_i(&hiadjusted, &hiadjusted.to_rv(), &0xff);
-    cg.or_i(&hiadjusted, &hiadjusted.to_rv(), &0x100); // Set new carry.
+    _cg.assign(&adjusted, &_decimal.to_rv());
+    _cg.add_i(&hiadjusted, &hiadjusted.to_rv(), &0x60);
+    _cg.and_i(&hiadjusted, &hiadjusted.to_rv(), &0xff);
+    _cg.or_i(&hiadjusted, &hiadjusted.to_rv(), &0x100); // Set new carry.
 
-    _select(cg, &decimal, &_decimal.to_rv(), &hiadjusted.to_rv(), &hiadjust.to_rv());
+    _select(_cg, &decimal, &_decimal.to_rv(), &hiadjusted.to_rv(), &hiadjust.to_rv());
 
     // Finally, select the result that is actually used.
-    _select(cg, &result, &normal.to_rv(), &decimal.to_rv(), &D.to_rv());
-    _select(cg, &result_c6, &normal_c6.to_rv(), &decimal_c6.to_rv(), &D.to_rv());
-    _select(cg, &result_n, &normal_n.to_rv(), &decimal_n.to_rv(), &D.to_rv());
+    _select(_cg, &result, &normal.to_rv(), &decimal.to_rv(), &D.to_rv());
+    _select(_cg, &result_c6, &normal_c6.to_rv(), &decimal_c6.to_rv(), &D.to_rv());
+    _select(_cg, &result_n, &normal_n.to_rv(), &decimal_n.to_rv(), &D.to_rv());
 
     // Output all results.
-    cg.assign(&*A, &result.to_rv());
-    cg.rshift_i(&*C, &result.to_rv(), &8);
-    cg.assign(&*N, &result_n.to_rv());
-    cg.xor_i(&*V, &result_c6.to_rv(), &C.to_rv());
-    cg.equal_i(&*Z, &A.to_rv(), &0);*/
+    _cg.assign(&*A, &result.to_rv());
+    _cg.rshift_i(&*C, &result.to_rv(), &8);
+    _cg.assign(&*N, &result_n.to_rv());
+    _cg.xor_i(&*V, &result_c6.to_rv(), &C.to_rv());
+    _cg.equal_i(&*Z, &A.to_rv(), &0);*/
 }
 
-pub fn and(cg: &mut Variant, r: Rvalue) -> Result<Vec<Statement>> {
+pub fn and(_cg: &mut Variant, r: Rvalue) -> Result<Vec<Statement>> {
     rreil!{
         and A:8, A:8, (r);
         cmpeq Z:1, A:8, [0]:8;
@@ -166,7 +166,7 @@ pub fn and(cg: &mut Variant, r: Rvalue) -> Result<Vec<Statement>> {
     }
 }
 
-pub fn asl(cg: &mut Variant, _r: Rvalue) -> Result<Vec<Statement>> {
+pub fn asl(_cg: &mut Variant, _r: Rvalue) -> Result<Vec<Statement>> {
     rreil!{
         mov C:1, A:1/7;
         shl A:8, A:8, [1]:8;
@@ -175,7 +175,7 @@ pub fn asl(cg: &mut Variant, _r: Rvalue) -> Result<Vec<Statement>> {
     }
 }
 
-pub fn bit(cg: &mut Variant, r: Rvalue) -> Result<Vec<Statement>> {
+pub fn bit(_cg: &mut Variant, r: Rvalue) -> Result<Vec<Statement>> {
     rreil!{
         and res:8, A:8, (r);
         cmpeq Z:1, res:8, [0]:8;
@@ -193,58 +193,58 @@ pub fn brk(_: &mut Variant) -> Result<Vec<Statement>> {
        side effects.  */
     /*
        let reg = new_temp(8);
-       cg.assign(&reg, &PC.to_rvalue());
-       _push(cg, &reg.to_rv());
-       cg.rshift_i(&pc, &PC.to_rvalue(), &8);
-       _push(cg, &reg.to_rv());
-       _pushf(cg, &0);
+       _cg.assign(&reg, &PC.to_rvalue());
+       _push(_cg, &reg.to_rv());
+       _cg.rshift_i(&pc, &PC.to_rvalue(), &8);
+       _push(_cg, &reg.to_rv());
+       _pushf(_cg, &0);
        */
     Ok(vec![])
 }
 
-pub fn clc(cg: &mut Variant) -> Result<Vec<Statement>> {
+pub fn clc(_cg: &mut Variant) -> Result<Vec<Statement>> {
     rreil!{
         mov C:1, [0]:1;
     }
 }
 
-pub fn cli(cg: &mut Variant) -> Result<Vec<Statement>> {
+pub fn cli(_cg: &mut Variant) -> Result<Vec<Statement>> {
     rreil!{
         mov I:1, [0]:1;
     }
 }
 
-pub fn cld(cg: &mut Variant) -> Result<Vec<Statement>> {
+pub fn cld(_cg: &mut Variant) -> Result<Vec<Statement>> {
     rreil!{
         mov D:1, [0]:1;
     }
 }
 
-pub fn sec(cg: &mut Variant) -> Result<Vec<Statement>> {
+pub fn sec(_cg: &mut Variant) -> Result<Vec<Statement>> {
     rreil!{
         mov C:1, [1]:1;
     }
 }
 
-pub fn sei(cg: &mut Variant) -> Result<Vec<Statement>> {
+pub fn sei(_cg: &mut Variant) -> Result<Vec<Statement>> {
     rreil!{
         mov I:1, [1]:1;
     }
 }
 
-pub fn clv(cg: &mut Variant) -> Result<Vec<Statement>> {
+pub fn clv(_cg: &mut Variant) -> Result<Vec<Statement>> {
     rreil!{
         mov V:1, [0]:1;
     }
 }
 
-pub fn sed(cg: &mut Variant) -> Result<Vec<Statement>> {
+pub fn sed(_cg: &mut Variant) -> Result<Vec<Statement>> {
     rreil!{
         mov D:1, [1]:1;
     }
 }
 
-fn cmp(cg: &mut Variant, r1: Rvalue, r2: Rvalue) -> Result<Vec<Statement>> {
+fn cmp(_cg: &mut Variant, r1: Rvalue, r2: Rvalue) -> Result<Vec<Statement>> {
     rreil!{
         cmpltu C:1, (r1), (r2);
         mov N:1, C:1;
@@ -252,19 +252,19 @@ fn cmp(cg: &mut Variant, r1: Rvalue, r2: Rvalue) -> Result<Vec<Statement>> {
     }
 }
 
-pub fn cpx(cg: &mut Variant, r: Rvalue) -> Result<Vec<Statement>> {
-    cmp(cg, rreil_rvalue!{ X:8 },r)
+pub fn cpx(_cg: &mut Variant, r: Rvalue) -> Result<Vec<Statement>> {
+    cmp(_cg, rreil_rvalue!{ X:8 },r)
 }
 
-pub fn cpy(cg: &mut Variant, r: Rvalue) -> Result<Vec<Statement>> {
-    cmp(cg, rreil_rvalue!{ Y:8 },r)
+pub fn cpy(_cg: &mut Variant, r: Rvalue) -> Result<Vec<Statement>> {
+    cmp(_cg, rreil_rvalue!{ Y:8 },r)
 }
 
-pub fn cpa(cg: &mut Variant, r: Rvalue) -> Result<Vec<Statement>> {
-    cmp(cg, rreil_rvalue!{ A:8 },r)
+pub fn cpa(_cg: &mut Variant, r: Rvalue) -> Result<Vec<Statement>> {
+    cmp(_cg, rreil_rvalue!{ A:8 },r)
 }
 
-fn dec(cg: &mut Variant, l: Lvalue, r: Rvalue) -> Result<Vec<Statement>> {
+fn dec(_cg: &mut Variant, l: Lvalue, r: Rvalue) -> Result<Vec<Statement>> {
     rreil!{
         sub (l), (r), [1]:8;
         cmpeq Z:1, (l), [0]:8;
@@ -272,19 +272,19 @@ fn dec(cg: &mut Variant, l: Lvalue, r: Rvalue) -> Result<Vec<Statement>> {
     }
 }
 
-pub fn dea(cg: &mut Variant, r: Rvalue) -> Result<Vec<Statement>> {
-    dec(cg, rreil_lvalue!{ A:8 }, r)
+pub fn dea(_cg: &mut Variant, r: Rvalue) -> Result<Vec<Statement>> {
+    dec(_cg, rreil_lvalue!{ A:8 }, r)
 }
 
-pub fn dex(cg: &mut Variant) -> Result<Vec<Statement>> {
-    dec(cg, rreil_lvalue!{ X:8 }, rreil_rvalue!{ X:8 })
+pub fn dex(_cg: &mut Variant) -> Result<Vec<Statement>> {
+    dec(_cg, rreil_lvalue!{ X:8 }, rreil_rvalue!{ X:8 })
 }
 
-pub fn dey(cg: &mut Variant) -> Result<Vec<Statement>> {
-    dec(cg, rreil_lvalue!{ Y:8 }, rreil_rvalue!{ Y:8 })
+pub fn dey(_cg: &mut Variant) -> Result<Vec<Statement>> {
+    dec(_cg, rreil_lvalue!{ Y:8 }, rreil_rvalue!{ Y:8 })
 }
 
-pub fn eor(cg: &mut Variant, r: Rvalue) -> Result<Vec<Statement>> {
+pub fn eor(_cg: &mut Variant, r: Rvalue) -> Result<Vec<Statement>> {
     rreil!{
         xor A:8, (r), A:8;
         cmpeq Z:1, A:8, [0]:8;
@@ -292,7 +292,7 @@ pub fn eor(cg: &mut Variant, r: Rvalue) -> Result<Vec<Statement>> {
     }
 }
 
-fn inc(cg: &mut Variant, l: Lvalue, r: Rvalue) -> Result<Vec<Statement>> {
+fn inc(_cg: &mut Variant, l: Lvalue, r: Rvalue) -> Result<Vec<Statement>> {
     rreil!{
         add (l), (r), [1]:8;
         cmpeq Z:1, (l), [0]:8;
@@ -300,19 +300,19 @@ fn inc(cg: &mut Variant, l: Lvalue, r: Rvalue) -> Result<Vec<Statement>> {
     }
 }
 
-pub fn ina(cg: &mut Variant, r: Rvalue) -> Result<Vec<Statement>> {
-    inc(cg, rreil_lvalue!{ A:8 },r)
+pub fn ina(_cg: &mut Variant, r: Rvalue) -> Result<Vec<Statement>> {
+    inc(_cg, rreil_lvalue!{ A:8 },r)
 }
 
-pub fn inx(cg: &mut Variant) -> Result<Vec<Statement>> {
-    inc(cg, rreil_lvalue!{ X:8 }, rreil_rvalue!{ X:8 })
+pub fn inx(_cg: &mut Variant) -> Result<Vec<Statement>> {
+    inc(_cg, rreil_lvalue!{ X:8 }, rreil_rvalue!{ X:8 })
 }
 
-pub fn iny(cg: &mut Variant) -> Result<Vec<Statement>> {
-    inc(cg, rreil_lvalue!{ Y:8 }, rreil_rvalue!{ Y:8 })
+pub fn iny(_cg: &mut Variant) -> Result<Vec<Statement>> {
+    inc(_cg, rreil_lvalue!{ Y:8 }, rreil_rvalue!{ Y:8 })
 }
 
-fn ld(cg: &mut Variant, l: Lvalue, r: Rvalue) -> Result<Vec<Statement>> {
+fn ld(_cg: &mut Variant, l: Lvalue, r: Rvalue) -> Result<Vec<Statement>> {
     rreil!{
         mov (l), (r);
         cmpeq Z:1, (l), [0]:8;
@@ -320,19 +320,19 @@ fn ld(cg: &mut Variant, l: Lvalue, r: Rvalue) -> Result<Vec<Statement>> {
     }
 }
 
-pub fn lda(cg: &mut Variant, r: Rvalue) -> Result<Vec<Statement>> {
-    ld(cg, rreil_lvalue!{ A:8 }, r)
+pub fn lda(_cg: &mut Variant, r: Rvalue) -> Result<Vec<Statement>> {
+    ld(_cg, rreil_lvalue!{ A:8 }, r)
 }
 
-pub fn ldx(cg: &mut Variant, r: Rvalue) -> Result<Vec<Statement>> {
-    ld(cg, rreil_lvalue!{ X:8 }, r)
+pub fn ldx(_cg: &mut Variant, r: Rvalue) -> Result<Vec<Statement>> {
+    ld(_cg, rreil_lvalue!{ X:8 }, r)
 }
 
-pub fn ldy(cg: &mut Variant, r: Rvalue) -> Result<Vec<Statement>> {
-    ld(cg, rreil_lvalue!{ Y:8 }, r)
+pub fn ldy(_cg: &mut Variant, r: Rvalue) -> Result<Vec<Statement>> {
+    ld(_cg, rreil_lvalue!{ Y:8 }, r)
 }
 
-pub fn lsr(cg: &mut Variant, r: Rvalue) -> Result<Vec<Statement>> {
+pub fn lsr(_cg: &mut Variant, r: Rvalue) -> Result<Vec<Statement>> {
     rreil!{
         mov C:1, A:1;
         shl A:8, A:8, (r);
@@ -341,7 +341,7 @@ pub fn lsr(cg: &mut Variant, r: Rvalue) -> Result<Vec<Statement>> {
     }
 }
 
-pub fn ora(cg: &mut Variant, r: Rvalue) -> Result<Vec<Statement>> {
+pub fn ora(_cg: &mut Variant, r: Rvalue) -> Result<Vec<Statement>> {
     rreil!{
         or A:8, (r), A:8;
         cmpeq Z:1, A:8, [0]:8;
@@ -349,7 +349,7 @@ pub fn ora(cg: &mut Variant, r: Rvalue) -> Result<Vec<Statement>> {
     }
 }
 
-pub fn pha(cg: &mut Variant) -> Result<Vec<Statement>> {
+pub fn pha(_cg: &mut Variant) -> Result<Vec<Statement>> {
     rreil!{
         zext/9 sp:9, S:8;
         add sp:9, sp:9, [0x100]:9;
@@ -361,7 +361,7 @@ pub fn pha(cg: &mut Variant) -> Result<Vec<Statement>> {
     }
 }
 
-pub fn php(cg: &mut Variant) -> Result<Vec<Statement>> {
+pub fn php(_cg: &mut Variant) -> Result<Vec<Statement>> {
     rreil!{
         zext/9 sp:9, S:8;
         add sp:9, sp:9, [0x100]:9;
@@ -381,7 +381,7 @@ pub fn php(cg: &mut Variant) -> Result<Vec<Statement>> {
     }
 }
 
-pub fn pla(cg: &mut Variant) -> Result<Vec<Statement>> {
+pub fn pla(_cg: &mut Variant) -> Result<Vec<Statement>> {
     rreil!{
         zext/9 sp:9, S:8;
         add sp:9, sp:9, [0x100]:9;
@@ -396,7 +396,7 @@ pub fn pla(cg: &mut Variant) -> Result<Vec<Statement>> {
     }
 }
 
-pub fn plp(cg: &mut Variant) -> Result<Vec<Statement>> {
+pub fn plp(_cg: &mut Variant) -> Result<Vec<Statement>> {
     rreil!{
         zext/9 sp:9, S:8;
         add sp:9, sp:9, [0x100]:9;
@@ -419,7 +419,7 @@ pub fn plp(cg: &mut Variant) -> Result<Vec<Statement>> {
 }
 
 
-pub fn rol(cg: &mut Variant, _r: Rvalue) -> Result<Vec<Statement>> {
+pub fn rol(_cg: &mut Variant, _r: Rvalue) -> Result<Vec<Statement>> {
     let r = Lvalue::from_rvalue(_r).unwrap();
     rreil!{
         mov hb:1, (r.extract(1,7).unwrap());
@@ -431,7 +431,7 @@ pub fn rol(cg: &mut Variant, _r: Rvalue) -> Result<Vec<Statement>> {
     }
 }
 
-pub fn ror(cg: &mut Variant, _r: Rvalue) -> Result<Vec<Statement>> {
+pub fn ror(_cg: &mut Variant, _r: Rvalue) -> Result<Vec<Statement>> {
     let r = Lvalue::from_rvalue(_r).unwrap();
     rreil!{
         mov lb:1, (r.extract(1,0).unwrap());
@@ -450,7 +450,7 @@ pub fn rts(_: &mut Variant) -> Result<Vec<Statement>> {
 }
 
 
-pub fn sbc(cg: &mut Variant, r: Rvalue) -> Result<Vec<Statement>> {
+pub fn sbc(_cg: &mut Variant, r: Rvalue) -> Result<Vec<Statement>> {
     rreil!{
         zext/8 carry:8, C:1;
         sub res:8, A:8, (r);
@@ -490,21 +490,21 @@ pub fn sbc(cg: &mut Variant, r: Rvalue) -> Result<Vec<Statement>> {
     let _v2 = new_temp(8);
 
     // Normal mode.  Same as adding 255-r.
-    cg.assign(&normal, &*A);
-    cg.xor_i(&_addend, &r, &0xff);
-    cg.add_i(&normal, &normal.to_rv(), &_addend.to_rv());
-    cg.add_i(&normal, &normal.to_rv(), &C.to_rv());
+    _cg.assign(&normal, &*A);
+    _cg.xor_i(&_addend, &r, &0xff);
+    _cg.add_i(&normal, &normal.to_rv(), &_addend.to_rv());
+    _cg.add_i(&normal, &normal.to_rv(), &C.to_rv());
 
     // Common results.
-    cg.rshift_i(&result_c, &normal.to_rv(), &8);
-    cg.rshift_i(&result_n, &normal.to_rv(), &7);
+    _cg.rshift_i(&result_c, &normal.to_rv(), &8);
+    _cg.rshift_i(&result_n, &normal.to_rv(), &7);
 
-    cg.and_i(&_v1, &A.to_rv(), &0x7f);
-    cg.and_i(&_v2, &_addend.to_rv(), &0x7f);
-    cg.add_i(&_v1, &_v1.to_rv(), &_v2.to_rv());
-    cg.add_i(&_v1, &_v1.to_rv(), &C.to_rv());
-    cg.rshift_i(&result_v, &_v1.to_rv(), &7);
-    cg.xor_i(&result_v, &result_v.to_rv(), &result_c.to_rv());
+    _cg.and_i(&_v1, &A.to_rv(), &0x7f);
+    _cg.and_i(&_v2, &_addend.to_rv(), &0x7f);
+    _cg.add_i(&_v1, &_v1.to_rv(), &_v2.to_rv());
+    _cg.add_i(&_v1, &_v1.to_rv(), &C.to_rv());
+    _cg.rshift_i(&result_v, &_v1.to_rv(), &7);
+    _cg.xor_i(&result_v, &result_v.to_rv(), &result_c.to_rv());
 
     // Decimal mode.  It's complicated: http://www.6502.org/tutorials/decimal_mode.html
 
@@ -512,77 +512,77 @@ pub fn sbc(cg: &mut Variant, r: Rvalue) -> Result<Vec<Statement>> {
 
     // 1a. Decimal
     let al = new_temp(8);
-    cg.assign(&al, &*A);
-    cg.and_i(&al, &al.to_rv(), &0xf);
+    _cg.assign(&al, &*A);
+    _cg.and_i(&al, &al.to_rv(), &0xf);
 
     let lo = new_temp(8);
-    cg.assign(&lo, &r);
-    cg.and_i(&lo, &lo.to_rv(), &0xf);
+    _cg.assign(&lo, &r);
+    _cg.and_i(&lo, &lo.to_rv(), &0xf);
 
-    cg.sub_i(&al, &al.to_rv(), &lo);
-    cg.add_i(&al, &al.to_rv(), &C.to_rv());
-    cg.sub_i(&al, &al.to_rv(), &1);
+    _cg.sub_i(&al, &al.to_rv(), &lo);
+    _cg.add_i(&al, &al.to_rv(), &C.to_rv());
+    _cg.sub_i(&al, &al.to_rv(), &1);
 
     // 1b. We have now al = (A & $0F) - (R & $0F) - 1 + C and have to compare to < 0.
     let adjust = new_temp(8);
-    cg.rshift_i(&adjust, &al.to_rv(), &7);    // N bit means < 0
+    _cg.rshift_i(&adjust, &al.to_rv(), &7);    // N bit means < 0
 
     let adjusted = new_temp(8);
-    cg.assign(&adjusted, &al.to_rv());
-    cg.sub_i(&adjusted, &adjusted.to_rv(), &6);
-    cg.and_i(&adjusted, &adjusted.to_rv(), &0xf);
-    cg.sub_i(&adjusted, &adjusted.to_rv(), &0x10);
+    _cg.assign(&adjusted, &al.to_rv());
+    _cg.sub_i(&adjusted, &adjusted.to_rv(), &6);
+    _cg.and_i(&adjusted, &adjusted.to_rv(), &0xf);
+    _cg.sub_i(&adjusted, &adjusted.to_rv(), &0x10);
 
-    _select(cg, &lo, &al.to_rv(), &adjusted.to_rv(), &adjust.to_rv());
-    cg.assign(&al, &lo.to_rv());
+    _select(_cg, &lo, &al.to_rv(), &adjusted.to_rv(), &adjust.to_rv());
+    _cg.assign(&al, &lo.to_rv());
 
     // 1c.
     let _decimal = new_temp(16);
-    cg.and_i(&_decimal, &A.to_rv(), &0xf0);
-    cg.sub_i(&_decimal, &_decimal.to_rv(), &r);
-    cg.add_i(&_decimal, &_decimal.to_rv(), &0x10); // Or sub r&0xf0 instead.
-    cg.and_i(&_decimal, &_decimal.to_rv(), &0xfff0);
-    cg.add_i(&_decimal, &_decimal.to_rv(), &al.to_rv());
+    _cg.and_i(&_decimal, &A.to_rv(), &0xf0);
+    _cg.sub_i(&_decimal, &_decimal.to_rv(), &r);
+    _cg.add_i(&_decimal, &_decimal.to_rv(), &0x10); // Or sub r&0xf0 instead.
+    _cg.and_i(&_decimal, &_decimal.to_rv(), &0xfff0);
+    _cg.add_i(&_decimal, &_decimal.to_rv(), &al.to_rv());
 
     // 1e. Compare to 0.
     let hiadjust = new_temp(16);
-    cg.rshift_i(&hiadjust, &hiadjust.to_rv(), &15); // N bit means > 0xa0.
+    _cg.rshift_i(&hiadjust, &hiadjust.to_rv(), &15); // N bit means > 0xa0.
 
     let hiadjusted = new_temp(16);
-    cg.assign(&adjusted, &_decimal.to_rv());
-    cg.sub_i(&hiadjusted, &hiadjusted.to_rv(), &0x60);
-    _select(cg, &decimal, &_decimal.to_rv(), &hiadjusted.to_rv(), &hiadjust.to_rv());
+    _cg.assign(&adjusted, &_decimal.to_rv());
+    _cg.sub_i(&hiadjusted, &hiadjusted.to_rv(), &0x60);
+    _select(_cg, &decimal, &_decimal.to_rv(), &hiadjusted.to_rv(), &hiadjust.to_rv());
 
     // Finally, select the result that is actually used.
-    _select(cg, &result, &normal.to_rv(), &decimal.to_rv(), &D.to_rv());
+    _select(_cg, &result, &normal.to_rv(), &decimal.to_rv(), &D.to_rv());
 
     // Output all results.
-    cg.assign(&*A, &result.to_rv());
-    cg.assign(&*C, &result_c.to_rv());
-    cg.assign(&*V, &result_v.to_rv());
-    cg.assign(&*N, &result_n.to_rv());
-    cg.equal_i(&*Z, &A.to_rv(), &0);*/
+    _cg.assign(&*A, &result.to_rv());
+    _cg.assign(&*C, &result_c.to_rv());
+    _cg.assign(&*V, &result_v.to_rv());
+    _cg.assign(&*N, &result_n.to_rv());
+    _cg.equal_i(&*Z, &A.to_rv(), &0);*/
 }
 
-fn st(cg: &mut Variant, reg: Lvalue, ptr: Rvalue) -> Result<Vec<Statement>> {
+fn st(_cg: &mut Variant, reg: Lvalue, ptr: Rvalue) -> Result<Vec<Statement>> {
     rreil!{
         store/ram (reg), (ptr);
     }
 }
 
-pub fn sta(cg: &mut Variant, r: Rvalue) -> Result<Vec<Statement>> {
-    st(cg, rreil_lvalue!{ A:8 }, r)
+pub fn sta(_cg: &mut Variant, r: Rvalue) -> Result<Vec<Statement>> {
+    st(_cg, rreil_lvalue!{ A:8 }, r)
 }
 
-pub fn stx(cg: &mut Variant, r: Rvalue) -> Result<Vec<Statement>> {
-    st(cg, rreil_lvalue!{ X:8 }, r)
+pub fn stx(_cg: &mut Variant, r: Rvalue) -> Result<Vec<Statement>> {
+    st(_cg, rreil_lvalue!{ X:8 }, r)
 }
 
-pub fn sty(cg: &mut Variant, r: Rvalue) -> Result<Vec<Statement>> {
-    st(cg, rreil_lvalue!{ Y:8 }, r)
+pub fn sty(_cg: &mut Variant, r: Rvalue) -> Result<Vec<Statement>> {
+    st(_cg, rreil_lvalue!{ Y:8 }, r)
 }
 
-pub fn trr(cg: &mut Variant, src: &Lvalue, dst: &Lvalue) -> Result<Vec<Statement>> {
+pub fn trr(_cg: &mut Variant, src: &Lvalue, dst: &Lvalue) -> Result<Vec<Statement>> {
     rreil!{
         mov (dst), (src);
         cmpeq Z:1, (dst), [0]:8;
@@ -590,35 +590,35 @@ pub fn trr(cg: &mut Variant, src: &Lvalue, dst: &Lvalue) -> Result<Vec<Statement
     }
 }
 
-pub fn tax(cg: &mut Variant) -> Result<Vec<Statement>> {
-    trr(cg, &A, &X)
+pub fn tax(_cg: &mut Variant) -> Result<Vec<Statement>> {
+    trr(_cg, &A, &X)
 }
 
-pub fn tay(cg: &mut Variant) -> Result<Vec<Statement>> {
-    trr(cg, &A, &Y)
+pub fn tay(_cg: &mut Variant) -> Result<Vec<Statement>> {
+    trr(_cg, &A, &Y)
 }
 
-pub fn tsx(cg: &mut Variant) -> Result<Vec<Statement>> {
-    trr(cg, &SP, &X)
+pub fn tsx(_cg: &mut Variant) -> Result<Vec<Statement>> {
+    trr(_cg, &SP, &X)
 }
 
-pub fn txa(cg: &mut Variant) -> Result<Vec<Statement>> {
-    trr(cg, &X, &A)
+pub fn txa(_cg: &mut Variant) -> Result<Vec<Statement>> {
+    trr(_cg, &X, &A)
 }
 
-pub fn txs(cg: &mut Variant) -> Result<Vec<Statement>> {
-    trr(cg, &X, &SP)
+pub fn txs(_cg: &mut Variant) -> Result<Vec<Statement>> {
+    trr(_cg, &X, &SP)
 }
 
-pub fn tya(cg: &mut Variant) -> Result<Vec<Statement>> {
-    trr(cg, &Y, &A)
+pub fn tya(_cg: &mut Variant) -> Result<Vec<Statement>> {
+    trr(_cg, &Y, &A)
 }
 
 pub fn jmp_direct(st: &mut State<Mos>) -> bool {
     let next = Rvalue::new_u16(st.get_group("immlo") as u16 | ((st.get_group("immhi") as u16) << 8));
 
-    st.mnemonic(3,"jmp","{c:ram}",vec![next.clone()],&|_: &mut Variant| -> Result<Vec<Statement>> { Ok(vec![]) });
-    st.jump(next,Guard::always());
+    st.mnemonic(3,"jmp","{c:ram}",vec![next.clone()],&|_: &mut Variant| -> Result<Vec<Statement>> { Ok(vec![]) }).unwrap();
+    st.jump(next,Guard::always()).unwrap();
 
     true
 }
@@ -626,16 +626,16 @@ pub fn jmp_direct(st: &mut State<Mos>) -> bool {
 pub fn jmp_indirect(st: &mut State<Mos>) -> bool {
     let ptr = Rvalue::new_u16(st.get_group("immlo") as u16 | ((st.get_group("immhi") as u16) << 8));
 
-    st.mnemonic(0,"__fetch","",vec![],&|cg: &mut Variant| -> Result<Vec<Statement>> {
+    st.mnemonic(0,"__fetch","",vec![],&|_cg: &mut Variant| -> Result<Vec<Statement>> {
         rreil!{
             load/ram res:16, (ptr);
         }
-    });
+    }).unwrap();
 
     let next = rreil_rvalue!{ res:16 };
 
-    st.mnemonic(3,"jmp","{p:ram}",vec![ptr.clone()],&|_: &mut Variant| -> Result<Vec<Statement>> { Ok(vec![]) });
-    st.jump(next,Guard::always());
+    st.mnemonic(3,"jmp","{p:ram}",vec![ptr.clone()],&|_: &mut Variant| -> Result<Vec<Statement>> { Ok(vec![]) }).unwrap();
+    st.jump(next,Guard::always()).unwrap();
 
     true
 }
@@ -644,11 +644,11 @@ pub fn jsr(st: &mut State<Mos>) -> bool {
     let next = Rvalue::new_u16(st.address as u16 + 3);
     let target = Rvalue::new_u16(st.get_group("immlo") as u16 | ((st.get_group("immhi") as u16) << 8));
 
-    st.mnemonic(3,"jsr","{c:ram}",vec![target.clone()],&|cg: &mut Variant| -> Result<Vec<Statement>> {
+    st.mnemonic(3,"jsr","{c:ram}",vec![target.clone()],&|_cg: &mut Variant| -> Result<Vec<Statement>> {
         rreil!{
             call ?, (target);
         }
-    });
-    st.jump(next,Guard::always());
+    }).unwrap();
+    st.jump(next,Guard::always()).unwrap();
     true
 }

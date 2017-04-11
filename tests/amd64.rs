@@ -668,8 +668,8 @@ macro_rules! rappel_xcheck {
                     let a = ops.get(0).cloned().unwrap().unwrap();
                     let b = ops.get(1).cloned().unwrap().unwrap();
 
-                    discard |= (stringify!($mne) == "movsx" && size(&a) <= size(&b));
-                    discard |= (stringify!($mne) == "movzx" && size(&a) <= size(&b));
+                    discard |= stringify!($mne) == "movsx" && size(&a) <= size(&b);
+                    discard |= stringify!($mne) == "movzx" && size(&a) <= size(&b);
 
                     if !discard {
                         let ret = rappel_xcheck(stringify!($mne),semantic::$sem,a,b,ctx);
