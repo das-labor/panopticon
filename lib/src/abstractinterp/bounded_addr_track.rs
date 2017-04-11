@@ -52,9 +52,24 @@ pub const VERSION_LIMIT: usize = 10;
 /// represented by None.
 #[derive(Debug,PartialEq,Eq,Clone,Hash,RustcDecodable,RustcEncodable)]
 pub enum BoundedAddrTrack {
+    /// Lattice top
     Join,
-    Region{ region: Option<(Cow<'static,str>,usize)> },
-    Offset{ region: Option<(Cow<'static,str>,usize)>, offset: u64, offset_size: usize },
+    /// Pointer pointing somewhere into `region`
+    Region{
+        /// Name of pointed to region and pointer version. None stands for the global region.
+        region: Option<(Cow<'static,str>,usize)>
+    },
+    /// Pointer pointing to `offset` inside `region`. `offset_size` is the size of the **pointer**
+    /// in bits.
+    Offset{
+        /// Name of pointed to region and pointer version. None stands for the global region.
+        region: Option<(Cow<'static,str>,usize)>,
+        /// Offset into region.
+        offset: u64,
+        /// Size of the pointer in bits. Not the value pointed to.
+        offset_size: usize
+    },
+    /// Lattice bottom
     Meet,
 }
 
