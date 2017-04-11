@@ -129,7 +129,7 @@ impl Architecture for Amd64 {
             }
         }
 
-        info!("disass @ {:#x}: {:?}",p,buf);
+        debug!("disass @ {:#x}: {:?}",p,buf);
 
         let ret = ::amd64::read(*cfg,&buf,p).and_then(|(len,mne,mut jmp)| {
             Ok(Match::<Amd64> {
@@ -140,7 +140,7 @@ impl Architecture for Amd64 {
             })
         });
 
-        info!("    res: {:?}",ret);
+        debug!("    res: {:?}",ret);
 
         ret
     }
@@ -1169,7 +1169,7 @@ fn read_effective_address(mode: Mode, seg: SegmentOverride, tail: &mut Tail,
         (0b00,0b101) if mode == Mode::Long => {
             let imm = sign_ext_u32(try!(tail.read_u32()),addrsz);
             let len = tail.fd.position() as u64;
-            Ok(Operand::Address(seg,Register::None,Register::None,0,(ip + len + imm,32)))
+            Ok(Operand::Address(seg,Register::None,Register::None,0,(ip.wrapping_add(len).wrapping_add(imm),32)))
         }
         (0b00,0b101) if mode != Mode::Long =>
             Ok(Operand::Address(seg,Register::None,Register::None,0,(sign_ext_u32(try!(tail.read_u32()),addrsz),32))),
@@ -2369,7 +2369,13 @@ fn to_rreil(op: Operand) -> Result<(Rvalue,Vec<Statement>)> {
                 64 => rreil!{
                     load/RAM (ret), (tgt);
                 },
-                _ => unimplemented!(),
+                128 => rreil!{
+                    load/RAM (ret), (tgt);
+                },
+                256 => rreil!{
+                    load/RAM (ret), (tgt);
+                },
+                _ => unreachable!(),
             }
             ));
 

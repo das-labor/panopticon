@@ -31,11 +31,12 @@ extern crate chrono;
 extern crate chrono_humanize;
 extern crate goblin;
 extern crate clap;
+extern crate futures;
+extern crate parking_lot;
 
 #[cfg(unix)]
 extern crate xdg;
 
-#[macro_use] extern crate lazy_static;
 #[macro_use] extern crate qml;
 #[macro_use] extern crate log;
 #[macro_use] extern crate error_chain;
@@ -55,28 +56,21 @@ mod errors {
         }
     }
 }
+mod sugiyama;
 
-use errors::*;
 use clap::{
     App,
     Arg
 };
 
-use paths::find_data_file;
 use singleton::{
     Panopticon,
     QPanopticon,
 };
 
-use std::path::{
-    Path,
-    PathBuf
-};
-
 use qml::QObjectMacro;
 
 fn main() {
-    use std::path::Path;
     use std::env;
 
     env_logger::init().unwrap();
@@ -89,34 +83,43 @@ fn main() {
         env::set_var("QT_QPA_PLATFORMTHEME","");
     }
 
+    let matches = App::new("Panopticon")
+                        .about("A libre cross-platform disassembler.")
+                        .arg(Arg::with_name("INPUT")
+                            .help("File to disassemble")
+                            .validator(exists_path_val)
+                            .index(1))
+                        .get_matches();
+
     let mut engine = qml::QmlEngine::new();
-    let mut panop = Panopticon::default();
+    let panop = Panopticon::default();
 
     let cwd = env::current_dir().unwrap();
-    let qrecent = panop.recentSessions.get_qvar();
-    let has_recent = !panop.recentSessions.view_data().is_empty();
-    let qfunctions = panop.functions.get_qvar();
-//    let qtasks = panop.tasks.get_qvar();
-    let qcontrolflownodes = panop.controlFlowNodes.get_qvar();
-    let qcontrolflowedges = panop.controlFlowEdges.get_qvar();
+    let qrecent = panop.recent_sessions.get_qvar();
+    let has_recent = !panop.recent_sessions.view_data().is_empty();
+    let qsidebar = panop.sidebar.get_qvar();
+    let qtasks = panop.tasks.get_qvar();
+    let qcontrolflownodes = panop.control_flow_nodes.get_qvar();
+    let qcontrolflowedges = panop.control_flow_edges.get_qvar();
 
-    let mut panop = QPanopticon::new(
+    let panop = QPanopticon::new(
         panop,
+        matches.value_of("INPUT").unwrap_or("").to_string(),
         qrecent,
         has_recent,
-        qfunctions,
-//        qtasks,
+        qsidebar,
+        qtasks,
+        "".to_string(),
+        qcontrolflownodes,
+        qcontrolflowedges,
 //        "".to_string(),
-//        qcontrolflownodes,
-//        qcontrolflowedges,
 //        "".to_string(),
-//        "".to_string(),
-//        3,
-//        8,
-//        17,
-//        8,
-//        26,
-//        150,
+        3,
+        8,
+        17,
+        8,
+        26,
+        150,
 //        false,
 //        false
         );
@@ -130,19 +133,7 @@ fn main() {
     let title_screen = find_data_file(&Path::new("qml").join("Title.qml"));
     let main_window = find_data_file(&Path::new("qml").join("Window.qml"));
 
-    let matches = App::new("Panopticon")
-                        .about("A libre cross-platform disassembler.")
-                        .arg(Arg::with_name("INPUT")
-                            .help("File to disassemble")
-                            .validator(exists_path_val)
-                            .index(1))
-                        .get_matches();
-
-    let (start_with_file, input_file_path) = match matches.value_of("INPUT") {
-        Some(v) => (true, v),
-        None => (false, "")
-    };
-
+   
     match (title_screen,main_window,start_with_file) {
         (_,Ok(Some(window)),true) => {
             qmlrs::register_singleton_type(&"Panopticon",1,0,&"Panopticon",create_singleton);
@@ -194,11 +185,11 @@ fn main() {
     */
 }
 
-/*
 fn exists_path_val(filepath: String) -> Result<(), String> {
+    use std::path::Path;
+
     match Path::new(&filepath).is_file() {
         true => Ok(()),
         false => Err(format!("'{}': no such file", filepath))
     }
 }
-*/

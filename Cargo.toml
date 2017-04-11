@@ -31,6 +31,8 @@ goblin = "0.0.9"
 clap = "2.20.5"
 quickcheck = "0.3"
 error-chain = "0.8"
+futures = "0.1.13"
+parking_lot = "0.4"
 
 [dev-dependencies]
 regex = "0.1"

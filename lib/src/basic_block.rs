@@ -30,7 +30,7 @@ use {
 };
 
 /// A basic block: a continiuous sequence of mnemonics without any branches in between.
-#[derive(PartialEq,Eq,Debug,RustcEncodable,RustcDecodable)]
+#[derive(PartialEq,Eq,Debug,RustcEncodable,RustcDecodable,Clone)]
 pub struct BasicBlock {
     /// Area the basic block occupies in memory.
     pub area: Bound,

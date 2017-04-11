@@ -20,7 +20,7 @@ use panopticon::result;
 use panopticon::result::Result;
 
 use std::env;
-use std::fs::{DirBuilder};
+use std::fs::DirBuilder;
 use std::path::{PathBuf,Path};
 use std::borrow::Cow;
 use std::error::Error;

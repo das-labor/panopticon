@@ -60,7 +60,7 @@ use {
 };
 
 /// Node of the function graph.
-#[derive(RustcDecodable,RustcEncodable,Debug)]
+#[derive(RustcDecodable,RustcEncodable,Debug,Clone)]
 pub enum ControlFlowTarget {
     /// A basic block
     Resolved(BasicBlock),
@@ -78,7 +78,7 @@ pub type ControlFlowRef = AdjacencyListVertexDescriptor;
 pub type ControlFlowEdge = AdjacencyListEdgeDescriptor;
 
 /// A set of basic blocks connected by conditional jumps
-#[derive(RustcDecodable,RustcEncodable,Debug)]
+#[derive(RustcDecodable,RustcEncodable,Debug,Clone)]
 pub struct Function {
     /// Unique, immutable identifier for this function.
     pub uuid: Uuid,
@@ -340,7 +340,7 @@ impl Function {
     /// created.
     pub fn disassemble<A: Architecture>(cont: Option<Function>, init: A::Configuration, reg: &Region, start: u64) -> Function
     where A: Debug, A::Configuration: Debug {
-        let name = cont.as_ref().map_or(format!("func_{}",start),|x| x.name.clone());
+        let name = cont.as_ref().map_or(format!("func_{:x}",start),|x| x.name.clone());
         let uuid = cont.as_ref().map_or(Uuid::new_v4(),|x| x.uuid.clone());
         let maybe_entry = if let Some(Function{ entry_point: ent, cflow_graph: ref cfg, ..}) = cont {
             if let Some(ref v) = ent {

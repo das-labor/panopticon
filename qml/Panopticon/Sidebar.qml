@@ -51,7 +51,7 @@ Rectangle {
 			anchors.leftMargin: 5
 			anchors.rightMargin: 5
 
-			model: Panopticon.functions
+			model: Panopticon.sidebar
 			delegate: Item {
 				height: 18
 				width: listView.width

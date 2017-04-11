@@ -33,8 +33,8 @@ Rectangle {
 					title: "Please choose a file"
 					folder: shortcuts.home
 					onAccepted: {
-						console.log("You chose: " + fileDialog.fileUrls)
-						Panopticon.new_program(fileDialog.fileUrl)
+						var p = fileDialog.fileUrls.toString().substring(7);
+						Panopticon.open_program(p)
 					}
 					Component.onCompleted: visible = true
 				}
@@ -64,7 +64,6 @@ Rectangle {
 						var diag = fileDialog.createObject(view)
 						diag.open();
 					}
-					console.log(link)
 				}
 
 				MouseArea {

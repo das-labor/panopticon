@@ -42,6 +42,25 @@ Ctrl.ApplicationWindow {
 		}
 	}
 
+	Timer {
+		id: callbackTimer
+		interval: 1
+		running: false
+		onTriggered: {
+			Panopticon.callback()
+		}
+	}
+
+	Component.onCompleted: {
+		Panopticon.call_me_maybe.connect(function() {
+			callbackTimer.start()
+		});
+
+		if(Panopticon.initialFile !== "") {
+			Panopticon.open_program(Panopticon.initialFile);
+		}
+	}
+
 	Item {
 		anchors.fill: parent
 		state: "welcomeState"

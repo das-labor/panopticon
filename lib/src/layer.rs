@@ -53,7 +53,7 @@ use {
 pub type Cell = Option<u8>;
 
 /// Layer that replace all overlapped `Cell`s.
-#[derive(Debug,RustcDecodable,RustcEncodable)]
+#[derive(Clone,Debug,RustcDecodable,RustcEncodable)]
 pub enum OpaqueLayer {
     /// Layer consisting of undefined cells.
     Undefined(u64),
@@ -215,7 +215,7 @@ impl<'a> LayerIter<'a> {
 ///
 /// `Layer` overlaps a continuous range of `Cell`s and returns a new range of `Cell`s of equal
 /// size. `Layer`s can overlap other `Layer`s or `Region`s.
-#[derive(Debug,RustcDecodable,RustcEncodable)]
+#[derive(Clone,Debug,RustcDecodable,RustcEncodable)]
 pub enum Layer {
     /// Layer consisting of fixed byte values.
     Opaque(OpaqueLayer),
