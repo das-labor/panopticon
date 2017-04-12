@@ -3,6 +3,7 @@ platform:
   - x64
 environment:
   RUST_INSTALL_DIR: C:\Rust
+  RUSTFLAGS: "-D warnings"
   matrix:
     - RUST_INSTALL_TRIPLE: x86_64-pc-windows-msvc
       RUST_VERSION: stable
