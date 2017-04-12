@@ -669,7 +669,7 @@ mod tests {
         func.cflow_graph = cfg;
         func.entry_point = Some(v0);
 
-        phi_functions(&mut func);
+        assert!(phi_functions(&mut func).is_ok());
 
         let a0 = Lvalue::Variable{ name: Cow::Borrowed("a"), size: 32, subscript: None };
         let b0 = Lvalue::Variable{ name: Cow::Borrowed("b"), size: 32, subscript: None };
@@ -880,8 +880,8 @@ mod tests {
         func.cflow_graph = cfg;
         func.entry_point = Some(v0);
 
-        phi_functions(&mut func);
-        rename_variables(&mut func);
+        assert!(phi_functions(&mut func).is_ok());
+        assert!(rename_variables(&mut func).is_ok());
 
         for v in func.cflow_graph.vertices() {
             if let Some(&ControlFlowTarget::Resolved(ref bb)) = func.cflow_graph.vertex_label(v) {

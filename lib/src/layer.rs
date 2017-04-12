@@ -244,7 +244,8 @@ impl OpaqueLayer {
     /// `path`. The `Layer` will have the size of the file.
     pub fn open(p: &Path) -> Result<OpaqueLayer> {
         let mut buf: Vec<u8> = Vec::new();
-        try!(File::open(p).map(|ref mut f| f.read_to_end(&mut buf)));
+        let mut fd = File::open(p)?;
+        fd.read_to_end(&mut buf)?;
         Ok(Self::wrap(buf))
     }
 

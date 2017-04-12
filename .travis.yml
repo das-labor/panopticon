@@ -1,3 +1,6 @@
+env:
+  global:
+    - RUSTFLAGS="-D warnings"
 matrix:
   fast_finish: true
   include:

@@ -30,13 +30,10 @@ use {
     State,
     Statement,
     Architecture,
-    LayerIter,
     Region,
     Result,
-    Disassembler,
     Match,
 };
-use std::sync::Arc;
 use std::borrow::Cow;
 
 pub mod syntax;
@@ -50,7 +47,7 @@ impl Architecture for Mos {
     type Configuration = Variant;
 
     fn prepare(reg: &Region,_: &Self::Configuration) -> Result<Vec<(&'static str,u64,&'static str)>> {
-        let mut i = reg.iter();
+        let i = reg.iter();
         let iv = vec![
             ("NMI",0xfffa, "NMI vector"),
             ("RESET",0xfffc, "Reset routine"),
@@ -139,8 +136,8 @@ pub fn nonary(opcode: &'static str,
 
         st.mnemonic_dynargs(len, &opcode, "", &|c| -> Result<(Vec<Rvalue>,Vec<Statement>)> {
             Ok((vec![],try!(sem(c))))
-        });
-        st.jump(Rvalue::new_u16(next), Guard::always());
+        }).unwrap();
+        st.jump(Rvalue::new_u16(next), Guard::always()).unwrap();
         true
     })
 }
@@ -149,7 +146,7 @@ pub fn nonary(opcode: &'static str,
 pub fn ret(opcode: &'static str) -> Box<Fn(&mut State<Mos>) -> bool> {
     Box::new(move |st: &mut State<Mos>| -> bool {
         let len = st.tokens.len();
-        st.mnemonic(len, &opcode, "", vec![], &|_| -> Result<Vec<Statement>> { Ok(vec![]) });
+        st.mnemonic(len, &opcode, "", vec![], &|_| -> Result<Vec<Statement>> { Ok(vec![]) }).unwrap();
         true
     })
 }
@@ -165,8 +162,8 @@ pub fn implied(opcode: &'static str,
         let next = (st.address + len as u64) as u16;
         st.mnemonic(len, &opcode, "", vec![], &|c| -> Result<Vec<Statement>> {
             sem(c,arg0.clone().into())
-        });
-        st.jump(Rvalue::new_u16(next),Guard::always());
+        }).unwrap();
+        st.jump(Rvalue::new_u16(next),Guard::always()).unwrap();
         true
     })
 }
@@ -182,8 +179,8 @@ pub fn immediate(opcode: &'static str,
         if let Some(arg) = _arg {
             st.mnemonic_dynargs(len,&opcode,"#{u}",&|c| -> Result<(Vec<Rvalue>,Vec<Statement>)> {
                 Ok((vec![arg.clone()],try!(sem(c,arg.clone()))))
-            });
-            st.jump(Rvalue::new_u16(next),Guard::always());
+            }).unwrap();
+            st.jump(Rvalue::new_u16(next),Guard::always()).unwrap();
             true
         } else {
             false
@@ -209,8 +206,8 @@ pub fn zpage(opcode: &'static str,
             stmts.append(&mut try!(sem(c, rreil_rvalue!{ val:8 })));
 
             Ok(stmts)
-        });
-        st.jump(Rvalue::new_u16(next), Guard::always());
+        }).unwrap();
+        st.jump(Rvalue::new_u16(next), Guard::always()).unwrap();
         true
     })
 }
@@ -235,19 +232,19 @@ pub fn zpage_offset(opcode: &'static str,
             subscript: None,
         };
 
-        st.mnemonic(0,"__load","",vec![],&|c| -> Result<Vec<Statement>> {
+        st.mnemonic(0,"__load","",vec![],&|_c| -> Result<Vec<Statement>> {
             rreil!{
                 add short_addr:8, (base), (index);
                 zext/16 (addr), short_addr:8;
                 load/ram val:8, (addr);
             }
-        });
+        }).unwrap();
 
         st.mnemonic(len,&opcode,"{p:ram}",vec![addr.clone().into()],&|c| -> Result<Vec<Statement>> {
             sem(c, rreil_rvalue!{ val:8 })
-        });
+        }).unwrap();
 
-        st.jump(Rvalue::new_u16(next), Guard::always());
+        st.jump(Rvalue::new_u16(next), Guard::always()).unwrap();
         true
     })
 }
@@ -280,19 +277,19 @@ pub fn zpage_index(opcode: &'static str,
             }
         };
 
-        st.mnemonic(0,"__load","",vec![],&|c| -> Result<Vec<Statement>> {
+        st.mnemonic(0,"__load","",vec![],&|_c| -> Result<Vec<Statement>> {
             rreil!{
                 add short_addr:8, (base), (index);
                 zext/16 addr:16, short_addr:8;
                 load/ram (addr), addr:16;
                 load/ram val:8, (addr);
             }
-        });
+        }).unwrap();
 
         st.mnemonic(len,&opcode,"{p:ram}",vec![addr.clone().into()],&|c| -> Result<Vec<Statement>> {
             sem(c, rreil_rvalue!{ val:8 })
-        });
-        st.jump(Rvalue::new_u16(next),Guard::always());
+        }).unwrap();
+        st.jump(Rvalue::new_u16(next),Guard::always()).unwrap();
         true
     })
 }
@@ -313,8 +310,8 @@ pub fn absolute(opcode: &'static str,
             stmts.append(&mut try!(sem(c, rreil_rvalue!{ val:8 })));
 
             Ok(stmts)
-        });
-        st.jump(Rvalue::new_u16(next),Guard::always());
+        }).unwrap();
+        st.jump(Rvalue::new_u16(next),Guard::always()).unwrap();
 	true
     })
 }
@@ -338,18 +335,18 @@ pub fn absolute_offset(opcode: &'static str,
             subscript: None,
         };
 
-        st.mnemonic(0,"__load","",vec![],&|c| {
+        st.mnemonic(0,"__load","",vec![],&|_c| {
             rreil!{
                 zext/16 (addr), (index);
                 add (addr), (addr), (base);
                 load/ram val:8, (addr);
             }
-        });
+        }).unwrap();
 
         st.mnemonic(len,&opcode,"{p:ram}",vec![addr.clone().into()],&|c| -> Result<Vec<Statement>> {
             sem(c, rreil_rvalue!{ val:8 })
-        });
-        st.jump(Rvalue::new_u16(next),Guard::always());
+        }).unwrap();
+        st.jump(Rvalue::new_u16(next),Guard::always()).unwrap();
         true
     })
 }
@@ -367,14 +364,14 @@ pub fn branch(opcode: &'static str, _flag: &Lvalue,
         let g = Guard::from_flag(&flag.clone().into()).ok().unwrap();
         let k = (st.address as i16).wrapping_add(rel) as u16;
 
-        st.mnemonic(2,opcode,"{c:ram}", vec![rreil_rvalue!{ [k]:16 }], &|c| -> Result<Vec<Statement>> {
+        st.mnemonic(2,opcode,"{c:ram}", vec![rreil_rvalue!{ [k]:16 }], &|_c| -> Result<Vec<Statement>> {
             rreil!{
                 cmpeq flag:1, (set), (flag);
             }
-        });
+        }).unwrap();
 
-        st.jump(Rvalue::new_u16(fallthru), g.negation());
-        st.jump(Rvalue::new_u16(k), g);
+        st.jump(Rvalue::new_u16(fallthru), g.negation()).unwrap();
+        st.jump(Rvalue::new_u16(k), g).unwrap();
         true
     })
 }

@@ -54,7 +54,7 @@ use graph_algos::order::{
 
 use {
     Lvalue,Rvalue,
-    Statement,Operation,execute,
+    Statement,Operation,
     ControlFlowTarget,
     ControlFlowRef,
     ControlFlowGraph,
@@ -628,7 +628,7 @@ mod tests {
             }
         }
 
-        fn extract(&self,size: usize,offset: usize) -> Self {
+        fn extract(&self,_: usize,_: usize) -> Self {
             match self {
                 &Sign::Join => Sign::Join,
                 &Sign::Meet => Sign::Meet,
@@ -684,7 +684,7 @@ mod tests {
         func.cflow_graph = cfg;
         func.entry_point = Some(v0);
 
-        ssa_convertion(&mut func);
+        assert!(ssa_convertion(&mut func).is_ok());
 
         let vals = approximate::<Sign>(&func).ok().unwrap();
         let res = results::<Sign>(&func,&vals);
@@ -744,7 +744,7 @@ mod tests {
         func.cflow_graph = cfg;
         func.entry_point = Some(v0);
 
-        ssa_convertion(&mut func);
+        assert!(ssa_convertion(&mut func).is_ok());
 
         let vals = approximate::<Sign>(&func).ok().unwrap();
         let res = results::<Sign>(&func,&vals);

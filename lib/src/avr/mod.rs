@@ -24,15 +24,12 @@
 
 use std::convert::Into;
 use std::borrow::Cow;
-use std::sync::Arc;
 
 use {
     Lvalue,Rvalue,
     Guard,
     Result,
-    LayerIter,
     Region,
-    Disassembler,
     State,
     Match,
     Statement,
@@ -260,7 +257,7 @@ pub fn resolv(r: u64) -> Lvalue {
 pub fn optional_skip(next: Rvalue, st: &mut State<Avr>) {
     if st.configuration.skip.is_some() {
         let (g,o) = st.configuration.skip.as_ref().unwrap().clone();
-        st.jump_from(o,next,g);
+        st.jump_from(o,next,g).unwrap();
     }
 }
 
@@ -278,21 +275,21 @@ pub fn skip(n: &'static str, expect: bool) -> Box<Fn(&mut State<Avr>) -> bool> {
         } else {
             let a = Rvalue::Constant{ value: st.get_group("sA"), size: 6 };
 
-            st.mnemonic(0,"__io_reg","",vec![],&|cg: &mut Mcu| {
+            st.mnemonic(0,"__io_reg","",vec![],&|_cg: &mut Mcu| {
                 rreil!{
                     load/io ioreg:8, (a);
                 }
-            });
+            }).unwrap();
 
             (Rvalue::Variable{ name: Cow::Borrowed("ioreg"), size: 1, offset: bit as usize, subscript: None },a)
         };
 
-        st.mnemonic(2,n,"{u}, {u}",vec![_rr.clone().into(),b.clone()],&|cg: &mut Mcu| {
+        st.mnemonic(2,n,"{u}, {u}",vec![_rr.clone().into(),b.clone()],&|_cg: &mut Mcu| {
             let rr = rr.clone();
             rreil!{
                 mov skip_flag:1, (rr);
             }
-        });
+        }).unwrap();
 
         let fallthru = st.configuration.wrap(st.address + 2);
         let skip = st.configuration.wrap(st.address + 4);
@@ -302,12 +299,12 @@ pub fn skip(n: &'static str, expect: bool) -> Box<Fn(&mut State<Avr>) -> bool> {
         };
 
         if st.tokens.len() == 1 {
-            st.jump(skip,g.clone());
+            st.jump(skip,g.clone()).unwrap();
         } else {
             st.configuration.skip = Some((g.clone(),st.address));
         }
 
-        st.jump(fallthru,g.negation());
+        st.jump(fallthru,g.negation()).unwrap();
         true
     })
 }
@@ -328,11 +325,11 @@ pub fn binary(n: &'static str,sem: fn(Lvalue,Rvalue,&mut Mcu) -> Result<Vec<Stat
         };
         let next = st.configuration.wrap(st.address + st.tokens.len() as u64 * 2);
 
-        st.mnemonic(2,n,"{u}, {u}",vec!(rd.clone().into(),rr.clone()),&|cg: &mut Mcu| {
-            sem(rd.clone(),rr.clone(),cg)
-        });
+        st.mnemonic(2,n,"{u}, {u}",vec!(rd.clone().into(),rr.clone()),&|_cg: &mut Mcu| {
+            sem(rd.clone(),rr.clone(),_cg)
+        }).unwrap();
         optional_skip(next.clone(),st);
-        st.jump(next,Guard::always());
+        st.jump(next,Guard::always()).unwrap();
         true
     })
 }
@@ -346,11 +343,11 @@ pub fn binary_imm(n: &'static str,sem: fn(Lvalue,u64,&mut Mcu) -> Result<Vec<Sta
         } else {
             let a = Rvalue::Constant{ value: st.get_group("A"), size: 6 };
 
-            st.mnemonic(0,"__io_reg","",vec![],&|cg: &mut Mcu| {
+            st.mnemonic(0,"__io_reg","",vec![],&|_cg: &mut Mcu| {
                 rreil!{
                     load/io ioreg:8, (a);
                 }
-            });
+            }).unwrap();
 
             (Lvalue::Variable{ name: Cow::Borrowed("ioreg"), size: 8, subscript: None },Some(a))
         };
@@ -362,11 +359,11 @@ pub fn binary_imm(n: &'static str,sem: fn(Lvalue,u64,&mut Mcu) -> Result<Vec<Sta
         let next = st.configuration.wrap(st.address + st.tokens.len() as u64 * 2);
         let len = st.tokens.len() * 2;
 
-        st.mnemonic(len,n,"{u}, {u}",vec![rd_rv.unwrap_or(rd.clone().into()),kc.clone()],&|cg: &mut Mcu| {
-            sem(rd.clone(),k,cg)
-        });
+        st.mnemonic(len,n,"{u}, {u}",vec![rd_rv.unwrap_or(rd.clone().into()),kc.clone()],&|_cg: &mut Mcu| {
+            sem(rd.clone(),k,_cg)
+        }).unwrap();
         optional_skip(next.clone(),st);
-        st.jump(next,Guard::always());
+        st.jump(next,Guard::always()).unwrap();
         true
     })
 }
@@ -404,7 +401,7 @@ pub fn binary_ptr(n: &'static str,sem: fn(Lvalue,Lvalue,&mut Mcu) -> Result<Vec<
         };
         let next = st.configuration.wrap(st.address + st.tokens.len() as u64 * 2);
 
-        st.mnemonic(0,"__addr_reg","",vec![],&|cg: &mut Mcu| {
+        st.mnemonic(0,"__addr_reg","",vec![],&|_cg: &mut Mcu| {
             let (r1,r2) = match ar {
                 AddressRegister::X => (rreil_lvalue!{ R26:8 },rreil_lvalue!{ R27:8 }),
                 AddressRegister::Y => (rreil_lvalue!{ R28:8 },rreil_lvalue!{ R29:8 }),
@@ -415,7 +412,7 @@ pub fn binary_ptr(n: &'static str,sem: fn(Lvalue,Lvalue,&mut Mcu) -> Result<Vec<
                 zext/16 (addr_reg), (r1);
                 sel/8 (addr_reg), (r2);
             }
-        });
+        }).unwrap();
 
         let (fmt,rd,rr) = if ptr_first {
             ("{p:ram}, {u}",addr_reg.clone().into(),reg.clone().into())
@@ -423,7 +420,7 @@ pub fn binary_ptr(n: &'static str,sem: fn(Lvalue,Lvalue,&mut Mcu) -> Result<Vec<
             ("{u}, {p:ram}",reg.clone().into(),addr_reg.clone().into())
         };
 
-        st.mnemonic(2,n,fmt,vec!(rd,rr),&|cg: &mut Mcu| {
+        st.mnemonic(2,n,fmt,vec!(rd,rr),&|_cg: &mut Mcu| {
             let mut stmts = vec![];
 
             if off == AddressOffset::Predecrement {
@@ -432,7 +429,7 @@ pub fn binary_ptr(n: &'static str,sem: fn(Lvalue,Lvalue,&mut Mcu) -> Result<Vec<
                 }));
             }
 
-            stmts.append(&mut try!(sem(addr_reg.clone(),reg.clone(),cg)));
+            stmts.append(&mut try!(sem(addr_reg.clone(),reg.clone(),_cg)));
 
             if off == AddressOffset::Postincrement {
                 stmts.append(&mut try!(rreil!{
@@ -456,10 +453,10 @@ pub fn binary_ptr(n: &'static str,sem: fn(Lvalue,Lvalue,&mut Mcu) -> Result<Vec<
             }));
 
             Ok(stmts)
-        });
+        }).unwrap();
 
         optional_skip(next.clone(),st);
-        st.jump(next,Guard::always());
+        st.jump(next,Guard::always()).unwrap();
         true
     })
 }
@@ -468,9 +465,9 @@ pub fn nonary(n: &'static str,sem: fn(&mut Mcu) -> Result<Vec<Statement>>) -> Bo
     Box::new(move |st: &mut State<Avr>| {
         let next = st.configuration.wrap(st.address + st.tokens.len() as u64 * 2);
 
-        st.mnemonic(2,n,"",vec![],&sem);
+        st.mnemonic(2,n,"",vec![],&sem).unwrap();
         optional_skip(next.clone(),st);
-        st.jump(next,Guard::always());
+        st.jump(next,Guard::always()).unwrap();
         true
     })
 }
@@ -480,11 +477,11 @@ pub fn unary(n: &'static str,sem: fn(Lvalue,&mut Mcu) -> Result<Vec<Statement>>)
         let rd = if st.has_group("D") { reg(st,"D") } else { resolv(st.get_group("d") + 16) };
         let next = st.configuration.wrap(st.address + st.tokens.len() as u64 * 2);
 
-        st.mnemonic(2,n,"{u}",vec!(rd.clone().into()),&|cg: &mut Mcu| -> Result<Vec<Statement>> {
-            sem(rd.clone(),cg)
-        });
+        st.mnemonic(2,n,"{u}",vec!(rd.clone().into()),&|_cg: &mut Mcu| -> Result<Vec<Statement>> {
+            sem(rd.clone(),_cg)
+        }).unwrap();
         optional_skip(next.clone(),st);
-        st.jump(next,Guard::always());
+        st.jump(next,Guard::always()).unwrap();
         true
     })
 }
@@ -494,15 +491,15 @@ pub fn flag(n: &'static str,_f: &Lvalue,val: bool) -> Box<Fn(&mut State<Avr>) ->
     Box::new(move |st: &mut State<Avr>| -> bool {
         let next = st.configuration.wrap(st.address + st.tokens.len() as u64 * 2);
 
-        st.mnemonic(2,n,"",vec!(),&|cg: &mut Mcu| {
+        st.mnemonic(2,n,"",vec!(),&|_cg: &mut Mcu| {
             let bit = if val { 1 } else { 0 };
 
             rreil!{
                 mov (f.clone()), [bit]:1;
             }
-        });
+        }).unwrap();
         optional_skip(next.clone(),st);
-        st.jump(next,Guard::always());
+        st.jump(next,Guard::always()).unwrap();
         true
     })
 }
@@ -515,23 +512,23 @@ pub fn branch(n: &'static str,_f: &Lvalue,val: bool) -> Box<Fn(&mut State<Avr>) 
         let jump = st.configuration.wrap((st.address as i64 + st.tokens.len() as i64 * 2 + k) as u64);
         let fallthru = st.configuration.wrap(st.address + st.tokens.len() as u64 * 2);
 
-        st.mnemonic(2,n,"{c:flash}",vec!(jump.clone().into()),&|cg: &mut Mcu| -> Result<Vec<Statement>> {
+        st.mnemonic(2,n,"{c:flash}",vec!(jump.clone().into()),&|_cg: &mut Mcu| -> Result<Vec<Statement>> {
             let bit = if val { 1 } else { 0 };
 
             rreil!{
                 mov (f), [bit]:1;
             }
-        });
+        }).unwrap();
 
         optional_skip(fallthru.clone(),st);
         let g = Guard::from_flag(&f.clone().into()).ok().unwrap();
 
         if val {
-            st.jump(fallthru,g.negation());
-            st.jump(jump,g);
+            st.jump(fallthru,g.negation()).unwrap();
+            st.jump(jump,g).unwrap();
         } else {
-            st.jump(jump,g.negation());
-            st.jump(fallthru,g);
+            st.jump(jump,g.negation()).unwrap();
+            st.jump(fallthru,g).unwrap();
         }
         true
     })
@@ -546,7 +543,8 @@ mod tests {
     use Rvalue;
     use std::borrow::Cow;
 
-    use std::hash::{Hash,Hasher,SipHasher};
+    use std::hash::{Hash,Hasher};
+    use std::collections::hash_map::DefaultHasher;
 
     use graph_algos::{
         GraphTrait,
@@ -787,8 +785,8 @@ mod tests {
             Some(&ControlFlowTarget::Resolved(ref bb)) => Some(format!("\"bb{}\"",bb.area.start)),
             Some(&ControlFlowTarget::Unresolved(Rvalue::Constant{ ref value,.. })) => Some(format!("\"v{}\"",*value)),
             Some(&ControlFlowTarget::Unresolved(ref c)) => {
-                let ref mut h = SipHasher::new();
-                c.hash::<SipHasher>(h);
+                let ref mut h = DefaultHasher::new();
+                c.hash::<DefaultHasher>(h);
                 Some(format!("\"c{}\"",h.finish()))
             },
             _ => None,

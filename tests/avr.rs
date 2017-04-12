@@ -21,7 +21,6 @@ extern crate graph_algos;
 
 use panopticon::region::Region;
 use panopticon::avr::{Mcu,Avr};
-use panopticon::avr::syntax::disassembler;
 use panopticon::function::{ControlFlowTarget,Function};
 use panopticon::loader;
 
