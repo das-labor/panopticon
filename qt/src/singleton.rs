@@ -457,13 +457,17 @@ impl QPanopticon {
                     Some(Rvalue::Constant{ value: c, size: s }) => {
                         let val = if s < 64 { c % (1u64 << s) } else { c };
                         let (display,data) = if is_code {
-                            /*if let Some(vx) = prog.find_function_by_entry(val) {
-                                if let Some(&CallTarget::Concrete(Function{ ref name, ref uuid,.. })) = prog.call_graph.vertex_label(vx) {
-                                    (name.clone(),format!("{}",uuid))
+                            let maybe_func = self.functions.iter().find(|f| {
+                                let maybe_entry = f.entry_point.map(|vx| f.cflow_graph.vertex_label(vx));
+                                if let Some(&ControlFlowTarget::Resolved(ref bb)) = maybe_entry {
+                                    bb.area.start == val
                                 } else {
-                                    (format!("{}",val),"".to_string())
+                                    false
                                 }
-                            } else*/ {
+                            });
+                            if let Some(ref called_func) = maybe_func {
+                                (name.clone(),format!("{}",called_func.uuid))
+                            } else {
                                 (format!("{}",val),"".to_string())
                             }
                         } else {
