@@ -29,6 +29,7 @@ use paths::{
     session_directory
 };
 use std::fs;
+use std::str::FromStr;
 use std::collections::{HashMap,HashSet};
 use std::iter::FromIterator;
 use panopticon::{
@@ -264,8 +265,6 @@ impl QPanopticon {
     }
 
     fn display_control_flow_for(&mut self, uuid_str: String) -> Option<&QVariant> {
-        use std::str::FromStr;
-
         debug!("display_control_flow_for() uuid={}",uuid_str);
 
         let uuid = Uuid::from_str(&uuid_str).unwrap();
@@ -315,6 +314,36 @@ impl QPanopticon {
         self.set_control_flow_properties(&uuid);
         self.set_visible_function(uuid.to_string());
         println!("layout done");
+        None
+    }
+
+    fn display_preview_for(&mut self,uuid_str: String) -> Option<&QVariant> {
+        debug!("display_preview_for(): uuid={}",uuid_str);
+
+        let uuid = Uuid::from_str(&uuid_str).unwrap();
+        let maybe_contents = self.functions.get(&uuid).and_then(|func| {
+            func.entry_point.map(|x| (func,x))
+        }).and_then(|(func,entry)| {
+            let cfg = &func.cflow_graph;
+            if let Some(&ControlFlowTarget::Resolved(ref bb)) = cfg.vertex_label(entry) {
+                Some(bb)
+            } else {
+                None
+            }
+        }).and_then(|bb| {
+            let lines = bb.mnemonics.iter().map(|mne| {
+                self.get_basic_block_line(mne).unwrap()
+            }).collect::<Vec<_>>();
+
+            json::encode(&lines).ok()
+        });
+
+        if let Some(contents) = maybe_contents {
+            self.set_preview_node(contents);
+            self.set_preview_function(uuid_str);
+            self.preview_node_changed();
+            self.preview_function_changed();
+        }
         None
     }
 
@@ -658,6 +687,7 @@ pub Panopticon as QPanopticon {
 
         // control flow / preview
         fn display_control_flow_for(uuid: String);
+        fn display_preview_for(uuid: String);
 
     properties:
         initialFile: String; read: get_initial_file, write: set_initial_file, notify: initial_file_changed;
@@ -676,8 +706,8 @@ pub Panopticon as QPanopticon {
         visibleFunction: String; read: get_visible_function, write: set_visible_function, notify: visible_function_changed;
         controlFlowNodes: QVariant; read: get_control_flow_nodes, write: set_control_flow_nodes, notify: control_flow_nodes_changed;
         controlFlowEdges: QVariant; read: get_control_flow_edges, write: set_control_flow_edges, notify: control_flow_edges_changed;
-        //previewNode: String; read: get_preview_node, write: set_preview_node, notify: preview_node_changed;
-        //previewFunction: String; read: get_preview_function, write: set_preview_function, notify: preview_function_changed;
+        previewNode: String; read: get_preview_node, write: set_preview_node, notify: preview_node_changed;
+        previewFunction: String; read: get_preview_function, write: set_preview_function, notify: preview_function_changed;
 
         basicBlockPadding: i32; read: get_basic_block_padding, write: set_basic_block_padding, notify: basic_block_padding_changed;
         basicBlockMargin: i32; read: get_basic_block_margin, write: set_basic_block_margin, notify: basic_block_margin_changed;
