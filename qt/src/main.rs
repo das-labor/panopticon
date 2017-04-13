@@ -44,7 +44,7 @@ extern crate xdg;
 //mod controller;
 //mod project;
 //mod function;
-//mod sugiyama;
+mod sugiyama;
 mod singleton;
 mod paths;
 mod errors {
@@ -53,10 +53,10 @@ mod errors {
             Panopticon(::panopticon::Error);
             Time(::std::time::SystemTimeError);
             Io(::std::io::Error);
+            Serialize(::rustc_serialize::json::EncoderError);
         }
     }
 }
-mod sugiyama;
 
 use clap::{
     App,

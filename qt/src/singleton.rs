@@ -36,6 +36,7 @@ use panopticon::{
     loader,
     Function,
     ControlFlowTarget,
+    Mnemonic,
 };
 use uuid::Uuid;
 use parking_lot::Mutex;
@@ -47,6 +48,12 @@ use graph_algos::{
     VertexListGraphTrait,
     EdgeListGraphTrait,
 };
+use graph_algos::adjacency_list::{
+    AdjacencyListEdgeDescriptor,
+    AdjacencyListVertexDescriptor,
+};
+use rustc_serialize::json;
+
 
 Q_LISTMODEL! {
     pub QRecentSessions {
@@ -99,10 +106,26 @@ Q_LISTMODEL! {
 
 #[derive(Clone)]
 pub struct ControlFlowLayout {
-    node_dimensions: HashMap<usize,(f32,f32)>,
+    node_dimensions: HashMap<AdjacencyListVertexDescriptor,(f32,f32)>,
     layout: sugiyama::LinearLayout,
-    node_positions: HashMap<usize,(f32,f32)>,
-    edges: HashMap<usize,(Vec<(f32,f32,f32,f32)>,(f32,f32),(f32,f32))>,
+    node_positions: HashMap<AdjacencyListVertexDescriptor,(f32,f32)>,
+    edges: HashMap<AdjacencyListEdgeDescriptor,(Vec<(f32,f32,f32,f32)>,(f32,f32),(f32,f32))>,
+}
+
+#[derive(RustcEncodable)]
+struct BasicBlockLine {
+    opcode: String,
+    region: String,
+    offset: u64,
+    comment: String,
+    args: Vec<BasicBlockOperand>,
+}
+
+#[derive(RustcEncodable)]
+struct BasicBlockOperand {
+    kind: &'static str, // constant, variable, function, literal
+    display: String, // string to display
+    data: String, // constant: value, variable: ssa var, function: UUID, literal: empty string
 }
 
 pub struct Panopticon {
@@ -234,7 +257,6 @@ impl QPanopticon {
             }
         }
 
-
         // XXX: error
         None
     }
@@ -273,7 +295,7 @@ impl QPanopticon {
                 let layout = ControlFlowLayout{
                     node_dimensions: HashMap::new(),
                     layout: layout,
-                    node_positions: HashMap::from_iter(vertices.iter().map(|&vx| (vx,(0.,0.)))),
+                    node_positions: HashMap::new(),
                     edges: HashMap::new(),
                 };
                 self.control_flow_layouts.insert(uuid.clone(),layout.clone());
@@ -288,15 +310,13 @@ impl QPanopticon {
             self.update_control_flow_dimensions(&uuid);
         }
 
-        //self.set_control_flow_properties(&uuid);
+        self.set_control_flow_properties(&uuid);
         self.set_visible_function(uuid.to_string());
         println!("layout done");
         None
     }
 
     fn update_control_flow_dimensions(&mut self,uuid: &Uuid) -> Result<()> {
-        use rustc_serialize::json;
-
         info!("update_control_flow_dimensions() uuid={}",uuid);
         let bb_char_width = self.get_basic_block_character_width().to_int() as usize;
         let bb_padding = self.get_basic_block_padding().to_int() as usize;
@@ -357,13 +377,128 @@ impl QPanopticon {
                 bb_cmnt_width as f32 + 20.,20.,50.,30.,30.,8.);
 
             if let Ok(l) = layout_res {
-                layout.node_positions = l.0;
-                layout.node_dimensions = dims;
-                layout.edges = l.1;
+                layout.node_positions = HashMap::from_iter(l.0.into_iter().map(|(idx,pos)| (AdjacencyListVertexDescriptor(idx),pos)));
+                layout.node_dimensions = HashMap::from_iter(dims.into_iter().map(|(idx,wh)| (AdjacencyListVertexDescriptor(idx),wh)));
+                layout.edges = HashMap::from_iter(l.1.into_iter().map(|(idx,e)| (AdjacencyListEdgeDescriptor(idx),e)));
             }
         }
 
         Ok(())
+    }
+
+    fn get_basic_block_line(&self, mnemonic: &Mnemonic) -> Result<BasicBlockLine> {
+        use panopticon::{
+            Rvalue,
+            MnemonicFormatToken
+        };
+
+        let mut ret = BasicBlockLine{
+            opcode: mnemonic.opcode.clone(),
+            region: "".to_string(),
+            offset: mnemonic.area.start,
+            comment: self.control_flow_comments.get(&mnemonic.area.start)
+                                               .unwrap_or(&"".to_string()).to_string(),
+            args: vec![],
+        };
+        let mut ops = mnemonic.operands.clone();
+
+        ops.reverse();
+        ret.args = mnemonic.format_string.iter().filter_map(|x| match x {
+            &MnemonicFormatToken::Literal(ref s) => {
+                Some(BasicBlockOperand{
+                    kind: "literal",
+                    display: s.to_string(),
+                    data: "".to_string(),
+                })
+            }
+            &MnemonicFormatToken::Variable{ ref has_sign } => {
+                match ops.pop() {
+                    Some(Rvalue::Constant{ value: c, size: s }) => {
+                        let val = if s < 64 { c % (1u64 << s) } else { c };
+                        let sign_bit = if s < 64 { 1u64 << (s - 1) } else { 0x8000000000000000 };
+                        let s = if !has_sign || val & sign_bit == 0 {
+                            format!("{:x}",val)
+                        } else {
+                            format!("{:x}",(val as i64).wrapping_neg())
+                        };
+                        Some(BasicBlockOperand{
+                            kind: "constant",
+                            display: s.clone(),
+                            data: s,
+                        })
+                    },
+                    Some(Rvalue::Variable{ ref name, subscript,.. }) => {
+                        let data = if let Some(subscript) = subscript {
+                            format!("{}_{}",*name,subscript)
+                        } else {
+                            format!("{}",*name)
+                        };
+                        Some(BasicBlockOperand{
+                            kind: "variable",
+                            display: name.to_string(),
+                            data: data,
+                        })
+                    }
+                    Some(Rvalue::Undefined) => {
+                        Some(BasicBlockOperand{
+                            kind: "variable",
+                            display: "?".to_string(),
+                            data: "".to_string(),
+                        })
+                    }
+                    None => {
+                        error!("Mnemonic at {:x} has invalid format string: {:?}",mnemonic.area.start,mnemonic);
+                        None
+                    }
+                }
+            }
+            &MnemonicFormatToken::Pointer{ is_code,.. } => {
+                match ops.pop() {
+                    Some(Rvalue::Constant{ value: c, size: s }) => {
+                        let val = if s < 64 { c % (1u64 << s) } else { c };
+                        let (display,data) = if is_code {
+                            /*if let Some(vx) = prog.find_function_by_entry(val) {
+                                if let Some(&CallTarget::Concrete(Function{ ref name, ref uuid,.. })) = prog.call_graph.vertex_label(vx) {
+                                    (name.clone(),format!("{}",uuid))
+                                } else {
+                                    (format!("{}",val),"".to_string())
+                                }
+                            } else*/ {
+                                (format!("{}",val),"".to_string())
+                            }
+                        } else {
+                            (format!("{}",val),"".to_string())
+                        };
+
+                        Some(BasicBlockOperand{
+                            kind: "pointer",
+                            display: display,
+                            data: data,
+                        })
+                    }
+                    Some(Rvalue::Variable{ ref name,.. }) => {
+                        Some(BasicBlockOperand{
+                            kind: "pointer",
+                            display: name.to_string(),
+                            data: "".to_string(),
+                        })
+                    }
+                    Some(Rvalue::Undefined) => {
+                        Some(BasicBlockOperand{
+                            kind: "pointer",
+                            display: "?".to_string(),
+                            data: "".to_string(),
+                        })
+                    }
+                    None => {
+                        error!("Mnemonic at {:x} has invalid format string: {:?}",mnemonic.area.start,mnemonic);
+                        None
+                    }
+                }
+            }
+        }).collect();
+
+        Ok(ret)
     }
 
     fn set_control_flow_properties(&mut self, uuid: &Uuid) -> Result<()> {
@@ -399,30 +534,38 @@ impl QPanopticon {
                 (min_x,min_y)
             });
 
-        for (&vx,&(x,y)) in positions.iter() {
-            let mut contents = json::decode::<Vec<CfgMnemonic>>(&FUNCTION.1[vx].2).unwrap();
+        let tuples = positions.iter().filter_map(|(&vx,&(x,y))| {
+            let func = &self.functions[uuid];
+            let maybe_lb = func.cflow_graph.vertex_label(vx);
 
-            for mne in contents.iter_mut() {
-                if let Some(cmnt) = self.controlFlowComments.get(&mne.offset) {
-                    mne.comment = cmnt.clone();
-                }
+            if let Some(&ControlFlowTarget::Resolved(ref bb)) = maybe_lb {
+                let lines = bb.mnemonics.iter().map(|mne| {
+                    self.get_basic_block_line(mne).unwrap()
+                }).collect::<Vec<_>>();
+
+                Some((x - min_x,y - min_y,vx.0 as i32,func.entry_point == Some(vx),json::encode(&lines).unwrap()))
+            } else {
+                None
             }
+        }).collect::<Vec<_>>();
 
-            self.control_flow_nodes.append_row(x - min_x,y - min_y,vx as i32,FUNCTION.0 == vx,json::encode(&contents).unwrap());
+        for (x,y,vx,is_entry,content) in tuples {
+            self.control_flow_nodes.append_row(x,y,vx,is_entry,content);
         }
 
         use rustc_serialize::json;
 
-        for (&edge_idx,&(ref trail,(start_x,start_y),(end_x,end_y))) in edges.iter() {
+        for (&edge_desc,&(ref trail,(start_x,start_y),(end_x,end_y))) in edges.iter() {
             let f = |&(x,y,_,_)| (x - min_x,y - min_y);
             let g = |&(_,_,x,y)| (x - min_x,y - min_y);
             let path = trail.clone().iter().take(1).map(&f).chain(trail.iter().map(&g)).collect::<Vec<_>>();
             let (mut x,mut y): (Vec<f32>,Vec<f32>) = path.into_iter().unzip();
             let x_res: json::EncodeResult<String> = json::encode(&x);
             let y_res: json::EncodeResult<String> = json::encode(&y);
-            let from = FUNCTION.2[edge_idx].0;
-            let to = FUNCTION.2[edge_idx].1;
-            let nodes = &FUNCTION.1;
+            let (from,to) = {
+                let func = &self.functions[uuid];
+                (func.cflow_graph.source(edge_desc),func.cflow_graph.target(edge_desc))
+            };
 
             if let (Ok(x),Ok(y)) = (x_res,y_res) {
                 self.control_flow_edges.append_row(
@@ -432,8 +575,8 @@ impl QPanopticon {
                     start_y - min_y,
                     end_x - min_x,
                     end_y - min_y,
-                    FUNCTION.2[edge_idx].2.clone(),
-                    FUNCTION.2[edge_idx].3.clone());
+                    "".to_string(),  // kind
+                    "".to_string()); // label
             }
         }
 

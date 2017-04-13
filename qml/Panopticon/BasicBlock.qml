@@ -37,10 +37,6 @@ Item {
 	width: childrenRect.width + childrenRect.x
 	height: childrenRect.height + childrenRect.y
 
-	Component.onCompleted: {
-		console.log("completed bb " + nodeId.toString())
-	}
-
 	Rectangle {
 		id: basicBlockRect
 
