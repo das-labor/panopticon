@@ -2333,7 +2333,7 @@ pub fn read(mode: Mode, buf: &[u8], addr: u64) -> Result<(u64,Mnemonic,Vec<(Rval
                     JumpSpec::FallThru => vec![(Rvalue::Constant{ value: addr + len, size: 64 },Guard::always())],
                     JumpSpec::Jump(ref v) => vec![(v.clone(),Guard::always())],
                     JumpSpec::Branch(ref v,ref g) => vec![
-                        (Rvalue::Constant{ value: addr + len, size: 64 },Guard::always()),
+                        (Rvalue::Constant{ value: addr + len, size: 64 },g.negation()),
                         (v.clone(),g.clone())
                     ],
                 };

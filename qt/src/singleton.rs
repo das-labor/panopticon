@@ -37,6 +37,7 @@ use panopticon::{
     Function,
     ControlFlowTarget,
     Mnemonic,
+    Guard,
 };
 use uuid::Uuid;
 use parking_lot::Mutex;
@@ -47,6 +48,7 @@ use graph_algos::{
     MutableGraphTrait,
     VertexListGraphTrait,
     EdgeListGraphTrait,
+    IncidenceGraphTrait,
 };
 use graph_algos::adjacency_list::{
     AdjacencyListEdgeDescriptor,
@@ -325,10 +327,9 @@ impl QPanopticon {
         let bb_line_height = self.get_basic_block_line_height().to_int() as usize;
         let bb_cmnt_width = self.get_basic_block_comment_width().to_int() as usize;
         let mut vertices = HashSet::new();
-        let mut edges = vec![];
         let mut dims = HashMap::new();
 
-        {
+        let (edges,edges_rev) = {
             let func = &self.functions[uuid];
             let cfg = &func.cflow_graph;
 
@@ -363,12 +364,11 @@ impl QPanopticon {
                 }
             }
 
-            let edge_iter = cfg.edges().map(|e| (cfg.source(e).0,cfg.target(e).0));
+            let edges = cfg.edges().map(|e| (cfg.source(e).0,cfg.target(e).0)).collect();
+            let edges_rev = HashMap::<usize,AdjacencyListEdgeDescriptor>::from_iter(cfg.edges().enumerate());
 
-            for (from_idx,to_idx) in edge_iter {
-                edges.push((from_idx,to_idx));
-            }
-        }
+            (edges,edges_rev)
+        };
 
         if let Some(layout) = self.control_flow_layouts.get_mut(uuid) {
             let layout_res = sugiyama::linear_layout_placement(
@@ -379,7 +379,7 @@ impl QPanopticon {
             if let Ok(l) = layout_res {
                 layout.node_positions = HashMap::from_iter(l.0.into_iter().map(|(idx,pos)| (AdjacencyListVertexDescriptor(idx),pos)));
                 layout.node_dimensions = HashMap::from_iter(dims.into_iter().map(|(idx,wh)| (AdjacencyListVertexDescriptor(idx),wh)));
-                layout.edges = HashMap::from_iter(l.1.into_iter().map(|(idx,e)| (AdjacencyListEdgeDescriptor(idx),e)));
+                layout.edges = HashMap::from_iter(l.1.into_iter().map(|(idx,e)| (edges_rev[&idx],e)));
             }
         }
 
@@ -447,7 +447,7 @@ impl QPanopticon {
                         })
                     }
                     None => {
-                        error!("Mnemonic at {:x} has invalid format string: {:?}",mnemonic.area.start,mnemonic);
+                        error!("mnemonic at {:x} has invalid format string: {:?}",mnemonic.area.start,mnemonic);
                         None
                     }
                 }
@@ -457,16 +457,16 @@ impl QPanopticon {
                     Some(Rvalue::Constant{ value: c, size: s }) => {
                         let val = if s < 64 { c % (1u64 << s) } else { c };
                         let (display,data) = if is_code {
-                            let maybe_func = self.functions.iter().find(|f| {
-                                let maybe_entry = f.entry_point.map(|vx| f.cflow_graph.vertex_label(vx));
+                            let maybe_func = self.functions.iter().find(|&(_,f)| {
+                                let maybe_entry = f.entry_point.and_then(|vx| f.cflow_graph.vertex_label(vx));
                                 if let Some(&ControlFlowTarget::Resolved(ref bb)) = maybe_entry {
                                     bb.area.start == val
                                 } else {
                                     false
                                 }
                             });
-                            if let Some(ref called_func) = maybe_func {
-                                (name.clone(),format!("{}",called_func.uuid))
+                            if let Some((_,called_func)) = maybe_func {
+                                (called_func.name.clone(),format!("{}",called_func.uuid))
                             } else {
                                 (format!("{}",val),"".to_string())
                             }
@@ -475,7 +475,7 @@ impl QPanopticon {
                         };
 
                         Some(BasicBlockOperand{
-                            kind: "pointer",
+                            kind: if data == "" { "pointer" } else { "function" },
                             display: display,
                             data: data,
                         })
@@ -495,7 +495,7 @@ impl QPanopticon {
                         })
                     }
                     None => {
-                        error!("Mnemonic at {:x} has invalid format string: {:?}",mnemonic.area.start,mnemonic);
+                        error!("mnemonic at {:x} has invalid format string: {:?}",mnemonic.area.start,mnemonic);
                         None
                     }
                 }
@@ -566,9 +566,42 @@ impl QPanopticon {
             let (mut x,mut y): (Vec<f32>,Vec<f32>) = path.into_iter().unzip();
             let x_res: json::EncodeResult<String> = json::encode(&x);
             let y_res: json::EncodeResult<String> = json::encode(&y);
-            let (from,to) = {
+            let (kind,label) = {
                 let func = &self.functions[uuid];
-                (func.cflow_graph.source(edge_desc),func.cflow_graph.target(edge_desc))
+                let cfg = &func.cflow_graph;
+                let label = cfg.edge_label(edge_desc).map(|guard| {
+                    if *guard != Guard::always() && *guard != Guard::never() {
+                        format!("{}",guard)
+                    } else {
+                        "".to_string()
+                    }
+                }).unwrap_or("".to_string());
+                let from = cfg.source(edge_desc);
+                let to = cfg.target(edge_desc);
+                let get_address = &|lb| if let &ControlFlowTarget::Resolved(ref bb) = lb { Some(bb.area.start) } else { None };
+                let from_addr = cfg.vertex_label(from).and_then(
+                    |lb| if let &ControlFlowTarget::Resolved(ref bb) = lb { Some(bb.area.end) } else { None });
+                let to_addr = cfg.vertex_label(to).and_then(
+                    |lb| if let &ControlFlowTarget::Resolved(ref bb) = lb { Some(bb.area.start) } else { None });
+                let kind = if cfg.out_degree(from) >= 2 {
+                    if let (Some(from),Some(to)) = (from_addr,to_addr) {
+                        if to == from {
+                            "fallthru"
+                        } else {
+                            if from > to {
+                                "branch-backedge"
+                            } else {
+                                "branch"
+                            }
+                        }
+                    } else {
+                        "jump"
+                    }
+                } else {
+                    "jump"
+                }.to_string();
+
+                (kind,label)
             };
 
             if let (Ok(x),Ok(y)) = (x_res,y_res) {
@@ -579,8 +612,8 @@ impl QPanopticon {
                     start_y - min_y,
                     end_x - min_x,
                     end_y - min_y,
-                    "".to_string(),  // kind
-                    "".to_string()); // label
+                    kind,
+                    label);
             }
         }
 
