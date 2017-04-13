@@ -2,3 +2,4 @@
 *.swp
 doc/html
 /target
+**/*.qmlc
