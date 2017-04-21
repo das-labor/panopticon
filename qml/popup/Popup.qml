@@ -28,7 +28,7 @@ import ".."
 Item {
 	property var component: null
 	property string title: "(unset)"
-	property var buttons: [{"title":"Ok","enabled":true}]
+	property var buttons: [{"title":"Ok", "enabled":true}]
 
 	signal done(int ret)
 
@@ -127,7 +127,7 @@ Item {
 					enabled: root.buttons[index].enabled
 					menu: {
 							if(root.buttons[index].confirm !== undefined) {
-								confirmMenu.createObject(parent,{});
+								confirmMenu.createObject(parent, {});
 							} else {
 								null
 							}

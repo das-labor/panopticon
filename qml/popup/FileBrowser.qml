@@ -47,13 +47,13 @@ Popup {
 
 	buttons: {
 		if (browser.mode == "READ") {
-			return [{"title":"Open","enabled":browser.valid},{"title":"Cancel","enabled":"true"}]
+			return [{"title":"Open", "enabled":browser.valid}, {"title":"Cancel", "enabled":"true"}]
 		} else {
 			return [{
 				"title":"Save",
 				"enabled":browser.valid,
 				"confirm":(willOverwrite !== "" && browser.valid ? "Yes, overwrite " + willOverwrite : undefined)
-			},{
+			}, {
 				"title":"Cancel",
 				"enabled":"true"
 			}]
@@ -68,7 +68,7 @@ Popup {
 
 			function chdir(_p) {
 				var p = _p.toString();
-				var path = (p.substr(0,7) == "file://" ? p.substr(7) : p);
+				var path = (p.substr(0, 7) == "file://" ? p.substr(7) : p);
 				var _res = Panopticon.readDirectory(path);
 
 				folder.clear();
@@ -76,7 +76,7 @@ Popup {
 				var res = JSON.parse(_res);
 
 				if(res.status == "ok") {
-					res.payload.listing.sort(function(a,b) {
+					res.payload.listing.sort(function(a, b) {
 						if(a.is_folder == b.is_folder) {
 							return a.name.localeCompare(b.name);
 						} else {
@@ -85,7 +85,7 @@ Popup {
 					});
 
 					for(var i = 0; i < res.payload.listing.length; i++) {
-						if(res.payload.listing[i].name.substr(0,1) != ".") {
+						if(res.payload.listing[i].name.substr(0, 1) != ".") {
 							folder.append(res.payload.listing[i]);
 						}
 					}

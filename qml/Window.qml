@@ -1,6 +1,6 @@
 /*
  * Panopticon - A libre disassembler (https://panopticon.re/)
- * Copyright (C) 2014,2015,2016 Kai Michaelis
+ * Copyright (C) 2014, 2015, 2016 Kai Michaelis
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -68,7 +68,7 @@ Ctrl.ApplicationWindow {
 				break;
 			}
 			case "avr": {
-				var res = JSON.parse(Panopticon.createRawProject(req.path,"atmega88",0,-1))
+				var res = JSON.parse(Panopticon.createRawProject(req.path, "atmega88", 0, -1))
 				if(res.status == "err") {
 					console.exception(res.error);
 				}
@@ -231,7 +231,7 @@ Ctrl.ApplicationWindow {
 
 					onClicked: {
 						var tgt = targetModel.get(targetCombobox.currentIndex).ident;
-						var res = JSON.parse(Panopticon.createRawProject(targetSelect.request.path,tgt,0,-1))
+						var res = JSON.parse(Panopticon.createRawProject(targetSelect.request.path, tgt, 0, -1))
 						if(res.status == "ok") {
 							targetSelect.visible = false;
 						} else {

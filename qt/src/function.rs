@@ -18,8 +18,8 @@
 
 use panopticon;
 use panopticon::{
-    Rvalue,Lvalue,
-    Function,ControlFlowTarget,
+    Rvalue, Lvalue,
+    Function, ControlFlowTarget,
     CallTarget,
     MnemonicFormatToken,
     Error,
@@ -27,13 +27,13 @@ use panopticon::{
     Kset,
 };
 
-use std::hash::{Hash,Hasher};
+use std::hash::{Hash, Hasher};
 use std::collections::hash_map::DefaultHasher;
 use std::thread;
 use std::fs;
 use std::path::{PathBuf};
 use std::iter::FromIterator;
-use std::collections::{HashSet,HashMap};
+use std::collections::{HashSet, HashMap};
 use std::io::{
     SeekFrom,
     Seek,
@@ -56,7 +56,7 @@ use rustc_serialize::{
     Encodable,
     Encoder
 };
-use byteorder::{BigEndian,ReadBytesExt};
+use byteorder::{BigEndian, ReadBytesExt};
 use controller::{
     LAYOUTED_FUNCTION,
     CHANGED_FUNCTION,
@@ -96,7 +96,7 @@ pub fn metainfo(arg: &Variant) -> Variant {
     Variant::String(if let &Variant::String(ref uuid_str) = arg {
         if let Some(tgt_uuid) = Uuid::parse_str(uuid_str).ok() {
             let ret = Controller::read(|proj| {
-                if let Some((vx,prog)) = proj.find_call_target_by_uuid(&tgt_uuid) {
+                if let Some((vx, prog)) = proj.find_call_target_by_uuid(&tgt_uuid) {
                     // collect called functions' UUIDs
                     let calls = prog.call_graph.out_edges(vx).
                         map(|x| prog.call_graph.target(x)).
@@ -106,26 +106,26 @@ pub fn metainfo(arg: &Variant) -> Variant {
 
                     // match function
                     match prog.call_graph.vertex_label(vx) {
-                        Some(&CallTarget::Concrete(Function{ ref uuid, ref name, entry_point: Some(ref ent), cflow_graph: ref cg,..})) =>
+                        Some(&CallTarget::Concrete(Function{ ref uuid, ref name, entry_point: Some(ref ent), cflow_graph: ref cg, ..})) =>
                             // match entry point
                             match cg.vertex_label(*ent) {
                                 Some(&ControlFlowTarget::Resolved(ref bb)) =>
                                     return_json(Ok(Metainfo{ kind: "function", name: Some(name.clone()), uuid: uuid.to_string(), entry_point: Some(bb.area.start), calls: calls })),
-                                Some(&ControlFlowTarget::Unresolved(Rvalue::Constant{ value: c,.. })) =>
+                                Some(&ControlFlowTarget::Unresolved(Rvalue::Constant{ value: c, .. })) =>
                                     return_json(Ok(Metainfo{ kind: "function", name: Some(name.clone()), uuid: uuid.to_string(), entry_point: Some(c), calls: calls })),
                                 Some(&ControlFlowTarget::Unresolved(_)) =>
                                     return_json(Ok(Metainfo{ kind: "function", name: Some(name.clone()), uuid: uuid.to_string(), entry_point: None, calls: calls })),
-                                Some(&ControlFlowTarget::Failed(pos,_)) =>
+                                Some(&ControlFlowTarget::Failed(pos, _)) =>
                                     return_json(Ok(Metainfo{ kind: "function", name: Some(name.clone()), uuid: uuid.to_string(), entry_point: Some(pos), calls: calls })),
                                 None => unreachable!(),
                             },
-                        Some(&CallTarget::Concrete(Function{ ref uuid, ref name, entry_point: None,..})) =>
+                        Some(&CallTarget::Concrete(Function{ ref uuid, ref name, entry_point: None, ..})) =>
                             return_json(Ok(Metainfo{ kind: "function", name: Some(name.clone()), uuid: uuid.to_string(), entry_point: None, calls: calls })),
-                        Some(&CallTarget::Symbolic(ref sym,ref uuid)) =>
+                        Some(&CallTarget::Symbolic(ref sym, ref uuid)) =>
                             return_json(Ok(Metainfo{ kind: "symbol", name: Some(sym.clone()), uuid: uuid.to_string(), entry_point: None, calls: calls })),
-                        Some(&CallTarget::Todo(Rvalue::Constant{ value: a,.. },_,ref uuid)) =>
+                        Some(&CallTarget::Todo(Rvalue::Constant{ value: a, .. }, _, ref uuid)) =>
                             return_json(Ok(Metainfo{ kind: "todo", name: None, uuid: uuid.to_string(), entry_point: Some(a), calls: calls })),
-                        Some(&CallTarget::Todo(_,_,ref uuid)) =>
+                        Some(&CallTarget::Todo(_, _, ref uuid)) =>
                             return_json(Ok(Metainfo{ kind: "todo", name: None, uuid: uuid.to_string(), entry_point: None, calls: calls })),
                         None =>
                             return_json::<()>(Err("Internal error".into())),
@@ -173,9 +173,9 @@ struct ControlFlowGraph {
     entry_point: Option<String>,
     nodes: Vec<String>,
     edges: Vec<CfgEdge>,
-    code: HashMap<String,Vec<CfgMnemonic>>,
-    targets: HashMap<String,String>,
-    errors: HashMap<String,String>,
+    code: HashMap<String, Vec<CfgMnemonic>>,
+    targets: HashMap<String, String>,
+    errors: HashMap<String, String>,
 }
 
 /// JSON-encoded control flow graph of the function w/ UUID `arg`.
@@ -184,7 +184,7 @@ struct ControlFlowGraph {
 /// ```json
 /// {
 ///     "entry_point": <IDENT>,
-///     "nodes": [ <IDENT>,... ],
+///     "nodes": [ <IDENT>, ... ],
 ///     "edges": [
 ///         {"from": <IDENT>, "to": <IDENT>},
 ///         {"from": <IDENT>, "to": <IDENT>},
@@ -196,7 +196,7 @@ struct ControlFlowGraph {
 ///             "reg": "ram",
 ///             "offset": 100,
 ///             "args": ["r1", "r2"],
-///         },{
+///         }, {
 ///             "opcode": "add",
 ///             "reg": "ram",
 ///             "offset": 102,
@@ -219,7 +219,7 @@ pub fn control_flow_graph(arg: &Variant) -> Variant {
     Variant::String(if let &Variant::String(ref uuid_str) = arg {
         if let Some(tgt_uuid) = Uuid::parse_str(uuid_str).ok() {
             let ret = Controller::read(|proj| {
-                if let Some((vx,prog)) = proj.find_call_target_by_uuid(&tgt_uuid) {
+                if let Some((vx, prog)) = proj.find_call_target_by_uuid(&tgt_uuid) {
                     if let Some(&CallTarget::Concrete(ref fun)) = prog.call_graph.vertex_label(vx) {
                         let cfg = &fun.cflow_graph;
 
@@ -266,9 +266,9 @@ pub fn control_flow_graph(arg: &Variant) -> Variant {
                                                             let val = if s < 64 { c % (1u64 << s) } else { c };
                                                             let sign_bit = if s < 64 { 1u64 << (s - 1) } else { 0x8000000000000000 };
                                                             let s = if !has_sign || val & sign_bit == 0 {
-                                                                format!("{:x}",val)
+                                                                format!("{:x}", val)
                                                             } else {
-                                                                format!("{:x}",(val as i64).wrapping_neg())
+                                                                format!("{:x}", (val as i64).wrapping_neg())
                                                             };
                                                             CfgOperand{
                                                                 kind: "constant",
@@ -276,11 +276,11 @@ pub fn control_flow_graph(arg: &Variant) -> Variant {
                                                                 data: s,
                                                             }
                                                         },
-                                                        Some(Rvalue::Variable{ ref name, subscript: Some(ref subscript),.. }) =>
+                                                        Some(Rvalue::Variable{ ref name, subscript: Some(ref subscript), .. }) =>
                                                             CfgOperand{
                                                                 kind: "variable",
                                                                 display: name.to_string(),
-                                                                data: format!("{}_{}",*name,*subscript),
+                                                                data: format!("{}_{}", *name, *subscript),
                                                             },
                                                         _ =>
                                                             CfgOperand{
@@ -289,22 +289,22 @@ pub fn control_flow_graph(arg: &Variant) -> Variant {
                                                                 data: "".to_string(),
                                                             },
                                                     },
-                                                &MnemonicFormatToken::Pointer{ is_code,.. } =>
+                                                &MnemonicFormatToken::Pointer{ is_code, .. } =>
                                                     match ops.pop() {
                                                         Some(Rvalue::Constant{ value: c, size: s }) => {
                                                             let val = if s < 64 { c % (1u64 << s) } else { c };
-                                                            let (display,data) = if is_code {
+                                                            let (display, data) = if is_code {
                                                                 if let Some(vx) = prog.find_function_by_entry(val) {
-                                                                    if let Some(&CallTarget::Concrete(Function{ ref name, ref uuid,.. })) = prog.call_graph.vertex_label(vx) {
-                                                                        (name.clone(),format!("{}",uuid))
+                                                                    if let Some(&CallTarget::Concrete(Function{ ref name, ref uuid, .. })) = prog.call_graph.vertex_label(vx) {
+                                                                        (name.clone(), format!("{}", uuid))
                                                                     } else {
-                                                                        (format!("{}",val),"".to_string())
+                                                                        (format!("{}", val), "".to_string())
                                                                     }
                                                                 } else {
-                                                                    (format!("{}",val),"".to_string())
+                                                                    (format!("{}", val), "".to_string())
                                                                 }
                                                             } else {
-                                                                (format!("{}",val),"".to_string())
+                                                                (format!("{}", val), "".to_string())
                                                             };
 
                                                             CfgOperand{
@@ -313,7 +313,7 @@ pub fn control_flow_graph(arg: &Variant) -> Variant {
                                                                 data: data,
                                                             }
                                                         },
-                                                        Some(Rvalue::Variable{ ref name, subscript: Some(_),.. }) =>
+                                                        Some(Rvalue::Variable{ ref name, subscript: Some(_), .. }) =>
                                                             CfgOperand{
                                                                 kind: "pointer",
                                                                 display: name.to_string(),
@@ -327,7 +327,7 @@ pub fn control_flow_graph(arg: &Variant) -> Variant {
                                                             },
                                                     },
                                             });
-                                            let cmnt = proj.comments.get(&(fun.region.clone(),x.area.start)).unwrap_or(&"".to_string()).clone();
+                                            let cmnt = proj.comments.get(&(fun.region.clone(), x.area.start)).unwrap_or(&"".to_string()).clone();
                                             Some(CfgMnemonic{
                                                 opcode: x.opcode.clone(),
                                                 args: args.collect(),
@@ -337,7 +337,7 @@ pub fn control_flow_graph(arg: &Variant) -> Variant {
                                             })
                                         }
                                     });
-                                    Some((to_ident(lb.unwrap()),mnes.collect()))
+                                    Some((to_ident(lb.unwrap()), mnes.collect()))
                                 },
                                 _ => None,
                             }
@@ -346,15 +346,15 @@ pub fn control_flow_graph(arg: &Variant) -> Variant {
                             let lb = cfg.vertex_label(x);
                             match lb {
                                 Some(&ControlFlowTarget::Unresolved(ref rv)) =>
-                                    Some((to_ident(lb.unwrap()),format!("{}",rv))),
+                                    Some((to_ident(lb.unwrap()), format!("{}", rv))),
                                 _ => None,
                             }
                         });
                         let errors = cfg.vertices().filter_map(|x| {
                             let lb = cfg.vertex_label(x);
                             match lb {
-                                Some(&ControlFlowTarget::Failed(_,ref msg)) =>
-                                    Some((to_ident(lb.unwrap()),format!("{}",msg))),
+                                Some(&ControlFlowTarget::Failed(_, ref msg)) =>
+                                    Some((to_ident(lb.unwrap()), format!("{}", msg))),
                                 _ => None,
                             }
                         });
@@ -367,7 +367,7 @@ pub fn control_flow_graph(arg: &Variant) -> Variant {
                             let from_ident = cfg.vertex_label(from).map(to_ident);
                             let to_ident = cfg.vertex_label(to).map(to_ident);
 
-                            if let (Some(f),Some(t)) = (from_ident,to_ident) {
+                            if let (Some(f), Some(t)) = (from_ident, to_ident) {
                                 Some(CfgEdge{ from: f, to: t })
                             } else {
                                 None
@@ -405,15 +405,15 @@ pub fn approximate(arg: &Variant) -> Variant {
     Variant::String(if let &Variant::String(ref uuid_str) = arg {
         if let Some(tgt_uuid) = Uuid::parse_str(uuid_str).ok() {
             let ret = Controller::read(|proj| {
-                if let Some((vx,prog)) = proj.find_call_target_by_uuid(&tgt_uuid) {
+                if let Some((vx, prog)) = proj.find_call_target_by_uuid(&tgt_uuid) {
                     if let Some(&CallTarget::Concrete(ref fun)) = prog.call_graph.vertex_label(vx) {
-                        return_json(panopticon::approximate::<Kset>(&fun).and_then(|x| Ok(x.iter().filter_map(|(k,v)| {
-                            if let &Lvalue::Variable{ ref name, subscript: Some(ref subscript),.. } = k {
+                        return_json(panopticon::approximate::<Kset>(&fun).and_then(|x| Ok(x.iter().filter_map(|(k, v)| {
+                            if let &Lvalue::Variable{ ref name, subscript: Some(ref subscript), .. } = k {
                                 if let &Kset::Set(ref s) = v {
                                     if s.len() == 1 {
-                                        return Some((format!("{}_{}",*name,*subscript),format!("{}",s[0].0)));
+                                        return Some((format!("{}_{}", *name, *subscript), format!("{}", s[0].0)));
                                     } else if s.len() > 1 {
-                                        return Some((format!("{}_{}",*name,*subscript),format!("{:?}",s.iter().map(|&(a,_)| a).collect::<Vec<_>>())));
+                                        return Some((format!("{}_{}", *name, *subscript), format!("{:?}", s.iter().map(|&(a, _)| a).collect::<Vec<_>>())));
                                     }
                                 }
                             }
@@ -438,14 +438,14 @@ pub fn approximate(arg: &Variant) -> Variant {
     })
 }
 
-#[derive(Clone,RustcEncodable)]
+#[derive(Clone, RustcEncodable)]
 struct DirectoryEntry {
     path: String,
     name: String,
     is_folder: bool,
 }
 
-#[derive(Clone,RustcEncodable)]
+#[derive(Clone, RustcEncodable)]
 struct DirectoryListing {
     current: String,
     parent: String,
@@ -689,7 +689,7 @@ pub fn file_details_of_path(path: PathBuf) -> Result<FileDetails> {
                         Ok(FileDetails{
                             state: state,
                             format: Some(FileFormat::Panop),
-                            info: vec![format!("Version {}",version)],
+                            info: vec![format!("Version {}", version)],
                         })
                     } else {
                         Ok(FileDetails{
@@ -737,37 +737,37 @@ pub fn file_details_of_path(path: PathBuf) -> Result<FileDetails> {
 fn to_ident(t: &ControlFlowTarget) -> String {
     match t {
         &ControlFlowTarget::Resolved(ref bb) =>
-            format!("bb{}",bb.area.start),
+            format!("bb{}", bb.area.start),
         &ControlFlowTarget::Unresolved(ref c) => {
             let ref mut h = DefaultHasher::new();
             c.hash::<DefaultHasher>(h);
-            format!("c{}",h.finish())
+            format!("c{}", h.finish())
         }
-        &ControlFlowTarget::Failed(ref pos,_) =>
-            format!("err{}",pos),
+        &ControlFlowTarget::Failed(ref pos, _) =>
+            format!("err{}", pos),
     }
 }
 
-#[derive(RustcDecodable,Debug)]
+#[derive(RustcDecodable, Debug)]
 struct LayoutInputDimension {
     width: f32,
     height: f32,
 }
 
-#[derive(RustcEncodable,Debug)]
+#[derive(RustcEncodable, Debug)]
 struct LayoutOutputPosition {
     x: f32,
     y: f32,
 }
 
-#[derive(RustcEncodable,Debug)]
+#[derive(RustcEncodable, Debug)]
 struct LayoutOutputEdge {
     segments: Vec<LayoutOutputSegment>,
     head_offset: LayoutOutputPosition,
     tail_offset: LayoutOutputPosition,
 }
 
-#[derive(RustcEncodable,Debug)]
+#[derive(RustcEncodable, Debug)]
 struct LayoutOutputSegment {
     x1: f32,
     y1: f32,
@@ -800,7 +800,7 @@ struct LayoutOutputSegment {
 /// }```
 pub fn layout(arg0: &Variant, arg1: &Variant, arg2: &Variant, arg3: &Variant, arg4: &Variant) -> Variant {
     let dims = if let &Variant::String(ref st) = arg1 {
-        match json::decode::<HashMap<String,LayoutInputDimension>>(st) {
+        match json::decode::<HashMap<String, LayoutInputDimension>>(st) {
             Ok(input) => {
                 input
             },
@@ -838,32 +838,32 @@ pub fn layout(arg0: &Variant, arg1: &Variant, arg2: &Variant, arg3: &Variant, ar
                     let edges = func.cflow_graph.edges().map(|e| {
                         let f = vertices.iter().position(|&x| x == func.cflow_graph.source(e)).unwrap();
                         let t = vertices.iter().position(|&x| x == func.cflow_graph.target(e)).unwrap();
-                        (f,t)
+                        (f, t)
                     }).collect::<Vec<_>>();
-                    let mut dims_transformed = HashMap::<usize,(f32,f32)>::new();
+                    let mut dims_transformed = HashMap::<usize, (f32, f32)>::new();
                     let mut unseen_verts = HashSet::<_>::from_iter(vertices.iter().map(|v|
                         to_ident(func.cflow_graph.vertex_label(*v).unwrap())));
 
-                    for (k,v) in dims.iter() {
+                    for (k, v) in dims.iter() {
                         let _k = vertices.iter().position(|&x| {
                             let a = to_ident(func.cflow_graph.vertex_label(x).unwrap());
                             a == *k
                         }).unwrap();
                         unseen_verts.remove(&to_ident(func.cflow_graph.vertex_label(vertices[_k]).unwrap()));
-                        dims_transformed.insert(_k,(v.width as f32,v.height as f32));
+                        dims_transformed.insert(_k, (v.width as f32, v.height as f32));
                     }
                     let maybe_entry = func.entry_point.map(|k| vertices.iter().position(|&x| x == k).unwrap());
                     let idents = vertices.iter().map(|x| to_ident(func.cflow_graph.vertex_label(*x).unwrap())).collect::<Vec<_>>();
 
-                    Some((maybe_entry,idents,dims_transformed,vertices,edges,unseen_verts))
+                    Some((maybe_entry, idents, dims_transformed, vertices, edges, unseen_verts))
                 } else {
                     None
                 }
             });
 
-            if let Ok(Some((maybe_entry,idents,dims_transformed,vertices,edges,unseen_verts))) = ret {
+            if let Ok(Some((maybe_entry, idents, dims_transformed, vertices, edges, unseen_verts))) = ret {
                 if !unseen_verts.is_empty() {
-                    let e = format!("Missing dimension for {:?}",unseen_verts);
+                    let e = format!("Missing dimension for {:?}", unseen_verts);
                     return Variant::String(return_json::<()>(Err(e.into())));
                 }
 
@@ -877,13 +877,13 @@ pub fn layout(arg0: &Variant, arg1: &Variant, arg2: &Variant, arg3: &Variant, ar
                                            rank_spacing as usize,
                                            port_spacing as usize) {
                         Ok(res) => {
-                            let mut ret_v = HashMap::<String,LayoutOutputPosition>::new();
-                            let mut ret_e = HashMap::<usize,LayoutOutputEdge>::new();
-                            for (k,v) in (res.0).iter() {
-                                ret_v.insert(idents[*k].clone(),LayoutOutputPosition{ x: v.0 as f32, y: v.1 as f32 });
+                            let mut ret_v = HashMap::<String, LayoutOutputPosition>::new();
+                            let mut ret_e = HashMap::<usize, LayoutOutputEdge>::new();
+                            for (k, v) in (res.0).iter() {
+                                ret_v.insert(idents[*k].clone(), LayoutOutputPosition{ x: v.0 as f32, y: v.1 as f32 });
                             }
                             for v in (res.1).iter() {
-                                ret_e.insert(*v.0,LayoutOutputEdge{
+                                ret_e.insert(*v.0, LayoutOutputEdge{
                                     segments: (v.1).0.iter().map(|w| {
                                         LayoutOutputSegment{
                                             x1: w.0 as f32,
@@ -902,11 +902,11 @@ pub fn layout(arg0: &Variant, arg1: &Variant, arg2: &Variant, arg3: &Variant, ar
                                 });
                             }
                             println!("end layout");
-                            Controller::emit(LAYOUTED_FUNCTION,&try!(json::encode(&(ret_v,ret_e))))
+                            Controller::emit(LAYOUTED_FUNCTION, &try!(json::encode(&(ret_v, ret_e))))
                         },
                         // XXX tell the frontend
                         Err(e) => {
-                            println!("layouting thread failed with '{:?}'",e);
+                            println!("layouting thread failed with '{:?}'", e);
                             Err(Error(e.into()))
                         },
                     }
@@ -944,7 +944,7 @@ pub fn comment(arg0: &Variant, arg1: &Variant, arg2: &Variant) -> Variant {
 
     // write comment
     Variant::String(return_json(Controller::modify(|proj| {
-        proj.comments.insert((reg.clone(),offset),cmnt);
+        proj.comments.insert((reg.clone(), offset), cmnt);
     }).and(Controller::read(|proj| {
         for prog in proj.code.iter() {
             for ct in prog.call_graph.vertices() {
@@ -952,7 +952,7 @@ pub fn comment(arg0: &Variant, arg1: &Variant, arg2: &Variant) -> Variant {
                     Some(&CallTarget::Concrete(ref func)) => {
                         if func.region == reg {
                             // XXX: check offset?
-                            try!(Controller::emit(CHANGED_FUNCTION,&func.uuid.to_string()));
+                            try!(Controller::emit(CHANGED_FUNCTION, &func.uuid.to_string()));
                         }
                     },
                     _ => {},
@@ -988,13 +988,13 @@ pub fn rename(arg0: &Variant, arg1: &Variant) -> Variant {
     };
 
     if let Some(Some(uu)) = maybe_uu {
-        Variant::String(return_json(Controller::emit(CHANGED_FUNCTION,&uu.to_string())))
+        Variant::String(return_json(Controller::emit(CHANGED_FUNCTION, &uu.to_string())))
     } else {
         Variant::String(return_json::<()>(Err("No function found for this UUID".into())))
     }
 }
 
-#[derive(RustcEncodable,Debug)]
+#[derive(RustcEncodable, Debug)]
 struct SessionInfo {
     title: String,
     age: String,
@@ -1025,7 +1025,7 @@ pub fn sessions() -> Variant {
                         match ts {
                             Some(ts) => Some(SessionInfo{
                                 title: f.file_name().to_str().unwrap_or("(error)").to_string(),
-                                age: format!("{}",HumanTime::from(ts)),
+                                age: format!("{}", HumanTime::from(ts)),
                                 file: f.file_name().to_str().unwrap_or("(error)").to_string(),
                                 path: f.path().to_str().unwrap_or("(error)").to_string(),
                             }),

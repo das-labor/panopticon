@@ -37,7 +37,7 @@ Item {
 	onSelectionChanged: callgraph.requestPaint()
 
 	Component.onCompleted: {
-		layoutTask.sendMessage({"type":"resize","width":callgraph.width,"height":callgraph.height});
+		layoutTask.sendMessage({"type":"resize", "width":callgraph.width, "height":callgraph.height});
 		timer.running = true;
 
 		Panopticon.finishedFunction.connect(function(uu) {
@@ -50,7 +50,7 @@ Item {
 
 				functionModel.append(obj);
 				functionModel.updateEdges();
-				layoutTask.sendMessage({"type":"add","item":obj});
+				layoutTask.sendMessage({"type":"add", "item":obj});
 				timer.running = true;
 
 
@@ -71,7 +71,7 @@ Item {
 					if(node.uuid == obj.uuid) {
 						obj.calls = JSON.stringify(obj.calls);
 
-						functionModel.set(i,obj);
+						functionModel.set(i, obj);
 						functionModel.updateEdges();
 						callgraph.requestPaint()
 						return;
@@ -100,7 +100,7 @@ Item {
 						var to = functionModel.get(j);
 
 						if(to.uuid == edge) {
-							edges.push({"from":i,"to":j});
+							edges.push({"from":i, "to":j});
 						}
 					}
 				}
@@ -130,16 +130,16 @@ Item {
 				var ctx = callgraph.getContext('2d');
 				var lb_w = ctx.measureText(func.name).width;
 
-				return Qt.rect(func.x - lb_w / 2 - root.nodePadding,func.y - root.labelHeight / 2 - root.nodePadding,
-											 lb_w + root.nodePadding * 2,root.labelHeight + root.nodePadding * 2);
+				return Qt.rect(func.x - lb_w / 2 - root.nodePadding, func.y - root.labelHeight / 2 - root.nodePadding,
+											 lb_w + root.nodePadding * 2, root.labelHeight + root.nodePadding * 2);
 			}
 
 			onHeightChanged: {
-				layoutTask.sendMessage({"type":"resize","width":callgraph.width,"height":callgraph.height});
+				layoutTask.sendMessage({"type":"resize", "width":callgraph.width, "height":callgraph.height});
 			}
 
 			onWidthChanged: {
-				layoutTask.sendMessage({"type":"resize","width":callgraph.width,"height":callgraph.height});
+				layoutTask.sendMessage({"type":"resize", "width":callgraph.width, "height":callgraph.height});
 			}
 
 			onPaint: {
@@ -149,7 +149,7 @@ Item {
 				ctx.font = root.labelHeight + "px monospace";
 
 				// clear background
-				ctx.clearRect(0,0,width,height);
+				ctx.clearRect(0, 0, width, height);
 
 				// edges
 				ctx.beginPath();
@@ -158,8 +158,8 @@ Item {
 					var from = functionModel.get(e.from);
 					var to = functionModel.get(e.to);
 
-					ctx.moveTo(from.x,from.y);
-					ctx.lineTo(to.x,to.y);
+					ctx.moveTo(from.x, from.y);
+					ctx.lineTo(to.x, to.y);
 				}
 				ctx.strokeStyle = root.edgeColor;
 				ctx.lineWidth = root.edgeWidth;
@@ -171,21 +171,21 @@ Item {
 					var bb = nodeBoundingBox(i);
 
 					if(root.selection != func.uuid) {
-						ctx.clearRect(bb.x,bb.y,bb.width,bb.height);
+						ctx.clearRect(bb.x, bb.y, bb.width, bb.height);
 					} else {
 						ctx.fillStyle = nodeColor;
-						ctx.fillRect(bb.x,bb.y,bb.width,bb.height);
+						ctx.fillRect(bb.x, bb.y, bb.width, bb.height);
 					}
 
 					ctx.fillStyle = "black";
-					ctx.fillText(func.name,func.x,func.y);
+					ctx.fillText(func.name, func.x, func.y);
 				}
 			}
 
 			MouseArea {
 				anchors.fill: parent
 
-				function nodeAt(x,y) {
+				function nodeAt(x, y) {
 					for(var i = 0; i < functionModel.count; ++i) {
 						var func = functionModel.get(i);
 						var bb = callgraph.nodeBoundingBox(i);
@@ -200,7 +200,7 @@ Item {
 				}
 
 				onClicked: {
-					var i = nodeAt(mouse.x,mouse.y);
+					var i = nodeAt(mouse.x, mouse.y);
 
 					if(i > -1) {
 						var func = functionModel.get(i);
@@ -211,7 +211,7 @@ Item {
 				}
 
 				onDoubleClicked: {
-					var i = nodeAt(mouse.x,mouse.y);
+					var i = nodeAt(mouse.x, mouse.y);
 
 					if(i > -1) {
 						var func = functionModel.get(i);
@@ -232,8 +232,8 @@ Item {
 					var node = functionModel.get(i);
 
 					if(messageObject.nodes[node.uuid] !== undefined) {
-						functionModel.setProperty(i,"x",messageObject.nodes[node.uuid].x);
-						functionModel.setProperty(i,"y",messageObject.nodes[node.uuid].y);
+						functionModel.setProperty(i, "x", messageObject.nodes[node.uuid].x);
+						functionModel.setProperty(i, "y", messageObject.nodes[node.uuid].y);
 					}
 				}
 			}

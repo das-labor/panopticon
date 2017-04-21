@@ -39,9 +39,9 @@ use goblin;
 
 /// Panopticon error type
 #[derive(Debug)]
-pub struct Error(pub Cow<'static,str>);
+pub struct Error(pub Cow<'static, str>);
 /// Panopticon result type
-pub type Result<T> = result::Result<T,Error>;
+pub type Result<T> = result::Result<T, Error>;
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -70,8 +70,8 @@ impl From<&'static str> for Error {
     }
 }
 
-impl From<Cow<'static,str>> for Error {
-    fn from(s: Cow<'static,str>) -> Error {
+impl From<Cow<'static, str>> for Error {
+    fn from(s: Cow<'static, str>) -> Error {
         Error(s)
     }
 }
@@ -84,24 +84,24 @@ impl<T> From<PoisonError<T>> for Error {
 
 impl From<io::Error> for Error {
     fn from(e: io::Error) -> Error {
-        Error(Cow::Owned(format!("I/O error: {:?}",e)))
+        Error(Cow::Owned(format!("I/O error: {:?}", e)))
     }
 }
 
 impl From<DecoderError> for Error {
     fn from(e: DecoderError) -> Error {
-        Error(Cow::Owned(format!("JSON decoder error: {}",e)))
+        Error(Cow::Owned(format!("JSON decoder error: {}", e)))
     }
 }
 
 impl From<EncoderError> for Error {
     fn from(e: EncoderError) -> Error {
-        Error(Cow::Owned(format!("JSON encoder error: {}",e)))
+        Error(Cow::Owned(format!("JSON encoder error: {}", e)))
     }
 }
 
 impl From<goblin::error::Error> for Error {
     fn from(e: goblin::error::Error) -> Error {
-        Error(Cow::Owned(format!("Goblin error: {}",e)))
+        Error(Cow::Owned(format!("Goblin error: {}", e)))
     }
 }

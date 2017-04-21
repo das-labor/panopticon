@@ -107,7 +107,7 @@
   function setComparator() {
     // If the first three letters are "asc", sort in ascending order
     // and remove the prefix.
-    if (by.substring(0,3) == 'asc') {
+    if (by.substring(0, 3) == 'asc') {
       var i = by.substring(3);
       comp = function(a, b) { return a[i] - b[i]; };
     } else {
@@ -225,7 +225,7 @@
     }
 
     // Disable the form that is being submitted.
-    form.find('textarea,input').attr('disabled', 'disabled');
+    form.find('textarea, input').attr('disabled', 'disabled');
 
     // Send the comment to the server.
     $.ajax({
@@ -262,7 +262,7 @@
         }
       },
       error: function(request, textStatus, error) {
-        form.find('textarea,input').removeAttr('disabled');
+        form.find('textarea, input').removeAttr('disabled');
         showError('Oops, there was a problem adding the comment.');
       }
     });

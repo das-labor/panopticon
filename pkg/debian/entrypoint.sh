@@ -6,4 +6,4 @@ git checkout $PANOPTICON_BRANCH
 cd pkg/debian
 dpkg-buildpackage
 lintian ../*.deb
-cp ../*.{dsc,deb} /out/
+cp ../*.{dsc, deb} /out/

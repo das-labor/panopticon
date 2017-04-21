@@ -19,7 +19,7 @@
 use panopticon::{
     Project,
     Function,
-    Program,CallTarget,
+    Program, CallTarget,
     ControlFlowTarget,
     Rvalue,
     Result,
@@ -68,19 +68,19 @@ pub fn create_raw_project(_path: &Variant, _tgt: &Variant, _base: &Variant, _ent
             if let &Variant::I64(entry) = _entry {
                 if let Some(nam) = p.file_name().and_then(|x| x.to_str()).or(p.to_str()) {
                     if let Ok(b) = OpaqueLayer::open(p) {
-                        let mut reg = Region::undefined(nam.to_string(),b.iter().len() + base as u64);
+                        let mut reg = Region::undefined(nam.to_string(), b.iter().len() + base as u64);
 
-                        reg.cover(Bound::new(base as u64,base as u64 + b.iter().len()),Layer::Opaque(b));
+                        reg.cover(Bound::new(base as u64, base as u64 + b.iter().len()), Layer::Opaque(b));
 
                         if let &Variant::String(ref tgt_s) = _tgt {
-                            let iv: Result<Vec<(&'static str,u64,&'static str)>> = {
+                            let iv: Result<Vec<(&'static str, u64, &'static str)>> = {
                                 match tgt_s.as_str() {
-                                    "mos6502" => mos::Mos::prepare(&reg,&mos::Variant::mos6502()),
-                                    "atmega103" => avr::Avr::prepare(&reg,&avr::Mcu::atmega103()),
-                                    "atmega8" => avr::Avr::prepare(&reg,&avr::Mcu::atmega8()),
-                                    "atmega88" => avr::Avr::prepare(&reg,&avr::Mcu::atmega88()),
-                                    "atmega16" => avr::Avr::prepare(&reg,&avr::Mcu::atmega16()),
-                                    _ => Err(format!("No such target '{}'",tgt_s).into()),
+                                    "mos6502" => mos::Mos::prepare(&reg, &mos::Variant::mos6502()),
+                                    "atmega103" => avr::Avr::prepare(&reg, &avr::Mcu::atmega103()),
+                                    "atmega8" => avr::Avr::prepare(&reg, &avr::Mcu::atmega8()),
+                                    "atmega88" => avr::Avr::prepare(&reg, &avr::Mcu::atmega88()),
+                                    "atmega16" => avr::Avr::prepare(&reg, &avr::Mcu::atmega16()),
+                                    _ => Err(format!("No such target '{}'", tgt_s).into()),
                                 }
                             };
 
@@ -90,19 +90,19 @@ pub fn create_raw_project(_path: &Variant, _tgt: &Variant, _base: &Variant, _ent
 
                                 if entry >= 0 {
                                     let uu =  Uuid::new_v4();
-                                    prog.call_graph.add_vertex(CallTarget::Todo(Rvalue::new_u64(entry as u64),Some("Entry point".to_string()),uu));
-                                    proj.comments.insert((nam.to_string(),entry as u64),"User supplied entry point".to_string());
+                                    prog.call_graph.add_vertex(CallTarget::Todo(Rvalue::new_u64(entry as u64), Some("Entry point".to_string()), uu));
+                                    proj.comments.insert((nam.to_string(), entry as u64), "User supplied entry point".to_string());
                                 } else {
-                                    for &(name,off,cmnt) in iv.iter() {
+                                    for &(name, off, cmnt) in iv.iter() {
                                         let uu =  Uuid::new_v4();
-                                        prog.call_graph.add_vertex(CallTarget::Todo(Rvalue::new_u64(off),Some(name.to_string()),uu));
-                                        proj.comments.insert((nam.to_string(),off),cmnt.to_string());
+                                        prog.call_graph.add_vertex(CallTarget::Todo(Rvalue::new_u64(off), Some(name.to_string()), uu));
+                                        proj.comments.insert((nam.to_string(), off), cmnt.to_string());
                                     }
                                 }
 
                                 proj.code.push(prog);
 
-                                let ret = return_json(Controller::replace(proj,None));
+                                let ret = return_json(Controller::replace(proj, None));
                                 match tgt_s.as_str() {
                                     "mos6502" => spawn_disassembler::<mos::Mos>(mos::Variant::mos6502()),
                                     "atmega103" => spawn_disassembler::<avr::Avr>(avr::Mcu::atmega103()),
@@ -140,14 +140,14 @@ pub fn create_raw_project(_path: &Variant, _tgt: &Variant, _base: &Variant, _ent
 pub fn create_project(_path: &Variant) -> Variant {
     Variant::String(if let &Variant::String(ref s) = _path {
         match loader::load(Path::new(s)) {
-            Ok((proj,machine)) => {
+            Ok((proj, machine)) => {
                 match machine {
                     loader::Machine::Ia32 => spawn_disassembler::<amd64::Amd64>(amd64::Mode::Protected),
                     loader::Machine::Amd64 => spawn_disassembler::<amd64::Amd64>(amd64::Mode::Long),
                     loader::Machine::Avr => spawn_disassembler::<avr::Avr>(avr::Mcu::atmega88()),
                 }
 
-                return_json(Controller::replace(proj,None))
+                return_json(Controller::replace(proj, None))
             },
             Err(err) => return_json::<()>(Err(format!("Failed to read file: {:?}", err).into())),
         }
@@ -161,7 +161,7 @@ pub fn open_project(_path: &Variant) -> Variant {
     Variant::String(if let &Variant::String(ref s) = _path {
         match Project::open(&Path::new(s)) {
             Ok(proj) => {
-                let ret = return_json(Controller::replace(proj,Some(&Path::new(s))));
+                let ret = return_json(Controller::replace(proj, Some(&Path::new(s))));
                 spawn_discoverer();
                 ret
             },
@@ -206,7 +206,7 @@ pub fn spawn_disassembler<A: 'static + Architecture + Debug>(_cfg: A::Configurat
                 let prog: &Program = proj.find_program_by_uuid(&prog_uuid).unwrap();
 
                 prog.call_graph.vertices().filter_map(|x| {
-                    if let Some(&CallTarget::Todo(_,_,uuid)) = prog.call_graph.vertex_label(x) {
+                    if let Some(&CallTarget::Todo(_, _, uuid)) = prog.call_graph.vertex_label(x) {
                         Some(uuid)
                     } else {
                         None
@@ -215,7 +215,7 @@ pub fn spawn_disassembler<A: 'static + Architecture + Debug>(_cfg: A::Configurat
             }));
 
             for uu in todo_funcs {
-                try!(Controller::emit(DISCOVERED_FUNCTION,&uu.to_string()));
+                try!(Controller::emit(DISCOVERED_FUNCTION, &uu.to_string()));
             }
 
             loop {
@@ -223,8 +223,8 @@ pub fn spawn_disassembler<A: 'static + Architecture + Debug>(_cfg: A::Configurat
                     let prog: &Program = proj.find_program_by_uuid(&prog_uuid).unwrap();
 
                     prog.call_graph.vertices().filter_map(|x| {
-                        if let Some(&CallTarget::Todo(ref tgt@Rvalue::Constant{ .. },ref name,uuid)) = prog.call_graph.vertex_label(x) {
-                            Some((tgt.clone(),name.clone(),uuid))
+                        if let Some(&CallTarget::Todo(ref tgt@Rvalue::Constant{ .. }, ref name, uuid)) = prog.call_graph.vertex_label(x) {
+                            Some((tgt.clone(), name.clone(), uuid))
                         } else {
                             None
                         }
@@ -232,24 +232,24 @@ pub fn spawn_disassembler<A: 'static + Architecture + Debug>(_cfg: A::Configurat
                 }));
 
                 match maybe_tgt {
-                    Some((Rvalue::Constant{ value: tgt,.. },maybe_name,uuid)) => {
-                        try!(Controller::emit(STARTED_FUNCTION,&uuid.to_string()));
+                    Some((Rvalue::Constant{ value: tgt, .. }, maybe_name, uuid)) => {
+                        try!(Controller::emit(STARTED_FUNCTION, &uuid.to_string()));
 
                         let cfg = _cfg.clone();
                         let th = thread::spawn(move || -> Result<Vec<Uuid>> {
                             let entry = tgt;
                             let mut func = try!(Controller::read(|proj| {
-                                let name = maybe_name.unwrap_or(format!("func_{:x}",tgt));
+                                let name = maybe_name.unwrap_or(format!("func_{:x}", tgt));
                                 let root = proj.data.dependencies.vertex_label(proj.data.root).unwrap();
-                                Function::with_uuid(name,uuid,root.name().clone())
+                                Function::with_uuid(name, uuid, root.name().clone())
                             }));
 
-                            debug!("start new function {:?} at {:?}",uuid,entry);
+                            debug!("start new function {:?} at {:?}", uuid, entry);
 
                             func = try!(Controller::read(|proj| {
                                 let root = proj.data.dependencies.vertex_label(proj.data.root).unwrap();
                                 let mut func = {
-                                    Function::disassemble::<A>(Some(func),cfg.clone(),&root,entry)
+                                    Function::disassemble::<A>(Some(func), cfg.clone(), &root, entry)
                                 };
 
                                 func.entry_point = func.find_basic_block_by_start(entry);
@@ -258,7 +258,7 @@ pub fn spawn_disassembler<A: 'static + Architecture + Debug>(_cfg: A::Configurat
                             }));
 
                             if func.cflow_graph.num_vertices() == 0 || func.entry_point.is_none() {
-                                debug!("failed to disassemble for {}",func.name);
+                                debug!("failed to disassemble for {}", func.name);
 
                                 let uu = func.uuid.clone();
                                 try!(Controller::modify(|proj| {
@@ -266,7 +266,7 @@ pub fn spawn_disassembler<A: 'static + Architecture + Debug>(_cfg: A::Configurat
                                     prog.insert(CallTarget::Concrete(func));
                                 }));
 
-                                try!(Controller::emit(FINISHED_FUNCTION,&uu.to_string()));
+                                try!(Controller::emit(FINISHED_FUNCTION, &uu.to_string()));
                                 return Ok(vec![]);
                             }
 
@@ -285,10 +285,10 @@ pub fn spawn_disassembler<A: 'static + Architecture + Debug>(_cfg: A::Configurat
                                 for &vx in vxs.iter() {
                                     if let Some(&mut ControlFlowTarget::Unresolved(ref mut var@Rvalue::Variable{..})) = func.cflow_graph.vertex_label_mut(vx) {
                                         if let Some(&Kset::Set(ref v)) = vals.get(&Lvalue::from_rvalue(var.clone()).unwrap()) {
-                                            if let Some(&(val,sz)) = v.first() {
+                                            if let Some(&(val, sz)) = v.first() {
                                                 *var = Rvalue::Constant{ value: val, size: sz };
                                                 fixpoint = true;
-                                                debug!("resolved {:?} to {:?}",var,val);
+                                                debug!("resolved {:?} to {:?}", var, val);
                                                 resolved_jumps.insert(val);
                                             }
                                         }
@@ -296,11 +296,11 @@ pub fn spawn_disassembler<A: 'static + Architecture + Debug>(_cfg: A::Configurat
                                 }
 
                                 for addr in resolved_jumps {
-                                    debug!("continue at {:?}",addr);
+                                    debug!("continue at {:?}", addr);
                                     func = try!(Controller::read(|proj| {
                                         let root = proj.data.dependencies.vertex_label(proj.data.root).unwrap();
                                         let mut func = {
-                                            Function::disassemble::<A>(Some(func),cfg.clone(),&root,addr)
+                                            Function::disassemble::<A>(Some(func), cfg.clone(), &root, addr)
                                         };
 
                                         func.entry_point = func.find_basic_block_by_start(entry);
@@ -325,24 +325,24 @@ pub fn spawn_disassembler<A: 'static + Architecture + Debug>(_cfg: A::Configurat
 
                         match th.join() {
                             Ok(Ok(ref new_functions)) => {
-                                try!(Controller::emit(FINISHED_FUNCTION,&uuid.to_string()));
+                                try!(Controller::emit(FINISHED_FUNCTION, &uuid.to_string()));
                                 for a in new_functions {
-                                    debug!("found new func at {:?}",a);
-                                    try!(Controller::emit(DISCOVERED_FUNCTION,&a.to_string()));
+                                    debug!("found new func at {:?}", a);
+                                    try!(Controller::emit(DISCOVERED_FUNCTION, &a.to_string()));
                                 }
                             },
                             Err(e) => {
-                                error!("error while disassembling {:?}: {:?}",uuid,e);
-                                try!(Controller::emit(FINISHED_FUNCTION,&uuid.to_string()))
+                                error!("error while disassembling {:?}: {:?}", uuid, e);
+                                try!(Controller::emit(FINISHED_FUNCTION, &uuid.to_string()))
                             },
                             Ok(Err(e)) => {
-                                error!("error while disassembling {:?}: {:?}",uuid,e);
-                                try!(Controller::emit(FINISHED_FUNCTION,&uuid.to_string()))
+                                error!("error while disassembling {:?}: {:?}", uuid, e);
+                                try!(Controller::emit(FINISHED_FUNCTION, &uuid.to_string()))
                             },
                         }
                     }
-                    Some((rv,maybe_name,uuid)) => {
-                        debug!("skip call to {:?} ({:?},{:?})",rv,maybe_name,uuid);
+                    Some((rv, maybe_name, uuid)) => {
+                        debug!("skip call to {:?} ({:?}, {:?})", rv, maybe_name, uuid);
                     }
                     None => {
                         break;
@@ -365,7 +365,7 @@ pub fn spawn_discoverer() {
         }));
 
         for uu in uuids {
-            try!(Controller::emit(FINISHED_FUNCTION,&uu.to_string()));
+            try!(Controller::emit(FINISHED_FUNCTION, &uu.to_string()));
         }
 
         Ok(())

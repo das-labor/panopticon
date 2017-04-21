@@ -38,24 +38,24 @@ const KSET_MAXIMAL_CARDINALITY: usize = 10;
 /// Kindler et.al style Kset domain. Domain elements are sets of concrete values. Sets have a
 /// maximum cardinality. Every set larger than that is equal the lattice join. The partial order is
 /// set inclusion.
-#[derive(Debug,Eq,Clone,Hash,RustcDecodable,RustcEncodable)]
+#[derive(Debug, Eq, Clone, Hash, RustcDecodable, RustcEncodable)]
 pub enum Kset {
     /// Lattice join. Sets larger than `KSET_MAXIMAL_CARDINALITY`.
     Join,
     /// Set of concrete values and their size in bits. The set is never empty and never larger than
     /// `KSET_MAXIMAL_CARDINALITY`.
-    Set(Vec<(u64,usize)>),
+    Set(Vec<(u64, usize)>),
     /// Lattice meet, equal to the empty set.
     Meet,
 }
 
 impl PartialEq for Kset {
-    fn eq(&self,other: &Kset) -> bool {
-        match (self,other) {
-            (&Kset::Meet,&Kset::Meet) => true,
-            (&Kset::Set(ref a),&Kset::Set(ref b)) =>
-                a.len() == b.len() && a.iter().zip(b.iter()).all(|(a,b)| a == b),
-                (&Kset::Join,&Kset::Join) => true,
+    fn eq(&self, other: &Kset) -> bool {
+        match (self, other) {
+            (&Kset::Meet, &Kset::Meet) => true,
+            (&Kset::Set(ref a), &Kset::Set(ref b)) =>
+                a.len() == b.len() && a.iter().zip(b.iter()).all(|(a, b)| a == b),
+                (&Kset::Join, &Kset::Join) => true,
                 _ => false
         }
     }
@@ -64,7 +64,7 @@ impl PartialEq for Kset {
 impl Avalue for Kset {
     fn abstract_value(v: &Rvalue) -> Self {
         if let &Rvalue::Constant{ ref value, ref size } = v {
-            Kset::Set(vec![(if *size < 64 { *value % (1u64 << *size) } else { *value },*size)])
+            Kset::Set(vec![(if *size < 64 { *value % (1u64 << *size) } else { *value }, *size)])
         } else {
             Kset::Join
         }
@@ -72,25 +72,25 @@ impl Avalue for Kset {
 
     fn abstract_constraint(constr: &Constraint) -> Self {
         if let &Constraint::Equal(Rvalue::Constant{ ref value, ref size }) = constr {
-            Kset::Set(vec![(if *size < 64 { *value % (1u64 << *size) } else { *value },*size)])
+            Kset::Set(vec![(if *size < 64 { *value % (1u64 << *size) } else { *value }, *size)])
         } else {
             Kset::Join
         }
     }
 
     fn execute(_: &ProgramPoint, op: &Operation<Self>) -> Self {
-        fn permute(_a: &Kset, _b: &Kset, f: &Fn(Rvalue,Rvalue) -> Rvalue) -> Kset {
-            match (_a,_b) {
-                (&Kset::Join,_) => Kset::Join,
-                (_,&Kset::Join) => Kset::Join,
-                (&Kset::Set(ref a),&Kset::Set(ref b)) => {
-                    let mut ret = HashSet::<(u64,usize)>::new();
-                    for &(_x,_xs) in a.iter() {
+        fn permute(_a: &Kset, _b: &Kset, f: &Fn(Rvalue, Rvalue) -> Rvalue) -> Kset {
+            match (_a, _b) {
+                (&Kset::Join, _) => Kset::Join,
+                (_, &Kset::Join) => Kset::Join,
+                (&Kset::Set(ref a), &Kset::Set(ref b)) => {
+                    let mut ret = HashSet::<(u64, usize)>::new();
+                    for &(_x, _xs) in a.iter() {
                         let x = Rvalue::Constant{ value: _x, size: _xs };
-                        for &(_y,_ys) in b.iter() {
+                        for &(_y, _ys) in b.iter() {
                             let y = Rvalue::Constant{ value: _y, size: _ys };
-                            if let Rvalue::Constant{ value, size } = f(x.clone(),y) {
-                                ret.insert((value,size));
+                            if let Rvalue::Constant{ value, size } = f(x.clone(), y) {
+                                ret.insert((value, size));
                                 if ret.len() > KSET_MAXIMAL_CARDINALITY {
                                     return Kset::Join;
                                 }
@@ -101,7 +101,7 @@ impl Avalue for Kset {
                     if ret.is_empty() {
                         Kset::Meet
                     } else {
-                        let mut v = ret.drain().collect::<Vec<(u64,usize)>>();
+                        let mut v = ret.drain().collect::<Vec<(u64, usize)>>();
                         v.sort();
                         Kset::Set(v)
                     }
@@ -111,10 +111,10 @@ impl Avalue for Kset {
         };
         fn map(_a: &Kset, f: &Fn(Rvalue) -> Rvalue) -> Kset {
             if let &Kset::Set(ref a) = _a {
-                let mut s = HashSet::<(u64,usize)>::from_iter(
-                    a.iter().filter_map(|&(a,_as)| {
+                let mut s = HashSet::<(u64, usize)>::from_iter(
+                    a.iter().filter_map(|&(a, _as)| {
                         if let Rvalue::Constant{ value, size } = f(Rvalue::Constant{ value: a, size: _as }) {
-                            Some((value,size))
+                            Some((value, size))
                         } else {
                             None
                         }
@@ -125,7 +125,7 @@ impl Avalue for Kset {
                 } else if s.is_empty() {
                     Kset::Meet
                 } else {
-                    let mut v = s.drain().collect::<Vec<(_,_)>>();
+                    let mut v = s.drain().collect::<Vec<(_, _)>>();
                     v.sort();
                     Kset::Set(v)
                 }
@@ -135,63 +135,63 @@ impl Avalue for Kset {
         };
 
         match *op {
-            Operation::And(ref a,ref b) =>
-                permute(a,b,&|a,b| execute(Operation::And(a,b))),
-            Operation::InclusiveOr(ref a,ref b) =>
-                permute(a,b,&|a,b| execute(Operation::InclusiveOr(a,b))),
-            Operation::ExclusiveOr(ref a,ref b) =>
-                permute(a,b,&|a,b| execute(Operation::ExclusiveOr(a,b))),
-            Operation::Add(ref a,ref b) =>
-                permute(a,b,&|a,b| execute(Operation::Add(a,b))),
-            Operation::Subtract(ref a,ref b) =>
-                permute(a,b,&|a,b| execute(Operation::Subtract(a,b))),
-            Operation::Multiply(ref a,ref b) =>
-                permute(a,b,&|a,b| execute(Operation::Multiply(a,b))),
-            Operation::DivideSigned(ref a,ref b) =>
-                permute(a,b,&|a,b| execute(Operation::DivideSigned(a,b))),
-            Operation::DivideUnsigned(ref a,ref b) =>
-                permute(a,b,&|a,b| execute(Operation::DivideUnsigned(a,b))),
-            Operation::Modulo(ref a,ref b) =>
-                permute(a,b,&|a,b| execute(Operation::Modulo(a,b))),
-            Operation::ShiftRightSigned(ref a,ref b) =>
-                permute(a,b,&|a,b| execute(Operation::ShiftRightSigned(a,b))),
-            Operation::ShiftRightUnsigned(ref a,ref b) =>
-                permute(a,b,&|a,b| execute(Operation::ShiftRightUnsigned(a,b))),
-            Operation::ShiftLeft(ref a,ref b) =>
-                permute(a,b,&|a,b| execute(Operation::ShiftLeft(a,b))),
+            Operation::And(ref a, ref b) =>
+                permute(a, b, &|a, b| execute(Operation::And(a, b))),
+            Operation::InclusiveOr(ref a, ref b) =>
+                permute(a, b, &|a, b| execute(Operation::InclusiveOr(a, b))),
+            Operation::ExclusiveOr(ref a, ref b) =>
+                permute(a, b, &|a, b| execute(Operation::ExclusiveOr(a, b))),
+            Operation::Add(ref a, ref b) =>
+                permute(a, b, &|a, b| execute(Operation::Add(a, b))),
+            Operation::Subtract(ref a, ref b) =>
+                permute(a, b, &|a, b| execute(Operation::Subtract(a, b))),
+            Operation::Multiply(ref a, ref b) =>
+                permute(a, b, &|a, b| execute(Operation::Multiply(a, b))),
+            Operation::DivideSigned(ref a, ref b) =>
+                permute(a, b, &|a, b| execute(Operation::DivideSigned(a, b))),
+            Operation::DivideUnsigned(ref a, ref b) =>
+                permute(a, b, &|a, b| execute(Operation::DivideUnsigned(a, b))),
+            Operation::Modulo(ref a, ref b) =>
+                permute(a, b, &|a, b| execute(Operation::Modulo(a, b))),
+            Operation::ShiftRightSigned(ref a, ref b) =>
+                permute(a, b, &|a, b| execute(Operation::ShiftRightSigned(a, b))),
+            Operation::ShiftRightUnsigned(ref a, ref b) =>
+                permute(a, b, &|a, b| execute(Operation::ShiftRightUnsigned(a, b))),
+            Operation::ShiftLeft(ref a, ref b) =>
+                permute(a, b, &|a, b| execute(Operation::ShiftLeft(a, b))),
 
-            Operation::LessOrEqualSigned(ref a,ref b) =>
-                permute(a,b,&|a,b| execute(Operation::LessOrEqualSigned(a,b))),
-            Operation::LessOrEqualUnsigned(ref a,ref b) =>
-                permute(a,b,&|a,b| execute(Operation::LessOrEqualUnsigned(a,b))),
-            Operation::LessSigned(ref a,ref b) =>
-                permute(a,b,&|a,b| execute(Operation::LessSigned(a,b))),
-            Operation::LessUnsigned(ref a,ref b) =>
-                permute(a,b,&|a,b| execute(Operation::LessUnsigned(a,b))),
-            Operation::Equal(ref a,ref b) =>
-                permute(a,b,&|a,b| execute(Operation::Equal(a,b))),
+            Operation::LessOrEqualSigned(ref a, ref b) =>
+                permute(a, b, &|a, b| execute(Operation::LessOrEqualSigned(a, b))),
+            Operation::LessOrEqualUnsigned(ref a, ref b) =>
+                permute(a, b, &|a, b| execute(Operation::LessOrEqualUnsigned(a, b))),
+            Operation::LessSigned(ref a, ref b) =>
+                permute(a, b, &|a, b| execute(Operation::LessSigned(a, b))),
+            Operation::LessUnsigned(ref a, ref b) =>
+                permute(a, b, &|a, b| execute(Operation::LessUnsigned(a, b))),
+            Operation::Equal(ref a, ref b) =>
+                permute(a, b, &|a, b| execute(Operation::Equal(a, b))),
 
             Operation::Move(ref a) =>
-                map(a,&|a| execute(Operation::Move(a))),
+                map(a, &|a| execute(Operation::Move(a))),
             Operation::Call(ref a) =>
-                map(a,&|a| execute(Operation::Call(a))),
-            Operation::ZeroExtend(ref sz,ref a) =>
-                map(a,&|a| execute(Operation::ZeroExtend(*sz,a))),
-            Operation::SignExtend(ref sz,ref a) =>
-                map(a,&|a| execute(Operation::SignExtend(*sz,a))),
-            Operation::Select(ref off,ref a,ref b) =>
-                permute(a,b,&|a,b| execute(Operation::Select(*off,a,b))),
+                map(a, &|a| execute(Operation::Call(a))),
+            Operation::ZeroExtend(ref sz, ref a) =>
+                map(a, &|a| execute(Operation::ZeroExtend(*sz, a))),
+            Operation::SignExtend(ref sz, ref a) =>
+                map(a, &|a| execute(Operation::SignExtend(*sz, a))),
+            Operation::Select(ref off, ref a, ref b) =>
+                permute(a, b, &|a, b| execute(Operation::Select(*off, a, b))),
 
-            Operation::Load(ref r,ref a) =>
-                map(a,&|a| execute(Operation::Load(r.clone(),a))),
-            Operation::Store(ref r,ref a) =>
-                map(a,&|a| execute(Operation::Store(r.clone(),a))),
+            Operation::Load(ref r, ref a) =>
+                map(a, &|a| execute(Operation::Load(r.clone(), a))),
+            Operation::Store(ref r, ref a) =>
+                map(a, &|a| execute(Operation::Store(r.clone(), a))),
 
             Operation::Phi(ref ops) => {
                 match ops.len() {
                     0 => unreachable!("Phi function w/o arguments"),
                     1 => ops[0].clone(),
-                    _ => ops.iter().fold(Kset::Meet,|acc,x| acc.combine(&x))
+                    _ => ops.iter().fold(Kset::Meet, |acc, x| acc.combine(&x))
                 }
             }
         }
@@ -206,7 +206,7 @@ impl Avalue for Kset {
                     &Kset::Meet => Kset::Meet,
                     &Kset::Join => Kset::Set(v.clone()),
                     &Kset::Set(ref w) => {
-                        let set = HashSet::<&(u64,usize)>::from_iter(v.iter());
+                        let set = HashSet::<&(u64, usize)>::from_iter(v.iter());
                         Kset::Set(w.iter().filter(|x| set.contains(x)).cloned().collect::<Vec<_>>())
                     },
                 }
@@ -214,15 +214,15 @@ impl Avalue for Kset {
         }
     }
 
-    fn combine(&self,a: &Self) -> Self {
-        match (self,a) {
-            (&Kset::Join,_) => Kset::Join,
-            (_,&Kset::Join) => Kset::Join,
-            (a,&Kset::Meet) => a.clone(),
-            (&Kset::Meet,b) => b.clone(),
-            (&Kset::Set(ref a),&Kset::Set(ref b)) => {
-                let mut ret = HashSet::<&(u64,usize)>::from_iter(a.iter().chain(b.iter()))
-                    .iter().cloned().cloned().collect::<Vec<(u64,usize)>>();
+    fn combine(&self, a: &Self) -> Self {
+        match (self, a) {
+            (&Kset::Join, _) => Kset::Join,
+            (_, &Kset::Join) => Kset::Join,
+            (a, &Kset::Meet) => a.clone(),
+            (&Kset::Meet, b) => b.clone(),
+            (&Kset::Set(ref a), &Kset::Set(ref b)) => {
+                let mut ret = HashSet::<&(u64, usize)>::from_iter(a.iter().chain(b.iter()))
+                    .iter().cloned().cloned().collect::<Vec<(u64, usize)>>();
                 ret.sort();
                 if ret.is_empty() {
                     Kset::Meet
@@ -235,7 +235,7 @@ impl Avalue for Kset {
         }
     }
 
-    fn widen(&self,s: &Self) -> Self {
+    fn widen(&self, s: &Self) -> Self {
         s.clone()
     }
 
@@ -247,24 +247,24 @@ impl Avalue for Kset {
         if self == a {
             false
         } else {
-            match (self,a) {
-                (&Kset::Join,_) => true,
-                (_,&Kset::Meet) => true,
-                (&Kset::Set(ref a),&Kset::Set(ref b)) =>
-                    HashSet::<&(u64,usize)>::from_iter(a.iter())
+            match (self, a) {
+                (&Kset::Join, _) => true,
+                (_, &Kset::Meet) => true,
+                (&Kset::Set(ref a), &Kset::Set(ref b)) =>
+                    HashSet::<&(u64, usize)>::from_iter(a.iter())
                     .is_superset(&HashSet::from_iter(b.iter())),
                     _ => false,
             }
         }
     }
 
-    fn extract(&self,size: usize,offset: usize) -> Self {
+    fn extract(&self, size: usize, offset: usize) -> Self {
         match self {
             &Kset::Join => Kset::Join,
             &Kset::Meet => Kset::Meet,
             &Kset::Set(ref v) =>
-                Kset::Set(v.iter().map(|&(v,_)| {
-                    ((v >> offset) % (1 << (size - 1)),size)
+                Kset::Set(v.iter().map(|&(v, _)| {
+                    ((v >> offset) % (1 << (size - 1)), size)
                 }).collect::<Vec<_>>()),
         }
     }
@@ -274,10 +274,10 @@ impl Avalue for Kset {
 mod tests {
     use super::*;
     use {
-        Statement,Operation,
-        ControlFlowTarget,Function,ControlFlowGraph,
+        Statement, Operation,
+        ControlFlowTarget, Function, ControlFlowGraph,
         Guard,
-        Lvalue,Rvalue,
+        Lvalue, Rvalue,
         Mnemonic,
         ssa_convertion,
         BasicBlock,
@@ -315,35 +315,35 @@ mod tests {
         let x_var = Lvalue::Variable{ name: Cow::Borrowed("x"), size: 32, subscript: None };
         let flag = Lvalue::Variable{ name: Cow::Borrowed("flag"), size: 1, subscript: None };
         let bb0 = BasicBlock::from_vec(vec![
-                                       Mnemonic::new(0..1,"assign a".to_string(),"".to_string(),vec![].iter(),vec![
+                                       Mnemonic::new(0..1, "assign a".to_string(), "".to_string(), vec![].iter(), vec![
                                                      Statement{ op: Operation::Move(Rvalue::new_u32(10)), assignee: a_var.clone()}].iter()).ok().unwrap(),
-                                       Mnemonic::new(1..2,"assign b".to_string(),"".to_string(),vec![].iter(),vec![
+                                       Mnemonic::new(1..2, "assign b".to_string(), "".to_string(), vec![].iter(), vec![
                                                      Statement{ op: Operation::Move(Rvalue::new_u32(0)), assignee: b_var.clone()}].iter()).ok().unwrap(),
-                                       Mnemonic::new(2..3,"assign c".to_string(),"".to_string(),vec![].iter(),vec![
+                                       Mnemonic::new(2..3, "assign c".to_string(), "".to_string(), vec![].iter(), vec![
                                                      Statement{ op: Operation::Move(Rvalue::new_u32(4)), assignee: c_var.clone()}].iter()).ok().unwrap(),
-                                       Mnemonic::new(3..4,"cmp c".to_string(),"".to_string(),vec![].iter(),vec![
-                                                     Statement{ op: Operation::Equal(c_var.clone().into(),Rvalue::new_u32(1)), assignee: flag.clone()}].iter()).ok().unwrap()]);
+                                       Mnemonic::new(3..4, "cmp c".to_string(), "".to_string(), vec![].iter(), vec![
+                                                     Statement{ op: Operation::Equal(c_var.clone().into(), Rvalue::new_u32(1)), assignee: flag.clone()}].iter()).ok().unwrap()]);
 
         let bb1 = BasicBlock::from_vec(vec![
-                                       Mnemonic::new(4..5,"add a and 5".to_string(),"".to_string(),vec![].iter(),vec![
-                                                     Statement{ op: Operation::Add(a_var.clone().into(),Rvalue::new_u32(5)), assignee: a_var.clone()}].iter()).ok().unwrap(),
-                                       Mnemonic::new(5..6,"mul a and c".to_string(),"".to_string(),vec![].iter(),vec![
-                                                     Statement{ op: Operation::Add(a_var.clone().into(),c_var.clone().into()), assignee: b_var.clone()}].iter()).ok().unwrap(),
-                                       Mnemonic::new(6..7,"assign c".to_string(),"".to_string(),vec![].iter(),vec![
+                                       Mnemonic::new(4..5, "add a and 5".to_string(), "".to_string(), vec![].iter(), vec![
+                                                     Statement{ op: Operation::Add(a_var.clone().into(), Rvalue::new_u32(5)), assignee: a_var.clone()}].iter()).ok().unwrap(),
+                                       Mnemonic::new(5..6, "mul a and c".to_string(), "".to_string(), vec![].iter(), vec![
+                                                     Statement{ op: Operation::Add(a_var.clone().into(), c_var.clone().into()), assignee: b_var.clone()}].iter()).ok().unwrap(),
+                                       Mnemonic::new(6..7, "assign c".to_string(), "".to_string(), vec![].iter(), vec![
                                                      Statement{ op: Operation::Move(Rvalue::new_u32(2)), assignee: c_var.clone()}].iter()).ok().unwrap()]);
         let bb2 = BasicBlock::from_vec(vec![
-                                       Mnemonic::new(7..8,"dec a".to_string(),"".to_string(),vec![].iter(),vec![
-                                                     Statement{ op: Operation::Subtract(a_var.clone().into(),Rvalue::new_u32(1)), assignee: a_var.clone()}].iter()).ok().unwrap(),
-                                       Mnemonic::new(8..9,"add 3 to b".to_string(),"".to_string(),vec![].iter(),vec![
-                                                     Statement{ op: Operation::Add(b_var.clone().into(),Rvalue::new_u32(3)), assignee: b_var.clone()}].iter()).ok().unwrap(),
-                                       Mnemonic::new(9..10,"assign c".to_string(),"".to_string(),vec![].iter(),vec![
+                                       Mnemonic::new(7..8, "dec a".to_string(), "".to_string(), vec![].iter(), vec![
+                                                     Statement{ op: Operation::Subtract(a_var.clone().into(), Rvalue::new_u32(1)), assignee: a_var.clone()}].iter()).ok().unwrap(),
+                                       Mnemonic::new(8..9, "add 3 to b".to_string(), "".to_string(), vec![].iter(), vec![
+                                                     Statement{ op: Operation::Add(b_var.clone().into(), Rvalue::new_u32(3)), assignee: b_var.clone()}].iter()).ok().unwrap(),
+                                       Mnemonic::new(9..10, "assign c".to_string(), "".to_string(), vec![].iter(), vec![
                                                      Statement{ op: Operation::Move(Rvalue::new_u32(3)), assignee: c_var.clone()}].iter()).ok().unwrap()]);
         let bb3 = BasicBlock::from_vec(vec![
-                                       Mnemonic::new(10..11,"add a and b".to_string(),"".to_string(),vec![].iter(),vec![
-                                                     Statement{ op: Operation::Add(a_var.clone().into(),b_var.clone().into()), assignee: x_var.clone()}].iter()).ok().unwrap()]);
+                                       Mnemonic::new(10..11, "add a and b".to_string(), "".to_string(), vec![].iter(), vec![
+                                                     Statement{ op: Operation::Add(a_var.clone().into(), b_var.clone().into()), assignee: x_var.clone()}].iter()).ok().unwrap()]);
         let bb4 = BasicBlock::from_vec(vec![
-                                       Mnemonic::new(11..12,"cmp a".to_string(),"".to_string(),vec![].iter(),vec![
-                                                     Statement{ op: Operation::LessOrEqualSigned(a_var.clone().into(),Rvalue::new_u32(0)), assignee: flag.clone()}].iter()).ok().unwrap()]);
+                                       Mnemonic::new(11..12, "cmp a".to_string(), "".to_string(), vec![].iter(), vec![
+                                                     Statement{ op: Operation::LessOrEqualSigned(a_var.clone().into(), Rvalue::new_u32(0)), assignee: flag.clone()}].iter()).ok().unwrap()]);
 
 
         let mut cfg = ControlFlowGraph::new();
@@ -356,14 +356,14 @@ mod tests {
 
         let g = Guard::from_flag(&flag.into()).ok().unwrap();
 
-        cfg.add_edge(g.clone(),v0,v1);
-        cfg.add_edge(g.negation(),v0,v4);
-        cfg.add_edge(g.negation(),v4,v2);
-        cfg.add_edge(g.clone(),v4,v3);
-        cfg.add_edge(Guard::always(),v2,v4);
-        cfg.add_edge(Guard::always(),v1,v3);
+        cfg.add_edge(g.clone(), v0, v1);
+        cfg.add_edge(g.negation(), v0, v4);
+        cfg.add_edge(g.negation(), v4, v2);
+        cfg.add_edge(g.clone(), v4, v3);
+        cfg.add_edge(Guard::always(), v2, v4);
+        cfg.add_edge(Guard::always(), v1, v3);
 
-        let mut func = Function::new("func".to_string(),"ram".to_string());
+        let mut func = Function::new("func".to_string(), "ram".to_string());
 
         func.cflow_graph = cfg;
         func.entry_point = Some(v0);
@@ -371,12 +371,12 @@ mod tests {
         assert!(ssa_convertion(&mut func).is_ok());
 
         let vals = approximate::<Kset>(&func).ok().unwrap();
-        let res = results::<Kset>(&func,&vals);
+        let res = results::<Kset>(&func, &vals);
 
-        assert_eq!(res[&(Cow::Borrowed("a"),32)],Kset::Join);
-        assert_eq!(res[&(Cow::Borrowed("b"),32)],Kset::Join);
-        assert_eq!(res[&(Cow::Borrowed("c"),32)],Kset::Set(vec![(2,32),(3,32),(4,32)]));
-        assert_eq!(res[&(Cow::Borrowed("x"),32)],Kset::Join);
+        assert_eq!(res[&(Cow::Borrowed("a"), 32)], Kset::Join);
+        assert_eq!(res[&(Cow::Borrowed("b"), 32)], Kset::Join);
+        assert_eq!(res[&(Cow::Borrowed("c"), 32)], Kset::Set(vec![(2, 32), (3, 32), (4, 32)]));
+        assert_eq!(res[&(Cow::Borrowed("x"), 32)], Kset::Join);
     }
 
     #[test]
@@ -386,28 +386,28 @@ mod tests {
         let r2_var = Lvalue::Variable{ name: Cow::Borrowed("r2"), size: 8, subscript: None };
         let next = Lvalue::Variable{ name: Cow::Borrowed("R30:R31"), size: 22, subscript: None };
         let bb0 = BasicBlock::from_vec(vec![
-            Mnemonic::new(0..1,"init r1".to_string(),"".to_string(),vec![].iter(),vec![
+            Mnemonic::new(0..1, "init r1".to_string(), "".to_string(), vec![].iter(), vec![
                 Statement{ op: Operation::Move(Rvalue::new_u8(7)), assignee: r1_var.clone()}].iter()).ok().unwrap(),
-            Mnemonic::new(1..2,"init r2".to_string(),"".to_string(),vec![].iter(),vec![
+            Mnemonic::new(1..2, "init r2".to_string(), "".to_string(), vec![].iter(), vec![
                 Statement{ op: Operation::Move(Rvalue::new_u8(88)), assignee: r2_var.clone()}].iter()).ok().unwrap()
         ]);
         let bb1 = BasicBlock::from_vec(vec![
-            Mnemonic::new(2..3,"zext r1".to_string(),"".to_string(),vec![].iter(),vec![
-                Statement{ op: Operation::ZeroExtend(22,r1_var.clone().into()), assignee: p_var.clone()}].iter()).ok().unwrap(),
-            Mnemonic::new(3..4,"mov r2".to_string(),"".to_string(),vec![].iter(),vec![
-                Statement{ op: Operation::Select(8,p_var.clone().into(),r2_var.clone().into()), assignee: p_var.clone()}].iter()).ok().unwrap(),
-            Mnemonic::new(4..5,"mov 0".to_string(),"".to_string(),vec![].iter(),vec![
-                Statement{ op: Operation::Select(16,p_var.clone().into(),Rvalue::Constant{ value: 0, size: 6 }), assignee: p_var.clone()}].iter()).ok().unwrap(),
-            Mnemonic::new(5..6,"mov next".to_string(),"".to_string(),vec![].iter(),vec![
+            Mnemonic::new(2..3, "zext r1".to_string(), "".to_string(), vec![].iter(), vec![
+                Statement{ op: Operation::ZeroExtend(22, r1_var.clone().into()), assignee: p_var.clone()}].iter()).ok().unwrap(),
+            Mnemonic::new(3..4, "mov r2".to_string(), "".to_string(), vec![].iter(), vec![
+                Statement{ op: Operation::Select(8, p_var.clone().into(), r2_var.clone().into()), assignee: p_var.clone()}].iter()).ok().unwrap(),
+            Mnemonic::new(4..5, "mov 0".to_string(), "".to_string(), vec![].iter(), vec![
+                Statement{ op: Operation::Select(16, p_var.clone().into(), Rvalue::Constant{ value: 0, size: 6 }), assignee: p_var.clone()}].iter()).ok().unwrap(),
+            Mnemonic::new(5..6, "mov next".to_string(), "".to_string(), vec![].iter(), vec![
                 Statement{ op: Operation::Move(p_var.clone().into()), assignee: next.clone()}].iter()).ok().unwrap()
         ]);
         let mut cfg = ControlFlowGraph::new();
         let v0 = cfg.add_vertex(ControlFlowTarget::Resolved(bb0));
         let v1 = cfg.add_vertex(ControlFlowTarget::Resolved(bb1));
 
-        cfg.add_edge(Guard::always(),v0,v1);
+        cfg.add_edge(Guard::always(), v0, v1);
 
-        let mut func = Function::new("func".to_string(),"ram".to_string());
+        let mut func = Function::new("func".to_string(), "ram".to_string());
 
         func.cflow_graph = cfg;
         func.entry_point = Some(v0);
@@ -417,7 +417,7 @@ mod tests {
         let vals = approximate::<Kset>(&func).ok().unwrap();
 
         for i in vals {
-            println!("{:?}",i);
+            println!("{:?}", i);
         }
     }
 }

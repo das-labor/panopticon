@@ -45,34 +45,34 @@ use {
 };
 
 /// Node of the program call graph.
-#[derive(RustcDecodable,RustcEncodable,Debug)]
+#[derive(RustcDecodable, RustcEncodable, Debug)]
 pub enum CallTarget {
     /// Resolved and disassembled function.
     Concrete(Function),
     /// Reference to an external symbol.
-    Symbolic(String,Uuid),
+    Symbolic(String, Uuid),
     /// Resolved but not yet disassembled function.
-    Todo(Rvalue,Option<String>,Uuid),
+    Todo(Rvalue, Option<String>, Uuid),
 }
 
 impl CallTarget {
     /// Returns the UUID of the call graph node.
     pub fn uuid(&self) -> Uuid {
         match self {
-            &CallTarget::Concrete(Function{ uuid,..}) => uuid,
-            &CallTarget::Symbolic(_,uuid) => uuid,
-            &CallTarget::Todo(_,_,uuid) => uuid,
+            &CallTarget::Concrete(Function{ uuid, ..}) => uuid,
+            &CallTarget::Symbolic(_, uuid) => uuid,
+            &CallTarget::Todo(_, _, uuid) => uuid,
         }
     }
 }
 
 /// Graph of functions/symbolic references
-pub type CallGraph = AdjacencyList<CallTarget,()>;
+pub type CallGraph = AdjacencyList<CallTarget, ()>;
 /// Stable reference to a call graph node
 pub type CallGraphRef = AdjacencyListVertexDescriptor;
 
 /// A collection of functions calling each other.
-#[derive(RustcDecodable,RustcEncodable,Debug)]
+#[derive(RustcDecodable, RustcEncodable, Debug)]
 pub struct Program {
     /// Unique, immutable identifier
     pub uuid: Uuid,
@@ -166,9 +166,9 @@ impl Program {
 
             for w in self.call_graph.vertices() {
                 match self.call_graph.vertex_label(w) {
-                    Some(&CallTarget::Concrete(Function{ cflow_graph: ref cg, entry_point: Some(ent),.. })) => {
+                    Some(&CallTarget::Concrete(Function{ cflow_graph: ref cg, entry_point: Some(ent), .. })) => {
                         if let Some(&ControlFlowTarget::Resolved(ref bb)) = cg.vertex_label(ent) {
-                            if let Rvalue::Constant{ ref value,.. } = a {
+                            if let Rvalue::Constant{ ref value, .. } = a {
                                 if *value == bb.area.start {
                                     other_funs.push(w);
                                     break;
@@ -176,7 +176,7 @@ impl Program {
                             }
                         }
                     },
-                    Some(&CallTarget::Todo(ref _a,_,_)) => {
+                    Some(&CallTarget::Todo(ref _a, _, _)) => {
                         if *_a == a {
                             other_funs.push(w);
                             break;
@@ -189,16 +189,16 @@ impl Program {
 
             if l == other_funs.len() {
                 let uu = Uuid::new_v4();
-                let v = self.call_graph.add_vertex(CallTarget::Todo(a,None,uu));
+                let v = self.call_graph.add_vertex(CallTarget::Todo(a, None, uu));
 
-                self.call_graph.add_edge((),new_vx,v);
+                self.call_graph.add_edge((), new_vx, v);
                 ret.push(uu);
             }
         }
 
         for other_fun in other_funs {
-            if self.call_graph.edge(new_vx,other_fun) == None {
-                self.call_graph.add_edge((),new_vx,other_fun);
+            if self.call_graph.edge(new_vx, other_fun) == None {
+                self.call_graph.add_edge((), new_vx, other_fun);
             }
         }
 
@@ -206,7 +206,7 @@ impl Program {
     }
 
     /// Returns the function, todo item or symbolic reference with UUID `uu`.
-    pub fn find_call_target_by_uuid<'a>(&'a self,uu: &Uuid) -> Option<CallGraphRef> {
+    pub fn find_call_target_by_uuid<'a>(&'a self, uu: &Uuid) -> Option<CallGraphRef> {
         for vx in self.call_graph.vertices() {
             if let Some(lb) = self.call_graph.vertex_label(vx) {
                 if lb.uuid() == *uu {
@@ -237,7 +237,7 @@ mod tests {
         Function,
         Mnemonic,
         BasicBlock,
-        Lvalue,Rvalue,
+        Lvalue, Rvalue,
         Operation,
         Statement,
     };
@@ -245,16 +245,16 @@ mod tests {
     #[test]
     fn find_by_entry() {
         let mut prog = Program::new("prog_test");
-        let mut func = Function::new("test2".to_string(),"ram".to_string());
+        let mut func = Function::new("test2".to_string(), "ram".to_string());
 
         let bb0 = BasicBlock::from_vec(vec!(Mnemonic::dummy(0..10)));
         func.entry_point = Some(func.cflow_graph.add_vertex(ControlFlowTarget::Resolved(bb0)));
 
-        prog.call_graph.add_vertex(CallTarget::Concrete(Function::new("test".to_string(),"ram".to_string())));
+        prog.call_graph.add_vertex(CallTarget::Concrete(Function::new("test".to_string(), "ram".to_string())));
         let vx1 = prog.call_graph.add_vertex(CallTarget::Concrete(func));
 
-        assert_eq!(prog.find_function_by_entry(0),Some(vx1));
-        assert_eq!(prog.find_function_by_entry(1),None);
+        assert_eq!(prog.find_function_by_entry(0), Some(vx1));
+        assert_eq!(prog.find_function_by_entry(1), None);
     }
 
     #[test]
@@ -262,34 +262,34 @@ mod tests {
         let uu = Uuid::new_v4();
         let mut prog = Program::new("prog_test");
 
-        let tvx = prog.call_graph.add_vertex(CallTarget::Todo(Rvalue::new_u64(12),None,uu));
-        let vx0 = prog.call_graph.add_vertex(CallTarget::Concrete(Function::new("test".to_string(),"ram".to_string())));
-        let vx1 = prog.call_graph.add_vertex(CallTarget::Concrete(Function::new("test2".to_string(),"ram".to_string())));
+        let tvx = prog.call_graph.add_vertex(CallTarget::Todo(Rvalue::new_u64(12), None, uu));
+        let vx0 = prog.call_graph.add_vertex(CallTarget::Concrete(Function::new("test".to_string(), "ram".to_string())));
+        let vx1 = prog.call_graph.add_vertex(CallTarget::Concrete(Function::new("test2".to_string(), "ram".to_string())));
 
-        let e1 = prog.call_graph.add_edge((),tvx,vx0);
-        let e2 = prog.call_graph.add_edge((),vx1,tvx);
+        let e1 = prog.call_graph.add_edge((), tvx, vx0);
+        let e2 = prog.call_graph.add_edge((), vx1, tvx);
 
-        let mut func = Function::with_uuid("test3".to_string(),uu.clone(),"ram".to_string());
+        let mut func = Function::with_uuid("test3".to_string(), uu.clone(), "ram".to_string());
         let bb0 = BasicBlock::from_vec(vec!(Mnemonic::dummy(12..20)));
         func.entry_point = Some(func.cflow_graph.add_vertex(ControlFlowTarget::Resolved(bb0)));
         let uuf = func.uuid.clone();
 
         let new = prog.insert(CallTarget::Concrete(func));
 
-        assert_eq!(new,vec!());
+        assert_eq!(new, vec!());
 
         if let Some(&CallTarget::Concrete(ref f)) = prog.call_graph.vertex_label(tvx) {
-            assert_eq!(f.uuid,uuf);
+            assert_eq!(f.uuid, uuf);
             assert!(f.entry_point.is_some());
         } else {
             unreachable!();
         }
         assert!(prog.call_graph.vertex_label(vx0).is_some());
         assert!(prog.call_graph.vertex_label(vx1).is_some());
-        assert_eq!(prog.call_graph.edge(tvx,vx0),e1);
-        assert_eq!(prog.call_graph.edge(vx1,tvx),e2);
-        assert_eq!(prog.call_graph.num_edges(),2);
-        assert_eq!(prog.call_graph.num_vertices(),3);
+        assert_eq!(prog.call_graph.edge(tvx, vx0), e1);
+        assert_eq!(prog.call_graph.edge(vx1, tvx), e2);
+        assert_eq!(prog.call_graph.num_edges(), 2);
+        assert_eq!(prog.call_graph.num_vertices(), 3);
     }
 
     #[test]
@@ -298,26 +298,26 @@ mod tests {
         let uu2 = Uuid::new_v4();
         let mut prog = Program::new("prog_test");
 
-        let tvx = prog.call_graph.add_vertex(CallTarget::Todo(Rvalue::new_u64(12),None,uu1));
+        let tvx = prog.call_graph.add_vertex(CallTarget::Todo(Rvalue::new_u64(12), None, uu1));
 
-        let mut func = Function::with_uuid("test3".to_string(),uu2.clone(),"ram".to_string());
+        let mut func = Function::with_uuid("test3".to_string(), uu2.clone(), "ram".to_string());
         let ops1 = vec![];
         let i1 = vec![Statement{ op: Operation::Call(Rvalue::new_u64(12)), assignee: Lvalue::Undefined}];
-        let mne1 = Mnemonic::new(0..10,"call".to_string(),"12".to_string(),ops1.iter(),i1.iter()).ok().unwrap();
+        let mne1 = Mnemonic::new(0..10, "call".to_string(), "12".to_string(), ops1.iter(), i1.iter()).ok().unwrap();
         let bb0 = BasicBlock::from_vec(vec!(mne1));
         func.entry_point = Some(func.cflow_graph.add_vertex(ControlFlowTarget::Resolved(bb0)));
         let uuf = func.uuid.clone();
 
         let new = prog.insert(CallTarget::Concrete(func));
 
-        assert_eq!(new,vec!());
+        assert_eq!(new, vec!());
 
         if let Some(&CallTarget::Concrete(ref f)) = prog.call_graph.vertex_label(tvx) {
-            assert_eq!(f.uuid,uuf);
+            assert_eq!(f.uuid, uuf);
             assert!(f.entry_point.is_some());
         }
         assert!(prog.call_graph.vertex_label(tvx).is_some());
-        assert_eq!(prog.call_graph.num_edges(),1);
-        assert_eq!(prog.call_graph.num_vertices(),2);
+        assert_eq!(prog.call_graph.num_edges(), 1);
+        assert_eq!(prog.call_graph.num_vertices(), 2);
     }
 }

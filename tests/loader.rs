@@ -24,8 +24,8 @@ use std::path::Path;
 #[test]
 fn elf_load_static() {
     match loader::load(Path::new("tests/data/static")) {
-        Ok((proj,_)) => {
-            println!("{:?}",proj);
+        Ok((proj, _)) => {
+            println!("{:?}", proj);
             assert_eq!(proj.imports.len(), 0);
         },
         Err(error) => {
@@ -38,7 +38,7 @@ fn elf_load_static() {
 #[test]
 fn elf_load_dynamic() {
     match loader::load(Path::new("tests/data/libfoo.so")) {
-        Ok((proj,_)) => {
+        Ok((proj, _)) => {
             println!("{:?}", &proj);
             assert_eq!(proj.name, "libfoo.so");
             assert_eq!(proj.code.len(), 1);
@@ -54,7 +54,7 @@ fn elf_load_dynamic() {
 #[test]
 fn mach_load_lib() {
     match loader::load(Path::new("tests/data/libbeef.dylib")) {
-        Ok((proj,_)) => {
+        Ok((proj, _)) => {
             println!("{:?}", &proj);
             assert_eq!(proj.imports.len(), 0);
         },
@@ -68,7 +68,7 @@ fn mach_load_lib() {
 #[test]
 fn mach_load_exe() {
     match loader::load(Path::new("tests/data/deadbeef.mach")) {
-        Ok((proj,_)) => {
+        Ok((proj, _)) => {
             println!("{:?}", &proj);
             assert_eq!(proj.imports.len(), 2);
         },
@@ -90,8 +90,8 @@ fn mach_load_bytes() {
         v
     };
     match loader::load_mach(&bytes, 0, "tests/data/deadbeef.mach".to_owned()) {
-        Ok((proj,_)) => {
-            println!("{}",proj.name);
+        Ok((proj, _)) => {
+            println!("{}", proj.name);
             assert_eq!(proj.imports.len(), 2);
         },
         Err(error) => {
@@ -107,8 +107,8 @@ fn mach_load_bytes() {
 fn load_pe32() {
     let project = loader::load(Path::new("tests/data/test.exe"));
     match project {
-        Ok((proj,_)) => {
-            println!("{:?}",proj);
+        Ok((proj, _)) => {
+            println!("{:?}", proj);
             assert_eq!(proj.imports.len(), 0);
         },
         Err(error) => {
@@ -122,8 +122,8 @@ fn load_pe32() {
 fn load_pe32_dll() {
     let project = loader::load(Path::new("tests/data/libbeef.dll"));
     match project {
-        Ok((proj,_)) => {
-            println!("{:?}",proj);
+        Ok((proj, _)) => {
+            println!("{:?}", proj);
             assert_eq!(proj.imports.len(), 0);
         },
         Err(error) => {

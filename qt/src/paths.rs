@@ -21,11 +21,11 @@ use panopticon::result::Result;
 
 use std::env;
 use std::fs::{DirBuilder};
-use std::path::{PathBuf,Path};
+use std::path::{PathBuf, Path};
 use std::borrow::Cow;
 use std::error::Error;
 
-#[cfg(all(unix,not(target_os = "macos")))]
+#[cfg(all(unix, not(target_os = "macos")))]
 pub fn session_directory() -> Result<PathBuf> {
     use xdg::BaseDirectories;
     match BaseDirectories::with_prefix("panopticon") {
@@ -40,7 +40,7 @@ pub fn session_directory() -> Result<PathBuf> {
     }
 }
 
-#[cfg(all(unix,target_os = "macos"))]
+#[cfg(all(unix, target_os = "macos"))]
 pub fn session_directory() -> Result<PathBuf> {
     match env::var("HOME") {
         Ok(home) => {
@@ -89,7 +89,7 @@ pub fn find_data_file(p: &Path) -> Result<Option<PathBuf>> {
     }
 }
 
-#[cfg(all(unix,not(target_os = "macos")))]
+#[cfg(all(unix, not(target_os = "macos")))]
 fn find_data_file_impl(p: &Path) -> Result<Option<PathBuf>> {
     use xdg::BaseDirectories;
     match BaseDirectories::with_prefix("panopticon") {
@@ -98,7 +98,7 @@ fn find_data_file_impl(p: &Path) -> Result<Option<PathBuf>> {
     }
 }
 
-#[cfg(all(unix,target_os = "macos"))]
+#[cfg(all(unix, target_os = "macos"))]
 fn find_data_file_impl(p: &Path) -> Result<Option<PathBuf>> {
     match env::current_exe() {
         Ok(path) => Ok(path.parent()

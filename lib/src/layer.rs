@@ -26,16 +26,16 @@
 //!
 //! ```no_run
 //! use std::path::Path;
-//! use panopticon::{Region,OpaqueLayer,Bound,Layer};
+//! use panopticon::{Region, OpaqueLayer, Bound, Layer};
 //!
 //! // All accessable RAM is modeled as a single region
-//! let mut reg = Region::undefined("ram".to_string(),0xc0000000);
+//! let mut reg = Region::undefined("ram".to_string(), 0xc0000000);
 //!
 //! // The layer that simulates mapping the COM file into RAM
 //! let mapping = OpaqueLayer::open(Path::new("path/to/file.com")).ok().unwrap();
 //!
 //! // COM files are always mapped at 0100h
-//! reg.cover(Bound::new(0x100,0x100 + mapping.len()),Layer::Opaque(mapping));
+//! reg.cover(Bound::new(0x100, 0x100 + mapping.len()), Layer::Opaque(mapping));
 //! ```
 //! Loading a Windows COM file.
 
@@ -53,7 +53,7 @@ use {
 pub type Cell = Option<u8>;
 
 /// Layer that replace all overlapped `Cell`s.
-#[derive(Debug,RustcDecodable,RustcEncodable)]
+#[derive(Debug, RustcDecodable, RustcEncodable)]
 pub enum OpaqueLayer {
     /// Layer consisting of undefined cells.
     Undefined(u64),
@@ -62,7 +62,7 @@ pub enum OpaqueLayer {
 }
 
 /// Iterator over a range of `Cell`s.
-#[derive(Clone,Debug)]
+#[derive(Clone, Debug)]
 pub enum LayerIter<'a> {
     /// Layer consisting of undefined cells.
     Undefined(u64),
@@ -215,7 +215,7 @@ impl<'a> LayerIter<'a> {
 ///
 /// `Layer` overlaps a continuous range of `Cell`s and returns a new range of `Cell`s of equal
 /// size. `Layer`s can overlap other `Layer`s or `Region`s.
-#[derive(Debug,RustcDecodable,RustcEncodable)]
+#[derive(Debug, RustcDecodable, RustcEncodable)]
 pub enum Layer {
     /// Layer consisting of fixed byte values.
     Opaque(OpaqueLayer),

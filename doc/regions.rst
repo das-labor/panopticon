@@ -19,14 +19,14 @@ undefined values.
 .. code-block:: c++
 
    // This region is named "file" and is filled with the contents of "path/to/file"
-   region_loc file_region = region::wrap("file",blob("path/to/file"));
+   region_loc file_region = region::wrap("file", blob("path/to/file"));
 
    // This region is named "buf" and is initialized with the contents of buf
    std::vector<uint8_t> buf = {1, 2, 3, 4, 5, 6, 7, 8, 9, 0};
-   region_loc buf_region = region::wrap("buf",buf);
+   region_loc buf_region = region::wrap("buf", buf);
 
    // This region is named "undef" and is just 4k of undefined cells
-   region_loc undefined_region = region::undefined("undef",4096);
+   region_loc undefined_region = region::undefined("undef", 4096);
 
 
 Reading from a region is done by calling :cpp:func:`read` on it. The function returns a
@@ -59,16 +59,16 @@ using which layer. Layers are added to a region using :cpp:func:`add`.
    // Loading a Windows COM file
 
    // All accessable RAM is modeled as a single region
-   region_loc reg = region::undefined("ram",0xc0000000);
+   region_loc reg = region::undefined("ram", 0xc0000000);
 
    // The file that's being loaded
    blob com("/path/to/file.com");
 
    // The layer that simulates mapping the COM file into RAM
-   layer_loc mapping(new layer("file.com",com));
+   layer_loc mapping(new layer("file.com", com));
 
    // COM files are always mapped at 0100h
-   reg.write().add(bound(0x100,0x100 + com.size()),mapping);
+   reg.write().add(bound(0x100, 0x100 + com.size()), mapping);
 
 Region Graph
 ~~~~~~~~~~~~

@@ -18,7 +18,7 @@
 
 //! Loader for 32 and 64-bit ELF, PE, and Mach-o files.
 
-use std::io::{Seek,SeekFrom,Read,Cursor};
+use std::io::{Seek, SeekFrom, Read, Cursor};
 use std::fs::File;
 use std::path::Path;
 
@@ -39,7 +39,7 @@ use {
 };
 
 /// CPU the binary file is intended for.
-#[derive(Clone,Copy,Debug)]
+#[derive(Clone, Copy, Debug)]
 pub enum Machine {
     /// 8-bit AVR
     Avr,
@@ -51,7 +51,7 @@ pub enum Machine {
 
 /// Parses a non-fat Mach-o binary from `bytes` at `offset` and creates a `Project` from it. Returns the `Project` instance and
 /// the CPU its intended for.
-pub fn load_mach(bytes: &[u8], offset: usize, name: String) -> Result<(Project,Machine)> {
+pub fn load_mach(bytes: &[u8], offset: usize, name: String) -> Result<(Project, Machine)> {
     let binary = mach::MachO::parse(&bytes, offset)?;
     debug!("mach: {:#?}", &binary);
     let mut base = 0x0;
@@ -59,11 +59,11 @@ pub fn load_mach(bytes: &[u8], offset: usize, name: String) -> Result<(Project,M
     let (machine, mut reg) = match cputype {
         mach::cputype::CPU_TYPE_X86    => {
             let reg = Region::undefined("RAM".to_string(), 0x1_0000_0000);
-            (Machine::Ia32,reg)
+            (Machine::Ia32, reg)
         },
         mach::cputype::CPU_TYPE_X86_64 => {
             let reg = Region::undefined("RAM".to_string(), 0xFFFF_FFFF_FFFF_FFFF);
-            (Machine::Amd64,reg)
+            (Machine::Amd64, reg)
         },
         machine => return Err(format!("Unsupported machine ({:#x}): {}", machine, mach::cputype::cpu_type_to_str(machine)).into())
     };
@@ -94,19 +94,19 @@ pub fn load_mach(bytes: &[u8], offset: usize, name: String) -> Result<(Project,M
         };
 
     let mut prog = Program::new("prog0");
-    let mut proj = Project::new(name.clone(),reg);
+    let mut proj = Project::new(name.clone(), reg);
 
     let entry = binary.entry;
 
     if entry != 0 {
-        prog.call_graph.add_vertex(CallTarget::Todo(Rvalue::new_u64(entry as u64),Some(name),Uuid::new_v4()));
+        prog.call_graph.add_vertex(CallTarget::Todo(Rvalue::new_u64(entry as u64), Some(name), Uuid::new_v4()));
     }
 
     for export in binary.exports()? {
         if export.offset != 0 {
             debug!("adding: {:?}", &export);
             prog.call_graph.add_vertex(CallTarget::Todo(Rvalue::new_u64
-                                                        (export.offset as u64 + base),Some(export.name),Uuid::new_v4()));
+                                                        (export.offset as u64 + base), Some(export.name), Uuid::new_v4()));
         }
     }
 
@@ -117,15 +117,15 @@ pub fn load_mach(bytes: &[u8], offset: usize, name: String) -> Result<(Project,M
 
     debug!("Imports: {:?}", &proj.imports);
 
-    proj.comments.insert(("base".to_string(),entry),"main".to_string());
+    proj.comments.insert(("base".to_string(), entry), "main".to_string());
     proj.code.push(prog);
 
-    Ok((proj,machine))
+    Ok((proj, machine))
 }
 
 /// Parses an ELF 32/64-bit binary from `bytes` and creates a `Project` from it. Returns the `Project` instance and
 /// the CPU its intended for.
-fn load_elf(bytes: &[u8], name: String) -> Result<(Project,Machine)> {
+fn load_elf(bytes: &[u8], name: String) -> Result<(Project, Machine)> {
     let mut cursor = Cursor::new(&bytes);
     let binary = elf::Elf::parse(&bytes)?;
     debug!("elf: {:#?}", &binary);
@@ -134,15 +134,15 @@ fn load_elf(bytes: &[u8], name: String) -> Result<(Project,Machine)> {
     let (machine, mut reg) = match binary.header.e_machine {
         elf::header::EM_X86_64 => {
             let reg = Region::undefined("RAM".to_string(), 0xFFFF_FFFF_FFFF_FFFF);
-            (Machine::Amd64,reg)
+            (Machine::Amd64, reg)
         },
         elf::header::EM_386 => {
             let reg = Region::undefined("RAM".to_string(), 0x1_0000_0000);
-            (Machine::Ia32,reg)
+            (Machine::Ia32, reg)
         },
         elf::header::EM_AVR => {
             let reg = Region::undefined("Flash".to_string(), 0x2_0000);
-            (Machine::Avr,reg)
+            (Machine::Avr, reg)
         },
         machine => return Err(format!("Unsupported machine: {}", machine).into())
     };
@@ -151,7 +151,7 @@ fn load_elf(bytes: &[u8], name: String) -> Result<(Project,Machine)> {
         if ph.p_type == program_header::PT_LOAD {
             let mut buf = vec![0u8; ph.p_filesz as usize];
 
-            debug!("Load ELF {} bytes segment to {:#x}",ph.p_filesz,ph.p_vaddr);
+            debug!("Load ELF {} bytes segment to {:#x}", ph.p_filesz, ph.p_vaddr);
 
             if cursor.seek(SeekFrom::Start(ph.p_offset)).ok() == Some(ph.p_offset) {
                 try!(cursor.read_exact(&mut buf));
@@ -172,9 +172,9 @@ fn load_elf(bytes: &[u8], name: String) -> Result<(Project,Machine)> {
     debug!("interpreter: {:?}", &binary.interpreter);
 
     let mut prog = Program::new("prog0");
-    let mut proj = Project::new(name.clone(),reg);
+    let mut proj = Project::new(name.clone(), reg);
 
-    prog.call_graph.add_vertex(CallTarget::Todo(Rvalue::new_u64(entry as u64),Some(name),Uuid::new_v4()));
+    prog.call_graph.add_vertex(CallTarget::Todo(Rvalue::new_u64(entry as u64), Some(name), Uuid::new_v4()));
 
     let add_sym = |prog: &mut Program, sym: &elf::Sym, strtab: &goblin::strtab::Strtab| {
         let name = strtab[sym.st_name].to_string();
@@ -182,9 +182,9 @@ fn load_elf(bytes: &[u8], name: String) -> Result<(Project,Machine)> {
         debug!("Symbol: {} @ 0x{:x}: {:?}", name, addr, sym);
         if sym.is_function() {
             if sym.is_import() {
-                prog.call_graph.add_vertex(CallTarget::Symbolic(name,Uuid::new_v4()));
+                prog.call_graph.add_vertex(CallTarget::Symbolic(name, Uuid::new_v4()));
             } else {
-                prog.call_graph.add_vertex(CallTarget::Todo(Rvalue::new_u64(addr),Some(name),Uuid::new_v4()));
+                prog.call_graph.add_vertex(CallTarget::Todo(Rvalue::new_u64(addr), Some(name), Uuid::new_v4()));
             }
         }
     };
@@ -222,10 +222,10 @@ fn load_elf(bytes: &[u8], name: String) -> Result<(Project,Machine)> {
     //     add_sym(&mut prog, sym, &binary.strtab);
     // }
 
-    proj.comments.insert(("base".to_string(),entry),"main".to_string());
+    proj.comments.insert(("base".to_string(), entry), "main".to_string());
     proj.code.push(prog);
 
-    Ok((proj,machine))
+    Ok((proj, machine))
 }
 
 /// Parses a PE32/PE32+ file from `bytes` and create a project from it.
@@ -233,7 +233,7 @@ fn load_pe(bytes: &[u8], name: String) -> Result<(Project, Machine)> {
     let pe = pe::PE::parse(&bytes)?;
     debug!("pe: {:#?}", &pe);
     let image_base = pe.image_base as u64;
-    let mut ram = Region::undefined("RAM".to_string(),0x100000000);
+    let mut ram = Region::undefined("RAM".to_string(), 0x100000000);
     for section in &pe.sections {
         let name = String::from_utf8_lossy(&section.name);
         debug!("section: {}", name);
@@ -247,11 +247,11 @@ fn load_pe(bytes: &[u8], name: String) -> Result<(Project, Machine)> {
                     debug!("bad section pointer: {:#x} + {:#x} >= {:#x}", offset, size, bytes.len());
                     (Layer::undefined(0), 0)
                 } else {
-                    debug!("mapped '{}': {:?}",name, offset..offset+size);
+                    debug!("mapped '{}': {:?}", name, offset..offset+size);
                     (Layer::wrap(bytes[offset..offset+size].to_vec()), size as u64)
                 }
             } else {
-                debug!("bss '{}'",name);
+                debug!("bss '{}'", name);
                 (Layer::undefined(vsize), vsize)
             }
         };
@@ -267,28 +267,28 @@ fn load_pe(bytes: &[u8], name: String) -> Result<(Project, Machine)> {
     let entry = (pe.image_base + pe.entry) as u64;
     debug!("entry: {:#x}", entry);
     let mut prog = Program::new("prog0");
-    let mut proj = Project::new(name.to_string(),ram);
+    let mut proj = Project::new(name.to_string(), ram);
 
-    prog.call_graph.add_vertex(CallTarget::Todo(Rvalue::new_u64(entry),Some(name.to_string()),Uuid::new_v4()));
+    prog.call_graph.add_vertex(CallTarget::Todo(Rvalue::new_u64(entry), Some(name.to_string()), Uuid::new_v4()));
 
     for export in pe.exports {
         debug!("adding export: {:?}", &export);
-        prog.call_graph.add_vertex(CallTarget::Todo(Rvalue::new_u64(export.rva as u64 + image_base),Some(export.name),Uuid::new_v4()));
+        prog.call_graph.add_vertex(CallTarget::Todo(Rvalue::new_u64(export.rva as u64 + image_base), Some(export.name), Uuid::new_v4()));
     }
 
     for import in pe.imports {
         debug!("adding import: {:?} @ {:#x}", &import, import.rva + pe.image_base);
-        prog.call_graph.add_vertex(CallTarget::Symbolic(import.name,Uuid::new_v4()));
+        prog.call_graph.add_vertex(CallTarget::Symbolic(import.name, Uuid::new_v4()));
     }
 
-    proj.comments.insert(("base".to_string(),entry),"main".to_string());
+    proj.comments.insert(("base".to_string(), entry), "main".to_string());
     proj.code.push(prog);
     Ok((proj, Machine::Ia32))
 }
 
 /// Load an ELF or PE file from disk and creates a `Project` from it. Returns the `Project` instance and
 /// the CPU its intended for.
-pub fn load(path: &Path) -> Result<(Project,Machine)> {
+pub fn load(path: &Path) -> Result<(Project, Machine)> {
     let name = path.file_name()
         .map(|x| x.to_string_lossy().to_string())
         .unwrap_or("(encoding error)".to_string());

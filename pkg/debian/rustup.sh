@@ -1124,7 +1124,7 @@ determine_remote_std_locations_v2() {
     local _urls=""
 
     # Replace commas with spaces
-    _targets="$(printf "%s" "$_targets" | sed "s/,/ /g")"
+    _targets="$(printf "%s" "$_targets" | sed "s/, / /g")"
 
     local _target
     # NB: Purposefully not quoting $_targets to split on space
@@ -1384,7 +1384,7 @@ extract_channel_and_date_from_toolchain() {
         stable-20[0-9][0-9]-[0-9][0-9]-[0-9][0-9] )
             local _channel="$(ensure echo "$_toolchain" | ensure cut -d- -f1)"
             assert_nz "$_channel" "channel"
-            local _date="$(ensure echo "$_toolchain" | ensure cut -d- -f2,3,4)"
+            local _date="$(ensure echo "$_toolchain" | ensure cut -d- -f2, 3, 4)"
             assert_nz "$_date" "date"
             RETVAL_CHANNEL="$_channel"
             RETVAL_DATE="$_date"

@@ -1,6 +1,6 @@
 /*
  * Panopticon - A libre disassembler (https://panopticon.re/)
- * Copyright (C) 2014,2015,2016 Kai Michaelis
+ * Copyright (C) 2014, 2015, 2016 Kai Michaelis
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -296,7 +296,7 @@ Window {
 										var idx = sessionView.toDelete.indexOf(file);
 
 										if(idx >= 0) {
-											sessionView.toDelete.splice(idx,1)
+											sessionView.toDelete.splice(idx, 1)
 										}
 										elem.state = ""
 									}

@@ -16,25 +16,25 @@ Flags
 
 All actions specified with flags can be done using the GUI, Most users will want to do the former and should start qtpanopticon without any flags.
 
--a,--avr <file with relocated AVR code>
+-a, --avr <file with relocated AVR code>
     Opens the file, loads it at address zero and starts disassembling AVR code at 0x0000.
 
--A,--avr-mcu <MCU name>
+-A, --avr-mcu <MCU name>
     Assume another MCU than ATmega88 when disassembling.
 
--n,--raw <file>
+-n, --raw <file>
     Opens the file and load it at address zero. No disassembly will take place. Meant for unknown files and files without code.
 
--o,--open <panop file>
+-o, --open <panop file>
     Loads a previously saved session.
 
--p,--pe <exe>
+-p, --pe <exe>
     Opens the file and parses it as PE file. Loading and disassembly is done using informations in the PE header.
 
--h,--help
+-h, --help
     Prints a synopsis of all supported flags.
 
--v,--version
+-v, --version
     Prints version information.
 
 Usage

@@ -4,4 +4,4 @@ Docker build:
 
 Normal build:
   1. Build the package: `dpkg-buildpackage`
-	2. Basic sanitiy checks: `lintian *.{deb,dsc}`
+	2. Basic sanitiy checks: `lintian *.{deb, dsc}`

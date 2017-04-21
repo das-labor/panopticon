@@ -3,7 +3,7 @@ macro_rules! rreil_binop {
     // lit := noff, noff
     ( $op:ident # ( $a:expr ), $x:tt : $x_w:tt , $y:tt : $y_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w),rreil_rvalue!($y : $y_w)), assignee: rreil_lvalue!(( $a ))}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w), rreil_rvalue!($y : $y_w)), assignee: rreil_lvalue!(( $a ))}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -23,7 +23,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // lit := noff, off
     ( $op:ident # ( $a:expr ), $x:tt : $x_w:tt , $y:tt : $y_w:tt / $y_o:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w),rreil_rvalue!($y : $y_w / $y_o)), assignee: rreil_lvalue!(( $a ))}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w), rreil_rvalue!($y : $y_w / $y_o)), assignee: rreil_lvalue!(( $a ))}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -43,7 +43,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // lit := noff, lit
     ( $op:ident # ( $a:expr ), $x:tt : $x_w:tt , ( $y:expr ) ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w),rreil_rvalue!(( $y ))), assignee: rreil_lvalue!(( $a ))}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w), rreil_rvalue!(( $y ))), assignee: rreil_lvalue!(( $a ))}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -63,7 +63,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // lit := noff, litw
     ( $op:ident # ( $a:expr ), $x:tt : $x_w:tt , ( $y:expr ) : $y_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w),rreil_rvalue!(( $y ) : $y_w)), assignee: rreil_lvalue!(( $a ))}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w), rreil_rvalue!(( $y ) : $y_w)), assignee: rreil_lvalue!(( $a ))}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -83,7 +83,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // lit := noff, const
     ( $op:ident # ( $a:expr ), $x:tt : $x_w:tt , [ $y:tt ] : $y_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w),rreil_rvalue!([ $y ] : $y_w)), assignee: rreil_lvalue!(( $a ))}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w), rreil_rvalue!([ $y ] : $y_w)), assignee: rreil_lvalue!(( $a ))}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -103,7 +103,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // lit := noff, undef
     ( $op:ident # ( $a:expr ), $x:tt : $x_w:tt , ? ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w),rreil_rvalue!(?)), assignee: rreil_lvalue!(( $a ))}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w), rreil_rvalue!(?)), assignee: rreil_lvalue!(( $a ))}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -123,7 +123,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // lit := off, noff
     ( $op:ident # ( $a:expr ), $x:tt : $x_w:tt / $x_o:tt , $y:tt : $y_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w / $x_o),rreil_rvalue!($y : $y_w)), assignee: rreil_lvalue!(( $a ))}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w / $x_o), rreil_rvalue!($y : $y_w)), assignee: rreil_lvalue!(( $a ))}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -143,7 +143,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // lit := off, off
     ( $op:ident # ( $a:expr ), $x:tt : $x_w:tt / $x_o:tt , $y:tt : $y_w:tt / $y_o:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w / $x_o),rreil_rvalue!($y : $y_w / $y_o)), assignee: rreil_lvalue!(( $a ))}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w / $x_o), rreil_rvalue!($y : $y_w / $y_o)), assignee: rreil_lvalue!(( $a ))}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -163,7 +163,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // lit := off, lit
     ( $op:ident # ( $a:expr ), $x:tt : $x_w:tt / $x_o:tt , ( $y:expr ) ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w / $x_o),rreil_rvalue!(( $y ))), assignee: rreil_lvalue!(( $a ))}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w / $x_o), rreil_rvalue!(( $y ))), assignee: rreil_lvalue!(( $a ))}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -183,7 +183,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // lit := off, litw
     ( $op:ident # ( $a:expr ), $x:tt : $x_w:tt / $x_o:tt , ( $y:expr ) : $y_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w / $x_o),rreil_rvalue!(( $y ) : $y_w)), assignee: rreil_lvalue!(( $a ))}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w / $x_o), rreil_rvalue!(( $y ) : $y_w)), assignee: rreil_lvalue!(( $a ))}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -203,7 +203,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // lit := off, const
     ( $op:ident # ( $a:expr ), $x:tt : $x_w:tt / $x_o:tt , [ $y:tt ] : $y_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w / $x_o),rreil_rvalue!([ $y ] : $y_w)), assignee: rreil_lvalue!(( $a ))}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w / $x_o), rreil_rvalue!([ $y ] : $y_w)), assignee: rreil_lvalue!(( $a ))}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -223,7 +223,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // lit := off, undef
     ( $op:ident # ( $a:expr ), $x:tt : $x_w:tt / $x_o:tt , ? ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w / $x_o),rreil_rvalue!(?)), assignee: rreil_lvalue!(( $a ))}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w / $x_o), rreil_rvalue!(?)), assignee: rreil_lvalue!(( $a ))}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -243,7 +243,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // lit := lit, noff
     ( $op:ident # ( $a:expr ), ( $x:expr ) , $y:tt : $y_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x )),rreil_rvalue!($y : $y_w)), assignee: rreil_lvalue!(( $a ))}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x )), rreil_rvalue!($y : $y_w)), assignee: rreil_lvalue!(( $a ))}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -263,7 +263,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // lit := lit, off
     ( $op:ident # ( $a:expr ), ( $x:expr ) , $y:tt : $y_w:tt / $y_o:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x )),rreil_rvalue!($y : $y_w / $y_o)), assignee: rreil_lvalue!(( $a ))}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x )), rreil_rvalue!($y : $y_w / $y_o)), assignee: rreil_lvalue!(( $a ))}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -283,7 +283,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // lit := lit, lit
     ( $op:ident # ( $a:expr ), ( $x:expr ) , ( $y:expr ) ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x )),rreil_rvalue!(( $y ))), assignee: rreil_lvalue!(( $a ))}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x )), rreil_rvalue!(( $y ))), assignee: rreil_lvalue!(( $a ))}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -303,7 +303,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // lit := lit, litw
     ( $op:ident # ( $a:expr ), ( $x:expr ) , ( $y:expr ) : $y_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x )),rreil_rvalue!(( $y ) : $y_w)), assignee: rreil_lvalue!(( $a ))}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x )), rreil_rvalue!(( $y ) : $y_w)), assignee: rreil_lvalue!(( $a ))}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -323,7 +323,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // lit := lit, const
     ( $op:ident # ( $a:expr ), ( $x:expr ) , [ $y:tt ] : $y_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x )),rreil_rvalue!([ $y ] : $y_w)), assignee: rreil_lvalue!(( $a ))}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x )), rreil_rvalue!([ $y ] : $y_w)), assignee: rreil_lvalue!(( $a ))}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -343,7 +343,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // lit := lit, undef
     ( $op:ident # ( $a:expr ), ( $x:expr ) , ? ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x )),rreil_rvalue!(?)), assignee: rreil_lvalue!(( $a ))}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x )), rreil_rvalue!(?)), assignee: rreil_lvalue!(( $a ))}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -363,7 +363,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // lit := litw, noff
     ( $op:ident # ( $a:expr ), ( $x:expr ) : $x_w:tt , $y:tt : $y_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x ) : $x_w),rreil_rvalue!($y : $y_w)), assignee: rreil_lvalue!(( $a ))}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x ) : $x_w), rreil_rvalue!($y : $y_w)), assignee: rreil_lvalue!(( $a ))}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -383,7 +383,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // lit := litw, off
     ( $op:ident # ( $a:expr ), ( $x:expr ) : $x_w:tt , $y:tt : $y_w:tt / $y_o:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x ) : $x_w),rreil_rvalue!($y : $y_w / $y_o)), assignee: rreil_lvalue!(( $a ))}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x ) : $x_w), rreil_rvalue!($y : $y_w / $y_o)), assignee: rreil_lvalue!(( $a ))}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -403,7 +403,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // lit := litw, lit
     ( $op:ident # ( $a:expr ), ( $x:expr ) : $x_w:tt , ( $y:expr ) ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x ) : $x_w),rreil_rvalue!(( $y ))), assignee: rreil_lvalue!(( $a ))}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x ) : $x_w), rreil_rvalue!(( $y ))), assignee: rreil_lvalue!(( $a ))}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -423,7 +423,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // lit := litw, litw
     ( $op:ident # ( $a:expr ), ( $x:expr ) : $x_w:tt , ( $y:expr ) : $y_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x ) : $x_w),rreil_rvalue!(( $y ) : $y_w)), assignee: rreil_lvalue!(( $a ))}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x ) : $x_w), rreil_rvalue!(( $y ) : $y_w)), assignee: rreil_lvalue!(( $a ))}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -443,7 +443,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // lit := litw, const
     ( $op:ident # ( $a:expr ), ( $x:expr ) : $x_w:tt , [ $y:tt ] : $y_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x ) : $x_w),rreil_rvalue!([ $y ] : $y_w)), assignee: rreil_lvalue!(( $a ))}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x ) : $x_w), rreil_rvalue!([ $y ] : $y_w)), assignee: rreil_lvalue!(( $a ))}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -463,7 +463,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // lit := litw, undef
     ( $op:ident # ( $a:expr ), ( $x:expr ) : $x_w:tt , ? ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x ) : $x_w),rreil_rvalue!(?)), assignee: rreil_lvalue!(( $a ))}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x ) : $x_w), rreil_rvalue!(?)), assignee: rreil_lvalue!(( $a ))}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -483,7 +483,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // lit := const, noff
     ( $op:ident # ( $a:expr ), [ $x:tt ] : $x_w:tt , $y:tt : $y_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!([ $x ] : $x_w),rreil_rvalue!($y : $y_w)), assignee: rreil_lvalue!(( $a ))}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!([ $x ] : $x_w), rreil_rvalue!($y : $y_w)), assignee: rreil_lvalue!(( $a ))}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -503,7 +503,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // lit := const, off
     ( $op:ident # ( $a:expr ), [ $x:tt ] : $x_w:tt , $y:tt : $y_w:tt / $y_o:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!([ $x ] : $x_w),rreil_rvalue!($y : $y_w / $y_o)), assignee: rreil_lvalue!(( $a ))}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!([ $x ] : $x_w), rreil_rvalue!($y : $y_w / $y_o)), assignee: rreil_lvalue!(( $a ))}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -523,7 +523,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // lit := const, lit
     ( $op:ident # ( $a:expr ), [ $x:tt ] : $x_w:tt , ( $y:expr ) ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!([ $x ] : $x_w),rreil_rvalue!(( $y ))), assignee: rreil_lvalue!(( $a ))}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!([ $x ] : $x_w), rreil_rvalue!(( $y ))), assignee: rreil_lvalue!(( $a ))}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -543,7 +543,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // lit := const, litw
     ( $op:ident # ( $a:expr ), [ $x:tt ] : $x_w:tt , ( $y:expr ) : $y_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!([ $x ] : $x_w),rreil_rvalue!(( $y ) : $y_w)), assignee: rreil_lvalue!(( $a ))}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!([ $x ] : $x_w), rreil_rvalue!(( $y ) : $y_w)), assignee: rreil_lvalue!(( $a ))}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -563,7 +563,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // lit := const, const
     ( $op:ident # ( $a:expr ), [ $x:tt ] : $x_w:tt , [ $y:tt ] : $y_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!([ $x ] : $x_w),rreil_rvalue!([ $y ] : $y_w)), assignee: rreil_lvalue!(( $a ))}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!([ $x ] : $x_w), rreil_rvalue!([ $y ] : $y_w)), assignee: rreil_lvalue!(( $a ))}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -583,7 +583,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // lit := const, undef
     ( $op:ident # ( $a:expr ), [ $x:tt ] : $x_w:tt , ? ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!([ $x ] : $x_w),rreil_rvalue!(?)), assignee: rreil_lvalue!(( $a ))}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!([ $x ] : $x_w), rreil_rvalue!(?)), assignee: rreil_lvalue!(( $a ))}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -603,7 +603,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // lit := undef, noff
     ( $op:ident # ( $a:expr ), ? , $y:tt : $y_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(?),rreil_rvalue!($y : $y_w)), assignee: rreil_lvalue!(( $a ))}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(?), rreil_rvalue!($y : $y_w)), assignee: rreil_lvalue!(( $a ))}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -623,7 +623,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // lit := undef, off
     ( $op:ident # ( $a:expr ), ? , $y:tt : $y_w:tt / $y_o:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(?),rreil_rvalue!($y : $y_w / $y_o)), assignee: rreil_lvalue!(( $a ))}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(?), rreil_rvalue!($y : $y_w / $y_o)), assignee: rreil_lvalue!(( $a ))}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -643,7 +643,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // lit := undef, lit
     ( $op:ident # ( $a:expr ), ? , ( $y:expr ) ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(?),rreil_rvalue!(( $y ))), assignee: rreil_lvalue!(( $a ))}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(?), rreil_rvalue!(( $y ))), assignee: rreil_lvalue!(( $a ))}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -663,7 +663,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // lit := undef, litw
     ( $op:ident # ( $a:expr ), ? , ( $y:expr ) : $y_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(?),rreil_rvalue!(( $y ) : $y_w)), assignee: rreil_lvalue!(( $a ))}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(?), rreil_rvalue!(( $y ) : $y_w)), assignee: rreil_lvalue!(( $a ))}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -683,7 +683,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // lit := undef, const
     ( $op:ident # ( $a:expr ), ? , [ $y:tt ] : $y_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(?),rreil_rvalue!([ $y ] : $y_w)), assignee: rreil_lvalue!(( $a ))}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(?), rreil_rvalue!([ $y ] : $y_w)), assignee: rreil_lvalue!(( $a ))}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -703,7 +703,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // lit := undef, undef
     ( $op:ident # ( $a:expr ), ? , ? ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(?),rreil_rvalue!(?)), assignee: rreil_lvalue!(( $a ))}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(?), rreil_rvalue!(?)), assignee: rreil_lvalue!(( $a ))}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -723,7 +723,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // litw := noff, noff
     ( $op:ident # ( $a:expr ) : $a_w:tt, $x:tt : $x_w:tt , $y:tt : $y_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w),rreil_rvalue!($y : $y_w)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w), rreil_rvalue!($y : $y_w)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -743,7 +743,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // litw := noff, off
     ( $op:ident # ( $a:expr ) : $a_w:tt, $x:tt : $x_w:tt , $y:tt : $y_w:tt / $y_o:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w),rreil_rvalue!($y : $y_w / $y_o)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w), rreil_rvalue!($y : $y_w / $y_o)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -763,7 +763,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // litw := noff, lit
     ( $op:ident # ( $a:expr ) : $a_w:tt, $x:tt : $x_w:tt , ( $y:expr ) ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w),rreil_rvalue!(( $y ))), assignee: rreil_lvalue!(( $a ) : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w), rreil_rvalue!(( $y ))), assignee: rreil_lvalue!(( $a ) : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -783,7 +783,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // litw := noff, litw
     ( $op:ident # ( $a:expr ) : $a_w:tt, $x:tt : $x_w:tt , ( $y:expr ) : $y_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w),rreil_rvalue!(( $y ) : $y_w)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w), rreil_rvalue!(( $y ) : $y_w)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -803,7 +803,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // litw := noff, const
     ( $op:ident # ( $a:expr ) : $a_w:tt, $x:tt : $x_w:tt , [ $y:tt ] : $y_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w),rreil_rvalue!([ $y ] : $y_w)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w), rreil_rvalue!([ $y ] : $y_w)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -823,7 +823,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // litw := noff, undef
     ( $op:ident # ( $a:expr ) : $a_w:tt, $x:tt : $x_w:tt , ? ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w),rreil_rvalue!(?)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w), rreil_rvalue!(?)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -843,7 +843,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // litw := off, noff
     ( $op:ident # ( $a:expr ) : $a_w:tt, $x:tt : $x_w:tt / $x_o:tt , $y:tt : $y_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w / $x_o),rreil_rvalue!($y : $y_w)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w / $x_o), rreil_rvalue!($y : $y_w)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -863,7 +863,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // litw := off, off
     ( $op:ident # ( $a:expr ) : $a_w:tt, $x:tt : $x_w:tt / $x_o:tt , $y:tt : $y_w:tt / $y_o:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w / $x_o),rreil_rvalue!($y : $y_w / $y_o)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w / $x_o), rreil_rvalue!($y : $y_w / $y_o)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -883,7 +883,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // litw := off, lit
     ( $op:ident # ( $a:expr ) : $a_w:tt, $x:tt : $x_w:tt / $x_o:tt , ( $y:expr ) ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w / $x_o),rreil_rvalue!(( $y ))), assignee: rreil_lvalue!(( $a ) : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w / $x_o), rreil_rvalue!(( $y ))), assignee: rreil_lvalue!(( $a ) : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -903,7 +903,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // litw := off, litw
     ( $op:ident # ( $a:expr ) : $a_w:tt, $x:tt : $x_w:tt / $x_o:tt , ( $y:expr ) : $y_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w / $x_o),rreil_rvalue!(( $y ) : $y_w)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w / $x_o), rreil_rvalue!(( $y ) : $y_w)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -923,7 +923,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // litw := off, const
     ( $op:ident # ( $a:expr ) : $a_w:tt, $x:tt : $x_w:tt / $x_o:tt , [ $y:tt ] : $y_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w / $x_o),rreil_rvalue!([ $y ] : $y_w)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w / $x_o), rreil_rvalue!([ $y ] : $y_w)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -943,7 +943,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // litw := off, undef
     ( $op:ident # ( $a:expr ) : $a_w:tt, $x:tt : $x_w:tt / $x_o:tt , ? ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w / $x_o),rreil_rvalue!(?)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w / $x_o), rreil_rvalue!(?)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -963,7 +963,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // litw := lit, noff
     ( $op:ident # ( $a:expr ) : $a_w:tt, ( $x:expr ) , $y:tt : $y_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x )),rreil_rvalue!($y : $y_w)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x )), rreil_rvalue!($y : $y_w)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -983,7 +983,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // litw := lit, off
     ( $op:ident # ( $a:expr ) : $a_w:tt, ( $x:expr ) , $y:tt : $y_w:tt / $y_o:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x )),rreil_rvalue!($y : $y_w / $y_o)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x )), rreil_rvalue!($y : $y_w / $y_o)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -1003,7 +1003,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // litw := lit, lit
     ( $op:ident # ( $a:expr ) : $a_w:tt, ( $x:expr ) , ( $y:expr ) ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x )),rreil_rvalue!(( $y ))), assignee: rreil_lvalue!(( $a ) : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x )), rreil_rvalue!(( $y ))), assignee: rreil_lvalue!(( $a ) : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -1023,7 +1023,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // litw := lit, litw
     ( $op:ident # ( $a:expr ) : $a_w:tt, ( $x:expr ) , ( $y:expr ) : $y_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x )),rreil_rvalue!(( $y ) : $y_w)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x )), rreil_rvalue!(( $y ) : $y_w)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -1043,7 +1043,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // litw := lit, const
     ( $op:ident # ( $a:expr ) : $a_w:tt, ( $x:expr ) , [ $y:tt ] : $y_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x )),rreil_rvalue!([ $y ] : $y_w)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x )), rreil_rvalue!([ $y ] : $y_w)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -1063,7 +1063,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // litw := lit, undef
     ( $op:ident # ( $a:expr ) : $a_w:tt, ( $x:expr ) , ? ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x )),rreil_rvalue!(?)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x )), rreil_rvalue!(?)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -1083,7 +1083,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // litw := litw, noff
     ( $op:ident # ( $a:expr ) : $a_w:tt, ( $x:expr ) : $x_w:tt , $y:tt : $y_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x ) : $x_w),rreil_rvalue!($y : $y_w)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x ) : $x_w), rreil_rvalue!($y : $y_w)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -1103,7 +1103,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // litw := litw, off
     ( $op:ident # ( $a:expr ) : $a_w:tt, ( $x:expr ) : $x_w:tt , $y:tt : $y_w:tt / $y_o:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x ) : $x_w),rreil_rvalue!($y : $y_w / $y_o)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x ) : $x_w), rreil_rvalue!($y : $y_w / $y_o)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -1123,7 +1123,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // litw := litw, lit
     ( $op:ident # ( $a:expr ) : $a_w:tt, ( $x:expr ) : $x_w:tt , ( $y:expr ) ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x ) : $x_w),rreil_rvalue!(( $y ))), assignee: rreil_lvalue!(( $a ) : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x ) : $x_w), rreil_rvalue!(( $y ))), assignee: rreil_lvalue!(( $a ) : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -1143,7 +1143,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // litw := litw, litw
     ( $op:ident # ( $a:expr ) : $a_w:tt, ( $x:expr ) : $x_w:tt , ( $y:expr ) : $y_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x ) : $x_w),rreil_rvalue!(( $y ) : $y_w)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x ) : $x_w), rreil_rvalue!(( $y ) : $y_w)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -1163,7 +1163,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // litw := litw, const
     ( $op:ident # ( $a:expr ) : $a_w:tt, ( $x:expr ) : $x_w:tt , [ $y:tt ] : $y_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x ) : $x_w),rreil_rvalue!([ $y ] : $y_w)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x ) : $x_w), rreil_rvalue!([ $y ] : $y_w)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -1183,7 +1183,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // litw := litw, undef
     ( $op:ident # ( $a:expr ) : $a_w:tt, ( $x:expr ) : $x_w:tt , ? ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x ) : $x_w),rreil_rvalue!(?)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x ) : $x_w), rreil_rvalue!(?)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -1203,7 +1203,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // litw := const, noff
     ( $op:ident # ( $a:expr ) : $a_w:tt, [ $x:tt ] : $x_w:tt , $y:tt : $y_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!([ $x ] : $x_w),rreil_rvalue!($y : $y_w)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!([ $x ] : $x_w), rreil_rvalue!($y : $y_w)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -1223,7 +1223,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // litw := const, off
     ( $op:ident # ( $a:expr ) : $a_w:tt, [ $x:tt ] : $x_w:tt , $y:tt : $y_w:tt / $y_o:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!([ $x ] : $x_w),rreil_rvalue!($y : $y_w / $y_o)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!([ $x ] : $x_w), rreil_rvalue!($y : $y_w / $y_o)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -1243,7 +1243,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // litw := const, lit
     ( $op:ident # ( $a:expr ) : $a_w:tt, [ $x:tt ] : $x_w:tt , ( $y:expr ) ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!([ $x ] : $x_w),rreil_rvalue!(( $y ))), assignee: rreil_lvalue!(( $a ) : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!([ $x ] : $x_w), rreil_rvalue!(( $y ))), assignee: rreil_lvalue!(( $a ) : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -1263,7 +1263,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // litw := const, litw
     ( $op:ident # ( $a:expr ) : $a_w:tt, [ $x:tt ] : $x_w:tt , ( $y:expr ) : $y_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!([ $x ] : $x_w),rreil_rvalue!(( $y ) : $y_w)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!([ $x ] : $x_w), rreil_rvalue!(( $y ) : $y_w)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -1283,7 +1283,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // litw := const, const
     ( $op:ident # ( $a:expr ) : $a_w:tt, [ $x:tt ] : $x_w:tt , [ $y:tt ] : $y_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!([ $x ] : $x_w),rreil_rvalue!([ $y ] : $y_w)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!([ $x ] : $x_w), rreil_rvalue!([ $y ] : $y_w)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -1303,7 +1303,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // litw := const, undef
     ( $op:ident # ( $a:expr ) : $a_w:tt, [ $x:tt ] : $x_w:tt , ? ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!([ $x ] : $x_w),rreil_rvalue!(?)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!([ $x ] : $x_w), rreil_rvalue!(?)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -1323,7 +1323,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // litw := undef, noff
     ( $op:ident # ( $a:expr ) : $a_w:tt, ? , $y:tt : $y_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(?),rreil_rvalue!($y : $y_w)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(?), rreil_rvalue!($y : $y_w)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -1343,7 +1343,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // litw := undef, off
     ( $op:ident # ( $a:expr ) : $a_w:tt, ? , $y:tt : $y_w:tt / $y_o:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(?),rreil_rvalue!($y : $y_w / $y_o)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(?), rreil_rvalue!($y : $y_w / $y_o)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -1363,7 +1363,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // litw := undef, lit
     ( $op:ident # ( $a:expr ) : $a_w:tt, ? , ( $y:expr ) ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(?),rreil_rvalue!(( $y ))), assignee: rreil_lvalue!(( $a ) : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(?), rreil_rvalue!(( $y ))), assignee: rreil_lvalue!(( $a ) : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -1383,7 +1383,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // litw := undef, litw
     ( $op:ident # ( $a:expr ) : $a_w:tt, ? , ( $y:expr ) : $y_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(?),rreil_rvalue!(( $y ) : $y_w)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(?), rreil_rvalue!(( $y ) : $y_w)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -1403,7 +1403,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // litw := undef, const
     ( $op:ident # ( $a:expr ) : $a_w:tt, ? , [ $y:tt ] : $y_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(?),rreil_rvalue!([ $y ] : $y_w)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(?), rreil_rvalue!([ $y ] : $y_w)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -1423,7 +1423,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // litw := undef, undef
     ( $op:ident # ( $a:expr ) : $a_w:tt, ? , ? ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(?),rreil_rvalue!(?)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(?), rreil_rvalue!(?)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -1443,7 +1443,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // noff := noff, noff
     ( $op:ident # $a:tt : $a_w:tt, $x:tt : $x_w:tt , $y:tt : $y_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w),rreil_rvalue!($y : $y_w)), assignee: rreil_lvalue!($a : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w), rreil_rvalue!($y : $y_w)), assignee: rreil_lvalue!($a : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -1463,7 +1463,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // noff := noff, off
     ( $op:ident # $a:tt : $a_w:tt, $x:tt : $x_w:tt , $y:tt : $y_w:tt / $y_o:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w),rreil_rvalue!($y : $y_w / $y_o)), assignee: rreil_lvalue!($a : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w), rreil_rvalue!($y : $y_w / $y_o)), assignee: rreil_lvalue!($a : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -1483,7 +1483,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // noff := noff, lit
     ( $op:ident # $a:tt : $a_w:tt, $x:tt : $x_w:tt , ( $y:expr ) ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w),rreil_rvalue!(( $y ))), assignee: rreil_lvalue!($a : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w), rreil_rvalue!(( $y ))), assignee: rreil_lvalue!($a : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -1503,7 +1503,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // noff := noff, litw
     ( $op:ident # $a:tt : $a_w:tt, $x:tt : $x_w:tt , ( $y:expr ) : $y_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w),rreil_rvalue!(( $y ) : $y_w)), assignee: rreil_lvalue!($a : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w), rreil_rvalue!(( $y ) : $y_w)), assignee: rreil_lvalue!($a : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -1523,7 +1523,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // noff := noff, const
     ( $op:ident # $a:tt : $a_w:tt, $x:tt : $x_w:tt , [ $y:tt ] : $y_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w),rreil_rvalue!([ $y ] : $y_w)), assignee: rreil_lvalue!($a : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w), rreil_rvalue!([ $y ] : $y_w)), assignee: rreil_lvalue!($a : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -1543,7 +1543,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // noff := noff, undef
     ( $op:ident # $a:tt : $a_w:tt, $x:tt : $x_w:tt , ? ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w),rreil_rvalue!(?)), assignee: rreil_lvalue!($a : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w), rreil_rvalue!(?)), assignee: rreil_lvalue!($a : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -1563,7 +1563,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // noff := off, noff
     ( $op:ident # $a:tt : $a_w:tt, $x:tt : $x_w:tt / $x_o:tt , $y:tt : $y_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w / $x_o),rreil_rvalue!($y : $y_w)), assignee: rreil_lvalue!($a : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w / $x_o), rreil_rvalue!($y : $y_w)), assignee: rreil_lvalue!($a : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -1583,7 +1583,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // noff := off, off
     ( $op:ident # $a:tt : $a_w:tt, $x:tt : $x_w:tt / $x_o:tt , $y:tt : $y_w:tt / $y_o:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w / $x_o),rreil_rvalue!($y : $y_w / $y_o)), assignee: rreil_lvalue!($a : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w / $x_o), rreil_rvalue!($y : $y_w / $y_o)), assignee: rreil_lvalue!($a : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -1603,7 +1603,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // noff := off, lit
     ( $op:ident # $a:tt : $a_w:tt, $x:tt : $x_w:tt / $x_o:tt , ( $y:expr ) ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w / $x_o),rreil_rvalue!(( $y ))), assignee: rreil_lvalue!($a : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w / $x_o), rreil_rvalue!(( $y ))), assignee: rreil_lvalue!($a : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -1623,7 +1623,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // noff := off, litw
     ( $op:ident # $a:tt : $a_w:tt, $x:tt : $x_w:tt / $x_o:tt , ( $y:expr ) : $y_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w / $x_o),rreil_rvalue!(( $y ) : $y_w)), assignee: rreil_lvalue!($a : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w / $x_o), rreil_rvalue!(( $y ) : $y_w)), assignee: rreil_lvalue!($a : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -1643,7 +1643,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // noff := off, const
     ( $op:ident # $a:tt : $a_w:tt, $x:tt : $x_w:tt / $x_o:tt , [ $y:tt ] : $y_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w / $x_o),rreil_rvalue!([ $y ] : $y_w)), assignee: rreil_lvalue!($a : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w / $x_o), rreil_rvalue!([ $y ] : $y_w)), assignee: rreil_lvalue!($a : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -1663,7 +1663,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // noff := off, undef
     ( $op:ident # $a:tt : $a_w:tt, $x:tt : $x_w:tt / $x_o:tt , ? ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w / $x_o),rreil_rvalue!(?)), assignee: rreil_lvalue!($a : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w / $x_o), rreil_rvalue!(?)), assignee: rreil_lvalue!($a : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -1683,7 +1683,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // noff := lit, noff
     ( $op:ident # $a:tt : $a_w:tt, ( $x:expr ) , $y:tt : $y_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x )),rreil_rvalue!($y : $y_w)), assignee: rreil_lvalue!($a : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x )), rreil_rvalue!($y : $y_w)), assignee: rreil_lvalue!($a : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -1703,7 +1703,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // noff := lit, off
     ( $op:ident # $a:tt : $a_w:tt, ( $x:expr ) , $y:tt : $y_w:tt / $y_o:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x )),rreil_rvalue!($y : $y_w / $y_o)), assignee: rreil_lvalue!($a : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x )), rreil_rvalue!($y : $y_w / $y_o)), assignee: rreil_lvalue!($a : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -1723,7 +1723,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // noff := lit, lit
     ( $op:ident # $a:tt : $a_w:tt, ( $x:expr ) , ( $y:expr ) ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x )),rreil_rvalue!(( $y ))), assignee: rreil_lvalue!($a : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x )), rreil_rvalue!(( $y ))), assignee: rreil_lvalue!($a : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -1743,7 +1743,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // noff := lit, litw
     ( $op:ident # $a:tt : $a_w:tt, ( $x:expr ) , ( $y:expr ) : $y_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x )),rreil_rvalue!(( $y ) : $y_w)), assignee: rreil_lvalue!($a : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x )), rreil_rvalue!(( $y ) : $y_w)), assignee: rreil_lvalue!($a : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -1763,7 +1763,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // noff := lit, const
     ( $op:ident # $a:tt : $a_w:tt, ( $x:expr ) , [ $y:tt ] : $y_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x )),rreil_rvalue!([ $y ] : $y_w)), assignee: rreil_lvalue!($a : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x )), rreil_rvalue!([ $y ] : $y_w)), assignee: rreil_lvalue!($a : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -1783,7 +1783,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // noff := lit, undef
     ( $op:ident # $a:tt : $a_w:tt, ( $x:expr ) , ? ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x )),rreil_rvalue!(?)), assignee: rreil_lvalue!($a : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x )), rreil_rvalue!(?)), assignee: rreil_lvalue!($a : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -1803,7 +1803,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // noff := litw, noff
     ( $op:ident # $a:tt : $a_w:tt, ( $x:expr ) : $x_w:tt , $y:tt : $y_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x ) : $x_w),rreil_rvalue!($y : $y_w)), assignee: rreil_lvalue!($a : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x ) : $x_w), rreil_rvalue!($y : $y_w)), assignee: rreil_lvalue!($a : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -1823,7 +1823,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // noff := litw, off
     ( $op:ident # $a:tt : $a_w:tt, ( $x:expr ) : $x_w:tt , $y:tt : $y_w:tt / $y_o:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x ) : $x_w),rreil_rvalue!($y : $y_w / $y_o)), assignee: rreil_lvalue!($a : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x ) : $x_w), rreil_rvalue!($y : $y_w / $y_o)), assignee: rreil_lvalue!($a : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -1843,7 +1843,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // noff := litw, lit
     ( $op:ident # $a:tt : $a_w:tt, ( $x:expr ) : $x_w:tt , ( $y:expr ) ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x ) : $x_w),rreil_rvalue!(( $y ))), assignee: rreil_lvalue!($a : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x ) : $x_w), rreil_rvalue!(( $y ))), assignee: rreil_lvalue!($a : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -1863,7 +1863,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // noff := litw, litw
     ( $op:ident # $a:tt : $a_w:tt, ( $x:expr ) : $x_w:tt , ( $y:expr ) : $y_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x ) : $x_w),rreil_rvalue!(( $y ) : $y_w)), assignee: rreil_lvalue!($a : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x ) : $x_w), rreil_rvalue!(( $y ) : $y_w)), assignee: rreil_lvalue!($a : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -1883,7 +1883,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // noff := litw, const
     ( $op:ident # $a:tt : $a_w:tt, ( $x:expr ) : $x_w:tt , [ $y:tt ] : $y_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x ) : $x_w),rreil_rvalue!([ $y ] : $y_w)), assignee: rreil_lvalue!($a : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x ) : $x_w), rreil_rvalue!([ $y ] : $y_w)), assignee: rreil_lvalue!($a : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -1903,7 +1903,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // noff := litw, undef
     ( $op:ident # $a:tt : $a_w:tt, ( $x:expr ) : $x_w:tt , ? ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x ) : $x_w),rreil_rvalue!(?)), assignee: rreil_lvalue!($a : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x ) : $x_w), rreil_rvalue!(?)), assignee: rreil_lvalue!($a : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -1923,7 +1923,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // noff := const, noff
     ( $op:ident # $a:tt : $a_w:tt, [ $x:tt ] : $x_w:tt , $y:tt : $y_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!([ $x ] : $x_w),rreil_rvalue!($y : $y_w)), assignee: rreil_lvalue!($a : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!([ $x ] : $x_w), rreil_rvalue!($y : $y_w)), assignee: rreil_lvalue!($a : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -1943,7 +1943,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // noff := const, off
     ( $op:ident # $a:tt : $a_w:tt, [ $x:tt ] : $x_w:tt , $y:tt : $y_w:tt / $y_o:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!([ $x ] : $x_w),rreil_rvalue!($y : $y_w / $y_o)), assignee: rreil_lvalue!($a : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!([ $x ] : $x_w), rreil_rvalue!($y : $y_w / $y_o)), assignee: rreil_lvalue!($a : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -1963,7 +1963,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // noff := const, lit
     ( $op:ident # $a:tt : $a_w:tt, [ $x:tt ] : $x_w:tt , ( $y:expr ) ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!([ $x ] : $x_w),rreil_rvalue!(( $y ))), assignee: rreil_lvalue!($a : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!([ $x ] : $x_w), rreil_rvalue!(( $y ))), assignee: rreil_lvalue!($a : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -1983,7 +1983,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // noff := const, litw
     ( $op:ident # $a:tt : $a_w:tt, [ $x:tt ] : $x_w:tt , ( $y:expr ) : $y_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!([ $x ] : $x_w),rreil_rvalue!(( $y ) : $y_w)), assignee: rreil_lvalue!($a : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!([ $x ] : $x_w), rreil_rvalue!(( $y ) : $y_w)), assignee: rreil_lvalue!($a : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -2003,7 +2003,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // noff := const, const
     ( $op:ident # $a:tt : $a_w:tt, [ $x:tt ] : $x_w:tt , [ $y:tt ] : $y_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!([ $x ] : $x_w),rreil_rvalue!([ $y ] : $y_w)), assignee: rreil_lvalue!($a : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!([ $x ] : $x_w), rreil_rvalue!([ $y ] : $y_w)), assignee: rreil_lvalue!($a : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -2023,7 +2023,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // noff := const, undef
     ( $op:ident # $a:tt : $a_w:tt, [ $x:tt ] : $x_w:tt , ? ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!([ $x ] : $x_w),rreil_rvalue!(?)), assignee: rreil_lvalue!($a : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!([ $x ] : $x_w), rreil_rvalue!(?)), assignee: rreil_lvalue!($a : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -2043,7 +2043,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // noff := undef, noff
     ( $op:ident # $a:tt : $a_w:tt, ? , $y:tt : $y_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(?),rreil_rvalue!($y : $y_w)), assignee: rreil_lvalue!($a : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(?), rreil_rvalue!($y : $y_w)), assignee: rreil_lvalue!($a : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -2063,7 +2063,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // noff := undef, off
     ( $op:ident # $a:tt : $a_w:tt, ? , $y:tt : $y_w:tt / $y_o:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(?),rreil_rvalue!($y : $y_w / $y_o)), assignee: rreil_lvalue!($a : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(?), rreil_rvalue!($y : $y_w / $y_o)), assignee: rreil_lvalue!($a : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -2083,7 +2083,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // noff := undef, lit
     ( $op:ident # $a:tt : $a_w:tt, ? , ( $y:expr ) ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(?),rreil_rvalue!(( $y ))), assignee: rreil_lvalue!($a : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(?), rreil_rvalue!(( $y ))), assignee: rreil_lvalue!($a : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -2103,7 +2103,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // noff := undef, litw
     ( $op:ident # $a:tt : $a_w:tt, ? , ( $y:expr ) : $y_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(?),rreil_rvalue!(( $y ) : $y_w)), assignee: rreil_lvalue!($a : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(?), rreil_rvalue!(( $y ) : $y_w)), assignee: rreil_lvalue!($a : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -2123,7 +2123,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // noff := undef, const
     ( $op:ident # $a:tt : $a_w:tt, ? , [ $y:tt ] : $y_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(?),rreil_rvalue!([ $y ] : $y_w)), assignee: rreil_lvalue!($a : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(?), rreil_rvalue!([ $y ] : $y_w)), assignee: rreil_lvalue!($a : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -2143,7 +2143,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // noff := undef, undef
     ( $op:ident # $a:tt : $a_w:tt, ? , ? ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(?),rreil_rvalue!(?)), assignee: rreil_lvalue!($a : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(?), rreil_rvalue!(?)), assignee: rreil_lvalue!($a : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -2163,7 +2163,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // undef := noff, noff
     ( $op:ident # ?, $x:tt : $x_w:tt , $y:tt : $y_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w),rreil_rvalue!($y : $y_w)), assignee: rreil_lvalue!(?)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w), rreil_rvalue!($y : $y_w)), assignee: rreil_lvalue!(?)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -2183,7 +2183,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // undef := noff, off
     ( $op:ident # ?, $x:tt : $x_w:tt , $y:tt : $y_w:tt / $y_o:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w),rreil_rvalue!($y : $y_w / $y_o)), assignee: rreil_lvalue!(?)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w), rreil_rvalue!($y : $y_w / $y_o)), assignee: rreil_lvalue!(?)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -2203,7 +2203,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // undef := noff, lit
     ( $op:ident # ?, $x:tt : $x_w:tt , ( $y:expr ) ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w),rreil_rvalue!(( $y ))), assignee: rreil_lvalue!(?)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w), rreil_rvalue!(( $y ))), assignee: rreil_lvalue!(?)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -2223,7 +2223,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // undef := noff, litw
     ( $op:ident # ?, $x:tt : $x_w:tt , ( $y:expr ) : $y_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w),rreil_rvalue!(( $y ) : $y_w)), assignee: rreil_lvalue!(?)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w), rreil_rvalue!(( $y ) : $y_w)), assignee: rreil_lvalue!(?)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -2243,7 +2243,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // undef := noff, const
     ( $op:ident # ?, $x:tt : $x_w:tt , [ $y:tt ] : $y_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w),rreil_rvalue!([ $y ] : $y_w)), assignee: rreil_lvalue!(?)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w), rreil_rvalue!([ $y ] : $y_w)), assignee: rreil_lvalue!(?)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -2263,7 +2263,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // undef := noff, undef
     ( $op:ident # ?, $x:tt : $x_w:tt , ? ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w),rreil_rvalue!(?)), assignee: rreil_lvalue!(?)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w), rreil_rvalue!(?)), assignee: rreil_lvalue!(?)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -2283,7 +2283,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // undef := off, noff
     ( $op:ident # ?, $x:tt : $x_w:tt / $x_o:tt , $y:tt : $y_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w / $x_o),rreil_rvalue!($y : $y_w)), assignee: rreil_lvalue!(?)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w / $x_o), rreil_rvalue!($y : $y_w)), assignee: rreil_lvalue!(?)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -2303,7 +2303,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // undef := off, off
     ( $op:ident # ?, $x:tt : $x_w:tt / $x_o:tt , $y:tt : $y_w:tt / $y_o:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w / $x_o),rreil_rvalue!($y : $y_w / $y_o)), assignee: rreil_lvalue!(?)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w / $x_o), rreil_rvalue!($y : $y_w / $y_o)), assignee: rreil_lvalue!(?)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -2323,7 +2323,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // undef := off, lit
     ( $op:ident # ?, $x:tt : $x_w:tt / $x_o:tt , ( $y:expr ) ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w / $x_o),rreil_rvalue!(( $y ))), assignee: rreil_lvalue!(?)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w / $x_o), rreil_rvalue!(( $y ))), assignee: rreil_lvalue!(?)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -2343,7 +2343,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // undef := off, litw
     ( $op:ident # ?, $x:tt : $x_w:tt / $x_o:tt , ( $y:expr ) : $y_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w / $x_o),rreil_rvalue!(( $y ) : $y_w)), assignee: rreil_lvalue!(?)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w / $x_o), rreil_rvalue!(( $y ) : $y_w)), assignee: rreil_lvalue!(?)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -2363,7 +2363,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // undef := off, const
     ( $op:ident # ?, $x:tt : $x_w:tt / $x_o:tt , [ $y:tt ] : $y_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w / $x_o),rreil_rvalue!([ $y ] : $y_w)), assignee: rreil_lvalue!(?)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w / $x_o), rreil_rvalue!([ $y ] : $y_w)), assignee: rreil_lvalue!(?)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -2383,7 +2383,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // undef := off, undef
     ( $op:ident # ?, $x:tt : $x_w:tt / $x_o:tt , ? ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w / $x_o),rreil_rvalue!(?)), assignee: rreil_lvalue!(?)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!($x : $x_w / $x_o), rreil_rvalue!(?)), assignee: rreil_lvalue!(?)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -2403,7 +2403,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // undef := lit, noff
     ( $op:ident # ?, ( $x:expr ) , $y:tt : $y_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x )),rreil_rvalue!($y : $y_w)), assignee: rreil_lvalue!(?)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x )), rreil_rvalue!($y : $y_w)), assignee: rreil_lvalue!(?)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -2423,7 +2423,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // undef := lit, off
     ( $op:ident # ?, ( $x:expr ) , $y:tt : $y_w:tt / $y_o:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x )),rreil_rvalue!($y : $y_w / $y_o)), assignee: rreil_lvalue!(?)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x )), rreil_rvalue!($y : $y_w / $y_o)), assignee: rreil_lvalue!(?)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -2443,7 +2443,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // undef := lit, lit
     ( $op:ident # ?, ( $x:expr ) , ( $y:expr ) ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x )),rreil_rvalue!(( $y ))), assignee: rreil_lvalue!(?)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x )), rreil_rvalue!(( $y ))), assignee: rreil_lvalue!(?)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -2463,7 +2463,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // undef := lit, litw
     ( $op:ident # ?, ( $x:expr ) , ( $y:expr ) : $y_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x )),rreil_rvalue!(( $y ) : $y_w)), assignee: rreil_lvalue!(?)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x )), rreil_rvalue!(( $y ) : $y_w)), assignee: rreil_lvalue!(?)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -2483,7 +2483,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // undef := lit, const
     ( $op:ident # ?, ( $x:expr ) , [ $y:tt ] : $y_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x )),rreil_rvalue!([ $y ] : $y_w)), assignee: rreil_lvalue!(?)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x )), rreil_rvalue!([ $y ] : $y_w)), assignee: rreil_lvalue!(?)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -2503,7 +2503,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // undef := lit, undef
     ( $op:ident # ?, ( $x:expr ) , ? ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x )),rreil_rvalue!(?)), assignee: rreil_lvalue!(?)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x )), rreil_rvalue!(?)), assignee: rreil_lvalue!(?)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -2523,7 +2523,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // undef := litw, noff
     ( $op:ident # ?, ( $x:expr ) : $x_w:tt , $y:tt : $y_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x ) : $x_w),rreil_rvalue!($y : $y_w)), assignee: rreil_lvalue!(?)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x ) : $x_w), rreil_rvalue!($y : $y_w)), assignee: rreil_lvalue!(?)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -2543,7 +2543,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // undef := litw, off
     ( $op:ident # ?, ( $x:expr ) : $x_w:tt , $y:tt : $y_w:tt / $y_o:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x ) : $x_w),rreil_rvalue!($y : $y_w / $y_o)), assignee: rreil_lvalue!(?)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x ) : $x_w), rreil_rvalue!($y : $y_w / $y_o)), assignee: rreil_lvalue!(?)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -2563,7 +2563,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // undef := litw, lit
     ( $op:ident # ?, ( $x:expr ) : $x_w:tt , ( $y:expr ) ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x ) : $x_w),rreil_rvalue!(( $y ))), assignee: rreil_lvalue!(?)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x ) : $x_w), rreil_rvalue!(( $y ))), assignee: rreil_lvalue!(?)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -2583,7 +2583,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // undef := litw, litw
     ( $op:ident # ?, ( $x:expr ) : $x_w:tt , ( $y:expr ) : $y_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x ) : $x_w),rreil_rvalue!(( $y ) : $y_w)), assignee: rreil_lvalue!(?)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x ) : $x_w), rreil_rvalue!(( $y ) : $y_w)), assignee: rreil_lvalue!(?)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -2603,7 +2603,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // undef := litw, const
     ( $op:ident # ?, ( $x:expr ) : $x_w:tt , [ $y:tt ] : $y_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x ) : $x_w),rreil_rvalue!([ $y ] : $y_w)), assignee: rreil_lvalue!(?)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x ) : $x_w), rreil_rvalue!([ $y ] : $y_w)), assignee: rreil_lvalue!(?)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -2623,7 +2623,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // undef := litw, undef
     ( $op:ident # ?, ( $x:expr ) : $x_w:tt , ? ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x ) : $x_w),rreil_rvalue!(?)), assignee: rreil_lvalue!(?)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(( $x ) : $x_w), rreil_rvalue!(?)), assignee: rreil_lvalue!(?)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -2643,7 +2643,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // undef := const, noff
     ( $op:ident # ?, [ $x:tt ] : $x_w:tt , $y:tt : $y_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!([ $x ] : $x_w),rreil_rvalue!($y : $y_w)), assignee: rreil_lvalue!(?)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!([ $x ] : $x_w), rreil_rvalue!($y : $y_w)), assignee: rreil_lvalue!(?)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -2663,7 +2663,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // undef := const, off
     ( $op:ident # ?, [ $x:tt ] : $x_w:tt , $y:tt : $y_w:tt / $y_o:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!([ $x ] : $x_w),rreil_rvalue!($y : $y_w / $y_o)), assignee: rreil_lvalue!(?)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!([ $x ] : $x_w), rreil_rvalue!($y : $y_w / $y_o)), assignee: rreil_lvalue!(?)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -2683,7 +2683,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // undef := const, lit
     ( $op:ident # ?, [ $x:tt ] : $x_w:tt , ( $y:expr ) ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!([ $x ] : $x_w),rreil_rvalue!(( $y ))), assignee: rreil_lvalue!(?)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!([ $x ] : $x_w), rreil_rvalue!(( $y ))), assignee: rreil_lvalue!(?)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -2703,7 +2703,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // undef := const, litw
     ( $op:ident # ?, [ $x:tt ] : $x_w:tt , ( $y:expr ) : $y_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!([ $x ] : $x_w),rreil_rvalue!(( $y ) : $y_w)), assignee: rreil_lvalue!(?)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!([ $x ] : $x_w), rreil_rvalue!(( $y ) : $y_w)), assignee: rreil_lvalue!(?)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -2723,7 +2723,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // undef := const, const
     ( $op:ident # ?, [ $x:tt ] : $x_w:tt , [ $y:tt ] : $y_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!([ $x ] : $x_w),rreil_rvalue!([ $y ] : $y_w)), assignee: rreil_lvalue!(?)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!([ $x ] : $x_w), rreil_rvalue!([ $y ] : $y_w)), assignee: rreil_lvalue!(?)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -2743,7 +2743,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // undef := const, undef
     ( $op:ident # ?, [ $x:tt ] : $x_w:tt , ? ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!([ $x ] : $x_w),rreil_rvalue!(?)), assignee: rreil_lvalue!(?)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!([ $x ] : $x_w), rreil_rvalue!(?)), assignee: rreil_lvalue!(?)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -2763,7 +2763,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // undef := undef, noff
     ( $op:ident # ?, ? , $y:tt : $y_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(?),rreil_rvalue!($y : $y_w)), assignee: rreil_lvalue!(?)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(?), rreil_rvalue!($y : $y_w)), assignee: rreil_lvalue!(?)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -2783,7 +2783,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // undef := undef, off
     ( $op:ident # ?, ? , $y:tt : $y_w:tt / $y_o:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(?),rreil_rvalue!($y : $y_w / $y_o)), assignee: rreil_lvalue!(?)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(?), rreil_rvalue!($y : $y_w / $y_o)), assignee: rreil_lvalue!(?)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -2803,7 +2803,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // undef := undef, lit
     ( $op:ident # ?, ? , ( $y:expr ) ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(?),rreil_rvalue!(( $y ))), assignee: rreil_lvalue!(?)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(?), rreil_rvalue!(( $y ))), assignee: rreil_lvalue!(?)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -2823,7 +2823,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // undef := undef, litw
     ( $op:ident # ?, ? , ( $y:expr ) : $y_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(?),rreil_rvalue!(( $y ) : $y_w)), assignee: rreil_lvalue!(?)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(?), rreil_rvalue!(( $y ) : $y_w)), assignee: rreil_lvalue!(?)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -2843,7 +2843,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // undef := undef, const
     ( $op:ident # ?, ? , [ $y:tt ] : $y_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(?),rreil_rvalue!([ $y ] : $y_w)), assignee: rreil_lvalue!(?)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(?), rreil_rvalue!([ $y ] : $y_w)), assignee: rreil_lvalue!(?)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -2863,7 +2863,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // undef := undef, undef
     ( $op:ident # ?, ? , ? ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(?),rreil_rvalue!(?)), assignee: rreil_lvalue!(?)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_rvalue!(?), rreil_rvalue!(?)), assignee: rreil_lvalue!(?)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -3371,7 +3371,7 @@ macro_rules! rreil_memop {
     // lit := noff
     ( $op:ident # $bank:ident # ( $a:expr ), $x:tt : $x_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(::std::borrow::Cow::Borrowed(stringify!($bank)),rreil_rvalue!($x : $x_w)), assignee: rreil_lvalue!(( $a ))}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(::std::borrow::Cow::Borrowed(stringify!($bank)), rreil_rvalue!($x : $x_w)), assignee: rreil_lvalue!(( $a ))}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -3391,7 +3391,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // lit := off
     ( $op:ident # $bank:ident # ( $a:expr ), $x:tt : $x_w:tt / $x_o:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(::std::borrow::Cow::Borrowed(stringify!($bank)),rreil_rvalue!($x : $x_w / $x_o)), assignee: rreil_lvalue!(( $a ))}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(::std::borrow::Cow::Borrowed(stringify!($bank)), rreil_rvalue!($x : $x_w / $x_o)), assignee: rreil_lvalue!(( $a ))}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -3411,7 +3411,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // lit := lit
     ( $op:ident # $bank:ident # ( $a:expr ), ( $x:expr ) ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(::std::borrow::Cow::Borrowed(stringify!($bank)),rreil_rvalue!(( $x ))), assignee: rreil_lvalue!(( $a ))}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(::std::borrow::Cow::Borrowed(stringify!($bank)), rreil_rvalue!(( $x ))), assignee: rreil_lvalue!(( $a ))}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -3431,7 +3431,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // lit := litw
     ( $op:ident # $bank:ident # ( $a:expr ), ( $x:expr ) : $x_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(::std::borrow::Cow::Borrowed(stringify!($bank)),rreil_rvalue!(( $x ) : $x_w)), assignee: rreil_lvalue!(( $a ))}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(::std::borrow::Cow::Borrowed(stringify!($bank)), rreil_rvalue!(( $x ) : $x_w)), assignee: rreil_lvalue!(( $a ))}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -3451,7 +3451,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // lit := const
     ( $op:ident # $bank:ident # ( $a:expr ), [ $x:tt ] : $x_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(::std::borrow::Cow::Borrowed(stringify!($bank)),rreil_rvalue!([ $x ] : $x_w)), assignee: rreil_lvalue!(( $a ))}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(::std::borrow::Cow::Borrowed(stringify!($bank)), rreil_rvalue!([ $x ] : $x_w)), assignee: rreil_lvalue!(( $a ))}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -3471,7 +3471,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // lit := undef
     ( $op:ident # $bank:ident # ( $a:expr ), ? ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(::std::borrow::Cow::Borrowed(stringify!($bank)),rreil_rvalue!(?)), assignee: rreil_lvalue!(( $a ))}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(::std::borrow::Cow::Borrowed(stringify!($bank)), rreil_rvalue!(?)), assignee: rreil_lvalue!(( $a ))}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -3491,7 +3491,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // litw := noff
     ( $op:ident # $bank:ident # ( $a:expr ) : $a_w:tt, $x:tt : $x_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(::std::borrow::Cow::Borrowed(stringify!($bank)),rreil_rvalue!($x : $x_w)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(::std::borrow::Cow::Borrowed(stringify!($bank)), rreil_rvalue!($x : $x_w)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -3511,7 +3511,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // litw := off
     ( $op:ident # $bank:ident # ( $a:expr ) : $a_w:tt, $x:tt : $x_w:tt / $x_o:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(::std::borrow::Cow::Borrowed(stringify!($bank)),rreil_rvalue!($x : $x_w / $x_o)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(::std::borrow::Cow::Borrowed(stringify!($bank)), rreil_rvalue!($x : $x_w / $x_o)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -3531,7 +3531,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // litw := lit
     ( $op:ident # $bank:ident # ( $a:expr ) : $a_w:tt, ( $x:expr ) ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(::std::borrow::Cow::Borrowed(stringify!($bank)),rreil_rvalue!(( $x ))), assignee: rreil_lvalue!(( $a ) : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(::std::borrow::Cow::Borrowed(stringify!($bank)), rreil_rvalue!(( $x ))), assignee: rreil_lvalue!(( $a ) : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -3551,7 +3551,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // litw := litw
     ( $op:ident # $bank:ident # ( $a:expr ) : $a_w:tt, ( $x:expr ) : $x_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(::std::borrow::Cow::Borrowed(stringify!($bank)),rreil_rvalue!(( $x ) : $x_w)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(::std::borrow::Cow::Borrowed(stringify!($bank)), rreil_rvalue!(( $x ) : $x_w)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -3571,7 +3571,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // litw := const
     ( $op:ident # $bank:ident # ( $a:expr ) : $a_w:tt, [ $x:tt ] : $x_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(::std::borrow::Cow::Borrowed(stringify!($bank)),rreil_rvalue!([ $x ] : $x_w)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(::std::borrow::Cow::Borrowed(stringify!($bank)), rreil_rvalue!([ $x ] : $x_w)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -3591,7 +3591,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // litw := undef
     ( $op:ident # $bank:ident # ( $a:expr ) : $a_w:tt, ? ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(::std::borrow::Cow::Borrowed(stringify!($bank)),rreil_rvalue!(?)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(::std::borrow::Cow::Borrowed(stringify!($bank)), rreil_rvalue!(?)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -3611,7 +3611,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // noff := noff
     ( $op:ident # $bank:ident # $a:tt : $a_w:tt, $x:tt : $x_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(::std::borrow::Cow::Borrowed(stringify!($bank)),rreil_rvalue!($x : $x_w)), assignee: rreil_lvalue!($a : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(::std::borrow::Cow::Borrowed(stringify!($bank)), rreil_rvalue!($x : $x_w)), assignee: rreil_lvalue!($a : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -3631,7 +3631,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // noff := off
     ( $op:ident # $bank:ident # $a:tt : $a_w:tt, $x:tt : $x_w:tt / $x_o:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(::std::borrow::Cow::Borrowed(stringify!($bank)),rreil_rvalue!($x : $x_w / $x_o)), assignee: rreil_lvalue!($a : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(::std::borrow::Cow::Borrowed(stringify!($bank)), rreil_rvalue!($x : $x_w / $x_o)), assignee: rreil_lvalue!($a : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -3651,7 +3651,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // noff := lit
     ( $op:ident # $bank:ident # $a:tt : $a_w:tt, ( $x:expr ) ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(::std::borrow::Cow::Borrowed(stringify!($bank)),rreil_rvalue!(( $x ))), assignee: rreil_lvalue!($a : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(::std::borrow::Cow::Borrowed(stringify!($bank)), rreil_rvalue!(( $x ))), assignee: rreil_lvalue!($a : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -3671,7 +3671,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // noff := litw
     ( $op:ident # $bank:ident # $a:tt : $a_w:tt, ( $x:expr ) : $x_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(::std::borrow::Cow::Borrowed(stringify!($bank)),rreil_rvalue!(( $x ) : $x_w)), assignee: rreil_lvalue!($a : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(::std::borrow::Cow::Borrowed(stringify!($bank)), rreil_rvalue!(( $x ) : $x_w)), assignee: rreil_lvalue!($a : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -3691,7 +3691,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // noff := const
     ( $op:ident # $bank:ident # $a:tt : $a_w:tt, [ $x:tt ] : $x_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(::std::borrow::Cow::Borrowed(stringify!($bank)),rreil_rvalue!([ $x ] : $x_w)), assignee: rreil_lvalue!($a : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(::std::borrow::Cow::Borrowed(stringify!($bank)), rreil_rvalue!([ $x ] : $x_w)), assignee: rreil_lvalue!($a : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -3711,7 +3711,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // noff := undef
     ( $op:ident # $bank:ident # $a:tt : $a_w:tt, ? ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(::std::borrow::Cow::Borrowed(stringify!($bank)),rreil_rvalue!(?)), assignee: rreil_lvalue!($a : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(::std::borrow::Cow::Borrowed(stringify!($bank)), rreil_rvalue!(?)), assignee: rreil_lvalue!($a : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -3731,7 +3731,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // undef := noff
     ( $op:ident # $bank:ident # ?, $x:tt : $x_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(::std::borrow::Cow::Borrowed(stringify!($bank)),rreil_rvalue!($x : $x_w)), assignee: rreil_lvalue!(?)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(::std::borrow::Cow::Borrowed(stringify!($bank)), rreil_rvalue!($x : $x_w)), assignee: rreil_lvalue!(?)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -3751,7 +3751,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // undef := off
     ( $op:ident # $bank:ident # ?, $x:tt : $x_w:tt / $x_o:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(::std::borrow::Cow::Borrowed(stringify!($bank)),rreil_rvalue!($x : $x_w / $x_o)), assignee: rreil_lvalue!(?)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(::std::borrow::Cow::Borrowed(stringify!($bank)), rreil_rvalue!($x : $x_w / $x_o)), assignee: rreil_lvalue!(?)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -3771,7 +3771,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // undef := lit
     ( $op:ident # $bank:ident # ?, ( $x:expr ) ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(::std::borrow::Cow::Borrowed(stringify!($bank)),rreil_rvalue!(( $x ))), assignee: rreil_lvalue!(?)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(::std::borrow::Cow::Borrowed(stringify!($bank)), rreil_rvalue!(( $x ))), assignee: rreil_lvalue!(?)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -3791,7 +3791,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // undef := litw
     ( $op:ident # $bank:ident # ?, ( $x:expr ) : $x_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(::std::borrow::Cow::Borrowed(stringify!($bank)),rreil_rvalue!(( $x ) : $x_w)), assignee: rreil_lvalue!(?)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(::std::borrow::Cow::Borrowed(stringify!($bank)), rreil_rvalue!(( $x ) : $x_w)), assignee: rreil_lvalue!(?)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -3811,7 +3811,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // undef := const
     ( $op:ident # $bank:ident # ?, [ $x:tt ] : $x_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(::std::borrow::Cow::Borrowed(stringify!($bank)),rreil_rvalue!([ $x ] : $x_w)), assignee: rreil_lvalue!(?)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(::std::borrow::Cow::Borrowed(stringify!($bank)), rreil_rvalue!([ $x ] : $x_w)), assignee: rreil_lvalue!(?)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -3831,7 +3831,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // undef := undef
     ( $op:ident # $bank:ident # ?, ? ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(::std::borrow::Cow::Borrowed(stringify!($bank)),rreil_rvalue!(?)), assignee: rreil_lvalue!(?)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(::std::borrow::Cow::Borrowed(stringify!($bank)), rreil_rvalue!(?)), assignee: rreil_lvalue!(?)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -3855,7 +3855,7 @@ macro_rules! rreil_extop {
     // lit := noff
     ( $op:ident # $sz:tt # ( $a:expr ), $x:tt : $x_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz),rreil_rvalue!($x : $x_w)), assignee: rreil_lvalue!(( $a ))}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz), rreil_rvalue!($x : $x_w)), assignee: rreil_lvalue!(( $a ))}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -3875,7 +3875,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // lit := off
     ( $op:ident # $sz:tt # ( $a:expr ), $x:tt : $x_w:tt / $x_o:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz),rreil_rvalue!($x : $x_w / $x_o)), assignee: rreil_lvalue!(( $a ))}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz), rreil_rvalue!($x : $x_w / $x_o)), assignee: rreil_lvalue!(( $a ))}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -3895,7 +3895,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // lit := lit
     ( $op:ident # $sz:tt # ( $a:expr ), ( $x:expr ) ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz),rreil_rvalue!(( $x ))), assignee: rreil_lvalue!(( $a ))}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz), rreil_rvalue!(( $x ))), assignee: rreil_lvalue!(( $a ))}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -3915,7 +3915,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // lit := litw
     ( $op:ident # $sz:tt # ( $a:expr ), ( $x:expr ) : $x_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz),rreil_rvalue!(( $x ) : $x_w)), assignee: rreil_lvalue!(( $a ))}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz), rreil_rvalue!(( $x ) : $x_w)), assignee: rreil_lvalue!(( $a ))}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -3935,7 +3935,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // lit := const
     ( $op:ident # $sz:tt # ( $a:expr ), [ $x:tt ] : $x_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz),rreil_rvalue!([ $x ] : $x_w)), assignee: rreil_lvalue!(( $a ))}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz), rreil_rvalue!([ $x ] : $x_w)), assignee: rreil_lvalue!(( $a ))}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -3955,7 +3955,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // lit := undef
     ( $op:ident # $sz:tt # ( $a:expr ), ? ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz),rreil_rvalue!(?)), assignee: rreil_lvalue!(( $a ))}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz), rreil_rvalue!(?)), assignee: rreil_lvalue!(( $a ))}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -3975,7 +3975,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // litw := noff
     ( $op:ident # $sz:tt # ( $a:expr ) : $a_w:tt, $x:tt : $x_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz),rreil_rvalue!($x : $x_w)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz), rreil_rvalue!($x : $x_w)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -3995,7 +3995,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // litw := off
     ( $op:ident # $sz:tt # ( $a:expr ) : $a_w:tt, $x:tt : $x_w:tt / $x_o:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz),rreil_rvalue!($x : $x_w / $x_o)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz), rreil_rvalue!($x : $x_w / $x_o)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -4015,7 +4015,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // litw := lit
     ( $op:ident # $sz:tt # ( $a:expr ) : $a_w:tt, ( $x:expr ) ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz),rreil_rvalue!(( $x ))), assignee: rreil_lvalue!(( $a ) : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz), rreil_rvalue!(( $x ))), assignee: rreil_lvalue!(( $a ) : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -4035,7 +4035,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // litw := litw
     ( $op:ident # $sz:tt # ( $a:expr ) : $a_w:tt, ( $x:expr ) : $x_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz),rreil_rvalue!(( $x ) : $x_w)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz), rreil_rvalue!(( $x ) : $x_w)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -4055,7 +4055,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // litw := const
     ( $op:ident # $sz:tt # ( $a:expr ) : $a_w:tt, [ $x:tt ] : $x_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz),rreil_rvalue!([ $x ] : $x_w)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz), rreil_rvalue!([ $x ] : $x_w)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -4075,7 +4075,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // litw := undef
     ( $op:ident # $sz:tt # ( $a:expr ) : $a_w:tt, ? ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz),rreil_rvalue!(?)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz), rreil_rvalue!(?)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -4095,7 +4095,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // noff := noff
     ( $op:ident # $sz:tt # $a:tt : $a_w:tt, $x:tt : $x_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz),rreil_rvalue!($x : $x_w)), assignee: rreil_lvalue!($a : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz), rreil_rvalue!($x : $x_w)), assignee: rreil_lvalue!($a : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -4115,7 +4115,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // noff := off
     ( $op:ident # $sz:tt # $a:tt : $a_w:tt, $x:tt : $x_w:tt / $x_o:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz),rreil_rvalue!($x : $x_w / $x_o)), assignee: rreil_lvalue!($a : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz), rreil_rvalue!($x : $x_w / $x_o)), assignee: rreil_lvalue!($a : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -4135,7 +4135,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // noff := lit
     ( $op:ident # $sz:tt # $a:tt : $a_w:tt, ( $x:expr ) ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz),rreil_rvalue!(( $x ))), assignee: rreil_lvalue!($a : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz), rreil_rvalue!(( $x ))), assignee: rreil_lvalue!($a : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -4155,7 +4155,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // noff := litw
     ( $op:ident # $sz:tt # $a:tt : $a_w:tt, ( $x:expr ) : $x_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz),rreil_rvalue!(( $x ) : $x_w)), assignee: rreil_lvalue!($a : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz), rreil_rvalue!(( $x ) : $x_w)), assignee: rreil_lvalue!($a : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -4175,7 +4175,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // noff := const
     ( $op:ident # $sz:tt # $a:tt : $a_w:tt, [ $x:tt ] : $x_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz),rreil_rvalue!([ $x ] : $x_w)), assignee: rreil_lvalue!($a : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz), rreil_rvalue!([ $x ] : $x_w)), assignee: rreil_lvalue!($a : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -4195,7 +4195,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // noff := undef
     ( $op:ident # $sz:tt # $a:tt : $a_w:tt, ? ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz),rreil_rvalue!(?)), assignee: rreil_lvalue!($a : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz), rreil_rvalue!(?)), assignee: rreil_lvalue!($a : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -4215,7 +4215,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // undef := noff
     ( $op:ident # $sz:tt # ?, $x:tt : $x_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz),rreil_rvalue!($x : $x_w)), assignee: rreil_lvalue!(?)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz), rreil_rvalue!($x : $x_w)), assignee: rreil_lvalue!(?)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -4235,7 +4235,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // undef := off
     ( $op:ident # $sz:tt # ?, $x:tt : $x_w:tt / $x_o:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz),rreil_rvalue!($x : $x_w / $x_o)), assignee: rreil_lvalue!(?)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz), rreil_rvalue!($x : $x_w / $x_o)), assignee: rreil_lvalue!(?)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -4255,7 +4255,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // undef := lit
     ( $op:ident # $sz:tt # ?, ( $x:expr ) ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz),rreil_rvalue!(( $x ))), assignee: rreil_lvalue!(?)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz), rreil_rvalue!(( $x ))), assignee: rreil_lvalue!(?)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -4275,7 +4275,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // undef := litw
     ( $op:ident # $sz:tt # ?, ( $x:expr ) : $x_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz),rreil_rvalue!(( $x ) : $x_w)), assignee: rreil_lvalue!(?)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz), rreil_rvalue!(( $x ) : $x_w)), assignee: rreil_lvalue!(?)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -4295,7 +4295,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // undef := const
     ( $op:ident # $sz:tt # ?, [ $x:tt ] : $x_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz),rreil_rvalue!([ $x ] : $x_w)), assignee: rreil_lvalue!(?)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz), rreil_rvalue!([ $x ] : $x_w)), assignee: rreil_lvalue!(?)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -4315,7 +4315,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // undef := undef
     ( $op:ident # $sz:tt # ?, ? ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz),rreil_rvalue!(?)), assignee: rreil_lvalue!(?)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz), rreil_rvalue!(?)), assignee: rreil_lvalue!(?)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -4339,7 +4339,7 @@ macro_rules! rreil_selop {
     // lit := noff
     ( $op:ident # $sz:tt # ( $a:expr ), $x:tt : $x_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz),rreil_rvalue!(( $a )),rreil_rvalue!($x : $x_w)), assignee: rreil_lvalue!(( $a ))}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz), rreil_rvalue!(( $a )), rreil_rvalue!($x : $x_w)), assignee: rreil_lvalue!(( $a ))}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -4359,7 +4359,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // lit := off
     ( $op:ident # $sz:tt # ( $a:expr ), $x:tt : $x_w:tt / $x_o:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz),rreil_rvalue!(( $a )),rreil_rvalue!($x : $x_w / $x_o)), assignee: rreil_lvalue!(( $a ))}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz), rreil_rvalue!(( $a )), rreil_rvalue!($x : $x_w / $x_o)), assignee: rreil_lvalue!(( $a ))}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -4379,7 +4379,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // lit := lit
     ( $op:ident # $sz:tt # ( $a:expr ), ( $x:expr ) ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz),rreil_rvalue!(( $a )),rreil_rvalue!(( $x ))), assignee: rreil_lvalue!(( $a ))}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz), rreil_rvalue!(( $a )), rreil_rvalue!(( $x ))), assignee: rreil_lvalue!(( $a ))}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -4399,7 +4399,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // lit := litw
     ( $op:ident # $sz:tt # ( $a:expr ), ( $x:expr ) : $x_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz),rreil_rvalue!(( $a )),rreil_rvalue!(( $x ) : $x_w)), assignee: rreil_lvalue!(( $a ))}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz), rreil_rvalue!(( $a )), rreil_rvalue!(( $x ) : $x_w)), assignee: rreil_lvalue!(( $a ))}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -4419,7 +4419,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // lit := const
     ( $op:ident # $sz:tt # ( $a:expr ), [ $x:tt ] : $x_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz),rreil_rvalue!(( $a )),rreil_rvalue!([ $x ] : $x_w)), assignee: rreil_lvalue!(( $a ))}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz), rreil_rvalue!(( $a )), rreil_rvalue!([ $x ] : $x_w)), assignee: rreil_lvalue!(( $a ))}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -4439,7 +4439,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // lit := undef
     ( $op:ident # $sz:tt # ( $a:expr ), ? ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz),rreil_rvalue!(( $a )),rreil_rvalue!(?)), assignee: rreil_lvalue!(( $a ))}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz), rreil_rvalue!(( $a )), rreil_rvalue!(?)), assignee: rreil_lvalue!(( $a ))}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -4459,7 +4459,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // litw := noff
     ( $op:ident # $sz:tt # ( $a:expr ) : $a_w:tt, $x:tt : $x_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz),rreil_rvalue!(( $a ) : $a_w),rreil_rvalue!($x : $x_w)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz), rreil_rvalue!(( $a ) : $a_w), rreil_rvalue!($x : $x_w)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -4479,7 +4479,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // litw := off
     ( $op:ident # $sz:tt # ( $a:expr ) : $a_w:tt, $x:tt : $x_w:tt / $x_o:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz),rreil_rvalue!(( $a ) : $a_w),rreil_rvalue!($x : $x_w / $x_o)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz), rreil_rvalue!(( $a ) : $a_w), rreil_rvalue!($x : $x_w / $x_o)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -4499,7 +4499,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // litw := lit
     ( $op:ident # $sz:tt # ( $a:expr ) : $a_w:tt, ( $x:expr ) ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz),rreil_rvalue!(( $a ) : $a_w),rreil_rvalue!(( $x ))), assignee: rreil_lvalue!(( $a ) : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz), rreil_rvalue!(( $a ) : $a_w), rreil_rvalue!(( $x ))), assignee: rreil_lvalue!(( $a ) : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -4519,7 +4519,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // litw := litw
     ( $op:ident # $sz:tt # ( $a:expr ) : $a_w:tt, ( $x:expr ) : $x_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz),rreil_rvalue!(( $a ) : $a_w),rreil_rvalue!(( $x ) : $x_w)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz), rreil_rvalue!(( $a ) : $a_w), rreil_rvalue!(( $x ) : $x_w)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -4539,7 +4539,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // litw := const
     ( $op:ident # $sz:tt # ( $a:expr ) : $a_w:tt, [ $x:tt ] : $x_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz),rreil_rvalue!(( $a ) : $a_w),rreil_rvalue!([ $x ] : $x_w)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz), rreil_rvalue!(( $a ) : $a_w), rreil_rvalue!([ $x ] : $x_w)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -4559,7 +4559,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // litw := undef
     ( $op:ident # $sz:tt # ( $a:expr ) : $a_w:tt, ? ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz),rreil_rvalue!(( $a ) : $a_w),rreil_rvalue!(?)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz), rreil_rvalue!(( $a ) : $a_w), rreil_rvalue!(?)), assignee: rreil_lvalue!(( $a ) : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -4579,7 +4579,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // noff := noff
     ( $op:ident # $sz:tt # $a:tt : $a_w:tt, $x:tt : $x_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz),rreil_rvalue!($a : $a_w),rreil_rvalue!($x : $x_w)), assignee: rreil_lvalue!($a : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz), rreil_rvalue!($a : $a_w), rreil_rvalue!($x : $x_w)), assignee: rreil_lvalue!($a : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -4599,7 +4599,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // noff := off
     ( $op:ident # $sz:tt # $a:tt : $a_w:tt, $x:tt : $x_w:tt / $x_o:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz),rreil_rvalue!($a : $a_w),rreil_rvalue!($x : $x_w / $x_o)), assignee: rreil_lvalue!($a : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz), rreil_rvalue!($a : $a_w), rreil_rvalue!($x : $x_w / $x_o)), assignee: rreil_lvalue!($a : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -4619,7 +4619,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // noff := lit
     ( $op:ident # $sz:tt # $a:tt : $a_w:tt, ( $x:expr ) ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz),rreil_rvalue!($a : $a_w),rreil_rvalue!(( $x ))), assignee: rreil_lvalue!($a : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz), rreil_rvalue!($a : $a_w), rreil_rvalue!(( $x ))), assignee: rreil_lvalue!($a : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -4639,7 +4639,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // noff := litw
     ( $op:ident # $sz:tt # $a:tt : $a_w:tt, ( $x:expr ) : $x_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz),rreil_rvalue!($a : $a_w),rreil_rvalue!(( $x ) : $x_w)), assignee: rreil_lvalue!($a : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz), rreil_rvalue!($a : $a_w), rreil_rvalue!(( $x ) : $x_w)), assignee: rreil_lvalue!($a : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -4659,7 +4659,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // noff := const
     ( $op:ident # $sz:tt # $a:tt : $a_w:tt, [ $x:tt ] : $x_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz),rreil_rvalue!($a : $a_w),rreil_rvalue!([ $x ] : $x_w)), assignee: rreil_lvalue!($a : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz), rreil_rvalue!($a : $a_w), rreil_rvalue!([ $x ] : $x_w)), assignee: rreil_lvalue!($a : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -4679,7 +4679,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // noff := undef
     ( $op:ident # $sz:tt # $a:tt : $a_w:tt, ? ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz),rreil_rvalue!($a : $a_w),rreil_rvalue!(?)), assignee: rreil_lvalue!($a : $a_w)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz), rreil_rvalue!($a : $a_w), rreil_rvalue!(?)), assignee: rreil_lvalue!($a : $a_w)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -4699,7 +4699,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // undef := noff
     ( $op:ident # $sz:tt # ?, $x:tt : $x_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz),rreil_rvalue!(?),rreil_rvalue!($x : $x_w)), assignee: rreil_lvalue!(?)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz), rreil_rvalue!(?), rreil_rvalue!($x : $x_w)), assignee: rreil_lvalue!(?)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -4719,7 +4719,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // undef := off
     ( $op:ident # $sz:tt # ?, $x:tt : $x_w:tt / $x_o:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz),rreil_rvalue!(?),rreil_rvalue!($x : $x_w / $x_o)), assignee: rreil_lvalue!(?)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz), rreil_rvalue!(?), rreil_rvalue!($x : $x_w / $x_o)), assignee: rreil_lvalue!(?)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -4739,7 +4739,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // undef := lit
     ( $op:ident # $sz:tt # ?, ( $x:expr ) ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz),rreil_rvalue!(?),rreil_rvalue!(( $x ))), assignee: rreil_lvalue!(?)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz), rreil_rvalue!(?), rreil_rvalue!(( $x ))), assignee: rreil_lvalue!(?)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -4759,7 +4759,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // undef := litw
     ( $op:ident # $sz:tt # ?, ( $x:expr ) : $x_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz),rreil_rvalue!(?),rreil_rvalue!(( $x ) : $x_w)), assignee: rreil_lvalue!(?)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz), rreil_rvalue!(?), rreil_rvalue!(( $x ) : $x_w)), assignee: rreil_lvalue!(?)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -4779,7 +4779,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // undef := const
     ( $op:ident # $sz:tt # ?, [ $x:tt ] : $x_w:tt ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz),rreil_rvalue!(?),rreil_rvalue!([ $x ] : $x_w)), assignee: rreil_lvalue!(?)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz), rreil_rvalue!(?), rreil_rvalue!([ $x ] : $x_w)), assignee: rreil_lvalue!(?)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };
@@ -4799,7 +4799,7 @@ let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sani
     // undef := undef
     ( $op:ident # $sz:tt # ?, ? ; $($cdr:tt)*) => {
         {
-            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz),rreil_rvalue!(?),rreil_rvalue!(?)), assignee: rreil_lvalue!(?)}];
+            let mut stmt = vec![$crate::Statement{ op: $crate::Operation::$op(rreil_imm!($sz), rreil_rvalue!(?), rreil_rvalue!(?)), assignee: rreil_lvalue!(?)}];
 let ret: $crate::result::Result<Vec<$crate::il::Statement>> = match stmt[0].sanity_check() {
 	Ok(()) => {
     let mut tail: $crate::result::Result<Vec<$crate::il::Statement>> = { rreil!( $($cdr)*) };

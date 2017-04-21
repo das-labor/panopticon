@@ -37,8 +37,8 @@ use Rvalue;
 use Statement;
 use Result;
 
-/// A non-empty address range [start,end).
-#[derive(Debug,Clone,PartialEq,Eq,RustcEncodable,RustcDecodable)]
+/// A non-empty address range [start, end).
+#[derive(Debug, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable)]
 pub struct Bound {
     /// Address of the first byte inside the range.
     pub start: u64,
@@ -47,7 +47,7 @@ pub struct Bound {
 }
 
 impl Bound {
-    /// Returns a `Bound` for [a,b)
+    /// Returns a `Bound` for [a, b)
     pub fn new(a: u64, b: u64) -> Bound {
         Bound{ start: a, end: b }
     }
@@ -59,7 +59,7 @@ impl Bound {
 }
 
 /// Internal to `Mnemonic`
-#[derive(Clone,Debug,PartialEq,Eq,RustcEncodable,RustcDecodable)]
+#[derive(Clone, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
 pub enum MnemonicFormatToken {
     /// Internal to `Mnemonic`
     Literal(char),
@@ -78,12 +78,12 @@ pub enum MnemonicFormatToken {
 }
 
 impl MnemonicFormatToken {
-    fn parse_bank<'a>(mut i: Chars<'a>) -> Result<(String,Chars<'a>)> {
+    fn parse_bank<'a>(mut i: Chars<'a>) -> Result<(String, Chars<'a>)> {
         let mut j = i.clone();
         if i.next() == Some(':') {
             if let Some(p) = i.clone().position(|x| x == '}') {
                 j.nth(p + 1);
-                Ok((i.clone().take(p).collect::<String>(),j))
+                Ok((i.clone().take(p).collect::<String>(), j))
             } else {
                 Err("Mnemonic format string parse error. Expecting '}'.".into())
             }
@@ -116,12 +116,12 @@ impl MnemonicFormatToken {
                         },
                         Some('p') => {
 
-                            let (bank,k) = try!(Self::parse_bank(j));
+                            let (bank, k) = try!(Self::parse_bank(j));
                             ret.push(MnemonicFormatToken::Pointer{ is_code: false, bank: bank });
                             j = k;
                         }
                         Some('c') => {
-                            let (bank,k) = try!(Self::parse_bank(j));
+                            let (bank, k) = try!(Self::parse_bank(j));
                             ret.push(MnemonicFormatToken::Pointer{ is_code: true, bank: bank });
                             j = k;
                         }
@@ -137,7 +137,7 @@ impl MnemonicFormatToken {
 }
 
 /// A single Mnemonic.
-#[derive(Clone,PartialEq,Eq,Debug,RustcEncodable,RustcDecodable)]
+#[derive(Clone, PartialEq, Eq, Debug, RustcEncodable, RustcDecodable)]
 pub struct Mnemonic {
     /// Range of bytes the mnemonic occupies
     pub area: Bound,
@@ -153,10 +153,10 @@ pub struct Mnemonic {
 
 impl Mnemonic {
     /// Create a new mnemonic `code`.
-    pub fn new<'a,I1,I2> (a: Range<u64>, code: String, fmt: String, ops: I1, instr: I2) -> Result<Mnemonic>
-        where I1: Iterator<Item=&'a Rvalue>,I2: Iterator<Item=&'a Statement> {
+    pub fn new<'a, I1, I2> (a: Range<u64>, code: String, fmt: String, ops: I1, instr: I2) -> Result<Mnemonic>
+        where I1: Iterator<Item=&'a Rvalue>, I2: Iterator<Item=&'a Statement> {
         Ok(Mnemonic{
-            area: Bound::new(a.start,a.end),
+            area: Bound::new(a.start, a.end),
             opcode: code,
             operands: ops.cloned().collect(),
             instructions: instr.cloned().collect(),
@@ -168,7 +168,7 @@ impl Mnemonic {
     #[cfg(test)]
     pub fn dummy(a: Range<u64>) -> Mnemonic {
         Mnemonic{
-            area: Bound::new(a.start,a.end),
+            area: Bound::new(a.start, a.end),
             opcode: "dummy".to_string(),
             operands: vec!(),
             instructions: vec!(),
@@ -216,7 +216,7 @@ mod tests {
                 MnemonicFormatToken::Literal('q'),
                 MnemonicFormatToken::Literal(' '),
                 MnemonicFormatToken::Pointer{ is_code: true, bank: "test".to_string() },
-            )),val.ok());
+            )), val.ok());
 
         assert!(MnemonicFormatToken::parse("{69:+}".to_string().chars()).is_err());
         assert!(MnemonicFormatToken::parse("{-69:+}".to_string().chars()).is_err());
@@ -229,21 +229,21 @@ mod tests {
         assert!(MnemonicFormatToken::parse("{69::".to_string().chars()).is_err());
         assert!(MnemonicFormatToken::parse("{69:-:".to_string().chars()).is_err());
         assert!(MnemonicFormatToken::parse("{69::ddd".to_string().chars()).is_err());
-        assert_eq!(MnemonicFormatToken::parse("{u}".to_string().chars()).ok(),Some(vec!(MnemonicFormatToken::Variable{ has_sign: false })));
+        assert_eq!(MnemonicFormatToken::parse("{u}".to_string().chars()).ok(), Some(vec!(MnemonicFormatToken::Variable{ has_sign: false })));
     }
 
     #[test]
     fn construct() {
-        let ops1 = vec!(Rvalue::new_u8(1),Rvalue::Variable{ name: Cow::Borrowed("a"), size: 3, offset: 0, subscript: None });
+        let ops1 = vec!(Rvalue::new_u8(1), Rvalue::Variable{ name: Cow::Borrowed("a"), size: 3, offset: 0, subscript: None });
         let i1 = vec!(
-            Statement{ op: Operation::Add(Rvalue::new_u8(1),Rvalue::new_u8(2)), assignee: Lvalue::Variable{ name: Cow::Borrowed("a"), size: 8, subscript: Some(2) }},
-            Statement{ op: Operation::Add(Rvalue::new_u8(4),Rvalue::new_u8(2)), assignee: Lvalue::Variable{ name: Cow::Borrowed("a"), size: 8, subscript: Some(1) }},
+            Statement{ op: Operation::Add(Rvalue::new_u8(1), Rvalue::new_u8(2)), assignee: Lvalue::Variable{ name: Cow::Borrowed("a"), size: 8, subscript: Some(2) }},
+            Statement{ op: Operation::Add(Rvalue::new_u8(4), Rvalue::new_u8(2)), assignee: Lvalue::Variable{ name: Cow::Borrowed("a"), size: 8, subscript: Some(1) }},
             Statement{ op: Operation::Phi(vec!(
                 Rvalue::Variable{ name: Cow::Borrowed("a"), size: 8, offset: 0, subscript: Some(2) },
                 Rvalue::Variable{ name: Cow::Borrowed("a"), size: 8, offset: 0, subscript: Some(1) })), assignee: Lvalue::Variable{ name: Cow::Borrowed("a"), size: 8, subscript: Some(3) }});
-        let mne1 = Mnemonic::new(0..10,"op1".to_string(),"{s} nog".to_string(),ops1.iter(),i1.iter()).ok().unwrap();
+        let mne1 = Mnemonic::new(0..10, "op1".to_string(), "{s} nog".to_string(), ops1.iter(), i1.iter()).ok().unwrap();
 
-        assert_eq!(mne1.area, Bound::new(0,10));
+        assert_eq!(mne1.area, Bound::new(0, 10));
         assert_eq!(mne1.opcode, "op1");
         assert_eq!(mne1.operands, ops1);
         assert_eq!(mne1.instructions, i1);

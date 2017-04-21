@@ -12,7 +12,7 @@ ListModel {
 	signal changed(int row)
 	signal removed(int row)
 
-	function upsert(uu,ev) {
+	function upsert(uu, ev) {
 		var _info = Panopticon.functionInfo(uu);
 		var info = JSON.parse(_info);
 
@@ -29,9 +29,9 @@ ListModel {
 				if(cfg.status == "ok") {
 					obj.cfg = cfg.payload;
 					obj.empty = obj.cfg.nodes.length == 0
-					obj.failed = obj.cfg.nodes.reduce(function(acc,x,i,a) {
-									 return acc && x.substr(0,3) === "err";
-								 },true);
+					obj.failed = obj.cfg.nodes.reduce(function(acc, x, i, a) {
+									 return acc && x.substr(0, 3) === "err";
+								 }, true);
 				} else {
 					obj.failed = true;
 					console.exception(info.error);
@@ -44,7 +44,7 @@ ListModel {
 				var node = model.get(i);
 
 				if(node.uuid == obj.uuid) {
-					model.set(i,obj);
+					model.set(i, obj);
 					model.changed(i);
 					return i;
 				}
@@ -72,19 +72,19 @@ ListModel {
 		});
 
 		Panopticon.startedFunction.connect(function(uu) {
-			upsert(uu,"started");
+			upsert(uu, "started");
 		});
 
 		Panopticon.discoveredFunction.connect(function(uu) {
-			upsert(uu,"discovered");
+			upsert(uu, "discovered");
 		});
 
 		Panopticon.finishedFunction.connect(function(uu) {
-			upsert(uu,"finished");
+			upsert(uu, "finished");
 		});
 
 		Panopticon.changedFunction.connect(function(uu) {
-			upsert(uu,"changed");
+			upsert(uu, "changed");
 		});
 	}
 }

@@ -1,6 +1,6 @@
 /*
  * Panopticon - A libre disassembler
- * Copyright (C) 2014,2015,2016 Panopticon Authors
+ * Copyright (C) 2014, 2015, 2016 Panopticon Authors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -36,11 +36,11 @@
 #![allow(missing_docs)]
 
 use std::cmp;
-use std::fmt::{Error,Display,Formatter};
+use std::fmt::{Error, Display, Formatter};
 use std::result;
 
 use std::io::Cursor;
-use byteorder::{ReadBytesExt,LittleEndian};
+use byteorder::{ReadBytesExt, LittleEndian};
 
 use {
     Lvalue,
@@ -59,10 +59,10 @@ use {
 pub mod tables;
 pub mod semantic;
 
-#[derive(Clone,Debug)]
+#[derive(Clone, Debug)]
 pub enum Amd64 {}
 
-#[derive(Clone,PartialEq,Copy)]
+#[derive(Clone, PartialEq, Copy)]
 pub enum Condition {
     Below,
     Overflow,
@@ -83,7 +83,7 @@ pub enum Condition {
     Greater,
 }
 
-#[derive(Clone,PartialEq,Copy,Debug)]
+#[derive(Clone, PartialEq, Copy, Debug)]
 pub enum Mode {
     Real,       // Real mode / Virtual 8086 mode
     Protected,  // Protected mode / Long compatibility mode
@@ -112,11 +112,11 @@ impl Architecture for Amd64 {
     type Token = u8;
     type Configuration = Mode;
 
-    fn prepare(_: &Region,_: &Self::Configuration) -> Result<Vec<(&'static str,u64,&'static str)>> {
+    fn prepare(_: &Region, _: &Self::Configuration) -> Result<Vec<(&'static str, u64, &'static str)>> {
         Ok(vec![])
     }
 
-    fn decode(reg: &Region,start: u64, cfg: &Self::Configuration) -> Result<Match<Self>> {
+    fn decode(reg: &Region, start: u64, cfg: &Self::Configuration) -> Result<Match<Self>> {
         let data = reg.iter();
         let mut buf: Vec<u8> = vec![];
         let mut i = data.seek(start);
@@ -129,34 +129,34 @@ impl Architecture for Amd64 {
             }
         }
 
-        info!("disass @ {:#x}: {:?}",p,buf);
+        info!("disass @ {:#x}: {:?}", p, buf);
 
-        let ret = ::amd64::read(*cfg,&buf,p).and_then(|(len,mne,mut jmp)| {
+        let ret = ::amd64::read(*cfg, &buf, p).and_then(|(len, mne, mut jmp)| {
             Ok(Match::<Amd64> {
                 tokens: buf[0..len as usize].to_vec(),
                 mnemonics: vec![mne],
-                jumps: jmp.drain(..).map(|x| (p,x.0,x.1)).collect::<Vec<_>>(),
+                jumps: jmp.drain(..).map(|x| (p, x.0, x.1)).collect::<Vec<_>>(),
                 configuration: cfg.clone(),
             })
         });
 
-        info!("    res: {:?}",ret);
+        info!("    res: {:?}", ret);
 
         ret
     }
 }
 
-#[derive(PartialEq,Clone,Copy,Debug)]
+#[derive(PartialEq, Clone, Copy, Debug)]
 pub enum SegmentOverride {
     None, Cs, Ss, Ds, Es, Fs, Gs,
 }
 
-#[derive(PartialEq,Clone,Copy,Debug)]
+#[derive(PartialEq, Clone, Copy, Debug)]
 enum BranchHint {
     None, Taken, NotTaken,
 }
 
-#[derive(PartialEq,Clone,Copy,Debug)]
+#[derive(PartialEq, Clone, Copy, Debug)]
 enum SimdPrefix {
     None,
     PrefixF2,
@@ -164,7 +164,7 @@ enum SimdPrefix {
     Prefix66,
 }
 
-#[derive(PartialEq,Clone,Copy,Debug)]
+#[derive(PartialEq, Clone, Copy, Debug)]
 enum OpcodeEscape {
     None,
     Escape0F,
@@ -195,7 +195,7 @@ struct Prefix {
     pub rex_w: bool,
 }
 
-#[derive(Clone,Debug,PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Register {
     None,
     RAX, RBX, RCX, RDX, RDI, RSI, RSP, RBP, RIP,
@@ -222,7 +222,7 @@ pub enum Register {
 }
 
 impl Display for Register {
-    fn fmt(&self, f: &mut Formatter) -> result::Result<(),Error> {
+    fn fmt(&self, f: &mut Formatter) -> result::Result<(), Error> {
         let s = match *self {
             Register::RAX => "RAX",
             Register::RBX => "RBX",
@@ -595,13 +595,13 @@ impl Register {
     }
 }
 
-#[derive(Clone,Debug)]
+#[derive(Clone, Debug)]
 pub enum AddressingMethod {
     None,
     A, B, C, D, E, F, G, H, I, J, L, M, N, O, P, Q, R, S, U, V, W, X, Y
 }
 
-#[derive(Clone,Debug)]
+#[derive(Clone, Debug)]
 #[allow(non_camel_case_types)]
 pub enum OperandType {
     None,
@@ -622,7 +622,7 @@ pub enum OperandType {
     NTA, T0, T1, T2,
 }
 
-pub fn read_spec_register(op: OperandType,opsz: usize,rex_b: bool) -> Result<Operand> {
+pub fn read_spec_register(op: OperandType, opsz: usize, rex_b: bool) -> Result<Operand> {
     match op {
         OperandType::RAX => Ok(Operand::Register(Register::RAX)),
         OperandType::RBX => Ok(Operand::Register(Register::RBX)),
@@ -746,39 +746,39 @@ pub fn read_spec_register(op: OperandType,opsz: usize,rex_b: bool) -> Result<Ope
     }
 }
 
-#[derive(Clone,Debug)]
+#[derive(Clone, Debug)]
 pub enum OperandSpec {
     None,
-    Present(AddressingMethod,OperandType),
+    Present(AddressingMethod, OperandType),
 }
 
-#[derive(Clone,Debug)]
+#[derive(Clone, Debug)]
 pub enum Operand {
     Register(Register),
     // Value, Width (Bits)
-    Immediate(u64,usize),
+    Immediate(u64, usize),
     // Segment Override, Base, Index, Scale, Disp, Width (Bits)
-    Indirect(SegmentOverride,Register,Register,usize,(u64,usize),usize),
+    Indirect(SegmentOverride, Register, Register, usize, (u64, usize), usize),
     // Segment Override, Base, Index, Scale, Disp
-    Address(SegmentOverride,Register,Register,usize,(u64,usize)),
+    Address(SegmentOverride, Register, Register, usize, (u64, usize)),
     Optional,
 }
 
 impl Display for Operand {
-    fn fmt(&self, f: &mut Formatter) -> result::Result<(),Error> {
+    fn fmt(&self, f: &mut Formatter) -> result::Result<(), Error> {
         match *self {
             Operand::Register(ref name) => if f.alternate() {
-                write!(f,"{:#}",name)
+                write!(f, "{:#}", name)
             } else {
-                write!(f,"{}",name)
+                write!(f, "{}", name)
             },
-            Operand::Immediate(ref value,ref width) => if *width < 64 {
-                f.write_str(&format!("{:#x}",value % (1 << *width)))
+            Operand::Immediate(ref value, ref width) => if *width < 64 {
+                f.write_str(&format!("{:#x}", value % (1 << *width)))
             } else {
-                f.write_str(&format!("{:#x}",value))
+                f.write_str(&format!("{:#x}", value))
             },
-            Operand::Indirect(ref seg, ref base,ref index,ref scale,ref disp,ref width) => {
-                write!(f,"{} PTR ",match *width {
+            Operand::Indirect(ref seg, ref base, ref index, ref scale, ref disp, ref width) => {
+                write!(f, "{} PTR ", match *width {
                     8 => "BYTE",
                     16 => "WORD",
                     32 => "DWORD",
@@ -786,289 +786,289 @@ impl Display for Operand {
                     _ => "UNK",
                 })?;
 
-                write!(f,"{}",Operand::Address(seg.clone(),base.clone(),index.clone(),scale.clone(),disp.clone()))
+                write!(f, "{}", Operand::Address(seg.clone(), base.clone(), index.clone(), scale.clone(), disp.clone()))
             },
-            Operand::Address(ref seg, ref base,ref index,ref scale,ref disp) => {
+            Operand::Address(ref seg, ref base, ref index, ref scale, ref disp) => {
                 let _ = try!(match *seg {
-                    SegmentOverride::None => write!(f,"["),
-                    SegmentOverride::Cs => write!(f,"cs:["),
-                    SegmentOverride::Ds => write!(f,"ds:["),
-                    SegmentOverride::Es => write!(f,"es:["),
-                    SegmentOverride::Fs => write!(f,"fs:["),
-                    SegmentOverride::Gs => write!(f,"gs:["),
-                    SegmentOverride::Ss => write!(f,"ss:["),
+                    SegmentOverride::None => write!(f, "["),
+                    SegmentOverride::Cs => write!(f, "cs:["),
+                    SegmentOverride::Ds => write!(f, "ds:["),
+                    SegmentOverride::Es => write!(f, "es:["),
+                    SegmentOverride::Fs => write!(f, "fs:["),
+                    SegmentOverride::Gs => write!(f, "gs:["),
+                    SegmentOverride::Ss => write!(f, "ss:["),
                 });
 
                 if *base != Register::None {
                     if f.alternate() {
-                        write!(f,"{:#}",base)?;
+                        write!(f, "{:#}", base)?;
                     } else {
-                        write!(f,"{}",base)?;
+                        write!(f, "{}", base)?;
                     }
                 }
 
                 if *scale > 0 && *index != Register::None {
                     if *base != Register::None {
-                        write!(f,"+")?;
+                        write!(f, "+")?;
                     }
 
                     if f.alternate() {
-                        write!(f,"{:#}*{}",index,scale)?;
+                        write!(f, "{:#}*{}", index, scale)?;
                     } else {
-                        write!(f,"{}*{}",index,scale)?;
+                        write!(f, "{}*{}", index, scale)?;
                     }
                 }
 
                 if disp.0 > 0 {
                     if disp.0 & 0x8000_0000_0000_0000 != 0 {
                         if disp.1 < 64 {
-                            write!(f,"-{:#x}",(disp.0 ^ 0xFFFF_FFFF_FFFF_FFFF).wrapping_add(1) % (1 << disp.1))?;
+                            write!(f, "-{:#x}", (disp.0 ^ 0xFFFF_FFFF_FFFF_FFFF).wrapping_add(1) % (1 << disp.1))?;
                         } else {
-                            write!(f,"-{:#x}",(disp.0 ^ 0xFFFF_FFFF_FFFF_FFFF).wrapping_add(1))?;
+                            write!(f, "-{:#x}", (disp.0 ^ 0xFFFF_FFFF_FFFF_FFFF).wrapping_add(1))?;
                         }
                     } else {
                         if *base != Register::None || (*scale > 0 && *index != Register::None) {
-                            write!(f,"+")?;
+                            write!(f, "+")?;
                         }
                         if disp.1 < 64 {
-                            write!(f,"{:#x}",disp.0 % (1 << disp.1))?;
+                            write!(f, "{:#x}", disp.0 % (1 << disp.1))?;
                         } else {
-                            write!(f,"{:#x}",disp.0)?;
+                            write!(f, "{:#x}", disp.0)?;
                         }
                     }
 
                 }
 
-                write!(f,"]")
+                write!(f, "]")
             },
-            Operand::Optional => write!(f,"(Opt)"),
+            Operand::Optional => write!(f, "(Opt)"),
         }
     }
 }
 
 fn read_operand(spec: &OperandSpec, tail: &mut Tail,
-                mode: Mode, seg: SegmentOverride, vvvv: Option<u8>, rex: Option<(bool,bool,bool,bool)>,
+                mode: Mode, seg: SegmentOverride, vvvv: Option<u8>, rex: Option<(bool, bool, bool, bool)>,
                 opsz: usize, addrsz: usize, simdsz: usize, addr: u64) -> Result<Operand> {
-    match (spec,opsz) {
-        (&OperandSpec::Present(AddressingMethod::None,ref reg),_) =>
-            read_spec_register(reg.clone(),opsz,rex.unwrap_or((false,false,false,false)).3),
-        (&OperandSpec::Present(AddressingMethod::A,OperandType::v),16) =>
-            Ok(Operand::Immediate(tail.read_u16().ok().unwrap() as u64,16)),
-        (&OperandSpec::Present(AddressingMethod::A,OperandType::v),32) =>
-            Ok(Operand::Immediate(tail.read_u32().ok().unwrap() as u64,32)),
-        (&OperandSpec::Present(AddressingMethod::A,OperandType::v),64) =>
-            Ok(Operand::Immediate(tail.read_u64().ok().unwrap(),64)),
-        (&OperandSpec::Present(AddressingMethod::A,OperandType::p),16) =>
-            Ok(Operand::Immediate(tail.read_u32().ok().unwrap() as u64,32)),
-        (&OperandSpec::Present(AddressingMethod::A,OperandType::p),32) => {
+    match (spec, opsz) {
+        (&OperandSpec::Present(AddressingMethod::None, ref reg), _) =>
+            read_spec_register(reg.clone(), opsz, rex.unwrap_or((false, false, false, false)).3),
+        (&OperandSpec::Present(AddressingMethod::A, OperandType::v), 16) =>
+            Ok(Operand::Immediate(tail.read_u16().ok().unwrap() as u64, 16)),
+        (&OperandSpec::Present(AddressingMethod::A, OperandType::v), 32) =>
+            Ok(Operand::Immediate(tail.read_u32().ok().unwrap() as u64, 32)),
+        (&OperandSpec::Present(AddressingMethod::A, OperandType::v), 64) =>
+            Ok(Operand::Immediate(tail.read_u64().ok().unwrap(), 64)),
+        (&OperandSpec::Present(AddressingMethod::A, OperandType::p), 16) =>
+            Ok(Operand::Immediate(tail.read_u32().ok().unwrap() as u64, 32)),
+        (&OperandSpec::Present(AddressingMethod::A, OperandType::p), 32) => {
             let imm16 = tail.read_u16().ok().unwrap() as u64;
             let imm32 = tail.read_u32().ok().unwrap() as u64;
-            Ok(Operand::Immediate((imm16 << 32) | imm32,48))
+            Ok(Operand::Immediate((imm16 << 32) | imm32, 48))
         }
-        (&OperandSpec::Present(AddressingMethod::A,OperandType::p),64) => {
+        (&OperandSpec::Present(AddressingMethod::A, OperandType::p), 64) => {
             // XXX
             let _ = tail.read_u16().ok().unwrap();
             let imm64 = tail.read_u64().ok().unwrap();
-            Ok(Operand::Immediate(imm64 as u64,64))
+            Ok(Operand::Immediate(imm64 as u64, 64))
         }
-        (&OperandSpec::Present(AddressingMethod::B,OperandType::y),opsz) if vvvv.is_some() =>
-            read_register(vvvv.unwrap(),rex.is_some(),cmp::max(32,opsz)),
-        (&OperandSpec::Present(AddressingMethod::C,OperandType::d),_) =>
-            read_ctrl_register(tail.modrm(rex).ok().unwrap().1,32),
-        (&OperandSpec::Present(AddressingMethod::D,OperandType::d),_) =>
-            read_debug_register(tail.modrm(rex).ok().unwrap().1,32),
+        (&OperandSpec::Present(AddressingMethod::B, OperandType::y), opsz) if vvvv.is_some() =>
+            read_register(vvvv.unwrap(), rex.is_some(), cmp::max(32, opsz)),
+        (&OperandSpec::Present(AddressingMethod::C, OperandType::d), _) =>
+            read_ctrl_register(tail.modrm(rex).ok().unwrap().1, 32),
+        (&OperandSpec::Present(AddressingMethod::D, OperandType::d), _) =>
+            read_debug_register(tail.modrm(rex).ok().unwrap().1, 32),
 
         // E
-        (&OperandSpec::Present(AddressingMethod::E,OperandType::v),opsz) =>
-            indirect(try!(read_effective_address(mode,seg,tail,rex,opsz,addrsz,addr)),seg,addrsz,opsz),
-        (&OperandSpec::Present(AddressingMethod::E,OperandType::z),_) =>
-            indirect(try!(read_effective_address(mode,seg,tail,rex,cmp::min(32,opsz),addrsz,addr)),seg,addrsz,cmp::min(32,opsz)),
-        (&OperandSpec::Present(AddressingMethod::E,OperandType::y),opsz) =>
-            indirect(try!(read_effective_address(mode,seg,tail,rex,cmp::max(32,opsz),addrsz,addr)),seg,addrsz,cmp::max(32,opsz)),
-        (&OperandSpec::Present(AddressingMethod::E,OperandType::b),_) =>
-            indirect(try!(read_effective_address(mode,seg,tail,rex,8,addrsz,addr)),seg,addrsz,8),
-        (&OperandSpec::Present(AddressingMethod::E,OperandType::w),_) =>
-            indirect(try!(read_effective_address(mode,seg,tail,rex,16,addrsz,addr)),seg,addrsz,16),
-        (&OperandSpec::Present(AddressingMethod::E,OperandType::d),_) =>
-            indirect(try!(read_effective_address(mode,seg,tail,rex,32,addrsz,addr)),seg,addrsz,32),
-        (&OperandSpec::Present(AddressingMethod::E,OperandType::dq),_) =>
-            indirect(try!(read_effective_address(mode,seg,tail,rex,64,addrsz,addr)),seg,addrsz,64),
+        (&OperandSpec::Present(AddressingMethod::E, OperandType::v), opsz) =>
+            indirect(try!(read_effective_address(mode, seg, tail, rex, opsz, addrsz, addr)), seg, addrsz, opsz),
+        (&OperandSpec::Present(AddressingMethod::E, OperandType::z), _) =>
+            indirect(try!(read_effective_address(mode, seg, tail, rex, cmp::min(32, opsz), addrsz, addr)), seg, addrsz, cmp::min(32, opsz)),
+        (&OperandSpec::Present(AddressingMethod::E, OperandType::y), opsz) =>
+            indirect(try!(read_effective_address(mode, seg, tail, rex, cmp::max(32, opsz), addrsz, addr)), seg, addrsz, cmp::max(32, opsz)),
+        (&OperandSpec::Present(AddressingMethod::E, OperandType::b), _) =>
+            indirect(try!(read_effective_address(mode, seg, tail, rex, 8, addrsz, addr)), seg, addrsz, 8),
+        (&OperandSpec::Present(AddressingMethod::E, OperandType::w), _) =>
+            indirect(try!(read_effective_address(mode, seg, tail, rex, 16, addrsz, addr)), seg, addrsz, 16),
+        (&OperandSpec::Present(AddressingMethod::E, OperandType::d), _) =>
+            indirect(try!(read_effective_address(mode, seg, tail, rex, 32, addrsz, addr)), seg, addrsz, 32),
+        (&OperandSpec::Present(AddressingMethod::E, OperandType::dq), _) =>
+            indirect(try!(read_effective_address(mode, seg, tail, rex, 64, addrsz, addr)), seg, addrsz, 64),
 
         // G
-        (&OperandSpec::Present(AddressingMethod::G,OperandType::dq),_) =>
-            read_register(tail.modrm(rex).ok().unwrap().1,rex.is_some(),64),
-        (&OperandSpec::Present(AddressingMethod::G,OperandType::d),_) =>
-            read_register(tail.modrm(rex).ok().unwrap().1,rex.is_some(),32),
-        (&OperandSpec::Present(AddressingMethod::G,OperandType::w),_) =>
-            read_register(tail.modrm(rex).ok().unwrap().1,rex.is_some(),16),
-        (&OperandSpec::Present(AddressingMethod::G,OperandType::b),_) =>
-            read_register(tail.modrm(rex).ok().unwrap().1,rex.is_some(),8),
-        (&OperandSpec::Present(AddressingMethod::G,OperandType::v),opsz) =>
-            read_register(tail.modrm(rex).ok().unwrap().1,rex.is_some(),opsz),
-        (&OperandSpec::Present(AddressingMethod::G,OperandType::z),opsz) =>
-            read_register(tail.modrm(rex).ok().unwrap().1,rex.is_some(),cmp::min(32,opsz)),
-        (&OperandSpec::Present(AddressingMethod::G,OperandType::y),opsz) =>
-            read_register(tail.modrm(rex).ok().unwrap().1,rex.is_some(),cmp::max(32,opsz)),
+        (&OperandSpec::Present(AddressingMethod::G, OperandType::dq), _) =>
+            read_register(tail.modrm(rex).ok().unwrap().1, rex.is_some(), 64),
+        (&OperandSpec::Present(AddressingMethod::G, OperandType::d), _) =>
+            read_register(tail.modrm(rex).ok().unwrap().1, rex.is_some(), 32),
+        (&OperandSpec::Present(AddressingMethod::G, OperandType::w), _) =>
+            read_register(tail.modrm(rex).ok().unwrap().1, rex.is_some(), 16),
+        (&OperandSpec::Present(AddressingMethod::G, OperandType::b), _) =>
+            read_register(tail.modrm(rex).ok().unwrap().1, rex.is_some(), 8),
+        (&OperandSpec::Present(AddressingMethod::G, OperandType::v), opsz) =>
+            read_register(tail.modrm(rex).ok().unwrap().1, rex.is_some(), opsz),
+        (&OperandSpec::Present(AddressingMethod::G, OperandType::z), opsz) =>
+            read_register(tail.modrm(rex).ok().unwrap().1, rex.is_some(), cmp::min(32, opsz)),
+        (&OperandSpec::Present(AddressingMethod::G, OperandType::y), opsz) =>
+            read_register(tail.modrm(rex).ok().unwrap().1, rex.is_some(), cmp::max(32, opsz)),
 
         // H
-        (&OperandSpec::Present(AddressingMethod::H,OperandType::x),opsz) if vvvv.is_some() =>
-            read_simd_register(vvvv.unwrap(),rex.is_some(),opsz),
-        (&OperandSpec::Present(AddressingMethod::H,OperandType::qq),_) if vvvv.is_some() =>
-            read_simd_register(vvvv.unwrap(),rex.is_some(),256),
-        (&OperandSpec::Present(AddressingMethod::H,OperandType::dq),_) if vvvv.is_some() =>
-            read_simd_register(vvvv.unwrap(),rex.is_some(),128),
-        (&OperandSpec::Present(AddressingMethod::H,OperandType::ps),_) if vvvv.is_some() =>
-            read_simd_register(vvvv.unwrap(),rex.is_some(),simdsz),
-        (&OperandSpec::Present(AddressingMethod::H,OperandType::pd),_) if vvvv.is_some() =>
-            read_simd_register(vvvv.unwrap(),rex.is_some(),simdsz),
-        (&OperandSpec::Present(AddressingMethod::H,OperandType::ss),_) if vvvv.is_some() =>
-            read_simd_register(vvvv.unwrap(),rex.is_some(),128),
-        (&OperandSpec::Present(AddressingMethod::H,OperandType::sd),_) if vvvv.is_some() =>
-            read_simd_register(vvvv.unwrap(),rex.is_some(),128),
-        (&OperandSpec::Present(AddressingMethod::H,_),_) if vvvv.is_none() =>
+        (&OperandSpec::Present(AddressingMethod::H, OperandType::x), opsz) if vvvv.is_some() =>
+            read_simd_register(vvvv.unwrap(), rex.is_some(), opsz),
+        (&OperandSpec::Present(AddressingMethod::H, OperandType::qq), _) if vvvv.is_some() =>
+            read_simd_register(vvvv.unwrap(), rex.is_some(), 256),
+        (&OperandSpec::Present(AddressingMethod::H, OperandType::dq), _) if vvvv.is_some() =>
+            read_simd_register(vvvv.unwrap(), rex.is_some(), 128),
+        (&OperandSpec::Present(AddressingMethod::H, OperandType::ps), _) if vvvv.is_some() =>
+            read_simd_register(vvvv.unwrap(), rex.is_some(), simdsz),
+        (&OperandSpec::Present(AddressingMethod::H, OperandType::pd), _) if vvvv.is_some() =>
+            read_simd_register(vvvv.unwrap(), rex.is_some(), simdsz),
+        (&OperandSpec::Present(AddressingMethod::H, OperandType::ss), _) if vvvv.is_some() =>
+            read_simd_register(vvvv.unwrap(), rex.is_some(), 128),
+        (&OperandSpec::Present(AddressingMethod::H, OperandType::sd), _) if vvvv.is_some() =>
+            read_simd_register(vvvv.unwrap(), rex.is_some(), 128),
+        (&OperandSpec::Present(AddressingMethod::H, _), _) if vvvv.is_none() =>
             Ok(Operand::Optional),
 
-        (&OperandSpec::Present(AddressingMethod::I,OperandType::z),16) =>
-            Ok(Operand::Immediate(tail.read_u16().ok().unwrap() as u64,16)),
-        (&OperandSpec::Present(AddressingMethod::I,OperandType::z),_) =>
-            Ok(Operand::Immediate(tail.read_u32().ok().unwrap() as u64,32)),
-        (&OperandSpec::Present(AddressingMethod::I,OperandType::b),_) =>
-            Ok(Operand::Immediate(((tail.read_u8().ok().unwrap() as i8) as i64) as u64,opsz)),
-        (&OperandSpec::Present(AddressingMethod::I,OperandType::one),opsz) =>
-            Ok(Operand::Immediate(1,opsz)),
-        (&OperandSpec::Present(AddressingMethod::I,OperandType::w),_) =>
-            Ok(Operand::Immediate(tail.read_u16().ok().unwrap() as u64,16)),
-        (&OperandSpec::Present(AddressingMethod::I,OperandType::v),16) =>
-            Ok(Operand::Immediate(tail.read_u16().ok().unwrap() as u64,16)),
-        (&OperandSpec::Present(AddressingMethod::I,OperandType::v),32) =>
-            Ok(Operand::Immediate(tail.read_u32().ok().unwrap() as u64,32)),
-        (&OperandSpec::Present(AddressingMethod::I,OperandType::v),64) =>
-            Ok(Operand::Immediate(tail.read_u64().ok().unwrap() as u64,64)),
-        (&OperandSpec::Present(AddressingMethod::J,OperandType::b),_) =>
-            Ok(Operand::Immediate(addr.wrapping_add(((tail.read_u8().ok().unwrap() as i8) as i64) as u64).wrapping_add(1),addrsz)),
-        (&OperandSpec::Present(AddressingMethod::J,OperandType::z),16) =>
-            Ok(Operand::Immediate(addr.wrapping_add(((tail.read_u16().ok().unwrap() as i16) as i64) as u64).wrapping_add(2),addrsz)),
-        (&OperandSpec::Present(AddressingMethod::J,OperandType::z),_) =>
-            Ok(Operand::Immediate(addr.wrapping_add(((tail.read_u32().ok().unwrap() as i32) as i64) as u64).wrapping_add(4),addrsz)),
-        (&OperandSpec::Present(AddressingMethod::L,OperandType::x),32) =>
-            read_simd_register(tail.read_u8().ok().unwrap() & 0b0111,rex.is_some(),simdsz),
-        (&OperandSpec::Present(AddressingMethod::L,OperandType::x),_) =>
-            read_simd_register(tail.read_u8().ok().unwrap() & 0b1111,rex.is_some(),simdsz),
-        (&OperandSpec::Present(AddressingMethod::M,OperandType::p),16) =>
-            read_effective_address(mode,seg,tail,rex,16,addrsz,addr),
-        (&OperandSpec::Present(AddressingMethod::M,OperandType::p),32) =>
-            read_effective_address(mode,seg,tail,rex,32,addrsz,addr),
-        (&OperandSpec::Present(AddressingMethod::M,OperandType::p),64) =>
-            read_effective_address(mode,seg,tail,rex,64,addrsz,addr),
-        (&OperandSpec::Present(AddressingMethod::M,OperandType::w),_opsz) =>
-            read_effective_address(mode,seg,tail,rex,16,addrsz,addr),
-        (&OperandSpec::Present(AddressingMethod::M,OperandType::d),_opsz) =>
-            read_effective_address(mode,seg,tail,rex,32,addrsz,addr),
-        (&OperandSpec::Present(AddressingMethod::M,OperandType::q),_opsz) =>
-            read_effective_address(mode,seg,tail,rex,64,addrsz,addr),
-        (&OperandSpec::Present(AddressingMethod::M,OperandType::s),64) =>
-            read_effective_address(mode,seg,tail,rex,80,addrsz,addr),
-        (&OperandSpec::Present(AddressingMethod::M,OperandType::s),_) =>
-            read_effective_address(mode,seg,tail,rex,48,addrsz,addr),
-        (&OperandSpec::Present(AddressingMethod::M,OperandType::b),_) =>
-            read_effective_address(mode,seg,tail,rex,8,addrsz,addr),
-        (&OperandSpec::Present(AddressingMethod::M,OperandType::None),opsz) =>
-            read_effective_address(mode,seg,tail,rex,opsz,addrsz,addr),
-        (&OperandSpec::Present(AddressingMethod::M,OperandType::a),32) =>
-            read_effective_address(mode,seg,tail,rex,64,addrsz,addr),
-        (&OperandSpec::Present(AddressingMethod::M,OperandType::a),16) =>
-            read_effective_address(mode,seg,tail,rex,32,addrsz,addr),
-        (&OperandSpec::Present(AddressingMethod::M,OperandType::y),opsz) =>
-            read_effective_address(mode,seg,tail,rex,cmp::min(32,opsz),addrsz,addr),
-        (&OperandSpec::Present(AddressingMethod::M,OperandType::x),32) =>
-            read_effective_address(mode,seg,tail,rex,128,addrsz,addr),
-        (&OperandSpec::Present(AddressingMethod::M,OperandType::x),64) =>
-            read_effective_address(mode,seg,tail,rex,256,addrsz,addr),
-        (&OperandSpec::Present(AddressingMethod::N,OperandType::q),_) =>
-            read_simd_register(tail.modrm(rex).ok().unwrap().2,rex.is_some(),64),
-        (&OperandSpec::Present(AddressingMethod::O,OperandType::b),_) if addrsz == 16 =>
-            read_memory(Operand::Immediate(tail.read_u16().ok().unwrap() as u64,addrsz),seg,addrsz,8),
-        (&OperandSpec::Present(AddressingMethod::O,OperandType::b),_) if addrsz == 32 =>
-            read_memory(Operand::Immediate(tail.read_u32().ok().unwrap() as u64,addrsz),seg,addrsz,8),
-        (&OperandSpec::Present(AddressingMethod::O,OperandType::b),_) if addrsz == 64 =>
-            read_memory(Operand::Immediate(tail.read_u64().ok().unwrap() as u64,addrsz),seg,addrsz,8),
-        (&OperandSpec::Present(AddressingMethod::O,OperandType::v),opsz) if addrsz == 16 =>
-            read_memory(Operand::Immediate(tail.read_u16().ok().unwrap() as u64,addrsz),seg,addrsz,opsz),
-        (&OperandSpec::Present(AddressingMethod::O,OperandType::v),opsz) if addrsz == 32 =>
-            read_memory(Operand::Immediate(tail.read_u32().ok().unwrap() as u64,addrsz),seg,addrsz,opsz),
-        (&OperandSpec::Present(AddressingMethod::O,OperandType::v),opsz) if addrsz == 64 =>
-            read_memory(Operand::Immediate(tail.read_u64().ok().unwrap() as u64,addrsz),seg,addrsz,opsz),
-        (&OperandSpec::Present(AddressingMethod::P,OperandType::pi),_) =>
-            read_simd_register(tail.modrm(rex).ok().unwrap().1,rex.is_some(),64),
-        (&OperandSpec::Present(AddressingMethod::P,OperandType::ps),_) =>
-            read_simd_register(tail.modrm(rex).ok().unwrap().1,rex.is_some(),simdsz),
-        (&OperandSpec::Present(AddressingMethod::P,OperandType::q),_) =>
-            read_simd_register(tail.modrm(rex).ok().unwrap().1,rex.is_some(),64),
-        (&OperandSpec::Present(AddressingMethod::P,OperandType::d),_) =>
-            read_simd_register(tail.modrm(rex).ok().unwrap().1,rex.is_some(),32),
-        (&OperandSpec::Present(AddressingMethod::Q,OperandType::d),_) =>
-            indirect(try!(read_effective_simd_address(mode,seg,tail,rex,opsz,addrsz,addr,32)),seg,addrsz,32),
-        (&OperandSpec::Present(AddressingMethod::Q,OperandType::pi),_) =>
-            indirect(try!(read_effective_simd_address(mode,seg,tail,rex,opsz,addrsz,addr,simdsz)),seg,addrsz,simdsz),
-        (&OperandSpec::Present(AddressingMethod::Q,OperandType::q),_) =>
-            indirect(try!(read_effective_simd_address(mode,seg,tail,rex,opsz,addrsz,addr,32)),seg,addrsz,32),
-        (&OperandSpec::Present(AddressingMethod::S,OperandType::w),_) =>
-            read_memory(Operand::Immediate(tail.read_u16().ok().unwrap() as u64,addrsz),seg,addrsz,16),
-        (&OperandSpec::Present(AddressingMethod::R,OperandType::d),_) =>
-            read_memory(Operand::Immediate(tail.read_u16().ok().unwrap() as u64,addrsz),seg,addrsz,32),
-        (&OperandSpec::Present(AddressingMethod::R,OperandType::q),_) =>
-            read_memory(Operand::Immediate(tail.read_u16().ok().unwrap() as u64,addrsz),seg,addrsz,64),
-        (&OperandSpec::Present(AddressingMethod::U,OperandType::ps),_) =>
-            read_simd_register(tail.modrm(rex).ok().unwrap().2,rex.is_some(),simdsz),
-        (&OperandSpec::Present(AddressingMethod::U,OperandType::pi),_) =>
-            read_simd_register(tail.modrm(rex).ok().unwrap().2,rex.is_some(),64),
-        (&OperandSpec::Present(AddressingMethod::U,OperandType::q),_) =>
-            read_simd_register(tail.modrm(rex).ok().unwrap().2,rex.is_some(),64),
-        (&OperandSpec::Present(AddressingMethod::U,OperandType::x),32) =>
-            read_simd_register(tail.modrm(rex).ok().unwrap().2,rex.is_some(),128),
-        (&OperandSpec::Present(AddressingMethod::U,OperandType::x),64) =>
-            read_simd_register(tail.modrm(rex).ok().unwrap().2,rex.is_some(),256),
-        (&OperandSpec::Present(AddressingMethod::U,OperandType::dq),_) =>
-            read_simd_register(tail.modrm(rex).ok().unwrap().2,rex.is_some(),128),
-        (&OperandSpec::Present(AddressingMethod::V,OperandType::pi),_) =>
-            read_simd_register(tail.modrm(rex).ok().unwrap().1,rex.is_some(),64),
-        (&OperandSpec::Present(AddressingMethod::V,OperandType::ps),_) =>
-            read_simd_register(tail.modrm(rex).ok().unwrap().1,rex.is_some(),simdsz),
-        (&OperandSpec::Present(AddressingMethod::V,OperandType::pd),_) =>
-            read_simd_register(tail.modrm(rex).ok().unwrap().1,rex.is_some(),simdsz),
-        (&OperandSpec::Present(AddressingMethod::V,OperandType::ss),_) =>
-            read_simd_register(tail.modrm(rex).ok().unwrap().1,rex.is_some(),128),
-        (&OperandSpec::Present(AddressingMethod::V,OperandType::x),32) =>
-            read_simd_register(tail.modrm(rex).ok().unwrap().1,rex.is_some(),128),
-        (&OperandSpec::Present(AddressingMethod::V,OperandType::x),64) =>
-            read_simd_register(tail.modrm(rex).ok().unwrap().1,rex.is_some(),256),
-        (&OperandSpec::Present(AddressingMethod::V,OperandType::dq),_) =>
-            read_simd_register(tail.modrm(rex).ok().unwrap().1,rex.is_some(),128),
-        (&OperandSpec::Present(AddressingMethod::V,OperandType::q),_) =>
-            read_simd_register(tail.modrm(rex).ok().unwrap().1,rex.is_some(),64),
-        (&OperandSpec::Present(AddressingMethod::V,OperandType::sd),_) =>
-            read_simd_register(tail.modrm(rex).ok().unwrap().1,rex.is_some(),128),
-        (&OperandSpec::Present(AddressingMethod::V,OperandType::y),opsz) =>
-            read_simd_register(tail.modrm(rex).ok().unwrap().1,rex.is_some(),cmp::min(32,opsz)),
-        (&OperandSpec::Present(AddressingMethod::W,OperandType::pd),_) =>
-            indirect(try!(read_effective_simd_address(mode,seg,tail,rex,opsz,addrsz,addr,simdsz)),seg,addrsz,simdsz),
-        (&OperandSpec::Present(AddressingMethod::W,OperandType::ps),_) =>
-            indirect(try!(read_effective_simd_address(mode,seg,tail,rex,opsz,addrsz,addr,simdsz)),seg,addrsz,simdsz),
-        (&OperandSpec::Present(AddressingMethod::W,OperandType::q),_) =>
-            indirect(try!(read_effective_simd_address(mode,seg,tail,rex,opsz,addrsz,addr,64)),seg,addrsz,64),
-        (&OperandSpec::Present(AddressingMethod::W,OperandType::dq),_) =>
-            indirect(try!(read_effective_simd_address(mode,seg,tail,rex,opsz,addrsz,addr,128)),seg,addrsz,128),
-        (&OperandSpec::Present(AddressingMethod::W,OperandType::x),32) =>
-            indirect(try!(read_effective_simd_address(mode,seg,tail,rex,opsz,addrsz,addr,128)),seg,addrsz,128),
-        (&OperandSpec::Present(AddressingMethod::W,OperandType::x),64) =>
-            indirect(try!(read_effective_simd_address(mode,seg,tail,rex,opsz,addrsz,addr,256)),seg,addrsz,256),
-        (&OperandSpec::Present(AddressingMethod::W,OperandType::sd),_) =>
-            indirect(try!(read_effective_simd_address(mode,seg,tail,rex,opsz,addrsz,addr,128)),seg,addrsz,128),
-        (&OperandSpec::Present(AddressingMethod::W,OperandType::ss),_) =>
-            indirect(try!(read_effective_simd_address(mode,seg,tail,rex,opsz,addrsz,addr,128)),seg,addrsz,128),
+        (&OperandSpec::Present(AddressingMethod::I, OperandType::z), 16) =>
+            Ok(Operand::Immediate(tail.read_u16().ok().unwrap() as u64, 16)),
+        (&OperandSpec::Present(AddressingMethod::I, OperandType::z), _) =>
+            Ok(Operand::Immediate(tail.read_u32().ok().unwrap() as u64, 32)),
+        (&OperandSpec::Present(AddressingMethod::I, OperandType::b), _) =>
+            Ok(Operand::Immediate(((tail.read_u8().ok().unwrap() as i8) as i64) as u64, opsz)),
+        (&OperandSpec::Present(AddressingMethod::I, OperandType::one), opsz) =>
+            Ok(Operand::Immediate(1, opsz)),
+        (&OperandSpec::Present(AddressingMethod::I, OperandType::w), _) =>
+            Ok(Operand::Immediate(tail.read_u16().ok().unwrap() as u64, 16)),
+        (&OperandSpec::Present(AddressingMethod::I, OperandType::v), 16) =>
+            Ok(Operand::Immediate(tail.read_u16().ok().unwrap() as u64, 16)),
+        (&OperandSpec::Present(AddressingMethod::I, OperandType::v), 32) =>
+            Ok(Operand::Immediate(tail.read_u32().ok().unwrap() as u64, 32)),
+        (&OperandSpec::Present(AddressingMethod::I, OperandType::v), 64) =>
+            Ok(Operand::Immediate(tail.read_u64().ok().unwrap() as u64, 64)),
+        (&OperandSpec::Present(AddressingMethod::J, OperandType::b), _) =>
+            Ok(Operand::Immediate(addr.wrapping_add(((tail.read_u8().ok().unwrap() as i8) as i64) as u64).wrapping_add(1), addrsz)),
+        (&OperandSpec::Present(AddressingMethod::J, OperandType::z), 16) =>
+            Ok(Operand::Immediate(addr.wrapping_add(((tail.read_u16().ok().unwrap() as i16) as i64) as u64).wrapping_add(2), addrsz)),
+        (&OperandSpec::Present(AddressingMethod::J, OperandType::z), _) =>
+            Ok(Operand::Immediate(addr.wrapping_add(((tail.read_u32().ok().unwrap() as i32) as i64) as u64).wrapping_add(4), addrsz)),
+        (&OperandSpec::Present(AddressingMethod::L, OperandType::x), 32) =>
+            read_simd_register(tail.read_u8().ok().unwrap() & 0b0111, rex.is_some(), simdsz),
+        (&OperandSpec::Present(AddressingMethod::L, OperandType::x), _) =>
+            read_simd_register(tail.read_u8().ok().unwrap() & 0b1111, rex.is_some(), simdsz),
+        (&OperandSpec::Present(AddressingMethod::M, OperandType::p), 16) =>
+            read_effective_address(mode, seg, tail, rex, 16, addrsz, addr),
+        (&OperandSpec::Present(AddressingMethod::M, OperandType::p), 32) =>
+            read_effective_address(mode, seg, tail, rex, 32, addrsz, addr),
+        (&OperandSpec::Present(AddressingMethod::M, OperandType::p), 64) =>
+            read_effective_address(mode, seg, tail, rex, 64, addrsz, addr),
+        (&OperandSpec::Present(AddressingMethod::M, OperandType::w), _opsz) =>
+            read_effective_address(mode, seg, tail, rex, 16, addrsz, addr),
+        (&OperandSpec::Present(AddressingMethod::M, OperandType::d), _opsz) =>
+            read_effective_address(mode, seg, tail, rex, 32, addrsz, addr),
+        (&OperandSpec::Present(AddressingMethod::M, OperandType::q), _opsz) =>
+            read_effective_address(mode, seg, tail, rex, 64, addrsz, addr),
+        (&OperandSpec::Present(AddressingMethod::M, OperandType::s), 64) =>
+            read_effective_address(mode, seg, tail, rex, 80, addrsz, addr),
+        (&OperandSpec::Present(AddressingMethod::M, OperandType::s), _) =>
+            read_effective_address(mode, seg, tail, rex, 48, addrsz, addr),
+        (&OperandSpec::Present(AddressingMethod::M, OperandType::b), _) =>
+            read_effective_address(mode, seg, tail, rex, 8, addrsz, addr),
+        (&OperandSpec::Present(AddressingMethod::M, OperandType::None), opsz) =>
+            read_effective_address(mode, seg, tail, rex, opsz, addrsz, addr),
+        (&OperandSpec::Present(AddressingMethod::M, OperandType::a), 32) =>
+            read_effective_address(mode, seg, tail, rex, 64, addrsz, addr),
+        (&OperandSpec::Present(AddressingMethod::M, OperandType::a), 16) =>
+            read_effective_address(mode, seg, tail, rex, 32, addrsz, addr),
+        (&OperandSpec::Present(AddressingMethod::M, OperandType::y), opsz) =>
+            read_effective_address(mode, seg, tail, rex, cmp::min(32, opsz), addrsz, addr),
+        (&OperandSpec::Present(AddressingMethod::M, OperandType::x), 32) =>
+            read_effective_address(mode, seg, tail, rex, 128, addrsz, addr),
+        (&OperandSpec::Present(AddressingMethod::M, OperandType::x), 64) =>
+            read_effective_address(mode, seg, tail, rex, 256, addrsz, addr),
+        (&OperandSpec::Present(AddressingMethod::N, OperandType::q), _) =>
+            read_simd_register(tail.modrm(rex).ok().unwrap().2, rex.is_some(), 64),
+        (&OperandSpec::Present(AddressingMethod::O, OperandType::b), _) if addrsz == 16 =>
+            read_memory(Operand::Immediate(tail.read_u16().ok().unwrap() as u64, addrsz), seg, addrsz, 8),
+        (&OperandSpec::Present(AddressingMethod::O, OperandType::b), _) if addrsz == 32 =>
+            read_memory(Operand::Immediate(tail.read_u32().ok().unwrap() as u64, addrsz), seg, addrsz, 8),
+        (&OperandSpec::Present(AddressingMethod::O, OperandType::b), _) if addrsz == 64 =>
+            read_memory(Operand::Immediate(tail.read_u64().ok().unwrap() as u64, addrsz), seg, addrsz, 8),
+        (&OperandSpec::Present(AddressingMethod::O, OperandType::v), opsz) if addrsz == 16 =>
+            read_memory(Operand::Immediate(tail.read_u16().ok().unwrap() as u64, addrsz), seg, addrsz, opsz),
+        (&OperandSpec::Present(AddressingMethod::O, OperandType::v), opsz) if addrsz == 32 =>
+            read_memory(Operand::Immediate(tail.read_u32().ok().unwrap() as u64, addrsz), seg, addrsz, opsz),
+        (&OperandSpec::Present(AddressingMethod::O, OperandType::v), opsz) if addrsz == 64 =>
+            read_memory(Operand::Immediate(tail.read_u64().ok().unwrap() as u64, addrsz), seg, addrsz, opsz),
+        (&OperandSpec::Present(AddressingMethod::P, OperandType::pi), _) =>
+            read_simd_register(tail.modrm(rex).ok().unwrap().1, rex.is_some(), 64),
+        (&OperandSpec::Present(AddressingMethod::P, OperandType::ps), _) =>
+            read_simd_register(tail.modrm(rex).ok().unwrap().1, rex.is_some(), simdsz),
+        (&OperandSpec::Present(AddressingMethod::P, OperandType::q), _) =>
+            read_simd_register(tail.modrm(rex).ok().unwrap().1, rex.is_some(), 64),
+        (&OperandSpec::Present(AddressingMethod::P, OperandType::d), _) =>
+            read_simd_register(tail.modrm(rex).ok().unwrap().1, rex.is_some(), 32),
+        (&OperandSpec::Present(AddressingMethod::Q, OperandType::d), _) =>
+            indirect(try!(read_effective_simd_address(mode, seg, tail, rex, opsz, addrsz, addr, 32)), seg, addrsz, 32),
+        (&OperandSpec::Present(AddressingMethod::Q, OperandType::pi), _) =>
+            indirect(try!(read_effective_simd_address(mode, seg, tail, rex, opsz, addrsz, addr, simdsz)), seg, addrsz, simdsz),
+        (&OperandSpec::Present(AddressingMethod::Q, OperandType::q), _) =>
+            indirect(try!(read_effective_simd_address(mode, seg, tail, rex, opsz, addrsz, addr, 32)), seg, addrsz, 32),
+        (&OperandSpec::Present(AddressingMethod::S, OperandType::w), _) =>
+            read_memory(Operand::Immediate(tail.read_u16().ok().unwrap() as u64, addrsz), seg, addrsz, 16),
+        (&OperandSpec::Present(AddressingMethod::R, OperandType::d), _) =>
+            read_memory(Operand::Immediate(tail.read_u16().ok().unwrap() as u64, addrsz), seg, addrsz, 32),
+        (&OperandSpec::Present(AddressingMethod::R, OperandType::q), _) =>
+            read_memory(Operand::Immediate(tail.read_u16().ok().unwrap() as u64, addrsz), seg, addrsz, 64),
+        (&OperandSpec::Present(AddressingMethod::U, OperandType::ps), _) =>
+            read_simd_register(tail.modrm(rex).ok().unwrap().2, rex.is_some(), simdsz),
+        (&OperandSpec::Present(AddressingMethod::U, OperandType::pi), _) =>
+            read_simd_register(tail.modrm(rex).ok().unwrap().2, rex.is_some(), 64),
+        (&OperandSpec::Present(AddressingMethod::U, OperandType::q), _) =>
+            read_simd_register(tail.modrm(rex).ok().unwrap().2, rex.is_some(), 64),
+        (&OperandSpec::Present(AddressingMethod::U, OperandType::x), 32) =>
+            read_simd_register(tail.modrm(rex).ok().unwrap().2, rex.is_some(), 128),
+        (&OperandSpec::Present(AddressingMethod::U, OperandType::x), 64) =>
+            read_simd_register(tail.modrm(rex).ok().unwrap().2, rex.is_some(), 256),
+        (&OperandSpec::Present(AddressingMethod::U, OperandType::dq), _) =>
+            read_simd_register(tail.modrm(rex).ok().unwrap().2, rex.is_some(), 128),
+        (&OperandSpec::Present(AddressingMethod::V, OperandType::pi), _) =>
+            read_simd_register(tail.modrm(rex).ok().unwrap().1, rex.is_some(), 64),
+        (&OperandSpec::Present(AddressingMethod::V, OperandType::ps), _) =>
+            read_simd_register(tail.modrm(rex).ok().unwrap().1, rex.is_some(), simdsz),
+        (&OperandSpec::Present(AddressingMethod::V, OperandType::pd), _) =>
+            read_simd_register(tail.modrm(rex).ok().unwrap().1, rex.is_some(), simdsz),
+        (&OperandSpec::Present(AddressingMethod::V, OperandType::ss), _) =>
+            read_simd_register(tail.modrm(rex).ok().unwrap().1, rex.is_some(), 128),
+        (&OperandSpec::Present(AddressingMethod::V, OperandType::x), 32) =>
+            read_simd_register(tail.modrm(rex).ok().unwrap().1, rex.is_some(), 128),
+        (&OperandSpec::Present(AddressingMethod::V, OperandType::x), 64) =>
+            read_simd_register(tail.modrm(rex).ok().unwrap().1, rex.is_some(), 256),
+        (&OperandSpec::Present(AddressingMethod::V, OperandType::dq), _) =>
+            read_simd_register(tail.modrm(rex).ok().unwrap().1, rex.is_some(), 128),
+        (&OperandSpec::Present(AddressingMethod::V, OperandType::q), _) =>
+            read_simd_register(tail.modrm(rex).ok().unwrap().1, rex.is_some(), 64),
+        (&OperandSpec::Present(AddressingMethod::V, OperandType::sd), _) =>
+            read_simd_register(tail.modrm(rex).ok().unwrap().1, rex.is_some(), 128),
+        (&OperandSpec::Present(AddressingMethod::V, OperandType::y), opsz) =>
+            read_simd_register(tail.modrm(rex).ok().unwrap().1, rex.is_some(), cmp::min(32, opsz)),
+        (&OperandSpec::Present(AddressingMethod::W, OperandType::pd), _) =>
+            indirect(try!(read_effective_simd_address(mode, seg, tail, rex, opsz, addrsz, addr, simdsz)), seg, addrsz, simdsz),
+        (&OperandSpec::Present(AddressingMethod::W, OperandType::ps), _) =>
+            indirect(try!(read_effective_simd_address(mode, seg, tail, rex, opsz, addrsz, addr, simdsz)), seg, addrsz, simdsz),
+        (&OperandSpec::Present(AddressingMethod::W, OperandType::q), _) =>
+            indirect(try!(read_effective_simd_address(mode, seg, tail, rex, opsz, addrsz, addr, 64)), seg, addrsz, 64),
+        (&OperandSpec::Present(AddressingMethod::W, OperandType::dq), _) =>
+            indirect(try!(read_effective_simd_address(mode, seg, tail, rex, opsz, addrsz, addr, 128)), seg, addrsz, 128),
+        (&OperandSpec::Present(AddressingMethod::W, OperandType::x), 32) =>
+            indirect(try!(read_effective_simd_address(mode, seg, tail, rex, opsz, addrsz, addr, 128)), seg, addrsz, 128),
+        (&OperandSpec::Present(AddressingMethod::W, OperandType::x), 64) =>
+            indirect(try!(read_effective_simd_address(mode, seg, tail, rex, opsz, addrsz, addr, 256)), seg, addrsz, 256),
+        (&OperandSpec::Present(AddressingMethod::W, OperandType::sd), _) =>
+            indirect(try!(read_effective_simd_address(mode, seg, tail, rex, opsz, addrsz, addr, 128)), seg, addrsz, 128),
+        (&OperandSpec::Present(AddressingMethod::W, OperandType::ss), _) =>
+            indirect(try!(read_effective_simd_address(mode, seg, tail, rex, opsz, addrsz, addr, 128)), seg, addrsz, 128),
         _ => {
-            error!("can't decode {:?}/{}",spec,opsz);
-            Err(format!("can't decode {:?}/{}",spec,opsz).into())
+            error!("can't decode {:?}/{}", spec, opsz);
+            Err(format!("can't decode {:?}/{}", spec, opsz).into())
         }
     }
 }
@@ -1092,144 +1092,144 @@ fn sign_ext_u32(val: u32, w: usize) -> u64 {
 }
 
 fn read_effective_simd_address(mode: Mode, seg: SegmentOverride, tail: &mut Tail,
-                               rex: Option<(bool,bool,bool,bool)>,
+                               rex: Option<(bool, bool, bool, bool)>,
                                opsz: usize, addrsz: usize, ip: u64, simdsz: usize) -> Result<Operand> {
-    let (mod_,_reg,rm) = try!(tail.modrm(rex));
+    let (mod_, _reg, rm) = try!(tail.modrm(rex));
 
-    match (mod_,rm & 0b111) {
+    match (mod_, rm & 0b111) {
         // mod = 00
-        (0b00,0b000) | (0b00,0b001) | (0b00,0b010) |
-        (0b00,0b011) | (0b00,0b110) | (0b00,0b111) =>
-            read_simd_register(rm,rex.is_some(),addrsz),
-        (0b00,0b100) =>
-            tail.sib(mod_,seg,rex,addrsz),
-        (0b00,0b101) if mode == Mode::Long =>
-            Ok(Operand::Address(seg,Register::None,Register::None,0,(ip + sign_ext_u32(try!(tail.read_u32()),addrsz),addrsz))),
-        (0b00,0b101) if mode != Mode::Long =>
-            Ok(Operand::Address(seg,Register::None,Register::None,0,(sign_ext_u32(try!(tail.read_u32()),addrsz),addrsz))),
+        (0b00, 0b000) | (0b00, 0b001) | (0b00, 0b010) |
+        (0b00, 0b011) | (0b00, 0b110) | (0b00, 0b111) =>
+            read_simd_register(rm, rex.is_some(), addrsz),
+        (0b00, 0b100) =>
+            tail.sib(mod_, seg, rex, addrsz),
+        (0b00, 0b101) if mode == Mode::Long =>
+            Ok(Operand::Address(seg, Register::None, Register::None, 0, (ip + sign_ext_u32(try!(tail.read_u32()), addrsz), addrsz))),
+        (0b00, 0b101) if mode != Mode::Long =>
+            Ok(Operand::Address(seg, Register::None, Register::None, 0, (sign_ext_u32(try!(tail.read_u32()), addrsz), addrsz))),
 
         // mod = 01
-        (0b01,0b000) | (0b01,0b001) | (0b01,0b010) | (0b01,0b011) |
-        (0b01,0b101) | (0b01,0b110) | (0b01,0b111) =>
-            if let Ok(Operand::Register(reg)) = read_register(rm,rex.is_some(),addrsz) {
-                Ok(Operand::Address(seg,reg,Register::None,0,(sign_ext_u8(try!(tail.read_u8()),addrsz),addrsz)))
+        (0b01, 0b000) | (0b01, 0b001) | (0b01, 0b010) | (0b01, 0b011) |
+        (0b01, 0b101) | (0b01, 0b110) | (0b01, 0b111) =>
+            if let Ok(Operand::Register(reg)) = read_register(rm, rex.is_some(), addrsz) {
+                Ok(Operand::Address(seg, reg, Register::None, 0, (sign_ext_u8(try!(tail.read_u8()), addrsz), addrsz)))
             } else {
                 error!("Failed to decode SIB byte");
                 Err("Failed to decode SIB byte".into())
             },
-        (0b01,0b100) =>
-            if let Operand::Address(e,b,i,s,_) = try!(tail.sib(mod_,seg,rex,addrsz)) {
-                let d = sign_ext_u8(try!(tail.read_u8()),opsz);
-                Ok(Operand::Address(e,b,i,s,(d as u64,8)))
+        (0b01, 0b100) =>
+            if let Operand::Address(e, b, i, s, _) = try!(tail.sib(mod_, seg, rex, addrsz)) {
+                let d = sign_ext_u8(try!(tail.read_u8()), opsz);
+                Ok(Operand::Address(e, b, i, s, (d as u64, 8)))
             } else {
                 error!("Internal error: read_sib did not return indirect operand");
                 Err("Internal error: read_sib did not return indirect operand".into())
             },
 
         // mod = 10
-        (0b10,0b000) | (0b10,0b001) | (0b10,0b010) | (0b10,0b011) |
-        (0b10,0b101) | (0b10,0b110) | (0b10,0b111) =>
-            if let Ok(Operand::Register(reg)) = read_register(rm,rex.is_some(),addrsz) {
-                Ok(Operand::Address(seg,reg,Register::None,0,(sign_ext_u32(try!(tail.read_u32()),addrsz),addrsz)))
+        (0b10, 0b000) | (0b10, 0b001) | (0b10, 0b010) | (0b10, 0b011) |
+        (0b10, 0b101) | (0b10, 0b110) | (0b10, 0b111) =>
+            if let Ok(Operand::Register(reg)) = read_register(rm, rex.is_some(), addrsz) {
+                Ok(Operand::Address(seg, reg, Register::None, 0, (sign_ext_u32(try!(tail.read_u32()), addrsz), addrsz)))
             } else {
                 error!("Failed to decode SIB byte");
                 Err("Failed to decode SIB byte".into())
             },
-       (0b10,0b100) =>
-            if let Operand::Address(e,b,i,s,_) = try!(tail.sib(mod_,seg,rex,addrsz)) {
-                let d = sign_ext_u32(try!(tail.read_u32()),addrsz);
-                Ok(Operand::Address(e,b,i,s,(d as u64,32)))
+       (0b10, 0b100) =>
+            if let Operand::Address(e, b, i, s, _) = try!(tail.sib(mod_, seg, rex, addrsz)) {
+                let d = sign_ext_u32(try!(tail.read_u32()), addrsz);
+                Ok(Operand::Address(e, b, i, s, (d as u64, 32)))
             } else {
                 error!("Internal error: read_sib did not return indirect operand");
                 Err("Internal error: read_sib did not return indirect operand".into())
             },
 
         // mod = 11
-        (0b11,_) => read_simd_register(rm,rex.is_some(),simdsz),
+        (0b11, _) => read_simd_register(rm, rex.is_some(), simdsz),
 
         _ => {
-            error!("Invalid mod value: {:b}",mod_);
+            error!("Invalid mod value: {:b}", mod_);
             Err("Invalid mod value".into())
         }
     }
 }
 
 fn read_effective_address(mode: Mode, seg: SegmentOverride, tail: &mut Tail,
-                          rex: Option<(bool,bool,bool,bool)>,
+                          rex: Option<(bool, bool, bool, bool)>,
                           opsz: usize, addrsz: usize, ip: u64) -> Result<Operand> {
-    let (mod_,_reg,rm) = try!(tail.modrm(rex));
+    let (mod_, _reg, rm) = try!(tail.modrm(rex));
 
-    match (mod_,rm & 0b111) {
+    match (mod_, rm & 0b111) {
         // mod = 00
-        (0b00,0b000) | (0b00,0b001) | (0b00,0b010) |
-        (0b00,0b011) | (0b00,0b110) | (0b00,0b111) =>
-            read_register(rm,rex.is_some(),addrsz),
-        (0b00,0b100) =>
-            tail.sib(mod_,seg,rex,addrsz),
-        (0b00,0b101) if mode == Mode::Long => {
-            let imm = sign_ext_u32(try!(tail.read_u32()),addrsz);
+        (0b00, 0b000) | (0b00, 0b001) | (0b00, 0b010) |
+        (0b00, 0b011) | (0b00, 0b110) | (0b00, 0b111) =>
+            read_register(rm, rex.is_some(), addrsz),
+        (0b00, 0b100) =>
+            tail.sib(mod_, seg, rex, addrsz),
+        (0b00, 0b101) if mode == Mode::Long => {
+            let imm = sign_ext_u32(try!(tail.read_u32()), addrsz);
             let len = tail.fd.position() as u64;
-            Ok(Operand::Address(seg,Register::None,Register::None,0,(ip + len + imm,32)))
+            Ok(Operand::Address(seg, Register::None, Register::None, 0, (ip + len + imm, 32)))
         }
-        (0b00,0b101) if mode != Mode::Long =>
-            Ok(Operand::Address(seg,Register::None,Register::None,0,(sign_ext_u32(try!(tail.read_u32()),addrsz),32))),
+        (0b00, 0b101) if mode != Mode::Long =>
+            Ok(Operand::Address(seg, Register::None, Register::None, 0, (sign_ext_u32(try!(tail.read_u32()), addrsz), 32))),
 
         // mod = 01
-        (0b01,0b000) | (0b01,0b001) | (0b01,0b010) | (0b01,0b011) |
-        (0b01,0b101) | (0b01,0b110) | (0b01,0b111) =>
-            if let Ok(Operand::Register(reg)) = read_register(rm,rex.is_some(),addrsz) {
-                Ok(Operand::Address(seg,reg,Register::None,0,(sign_ext_u8(try!(tail.read_u8()),addrsz),8)))
+        (0b01, 0b000) | (0b01, 0b001) | (0b01, 0b010) | (0b01, 0b011) |
+        (0b01, 0b101) | (0b01, 0b110) | (0b01, 0b111) =>
+            if let Ok(Operand::Register(reg)) = read_register(rm, rex.is_some(), addrsz) {
+                Ok(Operand::Address(seg, reg, Register::None, 0, (sign_ext_u8(try!(tail.read_u8()), addrsz), 8)))
             } else {
                 error!("Failed to decode r/m byte");
                 Err("Failed to decode r/m byte".into())
             },
-        (0b01,0b100) =>
-            match tail.sib(mod_,seg,rex,addrsz) {
-                Ok(Operand::Address(e,b,i,s,_)) => {
-                    let d = sign_ext_u8(try!(tail.read_u8()),addrsz);
-                    Ok(Operand::Address(e,b,i,s,(d as u64,8)))
+        (0b01, 0b100) =>
+            match tail.sib(mod_, seg, rex, addrsz) {
+                Ok(Operand::Address(e, b, i, s, _)) => {
+                    let d = sign_ext_u8(try!(tail.read_u8()), addrsz);
+                    Ok(Operand::Address(e, b, i, s, (d as u64, 8)))
                 }
                 Ok(_) => {
                     error!("Failed to decode SIB byte: No Address");
                     Err("Failed to decode SIB byte: No Address".into())
                 }
                 Err(e) => {
-                    error!("Failed to decode SIB byte: {}",e);
+                    error!("Failed to decode SIB byte: {}", e);
                     Err("Failed to decode SIB byte".into())
                 }
             },
 
         // mod = 10
-        (0b10,0b000) | (0b10,0b001) | (0b10,0b010) | (0b10,0b011) |
-        (0b10,0b101) | (0b10,0b110) | (0b10,0b111) =>
-            if let Ok(Operand::Register(reg)) = read_register(rm,rex.is_some(),addrsz) {
-                Ok(Operand::Address(seg,reg,Register::None,0,(sign_ext_u32(try!(tail.read_u32()),addrsz),addrsz)))
+        (0b10, 0b000) | (0b10, 0b001) | (0b10, 0b010) | (0b10, 0b011) |
+        (0b10, 0b101) | (0b10, 0b110) | (0b10, 0b111) =>
+            if let Ok(Operand::Register(reg)) = read_register(rm, rex.is_some(), addrsz) {
+                Ok(Operand::Address(seg, reg, Register::None, 0, (sign_ext_u32(try!(tail.read_u32()), addrsz), addrsz)))
             } else {
                 error!("Failed to decode SIB byte");
                 Err("Failed to decode SIB byte".into())
             },
-        (0b10,0b100) =>
-            if let Operand::Address(e,b,i,s,_) = try!(tail.sib(mod_,seg,rex,addrsz)) {
-                let d = sign_ext_u32(try!(tail.read_u32()),addrsz);
-                Ok(Operand::Address(e,b,i,s,(d as u64,32)))
+        (0b10, 0b100) =>
+            if let Operand::Address(e, b, i, s, _) = try!(tail.sib(mod_, seg, rex, addrsz)) {
+                let d = sign_ext_u32(try!(tail.read_u32()), addrsz);
+                Ok(Operand::Address(e, b, i, s, (d as u64, 32)))
             } else {
                 error!("Internal error: read_sib did not return indirect operand");
                 Err("Internal error: read_sib did not return indirect operand".into())
             },
 
         // mod = 11
-        (0b11,_) => read_register(rm,rex.is_some(),opsz),
+        (0b11, _) => read_register(rm, rex.is_some(), opsz),
 
         _ => {
-            error!("Invalid mod value: {:b}",mod_);
+            error!("Invalid mod value: {:b}", mod_);
             Err("Invalid mod value".into())
         }
     }
 }
 
 fn indirect(op: Operand, seg: SegmentOverride, addrsz: usize, width: usize) -> Result<Operand> {
-    if let Operand::Address(_,_,_,_,_) = op {
-        read_memory(op,seg,addrsz,width)
+    if let Operand::Address(_, _, _, _, _) = op {
+        read_memory(op, seg, addrsz, width)
     } else {
         Ok(op)
     }
@@ -1237,10 +1237,10 @@ fn indirect(op: Operand, seg: SegmentOverride, addrsz: usize, width: usize) -> R
 
 fn read_memory(op: Operand, seg: SegmentOverride, _addrsz: usize, width: usize) -> Result<Operand> {
     match op {
-        Operand::Register(reg) => Ok(Operand::Indirect(seg,reg,Register::None,0,(0,0),width)),
-        Operand::Immediate(imm,w) => Ok(Operand::Indirect(seg,Register::None,Register::None,0,(imm,w),width)),
-        Operand::Address(seg,base,index,scale,disp) => Ok(Operand::Indirect(seg,base,index,scale,disp,width)),
-        Operand::Indirect(_,_,_,_,_,_) => {
+        Operand::Register(reg) => Ok(Operand::Indirect(seg, reg, Register::None, 0, (0, 0), width)),
+        Operand::Immediate(imm, w) => Ok(Operand::Indirect(seg, Register::None, Register::None, 0, (imm, w), width)),
+        Operand::Address(seg, base, index, scale, disp) => Ok(Operand::Indirect(seg, base, index, scale, disp, width)),
+        Operand::Indirect(_, _, _, _, _, _) => {
             error!("Tried to contruct doubly indirect operand");
             Err("Tried to contruct doubly indirect operand".into())
         }
@@ -1251,36 +1251,36 @@ fn read_memory(op: Operand, seg: SegmentOverride, _addrsz: usize, width: usize) 
     }
 }
 
-fn read_sib<R: ReadBytesExt>(fd: &mut R, mod_: u8, seg: SegmentOverride, rex: Option<(bool,bool,bool,bool)>,
+fn read_sib<R: ReadBytesExt>(fd: &mut R, mod_: u8, seg: SegmentOverride, rex: Option<(bool, bool, bool, bool)>,
             addrsz: usize) -> Result<Operand> {
     let sib = try!(fd.read_u8());
     let scale = sib >> 6;
     let mut index = (sib >> 3) & 0b111;
     let mut base = sib & 0b111;
 
-    trace!("read sib 0x{:02x} ({:02b},{:03b},{:03b})",sib,scale,index,base);
+    trace!("read sib 0x{:02x} ({:02b}, {:03b}, {:03b})", sib, scale, index, base);
 
     if mod_ != 0b11 {
-        if let Some((_,_,x,b)) = rex {
+        if let Some((_, _, x, b)) = rex {
             if x { index |= 0b1000 };
             if b { base |= 0b1000 };
         }
     }
 
     let ret_scale = 1 << scale;
-    let (ret_base,ret_disp) = if mod_ != 0b11 && base & 0b111 == 0b101 {
+    let (ret_base, ret_disp) = if mod_ != 0b11 && base & 0b111 == 0b101 {
         match mod_ {
-            0b00 => (Register::None,(sign_ext_u32(try!(fd.read_u32::<LittleEndian>()),addrsz),32)),
-            0b01 => (Register::EBP,(0,0)),
-            0b10 => (Register::EBP,(0,0)),
+            0b00 => (Register::None, (sign_ext_u32(try!(fd.read_u32::<LittleEndian>()), addrsz), 32)),
+            0b01 => (Register::EBP, (0, 0)),
+            0b10 => (Register::EBP, (0, 0)),
             _ => {
                 error!("read_sib: invalid mod value");
                 return Err("Internal error".into())
             }
         }
     } else {
-        if let Ok(Operand::Register(r)) = read_register(base,rex.is_some(),addrsz) {
-            (r,(0,0))
+        if let Ok(Operand::Register(r)) = read_register(base, rex.is_some(), addrsz) {
+            (r, (0, 0))
         } else {
             error!("read_sib: Failed to decode base register");
             return Err("Failed to decode base register".into());
@@ -1289,7 +1289,7 @@ fn read_sib<R: ReadBytesExt>(fd: &mut R, mod_: u8, seg: SegmentOverride, rex: Op
     let ret_index = if index & 0b111 == 0b100 {
         Register::None
     } else {
-        if let Ok(Operand::Register(r)) = read_register(index,rex.is_some(),addrsz) {
+        if let Ok(Operand::Register(r)) = read_register(index, rex.is_some(), addrsz) {
             r
         } else {
             error!("read_sib: Failed to decode index register");
@@ -1298,231 +1298,231 @@ fn read_sib<R: ReadBytesExt>(fd: &mut R, mod_: u8, seg: SegmentOverride, rex: Op
     };
 
     // disp handled by calling function
-    Ok(Operand::Address(seg,ret_base,ret_index,ret_scale,ret_disp))
+    Ok(Operand::Address(seg, ret_base, ret_index, ret_scale, ret_disp))
 }
 
-fn read_modrm<R: ReadBytesExt>(fd: &mut R,rex: Option<(bool,bool,bool,bool)>) -> Result<(u8,u8,u8)> {
+fn read_modrm<R: ReadBytesExt>(fd: &mut R, rex: Option<(bool, bool, bool, bool)>) -> Result<(u8, u8, u8)> {
     let modrm = try!(fd.read_u8());
     let mod_ = modrm >> 6;
     let mut reg = (modrm >> 3) & 0b111;
     let mut rm = modrm & 0b111;
     let sib_present = mod_ != 0b11 && rm == 0b100;
 
-    if let Some((_w,r,_x,b)) = rex {
+    if let Some((_w, r, _x, b)) = rex {
         if b && !sib_present { rm |= 0b1000 }
         if r { reg |= 0b1000 }
     }
 
-    trace!("read modrm {:x} ({:b},{:b},{:b})",modrm,mod_,reg,rm);
-    Ok((mod_,reg,rm))
+    trace!("read modrm {:x} ({:b}, {:b}, {:b})", modrm, mod_, reg, rm);
+    Ok((mod_, reg, rm))
 }
 
 fn read_register(reg: u8, rex_present: bool, opsz: usize) -> Result<Operand> {
-    match (reg,opsz) {
-        (0b0000,8) => Ok(Operand::Register(Register::AL)),
-        (0b0001,8) => Ok(Operand::Register(Register::CL)),
-        (0b0010,8) => Ok(Operand::Register(Register::DL)),
-        (0b0011,8) => Ok(Operand::Register(Register::BL)),
-        (0b0100,8) => if !rex_present { Ok(Operand::Register(Register::AH)) } else { Ok(Operand::Register(Register::SPL)) },
-        (0b0101,8) => if !rex_present { Ok(Operand::Register(Register::CH)) } else { Ok(Operand::Register(Register::BPL)) },
-        (0b0110,8) => if !rex_present { Ok(Operand::Register(Register::DH)) } else { Ok(Operand::Register(Register::SIL)) },
-        (0b0111,8) => if !rex_present { Ok(Operand::Register(Register::BH)) } else { Ok(Operand::Register(Register::DIL)) },
-        (0b1000,8) => Ok(Operand::Register(Register::R8B)),
-        (0b1001,8) => Ok(Operand::Register(Register::R9B)),
-        (0b1010,8) => Ok(Operand::Register(Register::R10B)),
-        (0b1011,8) => Ok(Operand::Register(Register::R11B)),
-        (0b1100,8) => Ok(Operand::Register(Register::R12B)),
-        (0b1101,8) => Ok(Operand::Register(Register::R13B)),
-        (0b1110,8) => Ok(Operand::Register(Register::R14B)),
-        (0b1111,8) => Ok(Operand::Register(Register::R15B)),
+    match (reg, opsz) {
+        (0b0000, 8) => Ok(Operand::Register(Register::AL)),
+        (0b0001, 8) => Ok(Operand::Register(Register::CL)),
+        (0b0010, 8) => Ok(Operand::Register(Register::DL)),
+        (0b0011, 8) => Ok(Operand::Register(Register::BL)),
+        (0b0100, 8) => if !rex_present { Ok(Operand::Register(Register::AH)) } else { Ok(Operand::Register(Register::SPL)) },
+        (0b0101, 8) => if !rex_present { Ok(Operand::Register(Register::CH)) } else { Ok(Operand::Register(Register::BPL)) },
+        (0b0110, 8) => if !rex_present { Ok(Operand::Register(Register::DH)) } else { Ok(Operand::Register(Register::SIL)) },
+        (0b0111, 8) => if !rex_present { Ok(Operand::Register(Register::BH)) } else { Ok(Operand::Register(Register::DIL)) },
+        (0b1000, 8) => Ok(Operand::Register(Register::R8B)),
+        (0b1001, 8) => Ok(Operand::Register(Register::R9B)),
+        (0b1010, 8) => Ok(Operand::Register(Register::R10B)),
+        (0b1011, 8) => Ok(Operand::Register(Register::R11B)),
+        (0b1100, 8) => Ok(Operand::Register(Register::R12B)),
+        (0b1101, 8) => Ok(Operand::Register(Register::R13B)),
+        (0b1110, 8) => Ok(Operand::Register(Register::R14B)),
+        (0b1111, 8) => Ok(Operand::Register(Register::R15B)),
 
-        (0b0000,16) => Ok(Operand::Register(Register::AX)),
-        (0b0001,16) => Ok(Operand::Register(Register::CX)),
-        (0b0010,16) => Ok(Operand::Register(Register::DX)),
-        (0b0011,16) => Ok(Operand::Register(Register::BX)),
-        (0b0100,16) => Ok(Operand::Register(Register::SP)),
-        (0b0101,16) => Ok(Operand::Register(Register::BP)),
-        (0b0110,16) => Ok(Operand::Register(Register::SI)),
-        (0b0111,16) => Ok(Operand::Register(Register::DI)),
-        (0b1000,16) => Ok(Operand::Register(Register::R8W)),
-        (0b1001,16) => Ok(Operand::Register(Register::R9W)),
-        (0b1010,16) => Ok(Operand::Register(Register::R10W)),
-        (0b1011,16) => Ok(Operand::Register(Register::R11W)),
-        (0b1100,16) => Ok(Operand::Register(Register::R12W)),
-        (0b1101,16) => Ok(Operand::Register(Register::R13W)),
-        (0b1110,16) => Ok(Operand::Register(Register::R14W)),
-        (0b1111,16) => Ok(Operand::Register(Register::R15W)),
+        (0b0000, 16) => Ok(Operand::Register(Register::AX)),
+        (0b0001, 16) => Ok(Operand::Register(Register::CX)),
+        (0b0010, 16) => Ok(Operand::Register(Register::DX)),
+        (0b0011, 16) => Ok(Operand::Register(Register::BX)),
+        (0b0100, 16) => Ok(Operand::Register(Register::SP)),
+        (0b0101, 16) => Ok(Operand::Register(Register::BP)),
+        (0b0110, 16) => Ok(Operand::Register(Register::SI)),
+        (0b0111, 16) => Ok(Operand::Register(Register::DI)),
+        (0b1000, 16) => Ok(Operand::Register(Register::R8W)),
+        (0b1001, 16) => Ok(Operand::Register(Register::R9W)),
+        (0b1010, 16) => Ok(Operand::Register(Register::R10W)),
+        (0b1011, 16) => Ok(Operand::Register(Register::R11W)),
+        (0b1100, 16) => Ok(Operand::Register(Register::R12W)),
+        (0b1101, 16) => Ok(Operand::Register(Register::R13W)),
+        (0b1110, 16) => Ok(Operand::Register(Register::R14W)),
+        (0b1111, 16) => Ok(Operand::Register(Register::R15W)),
 
-        (0b0000,32) => Ok(Operand::Register(Register::EAX)),
-        (0b0001,32) => Ok(Operand::Register(Register::ECX)),
-        (0b0010,32) => Ok(Operand::Register(Register::EDX)),
-        (0b0011,32) => Ok(Operand::Register(Register::EBX)),
-        (0b0100,32) => Ok(Operand::Register(Register::ESP)),
-        (0b0101,32) => Ok(Operand::Register(Register::EBP)),
-        (0b0110,32) => Ok(Operand::Register(Register::ESI)),
-        (0b0111,32) => Ok(Operand::Register(Register::EDI)),
-        (0b1000,32) => Ok(Operand::Register(Register::R8D)),
-        (0b1001,32) => Ok(Operand::Register(Register::R9D)),
-        (0b1010,32) => Ok(Operand::Register(Register::R10D)),
-        (0b1011,32) => Ok(Operand::Register(Register::R11D)),
-        (0b1100,32) => Ok(Operand::Register(Register::R12D)),
-        (0b1101,32) => Ok(Operand::Register(Register::R13D)),
-        (0b1110,32) => Ok(Operand::Register(Register::R14D)),
-        (0b1111,32) => Ok(Operand::Register(Register::R15D)),
+        (0b0000, 32) => Ok(Operand::Register(Register::EAX)),
+        (0b0001, 32) => Ok(Operand::Register(Register::ECX)),
+        (0b0010, 32) => Ok(Operand::Register(Register::EDX)),
+        (0b0011, 32) => Ok(Operand::Register(Register::EBX)),
+        (0b0100, 32) => Ok(Operand::Register(Register::ESP)),
+        (0b0101, 32) => Ok(Operand::Register(Register::EBP)),
+        (0b0110, 32) => Ok(Operand::Register(Register::ESI)),
+        (0b0111, 32) => Ok(Operand::Register(Register::EDI)),
+        (0b1000, 32) => Ok(Operand::Register(Register::R8D)),
+        (0b1001, 32) => Ok(Operand::Register(Register::R9D)),
+        (0b1010, 32) => Ok(Operand::Register(Register::R10D)),
+        (0b1011, 32) => Ok(Operand::Register(Register::R11D)),
+        (0b1100, 32) => Ok(Operand::Register(Register::R12D)),
+        (0b1101, 32) => Ok(Operand::Register(Register::R13D)),
+        (0b1110, 32) => Ok(Operand::Register(Register::R14D)),
+        (0b1111, 32) => Ok(Operand::Register(Register::R15D)),
 
-        (0b0000,64) => Ok(Operand::Register(Register::RAX)),
-        (0b0001,64) => Ok(Operand::Register(Register::RCX)),
-        (0b0010,64) => Ok(Operand::Register(Register::RDX)),
-        (0b0011,64) => Ok(Operand::Register(Register::RBX)),
-        (0b0100,64) => Ok(Operand::Register(Register::RSP)),
-        (0b0101,64) => Ok(Operand::Register(Register::RBP)),
-        (0b0110,64) => Ok(Operand::Register(Register::RSI)),
-        (0b0111,64) => Ok(Operand::Register(Register::RDI)),
-        (0b1000,64) => Ok(Operand::Register(Register::R8)),
-        (0b1001,64) => Ok(Operand::Register(Register::R9)),
-        (0b1010,64) => Ok(Operand::Register(Register::R10)),
-        (0b1011,64) => Ok(Operand::Register(Register::R11)),
-        (0b1100,64) => Ok(Operand::Register(Register::R12)),
-        (0b1101,64) => Ok(Operand::Register(Register::R13)),
-        (0b1110,64) => Ok(Operand::Register(Register::R14)),
-        (0b1111,64) => Ok(Operand::Register(Register::R15)),
+        (0b0000, 64) => Ok(Operand::Register(Register::RAX)),
+        (0b0001, 64) => Ok(Operand::Register(Register::RCX)),
+        (0b0010, 64) => Ok(Operand::Register(Register::RDX)),
+        (0b0011, 64) => Ok(Operand::Register(Register::RBX)),
+        (0b0100, 64) => Ok(Operand::Register(Register::RSP)),
+        (0b0101, 64) => Ok(Operand::Register(Register::RBP)),
+        (0b0110, 64) => Ok(Operand::Register(Register::RSI)),
+        (0b0111, 64) => Ok(Operand::Register(Register::RDI)),
+        (0b1000, 64) => Ok(Operand::Register(Register::R8)),
+        (0b1001, 64) => Ok(Operand::Register(Register::R9)),
+        (0b1010, 64) => Ok(Operand::Register(Register::R10)),
+        (0b1011, 64) => Ok(Operand::Register(Register::R11)),
+        (0b1100, 64) => Ok(Operand::Register(Register::R12)),
+        (0b1101, 64) => Ok(Operand::Register(Register::R13)),
+        (0b1110, 64) => Ok(Operand::Register(Register::R14)),
+        (0b1111, 64) => Ok(Operand::Register(Register::R15)),
 
-        (0b0000,80) => Ok(Operand::Register(Register::ST0)),
-        (0b0001,80) => Ok(Operand::Register(Register::ST1)),
-        (0b0010,80) => Ok(Operand::Register(Register::ST2)),
-        (0b0011,80) => Ok(Operand::Register(Register::ST3)),
-        (0b0100,80) => Ok(Operand::Register(Register::ST4)),
-        (0b0101,80) => Ok(Operand::Register(Register::ST5)),
-        (0b0110,80) => Ok(Operand::Register(Register::ST6)),
-        (0b0111,80) => Ok(Operand::Register(Register::ST7)),
+        (0b0000, 80) => Ok(Operand::Register(Register::ST0)),
+        (0b0001, 80) => Ok(Operand::Register(Register::ST1)),
+        (0b0010, 80) => Ok(Operand::Register(Register::ST2)),
+        (0b0011, 80) => Ok(Operand::Register(Register::ST3)),
+        (0b0100, 80) => Ok(Operand::Register(Register::ST4)),
+        (0b0101, 80) => Ok(Operand::Register(Register::ST5)),
+        (0b0110, 80) => Ok(Operand::Register(Register::ST6)),
+        (0b0111, 80) => Ok(Operand::Register(Register::ST7)),
 
         _ => {
-            error!("Invalid reg value {:b} ({} bits)",reg,opsz);
-            Err(format!("Invalid reg value {:b} ({} bits)",reg,opsz).into())
+            error!("Invalid reg value {:b} ({} bits)", reg, opsz);
+            Err(format!("Invalid reg value {:b} ({} bits)", reg, opsz).into())
         }
     }
 }
 fn read_simd_register(reg: u8, _rex_present: bool, opsz: usize) -> Result<Operand> {
-    match (reg,opsz) {
-       (0b0000,32) => Ok(Operand::Register(Register::MM0)),
-       (0b0001,32) => Ok(Operand::Register(Register::MM1)),
-       (0b0010,32) => Ok(Operand::Register(Register::MM2)),
-       (0b0011,32) => Ok(Operand::Register(Register::MM3)),
-       (0b0100,32) => Ok(Operand::Register(Register::MM4)),
-       (0b0101,32) => Ok(Operand::Register(Register::MM5)),
-       (0b0110,32) => Ok(Operand::Register(Register::MM6)),
-       (0b0111,32) => Ok(Operand::Register(Register::MM7)),
-       (0b1000,32) => Ok(Operand::Register(Register::MM0)),
-       (0b1001,32) => Ok(Operand::Register(Register::MM1)),
-       (0b1010,32) => Ok(Operand::Register(Register::MM2)),
-       (0b1011,32) => Ok(Operand::Register(Register::MM3)),
-       (0b1100,32) => Ok(Operand::Register(Register::MM4)),
-       (0b1101,32) => Ok(Operand::Register(Register::MM5)),
-       (0b1110,32) => Ok(Operand::Register(Register::MM6)),
-       (0b1111,32) => Ok(Operand::Register(Register::MM7)),
+    match (reg, opsz) {
+       (0b0000, 32) => Ok(Operand::Register(Register::MM0)),
+       (0b0001, 32) => Ok(Operand::Register(Register::MM1)),
+       (0b0010, 32) => Ok(Operand::Register(Register::MM2)),
+       (0b0011, 32) => Ok(Operand::Register(Register::MM3)),
+       (0b0100, 32) => Ok(Operand::Register(Register::MM4)),
+       (0b0101, 32) => Ok(Operand::Register(Register::MM5)),
+       (0b0110, 32) => Ok(Operand::Register(Register::MM6)),
+       (0b0111, 32) => Ok(Operand::Register(Register::MM7)),
+       (0b1000, 32) => Ok(Operand::Register(Register::MM0)),
+       (0b1001, 32) => Ok(Operand::Register(Register::MM1)),
+       (0b1010, 32) => Ok(Operand::Register(Register::MM2)),
+       (0b1011, 32) => Ok(Operand::Register(Register::MM3)),
+       (0b1100, 32) => Ok(Operand::Register(Register::MM4)),
+       (0b1101, 32) => Ok(Operand::Register(Register::MM5)),
+       (0b1110, 32) => Ok(Operand::Register(Register::MM6)),
+       (0b1111, 32) => Ok(Operand::Register(Register::MM7)),
 
-       (0b0000,64) => Ok(Operand::Register(Register::MMX0)),
-       (0b0001,64) => Ok(Operand::Register(Register::MMX1)),
-       (0b0010,64) => Ok(Operand::Register(Register::MMX2)),
-       (0b0011,64) => Ok(Operand::Register(Register::MMX3)),
-       (0b0100,64) => Ok(Operand::Register(Register::MMX4)),
-       (0b0101,64) => Ok(Operand::Register(Register::MMX5)),
-       (0b0110,64) => Ok(Operand::Register(Register::MMX6)),
-       (0b0111,64) => Ok(Operand::Register(Register::MMX7)),
-       (0b1000,64) => Ok(Operand::Register(Register::MMX0)),
-       (0b1001,64) => Ok(Operand::Register(Register::MMX1)),
-       (0b1010,64) => Ok(Operand::Register(Register::MMX2)),
-       (0b1011,64) => Ok(Operand::Register(Register::MMX3)),
-       (0b1100,64) => Ok(Operand::Register(Register::MMX4)),
-       (0b1101,64) => Ok(Operand::Register(Register::MMX5)),
-       (0b1110,64) => Ok(Operand::Register(Register::MMX6)),
-       (0b1111,64) => Ok(Operand::Register(Register::MMX7)),
+       (0b0000, 64) => Ok(Operand::Register(Register::MMX0)),
+       (0b0001, 64) => Ok(Operand::Register(Register::MMX1)),
+       (0b0010, 64) => Ok(Operand::Register(Register::MMX2)),
+       (0b0011, 64) => Ok(Operand::Register(Register::MMX3)),
+       (0b0100, 64) => Ok(Operand::Register(Register::MMX4)),
+       (0b0101, 64) => Ok(Operand::Register(Register::MMX5)),
+       (0b0110, 64) => Ok(Operand::Register(Register::MMX6)),
+       (0b0111, 64) => Ok(Operand::Register(Register::MMX7)),
+       (0b1000, 64) => Ok(Operand::Register(Register::MMX0)),
+       (0b1001, 64) => Ok(Operand::Register(Register::MMX1)),
+       (0b1010, 64) => Ok(Operand::Register(Register::MMX2)),
+       (0b1011, 64) => Ok(Operand::Register(Register::MMX3)),
+       (0b1100, 64) => Ok(Operand::Register(Register::MMX4)),
+       (0b1101, 64) => Ok(Operand::Register(Register::MMX5)),
+       (0b1110, 64) => Ok(Operand::Register(Register::MMX6)),
+       (0b1111, 64) => Ok(Operand::Register(Register::MMX7)),
 
-       (0b0000,128) => Ok(Operand::Register(Register::XMM0)),
-       (0b0001,128) => Ok(Operand::Register(Register::XMM1)),
-       (0b0010,128) => Ok(Operand::Register(Register::XMM2)),
-       (0b0011,128) => Ok(Operand::Register(Register::XMM3)),
-       (0b0100,128) => Ok(Operand::Register(Register::XMM4)),
-       (0b0101,128) => Ok(Operand::Register(Register::XMM5)),
-       (0b0110,128) => Ok(Operand::Register(Register::XMM6)),
-       (0b0111,128) => Ok(Operand::Register(Register::XMM7)),
-       (0b1000,128) => Ok(Operand::Register(Register::XMM8)),
-       (0b1001,128) => Ok(Operand::Register(Register::XMM9)),
-       (0b1010,128) => Ok(Operand::Register(Register::XMM10)),
-       (0b1011,128) => Ok(Operand::Register(Register::XMM11)),
-       (0b1100,128) => Ok(Operand::Register(Register::XMM12)),
-       (0b1101,128) => Ok(Operand::Register(Register::XMM13)),
-       (0b1110,128) => Ok(Operand::Register(Register::XMM14)),
-       (0b1111,128) => Ok(Operand::Register(Register::XMM15)),
+       (0b0000, 128) => Ok(Operand::Register(Register::XMM0)),
+       (0b0001, 128) => Ok(Operand::Register(Register::XMM1)),
+       (0b0010, 128) => Ok(Operand::Register(Register::XMM2)),
+       (0b0011, 128) => Ok(Operand::Register(Register::XMM3)),
+       (0b0100, 128) => Ok(Operand::Register(Register::XMM4)),
+       (0b0101, 128) => Ok(Operand::Register(Register::XMM5)),
+       (0b0110, 128) => Ok(Operand::Register(Register::XMM6)),
+       (0b0111, 128) => Ok(Operand::Register(Register::XMM7)),
+       (0b1000, 128) => Ok(Operand::Register(Register::XMM8)),
+       (0b1001, 128) => Ok(Operand::Register(Register::XMM9)),
+       (0b1010, 128) => Ok(Operand::Register(Register::XMM10)),
+       (0b1011, 128) => Ok(Operand::Register(Register::XMM11)),
+       (0b1100, 128) => Ok(Operand::Register(Register::XMM12)),
+       (0b1101, 128) => Ok(Operand::Register(Register::XMM13)),
+       (0b1110, 128) => Ok(Operand::Register(Register::XMM14)),
+       (0b1111, 128) => Ok(Operand::Register(Register::XMM15)),
 
-       (0b0000,256) => Ok(Operand::Register(Register::YMM0)),
-       (0b0001,256) => Ok(Operand::Register(Register::YMM1)),
-       (0b0010,256) => Ok(Operand::Register(Register::YMM2)),
-       (0b0011,256) => Ok(Operand::Register(Register::YMM3)),
-       (0b0100,256) => Ok(Operand::Register(Register::YMM4)),
-       (0b0101,256) => Ok(Operand::Register(Register::YMM5)),
-       (0b0110,256) => Ok(Operand::Register(Register::YMM6)),
-       (0b0111,256) => Ok(Operand::Register(Register::YMM7)),
-       (0b1000,256) => Ok(Operand::Register(Register::YMM8)),
-       (0b1001,256) => Ok(Operand::Register(Register::YMM9)),
-       (0b1010,256) => Ok(Operand::Register(Register::YMM10)),
-       (0b1011,256) => Ok(Operand::Register(Register::YMM11)),
-       (0b1100,256) => Ok(Operand::Register(Register::YMM12)),
-       (0b1101,256) => Ok(Operand::Register(Register::YMM13)),
-       (0b1110,256) => Ok(Operand::Register(Register::YMM14)),
-       (0b1111,256) => Ok(Operand::Register(Register::YMM15)),
+       (0b0000, 256) => Ok(Operand::Register(Register::YMM0)),
+       (0b0001, 256) => Ok(Operand::Register(Register::YMM1)),
+       (0b0010, 256) => Ok(Operand::Register(Register::YMM2)),
+       (0b0011, 256) => Ok(Operand::Register(Register::YMM3)),
+       (0b0100, 256) => Ok(Operand::Register(Register::YMM4)),
+       (0b0101, 256) => Ok(Operand::Register(Register::YMM5)),
+       (0b0110, 256) => Ok(Operand::Register(Register::YMM6)),
+       (0b0111, 256) => Ok(Operand::Register(Register::YMM7)),
+       (0b1000, 256) => Ok(Operand::Register(Register::YMM8)),
+       (0b1001, 256) => Ok(Operand::Register(Register::YMM9)),
+       (0b1010, 256) => Ok(Operand::Register(Register::YMM10)),
+       (0b1011, 256) => Ok(Operand::Register(Register::YMM11)),
+       (0b1100, 256) => Ok(Operand::Register(Register::YMM12)),
+       (0b1101, 256) => Ok(Operand::Register(Register::YMM13)),
+       (0b1110, 256) => Ok(Operand::Register(Register::YMM14)),
+       (0b1111, 256) => Ok(Operand::Register(Register::YMM15)),
 
         _ => Err("Invalid reg value".into()),
     }
 }
 
 fn read_ctrl_register(reg: u8, opsz: usize) -> Result<Operand> {
-    match (reg,opsz) {
-       (0b0000,32) => Ok(Operand::Register(Register::CR0)),
-       (0b0001,32) => Ok(Operand::Register(Register::CR1)),
-       (0b0010,32) => Ok(Operand::Register(Register::CR2)),
-       (0b0011,32) => Ok(Operand::Register(Register::CR3)),
-       (0b0100,32) => Ok(Operand::Register(Register::CR4)),
-       (0b0101,32) => Ok(Operand::Register(Register::CR5)),
-       (0b0110,32) => Ok(Operand::Register(Register::CR6)),
-       (0b0111,32) => Ok(Operand::Register(Register::CR7)),
-       (0b1000,32) => Ok(Operand::Register(Register::CR8)),
-       (0b1001,32) => Ok(Operand::Register(Register::CR9)),
-       (0b1010,32) => Ok(Operand::Register(Register::CR10)),
-       (0b1011,32) => Ok(Operand::Register(Register::CR11)),
-       (0b1100,32) => Ok(Operand::Register(Register::CR12)),
-       (0b1101,32) => Ok(Operand::Register(Register::CR13)),
-       (0b1110,32) => Ok(Operand::Register(Register::CR14)),
-       (0b1111,32) => Ok(Operand::Register(Register::CR15)),
+    match (reg, opsz) {
+       (0b0000, 32) => Ok(Operand::Register(Register::CR0)),
+       (0b0001, 32) => Ok(Operand::Register(Register::CR1)),
+       (0b0010, 32) => Ok(Operand::Register(Register::CR2)),
+       (0b0011, 32) => Ok(Operand::Register(Register::CR3)),
+       (0b0100, 32) => Ok(Operand::Register(Register::CR4)),
+       (0b0101, 32) => Ok(Operand::Register(Register::CR5)),
+       (0b0110, 32) => Ok(Operand::Register(Register::CR6)),
+       (0b0111, 32) => Ok(Operand::Register(Register::CR7)),
+       (0b1000, 32) => Ok(Operand::Register(Register::CR8)),
+       (0b1001, 32) => Ok(Operand::Register(Register::CR9)),
+       (0b1010, 32) => Ok(Operand::Register(Register::CR10)),
+       (0b1011, 32) => Ok(Operand::Register(Register::CR11)),
+       (0b1100, 32) => Ok(Operand::Register(Register::CR12)),
+       (0b1101, 32) => Ok(Operand::Register(Register::CR13)),
+       (0b1110, 32) => Ok(Operand::Register(Register::CR14)),
+       (0b1111, 32) => Ok(Operand::Register(Register::CR15)),
 
         _ => Err("Invalid reg value".into()),
     }
 }
 
 fn read_debug_register(reg: u8, opsz: usize) -> Result<Operand> {
-    match (reg,opsz) {
-       (0b0000,32) => Ok(Operand::Register(Register::DR0)),
-       (0b0001,32) => Ok(Operand::Register(Register::DR1)),
-       (0b0010,32) => Ok(Operand::Register(Register::DR2)),
-       (0b0011,32) => Ok(Operand::Register(Register::DR3)),
-       (0b0100,32) => Ok(Operand::Register(Register::DR4)),
-       (0b0101,32) => Ok(Operand::Register(Register::DR5)),
-       (0b0110,32) => Ok(Operand::Register(Register::DR6)),
-       (0b0111,32) => Ok(Operand::Register(Register::DR7)),
-       (0b1000,32) => Ok(Operand::Register(Register::DR8)),
-       (0b1001,32) => Ok(Operand::Register(Register::DR9)),
-       (0b1010,32) => Ok(Operand::Register(Register::DR10)),
-       (0b1011,32) => Ok(Operand::Register(Register::DR11)),
-       (0b1100,32) => Ok(Operand::Register(Register::DR12)),
-       (0b1101,32) => Ok(Operand::Register(Register::DR13)),
-       (0b1110,32) => Ok(Operand::Register(Register::DR14)),
-       (0b1111,32) => Ok(Operand::Register(Register::DR15)),
+    match (reg, opsz) {
+       (0b0000, 32) => Ok(Operand::Register(Register::DR0)),
+       (0b0001, 32) => Ok(Operand::Register(Register::DR1)),
+       (0b0010, 32) => Ok(Operand::Register(Register::DR2)),
+       (0b0011, 32) => Ok(Operand::Register(Register::DR3)),
+       (0b0100, 32) => Ok(Operand::Register(Register::DR4)),
+       (0b0101, 32) => Ok(Operand::Register(Register::DR5)),
+       (0b0110, 32) => Ok(Operand::Register(Register::DR6)),
+       (0b0111, 32) => Ok(Operand::Register(Register::DR7)),
+       (0b1000, 32) => Ok(Operand::Register(Register::DR8)),
+       (0b1001, 32) => Ok(Operand::Register(Register::DR9)),
+       (0b1010, 32) => Ok(Operand::Register(Register::DR10)),
+       (0b1011, 32) => Ok(Operand::Register(Register::DR11)),
+       (0b1100, 32) => Ok(Operand::Register(Register::DR12)),
+       (0b1101, 32) => Ok(Operand::Register(Register::DR13)),
+       (0b1110, 32) => Ok(Operand::Register(Register::DR14)),
+       (0b1111, 32) => Ok(Operand::Register(Register::DR15)),
 
         _ => Err("Invalid reg value".into()),
     }
 }
 
-#[derive(Clone,Debug)]
+#[derive(Clone, Debug)]
 pub enum OpcodeOption {
     None,
     Default64,
@@ -1531,17 +1531,17 @@ pub enum OpcodeOption {
     Invalid64,
 }
 
-#[derive(Clone,Debug)]
+#[derive(Clone, Debug)]
 pub enum MnemonicSpec {
     Undefined,
     Escape,
-    Single(&'static str,),
+    Single(&'static str, ),
     ModRM(isize),
 }
 
 /// Describes how control flow continues after an opcode. We only care about single functions, so a
 /// return instructions stops execution.
-#[derive(Clone,Debug)]
+#[derive(Clone, Debug)]
 pub enum JumpSpec {
     /// Execution stops after this opcode. Examples `hlt`, `ret` and `reti`.
     DeadEnd,
@@ -1550,51 +1550,51 @@ pub enum JumpSpec {
     /// Execution forks and continues at the address defined by the `Rvalue` instance iff the Guard
     /// instance is true, otherwise execution falls thru and continues with the opcode following
     /// the current one.
-    Branch(Rvalue,Guard),
+    Branch(Rvalue, Guard),
     /// Execution continues at the address defined by the `Rvalue` instance.
     Jump(Rvalue),
 }
 
-#[derive(Clone,Debug)]
+#[derive(Clone, Debug)]
 pub enum Opcode {
-    Nonary(MnemonicSpec,OpcodeOption,fn() -> Result<(Vec<Statement>,JumpSpec)>),
-    Unary(MnemonicSpec,OpcodeOption,fn(Rvalue) -> Result<(Vec<Statement>,JumpSpec)>,OperandSpec),
-    Binary(MnemonicSpec,OpcodeOption,fn(Rvalue,Rvalue) -> Result<(Vec<Statement>,JumpSpec)>,OperandSpec,OperandSpec),
-    Trinary(MnemonicSpec,OpcodeOption,fn(Rvalue,Rvalue,Rvalue) -> Result<(Vec<Statement>,JumpSpec)>,OperandSpec,OperandSpec,OperandSpec),
-    Quaternary(MnemonicSpec,OpcodeOption,fn(Rvalue,Rvalue,Rvalue,Rvalue) -> Result<(Vec<Statement>,JumpSpec)>,OperandSpec,OperandSpec,OperandSpec,OperandSpec),
+    Nonary(MnemonicSpec, OpcodeOption, fn() -> Result<(Vec<Statement>, JumpSpec)>),
+    Unary(MnemonicSpec, OpcodeOption, fn(Rvalue) -> Result<(Vec<Statement>, JumpSpec)>, OperandSpec),
+    Binary(MnemonicSpec, OpcodeOption, fn(Rvalue, Rvalue) -> Result<(Vec<Statement>, JumpSpec)>, OperandSpec, OperandSpec),
+    Trinary(MnemonicSpec, OpcodeOption, fn(Rvalue, Rvalue, Rvalue) -> Result<(Vec<Statement>, JumpSpec)>, OperandSpec, OperandSpec, OperandSpec),
+    Quaternary(MnemonicSpec, OpcodeOption, fn(Rvalue, Rvalue, Rvalue, Rvalue) -> Result<(Vec<Statement>, JumpSpec)>, OperandSpec, OperandSpec, OperandSpec, OperandSpec),
 }
 
 impl Opcode {
     pub fn operands<'a>(&'a self) -> Vec<&'a OperandSpec> {
         match *self {
-            Opcode::Nonary(_,_,_) => vec![],
-            Opcode::Unary(_,_,_,ref a) => vec![a],
-            Opcode::Binary(_,_,_,ref a,ref b) => vec![a,b],
-            Opcode::Trinary(_,_,_,ref a,ref b,ref c) => vec![a,b,c],
-            Opcode::Quaternary(_,_,_,ref a,ref b,ref c,ref d) => vec![a,b,c,d],
+            Opcode::Nonary(_, _, _) => vec![],
+            Opcode::Unary(_, _, _, ref a) => vec![a],
+            Opcode::Binary(_, _, _, ref a, ref b) => vec![a, b],
+            Opcode::Trinary(_, _, _, ref a, ref b, ref c) => vec![a, b, c],
+            Opcode::Quaternary(_, _, _, ref a, ref b, ref c, ref d) => vec![a, b, c, d],
         }
     }
 
-    pub fn call(&self,a: &Option<Rvalue>, b: &Option<Rvalue>, c: &Option<Rvalue>, d: &Option<Rvalue>) -> Result<(Vec<Statement>,JumpSpec)> {
+    pub fn call(&self, a: &Option<Rvalue>, b: &Option<Rvalue>, c: &Option<Rvalue>, d: &Option<Rvalue>) -> Result<(Vec<Statement>, JumpSpec)> {
         match *self {
-            Opcode::Nonary(_,_,ref f) => f(),
-            Opcode::Unary(_,_,ref f,_) => if let &Some(ref a) = a {
+            Opcode::Nonary(_, _, ref f) => f(),
+            Opcode::Unary(_, _, ref f, _) => if let &Some(ref a) = a {
                 f(a.clone())
             } else {
                 Err("Internal error. Called 1-ary function with 0 arguments".into())
             },
-            Opcode::Binary(_,_,ref f,_,_) => if let (&Some(ref a),&Some(ref b)) = (a,b) {
-                f(a.clone(),b.clone())
+            Opcode::Binary(_, _, ref f, _, _) => if let (&Some(ref a), &Some(ref b)) = (a, b) {
+                f(a.clone(), b.clone())
             } else {
                 Err("Internal error. Called 2-ary function less than 2 arguments".into())
             },
-            Opcode::Trinary(_,_,ref f,_,_,_) => if let (&Some(ref a),&Some(ref b),&Some(ref c)) = (a,b,c) {
-                f(a.clone(),b.clone(),c.clone())
+            Opcode::Trinary(_, _, ref f, _, _, _) => if let (&Some(ref a), &Some(ref b), &Some(ref c)) = (a, b, c) {
+                f(a.clone(), b.clone(), c.clone())
             } else {
                 Err("Internal error. Called 3-ary function less than 3 arguments".into())
             },
-            Opcode::Quaternary(_,_,ref f,_,_,_,_) => if let (&Some(ref a),&Some(ref b),&Some(ref c),&Some(ref d)) = (a,b,c,d) {
-                f(a.clone(),b.clone(),c.clone(),d.clone())
+            Opcode::Quaternary(_, _, ref f, _, _, _, _) => if let (&Some(ref a), &Some(ref b), &Some(ref c), &Some(ref d)) = (a, b, c, d) {
+                f(a.clone(), b.clone(), c.clone(), d.clone())
             } else {
                 Err("Internal error. Called 4-ary function less than 4 arguments".into())
             },
@@ -1603,21 +1603,21 @@ impl Opcode {
 
     pub fn mnemonic<'a>(&'a self) -> &'a MnemonicSpec {
         match *self {
-            Opcode::Nonary(ref mne,_,_) => mne,
-            Opcode::Unary(ref mne,_,_,_) => mne,
-            Opcode::Binary(ref mne,_,_,_,_) => mne,
-            Opcode::Trinary(ref mne,_,_,_,_,_) => mne,
-            Opcode::Quaternary(ref mne,_,_,_,_,_,_) => mne,
+            Opcode::Nonary(ref mne, _, _) => mne,
+            Opcode::Unary(ref mne, _, _, _) => mne,
+            Opcode::Binary(ref mne, _, _, _, _) => mne,
+            Opcode::Trinary(ref mne, _, _, _, _, _) => mne,
+            Opcode::Quaternary(ref mne, _, _, _, _, _, _) => mne,
         }
     }
 
     pub fn option<'a>(&'a self) -> &'a OpcodeOption {
         match *self {
-            Opcode::Nonary(_,ref opo,_) => opo,
-            Opcode::Unary(_,ref opo,_,_) => opo,
-            Opcode::Binary(_,ref opo,_,_,_) => opo,
-            Opcode::Trinary(_,ref opo,_,_,_,_) => opo,
-            Opcode::Quaternary(_,ref opo,_,_,_,_,_) => opo,
+            Opcode::Nonary(_, ref opo, _) => opo,
+            Opcode::Unary(_, ref opo, _, _) => opo,
+            Opcode::Binary(_, ref opo, _, _, _) => opo,
+            Opcode::Trinary(_, ref opo, _, _, _, _) => opo,
+            Opcode::Quaternary(_, ref opo, _, _, _, _, _) => opo,
         }
     }
 }
@@ -1646,7 +1646,7 @@ impl Default for Prefix {
 
 struct Tail<'a> {
     fd: Cursor<&'a [u8]>,
-    modrm: Option<(u8,u8,u8)>,
+    modrm: Option<(u8, u8, u8)>,
     sib: Option<Operand>,
 }
 
@@ -1659,17 +1659,17 @@ impl<'a> Tail<'a> {
         }
     }
 
-    pub fn modrm(&mut self,rex: Option<(bool,bool,bool,bool)>) -> Result<(u8,u8,u8)> {
+    pub fn modrm(&mut self, rex: Option<(bool, bool, bool, bool)>) -> Result<(u8, u8, u8)> {
         if self.modrm.is_none() {
-            self.modrm = Some(try!(read_modrm(&mut self.fd,rex)));
+            self.modrm = Some(try!(read_modrm(&mut self.fd, rex)));
         }
         Ok(self.modrm.unwrap())
     }
 
-    pub fn sib(&mut self,mod_: u8,seg: SegmentOverride,rex: Option<(bool,bool,bool,bool)>,
+    pub fn sib(&mut self, mod_: u8, seg: SegmentOverride, rex: Option<(bool, bool, bool, bool)>,
                addrsz: usize) -> Result<Operand> {
         if self.sib.is_none() {
-            self.sib = Some(try!(read_sib(&mut self.fd,mod_,seg,rex,addrsz)));
+            self.sib = Some(try!(read_sib(&mut self.fd, mod_, seg, rex, addrsz)));
         }
         Ok(self.sib.clone().unwrap())
     }
@@ -1695,137 +1695,137 @@ impl<'a> Tail<'a> {
     }
 }
 
-fn select_opcode_ext(grp: isize, opc: usize, modrm: usize, pfx: SimdPrefix,mode: Mode,vexxop_present: bool) -> Result<Opcode> {
+fn select_opcode_ext(grp: isize, opc: usize, modrm: usize, pfx: SimdPrefix, mode: Mode, vexxop_present: bool) -> Result<Opcode> {
     use amd64::tables::*;
 
     let reg = (modrm & 0b00111000) >> 3;
     let mo = (modrm & 0b11000000) >> 6;
     let rm = modrm & 0b00000111;
 
-    Ok(match (grp,mo,pfx,opc) {
+    Ok(match (grp, mo, pfx, opc) {
         // GROUP1
-        (1,_,SimdPrefix::None,0x80) => GROUP1_OPC80[reg].clone(),
-        (1,_,SimdPrefix::None,0x81) => GROUP1_OPC81[reg].clone(),
-        (1,_,SimdPrefix::None,0x82) => GROUP1_OPC82[reg].clone(),
-        (1,_,SimdPrefix::None,0x83) => GROUP1_OPC83[reg].clone(),
+        (1, _, SimdPrefix::None, 0x80) => GROUP1_OPC80[reg].clone(),
+        (1, _, SimdPrefix::None, 0x81) => GROUP1_OPC81[reg].clone(),
+        (1, _, SimdPrefix::None, 0x82) => GROUP1_OPC82[reg].clone(),
+        (1, _, SimdPrefix::None, 0x83) => GROUP1_OPC83[reg].clone(),
 
         // GROUP1A
-        (101,_,SimdPrefix::None,0x8f) => GROUP101_OPC8F[reg].clone(),
+        (101, _, SimdPrefix::None, 0x8f) => GROUP101_OPC8F[reg].clone(),
 
         // GROUP2
-        (2,_,SimdPrefix::None,0xc0) => GROUP2_OPCC0[reg].clone(),
-        (2,_,SimdPrefix::None,0xc1) => GROUP2_OPCC1[reg].clone(),
-        (2,_,SimdPrefix::None,0xd0) => GROUP2_OPCD0[reg].clone(),
-        (2,_,SimdPrefix::None,0xd1) => GROUP2_OPCD1[reg].clone(),
-        (2,_,SimdPrefix::None,0xd2) => GROUP2_OPCD2[reg].clone(),
-        (2,_,SimdPrefix::None,0xd3) => GROUP2_OPCD3[reg].clone(),
+        (2, _, SimdPrefix::None, 0xc0) => GROUP2_OPCC0[reg].clone(),
+        (2, _, SimdPrefix::None, 0xc1) => GROUP2_OPCC1[reg].clone(),
+        (2, _, SimdPrefix::None, 0xd0) => GROUP2_OPCD0[reg].clone(),
+        (2, _, SimdPrefix::None, 0xd1) => GROUP2_OPCD1[reg].clone(),
+        (2, _, SimdPrefix::None, 0xd2) => GROUP2_OPCD2[reg].clone(),
+        (2, _, SimdPrefix::None, 0xd3) => GROUP2_OPCD3[reg].clone(),
 
         // GROUP3
-        (3,_,SimdPrefix::None,0xf6) => GROUP3_OPCF6[reg].clone(),
-        (3,_,SimdPrefix::None,0xf7) => GROUP3_OPCF7[reg].clone(),
+        (3, _, SimdPrefix::None, 0xf6) => GROUP3_OPCF6[reg].clone(),
+        (3, _, SimdPrefix::None, 0xf7) => GROUP3_OPCF7[reg].clone(),
 
         // GROUP4
-        (4,_,SimdPrefix::None,0xfe) => GROUP4_OPCFE[reg].clone(),
+        (4, _, SimdPrefix::None, 0xfe) => GROUP4_OPCFE[reg].clone(),
 
         // GROUP5
-        (5,_,SimdPrefix::None,0xff) => GROUP5_OPCFF[reg].clone(),
+        (5, _, SimdPrefix::None, 0xff) => GROUP5_OPCFF[reg].clone(),
 
         // GROUP6
-        (6,_,SimdPrefix::None,0x00) => GROUP6_OPC00[reg].clone(),
+        (6, _, SimdPrefix::None, 0x00) => GROUP6_OPC00[reg].clone(),
 
         // GROUP7
-        (7,0b11,SimdPrefix::None,0x01) => match (reg,rm) {
-            (0b000,0b001) => opcode!(vmcall; ),
-            (0b000,0b010) => opcode!(vmlaunch; ),
-            (0b000,0b011) => opcode!(vmresume; ),
-            (0b000,0b100) => opcode!(vmxoff; ),
-            (0b000,_) => unused!(),
-            (0b001,0b000) => opcode!(monitor; ),
-            (0b001,0b001) => opcode!(mwait; ),
-            (0b001,0b010) => opcode!(clac; ),
-            (0b001,0b011) => opcode!(stac; ),
-            (0b001,0b111) => opcode!(encls; ),
-            (0b001,_) => unused!(),
-            (0b010,0b000) => opcode!(xgetbv; E/v),
-            (0b010,0b001) => opcode!(xsetbv; ),
-            (0b010,0b100) => opcode!(vmfunc; ),
-            (0b010,0b101) => opcode!(xend; ),
-            (0b010,0b110) => opcode!(xtest; ),
-            (0b010,0b111) => opcode!(enclu; ),
-            (0b010,_) => unused!(),
-            (0b011,_) => unused!(),
-            (0b100,_) => GROUP7_OPC01_MEM[reg].clone(),
-            (0b101,_) => unused!(),
-            (0b110,_) => GROUP7_OPC01_MEM[reg].clone(),
-            (0b111,0b000) => opcode!(swapgs; ),
-            (0b111,0b001) => opcode!(rdtscp; ),
-            (0b111,_) => unused!(),
-            (_,_) => unreachable!(),
+        (7, 0b11, SimdPrefix::None, 0x01) => match (reg, rm) {
+            (0b000, 0b001) => opcode!(vmcall; ),
+            (0b000, 0b010) => opcode!(vmlaunch; ),
+            (0b000, 0b011) => opcode!(vmresume; ),
+            (0b000, 0b100) => opcode!(vmxoff; ),
+            (0b000, _) => unused!(),
+            (0b001, 0b000) => opcode!(monitor; ),
+            (0b001, 0b001) => opcode!(mwait; ),
+            (0b001, 0b010) => opcode!(clac; ),
+            (0b001, 0b011) => opcode!(stac; ),
+            (0b001, 0b111) => opcode!(encls; ),
+            (0b001, _) => unused!(),
+            (0b010, 0b000) => opcode!(xgetbv; E/v),
+            (0b010, 0b001) => opcode!(xsetbv; ),
+            (0b010, 0b100) => opcode!(vmfunc; ),
+            (0b010, 0b101) => opcode!(xend; ),
+            (0b010, 0b110) => opcode!(xtest; ),
+            (0b010, 0b111) => opcode!(enclu; ),
+            (0b010, _) => unused!(),
+            (0b011, _) => unused!(),
+            (0b100, _) => GROUP7_OPC01_MEM[reg].clone(),
+            (0b101, _) => unused!(),
+            (0b110, _) => GROUP7_OPC01_MEM[reg].clone(),
+            (0b111, 0b000) => opcode!(swapgs; ),
+            (0b111, 0b001) => opcode!(rdtscp; ),
+            (0b111, _) => unused!(),
+            (_, _) => unreachable!(),
         },
-        (7,_,SimdPrefix::None,0x01) => GROUP7_OPC01_MEM[reg].clone(),
+        (7, _, SimdPrefix::None, 0x01) => GROUP7_OPC01_MEM[reg].clone(),
 
         // GROUP8
-        (8,_,SimdPrefix::None,0xba) => GROUP8_OPCBA[reg].clone(),
+        (8, _, SimdPrefix::None, 0xba) => GROUP8_OPCBA[reg].clone(),
 
         // GROUP9
-        (9,_,SimdPrefix::None,0xc7) => match (mo,pfx,reg) {
-            (0b11,SimdPrefix::None,0b110) => opcode!(rdrand; R/v),
-            (0b11,SimdPrefix::None,0b111) => opcode!(rdseed; R/v),
-            (0b11,SimdPrefix::PrefixF3,0b111) => opcode!(rdpid; R/dq),
-            (_,SimdPrefix::None,0b001,) => {
+        (9, _, SimdPrefix::None, 0xc7) => match (mo, pfx, reg) {
+            (0b11, SimdPrefix::None, 0b110) => opcode!(rdrand; R/v),
+            (0b11, SimdPrefix::None, 0b111) => opcode!(rdseed; R/v),
+            (0b11, SimdPrefix::PrefixF3, 0b111) => opcode!(rdpid; R/dq),
+            (_, SimdPrefix::None, 0b001, ) => {
                 if mode == Mode::Long {
                     opcode!(cmpxch8b; M/q)
                 } else {
                     opcode!(cmpxchg16b; M/dq)
                 }
             }
-            (_,SimdPrefix::None,0b110) => opcode!(vmptrld; M/q),
-            (_,SimdPrefix::None,0b111) => opcode!(vmptrst; M/q),
-            (_,SimdPrefix::Prefix66,0b110) => opcode!(vmclear; M/q),
-            (_,SimdPrefix::PrefixF3,0b110) => opcode!(vmxon; M/q),
+            (_, SimdPrefix::None, 0b110) => opcode!(vmptrld; M/q),
+            (_, SimdPrefix::None, 0b111) => opcode!(vmptrst; M/q),
+            (_, SimdPrefix::Prefix66, 0b110) => opcode!(vmclear; M/q),
+            (_, SimdPrefix::PrefixF3, 0b110) => opcode!(vmxon; M/q),
             _ => unused!(),
         },
 
         // GROUP10
-        (10,_,SimdPrefix::None,0xb9) => GROUP10_OPCB9[reg].clone(),
+        (10, _, SimdPrefix::None, 0xb9) => GROUP10_OPCB9[reg].clone(),
 
         // GROUP11
-        (11,_,SimdPrefix::None,0xc6) => match (mo,reg,rm) {
-            (0b11,0b111,0b000) => opcode!(xabort; I/b),
-            (_,_,_) => GROUP11_OPCC6[reg].clone(),
+        (11, _, SimdPrefix::None, 0xc6) => match (mo, reg, rm) {
+            (0b11, 0b111, 0b000) => opcode!(xabort; I/b),
+            (_, _, _) => GROUP11_OPCC6[reg].clone(),
         },
-        (11,_,SimdPrefix::None,0xc7) => match (mo,reg,rm) {
-            (0b11,0b111,0b000) => opcode!(xbegin; I/b),
-            (_,_,_) => GROUP11_OPCC7[reg].clone(),
+        (11, _, SimdPrefix::None, 0xc7) => match (mo, reg, rm) {
+            (0b11, 0b111, 0b000) => opcode!(xbegin; I/b),
+            (_, _, _) => GROUP11_OPCC7[reg].clone(),
         },
 
         // GROUP12
-        (12,0b11,SimdPrefix::None,0x71) => GROUP12_OPC71[reg].clone(),
-        (12,0b11,SimdPrefix::Prefix66,0x71) => GROUP12_OPC6671[reg].clone(),
+        (12, 0b11, SimdPrefix::None, 0x71) => GROUP12_OPC71[reg].clone(),
+        (12, 0b11, SimdPrefix::Prefix66, 0x71) => GROUP12_OPC6671[reg].clone(),
 
         // GROUP13
-        (13,0b11,SimdPrefix::None,0x72) => GROUP13_OPC72[reg].clone(),
-        (13,0b11,SimdPrefix::Prefix66,0x72) => GROUP13_OPC6672[reg].clone(),
+        (13, 0b11, SimdPrefix::None, 0x72) => GROUP13_OPC72[reg].clone(),
+        (13, 0b11, SimdPrefix::Prefix66, 0x72) => GROUP13_OPC6672[reg].clone(),
 
         // GROUP14
-        (14,0b11,SimdPrefix::None,0x73) => GROUP14_OPC73[reg].clone(),
-        (14,0b11,SimdPrefix::Prefix66,0x73) => GROUP14_OPC6673[reg].clone(),
+        (14, 0b11, SimdPrefix::None, 0x73) => GROUP14_OPC73[reg].clone(),
+        (14, 0b11, SimdPrefix::Prefix66, 0x73) => GROUP14_OPC6673[reg].clone(),
 
         // GROUP15
-        (15,0b11,SimdPrefix::None,0xae) => match reg {
+        (15, 0b11, SimdPrefix::None, 0xae) => match reg {
             0b101 => opcode!(lfence; ),
             0b110 => opcode!(mfence; ),
             0b111 => opcode!(sfence; ),
             _ => unused!(),
         },
-        (15,0b11,SimdPrefix::PrefixF3,0xae) => match reg {
+        (15, 0b11, SimdPrefix::PrefixF3, 0xae) => match reg {
             0b000 => opcode!(rdfsbase; R/y),
             0b001 => opcode!(rdgsbase; R/y),
             0b010 => opcode!(wrfsbase; R/y),
             0b011 => opcode!(wrgsbase; R/y),
             _ => unused!(),
         },
-        (15,_,SimdPrefix::None,0xae) => match reg {
+        (15, _, SimdPrefix::None, 0xae) => match reg {
             0b000 => opcode!(fxsave; ),
             0b001 => opcode!(fxstor; ),
             0b010 => opcode!(ldmxcsr; ),
@@ -1838,8 +1838,8 @@ fn select_opcode_ext(grp: isize, opc: usize, modrm: usize, pfx: SimdPrefix,mode:
         },
 
         // GROUP16
-        (16,0b11,SimdPrefix::None,0x18) => unused!(),
-        (16,_,SimdPrefix::None,0x18) => match reg {
+        (16, 0b11, SimdPrefix::None, 0x18) => unused!(),
+        (16, _, SimdPrefix::None, 0x18) => match reg {
             0b000 => opcode!(prefetch; M/None),
             0b001 => opcode!(prefetch; M/None),
             0b010 => opcode!(prefetch; M/None),
@@ -1848,7 +1848,7 @@ fn select_opcode_ext(grp: isize, opc: usize, modrm: usize, pfx: SimdPrefix,mode:
         },
 
         // GROUP17
-        (17,_,_,0xf3) if vexxop_present => match reg {
+        (17, _, _, 0xf3) if vexxop_present => match reg {
             0b001 => opcode!(blsr; B/y, E/y),
             0b010 => opcode!(blsmsk; B/y, E/y),
             0b011 => opcode!(blsi; B/y, E/y),
@@ -1856,13 +1856,13 @@ fn select_opcode_ext(grp: isize, opc: usize, modrm: usize, pfx: SimdPrefix,mode:
         },
 
         // GROUPX
-        (102,_,SimdPrefix::None,0x01) => GROUP102_OPC01[reg].clone(),
+        (102, _, SimdPrefix::None, 0x01) => GROUP102_OPC01[reg].clone(),
 
         _ => return Err("Unknown instruction".into()),
     })
 }
 
-pub fn read(mode: Mode, buf: &[u8], addr: u64) -> Result<(u64,Mnemonic,Vec<(Rvalue,Guard)>)> {
+pub fn read(mode: Mode, buf: &[u8], addr: u64) -> Result<(u64, Mnemonic, Vec<(Rvalue, Guard)>)> {
     use amd64::tables::*;
 
     let mut i = 0;
@@ -2084,7 +2084,7 @@ pub fn read(mode: Mode, buf: &[u8], addr: u64) -> Result<(u64,Mnemonic,Vec<(Rval
         }
     }
 
-    trace!("prefix: {:?}, opcode: {:?}",prefix,buf.get(i).cloned());
+    trace!("prefix: {:?}, opcode: {:?}", prefix, buf.get(i).cloned());
 
     if prefix.opcode_escape == OpcodeEscape::Escape0F0F {
         // XXX: 3DNow!
@@ -2130,25 +2130,25 @@ pub fn read(mode: Mode, buf: &[u8], addr: u64) -> Result<(u64,Mnemonic,Vec<(Rval
             prefix.repne = false;
         }
 
-        trace!("tbl lookup: ({:?},{:?})",prefix.opcode_escape,prefix.simd_prefix);
+        trace!("tbl lookup: ({:?}, {:?})", prefix.opcode_escape, prefix.simd_prefix);
 
         let b = match buf.get(i) {
             Some(b) => *b as usize,
             None => return Err("Premature buffer end".into()),
         };
 
-        let opc = match (prefix.opcode_escape,prefix.simd_prefix) {
-            (OpcodeEscape::None,_) if b == 0x63 && mode == Mode::Long =>
+        let opc = match (prefix.opcode_escape, prefix.simd_prefix) {
+            (OpcodeEscape::None, _) if b == 0x63 && mode == Mode::Long =>
                 Opcode::Binary(
                     MnemonicSpec::Single("movsxd"),
                     OpcodeOption::Only64,
                     semantic::movsxd,
-                    OperandSpec::Present(AddressingMethod::G,OperandType::v),
-                    OperandSpec::Present(AddressingMethod::E,OperandType::z),
+                    OperandSpec::Present(AddressingMethod::G, OperandType::v),
+                    OperandSpec::Present(AddressingMethod::E, OperandType::z),
                 ),
-            (OpcodeEscape::None,_) => ONEBYTE_TABLE[b].clone(),
-            (OpcodeEscape::Escape0F,SimdPrefix::None) => TWOBYTE_TABLE[b].clone(),
-            (OpcodeEscape::Escape0F,SimdPrefix::Prefix66) => {
+            (OpcodeEscape::None, _) => ONEBYTE_TABLE[b].clone(),
+            (OpcodeEscape::Escape0F, SimdPrefix::None) => TWOBYTE_TABLE[b].clone(),
+            (OpcodeEscape::Escape0F, SimdPrefix::Prefix66) => {
                 prefix.operand_size = match mode {
                     Mode::Real => 16,
                     Mode::Protected => 32,
@@ -2156,10 +2156,10 @@ pub fn read(mode: Mode, buf: &[u8], addr: u64) -> Result<(u64,Mnemonic,Vec<(Rval
                 };
                 TWOBYTE_66_TABLE[b].clone()
             }
-            (OpcodeEscape::Escape0F,SimdPrefix::PrefixF2) => TWOBYTE_F2_TABLE[b].clone(),
-            (OpcodeEscape::Escape0F,SimdPrefix::PrefixF3) => TWOBYTE_F3_TABLE[b].clone(),
-            (OpcodeEscape::Escape0F3A,SimdPrefix::None) => THREEBYTE_3A_TABLE[b].clone(),
-            (OpcodeEscape::Escape0F3A,SimdPrefix::Prefix66) => {
+            (OpcodeEscape::Escape0F, SimdPrefix::PrefixF2) => TWOBYTE_F2_TABLE[b].clone(),
+            (OpcodeEscape::Escape0F, SimdPrefix::PrefixF3) => TWOBYTE_F3_TABLE[b].clone(),
+            (OpcodeEscape::Escape0F3A, SimdPrefix::None) => THREEBYTE_3A_TABLE[b].clone(),
+            (OpcodeEscape::Escape0F3A, SimdPrefix::Prefix66) => {
                 prefix.operand_size = match mode {
                     Mode::Real => 16,
                     Mode::Protected => 32,
@@ -2167,10 +2167,10 @@ pub fn read(mode: Mode, buf: &[u8], addr: u64) -> Result<(u64,Mnemonic,Vec<(Rval
                 };
                 THREEBYTE_3A66_TABLE[b].clone()
             }
-            (OpcodeEscape::Escape0F3A,SimdPrefix::PrefixF3) => return Err("Unknown instruction".into()),
-            (OpcodeEscape::Escape0F3A,SimdPrefix::PrefixF2) => THREEBYTE_3AF2_TABLE[b].clone(),
-            (OpcodeEscape::Escape0F38,SimdPrefix::None) => THREEBYTE_38_TABLE[b].clone(),
-            (OpcodeEscape::Escape0F38,SimdPrefix::Prefix66) => {
+            (OpcodeEscape::Escape0F3A, SimdPrefix::PrefixF3) => return Err("Unknown instruction".into()),
+            (OpcodeEscape::Escape0F3A, SimdPrefix::PrefixF2) => THREEBYTE_3AF2_TABLE[b].clone(),
+            (OpcodeEscape::Escape0F38, SimdPrefix::None) => THREEBYTE_38_TABLE[b].clone(),
+            (OpcodeEscape::Escape0F38, SimdPrefix::Prefix66) => {
                 prefix.operand_size = match mode {
                     Mode::Real => 16,
                     Mode::Protected => 32,
@@ -2178,18 +2178,18 @@ pub fn read(mode: Mode, buf: &[u8], addr: u64) -> Result<(u64,Mnemonic,Vec<(Rval
                 };
                 THREEBYTE_3866_TABLE[b].clone()
             }
-            (OpcodeEscape::Escape0F38,SimdPrefix::PrefixF3) => THREEBYTE_38F3_TABLE[b].clone(),
-            (OpcodeEscape::Escape0F38,SimdPrefix::PrefixF2) => THREEBYTE_38F2_TABLE[b].clone(),
-            (OpcodeEscape::Xop8,SimdPrefix::None) => XOP8_TABLE[b].clone(),
-            (OpcodeEscape::Xop8,_) => return Err("Unknown instruction".into()),
-            (OpcodeEscape::Xop9,SimdPrefix::None) => XOP9_TABLE[b].clone(),
-            (OpcodeEscape::Xop9,_) => return Err("Unknown instruction".into()),
-            (OpcodeEscape::XopA,SimdPrefix::None) => XOPA_TABLE[b].clone(),
-            (OpcodeEscape::XopA,_) => return Err("Unknown instruction".into()),
-            (OpcodeEscape::Escape0F0F,_) => unreachable!(),
+            (OpcodeEscape::Escape0F38, SimdPrefix::PrefixF3) => THREEBYTE_38F3_TABLE[b].clone(),
+            (OpcodeEscape::Escape0F38, SimdPrefix::PrefixF2) => THREEBYTE_38F2_TABLE[b].clone(),
+            (OpcodeEscape::Xop8, SimdPrefix::None) => XOP8_TABLE[b].clone(),
+            (OpcodeEscape::Xop8, _) => return Err("Unknown instruction".into()),
+            (OpcodeEscape::Xop9, SimdPrefix::None) => XOP9_TABLE[b].clone(),
+            (OpcodeEscape::Xop9, _) => return Err("Unknown instruction".into()),
+            (OpcodeEscape::XopA, SimdPrefix::None) => XOPA_TABLE[b].clone(),
+            (OpcodeEscape::XopA, _) => return Err("Unknown instruction".into()),
+            (OpcodeEscape::Escape0F0F, _) => unreachable!(),
         };
 
-        trace!("res: {:?}",opc);
+        trace!("res: {:?}", opc);
 
         let opc = match opc.mnemonic() {
             &MnemonicSpec::Single(_s) => {
@@ -2197,8 +2197,8 @@ pub fn read(mode: Mode, buf: &[u8], addr: u64) -> Result<(u64,Mnemonic,Vec<(Rval
             }
             &MnemonicSpec::Undefined => return Err("Unknown instruction".into()),
             &MnemonicSpec::Escape => {
-                let (esc,modrm) = match (buf.get(i),buf.get(i + 1)) {
-                    (Some(b1),Some(b2)) => (*b1 as usize,*b2 as usize),
+                let (esc, modrm) = match (buf.get(i), buf.get(i + 1)) {
+                    (Some(b1), Some(b2)) => (*b1 as usize, *b2 as usize),
                     _ => return Err("Premature buffer end".into()),
                 };
 
@@ -2236,12 +2236,12 @@ pub fn read(mode: Mode, buf: &[u8], addr: u64) -> Result<(u64,Mnemonic,Vec<(Rval
                 } else {
                     SimdPrefix::None
                 };
-                let (opc,modrm) = match (buf.get(i),buf.get(i + 1)) {
-                    (Some(b1),Some(b2)) => (*b1 as usize,*b2 as usize),
+                let (opc, modrm) = match (buf.get(i), buf.get(i + 1)) {
+                    (Some(b1), Some(b2)) => (*b1 as usize, *b2 as usize),
                     _ => return Err("Premature buffer end".into()),
                 };
 
-                try!(select_opcode_ext(grp,opc, modrm, pfx,mode,vexxop_present)).clone()
+                try!(select_opcode_ext(grp, opc, modrm, pfx, mode, vexxop_present)).clone()
             }
         };
 
@@ -2257,9 +2257,9 @@ pub fn read(mode: Mode, buf: &[u8], addr: u64) -> Result<(u64,Mnemonic,Vec<(Rval
             _ => {}
         }
 
-        trace!("prefix after fixup: {:?}",prefix);
+        trace!("prefix after fixup: {:?}", prefix);
 
-        trace!("opcode len: {}",i + 1);
+        trace!("opcode len: {}", i + 1);
 
         match opc.mnemonic() {
             &MnemonicSpec::Single(s) => {
@@ -2267,7 +2267,7 @@ pub fn read(mode: Mode, buf: &[u8], addr: u64) -> Result<(u64,Mnemonic,Vec<(Rval
 
                 let mut tail = Tail::new(Cursor::new(&buf[i+1..]));
                 let rex = if rex_present {
-                    Some((prefix.rex_w,prefix.rex_r,prefix.rex_x,prefix.rex_b))
+                    Some((prefix.rex_w, prefix.rex_r, prefix.rex_x, prefix.rex_b))
                 } else {
                     None
                 };
@@ -2276,17 +2276,17 @@ pub fn read(mode: Mode, buf: &[u8], addr: u64) -> Result<(u64,Mnemonic,Vec<(Rval
                 let mut ops = vec![];
 
                 for op in opc.operands().iter() {
-                   let maybe_op = read_operand(op,&mut tail,mode,prefix.seg_override,prefix.vvvv,rex,
-                                               prefix.operand_size,prefix.address_size,prefix.simd_size,ip).
+                   let maybe_op = read_operand(op, &mut tail, mode, prefix.seg_override, prefix.vvvv, rex,
+                                               prefix.operand_size, prefix.address_size, prefix.simd_size, ip).
                                   and_then(|x| to_rreil(x));
 
                    match maybe_op {
-                       Ok((rv,mut st)) => {
+                       Ok((rv, mut st)) => {
                            stmts.append(&mut st);
                            ops.push(rv);
                        },
                        Err(e) => {
-                           error!("error while decoding operands of '{}': {:?}",s,e);
+                           error!("error while decoding operands of '{}': {:?}", s, e);
                            return Err(e);
                        }
                    }
@@ -2296,15 +2296,15 @@ pub fn read(mode: Mode, buf: &[u8], addr: u64) -> Result<(u64,Mnemonic,Vec<(Rval
                 //if prefix.repe { print!("repz "); }
                 //if prefix.repne { print!("repnz "); }
 
-                debug!("call {} with {:?}",s,ops);
+                debug!("call {} with {:?}", s, ops);
                 let res = opc.call(&ops.get(0).cloned(),
                                    &ops.get(1).cloned(),
                                    &ops.get(2).cloned(),
                                    &ops.get(3).cloned());
-                let (mut op_stmts,jmp_spec) = match res {
+                let (mut op_stmts, jmp_spec) = match res {
                     Ok(o) => o,
                     Err(e) => {
-                        error!("Semantic function for '{}' with {:?} failed: {}",s,ops,e);
+                        error!("Semantic function for '{}' with {:?} failed: {}", s, ops, e);
                         return Err(e);
                     }
                 };
@@ -2321,40 +2321,40 @@ pub fn read(mode: Mode, buf: &[u8], addr: u64) -> Result<(u64,Mnemonic,Vec<(Rval
 
                 let len = tail.fd.position() + i as u64 + 1;
                 let mne = try!(match ops.len() {
-                    0 => Mnemonic::new((addr..addr+len),format!("{}",s),"".to_string(),ops.iter(),stmts.iter()),
-                    1 => Mnemonic::new((addr..addr+len),format!("{}",s),fmt.to_string(),ops.iter(),stmts.iter()),
-                    2 => Mnemonic::new((addr..addr+len),format!("{}",s),"{u}, {u}".to_string(),ops.iter(),stmts.iter()),
-                    3 => Mnemonic::new((addr..addr+len),format!("{}",s),"{u}, {u}, {u}".to_string(),ops.iter(),stmts.iter()),
-                    4 => Mnemonic::new((addr..addr+len),format!("{}",s),"{u}, {u}, {u}, {u}".to_string(),ops.iter(),stmts.iter()),
+                    0 => Mnemonic::new((addr..addr+len), format!("{}", s), "".to_string(), ops.iter(), stmts.iter()),
+                    1 => Mnemonic::new((addr..addr+len), format!("{}", s), fmt.to_string(), ops.iter(), stmts.iter()),
+                    2 => Mnemonic::new((addr..addr+len), format!("{}", s), "{u}, {u}".to_string(), ops.iter(), stmts.iter()),
+                    3 => Mnemonic::new((addr..addr+len), format!("{}", s), "{u}, {u}, {u}".to_string(), ops.iter(), stmts.iter()),
+                    4 => Mnemonic::new((addr..addr+len), format!("{}", s), "{u}, {u}, {u}, {u}".to_string(), ops.iter(), stmts.iter()),
                     _ => unreachable!(),
                 });
                 let next = match jmp_spec {
                     JumpSpec::DeadEnd => vec![],
-                    JumpSpec::FallThru => vec![(Rvalue::Constant{ value: addr + len, size: 64 },Guard::always())],
-                    JumpSpec::Jump(ref v) => vec![(v.clone(),Guard::always())],
-                    JumpSpec::Branch(ref v,ref g) => vec![
-                        (Rvalue::Constant{ value: addr + len, size: 64 },Guard::always()),
-                        (v.clone(),g.clone())
+                    JumpSpec::FallThru => vec![(Rvalue::Constant{ value: addr + len, size: 64 }, Guard::always())],
+                    JumpSpec::Jump(ref v) => vec![(v.clone(), Guard::always())],
+                    JumpSpec::Branch(ref v, ref g) => vec![
+                        (Rvalue::Constant{ value: addr + len, size: 64 }, Guard::always()),
+                        (v.clone(), g.clone())
                     ],
                 };
 
 
-                debug!("'{:?}' with {} bytes",mne,len as usize);
+                debug!("'{:?}' with {} bytes", mne, len as usize);
                 trace!("");
-                Ok((len,mne,next))
+                Ok((len, mne, next))
             }
             e => Err(format!("Internal error: {:?}", e).into()),
         }
     }
 }
 
-fn to_rreil(op: Operand) -> Result<(Rvalue,Vec<Statement>)> {
+fn to_rreil(op: Operand) -> Result<(Rvalue, Vec<Statement>)> {
     match op {
-        Operand::Register(ref name) => Ok((Rvalue::Variable{ name: format!("{}",name).into(), size: name.width(), offset: 0, subscript: None },vec![])),
-        Operand::Immediate(ref value,ref size) => Ok((Rvalue::Constant{ value: *value, size: *size },vec![])),
-        Operand::Indirect(ref seg,ref base,ref index,ref scale,ref disp,ref width) => {
-            let (tgt,mut stmts) = try!(to_rreil(Operand::Address(seg.clone(),base.clone(),index.clone(),scale.clone(),disp.clone())));
-            let ret = Lvalue::Variable{ name: format!("{}",op).into(), size: *width, subscript: None };
+        Operand::Register(ref name) => Ok((Rvalue::Variable{ name: format!("{}", name).into(), size: name.width(), offset: 0, subscript: None }, vec![])),
+        Operand::Immediate(ref value, ref size) => Ok((Rvalue::Constant{ value: *value, size: *size }, vec![])),
+        Operand::Indirect(ref seg, ref base, ref index, ref scale, ref disp, ref width) => {
+            let (tgt, mut stmts) = try!(to_rreil(Operand::Address(seg.clone(), base.clone(), index.clone(), scale.clone(), disp.clone())));
+            let ret = Lvalue::Variable{ name: format!("{}", op).into(), size: *width, subscript: None };
 
             stmts.append(&mut try!(match *width {
                 8 => rreil!{
@@ -2373,21 +2373,21 @@ fn to_rreil(op: Operand) -> Result<(Rvalue,Vec<Statement>)> {
             }
             ));
 
-            Ok((ret.into(),stmts))
+            Ok((ret.into(), stmts))
         },
-        Operand::Address(_,ref base,ref index,ref scale,ref disp) => {
+        Operand::Address(_, ref base, ref index, ref scale, ref disp) => {
             let mut stmts = vec![];
             let mut ret = Rvalue::Undefined;
 
             if *base != Register::None {
-                ret = Rvalue::Variable{ name: format!("{}",base).into(), size: base.width(), offset: 0, subscript: None };
+                ret = Rvalue::Variable{ name: format!("{}", base).into(), size: base.width(), offset: 0, subscript: None };
             }
 
             if *scale > 0 && *index != Register::None {
                 let s = *scale;
                 let w = index.width();
                 let rw = ret.size().unwrap_or(w);
-                let i = Lvalue::Variable{ name: format!("{}",index).into(), size: w, subscript: None };
+                let i = Lvalue::Variable{ name: format!("{}", index).into(), size: w, subscript: None };
                 if *base != Register::None {
                     stmts = try!(rreil!{
                         mul t:w, [s]:w, (i);
@@ -2415,8 +2415,8 @@ fn to_rreil(op: Operand) -> Result<(Rvalue,Vec<Statement>)> {
                 }
             }
 
-            Ok((ret,stmts))
+            Ok((ret, stmts))
         },
-        Operand::Optional => Ok((Rvalue::Undefined,vec![]))
+        Operand::Optional => Ok((Rvalue::Undefined, vec![]))
     }
 }

@@ -28,7 +28,7 @@ use {
 
 use std::sync::Arc;
 
-/* use value::{Lvalue,Rvalue,ToRvalue};
+/* use value::{Lvalue, Rvalue, ToRvalue};
 use guard::Guard;
 use std::num::Wrapping;
 use super::*;
@@ -72,9 +72,9 @@ pub fn disassembler() -> Arc<Disassembler<Mos>> {
         [ 0x69, imm8 ] = immediate("adc", adc),		// 011 010 01 iiii iiii
         [ 0x6d, imm16 ] = absolute("adc", adc),		// 011 011 01 aaaa aaaa
         [ 0x71, imm8 ] = zpage_index("adc", rreil_lvalue!{ Y:8 }, adc),	// 011 100 01 yyyy yyyy
-        [ 0x75, imm8 ] = zpage_offset("adc", &*X, adc),	// 011 101 01 zzzz zzzz,X
-        [ 0x79, imm16 ] = absolute_offset("adc", &*Y, adc),	// 011 110 01 aaaa aaaa,Y
-        [ 0x7d, imm16 ] = absolute_offset("adc", &*X, adc),	// 011 111 01 aaaa aaaa,X
+        [ 0x75, imm8 ] = zpage_offset("adc", &*X, adc),	// 011 101 01 zzzz zzzz, X
+        [ 0x79, imm16 ] = absolute_offset("adc", &*Y, adc),	// 011 110 01 aaaa aaaa, Y
+        [ 0x7d, imm16 ] = absolute_offset("adc", &*X, adc),	// 011 111 01 aaaa aaaa, X
 
         // AND
         [ 0x21, imm8 ] = zpage_index("and", rreil_lvalue!{ X:8 }, and),	// 001 000 01 xxxx xxxx
@@ -82,9 +82,9 @@ pub fn disassembler() -> Arc<Disassembler<Mos>> {
         [ 0x29, imm8 ] = immediate("and", and),		// 001 010 01 iiii iiii
         [ 0x2d, imm16 ] = absolute("and", and),		// 001 011 01 aaaa aaaa
         [ 0x31, imm8 ] = zpage_index("and", rreil_lvalue!{ Y:8 }, and),	// 001 100 01 yyyy yyyy
-        [ 0x35, imm8 ] = zpage_offset("and", &*X, and),	// 001 101 01 zzzz zzzz,X
-        [ 0x39, imm16 ] = absolute_offset("and", &*Y, and),	// 001 110 01 aaaa aaaa,X
-        [ 0x3d, imm16 ] = absolute_offset("and", &*X, and),	// 001 111 01 aaaa aaaa,Y
+        [ 0x35, imm8 ] = zpage_offset("and", &*X, and),	// 001 101 01 zzzz zzzz, X
+        [ 0x39, imm16 ] = absolute_offset("and", &*Y, and),	// 001 110 01 aaaa aaaa, X
+        [ 0x3d, imm16 ] = absolute_offset("and", &*X, and),	// 001 111 01 aaaa aaaa, Y
 
         // ASL
         [ 0x02 ] = ret("kil!"),		// 000 00 010*
@@ -94,8 +94,8 @@ pub fn disassembler() -> Arc<Disassembler<Mos>> {
         // ASL arg
         [ 0x06, imm8 ] = zpage("asl", asl),		// 000 00 110  zzzz zzzz
         [ 0x0e, imm16 ] = absolute("asl", asl),		// 000 01 110  aaaa aaaa
-        [ 0x16, imm8 ] = zpage_offset("asl", &*X, asl),	// 000 10 110  zzzz zzzz,X
-        [ 0x1e, imm16 ] = absolute_offset("asl", &*X, asl),   // 000 11 110  aaaa aaaa,X
+        [ 0x16, imm8 ] = zpage_offset("asl", &*X, asl),	// 000 10 110  zzzz zzzz, X
+        [ 0x1e, imm16 ] = absolute_offset("asl", &*X, asl),   // 000 11 110  aaaa aaaa, X
 
         // BCx
         [ 0x90, rel ] = branch("bcc", &*C, false),	// 1001 0000 rrrr rrrr

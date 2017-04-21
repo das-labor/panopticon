@@ -20,8 +20,8 @@ extern crate panopticon;
 extern crate graph_algos;
 
 use panopticon::region::Region;
-use panopticon::avr::{Mcu,Avr};
-use panopticon::function::{ControlFlowTarget,Function};
+use panopticon::avr::{Mcu, Avr};
+use panopticon::function::{ControlFlowTarget, Function};
 use panopticon::loader;
 
 use std::path::Path;
@@ -34,8 +34,8 @@ use graph_algos::{
 
 #[test]
 fn avr_jmp_overflow() {
-    let reg = Region::open("flash".to_string(),Path::new("tests/data/avr-jmp-overflow.bin")).unwrap();
-    let fun = Function::disassemble::<Avr>(None,Mcu::atmega88(),&reg,0);
+    let reg = Region::open("flash".to_string(), Path::new("tests/data/avr-jmp-overflow.bin")).unwrap();
+    let fun = Function::disassemble::<Avr>(None, Mcu::atmega88(), &reg, 0);
 
     assert_eq!(fun.cflow_graph.num_vertices(), 2);
     assert_eq!(fun.cflow_graph.num_edges(), 2);
@@ -53,8 +53,8 @@ fn avr_jmp_overflow() {
 
 #[test]
 fn avr_wrap_around() {
-    let reg = Region::open("flash".to_string(),Path::new("tests/data/avr-overflow.bin")).unwrap();
-    let fun = Function::disassemble::<Avr>(None,Mcu::atmega88(),&reg,0);
+    let reg = Region::open("flash".to_string(), Path::new("tests/data/avr-overflow.bin")).unwrap();
+    let fun = Function::disassemble::<Avr>(None, Mcu::atmega88(), &reg, 0);
 
     assert_eq!(fun.cflow_graph.num_vertices(), 2);
     assert_eq!(fun.cflow_graph.num_edges(), 2);
@@ -62,7 +62,7 @@ fn avr_wrap_around() {
     let mut vxs = fun.cflow_graph.vertices();
     if let Some(&ControlFlowTarget::Resolved(ref bb1)) = fun.cflow_graph.vertex_label(vxs.next().unwrap()) {
         if let Some(&ControlFlowTarget::Resolved(ref bb2)) = fun.cflow_graph.vertex_label(vxs.next().unwrap()) {
-            println!("bb1: {:?}, bb2: {:?}",bb1.area,bb2.area);
+            println!("bb1: {:?}, bb2: {:?}", bb1.area, bb2.area);
             assert!(bb1.area.start == 0 || bb1.area.start == 8190);
             assert!(bb2.area.start == 0 || bb2.area.start == 8190);
             assert!(bb1.area.end == 2 || bb1.area.end == 8192 );

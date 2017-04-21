@@ -253,15 +253,15 @@ fn cmp(_cg: &mut Variant, r1: Rvalue, r2: Rvalue) -> Result<Vec<Statement>> {
 }
 
 pub fn cpx(_cg: &mut Variant, r: Rvalue) -> Result<Vec<Statement>> {
-    cmp(_cg, rreil_rvalue!{ X:8 },r)
+    cmp(_cg, rreil_rvalue!{ X:8 }, r)
 }
 
 pub fn cpy(_cg: &mut Variant, r: Rvalue) -> Result<Vec<Statement>> {
-    cmp(_cg, rreil_rvalue!{ Y:8 },r)
+    cmp(_cg, rreil_rvalue!{ Y:8 }, r)
 }
 
 pub fn cpa(_cg: &mut Variant, r: Rvalue) -> Result<Vec<Statement>> {
-    cmp(_cg, rreil_rvalue!{ A:8 },r)
+    cmp(_cg, rreil_rvalue!{ A:8 }, r)
 }
 
 fn dec(_cg: &mut Variant, l: Lvalue, r: Rvalue) -> Result<Vec<Statement>> {
@@ -301,7 +301,7 @@ fn inc(_cg: &mut Variant, l: Lvalue, r: Rvalue) -> Result<Vec<Statement>> {
 }
 
 pub fn ina(_cg: &mut Variant, r: Rvalue) -> Result<Vec<Statement>> {
-    inc(_cg, rreil_lvalue!{ A:8 },r)
+    inc(_cg, rreil_lvalue!{ A:8 }, r)
 }
 
 pub fn inx(_cg: &mut Variant) -> Result<Vec<Statement>> {
@@ -422,7 +422,7 @@ pub fn plp(_cg: &mut Variant) -> Result<Vec<Statement>> {
 pub fn rol(_cg: &mut Variant, _r: Rvalue) -> Result<Vec<Statement>> {
     let r = Lvalue::from_rvalue(_r).unwrap();
     rreil!{
-        mov hb:1, (r.extract(1,7).unwrap());
+        mov hb:1, (r.extract(1, 7).unwrap());
         shl (r), (r), [1]:8;
         sel/7 (r), C:1;
         mov C:1, hb:1;
@@ -434,7 +434,7 @@ pub fn rol(_cg: &mut Variant, _r: Rvalue) -> Result<Vec<Statement>> {
 pub fn ror(_cg: &mut Variant, _r: Rvalue) -> Result<Vec<Statement>> {
     let r = Lvalue::from_rvalue(_r).unwrap();
     rreil!{
-        mov lb:1, (r.extract(1,0).unwrap());
+        mov lb:1, (r.extract(1, 0).unwrap());
         shr (r), (r), [1]:8;
         sel/7 (r), C:1;
         mov C:1, lb:1;
@@ -617,8 +617,8 @@ pub fn tya(_cg: &mut Variant) -> Result<Vec<Statement>> {
 pub fn jmp_direct(st: &mut State<Mos>) -> bool {
     let next = Rvalue::new_u16(st.get_group("immlo") as u16 | ((st.get_group("immhi") as u16) << 8));
 
-    st.mnemonic(3,"jmp","{c:ram}",vec![next.clone()],&|_: &mut Variant| -> Result<Vec<Statement>> { Ok(vec![]) }).unwrap();
-    st.jump(next,Guard::always()).unwrap();
+    st.mnemonic(3, "jmp", "{c:ram}", vec![next.clone()], &|_: &mut Variant| -> Result<Vec<Statement>> { Ok(vec![]) }).unwrap();
+    st.jump(next, Guard::always()).unwrap();
 
     true
 }
@@ -626,7 +626,7 @@ pub fn jmp_direct(st: &mut State<Mos>) -> bool {
 pub fn jmp_indirect(st: &mut State<Mos>) -> bool {
     let ptr = Rvalue::new_u16(st.get_group("immlo") as u16 | ((st.get_group("immhi") as u16) << 8));
 
-    st.mnemonic(0,"__fetch","",vec![],&|_cg: &mut Variant| -> Result<Vec<Statement>> {
+    st.mnemonic(0, "__fetch", "", vec![], &|_cg: &mut Variant| -> Result<Vec<Statement>> {
         rreil!{
             load/ram res:16, (ptr);
         }
@@ -634,8 +634,8 @@ pub fn jmp_indirect(st: &mut State<Mos>) -> bool {
 
     let next = rreil_rvalue!{ res:16 };
 
-    st.mnemonic(3,"jmp","{p:ram}",vec![ptr.clone()],&|_: &mut Variant| -> Result<Vec<Statement>> { Ok(vec![]) }).unwrap();
-    st.jump(next,Guard::always()).unwrap();
+    st.mnemonic(3, "jmp", "{p:ram}", vec![ptr.clone()], &|_: &mut Variant| -> Result<Vec<Statement>> { Ok(vec![]) }).unwrap();
+    st.jump(next, Guard::always()).unwrap();
 
     true
 }
@@ -644,11 +644,11 @@ pub fn jsr(st: &mut State<Mos>) -> bool {
     let next = Rvalue::new_u16(st.address as u16 + 3);
     let target = Rvalue::new_u16(st.get_group("immlo") as u16 | ((st.get_group("immhi") as u16) << 8));
 
-    st.mnemonic(3,"jsr","{c:ram}",vec![target.clone()],&|_cg: &mut Variant| -> Result<Vec<Statement>> {
+    st.mnemonic(3, "jsr", "{c:ram}", vec![target.clone()], &|_cg: &mut Variant| -> Result<Vec<Statement>> {
         rreil!{
             call ?, (target);
         }
     }).unwrap();
-    st.jump(next,Guard::always()).unwrap();
+    st.jump(next, Guard::always()).unwrap();
     true
 }

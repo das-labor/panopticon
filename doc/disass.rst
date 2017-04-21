@@ -55,8 +55,8 @@ looks like this:
 
    main | "1001000 d@..... 1111" = [](const sem_state<avr_tag>& st)
    {
-      variable op("r" + std::to_string(st.capture_groups["d"]),8);
-      state.mnemonic(2,"pop","{8}",op);
+      variable op("r" + std::to_string(st.capture_groups["d"]), 8);
+      state.mnemonic(2, "pop", "{8}", op);
    };
 
 Pairing patterns with decode functions is done using the following syntax:

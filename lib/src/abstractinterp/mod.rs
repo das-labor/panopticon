@@ -1,6 +1,6 @@
 /*
  * Panopticon - A libre disassembler
- * Copyright (C) 2014,2015,2016 Panopticon Authors
+ * Copyright (C) 2014, 2015, 2016 Panopticon Authors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -32,7 +32,7 @@ pub mod kset;
 
 use std::hash::Hash;
 use std::fmt::Debug;
-use std::collections::{HashSet,HashMap};
+use std::collections::{HashSet, HashMap};
 use std::iter::FromIterator;
 use std::borrow::Cow;
 use std::cmp::max;
@@ -43,7 +43,7 @@ use graph_algos::{
     VertexListGraphTrait,
     BidirectionalGraphTrait,
 };
-use rustc_serialize::{Encodable,Decodable};
+use rustc_serialize::{Encodable, Decodable};
 use graph_algos::dominator::{
     immediate_dominator,
 };
@@ -53,8 +53,8 @@ use graph_algos::order::{
 };
 
 use {
-    Lvalue,Rvalue,
-    Statement,Operation,
+    Lvalue, Rvalue,
+    Statement, Operation,
     ControlFlowTarget,
     ControlFlowRef,
     ControlFlowGraph,
@@ -80,7 +80,7 @@ pub enum Constraint {
 }
 
 /// A program point is a unique RREIL instruction inside a function.
-#[derive(Debug,PartialEq,Eq,Clone,RustcDecodable,RustcEncodable,PartialOrd,Ord,Hash)]
+#[derive(Debug, PartialEq, Eq, Clone, RustcDecodable, RustcEncodable, PartialOrd, Ord, Hash)]
 pub struct ProgramPoint {
     address: u64,
     position: usize,
@@ -94,40 +94,40 @@ pub trait Avalue: Clone + PartialEq + Eq + Hash + Debug + Encodable + Decodable 
     /// the constraint the best.
     fn abstract_constraint(&Constraint) -> Self;
     /// Execute the abstract version of the operation, yielding the result.
-    fn execute(&ProgramPoint,&Operation<Self>) -> Self;
+    fn execute(&ProgramPoint, &Operation<Self>) -> Self;
     /// Narrows `self` with the argument.
-    fn narrow(&self,&Self) -> Self;
+    fn narrow(&self, &Self) -> Self;
     /// Widens `self` with the argument.
-    fn widen(&self,other: &Self) -> Self;
+    fn widen(&self, other: &Self) -> Self;
     /// Computes the lowest upper bound of self and the argument.
-    fn combine(&self,&Self) -> Self;
+    fn combine(&self, &Self) -> Self;
     /// Returns true if `other` <= `self`.
-    fn more_exact(&self,other: &Self) -> bool;
+    fn more_exact(&self, other: &Self) -> bool;
     /// Returns the meet of the domain
     fn initial() -> Self;
     /// Mimics the Select operation.
-    fn extract(&self,size: usize,offset: usize) -> Self;
+    fn extract(&self, size: usize, offset: usize) -> Self;
 }
 
 /// Does an abstract interpretation of `func` using the abstract domain `A`. The function uses a
 /// fixed point iteration and the widening strategy outlined in
 /// Bourdoncle: "Efficient chaotic iteration strategies with widenings".
-pub fn approximate<A: Avalue>(func: &Function) -> Result<HashMap<Lvalue,A>> {
+pub fn approximate<A: Avalue>(func: &Function) -> Result<HashMap<Lvalue, A>> {
     if func.entry_point.is_none() {
         return Err("function has no entry point".into());
     }
 
-    let wto = weak_topo_order(func.entry_point.unwrap(),&func.cflow_graph);
+    let wto = weak_topo_order(func.entry_point.unwrap(), &func.cflow_graph);
     let edge_ops = flag_operations(func);
     fn stabilize<A: Avalue>(h: &Vec<Box<HierarchicalOrdering<ControlFlowRef>>>, graph: &ControlFlowGraph,
-                            constr: &HashMap<Lvalue,A>, sizes: &HashMap<Cow<'static,str>,usize>,
-                            ret: &mut HashMap<(Cow<'static,str>,usize),A>) -> Result<()> {
+                            constr: &HashMap<Lvalue, A>, sizes: &HashMap<Cow<'static, str>, usize>,
+                            ret: &mut HashMap<(Cow<'static, str>, usize), A>) -> Result<()> {
         let mut stable = true;
         let mut iter_cnt = 0;
         let head = if let Some(h) = h.first() {
             match &**h {
                 &HierarchicalOrdering::Element(ref vx) => vx.clone(),
-                &HierarchicalOrdering::Component(ref vec) => return stabilize(vec,graph,constr,sizes,ret),
+                &HierarchicalOrdering::Component(ref vec) => return stabilize(vec, graph, constr, sizes, ret),
             }
         } else {
             return Ok(())
@@ -137,25 +137,25 @@ pub fn approximate<A: Avalue>(func: &Function) -> Result<HashMap<Lvalue,A>> {
             for x in h.iter() {
                 match &**x {
                     &HierarchicalOrdering::Element(ref vx) =>
-                        stable &= !try!(execute(*vx,iter_cnt >= 2 && *vx == head,graph,constr,sizes,ret)),
+                        stable &= !try!(execute(*vx, iter_cnt >= 2 && *vx == head, graph, constr, sizes, ret)),
                     &HierarchicalOrdering::Component(ref vec) => {
-                        try!(stabilize(&*vec,graph,constr,sizes,ret));
+                        try!(stabilize(&*vec, graph, constr, sizes, ret));
                         stable = true;
                     },
                 }
             }
 
             if stable {
-                for (lv,a) in constr.iter() {
-                    if let &Lvalue::Variable{ ref name, subscript: Some(ref subscript),.. } = lv {
-                    if let Some(ref mut x) = ret.get_mut(&(name.clone(),*subscript)) {
+                for (lv, a) in constr.iter() {
+                    if let &Lvalue::Variable{ ref name, subscript: Some(ref subscript), .. } = lv {
+                    if let Some(ref mut x) = ret.get_mut(&(name.clone(), *subscript)) {
                         let n = x.narrow(&a);
                         **x = n;
                     }
                     }
                 }
 
-                //execute(*vx,do_widen && vx == head,graph,ret),
+                //execute(*vx, do_widen && vx == head, graph, ret),
                 return Ok(());
             }
 
@@ -164,21 +164,21 @@ pub fn approximate<A: Avalue>(func: &Function) -> Result<HashMap<Lvalue,A>> {
         }
     }
     fn execute<A: Avalue>(t: ControlFlowRef, do_widen: bool, graph: &ControlFlowGraph,
-                          _: &HashMap<Lvalue,A>, sizes: &HashMap<Cow<'static,str>,usize>,
-                          ret: &mut HashMap<(Cow<'static,str>,usize),A>) -> Result<bool> {
+                          _: &HashMap<Lvalue, A>, sizes: &HashMap<Cow<'static, str>, usize>,
+                          ret: &mut HashMap<(Cow<'static, str>, usize), A>) -> Result<bool> {
         if let Some(&ControlFlowTarget::Resolved(ref bb)) = graph.vertex_label(t) {
             let mut change = false;
             let mut pos = 0usize;
             bb.execute(|i| {
-                if let Statement{ ref op, assignee: Lvalue::Variable{ ref name, subscript: Some(ref subscript),.. } } = *i {
+                if let Statement{ ref op, assignee: Lvalue::Variable{ ref name, subscript: Some(ref subscript), .. } } = *i {
                     let pp = ProgramPoint{ address: bb.area.start, position: pos };
-                    let new = A::execute(&pp,&lift(op,&|x| res::<A>(x,sizes,&ret)));
-                    let assignee = (name.clone(),*subscript);
+                    let new = A::execute(&pp, &lift(op, &|x| res::<A>(x, sizes, &ret)));
+                    let assignee = (name.clone(), *subscript);
                     let cur = ret.get(&assignee).cloned();
 
                     if cur.is_none() {
                         change = true;
-                        ret.insert(assignee,new);
+                        ret.insert(assignee, new);
                     } else {
                         if do_widen {
                             let c = cur.unwrap();
@@ -186,11 +186,11 @@ pub fn approximate<A: Avalue>(func: &Function) -> Result<HashMap<Lvalue,A>> {
 
                             if w != c {
                                 change = true;
-                                ret.insert(assignee,w);
+                                ret.insert(assignee, w);
                             }
                         } else if new.more_exact(&cur.clone().unwrap()) {
                             change = true;
-                            ret.insert(assignee,new);
+                            ret.insert(assignee, new);
                         }
                     }
                 }
@@ -203,13 +203,13 @@ pub fn approximate<A: Avalue>(func: &Function) -> Result<HashMap<Lvalue,A>> {
             Ok(false)
         }
     }
-    fn res<A: Avalue>(v: &Rvalue, sizes: &HashMap<Cow<'static,str>,usize>, env: &HashMap<(Cow<'static,str>,usize),A>) -> A {
+    fn res<A: Avalue>(v: &Rvalue, sizes: &HashMap<Cow<'static, str>, usize>, env: &HashMap<(Cow<'static, str>, usize), A>) -> A {
         if let &Rvalue::Variable{ ref name, subscript: Some(ref subscript), ref size, ref offset } = v {
-            let nam = (name.clone(),*subscript);
+            let nam = (name.clone(), *subscript);
             let t = env.get(&nam).unwrap_or(&A::initial()).clone();
 
             if *offset > 0 || *size != *sizes.get(&nam.0).unwrap_or(&0) {
-                t.extract(*size,*offset)
+                t.extract(*size, *offset)
             } else {
                 t
             }
@@ -217,17 +217,17 @@ pub fn approximate<A: Avalue>(func: &Function) -> Result<HashMap<Lvalue,A>> {
             A::abstract_value(v)
         }
     };
-    let mut ret = HashMap::<(Cow<'static,str>,usize),A>::new();
-    let mut sizes = HashMap::<Cow<'static,str>,usize>::new();
-    let mut constr = HashMap::<Lvalue,A>::new();
+    let mut ret = HashMap::<(Cow<'static, str>, usize), A>::new();
+    let mut sizes = HashMap::<Cow<'static, str>, usize>::new();
+    let mut constr = HashMap::<Lvalue, A>::new();
 
     for vx in func.cflow_graph.vertices() {
         if let Some(&ControlFlowTarget::Resolved(ref bb)) = func.cflow_graph.vertex_label(vx) {
             bb.execute(|i| {
-                if let Lvalue::Variable{ ref name, ref size,.. } = i.assignee {
+                if let Lvalue::Variable{ ref name, ref size, .. } = i.assignee {
                     let t = *size;
                     let s = *sizes.get(name).unwrap_or(&t);
-                    sizes.insert(name.clone(),max(s,t));
+                    sizes.insert(name.clone(), max(s, t));
                 }
             });
         }
@@ -237,35 +237,35 @@ pub fn approximate<A: Avalue>(func: &Function) -> Result<HashMap<Lvalue,A>> {
         for e in func.cflow_graph.in_edges(vx) {
             if let Some(&Guard::Predicate{ .. }) = func.cflow_graph.edge_label(e) {
                 match edge_ops.get(&e).cloned() {
-                    Some(Operation::Equal(left@Rvalue::Constant{ .. },right@Rvalue::Variable{ .. })) => {
-                        constr.insert(Lvalue::from_rvalue(right).unwrap(),A::abstract_constraint(&Constraint::Equal(left.clone())));
+                    Some(Operation::Equal(left@Rvalue::Constant{ .. }, right@Rvalue::Variable{ .. })) => {
+                        constr.insert(Lvalue::from_rvalue(right).unwrap(), A::abstract_constraint(&Constraint::Equal(left.clone())));
                     },
-                    Some(Operation::Equal(left@Rvalue::Variable{ .. },right@Rvalue::Constant{ .. })) => {
-                        constr.insert(Lvalue::from_rvalue(left).unwrap(),A::abstract_constraint(&Constraint::Equal(right.clone())));
+                    Some(Operation::Equal(left@Rvalue::Variable{ .. }, right@Rvalue::Constant{ .. })) => {
+                        constr.insert(Lvalue::from_rvalue(left).unwrap(), A::abstract_constraint(&Constraint::Equal(right.clone())));
                     },
-                    Some(Operation::LessUnsigned(left@Rvalue::Constant{ .. },right@Rvalue::Variable{ .. })) => {
-                        constr.insert(Lvalue::from_rvalue(right).unwrap(),A::abstract_constraint(&Constraint::LessUnsigned(left.clone())));
+                    Some(Operation::LessUnsigned(left@Rvalue::Constant{ .. }, right@Rvalue::Variable{ .. })) => {
+                        constr.insert(Lvalue::from_rvalue(right).unwrap(), A::abstract_constraint(&Constraint::LessUnsigned(left.clone())));
                     },
-                    Some(Operation::LessUnsigned(left@Rvalue::Variable{ .. },right@Rvalue::Constant{ .. })) => {
-                        constr.insert(Lvalue::from_rvalue(left).unwrap(),A::abstract_constraint(&Constraint::LessUnsigned(right.clone())));
+                    Some(Operation::LessUnsigned(left@Rvalue::Variable{ .. }, right@Rvalue::Constant{ .. })) => {
+                        constr.insert(Lvalue::from_rvalue(left).unwrap(), A::abstract_constraint(&Constraint::LessUnsigned(right.clone())));
                     },
-                    Some(Operation::LessSigned(left@Rvalue::Constant{ .. },right@Rvalue::Variable{ .. })) => {
-                        constr.insert(Lvalue::from_rvalue(right).unwrap(),A::abstract_constraint(&Constraint::LessSigned(left.clone())));
+                    Some(Operation::LessSigned(left@Rvalue::Constant{ .. }, right@Rvalue::Variable{ .. })) => {
+                        constr.insert(Lvalue::from_rvalue(right).unwrap(), A::abstract_constraint(&Constraint::LessSigned(left.clone())));
                     },
-                    Some(Operation::LessSigned(left@Rvalue::Variable{ .. },right@Rvalue::Constant{ .. })) => {
-                        constr.insert(Lvalue::from_rvalue(left).unwrap(),A::abstract_constraint(&Constraint::LessSigned(right.clone())));
+                    Some(Operation::LessSigned(left@Rvalue::Variable{ .. }, right@Rvalue::Constant{ .. })) => {
+                        constr.insert(Lvalue::from_rvalue(left).unwrap(), A::abstract_constraint(&Constraint::LessSigned(right.clone())));
                     },
-                    Some(Operation::LessOrEqualUnsigned(left@Rvalue::Constant{ .. },right@Rvalue::Variable{ .. })) => {
-                        constr.insert(Lvalue::from_rvalue(right).unwrap(),A::abstract_constraint(&Constraint::LessOrEqualUnsigned(left.clone())));
+                    Some(Operation::LessOrEqualUnsigned(left@Rvalue::Constant{ .. }, right@Rvalue::Variable{ .. })) => {
+                        constr.insert(Lvalue::from_rvalue(right).unwrap(), A::abstract_constraint(&Constraint::LessOrEqualUnsigned(left.clone())));
                     },
-                    Some(Operation::LessOrEqualUnsigned(left@Rvalue::Variable{ .. },right@Rvalue::Constant{ .. })) => {
-                        constr.insert(Lvalue::from_rvalue(left).unwrap(),A::abstract_constraint(&Constraint::LessOrEqualUnsigned(right.clone())));
+                    Some(Operation::LessOrEqualUnsigned(left@Rvalue::Variable{ .. }, right@Rvalue::Constant{ .. })) => {
+                        constr.insert(Lvalue::from_rvalue(left).unwrap(), A::abstract_constraint(&Constraint::LessOrEqualUnsigned(right.clone())));
                     },
-                    Some(Operation::LessOrEqualSigned(left@Rvalue::Constant{ .. },right@Rvalue::Variable{ .. })) => {
-                        constr.insert(Lvalue::from_rvalue(right).unwrap(),A::abstract_constraint(&Constraint::LessOrEqualSigned(left.clone())));
+                    Some(Operation::LessOrEqualSigned(left@Rvalue::Constant{ .. }, right@Rvalue::Variable{ .. })) => {
+                        constr.insert(Lvalue::from_rvalue(right).unwrap(), A::abstract_constraint(&Constraint::LessOrEqualSigned(left.clone())));
                     },
-                    Some(Operation::LessOrEqualSigned(left@Rvalue::Variable{ .. },right@Rvalue::Constant{ .. })) => {
-                        constr.insert(Lvalue::from_rvalue(left).unwrap(),A::abstract_constraint(&Constraint::LessOrEqualSigned(right.clone())));
+                    Some(Operation::LessOrEqualSigned(left@Rvalue::Variable{ .. }, right@Rvalue::Constant{ .. })) => {
+                        constr.insert(Lvalue::from_rvalue(left).unwrap(), A::abstract_constraint(&Constraint::LessOrEqualSigned(right.clone())));
                     },
                     _ => {},
                 }
@@ -275,20 +275,20 @@ pub fn approximate<A: Avalue>(func: &Function) -> Result<HashMap<Lvalue,A>> {
 
     match wto {
         HierarchicalOrdering::Component(ref v) => {
-            try!(stabilize(v,&func.cflow_graph,&constr,&sizes,&mut ret));
+            try!(stabilize(v, &func.cflow_graph, &constr, &sizes, &mut ret));
         },
         HierarchicalOrdering::Element(ref v) => {
-            try!(execute(*v,false,&func.cflow_graph,&constr,&sizes,&mut ret));
+            try!(execute(*v, false, &func.cflow_graph, &constr, &sizes, &mut ret));
         },
     }
 
-    Ok(HashMap::from_iter(ret.iter().filter_map(|(&(ref name,ref subscript),val)| {
+    Ok(HashMap::from_iter(ret.iter().filter_map(|(&(ref name, ref subscript), val)| {
         if let Some(sz) = sizes.get(name) {
             Some((Lvalue::Variable{
                 name: name.clone(),
                 subscript: Some(*subscript),
                 size: *sz,
-            },val.clone()))
+            }, val.clone()))
         } else {
             None
         }
@@ -297,16 +297,16 @@ pub fn approximate<A: Avalue>(func: &Function) -> Result<HashMap<Lvalue,A>> {
 
 /// Given a function and an abstract interpretation result this functions returns that variable
 /// names and abstract values that live after the function returns.
-pub fn results<A: Avalue>(func: &Function,vals: &HashMap<Lvalue,A>) -> HashMap<(Cow<'static,str>,usize),A> {
+pub fn results<A: Avalue>(func: &Function, vals: &HashMap<Lvalue, A>) -> HashMap<(Cow<'static, str>, usize), A> {
     let cfg = &func.cflow_graph;
-    let idom = immediate_dominator(func.entry_point.unwrap(),cfg);
-    let mut ret = HashMap::<(Cow<'static,str>,usize),A>::new();
-    let mut names = HashSet::<Cow<'static,str>>::new();
+    let idom = immediate_dominator(func.entry_point.unwrap(), cfg);
+    let mut ret = HashMap::<(Cow<'static, str>, usize), A>::new();
+    let mut names = HashSet::<Cow<'static, str>>::new();
 
     for vx in cfg.vertices() {
         if let Some(&ControlFlowTarget::Resolved(ref bb)) = cfg.vertex_label(vx) {
             bb.execute(|i| {
-                if let Lvalue::Variable{ ref name,.. } = i.assignee {
+                if let Lvalue::Variable{ ref name, .. } = i.assignee {
                     names.insert(name.clone());
                 }
             });
@@ -317,15 +317,15 @@ pub fn results<A: Avalue>(func: &Function,vals: &HashMap<Lvalue,A>) -> HashMap<(
         if cfg.out_degree(v) == 0 {
             if let Some(&ControlFlowTarget::Resolved(ref bb)) = cfg.vertex_label(v) {
                 for lv in names.iter() {
-                    let mut bbv = (bb,v);
+                    let mut bbv = (bb, v);
 
                     loop {
                         let mut hit = false;
                         bb.execute_backwards(|i| {
-                            if let Lvalue::Variable{ ref name, ref size,.. } = i.assignee {
+                            if let Lvalue::Variable{ ref name, ref size, .. } = i.assignee {
                                 if name == lv {
                                     hit = true;
-                                    ret.insert((name.clone(),*size),vals.get(&i.assignee).unwrap_or(&A::initial()).clone());
+                                    ret.insert((name.clone(), *size), vals.get(&i.assignee).unwrap_or(&A::initial()).clone());
                                 }
                             }
                         });
@@ -337,7 +337,7 @@ pub fn results<A: Avalue>(func: &Function,vals: &HashMap<Lvalue,A>) -> HashMap<(
                             if !fixpoint {
                                 if let Some(w) = next_bb {
                                     if let Some(&ControlFlowTarget::Resolved(ref bb)) = cfg.vertex_label(w) {
-                                        bbv = (bb,w);
+                                        bbv = (bb, w);
                                         continue;
                                     }
                                 }
@@ -356,7 +356,7 @@ pub fn results<A: Avalue>(func: &Function,vals: &HashMap<Lvalue,A>) -> HashMap<(
 
 /// Mihaila et.al. Widening Point inferring cofibered domain. This domain is parameterized with a
 /// child domain.
-#[derive(Debug,PartialEq,Eq,Clone,Hash,RustcDecodable,RustcEncodable)]
+#[derive(Debug, PartialEq, Eq, Clone, Hash, RustcDecodable, RustcEncodable)]
 pub struct Widening<A: Avalue> {
     value: A,
     point: Option<ProgramPoint>,
@@ -386,7 +386,7 @@ impl<A: Avalue> Avalue for Widening<A> {
                     value: match ops.len() {
                         0 => unreachable!("Phi function w/o arguments"),
                         1 => ops[0].value.clone(),
-                        _ => ops.iter().map(|x| x.value.clone()).fold(A::initial(),|acc,x| {
+                        _ => ops.iter().map(|x| x.value.clone()).fold(A::initial(), |acc, x| {
                             if widen {
                                 acc.widen(&x)
                             } else {
@@ -398,20 +398,20 @@ impl<A: Avalue> Avalue for Widening<A> {
                 }
             },
             _ => Widening{
-                value: A::execute(pp,&lift(op,&|x| x.value.clone())),
+                value: A::execute(pp, &lift(op, &|x| x.value.clone())),
                 point: Some(pp.clone()),
             }
         }
     }
 
-    fn widen(&self,s: &Self) -> Self {
+    fn widen(&self, s: &Self) -> Self {
         Widening{
             value: self.value.widen(&s.value),
             point: self.point.clone(),
         }
     }
 
-    fn combine(&self,s: &Self) -> Self {
+    fn combine(&self, s: &Self) -> Self {
         Widening{
             value: self.value.combine(&s.value),
             point: self.point.clone(),
@@ -433,9 +433,9 @@ impl<A: Avalue> Avalue for Widening<A> {
         self.value.more_exact(&a.value)
     }
 
-    fn extract(&self,size: usize,offset: usize) -> Self {
+    fn extract(&self, size: usize, offset: usize) -> Self {
         Widening{
-            value: self.value.extract(size,offset),
+            value: self.value.extract(size, offset),
             point: self.point.clone(),
         }
     }
@@ -445,11 +445,11 @@ impl<A: Avalue> Avalue for Widening<A> {
 mod tests {
     use super::*;
     use {
-        Statement,Operation,
-        ControlFlowTarget,Function,ControlFlowGraph,
+        Statement, Operation,
+        ControlFlowTarget, Function, ControlFlowGraph,
         Guard,
-        Lvalue,Rvalue,
-        Bound,Mnemonic,
+        Lvalue, Rvalue,
+        Bound, Mnemonic,
         ssa_convertion,
         BasicBlock,
     };
@@ -459,7 +459,7 @@ mod tests {
     };
     use std::borrow::Cow;
 
-    #[derive(Debug,Clone,PartialEq,Eq,Hash,RustcDecodable,RustcEncodable)]
+    #[derive(Debug, Clone, PartialEq, Eq, Hash, RustcDecodable, RustcEncodable)]
     enum Sign {
         Join,
         Positive,
@@ -471,18 +471,18 @@ mod tests {
     impl Avalue for Sign {
         fn abstract_value(v: &Rvalue) -> Self {
             match v {
-                &Rvalue::Constant{ value: c,.. } if c > 0 => Sign::Positive,
-                &Rvalue::Constant{ value: 0,.. } => Sign::Zero,
+                &Rvalue::Constant{ value: c, .. } if c > 0 => Sign::Positive,
+                &Rvalue::Constant{ value: 0, .. } => Sign::Zero,
                 _ => Sign::Join,
             }
         }
 
         fn abstract_constraint(c: &Constraint) -> Self {
             match c {
-                &Constraint::Equal(Rvalue::Constant{ value: 0,.. }) => Sign::Zero,
-                &Constraint::LessUnsigned(Rvalue::Constant{ value: 1,.. }) => Sign::Zero,
-                &Constraint::LessOrEqualUnsigned(Rvalue::Constant{ value: 0,.. }) => Sign::Zero,
-                &Constraint::LessSigned(Rvalue::Constant{ value: 0,.. }) => Sign::Negative,
+                &Constraint::Equal(Rvalue::Constant{ value: 0, .. }) => Sign::Zero,
+                &Constraint::LessUnsigned(Rvalue::Constant{ value: 1, .. }) => Sign::Zero,
+                &Constraint::LessOrEqualUnsigned(Rvalue::Constant{ value: 0, .. }) => Sign::Zero,
+                &Constraint::LessSigned(Rvalue::Constant{ value: 0, .. }) => Sign::Negative,
                 &Constraint::LessOrEqualSigned(Rvalue::Constant{ value: v, size: s })
                     if s <= 64 && v & (1 << (s-1)) != 0 => Sign::Negative,
                 &Constraint::LessSigned(Rvalue::Constant{ value: v, size: s })
@@ -493,86 +493,86 @@ mod tests {
 
         fn execute(_: &ProgramPoint, op: &Operation<Self>) -> Self {
             match op {
-                &Operation::Add(Sign::Positive,Sign::Positive) => Sign::Positive,
-                &Operation::Add(Sign::Positive,Sign::Zero) => Sign::Positive,
-                &Operation::Add(Sign::Zero,Sign::Positive) => Sign::Positive,
-                &Operation::Add(Sign::Negative,Sign::Negative) => Sign::Negative,
-                &Operation::Add(Sign::Negative,Sign::Zero) => Sign::Negative,
-                &Operation::Add(Sign::Zero,Sign::Negative) => Sign::Negative,
-                &Operation::Add(Sign::Positive,Sign::Negative) => Sign::Join,
-                &Operation::Add(Sign::Negative,Sign::Positive) => Sign::Join,
-                &Operation::Add(_,Sign::Join) => Sign::Join,
-                &Operation::Add(Sign::Join,_) => Sign::Join,
-                &Operation::Add(ref a,Sign::Meet) => a.clone(),
-                &Operation::Add(Sign::Meet,ref b) => b.clone(),
+                &Operation::Add(Sign::Positive, Sign::Positive) => Sign::Positive,
+                &Operation::Add(Sign::Positive, Sign::Zero) => Sign::Positive,
+                &Operation::Add(Sign::Zero, Sign::Positive) => Sign::Positive,
+                &Operation::Add(Sign::Negative, Sign::Negative) => Sign::Negative,
+                &Operation::Add(Sign::Negative, Sign::Zero) => Sign::Negative,
+                &Operation::Add(Sign::Zero, Sign::Negative) => Sign::Negative,
+                &Operation::Add(Sign::Positive, Sign::Negative) => Sign::Join,
+                &Operation::Add(Sign::Negative, Sign::Positive) => Sign::Join,
+                &Operation::Add(_, Sign::Join) => Sign::Join,
+                &Operation::Add(Sign::Join, _) => Sign::Join,
+                &Operation::Add(ref a, Sign::Meet) => a.clone(),
+                &Operation::Add(Sign::Meet, ref b) => b.clone(),
 
-                &Operation::Subtract(Sign::Positive,Sign::Positive) => Sign::Join,
-                &Operation::Subtract(Sign::Positive,Sign::Zero) => Sign::Positive,
-                &Operation::Subtract(Sign::Zero,Sign::Positive) => Sign::Negative,
-                &Operation::Subtract(Sign::Negative,Sign::Negative) => Sign::Join,
-                &Operation::Subtract(Sign::Negative,Sign::Zero) => Sign::Negative,
-                &Operation::Subtract(Sign::Zero,Sign::Negative) => Sign::Positive,
-                &Operation::Subtract(Sign::Positive,Sign::Negative) => Sign::Positive,
-                &Operation::Subtract(Sign::Negative,Sign::Positive) => Sign::Negative,
-                &Operation::Subtract(_,Sign::Join) => Sign::Join,
-                &Operation::Subtract(Sign::Join,_) => Sign::Join,
-                &Operation::Subtract(ref a,Sign::Meet) => a.clone(),
-                &Operation::Subtract(Sign::Meet,ref b) => b.clone(),
+                &Operation::Subtract(Sign::Positive, Sign::Positive) => Sign::Join,
+                &Operation::Subtract(Sign::Positive, Sign::Zero) => Sign::Positive,
+                &Operation::Subtract(Sign::Zero, Sign::Positive) => Sign::Negative,
+                &Operation::Subtract(Sign::Negative, Sign::Negative) => Sign::Join,
+                &Operation::Subtract(Sign::Negative, Sign::Zero) => Sign::Negative,
+                &Operation::Subtract(Sign::Zero, Sign::Negative) => Sign::Positive,
+                &Operation::Subtract(Sign::Positive, Sign::Negative) => Sign::Positive,
+                &Operation::Subtract(Sign::Negative, Sign::Positive) => Sign::Negative,
+                &Operation::Subtract(_, Sign::Join) => Sign::Join,
+                &Operation::Subtract(Sign::Join, _) => Sign::Join,
+                &Operation::Subtract(ref a, Sign::Meet) => a.clone(),
+                &Operation::Subtract(Sign::Meet, ref b) => b.clone(),
 
-                &Operation::Multiply(Sign::Positive,Sign::Positive) => Sign::Positive,
-                &Operation::Multiply(Sign::Negative,Sign::Negative) => Sign::Positive,
-                &Operation::Multiply(Sign::Positive,Sign::Negative) => Sign::Negative,
-                &Operation::Multiply(Sign::Negative,Sign::Positive) => Sign::Negative,
-                &Operation::Multiply(_,Sign::Zero) => Sign::Zero,
-                &Operation::Multiply(Sign::Zero,_) => Sign::Zero,
-                &Operation::Multiply(_,Sign::Join) => Sign::Join,
-                &Operation::Multiply(Sign::Join,_) => Sign::Join,
-                &Operation::Multiply(ref a,Sign::Meet) => a.clone(),
-                &Operation::Multiply(Sign::Meet,ref b) => b.clone(),
+                &Operation::Multiply(Sign::Positive, Sign::Positive) => Sign::Positive,
+                &Operation::Multiply(Sign::Negative, Sign::Negative) => Sign::Positive,
+                &Operation::Multiply(Sign::Positive, Sign::Negative) => Sign::Negative,
+                &Operation::Multiply(Sign::Negative, Sign::Positive) => Sign::Negative,
+                &Operation::Multiply(_, Sign::Zero) => Sign::Zero,
+                &Operation::Multiply(Sign::Zero, _) => Sign::Zero,
+                &Operation::Multiply(_, Sign::Join) => Sign::Join,
+                &Operation::Multiply(Sign::Join, _) => Sign::Join,
+                &Operation::Multiply(ref a, Sign::Meet) => a.clone(),
+                &Operation::Multiply(Sign::Meet, ref b) => b.clone(),
 
-                &Operation::DivideSigned(Sign::Positive,Sign::Positive) => Sign::Positive,
-                &Operation::DivideSigned(Sign::Negative,Sign::Negative) => Sign::Positive,
-                &Operation::DivideSigned(Sign::Positive,Sign::Negative) => Sign::Negative,
-                &Operation::DivideSigned(Sign::Negative,Sign::Positive) => Sign::Negative,
-                &Operation::DivideSigned(_,Sign::Zero) => Sign::Zero,
-                &Operation::DivideSigned(Sign::Zero,_) => Sign::Zero,
-                &Operation::DivideSigned(_,Sign::Join) => Sign::Join,
-                &Operation::DivideSigned(Sign::Join,_) => Sign::Join,
-                &Operation::DivideSigned(ref a,Sign::Meet) => a.clone(),
-                &Operation::DivideSigned(Sign::Meet,ref b) => b.clone(),
+                &Operation::DivideSigned(Sign::Positive, Sign::Positive) => Sign::Positive,
+                &Operation::DivideSigned(Sign::Negative, Sign::Negative) => Sign::Positive,
+                &Operation::DivideSigned(Sign::Positive, Sign::Negative) => Sign::Negative,
+                &Operation::DivideSigned(Sign::Negative, Sign::Positive) => Sign::Negative,
+                &Operation::DivideSigned(_, Sign::Zero) => Sign::Zero,
+                &Operation::DivideSigned(Sign::Zero, _) => Sign::Zero,
+                &Operation::DivideSigned(_, Sign::Join) => Sign::Join,
+                &Operation::DivideSigned(Sign::Join, _) => Sign::Join,
+                &Operation::DivideSigned(ref a, Sign::Meet) => a.clone(),
+                &Operation::DivideSigned(Sign::Meet, ref b) => b.clone(),
 
-                &Operation::DivideUnsigned(Sign::Positive,Sign::Positive) => Sign::Positive,
-                &Operation::DivideUnsigned(Sign::Negative,Sign::Negative) => Sign::Positive,
-                &Operation::DivideUnsigned(Sign::Positive,Sign::Negative) => Sign::Negative,
-                &Operation::DivideUnsigned(Sign::Negative,Sign::Positive) => Sign::Negative,
-                &Operation::DivideUnsigned(_,Sign::Zero) => Sign::Zero,
-                &Operation::DivideUnsigned(Sign::Zero,_) => Sign::Zero,
-                &Operation::DivideUnsigned(_,Sign::Join) => Sign::Join,
-                &Operation::DivideUnsigned(Sign::Join,_) => Sign::Join,
-                &Operation::DivideUnsigned(ref a,Sign::Meet) => a.clone(),
-                &Operation::DivideUnsigned(Sign::Meet,ref b) => b.clone(),
+                &Operation::DivideUnsigned(Sign::Positive, Sign::Positive) => Sign::Positive,
+                &Operation::DivideUnsigned(Sign::Negative, Sign::Negative) => Sign::Positive,
+                &Operation::DivideUnsigned(Sign::Positive, Sign::Negative) => Sign::Negative,
+                &Operation::DivideUnsigned(Sign::Negative, Sign::Positive) => Sign::Negative,
+                &Operation::DivideUnsigned(_, Sign::Zero) => Sign::Zero,
+                &Operation::DivideUnsigned(Sign::Zero, _) => Sign::Zero,
+                &Operation::DivideUnsigned(_, Sign::Join) => Sign::Join,
+                &Operation::DivideUnsigned(Sign::Join, _) => Sign::Join,
+                &Operation::DivideUnsigned(ref a, Sign::Meet) => a.clone(),
+                &Operation::DivideUnsigned(Sign::Meet, ref b) => b.clone(),
 
-                &Operation::Modulo(Sign::Positive,Sign::Positive) => Sign::Positive,
-                &Operation::Modulo(Sign::Negative,Sign::Negative) => Sign::Positive,
-                &Operation::Modulo(Sign::Positive,Sign::Negative) => Sign::Negative,
-                &Operation::Modulo(Sign::Negative,Sign::Positive) => Sign::Negative,
-                &Operation::Modulo(_,Sign::Zero) => Sign::Zero,
-                &Operation::Modulo(Sign::Zero,_) => Sign::Zero,
-                &Operation::Modulo(_,Sign::Join) => Sign::Join,
-                &Operation::Modulo(Sign::Join,_) => Sign::Join,
-                &Operation::Modulo(ref a,Sign::Meet) => a.clone(),
-                &Operation::Modulo(Sign::Meet,ref b) => b.clone(),
+                &Operation::Modulo(Sign::Positive, Sign::Positive) => Sign::Positive,
+                &Operation::Modulo(Sign::Negative, Sign::Negative) => Sign::Positive,
+                &Operation::Modulo(Sign::Positive, Sign::Negative) => Sign::Negative,
+                &Operation::Modulo(Sign::Negative, Sign::Positive) => Sign::Negative,
+                &Operation::Modulo(_, Sign::Zero) => Sign::Zero,
+                &Operation::Modulo(Sign::Zero, _) => Sign::Zero,
+                &Operation::Modulo(_, Sign::Join) => Sign::Join,
+                &Operation::Modulo(Sign::Join, _) => Sign::Join,
+                &Operation::Modulo(ref a, Sign::Meet) => a.clone(),
+                &Operation::Modulo(Sign::Meet, ref b) => b.clone(),
 
                 &Operation::Move(ref a) => a.clone(),
-                &Operation::ZeroExtend(_,Sign::Negative) => Sign::Join,
-                &Operation::ZeroExtend(_,ref a) => a.clone(),
-                &Operation::SignExtend(_,ref a) => a.clone(),
+                &Operation::ZeroExtend(_, Sign::Negative) => Sign::Join,
+                &Operation::ZeroExtend(_, ref a) => a.clone(),
+                &Operation::SignExtend(_, ref a) => a.clone(),
 
                 &Operation::Phi(ref ops) => {
                     match ops.len() {
                         0 => unreachable!("Phi function w/o arguments"),
                         1 => ops[0].clone(),
-                        _ => ops.iter().fold(Sign::Meet,|acc,x| acc.combine(&x))
+                        _ => ops.iter().fold(Sign::Meet, |acc, x| acc.combine(&x))
                     }
                 },
 
@@ -599,10 +599,10 @@ mod tests {
         }
 
         fn combine(&self, b: &Self) -> Self {
-            match (self,b) {
-                (x,y) if x == y => x.clone(),
-                (&Sign::Meet,x) => x.clone(),
-                (x,&Sign::Meet) => x.clone(),
+            match (self, b) {
+                (x, y) if x == y => x.clone(),
+                (&Sign::Meet, x) => x.clone(),
+                (x, &Sign::Meet) => x.clone(),
                 _ => Sign::Join
             }
         }
@@ -621,14 +621,14 @@ mod tests {
         }
 
         fn more_exact(&self, b: &Self) -> bool {
-            self != b && match (self,b) {
-                (&Sign::Meet,&Sign::Positive) | (&Sign::Meet,&Sign::Negative) | (&Sign::Meet,&Sign::Join) => false,
-                (&Sign::Positive,&Sign::Join) | (&Sign::Negative,&Sign::Join) => false,
+            self != b && match (self, b) {
+                (&Sign::Meet, &Sign::Positive) | (&Sign::Meet, &Sign::Negative) | (&Sign::Meet, &Sign::Join) => false,
+                (&Sign::Positive, &Sign::Join) | (&Sign::Negative, &Sign::Join) => false,
                 _ => true
             }
         }
 
-        fn extract(&self,_: usize,_: usize) -> Self {
+        fn extract(&self, _: usize, _: usize) -> Self {
             match self {
                 &Sign::Join => Sign::Join,
                 &Sign::Meet => Sign::Meet,
@@ -653,20 +653,20 @@ mod tests {
         let n_var = Lvalue::Variable{ name: Cow::Borrowed("n"), size: 32, subscript: None };
         let flag = Lvalue::Variable{ name: Cow::Borrowed("flag"), size: 1, subscript: None };
         let bb0 = BasicBlock::from_vec(vec![
-                                       Mnemonic::new(0..1,"assign x".to_string(),"".to_string(),vec![].iter(),vec![
+                                       Mnemonic::new(0..1, "assign x".to_string(), "".to_string(), vec![].iter(), vec![
                                                      Statement{ op: Operation::Move(Rvalue::new_u64(0)), assignee: x_var.clone()}].iter()).ok().unwrap(),
-                                       Mnemonic::new(1..2,"assign n".to_string(),"".to_string(),vec![].iter(),vec![
+                                       Mnemonic::new(1..2, "assign n".to_string(), "".to_string(), vec![].iter(), vec![
                                                      Statement{ op: Operation::Move(Rvalue::new_u64(1)), assignee: n_var.clone()}].iter()).ok().unwrap(),
-                                       Mnemonic::new(2..3,"cmp n".to_string(),"".to_string(),vec![].iter(),vec![
-                                                     Statement{ op: Operation::LessOrEqualSigned(n_var.clone().into(),Rvalue::Undefined), assignee: flag.clone()}].iter()).ok().unwrap()]);
+                                       Mnemonic::new(2..3, "cmp n".to_string(), "".to_string(), vec![].iter(), vec![
+                                                     Statement{ op: Operation::LessOrEqualSigned(n_var.clone().into(), Rvalue::Undefined), assignee: flag.clone()}].iter()).ok().unwrap()]);
         let bb1 = BasicBlock::from_vec(vec![
-                                       Mnemonic::new(3..4,"add x and n".to_string(),"".to_string(),vec![].iter(),vec![
-                                                     Statement{ op: Operation::Add(x_var.clone().into(),n_var.clone().into()), assignee: x_var.clone()}].iter()).ok().unwrap(),
-                                       Mnemonic::new(4..5,"inc n".to_string(),"".to_string(),vec![].iter(),vec![
-                                                     Statement{ op: Operation::Add(n_var.clone().into(),Rvalue::new_u64(1)), assignee: n_var.clone()}].iter()).ok().unwrap(),
-                                       Mnemonic::new(5..6,"cmp n".to_string(),"".to_string(),vec![].iter(),vec![
-                                                     Statement{ op: Operation::LessOrEqualSigned(n_var.clone().into(),Rvalue::Undefined), assignee: flag.clone()}].iter()).ok().unwrap()]);
-        let bb2 = BasicBlock{ area: Bound::new(4,5), mnemonics: vec![] };
+                                       Mnemonic::new(3..4, "add x and n".to_string(), "".to_string(), vec![].iter(), vec![
+                                                     Statement{ op: Operation::Add(x_var.clone().into(), n_var.clone().into()), assignee: x_var.clone()}].iter()).ok().unwrap(),
+                                       Mnemonic::new(4..5, "inc n".to_string(), "".to_string(), vec![].iter(), vec![
+                                                     Statement{ op: Operation::Add(n_var.clone().into(), Rvalue::new_u64(1)), assignee: n_var.clone()}].iter()).ok().unwrap(),
+                                       Mnemonic::new(5..6, "cmp n".to_string(), "".to_string(), vec![].iter(), vec![
+                                                     Statement{ op: Operation::LessOrEqualSigned(n_var.clone().into(), Rvalue::Undefined), assignee: flag.clone()}].iter()).ok().unwrap()]);
+        let bb2 = BasicBlock{ area: Bound::new(4, 5), mnemonics: vec![] };
         let mut cfg = ControlFlowGraph::new();
 
         let g = Guard::from_flag(&flag.clone().into()).ok().unwrap();
@@ -674,12 +674,12 @@ mod tests {
         let v1 = cfg.add_vertex(ControlFlowTarget::Resolved(bb1));
         let v2 = cfg.add_vertex(ControlFlowTarget::Resolved(bb2));
 
-        cfg.add_edge(g.negation(),v0,v2);
-        cfg.add_edge(g.negation(),v1,v2);
-        cfg.add_edge(g.clone(),v0,v1);
-        cfg.add_edge(g.clone(),v1,v1);
+        cfg.add_edge(g.negation(), v0, v2);
+        cfg.add_edge(g.negation(), v1, v2);
+        cfg.add_edge(g.clone(), v0, v1);
+        cfg.add_edge(g.clone(), v1, v1);
 
-        let mut func = Function::new("func".to_string(),"ram".to_string());
+        let mut func = Function::new("func".to_string(), "ram".to_string());
 
         func.cflow_graph = cfg;
         func.entry_point = Some(v0);
@@ -687,10 +687,10 @@ mod tests {
         assert!(ssa_convertion(&mut func).is_ok());
 
         let vals = approximate::<Sign>(&func).ok().unwrap();
-        let res = results::<Sign>(&func,&vals);
+        let res = results::<Sign>(&func, &vals);
 
-        assert_eq!(res[&(Cow::Borrowed("x"),32)],Sign::Join);
-        assert_eq!(res[&(Cow::Borrowed("n"),32)],Sign::Positive);
+        assert_eq!(res[&(Cow::Borrowed("x"), 32)], Sign::Join);
+        assert_eq!(res[&(Cow::Borrowed("n"), 32)], Sign::Positive);
     }
 
     /*
@@ -709,23 +709,23 @@ mod tests {
         let b_var = Lvalue::Variable{ name: Cow::Borrowed("b"), size: 32, subscript: None };
         let flag = Lvalue::Variable{ name: Cow::Borrowed("flag"), size: 1, subscript: None };
         let bb0 = BasicBlock::from_vec(vec![
-                                       Mnemonic::new(0..1,"assign a".to_string(),"".to_string(),vec![].iter(),vec![
+                                       Mnemonic::new(0..1, "assign a".to_string(), "".to_string(), vec![].iter(), vec![
                                                      Statement{ op: Operation::Move(Rvalue::new_u64(0xffffffffffffff00)), assignee: a_var.clone()}].iter()).ok().unwrap(),
-                                       Mnemonic::new(1..2,"assign b".to_string(),"".to_string(),vec![].iter(),vec![
+                                       Mnemonic::new(1..2, "assign b".to_string(), "".to_string(), vec![].iter(), vec![
                                                      Statement{ op: Operation::Move(Rvalue::new_u64(1)), assignee: b_var.clone()}].iter()).ok().unwrap(),
-                                       Mnemonic::new(2..3,"cmp a".to_string(),"".to_string(),vec![].iter(),vec![
-                                                     Statement{ op: Operation::LessOrEqualSigned(a_var.clone().into(),Rvalue::new_u64(0)), assignee: flag.clone()}].iter()).ok().unwrap()]);
+                                       Mnemonic::new(2..3, "cmp a".to_string(), "".to_string(), vec![].iter(), vec![
+                                                     Statement{ op: Operation::LessOrEqualSigned(a_var.clone().into(), Rvalue::new_u64(0)), assignee: flag.clone()}].iter()).ok().unwrap()]);
         let bb1 = BasicBlock::from_vec(vec![
-                                       Mnemonic::new(3..4,"inc a".to_string(),"".to_string(),vec![].iter(),vec![
-                                                     Statement{ op: Operation::Add(a_var.clone().into(),Rvalue::new_u64(1)), assignee: a_var.clone()}].iter()).ok().unwrap(),
-                                       Mnemonic::new(4..5,"mul a".to_string(),"".to_string(),vec![].iter(),vec![
-                                                     Statement{ op: Operation::Multiply(a_var.clone().into(),Rvalue::new_u64(2)), assignee: b_var.clone()}].iter()).ok().unwrap(),
-                                       Mnemonic::new(5..6,"cmp a".to_string(),"".to_string(),vec![].iter(),vec![
-                                                     Statement{ op: Operation::LessOrEqualSigned(a_var.clone().into(),Rvalue::new_u64(0)), assignee: flag.clone()}].iter()).ok().unwrap()]);
+                                       Mnemonic::new(3..4, "inc a".to_string(), "".to_string(), vec![].iter(), vec![
+                                                     Statement{ op: Operation::Add(a_var.clone().into(), Rvalue::new_u64(1)), assignee: a_var.clone()}].iter()).ok().unwrap(),
+                                       Mnemonic::new(4..5, "mul a".to_string(), "".to_string(), vec![].iter(), vec![
+                                                     Statement{ op: Operation::Multiply(a_var.clone().into(), Rvalue::new_u64(2)), assignee: b_var.clone()}].iter()).ok().unwrap(),
+                                       Mnemonic::new(5..6, "cmp a".to_string(), "".to_string(), vec![].iter(), vec![
+                                                     Statement{ op: Operation::LessOrEqualSigned(a_var.clone().into(), Rvalue::new_u64(0)), assignee: flag.clone()}].iter()).ok().unwrap()]);
         let bb2 = BasicBlock::from_vec(vec![
-                                       Mnemonic::new(6..7,"use a".to_string(),"".to_string(),vec![].iter(),vec![
+                                       Mnemonic::new(6..7, "use a".to_string(), "".to_string(), vec![].iter(), vec![
                                                      Statement{ op: Operation::Move(a_var.clone().into()), assignee: a_var.clone()}].iter()).ok().unwrap(),
-                                       Mnemonic::new(7..8,"use b".to_string(),"".to_string(),vec![].iter(),vec![
+                                       Mnemonic::new(7..8, "use b".to_string(), "".to_string(), vec![].iter(), vec![
                                                      Statement{ op: Operation::Move(b_var.clone().into()), assignee: b_var.clone()}].iter()).ok().unwrap()]);
         let mut cfg = ControlFlowGraph::new();
         let v0 = cfg.add_vertex(ControlFlowTarget::Resolved(bb0));
@@ -734,12 +734,12 @@ mod tests {
 
         let g = Guard::from_flag(&flag.clone().into()).ok().unwrap();
 
-        cfg.add_edge(g.negation(),v0,v2);
-        cfg.add_edge(g.negation(),v1,v2);
-        cfg.add_edge(g.clone(),v0,v1);
-        cfg.add_edge(g.clone(),v1,v1);
+        cfg.add_edge(g.negation(), v0, v2);
+        cfg.add_edge(g.negation(), v1, v2);
+        cfg.add_edge(g.clone(), v0, v1);
+        cfg.add_edge(g.clone(), v1, v1);
 
-        let mut func = Function::new("func".to_string(),"ram".to_string());
+        let mut func = Function::new("func".to_string(), "ram".to_string());
 
         func.cflow_graph = cfg;
         func.entry_point = Some(v0);
@@ -747,12 +747,12 @@ mod tests {
         assert!(ssa_convertion(&mut func).is_ok());
 
         let vals = approximate::<Sign>(&func).ok().unwrap();
-        let res = results::<Sign>(&func,&vals);
+        let res = results::<Sign>(&func, &vals);
 
-        println!("vals: {:?}",vals);
-        println!("res: {:?}",res);
+        println!("vals: {:?}", vals);
+        println!("res: {:?}", res);
 
-        assert_eq!(res.get(&(Cow::Borrowed("a"),32)),Some(&Sign::Positive));
-        assert_eq!(res.get(&(Cow::Borrowed("b"),32)),Some(&Sign::Positive));
+        assert_eq!(res.get(&(Cow::Borrowed("a"), 32)), Some(&Sign::Positive));
+        assert_eq!(res.get(&(Cow::Borrowed("b"), 32)), Some(&Sign::Positive));
     }
 }

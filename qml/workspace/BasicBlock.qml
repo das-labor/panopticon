@@ -63,8 +63,8 @@ Item {
 
 	Item {
 		visible: mode == "RESOLVED"
-		height: Math.max(txt.childrenRect.height,tgt.height)
-		width: Math.max(opcodeWidth + argsWidth + 6 + 2 * bblock.xPadding,tgt.width)
+		height: Math.max(txt.childrenRect.height, tgt.height)
+		width: Math.max(opcodeWidth + argsWidth + 6 + 2 * bblock.xPadding, tgt.width)
 		Column {
 			id: txt
 			x: bblock.xPadding
@@ -73,7 +73,7 @@ Item {
 				model: bblock.code
 				delegate: Item {
 					width: comment.x + comment.width
-					height: Math.max(opcode.height,Math.max(args.height,comment.height)) + 2 * bblock.yPadding
+					height: Math.max(opcode.height, Math.max(args.height, comment.height)) + 2 * bblock.yPadding
 
 					Rectangle {
 						color: (index % 2 == 0 ? "#e6f7f4" : "white")
@@ -90,7 +90,7 @@ Item {
 						y: bblock.yPadding
 
 						Component.onCompleted: {
-							bblock.opcodeWidth = Math.max(bblock.opcodeWidth,opcode.contentWidth)
+							bblock.opcodeWidth = Math.max(bblock.opcodeWidth, opcode.contentWidth)
 						}
 					}
 
@@ -118,7 +118,7 @@ Item {
 								}
 
 								onTextChanged: {
-									bblock.argsWidth = Math.max(bblock.argsWidth,args.childrenRect.width)
+									bblock.argsWidth = Math.max(bblock.argsWidth, args.childrenRect.width)
 								}
 
 								MouseArea {
@@ -131,7 +131,7 @@ Item {
 						}
 
 						Component.onCompleted: {
-							bblock.argsWidth = Math.max(bblock.argsWidth,args.childrenRect.width)
+							bblock.argsWidth = Math.max(bblock.argsWidth, args.childrenRect.width)
 						}
 					}
 /*
@@ -168,7 +168,7 @@ Item {
 							if (event.modifiers & Qt.ShiftModifier) {
 								event.accepted = false
 							} else {
-								var res = JSON.parse(Panopticon.setComment(modelData.region,modelData.offset,comment.text.replace("\n","\\n")));
+								var res = JSON.parse(Panopticon.setComment(modelData.region, modelData.offset, comment.text.replace("\n", "\\n")));
 
 								if(res.status != "ok") {
 									errorDialog.text = res.error;

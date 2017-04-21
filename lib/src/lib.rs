@@ -1,6 +1,6 @@
 /*
  * Panopticon - A libre disassembler
- * Copyright (C) 2014,2015,2016 Kai Michaelis
+ * Copyright (C) 2014, 2015, 2016 Kai Michaelis
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -185,6 +185,7 @@ pub use abstractinterp::kset::Kset;
 pub mod avr;
 pub mod amd64;
 pub mod mos;
+pub mod mips;
 
 // file formats
 pub mod loader;

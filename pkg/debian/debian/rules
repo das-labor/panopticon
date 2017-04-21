@@ -5,9 +5,9 @@ include /usr/share/dpkg/architecture.mk
 include /usr/share/dpkg/buildflags.mk
 export CFLAGS CXXFLAGS CPPFLAGS LDFLAGS
 
-rust_cpu = $(subst i586,i686,$(1))
-DEB_HOST_RUST_TYPE := $(call rust_cpu,$(DEB_HOST_GNU_CPU))-unknown-$(DEB_HOST_GNU_SYSTEM)
-DEB_TARGET_RUST_TYPE := $(call rust_cpu,$(DEB_TARGET_GNU_CPU))-unknown-$(DEB_TARGET_GNU_SYSTEM)
+rust_cpu = $(subst i586, i686, $(1))
+DEB_HOST_RUST_TYPE := $(call rust_cpu, $(DEB_HOST_GNU_CPU))-unknown-$(DEB_HOST_GNU_SYSTEM)
+DEB_TARGET_RUST_TYPE := $(call rust_cpu, $(DEB_TARGET_GNU_CPU))-unknown-$(DEB_TARGET_GNU_SYSTEM)
 
 # Cargo looks for config in and writes cache to $CARGO_HOME/
 export CARGO_HOME = $(CURDIR)/.cargohome

@@ -60,7 +60,7 @@ Item {
 					for(var j = 0; j < functionModel.count; j++) {
 						var ent = get(j).entry_point;
 						if(ent !== undefined && ent > obj.entry_point) {
-							functionModel.insert(j,obj);
+							functionModel.insert(j, obj);
 							return;
 						}
 					}
@@ -76,7 +76,7 @@ Item {
 
 				for(var i = 0; i < functionModel.count; i++) {
 					if(get(i).row == row) {
-						functionModel.remove(i,1);
+						functionModel.remove(i, 1);
 						break;
 					}
 				}
@@ -85,7 +85,7 @@ Item {
 					for(var j = 0; j < functionModel.count; j++) {
 						var ent = get(j).entry_point;
 						if(ent !== undefined && ent > obj.entry_point) {
-							functionModel.insert(j,obj);
+							functionModel.insert(j, obj);
 
 							if(root.selection === "") {
 								root.selection = obj.uuid;
@@ -95,7 +95,7 @@ Item {
 							return;
 						}
 					}
-					functionModel.insert(functionModel.count,obj);
+					functionModel.insert(functionModel.count, obj);
 				}
 			})
 

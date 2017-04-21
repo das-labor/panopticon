@@ -45,8 +45,8 @@ Memory in PIL programs is modeled as an array of memory cells. These arrays are 
 
 .. code-block:: c++
 
-  f = a[0x1,1,little-endian]
-  b[a,3,big-endian] = 0x1
+  f = a[0x1, 1, little-endian]
+  b[a, 3, big-endian] = 0x1
 
 Aside from boolean and integer constants, variables and memory references PIL programs can use undefined values. Setting a variable or memory cell to "undefined" tells the analysis engine that the operation either has no result or that this value can not be by determined by the disassembler. A example for the first case is the "call" instruction in x86. PIL structure mandates that call produces a value that is assigned to a varaible. No such value exists in Intel architectures, so "call" returns "undefined".
 
@@ -68,8 +68,8 @@ The textual representaion of PIL used previous examples can'b be used directly i
 
 .. code-block:: c++
 
-  instr i(logic_xor{true,false},variable("a"));
-  instr j(int_add{variable("b"),contant(55)},variable("c"));
+  instr i(logic_xor{true, false}, variable("a"));
+  instr j(int_add{variable("b"), contant(55)}, variable("c"));
 
 Classes the represent PIL values are defined in "value.hh". These are either :cpp:class:`constant`, :cpp:class:`variable`, :cpp:class:`memory` or :cpp:class:`undefined`. The :cpp:class:`lvalue` type is a union of all value classes the can be the target of an assignment, :cpp:class:`rvalue` combines all implemented value types.
 
@@ -82,9 +82,9 @@ To make :cpp:class:`instr` instance construction easier, the disassembler framew
 
 .. code-block:: c++
 
-  st.mnemonic("test",2,{variable("a"),variable("b")},[&](void)
+  st.mnemonic("test", 2, {variable("a"), variable("b")}, [&](void)
   {
-    cg.add_i(variable("a"),cg.mul_i(variable("a"),constant(55)),variable("b"));
+    cg.add_i(variable("a"), cg.mul_i(variable("a"), constant(55)), variable("b"));
     cg.jump(st.address + 2);
   });
 
@@ -96,7 +96,7 @@ To make complex PIL expression more readable Panopticon includes overloads of mo
 
   using namespace po::dsel;
 
-  st.mnemonic("test",2,{variable("a"),variable("b")},[&](void)
+  st.mnemonic("test", 2, {variable("a"), variable("b")}, [&](void)
   {
     variable a("a"), variable b("b");
     cg.assign(a, a * 55 + b);

@@ -20,150 +20,150 @@ macro_rules! opcode {
             MnemonicSpec::ModRM($grp),
             OpcodeOption::None,
             semantic::noop_binary,
-            OperandSpec::Present(AddressingMethod::$addr1,OperandType::$type1),
-            OperandSpec::Present(AddressingMethod::$addr2,OperandType::$type2))
+            OperandSpec::Present(AddressingMethod::$addr1, OperandType::$type1),
+            OperandSpec::Present(AddressingMethod::$addr2, OperandType::$type2))
     };
     ($mne:ident; $addr1:ident / $type1:ident , $addr2:ident / $type2:ident; $opt:ident) => {
         Opcode::Binary(
             MnemonicSpec::Single(stringify!($mne)),
             OpcodeOption::$opt,
             semantic::$mne,
-            OperandSpec::Present(AddressingMethod::$addr1,OperandType::$type1),
-            OperandSpec::Present(AddressingMethod::$addr2,OperandType::$type2))
+            OperandSpec::Present(AddressingMethod::$addr1, OperandType::$type1),
+            OperandSpec::Present(AddressingMethod::$addr2, OperandType::$type2))
     };
     ($mne:ident ; $addr1:ident / $type1:ident , $addr2:ident / $type2:ident) => {
         Opcode::Binary(
             MnemonicSpec::Single(stringify!($mne)),
             OpcodeOption::None,
             semantic::$mne,
-            OperandSpec::Present(AddressingMethod::$addr1,OperandType::$type1),
-            OperandSpec::Present(AddressingMethod::$addr2,OperandType::$type2))
+            OperandSpec::Present(AddressingMethod::$addr1, OperandType::$type1),
+            OperandSpec::Present(AddressingMethod::$addr2, OperandType::$type2))
     };
     ($sem:ident ($mne:expr); $addr1:ident / $type1:ident , $addr2:ident / $type2:ident) => {
         Opcode::Binary(
             MnemonicSpec::Single($mne),
             OpcodeOption::None,
             semantic::$sem,
-            OperandSpec::Present(AddressingMethod::$addr1,OperandType::$type1),
-            OperandSpec::Present(AddressingMethod::$addr2,OperandType::$type2))
+            OperandSpec::Present(AddressingMethod::$addr1, OperandType::$type1),
+            OperandSpec::Present(AddressingMethod::$addr2, OperandType::$type2))
     };
     ($mne:ident; $addr1:ident / $type1:ident , $addr2:ident / $type2:ident , $addr3:ident / $type3:ident) => {
         Opcode::Trinary(
             MnemonicSpec::Single(stringify!($mne)),
             OpcodeOption::None,
             semantic::$mne,
-            OperandSpec::Present(AddressingMethod::$addr1,OperandType::$type1),
-            OperandSpec::Present(AddressingMethod::$addr2,OperandType::$type2),
-            OperandSpec::Present(AddressingMethod::$addr3,OperandType::$type3))
+            OperandSpec::Present(AddressingMethod::$addr1, OperandType::$type1),
+            OperandSpec::Present(AddressingMethod::$addr2, OperandType::$type2),
+            OperandSpec::Present(AddressingMethod::$addr3, OperandType::$type3))
     };
     ($sem:ident ($mne:expr); $addr1:ident / $type1:ident , $addr2:ident / $type2:ident , $addr3:ident / $type3:ident) => {
         Opcode::Trinary(
             MnemonicSpec::Single($mne),
             OpcodeOption::None,
             semantic::$sem,
-            OperandSpec::Present(AddressingMethod::$addr1,OperandType::$type1),
-            OperandSpec::Present(AddressingMethod::$addr2,OperandType::$type2),
-            OperandSpec::Present(AddressingMethod::$addr3,OperandType::$type3))
+            OperandSpec::Present(AddressingMethod::$addr1, OperandType::$type1),
+            OperandSpec::Present(AddressingMethod::$addr2, OperandType::$type2),
+            OperandSpec::Present(AddressingMethod::$addr3, OperandType::$type3))
     };
     ($mne:ident; $addr1:ident / $type1:ident , $addr2:ident / $type2:ident , $addr3:ident / $type3:ident , $addr4:ident / $type4:ident) => {
         Opcode::Quaternary(
             MnemonicSpec::Single(stringify!($mne)),
             OpcodeOption::None,
             semantic::$mne,
-            OperandSpec::Present(AddressingMethod::$addr1,OperandType::$type1),
-            OperandSpec::Present(AddressingMethod::$addr2,OperandType::$type2),
-            OperandSpec::Present(AddressingMethod::$addr3,OperandType::$type3),
-            OperandSpec::Present(AddressingMethod::$addr4,OperandType::$type4))
+            OperandSpec::Present(AddressingMethod::$addr1, OperandType::$type1),
+            OperandSpec::Present(AddressingMethod::$addr2, OperandType::$type2),
+            OperandSpec::Present(AddressingMethod::$addr3, OperandType::$type3),
+            OperandSpec::Present(AddressingMethod::$addr4, OperandType::$type4))
     };
     ($mne:ident; $addr1:ident / $type1:ident , $addr2:ident / $type2:ident , $type3:ident) => {
         Opcode::Trinary(
             MnemonicSpec::Single(stringify!($mne)),
             OpcodeOption::None,
             semantic::$mne,
-            OperandSpec::Present(AddressingMethod::$addr1,OperandType::$type1),
-            OperandSpec::Present(AddressingMethod::$addr2,OperandType::$type2),
-            OperandSpec::Present(AddressingMethod::None,OperandType::$type3))
+            OperandSpec::Present(AddressingMethod::$addr1, OperandType::$type1),
+            OperandSpec::Present(AddressingMethod::$addr2, OperandType::$type2),
+            OperandSpec::Present(AddressingMethod::None, OperandType::$type3))
     };
     ($mne:ident; $type1:ident , $addr2:ident / $type2:ident) => {
         Opcode::Binary(
             MnemonicSpec::Single(stringify!($mne)),
             OpcodeOption::None,
             semantic::$mne,
-            OperandSpec::Present(AddressingMethod::None,OperandType::$type1),
-            OperandSpec::Present(AddressingMethod::$addr2,OperandType::$type2))
+            OperandSpec::Present(AddressingMethod::None, OperandType::$type1),
+            OperandSpec::Present(AddressingMethod::$addr2, OperandType::$type2))
     };
       ($mne:ident; $addr1:ident / $type1:ident , $type2:ident) => {
         Opcode::Binary(
             MnemonicSpec::Single(stringify!($mne)),
             OpcodeOption::None,
             semantic::$mne,
-            OperandSpec::Present(AddressingMethod::$addr1,OperandType::$type1),
-            OperandSpec::Present(AddressingMethod::None,OperandType::$type2))
+            OperandSpec::Present(AddressingMethod::$addr1, OperandType::$type1),
+            OperandSpec::Present(AddressingMethod::None, OperandType::$type2))
     };
     ($mne:ident; $type1:ident , $type2:ident) => {
         Opcode::Binary(
             MnemonicSpec::Single(stringify!($mne)),
             OpcodeOption::None,
             semantic::$mne,
-            OperandSpec::Present(AddressingMethod::None,OperandType::$type1),
-            OperandSpec::Present(AddressingMethod::None,OperandType::$type2))
+            OperandSpec::Present(AddressingMethod::None, OperandType::$type1),
+            OperandSpec::Present(AddressingMethod::None, OperandType::$type2))
     };
     ($mne:ident; $addr1:ident / $type1:ident; $opt:ident) => {
        Opcode::Unary(
             MnemonicSpec::Single(stringify!($mne)),
             OpcodeOption::$opt,
             semantic::$mne,
-            OperandSpec::Present(AddressingMethod::$addr1,OperandType::$type1))
+            OperandSpec::Present(AddressingMethod::$addr1, OperandType::$type1))
     };
     ($mne:ident; $addr1:ident / $type1:ident) => {
        Opcode::Unary(
             MnemonicSpec::Single(stringify!($mne)),
             OpcodeOption::None,
             semantic::$mne,
-            OperandSpec::Present(AddressingMethod::$addr1,OperandType::$type1))
+            OperandSpec::Present(AddressingMethod::$addr1, OperandType::$type1))
     };
     ($sem:ident ($mne:expr); $addr1:ident / $type1:ident) => {
        Opcode::Unary(
             MnemonicSpec::Single($mne),
             OpcodeOption::None,
             semantic::$sem,
-            OperandSpec::Present(AddressingMethod::$addr1,OperandType::$type1))
+            OperandSpec::Present(AddressingMethod::$addr1, OperandType::$type1))
     };
     (group $grp:expr ; $addr1:ident / $type1:ident) => {
        Opcode::Unary(
             MnemonicSpec::ModRM($grp),
             OpcodeOption::None,
             semantic::noop_unary,
-            OperandSpec::Present(AddressingMethod::$addr1,OperandType::$type1))
+            OperandSpec::Present(AddressingMethod::$addr1, OperandType::$type1))
     };
     (group $grp:expr; $addr1:ident / $type1:ident , $type2:ident) => {
         Opcode::Binary(
             MnemonicSpec::ModRM($grp),
             OpcodeOption::None,
             semantic::noop_binary,
-            OperandSpec::Present(AddressingMethod::$addr1,OperandType::$type1),
-            OperandSpec::Present(AddressingMethod::None,OperandType::$type2))
+            OperandSpec::Present(AddressingMethod::$addr1, OperandType::$type1),
+            OperandSpec::Present(AddressingMethod::None, OperandType::$type2))
     };
     ($mne:ident; $type1:ident; $opt:ident) => {
        Opcode::Unary(
             MnemonicSpec::Single(stringify!($mne)),
             OpcodeOption::$opt,
             semantic::$mne,
-            OperandSpec::Present(AddressingMethod::None,OperandType::$type1))
+            OperandSpec::Present(AddressingMethod::None, OperandType::$type1))
     };
     ($mne:ident; $type1:ident) => {
        Opcode::Unary(
             MnemonicSpec::Single(stringify!($mne)),
             OpcodeOption::None,
             semantic::$mne,
-            OperandSpec::Present(AddressingMethod::None,OperandType::$type1))
+            OperandSpec::Present(AddressingMethod::None, OperandType::$type1))
     };
     ($sem:ident ($mne:expr); $type1:ident) => {
        Opcode::Unary(
             MnemonicSpec::Single(stringify!($mne)),
             OpcodeOption::None,
             semantic::$sem,
-            OperandSpec::Present(AddressingMethod::None,OperandType::$type1))
+            OperandSpec::Present(AddressingMethod::None, OperandType::$type1))
     };
     ($mne:ident; ) => {
        Opcode::Nonary(
@@ -428,20 +428,20 @@ pub static ONEBYTE_TABLE: [Opcode; 256] = [
         MnemonicSpec::Single("loop"),
         OpcodeOption::Force64,
         semantic::loop_,           // 0xe2: loop
-        OperandSpec::Present(AddressingMethod::J,OperandType::b)),
+        OperandSpec::Present(AddressingMethod::J, OperandType::b)),
     opcode!(jcxz; J/b; Force64),           // 0xe3: jcxz
     Opcode::Binary(
         MnemonicSpec::Single("in"),
         OpcodeOption::None,
         semantic::in_,          // 0xe4: in
-        OperandSpec::Present(AddressingMethod::None,OperandType::AL),
-        OperandSpec::Present(AddressingMethod::I,OperandType::b)),
+        OperandSpec::Present(AddressingMethod::None, OperandType::AL),
+        OperandSpec::Present(AddressingMethod::I, OperandType::b)),
     Opcode::Binary(
         MnemonicSpec::Single("in"),
         OpcodeOption::None,
         semantic::in_,          // 0xe5: in
-        OperandSpec::Present(AddressingMethod::None,OperandType::eAX),
-        OperandSpec::Present(AddressingMethod::I,OperandType::b)),
+        OperandSpec::Present(AddressingMethod::None, OperandType::eAX),
+        OperandSpec::Present(AddressingMethod::I, OperandType::b)),
     opcode!(out; I/b, AL),        // 0xe6: out
     opcode!(out; I/b, eAX),       // 0xe7: out
     opcode!(call; J/z; Force64),           // 0xe8: call
@@ -452,14 +452,14 @@ pub static ONEBYTE_TABLE: [Opcode; 256] = [
         MnemonicSpec::Single("in"),
         OpcodeOption::None,
         semantic::in_,
-        OperandSpec::Present(AddressingMethod::None,OperandType::AL),
-        OperandSpec::Present(AddressingMethod::None,OperandType::DX)),        // 0xec: in
+        OperandSpec::Present(AddressingMethod::None, OperandType::AL),
+        OperandSpec::Present(AddressingMethod::None, OperandType::DX)),        // 0xec: in
     Opcode::Binary(
         MnemonicSpec::Single("in"),
         OpcodeOption::None,
         semantic::in_,
-        OperandSpec::Present(AddressingMethod::None,OperandType::eAX),
-        OperandSpec::Present(AddressingMethod::None,OperandType::DX)),        // 0xed: in
+        OperandSpec::Present(AddressingMethod::None, OperandType::eAX),
+        OperandSpec::Present(AddressingMethod::None, OperandType::DX)),        // 0xed: in
     opcode!(out; DX, AL),         // 0xee: out
     opcode!(out; DX, eAX),        // 0xef: out
     opcode!(lock; ),              // 0xf0: lock
@@ -679,7 +679,7 @@ pub static TWOBYTE_TABLE: [Opcode; 256] = [
     opcode!(movnti; M/y, G/y),    // 0xc3: movnti
     opcode!(pinsrw; P/q, R/y),    // 0xc4: pinsrw
     opcode!(vpextrw; G/d, N/q, I/b), // 0xc5: pextrw
-    opcode!(vshufps; V/ps, H/ps, W/ps, I/b),// 0xc6: shufps
+    opcode!(vshufps; V/ps, H/ps, W/ps, I/b), // 0xc6: shufps
     opcode!(group 9; ),        // 0xc7: cmpxchg8b
     opcode!(bswap; rAX),          // 0xc8: bswap
     opcode!(bswap; rCX),          // 0xc9: bswap
@@ -936,9 +936,9 @@ pub static TWOBYTE_66_TABLE: [Opcode; 256] = [
     unused!(),                      // 0xc1
     opcode!(vcmppd; V/pd, H/pd, W/pd, I/b), // 0xc2: cmppd
     unused!(),                      // 0xc3
-    opcode!(vpinsrw; V/pd, H/dq, I/b),// 0xc4: pinsrw
+    opcode!(vpinsrw; V/pd, H/dq, I/b), // 0xc4: pinsrw
     opcode!(pextrw; G/d, U/dq, I/b), // 0xc5: pextrw
-    opcode!(vshufpd; V/pd, H/pd, W/pd, I/b),// 0xc6: shufpd
+    opcode!(vshufpd; V/pd, H/pd, W/pd, I/b), // 0xc6: shufpd
     opcode!(group 9; ),        // 0xc7
     unused!(),                      // 0xc8
     unused!(),                      // 0xc9
@@ -2822,20 +2822,20 @@ pub static THREEBYTE_3A66_TABLE: [Opcode; 256] = [
     unused!(),                      // 0x07
     opcode!(vroundps; V/x, W/x, I/b),  // 0x08: roundps
     opcode!(vroundpd; V/x, W/x, I/b),  // 0x09: roundpd
-    opcode!(vroundss; V/ss, W/ss, I/b),// 0x0a: roundss
-    opcode!(vroundsd; V/sd, W/sd, I/b),// 0x0b: roundsd
-    opcode!(vblendps; V/x, H/x, W/x, I/b),// 0x0c: blendps
-    opcode!(vblendpd; V/x, H/x, W/x, I/b),// 0x0d: blendpd
-    opcode!(vpblendw; V/x, H/x, W/x, I/b),// 0x0e: pblendw
-    opcode!(vpalignr; V/x, H/x, W/x, I/b),// 0x0f: palignr
+    opcode!(vroundss; V/ss, W/ss, I/b), // 0x0a: roundss
+    opcode!(vroundsd; V/sd, W/sd, I/b), // 0x0b: roundsd
+    opcode!(vblendps; V/x, H/x, W/x, I/b), // 0x0c: blendps
+    opcode!(vblendpd; V/x, H/x, W/x, I/b), // 0x0d: blendpd
+    opcode!(vpblendw; V/x, H/x, W/x, I/b), // 0x0e: pblendw
+    opcode!(vpalignr; V/x, H/x, W/x, I/b), // 0x0f: palignr
     unused!(),                      // 0x10
     unused!(),                      // 0x11
     unused!(),                      // 0x12
     unused!(),                      // 0x13
-    opcode!(pextrb; M/b, V/dq, I/b),// 0x14: pextrb
-    opcode!(pextrw; M/w, V/dq, I/b),// 0x15: pextrw
+    opcode!(pextrb; M/b, V/dq, I/b), // 0x14: pextrb
+    opcode!(pextrw; M/w, V/dq, I/b), // 0x15: pextrw
     opcode!(pextrd; E/y, V/dq, I/b), // 0x16: pextrd
-    opcode!(extractps; E/d, V/dq, I/b),// 0x17: extractps
+    opcode!(extractps; E/d, V/dq, I/b), // 0x17: extractps
     opcode!(vinserti128; V/qq, H/qq, W/qq, I/b),                      // 0x18
     opcode!(vextracti128; W/dq, V/dq, I/b),                      // 0x19
     unused!(),                      // 0x1a
@@ -2844,8 +2844,8 @@ pub static THREEBYTE_3A66_TABLE: [Opcode; 256] = [
     unused!(),                      // 0x1d
     unused!(),                      // 0x1e
     unused!(),                      // 0x1f
-    opcode!(vpinsrb; V/dq, H/dq, M/d, I/b),// 0x20: pinsrb
-    opcode!(vinsertps; V/dq, H/dq, M/d, I/b),// 0x21: insertps
+    opcode!(vpinsrb; V/dq, H/dq, M/d, I/b), // 0x20: pinsrb
+    opcode!(vinsertps; V/dq, H/dq, M/d, I/b), // 0x21: insertps
     opcode!(vpinsrd; V/dq, H/dq, E/y, I/b), // 0x22: pinsrd
     unused!(),                      // 0x23
     unused!(),                      // 0x24
@@ -2878,9 +2878,9 @@ pub static THREEBYTE_3A66_TABLE: [Opcode; 256] = [
     unused!(),                      // 0x3f
     opcode!(vdpps; V/x, H/x, W/x, I/b),  // 0x40: dpps
     opcode!(vdppd; V/dq, H/dq, W/dq, I/b),  // 0x41: dppd
-    opcode!(vmpsadbw; V/x, H/x, W/x, I/b),// 0x42: mpsadbw
+    opcode!(vmpsadbw; V/x, H/x, W/x, I/b), // 0x42: mpsadbw
     unused!(),                      // 0x43
-    opcode!(vpclmulqdq; V/dq, H/dq, W/dq, I/b),// 0x44: pclmulqdq
+    opcode!(vpclmulqdq; V/dq, H/dq, W/dq, I/b), // 0x44: pclmulqdq
     unused!(),                      // 0x45
     opcode!(vperm2i128; V/qq, H/qq, W/qq, I/b),                      // 0x46
     unused!(),                      // 0x47
@@ -2908,10 +2908,10 @@ pub static THREEBYTE_3A66_TABLE: [Opcode; 256] = [
     unused!(),                      // 0x5d
     unused!(),                      // 0x5e
     unused!(),                      // 0x5f
-    opcode!(vpcmpestrm; V/dq, W/dq, I/b),// 0x60: pcmpestrm
-    opcode!(vpcmpestri; V/dq, W/dq, I/b),// 0x61: pcmpestri
-    opcode!(vpcmpistrm; V/dq, W/dq, I/b),// 0x62: pcmpistrm
-    opcode!(vpcmpistri; V/dq, W/dq, I/b),// 0x63: pcmpistri
+    opcode!(vpcmpestrm; V/dq, W/dq, I/b), // 0x60: pcmpestrm
+    opcode!(vpcmpestri; V/dq, W/dq, I/b), // 0x61: pcmpestri
+    opcode!(vpcmpistrm; V/dq, W/dq, I/b), // 0x62: pcmpistrm
+    opcode!(vpcmpistri; V/dq, W/dq, I/b), // 0x63: pcmpistri
     unused!(),                      // 0x64
     unused!(),                      // 0x65
     unused!(),                      // 0x66
@@ -3035,7 +3035,7 @@ pub static THREEBYTE_3A66_TABLE: [Opcode; 256] = [
     unused!(),                      // 0xdc
     unused!(),                      // 0xdd
     unused!(),                      // 0xde
-    opcode!(vaeskeygenassist; V/dq, W/dq, I/b),// 0xdf: aeskeygenassist
+    opcode!(vaeskeygenassist; V/dq, W/dq, I/b), // 0xdf: aeskeygenassist
     unused!(),                      // 0xe0
     unused!(),                      // 0xe1
     unused!(),                      // 0xe2
@@ -4613,9 +4613,9 @@ pub static GROUP12_OPC71: [Opcode; 8] = [
 pub static GROUP12_OPC6671: [Opcode; 8] = [
     unused!(),                  // 0x00
     unused!(),                  // 0x01
-    opcode!(vpsrlw; H/x, U/x, I/b),// 0x02: psrlw
+    opcode!(vpsrlw; H/x, U/x, I/b), // 0x02: psrlw
     unused!(),                  // 0x03
-    opcode!(vpsraw; H/x, U/x, I/b),// 0x04: psraw
+    opcode!(vpsraw; H/x, U/x, I/b), // 0x04: psraw
     unused!(),                  // 0x05
     opcode!(vpsllw; H/x, U/x, I/b),   // 0x06: psllw
     unused!(),                  // 0x07
@@ -4635,9 +4635,9 @@ pub static GROUP13_OPC72: [Opcode; 8] = [
 pub static GROUP13_OPC6672: [Opcode; 8] = [
     unused!(),                  // 0x00
     unused!(),                  // 0x01
-    opcode!(vpsrld; H/x, U/x, I/b),// 0x02: psrld
+    opcode!(vpsrld; H/x, U/x, I/b), // 0x02: psrld
     unused!(),                  // 0x03
-    opcode!(vpsrad; H/x, U/x, I/b),// 0x04: psrad
+    opcode!(vpsrad; H/x, U/x, I/b), // 0x04: psrad
     unused!(),                  // 0x05
     opcode!(vpslld; H/x, U/x, I/b),   // 0x06: pslld
     unused!(),                  // 0x07
@@ -4657,12 +4657,12 @@ pub static GROUP14_OPC73: [Opcode; 8] = [
 pub static GROUP14_OPC6673: [Opcode; 8] = [
     unused!(),                  // 0x00
     unused!(),                  // 0x01
-    opcode!(vpsrlq; H/x, U/x, I/b),// 0x02: psrlq
-    opcode!(vpsrldq; H/x, U/x, I/b),// 0x03: psrldq
+    opcode!(vpsrlq; H/x, U/x, I/b), // 0x02: psrlq
+    opcode!(vpsrldq; H/x, U/x, I/b), // 0x03: psrldq
     unused!(),                  // 0x04
     unused!(),                  // 0x05
     opcode!(vpsllq; H/x, U/x, I/b),   // 0x06: psllq
-    opcode!(vpslldq; H/x, U/x, I/b),// 0x07: pslldq
+    opcode!(vpslldq; H/x, U/x, I/b), // 0x07: pslldq
 ];
 
 // GROUP15_OPCAE

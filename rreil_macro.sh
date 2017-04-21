@@ -41,10 +41,10 @@ print_tail() {
 	echo "			  stmt.extend(other.drain(..));"
 	echo "		  	Ok(stmt)"
 	echo "		  }"
-	echo "		  Err(e) => Err(e),"
+	echo "		  Err(e) => Err(e), "
 	echo "	  }"
-	echo "  },"
-	echo "	Err(e) => Err(e).into(),"
+	echo "  }, "
+	echo "	Err(e) => Err(e).into(), "
 	echo "}; ret"
 }
 
@@ -72,7 +72,7 @@ do
          echo "    // $A := $X, $Y"
          echo "    ( \$op:ident # $A_MATCH, $X_MATCH , $Y_MATCH ; \$(\$cdr:tt)*) => {"
          echo "        {"
-				 echo "            let mut stmt = vec![\$crate::Statement{ op: \$crate::Operation::\$op(rreil_rvalue!($X_ARG),rreil_rvalue!($Y_ARG)), assignee: rreil_lvalue!($A_ARG)}];"
+				 echo "            let mut stmt = vec![\$crate::Statement{ op: \$crate::Operation::\$op(rreil_rvalue!($X_ARG), rreil_rvalue!($Y_ARG)), assignee: rreil_lvalue!($A_ARG)}];"
 				 print_tail
          echo "        }"
          echo "    };"
@@ -129,7 +129,7 @@ do
       echo "    // $A := $X"
       echo "    ( \$op:ident # \$bank:ident # $A_MATCH, $X_MATCH ; \$(\$cdr:tt)*) => {"
       echo "        {"
-      echo "            let mut stmt = vec![\$crate::Statement{ op: \$crate::Operation::\$op(::std::borrow::Cow::Borrowed(stringify!(\$bank)),rreil_rvalue!($X_ARG)), assignee: rreil_lvalue!($A_ARG)}];"
+      echo "            let mut stmt = vec![\$crate::Statement{ op: \$crate::Operation::\$op(::std::borrow::Cow::Borrowed(stringify!(\$bank)), rreil_rvalue!($X_ARG)), assignee: rreil_lvalue!($A_ARG)}];"
 			print_tail
       echo "        }"
       echo "    };"
@@ -157,7 +157,7 @@ do
       echo "    // $A := $X"
       echo "    ( \$op:ident # \$sz:tt # $A_MATCH, $X_MATCH ; \$(\$cdr:tt)*) => {"
       echo "        {"
-      echo "            let mut stmt = vec![\$crate::Statement{ op: \$crate::Operation::\$op(rreil_imm!(\$sz),rreil_rvalue!($X_ARG)), assignee: rreil_lvalue!($A_ARG)}];"
+      echo "            let mut stmt = vec![\$crate::Statement{ op: \$crate::Operation::\$op(rreil_imm!(\$sz), rreil_rvalue!($X_ARG)), assignee: rreil_lvalue!($A_ARG)}];"
 			print_tail
       echo "        }"
 			echo "    };"
@@ -185,7 +185,7 @@ do
       echo "    // $A := $X"
       echo "    ( \$op:ident # \$sz:tt # $A_MATCH, $X_MATCH ; \$(\$cdr:tt)*) => {"
       echo "        {"
-			echo "            let mut stmt = vec![\$crate::Statement{ op: \$crate::Operation::\$op(rreil_imm!(\$sz),rreil_rvalue!($A_ARG),rreil_rvalue!($X_ARG)), assignee: rreil_lvalue!($A_ARG)}];"
+			echo "            let mut stmt = vec![\$crate::Statement{ op: \$crate::Operation::\$op(rreil_imm!(\$sz), rreil_rvalue!($A_ARG), rreil_rvalue!($X_ARG)), assignee: rreil_lvalue!($A_ARG)}];"
 			print_tail
       echo "        }"
       echo "    };"

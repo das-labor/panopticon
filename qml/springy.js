@@ -435,7 +435,7 @@ var Springy = (function() {
 			// Is this, along with updatePosition below, the only places that your
 			// integration code exist?
 			point.v = point.v.add(point.a.multiply(timestep)).multiply(this.damping);
-			point.a = new Vector(0,0);
+			point.a = new Vector(0, 0);
 		});
 	};
 
@@ -530,8 +530,8 @@ var Springy = (function() {
 
 	// returns [bottomleft, topright]
 	Layout.ForceDirected.prototype.getBoundingBox = function() {
-		var bottomleft = new Vector(-2,-2);
-		var topright = new Vector(2,2);
+		var bottomleft = new Vector(-2, -2);
+		var topright = new Vector(2, 2);
 
 		this.eachNode(function(n, point) {
 			if (point.p.x < bottomleft.x) {
@@ -717,7 +717,7 @@ var layout = null;
 WorkerScript.onMessage = function(msg) {
 	if(layout === null) {
 		var graph = new Springy.Graph();
-		layout = new Springy.Layout.ForceDirected(graph,400.0,400.0,0.01);
+		layout = new Springy.Layout.ForceDirected(graph, 400.0, 400.0, 0.01);
 	}
 
 	//console.log("WS: " + JSON.stringify(msg));
@@ -731,10 +731,10 @@ WorkerScript.onMessage = function(msg) {
 
 		for(var e = 0; e < calls.length; e++) {
 			try {
-				layout.graph.addEdges([msg.item.uuid,calls[e]]);
+				layout.graph.addEdges([msg.item.uuid, calls[e]]);
 			} catch(ex) {
 				layout.graph.addNodes(calls[e]);
-				layout.graph.addEdges([msg.item.uuid,calls[e]]);
+				layout.graph.addEdges([msg.item.uuid, calls[e]]);
 			}
 		}
 
@@ -759,7 +759,7 @@ WorkerScript.onMessage = function(msg) {
 				ret[node.id] = toScreen(p.p);
 			});
 
-			WorkerScript.sendMessage({"type":"tock","nodes":ret});
+			WorkerScript.sendMessage({"type":"tock", "nodes":ret});
 		}
 	}
 };

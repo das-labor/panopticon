@@ -109,7 +109,7 @@ Item {
 					var ctx = arrowCanvas.getContext("2d")
 
 					ctx.fillStyle = "#dddddd"
-					ctx.fillRect(arrowCanvas.x,arrowCanvas.y,arrowCanvas.width,arrowCanvas.height)
+					ctx.fillRect(arrowCanvas.x, arrowCanvas.y, arrowCanvas.width, arrowCanvas.height)
 
 					if(ctx != null) {
 						var ends = contents.arrows.end
@@ -139,7 +139,7 @@ Item {
 							if(begins[idx].tip) {
 								ctx.fillStyle = root.arrowHeadColor
 								ctx.beginPath()
-								ctx.arc(arrowCanvas.width - 4,y_pos,4,0,Math.PI * 2, true)
+								ctx.arc(arrowCanvas.width - 4, y_pos, 4, 0, Math.PI * 2, true)
 								ctx.fill()
 							}
 
@@ -168,7 +168,7 @@ Item {
 							if(ends[idx].tip) {
 								ctx.fillStyle = root.arrowHeadColor
 								ctx.beginPath()
-								ctx.arc(arrowCanvas.width - 4,y_pos,4,0,Math.PI * 2, true)
+								ctx.arc(arrowCanvas.width - 4, y_pos, 4, 0, Math.PI * 2, true)
 								ctx.fill()
 							}
 							idx += 1
@@ -220,7 +220,7 @@ Item {
 					verticalAlignment: Text.AlignVCenter
 					font { family: root.fontFamily; pixelSize: root.fontPixelSize }
 
-					onWidthChanged: { root.addressColumnWidth = Math.max(root.addressColumnWidth,width) }
+					onWidthChanged: { root.addressColumnWidth = Math.max(root.addressColumnWidth, width) }
 				}
 			}
 
@@ -269,7 +269,7 @@ Item {
 
 									onEntered: hexdump.activeColumn = colIndex
 									onExited: hexdump.activeColumn = -1
-									onPressed: session.disassemble(rowIndex,colIndex)
+									onPressed: session.disassemble(rowIndex, colIndex)
 								}
 							}
 						}
@@ -308,7 +308,7 @@ Item {
 
 									onEntered: hexdump.activeColumn = colIndex
 									onExited: hexdump.activeColumn = -1
-									onPressed: session.disassemble(rowIndex,colIndex)
+									onPressed: session.disassemble(rowIndex, colIndex)
 								}
 							}
 						}
@@ -322,7 +322,7 @@ Item {
 					width: childrenRect.width
 
 					Repeater {
-						model: root.mnemonicHexdump ? contents.payload.hex.slice(0,maxMnemonicHexdump) : []
+						model: root.mnemonicHexdump ? contents.payload.hex.slice(0, maxMnemonicHexdump) : []
 						delegate: Rectangle {
 							property int colIndex: index
 							height: root.cellSize
@@ -351,7 +351,7 @@ Item {
 
 								onEntered: hexdump.activeColumn = colIndex
 								onExited: hexdump.activeColumn = -1
-								onPressed: session.disassemble(rowIndex,colIndex)
+								onPressed: session.disassemble(rowIndex, colIndex)
 							}
 						}
 					}
@@ -382,11 +382,11 @@ Item {
 					}
 				}
 
-				onWidthChanged: { root.payloadColumnWidth = Math.max(root.payloadColumnWidth,width) }
+				onWidthChanged: { root.payloadColumnWidth = Math.max(root.payloadColumnWidth, width) }
 			}
 
 			Item {
-				width: childrenRect.width + Math.max(0,root.payloadColumnWidth - payloadCol.width)
+				width: childrenRect.width + Math.max(0, root.payloadColumnWidth - payloadCol.width)
 				height: childrenRect.height
 
 				Rectangle {
@@ -407,15 +407,15 @@ Item {
 					readOnly: false
 					text: contents.comment
 					width: root.width - root.payloadColumnWidth - root.addressColumnWidth - root.arrowColumnWidth
-					height: root.cellSize * Math.max(1,lineCount)
-					x: Math.max(0,root.payloadColumnWidth - payloadCol.width) + 25
+					height: root.cellSize * Math.max(1, lineCount)
+					x: Math.max(0, root.payloadColumnWidth - payloadCol.width) + 25
 
 					Keys.enabled: true
 					Keys.priority: Keys.BeforeItem
 					Keys.onPressed: {
 						if((event.key == Qt.Key_Enter && (event.modifiers & Qt.ShiftModifier) == 0) ||
 							 (event.key == Qt.Key_Return && (event.modifiers & Qt.ShiftModifier) == 0)) {
-							root.session.postComment(rowIndex,text)
+							root.session.postComment(rowIndex, text)
 							text = contents.comment
 							focus = false
 							event.accepted = true
@@ -446,7 +446,7 @@ Item {
 				if(lst.contentHeight <= lst.height) {
 					0
 				} else if(lst.contentHeight > lst.height && lst.contentHeight <= lst.height * 2) {
-					Math.max(30,lst.contentHeight - lst.height)
+					Math.max(30, lst.contentHeight - lst.height)
 				} else {
 					30
 				}
@@ -496,8 +496,8 @@ Item {
 
 		onPressed: {
 			if(state == "") {
-				var row = lst.indexAt(mouse.x + lst.contentX,mouse.y + lst.contentY)
-				var rowItm = lst.itemAt(mouse.x + lst.contentX,mouse.y + lst.contentY)
+				var row = lst.indexAt(mouse.x + lst.contentX, mouse.y + lst.contentY)
+				var rowItm = lst.itemAt(mouse.x + lst.contentX, mouse.y + lst.contentY)
 
 				if(row >= 0 && rowItm.columnAt != undefined) {
 					var col = rowItm.columnAt(mouse.x + lst.contentX)
@@ -539,8 +539,8 @@ Item {
 
 		function updateCursor() {
 			if(state == "selecting") {
-				var row = lst.indexAt(mouseX + lst.contentX,mouseY + lst.contentY)
-				var rowItm = lst.itemAt(mouseX + lst.contentX,mouseY + lst.contentY)
+				var row = lst.indexAt(mouseX + lst.contentX, mouseY + lst.contentY)
+				var rowItm = lst.itemAt(mouseX + lst.contentX, mouseY + lst.contentY)
 
 				if(row >= 0 && rowItm.columnAt != undefined) {
 					var col = rowItm.columnAt(mouseX + lst.contentX)
@@ -560,8 +560,8 @@ Item {
 						} else if(row == anchorRow) {
 							u = row
 							d = row
-							f = Math.min(col,anchorCol)
-							l = Math.max(col,anchorCol)
+							f = Math.min(col, anchorCol)
+							l = Math.max(col, anchorCol)
 						}
 
 						root.cursorUpperRow = u

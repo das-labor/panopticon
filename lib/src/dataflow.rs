@@ -56,22 +56,22 @@ use {
 };
 
 /// Computes the set of killed (VarKill) and upward exposed variables (UEvar) for each basic block
-/// in `func`. Returns (VarKill,UEvar).
-pub fn liveness_sets(func: &Function) ->  (HashMap<ControlFlowRef,HashSet<Cow<'static,str>>>,HashMap<ControlFlowRef,HashSet<Cow<'static,str>>>) {
-    let mut uevar = HashMap::<ControlFlowRef,HashSet<&str>>::new();
-    let mut varkill = HashMap::<ControlFlowRef,HashSet<Cow<'static,str>>>::new();
+/// in `func`. Returns (VarKill, UEvar).
+pub fn liveness_sets(func: &Function) ->  (HashMap<ControlFlowRef, HashSet<Cow<'static, str>>>, HashMap<ControlFlowRef, HashSet<Cow<'static, str>>>) {
+    let mut uevar = HashMap::<ControlFlowRef, HashSet<&str>>::new();
+    let mut varkill = HashMap::<ControlFlowRef, HashSet<Cow<'static, str>>>::new();
     let ord = func.postorder();
     let cfg = &func.cflow_graph;
 
     // init UEVar and VarKill sets
     for &vx in ord.iter() {
         let uev = uevar.entry(vx).or_insert(HashSet::<&str>::new());
-        let vk = varkill.entry(vx).or_insert(HashSet::<Cow<'static,str>>::new());
+        let vk = varkill.entry(vx).or_insert(HashSet::<Cow<'static, str>>::new());
 
         if let Some(&ControlFlowTarget::Resolved(ref bb)) = cfg.vertex_label(vx) {
             for mne in bb.mnemonics.iter() {
                 for rv in mne.operands.iter() {
-                    if let &Rvalue::Variable{ ref name,.. } = rv {
+                    if let &Rvalue::Variable{ ref name, .. } = rv {
                         if !vk.contains(name) {
                             uev.insert(name);
                         }
@@ -85,14 +85,14 @@ pub fn liveness_sets(func: &Function) ->  (HashMap<ControlFlowRef,HashSet<Cow<'s
                         ;
                     } else {
                         for &rv in op.operands().iter() {
-                            if let &Rvalue::Variable{ ref name,.. } = rv {
+                            if let &Rvalue::Variable{ ref name, .. } = rv {
                                 if !vk.contains(name) {
                                     uev.insert(name);
                                 }
                             }
                         }
 
-                        if let &Lvalue::Variable{ ref name,.. } = assignee {
+                        if let &Lvalue::Variable{ ref name, .. } = assignee {
                             vk.insert(name.clone());
                         }
                     }
@@ -101,7 +101,7 @@ pub fn liveness_sets(func: &Function) ->  (HashMap<ControlFlowRef,HashSet<Cow<'s
         }
 
         for e in cfg.out_edges(vx) {
-            if let Some(&Guard::Predicate{ flag: Rvalue::Variable{ ref name,.. },.. }) = cfg.edge_label(e) {
+            if let Some(&Guard::Predicate{ flag: Rvalue::Variable{ ref name, .. }, .. }) = cfg.edge_label(e) {
                 if !vk.contains(name) {
                     uev.insert(name);
                 }
@@ -109,28 +109,28 @@ pub fn liveness_sets(func: &Function) ->  (HashMap<ControlFlowRef,HashSet<Cow<'s
         }
     }
 
-    (varkill,HashMap::from_iter(uevar.iter().map(|(&k,v)| {
-        (k,HashSet::from_iter(v.iter().map(|x| Cow::Owned(x.to_string())))) })))
+    (varkill, HashMap::from_iter(uevar.iter().map(|(&k, v)| {
+        (k, HashSet::from_iter(v.iter().map(|x| Cow::Owned(x.to_string())))) })))
 }
 
 /// Computes for each basic block in `func` the set of live variables using simple fixed point
 /// iteration.
-pub fn liveness(func: &Function) ->  HashMap<ControlFlowRef,HashSet<Cow<'static,str>>> {
-    let (varkill,uevar) = liveness_sets(func);
-    let mut liveout = HashMap::<ControlFlowRef,HashSet<&str>>::new();
+pub fn liveness(func: &Function) ->  HashMap<ControlFlowRef, HashSet<Cow<'static, str>>> {
+    let (varkill, uevar) = liveness_sets(func);
+    let mut liveout = HashMap::<ControlFlowRef, HashSet<&str>>::new();
     let ord = func.postorder();
     let cfg = &func.cflow_graph;
 
     for &vx in ord.iter() {
         if let Some(&ControlFlowTarget::Resolved(_)) = cfg.vertex_label(vx) {
-            liveout.insert(vx,HashSet::<&str>::new());
+            liveout.insert(vx, HashSet::<&str>::new());
         }
     }
 
     // compute LiveOut sets
     let mut fixpoint = false;
     while !fixpoint {
-        let mut new_liveout = HashMap::<ControlFlowRef,HashSet<&str>>::new();
+        let mut new_liveout = HashMap::<ControlFlowRef, HashSet<&str>>::new();
 
         fixpoint = true;
         for &vx in ord.iter() {
@@ -155,27 +155,27 @@ pub fn liveness(func: &Function) ->  HashMap<ControlFlowRef,HashSet<Cow<'static,
                     fixpoint = false;
                 }
 
-                new_liveout.insert(vx,s);
+                new_liveout.insert(vx, s);
             }
         }
 
         liveout = new_liveout;
     }
 
-    HashMap::from_iter(liveout.iter().map(|(&k,v)| {
-        (k,HashSet::from_iter(v.iter().map(|x| Cow::Owned(x.to_string())))) }))
+    HashMap::from_iter(liveout.iter().map(|(&k, v)| {
+        (k, HashSet::from_iter(v.iter().map(|x| Cow::Owned(x.to_string())))) }))
 }
 
 /// Does a simple sanity check on all RREIL statements in `func`, returns every variable name
 /// found and its maximal size in bits.
-pub fn type_check(func: &Function) -> Result<HashMap<Cow<'static,str>,usize>> {
-    let mut ret = HashMap::<Cow<'static,str>,usize>::new();
+pub fn type_check(func: &Function) -> Result<HashMap<Cow<'static, str>, usize>> {
+    let mut ret = HashMap::<Cow<'static, str>, usize>::new();
     let cfg = &func.cflow_graph;
-    fn set_len(v: &Rvalue, ret: &mut HashMap<Cow<'static,str>,usize>) {
+    fn set_len(v: &Rvalue, ret: &mut HashMap<Cow<'static, str>, usize>) {
         match v {
             &Rvalue::Variable{ ref name, ref size, .. } => {
-                let val = *max(ret.get(name).unwrap_or(&0),size);
-                ret.insert(name.clone(),val);
+                let val = *max(ret.get(name).unwrap_or(&0), size);
+                ret.insert(name.clone(), val);
             },
             _ => {}
         }
@@ -185,7 +185,7 @@ pub fn type_check(func: &Function) -> Result<HashMap<Cow<'static,str>,usize>> {
         if let Some(&ControlFlowTarget::Resolved(ref bb)) = cfg.vertex_label(vx) {
             for mne in bb.mnemonics.iter() {
                 for o in mne.operands.iter() {
-                    set_len(o,&mut ret);
+                    set_len(o, &mut ret);
                 }
 
                 for instr in mne.instructions.iter() {
@@ -193,19 +193,19 @@ pub fn type_check(func: &Function) -> Result<HashMap<Cow<'static,str>,usize>> {
                     match ops.len() {
                         0 => return Err("Operation w/o arguments".into()),
                         _ => for o in ops.iter() {
-                            set_len(o,&mut ret);
+                            set_len(o, &mut ret);
                         }
                     }
 
-                    set_len(&instr.assignee.clone().into(),&mut ret);
+                    set_len(&instr.assignee.clone().into(), &mut ret);
                 }
             }
         }
     }
 
     for ed in cfg.edges() {
-        if let Some(&Guard::Predicate{ ref flag,.. }) = cfg.edge_label(ed) {
-            set_len(flag,&mut ret);
+        if let Some(&Guard::Predicate{ ref flag, .. }) = cfg.edge_label(ed) {
+            set_len(flag, &mut ret);
         }
     }
 
@@ -213,25 +213,25 @@ pub fn type_check(func: &Function) -> Result<HashMap<Cow<'static,str>,usize>> {
 }
 
 /// Computes the set of gloable variables in `func` and their points of usage. Globales are
-/// variables that are used in multiple basic blocks. Returns (Globals,Usage).
-pub fn global_names(func: &Function) -> (HashSet<Cow<'static,str>>,HashMap<Cow<'static,str>,HashSet<ControlFlowRef>>) {
-    let (varkill,uevar) = liveness_sets(func);
-    let mut usage = HashMap::<Cow<'static,str>,HashSet<ControlFlowRef>>::new();
-    let mut globals = HashSet::<Cow<'static,str>>::new();
+/// variables that are used in multiple basic blocks. Returns (Globals, Usage).
+pub fn global_names(func: &Function) -> (HashSet<Cow<'static, str>>, HashMap<Cow<'static, str>, HashSet<ControlFlowRef>>) {
+    let (varkill, uevar) = liveness_sets(func);
+    let mut usage = HashMap::<Cow<'static, str>, HashSet<ControlFlowRef>>::new();
+    let mut globals = HashSet::<Cow<'static, str>>::new();
 
-    for (_,uev) in uevar {
+    for (_, uev) in uevar {
         for v in uev {
             globals.insert(v);
         }
     }
 
-    for (vx,vk) in varkill {
+    for (vx, vk) in varkill {
         for v in vk {
             usage.entry(v.clone()).or_insert(HashSet::new()).insert(vx);
         }
     }
 
-    (globals,usage)
+    (globals, usage)
 }
 
 /// Inserts SSA Phi functions at junction points in the control flow graph of `func`. The
@@ -240,14 +240,14 @@ pub fn phi_functions(func: &mut Function) -> Result<()> {
     if func.entry_point.is_none() { return Err("Function has no entry point".into()); }
 
     let lens = try!(type_check(func));
-    let (globals,usage) = global_names(func);
+    let (globals, usage) = global_names(func);
     let mut cfg = &mut func.cflow_graph;
 
     // initalize all variables
     if let Some(&mut ControlFlowTarget::Resolved(ref mut bb)) = cfg.vertex_label_mut(func.entry_point.unwrap()) {
         let pos = bb.area.start;
         let instrs = globals.iter().map(|nam| {
-            let len = try!(lens.get(nam).ok_or(format!("No length for variable {}",nam)));
+            let len = try!(lens.get(nam).ok_or(format!("No length for variable {}", nam)));
 
             Ok(Statement{
                 op: Operation::Move(Rvalue::Undefined),
@@ -268,19 +268,19 @@ pub fn phi_functions(func: &mut Function) -> Result<()> {
             vec![].iter(),
             instrs.iter()).ok().unwrap();
 
-        bb.mnemonics.insert(0,mne);
+        bb.mnemonics.insert(0, mne);
     } else {
         return Err("Function entry point is unresolved!".into());
     }
 
-    let idom = immediate_dominator(func.entry_point.unwrap(),cfg);
+    let idom = immediate_dominator(func.entry_point.unwrap(), cfg);
 
     if idom.len() != cfg.num_vertices() {
         return Err("No all basic blocks are reachable from function entry point".into());
     }
 
-    let df = dominance_frontiers(&idom,cfg);
-    let mut phis = HashSet::<(&Cow<'static,str>,ControlFlowRef)>::new();
+    let df = dominance_frontiers(&idom, cfg);
+    let mut phis = HashSet::<(&Cow<'static, str>, ControlFlowRef)>::new();
 
     for v in globals.iter() {
         let mut worklist = if let Some(wl) = usage.get(v) { wl.clone() } else { HashSet::new() };
@@ -293,10 +293,10 @@ pub fn phi_functions(func: &mut Function) -> Result<()> {
             for d in frontiers.iter() {
                 let arg_num = cfg.in_edges(*d).filter_map(|p| usage.get(v).map(|b| b.contains(&cfg.source(p)))).count();
                 if let Some(&mut ControlFlowTarget::Resolved(ref mut bb)) = cfg.vertex_label_mut(*d) {
-                    if !phis.contains(&(v,*d)) {
+                    if !phis.contains(&(v, *d)) {
 
                         let pos = bb.area.start;
-                        let len = try!(lens.get(v).ok_or(format!("No length for variable {}",v)));
+                        let len = try!(lens.get(v).ok_or(format!("No length for variable {}", v)));
                         let mne = Mnemonic::new(
                             pos..pos,
                             "__phi".to_string(),
@@ -307,8 +307,8 @@ pub fn phi_functions(func: &mut Function) -> Result<()> {
                                 assignee: Lvalue::Variable{ size: *len, name: v.clone(), subscript: None }}].iter()
                         ).ok().unwrap();
 
-                        bb.mnemonics.insert(0,mne);
-                        phis.insert((v,*d));
+                        bb.mnemonics.insert(0, mne);
+                        phis.insert((v, *d));
                         worklist.insert(*d);
                     }
                 }
@@ -325,17 +325,17 @@ pub fn phi_functions(func: &mut Function) -> Result<()> {
 pub fn rename_variables(func: &mut Function) -> Result<()> {
     if func.entry_point.is_none() { return Err("Function has no entry point".into()); }
 
-    let (globals,_) = global_names(func);
+    let (globals, _) = global_names(func);
     let mut cfg = &mut func.cflow_graph;
-    let mut stack = HashMap::<Cow<'static,str>,Vec<usize>>::from_iter(globals.iter().map(|x| (x.clone(),Vec::new())));
-    let mut counter = HashMap::<Cow<'static,str>,usize>::new();
-    let idom = immediate_dominator(func.entry_point.unwrap(),cfg);
+    let mut stack = HashMap::<Cow<'static, str>, Vec<usize>>::from_iter(globals.iter().map(|x| (x.clone(), Vec::new())));
+    let mut counter = HashMap::<Cow<'static, str>, usize>::new();
+    let idom = immediate_dominator(func.entry_point.unwrap(), cfg);
 
     if idom.len() != cfg.num_vertices() {
         return Err("No all basic blocks are reachable from function entry point".into());
     }
 
-    fn new_name(n: &Cow<'static,str>, counter: &mut HashMap<Cow<'static,str>,usize>, stack: &mut HashMap<Cow<'static,str>,Vec<usize>>) -> usize {
+    fn new_name(n: &Cow<'static, str>, counter: &mut HashMap<Cow<'static, str>, usize>, stack: &mut HashMap<Cow<'static, str>, Vec<usize>>) -> usize {
         let i = *counter.entry(n.clone()).or_insert(0);
 
         counter.get_mut(n).map(|x| *x += 1);
@@ -343,18 +343,18 @@ pub fn rename_variables(func: &mut Function) -> Result<()> {
 
         i
     }
-    fn rename(b: ControlFlowRef, counter: &mut HashMap<Cow<'static,str>,usize>, stack: &mut HashMap<Cow<'static,str>,Vec<usize>>, cfg: &mut ControlFlowGraph, idom: &HashMap<ControlFlowRef,ControlFlowRef>) -> Result<()> {
+    fn rename(b: ControlFlowRef, counter: &mut HashMap<Cow<'static, str>, usize>, stack: &mut HashMap<Cow<'static, str>, Vec<usize>>, cfg: &mut ControlFlowGraph, idom: &HashMap<ControlFlowRef, ControlFlowRef>) -> Result<()> {
         if let Some(&mut ControlFlowTarget::Resolved(ref mut bb)) = cfg.vertex_label_mut(b) {
             bb.rewrite(|i| match i {
-                &mut Statement{ op: Operation::Phi(_), assignee: Lvalue::Variable{ ref name, ref mut subscript,.. } } =>
-                    *subscript = Some(new_name(name,counter,stack)),
+                &mut Statement{ op: Operation::Phi(_), assignee: Lvalue::Variable{ ref name, ref mut subscript, .. } } =>
+                    *subscript = Some(new_name(name, counter, stack)),
                 _ => {},
             });
 
             for mne in bb.mnemonics.iter_mut() {
                 if mne.opcode != "__phi" {
                     for o in mne.operands.iter_mut() {
-                        if let &mut Rvalue::Variable{ ref name, ref mut subscript,.. } = o {
+                        if let &mut Rvalue::Variable{ ref name, ref mut subscript, .. } = o {
                             *subscript = stack.get(name).and_then(|x| x.last()).cloned();
                         }
                     }
@@ -366,13 +366,13 @@ pub fn rename_variables(func: &mut Function) -> Result<()> {
                             return Err("Phi instruction outside __phi mnemonic".into());
                         } else {
                             for o in op.operands_mut() {
-                                if let &mut Rvalue::Variable{ ref name, ref mut subscript,.. } = o {
+                                if let &mut Rvalue::Variable{ ref name, ref mut subscript, .. } = o {
                                     *subscript = stack[name].last().cloned();
                                 }
                             }
 
-                            if let &mut Lvalue::Variable{ ref name, ref mut subscript,.. } = assignee {
-                                *subscript = Some(new_name(name,counter,stack));
+                            if let &mut Lvalue::Variable{ ref name, ref mut subscript, .. } = assignee {
+                                *subscript = Some(new_name(name, counter, stack));
                             }
                         }
                     }
@@ -384,7 +384,7 @@ pub fn rename_variables(func: &mut Function) -> Result<()> {
         succ.sort();
 
         for s in succ {
-            if let Some(&mut Guard::Predicate{ flag: Rvalue::Variable{ ref name, ref mut subscript,.. },.. }) = cfg.edge_label_mut(s) {
+            if let Some(&mut Guard::Predicate{ flag: Rvalue::Variable{ ref name, ref mut subscript, .. }, .. }) = cfg.edge_label_mut(s) {
                 *subscript = stack[name].last().cloned();
             }
 
@@ -392,9 +392,9 @@ pub fn rename_variables(func: &mut Function) -> Result<()> {
             match cfg.vertex_label_mut(v) {
                 Some(&mut ControlFlowTarget::Resolved(ref mut bb)) => {
                     bb.rewrite(|i| match i {
-                        &mut Statement{ op: Operation::Phi(ref mut ops),.. } =>
+                        &mut Statement{ op: Operation::Phi(ref mut ops), .. } =>
                             for o in ops.iter_mut() {
-                                if let &mut Rvalue::Variable{ ref name, ref mut subscript,.. } = o {
+                                if let &mut Rvalue::Variable{ ref name, ref mut subscript, .. } = o {
                                     if subscript.is_none() {
                                        *subscript = stack[name].last().cloned();
                                        break;
@@ -404,21 +404,21 @@ pub fn rename_variables(func: &mut Function) -> Result<()> {
                         _ => {},
                     });
                 }
-                Some(&mut ControlFlowTarget::Unresolved(Rvalue::Variable{ ref name, ref mut subscript,.. })) =>
+                Some(&mut ControlFlowTarget::Unresolved(Rvalue::Variable{ ref name, ref mut subscript, .. })) =>
                     *subscript = stack[name].last().cloned(),
                 _ => {}
             }
         }
 
-        for (k,_) in idom.iter().filter(|&(_,&v)| v == b) {
+        for (k, _) in idom.iter().filter(|&(_, &v)| v == b) {
             if *k != b {
-                try!(rename(*k,counter,stack,cfg,idom));
+                try!(rename(*k, counter, stack, cfg, idom));
             }
         }
 
         if let Some(&mut ControlFlowTarget::Resolved(ref mut bb)) = cfg.vertex_label_mut(b) {
             bb.execute(|i| match i {
-                &Statement{ assignee: Lvalue::Variable{ ref name,.. },.. } => {
+                &Statement{ assignee: Lvalue::Variable{ ref name, .. }, .. } => {
                     stack.get_mut(name).map(|x| x.pop());
                 },
                 _ => {}
@@ -428,7 +428,7 @@ pub fn rename_variables(func: &mut Function) -> Result<()> {
         Ok(())
     }
 
-    rename(func.entry_point.unwrap(),&mut counter,&mut stack,cfg,&idom)
+    rename(func.entry_point.unwrap(), &mut counter, &mut stack, cfg, &idom)
 }
 
 /// Convert `func` into semi-pruned SSA form.
@@ -439,12 +439,12 @@ pub fn ssa_convertion(func: &mut Function) -> Result<()> {
 
 /// Computes for every control flow guard the dependend RREIL operation via reverse data flow
 /// analysis.
-pub fn flag_operations(func: &Function) -> HashMap<ControlFlowEdge,Operation<Rvalue>> {
+pub fn flag_operations(func: &Function) -> HashMap<ControlFlowEdge, Operation<Rvalue>> {
     let mut ret = HashMap::new();
 
     for e in func.cflow_graph.edges() {
         if !ret.contains_key(&e) {
-            if let Some(&Guard::Predicate{ ref flag,.. }) = func.cflow_graph.edge_label(e) {
+            if let Some(&Guard::Predicate{ ref flag, .. }) = func.cflow_graph.edge_label(e) {
                 let maybe_bb = func.cflow_graph.vertex_label(func.cflow_graph.source(e));
                 if let Some(&ControlFlowTarget::Resolved(ref bb)) = maybe_bb {
                     let mut maybe_stmt = None;
@@ -452,16 +452,16 @@ pub fn flag_operations(func: &Function) -> HashMap<ControlFlowEdge,Operation<Rva
                         let a: Rvalue = s.assignee.clone().into();
                         if a == *flag {
                             match s.op {
-                                Operation::Equal(_,_) | Operation::LessOrEqualUnsigned(_,_) |
-                                Operation::LessOrEqualSigned(_,_) | Operation::LessUnsigned(_,_) |
-                                Operation::LessSigned(_,_) => maybe_stmt = Some(s.op.clone()),
+                                Operation::Equal(_, _) | Operation::LessOrEqualUnsigned(_, _) |
+                                Operation::LessOrEqualSigned(_, _) | Operation::LessUnsigned(_, _) |
+                                Operation::LessSigned(_, _) => maybe_stmt = Some(s.op.clone()),
                                 _ => {}
                             }
                         }
                     });
 
                     if maybe_stmt.is_some() {
-                        ret.insert(e.clone(),maybe_stmt.unwrap());
+                        ret.insert(e.clone(), maybe_stmt.unwrap());
                     }
                 }
             }
@@ -500,24 +500,24 @@ mod tests {
         let i = Lvalue::Variable{ name: Cow::Borrowed("i"), size: 32, subscript: None };
         let s = Lvalue::Variable{ name: Cow::Borrowed("s"), size: 32, subscript: None };
         let x = Lvalue::Variable{ name: Cow::Borrowed("x"), size: 1, subscript: None };
-        let mne0 = Mnemonic::new(0..1,"b0".to_string(),"".to_string(),vec![].iter(),vec![
+        let mne0 = Mnemonic::new(0..1, "b0".to_string(), "".to_string(), vec![].iter(), vec![
                                  Statement{ op: Operation::Move(Rvalue::new_u32(1)), assignee: i.clone() }].iter()).ok().unwrap();
-        let mne1 = Mnemonic::new(1..2,"b1".to_string(),"".to_string(),vec![].iter(),vec![
-                                 Statement{ op: Operation::LessUnsigned(i.clone().into(),Rvalue::new_u32(1)), assignee: x.clone() }].iter()).ok().unwrap();
-        let mne2 = Mnemonic::new(2..3,"b2".to_string(),"".to_string(),vec![].iter(),vec![
+        let mne1 = Mnemonic::new(1..2, "b1".to_string(), "".to_string(), vec![].iter(), vec![
+                                 Statement{ op: Operation::LessUnsigned(i.clone().into(), Rvalue::new_u32(1)), assignee: x.clone() }].iter()).ok().unwrap();
+        let mne2 = Mnemonic::new(2..3, "b2".to_string(), "".to_string(), vec![].iter(), vec![
                                  Statement{ op: Operation::Move(Rvalue::new_u32(0)), assignee: s.clone() }].iter()).ok().unwrap();
-        let mne30 = Mnemonic::new(3..4,"b3.0".to_string(),"".to_string(),vec![].iter(),vec![
-                                  Statement{ op: Operation::Add(i.clone().into(),s.clone().into()), assignee: s.clone() }].iter()).ok().unwrap();
-        let mne31 = Mnemonic::new(4..5,"b3.1".to_string(),"".to_string(),vec![].iter(),vec![
-                                  Statement{ op: Operation::Add(i.clone().into(),i.clone().into()), assignee: i.clone() }].iter()).ok().unwrap();
-        let mne32 = Mnemonic::new(5..6,"b3.2".to_string(),"".to_string(),vec![].iter(),vec![
-                                  Statement{ op: Operation::LessUnsigned(i.clone().into(),Rvalue::new_u32(1)), assignee: x.clone() }].iter()).ok().unwrap();
-        let mne4 = Mnemonic::new(6..7,"b4".to_string(),"".to_string(),vec![].iter(),vec![
+        let mne30 = Mnemonic::new(3..4, "b3.0".to_string(), "".to_string(), vec![].iter(), vec![
+                                  Statement{ op: Operation::Add(i.clone().into(), s.clone().into()), assignee: s.clone() }].iter()).ok().unwrap();
+        let mne31 = Mnemonic::new(4..5, "b3.1".to_string(), "".to_string(), vec![].iter(), vec![
+                                  Statement{ op: Operation::Add(i.clone().into(), i.clone().into()), assignee: i.clone() }].iter()).ok().unwrap();
+        let mne32 = Mnemonic::new(5..6, "b3.2".to_string(), "".to_string(), vec![].iter(), vec![
+                                  Statement{ op: Operation::LessUnsigned(i.clone().into(), Rvalue::new_u32(1)), assignee: x.clone() }].iter()).ok().unwrap();
+        let mne4 = Mnemonic::new(6..7, "b4".to_string(), "".to_string(), vec![].iter(), vec![
                                  Statement{ op: Operation::Move(s.clone().into()), assignee: Lvalue::Undefined }].iter()).ok().unwrap();
         let bb0 = BasicBlock::from_vec(vec![mne0]);
         let bb1 = BasicBlock::from_vec(vec![mne1]);
         let bb2 = BasicBlock::from_vec(vec![mne2]);
-        let bb3 = BasicBlock::from_vec(vec![mne30,mne31,mne32]);
+        let bb3 = BasicBlock::from_vec(vec![mne30, mne31, mne32]);
         let bb4 = BasicBlock::from_vec(vec![mne4]);
         let mut cfg = ControlFlowGraph::new();
 
@@ -529,33 +529,33 @@ mod tests {
 
         let g = Guard::from_flag(&x.clone().into()).ok().unwrap();
 
-        cfg.add_edge(Guard::always(),v0,v1);
-        cfg.add_edge(g.negation(),v1,v2);
-        cfg.add_edge(g.clone(),v1,v3);
-        cfg.add_edge(Guard::always(),v2,v3);
-        cfg.add_edge(g.negation(),v3,v1);
-        cfg.add_edge(g.clone(),v3,v4);
+        cfg.add_edge(Guard::always(), v0, v1);
+        cfg.add_edge(g.negation(), v1, v2);
+        cfg.add_edge(g.clone(), v1, v3);
+        cfg.add_edge(Guard::always(), v2, v3);
+        cfg.add_edge(g.negation(), v3, v1);
+        cfg.add_edge(g.clone(), v3, v4);
 
-        let mut func = Function::new("test".to_string(),"ram".to_string());
+        let mut func = Function::new("test".to_string(), "ram".to_string());
 
         func.cflow_graph = cfg;
         func.entry_point = Some(v0);
 
-        let all = HashSet::from_iter(vec![Cow::Borrowed("i"),Cow::Borrowed("s")]);
-        let (vk,ue) = liveness_sets(&func);
+        let all = HashSet::from_iter(vec![Cow::Borrowed("i"), Cow::Borrowed("s")]);
+        let (vk, ue) = liveness_sets(&func);
 
         assert_eq!(ue.len(), 5);
         assert_eq!(ue.get(&v0), Some(&HashSet::new()));
         assert_eq!(ue.get(&v1), Some(&HashSet::from_iter(vec![Cow::Borrowed("i")])));
         assert_eq!(ue.get(&v2), Some(&HashSet::new()));
-        assert_eq!(ue.get(&v3), Some(&HashSet::from_iter(vec![Cow::Borrowed("i"),Cow::Borrowed("s")])));
+        assert_eq!(ue.get(&v3), Some(&HashSet::from_iter(vec![Cow::Borrowed("i"), Cow::Borrowed("s")])));
         assert_eq!(ue.get(&v4), Some(&HashSet::from_iter(vec![Cow::Borrowed("s")])));
 
         assert_eq!(vk.len(), 5);
         assert_eq!(vk.get(&v0), Some(&HashSet::from_iter(vec![Cow::Borrowed("i")])));
         assert_eq!(vk.get(&v1), Some(&HashSet::from_iter(vec![Cow::Borrowed("x")])));
         assert_eq!(vk.get(&v2), Some(&HashSet::from_iter(vec![Cow::Borrowed("s")])));
-        assert_eq!(vk.get(&v3), Some(&HashSet::from_iter(vec![Cow::Borrowed("x"),Cow::Borrowed("i"),Cow::Borrowed("s")])));
+        assert_eq!(vk.get(&v3), Some(&HashSet::from_iter(vec![Cow::Borrowed("x"), Cow::Borrowed("i"), Cow::Borrowed("s")])));
         assert_eq!(vk.get(&v4), Some(&HashSet::new()));
 
         let res = liveness(&func);
@@ -579,56 +579,56 @@ mod tests {
         let i = Lvalue::Variable{ name: Cow::Borrowed("i"), size: 32, subscript: None };
         let f = Lvalue::Variable{ name: Cow::Borrowed("f"), size: 1, subscript: None };
 
-        let mne0 = Mnemonic::new(0..1,"b0".to_string(),"".to_string(),vec![].iter(),vec![
+        let mne0 = Mnemonic::new(0..1, "b0".to_string(), "".to_string(), vec![].iter(), vec![
                                  Statement{ op: Operation::Move(Rvalue::new_u32(1)), assignee: i.clone() }].iter()).ok().unwrap();
 
-        let mne10 = Mnemonic::new(1..2,"b1.0".to_string(),"".to_string(),vec![].iter(),vec![
+        let mne10 = Mnemonic::new(1..2, "b1.0".to_string(), "".to_string(), vec![].iter(), vec![
                                   Statement{ op: Operation::Move(Rvalue::Undefined), assignee: a.clone() }].iter()).ok().unwrap();
-        let mne11 = Mnemonic::new(2..3,"b1.1".to_string(),"".to_string(),vec![].iter(),vec![
+        let mne11 = Mnemonic::new(2..3, "b1.1".to_string(), "".to_string(), vec![].iter(), vec![
                                   Statement{ op: Operation::Move(Rvalue::Undefined), assignee: c.clone() }].iter()).ok().unwrap();
-        let mne12 = Mnemonic::new(3..4,"b1.2".to_string(),"".to_string(),vec![].iter(),vec![
-                                  Statement{ op: Operation::LessUnsigned(a.clone().into(),c.clone().into()), assignee: f.clone() }].iter()).ok().unwrap();
+        let mne12 = Mnemonic::new(3..4, "b1.2".to_string(), "".to_string(), vec![].iter(), vec![
+                                  Statement{ op: Operation::LessUnsigned(a.clone().into(), c.clone().into()), assignee: f.clone() }].iter()).ok().unwrap();
 
-        let mne20 = Mnemonic::new(4..5,"b2.0".to_string(),"".to_string(),vec![].iter(),vec![
+        let mne20 = Mnemonic::new(4..5, "b2.0".to_string(), "".to_string(), vec![].iter(), vec![
                                   Statement{ op: Operation::Move(Rvalue::Undefined), assignee: b.clone() }].iter()).ok().unwrap();
-        let mne21 = Mnemonic::new(5..6,"b2.1".to_string(),"".to_string(),vec![].iter(),vec![
+        let mne21 = Mnemonic::new(5..6, "b2.1".to_string(), "".to_string(), vec![].iter(), vec![
                                   Statement{ op: Operation::Move(Rvalue::Undefined), assignee: c.clone() }].iter()).ok().unwrap();
-        let mne22 = Mnemonic::new(6..7,"b2.2".to_string(),"".to_string(),vec![].iter(),vec![
+        let mne22 = Mnemonic::new(6..7, "b2.2".to_string(), "".to_string(), vec![].iter(), vec![
                                   Statement{ op: Operation::Move(Rvalue::Undefined), assignee: d.clone() }].iter()).ok().unwrap();
 
-        let mne30 = Mnemonic::new(7..8,"b3.0".to_string(),"".to_string(),vec![].iter(),vec![
-                                  Statement{ op: Operation::Add(a.clone().into(),b.clone().into()), assignee: y.clone() }].iter()).ok().unwrap();
-        let mne31 = Mnemonic::new(8..9,"b3.1".to_string(),"".to_string(),vec![].iter(),vec![
-                                  Statement{ op: Operation::Add(c.clone().into(),d.clone().into()), assignee: z.clone() }].iter()).ok().unwrap();
-        let mne32 = Mnemonic::new(9..10,"b3.2".to_string(),"".to_string(),vec![].iter(),vec![
-                                  Statement{ op: Operation::Add(i.clone().into(),i.clone().into()), assignee: i.clone() }].iter()).ok().unwrap();
-        let mne33 = Mnemonic::new(10..11,"b3.3".to_string(),"".to_string(),vec![].iter(),vec![
-                                  Statement{ op: Operation::LessOrEqualUnsigned(i.clone().into(),Rvalue::new_u32(100)), assignee: f.clone() }].iter()).ok().unwrap();
+        let mne30 = Mnemonic::new(7..8, "b3.0".to_string(), "".to_string(), vec![].iter(), vec![
+                                  Statement{ op: Operation::Add(a.clone().into(), b.clone().into()), assignee: y.clone() }].iter()).ok().unwrap();
+        let mne31 = Mnemonic::new(8..9, "b3.1".to_string(), "".to_string(), vec![].iter(), vec![
+                                  Statement{ op: Operation::Add(c.clone().into(), d.clone().into()), assignee: z.clone() }].iter()).ok().unwrap();
+        let mne32 = Mnemonic::new(9..10, "b3.2".to_string(), "".to_string(), vec![].iter(), vec![
+                                  Statement{ op: Operation::Add(i.clone().into(), i.clone().into()), assignee: i.clone() }].iter()).ok().unwrap();
+        let mne33 = Mnemonic::new(10..11, "b3.3".to_string(), "".to_string(), vec![].iter(), vec![
+                                  Statement{ op: Operation::LessOrEqualUnsigned(i.clone().into(), Rvalue::new_u32(100)), assignee: f.clone() }].iter()).ok().unwrap();
 
-        let mne4 = Mnemonic::new(11..12,"b4".to_string(),"".to_string(),vec![].iter(),vec![].iter()).ok().unwrap();
+        let mne4 = Mnemonic::new(11..12, "b4".to_string(), "".to_string(), vec![].iter(), vec![].iter()).ok().unwrap();
 
-        let mne50 = Mnemonic::new(12..13,"b5.0".to_string(),"".to_string(),vec![].iter(),vec![
+        let mne50 = Mnemonic::new(12..13, "b5.0".to_string(), "".to_string(), vec![].iter(), vec![
                                   Statement{ op: Operation::Move(Rvalue::Undefined), assignee: a.clone() }].iter()).ok().unwrap();
-        let mne51 = Mnemonic::new(13..14,"b5.1".to_string(),"".to_string(),vec![].iter(),vec![
+        let mne51 = Mnemonic::new(13..14, "b5.1".to_string(), "".to_string(), vec![].iter(), vec![
                                   Statement{ op: Operation::Move(Rvalue::Undefined), assignee: d.clone() }].iter()).ok().unwrap();
-        let mne52 = Mnemonic::new(14..15,"b5.2".to_string(),"".to_string(),vec![].iter(),vec![
-                                  Statement{ op: Operation::LessOrEqualUnsigned(a.clone().into(),d.clone().into()), assignee: f.clone() }].iter()).ok().unwrap();
+        let mne52 = Mnemonic::new(14..15, "b5.2".to_string(), "".to_string(), vec![].iter(), vec![
+                                  Statement{ op: Operation::LessOrEqualUnsigned(a.clone().into(), d.clone().into()), assignee: f.clone() }].iter()).ok().unwrap();
 
-        let mne6 = Mnemonic::new(15..16,"b6".to_string(),"".to_string(),vec![].iter(),vec![
+        let mne6 = Mnemonic::new(15..16, "b6".to_string(), "".to_string(), vec![].iter(), vec![
                                  Statement{ op: Operation::Move(Rvalue::Undefined), assignee: d.clone() }].iter()).ok().unwrap();
 
-        let mne7 = Mnemonic::new(16..17,"b7".to_string(),"".to_string(),vec![].iter(),vec![
+        let mne7 = Mnemonic::new(16..17, "b7".to_string(), "".to_string(), vec![].iter(), vec![
                                  Statement{ op: Operation::Move(Rvalue::Undefined), assignee: b.clone() }].iter()).ok().unwrap();
 
-        let mne8 = Mnemonic::new(17..18,"b8".to_string(),"".to_string(),vec![].iter(),vec![
+        let mne8 = Mnemonic::new(17..18, "b8".to_string(), "".to_string(), vec![].iter(), vec![
                                  Statement{ op: Operation::Move(Rvalue::Undefined), assignee: c.clone() }].iter()).ok().unwrap();
 
         let bb0 = BasicBlock::from_vec(vec![mne0]);
-        let bb1 = BasicBlock::from_vec(vec![mne10,mne11,mne12]);
-        let bb2 = BasicBlock::from_vec(vec![mne20,mne21,mne22]);
-        let bb3 = BasicBlock::from_vec(vec![mne30,mne31,mne32,mne33]);
+        let bb1 = BasicBlock::from_vec(vec![mne10, mne11, mne12]);
+        let bb2 = BasicBlock::from_vec(vec![mne20, mne21, mne22]);
+        let bb3 = BasicBlock::from_vec(vec![mne30, mne31, mne32, mne33]);
         let bb4 = BasicBlock::from_vec(vec![mne4]);
-        let bb5 = BasicBlock::from_vec(vec![mne50,mne51,mne52]);
+        let bb5 = BasicBlock::from_vec(vec![mne50, mne51, mne52]);
         let bb6 = BasicBlock::from_vec(vec![mne6]);
         let bb7 = BasicBlock::from_vec(vec![mne7]);
         let bb8 = BasicBlock::from_vec(vec![mne8]);
@@ -644,27 +644,27 @@ mod tests {
         let v7 = cfg.add_vertex(ControlFlowTarget::Resolved(bb7));
         let v8 = cfg.add_vertex(ControlFlowTarget::Resolved(bb8));
 
-        cfg.add_edge(Guard::always(),v0,v1);
+        cfg.add_edge(Guard::always(), v0, v1);
 
         let g1 = Guard::from_flag(&f.clone().into()).ok().unwrap();
-        cfg.add_edge(g1.clone(),v1,v2);
-        cfg.add_edge(g1.negation(),v1,v5);
+        cfg.add_edge(g1.clone(), v1, v2);
+        cfg.add_edge(g1.negation(), v1, v5);
 
-        cfg.add_edge(Guard::always(),v2,v3);
+        cfg.add_edge(Guard::always(), v2, v3);
 
         let g3 = Guard::from_flag(&f.clone().into()).ok().unwrap();
-        cfg.add_edge(g3.clone(),v3,v1);
-        cfg.add_edge(g3.negation(),v3,v4);
+        cfg.add_edge(g3.clone(), v3, v1);
+        cfg.add_edge(g3.negation(), v3, v4);
 
         let g5 = Guard::from_flag(&f.clone().into()).ok().unwrap();
-        cfg.add_edge(g5.clone(),v5,v6);
-        cfg.add_edge(g5.negation(),v5,v8);
+        cfg.add_edge(g5.clone(), v5, v6);
+        cfg.add_edge(g5.negation(), v5, v8);
 
-        cfg.add_edge(Guard::always(),v6,v7);
-        cfg.add_edge(Guard::always(),v7,v3);
-        cfg.add_edge(Guard::always(),v8,v7);
+        cfg.add_edge(Guard::always(), v6, v7);
+        cfg.add_edge(Guard::always(), v7, v3);
+        cfg.add_edge(Guard::always(), v8, v7);
 
-        let mut func = Function::new("test".to_string(),"ram".to_string());
+        let mut func = Function::new("test".to_string(), "ram".to_string());
 
         func.cflow_graph = cfg;
         func.entry_point = Some(v0);
@@ -790,56 +790,56 @@ mod tests {
         let i = Lvalue::Variable{ name: Cow::Borrowed("i"), size: 32, subscript: None };
         let f = Lvalue::Variable{ name: Cow::Borrowed("f"), size: 1, subscript: None };
 
-        let mne0 = Mnemonic::new(0..1,"b0".to_string(),"".to_string(),vec![].iter(),vec![
+        let mne0 = Mnemonic::new(0..1, "b0".to_string(), "".to_string(), vec![].iter(), vec![
                                  Statement{ op: Operation::Move(Rvalue::new_u32(1)), assignee: i.clone() }].iter()).ok().unwrap();
 
-        let mne10 = Mnemonic::new(1..2,"b1.0".to_string(),"".to_string(),vec![].iter(),vec![
+        let mne10 = Mnemonic::new(1..2, "b1.0".to_string(), "".to_string(), vec![].iter(), vec![
                                   Statement{ op: Operation::Move(Rvalue::Undefined), assignee: a.clone() }].iter()).ok().unwrap();
-        let mne11 = Mnemonic::new(2..3,"b1.1".to_string(),"".to_string(),vec![].iter(),vec![
+        let mne11 = Mnemonic::new(2..3, "b1.1".to_string(), "".to_string(), vec![].iter(), vec![
                                   Statement{ op: Operation::Move(Rvalue::Undefined), assignee: c.clone() }].iter()).ok().unwrap();
-        let mne12 = Mnemonic::new(3..4,"b1.2".to_string(),"".to_string(),vec![].iter(),vec![
-                                  Statement{ op: Operation::LessUnsigned(a.clone().into(),c.clone().into()), assignee: f.clone() }].iter()).ok().unwrap();
+        let mne12 = Mnemonic::new(3..4, "b1.2".to_string(), "".to_string(), vec![].iter(), vec![
+                                  Statement{ op: Operation::LessUnsigned(a.clone().into(), c.clone().into()), assignee: f.clone() }].iter()).ok().unwrap();
 
-        let mne20 = Mnemonic::new(4..5,"b2.0".to_string(),"".to_string(),vec![].iter(),vec![
+        let mne20 = Mnemonic::new(4..5, "b2.0".to_string(), "".to_string(), vec![].iter(), vec![
                                   Statement{ op: Operation::Move(Rvalue::Undefined), assignee: b.clone() }].iter()).ok().unwrap();
-        let mne21 = Mnemonic::new(5..6,"b2.1".to_string(),"".to_string(),vec![].iter(),vec![
+        let mne21 = Mnemonic::new(5..6, "b2.1".to_string(), "".to_string(), vec![].iter(), vec![
                                   Statement{ op: Operation::Move(Rvalue::Undefined), assignee: c.clone() }].iter()).ok().unwrap();
-        let mne22 = Mnemonic::new(6..7,"b2.2".to_string(),"".to_string(),vec![].iter(),vec![
+        let mne22 = Mnemonic::new(6..7, "b2.2".to_string(), "".to_string(), vec![].iter(), vec![
                                   Statement{ op: Operation::Move(Rvalue::Undefined), assignee: d.clone() }].iter()).ok().unwrap();
 
-        let mne30 = Mnemonic::new(7..8,"b3.0".to_string(),"".to_string(),vec![].iter(),vec![
-                                  Statement{ op: Operation::Add(a.clone().into(),b.clone().into()), assignee: y.clone() }].iter()).ok().unwrap();
-        let mne31 = Mnemonic::new(8..9,"b3.1".to_string(),"".to_string(),vec![].iter(),vec![
-                                  Statement{ op: Operation::Add(c.clone().into(),d.clone().into()), assignee: z.clone() }].iter()).ok().unwrap();
-        let mne32 = Mnemonic::new(9..10,"b3.2".to_string(),"".to_string(),vec![].iter(),vec![
-                                  Statement{ op: Operation::Add(i.clone().into(),i.clone().into()), assignee: i.clone() }].iter()).ok().unwrap();
-        let mne33 = Mnemonic::new(10..11,"b3.3".to_string(),"".to_string(),vec![].iter(),vec![
-                                  Statement{ op: Operation::LessOrEqualUnsigned(i.clone().into(),Rvalue::new_u32(100)), assignee: f.clone() }].iter()).ok().unwrap();
+        let mne30 = Mnemonic::new(7..8, "b3.0".to_string(), "".to_string(), vec![].iter(), vec![
+                                  Statement{ op: Operation::Add(a.clone().into(), b.clone().into()), assignee: y.clone() }].iter()).ok().unwrap();
+        let mne31 = Mnemonic::new(8..9, "b3.1".to_string(), "".to_string(), vec![].iter(), vec![
+                                  Statement{ op: Operation::Add(c.clone().into(), d.clone().into()), assignee: z.clone() }].iter()).ok().unwrap();
+        let mne32 = Mnemonic::new(9..10, "b3.2".to_string(), "".to_string(), vec![].iter(), vec![
+                                  Statement{ op: Operation::Add(i.clone().into(), i.clone().into()), assignee: i.clone() }].iter()).ok().unwrap();
+        let mne33 = Mnemonic::new(10..11, "b3.3".to_string(), "".to_string(), vec![].iter(), vec![
+                                  Statement{ op: Operation::LessOrEqualUnsigned(i.clone().into(), Rvalue::new_u32(100)), assignee: f.clone() }].iter()).ok().unwrap();
 
-        let mne4 = Mnemonic::new(11..12,"b4".to_string(),"".to_string(),vec![].iter(),vec![].iter()).ok().unwrap();
+        let mne4 = Mnemonic::new(11..12, "b4".to_string(), "".to_string(), vec![].iter(), vec![].iter()).ok().unwrap();
 
-        let mne50 = Mnemonic::new(12..13,"b5.0".to_string(),"".to_string(),vec![].iter(),vec![
+        let mne50 = Mnemonic::new(12..13, "b5.0".to_string(), "".to_string(), vec![].iter(), vec![
                                   Statement{ op: Operation::Move(Rvalue::Undefined), assignee: a.clone() }].iter()).ok().unwrap();
-        let mne51 = Mnemonic::new(13..14,"b5.1".to_string(),"".to_string(),vec![].iter(),vec![
+        let mne51 = Mnemonic::new(13..14, "b5.1".to_string(), "".to_string(), vec![].iter(), vec![
                                   Statement{ op: Operation::Move(Rvalue::Undefined), assignee: d.clone() }].iter()).ok().unwrap();
-        let mne52 = Mnemonic::new(14..15,"b5.2".to_string(),"".to_string(),vec![].iter(),vec![
-                                  Statement{ op: Operation::LessOrEqualUnsigned(a.clone().into(),d.clone().into()), assignee: f.clone() }].iter()).ok().unwrap();
+        let mne52 = Mnemonic::new(14..15, "b5.2".to_string(), "".to_string(), vec![].iter(), vec![
+                                  Statement{ op: Operation::LessOrEqualUnsigned(a.clone().into(), d.clone().into()), assignee: f.clone() }].iter()).ok().unwrap();
 
-        let mne6 = Mnemonic::new(15..16,"b6".to_string(),"".to_string(),vec![].iter(),vec![
+        let mne6 = Mnemonic::new(15..16, "b6".to_string(), "".to_string(), vec![].iter(), vec![
                                  Statement{ op: Operation::Move(Rvalue::Undefined), assignee: d.clone() }].iter()).ok().unwrap();
 
-        let mne7 = Mnemonic::new(16..17,"b7".to_string(),"".to_string(),vec![].iter(),vec![
+        let mne7 = Mnemonic::new(16..17, "b7".to_string(), "".to_string(), vec![].iter(), vec![
                                  Statement{ op: Operation::Move(Rvalue::Undefined), assignee: b.clone() }].iter()).ok().unwrap();
 
-        let mne8 = Mnemonic::new(17..18,"b8".to_string(),"".to_string(),vec![].iter(),vec![
+        let mne8 = Mnemonic::new(17..18, "b8".to_string(), "".to_string(), vec![].iter(), vec![
                                  Statement{ op: Operation::Move(Rvalue::Undefined), assignee: c.clone() }].iter()).ok().unwrap();
 
         let bb0 = BasicBlock::from_vec(vec![mne0]);
-        let bb1 = BasicBlock::from_vec(vec![mne10,mne11,mne12]);
-        let bb2 = BasicBlock::from_vec(vec![mne20,mne21,mne22]);
-        let bb3 = BasicBlock::from_vec(vec![mne30,mne31,mne32,mne33]);
+        let bb1 = BasicBlock::from_vec(vec![mne10, mne11, mne12]);
+        let bb2 = BasicBlock::from_vec(vec![mne20, mne21, mne22]);
+        let bb3 = BasicBlock::from_vec(vec![mne30, mne31, mne32, mne33]);
         let bb4 = BasicBlock::from_vec(vec![mne4]);
-        let bb5 = BasicBlock::from_vec(vec![mne50,mne51,mne52]);
+        let bb5 = BasicBlock::from_vec(vec![mne50, mne51, mne52]);
         let bb6 = BasicBlock::from_vec(vec![mne6]);
         let bb7 = BasicBlock::from_vec(vec![mne7]);
         let bb8 = BasicBlock::from_vec(vec![mne8]);
@@ -855,27 +855,27 @@ mod tests {
         let v7 = cfg.add_vertex(ControlFlowTarget::Resolved(bb7));
         let v8 = cfg.add_vertex(ControlFlowTarget::Resolved(bb8));
 
-        cfg.add_edge(Guard::always(),v0,v1);
+        cfg.add_edge(Guard::always(), v0, v1);
 
         let g1 = Guard::from_flag(&f.clone().into()).ok().unwrap();
-        cfg.add_edge(g1.clone(),v1,v2);
-        cfg.add_edge(g1.negation(),v1,v5);
+        cfg.add_edge(g1.clone(), v1, v2);
+        cfg.add_edge(g1.negation(), v1, v5);
 
-        cfg.add_edge(Guard::always(),v2,v3);
+        cfg.add_edge(Guard::always(), v2, v3);
 
         let g3 = Guard::from_flag(&f.clone().into()).ok().unwrap();
-        cfg.add_edge(g3.clone(),v3,v1);
-        cfg.add_edge(g3.negation(),v3,v4);
+        cfg.add_edge(g3.clone(), v3, v1);
+        cfg.add_edge(g3.negation(), v3, v4);
 
         let g5 = Guard::from_flag(&f.clone().into()).ok().unwrap();
-        cfg.add_edge(g5.clone(),v5,v6);
-        cfg.add_edge(g5.negation(),v5,v8);
+        cfg.add_edge(g5.clone(), v5, v6);
+        cfg.add_edge(g5.negation(), v5, v8);
 
-        cfg.add_edge(Guard::always(),v6,v7);
-        cfg.add_edge(Guard::always(),v7,v3);
-        cfg.add_edge(Guard::always(),v8,v7);
+        cfg.add_edge(Guard::always(), v6, v7);
+        cfg.add_edge(Guard::always(), v7, v3);
+        cfg.add_edge(Guard::always(), v8, v7);
 
-        let mut func = Function::new("test".to_string(),"ram".to_string());
+        let mut func = Function::new("test".to_string(), "ram".to_string());
 
         func.cflow_graph = cfg;
         func.entry_point = Some(v0);
@@ -886,12 +886,12 @@ mod tests {
         for v in func.cflow_graph.vertices() {
             if let Some(&ControlFlowTarget::Resolved(ref bb)) = func.cflow_graph.vertex_label(v) {
                 bb.execute(|i| {
-                    if let Lvalue::Variable{ subscript,.. } = i.assignee {
+                    if let Lvalue::Variable{ subscript, .. } = i.assignee {
                         assert!(subscript.is_some());
                     }
 
                     for op in i.op.operands() {
-                        if let &Rvalue::Variable{ subscript,.. } = op {
+                        if let &Rvalue::Variable{ subscript, .. } = op {
                             assert!(subscript.is_some());
                         }
                     }

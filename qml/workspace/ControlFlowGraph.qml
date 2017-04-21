@@ -63,10 +63,10 @@ Rectangle {
 					nodeScale.yScale *= 1.05
 				}
 
-				nodeScale.xScale = Math.min(nodeScale.xScale,1);
-				nodeScale.yScale = Math.min(nodeScale.yScale,1);
-				nodeScale.xScale = Math.max(nodeScale.xScale,0.000001);
-				nodeScale.yScale = Math.max(nodeScale.yScale,0.000001);
+				nodeScale.xScale = Math.min(nodeScale.xScale, 1);
+				nodeScale.yScale = Math.min(nodeScale.yScale, 1);
+				nodeScale.xScale = Math.max(nodeScale.xScale, 0.000001);
+				nodeScale.yScale = Math.max(nodeScale.yScale, 0.000001);
 			} else if(wheel.modifiers === 0) {
 				nodeRoot.y += wheel.angleDelta.y * 1 / nodeScale.yScale;
 				nodeRoot.x += wheel.angleDelta.x * 1 / nodeScale.xScale;
@@ -154,8 +154,8 @@ Rectangle {
 						 for(var i = 0; i < segs.length; i++) {
 							 var e = segs[i];
 
-							 off_x = Math.min(off_x,Math.min(e.x1,e.x2));
-							 off_y = Math.min(off_y,Math.min(e.y1,e.y2));
+							 off_x = Math.min(off_x, Math.min(e.x1, e.x2));
+							 off_y = Math.min(off_y, Math.min(e.y1, e.y2));
 						 }
 					 }
 				 }
@@ -178,7 +178,7 @@ Rectangle {
 			 nodeRoot.y = 0;
 
 			 if (entry !== undefined) {
-				 var mid = mapFromItem(nodeRoot,entry.x + entry.width / 2,entry.y + entry.height / 2);
+				 var mid = mapFromItem(nodeRoot, entry.x + entry.width / 2, entry.y + entry.height / 2);
 				 nodeRoot.x = (root.width / 2) - mid.x;
 				 nodeRoot.y = (root.height / 3) - mid.y;
 			 }
@@ -214,7 +214,7 @@ Rectangle {
 			 return;
 		 }
 
-		 if (cfg.nodes.length == 1 && cfg.nodes[0].substr(0,3) == "err") {
+		 if (cfg.nodes.length == 1 && cfg.nodes[0].substr(0, 3) == "err") {
 			 root.errorMessage = "Disassembly failed: " + cfg.errors[cfg.nodes[0]];
 			 root.state = "ERROR"
 			 console.exception("Disassembly failed: " + cfg.errors[cfg.nodes[0]]);
@@ -267,13 +267,13 @@ Rectangle {
 					console.exception("Node '" + node.toString() + "' has neither code nor target");
 				}
 
-				var obj = basicBlock.createObject(nodeRoot,c);
+				var obj = basicBlock.createObject(nodeRoot, c);
 
 				obj.visible = false;
-				dims[node] = {"width":obj.width,"height":obj.height};
+				dims[node] = {"width":obj.width, "height":obj.height};
 			}
 
-			var res = JSON.parse(Panopticon.sugiyamaLayout(selection,JSON.stringify(dims),100,30,8));
+			var res = JSON.parse(Panopticon.sugiyamaLayout(selection, JSON.stringify(dims), 100, 30, 8));
 			if(res.status != "ok") {
 				root.errorMessage = res.error
 				root.state = "ERROR"
@@ -346,7 +346,7 @@ Rectangle {
 				var func = func_res.payload;
 				var cfg = cfg_res.payload;
 
-				ctx.clearRect(0,0,width,height);
+				ctx.clearRect(0, 0, width, height);
 
 				if(edges !== null) {
 					for (var conn in edgeCanvas.edges) {
@@ -357,31 +357,31 @@ Rectangle {
 								var e = segs[i];
 
 								ctx.beginPath();
-								ctx.moveTo(e.x1 - x_corr,e.y1 - y_corr);
-								ctx.lineTo(e.x2 - x_corr,e.y2 - y_corr);
+								ctx.moveTo(e.x1 - x_corr, e.y1 - y_corr);
+								ctx.lineTo(e.x2 - x_corr, e.y2 - y_corr);
 								ctx.stroke();
 							}
 
 							draw_arrow_head(
 								edgeCanvas.edges[conn].head_offset.x - x_corr,
-								edgeCanvas.edges[conn].head_offset.y - y_corr - 5,ctx);
+								edgeCanvas.edges[conn].head_offset.y - y_corr - 5, ctx);
 							}
 						}
 					}
 				}
 
-				function draw_arrow_head(x,y,ctx) {
+				function draw_arrow_head(x, y, ctx) {
 					var dim = 10;
 
 					ctx.save();
-					ctx.translate(x,y);
+					ctx.translate(x, y);
 					ctx.rotate(Math.PI);
 					ctx.beginPath();
-					ctx.moveTo(0,dim / -2);
-					ctx.lineTo(dim / 2,dim / 2);
-					ctx.lineTo(0,dim / 3);
-					ctx.lineTo(dim / -2,dim / 2);
-					ctx.lineTo(0,dim / -2);
+					ctx.moveTo(0, dim / -2);
+					ctx.lineTo(dim / 2, dim / 2);
+					ctx.lineTo(0, dim / 3);
+					ctx.lineTo(dim / -2, dim / 2);
+					ctx.lineTo(0, dim / -2);
 					ctx.stroke();
 					ctx.fill();
 					ctx.restore();
