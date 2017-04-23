@@ -47,6 +47,14 @@ impl Action {
         }))
     }
 
+    pub fn new_rename(panopticon: &mut QPanopticon,func: Uuid, name: String) -> Result<Action> {
+        Ok(Self::new(func,ActionPayload::Rename{
+            before: panopticon.functions.get(&func).map(|f| f.name.clone()).unwrap_or("".to_string()),
+            after: name,
+        }))
+    }
+
+
 /*    pub fn new_setvalue(panopticon: &mut Panopticon,func: Uuid, variable: String, value: String) -> Result<Action> {
         Ok(Self::new(func,ActionPayload::SetValue{
             variable: variable.clone(),
@@ -119,42 +127,6 @@ impl Action {
                 Self::update_setvalue(panopticon,variable,after)
             }
         }
-    }
-
-    fn update_comment(panopticon: &mut Panopticon,comment: String, address: u64) -> Result<()> {
-        /*let func = &panopticon.functions[uuid];
-        let maybe_lb = func.cflow_graph.vertex_label(vx);
-
-        if let Some(&ControlFlowTarget::Resolved(ref bb)) = maybe_lb {
-            let lines = bb.mnemonics.iter().map(|mne| {
-                panopticon.get_basic_block_line(mne).unwrap()
-            }).collect::<Vec<_>>();
-
-            Some((x - min_x,y - min_y,vx.0 as i32,func.entry_point == Some(vx),json::encode(&lines).unwrap()))
-        } else {
-            None
-        }
-
-   let maybe_vx = FUNCTION.1.iter().position(|&(start,end,_)| start <= address && end >= address);
-        let maybe_idx = maybe_vx.and_then(|vx| {
-            panopticon.control_flow_nodes.view_data().iter().position(|&(_,_,id,_,_)| id == vx as i32)
-        });
-
-        if let Some(idx) = maybe_idx {
-            let mut tpl = panopticon.control_flow_nodes.view_data()[idx].clone();
-            let mut contents = json::decode::<Vec<CfgMnemonic>>(&tpl.4).unwrap();
-
-            for mne in contents.iter_mut() {
-                if mne.offset == address {
-                    mne.comment = comment.clone();
-                    break;
-                }
-            }
-
-            panopticon.control_flow_nodes.change_line(idx,tpl.0,tpl.1,tpl.2,tpl.3,json::encode(&contents).unwrap())
-        }*/
-
-        Ok(())
     }
 
     fn update_setvalue(panopticon: &mut Panopticon,variable: &str, value: &str) -> Result<()> {

@@ -22,8 +22,22 @@ Ctrl.ApplicationWindow {
 
 		Ctrl.Menu {
 			title: "Edit"
-			Ctrl.MenuItem { text: "Undo" }
-			Ctrl.MenuItem { text: "Redo" }
+			Ctrl.MenuItem {
+				action: Ctrl.Action {
+					text: "Undo"
+					shortcut: StandardKey.Undo
+					enabled: Panopticon.canUndo
+					onTriggered: { Panopticon.undo() }
+				}
+			}
+			Ctrl.MenuItem {
+				action: Ctrl.Action {
+					text: "Redo"
+					shortcut: StandardKey.Redo
+					enabled: Panopticon.canRedo
+					onTriggered: { Panopticon.redo() }
+				}
+			}
 			Ctrl.MenuItem { text: "Erase Values" }
 		}
 
