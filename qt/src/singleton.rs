@@ -44,6 +44,7 @@ use uuid::Uuid;
 use parking_lot::Mutex;
 use errors::*;
 use sugiyama;
+use action::Action;
 use graph_algos::{
     GraphTrait,
     MutableGraphTrait,
@@ -146,6 +147,9 @@ pub struct Panopticon {
 
     pub new_functions: Mutex<Vec<Function>>,
     pub functions: HashMap<Uuid,Function>,
+
+    pub undo_stack: Vec<Action>,
+    pub undo_stack_top: usize,
 }
 
 
@@ -264,6 +268,18 @@ impl QPanopticon {
         None
     }
 
+    fn comment_on(&mut self,address: String, comment: String) -> Option<&QVariant> {
+        use std::str::FromStr;
+
+        println!("comment_on(): address={}, comment={}",address,comment);
+        let addr = u64::from_str(&address).unwrap();
+        let func: String = self.get_visible_function().into();
+        let act = Action::new_comment(self,Uuid::parse_str(&func).unwrap(),addr,comment.clone()).unwrap();
+
+        self.push_action(act);
+        None
+    }
+
     fn display_control_flow_for(&mut self, uuid_str: String) -> Option<&QVariant> {
         debug!("display_control_flow_for() uuid={}",uuid_str);
 
@@ -344,6 +360,52 @@ impl QPanopticon {
             self.preview_node_changed();
             self.preview_function_changed();
         }
+        None
+    }
+
+    fn undo(&mut self) -> Option<&QVariant> {
+        let mut top = self.undo_stack_top;
+
+        if top == 0 || self.undo_stack.get(top - 1).is_none() {
+            unreachable!("call to undo() when canUndo() is false");
+        }
+
+        let act = self.undo_stack[top - 1].clone();
+        act.undo(self).unwrap();
+
+        self.undo_stack_top = top - 1;
+
+        let len = self.undo_stack.len();
+
+        self.set_can_undo(top - 1 != 0);
+        self.set_can_redo(true);
+
+        self.can_undo_changed();
+        self.can_redo_changed();
+
+        None
+    }
+
+    fn redo(&mut self) -> Option<&QVariant> {
+        let mut top = self.undo_stack_top;
+
+        if self.undo_stack.get(top).is_none() {
+            unreachable!("call to redo() when canRedo() is false");
+        }
+
+        let act = self.undo_stack[top].clone();
+        act.redo(self).unwrap();
+
+        self.undo_stack_top = top + 1;
+
+        let len = self.undo_stack.len();
+
+        self.set_can_undo(true);
+        self.set_can_redo(top + 1 < len);
+
+        self.can_undo_changed();
+        self.can_redo_changed();
+
         None
     }
 
@@ -650,6 +712,36 @@ impl QPanopticon {
         self.control_flow_edges_changed();
         Ok(())
     }
+
+    pub fn update_basic_block(&mut self, address: u64, uuid: &Uuid) -> Result<()> {
+        let vis: String = self.get_visible_function().into();
+        if vis == uuid.to_string() {
+            self.set_control_flow_properties(uuid)
+        } else {
+            Ok(())
+        }
+    }
+
+    fn push_action(&mut self,act: Action) -> Result<()> {
+        let top = self.undo_stack_top;
+
+        act.redo(self)?;
+
+        self.undo_stack.truncate(top);
+        self.undo_stack.push(act);
+        self.undo_stack_top = self.undo_stack.len();
+
+        let top = self.undo_stack_top;
+        let len = self.undo_stack.len();
+
+        self.set_can_undo(top != 0);
+        self.set_can_redo(top < len);
+
+        self.can_undo_changed();
+        self.can_redo_changed();
+
+        Ok(())
+    }
 }
 
 impl Default for Panopticon {
@@ -671,6 +763,8 @@ impl Default for Panopticon {
             control_flow_values: HashMap::new(),
             new_functions: Mutex::new(vec![]),
             functions: HashMap::new(),
+            undo_stack: Vec::new(),
+            undo_stack_top: 0,
         }
     }
 }
@@ -688,6 +782,13 @@ pub Panopticon as QPanopticon {
         // control flow / preview
         fn display_control_flow_for(uuid: String);
         fn display_preview_for(uuid: String);
+
+        // actions
+        fn comment_on(address: String,comment: String);
+
+        // undo/redo
+        fn undo();
+        fn redo();
 
     properties:
         initialFile: String; read: get_initial_file, write: set_initial_file, notify: initial_file_changed;
@@ -715,4 +816,8 @@ pub Panopticon as QPanopticon {
         basicBlockCharacterWidth: i32; read: get_basic_block_character_width, write: set_basic_block_character_width, notify: basic_block_character_width_changed;
         basicBlockColumnPadding: i32; read: get_basic_block_column_padding, write: set_basic_block_column_padding, notify: basic_block_column_padding_changed;
         basicBlockCommentWidth: i32; read: get_basic_block_comment_width, write: set_basic_block_comment_width, notify: basic_block_comment_width_changed;
+
+        // undo/redo
+        canUndo: bool; read: get_can_undo, write: set_can_undo, notify: can_undo_changed;
+        canRedo: bool; read: get_can_redo, write: set_can_redo, notify: can_redo_changed;
 });

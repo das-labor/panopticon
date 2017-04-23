@@ -47,6 +47,7 @@ extern crate xdg;
 mod sugiyama;
 mod singleton;
 mod paths;
+mod action;
 mod errors {
     error_chain! {
         foreign_links {
@@ -120,8 +121,8 @@ fn main() {
         8,
         26,
         150,
-//        false,
-//        false
+        false,
+        false
         );
 
     engine.set_and_store_property("Panopticon", panop.get_qobj());
