@@ -53,46 +53,45 @@ Rectangle {
 
 			model: Panopticon.sidebar
 			delegate: Item {
-				height: 18
 				width: listView.width
+				height: childrenRect.height
+
+				Rectangle {
+					id: rowMarker
+					anchors.fill: parent
+					anchors.rightMargin: 16+5+5
+					color: "#eee"
+					radius: 3
+					visible: rowMouseArea.containsMouse && !labelMouseArea.containsMouse
+				}
+
+				MouseArea {
+					id: rowMouseArea
+					anchors.fill: parent
+					anchors.rightMargin: 16+5
+					hoverEnabled: true
+					onClicked: {
+						console.log("display cfg for " + uuid);
+						root.showControlFlowGraph(uuid);
+					}
+				}
 
 				RowLayout {
 					id: row
-					anchors.fill: parent
+					width: parent.width
 
 					Ctrl.Label {
-						Layout.leftMargin: 20
+						Layout.leftMargin: 10
+						Layout.fillWidth: true
 
 						id: titleLabel
 						text: title
 						font { pointSize: 11; family: "Source Sans Pro" }
-
-						MouseArea {
-							id: mouseArea
-							anchors.top: parent.top
-							anchors.bottom: parent.bottom
-							x: 0; width: titleLabel.width + 5 + subtitleLabel.width
-							hoverEnabled: true
-							onClicked: {
-								console.log("display cfg for " + uuid);
-								root.showControlFlowGraph(uuid);
-							}
-						}
-
-						Rectangle {
-							anchors.top: parent.top
-							anchors.bottom: parent.bottom
-							x: -3; width: titleLabel.width + 5 + subtitleLabel.width + 6
-							z: -1
-							color: "#eee"
-							radius: 3
-							visible: mouseArea.containsMouse
-						}
 					}
 
 					Ctrl.Label {
 						Layout.leftMargin: 5
-						Layout.fillWidth: true
+						Layout.rightMargin: 10
 
 						id: subtitleLabel
 						text: subtitle
@@ -100,8 +99,36 @@ Rectangle {
 						font { pointSize: 11; family: "Source Code Pro" }
 						horizontalAlignment: Text.AlignLeft
 					}
+
+					Image {
+						Layout.preferredWidth: 16
+						Layout.preferredHeight: 16
+						Layout.rightMargin: 5
+
+						id: editLabel
+						source: "../icons/pencil.svg"
+						fillMode: Image.PreserveAspectFit
+						mipmap: true
+						opacity: labelMouseArea.containsMouse ? 1 : (rowMouseArea.containsMouse ? .6 : 0)
+
+						MouseArea {
+							id: labelMouseArea
+							width: parent.width
+							height: row.height
+							hoverEnabled: true
+							onClicked: {
+								console.log("rename " + uuid);
+								var mapped = row.mapToItem(root,row.x,row.y,row.width,row.height);
+								renamePopover.open(mapped,title,uuid);
+							}
+						}
+					}
 				}
 			}
 		}
+	}
+
+	RenamePopover {
+		id: renamePopover
 	}
 }

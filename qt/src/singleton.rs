@@ -280,6 +280,17 @@ impl QPanopticon {
         None
     }
 
+    fn rename_function(&mut self,uuid: String, name: String) -> Option<&QVariant> {
+        use std::str::FromStr;
+
+        println!("rename_function(): uuid={}, name={}",uuid,name);
+        let func = Uuid::parse_str(&uuid).unwrap();
+        let act = Action::new_rename(self,func,name.clone()).unwrap();
+
+        self.push_action(act);
+        None
+    }
+
     fn display_control_flow_for(&mut self, uuid_str: String) -> Option<&QVariant> {
         debug!("display_control_flow_for() uuid={}",uuid_str);
 
@@ -722,6 +733,32 @@ impl QPanopticon {
         }
     }
 
+    pub fn update_sidebar(&mut self, uuid: &Uuid) -> Result<()> {
+        let uuid_str = uuid.to_string();
+        let maybe_idx = self.sidebar.view_data().iter().position(|&(_,_,ref u)| *u == uuid_str);
+        let tpl = {
+            let func = &self.functions[uuid];
+            let cfg = &func.cflow_graph;
+            let entry = func.entry_point.
+                and_then(|vx| cfg.vertex_label(vx)).
+                and_then(|lb| {
+                    if let &ControlFlowTarget::Resolved(ref bb) = lb {
+                        Some(bb.area.start)
+                    } else {
+                        None
+                    }
+                });
+            let str_entry = entry.map(|x| format!("0x{:x}",x)).unwrap_or("".to_string());
+            (func.name.to_string(),str_entry,func.uuid.to_string())
+        };
+
+        if let Some(pos) = maybe_idx {
+            self.sidebar.change_line(pos,tpl.0,tpl.1,tpl.2);
+        }
+
+        Ok(())
+    }
+
     fn push_action(&mut self,act: Action) -> Result<()> {
         let top = self.undo_stack_top;
 
@@ -785,6 +822,7 @@ pub Panopticon as QPanopticon {
 
         // actions
         fn comment_on(address: String,comment: String);
+        fn rename_function(uuid: String, name: String);
 
         // undo/redo
         fn undo();

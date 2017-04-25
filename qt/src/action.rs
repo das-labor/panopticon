@@ -71,17 +71,13 @@ impl Action {
                 panopticon.control_flow_comments.insert(address,before.clone());
                 panopticon.update_basic_block(address,&self.function)
             },
-            ActionPayload::Rename{ ref before, ref after } => {
-                /*let (mut elem,idx) = {
-                    let funcs = panopticon.functions.view_data();
-                    let idx = funcs.iter().position(|s| s.2 == self.function.to_string()).unwrap();
-                    (funcs[idx].clone(),idx)
-                };
+            ActionPayload::Rename{ ref before,.. } => {
+                if let Some(func) = panopticon.functions.get_mut(&self.function) {
+                    func.name = before.clone();
+                }
 
-                debug_assert!(elem.0 == *after);
-                Self::update_rename(panopticon,variable,before)
-                panopticon.functions.change_line(idx,before.clone(),elem.1,elem.2);*/
-                Ok(())
+                panopticon.update_sidebar(&self.function)
+
             },
             ActionPayload::SetValue{ ref variable, ref before, ref after } => {
                 /*let key = (self.function.to_string(),variable.clone());
@@ -104,16 +100,12 @@ impl Action {
                 panopticon.control_flow_comments.insert(address,after.clone());
                 panopticon.update_basic_block(address,&self.function)
             },
-            ActionPayload::Rename{ ref before, ref after } => {
-                /*let (mut elem,idx) = {
-                    let funcs = panopticon.functions.view_data();
-                    let idx = funcs.iter().position(|s| s.2 == self.function.to_string()).unwrap();
-                    (funcs[idx].clone(),idx)
-                };
+            ActionPayload::Rename{ ref after,.. } => {
+                if let Some(func) = panopticon.functions.get_mut(&self.function) {
+                    func.name = after.clone();
+                }
 
-                debug_assert!(elem.0 == *before);
-                panopticon.functions.change_line(idx,after.clone(),elem.1,elem.2);*/
-                Ok(())
+                panopticon.update_sidebar(&self.function)
             },
             ActionPayload::SetValue{ ref variable, ref before, ref after } => {
                 /*let key = (self.function.to_string(),variable.clone());

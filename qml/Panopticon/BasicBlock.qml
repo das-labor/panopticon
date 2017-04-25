@@ -20,6 +20,7 @@ import QtQuick 2.3
 import QtQuick.Controls 1.2 as Ctrl
 import QtQuick.Controls.Styles 1.2 as Style
 import QtQuick.Layouts 1.1
+import QtGraphicalEffects 1.0
 
 import Panopticon 1.0
 import ".."
@@ -63,76 +64,8 @@ Item {
 			hoverEnabled: true
 		}
 
-		Item {
+		EditPopover {
 			id: editOverlay
-
-			property string variable: ""
-
-			function open(x,y,v) {
-				editOverlay.x = x;
-				editOverlay.y = y;
-				editOverlay.visible = true
-				editOverlayField.focus = true
-				editOverlay.variable = v;
-			}
-
-			function close() {
-				editOverlayField.focus = false
-				editOverlay.visible = false;
-				editOverlayField.text = "";
-			}
-
-			z: 2
-			visible: false
-
-			Canvas {
-				id: editOverlayTip
-
-				x: parent.width - width / 2
-				y: 0
-				width: 20
-				height: 12
-
-				onPaint: {
-					var ctx = editOverlayTip.getContext('2d');
-
-					ctx.fillStyle = "#a9a9a9";
-
-					ctx.beginPath();
-					ctx.moveTo(0,editOverlayTip.height);
-					ctx.lineTo(editOverlayTip.width / 2,0);
-					ctx.lineTo(editOverlayTip.width,editOverlayTip.height);
-					ctx.closePath();
-					ctx.fill();
-				}
-			}
-
-			Rectangle {
-				anchors.top: editOverlayTip.bottom
-				anchors.horizontalCenter: parent.left
-				width: editOverlayField.width + 10
-				height: editOverlayField.height + 10
-				color: "#a9a9a9"
-				radius: 2
-
-				Ctrl.TextField {
-					id: editOverlayField
-
-					x: 5
-					y: 5
-
-					/*style: Style.TextFieldStyle {
-						background: Rectangle { color: "white"; opacity: .9; border { width: 1 } }
-					}*/
-
-					onAccepted: {
-						Panopticon.set_value_for(editOverlay.variable,editOverlayField.text);
-						//editOverlay.close();
-					}
-
-					onEditingFinished: { editOverlay.close() }
-				}
-			}
 		}
 
 		GridLayout {
@@ -207,6 +140,7 @@ Item {
 							}
 
 							MouseArea {
+								id: operandMouseArea
 								anchors.fill: parent
 								hoverEnabled: true
 								visible: modelData.kind == "variable"
@@ -218,7 +152,7 @@ Item {
 
 								onClicked: {
 									var pnt = parent.mapToItem(editOverlay.parent,x + width / 2,y + height);
-									editOverlay.open(pnt.x,pnt.y,modelData.data)
+									editOverlay.open(pnt.x,pnt.y + 3,modelData.data)
 								}
 							}
 

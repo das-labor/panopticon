@@ -47,11 +47,11 @@ MouseArea {
 
 		width: basicBlockGrid.width + basicBlockGrid.x
 		height: basicBlockGrid.height + basicBlockGrid.y + Panopticon.basicBlockPadding
-		color: "#ffffff"
+		color: "#fafafa"
 		radius: 2
 		border {
 			width: .7
-			color: "#939393"
+			color: "#d8dae4"
 		}
 
 		Label {
@@ -64,7 +64,7 @@ MouseArea {
 			font {
 				pointSize: 12
 			}
-			color: "#939393"
+			color: "#d8dae4"
 		}
 
 		GridLayout {
@@ -124,14 +124,14 @@ MouseArea {
 
 		x: parent.width + 3
 		y: parent.height / 2 - height / 2
-		width: 20
+		width: 6
 		height: 20
 
 		onPaint: {
 			var ctx = overlayTip.getContext('2d');
 
-			ctx.fillStyle = "white";
-			ctx.strokeStyle = "#939393";
+			ctx.fillStyle = "#fafafa";
+			ctx.strokeStyle = "#d8dae4";
 			ctx.lineWidth = 1;
 
 			ctx.beginPath();

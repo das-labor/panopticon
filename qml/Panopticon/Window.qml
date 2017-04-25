@@ -96,6 +96,7 @@ Ctrl.ApplicationWindow {
 			anchors.top: parent.top
 			anchors.bottom: parent.bottom
 			width: 250
+			z: 2
 
 			onShowControlFlowGraph: {
 				controlflow.functionUuid = uuid
