@@ -4,3 +4,4 @@ doc/html
 /target
 **/*.qmlc
 **/*.jsc
+**/*.rs.bk
