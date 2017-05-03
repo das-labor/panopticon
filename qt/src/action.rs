@@ -54,15 +54,13 @@ impl Action {
         }))
     }
 
-
-/*    pub fn new_setvalue(panopticon: &mut Panopticon,func: Uuid, variable: String, value: String) -> Result<Action> {
+    pub fn new_setvalue(panopticon: &mut QPanopticon,func: Uuid, variable: String, value: String) -> Result<Action> {
         Ok(Self::new(func,ActionPayload::SetValue{
             variable: variable.clone(),
-            before: panopticon.control_flow_values.get(&(func.to_string(),variable)).cloned().unwrap_or("".to_string()),
+            before: panopticon.control_flow_values.get(&func).cloned().unwrap_or("".to_string()),
             after: value,
         }))
-    }*/
-
+    }
 
     pub fn undo(&self,panopticon: &mut QPanopticon) -> Result<()> {
         match self.payload {
@@ -80,15 +78,13 @@ impl Action {
 
             },
             ActionPayload::SetValue{ ref variable, ref before, ref after } => {
-                /*let key = (self.function.to_string(),variable.clone());
-                debug_assert!(panopticon.control_flow_values.get(&key).unwrap_or(&"".to_string()) == after);
-
+                debug_assert!(panopticon.control_flow_values.get(&self.function).unwrap_or(&"".to_string()) == after);
                 if before == "" {
-                    panopticon.control_flow_values.remove(&key);
+                    panopticon.control_flow_values.remove(&self.function);
                 } else {
-                    panopticon.control_flow_values.insert(key,before.clone());
-                }*/
-                Self::update_setvalue(panopticon,variable,before)
+                    panopticon.control_flow_values.insert(self.function.clone(),before.clone());
+                }
+                panopticon.update_basic_block(0,&self.function)
             }
         }
     }
@@ -108,40 +104,14 @@ impl Action {
                 panopticon.update_sidebar(&self.function)
             },
             ActionPayload::SetValue{ ref variable, ref before, ref after } => {
-                /*let key = (self.function.to_string(),variable.clone());
-                debug_assert!(panopticon.control_flow_values.get(&key).unwrap_or(&"".to_string()) == before);
-
+                debug_assert!(panopticon.control_flow_values.get(&self.function).unwrap_or(&"".to_string()) == before);
                 if after == "" {
-                    panopticon.control_flow_values.remove(&key);
+                    panopticon.control_flow_values.remove(&self.function);
                 } else {
-                    panopticon.control_flow_values.insert(key,after.clone());
-                }*/
-                Self::update_setvalue(panopticon,variable,after)
+                    panopticon.control_flow_values.insert(self.function.clone(),after.clone());
+                }
+                panopticon.update_basic_block(0,&self.function)
             }
         }
-    }
-
-    fn update_setvalue(panopticon: &mut Panopticon,variable: &str, value: &str) -> Result<()> {
-        /*let cnt = panopticon.control_flow_nodes.view_data().len();
-        for idx in 0..cnt {
-            let mut tpl = panopticon.control_flow_nodes.view_data()[idx].clone();
-            let mut contents = json::decode::<Vec<CfgMnemonic>>(&FUNCTION.1[tpl.2 as usize].2).unwrap();
-            let mut modified = false;
-
-            for mne in contents.iter_mut() {
-                for arg in mne.args.iter_mut() {
-                    if arg.kind == "variable" && arg.data == variable {
-                        if value != "" { arg.display = value.to_string(); }
-                        modified = true;
-                    }
-                }
-            }
-
-            if modified {
-                panopticon.control_flow_nodes.change_line(idx,tpl.0,tpl.1,tpl.2,tpl.3,json::encode(&contents).unwrap());
-            }
-        }*/
-
-        Ok(())
     }
 }

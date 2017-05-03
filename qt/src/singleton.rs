@@ -143,7 +143,7 @@ pub struct Panopticon {
     pub control_flow_layouts: HashMap<Uuid,ControlFlowLayout>,
 
     pub control_flow_comments: HashMap<u64,String>,
-    pub control_flow_values: HashMap<(Uuid,String),String>,
+    pub control_flow_values: HashMap<Uuid,String>,
 
     pub new_functions: Mutex<Vec<Function>>,
     pub functions: HashMap<Uuid,Function>,
@@ -286,6 +286,17 @@ impl QPanopticon {
         println!("rename_function(): uuid={}, name={}",uuid,name);
         let func = Uuid::parse_str(&uuid).unwrap();
         let act = Action::new_rename(self,func,name.clone()).unwrap();
+
+        self.push_action(act);
+        None
+    }
+
+    fn set_value_for(&mut self,variable: String, value: String) -> Option<&QVariant> {
+        use std::str::FromStr;
+
+        println!("set_value_for(): variable={}, value={}",variable,value);
+        let func: String = self.get_visible_function().into();
+        let act = Action::new_setvalue(self,Uuid::parse_str(&func).unwrap(),variable,value).unwrap();
 
         self.push_action(act);
         None
@@ -823,6 +834,7 @@ pub Panopticon as QPanopticon {
         // actions
         fn comment_on(address: String,comment: String);
         fn rename_function(uuid: String, name: String);
+        fn set_value_for(variable: String,value: String);
 
         // undo/redo
         fn undo();
