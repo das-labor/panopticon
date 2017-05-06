@@ -13,6 +13,7 @@ use {
     Region,
     CallTarget,
     Rvalue,
+    ssa_convertion,
 };
 use graph_algos::{
     VertexListGraphTrait,
@@ -39,7 +40,7 @@ where A::Configuration: Debug {
         while !targets.is_empty() {
             info!("disassemble {:?}",targets);
             let (new_targets,new_fns): (Vec<Vec<u64>>,Vec<Function>) = targets.into_iter().map(|entry| {
-                let f = Function::disassemble::<A>(None,config.clone(),&region,entry);
+                let mut f = Function::disassemble::<A>(None,config.clone(),&region,entry);
                 let new_ct = f.collect_calls().into_iter().filter_map(|rv| {
                     if let Rvalue::Constant{ value,.. } = rv {
                         if !functions.contains_key(&value) && entry != value {
@@ -48,6 +49,8 @@ where A::Configuration: Debug {
                     }
                     None
                 }).collect::<Vec<u64>>();
+
+                ssa_convertion(&mut f);
 
                 functions.insert(entry,f.clone());
                 (new_ct,f)
