@@ -22,6 +22,7 @@
 
 use std::collections::{HashSet};
 use std::iter::FromIterator;
+use std::fmt;
 
 use {
     Rvalue,
@@ -47,6 +48,24 @@ pub enum Kset {
     Set(Vec<(u64,usize)>),
     /// Lattice meet, equal to the empty set.
     Meet,
+}
+
+impl fmt::Display for Kset {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            &Kset::Meet => write!(f, "Ø"),
+            &Kset::Set(ref vec) if vec.is_empty() => write!(f, "Ø"),
+            &Kset::Set(ref vec) if vec.len() == 1 => write!(f, "{{0x{:x}}}", vec[0].0),
+            &Kset::Set(ref vec) => {
+                write!(f, "{{0x{:x}", vec[0].0)?;
+                for &(v,_) in vec.iter() {
+                    write!(f, ", 0x{:x}",v)?;
+                }
+                write!(f, "}}")
+            }
+            &Kset::Join => write!(f, "⫟"),
+        }
+    }
 }
 
 impl PartialEq for Kset {
