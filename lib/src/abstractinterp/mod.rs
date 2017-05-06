@@ -101,7 +101,7 @@ pub trait Avalue: Clone + PartialEq + Eq + Hash + Debug + Encodable + Decodable 
     fn widen(&self,other: &Self) -> Self;
     /// Computes the lowest upper bound of self and the argument.
     fn combine(&self,&Self) -> Self;
-    /// Returns true if `other` <= `self`.
+    /// Returns true if `self` <= `other`.
     fn more_exact(&self,other: &Self) -> bool;
     /// Returns the meet of the domain
     fn initial() -> Self;
@@ -112,7 +112,7 @@ pub trait Avalue: Clone + PartialEq + Eq + Hash + Debug + Encodable + Decodable 
 /// Does an abstract interpretation of `func` using the abstract domain `A`. The function uses a
 /// fixed point iteration and the widening strategy outlined in
 /// Bourdoncle: "Efficient chaotic iteration strategies with widenings".
-pub fn approximate<A: Avalue>(func: &Function) -> Result<HashMap<Lvalue,A>> {
+pub fn approximate<A: Avalue>(func: &Function,fixed: &HashMap<(Cow<'static,str>,usize),A>) -> Result<HashMap<Lvalue,A>> {
     if func.entry_point.is_none() {
         return Err("function has no entry point".into());
     }
@@ -121,13 +121,14 @@ pub fn approximate<A: Avalue>(func: &Function) -> Result<HashMap<Lvalue,A>> {
     let edge_ops = flag_operations(func);
     fn stabilize<A: Avalue>(h: &Vec<Box<HierarchicalOrdering<ControlFlowRef>>>, graph: &ControlFlowGraph,
                             constr: &HashMap<Lvalue,A>, sizes: &HashMap<Cow<'static,str>,usize>,
-                            ret: &mut HashMap<(Cow<'static,str>,usize),A>) -> Result<()> {
+                            ret: &mut HashMap<(Cow<'static,str>,usize),A>,
+                            fixed: &HashMap<(Cow<'static,str>,usize),A>) -> Result<()> {
         let mut stable = true;
         let mut iter_cnt = 0;
         let head = if let Some(h) = h.first() {
             match &**h {
                 &HierarchicalOrdering::Element(ref vx) => vx.clone(),
-                &HierarchicalOrdering::Component(ref vec) => return stabilize(vec,graph,constr,sizes,ret),
+                &HierarchicalOrdering::Component(ref vec) => return stabilize(vec,graph,constr,sizes,ret,fixed),
             }
         } else {
             return Ok(())
@@ -137,9 +138,9 @@ pub fn approximate<A: Avalue>(func: &Function) -> Result<HashMap<Lvalue,A>> {
             for x in h.iter() {
                 match &**x {
                     &HierarchicalOrdering::Element(ref vx) =>
-                        stable &= !try!(execute(*vx,iter_cnt >= 2 && *vx == head,graph,constr,sizes,ret)),
+                        stable &= !try!(execute(*vx,iter_cnt >= 2 && *vx == head,graph,constr,sizes,ret,fixed)),
                     &HierarchicalOrdering::Component(ref vec) => {
-                        try!(stabilize(&*vec,graph,constr,sizes,ret));
+                        try!(stabilize(&*vec,graph,constr,sizes,ret,fixed));
                         stable = true;
                     },
                 }
@@ -148,10 +149,12 @@ pub fn approximate<A: Avalue>(func: &Function) -> Result<HashMap<Lvalue,A>> {
             if stable {
                 for (lv,a) in constr.iter() {
                     if let &Lvalue::Variable{ ref name, subscript: Some(ref subscript),.. } = lv {
-                    if let Some(ref mut x) = ret.get_mut(&(name.clone(),*subscript)) {
-                        let n = x.narrow(&a);
-                        **x = n;
-                    }
+                        let nam = (name.clone(),*subscript);
+
+                        if let Some(ref mut x) = ret.get_mut(&nam) {
+                            let n = x.narrow(&a);
+                            **x = n;
+                        }
                     }
                 }
 
@@ -165,33 +168,33 @@ pub fn approximate<A: Avalue>(func: &Function) -> Result<HashMap<Lvalue,A>> {
     }
     fn execute<A: Avalue>(t: ControlFlowRef, do_widen: bool, graph: &ControlFlowGraph,
                           _: &HashMap<Lvalue,A>, sizes: &HashMap<Cow<'static,str>,usize>,
-                          ret: &mut HashMap<(Cow<'static,str>,usize),A>) -> Result<bool> {
+                          ret: &mut HashMap<(Cow<'static,str>,usize),A>,
+                          fixed: &HashMap<(Cow<'static,str>,usize),A>) -> Result<bool> {
         if let Some(&ControlFlowTarget::Resolved(ref bb)) = graph.vertex_label(t) {
             let mut change = false;
             let mut pos = 0usize;
             bb.execute(|i| {
                 if let Statement{ ref op, assignee: Lvalue::Variable{ ref name, subscript: Some(ref subscript),.. } } = *i {
                     let pp = ProgramPoint{ address: bb.area.start, position: pos };
-                    let new = A::execute(&pp,&lift(op,&|x| res::<A>(x,sizes,&ret)));
+                    let new = A::execute(&pp,&lift(op,&|x| res::<A>(x,sizes,&ret,fixed)));
                     let assignee = (name.clone(),*subscript);
                     let cur = ret.get(&assignee).cloned();
 
-                    if cur.is_none() {
-                        change = true;
-                        ret.insert(assignee,new);
-                    } else {
+                    if let Some(cur) = cur {
                         if do_widen {
-                            let c = cur.unwrap();
-                            let w = c.widen(&new);
+                            let w = cur.widen(&new);
 
-                            if w != c {
+                            if w != cur {
                                 change = true;
                                 ret.insert(assignee,w);
                             }
-                        } else if new.more_exact(&cur.clone().unwrap()) {
+                        } else if cur.more_exact(&new) {
                             change = true;
                             ret.insert(assignee,new);
                         }
+                    } else {
+                        change = true;
+                        ret.insert(assignee,new);
                     }
                 }
 
@@ -203,10 +206,12 @@ pub fn approximate<A: Avalue>(func: &Function) -> Result<HashMap<Lvalue,A>> {
             Ok(false)
         }
     }
-    fn res<A: Avalue>(v: &Rvalue, sizes: &HashMap<Cow<'static,str>,usize>, env: &HashMap<(Cow<'static,str>,usize),A>) -> A {
+    fn res<A: Avalue>(v: &Rvalue, sizes: &HashMap<Cow<'static,str>,usize>,
+                      env: &HashMap<(Cow<'static,str>,usize),A>,
+                      fixed: &HashMap<(Cow<'static,str>,usize),A>) -> A {
         if let &Rvalue::Variable{ ref name, subscript: Some(ref subscript), ref size, ref offset } = v {
             let nam = (name.clone(),*subscript);
-            let t = env.get(&nam).unwrap_or(&A::initial()).clone();
+            let t = fixed.get(&nam).or_else(|| env.get(&nam)).unwrap_or(&A::initial()).clone();
 
             if *offset > 0 || *size != *sizes.get(&nam.0).unwrap_or(&0) {
                 t.extract(*size,*offset)
@@ -275,11 +280,15 @@ pub fn approximate<A: Avalue>(func: &Function) -> Result<HashMap<Lvalue,A>> {
 
     match wto {
         HierarchicalOrdering::Component(ref v) => {
-            try!(stabilize(v,&func.cflow_graph,&constr,&sizes,&mut ret));
+            try!(stabilize(v,&func.cflow_graph,&constr,&sizes,&mut ret,fixed));
         },
         HierarchicalOrdering::Element(ref v) => {
-            try!(execute(*v,false,&func.cflow_graph,&constr,&sizes,&mut ret));
+            try!(execute(*v,false,&func.cflow_graph,&constr,&sizes,&mut ret,fixed));
         },
+    }
+
+    for (k,v) in fixed.iter() {
+        ret.insert(k.clone(),v.clone());
     }
 
     Ok(HashMap::from_iter(ret.iter().filter_map(|(&(ref name,ref subscript),val)| {
@@ -686,7 +695,7 @@ mod tests {
 
         assert!(ssa_convertion(&mut func).is_ok());
 
-        let vals = approximate::<Sign>(&func).ok().unwrap();
+        let vals = approximate::<Sign>(&func,&HashMap::new()).ok().unwrap();
         let res = results::<Sign>(&func,&vals);
 
         assert_eq!(res[&(Cow::Borrowed("x"),32)],Sign::Join);
@@ -746,7 +755,7 @@ mod tests {
 
         assert!(ssa_convertion(&mut func).is_ok());
 
-        let vals = approximate::<Sign>(&func).ok().unwrap();
+        let vals = approximate::<Sign>(&func,&HashMap::new()).ok().unwrap();
         let res = results::<Sign>(&func,&vals);
 
         println!("vals: {:?}",vals);

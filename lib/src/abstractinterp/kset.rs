@@ -370,7 +370,7 @@ mod tests {
 
         assert!(ssa_convertion(&mut func).is_ok());
 
-        let vals = approximate::<Kset>(&func).ok().unwrap();
+        let vals = approximate::<Kset>(&func,&HashMap::new()).ok().unwrap();
         let res = results::<Kset>(&func,&vals);
 
         assert_eq!(res[&(Cow::Borrowed("a"),32)],Kset::Join);
@@ -414,7 +414,7 @@ mod tests {
 
         assert!(ssa_convertion(&mut func).is_ok());
 
-        let vals = approximate::<Kset>(&func).ok().unwrap();
+        let vals = approximate::<Kset>(&func,&HashMap::new()).ok().unwrap();
 
         for i in vals {
             println!("{:?}",i);
