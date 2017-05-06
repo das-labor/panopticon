@@ -55,13 +55,31 @@ Item {
 			color: "#939393"
 		}
 
-	MouseArea {
+		MouseArea {
+			property int hoveredRow: -1
+
 			id: mouseArea
 			anchors.left: basicBlockGrid.left
 			anchors.top: parent.top
 			anchors.bottom: parent.bottom
 			anchors.right: basicBlockRect.right
 			hoverEnabled: true
+
+			function updateHoveredRow(y) {
+				if(y < 0 || y > mouseArea.height) {
+					mouseArea.hoveredRow = -1;
+				} else {
+					mouseArea.hoveredRow = Math.floor(y / Panopticon.basicBlockLineHeight);
+				}
+			}
+
+			onExited: {
+				mouseArea.hoveredRow = -1;
+			}
+
+			onPositionChanged: {
+				updateHoveredRow(mouseY)
+			}
 		}
 
 		EditPopover {
@@ -122,6 +140,8 @@ Item {
 			Repeater {
 				model: code
 				delegate: RowLayout {
+					property int rowIndex: index
+
 					Layout.column: 2
 					Layout.row: index
 					Layout.rightMargin: 15
@@ -138,6 +158,7 @@ Item {
 						 		capitalization: Font.AllLowercase
 								pointSize: 10
 							}
+							color: modelData.alt == "" ? "black" : "#297f7a"
 
 							MouseArea {
 								id: operandMouseArea
@@ -147,7 +168,19 @@ Item {
 								cursorShape: Qt.IBeamCursor
 
 								onExited: {
+									var y = mapToItem(mouseArea,0,mouseY).y;
+									mouseArea.updateHoveredRow(y);
 									editOverlay.close()
+								}
+
+								onEntered: {
+									var y = mapToItem(mouseArea,0,mouseY).y;
+									mouseArea.updateHoveredRow(y);
+								}
+
+								onPositionChanged: {
+									var y = mapToItem(mouseArea,0,mouseY).y;
+									mouseArea.updateHoveredRow(y);
 								}
 
 								onClicked: {
@@ -169,6 +202,21 @@ Item {
 																		 operandLabel.width,
 																		 operandLabel.height);
 									displayPreview(bb)
+								}
+
+								onExited: {
+									var y = mapToItem(mouseArea,0,mouseY).y;
+									mouseArea.updateHoveredRow(y);
+								}
+
+								onEntered: {
+									var y = mapToItem(mouseArea,0,mouseY).y;
+									mouseArea.updateHoveredRow(y);
+								}
+
+								onPositionChanged: {
+									var y = mapToItem(mouseArea,0,mouseY).y;
+									mouseArea.updateHoveredRow(y);
 								}
 
 								onDoubleClicked: {

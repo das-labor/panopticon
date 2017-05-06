@@ -83,7 +83,6 @@ Item {
 
 			onAccepted: {
 				Panopticon.set_value_for(editOverlay.variable,editOverlayField.text);
-				//editOverlay.close();
 			}
 
 			onEditingFinished: { editOverlay.close() }

@@ -32,6 +32,7 @@ use std::fs;
 use std::str::FromStr;
 use std::collections::{HashMap,HashSet};
 use std::iter::FromIterator;
+use std::borrow::Cow;
 use panopticon::{
     Project,
     loader,
@@ -39,6 +40,7 @@ use panopticon::{
     ControlFlowTarget,
     Mnemonic,
     Guard,
+    Kset,
 };
 use uuid::Uuid;
 use parking_lot::Mutex;
@@ -129,7 +131,20 @@ struct BasicBlockLine {
 struct BasicBlockOperand {
     kind: &'static str, // constant, variable, function, literal
     display: String, // string to display
+    alt: String, // alternative display string
     data: String, // constant: value, variable: ssa var, function: UUID, literal: empty string
+}
+
+#[derive(PartialEq,Eq,Clone,Debug,Hash)]
+pub struct VarName {
+    pub name: Cow<'static,str>,
+    pub subscript: usize,
+}
+
+#[derive(Clone,Debug)]
+pub struct AbstractInterpretation {
+    pub input: HashMap<VarName,Kset>,
+    pub output: HashMap<VarName,Kset>,
 }
 
 pub struct Panopticon {
@@ -143,7 +158,7 @@ pub struct Panopticon {
     pub control_flow_layouts: HashMap<Uuid,ControlFlowLayout>,
 
     pub control_flow_comments: HashMap<u64,String>,
-    pub control_flow_values: HashMap<Uuid,String>,
+    pub control_flow_values: HashMap<Uuid,AbstractInterpretation>,
 
     pub new_functions: Mutex<Vec<Function>>,
     pub functions: HashMap<Uuid,Function>,
@@ -294,11 +309,43 @@ impl QPanopticon {
     fn set_value_for(&mut self,variable: String, value: String) -> Option<&QVariant> {
         use std::str::FromStr;
 
-        println!("set_value_for(): variable={}, value={}",variable,value);
-        let func: String = self.get_visible_function().into();
-        let act = Action::new_setvalue(self,Uuid::parse_str(&func).unwrap(),variable,value).unwrap();
+        let toks: Vec<String> = variable.split('_').map(str::to_string).collect();
+        if toks.len() == 2 {
+            if let Ok(subscript) = usize::from_str(&toks[1]) {
 
-        self.push_action(act);
+                let var = VarName{
+                    name: toks[0].clone().into(),
+                    subscript: subscript,
+                };
+                let func: String = self.get_visible_function().into();
+                let val = if value == "" {
+                    None
+                } else {
+                    let vals = value
+                        .split(',')
+                        .filter_map(|x| u64::from_str(x.trim()).ok())
+                        .map(|x| (x,64))
+                        .collect::<Vec<_>>();
+
+                    if !vals.is_empty() {
+                        Some(Kset::Set(vals))
+                    } else {
+                        println!("'{}' is not a valid value",value);
+                        return None;
+                    }
+                };
+                println!("set_value_for(): variable={}, value={}",variable,value);
+
+                let act = Action::new_setvalue(self,Uuid::parse_str(&func).unwrap(),var,val).unwrap();
+
+                self.push_action(act);
+            } else {
+                println!("'{}' is not an integer",toks[1]);
+            }
+        } else {
+            println!("'{:?}' is not a valid variable",toks);
+        }
+
         None
     }
 
@@ -349,7 +396,7 @@ impl QPanopticon {
             self.update_control_flow_dimensions(&uuid);
         }
 
-        self.set_control_flow_properties(&uuid);
+        self.set_control_flow_properties(&uuid,None);
         self.set_visible_function(uuid.to_string());
         println!("layout done");
         None
@@ -370,7 +417,7 @@ impl QPanopticon {
             }
         }).and_then(|bb| {
             let lines = bb.mnemonics.iter().map(|mne| {
-                self.get_basic_block_line(mne).unwrap()
+                self.get_basic_block_line(&uuid,mne).unwrap()
             }).collect::<Vec<_>>();
 
             json::encode(&lines).ok()
@@ -499,7 +546,7 @@ impl QPanopticon {
         Ok(())
     }
 
-    fn get_basic_block_line(&self, mnemonic: &Mnemonic) -> Result<BasicBlockLine> {
+    fn get_basic_block_line(&self, func: &Uuid, mnemonic: &Mnemonic) -> Result<BasicBlockLine> {
         use panopticon::{
             Rvalue,
             MnemonicFormatToken
@@ -514,6 +561,7 @@ impl QPanopticon {
             args: vec![],
         };
         let mut ops = mnemonic.operands.clone();
+        let values = self.control_flow_values.get(func);
 
         ops.reverse();
         ret.args = mnemonic.format_string.iter().filter_map(|x| match x {
@@ -521,6 +569,7 @@ impl QPanopticon {
                 Some(BasicBlockOperand{
                     kind: "literal",
                     display: s.to_string(),
+                    alt: "".to_string(),
                     data: "".to_string(),
                 })
             }
@@ -537,6 +586,7 @@ impl QPanopticon {
                         Some(BasicBlockOperand{
                             kind: "constant",
                             display: s.clone(),
+                            alt: "".to_string(),
                             data: s,
                         })
                     },
@@ -546,9 +596,20 @@ impl QPanopticon {
                         } else {
                             format!("{}",*name)
                         };
+                        let (display,alt) = values
+                            .and_then(|x| subscript
+                                .and_then(|s| {
+                                    let nam = VarName{ name: name.clone(), subscript: s };
+                                    x.output.get(&nam)
+                                }))
+                            .and_then(|val| if val != &Kset::Join && val != &Kset::Meet { Some(val) } else { None })
+                            .map(|x| (format!("{}",x),name.to_string()))
+                            .unwrap_or_else(|| (name.to_string(),"".to_string()));
+
                         Some(BasicBlockOperand{
                             kind: "variable",
-                            display: name.to_string(),
+                            display: display,
+                            alt: alt,
                             data: data,
                         })
                     }
@@ -556,6 +617,7 @@ impl QPanopticon {
                         Some(BasicBlockOperand{
                             kind: "variable",
                             display: "?".to_string(),
+                            alt: "".to_string(),
                             data: "".to_string(),
                         })
                     }
@@ -590,6 +652,7 @@ impl QPanopticon {
                         Some(BasicBlockOperand{
                             kind: if data == "" { "pointer" } else { "function" },
                             display: display,
+                            alt: "".to_string(),
                             data: data,
                         })
                     }
@@ -597,6 +660,7 @@ impl QPanopticon {
                         Some(BasicBlockOperand{
                             kind: "pointer",
                             display: name.to_string(),
+                            alt: "".to_string(),
                             data: "".to_string(),
                         })
                     }
@@ -604,6 +668,7 @@ impl QPanopticon {
                         Some(BasicBlockOperand{
                             kind: "pointer",
                             display: "?".to_string(),
+                            alt: "".to_string(),
                             data: "".to_string(),
                         })
                     }
@@ -618,11 +683,13 @@ impl QPanopticon {
         Ok(ret)
     }
 
-    fn set_control_flow_properties(&mut self, uuid: &Uuid) -> Result<()> {
+    fn set_control_flow_properties(&mut self, uuid: &Uuid, limit_to: Option<&Vec<u64>>) -> Result<()> {
         let ControlFlowLayout{ node_positions: ref positions, ref edges, ref node_dimensions,.. } = self.control_flow_layouts[uuid].clone();
 
-        self.control_flow_nodes.clear();
-        self.control_flow_edges.clear();
+        if limit_to.is_none() {
+            self.control_flow_nodes.clear();
+            self.control_flow_edges.clear();
+        }
 
         use std::f32;
 
@@ -656,21 +723,50 @@ impl QPanopticon {
             let maybe_lb = func.cflow_graph.vertex_label(vx);
 
             if let Some(&ControlFlowTarget::Resolved(ref bb)) = maybe_lb {
-                let lines = bb.mnemonics.iter().map(|mne| {
-                    self.get_basic_block_line(mne).unwrap()
-                }).collect::<Vec<_>>();
+                let b = if let Some(ref addrs) = limit_to {
+                    addrs.iter().any(|&x| bb.area.start <= x && bb.area.end > x)
+                } else {
+                    limit_to.is_none()
+                };
 
-                Some((x - min_x,y - min_y,vx.0 as i32,func.entry_point == Some(vx),json::encode(&lines).unwrap()))
+                if b {
+                    let lines = bb.mnemonics.iter().map(|mne| {
+                        self.get_basic_block_line(uuid,mne).unwrap()
+                    }).collect::<Vec<_>>();
+
+                    Some((x - min_x,y - min_y,vx.0 as i32,func.entry_point == Some(vx),json::encode(&lines).unwrap()))
+                } else {
+                    None
+                }
             } else {
                 None
             }
         }).collect::<Vec<_>>();
 
-        for (x,y,vx,is_entry,content) in tuples {
-            self.control_flow_nodes.append_row(x,y,vx,is_entry,content);
+        if limit_to.is_none() {
+            for (x,y,vx,is_entry,content) in tuples {
+                self.control_flow_nodes.append_row(x,y,vx,is_entry,content);
+            }
+        } else {
+            let mut tuples = HashMap::<i32,(_,_,_,_,_)>::from_iter(tuples.into_iter().map(|t| (t.2,t)));
+            let num = self.control_flow_nodes.view_data().len();
+            let mut values = self.control_flow_nodes.view_data();
+
+            for idx in 0..num {
+                let p = tuples.remove(&values[idx].2);
+
+                if let Some(t) = p {
+                    values[idx] = t;
+                }
+            }
+            self.control_flow_nodes.set_data(values);
+
+            // don't change edges. this speeds up updates, may produce ugly output.
+            return Ok(());
         }
 
         use rustc_serialize::json;
+
 
         for (&edge_desc,&(ref trail,(start_x,start_y),(end_x,end_y))) in edges.iter() {
             let f = |&(x,y,_,_)| (x - min_x,y - min_y);
@@ -735,10 +831,10 @@ impl QPanopticon {
         Ok(())
     }
 
-    pub fn update_basic_block(&mut self, address: u64, uuid: &Uuid) -> Result<()> {
+    pub fn update_basic_block(&mut self, addresses: &Vec<u64>, uuid: &Uuid) -> Result<()> {
         let vis: String = self.get_visible_function().into();
         if vis == uuid.to_string() {
-            self.set_control_flow_properties(uuid)
+            self.set_control_flow_properties(uuid,Some(addresses))
         } else {
             Ok(())
         }
