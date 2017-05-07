@@ -101,7 +101,6 @@ fn main() {
     let qrecent = panop.recent_sessions.get_qvar();
     let has_recent = !panop.recent_sessions.view_data().is_empty();
     let qsidebar = panop.sidebar.get_qvar();
-    let qtasks = panop.tasks.get_qvar();
     let qcontrolflownodes = panop.control_flow_nodes.get_qvar();
     let qcontrolflowedges = panop.control_flow_edges.get_qvar();
 
@@ -110,8 +109,8 @@ fn main() {
         matches.value_of("INPUT").unwrap_or("").to_string(),
         qrecent,
         has_recent,
+        "".to_string(),
         qsidebar,
-        qtasks,
         "".to_string(),
         qcontrolflownodes,
         qcontrolflowedges,

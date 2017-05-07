@@ -51,6 +51,7 @@
 
 use std::collections::HashSet;
 use std::path::Path;
+use std::sync::Arc;
 use graph_algos::adjacency_list::{AdjacencyListEdgeDescriptor,AdjacencyListVertexDescriptor};
 use graph_algos::{AdjacencyList,GraphTrait,VertexListGraphTrait,MutableGraphTrait,IncidenceGraphTrait};
 
@@ -102,7 +103,7 @@ impl Region {
 
     /// Creates a new `Region` called `name`, filled with `data`.
     pub fn wrap(name: String, data: Vec<u8>) -> Region {
-        Region::new(name,OpaqueLayer::Defined(Box::new(data)))
+        Region::new(name,OpaqueLayer::Defined(Arc::new(data)))
     }
 
     /// Creates a new `Region` called `name`, of size `len` with all `Cell`s undefined.

@@ -18,13 +18,21 @@ Ctrl.ApplicationWindow {
 				action: Ctrl.Action {
 					text: "Open"
 					shortcut: StandardKey.Open
+					enabled: Panopticon.currentSession == ""
 					onTriggered: {
 						workspace.state = "welcomeState"
 						welcome.open()
 					}
 				}
 			}
-			//Ctrl.MenuItem { text: "Save" }
+			Ctrl.MenuItem {
+				action: Ctrl.Action {
+					text: "Save"
+					shortcut: StandardKey.Save
+					enabled: Panopticon.currentSession != ""
+					onTriggered: { Panopticon.save_session(Panopticon.currentSession) }
+				}
+			}
 			//Ctrl.MenuItem { text: "Save As..." }
 			Ctrl.MenuItem {
 				action: Ctrl.Action {

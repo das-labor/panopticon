@@ -38,12 +38,15 @@ use std::iter::FromIterator;
 use std::borrow::Cow;
 use panopticon::{
     Project,
+    Program,
     loader,
     Function,
     ControlFlowTarget,
     Mnemonic,
     Guard,
     Kset,
+    Region,
+    CallTarget,
 };
 use uuid::Uuid;
 use parking_lot::Mutex;
@@ -103,15 +106,6 @@ Q_LISTMODEL! {
     }
 }
 
-Q_LISTMODEL! {
-    pub QTasks {
-        title: String,
-        description: String,
-        state: String,
-        uuid: String
-    }
-}
-
 #[derive(Clone)]
 pub struct ControlFlowLayout {
     node_dimensions: HashMap<AdjacencyListVertexDescriptor,(f32,f32)>,
@@ -155,7 +149,6 @@ pub struct Panopticon {
     pub sidebar: QSidebar,
     pub control_flow_nodes: QControlFlowNodes,
     pub control_flow_edges: QControlFlowEdges,
-    pub tasks: QTasks,
 
     pub control_flow_layouts: HashMap<Uuid,ControlFlowLayout>,
 
@@ -164,6 +157,8 @@ pub struct Panopticon {
 
     pub new_functions: Mutex<Vec<Function>>,
     pub functions: HashMap<Uuid,Function>,
+    pub region: Option<Region>,
+    pub project: Option<Project>,
 
     pub undo_stack: Vec<Action>,
     pub undo_stack_top: usize,
@@ -236,24 +231,31 @@ impl QPanopticon {
 
         if let Ok(proj) = Project::open(&Path::new(&path)) {
             if !proj.code.is_empty() {
-                let cg = &proj.code[0].call_graph;
+                {
+                    let cg = &proj.code[0].call_graph;
 
-                for f in cg.vertices() {
-                    if let Some(&CallTarget::Concrete(ref func)) = cg.vertex_label(f) {
-                        let cfg = &func.cflow_graph;
-                        let entry = func.entry_point.
-                            and_then(|vx| cfg.vertex_label(vx)).
-                            and_then(|lb| {
-                                if let &ControlFlowTarget::Resolved(ref bb) = lb {
-                                    Some(bb.area.start)
-                                } else {
-                                    None
-                                }
-                            });
-                        let str_entry = entry.map(|x| format!("0x{:x}",x)).unwrap_or("".to_string());
-                        self.sidebar.append_row(func.name.to_string(),str_entry,func.uuid.to_string());
+                    for f in cg.vertices() {
+                        if let Some(&CallTarget::Concrete(ref func)) = cg.vertex_label(f) {
+                            let cfg = &func.cflow_graph;
+                            let entry = func.entry_point.
+                                and_then(|vx| cfg.vertex_label(vx)).
+                                and_then(|lb| {
+                                    if let &ControlFlowTarget::Resolved(ref bb) = lb {
+                                        Some(bb.area.start)
+                                    } else {
+                                        None
+                                    }
+                                });
+                            let str_entry = entry.map(|x| format!("0x{:x}",x)).unwrap_or("".to_string());
+                            self.sidebar.append_row(func.name.to_string(),str_entry,func.uuid.to_string());
+                            self.functions.insert(func.uuid.clone(),func.clone());
+                        }
                     }
                 }
+
+                self.project = Some(proj);
+                self.set_current_session(path);
+                self.current_session_changed();
             }
         } else if let Ok((mut proj,machine)) = loader::load(&Path::new(&path)) {
             let maybe_prog = proj.code.pop();
@@ -261,10 +263,11 @@ impl QPanopticon {
 
             if let Some(prog) = maybe_prog {
                 let pipe = match machine {
-                    Machine::Avr => pipeline::<avr::Avr>(prog,reg,avr::Mcu::atmega103()),
-                    Machine::Ia32 => pipeline::<amd64::Amd64>(prog,reg,amd64::Mode::Protected),
-                    Machine::Amd64 => pipeline::<amd64::Amd64>(prog,reg,amd64::Mode::Long),
+                    Machine::Avr => pipeline::<avr::Avr>(prog,reg.clone(),avr::Mcu::atmega103()),
+                    Machine::Ia32 => pipeline::<amd64::Amd64>(prog,reg.clone(),amd64::Mode::Protected),
+                    Machine::Amd64 => pipeline::<amd64::Amd64>(prog,reg.clone(),amd64::Mode::Long),
                 };
+                self.region = Some(reg);
 
                 self.threaded(|s| {
                     info!("disassembly thread started");
@@ -278,10 +281,19 @@ impl QPanopticon {
                     }
                     info!("disassembly thread finished");
                 });
+
+                use paths::session_directory;
+                use tempdir::TempDir;
+
+                let dir = session_directory().unwrap();
+                let dir = format!("{}",TempDir::new_in(dir,"panop-backing").unwrap().path().display());
+                self.set_current_session(dir);
+                self.current_session_changed();
             }
+        } else {
+            error!("{} is neither a saved session nor a recognized executable type",path);
         }
 
-        // XXX: error
         None
     }
 
@@ -348,6 +360,34 @@ impl QPanopticon {
         None
     }
 
+    fn save_session(&mut self, path: String) -> Option<&QVariant> {
+        use std::path::Path;
+
+        debug!("save_session() path={}",path);
+
+        if let Some(ref proj) = self.project {
+            if proj.snapshot(&Path::new(&path)).is_err() {
+                error!("Saving failed");
+            }
+        } else if let Some(ref region) = self.region {
+            let mut proj = Project::new("(none)".to_string(),region.clone());
+            let mut prog = Program::new("(none");
+
+            for f in self.functions.iter() {
+                prog.insert(CallTarget::Concrete(f.1.clone()));
+            }
+
+            proj.code.push(prog);
+            if proj.snapshot(&Path::new(&path)).is_err() {
+                error!("Saving failed");
+            }
+        } else {
+            error!("Saving failed");
+        }
+
+        None
+    }
+
     fn display_control_flow_for(&mut self, uuid_str: String) -> Option<&QVariant> {
         debug!("display_control_flow_for() uuid={}",uuid_str);
 
@@ -385,6 +425,7 @@ impl QPanopticon {
                 };
                 self.control_flow_layouts.insert(uuid.clone(),layout.clone());
             } else {
+                error!("layouting failed");
                 return None
             }
         }
@@ -889,7 +930,6 @@ impl Default for Panopticon {
         let sidebar = QSidebar::new();
         let nodes = QControlFlowNodes::new();
         let edges = QControlFlowEdges::new();
-        let tasks = QTasks::new();
         let recent = Self::read_recent_sessions().unwrap_or_else(|_| QRecentSessions::new());
 
         Panopticon{
@@ -897,12 +937,13 @@ impl Default for Panopticon {
             sidebar: sidebar,
             control_flow_nodes: nodes,
             control_flow_edges: edges,
-            tasks: tasks,
             control_flow_layouts: HashMap::new(),
             control_flow_comments: HashMap::new(),
             control_flow_values: HashMap::new(),
             new_functions: Mutex::new(vec![]),
             functions: HashMap::new(),
+            project: None,
+            region: None,
             undo_stack: Vec::new(),
             undo_stack_top: 0,
         }
@@ -918,6 +959,7 @@ pub Panopticon as QPanopticon {
 
         // session management
         fn open_program(path: String);
+        fn save_session(path: String);
 
         // control flow / preview
         fn display_control_flow_for(uuid: String);
@@ -938,12 +980,10 @@ pub Panopticon as QPanopticon {
         // recent sessions
         recentSessions: QVariant; read: get_recent_sessions, write: set_recent_sessions, notify: recent_sessions_changed;
         haveRecentSessions: bool; read: get_have_recent_sessions, write: set_have_recent_sessions, notify: have_recent_sessions_changed;
+        currentSession: String; read: get_current_session, write: set_current_session, notify: current_session_changed;
 
         // sidebar
         sidebar: QVariant; read: get_sidebar, write: set_sidebar, notify: sidebar_changed;
-
-        // tasks
-        tasks: QVariant; read: get_tasks, write: set_tasks, notify: tasks_changed;
 
         // control flow / preview
         visibleFunction: String; read: get_visible_function, write: set_visible_function, notify: visible_function_changed;

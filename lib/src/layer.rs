@@ -43,6 +43,7 @@ use std::collections::HashMap;
 use std::path::Path;
 use std::fs::File;
 use std::io::Read;
+use std::sync::Arc;
 use std::ops::Range;
 
 use {
@@ -58,7 +59,7 @@ pub enum OpaqueLayer {
     /// Layer consisting of undefined cells.
     Undefined(u64),
     /// Layer consisting of fixed byte values.
-    Defined(Box<Vec<u8>>),
+    Defined(Arc<Vec<u8>>),
 }
 
 /// Iterator over a range of `Cell`s.
@@ -252,7 +253,7 @@ impl OpaqueLayer {
     /// Create a new `Layer` that replaces overlapped `Cell`s with the contents of `data`.
     /// The `Layer` will have the size of the vector.
     pub fn wrap(data: Vec<u8>) -> OpaqueLayer {
-        OpaqueLayer::Defined(Box::new(data))
+        OpaqueLayer::Defined(Arc::new(data))
     }
 
     /// Create a new `Layer` of size `len` that replaces overlapped `Cell`s undefined ones.
