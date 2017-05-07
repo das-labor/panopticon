@@ -11,13 +11,20 @@ matrix:
     - os: linux
       dist: trusty
       rust: stable
-      env: TARGET=x86_64-unknown-linux-gnu
+      env:
+        - TARGET=x86_64-unknown-linux-gnu
+        - COMPILER_NAME=gcc
+        - CXX=g++-5
+        - CC=gcc-5
     # rustdoc
     - os: linux
       dist: trusty
       rust: nightly
       env:
         - TARGET=x86_64-unknown-linux-gnu
+        - COMPILER_NAME=gcc
+        - CXX=g++-5
+        - CC=gcc-5
         - PACKAGE=doc
         - secure: "J9YvYryNyAZZSfJfXw64xHGmuwbwjPWxfvQ1vaLoC3ZXla2Nf1tEQN7P0UgnJkC3MZYop/yIZFa0bbdTG0Kef7+RHeD15Yp70bI6fyP9i048KRQYLPubTOHWIm5Ow6qIMo5hKZsVO3z+Lg7s3/y6L+DR5bT3PXWdZHovhe1QlA8="
     # nightly builds
@@ -26,6 +33,9 @@ matrix:
       rust: stable
       env:
         - TARGET=x86_64-unknown-linux-gnu
+        - COMPILER_NAME=gcc
+        - CXX=g++-5
+        - CC=gcc-5
         - PACKAGE=ubuntu
         - secure: "HwY2nRi7xuAQTkuVWgUupdVcJmutiiq+A4iDCbC4NI/vRB7WKCifxlzivCeTJMBu22LSLPJBMoaQ0S7w1PLaPkuG2d0qqFhublmhzk5sLaQt6AiwpEnJaHLqGy6aDVPDbqd4EWlPZ1MMCV+uXhtHzsg9XmrlZH9l5hMGx3mUDJw="
       branches:
@@ -77,21 +87,25 @@ language: rust
 cache: cargo
 addons:
   apt:
+    sources: &sources
+      - ubuntu-toolchain-r-test
     packages:
-    # panopticon
-    - cmake
-    - qt5-default
-    - qtdeclarative5-dev
-    - libqt5qml-quickcontrols
-    - qtbase5-private-dev
-    - libqt5svg5-dev
-    - pkg-config
-    - git
-    - build-essential
-    # kcov
-    - libelf-dev
-    - libcurl4-openssl-dev
-    - libdw-dev
+      # qml-rust
+      - g++-5
+      # panopticon
+      - cmake
+      - qt5-default
+      - qtdeclarative5-dev
+      - libqt5qml-quickcontrols
+      - qtbase5-private-dev
+      - libqt5svg5-dev
+      - pkg-config
+      - git
+      - build-essential
+      # kcov
+      - libelf-dev
+      - libcurl4-openssl-dev
+      - libdw-dev
 before_install: |
    if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
       brew update
