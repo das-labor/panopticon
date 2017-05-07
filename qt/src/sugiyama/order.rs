@@ -18,7 +18,6 @@
 
 use std::collections::HashMap;
 use std::{f32,isize,usize};
-use std::cmp::Ordering;
 
 use graph_algos::adjacency_list::{
     AdjacencyListEdgeDescriptor,
@@ -37,50 +36,6 @@ use graph_algos::search::{
     depth_first_visit,
     VertexEvent,
 };
-
-pub fn radial_barycenter(order: &mut Vec<Vec<AdjacencyListVertexDescriptor>>,
-                         _: &HashMap<AdjacencyListVertexDescriptor,isize>,
-                         graph: &AdjacencyList<usize,usize>) {
-    let mut pos = HashMap::<AdjacencyListVertexDescriptor,(f32,f32)>::new();
-
-    // initial rank
-    if order[0].len() == 1 {
-        pos.insert(order[0][0],(0.,0.));
-    } else {
-        let step = 2. * f32::consts::PI / order[0].len() as f32;
-        for (idx,vx) in order[0].iter().enumerate() {
-            let phi = step * idx as f32;
-            pos.insert(*vx,(phi.cos(),phi.sin()));
-        }
-    }
-
-    for idx in 0..order.len() - 1 {
-        let barycenters = {
-            let vary = &mut order[idx + 1];
-            let mut barycenters = vary.iter().map(|vx| {
-                let deg = graph.in_degree(*vx) as f32;
-                let (mut x,mut y) = graph.in_edges(*vx).filter_map(|e| {
-                    let wx = graph.source(e);
-                    pos.get(&wx)
-                }).fold((0.,0.),|(acc_x,acc_y),&(x,y)| (acc_x + x,acc_y + y));
-
-                fn h(x: f32) -> f32 { if x <= 0. { 0. } else { 1. } }
-
-                x /= deg;
-                y /= deg;
-
-                (*vx,y.atan2(x) + f32::consts::PI * h(-x) * f32::signum(y))
-            }).collect::<Vec<_>>();
-
-            barycenters.sort_by(|&(_,a),&(_,b)| if a < b { Ordering::Less }
-                                else { Ordering::Greater });
-
-            barycenters
-        };
-
-        order[idx + 1] = barycenters.into_iter().map(|(vx,_)| vx).collect::<Vec<_>>();
-    }
-}
 
 pub fn initial_ordering(rank: &HashMap<AdjacencyListVertexDescriptor,isize>,
                     start: &AdjacencyListVertexDescriptor,

@@ -73,12 +73,7 @@ pub struct LinearLayout {
     revd_edge_labels: HashSet<usize>,
 }
 
-/*
-let loop_spacing = 30.;
-let entry_spacing = 30.;
-let block_spacing = 10.;
-*/
-
+#[cfg(test)]
 pub fn linear_layout(vertices: &Vec<usize>,
                      edges: &Vec<(usize,usize)>,
                      dims: &HashMap<usize,(f32,f32)>,

@@ -18,16 +18,13 @@
 
 mod order;
 mod linear;
-mod radial;
 mod rank;
 
 pub use self::linear::{
-    linear_layout,
     linear_layout_placement,
     linear_layout_structural,
     LinearLayout,
 };
-pub use self::radial::radial_layout;
 
 #[cfg(test)]
 mod tests {
