@@ -16,37 +16,28 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-use std::collections::{HashSet,HashMap};
-use std::{f32,isize,usize};
+use std::collections::HashMap;
+use std::{f32,usize};
 use std::borrow::Cow;
-use std::cmp::{min,max,Ordering};
-use std::mem::swap;
-use std::iter::FromIterator;
+use std::cmp::Ordering;
 
 use graph_algos::adjacency_list::{
-    AdjacencyListEdgeDescriptor,
     AdjacencyListVertexDescriptor
 };
 
 use graph_algos::{
     VertexListGraphTrait,
     EdgeListGraphTrait,
-    BidirectionalGraphTrait,
     AdjacencyList,
     GraphTrait,
-    IncidenceGraphTrait,
     MutableGraphTrait,
 };
 
 use graph_algos::search::{
-    depth_first_visit,
     is_connected,
-    VertexEvent,
-    EdgeKind,
 };
 
 use sugiyama::order::{
-    optimize_ordering,
     initial_ordering,
     radial_barycenter,
 };
@@ -95,7 +86,7 @@ pub fn radial_layout(vertices: &Vec<usize>,
 
     // normalize graph to DAG with single entry "head"
     let head = ensure_single_entry(maybe_entry.as_ref(),&mut graph);
-    let revd_edge_labels = remove_cycles(&head,&mut graph);
+    let _ = remove_cycles(&head,&mut graph);
     remove_loops(&mut graph);
     let revd_parallel_edge = remove_parallel_edges(&mut graph);
 
@@ -112,7 +103,7 @@ pub fn radial_layout(vertices: &Vec<usize>,
     }
 
     // split edges spanning multiple ranks
-    let (virt_start,mut next_virt) = add_virtual_vertices(&mut rank,&mut graph);
+    let (virt_start,next_virt) = add_virtual_vertices(&mut rank,&mut graph);
     assert!(virt_start <= next_virt);
 
     if rank.len() != graph.num_vertices() {

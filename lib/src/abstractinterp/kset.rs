@@ -292,6 +292,7 @@ impl Avalue for Kset {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::collections::HashMap;
     use {
         Statement,Operation,
         ControlFlowTarget,Function,ControlFlowGraph,
@@ -386,6 +387,8 @@ mod tests {
 
         func.cflow_graph = cfg;
         func.entry_point = Some(v0);
+
+        println!("{}",func.to_dot());
 
         assert!(ssa_convertion(&mut func).is_ok());
 

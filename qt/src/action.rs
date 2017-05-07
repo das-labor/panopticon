@@ -1,7 +1,6 @@
 use uuid::Uuid;
 use errors::*;
 use {
-    Panopticon,
     QPanopticon,
 };
 use singleton::{
@@ -28,8 +27,6 @@ use std::iter::{
     FromIterator,
     IntoIterator,
 };
-
-use rustc_serialize::json;
 
 #[derive(Clone)]
 enum ActionPayload {
@@ -102,7 +99,7 @@ impl Action {
             let o = output.into_iter().filter_map(|(k,v)| {
                 match k {
                     Lvalue::Variable{ name, subscript: Some(subscript),.. } => Some((VarName{ name: name, subscript: subscript },v)),
-                    Lvalue::Variable{ name, subscript: None,.. } => None,
+                    Lvalue::Variable{ subscript: None,.. } => None,
                     Lvalue::Undefined{ .. } => None
                 }
             });
@@ -139,7 +136,7 @@ impl Action {
                 panopticon.update_sidebar(&self.function)
 
             },
-            ActionPayload::SetValue{ ref variable, ref before, ref after, ref modified_basic_blocks } => {
+            ActionPayload::SetValue{ ref before, ref modified_basic_blocks,.. } => {
                 if let &Some(ref before) = before {
                     panopticon.control_flow_values.insert(self.function.clone(),before.clone());
                 } else {
@@ -164,7 +161,7 @@ impl Action {
 
                 panopticon.update_sidebar(&self.function)
             },
-            ActionPayload::SetValue{ ref variable, ref before, ref after, ref modified_basic_blocks } => {
+            ActionPayload::SetValue{ ref after, ref modified_basic_blocks,.. } => {
                 if let &Some(ref after) = after {
                     panopticon.control_flow_values.insert(self.function.clone(),after.clone());
                 } else {

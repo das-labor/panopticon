@@ -118,3 +118,15 @@ fn find_data_file_impl(p: &Path) -> Result<Option<PathBuf>> {
         Err(e) => Err(result::Error(Cow::Owned(e.description().to_string()))),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::Path;
+
+    #[test]
+    fn paths() {
+        assert!(find_data_file(Path::new("test")).is_ok());
+        assert!(session_directory().is_ok());
+    }
+}

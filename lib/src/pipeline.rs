@@ -1,3 +1,23 @@
+/*
+ * Panopticon - A libre disassembler
+ * Copyright (C) 2017 Panopticon authors
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+//! Disassembly-Analysis loop.
+
 use futures::sync::mpsc;
 use futures::{stream,Stream,Sink,Future};
 use std::thread;
@@ -20,19 +40,19 @@ use graph_algos::{
     GraphTrait,
 };
 use std::fmt::Debug;
-//use rayon::prelude::*;
 
+/// Starts disassembling insructions in `region` and puts them into `program`. Returns a stream of
+/// of newly discovered functions.
 pub fn pipeline<A: Architecture + Debug + 'static >(program: Program, region: Region, config: A::Configuration) -> Box<Stream<Item=Function,Error=()> + Send>
 where A::Configuration: Debug {
     let (tx,rx) = mpsc::channel::<Function>(10);
-    let name = region.name().clone();
     thread::spawn(move || {
         let mut tx = tx;
         let mut functions = HashMap::<u64,Function>::new();
         let mut targets = HashSet::<u64>::from_iter(program.call_graph.vertices().filter_map(|vx| {
             match program.call_graph.vertex_label(vx) {
-                Some(&CallTarget::Todo(Rvalue::Constant{ value: ref entry,.. },ref maybe_name,ref uuid)) => Some(*entry),
-                Some(a) => None,
+                Some(&CallTarget::Todo(Rvalue::Constant{ value: ref entry,.. },..)) => Some(*entry),
+                Some(_) => None,
                 None => unreachable!(),
             }
         }));
@@ -50,7 +70,7 @@ where A::Configuration: Debug {
                     None
                 }).collect::<Vec<u64>>();
 
-                ssa_convertion(&mut f);
+                let _ = ssa_convertion(&mut f);
 
                 functions.insert(entry,f.clone());
                 (new_ct,f)

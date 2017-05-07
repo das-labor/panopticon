@@ -16,35 +16,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-use std::collections::{HashSet,HashMap};
-use std::{f32,isize,usize};
-use std::borrow::Cow;
-use std::cmp::{min,max,Ordering};
-use std::mem::swap;
-use std::iter::FromIterator;
-
-use graph_algos::adjacency_list::{
-    AdjacencyListEdgeDescriptor,
-    AdjacencyListVertexDescriptor
-};
-
-use graph_algos::{
-    VertexListGraphTrait,
-    EdgeListGraphTrait,
-    BidirectionalGraphTrait,
-    AdjacencyList,
-    GraphTrait,
-    IncidenceGraphTrait,
-    MutableGraphTrait,
-};
-
-use graph_algos::search::{
-    depth_first_visit,
-    is_connected,
-    VertexEvent,
-    EdgeKind,
-};
-
 mod order;
 mod linear;
 mod radial;
@@ -60,9 +31,12 @@ pub use self::radial::radial_layout;
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use std::{f32,isize,usize};
+    use std::iter::FromIterator;
+    use std::collections::{HashSet,HashMap};
     use graph_algos::{
         AdjacencyList,
+        IncidenceGraphTrait,
         GraphTrait,
         MutableGraphTrait,
         VertexListGraphTrait,
@@ -75,22 +49,12 @@ mod tests {
         linear_layout,
         compute_x_coordinates,
     };
-    use sugiyama::order::{
-        optimize_ordering,
-        initial_ordering,
-    };
-
     use sugiyama::rank::{
         ensure_single_entry,
         remove_cycles,
         remove_loops,
-        remove_parallel_edges,
-        compute_ranking,
         add_virtual_vertices,
-        normalize_rank,
     };
-
-    use std::collections::{HashSet,HashMap};
 
     #[test]
     fn test_remove_loops() {
@@ -563,6 +527,6 @@ mod tests {
         }
 
 
-        let x_pos = compute_x_coordinates(&order,&rank,&mut graph,&dims,&ports,&|_| 25.,virt_start);
+        compute_x_coordinates(&order,&rank,&mut graph,&dims,&ports,&|_| 25.,virt_start);
     }
 }

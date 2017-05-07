@@ -17,14 +17,10 @@
  */
 
 use std::collections::{HashSet,HashMap};
-use std::{f32,isize,usize};
-use std::borrow::Cow;
-use std::cmp::{min,max,Ordering};
-use std::mem::swap;
+use std::{isize,usize};
 use std::iter::FromIterator;
 
 use graph_algos::adjacency_list::{
-    AdjacencyListEdgeDescriptor,
     AdjacencyListVertexDescriptor
 };
 
@@ -34,13 +30,11 @@ use graph_algos::{
     BidirectionalGraphTrait,
     AdjacencyList,
     GraphTrait,
-    IncidenceGraphTrait,
     MutableGraphTrait,
 };
 
 use graph_algos::search::{
     depth_first_visit,
-    is_connected,
     VertexEvent,
     EdgeKind,
 };

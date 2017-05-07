@@ -20,7 +20,6 @@ use std::collections::{HashSet,HashMap};
 use std::{f32,isize,usize};
 use std::borrow::Cow;
 use std::cmp::{min,max,Ordering};
-use std::mem::swap;
 use std::iter::FromIterator;
 
 use graph_algos::adjacency_list::{
@@ -38,12 +37,7 @@ use graph_algos::{
     MutableGraphTrait,
 };
 
-use graph_algos::search::{
-    depth_first_visit,
-    is_connected,
-    VertexEvent,
-    EdgeKind,
-};
+use graph_algos::search::is_connected;
 
 use sugiyama::order::{
     optimize_ordering,
@@ -240,7 +234,7 @@ pub fn linear_layout_placement(vertices: &Vec<usize>,
                                port_spacing: f32, loop_spacing: f32,
                                entry_spacing: f32, block_spacing: f32
     ) -> Result<(HashMap<usize,(f32,f32)>,HashMap<usize,(Vec<(f32,f32,f32,f32)>,(f32,f32),(f32,f32))>),Cow<'static,str>> {
-    let &LinearLayout{ ref order, ref rank, ref graph, ref rev, ref entry, virt_start, ref revd_edge_labels } = layout;
+    let &LinearLayout{ ref order, ref rank, ref graph, ref rev, virt_start, ref revd_edge_labels,.. } = layout;
     let mut graph = graph.clone();
     let rank_sep = rank_spacing + block_spacing + entry_spacing;
     let dims = HashMap::from_iter(graph.vertices().map(|vx| {
@@ -318,10 +312,6 @@ pub fn linear_layout_placement(vertices: &Vec<usize>,
         }
     }
     for e in revd_edges {
-        let a = graph.source(e);
-        let b = graph.target(e);
-        let lb = *graph.edge_label(e).unwrap();
-
         graph.remove_edge(e);
     }
 
@@ -669,7 +659,7 @@ pub fn vertical_alignment(order: &Vec<Vec<AdjacencyListVertexDescriptor>>,
 fn calculate_threshold(v: AdjacencyListVertexDescriptor,
                        w: AdjacencyListVertexDescriptor,
                        old_threshold: f32,
-                       left_to_right: bool,
+                       _: bool,
                        queue: &mut Vec<(AdjacencyListVertexDescriptor,AdjacencyListEdgeDescriptor)>,
                        placed: &HashSet<AdjacencyListVertexDescriptor>,
                        x: &HashMap<AdjacencyListVertexDescriptor,f32>,
@@ -997,7 +987,7 @@ pub fn compute_x_coordinates(order: &Vec<Vec<AdjacencyListVertexDescriptor>>,
     }).collect::<Vec<_>>();
 
     // balance layouts
-    let min_max = layouts.iter().enumerate().map(|(i,&(_,_,ref pos,ref inner_shift,_))| {
+    let min_max = layouts.iter().enumerate().map(|(_,&(_,_,ref pos,ref inner_shift,_))| {
         let min = pos.iter().min_by(|&(vx,x),&(wx,y)| {
             (x + inner_shift[vx]).partial_cmp(&(y + inner_shift[wx])).unwrap_or(Ordering::Equal)
         }).unwrap();
@@ -1009,19 +999,19 @@ pub fn compute_x_coordinates(order: &Vec<Vec<AdjacencyListVertexDescriptor>>,
         (min,max)
     }).collect::<Vec<_>>();
 
-    let (smallestLayout,&((_,min),(_,max))) = min_max.iter()
+    let (smallest_layout,&((_,_),(_,_))) = min_max.iter()
         .enumerate()
         .min_by(|&(_,&((_,min1),(_,max1))),&(_,&((_,min2),(_,max2)))| {
-            (max1 - min1).partial_cmp(&(max2 - max1)).unwrap_or(Ordering::Equal)
+            (max1 - min1).partial_cmp(&(max2 - min2)).unwrap_or(Ordering::Equal)
         }).unwrap();
 
     // shifts
     let shift = min_max.iter().enumerate().map(|(k,&((_,min),(_,max)))| {
         let left_to_right = k % 2 == 0;
         if left_to_right {
-            (min_max[smallestLayout].0).1 - min
+            (min_max[smallest_layout].0).1 - min
         } else {
-            (min_max[smallestLayout].1).1 - max
+            (min_max[smallest_layout].1).1 - max
         }
     }).collect::<Vec<_>>();
 

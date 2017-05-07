@@ -16,12 +16,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-use std::collections::{HashSet,HashMap};
+use std::collections::HashMap;
 use std::{f32,isize,usize};
-use std::borrow::Cow;
-use std::cmp::{min,max,Ordering};
-use std::mem::swap;
-use std::iter::FromIterator;
+use std::cmp::Ordering;
 
 use graph_algos::adjacency_list::{
     AdjacencyListEdgeDescriptor,
@@ -29,24 +26,20 @@ use graph_algos::adjacency_list::{
 };
 
 use graph_algos::{
-    VertexListGraphTrait,
     EdgeListGraphTrait,
     BidirectionalGraphTrait,
     AdjacencyList,
     GraphTrait,
     IncidenceGraphTrait,
-    MutableGraphTrait,
 };
 
 use graph_algos::search::{
     depth_first_visit,
-    is_connected,
     VertexEvent,
-    EdgeKind,
 };
 
 pub fn radial_barycenter(order: &mut Vec<Vec<AdjacencyListVertexDescriptor>>,
-                         rank: &HashMap<AdjacencyListVertexDescriptor,isize>,
+                         _: &HashMap<AdjacencyListVertexDescriptor,isize>,
                          graph: &AdjacencyList<usize,usize>) {
     let mut pos = HashMap::<AdjacencyListVertexDescriptor,(f32,f32)>::new();
 
@@ -62,7 +55,6 @@ pub fn radial_barycenter(order: &mut Vec<Vec<AdjacencyListVertexDescriptor>>,
     }
 
     for idx in 0..order.len() - 1 {
-        let fixed = order[idx].clone();
         let barycenters = {
             let vary = &mut order[idx + 1];
             let mut barycenters = vary.iter().map(|vx| {
@@ -189,6 +181,8 @@ pub fn optimize_ordering(order: &mut Vec<Vec<AdjacencyListVertexDescriptor>>,
 fn crossings(bipartite: &HashMap<(usize,usize),Vec<(AdjacencyListEdgeDescriptor,AdjacencyListEdgeDescriptor)>>,
              order: &Vec<Vec<AdjacencyListVertexDescriptor>>,
              graph: &AdjacencyList<usize,usize>) -> usize {
+    use std::mem::swap;
+
     let mut ret = 0;
 
     for (&(r_top,r_bot),v) in bipartite.iter() {

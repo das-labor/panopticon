@@ -16,6 +16,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+// Qt uses camelCase
+#![allow(non_snake_case)]
+
 use qml::{
     QObject,
     QVariant,
@@ -49,7 +52,6 @@ use sugiyama;
 use action::Action;
 use graph_algos::{
     GraphTrait,
-    MutableGraphTrait,
     VertexListGraphTrait,
     EdgeListGraphTrait,
     IncidenceGraphTrait,
@@ -290,19 +292,17 @@ impl QPanopticon {
         let addr = u64::from_str(&address).unwrap();
         let func: String = self.get_visible_function().into();
         let act = Action::new_comment(self,Uuid::parse_str(&func).unwrap(),addr,comment.clone()).unwrap();
+        let _ = self.push_action(act);
 
-        self.push_action(act);
         None
     }
 
     fn rename_function(&mut self,uuid: String, name: String) -> Option<&QVariant> {
-        use std::str::FromStr;
-
         println!("rename_function(): uuid={}, name={}",uuid,name);
         let func = Uuid::parse_str(&uuid).unwrap();
         let act = Action::new_rename(self,func,name.clone()).unwrap();
+        let _ = self.push_action(act);
 
-        self.push_action(act);
         None
     }
 
@@ -337,8 +337,7 @@ impl QPanopticon {
                 println!("set_value_for(): variable={}, value={}",variable,value);
 
                 let act = Action::new_setvalue(self,Uuid::parse_str(&func).unwrap(),var,val).unwrap();
-
-                self.push_action(act);
+                let _ = self.push_action(act);
             } else {
                 println!("'{}' is not an integer",toks[1]);
             }
@@ -393,10 +392,10 @@ impl QPanopticon {
         let need_dims = self.control_flow_layouts[&uuid].node_dimensions.is_empty();
 
         if need_dims {
-            self.update_control_flow_dimensions(&uuid);
+            let _ = self.update_control_flow_dimensions(&uuid);
         }
 
-        self.set_control_flow_properties(&uuid,None);
+        let _ = self.set_control_flow_properties(&uuid,None);
         self.set_visible_function(uuid.to_string());
         println!("layout done");
         None
@@ -433,7 +432,7 @@ impl QPanopticon {
     }
 
     fn undo(&mut self) -> Option<&QVariant> {
-        let mut top = self.undo_stack_top;
+        let top = self.undo_stack_top;
 
         if top == 0 || self.undo_stack.get(top - 1).is_none() {
             unreachable!("call to undo() when canUndo() is false");
@@ -443,8 +442,6 @@ impl QPanopticon {
         act.undo(self).unwrap();
 
         self.undo_stack_top = top - 1;
-
-        let len = self.undo_stack.len();
 
         self.set_can_undo(top - 1 != 0);
         self.set_can_redo(true);
@@ -456,7 +453,7 @@ impl QPanopticon {
     }
 
     fn redo(&mut self) -> Option<&QVariant> {
-        let mut top = self.undo_stack_top;
+        let top = self.undo_stack_top;
 
         if self.undo_stack.get(top).is_none() {
             unreachable!("call to redo() when canRedo() is false");
@@ -501,9 +498,9 @@ impl QPanopticon {
                         let linew = bb.mnemonics.iter().map(|mne| {
                             mne.opcode.len() + mne.operands.iter().map(|a| format!("{}",a).len()).sum::<usize>()
                         }).max().unwrap_or(0);
-                        let has_cmnt = bb.mnemonics.iter().any(|mne| {
+                        /*let has_cmnt = bb.mnemonics.iter().any(|mne| {
                             self.control_flow_comments.contains_key(&mne.area.start)
-                        });
+                        });*/
                         let height = bb.mnemonics.len() * bb_line_height
                             + 2 * bb_margin + 2 * bb_padding;
                         let width = linew * bb_char_width
@@ -684,7 +681,7 @@ impl QPanopticon {
     }
 
     fn set_control_flow_properties(&mut self, uuid: &Uuid, limit_to: Option<&Vec<u64>>) -> Result<()> {
-        let ControlFlowLayout{ node_positions: ref positions, ref edges, ref node_dimensions,.. } = self.control_flow_layouts[uuid].clone();
+        let ControlFlowLayout{ node_positions: ref positions, ref edges,.. } = self.control_flow_layouts[uuid].clone();
 
         if limit_to.is_none() {
             self.control_flow_nodes.clear();
@@ -772,7 +769,7 @@ impl QPanopticon {
             let f = |&(x,y,_,_)| (x - min_x,y - min_y);
             let g = |&(_,_,x,y)| (x - min_x,y - min_y);
             let path = trail.clone().iter().take(1).map(&f).chain(trail.iter().map(&g)).collect::<Vec<_>>();
-            let (mut x,mut y): (Vec<f32>,Vec<f32>) = path.into_iter().unzip();
+            let (x,y): (Vec<f32>,Vec<f32>) = path.into_iter().unzip();
             let x_res: json::EncodeResult<String> = json::encode(&x);
             let y_res: json::EncodeResult<String> = json::encode(&y);
             let (kind,label) = {
@@ -787,7 +784,6 @@ impl QPanopticon {
                 }).unwrap_or("".to_string());
                 let from = cfg.source(edge_desc);
                 let to = cfg.target(edge_desc);
-                let get_address = &|lb| if let &ControlFlowTarget::Resolved(ref bb) = lb { Some(bb.area.start) } else { None };
                 let from_addr = cfg.vertex_label(from).and_then(
                     |lb| if let &ControlFlowTarget::Resolved(ref bb) = lb { Some(bb.area.end) } else { None });
                 let to_addr = cfg.vertex_label(to).and_then(

@@ -59,6 +59,8 @@ mod errors {
     }
 }
 
+use std::path::Path;
+
 use clap::{
     App,
     Arg
@@ -68,6 +70,7 @@ use singleton::{
     Panopticon,
     QPanopticon,
 };
+use paths::find_data_file;
 
 use qml::QObjectMacro;
 
@@ -125,10 +128,17 @@ fn main() {
         false
         );
 
-    engine.set_and_store_property("Panopticon", panop.get_qobj());
-    engine.add_import_path(&format!("{}",cwd.join("qml").display()));
-    engine.load_file(&format!("{}",cwd.join("qml").join("Panopticon").join("Window.qml").display()));
-    engine.exec();
+    let window = find_data_file(&Path::new("qml").join("Panopticon").join("Window.qml"));
+    let import = find_data_file(&Path::new("qml"));
+
+    if let (Ok(Some(window)),Ok(Some(import))) = (window,import) {
+        engine.set_and_store_property("Panopticon", panop.get_qobj());
+        engine.add_import_path(&format!("{}",import.display()));
+        engine.load_file(&format!("{}",window.display()));
+        engine.exec();
+    } else {
+        error!("QML files not found.");
+    }
 
     /*
     let title_screen = find_data_file(&Path::new("qml").join("Title.qml"));
@@ -187,8 +197,6 @@ fn main() {
 }
 
 fn exists_path_val(filepath: String) -> Result<(), String> {
-    use std::path::Path;
-
     match Path::new(&filepath).is_file() {
         true => Ok(()),
         false => Err(format!("'{}': no such file", filepath))
