@@ -14,10 +14,25 @@ Ctrl.ApplicationWindow {
 	menuBar: Ctrl.MenuBar {
 		Ctrl.Menu {
 			title: "File"
-			Ctrl.MenuItem { text: "Open..." }
-			Ctrl.MenuItem { text: "Save" }
-			Ctrl.MenuItem { text: "Save As..." }
-			Ctrl.MenuItem { text: "Quit" }
+			Ctrl.MenuItem {
+				action: Ctrl.Action {
+					text: "Open"
+					shortcut: StandardKey.Open
+					onTriggered: {
+						workspace.state = "welcomeState"
+						welcome.open()
+					}
+				}
+			}
+			//Ctrl.MenuItem { text: "Save" }
+			//Ctrl.MenuItem { text: "Save As..." }
+			Ctrl.MenuItem {
+				action: Ctrl.Action {
+					text: "Quit"
+					shortcut: StandardKey.Quit
+					onTriggered: { Qt.quit() }
+				}
+			}
 		}
 
 		Ctrl.Menu {
@@ -38,21 +53,32 @@ Ctrl.ApplicationWindow {
 					onTriggered: { Panopticon.redo() }
 				}
 			}
-			Ctrl.MenuItem { text: "Erase Values" }
+			//Ctrl.MenuItem { text: "Erase Values" }
 		}
 
 		Ctrl.Menu {
 			title: "View"
-			Ctrl.MenuItem { text: "Back" }
-			Ctrl.MenuItem { text: "Forward" }
-			Ctrl.MenuItem { text: "Jump To..." }
-			Ctrl.MenuItem { text: "Center Entry Point" }
+			//Ctrl.MenuItem { text: "Back" }
+			//Ctrl.MenuItem { text: "Forward" }
+			//Ctrl.MenuItem { text: "Jump To..." }
+			Ctrl.MenuItem {
+				action: Ctrl.Action {
+					text: "Center Entry Point"
+					enabled: workspace.state == "functionState"
+					onTriggered: { controlflow.centerEntryPoint() }
+				}
+			}
 		}
 
 		Ctrl.Menu {
 			title: "Help"
-			Ctrl.MenuItem { text: "Documentation" }
-			Ctrl.MenuItem { text: "About" }
+			//Ctrl.MenuItem { text: "Documentation" }
+			Ctrl.MenuItem {
+				action: Ctrl.Action {
+					text: "About"
+					onTriggered: { workspace.state = "welcomeState" }
+				}
+			}
 		}
 	}
 
@@ -76,6 +102,8 @@ Ctrl.ApplicationWindow {
 	}
 
 	Item {
+		id: workspace
+
 		anchors.fill: parent
 		state: "welcomeState"
 		states: [

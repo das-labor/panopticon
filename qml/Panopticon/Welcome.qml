@@ -10,13 +10,23 @@ Rectangle {
 	FontLoader { source: "../fonts/SourceSansPro-Regular.ttf" }
 	FontLoader { source: "../fonts/SourceCodePro-Regular.ttf" }
 
+	function open() {
+		scrolled.open()
+	}
+
 	Ctrl.ScrollView {
 		id: scroll
 		anchors.fill: parent
 
 		Item {
+			id: scrolled
 			height: childrenRect.height + childrenRect.y + 100
 			width: Math.max(childrenRect.width + childrenRect.x,scroll.viewport.width)
+
+			function open() {
+				var diag = fileDialog.createObject(view)
+				diag.open();
+			}
 
 			// Panopticon logo font
 			Image {
@@ -61,8 +71,7 @@ Rectangle {
 
 				onLinkActivated: {
 					if(link == "panop:open") {
-						var diag = fileDialog.createObject(view)
-						diag.open();
+						scrolled.open()
 					}
 				}
 

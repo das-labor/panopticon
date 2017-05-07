@@ -26,6 +26,10 @@ MouseArea {
 
 	signal showControlFlowGraph(string uuid)
 
+	function centerEntryPoint() {
+		controlFlowRoot.centerEntryPoint()
+	}
+
 	onFunctionUuidChanged: {
 		Panopticon.display_control_flow_for(functionUuid);
 	}
