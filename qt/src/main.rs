@@ -98,7 +98,6 @@ fn main() {
     let mut engine = qml::QmlEngine::new();
     let panop = Panopticon::default();
 
-    let cwd = env::current_dir().unwrap();
     let qrecent = panop.recent_sessions.get_qvar();
     let has_recent = !panop.recent_sessions.view_data().is_empty();
     let qsidebar = panop.sidebar.get_qvar();
@@ -144,7 +143,6 @@ fn main() {
     let title_screen = find_data_file(&Path::new("qml").join("Title.qml"));
     let main_window = find_data_file(&Path::new("qml").join("Window.qml"));
 
-   
     match (title_screen,main_window,start_with_file) {
         (_,Ok(Some(window)),true) => {
             qmlrs::register_singleton_type(&"Panopticon",1,0,&"Panopticon",create_singleton);
