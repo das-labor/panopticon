@@ -416,17 +416,20 @@ impl QPanopticon {
                 &edges,
                 None);
 
-            if let Ok(layout) = layout_res {
-                let layout = ControlFlowLayout{
-                    node_dimensions: HashMap::new(),
-                    layout: layout,
-                    node_positions: HashMap::new(),
-                    edges: HashMap::new(),
-                };
-                self.control_flow_layouts.insert(uuid.clone(),layout.clone());
-            } else {
-                error!("layouting failed");
-                return None
+            match layout_res {
+                Ok(layout) => {
+                    let layout = ControlFlowLayout{
+                        node_dimensions: HashMap::new(),
+                        layout: layout,
+                        node_positions: HashMap::new(),
+                        edges: HashMap::new(),
+                    };
+                    self.control_flow_layouts.insert(uuid.clone(),layout.clone());
+                }
+                Err(e) => {
+                    error!("layouting failed: {}",e);
+                    return None
+                }
             }
         }
 
