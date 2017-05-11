@@ -18,10 +18,9 @@
 
 use std::collections::{HashSet,HashMap};
 use std::{f32,isize,usize};
-use std::borrow::Cow;
 use std::cmp::{min,max,Ordering};
 use std::iter::FromIterator;
-
+use panopticon::Error;
 use graph_algos::adjacency_list::{
     AdjacencyListEdgeDescriptor,
     AdjacencyListVertexDescriptor
@@ -81,7 +80,7 @@ pub fn linear_layout(vertices: &Vec<usize>,
                      node_spacing: f32, rank_spacing: f32,
                      port_spacing: f32, loop_spacing: f32,
                      entry_spacing: f32, block_spacing: f32
-    ) -> Result<(HashMap<usize,(f32,f32)>,HashMap<usize,(Vec<(f32,f32,f32,f32)>,(f32,f32),(f32,f32))>),Cow<'static,str>> {
+    ) -> Result<(HashMap<usize,(f32,f32)>,HashMap<usize,(Vec<(f32,f32,f32,f32)>,(f32,f32),(f32,f32))>),Error> {
     let layout = try!(linear_layout_structural(vertices,edges,entry));
     linear_layout_placement(vertices,edges,&layout,dims,node_spacing,rank_spacing,
                             port_spacing, loop_spacing, entry_spacing, block_spacing)
@@ -89,7 +88,7 @@ pub fn linear_layout(vertices: &Vec<usize>,
 
 pub fn linear_layout_structural(vertices: &Vec<usize>,
                                 edges: &Vec<(usize,usize)>,
-                                entry: Option<usize>) -> Result<LinearLayout,Cow<'static,str>> {
+                                entry: Option<usize>) -> Result<LinearLayout,Error> {
     let mut graph = AdjacencyList::<usize,usize>::new();
     let mut rev = HashMap::<usize,AdjacencyListVertexDescriptor>::new();
     let mut maybe_entry = None;
@@ -228,7 +227,7 @@ pub fn linear_layout_placement(vertices: &Vec<usize>,
                                node_spacing: f32, rank_spacing: f32,
                                port_spacing: f32, loop_spacing: f32,
                                entry_spacing: f32, block_spacing: f32
-    ) -> Result<(HashMap<usize,(f32,f32)>,HashMap<usize,(Vec<(f32,f32,f32,f32)>,(f32,f32),(f32,f32))>),Cow<'static,str>> {
+    ) -> Result<(HashMap<usize,(f32,f32)>,HashMap<usize,(Vec<(f32,f32,f32,f32)>,(f32,f32),(f32,f32))>),Error> {
     let &LinearLayout{ ref order, ref rank, ref graph, ref rev, virt_start, ref revd_edge_labels,.. } = layout;
     let mut graph = graph.clone();
     let rank_sep = rank_spacing + block_spacing + entry_spacing;

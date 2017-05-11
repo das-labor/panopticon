@@ -20,6 +20,7 @@ import QtQuick 2.4
 import QtQuick.Controls 1.3 as Ctrl
 import QtQuick.Layouts 1.1
 import QtQuick.Controls.Styles 1.2 as Style
+import Panopticon 1.0
 
 MouseArea {
 	id: overlay
@@ -85,7 +86,7 @@ MouseArea {
 				var txt = overlayField.text;
 
 				if(txt !== "") {
-					Panopticon.rename_function(uuid,txt);
+					Panopticon.renameFunction(uuid,txt);
 					overlay.close();
 				}
 			}

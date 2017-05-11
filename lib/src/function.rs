@@ -472,6 +472,19 @@ impl Function {
         })
     }
 
+    /// Returns the basic block that contains `a`.
+    pub fn find_basic_block_at(&self,a: u64) -> Option<ControlFlowRef> {
+        self.cflow_graph.vertices().find(|&x| {
+            match self.cflow_graph.vertex_label(x) {
+                Some(&ControlFlowTarget::Resolved(ref bb)) => {
+                    bb.area.start <= a && bb.area.end > a
+                },
+                _ => false
+            }
+        })
+    }
+
+
     /// Returns all nodes in the graph of this function in post order.
     pub fn postorder(&self) -> Vec<ControlFlowRef> {
         assert!(self.entry_point.is_some());

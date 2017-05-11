@@ -188,7 +188,7 @@ pub fn approximate<A: Avalue>(func: &Function,fixed: &HashMap<(Cow<'static,str>,
                                 change = true;
                                 ret.insert(assignee,w);
                             }
-                        } else if new.more_exact(&cur) {
+                        } else if cur.more_exact(&new) {
                             change = true;
                             ret.insert(assignee,new);
                         }

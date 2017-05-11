@@ -21,22 +21,25 @@ import QtQuick.Controls 1.2 as Ctrl
 import QtQuick.Controls.Styles 1.2 as Style
 import QtQuick.Layouts 1.1
 import QtGraphicalEffects 1.0
-
 import Panopticon 1.0
-import ".."
 
 Item {
 	id: basicBlock
 
+	property real nodeX: 0;
+	property real nodeY: 0;
 	property int nodeId: -1;
 	property var code: [];
+	property string uuid: "";
 
 	signal startComment(int x,int y,string address,string comment)
-	signal displayPreview(rect bb)
-	signal showControlFlowGraph(string uuid)
+	signal displayPreview(rect bb,string uuid)
+	signal showControlFlowGraph(string newUuid)
 
-	width: childrenRect.width + childrenRect.x
-	height: childrenRect.height + childrenRect.y
+	x: nodeX - width / 2 - basicBlockRect.x / 2
+	y: nodeY - height / 2 - basicBlockRect.y / 2
+	width: basicBlockRect.width + basicBlockRect.x
+	height: basicBlockRect.height + basicBlockRect.y
 
 	Rectangle {
 		id: basicBlockRect
@@ -44,10 +47,10 @@ Item {
 		property int commentRowStart: 0
 		property int opcodeRowStart: 0
 
-		x: Panopticon.basicBlockMargin
-		y: Panopticon.basicBlockMargin
-		width: commentRowStart - opcodeRowStart
-		height: basicBlockGrid.height + 8 + 3
+		x: addressColumn.width - Panopticon.basicBlockMargin
+		y: -Panopticon.basicBlockMargin
+		width: argumentColumn.x + argumentColumn.width - opcodeColumn.x + 2*Panopticon.basicBlockMargin
+		height: basicBlockGrid.height + 2*Panopticon.basicBlockMargin
 		color: "#ffffff"
 		radius: 2
 		border {
@@ -59,10 +62,7 @@ Item {
 			property int hoveredRow: -1
 
 			id: mouseArea
-			anchors.left: basicBlockGrid.left
-			anchors.top: parent.top
-			anchors.bottom: parent.bottom
-			anchors.right: basicBlockRect.right
+			anchors.fill: parent
 			hoverEnabled: true
 
 			function updateHoveredRow(y) {
@@ -81,27 +81,24 @@ Item {
 				updateHoveredRow(mouseY)
 			}
 		}
+	}
 
-		EditPopover {
-			id: editOverlay
-		}
+	EditPopover {
+		id: editOverlay
+	}
 
-		GridLayout {
-			id: basicBlockGrid
-			columnSpacing: 0
-			rowSpacing: 0
-			x: Panopticon.basicBlockPadding
-			y: Panopticon.basicBlockPadding
+	Row {
+		id: basicBlockGrid
 
-			// address
+		// address
+		Column {
+			id: addressColumn
 			Repeater {
 				model: code
 				delegate: Monospace {
-					Layout.column: 0
-					Layout.row: index
-					Layout.rightMargin: 20
-					Layout.maximumHeight: Panopticon.basicBlockLineHeight
-					Layout.preferredHeight: Panopticon.basicBlockLineHeight
+					width: contentWidth + 20
+					height: Panopticon.basicBlockLineHeight
+					verticalAlignment: Text.AlignVCenter
 
 					Behavior on opacity { NumberAnimation { duration: 150 } }
 
@@ -113,58 +110,62 @@ Item {
 					opacity: (mouseArea.containsMouse ? 1. : 0)
 				}
 			}
+		}
 
-			// opcode
+		Column {
+			id: opcodeColumn
 			Repeater {
 				model: code
 				delegate: Monospace {
-					Layout.column: 1
-					Layout.row: index
-					Layout.rightMargin: 26
-					Layout.maximumHeight: Panopticon.basicBlockLineHeight
-					Layout.preferredHeight: Panopticon.basicBlockLineHeight
-
 					text: modelData.opcode
+					width: contentWidth + 26
+					height: Panopticon.basicBlockLineHeight
+					verticalAlignment: Text.AlignVCenter
 					font {
 						pointSize: 10
 					}
-
-					onXChanged: {
-						basicBlockGrid.x = -x + 8
-						basicBlockRect.opcodeRowStart = Math.max(basicBlockRect.opcodeRowStart,x - 8)
-					}
 				}
 			}
+		}
 
-			// arguments
+		Column {
+			id: argumentColumn
 			Repeater {
 				model: code
-				delegate: RowLayout {
-					property int rowIndex: index
+				delegate: Row {
+					id: argumentRow
+					property var argumentModel: modelData
 
-					Layout.column: 2
-					Layout.row: index
-					Layout.rightMargin: 15
-					Layout.maximumHeight: Panopticon.basicBlockLineHeight
-					Layout.preferredHeight: Panopticon.basicBlockLineHeight
-					spacing: 0
+					Item {
+						id: padder
+						height: Panopticon.basicBlockLineHeight
+						width: 1
+						visible: modelData.operandDisplay.length == 0
+					}
 
 					Repeater {
-						model: modelData.args
+						model: modelData.operandDisplay
 						delegate: Monospace {
+							property string alt: argumentRow.argumentModel ? argumentRow.argumentModel.operandAlt[index] : ""
+							property string kind: argumentRow.argumentModel ? argumentRow.argumentModel.operandKind[index] : ""
+							property string ddata: argumentRow.argumentModel ? argumentRow.argumentModel.operandData[index] : ""
+
 							id: operandLabel
-							text: modelData.display
+							width: contentWidth
+							height: Panopticon.basicBlockLineHeight
+							verticalAlignment: Text.AlignVCenter
 							font {
 						 		capitalization: Font.AllLowercase
 								pointSize: 10
 							}
-							color: modelData.alt == "" ? "black" : "#297f7a"
+							color: alt == "" ? "black" : "#297f7a"
+							text: modelData
 
 							MouseArea {
 								id: operandMouseArea
 								anchors.fill: parent
 								hoverEnabled: true
-								visible: modelData.kind == "variable"
+								visible: kind == "variable"
 								cursorShape: Qt.IBeamCursor
 
 								onExited: {
@@ -185,23 +186,22 @@ Item {
 
 								onClicked: {
 									var pnt = parent.mapToItem(editOverlay.parent,x + width / 2,y + height);
-									editOverlay.open(pnt.x,pnt.y + 3,modelData.data)
+									editOverlay.open(pnt.x,pnt.y + 3,ddata,uuid)
 								}
 							}
 
 							MouseArea {
 								anchors.fill: parent
 								hoverEnabled: true
-								visible: modelData.kind == "function"
+								visible: kind == "function"
 								cursorShape: Qt.PointingHandCursor
 								onClicked: {
-									Panopticon.display_preview_for(modelData.data)
 									var bb = mapToItem(basicBlock,
 									                   operandLabel.x,
 																		 operandLabel.y,
 																		 operandLabel.width,
 																		 operandLabel.height);
-									displayPreview(bb)
+									displayPreview(bb,ddata)
 								}
 
 								onExited: {
@@ -220,29 +220,26 @@ Item {
 								}
 
 								onDoubleClicked: {
-									controlflow.showControlFlowGraph(modelData.data)
+									basicBlock.showControlFlowGraph(ddata)
 								}
 							}
 						}
 					}
 				}
 			}
+		}
+
+		Column {
+			id: commentColumn
 
 			// comments
 			Repeater {
 				model: code
 				delegate: Item {
-					Layout.column: 3
-					Layout.row: index
-					Layout.maximumHeight: Panopticon.basicBlockLineHeight
-					Layout.preferredHeight: Panopticon.basicBlockLineHeight
-					Layout.maximumWidth: Panopticon.basicBlockCommentWidth
-
-					onXChanged: {
-						basicBlockRect.commentRowStart = Math.max(basicBlockRect.commentRowStart,x - 8)
-					}
-
+					x: 2*Panopticon.basicBlockMargin
 					z: (mouseArea.containsMouse ? 2 : 1)
+					height: Panopticon.basicBlockLineHeight
+					width: Panopticon.basicBlockCommentWidth
 
 					Rectangle {
 						id: commentBackground
@@ -273,7 +270,7 @@ Item {
 						}
 						color: (modelData.comment === "" ? "#cdcdcd" : "black")
 						opacity: (modelData.comment !== "" || commentMouseArea.containsMouse ? 1. : 0)
-						elide: ((mouseArea.containsMouse && !new String(modelData.comment).search("\n")) || commentMouseArea.containsMouse ? Text.ElideNone : Text.ElideRight)
+						elide: (modelData.comment !== undefined && ((mouseArea.containsMouse && !new String(modelData.comment).search("\n")) || commentMouseArea.containsMouse ? Text.ElideNone : Text.ElideRight))
 					}
 
 					MouseArea {
@@ -290,6 +287,5 @@ Item {
 				}
 			}
 		}
-
 	}
 }

@@ -1,10 +1,8 @@
 use uuid::Uuid;
 use errors::*;
-use {
-    QPanopticon,
-};
 use singleton::{
     VarName,
+    Panopticon,
     AbstractInterpretation,
 };
 use panopticon::{
@@ -29,17 +27,20 @@ use std::iter::{
 };
 
 #[derive(Clone)]
-enum ActionPayload {
+pub enum Action {
     Comment {
+        function: Uuid,
         address: u64,
         before: String,
         after: String,
     },
     Rename {
+        function: Uuid,
         before: String,
         after: String,
     },
     SetValue {
+        function: Uuid,
         variable: VarName,
         before: Option<AbstractInterpretation>,
         after: Option<AbstractInterpretation>,
@@ -47,36 +48,32 @@ enum ActionPayload {
     }
 }
 
-#[derive(Clone)]
-pub struct Action {
-    function: Uuid,
-    payload: ActionPayload,
-}
-
 impl Action {
-    fn new(f: Uuid,p: ActionPayload) -> Action {
-        Action{
-            function: f,
-            payload: p,
+    pub fn new_comment(panopticon: &mut Panopticon,address: u64, comment: String) -> Result<Action> {
+        let maybe_func = panopticon.functions.iter().find(|f| f.1.find_basic_block_at(address).is_some());
+
+        match maybe_func {
+            Some((uuid,_)) => {
+                Ok(Action::Comment{
+                    function: uuid.clone(),
+                    address: address,
+                    before: panopticon.control_flow_comments.get(&address).cloned().unwrap_or("".to_string()),
+                    after: comment,
+                })
+            }
+            None => Err(format!("no function at {}",address).into())
         }
     }
 
-    pub fn new_comment(panopticon: &mut QPanopticon,func: Uuid, address: u64, comment: String) -> Result<Action> {
-        Ok(Self::new(func,ActionPayload::Comment{
-            address: address,
-            before: panopticon.control_flow_comments.get(&address).cloned().unwrap_or("".to_string()),
-            after: comment,
-        }))
-    }
-
-    pub fn new_rename(panopticon: &mut QPanopticon,func: Uuid, name: String) -> Result<Action> {
-        Ok(Self::new(func,ActionPayload::Rename{
+    pub fn new_rename(panopticon: &mut Panopticon,func: Uuid, name: String) -> Result<Action> {
+        Ok(Action::Rename{
+            function: func,
             before: panopticon.functions.get(&func).map(|f| f.name.clone()).unwrap_or("".to_string()),
             after: name,
-        }))
+        })
     }
 
-    pub fn new_setvalue(panopticon: &mut QPanopticon,func: Uuid, variable: VarName, value: Option<Kset>) -> Result<Action> {
+    pub fn new_setvalue(panopticon: &mut Panopticon,func: Uuid, variable: VarName, value: Option<Kset>) -> Result<Action> {
         let before = panopticon.control_flow_values.get(&func);
         let mut input = before.map(|x| x.input.clone()).unwrap_or(HashMap::new());
 
@@ -113,61 +110,62 @@ impl Action {
         let function = panopticon.functions.get(&func).unwrap();
         let addrs = diff_abstract_interpretations(after.as_ref(),before,&function);
 
-        Ok(Self::new(func,ActionPayload::SetValue{
+        Ok(Action::SetValue{
+            function: func,
             variable: variable,
             before: before.cloned(),
             after: after,
             modified_basic_blocks: addrs,
-        }))
+        })
     }
 
-    pub fn undo(&self,panopticon: &mut QPanopticon) -> Result<()> {
-        match self.payload {
-            ActionPayload::Comment { address, ref before, ref after } => {
+    pub fn undo(&self,panopticon: &mut Panopticon) -> Result<()> {
+        match self {
+            &Action::Comment { ref function, address, ref before, ref after } => {
                 debug_assert!(panopticon.control_flow_comments.get(&address).unwrap_or(&"".to_string()) == after);
                 panopticon.control_flow_comments.insert(address,before.clone());
-                panopticon.update_basic_block(&vec![address],&self.function)
+                panopticon.update_control_flow_nodes(function,Some(&vec![address]))
             },
-            ActionPayload::Rename{ ref before,.. } => {
-                if let Some(func) = panopticon.functions.get_mut(&self.function) {
+            &Action::Rename{ ref function, ref before,.. } => {
+                if let Some(func) = panopticon.functions.get_mut(function) {
                     func.name = before.clone();
                 }
 
-                panopticon.update_sidebar(&self.function)
+                panopticon.update_sidebar(function)
 
             },
-            ActionPayload::SetValue{ ref before, ref modified_basic_blocks,.. } => {
+            &Action::SetValue{ ref function, ref before, ref modified_basic_blocks,.. } => {
                 if let &Some(ref before) = before {
-                    panopticon.control_flow_values.insert(self.function.clone(),before.clone());
+                    panopticon.control_flow_values.insert(function.clone(),before.clone());
                 } else {
-                    panopticon.control_flow_values.remove(&self.function);
+                    panopticon.control_flow_values.remove(function);
                 }
-                panopticon.update_basic_block(modified_basic_blocks,&self.function)
+                panopticon.update_control_flow_nodes(function,Some(modified_basic_blocks))
             }
         }
     }
 
-    pub fn redo(&self,panopticon: &mut QPanopticon) -> Result<()> {
-        match self.payload {
-            ActionPayload::Comment { address, ref before, ref after } => {
+    pub fn redo(&self,panopticon: &mut Panopticon) -> Result<()> {
+        match self {
+            &Action::Comment { ref function, address, ref before, ref after } => {
                 debug_assert!(panopticon.control_flow_comments.get(&address).unwrap_or(&"".to_string()) == before);
                 panopticon.control_flow_comments.insert(address,after.clone());
-                panopticon.update_basic_block(&vec![address],&self.function)
+                panopticon.update_control_flow_nodes(function,Some(&vec![address]))
             },
-            ActionPayload::Rename{ ref after,.. } => {
-                if let Some(func) = panopticon.functions.get_mut(&self.function) {
+            &Action::Rename{ ref function, ref after,.. } => {
+                if let Some(func) = panopticon.functions.get_mut(function) {
                     func.name = after.clone();
                 }
 
-                panopticon.update_sidebar(&self.function)
+                panopticon.update_sidebar(function)
             },
-            ActionPayload::SetValue{ ref after, ref modified_basic_blocks,.. } => {
+            &Action::SetValue{ ref function, ref after, ref modified_basic_blocks,.. } => {
                 if let &Some(ref after) = after {
-                    panopticon.control_flow_values.insert(self.function.clone(),after.clone());
+                    panopticon.control_flow_values.insert(function.clone(),after.clone());
                 } else {
-                    panopticon.control_flow_values.remove(&self.function);
+                    panopticon.control_flow_values.remove(function);
                 }
-                panopticon.update_basic_block(modified_basic_blocks,&self.function)
+                panopticon.update_control_flow_nodes(function,Some(modified_basic_blocks))
             }
         }
     }

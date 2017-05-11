@@ -2,18 +2,21 @@ import QtQuick 2.4
 import QtQuick.Controls 1.3 as Ctrl
 import QtQuick.Layouts 1.1
 import QtQuick.Controls.Styles 1.2
+import Panopticon 1.0
 
 MouseArea {
 	id: overlay
 
 	property rect boundingBox: "0,0,0x0"
+	property var code: []
+	property string uuid: ""
 
 	signal showControlFlowGraph(string uuid)
 
-	function open(bb) {
+	function open(bb,uuid) {
 		overlay.boundingBox = bb;
 		overlay.visible = true
-		overlayBox.code = JSON.parse(Panopticon.previewNode);
+		overlay.uuid = uuid;
 	}
 
 	x: overlay.boundingBox.x
@@ -32,13 +35,13 @@ MouseArea {
 
 	onClicked: {
 		overlay.visible = false
-		showControlFlowGraph(Panopticon.previewFunction);
+		if(overlay.uuid != "") {
+			showControlFlowGraph(overlay.uuid);
+		}
 	}
 
 	Rectangle {
 		id: overlayBox
-
-		property var code: [];
 
 		anchors.left: overlayTip.right
 		anchors.top: overlayTip.top
@@ -60,57 +63,67 @@ MouseArea {
 			anchors.bottom: parent.top
 			anchors.bottomMargin: Panopticon.basicBlockPadding
 
-			text: overlayBox.code.length > 0 ? "0x" + overlayBox.code[0].offset : ""
+			text: overlay.code.length > 0 ? "0x" + overlay.code[0].offset : ""
 			font {
 				pointSize: 12
 			}
 			color: "#d8dae4"
 		}
 
-		GridLayout {
+		Row {
 			id: basicBlockGrid
 
 			x: Panopticon.basicBlockMargin
 			y: Panopticon.basicBlockPadding
-			columnSpacing: 0
-			rowSpacing: 0
 
-			// opcode
-			Repeater {
-				model: overlayBox.code
-				delegate: Monospace {
-					Layout.column: 0
-					Layout.row: index
-					Layout.rightMargin: 26
-					Layout.maximumHeight: Panopticon.basicBlockLineHeight
-					Layout.preferredHeight: Panopticon.basicBlockLineHeight
-
-					text: modelData.opcode
-					font {
-						pointSize: 10
+			Column {
+				id: opcodeColumn
+				Repeater {
+					model: overlay.code
+					delegate: Monospace {
+						text: modelData.opcode
+						width: contentWidth + 26
+						height: Panopticon.basicBlockLineHeight
+						verticalAlignment: Text.AlignVCenter
+						font {
+							pointSize: 10
+						}
 					}
 				}
 			}
 
-			// arguments
-			Repeater {
-				model: overlayBox.code
-				delegate: RowLayout {
-					Layout.column: 1
-					Layout.row: index
-					Layout.rightMargin: 15
-					Layout.maximumHeight: Panopticon.basicBlockLineHeight
-					Layout.preferredHeight: Panopticon.basicBlockLineHeight
-					spacing: 0
+			Column {
+				id: argumentColumn
+				Repeater {
+					model: overlay.code
+					delegate: Row {
+						id: argumentRow
+						property var argumentModel: modelData
 
-					Repeater {
-						model: modelData.args
-						delegate: Monospace {
-							id: operandLabel
-							text: modelData.display
-							font {
-								capitalization: Font.AllLowercase
-								pointSize: 10
+						Item {
+							id: padder
+							height: Panopticon.basicBlockLineHeight
+							width: 1
+							visible: modelData.operandDisplay.length == 0
+						}
+
+						Repeater {
+							model: modelData.operandDisplay
+							delegate: Monospace {
+								property string alt: argumentRow.argumentModel ? argumentRow.argumentModel.operandAlt[index] : ""
+								property string kind: argumentRow.argumentModel ? argumentRow.argumentModel.operandKind[index] : ""
+								property string ddata: argumentRow.argumentModel ? argumentRow.argumentModel.operandData[index] : ""
+
+								id: operandLabel
+								width: contentWidth
+								height: Panopticon.basicBlockLineHeight
+								verticalAlignment: Text.AlignVCenter
+								font {
+									capitalization: Font.AllLowercase
+									pointSize: 10
+								}
+								color: alt == "" ? "black" : "#297f7a"
+								text: modelData
 							}
 						}
 					}

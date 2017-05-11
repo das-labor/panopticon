@@ -21,21 +21,21 @@ import QtQuick.Controls 1.2 as Ctrl
 import QtQuick.Controls.Styles 1.2 as Style
 import QtQuick.Layouts 1.1
 import QtGraphicalEffects 1.0
-
 import Panopticon 1.0
-import ".."
 
 Item {
 	id: editOverlay
 
 	property string variable: ""
+	property string uuid: ""
 
-	function open(x,y,v) {
+	function open(x,y,v,u) {
 		editOverlay.x = x;
 		editOverlay.y = y;
 		editOverlay.visible = true
 		editOverlayField.focus = true
 		editOverlay.variable = v;
+		editOverlay.uuid = u;
 	}
 
 	function close() {
@@ -82,7 +82,7 @@ Item {
 			}
 
 			onAccepted: {
-				Panopticon.set_value_for(editOverlay.variable,editOverlayField.text);
+				Panopticon.setValueFor(editOverlay.uuid,editOverlay.variable,editOverlayField.text);
 			}
 
 			onEditingFinished: { editOverlay.close() }

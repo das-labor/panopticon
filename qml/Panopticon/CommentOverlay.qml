@@ -2,6 +2,7 @@ import QtQuick 2.4
 import QtQuick.Controls 1.3 as Ctrl
 import QtQuick.Layouts 1.1
 import QtQuick.Controls.Styles 1.2
+import Panopticon 1.0
 
 MouseArea {
 	id: overlay
@@ -22,7 +23,7 @@ MouseArea {
 	}
 
 	onAccepted: {
-		Panopticon.comment_on(overlay.address,overlayComment.text)
+		Panopticon.commentOn(overlay.address,overlayComment.text)
 		overlay.visible = false
 		overlayComment.text = ""
 	}

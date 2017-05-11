@@ -37,15 +37,14 @@ extern crate parking_lot;
 #[cfg(unix)]
 extern crate xdg;
 
-#[macro_use] extern crate qml;
 #[macro_use] extern crate log;
 #[macro_use] extern crate error_chain;
+#[macro_use] extern crate lazy_static;
 
-//mod controller;
-//mod project;
-//mod function;
 mod sugiyama;
 mod singleton;
+mod control_flow_layout;
+mod glue;
 mod paths;
 mod action;
 mod errors {
@@ -55,27 +54,26 @@ mod errors {
             Time(::std::time::SystemTimeError);
             Io(::std::io::Error);
             Serialize(::rustc_serialize::json::EncoderError);
+            NulError(::std::ffi::NulError);
+            UuidParseError(::uuid::ParseError);
         }
     }
 }
+use errors::*;
 
-use std::path::Path;
-
+use std::path::{
+    Path,
+    PathBuf
+};
 use clap::{
     App,
     Arg
 };
-
-use singleton::{
-    Panopticon,
-    QPanopticon,
-};
-use paths::find_data_file;
-
-use qml::QObjectMacro;
+use std::result;
 
 fn main() {
     use std::env;
+    use paths::find_data_file;
 
     env_logger::init().unwrap();
 
@@ -87,115 +85,60 @@ fn main() {
         env::set_var("QT_QPA_PLATFORMTHEME","");
     }
 
+
     let matches = App::new("Panopticon")
-                        .about("A libre cross-platform disassembler.")
-                        .arg(Arg::with_name("INPUT")
-                            .help("File to disassemble")
-                            .validator(exists_path_val)
-                            .index(1))
-                        .get_matches();
+        .about("A libre cross-platform disassembler.")
+        .arg(Arg::with_name("INPUT")
+            .help("File to disassemble")
+            .validator(exists_path_val)
+            .index(1))
+        .get_matches();
+    let main_window = find_data_file(&Path::new("qml"));
 
-    let mut engine = qml::QmlEngine::new();
-    let panop = Panopticon::default();
-
-    let qrecent = panop.recent_sessions.get_qvar();
-    let has_recent = !panop.recent_sessions.view_data().is_empty();
-    let qsidebar = panop.sidebar.get_qvar();
-    let qcontrolflownodes = panop.control_flow_nodes.get_qvar();
-    let qcontrolflowedges = panop.control_flow_edges.get_qvar();
-
-    let panop = QPanopticon::new(
-        panop,
-        matches.value_of("INPUT").unwrap_or("").to_string(),
-        qrecent,
-        has_recent,
-        "".to_string(),
-        qsidebar,
-        "".to_string(),
-        qcontrolflownodes,
-        qcontrolflowedges,
-        "".to_string(),
-        "".to_string(),
-        3,
-        8,
-        17,
-        8,
-        26,
-        150,
-        false,
-        false
-        );
-
-    let window = find_data_file(&Path::new("qml").join("Panopticon").join("Window.qml"));
-    let import = find_data_file(&Path::new("qml"));
-
-    if let (Ok(Some(window)),Ok(Some(import))) = (window,import) {
-        engine.set_and_store_property("Panopticon", panop.get_qobj());
-        engine.add_import_path(&format!("{}",import.display()));
-        engine.load_file(&format!("{}",window.display()));
-        engine.exec();
-    } else {
-        error!("QML files not found.");
-    }
-
-    /*
-    let title_screen = find_data_file(&Path::new("qml").join("Title.qml"));
-    let main_window = find_data_file(&Path::new("qml").join("Window.qml"));
-
-    match (title_screen,main_window,start_with_file) {
-        (_,Ok(Some(window)),true) => {
-            qmlrs::register_singleton_type(&"Panopticon",1,0,&"Panopticon",create_singleton);
-
-            let fileformat = match function::file_details_of_path(PathBuf::from(&input_file_path)) {
-                Ok(details) => {
-                    match details.format().clone() {
-                        Some(format) => format,
-                        None => {
-                            let filestate = details.state();
-                            println!("no format (file state: {})", filestate.to_string());
-                            return;
-                        }
-                    }
-                },
-                Err(e) => {
-                    println!("invalid format: {}", e);
-                    return;
+    match main_window {
+        Ok(Some(ref path)) => {
+            let recent_sessions = match read_recent_sessions() {
+                Ok(s) => s,
+                Err(s) => {
+                    error!("Failed to read recent sessions: {}",s);
+                    vec![]
                 }
             };
-
-            let request = format!("{{\"kind\": \"{}\", \"path\": \"{}\"}}",
-                fileformat.to_string(),
-                input_file_path);
-            Controller::set_request(&request).unwrap();
-            let mut engine = qmlrs::Engine::new("Panopticon");
-            engine.load_local_file(&format!("{}",window.display()));
-            engine.exec();
+            match glue::exec(path,matches.value_of("INPUT").map(str::to_string),recent_sessions) {
+                Ok(()) => {}
+                Err(s) => error!("{}",s),
+            }
         }
-        (Ok(Some(title)),Ok(Some(window)),false) => {
-            qmlrs::register_singleton_type(&"Panopticon",1,0,&"Panopticon",create_singleton);
-
-            {
-                let mut engine = qmlrs::Engine::new("Panopticon");
-                engine.load_local_file(&format!("{}",title.display()));
-                engine.exec();
-            }
-
-            if Controller::request().ok().unwrap_or(None).is_some() {
-                let mut engine = qmlrs::Engine::new("Panopticon");
-                engine.load_local_file(&format!("{}",window.display()));
-                engine.exec();
-            }
-        },
-        _ => {
-            println!("Failed to open the QML files")
-        },
+        Ok(None) => { error!("QML files not found :("); }
+        Err(s) => { error!("{}",s); }
     }
-    */
 }
 
-fn exists_path_val(filepath: String) -> Result<(), String> {
+fn exists_path_val(filepath: String) -> result::Result<(), String> {
     match Path::new(&filepath).is_file() {
         true => Ok(()),
         false => Err(format!("'{}': no such file", filepath))
     }
+}
+
+fn read_recent_sessions() -> Result<Vec<(String,String,PathBuf,u32)>> {
+    use std::fs;
+    use std::time;
+    use panopticon::Project;
+
+    let path = paths::session_directory()?;
+    let mut ret = vec![];
+
+    if let Ok(dir) = fs::read_dir(path) {
+        for ent in dir.filter_map(|x| x.ok()) {
+            if let Ok(ref project) = Project::open(&ent.path()) {
+                if let Ok(ref md) = ent.metadata() {
+                    let mtime = md.modified()?.duration_since(time::UNIX_EPOCH)?.as_secs() as u32;
+                    let fname = ent.path();
+                    ret.push((project.name.clone(),"".to_string(),fname,mtime));
+                }
+            }
+        }
+    }
+    Ok(ret)
 }

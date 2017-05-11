@@ -2,6 +2,7 @@ import QtQuick 2.4
 import QtQuick.Controls 1.3 as Ctrl
 import QtQuick.Layouts 1.1
 import QtQuick.Dialogs 1.0
+import Panopticon 1.0
 
 Rectangle {
 	color: "#fdfdfd"
@@ -42,9 +43,11 @@ Rectangle {
 					id: fileDialog
 					title: "Please choose a file"
 					folder: shortcuts.home
+					selectExisting: true
+					selectMultiple: false
 					onAccepted: {
 						var p = fileDialog.fileUrls.toString().substring(7);
-						Panopticon.open_program(p)
+						Panopticon.openProgram(p)
 					}
 					Component.onCompleted: visible = true
 				}
@@ -121,14 +124,14 @@ Rectangle {
 						Layout.maximumWidth: Number.POSITIVE_INFINITY
 						Layout.minimumWidth: 100
 						Ctrl.Label {
-							text: model.title
+							text: modelData.title
 							font {
 								family: "Source Sans Pro"; pointSize: 13; weight: Font.DemiBold;
 							}
 							horizontalAlignment: Text.AlignLeft
 						}
 						Ctrl.Label {
-							text: model.typ
+							text: modelData.kind
 							font {
 								family: "Source Sans Pro"; pointSize: 11
 							}
@@ -159,7 +162,7 @@ Rectangle {
 							hoverEnabled: true
 							cursorShape: (containsMouse ? Qt.PointingHandCursor : Qt.ArrowCursor)
 							onClicked: {
-								Panopticon.open_program(path)
+								Panopticon.openProgram(modelData.path)
 							}
 						}
 					}
