@@ -64,6 +64,7 @@ where A::Configuration: Debug {
             info!("disassemble {:?}",targets);
             let (new_targets,new_fns): (Vec<Vec<(u64,Function)>>,Vec<Function>) = targets.into_iter().map(|(entry,f)| {
                 let mut f = Function::disassemble::<A>(Some(f),config.clone(),&region,entry);
+                f.entry_point = f.find_basic_block_by_start(entry);
                 let new_ct = f.collect_calls().into_iter().filter_map(|rv| {
                     if let Rvalue::Constant{ value,.. } = rv {
                         if !functions.contains_key(&value) && entry != value {

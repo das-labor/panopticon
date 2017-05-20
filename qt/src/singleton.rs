@@ -175,7 +175,7 @@ impl Panopticon {
     }
 
     pub fn comment_on(&mut self,addr: u64, comment: String) -> Result<()> {
-        println!("comment_on(): address={}, comment={}",addr,comment);
+        debug!("comment_on(): address={}, comment={}",addr,comment);
 
         let act = Action::new_comment(self,addr,comment.clone())?;
         self.push_action(act)?;
@@ -184,7 +184,7 @@ impl Panopticon {
     }
 
     pub fn rename_function(&mut self,uuid: String, name: String) -> Result<()> {
-        println!("rename_function(): uuid={}, name={}",uuid,name);
+        debug!("rename_function(): uuid={}, name={}",uuid,name);
 
         let func = Uuid::parse_str(&uuid)?;
         let act = Action::new_rename(self,func,name.clone())?;
@@ -219,7 +219,7 @@ impl Panopticon {
                         return Err(format!("'{}' is not a valid value",value).into());
                     }
                 };
-                println!("set_value_for(): func={}, variable={}, value={}",func,variable,value);
+                debug!("set_value_for(): func={}, variable={}, value={}",func,variable,value);
 
                 let act = Action::new_setvalue(self,Uuid::parse_str(&func).unwrap(),var,val)?;
                 self.push_action(act)?;
@@ -297,7 +297,7 @@ impl Panopticon {
             send_function_node,
         };
 
-        println!("update_control_flow_nodes() func={}, addrs={:?}",uuid,addrs);
+        debug!("update_control_flow_nodes() func={}, addrs={:?}",uuid,addrs);
 
         let ids = if let Some(addr) = addrs {
             if let Some(ref mut cfl) = self.control_flow_layouts.get_mut(uuid) {
@@ -338,8 +338,6 @@ impl Panopticon {
             }).collect();
         let uuid = CString::new(uuid.clone().to_string().as_bytes()).unwrap();
 
-        println!("sending {} nodes",bbls.len());
-
         for (id,x,y,is_entry,bbl) in bbls.into_iter() {
             send_function_node(uuid.clone(),id,x,y,is_entry,bbl.as_slice())?;
         }
@@ -348,7 +346,7 @@ impl Panopticon {
     }
 
     pub fn update_sidebar(&mut self,uuid: &Uuid) -> Result<()> {
-        println!("update_sidebar() func={}",uuid);
+        debug!("update_sidebar() func={}",uuid);
 
         let func = self.functions.get(uuid).cloned();
         match func {
@@ -379,7 +377,6 @@ impl Panopticon {
 
         glue::send_undo_redo_update(top != 0,top < len)
     }
-
 }
 
 impl Default for Panopticon {
