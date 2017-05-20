@@ -49,9 +49,13 @@ where A::Configuration: Debug {
     thread::spawn(move || {
         let mut tx = tx;
         let mut functions = HashMap::<u64,Function>::new();
-        let mut targets = HashSet::<u64>::from_iter(program.call_graph.vertices().filter_map(|vx| {
+        let mut targets = HashMap::<u64,Function>::from_iter(program.call_graph.vertices().filter_map(|vx| {
             match program.call_graph.vertex_label(vx) {
-                Some(&CallTarget::Todo(Rvalue::Constant{ value: ref entry,.. },..)) => Some(*entry),
+                Some(&CallTarget::Todo(Rvalue::Constant{ value: entry,.. },ref maybe_name,ref uuid)) => {
+                    let name = maybe_name.clone().unwrap_or_else(|| format!("func_0x{:x}",entry));
+                    let f = Function::with_uuid(name,uuid.clone(),region.name().clone());
+                    Some((entry,f))
+                }
                 Some(_) => None,
                 None => unreachable!(),
             }
@@ -59,16 +63,16 @@ where A::Configuration: Debug {
 
         while !targets.is_empty() {
             info!("disassemble {:?}",targets);
-            let (new_targets,new_fns): (Vec<Vec<u64>>,Vec<Function>) = targets.into_iter().map(|entry| {
-                let mut f = Function::disassemble::<A>(None,config.clone(),&region,entry);
+            let (new_targets,new_fns): (Vec<Vec<(u64,Function)>>,Vec<Function>) = targets.into_iter().map(|(entry,f)| {
+                let mut f = Function::disassemble::<A>(Some(f),config.clone(),&region,entry);
                 let new_ct = f.collect_calls().into_iter().filter_map(|rv| {
                     if let Rvalue::Constant{ value,.. } = rv {
                         if !functions.contains_key(&value) && entry != value {
-                            return Some(value);
+                            return Some((value,Function::new(format!("func_0x{:x}",value),region.name().clone())));
                         }
                     }
                     None
-                }).collect::<Vec<u64>>();
+                }).collect::<Vec<(u64,Function)>>();
 
                 let _ = ssa_convertion(&mut f);
 
