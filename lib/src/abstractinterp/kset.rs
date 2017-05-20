@@ -329,6 +329,8 @@ mod tests {
      */
     #[test]
     fn kset_test() {
+        ::env_logger::init().unwrap();
+
         let a_var = Lvalue::Variable{ name: Cow::Borrowed("a"), size: 32, subscript: None };
         let b_var = Lvalue::Variable{ name: Cow::Borrowed("b"), size: 32, subscript: None };
         let c_var = Lvalue::Variable{ name: Cow::Borrowed("c"), size: 32, subscript: None };

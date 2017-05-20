@@ -92,7 +92,7 @@ Rectangle {
 				anchors.top: view.bottom
 				anchors.topMargin: 20
 
-				visible: Panopticon.haveRecentSessions && Panopticon.currentSession == ""
+				visible: Panopticon.recentSessions.rwoCount > 0 && Panopticon.currentSession == ""
 				width: logo.width
 				columns: 4
 				rowSpacing: 15

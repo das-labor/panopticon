@@ -176,25 +176,36 @@ pub fn approximate<A: Avalue>(func: &Function,fixed: &HashMap<(Cow<'static,str>,
             bb.execute(|i| {
                 if let Statement{ ref op, assignee: Lvalue::Variable{ ref name, subscript: Some(ref subscript),.. } } = *i {
                     let pp = ProgramPoint{ address: bb.area.start, position: pos };
-                    let new = A::execute(&pp,&lift(op,&|x| res::<A>(x,sizes,&ret,fixed)));
+                    let op = lift(op,&|x| res::<A>(x,sizes,&ret,fixed));
+                    let new = A::execute(&pp,&op);
                     let assignee = (name.clone(),*subscript);
                     let cur = ret.get(&assignee).cloned();
+
+                    debug!("{:?}: {:?} = {:?}",pp,op,new);
+                    debug!("    prev: {:?}",cur);
 
                     if let Some(cur) = cur {
                         if do_widen {
                             let w = cur.widen(&new);
 
+                            debug!("    widen to {:?}",w);
+
                             if w != cur {
                                 change = true;
-                                ret.insert(assignee,w);
+                                ret.insert(assignee,w.clone());
+                                debug!("    new value {:?}",w);
                             }
-                        } else if cur.more_exact(&new) {
+                        } else if !cur.more_exact(&new) && cur != new {
                             change = true;
-                            ret.insert(assignee,new);
+                            ret.insert(assignee,new.clone());
+                            debug!("    new value {:?}",new);
+                        } else {
+                            debug!("    {:?} is more exact than {:?}",cur,new);
                         }
                     } else {
                         change = true;
-                        ret.insert(assignee,new);
+                        ret.insert(assignee,new.clone());
+                        debug!("    new value {:?}",new);
                     }
                 }
 

@@ -97,6 +97,9 @@ extern crate goblin;
 #[macro_use]
 extern crate quickcheck;
 
+#[cfg(test)]
+extern crate env_logger;
+
 // core
 pub mod disassembler;
 pub use disassembler::{
