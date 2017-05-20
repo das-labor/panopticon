@@ -148,8 +148,8 @@ extern "C" void start_gui_loop(const char *dir, const char* f, const RecentSessi
 															 OpenProgramFunc op, SaveSessionFunc ss,
 															 CommentOnFunc co, RenameFunctionFunc rf, SetValueForFunc svf,
 															 UndoFunc u, RedoFunc r) {
-	int argc = 0;
-	char *argv[1] = { 0 };
+	int argc = 1;
+	char *argv[1] = { "Panopticon" };
 	QGuiApplication app(argc,argv);
 
 	QPanopticon::staticGetFunctionNodes = gfn;

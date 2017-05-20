@@ -9,6 +9,9 @@ Rectangle {
 	id: root
 	color: "white"
 
+	Accessible.name: "Sidebar"
+	Accessible.role: Accessible.Pane
+
 	Rectangle {
 		id: divider
 
@@ -17,6 +20,7 @@ Rectangle {
 		anchors.bottom: parent.bottom
 		width: 1
 		color: "#d8dae4"
+		Accessible.role: Accessible.Separator
 	}
 
 	Ctrl.Label {
@@ -40,6 +44,8 @@ Rectangle {
 		anchors.bottom: parent.bottom
 		anchors.right: divider.left
 
+		Accessible.role: Accessible.List
+		Accessible.name: "Function List"
 		visible: listView.count > 0
 
 		ListView {
@@ -57,6 +63,9 @@ Rectangle {
 				width: listView.width
 				height: childrenRect.height
 
+				Accessible.name: title
+				Accessible.role: Accessible.ListItem
+
 				Rectangle {
 					id: rowMarker
 					anchors.fill: parent
@@ -71,19 +80,29 @@ Rectangle {
 					anchors.fill: parent
 					anchors.rightMargin: 16+5
 					hoverEnabled: true
-					onClicked: {
+
+					Accessible.name: "Open " + title
+					Accessible.role: Accessible.Button
+
+					function activate() {
 						console.log("display cfg for " + uuid);
 						root.showControlFlowGraph(uuid);
 					}
+
+					Accessible.onPressAction: activate()
+					onClicked: activate()
 				}
 
 				RowLayout {
 					id: row
 					width: parent.width
 
+					Accessible.ignored: true
+
 					Ctrl.Label {
 						Layout.leftMargin: 10
 						Layout.fillWidth: true
+        		Accessible.ignored: true
 
 						id: titleLabel
 						text: title
@@ -93,6 +112,8 @@ Rectangle {
 					Ctrl.Label {
 						Layout.leftMargin: 5
 						Layout.rightMargin: 10
+
+						Accessible.description: "Function entry point"
 
 						id: subtitleLabel
 						text: subtitle
@@ -112,12 +133,19 @@ Rectangle {
 						mipmap: true
 						opacity: labelMouseArea.containsMouse ? 1 : (rowMouseArea.containsMouse ? .6 : 0)
 
+						Accessible.name: "Rename function " + title
+						Accessible.role: Accessible.Button
+						Accessible.onPressAction: labelMouseArea.activate()
+
 						MouseArea {
 							id: labelMouseArea
 							width: parent.width
 							height: row.height
 							hoverEnabled: true
-							onClicked: {
+							onClicked: activate()
+        			Accessible.ignored: true
+
+							function activate() {
 								console.log("rename " + uuid);
 								var mapped = row.mapToItem(root,row.x,row.y,row.width,row.height);
 								renamePopover.open(mapped,title,uuid);

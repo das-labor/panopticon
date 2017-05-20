@@ -50,9 +50,13 @@ MouseArea {
 	hoverEnabled: true
 	visible: false
 
+	Accessible.name: "Rename function " + name
+	Accessible.role: Accessible.Dialog
+
 	onExited: { close(); }
 	onWheel: { close(); }
 	onClicked: { close(); }
+	Accessible.onPressAction: { close(); }
 
 	Rectangle {
 		id: overlayBox

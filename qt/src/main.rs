@@ -83,6 +83,9 @@ fn main() {
 
         // workaround bug #183
         env::set_var("QT_QPA_PLATFORMTHEME","");
+
+        // needed for UI tests
+        env::set_var("QT_LINUX_ACCESSIBILITY_ALWAYS_ON","1");
     }
 
 
