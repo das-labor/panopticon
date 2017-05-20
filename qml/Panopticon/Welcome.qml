@@ -92,7 +92,10 @@ Rectangle {
 				anchors.top: view.bottom
 				anchors.topMargin: 20
 
-				visible: Panopticon.recentSessions.rwoCount > 0 && Panopticon.currentSession == ""
+				Accessible.role: Accessible.List
+				Accessible.name: "Recent Sessions"
+
+				visible: Panopticon.recentSessions.length > 0 && Panopticon.currentSession == ""
 				width: logo.width
 				columns: 4
 				rowSpacing: 15
@@ -138,9 +141,8 @@ Rectangle {
 							horizontalAlignment: Text.AlignLeft
 						}
 					}
-
-
 				}
+
 				// Actions
 				Repeater {
 					model: Panopticon.recentSessions

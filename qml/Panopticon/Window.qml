@@ -100,7 +100,6 @@ Ctrl.ApplicationWindow {
 			}
 		}
 	}
-	Accessible.name: "Panopticon Main Window"
 
 	Component.onCompleted: {
 		if(Panopticon.initialFile !== "") {

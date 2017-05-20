@@ -393,3 +393,19 @@ impl Default for Panopticon {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn default() {
+        let _ = Panopticon::default();
+    }
+
+    #[test]
+    fn open_save() {
+        let mut panop = Panopticon::default();
+        panop.open_program("tests/data/save.panop".to_string()).unwrap();
+    }
+}

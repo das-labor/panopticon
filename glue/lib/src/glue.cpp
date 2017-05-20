@@ -103,6 +103,8 @@ extern "C" void update_function_edges(const char* uuid, const uint32_t* ids,
 extern "C" void update_sidebar_items(const SidebarItem** items) {
 	size_t idx = 0;
 	QPanopticon *panop = QPanopticon::staticInstance;
+	if(!panop) return;
+
 	QSidebar *sidebar = panop->getSidebar();
 
 	while(items && items[idx]) {
@@ -125,22 +127,26 @@ extern "C" void update_sidebar_items(const SidebarItem** items) {
 extern "C" void update_undo_redo(int8_t undo, int8_t redo) {
 	QPanopticon *panop = QPanopticon::staticInstance;
 
-	panop->metaObject()->invokeMethod(
-			panop,
-			"updateUndoRedo",
-			Qt::QueuedConnection,
-			Q_ARG(bool,undo != 0),
-			Q_ARG(bool,redo != 0));
+	if(panop) {
+		panop->metaObject()->invokeMethod(
+				panop,
+				"updateUndoRedo",
+				Qt::QueuedConnection,
+				Q_ARG(bool,undo != 0),
+				Q_ARG(bool,redo != 0));
+	}
 }
 
 extern "C" void update_current_session(const char* path) {
 	QPanopticon *panop = QPanopticon::staticInstance;
 
-	panop->metaObject()->invokeMethod(
-			panop,
-			"updateCurrentSession",
-			Qt::QueuedConnection,
-			Q_ARG(QString,QString(path)));
+	if(panop) {
+		panop->metaObject()->invokeMethod(
+				panop,
+				"updateCurrentSession",
+				Qt::QueuedConnection,
+				Q_ARG(QString,QString(path)));
+	}
 }
 
 extern "C" void start_gui_loop(const char *dir, const char* f, const RecentSession** sess,
