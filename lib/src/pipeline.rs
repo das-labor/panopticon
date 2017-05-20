@@ -22,7 +22,6 @@ use futures::sync::mpsc;
 use futures::{stream,Stream,Sink,Future};
 use std::thread;
 use std::collections::{
-    HashSet,
     HashMap,
 };
 use std::iter::FromIterator;
