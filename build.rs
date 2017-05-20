@@ -5,7 +5,7 @@ use std::env;
 use std::env::consts;
 use std::path::PathBuf;
 
-fn build_dos(cmake_cfg: &mut cmake::Config) {
+fn build(cmake_cfg: &mut cmake::Config) {
     let dst = cmake_cfg.build();
 
     println!("cargo:rustc-link-search=native={}", dst.join("lib").display());
@@ -118,12 +118,11 @@ fn find_qt5(_: &mut cmake::Config) {
 
 fn main() {
     let mut cmake_cfg = cmake::Config::new("glue");
-    let dos_path = PathBuf::from("glue").join("CMakeLists.txt");
 
     if let Ok(gen) = env::var("CMAKE_GENERATOR") {
         cmake_cfg.generator(gen);
     }
 
     find_qt5(&mut cmake_cfg);
-    build_dos(&mut cmake_cfg);
+    build(&mut cmake_cfg);
 }
