@@ -27,11 +27,13 @@ public:
 	Q_PROPERTY(QVariant delegate READ getDelegate WRITE setDelegate NOTIFY delegateChanged)
 	Q_PROPERTY(QVariant edgeDelegate READ getEdgeDelegate WRITE setEdgeDelegate NOTIFY edgeDelegateChanged)
 	Q_PROPERTY(QVariantList preview READ getPreview NOTIFY previewChanged)
+	Q_PROPERTY(bool isEmpty READ getIsEmpty NOTIFY isEmptyChanged)
 
 	QString getUuid(void) const;
 	QVariant getDelegate(void) const;
 	QVariant getEdgeDelegate(void) const;
 	QVariantList getPreview(void) const;
+	bool getIsEmpty(void) const;
 
 	void setUuid(QString& s);
 	void setDelegate(QVariant& v);
@@ -55,6 +57,7 @@ signals:
 	void delegateChanged(void);
 	void edgeDelegateChanged(void);
 	void previewChanged(void);
+	void isEmptyChanged(void);
 
 protected:
 	void updateNodes(void);

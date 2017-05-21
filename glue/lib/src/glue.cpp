@@ -50,54 +50,54 @@ extern "C" void update_function_edges(const char* uuid, const uint32_t* ids,
 	QString uuid_str(uuid);
 	std::lock_guard<std::mutex> guard(QControlFlowGraph::allInstancesLock);
 
-	for(auto cfg: QControlFlowGraph::allInstances) {
-		QVector<QPointF> heads;
-		QVector<QPointF> tails;
-		QVector<QString> label_vec;
-		QVector<QString> kind_vec;
-		QVector<unsigned int> id_vec;
-		size_t idx = 0;
+  for(auto cfg: QControlFlowGraph::allInstances) {
+    QVector<QPointF> heads;
+    QVector<QPointF> tails;
+    QVector<QString> label_vec;
+    QVector<QString> kind_vec;
+    QVector<unsigned int> id_vec;
+    size_t idx = 0;
 
-		while(head_xs && head_ys && tail_xs && tail_ys && ids && labels &&
-				  labels[idx] && kinds && kinds[idx])
-		{
-			QPointF head(head_xs[idx],head_ys[idx]);
-			QPointF tail(tail_xs[idx],tail_ys[idx]);
-			QString label(labels[idx]);
-			QString kind(kinds[idx]);
-			unsigned int id = ids[idx];
+    while(head_xs && head_ys && tail_xs && tail_ys && ids && labels &&
+        labels[idx] && kinds && kinds[idx])
+    {
+      QPointF head(head_xs[idx],head_ys[idx]);
+      QPointF tail(tail_xs[idx],tail_ys[idx]);
+      QString label(labels[idx]);
+      QString kind(kinds[idx]);
+      unsigned int id = ids[idx];
 
-			heads.append(head);
-			tails.append(tail);
-			label_vec.append(label);
-			kind_vec.append(kind);
-			id_vec.append(id);
+      heads.append(head);
+      tails.append(tail);
+      label_vec.append(label);
+      kind_vec.append(kind);
+      id_vec.append(id);
 
-			++idx;
-		}
+      ++idx;
+    }
 
-		QSvgRenderer renderer;
-		renderer.load(QByteArray(svg));
-		auto vp = renderer.viewBox();
-		QImage img(vp.width(),vp.height(),QImage::Format_ARGB32_Premultiplied);
-		img.fill(Qt::transparent);
-		QPainter painter(&img);
-		renderer.render(&painter);
+    if(!id_vec.empty()) {
+      QSvgRenderer renderer;
+      renderer.load(QByteArray(svg));
+      auto vp = renderer.viewBox();
+      QImage img(vp.width(),vp.height(),QImage::Format_ARGB32_Premultiplied);
+      img.fill(Qt::transparent);
+      QPainter painter(&img);
+      renderer.render(&painter);
 
-		if(!label_vec.empty()) {
-			cfg->metaObject()->invokeMethod(
-					cfg,
-					"insertEdges",
-					Qt::QueuedConnection,
-					Q_ARG(QString,uuid_str),
-					Q_ARG(QVector<unsigned int>,id_vec),
-					Q_ARG(QVector<QString>,label_vec),
-					Q_ARG(QVector<QString>,kind_vec),
-					Q_ARG(QVector<QPointF>,heads),
-					Q_ARG(QVector<QPointF>,tails),
-					Q_ARG(QImage,img));
-		}
-	}
+      cfg->metaObject()->invokeMethod(
+          cfg,
+          "insertEdges",
+          Qt::QueuedConnection,
+          Q_ARG(QString,uuid_str),
+          Q_ARG(QVector<unsigned int>,id_vec),
+          Q_ARG(QVector<QString>,label_vec),
+          Q_ARG(QVector<QString>,kind_vec),
+          Q_ARG(QVector<QPointF>,heads),
+          Q_ARG(QVector<QPointF>,tails),
+          Q_ARG(QImage,img));
+    }
+  }
 }
 
 extern "C" void update_sidebar_items(const SidebarItem** items) {

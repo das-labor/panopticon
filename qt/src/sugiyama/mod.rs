@@ -526,4 +526,58 @@ mod tests {
 
         compute_x_coordinates(&order,&rank,&mut graph,&dims,&ports,&|_| 25.,virt_start);
     }
+
+    #[test]
+    fn layout_all() {
+        use std::path::Path;
+        use panopticon::{
+            loader,
+            Machine,
+            amd64,
+            pipeline,
+        };
+        use futures::Stream;
+
+        let _ = ::env_logger::init();
+
+        for path in &["tests/data/static","tests/data/libbeef.dll","tests/data/libbeef.dylib"] {
+            if let Ok((mut proj,machine)) = loader::load(&Path::new(path)) {
+                let maybe_prog = proj.code.pop();
+                let reg = proj.data.dependencies.vertex_label(proj.data.root).unwrap().clone();
+
+                if let Some(prog) = maybe_prog {
+                    let pipe: Box<_> = match machine {
+                        Machine::Amd64 => pipeline::<amd64::Amd64>(prog,reg.clone(),amd64::Mode::Long),
+                        Machine::Ia32 => pipeline::<amd64::Amd64>(prog,reg.clone(),amd64::Mode::Protected),
+                        _ => unreachable!()
+                    };
+
+                    for i in pipe.wait() {
+                        if let Ok(func) = i {
+                            let cfg = &func.cflow_graph;
+                            let vertices = HashMap::<AdjacencyListVertexDescriptor,usize>::from_iter(cfg.vertices().enumerate().map(|(idx,vx)| (vx,idx)));
+                            let entry = func.entry_point.map(|x| vertices[&x]);
+                            let edges: Vec<(usize,usize)> = cfg.edges().map(|e| {
+                                (vertices[&cfg.source(e)],vertices[&cfg.target(e)])
+                            }).collect();
+                            let dims = HashMap::from_iter(vertices.iter().map(|(_,&x)| (x,(42.,23.))));
+
+                            linear_layout(
+                                &vertices.into_iter().map(|(_,x)| x).collect(),
+                                &edges,
+                                &dims,
+                                entry,
+                                5.,10.,2.,5.,5.,120.).unwrap();
+                        } else {
+                            unreachable!();
+                        }
+                    }
+                } else {
+                    unreachable!();
+                }
+            } else {
+                unreachable!();
+            }
+        }
+    }
 }

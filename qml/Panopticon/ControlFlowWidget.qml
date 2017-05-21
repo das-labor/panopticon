@@ -257,6 +257,19 @@ MouseArea {
 		}
 	}
 
+	Ctrl.Label {
+		anchors.centerIn: parent
+		width: 140
+		font {
+			family: "Source Sans Pro"; pointSize: 20;
+		}
+		visible: controlFlowRoot.isEmpty
+		text: "Function is empty"
+		color: "#a2a2a2"
+		horizontalAlignment: Text.AlignHCenter
+		wrapMode: Text.WordWrap
+	}
+
 	PreviewOverlay {
 		id: preview
 		visible: false

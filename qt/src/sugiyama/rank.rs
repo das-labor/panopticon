@@ -76,6 +76,7 @@ pub fn ensure_single_entry(maybe_entry: Option<&AdjacencyListVertexDescriptor>,
             },&mut|_,_| {},&h,graph);
         } else {
             if let Some(h) = graph.vertices().find(|x| !seen.contains(x)) {
+                heads.push(h);
                 depth_first_visit(&mut|vx,ev| match ev {
                     VertexEvent::Discovered => { seen.insert(*vx); },
                     _ => {}

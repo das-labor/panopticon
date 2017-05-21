@@ -55,6 +55,10 @@ QVariantList QControlFlowGraph::getPreview(void) const {
 	return ret;
 }
 
+bool QControlFlowGraph::getIsEmpty(void) const {
+  return m_nodes.empty();
+}
+
 void QControlFlowGraph::setUuid(QString& s) {
 	m_uuid = s;
 
@@ -62,6 +66,10 @@ void QControlFlowGraph::setUuid(QString& s) {
 	m_edges.first.clear();
 	m_edges.second = QImage();
 	emit uuidChanged();
+	emit isEmptyChanged();
+  updateNodes();
+  updateEdges();
+  update();
 
 	if(m_uuid != "" && m_delegate && QPanopticon::staticGetFunctionNodes &&
 		 QPanopticon::staticGetFunctionEdges)
@@ -79,6 +87,8 @@ void QControlFlowGraph::setDelegate(QVariant& v) {
 
 		m_nodes.clear();
 		emit delegateChanged();
+		emit isEmptyChanged();
+    updateNodes();
 
 		if(m_uuid != "" && m_delegate && QPanopticon::staticGetFunctionNodes &&
 		   QPanopticon::staticGetFunctionEdges)
@@ -97,7 +107,9 @@ void QControlFlowGraph::setEdgeDelegate(QVariant& v) {
 
 		m_edges.first.clear();
 		m_edges.second = QImage();
+    updateEdges();
 		emit edgeDelegateChanged();
+    update();
 
 		if(m_uuid != "" && m_edgeDelegate && QPanopticon::staticGetFunctionEdges) {
 			std::string uuid = m_uuid.toStdString();
@@ -265,6 +277,7 @@ void QControlFlowGraph::insertNode(QString uuid, unsigned int id, float x, float
 		}
 
 		m_nodes.emplace_back(std::make_tuple(id,x,y,is_entry,vec));
+		emit isEmptyChanged();
 		updateNodes();
 	}
 

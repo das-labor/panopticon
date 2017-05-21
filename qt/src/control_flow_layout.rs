@@ -46,7 +46,6 @@ use graph_algos::adjacency_list::{
 #[derive(Clone)]
 pub struct ControlFlowLayout {
     pub node_dimensions: HashMap<AdjacencyListVertexDescriptor,(f32,f32)>,
-    pub layout: sugiyama::LinearLayout,
     pub node_positions: HashMap<AdjacencyListVertexDescriptor,(f32,f32)>,
     pub node_data: HashMap<AdjacencyListVertexDescriptor,(bool,Vec<BasicBlockLine>)>,
     pub edges: HashMap<AdjacencyListEdgeDescriptor,(Vec<(f32,f32,f32,f32)>,(f32,f32),(f32,f32))>,
@@ -77,6 +76,18 @@ impl ControlFlowLayout {
         use std::f32;
 
         let (vertices,edges,edges_rev) = Self::flatten_cflow_graph(func);
+
+        if vertices.is_empty() {
+            println!("{} is empty",func.uuid);
+            return Ok(ControlFlowLayout{
+                node_data: HashMap::new(),
+                node_positions: HashMap::new(),
+                node_dimensions: HashMap::new(),
+                edges: HashMap::new(),
+                edge_data: HashMap::new(),
+            });
+        }
+
         let layout = sugiyama::linear_layout_structural(
             &vertices.iter().map(|&vx| vx).collect::<Vec<_>>(),
             &edges,
@@ -150,7 +161,6 @@ impl ControlFlowLayout {
         }
 
         Ok(ControlFlowLayout{
-            layout: layout,
             node_data: data,
             node_positions: positions,
             node_dimensions: HashMap::from_iter(dims.into_iter().map(|(idx,wh)| (AdjacencyListVertexDescriptor(idx),wh))),
@@ -193,14 +203,12 @@ impl ControlFlowLayout {
     }
 
     fn flatten_cflow_graph(func: &Function) -> (HashSet<usize>,Vec<(usize,usize)>,HashMap<usize,AdjacencyListEdgeDescriptor>) {
-        let mut vertices = HashSet::new();
         let mut edges = vec![];
         let cfg = &func.cflow_graph;
+        let vertices = HashSet::from_iter(cfg.vertices().map(|x| x.0));
         let edge_iter = cfg.edges().map(|e| (cfg.source(e).0,cfg.target(e).0));
 
         for (from_idx,to_idx) in edge_iter {
-            vertices.insert(from_idx);
-            vertices.insert(to_idx);
             edges.push((from_idx,to_idx));
         }
 
