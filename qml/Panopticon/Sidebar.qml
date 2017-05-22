@@ -1,6 +1,7 @@
 import QtQuick 2.4
 import QtQuick.Controls 1.3 as Ctrl
 import QtQuick.Layouts 1.1
+import QtQuick.Controls.Styles 1.4 as Style
 import Panopticon 1.0
 
 Rectangle {
@@ -36,7 +37,7 @@ Rectangle {
 		wrapMode: Text.WordWrap
 	}
 
-	Item {
+	Ctrl.ScrollView {
 		id: functionList
 
 		anchors.left: parent.left
@@ -46,7 +47,30 @@ Rectangle {
 
 		Accessible.role: Accessible.List
 		Accessible.name: "Function List"
-		visible: listView.count > 0
+    visible: listView.count > 0
+
+    style: Style.ScrollViewStyle {
+      transientScrollBars: false
+      handle: Item {
+        implicitWidth: 14
+        implicitHeight: 26
+        Rectangle {
+          color: "#a2a2a2"
+          radius: 3
+          anchors.fill: parent
+          anchors.topMargin: 6
+          anchors.leftMargin: 4
+          anchors.rightMargin: 4
+          anchors.bottomMargin: 6
+        }
+      }
+      scrollBarBackground: Item {
+        implicitWidth: 14
+        implicitHeight: 26
+      }
+      incrementControl: Item {}
+      decrementControl: Item {}
+    }
 
 		ListView {
 			id: listView
@@ -54,7 +78,6 @@ Rectangle {
 			anchors.right: parent.right
 			anchors.top: parent.top
 			anchors.bottom: parent.bottom
-			anchors.topMargin: 10
 			anchors.leftMargin: 5
 			anchors.rightMargin: 5
 
