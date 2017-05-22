@@ -528,6 +528,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn layout_all() {
         use std::path::Path;
         use panopticon::{
