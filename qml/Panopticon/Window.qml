@@ -168,7 +168,11 @@ Ctrl.ApplicationWindow {
 			anchors.left: bar.right
 			anchors.right: parent.right
 			anchors.top: parent.top
-			anchors.bottom: parent.bottom
+      anchors.bottom: parent.bottom
+
+      onFunctionUuidChanged: {
+        bar.functionUuid = functionUuid;
+      }
 		}
 
 		LinearGradient {
