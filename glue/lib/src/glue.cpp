@@ -23,6 +23,7 @@ extern "C" void update_function_node(const char* uuid, uint32_t id, float x, flo
 			const BasicBlockLine *line = lines[idx];
 			QBasicBlockLine* qobj = new QBasicBlockLine(*line);
 
+      qobj->moveToThread(QGuiApplication::instance()->thread());
 			qobjs.append(qobj);
 			++idx;
 		}
@@ -150,7 +151,7 @@ extern "C" void update_current_session(const char* path) {
 }
 
 extern "C" void start_gui_loop(const char *dir, const char* f, const RecentSession** sess,
-															 GetFunctionNodesFunc gfn, GetFunctionEdgesFunc gfe,
+															 GetFunctionFunc gf,
 															 OpenProgramFunc op, SaveSessionFunc ss,
 															 CommentOnFunc co, RenameFunctionFunc rf, SetValueForFunc svf,
 															 UndoFunc u, RedoFunc r) {
@@ -158,8 +159,7 @@ extern "C" void start_gui_loop(const char *dir, const char* f, const RecentSessi
 	char *argv[1] = { "Panopticon" };
 	QGuiApplication app(argc,argv);
 
-	QPanopticon::staticGetFunctionNodes = gfn;
-	QPanopticon::staticGetFunctionEdges = gfe;
+	QPanopticon::staticGetFunction = gf;
 	QPanopticon::staticOpenProgram = op;
 	QPanopticon::staticSaveSession = ss;
 	QPanopticon::staticCommentOn = co;

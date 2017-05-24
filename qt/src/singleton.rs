@@ -41,6 +41,11 @@ use graph_algos::{
     GraphTrait,
     VertexListGraphTrait,
 };
+use futures::{
+    Async,
+    future,
+    Future,
+};
 
 #[derive(PartialEq,Eq,Clone,Debug,Hash)]
 pub struct VarName {
@@ -60,6 +65,9 @@ lazy_static!{
     };
 }
 
+pub type NodePosition = (usize,f32,f32,bool,Vec<BasicBlockLine>);
+pub type EdgePosition = (usize,&'static str,String,(f32,f32),(f32,f32),Vec<(f32,f32,f32,f32)>);
+
 pub struct Panopticon {
     pub control_flow_layouts: HashMap<Uuid,ControlFlowLayout>,
 
@@ -72,9 +80,36 @@ pub struct Panopticon {
 
     pub undo_stack: Vec<Action>,
     pub undo_stack_top: usize,
+
+    pub layout_task: Option<future::BoxFuture<ControlFlowLayout,Error>>,
 }
 
 impl Panopticon {
+    pub fn layout_function_async(&mut self,uuid: &Uuid) -> future::BoxFuture<(Vec<NodePosition>,Vec<EdgePosition>),Error> {
+        if !self.control_flow_layouts.contains_key(&uuid) {
+            let func = self.functions.get(&uuid).unwrap();
+            let cmnts = &self.control_flow_comments;
+            let values = self.control_flow_values.get(&uuid);
+            let funcs = &self.functions;
+            let uuid2 = uuid.clone();
+
+            ControlFlowLayout::new_async(func,cmnts,values,funcs,8,3,8,26,17,150).and_then(move |cfl| {
+                let uuid = uuid2;
+                let nodes = cfl.get_all_nodes();
+                let edges = cfl.get_all_edges();
+
+                PANOPTICON.lock().control_flow_layouts.insert(uuid,cfl);
+                future::ok((nodes,edges))
+            }).boxed()
+        } else {
+            let cfl = &self.control_flow_layouts.get(uuid).unwrap();
+            let nodes = cfl.get_all_nodes();
+            let edges = cfl.get_all_edges();
+
+            future::ok((nodes,edges)).boxed()
+        }
+    }
+
     fn get_function<'a>(&'a mut self,uuid: &Uuid) -> Result<&'a mut ControlFlowLayout> {
         if !self.control_flow_layouts.contains_key(&uuid) {
             let func = self.functions.get(&uuid).unwrap();
@@ -89,14 +124,14 @@ impl Panopticon {
         Ok(self.control_flow_layouts.get_mut(&uuid).unwrap())
     }
 
-    pub fn get_function_nodes(&mut self,uuid: String) -> Result<Vec<(usize,f32,f32,bool,Vec<BasicBlockLine>)>> {
+    pub fn get_function_nodes(&mut self,uuid: String) -> Result<Vec<NodePosition>> {
         let uuid = Uuid::parse_str(&uuid)?;
         let mut cfl = self.get_function(&uuid)?;
 
         Ok(cfl.get_all_nodes())
     }
 
-    pub fn get_function_edges(&mut self,uuid: String) -> Result<Vec<(usize,&'static str,String,(f32,f32),(f32,f32),Vec<(f32,f32,f32,f32)>)>> {
+    pub fn get_function_edges(&mut self,uuid: String) -> Result<Vec<EdgePosition>> {
         let uuid = Uuid::parse_str(&uuid)?;
         let mut cfl = self.get_function(&uuid)?;
 
@@ -390,6 +425,7 @@ impl Default for Panopticon {
             region: None,
             undo_stack: Vec::new(),
             undo_stack_top: 0,
+            layout_task: None,
         }
     }
 }

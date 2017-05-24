@@ -42,6 +42,11 @@ use graph_algos::adjacency_list::{
     AdjacencyListEdgeDescriptor,
     AdjacencyListVertexDescriptor,
 };
+use futures::{
+    Async,
+    future,
+    Future,
+};
 
 #[derive(Clone)]
 pub struct ControlFlowLayout {
@@ -70,66 +75,26 @@ pub struct BasicBlockOperand {
 }
 
 impl ControlFlowLayout {
-    pub fn new(func: &Function, comments: &HashMap<u64,String>, values: Option<&AbstractInterpretation>,
+    pub fn new_async(func: &Function, comments: &HashMap<u64,String>, values: Option<&AbstractInterpretation>,
                functions: &HashMap<Uuid,Function>, char_width: usize, padding: usize, margin: usize,
-               col_padding: usize, line_height: usize, cmnt_width: usize) -> Result<ControlFlowLayout> {
+               col_padding: usize, line_height: usize, cmnt_width: usize) -> future::BoxFuture<ControlFlowLayout,Error> {
         use std::f32;
 
         let (vertices,edges,edges_rev) = Self::flatten_cflow_graph(func);
 
         if vertices.is_empty() {
             println!("{} is empty",func.uuid);
-            return Ok(ControlFlowLayout{
+            return Box::new(future::ok(ControlFlowLayout{
                 node_data: HashMap::new(),
                 node_positions: HashMap::new(),
                 node_dimensions: HashMap::new(),
                 edges: HashMap::new(),
                 edge_data: HashMap::new(),
-            });
+            }));
         }
 
-        let layout = sugiyama::linear_layout_structural(
-            &vertices.iter().map(|&vx| vx).collect::<Vec<_>>(),
-            &edges,
-            None)?;
-        let dims = Self::compute_node_dimensions(func,char_width,padding,margin,col_padding,line_height,cmnt_width)?;
-        let mut placement = sugiyama::linear_layout_placement(
-            &vertices.iter().map(|&vx| vx).collect::<Vec<_>>(),
-            &edges,&layout,&dims,
-            cmnt_width as f32 + 20.,20.,50.,30.,30.,8.)?;
-        let mut positions = HashMap::from_iter(placement.0.into_iter().map(|(idx,pos)| (AdjacencyListVertexDescriptor(idx),pos)));
-        let initial = (f32::INFINITY,f32::INFINITY);
-        let (min_x,min_y) = positions
-            .iter().fold(initial,|(min_x,min_y),(_,&(mut x,mut y))| {
-                x -= 10.;
-                y -= 10.;
-                let min_x = if min_x > x { x } else { min_x };
-                let min_y = if min_y > y { y } else { min_y };
-
-                (min_x,min_y)
-            });
-        let (min_x,min_y) = placement.1
-            .iter().fold((min_x,min_y),|(min_x,min_y),(_,&(ref trail,_,_))| {
-                let (x,y) = trail.iter().fold((min_x,min_y),|(min_x,min_y),&(mut from_x,mut from_y,mut to_x,mut to_y)| {
-                    from_x -= 10.;
-                    from_y -= 10.;
-                    to_x -= 10.;
-                    to_y -= 10.;
-
-                    let min_x = if min_x > from_x { from_x } else { min_x };
-                    let min_x = if min_x > to_x { to_x } else { min_x };
-                    let min_y = if min_y > from_y { from_y } else { min_y };
-                    let min_y = if min_y > to_y { to_y } else { min_y };
-
-                    (min_x,min_y)
-                });
-
-                let min_x = if min_x > x { x } else { min_x };
-                let min_y = if min_y > y { y } else { min_y };
-
-                (min_x,min_y)
-            });
-        let data = HashMap::from_iter(func.cflow_graph
+        let data = HashMap::from_iter(
+            func.cflow_graph
             .vertices()
             .filter_map(|vx| func.cflow_graph.vertex_label(vx).map(|lb| (vx,lb)))
             .filter_map(|(vx,lb)| {
@@ -138,48 +103,126 @@ impl ControlFlowLayout {
 
                 maybe_lines.map(|v| (vx,(is_entry,v)))
             }));
-        let labels = HashMap::from_iter(func.cflow_graph
+        let labels = HashMap::from_iter(
+            func.cflow_graph
             .edges()
             .filter_map(|e| Self::get_edge_data(e,func).ok().map(|x| (e,x))));
-
-        for (_,&mut (ref mut x,ref mut y)) in positions.iter_mut() {
-            *x -= min_x;
-            *y -= min_y;
+        let dims = Self::compute_node_dimensions(func,char_width,padding,margin,col_padding,line_height,cmnt_width);
+        if dims.is_err() {
+            return future::err(dims.err().unwrap()).boxed();
         }
+        let dims = dims.unwrap();
+        let vx_vec = vertices.iter().map(|&vx| vx).collect::<Vec<_>>();
+        let edges2 = edges.clone();
 
-        for (_,&mut(ref mut trail,(ref mut start_x,ref mut start_y),(ref mut end_x,ref mut end_y))) in placement.1.iter_mut() {
-            *end_x -= min_x;
-            *end_y -= min_y;
-            *start_x -= min_x;
-            *start_y -= min_y;
-            for &mut(ref mut x1,ref mut y1,ref mut x2,ref mut y2) in trail.iter_mut() {
-                *x1 -= min_x;
-                *y1 -= min_y;
-                *x2 -= min_x;
-                *y2 -= min_y;
-            }
-        }
+        future::lazy(move || -> Result<_> {
+            let vx_vec = vx_vec;
+            let edges = edges2;
+            Ok(sugiyama::linear_layout_start(&vx_vec,&edges,None)?)
+        }).and_then(move |layout| {
+            future::result(sugiyama::linear_layout_rank(layout))
+        }).and_then(move |layout| {
+            future::result(sugiyama::linear_layout_initial_order(layout))
+        }).and_then(move |layout| {
+            future::loop_fn(layout,|layout| {
+                if let &sugiyama::LinearLayout::Ordering{ iterations_left: 0,.. } = &layout {
+                    Ok(future::Loop::Break(layout))
+                } else {
+                    sugiyama::linear_layout_order(layout).map(|x| future::Loop::Continue(x))
+                }
+            })
+        }).and_then(move |layout| {
+            let vertices = vertices;
+            let edges = edges;
+            let edges_rev = edges_rev;
+            let dims = dims;
+            let data = data;
 
-        Ok(ControlFlowLayout{
-            node_data: data,
-            node_positions: positions,
-            node_dimensions: HashMap::from_iter(dims.into_iter().map(|(idx,wh)| (AdjacencyListVertexDescriptor(idx),wh))),
-            edges: HashMap::from_iter(placement.1.into_iter().map(|(idx,e)| (edges_rev[&idx],e))),
-            edge_data: labels,
-        })
+            future::lazy(move || {
+                let mut placement = sugiyama::linear_layout_placement(
+                    &vertices.iter().map(|&vx| vx).collect::<Vec<_>>(),
+                    &edges,&layout,&dims,
+                    cmnt_width as f32 + 20.,20.,50.,30.,30.,8.)?;
+                let mut positions = HashMap::from_iter(placement.0.into_iter().map(|(idx,pos)| (AdjacencyListVertexDescriptor(idx),pos)));
+                let initial = (f32::INFINITY,f32::INFINITY);
+                let (min_x,min_y) = positions
+                    .iter().fold(initial,|(min_x,min_y),(_,&(mut x,mut y))| {
+                        x -= 10.;
+                        y -= 10.;
+                        let min_x = if min_x > x { x } else { min_x };
+                        let min_y = if min_y > y { y } else { min_y };
+
+                        (min_x,min_y)
+                    });
+                let (min_x,min_y) = placement.1
+                    .iter().fold((min_x,min_y),|(min_x,min_y),(_,&(ref trail,_,_))| {
+                        let (x,y) = trail.iter().fold((min_x,min_y),|(min_x,min_y),&(mut from_x,mut from_y,mut to_x,mut to_y)| {
+                            from_x -= 10.;
+                            from_y -= 10.;
+                            to_x -= 10.;
+                            to_y -= 10.;
+
+                            let min_x = if min_x > from_x { from_x } else { min_x };
+                            let min_x = if min_x > to_x { to_x } else { min_x };
+                            let min_y = if min_y > from_y { from_y } else { min_y };
+                            let min_y = if min_y > to_y { to_y } else { min_y };
+
+                            (min_x,min_y)
+                        });
+
+                        let min_x = if min_x > x { x } else { min_x };
+                        let min_y = if min_y > y { y } else { min_y };
+
+                        (min_x,min_y)
+                    });
+
+                for (_,&mut (ref mut x,ref mut y)) in positions.iter_mut() {
+                    *x -= min_x;
+                    *y -= min_y;
+                }
+
+                for (_,&mut(ref mut trail,(ref mut start_x,ref mut start_y),(ref mut end_x,ref mut end_y))) in placement.1.iter_mut() {
+                    *end_x -= min_x;
+                    *end_y -= min_y;
+                    *start_x -= min_x;
+                    *start_y -= min_y;
+                    for &mut(ref mut x1,ref mut y1,ref mut x2,ref mut y2) in trail.iter_mut() {
+                        *x1 -= min_x;
+                        *y1 -= min_y;
+                        *x2 -= min_x;
+                        *y2 -= min_y;
+                    }
+                }
+
+                Ok(ControlFlowLayout{
+                    node_data: data,
+                    node_positions: positions,
+                    node_dimensions: HashMap::from_iter(dims.into_iter().map(|(idx,wh)| (AdjacencyListVertexDescriptor(idx),wh))),
+                    edges: HashMap::from_iter(placement.1.into_iter().map(|(idx,e)| (edges_rev[&idx],e))),
+                    edge_data: labels,
+                })
+            })
+        }).boxed()
     }
 
-    pub fn get_all_nodes(&mut self) -> Vec<(usize,f32,f32,bool,Vec<BasicBlockLine>)> {
+    pub fn new(func: &Function, comments: &HashMap<u64,String>, values: Option<&AbstractInterpretation>,
+               functions: &HashMap<Uuid,Function>, char_width: usize, padding: usize, margin: usize,
+               col_padding: usize, line_height: usize, cmnt_width: usize) -> Result<ControlFlowLayout> {
+        Self::new_async(func,comments,values,functions,char_width,
+                       padding,margin,col_padding,line_height,cmnt_width).wait()
+    }
+
+    pub fn get_all_nodes(&self) -> Vec<(usize,f32,f32,bool,Vec<BasicBlockLine>)> {
         self.node_data.iter().map(|(vx,data)| {
-            let pos = self.node_positions[vx];
+            let pos = self.node_positions.get(vx).unwrap();
 
             (vx.0,pos.0,pos.1,data.0,data.1.clone())
         }).collect()
     }
 
-    pub fn get_all_edges(&mut self) -> Vec<(usize,&'static str,String,(f32,f32),(f32,f32),Vec<(f32,f32,f32,f32)>)> {
+    pub fn get_all_edges(&self) -> Vec<(usize,&'static str,String,(f32,f32),(f32,f32),Vec<(f32,f32,f32,f32)>)> {
         self.edges.iter().map(|(k,&(ref segs,ref head,ref tail))| {
-            let (kind,ref label) = self.edge_data[k];
+            let &(kind,ref label) = self.edge_data.get(k).unwrap();
             (k.0,kind,label.clone(),head.clone(),tail.clone(),segs.clone())
         }).collect()
     }

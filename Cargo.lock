@@ -12,6 +12,7 @@ dependencies = [
  "error-chain 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "flate2 0.2.19 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures 0.1.13 (registry+https://github.com/rust-lang/crates.io-index)",
+ "futures-cpupool 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "goblin 0.0.9 (registry+https://github.com/rust-lang/crates.io-index)",
  "graph_algos 0.11.0 (git+https://github.com/flanfly/rust-graph-algos.git)",
  "lazy_static 0.1.16 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -194,6 +195,15 @@ version = "0.1.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
+name = "futures-cpupool"
+version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "futures 0.1.13 (registry+https://github.com/rust-lang/crates.io-index)",
+ "num_cpus 1.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "gcc"
 version = "0.3.45"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -322,6 +332,14 @@ dependencies = [
 name = "num-traits"
 version = "0.1.37"
 source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "num_cpus"
+version = "1.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "libc 0.2.22 (registry+https://github.com/rust-lang/crates.io-index)",
+]
 
 [[package]]
 name = "owning_ref"
@@ -604,6 +622,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum error-chain 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)" = "6930e04918388a9a2e41d518c25cf679ccafe26733fb4127dbf21993f2575d46"
 "checksum flate2 0.2.19 (registry+https://github.com/rust-lang/crates.io-index)" = "36df0166e856739905cd3d7e0b210fe818592211a008862599845e012d8d304c"
 "checksum futures 0.1.13 (registry+https://github.com/rust-lang/crates.io-index)" = "55f0008e13fc853f79ea8fc86e931486860d4c4c156cdffb59fa5f7fa833660a"
+"checksum futures-cpupool 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)" = "a283c84501e92cade5ea673a2a7ca44f71f209ccdd302a3e0896f50083d2c5ff"
 "checksum gcc 0.3.45 (registry+https://github.com/rust-lang/crates.io-index)" = "40899336fb50db0c78710f53e87afc54d8c7266fb76262fecc78ca1a7f09deae"
 "checksum goblin 0.0.9 (registry+https://github.com/rust-lang/crates.io-index)" = "4023288fcdb49f38f7b15887078b922bb9e96b9d9b33dbb17eb61cb7b2578ba2"
 "checksum graph_algos 0.11.0 (git+https://github.com/flanfly/rust-graph-algos.git)" = "<none>"
@@ -620,6 +639,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum num-iter 0.1.33 (registry+https://github.com/rust-lang/crates.io-index)" = "f7d1891bd7b936f12349b7d1403761c8a0b85a18b148e9da4429d5d102c1a41e"
 "checksum num-rational 0.1.36 (registry+https://github.com/rust-lang/crates.io-index)" = "c2dc5ea04020a8f18318ae485c751f8cfa1c0e69dcf465c29ddaaa64a313cc44"
 "checksum num-traits 0.1.37 (registry+https://github.com/rust-lang/crates.io-index)" = "e1cbfa3781f3fe73dc05321bed52a06d2d491eaa764c52335cf4399f046ece99"
+"checksum num_cpus 1.4.0 (registry+https://github.com/rust-lang/crates.io-index)" = "ca313f1862c7ec3e0dfe8ace9fa91b1d9cb5c84ace3d00f5ec4216238e93c167"
 "checksum owning_ref 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)" = "cdf84f41639e037b484f93433aa3897863b561ed65c6e59c7073d7c561710f37"
 "checksum parking_lot 0.4.3 (registry+https://github.com/rust-lang/crates.io-index)" = "7403ffe0829d9a9d40dad3a76f4a8e3f28466f485c17305615169466d19ec6d3"
 "checksum parking_lot_core 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)" = "56a19dcbb5d1e32b6cccb8a9aa1fc2a38418c8699652e735e2bf391a3dc0aa16"

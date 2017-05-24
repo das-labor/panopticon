@@ -56,8 +56,7 @@ public:
 	bool getCanRedo(void) const;
 
 	// C to Rust functions
-	static GetFunctionNodesFunc staticGetFunctionNodes;
-	static GetFunctionEdgesFunc staticGetFunctionEdges;
+	static GetFunctionFunc staticGetFunction;
 	static OpenProgramFunc staticOpenProgram;
 	static SaveSessionFunc staticSaveSession;
 	static CommentOnFunc staticCommentOn;

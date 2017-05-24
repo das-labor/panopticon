@@ -71,12 +71,9 @@ void QControlFlowGraph::setUuid(QString& s) {
   updateEdges();
   update();
 
-	if(m_uuid != "" && m_delegate && QPanopticon::staticGetFunctionNodes &&
-		 QPanopticon::staticGetFunctionEdges)
-	{
+	if(m_uuid != "" && m_delegate && QPanopticon::staticGetFunction) {
 		std::string uuid = m_uuid.toStdString();
-		QPanopticon::staticGetFunctionNodes(uuid.c_str(),false);
-		QPanopticon::staticGetFunctionEdges(uuid.c_str());
+		QPanopticon::staticGetFunction(uuid.c_str(),false,true,true);
 	}
 }
 
@@ -90,12 +87,9 @@ void QControlFlowGraph::setDelegate(QVariant& v) {
 		emit isEmptyChanged();
     updateNodes();
 
-		if(m_uuid != "" && m_delegate && QPanopticon::staticGetFunctionNodes &&
-		   QPanopticon::staticGetFunctionEdges)
-		{
+		if(m_uuid != "" && m_delegate && QPanopticon::staticGetFunction) {
 			std::string uuid = m_uuid.toStdString();
-			QPanopticon::staticGetFunctionNodes(uuid.c_str(),false);
-			QPanopticon::staticGetFunctionEdges(uuid.c_str());
+			QPanopticon::staticGetFunction(uuid.c_str(),false,true,true);
 		}
 	}
 }
@@ -111,9 +105,9 @@ void QControlFlowGraph::setEdgeDelegate(QVariant& v) {
 		emit edgeDelegateChanged();
     update();
 
-		if(m_uuid != "" && m_edgeDelegate && QPanopticon::staticGetFunctionEdges) {
+		if(m_uuid != "" && m_edgeDelegate && QPanopticon::staticGetFunction) {
 			std::string uuid = m_uuid.toStdString();
-			QPanopticon::staticGetFunctionEdges(uuid.c_str());
+			QPanopticon::staticGetFunction(uuid.c_str(),false,false,true);
 		}
 	}
 }
@@ -365,8 +359,8 @@ void QControlFlowGraph::paint(QPainter* painter) {
 void QControlFlowGraph::requestPreview(QString quuid) {
 	std::string uuid = quuid.toStdString();
 
-	if(std::get<0>(m_preview) != uuid) {
+	if(std::get<0>(m_preview) != uuid && QPanopticon::staticGetFunction) {
 		m_preview = std::make_pair(uuid,std::vector<std::shared_ptr<QBasicBlockLine>>());
-		QPanopticon::staticGetFunctionNodes(uuid.c_str(),true);
+		QPanopticon::staticGetFunction(uuid.c_str(),true,true,false);
 	}
 }

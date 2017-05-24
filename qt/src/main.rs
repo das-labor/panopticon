@@ -32,6 +32,7 @@ extern crate chrono_humanize;
 extern crate goblin;
 extern crate clap;
 extern crate futures;
+extern crate futures_cpupool;
 extern crate parking_lot;
 
 #[cfg(unix)]

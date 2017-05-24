@@ -39,8 +39,11 @@ use graph_algos::search::{
 
 pub fn initial_ordering(rank: &HashMap<AdjacencyListVertexDescriptor,isize>,
                     start: &AdjacencyListVertexDescriptor,
-                    graph: &AdjacencyList<usize,usize>) -> Vec<Vec<AdjacencyListVertexDescriptor>> {
+                    graph: &AdjacencyList<usize,usize>)
+    -> (Vec<Vec<AdjacencyListVertexDescriptor>>,HashMap<(usize,usize),Vec<(AdjacencyListEdgeDescriptor,AdjacencyListEdgeDescriptor)>>)
+{
     let mut ret = Vec::new();
+    let bipartite = bipartite_subgraphs(rank,graph);
 
     depth_first_visit(&mut |vx,k| {
         if k == VertexEvent::Discovered {
@@ -57,7 +60,7 @@ pub fn initial_ordering(rank: &HashMap<AdjacencyListVertexDescriptor,isize>,
         }
     },&mut |_,_| {},start,graph);
 
-    ret
+    (ret,bipartite)
 }
 
 /// collects all edge pairs that need to be checked for crossings
@@ -102,38 +105,26 @@ fn bipartite_subgraphs(rank: &HashMap<AdjacencyListVertexDescriptor,isize>,
     ret
 }
 
-pub fn optimize_ordering(order: &mut Vec<Vec<AdjacencyListVertexDescriptor>>,
-                     rank: &HashMap<AdjacencyListVertexDescriptor,isize>,
-                     graph: &AdjacencyList<usize,usize>) {
-    let bipartite = bipartite_subgraphs(rank,graph);
-    let mut xings = crossings(&bipartite,&order,graph);
+pub fn optimize_ordering_once(iteration: usize,
+                              bipartite: &HashMap<(usize,usize),Vec<(AdjacencyListEdgeDescriptor,AdjacencyListEdgeDescriptor)>>,
+                              xings: &mut usize,
+                              order: &mut Vec<Vec<AdjacencyListVertexDescriptor>>,
+                              rank: &HashMap<AdjacencyListVertexDescriptor,isize>,
+                              graph: &AdjacencyList<usize,usize>) {
+    let mut alt = order.clone();
 
-    if xings == 0 {
-        return;
-    }
+    wmedian(iteration,&mut alt,rank,graph);
 
-    for i in 0..6 {
-        let mut alt = order.clone();
+    let alt_xings = crossings(&bipartite,&alt,graph);
 
-        wmedian(i,&mut alt,rank,graph);
-
-        let alt_xings = crossings(&bipartite,&alt,graph);
-
-        if alt_xings < xings {
-            *order = alt;
-            xings = alt_xings;
-
-            if xings == 0 {
-                return;
-            }
-        } else if alt_xings == xings {
-            return;
-        }
+    if alt_xings < *xings {
+        *order = alt;
+        *xings = alt_xings;
     }
 }
 
 /// Computes the number of edge crossings in graph.
-fn crossings(bipartite: &HashMap<(usize,usize),Vec<(AdjacencyListEdgeDescriptor,AdjacencyListEdgeDescriptor)>>,
+pub fn crossings(bipartite: &HashMap<(usize,usize),Vec<(AdjacencyListEdgeDescriptor,AdjacencyListEdgeDescriptor)>>,
              order: &Vec<Vec<AdjacencyListVertexDescriptor>>,
              graph: &AdjacencyList<usize,usize>) -> usize {
     use std::mem::swap;

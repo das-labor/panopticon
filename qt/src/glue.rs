@@ -17,59 +17,58 @@
  */
 
 use std::ffi::{CString,CStr};
-use singleton::PANOPTICON;
+use singleton::{
+    NodePosition,
+    EdgePosition,
+    PANOPTICON
+};
 use panopticon::{
     Function,
 };
 use std::ptr;
 use std::path::{Path,PathBuf};
 use errors::*;
+use futures::{
+    Async,
+    future,
+    Future,
+};
+use futures_cpupool::CpuPool;
+use parking_lot::Mutex;
+use uuid::Uuid;
 
-pub extern "C" fn get_function_nodes(uuid: *const i8, only_entry: i8) -> i32 {
-    let uuid = unsafe { CStr::from_ptr(uuid) }.to_string_lossy().to_string();
-    let nodes = match PANOPTICON.lock().get_function_nodes(uuid.clone()) {
-        Ok(x) => x,
-        Err(s) => { error!("send_function_nodes(): {}",s); return -1; }
+lazy_static! {
+    pub static ref LAYOUT_TASK: Mutex<future::BoxFuture<(),Error>> = {
+        Mutex::new(future::ok(()).boxed())
     };
-    let bbls = nodes
-        .into_iter()
-        .filter_map(|x| {
-            if only_entry == 0 || x.3 { Some(x) } else { None }
-        })
-        .map(|(id,x,y,is_entry,blk)| {
-            let blk = blk.into_iter()
-                .filter_map(|bbl| {
-                    let args = bbl.args.into_iter().filter_map(|x| {
-                        CBasicBlockOperand::new(x.kind.to_string(),x.display,x.alt,x.data).ok()
-                    }).collect::<Vec<_>>();
-                    CBasicBlockLine::new(bbl.opcode,bbl.region,bbl.offset,bbl.comment,args).ok()
-                })
-                .collect::<Vec<_>>();
-            (id,x,y,is_entry,blk)
-        });
 
-    let uuid = match CString::new(uuid.clone().as_bytes()) {
-        Ok(x) => x,
-        Err(s) => { error!("Can't convert {} to C string: {}",uuid,s); return -1; }
+    pub static ref THREAD_POOL: Mutex<CpuPool> = {
+        Mutex::new(CpuPool::new_num_cpus())
     };
-    for (id,x,y,is_entry,bbl) in bbls {
-        match send_function_node(uuid.clone(),id,x,y,is_entry,bbl.as_slice()) {
-            Ok(()) => {},
-            Err(s) => { error!("send_function_nodes(): {}",s); return -1; }
-        }
-    }
-
-    0
 }
 
-pub extern "C" fn get_function_edges(uuid: *const i8) -> i32 {
+fn transform_nodes(only_entry: bool, nodes: Vec<NodePosition>) -> Vec<(usize,f32,f32,bool,Vec<CBasicBlockLine>)> {
+    nodes.into_iter()
+        .filter_map(|x| {
+            if !only_entry || x.3 { Some(x) } else { None }
+        })
+    .map(|(id,x,y,is_entry,blk)| {
+        let blk = blk.into_iter()
+            .filter_map(|bbl| {
+                let args = bbl.args.into_iter().filter_map(|x| {
+                    CBasicBlockOperand::new(x.kind.to_string(),x.display,x.alt,x.data).ok()
+                }).collect::<Vec<_>>();
+                CBasicBlockLine::new(bbl.opcode,bbl.region,bbl.offset,bbl.comment,args).ok()
+            })
+        .collect::<Vec<_>>();
+        (id,x,y,is_entry,blk)
+    }).collect()
+}
+
+fn transform_edges(edges: Vec<EdgePosition>) -> (Vec<u32>,Vec<CString>,Vec<CString>,Vec<f32>,Vec<f32>,Vec<f32>,Vec<f32>,CString) {
     use std::f32;
 
-    let uuid = unsafe { CStr::from_ptr(uuid) }.to_string_lossy().to_string();
-    let edges = PANOPTICON
-        .lock()
-        .get_function_edges(uuid.clone())
-        .unwrap()
+    let edges = edges
         .into_iter()
         .map(|(id,kind,label,(head_x,head_y),(tail_x,tail_y),segs)| {
             let segs = segs.iter();
@@ -160,17 +159,53 @@ pub extern "C" fn get_function_edges(uuid: *const i8) -> i32 {
     svg = format!("<svg xmlns='http://www.w3.org/2000/svg' width='{}' height='{}' viewBox='0 0 {} {}'>\n{}</svg>",
                   max_x + 10.,max_y + 10.,max_x + 10.,max_y + 10.,svg);
 
-    let uuid = CString::new(uuid.clone().as_bytes()).unwrap();
-    let res = send_function_edges(uuid,ids.as_slice(),
-        labels.as_slice(),kinds.as_slice(),
-        head_xs.as_slice(),head_ys.as_slice(),
-        tail_xs.as_slice(),tail_ys.as_slice(),
-        CString::new(svg.as_bytes()).unwrap());
+    (ids,labels,kinds,head_xs,head_ys,tail_xs,tail_ys,CString::new(svg.as_bytes()).unwrap())
+}
 
-    match res {
-        Ok(()) => 0,
-        Err(s) => { error!("get_function_edges(): {}",s); -1 }
-    }
+fn transform_and_send_function(uuid: &Uuid, only_entry: bool, do_nodes: bool, do_edges: bool) -> future::BoxFuture<(),Error> {
+    let uuid = uuid.clone();
+
+    PANOPTICON
+        .lock()
+        .layout_function_async(&uuid)
+        .and_then(move |(nodes,edges)| {
+            let uuid = uuid;
+            let uuid = CString::new(uuid.clone().to_string().as_bytes()).unwrap();
+
+            if do_nodes {
+                let nodes = transform_nodes(only_entry,nodes);
+
+                for (id,x,y,is_entry,bbl) in nodes {
+                    send_function_node(uuid.clone(),id,x,y,is_entry,bbl.as_slice()).unwrap();
+                }
+            }
+
+            if do_edges {
+                let (ids,labels,kinds,head_xs,head_ys,tail_xs,tail_ys,svg) = transform_edges(edges);
+                send_function_edges(
+                    uuid,ids.as_slice(),
+                    labels.as_slice(),kinds.as_slice(),
+                    head_xs.as_slice(),head_ys.as_slice(),
+                    tail_xs.as_slice(),tail_ys.as_slice(),
+                    svg);
+            }
+
+            future::ok(())
+        }).boxed()
+}
+
+pub extern "C" fn get_function(uuid: *const i8, only_entry: i8, do_nodes: i8, do_edges: i8) -> i32 {
+    let uuid = unsafe { CStr::from_ptr(uuid) }.to_string_lossy().to_string();
+    let uuid = match Uuid::parse_str(&uuid) {
+        Ok(uuid) => uuid,
+        Err(s) => { error!("get_function(): {}",s); return -1; }
+    };
+
+    let task = transform_and_send_function(&uuid,only_entry != 0,do_nodes != 0,do_edges != 0);
+    let task = { THREAD_POOL.lock().spawn(task) };
+    *LAYOUT_TASK.lock() = task.boxed();
+
+    0
 }
 
 pub extern "C" fn open_program(path: *const i8) -> i32 {
@@ -391,8 +426,7 @@ extern "C" {
         qml_dir: *const i8,
         inital_file: *const i8,
         recent_sessions: *const *const CRecentSession,
-        get_function_nodes: extern "C" fn(*const i8,i8) -> i32,
-        get_function_edges: extern "C" fn(*const i8) -> i32,
+        get_function: extern "C" fn(*const i8,i8,i8,i8) -> i32,
         open_program: extern "C" fn(*const i8) -> i32,
         save_session: extern "C" fn(*const i8) -> i32,
         comment_on: extern "C" fn(u64, *const i8) -> i32,
@@ -433,8 +467,7 @@ pub fn exec(qml_dir: &Path, initial_file: Option<String>, recent_sessions: Vec<(
             qml_dir.as_ptr(),
             initial_file.as_ptr(),
             recent_sess_ptrs.as_ptr(),
-            get_function_nodes,
-            get_function_edges,
+            get_function,
             open_program,
             save_session,
             comment_on,
