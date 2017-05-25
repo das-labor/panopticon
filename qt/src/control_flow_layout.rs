@@ -29,6 +29,7 @@ use panopticon::{
     Mnemonic,
     Guard,
     Kset,
+    Rvalue,
 };
 use uuid::Uuid;
 use errors::*;
@@ -317,15 +318,77 @@ impl ControlFlowLayout {
                     .filter_map(|mne| Self::get_basic_block_line(mne,comments,values,functions).ok());
                 Ok(i.collect())
             }
-            &ControlFlowTarget::Unresolved(_) => Ok(vec![]),
+            &ControlFlowTarget::Unresolved(ref rv) => Ok(vec![Self::get_value_line(rv,values)]),
             &ControlFlowTarget::Failed(_,_) => Ok(vec![]),
+        }
+    }
+
+    fn get_value_line(value: &Rvalue, values: Option<&AbstractInterpretation>) -> BasicBlockLine {
+        let arg = Self::rvalue_to_operand(value,false,values);
+
+        BasicBlockLine{
+            opcode: "".to_string(),
+            region: "".to_string(),
+            offset: 0,
+            comment: "".to_string(),
+            args: vec![arg],
+        }
+    }
+
+    fn rvalue_to_operand(rv: &Rvalue, has_sign: bool, values: Option<&AbstractInterpretation>) -> BasicBlockOperand {
+        match rv {
+            &Rvalue::Constant{ value: c, size: s } => {
+                let val = if s < 64 { c % (1u64 << s) } else { c };
+                let sign_bit = if s < 64 { 1u64 << (s - 1) } else { 0x8000000000000000 };
+                let s = if !has_sign || val & sign_bit == 0 {
+                    format!("{:x}",val)
+                } else {
+                    format!("{:x}",(val as i64).wrapping_neg())
+                };
+                BasicBlockOperand{
+                    kind: "constant",
+                    display: s.clone(),
+                    alt: "".to_string(),
+                    data: s,
+                }
+            }
+            &Rvalue::Variable{ ref name, subscript,.. } => {
+                let data = if let Some(subscript) = subscript {
+                    format!("{}_{}",*name,subscript)
+                } else {
+                    format!("{}",*name)
+                };
+                let (display,alt) = values
+                    .and_then(|x| subscript
+                              .and_then(|s| {
+                                  let nam = VarName{ name: name.clone(), subscript: s };
+                                  x.output.get(&nam)
+                              }))
+                .and_then(|val| if val != &Kset::Join && val != &Kset::Meet { Some(val) } else { None })
+                    .map(|x| (format!("{}",x),name.to_string()))
+                    .unwrap_or_else(|| (name.to_string(),"".to_string()));
+
+                BasicBlockOperand{
+                    kind: "variable",
+                    display: display,
+                    alt: alt,
+                    data: data,
+                }
+            }
+            &Rvalue::Undefined => {
+                BasicBlockOperand{
+                    kind: "variable",
+                    display: "?".to_string(),
+                    alt: "".to_string(),
+                    data: "".to_string(),
+                }
+            }
         }
     }
 
     pub fn get_basic_block_line(mnemonic: &Mnemonic, comments: &HashMap<u64,String>, values: Option<&AbstractInterpretation>,
                                 functions: &HashMap<Uuid,Function>) -> Result<BasicBlockLine> {
         use panopticon::{
-            Rvalue,
             MnemonicFormatToken
         };
 
@@ -348,54 +411,9 @@ impl ControlFlowLayout {
                     data: "".to_string(),
                 })
             }
-            &MnemonicFormatToken::Variable{ ref has_sign } => {
+            &MnemonicFormatToken::Variable{ has_sign } => {
                 match ops.pop() {
-                    Some(Rvalue::Constant{ value: c, size: s }) => {
-                        let val = if s < 64 { c % (1u64 << s) } else { c };
-                        let sign_bit = if s < 64 { 1u64 << (s - 1) } else { 0x8000000000000000 };
-                        let s = if !has_sign || val & sign_bit == 0 {
-                            format!("{:x}",val)
-                        } else {
-                            format!("{:x}",(val as i64).wrapping_neg())
-                        };
-                        Some(BasicBlockOperand{
-                            kind: "constant",
-                            display: s.clone(),
-                            alt: "".to_string(),
-                            data: s,
-                        })
-                    },
-                    Some(Rvalue::Variable{ ref name, subscript,.. }) => {
-                        let data = if let Some(subscript) = subscript {
-                            format!("{}_{}",*name,subscript)
-                        } else {
-                            format!("{}",*name)
-                        };
-                        let (display,alt) = values
-                            .and_then(|x| subscript
-                                .and_then(|s| {
-                                    let nam = VarName{ name: name.clone(), subscript: s };
-                                    x.output.get(&nam)
-                                }))
-                            .and_then(|val| if val != &Kset::Join && val != &Kset::Meet { Some(val) } else { None })
-                            .map(|x| (format!("{}",x),name.to_string()))
-                            .unwrap_or_else(|| (name.to_string(),"".to_string()));
-
-                        Some(BasicBlockOperand{
-                            kind: "variable",
-                            display: display,
-                            alt: alt,
-                            data: data,
-                        })
-                    }
-                    Some(Rvalue::Undefined) => {
-                        Some(BasicBlockOperand{
-                            kind: "variable",
-                            display: "?".to_string(),
-                            alt: "".to_string(),
-                            data: "".to_string(),
-                        })
-                    }
+                    Some(ref rv) => Some(Self::rvalue_to_operand(rv,has_sign,values)),
                     None => {
                         error!("mnemonic at {:x} has invalid format string: {:?}",mnemonic.area.start,mnemonic);
                         None

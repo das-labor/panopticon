@@ -183,42 +183,61 @@ MouseArea {
 			controlFlowRoot.y = unscaled_y;
 		}
 
-		delegate: Component {
-			BasicBlock {
-				property bool isEntry: blockIsEntry
+    delegate: Component {
+      Loader {
+        sourceComponent: blockIsBlock ? basicBlockComponent : messageBlockComponent
 
-				id: basicBlock
-				nodeX: blockX
-				nodeY: blockY
-				z: 0
-				code: blockContents
-				nodeId: blockId
-				uuid: functionUuid
+        Component {
+          id: messageBlockComponent
 
-				onIsEntryChanged: {
-					if(isEntry) {
-						controlFlowRoot.entryNodeCenterX = blockX
-						controlFlowRoot.entryNodeCenterY = blockY
-						controlflow.centerEntryPoint()
-					}
-				}
+          MessageBlock {
+            nodeX: blockX
+            nodeY: blockY
+            nodeValue: blockContents[0]
+            z: 0
+           }
+         }
 
-				onStartComment: {
-					var pnt = basicBlock.mapToItem(controlflow,x,y);
-					overlay.open(pnt.x,pnt.y,address,comment);
-				}
+        Component {
+          id: basicBlockComponent
 
-				onDisplayPreview: {
-					var mapped = mapToItem(controlflow,bb.x,bb.y,bb.width,bb.height);
-					controlFlowRoot.requestPreview(uuid);
-					preview.open(mapped,uuid);
-				}
+          BasicBlock {
+            property bool isEntry: blockIsEntry
 
-				onShowControlFlowGraph: {
-					controlflow.showControlFlowGraph(newUuid)
-				}
-			}
-		}
+            id: basicBlock
+            nodeX: blockX
+            nodeY: blockY
+            z: 0
+            code: blockContents
+            nodeId: blockId
+            uuid: functionUuid
+
+            onIsEntryChanged: {
+              if(isEntry) {
+                controlFlowRoot.entryNodeCenterX = blockX
+                controlFlowRoot.entryNodeCenterY = blockY
+                controlflow.centerEntryPoint()
+              }
+            }
+
+            onStartComment: {
+              var pnt = basicBlock.mapToItem(controlflow,x,y);
+              overlay.open(pnt.x,pnt.y,address,comment);
+            }
+
+            onDisplayPreview: {
+              var mapped = mapToItem(controlflow,bb.x,bb.y,bb.width,bb.height);
+              controlFlowRoot.requestPreview(uuid);
+              preview.open(mapped,uuid);
+            }
+
+            onShowControlFlowGraph: {
+              controlflow.showControlFlowGraph(newUuid)
+            }
+          }
+        }
+      }
+    }
 		edgeDelegate: Component {
 			Rectangle {
 				id: controlFlowEdgeLabel

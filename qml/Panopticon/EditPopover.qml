@@ -35,7 +35,8 @@ Item {
 		editOverlay.visible = true
 		editOverlayField.focus = true
 		editOverlay.variable = v;
-		editOverlay.uuid = u;
+    editOverlay.uuid = u;
+    editOverlayField.forceActiveFocus()
 	}
 
 	function close() {

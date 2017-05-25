@@ -293,6 +293,7 @@ void QControlFlowGraph::updateNodes(void) {
 		ctx->setContextProperty("blockY",QVariant::fromValue(0.0f));
 		ctx->setContextProperty("blockId",QVariant::fromValue(0));
 		ctx->setContextProperty("blockIsEntry",QVariant::fromValue(false));
+		ctx->setContextProperty("blockIsBlock",QVariant::fromValue(false));
 
 		QObject* obj = m_delegate->create(ctx);
 		if(!obj) return;
@@ -343,11 +344,14 @@ void QControlFlowGraph::updateNode(unsigned int id, float x, float y, bool is_en
 		contents.append(v);
 	}
 
+  bool is_block = block.size() != 1 || block[0]->getOpcode() != "";
+
 	ctx->setContextProperty("blockContents",contents);
 	ctx->setContextProperty("blockX",QVariant::fromValue(x));
 	ctx->setContextProperty("blockY",QVariant::fromValue(y));
 	ctx->setContextProperty("blockId",QVariant::fromValue(id));
 	ctx->setContextProperty("blockIsEntry",QVariant::fromValue(is_entry));
+	ctx->setContextProperty("blockIsBlock",QVariant::fromValue(is_block));
 }
 
 void QControlFlowGraph::paint(QPainter* painter) {

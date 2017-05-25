@@ -44,9 +44,6 @@ Item {
 	Rectangle {
 		id: basicBlockRect
 
-		property int commentRowStart: 0
-		property int opcodeRowStart: 0
-
 		x: addressColumn.width - Panopticon.basicBlockMargin
 		y: -Panopticon.basicBlockMargin
 		width: argumentColumn.x + argumentColumn.width - opcodeColumn.x + 2*Panopticon.basicBlockMargin
@@ -88,7 +85,7 @@ Item {
 	}
 
 	Row {
-		id: basicBlockGrid
+    id: basicBlockGrid
 
 		// address
 		Column {
