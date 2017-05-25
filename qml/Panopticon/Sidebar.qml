@@ -5,7 +5,7 @@ import QtQuick.Controls.Styles 1.4 as Style
 import Panopticon 1.0
 
 Rectangle {
-  property string functionUuid: null;
+  property string functionUuid: "";
   signal showControlFlowGraph(string uuid)
 
   id: root
@@ -19,7 +19,7 @@ Rectangle {
       var idx = Panopticon.sidebar.index(row,0);
       var uuid = Panopticon.sidebar.data(idx,0x102);
 
-      if(uuid === functionUuid) {
+      if(uuid === functionUuid && !listView.selection.contains(row)) {
         listView.selection.clear();
         listView.selection.select(row);
         listView.positionViewAtRow(row,ListView.Contain);

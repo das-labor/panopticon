@@ -104,7 +104,6 @@ void QPanopticon::updateRecentSession(QRecentSession* sess) {
 }
 
 void QPanopticon::updateLayoutTask(QString task) {
-  qDebug() << "layoutTask:" << task;
   m_layoutTask = task;
   emit layoutTaskChanged();
 }
