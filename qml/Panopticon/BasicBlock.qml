@@ -102,7 +102,7 @@ Item {
 
 					Behavior on opacity { NumberAnimation { duration: 150 } }
 
-					text: "0x" + modelData.offset
+					text: "0x" + modelData.offset.toString(16)
 					font {
 						pointSize: 10
 					}

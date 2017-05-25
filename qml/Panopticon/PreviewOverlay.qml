@@ -63,7 +63,7 @@ MouseArea {
 			anchors.bottom: parent.top
 			anchors.bottomMargin: Panopticon.basicBlockPadding
 
-			text: overlay.code.length > 0 ? "0x" + overlay.code[0].offset : ""
+			text: overlay.code.length > 0 ? "0x" + overlay.code[0].offset.toString(16) : ""
 			font {
 				pointSize: 12
 			}
