@@ -22,7 +22,6 @@ mod rank;
 
 pub use self::linear::{
     linear_layout_placement,
-    linear_layout_structural,
     linear_layout_start,
     linear_layout_rank,
     linear_layout_order,

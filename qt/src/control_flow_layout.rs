@@ -43,7 +43,6 @@ use graph_algos::adjacency_list::{
     AdjacencyListVertexDescriptor,
 };
 use futures::{
-    Async,
     future,
     Future,
 };

@@ -51,6 +51,7 @@ int QPanopticon::getBasicBlockColumnPadding(void) const { return 26; }
 int QPanopticon::getBasicBlockCommentWidth(void) const { return 150; }
 bool QPanopticon::getCanUndo(void) const { return m_canUndo; }
 bool QPanopticon::getCanRedo(void) const { return m_canRedo; }
+QString QPanopticon::getLayoutTask(void) const { return m_layoutTask; }
 
 int QPanopticon::openProgram(QString path) {
 	return QPanopticon::staticOpenProgram(path.toStdString().c_str());
@@ -100,4 +101,10 @@ void QPanopticon::updateRecentSession(QRecentSession* sess) {
 	sess->setParent(this);
 	m_recentSessions.append(QVariant::fromValue(sess));
 	emit recentSessionsChanged();
+}
+
+void QPanopticon::updateLayoutTask(QString task) {
+  qDebug() << "layoutTask:" << task;
+  m_layoutTask = task;
+  emit layoutTaskChanged();
 }

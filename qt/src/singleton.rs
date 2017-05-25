@@ -42,7 +42,6 @@ use graph_algos::{
     VertexListGraphTrait,
 };
 use futures::{
-    Async,
     future,
     Future,
 };
@@ -126,16 +125,9 @@ impl Panopticon {
 
     pub fn get_function_nodes(&mut self,uuid: String) -> Result<Vec<NodePosition>> {
         let uuid = Uuid::parse_str(&uuid)?;
-        let mut cfl = self.get_function(&uuid)?;
+        let cfl = self.get_function(&uuid)?;
 
         Ok(cfl.get_all_nodes())
-    }
-
-    pub fn get_function_edges(&mut self,uuid: String) -> Result<Vec<EdgePosition>> {
-        let uuid = Uuid::parse_str(&uuid)?;
-        let mut cfl = self.get_function(&uuid)?;
-
-        Ok(cfl.get_all_edges())
     }
 
     pub fn open_program(&mut self,path: String) -> Result<()> {

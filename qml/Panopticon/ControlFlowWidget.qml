@@ -263,7 +263,20 @@ MouseArea {
 		font {
 			family: "Source Sans Pro"; pointSize: 20;
 		}
-		visible: controlFlowRoot.isEmpty
+		visible: controlFlowRoot.isEmpty && Panopticon.layoutTask === controlflow.functionUuid
+		text: "Function is layouting"
+		color: "#a2a2a2"
+		horizontalAlignment: Text.AlignHCenter
+		wrapMode: Text.WordWrap
+  }
+
+	Ctrl.Label {
+		anchors.centerIn: parent
+		width: 140
+		font {
+			family: "Source Sans Pro"; pointSize: 20;
+		}
+		visible: controlFlowRoot.isEmpty && Panopticon.layoutTask !== controlflow.functionUuid
 		text: "Function is empty"
 		color: "#a2a2a2"
 		horizontalAlignment: Text.AlignHCenter

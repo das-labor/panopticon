@@ -29,7 +29,6 @@ use std::ptr;
 use std::path::{Path,PathBuf};
 use errors::*;
 use futures::{
-    Async,
     future,
     Future,
 };
@@ -187,21 +186,29 @@ fn transform_and_send_function(uuid: &Uuid, only_entry: bool, do_nodes: bool, do
                     labels.as_slice(),kinds.as_slice(),
                     head_xs.as_slice(),head_ys.as_slice(),
                     tail_xs.as_slice(),tail_ys.as_slice(),
-                    svg);
+                    svg).unwrap();
             }
 
             future::ok(())
         }).boxed()
 }
 
-pub extern "C" fn get_function(uuid: *const i8, only_entry: i8, do_nodes: i8, do_edges: i8) -> i32 {
-    let uuid = unsafe { CStr::from_ptr(uuid) }.to_string_lossy().to_string();
+pub extern "C" fn get_function(uuid_cstr: *const i8, only_entry: i8, do_nodes: i8, do_edges: i8) -> i32 {
+    let uuid = unsafe { CStr::from_ptr(uuid_cstr) }.to_string_lossy().to_string();
     let uuid = match Uuid::parse_str(&uuid) {
         Ok(uuid) => uuid,
         Err(s) => { error!("get_function(): {}",s); return -1; }
     };
 
-    let task = transform_and_send_function(&uuid,only_entry != 0,do_nodes != 0,do_edges != 0);
+    unsafe { update_layout_task(uuid_cstr); }
+
+    let task = transform_and_send_function(&uuid,only_entry != 0,do_nodes != 0,do_edges != 0)
+        .then(|x| {
+            let uuid = CString::new("".to_string().as_bytes()).unwrap();
+            unsafe { update_layout_task(uuid.as_ptr()); }
+
+            future::result(x)
+        });
     let task = { THREAD_POOL.lock().spawn(task) };
     *LAYOUT_TASK.lock() = task.boxed();
 
@@ -452,6 +459,9 @@ extern "C" {
 
     // thread-safe
     fn update_current_session(path: *const i8);
+
+    // thread-safe
+    fn update_layout_task(task: *const i8);
 }
 
 pub fn exec(qml_dir: &Path, initial_file: Option<String>, recent_sessions: Vec<(String,String,PathBuf,u32)>) -> Result<()> {

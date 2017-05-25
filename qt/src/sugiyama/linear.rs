@@ -284,6 +284,7 @@ pub fn linear_layout_order(mut layout: LinearLayout) -> Result<LinearLayout,Erro
     Ok(layout)
 }
 
+#[test]
 pub fn linear_layout_structural(vertices: &Vec<usize>,
                                 edges: &Vec<(usize,usize)>,
                                 entry: Option<usize>) -> Result<LinearLayout,Error> {

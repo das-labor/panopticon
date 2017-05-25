@@ -40,6 +40,8 @@ public:
 	Q_PROPERTY(bool canUndo READ getCanUndo NOTIFY canUndoChanged)
 	Q_PROPERTY(bool canRedo READ getCanRedo NOTIFY canRedoChanged)
 
+	Q_PROPERTY(QString layoutTask READ getLayoutTask NOTIFY layoutTaskChanged)
+
 	bool hasRecentSessions(void) const;
 	QString getCurrentSession(void) const;
 	QSidebar* getSidebar(void);
@@ -54,6 +56,8 @@ public:
 
 	bool getCanUndo(void) const;
 	bool getCanRedo(void) const;
+
+	QString getLayoutTask(void) const;
 
 	// C to Rust functions
 	static GetFunctionFunc staticGetFunction;
@@ -88,6 +92,7 @@ public slots:
 	void updateUndoRedo(bool undo, bool redo);
 	void updateCurrentSession(QString path);
 	void updateRecentSession(QRecentSession* sess);
+	void updateLayoutTask(QString task);
 
 signals:
 	void recentSessionsChanged(void);
@@ -102,6 +107,7 @@ signals:
 	void basicBlockCommentWidthChanged(void);
 	void canUndoChanged(void);
 	void canRedoChanged(void);
+	void layoutTaskChanged(void);
 
 protected:
 	QVariantList m_recentSessions;
@@ -109,4 +115,5 @@ protected:
 	QSidebar* m_sidebar;
 	bool m_canUndo;
 	bool m_canRedo;
+  QString m_layoutTask;
 };

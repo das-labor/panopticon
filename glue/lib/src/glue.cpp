@@ -150,6 +150,18 @@ extern "C" void update_current_session(const char* path) {
 	}
 }
 
+extern "C" void update_layout_task(const char* task) {
+	QPanopticon *panop = QPanopticon::staticInstance;
+
+	if(panop) {
+		panop->metaObject()->invokeMethod(
+				panop,
+				"updateLayoutTask",
+				Qt::QueuedConnection,
+				Q_ARG(QString,QString(task)));
+	}
+}
+
 extern "C" void start_gui_loop(const char *dir, const char* f, const RecentSession** sess,
 															 GetFunctionFunc gf,
 															 OpenProgramFunc op, SaveSessionFunc ss,
