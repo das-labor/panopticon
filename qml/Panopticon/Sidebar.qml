@@ -14,10 +14,15 @@ Rectangle {
   Accessible.name: "Sidebar"
   Accessible.role: Accessible.Pane
 
+  Component.onCompleted: {
+    Panopticon.sidebarSortRole = 0
+    Panopticon.sidebarSortAscending = true
+  }
+
   onFunctionUuidChanged: {
-    for(var row = 0; row < Panopticon.sidebar.rowCount(); ++row) {
-      var idx = Panopticon.sidebar.index(row,0);
-      var uuid = Panopticon.sidebar.data(idx,0x102);
+    for(var row = 0; row < Panopticon.sortedSidebar.rowCount(); ++row) {
+      var idx = Panopticon.sortedSidebar.index(row,0);
+      var uuid = Panopticon.sortedSidebar.data(idx,0x102);
 
       if(uuid === functionUuid && !listView.selection.contains(row)) {
         listView.selection.clear();
@@ -50,7 +55,7 @@ Rectangle {
 
     backgroundVisible: false
     alternatingRowColors: false
-    model: Panopticon.sidebar
+    model: Panopticon.sortedSidebar
     frameVisible: false
     horizontalScrollBarPolicy: Qt.ScrollBarAlwaysOff
     sortIndicatorVisible: true
@@ -134,9 +139,9 @@ Rectangle {
         Connections {
           target: loaderEditor.item
           onAccepted: {
-            var idx = Panopticon.sidebar.index(styleData.row,0);
-            var uuid = Panopticon.sidebar.data(idx,0x102);
-            var title = Panopticon.sidebar.data(idx,0x100);
+            var idx = Panopticon.sortedSidebar.index(styleData.row,0);
+            var uuid = Panopticon.sortedSidebar.data(idx,0x102);
+            var title = Panopticon.sortedSidebar.data(idx,0x100);
             var txt = loaderEditor.item.text;
 
             if(txt !== "" && txt !== title) {
@@ -209,6 +214,19 @@ Rectangle {
           weight: Font.Bold
         }
       }
+
+      Image {
+        height: 10
+        anchors.right: parent.right
+        anchors.rightMargin: 10
+        anchors.verticalCenter: parent.verticalCenter
+        antialiasing: true
+        fillMode: Image.PreserveAspectFit
+        source: "../icons/chevron-down.svg"
+        mipmap: true
+        visible: (Panopticon.sidebarSortRole === 0 && styleData.column === 0) || (Panopticon.sidebarSortRole === 0x101 && styleData.column === 1)
+        rotation: (!Panopticon.sidebarSortAscending ? 180 : 0)
+      }
     }
 
     Ctrl.TableViewColumn {
@@ -225,13 +243,30 @@ Rectangle {
     selection {
       onSelectionChanged: {
         selection.forEach(function(row) {
-          var idx = Panopticon.sidebar.index(row,0);
-          var uuid = Panopticon.sidebar.data(idx,0x102);
+          var idx = Panopticon.sortedSidebar.index(row,0);
+          var uuid = Panopticon.sortedSidebar.data(idx,0x102);
 
           console.log("display cfg for " + uuid);
           root.showControlFlowGraph(uuid);
         })
       }
+    }
+
+    onSortIndicatorColumnChanged: {
+      switch(listView.sortIndicatorColumn) {
+        case 0:
+        default:
+        Panopticon.sidebarSortRole = 0;
+        break;
+
+        case 1:
+        Panopticon.sidebarSortRole = 0x101;
+        break;
+      }
+    }
+
+    onSortIndicatorOrderChanged: {
+      Panopticon.sidebarSortAscending = listView.sortIndicatorOrder == Qt.AscendingOrder
     }
   }
 

@@ -28,8 +28,10 @@ std::vector<QRecentSession*> QPanopticon::staticRecentSessions = {};
 
 QPanopticon::QPanopticon()
 : m_recentSessions(), m_currentSession(""),
-	m_sidebar(new QSidebar(this)), m_canUndo(false), m_canRedo(false)
+	m_sidebar(new QSidebar(this)), m_sortedSidebar(new QSortFilterProxyModel(this)), m_canUndo(false), m_canRedo(false)
 {
+  m_sortedSidebar->setSourceModel(m_sidebar);
+
 	for(auto qobj: staticRecentSessions) {
 		updateRecentSession(qobj);
 	}
@@ -40,18 +42,34 @@ QPanopticon::~QPanopticon() {}
 
 bool QPanopticon::hasRecentSessions(void) const { return m_recentSessions.size() != 0; }
 QString QPanopticon::getCurrentSession(void) const { return m_currentSession; }
-QSidebar* QPanopticon::getSidebar(void) { return m_sidebar; }
-
 QString QPanopticon::getInitialFile(void) const { return staticInitialFile; }
+
+QSidebar* QPanopticon::getSidebar(void) const { return m_sidebar; }
+QSortFilterProxyModel* QPanopticon::getSortedSidebar(void) const { return m_sortedSidebar; }
+unsigned int QPanopticon::getSidebarSortRole(void) const { return m_sortedSidebar->sortRole(); }
+bool QPanopticon::getSidebarSortAscending(void) const { return m_sortedSidebar->sortOrder() == Qt::AscendingOrder; }
+
 int QPanopticon::getBasicBlockPadding(void) const { return 3; }
 int QPanopticon::getBasicBlockMargin(void) const { return 8; }
 int QPanopticon::getBasicBlockLineHeight(void) const { return 17; }
 int QPanopticon::getBasicBlockCharacterWidth(void) const { return 8; }
 int QPanopticon::getBasicBlockColumnPadding(void) const { return 26; }
 int QPanopticon::getBasicBlockCommentWidth(void) const { return 150; }
+
 bool QPanopticon::getCanUndo(void) const { return m_canUndo; }
 bool QPanopticon::getCanRedo(void) const { return m_canRedo; }
+
 QString QPanopticon::getLayoutTask(void) const { return m_layoutTask; }
+
+void QPanopticon::setSidebarSortRole(unsigned int role) {
+  m_sortedSidebar->setSortRole(role);
+  emit sidebarSortRoleChanged();
+}
+
+void QPanopticon::setSidebarSortAscending(bool asc) {
+  m_sortedSidebar->sort(0, asc ? Qt::AscendingOrder : Qt::DescendingOrder);
+  emit sidebarSortAscendingChanged();
+}
 
 int QPanopticon::openProgram(QString path) {
 	return QPanopticon::staticOpenProgram(path.toStdString().c_str());
