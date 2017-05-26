@@ -34,6 +34,7 @@ extern crate clap;
 extern crate futures;
 extern crate futures_cpupool;
 extern crate parking_lot;
+extern crate multimap;
 
 #[cfg(unix)]
 extern crate xdg;

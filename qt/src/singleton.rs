@@ -45,6 +45,7 @@ use futures::{
     future,
     Future,
 };
+use multimap::MultiMap;
 
 #[derive(PartialEq,Eq,Clone,Debug,Hash)]
 pub struct VarName {
@@ -74,6 +75,7 @@ pub struct Panopticon {
     pub control_flow_values: HashMap<Uuid,AbstractInterpretation>,
 
     pub functions: HashMap<Uuid,Function>,
+    pub unresolved_calls: MultiMap<Option<u64>,(Uuid,u64)>,
     pub region: Option<Region>,
     pub project: Option<Project>,
 
@@ -151,7 +153,7 @@ impl Panopticon {
 
                     for f in cg.vertices() {
                         if let Some(&CallTarget::Concrete(ref func)) = cg.vertex_label(f) {
-                            self.functions.insert(func.uuid.clone(),func.clone());
+                                                       self.functions.insert(func.uuid.clone(),func.clone());
                             glue::update_sidebar(&[func.clone()]);
                         }
                     }
@@ -386,7 +388,48 @@ impl Panopticon {
     }
 
     pub fn new_function(&mut self,func: Function) -> Result<()> {
+        use panopticon::{
+            ControlFlowTarget,
+            Rvalue,
+            Statement,
+            Operation,
+        };
+
+        let pairs = {
+            let cfg = &func.cflow_graph;
+            for vx in cfg.vertices() {
+                if let Some(&ControlFlowTarget::Resolved(ref bb)) = cfg.vertex_label(vx) {
+                    bb.execute(|stmt| {
+                        if let &Statement{ op: Operation::Call(ref rv),.. } = stmt {
+                            match rv {
+                                &Rvalue::Constant{ value,.. } => {
+                                    self.unresolved_calls.insert(Some(value),(func.uuid.clone(),bb.area.start))
+                                }
+                                _ => {
+                                    self.unresolved_calls.insert(None,(func.uuid.clone(),bb.area.start))
+                                }
+                            }
+                        }
+                    });
+                }
+            }
+
+            if let Some(&ControlFlowTarget::Resolved(ref bb)) = func.entry_point.and_then(|x| cfg.vertex_label(x)) {
+                let pairs_owned = self.unresolved_calls.remove(&Some(bb.area.start)).unwrap_or(vec![]).into_iter();
+                let pairs_ref = self.unresolved_calls.get_vec(&None).cloned().unwrap_or(vec![]).into_iter();
+
+                pairs_owned.chain(pairs_ref).collect::<Vec<_>>()
+            } else {
+                vec![]
+            }
+        };
+
         self.functions.insert(func.uuid.clone(),func);
+
+        for (uuid,addr) in pairs.into_iter() {
+            self.update_control_flow_nodes(&uuid,Some(&[addr])).unwrap();
+        }
+
         Ok(())
     }
 
@@ -413,6 +456,7 @@ impl Default for Panopticon {
             control_flow_comments: HashMap::new(),
             control_flow_values: HashMap::new(),
             functions: HashMap::new(),
+            unresolved_calls: MultiMap::new(),
             project: None,
             region: None,
             undo_stack: Vec::new(),

@@ -263,8 +263,8 @@ void QControlFlowGraph::insertNode(QString uuid, unsigned int id, float x, float
 			auto& tpl = m_nodes[idx];
 
 			if(std::get<0>(tpl) == id) {
-				updateNode(id,x,y,is_entry,vec,m_nodeItems.at(idx).second);
 				tpl = std::make_tuple(id,x,y,is_entry,vec);
+				updateNode(id,x,y,is_entry,vec,m_nodeItems.at(idx).second);
 
 				return;
 			}

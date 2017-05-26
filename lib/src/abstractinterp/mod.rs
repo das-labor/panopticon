@@ -181,7 +181,7 @@ pub fn approximate<A: Avalue>(func: &Function,fixed: &HashMap<(Cow<'static,str>,
                     let assignee = (name.clone(),*subscript);
                     let cur = ret.get(&assignee).cloned();
 
-                    debug!("{:?}: {:?} = {:?}",pp,op,new);
+                    debug!("{:?} {:?}: {:?} = {:?}",pp,assignee,op,new);
                     debug!("    prev: {:?}",cur);
 
                     if let Some(cur) = cur {
