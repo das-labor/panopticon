@@ -341,9 +341,9 @@ impl ControlFlowLayout {
                 let val = if s < 64 { c % (1u64 << s) } else { c };
                 let sign_bit = if s < 64 { 1u64 << (s - 1) } else { 0x8000000000000000 };
                 let s = if !has_sign || val & sign_bit == 0 {
-                    format!("{:x}",val)
+                    format!("0x{:x}",val)
                 } else {
-                    format!("{:x}",(val as i64).wrapping_neg())
+                    format!("0x{:x}",(val as i64).wrapping_neg())
                 };
                 BasicBlockOperand{
                     kind: "constant",
@@ -436,10 +436,10 @@ impl ControlFlowLayout {
                             if let Some((_,called_func)) = maybe_func {
                                 (called_func.name.clone(),format!("{}",called_func.uuid))
                             } else {
-                                (format!("{}",val),"".to_string())
+                                (format!("0x{:x}",val),"".to_string())
                             }
                         } else {
-                            (format!("{}",val),"".to_string())
+                            (format!("0x{:x}",val),"".to_string())
                         };
 
                         Some(BasicBlockOperand{
