@@ -150,7 +150,7 @@ Ctrl.ApplicationWindow {
 			z: 2
 
 			onShowControlFlowGraph: {
-				controlflow.functionUuid = uuid
+				controlflow.showControlFlowGraph(uuid)
 				parent.state = "functionState"
 			}
 		}

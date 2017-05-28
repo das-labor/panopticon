@@ -26,9 +26,17 @@ MouseArea {
 	property string functionUuid: ""
 
 	function showControlFlowGraph(uuid) {
-		console.log("showControlFlowGraph(): " + uuid);
+    console.log("showControlFlowGraph(): " + uuid);
+
+    controlflow.fixX = 0
+    controlflow.fixY = 0
+    controlFlowRoot.entryNodeCenterX = 0
+    controlFlowRoot.entryNodeCenterY = 0
+    controlFlowRoot.x = 0
+    controlFlowRoot.y = 0
 		controlflow.functionUuid = uuid
-	}
+		controlFlowRoot.centerEntryPoint()
+  }
 
 	function centerEntryPoint() {
 		controlFlowRoot.centerEntryPoint()
@@ -212,8 +220,8 @@ MouseArea {
             nodeId: blockId
             uuid: functionUuid
 
-            onIsEntryChanged: {
-              if(isEntry) {
+            onVisibleChanged: {
+              if(visible && isEntry) {
                 controlFlowRoot.entryNodeCenterX = blockX
                 controlFlowRoot.entryNodeCenterY = blockY
                 controlflow.centerEntryPoint()
