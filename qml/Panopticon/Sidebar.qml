@@ -33,19 +33,6 @@ Rectangle {
     }
   }
 
-  Ctrl.Label {
-    anchors.centerIn: parent
-    width: 140
-    font {
-      family: "Source Sans Pro"; pointSize: 20;
-    }
-    visible: listView.count == 0
-    text: "Please open a program"
-    color: "#a2a2a2"
-    horizontalAlignment: Text.AlignHCenter
-    wrapMode: Text.WordWrap
-  }
-
   Ctrl.TableView {
     id: listView
     anchors.left: parent.left
@@ -59,6 +46,7 @@ Rectangle {
     frameVisible: false
     horizontalScrollBarPolicy: Qt.ScrollBarAlwaysOff
     sortIndicatorVisible: true
+    visible: listView.rowCount > 0
 
     style: Style.TableViewStyle {
       transientScrollBars: true
@@ -268,6 +256,19 @@ Rectangle {
     onSortIndicatorOrderChanged: {
       Panopticon.sidebarSortAscending = listView.sortIndicatorOrder == Qt.AscendingOrder
     }
+  }
+
+  Ctrl.Label {
+    anchors.centerIn: parent
+    width: 140
+    font {
+      family: "Source Sans Pro"; pointSize: 20;
+    }
+    visible: listView.rowCount == 0
+    text: "Please open a program"
+    color: "#a2a2a2"
+    horizontalAlignment: Text.AlignHCenter
+    wrapMode: Text.WordWrap
   }
 
   Rectangle {
