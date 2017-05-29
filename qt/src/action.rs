@@ -73,7 +73,13 @@ impl Action {
         })
     }
 
-    pub fn new_setvalue(panopticon: &mut Panopticon,func: Uuid, variable: VarName, value: Option<Kset>) -> Result<Action> {
+    pub fn new_setvalue(panopticon: &mut Panopticon,func: Uuid, variable: VarName, value: Option<Vec<u64>>) -> Result<Action> {
+        use panopticon::dataflow::type_check;
+        let function = panopticon.functions.get(&func).unwrap();
+        let lens = type_check(function)?;
+        let len = lens.get(&variable.name).unwrap();
+        let value = value.map(|x| Kset::Set(x.into_iter().map(|x| (x,*len)).collect()));
+
         let before = panopticon.control_flow_values.get(&func);
         let mut input = before.map(|x| x.input.clone()).unwrap_or(HashMap::new());
 
@@ -88,7 +94,6 @@ impl Action {
         } else {
             let output = {
                 let i = input.iter().map(|(k,v)| ((k.name.clone(),k.subscript),v.clone()));
-                let function = panopticon.functions.get(&func).unwrap();
                 let fixed = HashMap::from_iter(i);
 
                 approximate(function,&fixed)?
@@ -155,6 +160,10 @@ impl Action {
             &Action::Rename{ ref function, ref after,.. } => {
                 if let Some(func) = panopticon.functions.get_mut(function) {
                     func.name = after.clone();
+                }
+
+                for (uuid,addr) in panopticon.resolved_calls.get_vec(function).cloned().unwrap_or(vec![]) {
+                    panopticon.update_control_flow_nodes(&uuid,Some(&[addr]))?;
                 }
 
                 panopticon.update_sidebar(function)

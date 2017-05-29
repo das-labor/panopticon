@@ -76,6 +76,7 @@ pub struct Panopticon {
 
     pub functions: HashMap<Uuid,Function>,
     pub unresolved_calls: MultiMap<Option<u64>,(Uuid,u64)>,
+    pub resolved_calls: MultiMap<Uuid,(Uuid,u64)>, // callee -> caller
     pub region: Option<Region>,
     pub project: Option<Project>,
 
@@ -238,12 +239,23 @@ impl Panopticon {
                 } else {
                     let vals = value
                         .split(',')
-                        .filter_map(|x| u64::from_str(x.trim()).ok())
-                        .map(|x| (x,64))
+                        .filter_map(|x| {
+                            let x = x.trim();
+                            if x.starts_with("0x") {
+                                let s: &[_] = &['0','x'];
+                                u64::from_str_radix(x.trim_matches(s),16).ok()
+                            } else if x.starts_with("0b") {
+                                let s: &[_] = &['0','b'];
+                                u64::from_str_radix(x.trim_matches(s),2).ok()
+                            } else {
+                                u64::from_str(x).ok()
+                            }
+                        })
+                        .map(|x| x)
                         .collect::<Vec<_>>();
 
                     if !vals.is_empty() {
-                        Some(Kset::Set(vals))
+                        Some(vals)
                     } else {
                         return Err(format!("'{}' is not a valid value",value).into());
                     }
@@ -403,7 +415,21 @@ impl Panopticon {
                         if let &Statement{ op: Operation::Call(ref rv),.. } = stmt {
                             match rv {
                                 &Rvalue::Constant{ value,.. } => {
-                                    self.unresolved_calls.insert(Some(value),(func.uuid.clone(),bb.area.start))
+                                    // their addr
+                                    let maybe_callee = self.functions.iter().find(|f| {
+                                        let cfg = &f.1.cflow_graph;
+                                        if let Some(&ControlFlowTarget::Resolved(ref bb)) = f.1.entry_point.and_then(|x| cfg.vertex_label(x)) {
+                                            value == bb.area.start
+                                        } else {
+                                            false
+                                        }
+                                    });
+
+                                    if let Some(ref callee) = maybe_callee {
+                                        self.resolved_calls.insert(callee.0.clone(),(func.uuid.clone(),bb.area.start));
+                                    } else {
+                                        self.unresolved_calls.insert(Some(value),(func.uuid.clone(),bb.area.start));
+                                    }
                                 }
                                 _ => {
                                     self.unresolved_calls.insert(None,(func.uuid.clone(),bb.area.start))
@@ -415,8 +441,13 @@ impl Panopticon {
             }
 
             if let Some(&ControlFlowTarget::Resolved(ref bb)) = func.entry_point.and_then(|x| cfg.vertex_label(x)) {
+                // my addr
                 let pairs_owned = self.unresolved_calls.remove(&Some(bb.area.start)).unwrap_or(vec![]).into_iter();
                 let pairs_ref = self.unresolved_calls.get_vec(&None).cloned().unwrap_or(vec![]).into_iter();
+
+                for (uuid,addr) in pairs_owned.clone() {
+                    self.resolved_calls.insert(func.uuid.clone(),(uuid.clone(),addr));
+                }
 
                 pairs_owned.chain(pairs_ref).collect::<Vec<_>>()
             } else {
@@ -457,6 +488,7 @@ impl Default for Panopticon {
             control_flow_values: HashMap::new(),
             functions: HashMap::new(),
             unresolved_calls: MultiMap::new(),
+            resolved_calls: MultiMap::new(),
             project: None,
             region: None,
             undo_stack: Vec::new(),

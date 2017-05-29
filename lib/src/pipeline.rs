@@ -62,7 +62,8 @@ where A::Configuration: Debug {
 
         while !targets.is_empty() {
             info!("disassemble {:?}",targets);
-            let (new_targets,new_fns): (Vec<Vec<(u64,Function)>>,Vec<Function>) = targets.into_iter().map(|(entry,f)| {
+            let new_targets: Vec<Vec<(u64,Function)>> = targets.into_iter().map(|(entry,f)| {
+                let tx = tx.clone();
                 let mut f = Function::disassemble::<A>(Some(f),config.clone(),&region,entry);
                 f.entry_point = f.find_basic_block_by_start(entry);
                 let new_ct = f.collect_calls().into_iter().filter_map(|rv| {
@@ -77,10 +78,10 @@ where A::Configuration: Debug {
                 let _ = ssa_convertion(&mut f);
 
                 functions.insert(entry,f.clone());
-                (new_ct,f)
-            }).unzip();
+                tx.send_all(stream::iter(vec![Ok(f)])).wait().unwrap().0;
+                new_ct
+            }).collect();
             targets = new_targets.into_iter().flat_map(|x| x).collect();
-            tx = tx.send_all(stream::iter(new_fns.into_iter().map(|x| Ok(x)))).wait().unwrap().0;
         }
     });
 
