@@ -27,6 +27,7 @@ use panopticon::{
 };
 use std::ptr;
 use std::path::{Path,PathBuf};
+use std::collections::HashSet;
 use errors::*;
 use futures::{
     future,
@@ -43,6 +44,10 @@ lazy_static! {
 
     pub static ref THREAD_POOL: Mutex<CpuPool> = {
         Mutex::new(CpuPool::new_num_cpus())
+    };
+
+    pub static ref SUBSCRIBED_FUNCTIONS: Mutex<HashSet<Uuid>> = {
+        Mutex::new(HashSet::new())
     };
 }
 
@@ -213,6 +218,28 @@ pub extern "C" fn get_function(uuid_cstr: *const i8, only_entry: i8, do_nodes: i
     *LAYOUT_TASK.lock() = task.boxed();
 
     0
+}
+
+pub extern "C" fn subscribe_to(uuid_cstr: *const i8, state: i8) -> i32 {
+    let uuid = unsafe { CStr::from_ptr(uuid_cstr) }.to_string_lossy().to_string();
+    let uuid = match Uuid::parse_str(&uuid) {
+        Ok(uuid) => uuid,
+        Err(s) => { error!("subscribe_to(): {}",s); return -1; }
+    };
+
+    if state == 0 {
+        if SUBSCRIBED_FUNCTIONS.lock().remove(&uuid) {
+            0
+        } else {
+            -1
+        }
+    } else {
+        let subs = &mut SUBSCRIBED_FUNCTIONS.lock();
+        let ret = if subs.contains(&uuid) { -1 } else { 0 };
+
+        subs.insert(uuid);
+        ret
+    }
 }
 
 pub extern "C" fn open_program(path: *const i8) -> i32 {
@@ -434,6 +461,7 @@ extern "C" {
         inital_file: *const i8,
         recent_sessions: *const *const CRecentSession,
         get_function: extern "C" fn(*const i8,i8,i8,i8) -> i32,
+        subscribe_to: extern "C" fn(*const i8,i8) -> i32,
         open_program: extern "C" fn(*const i8) -> i32,
         save_session: extern "C" fn(*const i8) -> i32,
         comment_on: extern "C" fn(u64, *const i8) -> i32,
@@ -478,6 +506,7 @@ pub fn exec(qml_dir: &Path, initial_file: Option<String>, recent_sessions: Vec<(
             initial_file.as_ptr(),
             recent_sess_ptrs.as_ptr(),
             get_function,
+            subscribe_to,
             open_program,
             save_session,
             comment_on,

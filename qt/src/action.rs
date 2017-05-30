@@ -136,6 +136,10 @@ impl Action {
                     func.name = before.clone();
                 }
 
+                for (uuid,addr) in panopticon.resolved_calls.get_vec(function).cloned().unwrap_or(vec![]) {
+                    panopticon.update_control_flow_nodes(&uuid,Some(&[addr]))?;
+                }
+
                 panopticon.update_sidebar(function)
 
             },

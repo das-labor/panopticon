@@ -14,6 +14,7 @@ QObject *qpanopticon_provider(QQmlEngine *engine, QJSEngine *scriptEngine) {
     return QPanopticon::staticInstance;
 }
 
+SubscribeToFunc QPanopticon::staticSubscribeTo = nullptr;
 GetFunctionFunc QPanopticon::staticGetFunction = nullptr;
 OpenProgramFunc QPanopticon::staticOpenProgram = nullptr;
 SaveSessionFunc QPanopticon::staticSaveSession = nullptr;

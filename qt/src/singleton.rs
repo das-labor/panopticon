@@ -75,6 +75,7 @@ pub struct Panopticon {
     pub control_flow_values: HashMap<Uuid,AbstractInterpretation>,
 
     pub functions: HashMap<Uuid,Function>,
+    pub by_entry: HashMap<u64,Uuid>,
     pub unresolved_calls: MultiMap<Option<u64>,(Uuid,u64)>,
     pub resolved_calls: MultiMap<Uuid,(Uuid,u64)>, // callee -> caller
     pub region: Option<Region>,
@@ -340,20 +341,18 @@ impl Panopticon {
 
         debug!("update_control_flow_nodes() func={}, addrs={:?}",uuid,addrs);
 
-        let ids = if let Some(addr) = addrs {
-            if let Some(ref mut cfl) = self.control_flow_layouts.get_mut(uuid) {
-                let func = self.functions.get(&uuid).unwrap();
-                let cmnts = &self.control_flow_comments;
-                let values = self.control_flow_values.get(&uuid);
-                let funcs = &self.functions;
+        let ids = if let Some(ref mut cfl) = self.control_flow_layouts.get_mut(uuid) {
+            let func = self.functions.get(&uuid).unwrap();
+            let cmnts = &self.control_flow_comments;
+            let values = self.control_flow_values.get(&uuid);
+            let funcs = &self.functions;
 
-                cfl.update_nodes(addr,func,cmnts,values,funcs)?
-            } else {
-                vec![]
-            }
+            cfl.update_nodes(addrs,func,cmnts,values,funcs)?
         } else {
             vec![]
         };
+
+        if !glue::SUBSCRIBED_FUNCTIONS.lock().contains(uuid) { return Ok(()); }
 
         let bbls: Vec<_> = self
             .get_function_nodes(uuid.clone().to_string())
@@ -380,6 +379,7 @@ impl Panopticon {
         let uuid = CString::new(uuid.clone().to_string().as_bytes()).unwrap();
 
         for (id,x,y,is_entry,bbl) in bbls.into_iter() {
+            debug!("send update for id {}",id);
             send_function_node(uuid.clone(),id,x,y,is_entry,bbl.as_slice())?;
         }
 
@@ -408,54 +408,57 @@ impl Panopticon {
         };
 
         let pairs = {
-            let cfg = &func.cflow_graph;
-            for vx in cfg.vertices() {
-                if let Some(&ControlFlowTarget::Resolved(ref bb)) = cfg.vertex_label(vx) {
-                    bb.execute(|stmt| {
-                        if let &Statement{ op: Operation::Call(ref rv),.. } = stmt {
-                            match rv {
-                                &Rvalue::Constant{ value,.. } => {
-                                    // their addr
-                                    let maybe_callee = self.functions.iter().find(|f| {
-                                        let cfg = &f.1.cflow_graph;
-                                        if let Some(&ControlFlowTarget::Resolved(ref bb)) = f.1.entry_point.and_then(|x| cfg.vertex_label(x)) {
-                                            value == bb.area.start
-                                        } else {
-                                            false
-                                        }
-                                    });
+            let maybe_entry = {
+                let cfg = &func.cflow_graph;
+                for vx in cfg.vertices() {
+                    if let Some(&ControlFlowTarget::Resolved(ref bb)) = cfg.vertex_label(vx) {
+                        bb.execute(|stmt| {
+                            if let &Statement{ op: Operation::Call(ref rv),.. } = stmt {
+                                match rv {
+                                    &Rvalue::Constant{ value,.. } => {
+                                        // their addr
+                                        let maybe_callee = self.by_entry.get(&value);
 
-                                    if let Some(ref callee) = maybe_callee {
-                                        self.resolved_calls.insert(callee.0.clone(),(func.uuid.clone(),bb.area.start));
-                                    } else {
-                                        self.unresolved_calls.insert(Some(value),(func.uuid.clone(),bb.area.start));
+                                        if let Some(callee) = maybe_callee {
+                                            self.resolved_calls.insert(callee.clone(),(func.uuid.clone(),bb.area.start));
+                                        } else {
+                                            self.unresolved_calls.insert(Some(value),(func.uuid.clone(),bb.area.start));
+                                        }
+                                    }
+                                    _ => {
+                                        self.unresolved_calls.insert(None,(func.uuid.clone(),bb.area.start))
                                     }
                                 }
-                                _ => {
-                                    self.unresolved_calls.insert(None,(func.uuid.clone(),bb.area.start))
-                                }
                             }
-                        }
-                    });
+                        });
+                    }
                 }
-            }
 
-            if let Some(&ControlFlowTarget::Resolved(ref bb)) = func.entry_point.and_then(|x| cfg.vertex_label(x)) {
+                if let Some(&ControlFlowTarget::Resolved(ref bb)) = func.entry_point.and_then(|x| cfg.vertex_label(x)) {
+                    Some(bb.area.start)
+                } else {
+                    None
+                }
+            };
+
+            if let Some(entry) = maybe_entry {
                 // my addr
-                let pairs_owned = self.unresolved_calls.remove(&Some(bb.area.start)).unwrap_or(vec![]).into_iter();
+                let pairs_owned = self.unresolved_calls.remove(&Some(entry)).unwrap_or(vec![]).into_iter();
                 let pairs_ref = self.unresolved_calls.get_vec(&None).cloned().unwrap_or(vec![]).into_iter();
+
+                self.by_entry.insert(entry,func.uuid.clone());
 
                 for (uuid,addr) in pairs_owned.clone() {
                     self.resolved_calls.insert(func.uuid.clone(),(uuid.clone(),addr));
                 }
+
+                self.functions.insert(func.uuid.clone(),func);
 
                 pairs_owned.chain(pairs_ref).collect::<Vec<_>>()
             } else {
                 vec![]
             }
         };
-
-        self.functions.insert(func.uuid.clone(),func);
 
         for (uuid,addr) in pairs.into_iter() {
             self.update_control_flow_nodes(&uuid,Some(&[addr])).unwrap();
@@ -487,6 +490,7 @@ impl Default for Panopticon {
             control_flow_comments: HashMap::new(),
             control_flow_values: HashMap::new(),
             functions: HashMap::new(),
+            by_entry: HashMap::new(),
             unresolved_calls: MultiMap::new(),
             resolved_calls: MultiMap::new(),
             project: None,

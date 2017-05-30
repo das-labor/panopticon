@@ -42,6 +42,7 @@ struct RecentSession {
 };
 
 typedef int32_t (*GetFunctionFunc)(const char* uuid, int8_t only_entry, int8_t do_nodes, int8_t do_edges);
+typedef int32_t (*SubscribeToFunc)(const char* uuid, int8_t subscribe);
 
 // session management
 typedef int32_t (*OpenProgramFunc)(const char* path);

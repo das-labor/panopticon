@@ -60,6 +60,10 @@ bool QControlFlowGraph::getIsEmpty(void) const {
 }
 
 void QControlFlowGraph::setUuid(QString& s) {
+  if(m_uuid != "") {
+    QPanopticon::staticSubscribeTo(m_uuid.toStdString().c_str(),false);
+  }
+
 	m_uuid = s;
 
 	m_nodes.clear();
@@ -71,10 +75,14 @@ void QControlFlowGraph::setUuid(QString& s) {
   updateEdges();
   update();
 
-	if(m_uuid != "" && m_delegate && QPanopticon::staticGetFunction) {
-		std::string uuid = m_uuid.toStdString();
-		QPanopticon::staticGetFunction(uuid.c_str(),false,true,true);
-	}
+  if(m_uuid != "") {
+    QPanopticon::staticSubscribeTo(m_uuid.toStdString().c_str(),true);
+
+    if(m_delegate && QPanopticon::staticGetFunction) {
+      std::string uuid = m_uuid.toStdString();
+      QPanopticon::staticGetFunction(uuid.c_str(),false,true,true);
+    }
+  }
 }
 
 void QControlFlowGraph::setDelegate(QVariant& v) {
