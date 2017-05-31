@@ -85,6 +85,7 @@ extern crate graph_algos;
 extern crate tempdir;
 extern crate uuid;
 extern crate rmp_serialize;
+extern crate futures;
 
 #[macro_use]
 extern crate lazy_static;
@@ -95,6 +96,9 @@ extern crate goblin;
 #[cfg(test)]
 #[macro_use]
 extern crate quickcheck;
+
+#[cfg(test)]
+extern crate env_logger;
 
 // core
 pub mod disassembler;
@@ -181,6 +185,9 @@ pub use abstractinterp::{
 pub use abstractinterp::bounded_addr_track::BoundedAddrTrack;
 pub use abstractinterp::kset::Kset;
 
+pub mod pipeline;
+pub use pipeline::pipeline;
+
 // disassembler
 pub mod avr;
 pub mod amd64;
@@ -188,3 +195,7 @@ pub mod mos;
 
 // file formats
 pub mod loader;
+pub use loader::{
+    Machine,
+    load,
+};

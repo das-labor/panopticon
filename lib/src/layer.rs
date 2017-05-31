@@ -43,6 +43,7 @@ use std::collections::HashMap;
 use std::path::Path;
 use std::fs::File;
 use std::io::Read;
+use std::sync::Arc;
 use std::ops::Range;
 
 use {
@@ -53,12 +54,12 @@ use {
 pub type Cell = Option<u8>;
 
 /// Layer that replace all overlapped `Cell`s.
-#[derive(Debug,RustcDecodable,RustcEncodable)]
+#[derive(Clone,Debug,RustcDecodable,RustcEncodable)]
 pub enum OpaqueLayer {
     /// Layer consisting of undefined cells.
     Undefined(u64),
     /// Layer consisting of fixed byte values.
-    Defined(Box<Vec<u8>>),
+    Defined(Arc<Vec<u8>>),
 }
 
 /// Iterator over a range of `Cell`s.
@@ -215,7 +216,7 @@ impl<'a> LayerIter<'a> {
 ///
 /// `Layer` overlaps a continuous range of `Cell`s and returns a new range of `Cell`s of equal
 /// size. `Layer`s can overlap other `Layer`s or `Region`s.
-#[derive(Debug,RustcDecodable,RustcEncodable)]
+#[derive(Clone,Debug,RustcDecodable,RustcEncodable)]
 pub enum Layer {
     /// Layer consisting of fixed byte values.
     Opaque(OpaqueLayer),
@@ -252,7 +253,7 @@ impl OpaqueLayer {
     /// Create a new `Layer` that replaces overlapped `Cell`s with the contents of `data`.
     /// The `Layer` will have the size of the vector.
     pub fn wrap(data: Vec<u8>) -> OpaqueLayer {
-        OpaqueLayer::Defined(Box::new(data))
+        OpaqueLayer::Defined(Arc::new(data))
     }
 
     /// Create a new `Layer` of size `len` that replaces overlapped `Cell`s undefined ones.

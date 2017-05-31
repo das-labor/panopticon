@@ -20,7 +20,7 @@ use panopticon::result;
 use panopticon::result::Result;
 
 use std::env;
-use std::fs::{DirBuilder};
+use std::fs::DirBuilder;
 use std::path::{PathBuf,Path};
 use std::borrow::Cow;
 use std::error::Error;
@@ -116,5 +116,17 @@ fn find_data_file_impl(p: &Path) -> Result<Option<PathBuf>> {
                            .map(|x| x.join(p))
                            .and_then(|x| if x.exists() { Some(x) } else { None })),
         Err(e) => Err(result::Error(Cow::Owned(e.description().to_string()))),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::Path;
+
+    #[test]
+    fn paths() {
+        assert!(find_data_file(Path::new("test")).is_ok());
+        assert!(session_directory().is_ok());
     }
 }

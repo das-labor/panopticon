@@ -1182,8 +1182,27 @@ pub fn jmp(a: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> {
     Ok((vec![],JumpSpec::Jump(a)))
 }
 
-pub fn jcc(a: Rvalue, _: Condition) -> Result<(Vec<Statement>,JumpSpec)> {
-    Ok((vec![],JumpSpec::Branch(a,Guard::always())))
+pub fn jcc(a: Rvalue, cond: Condition) -> Result<(Vec<Statement>,JumpSpec)> {
+    let g = match cond {
+        Condition::Overflow => Guard::from_flag(&rreil_rvalue!{ OF:1 })?,
+        Condition::NotOverflow => Guard::from_flag(&rreil_rvalue!{ OF:1 })?.negation(),
+        //Condition::Below => Guard::from_flag(rreil_rvalue!{ CF:1 }),
+        Condition::AboveEqual => Guard::from_flag(&rreil_rvalue!{ CF:1 })?.negation(),
+        Condition::Equal => Guard::from_flag(&rreil_rvalue!{ ZF:1 })?,
+        Condition::NotEqual => Guard::from_flag(&rreil_rvalue!{ ZF:1 })?.negation(),
+        //Condition::BelowEqual => Guard::from_flag(rreil_rvalue!{ OF:1 }),
+        //Condition::Above => Guard::from_flag(rreil_rvalue!{ OF:1 }),
+        Condition::Sign => Guard::from_flag(&rreil_rvalue!{ SF:1 })?,
+        Condition::NotSign => Guard::from_flag(&rreil_rvalue!{ SF:1 })?.negation(),
+        Condition::Parity => Guard::from_flag(&rreil_rvalue!{ PF:1 })?,
+        Condition::NotParity => Guard::from_flag(&rreil_rvalue!{ PF:1 })?.negation(),
+        //Condition::Less => Guard::from_flag(rreil_rvalue!{ OF:1 }),
+        //Condition::LessEqual => Guard::from_flag(rreil_rvalue!{ OF:1 }),
+        //Condition::Greater => Guard::from_flag(rreil_rvalue!{ OF:1 }),
+        //Condition::GreaterEqual => Guard::from_flag(rreil_rvalue!{ OF:1 }),
+        _ => Guard::always(),
+    };
+    Ok((vec![],JumpSpec::Branch(a,g)))
 }
 
 pub fn jo(a: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { jcc(a,Condition::Overflow) }

@@ -51,6 +51,7 @@
 
 use std::collections::HashSet;
 use std::path::Path;
+use std::sync::Arc;
 use graph_algos::adjacency_list::{AdjacencyListEdgeDescriptor,AdjacencyListVertexDescriptor};
 use graph_algos::{AdjacencyList,GraphTrait,VertexListGraphTrait,MutableGraphTrait,IncidenceGraphTrait};
 
@@ -65,7 +66,7 @@ use {
 /// `Region`s are a stack of [`Layer`](../layer/index.html) inside a single address space. The
 /// `Region` is the primary way panopticon handles data. They can be created from files or
 /// in-memory buffers.
-#[derive(Debug,RustcDecodable,RustcEncodable)]
+#[derive(Clone,Debug,RustcDecodable,RustcEncodable)]
 pub struct Region {
     stack: Vec<(Bound,Layer)>,
     name: String,
@@ -85,7 +86,7 @@ pub type RegionRef = AdjacencyListVertexDescriptor;
 /// will not yield `Cell`s from the overlapping `Region`. For example, a compressed file inside a `Region`
 /// would be overlapped with a new, larger `Region` that holds the result after decompression. A `Program`
 /// inside the overlapped `Region` would still see only the compressed version.
-#[derive(RustcDecodable,RustcEncodable,Debug)]
+#[derive(Clone,RustcDecodable,RustcEncodable,Debug)]
 pub struct World {
     ///< Graph of all `Region`s with edges pointing from the overlapping to the overlapped `Region`.
     pub dependencies: RegionGraph,
@@ -102,7 +103,7 @@ impl Region {
 
     /// Creates a new `Region` called `name`, filled with `data`.
     pub fn wrap(name: String, data: Vec<u8>) -> Region {
-        Region::new(name,OpaqueLayer::Defined(Box::new(data)))
+        Region::new(name,OpaqueLayer::Defined(Arc::new(data)))
     }
 
     /// Creates a new `Region` called `name`, of size `len` with all `Cell`s undefined.

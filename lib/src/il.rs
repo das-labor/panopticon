@@ -391,7 +391,9 @@ impl Display for Guard {
         match self {
             &Guard::True => f.write_str("true"),
             &Guard::False => f.write_str("false"),
-            &Guard::Predicate{ ref flag, ref expected } => f.write_fmt(format_args!("({} == {})",flag,expected))
+            &Guard::Predicate{ flag: Rvalue::Variable{ ref name,.. }, expected: true } => f.write_fmt(format_args!("{}",name)),
+            &Guard::Predicate{ flag: Rvalue::Variable{ ref name,.. }, expected: false } => f.write_fmt(format_args!("¬{}",name)),
+            &Guard::Predicate{ ref flag, ref expected } => f.write_fmt(format_args!("({} == {})",flag,expected)),
         }
     }
 }
@@ -1393,5 +1395,15 @@ mod tests {
         let g2 = Guard::never();
 
         assert!(g1 != g2);
+    }
+
+    #[test]
+    fn guard_negation() {
+        let g = Guard::from_flag(&Rvalue::Undefined).ok().unwrap();
+        let ng = g.negation();
+
+        assert!(g != ng);
+        assert_eq!(g, ng.negation());
+        assert_eq!(g.negation(), ng);
     }
 }

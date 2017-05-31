@@ -2,6 +2,7 @@
 name = "panopticon"
 version = "0.16.0"
 authors = ["seu <seu@panopticon.re>", "m4b <m4b.github.io@gmail.com>"]
+build = "build.rs"
 
 [lib]
 name = "panopticon"
@@ -30,12 +31,18 @@ chrono-humanize = "0.0.6"
 goblin = "0.0.9"
 clap = "2.20.5"
 quickcheck = "0.3"
+error-chain = "0.8"
+futures = "0.1.13"
+futures-cpupool = "0.1.5"
+parking_lot = "0.4"
+multimap = "0.3.0"
 
 [dev-dependencies]
 regex = "0.1"
 
-[dependencies.qmlrs]
-git = "https://github.com/flanfly/qmlrs"
+[build-dependencies]
+cmake = "0.1.22"
+pkg-config = "0.3"
 
 [dependencies.graph_algos]
 git = "https://github.com/flanfly/rust-graph-algos.git"

@@ -22,6 +22,7 @@
 
 use std::collections::{HashSet};
 use std::iter::FromIterator;
+use std::fmt;
 
 use {
     Rvalue,
@@ -47,6 +48,24 @@ pub enum Kset {
     Set(Vec<(u64,usize)>),
     /// Lattice meet, equal to the empty set.
     Meet,
+}
+
+impl fmt::Display for Kset {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            &Kset::Meet => write!(f, "Ø"),
+            &Kset::Set(ref vec) if vec.is_empty() => write!(f, "Ø"),
+            &Kset::Set(ref vec) if vec.len() == 1 => write!(f, "{{0x{:x}}}", vec[0].0),
+            &Kset::Set(ref vec) => {
+                write!(f, "{{0x{:x}", vec[0].0)?;
+                for &(v,_) in vec.iter() {
+                    write!(f, ", 0x{:x}",v)?;
+                }
+                write!(f, "}}")
+            }
+            &Kset::Join => write!(f, "⫟"),
+        }
+    }
 }
 
 impl PartialEq for Kset {
@@ -273,6 +292,7 @@ impl Avalue for Kset {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::collections::HashMap;
     use {
         Statement,Operation,
         ControlFlowTarget,Function,ControlFlowGraph,
@@ -309,6 +329,8 @@ mod tests {
      */
     #[test]
     fn kset_test() {
+        let _ = ::env_logger::init();
+
         let a_var = Lvalue::Variable{ name: Cow::Borrowed("a"), size: 32, subscript: None };
         let b_var = Lvalue::Variable{ name: Cow::Borrowed("b"), size: 32, subscript: None };
         let c_var = Lvalue::Variable{ name: Cow::Borrowed("c"), size: 32, subscript: None };
@@ -368,9 +390,11 @@ mod tests {
         func.cflow_graph = cfg;
         func.entry_point = Some(v0);
 
+        println!("{}",func.to_dot());
+
         assert!(ssa_convertion(&mut func).is_ok());
 
-        let vals = approximate::<Kset>(&func).ok().unwrap();
+        let vals = approximate::<Kset>(&func,&HashMap::new()).ok().unwrap();
         let res = results::<Kset>(&func,&vals);
 
         assert_eq!(res[&(Cow::Borrowed("a"),32)],Kset::Join);
@@ -414,7 +438,7 @@ mod tests {
 
         assert!(ssa_convertion(&mut func).is_ok());
 
-        let vals = approximate::<Kset>(&func).ok().unwrap();
+        let vals = approximate::<Kset>(&func,&HashMap::new()).ok().unwrap();
 
         for i in vals {
             println!("{:?}",i);
