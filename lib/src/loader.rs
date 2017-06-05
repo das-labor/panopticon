@@ -204,14 +204,14 @@ fn load_elf(bytes: &[u8], name: String) -> Result<(Project,Machine)> {
         false
     };
 
-    let mut seen_syms = HashSet::<&str>::new();
+    let mut seen_syms = HashSet::<u64>::new();
 
     // add dynamic symbol information (non-strippable)
     for sym in &binary.dynsyms {
         let name = &binary.dynstrtab[sym.st_name];
 
         add_sym(&mut prog, sym, name);
-        seen_syms.insert(name);
+        seen_syms.insert(sym.st_value);
 
         if sym.is_function () {
             let name = &binary.dynstrtab[sym.st_name];
@@ -227,10 +227,10 @@ fn load_elf(bytes: &[u8], name: String) -> Result<(Project,Machine)> {
     // add strippable symbol information
     for sym in &binary.syms {
         let name = &binary.strtab[sym.st_name];
-        if !seen_syms.contains(&name) {
+        if !seen_syms.contains(&sym.st_value) {
             add_sym(&mut prog, sym, &name);
         }
-        seen_syms.insert(&name);
+        seen_syms.insert(sym.st_value);
     }
 
     proj.comments.insert(("base".to_string(),entry),"main".to_string());
