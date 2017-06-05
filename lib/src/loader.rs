@@ -126,6 +126,8 @@ pub fn load_mach(bytes: &[u8], offset: usize, name: String) -> Result<(Project,M
 /// Parses an ELF 32/64-bit binary from `bytes` and creates a `Project` from it. Returns the `Project` instance and
 /// the CPU its intended for.
 fn load_elf(bytes: &[u8], name: String) -> Result<(Project,Machine)> {
+    use std::collections::HashSet;
+
     let mut cursor = Cursor::new(&bytes);
     let binary = elf::Elf::parse(&bytes)?;
     debug!("elf: {:#?}", &binary);
@@ -176,8 +178,8 @@ fn load_elf(bytes: &[u8], name: String) -> Result<(Project,Machine)> {
 
     prog.call_graph.add_vertex(CallTarget::Todo(Rvalue::new_u64(entry as u64),Some(name),Uuid::new_v4()));
 
-    let add_sym = |prog: &mut Program, sym: &elf::Sym, strtab: &goblin::strtab::Strtab| {
-        let name = strtab[sym.st_name].to_string();
+    let add_sym = |prog: &mut Program, sym: &elf::Sym, name: &str| {
+        let name = name.to_string();
         let addr = sym.st_value;
         debug!("Symbol: {} @ 0x{:x}: {:?}", name, addr, sym);
         if sym.is_function() {
@@ -202,9 +204,15 @@ fn load_elf(bytes: &[u8], name: String) -> Result<(Project,Machine)> {
         false
     };
 
+    let mut seen_syms = HashSet::<u64>::new();
+
     // add dynamic symbol information (non-strippable)
     for sym in &binary.dynsyms {
-        add_sym(&mut prog, sym, &binary.dynstrtab);
+        let name = &binary.dynstrtab[sym.st_name];
+
+        add_sym(&mut prog, sym, name);
+        seen_syms.insert(sym.st_value);
+
         if sym.is_function () {
             let name = &binary.dynstrtab[sym.st_name];
             if !resolve_import_address(&mut proj, &binary.pltrelocs, name) {
@@ -216,11 +224,14 @@ fn load_elf(bytes: &[u8], name: String) -> Result<(Project,Machine)> {
     }
     debug!("Imports: {:#?}", &proj.imports);
 
-    // for now we comment adding symbols from strippable symbol table:
-    // we don't have an easy way/API to check if duplicate symbol/function targest have been added
-    // for sym in &binary.syms {
-    //     add_sym(&mut prog, sym, &binary.strtab);
-    // }
+    // add strippable symbol information
+    for sym in &binary.syms {
+        let name = &binary.strtab[sym.st_name];
+        if !seen_syms.contains(&sym.st_value) {
+            add_sym(&mut prog, sym, &name);
+        }
+        seen_syms.insert(sym.st_value);
+    }
 
     proj.comments.insert(("base".to_string(),entry),"main".to_string());
     proj.code.push(prog);

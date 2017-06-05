@@ -72,6 +72,7 @@ public:
   QString getLayoutTask(void) const;
 
   // C to Rust functions
+  static SubscribeToFunc staticSubscribeTo;
   static GetFunctionFunc staticGetFunction;
   static OpenProgramFunc staticOpenProgram;
   static SaveSessionFunc staticSaveSession;

@@ -163,7 +163,7 @@ extern "C" void update_layout_task(const char* task) {
 }
 
 extern "C" void start_gui_loop(const char *dir, const char* f, const RecentSession** sess,
-															 GetFunctionFunc gf,
+															 GetFunctionFunc gf, SubscribeToFunc st,
 															 OpenProgramFunc op, SaveSessionFunc ss,
 															 CommentOnFunc co, RenameFunctionFunc rf, SetValueForFunc svf,
 															 UndoFunc u, RedoFunc r) {
@@ -171,6 +171,7 @@ extern "C" void start_gui_loop(const char *dir, const char* f, const RecentSessi
 	char *argv[1] = { "Panopticon" };
 	QGuiApplication app(argc,argv);
 
+	QPanopticon::staticSubscribeTo = st;
 	QPanopticon::staticGetFunction = gf;
 	QPanopticon::staticOpenProgram = op;
 	QPanopticon::staticSaveSession = ss;

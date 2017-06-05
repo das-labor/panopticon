@@ -227,12 +227,16 @@ impl ControlFlowLayout {
         }).collect()
     }
 
-    pub fn update_nodes(&mut self,addresses: &[u64], func: &Function, comments: &HashMap<u64,String>, values: Option<&AbstractInterpretation>,
+    pub fn update_nodes(&mut self,addresses: Option<&[u64]>, func: &Function, comments: &HashMap<u64,String>, values: Option<&AbstractInterpretation>,
                      functions: &HashMap<Uuid,Function>) -> Result<Vec<i32>> {
         let mut ret = vec![];
 
         for (&vx,&mut (_,ref mut lines)) in self.node_data.iter_mut() {
-            let hit = lines.iter().any(|line| addresses.iter().find(|&&x| x == line.offset).is_some());
+            let hit = if let Some(ref addrs) = addresses {
+                lines.iter().any(|line| addrs.iter().find(|&&x| x == line.offset).is_some())
+            } else {
+                false
+            };
 
             if hit {
                 let cfg = &func.cflow_graph;
