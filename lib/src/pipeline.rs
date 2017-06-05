@@ -46,7 +46,7 @@ pub fn pipeline<A: Architecture + Debug + 'static >(program: Program, region: Re
 where A::Configuration: Debug {
     let (tx,rx) = mpsc::channel::<Function>(10);
     thread::spawn(move || {
-        let mut tx = tx;
+        let tx = tx;
         let mut functions = HashMap::<u64,Function>::new();
         let mut targets = HashMap::<u64,Function>::from_iter(program.call_graph.vertices().filter_map(|vx| {
             match program.call_graph.vertex_label(vx) {
