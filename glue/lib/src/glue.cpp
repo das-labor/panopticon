@@ -169,6 +169,9 @@ extern "C" void start_gui_loop(const char *dir, const char* f, const RecentSessi
 															 UndoFunc u, RedoFunc r) {
 	int argc = 1;
 	char *argv[1] = { "Panopticon" };
+
+  // workaround for #246
+  QGuiApplication::setDesktopSettingsAware(false);
 	QGuiApplication app(argc,argv);
 
 	QPanopticon::staticSubscribeTo = st;
