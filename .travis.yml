@@ -164,5 +164,5 @@ script: |
 after_success: |
   # send coverage report to coveralls.io
   if [[ "$TRAVIS_OS_NAME" == "linux" && "$PACKAGE" == "" ]]; then
-    cargo coveralls --verbose
+    cargo coveralls --verbose --all
   fi
