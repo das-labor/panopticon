@@ -209,7 +209,6 @@ impl<'a, V, E> VertexListGraph<'a, V, E> for AdjacencyMatrix<'a, V, E> {
 mod tests {
     use super::*;
     use std::collections::HashSet;
-    use traits::*;
 
     #[test]
     fn test_edge() {
