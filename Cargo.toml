@@ -2,50 +2,39 @@
 name = "panopticon"
 version = "0.16.0"
 authors = ["seu <seu@panopticon.re>", "m4b <m4b.github.io@gmail.com>"]
-build = "build.rs"
-
-[lib]
-name = "panopticon"
-path = "lib/src/lib.rs"
-test = true
 
 [[bin]]
-name = "qtpanopticon"
-path = "qt/src/main.rs"
+name = "panopticon"
 
 [dependencies]
+panopticon-core = { path = "core" }
+panopticon-data-flow = { path = "data-flow" }
+panopticon-abstract-interp = { path = "abstract-interp" }
+panopticon-amd64 = { path = "amd64" }
+panopticon-avr = { path = "avr" }
+panopticon-mos6502 = { path = "mos6502" }
+panopticon-analysis = { path = "analysis" }
+panopticon-glue = { path = "glue" }
+panopticon-graph-algos = { path = "graph-algos" }
 log = "0.3.6"
 env_logger = "0.3"
-rustc-serialize = "0.3.19"
-num = "0.1.31"
-tempdir = "0.3.4"
-lazy_static = "0.1.16"
-libc = "0.2.9"
 uuid = { version = "0.2.0", features = ["rustc-serialize", "v4"]}
-cassowary = "0.1.0"
-flate2 = "0.2.13"
-rmp-serialize = "0.8"
-byteorder = "0.5.1"
+cassowary = "0.1"
+tempdir = "0.3"
 chrono = "0.2"
-chrono-humanize = "0.0.6"
-goblin = "0.0.9"
-clap = "2.20.5"
-quickcheck = "0.3"
-error-chain = "0.8"
+chrono-humanize = "0.0"
+clap = "2.24"
 futures = "0.1.13"
-futures-cpupool = "0.1.5"
+futures-cpupool = "0.1"
 parking_lot = "0.4"
-multimap = "0.3.0"
+multimap = "0.3"
+error-chain = "0.8"
+lazy_static = "0.1"
+libc = "0.2"
 
 [dev-dependencies]
 regex = "0.1"
-
-[build-dependencies]
-cmake = "0.1.22"
-pkg-config = "0.3"
-
-[dependencies.graph_algos]
-git = "https://github.com/flanfly/rust-graph-algos.git"
+quickcheck = "0.3"
 
 [target.i686-unknown-linux-gnu.dependencies]
 xdg = "^2.0"
@@ -59,7 +48,4 @@ xdg = "^2.0"
 [target.i686-apple-darwin.dependencies]
 xdg = "^2.0"
 
-[features]
-# Cross checks the x86/AMD64 simulator against the CPU. Needs the rappel tool
-# installed (https://github.com/yrp604/rappel).
-cross-check-amd64 = []
+[workspace]

@@ -1,0 +1,11 @@
+[package]
+name = "panopticon-avr"
+version = "0.16.0"
+authors = ["seu <seu@panopticon.re>"]
+
+[dependencies]
+panopticon-core = { path = "../core" }
+panopticon-graph-algos = { path = "../graph-algos" }
+log = "0.3.6"
+byteorder = "0.5.1"
+env_logger = "0.3"

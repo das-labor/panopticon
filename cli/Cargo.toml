@@ -1,0 +1,6 @@
+[package]
+name = "cli"
+version = "0.16.0"
+authors = ["seu <seu@panopticon.re>"]
+
+[dependencies]

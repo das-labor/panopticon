@@ -1,1 +1,0 @@
-../../../../javascript/sphinxdoc/1.0/jquery.js

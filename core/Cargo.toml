@@ -1,0 +1,24 @@
+[package]
+name = "panopticon-core"
+version = "0.16.0"
+authors = ["seu <seu@panopticon.re>"]
+build = "build.rs"
+
+[dependencies]
+num = "0.1"
+log = "0.3.6"
+env_logger = "0.3"
+rustc-serialize = "0.3.19"
+tempdir = "0.3.4"
+libc = "0.2.9"
+uuid = { version = "0.2.0", features = ["rustc-serialize", "v4"]}
+flate2 = "0.2.13"
+rmp-serialize = "0.8"
+byteorder = "0.5.1"
+goblin = "0.0.9"
+quickcheck = "0.3"
+panopticon-graph-algos = { path = "../graph-algos" }
+
+[dev-dependencies]
+regex = "0.1"
+panopticon-avr = { path = "../avr" }

@@ -1,0 +1,13 @@
+[package]
+name = "panopticon-abstract-interp"
+version = "0.16.0"
+authors = ["seu <seu@panopticon.re>"]
+
+[dependencies]
+panopticon-core = { path = "../core" }
+panopticon-data-flow = { path = "../data-flow" }
+panopticon-graph-algos = { path = "../graph-algos" }
+rustc-serialize = "0.3.19"
+log = "0.3.6"
+quickcheck = "0.3"
+env_logger = "0.3"

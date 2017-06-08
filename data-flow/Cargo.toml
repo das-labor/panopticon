@@ -1,0 +1,8 @@
+[package]
+name = "panopticon-data-flow"
+version = "0.16.0"
+authors = ["seu <seu@panopticon.re>"]
+
+[dependencies]
+panopticon-core = { path = "../core" }
+panopticon-graph-algos = { path = "../graph-algos" }
