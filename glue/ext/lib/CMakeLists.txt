@@ -38,7 +38,7 @@ set(patch 0)
 
 add_library("${PROJECT_NAME}" ${SRC_LIST} ${HEADERS_LIST})
 set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 14)
-target_link_libraries("${PROJECT_NAME}" Qt5::Core Qt5::Gui
+target_link_libraries("${PROJECT_NAME}" PRIVATE Qt5::Core Qt5::Gui
 	Qt5::Svg Qt5::Qml Qt5::Quick)
 
 # Install directive for binaries
