@@ -38,146 +38,146 @@ use uuid::Uuid;
 /// Complete Panopticon session
 #[derive(RustcDecodable,RustcEncodable,Debug)]
 pub struct Project {
-   /// Human-readable name
-   pub name: String,
-   /// Recognized code
-   pub code: Vec<Program>,
-   /// Memory regions
-   pub data: World,
-   /// Comments
-   pub comments: HashMap<(String, u64), String>,
-   /// Symbolic References (Imports)
-   pub imports: HashMap<u64, String>,
+    /// Human-readable name
+    pub name: String,
+    /// Recognized code
+    pub code: Vec<Program>,
+    /// Memory regions
+    pub data: World,
+    /// Comments
+    pub comments: HashMap<(String, u64), String>,
+    /// Symbolic References (Imports)
+    pub imports: HashMap<u64, String>,
 }
 
 impl Project {
-   /// Returns a new `Project` named `s` from memory `Region` `r`.
-   pub fn new(s: String, r: Region) -> Project {
-      Project {
-         name: s,
-         code: Vec::new(),
-         data: World::new(r),
-         comments: HashMap::new(),
-         imports: HashMap::new(),
-      }
-   }
+    /// Returns a new `Project` named `s` from memory `Region` `r`.
+    pub fn new(s: String, r: Region) -> Project {
+        Project {
+            name: s,
+            code: Vec::new(),
+            data: World::new(r),
+            comments: HashMap::new(),
+            imports: HashMap::new(),
+        }
+    }
 
-   /// Reads a serialized project from disk.
-   pub fn open(p: &Path) -> Result<Project> {
-      let mut fd = match File::open(p) {
-         Ok(fd) => fd,
-         Err(e) => return Err(format!("failed to open file: {:?}", e).into()),
-      };
-      let mut magic = [0u8; 10];
+    /// Reads a serialized project from disk.
+    pub fn open(p: &Path) -> Result<Project> {
+        let mut fd = match File::open(p) {
+            Ok(fd) => fd,
+            Err(e) => return Err(format!("failed to open file: {:?}", e).into()),
+        };
+        let mut magic = [0u8; 10];
 
-      if fd.read(&mut magic)? == 10 && magic == *b"PANOPTICON" {
-         let version = fd.read_u32::<BigEndian>()?;
+        if fd.read(&mut magic)? == 10 && magic == *b"PANOPTICON" {
+            let version = fd.read_u32::<BigEndian>()?;
 
-         if version == 0 {
-            let mut z = ZlibDecoder::new(fd);
-            let mut rmp = Decoder::new(&mut z);
-            let res = <Project as Decodable>::decode(&mut rmp);
+            if version == 0 {
+                let mut z = ZlibDecoder::new(fd);
+                let mut rmp = Decoder::new(&mut z);
+                let res = <Project as Decodable>::decode(&mut rmp);
 
-            match res {
-               Ok(p) => Ok(p),
-               Err(_) => Err("project decoding failed".into()),
+                match res {
+                    Ok(p) => Ok(p),
+                    Err(_) => Err("project decoding failed".into()),
+                }
+            } else {
+                Err("wrong version".into())
             }
-         } else {
-            Err("wrong version".into())
-         }
-      } else {
-         Err("wrong magic number".into())
-      }
-   }
+        } else {
+            Err("wrong magic number".into())
+        }
+    }
 
-   /// Returns the program with UUID `uu`
-   pub fn find_program_by_uuid(&self, uu: &Uuid) -> Option<&Program> {
-      self.code.iter().find(|x| x.uuid == *uu)
-   }
+    /// Returns the program with UUID `uu`
+    pub fn find_program_by_uuid(&self, uu: &Uuid) -> Option<&Program> {
+        self.code.iter().find(|x| x.uuid == *uu)
+    }
 
-   /// Returns the program with UUID `uu`
-   pub fn find_program_by_uuid_mut(&mut self, uu: &Uuid) -> Option<&mut Program> {
-      self.code.iter_mut().find(|x| x.uuid == *uu)
-   }
+    /// Returns the program with UUID `uu`
+    pub fn find_program_by_uuid_mut(&mut self, uu: &Uuid) -> Option<&mut Program> {
+        self.code.iter_mut().find(|x| x.uuid == *uu)
+    }
 
-   /// Returns function and enclosing program with UUID `uu`
-   pub fn find_function_by_uuid<'a>(&'a self, uu: &Uuid) -> Option<&'a Function> {
-      for p in self.code.iter() {
-         if let Some(f) = p.find_function_by_uuid(uu) {
-            return Some(f);
-         }
-      }
+    /// Returns function and enclosing program with UUID `uu`
+    pub fn find_function_by_uuid<'a>(&'a self, uu: &Uuid) -> Option<&'a Function> {
+        for p in self.code.iter() {
+            if let Some(f) = p.find_function_by_uuid(uu) {
+                return Some(f);
+            }
+        }
 
-      None
-   }
+        None
+    }
 
-   /// Returns function and enclosing program with UUID `uu`
-   pub fn find_function_by_uuid_mut<'a>(&'a mut self, uu: &Uuid) -> Option<&'a mut Function> {
-      for p in self.code.iter_mut() {
-         if let Some(f) = p.find_function_by_uuid_mut(uu) {
-            return Some(f);
-         }
-      }
+    /// Returns function and enclosing program with UUID `uu`
+    pub fn find_function_by_uuid_mut<'a>(&'a mut self, uu: &Uuid) -> Option<&'a mut Function> {
+        for p in self.code.iter_mut() {
+            if let Some(f) = p.find_function_by_uuid_mut(uu) {
+                return Some(f);
+            }
+        }
 
-      None
-   }
+        None
+    }
 
-   /// Returns function/reference and enclosing program with UUID `uu`
-   pub fn find_call_target_by_uuid<'a>(&'a self, uu: &Uuid) -> Option<(CallGraphRef, &'a Program)> {
-      for p in self.code.iter() {
-         if let Some(ct) = p.find_call_target_by_uuid(uu) {
-            return Some((ct, p));
-         }
-      }
+    /// Returns function/reference and enclosing program with UUID `uu`
+    pub fn find_call_target_by_uuid<'a>(&'a self, uu: &Uuid) -> Option<(CallGraphRef, &'a Program)> {
+        for p in self.code.iter() {
+            if let Some(ct) = p.find_call_target_by_uuid(uu) {
+                return Some((ct, p));
+            }
+        }
 
-      None
-   }
+        None
+    }
 
-   /// Returns function/reference and enclosing program with UUID `uu`
-   pub fn find_call_target_by_uuid_mut<'a>(&'a mut self, uu: &Uuid) -> Option<(CallGraphRef, &'a mut Program)> {
-      for p in self.code.iter_mut() {
-         if let Some(ct) = p.find_call_target_by_uuid(uu) {
-            return Some((ct, p));
-         }
-      }
+    /// Returns function/reference and enclosing program with UUID `uu`
+    pub fn find_call_target_by_uuid_mut<'a>(&'a mut self, uu: &Uuid) -> Option<(CallGraphRef, &'a mut Program)> {
+        for p in self.code.iter_mut() {
+            if let Some(ct) = p.find_call_target_by_uuid(uu) {
+                return Some((ct, p));
+            }
+        }
 
-      None
-   }
+        None
+    }
 
-   /// Serializes the project into the file at `p`. The format looks like this:
-   /// [u8;10] magic = "PANOPTICON"
-   /// u32     version = 0
-   /// zlib compressed MsgPack
-   pub fn snapshot(&self, p: &Path) -> Result<()> {
-      println!("snapshot to {:?}", p);
-      let mut fd = File::create(p)?;
+    /// Serializes the project into the file at `p`. The format looks like this:
+    /// [u8;10] magic = "PANOPTICON"
+    /// u32     version = 0
+    /// zlib compressed MsgPack
+    pub fn snapshot(&self, p: &Path) -> Result<()> {
+        println!("snapshot to {:?}", p);
+        let mut fd = File::create(p)?;
 
-      fd.write(b"PANOPTICON")?;
-      fd.write_u32::<BigEndian>(0)?;
+        fd.write(b"PANOPTICON")?;
+        fd.write_u32::<BigEndian>(0)?;
 
-      let mut z = ZlibEncoder::new(fd, Compression::Default);
-      let mut enc = Encoder::new(&mut z);
+        let mut z = ZlibEncoder::new(fd, Compression::Default);
+        let mut enc = Encoder::new(&mut z);
 
-      match self.encode(&mut enc) {
-         Ok(()) => Ok(()),
-         Err(_) => Err("failed to write to save file".into()),
-      }
-   }
+        match self.encode(&mut enc) {
+            Ok(()) => Ok(()),
+            Err(_) => Err("failed to write to save file".into()),
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
-   use super::*;
-   use region::Region;
+    use super::*;
+    use region::Region;
 
-   #[test]
-   fn new() {
-      let p = Project::new(
-         "test".to_string(),
-         Region::undefined("base".to_string(), 128),
-      );
+    #[test]
+    fn new() {
+        let p = Project::new(
+            "test".to_string(),
+            Region::undefined("base".to_string(), 128),
+        );
 
-      assert_eq!(p.name, "test".to_string());
-      assert_eq!(p.code.len(), 0);
-   }
+        assert_eq!(p.name, "test".to_string());
+        assert_eq!(p.code.len(), 0);
+    }
 }

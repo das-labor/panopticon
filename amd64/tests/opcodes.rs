@@ -27,52 +27,52 @@ use std::path::Path;
 
 #[test]
 fn amd64_opcodes() {
-   let reg = Region::open("com".to_string(), Path::new("../tests/data/amd64.com")).unwrap();
-   let mut addr = 0;
+    let reg = Region::open("com".to_string(), Path::new("../tests/data/amd64.com")).unwrap();
+    let mut addr = 0;
 
-   loop {
-      let maybe_match = <amd64::Amd64 as Architecture>::decode(&reg, addr, &amd64::Mode::Long);
+    loop {
+        let maybe_match = <amd64::Amd64 as Architecture>::decode(&reg, addr, &amd64::Mode::Long);
 
-      if let Ok(match_st) = maybe_match {
-         for mne in match_st.mnemonics {
-            println!("{:x}: {}", mne.area.start, mne.opcode);
-            addr = mne.area.end;
+        if let Ok(match_st) = maybe_match {
+            for mne in match_st.mnemonics {
+                println!("{:x}: {}", mne.area.start, mne.opcode);
+                addr = mne.area.end;
 
-            if addr >= reg.size() {
-               return;
+                if addr >= reg.size() {
+                    return;
+                }
             }
-         }
-      } else if addr < reg.size() {
-         unreachable!("failed to match anything at {:x}", addr);
-      } else {
-         break;
-      }
-   }
+        } else if addr < reg.size() {
+            unreachable!("failed to match anything at {:x}", addr);
+        } else {
+            break;
+        }
+    }
 }
 
 #[test]
 fn ia32_opcodes() {
-   env_logger::init().unwrap();
+    env_logger::init().unwrap();
 
-   let reg = Region::open("com".to_string(), Path::new("../tests/data/ia32.com")).unwrap();
-   let mut addr = 0;
+    let reg = Region::open("com".to_string(), Path::new("../tests/data/ia32.com")).unwrap();
+    let mut addr = 0;
 
-   loop {
-      let maybe_match = amd64::Amd64::decode(&reg, addr, &amd64::Mode::Protected);
+    loop {
+        let maybe_match = amd64::Amd64::decode(&reg, addr, &amd64::Mode::Protected);
 
-      if let Ok(match_st) = maybe_match {
-         for mne in match_st.mnemonics {
-            println!("{:x}: {}", mne.area.start, mne.opcode);
-            addr = mne.area.end;
+        if let Ok(match_st) = maybe_match {
+            for mne in match_st.mnemonics {
+                println!("{:x}: {}", mne.area.start, mne.opcode);
+                addr = mne.area.end;
 
-            if addr >= reg.size() {
-               return;
+                if addr >= reg.size() {
+                    return;
+                }
             }
-         }
-      } else if addr < reg.size() {
-         unreachable!("failed to match anything at {:x}", addr);
-      } else {
-         break;
-      }
-   }
+        } else if addr < reg.size() {
+            unreachable!("failed to match anything at {:x}", addr);
+        } else {
+            break;
+        }
+    }
 }

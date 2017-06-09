@@ -39,19 +39,19 @@ use super::*;
 
 #[allow(overflowing_literals)]
 pub fn disassembler() -> Arc<Disassembler<Mos>> {
-   let imm8 = new_disassembler!(Mos =>
+    let imm8 = new_disassembler!(Mos =>
         [ "imm@........" ] = |st: &mut State<Mos>| {
             st.configuration.arg = Some(Rvalue::new_u8(st.get_group("imm") as u8));
             true
         });
 
-   let imm16 = new_disassembler!(Mos =>
+    let imm16 = new_disassembler!(Mos =>
         [ "immlo@........", "immhi@........" ] = |st: &mut State<Mos>| {
             st.configuration.arg = Some(Rvalue::new_u16(st.get_group("immlo") as u16 | ((st.get_group("immhi") as u16) << 8)));
             true
         });
 
-   let rel = new_disassembler!(Mos =>
+    let rel = new_disassembler!(Mos =>
         [ "imm@........" ] = |st: &mut State<Mos>| {
             let rel = st.get_group("imm") as i8;
 
@@ -59,8 +59,8 @@ pub fn disassembler() -> Arc<Disassembler<Mos>> {
             true
         });
 
-   // FIXME: Add illegal opcodes.
-   new_disassembler!(Mos =>
+    // FIXME: Add illegal opcodes.
+    new_disassembler!(Mos =>
         // ADC
         [ 0x61, imm8 ] = zpage_index("adc", rreil_lvalue!{ X:8 }, adc),	// 011 000 01 xxxx xxxx
         [ 0x65, imm8 ] = zpage("adc", adc),		// 011 001 01 zzzz zzzz

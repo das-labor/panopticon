@@ -23,7 +23,7 @@ use semantic::*;
 use std::sync::Arc;
 
 pub fn disassembler() -> Arc<Disassembler<Avr>> {
-   let skip = new_disassembler!(Avr =>
+    let skip = new_disassembler!(Avr =>
         [ "1111 110 sr@..... 0 sb@..." ] = skip("sbrc",false),
         [ "1111 111 sr@..... 0 sb@..." ] = skip("sbrs",true),
         [ "000100 cr@. cd@..... cr@...." ] = cpse,
@@ -31,7 +31,7 @@ pub fn disassembler() -> Arc<Disassembler<Avr>> {
         [ "1001 1011 sA@..... sb@..." ] = skip("sbis",true)
     );
 
-   let main = new_disassembler!(Avr =>
+    let main = new_disassembler!(Avr =>
         [ "000111 R@. D@..... R@...." ] = binary("adc",adc),
         [ "0000 11 R@. D@..... R@...." ] = binary("add",add),
         [ "10010110 K@.. d@.. K@...." ] = adiw,
@@ -166,7 +166,7 @@ pub fn disassembler() -> Arc<Disassembler<Avr>> {
         [ "1001 001 R@..... 0100" ] = binary_ptr("xch",xch,AddressRegister::Z,AddressOffset::None,true)
     );
 
-   new_disassembler!(Avr =>
+    new_disassembler!(Avr =>
         [ main ] = |_: &mut State<Avr>| { true },
         [ skip ] = |_: &mut State<Avr>| { true }
     )

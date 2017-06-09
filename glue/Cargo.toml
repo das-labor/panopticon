@@ -5,7 +5,7 @@ authors = ["seu <seu@panopticon.re>"]
 build = "build.rs"
 
 [build-dependencies]
-cmake = "0.1.22"
+cmake = "0.1"
 pkg-config = "0.3.9"
 
 [dependencies]

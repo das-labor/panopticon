@@ -23,14 +23,14 @@ use std::path::Path;
 
 #[test]
 fn project_open() {
-   let maybe_project = Project::open(Path::new("../tests/data/save.panop"));
+    let maybe_project = Project::open(Path::new("../tests/data/save.panop"));
 
-   assert!(maybe_project.ok().is_some());
+    assert!(maybe_project.ok().is_some());
 }
 
 #[test]
 fn project_empty() {
-   let maybe_project = Project::open(Path::new("../tests/data/empty.panop"));
+    let maybe_project = Project::open(Path::new("../tests/data/empty.panop"));
 
-   assert!(maybe_project.ok().is_none());
+    assert!(maybe_project.ok().is_none());
 }

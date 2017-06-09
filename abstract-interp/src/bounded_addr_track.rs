@@ -47,25 +47,25 @@ pub const VERSION_LIMIT: usize = 10;
 /// represented by None.
 #[derive(Debug,PartialEq,Eq,Clone,Hash,RustcDecodable,RustcEncodable)]
 pub enum BoundedAddrTrack {
-   /// Lattice top
-   Join,
-   /// Pointer pointing somewhere into `region`
-   Region {
-      /// Name of pointed to region and pointer version. None stands for the global region.
-      region: Option<(Cow<'static, str>, usize)>,
-   },
-   /// Pointer pointing to `offset` inside `region`. `offset_size` is the size of the **pointer**
-   /// in bits.
-   Offset {
-      /// Name of pointed to region and pointer version. None stands for the global region.
-      region: Option<(Cow<'static, str>, usize)>,
-      /// Offset into region.
-      offset: u64,
-      /// Size of the pointer in bits. Not the value pointed to.
-      offset_size: usize,
-   },
-   /// Lattice bottom
-   Meet,
+    /// Lattice top
+    Join,
+    /// Pointer pointing somewhere into `region`
+    Region {
+        /// Name of pointed to region and pointer version. None stands for the global region.
+        region: Option<(Cow<'static, str>, usize)>,
+    },
+    /// Pointer pointing to `offset` inside `region`. `offset_size` is the size of the **pointer**
+    /// in bits.
+    Offset {
+        /// Name of pointed to region and pointer version. None stands for the global region.
+        region: Option<(Cow<'static, str>, usize)>,
+        /// Offset into region.
+        offset: u64,
+        /// Size of the pointer in bits. Not the value pointed to.
+        offset_size: usize,
+    },
+    /// Lattice bottom
+    Meet,
 }
 
 macro_rules! addrtrack_op {
@@ -93,328 +93,328 @@ macro_rules! addrtrack_op {
 }
 
 impl Avalue for BoundedAddrTrack {
-   fn abstract_value(v: &Rvalue) -> Self {
-      if let &Rvalue::Constant { ref value, ref size } = v {
-         BoundedAddrTrack::Offset { region: None, offset: *value, offset_size: *size }
-      } else {
-         BoundedAddrTrack::Join
-      }
-   }
-
-   fn abstract_constraint(constr: &Constraint) -> Self {
-      if let &Constraint::Equal(Rvalue::Constant { ref value, ref size }) = constr {
-         BoundedAddrTrack::Offset { region: None, offset: *value, offset_size: *size }
-      } else {
-         BoundedAddrTrack::Join
-      }
-   }
-
-   fn execute(
-      _pp: &ProgramPoint,
-      op: &Operation<Self>, /*, reg: Option<&Region>,
-               symbolic: &HashMap<Range<u64>,Cow<'static,str>>, initial: &HashMap<(Cow<'static,str>,usize),Self>*/
-   ) -> Self {
-      fn execute(op: Operation<Rvalue>) -> BoundedAddrTrack {
-         let tmp = il::execute(op);
-         if let Rvalue::Constant { ref value, ref size } = tmp {
+    fn abstract_value(v: &Rvalue) -> Self {
+        if let &Rvalue::Constant { ref value, ref size } = v {
             BoundedAddrTrack::Offset { region: None, offset: *value, offset_size: *size }
-         } else {
+        } else {
             BoundedAddrTrack::Join
-         }
-      }
+        }
+    }
 
+    fn abstract_constraint(constr: &Constraint) -> Self {
+        if let &Constraint::Equal(Rvalue::Constant { ref value, ref size }) = constr {
+            BoundedAddrTrack::Offset { region: None, offset: *value, offset_size: *size }
+        } else {
+            BoundedAddrTrack::Join
+        }
+    }
 
-      match *op {
-         // EvalOp
-         Operation::And(BoundedAddrTrack::Offset { region: None, offset: ref val1, offset_size: ref sz1 },
-                        BoundedAddrTrack::Offset { region: None, offset: ref val2, offset_size: ref sz2 }) => {
-            execute(
-               Operation::And(
-                  Rvalue::Constant { value: *val1, size: *sz1 },
-                  Rvalue::Constant { value: *val2, size: *sz2 },
-               )
-            )
-         }
-         Operation::And(BoundedAddrTrack::Offset { region: ref r1, offset: ref val1, offset_size: ref sz1 },
-                        BoundedAddrTrack::Offset { region: ref r2, offset: ref val2, offset_size: ref sz2 }) => {
-            addrtrack_op!(Operation::And: r1, r2, val1, val2, sz1, sz2)
-         }
-
-         Operation::InclusiveOr(BoundedAddrTrack::Offset { region: None, offset: ref val1, offset_size: ref sz1 },
-                                BoundedAddrTrack::Offset { region: None, offset: ref val2, offset_size: ref sz2 }) => {
-            execute(
-               Operation::InclusiveOr(
-                  Rvalue::Constant { value: *val1, size: *sz1 },
-                  Rvalue::Constant { value: *val2, size: *sz2 },
-               )
-            )
-         }
-         Operation::InclusiveOr(BoundedAddrTrack::Offset { region: ref r1, offset: ref val1, offset_size: ref sz1 },
-                                BoundedAddrTrack::Offset { region: ref r2, offset: ref val2, offset_size: ref sz2 }) => {
-            addrtrack_op!(Operation::InclusiveOr: r1, r2, val1, val2, sz1, sz2)
-         }
-
-         Operation::ExclusiveOr(BoundedAddrTrack::Offset { region: None, offset: ref val1, offset_size: ref sz1 },
-                                BoundedAddrTrack::Offset { region: None, offset: ref val2, offset_size: ref sz2 }) => {
-            execute(
-               Operation::ExclusiveOr(
-                  Rvalue::Constant { value: *val1, size: *sz1 },
-                  Rvalue::Constant { value: *val2, size: *sz2 },
-               )
-            )
-         }
-         Operation::ExclusiveOr(BoundedAddrTrack::Offset { region: ref r1, offset: ref val1, offset_size: ref sz1 },
-                                BoundedAddrTrack::Offset { region: ref r2, offset: ref val2, offset_size: ref sz2 }) => {
-            addrtrack_op!(Operation::ExclusiveOr: r1, r2, val1, val2, sz1, sz2)
-         }
-
-         Operation::Add(BoundedAddrTrack::Offset { region: None, offset: ref val1, offset_size: ref sz1 },
-                        BoundedAddrTrack::Offset { region: None, offset: ref val2, offset_size: ref sz2 }) => {
-            execute(
-               Operation::Add(
-                  Rvalue::Constant { value: *val1, size: *sz1 },
-                  Rvalue::Constant { value: *val2, size: *sz2 },
-               )
-            )
-         }
-
-         Operation::Add(BoundedAddrTrack::Offset { region: ref r1, offset: ref val1, offset_size: ref sz1 },
-                        BoundedAddrTrack::Offset { region: ref r2, offset: ref val2, offset_size: ref sz2 }) if r1.is_some() || r2.is_some() => {
-            let (rx, verx) = if r1.is_some() {
-               r1.clone().unwrap()
-            } else {
-               r2.clone().unwrap()
-            };
-            let tmp = il::execute(
-               Operation::Add(
-                  Rvalue::Constant { value: *val1, size: *sz1 },
-                  Rvalue::Constant { value: *val2, size: *sz2 },
-               )
-            );
+    fn execute(
+        _pp: &ProgramPoint,
+        op: &Operation<Self>, /*, reg: Option<&Region>,
+               symbolic: &HashMap<Range<u64>,Cow<'static,str>>, initial: &HashMap<(Cow<'static,str>,usize),Self>*/
+    ) -> Self {
+        fn execute(op: Operation<Rvalue>) -> BoundedAddrTrack {
+            let tmp = il::execute(op);
             if let Rvalue::Constant { ref value, ref size } = tmp {
-               BoundedAddrTrack::Offset {
-                  region: Some((rx.clone(), verx)),
-                  offset: *value,
-                  offset_size: *size,
-               }
+                BoundedAddrTrack::Offset { region: None, offset: *value, offset_size: *size }
             } else {
-               BoundedAddrTrack::Join
+                BoundedAddrTrack::Join
             }
-         }
+        }
 
-         Operation::Subtract(BoundedAddrTrack::Offset { region: None, offset: ref val1, offset_size: ref sz1 },
-                             BoundedAddrTrack::Offset { region: None, offset: ref val2, offset_size: ref sz2 }) => {
-            execute(
-               Operation::Subtract(
-                  Rvalue::Constant { value: *val1, size: *sz1 },
-                  Rvalue::Constant { value: *val2, size: *sz2 },
-               )
-            )
-         }
-         Operation::Subtract(BoundedAddrTrack::Offset { region: ref r1, offset: ref val1, offset_size: ref sz1 },
-                             BoundedAddrTrack::Offset { region: ref r2, offset: ref val2, offset_size: ref sz2 }) => {
-            addrtrack_op!(Operation::Subtract: r1, r2, val1, val2, sz1, sz2)
-         }
 
-         Operation::Multiply(BoundedAddrTrack::Offset { region: None, offset: ref val1, offset_size: ref sz1 },
-                             BoundedAddrTrack::Offset { region: None, offset: ref val2, offset_size: ref sz2 }) => {
-            execute(
-               Operation::Multiply(
-                  Rvalue::Constant { value: *val1, size: *sz1 },
-                  Rvalue::Constant { value: *val2, size: *sz2 },
-               )
-            )
-         }
-         Operation::Multiply(BoundedAddrTrack::Offset { region: ref r1, offset: ref val1, offset_size: ref sz1 },
-                             BoundedAddrTrack::Offset { region: ref r2, offset: ref val2, offset_size: ref sz2 }) => {
-            addrtrack_op!(Operation::Multiply: r1, r2, val1, val2, sz1, sz2)
-         }
-
-         Operation::DivideUnsigned(BoundedAddrTrack::Offset { region: None, offset: ref val1, offset_size: ref sz1 },
-                                   BoundedAddrTrack::Offset { region: None, offset: ref val2, offset_size: ref sz2 }) => {
-            execute(
-               Operation::DivideUnsigned(
-                  Rvalue::Constant { value: *val1, size: *sz1 },
-                  Rvalue::Constant { value: *val2, size: *sz2 },
-               )
-            )
-         }
-         Operation::DivideUnsigned(BoundedAddrTrack::Offset { region: ref r1, offset: ref val1, offset_size: ref sz1 },
-                                   BoundedAddrTrack::Offset { region: ref r2, offset: ref val2, offset_size: ref sz2 }) => {
-            addrtrack_op!(Operation::DivideUnsigned: r1, r2, val1, val2, sz1, sz2)
-         }
-
-         Operation::DivideSigned(BoundedAddrTrack::Offset { region: None, offset: ref val1, offset_size: ref sz1 },
-                                 BoundedAddrTrack::Offset { region: None, offset: ref val2, offset_size: ref sz2 }) => {
-            execute(
-               Operation::DivideSigned(
-                  Rvalue::Constant { value: *val1, size: *sz1 },
-                  Rvalue::Constant { value: *val2, size: *sz2 },
-               )
-            )
-         }
-         Operation::DivideSigned(BoundedAddrTrack::Offset { region: ref r1, offset: ref val1, offset_size: ref sz1 },
-                                 BoundedAddrTrack::Offset { region: ref r2, offset: ref val2, offset_size: ref sz2 }) => {
-            addrtrack_op!(Operation::DivideSigned: r1, r2, val1, val2, sz1, sz2)
-         }
-
-         Operation::Modulo(BoundedAddrTrack::Offset { region: None, offset: ref val1, offset_size: ref sz1 },
+        match *op {
+            // EvalOp
+            Operation::And(BoundedAddrTrack::Offset { region: None, offset: ref val1, offset_size: ref sz1 },
                            BoundedAddrTrack::Offset { region: None, offset: ref val2, offset_size: ref sz2 }) => {
-            execute(
-               Operation::Modulo(
-                  Rvalue::Constant { value: *val1, size: *sz1 },
-                  Rvalue::Constant { value: *val2, size: *sz2 },
-               )
-            )
-         }
-         Operation::Modulo(BoundedAddrTrack::Offset { region: ref r1, offset: ref val1, offset_size: ref sz1 },
+                execute(
+                    Operation::And(
+                        Rvalue::Constant { value: *val1, size: *sz1 },
+                        Rvalue::Constant { value: *val2, size: *sz2 },
+                    )
+                )
+            }
+            Operation::And(BoundedAddrTrack::Offset { region: ref r1, offset: ref val1, offset_size: ref sz1 },
                            BoundedAddrTrack::Offset { region: ref r2, offset: ref val2, offset_size: ref sz2 }) => {
-            addrtrack_op!(Operation::Modulo: r1, r2, val1, val2, sz1, sz2)
-         }
-
-         Operation::ShiftLeft(BoundedAddrTrack::Offset { region: None, offset: ref val1, offset_size: ref sz1 },
-                              BoundedAddrTrack::Offset { region: None, offset: ref val2, offset_size: ref sz2 }) => {
-            execute(
-               Operation::ShiftLeft(
-                  Rvalue::Constant { value: *val1, size: *sz1 },
-                  Rvalue::Constant { value: *val2, size: *sz2 },
-               )
-            )
-         }
-         Operation::ShiftLeft(BoundedAddrTrack::Offset { region: ref r1, offset: ref val1, offset_size: ref sz1 },
-                              BoundedAddrTrack::Offset { region: ref r2, offset: ref val2, offset_size: ref sz2 }) => {
-            addrtrack_op!(Operation::ShiftLeft: r1, r2, val1, val2, sz1, sz2)
-         }
-
-         Operation::ShiftRightUnsigned(BoundedAddrTrack::Offset { region: None, offset: ref val1, offset_size: ref sz1 },
-                                       BoundedAddrTrack::Offset { region: None, offset: ref val2, offset_size: ref sz2 }) => {
-            execute(
-               Operation::ShiftRightUnsigned(
-                  Rvalue::Constant { value: *val1, size: *sz1 },
-                  Rvalue::Constant { value: *val2, size: *sz2 },
-               )
-            )
-         }
-         Operation::ShiftRightUnsigned(BoundedAddrTrack::Offset { region: ref r1, offset: ref val1, offset_size: ref sz1 },
-                                       BoundedAddrTrack::Offset { region: ref r2, offset: ref val2, offset_size: ref sz2 }) => {
-            addrtrack_op!(Operation::ShiftRightUnsigned: r1, r2, val1, val2, sz1, sz2)
-         }
-
-         Operation::ShiftRightSigned(BoundedAddrTrack::Offset { region: None, offset: ref val1, offset_size: ref sz1 },
-                                     BoundedAddrTrack::Offset { region: None, offset: ref val2, offset_size: ref sz2 }) => {
-            execute(
-               Operation::ShiftRightSigned(
-                  Rvalue::Constant { value: *val1, size: *sz1 },
-                  Rvalue::Constant { value: *val2, size: *sz2 },
-               )
-            )
-         }
-         Operation::ShiftRightSigned(BoundedAddrTrack::Offset { region: ref r1, offset: ref val1, offset_size: ref sz1 },
-                                     BoundedAddrTrack::Offset { region: ref r2, offset: ref val2, offset_size: ref sz2 }) => {
-            addrtrack_op!(Operation::ShiftRightSigned: r1, r2, val1, val2, sz1, sz2)
-         }
-
-         Operation::LessOrEqualSigned(BoundedAddrTrack::Offset { region: None, offset: ref val1, offset_size: ref sz1 },
-                                      BoundedAddrTrack::Offset { region: None, offset: ref val2, offset_size: ref sz2 }) => {
-            execute(
-               Operation::LessOrEqualSigned(
-                  Rvalue::Constant { value: *val1, size: *sz1 },
-                  Rvalue::Constant { value: *val2, size: *sz2 },
-               )
-            )
-         }
-         Operation::LessOrEqualSigned(BoundedAddrTrack::Offset { region: ref r1, offset: ref val1, offset_size: ref sz1 },
-                                      BoundedAddrTrack::Offset { region: ref r2, offset: ref val2, offset_size: ref sz2 }) => {
-            addrtrack_op!(Operation::LessOrEqualSigned: r1, r2, val1, val2, sz1, sz2)
-         }
-
-         Operation::LessOrEqualUnsigned(BoundedAddrTrack::Offset { region: None, offset: ref val1, offset_size: ref sz1 },
-                                        BoundedAddrTrack::Offset { region: None, offset: ref val2, offset_size: ref sz2 }) => {
-            execute(
-               Operation::LessOrEqualUnsigned(
-                  Rvalue::Constant { value: *val1, size: *sz1 },
-                  Rvalue::Constant { value: *val2, size: *sz2 },
-               )
-            )
-         }
-         Operation::LessOrEqualUnsigned(BoundedAddrTrack::Offset { region: ref r1, offset: ref val1, offset_size: ref sz1 },
-                                        BoundedAddrTrack::Offset { region: ref r2, offset: ref val2, offset_size: ref sz2 }) => {
-            addrtrack_op!(Operation::LessOrEqualUnsigned: r1, r2, val1, val2, sz1, sz2)
-         }
-
-         Operation::LessUnsigned(BoundedAddrTrack::Offset { region: None, offset: ref val1, offset_size: ref sz1 },
-                                 BoundedAddrTrack::Offset { region: None, offset: ref val2, offset_size: ref sz2 }) => {
-            execute(
-               Operation::LessUnsigned(
-                  Rvalue::Constant { value: *val1, size: *sz1 },
-                  Rvalue::Constant { value: *val2, size: *sz2 },
-               )
-            )
-         }
-         Operation::LessUnsigned(BoundedAddrTrack::Offset { region: ref r1, offset: ref val1, offset_size: ref sz1 },
-                                 BoundedAddrTrack::Offset { region: ref r2, offset: ref val2, offset_size: ref sz2 }) => {
-            addrtrack_op!(Operation::LessUnsigned: r1, r2, val1, val2, sz1, sz2)
-         }
-
-         Operation::LessSigned(BoundedAddrTrack::Offset { region: None, offset: ref val1, offset_size: ref sz1 },
-                               BoundedAddrTrack::Offset { region: None, offset: ref val2, offset_size: ref sz2 }) => {
-            execute(
-               Operation::LessSigned(
-                  Rvalue::Constant { value: *val1, size: *sz1 },
-                  Rvalue::Constant { value: *val2, size: *sz2 },
-               )
-            )
-         }
-         Operation::LessSigned(BoundedAddrTrack::Offset { region: ref r1, offset: ref val1, offset_size: ref sz1 },
-                               BoundedAddrTrack::Offset { region: ref r2, offset: ref val2, offset_size: ref sz2 }) => {
-            addrtrack_op!(Operation::LessSigned: r1, r2, val1, val2, sz1, sz2)
-         }
-
-         Operation::Equal(BoundedAddrTrack::Offset { region: None, offset: ref val1, offset_size: ref sz1 },
-                          BoundedAddrTrack::Offset { region: None, offset: ref val2, offset_size: ref sz2 }) => {
-            execute(
-               Operation::Equal(
-                  Rvalue::Constant { value: *val1, size: *sz1 },
-                  Rvalue::Constant { value: *val2, size: *sz2 },
-               )
-            )
-         }
-         Operation::Equal(BoundedAddrTrack::Offset { region: ref r1, offset: ref val1, offset_size: ref sz1 },
-                          BoundedAddrTrack::Offset { region: ref r2, offset: ref val2, offset_size: ref sz2 }) => {
-            addrtrack_op!(Operation::Equal: r1, r2, val1, val2, sz1, sz2)
-         }
-
-         Operation::Move(ref a) => a.clone(),
-
-         Operation::ZeroExtend(ref sz, BoundedAddrTrack::Offset { region: ref r1, offset: ref val1, offset_size: ref sz1 }) => {
-            let tmp = il::execute(Operation::ZeroExtend(*sz, Rvalue::Constant { value: *val1, size: *sz1 }));
-            if let Rvalue::Constant { ref value, ref size } = tmp {
-               BoundedAddrTrack::Offset { region: r1.clone(), offset: *value, offset_size: *size }
-            } else {
-               BoundedAddrTrack::Join
+                addrtrack_op!(Operation::And: r1, r2, val1, val2, sz1, sz2)
             }
-         }
-         Operation::SignExtend(ref sz, BoundedAddrTrack::Offset { region: ref r1, offset: ref val1, offset_size: ref sz1 }) => {
-            let tmp = il::execute(Operation::SignExtend(*sz, Rvalue::Constant { value: *val1, size: *sz1 }));
-            if let Rvalue::Constant { ref value, ref size } = tmp {
-               BoundedAddrTrack::Offset { region: r1.clone(), offset: *value, offset_size: *size }
-            } else {
-               BoundedAddrTrack::Join
+
+            Operation::InclusiveOr(BoundedAddrTrack::Offset { region: None, offset: ref val1, offset_size: ref sz1 },
+                                   BoundedAddrTrack::Offset { region: None, offset: ref val2, offset_size: ref sz2 }) => {
+                execute(
+                    Operation::InclusiveOr(
+                        Rvalue::Constant { value: *val1, size: *sz1 },
+                        Rvalue::Constant { value: *val2, size: *sz2 },
+                    )
+                )
             }
-         }
-         Operation::Select(ref off,
-                           BoundedAddrTrack::Offset { region: None, offset: ref val1, offset_size: ref sz1 },
+            Operation::InclusiveOr(BoundedAddrTrack::Offset { region: ref r1, offset: ref val1, offset_size: ref sz1 },
+                                   BoundedAddrTrack::Offset { region: ref r2, offset: ref val2, offset_size: ref sz2 }) => {
+                addrtrack_op!(Operation::InclusiveOr: r1, r2, val1, val2, sz1, sz2)
+            }
+
+            Operation::ExclusiveOr(BoundedAddrTrack::Offset { region: None, offset: ref val1, offset_size: ref sz1 },
+                                   BoundedAddrTrack::Offset { region: None, offset: ref val2, offset_size: ref sz2 }) => {
+                execute(
+                    Operation::ExclusiveOr(
+                        Rvalue::Constant { value: *val1, size: *sz1 },
+                        Rvalue::Constant { value: *val2, size: *sz2 },
+                    )
+                )
+            }
+            Operation::ExclusiveOr(BoundedAddrTrack::Offset { region: ref r1, offset: ref val1, offset_size: ref sz1 },
+                                   BoundedAddrTrack::Offset { region: ref r2, offset: ref val2, offset_size: ref sz2 }) => {
+                addrtrack_op!(Operation::ExclusiveOr: r1, r2, val1, val2, sz1, sz2)
+            }
+
+            Operation::Add(BoundedAddrTrack::Offset { region: None, offset: ref val1, offset_size: ref sz1 },
                            BoundedAddrTrack::Offset { region: None, offset: ref val2, offset_size: ref sz2 }) => {
-            execute(
-               Operation::Select(
-                  *off,
-                  Rvalue::Constant { value: *val1, size: *sz1 },
-                  Rvalue::Constant { value: *val2, size: *sz2 },
-               )
-            )
-         }
+                execute(
+                    Operation::Add(
+                        Rvalue::Constant { value: *val1, size: *sz1 },
+                        Rvalue::Constant { value: *val2, size: *sz2 },
+                    )
+                )
+            }
 
-         /*
+            Operation::Add(BoundedAddrTrack::Offset { region: ref r1, offset: ref val1, offset_size: ref sz1 },
+                           BoundedAddrTrack::Offset { region: ref r2, offset: ref val2, offset_size: ref sz2 }) if r1.is_some() || r2.is_some() => {
+                let (rx, verx) = if r1.is_some() {
+                    r1.clone().unwrap()
+                } else {
+                    r2.clone().unwrap()
+                };
+                let tmp = il::execute(
+                    Operation::Add(
+                        Rvalue::Constant { value: *val1, size: *sz1 },
+                        Rvalue::Constant { value: *val2, size: *sz2 },
+                    )
+                );
+                if let Rvalue::Constant { ref value, ref size } = tmp {
+                    BoundedAddrTrack::Offset {
+                        region: Some((rx.clone(), verx)),
+                        offset: *value,
+                        offset_size: *size,
+                    }
+                } else {
+                    BoundedAddrTrack::Join
+                }
+            }
+
+            Operation::Subtract(BoundedAddrTrack::Offset { region: None, offset: ref val1, offset_size: ref sz1 },
+                                BoundedAddrTrack::Offset { region: None, offset: ref val2, offset_size: ref sz2 }) => {
+                execute(
+                    Operation::Subtract(
+                        Rvalue::Constant { value: *val1, size: *sz1 },
+                        Rvalue::Constant { value: *val2, size: *sz2 },
+                    )
+                )
+            }
+            Operation::Subtract(BoundedAddrTrack::Offset { region: ref r1, offset: ref val1, offset_size: ref sz1 },
+                                BoundedAddrTrack::Offset { region: ref r2, offset: ref val2, offset_size: ref sz2 }) => {
+                addrtrack_op!(Operation::Subtract: r1, r2, val1, val2, sz1, sz2)
+            }
+
+            Operation::Multiply(BoundedAddrTrack::Offset { region: None, offset: ref val1, offset_size: ref sz1 },
+                                BoundedAddrTrack::Offset { region: None, offset: ref val2, offset_size: ref sz2 }) => {
+                execute(
+                    Operation::Multiply(
+                        Rvalue::Constant { value: *val1, size: *sz1 },
+                        Rvalue::Constant { value: *val2, size: *sz2 },
+                    )
+                )
+            }
+            Operation::Multiply(BoundedAddrTrack::Offset { region: ref r1, offset: ref val1, offset_size: ref sz1 },
+                                BoundedAddrTrack::Offset { region: ref r2, offset: ref val2, offset_size: ref sz2 }) => {
+                addrtrack_op!(Operation::Multiply: r1, r2, val1, val2, sz1, sz2)
+            }
+
+            Operation::DivideUnsigned(BoundedAddrTrack::Offset { region: None, offset: ref val1, offset_size: ref sz1 },
+                                      BoundedAddrTrack::Offset { region: None, offset: ref val2, offset_size: ref sz2 }) => {
+                execute(
+                    Operation::DivideUnsigned(
+                        Rvalue::Constant { value: *val1, size: *sz1 },
+                        Rvalue::Constant { value: *val2, size: *sz2 },
+                    )
+                )
+            }
+            Operation::DivideUnsigned(BoundedAddrTrack::Offset { region: ref r1, offset: ref val1, offset_size: ref sz1 },
+                                      BoundedAddrTrack::Offset { region: ref r2, offset: ref val2, offset_size: ref sz2 }) => {
+                addrtrack_op!(Operation::DivideUnsigned: r1, r2, val1, val2, sz1, sz2)
+            }
+
+            Operation::DivideSigned(BoundedAddrTrack::Offset { region: None, offset: ref val1, offset_size: ref sz1 },
+                                    BoundedAddrTrack::Offset { region: None, offset: ref val2, offset_size: ref sz2 }) => {
+                execute(
+                    Operation::DivideSigned(
+                        Rvalue::Constant { value: *val1, size: *sz1 },
+                        Rvalue::Constant { value: *val2, size: *sz2 },
+                    )
+                )
+            }
+            Operation::DivideSigned(BoundedAddrTrack::Offset { region: ref r1, offset: ref val1, offset_size: ref sz1 },
+                                    BoundedAddrTrack::Offset { region: ref r2, offset: ref val2, offset_size: ref sz2 }) => {
+                addrtrack_op!(Operation::DivideSigned: r1, r2, val1, val2, sz1, sz2)
+            }
+
+            Operation::Modulo(BoundedAddrTrack::Offset { region: None, offset: ref val1, offset_size: ref sz1 },
+                              BoundedAddrTrack::Offset { region: None, offset: ref val2, offset_size: ref sz2 }) => {
+                execute(
+                    Operation::Modulo(
+                        Rvalue::Constant { value: *val1, size: *sz1 },
+                        Rvalue::Constant { value: *val2, size: *sz2 },
+                    )
+                )
+            }
+            Operation::Modulo(BoundedAddrTrack::Offset { region: ref r1, offset: ref val1, offset_size: ref sz1 },
+                              BoundedAddrTrack::Offset { region: ref r2, offset: ref val2, offset_size: ref sz2 }) => {
+                addrtrack_op!(Operation::Modulo: r1, r2, val1, val2, sz1, sz2)
+            }
+
+            Operation::ShiftLeft(BoundedAddrTrack::Offset { region: None, offset: ref val1, offset_size: ref sz1 },
+                                 BoundedAddrTrack::Offset { region: None, offset: ref val2, offset_size: ref sz2 }) => {
+                execute(
+                    Operation::ShiftLeft(
+                        Rvalue::Constant { value: *val1, size: *sz1 },
+                        Rvalue::Constant { value: *val2, size: *sz2 },
+                    )
+                )
+            }
+            Operation::ShiftLeft(BoundedAddrTrack::Offset { region: ref r1, offset: ref val1, offset_size: ref sz1 },
+                                 BoundedAddrTrack::Offset { region: ref r2, offset: ref val2, offset_size: ref sz2 }) => {
+                addrtrack_op!(Operation::ShiftLeft: r1, r2, val1, val2, sz1, sz2)
+            }
+
+            Operation::ShiftRightUnsigned(BoundedAddrTrack::Offset { region: None, offset: ref val1, offset_size: ref sz1 },
+                                          BoundedAddrTrack::Offset { region: None, offset: ref val2, offset_size: ref sz2 }) => {
+                execute(
+                    Operation::ShiftRightUnsigned(
+                        Rvalue::Constant { value: *val1, size: *sz1 },
+                        Rvalue::Constant { value: *val2, size: *sz2 },
+                    )
+                )
+            }
+            Operation::ShiftRightUnsigned(BoundedAddrTrack::Offset { region: ref r1, offset: ref val1, offset_size: ref sz1 },
+                                          BoundedAddrTrack::Offset { region: ref r2, offset: ref val2, offset_size: ref sz2 }) => {
+                addrtrack_op!(Operation::ShiftRightUnsigned: r1, r2, val1, val2, sz1, sz2)
+            }
+
+            Operation::ShiftRightSigned(BoundedAddrTrack::Offset { region: None, offset: ref val1, offset_size: ref sz1 },
+                                        BoundedAddrTrack::Offset { region: None, offset: ref val2, offset_size: ref sz2 }) => {
+                execute(
+                    Operation::ShiftRightSigned(
+                        Rvalue::Constant { value: *val1, size: *sz1 },
+                        Rvalue::Constant { value: *val2, size: *sz2 },
+                    )
+                )
+            }
+            Operation::ShiftRightSigned(BoundedAddrTrack::Offset { region: ref r1, offset: ref val1, offset_size: ref sz1 },
+                                        BoundedAddrTrack::Offset { region: ref r2, offset: ref val2, offset_size: ref sz2 }) => {
+                addrtrack_op!(Operation::ShiftRightSigned: r1, r2, val1, val2, sz1, sz2)
+            }
+
+            Operation::LessOrEqualSigned(BoundedAddrTrack::Offset { region: None, offset: ref val1, offset_size: ref sz1 },
+                                         BoundedAddrTrack::Offset { region: None, offset: ref val2, offset_size: ref sz2 }) => {
+                execute(
+                    Operation::LessOrEqualSigned(
+                        Rvalue::Constant { value: *val1, size: *sz1 },
+                        Rvalue::Constant { value: *val2, size: *sz2 },
+                    )
+                )
+            }
+            Operation::LessOrEqualSigned(BoundedAddrTrack::Offset { region: ref r1, offset: ref val1, offset_size: ref sz1 },
+                                         BoundedAddrTrack::Offset { region: ref r2, offset: ref val2, offset_size: ref sz2 }) => {
+                addrtrack_op!(Operation::LessOrEqualSigned: r1, r2, val1, val2, sz1, sz2)
+            }
+
+            Operation::LessOrEqualUnsigned(BoundedAddrTrack::Offset { region: None, offset: ref val1, offset_size: ref sz1 },
+                                           BoundedAddrTrack::Offset { region: None, offset: ref val2, offset_size: ref sz2 }) => {
+                execute(
+                    Operation::LessOrEqualUnsigned(
+                        Rvalue::Constant { value: *val1, size: *sz1 },
+                        Rvalue::Constant { value: *val2, size: *sz2 },
+                    )
+                )
+            }
+            Operation::LessOrEqualUnsigned(BoundedAddrTrack::Offset { region: ref r1, offset: ref val1, offset_size: ref sz1 },
+                                           BoundedAddrTrack::Offset { region: ref r2, offset: ref val2, offset_size: ref sz2 }) => {
+                addrtrack_op!(Operation::LessOrEqualUnsigned: r1, r2, val1, val2, sz1, sz2)
+            }
+
+            Operation::LessUnsigned(BoundedAddrTrack::Offset { region: None, offset: ref val1, offset_size: ref sz1 },
+                                    BoundedAddrTrack::Offset { region: None, offset: ref val2, offset_size: ref sz2 }) => {
+                execute(
+                    Operation::LessUnsigned(
+                        Rvalue::Constant { value: *val1, size: *sz1 },
+                        Rvalue::Constant { value: *val2, size: *sz2 },
+                    )
+                )
+            }
+            Operation::LessUnsigned(BoundedAddrTrack::Offset { region: ref r1, offset: ref val1, offset_size: ref sz1 },
+                                    BoundedAddrTrack::Offset { region: ref r2, offset: ref val2, offset_size: ref sz2 }) => {
+                addrtrack_op!(Operation::LessUnsigned: r1, r2, val1, val2, sz1, sz2)
+            }
+
+            Operation::LessSigned(BoundedAddrTrack::Offset { region: None, offset: ref val1, offset_size: ref sz1 },
+                                  BoundedAddrTrack::Offset { region: None, offset: ref val2, offset_size: ref sz2 }) => {
+                execute(
+                    Operation::LessSigned(
+                        Rvalue::Constant { value: *val1, size: *sz1 },
+                        Rvalue::Constant { value: *val2, size: *sz2 },
+                    )
+                )
+            }
+            Operation::LessSigned(BoundedAddrTrack::Offset { region: ref r1, offset: ref val1, offset_size: ref sz1 },
+                                  BoundedAddrTrack::Offset { region: ref r2, offset: ref val2, offset_size: ref sz2 }) => {
+                addrtrack_op!(Operation::LessSigned: r1, r2, val1, val2, sz1, sz2)
+            }
+
+            Operation::Equal(BoundedAddrTrack::Offset { region: None, offset: ref val1, offset_size: ref sz1 },
+                             BoundedAddrTrack::Offset { region: None, offset: ref val2, offset_size: ref sz2 }) => {
+                execute(
+                    Operation::Equal(
+                        Rvalue::Constant { value: *val1, size: *sz1 },
+                        Rvalue::Constant { value: *val2, size: *sz2 },
+                    )
+                )
+            }
+            Operation::Equal(BoundedAddrTrack::Offset { region: ref r1, offset: ref val1, offset_size: ref sz1 },
+                             BoundedAddrTrack::Offset { region: ref r2, offset: ref val2, offset_size: ref sz2 }) => {
+                addrtrack_op!(Operation::Equal: r1, r2, val1, val2, sz1, sz2)
+            }
+
+            Operation::Move(ref a) => a.clone(),
+
+            Operation::ZeroExtend(ref sz, BoundedAddrTrack::Offset { region: ref r1, offset: ref val1, offset_size: ref sz1 }) => {
+                let tmp = il::execute(Operation::ZeroExtend(*sz, Rvalue::Constant { value: *val1, size: *sz1 }));
+                if let Rvalue::Constant { ref value, ref size } = tmp {
+                    BoundedAddrTrack::Offset { region: r1.clone(), offset: *value, offset_size: *size }
+                } else {
+                    BoundedAddrTrack::Join
+                }
+            }
+            Operation::SignExtend(ref sz, BoundedAddrTrack::Offset { region: ref r1, offset: ref val1, offset_size: ref sz1 }) => {
+                let tmp = il::execute(Operation::SignExtend(*sz, Rvalue::Constant { value: *val1, size: *sz1 }));
+                if let Rvalue::Constant { ref value, ref size } = tmp {
+                    BoundedAddrTrack::Offset { region: r1.clone(), offset: *value, offset_size: *size }
+                } else {
+                    BoundedAddrTrack::Join
+                }
+            }
+            Operation::Select(ref off,
+                              BoundedAddrTrack::Offset { region: None, offset: ref val1, offset_size: ref sz1 },
+                              BoundedAddrTrack::Offset { region: None, offset: ref val2, offset_size: ref sz2 }) => {
+                execute(
+                    Operation::Select(
+                        *off,
+                        Rvalue::Constant { value: *val1, size: *sz1 },
+                        Rvalue::Constant { value: *val2, size: *sz2 },
+                    )
+                )
+            }
+
+            /*
             // EvalMem
             Operation::Load(ref r,ref endian,ref sz,ref a) => {
                 if let &BoundedAddrTrack::Offset{ region: ref reg, offset: ref val,.. } = a {
@@ -435,146 +435,146 @@ impl Avalue for BoundedAddrTrack {
             // AssignMem
             Operation::Store(ref r,ref endian,ref sz,ref a) => BoundedAddrTrack::Join,
             */
-         Operation::Phi(ref ops) => {
-            match ops.len() {
-               0 => unreachable!("Phi function w/o arguments"),
-               1 => ops[0].clone(),
-               _ => ops.iter().fold(BoundedAddrTrack::Meet, |acc, x| acc.combine(&x)),
+            Operation::Phi(ref ops) => {
+                match ops.len() {
+                    0 => unreachable!("Phi function w/o arguments"),
+                    1 => ops[0].clone(),
+                    _ => ops.iter().fold(BoundedAddrTrack::Meet, |acc, x| acc.combine(&x)),
+                }
             }
-         }
 
-         //Operation::Initialize(ref name, ref size) =>
-         //    initial.get(&(name.clone(),*size)).unwrap_or(&BoundedAddrTrack::Meet).clone(),
-         _ => BoundedAddrTrack::Join,
-      }
-   }
+            //Operation::Initialize(ref name, ref size) =>
+            //    initial.get(&(name.clone(),*size)).unwrap_or(&BoundedAddrTrack::Meet).clone(),
+            _ => BoundedAddrTrack::Join,
+        }
+    }
 
-   fn narrow(&self, a: &Self) -> Self {
-      a.clone()
-   }
+    fn narrow(&self, a: &Self) -> Self {
+        a.clone()
+    }
 
-   fn combine(&self, a: &Self) -> Self {
-      if *a == *self {
-         a.clone()
-      } else {
-         match (self, a) {
-            (&BoundedAddrTrack::Join, _) => BoundedAddrTrack::Join,
-            (_, &BoundedAddrTrack::Join) => BoundedAddrTrack::Join,
-            (&BoundedAddrTrack::Region { region: ref a }, &BoundedAddrTrack::Region { region: ref b }) => {
-               if a == b {
-                  BoundedAddrTrack::Region { region: a.clone() }
-               } else {
-                  BoundedAddrTrack::Join
-               }
+    fn combine(&self, a: &Self) -> Self {
+        if *a == *self {
+            a.clone()
+        } else {
+            match (self, a) {
+                (&BoundedAddrTrack::Join, _) => BoundedAddrTrack::Join,
+                (_, &BoundedAddrTrack::Join) => BoundedAddrTrack::Join,
+                (&BoundedAddrTrack::Region { region: ref a }, &BoundedAddrTrack::Region { region: ref b }) => {
+                    if a == b {
+                        BoundedAddrTrack::Region { region: a.clone() }
+                    } else {
+                        BoundedAddrTrack::Join
+                    }
+                }
+                (&BoundedAddrTrack::Offset { region: ref a, .. }, &BoundedAddrTrack::Region { region: ref b }) => {
+                    if a == b {
+                        BoundedAddrTrack::Region { region: a.clone() }
+                    } else {
+                        BoundedAddrTrack::Join
+                    }
+                }
+                (&BoundedAddrTrack::Region { region: ref a }, &BoundedAddrTrack::Offset { region: ref b, .. }) => {
+                    if a == b {
+                        BoundedAddrTrack::Region { region: a.clone() }
+                    } else {
+                        BoundedAddrTrack::Join
+                    }
+                }
+                (&BoundedAddrTrack::Offset { region: ref a, .. }, &BoundedAddrTrack::Offset { region: ref b, .. }) => {
+                    if a == b {
+                        BoundedAddrTrack::Region { region: a.clone() }
+                    } else {
+                        BoundedAddrTrack::Join
+                    }
+                }
+                (&BoundedAddrTrack::Meet, b) => b.clone(),
+                (a, &BoundedAddrTrack::Meet) => a.clone(),
             }
-            (&BoundedAddrTrack::Offset { region: ref a, .. }, &BoundedAddrTrack::Region { region: ref b }) => {
-               if a == b {
-                  BoundedAddrTrack::Region { region: a.clone() }
-               } else {
-                  BoundedAddrTrack::Join
-               }
-            }
-            (&BoundedAddrTrack::Region { region: ref a }, &BoundedAddrTrack::Offset { region: ref b, .. }) => {
-               if a == b {
-                  BoundedAddrTrack::Region { region: a.clone() }
-               } else {
-                  BoundedAddrTrack::Join
-               }
-            }
-            (&BoundedAddrTrack::Offset { region: ref a, .. }, &BoundedAddrTrack::Offset { region: ref b, .. }) => {
-               if a == b {
-                  BoundedAddrTrack::Region { region: a.clone() }
-               } else {
-                  BoundedAddrTrack::Join
-               }
-            }
-            (&BoundedAddrTrack::Meet, b) => b.clone(),
-            (a, &BoundedAddrTrack::Meet) => a.clone(),
-         }
-      }
-   }
+        }
+    }
 
-   fn widen(&self, s: &Self) -> Self {
-      s.clone()
-   }
+    fn widen(&self, s: &Self) -> Self {
+        s.clone()
+    }
 
-   fn initial() -> Self {
-      BoundedAddrTrack::Meet
-   }
+    fn initial() -> Self {
+        BoundedAddrTrack::Meet
+    }
 
-   fn more_exact(&self, a: &Self) -> bool {
-      if self == a {
-         false
-      } else {
-         match (self, a) {
-            (&BoundedAddrTrack::Join, _) => false,
-            (_, &BoundedAddrTrack::Join) => true,
-            (_, &BoundedAddrTrack::Meet) => false,
-            (&BoundedAddrTrack::Meet, _) => true,
-            (&BoundedAddrTrack::Region { .. }, &BoundedAddrTrack::Offset { .. }) => false,
-            (&BoundedAddrTrack::Offset { .. }, &BoundedAddrTrack::Region { .. }) => true,
-            (&BoundedAddrTrack::Region { .. }, &BoundedAddrTrack::Region { .. }) => false,
-            (&BoundedAddrTrack::Offset { .. }, &BoundedAddrTrack::Offset { .. }) => false,
-         }
-      }
-   }
-
-   fn extract(&self, size: usize, offset: usize) -> Self {
-      match self {
-         &BoundedAddrTrack::Join => BoundedAddrTrack::Join,
-         &BoundedAddrTrack::Meet => BoundedAddrTrack::Meet,
-         &BoundedAddrTrack::Region { region: ref r } => BoundedAddrTrack::Region { region: r.clone() },
-         &BoundedAddrTrack::Offset { region: ref r, offset: ref v, .. } => {
-            BoundedAddrTrack::Offset {
-               region: r.clone(),
-               offset: (v >> offset) % (1 << (size - 1)),
-               offset_size: size,
+    fn more_exact(&self, a: &Self) -> bool {
+        if self == a {
+            false
+        } else {
+            match (self, a) {
+                (&BoundedAddrTrack::Join, _) => false,
+                (_, &BoundedAddrTrack::Join) => true,
+                (_, &BoundedAddrTrack::Meet) => false,
+                (&BoundedAddrTrack::Meet, _) => true,
+                (&BoundedAddrTrack::Region { .. }, &BoundedAddrTrack::Offset { .. }) => false,
+                (&BoundedAddrTrack::Offset { .. }, &BoundedAddrTrack::Region { .. }) => true,
+                (&BoundedAddrTrack::Region { .. }, &BoundedAddrTrack::Region { .. }) => false,
+                (&BoundedAddrTrack::Offset { .. }, &BoundedAddrTrack::Offset { .. }) => false,
             }
-         }
-      }
-   }
+        }
+    }
+
+    fn extract(&self, size: usize, offset: usize) -> Self {
+        match self {
+            &BoundedAddrTrack::Join => BoundedAddrTrack::Join,
+            &BoundedAddrTrack::Meet => BoundedAddrTrack::Meet,
+            &BoundedAddrTrack::Region { region: ref r } => BoundedAddrTrack::Region { region: r.clone() },
+            &BoundedAddrTrack::Offset { region: ref r, offset: ref v, .. } => {
+                BoundedAddrTrack::Offset {
+                    region: r.clone(),
+                    offset: (v >> offset) % (1 << (size - 1)),
+                    offset_size: size,
+                }
+            }
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
-   use super::*;
-   use panopticon_core::lift;
-   use quickcheck::{Arbitrary, Gen, TestResult};
+    use super::*;
+    use panopticon_core::lift;
+    use quickcheck::{Arbitrary, Gen, TestResult};
 
-   impl Arbitrary for BoundedAddrTrack {
-      fn arbitrary<G: Gen>(g: &mut G) -> Self {
-         let variant = g.gen_range(0, 4);
-         match variant {
-            0 => BoundedAddrTrack::Meet,
-            1 | 2 => {
-               let reg = if g.gen::<bool>() {
-                  let n = Cow::Owned(g.gen_ascii_chars().take(1).collect());
-                  let o = g.gen_range(0, 11);
+    impl Arbitrary for BoundedAddrTrack {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            let variant = g.gen_range(0, 4);
+            match variant {
+                0 => BoundedAddrTrack::Meet,
+                1 | 2 => {
+                    let reg = if g.gen::<bool>() {
+                        let n = Cow::Owned(g.gen_ascii_chars().take(1).collect());
+                        let o = g.gen_range(0, 11);
 
-                  Some((n, o))
-               } else {
-                  None
-               };
+                        Some((n, o))
+                    } else {
+                        None
+                    };
 
-               match variant {
-                  1 => {
-                     BoundedAddrTrack::Offset {
-                        region: reg,
-                        offset: g.gen_range(0, 11),
-                        offset_size: *g.choose(&[8, 16, 32, 64]).unwrap(),
-                     }
-                  }
-                  2 => BoundedAddrTrack::Region { region: reg },
-                  _ => unreachable!(),
-               }
+                    match variant {
+                        1 => {
+                            BoundedAddrTrack::Offset {
+                                region: reg,
+                                offset: g.gen_range(0, 11),
+                                offset_size: *g.choose(&[8, 16, 32, 64]).unwrap(),
+                            }
+                        }
+                        2 => BoundedAddrTrack::Region { region: reg },
+                        _ => unreachable!(),
+                    }
+                }
+                3 => BoundedAddrTrack::Join,
+                _ => unreachable!(),
             }
-            3 => BoundedAddrTrack::Join,
-            _ => unreachable!(),
-         }
-      }
-   }
+        }
+    }
 
-   quickcheck! {
+    quickcheck! {
         fn qc_combine(a: BoundedAddrTrack, b: BoundedAddrTrack) -> bool {
             let c = a.combine(&b);
 
@@ -583,7 +583,7 @@ mod tests {
         }
     }
 
-   quickcheck! {
+    quickcheck! {
         fn qc_widen(a: BoundedAddrTrack, b: BoundedAddrTrack) -> TestResult {
             // widening op is only defined for increasing sequences
             if a.more_exact(&b) {
@@ -598,7 +598,7 @@ mod tests {
         }
     }
 
-   quickcheck! {
+    quickcheck! {
         fn qc_execute(op: Operation<Rvalue>) -> bool {
             let pp = ProgramPoint{ address: 0, position: 0 };
             let aop = lift(&op,&|x| BoundedAddrTrack::abstract_value(x));

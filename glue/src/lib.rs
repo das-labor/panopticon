@@ -27,7 +27,7 @@ extern crate log;
 extern crate error_chain;
 
 mod errors {
-   error_chain! {
+    error_chain! {
         foreign_links {
             Panopticon(::panopticon_core::Error);
             Time(::std::time::SystemTimeError);

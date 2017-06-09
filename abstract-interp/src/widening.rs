@@ -24,79 +24,79 @@ use panopticon_core::{Operation, Rvalue, lift};
 /// child domain.
 #[derive(Debug,PartialEq,Eq,Clone,Hash,RustcDecodable,RustcEncodable)]
 pub struct Widening<A: Avalue> {
-   value: A,
-   point: Option<ProgramPoint>,
+    value: A,
+    point: Option<ProgramPoint>,
 }
 
 impl<A: Avalue> Avalue for Widening<A> {
-   fn abstract_value(v: &Rvalue) -> Self {
-      Widening { value: A::abstract_value(v), point: None }
-   }
+    fn abstract_value(v: &Rvalue) -> Self {
+        Widening { value: A::abstract_value(v), point: None }
+    }
 
-   fn abstract_constraint(c: &Constraint) -> Self {
-      Widening { value: A::abstract_constraint(c), point: None }
-   }
+    fn abstract_constraint(c: &Constraint) -> Self {
+        Widening { value: A::abstract_constraint(c), point: None }
+    }
 
-   fn execute(pp: &ProgramPoint, op: &Operation<Self>) -> Self {
-      match op {
-         &Operation::Phi(ref ops) => {
-            let widen = ops.iter().map(|x| x.point.clone().unwrap_or(pp.clone())).max() > Some(pp.clone());
+    fn execute(pp: &ProgramPoint, op: &Operation<Self>) -> Self {
+        match op {
+            &Operation::Phi(ref ops) => {
+                let widen = ops.iter().map(|x| x.point.clone().unwrap_or(pp.clone())).max() > Some(pp.clone());
 
-            Widening {
-               value: match ops.len() {
-                  0 => unreachable!("Phi function w/o arguments"),
-                  1 => ops[0].value.clone(),
-                  _ => {
-                     ops.iter()
-                        .map(|x| x.value.clone())
-                        .fold(
-                           A::initial(), |acc, x| if widen {
-                              acc.widen(&x)
-                           } else {
-                              acc.combine(&x)
-                           }
-                        )
-                  }
-               },
-               point: Some(pp.clone()),
+                Widening {
+                    value: match ops.len() {
+                        0 => unreachable!("Phi function w/o arguments"),
+                        1 => ops[0].value.clone(),
+                        _ => {
+                            ops.iter()
+                                .map(|x| x.value.clone())
+                                .fold(
+                                    A::initial(), |acc, x| if widen {
+                                        acc.widen(&x)
+                                    } else {
+                                        acc.combine(&x)
+                                    }
+                                )
+                        }
+                    },
+                    point: Some(pp.clone()),
+                }
             }
-         }
-         _ => {
-            Widening {
-               value: A::execute(pp, &lift(op, &|x| x.value.clone())),
-               point: Some(pp.clone()),
+            _ => {
+                Widening {
+                    value: A::execute(pp, &lift(op, &|x| x.value.clone())),
+                    point: Some(pp.clone()),
+                }
             }
-         }
-      }
-   }
+        }
+    }
 
-   fn widen(&self, s: &Self) -> Self {
-      Widening { value: self.value.widen(&s.value), point: self.point.clone() }
-   }
+    fn widen(&self, s: &Self) -> Self {
+        Widening { value: self.value.widen(&s.value), point: self.point.clone() }
+    }
 
-   fn combine(&self, s: &Self) -> Self {
-      Widening {
-         value: self.value.combine(&s.value),
-         point: self.point.clone(),
-      }
-   }
+    fn combine(&self, s: &Self) -> Self {
+        Widening {
+            value: self.value.combine(&s.value),
+            point: self.point.clone(),
+        }
+    }
 
-   fn narrow(&self, _: &Self) -> Self {
-      self.clone()
-   }
+    fn narrow(&self, _: &Self) -> Self {
+        self.clone()
+    }
 
-   fn initial() -> Self {
-      Widening { value: A::initial(), point: None }
-   }
+    fn initial() -> Self {
+        Widening { value: A::initial(), point: None }
+    }
 
-   fn more_exact(&self, a: &Self) -> bool {
-      self.value.more_exact(&a.value)
-   }
+    fn more_exact(&self, a: &Self) -> bool {
+        self.value.more_exact(&a.value)
+    }
 
-   fn extract(&self, size: usize, offset: usize) -> Self {
-      Widening {
-         value: self.value.extract(size, offset),
-         point: self.point.clone(),
-      }
-   }
+    fn extract(&self, size: usize, offset: usize) -> Self {
+        Widening {
+            value: self.value.extract(size, offset),
+            point: self.point.clone(),
+        }
+    }
 }
