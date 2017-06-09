@@ -110,6 +110,7 @@ before_install: |
    if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
       brew update
       brew install qt@5.7
+      brew link --force qt@5.7
    fi
 before_script: |
    if [[ "$TRAVIS_OS_NAME" == "linux" && "$PACKAGE" == "" ]]; then
