@@ -51,10 +51,8 @@
 
 
 use {Bound, Layer, LayerIter, OpaqueLayer, Result};
-use panopticon_graph_algos::{AdjacencyList, GraphTrait, IncidenceGraphTrait,
-                             MutableGraphTrait, VertexListGraphTrait};
-use panopticon_graph_algos::adjacency_list::{AdjacencyListEdgeDescriptor,
-                                             AdjacencyListVertexDescriptor};
+use panopticon_graph_algos::{AdjacencyList, GraphTrait, IncidenceGraphTrait, MutableGraphTrait, VertexListGraphTrait};
+use panopticon_graph_algos::adjacency_list::{AdjacencyListEdgeDescriptor, AdjacencyListVertexDescriptor};
 use std::collections::HashSet;
 use std::path::Path;
 use std::sync::Arc;
@@ -66,9 +64,9 @@ use std::sync::Arc;
 /// in-memory buffers.
 #[derive(Clone,Debug,RustcDecodable,RustcEncodable)]
 pub struct Region {
-    stack: Vec<(Bound, Layer)>,
-    name: String,
-    size: u64,
+   stack: Vec<(Bound, Layer)>,
+   name: String,
+   size: u64,
 }
 
 /// Graph that models overlapping regions.
@@ -86,316 +84,288 @@ pub type RegionRef = AdjacencyListVertexDescriptor;
 /// inside the overlapped `Region` would still see only the compressed version.
 #[derive(Clone,RustcDecodable,RustcEncodable,Debug)]
 pub struct World {
-    ///< Graph of all `Region`s with edges pointing from the overlapping to the overlapped `Region`.
-    pub dependencies: RegionGraph,
-    /// Lowest `Region` in the stack.
-    pub root: RegionRef,
+   ///< Graph of all `Region`s with edges pointing from the overlapping to the overlapped `Region`.
+   pub dependencies: RegionGraph,
+   /// Lowest `Region` in the stack.
+   pub root: RegionRef,
 }
 
 impl Region {
-    /// Creates a new `Region` called `name` that is filled with the contents of the file at `path`.
-    pub fn open(s: String, p: &Path) -> Result<Region> {
-        let layer = try!(OpaqueLayer::open(p));
-        Ok(Region::new(s.clone(), layer))
-    }
+   /// Creates a new `Region` called `name` that is filled with the contents of the file at `path`.
+   pub fn open(s: String, p: &Path) -> Result<Region> {
+      let layer = OpaqueLayer::open(p)?;
+      Ok(Region::new(s.clone(), layer))
+   }
 
-    /// Creates a new `Region` called `name`, filled with `data`.
-    pub fn wrap(name: String, data: Vec<u8>) -> Region {
-        Region::new(name, OpaqueLayer::Defined(Arc::new(data)))
-    }
+   /// Creates a new `Region` called `name`, filled with `data`.
+   pub fn wrap(name: String, data: Vec<u8>) -> Region {
+      Region::new(name, OpaqueLayer::Defined(Arc::new(data)))
+   }
 
-    /// Creates a new `Region` called `name`, of size `len` with all `Cell`s undefined.
-    pub fn undefined(name: String, len: u64) -> Region {
-        Region::new(name, OpaqueLayer::Undefined(len))
-    }
+   /// Creates a new `Region` called `name`, of size `len` with all `Cell`s undefined.
+   pub fn undefined(name: String, len: u64) -> Region {
+      Region::new(name, OpaqueLayer::Undefined(len))
+   }
 
-    /// Creates a new `Region` called `name` with the contens of `root`.
-    pub fn new(name: String, root: OpaqueLayer) -> Region {
-        let l = root.len();
-        let b = Layer::Opaque(root);
-        Region {
-            stack: vec![(Bound::new(0, l), b)],
-            name: name,
-            size: l,
-        }
-    }
+   /// Creates a new `Region` called `name` with the contens of `root`.
+   pub fn new(name: String, root: OpaqueLayer) -> Region {
+      let l = root.len();
+      let b = Layer::Opaque(root);
+      Region { stack: vec![(Bound::new(0, l), b)], name: name, size: l }
+   }
 
-    /// Applies `layer` to the cells inside `area`.
-    ///
-    /// # Returns
-    /// `false` if `area` is outside of `0..self.size()` of not compatible with `layer`, `true`
-    /// otherwise.
-    pub fn cover(&mut self, b: Bound, l: Layer) -> bool {
-        if b.end <= self.stack[0].0.end {
-            if let Some(o) = l.as_opaque() {
-                if b.end - b.start > o.len() {
-                    return false;
-                }
+   /// Applies `layer` to the cells inside `area`.
+   ///
+   /// # Returns
+   /// `false` if `area` is outside of `0..self.size()` of not compatible with `layer`, `true`
+   /// otherwise.
+   pub fn cover(&mut self, b: Bound, l: Layer) -> bool {
+      if b.end <= self.stack[0].0.end {
+         if let Some(o) = l.as_opaque() {
+            if b.end - b.start > o.len() {
+               return false;
             }
+         }
 
-            self.stack.push((b, l));
-            true
-        } else {
-            false
-        }
-    }
+         self.stack.push((b, l));
+         true
+      } else {
+         false
+      }
+   }
 
-    /// Iterator over all `Cell`s, starting at 0.
-    pub fn iter(&self) -> LayerIter {
-        let mut ret = self.stack[0].1.as_opaque().unwrap().iter();
+   /// Iterator over all `Cell`s, starting at 0.
+   pub fn iter(&self) -> LayerIter {
+      let mut ret = self.stack[0].1.as_opaque().unwrap().iter();
 
-        for s in self.stack.iter().skip(1) {
-            let &(ref area, ref layer) = s;
+      for s in self.stack.iter().skip(1) {
+         let &(ref area, ref layer) = s;
 
-            let src = ret.cut(&(area.start..area.end));
-            assert_eq!(src.len(), area.end - area.start);
+         let src = ret.cut(&(area.start..area.end));
+         assert_eq!(src.len(), area.end - area.start);
 
-            let mut tmp = layer.filter(src);
+         let mut tmp = layer.filter(src);
 
-            if area.start != 0 {
-                tmp = ret.cut(&(0..area.start)).append(tmp);
-                assert_eq!(tmp.len(), area.end);
+         if area.start != 0 {
+            tmp = ret.cut(&(0..area.start)).append(tmp);
+            assert_eq!(tmp.len(), area.end);
+         }
+
+         if area.end < ret.len() {
+            tmp = tmp.append(ret.cut(&(area.end..(ret.len()))));
+         }
+
+         assert_eq!(ret.len(), tmp.len());
+         ret = tmp;
+      }
+
+      ret
+   }
+
+   fn add<'a>(a: (Bound, &'a Layer), v: Vec<(Bound, &'a Layer)>) -> Vec<(Bound, &'a Layer)> {
+      let mut ret = v.iter()
+         .fold(
+            Vec::new(), |mut acc, x| {
+               if x.0.start >= a.0.start && x.0.end <= a.0.end {
+                  // a covers x completly
+                  acc
+               } else if x.0.start >= a.0.end || x.0.end <= a.0.start {
+                  // a and x don't touch
+                  acc.push(x.clone());
+                  acc
+               } else if x.0.start > a.0.start && x.0.end >= a.0.end {
+                  // a covers start of x
+                  let bound = Bound::new(a.0.end, x.0.end);
+                  if bound.start < bound.end {
+                     acc.push((bound, x.1));
+                  }
+                  acc
+               } else if a.0.start > x.0.start && a.0.end >= x.0.end {
+                  // a covers end of x
+                  let bound = Bound::new(x.0.start, a.0.start);
+
+                  if bound.start < bound.end {
+                     acc.push((bound, x.1));
+                  }
+                  acc
+               } else {
+                  // a covers middle of x
+                  let bound1 = Bound::new(x.0.start, a.0.start);
+                  let bound2 = Bound::new(a.0.end, x.0.end);
+                  if bound1.start < bound1.end {
+                     acc.push((bound1, x.1));
+                  }
+                  if bound2.start < bound2.end {
+                     acc.push((bound2, x.1));
+                  }
+                  acc
+               }
             }
+         );
+      ret.push(a);
+      ret
+   }
 
-            if area.end < ret.len() {
-                tmp = tmp.append(ret.cut(&(area.end..(ret.len()))));
-            }
+   /// Vector of all uncovered parts.
+   pub fn flatten(&self) -> Vec<(Bound, &Layer)> {
+      let mut ret = Vec::new();
+      for x in self.stack.iter() {
+         ret = Self::add((x.0.clone(), &x.1), ret);
+      }
+      ret.sort_by(|a, b| a.0.start.cmp(&b.0.start));
+      ret
+   }
 
-            assert_eq!(ret.len(), tmp.len());
-            ret = tmp;
-        }
+   /// Stack of all `Layer` and covered area.
+   pub fn stack(&self) -> &Vec<(Bound, Layer)> {
+      &self.stack
+   }
 
-        ret
-    }
+   /// Number of `Cell`s.
+   pub fn size(&self) -> u64 {
+      self.size
+   }
 
-    fn add<'a>(
-        a: (Bound, &'a Layer),
-        v: Vec<(Bound, &'a Layer)>,
-    ) -> Vec<(Bound, &'a Layer)> {
-        let mut ret = v.iter()
-            .fold(
-                Vec::new(), |mut acc, x| {
-                    if x.0.start >= a.0.start && x.0.end <= a.0.end {
-                        // a covers x completly
-                        acc
-                    } else if x.0.start >= a.0.end || x.0.end <= a.0.start {
-                        // a and x don't touch
-                        acc.push(x.clone());
-                        acc
-                    } else if x.0.start > a.0.start && x.0.end >= a.0.end {
-                        // a covers start of x
-                        let bound = Bound::new(a.0.end, x.0.end);
-                        if bound.start < bound.end {
-                            acc.push((bound, x.1));
-                        }
-                        acc
-                    } else if a.0.start > x.0.start && a.0.end >= x.0.end {
-                        // a covers end of x
-                        let bound = Bound::new(x.0.start, a.0.start);
-
-                        if bound.start < bound.end {
-                            acc.push((bound, x.1));
-                        }
-                        acc
-                    } else {
-                        // a covers middle of x
-                        let bound1 = Bound::new(x.0.start, a.0.start);
-                        let bound2 = Bound::new(a.0.end, x.0.end);
-                        if bound1.start < bound1.end {
-                            acc.push((bound1, x.1));
-                        }
-                        if bound2.start < bound2.end {
-                            acc.push((bound2, x.1));
-                        }
-                        acc
-                    }
-                }
-            );
-        ret.push(a);
-        ret
-    }
-
-    /// Vector of all uncovered parts.
-    pub fn flatten(&self) -> Vec<(Bound, &Layer)> {
-        let mut ret = Vec::new();
-        for x in self.stack.iter() {
-            ret = Self::add((x.0.clone(), &x.1), ret);
-        }
-        ret.sort_by(|a, b| a.0.start.cmp(&b.0.start));
-        ret
-    }
-
-    /// Stack of all `Layer` and covered area.
-    pub fn stack(&self) -> &Vec<(Bound, Layer)> {
-        &self.stack
-    }
-
-    /// Number of `Cell`s.
-    pub fn size(&self) -> u64 {
-        self.size
-    }
-
-    /// Name of the `Region`
-    pub fn name(&self) -> &String {
-        &self.name
-    }
+   /// Name of the `Region`
+   pub fn name(&self) -> &String {
+      &self.name
+   }
 }
 
 impl World {
-    /// Creates a new `World` with a single `Region` `reg`
-    pub fn new(reg: Region) -> World {
-        let mut g = RegionGraph::new();
-        let b = g.add_vertex(reg);
+   /// Creates a new `World` with a single `Region` `reg`
+   pub fn new(reg: Region) -> World {
+      let mut g = RegionGraph::new();
+      let b = g.add_vertex(reg);
 
-        World {
-            dependencies: g,
-            root: b,
-        }
-    }
+      World { dependencies: g, root: b }
+   }
 
-    /// Vector of all `Region` in `self` and their uncovered area
-    pub fn projection(&self) -> Vec<(Bound, RegionRef)> {
-        let mut ret = Vec::<(Bound, RegionRef)>::new();
-        let mut visited = HashSet::<RegionRef>::new();
+   /// Vector of all `Region` in `self` and their uncovered area
+   pub fn projection(&self) -> Vec<(Bound, RegionRef)> {
+      let mut ret = Vec::<(Bound, RegionRef)>::new();
+      let mut visited = HashSet::<RegionRef>::new();
 
-        fn step(
-            v: RegionRef,
-            regs: &RegionGraph,
-            ret: &mut Vec<(Bound, RegionRef)>,
-            visited: &mut HashSet<RegionRef>,
-        ) {
-            let reg = regs.vertex_label(v).unwrap();
-            let mut es = regs.out_edges(v)
-                .collect::<Vec<AdjacencyListEdgeDescriptor>>();
-            let mut last = 0;
+      fn step(v: RegionRef, regs: &RegionGraph, ret: &mut Vec<(Bound, RegionRef)>, visited: &mut HashSet<RegionRef>) {
+         let reg = regs.vertex_label(v).unwrap();
+         let mut es = regs.out_edges(v).collect::<Vec<AdjacencyListEdgeDescriptor>>();
+         let mut last = 0;
 
-            es.sort_by(
-                |&a, &b| {
-                    regs.edge_label(a).unwrap().start.cmp(
-                        &regs.edge_label(b)
-                             .unwrap()
-                             .start
-                    )
-                }
-            );
+         es.sort_by(|&a, &b| regs.edge_label(a).unwrap().start.cmp(&regs.edge_label(b).unwrap().start));
 
-            for e in es {
-                let b = regs.edge_label(e).unwrap();
-                let nx = regs.target(e);
-                let free = Bound::new(last, b.start);
+         for e in es {
+            let b = regs.edge_label(e).unwrap();
+            let nx = regs.target(e);
+            let free = Bound::new(last, b.start);
 
-                if last < b.start {
-                    ret.push((free, v));
-                }
-                last = b.end;
-
-                if visited.insert(nx) {
-                    step(nx, regs, ret, visited);
-                }
+            if last < b.start {
+               ret.push((free, v));
             }
+            last = b.end;
 
-            if last < reg.size() {
-                let free = Bound::new(last, reg.size());
-                ret.push((free, v));
+            if visited.insert(nx) {
+               step(nx, regs, ret, visited);
             }
-        }
+         }
 
-        if self.dependencies.num_vertices() > 0 {
-            step(self.root, &self.dependencies, &mut ret, &mut visited);
-        }
-        ret
-    }
+         if last < reg.size() {
+            let free = Bound::new(last, reg.size());
+            ret.push((free, v));
+         }
+      }
+
+      if self.dependencies.num_vertices() > 0 {
+         step(self.root, &self.dependencies, &mut ret, &mut visited);
+      }
+      ret
+   }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use layer::Layer;
-    use mnemonic::Bound;
-    use panopticon_graph_algos::MutableGraphTrait;
+   use super::*;
+   use layer::Layer;
+   use mnemonic::Bound;
+   use panopticon_graph_algos::MutableGraphTrait;
 
-    fn fixture<'a>() -> (RegionRef, RegionRef, RegionRef, World) {
-        let mut regs = World::new(Region::undefined("base".to_string(), 128));
-        let r1 = regs.root;
-        let r2 = regs.dependencies.add_vertex(
-            Region::undefined("zlib".to_string(), 64),
-        );
-        let r3 = regs.dependencies.add_vertex(
-            Region::undefined("aes".to_string(), 48),
-        );
+   fn fixture<'a>() -> (RegionRef, RegionRef, RegionRef, World) {
+      let mut regs = World::new(Region::undefined("base".to_string(), 128));
+      let r1 = regs.root;
+      let r2 = regs.dependencies.add_vertex(Region::undefined("zlib".to_string(), 64));
+      let r3 = regs.dependencies.add_vertex(Region::undefined("aes".to_string(), 48));
 
-        regs.dependencies.add_edge(Bound::new(32, 96), r1, r2);
-        regs.dependencies.add_edge(Bound::new(16, 32), r1, r3);
-        regs.dependencies.add_edge(Bound::new(0, 32), r2, r3);
+      regs.dependencies.add_edge(Bound::new(32, 96), r1, r2);
+      regs.dependencies.add_edge(Bound::new(16, 32), r1, r3);
+      regs.dependencies.add_edge(Bound::new(0, 32), r2, r3);
 
-        (r1, r2, r3, regs)
-    }
+      (r1, r2, r3, regs)
+   }
 
-    #[test]
-    fn too_small_layer_cover() {
-        let mut st = Region::undefined("".to_string(), 12);
+   #[test]
+   fn too_small_layer_cover() {
+      let mut st = Region::undefined("".to_string(), 12);
 
-        assert!(!st.cover(Bound::new(0, 6), Layer::wrap(vec![1, 2, 3, 4, 5])));
-    }
+      assert!(!st.cover(Bound::new(0, 6), Layer::wrap(vec![1, 2, 3, 4, 5])));
+   }
 
-    #[test]
-    fn too_large_layer_cover() {
-        let mut st = Region::undefined("".to_string(), 3);
+   #[test]
+   fn too_large_layer_cover() {
+      let mut st = Region::undefined("".to_string(), 3);
 
-        assert!(!st.cover(Bound::new(0, 5), Layer::wrap(vec![1, 2, 3, 4, 5])));
-    }
+      assert!(!st.cover(Bound::new(0, 5), Layer::wrap(vec![1, 2, 3, 4, 5])));
+   }
 
-    #[test]
-    fn projection() {
-        let f = fixture();
-        let proj = f.3.projection();
-        let expect = vec![
-            (Bound::new(0, 16), f.0),
-            (Bound::new(0, 48), f.2),
-            (Bound::new(32, 64), f.1),
-            (Bound::new(96, 128), f.0),
-        ];
+   #[test]
+   fn projection() {
+      let f = fixture();
+      let proj = f.3.projection();
+      let expect = vec![
+         (Bound::new(0, 16), f.0),
+         (Bound::new(0, 48), f.2),
+         (Bound::new(32, 64), f.1),
+         (Bound::new(96, 128), f.0),
+      ];
 
-        assert_eq!(proj, expect);
-    }
+      assert_eq!(proj, expect);
+   }
 
-    #[test]
-    fn read_undefined() {
-        let r1 = Region::undefined("test".to_string(), 128);
-        let mut s1 = r1.iter();
+   #[test]
+   fn read_undefined() {
+      let r1 = Region::undefined("test".to_string(), 128);
+      let mut s1 = r1.iter();
 
-        assert_eq!(s1.len(), 128);
-        assert!(s1.all(|x| x.is_none()));
-    }
+      assert_eq!(s1.len(), 128);
+      assert!(s1.all(|x| x.is_none()));
+   }
 
-    #[test]
-    fn flatten() {
-        let mut st = Region::undefined("".to_string(), 140);
+   #[test]
+   fn flatten() {
+      let mut st = Region::undefined("".to_string(), 140);
 
-        let xor1 = Layer::undefined(64);
-        let add = Layer::undefined(27);
-        let zlib = Layer::undefined(48);
-        let aes = Layer::undefined(32);
+      let xor1 = Layer::undefined(64);
+      let add = Layer::undefined(27);
+      let zlib = Layer::undefined(48);
+      let aes = Layer::undefined(32);
 
-        assert!(st.cover(Bound::new(0, 64), xor1));
-        assert!(st.cover(Bound::new(45, 72), add));
-        assert!(st.cover(Bound::new(80, 128), zlib));
-        assert!(st.cover(Bound::new(102, 134), aes));
+      assert!(st.cover(Bound::new(0, 64), xor1));
+      assert!(st.cover(Bound::new(45, 72), add));
+      assert!(st.cover(Bound::new(80, 128), zlib));
+      assert!(st.cover(Bound::new(102, 134), aes));
 
-        let proj = st.flatten();
+      let proj = st.flatten();
 
-        assert_eq!(proj.len(), 6);
-        assert_eq!(proj[0].0, Bound::new(0, 45));
-        assert_eq!(proj[0].1.as_opaque().unwrap().iter().len(), 64);
-        assert_eq!(proj[1].0, Bound::new(45, 72));
-        assert_eq!(proj[1].1.as_opaque().unwrap().iter().len(), 27);
-        assert_eq!(proj[2].0, Bound::new(72, 80));
-        assert_eq!(proj[2].1.as_opaque().unwrap().iter().len(), 140);
-        assert_eq!(proj[3].0, Bound::new(80, 102));
-        assert_eq!(proj[3].1.as_opaque().unwrap().iter().len(), 48);
-        assert_eq!(proj[4].0, Bound::new(102, 134));
-        assert_eq!(proj[4].1.as_opaque().unwrap().iter().len(), 32);
-        assert_eq!(proj[5].0, Bound::new(134, 140));
-        assert_eq!(proj[5].1.as_opaque().unwrap().iter().len(), 140);
-    }
+      assert_eq!(proj.len(), 6);
+      assert_eq!(proj[0].0, Bound::new(0, 45));
+      assert_eq!(proj[0].1.as_opaque().unwrap().iter().len(), 64);
+      assert_eq!(proj[1].0, Bound::new(45, 72));
+      assert_eq!(proj[1].1.as_opaque().unwrap().iter().len(), 27);
+      assert_eq!(proj[2].0, Bound::new(72, 80));
+      assert_eq!(proj[2].1.as_opaque().unwrap().iter().len(), 140);
+      assert_eq!(proj[3].0, Bound::new(80, 102));
+      assert_eq!(proj[3].1.as_opaque().unwrap().iter().len(), 48);
+      assert_eq!(proj[4].0, Bound::new(102, 134));
+      assert_eq!(proj[4].1.as_opaque().unwrap().iter().len(), 32);
+      assert_eq!(proj[5].0, Bound::new(134, 140));
+      assert_eq!(proj[5].1.as_opaque().unwrap().iter().len(), 140);
+   }
 }

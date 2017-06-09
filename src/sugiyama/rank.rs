@@ -17,9 +17,7 @@
  */
 
 
-use panopticon_graph_algos::{AdjacencyList, BidirectionalGraphTrait,
-                             EdgeListGraphTrait, GraphTrait,
-                             MutableGraphTrait, VertexListGraphTrait};
+use panopticon_graph_algos::{AdjacencyList, BidirectionalGraphTrait, EdgeListGraphTrait, GraphTrait, MutableGraphTrait, VertexListGraphTrait};
 
 use panopticon_graph_algos::adjacency_list::AdjacencyListVertexDescriptor;
 
@@ -39,261 +37,226 @@ use std::iter::FromIterator;
 ///
 /// # panics
 /// If `graph` is not cycle-free.
-pub fn ensure_single_entry(
-    maybe_entry: Option<&AdjacencyListVertexDescriptor>,
-    graph: &mut AdjacencyList<usize, usize>,
-) -> AdjacencyListVertexDescriptor {
-    let mut heads = vec![];
-    let mut seen = HashSet::new();
+pub fn ensure_single_entry(maybe_entry: Option<&AdjacencyListVertexDescriptor>, graph: &mut AdjacencyList<usize, usize>) -> AdjacencyListVertexDescriptor {
+   let mut heads = vec![];
+   let mut seen = HashSet::new();
 
-    if let Some(entry) = maybe_entry {
-        heads.push(*entry);
-        depth_first_visit(
+   if let Some(entry) = maybe_entry {
+      heads.push(*entry);
+      depth_first_visit(
+         &mut |vx, ev| match ev {
+                 VertexEvent::Discovered => {
+                    seen.insert(*vx);
+                 }
+                 _ => {}
+              },
+         &mut |_, _| {},
+         entry,
+         graph,
+      );
+   }
+
+   while seen.len() < graph.num_vertices() {
+      let maybe_h = graph.vertices().find(|x| !seen.contains(x) && graph.in_degree(*x) == 0);
+
+      if let Some(h) = maybe_h {
+         heads.push(h);
+         depth_first_visit(
             &mut |vx, ev| match ev {
-                     VertexEvent::Discovered => {
-                         seen.insert(*vx);
-                     }
-                     _ => {}
+                    VertexEvent::Discovered => {
+                       seen.insert(*vx);
+                    }
+                    _ => {}
                  },
             &mut |_, _| {},
-            entry,
+            &h,
             graph,
-        );
-    }
-
-    while seen.len() < graph.num_vertices() {
-        let maybe_h = graph.vertices().find(
-            |x| {
-                !seen.contains(x) && graph.in_degree(*x) == 0
-            }
-        );
-
-        if let Some(h) = maybe_h {
+         );
+      } else {
+         if let Some(h) = graph.vertices().find(|x| !seen.contains(x)) {
             heads.push(h);
             depth_first_visit(
-                &mut |vx, ev| match ev {
-                         VertexEvent::Discovered => {
-                             seen.insert(*vx);
-                         }
-                         _ => {}
-                     },
-                &mut |_, _| {},
-                &h,
-                graph,
+               &mut |vx, ev| match ev {
+                       VertexEvent::Discovered => {
+                          seen.insert(*vx);
+                       }
+                       _ => {}
+                    },
+               &mut |_, _| {},
+               &h,
+               graph,
             );
-        } else {
-            if let Some(h) = graph.vertices().find(|x| !seen.contains(x)) {
-                heads.push(h);
-                depth_first_visit(
-                    &mut |vx, ev| match ev {
-                             VertexEvent::Discovered => {
-                                 seen.insert(*vx);
-                             }
-                             _ => {}
-                         },
-                    &mut |_, _| {},
-                    &h,
-                    graph,
-                );
-            } else {
-                unreachable!()
-            }
-        }
-    }
+         } else {
+            unreachable!()
+         }
+      }
+   }
 
-    match heads.len() {
-        0 => unreachable!(),
-        1 => heads[0],
-        _ => {
-            let m = graph
-                .vertices()
-                .filter_map(|x| graph.vertex_label(x))
-                .max()
-                .map(|x| x + 1)
-                .unwrap_or(0);
-            let ret = graph.add_vertex(m);
+   match heads.len() {
+      0 => unreachable!(),
+      1 => heads[0],
+      _ => {
+         let m = graph.vertices().filter_map(|x| graph.vertex_label(x)).max().map(|x| x + 1).unwrap_or(0);
+         let ret = graph.add_vertex(m);
 
-            for vx in heads {
-                graph.add_edge(usize::MAX, ret, vx);
-            }
+         for vx in heads {
+            graph.add_edge(usize::MAX, ret, vx);
+         }
 
-            ret
-        }
-    }
+         ret
+      }
+   }
 }
 
-pub fn remove_cycles(
-    head: &AdjacencyListVertexDescriptor,
-    graph: &mut AdjacencyList<usize, usize>,
-) -> HashSet<usize> {
-    let mut to_flip = vec![];
-    let mut ret = HashSet::new();
+pub fn remove_cycles(head: &AdjacencyListVertexDescriptor, graph: &mut AdjacencyList<usize, usize>) -> HashSet<usize> {
+   let mut to_flip = vec![];
+   let mut ret = HashSet::new();
 
-    depth_first_visit::<usize, usize, AdjacencyList<usize, usize>>(
-        &mut |_, _| {},
-        &mut |e, k| if k == EdgeKind::Backward {
-                 to_flip.push(e.clone())
-             },
-        head,
-        graph,
-    );
+   depth_first_visit::<usize, usize, AdjacencyList<usize, usize>>(
+      &mut |_, _| {},
+      &mut |e, k| if k == EdgeKind::Backward {
+              to_flip.push(e.clone())
+           },
+      head,
+      graph,
+   );
 
-    for e in to_flip {
-        let from = graph.source(e);
-        let to = graph.target(e);
-        let lb = *graph.edge_label(e).unwrap();
+   for e in to_flip {
+      let from = graph.source(e);
+      let to = graph.target(e);
+      let lb = *graph.edge_label(e).unwrap();
 
-        graph.remove_edge(e);
-        graph.add_edge(lb, to, from);
-        ret.insert(lb);
-    }
+      graph.remove_edge(e);
+      graph.add_edge(lb, to, from);
+      ret.insert(lb);
+   }
 
-    ret
+   ret
 }
 
 pub fn remove_loops(graph: &mut AdjacencyList<usize, usize>) {
-    let to_rm = graph
-        .edges()
-        .filter(|&e| graph.source(e) == graph.target(e))
-        .collect::<Vec<_>>();
+   let to_rm = graph.edges().filter(|&e| graph.source(e) == graph.target(e)).collect::<Vec<_>>();
 
-    for e in to_rm {
-        graph.remove_edge(e);
-    }
+   for e in to_rm {
+      graph.remove_edge(e);
+   }
 }
 
-pub fn remove_parallel_edges
-    (graph: &mut AdjacencyList<usize, usize>)
-     -> Vec<(usize,
-             AdjacencyListVertexDescriptor,
-             AdjacencyListVertexDescriptor)> {
-    let mut seen_edges = HashSet::<(usize, usize)>::new();
-    let to_rm = graph
-        .edges()
-        .filter_map(
-            |e| {
-                let from = graph.vertex_label(graph.source(e)).unwrap();
-                let to = graph.vertex_label(graph.target(e)).unwrap();
+pub fn remove_parallel_edges(graph: &mut AdjacencyList<usize, usize>) -> Vec<(usize, AdjacencyListVertexDescriptor, AdjacencyListVertexDescriptor)> {
+   let mut seen_edges = HashSet::<(usize, usize)>::new();
+   let to_rm = graph
+      .edges()
+      .filter_map(
+         |e| {
+            let from = graph.vertex_label(graph.source(e)).unwrap();
+            let to = graph.vertex_label(graph.target(e)).unwrap();
 
 
-                if !seen_edges.insert((*from, *to)) {
-                    Some(
-                        (e,
-                         *graph.edge_label(e).unwrap(),
-                         graph.source(e),
-                         graph.target(e))
-                    )
-                } else {
-                    None
-                }
+            if !seen_edges.insert((*from, *to)) {
+               Some((e, *graph.edge_label(e).unwrap(), graph.source(e), graph.target(e)))
+            } else {
+               None
             }
-        )
-        .collect::<Vec<_>>();
+         }
+      )
+      .collect::<Vec<_>>();
 
-    for e in to_rm.iter() {
-        graph.remove_edge(e.0);
-    }
+   for e in to_rm.iter() {
+      graph.remove_edge(e.0);
+   }
 
-    to_rm.iter().map(|&(_, a, b, c)| (a, b, c)).collect::<Vec<_>>()
+   to_rm.iter().map(|&(_, a, b, c)| (a, b, c)).collect::<Vec<_>>()
 }
 
 /// Computes the ranks for all vertices.
-pub fn compute_ranking(graph: &AdjacencyList<usize, usize>)
-    -> HashMap<AdjacencyListVertexDescriptor, isize> {
-    use cassowary::{Solver, Variable};
-    use cassowary::WeightedRelation::*;
-    use cassowary::strength::{REQUIRED, WEAK};
+pub fn compute_ranking(graph: &AdjacencyList<usize, usize>) -> HashMap<AdjacencyListVertexDescriptor, isize> {
+   use cassowary::{Solver, Variable};
+   use cassowary::WeightedRelation::*;
+   use cassowary::strength::{REQUIRED, WEAK};
 
-    let mut vx2var = HashMap::new();
-    let mut solver = Solver::new();
+   let mut vx2var = HashMap::new();
+   let mut solver = Solver::new();
 
-    for vx in graph.vertices() {
-        let var = Variable::new();
+   for vx in graph.vertices() {
+      let var = Variable::new();
 
-        // First rank is 0
-        let _ = solver.add_constraint(var | GE(REQUIRED) | 0.0);
+      // First rank is 0
+      let _ = solver.add_constraint(var | GE(REQUIRED) | 0.0);
 
-        // Minimize ranks
-        let _ = solver.add_constraint(var | EQ(WEAK) | 0.0);
+      // Minimize ranks
+      let _ = solver.add_constraint(var | EQ(WEAK) | 0.0);
 
-        vx2var.insert(vx, var);
-    }
+      vx2var.insert(vx, var);
+   }
 
-    for e in graph.edges() {
-        let from_vx = vx2var[&graph.source(e)];
-        let to_vx = vx2var[&graph.target(e)];
+   for e in graph.edges() {
+      let from_vx = vx2var[&graph.source(e)];
+      let to_vx = vx2var[&graph.target(e)];
 
-        // Adjacent vertices are at least on rank apart
-        let _ = solver.add_constraint(to_vx - from_vx | GE(REQUIRED) | 1.0);
-    }
+      // Adjacent vertices are at least on rank apart
+      let _ = solver.add_constraint(to_vx - from_vx | GE(REQUIRED) | 1.0);
+   }
 
-    solver.update_variables();
+   solver.update_variables();
 
-    HashMap::from_iter(
-        vx2var
-            .iter()
-            .map(
-                |(&vx, &var)| {
-                    let rank = solver.value_for(var);
+   HashMap::from_iter(
+      vx2var
+         .iter()
+         .map(
+            |(&vx, &var)| {
+               let rank = solver.value_for(var);
 
-                    (vx, rank.unwrap_or(0.0) as isize)
-                }
-            )
-    )
+               (vx, rank.unwrap_or(0.0) as isize)
+            }
+         )
+   )
 }
 
-pub fn add_virtual_vertices(
-    rank: &mut HashMap<AdjacencyListVertexDescriptor, isize>,
-    graph: &mut AdjacencyList<usize, usize>,
-) -> (usize, usize) {
-    let to_replace = graph
-        .edges()
-        .filter(
-            |&e| {
-                let rank_from = rank.get(&graph.source(e)).unwrap();
-                let rank_to = rank.get(&graph.target(e)).unwrap();
+pub fn add_virtual_vertices(rank: &mut HashMap<AdjacencyListVertexDescriptor, isize>, graph: &mut AdjacencyList<usize, usize>) -> (usize, usize) {
+   let to_replace = graph
+      .edges()
+      .filter(
+         |&e| {
+            let rank_from = rank.get(&graph.source(e)).unwrap();
+            let rank_to = rank.get(&graph.target(e)).unwrap();
 
-                assert!(rank_from <= rank_to);
+            assert!(rank_from <= rank_to);
 
-                rank_to - rank_from > 1
-            }
-        )
-        .collect::<Vec<_>>();
+            rank_to - rank_from > 1
+         }
+      )
+      .collect::<Vec<_>>();
 
-    let mut next_label = graph
-        .vertices()
-        .filter_map(|vx| graph.vertex_label(vx))
-        .max()
-        .unwrap() + 1;
-    let ret = next_label;
-    for e in to_replace {
-        let mut prev = graph.source(e);
-        let last = graph.target(e);
-        let lb = *graph.edge_label(e).unwrap();
-        let rank_from = *rank.get(&prev).unwrap();
-        let rank_to = *rank.get(&last).unwrap();
+   let mut next_label = graph.vertices().filter_map(|vx| graph.vertex_label(vx)).max().unwrap() + 1;
+   let ret = next_label;
+   for e in to_replace {
+      let mut prev = graph.source(e);
+      let last = graph.target(e);
+      let lb = *graph.edge_label(e).unwrap();
+      let rank_from = *rank.get(&prev).unwrap();
+      let rank_to = *rank.get(&last).unwrap();
 
-        for r in (rank_from + 1)..rank_to {
-            let vx = graph.add_vertex(next_label);
+      for r in (rank_from + 1)..rank_to {
+         let vx = graph.add_vertex(next_label);
 
-            rank.insert(vx, r);
-            graph.add_edge(lb, prev, vx);
-            next_label += 1;
-            prev = vx;
+         rank.insert(vx, r);
+         graph.add_edge(lb, prev, vx);
+         next_label += 1;
+         prev = vx;
 
-        }
+      }
 
-        graph.add_edge(lb, prev, last);
-        graph.remove_edge(e);
-    }
+      graph.add_edge(lb, prev, last);
+      graph.remove_edge(e);
+   }
 
-    (ret, next_label)
+   (ret, next_label)
 }
 
 pub fn normalize_rank(rank: &mut HashMap<AdjacencyListVertexDescriptor, isize>) {
-    let offset = *rank.values().min().unwrap();
+   let offset = *rank.values().min().unwrap();
 
-    for (_, v) in rank.iter_mut() {
-        *v -= offset;
-    }
+   for (_, v) in rank.iter_mut() {
+      *v -= offset;
+   }
 }

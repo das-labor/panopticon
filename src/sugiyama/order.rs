@@ -17,303 +17,267 @@
  */
 
 
-use panopticon_graph_algos::{AdjacencyList, BidirectionalGraphTrait,
-                             EdgeListGraphTrait, GraphTrait,
-                             IncidenceGraphTrait};
+use panopticon_graph_algos::{AdjacencyList, BidirectionalGraphTrait, EdgeListGraphTrait, GraphTrait, IncidenceGraphTrait};
 
-use panopticon_graph_algos::adjacency_list::{AdjacencyListEdgeDescriptor,
-                                             AdjacencyListVertexDescriptor};
+use panopticon_graph_algos::adjacency_list::{AdjacencyListEdgeDescriptor, AdjacencyListVertexDescriptor};
 
 use panopticon_graph_algos::search::{VertexEvent, depth_first_visit};
 use std::{f32, isize, usize};
 use std::collections::HashMap;
 
-pub fn initial_ordering(rank: &HashMap<AdjacencyListVertexDescriptor, isize>, start: &AdjacencyListVertexDescriptor, graph: &AdjacencyList<usize, usize>) -> (Vec<Vec<AdjacencyListVertexDescriptor>>, HashMap<(usize, usize), Vec<(AdjacencyListEdgeDescriptor, AdjacencyListEdgeDescriptor)>>){
-    let mut ret = Vec::new();
-    let bipartite = bipartite_subgraphs(rank, graph);
+pub fn initial_ordering
+   (
+   rank: &HashMap<AdjacencyListVertexDescriptor, isize>,
+   start: &AdjacencyListVertexDescriptor,
+   graph: &AdjacencyList<usize, usize>,
+) -> (Vec<Vec<AdjacencyListVertexDescriptor>>, HashMap<(usize, usize), Vec<(AdjacencyListEdgeDescriptor, AdjacencyListEdgeDescriptor)>>) {
+   let mut ret = Vec::new();
+   let bipartite = bipartite_subgraphs(rank, graph);
 
-    depth_first_visit(
-        &mut |vx, k| if k == VertexEvent::Discovered {
-                 let r = rank[vx];
+   depth_first_visit(
+      &mut |vx, k| if k == VertexEvent::Discovered {
+              let r = rank[vx];
 
-                 assert!(r >= 0);
+              assert!(r >= 0);
 
-                 while ret.len() as isize <= r {
-                     ret.push(Vec::new());
-                 }
+              while ret.len() as isize <= r {
+                 ret.push(Vec::new());
+              }
 
-                 assert!(r >= 0);
-                 ret[r as usize].push(*vx)
-             },
-        &mut |_, _| {},
-        start,
-        graph,
-    );
+              assert!(r >= 0);
+              ret[r as usize].push(*vx)
+           },
+      &mut |_, _| {},
+      start,
+      graph,
+   );
 
-    (ret, bipartite)
+   (ret, bipartite)
 }
 
 /// collects all edge pairs that need to be checked for crossings
 /// TODO: This does not need to be O(n^2)
-fn bipartite_subgraphs(rank: &HashMap<AdjacencyListVertexDescriptor, isize>, graph: &AdjacencyList<usize, usize>) -> HashMap<(usize, usize), Vec<(AdjacencyListEdgeDescriptor, AdjacencyListEdgeDescriptor)>>{
-    let mut ret = HashMap::<(usize, usize),
-                            Vec<(AdjacencyListEdgeDescriptor,
-                                 AdjacencyListEdgeDescriptor)>>::new();
+fn bipartite_subgraphs(
+   rank: &HashMap<AdjacencyListVertexDescriptor, isize>,
+   graph: &AdjacencyList<usize, usize>,
+) -> HashMap<(usize, usize), Vec<(AdjacencyListEdgeDescriptor, AdjacencyListEdgeDescriptor)>> {
+   let mut ret = HashMap::<(usize, usize), Vec<(AdjacencyListEdgeDescriptor, AdjacencyListEdgeDescriptor)>>::new();
 
-    for e1 in graph.edges() {
-        let e1src = graph.source(e1);
-        let e1tgt = graph.target(e1);
+   for e1 in graph.edges() {
+      let e1src = graph.source(e1);
+      let e1tgt = graph.target(e1);
 
-        assert!(rank[&e1src] >= 0 && rank[&e1tgt] >= 0);
-        let e1_start_rank = rank[&e1src] as usize;
-        let e1_end_rank = rank[&e1tgt] as usize;
+      assert!(rank[&e1src] >= 0 && rank[&e1tgt] >= 0);
+      let e1_start_rank = rank[&e1src] as usize;
+      let e1_end_rank = rank[&e1tgt] as usize;
 
-        for e2 in graph.edges() {
-            if e1 != e2 {
-                let e2src = graph.source(e2);
-                let e2tgt = graph.target(e2);
+      for e2 in graph.edges() {
+         if e1 != e2 {
+            let e2src = graph.source(e2);
+            let e2tgt = graph.target(e2);
 
-                assert!(rank[&e2src] >= 0 && rank[&e2tgt] >= 0);
-                let e2_start_rank = rank[&e2src] as usize;
-                let e2_end_rank = rank[&e2tgt] as usize;
-                let mut ranks = vec![
-                    e1_start_rank,
-                    e2_start_rank,
-                    e1_end_rank,
-                    e2_end_rank,
-                ];
+            assert!(rank[&e2src] >= 0 && rank[&e2tgt] >= 0);
+            let e2_start_rank = rank[&e2src] as usize;
+            let e2_end_rank = rank[&e2tgt] as usize;
+            let mut ranks = vec![e1_start_rank, e2_start_rank, e1_end_rank, e2_end_rank];
 
-                ranks.sort();
-                ranks.dedup();
+            ranks.sort();
+            ranks.dedup();
 
-                match ranks.len() {
-                    0 => unreachable!(),
-                    1 => {
-                        ret.entry((ranks[0], ranks[0]))
-                            .or_insert(vec![])
-                            .push((e1, e2))
-                    }
-                    2 if ranks[1] - ranks[0] == 1 => {
-                        ret.entry((ranks[0], ranks[1]))
-                            .or_insert(vec![])
-                            .push((e1, e2))
-                    }
-                    _ => {}
-                }
+            match ranks.len() {
+               0 => unreachable!(),
+               1 => ret.entry((ranks[0], ranks[0])).or_insert(vec![]).push((e1, e2)),
+               2 if ranks[1] - ranks[0] == 1 => ret.entry((ranks[0], ranks[1])).or_insert(vec![]).push((e1, e2)),
+               _ => {}
             }
-        }
-    }
+         }
+      }
+   }
 
-    ret
+   ret
 }
 
 pub fn optimize_ordering_once(
-    iteration: usize,
-    bipartite: &HashMap<(usize, usize),
-                        Vec<(AdjacencyListEdgeDescriptor,
-                             AdjacencyListEdgeDescriptor)>>,
-    xings: &mut usize,
-    order: &mut Vec<Vec<AdjacencyListVertexDescriptor>>,
-    rank: &HashMap<AdjacencyListVertexDescriptor, isize>,
-    graph: &AdjacencyList<usize, usize>,
+   iteration: usize,
+   bipartite: &HashMap<(usize, usize), Vec<(AdjacencyListEdgeDescriptor, AdjacencyListEdgeDescriptor)>>,
+   xings: &mut usize,
+   order: &mut Vec<Vec<AdjacencyListVertexDescriptor>>,
+   rank: &HashMap<AdjacencyListVertexDescriptor, isize>,
+   graph: &AdjacencyList<usize, usize>,
 ) {
-    let mut alt = order.clone();
+   let mut alt = order.clone();
 
-    wmedian(iteration, &mut alt, rank, graph);
+   wmedian(iteration, &mut alt, rank, graph);
 
-    let alt_xings = crossings(&bipartite, &alt, graph);
+   let alt_xings = crossings(&bipartite, &alt, graph);
 
-    if alt_xings < *xings {
-        *order = alt;
-        *xings = alt_xings;
-    }
+   if alt_xings < *xings {
+      *order = alt;
+      *xings = alt_xings;
+   }
 }
 
 /// Computes the number of edge crossings in graph.
 pub fn crossings(
-    bipartite: &HashMap<(usize, usize),
-                        Vec<(AdjacencyListEdgeDescriptor,
-                             AdjacencyListEdgeDescriptor)>>,
-    order: &Vec<Vec<AdjacencyListVertexDescriptor>>,
-    graph: &AdjacencyList<usize, usize>,
+   bipartite: &HashMap<(usize, usize), Vec<(AdjacencyListEdgeDescriptor, AdjacencyListEdgeDescriptor)>>,
+   order: &Vec<Vec<AdjacencyListVertexDescriptor>>,
+   graph: &AdjacencyList<usize, usize>,
 ) -> usize {
-    use std::mem::swap;
+   use std::mem::swap;
 
-    let mut ret = 0;
+   let mut ret = 0;
 
-    for (&(r_top, r_bot), v) in bipartite.iter() {
-        assert!(r_top <= r_bot);
+   for (&(r_top, r_bot), v) in bipartite.iter() {
+      assert!(r_top <= r_bot);
 
-        let ord_top = &order[r_top];
-        let ord_bot = &order[r_bot];
+      let ord_top = &order[r_top];
+      let ord_bot = &order[r_bot];
 
-        // sum #crossings of all edge pairs between adjacent ranks
-        for &(e1, e2) in v.iter() {
-            let e1src = graph.source(e1);
-            let e1tgt = graph.target(e1);
-            let e2src = graph.source(e2);
-            let e2tgt = graph.target(e2);
+      // sum #crossings of all edge pairs between adjacent ranks
+      for &(e1, e2) in v.iter() {
+         let e1src = graph.source(e1);
+         let e1tgt = graph.target(e1);
+         let e2src = graph.source(e2);
+         let e2tgt = graph.target(e2);
 
-            // edges can't cross if they share a vertex
-            if !(e1src == e2src || e1src == e2tgt || e1tgt == e2src ||
-                 e1tgt == e2tgt) {
-                let mut vert_set1 = vec![];
-                let mut vert_set2 = vec![];
+         // edges can't cross if they share a vertex
+         if !(e1src == e2src || e1src == e2tgt || e1tgt == e2src || e1tgt == e2tgt) {
+            let mut vert_set1 = vec![];
+            let mut vert_set2 = vec![];
 
-                // sort vertices from the upper rank into vert_set1 and from the lower into vert_set2
-                // contents of the vectors are pairs (order,edge)
-                for (v, e) in vec![
-                    (e1src, e1),
-                    (e1tgt, e1),
-                    (e2src, e2),
-                    (e2tgt, e2),
-                ] {
-                    if let Some(o) = ord_top.iter().position(|&x| x == v) {
-                        vert_set1.push((o, e));
-                    } else {
-                        vert_set2.push(
-                            (ord_bot
-                                 .iter()
-                                 .position(|&x| x == v)
-                                 .unwrap(),
-                             e)
-                        );
-                    }
-                }
-
-                // sort by x
-                vert_set1.sort_by(|x, y| x.0.cmp(&y.0));
-                vert_set2.sort_by(|x, y| x.0.cmp(&y.0));
-
-                // ensure |vert_set1| < |vert_set2|. This saves cases in the following match
-                if vert_set1.len() > vert_set2.len() {
-                    swap(&mut vert_set1, &mut vert_set2);
-                }
-
-                // case split based on how the vertices are distributed along the adjacent ranks.
-                // a and b are the resp. endpoints of the two edges.
-                let has_crossing = match (vert_set1.len(), vert_set2.len()) {
-                    // all vertices are in the same rank, edges cross if [a,b,a,b]
-                    (0, 4) => vert_set2[0].1 == vert_set2[2].1,
-                    // all but one vertex are in the same rank, edges cross if [b] and [a,b,a]
-                    (1, 3) => vert_set1[0].1 == vert_set2[1].1,
-                    // edges are split even between the two ranks, edges cross if [a,b] and [b,a]
-                    (2, 2) => {
-                        vert_set2[0].1 == vert_set1[1].1 &&
-                        vert_set2[1].1 == vert_set1[0].1
-                    }
-                    _ => unreachable!(),
-                };
-
-                if has_crossing {
-                    ret += 1;
-                }
+            // sort vertices from the upper rank into vert_set1 and from the lower into vert_set2
+            // contents of the vectors are pairs (order,edge)
+            for (v, e) in vec![(e1src, e1), (e1tgt, e1), (e2src, e2), (e2tgt, e2)] {
+               if let Some(o) = ord_top.iter().position(|&x| x == v) {
+                  vert_set1.push((o, e));
+               } else {
+                  vert_set2.push((ord_bot.iter().position(|&x| x == v).unwrap(), e));
+               }
             }
-        }
-    }
 
-    ret
+            // sort by x
+            vert_set1.sort_by(|x, y| x.0.cmp(&y.0));
+            vert_set2.sort_by(|x, y| x.0.cmp(&y.0));
+
+            // ensure |vert_set1| < |vert_set2|. This saves cases in the following match
+            if vert_set1.len() > vert_set2.len() {
+               swap(&mut vert_set1, &mut vert_set2);
+            }
+
+            // case split based on how the vertices are distributed along the adjacent ranks.
+            // a and b are the resp. endpoints of the two edges.
+            let has_crossing = match (vert_set1.len(), vert_set2.len()) {
+               // all vertices are in the same rank, edges cross if [a,b,a,b]
+               (0, 4) => vert_set2[0].1 == vert_set2[2].1,
+               // all but one vertex are in the same rank, edges cross if [b] and [a,b,a]
+               (1, 3) => vert_set1[0].1 == vert_set2[1].1,
+               // edges are split even between the two ranks, edges cross if [a,b] and [b,a]
+               (2, 2) => vert_set2[0].1 == vert_set1[1].1 && vert_set2[1].1 == vert_set1[0].1,
+               _ => unreachable!(),
+            };
+
+            if has_crossing {
+               ret += 1;
+            }
+         }
+      }
+   }
+
+   ret
 }
 
 fn adj_positions(
-    vx: &AdjacencyListVertexDescriptor,
-    adj_rank: usize,
-    order: &Vec<Vec<AdjacencyListVertexDescriptor>>,
-    rank: &HashMap<AdjacencyListVertexDescriptor, isize>,
-    graph: &AdjacencyList<usize, usize>,
+   vx: &AdjacencyListVertexDescriptor,
+   adj_rank: usize,
+   order: &Vec<Vec<AdjacencyListVertexDescriptor>>,
+   rank: &HashMap<AdjacencyListVertexDescriptor, isize>,
+   graph: &AdjacencyList<usize, usize>,
 ) -> Vec<usize> {
-    let mut ret = vec![];
+   let mut ret = vec![];
 
-    for e in graph.out_edges(*vx).chain(graph.in_edges(*vx)) {
-        let other = if graph.source(e) == *vx {
-            graph.target(e)
-        } else {
-            graph.source(e)
-        };
+   for e in graph.out_edges(*vx).chain(graph.in_edges(*vx)) {
+      let other = if graph.source(e) == *vx {
+         graph.target(e)
+      } else {
+         graph.source(e)
+      };
 
-        assert!(rank[&other] >= 0);
-        let or = rank[&other] as usize;
+      assert!(rank[&other] >= 0);
+      let or = rank[&other] as usize;
 
-        if or == adj_rank {
-            ret.push(order[or].iter().position(|&x| x == other).unwrap());
-        }
-    }
+      if or == adj_rank {
+         ret.push(order[or].iter().position(|&x| x == other).unwrap());
+      }
+   }
 
-    ret.sort();
-    ret
+   ret.sort();
+   ret
 }
 
 fn median_value(
-    vx: &AdjacencyListVertexDescriptor,
-    adj_rank: usize,
-    order: &Vec<Vec<AdjacencyListVertexDescriptor>>,
-    rank: &HashMap<AdjacencyListVertexDescriptor, isize>,
-    graph: &AdjacencyList<usize, usize>,
+   vx: &AdjacencyListVertexDescriptor,
+   adj_rank: usize,
+   order: &Vec<Vec<AdjacencyListVertexDescriptor>>,
+   rank: &HashMap<AdjacencyListVertexDescriptor, isize>,
+   graph: &AdjacencyList<usize, usize>,
 ) -> f32 {
-    let p = adj_positions(vx, adj_rank, order, rank, graph);
-    let m = (p.len() as f32 / 2.0).floor();
+   let p = adj_positions(vx, adj_rank, order, rank, graph);
+   let m = (p.len() as f32 / 2.0).floor();
 
-    assert!(m >= 0.0);
+   assert!(m >= 0.0);
 
-    if p.len() == 0 {
-        -1.0
-    } else if p.len() % 2 == 1 {
-        p[m as usize] as f32
-    } else if p.len() == 2 {
-        (p[0] + p[1]) as f32 / 2.0
-    } else {
-        assert!(m >= 1.0);
-        let left = (p[(m - 1.0) as usize] - p[0]) as f32;
-        let right = (p.last().unwrap() - p[m as usize]) as f32;
+   if p.len() == 0 {
+      -1.0
+   } else if p.len() % 2 == 1 {
+      p[m as usize] as f32
+   } else if p.len() == 2 {
+      (p[0] + p[1]) as f32 / 2.0
+   } else {
+      assert!(m >= 1.0);
+      let left = (p[(m - 1.0) as usize] - p[0]) as f32;
+      let right = (p.last().unwrap() - p[m as usize]) as f32;
 
-        ((p[(m - 1.0) as usize] as f32) * right +
-         (p[m as usize] as f32) * left) / (left + right)
-    }
+      ((p[(m - 1.0) as usize] as f32) * right + (p[m as usize] as f32) * left) / (left + right)
+   }
 }
 
 fn wmedian(
-    iter: usize,
-    order: &mut Vec<Vec<AdjacencyListVertexDescriptor>>,
-    rank: &HashMap<AdjacencyListVertexDescriptor, isize>,
-    graph: &AdjacencyList<usize, usize>,
+   iter: usize,
+   order: &mut Vec<Vec<AdjacencyListVertexDescriptor>>,
+   rank: &HashMap<AdjacencyListVertexDescriptor, isize>,
+   graph: &AdjacencyList<usize, usize>,
 ) {
-    let dir = iter % 2 == 0; // true -> torwards higher ranks
-    let mut rank_idx = if dir {
-        0
-    } else {
-        assert!(order.len() >= 1);
-        order.len() - 1
-    } as usize;
+   let dir = iter % 2 == 0; // true -> torwards higher ranks
+   let mut rank_idx = if dir {
+      0
+   } else {
+      assert!(order.len() >= 1);
+      order.len() - 1
+   } as usize;
 
-    while rank_idx < order.len() {
-        if (rank_idx < order.len() - 1 && !dir) || (rank_idx > 0 && dir) {
-            let prev_rank = if dir { rank_idx - 1 } else { rank_idx + 1 };
-            let mut new_order = HashMap::new();
+   while rank_idx < order.len() {
+      if (rank_idx < order.len() - 1 && !dir) || (rank_idx > 0 && dir) {
+         let prev_rank = if dir { rank_idx - 1 } else { rank_idx + 1 };
+         let mut new_order = HashMap::new();
 
-            for vx in order[rank_idx].iter() {
-                new_order.insert(
-                    vx.clone(),
-                    median_value(
-                        vx,
-                        prev_rank,
-                        order,
-                        rank,
-                        graph,
-                    ) as isize,
-                );
-            }
+         for vx in order[rank_idx].iter() {
+            new_order.insert(
+               vx.clone(),
+               median_value(vx, prev_rank, order, rank, graph) as isize,
+            );
+         }
 
-            order[rank_idx].sort_by(|a, b| new_order[a].cmp(&new_order[b]));
-        }
+         order[rank_idx].sort_by(|a, b| new_order[a].cmp(&new_order[b]));
+      }
 
-        if dir {
-            rank_idx += 1;
-        } else {
-            if rank_idx == 0 {
-                break;
-            } else {
-                rank_idx -= 1;
-            }
-        }
-    }
+      if dir {
+         rank_idx += 1;
+      } else {
+         if rank_idx == 0 {
+            break;
+         } else {
+            rank_idx -= 1;
+         }
+      }
+   }
 }

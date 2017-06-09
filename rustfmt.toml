@@ -1,5 +1,5 @@
 max_width=160
-fn_call_width=1000
+fn_call_width=60
 chain_one_line_max=160
 reorder_imports=true
 reorder_imported_names=true
@@ -9,3 +9,9 @@ where_style = "Rfc"
 generics_indent = "Block"
 fn_call_style = "Block"
 struct_lit_style = "Block"
+struct_lit_multiline_style = "PreferSingle"
+struct_lit_width = 60
+struct_variant_width = 60
+array_width = 80
+tab_spaces = 4
+use_try_shorthand = true

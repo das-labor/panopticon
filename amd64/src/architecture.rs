@@ -23,77 +23,67 @@ pub enum Amd64 {}
 
 #[derive(Clone,PartialEq,Copy,Debug)]
 pub enum Mode {
-    Real, // Real mode / Virtual 8086 mode
-    Protected, // Protected mode / Long compatibility mode
-    Long, // Long 64-bit mode
+   Real, // Real mode / Virtual 8086 mode
+   Protected, // Protected mode / Long compatibility mode
+   Long, // Long 64-bit mode
 }
 
 impl Mode {
-    pub fn alt_bits(&self) -> usize {
-        match self {
-            &Mode::Real => 32,
-            &Mode::Protected => 16,
-            &Mode::Long => 16,
-        }
-    }
+   pub fn alt_bits(&self) -> usize {
+      match self {
+         &Mode::Real => 32,
+         &Mode::Protected => 16,
+         &Mode::Long => 16,
+      }
+   }
 
-    pub fn bits(&self) -> usize {
-        match self {
-            &Mode::Real => 16,
-            &Mode::Protected => 32,
-            &Mode::Long => 64,
-        }
-    }
+   pub fn bits(&self) -> usize {
+      match self {
+         &Mode::Real => 16,
+         &Mode::Protected => 32,
+         &Mode::Long => 64,
+      }
+   }
 }
 
 impl Architecture for Amd64 {
-    type Token = u8;
-    type Configuration = Mode;
+   type Token = u8;
+   type Configuration = Mode;
 
-    fn prepare(
-        _: &Region,
-        _: &Self::Configuration,
-    ) -> Result<Vec<(&'static str, u64, &'static str)>> {
-        Ok(vec![])
-    }
+   fn prepare(_: &Region, _: &Self::Configuration) -> Result<Vec<(&'static str, u64, &'static str)>> {
+      Ok(vec![])
+   }
 
-    fn decode(
-        reg: &Region,
-        start: u64,
-        cfg: &Self::Configuration,
-    ) -> Result<Match<Self>> {
-        let data = reg.iter();
-        let mut buf: Vec<u8> = vec![];
-        let mut i = data.seek(start);
-        let p = start;
+   fn decode(reg: &Region, start: u64, cfg: &Self::Configuration) -> Result<Match<Self>> {
+      let data = reg.iter();
+      let mut buf: Vec<u8> = vec![];
+      let mut i = data.seek(start);
+      let p = start;
 
-        while let Some(Some(b)) = i.next() {
-            buf.push(b);
-            if buf.len() == 15 {
-                break;
-            }
-        }
+      while let Some(Some(b)) = i.next() {
+         buf.push(b);
+         if buf.len() == 15 {
+            break;
+         }
+      }
 
-        debug!("disass @ {:#x}: {:?}", p, buf);
+      debug!("disass @ {:#x}: {:?}", p, buf);
 
-        let ret =
-            ::disassembler::read(*cfg, &buf, p).and_then(
-                |(len, mne, mut jmp)| {
-                    Ok(
-                        Match::<Amd64> {
-                            tokens: buf[0..len as usize].to_vec(),
-                            mnemonics: vec![mne],
-                            jumps: jmp.drain(..)
-                                .map(|x| (p, x.0, x.1))
-                                .collect::<Vec<_>>(),
-                            configuration: cfg.clone(),
-                        }
-                    )
-                }
-            );
+      let ret = ::disassembler::read(*cfg, &buf, p).and_then(
+         |(len, mne, mut jmp)| {
+            Ok(
+               Match::<Amd64> {
+                  tokens: buf[0..len as usize].to_vec(),
+                  mnemonics: vec![mne],
+                  jumps: jmp.drain(..).map(|x| (p, x.0, x.1)).collect::<Vec<_>>(),
+                  configuration: cfg.clone(),
+               }
+            )
+         }
+      );
 
-        debug!("    res: {:?}", ret);
+      debug!("    res: {:?}", ret);
 
-        ret
-    }
+      ret
+   }
 }

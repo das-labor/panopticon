@@ -23,36 +23,36 @@ use std::path::Path;
 
 #[derive(Clone,Copy,Debug)]
 enum Argument {
-    Literal,
-    LiteralWidth,
-    NoOffset,
-    Offset,
-    Constant,
-    Undefined,
+   Literal,
+   LiteralWidth,
+   NoOffset,
+   Offset,
+   Constant,
+   Undefined,
 }
 
 impl Argument {
-    pub fn match_expr(&self,pos: &'static str) -> String {
-        match self {
-            &Argument::Literal => format!("( ${}:expr )",pos),
-            &Argument::LiteralWidth => format!("( ${}:expr ) : ${}_w:tt",pos,pos),
-            &Argument::NoOffset => format!("${}:tt : ${}_w:tt",pos,pos),
-            &Argument::Offset => format!("${}:tt : ${}_w:tt / ${}_o:tt",pos,pos,pos),
-            &Argument::Constant => format!("[ ${}:tt ] : ${}_w:tt",pos,pos),
-            &Argument::Undefined => "?".to_string(),
-        }
-    }
+   pub fn match_expr(&self, pos: &'static str) -> String {
+      match self {
+         &Argument::Literal => format!("( ${}:expr )", pos),
+         &Argument::LiteralWidth => format!("( ${}:expr ) : ${}_w:tt", pos, pos),
+         &Argument::NoOffset => format!("${}:tt : ${}_w:tt", pos, pos),
+         &Argument::Offset => format!("${}:tt : ${}_w:tt / ${}_o:tt", pos, pos, pos),
+         &Argument::Constant => format!("[ ${}:tt ] : ${}_w:tt", pos, pos),
+         &Argument::Undefined => "?".to_string(),
+      }
+   }
 
-    pub fn arg_expr(&self,pos: &'static str) -> String {
-        match self {
-            &Argument::Literal => format!("( ${} )",pos),
-            &Argument::LiteralWidth => format!("( ${} ) : ${}_w",pos,pos),
-            &Argument::NoOffset => format!("${} : ${}_w",pos,pos),
-            &Argument::Offset => format!("${} : ${}_w / ${}_o",pos,pos,pos),
-            &Argument::Constant => format!("[ ${} ] : ${}_w",pos,pos),
-            &Argument::Undefined => "?".to_string(),
-        }
-    }
+   pub fn arg_expr(&self, pos: &'static str) -> String {
+      match self {
+         &Argument::Literal => format!("( ${} )", pos),
+         &Argument::LiteralWidth => format!("( ${} ) : ${}_w", pos, pos),
+         &Argument::NoOffset => format!("${} : ${}_w", pos, pos),
+         &Argument::Offset => format!("${} : ${}_w / ${}_o", pos, pos, pos),
+         &Argument::Constant => format!("[ ${} ] : ${}_w", pos, pos),
+         &Argument::Undefined => "?".to_string(),
+      }
+   }
 }
 
 const BOILERPLATE: &'static str = "
@@ -74,81 +74,117 @@ ret
 ";
 
 fn main() {
-    let out_dir = env::var("OUT_DIR").unwrap();
-    let dest_path = Path::new(&out_dir).join("rreil.rs");
-    let mut f = File::create(&dest_path).unwrap();
-    let lvalues = &[
-        Argument::Literal,
-        Argument::LiteralWidth,
-        Argument::NoOffset,
-        Argument::Undefined,
-    ];
-    let rvalues = &[
-        Argument::Literal,
-        Argument::LiteralWidth,
-        Argument::NoOffset,
-        Argument::Offset,
-        Argument::Constant,
-        Argument::Undefined,
-    ];
+   let out_dir = env::var("OUT_DIR").unwrap();
+   let dest_path = Path::new(&out_dir).join("rreil.rs");
+   let mut f = File::create(&dest_path).unwrap();
+   let lvalues = &[
+      Argument::Literal,
+      Argument::LiteralWidth,
+      Argument::NoOffset,
+      Argument::Undefined,
+   ];
+   let rvalues = &[
+      Argument::Literal,
+      Argument::LiteralWidth,
+      Argument::NoOffset,
+      Argument::Offset,
+      Argument::Constant,
+      Argument::Undefined,
+   ];
 
-    // binary
-    f.write_all(b"
+   // binary
+   f.write_all(
+         b"
 #[macro_export]
 macro_rules! rreil_binop {
-    ").unwrap();
+    "
+      )
+      .unwrap();
 
-    for a in lvalues.iter() {
-        for b in rvalues.iter() {
-            for c in rvalues.iter() {
-                f.write_fmt(format_args!("
+   for a in lvalues.iter() {
+      for b in rvalues.iter() {
+         for c in rvalues.iter() {
+            f.write_fmt(
+                  format_args!(
+                     "
     // {:?} := {:?}, {:?}
     ( $op:ident # {}, {} , {} ; $($cdr:tt)*) => {{{{
 	    let mut stmt = vec![$crate::Statement{{ op: $crate::Operation::$op(rreil_rvalue!({}),rreil_rvalue!({})), assignee: rreil_lvalue!({})}}];
         {}
     }}}};
-                ",a,b,c,
-                a.match_expr("a"),b.match_expr("b"),c.match_expr("c"),
-                b.arg_expr("b"),c.arg_expr("c"),a.arg_expr("a"),
-                BOILERPLATE)).unwrap();
-            }
-        }
-    }
-    f.write_all(b"}
-    ").unwrap();
+                ",
+                     a,
+                     b,
+                     c,
+                     a.match_expr("a"),
+                     b.match_expr("b"),
+                     c.match_expr("c"),
+                     b.arg_expr("b"),
+                     c.arg_expr("c"),
+                     a.arg_expr("a"),
+                     BOILERPLATE
+                  )
+               )
+               .unwrap();
+         }
+      }
+   }
+   f.write_all(
+         b"}
+    "
+      )
+      .unwrap();
 
-    // unary
-    f.write_all(b"
+   // unary
+   f.write_all(
+         b"
 #[macro_export]
 macro_rules! rreil_unop {
-    ").unwrap();
+    "
+      )
+      .unwrap();
 
-    for a in lvalues.iter() {
-        for b in rvalues.iter() {
-            f.write_fmt(format_args!("
+   for a in lvalues.iter() {
+      for b in rvalues.iter() {
+         f.write_fmt(
+               format_args!(
+                  "
     // {:?} := {:?}
     ( $op:ident # {}, {} ; $($cdr:tt)*) => {{{{
         let mut stmt = vec![$crate::Statement{{ op: $crate::Operation::$op(rreil_rvalue!({})), assignee: rreil_lvalue!({})}}];
         {}
     }}}};
-                ",a,b,
-                a.match_expr("a"),b.match_expr("b"),
-                b.arg_expr("b"),a.arg_expr("a"),
-                BOILERPLATE)).unwrap();
-        }
-    }
-    f.write_all(b"}
-    ").unwrap();
+                ",
+                  a,
+                  b,
+                  a.match_expr("a"),
+                  b.match_expr("b"),
+                  b.arg_expr("b"),
+                  a.arg_expr("a"),
+                  BOILERPLATE
+               )
+            )
+            .unwrap();
+      }
+   }
+   f.write_all(
+         b"}
+    "
+      )
+      .unwrap();
 
-    // memop
-    f.write_all(b"
+   // memop
+   f.write_all(
+         b"
 #[macro_export]
 macro_rules! rreil_memop {
-    ").unwrap();
+    "
+      )
+      .unwrap();
 
-    for a in lvalues.iter() {
-        for b in rvalues.iter() {
-            f.write_fmt(format_args!("
+   for a in lvalues.iter() {
+      for b in rvalues.iter() {
+         f.write_fmt(format_args!("
     // {:?} := {:?}
     ( $op:ident # $bank:ident # {} , {} ; $($cdr:tt)*) => {{{{
         let mut stmt = vec![$crate::Statement{{ op: $crate::Operation::$op(::std::borrow::Cow::Borrowed(stringify!($bank)),rreil_rvalue!({})), assignee: rreil_lvalue!({})}}];
@@ -158,55 +194,88 @@ macro_rules! rreil_memop {
                 a.match_expr("a"),b.match_expr("b"),
                 b.arg_expr("b"),a.arg_expr("a"),
                 BOILERPLATE)).unwrap();
-        }
-    }
-    f.write_all(b"}
-    ").unwrap();
+      }
+   }
+   f.write_all(
+         b"}
+    "
+      )
+      .unwrap();
 
-    // extop
-    f.write_all(b"
+   // extop
+   f.write_all(
+         b"
 #[macro_export]
 macro_rules! rreil_extop {
-    ").unwrap();
+    "
+      )
+      .unwrap();
 
-    for a in lvalues.iter() {
-        for b in rvalues.iter() {
-            f.write_fmt(format_args!("
+   for a in lvalues.iter() {
+      for b in rvalues.iter() {
+         f.write_fmt(
+               format_args!(
+                  "
     // {:?} := {:?}
     ( $op:ident # $sz:tt # {}, {} ; $($cdr:tt)*) => {{{{
         let mut stmt = vec![$crate::Statement{{ op: $crate::Operation::$op(rreil_imm!($sz),rreil_rvalue!({})), assignee: rreil_lvalue!({})}}];
         {}
     }}}};
-                ",a,b,
-                a.match_expr("a"),b.match_expr("b"),
-                b.arg_expr("b"),a.arg_expr("a"),
-                BOILERPLATE)).unwrap();
-        }
-    }
-    f.write_all(b"}
-    ").unwrap();
+                ",
+                  a,
+                  b,
+                  a.match_expr("a"),
+                  b.match_expr("b"),
+                  b.arg_expr("b"),
+                  a.arg_expr("a"),
+                  BOILERPLATE
+               )
+            )
+            .unwrap();
+      }
+   }
+   f.write_all(
+         b"}
+    "
+      )
+      .unwrap();
 
-    // selop
-    f.write_all(b"
+   // selop
+   f.write_all(
+         b"
 #[macro_export]
 macro_rules! rreil_selop {
-    ").unwrap();
+    "
+      )
+      .unwrap();
 
-    for a in lvalues.iter() {
-        for b in rvalues.iter() {
-            f.write_fmt(format_args!("
+   for a in lvalues.iter() {
+      for b in rvalues.iter() {
+         f.write_fmt(
+               format_args!(
+                  "
     // {:?} := {:?}
     ( $op:ident # $sz:tt # {}, {} ; $($cdr:tt)*) => {{{{
         let mut stmt = vec![$crate::Statement{{ op: $crate::Operation::$op(rreil_imm!($sz),rreil_rvalue!({}),rreil_rvalue!({})), assignee: rreil_lvalue!({})}}];
         {}
     }}}};
-                ",a,b,
-                a.match_expr("a"),b.match_expr("b"),
-                a.arg_expr("a"),b.arg_expr("b"),a.arg_expr("a"),
-                BOILERPLATE)).unwrap();
-        }
-    }
-    f.write_all(b"}
-    ").unwrap();
+                ",
+                  a,
+                  b,
+                  a.match_expr("a"),
+                  b.match_expr("b"),
+                  a.arg_expr("a"),
+                  b.arg_expr("b"),
+                  a.arg_expr("a"),
+                  BOILERPLATE
+               )
+            )
+            .unwrap();
+      }
+   }
+   f.write_all(
+         b"}
+    "
+      )
+      .unwrap();
 }
-
