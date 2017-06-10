@@ -25,7 +25,7 @@ extern crate regex;
 extern crate quickcheck;
 
 use panopticon_amd64::{AddressingMethod, JumpSpec, MnemonicSpec, Opcode, Operand, OperandSpec, OperandType, read_spec_register, semantic, tables};
-use panopticon_core::{Lvalue, Result, Rvalue, Statement, execute, lift};
+use panopticon_core::{Lvalue, Result, Rvalue, Statement, execute};
 
 use quickcheck::{Arbitrary, Gen, TestResult, Testable};
 use std::borrow::Cow;
@@ -648,9 +648,10 @@ fn rappel_xcheck(
     let mut ctx = HashMap::<Cow<'static, str>, u64>::new();
 
     for stmt in stmts {
-        let s = lift(
-            &stmt.op,
-            &|rv| if let &Rvalue::Variable { ref name, ref offset, ref size, .. } = rv {
+        let mut s = stmt.op;
+
+        for rv in s.operands_mut() {
+            *rv = if let &mut Rvalue::Variable { ref name, ref offset, ref size, .. } = rv {
                 if let Some(val) = ctx.get(name.as_ref()) {
                     if *size < 64 {
                         Rvalue::Constant {
@@ -665,8 +666,8 @@ fn rappel_xcheck(
                 }
             } else {
                 rv.clone()
-            },
-        );
+            }
+        }
 
         println!(
             "{}",

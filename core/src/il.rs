@@ -110,8 +110,8 @@
 
 use Result;
 use quickcheck::{Arbitrary, Gen};
+use serde::{Serialize,Deserialize};
 
-use rustc_serialize::{Decodable, Encodable};
 use std::borrow::Cow;
 use std::cmp;
 use std::convert::From;
@@ -122,7 +122,7 @@ use std::str::{FromStr, SplitWhitespace};
 use std::u64;
 
 /// A readable RREIL value.
-#[derive(Clone,PartialEq,Eq,Debug,RustcEncodable,RustcDecodable,Hash)]
+#[derive(Clone,PartialEq,Eq,Debug,Serialize,Deserialize,Hash)]
 pub enum Rvalue {
     /// Undefined value of unknown length
     Undefined,
@@ -273,7 +273,7 @@ impl Display for Rvalue {
 
 
 /// A writeable RREIL value.
-#[derive(Clone,PartialEq,Eq,Debug,RustcEncodable,RustcDecodable,Hash)]
+#[derive(Clone,PartialEq,Eq,Debug,Serialize,Deserialize,Hash)]
 pub enum Lvalue {
     /// Undefined value of unknown length
     Undefined,
@@ -339,7 +339,7 @@ impl Display for Lvalue {
 }
 
 /// Branch condition
-#[derive(Clone,PartialEq,Eq,Debug,RustcEncodable,RustcDecodable)]
+#[derive(Clone,PartialEq,Eq,Debug,Serialize,Deserialize)]
 pub enum Guard {
     /// Guard is constant true
     True,
@@ -400,75 +400,75 @@ impl Display for Guard {
 }
 
 /// A RREIL operation.
-#[derive(Clone,PartialEq,Eq,Debug,RustcEncodable,RustcDecodable)]
-pub enum Operation<V: Clone + PartialEq + Eq + Debug + Encodable + Decodable> {
+#[derive(Clone,PartialEq,Eq,Debug,Serialize,Deserialize)]
+pub enum Operation {
     /// Integer addition
-    Add(V, V),
+    Add(Rvalue, Rvalue),
     /// Integer subtraction
-    Subtract(V, V),
+    Subtract(Rvalue, Rvalue),
     /// Unsigned integer multiplication
-    Multiply(V, V),
+    Multiply(Rvalue, Rvalue),
     /// Unsigned integer division
-    DivideUnsigned(V, V),
+    DivideUnsigned(Rvalue, Rvalue),
     /// Signed integer division
-    DivideSigned(V, V),
+    DivideSigned(Rvalue, Rvalue),
     /// Bitwise left shift
-    ShiftLeft(V, V),
+    ShiftLeft(Rvalue, Rvalue),
     /// Bitwise logical right shift
-    ShiftRightUnsigned(V, V),
+    ShiftRightUnsigned(Rvalue, Rvalue),
     /// Bitwise arithmetic right shift
-    ShiftRightSigned(V, V),
+    ShiftRightSigned(Rvalue, Rvalue),
     /// Integer modulo
-    Modulo(V, V),
+    Modulo(Rvalue, Rvalue),
     /// Bitwise logical and
-    And(V, V),
+    And(Rvalue, Rvalue),
     /// Bitwise logical or
-    InclusiveOr(V, V),
+    InclusiveOr(Rvalue, Rvalue),
     /// Bitwise logical xor
-    ExclusiveOr(V, V),
+    ExclusiveOr(Rvalue, Rvalue),
 
     /// Compare both operands for equality and returns `1` or `0`
-    Equal(V, V),
+    Equal(Rvalue, Rvalue),
     /// Returns `1` if the first operand is less than or equal to the second and `0` otherwise.
     /// Comparison assumes unsigned values.
-    LessOrEqualUnsigned(V, V),
+    LessOrEqualUnsigned(Rvalue, Rvalue),
     /// Returns `1` if the first operand is less than or equal to the second and `0` otherwise.
     /// Comparison assumes signed values.
-    LessOrEqualSigned(V, V),
+    LessOrEqualSigned(Rvalue, Rvalue),
     /// Returns `1` if the first operand is less than the second and `0` otherwise.
     /// Comparison assumes unsigned values.
-    LessUnsigned(V, V),
+    LessUnsigned(Rvalue, Rvalue),
     /// Returns `1` if the first operand is less than the second and `0` otherwise.
     /// Comparison assumes signed values.
-    LessSigned(V, V),
+    LessSigned(Rvalue, Rvalue),
 
     /// Zero extends the operand.
-    ZeroExtend(usize, V),
+    ZeroExtend(usize, Rvalue),
     /// Sign extends the operand.
-    SignExtend(usize, V),
+    SignExtend(usize, Rvalue),
     /// Copies the operand without modification.
-    Move(V),
+    Move(Rvalue),
     /// Calls the function located at the address pointed to by the operand.
-    Call(V),
+    Call(Rvalue),
     /// Copies only a range of bit from the operand.
-    Select(usize, V, V),
+    Select(usize, Rvalue, Rvalue),
 
     /// Reads a memory cell
-    Load(Cow<'static, str>, V),
+    Load(Cow<'static, str>, Rvalue),
     /// Writes a memory cell
-    Store(Cow<'static, str>, V),
+    Store(Cow<'static, str>, Rvalue),
 
     /// SSA Phi function
-    Phi(Vec<V>),
+    Phi(Vec<Rvalue>),
 }
 
 /// A single RREIL statement.
-#[derive(Clone,PartialEq,Eq,Debug,RustcEncodable,RustcDecodable)]
+#[derive(Clone,PartialEq,Eq,Debug,Serialize,Deserialize)]
 pub struct Statement {
     /// Value that the operation result is assigned to
     pub assignee: Lvalue,
     /// Operation and its arguments
-    pub op: Operation<Rvalue>,
+    pub op: Operation,
 }
 
 impl Statement {
@@ -592,7 +592,7 @@ impl Statement {
 }
 
 /// Executes a RREIL operation returning the result.
-pub fn execute(op: Operation<Rvalue>) -> Rvalue {
+pub fn execute(op: Operation) -> Rvalue {
     match op {
         Operation::Add(Rvalue::Constant { value: _a, size: s }, Rvalue::Constant { value: _b, size: _s }) => {
             debug_assert!(s == _s);
@@ -966,48 +966,9 @@ pub fn execute(op: Operation<Rvalue>) -> Rvalue {
     }
 }
 
-/// Maps the function `m` over all operands of `op`.
-pub fn lift<V: Clone + PartialEq + Eq + Debug + Encodable + Decodable, W: Clone + PartialEq + Eq + Debug + Encodable + Decodable, F: Fn(&V) -> W>
-    (
-    op: &Operation<V>,
-    m: &F,
-) -> Operation<W> {
-    let args = op.operands().iter().cloned().map(m).collect::<Vec<_>>();
-    match op {
-        &Operation::Phi(_) => Operation::Phi(args),
-        &Operation::Load(ref s, _) => Operation::Load(s.clone(), args[0].clone()),
-        &Operation::Store(ref s, _) => Operation::Store(s.clone(), args[0].clone()),
-        &Operation::Add(_, _) => Operation::Add(args[0].clone(), args[1].clone()),
-        &Operation::Subtract(_, _) => Operation::Subtract(args[0].clone(), args[1].clone()),
-        &Operation::Multiply(_, _) => Operation::Multiply(args[0].clone(), args[1].clone()),
-        &Operation::DivideUnsigned(_, _) => Operation::DivideUnsigned(args[0].clone(), args[1].clone()),
-        &Operation::DivideSigned(_, _) => Operation::DivideSigned(args[0].clone(), args[1].clone()),
-        &Operation::ShiftLeft(_, _) => Operation::ShiftLeft(args[0].clone(), args[1].clone()),
-        &Operation::ShiftRightUnsigned(_, _) => Operation::ShiftRightUnsigned(args[0].clone(), args[1].clone()),
-        &Operation::ShiftRightSigned(_, _) => Operation::ShiftRightSigned(args[0].clone(), args[1].clone()),
-        &Operation::Modulo(_, _) => Operation::Modulo(args[0].clone(), args[1].clone()),
-        &Operation::And(_, _) => Operation::And(args[0].clone(), args[1].clone()),
-        &Operation::InclusiveOr(_, _) => Operation::InclusiveOr(args[0].clone(), args[1].clone()),
-        &Operation::ExclusiveOr(_, _) => Operation::ExclusiveOr(args[0].clone(), args[1].clone()),
-        &Operation::Equal(_, _) => Operation::Equal(args[0].clone(), args[1].clone()),
-        &Operation::LessUnsigned(_, _) => Operation::LessUnsigned(args[0].clone(), args[1].clone()),
-        &Operation::LessSigned(_, _) => Operation::LessSigned(args[0].clone(), args[1].clone()),
-        &Operation::LessOrEqualUnsigned(_, _) => Operation::LessOrEqualUnsigned(args[0].clone(), args[1].clone()),
-        &Operation::LessOrEqualSigned(_, _) => Operation::LessOrEqualSigned(args[0].clone(), args[1].clone()),
-        &Operation::Call(_) => Operation::Call(args[0].clone()),
-        &Operation::Move(_) => Operation::Move(args[0].clone()),
-        &Operation::Select(ref off, _, _) => Operation::Select(*off, args[0].clone(), args[1].clone()),
-        &Operation::ZeroExtend(ref sz, _) => Operation::ZeroExtend(*sz, args[0].clone()),
-        &Operation::SignExtend(ref sz, _) => Operation::SignExtend(*sz, args[0].clone()),
-    }
-}
-
-impl<'a, V> Operation<V>
-where
-    V: Clone + PartialEq + Eq + Debug + Encodable + Decodable,
-{
+impl Operation {
     /// Returns its operands
-    pub fn operands(&'a self) -> Vec<&'a V> {
+    pub fn operands(&self) -> Vec<&Rvalue> {
         match *self {
             Operation::Add(ref a, ref b) => return vec![a, b],
             Operation::Subtract(ref a, ref b) => return vec![a, b],
@@ -1042,7 +1003,7 @@ where
     }
 
     /// Returns its operands
-    pub fn operands_mut(&'a mut self) -> Vec<&'a mut V> {
+    pub fn operands_mut(&mut self) -> Vec<&mut Rvalue> {
         match self {
             &mut Operation::Add(ref mut a, ref mut b) => return vec![a, b],
             &mut Operation::Subtract(ref mut a, ref mut b) => return vec![a, b],
@@ -1156,7 +1117,7 @@ impl Arbitrary for Lvalue {
     }
 }
 
-impl Arbitrary for Operation<Rvalue> {
+impl Arbitrary for Operation {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
         let mut op = match g.gen_range(0, 24) {
             0 => Operation::Add(Rvalue::arbitrary(g), Rvalue::arbitrary(g)),

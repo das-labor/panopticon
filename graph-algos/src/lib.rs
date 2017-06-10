@@ -23,7 +23,8 @@ pub mod order;
 pub mod adjacency_list;
 pub mod adjacency_matrix;
 
-extern crate rustc_serialize;
+extern crate serde;
+#[macro_use] extern crate serde_derive;
 extern crate bit_set;
 
 pub use adjacency_list::AdjacencyList;

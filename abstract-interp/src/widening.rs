@@ -16,13 +16,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-use {Avalue, Constraint, ProgramPoint};
-use panopticon_core::{Operation, Rvalue, lift};
-
+use {Aoperation, Avalue, Constraint, ProgramPoint, translate};
+use panopticon_core::{Rvalue};
 
 /// Mihaila et.al. Widening Point inferring cofibered domain. This domain is parameterized with a
 /// child domain.
-#[derive(Debug,PartialEq,Eq,Clone,Hash,RustcDecodable,RustcEncodable)]
+#[derive(Debug,PartialEq,Eq,Clone,Hash)]
 pub struct Widening<A: Avalue> {
     value: A,
     point: Option<ProgramPoint>,
@@ -37,9 +36,9 @@ impl<A: Avalue> Avalue for Widening<A> {
         Widening { value: A::abstract_constraint(c), point: None }
     }
 
-    fn execute(pp: &ProgramPoint, op: &Operation<Self>) -> Self {
+    fn execute(pp: &ProgramPoint, op: &Aoperation<Self>) -> Self {
         match op {
-            &Operation::Phi(ref ops) => {
+            &Aoperation::Phi(ref ops) => {
                 let widen = ops.iter().map(|x| x.point.clone().unwrap_or(pp.clone())).max() > Some(pp.clone());
 
                 Widening {
@@ -63,7 +62,7 @@ impl<A: Avalue> Avalue for Widening<A> {
             }
             _ => {
                 Widening {
-                    value: A::execute(pp, &lift(op, &|x| x.value.clone())),
+                    value: A::execute(pp, &translate(op, &|x| x.value.clone())),
                     point: Some(pp.clone()),
                 }
             }

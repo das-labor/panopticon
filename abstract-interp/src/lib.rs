@@ -37,13 +37,12 @@ extern crate quickcheck;
 #[cfg(test)]
 extern crate env_logger;
 
-extern crate rustc_serialize;
 extern crate panopticon_core;
 extern crate panopticon_data_flow;
 extern crate panopticon_graph_algos;
 
 mod interpreter;
-pub use interpreter::{Avalue, Constraint, ProgramPoint, approximate, results};
+pub use interpreter::{Aoperation, Avalue, Constraint, ProgramPoint, approximate, results, lift, translate};
 
 mod bounded_addr_track;
 pub use bounded_addr_track::BoundedAddrTrack;

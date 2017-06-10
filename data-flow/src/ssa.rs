@@ -345,7 +345,7 @@ pub fn ssa_convertion(func: &mut Function) -> Result<()> {
 
 /// Computes for every control flow guard the dependend RREIL operation via reverse data flow
 /// analysis.
-pub fn flag_operations(func: &Function) -> HashMap<ControlFlowEdge, Operation<Rvalue>> {
+pub fn flag_operations(func: &Function) -> HashMap<ControlFlowEdge, Operation> {
     let mut ret = HashMap::new();
 
     for e in func.cflow_graph.edges() {

@@ -18,7 +18,7 @@ panopticon-glue = { path = "glue" }
 panopticon-graph-algos = { path = "graph-algos" }
 log = "0.3.6"
 env_logger = "0.3"
-uuid = { version = "0.2.0", features = ["rustc-serialize", "v4"]}
+uuid = { version = "0.5", features = ["v4", "serde"]}
 cassowary = "0.1"
 tempdir = "0.3"
 chrono = "0.2"

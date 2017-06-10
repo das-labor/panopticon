@@ -82,15 +82,15 @@ extern crate num;
 extern crate flate2;
 extern crate panopticon_graph_algos;
 extern crate uuid;
-extern crate rmp_serialize;
-extern crate rustc_serialize;
 extern crate byteorder;
 extern crate goblin;
 extern crate quickcheck;
+extern crate serde;
+#[macro_use] extern crate serde_derive;
+extern crate rmp_serde;
 
 #[cfg(test)]
 extern crate env_logger;
-
 
 // core
 pub mod disassembler;
@@ -98,7 +98,7 @@ pub use disassembler::{Architecture, Disassembler, Match, State};
 
 #[macro_use]
 pub mod il;
-pub use il::{Guard, Lvalue, Operation, Rvalue, Statement, execute, lift};
+pub use il::{Guard, Lvalue, Operation, Rvalue, Statement, execute};
 
 pub mod mnemonic;
 pub use mnemonic::{Bound, Mnemonic, MnemonicFormatToken};
