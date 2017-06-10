@@ -1692,17 +1692,13 @@ pub fn rcr(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>, JumpSpec)> {
 }
 
 pub fn ret() -> Result<(Vec<Statement>, JumpSpec)> {
-    let stmts = rreil!{
-        ret [0]:8;
-    }?;
+    let stmts = vec![];
     Ok((stmts, JumpSpec::DeadEnd))
 }
 
 pub fn retn(v: Rvalue) -> Result<(Vec<Statement>, JumpSpec)> {
-   let stmts = rreil!{
-        ret (v);
-    }?;
-    Ok((stmts, JumpSpec::DeadEnd))
+   let stmts = vec![];
+   Ok((stmts, JumpSpec::DeadEnd))
 }
 
 pub fn retf() -> Result<(Vec<Statement>, JumpSpec)> {

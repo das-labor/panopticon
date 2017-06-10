@@ -418,8 +418,8 @@ pub fn lift<A, B, F>(op: &Operation<B>, m: &F) -> Operation<A>
     let args = op.operands().iter().cloned().map(m).collect::<Vec<_>>();
     match op {
         &Operation::Phi(_) => Operation::Phi(args),
-        &Operation::Load(ref s, _) => Operation::Load(s.clone(), args[0].clone()),
-        &Operation::Store(ref s, _) => Operation::Store(s.clone(), args[0].clone()),
+        &Operation::Load(ref s, e, sz, _) => Operation::Load(s.clone(), e, sz, args[0].clone()),
+        &Operation::Store(ref s, e, sz, _, _) => Operation::Store(s.clone(), e, sz, args[0].clone(), args[1].clone()),
         &Operation::Add(_, _) => Operation::Add(args[0].clone(), args[1].clone()),
         &Operation::Subtract(_, _) => Operation::Subtract(args[0].clone(), args[1].clone()),
         &Operation::Multiply(_, _) => Operation::Multiply(args[0].clone(), args[1].clone()),
@@ -442,6 +442,7 @@ pub fn lift<A, B, F>(op: &Operation<B>, m: &F) -> Operation<A>
         &Operation::Select(ref off, _, _) => Operation::Select(*off, args[0].clone(), args[1].clone()),
         &Operation::ZeroExtend(ref sz, _) => Operation::ZeroExtend(*sz, args[0].clone()),
         &Operation::SignExtend(ref sz, _) => Operation::SignExtend(*sz, args[0].clone()),
+        &Operation::Initialize(ref r, sz) => Operation::Initialize(r.clone(), sz),
     }
 }
 

@@ -98,7 +98,7 @@ pub use disassembler::{Architecture, Disassembler, Match, State};
 
 #[macro_use]
 pub mod il;
-pub use il::{Guard, Lvalue, Operation, Rvalue, Statement, execute};
+pub use il::{Guard, Lvalue, Operation, Rvalue, Statement, execute, Endianess};
 
 pub mod mnemonic;
 pub use mnemonic::{Bound, Mnemonic, MnemonicFormatToken};

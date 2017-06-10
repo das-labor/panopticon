@@ -286,7 +286,7 @@ pub fn skip(n: &'static str, expect: bool) -> Box<Fn(&mut State<Avr>) -> bool> {
                         vec![],
                         &|_cg: &mut Mcu| {
                             rreil!{
-                    load/io ioreg:8, (a);
+                    load/io/be/8 ioreg:8, (a);
                 }
                         },
                     )
@@ -383,7 +383,7 @@ pub fn binary_imm(n: &'static str, sem: fn(Lvalue, u64, &mut Mcu) -> Result<Vec<
                         vec![],
                         &|_cg: &mut Mcu| {
                             rreil!{
-                    load/io ioreg:8, (a);
+                    load/io/be/8 ioreg:8, (a);
                 }
                         },
                     )

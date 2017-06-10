@@ -191,9 +191,10 @@ impl Avalue for Kset {
             Operation::ZeroExtend(ref sz, ref a) => map(a, &|a| execute(Operation::ZeroExtend(*sz, a))),
             Operation::SignExtend(ref sz, ref a) => map(a, &|a| execute(Operation::SignExtend(*sz, a))),
             Operation::Select(ref off, ref a, ref b) => permute(a, b, &|a, b| execute(Operation::Select(*off, a, b))),
+            Operation::Initialize(_,_) => Kset::Meet,
 
-            Operation::Load(ref r, ref a) => map(a, &|a| execute(Operation::Load(r.clone(), a))),
-            Operation::Store(ref r, ref a) => map(a, &|a| execute(Operation::Store(r.clone(), a))),
+            Operation::Load(ref r,e, sz, ref a) => map(a, &|a| execute(Operation::Load(r.clone(),e, sz, a))),
+            Operation::Store(ref r,e, sz, ref a,ref b) => permute(a, b, &|a, b| execute(Operation::Store(r.clone(), e, sz, a, b))),
 
             Operation::Phi(ref ops) => {
                 match ops.len() {
