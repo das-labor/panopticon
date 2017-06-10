@@ -110,12 +110,11 @@
 
 use Result;
 use quickcheck::{Arbitrary, Gen};
-use serde::{Serialize,Deserialize};
 
 use std::borrow::Cow;
 use std::cmp;
 use std::convert::From;
-use std::fmt::{Debug, Display, Error, Formatter};
+use std::fmt::{Display, Error, Formatter};
 use std::num::Wrapping;
 use std::result;
 use std::str::{FromStr, SplitWhitespace};

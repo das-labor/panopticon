@@ -27,10 +27,3 @@ fn project_open() {
 
     assert!(maybe_project.ok().is_some());
 }
-
-#[test]
-fn project_empty() {
-    let maybe_project = Project::open(Path::new("../tests/data/empty.panop"));
-
-    assert!(maybe_project.ok().is_none());
-}

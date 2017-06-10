@@ -30,7 +30,7 @@ use std::fmt;
 use std::io;
 use std::result;
 use std::sync::PoisonError;
-use rmp_serde;
+use serde_cbor;
 
 /// Panopticon error type
 #[derive(Debug)]
@@ -89,8 +89,8 @@ impl From<goblin::error::Error> for Error {
     }
 }
 
-impl From<rmp_serde::decode::Error> for Error {
-    fn from(e: rmp_serde::decode::Error) -> Error {
+impl From<serde_cbor::Error> for Error {
+    fn from(e: serde_cbor::Error) -> Error {
         Error(Cow::Owned(format!("Serde error: {}", e)))
     }
 }

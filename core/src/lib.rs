@@ -87,7 +87,7 @@ extern crate goblin;
 extern crate quickcheck;
 extern crate serde;
 #[macro_use] extern crate serde_derive;
-extern crate rmp_serde;
+extern crate serde_cbor;
 
 #[cfg(test)]
 extern crate env_logger;

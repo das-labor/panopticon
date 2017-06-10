@@ -18,7 +18,6 @@
 
 use std;
 use std::clone::Clone;
-use std::cmp::max;
 use std::collections::HashMap;
 
 use traits::*;
@@ -596,5 +595,36 @@ mod test {
         assert_eq!(g.edge(n4, n2), None);
         assert_eq!(g.edge(n4, n3), None);
         assert_eq!(g.edge(n4, n4), None);
+    }
+
+    #[test]
+    fn serialize() {
+        use rmp_serde::{Deserializer, Serializer};
+        use serde::{Deserialize, Serialize};
+
+        let mut g = AdjacencyList::<isize, String>::new();
+
+        let n1 = g.add_vertex(42);
+        let n2 = g.add_vertex(13);
+        let n3 = g.add_vertex(1337);
+        let n4 = g.add_vertex(99);
+
+        let _ = g.add_edge("a".to_string(), n1, n2);
+        let _ = g.add_edge("b".to_string(), n2, n3);
+        let _ = g.add_edge("c".to_string(), n2, n1);
+        let _ = g.add_edge("d".to_string(), n1, n4);
+
+        let mut buf = Vec::new();
+
+        {
+            let mut enc = Serializer::new(&mut buf);
+            g.serialize(&mut enc).unwrap();
+        }
+
+        let mut rmp = Deserializer::new(&buf[..]);
+        let g2: AdjacencyList<isize, String> = Deserialize::deserialize(&mut rmp).unwrap();
+
+        assert_eq!(g.num_vertices(), g2.num_vertices());
+        assert_eq!(g.num_edges(), g2.num_edges());
     }
 }

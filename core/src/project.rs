@@ -26,7 +26,8 @@ use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use flate2::Compression;
 use flate2::read::ZlibDecoder;
 use flate2::write::ZlibEncoder;
-use rmp_serde::{Deserializer, Serializer};
+use serde_cbor::de::Deserializer;
+use serde_cbor::ser::Serializer;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs::File;
@@ -75,9 +76,8 @@ impl Project {
 
             if version == 0 {
                 let mut z = ZlibDecoder::new(fd);
-                let mut rmp = Deserializer::new(&mut z);
-                let proj = Deserialize::deserialize(&mut rmp)?;
-
+                let mut cbor = Deserializer::new(&mut z);
+                let proj = Deserialize::deserialize(&mut cbor)?;
                 Ok(proj)
             } else {
                 Err("wrong version".into())
@@ -146,7 +146,6 @@ impl Project {
     /// u32     version = 0
     /// zlib compressed MsgPack
     pub fn snapshot(&self, p: &Path) -> Result<()> {
-        println!("snapshot to {:?}", p);
         let mut fd = File::create(p)?;
 
         fd.write(b"PANOPTICON")?;
@@ -157,7 +156,7 @@ impl Project {
 
         match self.serialize(&mut enc) {
             Ok(()) => Ok(()),
-            Err(_) => Err("failed to write to save file".into()),
+            Err(e) => Err(format!("failed to write to save file: {}",e).into()),
         }
     }
 }

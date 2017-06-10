@@ -18,7 +18,7 @@ quickcheck = "0.3"
 panopticon-graph-algos = { path = "../graph-algos" }
 serde = { version = "1.0", features = ["rc"] }
 serde_derive = "1.0"
-rmp-serde = "0.13"
+serde_cbor = "0.6"
 
 [dev-dependencies]
 regex = "0.1"
