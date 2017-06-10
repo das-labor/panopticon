@@ -1,0 +1,10 @@
+[package]
+name = "panopticon-mos6502"
+version = "0.16.0"
+authors = ["seu <seu@panopticon.re>"]
+
+[dependencies]
+panopticon-core = { path = "../core" }
+log = "0.3.6"
+byteorder = "0.5.1"
+lazy_static = "0"

@@ -1,19 +1,21 @@
 List of authors
 ===============
 
+Mikko Perttunen
+  Build script glue/build.rs. See
+	https://github.com/flanfly/qmlrs/blob/master/LICENSE-MIT
+	for full license.
 Philipp Deppenwiese
 	Gentoo ebuild and supporting files inside pkg/gentoo.
-Dennis Hotson
-	The file qml/springy.js. See LICENSE.springy for full license.
 Dave Gandy
-	The file qml/popup/fontawesome-webfont.ttf. See http://scripts.sil.org/OFL
+	The file qml/fonts/. See http://scripts.sil.org/OFL
 	for full license
 Marcus Brinkmann
-  	MOS-6502 disassembler in lib/src/mos.
+  	MOS-6502 disassembler in mos6502/src/.
+m4b
+	The binary file loader in core/src/loader.rs
 Kai Michaelis
 	Everything not listed above.
-m4b
-	The binary file loader in lib/src/loader.rs
 
 All other contributors
 ======================

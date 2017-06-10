@@ -109,7 +109,12 @@ addons:
 before_install: |
    if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
       brew update
-      brew install homebrew/versions/qt55
+      brew install qt
+      brew link qt --force
+      brew linkapps qt
+      export HOMEBREW_QT5_VERSION=$(brew list --versions qt | rev | cut -d ' ' -f1 | rev)
+      ln -s /usr/local/Cellar/qt/$HOMEBREW_QT5_VERSION/mkspecs /usr/local/mkspecs
+      ln -s /usr/local/Cellar/qt/$HOMEBREW_QT5_VERSION/plugins /usr/local/plugins
    fi
 before_script: |
    if [[ "$TRAVIS_OS_NAME" == "linux" && "$PACKAGE" == "" ]]; then
@@ -121,7 +126,7 @@ script: |
   then
     echo ""
   else
-    if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then export QTDIR64=`brew --prefix qt55`; fi &&
+    if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then export QTDIR64=/usr/local; fi &&
     case "$PACKAGE" in
     "osx")
       cd pkg/osx/ &&
@@ -154,7 +159,7 @@ script: |
       ;;
     "")
       cargo build --verbose &&
-      cargo test --verbose
+      cargo test --verbose --all
       ;;
     *)
       exit
@@ -164,5 +169,5 @@ script: |
 after_success: |
   # send coverage report to coveralls.io
   if [[ "$TRAVIS_OS_NAME" == "linux" && "$PACKAGE" == "" ]]; then
-    cargo coveralls --verbose
+    cargo coveralls --verbose --all
   fi

@@ -1,0 +1,8 @@
+[package]
+name = "panopticon-graph-algos"
+version = "0.11.0"
+authors = ["seu <seu@panopticon.re>"]
+
+[dependencies]
+rustc-serialize = "*"
+bit-set = "*"
