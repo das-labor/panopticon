@@ -127,7 +127,7 @@ script: |
   then
     echo ""
   else
-    if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then export QTDIR64=`brew --prefix qt@5.7`; fi &&
+    if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then export QTDIR64=/usr/local; fi &&
     case "$PACKAGE" in
     "osx")
       cd pkg/osx/ &&
