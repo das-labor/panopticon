@@ -24,7 +24,9 @@ sudo apt install qt5-default qtdeclarative5-dev libqt5svg5-dev \
                  qml-module-qtgraphicaleffects qml-module-qtqml-models2 \
                  qml-module-qtquick-dialogs \
                  qtbase5-private-dev pkg-config \
-                 git build-essential cmake
+                 git build-essential cmake \
+                 qml-module-qt-labs-folderlistmodel \
+                 qml-module-qt-labs-settings
 ```
 
 **Fedora 22, 23 and 24**
