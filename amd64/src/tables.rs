@@ -777,7 +777,7 @@ pub static TWOBYTE_66_TABLE: [Opcode; 256] = [
     opcode!(movhpd; M/q, V/q),        // 0x17: movhpd
     unused!(),                      // 0x18
     unused!(),                      // 0x19
-    unused!(),                      // 0x1a
+    unused!(),                      // 0x1a MPX BNDMOV
     unused!(),                      // 0x1b
     unused!(),                      // 0x1c
     unused!(),                      // 0x1d
@@ -2847,8 +2847,8 @@ pub static THREEBYTE_3A66_TABLE: [Opcode; 256] = [
     opcode!(pextrw; M/w, V/dq, I/b),// 0x15: pextrw
     opcode!(pextrd; E/y, V/dq, I/b), // 0x16: pextrd
     opcode!(extractps; E/d, V/dq, I/b),// 0x17: extractps
-    opcode!(vinserti128; V/qq, H/qq, W/qq, I/b),                      // 0x18
-    opcode!(vextracti128; W/dq, V/dq, I/b),                      // 0x19
+    opcode!(vinsertf128; V/qq, H/qq, W/qq, I/b),                      // 0x18
+    opcode!(vextractf128; W/dq, V/qq, I/b),                      // 0x19
     unused!(),                      // 0x1a
     unused!(),                      // 0x1b
     unused!(),                      // 0x1c
@@ -2879,8 +2879,8 @@ pub static THREEBYTE_3A66_TABLE: [Opcode; 256] = [
     unused!(),                      // 0x35
     unused!(),                      // 0x36
     unused!(),                      // 0x37
-    unused!(),                      // 0x38
-    unused!(),                      // 0x39
+    opcode!(vinserti128; V/qq, H/qq, W/qq, I/b),                      // 0x38
+    opcode!(vextracti128; W/dq, V/qq, I/b),                      // 0x39
     unused!(),                      // 0x3a
     unused!(),                      // 0x3b
     unused!(),                      // 0x3c
