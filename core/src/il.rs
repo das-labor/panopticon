@@ -110,11 +110,12 @@
 
 use Result;
 use quickcheck::{Arbitrary, Gen};
+use serde::{Serialize,Deserialize};
 
 use std::borrow::Cow;
 use std::cmp;
 use std::convert::From;
-use std::fmt::{Display, Error, Formatter};
+use std::fmt::{Display, Error, Formatter, Debug};
 use std::num::Wrapping;
 use std::result;
 use std::str::{FromStr, SplitWhitespace};
@@ -400,65 +401,68 @@ impl Display for Guard {
 
 /// A RREIL operation.
 #[derive(Clone,PartialEq,Eq,Debug,Serialize,Deserialize)]
-pub enum Operation {
+#[serde(bound(deserialize = "V: Serialize + for<'a> Deserialize<'a> + Clone + PartialEq + Eq + Debug"))]
+pub enum Operation<V>
+    where V: Serialize + for<'a> Deserialize<'a> + Clone + PartialEq + Eq + Debug
+{
     /// Integer addition
-    Add(Rvalue, Rvalue),
+    Add(V, V),
     /// Integer subtraction
-    Subtract(Rvalue, Rvalue),
+    Subtract(V, V),
     /// Unsigned integer multiplication
-    Multiply(Rvalue, Rvalue),
+    Multiply(V, V),
     /// Unsigned integer division
-    DivideUnsigned(Rvalue, Rvalue),
+    DivideUnsigned(V, V),
     /// Signed integer division
-    DivideSigned(Rvalue, Rvalue),
+    DivideSigned(V, V),
     /// Bitwise left shift
-    ShiftLeft(Rvalue, Rvalue),
+    ShiftLeft(V, V),
     /// Bitwise logical right shift
-    ShiftRightUnsigned(Rvalue, Rvalue),
+    ShiftRightUnsigned(V, V),
     /// Bitwise arithmetic right shift
-    ShiftRightSigned(Rvalue, Rvalue),
+    ShiftRightSigned(V, V),
     /// Integer modulo
-    Modulo(Rvalue, Rvalue),
+    Modulo(V, V),
     /// Bitwise logical and
-    And(Rvalue, Rvalue),
+    And(V, V),
     /// Bitwise logical or
-    InclusiveOr(Rvalue, Rvalue),
+    InclusiveOr(V, V),
     /// Bitwise logical xor
-    ExclusiveOr(Rvalue, Rvalue),
+    ExclusiveOr(V, V),
 
     /// Compare both operands for equality and returns `1` or `0`
-    Equal(Rvalue, Rvalue),
+    Equal(V, V),
     /// Returns `1` if the first operand is less than or equal to the second and `0` otherwise.
     /// Comparison assumes unsigned values.
-    LessOrEqualUnsigned(Rvalue, Rvalue),
+    LessOrEqualUnsigned(V, V),
     /// Returns `1` if the first operand is less than or equal to the second and `0` otherwise.
     /// Comparison assumes signed values.
-    LessOrEqualSigned(Rvalue, Rvalue),
+    LessOrEqualSigned(V, V),
     /// Returns `1` if the first operand is less than the second and `0` otherwise.
     /// Comparison assumes unsigned values.
-    LessUnsigned(Rvalue, Rvalue),
+    LessUnsigned(V, V),
     /// Returns `1` if the first operand is less than the second and `0` otherwise.
     /// Comparison assumes signed values.
-    LessSigned(Rvalue, Rvalue),
+    LessSigned(V, V),
 
     /// Zero extends the operand.
-    ZeroExtend(usize, Rvalue),
+    ZeroExtend(usize, V),
     /// Sign extends the operand.
-    SignExtend(usize, Rvalue),
+    SignExtend(usize, V),
     /// Copies the operand without modification.
-    Move(Rvalue),
+    Move(V),
     /// Calls the function located at the address pointed to by the operand.
-    Call(Rvalue),
+    Call(V),
     /// Copies only a range of bit from the operand.
-    Select(usize, Rvalue, Rvalue),
+    Select(usize, V, V),
 
     /// Reads a memory cell
-    Load(Cow<'static, str>, Rvalue),
+    Load(Cow<'static, str>, V),
     /// Writes a memory cell
-    Store(Cow<'static, str>, Rvalue),
+    Store(Cow<'static, str>, V),
 
     /// SSA Phi function
-    Phi(Vec<Rvalue>),
+    Phi(Vec<V>),
 }
 
 /// A single RREIL statement.
@@ -467,7 +471,7 @@ pub struct Statement {
     /// Value that the operation result is assigned to
     pub assignee: Lvalue,
     /// Operation and its arguments
-    pub op: Operation,
+    pub op: Operation<Rvalue>,
 }
 
 impl Statement {
@@ -591,7 +595,7 @@ impl Statement {
 }
 
 /// Executes a RREIL operation returning the result.
-pub fn execute(op: Operation) -> Rvalue {
+pub fn execute(op: Operation<Rvalue>) -> Rvalue {
     match op {
         Operation::Add(Rvalue::Constant { value: _a, size: s }, Rvalue::Constant { value: _b, size: _s }) => {
             debug_assert!(s == _s);
@@ -965,9 +969,11 @@ pub fn execute(op: Operation) -> Rvalue {
     }
 }
 
-impl Operation {
+impl<V> Operation<V>
+    where V: Serialize + for<'a> Deserialize<'a> + Clone + PartialEq + Eq + Debug
+{
     /// Returns its operands
-    pub fn operands(&self) -> Vec<&Rvalue> {
+    pub fn operands(&self) -> Vec<&V> {
         match *self {
             Operation::Add(ref a, ref b) => return vec![a, b],
             Operation::Subtract(ref a, ref b) => return vec![a, b],
@@ -1002,7 +1008,7 @@ impl Operation {
     }
 
     /// Returns its operands
-    pub fn operands_mut(&mut self) -> Vec<&mut Rvalue> {
+    pub fn operands_mut(&mut self) -> Vec<&mut V> {
         match self {
             &mut Operation::Add(ref mut a, ref mut b) => return vec![a, b],
             &mut Operation::Subtract(ref mut a, ref mut b) => return vec![a, b],
@@ -1116,7 +1122,7 @@ impl Arbitrary for Lvalue {
     }
 }
 
-impl Arbitrary for Operation {
+impl Arbitrary for Operation<Rvalue> {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
         let mut op = match g.gen_range(0, 24) {
             0 => Operation::Add(Rvalue::arbitrary(g), Rvalue::arbitrary(g)),

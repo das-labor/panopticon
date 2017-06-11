@@ -17,12 +17,11 @@
  */
 
 use panopticon_core::{ControlFlowGraph, ControlFlowRef, ControlFlowTarget, Function, Guard, Lvalue, Operation, Result, Rvalue, Statement};
-
 use panopticon_data_flow::flag_operations;
-
 use panopticon_graph_algos::{BidirectionalGraphTrait, GraphTrait, IncidenceGraphTrait, VertexListGraphTrait};
 use panopticon_graph_algos::dominator::immediate_dominator;
 use panopticon_graph_algos::order::{HierarchicalOrdering, weak_topo_order};
+use serde::{Serialize,Deserialize};
 use std::borrow::Cow;
 use std::cmp::max;
 use std::collections::{HashMap, HashSet};
@@ -45,21 +44,21 @@ pub enum Constraint {
 }
 
 /// A program point is a unique RREIL instruction inside a function.
-#[derive(Debug,PartialEq,Eq,Clone,PartialOrd,Ord,Hash)]
+#[derive(Debug,PartialEq,Eq,Clone,PartialOrd,Ord,Hash,Serialize,Deserialize)]
 pub struct ProgramPoint {
     pub address: u64,
     pub position: usize,
 }
 
 /// Abstract Domain. Models both under- and over-approximation.
-pub trait Avalue: Clone + PartialEq + Eq + Hash + Debug {
+pub trait Avalue: Clone + PartialEq + Eq + Hash + Debug + Serialize + for<'a> Deserialize<'a> {
     /// Alpha function. Returns domain element that approximates the concrete value the best
     fn abstract_value(&Rvalue) -> Self;
     /// Alpha function. Returns domain element that approximates the concrete value that fullfil
     /// the constraint the best.
     fn abstract_constraint(&Constraint) -> Self;
     /// Execute the abstract version of the operation, yielding the result.
-    fn execute(&ProgramPoint, &Aoperation<Self>) -> Self;
+    fn execute(&ProgramPoint, &Operation<Self>) -> Self;
     /// Narrows `self` with the argument.
     fn narrow(&self, &Self) -> Self;
     /// Widens `self` with the argument.
@@ -72,106 +71,6 @@ pub trait Avalue: Clone + PartialEq + Eq + Hash + Debug {
     fn initial() -> Self;
     /// Mimics the Select operation.
     fn extract(&self, size: usize, offset: usize) -> Self;
-}
-
-/// A lifted RREIL operation.
-#[derive(Debug)]
-pub enum Aoperation<A: Avalue> {
-    /// Integer addition
-    Add(A, A),
-    /// Integer subtraction
-    Subtract(A, A),
-    /// Unsigned integer multiplication
-    Multiply(A, A),
-    /// Unsigned integer division
-    DivideUnsigned(A, A),
-    /// Signed integer division
-    DivideSigned(A, A),
-    /// Bitwise left shift
-    ShiftLeft(A, A),
-    /// Bitwise logical right shift
-    ShiftRightUnsigned(A, A),
-    /// Bitwise arithmetic right shift
-    ShiftRightSigned(A, A),
-    /// Integer modulo
-    Modulo(A, A),
-    /// Bitwise logical and
-    And(A, A),
-    /// Bitwise logical or
-    InclusiveOr(A, A),
-    /// Bitwise logical xor
-    ExclusiveOr(A, A),
-
-    /// Compare both operands for equality and returns `1` or `0`
-    Equal(A, A),
-    /// Returns `1` if the first operand is less than or equal to the second and `0` otherwise.
-    /// Comparison assumes unsigned values.
-    LessOrEqualUnsigned(A, A),
-    /// Returns `1` if the first operand is less than or equal to the second and `0` otherwise.
-    /// Comparison assumes signed values.
-    LessOrEqualSigned(A, A),
-    /// Returns `1` if the first operand is less than the second and `0` otherwise.
-    /// Comparison assumes unsigned values.
-    LessUnsigned(A, A),
-    /// Returns `1` if the first operand is less than the second and `0` otherwise.
-    /// Comparison assumes signed values.
-    LessSigned(A, A),
-
-    /// Zero extends the operand.
-    ZeroExtend(usize, A),
-    /// Sign extends the operand.
-    SignExtend(usize, A),
-    /// Copies the operand without modification.
-    Move(A),
-    /// Calls the function located at the address pointed to by the operand.
-    Call(A),
-    /// Copies only a range of bit from the operand.
-    Select(usize, A, A),
-
-    /// Reads a memory cell
-    Load(Cow<'static, str>, A),
-    /// Writes a memory cell
-    Store(Cow<'static, str>, A),
-
-    /// SSA Phi function
-    Phi(Vec<A>),
-}
-
-impl<A: Avalue> Aoperation<A> {
-    /// Returns its operands
-    pub fn operands(&self) -> Vec<&A> {
-        match *self {
-            Aoperation::Add(ref a, ref b) => return vec![a, b],
-            Aoperation::Subtract(ref a, ref b) => return vec![a, b],
-            Aoperation::Multiply(ref a, ref b) => return vec![a, b],
-            Aoperation::DivideUnsigned(ref a, ref b) => return vec![a, b],
-            Aoperation::DivideSigned(ref a, ref b) => return vec![a, b],
-            Aoperation::ShiftLeft(ref a, ref b) => return vec![a, b],
-            Aoperation::ShiftRightUnsigned(ref a, ref b) => return vec![a, b],
-            Aoperation::ShiftRightSigned(ref a, ref b) => return vec![a, b],
-            Aoperation::Modulo(ref a, ref b) => return vec![a, b],
-            Aoperation::And(ref a, ref b) => return vec![a, b],
-            Aoperation::InclusiveOr(ref a, ref b) => return vec![a, b],
-            Aoperation::ExclusiveOr(ref a, ref b) => return vec![a, b],
-
-            Aoperation::Equal(ref a, ref b) => return vec![a, b],
-            Aoperation::LessOrEqualUnsigned(ref a, ref b) => return vec![a, b],
-            Aoperation::LessOrEqualSigned(ref a, ref b) => return vec![a, b],
-            Aoperation::LessUnsigned(ref a, ref b) => return vec![a, b],
-            Aoperation::LessSigned(ref a, ref b) => return vec![a, b],
-
-            Aoperation::ZeroExtend(_, ref a) => return vec![a],
-            Aoperation::SignExtend(_, ref a) => return vec![a],
-            Aoperation::Move(ref a) => return vec![a],
-            Aoperation::Call(ref a) => return vec![a],
-            Aoperation::Select(_, ref a, ref b) => return vec![a, b],
-
-            Aoperation::Load(_, ref b) => return vec![b],
-            Aoperation::Store(_, ref b) => return vec![b],
-
-            Aoperation::Phi(ref vec) => return vec.iter().collect(),
-        }
-    }
 }
 
 /// Does an abstract interpretation of `func` using the abstract domain `A`. The function uses a
@@ -515,73 +414,38 @@ pub fn results<A: Avalue>(func: &Function, vals: &HashMap<Lvalue, A>) -> HashMap
 }
 
 /// Maps the function `m` over all operands of `op`.
-pub fn lift<A, F>(op: &Operation, m: &F) -> Aoperation<A>
-where A: Avalue + Clone + PartialEq + Eq + Debug,
-      F: Fn(&Rvalue) -> A
+pub fn lift<A, B, F>(op: &Operation<B>, m: &F) -> Operation<A>
+    where A: Serialize + for<'a> Deserialize<'a> + Clone + PartialEq + Eq + Debug,
+          B: Serialize + for<'a> Deserialize<'a> + Clone + PartialEq + Eq + Debug,
+          F: Fn(&B) -> A
 {
     let args = op.operands().iter().cloned().map(m).collect::<Vec<_>>();
     match op {
-        &Operation::Phi(_) => Aoperation::Phi(args),
-        &Operation::Load(ref s, _) => Aoperation::Load(s.clone(), args[0].clone()),
-        &Operation::Store(ref s, _) => Aoperation::Store(s.clone(), args[0].clone()),
-        &Operation::Add(_, _) => Aoperation::Add(args[0].clone(), args[1].clone()),
-        &Operation::Subtract(_, _) => Aoperation::Subtract(args[0].clone(), args[1].clone()),
-        &Operation::Multiply(_, _) => Aoperation::Multiply(args[0].clone(), args[1].clone()),
-        &Operation::DivideUnsigned(_, _) => Aoperation::DivideUnsigned(args[0].clone(), args[1].clone()),
-        &Operation::DivideSigned(_, _) => Aoperation::DivideSigned(args[0].clone(), args[1].clone()),
-        &Operation::ShiftLeft(_, _) => Aoperation::ShiftLeft(args[0].clone(), args[1].clone()),
-        &Operation::ShiftRightUnsigned(_, _) => Aoperation::ShiftRightUnsigned(args[0].clone(), args[1].clone()),
-        &Operation::ShiftRightSigned(_, _) => Aoperation::ShiftRightSigned(args[0].clone(), args[1].clone()),
-        &Operation::Modulo(_, _) => Aoperation::Modulo(args[0].clone(), args[1].clone()),
-        &Operation::And(_, _) => Aoperation::And(args[0].clone(), args[1].clone()),
-        &Operation::InclusiveOr(_, _) => Aoperation::InclusiveOr(args[0].clone(), args[1].clone()),
-        &Operation::ExclusiveOr(_, _) => Aoperation::ExclusiveOr(args[0].clone(), args[1].clone()),
-        &Operation::Equal(_, _) => Aoperation::Equal(args[0].clone(), args[1].clone()),
-        &Operation::LessUnsigned(_, _) => Aoperation::LessUnsigned(args[0].clone(), args[1].clone()),
-        &Operation::LessSigned(_, _) => Aoperation::LessSigned(args[0].clone(), args[1].clone()),
-        &Operation::LessOrEqualUnsigned(_, _) => Aoperation::LessOrEqualUnsigned(args[0].clone(), args[1].clone()),
-        &Operation::LessOrEqualSigned(_, _) => Aoperation::LessOrEqualSigned(args[0].clone(), args[1].clone()),
-        &Operation::Call(_) => Aoperation::Call(args[0].clone()),
-        &Operation::Move(_) => Aoperation::Move(args[0].clone()),
-        &Operation::Select(ref off, _, _) => Aoperation::Select(*off, args[0].clone(), args[1].clone()),
-        &Operation::ZeroExtend(ref sz, _) => Aoperation::ZeroExtend(*sz, args[0].clone()),
-        &Operation::SignExtend(ref sz, _) => Aoperation::SignExtend(*sz, args[0].clone()),
-    }
-}
-
-/// Maps the function `m` over all operands of `op`.
-pub fn translate<A, B, F>(op: &Aoperation<B>, m: &F) -> Aoperation<A>
-where A: Avalue + Clone,
-      B: Avalue + Clone,
-      F: Fn(&B) -> A
-{
-    let args = op.operands().iter().cloned().map(m).collect::<Vec<_>>();
-    match op {
-        &Aoperation::Phi(_) => Aoperation::Phi(args),
-        &Aoperation::Load(ref s, _) => Aoperation::Load(s.clone(), args[0].clone()),
-        &Aoperation::Store(ref s, _) => Aoperation::Store(s.clone(), args[0].clone()),
-        &Aoperation::Add(_, _) => Aoperation::Add(args[0].clone(), args[1].clone()),
-        &Aoperation::Subtract(_, _) => Aoperation::Subtract(args[0].clone(), args[1].clone()),
-        &Aoperation::Multiply(_, _) => Aoperation::Multiply(args[0].clone(), args[1].clone()),
-        &Aoperation::DivideUnsigned(_, _) => Aoperation::DivideUnsigned(args[0].clone(), args[1].clone()),
-        &Aoperation::DivideSigned(_, _) => Aoperation::DivideSigned(args[0].clone(), args[1].clone()),
-        &Aoperation::ShiftLeft(_, _) => Aoperation::ShiftLeft(args[0].clone(), args[1].clone()),
-        &Aoperation::ShiftRightUnsigned(_, _) => Aoperation::ShiftRightUnsigned(args[0].clone(), args[1].clone()),
-        &Aoperation::ShiftRightSigned(_, _) => Aoperation::ShiftRightSigned(args[0].clone(), args[1].clone()),
-        &Aoperation::Modulo(_, _) => Aoperation::Modulo(args[0].clone(), args[1].clone()),
-        &Aoperation::And(_, _) => Aoperation::And(args[0].clone(), args[1].clone()),
-        &Aoperation::InclusiveOr(_, _) => Aoperation::InclusiveOr(args[0].clone(), args[1].clone()),
-        &Aoperation::ExclusiveOr(_, _) => Aoperation::ExclusiveOr(args[0].clone(), args[1].clone()),
-        &Aoperation::Equal(_, _) => Aoperation::Equal(args[0].clone(), args[1].clone()),
-        &Aoperation::LessUnsigned(_, _) => Aoperation::LessUnsigned(args[0].clone(), args[1].clone()),
-        &Aoperation::LessSigned(_, _) => Aoperation::LessSigned(args[0].clone(), args[1].clone()),
-        &Aoperation::LessOrEqualUnsigned(_, _) => Aoperation::LessOrEqualUnsigned(args[0].clone(), args[1].clone()),
-        &Aoperation::LessOrEqualSigned(_, _) => Aoperation::LessOrEqualSigned(args[0].clone(), args[1].clone()),
-        &Aoperation::Call(_) => Aoperation::Call(args[0].clone()),
-        &Aoperation::Move(_) => Aoperation::Move(args[0].clone()),
-        &Aoperation::Select(ref off, _, _) => Aoperation::Select(*off, args[0].clone(), args[1].clone()),
-        &Aoperation::ZeroExtend(ref sz, _) => Aoperation::ZeroExtend(*sz, args[0].clone()),
-        &Aoperation::SignExtend(ref sz, _) => Aoperation::SignExtend(*sz, args[0].clone()),
+        &Operation::Phi(_) => Operation::Phi(args),
+        &Operation::Load(ref s, _) => Operation::Load(s.clone(), args[0].clone()),
+        &Operation::Store(ref s, _) => Operation::Store(s.clone(), args[0].clone()),
+        &Operation::Add(_, _) => Operation::Add(args[0].clone(), args[1].clone()),
+        &Operation::Subtract(_, _) => Operation::Subtract(args[0].clone(), args[1].clone()),
+        &Operation::Multiply(_, _) => Operation::Multiply(args[0].clone(), args[1].clone()),
+        &Operation::DivideUnsigned(_, _) => Operation::DivideUnsigned(args[0].clone(), args[1].clone()),
+        &Operation::DivideSigned(_, _) => Operation::DivideSigned(args[0].clone(), args[1].clone()),
+        &Operation::ShiftLeft(_, _) => Operation::ShiftLeft(args[0].clone(), args[1].clone()),
+        &Operation::ShiftRightUnsigned(_, _) => Operation::ShiftRightUnsigned(args[0].clone(), args[1].clone()),
+        &Operation::ShiftRightSigned(_, _) => Operation::ShiftRightSigned(args[0].clone(), args[1].clone()),
+        &Operation::Modulo(_, _) => Operation::Modulo(args[0].clone(), args[1].clone()),
+        &Operation::And(_, _) => Operation::And(args[0].clone(), args[1].clone()),
+        &Operation::InclusiveOr(_, _) => Operation::InclusiveOr(args[0].clone(), args[1].clone()),
+        &Operation::ExclusiveOr(_, _) => Operation::ExclusiveOr(args[0].clone(), args[1].clone()),
+        &Operation::Equal(_, _) => Operation::Equal(args[0].clone(), args[1].clone()),
+        &Operation::LessUnsigned(_, _) => Operation::LessUnsigned(args[0].clone(), args[1].clone()),
+        &Operation::LessSigned(_, _) => Operation::LessSigned(args[0].clone(), args[1].clone()),
+        &Operation::LessOrEqualUnsigned(_, _) => Operation::LessOrEqualUnsigned(args[0].clone(), args[1].clone()),
+        &Operation::LessOrEqualSigned(_, _) => Operation::LessOrEqualSigned(args[0].clone(), args[1].clone()),
+        &Operation::Call(_) => Operation::Call(args[0].clone()),
+        &Operation::Move(_) => Operation::Move(args[0].clone()),
+        &Operation::Select(ref off, _, _) => Operation::Select(*off, args[0].clone(), args[1].clone()),
+        &Operation::ZeroExtend(ref sz, _) => Operation::ZeroExtend(*sz, args[0].clone()),
+        &Operation::SignExtend(ref sz, _) => Operation::SignExtend(*sz, args[0].clone()),
     }
 }
 
@@ -593,7 +457,7 @@ mod tests {
     use panopticon_graph_algos::MutableGraphTrait;
     use std::borrow::Cow;
 
-    #[derive(Debug,Clone,PartialEq,Eq,Hash)]
+    #[derive(Debug,Clone,PartialEq,Eq,Hash,Serialize,Deserialize)]
     enum Sign {
         Join,
         Positive,
@@ -623,84 +487,84 @@ mod tests {
             }
         }
 
-        fn execute(_: &ProgramPoint, op: &Aoperation<Self>) -> Self {
+        fn execute(_: &ProgramPoint, op: &Operation<Self>) -> Self {
             match op {
-                &Aoperation::Add(Sign::Positive, Sign::Positive) => Sign::Positive,
-                &Aoperation::Add(Sign::Positive, Sign::Zero) => Sign::Positive,
-                &Aoperation::Add(Sign::Zero, Sign::Positive) => Sign::Positive,
-                &Aoperation::Add(Sign::Negative, Sign::Negative) => Sign::Negative,
-                &Aoperation::Add(Sign::Negative, Sign::Zero) => Sign::Negative,
-                &Aoperation::Add(Sign::Zero, Sign::Negative) => Sign::Negative,
-                &Aoperation::Add(Sign::Positive, Sign::Negative) => Sign::Join,
-                &Aoperation::Add(Sign::Negative, Sign::Positive) => Sign::Join,
-                &Aoperation::Add(_, Sign::Join) => Sign::Join,
-                &Aoperation::Add(Sign::Join, _) => Sign::Join,
-                &Aoperation::Add(ref a, Sign::Meet) => a.clone(),
-                &Aoperation::Add(Sign::Meet, ref b) => b.clone(),
+                &Operation::Add(Sign::Positive, Sign::Positive) => Sign::Positive,
+                &Operation::Add(Sign::Positive, Sign::Zero) => Sign::Positive,
+                &Operation::Add(Sign::Zero, Sign::Positive) => Sign::Positive,
+                &Operation::Add(Sign::Negative, Sign::Negative) => Sign::Negative,
+                &Operation::Add(Sign::Negative, Sign::Zero) => Sign::Negative,
+                &Operation::Add(Sign::Zero, Sign::Negative) => Sign::Negative,
+                &Operation::Add(Sign::Positive, Sign::Negative) => Sign::Join,
+                &Operation::Add(Sign::Negative, Sign::Positive) => Sign::Join,
+                &Operation::Add(_, Sign::Join) => Sign::Join,
+                &Operation::Add(Sign::Join, _) => Sign::Join,
+                &Operation::Add(ref a, Sign::Meet) => a.clone(),
+                &Operation::Add(Sign::Meet, ref b) => b.clone(),
 
-                &Aoperation::Subtract(Sign::Positive, Sign::Positive) => Sign::Join,
-                &Aoperation::Subtract(Sign::Positive, Sign::Zero) => Sign::Positive,
-                &Aoperation::Subtract(Sign::Zero, Sign::Positive) => Sign::Negative,
-                &Aoperation::Subtract(Sign::Negative, Sign::Negative) => Sign::Join,
-                &Aoperation::Subtract(Sign::Negative, Sign::Zero) => Sign::Negative,
-                &Aoperation::Subtract(Sign::Zero, Sign::Negative) => Sign::Positive,
-                &Aoperation::Subtract(Sign::Positive, Sign::Negative) => Sign::Positive,
-                &Aoperation::Subtract(Sign::Negative, Sign::Positive) => Sign::Negative,
-                &Aoperation::Subtract(_, Sign::Join) => Sign::Join,
-                &Aoperation::Subtract(Sign::Join, _) => Sign::Join,
-                &Aoperation::Subtract(ref a, Sign::Meet) => a.clone(),
-                &Aoperation::Subtract(Sign::Meet, ref b) => b.clone(),
+                &Operation::Subtract(Sign::Positive, Sign::Positive) => Sign::Join,
+                &Operation::Subtract(Sign::Positive, Sign::Zero) => Sign::Positive,
+                &Operation::Subtract(Sign::Zero, Sign::Positive) => Sign::Negative,
+                &Operation::Subtract(Sign::Negative, Sign::Negative) => Sign::Join,
+                &Operation::Subtract(Sign::Negative, Sign::Zero) => Sign::Negative,
+                &Operation::Subtract(Sign::Zero, Sign::Negative) => Sign::Positive,
+                &Operation::Subtract(Sign::Positive, Sign::Negative) => Sign::Positive,
+                &Operation::Subtract(Sign::Negative, Sign::Positive) => Sign::Negative,
+                &Operation::Subtract(_, Sign::Join) => Sign::Join,
+                &Operation::Subtract(Sign::Join, _) => Sign::Join,
+                &Operation::Subtract(ref a, Sign::Meet) => a.clone(),
+                &Operation::Subtract(Sign::Meet, ref b) => b.clone(),
 
-                &Aoperation::Multiply(Sign::Positive, Sign::Positive) => Sign::Positive,
-                &Aoperation::Multiply(Sign::Negative, Sign::Negative) => Sign::Positive,
-                &Aoperation::Multiply(Sign::Positive, Sign::Negative) => Sign::Negative,
-                &Aoperation::Multiply(Sign::Negative, Sign::Positive) => Sign::Negative,
-                &Aoperation::Multiply(_, Sign::Zero) => Sign::Zero,
-                &Aoperation::Multiply(Sign::Zero, _) => Sign::Zero,
-                &Aoperation::Multiply(_, Sign::Join) => Sign::Join,
-                &Aoperation::Multiply(Sign::Join, _) => Sign::Join,
-                &Aoperation::Multiply(ref a, Sign::Meet) => a.clone(),
-                &Aoperation::Multiply(Sign::Meet, ref b) => b.clone(),
+                &Operation::Multiply(Sign::Positive, Sign::Positive) => Sign::Positive,
+                &Operation::Multiply(Sign::Negative, Sign::Negative) => Sign::Positive,
+                &Operation::Multiply(Sign::Positive, Sign::Negative) => Sign::Negative,
+                &Operation::Multiply(Sign::Negative, Sign::Positive) => Sign::Negative,
+                &Operation::Multiply(_, Sign::Zero) => Sign::Zero,
+                &Operation::Multiply(Sign::Zero, _) => Sign::Zero,
+                &Operation::Multiply(_, Sign::Join) => Sign::Join,
+                &Operation::Multiply(Sign::Join, _) => Sign::Join,
+                &Operation::Multiply(ref a, Sign::Meet) => a.clone(),
+                &Operation::Multiply(Sign::Meet, ref b) => b.clone(),
 
-                &Aoperation::DivideSigned(Sign::Positive, Sign::Positive) => Sign::Positive,
-                &Aoperation::DivideSigned(Sign::Negative, Sign::Negative) => Sign::Positive,
-                &Aoperation::DivideSigned(Sign::Positive, Sign::Negative) => Sign::Negative,
-                &Aoperation::DivideSigned(Sign::Negative, Sign::Positive) => Sign::Negative,
-                &Aoperation::DivideSigned(_, Sign::Zero) => Sign::Zero,
-                &Aoperation::DivideSigned(Sign::Zero, _) => Sign::Zero,
-                &Aoperation::DivideSigned(_, Sign::Join) => Sign::Join,
-                &Aoperation::DivideSigned(Sign::Join, _) => Sign::Join,
-                &Aoperation::DivideSigned(ref a, Sign::Meet) => a.clone(),
-                &Aoperation::DivideSigned(Sign::Meet, ref b) => b.clone(),
+                &Operation::DivideSigned(Sign::Positive, Sign::Positive) => Sign::Positive,
+                &Operation::DivideSigned(Sign::Negative, Sign::Negative) => Sign::Positive,
+                &Operation::DivideSigned(Sign::Positive, Sign::Negative) => Sign::Negative,
+                &Operation::DivideSigned(Sign::Negative, Sign::Positive) => Sign::Negative,
+                &Operation::DivideSigned(_, Sign::Zero) => Sign::Zero,
+                &Operation::DivideSigned(Sign::Zero, _) => Sign::Zero,
+                &Operation::DivideSigned(_, Sign::Join) => Sign::Join,
+                &Operation::DivideSigned(Sign::Join, _) => Sign::Join,
+                &Operation::DivideSigned(ref a, Sign::Meet) => a.clone(),
+                &Operation::DivideSigned(Sign::Meet, ref b) => b.clone(),
 
-                &Aoperation::DivideUnsigned(Sign::Positive, Sign::Positive) => Sign::Positive,
-                &Aoperation::DivideUnsigned(Sign::Negative, Sign::Negative) => Sign::Positive,
-                &Aoperation::DivideUnsigned(Sign::Positive, Sign::Negative) => Sign::Negative,
-                &Aoperation::DivideUnsigned(Sign::Negative, Sign::Positive) => Sign::Negative,
-                &Aoperation::DivideUnsigned(_, Sign::Zero) => Sign::Zero,
-                &Aoperation::DivideUnsigned(Sign::Zero, _) => Sign::Zero,
-                &Aoperation::DivideUnsigned(_, Sign::Join) => Sign::Join,
-                &Aoperation::DivideUnsigned(Sign::Join, _) => Sign::Join,
-                &Aoperation::DivideUnsigned(ref a, Sign::Meet) => a.clone(),
-                &Aoperation::DivideUnsigned(Sign::Meet, ref b) => b.clone(),
+                &Operation::DivideUnsigned(Sign::Positive, Sign::Positive) => Sign::Positive,
+                &Operation::DivideUnsigned(Sign::Negative, Sign::Negative) => Sign::Positive,
+                &Operation::DivideUnsigned(Sign::Positive, Sign::Negative) => Sign::Negative,
+                &Operation::DivideUnsigned(Sign::Negative, Sign::Positive) => Sign::Negative,
+                &Operation::DivideUnsigned(_, Sign::Zero) => Sign::Zero,
+                &Operation::DivideUnsigned(Sign::Zero, _) => Sign::Zero,
+                &Operation::DivideUnsigned(_, Sign::Join) => Sign::Join,
+                &Operation::DivideUnsigned(Sign::Join, _) => Sign::Join,
+                &Operation::DivideUnsigned(ref a, Sign::Meet) => a.clone(),
+                &Operation::DivideUnsigned(Sign::Meet, ref b) => b.clone(),
 
-                &Aoperation::Modulo(Sign::Positive, Sign::Positive) => Sign::Positive,
-                &Aoperation::Modulo(Sign::Negative, Sign::Negative) => Sign::Positive,
-                &Aoperation::Modulo(Sign::Positive, Sign::Negative) => Sign::Negative,
-                &Aoperation::Modulo(Sign::Negative, Sign::Positive) => Sign::Negative,
-                &Aoperation::Modulo(_, Sign::Zero) => Sign::Zero,
-                &Aoperation::Modulo(Sign::Zero, _) => Sign::Zero,
-                &Aoperation::Modulo(_, Sign::Join) => Sign::Join,
-                &Aoperation::Modulo(Sign::Join, _) => Sign::Join,
-                &Aoperation::Modulo(ref a, Sign::Meet) => a.clone(),
-                &Aoperation::Modulo(Sign::Meet, ref b) => b.clone(),
+                &Operation::Modulo(Sign::Positive, Sign::Positive) => Sign::Positive,
+                &Operation::Modulo(Sign::Negative, Sign::Negative) => Sign::Positive,
+                &Operation::Modulo(Sign::Positive, Sign::Negative) => Sign::Negative,
+                &Operation::Modulo(Sign::Negative, Sign::Positive) => Sign::Negative,
+                &Operation::Modulo(_, Sign::Zero) => Sign::Zero,
+                &Operation::Modulo(Sign::Zero, _) => Sign::Zero,
+                &Operation::Modulo(_, Sign::Join) => Sign::Join,
+                &Operation::Modulo(Sign::Join, _) => Sign::Join,
+                &Operation::Modulo(ref a, Sign::Meet) => a.clone(),
+                &Operation::Modulo(Sign::Meet, ref b) => b.clone(),
 
-                &Aoperation::Move(ref a) => a.clone(),
-                &Aoperation::ZeroExtend(_, Sign::Negative) => Sign::Join,
-                &Aoperation::ZeroExtend(_, ref a) => a.clone(),
-                &Aoperation::SignExtend(_, ref a) => a.clone(),
+                &Operation::Move(ref a) => a.clone(),
+                &Operation::ZeroExtend(_, Sign::Negative) => Sign::Join,
+                &Operation::ZeroExtend(_, ref a) => a.clone(),
+                &Operation::SignExtend(_, ref a) => a.clone(),
 
-                &Aoperation::Phi(ref ops) => {
+                &Operation::Phi(ref ops) => {
                     match ops.len() {
                         0 => unreachable!("Phi function w/o arguments"),
                         1 => ops[0].clone(),

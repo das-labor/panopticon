@@ -20,7 +20,7 @@
 //!
 //! TODO
 
-use {Aoperation, Avalue, Constraint, ProgramPoint};
+use {Avalue, Constraint, ProgramPoint};
 
 use panopticon_core::{Operation, Rvalue, execute};
 use std::collections::HashSet;
@@ -33,7 +33,7 @@ const KSET_MAXIMAL_CARDINALITY: usize = 10;
 /// Kindler et.al style Kset domain. Domain elements are sets of concrete values. Sets have a
 /// maximum cardinality. Every set larger than that is equal the lattice join. The partial order is
 /// set inclusion.
-#[derive(Debug,Eq,Clone,Hash)]
+#[derive(Debug,Eq,Clone,Hash,Serialize,Deserialize)]
 pub enum Kset {
     /// Lattice join. Sets larger than `KSET_MAXIMAL_CARDINALITY`.
     Join,
@@ -108,7 +108,7 @@ impl Avalue for Kset {
         }
     }
 
-    fn execute(_: &ProgramPoint, op: &Aoperation<Self>) -> Self {
+    fn execute(_: &ProgramPoint, op: &Operation<Self>) -> Self {
         fn permute(_a: &Kset, _b: &Kset, f: &Fn(Rvalue, Rvalue) -> Rvalue) -> Kset {
             match (_a, _b) {
                 (&Kset::Join, _) => Kset::Join,
@@ -167,35 +167,35 @@ impl Avalue for Kset {
         };
 
         match *op {
-            Aoperation::And(ref a, ref b) => permute(a, b, &|a, b| execute(Operation::And(a, b))),
-            Aoperation::InclusiveOr(ref a, ref b) => permute(a, b, &|a, b| execute(Operation::InclusiveOr(a, b))),
-            Aoperation::ExclusiveOr(ref a, ref b) => permute(a, b, &|a, b| execute(Operation::ExclusiveOr(a, b))),
-            Aoperation::Add(ref a, ref b) => permute(a, b, &|a, b| execute(Operation::Add(a, b))),
-            Aoperation::Subtract(ref a, ref b) => permute(a, b, &|a, b| execute(Operation::Subtract(a, b))),
-            Aoperation::Multiply(ref a, ref b) => permute(a, b, &|a, b| execute(Operation::Multiply(a, b))),
-            Aoperation::DivideSigned(ref a, ref b) => permute(a, b, &|a, b| execute(Operation::DivideSigned(a, b))),
-            Aoperation::DivideUnsigned(ref a, ref b) => permute(a, b, &|a, b| execute(Operation::DivideUnsigned(a, b))),
-            Aoperation::Modulo(ref a, ref b) => permute(a, b, &|a, b| execute(Operation::Modulo(a, b))),
-            Aoperation::ShiftRightSigned(ref a, ref b) => permute(a, b, &|a, b| execute(Operation::ShiftRightSigned(a, b))),
-            Aoperation::ShiftRightUnsigned(ref a, ref b) => permute(a, b, &|a, b| execute(Operation::ShiftRightUnsigned(a, b))),
-            Aoperation::ShiftLeft(ref a, ref b) => permute(a, b, &|a, b| execute(Operation::ShiftLeft(a, b))),
+            Operation::And(ref a, ref b) => permute(a, b, &|a, b| execute(Operation::And(a, b))),
+            Operation::InclusiveOr(ref a, ref b) => permute(a, b, &|a, b| execute(Operation::InclusiveOr(a, b))),
+            Operation::ExclusiveOr(ref a, ref b) => permute(a, b, &|a, b| execute(Operation::ExclusiveOr(a, b))),
+            Operation::Add(ref a, ref b) => permute(a, b, &|a, b| execute(Operation::Add(a, b))),
+            Operation::Subtract(ref a, ref b) => permute(a, b, &|a, b| execute(Operation::Subtract(a, b))),
+            Operation::Multiply(ref a, ref b) => permute(a, b, &|a, b| execute(Operation::Multiply(a, b))),
+            Operation::DivideSigned(ref a, ref b) => permute(a, b, &|a, b| execute(Operation::DivideSigned(a, b))),
+            Operation::DivideUnsigned(ref a, ref b) => permute(a, b, &|a, b| execute(Operation::DivideUnsigned(a, b))),
+            Operation::Modulo(ref a, ref b) => permute(a, b, &|a, b| execute(Operation::Modulo(a, b))),
+            Operation::ShiftRightSigned(ref a, ref b) => permute(a, b, &|a, b| execute(Operation::ShiftRightSigned(a, b))),
+            Operation::ShiftRightUnsigned(ref a, ref b) => permute(a, b, &|a, b| execute(Operation::ShiftRightUnsigned(a, b))),
+            Operation::ShiftLeft(ref a, ref b) => permute(a, b, &|a, b| execute(Operation::ShiftLeft(a, b))),
 
-            Aoperation::LessOrEqualSigned(ref a, ref b) => permute(a, b, &|a, b| execute(Operation::LessOrEqualSigned(a, b))),
-            Aoperation::LessOrEqualUnsigned(ref a, ref b) => permute(a, b, &|a, b| execute(Operation::LessOrEqualUnsigned(a, b))),
-            Aoperation::LessSigned(ref a, ref b) => permute(a, b, &|a, b| execute(Operation::LessSigned(a, b))),
-            Aoperation::LessUnsigned(ref a, ref b) => permute(a, b, &|a, b| execute(Operation::LessUnsigned(a, b))),
-            Aoperation::Equal(ref a, ref b) => permute(a, b, &|a, b| execute(Operation::Equal(a, b))),
+            Operation::LessOrEqualSigned(ref a, ref b) => permute(a, b, &|a, b| execute(Operation::LessOrEqualSigned(a, b))),
+            Operation::LessOrEqualUnsigned(ref a, ref b) => permute(a, b, &|a, b| execute(Operation::LessOrEqualUnsigned(a, b))),
+            Operation::LessSigned(ref a, ref b) => permute(a, b, &|a, b| execute(Operation::LessSigned(a, b))),
+            Operation::LessUnsigned(ref a, ref b) => permute(a, b, &|a, b| execute(Operation::LessUnsigned(a, b))),
+            Operation::Equal(ref a, ref b) => permute(a, b, &|a, b| execute(Operation::Equal(a, b))),
 
-            Aoperation::Move(ref a) => map(a, &|a| execute(Operation::Move(a))),
-            Aoperation::Call(ref a) => map(a, &|a| execute(Operation::Call(a))),
-            Aoperation::ZeroExtend(ref sz, ref a) => map(a, &|a| execute(Operation::ZeroExtend(*sz, a))),
-            Aoperation::SignExtend(ref sz, ref a) => map(a, &|a| execute(Operation::SignExtend(*sz, a))),
-            Aoperation::Select(ref off, ref a, ref b) => permute(a, b, &|a, b| execute(Operation::Select(*off, a, b))),
+            Operation::Move(ref a) => map(a, &|a| execute(Operation::Move(a))),
+            Operation::Call(ref a) => map(a, &|a| execute(Operation::Call(a))),
+            Operation::ZeroExtend(ref sz, ref a) => map(a, &|a| execute(Operation::ZeroExtend(*sz, a))),
+            Operation::SignExtend(ref sz, ref a) => map(a, &|a| execute(Operation::SignExtend(*sz, a))),
+            Operation::Select(ref off, ref a, ref b) => permute(a, b, &|a, b| execute(Operation::Select(*off, a, b))),
 
-            Aoperation::Load(ref r, ref a) => map(a, &|a| execute(Operation::Load(r.clone(), a))),
-            Aoperation::Store(ref r, ref a) => map(a, &|a| execute(Operation::Store(r.clone(), a))),
+            Operation::Load(ref r, ref a) => map(a, &|a| execute(Operation::Load(r.clone(), a))),
+            Operation::Store(ref r, ref a) => map(a, &|a| execute(Operation::Store(r.clone(), a))),
 
-            Aoperation::Phi(ref ops) => {
+            Operation::Phi(ref ops) => {
                 match ops.len() {
                     0 => unreachable!("Phi function w/o arguments"),
                     1 => ops[0].clone(),

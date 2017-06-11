@@ -380,7 +380,8 @@ dependencies = [
  "panopticon-data-flow 0.16.0",
  "panopticon-graph-algos 0.11.0",
  "quickcheck 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "rustc-serialize 0.3.24 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde 1.0.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde_derive 1.0.8 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
