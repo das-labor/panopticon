@@ -7,7 +7,8 @@ authors = ["seu <seu@panopticon.re>"]
 panopticon-core = { path = "../core" }
 panopticon-data-flow = { path = "../data-flow" }
 panopticon-graph-algos = { path = "../graph-algos" }
-rustc-serialize = "0.3.19"
 log = "0.3.6"
 quickcheck = "0.3"
 env_logger = "0.3"
+serde = "1.0"
+serde_derive = "1.0"

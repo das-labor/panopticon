@@ -16,13 +16,15 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-use {Aoperation, Avalue, Constraint, ProgramPoint, translate};
-use panopticon_core::{Rvalue};
+use {Avalue, Constraint, ProgramPoint, lift};
+use serde::{Serialize,Deserialize};
+use panopticon_core::{Rvalue, Operation};
 
 /// Mihaila et.al. Widening Point inferring cofibered domain. This domain is parameterized with a
 /// child domain.
-#[derive(Debug,PartialEq,Eq,Clone,Hash)]
-pub struct Widening<A: Avalue> {
+#[derive(Debug,PartialEq,Eq,Clone,Hash,Serialize,Deserialize)]
+#[serde(bound(deserialize = "A: Avalue + Serialize + for<'a> Deserialize<'a>"))]
+pub struct Widening<A: Avalue + Serialize + for<'a> Deserialize<'a>> {
     value: A,
     point: Option<ProgramPoint>,
 }
@@ -36,9 +38,9 @@ impl<A: Avalue> Avalue for Widening<A> {
         Widening { value: A::abstract_constraint(c), point: None }
     }
 
-    fn execute(pp: &ProgramPoint, op: &Aoperation<Self>) -> Self {
+    fn execute(pp: &ProgramPoint, op: &Operation<Self>) -> Self {
         match op {
-            &Aoperation::Phi(ref ops) => {
+            &Operation::Phi(ref ops) => {
                 let widen = ops.iter().map(|x| x.point.clone().unwrap_or(pp.clone())).max() > Some(pp.clone());
 
                 Widening {
@@ -62,7 +64,7 @@ impl<A: Avalue> Avalue for Widening<A> {
             }
             _ => {
                 Widening {
-                    value: A::execute(pp, &translate(op, &|x| x.value.clone())),
+                    value: A::execute(pp, &lift(op, &|x| x.value.clone())),
                     point: Some(pp.clone()),
                 }
             }

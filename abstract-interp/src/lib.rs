@@ -40,9 +40,11 @@ extern crate env_logger;
 extern crate panopticon_core;
 extern crate panopticon_data_flow;
 extern crate panopticon_graph_algos;
+extern crate serde;
+#[macro_use] extern crate serde_derive;
 
 mod interpreter;
-pub use interpreter::{Aoperation, Avalue, Constraint, ProgramPoint, approximate, results, lift, translate};
+pub use interpreter::{Avalue, Constraint, ProgramPoint, approximate, results, lift};
 
 mod bounded_addr_track;
 pub use bounded_addr_track::BoundedAddrTrack;
