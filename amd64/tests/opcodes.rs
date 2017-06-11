@@ -27,7 +27,7 @@ use std::path::Path;
 
 #[test]
 fn amd64_opcodes() {
-    let reg = Region::open("com".to_string(), Path::new("../tests/data/amd64.com")).unwrap();
+    let reg = Region::open("com".to_string(), Path::new("../test-data/amd64.com")).unwrap();
     let mut addr = 0;
 
     loop {
@@ -54,7 +54,7 @@ fn amd64_opcodes() {
 fn ia32_opcodes() {
     env_logger::init().unwrap();
 
-    let reg = Region::open("com".to_string(), Path::new("../tests/data/ia32.com")).unwrap();
+    let reg = Region::open("com".to_string(), Path::new("../test-data/ia32.com")).unwrap();
     let mut addr = 0;
 
     loop {

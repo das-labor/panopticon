@@ -1,6 +1,9 @@
 [package]
-name = "cli"
+name = "panopticon-cli"
 version = "0.16.0"
 authors = ["seu <seu@panopticon.re>"]
+
+[[bin]]
+name = "panop"
 
 [dependencies]

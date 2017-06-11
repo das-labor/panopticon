@@ -31,7 +31,7 @@ use std::path::Path;
 fn avr_jmp_overflow() {
     let reg = Region::open(
         "flash".to_string(),
-        Path::new("../tests/data/avr-jmp-overflow.bin"),
+        Path::new("../test-data/avr-jmp-overflow.bin"),
     )
             .unwrap();
     let fun = Function::disassemble::<Avr>(None, Mcu::atmega88(), &reg, 0);
@@ -54,7 +54,7 @@ fn avr_jmp_overflow() {
 fn avr_wrap_around() {
     let reg = Region::open(
         "flash".to_string(),
-        Path::new("../tests/data/avr-overflow.bin"),
+        Path::new("../test-data/avr-overflow.bin"),
     )
             .unwrap();
     let fun = Function::disassemble::<Avr>(None, Mcu::atmega88(), &reg, 0);
@@ -76,6 +76,6 @@ fn avr_wrap_around() {
 
 #[test]
 fn avr_elf() {
-    let proj = loader::load(Path::new("../tests/data/hello-world")).ok();
+    let proj = loader::load(Path::new("../test-data/hello-world")).ok();
     assert!(proj.is_some());
 }

@@ -23,7 +23,7 @@ use std::path::Path;
 
 #[test]
 fn project_open() {
-    let maybe_project = Project::open(Path::new("../tests/data/save.panop"));
+    let maybe_project = Project::open(Path::new("../test-data/save.panop"));
 
     assert!(maybe_project.ok().is_some());
 }
