@@ -205,6 +205,11 @@ dependencies = [
 ]
 
 [[package]]
+name = "hamt"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
 name = "kernel32-sys"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -349,10 +354,12 @@ dependencies = [
  "error-chain 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures 0.1.14 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures-cpupool 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "hamt 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "lazy_static 0.1.16 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.2.23 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "multimap 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "num 0.1.38 (registry+https://github.com/rust-lang/crates.io-index)",
  "panopticon-abstract-interp 0.16.0",
  "panopticon-amd64 0.16.0",
  "panopticon-analysis 0.16.0",
@@ -421,6 +428,18 @@ dependencies = [
 [[package]]
 name = "panopticon-cli"
 version = "0.16.0"
+dependencies = [
+ "clap 2.24.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "env_logger 0.3.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "error-chain 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "futures 0.1.14 (registry+https://github.com/rust-lang/crates.io-index)",
+ "log 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "panopticon-amd64 0.16.0",
+ "panopticon-analysis 0.16.0",
+ "panopticon-avr 0.16.0",
+ "panopticon-core 0.16.0",
+ "panopticon-graph-algos 0.11.0",
+]
 
 [[package]]
 name = "panopticon-core"
@@ -796,6 +815,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum futures-cpupool 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)" = "a283c84501e92cade5ea673a2a7ca44f71f209ccdd302a3e0896f50083d2c5ff"
 "checksum gcc 0.3.50 (registry+https://github.com/rust-lang/crates.io-index)" = "5f837c392f2ea61cb1576eac188653df828c861b7137d74ea4a5caa89621f9e6"
 "checksum goblin 0.0.9 (registry+https://github.com/rust-lang/crates.io-index)" = "4023288fcdb49f38f7b15887078b922bb9e96b9d9b33dbb17eb61cb7b2578ba2"
+"checksum hamt 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "a348cf9404ba4aeff9fe6f5e9f5d12eaf236b5e51f129f876e8666af7e21cb50"
 "checksum kernel32-sys 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)" = "7507624b29483431c0ba2d82aece8ca6cdba9382bff4ddd0f7490560c056098d"
 "checksum lazy_static 0.1.16 (registry+https://github.com/rust-lang/crates.io-index)" = "cf186d1a8aa5f5bee5fd662bc9c1b949e0259e1bcc379d1f006847b0080c7417"
 "checksum lazy_static 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)" = "3b37545ab726dd833ec6420aaba8231c5b320814b9029ad585555d2a03e94fbf"
