@@ -35,7 +35,7 @@ use panopticon_graph_algos::adjacency_list::AdjacencyListVertexDescriptor;
 use uuid::Uuid;
 
 /// Node of the program call graph.
-#[derive(RustcDecodable,RustcEncodable,Debug)]
+#[derive(Serialize,Deserialize,Debug)]
 pub enum CallTarget {
     /// Resolved and disassembled function.
     Concrete(Function),
@@ -62,7 +62,7 @@ pub type CallGraph = AdjacencyList<CallTarget, ()>;
 pub type CallGraphRef = AdjacencyListVertexDescriptor;
 
 /// A collection of functions calling each other.
-#[derive(RustcDecodable,RustcEncodable,Debug)]
+#[derive(Serialize,Deserialize,Debug)]
 pub struct Program {
     /// Unique, immutable identifier
     pub uuid: Uuid,

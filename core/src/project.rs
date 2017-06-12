@@ -26,8 +26,9 @@ use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use flate2::Compression;
 use flate2::read::ZlibDecoder;
 use flate2::write::ZlibEncoder;
-use rmp_serialize::{Decoder, Encoder};
-use rustc_serialize::{Decodable, Encodable};
+use serde_cbor::de::Deserializer;
+use serde_cbor::ser::Serializer;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::{Read, Write};
@@ -36,7 +37,7 @@ use std::path::Path;
 use uuid::Uuid;
 
 /// Complete Panopticon session
-#[derive(RustcDecodable,RustcEncodable,Debug)]
+#[derive(Serialize,Deserialize,Debug)]
 pub struct Project {
     /// Human-readable name
     pub name: String,
@@ -75,13 +76,9 @@ impl Project {
 
             if version == 0 {
                 let mut z = ZlibDecoder::new(fd);
-                let mut rmp = Decoder::new(&mut z);
-                let res = <Project as Decodable>::decode(&mut rmp);
-
-                match res {
-                    Ok(p) => Ok(p),
-                    Err(_) => Err("project decoding failed".into()),
-                }
+                let mut cbor = Deserializer::new(&mut z);
+                let proj = Deserialize::deserialize(&mut cbor)?;
+                Ok(proj)
             } else {
                 Err("wrong version".into())
             }
@@ -149,18 +146,17 @@ impl Project {
     /// u32     version = 0
     /// zlib compressed MsgPack
     pub fn snapshot(&self, p: &Path) -> Result<()> {
-        println!("snapshot to {:?}", p);
         let mut fd = File::create(p)?;
 
         fd.write(b"PANOPTICON")?;
         fd.write_u32::<BigEndian>(0)?;
 
         let mut z = ZlibEncoder::new(fd, Compression::Default);
-        let mut enc = Encoder::new(&mut z);
+        let mut enc = Serializer::new(&mut z);
 
-        match self.encode(&mut enc) {
+        match self.serialize(&mut enc) {
             Ok(()) => Ok(()),
-            Err(_) => Err("failed to write to save file".into()),
+            Err(e) => Err(format!("failed to write to save file: {}",e).into()),
         }
     }
 }

@@ -110,19 +110,19 @@
 
 use Result;
 use quickcheck::{Arbitrary, Gen};
+use serde::{Serialize,Deserialize};
 
-use rustc_serialize::{Decodable, Encodable};
 use std::borrow::Cow;
 use std::cmp;
 use std::convert::From;
-use std::fmt::{Debug, Display, Error, Formatter};
+use std::fmt::{Display, Error, Formatter, Debug};
 use std::num::Wrapping;
 use std::result;
 use std::str::{FromStr, SplitWhitespace};
 use std::u64;
 
 /// A readable RREIL value.
-#[derive(Clone,PartialEq,Eq,Debug,RustcEncodable,RustcDecodable,Hash)]
+#[derive(Clone,PartialEq,Eq,Debug,Serialize,Deserialize,Hash)]
 pub enum Rvalue {
     /// Undefined value of unknown length
     Undefined,
@@ -273,7 +273,7 @@ impl Display for Rvalue {
 
 
 /// A writeable RREIL value.
-#[derive(Clone,PartialEq,Eq,Debug,RustcEncodable,RustcDecodable,Hash)]
+#[derive(Clone,PartialEq,Eq,Debug,Serialize,Deserialize,Hash)]
 pub enum Lvalue {
     /// Undefined value of unknown length
     Undefined,
@@ -339,7 +339,7 @@ impl Display for Lvalue {
 }
 
 /// Branch condition
-#[derive(Clone,PartialEq,Eq,Debug,RustcEncodable,RustcDecodable)]
+#[derive(Clone,PartialEq,Eq,Debug,Serialize,Deserialize)]
 pub enum Guard {
     /// Guard is constant true
     True,
@@ -400,8 +400,11 @@ impl Display for Guard {
 }
 
 /// A RREIL operation.
-#[derive(Clone,PartialEq,Eq,Debug,RustcEncodable,RustcDecodable)]
-pub enum Operation<V: Clone + PartialEq + Eq + Debug + Encodable + Decodable> {
+#[derive(Clone,PartialEq,Eq,Debug,Serialize,Deserialize)]
+#[serde(bound(deserialize = "V: Serialize + for<'a> Deserialize<'a> + Clone + PartialEq + Eq + Debug"))]
+pub enum Operation<V>
+    where V: Serialize + for<'a> Deserialize<'a> + Clone + PartialEq + Eq + Debug
+{
     /// Integer addition
     Add(V, V),
     /// Integer subtraction
@@ -463,7 +466,7 @@ pub enum Operation<V: Clone + PartialEq + Eq + Debug + Encodable + Decodable> {
 }
 
 /// A single RREIL statement.
-#[derive(Clone,PartialEq,Eq,Debug,RustcEncodable,RustcDecodable)]
+#[derive(Clone,PartialEq,Eq,Debug,Serialize,Deserialize)]
 pub struct Statement {
     /// Value that the operation result is assigned to
     pub assignee: Lvalue,
@@ -936,7 +939,7 @@ pub fn execute(op: Operation<Rvalue>) -> Rvalue {
         Operation::Select(off, Rvalue::Constant { value: _a, size: s }, Rvalue::Constant { value: _b, size: _s }) => {
             debug_assert!(off + _s <= s);
 
-            if off + _s <= 64 {
+            if off + _s < 64 {
                 let hi = _a >> (off + _s);
                 let lo = _a % (1 << off);
                 Rvalue::Constant { value: lo | (_b << off) | (hi << (off + _s)), size: s }
@@ -966,48 +969,11 @@ pub fn execute(op: Operation<Rvalue>) -> Rvalue {
     }
 }
 
-/// Maps the function `m` over all operands of `op`.
-pub fn lift<V: Clone + PartialEq + Eq + Debug + Encodable + Decodable, W: Clone + PartialEq + Eq + Debug + Encodable + Decodable, F: Fn(&V) -> W>
-    (
-    op: &Operation<V>,
-    m: &F,
-) -> Operation<W> {
-    let args = op.operands().iter().cloned().map(m).collect::<Vec<_>>();
-    match op {
-        &Operation::Phi(_) => Operation::Phi(args),
-        &Operation::Load(ref s, _) => Operation::Load(s.clone(), args[0].clone()),
-        &Operation::Store(ref s, _) => Operation::Store(s.clone(), args[0].clone()),
-        &Operation::Add(_, _) => Operation::Add(args[0].clone(), args[1].clone()),
-        &Operation::Subtract(_, _) => Operation::Subtract(args[0].clone(), args[1].clone()),
-        &Operation::Multiply(_, _) => Operation::Multiply(args[0].clone(), args[1].clone()),
-        &Operation::DivideUnsigned(_, _) => Operation::DivideUnsigned(args[0].clone(), args[1].clone()),
-        &Operation::DivideSigned(_, _) => Operation::DivideSigned(args[0].clone(), args[1].clone()),
-        &Operation::ShiftLeft(_, _) => Operation::ShiftLeft(args[0].clone(), args[1].clone()),
-        &Operation::ShiftRightUnsigned(_, _) => Operation::ShiftRightUnsigned(args[0].clone(), args[1].clone()),
-        &Operation::ShiftRightSigned(_, _) => Operation::ShiftRightSigned(args[0].clone(), args[1].clone()),
-        &Operation::Modulo(_, _) => Operation::Modulo(args[0].clone(), args[1].clone()),
-        &Operation::And(_, _) => Operation::And(args[0].clone(), args[1].clone()),
-        &Operation::InclusiveOr(_, _) => Operation::InclusiveOr(args[0].clone(), args[1].clone()),
-        &Operation::ExclusiveOr(_, _) => Operation::ExclusiveOr(args[0].clone(), args[1].clone()),
-        &Operation::Equal(_, _) => Operation::Equal(args[0].clone(), args[1].clone()),
-        &Operation::LessUnsigned(_, _) => Operation::LessUnsigned(args[0].clone(), args[1].clone()),
-        &Operation::LessSigned(_, _) => Operation::LessSigned(args[0].clone(), args[1].clone()),
-        &Operation::LessOrEqualUnsigned(_, _) => Operation::LessOrEqualUnsigned(args[0].clone(), args[1].clone()),
-        &Operation::LessOrEqualSigned(_, _) => Operation::LessOrEqualSigned(args[0].clone(), args[1].clone()),
-        &Operation::Call(_) => Operation::Call(args[0].clone()),
-        &Operation::Move(_) => Operation::Move(args[0].clone()),
-        &Operation::Select(ref off, _, _) => Operation::Select(*off, args[0].clone(), args[1].clone()),
-        &Operation::ZeroExtend(ref sz, _) => Operation::ZeroExtend(*sz, args[0].clone()),
-        &Operation::SignExtend(ref sz, _) => Operation::SignExtend(*sz, args[0].clone()),
-    }
-}
-
-impl<'a, V> Operation<V>
-where
-    V: Clone + PartialEq + Eq + Debug + Encodable + Decodable,
+impl<V> Operation<V>
+    where V: Serialize + for<'a> Deserialize<'a> + Clone + PartialEq + Eq + Debug
 {
     /// Returns its operands
-    pub fn operands(&'a self) -> Vec<&'a V> {
+    pub fn operands(&self) -> Vec<&V> {
         match *self {
             Operation::Add(ref a, ref b) => return vec![a, b],
             Operation::Subtract(ref a, ref b) => return vec![a, b],
@@ -1042,7 +1008,7 @@ where
     }
 
     /// Returns its operands
-    pub fn operands_mut(&'a mut self) -> Vec<&'a mut V> {
+    pub fn operands_mut(&mut self) -> Vec<&mut V> {
         match self {
             &mut Operation::Add(ref mut a, ref mut b) => return vec![a, b],
             &mut Operation::Subtract(ref mut a, ref mut b) => return vec![a, b],

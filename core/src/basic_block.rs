@@ -26,7 +26,7 @@ use {Bound, Mnemonic, Statement};
 use std::cmp::{max, min};
 
 /// A basic block: a continiuous sequence of mnemonics without any branches in between.
-#[derive(PartialEq,Eq,Debug,RustcEncodable,RustcDecodable,Clone)]
+#[derive(PartialEq,Eq,Debug,Serialize,Deserialize,Clone)]
 pub struct BasicBlock {
     /// Area the basic block occupies in memory.
     pub area: Bound,

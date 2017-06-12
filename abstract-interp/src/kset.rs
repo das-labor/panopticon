@@ -33,7 +33,7 @@ const KSET_MAXIMAL_CARDINALITY: usize = 10;
 /// Kindler et.al style Kset domain. Domain elements are sets of concrete values. Sets have a
 /// maximum cardinality. Every set larger than that is equal the lattice join. The partial order is
 /// set inclusion.
-#[derive(Debug,Eq,Clone,Hash,RustcDecodable,RustcEncodable)]
+#[derive(Debug,Eq,Clone,Hash,Serialize,Deserialize)]
 pub enum Kset {
     /// Lattice join. Sets larger than `KSET_MAXIMAL_CARDINALITY`.
     Join,

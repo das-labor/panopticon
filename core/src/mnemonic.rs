@@ -38,7 +38,7 @@ use std::ops::Range;
 use std::str::Chars;
 
 /// A non-empty address range [start,end).
-#[derive(Debug,Clone,PartialEq,Eq,RustcEncodable,RustcDecodable)]
+#[derive(Debug,Clone,PartialEq,Eq,Serialize,Deserialize)]
 pub struct Bound {
     /// Address of the first byte inside the range.
     pub start: u64,
@@ -59,7 +59,7 @@ impl Bound {
 }
 
 /// Internal to `Mnemonic`
-#[derive(Clone,Debug,PartialEq,Eq,RustcEncodable,RustcDecodable)]
+#[derive(Clone,Debug,PartialEq,Eq,Serialize,Deserialize)]
 pub enum MnemonicFormatToken {
     /// Internal to `Mnemonic`
     Literal(char),
@@ -137,7 +137,7 @@ impl MnemonicFormatToken {
 }
 
 /// A single Mnemonic.
-#[derive(Clone,PartialEq,Eq,Debug,RustcEncodable,RustcDecodable)]
+#[derive(Clone,PartialEq,Eq,Debug,Serialize,Deserialize)]
 pub struct Mnemonic {
     /// Range of bytes the mnemonic occupies
     pub area: Bound,

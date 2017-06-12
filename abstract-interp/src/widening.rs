@@ -16,14 +16,15 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-use {Avalue, Constraint, ProgramPoint};
-use panopticon_core::{Operation, Rvalue, lift};
-
+use {Avalue, Constraint, ProgramPoint, lift};
+use serde::{Serialize,Deserialize};
+use panopticon_core::{Rvalue, Operation};
 
 /// Mihaila et.al. Widening Point inferring cofibered domain. This domain is parameterized with a
 /// child domain.
-#[derive(Debug,PartialEq,Eq,Clone,Hash,RustcDecodable,RustcEncodable)]
-pub struct Widening<A: Avalue> {
+#[derive(Debug,PartialEq,Eq,Clone,Hash,Serialize,Deserialize)]
+#[serde(bound(deserialize = "A: Avalue + Serialize + for<'a> Deserialize<'a>"))]
+pub struct Widening<A: Avalue + Serialize + for<'a> Deserialize<'a>> {
     value: A,
     point: Option<ProgramPoint>,
 }

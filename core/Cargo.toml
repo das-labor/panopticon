@@ -8,16 +8,17 @@ build = "build.rs"
 num = "0.1"
 log = "0.3.6"
 env_logger = "0.3"
-rustc-serialize = "0.3.19"
 tempdir = "0.3.4"
 libc = "0.2.9"
-uuid = { version = "0.2.0", features = ["rustc-serialize", "v4"]}
+uuid = { version = "0.5", features = ["v4", "serde"]}
 flate2 = "0.2.13"
-rmp-serialize = "0.8"
 byteorder = "0.5.1"
 goblin = "0.0.9"
 quickcheck = "0.3"
 panopticon-graph-algos = { path = "../graph-algos" }
+serde = { version = "1.0", features = ["rc"] }
+serde_derive = "1.0"
+serde_cbor = "0.6"
 
 [dev-dependencies]
 regex = "0.1"

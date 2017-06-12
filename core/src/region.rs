@@ -62,7 +62,7 @@ use std::sync::Arc;
 /// `Region`s are a stack of [`Layer`](../layer/index.html) inside a single address space. The
 /// `Region` is the primary way panopticon handles data. They can be created from files or
 /// in-memory buffers.
-#[derive(Clone,Debug,RustcDecodable,RustcEncodable)]
+#[derive(Clone,Debug,Serialize,Deserialize)]
 pub struct Region {
     stack: Vec<(Bound, Layer)>,
     name: String,
@@ -82,7 +82,7 @@ pub type RegionRef = AdjacencyListVertexDescriptor;
 /// will not yield `Cell`s from the overlapping `Region`. For example, a compressed file inside a `Region`
 /// would be overlapped with a new, larger `Region` that holds the result after decompression. A `Program`
 /// inside the overlapped `Region` would still see only the compressed version.
-#[derive(Clone,RustcDecodable,RustcEncodable,Debug)]
+#[derive(Clone,Serialize,Deserialize,Debug)]
 pub struct World {
     ///< Graph of all `Region`s with edges pointing from the overlapping to the overlapped `Region`.
     pub dependencies: RegionGraph,

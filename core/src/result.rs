@@ -23,7 +23,6 @@
 
 use goblin;
 
-use rustc_serialize::json::{DecoderError, EncoderError};
 use std::borrow::Cow;
 use std::convert::From;
 use std::error;
@@ -31,6 +30,7 @@ use std::fmt;
 use std::io;
 use std::result;
 use std::sync::PoisonError;
+use serde_cbor;
 
 /// Panopticon error type
 #[derive(Debug)]
@@ -83,20 +83,14 @@ impl From<io::Error> for Error {
     }
 }
 
-impl From<DecoderError> for Error {
-    fn from(e: DecoderError) -> Error {
-        Error(Cow::Owned(format!("JSON decoder error: {}", e)))
-    }
-}
-
-impl From<EncoderError> for Error {
-    fn from(e: EncoderError) -> Error {
-        Error(Cow::Owned(format!("JSON encoder error: {}", e)))
-    }
-}
-
 impl From<goblin::error::Error> for Error {
     fn from(e: goblin::error::Error) -> Error {
         Error(Cow::Owned(format!("Goblin error: {}", e)))
+    }
+}
+
+impl From<serde_cbor::Error> for Error {
+    fn from(e: serde_cbor::Error) -> Error {
+        Error(Cow::Owned(format!("Serde error: {}", e)))
     }
 }

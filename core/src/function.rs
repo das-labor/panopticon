@@ -39,7 +39,7 @@ use std::fmt::Debug;
 use uuid::Uuid;
 
 /// Node of the function graph.
-#[derive(RustcDecodable,RustcEncodable,Debug,Clone)]
+#[derive(Serialize,Deserialize,Debug,Clone)]
 pub enum ControlFlowTarget {
     /// A basic block
     Resolved(BasicBlock),
@@ -57,7 +57,7 @@ pub type ControlFlowRef = AdjacencyListVertexDescriptor;
 pub type ControlFlowEdge = AdjacencyListEdgeDescriptor;
 
 /// A set of basic blocks connected by conditional jumps
-#[derive(RustcDecodable,RustcEncodable,Debug,Clone)]
+#[derive(Serialize,Deserialize,Debug,Clone)]
 pub struct Function {
     /// Unique, immutable identifier for this function.
     pub uuid: Uuid,
