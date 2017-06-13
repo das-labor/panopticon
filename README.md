@@ -51,15 +51,15 @@ everything.
 ```bash
 git clone https://github.com/das-labor/panopticon.git
 cd panopticon
-cargo build --release
+cargo build --all --release
 ```
 
 **Windows**
 
-Install the [Qt 5.5 SDK](http://download.qt.io/official_releases/online_installers/qt-unified-windows-x86-online.exe),
+Install the [Qt 5.4 SDK](http://download.qt.io/official_releases/online_installers/qt-unified-windows-x86-online.exe),
 the [Rust toolchain](https://static.rust-lang.org/rustup/dist/x86_64-pc-windows-msvc/rustup-init.exe)
 and [CMake](https://cmake.org/files/v3.6/cmake-3.6.1-win64-x64.msi).
-Panopticon can be build using ``cargo build --release``.
+Panopticon can be build using ``cargo build --all --release``.
 
 **OS X**
 
@@ -67,16 +67,21 @@ Install [Homebrew](http://brew.sh/) and get Qt 5.5, CMake and the Rust toolchain
 Then, compile Panopticon using cargo.
 
 ```bash
-brew install qt55 cmake rust
-QTDIR64=`brew --prefix qt55` cargo build --release
+brew install qt cmake rust
+brew link qt --force
+brew linkapps qt
+export HOMEBREW_QT5_VERSION=$(brew list --versions qt | rev | cut -d ' ' -f1 | rev)
+ln -s /usr/local/Cellar/qt/$HOMEBREW_QT5_VERSION/mkspecs /usr/local/mkspecs
+ln -s /usr/local/Cellar/qt/$HOMEBREW_QT5_VERSION/plugins /usr/local/plugins
+QTDIR64=/usr/local cargo build --all --release
 ```
 
 ## Running
-After installation start the ``qtpanopticon`` binary. If you build it from
+After installation start the ``panopticon`` binary. If you build it from
 source you can type:
 
 ```bash
-cargo run --release
+cargo run -p panopticon-qt --release
 ```
 
 For detailed usage information see the
