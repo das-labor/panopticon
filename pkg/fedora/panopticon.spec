@@ -35,11 +35,11 @@ flow graphs.
 %autosetup
 
 %build
-cargo build --release
+cargo build --all --release
 
 %install
 %{__install} -d -m755 %{buildroot}/usr/bin
-%{__install} -D -s -m755 target/release/qtpanopticon %{buildroot}/usr/bin/qtpanopticon
+%{__install} -D -s -m755 target/release/panopticon %{buildroot}/usr/bin/panopticon
 %{__install} -d -m755 %{buildroot}/usr/share/panopticon/qml
 cp -R qml/* %{buildroot}/usr/share/panopticon/qml
 chown -R root:root %{buildroot}/usr/share/panopticon/qml
@@ -48,7 +48,7 @@ cp README.md %{buildroot}/usr/share/doc/panopticon/README.md
 
 %files
 %doc README.md
-%{_bindir}/qtpanopticon
+%{_bindir}/panopticon
 %{_datarootdir}/panopticon/qml
 
 %changelog

@@ -23,7 +23,7 @@ DEPSDIR := $(CURDIR)/deps
 	dh $@
 
 override_dh_auto_build:
-	cargo build --release
+	cargo build --all --release
 
 override_dh_auto_clean:
 	cargo clean
