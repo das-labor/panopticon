@@ -19,7 +19,7 @@ install:
   - set PATH=%QTDIR%\bin;%PATH%
   - set CMAKE_PREFIX_PATH=%QTDIR%;%CMAKE_PREFIX_PATH%
   - appveyor DownloadFile https://static.rust-lang.org/rustup/dist/%RUST_INSTALL_TRIPLE%/rustup-init.exe
-  - if defined APPVEYOR_PULL_REQUEST_TITLE (
+  - if defined PPVEYOR_PULL_REQUEST_TITLE (
       if NOT defined PACKAGE (
         rustup-init.exe -y
       )
@@ -28,11 +28,11 @@ install:
     )
 build_script:
   - call "C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\vcvarsall.bat" x64
-  - if NOT DEFINED PACKAGE (
+  - if NOT DEFINED ACKAGE (
       cargo build --all --verbose
     ) else (
-      if NOT DEFINED APPVEYOR_PULL_REQUEST_TITLE (
-        if "%PACKAGE%"=="win" (
+      if NOT DEFINED PPVEYOR_PULL_REQUEST_TITLE (
+        if "%PACKAGE%"=="" (
           cd pkg\windows &
           call package_zip.bat &
           curl -T panopticon-0.16.zip -u upload:%FTP_PASSWD% -Q "-SITE CHMOD 664 panopticon-master.zip" ftp://files.panopticon.re/panopticon-master.zip
@@ -40,7 +40,7 @@ build_script:
       )
     )
 test_script:
-  - if NOT DEFINED PACKAGE (
+  - if NOT DEFINED ACKAGE (
       call "C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\vcvarsall.bat" x64 &
       cargo test --verbose --all
     )
