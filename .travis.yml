@@ -38,9 +38,9 @@ matrix:
         - CC=gcc-5
         - PACKAGE=ubuntu
         - secure: "HwY2nRi7xuAQTkuVWgUupdVcJmutiiq+A4iDCbC4NI/vRB7WKCifxlzivCeTJMBu22LSLPJBMoaQ0S7w1PLaPkuG2d0qqFhublmhzk5sLaQt6AiwpEnJaHLqGy6aDVPDbqd4EWlPZ1MMCV+uXhtHzsg9XmrlZH9l5hMGx3mUDJw="
-    #branches:
-    #   only:
-    #      - master
+      branches:
+        only:
+          - master
     - os: linux
       dist: trusty
       rust: stable
@@ -48,9 +48,9 @@ matrix:
         - TARGET=x86_64-unknown-linux-gnu
         - PACKAGE=debian
         - secure: "HwY2nRi7xuAQTkuVWgUupdVcJmutiiq+A4iDCbC4NI/vRB7WKCifxlzivCeTJMBu22LSLPJBMoaQ0S7w1PLaPkuG2d0qqFhublmhzk5sLaQt6AiwpEnJaHLqGy6aDVPDbqd4EWlPZ1MMCV+uXhtHzsg9XmrlZH9l5hMGx3mUDJw="
-    #  branches:
-    #    only:
-    #      - master
+      branches:
+        only:
+          - master
     - os: linux
       dist: trusty
       rust: stable
@@ -58,18 +58,18 @@ matrix:
         - TARGET=x86_64-unknown-linux-gnu
         - PACKAGE=fedora
         - secure: "HwY2nRi7xuAQTkuVWgUupdVcJmutiiq+A4iDCbC4NI/vRB7WKCifxlzivCeTJMBu22LSLPJBMoaQ0S7w1PLaPkuG2d0qqFhublmhzk5sLaQt6AiwpEnJaHLqGy6aDVPDbqd4EWlPZ1MMCV+uXhtHzsg9XmrlZH9l5hMGx3mUDJw="
-    #  branches:
-    #    only:
-    #      - master
+      branches:
+        only:
+          - master
     - os: osx
       rust: stable
       env:
         - TARGET=x86_64-apple-darwin
         - PACKAGE=osx
         - secure: "HwY2nRi7xuAQTkuVWgUupdVcJmutiiq+A4iDCbC4NI/vRB7WKCifxlzivCeTJMBu22LSLPJBMoaQ0S7w1PLaPkuG2d0qqFhublmhzk5sLaQt6AiwpEnJaHLqGy6aDVPDbqd4EWlPZ1MMCV+uXhtHzsg9XmrlZH9l5hMGx3mUDJw="
-    #  branches:
-    #    only:
-    #      - master
+      branches:
+        only:
+          - master
 
 sudo: false
 services:
