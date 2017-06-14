@@ -23,7 +23,7 @@ use std::path::Path;
 
 #[test]
 fn elf_load_static() {
-    match loader::load(Path::new("../tests/data/static")) {
+    match loader::load(Path::new("../test-data/static")) {
         Ok((proj, _)) => {
             println!("{:?}", proj);
             assert_eq!(proj.imports.len(), 0);
@@ -37,7 +37,7 @@ fn elf_load_static() {
 
 #[test]
 fn elf_load_dynamic() {
-    match loader::load(Path::new("../tests/data/libfoo.so")) {
+    match loader::load(Path::new("../test-data/libfoo.so")) {
         Ok((proj, _)) => {
             println!("{:?}", &proj);
             assert_eq!(proj.name, "libfoo.so");
@@ -53,7 +53,7 @@ fn elf_load_dynamic() {
 
 #[test]
 fn mach_load_lib() {
-    match loader::load(Path::new("../tests/data/libbeef.dylib")) {
+    match loader::load(Path::new("../test-data/libbeef.dylib")) {
         Ok((proj, _)) => {
             println!("{:?}", &proj);
             assert_eq!(proj.imports.len(), 0);
@@ -67,7 +67,7 @@ fn mach_load_lib() {
 
 #[test]
 fn mach_load_exe() {
-    match loader::load(Path::new("../tests/data/deadbeef.mach")) {
+    match loader::load(Path::new("../test-data/deadbeef.mach")) {
         Ok((proj, _)) => {
             println!("{:?}", &proj);
             assert_eq!(proj.imports.len(), 2);
@@ -85,11 +85,11 @@ fn mach_load_bytes() {
     use std::io::Read;
     let bytes = {
         let mut v = Vec::new();
-        let mut fd = File::open(Path::new("../tests/data/deadbeef.mach")).unwrap();
+        let mut fd = File::open(Path::new("../test-data/deadbeef.mach")).unwrap();
         fd.read_to_end(&mut v).unwrap();
         v
     };
-    match loader::load_mach(&bytes, 0, "../tests/data/deadbeef.mach".to_owned()) {
+    match loader::load_mach(&bytes, 0, "../test-data/deadbeef.mach".to_owned()) {
         Ok((proj, _)) => {
             println!("{}", proj.name);
             assert_eq!(proj.imports.len(), 2);
@@ -105,7 +105,7 @@ fn mach_load_bytes() {
 
 #[test]
 fn load_pe32() {
-    let project = loader::load(Path::new("../tests/data/test.exe"));
+    let project = loader::load(Path::new("../test-data/test.exe"));
     match project {
         Ok((proj, _)) => {
             println!("{:?}", proj);
@@ -120,7 +120,7 @@ fn load_pe32() {
 
 #[test]
 fn load_pe32_dll() {
-    let project = loader::load(Path::new("../tests/data/libbeef.dll"));
+    let project = loader::load(Path::new("../test-data/libbeef.dll"));
     match project {
         Ok((proj, _)) => {
             println!("{:?}", proj);

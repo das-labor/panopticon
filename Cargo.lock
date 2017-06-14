@@ -419,6 +419,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "panopticon-cli"
+version = "0.16.0"
+
+[[package]]
 name = "panopticon-core"
 version = "0.16.0"
 dependencies = [

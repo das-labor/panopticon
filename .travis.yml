@@ -158,7 +158,7 @@ script: |
       curl -vT panopticon_0.16_amd64.rpm -u upload:$FTP_PASSWD -Q "-SITE CHMOD 664 panopticon-master-fedora-25.rpm" ftp://files.panopticon.re/panopticon-master-fedora-25.rpm
       ;;
     "")
-      cargo build --verbose &&
+      cargo build --verbose --all &&
       cargo test --verbose --all
       ;;
     *)

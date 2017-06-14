@@ -524,6 +524,6 @@ mod tests {
     #[test]
     fn open_save() {
         let mut panop = Panopticon::default();
-        panop.open_program("tests/data/save.panop".to_string()).unwrap();
+        panop.open_program("../test-data/save.panop".to_string()).unwrap();
     }
 }

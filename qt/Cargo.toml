@@ -1,0 +1,51 @@
+[package]
+name = "panopticon"
+version = "0.16.0"
+authors = ["seu <seu@panopticon.re>", "m4b <m4b.github.io@gmail.com>"]
+
+[[bin]]
+name = "panopticon"
+
+[dependencies]
+panopticon-core = { path = "../core" }
+panopticon-data-flow = { path = "../data-flow" }
+panopticon-abstract-interp = { path = "../abstract-interp" }
+panopticon-amd64 = { path = "../amd64" }
+panopticon-avr = { path = "../avr" }
+panopticon-mos6502 = { path = "../mos6502" }
+panopticon-analysis = { path = "../analysis" }
+panopticon-glue = { path = "../glue" }
+panopticon-graph-algos = { path = "../graph-algos" }
+log = "0.3.6"
+env_logger = "0.3"
+uuid = { version = "0.5", features = ["v4", "serde"]}
+cassowary = "0.1"
+tempdir = "0.3"
+chrono = "0.2"
+chrono-humanize = "0.0"
+clap = "2.24"
+futures = "0.1.13"
+futures-cpupool = "0.1"
+parking_lot = "0.4"
+multimap = "0.3"
+error-chain = "0.8"
+lazy_static = "0.1"
+libc = "0.2"
+hamt = "0.2"
+num = "0.1"
+
+[dev-dependencies]
+regex = "0.1"
+quickcheck = "0.3"
+
+[target.i686-unknown-linux-gnu.dependencies]
+xdg = "^2.0"
+
+[target.x86_64-unknown-linux-gnu.dependencies]
+xdg = "^2.0"
+
+[target.x86_64-apple-darwin.dependencies]
+xdg = "^2.0"
+
+[target.i686-apple-darwin.dependencies]
+xdg = "^2.0"
