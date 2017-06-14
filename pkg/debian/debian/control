@@ -13,11 +13,3 @@ Description: Qt 5 frontend of Panopticon
 Depends: ${misc:Depends}, ${shlibs:Depends}, qml-module-qtquick-controls, qml-module-qttest, qml-module-qtquick2, qml-module-qtquick-layouts, qml-module-qtgraphicaleffects, qml-module-qtqml-models2, qml-module-qtquick-dialogs
 Priority: optional
 Section: editors
-
-Package: panopticon-doc
-Architecture: all
-Description: API and usage documentation for Panopticon
- Documents the internals of the panopticon library.
-Depends: ${misc:Depends}
-Priority: optional
-Section: doc

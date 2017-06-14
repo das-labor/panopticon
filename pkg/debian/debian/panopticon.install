@@ -1,2 +1,2 @@
-../../target/release/qtpanopticon usr/bin
+../../target/release/panopticon usr/bin
 ../../qml usr/share/panopticon

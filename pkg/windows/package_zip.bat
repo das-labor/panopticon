@@ -13,19 +13,17 @@ rem set LIB=%GLPKDIR%\w64;%LIB%
 rem call "%VSDIR%\VC\vcvarsall.bat" x64
 
 rem Build
-cargo build --release
+cargo build --all --release
 
 rem Package
 md out
-copy ..\..\target\release\qtpanopticon.exe out\qtpanopticon.exe
+copy ..\..\target\release\panopticon.exe out\panopticon.exe
 xcopy /e /i /s /y ..\..\qml out\qml
 TYPE ..\..\README.md | MORE /P > out\README.txt
 TYPE ..\..\LICENSE | MORE /P > out\LICENSE.txt
-TYPE ..\..\LICENSE.springy | MORE /P > out\LICENSE-springy.txt
 TYPE ..\..\AUTHORS | MORE /P > out\AUTHORS.txt
 TYPE ..\..\CHANGELOG | MORE /P > out\CHANGELOG.txt
-%QTDIR%\bin\windeployqt.exe --release --qmldir out\qml out\qtpanopticon.exe
-copy %QTDIR%\bin\Qt5QuickTest.dll out\Qt5QuickTest.dll
+%QTDIR%\bin\windeployqt.exe --release --qmldir out\qml out\panopticon.exe
 7z a panopticon-%VERSION%.zip .\out\*
 
 rmdir /s /q out
