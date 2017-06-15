@@ -19,7 +19,7 @@ matrix:
     # rustdoc
     - os: linux
       dist: trusty
-      rust: nightly
+      rust: stable
       env:
         - TARGET=x86_64-unknown-linux-gnu
         - COMPILER_NAME=gcc
@@ -140,7 +140,7 @@ script: |
       curl -vT panopticon_0.16_amd64.deb -u upload:$FTP_PASSWD -Q "-SITE CHMOD 664 panopticon-master-xenial.deb" ftp://files.panopticon.re/panopticon-master-xenial.deb
       ;;
     "doc")
-      cargo doc &&
+      cargo doc --all &&
       cd target/doc &&
       tar cvf ../../doc.tar * &&
       curl -H "X-Token: $DOC_TOKEN" --data-binary @../../doc.tar https://doc.panopticon.re/update
