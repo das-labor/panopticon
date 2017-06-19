@@ -7,7 +7,8 @@ authors = ["seu <seu@panopticon.re>"]
 name = "panop"
 
 [dependencies]
-clap = "2.24"
+structopt = "0.0.5"
+structopt-derive = "0.0.5"
 error-chain = "0.8"
 futures = "0.1"
 panopticon-core = { path = "../core" }
