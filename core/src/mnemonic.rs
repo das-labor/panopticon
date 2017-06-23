@@ -30,12 +30,13 @@
 //! value. Other formattings are `{d:<region>}` for data pointer into <region> and `{s}` for
 //! signed values.
 
-use Result;
+use {Result, Program, CallTarget, Function};
 
 use Rvalue;
 use Statement;
 use std::ops::Range;
 use std::str::Chars;
+use panopticon_graph_algos::*;
 
 /// A non-empty address range [start,end).
 #[derive(Debug,Clone,PartialEq,Eq,Serialize,Deserialize)]
@@ -179,6 +180,73 @@ impl Mnemonic {
             instructions: vec![],
             format_string: vec![],
         }
+    }
+    /// Displays the mnemonic in human readable form, and looks up any functions calls in `program`
+    pub fn display_with(&self, program: &Program) -> String {
+        let mut ops = self.operands.iter();
+        let mut fmt = format!( "{:8x}: {} ", self.area.start, self.opcode);
+        for token in &self.format_string {
+            match token {
+                &MnemonicFormatToken::Literal(ref s) => {
+                    fmt = format!( "{}{}", fmt, s);
+                },
+                &MnemonicFormatToken::Variable{ ref has_sign } => {
+                    match ops.next() {
+                        Some(&Rvalue::Constant{ value: c, size: s }) => {
+                            let val =
+                                if s < 64 {
+                                    let res = 1u64 << s;
+                                    c % res
+                                } else { c };
+                            let sign_bit = if s < 64 { 1u64 << (s - 1) } else { 0x8000000000000000 };
+                            if !has_sign || val & sign_bit == 0 {
+                                fmt = format!( "{}{:x}", fmt, val);
+                            } else {
+                                fmt = format!( "{}{:x}", fmt, (val as i64).wrapping_neg());
+                            }
+                        },
+                        Some(&Rvalue::Variable{ ref name, subscript: Some(ref _subscript),.. }) => {
+                            fmt = format!( "{}{}", fmt, &name.to_lowercase());
+                        },
+                        _ => {
+                            fmt = format!( "{}?", fmt);
+                        }
+                    }
+                },
+                &MnemonicFormatToken::Pointer{ is_code,.. } => {
+                    match ops.next() {
+                        Some(&Rvalue::Constant{ value: c, size: s }) => {
+                            let val =
+                                if s < 64 {
+                                    let res = 1u64 << s;
+                                    c % res
+                                } else { c };
+                            let display = if is_code {
+                                if let Some(vx) = program.find_function_by_entry(val) {
+                                    if let Some(&CallTarget::Concrete(Function{ ref name, .. })) = program.call_graph.vertex_label(vx) {
+                                        format!("{}{:#x} <{}>", fmt, val, name.clone())
+                                    } else {
+                                        format!("{}{:x}", fmt, val)
+                                    }
+                                } else {
+                                    format!("{}{:x}", fmt, val)
+                                }
+                            } else {
+                                format!("{}{:x}", fmt, val)
+                            };
+                            fmt = display;
+                        },
+                        Some(&Rvalue::Variable{ ref name, subscript: Some(_),.. }) => {
+                            fmt = format!( "{}{}", fmt, name);
+                        },
+                        _ => {
+                            fmt = format!( "{}?", fmt);
+                        }
+                    }
+                }
+            }
+        }
+        fmt
     }
 }
 

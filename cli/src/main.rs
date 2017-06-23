@@ -15,6 +15,7 @@ extern crate env_logger;
 
 use std::result;
 use std::path::Path;
+use std::sync::Arc;
 use panopticon_core::{Machine, loader};
 use panopticon_amd64 as amd64;
 use panopticon_avr as avr;
@@ -37,7 +38,7 @@ use errors::*;
 struct Args {
     /// The specific function to disassemble
     #[structopt(short = "f", long = "function", help = "Disassemble the given function")]
-    function: Option<String>,
+    function_filter: Option<String>,
     /// The binary to disassemble
     #[structopt(help = "The binary to disassemble")]
     binary: String,
@@ -50,38 +51,62 @@ fn exists_path_val(filepath: &str) -> result::Result<(), String> {
     }
 }
 
-fn disassemble(binary: &str, filter: &Option<String>) -> Result<()> {
-    let (mut proj, machine) = loader::load(Path::new(binary))?;
+fn disassemble(args: Args) -> Result<()> {
+    let binary = args.binary;
+    let filter = args.function_filter;
+    let (mut proj, machine) = loader::load(Path::new(&binary))?;
     let maybe_prog = proj.code.pop();
     let reg = proj.data.dependencies.vertex_label(proj.data.root).unwrap().clone();
 
     if let Some(prog) = maybe_prog {
-        let pipe = match machine {
-            Machine::Avr => pipeline::<avr::Avr>(prog, reg.clone(), avr::Mcu::atmega103()),
-            Machine::Ia32 => pipeline::<amd64::Amd64>(prog, reg.clone(), amd64::Mode::Protected),
-            Machine::Amd64 => pipeline::<amd64::Amd64>(prog, reg.clone(), amd64::Mode::Long),
+        let prog = Arc::new(prog);
+        let pipe = {
+            let prog = prog.clone();
+            match machine {
+                Machine::Avr => pipeline::<avr::Avr>(prog, reg.clone(), avr::Mcu::atmega103()),
+                Machine::Ia32 => pipeline::<amd64::Amd64>(prog, reg.clone(), amd64::Mode::Protected),
+                Machine::Amd64 => pipeline::<amd64::Amd64>(prog, reg.clone(), amd64::Mode::Long),
+            }
         };
 
         info!("disassembly thread started");
-        for i in pipe.wait() {
-            if let Ok(func) = i {
-                info!("{}",func.uuid);
-                if let &Some(ref filter) = filter {
-                    if func.name.as_str() == filter {
-                        info!("Filter matches {} - {:?}", func.name, func.cflow_graph);
+        match filter {
+            Some(filter) => {
+                for function in pipe.wait() {
+                    info!("derp");
+                    if let Ok(function) = function {
+                        if filter == function.name {
+                            println!("{}", function.display_with(&prog.clone()));
+                            break;
+                        }
                     }
+                }
+            },
+            None => {
+                let functions = pipe.wait().filter_map(|function| {
+                    if let Ok(function) = function {
+                        info!("{}",function.uuid);
+                        Some(function)
+                    } else {
+                        None
+                    }
+                }).collect::<Vec<_>>();
+                // todo: sort by address
+                // functions.sort_by(|f1, f2| {
+                // });
+                for function in functions {
+                    println!("{}", function.display_with(&prog.clone()));
                 }
             }
         }
         info!("disassembly thread finished");
     }
-
     Ok(())
 }
 
 fn run(args: Args) -> Result<()> {
     exists_path_val(&args.binary)?;
-    disassemble(&args.binary, &args.function)?;
+    disassemble(args)?;
     Ok(())
 }
 
