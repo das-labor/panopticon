@@ -16,7 +16,7 @@ extern crate env_logger;
 use std::result;
 use std::path::Path;
 use std::sync::Arc;
-use panopticon_core::{Machine, loader};
+use panopticon_core::{Machine, Function, ControlFlowTarget, loader};
 use panopticon_amd64 as amd64;
 use panopticon_avr as avr;
 use panopticon_analysis::pipeline;
@@ -51,6 +51,16 @@ fn exists_path_val(filepath: &str) -> result::Result<(), String> {
     }
 }
 
+fn get_entry_point(func: &Function) -> Option<u64> {
+    if let Some(ref entry) = func.entry_point {
+        if let Some(&ControlFlowTarget::Resolved(ref bb)) = func.cflow_graph.vertex_label(*entry) {
+            return Some(bb.area.start);
+        }
+    }
+
+    None
+}
+
 fn disassemble(args: Args) -> Result<()> {
     let binary = args.binary;
     let filter = args.function_filter;
@@ -73,7 +83,6 @@ fn disassemble(args: Args) -> Result<()> {
         match filter {
             Some(filter) => {
                 for function in pipe.wait() {
-                    info!("derp");
                     if let Ok(function) = function {
                         if filter == function.name {
                             println!("{}", function.display_with(&prog.clone()));
@@ -83,7 +92,7 @@ fn disassemble(args: Args) -> Result<()> {
                 }
             },
             None => {
-                let functions = pipe.wait().filter_map(|function| {
+                let mut functions = pipe.wait().filter_map(|function| {
                     if let Ok(function) = function {
                         info!("{}",function.uuid);
                         Some(function)
@@ -91,9 +100,19 @@ fn disassemble(args: Args) -> Result<()> {
                         None
                     }
                 }).collect::<Vec<_>>();
-                // todo: sort by address
-                // functions.sort_by(|f1, f2| {
-                // });
+
+                functions.sort_by(|f1, f2| {
+                    use std::cmp::Ordering::*;
+                    let entry1 = get_entry_point(f1);
+                    let entry2 = get_entry_point(f2);
+                    match (entry1, entry2) {
+                        (Some(entry1), Some(entry2)) => entry1.cmp(&entry2),
+                        (Some(_), None) => Greater,
+                        (None, Some(_)) => Less,
+                        (None, None) => Equal,
+                    }
+                });
+
                 for function in functions {
                     println!("{}", function.display_with(&prog.clone()));
                 }
