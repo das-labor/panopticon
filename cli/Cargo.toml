@@ -7,3 +7,14 @@ authors = ["seu <seu@panopticon.re>"]
 name = "panop"
 
 [dependencies]
+structopt = "0.0.5"
+structopt-derive = "0.0.5"
+error-chain = "0.8"
+futures = "0.1"
+panopticon-core = { path = "../core" }
+panopticon-analysis = { path = "../analysis" }
+panopticon-amd64 = { path = "../amd64" }
+panopticon-avr = { path = "../avr" }
+panopticon-graph-algos = { path = "../graph-algos" }
+log = "0.3"
+env_logger = "0.3"

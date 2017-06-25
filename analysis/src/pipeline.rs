@@ -25,11 +25,12 @@ use std::collections::HashMap;
 use std::fmt::Debug;
 use std::iter::FromIterator;
 use std::thread;
+use std::sync::Arc;
 
 /// Starts disassembling insructions in `region` and puts them into `program`. Returns a stream of
 /// of newly discovered functions.
 pub fn pipeline<A: Architecture + Debug + 'static>(
-    program: Program,
+    program: Arc<Program>,
     region: Region,
     config: A::Configuration,
 ) -> Box<Stream<Item = Function, Error = ()> + Send>

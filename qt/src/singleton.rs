@@ -158,6 +158,7 @@ impl Panopticon {
             let reg = proj.data.dependencies.vertex_label(proj.data.root).unwrap().clone();
 
             if let Some(prog) = maybe_prog {
+                let prog = ::std::sync::Arc::new(prog);
                 let pipe = match machine {
                     Machine::Avr => pipeline::<avr::Avr>(prog, reg.clone(), avr::Mcu::atmega103()),
                     Machine::Ia32 => pipeline::<amd64::Amd64>(prog, reg.clone(), amd64::Mode::Protected),
