@@ -13,15 +13,15 @@ extern crate futures;
 extern crate log;
 extern crate env_logger;
 
-use std::result;
-use std::path::Path;
-use std::sync::Arc;
-use panopticon_core::{Machine, Function, ControlFlowTarget, loader};
-use panopticon_amd64 as amd64;
-use panopticon_avr as avr;
-use panopticon_analysis::pipeline;
-use panopticon_graph_algos::{GraphTrait};
 use futures::Stream;
+use panopticon_amd64 as amd64;
+use panopticon_analysis::pipeline;
+use panopticon_avr as avr;
+use panopticon_core::{ControlFlowTarget, Function, Machine, loader};
+use panopticon_graph_algos::GraphTrait;
+use std::path::Path;
+use std::result;
+use std::sync::Arc;
 use structopt::StructOpt;
 
 mod errors {
@@ -90,16 +90,16 @@ fn disassemble(args: Args) -> Result<()> {
                         }
                     }
                 }
-            },
+            }
             None => {
-                let mut functions = pipe.wait().filter_map(|function| {
-                    if let Ok(function) = function {
-                        info!("{}",function.uuid);
+                let mut functions = pipe.wait()
+                    .filter_map(|function| if let Ok(function) = function {
+                        info!("{}", function.uuid);
                         Some(function)
                     } else {
                         None
-                    }
-                }).collect::<Vec<_>>();
+                    })
+                    .collect::<Vec<_>>();
 
                 functions.sort_by(|f1, f2| {
                     use std::cmp::Ordering::*;
@@ -134,7 +134,7 @@ fn main() {
     match run(Args::from_args()) {
         Ok(()) => {}
         Err(s) => {
-            error!("Error: {}",s);
+            error!("Error: {}", s);
             ::std::process::exit(1);
         }
     }
