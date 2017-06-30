@@ -80,7 +80,7 @@ enum MnemonicOrError {
 }
 
 impl Function {
-    /// New function with name `name`, inside memory region `region` and a random UUID.
+    /// Create a new function with `name`, inside memory `region`, with a random UUID.
     pub fn new(entry: u64, name: String, region: String) -> Function {
         Function {
             uuid: Uuid::new_v4(),
@@ -117,15 +117,13 @@ impl Function {
 
     fn index_cflow_graph(
         g: ControlFlowGraph,
-        entry: Option<u64>,
+        entry: u64,
     ) -> (BTreeMap<u64, Vec<MnemonicOrError>>, HashMap<u64, Vec<(Rvalue, Guard)>>, HashMap<u64, Vec<(Rvalue, Guard)>>) {
         let mut mnemonics = BTreeMap::new();
         let mut by_source = HashMap::<u64, Vec<(Rvalue, Guard)>>::new();
         let mut by_destination = HashMap::<u64, Vec<(Rvalue, Guard)>>::new();
 
-        if let Some(entry) = entry {
-            by_destination.insert(entry, vec![(Rvalue::Undefined, Guard::always())]);
-        }
+        by_destination.insert(entry, vec![(Rvalue::Undefined, Guard::always())]);
 
         for v in g.vertices() {
             match g.vertex_label(v) {
@@ -367,8 +365,7 @@ impl Function {
         A: Debug,
         A::Configuration: Debug,
     {
-        let entry = Some(self.entry);
-        let (mut mnemonics, mut by_source, mut by_destination) = Self::index_cflow_graph(self.cflow_graph.clone(), entry);
+        let (mut mnemonics, mut by_source, mut by_destination) = Self::index_cflow_graph(self.cflow_graph.clone(), self.entry);
         let mut todo = HashSet::<u64>::new();
 
         todo.insert(self.entry);
@@ -440,18 +437,14 @@ impl Function {
 
         let cfg = Self::assemble_cflow_graph(mnemonics, by_source, by_destination, self.entry);
 
-        let e = if let Some(addr) = entry {
-            cfg.vertices()
-                .find(
-                    |&vx| if let Some(&ControlFlowTarget::Resolved(ref bb)) = cfg.vertex_label(vx) {
-                        bb.area.start == addr
-                    } else {
-                        false
-                    }
-                )
-        } else {
-            None
-        };
+        let e = cfg.vertices()
+            .find(
+                |&vx| if let Some(&ControlFlowTarget::Resolved(ref bb)) = cfg.vertex_label(vx) {
+                    bb.area.start == self.entry
+                } else {
+                    false
+                }
+            );
         self.cflow_graph = cfg;
         self.entry_point = e;
     }
@@ -672,11 +665,11 @@ mod tests {
         cfg.add_edge(Guard::always(), vx1, vx2);
         cfg.add_edge(Guard::always(), vx2, vx0);
 
-        let (mnes, src, dest) = Function::index_cflow_graph(cfg, None);
+        let (mnes, src, dest) = Function::index_cflow_graph(cfg, 0);
 
         assert_eq!(mnes.len(), 9);
         assert_eq!(src.values().fold(0, |acc, x| acc + x.len()), 10);
-        assert_eq!(dest.values().fold(0, |acc, x| acc + x.len()), 10);
+        assert_eq!(dest.values().fold(0, |acc, x| acc + x.len()), 11); // because index_cflow_graph adds the start/entry value
 
         let cfg_re = Function::assemble_cflow_graph(mnes, src, dest, 0);
 
@@ -734,11 +727,11 @@ mod tests {
         cfg.add_edge(Guard::always(), vx3, vx0);
         cfg.add_edge(Guard::always(), vx4, vx3);
 
-        let (mnes, src, dest) = Function::index_cflow_graph(cfg, None);
+        let (mnes, src, dest) = Function::index_cflow_graph(cfg, 0);
 
         assert_eq!(mnes.len(), 2);
         assert_eq!(src.values().fold(0, |acc, x| acc + x.len()), 3);
-        assert_eq!(dest.values().fold(0, |acc, x| acc + x.len()), 3);
+        assert_eq!(dest.values().fold(0, |acc, x| acc + x.len()), 4); // because index_cflow_graph automatically adds the functions start entry
 
         let cfg_re = Function::assemble_cflow_graph(mnes, src, dest, 0);
 
