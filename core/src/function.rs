@@ -111,19 +111,19 @@ impl Function {
         A::Configuration: Debug,
     {
             let mut f = Self::new(start, format!("func_{:x}", start), reg.name().clone());
-            f.dis::<A>(init, &reg, start);
+            f.dis::<A>(init, &reg);
             f
         }
 
     fn index_cflow_graph(
         g: ControlFlowGraph,
-        maybe_entry: Option<u64>,
+        entry: Option<u64>,
     ) -> (BTreeMap<u64, Vec<MnemonicOrError>>, HashMap<u64, Vec<(Rvalue, Guard)>>, HashMap<u64, Vec<(Rvalue, Guard)>>) {
         let mut mnemonics = BTreeMap::new();
         let mut by_source = HashMap::<u64, Vec<(Rvalue, Guard)>>::new();
         let mut by_destination = HashMap::<u64, Vec<(Rvalue, Guard)>>::new();
 
-        if let Some(entry) = maybe_entry {
+        if let Some(entry) = entry {
             by_destination.insert(entry, vec![(Rvalue::Undefined, Guard::always())]);
         }
 
@@ -361,24 +361,17 @@ impl Function {
         ret
     }
 
-    /// Begins disassembly at address `start`, inside region `reg`, with CPU state `init`.
-    pub fn dis<A: Architecture>(&mut self, init: A::Configuration, reg: &Region, start: u64) -> ()
+    /// Begins disassembly of `self` inside region `reg`, with CPU state `init`.
+    pub fn dis<A: Architecture>(&mut self, init: A::Configuration, reg: &Region) -> ()
     where
         A: Debug,
         A::Configuration: Debug,
     {
-        let maybe_entry = if let Some(ref v) = self.entry_point {
-            match self.cflow_graph.vertex_label(*v) {
-                Some(&ControlFlowTarget::Resolved(ref bb)) => Some(bb.area.start),
-                _ => None,
-            }
-        } else {
-            Some(start)
-        };
-        let (mut mnemonics, mut by_source, mut by_destination) = Self::index_cflow_graph(self.cflow_graph.clone(), maybe_entry);
+        let entry = Some(self.entry);
+        let (mut mnemonics, mut by_source, mut by_destination) = Self::index_cflow_graph(self.cflow_graph.clone(), entry);
         let mut todo = HashSet::<u64>::new();
 
-        todo.insert(start);
+        todo.insert(self.entry);
 
         while let Some(addr) = todo.iter().next().cloned() {
             let maybe_mnes = mnemonics.iter().find(|x| *x.0 >= addr).map(|x| x.1.clone());
@@ -445,9 +438,9 @@ impl Function {
             }
         }
 
-        let cfg = Self::assemble_cflow_graph(mnemonics, by_source, by_destination, start);
+        let cfg = Self::assemble_cflow_graph(mnemonics, by_source, by_destination, self.entry);
 
-        let e = if let Some(addr) = maybe_entry {
+        let e = if let Some(addr) = entry {
             cfg.vertices()
                 .find(
                     |&vx| if let Some(&ControlFlowTarget::Resolved(ref bb)) = cfg.vertex_label(vx) {
@@ -1067,7 +1060,7 @@ mod tests {
 
         let data = OpaqueLayer::wrap(vec![0, 1, 2]);
         let reg = Region::new("".to_string(), data);
-        func.dis::<TestArchShort>(main, &reg, 2);
+        func.dis::<TestArchShort>(main, &reg);
 
         assert_eq!(func.cflow_graph.num_vertices(), 3);
         assert_eq!(func.cflow_graph.num_edges(), 3);

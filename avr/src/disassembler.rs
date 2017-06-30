@@ -664,7 +664,7 @@ mod tests {
         ),
         );
         let mut fun = Function::new(0, "test".to_string(), "ram".to_string());
-        fun.dis::<Avr>(Mcu::atmega8(), &reg, 0);
+        fun.dis::<Avr>(Mcu::atmega8(), &reg);
         let cg = &fun.cflow_graph;
 
         for x in cg.vertices() {
@@ -712,7 +712,7 @@ mod tests {
         ),
         );
         let mut fun = Function::new(0, "test".to_string(), "ram".to_string());
-        fun.dis::<Avr>(Mcu::atmega8(), &reg, 0);
+        fun.dis::<Avr>(Mcu::atmega8(), &reg);
         let cg = &fun.cflow_graph;
         for x in cg.vertices() {
             match cg.vertex_label(x) {
@@ -761,7 +761,7 @@ mod tests {
         ),
         );
         let mut fun = Function::new(0, "test".to_string(), "ram".to_string());
-        fun.dis::<Avr>(Mcu::atmega8(), &reg, 0);
+        fun.dis::<Avr>(Mcu::atmega8(), &reg);
         let cg = &fun.cflow_graph;
 
         for x in cg.vertices() {
@@ -814,7 +814,7 @@ mod tests {
             ),
         );
         let mut fun = Function::new(0, "test".to_string(), "ram".to_string());
-        fun.dis::<Avr>(Mcu::atmega8(), &reg, 0);
+        fun.dis::<Avr>(Mcu::atmega8(), &reg);
         let cfg = &fun.cflow_graph;
 
         assert_eq!(cfg.num_vertices(), 3);
