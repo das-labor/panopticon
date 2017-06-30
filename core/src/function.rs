@@ -116,7 +116,7 @@ impl Function {
         }
 
     fn index_cflow_graph(
-        g: ControlFlowGraph,
+        g: &ControlFlowGraph,
         entry: u64,
     ) -> (BTreeMap<u64, Vec<MnemonicOrError>>, HashMap<u64, Vec<(Rvalue, Guard)>>, HashMap<u64, Vec<(Rvalue, Guard)>>) {
         let mut mnemonics = BTreeMap::new();
@@ -365,7 +365,7 @@ impl Function {
         A: Debug,
         A::Configuration: Debug,
     {
-        let (mut mnemonics, mut by_source, mut by_destination) = Self::index_cflow_graph(self.cflow_graph.clone(), self.entry);
+        let (mut mnemonics, mut by_source, mut by_destination) = Self::index_cflow_graph(&self.cflow_graph, self.entry);
         let mut todo = HashSet::<u64>::new();
 
         todo.insert(self.entry);
@@ -665,7 +665,7 @@ mod tests {
         cfg.add_edge(Guard::always(), vx1, vx2);
         cfg.add_edge(Guard::always(), vx2, vx0);
 
-        let (mnes, src, dest) = Function::index_cflow_graph(cfg, 0);
+        let (mnes, src, dest) = Function::index_cflow_graph(&cfg, 0);
 
         assert_eq!(mnes.len(), 9);
         assert_eq!(src.values().fold(0, |acc, x| acc + x.len()), 10);
@@ -727,7 +727,7 @@ mod tests {
         cfg.add_edge(Guard::always(), vx3, vx0);
         cfg.add_edge(Guard::always(), vx4, vx3);
 
-        let (mnes, src, dest) = Function::index_cflow_graph(cfg, 0);
+        let (mnes, src, dest) = Function::index_cflow_graph(&cfg, 0);
 
         assert_eq!(mnes.len(), 2);
         assert_eq!(src.values().fold(0, |acc, x| acc + x.len()), 3);
