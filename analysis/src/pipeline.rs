@@ -51,6 +51,7 @@ where
                             Some(&CallTarget::Todo(Rvalue::Constant { value: entry, .. }, ref maybe_name, ref uuid)) => {
                                 let name = maybe_name.clone().unwrap_or_else(|| format!("func_0x{:x}", entry));
                                 let f = Function::with_uuid(entry, name, uuid.clone(), region.name().clone());
+                                functions.insert(entry);
                                 Some((entry, f))
                             }
                             Some(_) => None,
@@ -60,11 +61,12 @@ where
             );
 
             while !targets.is_empty() {
-                info!("disassemble {:?}", targets);
+                info!("disassemble({}) {:?}", targets.len(), &targets);
                 let new_targets: Vec<Vec<(u64, Function)>> = targets
                     .into_iter()
                     .map(
                         |(entry, mut f)| {
+                            debug!("entry {:#x} = f.start {:#x}", entry, f.start);
                             let tx = tx.clone();
                             f.dis::<A>(config.clone(), &region);
                             let new_ct = f.collect_calls()
@@ -72,8 +74,11 @@ where
                                 .filter_map(
                                     |rv| {
                                         if let Rvalue::Constant { value, .. } = rv {
+                                            info!("checking if {} is in {:?}", value, &functions);
                                             if !functions.contains(&value) && entry != value {
-                                                return Some((value, Function::new(entry, format!("func_0x{:x}", value), region.name().clone())));
+                                                functions.insert(value);
+                                                info!("adding {:#x} - func_0x{:x}", value, value);
+                                                return Some((value, Function::new(value, format!("func_0x{:x}", value), region.name().clone())));
                                             }
                                         }
                                         None
@@ -82,8 +87,6 @@ where
                                 .collect::<Vec<(u64, Function)>>();
 
                             let _ = ssa_convertion(&mut f);
-
-                            functions.insert(entry);
                             tx.send_all(stream::iter(vec![Ok(f)])).wait().unwrap().0;
                             new_ct
                         }
