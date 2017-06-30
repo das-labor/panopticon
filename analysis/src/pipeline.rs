@@ -21,7 +21,7 @@ use futures::sync::mpsc;
 use panopticon_core::{Architecture, CallTarget, Function, Program, Region, Rvalue};
 use panopticon_data_flow::ssa_convertion;
 use panopticon_graph_algos::{GraphTrait, VertexListGraphTrait};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
 use std::iter::FromIterator;
 use std::thread;
@@ -41,7 +41,7 @@ where
     thread::spawn(
         move || {
             let tx = tx;
-            let mut functions = HashMap::<u64, Function>::new();
+            let mut functions = HashSet::<u64>::new();
             let mut targets = HashMap::<u64, Function>::from_iter(
                 program
                     .call_graph
@@ -72,7 +72,7 @@ where
                                 .filter_map(
                                     |rv| {
                                         if let Rvalue::Constant { value, .. } = rv {
-                                            if !functions.contains_key(&value) && entry != value {
+                                            if !functions.contains(&value) && entry != value {
                                                 return Some((value, Function::new(entry, format!("func_0x{:x}", value), region.name().clone())));
                                             }
                                         }
@@ -83,7 +83,7 @@ where
 
                             let _ = ssa_convertion(&mut f);
 
-                            functions.insert(entry, f.clone());
+                            functions.insert(entry);
                             tx.send_all(stream::iter(vec![Ok(f)])).wait().unwrap().0;
                             new_ct
                         }
