@@ -69,6 +69,8 @@ pub struct Function {
     pub entry_point: Option<ControlFlowRef>,
     /// Name of the memory region the function is part of
     pub region: String,
+    /// The virtual memory address this function starts at
+    pub entry: u64,
 }
 
 #[derive(Clone,PartialEq,Eq,Debug)]
@@ -78,27 +80,40 @@ enum MnemonicOrError {
 }
 
 impl Function {
-    /// New function with name `a`, inside memory region `reg` and a random UUID.
-    pub fn new(a: String, reg: String) -> Function {
+    /// New function with name `name`, inside memory region `region` and a random UUID.
+    pub fn new(entry: u64, name: String, region: String) -> Function {
         Function {
             uuid: Uuid::new_v4(),
-            name: a,
+            name,
             cflow_graph: AdjacencyList::new(),
             entry_point: None,
-            region: reg,
+            region,
+            entry
         }
     }
 
-    /// New function with name `a`, inside memory region `reg` and UUID `uu`.
-    pub fn with_uuid(a: String, uu: Uuid, reg: String) -> Function {
+    /// New function with name `name`, inside memory region `region` and UUID `uuid`.
+    pub fn with_uuid(entry: u64, name: String, uuid: Uuid, region: String) -> Function {
         Function {
-            uuid: uu,
-            name: a,
+            uuid,
+            name,
             cflow_graph: AdjacencyList::new(),
             entry_point: None,
-            region: reg,
+            entry,
+            region,
         }
     }
+
+    /// Transitional function
+    pub fn disassemble<A: Architecture>(init: A::Configuration, reg: &Region, start: u64) -> Self
+    where
+        A: Debug,
+        A::Configuration: Debug,
+    {
+            let mut f = Self::new(start, format!("func_{:x}", start), reg.name().clone());
+            f.dis::<A>(init, &reg, start);
+            f
+        }
 
     fn index_cflow_graph(
         g: ControlFlowGraph,
@@ -346,32 +361,21 @@ impl Function {
         ret
     }
 
-    /// Start or continue disassembly a address `start` inside region `reg` with CPU state `init`.
-    /// If `cont` is a function new mnemonics are appended to it, otherwise a new function is
-    /// created.
-    pub fn disassemble<A: Architecture>(cont: Option<Function>, init: A::Configuration, reg: &Region, start: u64) -> Function
+    /// Begins disassembly at address `start`, inside region `reg`, with CPU state `init`.
+    pub fn dis<A: Architecture>(&mut self, init: A::Configuration, reg: &Region, start: u64) -> ()
     where
         A: Debug,
         A::Configuration: Debug,
     {
-        let name = cont.as_ref().map_or(format!("func_{:x}", start), |x| x.name.clone());
-        let uuid = cont.as_ref().map_or(Uuid::new_v4(), |x| x.uuid.clone());
-        let maybe_entry = if let Some(Function { entry_point: ent, cflow_graph: ref cfg, .. }) = cont {
-            if let Some(ref v) = ent {
-                match cfg.vertex_label(*v) {
-                    Some(&ControlFlowTarget::Resolved(ref bb)) => Some(bb.area.start),
-                    _ => None,
-                }
-            } else {
-                None
+        let maybe_entry = if let Some(ref v) = self.entry_point {
+            match self.cflow_graph.vertex_label(*v) {
+                Some(&ControlFlowTarget::Resolved(ref bb)) => Some(bb.area.start),
+                _ => None,
             }
         } else {
             Some(start)
         };
-        let (mut mnemonics, mut by_source, mut by_destination) = cont.map_or(
-            (BTreeMap::new(), HashMap::new(), HashMap::new()),
-            |x| Self::index_cflow_graph(x.cflow_graph, maybe_entry),
-        );
+        let (mut mnemonics, mut by_source, mut by_destination) = Self::index_cflow_graph(self.cflow_graph.clone(), maybe_entry);
         let mut todo = HashSet::<u64>::new();
 
         todo.insert(start);
@@ -455,14 +459,8 @@ impl Function {
         } else {
             None
         };
-
-        Function {
-            uuid: uuid,
-            name: name,
-            cflow_graph: cfg,
-            entry_point: e,
-            region: reg.name().clone(),
-        }
+        self.cflow_graph = cfg;
+        self.entry_point = e;
     }
 
     /// Returns all call targets.
@@ -642,7 +640,7 @@ mod tests {
 
     #[test]
     fn new() {
-        let f = Function::new("test".to_string(), "ram".to_string());
+        let f = Function::new(0, "test".to_string(), "ram".to_string());
 
         assert_eq!(f.name, "test".to_string());
         assert_eq!(f.cflow_graph.num_vertices(), 0);
@@ -779,7 +777,7 @@ mod tests {
 		);
         let data = OpaqueLayer::wrap(vec![0]);
         let reg = Region::new("".to_string(), data);
-        let func = Function::disassemble::<TestArchShort>(None, main, &reg, 0);
+        let func = Function::disassemble::<TestArchShort>(main, &reg, 0);
 
         assert_eq!(func.cflow_graph.num_vertices(), 1);
         assert_eq!(func.cflow_graph.num_edges(), 0);
@@ -844,7 +842,7 @@ mod tests {
 
         let data = OpaqueLayer::wrap(vec![0, 1, 2, 3, 4, 5]);
         let reg = Region::new("".to_string(), data);
-        let func = Function::disassemble::<TestArchShort>(None, main, &reg, 0);
+        let func = Function::disassemble::<TestArchShort>(main, &reg, 0);
 
         assert_eq!(func.cflow_graph.num_vertices(), 2);
         assert_eq!(func.cflow_graph.num_edges(), 1);
@@ -906,7 +904,7 @@ mod tests {
 
         let data = OpaqueLayer::wrap(vec![0, 1, 2]);
         let reg = Region::new("".to_string(), data);
-        let func = Function::disassemble::<TestArchShort>(None, main, &reg, 0);
+        let func = Function::disassemble::<TestArchShort>(main, &reg, 0);
 
         assert_eq!(func.cflow_graph.num_vertices(), 4);
         assert_eq!(func.cflow_graph.num_edges(), 4);
@@ -978,7 +976,7 @@ mod tests {
 
         let data = OpaqueLayer::wrap(vec![0, 1, 2]);
         let reg = Region::new("".to_string(), data);
-        let func = Function::disassemble::<TestArchShort>(None, main, &reg, 0);
+        let func = Function::disassemble::<TestArchShort>(main, &reg, 0);
 
         assert_eq!(func.cflow_graph.num_vertices(), 1);
         assert_eq!(func.cflow_graph.num_edges(), 1);
@@ -1026,7 +1024,7 @@ mod tests {
 
         let data = OpaqueLayer::wrap(vec![]);
         let reg = Region::new("".to_string(), data);
-        let func = Function::disassemble::<TestArchShort>(None, main, &reg, 0);
+        let func = Function::disassemble::<TestArchShort>(main, &reg, 0);
 
         assert_eq!(func.cflow_graph.num_vertices(), 1);
         assert_eq!(func.cflow_graph.num_edges(), 0);
@@ -1042,12 +1040,12 @@ mod tests {
     #[test]
     fn entry_split() {
         let bb = BasicBlock::from_vec(vec![Mnemonic::dummy(0..1), Mnemonic::dummy(1..2)]);
-        let mut fun = Function::new("test_func".to_string(), "ram".to_string());
-        let vx0 = fun.cflow_graph.add_vertex(ControlFlowTarget::Resolved(bb));
-        let vx1 = fun.cflow_graph.add_vertex(ControlFlowTarget::Unresolved(Rvalue::new_u32(2)));
+        let mut func = Function::new(0, "test_func".to_string(), "ram".to_string());
+        let vx0 = func.cflow_graph.add_vertex(ControlFlowTarget::Resolved(bb));
+        let vx1 = func.cflow_graph.add_vertex(ControlFlowTarget::Unresolved(Rvalue::new_u32(2)));
 
-        fun.entry_point = Some(vx0);
-        fun.cflow_graph.add_edge(Guard::always(), vx0, vx1);
+        func.entry_point = Some(vx0);
+        func.cflow_graph.add_edge(Guard::always(), vx0, vx1);
 
         let main = new_disassembler!(TestArchShort =>
             [ 0 ] = |st: &mut State<TestArchShort>| {
@@ -1069,7 +1067,7 @@ mod tests {
 
         let data = OpaqueLayer::wrap(vec![0, 1, 2]);
         let reg = Region::new("".to_string(), data);
-        let func = Function::disassemble::<TestArchShort>(Some(fun), main, &reg, 2);
+        func.dis::<TestArchShort>(main, &reg, 2);
 
         assert_eq!(func.cflow_graph.num_vertices(), 3);
         assert_eq!(func.cflow_graph.num_edges(), 3);
@@ -1143,7 +1141,7 @@ mod tests {
             }
         );
 
-        let func = Function::disassemble::<TestArchWide>(None, dec, &reg, 0);
+        let func = Function::disassemble::<TestArchWide>(dec, &reg, 0);
 
         assert_eq!(func.cflow_graph.num_vertices(), 3);
         assert_eq!(func.cflow_graph.num_edges(), 2);
@@ -1197,7 +1195,7 @@ mod tests {
 
         let data = OpaqueLayer::wrap(vec![0, 1, 2]);
         let reg = Region::new("".to_string(), data);
-        let func = Function::disassemble::<TestArchShort>(None, main, &reg, 1);
+        let func = Function::disassemble::<TestArchShort>(main, &reg, 1);
 
         assert_eq!(func.cflow_graph.num_vertices(), 2);
         assert_eq!(func.cflow_graph.num_edges(), 2);
@@ -1251,7 +1249,7 @@ mod tests {
 
         let data = OpaqueLayer::wrap(vec![0, 1, 2]);
         let reg = Region::new("".to_string(), data);
-        let func = Function::disassemble::<TestArchShort>(None, main, &reg, 1);
+        let func = Function::disassemble::<TestArchShort>(main, &reg, 1);
 
         assert_eq!(func.cflow_graph.num_vertices(), 3);
         assert_eq!(func.cflow_graph.num_edges(), 3);

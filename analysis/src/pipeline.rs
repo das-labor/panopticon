@@ -50,7 +50,7 @@ where
                         |vx| match program.call_graph.vertex_label(vx) {
                             Some(&CallTarget::Todo(Rvalue::Constant { value: entry, .. }, ref maybe_name, ref uuid)) => {
                                 let name = maybe_name.clone().unwrap_or_else(|| format!("func_0x{:x}", entry));
-                                let f = Function::with_uuid(name, uuid.clone(), region.name().clone());
+                                let f = Function::with_uuid(entry, name, uuid.clone(), region.name().clone());
                                 Some((entry, f))
                             }
                             Some(_) => None,
@@ -64,9 +64,9 @@ where
                 let new_targets: Vec<Vec<(u64, Function)>> = targets
                     .into_iter()
                     .map(
-                        |(entry, f)| {
+                        |(entry, mut f)| {
                             let tx = tx.clone();
-                            let mut f = Function::disassemble::<A>(Some(f), config.clone(), &region, entry);
+                            f.dis::<A>(config.clone(), &region, entry);
                             f.entry_point = f.find_basic_block_by_start(entry);
                             let new_ct = f.collect_calls()
                                 .into_iter()
@@ -74,7 +74,7 @@ where
                                     |rv| {
                                         if let Rvalue::Constant { value, .. } = rv {
                                             if !functions.contains_key(&value) && entry != value {
-                                                return Some((value, Function::new(format!("func_0x{:x}", value), region.name().clone())));
+                                                return Some((value, Function::new(entry, format!("func_0x{:x}", value), region.name().clone())));
                                             }
                                         }
                                         None

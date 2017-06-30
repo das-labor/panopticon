@@ -663,7 +663,8 @@ mod tests {
             0x21,0x2c, // 6:8 mov
         ),
         );
-        let fun = Function::disassemble::<Avr>(None, Mcu::atmega8(), &reg, 0);
+        let mut fun = Function::new(0, "test".to_string(), "ram".to_string());
+        fun.dis::<Avr>(Mcu::atmega8(), &reg, 0);
         let cg = &fun.cflow_graph;
 
         for x in cg.vertices() {
@@ -710,9 +711,9 @@ mod tests {
             0x21,0x2c, // 8:10 mov
         ),
         );
-        let fun = Function::disassemble::<Avr>(None, Mcu::atmega8(), &reg, 0);
+        let mut fun = Function::new(0, "test".to_string(), "ram".to_string());
+        fun.dis::<Avr>(Mcu::atmega8(), &reg, 0);
         let cg = &fun.cflow_graph;
-
         for x in cg.vertices() {
             match cg.vertex_label(x) {
                 Some(&ControlFlowTarget::Resolved(ref bb)) => {
@@ -759,7 +760,8 @@ mod tests {
             0x21,0x2c, // 6:8 mov
         ),
         );
-        let fun = Function::disassemble::<Avr>(None, Mcu::atmega8(), &reg, 0);
+        let mut fun = Function::new(0, "test".to_string(), "ram".to_string());
+        fun.dis::<Avr>(Mcu::atmega8(), &reg, 0);
         let cg = &fun.cflow_graph;
 
         for x in cg.vertices() {
@@ -811,7 +813,8 @@ mod tests {
                 0xB0,0xE0, //       10 ldi     r27, 0
             ),
         );
-        let fun = Function::disassemble::<Avr>(None, Mcu::atmega8(), &reg, 0);
+        let mut fun = Function::new(0, "test".to_string(), "ram".to_string());
+        fun.dis::<Avr>(Mcu::atmega8(), &reg, 0);
         let cfg = &fun.cflow_graph;
 
         assert_eq!(cfg.num_vertices(), 3);
