@@ -142,7 +142,7 @@ impl Panopticon {
 
                     for f in cg.vertices() {
                         if let Some(&CallTarget::Concrete(ref func)) = cg.vertex_label(f) {
-                            self.functions.insert(func.uuid.clone(), func.clone());
+                            self.functions.insert(func.uuid().clone(), func.clone());
                             Qt::update_sidebar(&[func.clone()]);
                         }
                     }
@@ -432,12 +432,12 @@ impl Panopticon {
                                             let maybe_callee = self.by_entry.get(&value);
 
                                             if let Some(callee) = maybe_callee {
-                                                self.resolved_calls.insert(callee.clone(), (func.uuid.clone(), bb.area.start));
+                                                self.resolved_calls.insert(callee.clone(), (func.uuid().clone(), bb.area.start));
                                             } else {
-                                                self.unresolved_calls.insert(Some(value), (func.uuid.clone(), bb.area.start));
+                                                self.unresolved_calls.insert(Some(value), (func.uuid().clone(), bb.area.start));
                                             }
                                         }
-                                        _ => self.unresolved_calls.insert(None, (func.uuid.clone(), bb.area.start)),
+                                        _ => self.unresolved_calls.insert(None, (func.uuid().clone(), bb.area.start)),
                                     }
                                 }
                             }
@@ -457,13 +457,13 @@ impl Panopticon {
                 let pairs_owned = self.unresolved_calls.remove(&Some(entry)).unwrap_or(vec![]).into_iter();
                 let pairs_ref = self.unresolved_calls.get_vec(&None).cloned().unwrap_or(vec![]).into_iter();
 
-                self.by_entry.insert(entry, func.uuid.clone());
+                self.by_entry.insert(entry, func.uuid().clone());
 
                 for (uuid, addr) in pairs_owned.clone() {
-                    self.resolved_calls.insert(func.uuid.clone(), (uuid.clone(), addr));
+                    self.resolved_calls.insert(func.uuid().clone(), (uuid.clone(), addr));
                 }
 
-                self.functions.insert(func.uuid.clone(), func);
+                self.functions.insert(func.uuid().clone(), func);
 
                 pairs_owned.chain(pairs_ref).collect::<Vec<_>>()
             } else {

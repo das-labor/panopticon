@@ -75,7 +75,7 @@ impl ControlFlowLayout {
         let (vertices, edges, edges_rev) = Self::flatten_cflow_graph(func);
 
         if vertices.is_empty() {
-            println!("{} is empty", func.uuid);
+            println!("{} is empty", func.uuid());
             return Box::new(
                 future::ok(
                     ControlFlowLayout {
@@ -556,7 +556,7 @@ impl ControlFlowLayout {
                                             }
                                         );
                                     if let Some((_, called_func)) = maybe_func {
-                                        (called_func.name.clone(), format!("{}", called_func.uuid))
+                                        (called_func.name.clone(), format!("{}", called_func.uuid()))
                                     } else {
                                         (format!("0x{:x}", val), "".to_string())
                                     }

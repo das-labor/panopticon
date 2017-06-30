@@ -67,7 +67,6 @@ where
                         |(entry, mut f)| {
                             let tx = tx.clone();
                             f.dis::<A>(config.clone(), &region);
-                            f.entry_point = f.find_basic_block_by_start(entry);
                             let new_ct = f.collect_calls()
                                 .into_iter()
                                 .filter_map(

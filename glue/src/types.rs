@@ -45,7 +45,7 @@ impl CSidebarItem {
             );
         let str_entry = CString::new(entry.map(|x| format!("0x{:x}", x)).unwrap_or("".to_string()).into_bytes())?;
         let name = CString::new(func.name.to_string().into_bytes())?;
-        let uuid = CString::new(func.uuid.to_string().into_bytes())?;
+        let uuid = CString::new(func.uuid().to_string().into_bytes())?;
 
         Ok(
             CSidebarItem {

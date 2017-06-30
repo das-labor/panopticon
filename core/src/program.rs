@@ -49,7 +49,7 @@ impl CallTarget {
     /// Returns the UUID of the call graph node.
     pub fn uuid(&self) -> Uuid {
         match self {
-            &CallTarget::Concrete(Function { uuid, .. }) => uuid,
+            &CallTarget::Concrete(ref f) => f.uuid(),
             &CallTarget::Symbolic(_, uuid) => uuid,
             &CallTarget::Todo(_, _, uuid) => uuid,
         }
@@ -82,8 +82,8 @@ impl Program {
         }
     }
 
-    /// Returns a reference to the function with an entry point starting at `a`.
-    pub fn find_function_by_entry(&self, a: u64) -> Option<CallGraphRef> {
+    /// Returns a reference to the function with an entry point starting at `start`.
+    pub fn find_function_by_entry(&self, start: u64) -> Option<CallGraphRef> {
         self.call_graph
             .vertices()
             .find(
@@ -91,13 +91,14 @@ impl Program {
                     Some(&CallTarget::Concrete(ref s)) => {
                         if let Some(e) = s.entry_point {
                             if let Some(&ControlFlowTarget::Resolved(ref ee)) = s.cflow_graph.vertex_label(e) {
-                                ee.area.start == a
+                                ee.area.start == start
                             } else {
                                 false
                             }
                         } else {
                             false
                         }
+//                        s.start == start
                     }
                     _ => false,
                 }
@@ -110,7 +111,7 @@ impl Program {
             .vertices()
             .find(
                 |&x| match self.call_graph.vertex_label(x) {
-                    Some(&CallTarget::Concrete(ref s)) => s.uuid == *a,
+                    Some(&CallTarget::Concrete(ref s)) => s.uuid() == *a,
                     _ => false,
                 }
             )
@@ -128,7 +129,7 @@ impl Program {
             .vertices()
             .find(
                 |&x| match self.call_graph.vertex_label(x) {
-                    Some(&CallTarget::Concrete(ref s)) => s.uuid == *a,
+                    Some(&CallTarget::Concrete(ref s)) => s.uuid() == *a,
                     _ => false,
                 }
             );
@@ -260,14 +261,14 @@ mod tests {
         let mut func = Function::with_uuid(0, "test3".to_string(), uu.clone(), "ram".to_string());
         let bb0 = BasicBlock::from_vec(vec![Mnemonic::dummy(12..20)]);
         func.entry_point = Some(func.cflow_graph.add_vertex(ControlFlowTarget::Resolved(bb0)));
-        let uuf = func.uuid.clone();
+        let uuf = func.uuid().clone();
 
         let new = prog.insert(CallTarget::Concrete(func));
 
         assert_eq!(new, vec![]);
 
         if let Some(&CallTarget::Concrete(ref f)) = prog.call_graph.vertex_label(tvx) {
-            assert_eq!(f.uuid, uuf);
+            assert_eq!(f.uuid(), uuf);
             assert!(f.entry_point.is_some());
         } else {
             unreachable!();
@@ -307,14 +308,14 @@ mod tests {
                 .unwrap();
         let bb0 = BasicBlock::from_vec(vec![mne1]);
         func.entry_point = Some(func.cflow_graph.add_vertex(ControlFlowTarget::Resolved(bb0)));
-        let uuf = func.uuid.clone();
+        let uuf = func.uuid().clone();
 
         let new = prog.insert(CallTarget::Concrete(func));
 
         assert_eq!(new, vec![]);
 
         if let Some(&CallTarget::Concrete(ref f)) = prog.call_graph.vertex_label(tvx) {
-            assert_eq!(f.uuid, uuf);
+            assert_eq!(f.uuid(), uuf);
             assert!(f.entry_point.is_some());
         }
         assert!(prog.call_graph.vertex_label(tvx).is_some());

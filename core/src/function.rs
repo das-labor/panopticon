@@ -59,18 +59,18 @@ pub type ControlFlowEdge = AdjacencyListEdgeDescriptor;
 /// A set of basic blocks connected by conditional jumps
 #[derive(Serialize,Deserialize,Debug,Clone)]
 pub struct Function {
-    /// Unique, immutable identifier for this function.
-    pub uuid: Uuid,
     /// Display name of the function.
     pub name: String,
+    /// The virtual memory address this function starts at
+    pub start: u64,
+    /// Unique, immutable identifier for this function.
+    uuid: Uuid,
     /// Graph of basic blocks and jumps
     pub cflow_graph: ControlFlowGraph,
     /// Optional function entry point
     pub entry_point: Option<ControlFlowRef>,
     /// Name of the memory region the function is part of
-    pub region: String,
-    /// The virtual memory address this function starts at
-    pub entry: u64,
+    region: String,
 }
 
 #[derive(Clone,PartialEq,Eq,Debug)]
@@ -80,28 +80,33 @@ enum MnemonicOrError {
 }
 
 impl Function {
-    /// Create a new function with `name`, inside memory `region`, with a random UUID.
-    pub fn new(entry: u64, name: String, region: String) -> Function {
+    /// Create a new function with `name`, inside memory `region`, starting at `start`, with a random UUID.
+    pub fn new(start: u64, name: String, region: String) -> Function {
         Function {
             uuid: Uuid::new_v4(),
             name,
             cflow_graph: AdjacencyList::new(),
             entry_point: None,
             region,
-            entry
+            start
         }
     }
 
-    /// New function with name `name`, inside memory region `region` and UUID `uuid`.
-    pub fn with_uuid(entry: u64, name: String, uuid: Uuid, region: String) -> Function {
+    /// New function starting at `start`, with name `name`, inside memory region `region` and UUID `uuid`.
+    pub fn with_uuid(start: u64, name: String, uuid: Uuid, region: String) -> Function {
         Function {
             uuid,
             name,
             cflow_graph: AdjacencyList::new(),
             entry_point: None,
-            entry,
+            start,
             region,
         }
+    }
+
+    /// Returns the UUID of this function
+    pub fn uuid(&self) -> Uuid {
+        self.uuid
     }
 
     /// Transitional function
@@ -365,10 +370,10 @@ impl Function {
         A: Debug,
         A::Configuration: Debug,
     {
-        let (mut mnemonics, mut by_source, mut by_destination) = Self::index_cflow_graph(&self.cflow_graph, self.entry);
+        let (mut mnemonics, mut by_source, mut by_destination) = Self::index_cflow_graph(&self.cflow_graph, self.start);
         let mut todo = HashSet::<u64>::new();
 
-        todo.insert(self.entry);
+        todo.insert(self.start);
 
         while let Some(addr) = todo.iter().next().cloned() {
             let maybe_mnes = mnemonics.iter().find(|x| *x.0 >= addr).map(|x| x.1.clone());
@@ -435,18 +440,10 @@ impl Function {
             }
         }
 
-        let cfg = Self::assemble_cflow_graph(mnemonics, by_source, by_destination, self.entry);
+        let cfg = Self::assemble_cflow_graph(mnemonics, by_source, by_destination, self.start);
 
-        let e = cfg.vertices()
-            .find(
-                |&vx| if let Some(&ControlFlowTarget::Resolved(ref bb)) = cfg.vertex_label(vx) {
-                    bb.area.start == self.entry
-                } else {
-                    false
-                }
-            );
         self.cflow_graph = cfg;
-        self.entry_point = e;
+        self.entry_point = self.find_basic_block_by_start(self.start);
     }
 
     /// Returns all call targets.

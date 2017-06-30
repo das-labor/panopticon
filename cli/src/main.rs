@@ -94,7 +94,7 @@ fn disassemble(args: Args) -> Result<()> {
             None => {
                 let mut functions = pipe.wait()
                     .filter_map(|function| if let Ok(function) = function {
-                        info!("{}", function.uuid);
+                        info!("{}", function.uuid());
                         Some(function)
                     } else {
                         None
