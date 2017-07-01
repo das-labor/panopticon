@@ -370,8 +370,18 @@ impl Function {
         A: Debug,
         A::Configuration: Debug,
     {
+        use std::iter::FromIterator;
+
         let (mut mnemonics, mut by_source, mut by_destination) = Self::index_cflow_graph(&self.cflow_graph, self.start);
-        let mut todo = HashSet::<u64>::new();
+        let mut todo = HashSet::<u64>::from_iter(self.cflow_graph.vertices().filter_map(|vx| {
+            self.cflow_graph.vertex_label(vx).and_then(|lb| {
+                if let &ControlFlowTarget::Unresolved(Rvalue::Constant{ value,.. }) = lb {
+                    Some(value)
+                } else {
+                    None
+                }
+            })
+        }));
 
         todo.insert(self.start);
 
@@ -1052,13 +1062,12 @@ mod tests {
         let reg = Region::new("".to_string(), data);
         func.dis::<TestArchShort>(main, &reg);
 
-        assert_eq!(func.cflow_graph.num_vertices(), 3);
-        assert_eq!(func.cflow_graph.num_edges(), 3);
+        assert_eq!(func.cflow_graph.num_vertices(), 2);
+        assert_eq!(func.cflow_graph.num_edges(), 2);
         assert_eq!(func.name, "test_func".to_string());
 
         let mut bb0_vx = None;
         let mut bb1_vx = None;
-        let mut bb2_vx = None;
 
         for vx in func.cflow_graph.vertices() {
             if let Some(&ControlFlowTarget::Resolved(ref bb)) = func.cflow_graph.vertex_label(vx) {
@@ -1069,17 +1078,13 @@ mod tests {
                     assert_eq!(bb.area, Bound::new(0, 1));
                     bb0_vx = Some(vx);
                 } else if bb.area.start == 1 {
-                    assert_eq!(bb.mnemonics.len(), 1);
+                    assert_eq!(bb.mnemonics.len(), 2);
                     assert_eq!(bb.mnemonics[0].opcode, "dummy".to_string());
                     assert_eq!(bb.mnemonics[0].area, Bound::new(1, 2));
-                    assert_eq!(bb.area, Bound::new(1, 2));
+                    assert_eq!(bb.mnemonics[1].opcode, "test2".to_string());
+                    assert_eq!(bb.mnemonics[1].area, Bound::new(2, 3));
+                    assert_eq!(bb.area, Bound::new(1, 3));
                     bb1_vx = Some(vx);
-                } else if bb.area.start == 2 {
-                    assert_eq!(bb.mnemonics.len(), 1);
-                    assert_eq!(bb.mnemonics[0].opcode, "test2".to_string());
-                    assert_eq!(bb.mnemonics[0].area, Bound::new(2, 3));
-                    assert_eq!(bb.area, Bound::new(2, 3));
-                    bb2_vx = Some(vx);
                 } else {
                     unreachable!();
                 }
@@ -1088,11 +1093,10 @@ mod tests {
             }
         }
 
-        assert!(bb0_vx.is_some() && bb1_vx.is_some() && bb2_vx.is_some());
+        assert!(bb0_vx.is_some() && bb1_vx.is_some());
         assert_eq!(func.entry_point, bb0_vx);
         assert!(func.cflow_graph.edge(bb0_vx.unwrap(), bb1_vx.unwrap()).is_some());
-        assert!(func.cflow_graph.edge(bb1_vx.unwrap(), bb2_vx.unwrap()).is_some());
-        assert!(func.cflow_graph.edge(bb2_vx.unwrap(), bb1_vx.unwrap()).is_some());
+        assert!(func.cflow_graph.edge(bb1_vx.unwrap(), bb1_vx.unwrap()).is_some());
     }
 
     #[test]
