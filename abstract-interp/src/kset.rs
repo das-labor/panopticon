@@ -276,7 +276,7 @@ impl Avalue for Kset {
 mod tests {
     use super::*;
     use interpreter::{approximate, results};
-    use panopticon_core::{BasicBlock, ControlFlowGraph, ControlFlowTarget, Function, Guard, Lvalue, Mnemonic, Operation, Rvalue, Statement};
+    use panopticon_core::{BasicBlock, ControlFlowGraph, ControlFlowTarget, Function, Guard, Lvalue, Mnemonic, Operation, Region, Rvalue, Statement};
     use panopticon_data_flow::ssa_convertion;
     use panopticon_graph_algos::MutableGraphTrait;
     use std::borrow::Cow;
@@ -528,7 +528,7 @@ mod tests {
         cfg.add_edge(Guard::always(), v2, v4);
         cfg.add_edge(Guard::always(), v1, v3);
 
-        let mut func = Function::new(0, "func".to_string(), "ram".to_string());
+        let mut func = Function::new(0, "func".to_string(), &Region::undefined("ram".to_owned(), 100));
 
         func.cflow_graph = cfg;
         func.entry_point = Some(v0);
@@ -663,7 +663,7 @@ mod tests {
 
         cfg.add_edge(Guard::always(), v0, v1);
 
-        let mut func = Function::new(0, "func".to_string(), "ram".to_string());
+        let mut func = Function::new(0, "func".to_string(), &Region::undefined("ram".to_owned(), 100));
 
         func.cflow_graph = cfg;
         func.entry_point = Some(v0);

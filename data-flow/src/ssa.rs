@@ -384,7 +384,7 @@ pub fn flag_operations(func: &Function) -> HashMap<ControlFlowEdge, Operation<Rv
 #[cfg(test)]
 mod tests {
     use super::*;
-    use panopticon_core::{BasicBlock, ControlFlowGraph, ControlFlowTarget, Function, Guard, Lvalue, Mnemonic, Operation, Rvalue, Statement};
+    use panopticon_core::{BasicBlock, ControlFlowGraph, ControlFlowTarget, Function, Guard, Lvalue, Mnemonic, Operation, Region, Rvalue, Statement};
     use panopticon_graph_algos::{GraphTrait, MutableGraphTrait, VertexListGraphTrait};
     use std::borrow::Cow;
     use std::collections::HashSet;
@@ -648,7 +648,7 @@ mod tests {
         cfg.add_edge(Guard::always(), v7, v3);
         cfg.add_edge(Guard::always(), v8, v7);
 
-        let mut func = Function::new(0, "test".to_string(), "ram".to_string());
+        let mut func = Function::new(0, "test".to_string(), &Region::undefined("ram".to_owned(), 100));
 
         func.cflow_graph = cfg;
         func.entry_point = Some(v0);
@@ -1022,7 +1022,7 @@ mod tests {
         cfg.add_edge(Guard::always(), v7, v3);
         cfg.add_edge(Guard::always(), v8, v7);
 
-        let mut func = Function::new(0, "test".to_string(), "ram".to_string());
+        let mut func = Function::new(0, "test".to_string(), &Region::undefined("ram".to_owned(), 100));
 
         func.cflow_graph = cfg;
         func.entry_point = Some(v0);

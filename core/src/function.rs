@@ -81,26 +81,26 @@ enum MnemonicOrError {
 
 impl Function {
     /// Create a new function with `name`, inside memory `region`, starting at `start`, with a random UUID.
-    pub fn new(start: u64, name: String, region: String) -> Function {
+    pub fn new(start: u64, name: String, region: &Region) -> Function {
         Function {
             uuid: Uuid::new_v4(),
             name,
             cflow_graph: AdjacencyList::new(),
             entry_point: None,
-            region,
+            region: region.name().clone(),
             start
         }
     }
 
     /// New function starting at `start`, with name `name`, inside memory region `region` and UUID `uuid`.
-    pub fn with_uuid(start: u64, name: String, uuid: Uuid, region: String) -> Function {
+    pub fn with_uuid(start: u64, name: String, uuid: Uuid, region: &Region) -> Function {
         Function {
             uuid,
             name,
             cflow_graph: AdjacencyList::new(),
             entry_point: None,
             start,
-            region,
+            region: region.name().clone(),
         }
     }
 
@@ -115,7 +115,7 @@ impl Function {
         A: Debug,
         A::Configuration: Debug,
     {
-            let mut f = Self::new(start, format!("func_{:x}", start), reg.name().clone());
+            let mut f = Self::new(start, format!("func_{:x}", start), reg);
             f.dis::<A>(init, &reg);
             f
         }
@@ -633,7 +633,7 @@ mod tests {
 
     #[test]
     fn new() {
-        let f = Function::new(0, "test".to_string(), "ram".to_string());
+        let f = Function::new(0, "test".to_string(), &Region::undefined("ram".to_owned(), 100));
 
         assert_eq!(f.name, "test".to_string());
         assert_eq!(f.cflow_graph.num_vertices(), 0);
@@ -1033,7 +1033,7 @@ mod tests {
     #[test]
     fn entry_split() {
         let bb = BasicBlock::from_vec(vec![Mnemonic::dummy(0..1), Mnemonic::dummy(1..2)]);
-        let mut func = Function::new(0, "test_func".to_string(), "ram".to_string());
+        let mut func = Function::new(0, "test_func".to_string(), &Region::undefined("ram".to_owned(), 100));
         let vx0 = func.cflow_graph.add_vertex(ControlFlowTarget::Resolved(bb));
         let vx1 = func.cflow_graph.add_vertex(ControlFlowTarget::Unresolved(Rvalue::new_u32(2)));
 

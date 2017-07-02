@@ -136,7 +136,7 @@ pub fn liveness(func: &Function) -> HashMap<ControlFlowRef, HashSet<Cow<'static,
 #[cfg(test)]
 mod tests {
     use super::*;
-    use panopticon_core::{BasicBlock, ControlFlowGraph, ControlFlowTarget, Function, Guard, Lvalue, Mnemonic, Operation, Rvalue, Statement};
+    use panopticon_core::{BasicBlock, ControlFlowGraph, ControlFlowTarget, Function, Guard, Lvalue, Mnemonic, Operation, Rvalue, Statement, Region};
     use panopticon_graph_algos::{GraphTrait, MutableGraphTrait, VertexListGraphTrait};
     use ssa::{phi_functions, rename_variables};
     use std::borrow::Cow;
@@ -262,8 +262,7 @@ mod tests {
         cfg.add_edge(Guard::always(), v2, v3);
         cfg.add_edge(g.negation(), v3, v1);
         cfg.add_edge(g.clone(), v3, v4);
-
-        let mut func = Function::new(0, "test".to_string(), "ram".to_string());
+        let mut func = Function::new(0, "test".to_string(), &Region::undefined("ram".to_owned(), 100));
 
         func.cflow_graph = cfg;
         func.entry_point = Some(v0);
@@ -575,7 +574,7 @@ mod tests {
         cfg.add_edge(Guard::always(), v7, v3);
         cfg.add_edge(Guard::always(), v8, v7);
 
-        let mut func = Function::new(0, "test".to_string(), "ram".to_string());
+        let mut func = Function::new(0, "test".to_string(), &Region::undefined("ram".to_owned(), 100));
 
         func.cflow_graph = cfg;
         func.entry_point = Some(v0);
@@ -949,7 +948,7 @@ mod tests {
         cfg.add_edge(Guard::always(), v7, v3);
         cfg.add_edge(Guard::always(), v8, v7);
 
-        let mut func = Function::new(0, "test".to_string(), "ram".to_string());
+        let mut func = Function::new(0, "test".to_string(), &Region::undefined("ram".to_owned(), 100));
 
         func.cflow_graph = cfg;
         func.entry_point = Some(v0);
