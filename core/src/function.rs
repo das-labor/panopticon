@@ -81,27 +81,22 @@ enum MnemonicOrError {
 
 impl Function {
     /// Create a new function with `name`, inside memory `region`, starting at `start`, with a random UUID.
-    pub fn new(start: u64, name: String, region: &Region) -> Function {
+    pub fn new(start: u64, region: &Region, name: Option<String>) -> Function {
         Function {
+            name: name.unwrap_or(format!("func_{:#x}", start)),
+            start,
             uuid: Uuid::new_v4(),
-            name,
             cflow_graph: AdjacencyList::new(),
             entry_point: None,
             region: region.name().clone(),
-            start
         }
     }
 
     /// New function starting at `start`, with name `name`, inside memory region `region` and UUID `uuid`.
-    pub fn with_uuid(start: u64, name: String, uuid: Uuid, region: &Region) -> Function {
-        Function {
-            uuid,
-            name,
-            cflow_graph: AdjacencyList::new(),
-            entry_point: None,
-            start,
-            region: region.name().clone(),
-        }
+    pub fn with_uuid(start: u64, uuid: Uuid, region: &Region, name: Option<String>) -> Function {
+        let mut f = Function::new(start, region, name);
+        f.uuid = uuid;
+        f
     }
 
     /// Returns the UUID of this function
@@ -115,7 +110,7 @@ impl Function {
         A: Debug,
         A::Configuration: Debug,
     {
-            let mut f = Self::new(start, format!("func_{:x}", start), reg);
+            let mut f = Self::new(start, reg, None);
             f.dis::<A>(init, &reg);
             f
         }
@@ -633,7 +628,7 @@ mod tests {
 
     #[test]
     fn new() {
-        let f = Function::new(0, "test".to_string(), &Region::undefined("ram".to_owned(), 100));
+        let f = Function::new(0, &Region::undefined("ram".to_owned(), 100), Some("test".to_owned()));
 
         assert_eq!(f.name, "test".to_string());
         assert_eq!(f.cflow_graph.num_vertices(), 0);
@@ -789,7 +784,7 @@ mod tests {
         }
 
         assert_eq!(func.entry_point, func.cflow_graph.vertices().next());
-        assert_eq!(func.name, "func_0".to_string());
+        assert_eq!(func.name, "func_0x0".to_string());
     }
 
     #[test]
@@ -870,7 +865,7 @@ mod tests {
 
         assert!(ures_vx.is_some() && bb_vx.is_some());
         assert_eq!(func.entry_point, bb_vx);
-        assert_eq!(func.name, "func_0".to_string());
+        assert_eq!(func.name, "func_0x0".to_string());
         assert!(func.cflow_graph.edge(bb_vx.unwrap(), ures_vx.unwrap()).is_some());
     }
 
@@ -940,7 +935,7 @@ mod tests {
 
         assert!(ures_vx.is_some() && bb0_vx.is_some() && bb1_vx.is_some() && bb2_vx.is_some());
         assert_eq!(func.entry_point, bb0_vx);
-        assert_eq!(func.name, "func_0".to_string());
+        assert_eq!(func.name, "func_0x0".to_string());
         assert!(func.cflow_graph.edge(bb0_vx.unwrap(), bb1_vx.unwrap()).is_some());
         assert!(func.cflow_graph.edge(bb0_vx.unwrap(), bb2_vx.unwrap()).is_some());
         assert!(func.cflow_graph.edge(bb1_vx.unwrap(), ures_vx.unwrap()).is_some());
@@ -990,7 +985,7 @@ mod tests {
             }
         }
 
-        assert_eq!(func.name, "func_0".to_string());
+        assert_eq!(func.name, "func_0x0".to_string());
         assert_eq!(func.entry_point, Some(vx));
         assert!(func.cflow_graph.edge(vx, vx).is_some());
     }
@@ -1021,7 +1016,7 @@ mod tests {
 
         assert_eq!(func.cflow_graph.num_vertices(), 1);
         assert_eq!(func.cflow_graph.num_edges(), 0);
-        assert_eq!(func.name, "func_0".to_string());
+        assert_eq!(func.name, "func_0x0".to_string());
         assert_eq!(func.entry_point, None);
 
         let vx = func.cflow_graph.vertices().next().unwrap();
@@ -1033,7 +1028,7 @@ mod tests {
     #[test]
     fn entry_split() {
         let bb = BasicBlock::from_vec(vec![Mnemonic::dummy(0..1), Mnemonic::dummy(1..2)]);
-        let mut func = Function::new(0, "test_func".to_string(), &Region::undefined("ram".to_owned(), 100));
+        let mut func = Function::new(0, &Region::undefined("ram".to_owned(), 100), Some("test".to_owned()));
         let vx0 = func.cflow_graph.add_vertex(ControlFlowTarget::Resolved(bb));
         let vx1 = func.cflow_graph.add_vertex(ControlFlowTarget::Unresolved(Rvalue::new_u32(2)));
 
@@ -1064,7 +1059,7 @@ mod tests {
 
         assert_eq!(func.cflow_graph.num_vertices(), 2);
         assert_eq!(func.cflow_graph.num_edges(), 2);
-        assert_eq!(func.name, "test_func".to_string());
+        assert_eq!(func.name, "test".to_string());
 
         let mut bb0_vx = None;
         let mut bb1_vx = None;

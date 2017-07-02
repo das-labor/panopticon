@@ -49,8 +49,7 @@ where
                     .filter_map(
                         |vx| match program.call_graph.vertex_label(vx) {
                             Some(&CallTarget::Todo(Rvalue::Constant { value: entry, .. }, ref maybe_name, ref uuid)) => {
-                                let name = maybe_name.clone().unwrap_or_else(|| format!("func_0x{:x}", entry));
-                                let f = Function::with_uuid(entry, name, uuid.clone(), &region);
+                                let f = Function::with_uuid(entry, uuid.clone(), &region, maybe_name.clone());
                                 functions.insert(entry);
                                 Some((entry, f))
                             }
@@ -78,7 +77,7 @@ where
                                             if !functions.contains(&value) && entry != value {
                                                 functions.insert(value);
                                                 info!("adding {:#x} - func_0x{:x}", value, value);
-                                                return Some((value, Function::new(value, format!("func_0x{:x}", value), &region)));
+                                                return Some((value, Function::new(value, &region, None)));
                                             }
                                         }
                                         None

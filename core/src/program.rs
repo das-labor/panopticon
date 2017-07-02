@@ -234,12 +234,12 @@ mod tests {
     #[test]
     fn find_by_entry() {
         let mut prog = Program::new("prog_test");
-        let mut func = Function::new(0, "test2".to_string(), &Region::undefined("ram".to_owned(), 100));
+        let mut func = Function::new(0, &Region::undefined("ram".to_owned(), 100), Some("test2".to_owned()));
 
         let bb0 = BasicBlock::from_vec(vec![Mnemonic::dummy(0..10)]);
         func.entry_point = Some(func.cflow_graph.add_vertex(ControlFlowTarget::Resolved(bb0)));
 
-        prog.call_graph.add_vertex(CallTarget::Concrete(Function::new(0, "test".to_string(), &Region::undefined("ram".to_owned(), 100))));
+        prog.call_graph.add_vertex(CallTarget::Concrete(Function::new(0, &Region::undefined("ram".to_owned(), 100), Some("test".to_owned()))));
         let vx1 = prog.call_graph.add_vertex(CallTarget::Concrete(func));
 
         assert_eq!(prog.find_function_by_entry(0), Some(vx1));
@@ -252,13 +252,13 @@ mod tests {
         let mut prog = Program::new("prog_test");
 
         let tvx = prog.call_graph.add_vertex(CallTarget::Todo(Rvalue::new_u64(12), None, uu));
-        let vx0 = prog.call_graph.add_vertex(CallTarget::Concrete(Function::new(0, "test".to_string(), &Region::undefined("ram".to_owned(), 100))));
-        let vx1 = prog.call_graph.add_vertex(CallTarget::Concrete(Function::new(0, "test2".to_string(), &Region::undefined("ram".to_owned(), 100))));
+        let vx0 = prog.call_graph.add_vertex(CallTarget::Concrete(Function::new(0, &Region::undefined("ram".to_owned(), 100), Some("test".to_owned()))));
+        let vx1 = prog.call_graph.add_vertex(CallTarget::Concrete(Function::new(0, &Region::undefined("ram".to_owned(), 100), Some("test2".to_owned()))));
 
         let e1 = prog.call_graph.add_edge((), tvx, vx0);
         let e2 = prog.call_graph.add_edge((), vx1, tvx);
 
-        let mut func = Function::with_uuid(0, "test3".to_string(), uu.clone(), &Region::undefined("ram".to_owned(), 100));
+        let mut func = Function::with_uuid(0, uu.clone(), &Region::undefined("ram".to_owned(), 100), Some("test3".to_owned()));
         let bb0 = BasicBlock::from_vec(vec![Mnemonic::dummy(12..20)]);
         func.entry_point = Some(func.cflow_graph.add_vertex(ControlFlowTarget::Resolved(bb0)));
         let uuf = func.uuid().clone();
@@ -289,7 +289,7 @@ mod tests {
 
         let tvx = prog.call_graph.add_vertex(CallTarget::Todo(Rvalue::new_u64(12), None, uu1));
 
-        let mut func = Function::with_uuid(0, "test3".to_string(), uu2.clone(), &Region::undefined("ram".to_owned(), 100));
+        let mut func = Function::with_uuid(0, uu2.clone(), &Region::undefined("ram".to_owned(), 100), Some("test3".to_owned()));
         let ops1 = vec![];
         let i1 = vec![
             Statement {

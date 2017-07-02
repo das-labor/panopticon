@@ -759,7 +759,7 @@ mod tests {
         cfg.add_edge(g.clone(), v0, v1);
         cfg.add_edge(g.clone(), v1, v1);
 
-        let mut func = Function::new(0, "func".to_string(), &Region::undefined("ram".to_owned(), 100));
+        let mut func = Function::new(0, &Region::undefined("ram".to_owned(), 100), Some("test".to_owned()));
 
         func.cflow_graph = cfg;
         func.entry_point = Some(v0);
@@ -932,7 +932,7 @@ mod tests {
         cfg.add_edge(g.clone(), v0, v1);
         cfg.add_edge(g.clone(), v1, v1);
 
-        let mut func = Function::new(0, "func".to_string(), &Region::undefined("ram".to_owned(), 100));
+        let mut func = Function::new(0, &Region::undefined("ram".to_owned(), 100), Some("test".to_owned()));
 
         func.cflow_graph = cfg;
         func.entry_point = Some(v0);
