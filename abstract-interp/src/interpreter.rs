@@ -228,8 +228,8 @@ pub fn approximate<A: Avalue>(func: &Function, fixed: &HashMap<(Cow<'static, str
     let mut sizes = HashMap::<Cow<'static, str>, usize>::new();
     let mut constr = HashMap::<Lvalue, A>::new();
 
-    for vx in func.cflow_graph.vertices() {
-        if let Some(&ControlFlowTarget::Resolved(ref bb)) = func.cflow_graph.vertex_label(vx) {
+    for vx in func.cfg().vertices() {
+        if let Some(&ControlFlowTarget::Resolved(ref bb)) = func.cfg().vertex_label(vx) {
             bb.execute(
                 |i| if let Lvalue::Variable { ref name, ref size, .. } = i.assignee {
                     let t = *size;
@@ -240,9 +240,9 @@ pub fn approximate<A: Avalue>(func: &Function, fixed: &HashMap<(Cow<'static, str
         }
     }
 
-    for vx in func.cflow_graph.vertices() {
-        for e in func.cflow_graph.in_edges(vx) {
-            if let Some(&Guard::Predicate { .. }) = func.cflow_graph.edge_label(e) {
+    for vx in func.cfg().vertices() {
+        for e in func.cfg().in_edges(vx) {
+            if let Some(&Guard::Predicate { .. }) = func.cfg().edge_label(e) {
                 match edge_ops.get(&e).cloned() {
                     Some(Operation::Equal(left @ Rvalue::Constant { .. }, right @ Rvalue::Variable { .. })) => {
                         constr.insert(
@@ -312,13 +312,13 @@ pub fn approximate<A: Avalue>(func: &Function, fixed: &HashMap<(Cow<'static, str
 
     match wto {
         HierarchicalOrdering::Component(ref v) => {
-            stabilize(v, &func.cflow_graph, &constr, &sizes, &mut ret, fixed)?;
+            stabilize(v, &func.cfg(), &constr, &sizes, &mut ret, fixed)?;
         }
         HierarchicalOrdering::Element(ref v) => {
             execute(
                 *v,
                 false,
-                &func.cflow_graph,
+                &func.cfg(),
                 &constr,
                 &sizes,
                 &mut ret,
