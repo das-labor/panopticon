@@ -265,7 +265,7 @@ mod tests {
         let mut func = Function::new(0, &Region::undefined("ram".to_owned(), 100), None);
 
         func.cflow_graph = cfg;
-        func.entry_point = Some(v0);
+        func.set_entry_point_ref(v0);
 
         let all = HashSet::from_iter(vec![Cow::Borrowed("i"), Cow::Borrowed("s")]);
         let (vk, ue) = liveness_sets(&func);
@@ -577,7 +577,7 @@ mod tests {
         let mut func = Function::new(0, &Region::undefined("ram".to_owned(), 100), Some("test".to_owned()));
 
         func.cflow_graph = cfg;
-        func.entry_point = Some(v0);
+        func.set_entry_point_ref(v0);
 
         assert!(phi_functions(&mut func).is_ok());
 
@@ -951,7 +951,7 @@ mod tests {
         let mut func = Function::new(0, &Region::undefined("ram".to_owned(), 100), Some("test".to_owned()));
 
         func.cflow_graph = cfg;
-        func.entry_point = Some(v0);
+        func.set_entry_point_ref(v0);
 
         assert!(phi_functions(&mut func).is_ok());
         assert!(rename_variables(&mut func).is_ok());

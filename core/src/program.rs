@@ -89,16 +89,11 @@ impl Program {
             .find(
                 |&x| match self.call_graph.vertex_label(x) {
                     Some(&CallTarget::Concrete(ref s)) => {
-                        if let Some(e) = s.entry_point {
-                            if let Some(&ControlFlowTarget::Resolved(ref ee)) = s.cflow_graph.vertex_label(e) {
-                                ee.area.start == start
-                            } else {
-                                false
-                            }
-                        } else {
-                            false
+                        match s.entry_point() {
+                            &ControlFlowTarget::Resolved(ref ee) => ee.area.start == start,
+                            _ => false
                         }
-//                        s.start == start
+                        //                        s.start == start
                     }
                     _ => false,
                 }
@@ -170,14 +165,17 @@ impl Program {
 
             for w in self.call_graph.vertices() {
                 match self.call_graph.vertex_label(w) {
-                    Some(&CallTarget::Concrete(Function { cflow_graph: ref cg, entry_point: Some(ent), .. })) => {
-                        if let Some(&ControlFlowTarget::Resolved(ref bb)) = cg.vertex_label(ent) {
-                            if let Rvalue::Constant { ref value, .. } = a {
-                                if *value == bb.area.start {
-                                    other_funs.push(w);
-                                    break;
+                    Some(&CallTarget::Concrete(ref function)) => {
+                        match function.entry_point() {
+                            &ControlFlowTarget::Resolved(ref bb) => {
+                                if let Rvalue::Constant { ref value, .. } = a {
+                                    if *value == bb.area.start {
+                                        other_funs.push(w);
+                                        break;
+                                    }
                                 }
-                            }
+                            },
+                            _ => ()
                         }
                     }
                     Some(&CallTarget::Todo(ref _a, _, _)) => {
@@ -237,7 +235,8 @@ mod tests {
         let mut func = Function::new(0, &Region::undefined("ram".to_owned(), 100), Some("test2".to_owned()));
 
         let bb0 = BasicBlock::from_vec(vec![Mnemonic::dummy(0..10)]);
-        func.entry_point = Some(func.cflow_graph.add_vertex(ControlFlowTarget::Resolved(bb0)));
+        let vx = func.cfg_mut().add_vertex(ControlFlowTarget::Resolved(bb0));
+        func.set_entry_point_ref(vx);
 
         prog.call_graph.add_vertex(CallTarget::Concrete(Function::new(0, &Region::undefined("ram".to_owned(), 100), Some("test".to_owned()))));
         let vx1 = prog.call_graph.add_vertex(CallTarget::Concrete(func));
@@ -260,7 +259,8 @@ mod tests {
 
         let mut func = Function::with_uuid(0, uu.clone(), &Region::undefined("ram".to_owned(), 100), Some("test3".to_owned()));
         let bb0 = BasicBlock::from_vec(vec![Mnemonic::dummy(12..20)]);
-        func.entry_point = Some(func.cflow_graph.add_vertex(ControlFlowTarget::Resolved(bb0)));
+        let vx = func.cfg_mut().add_vertex(ControlFlowTarget::Resolved(bb0));
+        func.set_entry_point_ref(vx);
         let uuf = func.uuid().clone();
 
         let new = prog.insert(CallTarget::Concrete(func));
@@ -269,7 +269,6 @@ mod tests {
 
         if let Some(&CallTarget::Concrete(ref f)) = prog.call_graph.vertex_label(tvx) {
             assert_eq!(f.uuid(), uuf);
-            assert!(f.entry_point.is_some());
         } else {
             unreachable!();
         }
@@ -307,7 +306,8 @@ mod tests {
                 .ok()
                 .unwrap();
         let bb0 = BasicBlock::from_vec(vec![mne1]);
-        func.entry_point = Some(func.cflow_graph.add_vertex(ControlFlowTarget::Resolved(bb0)));
+        let vx = func.cfg_mut().add_vertex(ControlFlowTarget::Resolved(bb0));
+        func.set_entry_point_ref(vx);
         let uuf = func.uuid().clone();
 
         let new = prog.insert(CallTarget::Concrete(func));
@@ -316,7 +316,6 @@ mod tests {
 
         if let Some(&CallTarget::Concrete(ref f)) = prog.call_graph.vertex_label(tvx) {
             assert_eq!(f.uuid(), uuf);
-            assert!(f.entry_point.is_some());
         }
         assert!(prog.call_graph.vertex_label(tvx).is_some());
         assert_eq!(prog.call_graph.num_edges(), 1);

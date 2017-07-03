@@ -445,10 +445,10 @@ impl Panopticon {
                     }
                 }
 
-                if let Some(&ControlFlowTarget::Resolved(ref bb)) = func.entry_point.and_then(|x| cfg.vertex_label(x)) {
-                    Some(bb.area.start)
-                } else {
-                    None
+                // we should be able to just write func.start but i suspect there are bugs which modify the cfg directly without updating entry_point
+                match func.entry_point() {
+                    &ControlFlowTarget::Resolved(ref bb) => Some(bb.area.start),
+                    _ => None,
                 }
             };
 

@@ -77,11 +77,7 @@ pub trait Avalue: Clone + PartialEq + Eq + Hash + Debug + Serialize + for<'a> De
 /// fixed point iteration and the widening strategy outlined in
 /// Bourdoncle: "Efficient chaotic iteration strategies with widenings".
 pub fn approximate<A: Avalue>(func: &Function, fixed: &HashMap<(Cow<'static, str>, usize), A>) -> Result<HashMap<Lvalue, A>> {
-    if func.entry_point.is_none() {
-        return Err("function has no entry point".into());
-    }
-
-    let wto = weak_topo_order(func.entry_point.unwrap(), &func.cflow_graph);
+    let wto = weak_topo_order(func.entry_point_ref(), func.cfg());
     let edge_ops = flag_operations(func);
     fn stabilize<A: Avalue>(
         h: &Vec<Box<HierarchicalOrdering<ControlFlowRef>>>,
@@ -352,8 +348,8 @@ pub fn approximate<A: Avalue>(func: &Function, fixed: &HashMap<(Cow<'static, str
 /// Given a function and an abstract interpretation result this functions returns that variable
 /// names and abstract values that live after the function returns.
 pub fn results<A: Avalue>(func: &Function, vals: &HashMap<Lvalue, A>) -> HashMap<(Cow<'static, str>, usize), A> {
-    let cfg = &func.cflow_graph;
-    let idom = immediate_dominator(func.entry_point.unwrap(), cfg);
+    let cfg = func.cfg();
+    let idom = immediate_dominator(func.entry_point_ref(), cfg);
     let mut ret = HashMap::<(Cow<'static, str>, usize), A>::new();
     let mut names = HashSet::<Cow<'static, str>>::new();
 
@@ -762,7 +758,7 @@ mod tests {
         let mut func = Function::new(0, &Region::undefined("ram".to_owned(), 100), Some("test".to_owned()));
 
         func.cflow_graph = cfg;
-        func.entry_point = Some(v0);
+        func.set_entry_point_ref(v0);
 
         assert!(ssa_convertion(&mut func).is_ok());
 
@@ -935,7 +931,7 @@ mod tests {
         let mut func = Function::new(0, &Region::undefined("ram".to_owned(), 100), Some("test".to_owned()));
 
         func.cflow_graph = cfg;
-        func.entry_point = Some(v0);
+        func.set_entry_point_ref(v0);
 
         assert!(ssa_convertion(&mut func).is_ok());
 

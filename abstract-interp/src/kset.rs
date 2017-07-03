@@ -531,7 +531,7 @@ mod tests {
         let mut func = Function::new(0, &Region::undefined("ram".to_owned(), 100), Some("test".to_owned()));
 
         func.cflow_graph = cfg;
-        func.entry_point = Some(v0);
+        func.set_entry_point_ref(v0);
 
         println!("{}", func.to_dot());
 
@@ -666,7 +666,7 @@ mod tests {
         let mut func = Function::new(0, &Region::undefined("ram".to_owned(), 100), Some("test".to_owned()));
 
         func.cflow_graph = cfg;
-        func.entry_point = Some(v0);
+        func.set_entry_point_ref(v0);
 
         assert!(ssa_convertion(&mut func).is_ok());
 

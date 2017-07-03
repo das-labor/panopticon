@@ -90,13 +90,13 @@ impl ControlFlowLayout {
         }
 
         let data = HashMap::from_iter(
-            func.cflow_graph
+            func.cfg()
                 .vertices()
-                .filter_map(|vx| func.cflow_graph.vertex_label(vx).map(|lb| (vx, lb)))
+                .filter_map(|vx| func.cfg().vertex_label(vx).map(|lb| (vx, lb)))
                 .filter_map(
                     |(vx, lb)| {
                         let maybe_lines = Self::get_node_data(lb, comments, values, functions).ok();
-                        let is_entry = func.entry_point == Some(vx);
+                        let is_entry = func.entry_point_ref() == vx;
 
                         maybe_lines.map(|v| (vx, (is_entry, v)))
                     }
@@ -547,11 +547,9 @@ impl ControlFlowLayout {
                                         .iter()
                                         .find(
                                             |&(_, f)| {
-                                                let maybe_entry = f.entry_point.and_then(|vx| f.cflow_graph.vertex_label(vx));
-                                                if let Some(&ControlFlowTarget::Resolved(ref bb)) = maybe_entry {
-                                                    bb.area.start == val
-                                                } else {
-                                                    false
+                                                match f.entry_point() {
+                                                    &ControlFlowTarget::Resolved(ref bb) => bb.area.start == val,
+                                                    _ => false
                                                 }
                                             }
                                         );

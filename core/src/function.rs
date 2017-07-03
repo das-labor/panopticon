@@ -18,7 +18,7 @@
 
 //! Functions are a graph of `BasicBlock`s connected with conditional jumps.
 //!
-//! Functions have an optial entry point, a (non-unique) name and an unique identifier. Functions
+//! Functions have an entry point, a (non-unique) name and an unique identifier. Functions
 //! do not share basic blocks. In case functions overlap in the binary, the basic blocks are copied
 //! by the disassembler.
 //!
@@ -67,8 +67,8 @@ pub struct Function {
     uuid: Uuid,
     /// Graph of basic blocks and jumps
     pub cflow_graph: ControlFlowGraph,
-    /// Optional function entry point
-    pub entry_point: Option<ControlFlowRef>,
+    /// The function's entry point
+    entry_point: ControlFlowRef,
     /// Name of the memory region the function is part of
     region: String,
 }
@@ -82,12 +82,15 @@ enum MnemonicOrError {
 impl Function {
     /// Create a new function with `name`, inside memory `region`, starting at `start`, with a random UUID.
     pub fn new(start: u64, region: &Region, name: Option<String>) -> Function {
+        let mut cflow_graph = AdjacencyList::new();
+        let entry_point = ControlFlowTarget::Unresolved(Rvalue::new_u64(start));
+        let entry_point = cflow_graph.add_vertex(entry_point);
         Function {
             name: name.unwrap_or(format!("func_{:#x}", start)),
             start,
             uuid: Uuid::new_v4(),
-            cflow_graph: AdjacencyList::new(),
-            entry_point: None,
+            cflow_graph,
+            entry_point,
             region: region.name().clone(),
         }
     }
@@ -102,6 +105,36 @@ impl Function {
     /// Returns the UUID of this function
     pub fn uuid(&self) -> Uuid {
         self.uuid
+    }
+
+    /// Returns a reference to this functions control flow graph
+    pub fn cfg(&self) -> &ControlFlowGraph {
+        &self.cflow_graph
+    }
+
+    /// Returns a mutable reference to this functions control flow graph; **WARNING** this can cause instability if the entry point is not correctly updated
+    pub fn cfg_mut(&mut self) -> &mut ControlFlowGraph {
+        &mut self.cflow_graph
+    }
+
+    /// Returns a reference to the entry point vertex in the cfg
+    pub fn entry_point_ref(&self) -> ControlFlowRef {
+        self.entry_point
+    }
+
+    /// Returns a reference to the entry point vertex in the cfg
+    pub fn set_entry_point_ref(&mut self, vx: ControlFlowRef) {
+        self.entry_point = vx;
+    }
+
+    /// Returns a reference to the entry point of this function. TODO: this should be a resolved BasicBlock. Will eliminate tons of boilerplate
+    pub fn entry_point(&self) -> &ControlFlowTarget {
+        &self.cflow_graph.vertex_label(self.entry_point).unwrap()
+    }
+
+    /// Returns a reference to the entry point of this function. TODO: this should be a resolved BasicBlock. Will eliminate tons of boilerplate
+    pub fn entry_point_mut(&mut self) -> &mut ControlFlowTarget {
+        self.cflow_graph.vertex_label_mut(self.entry_point).unwrap()
     }
 
     /// Transitional function
@@ -359,7 +392,7 @@ impl Function {
         ret
     }
 
-    /// Begins disassembly of `self` inside region `reg`, with CPU state `init`.
+    /// Disassembles `self` inside region `reg`, with CPU state `init`.
     pub fn dis<A: Architecture>(&mut self, init: A::Configuration, reg: &Region) -> ()
     where
         A: Debug,
@@ -448,7 +481,14 @@ impl Function {
         let cfg = Self::assemble_cflow_graph(mnemonics, by_source, by_destination, self.start);
 
         self.cflow_graph = cfg;
-        self.entry_point = self.find_basic_block_by_start(self.start);
+        match self.find_basic_block_by_start(self.start) {
+            Some(entry_point) => {
+                self.entry_point = entry_point;
+            },
+            None => {
+                error!("function ({}) {} has no entry point", self.name, self.uuid);
+            }
+        }
     }
 
     /// Returns all call targets.
@@ -497,9 +537,8 @@ impl Function {
 
     /// Returns all nodes in the graph of this function in post order.
     pub fn postorder(&self) -> Vec<ControlFlowRef> {
-        assert!(self.entry_point.is_some());
         TreeIterator::new(
-            self.entry_point.unwrap(),
+            self.entry_point,
             TraversalOrder::Postorder,
             &self.cflow_graph,
         )
@@ -628,12 +667,18 @@ mod tests {
 
     #[test]
     fn new() {
-        let f = Function::new(0, &Region::undefined("ram".to_owned(), 100), Some("test".to_owned()));
+        let f = Function::new(100, &Region::undefined("ram".to_owned(), 100), Some("test".to_owned()));
 
         assert_eq!(f.name, "test".to_string());
-        assert_eq!(f.cflow_graph.num_vertices(), 0);
+        assert_eq!(f.cflow_graph.num_vertices(), 1);
         assert_eq!(f.cflow_graph.num_edges(), 0);
-        assert_eq!(f.entry_point, None);
+        match f.entry_point() {
+            &ControlFlowTarget::Unresolved(Rvalue::Constant{ value, size }) => {
+                assert_eq!(value, 100);
+                assert_eq!(size, 64);
+            },
+            _ => assert!(false)
+        }
     }
 
     #[test]
@@ -762,7 +807,7 @@ mod tests {
                 st.mnemonic(1,"A","",vec!(),&|_| { Ok(vec![]) }).unwrap();
                 true
             }
-		);
+        );
         let data = OpaqueLayer::wrap(vec![0]);
         let reg = Region::new("".to_string(), data);
         let func = Function::disassemble::<TestArchShort>(main, &reg, 0);
@@ -783,7 +828,7 @@ mod tests {
             unreachable!();
         }
 
-        assert_eq!(func.entry_point, func.cflow_graph.vertices().next());
+        assert_eq!(func.entry_point_ref(), func.cflow_graph.vertices().next().unwrap());
         assert_eq!(func.name, "func_0x0".to_string());
     }
 
@@ -864,7 +909,7 @@ mod tests {
         }
 
         assert!(ures_vx.is_some() && bb_vx.is_some());
-        assert_eq!(func.entry_point, bb_vx);
+        assert_eq!(Some(func.entry_point_ref()), bb_vx);
         assert_eq!(func.name, "func_0x0".to_string());
         assert!(func.cflow_graph.edge(bb_vx.unwrap(), ures_vx.unwrap()).is_some());
     }
@@ -934,7 +979,7 @@ mod tests {
         }
 
         assert!(ures_vx.is_some() && bb0_vx.is_some() && bb1_vx.is_some() && bb2_vx.is_some());
-        assert_eq!(func.entry_point, bb0_vx);
+        assert_eq!(Some(func.entry_point_ref()), bb0_vx);
         assert_eq!(func.name, "func_0x0".to_string());
         assert!(func.cflow_graph.edge(bb0_vx.unwrap(), bb1_vx.unwrap()).is_some());
         assert!(func.cflow_graph.edge(bb0_vx.unwrap(), bb2_vx.unwrap()).is_some());
@@ -986,7 +1031,7 @@ mod tests {
         }
 
         assert_eq!(func.name, "func_0x0".to_string());
-        assert_eq!(func.entry_point, Some(vx));
+        assert_eq!(Some(func.entry_point_ref()), Some(vx));
         assert!(func.cflow_graph.edge(vx, vx).is_some());
     }
 
@@ -1017,7 +1062,6 @@ mod tests {
         assert_eq!(func.cflow_graph.num_vertices(), 1);
         assert_eq!(func.cflow_graph.num_edges(), 0);
         assert_eq!(func.name, "func_0x0".to_string());
-        assert_eq!(func.entry_point, None);
 
         let vx = func.cflow_graph.vertices().next().unwrap();
         if let Some(&ControlFlowTarget::Failed(v, _)) = func.cflow_graph.vertex_label(vx) {
@@ -1032,7 +1076,7 @@ mod tests {
         let vx0 = func.cflow_graph.add_vertex(ControlFlowTarget::Resolved(bb));
         let vx1 = func.cflow_graph.add_vertex(ControlFlowTarget::Unresolved(Rvalue::new_u32(2)));
 
-        func.entry_point = Some(vx0);
+        func.set_entry_point_ref(vx0);
         func.cflow_graph.add_edge(Guard::always(), vx0, vx1);
 
         let main = new_disassembler!(TestArchShort =>
@@ -1089,7 +1133,7 @@ mod tests {
         }
 
         assert!(bb0_vx.is_some() && bb1_vx.is_some());
-        assert_eq!(func.entry_point, bb0_vx);
+        assert_eq!(Some(func.entry_point_ref()), bb0_vx);
         assert!(func.cflow_graph.edge(bb0_vx.unwrap(), bb1_vx.unwrap()).is_some());
         assert!(func.cflow_graph.edge(bb1_vx.unwrap(), bb1_vx.unwrap()).is_some());
     }
@@ -1152,7 +1196,7 @@ mod tests {
         }
 
         assert!(bb0_vx.is_some() && bb1_vx.is_some());
-        assert_eq!(func.entry_point, bb0_vx);
+        assert_eq!(Some(func.entry_point_ref()), bb0_vx);
     }
 
     #[test]
@@ -1204,7 +1248,7 @@ mod tests {
         }
 
         assert!(bb0_vx.is_some() && bb1_vx.is_some());
-        assert_eq!(func.entry_point, bb1_vx);
+        assert_eq!(Some(func.entry_point_ref()), bb1_vx);
         assert!(func.cflow_graph.edge(bb0_vx.unwrap(), bb1_vx.unwrap()).is_some());
         assert!(func.cflow_graph.edge(bb1_vx.unwrap(), bb0_vx.unwrap()).is_some());
     }
@@ -1265,7 +1309,7 @@ mod tests {
         assert!(bb01_vx.is_some());
         assert!(bb1_vx.is_some());
         assert!(bb2_vx.is_some());
-        assert_eq!(func.entry_point, bb1_vx);
+        assert_eq!(Some(func.entry_point_ref()), bb1_vx);
         assert!(func.cflow_graph.edge(bb01_vx.unwrap(), bb2_vx.unwrap()).is_some());
         assert!(func.cflow_graph.edge(bb1_vx.unwrap(), bb2_vx.unwrap()).is_some());
         assert!(func.cflow_graph.edge(bb2_vx.unwrap(), bb01_vx.unwrap()).is_some());

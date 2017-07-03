@@ -52,14 +52,13 @@ fn exists_path_val(filepath: &str) -> result::Result<(), String> {
 }
 
 fn get_entry_point(func: &Function) -> Option<u64> {
-    if let Some(ref entry) = func.entry_point {
-        if let Some(&ControlFlowTarget::Resolved(ref bb)) = func.cflow_graph.vertex_label(*entry) {
+    match func.entry_point() {
+        &ControlFlowTarget::Resolved(ref bb) => {
             assert!(func.start == bb.area.start);
             return Some(bb.area.start);
-        }
+        },
+        _ => None
     }
-
-    None
 }
 
 fn disassemble(args: Args) -> Result<()> {

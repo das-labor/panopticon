@@ -99,55 +99,55 @@ pub fn global_names(func: &Function) -> (HashSet<Cow<'static, str>>, HashMap<Cow
 /// Inserts SSA Phi functions at junction points in the control flow graph of `func`. The
 /// algorithm produces the semi-pruned SSA form found in Cooper, Torczon: "Engineering a Compiler".
 pub fn phi_functions(func: &mut Function) -> Result<()> {
-    if func.entry_point.is_none() {
-        return Err("Function has no entry point".into());
-    }
-
     let lens = type_check(func)?;
     let (globals, usage) = global_names(func);
-    let mut cfg = &mut func.cflow_graph;
 
-    // initalize all variables
-    if let Some(&mut ControlFlowTarget::Resolved(ref mut bb)) = cfg.vertex_label_mut(func.entry_point.unwrap()) {
-        let pos = bb.area.start;
-        let instrs = globals
-            .iter()
-            .map(
-                |nam| {
-                    let len = lens.get(nam).ok_or(format!("No length for variable {}", nam))?;
+    // initalize all variables - TODO: I believe this should be inside of disassemble, no? E.g., creating a Function, then disassemble, is essentially a malformed object.
+    match func.entry_point_mut() {
+        &mut ControlFlowTarget::Resolved(ref mut bb) => {
+            let pos = bb.area.start;
+            let instrs = globals
+                .iter()
+                .map(
+                    |nam| {
+                        let len = lens.get(nam).ok_or(format!("No length for variable {}", nam))?;
 
-                    Ok(
-                        Statement {
-                            op: Operation::Move(Rvalue::Undefined),
-                            assignee: Lvalue::Variable { size: *len, name: nam.clone(), subscript: None },
-                        }
-                    )
-                }
+                        Ok(
+                            Statement {
+                                op: Operation::Move(Rvalue::Undefined),
+                                assignee: Lvalue::Variable { size: *len, name: nam.clone(), subscript: None },
+                            }
+                        )
+                    }
+                )
+                .collect::<Vec<_>>();
+
+            if instrs.iter().find(|x| x.is_err()).is_some() {
+                let e = instrs.into_iter().find(|x| x.is_err());
+                return Err(e.unwrap().err().unwrap());
+            }
+
+            let instrs = instrs.into_iter().map(|x| x.ok().unwrap()).collect::<Vec<_>>();
+            let mne = Mnemonic::new(
+                pos..pos,
+                "__init".to_string(),
+                "".to_string(),
+                vec![].iter(),
+                instrs.iter(),
             )
-            .collect::<Vec<_>>();
-
-        if instrs.iter().find(|x| x.is_err()).is_some() {
-            let e = instrs.into_iter().find(|x| x.is_err());
-            return Err(e.unwrap().err().unwrap());
-        }
-
-        let instrs = instrs.into_iter().map(|x| x.ok().unwrap()).collect::<Vec<_>>();
-        let mne = Mnemonic::new(
-            pos..pos,
-            "__init".to_string(),
-            "".to_string(),
-            vec![].iter(),
-            instrs.iter(),
-        )
                 .ok()
                 .unwrap();
 
-        bb.mnemonics.insert(0, mne);
-    } else {
-        return Err("Function entry point is unresolved!".into());
+            bb.mnemonics.insert(0, mne);
+        },
+        _ => {
+            return Err("Function entry point is unresolved!".into());
+        }
     }
 
-    let idom = immediate_dominator(func.entry_point.unwrap(), cfg);
+    let vx = func.entry_point_ref();
+    let mut cfg = &mut func.cflow_graph;
+    let idom = immediate_dominator(vx, cfg);
 
     if idom.len() != cfg.num_vertices() {
         return Err("No all basic blocks are reachable from function entry point".into());
@@ -186,10 +186,10 @@ pub fn phi_functions(func: &mut Function) -> Result<()> {
                                     assignee: Lvalue::Variable { size: *len, name: v.clone(), subscript: None },
                                 },
                             ]
-                                    .iter(),
+                                .iter(),
                         )
-                                .ok()
-                                .unwrap();
+                            .ok()
+                            .unwrap();
 
                         bb.mnemonics.insert(0, mne);
                         phis.insert((v, *d));
@@ -207,17 +207,13 @@ pub fn phi_functions(func: &mut Function) -> Result<()> {
 /// Cooper, Torczon: "Engineering a Compiler". The function expects that Phi functions to be
 /// already inserted.
 pub fn rename_variables(func: &mut Function) -> Result<()> {
-    if func.entry_point.is_none() {
-        return Err("Function has no entry point".into());
-    }
-
     let (globals, _) = global_names(func);
-    let mut cfg = &mut func.cflow_graph;
+    let vx = func.entry_point_ref();
     let mut stack = HashMap::<Cow<'static, str>, Vec<usize>>::from_iter(globals.iter().map(|x| (x.clone(), Vec::new())));
     let mut counter = HashMap::<Cow<'static, str>, usize>::new();
-    let idom = immediate_dominator(func.entry_point.unwrap(), cfg);
+    let idom = immediate_dominator(vx, func.cfg_mut());
 
-    if idom.len() != cfg.num_vertices() {
+    if idom.len() != func.cfg().num_vertices() {
         return Err("No all basic blocks are reachable from function entry point".into());
     }
 
@@ -240,9 +236,9 @@ pub fn rename_variables(func: &mut Function) -> Result<()> {
             bb.rewrite(
                 |i| match i {
                     &mut Statement {
-                             op: Operation::Phi(_),
-                             assignee: Lvalue::Variable { ref name, ref mut subscript, .. },
-                         } => *subscript = Some(new_name(name, counter, stack)),
+                        op: Operation::Phi(_),
+                        assignee: Lvalue::Variable { ref name, ref mut subscript, .. },
+                    } => *subscript = Some(new_name(name, counter, stack)),
                     _ => {}
                 }
             );
@@ -329,10 +325,10 @@ pub fn rename_variables(func: &mut Function) -> Result<()> {
     }
 
     rename(
-        func.entry_point.unwrap(),
+        func.entry_point_ref(),
         &mut counter,
         &mut stack,
-        cfg,
+        func.cfg_mut(),
         &idom,
     )
 }
@@ -407,8 +403,8 @@ mod tests {
             vec![].iter(),
             vec![Statement { op: Operation::Move(Rvalue::new_u32(1)), assignee: i.clone() }].iter(),
         )
-                .ok()
-                .unwrap();
+            .ok()
+            .unwrap();
 
         let mne10 = Mnemonic::new(
             1..2,
@@ -417,8 +413,8 @@ mod tests {
             vec![].iter(),
             vec![Statement { op: Operation::Move(Rvalue::Undefined), assignee: a.clone() }].iter(),
         )
-                .ok()
-                .unwrap();
+            .ok()
+            .unwrap();
         let mne11 = Mnemonic::new(
             2..3,
             "b1.1".to_string(),
@@ -426,8 +422,8 @@ mod tests {
             vec![].iter(),
             vec![Statement { op: Operation::Move(Rvalue::Undefined), assignee: c.clone() }].iter(),
         )
-                .ok()
-                .unwrap();
+            .ok()
+            .unwrap();
         let mne12 = Mnemonic::new(
             3..4,
             "b1.2".to_string(),
@@ -439,10 +435,10 @@ mod tests {
                     assignee: f.clone(),
                 },
             ]
-                    .iter(),
+                .iter(),
         )
-                .ok()
-                .unwrap();
+            .ok()
+            .unwrap();
 
         let mne20 = Mnemonic::new(
             4..5,
@@ -451,8 +447,8 @@ mod tests {
             vec![].iter(),
             vec![Statement { op: Operation::Move(Rvalue::Undefined), assignee: b.clone() }].iter(),
         )
-                .ok()
-                .unwrap();
+            .ok()
+            .unwrap();
         let mne21 = Mnemonic::new(
             5..6,
             "b2.1".to_string(),
@@ -460,8 +456,8 @@ mod tests {
             vec![].iter(),
             vec![Statement { op: Operation::Move(Rvalue::Undefined), assignee: c.clone() }].iter(),
         )
-                .ok()
-                .unwrap();
+            .ok()
+            .unwrap();
         let mne22 = Mnemonic::new(
             6..7,
             "b2.2".to_string(),
@@ -469,8 +465,8 @@ mod tests {
             vec![].iter(),
             vec![Statement { op: Operation::Move(Rvalue::Undefined), assignee: d.clone() }].iter(),
         )
-                .ok()
-                .unwrap();
+            .ok()
+            .unwrap();
 
         let mne30 = Mnemonic::new(
             7..8,
@@ -483,10 +479,10 @@ mod tests {
                     assignee: y.clone(),
                 },
             ]
-                    .iter(),
+                .iter(),
         )
-                .ok()
-                .unwrap();
+            .ok()
+            .unwrap();
         let mne31 = Mnemonic::new(
             8..9,
             "b3.1".to_string(),
@@ -498,10 +494,10 @@ mod tests {
                     assignee: z.clone(),
                 },
             ]
-                    .iter(),
+                .iter(),
         )
-                .ok()
-                .unwrap();
+            .ok()
+            .unwrap();
         let mne32 = Mnemonic::new(
             9..10,
             "b3.2".to_string(),
@@ -513,10 +509,10 @@ mod tests {
                     assignee: i.clone(),
                 },
             ]
-                    .iter(),
+                .iter(),
         )
-                .ok()
-                .unwrap();
+            .ok()
+            .unwrap();
         let mne33 = Mnemonic::new(
             10..11,
             "b3.3".to_string(),
@@ -528,10 +524,10 @@ mod tests {
                     assignee: f.clone(),
                 },
             ]
-                    .iter(),
+                .iter(),
         )
-                .ok()
-                .unwrap();
+            .ok()
+            .unwrap();
 
         let mne4 = Mnemonic::new(
             11..12,
@@ -540,8 +536,8 @@ mod tests {
             vec![].iter(),
             vec![].iter(),
         )
-                .ok()
-                .unwrap();
+            .ok()
+            .unwrap();
 
         let mne50 = Mnemonic::new(
             12..13,
@@ -550,8 +546,8 @@ mod tests {
             vec![].iter(),
             vec![Statement { op: Operation::Move(Rvalue::Undefined), assignee: a.clone() }].iter(),
         )
-                .ok()
-                .unwrap();
+            .ok()
+            .unwrap();
         let mne51 = Mnemonic::new(
             13..14,
             "b5.1".to_string(),
@@ -559,8 +555,8 @@ mod tests {
             vec![].iter(),
             vec![Statement { op: Operation::Move(Rvalue::Undefined), assignee: d.clone() }].iter(),
         )
-                .ok()
-                .unwrap();
+            .ok()
+            .unwrap();
         let mne52 = Mnemonic::new(
             14..15,
             "b5.2".to_string(),
@@ -572,10 +568,10 @@ mod tests {
                     assignee: f.clone(),
                 },
             ]
-                    .iter(),
+                .iter(),
         )
-                .ok()
-                .unwrap();
+            .ok()
+            .unwrap();
 
         let mne6 = Mnemonic::new(
             15..16,
@@ -584,8 +580,8 @@ mod tests {
             vec![].iter(),
             vec![Statement { op: Operation::Move(Rvalue::Undefined), assignee: d.clone() }].iter(),
         )
-                .ok()
-                .unwrap();
+            .ok()
+            .unwrap();
 
         let mne7 = Mnemonic::new(
             16..17,
@@ -594,8 +590,8 @@ mod tests {
             vec![].iter(),
             vec![Statement { op: Operation::Move(Rvalue::Undefined), assignee: b.clone() }].iter(),
         )
-                .ok()
-                .unwrap();
+            .ok()
+            .unwrap();
 
         let mne8 = Mnemonic::new(
             17..18,
@@ -604,8 +600,8 @@ mod tests {
             vec![].iter(),
             vec![Statement { op: Operation::Move(Rvalue::Undefined), assignee: c.clone() }].iter(),
         )
-                .ok()
-                .unwrap();
+            .ok()
+            .unwrap();
 
         let bb0 = BasicBlock::from_vec(vec![mne0]);
         let bb1 = BasicBlock::from_vec(vec![mne10, mne11, mne12]);
@@ -651,7 +647,7 @@ mod tests {
         let mut func = Function::new(0, &Region::undefined("ram".to_owned(), 100), Some("test".to_owned()));
 
         func.cflow_graph = cfg;
-        func.entry_point = Some(v0);
+        func.set_entry_point_ref(v0);
 
         assert!(phi_functions(&mut func).is_ok());
 
@@ -781,8 +777,8 @@ mod tests {
             vec![].iter(),
             vec![Statement { op: Operation::Move(Rvalue::new_u32(1)), assignee: i.clone() }].iter(),
         )
-                .ok()
-                .unwrap();
+            .ok()
+            .unwrap();
 
         let mne10 = Mnemonic::new(
             1..2,
@@ -791,8 +787,8 @@ mod tests {
             vec![].iter(),
             vec![Statement { op: Operation::Move(Rvalue::Undefined), assignee: a.clone() }].iter(),
         )
-                .ok()
-                .unwrap();
+            .ok()
+            .unwrap();
         let mne11 = Mnemonic::new(
             2..3,
             "b1.1".to_string(),
@@ -800,8 +796,8 @@ mod tests {
             vec![].iter(),
             vec![Statement { op: Operation::Move(Rvalue::Undefined), assignee: c.clone() }].iter(),
         )
-                .ok()
-                .unwrap();
+            .ok()
+            .unwrap();
         let mne12 = Mnemonic::new(
             3..4,
             "b1.2".to_string(),
@@ -813,10 +809,10 @@ mod tests {
                     assignee: f.clone(),
                 },
             ]
-                    .iter(),
+                .iter(),
         )
-                .ok()
-                .unwrap();
+            .ok()
+            .unwrap();
 
         let mne20 = Mnemonic::new(
             4..5,
@@ -825,8 +821,8 @@ mod tests {
             vec![].iter(),
             vec![Statement { op: Operation::Move(Rvalue::Undefined), assignee: b.clone() }].iter(),
         )
-                .ok()
-                .unwrap();
+            .ok()
+            .unwrap();
         let mne21 = Mnemonic::new(
             5..6,
             "b2.1".to_string(),
@@ -834,8 +830,8 @@ mod tests {
             vec![].iter(),
             vec![Statement { op: Operation::Move(Rvalue::Undefined), assignee: c.clone() }].iter(),
         )
-                .ok()
-                .unwrap();
+            .ok()
+            .unwrap();
         let mne22 = Mnemonic::new(
             6..7,
             "b2.2".to_string(),
@@ -843,8 +839,8 @@ mod tests {
             vec![].iter(),
             vec![Statement { op: Operation::Move(Rvalue::Undefined), assignee: d.clone() }].iter(),
         )
-                .ok()
-                .unwrap();
+            .ok()
+            .unwrap();
 
         let mne30 = Mnemonic::new(
             7..8,
@@ -857,10 +853,10 @@ mod tests {
                     assignee: y.clone(),
                 },
             ]
-                    .iter(),
+                .iter(),
         )
-                .ok()
-                .unwrap();
+            .ok()
+            .unwrap();
         let mne31 = Mnemonic::new(
             8..9,
             "b3.1".to_string(),
@@ -872,10 +868,10 @@ mod tests {
                     assignee: z.clone(),
                 },
             ]
-                    .iter(),
+                .iter(),
         )
-                .ok()
-                .unwrap();
+            .ok()
+            .unwrap();
         let mne32 = Mnemonic::new(
             9..10,
             "b3.2".to_string(),
@@ -887,10 +883,10 @@ mod tests {
                     assignee: i.clone(),
                 },
             ]
-                    .iter(),
+                .iter(),
         )
-                .ok()
-                .unwrap();
+            .ok()
+            .unwrap();
         let mne33 = Mnemonic::new(
             10..11,
             "b3.3".to_string(),
@@ -902,10 +898,10 @@ mod tests {
                     assignee: f.clone(),
                 },
             ]
-                    .iter(),
+                .iter(),
         )
-                .ok()
-                .unwrap();
+            .ok()
+            .unwrap();
 
         let mne4 = Mnemonic::new(
             11..12,
@@ -914,8 +910,8 @@ mod tests {
             vec![].iter(),
             vec![].iter(),
         )
-                .ok()
-                .unwrap();
+            .ok()
+            .unwrap();
 
         let mne50 = Mnemonic::new(
             12..13,
@@ -924,8 +920,8 @@ mod tests {
             vec![].iter(),
             vec![Statement { op: Operation::Move(Rvalue::Undefined), assignee: a.clone() }].iter(),
         )
-                .ok()
-                .unwrap();
+            .ok()
+            .unwrap();
         let mne51 = Mnemonic::new(
             13..14,
             "b5.1".to_string(),
@@ -933,8 +929,8 @@ mod tests {
             vec![].iter(),
             vec![Statement { op: Operation::Move(Rvalue::Undefined), assignee: d.clone() }].iter(),
         )
-                .ok()
-                .unwrap();
+            .ok()
+            .unwrap();
         let mne52 = Mnemonic::new(
             14..15,
             "b5.2".to_string(),
@@ -946,10 +942,10 @@ mod tests {
                     assignee: f.clone(),
                 },
             ]
-                    .iter(),
+                .iter(),
         )
-                .ok()
-                .unwrap();
+            .ok()
+            .unwrap();
 
         let mne6 = Mnemonic::new(
             15..16,
@@ -958,8 +954,8 @@ mod tests {
             vec![].iter(),
             vec![Statement { op: Operation::Move(Rvalue::Undefined), assignee: d.clone() }].iter(),
         )
-                .ok()
-                .unwrap();
+            .ok()
+            .unwrap();
 
         let mne7 = Mnemonic::new(
             16..17,
@@ -968,8 +964,8 @@ mod tests {
             vec![].iter(),
             vec![Statement { op: Operation::Move(Rvalue::Undefined), assignee: b.clone() }].iter(),
         )
-                .ok()
-                .unwrap();
+            .ok()
+            .unwrap();
 
         let mne8 = Mnemonic::new(
             17..18,
@@ -978,8 +974,8 @@ mod tests {
             vec![].iter(),
             vec![Statement { op: Operation::Move(Rvalue::Undefined), assignee: c.clone() }].iter(),
         )
-                .ok()
-                .unwrap();
+            .ok()
+            .unwrap();
 
         let bb0 = BasicBlock::from_vec(vec![mne0]);
         let bb1 = BasicBlock::from_vec(vec![mne10, mne11, mne12]);
@@ -1025,7 +1021,7 @@ mod tests {
         let mut func = Function::new(0, &Region::undefined("ram".to_owned(), 100), Some("test".to_owned()));
 
         func.cflow_graph = cfg;
-        func.entry_point = Some(v0);
+        func.set_entry_point_ref(v0);
 
         assert!(phi_functions(&mut func).is_ok());
         assert!(rename_variables(&mut func).is_ok());
