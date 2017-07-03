@@ -67,7 +67,7 @@ where
                         |(entry, mut f)| {
                             debug!("entry {:#x} = f.start {:#x}", entry, f.start);
                             let tx = tx.clone();
-                            f.dis::<A>(config.clone(), &region);
+                            f.disassemble::<A>(config.clone(), &region);
                             let new_ct = f.collect_calls()
                                 .into_iter()
                                 .filter_map(

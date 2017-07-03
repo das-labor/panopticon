@@ -382,7 +382,7 @@ impl Function {
     }
 
     /// Disassembles `self` inside region `reg`, with CPU state `init`.
-    pub fn dis<A: Architecture>(&mut self, init: A::Configuration, reg: &Region) -> ()
+    pub fn disassemble<A: Architecture>(&mut self, init: A::Configuration, reg: &Region) -> ()
     where
         A: Debug,
         A::Configuration: Debug,
@@ -800,7 +800,7 @@ mod tests {
         let data = OpaqueLayer::wrap(vec![0]);
         let reg = Region::new("".to_string(), data);
         let mut func = Function::new(0, &reg, None);
-        func.dis::<TestArchShort>(main, &reg);
+        func.disassemble::<TestArchShort>(main, &reg);
 
         assert_eq!(func.cflow_graph.num_vertices(), 1);
         assert_eq!(func.cflow_graph.num_edges(), 0);
@@ -866,7 +866,7 @@ mod tests {
         let data = OpaqueLayer::wrap(vec![0, 1, 2, 3, 4, 5]);
         let reg = Region::new("".to_string(), data);
         let mut func = Function::new(0, &reg, None);
-        func.dis::<TestArchShort>(main, &reg);
+        func.disassemble::<TestArchShort>(main, &reg);
 
         assert_eq!(func.cflow_graph.num_vertices(), 2);
         assert_eq!(func.cflow_graph.num_edges(), 1);
@@ -929,7 +929,7 @@ mod tests {
         let data = OpaqueLayer::wrap(vec![0, 1, 2]);
         let reg = Region::new("".to_string(), data);
         let mut func = Function::new(0, &reg, None);
-        func.dis::<TestArchShort>(main, &reg);
+        func.disassemble::<TestArchShort>(main, &reg);
 
         assert_eq!(func.cflow_graph.num_vertices(), 4);
         assert_eq!(func.cflow_graph.num_edges(), 4);
@@ -1002,7 +1002,7 @@ mod tests {
         let data = OpaqueLayer::wrap(vec![0, 1, 2]);
         let reg = Region::new("".to_string(), data);
         let mut func = Function::new(0, &reg, None);
-        func.dis::<TestArchShort>(main, &reg);
+        func.disassemble::<TestArchShort>(main, &reg);
 
         assert_eq!(func.cflow_graph.num_vertices(), 1);
         assert_eq!(func.cflow_graph.num_edges(), 1);
@@ -1051,7 +1051,7 @@ mod tests {
         let data = OpaqueLayer::wrap(vec![]);
         let reg = Region::new("".to_string(), data);
         let mut func = Function::new(0, &reg, None);
-        func.dis::<TestArchShort>(main, &reg);
+        func.disassemble::<TestArchShort>(main, &reg);
 
         assert_eq!(func.cflow_graph.num_vertices(), 1);
         assert_eq!(func.cflow_graph.num_edges(), 0);
@@ -1093,7 +1093,7 @@ mod tests {
 
         let data = OpaqueLayer::wrap(vec![0, 1, 2]);
         let reg = Region::new("".to_string(), data);
-        func.dis::<TestArchShort>(main, &reg);
+        func.disassemble::<TestArchShort>(main, &reg);
 
         assert_eq!(func.cflow_graph.num_vertices(), 2);
         assert_eq!(func.cflow_graph.num_edges(), 2);
@@ -1162,7 +1162,7 @@ mod tests {
         );
 
         let mut func = Function::new(0, &reg, None);
-	func.dis::<TestArchWide>(dec, &reg);
+	func.disassemble::<TestArchWide>(dec, &reg);
 
         assert_eq!(func.cflow_graph.num_vertices(), 3);
         assert_eq!(func.cflow_graph.num_edges(), 2);
@@ -1217,7 +1217,7 @@ mod tests {
         let data = OpaqueLayer::wrap(vec![0, 1, 2]);
         let reg = Region::new("".to_string(), data);
         let mut func = Function::new(1, &reg, None);
-        func.dis::<TestArchShort>(main, &reg);
+        func.disassemble::<TestArchShort>(main, &reg);
 
         assert_eq!(func.cflow_graph.num_vertices(), 2);
         assert_eq!(func.cflow_graph.num_edges(), 2);
@@ -1272,7 +1272,7 @@ mod tests {
         let data = OpaqueLayer::wrap(vec![0, 1, 2]);
         let reg = Region::new("".to_string(), data);
         let mut func = Function::new(1, &reg, None);
-        func.dis::<TestArchShort>(main, &reg);
+        func.disassemble::<TestArchShort>(main, &reg);
 
         assert_eq!(func.cflow_graph.num_vertices(), 3);
         assert_eq!(func.cflow_graph.num_edges(), 3);
