@@ -170,6 +170,11 @@ impl Mnemonic {
         )
     }
 
+    /// The size of this instruction mnemonic, in bytes
+    pub fn size(&self) -> usize {
+        self.area.len() as usize
+    }
+
     /// For testing only
     #[cfg(test)]
     pub fn dummy(a: Range<u64>) -> Mnemonic {

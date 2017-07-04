@@ -129,6 +129,38 @@ impl<'a, V, E> AdjacencyGraph<'a, V, E> for AdjacencyList<V, E> {
     }
 }
 
+pub struct VertexLabelIterator<'a, V: 'a, E: 'a, G: VertexListGraph<'a, V, E> + 'a> where G::Vertex: 'a {
+    cfg: &'a G,
+    iter: G::Vertices,
+}
+
+impl<'a, V: 'a, E, G: VertexListGraph<'a, V, E> + 'a> VertexLabelIterator<'a, V, E, G> {
+    /// Create a new vertex label iterator from this VertexListGraph
+    pub fn new(cfg: &'a G) -> Self {
+        VertexLabelIterator { cfg, iter: cfg.vertices() }
+    }
+}
+
+impl<'a, V: 'a, E, G: VertexListGraph<'a, V, E> + 'a> Iterator for VertexLabelIterator<'a, V, E, G> {
+    type Item = &'a V;
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.iter.next() {
+            Some(vx) => {
+                self.cfg.vertex_label(vx)
+            },
+            None => None
+        }
+    }
+}
+
+impl<'a, V: 'a, E> IntoIterator for &'a AdjacencyList<V, E> {
+    type Item = &'a V;
+    type IntoIter = VertexLabelIterator<'a, V, E, AdjacencyList<V, E>>;
+    fn into_iter(self) -> Self::IntoIter {
+        VertexLabelIterator::new(self)
+    }
+}
+
 impl<'a, V: 'a, E> VertexListGraph<'a, V, E> for AdjacencyList<V, E> {
     type Vertices = std::iter::Map<std::collections::hash_map::Keys<'a, Self::Vertex, V>, fn(&Self::Vertex) -> Self::Vertex>;
 
@@ -626,5 +658,32 @@ mod test {
 
         assert_eq!(g.num_vertices(), g2.num_vertices());
         assert_eq!(g.num_edges(), g2.num_edges());
+    }
+
+    #[test]
+    fn test_vertice_label_iterator() {
+        let mut g = AdjacencyList::<isize, String>::new();
+
+        let n1 = g.add_vertex(42);
+        let n2 = g.add_vertex(13);
+        let n3 = g.add_vertex(1337);
+        let n4 = g.add_vertex(99);
+
+        let e12 = g.add_edge("a".to_string(), n1, n2);
+        let e23 = g.add_edge("b".to_string(), n2, n3);
+        let e21 = g.add_edge("c".to_string(), n2, n1);
+        let e14 = g.add_edge("d".to_string(), n1, n4);
+
+        assert!(e12.is_some() && e23.is_some() && e21.is_some() && e14.is_some());
+
+        let mut labels_iter: VertexLabelIterator<isize, String, _> = g.into_iter();
+        assert!(labels_iter.next().is_some());
+        assert!(labels_iter.next().is_some());
+        assert!(labels_iter.next().is_some());
+        assert!(labels_iter.next().is_some());
+        assert!(labels_iter.next().is_none());
+
+        let sum = g.into_iter().sum::<isize>();
+        assert_eq!(sum, 42 + 13 + 1337 + 99);
     }
 }

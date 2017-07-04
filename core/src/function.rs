@@ -71,6 +71,8 @@ pub struct Function {
     entry_point: ControlFlowRef,
     /// Name of the memory region the function is part of
     region: String,
+    /// The size of this function, in bytes (only counts the number of instructions, not padding bytes, or gaps for non-contiguous functions)
+    size: usize,
 }
 
 #[derive(Clone,PartialEq,Eq,Debug)]
@@ -92,6 +94,7 @@ impl Function {
             cflow_graph,
             entry_point,
             region: region.name().clone(),
+            size: 0,
         }
     }
 
@@ -122,7 +125,7 @@ impl Function {
         self.entry_point
     }
 
-    /// Returns a reference to the entry point vertex in the cfg
+    /// Sets the functions  entry point vertex in the cfg to `vx` (this is primarily for use in tests). **WARNING** Make sure this vertex is correct.
     pub fn set_entry_point_ref(&mut self, vx: ControlFlowRef) {
         self.entry_point = vx;
     }
@@ -387,18 +390,15 @@ impl Function {
         A: Debug,
         A::Configuration: Debug,
     {
-        use std::iter::FromIterator;
-
         let (mut mnemonics, mut by_source, mut by_destination) = Self::index_cflow_graph(&self.cflow_graph, self.start);
-        let mut todo = HashSet::<u64>::from_iter(self.cflow_graph.vertices().filter_map(|vx| {
-            self.cflow_graph.vertex_label(vx).and_then(|lb| {
-                if let &ControlFlowTarget::Unresolved(Rvalue::Constant{ value,.. }) = lb {
-                    Some(value)
-                } else {
-                    None
-                }
-            })
-        }));
+
+        let mut todo = self.cflow_graph.into_iter().filter_map(|lb| {
+            if let &ControlFlowTarget::Unresolved(Rvalue::Constant{ value,.. }) = lb {
+                Some(value)
+            } else {
+                None
+            }
+        }).collect::<HashSet<u64>>();
 
         todo.insert(self.start);
 
@@ -413,6 +413,7 @@ impl Function {
                         Some(&MnemonicOrError::Mnemonic(ref mne)) => {
                             if mne.area.start < addr && mne.area.end > addr {
                                 mnemonics.entry(addr).or_insert(Vec::new()).push(MnemonicOrError::Error(addr, "Jump inside instruction".into()));
+                                self.size += mne.size();
                                 continue;
                             } else if mne.area.start == addr {
                                 continue;
@@ -484,8 +485,8 @@ impl Function {
     pub fn collect_calls(&self) -> Vec<Rvalue> {
         let mut ret = Vec::new();
 
-        for vx in self.cflow_graph.vertices() {
-            if let Some(&ControlFlowTarget::Resolved(ref bb)) = self.cflow_graph.vertex_label(vx) {
+        for cft in self.cflow_graph.into_iter() {
+            if let &ControlFlowTarget::Resolved(ref bb) = cft {
                 bb.execute(
                     |i| match i {
                         &Statement { op: Operation::Call(ref t), .. } => ret.push(t.clone()),
