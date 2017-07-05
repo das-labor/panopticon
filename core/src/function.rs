@@ -31,12 +31,39 @@
 use {Architecture, BasicBlock, Guard, Mnemonic, Operation, Region, Rvalue, Statement, Program};
 
 use panopticon_graph_algos::{AdjacencyList, EdgeListGraphTrait, GraphTrait, MutableGraphTrait, VertexListGraphTrait};
-use panopticon_graph_algos::adjacency_list::{AdjacencyListEdgeDescriptor, AdjacencyListVertexDescriptor};
+use panopticon_graph_algos::adjacency_list::{AdjacencyListEdgeDescriptor, AdjacencyListVertexDescriptor, VertexLabelIterator};
 use panopticon_graph_algos::search::{TraversalOrder, TreeIterator};
 use std::borrow::Cow;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fmt::Debug;
 use uuid::Uuid;
+
+/// An iterator over every BasicBlock in a Function
+pub struct BasicBlockIterator<'a> {
+    iter: VertexLabelIterator<'a, ControlFlowTarget, Guard, AdjacencyList<ControlFlowTarget, Guard>>
+}
+
+impl<'a> BasicBlockIterator<'a> {
+    /// Create a new statement iterator from `mnemonics`
+    pub fn new(cfg: &'a ControlFlowGraph) -> Self {
+        BasicBlockIterator {
+            iter: cfg.into_iter(),
+        }
+    }
+}
+
+impl<'a> Iterator for BasicBlockIterator<'a> {
+    type Item = &'a BasicBlock;
+    fn next(&mut self) ->  Option<Self::Item> {
+        loop {
+            match self.iter.next() {
+                None => return None,
+                Some(&ControlFlowTarget::Resolved(ref bb)) => return Some(bb),
+                _ => ()
+            }
+        }
+    }
+}
 
 /// Node of the function graph.
 #[derive(Serialize,Deserialize,Debug,Clone)]
@@ -110,6 +137,11 @@ impl Function {
         self.uuid
     }
 
+    /// The size of this function, in bytes (does not count gaps)
+    pub fn size(&self) -> usize {
+        self.size
+    }
+
     /// Returns a reference to this functions control flow graph
     pub fn cfg(&self) -> &ControlFlowGraph {
         &self.cflow_graph
@@ -150,9 +182,9 @@ impl Function {
 
         by_destination.insert(entry, vec![(Rvalue::Undefined, Guard::always())]);
 
-        for v in g.vertices() {
-            match g.vertex_label(v) {
-                Some(&ControlFlowTarget::Resolved(ref bb)) => {
+        for cft in g {
+            match cft {
+                &ControlFlowTarget::Resolved(ref bb) => {
                     let mut prev_mne = None;
 
                     for mne in &bb.mnemonics {
@@ -165,11 +197,10 @@ impl Function {
                         prev_mne = Some(mne.area.start);
                     }
                 }
-                Some(&ControlFlowTarget::Failed(ref pos, ref msg)) => {
+                &ControlFlowTarget::Failed(ref pos, ref msg) => {
                     mnemonics.entry(*pos).or_insert(Vec::new()).push(MnemonicOrError::Error(*pos, msg.clone()));
                 }
-                Some(&ControlFlowTarget::Unresolved(_)) => {}
-                None => unreachable!(),
+                &ControlFlowTarget::Unresolved(_) => {}
             }
         }
 
@@ -413,9 +444,9 @@ impl Function {
                         Some(&MnemonicOrError::Mnemonic(ref mne)) => {
                             if mne.area.start < addr && mne.area.end > addr {
                                 mnemonics.entry(addr).or_insert(Vec::new()).push(MnemonicOrError::Error(addr, "Jump inside instruction".into()));
-                                self.size += mne.size();
                                 continue;
                             } else if mne.area.start == addr {
+                                self.size += mne.size();
                                 continue;
                             }
                         }
@@ -443,6 +474,7 @@ impl Function {
                                 mne.opcode,
                                 match_st.tokens
                             );
+                            self.size += mne.size();
                             mnemonics.entry(mne.area.start).or_insert(Vec::new()).push(MnemonicOrError::Mnemonic(mne));
                         }
                     }
@@ -481,21 +513,22 @@ impl Function {
         }
     }
 
+    /// Returns an iterator over this functions `BasicBlock`s
+    pub fn basic_blocks(&self) -> BasicBlockIterator {
+        BasicBlockIterator::new(&self.cflow_graph)
+    }
+
     /// Returns all call targets.
     pub fn collect_calls(&self) -> Vec<Rvalue> {
         let mut ret = Vec::new();
-
-        for cft in self.cflow_graph.into_iter() {
-            if let &ControlFlowTarget::Resolved(ref bb) = cft {
-                bb.execute(
-                    |i| match i {
-                        &Statement { op: Operation::Call(ref t), .. } => ret.push(t.clone()),
-                        _ => {}
-                    }
-                );
+        for bb in self.basic_blocks() {
+            for statement in bb.statements() {
+                match statement {
+                    &Statement { op: Operation::Call(ref t), .. } => ret.push(t.clone()),
+                    _ => ()
+                }
             }
         }
-
         debug!("collected calls: {:?}", ret);
         ret
     }
@@ -513,17 +546,9 @@ impl Function {
     }
 
     /// Returns the basic block that contains `a`.
-    pub fn find_basic_block_at(&self, a: u64) -> Option<ControlFlowRef> {
-        self.cflow_graph
-            .vertices()
-            .find(
-                |&x| match self.cflow_graph.vertex_label(x) {
-                    Some(&ControlFlowTarget::Resolved(ref bb)) => bb.area.start <= a && bb.area.end > a,
-                    _ => false,
-                }
-            )
+    pub fn find_basic_block_at(&self, a: u64) -> Option<&BasicBlock> {
+        self.basic_blocks().find(|&bb| bb.area.start <= a && bb.area.end > a)
     }
-
 
     /// Returns all nodes in the graph of this function in post order.
     pub fn postorder(&self) -> Vec<ControlFlowRef> {
