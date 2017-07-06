@@ -262,7 +262,7 @@ mod tests {
         cfg.add_edge(Guard::always(), v2, v3);
         cfg.add_edge(g.negation(), v3, v1);
         cfg.add_edge(g.clone(), v3, v4);
-        let mut func = Function::new(0, &Region::undefined("ram".to_owned(), 100), None);
+        let mut func = Function::undefined(0, None, &Region::undefined("ram".to_owned(), 100), None);
 
         func.cflow_graph = cfg;
         func.set_entry_point_ref(v0);
@@ -574,7 +574,7 @@ mod tests {
         cfg.add_edge(Guard::always(), v7, v3);
         cfg.add_edge(Guard::always(), v8, v7);
 
-        let mut func = Function::new(0, &Region::undefined("ram".to_owned(), 100), Some("test".to_owned()));
+        let mut func = Function::undefined(0, None, &Region::undefined("ram".to_owned(), 100), None);
 
         func.cflow_graph = cfg;
         func.set_entry_point_ref(v0);
@@ -948,7 +948,7 @@ mod tests {
         cfg.add_edge(Guard::always(), v7, v3);
         cfg.add_edge(Guard::always(), v8, v7);
 
-        let mut func = Function::new(0, &Region::undefined("ram".to_owned(), 100), Some("test".to_owned()));
+        let mut func = Function::undefined(0, None, &Region::undefined("ram".to_owned(), 100), None);
 
         func.cflow_graph = cfg;
         func.set_entry_point_ref(v0);

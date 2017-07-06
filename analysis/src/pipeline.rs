@@ -18,12 +18,10 @@
 
 use futures::{Future, Sink, Stream, stream};
 use futures::sync::mpsc;
-use panopticon_core::{Architecture, CallTarget, Function, Program, Region, Rvalue};
+use panopticon_core::{Architecture, CallTarget, Error, Function, Program, Region, Rvalue};
 use panopticon_data_flow::ssa_convertion;
-use panopticon_graph_algos::{GraphTrait, VertexListGraphTrait};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::fmt::Debug;
-use std::iter::FromIterator;
 use std::thread;
 use std::sync::Arc;
 
@@ -40,58 +38,62 @@ where
     let (tx, rx) = mpsc::channel::<Function>(10);
     thread::spawn(
         move || {
-            let tx = tx;
-            let mut functions = HashSet::<u64>::new();
-            let mut targets = HashMap::<u64, Function>::from_iter(
+            let mut finished_functions = HashSet::<u64>::new();
+            let mut targets: Vec<u64> = Vec::new();
+            let mut failures: Vec<(u64, Error)> = Vec::new();
+            // TODO: this is the exact code below, modulo how we construct the function
+            let functions =
                 program
                     .call_graph
-                    .vertices()
+                    .into_iter()
                     .filter_map(
-                        |vx| match program.call_graph.vertex_label(vx) {
-                            Some(&CallTarget::Todo(Rvalue::Constant { value: entry, .. }, ref maybe_name, ref uuid)) => {
-                                let f = Function::with_uuid(entry, uuid.clone(), &region, maybe_name.clone());
-                                functions.insert(entry);
-                                Some((entry, f))
+                        |ct| match ct {
+                            &CallTarget::Todo(Rvalue::Constant { value: entry, .. }, ref maybe_name, ref uuid) => {
+                                finished_functions.insert(entry);
+                                match Function::with_uuid::<A>(entry, uuid, &region, maybe_name.clone(), config.clone()) {
+                                    Ok(mut f) => {
+                                        let addresses = f.collect_call_addresses();
+                                        targets.extend_from_slice(&addresses);
+                                        let _ = ssa_convertion(&mut f);
+                                        Some(f)
+                                    },
+                                    Err(e) => { failures.push((entry, e)); None },
+                                }
                             }
-                            Some(_) => None,
-                            None => unreachable!(),
+                            _ => None,
                         }
-                    )
-            );
+                    ).collect::<Vec<Function>>();
+
+            // now we send the first burst of functions;
+            // stop unwrapping;
+            {
+                let tx = tx.clone();
+                tx.send_all(stream::iter(functions.into_iter().map(|f| Ok(f)))).wait().unwrap().0;
+            }
 
             while !targets.is_empty() {
                 info!("disassemble({}) {:?}", targets.len(), &targets);
-                let new_targets: Vec<Vec<(u64, Function)>> = targets
-                    .into_iter()
-                    .map(
-                        |(entry, mut f)| {
-                            debug!("entry {:#x} = f.start {:#x}", entry, f.start);
-                            let tx = tx.clone();
-                            f.disassemble::<A>(config.clone(), &region);
-                            let new_ct = f.collect_calls()
-                                .into_iter()
-                                .filter_map(
-                                    |rv| {
-                                        if let Rvalue::Constant { value, .. } = rv {
-                                            info!("checking if {} is in {:?}", value, &functions);
-                                            if !functions.contains(&value) && entry != value {
-                                                functions.insert(value);
-                                                info!("adding {:#x} - func_0x{:x}", value, value);
-                                                return Some((value, Function::new(value, &region, None)));
-                                            }
-                                        }
-                                        None
-                                    }
-                                )
-                                .collect::<Vec<(u64, Function)>>();
-
-                            let _ = ssa_convertion(&mut f);
-                            tx.send_all(stream::iter(vec![Ok(f)])).wait().unwrap().0;
-                            new_ct
+                let mut new_targets = Vec::new();
+                for address in targets.drain(..) {
+                    info!("checking if {} is in {:?}", address, &finished_functions);
+                    if !finished_functions.contains(&address) {
+                        finished_functions.insert(address);
+                        info!("adding func_0x{:x}", address);
+                        match Function::new::<A>(address, &region, None, config.clone()) {
+                            Ok(mut f) => {
+                                let addresses = f.collect_call_addresses();
+                                new_targets.extend_from_slice(&addresses);
+                                let _ = ssa_convertion(&mut f);
+                                {
+                                    let tx = tx.clone();
+                                    tx.send_all(stream::iter(vec![Ok(f)])).wait().unwrap().0;
+                                }
+                            },
+                            Err(e) => failures.push((address, e)),
                         }
-                    )
-                    .collect();
-                targets = new_targets.into_iter().flat_map(|x| x).collect();
+                    }
+                }
+                targets = new_targets;
             }
         }
     );

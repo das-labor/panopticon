@@ -35,8 +35,7 @@ fn avr_jmp_overflow() {
     )
             .unwrap();
 
-    let mut func = Function::new(0, &reg, None);
-    func.disassemble::<Avr>(Mcu::atmega88(), &reg);
+    let func = Function::new::<Avr>(0, &reg, None, Mcu::atmega88()).unwrap();
 
     assert_eq!(func.cflow_graph.num_vertices(), 2);
     assert_eq!(func.cflow_graph.num_edges(), 2);
@@ -59,8 +58,7 @@ fn avr_wrap_around() {
         Path::new("../test-data/avr-overflow.bin"),
     )
             .unwrap();
-    let mut func = Function::new(0, &reg, None);
-    func.disassemble::<Avr>(Mcu::atmega88(), &reg);
+    let func = Function::new::<Avr>(0, &reg, None, Mcu::atmega88()).unwrap();
 
     assert_eq!(func.cflow_graph.num_vertices(), 2);
     assert_eq!(func.cflow_graph.num_edges(), 2);

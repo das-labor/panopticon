@@ -663,8 +663,7 @@ mod tests {
             0x21,0x2c, // 6:8 mov
         ),
         );
-        let mut fun = Function::new(0, &reg, Some("test".to_owned()));
-        fun.disassemble::<Avr>(Mcu::atmega8(), &reg);
+        let fun = Function::new::<Avr>(0, &reg, Some("test".to_owned()), Mcu::atmega8()).unwrap();
         let cg = &fun.cflow_graph;
 
         for x in cg.vertices() {
@@ -711,8 +710,7 @@ mod tests {
             0x21,0x2c, // 8:10 mov
         ),
         );
-        let mut fun = Function::new(0, &Region::undefined("ram".to_owned(), 100), Some("test".to_owned()));
-        fun.disassemble::<Avr>(Mcu::atmega8(), &reg);
+        let fun = Function::new::<Avr>(0, &reg, Some("test".to_owned()), Mcu::atmega8()).unwrap();
         let cg = &fun.cflow_graph;
         for x in cg.vertices() {
             match cg.vertex_label(x) {
@@ -760,8 +758,7 @@ mod tests {
             0x21,0x2c, // 6:8 mov
         ),
         );
-        let mut fun = Function::new(0, &Region::undefined("ram".to_owned(), 100), Some("test".to_owned()));
-        fun.disassemble::<Avr>(Mcu::atmega8(), &reg);
+        let fun = Function::new::<Avr>(0, &reg, Some("test".to_owned()), Mcu::atmega8()).unwrap();
         let cg = &fun.cflow_graph;
 
         for x in cg.vertices() {
@@ -813,8 +810,7 @@ mod tests {
                 0xB0,0xE0, //       10 ldi     r27, 0
             ),
         );
-        let mut fun = Function::new(0, &Region::undefined("ram".to_owned(), 100), Some("test".to_owned()));
-        fun.disassemble::<Avr>(Mcu::atmega8(), &reg);
+        let fun = Function::new::<Avr>(0, &reg, Some("test".to_owned()), Mcu::atmega8()).unwrap();
         let cfg = &fun.cflow_graph;
 
         assert_eq!(cfg.num_vertices(), 3);

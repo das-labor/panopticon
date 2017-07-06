@@ -28,14 +28,13 @@
 //! on the front-end.
 
 
-use {Architecture, BasicBlock, Guard, Mnemonic, Operation, Region, Rvalue, Statement, Program};
+use {Architecture, BasicBlock, Guard, Mnemonic, Operation, Region, Result, Rvalue, Statement, Program};
 
 use panopticon_graph_algos::{AdjacencyList, EdgeListGraphTrait, GraphTrait, MutableGraphTrait, VertexListGraphTrait};
 use panopticon_graph_algos::adjacency_list::{AdjacencyListEdgeDescriptor, AdjacencyListVertexDescriptor, VertexLabelIterator};
 use panopticon_graph_algos::search::{TraversalOrder, TreeIterator};
 use std::borrow::Cow;
 use std::collections::{BTreeMap, HashMap, HashSet};
-use std::fmt::Debug;
 use uuid::Uuid;
 
 /// An iterator over every BasicBlock in a Function
@@ -109,27 +108,142 @@ enum MnemonicOrError {
 }
 
 impl Function {
-    /// Create a new function with `name`, inside memory `region`, starting at `start`, with a random UUID.
-    pub fn new(start: u64, region: &Region, name: Option<String>) -> Function {
-        let mut cflow_graph = AdjacencyList::new();
-        let entry_point = ControlFlowTarget::Unresolved(Rvalue::new_u64(start));
+    /// Create an undefined Function. This function has undefined behavior. Creating an undefined Function always succeeds, and is usually a bad idea. Don't do it unless you know what you're doing.
+    pub fn undefined(start: u64, uuid: Option<Uuid>, region: &Region, name: Option<String>) -> Function {
+         let mut cflow_graph = AdjacencyList::new();
+         let entry_point = ControlFlowTarget::Unresolved(Rvalue::new_u64(start));
         let entry_point = cflow_graph.add_vertex(entry_point);
         Function {
-            name: name.unwrap_or(format!("func_{:#x}", start)),
             start,
-            uuid: Uuid::new_v4(),
+            name: name.unwrap_or(format!("func_{:#x}", start)),
+            uuid: uuid.unwrap_or(Uuid::new_v4()),
             cflow_graph,
             entry_point,
             region: region.name().clone(),
             size: 0,
         }
     }
+    /// Create and start disassembling a new function with `name`, inside memory `region`, starting at entry point `start`, with a random UUID.
+    pub fn new<A: Architecture>(start: u64, region: &Region, name: Option<String>, init: A::Configuration) -> Result<Function> {
+        let mut cflow_graph = AdjacencyList::new();
+        let entry_point = ControlFlowTarget::Unresolved(Rvalue::new_u64(start));
+        cflow_graph.add_vertex(entry_point);
+        let mut size = 0;
+        let (mut mnemonics, mut by_source, mut by_destination) = Self::index_cflow_graph(&mut cflow_graph, start);
+
+        let mut todo = cflow_graph.into_iter().filter_map(|lb| {
+            if let &ControlFlowTarget::Unresolved(Rvalue::Constant{ value,.. }) = lb {
+                Some(value)
+            } else {
+                None
+            }
+        }).collect::<HashSet<u64>>();
+
+        todo.insert(start);
+
+        while let Some(addr) = todo.iter().next().cloned() {
+            let maybe_mnes = mnemonics.iter().find(|x| *x.0 >= addr).map(|x| x.1.clone());
+
+            assert!(todo.remove(&addr));
+
+            if let Some(mnes) = maybe_mnes {
+                if !mnes.is_empty() {
+                    match mnes.first() {
+                        Some(&MnemonicOrError::Mnemonic(ref mne)) => {
+                            if mne.area.start < addr && mne.area.end > addr {
+                                mnemonics.entry(addr).or_insert(Vec::new()).push(MnemonicOrError::Error(addr, "Jump inside instruction".into()));
+                                continue;
+                            } else if mne.area.start == addr {
+                                size += mne.size();
+                                continue;
+                            }
+                        }
+                        Some(&MnemonicOrError::Error(ref pos, _)) => {
+                            if *pos == addr {
+                                continue;
+                            }
+                        }
+                        None => unreachable!(),
+                    }
+                }
+            }
+
+            let maybe_match = A::decode(region, addr, &init);
+
+            match maybe_match {
+                Ok(match_st) => {
+                    if match_st.mnemonics.is_empty() {
+                        mnemonics.entry(addr).or_insert(Vec::new()).push(MnemonicOrError::Error(addr, "Unrecognized instruction".into()));
+                    } else {
+                        for mne in match_st.mnemonics {
+                            debug!(
+                                "{:x}: {} ({:?})",
+                                mne.area.start,
+                                mne.opcode,
+                                match_st.tokens
+                            );
+                            size += mne.size();
+                            mnemonics.entry(mne.area.start).or_insert(Vec::new()).push(MnemonicOrError::Mnemonic(mne));
+                        }
+                    }
+
+                    for (origin, tgt, gu) in match_st.jumps {
+                        debug!("jump to {:?}", tgt);
+                        match tgt {
+                            Rvalue::Constant { value: ref c, .. } => {
+                                by_source.entry(origin).or_insert(Vec::new()).push((tgt.clone(), gu.clone()));
+                                by_destination.entry(*c).or_insert(Vec::new()).push((Rvalue::new_u64(origin), gu.clone()));
+                                todo.insert(*c);
+                            }
+                            _ => {
+                                by_source.entry(origin).or_insert(Vec::new()).push((tgt, gu.clone()));
+                            }
+                        }
+                    }
+                }
+                Err(e) => {
+                    error!("failed to disassemble: {}", e);
+                    mnemonics.entry(addr).or_insert(Vec::new()).push(MnemonicOrError::Error(addr, "Unrecognized instruction".into()));
+                }
+            }
+        }
+
+        let cfg = Self::assemble_cflow_graph(mnemonics, by_source, by_destination, start);
+        let name = name.unwrap_or(format!("func_{:#x}", start));
+        let uuid = Uuid::new_v4();
+        let ep = cfg
+            .vertices()
+            .find(
+                |&x| match cfg.vertex_label(x) {
+                    Some(&ControlFlowTarget::Resolved(ref bb)) => bb.area.start == start && bb.area.end > start,
+                    _ => false,
+                }
+            );
+
+        let entry_point = match ep {
+            Some(entry_point) => {
+                entry_point
+            },
+            None => {
+                return Err(format!("function ({}) {} has no entry point", name, uuid).into());
+            }
+        };
+        Ok(Function {
+            name,
+            start,
+            uuid,
+            cflow_graph: cfg,
+            entry_point,
+            region: region.name().clone(),
+            size,
+        })
+    }
 
     /// New function starting at `start`, with name `name`, inside memory region `region` and UUID `uuid`.
-    pub fn with_uuid(start: u64, uuid: Uuid, region: &Region, name: Option<String>) -> Function {
-        let mut f = Function::new(start, region, name);
-        f.uuid = uuid;
-        f
+    pub fn with_uuid<A: Architecture>(start: u64, uuid: &Uuid, region: &Region, name: Option<String>, init: A::Configuration) -> Result<Function> {
+        let mut f = Function::new::<A>(start, region, name, init)?;
+        f.uuid = uuid.clone();
+        Ok(f)
     }
 
     /// Returns the UUID of this function
@@ -415,107 +529,24 @@ impl Function {
         ret
     }
 
-    /// Disassembles `self` inside region `reg`, with CPU state `init`.
-    pub fn disassemble<A: Architecture>(&mut self, init: A::Configuration, reg: &Region) -> ()
-    where
-        A: Debug,
-        A::Configuration: Debug,
-    {
-        let (mut mnemonics, mut by_source, mut by_destination) = Self::index_cflow_graph(&self.cflow_graph, self.start);
-
-        let mut todo = self.cflow_graph.into_iter().filter_map(|lb| {
-            if let &ControlFlowTarget::Unresolved(Rvalue::Constant{ value,.. }) = lb {
-                Some(value)
-            } else {
-                None
-            }
-        }).collect::<HashSet<u64>>();
-
-        todo.insert(self.start);
-
-        while let Some(addr) = todo.iter().next().cloned() {
-            let maybe_mnes = mnemonics.iter().find(|x| *x.0 >= addr).map(|x| x.1.clone());
-
-            assert!(todo.remove(&addr));
-
-            if let Some(mnes) = maybe_mnes {
-                if !mnes.is_empty() {
-                    match mnes.first() {
-                        Some(&MnemonicOrError::Mnemonic(ref mne)) => {
-                            if mne.area.start < addr && mne.area.end > addr {
-                                mnemonics.entry(addr).or_insert(Vec::new()).push(MnemonicOrError::Error(addr, "Jump inside instruction".into()));
-                                continue;
-                            } else if mne.area.start == addr {
-                                self.size += mne.size();
-                                continue;
-                            }
-                        }
-                        Some(&MnemonicOrError::Error(ref pos, _)) => {
-                            if *pos == addr {
-                                continue;
-                            }
-                        }
-                        None => unreachable!(),
-                    }
-                }
-            }
-
-            let maybe_match = A::decode(reg, addr, &init);
-
-            match maybe_match {
-                Ok(match_st) => {
-                    if match_st.mnemonics.is_empty() {
-                        mnemonics.entry(addr).or_insert(Vec::new()).push(MnemonicOrError::Error(addr, "Unrecognized instruction".into()));
-                    } else {
-                        for mne in match_st.mnemonics {
-                            debug!(
-                                "{:x}: {} ({:?})",
-                                mne.area.start,
-                                mne.opcode,
-                                match_st.tokens
-                            );
-                            self.size += mne.size();
-                            mnemonics.entry(mne.area.start).or_insert(Vec::new()).push(MnemonicOrError::Mnemonic(mne));
-                        }
-                    }
-
-                    for (origin, tgt, gu) in match_st.jumps {
-                        debug!("jump to {:?}", tgt);
-                        match tgt {
-                            Rvalue::Constant { value: ref c, .. } => {
-                                by_source.entry(origin).or_insert(Vec::new()).push((tgt.clone(), gu.clone()));
-                                by_destination.entry(*c).or_insert(Vec::new()).push((Rvalue::new_u64(origin), gu.clone()));
-                                todo.insert(*c);
-                            }
-                            _ => {
-                                by_source.entry(origin).or_insert(Vec::new()).push((tgt, gu.clone()));
-                            }
-                        }
-                    }
-                }
-                Err(e) => {
-                    error!("failed to disassemble: {}", e);
-                    mnemonics.entry(addr).or_insert(Vec::new()).push(MnemonicOrError::Error(addr, "Unrecognized instruction".into()));
-                }
-            }
-        }
-
-        let cfg = Self::assemble_cflow_graph(mnemonics, by_source, by_destination, self.start);
-
-        self.cflow_graph = cfg;
-        match self.find_basic_block_by_start(self.start) {
-            Some(entry_point) => {
-                self.entry_point = entry_point;
-            },
-            None => {
-                error!("function ({}) {} has no entry point", self.name, self.uuid);
-            }
-        }
-    }
-
     /// Returns an iterator over this functions `BasicBlock`s
     pub fn basic_blocks(&self) -> BasicBlockIterator {
         BasicBlockIterator::new(&self.cflow_graph)
+    }
+
+    /// Returns the address of every function this function calls
+    pub fn collect_call_addresses(&self) -> Vec<u64> {
+        let mut ret = Vec::new();
+        for bb in self.basic_blocks() {
+            for statement in bb.statements() {
+                match statement {
+                    &Statement { op: Operation::Call(Rvalue::Constant{ value, .. }), .. } => ret.push(value),
+                    _ => ()
+                }
+            }
+        }
+        debug!("collected calls: {:?}", ret);
+        ret
     }
 
     /// Returns all call targets.
@@ -682,7 +713,7 @@ mod tests {
 
     #[test]
     fn new() {
-        let f = Function::new(100, &Region::undefined("ram".to_owned(), 100), Some("test".to_owned()));
+        let f = Function::undefined(100, None, &Region::undefined("ram".to_owned(), 100), Some("test".to_owned()));
 
         assert_eq!(f.name, "test".to_string());
         assert_eq!(f.cflow_graph.num_vertices(), 1);
@@ -825,8 +856,7 @@ mod tests {
         );
         let data = OpaqueLayer::wrap(vec![0]);
         let reg = Region::new("".to_string(), data);
-        let mut func = Function::new(0, &reg, None);
-        func.disassemble::<TestArchShort>(main, &reg);
+        let func = Function::new::<TestArchShort>(0, &reg, None, main).unwrap();
 
         assert_eq!(func.cflow_graph.num_vertices(), 1);
         assert_eq!(func.cflow_graph.num_edges(), 0);
@@ -891,8 +921,7 @@ mod tests {
 
         let data = OpaqueLayer::wrap(vec![0, 1, 2, 3, 4, 5]);
         let reg = Region::new("".to_string(), data);
-        let mut func = Function::new(0, &reg, None);
-        func.disassemble::<TestArchShort>(main, &reg);
+        let func = Function::new::<TestArchShort>(0, &reg, None, main).unwrap();
 
         assert_eq!(func.cflow_graph.num_vertices(), 2);
         assert_eq!(func.cflow_graph.num_edges(), 1);
@@ -954,8 +983,7 @@ mod tests {
 
         let data = OpaqueLayer::wrap(vec![0, 1, 2]);
         let reg = Region::new("".to_string(), data);
-        let mut func = Function::new(0, &reg, None);
-        func.disassemble::<TestArchShort>(main, &reg);
+        let func = Function::new::<TestArchShort>(0, &reg, None, main).unwrap();
 
         assert_eq!(func.cflow_graph.num_vertices(), 4);
         assert_eq!(func.cflow_graph.num_edges(), 4);
@@ -1027,8 +1055,7 @@ mod tests {
 
         let data = OpaqueLayer::wrap(vec![0, 1, 2]);
         let reg = Region::new("".to_string(), data);
-        let mut func = Function::new(0, &reg, None);
-        func.disassemble::<TestArchShort>(main, &reg);
+        let func = Function::new::<TestArchShort>(0, &reg, None, main).unwrap();
 
         assert_eq!(func.cflow_graph.num_vertices(), 1);
         assert_eq!(func.cflow_graph.num_edges(), 1);
@@ -1076,29 +1103,21 @@ mod tests {
 
         let data = OpaqueLayer::wrap(vec![]);
         let reg = Region::new("".to_string(), data);
-        let mut func = Function::new(0, &reg, None);
-        func.disassemble::<TestArchShort>(main, &reg);
+        let func = Function::new::<TestArchShort>(0, &reg, None, main);
+        assert!(func.is_err());
+        // these tests have been rendered somewhat moot now since the entry point must be present
+        // assert_eq!(func.cflow_graph.num_vertices(), 1);
+        // assert_eq!(func.cflow_graph.num_edges(), 0);
+        // assert_eq!(func.name, "func_0x0".to_string());
 
-        assert_eq!(func.cflow_graph.num_vertices(), 1);
-        assert_eq!(func.cflow_graph.num_edges(), 0);
-        assert_eq!(func.name, "func_0x0".to_string());
-
-        let vx = func.cflow_graph.vertices().next().unwrap();
-        if let Some(&ControlFlowTarget::Failed(v, _)) = func.cflow_graph.vertex_label(vx) {
-            assert_eq!(v, 0);
-        }
+        // let vx = func.cflow_graph.vertices().next().unwrap();
+        // if let Some(&ControlFlowTarget::Failed(v, _)) = func.cflow_graph.vertex_label(vx) {
+        //     assert_eq!(v, 0);
+        // }
     }
 
     #[test]
     fn entry_split() {
-        let bb = BasicBlock::from_vec(vec![Mnemonic::dummy(0..1), Mnemonic::dummy(1..2)]);
-        let mut func = Function::new(0, &Region::undefined("ram".to_owned(), 100), Some("test".to_owned()));
-        let vx0 = func.cflow_graph.add_vertex(ControlFlowTarget::Resolved(bb));
-        let vx1 = func.cflow_graph.add_vertex(ControlFlowTarget::Unresolved(Rvalue::new_u32(2)));
-
-        func.set_entry_point_ref(vx0);
-        func.cflow_graph.add_edge(Guard::always(), vx0, vx1);
-
         let main = new_disassembler!(TestArchShort =>
             [ 0 ] = |st: &mut State<TestArchShort>| {
                 st.mnemonic(1,"test0","",vec!(),&|_| { Ok(vec![]) }).unwrap();
@@ -1119,7 +1138,13 @@ mod tests {
 
         let data = OpaqueLayer::wrap(vec![0, 1, 2]);
         let reg = Region::new("".to_string(), data);
-        func.disassemble::<TestArchShort>(main, &reg);
+        let bb = BasicBlock::from_vec(vec![Mnemonic::dummy(0..1), Mnemonic::dummy(1..2)]);
+        let mut func = Function::new::<TestArchShort>(0, &reg, Some("test".to_owned()), main).unwrap();
+        let vx0 = func.cflow_graph.add_vertex(ControlFlowTarget::Resolved(bb));
+        let vx1 = func.cflow_graph.add_vertex(ControlFlowTarget::Unresolved(Rvalue::new_u32(2)));
+
+        func.set_entry_point_ref(vx0);
+        func.cflow_graph.add_edge(Guard::always(), vx0, vx1);
 
         assert_eq!(func.cflow_graph.num_vertices(), 2);
         assert_eq!(func.cflow_graph.num_edges(), 2);
@@ -1187,9 +1212,7 @@ mod tests {
             }
         );
 
-        let mut func = Function::new(0, &reg, None);
-	func.disassemble::<TestArchWide>(dec, &reg);
-
+        let func = Function::new::<TestArchWide>(0, &reg, None, dec).unwrap();
         assert_eq!(func.cflow_graph.num_vertices(), 3);
         assert_eq!(func.cflow_graph.num_edges(), 2);
 
@@ -1242,9 +1265,7 @@ mod tests {
 
         let data = OpaqueLayer::wrap(vec![0, 1, 2]);
         let reg = Region::new("".to_string(), data);
-        let mut func = Function::new(1, &reg, None);
-        func.disassemble::<TestArchShort>(main, &reg);
-
+        let func = Function::new::<TestArchShort>(1, &reg, None, main).unwrap();
         assert_eq!(func.cflow_graph.num_vertices(), 2);
         assert_eq!(func.cflow_graph.num_edges(), 2);
 
@@ -1297,9 +1318,7 @@ mod tests {
 
         let data = OpaqueLayer::wrap(vec![0, 1, 2]);
         let reg = Region::new("".to_string(), data);
-        let mut func = Function::new(1, &reg, None);
-        func.disassemble::<TestArchShort>(main, &reg);
-
+        let func = Function::new::<TestArchShort>(1, &reg, None, main).unwrap();
         assert_eq!(func.cflow_graph.num_vertices(), 3);
         assert_eq!(func.cflow_graph.num_edges(), 3);
 
