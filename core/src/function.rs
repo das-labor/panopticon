@@ -248,8 +248,8 @@ impl Function {
     }
 
     /// Returns the UUID of this function
-    pub fn uuid(&self) -> Uuid {
-        self.uuid
+    pub fn uuid(&self) -> &Uuid {
+        &self.uuid
     }
 
     /// The size of this function, in bytes (only counts the number of instructions, not padding bytes, or gaps for non-contiguous functions)

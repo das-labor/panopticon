@@ -47,11 +47,11 @@ pub enum CallTarget {
 
 impl CallTarget {
     /// Returns the UUID of the call graph node.
-    pub fn uuid(&self) -> Uuid {
+    pub fn uuid(&self) -> &Uuid {
         match self {
             &CallTarget::Concrete(ref f) => f.uuid(),
-            &CallTarget::Symbolic(_, uuid) => uuid,
-            &CallTarget::Todo(_, _, uuid) => uuid,
+            &CallTarget::Symbolic(_, ref uuid) => uuid,
+            &CallTarget::Todo(_, _, ref uuid) => uuid,
         }
     }
 }
@@ -102,7 +102,7 @@ impl Program {
             .vertices()
             .find(
                 |&x| match self.call_graph.vertex_label(x) {
-                    Some(&CallTarget::Concrete(ref s)) => s.uuid() == *a,
+                    Some(&CallTarget::Concrete(ref s)) => s.uuid() == a,
                     _ => false,
                 }
             )
@@ -120,7 +120,7 @@ impl Program {
             .vertices()
             .find(
                 |&x| match self.call_graph.vertex_label(x) {
-                    Some(&CallTarget::Concrete(ref s)) => s.uuid() == *a,
+                    Some(&CallTarget::Concrete(ref s)) => s.uuid() == a,
                     _ => false,
                 }
             );
@@ -138,8 +138,7 @@ impl Program {
     /// Puts function/reference `new_ct` into the call graph, returning the UUIDs of all functions
     /// that are called by `new_ct` and call `new_ct`.
     pub fn insert(&mut self, new_ct: CallTarget) -> Vec<Uuid> {
-        let new_uu = new_ct.uuid();
-        let maybe_vx = self.call_graph.vertices().find(|ct| self.call_graph.vertex_label(*ct).unwrap().uuid() == new_uu);
+        let maybe_vx = self.call_graph.vertices().find(|ct| self.call_graph.vertex_label(*ct).unwrap().uuid() == new_ct.uuid());
 
         let new_vx = if let Some(vx) = maybe_vx {
             *self.call_graph.vertex_label_mut(vx).unwrap() = new_ct;
@@ -201,7 +200,7 @@ impl Program {
     pub fn find_call_target_by_uuid<'a>(&'a self, uu: &Uuid) -> Option<CallGraphRef> {
         for vx in self.call_graph.vertices() {
             if let Some(lb) = self.call_graph.vertex_label(vx) {
-                if lb.uuid() == *uu {
+                if lb.uuid() == uu {
                     return Some(vx);
                 }
             } else {
@@ -267,7 +266,7 @@ mod tests {
         assert_eq!(new, vec![]);
 
         if let Some(&CallTarget::Concrete(ref f)) = prog.call_graph.vertex_label(tvx) {
-            assert_eq!(f.uuid(), uuf);
+            assert_eq!(f.uuid(), &uuf);
         } else {
             unreachable!();
         }
@@ -314,7 +313,7 @@ mod tests {
         assert_eq!(new, vec![]);
 
         if let Some(&CallTarget::Concrete(ref f)) = prog.call_graph.vertex_label(tvx) {
-            assert_eq!(f.uuid(), uuf);
+            assert_eq!(f.uuid(), &uuf);
         }
         assert!(prog.call_graph.vertex_label(tvx).is_some());
         assert_eq!(prog.call_graph.num_edges(), 1);
