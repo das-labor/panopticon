@@ -87,8 +87,6 @@ pub type ControlFlowEdge = AdjacencyListEdgeDescriptor;
 pub struct Function {
     /// Display name of the function.
     pub name: String,
-    /// The virtual memory address this function starts at
-    pub start: u64,
     /// Unique, immutable identifier for this function.
     uuid: Uuid,
     /// Graph of basic blocks and jumps
@@ -110,11 +108,10 @@ enum MnemonicOrError {
 impl Function {
     /// Create an undefined Function. This function has undefined behavior. Creating an undefined Function always succeeds, and is usually a bad idea. Don't do it unless you know what you're doing.
     pub fn undefined(start: u64, uuid: Option<Uuid>, region: &Region, name: Option<String>) -> Function {
-         let mut cflow_graph = AdjacencyList::new();
-         let entry_point = ControlFlowTarget::Unresolved(Rvalue::new_u64(start));
+        let mut cflow_graph = AdjacencyList::new();
+        let entry_point = ControlFlowTarget::Unresolved(Rvalue::new_u64(start));
         let entry_point = cflow_graph.add_vertex(entry_point);
         Function {
-            start,
             name: name.unwrap_or(format!("func_{:#x}", start)),
             uuid: uuid.unwrap_or(Uuid::new_v4()),
             cflow_graph,
@@ -230,7 +227,6 @@ impl Function {
         };
         Ok(Function {
             name,
-            start,
             uuid,
             cflow_graph: cfg,
             entry_point,
@@ -256,7 +252,7 @@ impl Function {
         self.uuid
     }
 
-    /// The size of this function, in bytes (does not count gaps)
+    /// The size of this function, in bytes (only counts the number of instructions, not padding bytes, or gaps for non-contiguous functions)
     pub fn size(&self) -> usize {
         self.size
     }
