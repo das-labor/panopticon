@@ -90,7 +90,7 @@ pub struct Function {
     /// Unique, immutable identifier for this function.
     uuid: Uuid,
     /// Graph of basic blocks and jumps
-    pub cflow_graph: ControlFlowGraph,
+    cflow_graph: ControlFlowGraph,
     /// The function's entry point
     entry_point: ControlFlowRef,
     /// Name of the memory region the function is part of

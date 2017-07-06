@@ -37,12 +37,12 @@ fn avr_jmp_overflow() {
 
     let func = Function::new::<Avr>(0, &reg, None, Mcu::atmega88()).unwrap();
 
-    assert_eq!(func.cflow_graph.num_vertices(), 2);
-    assert_eq!(func.cflow_graph.num_edges(), 2);
+    assert_eq!(func.cfg().num_vertices(), 2);
+    assert_eq!(func.cfg().num_edges(), 2);
 
-    let mut vxs = func.cflow_graph.vertices();
-    if let Some(&ControlFlowTarget::Resolved(ref bb1)) = func.cflow_graph.vertex_label(vxs.next().unwrap()) {
-        if let Some(&ControlFlowTarget::Resolved(ref bb2)) = func.cflow_graph.vertex_label(vxs.next().unwrap()) {
+    let mut vxs = func.cfg().vertices();
+    if let Some(&ControlFlowTarget::Resolved(ref bb1)) = func.cfg().vertex_label(vxs.next().unwrap()) {
+        if let Some(&ControlFlowTarget::Resolved(ref bb2)) = func.cfg().vertex_label(vxs.next().unwrap()) {
             assert!(bb1.area.start == 0 || bb1.area.start == 6000);
             assert!(bb2.area.start == 0 || bb2.area.start == 6000);
             assert!(bb1.area.end == 2 || bb1.area.end == 6004);
@@ -60,12 +60,12 @@ fn avr_wrap_around() {
             .unwrap();
     let func = Function::new::<Avr>(0, &reg, None, Mcu::atmega88()).unwrap();
 
-    assert_eq!(func.cflow_graph.num_vertices(), 2);
-    assert_eq!(func.cflow_graph.num_edges(), 2);
+    assert_eq!(func.cfg().num_vertices(), 2);
+    assert_eq!(func.cfg().num_edges(), 2);
 
-    let mut vxs = func.cflow_graph.vertices();
-    if let Some(&ControlFlowTarget::Resolved(ref bb1)) = func.cflow_graph.vertex_label(vxs.next().unwrap()) {
-        if let Some(&ControlFlowTarget::Resolved(ref bb2)) = func.cflow_graph.vertex_label(vxs.next().unwrap()) {
+    let mut vxs = func.cfg().vertices();
+    if let Some(&ControlFlowTarget::Resolved(ref bb1)) = func.cfg().vertex_label(vxs.next().unwrap()) {
+        if let Some(&ControlFlowTarget::Resolved(ref bb2)) = func.cfg().vertex_label(vxs.next().unwrap()) {
             println!("bb1: {:?}, bb2: {:?}", bb1.area, bb2.area);
             assert!(bb1.area.start == 0 || bb1.area.start == 8190);
             assert!(bb2.area.start == 0 || bb2.area.start == 8190);

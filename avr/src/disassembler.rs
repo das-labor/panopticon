@@ -664,7 +664,7 @@ mod tests {
         ),
         );
         let fun = Function::new::<Avr>(0, &reg, Some("test".to_owned()), Mcu::atmega8()).unwrap();
-        let cg = &fun.cflow_graph;
+        let cg = &fun.cfg();
 
         for x in cg.vertices() {
             match cg.vertex_label(x) {
@@ -711,7 +711,7 @@ mod tests {
         ),
         );
         let fun = Function::new::<Avr>(0, &reg, Some("test".to_owned()), Mcu::atmega8()).unwrap();
-        let cg = &fun.cflow_graph;
+        let cg = &fun.cfg();
         for x in cg.vertices() {
             match cg.vertex_label(x) {
                 Some(&ControlFlowTarget::Resolved(ref bb)) => {
@@ -759,7 +759,7 @@ mod tests {
         ),
         );
         let fun = Function::new::<Avr>(0, &reg, Some("test".to_owned()), Mcu::atmega8()).unwrap();
-        let cg = &fun.cflow_graph;
+        let cg = &fun.cfg();
 
         for x in cg.vertices() {
             match cg.vertex_label(x) {
@@ -811,7 +811,7 @@ mod tests {
             ),
         );
         let fun = Function::new::<Avr>(0, &reg, Some("test".to_owned()), Mcu::atmega8()).unwrap();
-        let cfg = &fun.cflow_graph;
+        let cfg = &fun.cfg();
 
         assert_eq!(cfg.num_vertices(), 3);
         assert_eq!(cfg.num_edges(), 3);
@@ -872,8 +872,8 @@ mod tests {
             }
         }
 
-        for x in fun.cflow_graph.edges() {
-            let cg = &fun.cflow_graph;
+        for x in fun.cfg().edges() {
+            let cg = &fun.cfg();
             let from = cg.source(x);
             let to = cg.target(x);
             let from_ident = to_ident(cg.vertex_label(from));

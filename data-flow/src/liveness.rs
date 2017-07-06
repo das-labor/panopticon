@@ -264,7 +264,7 @@ mod tests {
         cfg.add_edge(g.clone(), v3, v4);
         let mut func = Function::undefined(0, None, &Region::undefined("ram".to_owned(), 100), None);
 
-        func.cflow_graph = cfg;
+        *func.cfg_mut() = cfg;
         func.set_entry_point_ref(v0);
 
         let all = HashSet::from_iter(vec![Cow::Borrowed("i"), Cow::Borrowed("s")]);
@@ -576,7 +576,7 @@ mod tests {
 
         let mut func = Function::undefined(0, None, &Region::undefined("ram".to_owned(), 100), None);
 
-        func.cflow_graph = cfg;
+        *func.cfg_mut() = cfg;
         func.set_entry_point_ref(v0);
 
         assert!(phi_functions(&mut func).is_ok());
@@ -950,7 +950,7 @@ mod tests {
 
         let mut func = Function::undefined(0, None, &Region::undefined("ram".to_owned(), 100), None);
 
-        func.cflow_graph = cfg;
+        *func.cfg_mut() = cfg;
         func.set_entry_point_ref(v0);
 
         assert!(phi_functions(&mut func).is_ok());
