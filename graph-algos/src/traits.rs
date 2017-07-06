@@ -63,11 +63,15 @@ pub trait AdjacencyMatrixGraph<'a, V, E>: Graph<'a, V, E> {
     fn edge(&'a self, Self::Vertex, Self::Vertex) -> Option<Self::Edge>;
 }
 
-pub trait MutableGraph<'a, V, E>: Graph<'a, V, E> {
+pub trait MutableGraph<'a, V: 'a, E: 'a>: Graph<'a, V, E> {
+    type LabelsMut: Iterator<Item = &'a mut V>;
+    type EdgesMut: Iterator<Item = &'a mut E>;
     fn add_vertex(&mut self, V) -> Self::Vertex;
     fn add_edge(&mut self, E, Self::Vertex, Self::Vertex) -> Option<Self::Edge>;
     fn remove_vertex<'t>(&'t mut self, Self::Vertex) -> Option<V>;
     fn remove_edge(&mut self, Self::Edge) -> Option<E>;
     fn edge_label_mut(&mut self, Self::Edge) -> Option<&mut E>;
     fn vertex_label_mut(&mut self, Self::Vertex) -> Option<&mut V>;
+    fn labels_mut(&'a mut self) -> Self::LabelsMut;
+    fn edges_mut(&'a mut self) -> Self::EdgesMut;
 }

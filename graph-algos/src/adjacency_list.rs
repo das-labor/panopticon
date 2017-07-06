@@ -195,7 +195,9 @@ impl<'a, V, E> AdjacencyMatrixGraph<'a, V, E> for AdjacencyList<V, E> {
     }
 }
 
-impl<'a, V, E> MutableGraph<'a, V, E> for AdjacencyList<V, E> {
+impl<'a, V: 'a, E: 'a> MutableGraph<'a, V, E> for AdjacencyList<V, E> {
+    type LabelsMut = std::collections::hash_map::ValuesMut<'a, Self::Vertex, V>;
+    type EdgesMut = std::collections::hash_map::ValuesMut<'a, Self::Edge, E>;
     fn add_vertex(&mut self, lb: V) -> Self::Vertex {
         let n = self.next_vertex;
 
@@ -308,6 +310,12 @@ impl<'a, V, E> MutableGraph<'a, V, E> for AdjacencyList<V, E> {
 
     fn edge_label_mut(&mut self, n: Self::Edge) -> Option<&mut E> {
         return self.edge_labels.get_mut(&n);
+    }
+    fn labels_mut(&'a mut self) -> Self::LabelsMut {
+        self.vertex_labels.values_mut()
+    }
+    fn edges_mut(&'a mut self) -> Self::EdgesMut {
+        self.edge_labels.values_mut()
     }
 }
 
