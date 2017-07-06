@@ -239,6 +239,11 @@ impl Function {
         })
     }
 
+    /// Returns the start address of the first basic block in this function
+    pub fn start(&self) -> u64 {
+        self.entry_point().area.start
+    }
+
     /// New function starting at `start`, with name `name`, inside memory region `region` and UUID `uuid`.
     pub fn with_uuid<A: Architecture>(start: u64, uuid: &Uuid, region: &Region, name: Option<String>, init: A::Configuration) -> Result<Function> {
         let mut f = Function::new::<A>(start, region, name, init)?;
@@ -271,19 +276,27 @@ impl Function {
         self.entry_point
     }
 
-    /// Sets the functions  entry point vertex in the cfg to `vx` (this is primarily for use in tests). **WARNING** Make sure this vertex is correct.
+    /// Sets the functions entry point vertex in the cfg to `vx` (this is primarily for use in tests).
+    ///
+    /// **WARNING** Make sure the vertex descriptor actually is the entry point _and_ points to a _resolved_ basic block, otherwise subsequent operations on this function will be undefined.
     pub fn set_entry_point_ref(&mut self, vx: ControlFlowRef) {
         self.entry_point = vx;
     }
 
-    /// Returns a reference to the entry point of this function. TODO: this should be a resolved BasicBlock. Will eliminate tons of boilerplate
-    pub fn entry_point(&self) -> &ControlFlowTarget {
-        &self.cflow_graph.vertex_label(self.entry_point).unwrap()
+    /// Returns a reference to the BasicBlock entry point of this function.
+    pub fn entry_point(&self) -> &BasicBlock {
+        match self.cflow_graph.vertex_label(self.entry_point).unwrap() {
+            &ControlFlowTarget::Resolved(ref bb) => bb,
+            _ => panic!("Function {} has an unresolved entry point - this is a bug, dumping the cfg: {:?}", self.name, self.cflow_graph)
+        }
     }
 
-    /// Returns a reference to the entry point of this function. TODO: this should be a resolved BasicBlock. Will eliminate tons of boilerplate
-    pub fn entry_point_mut(&mut self) -> &mut ControlFlowTarget {
-        self.cflow_graph.vertex_label_mut(self.entry_point).unwrap()
+    /// Returns a mutable reference to the BasicBlock entry point of this function.
+    pub fn entry_point_mut(&mut self) -> &mut BasicBlock {
+        match self.cflow_graph.vertex_label_mut(self.entry_point).unwrap() {
+            &mut ControlFlowTarget::Resolved(ref mut bb) => bb,
+            _ => panic!("Function {} has an unresolved entry point - this is a bug!", self.name) // can't dump cfg here because borrowed mutable ;)
+        }
     }
 
     fn index_cflow_graph(
@@ -718,7 +731,7 @@ mod tests {
         assert_eq!(f.name, "test".to_string());
         assert_eq!(f.cflow_graph.num_vertices(), 1);
         assert_eq!(f.cflow_graph.num_edges(), 0);
-        match f.entry_point() {
+        match f.cflow_graph.vertex_label(f.entry_point_ref()).unwrap() {
             &ControlFlowTarget::Unresolved(Rvalue::Constant{ value, size }) => {
                 assert_eq!(value, 100);
                 assert_eq!(size, 64);

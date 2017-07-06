@@ -416,59 +416,43 @@ impl Panopticon {
     }
 
     pub fn new_function(&mut self, func: Function) -> Result<()> {
-        use panopticon_core::{ControlFlowTarget, Operation, Rvalue, Statement};
+        use panopticon_core::{Operation, Rvalue, Statement};
 
         let pairs = {
-            let maybe_entry = {
-                let cfg = &func.cflow_graph;
-                for vx in cfg.vertices() {
-                    if let Some(&ControlFlowTarget::Resolved(ref bb)) = cfg.vertex_label(vx) {
-                        bb.execute(
-                            |stmt| {
-                                if let &Statement { op: Operation::Call(ref rv), .. } = stmt {
-                                    match rv {
-                                        &Rvalue::Constant { value, .. } => {
-                                            // their addr
-                                            let maybe_callee = self.by_entry.get(&value);
+            for bb in func.basic_blocks() {
+                for statement in bb.statements() {
+                    if let &Statement { op: Operation::Call(ref rv), .. } = statement {
+                        match rv {
+                            &Rvalue::Constant { value, .. } => {
+                                // their addr
+                                let maybe_callee = self.by_entry.get(&value);
 
-                                            if let Some(callee) = maybe_callee {
-                                                self.resolved_calls.insert(callee.clone(), (func.uuid().clone(), bb.area.start));
-                                            } else {
-                                                self.unresolved_calls.insert(Some(value), (func.uuid().clone(), bb.area.start));
-                                            }
-                                        }
-                                        _ => self.unresolved_calls.insert(None, (func.uuid().clone(), bb.area.start)),
-                                    }
+                                if let Some(callee) = maybe_callee {
+                                    self.resolved_calls.insert(callee.clone(), (func.uuid().clone(), bb.area.start));
+                                } else {
+                                    self.unresolved_calls.insert(Some(value), (func.uuid().clone(), bb.area.start));
                                 }
                             }
-                        );
+                            _ => self.unresolved_calls.insert(None, (func.uuid().clone(), bb.area.start)),
+                        }
                     }
                 }
-
-                // we should be able to just write func.start but i suspect there are bugs which modify the cfg directly without updating entry_point
-                match func.entry_point() {
-                    &ControlFlowTarget::Resolved(ref bb) => Some(bb.area.start),
-                    _ => None,
-                }
-            };
-
-            if let Some(entry) = maybe_entry {
-                // my addr
-                let pairs_owned = self.unresolved_calls.remove(&Some(entry)).unwrap_or(vec![]).into_iter();
-                let pairs_ref = self.unresolved_calls.get_vec(&None).cloned().unwrap_or(vec![]).into_iter();
-
-                self.by_entry.insert(entry, func.uuid().clone());
-
-                for (uuid, addr) in pairs_owned.clone() {
-                    self.resolved_calls.insert(func.uuid().clone(), (uuid.clone(), addr));
-                }
-
-                self.functions.insert(func.uuid().clone(), func);
-
-                pairs_owned.chain(pairs_ref).collect::<Vec<_>>()
-            } else {
-                vec![]
             }
+
+            let entry = func.start();
+            // my addr
+            let pairs_owned = self.unresolved_calls.remove(&Some(entry)).unwrap_or(vec![]).into_iter();
+            let pairs_ref = self.unresolved_calls.get_vec(&None).cloned().unwrap_or(vec![]).into_iter();
+
+            self.by_entry.insert(entry, func.uuid().clone());
+
+            for (uuid, addr) in pairs_owned.clone() {
+                self.resolved_calls.insert(func.uuid().clone(), (uuid.clone(), addr));
+            }
+
+            self.functions.insert(func.uuid().clone(), func);
+
+            pairs_owned.chain(pairs_ref).collect::<Vec<_>>()
         };
 
         for (uuid, addr) in pairs.into_iter() {

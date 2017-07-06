@@ -17,7 +17,7 @@
  */
 
 use errors::*;
-use panopticon_core::{ControlFlowTarget, Function};
+use panopticon_core::Function;
 use std::ffi::CString;
 use std::path::Path;
 use std::ptr;
@@ -31,11 +31,7 @@ pub struct CSidebarItem {
 
 impl CSidebarItem {
     pub fn new(func: &Function) -> Result<CSidebarItem> {
-        let entry = match func.entry_point() {
-            &ControlFlowTarget::Resolved(ref bb) => Some(bb.area.start),
-            _ => None,
-        };
-        let str_entry = CString::new(entry.map(|x| format!("0x{:x}", x)).unwrap_or("".to_string()).into_bytes())?;
+        let str_entry = CString::new(format!("0x{:x}", func.start()))?;
         let name = CString::new(func.name.to_string().into_bytes())?;
         let uuid = CString::new(func.uuid().to_string().into_bytes())?;
 

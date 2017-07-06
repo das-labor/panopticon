@@ -545,14 +545,7 @@ impl ControlFlowLayout {
                                 let (display, data) = if is_code {
                                     let maybe_func = functions
                                         .iter()
-                                        .find(
-                                            |&(_, f)| {
-                                                match f.entry_point() {
-                                                    &ControlFlowTarget::Resolved(ref bb) => bb.area.start == val,
-                                                    _ => false
-                                                }
-                                            }
-                                        );
+                                        .find(|&(_, f)| val == f.start());
                                     if let Some((_, called_func)) = maybe_func {
                                         (called_func.name.clone(), format!("{}", called_func.uuid()))
                                     } else {

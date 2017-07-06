@@ -29,7 +29,7 @@
 //! error node.
 
 
-use {ControlFlowTarget, Function, Rvalue};
+use {Function, Rvalue};
 use panopticon_graph_algos::{AdjacencyList, AdjacencyMatrixGraphTrait, GraphTrait, MutableGraphTrait, VertexListGraphTrait};
 use panopticon_graph_algos::adjacency_list::AdjacencyListVertexDescriptor;
 use uuid::Uuid;
@@ -89,11 +89,7 @@ impl Program {
             .find(
                 |&x| match self.call_graph.vertex_label(x) {
                     Some(&CallTarget::Concrete(ref s)) => {
-                        match s.entry_point() {
-                            &ControlFlowTarget::Resolved(ref ee) => ee.area.start == start,
-                            _ => false
-                        }
-                        //                        s.start == start
+                        s.start() == start
                     }
                     _ => false,
                 }
@@ -166,16 +162,11 @@ impl Program {
             for w in self.call_graph.vertices() {
                 match self.call_graph.vertex_label(w) {
                     Some(&CallTarget::Concrete(ref function)) => {
-                        match function.entry_point() {
-                            &ControlFlowTarget::Resolved(ref bb) => {
-                                if let Rvalue::Constant { ref value, .. } = a {
-                                    if *value == bb.area.start {
-                                        other_funs.push(w);
-                                        break;
-                                    }
-                                }
-                            },
-                            _ => ()
+                        if let Rvalue::Constant { ref value, .. } = a {
+                            if *value == function.start() {
+                                other_funs.push(w);
+                                break;
+                            }
                         }
                     }
                     Some(&CallTarget::Todo(ref _a, _, _)) => {
@@ -232,17 +223,25 @@ mod tests {
     #[test]
     fn find_by_entry() {
         let mut prog = Program::new("prog_test");
-        let mut func = Function::undefined(0, None, &Region::undefined("ram".to_owned(), 100), Some("test2".to_owned()));
+        let mut func = Function::undefined(0, None, &Region::undefined("ram".to_owned(), 100), Some("test".to_owned()));
 
         let bb0 = BasicBlock::from_vec(vec![Mnemonic::dummy(0..10)]);
         let vx = func.cfg_mut().add_vertex(ControlFlowTarget::Resolved(bb0));
         func.set_entry_point_ref(vx);
 
-        prog.call_graph.add_vertex(CallTarget::Concrete(Function::undefined(0, None, &Region::undefined("ram".to_owned(), 100), Some("test".to_owned()))));
+        let func2_start = 0xdeadbeef;
+        // technically passing func2_start is useless here since we overwrite it with bb below
+        let mut func2 = Function::undefined(func2_start, None, &Region::undefined("ram".to_owned(), 100), Some("test2".to_owned()));
+        let bb1 = BasicBlock::from_vec(vec![Mnemonic::dummy(func2_start..5)]);
+        let vx = func2.cfg_mut().add_vertex(ControlFlowTarget::Resolved(bb1));
+        func2.set_entry_point_ref(vx);
+
         let vx1 = prog.call_graph.add_vertex(CallTarget::Concrete(func));
+        let vx2 = prog.call_graph.add_vertex(CallTarget::Concrete(func2));
 
         assert_eq!(prog.find_function_by_entry(0), Some(vx1));
-        assert_eq!(prog.find_function_by_entry(1), None);
+        assert_eq!(prog.find_function_by_entry(func2_start), Some(vx2));
+        assert_eq!(prog.find_function_by_entry(2), None);
     }
 
     #[test]

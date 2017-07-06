@@ -103,46 +103,42 @@ pub fn phi_functions(func: &mut Function) -> Result<()> {
     let (globals, usage) = global_names(func);
 
     // initalize all variables - TODO: I believe this should be inside of disassemble, no? E.g., creating a Function, then disassemble, is essentially a malformed object.
-    match func.entry_point_mut() {
-        &mut ControlFlowTarget::Resolved(ref mut bb) => {
-            let pos = bb.area.start;
-            let instrs = globals
-                .iter()
-                .map(
-                    |nam| {
-                        let len = lens.get(nam).ok_or(format!("No length for variable {}", nam))?;
+    {
+        let bb = func.entry_point_mut();
+        let pos = bb.area.start;
+        let instrs = globals
+            .iter()
+            .map(
+                |nam| {
+                    let len = lens.get(nam).ok_or(format!("No length for variable {}", nam))?;
 
-                        Ok(
-                            Statement {
-                                op: Operation::Move(Rvalue::Undefined),
-                                assignee: Lvalue::Variable { size: *len, name: nam.clone(), subscript: None },
-                            }
-                        )
-                    }
-                )
-                .collect::<Vec<_>>();
-
-            if instrs.iter().find(|x| x.is_err()).is_some() {
-                let e = instrs.into_iter().find(|x| x.is_err());
-                return Err(e.unwrap().err().unwrap());
-            }
-
-            let instrs = instrs.into_iter().map(|x| x.ok().unwrap()).collect::<Vec<_>>();
-            let mne = Mnemonic::new(
-                pos..pos,
-                "__init".to_string(),
-                "".to_string(),
-                vec![].iter(),
-                instrs.iter(),
+                    Ok(
+                        Statement {
+                            op: Operation::Move(Rvalue::Undefined),
+                            assignee: Lvalue::Variable { size: *len, name: nam.clone(), subscript: None },
+                        }
+                    )
+                }
             )
-                .ok()
-                .unwrap();
+            .collect::<Vec<_>>();
 
-            bb.mnemonics.insert(0, mne);
-        },
-        _ => {
-            return Err("Function entry point is unresolved!".into());
+        if instrs.iter().find(|x| x.is_err()).is_some() {
+            let e = instrs.into_iter().find(|x| x.is_err());
+            return Err(e.unwrap().err().unwrap());
         }
+
+        let instrs = instrs.into_iter().map(|x| x.ok().unwrap()).collect::<Vec<_>>();
+        let mne = Mnemonic::new(
+            pos..pos,
+            "__init".to_string(),
+            "".to_string(),
+            vec![].iter(),
+            instrs.iter(),
+        )
+            .ok()
+            .unwrap();
+
+        bb.mnemonics.insert(0, mne);
     }
 
     let idom = immediate_dominator(func.entry_point_ref(), func.cfg());

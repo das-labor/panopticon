@@ -17,7 +17,7 @@ use futures::Stream;
 use panopticon_amd64 as amd64;
 use panopticon_analysis::pipeline;
 use panopticon_avr as avr;
-use panopticon_core::{ControlFlowTarget, Function, Machine, loader};
+use panopticon_core::{Machine, loader};
 use panopticon_graph_algos::GraphTrait;
 use std::path::Path;
 use std::result;
@@ -48,16 +48,6 @@ fn exists_path_val(filepath: &str) -> result::Result<(), String> {
     match Path::new(filepath).is_file() {
         true => Ok(()),
         false => Err(format!("'{}': no such file", filepath)),
-    }
-}
-
-fn get_entry_point(func: &Function) -> Option<u64> {
-    match func.entry_point() {
-        &ControlFlowTarget::Resolved(ref bb) => {
-            assert!(func.start == bb.area.start);
-            return Some(bb.area.start);
-        },
-        _ => None
     }
 }
 
@@ -102,15 +92,9 @@ fn disassemble(args: Args) -> Result<()> {
                     .collect::<Vec<_>>();
 
                 functions.sort_by(|f1, f2| {
-                    use std::cmp::Ordering::*;
-                    let entry1 = get_entry_point(f1);
-                    let entry2 = get_entry_point(f2);
-                    match (entry1, entry2) {
-                        (Some(entry1), Some(entry2)) => entry1.cmp(&entry2),
-                        (Some(_), None) => Greater,
-                        (None, Some(_)) => Less,
-                        (None, None) => Equal,
-                    }
+                    let entry1 = f1.start();
+                    let entry2 = f2.start();
+                    entry1.cmp(&entry2)
                 });
 
                 for function in functions {
