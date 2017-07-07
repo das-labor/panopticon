@@ -129,40 +129,19 @@ impl<'a, V, E> AdjacencyGraph<'a, V, E> for AdjacencyList<V, E> {
     }
 }
 
-pub struct VertexLabelIterator<'a, V: 'a, E: 'a, G: VertexListGraph<'a, V, E> + 'a> where G::Vertex: 'a {
-    cfg: &'a G,
-    iter: G::Vertices,
-}
-
-impl<'a, V: 'a, E, G: VertexListGraph<'a, V, E> + 'a> VertexLabelIterator<'a, V, E, G> {
-    /// Create a new vertex label iterator from this VertexListGraph
-    pub fn new(cfg: &'a G) -> Self {
-        VertexLabelIterator { cfg, iter: cfg.vertices() }
-    }
-}
-
-impl<'a, V: 'a, E, G: VertexListGraph<'a, V, E> + 'a> Iterator for VertexLabelIterator<'a, V, E, G> {
-    type Item = &'a V;
-    fn next(&mut self) -> Option<Self::Item> {
-        match self.iter.next() {
-            Some(vx) => {
-                self.cfg.vertex_label(vx)
-            },
-            None => None
-        }
-    }
-}
+pub type VertexLabelIterator<'a, K, V> = std::collections::hash_map::Values<'a, K, V>;
 
 impl<'a, V: 'a, E> IntoIterator for &'a AdjacencyList<V, E> {
     type Item = &'a V;
-    type IntoIter = VertexLabelIterator<'a, V, E, AdjacencyList<V, E>>;
+    type IntoIter = <AdjacencyList<V, E> as VertexListGraph<'a, V, E>>::VertexLabels;
     fn into_iter(self) -> Self::IntoIter {
-        VertexLabelIterator::new(self)
+        self.vertex_labels()
     }
 }
 
 impl<'a, V: 'a, E> VertexListGraph<'a, V, E> for AdjacencyList<V, E> {
     type Vertices = std::iter::Map<std::collections::hash_map::Keys<'a, Self::Vertex, V>, fn(&Self::Vertex) -> Self::Vertex>;
+    type VertexLabels = std::collections::hash_map::Values<'a, Self::Vertex, V>;
 
     fn num_vertices(&self) -> usize {
         return self.vertex_labels.len();
@@ -171,10 +150,15 @@ impl<'a, V: 'a, E> VertexListGraph<'a, V, E> for AdjacencyList<V, E> {
     fn vertices(&'a self) -> Self::Vertices {
         return self.vertex_labels.keys().map(std::clone::Clone::clone);
     }
+
+    fn vertex_labels(&'a self) -> Self::VertexLabels {
+        self.vertex_labels.values()
+    }
 }
 
 impl<'a, V, E: 'a> EdgeListGraph<'a, V, E> for AdjacencyList<V, E> {
     type Edges = std::iter::Map<std::collections::hash_map::Keys<'a, Self::Edge, E>, fn(&Self::Edge) -> Self::Edge>;
+    type EdgeLabels = std::collections::hash_map::Values<'a, Self::Edge, E>;
 
     fn num_edges(&self) -> usize {
         return self.edge_labels.len();
@@ -183,8 +167,11 @@ impl<'a, V, E: 'a> EdgeListGraph<'a, V, E> for AdjacencyList<V, E> {
     fn edges(&'a self) -> Self::Edges {
         return self.edge_labels.keys().map(std::clone::Clone::clone);
     }
-}
 
+    fn edge_labels(&'a self) -> Self::EdgeLabels {
+        self.edge_labels.values()
+    }
+}
 
 impl<'a, V, E> AdjacencyMatrixGraph<'a, V, E> for AdjacencyList<V, E> {
     fn edge(&'a self, from: Self::Vertex, to: Self::Vertex) -> Option<Self::Edge> {
@@ -196,8 +183,8 @@ impl<'a, V, E> AdjacencyMatrixGraph<'a, V, E> for AdjacencyList<V, E> {
 }
 
 impl<'a, V: 'a, E: 'a> MutableGraph<'a, V, E> for AdjacencyList<V, E> {
-    type LabelsMut = std::collections::hash_map::ValuesMut<'a, Self::Vertex, V>;
-    type EdgesMut = std::collections::hash_map::ValuesMut<'a, Self::Edge, E>;
+    type VertexLabelsMut = std::collections::hash_map::ValuesMut<'a, Self::Vertex, V>;
+    type EdgeLabelsMut = std::collections::hash_map::ValuesMut<'a, Self::Edge, E>;
     fn add_vertex(&mut self, lb: V) -> Self::Vertex {
         let n = self.next_vertex;
 
@@ -311,10 +298,10 @@ impl<'a, V: 'a, E: 'a> MutableGraph<'a, V, E> for AdjacencyList<V, E> {
     fn edge_label_mut(&mut self, n: Self::Edge) -> Option<&mut E> {
         return self.edge_labels.get_mut(&n);
     }
-    fn labels_mut(&'a mut self) -> Self::LabelsMut {
+    fn vertex_labels_mut(&'a mut self) -> Self::VertexLabelsMut {
         self.vertex_labels.values_mut()
     }
-    fn edges_mut(&'a mut self) -> Self::EdgesMut {
+    fn edge_labels_mut(&'a mut self) -> Self::EdgeLabelsMut {
         self.edge_labels.values_mut()
     }
 }
@@ -684,7 +671,7 @@ mod test {
 
         assert!(e12.is_some() && e23.is_some() && e21.is_some() && e14.is_some());
 
-        let mut labels_iter: VertexLabelIterator<isize, String, _> = g.into_iter();
+        let mut labels_iter = g.into_iter();
         assert!(labels_iter.next().is_some());
         assert!(labels_iter.next().is_some());
         assert!(labels_iter.next().is_some());

@@ -29,14 +29,14 @@ pub enum HierarchicalOrdering<T: Clone> {
 }
 
 /// Bourdoncle: "Efficient chaotic iteration strategies with widenings"
-pub fn weak_topo_order<'a, V, E, G: 'a + Graph<'a, V, E> + IncidenceGraph<'a, V, E> + VertexListGraph<'a, V, E>>(
+pub fn weak_topo_order<'a, V: 'a, E, G: 'a + Graph<'a, V, E> + IncidenceGraph<'a, V, E> + VertexListGraph<'a, V, E>>(
     root: G::Vertex,
     graph: &'a G,
 ) -> HierarchicalOrdering<G::Vertex>
 where
     G::Vertex: Debug,
 {
-    fn visit<'a, V, E, G: 'a + Graph<'a, V, E> + IncidenceGraph<'a, V, E> + VertexListGraph<'a, V, E>>(
+    fn visit<'a, V: 'a, E, G: 'a + Graph<'a, V, E> + IncidenceGraph<'a, V, E> + VertexListGraph<'a, V, E>>(
         vx: G::Vertex,
         graph: &'a G,
         ret: &mut Vec<Box<HierarchicalOrdering<G::Vertex>>>,
@@ -88,7 +88,7 @@ where
         head
     }
 
-    fn component<'a, V, E, G: 'a + Graph<'a, V, E> + IncidenceGraph<'a, V, E> + VertexListGraph<'a, V, E>>(
+    fn component<'a, V: 'a, E, G: 'a + Graph<'a, V, E> + IncidenceGraph<'a, V, E> + VertexListGraph<'a, V, E>>(
         vx: G::Vertex,
         graph: &'a G,
         stack: &mut Vec<G::Vertex>,

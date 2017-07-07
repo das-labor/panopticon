@@ -176,6 +176,7 @@ impl<'a, V, E> AdjacencyGraph<'a, V, E> for AdjacencyMatrix<'a, V, E> {
 
 impl<'a, V, E> VertexListGraph<'a, V, E> for AdjacencyMatrix<'a, V, E> {
     type Vertices = Range<usize>;
+    type VertexLabels = ::std::slice::Iter<'a, V>;
 
     fn vertices(&'a self) -> Self::Vertices {
         return 0..self.vertex_labels.len();
@@ -183,6 +184,9 @@ impl<'a, V, E> VertexListGraph<'a, V, E> for AdjacencyMatrix<'a, V, E> {
 
     fn num_vertices(&self) -> usize {
         return self.vertex_labels.len();
+    }
+    fn vertex_labels(&self) -> Self::VertexLabels {
+        self.vertex_labels.iter()
     }
 }
 

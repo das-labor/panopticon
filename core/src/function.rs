@@ -39,14 +39,14 @@ use uuid::Uuid;
 
 /// An iterator over every BasicBlock in a Function
 pub struct BasicBlockIterator<'a> {
-    iter: VertexLabelIterator<'a, ControlFlowTarget, Guard, AdjacencyList<ControlFlowTarget, Guard>>
+    iter: VertexLabelIterator<'a, ControlFlowRef, ControlFlowTarget>
 }
 
 impl<'a> BasicBlockIterator<'a> {
     /// Create a new statement iterator from `mnemonics`
     pub fn new(cfg: &'a ControlFlowGraph) -> Self {
         BasicBlockIterator {
-            iter: cfg.into_iter(),
+            iter: cfg.vertex_labels(),
         }
     }
 }
@@ -128,7 +128,7 @@ impl Function {
         let mut size = 0;
         let (mut mnemonics, mut by_source, mut by_destination) = Self::index_cflow_graph(&mut cflow_graph, start);
 
-        let mut todo = cflow_graph.into_iter().filter_map(|lb| {
+        let mut todo = cflow_graph.vertex_labels().filter_map(|lb| {
             if let &ControlFlowTarget::Unresolved(Rvalue::Constant{ value,.. }) = lb {
                 Some(value)
             } else {
@@ -305,7 +305,7 @@ impl Function {
 
         by_destination.insert(entry, vec![(Rvalue::Undefined, Guard::always())]);
 
-        for cft in g {
+        for cft in g.vertex_labels() {
             match cft {
                 &ControlFlowTarget::Resolved(ref bb) => {
                     let mut prev_mne = None;

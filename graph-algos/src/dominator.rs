@@ -22,7 +22,7 @@ use std::collections::HashMap;
 use std::iter::FromIterator;
 use traits::{BidirectionalGraph, Graph, VertexListGraph};
 
-pub fn dominators<'a, V, E, G: 'a + Graph<'a, V, E> + BidirectionalGraph<'a, V, E> + VertexListGraph<'a, V, E>>(
+pub fn dominators<'a, V: 'a, E, G: 'a + Graph<'a, V, E> + BidirectionalGraph<'a, V, E> + VertexListGraph<'a, V, E>>(
     start: G::Vertex,
     graph: &'a G,
 ) -> HashMap<G::Vertex, Vec<G::Vertex>> {
@@ -78,7 +78,7 @@ pub fn dominators<'a, V, E, G: 'a + Graph<'a, V, E> + BidirectionalGraph<'a, V, 
 }
 
 /// Cooper, Harvey, Kennedy: "A Simple, Fast Dominance Algorithm"
-pub fn dominance_frontiers<'a, V, E, G: 'a + Graph<'a, V, E> + BidirectionalGraph<'a, V, E> + VertexListGraph<'a, V, E>>
+pub fn dominance_frontiers<'a, V: 'a, E, G: 'a + Graph<'a, V, E> + BidirectionalGraph<'a, V, E> + VertexListGraph<'a, V, E>>
     (
     idom: &HashMap<G::Vertex, G::Vertex>,
     graph: &'a G,
@@ -114,13 +114,13 @@ pub fn dominance_frontiers<'a, V, E, G: 'a + Graph<'a, V, E> + BidirectionalGrap
 }
 
 /// Cooper, Harvey, Kennedy: "A Simple, Fast Dominance Algorithm"
-pub fn immediate_dominator<'a, V, E, G: 'a + Graph<'a, V, E> + BidirectionalGraph<'a, V, E> + VertexListGraph<'a, V, E>>(
+pub fn immediate_dominator<'a, V: 'a, E, G: 'a + Graph<'a, V, E> + BidirectionalGraph<'a, V, E> + VertexListGraph<'a, V, E>>(
     start: G::Vertex,
     graph: &'a G,
 ) -> HashMap<G::Vertex, G::Vertex> {
     let postorder = TreeIterator::new(start, TraversalOrder::Postorder, graph).collect::<Vec<_>>();
     let po_idx = HashMap::<G::Vertex, usize>::from_iter(postorder.iter().enumerate().map(|(a, b)| (b.clone(), a)));
-    fn intersect<'a, V, E, G: 'a + Graph<'a, V, E> + BidirectionalGraph<'a, V, E> + VertexListGraph<'a, V, E>>(
+    fn intersect<'a, V: 'a, E, G: 'a + Graph<'a, V, E> + BidirectionalGraph<'a, V, E> + VertexListGraph<'a, V, E>>(
         b1: G::Vertex,
         b2: G::Vertex,
         po_idx: &HashMap<G::Vertex, usize>,
