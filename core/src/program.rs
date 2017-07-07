@@ -98,41 +98,24 @@ impl Program {
 
     /// Returns the function with UUID `a`.
     pub fn find_function_by_uuid<'a>(&'a self, a: &Uuid) -> Option<&'a Function> {
-        self.call_graph
-            .vertices()
-            .find(
-                |&x| match self.call_graph.vertex_label(x) {
-                    Some(&CallTarget::Concrete(ref s)) => s.uuid() == a,
-                    _ => false,
-                }
-            )
-            .and_then(
-                |r| match self.call_graph.vertex_label(r) {
-                    Some(&CallTarget::Concrete(ref s)) => Some(s),
-                    _ => None,
-                }
-            )
+        for ct in self.call_graph.vertex_labels() {
+            match ct {
+                &CallTarget::Concrete(ref s) => if s.uuid() == a { return Some(s) },
+                _ => (),
+            }
+        }
+        None
     }
 
     /// Returns the function with UUID `a`.
     pub fn find_function_by_uuid_mut<'a>(&'a mut self, a: &Uuid) -> Option<&'a mut Function> {
-        let ct = self.call_graph
-            .vertices()
-            .find(
-                |&x| match self.call_graph.vertex_label(x) {
-                    Some(&CallTarget::Concrete(ref s)) => s.uuid() == a,
-                    _ => false,
-                }
-            );
-
-        if ct.is_none() {
-            return None;
+        for ct in self.call_graph.vertex_labels_mut() {
+            match ct {
+                &mut CallTarget::Concrete(ref mut s) => if s.uuid() == a { return Some(s) },
+                _ => (),
+            }
         }
-
-        match self.call_graph.vertex_label_mut(ct.unwrap()) {
-            Some(&mut CallTarget::Concrete(ref mut s)) => Some(s),
-            _ => None,
-        }
+        None
     }
 
     /// Puts function/reference `new_ct` into the call graph, returning the UUIDs of all functions
