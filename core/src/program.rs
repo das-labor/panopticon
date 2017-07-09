@@ -70,6 +70,8 @@ pub struct Program {
     pub name: String,
     /// Graph of functions
     pub call_graph: CallGraph,
+    /// Symbolic References (Imports)
+    pub imports: ::std::collections::HashMap<u64, String>,
 }
 
 impl Program {
@@ -79,7 +81,19 @@ impl Program {
             uuid: Uuid::new_v4(),
             name: n.to_string(),
             call_graph: CallGraph::new(),
+            imports: ::std::collections::HashMap::new(),
         }
+    }
+
+    /// Returns a function if it matches the condition in the `filter` closure.
+    pub fn find_function_by<'a, F: (Fn(&'a Function) -> bool)>(&'a self, filter: F) -> Option<&'a Function> {
+        for ct in self.call_graph.vertex_labels() {
+            match ct {
+                &CallTarget::Concrete(ref function) => if filter(function) { return Some(function) },
+                _ => (),
+            }
+        }
+        None
     }
 
     /// Returns a reference to the function with an entry point starting at `start`.

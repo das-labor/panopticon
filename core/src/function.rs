@@ -28,7 +28,7 @@
 //! on the front-end.
 
 
-use {Architecture, BasicBlock, Guard, Mnemonic, Operation, Region, Result, Rvalue, Statement, Program};
+use {Architecture, BasicBlock, Guard, Mnemonic, Operation, Region, Result, Rvalue, Statement};
 
 use panopticon_graph_algos::{AdjacencyList, EdgeListGraphTrait, GraphTrait, MutableGraphTrait, VertexListGraphTrait};
 use panopticon_graph_algos::adjacency_list::{AdjacencyListEdgeDescriptor, AdjacencyListVertexDescriptor, VertexLabelIterator};
@@ -705,28 +705,6 @@ impl Function {
         }
 
         format!("{}\n}}", ret)
-    }
-
-    /// Displays the function in a human readable format, using `program`
-    pub fn display_with(&self, program: &Program) -> String {
-        let mut bbs = self.cflow_graph.vertices().filter_map(|v| {
-            match self.cflow_graph.vertex_label(v) {
-                Some(&ControlFlowTarget::Resolved(ref bb)) => {
-                    Some (bb)
-                },
-                _ => None
-            }
-        }).collect::<Vec<&BasicBlock>>();
-        bbs.sort_by(|bb1, bb2| bb1.area.start.cmp(&bb2.area.start));
-        let mut fmt = if let Some(bb) = bbs.first() {
-            format!("{:0>8x} <{}>:", bb.area.start, self.name)
-        } else {
-            format!("{}", self.name)
-        };
-        for bb in bbs {
-            fmt = format!("{}{}", fmt, bb.display_with(program));
-        }
-        fmt
     }
 }
 

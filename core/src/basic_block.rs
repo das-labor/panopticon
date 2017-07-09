@@ -22,7 +22,7 @@
 //! Basic blocks always occupy a continuous byte range.
 
 
-use {Bound, Mnemonic, Statement, Program};
+use {Bound, Mnemonic, Statement};
 use std::cmp::{max, min};
 use std::slice::Iter;
 
@@ -139,20 +139,6 @@ impl BasicBlock {
                 f(i);
             }
         }
-    }
-    /// Displays the basic block in disassembly order, in human readable form, and looks up any functions calls in `program`
-    pub fn display_with(&self, program: &Program) -> String {
-        let seed = String::new();
-        let display = self.mnemonics.iter().filter_map(|x| {
-            if x.opcode.starts_with("__") {
-                None
-            } else {
-                Some(x)
-            }
-        }).collect::<Vec<_>>();
-        display.iter().fold(seed, |acc, ref m| -> String {
-            format!("{}\n{}", acc, m.display_with(program))
-        })
     }
 
     /// Return a slice of this BasicBlock's mnemonics

@@ -255,7 +255,7 @@ fn load_elf(bytes: &[u8], name: String) -> Result<(Project, Machine)> {
         }
         seen_syms.insert(sym.st_value);
     }
-
+    prog.imports = proj.imports.clone();
     proj.comments.insert(("base".to_string(), entry), "main".to_string());
     proj.code.push(prog);
 
