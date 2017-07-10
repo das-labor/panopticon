@@ -155,7 +155,7 @@ impl Panopticon {
             }
         } else if let Ok((mut proj, machine)) = loader::load(&Path::new(&path)) {
             let maybe_prog = proj.code.pop();
-            let reg = proj.data.dependencies.vertex_label(proj.data.root).unwrap().clone();
+            let reg = proj.region().clone();
 
             if let Some(prog) = maybe_prog {
                 let prog = ::std::sync::Arc::new(prog);

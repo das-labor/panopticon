@@ -19,7 +19,6 @@ use panopticon_amd64 as amd64;
 use panopticon_analysis::pipeline;
 use panopticon_avr as avr;
 use panopticon_core::{Machine, Function, loader};
-use panopticon_graph_algos::GraphTrait;
 use std::path::Path;
 use std::result;
 use std::sync::Arc;
@@ -86,7 +85,7 @@ fn disassemble(args: Args) -> Result<()> {
     let filter = Filter { name: args.function_filter, addr: args.address_filter.map(|addr| u64::from_str_radix(&addr, 16).unwrap()) };
     let (mut proj, machine) = loader::load(Path::new(&binary))?;
     let maybe_prog = proj.code.pop();
-    let reg = proj.data.dependencies.vertex_label(proj.data.root).unwrap().clone();
+    let reg = proj.region().clone();
 
     if let Some(prog) = maybe_prog {
         let prog = Arc::new(prog);
