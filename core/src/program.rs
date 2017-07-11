@@ -101,6 +101,14 @@ pub struct Program {
     pub imports: ::std::collections::HashMap<u64, String>,
 }
 
+impl<'a> IntoIterator for &'a Program {
+    type Item = &'a Function;
+    type IntoIter = FunctionIterator<'a>;
+    fn into_iter(self) -> Self::IntoIter {
+        FunctionIterator::new(&self.call_graph)
+    }
+}
+
 impl Program {
     /// Create a new, empty `Program` named `n`.
     pub fn new(n: &str) -> Program {
