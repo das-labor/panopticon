@@ -87,6 +87,7 @@ pub type ControlFlowEdge = AdjacencyListEdgeDescriptor;
 pub struct Function {
     /// Display name of the function.
     pub name: String,
+    aliases: Vec<String>,
     /// Unique, immutable identifier for this function.
     uuid: Uuid,
     /// Graph of basic blocks and jumps
@@ -113,6 +114,7 @@ impl Function {
         let entry_point = cflow_graph.add_vertex(entry_point);
         Function {
             name: name.unwrap_or(format!("func_{:#x}", start)),
+            aliases: Vec::new(),
             uuid: uuid.unwrap_or(Uuid::new_v4()),
             cflow_graph,
             entry_point,
@@ -227,6 +229,7 @@ impl Function {
         };
         Ok(Function {
             name,
+            aliases: Vec::new(),
             uuid,
             cflow_graph: cfg,
             entry_point,
@@ -238,6 +241,25 @@ impl Function {
     /// Returns the start address of the first basic block in this function
     pub fn start(&self) -> u64 {
         self.entry_point().area.start
+    }
+
+    /// Returns the end address of the highest basic block in this function
+    pub fn end(&self) -> u64 {
+        let mut end = self.entry_point().area.end;
+        for bb in self.basic_blocks() {
+            end = ::std::cmp::max(bb.area.end, end);
+        }
+        end
+    }
+
+    /// Whether the given address is contained within this function
+    pub fn contains(&self, address: u64) -> bool {
+        for bb in self.basic_blocks() {
+            if bb.area.start >= address && address < bb.area.end {
+                return true
+            }
+        }
+        false
     }
 
     /// New function starting at `start`, with name `name`, inside memory region `region` and UUID `uuid`.
@@ -260,6 +282,16 @@ impl Function {
     /// Returns a reference to this functions control flow graph
     pub fn cfg(&self) -> &ControlFlowGraph {
         &self.cflow_graph
+    }
+
+    /// Adds `alias` to this functions known aliases
+    pub fn add_alias(&mut self, alias: String) {
+        self.aliases.push(alias)
+    }
+
+    /// Returns this functions known name aliases (names pointing to the same start address)
+    pub fn aliases(&self) -> &[String] {
+        self.aliases.as_slice()
     }
 
     /// Returns a mutable reference to this functions control flow graph; **WARNING** this can cause instability if the entry point is not correctly updated
@@ -293,6 +325,19 @@ impl Function {
             &mut ControlFlowTarget::Resolved(ref mut bb) => bb,
             _ => panic!("Function {} has an unresolved entry point - this is a bug!", self.name) // can't dump cfg here because borrowed mutable ;)
         }
+    }
+
+    /// Whether this function is a leaf function or not (no outgoing calls)
+    pub fn is_leaf(&self) -> bool {
+        for bb in self.basic_blocks() {
+            for statement in bb.statements() {
+                match statement {
+                    &Statement { op: Operation::Call(_), .. } => return false,
+                    _ => ()
+                }
+            }
+        }
+        true
     }
 
     fn index_cflow_graph(
