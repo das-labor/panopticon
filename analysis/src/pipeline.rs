@@ -18,12 +18,107 @@
 
 use futures::{Future, Sink, Stream, stream};
 use futures::sync::mpsc;
-use panopticon_core::{Architecture, CallTarget, Error, Function, Program, Region, Rvalue};
+use panopticon_core::{Architecture, CallTarget, Error, Function, Program, Result, Region, Rvalue};
 use panopticon_data_flow::ssa_convertion;
 use std::collections::HashSet;
 use std::fmt::Debug;
 use std::thread;
 use std::sync::Arc;
+use uuid::Uuid;
+use std::result;
+
+pub fn analyze<A: Architecture + Debug + Sync + 'static>(
+    mut program: Program,
+    region: Region,
+    config: A::Configuration,
+) -> Result<Program>
+where
+    A::Configuration: Debug + Sync,
+{
+    use rayon::prelude::*;
+    use chashmap::CHashMap;
+
+    struct Init {
+        name: Option<String>,
+        entry: u64,
+        uuid: Uuid,
+    }
+
+    let attempts = CHashMap::<u64, result::Result<Function, Error>>::new();
+    let targets = CHashMap::<u64, bool>::new();
+    let failures = ::std::sync::RwLock::new(0);
+    info!("initializing first wave");
+    let functions =
+        program
+        .call_graph
+        .into_iter()
+        .filter_map(
+            |ct| match ct {
+                &CallTarget::Todo(Rvalue::Constant { value: entry, .. }, ref name, ref uuid) => {
+                    Some(Init { entry, name: name.clone(), uuid: *uuid })
+                }
+                _ => None,
+            }
+        ).collect::<Vec<Init>>();
+
+    info!("begin first wave {}", functions.len());
+    functions.into_par_iter().for_each(| Init { entry, name, uuid }| {
+        match Function::with_uuid::<A>(entry, &uuid, &region, name, config.clone()) {
+            Ok(mut f) => {
+                for address in f.collect_call_addresses() {
+                    targets.upsert(address, || { true }, |_| ());
+                }
+                let _ = ssa_convertion(&mut f);
+                let name = f.name.clone();
+                attempts.upsert(entry,
+                                || Ok(f),
+                                |f2| {
+                                    match f2 {
+                                        &mut Ok(ref mut f2) => {
+                                            info!("New alias ({}) found at {:#x} with canonical name {:?}", name, entry, &f2.name);
+                                            f2.add_alias(name);
+                                        },
+                                        _ => ()
+                                    }
+                                });
+            },
+            e => { attempts.insert(entry, e); *failures.write().unwrap() += 1; },
+        }
+    });
+
+    info!("first wave done: success: {} failures: {} targets: {}", attempts.len(), *failures.read().unwrap(), targets.len());
+
+    let mut targets = targets.into_iter().map(|(x, _)| x).collect::<Vec<u64>>();
+    while !targets.is_empty() {
+        info!("targets - ({})", targets.len());
+        let new_targets = CHashMap::<u64, bool>::new();
+        targets.into_par_iter().for_each(| address | {
+            attempts.upsert(address, || {
+                match Function::new::<A>(address, &region, None, config.clone()) {
+                    Ok(mut f) => {
+                        for address in f.collect_call_addresses() {
+                            new_targets.upsert(address, || { true }, |_| ());
+                        }
+                        let _ = ssa_convertion(&mut f);
+                        Ok(f)
+                    },
+                    e => { let mut failures = failures.write().unwrap(); *failures += 1; e}
+                }
+            },
+            |_| ());
+        });
+        targets = new_targets.into_iter().map(|(x, _)| x).collect::<Vec<u64>>();
+    }
+    info!("Finished analysis: {} failures {}", attempts.len(), *failures.read().unwrap());
+    for (_, function) in attempts.into_iter() {
+        match function {
+            Ok(function) => { let _ = program.insert(function); },
+            _ => ()
+        }
+    }
+    info!("Dumping known symbols: {:#?}", program.imports);
+    Ok(program)
+}
 
 /// Starts disassembling insructions in `region` and puts them into `program`. Returns a stream of
 /// of newly discovered functions.

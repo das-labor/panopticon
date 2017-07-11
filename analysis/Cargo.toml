@@ -6,6 +6,9 @@ authors = ["seu <seu@panopticon.re>"]
 [dependencies]
 log = "0.3.6"
 futures = "0.1.13"
+rayon = "0.8"
+chashmap = "2.2.0"
+uuid = "0.5"
 panopticon-core = { path = "../core" }
 panopticon-data-flow = { path = "../data-flow" }
 panopticon-graph-algos = { path = "../graph-algos" }
