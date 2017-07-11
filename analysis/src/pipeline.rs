@@ -42,33 +42,23 @@ where
             let mut targets: Vec<u64> = Vec::new();
             let mut failures: Vec<(u64, Error)> = Vec::new();
             // TODO: this is the exact code below, modulo how we construct the function
-            let functions =
-                program
-                    .call_graph
-                    .into_iter()
-                    .filter_map(
-                        |ct| match ct {
-                            &CallTarget::Todo(Rvalue::Constant { value: entry, .. }, ref maybe_name, ref uuid) => {
-                                finished_functions.insert(entry);
-                                match Function::with_uuid::<A>(entry, uuid, &region, maybe_name.clone(), config.clone()) {
-                                    Ok(mut f) => {
-                                        let addresses = f.collect_call_addresses();
-                                        targets.extend_from_slice(&addresses);
-                                        let _ = ssa_convertion(&mut f);
-                                        Some(f)
-                                    },
-                                    Err(e) => { failures.push((entry, e)); None },
-                                }
-                            }
-                            _ => None,
+            for ct in program.call_graph.into_iter() {
+                match ct {
+                    &CallTarget::Todo(Rvalue::Constant { value: entry, .. }, ref maybe_name, ref uuid) => {
+                        finished_functions.insert(entry);
+                        match Function::with_uuid::<A>(entry, uuid, &region, maybe_name.clone(), config.clone()) {
+                            Ok(mut f) => {
+                                let addresses = f.collect_call_addresses();
+                                targets.extend_from_slice(&addresses);
+                                let _ = ssa_convertion(&mut f);
+                                let tx = tx.clone();
+                                tx.send_all(stream::iter(vec![Ok(f)])).wait().unwrap().0;
+                            },
+                            Err(e) => { failures.push((entry, e)); },
                         }
-                    ).collect::<Vec<Function>>();
-
-            // now we send the first burst of functions;
-            // stop unwrapping;
-            {
-                let tx = tx.clone();
-                tx.send_all(stream::iter(functions.into_iter().map(|f| Ok(f)))).wait().unwrap().0;
+                    }
+                    _ => (),
+                }
             }
 
             while !targets.is_empty() {
