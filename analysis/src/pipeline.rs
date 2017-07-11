@@ -28,7 +28,7 @@ use uuid::Uuid;
 use std::result;
 
 pub fn analyze<A: Architecture + Debug + Sync + 'static>(
-    mut program: Program,
+    program: Program,
     region: Region,
     config: A::Configuration,
 ) -> Result<Program>
@@ -44,7 +44,7 @@ where
         uuid: Uuid,
     }
 
-    let attempts = CHashMap::<u64, result::Result<Function, Error>>::new();
+    let attempts = CHashMap::<u64, result::Result<Uuid, Error>>::new();
     let targets = CHashMap::<u64, bool>::new();
     let failures = ::std::sync::RwLock::new(0);
     info!("initializing first wave");
@@ -61,6 +61,9 @@ where
             }
         ).collect::<Vec<Init>>();
 
+    // we now lock the program
+    let program = ::std::sync::Mutex::new(program);
+
     info!("begin first wave {}", functions.len());
     functions.into_par_iter().for_each(| Init { entry, name, uuid }| {
         match Function::with_uuid::<A>(entry, &uuid, &region, name, config.clone()) {
@@ -71,10 +74,17 @@ where
                 let _ = ssa_convertion(&mut f);
                 let name = f.name.clone();
                 attempts.upsert(entry,
-                                || Ok(f),
+                                || {
+                                    let mut program = program.lock().unwrap();
+                                    let uuid = *f.uuid();
+                                    let _ = program.insert(f);
+                                    Ok(uuid)
+                                },
                                 |f2| {
                                     match f2 {
-                                        &mut Ok(ref mut f2) => {
+                                        &mut Ok(ref uuid) => {
+                                            let mut program = program.lock().unwrap();
+                                            let f2 = program.find_function_by_uuid_mut(uuid).unwrap();
                                             info!("New alias ({}) found at {:#x} with canonical name {:?}", name, entry, &f2.name);
                                             f2.add_alias(name);
                                         },
@@ -82,7 +92,7 @@ where
                                     }
                                 });
             },
-            e => { attempts.insert(entry, e); *failures.write().unwrap() += 1; },
+            Err(e) => { attempts.insert(entry, Err(e)); *failures.write().unwrap() += 1; },
         }
     });
 
@@ -100,23 +110,21 @@ where
                             new_targets.upsert(address, || { true }, |_| ());
                         }
                         let _ = ssa_convertion(&mut f);
-                        Ok(f)
+                        let uuid = *f.uuid();
+                        let mut program = program.lock().unwrap();
+                        let _ = program.insert(f);
+                        Ok(uuid)
                     },
-                    e => { let mut failures = failures.write().unwrap(); *failures += 1; e}
+                    Err(e) => { let mut failures = failures.write().unwrap(); *failures += 1; Err(e) }
                 }
             },
             |_| ());
         });
         targets = new_targets.into_iter().map(|(x, _)| x).collect::<Vec<u64>>();
     }
+
+    let program = program.into_inner().unwrap();
     info!("Finished analysis: {} failures {}", attempts.len(), *failures.read().unwrap());
-    for (_, function) in attempts.into_iter() {
-        match function {
-            Ok(function) => { let _ = program.insert(function); },
-            _ => ()
-        }
-    }
-    info!("Dumping known symbols: {:#?}", program.imports);
     Ok(program)
 }
 
