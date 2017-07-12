@@ -26,6 +26,7 @@ use std::thread;
 use std::sync::Arc;
 use uuid::Uuid;
 use std::result;
+use parking_lot;
 
 pub fn analyze<A: Architecture + Debug + Sync + 'static>(
     program: Program,
@@ -62,7 +63,7 @@ where
         ).collect::<Vec<Init>>();
 
     // we now lock the program
-    let program = ::std::sync::Mutex::new(program);
+    let program = parking_lot::Mutex::new(program);
 
     info!("begin first wave {}", functions.len());
     functions.into_par_iter().for_each(| Init { entry, name, uuid }| {
@@ -76,7 +77,7 @@ where
                                     }
                                     let _ = ssa_convertion(&mut f);
                                     {
-                                        let mut program = program.lock().unwrap();
+                                        let mut program = program.lock();
                                         let _ = program.insert(f);
                                     }
                                     Ok(())
@@ -88,7 +89,7 @@ where
                             match f2 {
                                 &mut Ok(_) => {
                                     let name = name.clone().unwrap_or(format!("func_{:#x}", entry));
-                                    let mut program = program.lock().unwrap();
+                                    let mut program = program.lock();
                                     let f2 = program.find_function_mut(|f| f.start() == entry).unwrap();
                                     info!("New alias ({}) found at {:#x} with canonical name {:?}", &name, entry, &f2.name);
                                     f2.add_alias(name);
@@ -112,8 +113,10 @@ where
                             new_targets.upsert(address, || { true }, |_| ());
                         }
                         let _ = ssa_convertion(&mut f);
-                        let mut program = program.lock().unwrap();
-                        let _ = program.insert(f);
+                        {
+                            let mut program = program.lock();
+                            let _ = program.insert(f);
+                        }
                         Ok(())
                     },
                     Err(e) => { let mut failures = failures.write().unwrap(); *failures += 1; Err(e) }
@@ -124,7 +127,7 @@ where
         targets = new_targets.into_iter().map(|(x, _)| x).collect::<Vec<u64>>();
     }
 
-    let program = program.into_inner().unwrap();
+    let program = program.into_inner();
     info!("Finished analysis: {} failures {}", attempts.len(), *failures.read().unwrap());
     Ok(program)
 }

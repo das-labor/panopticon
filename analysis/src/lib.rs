@@ -28,6 +28,7 @@ extern crate futures;
 extern crate chashmap;
 extern crate rayon;
 extern crate uuid;
+extern crate parking_lot;
 
 mod pipeline;
 pub use pipeline::pipeline;

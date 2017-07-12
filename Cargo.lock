@@ -486,6 +486,7 @@ dependencies = [
  "panopticon-core 0.16.0",
  "panopticon-data-flow 0.16.0",
  "panopticon-graph-algos 0.11.0",
+ "parking_lot 0.4.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "rayon 0.8.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "uuid 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
