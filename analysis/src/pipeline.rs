@@ -44,7 +44,7 @@ where
         uuid: Uuid,
     }
 
-    let attempts = CHashMap::<u64, result::Result<Uuid, Error>>::new();
+    let attempts = CHashMap::<u64, result::Result<(), Error>>::new();
     let targets = CHashMap::<u64, bool>::new();
     let failures = ::std::sync::RwLock::new(0);
     info!("initializing first wave");
@@ -66,34 +66,36 @@ where
 
     info!("begin first wave {}", functions.len());
     functions.into_par_iter().for_each(| Init { entry, name, uuid }| {
-        match Function::with_uuid::<A>(entry, &uuid, &region, name, config.clone()) {
-            Ok(mut f) => {
-                for address in f.collect_call_addresses() {
-                    targets.upsert(address, || { true }, |_| ());
-                }
-                let _ = ssa_convertion(&mut f);
-                let name = f.name.clone();
-                attempts.upsert(entry,
-                                || {
-                                    let mut program = program.lock().unwrap();
-                                    let uuid = *f.uuid();
-                                    let _ = program.insert(f);
-                                    Ok(uuid)
-                                },
-                                |f2| {
-                                    match f2 {
-                                        &mut Ok(ref uuid) => {
-                                            let mut program = program.lock().unwrap();
-                                            let f2 = program.find_function_by_uuid_mut(uuid).unwrap();
-                                            info!("New alias ({}) found at {:#x} with canonical name {:?}", name, entry, &f2.name);
-                                            f2.add_alias(name);
-                                        },
-                                        _ => ()
+        let name = &name;
+        attempts.upsert(entry,
+                        || {
+                            match Function::with_uuid::<A>(entry, &uuid, &region, name.clone(), config.clone()) {
+                                Ok(mut f) => {
+                                    for address in f.collect_call_addresses() {
+                                        targets.upsert(address, || { true }, |_| ());
                                     }
-                                });
-            },
-            Err(e) => { attempts.insert(entry, Err(e)); *failures.write().unwrap() += 1; },
-        }
+                                    let _ = ssa_convertion(&mut f);
+                                    {
+                                        let mut program = program.lock().unwrap();
+                                        let _ = program.insert(f);
+                                    }
+                                    Ok(())
+                                },
+                                Err(e) => { *failures.write().unwrap() += 1; Err(e) },
+                            }
+                        },
+                        |f2| {
+                            match f2 {
+                                &mut Ok(_) => {
+                                    let name = name.clone().unwrap_or(format!("func_{:#x}", entry));
+                                    let mut program = program.lock().unwrap();
+                                    let f2 = program.find_function_mut(|f| f.start() == entry).unwrap();
+                                    info!("New alias ({}) found at {:#x} with canonical name {:?}", &name, entry, &f2.name);
+                                    f2.add_alias(name);
+                                },
+                                _ => ()
+                            }
+                        });
     });
 
     info!("first wave done: success: {} failures: {} targets: {}", attempts.len(), *failures.read().unwrap(), targets.len());
@@ -110,10 +112,9 @@ where
                             new_targets.upsert(address, || { true }, |_| ());
                         }
                         let _ = ssa_convertion(&mut f);
-                        let uuid = *f.uuid();
                         let mut program = program.lock().unwrap();
                         let _ = program.insert(f);
-                        Ok(uuid)
+                        Ok(())
                     },
                     Err(e) => { let mut failures = failures.write().unwrap(); *failures += 1; Err(e) }
                 }
