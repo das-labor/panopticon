@@ -14,14 +14,12 @@ extern crate log;
 extern crate env_logger;
 extern crate colored;
 
-use futures::Stream;
 use panopticon_amd64 as amd64;
-use panopticon_analysis::pipeline;
+use panopticon_analysis::analyze;
 use panopticon_avr as avr;
 use panopticon_core::{Machine, Function, loader};
 use std::path::Path;
 use std::result;
-use std::sync::Arc;
 use structopt::StructOpt;
 
 mod display;
@@ -76,7 +74,7 @@ impl Filter {
         if let Some(ref addr) = self.addr {
             return *addr == func.start()
         }
-        false
+        !self.filtering()
     }
 }
 
@@ -84,57 +82,35 @@ fn disassemble(args: Args) -> Result<()> {
     let binary = args.binary;
     let filter = Filter { name: args.function_filter, addr: args.address_filter.map(|addr| u64::from_str_radix(&addr, 16).unwrap()) };
     let (mut proj, machine) = loader::load(Path::new(&binary))?;
-    let maybe_prog = proj.code.pop();
+    let program = proj.code.pop().unwrap();
     let reg = proj.region().clone();
+    info!("disassembly thread started");
+    let program = {
+        match machine {
+            Machine::Avr => analyze::<avr::Avr>(program, reg.clone(), avr::Mcu::atmega103()),
+            Machine::Ia32 => analyze::<amd64::Amd64>(program, reg.clone(), amd64::Mode::Protected),
+            Machine::Amd64 => analyze::<amd64::Amd64>(program, reg.clone(), amd64::Mode::Long),
+        }
+    }?;
+    let mut functions = program.functions().filter_map(|f| if filter.is_match(f) { Some(f) } else { None }).collect::<Vec<&Function>>();
+    info!("disassembly thread finished with {} functions", functions.len());
 
-    if let Some(prog) = maybe_prog {
-        let prog = Arc::new(prog);
-        let pipe = {
-            let prog = prog.clone();
-            match machine {
-                Machine::Avr => pipeline::<avr::Avr>(prog, reg.clone(), avr::Mcu::atmega103()),
-                Machine::Ia32 => pipeline::<amd64::Amd64>(prog, reg.clone(), amd64::Mode::Protected),
-                Machine::Amd64 => pipeline::<amd64::Amd64>(prog, reg.clone(), amd64::Mode::Long),
-            }
-        };
+    functions.sort_by(|f1, f2| {
+        let entry1 = f1.start();
+        let entry2 = f2.start();
+        entry1.cmp(&entry2)
+    });
 
-        info!("disassembly thread started");
-        if filter.filtering() {
-            for function in pipe.wait() {
-                if let Ok(function) = function {
-                    if filter.is_match(&function) {
-                        println!("{}", display::display_function(&function, &prog.clone()));
-                        if args.calls {
-                            println!("Calls:");
-                            for addr in function.collect_call_addresses() {
-                                println!("\t{:#x}", addr);
-                            }
-                         }
-                        break;
-                    }
-                }
-            }
-        } else {
-            let mut functions = pipe.wait()
-                .filter_map(|function| if let Ok(function) = function {
-                    info!("{}", function.uuid());
-                    Some(function)
-                } else {
-                    None
-                })
-                .collect::<Vec<_>>();
-
-            functions.sort_by(|f1, f2| {
-                let entry1 = f1.start();
-                let entry2 = f2.start();
-                entry1.cmp(&entry2)
-            });
-
-            for function in functions {
-                println!("{}", display::display_function(&function, &prog.clone()));
+    for function in functions {
+        println!("{}", display::display_function(&function, &program));
+        if args.calls {
+            let calls = function.collect_call_addresses();
+            println!("Calls ({}):", calls.len());
+            for addr in calls {
+                println!("{:>8x}", addr);
             }
         }
-        info!("disassembly thread finished");
+        println!("Aliases: {:?}", function.aliases());
     }
     Ok(())
 }
