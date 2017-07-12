@@ -121,10 +121,21 @@ impl Program {
     }
 
     /// Returns a function if it matches the condition in the `filter` closure.
-    pub fn find_function_by<'a, F: (Fn(&'a Function) -> bool)>(&'a self, filter: F) -> Option<&'a Function> {
+    pub fn find_function_by<'a, F: (Fn(&Function) -> bool)>(&'a self, filter: F) -> Option<&'a Function> {
         for ct in self.call_graph.vertex_labels() {
             match ct {
                 &CallTarget::Concrete(ref function) => if filter(function) { return Some(function) },
+                _ => (),
+            }
+        }
+        None
+    }
+
+    /// Returns a mutable reference to the first function that matches the condition in the `filter` closure.
+    pub fn find_function_mut<'a, F: (Fn(&Function) -> bool)>(&'a mut self, filter: F) -> Option<&'a mut Function> {
+        for ct in self.call_graph.vertex_labels_mut() {
+            match ct {
+                &mut CallTarget::Concrete(ref mut function) => if filter(function) { return Some(function) },
                 _ => (),
             }
         }
