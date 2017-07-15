@@ -122,13 +122,10 @@ impl Function {
             size: 0,
         }
     }
-    /// Create and start disassembling a new function with `name`, inside memory `region`, starting at entry point `start`, with a random UUID.
-    pub fn new<A: Architecture>(start: u64, region: &Region, name: Option<String>, init: A::Configuration) -> Result<Function> {
-        let mut cflow_graph = AdjacencyList::new();
-        let entry_point = ControlFlowTarget::Unresolved(Rvalue::new_u64(start));
-        cflow_graph.add_vertex(entry_point);
-        let mut size = 0;
-        let (mut mnemonics, mut by_source, mut by_destination) = Self::index_cflow_graph(&mut cflow_graph, start);
+    // this private method is where the meat of making a function is;
+    // almost all perf gains for function disassembly will be in here, and related functions like, assemble_cflow_graph, etc.
+    fn disassemble<A: Architecture>(start: u64, cflow_graph: &mut ControlFlowGraph, size: &mut usize, name: &str, uuid: &Uuid, region: &Region, init: A::Configuration) -> Result<ControlFlowRef> {
+        let (mut mnemonics, mut by_source, mut by_destination) = Self::index_cflow_graph(cflow_graph, start);
 
         let mut todo = cflow_graph.vertex_labels().filter_map(|lb| {
             if let &ControlFlowTarget::Unresolved(Rvalue::Constant{ value,.. }) = lb {
@@ -153,7 +150,7 @@ impl Function {
                                 mnemonics.entry(addr).or_insert(Vec::new()).push(MnemonicOrError::Error(addr, "Jump inside instruction".into()));
                                 continue;
                             } else if mne.area.start == addr {
-                                size += mne.size();
+                                *size += mne.size();
                                 continue;
                             }
                         }
@@ -181,7 +178,7 @@ impl Function {
                                 mne.opcode,
                                 match_st.tokens
                             );
-                            size += mne.size();
+                            *size += mne.size();
                             mnemonics.entry(mne.area.start).or_insert(Vec::new()).push(MnemonicOrError::Mnemonic(mne));
                         }
                     }
@@ -208,8 +205,6 @@ impl Function {
         }
 
         let cfg = Self::assemble_cflow_graph(mnemonics, by_source, by_destination, start);
-        let name = name.unwrap_or(format!("func_{:#x}", start));
-        let uuid = Uuid::new_v4();
         let ep = cfg
             .vertices()
             .find(
@@ -219,19 +214,36 @@ impl Function {
                 }
             );
 
-        let entry_point = match ep {
+        match ep {
             Some(entry_point) => {
-                entry_point
+                *cflow_graph = cfg;
+                Ok(entry_point)
             },
             None => {
-                return Err(format!("function ({}) {} has no entry point", name, uuid).into());
+                Err(format!("function ({}) {} has no entry point", name, uuid).into())
             }
-        };
+        }
+    }
+    /// Continue disassembling from `start`, at `region`, with CPU `configuration`, using the functions current, internal control flow graph.
+    pub fn cont<A: Architecture>(&mut self, start: u64, region: &Region, configuration: A::Configuration) -> Result<()> {
+        self.entry_point = Self::disassemble::<A>(start, &mut self.cflow_graph, &mut self.size, &self.name, &self.uuid, region, configuration)?;
+        Ok(())
+    }
+
+    /// Create and start disassembling a new function with `name`, inside memory `region`, starting at entry point `start`, with a random UUID.
+    pub fn new<A: Architecture>(start: u64, region: &Region, name: Option<String>, init: A::Configuration) -> Result<Function> {
+        let mut cflow_graph = AdjacencyList::new();
+        let entry_point = ControlFlowTarget::Unresolved(Rvalue::new_u64(start));
+        cflow_graph.add_vertex(entry_point);
+        let mut size = 0;
+        let name = name.unwrap_or(format!("func_{:#x}", start));
+        let uuid = Uuid::new_v4();
+        let entry_point = Self::disassemble::<A>(start, &mut cflow_graph, &mut size, &name, &uuid, region, init)?;
         Ok(Function {
             name,
             aliases: Vec::new(),
             uuid,
-            cflow_graph: cfg,
+            cflow_graph,
             entry_point,
             region: region.name().clone(),
             size,
@@ -1193,13 +1205,14 @@ mod tests {
         let data = OpaqueLayer::wrap(vec![0, 1, 2]);
         let reg = Region::new("".to_string(), data);
         let bb = BasicBlock::from_vec(vec![Mnemonic::dummy(0..1), Mnemonic::dummy(1..2)]);
-        let mut func = Function::new::<TestArchShort>(0, &reg, Some("test".to_owned()), main).unwrap();
+        let mut func = Function::undefined(0, None, &reg, Some("test".to_owned()));
         let vx0 = func.cflow_graph.add_vertex(ControlFlowTarget::Resolved(bb));
         let vx1 = func.cflow_graph.add_vertex(ControlFlowTarget::Unresolved(Rvalue::new_u32(2)));
 
         func.set_entry_point_ref(vx0);
         func.cflow_graph.add_edge(Guard::always(), vx0, vx1);
 
+        func.cont::<TestArchShort>(0, &reg, main).unwrap();
         assert_eq!(func.cflow_graph.num_vertices(), 2);
         assert_eq!(func.cflow_graph.num_edges(), 2);
         assert_eq!(func.name, "test".to_string());
