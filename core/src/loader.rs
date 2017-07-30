@@ -323,7 +323,7 @@ fn load_pe(bytes: &[u8], name: String) -> Result<(Project, Machine)> {
             .add_vertex(
                 CallTarget::Todo(
                     Rvalue::new_u64(export.rva as u64 + image_base),
-                    Some(export.name),
+                    Some(export.name.to_string()),
                     Uuid::new_v4(),
                 )
             );
@@ -335,7 +335,7 @@ fn load_pe(bytes: &[u8], name: String) -> Result<(Project, Machine)> {
             &import,
             import.rva + pe.image_base
         );
-        prog.call_graph.add_vertex(CallTarget::Symbolic(import.name, Uuid::new_v4()));
+        prog.call_graph.add_vertex(CallTarget::Symbolic(import.name.into_owned(), Uuid::new_v4()));
     }
 
     proj.comments.insert(("base".to_string(), entry), "main".to_string());
