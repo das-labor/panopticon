@@ -25,7 +25,6 @@
 use {Bound, Mnemonic, Statement, Program};
 use std::cmp::{max, min};
 use std::slice::Iter;
-use std::ops::{Deref, DerefMut};
 
 /// An iterator over every Statement in every Mnemonic in a BasicBlock
 pub struct StatementIterator<'a> {
@@ -82,20 +81,6 @@ pub struct BasicBlock {
     pub area: Bound,
     /// List of mnemonics in to order of execution.
     pub mnemonics: Vec<Mnemonic>,
-}
-
-// this gets us iteration over mnemonics from a basic block for free
-impl Deref for BasicBlock {
-    type Target = [Mnemonic];
-    fn deref(&self) -> &Self::Target {
-        self.mnemonics.as_slice()
-    }
-}
-
-impl DerefMut for BasicBlock {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        self.mnemonics.as_mut_slice()
-    }
 }
 
 impl BasicBlock {
@@ -170,9 +155,19 @@ impl BasicBlock {
         })
     }
 
+    /// Return a slice of this BasicBlock's mnemonics
+    pub fn mnemonics(&self) -> &[Mnemonic] {
+        self.mnemonics.as_slice()
+    }
+
+    /// Return a mutable slice of this BasicBlock's mnemonics
+    pub fn mnemonics_mut(&mut self) -> &mut [Mnemonic] {
+        self.mnemonics.as_mut()
+    }
+
     /// Returns an iterator over every statement in every mnemonic in this basic block
     pub fn statements(&self) -> StatementIterator {
-        StatementIterator::new(self)
+        StatementIterator::new(self.mnemonics())
     }
 }
 
