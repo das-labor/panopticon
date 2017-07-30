@@ -663,8 +663,8 @@ mod tests {
             0x21,0x2c, // 6:8 mov
         ),
         );
-        let fun = Function::disassemble::<Avr>(None, Mcu::atmega8(), &reg, 0);
-        let cg = &fun.cflow_graph;
+        let fun = Function::new::<Avr>(0, &reg, Some("test".to_owned()), Mcu::atmega8()).unwrap();
+        let cg = &fun.cfg();
 
         for x in cg.vertices() {
             match cg.vertex_label(x) {
@@ -710,9 +710,8 @@ mod tests {
             0x21,0x2c, // 8:10 mov
         ),
         );
-        let fun = Function::disassemble::<Avr>(None, Mcu::atmega8(), &reg, 0);
-        let cg = &fun.cflow_graph;
-
+        let fun = Function::new::<Avr>(0, &reg, Some("test".to_owned()), Mcu::atmega8()).unwrap();
+        let cg = &fun.cfg();
         for x in cg.vertices() {
             match cg.vertex_label(x) {
                 Some(&ControlFlowTarget::Resolved(ref bb)) => {
@@ -759,8 +758,8 @@ mod tests {
             0x21,0x2c, // 6:8 mov
         ),
         );
-        let fun = Function::disassemble::<Avr>(None, Mcu::atmega8(), &reg, 0);
-        let cg = &fun.cflow_graph;
+        let fun = Function::new::<Avr>(0, &reg, Some("test".to_owned()), Mcu::atmega8()).unwrap();
+        let cg = &fun.cfg();
 
         for x in cg.vertices() {
             match cg.vertex_label(x) {
@@ -811,8 +810,8 @@ mod tests {
                 0xB0,0xE0, //       10 ldi     r27, 0
             ),
         );
-        let fun = Function::disassemble::<Avr>(None, Mcu::atmega8(), &reg, 0);
-        let cfg = &fun.cflow_graph;
+        let fun = Function::new::<Avr>(0, &reg, Some("test".to_owned()), Mcu::atmega8()).unwrap();
+        let cfg = &fun.cfg();
 
         assert_eq!(cfg.num_vertices(), 3);
         assert_eq!(cfg.num_edges(), 3);
@@ -873,8 +872,8 @@ mod tests {
             }
         }
 
-        for x in fun.cflow_graph.edges() {
-            let cg = &fun.cflow_graph;
+        for x in fun.cfg().edges() {
+            let cg = &fun.cfg();
             let from = cg.source(x);
             let to = cg.target(x);
             let from_ident = to_ident(cg.vertex_label(from));

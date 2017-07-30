@@ -28,7 +28,7 @@ pub fn liveness_sets(func: &Function) -> (HashMap<ControlFlowRef, HashSet<Cow<'s
     let mut uevar = HashMap::<ControlFlowRef, HashSet<&str>>::new();
     let mut varkill = HashMap::<ControlFlowRef, HashSet<Cow<'static, str>>>::new();
     let ord = func.postorder();
-    let cfg = &func.cflow_graph;
+    let cfg = func.cfg();
 
     // init UEVar and VarKill sets
     for &vx in ord.iter() {
@@ -85,7 +85,7 @@ pub fn liveness(func: &Function) -> HashMap<ControlFlowRef, HashSet<Cow<'static,
     let (varkill, uevar) = liveness_sets(func);
     let mut liveout = HashMap::<ControlFlowRef, HashSet<&str>>::new();
     let ord = func.postorder();
-    let cfg = &func.cflow_graph;
+    let cfg = func.cfg();
 
     for &vx in ord.iter() {
         if let Some(&ControlFlowTarget::Resolved(_)) = cfg.vertex_label(vx) {
@@ -136,7 +136,7 @@ pub fn liveness(func: &Function) -> HashMap<ControlFlowRef, HashSet<Cow<'static,
 #[cfg(test)]
 mod tests {
     use super::*;
-    use panopticon_core::{BasicBlock, ControlFlowGraph, ControlFlowTarget, Function, Guard, Lvalue, Mnemonic, Operation, Rvalue, Statement};
+    use panopticon_core::{BasicBlock, ControlFlowGraph, ControlFlowTarget, Function, Guard, Lvalue, Mnemonic, Operation, Rvalue, Statement, Region};
     use panopticon_graph_algos::{GraphTrait, MutableGraphTrait, VertexListGraphTrait};
     use ssa::{phi_functions, rename_variables};
     use std::borrow::Cow;
@@ -262,11 +262,10 @@ mod tests {
         cfg.add_edge(Guard::always(), v2, v3);
         cfg.add_edge(g.negation(), v3, v1);
         cfg.add_edge(g.clone(), v3, v4);
+        let mut func = Function::undefined(0, None, &Region::undefined("ram".to_owned(), 100), None);
 
-        let mut func = Function::new("test".to_string(), "ram".to_string());
-
-        func.cflow_graph = cfg;
-        func.entry_point = Some(v0);
+        *func.cfg_mut() = cfg;
+        func.set_entry_point_ref(v0);
 
         let all = HashSet::from_iter(vec![Cow::Borrowed("i"), Cow::Borrowed("s")]);
         let (vk, ue) = liveness_sets(&func);
@@ -575,10 +574,10 @@ mod tests {
         cfg.add_edge(Guard::always(), v7, v3);
         cfg.add_edge(Guard::always(), v8, v7);
 
-        let mut func = Function::new("test".to_string(), "ram".to_string());
+        let mut func = Function::undefined(0, None, &Region::undefined("ram".to_owned(), 100), None);
 
-        func.cflow_graph = cfg;
-        func.entry_point = Some(v0);
+        *func.cfg_mut() = cfg;
+        func.set_entry_point_ref(v0);
 
         assert!(phi_functions(&mut func).is_ok());
 
@@ -589,14 +588,14 @@ mod tests {
         let i0 = Lvalue::Variable { name: Cow::Borrowed("i"), size: 32, subscript: None };
 
         // bb0
-        if let Some(&ControlFlowTarget::Resolved(ref bb)) = func.cflow_graph.vertex_label(v0) {
+        if let Some(&ControlFlowTarget::Resolved(ref bb)) = func.cfg().vertex_label(v0) {
             assert!(bb.mnemonics[0].opcode != "__phi".to_string());
         } else {
             unreachable!()
         }
 
         // bb1
-        if let Some(&ControlFlowTarget::Resolved(ref bb)) = func.cflow_graph.vertex_label(v1) {
+        if let Some(&ControlFlowTarget::Resolved(ref bb)) = func.cfg().vertex_label(v1) {
             assert_eq!(bb.mnemonics[0].opcode, "__phi".to_string());
             assert_eq!(bb.mnemonics[1].opcode, "__phi".to_string());
             assert_eq!(bb.mnemonics[2].opcode, "__phi".to_string());
@@ -622,14 +621,14 @@ mod tests {
         }
 
         // bb2
-        if let Some(&ControlFlowTarget::Resolved(ref bb)) = func.cflow_graph.vertex_label(v2) {
+        if let Some(&ControlFlowTarget::Resolved(ref bb)) = func.cfg().vertex_label(v2) {
             assert!(bb.mnemonics[0].opcode != "__phi".to_string());
         } else {
             unreachable!()
         }
 
         // bb3
-        if let Some(&ControlFlowTarget::Resolved(ref bb)) = func.cflow_graph.vertex_label(v3) {
+        if let Some(&ControlFlowTarget::Resolved(ref bb)) = func.cfg().vertex_label(v3) {
             assert_eq!(bb.mnemonics[0].opcode, "__phi".to_string());
             assert_eq!(bb.mnemonics[1].opcode, "__phi".to_string());
             assert_eq!(bb.mnemonics[2].opcode, "__phi".to_string());
@@ -652,28 +651,28 @@ mod tests {
         }
 
         // bb4
-        if let Some(&ControlFlowTarget::Resolved(ref bb)) = func.cflow_graph.vertex_label(v4) {
+        if let Some(&ControlFlowTarget::Resolved(ref bb)) = func.cfg().vertex_label(v4) {
             assert!(bb.mnemonics[0].opcode != "__phi".to_string());
         } else {
             unreachable!()
         }
 
         // bb5
-        if let Some(&ControlFlowTarget::Resolved(ref bb)) = func.cflow_graph.vertex_label(v5) {
+        if let Some(&ControlFlowTarget::Resolved(ref bb)) = func.cfg().vertex_label(v5) {
             assert!(bb.mnemonics[0].opcode != "__phi".to_string());
         } else {
             unreachable!()
         }
 
         // bb6
-        if let Some(&ControlFlowTarget::Resolved(ref bb)) = func.cflow_graph.vertex_label(v6) {
+        if let Some(&ControlFlowTarget::Resolved(ref bb)) = func.cfg().vertex_label(v6) {
             assert!(bb.mnemonics[0].opcode != "__phi".to_string());
         } else {
             unreachable!()
         }
 
         // bb7
-        if let Some(&ControlFlowTarget::Resolved(ref bb)) = func.cflow_graph.vertex_label(v7) {
+        if let Some(&ControlFlowTarget::Resolved(ref bb)) = func.cfg().vertex_label(v7) {
             assert_eq!(bb.mnemonics[0].opcode, "__phi".to_string());
             assert_eq!(bb.mnemonics[1].opcode, "__phi".to_string());
             assert!(bb.mnemonics[2].opcode != "__phi".to_string());
@@ -949,16 +948,16 @@ mod tests {
         cfg.add_edge(Guard::always(), v7, v3);
         cfg.add_edge(Guard::always(), v8, v7);
 
-        let mut func = Function::new("test".to_string(), "ram".to_string());
+        let mut func = Function::undefined(0, None, &Region::undefined("ram".to_owned(), 100), None);
 
-        func.cflow_graph = cfg;
-        func.entry_point = Some(v0);
+        *func.cfg_mut() = cfg;
+        func.set_entry_point_ref(v0);
 
         assert!(phi_functions(&mut func).is_ok());
         assert!(rename_variables(&mut func).is_ok());
 
-        for v in func.cflow_graph.vertices() {
-            if let Some(&ControlFlowTarget::Resolved(ref bb)) = func.cflow_graph.vertex_label(v) {
+        for v in func.cfg().vertices() {
+            if let Some(&ControlFlowTarget::Resolved(ref bb)) = func.cfg().vertex_label(v) {
                 bb.execute(
                     |i| {
                         if let Lvalue::Variable { subscript, .. } = i.assignee {

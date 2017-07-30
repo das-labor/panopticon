@@ -24,6 +24,55 @@
 
 use {Bound, Mnemonic, Statement, Program};
 use std::cmp::{max, min};
+use std::slice::Iter;
+
+/// An iterator over every Statement in every Mnemonic in a BasicBlock
+pub struct StatementIterator<'a> {
+    mnemonics: Iter<'a, Mnemonic>,
+    statements: Option<Iter<'a, Statement>>,
+}
+
+impl<'a> StatementIterator<'a> {
+    /// Create a new statement iterator from `mnemonics`
+    pub fn new(mnemonics: &'a[Mnemonic]) -> Self {
+        StatementIterator {
+            mnemonics: mnemonics.iter(),
+            statements: None,
+        }
+    }
+    fn get_next(&mut self) -> Option<&'a Statement> {
+        let mut statement = None;
+        while statement.is_none() {
+            let mnemonic = self.mnemonics.next();
+            match mnemonic {
+                // termination
+                None => return None,
+                Some(mnemonic) => {
+                    let mut statements = mnemonic.instructions.iter();
+                    statement = statements.next();
+                    self.statements = Some(statements);
+                }
+            }
+        }
+        return statement
+    }
+}
+
+impl<'a> Iterator for StatementIterator<'a> {
+    type Item = &'a Statement;
+    fn next(&mut self) ->  Option<Self::Item> {
+        match self.statements {
+            None => (),
+            Some(ref mut iter) => {
+                match iter.next() {
+                    None => (),
+                    some => return some
+                }
+            }
+        }
+        self.get_next()
+    }
+}
 
 /// A basic block: a continiuous sequence of mnemonics without any branches in between.
 #[derive(PartialEq,Eq,Debug,Serialize,Deserialize,Clone)]
@@ -104,6 +153,21 @@ impl BasicBlock {
         display.iter().fold(seed, |acc, ref m| -> String {
             format!("{}\n{}", acc, m.display_with(program))
         })
+    }
+
+    /// Return a slice of this BasicBlock's mnemonics
+    pub fn mnemonics(&self) -> &[Mnemonic] {
+        self.mnemonics.as_slice()
+    }
+
+    /// Return a mutable slice of this BasicBlock's mnemonics
+    pub fn mnemonics_mut(&mut self) -> &mut [Mnemonic] {
+        self.mnemonics.as_mut()
+    }
+
+    /// Returns an iterator over every statement in every mnemonic in this basic block
+    pub fn statements(&self) -> StatementIterator {
+        StatementIterator::new(self.mnemonics())
     }
 }
 
@@ -508,5 +572,113 @@ mod tests {
         );
 
         assert!(ok);
+    }
+
+    #[test]
+    fn statement_iterator() {
+        let ops1 = vec![
+            Rvalue::new_u8(1),
+            Rvalue::Variable {
+                name: Cow::Borrowed("a"),
+                offset: 0,
+                size: 3,
+                subscript: None,
+            },
+        ];
+        let i1 = vec![
+            Statement {
+                op: Operation::Add(Rvalue::new_u8(1), Rvalue::new_u8(2)),
+                assignee: Lvalue::Variable { name: Cow::Borrowed("a"), size: 8, subscript: Some(2) },
+            },
+            Statement {
+                op: Operation::Add(Rvalue::new_u8(4), Rvalue::new_u8(2)),
+                assignee: Lvalue::Variable { name: Cow::Borrowed("a"), size: 8, subscript: Some(1) },
+            },
+            Statement {
+                op: Operation::Phi(
+                    vec![
+                        Rvalue::Variable {
+                            name: Cow::Borrowed("a"),
+                            offset: 0,
+                            size: 8,
+                            subscript: Some(2),
+                        },
+                        Rvalue::Variable {
+                            name: Cow::Borrowed("a"),
+                            offset: 0,
+                            size: 8,
+                            subscript: Some(1),
+                        },
+                    ]
+                ),
+                assignee: Lvalue::Variable { name: Cow::Borrowed("a"), size: 8, subscript: Some(3) },
+            },
+        ];
+        let mne1 = Mnemonic::new(
+            0..10,
+            "op1".to_string(),
+            "{s} nog".to_string(),
+            ops1.iter(),
+            i1.iter(),
+        )
+            .ok()
+            .unwrap();
+
+        let ops2 = vec![
+            Rvalue::new_u8(1),
+            Rvalue::Variable {
+                name: Cow::Borrowed("a"),
+                offset: 0,
+                size: 3,
+                subscript: None,
+            },
+        ];
+        let i2 = vec![
+            Statement {
+                op: Operation::Add(Rvalue::new_u8(1), Rvalue::new_u8(2)),
+                assignee: Lvalue::Variable { name: Cow::Borrowed("a"), size: 8, subscript: Some(2) },
+            },
+            Statement {
+                op: Operation::Add(Rvalue::new_u8(4), Rvalue::new_u8(2)),
+                assignee: Lvalue::Variable { name: Cow::Borrowed("a"), size: 8, subscript: Some(1) },
+            },
+            Statement {
+                op: Operation::Phi(
+                    vec![
+                        Rvalue::Variable {
+                            name: Cow::Borrowed("a"),
+                            offset: 0,
+                            size: 8,
+                            subscript: Some(2),
+                        },
+                        Rvalue::Variable {
+                            name: Cow::Borrowed("a"),
+                            offset: 0,
+                            size: 8,
+                            subscript: Some(1),
+                        },
+                    ]
+                ),
+                assignee: Lvalue::Variable { name: Cow::Borrowed("a"), size: 8, subscript: Some(3) },
+            },
+        ];
+        let mne2 = Mnemonic::new(
+            10..13,
+            "op3".to_string(),
+            "{s} nog".to_string(),
+            ops2.iter(),
+            i2.iter(),
+        )
+                .ok()
+                .unwrap();
+
+        let nstatements = i2.len() + i1.len();
+        let ms = vec![mne1, mne2];
+        let bb1 = BasicBlock::from_vec(ms);
+
+        assert_eq!(bb1.area, Bound::new(0, 13));
+
+        let statements = bb1.statements().collect::<Vec<_>>();
+        assert_eq!(statements.len(), nstatements);
     }
 }

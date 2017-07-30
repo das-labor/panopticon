@@ -46,28 +46,36 @@ pub trait AdjacencyGraph<'a, V, E>: Graph<'a, V, E> {
     fn adjacent_vertices(&'a self, Self::Vertex) -> Self::Adjacency;
 }
 
-pub trait VertexListGraph<'a, V, E>
+pub trait VertexListGraph<'a, V: 'a, E>
     : IncidenceGraph<'a, V, E> + AdjacencyGraph<'a, V, E> {
     type Vertices: Iterator<Item = Self::Vertex>;
+    type VertexLabels: Iterator<Item = &'a V>;
     fn vertices(&'a self) -> Self::Vertices;
     fn num_vertices(&self) -> usize;
+    fn vertex_labels(&'a self) -> Self::VertexLabels;
 }
 
-pub trait EdgeListGraph<'a, V, E>: Graph<'a, V, E> {
+pub trait EdgeListGraph<'a, V, E: 'a>: Graph<'a, V, E> {
     type Edges: Iterator<Item = Self::Edge>;
+    type EdgeLabels: Iterator<Item = &'a E>;
     fn num_edges(&self) -> usize;
     fn edges(&'a self) -> Self::Edges;
+    fn edge_labels(&'a self) -> Self::EdgeLabels;
 }
 
 pub trait AdjacencyMatrixGraph<'a, V, E>: Graph<'a, V, E> {
     fn edge(&'a self, Self::Vertex, Self::Vertex) -> Option<Self::Edge>;
 }
 
-pub trait MutableGraph<'a, V, E>: Graph<'a, V, E> {
+pub trait MutableGraph<'a, V: 'a, E: 'a>: Graph<'a, V, E> {
+    type VertexLabelsMut: Iterator<Item = &'a mut V>;
+    type EdgeLabelsMut: Iterator<Item = &'a mut E>;
     fn add_vertex(&mut self, V) -> Self::Vertex;
     fn add_edge(&mut self, E, Self::Vertex, Self::Vertex) -> Option<Self::Edge>;
     fn remove_vertex<'t>(&'t mut self, Self::Vertex) -> Option<V>;
     fn remove_edge(&mut self, Self::Edge) -> Option<E>;
     fn edge_label_mut(&mut self, Self::Edge) -> Option<&mut E>;
+    fn edge_labels_mut(&'a mut self) -> Self::EdgeLabelsMut;
     fn vertex_label_mut(&mut self, Self::Vertex) -> Option<&mut V>;
+    fn vertex_labels_mut(&'a mut self) -> Self::VertexLabelsMut;
 }

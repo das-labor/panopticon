@@ -193,7 +193,7 @@ fn diff_abstract_interpretations(a: Option<&AbstractInterpretation>, b: Option<&
     let blocks = func.postorder()
         .into_iter()
         .filter_map(
-            |vx| if let Some(&ControlFlowTarget::Resolved(ref bb)) = func.cflow_graph.vertex_label(vx) {
+            |vx| if let Some(&ControlFlowTarget::Resolved(ref bb)) = func.cfg().vertex_label(vx) {
                 Some(bb)
             } else {
                 None

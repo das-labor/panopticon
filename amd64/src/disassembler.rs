@@ -2462,7 +2462,7 @@ pub fn read(mode: Mode, buf: &[u8], addr: u64) -> Result<(u64, Mnemonic, Vec<(Rv
             }
 
             // EVEX
-            Some(&0x62) if i == 0 && mode == Mode::Long => unimplemented!(),
+            Some(&0x62) if i == 0 && mode == Mode::Long => return Err("Evex unimplemented".into()),
 
             // XOP
             Some(&0x8f) if i == 0 && mode == Mode::Long => {

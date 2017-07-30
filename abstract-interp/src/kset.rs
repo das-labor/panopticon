@@ -276,7 +276,7 @@ impl Avalue for Kset {
 mod tests {
     use super::*;
     use interpreter::{approximate, results};
-    use panopticon_core::{BasicBlock, ControlFlowGraph, ControlFlowTarget, Function, Guard, Lvalue, Mnemonic, Operation, Rvalue, Statement};
+    use panopticon_core::{BasicBlock, ControlFlowGraph, ControlFlowTarget, Function, Guard, Lvalue, Mnemonic, Operation, Region, Rvalue, Statement};
     use panopticon_data_flow::ssa_convertion;
     use panopticon_graph_algos::MutableGraphTrait;
     use std::borrow::Cow;
@@ -528,10 +528,10 @@ mod tests {
         cfg.add_edge(Guard::always(), v2, v4);
         cfg.add_edge(Guard::always(), v1, v3);
 
-        let mut func = Function::new("func".to_string(), "ram".to_string());
+        let mut func = Function::undefined(0, None, &Region::undefined("ram".to_owned(), 100), Some("test".to_owned()));
 
-        func.cflow_graph = cfg;
-        func.entry_point = Some(v0);
+        *func.cfg_mut() = cfg;
+        func.set_entry_point_ref(v0);
 
         println!("{}", func.to_dot());
 
@@ -663,10 +663,10 @@ mod tests {
 
         cfg.add_edge(Guard::always(), v0, v1);
 
-        let mut func = Function::new("func".to_string(), "ram".to_string());
+        let mut func = Function::undefined(0, None, &Region::undefined("ram".to_owned(), 100), Some("test".to_owned()));
 
-        func.cflow_graph = cfg;
-        func.entry_point = Some(v0);
+        *func.cfg_mut() = cfg;
+        func.set_entry_point_ref(v0);
 
         assert!(ssa_convertion(&mut func).is_ok());
 

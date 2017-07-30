@@ -25,7 +25,7 @@ pub enum TraversalOrder {
     Postorder,
 }
 
-pub struct TreeIterator<'a, V, E, G: 'a + Graph<'a, V, E> + IncidenceGraph<'a, V, E> + VertexListGraph<'a, V, E>> {
+pub struct TreeIterator<'a, V: 'a, E, G: 'a + Graph<'a, V, E> + IncidenceGraph<'a, V, E> + VertexListGraph<'a, V, E>> {
     order: TraversalOrder,
     stack: Vec<G::Vertex>,
     seen: HashSet<G::Vertex>,
@@ -113,7 +113,7 @@ impl<'a, V, E, G: 'a + Graph<'a, V, E> + IncidenceGraph<'a, V, E> + VertexListGr
     }
 }
 
-pub fn is_connected<'a, V, E, G: 'a + Graph<'a, V, E> + IncidenceGraph<'a, V, E> + BidirectionalGraph<'a, V, E> + VertexListGraph<'a, V, E>>(graph: &'a G)
+pub fn is_connected<'a, V: 'a, E, G: 'a + Graph<'a, V, E> + IncidenceGraph<'a, V, E> + BidirectionalGraph<'a, V, E> + VertexListGraph<'a, V, E>>(graph: &'a G)
     -> bool {
     let mut seen = HashSet::<G::Vertex>::new();
 
@@ -160,7 +160,7 @@ pub enum VertexColor {
     Black,
 }
 
-pub fn depth_first_visit<'a, V, E, G: 'a + Graph<'a, V, E> + IncidenceGraph<'a, V, E> + VertexListGraph<'a, V, E>>(
+pub fn depth_first_visit<'a, V: 'a, E, G: 'a + Graph<'a, V, E> + IncidenceGraph<'a, V, E> + VertexListGraph<'a, V, E>>(
     vertex_visitor: &mut FnMut(&G::Vertex, VertexEvent),
     edge_visitor: &mut FnMut(&G::Edge, EdgeKind),
     start: &G::Vertex,
@@ -172,7 +172,7 @@ pub fn depth_first_visit<'a, V, E, G: 'a + Graph<'a, V, E> + IncidenceGraph<'a, 
         color.insert(v, VertexColor::White);
     }
 
-    fn visit<'a, V, E, G: 'a + Graph<'a, V, E> + IncidenceGraph<'a, V, E> + VertexListGraph<'a, V, E>>(
+    fn visit<'a, V: 'a, E, G: 'a + Graph<'a, V, E> + IncidenceGraph<'a, V, E> + VertexListGraph<'a, V, E>>(
         vx: &G::Vertex,
         color: &mut HashMap<G::Vertex, VertexColor>,
         vertex_visitor: &mut FnMut(&G::Vertex, VertexEvent),

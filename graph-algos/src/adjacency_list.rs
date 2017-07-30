@@ -129,8 +129,19 @@ impl<'a, V, E> AdjacencyGraph<'a, V, E> for AdjacencyList<V, E> {
     }
 }
 
+pub type VertexLabelIterator<'a, K, V> = std::collections::hash_map::Values<'a, K, V>;
+
+impl<'a, V: 'a, E> IntoIterator for &'a AdjacencyList<V, E> {
+    type Item = &'a V;
+    type IntoIter = <AdjacencyList<V, E> as VertexListGraph<'a, V, E>>::VertexLabels;
+    fn into_iter(self) -> Self::IntoIter {
+        self.vertex_labels()
+    }
+}
+
 impl<'a, V: 'a, E> VertexListGraph<'a, V, E> for AdjacencyList<V, E> {
     type Vertices = std::iter::Map<std::collections::hash_map::Keys<'a, Self::Vertex, V>, fn(&Self::Vertex) -> Self::Vertex>;
+    type VertexLabels = std::collections::hash_map::Values<'a, Self::Vertex, V>;
 
     fn num_vertices(&self) -> usize {
         return self.vertex_labels.len();
@@ -139,10 +150,15 @@ impl<'a, V: 'a, E> VertexListGraph<'a, V, E> for AdjacencyList<V, E> {
     fn vertices(&'a self) -> Self::Vertices {
         return self.vertex_labels.keys().map(std::clone::Clone::clone);
     }
+
+    fn vertex_labels(&'a self) -> Self::VertexLabels {
+        self.vertex_labels.values()
+    }
 }
 
 impl<'a, V, E: 'a> EdgeListGraph<'a, V, E> for AdjacencyList<V, E> {
     type Edges = std::iter::Map<std::collections::hash_map::Keys<'a, Self::Edge, E>, fn(&Self::Edge) -> Self::Edge>;
+    type EdgeLabels = std::collections::hash_map::Values<'a, Self::Edge, E>;
 
     fn num_edges(&self) -> usize {
         return self.edge_labels.len();
@@ -151,8 +167,11 @@ impl<'a, V, E: 'a> EdgeListGraph<'a, V, E> for AdjacencyList<V, E> {
     fn edges(&'a self) -> Self::Edges {
         return self.edge_labels.keys().map(std::clone::Clone::clone);
     }
-}
 
+    fn edge_labels(&'a self) -> Self::EdgeLabels {
+        self.edge_labels.values()
+    }
+}
 
 impl<'a, V, E> AdjacencyMatrixGraph<'a, V, E> for AdjacencyList<V, E> {
     fn edge(&'a self, from: Self::Vertex, to: Self::Vertex) -> Option<Self::Edge> {
@@ -163,7 +182,9 @@ impl<'a, V, E> AdjacencyMatrixGraph<'a, V, E> for AdjacencyList<V, E> {
     }
 }
 
-impl<'a, V, E> MutableGraph<'a, V, E> for AdjacencyList<V, E> {
+impl<'a, V: 'a, E: 'a> MutableGraph<'a, V, E> for AdjacencyList<V, E> {
+    type VertexLabelsMut = std::collections::hash_map::ValuesMut<'a, Self::Vertex, V>;
+    type EdgeLabelsMut = std::collections::hash_map::ValuesMut<'a, Self::Edge, E>;
     fn add_vertex(&mut self, lb: V) -> Self::Vertex {
         let n = self.next_vertex;
 
@@ -276,6 +297,12 @@ impl<'a, V, E> MutableGraph<'a, V, E> for AdjacencyList<V, E> {
 
     fn edge_label_mut(&mut self, n: Self::Edge) -> Option<&mut E> {
         return self.edge_labels.get_mut(&n);
+    }
+    fn vertex_labels_mut(&'a mut self) -> Self::VertexLabelsMut {
+        self.vertex_labels.values_mut()
+    }
+    fn edge_labels_mut(&'a mut self) -> Self::EdgeLabelsMut {
+        self.edge_labels.values_mut()
     }
 }
 
@@ -626,5 +653,32 @@ mod test {
 
         assert_eq!(g.num_vertices(), g2.num_vertices());
         assert_eq!(g.num_edges(), g2.num_edges());
+    }
+
+    #[test]
+    fn test_vertice_label_iterator() {
+        let mut g = AdjacencyList::<isize, String>::new();
+
+        let n1 = g.add_vertex(42);
+        let n2 = g.add_vertex(13);
+        let n3 = g.add_vertex(1337);
+        let n4 = g.add_vertex(99);
+
+        let e12 = g.add_edge("a".to_string(), n1, n2);
+        let e23 = g.add_edge("b".to_string(), n2, n3);
+        let e21 = g.add_edge("c".to_string(), n2, n1);
+        let e14 = g.add_edge("d".to_string(), n1, n4);
+
+        assert!(e12.is_some() && e23.is_some() && e21.is_some() && e14.is_some());
+
+        let mut labels_iter = g.into_iter();
+        assert!(labels_iter.next().is_some());
+        assert!(labels_iter.next().is_some());
+        assert!(labels_iter.next().is_some());
+        assert!(labels_iter.next().is_some());
+        assert!(labels_iter.next().is_none());
+
+        let sum = g.into_iter().sum::<isize>();
+        assert_eq!(sum, 42 + 13 + 1337 + 99);
     }
 }

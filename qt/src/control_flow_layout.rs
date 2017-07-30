@@ -75,7 +75,7 @@ impl ControlFlowLayout {
         let (vertices, edges, edges_rev) = Self::flatten_cflow_graph(func);
 
         if vertices.is_empty() {
-            println!("{} is empty", func.uuid);
+            println!("{} is empty", func.uuid());
             return Box::new(
                 future::ok(
                     ControlFlowLayout {
@@ -90,19 +90,19 @@ impl ControlFlowLayout {
         }
 
         let data = HashMap::from_iter(
-            func.cflow_graph
+            func.cfg()
                 .vertices()
-                .filter_map(|vx| func.cflow_graph.vertex_label(vx).map(|lb| (vx, lb)))
+                .filter_map(|vx| func.cfg().vertex_label(vx).map(|lb| (vx, lb)))
                 .filter_map(
                     |(vx, lb)| {
                         let maybe_lines = Self::get_node_data(lb, comments, values, functions).ok();
-                        let is_entry = func.entry_point == Some(vx);
+                        let is_entry = func.entry_point_ref() == vx;
 
                         maybe_lines.map(|v| (vx, (is_entry, v)))
                     }
                 )
         );
-        let labels = HashMap::from_iter(func.cflow_graph.edges().filter_map(|e| Self::get_edge_data(e, func).ok().map(|x| (e, x))));
+        let labels = HashMap::from_iter(func.cfg().edges().filter_map(|e| Self::get_edge_data(e, func).ok().map(|x| (e, x))));
         let dims = Self::compute_node_dimensions(
             func,
             char_width,
@@ -311,7 +311,7 @@ impl ControlFlowLayout {
             };
 
             if hit {
-                let cfg = &func.cflow_graph;
+                let cfg = &func.cfg();
                 let lb = cfg.vertex_label(vx).ok_or(::panopticon_core::Error("missing label in cfg".into()))?;
                 *lines = Self::get_node_data(lb, comments, values, functions)?;
                 ret.push(vx.0 as i32);
@@ -323,7 +323,7 @@ impl ControlFlowLayout {
 
     fn flatten_cflow_graph(func: &Function) -> (HashSet<usize>, Vec<(usize, usize)>, HashMap<usize, AdjacencyListEdgeDescriptor>) {
         let mut edges = vec![];
-        let cfg = &func.cflow_graph;
+        let cfg = &func.cfg();
         let vertices = HashSet::from_iter(cfg.vertices().map(|x| x.0));
         let edge_iter = cfg.edges().map(|e| (cfg.source(e).0, cfg.target(e).0));
 
@@ -346,7 +346,7 @@ impl ControlFlowLayout {
         _cmnt_width: usize,
     ) -> Result<HashMap<usize, (f32, f32)>> {
         let mut dims = HashMap::new();
-        let cfg = &func.cflow_graph;
+        let cfg = &func.cfg();
 
         for vx in cfg.vertices() {
             let maybe_lb = cfg.vertex_label(vx);
@@ -545,18 +545,9 @@ impl ControlFlowLayout {
                                 let (display, data) = if is_code {
                                     let maybe_func = functions
                                         .iter()
-                                        .find(
-                                            |&(_, f)| {
-                                                let maybe_entry = f.entry_point.and_then(|vx| f.cflow_graph.vertex_label(vx));
-                                                if let Some(&ControlFlowTarget::Resolved(ref bb)) = maybe_entry {
-                                                    bb.area.start == val
-                                                } else {
-                                                    false
-                                                }
-                                            }
-                                        );
+                                        .find(|&(_, f)| val == f.start());
                                     if let Some((_, called_func)) = maybe_func {
-                                        (called_func.name.clone(), format!("{}", called_func.uuid))
+                                        (called_func.name.clone(), format!("{}", called_func.uuid()))
                                     } else {
                                         (format!("0x{:x}", val), "".to_string())
                                     }
@@ -611,7 +602,7 @@ impl ControlFlowLayout {
     }
 
     fn get_edge_data(edge_desc: AdjacencyListEdgeDescriptor, func: &Function) -> Result<(&'static str, String)> {
-        let cfg = &func.cflow_graph;
+        let cfg = &func.cfg();
         let label = cfg.edge_label(edge_desc)
             .map(
                 |guard| if *guard != Guard::always() && *guard != Guard::never() {
