@@ -26,7 +26,7 @@ use std::thread;
 use std::sync::Arc;
 use uuid::Uuid;
 use std::result;
-use parking_lot;
+use parking_lot::{Mutex, RwLock};
 
 pub fn analyze<A: Architecture + Debug + Sync + 'static>(
     program: Program,
@@ -47,7 +47,7 @@ where
 
     let attempts = CHashMap::<u64, result::Result<(), Error>>::new();
     let targets = CHashMap::<u64, bool>::new();
-    let failures = ::std::sync::RwLock::new(0);
+    let failures = RwLock::new(0);
     info!("initializing first wave");
     let functions =
         program
@@ -63,7 +63,7 @@ where
         ).collect::<Vec<Init>>();
 
     // we now lock the program
-    let program = parking_lot::Mutex::new(program);
+    let program = Mutex::new(program);
 
     info!("begin first wave {}", functions.len());
     functions.into_par_iter().for_each(| Init { entry, name, uuid }| {
@@ -82,7 +82,7 @@ where
                                     }
                                     Ok(())
                                 },
-                                Err(e) => { *failures.write().unwrap() += 1; Err(e) },
+                                Err(e) => { *failures.write() += 1; Err(e) },
                             }
                         },
                         |f2| {
@@ -99,7 +99,7 @@ where
                         });
     });
 
-    info!("first wave done: success: {} failures: {} targets: {}", attempts.len(), *failures.read().unwrap(), targets.len());
+    info!("first wave done: success: {} failures: {} targets: {}", attempts.len(), *failures.read(), targets.len());
 
     let mut targets = targets.into_iter().map(|(x, _)| x).collect::<Vec<u64>>();
     while !targets.is_empty() {
@@ -119,7 +119,7 @@ where
                         }
                         Ok(())
                     },
-                    Err(e) => { let mut failures = failures.write().unwrap(); *failures += 1; Err(e) }
+                    Err(e) => { let mut failures = failures.write(); *failures += 1; Err(e) }
                 }
             },
             |_| ());
@@ -128,7 +128,7 @@ where
     }
 
     let program = program.into_inner();
-    info!("Finished analysis: {} failures {}", attempts.len(), *failures.read().unwrap());
+    info!("Finished analysis: {} failures {}", attempts.len(), *failures.read());
     Ok(program)
 }
 
