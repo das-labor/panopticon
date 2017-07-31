@@ -25,6 +25,11 @@ extern crate panopticon_core;
 extern crate panopticon_data_flow;
 extern crate panopticon_graph_algos;
 extern crate futures;
+extern crate chashmap;
+extern crate rayon;
+extern crate uuid;
+extern crate parking_lot;
 
 mod pipeline;
 pub use pipeline::pipeline;
+pub use pipeline::analyze;

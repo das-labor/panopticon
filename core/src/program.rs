@@ -31,8 +31,35 @@
 
 use {Function, Rvalue};
 use panopticon_graph_algos::{AdjacencyList, AdjacencyMatrixGraphTrait, GraphTrait, MutableGraphTrait, VertexListGraphTrait};
-use panopticon_graph_algos::adjacency_list::AdjacencyListVertexDescriptor;
+use panopticon_graph_algos::adjacency_list::{AdjacencyListVertexDescriptor, VertexLabelIterator};
 use uuid::Uuid;
+
+/// An iterator over every Function in this Program
+pub struct FunctionIterator<'a> {
+    iter: VertexLabelIterator<'a, CallGraphRef, CallTarget>
+}
+
+impl<'a> FunctionIterator<'a> {
+    /// Create a new function iterator from the `cfg`
+    pub fn new(cfg: &'a CallGraph) -> Self {
+        FunctionIterator {
+            iter: cfg.vertex_labels(),
+        }
+    }
+}
+
+impl<'a> Iterator for FunctionIterator<'a> {
+    type Item = &'a Function;
+    fn next(&mut self) ->  Option<Self::Item> {
+        loop {
+            match self.iter.next() {
+                None => return None,
+                Some(&CallTarget::Concrete(ref function)) => return Some(function),
+                _ => ()
+            }
+        }
+    }
+}
 
 /// Node of the program call graph.
 #[derive(Serialize,Deserialize,Debug)]
@@ -70,6 +97,16 @@ pub struct Program {
     pub name: String,
     /// Graph of functions
     pub call_graph: CallGraph,
+    /// Symbolic References (Imports)
+    pub imports: ::std::collections::HashMap<u64, String>,
+}
+
+impl<'a> IntoIterator for &'a Program {
+    type Item = &'a Function;
+    type IntoIter = FunctionIterator<'a>;
+    fn into_iter(self) -> Self::IntoIter {
+        FunctionIterator::new(&self.call_graph)
+    }
 }
 
 impl Program {
@@ -79,7 +116,30 @@ impl Program {
             uuid: Uuid::new_v4(),
             name: n.to_string(),
             call_graph: CallGraph::new(),
+            imports: ::std::collections::HashMap::new(),
         }
+    }
+
+    /// Returns a function if it matches the condition in the `filter` closure.
+    pub fn find_function_by<'a, F: (Fn(&Function) -> bool)>(&'a self, filter: F) -> Option<&'a Function> {
+        for ct in self.call_graph.vertex_labels() {
+            match ct {
+                &CallTarget::Concrete(ref function) => if filter(function) { return Some(function) },
+                _ => (),
+            }
+        }
+        None
+    }
+
+    /// Returns a mutable reference to the first function that matches the condition in the `filter` closure.
+    pub fn find_function_mut<'a, F: (Fn(&Function) -> bool)>(&'a mut self, filter: F) -> Option<&'a mut Function> {
+        for ct in self.call_graph.vertex_labels_mut() {
+            match ct {
+                &mut CallTarget::Concrete(ref mut function) => if filter(function) { return Some(function) },
+                _ => (),
+            }
+        }
+        None
     }
 
     /// Returns a reference to the function with an entry point starting at `start`.
@@ -118,25 +178,21 @@ impl Program {
         None
     }
 
-    /// Puts function/reference `new_ct` into the call graph, returning the UUIDs of all functions
-    /// that are called by `new_ct` and call `new_ct`.
-    pub fn insert(&mut self, new_ct: CallTarget) -> Vec<Uuid> {
-        let maybe_vx = self.call_graph.vertices().find(|ct| self.call_graph.vertex_label(*ct).unwrap().uuid() == new_ct.uuid());
+    /// Puts `function` into the call graph, returning the UUIDs of all _new_ `Todo`s
+    /// that are called by `function`
+    pub fn insert(&mut self, function: Function) -> Vec<Uuid> {
+        let maybe_vx = self.call_graph.vertices().find(|ct| self.call_graph.vertex_label(*ct).unwrap().uuid() == function.uuid());
 
+        let calls = function.collect_calls();
         let new_vx = if let Some(vx) = maybe_vx {
-            *self.call_graph.vertex_label_mut(vx).unwrap() = new_ct;
+            *self.call_graph.vertex_label_mut(vx).unwrap() = CallTarget::Concrete(function);
             vx
         } else {
-            self.call_graph.add_vertex(new_ct)
+            self.call_graph.add_vertex(CallTarget::Concrete(function))
         };
 
         let mut other_funs = Vec::new();
-        let mut ret = Vec::new();
-        let calls = if let Some(&CallTarget::Concrete(ref fun)) = self.call_graph.vertex_label(new_vx) {
-            fun.collect_calls()
-        } else {
-            vec![]
-        };
+        let mut todos = Vec::new();
 
         for a in calls {
             let l = other_funs.len();
@@ -166,7 +222,7 @@ impl Program {
                 let v = self.call_graph.add_vertex(CallTarget::Todo(a, None, uu));
 
                 self.call_graph.add_edge((), new_vx, v);
-                ret.push(uu);
+                todos.push(uu);
             }
         }
 
@@ -176,7 +232,7 @@ impl Program {
             }
         }
 
-        ret
+        todos
     }
 
     /// Returns the function, todo item or symbolic reference with UUID `uu`.
@@ -192,6 +248,11 @@ impl Program {
         }
 
         None
+    }
+
+    /// Returns an iterator over every Function in this program
+    pub fn functions(&self) -> FunctionIterator {
+        FunctionIterator::new(&self.call_graph)
     }
 }
 
@@ -244,7 +305,7 @@ mod tests {
         func.set_entry_point_ref(vx);
         let uuf = func.uuid().clone();
 
-        let new = prog.insert(CallTarget::Concrete(func));
+        let new = prog.insert(func);
 
         assert_eq!(new, vec![]);
 
@@ -291,7 +352,7 @@ mod tests {
         func.set_entry_point_ref(vx);
         let uuf = func.uuid().clone();
 
-        let new = prog.insert(CallTarget::Concrete(func));
+        let new = prog.insert(func);
 
         assert_eq!(new, vec![]);
 

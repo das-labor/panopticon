@@ -22,7 +22,7 @@ use errors::*;
 use futures::{Future, future};
 use multimap::MultiMap;
 use panopticon_abstract_interp::Kset;
-use panopticon_core::{CallTarget, Function, Program, Project, Region, loader};
+use panopticon_core::{Function, Program, Project, Region, loader};
 use panopticon_glue::Glue;
 use panopticon_graph_algos::{GraphTrait, VertexListGraphTrait};
 use parking_lot::Mutex;
@@ -155,7 +155,7 @@ impl Panopticon {
             }
         } else if let Ok((mut proj, machine)) = loader::load(&Path::new(&path)) {
             let maybe_prog = proj.code.pop();
-            let reg = proj.data.dependencies.vertex_label(proj.data.root).unwrap().clone();
+            let reg = proj.region().clone();
 
             if let Some(prog) = maybe_prog {
                 let prog = ::std::sync::Arc::new(prog);
@@ -296,7 +296,7 @@ impl Panopticon {
             let mut prog = Program::new("(none");
 
             for f in self.functions.iter() {
-                prog.insert(CallTarget::Concrete(f.1.clone()));
+                prog.insert(f.1.clone());
             }
 
             proj.code.push(prog);

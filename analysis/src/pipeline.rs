@@ -18,12 +18,119 @@
 
 use futures::{Future, Sink, Stream, stream};
 use futures::sync::mpsc;
-use panopticon_core::{Architecture, CallTarget, Error, Function, Program, Region, Rvalue};
+use panopticon_core::{Architecture, CallTarget, Error, Function, Program, Result, Region, Rvalue};
 use panopticon_data_flow::ssa_convertion;
 use std::collections::HashSet;
 use std::fmt::Debug;
 use std::thread;
 use std::sync::Arc;
+use uuid::Uuid;
+use std::result;
+use parking_lot::{Mutex, RwLock};
+
+pub fn analyze<A: Architecture + Debug + Sync + 'static>(
+    program: Program,
+    region: Region,
+    config: A::Configuration,
+) -> Result<Program>
+where
+    A::Configuration: Debug + Sync,
+{
+    use rayon::prelude::*;
+    use chashmap::CHashMap;
+
+    struct Init {
+        name: Option<String>,
+        entry: u64,
+        uuid: Uuid,
+    }
+
+    let attempts = CHashMap::<u64, result::Result<(), Error>>::new();
+    let targets = CHashMap::<u64, bool>::new();
+    let failures = RwLock::new(0);
+    info!("initializing first wave");
+    let functions =
+        program
+        .call_graph
+        .into_iter()
+        .filter_map(
+            |ct| match ct {
+                &CallTarget::Todo(Rvalue::Constant { value: entry, .. }, ref name, ref uuid) => {
+                    Some(Init { entry, name: name.clone(), uuid: *uuid })
+                }
+                _ => None,
+            }
+        ).collect::<Vec<Init>>();
+
+    // we now lock the program
+    let program = Mutex::new(program);
+
+    info!("begin first wave {}", functions.len());
+    functions.into_par_iter().for_each(| Init { entry, name, uuid }| {
+        let name = &name;
+        attempts.upsert(entry,
+                        || {
+                            match Function::with_uuid::<A>(entry, &uuid, &region, name.clone(), config.clone()) {
+                                Ok(mut f) => {
+                                    for address in f.collect_call_addresses() {
+                                        targets.upsert(address, || { true }, |_| ());
+                                    }
+                                    let _ = ssa_convertion(&mut f);
+                                    {
+                                        let mut program = program.lock();
+                                        let _ = program.insert(f);
+                                    }
+                                    Ok(())
+                                },
+                                Err(e) => { *failures.write() += 1; Err(e) },
+                            }
+                        },
+                        |f2| {
+                            match f2 {
+                                &mut Ok(_) => {
+                                    let name = name.clone().unwrap_or(format!("func_{:#x}", entry));
+                                    let mut program = program.lock();
+                                    let f2 = program.find_function_mut(|f| f.start() == entry).unwrap();
+                                    info!("New alias ({}) found at {:#x} with canonical name {:?}", &name, entry, &f2.name);
+                                    f2.add_alias(name);
+                                },
+                                _ => ()
+                            }
+                        });
+    });
+
+    info!("first wave done: success: {} failures: {} targets: {}", attempts.len(), *failures.read(), targets.len());
+
+    let mut targets = targets.into_iter().map(|(x, _)| x).collect::<Vec<u64>>();
+    while !targets.is_empty() {
+        info!("targets - ({})", targets.len());
+        let new_targets = CHashMap::<u64, bool>::new();
+        targets.into_par_iter().for_each(| address | {
+            attempts.upsert(address, || {
+                match Function::new::<A>(address, &region, None, config.clone()) {
+                    Ok(mut f) => {
+                        for address in f.collect_call_addresses() {
+                            new_targets.upsert(address, || { true }, |_| ());
+                        }
+                        let _ = ssa_convertion(&mut f);
+                        {
+                            let mut program = program.lock();
+                            let _ = program.insert(f);
+                        }
+                        Ok(())
+                    },
+                    Err(e) => { let mut failures = failures.write(); *failures += 1; Err(e) }
+                }
+            },
+            |_| ());
+        });
+        targets = new_targets.into_iter().map(|(x, _)| x).collect::<Vec<u64>>();
+    }
+
+    let program = program.into_inner();
+    info!("Finished analysis: {} failures {}", attempts.len(), *failures.read());
+    Ok(program)
+}
 
 /// Starts disassembling insructions in `region` and puts them into `program`. Returns a stream of
 /// of newly discovered functions.
