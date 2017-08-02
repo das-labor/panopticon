@@ -12,7 +12,8 @@ extern crate futures;
 #[macro_use]
 extern crate log;
 extern crate env_logger;
-extern crate colored;
+extern crate termcolor;
+extern crate atty;
 
 use panopticon_amd64 as amd64;
 use panopticon_analysis::analyze;
@@ -37,6 +38,8 @@ use errors::*;
 #[derive(StructOpt, Debug)]
 #[structopt(name = "panop", about = "A libre cross-platform disassembler.")]
 struct Args {
+    #[structopt(long = "color", help = "Always color")]
+    color: bool,
     /// Print every function the function calls
     #[structopt(short = "c", long = "calls", help = "Print every address of every function this function calls")]
     calls: bool,
@@ -102,7 +105,7 @@ fn disassemble(args: Args) -> Result<()> {
     });
 
     for function in functions {
-        println!("{}", display::display_function(&function, &program));
+        display::print_function(&function, &program, args.color)?;
         if args.calls {
             let calls = function.collect_call_addresses();
             println!("Calls ({}):", calls.len());

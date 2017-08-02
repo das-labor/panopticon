@@ -1,44 +1,63 @@
-use colored::*;
+use std::io::Write;
+use atty;
+use termcolor::{BufferWriter, ColorChoice, ColorSpec, WriteColor};
+use termcolor::Color::*;
 
-use panopticon_core::{Function, BasicBlock, Mnemonic, MnemonicFormatToken, Program, Rvalue};
+use panopticon_core::{Function, BasicBlock, Mnemonic, MnemonicFormatToken, Program, Rvalue, Result};
 
-/// Displays the function in a human readable format, using `program`
-pub fn display_function(function: &Function, program: &Program) -> String {
-    let mut bbs = function.basic_blocks().collect::<Vec<&BasicBlock>>();
-    bbs.sort_by(|bb1, bb2| bb1.area.start.cmp(&bb2.area.start));
-    let mut fmt = {
-        let &BasicBlock { ref area, .. } = function.entry_point();
-        format!("{:0>8x} <{}>:", area.start, function.name.bold().yellow())
-    };
-    for bb in bbs {
-        fmt = format!("{}{}", fmt, display_basic_block(&bb, program));
-    }
-    fmt
-}
-
-/// Displays the basic block in disassembly order, in human readable form, and looks up any functions calls in `program`
-pub fn display_basic_block(basic_block: &BasicBlock, program: &Program) -> String {
-    let seed = String::new();
-    let display = basic_block.mnemonics.iter().filter_map(|x| {
-        if x.opcode.starts_with("__") {
-            None
-        } else {
-            Some(x)
-        }
-    }).collect::<Vec<_>>();
-    display.iter().fold(seed, |acc, ref m| -> String {
-        format!("{}\n{}", acc, display_mnemonic(&m, program))
+macro_rules! color_bold {
+    ($fmt:ident, $color:ident, $str:expr) => ({
+    $fmt.set_color(ColorSpec::new().set_bold(true).set_fg(Some($color)))?;
+    write!($fmt, "{}", $str)?;
+    $fmt.reset()?;
     })
 }
 
+macro_rules! color {
+    ($fmt:ident, $color:ident, $str:expr) => ({
+        $fmt.set_color(ColorSpec::new().set_fg(Some($color)))?;
+        write!($fmt, "{}", $str)?;
+        $fmt.reset()?;
+    })
+}
+
+/// Displays the function in a human readable format, using `program`
+pub fn print_function(function: &Function, program: &Program, always_color: bool) -> Result<()> {
+    let cc = if always_color || atty::is(atty::Stream::Stdout) { ColorChoice::Auto }else { ColorChoice::Never };
+    let writer = BufferWriter::stdout(cc);
+    let mut fmt = writer.buffer();
+    let mut bbs = function.basic_blocks().collect::<Vec<&BasicBlock>>();
+    bbs.sort_by(|bb1, bb2| bb1.area.start.cmp(&bb2.area.start));
+    write!(fmt, "{:0>8x} <", function.start())?;
+    color_bold!(fmt, Yellow, function.name);
+    writeln!(fmt, ">:")?;
+    for bb in bbs {
+        display_basic_block(&mut fmt, &bb, program)?;
+    }
+    writer.print(&fmt)?;
+    Ok(())
+}
+
+/// Displays the basic block in disassembly order, in human readable form, and looks up any functions calls in `program`
+pub fn display_basic_block<W: Write + WriteColor>(fmt: &mut W, basic_block: &BasicBlock, program: &Program) -> Result<()> {
+    for x in basic_block.mnemonics.iter() {
+        if !x.opcode.starts_with("__") {
+            display_mnemonic(fmt, &x, program)?;
+        }
+    }
+    Ok(())
+}
+
 /// Displays the mnemonic in human readable form, and looks up any functions calls in `program`
-pub fn display_mnemonic(mnemonic: &Mnemonic, program: &Program) -> String {
+pub fn display_mnemonic<W: Write + WriteColor>(fmt: &mut W, mnemonic: &Mnemonic, program: &Program) -> Result<()> {
     let mut ops = mnemonic.operands.iter();
-    let mut fmt = format!( "{:8x}: {} ", mnemonic.area.start, mnemonic.opcode.bold().blue());
+    write!(fmt, "{:8x}: ", mnemonic.area.start)?;
+    color_bold!(fmt, Blue, mnemonic.opcode);
+    write!(fmt, " ")?;
     for token in &mnemonic.format_string {
         match token {
             &MnemonicFormatToken::Literal(ref s) => {
-                fmt = format!( "{}{}", fmt, format!("{}", s).bold().green());
+                color_bold!(fmt, Green, s);
             },
             &MnemonicFormatToken::Variable{ ref has_sign } => {
                 match ops.next() {
@@ -50,16 +69,16 @@ pub fn display_mnemonic(mnemonic: &Mnemonic, program: &Program) -> String {
                             } else { c };
                         let sign_bit = if s < 64 { 1u64 << (s - 1) } else { 0x8000000000000000 };
                         if !has_sign || val & sign_bit == 0 {
-                            fmt = format!( "{}{}", fmt, format!("{:x}",val).red());
+                            color!(fmt, Red, format!("{:x}", val));
                         } else {
-                            fmt = format!( "{}{:x}", fmt, (val as i64).wrapping_neg());
+                            color!(fmt, White, format!("{:x}", (val as i64).wrapping_neg()));
                         }
                     },
                     Some(&Rvalue::Variable{ ref name, subscript: Some(ref _subscript),.. }) => {
-                        fmt = format!( "{}{}", fmt, &name.to_lowercase().bold().white());
+                        color_bold!(fmt, White, &name.to_lowercase());
                     },
                     _ => {
-                        fmt = format!( "{}?", fmt);
+                        color!(fmt, Black, "?");
                     }
                 }
             },
@@ -71,32 +90,35 @@ pub fn display_mnemonic(mnemonic: &Mnemonic, program: &Program) -> String {
                                 let res = 1u64 << s;
                                 c % res
                             } else { c };
-                        let display = if is_code {
+                        if is_code {
                             if let Some(function) = program.find_function_by(|f| { f.start() == val }) {
-                                format!("{}{} <{}>", fmt, format!("{:x}",val).red(), function.name.yellow().bold())
+                                color!(fmt, Red, format!("{:x}",val));
+                                write!(fmt, " <", )?;
+                                color_bold!(fmt, Yellow, function.name);
+                                write!(fmt, ">")?;
                             } else {
-                                format!("{}{}", fmt, format!("{:x}",val).bold().purple())
+                                color_bold!(fmt, Magenta, format!("{:x}",val));
                             }
                         } else {
-                            format!("{}{:#x}", fmt, val)
-                        };
-                        fmt = display;
+                            write!(fmt, "{}", format!("{:#x}",val))?;
+                        }
                     },
                     Some(&Rvalue::Variable{ ref name, subscript: Some(_),.. }) => {
-                        fmt = format!( "{}{}", fmt, name.to_lowercase().yellow());
+                        color!(fmt, Yellow, name.to_lowercase());
                     },
                     Some(&Rvalue::Variable{ ref name, .. }) => {
-                        fmt = format!( "{}{}", fmt, name.to_lowercase().yellow());
+                        color!(fmt, Yellow, name.to_lowercase());
                     },
                     Some(&Rvalue::Undefined) => {
-                        fmt = format!( "{}{}", fmt, "undefined".bold().red());
+                        color_bold!(fmt, Red, "undefined");
                     },
                     None => {
-                        fmt = format!( "{}{}", fmt, "?".black().dimmed());
+                        color!(fmt, Black, "?");
                     }
                 }
             }
         }
     }
-    fmt
+    writeln!(fmt)?;
+    Ok(())
 }

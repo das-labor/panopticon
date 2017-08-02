@@ -18,4 +18,5 @@ panopticon-avr = { path = "../avr" }
 panopticon-graph-algos = { path = "../graph-algos" }
 log = "0.3"
 env_logger = "0.3"
-colored = "1.5"
+termcolor = "0.3.2"
+atty = "0.2.2"
