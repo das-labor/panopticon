@@ -21,9 +21,9 @@ macro_rules! color {
     })
 }
 
-/// Displays the function in a human readable format, using `program`
+/// Prints the function in a human readable format, using `program`, with colors. If `always_color` is set, it will force printing, even to non ttys.
 pub fn print_function(function: &Function, program: &Program, always_color: bool) -> Result<()> {
-    let cc = if always_color || atty::is(atty::Stream::Stdout) { ColorChoice::Auto }else { ColorChoice::Never };
+    let cc = if always_color || atty::is(atty::Stream::Stdout) { ColorChoice::Auto } else { ColorChoice::Never };
     let writer = BufferWriter::stdout(cc);
     let mut fmt = writer.buffer();
     let mut bbs = function.basic_blocks().collect::<Vec<&BasicBlock>>();
@@ -38,7 +38,7 @@ pub fn print_function(function: &Function, program: &Program, always_color: bool
     Ok(())
 }
 
-/// Displays the basic block in disassembly order, in human readable form, and looks up any functions calls in `program`
+/// Prints the basic block into `fmt`, in disassembly order, in human readable form, and looks up any functions calls in `program`
 pub fn display_basic_block<W: Write + WriteColor>(fmt: &mut W, basic_block: &BasicBlock, program: &Program) -> Result<()> {
     for x in basic_block.mnemonics.iter() {
         if !x.opcode.starts_with("__") {
@@ -48,7 +48,7 @@ pub fn display_basic_block<W: Write + WriteColor>(fmt: &mut W, basic_block: &Bas
     Ok(())
 }
 
-/// Displays the mnemonic in human readable form, and looks up any functions calls in `program`
+/// Prints the mnemonic into `fmt`, in human readable form, and looks up any functions calls in `program`
 pub fn display_mnemonic<W: Write + WriteColor>(fmt: &mut W, mnemonic: &Mnemonic, program: &Program) -> Result<()> {
     let mut ops = mnemonic.operands.iter();
     write!(fmt, "{:8x}: ", mnemonic.area.start)?;
