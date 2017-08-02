@@ -72,7 +72,7 @@ impl Filter {
     }
     pub fn is_match(&self, func: &Function) -> bool {
         if let Some(ref name) = self.name {
-            if name == &func.name { return true }
+            if name == &func.name || func.aliases().contains(name){ return true }
         }
         if let Some(ref addr) = self.addr {
             return *addr == func.start()
