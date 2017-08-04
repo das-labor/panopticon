@@ -12,7 +12,8 @@ extern crate futures;
 #[macro_use]
 extern crate log;
 extern crate env_logger;
-extern crate colored;
+extern crate termcolor;
+extern crate atty;
 
 use panopticon_amd64 as amd64;
 use panopticon_analysis::analyze;
@@ -37,11 +38,13 @@ use errors::*;
 #[derive(StructOpt, Debug)]
 #[structopt(name = "panop", about = "A libre cross-platform disassembler.")]
 struct Args {
+    #[structopt(long = "color", help = "Forces coloring, even when piping to a file, etc.")]
+    color: bool,
     /// Print every function the function calls
     #[structopt(short = "c", long = "calls", help = "Print every address of every function this function calls")]
     calls: bool,
     /// The specific function to disassemble
-    #[structopt(short = "f", long = "function", help = "Disassemble the given function")]
+    #[structopt(short = "f", long = "function", help = "Disassemble the given function, or any of its aliases")]
     function_filter: Option<String>,
     /// The specific function address to disassemble
     #[structopt(short = "a", long = "address", help = "Disassemble the function at the given address")]
@@ -69,7 +72,7 @@ impl Filter {
     }
     pub fn is_match(&self, func: &Function) -> bool {
         if let Some(ref name) = self.name {
-            if name == &func.name { return true }
+            if name == &func.name || func.aliases().contains(name){ return true }
         }
         if let Some(ref addr) = self.addr {
             return *addr == func.start()
@@ -102,7 +105,7 @@ fn disassemble(args: Args) -> Result<()> {
     });
 
     for function in functions {
-        println!("{}", display::display_function(&function, &program));
+        display::print_function(&function, &program, args.color)?;
         if args.calls {
             let calls = function.collect_call_addresses();
             println!("Calls ({}):", calls.len());
