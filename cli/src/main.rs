@@ -38,13 +38,13 @@ use errors::*;
 #[derive(StructOpt, Debug)]
 #[structopt(name = "panop", about = "A libre cross-platform disassembler.")]
 struct Args {
-    #[structopt(long = "color", help = "Always color")]
+    #[structopt(long = "color", help = "Forces coloring, even when piping to a file, etc.")]
     color: bool,
     /// Print every function the function calls
     #[structopt(short = "c", long = "calls", help = "Print every address of every function this function calls")]
     calls: bool,
     /// The specific function to disassemble
-    #[structopt(short = "f", long = "function", help = "Disassemble the given function")]
+    #[structopt(short = "f", long = "function", help = "Disassemble the given function, or any of its aliases")]
     function_filter: Option<String>,
     /// The specific function address to disassemble
     #[structopt(short = "a", long = "address", help = "Disassemble the function at the given address")]
