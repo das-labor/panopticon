@@ -657,6 +657,11 @@ impl Function {
                 .collect()
     }
 
+    /// Return a boxed iterator over every statement in this function
+    pub fn statements<'b>(&'b self) -> Box<Iterator<Item=&'b Statement> + 'b> {
+        Box::new(self.basic_blocks().map(|bb| bb.statements()).flat_map(|ss| ss))
+    }
+
     /// Returns the functions basic block graph in graphivz's DOT format. Useful for debugging.
     pub fn to_dot(&self) -> String {
         let mut ret = "digraph G {".to_string();

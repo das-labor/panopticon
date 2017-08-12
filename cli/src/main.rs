@@ -38,6 +38,9 @@ use errors::*;
 #[derive(StructOpt, Debug)]
 #[structopt(name = "panop", about = "A libre cross-platform disassembler.")]
 struct Args {
+    /// Dumps the il of the matched function
+    #[structopt(long = "il", help = "Print the rreil of this function")]
+    dump_il: bool,
     #[structopt(long = "color", help = "Forces coloring, even when piping to a file, etc.")]
     color: bool,
     /// Print every function the function calls
@@ -111,6 +114,12 @@ fn disassemble(args: Args) -> Result<()> {
             println!("Calls ({}):", calls.len());
             for addr in calls {
                 println!("{:>8x}", addr);
+            }
+        }
+        if args.dump_il {
+            let statements = function.statements();
+            for statement in statements {
+                println!("{}", statement);
             }
         }
         println!("Aliases: {:?}", function.aliases());
