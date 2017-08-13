@@ -29,9 +29,9 @@
 //! error node.
 
 
-use {Function, Rvalue};
+use {Function, Statement, Operation, Rvalue};
 use panopticon_graph_algos::{AdjacencyList, AdjacencyMatrixGraphTrait, GraphTrait, MutableGraphTrait, VertexListGraphTrait};
-use panopticon_graph_algos::adjacency_list::{AdjacencyListVertexDescriptor, VertexLabelIterator};
+use panopticon_graph_algos::adjacency_list::{AdjacencyListVertexDescriptor, VertexLabelIterator, VertexLabelMutIterator};
 use uuid::Uuid;
 
 /// An iterator over every Function in this Program
@@ -55,6 +55,33 @@ impl<'a> Iterator for FunctionIterator<'a> {
             match self.iter.next() {
                 None => return None,
                 Some(&CallTarget::Concrete(ref function)) => return Some(function),
+                _ => ()
+            }
+        }
+    }
+}
+
+/// An iterator over every Function in this Program
+pub struct FunctionMutIterator<'a> {
+    iter: VertexLabelMutIterator<'a, CallGraphRef, CallTarget>
+}
+
+impl<'a> FunctionMutIterator<'a> {
+    /// Create a new function iterator from the `cfg`
+    pub fn new(cfg: &'a mut CallGraph) -> Self {
+        FunctionMutIterator {
+            iter: cfg.vertex_labels_mut(),
+        }
+    }
+}
+
+impl<'a> Iterator for FunctionMutIterator<'a> {
+    type Item = &'a mut Function;
+    fn next(&mut self) ->  Option<Self::Item> {
+        loop {
+            match self.iter.next() {
+                None => return None,
+                Some(&mut CallTarget::Concrete(ref mut function)) => return Some(function),
                 _ => ()
             }
         }
@@ -253,6 +280,46 @@ impl Program {
     /// Returns an iterator over every Function in this program
     pub fn functions(&self) -> FunctionIterator {
         FunctionIterator::new(&self.call_graph)
+    }
+
+    /// Returns a mutable iterator over every Function in this program
+    pub fn functions_mut(&mut self) -> FunctionMutIterator {
+        FunctionMutIterator::new(&mut self.call_graph)
+    }
+    /// Calls [Function::set_plt](../function/struct.Function.html#method.set_plt) on all matching functions
+    pub fn update_plt(&mut self) {
+        for ct in self.call_graph.vertex_labels_mut() {
+            match ct {
+                &mut CallTarget::Concrete(ref mut function) => {
+                    let address = {
+                        let mut last = None;
+                        let mut count = 0;
+                        for statement in function.statements() {
+                            count += 1;
+                            last = Some(statement);
+                        }
+                        if count == 2 {
+                            if let Some( &Statement { op: Operation::Load(_, Rvalue::Constant { value, .. }), .. }) = last {
+                                Some(value)
+                            } else {
+                                None
+                            }
+                        } else {
+                            None
+                        }
+                    };
+                    if let Some(address) = address {
+                        match self.imports.get(&address) {
+                            Some(import) => {
+                                function.set_plt(import, address);
+                            },
+                            None => (),
+                        }
+                    }
+                },
+                _ => (),
+            }
+        }
     }
 }
 

@@ -127,8 +127,9 @@ where
         targets = new_targets.into_iter().map(|(x, _)| x).collect::<Vec<u64>>();
     }
 
-    let program = program.into_inner();
+    let mut program = program.into_inner();
     info!("Finished analysis: {} failures {}", attempts.len(), *failures.read());
+    program.update_plt();
     Ok(program)
 }
 

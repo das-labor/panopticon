@@ -236,9 +236,9 @@ fn load_elf(bytes: &[u8], name: String) -> Result<(Project, Machine)> {
         add_sym(&mut prog, sym, name);
         seen_syms.insert(sym.st_value);
 
-        if sym.is_function() {
-            let name = &binary.dynstrtab[sym.st_name];
-            if !resolve_import_address(&mut proj, &binary.pltrelocs, name) {
+        let name = &binary.dynstrtab[sym.st_name];
+        if !resolve_import_address(&mut proj, &binary.pltrelocs, name) {
+            if sym.is_function() {
                 if !resolve_import_address(&mut proj, &binary.dynrelas, name) {
                     resolve_import_address(&mut proj, &binary.dynrels, name);
                 }

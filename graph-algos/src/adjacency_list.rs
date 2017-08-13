@@ -130,6 +130,7 @@ impl<'a, V, E> AdjacencyGraph<'a, V, E> for AdjacencyList<V, E> {
 }
 
 pub type VertexLabelIterator<'a, K, V> = std::collections::hash_map::Values<'a, K, V>;
+pub type VertexLabelMutIterator<'a, K, V> = std::collections::hash_map::ValuesMut<'a, K, V>;
 
 impl<'a, V: 'a, E> IntoIterator for &'a AdjacencyList<V, E> {
     type Item = &'a V;

@@ -82,6 +82,20 @@ pub type ControlFlowRef = AdjacencyListVertexDescriptor;
 /// Stable reference to an edge in the `ControlFlowGraph`
 pub type ControlFlowEdge = AdjacencyListEdgeDescriptor;
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+/// The kind of function this is, to distinguish plt stubs from regular functions.
+pub enum Kind {
+    /// A regular function
+    Regular,
+    /// A PLT stub, which is a name  and an address pointing to its PLT table entry
+    Stub {
+        /// The import name of this stub, as found in the PLT table
+        name: String,
+        /// The address of this stub in the PLT table
+        plt_address: u64
+    }
+}
+
 /// A set of basic blocks connected by conditional jumps
 #[derive(Serialize,Deserialize,Debug,Clone)]
 pub struct Function {
@@ -98,6 +112,8 @@ pub struct Function {
     region: String,
     /// The size of this function, in bytes (only counts the number of instructions, not padding bytes, or gaps for non-contiguous functions)
     size: usize,
+    /// What kind of function is this
+    kind: Kind,
 }
 
 #[derive(Clone,PartialEq,Eq,Debug)]
@@ -120,6 +136,7 @@ impl Function {
             entry_point,
             region: region.name().clone(),
             size: 0,
+            kind: Kind::Regular,
         }
     }
     // this private method is where the meat of making a function is;
@@ -247,6 +264,7 @@ impl Function {
             entry_point,
             region: region.name().clone(),
             size,
+            kind: Kind::Regular,
         })
     }
 
@@ -299,6 +317,19 @@ impl Function {
     /// Adds `alias` to this functions known aliases
     pub fn add_alias(&mut self, alias: String) {
         self.aliases.push(alias)
+    }
+
+    /// Sets this function's plt stub entry at `plt_address`, as `name`. **Note** This will alter the function's kind from `Regular` to `Stub`, and will also change move its canonical name into aliases.
+    pub fn set_plt(&mut self, name: &str, plt_address: u64) {
+        let old_name = self.name.clone();
+        self.aliases.push(old_name);
+        self.name = format!("{}@plt", name);
+        self.kind = Kind::Stub { name: name.to_string(), plt_address };
+    }
+
+    /// Returns this functions Kind
+    pub fn kind(&self) -> &Kind {
+        &self.kind
     }
 
     /// Returns this functions known name aliases (names pointing to the same start address)
