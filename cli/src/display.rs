@@ -1,13 +1,12 @@
 use std::io::Write;
-use atty;
-use termcolor::{BufferWriter, ColorChoice, ColorSpec, WriteColor};
+use termcolor::WriteColor;
 use termcolor::Color::*;
 
 use panopticon_core::{Function, BasicBlock, Mnemonic, MnemonicFormatToken, Program, Rvalue, Result};
 
 macro_rules! color_bold {
     ($fmt:ident, $color:ident, $str:expr) => ({
-    $fmt.set_color(ColorSpec::new().set_bold(true).set_fg(Some($color)))?;
+    $fmt.set_color(::termcolor::ColorSpec::new().set_bold(true).set_fg(Some($color)))?;
     write!($fmt, "{}", $str)?;
     $fmt.reset()
     })
@@ -15,26 +14,22 @@ macro_rules! color_bold {
 
 macro_rules! color {
     ($fmt:ident, $color:ident, $str:expr) => ({
-        $fmt.set_color(ColorSpec::new().set_fg(Some($color)))?;
+        $fmt.set_color(::termcolor::ColorSpec::new().set_fg(Some($color)))?;
         write!($fmt, "{}", $str)?;
         $fmt.reset()
     })
 }
 
 /// Prints the function in a human readable format, using `program`, with colors. If `always_color` is set, it will force printing, even to non ttys.
-pub fn print_function(function: &Function, program: &Program, always_color: bool) -> Result<()> {
-    let cc = if always_color || atty::is(atty::Stream::Stdout) { ColorChoice::Auto } else { ColorChoice::Never };
-    let writer = BufferWriter::stdout(cc);
-    let mut fmt = writer.buffer();
+pub fn print_function<W: Write + WriteColor>(fmt: &mut W, function: &Function, program: &Program) -> Result<()> {
     let mut bbs = function.basic_blocks().collect::<Vec<&BasicBlock>>();
     bbs.sort_by(|bb1, bb2| bb1.area.start.cmp(&bb2.area.start));
     write!(fmt, "{:0>8x} <", function.start())?;
     color_bold!(fmt, Yellow, function.name)?;
     writeln!(fmt, ">:")?;
     for bb in bbs {
-        display_basic_block(&mut fmt, &bb, program)?;
+        display_basic_block(fmt, &bb, program)?;
     }
-    writer.print(&fmt)?;
     Ok(())
 }
 
