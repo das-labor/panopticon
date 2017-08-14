@@ -84,7 +84,7 @@ pub type ControlFlowEdge = AdjacencyListEdgeDescriptor;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 /// The kind of function this is, to distinguish plt stubs from regular functions.
-pub enum Kind {
+pub enum FunctionKind {
     /// A regular function
     Regular,
     /// A PLT stub, which is a name  and an address pointing to its PLT table entry
@@ -113,7 +113,7 @@ pub struct Function {
     /// The size of this function, in bytes (only counts the number of instructions, not padding bytes, or gaps for non-contiguous functions)
     size: usize,
     /// What kind of function is this
-    kind: Kind,
+    kind: FunctionKind,
 }
 
 #[derive(Clone,PartialEq,Eq,Debug)]
@@ -136,7 +136,7 @@ impl Function {
             entry_point,
             region: region.name().clone(),
             size: 0,
-            kind: Kind::Regular,
+            kind: FunctionKind::Regular,
         }
     }
     // this private method is where the meat of making a function is;
@@ -264,7 +264,7 @@ impl Function {
             entry_point,
             region: region.name().clone(),
             size,
-            kind: Kind::Regular,
+            kind: FunctionKind::Regular,
         })
     }
 
@@ -324,11 +324,11 @@ impl Function {
         let old_name = self.name.clone();
         self.aliases.push(old_name);
         self.name = format!("{}@plt", name);
-        self.kind = Kind::Stub { name: name.to_string(), plt_address };
+        self.kind = FunctionKind::Stub { name: name.to_string(), plt_address };
     }
 
-    /// Returns this functions Kind
-    pub fn kind(&self) -> &Kind {
+    /// Returns this functions FunctionKind
+    pub fn kind(&self) -> &FunctionKind {
         &self.kind
     }
 

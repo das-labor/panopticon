@@ -106,7 +106,7 @@ pub mod basic_block;
 pub use basic_block::BasicBlock;
 
 pub mod function;
-pub use function::{ControlFlowEdge, ControlFlowGraph, ControlFlowRef, ControlFlowTarget, Function};
+pub use function::{ControlFlowEdge, ControlFlowGraph, ControlFlowRef, ControlFlowTarget, Function, FunctionKind};
 
 pub mod program;
 pub use program::{CallGraph, CallGraphRef, CallTarget, Program};

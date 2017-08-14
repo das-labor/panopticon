@@ -18,8 +18,7 @@ extern crate atty;
 use panopticon_amd64 as amd64;
 use panopticon_analysis::analyze;
 use panopticon_avr as avr;
-use panopticon_core::{Machine, Function, Program, Result, loader};
-use panopticon_core::function::Kind;
+use panopticon_core::{Machine, Function, FunctionKind, Program, Result, loader};
 use std::path::Path;
 use std::result;
 use structopt::StructOpt;
@@ -127,7 +126,7 @@ fn print_reverse_deps<W: Write + WriteColor>(mut fmt: W, program: &Program, filt
                         let function = program.find_function_by(|f| f.start() == call_address).unwrap();
                         debug!("Checking function {} with call address {:#x} for plt stub", function.name, call_address);
                         match function.kind() {
-                            &Kind::Stub { ref plt_address, ref name } => {
+                            &FunctionKind::Stub { ref plt_address, ref name } => {
                                 debug!("Function {} is a plt stub for {}", function.name, name);
                                 if *plt_address == addr {
                                     debug!("Function {} plt address {:#x} matches reverse dep address {:#x}, returning", f.name, plt_address, addr);
