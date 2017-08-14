@@ -133,7 +133,7 @@ pub fn load_mach(bytes: &[u8], offset: usize, name: String) -> Result<(Project, 
     }
 
     debug!("Imports: {:?}", &proj.imports);
-
+    prog.imports = proj.imports.clone();
     proj.comments.insert(("base".to_string(), entry), "main".to_string());
     proj.code.push(prog);
 
@@ -189,7 +189,7 @@ fn load_elf(bytes: &[u8], name: String) -> Result<(Project, Machine)> {
     }
 
     let name = if let &Some(ref soname) = &binary.soname {
-        soname.to_owned()
+        soname.to_string()
     } else {
         name
     };
