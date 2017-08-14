@@ -123,7 +123,7 @@ fn print_reverse_deps<W: Write + WriteColor>(mut fmt: W, program: &Program, filt
                     Some((f.start(), f.name.to_string()))
                 } else {
                     for call_address in call_addresses {
-                        let function = program.find_function_by(|f| f.start() == call_address).unwrap();
+                        let function = program.find_function_by(|f| f.start() == call_address).expect(&format!("{} has a call address {:#x}, but there isn't a function with that address in the program object", f.name, call_address));
                         debug!("Checking function {} with call address {:#x} for plt stub", function.name, call_address);
                         match function.kind() {
                             &FunctionKind::Stub { ref plt_address, ref name } => {
@@ -137,7 +137,7 @@ fn print_reverse_deps<W: Write + WriteColor>(mut fmt: W, program: &Program, filt
                         }
                     }
                     None
-                }
+               }
             }).collect();
 
             reverse_deps.sort();
