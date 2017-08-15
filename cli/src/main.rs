@@ -174,7 +174,7 @@ fn disassemble(binary: &str) -> Result<Program> {
     }?)
 }
 
-fn format(fmt: &mut termcolor::Buffer, program: Program, args: Args) -> Result<()> {
+fn app_logic(fmt: &mut termcolor::Buffer, program: Program, args: Args) -> Result<()> {
     let filter = Filter { name: args.function_filter, addr: args.address_filter.map(|addr| u64::from_str_radix(&addr, 16).unwrap()) };
 
     debug!("Program.imports: {:#?}", program.imports);
@@ -220,7 +220,7 @@ fn run(args: Args) -> Result<()> {
     let cc = if args.color || atty::is(atty::Stream::Stdout) { ColorChoice::Auto } else { ColorChoice::Never };
     let writer = BufferWriter::stdout(cc);
     let mut fmt = writer.buffer();
-    format(&mut fmt, program, args)?;
+    app_logic(&mut fmt, program, args)?;
     writer.print(&fmt)?;
     Ok(())
 }
