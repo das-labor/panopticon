@@ -191,7 +191,11 @@ fn format(fmt: &mut termcolor::Buffer, program: Program, args: Args) -> Result<(
     });
 
     for function in functions {
-        display::print_function(fmt, &function, &program)?;
+        let mut bbs = function.basic_blocks().collect::<Vec<_>>();
+        // sort them by start so we can use them later
+        bbs.sort_by(|bb1, bb2| bb1.area.start.cmp(&bb2.area.start));
+
+        display::print_function(fmt, &function, &bbs, &program)?;
         if args.calls {
             let calls = function.collect_call_addresses();
             write!(fmt, "Calls (")?;
@@ -203,10 +207,7 @@ fn format(fmt: &mut termcolor::Buffer, program: Program, args: Args) -> Result<(
             }
         }
         if args.dump_il {
-            let statements = function.statements();
-            for statement in statements {
-                writeln!(fmt, "{}", statement)?;
-            }
+            display::print_rreil(fmt, &bbs)?;
         }
         writeln!(fmt, "Aliases: {:?}", function.aliases())?;
     }
