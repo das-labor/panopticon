@@ -1,13 +1,12 @@
 use std::io::Write;
-use atty;
-use termcolor::{BufferWriter, ColorChoice, ColorSpec, WriteColor};
+use termcolor::WriteColor;
 use termcolor::Color::*;
 
-use panopticon_core::{Function, BasicBlock, Mnemonic, MnemonicFormatToken, Program, Rvalue, Result};
+use panopticon_core::{Function, BasicBlock, Mnemonic, MnemonicFormatToken, Operation, Program, Rvalue, Result, Statement};
 
 macro_rules! color_bold {
     ($fmt:ident, $color:ident, $str:expr) => ({
-    $fmt.set_color(ColorSpec::new().set_bold(true).set_fg(Some($color)))?;
+    $fmt.set_color(::termcolor::ColorSpec::new().set_bold(true).set_fg(Some($color)))?;
     write!($fmt, "{}", $str)?;
     $fmt.reset()
     })
@@ -15,43 +14,328 @@ macro_rules! color_bold {
 
 macro_rules! color {
     ($fmt:ident, $color:ident, $str:expr) => ({
-        $fmt.set_color(ColorSpec::new().set_fg(Some($color)))?;
+        $fmt.set_color(::termcolor::ColorSpec::new().set_fg(Some($color)))?;
         write!($fmt, "{}", $str)?;
         $fmt.reset()
     })
 }
 
-/// Prints the function in a human readable format, using `program`, with colors. If `always_color` is set, it will force printing, even to non ttys.
-pub fn print_function(function: &Function, program: &Program, always_color: bool) -> Result<()> {
-    let cc = if always_color || atty::is(atty::Stream::Stdout) { ColorChoice::Auto } else { ColorChoice::Never };
-    let writer = BufferWriter::stdout(cc);
-    let mut fmt = writer.buffer();
-    let mut bbs = function.basic_blocks().collect::<Vec<&BasicBlock>>();
-    bbs.sort_by(|bb1, bb2| bb1.area.start.cmp(&bb2.area.start));
+/// Prints a sorted-by-start list of the RREIL implementing each mnemonic in a basic block, as well as phi functions and init code
+pub fn print_rreil<W: Write + WriteColor>(fmt: &mut W, bbs: &[&BasicBlock]) -> Result<()> {
+    color_bold!(fmt, White, "RREIL")?;
+    writeln!(fmt, ":")?;
+    for bb in bbs {
+        for mnemonic in bb.mnemonics() {
+            print_address_and_mnemonic(fmt, mnemonic)?;
+            for statement in &mnemonic.instructions {
+                print_statement(fmt, statement)?;
+            }
+        }
+    }
+    Ok(())
+}
+
+/// Prints an address and its corresponding mnemonic at that address
+pub fn print_address_and_mnemonic<W: Write + WriteColor>(fmt: &mut W, mnemonic: &Mnemonic) -> Result<()> {
+    color_bold!(fmt, White, format!("{:8x}", mnemonic.area.start as usize))?;
+    write!(fmt, ": (")?;
+    print_mnemonic(fmt, mnemonic, None)?;
+    writeln!(fmt, ")")?;
+    Ok(())
+}
+
+/// Print colored RREIL statement
+pub fn print_statement<W: Write + WriteColor>(fmt: &mut W, statement: &Statement) -> Result<()> {
+    write!(fmt, "{: <8}  ", "")?;
+    match statement.op {
+        Operation::Add(ref a, ref b) => {
+            color_bold!(fmt, White, "add")?;
+            write!(fmt, " ")?;
+            color!(fmt, White, statement.assignee)?;
+            color_bold!(fmt, Green, ",")?;
+            write!(fmt, " ")?;
+            color!(fmt, White, a)?;
+            color_bold!(fmt, Green, ",")?;
+            write!(fmt, " ")?;
+            color!(fmt, White, b)?;
+        },
+        Operation::Subtract(ref a, ref b) => {
+            color_bold!(fmt, White, "sub")?;
+            write!(fmt, " ")?;
+            color!(fmt, White, statement.assignee)?;
+            color_bold!(fmt, Green, ",")?;
+            write!(fmt, " ")?;
+            color!(fmt, White, a)?;
+            color_bold!(fmt, Green, ",")?;
+            write!(fmt, " ")?;
+            color!(fmt, White, b)?;
+        },
+        Operation::Multiply(ref a, ref b) => {
+            color_bold!(fmt, White, "mul")?;
+            write!(fmt, " ")?;
+            color!(fmt, White, statement.assignee)?;
+            color_bold!(fmt, Green, ",")?;
+            write!(fmt, " ")?;
+            color!(fmt, White, a)?;
+            color_bold!(fmt, Green, ",")?;
+            write!(fmt, " ")?;
+            color!(fmt, White, b)?;
+        },
+        Operation::DivideUnsigned(ref a, ref b) => {
+            color_bold!(fmt, White, "divu")?;
+            write!(fmt, " ")?;
+            color!(fmt, White, statement.assignee)?;
+            color_bold!(fmt, Green, ",")?;
+            write!(fmt, " ")?;
+            color!(fmt, White, a)?;
+            color_bold!(fmt, Green, ",")?;
+            write!(fmt, " ")?;
+            color!(fmt, White, b)?;
+        },
+        Operation::DivideSigned(ref a, ref b) => {
+            color_bold!(fmt, White, "divs")?;
+            write!(fmt, " ")?;
+            color!(fmt, White, statement.assignee)?;
+            color_bold!(fmt, Green, ",")?;
+            write!(fmt, " ")?;
+            color!(fmt, White, a)?;
+            color_bold!(fmt, Green, ",")?;
+            write!(fmt, " ")?;
+            color!(fmt, White, b)?;
+        },
+        Operation::ShiftLeft(ref a, ref b) => {
+            color_bold!(fmt, White, "shl")?;
+            write!(fmt, " ")?;
+            color!(fmt, White, statement.assignee)?;
+            color_bold!(fmt, Green, ",")?;
+            write!(fmt, " ")?;
+            color!(fmt, White, a)?;
+            color_bold!(fmt, Green, ",")?;
+            write!(fmt, " ")?;
+            color!(fmt, White, b)?;
+        },
+        Operation::ShiftRightUnsigned(ref a, ref b) => {
+            color_bold!(fmt, White, "shru")?;
+            write!(fmt, " ")?;
+            color!(fmt, White, statement.assignee)?;
+            color_bold!(fmt, Green, ",")?;
+            write!(fmt, " ")?;
+            color!(fmt, White, a)?;
+            color_bold!(fmt, Green, ",")?;
+            write!(fmt, " ")?;
+            color!(fmt, White, b)?;
+        },
+        Operation::ShiftRightSigned(ref a, ref b) => {
+            color_bold!(fmt, White, "shrs")?;
+            write!(fmt, " ")?;
+            color!(fmt, White, statement.assignee)?;
+            color_bold!(fmt, Green, ",")?;
+            write!(fmt, " ")?;
+            color!(fmt, White, a)?;
+            color_bold!(fmt, Green, ",")?;
+            write!(fmt, " ")?;
+            color!(fmt, White, b)?;
+        },
+        Operation::Modulo(ref a, ref b) => {
+            color_bold!(fmt, White, "mod")?;
+            write!(fmt, " ")?;
+            color!(fmt, White, statement.assignee)?;
+            color_bold!(fmt, Green, ",")?;
+            write!(fmt, " ")?;
+            color!(fmt, White, a)?;
+            color_bold!(fmt, Green, ",")?;
+            write!(fmt, " ")?;
+            color!(fmt, White, b)?;
+        },
+        Operation::And(ref a, ref b) => {
+            color_bold!(fmt, White, "and")?;
+            write!(fmt, " ")?;
+            color!(fmt, White, statement.assignee)?;
+            color_bold!(fmt, Green, ",")?;
+            write!(fmt, " ")?;
+            color!(fmt, White, a)?;
+            color_bold!(fmt, Green, ",")?;
+            write!(fmt, " ")?;
+            color!(fmt, White, b)?;
+        },
+        Operation::InclusiveOr(ref a, ref b) => {
+            color_bold!(fmt, White, "or")?;
+            write!(fmt, " ")?;
+            color!(fmt, White, statement.assignee)?;
+            color_bold!(fmt, Green, ",")?;
+            write!(fmt, " ")?;
+            color!(fmt, White, a)?;
+            color_bold!(fmt, Green, ",")?;
+            write!(fmt, " ")?;
+            color!(fmt, White, b)?;
+        },
+        Operation::ExclusiveOr(ref a, ref b) => {
+            color_bold!(fmt, White, "xor")?;
+            write!(fmt, " ")?;
+            color!(fmt, White, statement.assignee)?;
+            color_bold!(fmt, Green, ",")?;
+            write!(fmt, " ")?;
+            color!(fmt, White, a)?;
+            color_bold!(fmt, Green, ",")?;
+            write!(fmt, " ")?;
+            color!(fmt, White, b)?;
+        },
+        Operation::Equal(ref a, ref b) => {
+            color_bold!(fmt, White, "cmpeq")?;
+            write!(fmt, " ")?;
+            color!(fmt, White, statement.assignee)?;
+            color_bold!(fmt, Green, ",")?;
+            write!(fmt, " ")?;
+            color!(fmt, White, a)?;
+            color_bold!(fmt, Green, ",")?;
+            write!(fmt, " ")?;
+            color!(fmt, White, b)?;
+        },
+        Operation::LessOrEqualUnsigned(ref a, ref b) => {
+            color_bold!(fmt, White, "cmpleu")?;
+            write!(fmt, " ")?;
+            color!(fmt, White, statement.assignee)?;
+            color_bold!(fmt, Green, ",")?;
+            write!(fmt, " ")?;
+            color!(fmt, White, a)?;
+            color_bold!(fmt, Green, ",")?;
+            write!(fmt, " ")?;
+            color!(fmt, White, b)?;
+        },
+        Operation::LessOrEqualSigned(ref a, ref b) => {
+            color_bold!(fmt, White, "cmples")?;
+            write!(fmt, " ")?;
+            color!(fmt, White, statement.assignee)?;
+            color_bold!(fmt, Green, ",")?;
+            write!(fmt, " ")?;
+            color!(fmt, White, a)?;
+            color_bold!(fmt, Green, ",")?;
+            write!(fmt, " ")?;
+            color!(fmt, White, b)?;
+        },
+        Operation::LessUnsigned(ref a, ref b) => {
+            color_bold!(fmt, White, "cmplu")?;
+            write!(fmt, " ")?;
+            color!(fmt, White, statement.assignee)?;
+            color_bold!(fmt, Green, ",")?;
+            write!(fmt, " ")?;
+            color!(fmt, White, a)?;
+            color_bold!(fmt, Green, ",")?;
+            write!(fmt, " ")?;
+            color!(fmt, White, b)?;
+        },
+        Operation::LessSigned(ref a, ref b) => {
+            color_bold!(fmt, White, "cmpls")?;
+            write!(fmt, " ")?;
+            color!(fmt, White, statement.assignee)?;
+            color_bold!(fmt, Green, ",")?;
+            write!(fmt, " ")?;
+            color!(fmt, White, a)?;
+            color_bold!(fmt, Green, ",")?;
+            write!(fmt, " ")?;
+            color!(fmt, White, b)?;
+        },
+        Operation::Move(ref a) => {
+            color_bold!(fmt, White, "mov")?;
+            write!(fmt, " ")?;
+            color!(fmt, White, statement.assignee)?;
+            color_bold!(fmt, Green, ",")?;
+            write!(fmt, " ")?;
+            color!(fmt, White, a)?;
+        },
+        Operation::Call(ref a) => {
+            color_bold!(fmt, White, "call")?;
+            write!(fmt, " ")?;
+            color!(fmt, White, statement.assignee)?;
+            color_bold!(fmt, Green, ",")?;
+            write!(fmt, " ")?;
+            color!(fmt, White, a)?;
+        },
+        Operation::ZeroExtend(s, ref a) => {
+            color_bold!(fmt, White, format!("convert_{}", s))?;
+            write!(fmt, " ")?;
+            color!(fmt, White, statement.assignee)?;
+            color_bold!(fmt, Green, ",")?;
+            write!(fmt, " ")?;
+            color!(fmt, White, a)?;
+        },
+        Operation::SignExtend(s, ref a) => {
+            color_bold!(fmt, White, format!("sign-extend_{}", s))?;
+            write!(fmt, " ")?;
+            color!(fmt, White, statement.assignee)?;
+            color_bold!(fmt, Green, ",")?;
+            write!(fmt, " ")?;
+            color!(fmt, White, a)?;
+        },
+        Operation::Select(s, ref a, ref b) => {
+            color_bold!(fmt, White, format!("select_{}", s))?;
+            write!(fmt, " ")?;
+            color!(fmt, White, statement.assignee)?;
+            color_bold!(fmt, Green, ",")?;
+            write!(fmt, " ")?;
+            color!(fmt, White, a)?;
+            color_bold!(fmt, Green, ",")?;
+            write!(fmt, " ")?;
+            color!(fmt, White, b)?;
+        },
+        Operation::Load(ref r, ref b) => {
+            color_bold!(fmt, White, format!("load_{}", r))?;
+            write!(fmt, " ")?;
+            color!(fmt, White, statement.assignee)?;
+            color_bold!(fmt, Green, ",")?;
+            write!(fmt, " ")?;
+            color!(fmt, White, b)?;
+        },
+        Operation::Store(ref r, ref b) => {
+            color_bold!(fmt, White, format!("store_{}", r))?;
+            write!(fmt, " ")?;
+            color!(fmt, White, statement.assignee)?;
+            color_bold!(fmt, Green, ",")?;
+            write!(fmt, " ")?;
+            color!(fmt, White, b)?;
+        },
+        Operation::Phi(ref vec) => {
+            color_bold!(fmt, White, format!("phi"))?;
+            write!(fmt, " ")?;
+            for (i, x) in vec.iter().enumerate() {
+                color!(fmt, White, format!("{}", x))?;
+                if i < vec.len() - 1 {
+                    color_bold!(fmt, Green, ",")?;
+                    write!(fmt, " ")?;
+                }
+            }
+        }
+    }
+    writeln!(fmt, "")?;
+    Ok(())
+}
+
+/// Prints the function in a human readable format, using `program`, with colors
+pub fn print_function<W: Write + WriteColor>(fmt: &mut W, function: &Function, bbs: &[&BasicBlock], program: &Program) -> Result<()> {
     write!(fmt, "{:0>8x} <", function.start())?;
     color_bold!(fmt, Yellow, function.name)?;
     writeln!(fmt, ">:")?;
     for bb in bbs {
-        display_basic_block(&mut fmt, &bb, program)?;
+        print_basic_block(fmt, &bb, program)?;
     }
-    writer.print(&fmt)?;
     Ok(())
 }
 
 /// Prints the basic block into `fmt`, in disassembly order, in human readable form, and looks up any functions calls in `program`
-pub fn display_basic_block<W: Write + WriteColor>(fmt: &mut W, basic_block: &BasicBlock, program: &Program) -> Result<()> {
-    for x in basic_block.mnemonics.iter() {
-        if !x.opcode.starts_with("__") {
-            display_mnemonic(fmt, &x, program)?;
+pub fn print_basic_block<W: Write + WriteColor>(fmt: &mut W, basic_block: &BasicBlock, program: &Program) -> Result<()> {
+    for mnemonic in basic_block.mnemonics.iter() {
+        if !mnemonic.opcode.starts_with("__") {
+            write!(fmt, "{:8x}: ", mnemonic.area.start)?;
+            print_mnemonic(fmt, &mnemonic, Some(program))?;
+            writeln!(fmt)?;
         }
     }
     Ok(())
 }
 
 /// Prints the mnemonic into `fmt`, in human readable form, and looks up any functions calls in `program`
-pub fn display_mnemonic<W: Write + WriteColor>(fmt: &mut W, mnemonic: &Mnemonic, program: &Program) -> Result<()> {
+pub fn print_mnemonic<W: Write + WriteColor>(fmt: &mut W, mnemonic: &Mnemonic, program: Option<&Program>) -> Result<()> {
     let mut ops = mnemonic.operands.iter();
-    write!(fmt, "{:8x}: ", mnemonic.area.start)?;
     color_bold!(fmt, Blue, mnemonic.opcode)?;
     write!(fmt, " ")?;
     for token in &mnemonic.format_string {
@@ -91,13 +375,17 @@ pub fn display_mnemonic<W: Write + WriteColor>(fmt: &mut W, mnemonic: &Mnemonic,
                                 c % res
                             } else { c };
                         if is_code {
-                            if let Some(function) = program.find_function_by(|f| { f.start() == val }) {
-                                color!(fmt, Red, format!("{:x}",val))?;
-                                write!(fmt, " <", )?;
-                                color_bold!(fmt, Yellow, function.name)?;
-                                write!(fmt, ">")?;
+                            if let Some(program) = program {
+                                if let Some(function) = program.find_function_by(|f| { f.start() == val }) {
+                                    color!(fmt, Red, format!("{:x}",val))?;
+                                    write!(fmt, " <", )?;
+                                    color_bold!(fmt, Yellow, function.name)?;
+                                    write!(fmt, ">")?;
+                                } else {
+                                    color_bold!(fmt, Magenta, format!("{:x}",val))?;
+                                }
                             } else {
-                                color_bold!(fmt, Magenta, format!("{:x}",val))?;
+                                write!(fmt, "{}", format!("{:#x}",val))?;
                             }
                         } else {
                             write!(fmt, "{}", format!("{:#x}",val))?;
@@ -119,6 +407,5 @@ pub fn display_mnemonic<W: Write + WriteColor>(fmt: &mut W, mnemonic: &Mnemonic,
             }
         }
     }
-    writeln!(fmt)?;
     Ok(())
 }
