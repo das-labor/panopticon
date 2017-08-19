@@ -106,8 +106,6 @@
 //! # }
 //! ```
 
-
-
 use Result;
 use quickcheck::{Arbitrary, Gen};
 use serde::{Serialize,Deserialize};
@@ -122,7 +120,7 @@ use std::str::{FromStr, SplitWhitespace};
 use std::u64;
 
 /// A readable RREIL value.
-#[derive(Clone,PartialEq,Eq,Debug,Serialize,Deserialize,Hash)]
+#[derive(Clone,PartialEq,Eq,Debug,Serialize,Deserialize,Hash,PartialOrd,Ord)]
 pub enum Rvalue {
     /// Undefined value of unknown length
     Undefined,
@@ -273,7 +271,7 @@ impl Display for Rvalue {
 
 
 /// A writeable RREIL value.
-#[derive(Clone,PartialEq,Eq,Debug,Serialize,Deserialize,Hash)]
+#[derive(Clone,PartialEq,Eq,Debug,Serialize,Deserialize,Hash,PartialOrd,Ord)]
 pub enum Lvalue {
     /// Undefined value of unknown length
     Undefined,
@@ -399,6 +397,24 @@ impl Display for Guard {
     }
 }
 
+/// Endianess of a memory operation.
+#[derive(Debug,Clone,Copy,PartialEq,Eq,Serialize,Deserialize)]
+pub enum Endianess {
+    /// Least significant byte first
+    Little,
+    /// Most significant byte first
+    Big,
+}
+
+impl Display for Endianess {
+    fn fmt(&self, f: &mut Formatter) -> result::Result<(), Error> {
+        match self {
+            &Endianess::Little => f.write_str("le"),
+            &Endianess::Big => f.write_str("be"),
+        }
+    }
+}
+
 /// A RREIL operation.
 #[derive(Clone,PartialEq,Eq,Debug,Serialize,Deserialize)]
 #[serde(bound(deserialize = "V: Serialize + for<'a> Deserialize<'a> + Clone + PartialEq + Eq + Debug"))]
@@ -453,13 +469,15 @@ pub enum Operation<V>
     Move(V),
     /// Calls the function located at the address pointed to by the operand.
     Call(V),
+    /// Initializes a global variable.
+    Initialize(Cow<'static,str>,usize),
     /// Copies only a range of bit from the operand.
     Select(usize, V, V),
 
     /// Reads a memory cell
-    Load(Cow<'static, str>, V),
-    /// Writes a memory cell
-    Store(Cow<'static, str>, V),
+    Load(Cow<'static,str>,Endianess,usize,V),
+    /// Writes a memory cell pointed by 1st V w/ 2nd V, returns Undef
+    Store(Cow<'static,str>,Endianess,usize,V,V),
 
     /// SSA Phi function
     Phi(Vec<V>),
@@ -487,7 +505,7 @@ impl Statement {
             }
 
             if !(assignee.size() == None || Some(cmp::max(a.size().unwrap_or(0), b.size().unwrap_or(0))) == assignee.size()) {
-                return Err("Operation result and assingnee sizes mismatch".into());
+                return Err(format!("Operation result and assingnee sizes mismatch ({:?})",self).into());
             }
 
             Ok(())
@@ -554,6 +572,14 @@ impl Statement {
                 }
             }
 
+            &Statement{ op: Operation::Initialize(_,ref sz), ref assignee } => {
+                if !(assignee.size() == None || assignee.size() == Some(*sz)) {
+                    return Err("Operation result and assingnee sizes mismatch".into())
+                } else {
+                    Ok(())
+                }
+            }
+
             &Statement { op: Operation::Call(_), ref assignee } => {
                 if !(assignee == &Lvalue::Undefined) {
                     return Err("Call operation can only be assigned to Undefined".into());
@@ -562,20 +588,32 @@ impl Statement {
                 }
             }
 
-            &Statement { op: Operation::Load(_, _), ref assignee } => {
-                if !(assignee.size().is_some()) {
-                    return Err("Memory operation with undefined size".into());
+            &Statement{ op: Operation::Load(_,_,ref sz,_), ref assignee } => {
+                if !assignee.size().is_none() && assignee.size() != Some(*sz) {
+                    return Err(format!("Memory operation with invalid size. Expected {:?} got {:?}",Some(*sz),assignee.size()).into());
+                } else if *sz == 0 {
+                    return Err("Memory operation of size 0".into());
+                } else if *sz % 8 != 0 {
+                    return Err("Memory operation not byte aligned".into());
                 } else {
                     Ok(())
                 }
             }
-            &Statement { op: Operation::Store(_, _), ref assignee } => {
-                if !(assignee.size().is_some()) {
-                    return Err("Memory operation with undefined size".into());
+
+            &Statement{ op: Operation::Store(_,_,sz,_,ref val), ref assignee } => {
+                if val.size().is_some() && assignee.size().is_some() && val.size() != assignee.size() {
+                    return Err("Memory store value with inconsitend size".into());
+                } else if sz == 0 {
+                    return Err("Memory operation of size 0".into());
+                } else if val.size().is_some() && val.size() != Some(sz) {
+                    return Err(format!("Memory store value with inconsitend size: {:?} != {}",val.size(),sz).into());
+                } else if sz % 8 != 0 {
+                    return Err("Memory operation not byte aligned".into());
                 } else {
                     Ok(())
                 }
             }
+
 
             &Statement { op: Operation::Phi(ref vec), ref assignee } => {
                 if !(vec.iter().all(|rv| rv.size() == assignee.size()) && assignee.size() != None) {
@@ -640,7 +678,12 @@ pub fn execute(op: Operation<Rvalue>) -> Rvalue {
             let a = Wrapping(_a);
             let b = Wrapping(_b);
             let mask = Wrapping(if s < 64 { (1u64 << s) - 1 } else { u64::MAX });
-            Rvalue::Constant { value: ((a * b) & mask).0, size: s }
+
+            if (b & mask) == Wrapping(0) {
+                Rvalue::Undefined
+            } else {
+                Rvalue::Constant { value: ((a / b) & mask).0, size: s }
+            }
         }
         Operation::DivideUnsigned(ref a, Rvalue::Constant { value: 1, .. }) => a.clone(),
         Operation::DivideUnsigned(Rvalue::Constant { value: 0, size: s }, _) => Rvalue::Constant { value: 0, size: s },
@@ -650,17 +693,33 @@ pub fn execute(op: Operation<Rvalue>) -> Rvalue {
         Operation::DivideSigned(Rvalue::Constant { value: _a, size: s }, Rvalue::Constant { value: _b, size: _s }) => {
             debug_assert!(s == _s);
 
-            let a = Wrapping(_a);
-            let b = Wrapping(_b);
-            let mask = Wrapping(
-                if s < 64 {
-                    (1u64 << (s - 1)) - 1
-                } else {
-                    u64::MAX
+            let mut a = Wrapping(_a as i64);
+            let mut b = Wrapping(_b as i64);
+
+            if s < 64 {
+                let sign_bit = Wrapping(1 << (s - 1));
+                let m = Wrapping(1 << s);
+
+                if sign_bit & a != Wrapping(0) {
+                    a = a - m;
                 }
-            );
-            let sign_mask = Wrapping(if s < 64 { 1u64 << s } else { 0u64 });
-            Rvalue::Constant { value: (((a * b) & mask) | ((a ^ b) & sign_mask)).0, size: s }
+                if sign_bit & b != Wrapping(0) {
+                    b = b - m;
+                }
+                a = a % m;
+                b = b % m;
+            }
+
+            if b == Wrapping(0) {
+                Rvalue::Undefined
+            } else {
+                if s < 64 {
+                    let m = 1 << s;
+                    Rvalue::Constant { value: (a / b).0 as u64 % m, size: s }
+                } else {
+                    Rvalue::Constant { value: (a / b).0 as u64, size: s }
+                }
+            }
         }
         Operation::DivideSigned(ref a, Rvalue::Constant { value: 1, .. }) => a.clone(),
         Operation::DivideSigned(Rvalue::Constant { value: 0, size: s }, _) => Rvalue::Constant { value: 0, size: s },
@@ -688,12 +747,19 @@ pub fn execute(op: Operation<Rvalue>) -> Rvalue {
         Operation::ShiftLeft(ref a, Rvalue::Constant { value: 0, .. }) => a.clone(),
         Operation::ShiftLeft(_, _) => Rvalue::Undefined,
 
-        Operation::ShiftRightUnsigned(Rvalue::Constant { value: _a, size: s }, Rvalue::Constant { value: b, size: _s }) => {
+        Operation::ShiftRightUnsigned(Rvalue::Constant { value: a, size: s }, Rvalue::Constant { value: b, size: _s }) => {
+            use std::cmp;
             debug_assert!(s == _s);
 
-            let a = Wrapping(_a);
-            let mask = Wrapping(if s < 64 { (1u64 << s) - 1 } else { u64::MAX });
-            Rvalue::Constant { value: ((a >> (b as usize)) & mask).0, size: s }
+            if b >= s as u64 {
+                Rvalue::Constant { value: 0, size: s }
+            } else {
+                let mask = if s < 64 { (1u64 << s) - 1 } else { u64::MAX };
+                Rvalue::Constant {
+                    value: ((a >> cmp::min(cmp::min(64, s), (b as usize))) & mask),
+                    size: s,
+                }
+            }
         }
         Operation::ShiftRightUnsigned(Rvalue::Constant { value: 0, size: s }, _) => Rvalue::Constant { value: 0, size: s },
         Operation::ShiftRightUnsigned(ref a, Rvalue::Constant { value: 0, .. }) => a.clone(),
@@ -702,12 +768,35 @@ pub fn execute(op: Operation<Rvalue>) -> Rvalue {
         Operation::ShiftRightSigned(Rvalue::Constant { value: _a, size: s }, Rvalue::Constant { value: b, size: _s }) => {
             debug_assert!(s == _s);
 
-            let a = Wrapping(_a);
-            let mask = Wrapping(if s < 64 { (1u64 << s) - 1 } else { u64::MAX });
-            let sign = Wrapping(if s < 64 { 1u64 << (s - 1) } else { 0 });
-            Rvalue::Constant {
-                value: ((((a & mask) >> (b as usize)) & mask) | (a & sign)).0,
-                size: s,
+            let mut a = Wrapping(_a as i64);
+
+            if s < 64 {
+                let sign_bit = Wrapping(1 << (s - 1));
+                let m = Wrapping(1 << s);
+
+                if sign_bit & a != Wrapping(0) {
+                    a = a - m;
+                }
+                a = a % m;
+            }
+
+            if b >= s as u64 {
+                return if a < Wrapping(0) {
+                           if s < 64 {
+                               Rvalue::Constant { value: (1 << s) - 1, size: s }
+                           } else {
+                               Rvalue::Constant { value: u64::MAX, size: s }
+                           }
+                       } else {
+                           Rvalue::Constant { value: 0, size: s }
+                       };
+            }
+
+            if s < 64 {
+                let m = (1 << s) - 1;
+                Rvalue::Constant { value: (a >> (b as usize)).0 as u64 & m, size: s }
+            } else {
+                Rvalue::Constant { value: (a >> (b as usize)).0 as u64, size: s }
             }
         }
         Operation::ShiftRightSigned(Rvalue::Constant { value: 0, size: s }, _) => Rvalue::Constant { value: 0, size: s },
@@ -836,19 +925,20 @@ pub fn execute(op: Operation<Rvalue>) -> Rvalue {
         }
         Operation::LessOrEqualSigned(_, _) => Rvalue::Undefined,
 
-        Operation::LessUnsigned(Rvalue::Constant { value: _a, size: s }, Rvalue::Constant { value: _b, size: _s }) => {
-            debug_assert!(s == _s);
+        Operation::LessUnsigned(Rvalue::Constant { value: a_, size: sa }, Rvalue::Constant { value: b_, size: sb }) => {
+            debug_assert!(sb == sa);
 
-            let a = if s < 64 {
-                Wrapping(_a & ((1 << s) - 1))
+            let a = if sa < 64 {
+                Wrapping(a_ & ((1 << sa) - 1))
             } else {
-                Wrapping(_a)
+                Wrapping(a_)
             };
-            let b = if s < 64 {
-                Wrapping(_b & ((1 << s) - 1))
+            let b = if sb < 64 {
+                Wrapping(b_ & ((1 << sa) - 1))
             } else {
-                Wrapping(_b)
+                Wrapping(b_)
             };
+
             if a < b {
                 Rvalue::Constant { value: 1, size: 1 }
             } else {
@@ -905,13 +995,10 @@ pub fn execute(op: Operation<Rvalue>) -> Rvalue {
             let mask1 = if t < 64 { (1u64 << t) - 1 } else { u64::MAX };
             let sign = if s < 64 { 1u64 << (s - 1) } else { 0 };
 
-            println!("{:?} & {:?} = {:?}", v, sign, v & sign);
-
             if v & sign == 0 {
                 Rvalue::Constant { value: (v & mask0) & mask1, size: t }
             } else {
                 let mask = mask1 & !mask0;
-                println!("mask: {:?}, sx: {:?}", mask, (v & mask0) | mask);
                 Rvalue::Constant { value: (v & mask0) | mask, size: t }
             }
         }
@@ -934,6 +1021,8 @@ pub fn execute(op: Operation<Rvalue>) -> Rvalue {
         }
         Operation::Move(ref a) => a.clone(),
 
+        Operation::Initialize(_, _) => Rvalue::Undefined,
+
         Operation::Call(_) => Rvalue::Undefined,
 
         Operation::Select(off, Rvalue::Constant { value: _a, size: s }, Rvalue::Constant { value: _b, size: _s }) => {
@@ -949,9 +1038,9 @@ pub fn execute(op: Operation<Rvalue>) -> Rvalue {
         }
         Operation::Select(_, _, _) => Rvalue::Undefined,
 
-        Operation::Load(_, _) => Rvalue::Undefined,
+        Operation::Load(_, _, _, _) => Rvalue::Undefined,
 
-        Operation::Store(_, _) => Rvalue::Undefined,
+        Operation::Store(_, _, _, _, _) => Rvalue::Undefined,
 
         Operation::Phi(ref vec) => {
             match vec.len() {
@@ -968,6 +1057,45 @@ pub fn execute(op: Operation<Rvalue>) -> Rvalue {
         }
     }
 }
+
+/// Maps the function `m` over all operands of `op`.
+pub fn lift<A, B, F>(op: &Operation<B>, m: &F) -> Operation<A>
+    where A: Serialize + for<'a> Deserialize<'a> + Clone + PartialEq + Eq + Debug,
+          B: Serialize + for<'a> Deserialize<'a> + Clone + PartialEq + Eq + Debug,
+          F: Fn(&B) -> A
+{
+    let args = op.operands().iter().cloned().map(m).collect::<Vec<_>>();
+    match op {
+        &Operation::Phi(_) => Operation::Phi(args),
+        &Operation::Load(ref s, e, sz, _) => Operation::Load(s.clone(), e, sz, args[0].clone()),
+        &Operation::Store(ref s, e, sz, _, _) => Operation::Store(s.clone(), e, sz, args[0].clone(),args[1].clone()),
+        &Operation::Add(_, _) => Operation::Add(args[0].clone(), args[1].clone()),
+        &Operation::Subtract(_, _) => Operation::Subtract(args[0].clone(), args[1].clone()),
+        &Operation::Multiply(_, _) => Operation::Multiply(args[0].clone(), args[1].clone()),
+        &Operation::DivideUnsigned(_, _) => Operation::DivideUnsigned(args[0].clone(), args[1].clone()),
+        &Operation::DivideSigned(_, _) => Operation::DivideSigned(args[0].clone(), args[1].clone()),
+        &Operation::ShiftLeft(_, _) => Operation::ShiftLeft(args[0].clone(), args[1].clone()),
+        &Operation::ShiftRightUnsigned(_, _) => Operation::ShiftRightUnsigned(args[0].clone(), args[1].clone()),
+        &Operation::ShiftRightSigned(_, _) => Operation::ShiftRightSigned(args[0].clone(), args[1].clone()),
+        &Operation::Modulo(_, _) => Operation::Modulo(args[0].clone(), args[1].clone()),
+        &Operation::And(_, _) => Operation::And(args[0].clone(), args[1].clone()),
+        &Operation::InclusiveOr(_, _) => Operation::InclusiveOr(args[0].clone(), args[1].clone()),
+        &Operation::ExclusiveOr(_, _) => Operation::ExclusiveOr(args[0].clone(), args[1].clone()),
+        &Operation::Equal(_, _) => Operation::Equal(args[0].clone(), args[1].clone()),
+        &Operation::LessUnsigned(_, _) => Operation::LessUnsigned(args[0].clone(), args[1].clone()),
+        &Operation::LessSigned(_, _) => Operation::LessSigned(args[0].clone(), args[1].clone()),
+        &Operation::LessOrEqualUnsigned(_, _) => Operation::LessOrEqualUnsigned(args[0].clone(), args[1].clone()),
+        &Operation::LessOrEqualSigned(_, _) => Operation::LessOrEqualSigned(args[0].clone(), args[1].clone()),
+        &Operation::Initialize(ref a, b) => Operation::Initialize(a.clone(),b),
+        &Operation::Move(_) => Operation::Move(args[0].clone()),
+        &Operation::Call(_) => Operation::Call(args[0].clone()),
+        &Operation::Select(ref off, _, _) => Operation::Select(*off, args[0].clone(), args[1].clone()),
+        &Operation::ZeroExtend(ref sz, _) => Operation::ZeroExtend(*sz, args[0].clone()),
+        &Operation::SignExtend(ref sz, _) => Operation::SignExtend(*sz, args[0].clone()),
+    }
+}
+
+
 
 impl<V> Operation<V>
     where V: Serialize + for<'a> Deserialize<'a> + Clone + PartialEq + Eq + Debug
@@ -998,10 +1126,11 @@ impl<V> Operation<V>
             Operation::SignExtend(_, ref a) => return vec![a],
             Operation::Move(ref a) => return vec![a],
             Operation::Call(ref a) => return vec![a],
+            Operation::Initialize(_, _) => return vec![],
             Operation::Select(_, ref a, ref b) => return vec![a, b],
 
-            Operation::Load(_, ref b) => return vec![b],
-            Operation::Store(_, ref b) => return vec![b],
+            Operation::Load(_, _, _, ref b) => return vec![b],
+            Operation::Store(_, _, _, ref a, ref b) => return vec![a,b],
 
             Operation::Phi(ref vec) => return vec.iter().collect(),
         }
@@ -1033,10 +1162,11 @@ impl<V> Operation<V>
             &mut Operation::SignExtend(_, ref mut a) => return vec![a],
             &mut Operation::Move(ref mut a) => return vec![a],
             &mut Operation::Call(ref mut a) => return vec![a],
+            &mut Operation::Initialize(_, _) => return vec![],
             &mut Operation::Select(_, ref mut a, ref mut b) => return vec![a, b],
 
-            &mut Operation::Load(_, ref mut b) => return vec![b],
-            &mut Operation::Store(_, ref mut b) => return vec![b],
+            &mut Operation::Load(_, _, _, ref mut b) => return vec![b],
+            &mut Operation::Store(_, _, _, ref mut a, ref mut b) => return vec![a, b],
 
             &mut Operation::Phi(ref mut vec) => return vec.iter_mut().collect(),
         }
@@ -1071,8 +1201,12 @@ impl Display for Statement {
             Operation::Move(ref a) => f.write_fmt(format_args!("mov {}, {}", self.assignee, a)),
             Operation::Call(ref a) => f.write_fmt(format_args!("call {}, {}", self.assignee, a)),
 
-            Operation::Load(ref r, ref b) => f.write_fmt(format_args!("load_{} {}, {}", r, self.assignee, b)),
-            Operation::Store(ref r, ref b) => f.write_fmt(format_args!("store_{} {}, {}", r, self.assignee, b)),
+            Operation::Initialize(ref name,ref size) => f.write_fmt(format_args!("init {}, {}:{}",self.assignee,name,size)),
+
+            Operation::Load(ref r,Endianess::Little,ref sz,ref b) => f.write_fmt(format_args!("load_{}/le/{} {}, {}",r,sz,self.assignee,b)),
+            Operation::Load(ref r,Endianess::Big,ref sz,ref b) => f.write_fmt(format_args!("load_{}/be/{} {}, {}",r,sz,self.assignee,b)),
+            Operation::Store(ref r,Endianess::Little,ref sz,ref a, ref b) => f.write_fmt(format_args!("store_{}/le/{} {}, {}, {}",r,sz,self.assignee,a,b)),
+            Operation::Store(ref r,Endianess::Big,ref sz,ref a, ref b) => f.write_fmt(format_args!("store_{}/be/{} {}, {}, {}",r,sz,self.assignee,a,b)),
 
             Operation::Phi(ref vec) => {
                 f.write_fmt(format_args!("phi {}", self.assignee))?;
@@ -1124,7 +1258,7 @@ impl Arbitrary for Lvalue {
 
 impl Arbitrary for Operation<Rvalue> {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
-        let mut op = match g.gen_range(0, 24) {
+        let mut op = match g.gen_range(0, 25) {
             0 => Operation::Add(Rvalue::arbitrary(g), Rvalue::arbitrary(g)),
             1 => Operation::Subtract(Rvalue::arbitrary(g), Rvalue::arbitrary(g)),
             2 => Operation::Multiply(Rvalue::arbitrary(g), Rvalue::arbitrary(g)),
@@ -1147,12 +1281,12 @@ impl Arbitrary for Operation<Rvalue> {
             17 => Operation::SignExtend(g.gen(), Rvalue::arbitrary(g)),
 
             18 => Operation::Move(Rvalue::arbitrary(g)),
-            19 => Operation::Call(Rvalue::arbitrary(g)),
+            19 => Operation::Initialize(g.gen_ascii_chars().take(1).collect(),g.gen()),
 
             20 => Operation::Select(g.gen(), Rvalue::arbitrary(g), Rvalue::arbitrary(g)),
 
-            21 => Operation::Load(g.gen_ascii_chars().take(1).collect(), Rvalue::arbitrary(g)),
-            22 => Operation::Store(g.gen_ascii_chars().take(1).collect(), Rvalue::arbitrary(g)),
+            21 => Operation::Load(g.gen_ascii_chars().take(1).collect(), Endianess::arbitrary(g), g.gen(), Rvalue::arbitrary(g)),
+            22 => Operation::Store(g.gen_ascii_chars().take(1).collect(), Endianess::arbitrary(g), g.gen(), Rvalue::arbitrary(g), Rvalue::arbitrary(g)),
 
             23 => {
                 let cnt = g.gen_range(1, 6);
@@ -1160,6 +1294,7 @@ impl Arbitrary for Operation<Rvalue> {
                 let i = (0..cnt).into_iter().map(|_| Rvalue::arbitrary(g));
                 Operation::Phi(i.collect())
             }
+            24 => Operation::Call(Rvalue::arbitrary(g)),
 
             _ => unreachable!(),
         };
@@ -1214,6 +1349,16 @@ impl Arbitrary for Operation<Rvalue> {
     }
 }
 
+impl Arbitrary for Endianess {
+    fn arbitrary<G: Gen>(g: &mut G) -> Self {
+        match g.gen_range(0, 1) {
+            0 => Endianess::Little,
+            1 => Endianess::Big,
+            _ => unreachable!(),
+        }
+    }
+}
+
 #[macro_export]
 macro_rules! rreil {
     ( ) => {Ok(vec![])};
@@ -1240,10 +1385,11 @@ macro_rules! rreil {
     ( sext / $sz:tt $($cdr:tt)* ) => { rreil_extop!(SignExtend # $sz # $($cdr)*) };
     ( zext / $sz:tt $($cdr:tt)* ) => { rreil_extop!(ZeroExtend # $sz # $($cdr)*) };
     ( mov $($cdr:tt)* ) => { rreil_unop!(Move # $($cdr)*) };
-    ( call $($cdr:tt)* ) => { rreil_unop!(Call # $($cdr)*) };
+    ( call $($cdr:tt)* ) => { rreil_callop!($($cdr)*) };
+    ( ret $($cdr:tt)* ) => { rreil_retop!($($cdr)*) };
 
-    ( load / $r:ident   $($cdr:tt)* ) => { rreil_memop!(Load # $r # $($cdr)*) };
-    ( store / $r:ident $($cdr:tt)* ) => { rreil_memop!(Store # $r # $($cdr)*) };
+    ( load / $r:ident / $en:ident / $sz:tt $($cdr:tt)* ) => { rreil_memop!(Load # $r # $en # $sz # $($cdr)*) };
+    ( store / $r:ident / $en:ident / $sz:tt $($cdr:tt)* ) => { rreil_memop!(Store # $r # $en # $sz # $($cdr)*) };
 }
 
 include!(concat!(env!("OUT_DIR"), "/rreil.rs"));
@@ -1363,8 +1509,8 @@ mod tests {
         };
 
         let _ = rreil!{
-            store/ram rax:32, [0]:32;
-            load/ram rax:32, [0]:32;
+            store/ram/le/32 rax:32, [0]:32;
+            load/ram/le/32 rax:32, [0]:32;
         };
 
         let _ = rreil!{
@@ -1468,11 +1614,11 @@ mod tests {
             },
 
             Statement {
-                op: Operation::Load(Cow::Borrowed("ram"), Rvalue::Undefined),
+                op: Operation::Load(Cow::Borrowed("ram"), Endianess::Little, 8, Rvalue::Undefined),
                 assignee: Lvalue::Undefined,
             },
             Statement {
-                op: Operation::Store(Cow::Borrowed("ram"), Rvalue::Undefined),
+                op: Operation::Store(Cow::Borrowed("ram"), Endianess::Little, 8, Rvalue::Undefined, Rvalue::Undefined),
                 assignee: Lvalue::Undefined,
             },
 

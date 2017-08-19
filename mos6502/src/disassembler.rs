@@ -205,7 +205,7 @@ pub fn zpage(opcode: &'static str, sem: fn(&mut Variant, Rvalue) -> Result<Vec<S
                     &|c| -> Result<Vec<Statement>> {
                         let mut stmts = rreil!{
                 zext/16 addr:16, (base);
-                load/ram val:8, addr:16;
+                load/ram/be/8 val:8, addr:16;
             }?;
 
                         stmts.append(&mut sem(c, rreil_rvalue!{ val:8 })?);
@@ -253,7 +253,7 @@ pub fn zpage_offset(opcode: &'static str, _arg1: &Lvalue, sem: fn(&mut Variant, 
                         rreil!{
                 add short_addr:8, (base), (index);
                 zext/16 (addr), short_addr:8;
-                load/ram val:8, (addr);
+                load/ram/be/8 val:8, (addr);
             }
                     },
                 )
@@ -315,8 +315,8 @@ pub fn zpage_index(opcode: &'static str, _arg1: Lvalue, sem: fn(&mut Variant, Rv
                         rreil!{
                 add short_addr:8, (base), (index);
                 zext/16 addr:16, short_addr:8;
-                load/ram (addr), addr:16;
-                load/ram val:8, (addr);
+                load/ram/be/16 (addr), addr:16;
+                load/ram/be/8 val:8, (addr);
             }
                     },
                 )
@@ -350,7 +350,7 @@ pub fn absolute(opcode: &'static str, sem: fn(&mut Variant, Rvalue) -> Result<Ve
                     vec![base.clone()],
                     &|c| -> Result<Vec<Statement>> {
                         let mut stmts = rreil!{
-                load/ram val:8, (base);
+                load/ram/be/8 val:8, (base);
             }?;
 
                         stmts.append(&mut sem(c, rreil_rvalue!{ val:8 })?);
@@ -397,7 +397,7 @@ pub fn absolute_offset(opcode: &'static str, _arg1: &Lvalue, sem: fn(&mut Varian
                         rreil!{
                 zext/16 (addr), (index);
                 add (addr), (addr), (base);
-                load/ram val:8, (addr);
+                load/ram/be/8 val:8, (addr);
             }
                     },
                 )

@@ -351,7 +351,7 @@ pub fn pha(_cg: &mut Variant) -> Result<Vec<Statement>> {
         zext/9 sp:9, S:8;
         add sp:9, sp:9, [0x100]:9;
 
-        store/ram sp:9, A:8;
+        store/ram/be/8 A:8, sp:9;
 
         add sp:9, sp:9, [1]:9;
         mov S:8, sp:8;
@@ -372,7 +372,7 @@ pub fn php(_cg: &mut Variant) -> Result<Vec<Statement>> {
         sel/6 flags:8, V:1;
         sel/7 flags:8, N:1;
 
-        store/ram sp:9, flags:8;
+        store/ram/be/8 flags:8, sp:9;
         add sp:9, sp:9, [1]:9;
         mov S:8, sp:8;
     }
@@ -384,7 +384,7 @@ pub fn pla(_cg: &mut Variant) -> Result<Vec<Statement>> {
         add sp:9, sp:9, [0x100]:9;
 
         add sp:9, sp:9, [1]:9;
-        load/ram A:8, sp:9;
+        load/ram/be/8 A:8, sp:9;
 
         mov S:8, sp:8;
 
@@ -399,7 +399,7 @@ pub fn plp(_cg: &mut Variant) -> Result<Vec<Statement>> {
         add sp:9, sp:9, [0x100]:9;
 
         add sp:9, sp:9, [1]:9;
-        load/ram flags:8, sp:9;
+        load/ram/be/8 flags:8, sp:9;
 
         mov C:1, flags:1;
         mov Z:1, flags:1/1;
@@ -563,7 +563,7 @@ pub fn sbc(_cg: &mut Variant, r: Rvalue) -> Result<Vec<Statement>> {
 
 fn st(_cg: &mut Variant, reg: Lvalue, ptr: Rvalue) -> Result<Vec<Statement>> {
     rreil!{
-        store/ram (reg), (ptr);
+        store/ram/be/8 (reg), (ptr);
     }
 }
 
@@ -637,7 +637,7 @@ pub fn jmp_indirect(st: &mut State<Mos>) -> bool {
             vec![],
             &|_cg: &mut Variant| -> Result<Vec<Statement>> {
                 rreil!{
-            load/ram res:16, (ptr);
+            load/ram/be/16 res:16, (ptr);
         }
             },
         )
@@ -669,7 +669,7 @@ pub fn jsr(st: &mut State<Mos>) -> bool {
             vec![target.clone()],
             &|_cg: &mut Variant| -> Result<Vec<Statement>> {
                 rreil!{
-            call ?, (target);
+            call (target);
         }
             },
         )

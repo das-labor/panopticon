@@ -286,7 +286,7 @@ pub fn skip(n: &'static str, expect: bool) -> Box<Fn(&mut State<Avr>) -> bool> {
                         vec![],
                         &|_cg: &mut Mcu| {
                             rreil!{
-                    load/io ioreg:8, (a);
+                    load/io/be/8 ioreg:8, (a);
                 }
                         },
                     )
@@ -383,7 +383,7 @@ pub fn binary_imm(n: &'static str, sem: fn(Lvalue, u64, &mut Mcu) -> Result<Vec<
                         vec![],
                         &|_cg: &mut Mcu| {
                             rreil!{
-                    load/io ioreg:8, (a);
+                    load/io/be/8 ioreg:8, (a);
                 }
                         },
                     )
@@ -955,8 +955,8 @@ mod tests {
             (vec![0x81,0x93],"st",vec![Rvalue::Variable{ name: Cow::Borrowed("Z+"), size: 16, offset: 0, subscript: None }, rreil_rvalue!{ R24:8 }]),
             (vec![0x03,0x2e],"mov",vec![rreil_rvalue!{ R0:8 },rreil_rvalue!{ R19:8 }]),
             (vec![0x10,0xe0],"ldi",vec![rreil_rvalue!{ R17:8 }, Rvalue::new_u8(0x00)]),
-            (vec![0xcd,0xb7],"in",vec![rreil_rvalue!{ R28:8 }, rreil_rvalue!{ [0x3d]:6 }]),
-            (vec![0xde,0xbf],"out",vec![rreil_rvalue!{ [0x3e]:6 }, rreil_rvalue!{ R29:8 }]),
+            (vec![0xcd,0xb7],"in",vec![rreil_rvalue!{ R28:8 }, rreil_rvalue!{ [0x3d]:8 }]),
+            (vec![0xde,0xbf],"out",vec![rreil_rvalue!{ [0x3e]:8 }, rreil_rvalue!{ R29:8 }]),
             (vec![0xc8,0x95],"lpm",vec![]),
             (vec![0xc0,0x9a],"sbi",vec![rreil_rvalue!{ [0x18]:6 }, rreil_rvalue!{ [0]:3}]),
             (vec![0xc0,0x98],"cbi",vec![rreil_rvalue!{ [0x18]:6 }, rreil_rvalue!{ [0]:3}]),

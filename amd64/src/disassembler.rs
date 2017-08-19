@@ -1276,6 +1276,7 @@ fn read_operand(
         }
         (&OperandSpec(AddressingMethod::U, OperandType::ps), _) => read_simd_register(tail.modrm(rex).ok().unwrap().2, rex.is_some(), simdsz),
         (&OperandSpec(AddressingMethod::U, OperandType::pi), _) => read_simd_register(tail.modrm(rex).ok().unwrap().2, rex.is_some(), 64),
+        (&OperandSpec(AddressingMethod::U, OperandType::pd), _) => read_simd_register(tail.modrm(rex).ok().unwrap().2, rex.is_some(), simdsz),
         (&OperandSpec(AddressingMethod::U, OperandType::q), _) => read_simd_register(tail.modrm(rex).ok().unwrap().2, rex.is_some(), 64),
         (&OperandSpec(AddressingMethod::U, OperandType::x), 32) => read_simd_register(tail.modrm(rex).ok().unwrap().2, rex.is_some(), 128),
         (&OperandSpec(AddressingMethod::U, OperandType::x), 64) => read_simd_register(tail.modrm(rex).ok().unwrap().2, rex.is_some(), 256),
@@ -1287,6 +1288,7 @@ fn read_operand(
         (&OperandSpec(AddressingMethod::V, OperandType::x), 32) => read_simd_register(tail.modrm(rex).ok().unwrap().1, rex.is_some(), 128),
         (&OperandSpec(AddressingMethod::V, OperandType::x), 64) => read_simd_register(tail.modrm(rex).ok().unwrap().1, rex.is_some(), 256),
         (&OperandSpec(AddressingMethod::V, OperandType::dq), _) => read_simd_register(tail.modrm(rex).ok().unwrap().1, rex.is_some(), 128),
+        (&OperandSpec(AddressingMethod::V, OperandType::qq), _) => read_simd_register(tail.modrm(rex).ok().unwrap().1, rex.is_some(), 256),
         (&OperandSpec(AddressingMethod::V, OperandType::q), _) => read_simd_register(tail.modrm(rex).ok().unwrap().1, rex.is_some(), 64),
         (&OperandSpec(AddressingMethod::V, OperandType::sd), _) => read_simd_register(tail.modrm(rex).ok().unwrap().1, rex.is_some(), 128),
         (&OperandSpec(AddressingMethod::V, OperandType::y), opsz) => {
@@ -1320,12 +1322,28 @@ fn read_operand(
                 64,
             )
         }
+        (&OperandSpec(AddressingMethod::W, OperandType::d), _) => {
+            indirect(
+                read_effective_simd_address(mode, seg, tail, rex, opsz, addrsz, addr, 32)?,
+                seg,
+                addrsz,
+                64,
+            )
+        }
         (&OperandSpec(AddressingMethod::W, OperandType::dq), _) => {
             indirect(
                 read_effective_simd_address(mode, seg, tail, rex, opsz, addrsz, addr, 128)?,
                 seg,
                 addrsz,
                 128,
+            )
+        }
+        (&OperandSpec(AddressingMethod::W, OperandType::qq), _) => {
+            indirect(
+                read_effective_simd_address(mode, seg, tail, rex, opsz, addrsz, addr, 256)?,
+                seg,
+                addrsz,
+                256,
             )
         }
         (&OperandSpec(AddressingMethod::W, OperandType::x), 32) => {
@@ -1444,7 +1462,7 @@ fn read_effective_simd_address(
         (0b01, 0b100) => {
             if let Operand::Address(e, b, i, s, _) = tail.sib(mod_, seg, rex, addrsz)? {
                 let d = sign_ext_u8(tail.read_u8()?, opsz);
-                Ok(Operand::Address(e, b, i, s, (d as u64, 8)))
+                Ok(Operand::Address(e, b, i, s, (d as u64, addrsz)))
             } else {
                 error!(
                     "Internal error: read_sib did not return indirect operand",
@@ -1541,7 +1559,7 @@ fn read_effective_address(
                         reg,
                         Register::None,
                         0,
-                        (sign_ext_u8(tail.read_u8()?, addrsz), 8),
+                        (sign_ext_u8(tail.read_u8()?, addrsz), addrsz),
                     )
                 )
             } else {
@@ -1553,7 +1571,7 @@ fn read_effective_address(
             match tail.sib(mod_, seg, rex, addrsz) {
                 Ok(Operand::Address(e, b, i, s, _)) => {
                     let d = sign_ext_u8(tail.read_u8()?, addrsz);
-                    Ok(Operand::Address(e, b, i, s, (d as u64, 8)))
+                    Ok(Operand::Address(e, b, i, s, (d as u64, addrsz)))
                 }
                 Ok(_) => {
                     error!("Failed to decode SIB byte: No Address");
@@ -1658,8 +1676,8 @@ fn read_sib<R: ReadBytesExt>(fd: &mut R, mod_: u8, seg: SegmentOverride, rex: Op
     let (ret_base, ret_disp) = if mod_ != 0b11 && base & 0b111 == 0b101 {
         match mod_ {
             0b00 => (Register::None, (sign_ext_u32(fd.read_u32::<LittleEndian>()?, addrsz), 32)),
-            0b01 => (Register::EBP, (0, 0)),
-            0b10 => (Register::EBP, (0, 0)),
+            0b01 => (if addrsz == 32 { Register::EBP } else { Register::RBP }, (0, addrsz)),
+            0b10 => (if addrsz == 32 { Register::EBP } else { Register::RBP }, (0, addrsz)),
             _ => {
                 error!("read_sib: invalid mod value");
                 return Err("Internal error".into());
@@ -1667,7 +1685,7 @@ fn read_sib<R: ReadBytesExt>(fd: &mut R, mod_: u8, seg: SegmentOverride, rex: Op
         }
     } else {
         if let Ok(Operand::Register(r)) = read_register(base, rex.is_some(), addrsz) {
-            (r, (0, 0))
+            (r, (0, addrsz))
         } else {
             error!("read_sib: Failed to decode base register");
             return Err("Failed to decode base register".into());
@@ -1887,7 +1905,7 @@ fn read_simd_register(reg: u8, _rex_present: bool, opsz: usize) -> Result<Operan
         (0b1110, 256) => Ok(Operand::Register(Register::YMM14)),
         (0b1111, 256) => Ok(Operand::Register(Register::YMM15)),
 
-        _ => Err("Invalid reg value".into()),
+        _ => Err(format!("Invalid simd reg value {:b} ({} bits)", reg, opsz).into()),
     }
 }
 
@@ -1910,7 +1928,7 @@ fn read_ctrl_register(reg: u8, opsz: usize) -> Result<Operand> {
         (0b1110, 32) => Ok(Operand::Register(Register::CR14)),
         (0b1111, 32) => Ok(Operand::Register(Register::CR15)),
 
-        _ => Err("Invalid reg value".into()),
+        _ => Err(format!("Invalid ctrl reg value {:b} ({} bits)", reg, opsz).into()),
     }
 }
 
@@ -1933,7 +1951,7 @@ fn read_debug_register(reg: u8, opsz: usize) -> Result<Operand> {
         (0b1110, 32) => Ok(Operand::Register(Register::DR14)),
         (0b1111, 32) => Ok(Operand::Register(Register::DR15)),
 
-        _ => Err("Invalid reg value".into()),
+        _ => Err(format!("Invalid debug reg value {:b} ({} bits)", reg, opsz).into()),
     }
 }
 
@@ -2303,7 +2321,7 @@ fn select_opcode_ext(grp: isize, opc: usize, modrm: usize, pfx: SimdPrefix, mode
             // GROUPX
             (102, _, SimdPrefix::None, 0x01) => GROUP102_OPC01[reg].clone(),
 
-            _ => return Err("Unknown instruction".into()),
+            _ => return Err(format!("Unknown instruction: Opcode group {:x}, Mod {:x}, Prefix {:?}, Opcode: {:x}",grp,mo,pfx,opc).into()),
         }
     )
 }
@@ -2415,7 +2433,7 @@ pub fn read(mode: Mode, buf: &[u8], addr: u64) -> Result<(u64, Mnemonic, Vec<(Rv
                 if vex & 0b100 != 0 {
                     prefix.simd_size = 256
                 }
-                prefix.vvvv = Some(&0xFF ^ ((vex >> 3) & 0b1111));
+                prefix.vvvv = Some((0xFF ^ (vex >> 3)) & 0b1111);
                 prefix.rex_r = vex & 0b1000000 == 0;
 
                 vexxop_present = true;
@@ -2442,10 +2460,10 @@ pub fn read(mode: Mode, buf: &[u8], addr: u64) -> Result<(u64, Mnemonic, Vec<(Rv
                     1 => OpcodeEscape::Escape0F,
                     2 => OpcodeEscape::Escape0F38,
                     3 => OpcodeEscape::Escape0F3A,
-                    _ => return Err("Unknown instruction".into()),
+                    _ => return Err(format!("Unknown instruction: 3 byte VEX w/ opcode escape 0x{:x}",vex1 & 0b00001111).into()),
                 };
 
-                prefix.vvvv = Some(&0xFF ^ ((vex2 >> 3) & 0b1111));
+                prefix.vvvv = Some((0xFF ^ (vex2 >> 3)) & 0b1111);
                 if vex2 & 0b100 != 0 {
                     prefix.simd_size = 256
                 }
@@ -2462,7 +2480,41 @@ pub fn read(mode: Mode, buf: &[u8], addr: u64) -> Result<(u64, Mnemonic, Vec<(Rv
             }
 
             // EVEX
-            Some(&0x62) if i == 0 && mode == Mode::Long => return Err("Evex unimplemented".into()),
+            Some(&0x62) if i == 0 && mode == Mode::Long => {
+                let p0 = buf[i + 1];
+                let p1 = buf[i + 2];
+                let p2 = buf[i + 3];
+
+                prefix.simd_prefix = match p1 & 0b00000011 {
+                    0 => SimdPrefix::None,
+                    1 => SimdPrefix::Prefix66,
+                    2 => SimdPrefix::PrefixF3,
+                    3 => SimdPrefix::PrefixF2,
+                    _ => unreachable!(),
+                };
+
+                prefix.opcode_escape = match p0 & 0b00000011 {
+                    1 => OpcodeEscape::Escape0F,
+                    2 => OpcodeEscape::Escape0F38,
+                    3 => OpcodeEscape::Escape0F3A,
+                    _ => return Err(format!("Unknown instruction: EVEX w/ opcode escape 0x{:x}",p0 & 0b00000011).into()),
+                };
+
+                prefix.vvvv = Some((0xFF ^ (p1 >> 3)) & 0b1111);
+                if p2 & 0b100000 != 0 {
+                    prefix.simd_size = 256
+                }
+                prefix.rex_r = p0 & 0b1000000 == 0;
+                prefix.rex_x = p0 & 0b0100000 == 0;
+                prefix.rex_b = p0 & 0b0010000 == 0;
+                prefix.rex_w = p1 & 0b1000000 == 0;
+
+                vexxop_present = true;
+                rex_present = true;
+                i += 4;
+
+                break;
+            }
 
             // XOP
             Some(&0x8f) if i == 0 && mode == Mode::Long => {
@@ -2481,7 +2533,7 @@ pub fn read(mode: Mode, buf: &[u8], addr: u64) -> Result<(u64, Mnemonic, Vec<(Rv
                     0b1000 => OpcodeEscape::Xop8,
                     0b1001 => OpcodeEscape::Xop9,
                     0b1010 => OpcodeEscape::XopA,
-                    _ => return Err("Unknown instruction".into()),
+                    _ => return Err(format!("Unknown instruction: XOP w/ opcode escape 0x{:x}",xop1 & 0b00001111).into()),
                 };
 
                 vexxop_present = true;
@@ -2535,7 +2587,7 @@ pub fn read(mode: Mode, buf: &[u8], addr: u64) -> Result<(u64, Mnemonic, Vec<(Rv
                 prefix.opcode_escape = OpcodeEscape::Escape0F;
                 i += 1;
             }
-            None => return Err("Premature buffer end".into()),
+            None => return Err(format!("Premature buffer end at 0x{:x} while fetching opcode escape byte",addr).into()),
         }
     }
 
@@ -2543,7 +2595,7 @@ pub fn read(mode: Mode, buf: &[u8], addr: u64) -> Result<(u64, Mnemonic, Vec<(Rv
 
     if prefix.opcode_escape == OpcodeEscape::Escape0F0F {
         // XXX: 3DNow!
-        return Err("Unknown instruction".into());
+        return Err("Unsupported instruction: 3DNow!".into());
     } else {
         // remove non-mandatory prefixes
         let rm_pfx = match prefix.opcode_escape {
@@ -2571,7 +2623,7 @@ pub fn read(mode: Mode, buf: &[u8], addr: u64) -> Result<(u64, Mnemonic, Vec<(Rv
                         _ => false,
                     }
                 } else {
-                    return Err("Premature buffer end".into());
+                    return Err(format!("Premature buffer end at 0x{:x} while fetching opcode prefix byte",addr).into());
                 }
             }
             _ => false,
@@ -2593,7 +2645,7 @@ pub fn read(mode: Mode, buf: &[u8], addr: u64) -> Result<(u64, Mnemonic, Vec<(Rv
 
         let b = match buf.get(i) {
             Some(b) => *b as usize,
-            None => return Err("Premature buffer end".into()),
+            None => return Err(format!("Premature buffer end at 0x{:x} while fetching opcode",addr).into()),
         };
 
         let opc = match (prefix.opcode_escape, prefix.simd_prefix) {
@@ -2627,7 +2679,7 @@ pub fn read(mode: Mode, buf: &[u8], addr: u64) -> Result<(u64, Mnemonic, Vec<(Rv
                 };
                 THREEBYTE_3A66_TABLE[b].clone()
             }
-            (OpcodeEscape::Escape0F3A, SimdPrefix::PrefixF3) => return Err("Unknown instruction".into()),
+            (OpcodeEscape::Escape0F3A, SimdPrefix::PrefixF3) => return Err("Unknown instruction: Escape 0f 3a, Prefix f3".into()),
             (OpcodeEscape::Escape0F3A, SimdPrefix::PrefixF2) => THREEBYTE_3AF2_TABLE[b].clone(),
             (OpcodeEscape::Escape0F38, SimdPrefix::None) => THREEBYTE_38_TABLE[b].clone(),
             (OpcodeEscape::Escape0F38, SimdPrefix::Prefix66) => {
@@ -2641,11 +2693,11 @@ pub fn read(mode: Mode, buf: &[u8], addr: u64) -> Result<(u64, Mnemonic, Vec<(Rv
             (OpcodeEscape::Escape0F38, SimdPrefix::PrefixF3) => THREEBYTE_38F3_TABLE[b].clone(),
             (OpcodeEscape::Escape0F38, SimdPrefix::PrefixF2) => THREEBYTE_38F2_TABLE[b].clone(),
             (OpcodeEscape::Xop8, SimdPrefix::None) => XOP8_TABLE[b].clone(),
-            (OpcodeEscape::Xop8, _) => return Err("Unknown instruction".into()),
+            (OpcodeEscape::Xop8, pfx) => return Err(format!("Unknown instruction: XOP8 w/ Prefix {:?}",pfx).into()),
             (OpcodeEscape::Xop9, SimdPrefix::None) => XOP9_TABLE[b].clone(),
-            (OpcodeEscape::Xop9, _) => return Err("Unknown instruction".into()),
+            (OpcodeEscape::Xop9, pfx) => return Err(format!("Unknown instruction: XOP9 w/ Prefix {:?}",pfx).into()),
             (OpcodeEscape::XopA, SimdPrefix::None) => XOPA_TABLE[b].clone(),
-            (OpcodeEscape::XopA, _) => return Err("Unknown instruction".into()),
+            (OpcodeEscape::XopA, pfx) => return Err(format!("Unknown instruction: XOPA w/ Prefix {:?}",pfx).into()),
             (OpcodeEscape::Escape0F0F, _) => unreachable!(),
         };
 
@@ -2653,11 +2705,11 @@ pub fn read(mode: Mode, buf: &[u8], addr: u64) -> Result<(u64, Mnemonic, Vec<(Rv
 
         let opc = match opc.mnemonic() {
             &MnemonicSpec::Single(_s) => opc,
-            &MnemonicSpec::Undefined => return Err("Unknown instruction".into()),
+            &MnemonicSpec::Undefined => return Err(format!("Unknown instruction: undefined opcode at 0x{:x}",addr).into()),
             &MnemonicSpec::Escape => {
                 let (esc, modrm) = match (buf.get(i), buf.get(i + 1)) {
                     (Some(b1), Some(b2)) => (*b1 as usize, *b2 as usize),
-                    _ => return Err("Premature buffer end".into()),
+                    _ => return Err(format!("Premature buffer end at 0x{:x} while fetching opcode escape/modrm bytes",addr).into()),
                 };
 
                 if modrm < 0xc0 {
@@ -2696,7 +2748,7 @@ pub fn read(mode: Mode, buf: &[u8], addr: u64) -> Result<(u64, Mnemonic, Vec<(Rv
                 };
                 let (opc, modrm) = match (buf.get(i), buf.get(i + 1)) {
                     (Some(b1), Some(b2)) => (*b1 as usize, *b2 as usize),
-                    _ => return Err("Premature buffer end".into()),
+                    _ => return Err(format!("Premature buffer end at 0x{:x} while fetching opcode/modrm bytes",addr).into()),
                 };
 
                 select_opcode_ext(grp, opc, modrm, pfx, mode, vexxop_present)?.clone()
@@ -2706,8 +2758,8 @@ pub fn read(mode: Mode, buf: &[u8], addr: u64) -> Result<(u64, Mnemonic, Vec<(Rv
         match opc.option() {
             &OpcodeOption::Default64 if mode == Mode::Long && prefix.operand_size == 32 => prefix.operand_size = 64,
             &OpcodeOption::Force64 if mode == Mode::Long => prefix.operand_size = 64,
-            &OpcodeOption::Only64 if mode != Mode::Long => return Err("Unknown instruction".into()),
-            &OpcodeOption::Invalid64 if mode == Mode::Long => return Err("Unknown instruction".into()),
+            &OpcodeOption::Only64 if mode != Mode::Long => return Err("Unknown instruction: Long mode only".into()),
+            &OpcodeOption::Invalid64 if mode == Mode::Long => return Err("Unknown instruction: Invalid in Long mode".into()),
             _ => {}
         }
 
@@ -2727,9 +2779,10 @@ pub fn read(mode: Mode, buf: &[u8], addr: u64) -> Result<(u64, Mnemonic, Vec<(Rv
                 };
                 let ip = addr + i as u64 + 1;
                 let mut stmts = vec![];
+                let mut wstmts = vec![];
                 let mut ops = vec![];
 
-                for op in opc.operands().iter() {
+                for (idx,op) in opc.operands().iter().enumerate() {
                     let maybe_op = read_operand(
                         op,
                         &mut tail,
@@ -2742,15 +2795,16 @@ pub fn read(mode: Mode, buf: &[u8], addr: u64) -> Result<(u64, Mnemonic, Vec<(Rv
                         prefix.simd_size,
                         ip,
                     )
-                            .and_then(|x| to_rreil(x));
+                        .and_then(|x| to_rreil(x));
 
                     match maybe_op {
-                        Ok((rv, mut st)) => {
-                            stmts.append(&mut st);
+                        Ok((rv, mut rst, wst)) => {
+                            stmts.append(&mut rst);
+                            wstmts.push(wst);
                             ops.push(rv);
                         }
                         Err(e) => {
-                            error!("error while decoding operands of '{}': {:?}", s, e);
+                            error!("error while decoding {}. operand of '{}' at 0x{:x}: {:?}", idx, s, ip, e);
                             return Err(e);
                         }
                     }
@@ -2775,6 +2829,10 @@ pub fn read(mode: Mode, buf: &[u8], addr: u64) -> Result<(u64, Mnemonic, Vec<(Rv
                     }
                 };
                 stmts.append(&mut op_stmts);
+
+                if ops.len() >= 2 {
+                    stmts.append(&mut wstmts[0]);
+                }
 
                 let fmt = match s {
                     "call" => "{c:text}",
@@ -2855,7 +2913,7 @@ pub fn read(mode: Mode, buf: &[u8], addr: u64) -> Result<(u64, Mnemonic, Vec<(Rv
     }
 }
 
-fn to_rreil(op: Operand) -> Result<(Rvalue, Vec<Statement>)> {
+fn to_rreil(op: Operand) -> Result<(Rvalue, Vec<Statement>, Vec<Statement>)> {
     match op {
         Operand::Register(ref name) => {
             Ok(
@@ -2865,12 +2923,12 @@ fn to_rreil(op: Operand) -> Result<(Rvalue, Vec<Statement>)> {
                      offset: 0,
                      subscript: None,
                  },
-                 vec![])
+                 vec![],vec![])
             )
         }
-        Operand::Immediate(ref value, ref size) => Ok((Rvalue::Constant { value: *value, size: *size }, vec![])),
+        Operand::Immediate(ref value, ref size) => Ok((Rvalue::Constant { value: *value, size: *size }, vec![], vec![])),
         Operand::Indirect(ref seg, ref base, ref index, ref scale, ref disp, ref width) => {
-            let (tgt, mut stmts) = to_rreil(
+            let (tgt, mut rstmts, mut wstmts) = to_rreil(
                 Operand::Address(
                     seg.clone(),
                     base.clone(),
@@ -2885,47 +2943,40 @@ fn to_rreil(op: Operand) -> Result<(Rvalue, Vec<Statement>)> {
                 subscript: None,
             };
 
-            stmts.append(
-                &mut match *width {
-                         8 => {
-                    rreil!{
-                    load/RAM (ret), (tgt);
+            match *width {
+                8 => {
+                    rstmts.append(&mut rreil!{ load/RAM/le/8 (ret), (tgt); }?);
+                    wstmts.append(&mut rreil!{ store/RAM/le/8 (ret), (tgt); }?);
                 }
+                16 => {
+                    rstmts.append(&mut rreil!{ load/RAM/le/16 (ret), (tgt); }?);
+                    wstmts.append(&mut rreil!{ store/RAM/le/16 (ret), (tgt); }?);
                 }
-                         16 => {
-                    rreil!{
-                    load/RAM (ret), (tgt);
+                32 => {
+                    rstmts.append(&mut rreil!{ load/RAM/le/32 (ret), (tgt); }?);
+                    wstmts.append(&mut rreil!{ store/RAM/le/32 (ret), (tgt); }?);
                 }
+                64 => {
+                    rstmts.append(&mut rreil!{ load/RAM/le/64 (ret), (tgt); }?);
+                    wstmts.append(&mut rreil!{ store/RAM/le/64 (ret), (tgt); }?);
                 }
-                         32 => {
-                    rreil!{
-                    load/RAM (ret), (tgt);
+                128 => {
+                    rstmts.append(&mut rreil!{ load/RAM/le/128 (ret), (tgt); }?);
+                    wstmts.append(&mut rreil!{ store/RAM/le/128 (ret), (tgt); }?);
                 }
+                256 => {
+                    rstmts.append(&mut rreil!{ load/RAM/le/256 (ret), (tgt); }?);
+                    wstmts.append(&mut rreil!{ store/RAM/le/256 (ret), (tgt); }?);
                 }
-                         64 => {
-                    rreil!{
-                    load/RAM (ret), (tgt);
-                }
-                }
-                         128 => {
-                    rreil!{
-                    load/RAM (ret), (tgt);
-                }
-                }
-                         256 => {
-                    rreil!{
-                    load/RAM (ret), (tgt);
-                }
-                }
-                         _ => unreachable!(),
-                     }?
-            );
+                _ => unreachable!(),
+            }
 
-            Ok((ret.into(), stmts))
+            Ok((ret.into(), rstmts, wstmts))
         }
         Operand::Address(_, ref base, ref index, ref scale, ref disp) => {
             let mut stmts = vec![];
             let mut ret = Rvalue::Undefined;
+            let out = format!("{}", op);
 
             if *base != Register::None {
                 ret = Rvalue::Variable {
@@ -2939,19 +2990,32 @@ fn to_rreil(op: Operand) -> Result<(Rvalue, Vec<Statement>)> {
             if *scale > 0 && *index != Register::None {
                 let s = *scale;
                 let w = index.width();
-                let rw = ret.size().unwrap_or(w);
+                let bw = base.width();
                 let i = Lvalue::Variable { name: format!("{}", index).into(), size: w, subscript: None };
                 if *base != Register::None {
+                    let base = ret;
+
+                    ret = Rvalue::Variable {
+                        name: out.clone().into(),
+                        size: w,
+                        offset: 0,
+                        subscript: None,
+                    };
                     stmts = rreil!{
                         mul t:w, [s]:w, (i);
-                        zext/rw t1:rw, t:w;
-                        add (Lvalue::from_rvalue(ret.clone()).unwrap()), (ret), t1:rw;
+                        zext/bw t1:bw, t:w;
+                        add (Lvalue::from_rvalue(ret.clone()).unwrap()), (base), t1:bw;
                     }?;
                 } else {
+                    ret = Rvalue::Variable {
+                        name: out.clone().into(),
+                        size: w,
+                        offset: 0,
+                        subscript: None,
+                    };
                     stmts = rreil!{
-                        mul t:w, (i), [s]:w;
+                        mul (Lvalue::from_rvalue(ret.clone()).unwrap()), (i), [s]:w;
                     }?;
-                    ret = Rvalue::Variable { name: "t".into(), size: w, offset: 0, subscript: None };
                 }
             }
 
@@ -2959,10 +3023,18 @@ fn to_rreil(op: Operand) -> Result<(Rvalue, Vec<Statement>)> {
                 if ret != Rvalue::Undefined {
                     let d = Rvalue::Constant { value: disp.0, size: disp.1 };
                     let w = ret.size().unwrap_or(disp.1);
+                    let base = ret;
+
+                    ret = Rvalue::Variable {
+                        name: out.clone().into(),
+                        size: w,
+                        offset: 0,
+                        subscript: None,
+                    };
                     stmts.append(
                         &mut rreil!{
                         zext/w d:w, (d);
-                        add (Lvalue::from_rvalue(ret.clone()).unwrap()), (ret), d:w;
+                        add (Lvalue::from_rvalue(ret.clone()).unwrap()), (base), d:w;
                     }?
                     );
                 } else {
@@ -2970,8 +3042,8 @@ fn to_rreil(op: Operand) -> Result<(Rvalue, Vec<Statement>)> {
                 }
             }
 
-            Ok((ret, stmts))
+            Ok((ret, stmts, vec![]))
         }
-        Operand::Optional => Ok((Rvalue::Undefined, vec![])),
+        Operand::Optional => Ok((Rvalue::Undefined, vec![], vec![])),
     }
 }

@@ -527,8 +527,7 @@ pub fn adc(a_: Rvalue, b_: Rvalue) -> Result<(Vec<Statement>, JumpSpec)> {
     let (a, b, sz, mut stmts) = sign_extend(&a_, &b_)?;
     let res = rreil_lvalue!{ res:sz };
 
-    stmts.append(
-        &mut rreil!{
+    stmts.append(&mut rreil!{
         add res:sz, (a), (b);
         zext/sz cf:sz, CF:1;
         add res:sz, res:sz, cf:sz;
@@ -539,7 +538,6 @@ pub fn adc(a_: Rvalue, b_: Rvalue) -> Result<(Vec<Statement>, JumpSpec)> {
         cmpltu af2:1, (res.extract(4,0).unwrap()), (a.extract(4,0).unwrap());
         and af1:1, af1:1, CF:1;
         or AF:1, af1:1, af2:1;
-
     }?
     );
     stmts.append(&mut set_carry_flag(&res, &a)?);
@@ -667,6 +665,8 @@ pub fn bswap(_: Rvalue) -> Result<(Vec<Statement>, JumpSpec)> {
 
 
 
+
+
 }
 
 pub fn bt(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>, JumpSpec)> {
@@ -681,6 +681,8 @@ pub fn bt(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>, JumpSpec)> {
     m.assign(to_lvalue(OF), undefined());
     m.assign(to_lvalue(SF), undefined());
     m.assign(to_lvalue(AF), undefined());*/
+
+
 
 
 
@@ -699,6 +701,8 @@ pub fn btc(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>, JumpSpec)> {
     m.assign(to_lvalue(SF), undefined());
     m.assign(to_lvalue(AF), undefined());
     m.assign(to_lvalue(a),a ^ mod);*/
+
+
 
 
 
@@ -721,6 +725,8 @@ pub fn btr(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>, JumpSpec)> {
 
 
 
+
+
 }
 
 pub fn bts(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>, JumpSpec)> {
@@ -739,6 +745,8 @@ pub fn bts(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>, JumpSpec)> {
 
 
 
+
+
 }
 
 pub fn call(a: Rvalue) -> Result<(Vec<Statement>, JumpSpec)> {
@@ -747,7 +755,7 @@ pub fn call(a: Rvalue) -> Result<(Vec<Statement>, JumpSpec)> {
         call ?, new_rip:64;
     });*/
     let stmts = rreil!{
-        call ?, (a);
+        call (a);
     }?;
     Ok((stmts, JumpSpec::FallThru))
 }
@@ -1410,8 +1418,12 @@ pub fn lgs(a: Rvalue, b: Rvalue) -> Result<(Vec<Statement>, JumpSpec)> {
 pub fn lxs(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>, JumpSpec)> {
     Ok((vec![], JumpSpec::FallThru))
 }
-pub fn lea(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>, JumpSpec)> {
-    Ok((vec![], JumpSpec::FallThru))
+pub fn lea(a: Rvalue, b: Rvalue) -> Result<(Vec<Statement>, JumpSpec)> {
+    let (_, b, sz, mut stmts) = zero_extend(&a, &b)?;
+
+    stmts.append(&mut write_reg(&a, &b, sz)?);
+
+    Ok((stmts, JumpSpec::FallThru))
 }
 
 pub fn leave() -> Result<(Vec<Statement>, JumpSpec)> {
@@ -1574,15 +1586,42 @@ pub fn popfw() -> Result<(Vec<Statement>, JumpSpec)> {
 pub fn pushfw() -> Result<(Vec<Statement>, JumpSpec)> {
     Ok((vec![], JumpSpec::FallThru))
 }
-pub fn pop(_: Rvalue) -> Result<(Vec<Statement>, JumpSpec)> {
-    /*
-    let next = st.address + (st.tokens.len() as u64);
-    let len = st.tokens.len();
+pub fn pop(a: Rvalue) -> Result<(Vec<Statement>, JumpSpec)> {
+    use std::borrow::Cow;
 
-    st.mnemonic(len,"pop","{u}",Ok((vec![],JumpSpec::FallThru)),&|| {} );
-    st.jump(Rvalue::new_u64(next),Guard::always());
-    true*/
-    Ok((vec![], JumpSpec::FallThru))
+    let mut a = Lvalue::from_rvalue(a).ok_or(Cow::Borrowed("Can't pop() into Rvalue"))?;
+    let opsz = 64;
+    let addrsz = 64;
+    let mut stmts = vec![];
+
+    if let Some(sz) = a.size() {
+        if sz < opsz {
+            stmts = rreil!{ sext/opsz res:opsz, (a); }?;
+            a = rreil_lvalue!{ res:opsz };
+        } else if sz > opsz {
+            stmts = rreil!{ mov res:opsz, (a.extract(opsz,0).unwrap()); }?;
+            a = rreil_lvalue!{ res:opsz };
+        }
+    }
+
+    let sp = match addrsz {
+        16 => rreil_lvalue!{ SP:16 },
+        32 => rreil_lvalue!{ ESP:32 },
+        64 => rreil_lvalue!{ RSP:64 },
+        _ => return Err(format!("Invalid AddressSize: {}",addrsz).into()),
+    };
+
+    let bytes = opsz / 8;
+    stmts.append(&mut rreil!{
+        mov stack:addrsz, (sp);
+        load/RAM/le/opsz val:opsz, stack:addrsz;
+        add stack:addrsz, (sp), [bytes]:addrsz;
+    }?);
+
+    stmts.append(&mut write_reg(&a.into(), &rreil_rvalue!{ val:addrsz },opsz)?);
+    stmts.append(&mut write_reg(&sp.into(), &rreil_rvalue!{ stack:addrsz },addrsz)?);
+
+    Ok((stmts,JumpSpec::FallThru))
 }
 
 pub fn popa() -> Result<(Vec<Statement>, JumpSpec)> {
@@ -1601,15 +1640,37 @@ pub fn popcnt(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>, JumpSpec)> {
 }
 //pub fn popf(_: Rvalue) -> Result<(Vec<Statement>,JumpSpec)> { Ok((vec![],JumpSpec::FallThru)) }
 
-pub fn push(_: Rvalue) -> Result<(Vec<Statement>, JumpSpec)> {
-    /*
-    let next = st.address + (st.tokens.len() as u64);
-    let len = st.tokens.len();
+pub fn push(mut a: Rvalue) -> Result<(Vec<Statement>, JumpSpec)> {
+    let opsz = 64;
+    let addrsz = 64;
+    let mut stmts = vec![];
+    let bytes = opsz / 8;
 
-    st.mnemonic(len,"push","{u}",Ok((vec![],JumpSpec::FallThru)),&|| {} );
-    st.jump(Rvalue::new_u64(next),Guard::always());
-    true*/
-    Ok((vec![], JumpSpec::FallThru))
+    if let Some(sz) = a.size() {
+        if sz < opsz {
+            stmts = rreil!{ sext/opsz res:opsz, (a); }?;
+            a = rreil_rvalue!{ res:opsz };
+        } else if sz > opsz {
+            stmts = rreil!{ mov res:opsz, (a.extract(opsz,0).unwrap()); }?;
+            a = rreil_rvalue!{ res:opsz };
+        }
+    }
+
+    let sp = match addrsz {
+        16 => rreil_lvalue!{ SP:16 },
+        32 => rreil_lvalue!{ ESP:32 },
+        64 => rreil_lvalue!{ RSP:64 },
+        _ => return Err(format!("Invalid AddressSize: {}",addrsz).into()),
+    };
+
+    stmts.append(&mut rreil!{
+        sub stack:addrsz, (sp), [bytes]:addrsz;
+        store/RAM/le/opsz (a), stack:addrsz;
+    }?);
+
+    stmts.append(&mut write_reg(&sp.into(), &rreil_rvalue!{ stack:addrsz },addrsz)?);
+
+    Ok((stmts,JumpSpec::FallThru))
 }
 
 pub fn pusha() -> Result<(Vec<Statement>, JumpSpec)> {
@@ -1631,17 +1692,13 @@ pub fn rcr(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>, JumpSpec)> {
 }
 
 pub fn ret() -> Result<(Vec<Statement>, JumpSpec)> {
-    /*let len = st.tokens.len();
-    st.mnemonic(len,"ret","",Ok((vec![],JumpSpec::FallThru)),&|| {} );
-    true*/
-    Ok((vec![], JumpSpec::DeadEnd))
+    let stmts = vec![];
+    Ok((stmts, JumpSpec::DeadEnd))
 }
 
 pub fn retn(_: Rvalue) -> Result<(Vec<Statement>, JumpSpec)> {
-    /*let len = st.tokens.len();
-    st.mnemonic(len,"ret","",Ok((vec![],JumpSpec::FallThru)),&|| {} );
-    true*/
-    Ok((vec![], JumpSpec::DeadEnd))
+   let stmts = vec![];
+   Ok((stmts, JumpSpec::DeadEnd))
 }
 
 pub fn retf() -> Result<(Vec<Statement>, JumpSpec)> {
@@ -4021,7 +4078,7 @@ pub fn vbroadcastsd(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>, JumpSpec)> 
 pub fn vbroadcastf128(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>, JumpSpec)> {
     Ok((vec![], JumpSpec::FallThru))
 }
-pub fn vextractf128(_: Rvalue, _: Rvalue) -> Result<(Vec<Statement>, JumpSpec)> {
+pub fn vextractf128(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>, JumpSpec)> {
     Ok((vec![], JumpSpec::FallThru))
 }
 pub fn vextracti128(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>, JumpSpec)> {
@@ -4039,7 +4096,7 @@ pub fn vgatherpdp(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>, Ju
 pub fn vgatherqpd(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>, JumpSpec)> {
     Ok((vec![], JumpSpec::FallThru))
 }
-pub fn vinsertf128(_: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>, JumpSpec)> {
+pub fn vinsertf128(_: Rvalue, _: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>, JumpSpec)> {
     Ok((vec![], JumpSpec::FallThru))
 }
 pub fn vinserti128(_: Rvalue, _: Rvalue, _: Rvalue, _: Rvalue) -> Result<(Vec<Statement>, JumpSpec)> {

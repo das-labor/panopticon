@@ -278,19 +278,32 @@ pub fn print_statement<W: Write + WriteColor>(fmt: &mut W, statement: &Statement
             write!(fmt, " ")?;
             color!(fmt, White, b)?;
         },
-        Operation::Load(ref r, ref b) => {
-            color_bold!(fmt, White, format!("load_{}", r))?;
+        Operation::Initialize(ref r, sz) => {
+            color_bold!(fmt, White, "init")?;
+            write!(fmt, " ")?;
+            color!(fmt, White, statement.assignee)?;
+            color_bold!(fmt, Green, ",")?;
+            write!(fmt, " ")?;
+            color!(fmt, White, r)?;
+            color_bold!(fmt, Green, ",")?;
+            write!(fmt, " ")?;
+            color!(fmt, White, sz)?;
+        },
+        Operation::Load(ref r, e, sz, ref b) => {
+            color_bold!(fmt, White, format!("load/{}/{}/{}", r, e, sz))?;
             write!(fmt, " ")?;
             color!(fmt, White, statement.assignee)?;
             color_bold!(fmt, Green, ",")?;
             write!(fmt, " ")?;
             color!(fmt, White, b)?;
         },
-        Operation::Store(ref r, ref b) => {
-            color_bold!(fmt, White, format!("store_{}", r))?;
+        Operation::Store(ref r, e, sz, ref a, ref b) => {
+            color_bold!(fmt, White, format!("store/{}/{}/{}", r, e, sz))?;
             write!(fmt, " ")?;
             color!(fmt, White, statement.assignee)?;
             color_bold!(fmt, Green, ",")?;
+            write!(fmt, " ")?;
+            color!(fmt, White, a)?;
             write!(fmt, " ")?;
             color!(fmt, White, b)?;
         },

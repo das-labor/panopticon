@@ -299,7 +299,7 @@ impl Program {
                             last = Some(statement);
                         }
                         if count == 2 {
-                            if let Some( &Statement { op: Operation::Load(_, Rvalue::Constant { value, .. }), .. }) = last {
+                            if let Some( &Statement { op: Operation::Load(_, _, _, Rvalue::Constant { value, .. }), .. }) = last {
                                 Some(value)
                             } else {
                                 None
