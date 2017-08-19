@@ -2411,10 +2411,16 @@ pub fn read(mode: Mode, buf: &[u8], addr: u64) -> Result<(u64, Mnemonic, Vec<(Rv
             }
             // Group 4: Address size override
             Some(&0x67) => {
-                if prefix.address_size == 1 {
+                let new_addr_sz = match mode {
+                    Mode::Real => 32,
+                    Mode::Protected => 16,
+                    Mode::Long => 32,
+                };
+
+                if prefix.address_size == new_addr_sz {
                     error!("Multiple address-size override prefixes");
                 } else {
-                    prefix.address_size = 1;
+                    prefix.address_size = new_addr_sz;
                 }
             }
             // 2 byte VEX
