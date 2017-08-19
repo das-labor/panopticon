@@ -2976,7 +2976,6 @@ fn to_rreil(op: Operand) -> Result<(Rvalue, Vec<Statement>, Vec<Statement>)> {
         Operand::Address(_, ref base, ref index, ref scale, ref disp) => {
             let mut stmts = vec![];
             let mut ret = Rvalue::Undefined;
-            let addrsz = disp.1;
             let out = format!("{}", op);
 
             if *base != Register::None {

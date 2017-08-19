@@ -33,7 +33,7 @@ pub fn cpse(st: &mut State<Avr>) -> bool {
             "cpse",
             "{u}, {u}",
             vec![rd.clone().into(), rr.clone().into()],
-            &|_cg: &mut Mcu| {
+            &|_: &mut Mcu| {
                 rreil!{
             cmpeq skip_flag:1, (rr.clone()), (rd.clone());
         }
@@ -53,7 +53,7 @@ pub fn cpse(st: &mut State<Avr>) -> bool {
     true
 }
 
-pub fn adc(rd: Lvalue, rr: Rvalue, _cg: &mut Mcu) -> Result<Vec<Statement>> {
+pub fn adc(rd: Lvalue, rr: Rvalue, _: &mut Mcu) -> Result<Vec<Statement>> {
     let half_rd = if let &Lvalue::Variable { ref name, size: 8, .. } = &rd {
         Lvalue::Variable { name: name.clone(), size: 4, subscript: None }
     } else {
@@ -107,7 +107,7 @@ pub fn adc(rd: Lvalue, rr: Rvalue, _cg: &mut Mcu) -> Result<Vec<Statement>> {
     }
 }
 
-pub fn add(rd: Lvalue, rr: Rvalue, _cg: &mut Mcu) -> Result<Vec<Statement>> {
+pub fn add(rd: Lvalue, rr: Rvalue, _: &mut Mcu) -> Result<Vec<Statement>> {
     let half_rd = rd.extract(4, 0).ok().unwrap();
 
     rreil!{
@@ -159,7 +159,7 @@ pub fn adiw(st: &mut State<Avr>) -> bool {
             "__wide_reg",
             "",
             vec![],
-            &|_cg: &mut Mcu| {
+            &|_: &mut Mcu| {
                 rreil!{
             zext/16 reg:16, (rd1);
             sel/8 reg:16, (rd2);
@@ -173,7 +173,7 @@ pub fn adiw(st: &mut State<Avr>) -> bool {
             "adiw",
             "{u:8}, {u:8}",
             vec![rd1.clone().into(), k.clone()],
-            &|_cg: &mut Mcu| {
+            &|_: &mut Mcu| {
                 rreil!{
             zext/16 imm:16, (k);
             add res:16, reg:16, imm:16;
@@ -218,7 +218,7 @@ pub fn adiw(st: &mut State<Avr>) -> bool {
     true
 }
 
-pub fn and(rd: Lvalue, rr: Rvalue, _cg: &mut Mcu) -> Result<Vec<Statement>> {
+pub fn and(rd: Lvalue, rr: Rvalue, _: &mut Mcu) -> Result<Vec<Statement>> {
     rreil!{
         and res:8, (rd), (rr);
 
@@ -229,7 +229,7 @@ pub fn and(rd: Lvalue, rr: Rvalue, _cg: &mut Mcu) -> Result<Vec<Statement>> {
     }
 }
 
-pub fn asr(rd: Lvalue, _cg: &mut Mcu) -> Result<Vec<Statement>> {
+pub fn asr(rd: Lvalue, _: &mut Mcu) -> Result<Vec<Statement>> {
     rreil!{
         mov lsb:1, C:1;
         cmpltu C:1, [0x7f]:8, (rd);
@@ -247,13 +247,13 @@ pub fn _break(_: &mut Mcu) -> Result<Vec<Statement>> {
     Ok(vec![])
 }
 
-pub fn bld(rd: Lvalue, b: u64, _cg: &mut Mcu) -> Result<Vec<Statement>> {
+pub fn bld(rd: Lvalue, b: u64, _: &mut Mcu) -> Result<Vec<Statement>> {
     rreil!{
         sel/b (rd), T:1;
     }
 }
 
-pub fn bst(rd: Lvalue, b: u64, _cg: &mut Mcu) -> Result<Vec<Statement>> {
+pub fn bst(rd: Lvalue, b: u64, _: &mut Mcu) -> Result<Vec<Statement>> {
     let r: Rvalue = rd.extract(1, b as usize).ok().unwrap();
 
     rreil!{
@@ -265,7 +265,7 @@ pub fn call(st: &mut State<Avr>) -> bool {
     let k = st.configuration.wrap(st.get_group("k") * 2);
     let next = st.configuration.wrap(st.address + st.tokens.len() as u64 * 2);
 
-    st.mnemonic(4,"call","{c:flash}",vec![k.clone()],&|cg: &mut Mcu| {
+    st.mnemonic(4,"call","{c:flash}",vec![k.clone()],&|_: &mut Mcu| {
         rreil!{ call (k); }
     }).unwrap();
 
@@ -274,13 +274,13 @@ pub fn call(st: &mut State<Avr>) -> bool {
     true
 }
 
-pub fn cbx(rd: Lvalue, b: u64, _cg: &mut Mcu) -> Result<Vec<Statement>> {
+pub fn cbx(rd: Lvalue, b: u64, _: &mut Mcu) -> Result<Vec<Statement>> {
     rreil!{
         sel/b (rd), [0]:1;
     }
 }
 
-pub fn com(rd: Lvalue, _cg: &mut Mcu) -> Result<Vec<Statement>> {
+pub fn com(rd: Lvalue, _: &mut Mcu) -> Result<Vec<Statement>> {
     rreil!{
         sub res:8, [0xff]:8, (rd);
         mov C:1, [0]:1;
@@ -291,7 +291,7 @@ pub fn com(rd: Lvalue, _cg: &mut Mcu) -> Result<Vec<Statement>> {
     }
 }
 
-pub fn cp(rd: Lvalue, rr: Rvalue, _cg: &mut Mcu) -> Result<Vec<Statement>> {
+pub fn cp(rd: Lvalue, rr: Rvalue, _: &mut Mcu) -> Result<Vec<Statement>> {
     let half_rd: Rvalue = rd.extract(4, 0).ok().unwrap();
 
     rreil!{
@@ -326,7 +326,7 @@ pub fn cp(rd: Lvalue, rr: Rvalue, _cg: &mut Mcu) -> Result<Vec<Statement>> {
     }
 }
 
-pub fn cpc(rd: Lvalue, rr: Rvalue, _cg: &mut Mcu) -> Result<Vec<Statement>> {
+pub fn cpc(rd: Lvalue, rr: Rvalue, _: &mut Mcu) -> Result<Vec<Statement>> {
     let half_rd: Rvalue = rd.extract(4, 0).ok().unwrap();
 
     rreil!{
@@ -369,7 +369,7 @@ pub fn cpc(rd: Lvalue, rr: Rvalue, _cg: &mut Mcu) -> Result<Vec<Statement>> {
     }
 }
 
-pub fn dec(rd: Lvalue, _cg: &mut Mcu) -> Result<Vec<Statement>> {
+pub fn dec(rd: Lvalue, _: &mut Mcu) -> Result<Vec<Statement>> {
     rreil!{
         cmpeq V:1, (rd), [0x80]:8;
         sub (rd), (rd), [1]:8;
@@ -386,7 +386,7 @@ pub fn des(st: &mut State<Avr>) -> bool {
             "des",
             "{u}",
             vec![k],
-            &|_cg: &mut Mcu| {
+            &|_: &mut Mcu| {
                 rreil!{
         mov R0:8, ?;
         mov R1:8, ?;
@@ -415,7 +415,7 @@ pub fn des(st: &mut State<Avr>) -> bool {
     true
 }
 
-pub fn eicall(_cg: &mut Mcu) -> Result<Vec<Statement>> {
+pub fn eicall(_: &mut Mcu) -> Result<Vec<Statement>> {
     rreil!{
         zext/22 p:22, R30:8;
         sel/8 p:22, R31:8;
@@ -431,7 +431,7 @@ pub fn eijmp(st: &mut State<Avr>) -> bool {
             "eijmp",
             "",
             vec![],
-            &|_cg: &mut Mcu| {
+            &|_: &mut Mcu| {
                 rreil!{
             zext/22 p:22, R30:8;
             sel/8 p:22, R31:8;
@@ -462,7 +462,7 @@ pub fn elpm(rd: Lvalue, off: usize, st: &mut State<Avr>) -> bool {
         "__wide_reg",
         "",
         vec![],
-        &|_cg: &mut Mcu| {
+        &|_: &mut Mcu| {
             rreil!{
                 zext/24 (zreg), R30:8;
                 sel/8 (zreg), R31:8;
@@ -473,7 +473,7 @@ pub fn elpm(rd: Lvalue, off: usize, st: &mut State<Avr>) -> bool {
         .unwrap();
 
     let arg = if rd == rreil_lvalue!{ R0:8 } { vec![] } else { vec![zreg.clone().into()] };
-    st.mnemonic(2,"elpm","{p:sram}",arg,&|cg: &mut Mcu| {
+    st.mnemonic(2,"elpm","{p:sram}",arg,&|_: &mut Mcu| {
         let mut stmts = try!(rreil!{
             load/sram/be/24 ptr:24, (zreg);
             load/flash/be/8 (rd), ptr:24;
@@ -513,7 +513,7 @@ pub fn elpm3(st: &mut State<Avr>) -> bool {
     elpm(reg(st, "D"), 1, st)
 }
 
-pub fn eor(rd: Lvalue, rr: Rvalue, _cg: &mut Mcu) -> Result<Vec<Statement>> {
+pub fn eor(rd: Lvalue, rr: Rvalue, _: &mut Mcu) -> Result<Vec<Statement>> {
     rreil!{
         xor res:8, (rd), (rr);
 
@@ -524,7 +524,7 @@ pub fn eor(rd: Lvalue, rr: Rvalue, _cg: &mut Mcu) -> Result<Vec<Statement>> {
     }
 }
 
-pub fn fmul(rd: Lvalue, rr: Rvalue, _cg: &mut Mcu) -> Result<Vec<Statement>> {
+pub fn fmul(rd: Lvalue, rr: Rvalue, _: &mut Mcu) -> Result<Vec<Statement>> {
     rreil!{
         zext/16 rd:16, (rd);
         zext/16 rr:16, (rr);
@@ -541,7 +541,7 @@ pub fn fmul(rd: Lvalue, rr: Rvalue, _cg: &mut Mcu) -> Result<Vec<Statement>> {
     }
 }
 
-pub fn fmuls(rd: Lvalue, rr: Rvalue, _cg: &mut Mcu) -> Result<Vec<Statement>> {
+pub fn fmuls(rd: Lvalue, rr: Rvalue, _: &mut Mcu) -> Result<Vec<Statement>> {
     rreil!{
         sext/16 rd:16, (rd);
         sext/16 rr:16, (rr);
@@ -558,7 +558,7 @@ pub fn fmuls(rd: Lvalue, rr: Rvalue, _cg: &mut Mcu) -> Result<Vec<Statement>> {
     }
 }
 
-pub fn fmulsu(rd: Lvalue, rr: Rvalue, _cg: &mut Mcu) -> Result<Vec<Statement>> {
+pub fn fmulsu(rd: Lvalue, rr: Rvalue, _: &mut Mcu) -> Result<Vec<Statement>> {
     rreil!{
         sext/16 rd:16, (rd);
         zext/16 rr:16, (rr);
@@ -583,21 +583,19 @@ pub fn icall(st: &mut State<Avr>) -> bool {
             "__wide_reg",
             "",
             vec![],
-            &|_cg: &mut Mcu| {
+            &|_: &mut Mcu| {
                 rreil!{
             zext/16 (zreg), R30:8;
             sel/8 (zreg), R31:8;
         }
-    });
+    }).unwrap();
 
-    st.mnemonic(2,"icall","{p:sram}",vec![],&|cg: &mut Mcu| {
+    st.mnemonic(2,"icall","{p:sram}",vec![],&|_: &mut Mcu| {
         rreil!{
             load/sram/be/24 ptr:24, (zreg);
             call ptr:24;
         }
-            },
-        )
-        .unwrap();
+    }).unwrap();
 
     let next = st.configuration.wrap(st.address + st.tokens.len() as u64 * 2);
     optional_skip(next.clone(), st);
@@ -612,7 +610,7 @@ pub fn ijmp(st: &mut State<Avr>) -> bool {
             "ijmp",
             "",
             vec![],
-            &|_cg: &mut Mcu| {
+            &|_: &mut Mcu| {
                 rreil!{
             zext/22 p:22, R30:8;
             sel/8 p:22, R31:8;
@@ -632,7 +630,7 @@ pub fn _in(st: &mut State<Avr>) -> bool {
     let rd = reg(st,"D");
     let rr = Rvalue::Constant{ value: st.get_group("A"), size: 8 };
 
-    st.mnemonic(2,"in","{u}, {u}",vec!(rd.clone().into(),rr.clone().into()),&|cg: &mut Mcu| {
+    st.mnemonic(2,"in","{u}, {u}",vec!(rd.clone().into(),rr.clone().into()),&|_: &mut Mcu| {
         rreil!{
             load/io/be/8 (rd), (rr);
         }
@@ -646,7 +644,7 @@ pub fn _in(st: &mut State<Avr>) -> bool {
     true
 }
 
-pub fn inc(rd: Lvalue, _cg: &mut Mcu) -> Result<Vec<Statement>> {
+pub fn inc(rd: Lvalue, _: &mut Mcu) -> Result<Vec<Statement>> {
     rreil!{
         cmpeq V:1, (rd), [0x80]:8;
         add (rd), (rd), [1]:8;
@@ -677,7 +675,7 @@ pub fn jmp(st: &mut State<Avr>) -> bool {
     true
 }
 
-pub fn lac(ptr: Lvalue, reg: Lvalue, _cg: &mut Mcu) -> Result<Vec<Statement>> {
+pub fn lac(ptr: Lvalue, reg: Lvalue, _: &mut Mcu) -> Result<Vec<Statement>> {
     rreil!{
         load/sram/be/8 zcont:8, (ptr);
         xor nreg:8, (reg), [0xff]:8;
@@ -686,7 +684,7 @@ pub fn lac(ptr: Lvalue, reg: Lvalue, _cg: &mut Mcu) -> Result<Vec<Statement>> {
     }
 }
 
-pub fn las(ptr: Lvalue, reg: Lvalue, _cg: &mut Mcu) -> Result<Vec<Statement>> {
+pub fn las(ptr: Lvalue, reg: Lvalue, _: &mut Mcu) -> Result<Vec<Statement>> {
     rreil!{
         load/sram/be/8 zcont:8, (ptr);
         or (reg), (reg), zcont:8;
@@ -694,7 +692,7 @@ pub fn las(ptr: Lvalue, reg: Lvalue, _cg: &mut Mcu) -> Result<Vec<Statement>> {
     }
 }
 
-pub fn lat(ptr: Lvalue, reg: Lvalue, _cg: &mut Mcu) -> Result<Vec<Statement>> {
+pub fn lat(ptr: Lvalue, reg: Lvalue, _: &mut Mcu) -> Result<Vec<Statement>> {
     rreil!{
         load/sram/be/8 zcont:8, (ptr);
         xor (reg), (reg), zcont:8;
@@ -702,13 +700,13 @@ pub fn lat(ptr: Lvalue, reg: Lvalue, _cg: &mut Mcu) -> Result<Vec<Statement>> {
     }
 }
 
-pub fn ld(ptr: Lvalue, reg: Lvalue, _cg: &mut Mcu) -> Result<Vec<Statement>> {
+pub fn ld(ptr: Lvalue, reg: Lvalue, _: &mut Mcu) -> Result<Vec<Statement>> {
     rreil!{
         load/sram/be/8 (reg), (ptr);
     }
 }
 
-pub fn ldi(rd: Lvalue, k: u64, _cg: &mut Mcu) -> Result<Vec<Statement>> {
+pub fn ldi(rd: Lvalue, k: u64, _: &mut Mcu) -> Result<Vec<Statement>> {
     rreil!{
         mov (rd), [k]:8;
     }
@@ -718,7 +716,7 @@ pub fn lds1(st: &mut State<Avr>) -> bool {
     let rd = reg(st, "D");
     let k = Rvalue::new_u16(st.get_group("k") as u16);
 
-    st.mnemonic(4,"lds","{p:sram}, {u}",vec![rd.clone().into(),k.clone().into()],&|cg: &mut Mcu| {
+    st.mnemonic(4,"lds","{p:sram}, {u}",vec![rd.clone().into(),k.clone().into()],&|_: &mut Mcu| {
         rreil!{
             load/sram/be/8 (rd), (k);
         }
@@ -738,7 +736,7 @@ pub fn lds2(st: &mut State<Avr>) -> bool {
     let _k = st.get_group("k") as u16;
     let k = Rvalue::new_u16(if _k <= 0x1F { _k + 0x20 } else { _k });
 
-    st.mnemonic(2,"lds","{u}, {p:sram}",vec![rd.clone().into(),k.clone().into()],&|cg: &mut Mcu| {
+    st.mnemonic(2,"lds","{u}, {p:sram}",vec![rd.clone().into(),k.clone().into()],&|_: &mut Mcu| {
         rreil!{
             load/sram/be/8 (rd), (k);
         }
@@ -761,7 +759,7 @@ pub fn lpm(rd: Lvalue, off: usize, st: &mut State<Avr>) -> bool {
             "__wide_reg",
             "",
             vec![],
-            &|_cg: &mut Mcu| {
+            &|_: &mut Mcu| {
                 rreil!{
             zext/16 (zreg), R30:8;
             sel/8 (zreg), R31:8;
@@ -771,7 +769,7 @@ pub fn lpm(rd: Lvalue, off: usize, st: &mut State<Avr>) -> bool {
         .unwrap();
 
     let arg = if rd == rreil_lvalue!{ R0:8 } { vec![] } else { vec![zreg.clone().into()] };
-    st.mnemonic(2,"lpm","{p:sram}",arg,&|cg: &mut Mcu| {
+    st.mnemonic(2,"lpm","{p:sram}",arg,&|_: &mut Mcu| {
         let mut stmts = try!(rreil!{
             load/sram/be/16 ptr:16, (zreg);
             load/flash/be/8 (rd), ptr:16;
@@ -811,7 +809,7 @@ pub fn lpm3(st: &mut State<Avr>) -> bool {
     lpm(reg(st, "D"), 1, st)
 }
 
-pub fn lsr(rd: Lvalue, _cg: &mut Mcu) -> Result<Vec<Statement>> {
+pub fn lsr(rd: Lvalue, _: &mut Mcu) -> Result<Vec<Statement>> {
     rreil!{
         mov C:1, (rd.extract(1,0).ok().unwrap());
         shr (rd), (rd), [1]:8;
@@ -822,7 +820,7 @@ pub fn lsr(rd: Lvalue, _cg: &mut Mcu) -> Result<Vec<Statement>> {
     }
 }
 
-pub fn mov(rd: Lvalue, rr: Rvalue, _cg: &mut Mcu) -> Result<Vec<Statement>> {
+pub fn mov(rd: Lvalue, rr: Rvalue, _: &mut Mcu) -> Result<Vec<Statement>> {
     rreil!{
         mov (rd), (rr);
     }
@@ -840,7 +838,7 @@ pub fn movw(st: &mut State<Avr>) -> bool {
             "movw",
             "{u}, {u}",
             vec![rd1.clone().into(), rr1.clone().into()],
-            &|_cg: &mut Mcu| {
+            &|_: &mut Mcu| {
                 rreil!{
             mov (rd1), (rr1);
             mov (rd2), (rr2);
@@ -854,7 +852,7 @@ pub fn movw(st: &mut State<Avr>) -> bool {
     true
 }
 
-pub fn mul(rd: Lvalue, rr: Rvalue, _cg: &mut Mcu) -> Result<Vec<Statement>> {
+pub fn mul(rd: Lvalue, rr: Rvalue, _: &mut Mcu) -> Result<Vec<Statement>> {
     rreil!{
         zext/16 rd:16, (rd);
         zext/16 rr:16, (rr);
@@ -869,7 +867,7 @@ pub fn mul(rd: Lvalue, rr: Rvalue, _cg: &mut Mcu) -> Result<Vec<Statement>> {
     }
 }
 
-pub fn muls(rd: Lvalue, rr: Rvalue, _cg: &mut Mcu) -> Result<Vec<Statement>> {
+pub fn muls(rd: Lvalue, rr: Rvalue, _: &mut Mcu) -> Result<Vec<Statement>> {
     rreil!{
         sext/16 rd:16, (rd);
         sext/16 rr:16, (rr);
@@ -885,7 +883,7 @@ pub fn muls(rd: Lvalue, rr: Rvalue, _cg: &mut Mcu) -> Result<Vec<Statement>> {
     }
 }
 
-pub fn mulsu(rd: Lvalue, rr: Rvalue, _cg: &mut Mcu) -> Result<Vec<Statement>> {
+pub fn mulsu(rd: Lvalue, rr: Rvalue, _: &mut Mcu) -> Result<Vec<Statement>> {
     rreil!{
         sext/16 rd:16, (rd);
         zext/16 rr:16, (rr);
@@ -901,7 +899,7 @@ pub fn mulsu(rd: Lvalue, rr: Rvalue, _cg: &mut Mcu) -> Result<Vec<Statement>> {
     }
 }
 
-pub fn neg(rd: Lvalue, _cg: &mut Mcu) -> Result<Vec<Statement>> {
+pub fn neg(rd: Lvalue, _: &mut Mcu) -> Result<Vec<Statement>> {
     rreil!{
         sub res:8, [0]:8, (rd);
 
@@ -919,7 +917,7 @@ pub fn nop(_: &mut Mcu) -> Result<Vec<Statement>> {
     Ok(vec![])
 }
 
-pub fn or(rd: Lvalue, rr: Rvalue, _cg: &mut Mcu) -> Result<Vec<Statement>> {
+pub fn or(rd: Lvalue, rr: Rvalue, _: &mut Mcu) -> Result<Vec<Statement>> {
     rreil!{
         or res:8, (rd), (rr);
 
@@ -938,7 +936,7 @@ pub fn out(st: &mut State<Avr>) -> bool {
     let rr = reg(st, "R");
     let next = st.configuration.wrap(st.address + st.tokens.len() as u64 * 2);
 
-    st.mnemonic(2,"out","{u}, {u}",vec!(rd.clone().into(),rr.clone().into()),&|cg: &mut Mcu| {
+    st.mnemonic(2,"out","{u}, {u}",vec!(rd.clone().into(),rr.clone().into()),&|_: &mut Mcu| {
         rreil!{
             store/io/be/8 (rd), (rr);
         }
@@ -950,7 +948,7 @@ pub fn out(st: &mut State<Avr>) -> bool {
     true
 }
 
-pub fn pop(rd: Lvalue, _cg: &mut Mcu) -> Result<Vec<Statement>> {
+pub fn pop(rd: Lvalue, _: &mut Mcu) -> Result<Vec<Statement>> {
     rreil!{
         zext/16 stack:16, spl:8;
         sel/8 stack:16, sph:8;
@@ -961,7 +959,7 @@ pub fn pop(rd: Lvalue, _cg: &mut Mcu) -> Result<Vec<Statement>> {
     }
 }
 
-pub fn push(rd: Lvalue, _cg: &mut Mcu) -> Result<Vec<Statement>> {
+pub fn push(rd: Lvalue, _: &mut Mcu) -> Result<Vec<Statement>> {
     rreil!{
         zext/16 stack:16, spl:8;
         sel/8 stack:16, sph:8;
@@ -978,7 +976,7 @@ pub fn rcall(st: &mut State<Avr>) -> bool {
     let k = Rvalue::Constant { value: _k, size: st.configuration.pc_bits };
     let next = st.configuration.wrap(st.address + st.tokens.len() as u64 * 2);
 
-    st.mnemonic(2,"rcall","{c:flash}",vec![k.clone()],&|cg: &mut Mcu| {
+    st.mnemonic(2,"rcall","{c:flash}",vec![k.clone()],&|_: &mut Mcu| {
     rreil!{
         call (k);
     }
@@ -1016,7 +1014,7 @@ pub fn rjmp(st: &mut State<Avr>) -> bool {
     true
 }
 
-pub fn ror(rd: Lvalue, _cg: &mut Mcu) -> Result<Vec<Statement>> {
+pub fn ror(rd: Lvalue, _: &mut Mcu) -> Result<Vec<Statement>> {
     rreil!{
         mov nc:1, (rd.extract(1,7).ok().unwrap());
         shr (rd), (rd), [1]:8;
@@ -1029,7 +1027,7 @@ pub fn ror(rd: Lvalue, _cg: &mut Mcu) -> Result<Vec<Statement>> {
     }
 }
 
-pub fn sbc(rd: Lvalue, rr: Rvalue, _cg: &mut Mcu) -> Result<Vec<Statement>> {
+pub fn sbc(rd: Lvalue, rr: Rvalue, _: &mut Mcu) -> Result<Vec<Statement>> {
     rreil!{
         zext/8 carry:8, C:1;
         sub res:8, (rd), (rr);
@@ -1058,7 +1056,7 @@ pub fn sbc(rd: Lvalue, rr: Rvalue, _cg: &mut Mcu) -> Result<Vec<Statement>> {
     }
 }
 
-pub fn sbi(rd: Lvalue, b: u64, _cg: &mut Mcu) -> Result<Vec<Statement>> {
+pub fn sbi(rd: Lvalue, b: u64, _: &mut Mcu) -> Result<Vec<Statement>> {
     rreil!{
         sel/b (rd), [1]:1;
     }
@@ -1074,7 +1072,7 @@ pub fn sbiw(st: &mut State<Avr>) -> bool {
             "__wide_reg",
             "",
             vec![],
-            &|_cg: &mut Mcu| {
+            &|_: &mut Mcu| {
                 rreil!{
             zext/16 reg:16, (rd1);
             sel/8 reg:16, (rd2);
@@ -1088,7 +1086,7 @@ pub fn sbiw(st: &mut State<Avr>) -> bool {
             "sbiw",
             "{u:8}, {u:8}",
             vec![rd1.clone().into(), k.clone()],
-            &|_cg: &mut Mcu| {
+            &|_: &mut Mcu| {
                 rreil!{
             zext/16 reg:16, (rd1);
             sel/8 reg:16, (rd2);
@@ -1146,7 +1144,7 @@ pub fn spm(rd: Lvalue, off: usize, st: &mut State<Avr>) -> bool {
             "__wide_reg",
             "",
             vec![],
-            &|_cg: &mut Mcu| {
+            &|_: &mut Mcu| {
                 rreil!{
             zext/16 (zreg), R30:8;
             sel/8 (zreg), R31:8;
@@ -1156,7 +1154,7 @@ pub fn spm(rd: Lvalue, off: usize, st: &mut State<Avr>) -> bool {
         .unwrap();
 
     let arg = if off == 0 { vec![] } else { vec![zreg.clone().into()] };
-    st.mnemonic(len,"spm","{p:sram}",arg,&|cg: &mut Mcu| {
+    st.mnemonic(len,"spm","{p:sram}",arg,&|_: &mut Mcu| {
         let mut stmts = try!(rreil!{
             load/sram/be/16 ptr:16, (zreg);
             load/flash/be/8 (rd), ptr:16;
@@ -1192,7 +1190,7 @@ pub fn spm2(st: &mut State<Avr>) -> bool {
     spm(reg(st, "D"), 0, st)
 }
 
-pub fn st(ptr: Lvalue, reg: Lvalue, _cg: &mut Mcu) -> Result<Vec<Statement>> {
+pub fn st(ptr: Lvalue, reg: Lvalue, _: &mut Mcu) -> Result<Vec<Statement>> {
     rreil!{
         store/sram/be/8 (reg), (ptr);
     }
@@ -1202,7 +1200,7 @@ pub fn sts1(st: &mut State<Avr>) -> bool {
     let rd = reg(st, "R");
     let k = Rvalue::new_u16(st.get_group("k") as u16);
 
-    st.mnemonic(4,"sts","{p:sram}, {u}",vec![k.clone().into(),rd.clone().into()],&|cg: &mut Mcu| {
+    st.mnemonic(4,"sts","{p:sram}, {u}",vec![k.clone().into(),rd.clone().into()],&|_: &mut Mcu| {
         rreil!{
             store/sram/be/8 (rd), (k);
         }
@@ -1222,7 +1220,7 @@ pub fn sts2(st: &mut State<Avr>) -> bool {
     let _k = st.get_group("k") as u16;
     let k = Rvalue::new_u16(if _k <= 0x1F { _k + 0x20 } else { _k });
 
-    st.mnemonic(2,"sts","{p:sram}, {u}",vec![k.clone().into(),rd.clone().into()],&|cg: &mut Mcu| {
+    st.mnemonic(2,"sts","{p:sram}, {u}",vec![k.clone().into(),rd.clone().into()],&|_: &mut Mcu| {
         rreil!{
             store/sram/be/8 (rd), (k);
         }
@@ -1237,7 +1235,7 @@ pub fn sts2(st: &mut State<Avr>) -> bool {
     true
 }
 
-pub fn sub(rd: Lvalue, rr: Rvalue, _cg: &mut Mcu) -> Result<Vec<Statement>> {
+pub fn sub(rd: Lvalue, rr: Rvalue, _: &mut Mcu) -> Result<Vec<Statement>> {
     rreil!{
         sub res:8, (rd), (rr);
 
@@ -1261,7 +1259,7 @@ pub fn sub(rd: Lvalue, rr: Rvalue, _cg: &mut Mcu) -> Result<Vec<Statement>> {
     }
 }
 
-pub fn swap(rd: Lvalue, _cg: &mut Mcu) -> Result<Vec<Statement>> {
+pub fn swap(rd: Lvalue, _: &mut Mcu) -> Result<Vec<Statement>> {
     rreil!{
         mov tmp:4, (rd.extract(4,0).ok().unwrap());
         sel/0 (rd), (rd.extract(4,4).ok().unwrap());
@@ -1273,7 +1271,7 @@ pub fn wdr(_: &mut Mcu) -> Result<Vec<Statement>> {
     Ok(vec![])
 }
 
-pub fn xch(ptr: Lvalue, reg: Lvalue, _cg: &mut Mcu) -> Result<Vec<Statement>> {
+pub fn xch(ptr: Lvalue, reg: Lvalue, _: &mut Mcu) -> Result<Vec<Statement>> {
     rreil!{
         load/sram/be/8 zcont:8, (ptr);
         store/sram/be/8 (reg), (ptr);

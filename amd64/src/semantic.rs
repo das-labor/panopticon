@@ -1696,7 +1696,7 @@ pub fn ret() -> Result<(Vec<Statement>, JumpSpec)> {
     Ok((stmts, JumpSpec::DeadEnd))
 }
 
-pub fn retn(v: Rvalue) -> Result<(Vec<Statement>, JumpSpec)> {
+pub fn retn(_: Rvalue) -> Result<(Vec<Statement>, JumpSpec)> {
    let stmts = vec![];
    Ok((stmts, JumpSpec::DeadEnd))
 }
