@@ -106,7 +106,7 @@
 //! # }
 //! ```
 
-use {CallTarget,Result};
+use Result;
 use quickcheck::{Arbitrary, Gen};
 use serde::{Serialize,Deserialize};
 
@@ -397,9 +397,12 @@ impl Display for Guard {
     }
 }
 
+/// Endianess of a memory operation.
 #[derive(Debug,Clone,Copy,PartialEq,Eq,Serialize,Deserialize)]
 pub enum Endianess {
+    /// Least significant byte first
     Little,
+    /// Most significant byte first
     Big,
 }
 
@@ -569,7 +572,7 @@ impl Statement {
                 }
             }
 
-            &Statement{ op: Operation::Initialize(ref a,ref sz), ref assignee } => {
+            &Statement{ op: Operation::Initialize(_,ref sz), ref assignee } => {
                 if !(assignee.size() == None || assignee.size() == Some(*sz)) {
                     return Err("Operation result and assingnee sizes mismatch".into())
                 } else {
@@ -597,7 +600,7 @@ impl Statement {
                 }
             }
 
-            &Statement{ op: Operation::Store(_,_,sz,ref pnt,ref val), ref assignee } => {
+            &Statement{ op: Operation::Store(_,_,sz,_,ref val), ref assignee } => {
                 if val.size().is_some() && assignee.size().is_some() && val.size() != assignee.size() {
                     return Err("Memory store value with inconsitend size".into());
                 } else if sz == 0 {
