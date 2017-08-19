@@ -7,5 +7,5 @@ authors = ["seu <seu@panopticon.re>"]
 panopticon-core = { path = "../core" }
 panopticon-graph-algos = { path = "../graph-algos" }
 log = "0.3.6"
-byteorder = "0.5.1"
+byteorder = "1"
 env_logger = "0.3"

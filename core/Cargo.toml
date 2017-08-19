@@ -12,7 +12,7 @@ tempdir = "0.3.4"
 libc = "0.2.9"
 uuid = { version = "0.5", features = ["v4", "serde"]}
 flate2 = "0.2.13"
-byteorder = "0.5.1"
+byteorder = "1"
 goblin = "0.0.10"
 quickcheck = "0.3"
 panopticon-graph-algos = { path = "../graph-algos" }
