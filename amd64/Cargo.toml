@@ -6,7 +6,7 @@ authors = ["seu <seu@panopticon.re>"]
 [dependencies]
 panopticon-core = { path = "../core" }
 log = "0.3.6"
-byteorder = "0.5.1"
+byteorder = "1"
 env_logger = "0.3"
 quickcheck = "0.3"
 
