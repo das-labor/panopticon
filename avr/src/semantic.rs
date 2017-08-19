@@ -421,7 +421,7 @@ pub fn eicall(_cg: &mut Mcu) -> Result<Vec<Statement>> {
         sel/8 p:22, R31:8;
         sel/16 p:22, EIND:6;
         load/sram/be/24 q:24, p:22;
-        call q:22;
+        call q:24;
     }
 }
 
@@ -444,7 +444,7 @@ pub fn eijmp(st: &mut State<Avr>) -> bool {
 
     let next = Rvalue::Variable {
         name: Cow::Borrowed("q"),
-        size: 22,
+        size: 24,
         subscript: None,
         offset: 0,
     };
@@ -476,7 +476,7 @@ pub fn elpm(rd: Lvalue, off: usize, st: &mut State<Avr>) -> bool {
     st.mnemonic(2,"elpm","{p:sram}",arg,&|cg: &mut Mcu| {
         let mut stmts = try!(rreil!{
             load/sram/be/24 ptr:24, (zreg);
-            load/flash/be/24 (rd), ptr:24;
+            load/flash/be/8 (rd), ptr:24;
         });
 
         if off <= 1 {
@@ -630,7 +630,7 @@ pub fn ijmp(st: &mut State<Avr>) -> bool {
 
 pub fn _in(st: &mut State<Avr>) -> bool {
     let rd = reg(st,"D");
-    let rr = Rvalue::Constant{ value: st.get_group("A"), size: 6 };
+    let rr = Rvalue::Constant{ value: st.get_group("A"), size: 8 };
 
     st.mnemonic(2,"in","{u}, {u}",vec!(rd.clone().into(),rr.clone().into()),&|cg: &mut Mcu| {
         rreil!{
@@ -934,7 +934,7 @@ pub fn or(rd: Lvalue, rr: Rvalue, _cg: &mut Mcu) -> Result<Vec<Statement>> {
 
 
 pub fn out(st: &mut State<Avr>) -> bool {
-    let rd = Rvalue::Constant { value: st.get_group("A"), size: 6 };
+    let rd = Rvalue::Constant { value: st.get_group("A"), size: 8 };
     let rr = reg(st, "R");
     let next = st.configuration.wrap(st.address + st.tokens.len() as u64 * 2);
 
@@ -1159,7 +1159,7 @@ pub fn spm(rd: Lvalue, off: usize, st: &mut State<Avr>) -> bool {
     st.mnemonic(len,"spm","{p:sram}",arg,&|cg: &mut Mcu| {
         let mut stmts = try!(rreil!{
             load/sram/be/16 ptr:16, (zreg);
-            load/flash/be/8 ptr:16, (rd);
+            load/flash/be/8 (rd), ptr:16;
         });
 
                 if off <= 1 {
@@ -1194,7 +1194,7 @@ pub fn spm2(st: &mut State<Avr>) -> bool {
 
 pub fn st(ptr: Lvalue, reg: Lvalue, _cg: &mut Mcu) -> Result<Vec<Statement>> {
     rreil!{
-        load/sram/be/8 (ptr), (reg);
+        store/sram/be/8 (reg), (ptr);
     }
 }
 

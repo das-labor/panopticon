@@ -586,8 +586,8 @@ impl Statement {
             }
 
             &Statement{ op: Operation::Load(_,_,ref sz,_), ref assignee } => {
-                if assignee.size() != Some(*sz) {
-                    return Err("Memory operation with undefined size".into());
+                if !assignee.size().is_none() && assignee.size() != Some(*sz) {
+                    return Err(format!("Memory operation with invalid size. Expected {:?} got {:?}",Some(*sz),assignee.size()).into());
                 } else if *sz == 0 {
                     return Err("Memory operation of size 0".into());
                 } else if *sz % 8 != 0 {

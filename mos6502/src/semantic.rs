@@ -351,7 +351,7 @@ pub fn pha(_cg: &mut Variant) -> Result<Vec<Statement>> {
         zext/9 sp:9, S:8;
         add sp:9, sp:9, [0x100]:9;
 
-        store/ram/be/8 sp:9, A:8;
+        store/ram/be/8 A:8, sp:9;
 
         add sp:9, sp:9, [1]:9;
         mov S:8, sp:8;
@@ -372,7 +372,7 @@ pub fn php(_cg: &mut Variant) -> Result<Vec<Statement>> {
         sel/6 flags:8, V:1;
         sel/7 flags:8, N:1;
 
-        store/ram/be/8 sp:9, flags:8;
+        store/ram/be/8 flags:8, sp:9;
         add sp:9, sp:9, [1]:9;
         mov S:8, sp:8;
     }

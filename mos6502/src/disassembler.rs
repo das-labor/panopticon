@@ -315,7 +315,7 @@ pub fn zpage_index(opcode: &'static str, _arg1: Lvalue, sem: fn(&mut Variant, Rv
                         rreil!{
                 add short_addr:8, (base), (index);
                 zext/16 addr:16, short_addr:8;
-                load/ram/be/8 (addr), addr:16;
+                load/ram/be/16 (addr), addr:16;
                 load/ram/be/8 val:8, (addr);
             }
                     },
