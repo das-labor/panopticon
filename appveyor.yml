@@ -15,7 +15,7 @@ environment:
 install:
   # Rust & Qt
   - set PATH=%USERPROFILE%\.cargo\bin;%PATH%
-  - set QTDIR=C:\Qt\5.4\msvc2013_64_opengl
+  - set QTDIR=C:\Qt\5.7\msvc2015_64
   - set PATH=%QTDIR%\bin;%PATH%
   - set CMAKE_PREFIX_PATH=%QTDIR%;%CMAKE_PREFIX_PATH%
   - appveyor DownloadFile https://static.rust-lang.org/rustup/dist/%RUST_INSTALL_TRIPLE%/rustup-init.exe
