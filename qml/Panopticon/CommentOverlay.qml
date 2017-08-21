@@ -131,7 +131,7 @@ MouseArea {
 				Layout.fillWidth: true
 
 				Keys.onReturnPressed: {
-					if(event.modifiers & Qt.ShiftModifier) {
+					if(event.modifiers & Qt.ControlModifier) {
 						overlay.accepted()
 					} else {
 						event.accepted = false
@@ -152,7 +152,7 @@ MouseArea {
 				Layout.row: 2
 				Layout.alignment: Qt.AlignRight
 
-				text: "Comment (Shift+Return)"
+				text: "Comment (Ctrl/⌘+Return)"
 				horizontalAlignment: Text.AlignRight
 				font {
 					family: "Source Sans Pro"

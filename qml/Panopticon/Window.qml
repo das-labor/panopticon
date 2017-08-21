@@ -16,6 +16,7 @@ Ctrl.ApplicationWindow {
 		Ctrl.Menu {
 			title: "File"
 			Ctrl.MenuItem {
+				text: "Open"
 				action: Ctrl.Action {
 					text: "Open"
 					shortcut: StandardKey.Open
@@ -27,6 +28,7 @@ Ctrl.ApplicationWindow {
 				}
 			}
 			Ctrl.MenuItem {
+				text: "Save"
 				action: Ctrl.Action {
 					text: "Save"
 					shortcut: StandardKey.Save
@@ -35,8 +37,9 @@ Ctrl.ApplicationWindow {
 				}
 			}
 			Ctrl.MenuItem {
+				text: "Save as..."
 				action: Ctrl.Action {
-					text: "Save As..."
+					text: "Save as..."
 					shortcut: StandardKey.SaveAs
 					enabled: Panopticon.currentSession != ""
 					onTriggered: {
@@ -46,6 +49,7 @@ Ctrl.ApplicationWindow {
 				}
 			}
 			Ctrl.MenuItem {
+				text: "Quit"
 				action: Ctrl.Action {
 					text: "Quit"
 					shortcut: StandardKey.Quit
@@ -57,6 +61,7 @@ Ctrl.ApplicationWindow {
 		Ctrl.Menu {
 			title: "Edit"
 			Ctrl.MenuItem {
+				text: "Undo"
 				action: Ctrl.Action {
 					text: "Undo"
 					shortcut: StandardKey.Undo
@@ -65,6 +70,7 @@ Ctrl.ApplicationWindow {
 				}
 			}
 			Ctrl.MenuItem {
+				text: "Redo"
 				action: Ctrl.Action {
 					text: "Redo"
 					shortcut: StandardKey.Redo
@@ -93,6 +99,7 @@ Ctrl.ApplicationWindow {
 			title: "Help"
 			//Ctrl.MenuItem { text: "Documentation" }
 			Ctrl.MenuItem {
+				text: "About"
 				action: Ctrl.Action {
 					text: "About"
 					onTriggered: { workspace.state = "welcomeState" }
@@ -146,7 +153,7 @@ Ctrl.ApplicationWindow {
 			id: bar
 			anchors.top: parent.top
 			anchors.bottom: parent.bottom
-			width: 250
+			width: parent.width * 0.3
 			z: 2
 
 			onShowControlFlowGraph: {
