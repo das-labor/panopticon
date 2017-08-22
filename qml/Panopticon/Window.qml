@@ -153,7 +153,7 @@ Ctrl.ApplicationWindow {
 			id: bar
 			anchors.top: parent.top
 			anchors.bottom: parent.bottom
-			width: parent.width * 0.3
+			width: Math.min(parent.width * 0.3, 400)
 			z: 2
 
 			onShowControlFlowGraph: {
