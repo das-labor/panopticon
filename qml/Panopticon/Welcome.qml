@@ -33,7 +33,9 @@ Rectangle {
 			Image {
 				id: logo
 				x: 68; y: 70
-				source: "../icons/logo.png"
+				source: "../icons/logo.svg"
+				sourceSize.width: 500
+				sourceSize.height: 44
 			}
 
 			Component {
