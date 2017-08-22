@@ -152,7 +152,15 @@ MouseArea {
 				Layout.row: 2
 				Layout.alignment: Qt.AlignRight
 
-				text: "Comment (Ctrl/⌘+Return)"
+				function getPlatformCommentShortcut() {
+					if (Qt.platform.os == "osx") {
+						return "Comment (⌘+Return)";
+					} else {
+						return "Comment (Ctrl+Return)";
+					}
+				}
+
+				text: getPlatformCommentShortcut()
 				horizontalAlignment: Text.AlignRight
 				font {
 					family: "Source Sans Pro"
