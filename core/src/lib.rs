@@ -84,10 +84,13 @@ extern crate panopticon_graph_algos;
 extern crate uuid;
 extern crate byteorder;
 extern crate goblin;
-extern crate quickcheck;
+#[macro_use] extern crate quickcheck;
 extern crate serde;
 #[macro_use] extern crate serde_derive;
 extern crate serde_cbor;
+#[macro_use] extern crate error_chain;
+extern crate leb128;
+extern crate petgraph;
 
 #[cfg(test)]
 extern crate env_logger;
@@ -126,3 +129,5 @@ pub use result::{Error, Result};
 // file formats
 pub mod loader;
 pub use loader::{Machine, load};
+
+pub mod neo;
