@@ -23,9 +23,13 @@
 
 extern crate panopticon_core;
 extern crate panopticon_graph_algos;
+extern crate bit_set;
+extern crate petgraph;
 
 mod liveness;
 pub use liveness::{liveness, liveness_sets};
 
 mod ssa;
 pub use ssa::{flag_operations, ssa_convertion, type_check};
+
+pub mod neo;

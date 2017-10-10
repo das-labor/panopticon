@@ -1,4 +1,3 @@
-use std::borrow::Cow;
 use neo::{Result,Str};
 use {Rvalue,Lvalue};
 
@@ -104,6 +103,7 @@ impl From<Lvalue> for Value {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::borrow::Cow;
     use quickcheck::{Arbitrary,Gen};
 
      impl Arbitrary for Variable {

@@ -1,5 +1,5 @@
 use std::io::{Write,Cursor,Read};
-use std::ops::Range;
+use std::ops::{Range};
 use leb128;
 use uuid::Uuid;
 use neo::il::{Statement,Endianess,CallTarget,Operation};
@@ -1107,10 +1107,21 @@ impl Bitcode {
             bitcode: self,
         }
     }
+
+    pub fn iter_range<'a>(&'a self, rgn: Range<usize>) -> BitcodeIter<'a> {
+        BitcodeIter{
+            cursor: Cursor::new(&self.data[rgn]),
+            bitcode: self,
+        }
+    }
+
+    pub fn num_bytes(&self) -> usize {
+        self.data.len()
+    }
 }
 
 pub struct BitcodeIter<'a> {
-    cursor: Cursor<&'a Vec<u8>>,
+    cursor: Cursor<&'a [u8]>,
     bitcode: &'a Bitcode,
 }
 

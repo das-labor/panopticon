@@ -4,5 +4,7 @@ version = "0.16.0"
 authors = ["seu <seu@panopticon.re>"]
 
 [dependencies]
+bit-set = "0.4.0"
+petgraph = "0.4.9"
 panopticon-core = { path = "../core" }
 panopticon-graph-algos = { path = "../graph-algos" }

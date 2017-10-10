@@ -673,7 +673,7 @@ pub struct OptionalRule<A: Architecture>(pub Rule<A>);
 impl<A: Architecture> AddToRuleGen<A> for OptionalRule<A> {
     fn push(&self, rules: &mut Vec<Vec<Rule<A>>>) {
         let mut copy = rules.clone();
-        for mut c in copy.iter_mut() {
+        for c in copy.iter_mut() {
             c.push(self.0.clone());
         }
 
@@ -683,7 +683,7 @@ impl<A: Architecture> AddToRuleGen<A> for OptionalRule<A> {
 
 impl<A: Architecture, T: Into<Rule<A>> + Clone> AddToRuleGen<A> for T {
     fn push(&self, rules: &mut Vec<Vec<Rule<A>>>) {
-        for mut c in rules.iter_mut() {
+        for c in rules.iter_mut() {
             let s: Self = self.clone();
             c.push(s.into());
         }

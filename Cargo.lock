@@ -55,6 +55,11 @@ dependencies = [
 ]
 
 [[package]]
+name = "bencher"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
 name = "bit-set"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -514,6 +519,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "panopticon-benchmark"
+version = "0.16.0"
+dependencies = [
+ "bencher 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "panopticon-amd64 0.16.0",
+ "panopticon-core 0.16.0",
+ "panopticon-graph-algos 0.11.0",
+]
+
+[[package]]
 name = "panopticon-cli"
 version = "0.16.0"
 dependencies = [
@@ -561,8 +576,10 @@ dependencies = [
 name = "panopticon-data-flow"
 version = "0.16.0"
 dependencies = [
+ "bit-set 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "panopticon-core 0.16.0",
  "panopticon-graph-algos 0.11.0",
+ "petgraph 0.4.9 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -994,6 +1011,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum atty 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)" = "d912da0db7fa85514874458ca3651fe2cddace8d0b0505571dbdcd41ab490159"
 "checksum backtrace 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)" = "72f9b4182546f4b04ebc4ab7f84948953a118bd6021a1b6a6c909e3e94f6be76"
 "checksum backtrace-sys 0.1.12 (registry+https://github.com/rust-lang/crates.io-index)" = "afccc5772ba333abccdf60d55200fa3406f8c59dcf54d5f7998c9107d3799c7c"
+"checksum bencher 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)" = "1668b311500dd3b240933ee5ca5a80505e8378a4fa0a6457f629760e97d6c992"
 "checksum bit-set 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)" = "d9bf6104718e80d7b26a68fdbacff3481cfc05df670821affc7e9cbc1884400c"
 "checksum bit-vec 0.4.4 (registry+https://github.com/rust-lang/crates.io-index)" = "02b4ff8b16e6076c3e14220b39fbc1fabb6737522281a388998046859400895f"
 "checksum bitflags 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)" = "aad18937a628ec6abcd26d1489012cc0e18c21798210f491af69ded9b881106d"

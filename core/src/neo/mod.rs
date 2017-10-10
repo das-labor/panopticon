@@ -1,4 +1,3 @@
-#![recursion_limit = "1024"]
 
 mod value;
 mod il;
@@ -13,7 +12,7 @@ mod errors {
         }
     }
 }
-use neo::errors::*;
+pub use neo::errors::*;
 
 pub use self::il::{Operation,Statement,Endianess,CallTarget};
 pub use self::value::{Variable,Constant,Value};
@@ -22,4 +21,3 @@ pub use self::function::{Function};
 
 use std::borrow::Cow;
 pub type Str = Cow<'static,str>;
-

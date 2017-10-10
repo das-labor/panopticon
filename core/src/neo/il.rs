@@ -73,6 +73,41 @@ pub enum Operation<V>
     Phi(V,V,V),
 }
 
+impl<V> Operation<V> where V: Clone + PartialEq + Eq + Debug {
+    pub fn reads<'x>(&'x self) -> Vec<&'x V> {
+        match self {
+            &Operation::Add(ref a, ref b) => vec![a,b],
+            &Operation::Subtract(ref a, ref b) => vec![a,b],
+            &Operation::Multiply(ref a, ref b) => vec![a,b],
+            &Operation::DivideUnsigned(ref a, ref b) => vec![a,b],
+            &Operation::DivideSigned(ref a, ref b) => vec![a,b],
+            &Operation::ShiftLeft(ref a, ref b) => vec![a,b],
+            &Operation::ShiftRightUnsigned(ref a, ref b) => vec![a,b],
+            &Operation::ShiftRightSigned(ref a, ref b) => vec![a,b],
+            &Operation::Modulo(ref a, ref b) => vec![a,b],
+            &Operation::And(ref a, ref b) => vec![a,b],
+            &Operation::InclusiveOr(ref a, ref b) => vec![a,b],
+            &Operation::ExclusiveOr(ref a, ref b) => vec![a,b],
+
+            &Operation::Equal(ref a, ref b) => vec![a,b],
+            &Operation::LessOrEqualUnsigned(ref a, ref b) => vec![a,b],
+            &Operation::LessOrEqualSigned(ref a, ref b) => vec![a,b],
+            &Operation::LessUnsigned(ref a, ref b) => vec![a,b],
+            &Operation::LessSigned(ref a, ref b) => vec![a,b],
+
+            &Operation::ZeroExtend(_, ref a) => vec![a],
+            &Operation::SignExtend(_, ref a) => vec![a],
+            &Operation::Move(ref a) => vec![a],
+            &Operation::Initialize(_,_) => vec![],
+            &Operation::Select(_, ref a, ref b) => vec![a,b],
+
+            &Operation::Load(_, _, _, ref a) => vec![a],
+
+            &Operation::Phi(ref a, ref b, ref c) => vec![a, b, c],
+        }
+    }
+}
+
 #[derive(Clone,PartialEq,Eq,Debug)]
 pub enum CallTarget {
     Function(Uuid),
