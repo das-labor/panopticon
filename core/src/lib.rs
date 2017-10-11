@@ -99,6 +99,30 @@ extern crate env_logger;
 #[cfg(test)]
 #[macro_use] extern crate quickcheck;
 
+pub trait Fun: Sized {
+    fn entry_point_mut(&mut self) -> &mut BasicBlock;
+    // fn entry_point(&self) -> &BasicBlock;
+    fn entry_point_ref(&self) -> ControlFlowRef;
+    fn cfg(&self) -> &ControlFlowGraph;
+    fn cfg_mut(&mut self) -> &mut ControlFlowGraph;
+    fn postorder(&self) -> Vec<ControlFlowRef>;
+    fn add_alias(&mut self, String);
+    fn name(&self) -> &str;
+    fn uuid(&self) -> &uuid::Uuid;
+    fn set_uuid(&mut self, uuid::Uuid);
+    fn start(&self) -> u64;
+    fn collect_call_addresses(&self) -> Vec<u64>;
+    fn collect_calls(&self) -> Vec<Rvalue>;
+    fn statements<'a>(&'a self) -> Box<Iterator<Item=&'a Statement> + 'a>;
+    fn set_plt(&mut self, import: &str, address: u64);
+    fn new<A: Architecture>(start: u64, region: &Region, name: Option<String>, init: A::Configuration) -> Result<Self>;
+    fn with_uuid<A: Architecture>(start: u64, uuid: &uuid::Uuid, region: &Region, name: Option<String>, init: A::Configuration) -> Result<Self> {
+        let mut f = Self::new::<A>(start, region, name, init)?;
+        f.set_uuid(uuid.clone());
+        Ok(f)
+    }
+}
+
 // core
 pub mod disassembler;
 pub use disassembler::{Architecture, Disassembler, Match, State, TestArch};

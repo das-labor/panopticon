@@ -28,7 +28,7 @@
 //! on the front-end.
 
 
-use {Architecture, BasicBlock, Guard, Mnemonic, Operation, Region, Result, Rvalue, Statement};
+use {Architecture, BasicBlock, Fun, Guard, Mnemonic, Operation, Region, Result, Rvalue, Statement};
 
 use panopticon_graph_algos::{AdjacencyList, EdgeListGraphTrait, GraphTrait, MutableGraphTrait, VertexListGraphTrait};
 use panopticon_graph_algos::adjacency_list::{AdjacencyListEdgeDescriptor, AdjacencyListVertexDescriptor, VertexLabelIterator};
@@ -120,6 +120,57 @@ pub struct Function {
 enum MnemonicOrError {
     Mnemonic(Mnemonic),
     Error(u64, Cow<'static, str>),
+}
+
+impl Fun for Function {
+    fn entry_point_mut(&mut self) -> &mut BasicBlock {
+        Function::entry_point_mut(self)
+    }
+    // fn entry_point(&self) -> &BasicBlock {
+    //     Function::entry_point(self)
+    // }
+    fn entry_point_ref(&self) -> ControlFlowRef {
+        Function::entry_point_ref(self)
+    }
+    fn cfg(&self) -> &ControlFlowGraph {
+        &self.cflow_graph
+    }
+    fn cfg_mut(&mut self) -> &mut ControlFlowGraph {
+        &mut self.cflow_graph
+    }
+    fn postorder(&self) -> Vec<ControlFlowRef> {
+        Function::postorder(self)
+    }
+    fn add_alias(&mut self, name: String) {
+        Function::add_alias(self, name)
+    }
+    fn name(&self) -> &str {
+        &self.name
+    }
+    fn uuid(&self) -> &Uuid {
+        &*self.uuid()
+    }
+    fn set_uuid(&mut self, uuid: Uuid) {
+        self.uuid = uuid;
+    }
+    fn start(&self) -> u64 {
+        Function::start(self)
+    }
+    fn collect_call_addresses(&self) -> Vec<u64> {
+        Function::collect_call_addresses(self)
+    }
+    fn collect_calls(&self) -> Vec<Rvalue> {
+        Function::collect_calls(self)
+    }
+    fn statements<'a>(&'a self) -> Box<Iterator<Item=&'a Statement> + 'a> {
+        Function::statements(self)
+    }
+    fn set_plt(&mut self, import: &str, address: u64) {
+        Function::set_plt(self, import, address)
+    }
+    fn new<A: Architecture>(start: u64, region: &Region, name: Option<String>, init: A::Configuration) -> Result<Function> {
+        Function::new::<A>(start, region, name, init)
+    }
 }
 
 impl Function {

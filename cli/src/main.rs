@@ -18,7 +18,8 @@ extern crate atty;
 use panopticon_amd64 as amd64;
 use panopticon_analysis::analyze;
 use panopticon_avr as avr;
-use panopticon_core::{Machine, Function, FunctionKind, Program, Result, loader};
+use panopticon_core::{Machine, Fun, FunctionKind, Function, Program, Result, loader};
+//pub use panopticon_core::neo::Function as Function;
 use std::path::Path;
 use std::result;
 use structopt::StructOpt;
@@ -98,7 +99,7 @@ impl Filter {
     }
 }
 
-fn print_reverse_deps<W: Write + WriteColor>(mut fmt: W, program: &Program, filter: &Filter) -> Result<()> {
+fn print_reverse_deps<W: Write + WriteColor>(mut fmt: W, program: &Program<Function>, filter: &Filter) -> Result<()> {
     let name_and_address = {
         if let Some(f) = program.find_function_by(|f| filter.is_match_with(&f.name, f.start())) {
             Some((f.start(), &f.name))
@@ -162,19 +163,19 @@ fn print_reverse_deps<W: Write + WriteColor>(mut fmt: W, program: &Program, filt
     Ok(())
 }
 
-fn disassemble(binary: &str) -> Result<Program> {
+fn disassemble<Function: Fun + Send>(binary: &str) -> Result<Program<Function>> {
     let (mut proj, machine) = loader::load(Path::new(&binary))?;
     let program = proj.code.pop().unwrap();
     let reg = proj.region().clone();
     info!("disassembly thread started");
     Ok(match machine {
-        Machine::Avr => analyze::<avr::Avr>(program, reg.clone(), avr::Mcu::atmega103()),
-        Machine::Ia32 => analyze::<amd64::Amd64>(program, reg.clone(), amd64::Mode::Protected),
-        Machine::Amd64 => analyze::<amd64::Amd64>(program, reg.clone(), amd64::Mode::Long),
+        Machine::Avr => analyze::<avr::Avr, Function>(program, reg.clone(), avr::Mcu::atmega103()),
+        Machine::Ia32 => analyze::<amd64::Amd64, Function>(program, reg.clone(), amd64::Mode::Protected),
+        Machine::Amd64 => analyze::<amd64::Amd64, Function>(program, reg.clone(), amd64::Mode::Long),
     }?)
 }
 
-fn app_logic(fmt: &mut termcolor::Buffer, program: Program, args: Args) -> Result<()> {
+fn app_logic(fmt: &mut termcolor::Buffer, program: Program<Function>, args: Args) -> Result<()> {
     let filter = Filter { name: args.function_filter, addr: args.address_filter.map(|addr| u64::from_str_radix(&addr, 16).unwrap()) };
 
     debug!("Program.imports: {:#?}", program.imports);
@@ -216,7 +217,7 @@ fn app_logic(fmt: &mut termcolor::Buffer, program: Program, args: Args) -> Resul
 
 fn run(args: Args) -> Result<()> {
     exists_path_val(&args.binary)?;
-    let program = disassemble(&args.binary)?;
+    let program = disassemble::<Function>(&args.binary)?;
     let cc = if args.color || atty::is(atty::Stream::Stdout) { ColorChoice::Auto } else { ColorChoice::Never };
     let writer = BufferWriter::stdout(cc);
     let mut fmt = writer.buffer();

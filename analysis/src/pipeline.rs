@@ -18,7 +18,7 @@
 
 use futures::{Future, Sink, Stream, stream};
 use futures::sync::mpsc;
-use panopticon_core::{Architecture, CallTarget, Error, Function, Program, Result, Region, Rvalue};
+use panopticon_core::{Architecture, CallTarget, Error, Fun, Function, Program, Result, Region, Rvalue};
 use panopticon_data_flow::ssa_convertion;
 use std::collections::HashSet;
 use std::fmt::Debug;
@@ -28,13 +28,14 @@ use uuid::Uuid;
 use std::result;
 use parking_lot::{Mutex, RwLock};
 
-pub fn analyze<A: Architecture + Debug + Sync + 'static>(
-    program: Program,
+pub fn analyze<A: Architecture + Debug + Sync + 'static, Function: Fun>(
+    program: Program<Function>,
     region: Region,
     config: A::Configuration,
-) -> Result<Program>
+) -> Result<Program<Function>>
 where
     A::Configuration: Debug + Sync,
+    Function: Send,
 {
     use rayon::prelude::*;
     use chashmap::CHashMap;
@@ -91,7 +92,7 @@ where
                                     let name = name.clone().unwrap_or(format!("func_{:#x}", entry));
                                     let mut program = program.lock();
                                     let f2 = program.find_function_mut(|f| f.start() == entry).unwrap();
-                                    info!("New alias ({}) found at {:#x} with canonical name {:?}", &name, entry, &f2.name);
+                                    info!("New alias ({}) found at {:#x} with canonical name {:?}", &name, entry, &f2.name());
                                     f2.add_alias(name);
                                 },
                                 _ => ()
@@ -136,7 +137,7 @@ where
 /// Starts disassembling insructions in `region` and puts them into `program`. Returns a stream of
 /// of newly discovered functions.
 pub fn pipeline<A: Architecture + Debug + 'static>(
-    program: Arc<Program>,
+    program: Arc<Program<Function>>,
     region: Region,
     config: A::Configuration,
 ) -> Box<Stream<Item = Function, Error = ()> + Send>

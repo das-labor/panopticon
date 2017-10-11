@@ -324,7 +324,7 @@ pub fn print_statement<W: Write + WriteColor>(fmt: &mut W, statement: &Statement
 }
 
 /// Prints the function in a human readable format, using `program`, with colors
-pub fn print_function<W: Write + WriteColor>(fmt: &mut W, function: &Function, bbs: &[&BasicBlock], program: &Program) -> Result<()> {
+pub fn print_function<W: Write + WriteColor>(fmt: &mut W, function: &Function, bbs: &[&BasicBlock], program: &Program<Function>) -> Result<()> {
     write!(fmt, "{:0>8x} <", function.start())?;
     color_bold!(fmt, Yellow, function.name)?;
     writeln!(fmt, ">:")?;
@@ -335,7 +335,7 @@ pub fn print_function<W: Write + WriteColor>(fmt: &mut W, function: &Function, b
 }
 
 /// Prints the basic block into `fmt`, in disassembly order, in human readable form, and looks up any functions calls in `program`
-pub fn print_basic_block<W: Write + WriteColor>(fmt: &mut W, basic_block: &BasicBlock, program: &Program) -> Result<()> {
+pub fn print_basic_block<W: Write + WriteColor>(fmt: &mut W, basic_block: &BasicBlock, program: &Program<Function>) -> Result<()> {
     for mnemonic in basic_block.mnemonics.iter() {
         if !mnemonic.opcode.starts_with("__") {
             write!(fmt, "{:8x}: ", mnemonic.area.start)?;
@@ -347,7 +347,7 @@ pub fn print_basic_block<W: Write + WriteColor>(fmt: &mut W, basic_block: &Basic
 }
 
 /// Prints the mnemonic into `fmt`, in human readable form, and looks up any functions calls in `program`
-pub fn print_mnemonic<W: Write + WriteColor>(fmt: &mut W, mnemonic: &Mnemonic, program: Option<&Program>) -> Result<()> {
+pub fn print_mnemonic<W: Write + WriteColor>(fmt: &mut W, mnemonic: &Mnemonic, program: Option<&Program<Function>>) -> Result<()> {
     let mut ops = mnemonic.operands.iter();
     color_bold!(fmt, Blue, mnemonic.opcode)?;
     write!(fmt, " ")?;

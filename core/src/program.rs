@@ -29,27 +29,27 @@
 //! error node.
 
 
-use {Function, Statement, Operation, Rvalue};
+use {Fun, Statement, Operation, Rvalue};
 use panopticon_graph_algos::{AdjacencyList, AdjacencyMatrixGraphTrait, GraphTrait, MutableGraphTrait, VertexListGraphTrait};
 use panopticon_graph_algos::adjacency_list::{AdjacencyListVertexDescriptor, VertexLabelIterator, VertexLabelMutIterator};
 use uuid::Uuid;
 
 /// An iterator over every Function in this Program
-pub struct FunctionIterator<'a> {
-    iter: VertexLabelIterator<'a, CallGraphRef, CallTarget>
+pub struct FunctionIterator<'a, F: 'a> {
+    iter: VertexLabelIterator<'a, CallGraphRef, CallTarget<F>>
 }
 
-impl<'a> FunctionIterator<'a> {
+impl<'a, F> FunctionIterator<'a, F> {
     /// Create a new function iterator from the `cfg`
-    pub fn new(cfg: &'a CallGraph) -> Self {
+    pub fn new(cfg: &'a CallGraph<F>) -> Self {
         FunctionIterator {
             iter: cfg.vertex_labels(),
         }
     }
 }
 
-impl<'a> Iterator for FunctionIterator<'a> {
-    type Item = &'a Function;
+impl<'a, F> Iterator for FunctionIterator<'a, F> {
+    type Item = &'a F;
     fn next(&mut self) ->  Option<Self::Item> {
         loop {
             match self.iter.next() {
@@ -62,21 +62,21 @@ impl<'a> Iterator for FunctionIterator<'a> {
 }
 
 /// An iterator over every Function in this Program
-pub struct FunctionMutIterator<'a> {
-    iter: VertexLabelMutIterator<'a, CallGraphRef, CallTarget>
+pub struct FunctionMutIterator<'a, F: 'a> {
+    iter: VertexLabelMutIterator<'a, CallGraphRef, CallTarget<F>>
 }
 
-impl<'a> FunctionMutIterator<'a> {
+impl<'a, F> FunctionMutIterator<'a, F> {
     /// Create a new function iterator from the `cfg`
-    pub fn new(cfg: &'a mut CallGraph) -> Self {
+    pub fn new(cfg: &'a mut CallGraph<F>) -> Self {
         FunctionMutIterator {
             iter: cfg.vertex_labels_mut(),
         }
     }
 }
 
-impl<'a> Iterator for FunctionMutIterator<'a> {
-    type Item = &'a mut Function;
+impl<'a, F> Iterator for FunctionMutIterator<'a, F> {
+    type Item = &'a mut F;
     fn next(&mut self) ->  Option<Self::Item> {
         loop {
             match self.iter.next() {
@@ -90,16 +90,16 @@ impl<'a> Iterator for FunctionMutIterator<'a> {
 
 /// Node of the program call graph.
 #[derive(Serialize,Deserialize,Debug)]
-pub enum CallTarget {
+pub enum CallTarget<F> {
     /// Resolved and disassembled function.
-    Concrete(Function),
+    Concrete(F),
     /// Reference to an external symbol.
     Symbolic(String, Uuid),
     /// Resolved but not yet disassembled function.
     Todo(Rvalue, Option<String>, Uuid),
 }
 
-impl CallTarget {
+impl<F: Fun> CallTarget<F> {
     /// Returns the UUID of the call graph node.
     pub fn uuid(&self) -> &Uuid {
         match self {
@@ -111,34 +111,34 @@ impl CallTarget {
 }
 
 /// Graph of functions/symbolic references
-pub type CallGraph = AdjacencyList<CallTarget, ()>;
+pub type CallGraph<F> = AdjacencyList<CallTarget<F>, ()>;
 /// Stable reference to a call graph node
 pub type CallGraphRef = AdjacencyListVertexDescriptor;
 
 /// A collection of functions calling each other.
 #[derive(Serialize,Deserialize,Debug)]
-pub struct Program {
+pub struct Program<F> {
     /// Unique, immutable identifier
     pub uuid: Uuid,
     /// Human-readable name
     pub name: String,
     /// Graph of functions
-    pub call_graph: CallGraph,
+    pub call_graph: CallGraph<F>,
     /// Symbolic References (Imports)
     pub imports: ::std::collections::HashMap<u64, String>,
 }
 
-impl<'a> IntoIterator for &'a Program {
-    type Item = &'a Function;
-    type IntoIter = FunctionIterator<'a>;
+impl<'a, F> IntoIterator for &'a Program<F> {
+    type Item = &'a F;
+    type IntoIter = FunctionIterator<'a, F>;
     fn into_iter(self) -> Self::IntoIter {
         FunctionIterator::new(&self.call_graph)
     }
 }
 
-impl Program {
+impl<F: Fun> Program<F> {
     /// Create a new, empty `Program` named `n`.
-    pub fn new(n: &str) -> Program {
+    pub fn new(n: &str) -> Self {
         Program {
             uuid: Uuid::new_v4(),
             name: n.to_string(),
@@ -148,7 +148,7 @@ impl Program {
     }
 
     /// Returns a function if it matches the condition in the `filter` closure.
-    pub fn find_function_by<'a, F: (Fn(&Function) -> bool)>(&'a self, filter: F) -> Option<&'a Function> {
+    pub fn find_function_by<'a, Filter: (Fn(&F) -> bool)>(&'a self, filter: Filter) -> Option<&'a F> {
         for ct in self.call_graph.vertex_labels() {
             match ct {
                 &CallTarget::Concrete(ref function) => if filter(function) { return Some(function) },
@@ -159,7 +159,7 @@ impl Program {
     }
 
     /// Returns a mutable reference to the first function that matches the condition in the `filter` closure.
-    pub fn find_function_mut<'a, F: (Fn(&Function) -> bool)>(&'a mut self, filter: F) -> Option<&'a mut Function> {
+    pub fn find_function_mut<'a, Filter: (Fn(&F) -> bool)>(&'a mut self, filter: Filter) -> Option<&'a mut F> {
         for ct in self.call_graph.vertex_labels_mut() {
             match ct {
                 &mut CallTarget::Concrete(ref mut function) => if filter(function) { return Some(function) },
@@ -184,7 +184,7 @@ impl Program {
     }
 
     /// Returns the function with UUID `a`.
-    pub fn find_function_by_uuid<'a>(&'a self, a: &Uuid) -> Option<&'a Function> {
+    pub fn find_function_by_uuid<'a>(&'a self, a: &Uuid) -> Option<&'a F> {
         for ct in self.call_graph.vertex_labels() {
             match ct {
                 &CallTarget::Concrete(ref s) => if s.uuid() == a { return Some(s) },
@@ -195,7 +195,7 @@ impl Program {
     }
 
     /// Returns the function with UUID `a`.
-    pub fn find_function_by_uuid_mut<'a>(&'a mut self, a: &Uuid) -> Option<&'a mut Function> {
+    pub fn find_function_by_uuid_mut<'a>(&'a mut self, a: &Uuid) -> Option<&'a mut F> {
         for ct in self.call_graph.vertex_labels_mut() {
             match ct {
                 &mut CallTarget::Concrete(ref mut s) => if s.uuid() == a { return Some(s) },
@@ -207,7 +207,7 @@ impl Program {
 
     /// Puts `function` into the call graph, returning the UUIDs of all _new_ `Todo`s
     /// that are called by `function`
-    pub fn insert(&mut self, function: Function) -> Vec<Uuid> {
+    pub fn insert(&mut self, function: F) -> Vec<Uuid> {
         let maybe_vx = self.call_graph.vertices().find(|ct| self.call_graph.vertex_label(*ct).unwrap().uuid() == function.uuid());
 
         let calls = function.collect_calls();
@@ -278,12 +278,12 @@ impl Program {
     }
 
     /// Returns an iterator over every Function in this program
-    pub fn functions(&self) -> FunctionIterator {
+    pub fn functions(&self) -> FunctionIterator<F> {
         FunctionIterator::new(&self.call_graph)
     }
 
     /// Returns a mutable iterator over every Function in this program
-    pub fn functions_mut(&mut self) -> FunctionMutIterator {
+    pub fn functions_mut(&mut self) -> FunctionMutIterator<F> {
         FunctionMutIterator::new(&mut self.call_graph)
     }
     /// Calls [Function::set_plt](../function/struct.Function.html#method.set_plt) on all matching functions
