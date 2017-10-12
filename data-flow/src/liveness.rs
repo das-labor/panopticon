@@ -16,15 +16,16 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-use panopticon_core::{ControlFlowRef, ControlFlowTarget, Fun, Function, Guard, Lvalue, Operation, Rvalue, Statement};
+use panopticon_core::{ControlFlowRef, ControlFlowTarget, Function, Guard, Lvalue, Operation, Rvalue, Statement};
 use panopticon_graph_algos::{GraphTrait, IncidenceGraphTrait};
 use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
 use std::iter::FromIterator;
+use SSAFunction;
 
 /// Computes the set of killed (VarKill) and upward exposed variables (UEvar) for each basic block
 /// in `func`. Returns (VarKill,UEvar).
-pub fn liveness_sets<Function: Fun>(func: &Function) -> (HashMap<ControlFlowRef, HashSet<Cow<'static, str>>>, HashMap<ControlFlowRef, HashSet<Cow<'static, str>>>) {
+pub fn liveness_sets<Function: SSAFunction>(func: &Function) -> (HashMap<ControlFlowRef, HashSet<Cow<'static, str>>>, HashMap<ControlFlowRef, HashSet<Cow<'static, str>>>) {
     let mut uevar = HashMap::<ControlFlowRef, HashSet<&str>>::new();
     let mut varkill = HashMap::<ControlFlowRef, HashSet<Cow<'static, str>>>::new();
     let ord = func.postorder();

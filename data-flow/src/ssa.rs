@@ -17,7 +17,7 @@
  */
 
 use liveness_sets;
-use panopticon_core::{ControlFlowEdge, ControlFlowGraph, ControlFlowRef, ControlFlowTarget, Fun, Function, Guard, Lvalue, Mnemonic, Operation, Result, Rvalue,
+use panopticon_core::{ControlFlowEdge, ControlFlowGraph, ControlFlowRef, ControlFlowTarget, Function, Guard, Lvalue, Mnemonic, Operation, Result, Rvalue,
                       Statement};
 use panopticon_graph_algos::{BidirectionalGraphTrait, EdgeListGraphTrait, GraphTrait, IncidenceGraphTrait, MutableGraphTrait, VertexListGraphTrait};
 use panopticon_graph_algos::dominator::{dominance_frontiers, immediate_dominator};
@@ -25,10 +25,11 @@ use std::borrow::Cow;
 use std::cmp::max;
 use std::collections::{HashMap, HashSet};
 use std::iter::FromIterator;
+use SSAFunction;
 
 /// Does a simple sanity check on all RREIL statements in `func`, returns every variable name
 /// found and its maximal size in bits.
-pub fn type_check<Function: Fun>(func: &Function) -> Result<HashMap<Cow<'static, str>, usize>> {
+pub fn type_check<Function: SSAFunction>(func: &Function) -> Result<HashMap<Cow<'static, str>, usize>> {
     let mut ret = HashMap::<Cow<'static, str>, usize>::new();
     let cfg = func.cfg();
     fn set_len(v: &Rvalue, ret: &mut HashMap<Cow<'static, str>, usize>) {
@@ -76,7 +77,7 @@ pub fn type_check<Function: Fun>(func: &Function) -> Result<HashMap<Cow<'static,
 
 /// Computes the set of gloable variables in `func` and their points of usage. Globales are
 /// variables that are used in multiple basic blocks. Returns (Globals,Usage).
-pub fn global_names<Function: Fun>(func: &Function) -> (HashSet<Cow<'static, str>>, HashMap<Cow<'static, str>, HashSet<ControlFlowRef>>) {
+pub fn global_names<Function: SSAFunction>(func: &Function) -> (HashSet<Cow<'static, str>>, HashMap<Cow<'static, str>, HashSet<ControlFlowRef>>) {
     let (varkill, uevar) = liveness_sets(func);
     let mut usage = HashMap::<Cow<'static, str>, HashSet<ControlFlowRef>>::new();
     let mut globals = HashSet::<Cow<'static, str>>::new();
@@ -98,7 +99,7 @@ pub fn global_names<Function: Fun>(func: &Function) -> (HashSet<Cow<'static, str
 
 /// Inserts SSA Phi functions at junction points in the control flow graph of `func`. The
 /// algorithm produces the semi-pruned SSA form found in Cooper, Torczon: "Engineering a Compiler".
-pub fn phi_functions<Function: Fun>(func: &mut Function) -> Result<()> {
+pub fn phi_functions<Function: SSAFunction>(func: &mut Function) -> Result<()> {
     let lens = type_check(func)?;
     let (globals, usage) = global_names(func);
 
@@ -200,7 +201,7 @@ pub fn phi_functions<Function: Fun>(func: &mut Function) -> Result<()> {
 /// Sets the SSA subscripts of all variables in `func`. Follows the algorithm outlined
 /// Cooper, Torczon: "Engineering a Compiler". The function expects that Phi functions to be
 /// already inserted.
-pub fn rename_variables<Function: Fun>(func: &mut Function) -> Result<()> {
+pub fn rename_variables<Function: SSAFunction>(func: &mut Function) -> Result<()> {
     let (globals, _) = global_names(func);
     let mut stack = HashMap::<Cow<'static, str>, Vec<usize>>::from_iter(globals.iter().map(|x| (x.clone(), Vec::new())));
     let mut counter = HashMap::<Cow<'static, str>, usize>::new();
@@ -327,7 +328,7 @@ pub fn rename_variables<Function: Fun>(func: &mut Function) -> Result<()> {
 }
 
 /// Convert `func` into semi-pruned SSA form.
-pub fn ssa_convertion<Function: Fun>(func: &mut Function) -> Result<()> {
+pub fn ssa_convertion<Function: SSAFunction>(func: &mut Function) -> Result<()> {
     phi_functions(func)?;
     rename_variables(func)
 }

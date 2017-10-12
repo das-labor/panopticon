@@ -19,7 +19,7 @@
 use futures::{Future, Sink, Stream, stream};
 use futures::sync::mpsc;
 use panopticon_core::{Architecture, CallTarget, Error, Fun, Function, Program, Result, Region, Rvalue};
-use panopticon_data_flow::ssa_convertion;
+use panopticon_data_flow::SSAFunction;
 use std::collections::HashSet;
 use std::fmt::Debug;
 use std::thread;
@@ -28,7 +28,7 @@ use uuid::Uuid;
 use std::result;
 use parking_lot::{Mutex, RwLock};
 
-pub fn analyze<A: Architecture + Debug + Sync + 'static, Function: Fun>(
+pub fn analyze<A: Architecture + Debug + Sync + 'static, Function: Fun + SSAFunction>(
     program: Program<Function>,
     region: Region,
     config: A::Configuration,
@@ -76,7 +76,7 @@ where
                                     for address in f.collect_call_addresses() {
                                         targets.upsert(address, || { true }, |_| ());
                                     }
-                                    let _ = ssa_convertion(&mut f);
+                                    //f.ssa_conversion()?;
                                     {
                                         let mut program = program.lock();
                                         let _ = program.insert(f);
@@ -113,7 +113,7 @@ where
                         for address in f.collect_call_addresses() {
                             new_targets.upsert(address, || { true }, |_| ());
                         }
-                        let _ = ssa_convertion(&mut f);
+                        //f.ssa_conversion()?;
                         {
                             let mut program = program.lock();
                             let _ = program.insert(f);
@@ -159,7 +159,7 @@ where
                             Ok(mut f) => {
                                 let addresses = f.collect_call_addresses();
                                 targets.extend_from_slice(&addresses);
-                                let _ = ssa_convertion(&mut f);
+                                let _ = f.ssa_conversion();
                                 let tx = tx.clone();
                                 tx.send_all(stream::iter(vec![Ok(f)])).wait().unwrap().0;
                             },
@@ -182,7 +182,7 @@ where
                             Ok(mut f) => {
                                 let addresses = f.collect_call_addresses();
                                 new_targets.extend_from_slice(&addresses);
-                                let _ = ssa_convertion(&mut f);
+                                let _ = f.ssa_conversion();
                                 {
                                     let tx = tx.clone();
                                     tx.send_all(stream::iter(vec![Ok(f)])).wait().unwrap().0;

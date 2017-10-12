@@ -1,10 +1,13 @@
-use std::ops::{RangeFull,Range};
+#![allow(unused_variables, dead_code)]
+use std::ops::{RangeFull, Range};
 use std::iter::FromIterator;
 use uuid::Uuid;
 use petgraph::Graph;
 use petgraph::graph::{NodeIndices,NodeIndex};
 use petgraph::visit::{Walker,DfsPostOrder};
-use {Architecture,Guard,Region,MnemonicFormatToken,Rvalue,Lvalue};
+use {Fun,FunctionKind,Architecture,Guard,Region,MnemonicFormatToken,Rvalue,Lvalue};
+pub use Result as CResult;
+pub use BasicBlock as CBasicBlock;
 use neo::{Str,Result,Statement,Bitcode,Value,BitcodeIter,Constant,Operation,Variable,Endianess};
 
 mod core {
@@ -337,23 +340,97 @@ pub struct Function {
     mnemonics: Vec<Mnemonic>,
     cflow_graph: Graph<CfgNode,Guard>,
     entry_point: BasicBlockIndex,
+    kind: FunctionKind,
+    aliases: Vec<String>,
+}
+
+impl Fun for Function {
+    fn aliases(&self) -> &[String] {
+        self.aliases.as_slice()
+    }
+    fn kind(&self) -> &FunctionKind {
+        &self.kind
+    }
+    fn add_alias(&mut self, name: String) {
+        self.aliases.push(name)
+    }
+    fn name(&self) -> &str {
+        &self.name
+    }
+    fn uuid(&self) -> &Uuid {
+        &self.uuid
+    }
+    fn set_uuid(&mut self, uuid: Uuid) {
+        self.uuid = uuid;
+    }
+    fn start(&self) -> u64 {
+        self.entry_address()
+    }
+    fn collect_call_addresses(&self) -> Vec<u64> {
+        self.collect_calls().into_iter().filter_map(|addr| {
+            if let Rvalue::Constant { value, .. } = addr {
+                Some(value)
+            } else {
+                None
+            }
+        }).collect()
+    }
+    fn collect_calls(&self) -> Vec<Rvalue> {
+        let mut ret = Vec::new();
+        for (bb, _) in self.basic_blocks() {
+            for statement in self.statements(bb) {
+                match statement {
+                    Statement::IndirectCall { target: Value::Constant(Constant { value, bits }) } => {
+                        ret.push(Rvalue::Constant {value, size: bits })
+                    },
+                    _ => ()
+                }
+            }
+        }
+        debug!("collected calls: {:?}", ret);
+        ret
+    }
+    fn statements<'a>(&'a self) -> Box<Iterator<Item=&'a core::Statement> + 'a> {
+        Box::new(vec![].into_iter())
+        //Function::statements(self)
+    }
+    fn set_plt(&mut self, name: &str, plt_address: u64) {
+        let old_name = self.name.clone().to_string();
+        self.aliases.push(old_name);
+        self.name = format!("{}@plt", name).into();
+        self.kind = FunctionKind::Stub { name: name.to_string(), plt_address };
+    }
+    fn new<A: Architecture>(start: u64, region: &Region, name: Option<String>, init: A::Configuration) -> CResult<Function> {
+        let name_ = name.clone();
+        let name = name.map(|name| ::std::borrow::Cow::Owned(name));
+        match Function::new::<A>(init, start, region, name) {
+            Ok(f) => Ok(f),
+            Err(e) => {
+                let msg = format!("Error disassembling: {:?} with {}", name_, e);
+                warn!("{}", msg);
+                Err(msg.into())
+            }
+        }
+    }
 }
 
 impl Function {
 	// disassembly
     pub fn new<A: Architecture>(init: A::Configuration, start: u64, region: &Region, name: Option<Str>) -> Result<Function>
-    where A: Debug, A::Configuration: Debug {
+    {
         let mut mnemonics = Vec::new();
         let mut by_source = HashMap::new();
         let mut by_destination = HashMap::new();
         let mut func = Function{
-            name: name.unwrap_or("(none)".into()),
+            name: name.unwrap_or(format!("func_{:x}", start).into()),
             uuid: Uuid::new_v4(),
             bitcode: Bitcode::default(),
             basic_blocks: Vec::new(),
             mnemonics: Vec::new(),
             cflow_graph: Graph::new(),
             entry_point: BasicBlockIndex::new(0),
+            kind: FunctionKind::Regular,
+            aliases: vec![],
         };
 
         disassemble::<A>(init,vec![start],region, &mut mnemonics, &mut by_source, &mut by_destination)?;
@@ -420,12 +497,24 @@ impl Function {
         }
     }
 
+    pub fn mnemonics_for(&self, bb: &BasicBlock) -> MnemonicIterator {
+        MnemonicIterator {
+            function: self,
+            index: bb.mnemonics.start.index,
+            max: bb.mnemonics.end.index - 1,
+        }
+    }
+
     pub fn basic_blocks<'a>(&'a self) -> BasicBlockIterator<'a> {
         BasicBlockIterator{
             function: self,
             index: 0,
             max: self.basic_blocks.len() - 1
         }
+    }
+
+    pub fn bitcode_size(&self) -> usize {
+        self.bitcode.num_bytes()
     }
 
     pub fn cflow_graph<'a>(&'a self) -> &'a Graph<CfgNode,Guard> {
@@ -527,7 +616,7 @@ fn disassemble<A: Architecture>(init: A::Configuration, starts: Vec<u64>, region
                                 mnemonics: &mut Vec<(Mnemonic,Vec<Statement>)>,
                                 by_source: &mut HashMap<u64,Vec<(Value,Guard)>>,
                                 by_destination: &mut HashMap<u64,Vec<(Value,Guard)>>) -> Result<()>
-where A: Debug, A::Configuration: Debug {
+{
     let mut todo = HashSet::<u64>::from_iter(starts.into_iter());
 
     while let Some(addr) = todo.iter().next().cloned() {
@@ -685,7 +774,6 @@ fn assemble_function(function: &mut Function, entry: u64, mut mnemonics: Vec<(Mn
         }
     }
 
-    function.name = format!("func_{:x}",entry).into();
     function.bitcode = bitcode;
     function.basic_blocks = basic_blocks;
     function.mnemonics = mnemonics.into_iter().enumerate().map(|(idx,(mut mne,_))| {
@@ -694,7 +782,8 @@ fn assemble_function(function: &mut Function, entry: u64, mut mnemonics: Vec<(Mn
     }).collect();
     function.cflow_graph = cfg;
     function.entry_point = BasicBlockIndex::new(entry_idx);
-
+    // we erase the functions name this way; need to keep track of whether we actually have a name or not
+    //if entry != function.start_address() { function.name = format!("func_{:x}",entry).into() };
     Ok(())
 }
 
@@ -834,7 +923,7 @@ fn to_statement(stmt: &core::Statement) -> Statement {
 
 
         _ => {
-            let res = format!("{:?}", stmt);
+            warn!("No implemented {:?}", stmt);
             unimplemented!();
         }
     }

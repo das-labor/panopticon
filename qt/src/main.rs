@@ -139,14 +139,14 @@ fn exists_path_val(filepath: String) -> result::Result<(), String> {
 fn read_recent_sessions() -> Result<Vec<(String, String, PathBuf, u32)>> {
     use std::fs;
     use std::time;
-    use panopticon_core::Project;
+    use panopticon_core::{Function, Project};
 
     let path = paths::session_directory()?;
     let mut ret = vec![];
 
     if let Ok(dir) = fs::read_dir(path) {
         for ent in dir.filter_map(|x| x.ok()) {
-            if let Ok(ref project) = Project::open(&ent.path()) {
+            if let Ok(ref project) = <Project<Function>>::open(&ent.path()) {
                 if let Ok(ref md) = ent.metadata() {
                     let mtime = md.modified()?.duration_since(time::UNIX_EPOCH)?.as_secs() as u32;
                     let fname = ent.path();

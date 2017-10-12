@@ -100,12 +100,8 @@ extern crate env_logger;
 #[macro_use] extern crate quickcheck;
 
 pub trait Fun: Sized {
-    fn entry_point_mut(&mut self) -> &mut BasicBlock;
-    // fn entry_point(&self) -> &BasicBlock;
-    fn entry_point_ref(&self) -> ControlFlowRef;
-    fn cfg(&self) -> &ControlFlowGraph;
-    fn cfg_mut(&mut self) -> &mut ControlFlowGraph;
-    fn postorder(&self) -> Vec<ControlFlowRef>;
+    fn aliases(&self) -> &[String];
+    fn kind(&self) -> &FunctionKind;
     fn add_alias(&mut self, String);
     fn name(&self) -> &str;
     fn uuid(&self) -> &uuid::Uuid;

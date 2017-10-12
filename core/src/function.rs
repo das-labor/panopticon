@@ -123,23 +123,11 @@ enum MnemonicOrError {
 }
 
 impl Fun for Function {
-    fn entry_point_mut(&mut self) -> &mut BasicBlock {
-        Function::entry_point_mut(self)
+    fn aliases(&self) -> &[String] {
+        Function::aliases(self)
     }
-    // fn entry_point(&self) -> &BasicBlock {
-    //     Function::entry_point(self)
-    // }
-    fn entry_point_ref(&self) -> ControlFlowRef {
-        Function::entry_point_ref(self)
-    }
-    fn cfg(&self) -> &ControlFlowGraph {
-        &self.cflow_graph
-    }
-    fn cfg_mut(&mut self) -> &mut ControlFlowGraph {
-        &mut self.cflow_graph
-    }
-    fn postorder(&self) -> Vec<ControlFlowRef> {
-        Function::postorder(self)
+    fn kind(&self) -> &FunctionKind {
+        Function::kind(self)
     }
     fn add_alias(&mut self, name: String) {
         Function::add_alias(self, name)

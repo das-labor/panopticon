@@ -32,6 +32,59 @@ extern crate log;
 #[cfg(test)]
 extern crate env_logger;
 
+use panopticon_core::{Function, BasicBlock, Result, ControlFlowGraph, ControlFlowRef};
+
+pub trait SSAFunction {
+    fn ssa_conversion(&mut self) -> Result<()>;
+    fn cfg(&self) -> &ControlFlowGraph;
+    fn cfg_mut(&mut self) -> &mut ControlFlowGraph;
+    fn entry_point_mut(&mut self) -> &mut BasicBlock;
+    fn entry_point_ref(&self) -> ControlFlowRef;
+    fn postorder(&self) -> Vec<ControlFlowRef>;
+}
+
+impl SSAFunction for Function {
+    fn ssa_conversion(&mut self) -> Result<()> {
+        ssa_convertion(self)
+    }
+    fn cfg(&self) -> &ControlFlowGraph {
+        Function::cfg(self)
+    }
+    fn cfg_mut(&mut self) -> &mut ControlFlowGraph {
+        Function::cfg_mut(self)
+    }
+    fn entry_point_mut(&mut self) -> &mut BasicBlock {
+        Function::entry_point_mut(self)
+    }
+    fn entry_point_ref(&self) -> ControlFlowRef {
+        Function::entry_point_ref(self)
+    }
+    fn postorder(&self) -> Vec<ControlFlowRef> {
+        Function::postorder(self)
+    }
+}
+
+impl SSAFunction for panopticon_core::neo::Function {
+    fn ssa_conversion(&mut self) -> Result<()> {
+        Ok(())
+    }
+    fn entry_point_mut(&mut self) -> &mut BasicBlock {
+        unimplemented!()
+    }
+    fn entry_point_ref(&self) -> ControlFlowRef {
+        unimplemented!()
+    }
+    fn cfg(&self) -> &ControlFlowGraph {
+        unimplemented!()
+    }
+    fn cfg_mut(&mut self) -> &mut ControlFlowGraph {
+        unimplemented!()
+    }
+    fn postorder(&self) -> Vec<ControlFlowRef> {
+        unimplemented!()
+    }
+}
+
 mod liveness;
 pub use liveness::{liveness, liveness_sets};
 

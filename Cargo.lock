@@ -528,6 +528,7 @@ dependencies = [
  "panopticon-analysis 0.16.0",
  "panopticon-avr 0.16.0",
  "panopticon-core 0.16.0",
+ "panopticon-data-flow 0.16.0",
  "panopticon-graph-algos 0.11.0",
  "structopt 0.0.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "structopt-derive 0.0.5 (registry+https://github.com/rust-lang/crates.io-index)",
