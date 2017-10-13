@@ -137,6 +137,67 @@ pub struct BasicBlockIterator<'a> {
     max: usize,
 }
 
+pub struct EasyBasicBlockIterator<'a> {
+    function: &'a Function,
+    range: Range<usize>,
+}
+
+pub struct EasyMnemonicIterator<'a> {
+    function: &'a Function,
+    basic_block: &'a BasicBlock,
+    range: Range<usize>,
+}
+
+impl<'a> Iterator for EasyMnemonicIterator<'a> {
+    type Item = BitcodeIter<'a>;
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.range.next() {
+            Some(idx) => {
+                let mne = &self.function.mnemonics[idx];
+                Some(self.function.bitcode.iter_range(mne.statements.clone()))
+            },
+            None => None
+        }
+     }
+}
+
+impl<'a> Iterator for EasyBasicBlockIterator<'a> {
+    type Item = EasyMnemonicIterator<'a>;
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.range.next() {
+            Some(idx) => {
+                let basic_block = &self.function.basic_blocks[idx];
+                let mnes = &basic_block.mnemonics;
+                Some(EasyMnemonicIterator {
+                    function: self.function,
+                    basic_block,
+                    range: mnes.start.index..mnes.end.index,
+                })
+            },
+            None => None
+        }
+     }
+}
+
+// get us:
+//
+// for bb in f {
+//   for mne in bb {
+//     for statement in mne {
+//     }
+//   }
+// }
+impl<'a> IntoIterator for &'a Function {
+    type Item = EasyMnemonicIterator<'a>;
+    type IntoIter = EasyBasicBlockIterator<'a>;
+    fn into_iter(self) -> Self::IntoIter {
+       EasyBasicBlockIterator {
+            function: self,
+            range: 0..self.basic_blocks().len(),
+        }
+     }
+}
+
 impl<'a> Iterator for BasicBlockIterator<'a> {
     type Item = (BasicBlockIndex,&'a BasicBlock);
 
