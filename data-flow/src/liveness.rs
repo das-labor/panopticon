@@ -22,6 +22,66 @@ use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
 use std::iter::FromIterator;
 use SSAFunction;
+use DataFlow;
+
+use petgraph::Direction;
+
+/// Computes the set of killed (VarKill) and upward exposed variables (UEvar) for each basic block
+/// in `func`. Returns (VarKill,UEvar).
+pub fn liveness_sets_pet<Function: DataFlow>(func: &Function) -> (HashMap<u32, HashSet<Cow<'static, str>>>, HashMap<u32, HashSet<Cow<'static, str>>>) {
+    let mut uevar = HashMap::<u32, HashSet<&str>>::new();
+    let mut varkill = HashMap::<u32, HashSet<Cow<'static, str>>>::new();
+    let ord = func.postorder();
+    let cfg = func.cfg();
+
+    // init UEVar and VarKill sets
+    for &vx in ord.iter() {
+        let uev = uevar.entry(vx).or_insert(HashSet::<&str>::new());
+        let vk = varkill.entry(vx).or_insert(HashSet::<Cow<'static, str>>::new());
+
+        if let Some(&ControlFlowTarget::Resolved(ref bb)) = cfg.node_weight(vx.into()) {
+            for mne in bb.mnemonics.iter() {
+                for rv in mne.operands.iter() {
+                    if let &Rvalue::Variable { ref name, .. } = rv {
+                        if !vk.contains(name) {
+                            uev.insert(name);
+                        }
+                    }
+                }
+
+                for instr in mne.instructions.iter() {
+                    let &Statement { ref op, ref assignee } = instr;
+
+                    if let &Operation::Phi(_) = op {
+;
+                    } else {
+                        for &rv in op.operands().iter() {
+                            if let &Rvalue::Variable { ref name, .. } = rv {
+                                if !vk.contains(name) {
+                                    uev.insert(name);
+                                }
+                            }
+                        }
+
+                        if let &Lvalue::Variable { ref name, .. } = assignee {
+                            vk.insert(name.clone());
+                        }
+                    }
+                }
+            }
+        }
+
+        for e in cfg.edges_directed(vx.into(), Direction::Outgoing) {
+            if let &Guard::Predicate { flag: Rvalue::Variable { ref name, .. }, .. } = e.weight() {
+                if !vk.contains(name) {
+                    uev.insert(name);
+                }
+            }
+        }
+    }
+
+    (varkill, HashMap::from_iter(uevar.iter().map(|(&k, v)| (k, HashSet::from_iter(v.iter().map(|x| Cow::Owned(x.to_string())))))))
+}
 
 /// Computes the set of killed (VarKill) and upward exposed variables (UEvar) for each basic block
 /// in `func`. Returns (VarKill,UEvar).
