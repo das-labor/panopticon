@@ -1,5 +1,6 @@
 use std::fmt::Debug;
 use uuid::Uuid;
+use smallvec::SmallVec;
 
 use neo::value::{Value,Variable};
 use neo::Str;
@@ -74,37 +75,86 @@ pub enum Operation<V>
 }
 
 impl<V> Operation<V> where V: Clone + PartialEq + Eq + Debug {
-    pub fn reads<'x>(&'x self) -> Vec<&'x V> {
+    pub fn reads<'x>(&'x self) -> SmallVec<[&'x V; 3]> {
+        use neo::Operation::*;
+
+        let mut ret = SmallVec::new();
+
         match self {
-            &Operation::Add(ref a, ref b) => vec![a,b],
-            &Operation::Subtract(ref a, ref b) => vec![a,b],
-            &Operation::Multiply(ref a, ref b) => vec![a,b],
-            &Operation::DivideUnsigned(ref a, ref b) => vec![a,b],
-            &Operation::DivideSigned(ref a, ref b) => vec![a,b],
-            &Operation::ShiftLeft(ref a, ref b) => vec![a,b],
-            &Operation::ShiftRightUnsigned(ref a, ref b) => vec![a,b],
-            &Operation::ShiftRightSigned(ref a, ref b) => vec![a,b],
-            &Operation::Modulo(ref a, ref b) => vec![a,b],
-            &Operation::And(ref a, ref b) => vec![a,b],
-            &Operation::InclusiveOr(ref a, ref b) => vec![a,b],
-            &Operation::ExclusiveOr(ref a, ref b) => vec![a,b],
+            &Add(ref a, ref b) => { ret.push(a); ret.push(b); }
+            &Subtract(ref a, ref b) => { ret.push(a); ret.push(b); }
+            &Multiply(ref a, ref b) => { ret.push(a); ret.push(b); }
+            &DivideUnsigned(ref a, ref b) => { ret.push(a); ret.push(b); }
+            &DivideSigned(ref a, ref b) => { ret.push(a); ret.push(b); }
+            &ShiftLeft(ref a, ref b) => { ret.push(a); ret.push(b); }
+            &ShiftRightUnsigned(ref a, ref b) => { ret.push(a); ret.push(b); }
+            &ShiftRightSigned(ref a, ref b) => { ret.push(a); ret.push(b); }
+            &Modulo(ref a, ref b) => { ret.push(a); ret.push(b); }
+            &And(ref a, ref b) => { ret.push(a); ret.push(b); }
+            &InclusiveOr(ref a, ref b) => { ret.push(a); ret.push(b); }
+            &ExclusiveOr(ref a, ref b) => { ret.push(a); ret.push(b); }
 
-            &Operation::Equal(ref a, ref b) => vec![a,b],
-            &Operation::LessOrEqualUnsigned(ref a, ref b) => vec![a,b],
-            &Operation::LessOrEqualSigned(ref a, ref b) => vec![a,b],
-            &Operation::LessUnsigned(ref a, ref b) => vec![a,b],
-            &Operation::LessSigned(ref a, ref b) => vec![a,b],
+            &Equal(ref a, ref b) => { ret.push(a); ret.push(b); }
+            &LessOrEqualUnsigned(ref a, ref b) => { ret.push(a); ret.push(b); }
+            &LessOrEqualSigned(ref a, ref b) => { ret.push(a); ret.push(b); }
+            &LessUnsigned(ref a, ref b) => { ret.push(a); ret.push(b); }
+            &LessSigned(ref a, ref b) => { ret.push(a); ret.push(b); }
 
-            &Operation::ZeroExtend(_, ref a) => vec![a],
-            &Operation::SignExtend(_, ref a) => vec![a],
-            &Operation::Move(ref a) => vec![a],
-            &Operation::Initialize(_,_) => vec![],
-            &Operation::Select(_, ref a, ref b) => vec![a,b],
+            &ZeroExtend(_, ref a) => { ret.push(a); }
+            &SignExtend(_, ref a) => { ret.push(a); }
+            &Move(ref a) => { ret.push(a); }
+            &Initialize(_,_) => {}
+            &Select(_, ref a, ref b) => { ret.push(a); ret.push(b); }
 
-            &Operation::Load(_, _, _, ref a) => vec![a],
+            &Load(_, _, _, ref a) => { ret.push(a); }
 
-            &Operation::Phi(ref a, ref b, ref c) => vec![a, b, c],
+            &Phi(ref a, ref b, ref c) => {
+                ret.push(a); ret.push(b); ret.push(c);
+            }
         }
+
+        ret
+    }
+
+    pub fn reads_mut<'x>(&'x mut self) -> SmallVec<[&'x mut V; 3]> {
+        use neo::Operation::*;
+
+        let mut ret = SmallVec::new();
+
+        match self {
+            &mut Add(ref mut a, ref mut b) => { ret.push(a); ret.push(b); }
+            &mut Subtract(ref mut a, ref mut b) => { ret.push(a); ret.push(b); }
+            &mut Multiply(ref mut a, ref mut b) => { ret.push(a); ret.push(b); }
+            &mut DivideUnsigned(ref mut a, ref mut b) => { ret.push(a); ret.push(b); }
+            &mut DivideSigned(ref mut a, ref mut b) => { ret.push(a); ret.push(b); }
+            &mut ShiftLeft(ref mut a, ref mut b) => { ret.push(a); ret.push(b); }
+            &mut ShiftRightUnsigned(ref mut a, ref mut b) => { ret.push(a); ret.push(b); }
+            &mut ShiftRightSigned(ref mut a, ref mut b) => { ret.push(a); ret.push(b); }
+            &mut Modulo(ref mut a, ref mut b) => { ret.push(a); ret.push(b); }
+            &mut And(ref mut a, ref mut b) => { ret.push(a); ret.push(b); }
+            &mut InclusiveOr(ref mut a, ref mut b) => { ret.push(a); ret.push(b); }
+            &mut ExclusiveOr(ref mut a, ref mut b) => { ret.push(a); ret.push(b); }
+
+            &mut Equal(ref mut a, ref mut b) => { ret.push(a); ret.push(b); }
+            &mut LessOrEqualUnsigned(ref mut a, ref mut b) => { ret.push(a); ret.push(b); }
+            &mut LessOrEqualSigned(ref mut a, ref mut b) => { ret.push(a); ret.push(b); }
+            &mut LessUnsigned(ref mut a, ref mut b) => { ret.push(a); ret.push(b); }
+            &mut LessSigned(ref mut a, ref mut b) => { ret.push(a); ret.push(b); }
+
+            &mut ZeroExtend(_, ref mut a) => { ret.push(a); }
+            &mut SignExtend(_, ref mut a) => { ret.push(a); }
+            &mut Move(ref mut a) => { ret.push(a); }
+            &mut Initialize(_,_) => {}
+            &mut Select(_, ref mut a, ref mut b) => { ret.push(a); ret.push(b); }
+
+            &mut Load(_, _, _, ref mut a) => { ret.push(a); }
+
+            &mut Phi(ref mut a, ref mut b, ref mut c) => {
+                ret.push(a); ret.push(b); ret.push(c);
+            }
+        }
+
+        ret
     }
 }
 

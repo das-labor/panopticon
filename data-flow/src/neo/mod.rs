@@ -4,4 +4,7 @@
 //};
 
 mod liveness;
-pub use neo::liveness::{LivenessSets,liveness_sets,Globals,globals};
+pub use neo::liveness::{Liveness,Globals};
+
+mod ssa;
+pub use neo::ssa::rewrite_to_ssa;

@@ -1,12 +1,7 @@
-#[macro_use]
-extern crate bencher;
-extern crate panopticon_amd64 as amd64;
-extern crate panopticon_graph_algos;
-extern crate panopticon_core;
-
 use bencher::Bencher;
+use panopticon_amd64 as amd64;
 
-fn disassemble_static_amd64_elf_new(b: &mut Bencher) {
+fn static_amd64_elf_new(b: &mut Bencher) {
     use panopticon_core::{loader,neo,CallTarget,Rvalue};
     use panopticon_graph_algos::{VertexListGraphTrait,GraphTrait};
     use std::path::Path;
@@ -24,7 +19,7 @@ fn disassemble_static_amd64_elf_new(b: &mut Bencher) {
     });
 }
 
-fn disassemble_static_amd64_elf_old(b: &mut Bencher) {
+fn static_amd64_elf_old(b: &mut Bencher) {
     use panopticon_core::{loader,Function,CallTarget,Rvalue};
     use panopticon_graph_algos::{VertexListGraphTrait,GraphTrait};
     use std::path::Path;
@@ -42,5 +37,4 @@ fn disassemble_static_amd64_elf_old(b: &mut Bencher) {
     });
 }
 
-benchmark_group!(benches, disassemble_static_amd64_elf_new, disassemble_static_amd64_elf_old);
-benchmark_main!(benches);
+benchmark_group!(disassemble, static_amd64_elf_new, static_amd64_elf_old);

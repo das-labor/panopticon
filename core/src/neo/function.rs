@@ -1,4 +1,4 @@
-use std::ops::Range;
+use std::ops::{RangeFull,Range};
 use std::iter::FromIterator;
 use uuid::Uuid;
 use petgraph::Graph;
@@ -36,6 +36,18 @@ pub struct Mnemonic {
     pub operands: Vec<Rvalue>,
     pub format_string: Vec<MnemonicFormatToken>,
     pub statements: Range<usize>,
+}
+
+impl Mnemonic {
+    pub fn new<S: Into<Str> + Sized>(a: Range<u64>, s: S) -> Mnemonic {
+        Mnemonic{
+            area: a,
+            opcode: s.into(),
+            operands: vec![],
+            format_string: vec![],
+            statements: 0..0,
+        }
+    }
 }
 
 /// Internal to `Mnemonic`
@@ -144,6 +156,20 @@ impl<'a> ExactSizeIterator for BasicBlockIterator<'a> {
     }
 }
 
+impl<'a> DoubleEndedIterator for BasicBlockIterator<'a> {
+    fn next_back(&mut self) -> Option<(BasicBlockIndex,&'a BasicBlock)> {
+        if self.max > 0 {
+            self.max -= 1;
+            let idx = BasicBlockIndex::new(self.max);
+            let bb = &self.function.basic_blocks[self.max];
+
+            Some((idx,bb))
+        } else {
+            None
+        }
+    }
+}
+
 #[derive(Clone,Copy,Debug,PartialOrd,Ord,PartialEq,Eq)]
 pub struct MnemonicIndex {
     index: usize
@@ -186,12 +212,9 @@ pub trait IntoStatementRange {
     fn into_statement_range(self, func: &Function) -> Range<usize>;
 }
 
-impl<T: IntoStatementRange> IntoStatementRange for Option<T> {
+impl IntoStatementRange for RangeFull {
     fn into_statement_range(self, func: &Function) -> Range<usize> {
-        match self {
-            Some(t) => t.into_statement_range(func),
-            None => 0..func.bitcode.num_bytes()
-        }
+        0..func.bitcode.num_bytes()
     }
 }
 
@@ -227,6 +250,50 @@ impl<'a> IntoStatementRange for &'a BasicBlock {
         let end = func.mnemonics[self.mnemonics.end.index() - 1].statements.end;
 
         start..end
+    }
+}
+
+pub trait IntoMnemonicRange {
+    fn into_mnemonic_range(self, func: &Function) -> Range<usize>;
+}
+
+impl IntoMnemonicRange for RangeFull {
+    fn into_mnemonic_range(self, func: &Function) -> Range<usize> {
+        0..func.mnemonics.len()
+    }
+}
+
+impl IntoMnemonicRange for Range<usize> {
+    fn into_mnemonic_range(self, _: &Function) -> Range<usize> {
+        self
+    }
+}
+
+impl IntoMnemonicRange for Range<MnemonicIndex> {
+    fn into_mnemonic_range(self, _: &Function) -> Range<usize> {
+        self.start.index()..self.end.index()
+    }
+}
+
+impl IntoMnemonicRange for BasicBlockIndex {
+    fn into_mnemonic_range(self, func: &Function) -> Range<usize> {
+        let bb = &func.basic_blocks[self.index()];
+        bb.into_mnemonic_range(func)
+    }
+}
+
+impl<'a> IntoMnemonicRange for &'a BasicBlock {
+    fn into_mnemonic_range(self, _: &Function) -> Range<usize> {
+        let start = self.mnemonics.start.index();
+        let end = self.mnemonics.end.index();
+
+        start..end
+    }
+}
+
+impl IntoMnemonicRange for MnemonicIndex {
+    fn into_mnemonic_range(self, _: &Function) -> Range<usize> {
+        self.index()..(self.index() + 1)
     }
 }
 
@@ -268,7 +335,6 @@ pub struct Function {
     basic_blocks: Vec<BasicBlock>,
     // sort by area.start
     mnemonics: Vec<Mnemonic>,
-    // sorted by bb idx
     cflow_graph: Graph<CfgNode,Guard>,
     entry_point: BasicBlockIndex,
 }
@@ -345,23 +411,12 @@ impl Function {
     // getter
     pub fn entry_point(&self) -> BasicBlockIndex { self.entry_point }
 
-    pub fn mnemonics<'a, O: Into<Option<BasicBlockIndex>>>(&'a self, basic_block: O) -> MnemonicIterator<'a> {
-        match basic_block.into() {
-            Some(BasicBlockIndex{ index }) => {
-                let &BasicBlock{ ref mnemonics,.. } = &self.basic_blocks[index];
-                MnemonicIterator{
-                    function: self,
-                    index: mnemonics.start.index,
-                    max: mnemonics.end.index - 1
-                }
-            }
-            None => {
-                MnemonicIterator{
-                    function: self,
-                    index: 0,
-                    max: self.mnemonics.len() - 1
-                }
-            }
+    pub fn mnemonics<'a,Idx: IntoMnemonicRange + Sized>(&'a self, idx: Idx) -> MnemonicIterator<'a> {
+        let idx = idx.into_mnemonic_range(self);
+        MnemonicIterator{
+            function: self,
+            index: idx.start,
+            max: idx.end - 1
         }
     }
 
@@ -424,11 +479,48 @@ impl Function {
         false
     }
 
-    // insert
-    pub fn insert_statement(stmt: Statement, mnemonic: MnemonicIndex,
-        basic_block: BasicBlockIndex, index: usize) -> Result<()> { unimplemented!() }
-    pub fn insert_pseudo_mnemonic(stmts: &[Statement], opcode: Str,
-        basic_block: BasicBlock, index: usize) -> Result<()> { unimplemented!() }
+    pub fn rewrite<F>(&mut self, f: F) -> Result<()> where F: FnOnce(&mut [Vec<(Mnemonic,Vec<Statement>)>]) -> Result<()> {
+        let mut blocks: Vec<Vec<(Mnemonic,Vec<Statement>)>> = self.basic_blocks.iter().map(|bb| {
+            self.mnemonics(bb.mnemonics.clone()).map(|(_,mne)| {
+                (mne.clone(),self.statements(mne.statements.clone()).collect())
+            }).collect()
+        }).collect();
+
+        f(blocks.as_mut_slice())?;
+
+        let mut bitcode = Bitcode::with_capacity(self.bitcode.num_bytes(),self.bitcode.num_strings());
+        let mne_cnt = blocks.iter().map(|x| x.len()).sum();
+        let mut mnemonics = Vec::with_capacity(mne_cnt);
+        let mut new_mne_ranges = Vec::with_capacity(blocks.len());
+
+        for (bb_idx,mnes) in blocks.into_iter().enumerate() {
+            let fst_mne = mnemonics.len();
+            let mut prev_addr = None;
+
+            for (mut mne,stmts) in mnes.into_iter() {
+                if let Some(s) = prev_addr {
+                    if s != mne.area.start {
+                        return Err(format!("Non-continuous basic block #{}: gap between {:#x} and {:#x}",bb_idx,s,mne.area.start).into());
+                    }
+                }
+
+                prev_addr = Some(mne.area.end);
+                mne.statements = bitcode.append(stmts.into_iter())?;
+                mnemonics.push(mne);
+            }
+
+            new_mne_ranges.push(fst_mne..mnemonics.len());
+        }
+
+        for (idx,rgn) in new_mne_ranges.into_iter().enumerate() {
+            self.basic_blocks[idx].mnemonics = MnemonicIndex::new(rgn.start)..MnemonicIndex::new(rgn.end);
+        }
+
+        self.mnemonics = mnemonics;
+        self.bitcode = bitcode;
+
+        Ok(())
+    }
 }
 
 fn disassemble<A: Architecture>(init: A::Configuration, starts: Vec<u64>, region: &Region,
@@ -748,8 +840,9 @@ fn to_statement(stmt: &core::Statement) -> Statement {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use {Architecture, Disassembler, Guard, Match, OpaqueLayer, Region, Result, Rvalue, State};
+    use {Architecture, Disassembler, Guard, Match, OpaqueLayer, Region, Result, Rvalue, State, TestArch};
     use std::sync::Arc;
+    use petgraph::dot::Dot;
     use env_logger;
 
     #[derive(Clone,Debug)]
@@ -1373,6 +1466,245 @@ mod tests {
 
     #[test]
     fn iter_range() {
-        unimplemented!()
+        let main = new_disassembler!(TestArchShort =>
+            [ 0 ] = |st: &mut State<TestArchShort>| {
+                st.mnemonic(1,"test0","",vec!(),&|_| {
+                    rreil!{
+                        add a:32, b:32, c:32;
+                        sub a:32, b:32, c:32;
+                    }
+                }).unwrap();
+                let addr = st.address;
+                st.jump(Rvalue::new_u64(addr + 1),Guard::always()).unwrap();
+                true
+            },
+            [ 1 ] = |st: &mut State<TestArchShort>| {
+                st.mnemonic(1,"test1","",vec!(),&|_| {
+                   rreil!{
+                        add a:32, b:32, c:32;
+                    }
+                }).unwrap();
+                let addr = st.address;
+                st.jump(Rvalue::new_u64(addr + 1),Guard::always()).unwrap();
+                true
+            },
+            [ 2, 3 ] = |st: &mut State<TestArchShort>| {
+                st.mnemonic(2,"test2","",vec!(),&|_| {
+                   rreil!{
+                        sub a:32, b:32, c:32;
+                    }
+                }).unwrap();
+                true
+            }
+        );
+        let data = OpaqueLayer::wrap(vec![0, 1, 2, 3, 0, 0]);
+        let reg = Region::new("".to_string(), data);
+        let func = Function::new::<TestArchShort>(main, 0, &reg, None).unwrap();
+
+        let bb_idx = func.basic_blocks().map(|x| x.0).collect::<Vec<_>>();
+        assert_eq!(bb_idx.len(), 1);
+        let stmts = func.statements(bb_idx[0]).collect::<Vec<_>>();
+        assert_eq!(stmts.len(), 4);
+
+        let bb = func.basic_blocks().map(|x| x.1).collect::<Vec<_>>();
+        assert_eq!(bb.len(), 1);
+        let stmts = func.statements(bb[0]).collect::<Vec<_>>();
+        assert_eq!(stmts.len(), 4);
+
+        let stmts = func.statements(..).collect::<Vec<_>>();
+        assert_eq!(stmts.len(), 4);
+
+        let mne_idx = func.mnemonics(..).map(|x| x.0).collect::<Vec<_>>();
+        assert_eq!(mne_idx.len(), 3);
+        let stmts = func.statements(mne_idx[1]).collect::<Vec<_>>();
+        assert_eq!(stmts.len(), 1);
+        if let &Statement::Expression{ op: Operation::Add(Value::Variable(_),Value::Variable(_)),.. } = &stmts[0] { ; } else { unreachable!() }
+
+        let stmts = func.statements(mne_idx[0]).collect::<Vec<_>>();
+        assert_eq!(stmts.len(), 2);
+        if let &Statement::Expression{ op: Operation::Add(Value::Variable(_),Value::Variable(_)),.. } = &stmts[0] { ; } else { unreachable!() }
+        if let &Statement::Expression{ op: Operation::Subtract(Value::Variable(_),Value::Variable(_)),.. } = &stmts[1] { ; } else { unreachable!() }
     }
+
+    /*
+     * (B0)
+     * 0:  Mi1  ; mov i 1
+     * 3:  Cfi0 ; cmp f i 0
+     * 7:  Bf18 ; br f (B2)
+     *
+     * (B1)
+     * 11: Aii3 ; add i i 3
+     * 15: J22  ; jmp (B3)
+     *
+     * (B2)
+     * 18: Ai23 ; add i 2 3
+     *
+     * (B3)
+     * 22: Ms3  ; mov s 3
+     * 25: R    ; ret
+     */
+    #[test]
+    fn rewrite_rename() {
+        let _ = env_logger::init();
+        let data = OpaqueLayer::wrap(b"Mi1Cfi0Bf18Aii3J22Ai23Ms3R".to_vec());
+        let reg = Region::new("".to_string(), data);
+        let mut func = Function::new::<TestArch>((), 0, &reg, None).unwrap();
+        let _ = func.rewrite(|basic_blocks| {
+            for bb in basic_blocks.iter_mut() {
+                for &mut (_,ref mut stmts) in bb.iter_mut() {
+                    for stmt in stmts.iter_mut() {
+                        match stmt {
+                            &mut Statement::Expression{ result: Variable{ ref mut name,.. },.. } => {
+                                *name = name.to_string().to_uppercase().into();
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+            }
+
+            Ok(())
+        }).unwrap();
+
+        let b0 = func.statements(BasicBlockIndex::new(0)).collect::<Vec<_>>();
+        if let Statement::Expression{ op: Operation::Move(Value::Constant(_)),.. } = b0[0] {} else { unreachable!() }
+        if let Statement::Expression{ op: Operation::LessOrEqualUnsigned(Value::Variable(_),Value::Constant(_)),.. } = b0[1] {} else { unreachable!() }
+        assert_eq!(b0.len(), 2);
+
+        let b1 = func.statements(BasicBlockIndex::new(1)).collect::<Vec<_>>();
+        if let Statement::Expression{ op: Operation::Add(Value::Variable(_),Value::Constant(_)),.. } = b1[0] {} else { unreachable!() }
+        assert_eq!(b1.len(), 1);
+
+        let b2 = func.statements(BasicBlockIndex::new(2)).collect::<Vec<_>>();
+        if let Statement::Expression{ op: Operation::Add(Value::Constant(_),Value::Constant(_)),.. } = b2[0] {} else { unreachable!() }
+        assert_eq!(b2.len(), 1);
+
+        let b3 = func.statements(BasicBlockIndex::new(3)).collect::<Vec<_>>();
+        if let Statement::Expression{ op: Operation::Move(Value::Constant(_)),.. } = b3[0] {} else { unreachable!() }
+        assert_eq!(b3.len(), 1);
+
+        for stmt in func.statements(..) {
+            match stmt {
+                Statement::Expression{ result: Variable{ ref name,.. },.. } => {
+                    assert!(name.chars().all(|x| x.is_uppercase()));
+                }
+                _ => {}
+            }
+        }
+    }
+
+    #[test]
+    fn rewrite_add_mnemonic() {
+        let _ = env_logger::init();
+        let data = OpaqueLayer::wrap(b"Mi1Cfi0Bf18Aii3J22Ai23Ms3R".to_vec());
+        let reg = Region::new("".to_string(), data);
+        let mut func = Function::new::<TestArch>((), 0, &reg, None).unwrap();
+        let _ = func.rewrite(|basic_blocks| {
+            let start = basic_blocks[1][0].0.area.start;
+            let mne = Mnemonic::new(start..start,"test");
+            let stmts = vec![
+                Statement::Expression{
+                    op: Operation::And(Value::val(42,32).unwrap(),Value::var("x",32,None).unwrap()),
+                    result: Variable::new("x",32,None).unwrap()
+                },
+                Statement::Expression{
+                    op: Operation::Subtract(Value::val(42,32).unwrap(),Value::var("x",32,None).unwrap()),
+                    result: Variable::new("x",32,None).unwrap()
+                },
+            ];
+
+            basic_blocks[1].insert(0,(mne,stmts));
+            Ok(())
+        }).unwrap();
+
+        let b0 = func.statements(BasicBlockIndex::new(0)).collect::<Vec<_>>();
+        if let Statement::Expression{ op: Operation::Move(Value::Constant(_)),.. } = b0[0] {} else { unreachable!() }
+        if let Statement::Expression{ op: Operation::LessOrEqualUnsigned(Value::Variable(_),Value::Constant(_)),.. } = b0[1] {} else { unreachable!() }
+        assert_eq!(b0.len(), 2);
+
+        let b1 = func.statements(BasicBlockIndex::new(1)).collect::<Vec<_>>();
+        if let Statement::Expression{ op: Operation::And(Value::Constant(_),Value::Variable(_)),.. } = b1[0] {} else { unreachable!() }
+        if let Statement::Expression{ op: Operation::Subtract(Value::Constant(_),Value::Variable(_)),.. } = b1[1] {} else { unreachable!() }
+        if let Statement::Expression{ op: Operation::Add(Value::Variable(_),Value::Constant(_)),.. } = b1[2] {} else { unreachable!() }
+        assert_eq!(b1.len(), 3);
+
+        let b2 = func.statements(BasicBlockIndex::new(2)).collect::<Vec<_>>();
+        if let Statement::Expression{ op: Operation::Add(Value::Constant(_),Value::Constant(_)),.. } = b2[0] {} else { unreachable!() }
+        assert_eq!(b2.len(), 1);
+
+        let b3 = func.statements(BasicBlockIndex::new(3)).collect::<Vec<_>>();
+        if let Statement::Expression{ op: Operation::Move(Value::Constant(_)),.. } = b3[0] {} else { unreachable!() }
+        assert_eq!(b3.len(), 1);
+    }
+
+    #[test]
+    fn rewrite_add_statements() {
+        let _ = env_logger::init();
+        let data = OpaqueLayer::wrap(b"Mi1Cfi0Bf18Aii3J22Ai23Ms3R".to_vec());
+        let reg = Region::new("".to_string(), data);
+        let mut func = Function::new::<TestArch>((), 0, &reg, None).unwrap();
+        let _ = func.rewrite(|basic_blocks| {
+            let stmts = vec![
+                Statement::Expression{
+                    op: Operation::And(Value::val(42,32).unwrap(),Value::var("x",32,None).unwrap()),
+                    result: Variable::new("x",32,None).unwrap()
+                },
+                Statement::Expression{
+                    op: Operation::Subtract(Value::val(42,32).unwrap(),Value::var("x",32,None).unwrap()),
+                    result: Variable::new("x",32,None).unwrap()
+                },
+            ];
+
+            basic_blocks[1][0].1.extend(stmts);
+            Ok(())
+        }).unwrap();
+
+        let b0 = func.statements(BasicBlockIndex::new(0)).collect::<Vec<_>>();
+        if let Statement::Expression{ op: Operation::Move(Value::Constant(_)),.. } = b0[0] {} else { unreachable!() }
+        if let Statement::Expression{ op: Operation::LessOrEqualUnsigned(Value::Variable(_),Value::Constant(_)),.. } = b0[1] {} else { unreachable!() }
+        assert_eq!(b0.len(), 2);
+
+        let b1 = func.statements(BasicBlockIndex::new(1)).collect::<Vec<_>>();
+        if let Statement::Expression{ op: Operation::Add(Value::Variable(_),Value::Constant(_)),.. } = b1[0] {} else { unreachable!() }
+        if let Statement::Expression{ op: Operation::And(Value::Constant(_),Value::Variable(_)),.. } = b1[1] {} else { unreachable!() }
+        if let Statement::Expression{ op: Operation::Subtract(Value::Constant(_),Value::Variable(_)),.. } = b1[2] {} else { unreachable!() }
+        assert_eq!(b1.len(), 3);
+
+        let b2 = func.statements(BasicBlockIndex::new(2)).collect::<Vec<_>>();
+        if let Statement::Expression{ op: Operation::Add(Value::Constant(_),Value::Constant(_)),.. } = b2[0] {} else { unreachable!() }
+        assert_eq!(b2.len(), 1);
+
+        let b3 = func.statements(BasicBlockIndex::new(3)).collect::<Vec<_>>();
+        if let Statement::Expression{ op: Operation::Move(Value::Constant(_)),.. } = b3[0] {} else { unreachable!() }
+        assert_eq!(b3.len(), 1);
+    }
+
+    #[test]
+    fn rewrite_remove_mnemonic() {
+        let _ = env_logger::init();
+        let data = OpaqueLayer::wrap(b"Mi1Cfi0Bf18Aii3J22Ai23Ms3R".to_vec());
+        let reg = Region::new("".to_string(), data);
+        let mut func = Function::new::<TestArch>((), 0, &reg, None).unwrap();
+        let _ = func.rewrite(|basic_blocks| {
+            basic_blocks[1].remove(0);
+            Ok(())
+        }).unwrap();
+
+        let b0 = func.statements(BasicBlockIndex::new(0)).collect::<Vec<_>>();
+        if let Statement::Expression{ op: Operation::Move(Value::Constant(_)),.. } = b0[0] {} else { unreachable!() }
+        if let Statement::Expression{ op: Operation::LessOrEqualUnsigned(Value::Variable(_),Value::Constant(_)),.. } = b0[1] {} else { unreachable!() }
+        assert_eq!(b0.len(), 2);
+
+        let b1 = func.statements(BasicBlockIndex::new(1)).collect::<Vec<_>>();
+        assert_eq!(b1.len(), 0);
+
+        let b2 = func.statements(BasicBlockIndex::new(2)).collect::<Vec<_>>();
+        if let Statement::Expression{ op: Operation::Add(Value::Constant(_),Value::Constant(_)),.. } = b2[0] {} else { unreachable!() }
+        assert_eq!(b2.len(), 1);
+
+        let b3 = func.statements(BasicBlockIndex::new(3)).collect::<Vec<_>>();
+        if let Statement::Expression{ op: Operation::Move(Value::Constant(_)),.. } = b3[0] {} else { unreachable!() }
+        assert_eq!(b3.len(), 1);
+    }
+
 }

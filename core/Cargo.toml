@@ -22,6 +22,7 @@ petgraph = "0.4.9"
 leb128 = "0.2.1"
 error-chain = "0.11.0"
 quickcheck = "0.4.1"
+smallvec = "0.4.4"
 
 [dev-dependencies]
 regex = "0.1"

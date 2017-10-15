@@ -5,10 +5,11 @@ authors = ["seu <seu@panopticon.re>"]
 
 [dependencies]
 panopticon-core = { path = "../core" }
+panopticon-data-flow = { path = "../data-flow" }
 panopticon-amd64 = { path = "../amd64" }
 panopticon-graph-algos = { path = "../graph-algos" }
 bencher = "0.1.4"
 
 [[bench]]
-name = "core"
+name = "main"
 harness = false

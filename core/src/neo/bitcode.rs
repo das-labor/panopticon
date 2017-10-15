@@ -190,6 +190,13 @@ impl Bitcode {
         Ok(Bitcode{ data: buf.into_inner(), strings: strtbl })
     }
 
+    pub fn with_capacity(bytes: usize, strs: usize) -> Bitcode {
+        Bitcode{
+            strings: Vec::with_capacity(strs),
+            data: Vec::with_capacity(bytes),
+        }
+    }
+
     fn encode_statement<W: Write>(stmt: Statement, data: &mut W, strtbl: &mut Vec<Str>) -> Result<()> {
         use neo::il::Operation::*;
         use neo::value::Value::*;
@@ -1117,6 +1124,10 @@ impl Bitcode {
 
     pub fn num_bytes(&self) -> usize {
         self.data.len()
+    }
+
+    pub fn num_strings(&self) -> usize {
+        self.strings.len()
     }
 }
 

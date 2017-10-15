@@ -52,8 +52,8 @@ impl Value {
         Ok(Value::Constant(Constant::new(val,bits)?))
     }
 
-    pub fn var<N: Into<Str> + Sized>(name: N, bits: usize, subscript: Option<usize>) -> Result<Value> {
-        Ok(Value::Variable(Variable::new(name,bits,subscript)?))
+    pub fn var<N: Into<Str> + Sized, S: Into<Option<usize>> + Sized>(name: N, bits: usize, subscript: S) -> Result<Value> {
+        Ok(Value::Variable(Variable::new(name,bits,subscript.into())?))
     }
 
     pub fn undef() -> Value {

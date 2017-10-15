@@ -92,6 +92,7 @@ extern crate serde_cbor;
 #[macro_use] extern crate error_chain;
 extern crate leb128;
 extern crate petgraph;
+extern crate smallvec;
 
 #[cfg(test)]
 extern crate env_logger;
@@ -100,7 +101,7 @@ extern crate env_logger;
 
 // core
 pub mod disassembler;
-pub use disassembler::{Architecture, Disassembler, Match, State};
+pub use disassembler::{Architecture, Disassembler, Match, State, TestArch};
 
 #[macro_use]
 pub mod il;
