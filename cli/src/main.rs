@@ -20,7 +20,7 @@ use panopticon_amd64 as amd64;
 use panopticon_analysis::analyze;
 use panopticon_avr as avr;
 use panopticon_core::{Machine, Fun, FunctionKind, Function, Program, Result, loader, neo};
-use panopticon_data_flow::SSAFunction;
+use panopticon_data_flow::{DataFlow};
 
 use std::path::Path;
 use std::result;
@@ -168,7 +168,7 @@ fn print_reverse_deps<Function: Fun, W: Write + WriteColor>(mut fmt: W, program:
     Ok(())
 }
 
-fn disassemble<Function: Fun + SSAFunction + Send>(binary: &str) -> Result<Program<Function>> {
+fn disassemble<Function: Fun + DataFlow + Send>(binary: &str) -> Result<Program<Function>> {
     let (mut proj, machine) = loader::load(Path::new(&binary))?;
     let program = proj.code.pop().unwrap();
     let reg = proj.region().clone();
@@ -180,7 +180,7 @@ fn disassemble<Function: Fun + SSAFunction + Send>(binary: &str) -> Result<Progr
     }?)
 }
 
-fn app_logic<Function: Fun + SSAFunction + PrintableFunction + PrintableStatements>(fmt: &mut termcolor::Buffer, mut program: Program<Function>, args: Args) -> Result<()> {
+fn app_logic<Function: Fun + DataFlow + PrintableFunction + PrintableStatements>(fmt: &mut termcolor::Buffer, mut program: Program<Function>, args: Args) -> Result<()> {
     let filter = Filter { name: args.function_filter, addr: args.address_filter.map(|addr| u64::from_str_radix(&addr, 16).unwrap()) };
 
     debug!("Program.imports: {:#?}", program.imports);
@@ -234,8 +234,8 @@ fn run(args: Args) -> Result<()> {
     let writer = BufferWriter::stdout(cc);
     let mut fmt = writer.buffer();
     if args.neo {
-        let program = disassemble::<neo::Function>(&args.binary)?;
-        app_logic(&mut fmt, program, args)?;
+//        let program = disassemble::<neo::Function>(&args.binary)?;
+//        app_logic(&mut fmt, program, args)?;
     } else {
         let program = disassemble::<Function>(&args.binary)?;
         app_logic(&mut fmt, program, args)?;

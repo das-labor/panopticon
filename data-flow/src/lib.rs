@@ -22,7 +22,6 @@
 //! module implements functions to compute liveness sets and basic reverse data flow information.
 
 extern crate panopticon_core;
-extern crate panopticon_graph_algos;
 extern crate bit_set;
 extern crate petgraph;
 extern crate smallvec;
@@ -32,8 +31,7 @@ extern crate log;
 #[cfg(test)]
 extern crate env_logger;
 
-//use panopticon_core::{Function, BasicBlock, Result, ControlFlowGraph, ControlFlowRef};
-use panopticon_core::*;
+use panopticon_core::{Function, BasicBlock, Result, Guard, ControlFlowTarget, ControlFlowEdge, ControlFlowRef, Operation, Rvalue, Mnemonic};
 use std::ops::Range;
 use std::collections::{HashMap, HashSet};
 use std::borrow::Cow;
@@ -70,136 +68,72 @@ impl<'a> StandardBlock<&'a Mnemonic> for &'a BasicBlock {
     }
 }
 
-pub trait SSAFunction {
-    fn ssa_conversion(&mut self) -> Result<()>;
-    fn cfg(&self) -> &ControlFlowGraph;
-    fn cfg_mut(&mut self) -> &mut ControlFlowGraph;
+pub trait DataFlow: Sized {
+    /// Convert `func` into semi-pruned SSA form.
+    fn ssa_conversion(&mut self) -> Result<()> {
+        let (globals, usage) = self.global_names();
+        self.phi_functions(&globals, &usage)?;
+        self.rename_variables(&globals)
+    }
+    /// Computes the set of global variables in `func` and their points of usage. Globals are
+    /// variables that are used in multiple basic blocks. Returns (Globals,Usage).
+    fn global_names(&self) -> (ssa::Globals, ssa::Usage) {
+        ssa::global_names(self)
+    }
+
+    /// Does a simple sanity check on all RREIL statements in `func`, returns every variable name
+    /// found and its maximal size in bits.
+    fn type_check(&self) -> Result<HashMap<Cow<'static, str>, usize>> {
+        ssa::type_check(self)
+    }
+
+    /// Inserts SSA Phi functions at junction points in the control flow graph of `func`. The
+    /// algorithm produces the semi-pruned SSA form found in Cooper, Torczon: "Engineering a Compiler".
+    fn phi_functions(&mut self, globals: &ssa::Globals, usage: &ssa::Usage) -> Result<()> {
+        ssa::phi_functions(self, globals, usage)
+    }
+
+    /// Sets the SSA subscripts of all variables in `func`. Follows the algorithm outlined
+    /// Cooper, Torczon: "Engineering a Compiler". The function expects that Phi functions to be
+    /// already inserted.
+    fn rename_variables(&mut self, globals: &ssa::Globals) -> Result<()> {
+        ssa::rename_variables(self, globals)
+    }
+    /// Computes for every control flow guard the dependent RREIL operation via reverse data flow
+    /// analysis.
+    fn flag_operations(&self) -> HashMap<ControlFlowEdge, Operation<Rvalue>> {
+        ssa::flag_operations(self)
+    }
+    /// Computes for each basic block in `func` the set of live variables using simple fixed point
+    /// iteration.
+    fn liveness<Function: DataFlow>(&self) -> HashMap<ControlFlowRef, HashSet<Cow<'static, str>>> {
+        liveness::liveness(self)
+    }
+
     fn entry_point_mut(&mut self) -> &mut BasicBlock;
     fn entry_point_ref(&self) -> ControlFlowRef;
-    fn postorder(&self) -> Vec<ControlFlowRef>;
+    fn cfg(&self) -> &Graph<ControlFlowTarget, Guard>;
+    fn cfg_mut(&mut self) -> &mut Graph<ControlFlowTarget, Guard>;
 }
 
-impl SSAFunction for Function {
-    fn ssa_conversion(&mut self) -> Result<()> {
-        ssa_convertion(self)
-    }
-    fn cfg(&self) -> &ControlFlowGraph {
-        Function::cfg(self)
-    }
-    fn cfg_mut(&mut self) -> &mut ControlFlowGraph {
-        Function::cfg_mut(self)
-    }
+impl DataFlow for Function {
     fn entry_point_mut(&mut self) -> &mut BasicBlock {
         Function::entry_point_mut(self)
     }
     fn entry_point_ref(&self) -> ControlFlowRef {
         Function::entry_point_ref(self)
     }
-    fn postorder(&self) -> Vec<ControlFlowRef> {
-        Function::postorder(self)
-    }
-}
 
-impl SSAFunction for panopticon_core::neo::Function {
-    fn ssa_conversion(&mut self) -> Result<()> {
-        Ok(())
-    }
-    fn entry_point_mut(&mut self) -> &mut BasicBlock {
-        unimplemented!()
-    }
-    fn entry_point_ref(&self) -> ControlFlowRef {
-        unimplemented!()
-    }
-    fn cfg(&self) -> &ControlFlowGraph {
-        unimplemented!()
-    }
-    fn cfg_mut(&mut self) -> &mut ControlFlowGraph {
-        unimplemented!()
-    }
-    fn postorder(&self) -> Vec<ControlFlowRef> {
-        unimplemented!()
-    }
-}
-
-pub trait DataFlow: Sized {
-    fn ssa_conversion(&mut self) -> Result<()> {
-        Ok(())
-    }
-    /// Computes the set of global variables in `func` and their points of usage. Globals are
-    /// variables that are used in multiple basic blocks. Returns (Globals,Usage).
-    fn global_names(&self) -> (HashSet<Cow<'static, str>>, HashMap<Cow<'static, str>, HashSet<u32>>) {
-        let (varkill, uevar) = liveness_sets_pet(self);
-        let mut usage = HashMap::<Cow<'static, str>, HashSet<u32>>::new();
-        let mut globals = HashSet::<Cow<'static, str>>::new();
-
-        for (_, uev) in uevar {
-            for v in uev {
-                globals.insert(v);
-            }
-        }
-
-        for (vx, vk) in varkill {
-            for v in vk {
-                usage.entry(v.clone()).or_insert(HashSet::new()).insert(vx);
-            }
-        }
-
-        (globals, usage)
+    fn cfg(&self) -> &Graph<ControlFlowTarget, Guard> {
+        Function::cfg(self)
     }
 
-    fn type_check(&self) -> Result<HashMap<Cow<'static, str>, usize>> {
-        let mut ret = HashMap::<Cow<'static, str>, usize>::new();
-        let cfg = self.cfg();
-        fn set_len(v: &Rvalue, ret: &mut HashMap<Cow<'static, str>, usize>) {
-            match v {
-                &Rvalue::Variable { ref name, ref size, .. } => {
-                    let val = *::std::cmp::max(ret.get(name).unwrap_or(&0), size);
-                    ret.insert(name.clone(), val);
-                }
-                _ => {}
-            }
-        }
-        for vx in cfg.node_indices() {
-            if let Some(&ControlFlowTarget::Resolved(ref bb)) = cfg.node_weight(vx) {
-                for mne in bb.mnemonics.iter() {
-                    for o in mne.operands.iter() {
-                        set_len(o, &mut ret);
-                    }
-
-                    for instr in mne.instructions.iter() {
-                        let ops = instr.op.operands();
-                        match ops.len() {
-                            0 => return Err("Operation w/o arguments".into()),
-                            _ => {
-                                for o in ops.iter() {
-                                    set_len(o, &mut ret);
-                                }
-                            }
-                        }
-                        set_len(&instr.assignee.clone().into(), &mut ret);
-                    }
-                }
-            }
-        }
-
-        for ed in cfg.edge_indices() {
-            if let Some(&Guard::Predicate { ref flag, .. }) = cfg.edge_weight(ed) {
-                set_len(flag, &mut ret);
-            }
-        }
-        Ok(ret)
+    fn cfg_mut(&mut self) -> &mut Graph<ControlFlowTarget, Guard> {
+        Function::cfg_mut(self)
     }
-    fn entry_point_mut(&mut self) -> &mut BasicBlock;
-    fn entry_point_ref(&self) -> u32;
-    fn cfg(&self) -> &Graph<ControlFlowTarget, Guard>;
-    fn cfg_mut(&mut self) -> &mut Graph<ControlFlowTarget, Guard>;
-    fn postorder(&self) -> Vec<u32>;
 }
 
 mod liveness;
-pub use liveness::{liveness, liveness_sets, liveness_sets_pet};
-
 mod ssa;
-pub use ssa::{flag_operations, ssa_convertion, type_check};
 
 pub mod neo;

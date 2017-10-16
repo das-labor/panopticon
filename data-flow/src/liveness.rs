@@ -16,26 +16,26 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-use panopticon_core::{ControlFlowRef, ControlFlowTarget, Function, Guard, Lvalue, Operation, Rvalue, Statement};
-use panopticon_graph_algos::{GraphTrait, IncidenceGraphTrait};
+use panopticon_core::{ControlFlowTarget, ControlFlowRef, Guard, Lvalue, Operation, Rvalue, Statement};
 use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
 use std::iter::FromIterator;
-use SSAFunction;
 use DataFlow;
 
 use petgraph::Direction;
+use petgraph::visit::{Walker, EdgeRef, DfsPostOrder};
 
 /// Computes the set of killed (VarKill) and upward exposed variables (UEvar) for each basic block
 /// in `func`. Returns (VarKill,UEvar).
-pub fn liveness_sets_pet<Function: DataFlow>(func: &Function) -> (HashMap<u32, HashSet<Cow<'static, str>>>, HashMap<u32, HashSet<Cow<'static, str>>>) {
-    let mut uevar = HashMap::<u32, HashSet<&str>>::new();
-    let mut varkill = HashMap::<u32, HashSet<Cow<'static, str>>>::new();
-    let ord = func.postorder();
+pub(crate) fn liveness_sets<Function: DataFlow>(func: &Function) -> (HashMap<ControlFlowRef, HashSet<Cow<'static, str>>>, HashMap<ControlFlowRef, HashSet<Cow<'static, str>>>) {
+    let mut uevar = HashMap::<ControlFlowRef, HashSet<&str>>::new();
+    let mut varkill = HashMap::<ControlFlowRef, HashSet<Cow<'static, str>>>::new();
+    // don't allocate the postorder
+    let ord = DfsPostOrder::new(func.cfg(), func.entry_point_ref()).iter(func.cfg());
     let cfg = func.cfg();
 
     // init UEVar and VarKill sets
-    for &vx in ord.iter() {
+    for vx in ord {
         let uev = uevar.entry(vx).or_insert(HashSet::<&str>::new());
         let vk = varkill.entry(vx).or_insert(HashSet::<Cow<'static, str>>::new());
 
@@ -83,73 +83,16 @@ pub fn liveness_sets_pet<Function: DataFlow>(func: &Function) -> (HashMap<u32, H
     (varkill, HashMap::from_iter(uevar.iter().map(|(&k, v)| (k, HashSet::from_iter(v.iter().map(|x| Cow::Owned(x.to_string())))))))
 }
 
-/// Computes the set of killed (VarKill) and upward exposed variables (UEvar) for each basic block
-/// in `func`. Returns (VarKill,UEvar).
-pub fn liveness_sets<Function: SSAFunction>(func: &Function) -> (HashMap<ControlFlowRef, HashSet<Cow<'static, str>>>, HashMap<ControlFlowRef, HashSet<Cow<'static, str>>>) {
-    let mut uevar = HashMap::<ControlFlowRef, HashSet<&str>>::new();
-    let mut varkill = HashMap::<ControlFlowRef, HashSet<Cow<'static, str>>>::new();
-    let ord = func.postorder();
-    let cfg = func.cfg();
-
-    // init UEVar and VarKill sets
-    for &vx in ord.iter() {
-        let uev = uevar.entry(vx).or_insert(HashSet::<&str>::new());
-        let vk = varkill.entry(vx).or_insert(HashSet::<Cow<'static, str>>::new());
-
-        if let Some(&ControlFlowTarget::Resolved(ref bb)) = cfg.vertex_label(vx) {
-            for mne in bb.mnemonics.iter() {
-                for rv in mne.operands.iter() {
-                    if let &Rvalue::Variable { ref name, .. } = rv {
-                        if !vk.contains(name) {
-                            uev.insert(name);
-                        }
-                    }
-                }
-
-                for instr in mne.instructions.iter() {
-                    let &Statement { ref op, ref assignee } = instr;
-
-                    if let &Operation::Phi(_) = op {
-;
-                    } else {
-                        for &rv in op.operands().iter() {
-                            if let &Rvalue::Variable { ref name, .. } = rv {
-                                if !vk.contains(name) {
-                                    uev.insert(name);
-                                }
-                            }
-                        }
-
-                        if let &Lvalue::Variable { ref name, .. } = assignee {
-                            vk.insert(name.clone());
-                        }
-                    }
-                }
-            }
-        }
-
-        for e in cfg.out_edges(vx) {
-            if let Some(&Guard::Predicate { flag: Rvalue::Variable { ref name, .. }, .. }) = cfg.edge_label(e) {
-                if !vk.contains(name) {
-                    uev.insert(name);
-                }
-            }
-        }
-    }
-
-    (varkill, HashMap::from_iter(uevar.iter().map(|(&k, v)| (k, HashSet::from_iter(v.iter().map(|x| Cow::Owned(x.to_string())))))))
-}
-
 /// Computes for each basic block in `func` the set of live variables using simple fixed point
 /// iteration.
-pub fn liveness(func: &Function) -> HashMap<ControlFlowRef, HashSet<Cow<'static, str>>> {
+pub(crate) fn liveness<Function: DataFlow>(func: &Function) -> HashMap<ControlFlowRef, HashSet<Cow<'static, str>>> {
     let (varkill, uevar) = liveness_sets(func);
     let mut liveout = HashMap::<ControlFlowRef, HashSet<&str>>::new();
-    let ord = func.postorder();
+    let ord = DfsPostOrder::new(func.cfg(), func.entry_point_ref()).iter(func.cfg());
     let cfg = func.cfg();
 
-    for &vx in ord.iter() {
-        if let Some(&ControlFlowTarget::Resolved(_)) = cfg.vertex_label(vx) {
+    for vx in ord.clone() {
+        if let Some(&ControlFlowTarget::Resolved(_)) = cfg.node_weight(vx) {
             liveout.insert(vx, HashSet::<&str>::new());
         }
     }
@@ -160,18 +103,18 @@ pub fn liveness(func: &Function) -> HashMap<ControlFlowRef, HashSet<Cow<'static,
         let mut new_liveout = HashMap::<ControlFlowRef, HashSet<&str>>::new();
 
         fixpoint = true;
-        for &vx in ord.iter() {
+        for vx in ord.clone() {
             let mut s = HashSet::<&str>::new();
 
-            if let Some(&ControlFlowTarget::Resolved(_)) = cfg.vertex_label(vx) {
-                for e in cfg.out_edges(vx) {
-                    let m = cfg.target(e);
+            if let Some(&ControlFlowTarget::Resolved(_)) = cfg.node_weight(vx) {
+                for e in cfg.edges_directed(vx, Direction::Outgoing) {
+                    let m = e.target();
 
                     for x in uevar[&m].iter() {
                         s.insert(x);
                     }
 
-                    if let Some(&ControlFlowTarget::Resolved(_)) = cfg.vertex_label(m) {
+                    if let Some(&ControlFlowTarget::Resolved(_)) = cfg.node_weight(m) {
                         for x in liveout[&m].iter() {
                             if !varkill[&m].contains(*x) {
                                 s.insert(x);
@@ -183,14 +126,11 @@ pub fn liveness(func: &Function) -> HashMap<ControlFlowRef, HashSet<Cow<'static,
                 if liveout[&vx] != s {
                     fixpoint = false;
                 }
-
                 new_liveout.insert(vx, s);
             }
         }
-
         liveout = new_liveout;
     }
-
     HashMap::from_iter(liveout.iter().map(|(&k, v)| (k, HashSet::from_iter(v.iter().map(|x| Cow::Owned(x.to_string()))))))
 }
 
@@ -198,11 +138,11 @@ pub fn liveness(func: &Function) -> HashMap<ControlFlowRef, HashSet<Cow<'static,
 mod tests {
     use super::*;
     use panopticon_core::{BasicBlock, ControlFlowGraph, ControlFlowTarget, Function, Guard, Lvalue, Mnemonic, Operation, Rvalue, Statement, Region};
-    use panopticon_graph_algos::{GraphTrait, MutableGraphTrait, VertexListGraphTrait};
-    use ssa::{phi_functions, rename_variables};
+    use ssa::{phi_functions};
     use std::borrow::Cow;
     use std::collections::HashSet;
     use std::iter::FromIterator;
+    use DataFlow;
 
     #[test]
     fn live() {
@@ -309,20 +249,20 @@ mod tests {
         let bb4 = BasicBlock::from_vec(vec![mne4]);
         let mut cfg = ControlFlowGraph::new();
 
-        let v0 = cfg.add_vertex(ControlFlowTarget::Resolved(bb0));
-        let v1 = cfg.add_vertex(ControlFlowTarget::Resolved(bb1));
-        let v2 = cfg.add_vertex(ControlFlowTarget::Resolved(bb2));
-        let v3 = cfg.add_vertex(ControlFlowTarget::Resolved(bb3));
-        let v4 = cfg.add_vertex(ControlFlowTarget::Resolved(bb4));
+        let v0 = cfg.add_node(ControlFlowTarget::Resolved(bb0));
+        let v1 = cfg.add_node(ControlFlowTarget::Resolved(bb1));
+        let v2 = cfg.add_node(ControlFlowTarget::Resolved(bb2));
+        let v3 = cfg.add_node(ControlFlowTarget::Resolved(bb3));
+        let v4 = cfg.add_node(ControlFlowTarget::Resolved(bb4));
 
         let g = Guard::from_flag(&x.clone().into()).ok().unwrap();
 
-        cfg.add_edge(Guard::always(), v0, v1);
-        cfg.add_edge(g.negation(), v1, v2);
-        cfg.add_edge(g.clone(), v1, v3);
-        cfg.add_edge(Guard::always(), v2, v3);
-        cfg.add_edge(g.negation(), v3, v1);
-        cfg.add_edge(g.clone(), v3, v4);
+        cfg.add_edge( v0,  v1, Guard::always());
+        cfg.add_edge( v1,  v2, g.negation());
+        cfg.add_edge( v1,  v3, g.clone());
+        cfg.add_edge( v2,  v3, Guard::always());
+        cfg.add_edge( v3,  v1, g.negation());
+        cfg.add_edge( v3,  v4, g.clone());
         let mut func = Function::undefined(0, None, &Region::undefined("ram".to_owned(), 100), None);
 
         *func.cfg_mut() = cfg;
@@ -365,7 +305,6 @@ mod tests {
             Some(&HashSet::from_iter(vec![Cow::Borrowed("x"), Cow::Borrowed("i"), Cow::Borrowed("s")]))
         );
         assert_eq!(vk.get(&v4), Some(&HashSet::new()));
-
         let res = liveness(&func);
 
         assert_eq!(res.len(), 5);
@@ -605,42 +544,42 @@ mod tests {
         let bb8 = BasicBlock::from_vec(vec![mne8]);
         let mut cfg = ControlFlowGraph::new();
 
-        let v0 = cfg.add_vertex(ControlFlowTarget::Resolved(bb0));
-        let v1 = cfg.add_vertex(ControlFlowTarget::Resolved(bb1));
-        let v2 = cfg.add_vertex(ControlFlowTarget::Resolved(bb2));
-        let v3 = cfg.add_vertex(ControlFlowTarget::Resolved(bb3));
-        let v4 = cfg.add_vertex(ControlFlowTarget::Resolved(bb4));
-        let v5 = cfg.add_vertex(ControlFlowTarget::Resolved(bb5));
-        let v6 = cfg.add_vertex(ControlFlowTarget::Resolved(bb6));
-        let v7 = cfg.add_vertex(ControlFlowTarget::Resolved(bb7));
-        let v8 = cfg.add_vertex(ControlFlowTarget::Resolved(bb8));
+        let v0 = cfg.add_node(ControlFlowTarget::Resolved(bb0));
+        let v1 = cfg.add_node(ControlFlowTarget::Resolved(bb1));
+        let v2 = cfg.add_node(ControlFlowTarget::Resolved(bb2));
+        let v3 = cfg.add_node(ControlFlowTarget::Resolved(bb3));
+        let v4 = cfg.add_node(ControlFlowTarget::Resolved(bb4));
+        let v5 = cfg.add_node(ControlFlowTarget::Resolved(bb5));
+        let v6 = cfg.add_node(ControlFlowTarget::Resolved(bb6));
+        let v7 = cfg.add_node(ControlFlowTarget::Resolved(bb7));
+        let v8 = cfg.add_node(ControlFlowTarget::Resolved(bb8));
 
-        cfg.add_edge(Guard::always(), v0, v1);
+        cfg.add_edge( v0,  v1, Guard::always());
 
         let g1 = Guard::from_flag(&f.clone().into()).ok().unwrap();
-        cfg.add_edge(g1.clone(), v1, v2);
-        cfg.add_edge(g1.negation(), v1, v5);
+        cfg.add_edge( v1,  v2, g1.clone());
+        cfg.add_edge( v1,  v5, g1.negation());
 
-        cfg.add_edge(Guard::always(), v2, v3);
+        cfg.add_edge( v2,  v3, Guard::always());
 
         let g3 = Guard::from_flag(&f.clone().into()).ok().unwrap();
-        cfg.add_edge(g3.clone(), v3, v1);
-        cfg.add_edge(g3.negation(), v3, v4);
+        cfg.add_edge( v3,  v1, g3.clone());
+        cfg.add_edge( v3,  v4, g3.negation());
 
         let g5 = Guard::from_flag(&f.clone().into()).ok().unwrap();
-        cfg.add_edge(g5.clone(), v5, v6);
-        cfg.add_edge(g5.negation(), v5, v8);
+        cfg.add_edge( v5,  v6, g5.clone());
+        cfg.add_edge( v5,  v8, g5.negation());
 
-        cfg.add_edge(Guard::always(), v6, v7);
-        cfg.add_edge(Guard::always(), v7, v3);
-        cfg.add_edge(Guard::always(), v8, v7);
+        cfg.add_edge( v6,  v7, Guard::always());
+        cfg.add_edge( v7,  v3, Guard::always());
+        cfg.add_edge( v8,  v7, Guard::always());
 
         let mut func = Function::undefined(0, None, &Region::undefined("ram".to_owned(), 100), None);
 
         *func.cfg_mut() = cfg;
         func.set_entry_point_ref(v0);
-
-        assert!(phi_functions(&mut func).is_ok());
+        let (globals, usage) = func.global_names();
+        assert!(phi_functions(&mut func, &globals, &usage).is_ok());
 
         let a0 = Lvalue::Variable { name: Cow::Borrowed("a"), size: 32, subscript: None };
         let b0 = Lvalue::Variable { name: Cow::Borrowed("b"), size: 32, subscript: None };
@@ -649,14 +588,14 @@ mod tests {
         let i0 = Lvalue::Variable { name: Cow::Borrowed("i"), size: 32, subscript: None };
 
         // bb0
-        if let Some(&ControlFlowTarget::Resolved(ref bb)) = func.cfg().vertex_label(v0) {
+        if let Some(&ControlFlowTarget::Resolved(ref bb)) = func.cfg().node_weight(v0) {
             assert!(bb.mnemonics[0].opcode != "__phi".to_string());
         } else {
             unreachable!()
         }
 
         // bb1
-        if let Some(&ControlFlowTarget::Resolved(ref bb)) = func.cfg().vertex_label(v1) {
+        if let Some(&ControlFlowTarget::Resolved(ref bb)) = func.cfg().node_weight(v1) {
             assert_eq!(bb.mnemonics[0].opcode, "__phi".to_string());
             assert_eq!(bb.mnemonics[1].opcode, "__phi".to_string());
             assert_eq!(bb.mnemonics[2].opcode, "__phi".to_string());
@@ -682,14 +621,14 @@ mod tests {
         }
 
         // bb2
-        if let Some(&ControlFlowTarget::Resolved(ref bb)) = func.cfg().vertex_label(v2) {
+        if let Some(&ControlFlowTarget::Resolved(ref bb)) = func.cfg().node_weight(v2) {
             assert!(bb.mnemonics[0].opcode != "__phi".to_string());
         } else {
             unreachable!()
         }
 
         // bb3
-        if let Some(&ControlFlowTarget::Resolved(ref bb)) = func.cfg().vertex_label(v3) {
+        if let Some(&ControlFlowTarget::Resolved(ref bb)) = func.cfg().node_weight(v3) {
             assert_eq!(bb.mnemonics[0].opcode, "__phi".to_string());
             assert_eq!(bb.mnemonics[1].opcode, "__phi".to_string());
             assert_eq!(bb.mnemonics[2].opcode, "__phi".to_string());
@@ -712,28 +651,28 @@ mod tests {
         }
 
         // bb4
-        if let Some(&ControlFlowTarget::Resolved(ref bb)) = func.cfg().vertex_label(v4) {
+        if let Some(&ControlFlowTarget::Resolved(ref bb)) = func.cfg().node_weight(v4) {
             assert!(bb.mnemonics[0].opcode != "__phi".to_string());
         } else {
             unreachable!()
         }
 
         // bb5
-        if let Some(&ControlFlowTarget::Resolved(ref bb)) = func.cfg().vertex_label(v5) {
+        if let Some(&ControlFlowTarget::Resolved(ref bb)) = func.cfg().node_weight(v5) {
             assert!(bb.mnemonics[0].opcode != "__phi".to_string());
         } else {
             unreachable!()
         }
 
         // bb6
-        if let Some(&ControlFlowTarget::Resolved(ref bb)) = func.cfg().vertex_label(v6) {
+        if let Some(&ControlFlowTarget::Resolved(ref bb)) = func.cfg().node_weight(v6) {
             assert!(bb.mnemonics[0].opcode != "__phi".to_string());
         } else {
             unreachable!()
         }
 
         // bb7
-        if let Some(&ControlFlowTarget::Resolved(ref bb)) = func.cfg().vertex_label(v7) {
+        if let Some(&ControlFlowTarget::Resolved(ref bb)) = func.cfg().node_weight(v7) {
             assert_eq!(bb.mnemonics[0].opcode, "__phi".to_string());
             assert_eq!(bb.mnemonics[1].opcode, "__phi".to_string());
             assert!(bb.mnemonics[2].opcode != "__phi".to_string());
@@ -979,46 +918,44 @@ mod tests {
         let bb8 = BasicBlock::from_vec(vec![mne8]);
         let mut cfg = ControlFlowGraph::new();
 
-        let v0 = cfg.add_vertex(ControlFlowTarget::Resolved(bb0));
-        let v1 = cfg.add_vertex(ControlFlowTarget::Resolved(bb1));
-        let v2 = cfg.add_vertex(ControlFlowTarget::Resolved(bb2));
-        let v3 = cfg.add_vertex(ControlFlowTarget::Resolved(bb3));
-        let v4 = cfg.add_vertex(ControlFlowTarget::Resolved(bb4));
-        let v5 = cfg.add_vertex(ControlFlowTarget::Resolved(bb5));
-        let v6 = cfg.add_vertex(ControlFlowTarget::Resolved(bb6));
-        let v7 = cfg.add_vertex(ControlFlowTarget::Resolved(bb7));
-        let v8 = cfg.add_vertex(ControlFlowTarget::Resolved(bb8));
+        let v0 = cfg.add_node(ControlFlowTarget::Resolved(bb0));
+        let v1 = cfg.add_node(ControlFlowTarget::Resolved(bb1));
+        let v2 = cfg.add_node(ControlFlowTarget::Resolved(bb2));
+        let v3 = cfg.add_node(ControlFlowTarget::Resolved(bb3));
+        let v4 = cfg.add_node(ControlFlowTarget::Resolved(bb4));
+        let v5 = cfg.add_node(ControlFlowTarget::Resolved(bb5));
+        let v6 = cfg.add_node(ControlFlowTarget::Resolved(bb6));
+        let v7 = cfg.add_node(ControlFlowTarget::Resolved(bb7));
+        let v8 = cfg.add_node(ControlFlowTarget::Resolved(bb8));
 
-        cfg.add_edge(Guard::always(), v0, v1);
+        cfg.add_edge( v0,  v1, Guard::always());
 
         let g1 = Guard::from_flag(&f.clone().into()).ok().unwrap();
-        cfg.add_edge(g1.clone(), v1, v2);
-        cfg.add_edge(g1.negation(), v1, v5);
+        cfg.add_edge( v1,  v2, g1.clone());
+        cfg.add_edge( v1,  v5, g1.negation());
 
-        cfg.add_edge(Guard::always(), v2, v3);
+        cfg.add_edge( v2,  v3, Guard::always());
 
         let g3 = Guard::from_flag(&f.clone().into()).ok().unwrap();
-        cfg.add_edge(g3.clone(), v3, v1);
-        cfg.add_edge(g3.negation(), v3, v4);
+        cfg.add_edge( v3,  v1, g3.clone());
+        cfg.add_edge( v3,  v4, g3.negation());
 
         let g5 = Guard::from_flag(&f.clone().into()).ok().unwrap();
-        cfg.add_edge(g5.clone(), v5, v6);
-        cfg.add_edge(g5.negation(), v5, v8);
+        cfg.add_edge( v5,  v6, g5.clone());
+        cfg.add_edge( v5,  v8, g5.negation());
 
-        cfg.add_edge(Guard::always(), v6, v7);
-        cfg.add_edge(Guard::always(), v7, v3);
-        cfg.add_edge(Guard::always(), v8, v7);
+        cfg.add_edge( v6,  v7, Guard::always());
+        cfg.add_edge( v7,  v3, Guard::always());
+        cfg.add_edge( v8,  v7, Guard::always());
 
         let mut func = Function::undefined(0, None, &Region::undefined("ram".to_owned(), 100), None);
 
         *func.cfg_mut() = cfg;
         func.set_entry_point_ref(v0);
+        assert!(func.ssa_conversion().is_ok());
 
-        assert!(phi_functions(&mut func).is_ok());
-        assert!(rename_variables(&mut func).is_ok());
-
-        for v in func.cfg().vertices() {
-            if let Some(&ControlFlowTarget::Resolved(ref bb)) = func.cfg().vertex_label(v) {
+        for v in func.cfg().node_indices() {
+            if let Some(&ControlFlowTarget::Resolved(ref bb)) = func.cfg().node_weight(v) {
                 bb.execute(
                     |i| {
                         if let Lvalue::Variable { subscript, .. } = i.assignee {

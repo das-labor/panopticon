@@ -16,20 +16,27 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-use liveness_sets;
-use panopticon_core::{ControlFlowEdge, ControlFlowGraph, ControlFlowRef, ControlFlowTarget, Function, Guard, Lvalue, Mnemonic, Operation, Result, Rvalue,
-                      Statement};
-use panopticon_graph_algos::{BidirectionalGraphTrait, EdgeListGraphTrait, GraphTrait, IncidenceGraphTrait, MutableGraphTrait, VertexListGraphTrait};
-use panopticon_graph_algos::dominator::{dominance_frontiers, immediate_dominator};
-use std::borrow::Cow;
+use liveness;
+//use panopticon_core::{ControlFlowGraph, ControlFlowTarget, Guard, Result, Rvalue, Statement};
+use panopticon_core::*;
+
 use std::cmp::max;
 use std::collections::{HashMap, HashSet};
 use std::iter::FromIterator;
-use SSAFunction;
+use std::borrow::Cow;
+
+use petgraph::{Direction};
+use petgraph::algo::dominators::{self, Dominators};
+use petgraph::visit::EdgeRef;
+
+use DataFlow;
+
+pub type Globals = HashSet<Cow<'static, str>>;
+pub type Usage = HashMap<Cow<'static, str>, HashSet<ControlFlowRef>>;
 
 /// Does a simple sanity check on all RREIL statements in `func`, returns every variable name
 /// found and its maximal size in bits.
-pub fn type_check<Function: SSAFunction>(func: &Function) -> Result<HashMap<Cow<'static, str>, usize>> {
+pub(crate) fn type_check<Function: DataFlow>(func: &Function) -> Result<HashMap<Cow<'static, str>, usize>> {
     let mut ret = HashMap::<Cow<'static, str>, usize>::new();
     let cfg = func.cfg();
     fn set_len(v: &Rvalue, ret: &mut HashMap<Cow<'static, str>, usize>) {
@@ -41,9 +48,8 @@ pub fn type_check<Function: SSAFunction>(func: &Function) -> Result<HashMap<Cow<
             _ => {}
         }
     }
-
-    for vx in cfg.vertices() {
-        if let Some(&ControlFlowTarget::Resolved(ref bb)) = cfg.vertex_label(vx) {
+    for vx in cfg.node_indices() {
+        if let Some(&ControlFlowTarget::Resolved(ref bb)) = cfg.node_weight(vx) {
             for mne in bb.mnemonics.iter() {
                 for o in mne.operands.iter() {
                     set_len(o, &mut ret);
@@ -59,26 +65,24 @@ pub fn type_check<Function: SSAFunction>(func: &Function) -> Result<HashMap<Cow<
                             }
                         }
                     }
-
                     set_len(&instr.assignee.clone().into(), &mut ret);
                 }
             }
         }
     }
 
-    for ed in cfg.edges() {
-        if let Some(&Guard::Predicate { ref flag, .. }) = cfg.edge_label(ed) {
+    for ed in cfg.edge_indices() {
+        if let Some(&Guard::Predicate { ref flag, .. }) = cfg.edge_weight(ed) {
             set_len(flag, &mut ret);
         }
     }
-
     Ok(ret)
 }
 
 /// Computes the set of gloable variables in `func` and their points of usage. Globales are
 /// variables that are used in multiple basic blocks. Returns (Globals,Usage).
-pub fn global_names<Function: SSAFunction>(func: &Function) -> (HashSet<Cow<'static, str>>, HashMap<Cow<'static, str>, HashSet<ControlFlowRef>>) {
-    let (varkill, uevar) = liveness_sets(func);
+pub(crate) fn global_names<Function: DataFlow>(func: &Function) -> (HashSet<Cow<'static, str>>, HashMap<Cow<'static, str>, HashSet<ControlFlowRef>>) {
+    let (varkill, uevar) = liveness::liveness_sets(func);
     let mut usage = HashMap::<Cow<'static, str>, HashSet<ControlFlowRef>>::new();
     let mut globals = HashSet::<Cow<'static, str>>::new();
 
@@ -99,11 +103,8 @@ pub fn global_names<Function: SSAFunction>(func: &Function) -> (HashSet<Cow<'sta
 
 /// Inserts SSA Phi functions at junction points in the control flow graph of `func`. The
 /// algorithm produces the semi-pruned SSA form found in Cooper, Torczon: "Engineering a Compiler".
-pub fn phi_functions<Function: SSAFunction>(func: &mut Function) -> Result<()> {
-    let lens = type_check(func)?;
-    let (globals, usage) = global_names(func);
-
-    // initalize all variables - TODO: I believe this should be inside of disassemble, no? E.g., creating a Function, then disassemble, is essentially a malformed object.
+pub(crate) fn phi_functions<Function: DataFlow>(func: &mut Function, globals: &Globals, usage: &Usage) -> Result<()> {
+    let lens = func.type_check()?;
     {
         let bb = func.entry_point_mut();
         let pos = bb.area.start;
@@ -142,14 +143,16 @@ pub fn phi_functions<Function: SSAFunction>(func: &mut Function) -> Result<()> {
         bb.mnemonics.insert(0, mne);
     }
 
-    let idom = immediate_dominator(func.entry_point_ref(), func.cfg());
-    if idom.len() != func.cfg().num_vertices() {
-        return Err("No all basic blocks are reachable from function entry point".into());
-    }
+    let doms = dominators::simple_fast(func.cfg(), func.entry_point_ref());
 
-    let df = dominance_frontiers(&idom, func.cfg());
-    let mut phis = HashSet::<(&Cow<'static, str>, ControlFlowRef)>::new();
-    let cfg = &mut func.cfg_mut();
+    // FIXME: need exactsizeiterator for petgraph Dominators
+    //        if doms.count() != func.cfg().num_nodes() {
+    //            return Err("No all basic blocks are reachable from function entry point".into());
+    //        }
+
+    let df = doms.dominance_frontiers(func.cfg());
+    let mut phis = HashSet::<(&Cow<'static, str>, _)>::new();
+    let cfg = func.cfg_mut();
 
     for v in globals.iter() {
         let mut worklist = if let Some(wl) = usage.get(v) {
@@ -164,8 +167,8 @@ pub fn phi_functions<Function: SSAFunction>(func: &mut Function) -> Result<()> {
 
             worklist.remove(&w);
             for d in frontiers.iter() {
-                let arg_num = cfg.in_edges(*d).filter_map(|p| usage.get(v).map(|b| b.contains(&cfg.source(p)))).count();
-                if let Some(&mut ControlFlowTarget::Resolved(ref mut bb)) = cfg.vertex_label_mut(*d) {
+                let arg_num = cfg.edges_directed(*d, Direction::Incoming).filter_map(|p| usage.get(v).map(|b| b.contains(&(p.source())))).count();
+                if let Some(&mut ControlFlowTarget::Resolved(ref mut bb)) = cfg.node_weight_mut(*d) {
                     if !phis.contains(&(v, *d)) {
 
                         let pos = bb.area.start;
@@ -188,7 +191,7 @@ pub fn phi_functions<Function: SSAFunction>(func: &mut Function) -> Result<()> {
 
                         bb.mnemonics.insert(0, mne);
                         phis.insert((v, *d));
-                        worklist.insert(*d);
+                        worklist.insert((*d));
                     }
                 }
             }
@@ -201,17 +204,19 @@ pub fn phi_functions<Function: SSAFunction>(func: &mut Function) -> Result<()> {
 /// Sets the SSA subscripts of all variables in `func`. Follows the algorithm outlined
 /// Cooper, Torczon: "Engineering a Compiler". The function expects that Phi functions to be
 /// already inserted.
-pub fn rename_variables<Function: SSAFunction>(func: &mut Function) -> Result<()> {
-    let (globals, _) = global_names(func);
-    let mut stack = HashMap::<Cow<'static, str>, Vec<usize>>::from_iter(globals.iter().map(|x| (x.clone(), Vec::new())));
-    let mut counter = HashMap::<Cow<'static, str>, usize>::new();
-    let idom = immediate_dominator(func.entry_point_ref(), func.cfg());
+pub(crate) fn rename_variables<Function: DataFlow>(func: &mut Function, globals: &Globals) -> Result<()> {
+    type Counter = HashMap<Cow<'static, str>, usize>;
+    type Stack = HashMap<Cow<'static, str>, Vec<usize>>;
+    let mut stack = Stack::from_iter(globals.iter().map(|x| (x.clone(), Vec::new())));
+    let mut counter = Counter::new();
+    let doms = dominators::simple_fast(func.cfg(), func.entry_point_ref());
 
-    if idom.len() != func.cfg().num_vertices() {
-        return Err("No all basic blocks are reachable from function entry point".into());
-    }
+    // FIXME: check dominator matches node count
+    //        if dom.len() != func.cfg().node_count() {
+    //            return Err("No all basic blocks are reachable from function entry point".into());
+    //        }
 
-    fn new_name(n: &Cow<'static, str>, counter: &mut HashMap<Cow<'static, str>, usize>, stack: &mut HashMap<Cow<'static, str>, Vec<usize>>) -> usize {
+    fn new_name(n: &Cow<'static, str>, counter: &mut Counter, stack: &mut Stack) -> usize {
         let i = *counter.entry(n.clone()).or_insert(0);
 
         counter.get_mut(n).map(|x| *x += 1);
@@ -221,12 +226,12 @@ pub fn rename_variables<Function: SSAFunction>(func: &mut Function) -> Result<()
     }
     fn rename(
         b: ControlFlowRef,
-        counter: &mut HashMap<Cow<'static, str>, usize>,
-        stack: &mut HashMap<Cow<'static, str>, Vec<usize>>,
+        counter: &mut Counter,
+        stack: &mut Stack,
         cfg: &mut ControlFlowGraph,
-        idom: &HashMap<ControlFlowRef, ControlFlowRef>,
+        doms: &Dominators<ControlFlowRef>,
     ) -> Result<()> {
-        if let Some(&mut ControlFlowTarget::Resolved(ref mut bb)) = cfg.vertex_label_mut(b) {
+        if let Some(&mut ControlFlowTarget::Resolved(ref mut bb)) = cfg.node_weight_mut(b) {
             bb.rewrite(
                 |i| match i {
                     &mut Statement {
@@ -239,6 +244,8 @@ pub fn rename_variables<Function: SSAFunction>(func: &mut Function) -> Result<()
 
             for mne in bb.mnemonics.iter_mut() {
                 if mne.opcode != "__phi" {
+                    // this is where operand names are renamed from
+                    // 80e: mov ?, ? -> 80e: mov rbp, rsp
                     for o in mne.operands.iter_mut() {
                         if let &mut Rvalue::Variable { ref name, ref mut subscript, .. } = o {
                             *subscript = stack.get(name).and_then(|x| x.last()).cloned();
@@ -266,16 +273,17 @@ pub fn rename_variables<Function: SSAFunction>(func: &mut Function) -> Result<()
             }
         }
 
-        let mut succ = cfg.out_edges(b).collect::<Vec<_>>();
-        succ.sort();
+        // FIXME: original is sorted, but it is sorting cfg indexes, which shouldn't be important for this algo?
+        // FIXME: actually need the walker api
+        let succ = cfg.edges_directed(b, Direction::Outgoing).map(|edge| (edge.id(), edge.target())).collect::<Vec<_>>();
 
-        for s in succ {
-            if let Some(&mut Guard::Predicate { flag: Rvalue::Variable { ref name, ref mut subscript, .. }, .. }) = cfg.edge_label_mut(s) {
+        for (id, target_vertex) in succ {
+            if let Some(&mut Guard::Predicate { flag: Rvalue::Variable { ref name, ref mut subscript, .. }, .. }) = cfg.edge_weight_mut(id) {
                 *subscript = stack[name].last().cloned();
             }
 
-            let v = cfg.target(s);
-            match cfg.vertex_label_mut(v) {
+            let v = target_vertex;
+            match cfg.node_weight_mut(v) {
                 Some(&mut ControlFlowTarget::Resolved(ref mut bb)) => {
                     bb.rewrite(
                         |i| match i {
@@ -298,13 +306,18 @@ pub fn rename_variables<Function: SSAFunction>(func: &mut Function) -> Result<()
             }
         }
 
-        for (k, _) in idom.iter().filter(|&(_, &v)| v == b) {
-            if *k != b {
-                rename(*k, counter, stack, cfg, idom)?;
+        for k in cfg.node_indices().filter_map(|node| {
+            match doms.immediate_dominator(node) {
+                // add this node to the rename list iff its immediate dominator is the node we just renamed (b)
+                Some(v) if v == b => Some(node),
+                _ => None,
             }
+        }) {
+            // since immediate_dominator(k) != k in petgraph, we do not have to worry about infinite recursion
+            rename(k, counter, stack, cfg, doms)?;
         }
 
-        if let Some(&mut ControlFlowTarget::Resolved(ref mut bb)) = cfg.vertex_label_mut(b) {
+        if let Some(&mut ControlFlowTarget::Resolved(ref mut bb)) = cfg.node_weight_mut(b) {
             bb.execute(
                 |i| match i {
                     &Statement { assignee: Lvalue::Variable { ref name, .. }, .. } => {
@@ -323,25 +336,19 @@ pub fn rename_variables<Function: SSAFunction>(func: &mut Function) -> Result<()
         &mut counter,
         &mut stack,
         func.cfg_mut(),
-        &idom,
+        &doms,
     )
 }
 
-/// Convert `func` into semi-pruned SSA form.
-pub fn ssa_convertion<Function: SSAFunction>(func: &mut Function) -> Result<()> {
-    phi_functions(func)?;
-    rename_variables(func)
-}
-
-/// Computes for every control flow guard the dependend RREIL operation via reverse data flow
+/// Computes for every control flow guard the dependent RREIL operation via reverse data flow
 /// analysis.
-pub fn flag_operations(func: &Function) -> HashMap<ControlFlowEdge, Operation<Rvalue>> {
+pub(crate) fn flag_operations<Function: DataFlow>(func: &Function) -> HashMap<ControlFlowEdge, Operation<Rvalue>> {
     let mut ret = HashMap::new();
-
-    for e in func.cfg().edges() {
-        if !ret.contains_key(&e) {
-            if let Some(&Guard::Predicate { ref flag, .. }) = func.cfg().edge_label(e) {
-                let maybe_bb = func.cfg().vertex_label(func.cfg().source(e));
+    let cfg = func.cfg();
+    for e in cfg.edge_references() {
+        if !ret.contains_key(&e.id()) {
+            if let &Guard::Predicate { ref flag, .. } = e.weight() {
+                let maybe_bb = func.cfg().node_weight(e.source());
                 if let Some(&ControlFlowTarget::Resolved(ref bb)) = maybe_bb {
                     let mut maybe_stmt = None;
                     bb.execute(
@@ -361,7 +368,7 @@ pub fn flag_operations(func: &Function) -> HashMap<ControlFlowEdge, Operation<Rv
                     );
 
                     if maybe_stmt.is_some() {
-                        ret.insert(e.clone(), maybe_stmt.unwrap());
+                        ret.insert(e.id(), maybe_stmt.unwrap());
                     }
                 }
             }
@@ -375,9 +382,10 @@ pub fn flag_operations(func: &Function) -> HashMap<ControlFlowEdge, Operation<Rv
 mod tests {
     use super::*;
     use panopticon_core::{BasicBlock, ControlFlowGraph, ControlFlowTarget, Function, Guard, Lvalue, Mnemonic, Operation, Region, Rvalue, Statement};
-    use panopticon_graph_algos::{GraphTrait, MutableGraphTrait, VertexListGraphTrait};
     use std::borrow::Cow;
     use std::collections::HashSet;
+    use petgraph::Graph;
+    use petgraph::algo::dominators;
 
     #[test]
     fn phi() {
@@ -608,42 +616,42 @@ mod tests {
         let bb8 = BasicBlock::from_vec(vec![mne8]);
         let mut cfg = ControlFlowGraph::new();
 
-        let v0 = cfg.add_vertex(ControlFlowTarget::Resolved(bb0));
-        let v1 = cfg.add_vertex(ControlFlowTarget::Resolved(bb1));
-        let v2 = cfg.add_vertex(ControlFlowTarget::Resolved(bb2));
-        let v3 = cfg.add_vertex(ControlFlowTarget::Resolved(bb3));
-        let v4 = cfg.add_vertex(ControlFlowTarget::Resolved(bb4));
-        let v5 = cfg.add_vertex(ControlFlowTarget::Resolved(bb5));
-        let v6 = cfg.add_vertex(ControlFlowTarget::Resolved(bb6));
-        let v7 = cfg.add_vertex(ControlFlowTarget::Resolved(bb7));
-        let v8 = cfg.add_vertex(ControlFlowTarget::Resolved(bb8));
+        let v0 = cfg.add_node(ControlFlowTarget::Resolved(bb0));
+        let v1 = cfg.add_node(ControlFlowTarget::Resolved(bb1));
+        let v2 = cfg.add_node(ControlFlowTarget::Resolved(bb2));
+        let v3 = cfg.add_node(ControlFlowTarget::Resolved(bb3));
+        let v4 = cfg.add_node(ControlFlowTarget::Resolved(bb4));
+        let v5 = cfg.add_node(ControlFlowTarget::Resolved(bb5));
+        let v6 = cfg.add_node(ControlFlowTarget::Resolved(bb6));
+        let v7 = cfg.add_node(ControlFlowTarget::Resolved(bb7));
+        let v8 = cfg.add_node(ControlFlowTarget::Resolved(bb8));
 
-        cfg.add_edge(Guard::always(), v0, v1);
+        cfg.add_edge( v0,  v1, Guard::always());
 
         let g1 = Guard::from_flag(&f.clone().into()).ok().unwrap();
-        cfg.add_edge(g1.clone(), v1, v2);
-        cfg.add_edge(g1.negation(), v1, v5);
+        cfg.add_edge( v1,  v2, g1.clone());
+        cfg.add_edge( v1,  v5, g1.negation());
 
-        cfg.add_edge(Guard::always(), v2, v3);
+        cfg.add_edge( v2,  v3, Guard::always());
 
         let g3 = Guard::from_flag(&f.clone().into()).ok().unwrap();
-        cfg.add_edge(g3.clone(), v3, v1);
-        cfg.add_edge(g3.negation(), v3, v4);
+        cfg.add_edge( v3,  v1, g3.clone());
+        cfg.add_edge( v3,  v4, g3.negation());
 
         let g5 = Guard::from_flag(&f.clone().into()).ok().unwrap();
-        cfg.add_edge(g5.clone(), v5, v6);
-        cfg.add_edge(g5.negation(), v5, v8);
+        cfg.add_edge( v5,  v6, g5.clone());
+        cfg.add_edge( v5,  v8, g5.negation());
 
-        cfg.add_edge(Guard::always(), v6, v7);
-        cfg.add_edge(Guard::always(), v7, v3);
-        cfg.add_edge(Guard::always(), v8, v7);
+        cfg.add_edge( v6,  v7, Guard::always());
+        cfg.add_edge( v7,  v3, Guard::always());
+        cfg.add_edge( v8,  v7, Guard::always());
 
         let mut func = Function::undefined(0, None, &Region::undefined("ram".to_owned(), 100), None);
 
         *func.cfg_mut() = cfg;
         func.set_entry_point_ref(v0);
-
-        assert!(phi_functions(&mut func).is_ok());
+        let (globals, usage) = func.global_names();
+        assert!(phi_functions(&mut func, &globals, &usage).is_ok());
 
         let a0 = Lvalue::Variable { name: Cow::Borrowed("a"), size: 32, subscript: None };
         let b0 = Lvalue::Variable { name: Cow::Borrowed("b"), size: 32, subscript: None };
@@ -652,14 +660,14 @@ mod tests {
         let i0 = Lvalue::Variable { name: Cow::Borrowed("i"), size: 32, subscript: None };
 
         // bb0
-        if let Some(&ControlFlowTarget::Resolved(ref bb)) = func.cfg().vertex_label(v0) {
+        if let Some(&ControlFlowTarget::Resolved(ref bb)) = func.cfg().node_weight(v0) {
             assert!(bb.mnemonics[0].opcode != "__phi".to_string());
         } else {
             unreachable!()
         }
 
         // bb1
-        if let Some(&ControlFlowTarget::Resolved(ref bb)) = func.cfg().vertex_label(v1) {
+        if let Some(&ControlFlowTarget::Resolved(ref bb)) = func.cfg().node_weight(v1) {
             assert_eq!(bb.mnemonics[0].opcode, "__phi".to_string());
             assert_eq!(bb.mnemonics[1].opcode, "__phi".to_string());
             assert_eq!(bb.mnemonics[2].opcode, "__phi".to_string());
@@ -685,14 +693,14 @@ mod tests {
         }
 
         // bb2
-        if let Some(&ControlFlowTarget::Resolved(ref bb)) = func.cfg().vertex_label(v2) {
+        if let Some(&ControlFlowTarget::Resolved(ref bb)) = func.cfg().node_weight(v2) {
             assert!(bb.mnemonics[0].opcode != "__phi".to_string());
         } else {
             unreachable!()
         }
 
         // bb3
-        if let Some(&ControlFlowTarget::Resolved(ref bb)) = func.cfg().vertex_label(v3) {
+        if let Some(&ControlFlowTarget::Resolved(ref bb)) = func.cfg().node_weight(v3) {
             assert_eq!(bb.mnemonics[0].opcode, "__phi".to_string());
             assert_eq!(bb.mnemonics[1].opcode, "__phi".to_string());
             assert_eq!(bb.mnemonics[2].opcode, "__phi".to_string());
@@ -715,28 +723,28 @@ mod tests {
         }
 
         // bb4
-        if let Some(&ControlFlowTarget::Resolved(ref bb)) = func.cfg().vertex_label(v4) {
+        if let Some(&ControlFlowTarget::Resolved(ref bb)) = func.cfg().node_weight(v4) {
             assert!(bb.mnemonics[0].opcode != "__phi".to_string());
         } else {
             unreachable!()
         }
 
         // bb5
-        if let Some(&ControlFlowTarget::Resolved(ref bb)) = func.cfg().vertex_label(v5) {
+        if let Some(&ControlFlowTarget::Resolved(ref bb)) = func.cfg().node_weight(v5) {
             assert!(bb.mnemonics[0].opcode != "__phi".to_string());
         } else {
             unreachable!()
         }
 
         // bb6
-        if let Some(&ControlFlowTarget::Resolved(ref bb)) = func.cfg().vertex_label(v6) {
+        if let Some(&ControlFlowTarget::Resolved(ref bb)) = func.cfg().node_weight(v6) {
             assert!(bb.mnemonics[0].opcode != "__phi".to_string());
         } else {
             unreachable!()
         }
 
         // bb7
-        if let Some(&ControlFlowTarget::Resolved(ref bb)) = func.cfg().vertex_label(v7) {
+        if let Some(&ControlFlowTarget::Resolved(ref bb)) = func.cfg().node_weight(v7) {
             assert_eq!(bb.mnemonics[0].opcode, "__phi".to_string());
             assert_eq!(bb.mnemonics[1].opcode, "__phi".to_string());
             assert!(bb.mnemonics[2].opcode != "__phi".to_string());
@@ -982,46 +990,45 @@ mod tests {
         let bb8 = BasicBlock::from_vec(vec![mne8]);
         let mut cfg = ControlFlowGraph::new();
 
-        let v0 = cfg.add_vertex(ControlFlowTarget::Resolved(bb0));
-        let v1 = cfg.add_vertex(ControlFlowTarget::Resolved(bb1));
-        let v2 = cfg.add_vertex(ControlFlowTarget::Resolved(bb2));
-        let v3 = cfg.add_vertex(ControlFlowTarget::Resolved(bb3));
-        let v4 = cfg.add_vertex(ControlFlowTarget::Resolved(bb4));
-        let v5 = cfg.add_vertex(ControlFlowTarget::Resolved(bb5));
-        let v6 = cfg.add_vertex(ControlFlowTarget::Resolved(bb6));
-        let v7 = cfg.add_vertex(ControlFlowTarget::Resolved(bb7));
-        let v8 = cfg.add_vertex(ControlFlowTarget::Resolved(bb8));
+        let v0 = cfg.add_node(ControlFlowTarget::Resolved(bb0));
+        let v1 = cfg.add_node(ControlFlowTarget::Resolved(bb1));
+        let v2 = cfg.add_node(ControlFlowTarget::Resolved(bb2));
+        let v3 = cfg.add_node(ControlFlowTarget::Resolved(bb3));
+        let v4 = cfg.add_node(ControlFlowTarget::Resolved(bb4));
+        let v5 = cfg.add_node(ControlFlowTarget::Resolved(bb5));
+        let v6 = cfg.add_node(ControlFlowTarget::Resolved(bb6));
+        let v7 = cfg.add_node(ControlFlowTarget::Resolved(bb7));
+        let v8 = cfg.add_node(ControlFlowTarget::Resolved(bb8));
 
-        cfg.add_edge(Guard::always(), v0, v1);
+        cfg.add_edge( v0,  v1, Guard::always());
 
         let g1 = Guard::from_flag(&f.clone().into()).ok().unwrap();
-        cfg.add_edge(g1.clone(), v1, v2);
-        cfg.add_edge(g1.negation(), v1, v5);
+        cfg.add_edge( v1,  v2, g1.clone());
+        cfg.add_edge( v1,  v5, g1.negation());
 
-        cfg.add_edge(Guard::always(), v2, v3);
+        cfg.add_edge( v2,  v3, Guard::always());
 
         let g3 = Guard::from_flag(&f.clone().into()).ok().unwrap();
-        cfg.add_edge(g3.clone(), v3, v1);
-        cfg.add_edge(g3.negation(), v3, v4);
+        cfg.add_edge( v3,  v1, g3.clone());
+        cfg.add_edge( v3,  v4, g3.negation());
 
         let g5 = Guard::from_flag(&f.clone().into()).ok().unwrap();
-        cfg.add_edge(g5.clone(), v5, v6);
-        cfg.add_edge(g5.negation(), v5, v8);
+        cfg.add_edge( v5,  v6, g5.clone());
+        cfg.add_edge( v5,  v8, g5.negation());
 
-        cfg.add_edge(Guard::always(), v6, v7);
-        cfg.add_edge(Guard::always(), v7, v3);
-        cfg.add_edge(Guard::always(), v8, v7);
+        cfg.add_edge( v6,  v7, Guard::always());
+        cfg.add_edge( v7,  v3, Guard::always());
+        cfg.add_edge( v8,  v7, Guard::always());
 
         let mut func = Function::undefined(0, None, &Region::undefined("ram".to_owned(), 100), None);
 
         *func.cfg_mut() = cfg;
         func.set_entry_point_ref(v0);
 
-        assert!(phi_functions(&mut func).is_ok());
-        assert!(rename_variables(&mut func).is_ok());
+        assert!(func.ssa_conversion().is_ok());
 
-        for v in func.cfg().vertices() {
-            if let Some(&ControlFlowTarget::Resolved(ref bb)) = func.cfg().vertex_label(v) {
+        for v in func.cfg().node_indices() {
+            if let Some(&ControlFlowTarget::Resolved(ref bb)) = func.cfg().node_weight(v) {
                 bb.execute(
                     |i| {
                         if let Lvalue::Variable { subscript, .. } = i.assignee {
@@ -1039,5 +1046,161 @@ mod tests {
                 unreachable!()
             }
         }
+    }
+
+    #[test]
+    fn dom_pet() {
+        let mut g = Graph::<usize, ()>::new();
+        let v1 = g.add_node(1);
+        let v2 = g.add_node(2);
+        let v3 = g.add_node(3);
+        let v4 = g.add_node(4);
+        let v5 = g.add_node(5);
+        let v6 = g.add_node(6);
+
+        g.add_edge(v1, v2, ());
+        g.add_edge(v2, v3, ());
+        g.add_edge(v2, v4, ());
+        g.add_edge(v2, v6, ());
+        g.add_edge(v3, v5, ());
+        g.add_edge(v4, v5, ());
+        g.add_edge(v5, v2, ());
+
+        let dom = dominators::simple_fast(&g, v1);
+        assert_eq!(dom.dominators(v1).unwrap().collect::<Vec<_>>(), vec![v1]);
+        assert_eq!(dom.dominators(v2).unwrap().collect::<Vec<_>>(), vec![v2,v1]);
+        assert_eq!(dom.dominators(v3).unwrap().collect::<Vec<_>>(), vec![v3,v2,v1]);
+        assert_eq!(dom.dominators(v4).unwrap().collect::<Vec<_>>(), vec![v4,v2,v1]);
+        assert_eq!(dom.dominators(v5).unwrap().collect::<Vec<_>>(), vec![v5,v2,v1]);
+        assert_eq!(dom.dominators(v6).unwrap().collect::<Vec<_>>(), vec![v6,v2,v1]);
+
+    }
+
+    #[test]
+    fn issue_5() {
+        let mut g = Graph::<usize, ()>::new();
+
+        let v0 = g.add_node(0);
+        let v1 = g.add_node(1);
+        let v2 = g.add_node(2);
+        let v3 = g.add_node(3);
+        let v4 = g.add_node(4);
+        let v5 = g.add_node(5);
+        let v6 = g.add_node(6);
+        let v7 = g.add_node(7);
+        let v8 = g.add_node(8);
+        let v9 = g.add_node(9);
+        let v10 = g.add_node(10);
+        let v11 = g.add_node(11);
+
+        g.add_edge( v0,  v2, ());
+        g.add_edge( v6,  v7, ());
+        g.add_edge( v4,  v3, ());
+        g.add_edge( v1,  v9, ());
+        g.add_edge( v5,  v7, ());
+        g.add_edge( v3,  v4, ());
+        g.add_edge( v10,  v11, ());
+        g.add_edge( v9,  v0, ());
+        g.add_edge( v7,  v6, ());
+        g.add_edge( v2,  v4, ());
+        g.add_edge( v11,  v11, ());
+        g.add_edge( v4,  v5, ());
+        g.add_edge( v8,  v10, ());
+        g.add_edge( v7,  v8, ());
+
+        let _doms = dominators::simple_fast(&g, v1);
+        // not sure what this issue was testing exactly
+        //assert_eq!(doms.count(), 12);
+    }
+
+    #[test]
+    fn immediate_dom_pet() {
+        let mut g = Graph::<usize, ()>::new();
+        let v1 = g.add_node(1);
+        let v2 = g.add_node(2);
+        let v3 = g.add_node(3);
+        let v4 = g.add_node(4);
+        let v5 = g.add_node(5);
+        let v6 = g.add_node(6);
+
+        g.add_edge(v6, v5, ());
+        g.add_edge(v6, v4, ());
+        g.add_edge(v5, v1, ());
+        g.add_edge(v4, v2, ());
+        g.add_edge(v4, v3, ());
+        g.add_edge(v3, v2, ());
+        g.add_edge(v2, v3, ());
+        g.add_edge(v1, v2, ());
+        g.add_edge(v2, v1, ());
+
+        let dom = dominators::simple_fast(&g, v6);
+
+        println!("Before 1");
+        assert_eq!(dom.immediate_dominator(v1).unwrap(), v6);
+        println!("Before 2");
+        assert_eq!(dom.immediate_dominator(v2).unwrap(), v6);
+        println!("Before 3");
+        assert_eq!(dom.immediate_dominator(v3).unwrap(), v6);
+        println!("Before 4");
+        assert_eq!(dom.immediate_dominator(v4).unwrap(), v6);
+        println!("Before 5");
+        assert_eq!(dom.immediate_dominator(v5).unwrap(), v6);
+        println!("Before 6");
+        // this is change/regression from old behavior but is technically correct now
+        assert_eq!(dom.immediate_dominator(v6), None);
+
+        let mut g2 = Graph::<usize, ()>::new();
+        let v7 = g2.add_node(7);
+        g2.add_edge(v7, v7, ());
+        let doms = dominators::simple_fast(&g2, v7);
+        let idom = doms.immediate_dominator(v7);
+
+        assert_eq!(None, idom);
+    }
+
+    #[test]
+    fn dominance_frontiers_pet () {
+        let mut g = Graph::<usize, ()>::new();
+        let a = g.add_node(0);
+        let b = g.add_node(1);
+        let c = g.add_node(2);
+        let d = g.add_node(3);
+        let e = g.add_node(4);
+        let f = g.add_node(5);
+
+        g.add_edge(a, b, ());
+        g.add_edge(b, c, ());
+        g.add_edge(b, d, ());
+        g.add_edge(c, e, ());
+        g.add_edge(d, e, ());
+        g.add_edge(e, f, ());
+        g.add_edge(a, f, ());
+
+        let dom = dominators::simple_fast(&g, a);
+
+        //assert_eq!(dom.len(), 6);
+        println!("Before 1");
+        assert_eq!(dom.immediate_dominator(a), None);
+        println!("Before 2");
+        assert_eq!(dom.immediate_dominator(b).unwrap(), a);
+        println!("Before 3");
+        assert_eq!(dom.immediate_dominator(c).unwrap(), b);
+        println!("Before 4");
+        assert_eq!(dom.immediate_dominator(d).unwrap(), b);
+        println!("Before 5");
+        assert_eq!(dom.immediate_dominator(e).unwrap(), b);
+        println!("Before 6");
+        assert_eq!(dom.immediate_dominator(f).unwrap(), a);
+
+
+        let fron = dom.dominance_frontiers(&g);
+
+        assert_eq!(fron.len(), 6);
+        assert_eq!(fron[&a], vec![]);
+        assert_eq!(fron[&b], vec![f]);
+        assert_eq!(fron[&c], vec![e]);
+        assert_eq!(fron[&d], vec![e]);
+        assert_eq!(fron[&e], vec![f]);
+        assert_eq!(fron[&f], vec![]);
     }
 }

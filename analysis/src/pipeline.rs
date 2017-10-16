@@ -19,7 +19,7 @@
 use futures::{Future, Sink, Stream, stream};
 use futures::sync::mpsc;
 use panopticon_core::{Architecture, CallTarget, Error, Fun, Function, Program, Result, Region, Rvalue};
-use panopticon_data_flow::SSAFunction;
+use panopticon_data_flow::DataFlow;
 use std::collections::HashSet;
 use std::fmt::Debug;
 use std::thread;
@@ -28,7 +28,7 @@ use uuid::Uuid;
 use std::result;
 use parking_lot::{Mutex, RwLock};
 
-pub fn analyze<A: Architecture + Debug + Sync + 'static, Function: Fun + SSAFunction>(
+pub fn analyze<A: Architecture + Debug + Sync + 'static, Function: Fun>(
     program: Program<Function>,
     region: Region,
     config: A::Configuration,
@@ -72,11 +72,10 @@ where
         attempts.upsert(entry,
                         || {
                             match Function::with_uuid::<A>(entry, &uuid, &region, name.clone(), config.clone()) {
-                                Ok(mut f) => {
+                                Ok(f) => {
                                     for address in f.collect_call_addresses() {
                                         targets.upsert(address, || { true }, |_| ());
                                     }
-                                    //f.ssa_conversion()?;
                                     {
                                         let mut program = program.lock();
                                         let _ = program.insert(f);
@@ -109,11 +108,10 @@ where
         targets.into_par_iter().for_each(| address | {
             attempts.upsert(address, || {
                 match Function::new::<A>(address, &region, None, config.clone()) {
-                    Ok(mut f) => {
+                    Ok(f) => {
                         for address in f.collect_call_addresses() {
                             new_targets.upsert(address, || { true }, |_| ());
                         }
-                        //f.ssa_conversion()?;
                         {
                             let mut program = program.lock();
                             let _ = program.insert(f);
