@@ -133,6 +133,26 @@ impl DataFlow for Function {
     }
 }
 
+impl DataFlow for panopticon_core::neo::Function {
+    fn ssa_conversion(&mut self) -> Result<()> {
+        Ok(())
+    }
+    fn entry_point_mut(&mut self) -> &mut BasicBlock {
+        unimplemented!()
+    }
+    fn entry_point_ref(&self) -> ControlFlowRef {
+        unimplemented!()
+    }
+
+    fn cfg(&self) -> &Graph<ControlFlowTarget, Guard> {
+        unimplemented!()
+    }
+
+    fn cfg_mut(&mut self) -> &mut Graph<ControlFlowTarget, Guard> {
+        unimplemented!()
+    }
+}
+
 mod liveness;
 mod ssa;
 

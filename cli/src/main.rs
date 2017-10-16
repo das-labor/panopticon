@@ -234,8 +234,8 @@ fn run(args: Args) -> Result<()> {
     let writer = BufferWriter::stdout(cc);
     let mut fmt = writer.buffer();
     if args.neo {
-//        let program = disassemble::<neo::Function>(&args.binary)?;
-//        app_logic(&mut fmt, program, args)?;
+       let program = disassemble::<neo::Function>(&args.binary)?;
+       app_logic(&mut fmt, program, args)?;
     } else {
         let program = disassemble::<Function>(&args.binary)?;
         app_logic(&mut fmt, program, args)?;
