@@ -1,15 +1,59 @@
 use std::io::{Write,Cursor,Read};
 use std::ops::{Range};
+use std::collections::HashMap;
 use leb128;
 use uuid::Uuid;
 use neo::il::{Statement,Endianess,CallTarget,Operation};
 use neo::value::{Constant,Variable,Value};
 use neo::{Str,Result};
 
+#[derive(Debug,Clone)]
+struct Strings {
+    keys: HashMap<Str,usize>,
+    strings: Vec<Str>,
+}
+
+impl Strings {
+    pub fn with_capacity(cap: usize) -> Strings {
+        Strings{
+            keys: HashMap::with_capacity(cap),
+            strings: Vec::with_capacity(cap),
+        }
+    }
+
+    pub fn insert(&mut self, s: Str) -> usize {
+        if let Some(i) = self.keys.get(&s).cloned() {
+            i
+        } else {
+            let i = self.strings.len();
+            self.keys.insert(s.clone(),i);
+            self.strings.push(s);
+            i
+        }
+    }
+
+    pub fn get(&self, i: usize) -> Str {
+        self.strings[i].clone()
+    }
+
+    pub fn len(&self) -> usize {
+        self.strings.len()
+    }
+}
+
+impl Default for Strings {
+    fn default() -> Strings {
+        Strings{
+            keys: HashMap::default(),
+            strings: Vec::default(),
+        }
+    }
+}
+
 #[derive(Clone,Debug)]
 pub struct Bitcode {
     data: Vec<u8>,
-    strings: Vec<Str>,
+    strings: Strings,
 }
 // const: <len, pow2><leb128 value>
 // var: <name, leb128 str idx>, <subscript, leb128 + 1>, <offset, leb128>, <len, pow2><leb128 value>
@@ -160,14 +204,14 @@ macro_rules! encoding_rule {
 impl Default for Bitcode {
     fn default() -> Bitcode {
         Bitcode{
-            strings: Vec::new(),
+            strings: Strings::default(),
             data: Vec::new(),
         }
     }
 }
 
 impl Bitcode {
-    pub fn append<I: IntoIterator<Item=Statement> + Sized>(&mut self, i: I) -> Result<Range<usize>> {
+    pub fn append<I: IntoIterator<Item=Statement<Value>> + Sized>(&mut self, i: I) -> Result<Range<usize>> {
         let mut buf = Cursor::new(Vec::new());
         let start = self.data.len();
 
@@ -179,8 +223,8 @@ impl Bitcode {
         Ok(start..self.data.len())
     }
 
-    pub fn new(v: Vec<Statement>) -> Result<Bitcode> {
-        let mut strtbl = Vec::<Str>::new();
+    pub fn new(v: Vec<Statement<Value>>) -> Result<Bitcode> {
+        let mut strtbl = Strings::default();
         let mut buf = Cursor::new(Vec::new());
 
         for stmt in v {
@@ -192,12 +236,12 @@ impl Bitcode {
 
     pub fn with_capacity(bytes: usize, strs: usize) -> Bitcode {
         Bitcode{
-            strings: Vec::with_capacity(strs),
+            strings: Strings::with_capacity(strs),
             data: Vec::with_capacity(bytes),
         }
     }
 
-    fn encode_statement<W: Write>(stmt: Statement, data: &mut W, strtbl: &mut Vec<Str>) -> Result<()> {
+    fn encode_statement<W: Write>(stmt: Statement<Value>, data: &mut W, strtbl: &mut Strings) -> Result<()> {
         use neo::il::Operation::*;
         use neo::value::Value::*;
 
@@ -680,7 +724,7 @@ impl Bitcode {
     }
 
     // var: <name, leb128 str idx>, <subscript, leb128 + 1>, <len, pow2>
-    fn encode_variable<W: Write>(c: Variable, data: &mut W, strtbl: &mut Vec<Str>) -> Result<()> {
+    fn encode_variable<W: Write>(c: Variable, data: &mut W, strtbl: &mut Strings) -> Result<()> {
         let Variable{ name, subscript, bits } = c;
         leb128::write::unsigned(data,Self::encode_str(name,strtbl))?;
         leb128::write::unsigned(data,if let Some(subscript) = subscript { subscript as u64 + 1 } else { 0 })?;
@@ -688,16 +732,11 @@ impl Bitcode {
         Ok(())
     }
 
-    fn encode_str(s: Str, strtbl: &mut Vec<Str>) -> u64 {
-        if let Some(pos) = strtbl.iter().position(|x| *x == s) {
-            pos as u64
-        } else {
-            strtbl.push(s);
-            strtbl.len() as u64 - 1
-        }
+    fn encode_str(s: Str, strtbl: &mut Strings) -> u64 {
+        strtbl.insert(s) as u64
     }
 
-    fn decode_statement<R: Read>(&self, data: &mut R) -> Result<Statement> {
+    fn decode_statement<R: Read>(&self, data: &mut R) -> Result<Statement<Value>> {
         let mut opcode = [0u8; 1];
         data.read_exact(&mut opcode)?;
 
@@ -877,7 +916,7 @@ impl Bitcode {
                 let sz = leb128::read::unsigned(data)? as usize;
                 let res = self.decode_variable(data)?;
                 let stmt = Statement::Expression{
-                    op: Operation::Initialize(self.strings[name].clone(),sz),
+                    op: Operation::Initialize(self.strings.get(name),sz),
                     result: res
                 };
 
@@ -919,7 +958,7 @@ impl Bitcode {
                 };
                 let res = self.decode_variable(data)?;
                 let stmt = Statement::Expression{
-                    op: Operation::Load(self.strings[reg].clone(),endianess,sz,val),
+                    op: Operation::Load(self.strings.get(reg),endianess,sz,val),
                     result: res
                 };
 
@@ -959,9 +998,9 @@ impl Bitcode {
                 let s = leb128::read::unsigned(data)? as usize;
                 let stmt = Statement::Call{
                     function: if opcode[0] & 1 == 0 {
-                        CallTarget::External(self.strings[s].clone())
+                        CallTarget::External(self.strings.get(s))
                     } else {
-                        let s = &self.strings[s];
+                        let s = &self.strings.get(s);
                         let uu = Uuid::parse_str(s)
                             .map_err(|_| format!("Internal error: invalid uuid '{}'",s))?;
                         CallTarget::Function(uu)
@@ -1000,7 +1039,7 @@ impl Bitcode {
                     Endianess::Big
                 };
                 let stmt = Statement::Store{
-                    region: self.strings[reg].clone(),
+                    region: self.strings.get(reg),
                     bytes: sz,
                     endianess: endianess,
                     address: addr,
@@ -1028,7 +1067,7 @@ impl Bitcode {
                 };
                 let res = self.decode_variable(data)?;
                 let stmt = Statement::Expression{
-                    op: Operation::Load(self.strings[reg].clone(),endianess,sz,Value::Undefined),
+                    op: Operation::Load(self.strings.get(reg),endianess,sz,Value::Undefined),
                     result: res
                 };
 
@@ -1099,7 +1138,7 @@ impl Bitcode {
         let subscript = leb128::read::unsigned(data)?;
         let bits = leb128::read::unsigned(data)?;
         let var = Variable{
-            name: self.strings[name as usize].clone(),
+            name: self.strings.get(name as usize),
             subscript: if subscript == 0 { None } else { Some(subscript as usize - 1)  },
             bits: bits as usize,
         };
@@ -1137,7 +1176,7 @@ pub struct BitcodeIter<'a> {
 }
 
 impl<'a> Iterator for BitcodeIter<'a> {
-    type Item = Statement;
+    type Item = Statement<Value>;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.bitcode.decode_statement(&mut self.cursor).ok()
@@ -1149,7 +1188,7 @@ mod tests {
     use super::*;
 
     quickcheck! {
-        fn round_trip(v: Vec<Statement>) -> bool {
+        fn round_trip(v: Vec<Statement<Value>>) -> bool {
             debug!("in: {:?}",v);
             match Bitcode::new(v.clone()) {
                 Ok(bt) => {

@@ -38,7 +38,6 @@ pub struct Mnemonic {
     pub opcode: Str,
     pub operands: Vec<Rvalue>,
     pub format_string: Vec<MnemonicFormatToken>,
-    pub statements: Range<usize>,
 }
 
 impl Mnemonic {
@@ -389,12 +388,144 @@ pub enum CfgNode {
     Value(Value),
 }
 
+pub enum Statements {
+    Compressed{
+        ranges: Vec<Range<u64>>,
+        bitcode: Bitcode,
+    }
+    Uncompressed{
+        ranges: Vec<Range<u64>>,
+        statements: Vec<Statement<Value>>,
+    }
+}
+
+impl Statements {
+    pub fn new(mnes: &Vec<(Mnemonic,Vec<Statements>)>) -> Statements {
+        let ranges = Vec::with_capacity(mnes.len());
+        let stmts = Vec::with_capacity(mnes.iter().map(|x| x.1.len()).sum());
+
+        for &(ref mne,ref s) in mnes.iter() {
+            let i = stmts.len();
+            stmts.extend(s.ite().cloned());
+            ranges.push(i..stmts.len());
+        }
+
+        Statements{
+            ranges: ranges,
+            statements: statements,
+        }
+    }
+
+    pub fn compress(&mut self) -> bool {
+        let new = match self {
+            &mut Statements::Uncompressed{ ranges: ref old_ranges, ref statements } => {
+                let mut bitcode = Bitcode::with_capacity(statements.len() * 10, 10);
+                let mut ranges = Vec::with_capacity(old_ranges.len());
+
+                for rgn in old_ranges.iter() {
+                    let new_rgn = bitcode.append(statements[rgn])?;
+                    ranges.push(new_rgn);
+                }
+
+                Statmements::Compressed{
+                    ranges: ranges,
+                    bitcode: bitcode,
+                }
+            }
+            &mut Statmements::Compressed{ .. } => {
+                return false;
+            }
+        };
+
+        *self = new;
+        true
+    }
+
+    pub fn uncompress(&mut self) -> bool {
+        let new = match self {
+            &mut Statements::Compressed{ ranges: ref old_ranges, ref bitcode } => {
+                let mut statmements = Vec::with_capacity(bitcode.num_bytes() / 10, 10);
+                let mut ranges = Vec::with_capacity(old_ranges.len());
+
+                for rgn in old_ranges.iter() {
+                    let i = statements.len();
+                    statements.extend(bitcode.iter_range(rgn));
+                    ranges.push(i..statements.len());
+                }
+
+                Statements::Uncompressed{
+                    ranges: ranges,
+                    statements: statements,
+                }
+            }
+            &mut Statmements::Uncompressed{ .. } => {
+                return false;
+            }
+        };
+
+        *self = new;
+        true
+    }
+
+    pub fn range_for(&self, mne: MnemonicIndex) -> Range<u64> {
+        match self {
+            Statements::Compressed{ ref ranges,.. } => ranges[mne.index()],
+            Statements::Uncompressed{ ref ranges,.. } => ranges[mne.index()],
+        }
+    }
+
+    pub fn iter_range<'a>(&'a self, rgn: &Range<u64>) -> StatementIter<'a> {
+        match self {
+            Statements::Compressed{ ref bitcode,.. } => {
+                StatementIter::Bitcode(bitcode.iter_range(rgn))
+            }
+            Statements::Uncompressed{ ref statements,.. } => {
+                StatementIter::Vector(statements[rgn].iter())
+            }
+        }
+    }
+}
+
+impl Default for Statements {
+    fn default() -> Self {
+        Statements::Uncompressed{
+            ranges: Vec::new(),
+            statements: Vec::new(),
+        }
+    }
+}
+
+enum StatementIter<'a> {
+    Bitcode(BitcodeIter<'a>),
+    Vector(Iter<'a,Statement>).
+}
+
+impl<'a> Iterator<'a> for StatementIter<'a> {
+    type Item = &'a Statement;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self {
+            &mut StatementIter::Bitcode(ref mut i) => i.next(),
+            &mut StatementIter::Vector(ref mut i) => i.next(),
+        }
+    }
+}
+
+impl<'a> ExactSizeIterator for StatementIter<'a> {
+    fn len(&self) -> usize {
+        match self {
+            &StatementIter::Bitcode(ref i) => i.len(),
+            &StatementIter::Vector(ref i) => i.len(),
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct Function {
     pub name: Str,
     uuid: Uuid,
     // sort by rev. post order
-    bitcode: Bitcode,
+    statements: Statements,
     // sort by rev. post order
     basic_blocks: Vec<BasicBlock>,
     // sort by area.start
@@ -485,7 +616,7 @@ impl Function {
         let mut func = Function{
             name: name.unwrap_or(format!("func_{:x}", start).into()),
             uuid: Uuid::new_v4(),
-            bitcode: Bitcode::default(),
+            statements: Statements::default(),
             basic_blocks: Vec::new(),
             mnemonics: Vec::new(),
             cflow_graph: Graph::new(),
@@ -504,8 +635,9 @@ impl Function {
     where A: Debug, A::Configuration: Debug {
         use petgraph::visit::EdgeRef;
 
-        let mut mnemonics = self.mnemonics.iter().map(|mne| {
-            let stmts = self.bitcode.iter_range(mne.statements.clone()).collect::<Vec<_>>();
+        let mut mnemonics = self.mnemonics.iter().enumerate().map(|(idx,mne)| {
+            let rgn = self.statements.range_for(MnemonicIndex::new(idx));
+            let stmts = self.statements.iter_range(rgn).collect::<Vec<_>>();
             (mne.clone(),stmts)
         }).collect::<Vec<_>>();
         let mut by_source = HashMap::new();
@@ -593,7 +725,7 @@ impl Function {
     // iters
     pub fn statements<Idx: IntoStatementRange + Sized>(&self, rgn: Idx) -> BitcodeIter {
         let rgn = rgn.into_statement_range(self);
-        self.bitcode.iter_range(rgn)
+        self.statements.iter_range(rgn)
     }
 
     // aux
@@ -628,53 +760,10 @@ impl Function {
 
         false
     }
-
-    pub fn rewrite<F>(&mut self, f: F) -> Result<()> where F: FnOnce(&mut [Vec<(Mnemonic,Vec<Statement>)>]) -> Result<()> {
-        let mut blocks: Vec<Vec<(Mnemonic,Vec<Statement>)>> = self.basic_blocks.iter().map(|bb| {
-            self.mnemonics(bb.mnemonics.clone()).map(|(_,mne)| {
-                (mne.clone(),self.statements(mne.statements.clone()).collect())
-            }).collect()
-        }).collect();
-
-        f(blocks.as_mut_slice())?;
-
-        let mut bitcode = Bitcode::with_capacity(self.bitcode.num_bytes(),self.bitcode.num_strings());
-        let mne_cnt = blocks.iter().map(|x| x.len()).sum();
-        let mut mnemonics = Vec::with_capacity(mne_cnt);
-        let mut new_mne_ranges = Vec::with_capacity(blocks.len());
-
-        for (bb_idx,mnes) in blocks.into_iter().enumerate() {
-            let fst_mne = mnemonics.len();
-            let mut prev_addr = None;
-
-            for (mut mne,stmts) in mnes.into_iter() {
-                if let Some(s) = prev_addr {
-                    if s != mne.area.start {
-                        return Err(format!("Non-continuous basic block #{}: gap between {:#x} and {:#x}",bb_idx,s,mne.area.start).into());
-                    }
-                }
-
-                prev_addr = Some(mne.area.end);
-                mne.statements = bitcode.append(stmts.into_iter())?;
-                mnemonics.push(mne);
-            }
-
-            new_mne_ranges.push(fst_mne..mnemonics.len());
-        }
-
-        for (idx,rgn) in new_mne_ranges.into_iter().enumerate() {
-            self.basic_blocks[idx].mnemonics = MnemonicIndex::new(rgn.start)..MnemonicIndex::new(rgn.end);
-        }
-
-        self.mnemonics = mnemonics;
-        self.bitcode = bitcode;
-
-        Ok(())
-    }
 }
 
 fn disassemble<A: Architecture>(init: A::Configuration, starts: Vec<u64>, region: &Region,
-                                mnemonics: &mut Vec<(Mnemonic,Vec<Statement>)>,
+                                mnemonics: &mut Vec<(Mnemonic,Vec<Statement<Value>>)>,
                                 by_source: &mut HashMap<u64,Vec<(Value,Guard)>>,
                                 by_destination: &mut HashMap<u64,Vec<(Value,Guard)>>) -> Result<()>
 {
@@ -750,7 +839,7 @@ fn disassemble<A: Architecture>(init: A::Configuration, starts: Vec<u64>, region
     Ok(())
 }
 
-fn assemble_function(function: &mut Function, entry: u64, mut mnemonics: Vec<(Mnemonic,Vec<Statement>)>,
+fn assemble_function(function: &mut Function, entry: u64, mut mnemonics: Vec<(Mnemonic,Vec<Statement<Value>>)>,
                      by_source: HashMap<u64,Vec<(Value,Guard)>>,
                      by_destination: HashMap<u64,Vec<(Value,Guard)>>) -> Result<()> {
 
@@ -882,7 +971,7 @@ fn is_basic_block_boundary(a: &Mnemonic, b: &Mnemonic, entry: u64,
     new_bb
 }
 
-fn to_statement(stmt: &core::Statement) -> Statement {
+fn to_statement(stmt: &core::Statement) -> Statement<Value> {
     match stmt {
         &core::Statement{ op: core::Operation::Add(ref a,ref b), assignee: Lvalue::Variable{ ref name, ref subscript, size } } => {
             Statement::Expression{ op: Operation::Add(a.clone().into(),b.clone().into()), result: Variable::new(name.clone(),size,subscript.clone()).unwrap() }

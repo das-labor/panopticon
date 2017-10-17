@@ -2,7 +2,7 @@ use std::fmt::Debug;
 use uuid::Uuid;
 use smallvec::SmallVec;
 
-use neo::value::{Value,Variable};
+use neo::value::Variable;
 use neo::Str;
 
 #[derive(Debug,Clone,Copy,PartialEq,Eq)]
@@ -13,9 +13,7 @@ pub enum Endianess {
 
 /// A RREIL operation.
 #[derive(Clone,PartialEq,Eq,Debug)]
-pub enum Operation<V>
-    where V: Clone + PartialEq + Eq + Debug
-{
+pub enum Operation<V> where V: Clone + PartialEq + Eq + Debug {
     /// Integer addition
     Add(V, V),
     /// Integer subtraction
@@ -165,13 +163,13 @@ pub enum CallTarget {
 }
 
 #[derive(Clone,PartialEq,Eq,Debug)]
-pub enum Statement {
+pub enum Statement<V> where V: Clone + PartialEq + Eq + Debug {
     /// A single RREIL statement.
     Expression{
         /// Value that the operation result is assigned to
         result: Variable,
         /// Operation and its arguments
-        op: Operation<Value>,
+        op: Operation<V>,
     },
     /// Function call
     Call{
@@ -179,7 +177,7 @@ pub enum Statement {
     },
     IndirectCall{
         /// Call target
-        target: Value,
+        target: V,
     },
     Return,
     /// Writes a memory cell
@@ -187,8 +185,8 @@ pub enum Statement {
         region: Str,
         endianess: Endianess,
         bytes: usize,
-        address: Value,
-        value: Value,
+        address: V,
+        value: V,
     }
 }
 

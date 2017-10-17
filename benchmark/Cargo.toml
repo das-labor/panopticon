@@ -11,5 +11,6 @@ petgraph = { version = "0.4.10", features = ["serde-1"], git = "https://github.c
 bencher = "0.1.4"
 
 [[bench]]
-name = "main"
+name = "panopticon_benchmark"
 harness = false
+path = "benches/main.rs"
