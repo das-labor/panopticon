@@ -1,7 +1,7 @@
 use neo::{Result,Str};
 use {Rvalue,Lvalue};
 
-#[derive(Clone,PartialEq,Eq,Debug)]
+#[derive(Clone,PartialEq,Eq,Debug,Hash)]
 pub struct Variable {
     pub name: Str,
     pub bits: usize,

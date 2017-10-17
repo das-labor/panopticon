@@ -11,5 +11,5 @@ panopticon-graph-algos = { path = "../graph-algos" }
 bencher = "0.1.4"
 
 [[bench]]
-name = "main"
+name = "panopticon_benchmark"
 harness = false

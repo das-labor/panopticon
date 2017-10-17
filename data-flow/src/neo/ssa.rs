@@ -64,7 +64,7 @@ fn dominance_frontiers(func: &Function, doms: &Dominators<NodeIndex>) -> Result<
     Ok(ret)
 }
 
-fn fix_uninitialized_variables(basic_block: &mut Vec<(Mnemonic,Vec<Statement>)>, uninit: BitSet, variables: &Vec<Variable>) {
+fn fix_uninitialized_variables(basic_block: &mut Vec<(Mnemonic,Vec<Statement<Value>>)>, uninit: BitSet, variables: &Vec<Variable>) {
     basic_block.retain(|&(ref mne,_)| mne.opcode != "__init");
 
     let start = basic_block[0].0.area.start;
@@ -130,7 +130,7 @@ enum DomTreeEvent {
     Leave(BasicBlockIndex),
 }
 
-fn insert_phi_operations(basic_blocks: &mut [Vec<(Mnemonic,Vec<Statement>)>], phis: Vec<BitSet>,
+fn insert_phi_operations(basic_blocks: &mut [Vec<(Mnemonic,Vec<Statement<Value>>)>], phis: Vec<BitSet>,
                          dom_events: &Vec<DomTreeEvent>, variables: &Vec<Variable>) -> Result<()> {
     // Remove all Phi functions
     for (bb_idx,vars) in phis.iter().enumerate() {
@@ -172,7 +172,7 @@ fn insert_phi_operations(basic_blocks: &mut [Vec<(Mnemonic,Vec<Statement>)>], ph
     Ok(())
 }
 
-fn assign_subscripts(basic_blocks: &mut [Vec<(Mnemonic,Vec<Statement>)>],
+fn assign_subscripts(basic_blocks: &mut [Vec<(Mnemonic,Vec<Statement<Value>>)>],
                      dom_events: Vec<DomTreeEvent>, variables: &Vec<Variable>) -> Result<()> {
     let find_variable = |v: &Variable| -> Result<usize> {
         variables.iter()
