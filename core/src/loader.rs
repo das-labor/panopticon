@@ -19,11 +19,10 @@
 //! Loader for 32 and 64-bit ELF, PE, and Mach-o files.
 
 
-use {Bound, CallTarget, Layer, Program, Project, Region, Result, Rvalue};
+use {Bound, CallTarget, Layer, Fun, Program, Project, Region, Result, Rvalue};
 use goblin::{self, Hint, archive, elf, mach, pe};
 use goblin::elf::program_header;
 
-use panopticon_graph_algos::MutableGraphTrait;
 use std::fs::File;
 use std::io::{Cursor, Read, Seek, SeekFrom};
 use std::path::Path;
@@ -42,7 +41,7 @@ pub enum Machine {
 
 /// Parses a non-fat Mach-o binary from `bytes` at `offset` and creates a `Project` from it. Returns the `Project` instance and
 /// the CPU its intended for.
-pub fn load_mach(bytes: &[u8], offset: usize, name: String) -> Result<(Project, Machine)> {
+pub fn load_mach<F: Fun>(bytes: &[u8], offset: usize, name: String) -> Result<(Project<F>, Machine)> {
     let binary = mach::MachO::parse(&bytes, offset)?;
     debug!("mach: {:#?}", &binary);
     let mut base = 0x0;
@@ -110,14 +109,14 @@ pub fn load_mach(bytes: &[u8], offset: usize, name: String) -> Result<(Project, 
     let entry = binary.entry;
 
     if entry != 0 {
-        prog.call_graph.add_vertex(CallTarget::Todo(Rvalue::new_u64(entry as u64), Some(name), Uuid::new_v4()));
+        prog.call_graph.add_node(CallTarget::Todo(Rvalue::new_u64(entry as u64), Some(name), Uuid::new_v4()));
     }
 
     for export in binary.exports()? {
         if export.offset != 0 {
             debug!("adding: {:?}", &export);
             prog.call_graph
-                .add_vertex(
+                .add_node(
                     CallTarget::Todo(
                         Rvalue::new_u64(export.offset as u64 + base),
                         Some(export.name),
@@ -142,7 +141,7 @@ pub fn load_mach(bytes: &[u8], offset: usize, name: String) -> Result<(Project, 
 
 /// Parses an ELF 32/64-bit binary from `bytes` and creates a `Project` from it. Returns the `Project` instance and
 /// the CPU its intended for.
-fn load_elf(bytes: &[u8], name: String) -> Result<(Project, Machine)> {
+fn load_elf<F: Fun>(bytes: &[u8], name: String) -> Result<(Project<F>, Machine)> {
     use std::collections::HashSet;
 
     let mut cursor = Cursor::new(&bytes);
@@ -199,22 +198,22 @@ fn load_elf(bytes: &[u8], name: String) -> Result<(Project, Machine)> {
     let mut prog = Program::new("prog0");
     let mut proj = Project::new(name.clone(), reg);
 
-    prog.call_graph.add_vertex(CallTarget::Todo(Rvalue::new_u64(entry as u64), Some(name), Uuid::new_v4()));
+    prog.call_graph.add_node(CallTarget::Todo(Rvalue::new_u64(entry as u64), Some(name), Uuid::new_v4()));
 
-    let add_sym = |prog: &mut Program, sym: &elf::Sym, name: &str| {
+    let add_sym = |prog: &mut Program<F>, sym: &elf::Sym, name: &str| {
         let name = name.to_string();
         let addr = sym.st_value;
         debug!("Symbol: {} @ 0x{:x}: {:?}", name, addr, sym);
         if sym.is_function() {
             if sym.is_import() {
-                prog.call_graph.add_vertex(CallTarget::Symbolic(name, Uuid::new_v4()));
+                prog.call_graph.add_node(CallTarget::Symbolic(name, Uuid::new_v4()));
             } else {
-                prog.call_graph.add_vertex(CallTarget::Todo(Rvalue::new_u64(addr), Some(name), Uuid::new_v4()));
+                prog.call_graph.add_node(CallTarget::Todo(Rvalue::new_u64(addr), Some(name), Uuid::new_v4()));
             }
         }
     };
 
-    let resolve_import_address = |proj: &mut Project, relocs: &[elf::Reloc], name: &str| {
+    let resolve_import_address = |proj: &mut Project<F>, relocs: &[elf::Reloc], name: &str| {
         for reloc in relocs {
             let pltsym = &binary.dynsyms[reloc.r_sym];
             let pltname = &binary.dynstrtab[pltsym.st_name];
@@ -263,7 +262,7 @@ fn load_elf(bytes: &[u8], name: String) -> Result<(Project, Machine)> {
 }
 
 /// Parses a PE32/PE32+ file from `bytes` and create a project from it.
-fn load_pe(bytes: &[u8], name: String) -> Result<(Project, Machine)> {
+fn load_pe<F: Fun>(bytes: &[u8], name: String) -> Result<(Project<F>, Machine)> {
     let pe = pe::PE::parse(&bytes)?;
     debug!("pe: {:#?}", &pe);
     let image_base = pe.image_base as u64;
@@ -309,7 +308,7 @@ fn load_pe(bytes: &[u8], name: String) -> Result<(Project, Machine)> {
     let mut proj = Project::new(name.to_string(), ram);
 
     prog.call_graph
-        .add_vertex(
+        .add_node(
             CallTarget::Todo(
                 Rvalue::new_u64(entry),
                 Some(name.to_string()),
@@ -320,7 +319,7 @@ fn load_pe(bytes: &[u8], name: String) -> Result<(Project, Machine)> {
     for export in pe.exports {
         debug!("adding export: {:?}", &export);
         prog.call_graph
-            .add_vertex(
+            .add_node(
                 CallTarget::Todo(
                     Rvalue::new_u64(export.rva as u64 + image_base),
                     Some(export.name.to_string()),
@@ -335,7 +334,7 @@ fn load_pe(bytes: &[u8], name: String) -> Result<(Project, Machine)> {
             &import,
             import.rva + pe.image_base
         );
-        prog.call_graph.add_vertex(CallTarget::Symbolic(import.name.into_owned(), Uuid::new_v4()));
+        prog.call_graph.add_node(CallTarget::Symbolic(import.name.into_owned(), Uuid::new_v4()));
     }
 
     proj.comments.insert(("base".to_string(), entry), "main".to_string());
@@ -345,7 +344,7 @@ fn load_pe(bytes: &[u8], name: String) -> Result<(Project, Machine)> {
 
 /// Load an ELF or PE file from disk and creates a `Project` from it. Returns the `Project` instance and
 /// the CPU its intended for.
-pub fn load(path: &Path) -> Result<(Project, Machine)> {
+pub fn load<F: Fun>(path: &Path) -> Result<(Project<F>, Machine)> {
     let name = path.file_name().map(|x| x.to_string_lossy().to_string()).unwrap_or("(encoding error)".to_string());
     let mut fd = File::open(path)?;
     let peek = goblin::peek(&mut fd)?;

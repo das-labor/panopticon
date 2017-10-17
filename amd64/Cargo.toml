@@ -8,7 +8,7 @@ panopticon-core = { path = "../core" }
 log = "0.3.6"
 byteorder = "1"
 env_logger = "0.3"
-quickcheck = "0.3"
+quickcheck = "0.4"
 
 [dev-dependencies]
 regex = "0.1"

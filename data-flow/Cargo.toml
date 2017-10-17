@@ -5,9 +5,9 @@ authors = ["seu <seu@panopticon.re>"]
 
 [dependencies]
 bit-set = "0.4.0"
-petgraph = "0.4.9"
 env_logger = "0.3"
 log = "0.3.6"
 smallvec = "0.4.4"
+petgraph = { version = "0.4.10", features = ["serde-1"], git = "https://github.com/m4b/petgraph", branch = "dominance_frontiers" }
 panopticon-core = { path = "../core" }
 panopticon-graph-algos = { path = "../graph-algos" }

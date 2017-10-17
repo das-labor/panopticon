@@ -1,17 +1,15 @@
 use bencher::Bencher;
 use panopticon_amd64 as amd64;
-use panopticon_core::neo;
+use panopticon_data_flow::DataFlow;
 use panopticon_data_flow::neo::rewrite_to_ssa;
-use panopticon_data_flow::ssa_convertion;
 
 fn ssa_convertion_new(b: &mut Bencher) {
     use panopticon_core::{loader,neo,CallTarget,Rvalue};
-    use panopticon_graph_algos::{VertexListGraphTrait,GraphTrait};
     use std::path::Path;
 
-    let (proj,_) = loader::load(Path::new("../test-data/static")).unwrap();
-    let entries = proj.code[0].call_graph.vertices().filter_map(|vx| if let Some(&CallTarget::Todo(Rvalue::Constant{ value,.. },_,_)) = proj.code[0].call_graph.vertex_label(vx) { Some(value) } else { None }).collect::<Vec<_>>();
-    let reg = proj.data.dependencies.vertex_label(proj.data.root).unwrap();
+    let (proj,_) = loader::load::<neo::Function>(Path::new("../test-data/static")).unwrap();
+    let entries = proj.code[0].iter_callgraph().filter_map(|vx| if let &CallTarget::Todo(Rvalue::Constant{ value,.. },_,_) = vx { Some (value) } else { None }).collect::<Vec<_>>();
+    let reg = proj.region();
     let mut funcs = vec![];
 
     for &ep in entries.iter() {
@@ -28,12 +26,11 @@ fn ssa_convertion_new(b: &mut Bencher) {
 
 fn ssa_convertion_old(b: &mut Bencher) {
     use panopticon_core::{loader,Function,CallTarget,Rvalue};
-    use panopticon_graph_algos::{VertexListGraphTrait,GraphTrait};
     use std::path::Path;
 
-    let (proj,_) = loader::load(Path::new("../test-data/static")).unwrap();
-    let entries = proj.code[0].call_graph.vertices().filter_map(|vx| if let Some(&CallTarget::Todo(Rvalue::Constant{ value,.. },_,_)) = proj.code[0].call_graph.vertex_label(vx) { Some(value) } else { None }).collect::<Vec<_>>();
-    let reg = proj.data.dependencies.vertex_label(proj.data.root).unwrap();
+    let (proj,_) = loader::load::<Function>(Path::new("../test-data/static")).unwrap();
+    let entries = proj.code[0].iter_callgraph().filter_map(|vx| if let &CallTarget::Todo(Rvalue::Constant{ value,.. },_,_) = vx { Some (value) } else { None }).collect::<Vec<_>>();
+    let reg = proj.region();
     let mut funcs = vec![];
 
     for &ep in entries.iter() {
@@ -43,7 +40,12 @@ fn ssa_convertion_old(b: &mut Bencher) {
 
     b.bench_n(1,|b| {
         b.iter(|| {
-            for f in funcs.iter_mut() { ssa_convertion(f).unwrap(); }
+            // NB: this is broken right now for old functions using petgraph, unwrap() on None
+            // 11: <petgraph::algo::dominators::Dominators<N>>::dominance_frontiers
+            // at /home/m4b/.cargo/git/checkouts/petgraph-d1e6db80f82b1362/6ea8c94/src/algo/dominators.rs:112
+            // 12: panopticon_data_flow::ssa::phi_functions
+            //  at /home/m4b/projects/panopticon/data-flow/src/ssa.rs:151
+            for f in funcs.iter_mut() { f.ssa_conversion().unwrap(); }
         });
     });
 }

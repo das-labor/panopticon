@@ -65,7 +65,7 @@ pub struct Panopticon {
     pub unresolved_calls: MultiMap<Option<u64>, (Uuid, u64)>,
     pub resolved_calls: MultiMap<Uuid, (Uuid, u64)>, // callee -> caller
     pub region: Option<Region>,
-    pub project: Option<Project>,
+    pub project: Option<Project<Function>>,
 
     pub undo_stack: Vec<Action>,
     pub undo_stack_top: usize,
@@ -126,7 +126,7 @@ impl Panopticon {
 
     pub fn open_program(&mut self, path: String) -> Result<()> {
         use std::path::Path;
-        use panopticon_core::{CallTarget, Machine};
+        use panopticon_core::{Function, CallTarget, Machine};
         use panopticon_amd64 as amd64;
         use panopticon_avr as avr;
         use panopticon_analysis::pipeline;
@@ -135,7 +135,7 @@ impl Panopticon {
 
         debug!("open_program() path={}", path);
 
-        if let Ok(proj) = Project::open(&Path::new(&path)) {
+        if let Ok(proj) = <Project<Function>>::open(&Path::new(&path)) {
             if !proj.code.is_empty() {
                 {
                     let cg = &proj.code[0].call_graph;

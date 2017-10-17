@@ -788,7 +788,7 @@ impl Architecture for TestArch {
                         Ok(Rvalue::Constant{ value: (b - b'0') as u64, size: len })
                     }
                     _ => Err(format!("'{}' is nor a variable name neither a constant",b).into())
-                }
+                },
                 Some(None) => Err(format!("Undefined cell at {}",*entry - 1).into()),
                 None => Err(format!("Premature end while decoding rvalue at {}",*entry).into())
             }
@@ -803,7 +803,7 @@ impl Architecture for TestArch {
                         Ok(Lvalue::Variable{ name: format!("{}",char::from(b)).into(), size: len, subscript: None })
                     }
                     _ => Err(format!("'{}' is not a variable name",b).into())
-                }
+                },
                 Some(None) => Err(format!("Undefined cell at {}",*entry - 1).into()),
                 None => Err(format!("Premature end while decoding lvalue at {}",*entry).into())
             }
