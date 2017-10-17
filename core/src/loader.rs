@@ -23,7 +23,6 @@ use {Bound, CallTarget, Layer, Fun, Program, Project, Region, Result, Rvalue};
 use goblin::{self, Hint, archive, elf, mach, pe};
 use goblin::elf::program_header;
 
-use panopticon_graph_algos::MutableGraphTrait;
 use std::fs::File;
 use std::io::{Cursor, Read, Seek, SeekFrom};
 use std::path::Path;
@@ -110,14 +109,14 @@ pub fn load_mach<F: Fun>(bytes: &[u8], offset: usize, name: String) -> Result<(P
     let entry = binary.entry;
 
     if entry != 0 {
-        prog.call_graph.add_vertex(CallTarget::Todo(Rvalue::new_u64(entry as u64), Some(name), Uuid::new_v4()));
+        prog.call_graph.add_node(CallTarget::Todo(Rvalue::new_u64(entry as u64), Some(name), Uuid::new_v4()));
     }
 
     for export in binary.exports()? {
         if export.offset != 0 {
             debug!("adding: {:?}", &export);
             prog.call_graph
-                .add_vertex(
+                .add_node(
                     CallTarget::Todo(
                         Rvalue::new_u64(export.offset as u64 + base),
                         Some(export.name),
@@ -199,7 +198,7 @@ fn load_elf<F: Fun>(bytes: &[u8], name: String) -> Result<(Project<F>, Machine)>
     let mut prog = Program::new("prog0");
     let mut proj = Project::new(name.clone(), reg);
 
-    prog.call_graph.add_vertex(CallTarget::Todo(Rvalue::new_u64(entry as u64), Some(name), Uuid::new_v4()));
+    prog.call_graph.add_node(CallTarget::Todo(Rvalue::new_u64(entry as u64), Some(name), Uuid::new_v4()));
 
     let add_sym = |prog: &mut Program<F>, sym: &elf::Sym, name: &str| {
         let name = name.to_string();
@@ -207,9 +206,9 @@ fn load_elf<F: Fun>(bytes: &[u8], name: String) -> Result<(Project<F>, Machine)>
         debug!("Symbol: {} @ 0x{:x}: {:?}", name, addr, sym);
         if sym.is_function() {
             if sym.is_import() {
-                prog.call_graph.add_vertex(CallTarget::Symbolic(name, Uuid::new_v4()));
+                prog.call_graph.add_node(CallTarget::Symbolic(name, Uuid::new_v4()));
             } else {
-                prog.call_graph.add_vertex(CallTarget::Todo(Rvalue::new_u64(addr), Some(name), Uuid::new_v4()));
+                prog.call_graph.add_node(CallTarget::Todo(Rvalue::new_u64(addr), Some(name), Uuid::new_v4()));
             }
         }
     };
@@ -309,7 +308,7 @@ fn load_pe<F: Fun>(bytes: &[u8], name: String) -> Result<(Project<F>, Machine)> 
     let mut proj = Project::new(name.to_string(), ram);
 
     prog.call_graph
-        .add_vertex(
+        .add_node(
             CallTarget::Todo(
                 Rvalue::new_u64(entry),
                 Some(name.to_string()),
@@ -320,7 +319,7 @@ fn load_pe<F: Fun>(bytes: &[u8], name: String) -> Result<(Project<F>, Machine)> 
     for export in pe.exports {
         debug!("adding export: {:?}", &export);
         prog.call_graph
-            .add_vertex(
+            .add_node(
                 CallTarget::Todo(
                     Rvalue::new_u64(export.rva as u64 + image_base),
                     Some(export.name.to_string()),
@@ -335,7 +334,7 @@ fn load_pe<F: Fun>(bytes: &[u8], name: String) -> Result<(Project<F>, Machine)> 
             &import,
             import.rva + pe.image_base
         );
-        prog.call_graph.add_vertex(CallTarget::Symbolic(import.name.into_owned(), Uuid::new_v4()));
+        prog.call_graph.add_node(CallTarget::Symbolic(import.name.into_owned(), Uuid::new_v4()));
     }
 
     proj.comments.insert(("base".to_string(), entry), "main".to_string());

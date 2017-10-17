@@ -52,10 +52,9 @@ where
     info!("initializing first wave");
     let functions =
         program
-        .call_graph
-        .into_iter()
+        .iter_callgraph()
         .filter_map(
-            |ct| match ct {
+            |node| match node {
                 &CallTarget::Todo(Rvalue::Constant { value: entry, .. }, ref name, ref uuid) => {
                     Some(Init { entry, name: name.clone(), uuid: *uuid })
                 }
@@ -149,7 +148,7 @@ where
             let mut targets: Vec<u64> = Vec::new();
             let mut failures: Vec<(u64, Error)> = Vec::new();
             // TODO: this is the exact code below, modulo how we construct the function
-            for ct in program.call_graph.into_iter() {
+            for ct in program.iter_callgraph() {
                 match ct {
                     &CallTarget::Todo(Rvalue::Constant { value: entry, .. }, ref maybe_name, ref uuid) => {
                         finished_functions.insert(entry);
@@ -159,7 +158,7 @@ where
                                 targets.extend_from_slice(&addresses);
                                 let _ = f.ssa_conversion();
                                 let tx = tx.clone();
-                                tx.send_all(stream::iter(vec![Ok(f)])).wait().unwrap().0;
+                                tx.send_all(stream::iter_ok(vec![f])).wait().unwrap().0;
                             },
                             Err(e) => { failures.push((entry, e)); },
                         }
@@ -183,7 +182,7 @@ where
                                 let _ = f.ssa_conversion();
                                 {
                                     let tx = tx.clone();
-                                    tx.send_all(stream::iter(vec![Ok(f)])).wait().unwrap().0;
+                                    tx.send_all(stream::iter_ok(vec![f])).wait().unwrap().0;
                                 }
                             },
                             Err(e) => failures.push((address, e)),

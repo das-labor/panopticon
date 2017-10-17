@@ -7,7 +7,7 @@ authors = ["seu <seu@panopticon.re>"]
 panopticon-core = { path = "../core" }
 panopticon-data-flow = { path = "../data-flow" }
 panopticon-amd64 = { path = "../amd64" }
-panopticon-graph-algos = { path = "../graph-algos" }
+petgraph = { version = "0.4.10", features = ["serde-1"], git = "https://github.com/m4b/petgraph", branch = "dominance_frontiers" }
 bencher = "0.1.4"
 
 [[bench]]

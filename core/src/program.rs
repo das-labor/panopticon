@@ -28,22 +28,26 @@
 //! function fails, it will still be added to the call graph. The function will only have a single
 //! error node.
 
+use std::collections::HashMap;
 
 use {Fun, Statement, Operation, Rvalue};
-use panopticon_graph_algos::{AdjacencyList, AdjacencyMatrixGraphTrait, GraphTrait, MutableGraphTrait, VertexListGraphTrait};
-use panopticon_graph_algos::adjacency_list::{AdjacencyListVertexDescriptor, VertexLabelIterator, VertexLabelMutIterator};
 use uuid::Uuid;
+use petgraph::visit::{IntoNodeReferences};
+// use stable when API is at parity with Graph
+//use petgraph::stable_graph::{NodeIndex, StableGraph};
+use petgraph::graph::{NodeIndex, Graph};
 
 /// An iterator over every Function in this Program
 pub struct FunctionIterator<'a, F: 'a> {
-    iter: VertexLabelIterator<'a, CallGraphRef, CallTarget<F>>
+    iter: Box<Iterator<Item = &'a CallTarget<F>> + 'a>
 }
 
 impl<'a, F> FunctionIterator<'a, F> {
     /// Create a new function iterator from the `cfg`
     pub fn new(cfg: &'a CallGraph<F>) -> Self {
+        let iter = Box::new(cfg.node_indices().filter_map(move |idx| cfg.node_weight(idx)));
         FunctionIterator {
-            iter: cfg.vertex_labels(),
+            iter
         }
     }
 }
@@ -63,14 +67,15 @@ impl<'a, F> Iterator for FunctionIterator<'a, F> {
 
 /// An iterator over every Function in this Program
 pub struct FunctionMutIterator<'a, F: 'a> {
-    iter: VertexLabelMutIterator<'a, CallGraphRef, CallTarget<F>>
+    iter: Box<Iterator<Item = &'a mut CallTarget<F>> + 'a>
 }
 
 impl<'a, F> FunctionMutIterator<'a, F> {
     /// Create a new function iterator from the `cfg`
     pub fn new(cfg: &'a mut CallGraph<F>) -> Self {
+        let iter = Box::new(cfg.node_weights_mut());
         FunctionMutIterator {
-            iter: cfg.vertex_labels_mut(),
+            iter
         }
     }
 }
@@ -111,9 +116,9 @@ impl<F: Fun> CallTarget<F> {
 }
 
 /// Graph of functions/symbolic references
-pub type CallGraph<F> = AdjacencyList<CallTarget<F>, ()>;
+pub type CallGraph<F> = Graph<CallTarget<F>, ()>;
 /// Stable reference to a call graph node
-pub type CallGraphRef = AdjacencyListVertexDescriptor;
+pub type CallGraphRef = NodeIndex<u32>;
 
 /// A collection of functions calling each other.
 #[derive(Serialize,Deserialize,Debug)]
@@ -125,7 +130,7 @@ pub struct Program<F> {
     /// Graph of functions
     pub call_graph: CallGraph<F>,
     /// Symbolic References (Imports)
-    pub imports: ::std::collections::HashMap<u64, String>,
+    pub imports: HashMap<u64, String>,
 }
 
 impl<'a, F> IntoIterator for &'a Program<F> {
@@ -143,14 +148,14 @@ impl<F: Fun> Program<F> {
             uuid: Uuid::new_v4(),
             name: n.to_string(),
             call_graph: CallGraph::new(),
-            imports: ::std::collections::HashMap::new(),
+            imports: HashMap::new(),
         }
     }
 
     /// Returns a function if it matches the condition in the `filter` closure.
     pub fn find_function_by<'a, Filter: (Fn(&F) -> bool)>(&'a self, filter: Filter) -> Option<&'a F> {
-        for ct in self.call_graph.vertex_labels() {
-            match ct {
+        for (_, node) in self.call_graph.node_references() {
+            match node {
                 &CallTarget::Concrete(ref function) => if filter(function) { return Some(function) },
                 _ => (),
             }
@@ -160,21 +165,31 @@ impl<F: Fun> Program<F> {
 
     /// Returns a mutable reference to the first function that matches the condition in the `filter` closure.
     pub fn find_function_mut<'a, Filter: (Fn(&F) -> bool)>(&'a mut self, filter: Filter) -> Option<&'a mut F> {
-        for ct in self.call_graph.vertex_labels_mut() {
-            match ct {
-                &mut CallTarget::Concrete(ref mut function) => if filter(function) { return Some(function) },
+        let mut idx = None;
+        for (nidx, node) in self.call_graph.node_references() {
+            match node {
+                &CallTarget::Concrete(ref function) => if filter(function) { idx = Some(nidx); break },
                 _ => (),
             }
         }
-        None
+        match idx {
+            Some(idx) => {
+                let ct = self.call_graph.node_weight_mut(idx).unwrap();
+                match ct {
+                    &mut CallTarget::Concrete(ref mut function) => Some(function),
+                    _ => unreachable!()
+                }
+            },
+            None => None
+        }
     }
 
     /// Returns a reference to the function with an entry point starting at `start`.
     pub fn find_function_by_entry(&self, start: u64) -> Option<CallGraphRef> {
         self.call_graph
-            .vertices()
+            .node_indices()
             .find(
-                |&x| match self.call_graph.vertex_label(x) {
+                |&x| match self.call_graph.node_weight(x) {
                     Some(&CallTarget::Concrete(ref s)) => {
                         s.start() == start
                     }
@@ -185,9 +200,9 @@ impl<F: Fun> Program<F> {
 
     /// Returns the function with UUID `a`.
     pub fn find_function_by_uuid<'a>(&'a self, a: &Uuid) -> Option<&'a F> {
-        for ct in self.call_graph.vertex_labels() {
-            match ct {
-                &CallTarget::Concrete(ref s) => if s.uuid() == a { return Some(s) },
+        for (_, node) in self.call_graph.node_references() {
+            match node {
+                &CallTarget::Concrete(ref function) => if function.uuid() == a { return Some(function) },
                 _ => (),
             }
         }
@@ -196,7 +211,7 @@ impl<F: Fun> Program<F> {
 
     /// Returns the function with UUID `a`.
     pub fn find_function_by_uuid_mut<'a>(&'a mut self, a: &Uuid) -> Option<&'a mut F> {
-        for ct in self.call_graph.vertex_labels_mut() {
+        for ct in self.call_graph.node_weights_mut() {
             match ct {
                 &mut CallTarget::Concrete(ref mut s) => if s.uuid() == a { return Some(s) },
                 _ => (),
@@ -208,14 +223,14 @@ impl<F: Fun> Program<F> {
     /// Puts `function` into the call graph, returning the UUIDs of all _new_ `Todo`s
     /// that are called by `function`
     pub fn insert(&mut self, function: F) -> Vec<Uuid> {
-        let maybe_vx = self.call_graph.vertices().find(|ct| self.call_graph.vertex_label(*ct).unwrap().uuid() == function.uuid());
+        let maybe_vx = self.call_graph.node_indices().find(|ct| self.call_graph.node_weight(*ct).unwrap().uuid() == function.uuid());
 
         let calls = function.collect_calls();
         let new_vx = if let Some(vx) = maybe_vx {
-            *self.call_graph.vertex_label_mut(vx).unwrap() = CallTarget::Concrete(function);
+            *self.call_graph.node_weight_mut(vx).unwrap() = CallTarget::Concrete(function);
             vx
         } else {
-            self.call_graph.add_vertex(CallTarget::Concrete(function))
+            self.call_graph.add_node(CallTarget::Concrete(function))
         };
 
         let mut other_funs = Vec::new();
@@ -224,8 +239,8 @@ impl<F: Fun> Program<F> {
         for a in calls {
             let l = other_funs.len();
 
-            for w in self.call_graph.vertices() {
-                match self.call_graph.vertex_label(w) {
+            for w in self.call_graph.node_indices() {
+                match self.call_graph.node_weight(w) {
                     Some(&CallTarget::Concrete(ref function)) => {
                         if let Rvalue::Constant { ref value, .. } = a {
                             if *value == function.start() {
@@ -246,16 +261,16 @@ impl<F: Fun> Program<F> {
 
             if l == other_funs.len() {
                 let uu = Uuid::new_v4();
-                let v = self.call_graph.add_vertex(CallTarget::Todo(a, None, uu));
+                let v = self.call_graph.add_node(CallTarget::Todo(a, None, uu));
 
-                self.call_graph.add_edge((), new_vx, v);
+                self.call_graph.add_edge(new_vx, v, ());
                 todos.push(uu);
             }
         }
 
         for other_fun in other_funs {
-            if self.call_graph.edge(new_vx, other_fun) == None {
-                self.call_graph.add_edge((), new_vx, other_fun);
+            if self.call_graph.find_edge(new_vx, other_fun) == None {
+                self.call_graph.add_edge(new_vx, other_fun, ());
             }
         }
 
@@ -264,16 +279,11 @@ impl<F: Fun> Program<F> {
 
     /// Returns the function, todo item or symbolic reference with UUID `uu`.
     pub fn find_call_target_by_uuid<'a>(&'a self, uu: &Uuid) -> Option<CallGraphRef> {
-        for vx in self.call_graph.vertices() {
-            if let Some(lb) = self.call_graph.vertex_label(vx) {
-                if lb.uuid() == uu {
-                    return Some(vx);
-                }
-            } else {
-                unreachable!();
+        for (id, node) in self.call_graph.node_references() {
+            if node.uuid() == uu {
+                return Some(id);
             }
         }
-
         None
     }
 
@@ -288,8 +298,8 @@ impl<F: Fun> Program<F> {
     }
     /// Calls [Function::set_plt](../function/struct.Function.html#method.set_plt) on all matching functions
     pub fn update_plt(&mut self) {
-        for ct in self.call_graph.vertex_labels_mut() {
-            match ct {
+        for ct in self.call_graph.node_indices() {
+            match self.call_graph.node_weight_mut(ct).unwrap() {
                 &mut CallTarget::Concrete(ref mut function) => {
                     let address = {
                         let mut last = None;
@@ -320,6 +330,10 @@ impl<F: Fun> Program<F> {
                 _ => (),
             }
         }
+    }
+
+    pub fn iter_callgraph<'a>(&'a self) -> Box<Iterator<Item = &'a CallTarget<F>> + 'a> {
+        Box::new(self.call_graph.node_references().map(|(_, node)| node))
     }
 }
 

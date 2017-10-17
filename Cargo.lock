@@ -512,7 +512,7 @@ dependencies = [
  "panopticon-amd64 0.16.0",
  "panopticon-core 0.16.0",
  "panopticon-data-flow 0.16.0",
- "panopticon-graph-algos 0.11.0",
+ "petgraph 0.4.10 (git+https://github.com/m4b/petgraph?branch=dominance_frontiers)",
 ]
 
 [[package]]
