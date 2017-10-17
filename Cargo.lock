@@ -401,7 +401,7 @@ dependencies = [
 
 [[package]]
 name = "ordermap"
-version = "0.2.13"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
@@ -445,7 +445,7 @@ dependencies = [
  "panopticon-graph-algos 0.11.0",
  "panopticon-mos6502 0.16.0",
  "parking_lot 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",
- "quickcheck 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "quickcheck 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "regex 0.1.80 (registry+https://github.com/rust-lang/crates.io-index)",
  "tempdir 0.3.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "uuid 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -474,7 +474,7 @@ dependencies = [
  "env_logger 0.3.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "panopticon-core 0.16.0",
- "quickcheck 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "quickcheck 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "regex 0.1.80 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -550,7 +550,7 @@ dependencies = [
  "num 0.1.40 (registry+https://github.com/rust-lang/crates.io-index)",
  "panopticon-avr 0.16.0",
  "panopticon-graph-algos 0.11.0",
- "petgraph 0.4.9 (registry+https://github.com/rust-lang/crates.io-index)",
+ "petgraph 0.4.10 (git+https://github.com/m4b/petgraph?branch=dominance_frontiers)",
  "quickcheck 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "regex 0.1.80 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.15 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -570,7 +570,7 @@ dependencies = [
  "log 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "panopticon-core 0.16.0",
  "panopticon-graph-algos 0.11.0",
- "petgraph 0.4.9 (registry+https://github.com/rust-lang/crates.io-index)",
+ "petgraph 0.4.10 (git+https://github.com/m4b/petgraph?branch=dominance_frontiers)",
  "smallvec 0.4.4 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -631,11 +631,13 @@ dependencies = [
 
 [[package]]
 name = "petgraph"
-version = "0.4.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
+version = "0.4.10"
+source = "git+https://github.com/m4b/petgraph?branch=dominance_frontiers#6ea8c947b679780ee156e445ea0edfa01676dcdc"
 dependencies = [
  "fixedbitset 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)",
- "ordermap 0.2.13 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ordermap 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde 1.0.15 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde_derive 1.0.15 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -647,16 +649,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 name = "plain"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-
-[[package]]
-name = "quickcheck"
-version = "0.3.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-dependencies = [
- "env_logger 0.3.5 (registry+https://github.com/rust-lang/crates.io-index)",
- "log 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
- "rand 0.3.17 (registry+https://github.com/rust-lang/crates.io-index)",
-]
 
 [[package]]
 name = "quickcheck"
@@ -1061,16 +1053,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum num-rational 0.1.39 (registry+https://github.com/rust-lang/crates.io-index)" = "288629c76fac4b33556f4b7ab57ba21ae202da65ba8b77466e6d598e31990790"
 "checksum num-traits 0.1.40 (registry+https://github.com/rust-lang/crates.io-index)" = "99843c856d68d8b4313b03a17e33c4bb42ae8f6610ea81b28abe076ac721b9b0"
 "checksum num_cpus 1.7.0 (registry+https://github.com/rust-lang/crates.io-index)" = "514f0d73e64be53ff320680ca671b64fe3fb91da01e1ae2ddc99eb51d453b20d"
-"checksum ordermap 0.2.13 (registry+https://github.com/rust-lang/crates.io-index)" = "b81cf3b8cb96aa0e73bbedfcdc9708d09fec2854ba8d474be4e6f666d7379e8b"
+"checksum ordermap 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)" = "8c7790b1bc9bf27776cd5cdeaae1263758c2c597d4ae02b58aa63c320f94d778"
 "checksum owning_ref 0.2.4 (registry+https://github.com/rust-lang/crates.io-index)" = "9d52571ddcb42e9c900c901a18d8d67e393df723fcd51dd59c5b1a85d0acb6cc"
 "checksum owning_ref 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)" = "cdf84f41639e037b484f93433aa3897863b561ed65c6e59c7073d7c561710f37"
 "checksum parking_lot 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)" = "fa12d706797d42551663426a45e2db2e0364bd1dbf6aeada87e89c5f981f43e9"
 "checksum parking_lot 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)" = "149d8f5b97f3c1133e3cfcd8886449959e856b557ff281e292b733d7c69e005e"
 "checksum parking_lot_core 0.2.6 (registry+https://github.com/rust-lang/crates.io-index)" = "4f610cb9664da38e417ea3225f23051f589851999535290e077939838ab7a595"
-"checksum petgraph 0.4.9 (registry+https://github.com/rust-lang/crates.io-index)" = "2c960f99a9b3962c6a942e0e8f1f47fe72c82202dae8539ded32d3bb8c4e67d5"
+"checksum petgraph 0.4.10 (git+https://github.com/m4b/petgraph?branch=dominance_frontiers)" = "<none>"
 "checksum pkg-config 0.3.9 (registry+https://github.com/rust-lang/crates.io-index)" = "3a8b4c6b8165cd1a1cd4b9b120978131389f64bdaf456435caa41e630edba903"
 "checksum plain 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)" = "da55423d5704ee357503ce020f88b90269610ec85708331e6a7879dd4cea3122"
-"checksum quickcheck 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)" = "0b333da40686cc05db13d933f8e7b450f403cfc5a4d005154d8d4a5ba9d14605"
 "checksum quickcheck 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)" = "02c2411d418cea2364325b18a205664f9ef8252e06b2e911db97c0b0d98b1406"
 "checksum quote 0.3.15 (registry+https://github.com/rust-lang/crates.io-index)" = "7a6e920b65c65f10b2ae65c831a81a073a89edd28c7cce89475bff467ab4167a"
 "checksum rand 0.3.17 (registry+https://github.com/rust-lang/crates.io-index)" = "61efcbcd9fa8d8fbb07c84e34a8af18a1ff177b449689ad38a6e9457ecc7b2ae"

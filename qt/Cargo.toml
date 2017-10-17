@@ -36,7 +36,7 @@ num = "0.1"
 
 [dev-dependencies]
 regex = "0.1"
-quickcheck = "0.3"
+quickcheck = "0.4"
 
 [target.i686-unknown-linux-gnu.dependencies]
 xdg = "^2.0"
