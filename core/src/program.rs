@@ -28,14 +28,14 @@
 //! function fails, it will still be added to the call graph. The function will only have a single
 //! error node.
 
-use std::collections::HashMap;
-
 use {Fun, Statement, Operation, Rvalue};
-use uuid::Uuid;
 use petgraph::visit::{IntoNodeReferences};
 // use stable when API is at parity with Graph
 //use petgraph::stable_graph::{NodeIndex, StableGraph};
 use petgraph::graph::{NodeIndex, Graph};
+use uuid::Uuid;
+
+use std::collections::HashMap;
 
 /// An iterator over every Function in this Program
 pub struct FunctionIterator<'a, F: 'a> {

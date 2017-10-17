@@ -17,17 +17,15 @@
  */
 
 use liveness;
-//use panopticon_core::{ControlFlowGraph, ControlFlowTarget, Guard, Result, Rvalue, Statement};
-use panopticon_core::*;
-
-use std::cmp::max;
-use std::collections::{HashMap, HashSet};
-use std::iter::FromIterator;
-use std::borrow::Cow;
-
+use panopticon_core::{ControlFlowGraph, ControlFlowTarget, ControlFlowRef, ControlFlowEdge, Guard, Lvalue, Mnemonic, Operation, Result, Rvalue, Statement};
 use petgraph::{Direction};
 use petgraph::algo::dominators::{self, Dominators};
 use petgraph::visit::EdgeRef;
+
+use std::borrow::Cow;
+use std::cmp::max;
+use std::collections::{HashMap, HashSet};
+use std::iter::FromIterator;
 
 use DataFlow;
 

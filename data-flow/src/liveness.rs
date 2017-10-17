@@ -17,13 +17,12 @@
  */
 
 use panopticon_core::{ControlFlowTarget, ControlFlowRef, Guard, Lvalue, Operation, Rvalue, Statement};
+use petgraph::Direction;
+use petgraph::visit::{Walker, EdgeRef, DfsPostOrder};
 use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
 use std::iter::FromIterator;
 use DataFlow;
-
-use petgraph::Direction;
-use petgraph::visit::{Walker, EdgeRef, DfsPostOrder};
 
 /// Computes the set of killed (VarKill) and upward exposed variables (UEvar) for each basic block
 /// in `func`. Returns (VarKill,UEvar).

@@ -40,6 +40,11 @@ fn ssa_convertion_old(b: &mut Bencher) {
 
     b.bench_n(1,|b| {
         b.iter(|| {
+            // NB: this is broken right now for old functions using petgraph, unwrap() on None
+            // 11: <petgraph::algo::dominators::Dominators<N>>::dominance_frontiers
+            // at /home/m4b/.cargo/git/checkouts/petgraph-d1e6db80f82b1362/6ea8c94/src/algo/dominators.rs:112
+            // 12: panopticon_data_flow::ssa::phi_functions
+            //  at /home/m4b/projects/panopticon/data-flow/src/ssa.rs:151
             for f in funcs.iter_mut() { f.ssa_conversion().unwrap(); }
         });
     });

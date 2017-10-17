@@ -30,13 +30,12 @@
 
 use {Architecture, BasicBlock, Fun, Guard, Mnemonic, Operation, Region, Result, Rvalue, Statement};
 
-use std::borrow::Cow;
-use std::collections::{BTreeMap, HashMap, HashSet};
-use uuid::Uuid;
-
 use petgraph::Graph;
 use petgraph::graph::{NodeIndex, EdgeIndex};
 use petgraph::prelude::*;
+use std::borrow::Cow;
+use std::collections::{BTreeMap, HashMap, HashSet};
+use uuid::Uuid;
 
 /// An iterator over every BasicBlock in a Function
 pub struct BasicBlockIterator<'a> {

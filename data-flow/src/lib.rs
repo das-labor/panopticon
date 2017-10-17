@@ -31,42 +31,11 @@ extern crate log;
 #[cfg(test)]
 extern crate env_logger;
 
-use panopticon_core::{Function, BasicBlock, Result, Guard, ControlFlowTarget, ControlFlowEdge, ControlFlowRef, Operation, Rvalue, Mnemonic};
-use std::ops::Range;
+use panopticon_core::{Function, BasicBlock, Result, Guard, ControlFlowTarget, ControlFlowEdge, ControlFlowRef, Operation, Rvalue};
 use std::collections::{HashMap, HashSet};
 use std::borrow::Cow;
 
 use petgraph::Graph;
-
-pub trait StandardMnemonic {
-    fn opcode(&self) -> &str;
-    fn operands(&self) -> Vec<Rvalue>;
-    fn area(&self) -> Range<u64>;
-}
-
-impl<'a> StandardMnemonic for &'a Mnemonic {
-    fn opcode(&self) -> &str {
-        self.opcode.as_str()
-    }
-    fn operands(&self) -> Vec<Rvalue> {
-        self.operands.clone()
-    }
-    fn area(&self) -> Range<u64> {
-        self.area.start..self.area.end
-    }
-}
-
-pub trait StandardBlock<M: StandardMnemonic> {
-    type Iter: Iterator<Item = M>;
-    fn mnemonics(&self) -> Self::Iter;
-}
-
-impl<'a> StandardBlock<&'a Mnemonic> for &'a BasicBlock {
-    type Iter = ::std::slice::Iter<'a, Mnemonic>;
-    fn mnemonics(&self) -> Self::Iter {
-        self.mnemonics.as_slice().iter()
-    }
-}
 
 pub trait DataFlow: Sized {
     /// Convert `func` into semi-pruned SSA form.
@@ -134,8 +103,11 @@ impl DataFlow for Function {
 }
 
 impl DataFlow for panopticon_core::neo::Function {
+    // @flanfly: can technically implement it for neo by calling its specific functions in `neo::*` here, as it mutates self
     fn ssa_conversion(&mut self) -> Result<()> {
-        Ok(())
+        neo::rewrite_to_ssa(self).map_err(|e| {
+            format!("{}", e).into()
+        })
     }
     fn entry_point_mut(&mut self) -> &mut BasicBlock {
         unimplemented!()
