@@ -632,7 +632,7 @@ dependencies = [
 [[package]]
 name = "petgraph"
 version = "0.4.10"
-source = "git+https://github.com/m4b/petgraph?branch=dominance_frontiers#6ea8c947b679780ee156e445ea0edfa01676dcdc"
+source = "git+https://github.com/m4b/petgraph?branch=dominance_frontiers#9a6af51bf9803414d68e27f5e8d08600ce2a6212"
 dependencies = [
  "fixedbitset 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "ordermap 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
