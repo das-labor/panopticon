@@ -549,7 +549,6 @@ dependencies = [
  "log 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "num 0.1.40 (registry+https://github.com/rust-lang/crates.io-index)",
  "panopticon-avr 0.16.0",
- "panopticon-graph-algos 0.11.0",
  "petgraph 0.4.10 (git+https://github.com/m4b/petgraph?branch=dominance_frontiers)",
  "quickcheck 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "regex 0.1.80 (registry+https://github.com/rust-lang/crates.io-index)",

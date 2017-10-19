@@ -171,7 +171,7 @@ fn print_reverse_deps<Function: Fun, W: Write + WriteColor>(mut fmt: W, program:
 fn disassemble<Function: Fun + DataFlow + Send>(binary: &str) -> Result<Program<Function>> {
     let (mut proj, machine) = loader::load(Path::new(&binary))?;
     let program = proj.code.pop().unwrap();
-    let reg = proj.region().clone();
+    let reg = proj.region();
     info!("disassembly thread started");
     Ok(match machine {
         Machine::Avr => analyze::<avr::Avr, Function>(program, reg.clone(), avr::Mcu::atmega103()),

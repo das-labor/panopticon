@@ -128,11 +128,10 @@ pub fn load_mach<F: Fun>(bytes: &[u8], offset: usize, name: String) -> Result<(P
 
     for import in binary.imports()? {
         debug!("Import {}: {:#x}", import.name, import.offset);
-        proj.imports.insert(import.offset, import.name.to_string());
+        prog.imports.insert(import.offset, import.name.to_string());
     }
 
-    debug!("Imports: {:?}", &proj.imports);
-    prog.imports = proj.imports.clone();
+    debug!("Imports: {:?}", &prog.imports);
     proj.comments.insert(("base".to_string(), entry), "main".to_string());
     proj.code.push(prog);
 
@@ -213,13 +212,13 @@ fn load_elf<F: Fun>(bytes: &[u8], name: String) -> Result<(Project<F>, Machine)>
         }
     };
 
-    let resolve_import_address = |proj: &mut Project<F>, relocs: &[elf::Reloc], name: &str| {
+    let resolve_import_address = |prog: &mut Program<F>, relocs: &[elf::Reloc], name: &str| {
         for reloc in relocs {
             let pltsym = &binary.dynsyms[reloc.r_sym];
             let pltname = &binary.dynstrtab[pltsym.st_name];
             if pltname == name {
                 debug!("Import match {}: {:#x} {:?}", name, reloc.r_offset, pltsym);
-                proj.imports.insert(reloc.r_offset as u64, name.to_string());
+                prog.imports.insert(reloc.r_offset as u64, name.to_string());
                 return true;
             }
         }
@@ -236,15 +235,15 @@ fn load_elf<F: Fun>(bytes: &[u8], name: String) -> Result<(Project<F>, Machine)>
         seen_syms.insert(sym.st_value);
 
         let name = &binary.dynstrtab[sym.st_name];
-        if !resolve_import_address(&mut proj, &binary.pltrelocs, name) {
+        if !resolve_import_address(&mut prog, &binary.pltrelocs, name) {
             if sym.is_function() {
-                if !resolve_import_address(&mut proj, &binary.dynrelas, name) {
-                    resolve_import_address(&mut proj, &binary.dynrels, name);
+                if !resolve_import_address(&mut prog, &binary.dynrelas, name) {
+                    resolve_import_address(&mut prog, &binary.dynrels, name);
                 }
             }
         }
     }
-    debug!("Imports: {:#?}", &proj.imports);
+    debug!("Imports: {:#?}", &prog.imports);
 
     // add strippable symbol information
     for sym in &binary.syms {
@@ -254,7 +253,6 @@ fn load_elf<F: Fun>(bytes: &[u8], name: String) -> Result<(Project<F>, Machine)>
         }
         seen_syms.insert(sym.st_value);
     }
-    prog.imports = proj.imports.clone();
     proj.comments.insert(("base".to_string(), entry), "main".to_string());
     proj.code.push(prog);
 
