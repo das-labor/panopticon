@@ -8,6 +8,7 @@ extern crate panopticon_amd64;
 extern crate panopticon_avr;
 extern crate panopticon_analysis;
 extern crate panopticon_graph_algos;
+extern crate panopticon_data_flow;
 extern crate futures;
 #[macro_use]
 extern crate log;
@@ -18,7 +19,9 @@ extern crate atty;
 use panopticon_amd64 as amd64;
 use panopticon_analysis::analyze;
 use panopticon_avr as avr;
-use panopticon_core::{Machine, Function, FunctionKind, Program, Result, loader};
+use panopticon_core::{Machine, Fun, FunctionKind, Function, Program, Result, loader, neo};
+use panopticon_data_flow::{DataFlow};
+
 use std::path::Path;
 use std::result;
 use structopt::StructOpt;
@@ -28,6 +31,7 @@ use termcolor::Color::*;
 
 #[macro_use]
 mod display;
+use display::{PrintableStatements, PrintableFunction};
 
 mod errors {
     error_chain! {
@@ -40,6 +44,8 @@ mod errors {
 #[derive(StructOpt, Debug)]
 #[structopt(name = "panop", about = "A libre cross-platform disassembler.")]
 struct Args {
+    #[structopt(long = "neo", help = "Use the new bincode")]
+    neo: bool,
     #[structopt(long = "reverse-deps", help = "Print every function that calls the function in -f")]
     reverse_deps: bool,
     /// Dumps the il of the matched function
@@ -78,9 +84,9 @@ impl Filter {
     pub fn filtering(&self) -> bool {
         self.name.is_some() || self.addr.is_some()
     }
-    pub fn is_match(&self, func: &Function) -> bool {
+    pub fn is_match<Function: Fun>(&self, func: &Function) -> bool {
         if let Some(ref name) = self.name {
-            if name == &func.name || func.aliases().contains(name){ return true }
+            if name == &func.name() || func.aliases().contains(name){ return true }
         }
         if let Some(ref addr) = self.addr {
             return *addr == func.start()
@@ -98,17 +104,17 @@ impl Filter {
     }
 }
 
-fn print_reverse_deps<W: Write + WriteColor>(mut fmt: W, program: &Program, filter: &Filter) -> Result<()> {
-    let name_and_address = {
-        if let Some(f) = program.find_function_by(|f| filter.is_match_with(&f.name, f.start())) {
-            Some((f.start(), &f.name))
+fn print_reverse_deps<Function: Fun, W: Write + WriteColor>(mut fmt: W, program: &Program<Function>, filter: &Filter) -> Result<()> {
+    let name_and_address: Option<(u64, &str)> = {
+        if let Some(f) = program.find_function_by(|f| filter.is_match_with(&f.name(), f.start())) {
+            Some((f.start(), f.name()))
         } else {
             // not a function, so we search imports
             let mut name_and_address = None;
             for (addr, name) in program.imports.iter() {
                 if filter.is_match_with(name, *addr) {
                     debug!("Found import with matching name or address, {:#x} - {}", addr, name);
-                    name_and_address = Some((*addr, name));
+                    name_and_address = Some((*addr, name.as_str()));
                 }
             }
             name_and_address
@@ -118,19 +124,19 @@ fn print_reverse_deps<W: Write + WriteColor>(mut fmt: W, program: &Program, filt
         Some((addr, name)) => {
             let mut reverse_deps: Vec<_> = program.functions().filter_map(|f| {
                 let call_addresses = f.collect_call_addresses();
-                debug!("Total call addresses for {}: {}", f.name, call_addresses.len());
+                debug!("Total call addresses for {}: {}", f.name(), call_addresses.len());
                 if call_addresses.contains(&addr) {
-                    Some((f.start(), f.name.to_string()))
+                    Some((f.start(), f.name().to_string()))
                 } else {
                     for call_address in call_addresses {
-                        let function = program.find_function_by(|f| f.start() == call_address).expect(&format!("{} has a call address {:#x}, but there isn't a function with that address in the program object", f.name, call_address));
-                        debug!("Checking function {} with call address {:#x} for plt stub", function.name, call_address);
+                        let function = program.find_function_by(|f| f.start() == call_address).expect(&format!("{} has a call address {:#x}, but there isn't a function with that address in the program object", f.name(), call_address));
+                        debug!("Checking function {} with call address {:#x} for plt stub", function.name(), call_address);
                         match function.kind() {
                             &FunctionKind::Stub { ref plt_address, ref name } => {
-                                debug!("Function {} is a plt stub for {}", function.name, name);
+                                debug!("Function {} is a plt stub for {}", function.name(), name);
                                 if *plt_address == addr {
-                                    debug!("Function {} plt address {:#x} matches reverse dep address {:#x}, returning", f.name, plt_address, addr);
-                                    return Some((f.start(), f.name.to_string()))
+                                    debug!("Function {} plt address {:#x} matches reverse dep address {:#x}, returning", f.name(), plt_address, addr);
+                                    return Some((f.start(), f.name().to_string()))
                                 }
                             },
                             _ => ()
@@ -162,26 +168,37 @@ fn print_reverse_deps<W: Write + WriteColor>(mut fmt: W, program: &Program, filt
     Ok(())
 }
 
-fn disassemble(binary: &str) -> Result<Program> {
+fn disassemble<Function: Fun + DataFlow + Send>(binary: &str) -> Result<Program<Function>> {
     let (mut proj, machine) = loader::load(Path::new(&binary))?;
     let program = proj.code.pop().unwrap();
-    let reg = proj.region().clone();
+    let reg = proj.region();
     info!("disassembly thread started");
     Ok(match machine {
-        Machine::Avr => analyze::<avr::Avr>(program, reg.clone(), avr::Mcu::atmega103()),
-        Machine::Ia32 => analyze::<amd64::Amd64>(program, reg.clone(), amd64::Mode::Protected),
-        Machine::Amd64 => analyze::<amd64::Amd64>(program, reg.clone(), amd64::Mode::Long),
+        Machine::Avr => analyze::<avr::Avr, Function>(program, reg.clone(), avr::Mcu::atmega103()),
+        Machine::Ia32 => analyze::<amd64::Amd64, Function>(program, reg.clone(), amd64::Mode::Protected),
+        Machine::Amd64 => analyze::<amd64::Amd64, Function>(program, reg.clone(), amd64::Mode::Long),
     }?)
 }
 
-fn app_logic(fmt: &mut termcolor::Buffer, program: Program, args: Args) -> Result<()> {
+fn app_logic<Function: Fun + DataFlow + PrintableFunction + PrintableStatements>(fmt: &mut termcolor::Buffer, mut program: Program<Function>, args: Args) -> Result<()> {
     let filter = Filter { name: args.function_filter, addr: args.address_filter.map(|addr| u64::from_str_radix(&addr, 16).unwrap()) };
 
     debug!("Program.imports: {:#?}", program.imports);
     if args.reverse_deps && filter.filtering() {
         return print_reverse_deps(fmt, &program, &filter);
     }
-    let mut functions = program.functions().filter_map(|f| if filter.is_match(f) { Some(f) } else { None }).collect::<Vec<&Function>>();
+    let mut functions = {
+        // we iterate twice because rust ownership system sucks sometimes
+        for f in program.functions_mut() {
+            if filter.is_match(f) {
+                // we use less memory and take less time if we perform the ssa conversion _only_ on functions
+                // we want to examine (e.g., ones that match our filter)
+                f.ssa_conversion()?;
+            }
+        }
+        program.functions().filter_map(|f| if filter.is_match(f) { Some(f.clone()) } else { None }).collect::<Vec<&Function>>()
+    };
+
     info!("disassembly thread finished with {} functions", functions.len());
 
     functions.sort_by(|f1, f2| {
@@ -191,11 +208,7 @@ fn app_logic(fmt: &mut termcolor::Buffer, program: Program, args: Args) -> Resul
     });
 
     for function in functions {
-        let mut bbs = function.basic_blocks().collect::<Vec<_>>();
-        // sort them by start so we can use them later
-        bbs.sort_by(|bb1, bb2| bb1.area.start.cmp(&bb2.area.start));
-
-        display::print_function(fmt, &function, &bbs, &program)?;
+        function.pretty_print(fmt, &program)?;
         if args.calls {
             let calls = function.collect_call_addresses();
             write!(fmt, "Calls (")?;
@@ -207,8 +220,9 @@ fn app_logic(fmt: &mut termcolor::Buffer, program: Program, args: Args) -> Resul
             }
         }
         if args.dump_il {
-            display::print_rreil(fmt, &bbs)?;
+            // function.pretty_print_il(fmt)?;
         }
+        // move this into pretty_print
         writeln!(fmt, "Aliases: {:?}", function.aliases())?;
     }
     Ok(())
@@ -216,11 +230,16 @@ fn app_logic(fmt: &mut termcolor::Buffer, program: Program, args: Args) -> Resul
 
 fn run(args: Args) -> Result<()> {
     exists_path_val(&args.binary)?;
-    let program = disassemble(&args.binary)?;
     let cc = if args.color || atty::is(atty::Stream::Stdout) { ColorChoice::Auto } else { ColorChoice::Never };
     let writer = BufferWriter::stdout(cc);
     let mut fmt = writer.buffer();
-    app_logic(&mut fmt, program, args)?;
+    if args.neo {
+       let program = disassemble::<neo::Function>(&args.binary)?;
+       app_logic(&mut fmt, program, args)?;
+    } else {
+        let program = disassemble::<Function>(&args.binary)?;
+        app_logic(&mut fmt, program, args)?;
+    }
     writer.print(&fmt)?;
     Ok(())
 }
@@ -236,3 +255,36 @@ fn main() {
         }
     }
 }
+
+/*
+INFO:panopticon_analysis::pipeline: first wave done: success: 1748 failures: 0 targets: 806
+INFO:panopticon_analysis::pipeline: targets - (806)
+INFO:panopticon_analysis::pipeline: targets - (456)
+INFO:panopticon_analysis::pipeline: targets - (245)
+INFO:panopticon_analysis::pipeline: targets - (95)
+INFO:panopticon_analysis::pipeline: targets - (49)
+INFO:panopticon_analysis::pipeline: targets - (20)
+INFO:panopticon_analysis::pipeline: Finished analysis: 2286 failures 0
+INFO:panop: disassembly thread finished with 2286 functions
+Total bytes: 753214720
+15.62user 0.48system 0:05.32elapsed 302%CPU (0avgtext+0avgdata 1243060maxresident)k
+0inputs+0outputs (0major+322752minor)pagefaults 0swaps
+
+INFO:panopticon_analysis::pipeline: first wave done: success: 1748 failures: 0 targets: 0
+INFO:panopticon_analysis::pipeline: Finished analysis: 1748 failures 0
+Total_bytes: 13561144
+3.67user 0.19system 0:01.31elapsed 294%CPU (0avgtext+0avgdata 154000maxresident)k
+0inputs+0outputs (0major+80572minor)pagefaults 0swaps
+
+Aliases: ["printf"]
+21.74user 0.39system 0:07.71elapsed 287%CPU (0avgtext+0avgdata 443572maxresident)k
+0inputs+0outputs (0major+133326minor)pagefaults 0swaps
+
+RUST_LOG=panop=info /usr/bin/time ./panop /usr/lib/libc.so.6
+52.02user 1.20system 0:16.66elapsed 319%CPU (0avgtext+0avgdata 2756540maxresident)k
+0inputs+0outputs (0major+658616minor)pagefaults 0swaps
+
+RUST_LOG=panop=info /usr/bin/time ./panop --neo /usr/lib/libc.so.6
+21.26user 0.34system 0:06.98elapsed 309%CPU (0avgtext+0avgdata 450880maxresident)k
+104inputs+0outputs (0major+134643minor)pagefaults 0swaps
+*/

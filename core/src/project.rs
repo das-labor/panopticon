@@ -21,8 +21,7 @@
 //! Projects are a set of `Program`s, associated memory `Region`s and comments.
 
 
-use {CallGraphRef, Function, Program, Region, Result, World};
-use panopticon_graph_algos::GraphTrait;
+use {CallGraphRef, Fun, Program, Region, Result, World};
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use flate2::Compression;
 use flate2::read::ZlibDecoder;
@@ -39,39 +38,20 @@ use uuid::Uuid;
 
 /// Complete Panopticon session
 #[derive(Serialize,Deserialize,Debug)]
-pub struct Project {
+pub struct Project<F> {
     /// Human-readable name
     pub name: String,
     /// Recognized code
-    pub code: Vec<Program>,
+    pub code: Vec<Program<F>>,
     /// Memory regions
     pub data: World,
     /// Comments
     pub comments: HashMap<(String, u64), String>,
-    /// Symbolic References (Imports)
-    pub imports: HashMap<u64, String>,
 }
 
-impl Project {
-    /// Returns a new `Project` named `s` from memory `Region` `r`.
-    pub fn new(s: String, r: Region) -> Project {
-        Project {
-            name: s,
-            code: Vec::new(),
-            data: World::new(r),
-            comments: HashMap::new(),
-            imports: HashMap::new(),
-        }
-    }
-
-    /// Returns this project's root Region
-    pub fn region(&self) -> &Region {
-        // this cannot fail because World::new guarantees that data.root = r
-        self.data.dependencies.vertex_label(self.data.root).unwrap()
-    }
-
+impl<'de, F: Fun + Deserialize<'de> + Serialize> Project<F> {
     /// Reads a serialized project from disk.
-    pub fn open(p: &Path) -> Result<Project> {
+    pub fn open(p: &Path) -> Result<Self> {
         let mut fd = match File::open(p) {
             Ok(fd) => fd,
             Err(e) => return Err(format!("failed to open file: {:?}", e).into()),
@@ -94,60 +74,6 @@ impl Project {
         }
     }
 
-    /// Returns the program with UUID `uu`
-    pub fn find_program_by_uuid(&self, uu: &Uuid) -> Option<&Program> {
-        self.code.iter().find(|x| x.uuid == *uu)
-    }
-
-    /// Returns the program with UUID `uu`
-    pub fn find_program_by_uuid_mut(&mut self, uu: &Uuid) -> Option<&mut Program> {
-        self.code.iter_mut().find(|x| x.uuid == *uu)
-    }
-
-    /// Returns function and enclosing program with UUID `uu`
-    pub fn find_function_by_uuid<'a>(&'a self, uu: &Uuid) -> Option<&'a Function> {
-        for p in self.code.iter() {
-            if let Some(f) = p.find_function_by_uuid(uu) {
-                return Some(f);
-            }
-        }
-
-        None
-    }
-
-    /// Returns function and enclosing program with UUID `uu`
-    pub fn find_function_by_uuid_mut<'a>(&'a mut self, uu: &Uuid) -> Option<&'a mut Function> {
-        for p in self.code.iter_mut() {
-            if let Some(f) = p.find_function_by_uuid_mut(uu) {
-                return Some(f);
-            }
-        }
-
-        None
-    }
-
-    /// Returns function/reference and enclosing program with UUID `uu`
-    pub fn find_call_target_by_uuid<'a>(&'a self, uu: &Uuid) -> Option<(CallGraphRef, &'a Program)> {
-        for p in self.code.iter() {
-            if let Some(ct) = p.find_call_target_by_uuid(uu) {
-                return Some((ct, p));
-            }
-        }
-
-        None
-    }
-
-    /// Returns function/reference and enclosing program with UUID `uu`
-    pub fn find_call_target_by_uuid_mut<'a>(&'a mut self, uu: &Uuid) -> Option<(CallGraphRef, &'a mut Program)> {
-        for p in self.code.iter_mut() {
-            if let Some(ct) = p.find_call_target_by_uuid(uu) {
-                return Some((ct, p));
-            }
-        }
-
-        None
-    }
-
     /// Serializes the project into the file at `p`. The format looks like this:
     /// [u8;10] magic = "PANOPTICON"
     /// u32     version = 0
@@ -165,6 +91,82 @@ impl Project {
             Ok(()) => Ok(()),
             Err(e) => Err(format!("failed to write to save file: {}",e).into()),
         }
+    }
+
+}
+
+impl<F> Project<F> {
+    /// Returns a new `Project` named `s` from memory `Region` `r`.
+    pub fn new(s: String, r: Region) -> Self {
+        Project {
+            name: s,
+            code: Vec::new(),
+            data: World::new(r),
+            comments: HashMap::new(),
+        }
+    }
+
+    /// Returns this project's root Region
+    pub fn region(&self) -> &Region {
+        // this cannot fail because World::new guarantees that data.root = r
+        self.data.dependencies.node_weight(self.data.root).unwrap()
+    }
+}
+
+
+impl<F: Fun> Project<F> {
+    /// Returns the program with UUID `uu`
+    pub fn find_program_by_uuid(&self, uu: &Uuid) -> Option<&Program<F>> {
+        self.code.iter().find(|x| x.uuid == *uu)
+    }
+
+    /// Returns the program with UUID `uu`
+    pub fn find_program_by_uuid_mut(&mut self, uu: &Uuid) -> Option<&mut Program<F>> {
+        self.code.iter_mut().find(|x| x.uuid == *uu)
+    }
+
+    /// Returns function and enclosing program with UUID `uu`
+    pub fn find_function_by_uuid<'a>(&'a self, uu: &Uuid) -> Option<&'a F> {
+        for p in self.code.iter() {
+            if let Some(f) = p.find_function_by_uuid(uu) {
+                return Some(f);
+            }
+        }
+
+        None
+    }
+
+    /// Returns function and enclosing program with UUID `uu`
+    pub fn find_function_by_uuid_mut<'a>(&'a mut self, uu: &Uuid) -> Option<&'a mut F> {
+        for p in self.code.iter_mut() {
+            if let Some(f) = p.find_function_by_uuid_mut(uu) {
+                return Some(f);
+            }
+        }
+
+        None
+    }
+
+    /// Returns function/reference and enclosing program with UUID `uu`
+    pub fn find_call_target_by_uuid<'a>(&'a self, uu: &Uuid) -> Option<(CallGraphRef, &'a Program<F>)> {
+        for p in self.code.iter() {
+            if let Some(ct) = p.find_call_target_by_uuid(uu) {
+                return Some((ct, p));
+            }
+        }
+
+        None
+    }
+
+    /// Returns function/reference and enclosing program with UUID `uu`
+    pub fn find_call_target_by_uuid_mut<'a>(&'a mut self, uu: &Uuid) -> Option<(CallGraphRef, &'a mut Program<F>)> {
+        for p in self.code.iter_mut() {
+            if let Some(ct) = p.find_call_target_by_uuid(uu) {
+                return Some((ct, p));
+            }
+        }
+
+        None
     }
 }
 

@@ -18,8 +18,8 @@
 
 use futures::{Future, Sink, Stream, stream};
 use futures::sync::mpsc;
-use panopticon_core::{Architecture, CallTarget, Error, Function, Program, Result, Region, Rvalue};
-use panopticon_data_flow::ssa_convertion;
+use panopticon_core::{Architecture, CallTarget, Error, Fun, Function, Program, Result, Region, Rvalue};
+use panopticon_data_flow::DataFlow;
 use std::collections::HashSet;
 use std::fmt::Debug;
 use std::thread;
@@ -28,13 +28,14 @@ use uuid::Uuid;
 use std::result;
 use parking_lot::{Mutex, RwLock};
 
-pub fn analyze<A: Architecture + Debug + Sync + 'static>(
-    program: Program,
+pub fn analyze<A: Architecture + Debug + Sync + 'static, Function: Fun>(
+    program: Program<Function>,
     region: Region,
     config: A::Configuration,
-) -> Result<Program>
+) -> Result<Program<Function>>
 where
     A::Configuration: Debug + Sync,
+    Function: Send,
 {
     use rayon::prelude::*;
     use chashmap::CHashMap;
@@ -51,10 +52,9 @@ where
     info!("initializing first wave");
     let functions =
         program
-        .call_graph
-        .into_iter()
+        .iter_callgraph()
         .filter_map(
-            |ct| match ct {
+            |node| match node {
                 &CallTarget::Todo(Rvalue::Constant { value: entry, .. }, ref name, ref uuid) => {
                     Some(Init { entry, name: name.clone(), uuid: *uuid })
                 }
@@ -71,11 +71,10 @@ where
         attempts.upsert(entry,
                         || {
                             match Function::with_uuid::<A>(entry, &uuid, &region, name.clone(), config.clone()) {
-                                Ok(mut f) => {
+                                Ok(f) => {
                                     for address in f.collect_call_addresses() {
                                         targets.upsert(address, || { true }, |_| ());
                                     }
-                                    let _ = ssa_convertion(&mut f);
                                     {
                                         let mut program = program.lock();
                                         let _ = program.insert(f);
@@ -91,7 +90,7 @@ where
                                     let name = name.clone().unwrap_or(format!("func_{:#x}", entry));
                                     let mut program = program.lock();
                                     let f2 = program.find_function_mut(|f| f.start() == entry).unwrap();
-                                    info!("New alias ({}) found at {:#x} with canonical name {:?}", &name, entry, &f2.name);
+                                    info!("New alias ({}) found at {:#x} with canonical name {:?}", &name, entry, &f2.name());
                                     f2.add_alias(name);
                                 },
                                 _ => ()
@@ -108,11 +107,10 @@ where
         targets.into_par_iter().for_each(| address | {
             attempts.upsert(address, || {
                 match Function::new::<A>(address, &region, None, config.clone()) {
-                    Ok(mut f) => {
+                    Ok(f) => {
                         for address in f.collect_call_addresses() {
                             new_targets.upsert(address, || { true }, |_| ());
                         }
-                        let _ = ssa_convertion(&mut f);
                         {
                             let mut program = program.lock();
                             let _ = program.insert(f);
@@ -136,7 +134,7 @@ where
 /// Starts disassembling insructions in `region` and puts them into `program`. Returns a stream of
 /// of newly discovered functions.
 pub fn pipeline<A: Architecture + Debug + 'static>(
-    program: Arc<Program>,
+    program: Arc<Program<Function>>,
     region: Region,
     config: A::Configuration,
 ) -> Box<Stream<Item = Function, Error = ()> + Send>
@@ -150,7 +148,7 @@ where
             let mut targets: Vec<u64> = Vec::new();
             let mut failures: Vec<(u64, Error)> = Vec::new();
             // TODO: this is the exact code below, modulo how we construct the function
-            for ct in program.call_graph.into_iter() {
+            for ct in program.iter_callgraph() {
                 match ct {
                     &CallTarget::Todo(Rvalue::Constant { value: entry, .. }, ref maybe_name, ref uuid) => {
                         finished_functions.insert(entry);
@@ -158,9 +156,9 @@ where
                             Ok(mut f) => {
                                 let addresses = f.collect_call_addresses();
                                 targets.extend_from_slice(&addresses);
-                                let _ = ssa_convertion(&mut f);
+                                let _ = f.ssa_conversion();
                                 let tx = tx.clone();
-                                tx.send_all(stream::iter(vec![Ok(f)])).wait().unwrap().0;
+                                tx.send_all(stream::iter_ok(vec![f])).wait().unwrap().0;
                             },
                             Err(e) => { failures.push((entry, e)); },
                         }
@@ -181,10 +179,10 @@ where
                             Ok(mut f) => {
                                 let addresses = f.collect_call_addresses();
                                 new_targets.extend_from_slice(&addresses);
-                                let _ = ssa_convertion(&mut f);
+                                let _ = f.ssa_conversion();
                                 {
                                     let tx = tx.clone();
-                                    tx.send_all(stream::iter(vec![Ok(f)])).wait().unwrap().0;
+                                    tx.send_all(stream::iter_ok(vec![f])).wait().unwrap().0;
                                 }
                             },
                             Err(e) => failures.push((address, e)),

@@ -51,8 +51,7 @@
 
 
 use {Bound, Layer, LayerIter, OpaqueLayer, Result};
-use panopticon_graph_algos::{AdjacencyList, GraphTrait, IncidenceGraphTrait, MutableGraphTrait, VertexListGraphTrait};
-use panopticon_graph_algos::adjacency_list::{AdjacencyListEdgeDescriptor, AdjacencyListVertexDescriptor};
+use petgraph::prelude::*;
 use std::collections::HashSet;
 use std::path::Path;
 use std::sync::Arc;
@@ -70,9 +69,11 @@ pub struct Region {
 }
 
 /// Graph that models overlapping regions.
-pub type RegionGraph = AdjacencyList<Region, Bound>;
-/// Stable reference for a node in a region graph.
-pub type RegionRef = AdjacencyListVertexDescriptor;
+pub type RegionGraph = Graph<Region, Bound>;
+/// Unstable reference for a node in a region graph.
+pub type RegionRef = NodeIndex<u32>;
+/// Unstable reference to an edge in a region graph.
+pub type BoundRef = EdgeIndex<u32>;
 
 /// A set of `Region`s
 ///
@@ -236,7 +237,8 @@ impl World {
     /// Creates a new `World` with a single `Region` `reg`
     pub fn new(reg: Region) -> World {
         let mut g = RegionGraph::new();
-        let b = g.add_vertex(reg);
+        // this is no longer safe, since the graph isn't stable :/
+        let b = g.add_node(reg);
 
         World { dependencies: g, root: b }
     }
@@ -247,15 +249,15 @@ impl World {
         let mut visited = HashSet::<RegionRef>::new();
 
         fn step(v: RegionRef, regs: &RegionGraph, ret: &mut Vec<(Bound, RegionRef)>, visited: &mut HashSet<RegionRef>) {
-            let reg = regs.vertex_label(v).unwrap();
-            let mut es = regs.out_edges(v).collect::<Vec<AdjacencyListEdgeDescriptor>>();
+            let reg = regs.node_weight(v).unwrap();
+            let mut es = regs.edges_directed(v, Direction::Outgoing).collect::<Vec<_>>();
             let mut last = 0;
 
-            es.sort_by(|&a, &b| regs.edge_label(a).unwrap().start.cmp(&regs.edge_label(b).unwrap().start));
+            es.sort_by(|&a, &b| a.weight().start.cmp(&b.weight().start));
 
             for e in es {
-                let b = regs.edge_label(e).unwrap();
-                let nx = regs.target(e);
+                let b = e.weight();
+                let nx = e.target();
                 let free = Bound::new(last, b.start);
 
                 if last < b.start {
@@ -274,7 +276,7 @@ impl World {
             }
         }
 
-        if self.dependencies.num_vertices() > 0 {
+        if self.dependencies.node_count() > 0 {
             step(self.root, &self.dependencies, &mut ret, &mut visited);
         }
         ret
