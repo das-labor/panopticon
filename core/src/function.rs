@@ -722,57 +722,13 @@ impl Function {
     pub fn statements<'b>(&'b self) -> Box<Iterator<Item=&'b Statement> + 'b> {
         Box::new(self.basic_blocks().map(|bb| bb.statements()).flat_map(|ss| ss))
     }
-}
-    ///// Returns the functions basic block graph in graphivz's DOT format. Useful for debugging.
-//    pub fn to_dot(&self) -> String {
-//        let mut ret = "digraph G {".to_string();
-//
-//        for v in self.cflow_graph.node_indices() {
-//            match self.cflow_graph.node_weight(v) {
-//                Some(&ControlFlowTarget::Resolved(ref bb)) => {
-//                    ret = format!(
-//                        "{}\n{} [label=<<table border=\"0\"><tr><td>{}:{}</td></tr>",
-//                        ret,
-//                        v.0,
-//                        bb.area.start,
-//                        bb.area.end
-//                    );
-//
-//                    for mne in bb.mnemonics.iter() {
-//                        ret = format!("{}<tr><td align=\"left\">{}</td></tr>", ret, mne.opcode);
-//                        for i in mne.instructions.iter() {
-//                            ret = format!(
-//                                "{}<tr><td align=\"left\">&nbsp;&nbsp;&nbsp;&nbsp;{}</td></tr>",
-//                                ret,
-//                                i
-//                            );
-//                        }
-//                    }
-//
-//                    ret = format!("{}</table>>,shape=record];", ret);
-//                }
-//                Some(&ControlFlowTarget::Unresolved(ref c)) => {
-//                    ret = format!("{}\n{} [label=\"{:?}\",shape=circle];", ret, v.0, c);
-//                }
-//                _ => {
-//                    ret = format!("{}\n{} [label=\"?\",shape=circle];", ret, v.0);
-//                }
-//            }
-//        }
-//
-////        for e in self.cflow_graph.edges() {
-////            ret = format!(
-////                "{}\n{} -> {} [label=\"{}\"];",
-////                ret,
-////                self.cflow_graph.source(e).0,
-////                self.cflow_graph.target(e).0,
-////                self.cflow_graph.edge_label(e).unwrap()
-////            );
-////        }
-//
-//        format!("{}\n}}", ret)
-//    }
 
+    /// Returns the functions basic block graph in graphivz's DOT format. Useful for debugging.
+    pub fn to_dot(&self) -> String {
+        use petgraph::dot::Dot;
+        format!("{:?}", Dot::new(&self.cflow_graph))
+    }
+}
 
 #[cfg(test)]
 mod tests {

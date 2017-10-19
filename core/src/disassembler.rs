@@ -89,8 +89,7 @@
 use {Guard, Mnemonic, Region, Result, Rvalue, Statement};
 
 use num::traits::{NumCast, One, Zero};
-use panopticon_graph_algos::{AdjacencyList, EdgeListGraphTrait, GraphTrait, IncidenceGraphTrait, MutableGraphTrait, VertexListGraphTrait};
-use panopticon_graph_algos::adjacency_list::AdjacencyListVertexDescriptor;
+use petgraph::prelude::*;
 use std::collections::HashMap;
 use std::fmt;
 use std::fmt::Debug;
@@ -263,7 +262,7 @@ impl<A: Architecture> State<A> {
 }
 
 /// Single matching rule.
-#[derive(Clone)]
+#[derive(Debug,Clone)]
 pub enum Rule<A: Architecture> {
     /// Matches a fixed set of bits of a single token
     Terminal {
@@ -289,58 +288,33 @@ impl<A: Architecture> PartialEq for Rule<A> {
     }
 }
 
+type DisassemblerRef = NodeIndex<u32>;
+
 /// Ready made disassembler for simple instruction sets.
 ///
 /// Disassembler instances are creates using the `new_disassembler!` macro. The resulting
 /// disassembler can then be used to produce `Match`es.
 pub struct Disassembler<A: Architecture> {
-    graph: AdjacencyList<(), Rule<A>>,
-    start: AdjacencyListVertexDescriptor,
-    end: HashMap<AdjacencyListVertexDescriptor, Arc<Action<A>>>,
+    graph: Graph<(), Rule<A>>,
+    start: DisassemblerRef,
+    end: HashMap<DisassemblerRef, Arc<Action<A>>>,
     default: Option<Action<A>>,
 }
 
-impl<A: Architecture> Disassembler<A> {
+impl<A: Architecture + Debug> Disassembler<A> {
     /// Creates a new, empty, disassembler instance. You probably want to use `new_disassembler!`
     /// instead.
     pub fn new() -> Disassembler<A> {
-        let mut g = AdjacencyList::new();
-        let s = g.add_vertex(());
+        let mut g = Graph::new();
+        let s = g.add_node(());
 
         Disassembler { graph: g, start: s, end: HashMap::new(), default: None }
     }
     /// Converts to a dot file; useful for debugging
-    pub fn to_dot(&self) {
-        println!("digraph G {{");
-        for v in self.graph.vertices() {
-            let lb = self.graph.vertex_label(v).unwrap();
-
-            if self.end.contains_key(&v) {
-                println!(
-                    "{} [label=\"{}, prio: {:?}\",shape=doublecircle]",
-                    v.0,
-                    v.0,
-                    lb
-                );
-            } else {
-                println!("{} [label=\"{}, prio: {:?}\",shape=circle]", v.0, v.0, lb);
-            }
-        }
-        for e in self.graph.edges() {
-            let lb = match self.graph.edge_label(e) {
-                Some(&Rule::Sub(_)) => "SUB".to_string(),
-                Some(&Rule::Terminal::<A> { ref pattern, ref mask, .. }) => format!("{:?}/{:?}", pattern, mask),
-                None => "".to_string(),
-            };
-            println!(
-                "{} -> {} [label={:?}]",
-                self.graph.source(e).0,
-                self.graph.target(e).0,
-                lb
-            );
-        }
-        println!("}}");
-    }
+   pub fn to_dot(&self) {
+       use petgraph::dot::Dot;
+       println!("{:?}", Dot::new(&self.graph));
+   }
 
     /// Adds the matching rule and associated semantic action.
     /// Panics if a is empty.
@@ -351,19 +325,18 @@ impl<A: Architecture> Disassembler<A> {
         for r in a.iter() {
             let mut found = false;
 
-            for out in self.graph.out_edges(v) {
-                if let Some(ref t) = self.graph.edge_label(out) {
-                    if **t == *r {
-                        v = self.graph.target(out);
-                        found = true;
-                        break;
-                    }
+            for out in self.graph.edges_directed(v, Direction::Outgoing) {
+                let t = out.weight();
+                if t == r {
+                    v = out.target();
+                    found = true;
+                    break;
                 }
             }
 
             if !found {
-                let tmp = self.graph.add_vertex(());
-                self.graph.add_edge(r.clone(), v, tmp);
+                let tmp = self.graph.add_node(());
+                self.graph.add_edge(v, tmp, r.clone());
                 v = tmp;
             }
         }
@@ -445,7 +418,7 @@ impl<A: Architecture> Disassembler<A> {
         Iter: Iterator<Item = Option<u8>> + Clone,
         A::Configuration: Clone,
     {
-        let mut states = Vec::<(Vec<&()>, State<A>, AdjacencyListVertexDescriptor, Iter)>::new();
+        let mut states = Vec::<(Vec<&()>, State<A>, DisassemblerRef, Iter)>::new();
         let mut ret = vec![];
 
         states.push((vec![], initial_state.clone(), self.start, i.clone()));
@@ -459,14 +432,14 @@ impl<A: Architecture> Disassembler<A> {
                 }
             }
 
-            let mut new_states = Vec::<(Vec<&()>, State<A>, AdjacencyListVertexDescriptor, Iter)>::new();
+            let mut new_states = Vec::<(Vec<&()>, State<A>, DisassemblerRef, Iter)>::new();
 
 
             for &(ref pats, ref state, ref vx, ref iter) in states.iter() {
-                if let Some(a) = self.graph.vertex_label(*vx) {
-                    for e in self.graph.out_edges(*vx) {
-                        match self.graph.edge_label(e) {
-                            Some(&Rule::Terminal { ref mask, ref pattern, capture_group: ref capture }) => {
+                if let Some(a) = self.graph.node_weight(*vx) {
+                    for e in self.graph.edges_directed(*vx, Direction::Outgoing) {
+                        match e.weight() {
+                            &Rule::Terminal { ref mask, ref pattern, capture_group: ref capture } => {
                                 let mut i = iter.clone();
                                 if let Some(tok) = Self::read_token(&mut i) {
                                     if mask.clone() & tok.clone() == *pattern {
@@ -509,17 +482,16 @@ impl<A: Architecture> Disassembler<A> {
 
                                         p.push(a);
                                         st.tokens.push(tok);
-                                        new_states.push((p, st, self.graph.target(e), i));
+                                        new_states.push((p, st, e.target(), i));
                                     }
                                 }
                             }
-                            Some(&Rule::Sub(ref sub)) => {
+                            &Rule::Sub(ref sub) => {
                                 let i = iter.clone();
                                 let mut v = sub.find(i.clone(), state);
 
-                                new_states.extend(v.drain(..).map(|(a, b, i)| (a, b, self.graph.target(e), i.clone())));
+                                new_states.extend(v.drain(..).map(|(a, b, i)| (a, b, e.target(), i.clone())));
                             }
-                            None => {}
                         };
                     }
                 }

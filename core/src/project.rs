@@ -22,7 +22,6 @@
 
 
 use {CallGraphRef, Fun, Program, Region, Result, World};
-use panopticon_graph_algos::GraphTrait;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use flate2::Compression;
 use flate2::read::ZlibDecoder;
@@ -48,8 +47,6 @@ pub struct Project<F> {
     pub data: World,
     /// Comments
     pub comments: HashMap<(String, u64), String>,
-    /// Symbolic References (Imports)
-    pub imports: HashMap<u64, String>,
 }
 
 impl<'de, F: Fun + Deserialize<'de> + Serialize> Project<F> {
@@ -106,14 +103,13 @@ impl<F> Project<F> {
             code: Vec::new(),
             data: World::new(r),
             comments: HashMap::new(),
-            imports: HashMap::new(),
         }
     }
 
     /// Returns this project's root Region
     pub fn region(&self) -> &Region {
         // this cannot fail because World::new guarantees that data.root = r
-        self.data.dependencies.vertex_label(self.data.root).unwrap()
+        self.data.dependencies.node_weight(self.data.root).unwrap()
     }
 }
 

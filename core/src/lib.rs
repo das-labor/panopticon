@@ -80,7 +80,6 @@ extern crate log;
 
 extern crate num;
 extern crate flate2;
-extern crate panopticon_graph_algos;
 extern crate uuid;
 extern crate byteorder;
 extern crate goblin;
