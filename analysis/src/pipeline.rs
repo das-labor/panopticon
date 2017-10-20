@@ -30,7 +30,7 @@ use parking_lot::{Mutex, RwLock};
 
 pub fn analyze<A: Architecture + Debug + Sync + 'static, Function: Fun>(
     program: Program<Function>,
-    region: Region,
+    region: &Region,
     config: A::Configuration,
 ) -> Result<Program<Function>>
 where

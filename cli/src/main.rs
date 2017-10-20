@@ -174,9 +174,9 @@ fn disassemble<Function: Fun + DataFlow + Send>(binary: &str) -> Result<Program<
     let reg = proj.region();
     info!("disassembly thread started");
     Ok(match machine {
-        Machine::Avr => analyze::<avr::Avr, Function>(program, reg.clone(), avr::Mcu::atmega103()),
-        Machine::Ia32 => analyze::<amd64::Amd64, Function>(program, reg.clone(), amd64::Mode::Protected),
-        Machine::Amd64 => analyze::<amd64::Amd64, Function>(program, reg.clone(), amd64::Mode::Long),
+        Machine::Avr => analyze::<avr::Avr, Function>(program, reg, avr::Mcu::atmega103()),
+        Machine::Ia32 => analyze::<amd64::Amd64, Function>(program, reg, amd64::Mode::Protected),
+        Machine::Amd64 => analyze::<amd64::Amd64, Function>(program, reg, amd64::Mode::Long),
     }?)
 }
 

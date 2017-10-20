@@ -46,6 +46,18 @@ pub struct Bound {
     pub end: u64,
 }
 
+impl From<Range<usize>> for Bound {
+    fn from(range: Range<usize>) -> Self {
+        Bound { start: range.start as u64, end: range.end as u64 }
+    }
+}
+
+impl From<Range<u64>> for Bound {
+    fn from(range: Range<u64>) -> Self {
+        Bound { start: range.start, end: range.end }
+    }
+}
+
 impl Bound {
     /// Returns a `Bound` for [a,b)
     pub fn new(a: u64, b: u64) -> Bound {
@@ -55,6 +67,11 @@ impl Bound {
     /// Size of the range in bytes.
     pub fn len(&self) -> u64 {
         self.end - self.start
+    }
+
+    /// Checks if this bound contains `address`
+    pub fn contains(&self, address: u64) -> bool {
+        address >= self.start && address < self.end
     }
 }
 

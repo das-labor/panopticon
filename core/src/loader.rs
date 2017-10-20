@@ -19,7 +19,7 @@
 //! Loader for 32 and 64-bit ELF, PE, and Mach-o files.
 
 
-use {Bound, CallTarget, Layer, Fun, Program, Project, Region, Result, Rvalue};
+use {Bound, CallTarget, Fun, Program, Project, Region, Result, Rvalue};
 use goblin::{self, Hint, archive, elf, mach, pe};
 use goblin::elf::program_header;
 
@@ -48,11 +48,11 @@ pub fn load_mach<F: Fun>(bytes: &[u8], offset: usize, name: String) -> Result<(P
     let cputype = binary.header.cputype;
     let (machine, mut reg) = match cputype {
         mach::cputype::CPU_TYPE_X86 => {
-            let reg = Region::undefined("RAM".to_string(), 0x1_0000_0000);
+            let reg = Region::new("RAM".to_string());
             (Machine::Ia32, reg)
         }
         mach::cputype::CPU_TYPE_X86_64 => {
-            let reg = Region::undefined("RAM".to_string(), 0xFFFF_FFFF_FFFF_FFFF);
+            let reg = Region::new("RAM".to_string());
             (Machine::Amd64, reg)
         }
         machine => {
@@ -90,7 +90,7 @@ pub fn load_mach<F: Fun>(bytes: &[u8], offset: usize, name: String) -> Result<(P
             segment.vmsize,
             start
         );
-        reg.cover(Bound::new(start, end), Layer::wrap(Vec::from(section)));
+        reg.cover(Bound::new(start, end), Vec::from(section));
         if name == "__TEXT" {
             base = segment.vmaddr;
             debug!("Setting vm address base to {:#x}", base);
@@ -150,15 +150,15 @@ fn load_elf<F: Fun>(bytes: &[u8], name: String) -> Result<(Project<F>, Machine)>
     let entry = binary.entry;
     let (machine, mut reg) = match binary.header.e_machine {
         elf::header::EM_X86_64 => {
-            let reg = Region::undefined("RAM".to_string(), 0xFFFF_FFFF_FFFF_FFFF);
+            let reg = Region::new("RAM".to_string());
             (Machine::Amd64, reg)
         }
         elf::header::EM_386 => {
-            let reg = Region::undefined("RAM".to_string(), 0x1_0000_0000);
+            let reg = Region::new("RAM".to_string());
             (Machine::Ia32, reg)
         }
         elf::header::EM_AVR => {
-            let reg = Region::undefined("Flash".to_string(), 0x2_0000);
+            let reg = Region::new("Flash".to_string());
             (Machine::Avr, reg)
         }
         machine => return Err(format!("Unsupported machine: {}", machine).into()),
@@ -178,7 +178,7 @@ fn load_elf<F: Fun>(bytes: &[u8], name: String) -> Result<(Project<F>, Machine)>
                 cursor.read_exact(&mut buf)?;
                 reg.cover(
                     Bound::new(ph.p_vaddr, ph.p_vaddr + ph.p_filesz),
-                    Layer::wrap(buf),
+                    buf,
                 );
             } else {
                 return Err("Failed to read segment".into());
@@ -264,7 +264,7 @@ fn load_pe<F: Fun>(bytes: &[u8], name: String) -> Result<(Project<F>, Machine)> 
     let pe = pe::PE::parse(&bytes)?;
     debug!("pe: {:#?}", &pe);
     let image_base = pe.image_base as u64;
-    let mut ram = Region::undefined("RAM".to_string(), 0x100000000);
+    let mut ram = Region::new("RAM".to_string());
     for section in &pe.sections {
         let name = String::from_utf8_lossy(&section.name);
         debug!("section: {}", name);
@@ -281,24 +281,21 @@ fn load_pe<F: Fun>(bytes: &[u8], name: String) -> Result<(Project<F>, Machine)> 
                         size,
                         bytes.len()
                     );
-                    (Layer::undefined(0), 0)
+                    (Vec::new(), 0)
                 } else {
                     debug!("mapped '{}': {:?}", name, offset..offset + size);
-                    (Layer::wrap(bytes[offset..offset + size].to_vec()), size as u64)
+                    (bytes[offset..offset + size].to_vec(), size as u64)
                 }
             } else {
                 debug!("bss '{}'", name);
-                (Layer::undefined(vsize), vsize)
+                (vec![0; vsize as usize], vsize)
             }
         };
         let begin = image_base + virtual_address;
         let end = image_base + virtual_address + size as u64;
         let bound = Bound::new(begin, end);
         debug!("bound: {:?}", &bound);
-        if !ram.cover(bound, layer) {
-            debug!("bad cover");
-            return Err(format!("Cannot cover bound: {:?}", Bound::new(begin, end)).into());
-        }
+        ram.cover(bound, layer);
     }
     let entry = (pe.image_base + pe.entry) as u64;
     debug!("entry: {:#x}", entry);

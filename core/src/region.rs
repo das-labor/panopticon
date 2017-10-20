@@ -50,22 +50,89 @@
 //! This region is named "undef" and is just 4k of undefined cells
 
 
-use {Bound, Layer, LayerIter, OpaqueLayer, Result};
+use {Bound, Result};
+
 use petgraph::prelude::*;
+
+use std::ops::Range;
+use std::io::Read;
+use std::fs::File;
+use std::slice::Iter;
 use std::collections::HashSet;
 use std::path::Path;
-use std::sync::Arc;
 
-/// A continuous sequcence of `Cell`s
-///
-/// `Region`s are a stack of [`Layer`](../layer/index.html) inside a single address space. The
-/// `Region` is the primary way panopticon handles data. They can be created from files or
-/// in-memory buffers.
+/// Memory in panopticon is a series of ranges -> bytes. This corresponds to the memory image of the binary
+/// when it is run on the CPU
 #[derive(Clone,Debug,Serialize,Deserialize)]
 pub struct Region {
-    stack: Vec<(Bound, Layer)>,
     name: String,
-    size: u64,
+    size: usize,
+    // memory is flattened internally, and accessed on behalf of the user by mapping
+    // virtual memory addresses in regions into byte offsets into the flat memory here
+    flat_memory: Vec<u8>,
+    regions: Vec<(Bound, Range<usize>)>,
+}
+
+impl Region {
+    /// Creates a new `Region` called `name` that is filled with the contents of the file at `path`.
+    /// Note: this is _not_ the proper way to load an ELF file, or other structured binaries, please see [loader](../loader.html)
+    pub fn open(name: String, path: &Path) -> Result<Self> {
+        let mut buf: Vec<u8> = Vec::new();
+        let mut fd = File::open(path)?;
+        fd.read_to_end(&mut buf)?;
+        let mut region = Self::new(name);
+        region.add(Bound::from(0..buf.len()), buf);
+        Ok(region)
+    }
+
+    /// Creates a new `Region` called `name`.
+    pub fn new(name: String) -> Self {
+        Region { flat_memory: Vec::new(), size: 0, regions: Vec::new(), name }
+    }
+    /// The size of this region, in bytes
+    pub fn size(&self) -> usize {
+        self.size
+    }
+
+    /// Name of this `Region`
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    #[inline]
+    fn add(&mut self, range: Bound, memory: Vec<u8>) {
+        let start = self.flat_memory.len();
+        let end = start + memory.len();
+        debug!("Adding memory region of size {}, new size: {}, with vmaddr: {:?}, and bytes bound: {:?}", memory.len(), self.size, &range, start..end);
+        self.size += memory.len();
+        self.flat_memory.extend(memory);
+        self.regions.push((range, start..end));
+    }
+    /// Add zeroed memory in `range`
+    pub fn zeroes(&mut self, range: Bound) {
+        let len = (range.end - range.start) as usize;
+        self.add(range, vec![0; len])
+    }
+    /// FIXME: Placeholder for transition
+    pub fn cover(&mut self, range: Bound, memory: Vec<u8>) {
+        self.add(range, memory)
+    }
+
+    // FIXME: return option or result for bad starts
+    /// Iterate over memory at `start` bytes
+    pub fn iter(&self, start: u64) -> Iter<u8> {
+        // debug!("total memory: {} - nregions: {}, regions: {:?}", self.size, self.regions.len(), self.regions);
+        for &(ref vmaddr, ref bytes) in &self.regions {
+            if vmaddr.contains(start) {
+                // transform into flat memory index space
+                let start_ = (start - vmaddr.start) as usize + bytes.start;
+                // debug!("START: {}, computed {} vmaddr: {:?}, bytes: {:?}", start, start_, vmaddr, bytes);
+                // FIXME: check that start < bytes.end
+                return self.flat_memory[start_..].iter();
+            }
+        }
+        [].iter()
+    }
 }
 
 /// Graph that models overlapping regions.
@@ -89,148 +156,6 @@ pub struct World {
     pub dependencies: RegionGraph,
     /// Lowest `Region` in the stack.
     pub root: RegionRef,
-}
-
-impl Region {
-    /// Creates a new `Region` called `name` that is filled with the contents of the file at `path`.
-    pub fn open(s: String, p: &Path) -> Result<Region> {
-        let layer = OpaqueLayer::open(p)?;
-        Ok(Region::new(s.clone(), layer))
-    }
-
-    /// Creates a new `Region` called `name`, filled with `data`.
-    pub fn wrap(name: String, data: Vec<u8>) -> Region {
-        Region::new(name, OpaqueLayer::Defined(Arc::new(data)))
-    }
-
-    /// Creates a new `Region` called `name`, of size `len` with all `Cell`s undefined.
-    pub fn undefined(name: String, len: u64) -> Region {
-        Region::new(name, OpaqueLayer::Undefined(len))
-    }
-
-    /// Creates a new `Region` called `name` with the contens of `root`.
-    pub fn new(name: String, root: OpaqueLayer) -> Region {
-        let l = root.len();
-        let b = Layer::Opaque(root);
-        Region { stack: vec![(Bound::new(0, l), b)], name: name, size: l }
-    }
-
-    /// Applies `layer` to the cells inside `area`.
-    ///
-    /// # Returns
-    /// `false` if `area` is outside of `0..self.size()` of not compatible with `layer`, `true`
-    /// otherwise.
-    pub fn cover(&mut self, b: Bound, l: Layer) -> bool {
-        if b.end <= self.stack[0].0.end {
-            if let Some(o) = l.as_opaque() {
-                if b.end - b.start > o.len() {
-                    return false;
-                }
-            }
-
-            self.stack.push((b, l));
-            true
-        } else {
-            false
-        }
-    }
-
-    /// Iterator over all `Cell`s, starting at 0.
-    pub fn iter(&self) -> LayerIter {
-        let mut ret = self.stack[0].1.as_opaque().unwrap().iter();
-
-        for s in self.stack.iter().skip(1) {
-            let &(ref area, ref layer) = s;
-
-            let src = ret.cut(&(area.start..area.end));
-            assert_eq!(src.len(), area.end - area.start);
-
-            let mut tmp = layer.filter(src);
-
-            if area.start != 0 {
-                tmp = ret.cut(&(0..area.start)).append(tmp);
-                assert_eq!(tmp.len(), area.end);
-            }
-
-            if area.end < ret.len() {
-                tmp = tmp.append(ret.cut(&(area.end..(ret.len()))));
-            }
-
-            assert_eq!(ret.len(), tmp.len());
-            ret = tmp;
-        }
-
-        ret
-    }
-
-    fn add<'a>(a: (Bound, &'a Layer), v: Vec<(Bound, &'a Layer)>) -> Vec<(Bound, &'a Layer)> {
-        let mut ret = v.iter()
-            .fold(
-                Vec::new(), |mut acc, x| {
-                    if x.0.start >= a.0.start && x.0.end <= a.0.end {
-                        // a covers x completly
-                        acc
-                    } else if x.0.start >= a.0.end || x.0.end <= a.0.start {
-                        // a and x don't touch
-                        acc.push(x.clone());
-                        acc
-                    } else if x.0.start > a.0.start && x.0.end >= a.0.end {
-                        // a covers start of x
-                        let bound = Bound::new(a.0.end, x.0.end);
-                        if bound.start < bound.end {
-                            acc.push((bound, x.1));
-                        }
-                        acc
-                    } else if a.0.start > x.0.start && a.0.end >= x.0.end {
-                        // a covers end of x
-                        let bound = Bound::new(x.0.start, a.0.start);
-
-                        if bound.start < bound.end {
-                            acc.push((bound, x.1));
-                        }
-                        acc
-                    } else {
-                        // a covers middle of x
-                        let bound1 = Bound::new(x.0.start, a.0.start);
-                        let bound2 = Bound::new(a.0.end, x.0.end);
-                        if bound1.start < bound1.end {
-                            acc.push((bound1, x.1));
-                        }
-                        if bound2.start < bound2.end {
-                            acc.push((bound2, x.1));
-                        }
-                        acc
-                    }
-                }
-            );
-        ret.push(a);
-        ret
-    }
-
-    /// Vector of all uncovered parts.
-    pub fn flatten(&self) -> Vec<(Bound, &Layer)> {
-        let mut ret = Vec::new();
-        for x in self.stack.iter() {
-            ret = Self::add((x.0.clone(), &x.1), ret);
-        }
-        ret.sort_by(|a, b| a.0.start.cmp(&b.0.start));
-        ret
-    }
-
-    /// Stack of all `Layer` and covered area.
-    pub fn stack(&self) -> &Vec<(Bound, Layer)> {
-        &self.stack
-    }
-
-    /// Number of `Cell`s.
-    pub fn size(&self) -> u64 {
-        self.size
-    }
-
-    /// Name of the `Region`
-    pub fn name(&self) -> &String {
-        &self.name
-    }
 }
 
 impl World {
@@ -270,8 +195,8 @@ impl World {
                 }
             }
 
-            if last < reg.size() {
-                let free = Bound::new(last, reg.size());
+            if last < reg.size() as u64 {
+                let free = Bound::new(last, reg.size() as u64);
                 ret.push((free, v));
             }
         }

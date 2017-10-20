@@ -35,8 +35,7 @@ impl Architecture for Avr {
     fn decode(reg: &Region, addr: u64, cfg: &Self::Configuration) -> Result<Match<Self>> {
         info!("disass @ {:x}", addr);
         let disass = syntax::disassembler();
-
-        if let Some(st) = disass.next_match(&mut reg.iter().seek(addr), addr, cfg.clone()) {
+        if let Some(st) = disass.next_match(&mut reg.iter(addr), addr, cfg.clone()) {
             info!("    res: {:?}", st);
             Ok(st.into())
         } else {

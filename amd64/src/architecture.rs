@@ -55,27 +55,26 @@ impl Architecture for Amd64 {
     }
 
     fn decode(reg: &Region, start: u64, cfg: &Self::Configuration) -> Result<Match<Self>> {
-        let data = reg.iter();
-        let mut buf: Vec<u8> = vec![];
-        let mut i = data.seek(start);
-        let p = start;
-
-        while let Some(Some(b)) = i.next() {
-            buf.push(b);
-            if buf.len() == 15 {
+        let data = reg.iter(start);
+        let mut buf: [u8; 15] = [0; 15];
+        let mut len = 0;
+        for byte in data {
+            buf[len] = *byte;
+            len += 1;
+            if len == 15 {
                 break;
             }
         }
+        let buf = &buf[0..len];
+        debug!("disass @ {:#x}: {:?}", start, buf);
 
-        debug!("disass @ {:#x}: {:?}", p, buf);
-
-        let ret = ::disassembler::read(*cfg, &buf, p).and_then(
-            |(len, mne, mut jmp)| {
+        let ret = ::disassembler::read(*cfg, buf, start).and_then(
+            |(_len, mne, mut jmp)| {
                 Ok(
                     Match::<Amd64> {
-                        tokens: buf[0..len as usize].to_vec(),
+                        //tokens: buf[0..len as usize].to_vec(),
                         mnemonics: vec![mne],
-                        jumps: jmp.drain(..).map(|x| (p, x.0, x.1)).collect::<Vec<_>>(),
+                        jumps: jmp.drain(..).map(|x| (start, x.0, x.1)).collect::<Vec<_>>(),
                         configuration: cfg.clone(),
                     }
                 )

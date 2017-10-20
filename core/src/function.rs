@@ -174,7 +174,7 @@ impl Function {
             uuid: uuid.unwrap_or(Uuid::new_v4()),
             cflow_graph,
             entry_point,
-            region: region.name().clone(),
+            region: region.name().to_string(),
             size: 0,
             kind: FunctionKind::Regular,
         }
@@ -230,10 +230,10 @@ impl Function {
                     } else {
                         for mne in match_st.mnemonics {
                             debug!(
-                                "{:x}: {} ({:?})",
+                                "{:x}: {}",
                                 mne.area.start,
-                                mne.opcode,
-                                match_st.tokens
+                                mne.opcode
+                                //match_st.tokens
                             );
                             *size += mne.size();
                             mnemonics.entry(mne.area.start).or_insert(Vec::new()).push(MnemonicOrError::Mnemonic(mne));
@@ -302,7 +302,7 @@ impl Function {
             uuid,
             cflow_graph,
             entry_point,
-            region: region.name().clone(),
+            region: region.name().to_string(),
             size,
             kind: FunctionKind::Regular,
         })

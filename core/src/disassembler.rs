@@ -119,8 +119,6 @@ pub trait Architecture: Clone {
 /// Result of a single disassembly operation.
 #[derive(Debug,Clone)]
 pub struct Match<A: Architecture> {
-    /// Matched tokens
-    pub tokens: Vec<A::Token>,
     /// Recognized mnemonics
     pub mnemonics: Vec<Mnemonic>,
     /// Jumps/branches originating from the recovered mnemonics
@@ -133,7 +131,7 @@ pub struct Match<A: Architecture> {
 impl<A: Architecture> From<State<A>> for Match<A> {
     fn from(st: State<A>) -> Self {
         Match::<A> {
-            tokens: st.tokens,
+            //tokens: st.tokens,
             mnemonics: st.mnemonics,
             jumps: st.jumps,
             configuration: st.configuration,
@@ -352,9 +350,9 @@ impl<A: Architecture + Debug> Disassembler<A> {
 
     /// Trys to match the token sequence `i`. If successful, the state after the semantic function
     /// was called is returned and None otherwise.
-    pub fn next_match<Iter>(&self, i: &mut Iter, offset: u64, cfg: A::Configuration) -> Option<State<A>>
+    pub fn next_match<'a, Iter>(&self, i: &mut Iter, offset: u64, cfg: A::Configuration) -> Option<State<A>>
     where
-        Iter: Iterator<Item = Option<u8>> + Clone,
+        Iter: Iterator<Item = &'a u8> + Clone,
         A::Configuration: Clone + Debug,
         A: Debug,
     {
@@ -386,9 +384,9 @@ impl<A: Architecture + Debug> Disassembler<A> {
         }
     }
 
-    fn read_token<Iter>(i: &mut Iter) -> Option<A::Token>
+    fn read_token<'a, Iter>(i: &mut Iter) -> Option<A::Token>
     where
-        Iter: Iterator<Item = Option<u8>>,
+        Iter: Iterator<Item = &'a u8>,
     {
         let mut tok = A::Token::zero();
         // XXX: Hardcoded to little endian for AVR. Make configurable in Architecture trait
@@ -403,8 +401,8 @@ impl<A: Architecture + Debug> Disassembler<A> {
             if tok != A::Token::zero() {
                 tok = tok << 8;
             }
-            if let Some(&Some(byte)) = j.next() {
-                tok = tok | <A::Token as NumCast>::from(byte).unwrap();
+            if let Some(byte) = j.next() {
+                tok = tok | <A::Token as NumCast>::from(**byte).unwrap();
             } else {
                 return None;
             }
@@ -413,9 +411,9 @@ impl<A: Architecture + Debug> Disassembler<A> {
         Some(tok)
     }
 
-    fn find<Iter>(&self, i: Iter, initial_state: &State<A>) -> Vec<(Vec<&()>, State<A>, Iter)>
+    fn find<'a, Iter>(&self, i: Iter, initial_state: &State<A>) -> Vec<(Vec<&()>, State<A>, Iter)>
     where
-        Iter: Iterator<Item = Option<u8>> + Clone,
+        Iter: Iterator<Item = &'a u8> + Clone,
         A::Configuration: Clone,
     {
         let mut states = Vec::<(Vec<&()>, State<A>, DisassemblerRef, Iter)>::new();
@@ -481,7 +479,7 @@ impl<A: Architecture + Debug> Disassembler<A> {
                                         }
 
                                         p.push(a);
-                                        st.tokens.push(tok);
+                                        //st.tokens.push(tok);
                                         new_states.push((p, st, e.target(), i));
                                     }
                                 }
@@ -747,165 +745,166 @@ impl Architecture for TestArch {
         use std::iter;
 
         fn read_rvalue(reg: &Region, entry: &mut u64, len: usize) -> Result<Rvalue> {
-            let b = reg.iter().seek(*entry).next();
+            let b = reg.iter(*entry).next();
 
-            match b {
-                Some(Some(b)) => match b {
-                    b'a'...b'z' => {
+
+            if let Some(b) = b {
+                match *b {
+                    b @ b'a' ... b'z' => {
                         *entry += 1;
-                        Ok(Rvalue::Variable{ name: format!("{}",char::from(b)).into(), size: len, offset: 0, subscript: None })
+                        Ok(Rvalue::Variable { name: format!("{}", char::from(b)).into(), size: len, offset: 0, subscript: None })
                     }
-                    b'0'...b'9' => {
+                    b @ b'0' ... b'9' => {
                         *entry += 1;
-                        Ok(Rvalue::Constant{ value: (b - b'0') as u64, size: len })
+                        Ok(Rvalue::Constant { value: (b - b'0') as u64, size: len })
                     }
-                    _ => Err(format!("'{}' is nor a variable name neither a constant",b).into())
-                },
-                Some(None) => Err(format!("Undefined cell at {}",*entry - 1).into()),
-                None => Err(format!("Premature end while decoding rvalue at {}",*entry).into())
+                    _ => Err(format!("'{}' is nor a variable name neither a constant", b).into())
+                }
+            } else {
+                Err(format!("Premature end while decoding rvalue at {}",*entry).into())
             }
         }
         fn read_lvalue(reg: &Region, entry: &mut u64, len: usize) -> Result<Lvalue> {
-            let b = reg.iter().seek(*entry).next();
+            let b = reg.iter(*entry).next();
 
-            match b {
-                Some(Some(b)) => match b {
-                    b'a'...b'z' => {
+            if let Some(b) = b {
+                match *b {
+                    b @ b'a' ... b'z' => {
                         *entry += 1;
-                        Ok(Lvalue::Variable{ name: format!("{}",char::from(b)).into(), size: len, subscript: None })
+                        Ok(Lvalue::Variable { name: format!("{}", char::from(b)).into(), size: len, subscript: None })
                     }
-                    _ => Err(format!("'{}' is not a variable name",b).into())
-                },
-                Some(None) => Err(format!("Undefined cell at {}",*entry - 1).into()),
-                None => Err(format!("Premature end while decoding lvalue at {}",*entry).into())
+                    _ => Err(format!("'{}' is not a variable name", b).into())
+                }
+            } else {
+                Err(format!("Premature end while decoding lvalue at {}",*entry).into())
             }
         }
 
         fn read_address(reg: &Region, entry: &mut u64) -> Result<i64> {
-            let b = reg.iter().seek(*entry).next();
+            let b = reg.iter(*entry).next();
 
-            match b {
-                Some(Some(b@b'0'...b'9')) => {
-                    let value = (b - b'0') as i64;
+            if let Some(b) = b {
+                match *b {
+                    b @ b'0' ... b'9' => {
+                        let value = (b - b'0') as i64;
 
-                    *entry += 1;
-                    match read_address(reg,entry) {
-                        Ok(x) => Ok(value * 10 + x),
-                        Err(_) => Ok(value)
-                    }
+                        *entry += 1;
+                        match read_address(reg, entry) {
+                            Ok(x) => Ok(value * 10 + x),
+                            Err(_) => Ok(value)
+                        }
+                    },
+                    b => Err(format!("'{}' is not a number", b).into()),
                 }
-                Some(Some(b)) => Err(format!("'{}' is not a number",b).into()),
-                Some(None) => Err(format!("Undefined cell at {}",*entry - 1).into()),
-                None => Err(format!("Premature end while decoding address at {}",*entry).into())
+            } else {
+                Err(format!("Premature end while decoding address at {}",*entry).into())
             }
         }
 
         let start = entry;
-        let opcode = reg.iter().seek(entry).next();
+        let opcode = reg.iter(entry).next();
         entry += 1;
 
-        match opcode {
-            Some(Some(b'M')) => {
-                let var = read_lvalue(reg, &mut entry, 32)?;
-                let val = read_rvalue(reg, &mut entry, 32)?;
-                let ops = vec![var.clone().into(),val.clone()];
-                let instr = Statement{
-                    assignee: var,
-                    op: Operation::Move(val)
-                };
-                let mne = Mnemonic::new(start..entry, "mov".to_string(), "{u}, {u}".to_string(), ops.iter(), vec![instr].iter())?;
+            if let Some(opcode) = opcode {
+                match *opcode {
+                    b'M' => {
+                        let var = read_lvalue(reg, &mut entry, 32)?;
+                        let val = read_rvalue(reg, &mut entry, 32)?;
+                        let ops = vec![var.clone().into(), val.clone()];
+                        let instr = Statement {
+                            assignee: var,
+                            op: Operation::Move(val)
+                        };
+                        let mne = Mnemonic::new(start..entry, "mov".to_string(), "{u}, {u}".to_string(), ops.iter(), vec![instr].iter())?;
 
-                Ok(Match{
-                    tokens: reg.iter().cut(&(start..entry)).map(|x| x.unwrap()).collect(),
-                    mnemonics: vec![mne],
-                    jumps: vec![(start,Rvalue::new_u32(entry as u32),Guard::always())],
-                    configuration: (),
-                })
-            }
-            Some(Some(b'A')) => {
-                let var = read_lvalue(reg, &mut entry, 32)?;
-                let val1 = read_rvalue(reg, &mut entry, 32)?;
-                let val2 = read_rvalue(reg, &mut entry, 32)?;
-                let ops = vec![var.clone().into(),val1.clone(),val2.clone()];
-                let instr = Statement{
-                    assignee: var,
-                    op: Operation::Add(val1,val2)
-                };
-                let mne = Mnemonic::new(start..entry, "add".to_string(), "{u}, {u}, {u}".to_string(), ops.iter(), vec![instr].iter())?;
+                        Ok(Match {
+                            //tokens: reg.iter().cut(&(start..entry)).map(|x| x.unwrap()).collect(),
+                            mnemonics: vec![mne],
+                            jumps: vec![(start, Rvalue::new_u32(entry as u32), Guard::always())],
+                            configuration: (),
+                        })
+                    },
+                    b'A' => {
+                        let var = read_lvalue(reg, &mut entry, 32)?;
+                        let val1 = read_rvalue(reg, &mut entry, 32)?;
+                        let val2 = read_rvalue(reg, &mut entry, 32)?;
+                        let ops = vec![var.clone().into(), val1.clone(), val2.clone()];
+                        let instr = Statement {
+                            assignee: var,
+                            op: Operation::Add(val1, val2)
+                        };
+                        let mne = Mnemonic::new(start..entry, "add".to_string(), "{u}, {u}, {u}".to_string(), ops.iter(), vec![instr].iter())?;
 
-                Ok(Match{
-                    tokens: reg.iter().cut(&(start..entry)).map(|x| x.unwrap()).collect(),
-                    mnemonics: vec![mne],
-                    jumps: vec![(start,Rvalue::new_u32(entry as u32),Guard::always())],
-                    configuration: (),
-                })
-            }
-            Some(Some(b'C')) => {
-                let var = read_lvalue(reg, &mut entry, 1)?;
-                let val1 = read_rvalue(reg, &mut entry, 32)?;
-                let val2 = read_rvalue(reg, &mut entry, 32)?;
-                let ops = vec![var.clone().into(),val1.clone(),val2.clone()];
-                let instr = Statement{
-                    assignee: var,
-                    op: Operation::LessOrEqualUnsigned(val1,val2)
-                };
-                let mne = Mnemonic::new(start..entry, "leq".to_string(), "{u}, {u}, {u}".to_string(), ops.iter(), vec![instr].iter())?;
+                        Ok(Match {
+                            //tokens: reg.iter().cut(&(start..entry)).map(|x| x.unwrap()).collect(),
+                            mnemonics: vec![mne],
+                            jumps: vec![(start, Rvalue::new_u32(entry as u32), Guard::always())],
+                            configuration: (),
+                        })
+                    },
+                    b'C' => {
+                        let var = read_lvalue(reg, &mut entry, 1)?;
+                        let val1 = read_rvalue(reg, &mut entry, 32)?;
+                        let val2 = read_rvalue(reg, &mut entry, 32)?;
+                        let ops = vec![var.clone().into(), val1.clone(), val2.clone()];
+                        let instr = Statement {
+                            assignee: var,
+                            op: Operation::LessOrEqualUnsigned(val1, val2)
+                        };
+                        let mne = Mnemonic::new(start..entry, "leq".to_string(), "{u}, {u}, {u}".to_string(), ops.iter(), vec![instr].iter())?;
 
-                Ok(Match{
-                    tokens: reg.iter().cut(&(start..entry)).map(|x| x.unwrap()).collect(),
-                    mnemonics: vec![mne],
-                    jumps: vec![(start,Rvalue::new_u32(entry as u32),Guard::always())],
-                    configuration: (),
-                })
-            }
-            Some(Some(b'B')) => {
-                let bit = read_rvalue(reg, &mut entry, 1)?;
-                let brtgt = read_address(reg, &mut entry)?;
-                let ops = vec![bit.clone(),Rvalue::new_u32(brtgt as u32)];
-                let mne = Mnemonic::new(start..entry, "br".to_string(), "{u}, {u}".to_string(), ops.iter(), iter::empty())?;
-                let guard = Guard::from_flag(&bit)?;
+                        Ok(Match {
+                            //tokens: reg.iter().cut(&(start..entry)).map(|x| x.unwrap()).collect(),
+                            mnemonics: vec![mne],
+                            jumps: vec![(start, Rvalue::new_u32(entry as u32), Guard::always())],
+                            configuration: (),
+                        })
+                    },
+                    b'B' => {
+                        let bit = read_rvalue(reg, &mut entry, 1)?;
+                        let brtgt = read_address(reg, &mut entry)?;
+                        let ops = vec![bit.clone(), Rvalue::new_u32(brtgt as u32)];
+                        let mne = Mnemonic::new(start..entry, "br".to_string(), "{u}, {u}".to_string(), ops.iter(), iter::empty())?;
+                        let guard = Guard::from_flag(&bit)?;
 
-                Ok(Match{
-                    tokens: reg.iter().cut(&(start..entry)).map(|x| x.unwrap()).collect(),
-                    mnemonics: vec![mne],
-                    jumps: vec![
-                        (start,Rvalue::new_u32(entry as u32),guard.negation()),
-                        (start,Rvalue::new_u32(brtgt as u32),guard)],
-                    configuration: (),
-                })
-            }
-            Some(Some(b'J')) => {
-                let jtgt = read_address(reg, &mut entry)?;
-                let ops = vec![Rvalue::new_u32(jtgt as u32)];
-                let mne = Mnemonic::new(start..entry, "jmp".to_string(), "{u}".to_string(), ops.iter(), iter::empty())?;
+                        Ok(Match {
+                            //tokens: reg.iter().cut(&(start..entry)).map(|x| x.unwrap()).collect(),
+                            mnemonics: vec![mne],
+                            jumps: vec![
+                                (start, Rvalue::new_u32(entry as u32), guard.negation()),
+                                (start, Rvalue::new_u32(brtgt as u32), guard)],
+                            configuration: (),
+                        })
+                    },
+                    b'J' => {
+                        let jtgt = read_address(reg, &mut entry)?;
+                        let ops = vec![Rvalue::new_u32(jtgt as u32)];
+                        let mne = Mnemonic::new(start..entry, "jmp".to_string(), "{u}".to_string(), ops.iter(), iter::empty())?;
 
-                Ok(Match{
-                    tokens: reg.iter().cut(&(start..entry)).map(|x| x.unwrap()).collect(),
-                    mnemonics: vec![mne],
-                    jumps: vec![(start,Rvalue::new_u32(jtgt as u32),Guard::always())],
-                    configuration: (),
-                })
-            }
-            Some(Some(b'R')) => {
-                let mne = Mnemonic::new(start..entry, "ret".to_string(), "".to_string(), iter::empty(), iter::empty())?;
+                        Ok(Match {
+                            //tokens: reg.iter().cut(&(start..entry)).map(|x| x.unwrap()).collect(),
+                            mnemonics: vec![mne],
+                            jumps: vec![(start, Rvalue::new_u32(jtgt as u32), Guard::always())],
+                            configuration: (),
+                        })
+                    },
+                    b'R' => {
+                        let mne = Mnemonic::new(start..entry, "ret".to_string(), "".to_string(), iter::empty(), iter::empty())?;
 
-                Ok(Match{
-                    tokens: reg.iter().cut(&(start..entry)).map(|x| x.unwrap()).collect(),
-                    mnemonics: vec![mne],
-                    jumps: vec![],
-                    configuration: (),
-                })
+                        Ok(Match {
+                            //tokens: reg.iter().cut(&(start..entry)).map(|x| x.unwrap()).collect(),
+                            mnemonics: vec![mne],
+                            jumps: vec![],
+                            configuration: (),
+                        })
+                    },
+                    o => {
+                        Err(format!("Unknown opcode '{}' at {}", o, start).into())
+                    }
+                }
+            } else {
+                Err(format ! ("Premature end while decoding opcode {}", start).into())
             }
-            Some(Some(o)) => {
-                Err(format!("Unknown opcode '{}' at {}",o,start).into())
-            }
-            Some(None) => {
-                Err(format!("Undefined cell at {}",start).into())
-            }
-            None => {
-                Err(format!("Premature end while decoding opcode {}",start).into())
-            }
-        }
     }
 }
 

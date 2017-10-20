@@ -704,10 +704,10 @@ fn disassemble<A: Architecture>(init: A::Configuration, starts: Vec<u64>, region
                         } else {
                             for mne in match_st.mnemonics {
                                 debug!(
-                                    "{:x}: {} ({:?})",
+                                    "{:x}: {}",
                                     mne.area.start,
-                                    mne.opcode,
-                                    match_st.tokens
+                                    mne.opcode
+                                    //match_st.tokens
                                     );
                                 let this_mne = Mnemonic{
                                     area: mne.area.start..mne.area.end,

@@ -28,7 +28,6 @@ impl Architecture for Mos {
     type Configuration = Variant;
 
     fn prepare(reg: &Region, _: &Self::Configuration) -> Result<Vec<(&'static str, u64, &'static str)>> {
-        let i = reg.iter();
         let iv = vec![
             ("NMI", 0xfffa, "NMI vector"),
             ("RESET", 0xfffc, "Reset routine"),
@@ -37,13 +36,11 @@ impl Architecture for Mos {
         let mut ret = vec![];
 
         for v in iv {
-            let mut j = i.clone();
-
-            j.seek(v.1);
+            let mut j = reg.iter(v.1);
             let maybe_lo = j.next();
             let maybe_hi = j.next();
-            if let (Some(Some(hi)), Some(Some(lo))) = (maybe_hi, maybe_lo) {
-                let addr = ((hi as u64) << 8) | (lo as u64);
+            if let (Some(hi), Some(lo)) = (maybe_hi, maybe_lo) {
+                let addr = ((*hi as u64) << 8) | (*lo as u64);
 
                 ret.push((v.0, addr, v.2))
             }
@@ -56,7 +53,7 @@ impl Architecture for Mos {
         info!("disass @ {:x}", addr);
         let disass = syntax::disassembler();
 
-        if let Some(st) = disass.next_match(&mut reg.iter().seek(addr), addr, cfg.clone()) {
+        if let Some(st) = disass.next_match(&mut reg.iter(addr), addr, cfg.clone()) {
             info!("    res: {:?}", st);
             Ok(st.into())
         } else {
