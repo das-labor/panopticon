@@ -745,7 +745,7 @@ impl Architecture for TestArch {
         use std::iter;
 
         fn read_rvalue(reg: &Region, entry: &mut u64, len: usize) -> Result<Rvalue> {
-            let b = reg.iter(*entry).next();
+            let b = reg.iter(*entry)?.next();
 
 
             if let Some(b) = b {
@@ -765,7 +765,7 @@ impl Architecture for TestArch {
             }
         }
         fn read_lvalue(reg: &Region, entry: &mut u64, len: usize) -> Result<Lvalue> {
-            let b = reg.iter(*entry).next();
+            let b = reg.iter(*entry)?.next();
 
             if let Some(b) = b {
                 match *b {
@@ -781,7 +781,7 @@ impl Architecture for TestArch {
         }
 
         fn read_address(reg: &Region, entry: &mut u64) -> Result<i64> {
-            let b = reg.iter(*entry).next();
+            let b = reg.iter(*entry)?.next();
 
             if let Some(b) = b {
                 match *b {
@@ -802,7 +802,7 @@ impl Architecture for TestArch {
         }
 
         let start = entry;
-        let opcode = reg.iter(entry).next();
+        let opcode = reg.iter(entry)?.next();
         entry += 1;
 
             if let Some(opcode) = opcode {

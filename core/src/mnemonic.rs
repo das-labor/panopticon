@@ -30,50 +30,12 @@
 //! value. Other formattings are `{d:<region>}` for data pointer into <region> and `{s}` for
 //! signed values.
 
-use Result;
+use {Bound, Result};
 
 use Rvalue;
 use Statement;
 use std::ops::Range;
 use std::str::Chars;
-
-/// A non-empty address range [start,end).
-#[derive(Debug,Clone,PartialEq,Eq,Serialize,Deserialize)]
-pub struct Bound {
-    /// Address of the first byte inside the range.
-    pub start: u64,
-    /// Address of the first byte outside the range.
-    pub end: u64,
-}
-
-impl From<Range<usize>> for Bound {
-    fn from(range: Range<usize>) -> Self {
-        Bound { start: range.start as u64, end: range.end as u64 }
-    }
-}
-
-impl From<Range<u64>> for Bound {
-    fn from(range: Range<u64>) -> Self {
-        Bound { start: range.start, end: range.end }
-    }
-}
-
-impl Bound {
-    /// Returns a `Bound` for [a,b)
-    pub fn new(a: u64, b: u64) -> Bound {
-        Bound { start: a, end: b }
-    }
-
-    /// Size of the range in bytes.
-    pub fn len(&self) -> u64 {
-        self.end - self.start
-    }
-
-    /// Checks if this bound contains `address`
-    pub fn contains(&self, address: u64) -> bool {
-        address >= self.start && address < self.end
-    }
-}
 
 /// Internal to `Mnemonic`
 #[derive(Clone,Debug,PartialEq,Eq,Serialize,Deserialize)]

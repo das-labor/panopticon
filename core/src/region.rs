@@ -50,7 +50,7 @@
 //! This region is named "undef" and is just 4k of undefined cells
 
 
-use {Bound, Result};
+use {Result};
 
 use petgraph::prelude::*;
 
@@ -60,6 +60,44 @@ use std::fs::File;
 use std::slice::Iter;
 use std::collections::HashSet;
 use std::path::Path;
+
+/// A non-empty address range [start,end).
+#[derive(Debug,Clone,PartialEq,Eq,Serialize,Deserialize)]
+pub struct Bound {
+    /// Address of the first byte inside the range.
+    pub start: u64,
+    /// Address of the first byte outside the range.
+    pub end: u64,
+}
+
+impl From<Range<usize>> for Bound {
+    fn from(range: Range<usize>) -> Self {
+        Bound { start: range.start as u64, end: range.end as u64 }
+    }
+}
+
+impl From<Range<u64>> for Bound {
+    fn from(range: Range<u64>) -> Self {
+        Bound { start: range.start, end: range.end }
+    }
+}
+
+impl Bound {
+    /// Returns a `Bound` for [a,b)
+    pub fn new(a: u64, b: u64) -> Bound {
+        Bound { start: a, end: b }
+    }
+
+    /// Size of the range in bytes.
+    pub fn len(&self) -> u64 {
+        self.end - self.start
+    }
+
+    /// Checks if this bound contains `address`
+    pub fn contains(&self, address: u64) -> bool {
+        address >= self.start && address < self.end
+    }
+}
 
 /// Memory in panopticon is a series of ranges -> bytes. This corresponds to the memory image of the binary
 /// when it is run on the CPU
@@ -75,13 +113,13 @@ pub struct Region {
 
 impl Region {
     /// Creates a new `Region` called `name` that is filled with the contents of the file at `path`.
-    /// Note: this is _not_ the proper way to load an ELF file, or other structured binaries, please see [loader](../loader.html)
+    /// Note: this is _not_ the proper way to load an ELF file, or other structured binaries, please see [loader](../loader/index.html)
     pub fn open(name: String, path: &Path) -> Result<Self> {
         let mut buf: Vec<u8> = Vec::new();
         let mut fd = File::open(path)?;
         fd.read_to_end(&mut buf)?;
         let mut region = Self::new(name);
-        region.add(Bound::from(0..buf.len()), buf);
+        region.add(Bound::from(0..buf.len()), buf)?;
         Ok(region)
     }
 
@@ -99,39 +137,46 @@ impl Region {
         &self.name
     }
 
-    #[inline]
-    fn add(&mut self, range: Bound, memory: Vec<u8>) {
+    fn add(&mut self, range: Bound, memory: Vec<u8>) -> Result<()> {
         let start = self.flat_memory.len();
         let end = start + memory.len();
+        let vmaddr_len = range.len() as usize;
+        if vmaddr_len != memory.len() {
+            if vmaddr_len < memory.len() {
+                return Err(format!("Invalid bound: vmaddress bound ({:?}) is smaller ({}) than the raw memory it covers ({})", range, vmaddr_len, memory.len()).into());
+            } else {
+                return Err(format!("Invalid bound: vmaddress bound ({:?}) is larger ({}) than the raw memory it covers ({})", range, vmaddr_len, memory.len()).into());
+            }
+        }
         debug!("Adding memory region of size {}, new size: {}, with vmaddr: {:?}, and bytes bound: {:?}", memory.len(), self.size, &range, start..end);
         self.size += memory.len();
         self.flat_memory.extend(memory);
         self.regions.push((range, start..end));
+        Ok(())
     }
     /// Add zeroed memory in `range`
-    pub fn zeroes(&mut self, range: Bound) {
+    pub fn zeroes(&mut self, range: Bound) -> Result<()> {
         let len = (range.end - range.start) as usize;
         self.add(range, vec![0; len])
     }
     /// FIXME: Placeholder for transition
-    pub fn cover(&mut self, range: Bound, memory: Vec<u8>) {
+    pub fn cover(&mut self, range: Bound, memory: Vec<u8>)-> Result<()> {
         self.add(range, memory)
     }
 
-    // FIXME: return option or result for bad starts
     /// Iterate over memory at `start` bytes
-    pub fn iter(&self, start: u64) -> Iter<u8> {
+    pub fn iter(&self, start: u64) -> Result<Iter<u8>> {
         // debug!("total memory: {} - nregions: {}, regions: {:?}", self.size, self.regions.len(), self.regions);
         for &(ref vmaddr, ref bytes) in &self.regions {
             if vmaddr.contains(start) {
                 // transform into flat memory index space
                 let start_ = (start - vmaddr.start) as usize + bytes.start;
                 // debug!("START: {}, computed {} vmaddr: {:?}, bytes: {:?}", start, start_, vmaddr, bytes);
-                // FIXME: check that start < bytes.end
-                return self.flat_memory[start_..].iter();
+                // add insures invariant that start_ is always < bytes.end
+                return Ok(self.flat_memory[start_..].iter());
             }
         }
-        [].iter()
+        Err(format!("Cannot iterate: start address ({:#x}) is not contained anywhere in this region", start).into())
     }
 }
 

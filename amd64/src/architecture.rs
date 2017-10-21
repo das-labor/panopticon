@@ -55,7 +55,7 @@ impl Architecture for Amd64 {
     }
 
     fn decode(reg: &Region, start: u64, cfg: &Self::Configuration) -> Result<Match<Self>> {
-        let data = reg.iter(start);
+        let data = reg.iter(start)?;
         let mut buf: [u8; 15] = [0; 15];
         let mut len = 0;
         for byte in data {

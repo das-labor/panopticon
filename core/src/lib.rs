@@ -127,7 +127,7 @@ pub mod il;
 pub use il::{Guard, Lvalue, Operation, Rvalue, Statement, execute, Endianess};
 
 pub mod mnemonic;
-pub use mnemonic::{Bound, Mnemonic, MnemonicFormatToken};
+pub use mnemonic::{Mnemonic, MnemonicFormatToken};
 pub mod basic_block;
 pub use basic_block::BasicBlock;
 
@@ -141,7 +141,7 @@ pub mod project;
 pub use project::Project;
 
 pub mod region;
-pub use region::{Region, World};
+pub use region::{Bound, Region, World};
 
 pub mod layer;
 pub use layer::{Layer, LayerIter, OpaqueLayer};

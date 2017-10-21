@@ -90,7 +90,7 @@ pub fn load_mach<F: Fun>(bytes: &[u8], offset: usize, name: String) -> Result<(P
             segment.vmsize,
             start
         );
-        reg.cover(Bound::new(start, end), Vec::from(section));
+        reg.cover(Bound::new(start, end), Vec::from(section))?;
         if name == "__TEXT" {
             base = segment.vmaddr;
             debug!("Setting vm address base to {:#x}", base);
@@ -179,7 +179,7 @@ fn load_elf<F: Fun>(bytes: &[u8], name: String) -> Result<(Project<F>, Machine)>
                 reg.cover(
                     Bound::new(ph.p_vaddr, ph.p_vaddr + ph.p_filesz),
                     buf,
-                );
+                )?;
             } else {
                 return Err("Failed to read segment".into());
             }
@@ -295,7 +295,7 @@ fn load_pe<F: Fun>(bytes: &[u8], name: String) -> Result<(Project<F>, Machine)> 
         let end = image_base + virtual_address + size as u64;
         let bound = Bound::new(begin, end);
         debug!("bound: {:?}", &bound);
-        ram.cover(bound, layer);
+        ram.cover(bound, layer)?;
     }
     let entry = (pe.image_base + pe.entry) as u64;
     debug!("entry: {:#x}", entry);
