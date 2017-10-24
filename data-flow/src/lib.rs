@@ -102,12 +102,13 @@ impl DataFlow for Function {
     }
 }
 
-impl DataFlow for panopticon_core::neo::Function {
+impl<S> DataFlow for panopticon_core::neo::Function<S> {
     // @flanfly: can technically implement it for neo by calling its specific functions in `neo::*` here, as it mutates self
     fn ssa_conversion(&mut self) -> Result<()> {
-        neo::rewrite_to_ssa(self).map_err(|e| {
-            format!("{}", e).into()
-        })
+        Ok(())
+//        neo::rewrite_to_ssa(self).map_err(|e| {
+//            format!("{}", e).into()
+//        })
     }
     fn entry_point_mut(&mut self) -> &mut BasicBlock {
         unimplemented!()
@@ -128,4 +129,4 @@ impl DataFlow for panopticon_core::neo::Function {
 mod liveness;
 mod ssa;
 
-pub mod neo;
+//pub mod neo;

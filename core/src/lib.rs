@@ -98,6 +98,10 @@ extern crate env_logger;
 #[cfg(test)]
 #[macro_use] extern crate quickcheck;
 
+//pub trait StandardIL {
+//    fn from_rreil(rreil: Statement) -> Self;
+//}
+
 pub trait Fun: Sized {
     fn aliases(&self) -> &[String];
     fn kind(&self) -> &FunctionKind;

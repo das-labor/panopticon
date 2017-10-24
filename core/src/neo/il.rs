@@ -75,6 +75,36 @@ pub enum Operation<V>
 }
 
 impl<V> Operation<V> where V: Clone + PartialEq + Eq + Debug {
+    pub fn name(&self) -> &'static str {
+        use self::Operation::*;
+        match self {
+            &Add(..) => "add",
+            &Subtract(..) => "sub",
+            &Multiply(..) => "mul",
+            &DivideUnsigned(..) => "div",
+            &DivideSigned(..) => "divs",
+            &ShiftLeft(..) => "shl",
+            &ShiftRightUnsigned(..) => "shr",
+            &ShiftRightSigned(..) => "shrs",
+            &Modulo(..) => "mod",
+            &And(..) => "and",
+            &InclusiveOr(..) => "or",
+            &ExclusiveOr(..) => "xor",
+            &Equal(..) => "eq",
+            &LessOrEqualUnsigned(..) => "leq",
+            &LessOrEqualSigned(..) => "leqs",
+            &LessUnsigned(..) => "less",
+            &LessSigned(..) => "less_signed",
+            &ZeroExtend(..) => "zero_extend",
+            &SignExtend(..) => "sign_extend",
+            &Move(..) => "move",
+            &Initialize(..) => "init",
+            &Select(..) => "select",
+            &Load(..) => "load",
+            &Phi(..) => "phi",
+        }
+
+    }
     pub fn reads<'x>(&'x self) -> SmallVec<[&'x V; 3]> {
         use neo::Operation::*;
 
@@ -167,23 +197,23 @@ pub enum CallTarget {
 #[derive(Clone,PartialEq,Eq,Debug)]
 pub enum Statement {
     /// A single RREIL statement.
-    Expression{
+    Expression {
         /// Value that the operation result is assigned to
         result: Variable,
         /// Operation and its arguments
         op: Operation<Value>,
     },
     /// Function call
-    Call{
+    Call {
         function: CallTarget,
     },
-    IndirectCall{
+    IndirectCall {
         /// Call target
         target: Value,
     },
     Return,
     /// Writes a memory cell
-    Store{
+    Store {
         region: Str,
         endianess: Endianess,
         bytes: usize,

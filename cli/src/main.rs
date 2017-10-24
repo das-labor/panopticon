@@ -1,3 +1,4 @@
+#![allow(unused_doc_comment)]
 extern crate structopt;
 #[macro_use]
 extern crate structopt_derive;
@@ -19,7 +20,7 @@ extern crate atty;
 use panopticon_amd64 as amd64;
 use panopticon_analysis::analyze;
 use panopticon_avr as avr;
-use panopticon_core::{Machine, Fun, FunctionKind, Function, Program, Result, loader, neo};
+use panopticon_core::{Machine, Fun, FunctionKind, Program, Result, loader, neo};
 use panopticon_data_flow::{DataFlow};
 
 use std::path::Path;
@@ -180,7 +181,7 @@ fn disassemble<Function: Fun + DataFlow + Send>(binary: &str) -> Result<Program<
     }?)
 }
 
-fn app_logic<Function: Fun + DataFlow + PrintableFunction + PrintableStatements>(fmt: &mut termcolor::Buffer, mut program: Program<Function>, args: Args) -> Result<()> {
+fn app_logic<'a, Function: Fun + DataFlow + PrintableFunction + PrintableStatements<'a>>(fmt: &mut termcolor::Buffer, program: &mut Program<Function>, args: Args) -> Result<()> {
     let filter = Filter { name: args.function_filter, addr: args.address_filter.map(|addr| u64::from_str_radix(&addr, 16).unwrap()) };
 
     debug!("Program.imports: {:#?}", program.imports);
@@ -219,11 +220,11 @@ fn app_logic<Function: Fun + DataFlow + PrintableFunction + PrintableStatements>
                 writeln!(fmt, "")?;
             }
         }
-        if args.dump_il {
-            // function.pretty_print_il(fmt)?;
-        }
         // move this into pretty_print
         writeln!(fmt, "Aliases: {:?}", function.aliases())?;
+//        if args.dump_il {
+//            function.pretty_print_il::<,_>(&mut fmt)?;
+//        }
     }
     Ok(())
 }
@@ -233,12 +234,25 @@ fn run(args: Args) -> Result<()> {
     let cc = if args.color || atty::is(atty::Stream::Stdout) { ColorChoice::Auto } else { ColorChoice::Never };
     let writer = BufferWriter::stdout(cc);
     let mut fmt = writer.buffer();
+    let dump_il = args.dump_il;
     if args.neo {
-       let program = disassemble::<neo::Function>(&args.binary)?;
-       app_logic(&mut fmt, program, args)?;
+        let mut program = disassemble::<neo::Function<neo::Bitcode>>(&args.binary)?;
+        app_logic(&mut fmt, &mut program, args)?;
+        if dump_il {
+            for function in program.functions() {
+                function.pretty_print_il::<neo::Statement,_>(&mut fmt)?;
+            }
+        }
     } else {
-        let program = disassemble::<Function>(&args.binary)?;
-        app_logic(&mut fmt, program, args)?;
+        use panopticon_core::Statement;
+        let mut program = disassemble::<neo::Function<Vec<Statement>>>(&args.binary)?;
+        app_logic(&mut fmt, &mut program, args)?;
+        if dump_il {
+            for function in program.functions() {
+                function.pretty_print_il::<Statement,_>(&mut fmt)?;
+            }
+        }
+
     }
     writer.print(&fmt)?;
     Ok(())

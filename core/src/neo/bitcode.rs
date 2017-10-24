@@ -167,14 +167,23 @@ impl Default for Bitcode {
 }
 
 impl Bitcode {
-    pub fn append<I: IntoIterator<Item=Statement> + Sized>(&mut self, i: I) -> Result<Range<usize>> {
+    pub fn push(&mut self, statement: Statement) -> Result<usize> {
+        let mut buf = Cursor::new(Vec::new());
+        Bitcode::encode_statement(statement,&mut buf,&mut self.strings)?;
+        let bytes = buf.into_inner();
+        let len = bytes.len();
+        self.data.extend(bytes.into_iter());
+        Ok(len)
+    }
+    //pub fn append<I: IntoIterator<Item=Statement> + Sized>(&mut self, i: I) -> Result<Range<usize>> {
+    //pub fn append(&mut self, i: &::std::iter::Drain<Item = Statement>) -> Result<Range<usize>> {
+    pub fn append(&mut self, i: Vec<Statement>) -> Result<Range<usize>> {
         let mut buf = Cursor::new(Vec::new());
         let start = self.data.len();
 
         for stmt in i {
             Self::encode_statement(stmt,&mut buf,&mut self.strings)?;
         }
-
         self.data.extend(buf.into_inner().into_iter());
         Ok(start..self.data.len())
     }

@@ -19,7 +19,6 @@ mod core {
 }
 
 use std::collections::{HashSet,HashMap};
-use std::fmt::Debug;
 
 #[derive(Debug)]
 pub struct BasicBlock {
@@ -131,38 +130,67 @@ impl BasicBlockIndex {
     pub fn index(&self) -> usize { self.index }
 }
 
-pub struct BasicBlockIterator<'a> {
-    function: &'a Function,
+pub struct BasicBlockIterator<'a, IL: 'a> {
+    function: &'a Function<IL>,
     index: usize,
     max: usize,
 }
 
-pub struct EasyBasicBlockIterator<'a> {
-    function: &'a Function,
+pub struct EasyBasicBlockIterator<'a, IL: 'a> {
+    function: &'a Function<IL>,
     range: Range<usize>,
 }
 
-pub struct EasyMnemonicIterator<'a> {
-    function: &'a Function,
+pub struct EasyMnemonicIterator<'a, IL: 'a> {
+    function: &'a Function<IL>,
     basic_block: &'a BasicBlock,
     range: Range<usize>,
 }
 
-impl<'a> Iterator for EasyMnemonicIterator<'a> {
-    type Item = BitcodeIter<'a>;
+pub struct EasyStatementIterator<'a, IL: Language<'a>> {
+    pub mnemonic: &'a Mnemonic,
+    statements: IL::Iterator,
+}
+
+impl<'a, IL: Language<'a>> Iterator for EasyStatementIterator<'a, IL> {
+    type Item = IL::Statement;
+    fn next(&mut self) -> Option<Self::Item> {
+        self.statements.next()
+    }
+}
+
+impl<'a, IL: Language<'a>> Iterator for EasyMnemonicIterator<'a, IL> {
+    type Item = EasyStatementIterator<'a, IL>;
     fn next(&mut self) -> Option<Self::Item> {
         match self.range.next() {
             Some(idx) => {
-                let mne = &self.function.mnemonics[idx];
-                Some(self.function.bitcode.iter_range(mne.statements.clone()))
+                let mnemonic = &self.function.mnemonics[idx];
+                let statements = self.function.code.iter_range(mnemonic.statements.clone());
+                Some(EasyStatementIterator {
+                    mnemonic,
+                    statements,
+                })
             },
             None => None
         }
      }
 }
 
-impl<'a> Iterator for EasyBasicBlockIterator<'a> {
-    type Item = EasyMnemonicIterator<'a>;
+//impl<'a, IL: Language<'a>> Iterator for EasyMnemonicIterator<'a, IL> {
+//    type Item = IL::Iterator;
+//    fn next(&mut self) -> Option<Self::Item> {
+//        match self.range.next() {
+//            Some(idx) => {
+//                let mne = &self.function.mnemonics[idx];
+//                Some(self.function.code.iter_range(mne.statements.clone()))
+//            },
+//            None => None
+//        }
+//     }
+//}
+
+impl<'a, IL> Iterator for EasyBasicBlockIterator<'a, IL> {
+    type Item = EasyMnemonicIterator<'a, IL>;
     fn next(&mut self) -> Option<Self::Item> {
         match self.range.next() {
             Some(idx) => {
@@ -179,33 +207,32 @@ impl<'a> Iterator for EasyBasicBlockIterator<'a> {
      }
 }
 
-// get us:
-//
-// for bb in f {
-//   for mne in bb {
-//     for statement in mne {
-//     }
-//   }
-// }
-impl<'a> IntoIterator for &'a Function {
-    type Item = EasyMnemonicIterator<'a>;
-    type IntoIter = EasyBasicBlockIterator<'a>;
+//// get us:
+////
+//// for bb in f {
+////   for mne in bb {
+////     for statement in mne {
+////     }
+////   }
+//// }
+impl<'a, IL: Language<'a> + Default> IntoIterator for &'a Function<IL> {
+    type Item = EasyMnemonicIterator<'a, IL>;
+    type IntoIter = EasyBasicBlockIterator<'a, IL>;
     fn into_iter(self) -> Self::IntoIter {
-       EasyBasicBlockIterator {
+        EasyBasicBlockIterator {
             function: self,
             range: 0..self.basic_blocks().len(),
         }
-     }
+    }
 }
 
-impl<'a> Iterator for BasicBlockIterator<'a> {
+impl<'a, IL> Iterator for BasicBlockIterator<'a, IL> {
     type Item = (BasicBlockIndex,&'a BasicBlock);
 
     fn next(&mut self) -> Option<(BasicBlockIndex,&'a BasicBlock)> {
         if self.index <= self.max {
             let idx = BasicBlockIndex::new(self.index);
             let bb = &self.function.basic_blocks[self.index];
-
             self.index += 1;
             Some((idx,bb))
         } else {
@@ -214,13 +241,13 @@ impl<'a> Iterator for BasicBlockIterator<'a> {
     }
 }
 
-impl<'a> ExactSizeIterator for BasicBlockIterator<'a> {
+impl<'a, IL> ExactSizeIterator for BasicBlockIterator<'a, IL> {
     fn len(&self) -> usize {
         self.max - self.index + 1
     }
 }
 
-impl<'a> DoubleEndedIterator for BasicBlockIterator<'a> {
+impl<'a, IL> DoubleEndedIterator for BasicBlockIterator<'a, IL> {
     fn next_back(&mut self) -> Option<(BasicBlockIndex,&'a BasicBlock)> {
         if self.max > 0 {
             self.max -= 1;
@@ -244,13 +271,13 @@ impl MnemonicIndex {
     pub fn index(&self) -> usize { self.index }
 }
 
-pub struct MnemonicIterator<'a> {
-    function: &'a Function,
+pub struct MnemonicIterator<'a, IL: 'a> {
+    function: &'a Function<IL>,
     index: usize,
     max: usize,
 }
 
-impl<'a> Iterator for MnemonicIterator<'a> {
+impl<'a, IL> Iterator for MnemonicIterator<'a, IL> {
     type Item = (MnemonicIndex,&'a Mnemonic);
 
     fn next(&mut self) -> Option<(MnemonicIndex,&'a Mnemonic)> {
@@ -266,100 +293,107 @@ impl<'a> Iterator for MnemonicIterator<'a> {
     }
 }
 
-impl<'a> ExactSizeIterator for MnemonicIterator<'a> {
+impl<'a, IL> ExactSizeIterator for MnemonicIterator<'a, IL> {
     fn len(&self) -> usize {
         self.max - self.index + 1
     }
 }
 
-pub trait IntoStatementRange {
-    fn into_statement_range(self, func: &Function) -> Range<usize>;
+pub trait IntoStatementRange<IL> {
+    fn into_statement_range(self, func: &Function<IL>) -> Range<usize>;
 }
 
-impl IntoStatementRange for RangeFull {
-    fn into_statement_range(self, func: &Function) -> Range<usize> {
-        0..func.bitcode.num_bytes()
+impl<IL> IntoStatementRange<IL> for RangeFull {
+    fn into_statement_range(self, func: &Function<IL>) -> Range<usize> {
+        0..0
+        //0..func.bitcode.num_bytes()
     }
 }
 
-impl IntoStatementRange for Range<usize> {
-    fn into_statement_range(self, _: &Function) -> Range<usize> {
+impl<IL> IntoStatementRange<IL> for Range<usize> {
+    fn into_statement_range(self, _: &Function<IL>) -> Range<usize> {
         self
     }
 }
 
-impl IntoStatementRange for BasicBlockIndex {
-    fn into_statement_range(self, func: &Function) -> Range<usize> {
+impl<IL> IntoStatementRange<IL> for BasicBlockIndex {
+    fn into_statement_range(self, func: &Function<IL>) -> Range<usize> {
         let bb = &func.basic_blocks[self.index()];
         bb.into_statement_range(func)
     }
 }
 
-impl IntoStatementRange for MnemonicIndex {
-    fn into_statement_range(self, func: &Function) -> Range<usize> {
+impl<IL> IntoStatementRange<IL> for MnemonicIndex {
+    fn into_statement_range(self, func: &Function<IL>) -> Range<usize> {
         let mne = &func.mnemonics[self.index()];
         mne.into_statement_range(func)
     }
 }
 
-impl<'a> IntoStatementRange for &'a Mnemonic {
-    fn into_statement_range(self, _: &Function) -> Range<usize> {
+impl<'a, IL> IntoStatementRange<IL> for &'a Mnemonic {
+    fn into_statement_range(self, _: &Function<IL>) -> Range<usize> {
         self.statements.clone()
     }
 }
 
-impl<'a> IntoStatementRange for &'a BasicBlock {
-    fn into_statement_range(self, func: &Function) -> Range<usize> {
+impl<'a, IL> IntoStatementRange<IL> for &'a BasicBlock {
+    fn into_statement_range(self, func: &Function<IL>) -> Range<usize> {
         let start = func.mnemonics[self.mnemonics.start.index()].statements.start;
         let end = func.mnemonics[self.mnemonics.end.index() - 1].statements.end;
-
         start..end
     }
 }
 
-pub trait IntoMnemonicRange {
-    fn into_mnemonic_range(self, func: &Function) -> Range<usize>;
+pub trait IntoMnemonicRange<'a, IL> {
+    fn into_mnemonic_range(self, func: &'a Function<IL>) -> Range<usize>;
 }
-
-impl IntoMnemonicRange for RangeFull {
-    fn into_mnemonic_range(self, func: &Function) -> Range<usize> {
-        0..func.mnemonics.len()
-    }
-}
-
-impl IntoMnemonicRange for Range<usize> {
-    fn into_mnemonic_range(self, _: &Function) -> Range<usize> {
-        self
-    }
-}
-
-impl IntoMnemonicRange for Range<MnemonicIndex> {
-    fn into_mnemonic_range(self, _: &Function) -> Range<usize> {
-        self.start.index()..self.end.index()
-    }
-}
-
-impl IntoMnemonicRange for BasicBlockIndex {
-    fn into_mnemonic_range(self, func: &Function) -> Range<usize> {
+//
+//impl IntoMnemonicRange for RangeFull {
+//    fn into_mnemonic_range(self, func: &Function<S>) -> Range<usize> {
+//        0..func.mnemonics.len()
+//    }
+//}
+//
+//impl IntoMnemonicRange for Range<usize> {
+//    fn into_mnemonic_range(self, _: &Function<S>) -> Range<usize> {
+//        self
+//    }
+//}
+//
+//impl IntoMnemonicRange for Range<MnemonicIndex> {
+//    fn into_mnemonic_range(self, _: &Function<S>) -> Range<usize> {
+//        self.start.index()..self.end.index()
+//    }
+//}
+//
+impl<'a, IL> IntoMnemonicRange<'a, IL> for BasicBlockIndex {
+    fn into_mnemonic_range(self, func: &'a Function<IL>) -> Range<usize> {
         let bb = &func.basic_blocks[self.index()];
         bb.into_mnemonic_range(func)
     }
 }
 
-impl<'a> IntoMnemonicRange for &'a BasicBlock {
-    fn into_mnemonic_range(self, _: &Function) -> Range<usize> {
+impl<'a, IL> IntoMnemonicRange<'a, IL> for (BasicBlockIndex, &'a BasicBlock) {
+    fn into_mnemonic_range(self, func: &'a Function<IL>) -> Range<usize> {
+        let bb = &func.basic_blocks[self.0.index()];
+        bb.into_mnemonic_range(func)
+    }
+}
+
+impl<'a, IL> IntoMnemonicRange<'a, IL> for &'a BasicBlock {
+    fn into_mnemonic_range(self, _: &'a Function<IL>) -> Range<usize> {
         let start = self.mnemonics.start.index();
         let end = self.mnemonics.end.index();
 
         start..end
     }
 }
-
-impl IntoMnemonicRange for MnemonicIndex {
-    fn into_mnemonic_range(self, _: &Function) -> Range<usize> {
-        self.index()..(self.index() + 1)
-    }
-}
+//
+//impl IntoMnemonicRange for MnemonicIndex {
+//    fn into_mnemonic_range(self, _: &Function<S>) -> Range<usize> {
+//        self.index()..(self.index() + 1)
+//    }
+//}
 
 pub struct IndirectJumps<'a> {
     pub graph: &'a Graph<CfgNode,Guard>,
@@ -389,12 +423,59 @@ pub enum CfgNode {
     Value(Value),
 }
 
+pub trait Language<'a> {
+    type Statement: From<core::Statement> + 'a;
+    type Iterator: Iterator<Item = Self::Statement> + 'a;
+    fn push(&mut self, statement: Self::Statement) -> Result<usize>;
+    fn append(&mut self, statements: Vec<Self::Statement>) -> Result<Range<usize>>;
+    fn iter_range(&'a self, range: Range<usize>) -> Self::Iterator;
+    fn len(&self) -> usize;
+}
+
+impl<'a> Language<'a> for Bitcode {
+    type Statement = Statement;
+    type Iterator = BitcodeIter<'a>;
+    fn push(&mut self, statement: Self::Statement) -> Result<usize> {
+        Bitcode::push(self, statement)
+    }
+    fn iter_range(&'a self, range: Range<usize>) -> Self::Iterator {
+        Bitcode::iter_range(self, range)
+    }
+    fn append(&mut self, statements: Vec<Self::Statement>) -> Result<Range<usize>> {
+        Bitcode::append(self, statements)
+    }
+    fn len(&self) -> usize {
+        self.num_bytes()
+    }
+}
+
+impl<'a, S: 'a + Clone + From<core::Statement>> Language<'a> for Vec<S> {
+    type Statement = S;
+    type Iterator = Box<Iterator<Item = Self::Statement> + 'a>;
+    fn push(&mut self, statement: Self::Statement) -> Result<usize> {
+        self.push(statement);
+        Ok(1)
+    }
+    fn iter_range(&'a self, range: Range<usize>) -> Self::Iterator {
+        Box::new(self[range].iter().cloned())
+    }
+    fn append(&mut self, statements: Vec<Self::Statement>) -> Result<Range<usize>> {
+        let start = self.len();
+        let len = statements.len();
+        self.extend(statements);
+        Ok(start..start+len)
+    }
+    fn len(&self) -> usize {
+        self.len()
+    }
+}
+
 #[derive(Debug)]
-pub struct Function {
+pub struct Function<IL> {
     pub name: Str,
     uuid: Uuid,
     // sort by rev. post order
-    bitcode: Bitcode,
+    code: IL,
     // sort by rev. post order
     basic_blocks: Vec<BasicBlock>,
     // sort by area.start
@@ -405,7 +486,7 @@ pub struct Function {
     aliases: Vec<String>,
 }
 
-impl Fun for Function {
+impl Fun for Function<Bitcode> {
     fn aliases(&self) -> &[String] {
         self.aliases.as_slice()
     }
@@ -453,7 +534,6 @@ impl Fun for Function {
     }
     fn statements<'a>(&'a self) -> Box<Iterator<Item=&'a core::Statement> + 'a> {
         Box::new(vec![].into_iter())
-        //Function::statements(self)
     }
     fn set_plt(&mut self, name: &str, plt_address: u64) {
         let old_name = self.name.clone().to_string();
@@ -461,10 +541,10 @@ impl Fun for Function {
         self.name = format!("{}@plt", name).into();
         self.kind = FunctionKind::Stub { name: name.to_string(), plt_address };
     }
-    fn new<A: Architecture>(start: u64, region: &Region, name: Option<String>, init: A::Configuration) -> CResult<Function> {
+    fn new<A: Architecture>(start: u64, region: &Region, name: Option<String>, init: A::Configuration) -> CResult<Self> {
         let name_ = name.clone();
         let name = name.map(|name| ::std::borrow::Cow::Owned(name));
-        match Function::new::<A>(init, start, region, name) {
+        match Self::new::<A>(init, start, region, name) {
             Ok(f) => Ok(f),
             Err(e) => {
                 let msg = format!("Error disassembling: {:?} with {}", name_, e);
@@ -475,17 +555,86 @@ impl Fun for Function {
     }
 }
 
-impl Function {
+impl<'b, S> Fun for Function<Vec<S>> where Vec<S>: Language<'b> {
+    fn aliases(&self) -> &[String] {
+        self.aliases.as_slice()
+    }
+    fn kind(&self) -> &FunctionKind {
+        &self.kind
+    }
+    fn add_alias(&mut self, name: String) {
+        self.aliases.push(name)
+    }
+    fn name(&self) -> &str {
+        &self.name
+    }
+    fn uuid(&self) -> &Uuid {
+        &self.uuid
+    }
+    fn set_uuid(&mut self, uuid: Uuid) {
+        self.uuid = uuid;
+    }
+    fn start(&self) -> u64 {
+        self.entry_address()
+    }
+    fn collect_call_addresses(&self) -> Vec<u64> {
+        self.collect_calls().into_iter().filter_map(|addr| {
+            if let Rvalue::Constant { value, .. } = addr {
+                Some(value)
+            } else {
+                None
+            }
+        }).collect()
+    }
+    fn collect_calls(&self) -> Vec<Rvalue> {
+        let mut ret = Vec::new();
+//        for (bb, _) in self.basic_blocks() {
+//            for statement in self.statements(bb) {
+//                match statement {
+//                    Statement::IndirectCall { target: Value::Constant(Constant { value, bits }) } => {
+//                        ret.push(Rvalue::Constant {value, size: bits })
+//                    },
+//                    _ => ()
+//                }
+//            }
+//        }
+        debug!("collected calls: {:?}", ret);
+        ret
+    }
+    fn statements<'a>(&'a self) -> Box<Iterator<Item=&'a core::Statement> + 'a> {
+        Box::new(vec![].into_iter())
+    }
+    fn set_plt(&mut self, name: &str, plt_address: u64) {
+        let old_name = self.name.clone().to_string();
+        self.aliases.push(old_name);
+        self.name = format!("{}@plt", name).into();
+        self.kind = FunctionKind::Stub { name: name.to_string(), plt_address };
+    }
+    fn new<A: Architecture>(start: u64, region: &Region, name: Option<String>, init: A::Configuration) -> CResult<Self> {
+        let name_ = name.clone();
+        let name = name.map(|name| ::std::borrow::Cow::Owned(name));
+        match Self::new::<A>(init, start, region, name) {
+            Ok(f) => Ok(f),
+            Err(e) => {
+                let msg = format!("Error disassembling: {:?} with {}", name_, e);
+                warn!("{}", msg);
+                Err(msg.into())
+            }
+        }
+    }
+}
+
+impl<'b, IL: Language<'b> + Default> Function<IL> {
 	// disassembly
-    pub fn new<A: Architecture>(init: A::Configuration, start: u64, region: &Region, name: Option<Str>) -> Result<Function>
+    pub fn new<A: Architecture>(init: A::Configuration, start: u64, region: &Region, name: Option<Str>) -> Result<Self>
     {
-        let mut mnemonics = Vec::new();
+        let mut mnemonics: Vec<(Mnemonic, Vec<IL::Statement>)> = Vec::new();
         let mut by_source = HashMap::new();
         let mut by_destination = HashMap::new();
-        let mut func = Function{
+        let mut func: Function<IL> = Function {
             name: name.unwrap_or(format!("func_{:x}", start).into()),
             uuid: Uuid::new_v4(),
-            bitcode: Bitcode::default(),
+            code: IL::default(),
             basic_blocks: Vec::new(),
             mnemonics: Vec::new(),
             cflow_graph: Graph::new(),
@@ -494,62 +643,62 @@ impl Function {
             aliases: vec![],
         };
 
-        disassemble::<A>(init,vec![start],region, &mut mnemonics, &mut by_source, &mut by_destination)?;
-        assemble_function(&mut func, start, mnemonics, by_source, by_destination)?;
+        disassemble::<A, IL::Statement>(init, vec![start], region, &mut mnemonics, &mut by_source, &mut by_destination)?;
+        func.assemble(start, mnemonics, by_source, by_destination)?;
 
         Ok(func)
     }
 
-    pub fn extend<A: Architecture>(&mut self, init: A::Configuration, region: &Region) -> Result<()>
-    where A: Debug, A::Configuration: Debug {
-        use petgraph::visit::EdgeRef;
-
-        let mut mnemonics = self.mnemonics.iter().map(|mne| {
-            let stmts = self.bitcode.iter_range(mne.statements.clone()).collect::<Vec<_>>();
-            (mne.clone(),stmts)
-        }).collect::<Vec<_>>();
-        let mut by_source = HashMap::new();
-        let mut by_destination = HashMap::new();
-        let mut starts = Vec::new();
-
-        for e in self.cflow_graph.edge_references() {
-            let src = match self.cflow_graph.node_weight(e.source()) {
-                Some(&CfgNode::BasicBlock(bb_idx)) => {
-                    let bb = &self.basic_blocks[bb_idx.index()];
-                    let mne = &self.mnemonics[bb.mnemonics.end.index() - 1];
-                    mne.area.start
-                }
-                _ => unreachable!()
-            };
-            let dst = match self.cflow_graph.node_weight(e.target()) {
-                Some(&CfgNode::BasicBlock(bb_idx)) => {
-                    let bb = &self.basic_blocks[bb_idx.index()];
-                    let mne = &self.mnemonics[bb.mnemonics.start.index()];
-                    Value::val(mne.area.start,64)?
-                }
-                Some(&CfgNode::Value(ref val)) => {
-                    val.clone()
-                }
-                None => unreachable!()
-            };
-
-            by_source.entry(src).or_insert_with(|| Vec::new()).push((dst.clone(),e.weight().clone()));
-
-            if let Value::Constant(Constant{ value,.. }) = dst {
-                by_destination.entry(value).or_insert_with(|| Vec::new()).push((Value::val(src,64)?,e.weight().clone()));
-                starts.push(value);
-            }
-        }
-
-        let entry = self.entry_address();
-        disassemble::<A>(init,starts, region, &mut mnemonics, &mut by_source, &mut by_destination)?;
-        assemble_function(self,entry,mnemonics,by_source,by_destination)
-    }
+//    pub fn extend<A: Architecture, Statement: From<core::Statement>>(&mut self, init: A::Configuration, region: &Region) -> Result<()>
+//    where A: Debug, A::Configuration: Debug {
+//        use petgraph::visit::EdgeRef;
+//
+//        let mut mnemonics = self.mnemonics.iter().map(|mne| {
+//            let stmts = self.bitcode.iter_range(mne.statements.clone()).collect::<Vec<_>>();
+//            (mne.clone(),stmts)
+//        }).collect::<Vec<_>>();
+//        let mut by_source = HashMap::new();
+//        let mut by_destination = HashMap::new();
+//        let mut starts = Vec::new();
+//
+//        for e in self.cflow_graph.edge_references() {
+//            let src = match self.cflow_graph.node_weight(e.source()) {
+//                Some(&CfgNode::BasicBlock(bb_idx)) => {
+//                    let bb = &self.basic_blocks[bb_idx.index()];
+//                    let mne = &self.mnemonics[bb.mnemonics.end.index() - 1];
+//                    mne.area.start
+//                }
+//                _ => unreachable!()
+//            };
+//            let dst = match self.cflow_graph.node_weight(e.target()) {
+//                Some(&CfgNode::BasicBlock(bb_idx)) => {
+//                    let bb = &self.basic_blocks[bb_idx.index()];
+//                    let mne = &self.mnemonics[bb.mnemonics.start.index()];
+//                    Value::val(mne.area.start,64)?
+//                }
+//                Some(&CfgNode::Value(ref val)) => {
+//                    val.clone()
+//                }
+//                None => unreachable!()
+//            };
+//
+//            by_source.entry(src).or_insert_with(|| Vec::new()).push((dst.clone(),e.weight().clone()));
+//
+//            if let Value::Constant(Constant{ value,.. }) = dst {
+//                by_destination.entry(value).or_insert_with(|| Vec::new()).push((Value::val(src,64)?,e.weight().clone()));
+//                starts.push(value);
+//            }
+//        }
+//
+//        let entry = self.entry_address();
+//        disassemble::<A, Statement>(init,starts, region, &mut mnemonics, &mut by_source, &mut by_destination)?;
+//        assemble_function::<Statement>(self,entry,mnemonics,by_source,by_destination)
+//    }
 
     // getter
     pub fn entry_point(&self) -> BasicBlockIndex { self.entry_point }
 
-    pub fn mnemonics<'a,Idx: IntoMnemonicRange + Sized>(&'a self, idx: Idx) -> MnemonicIterator<'a> {
+    pub fn mnemonics<'a, Idx: IntoMnemonicRange<'a, IL> + Sized>(&'a self, idx: Idx) -> MnemonicIterator<'a, IL> {
         let idx = idx.into_mnemonic_range(self);
         MnemonicIterator{
             function: self,
@@ -558,7 +707,7 @@ impl Function {
         }
     }
 
-    pub fn mnemonics_for(&self, bb: &BasicBlock) -> MnemonicIterator {
+    pub fn mnemonics_for(&self, bb: &BasicBlock) -> MnemonicIterator<IL> {
         MnemonicIterator {
             function: self,
             index: bb.mnemonics.start.index,
@@ -566,7 +715,7 @@ impl Function {
         }
     }
 
-    pub fn basic_blocks<'a>(&'a self) -> BasicBlockIterator<'a> {
+    pub fn basic_blocks(&self) -> BasicBlockIterator<IL> {
         BasicBlockIterator{
             function: self,
             index: 0,
@@ -574,26 +723,26 @@ impl Function {
         }
     }
 
-    pub fn bitcode_size(&self) -> usize {
-        self.bitcode.num_bytes()
-    }
+//    pub fn bitcode_size(&self) -> usize {
+//        self.bitcode.num_bytes()
+//    }
 
-    pub fn cflow_graph<'a>(&'a self) -> &'a Graph<CfgNode,Guard> {
+    pub fn cflow_graph(&self) -> &Graph<CfgNode,Guard> {
         &self.cflow_graph
     }
 
-    pub fn basic_block<'a>(&'a self, idx: BasicBlockIndex) -> &'a BasicBlock {
+    pub fn basic_block(&self, idx: BasicBlockIndex) -> &BasicBlock {
         &self.basic_blocks[idx.index]
     }
 
-    pub fn mnemonic<'a>(&'a self, idx: MnemonicIndex) -> &'a Mnemonic {
+    pub fn mnemonic(&self, idx: MnemonicIndex) -> &Mnemonic {
         &self.mnemonics[idx.index]
     }
 
     // iters
-    pub fn statements<Idx: IntoStatementRange + Sized>(&self, rgn: Idx) -> BitcodeIter {
+    pub fn statements<Idx: IntoStatementRange<IL> + Sized>(&'b self, rgn: Idx) -> IL::Iterator {
         let rgn = rgn.into_statement_range(self);
-        self.bitcode.iter_range(rgn)
+        self.code.iter_range(rgn)
     }
 
     // aux
@@ -629,54 +778,169 @@ impl Function {
         false
     }
 
-    pub fn rewrite<F>(&mut self, f: F) -> Result<()> where F: FnOnce(&mut [Vec<(Mnemonic,Vec<Statement>)>]) -> Result<()> {
-        let mut blocks: Vec<Vec<(Mnemonic,Vec<Statement>)>> = self.basic_blocks.iter().map(|bb| {
-            self.mnemonics(bb.mnemonics.clone()).map(|(_,mne)| {
-                (mne.clone(),self.statements(mne.statements.clone()).collect())
-            }).collect()
-        }).collect();
+//    pub fn rewrite<F>(&mut self, f: F) -> Result<()>
+//        where F: FnOnce(&mut [Vec<(Mnemonic,Vec<IL::Statement>)>]) -> Result<()>
+//    {
+//        let mut blocks: Vec<Vec<(Mnemonic,Vec<IL::Statement>)>> = self.basic_blocks.iter().map(|bb| {
+//            self.mnemonics(bb.mnemonics.clone()).map(|(_,mne)| {
+//                (mne.clone(),self.statements(mne.statements.clone()).collect())
+//            }).collect()
+//        }).collect();
+//
+//        f(blocks.as_mut_slice())?;
+//
+//        let mut bitcode = Bitcode::with_capacity(self.bitcode.num_bytes(),self.bitcode.num_strings());
+//        let mne_cnt = blocks.iter().map(|x| x.len()).sum();
+//        let mut mnemonics = Vec::with_capacity(mne_cnt);
+//        let mut new_mne_ranges = Vec::with_capacity(blocks.len());
+//
+//        for (bb_idx,mnes) in blocks.into_iter().enumerate() {
+//            let fst_mne = mnemonics.len();
+//            let mut prev_addr = None;
+//
+//            for (mut mne,stmts) in mnes.into_iter() {
+//                if let Some(s) = prev_addr {
+//                    if s != mne.area.start {
+//                        return Err(format!("Non-continuous basic block #{}: gap between {:#x} and {:#x}",bb_idx,s,mne.area.start).into());
+//                    }
+//                }
+//
+//                prev_addr = Some(mne.area.end);
+//                mne.statements = bitcode.append(stmts.into_iter())?;
+//                mnemonics.push(mne);
+//            }
+//
+//            new_mne_ranges.push(fst_mne..mnemonics.len());
+//        }
+//
+//        for (idx,rgn) in new_mne_ranges.into_iter().enumerate() {
+//            self.basic_blocks[idx].mnemonics = MnemonicIndex::new(rgn.start)..MnemonicIndex::new(rgn.end);
+//        }
+//
+//        self.mnemonics = mnemonics;
+//        self.bitcode = bitcode;
+//
+//        Ok(())
+//    }
 
-        f(blocks.as_mut_slice())?;
+    fn assemble(&mut self, entry: u64,
+                mut mnemonics: Vec<(Mnemonic, Vec<IL::Statement>)>,
+                by_source: HashMap<u64,Vec<(Value,Guard)>>,
+                by_destination: HashMap<u64,Vec<(Value,Guard)>>) -> Result<()>
+    {
 
-        let mut bitcode = Bitcode::with_capacity(self.bitcode.num_bytes(),self.bitcode.num_strings());
-        let mne_cnt = blocks.iter().map(|x| x.len()).sum();
-        let mut mnemonics = Vec::with_capacity(mne_cnt);
-        let mut new_mne_ranges = Vec::with_capacity(blocks.len());
+        let mut basic_blocks = Vec::<BasicBlock>::new();
+        let mut idx = 0;
 
-        for (bb_idx,mnes) in blocks.into_iter().enumerate() {
-            let fst_mne = mnemonics.len();
-            let mut prev_addr = None;
+        // Partition mnemonics into basic blocks
+        while idx < mnemonics.len() {
+            if mnemonics.len() - idx > 1 {
+                let next_bb = mnemonics
+                    .as_slice()[idx..].windows(2)
+                    .position(|x| is_basic_block_boundary(&x[0].0,&x[1].0,entry,&by_source,&by_destination))
+                    .map(|x| x + 1 + idx)
+                    .unwrap_or(mnemonics.len());
+                let bb = BasicBlock{
+                    mnemonics: MnemonicIndex::new(idx)..MnemonicIndex::new(next_bb),
+                    area: mnemonics[idx].0.area.start..mnemonics[next_bb - 1].0.area.end,
+                    node: NodeIndex::new(0),
+                };
 
-            for (mut mne,stmts) in mnes.into_iter() {
-                if let Some(s) = prev_addr {
-                    if s != mne.area.start {
-                        return Err(format!("Non-continuous basic block #{}: gap between {:#x} and {:#x}",bb_idx,s,mne.area.start).into());
+                basic_blocks.push(bb);
+                idx = next_bb;
+            } else {
+                let bb = BasicBlock{
+                    mnemonics: MnemonicIndex::new(idx)..MnemonicIndex::new(mnemonics.len()),
+                    area: mnemonics[idx].0.area.start..mnemonics[idx].0.area.end,
+                    node: NodeIndex::new(0),
+                };
+
+                basic_blocks.push(bb);
+                break;
+            }
+        }
+
+        // Build control flow graph
+        let mut cfg = Graph::<CfgNode,Guard>::with_capacity(basic_blocks.len(),3*basic_blocks.len() / 2);
+
+        for (i,bb) in basic_blocks.iter_mut().enumerate() {
+            bb.node = cfg.add_node(CfgNode::BasicBlock(BasicBlockIndex::new(i)));
+        }
+
+        for bb in basic_blocks.iter() {
+            let last_mne = &mnemonics[bb.mnemonics.end.index() - 1].0;
+            if let Some(ct) = by_source.get(&last_mne.area.start) {
+                for &(ref val,ref guard) in ct.iter() {
+                    match val {
+                        &Value::Constant(Constant{ value,.. }) => {
+                            if let Ok(pos) = basic_blocks.binary_search_by_key(&value,|bb| bb.area.start) {
+                                cfg.update_edge(bb.node,basic_blocks[pos].node,guard.clone());
+                            } else {
+                                let n = cfg.add_node(CfgNode::Value(val.clone()));
+                                cfg.update_edge(bb.node,n,guard.clone());
+                            }
+                        }
+                        val => {
+                            let n = cfg.add_node(CfgNode::Value(val.clone()));
+                            cfg.update_edge(bb.node,n,guard.clone());
+                        }
                     }
                 }
-
-                prev_addr = Some(mne.area.end);
-                mne.statements = bitcode.append(stmts.into_iter())?;
-                mnemonics.push(mne);
             }
-
-            new_mne_ranges.push(fst_mne..mnemonics.len());
         }
 
-        for (idx,rgn) in new_mne_ranges.into_iter().enumerate() {
-            self.basic_blocks[idx].mnemonics = MnemonicIndex::new(rgn.start)..MnemonicIndex::new(rgn.end);
+        let entry_idx = basic_blocks
+            .iter().position(|x| x.area.start == entry)
+            .ok_or("Internal error: no basic block at the entry point")?;
+
+        // Generate bitcode
+        let mut bitcode = IL::default();
+        let mut statement_ranges = vec![0..0; mnemonics.len()];
+        debug!("Generating bitcode for {}", self.name);
+        {
+            let postorder = DfsPostOrder::new(&cfg, basic_blocks[entry_idx].node).iter(&cfg);
+            for n in postorder {
+                if let Some(&CfgNode::BasicBlock(idx)) = cfg.node_weight(n) {
+                    let bb = &basic_blocks[idx.index()];
+                    let sl = bb.mnemonics.start.index()..bb.mnemonics.end.index();
+                    let mnes_and_instrs= &mut mnemonics.as_mut_slice()[sl];
+                    //for (off, &mut (_, ref mut instr)) in mnes.iter_mut().enumerate() {
+                    for (off, &mut (_, ref mut instr)) in mnes_and_instrs.into_iter().enumerate() {
+                        let start = bitcode.len();
+                        let nstatements = instr.len();
+                        let mut end = start;
+                        for statement in instr.drain(..) {
+                            end += bitcode.push(statement)?;
+                            //let size = bitcode.append(statement)?;
+                        }
+                        debug!("Added {} statements, at range: {:?}", nstatements, start..end);
+                        statement_ranges[bb.mnemonics.start.index() + off] = start..end;
+                    }
+                }
+            }
         }
 
-        self.mnemonics = mnemonics;
-        self.bitcode = bitcode;
-
+        self.code = bitcode;
+        self.basic_blocks = basic_blocks;
+        self.mnemonics = mnemonics.into_iter().enumerate().map(|(idx,(mut mne,_))| {
+            // we don't need to clone this, we construct the owned vector above
+            mne.statements = statement_ranges[idx].clone();
+            mne
+        }).collect();
+        self.cflow_graph = cfg;
+        self.entry_point = BasicBlockIndex::new(entry_idx);
+        // we erase the functions name this way; need to keep track of whether we actually have a name or not
+        // if entry != function.start_address() { function.name = format!("func_{:x}",entry).into() };
         Ok(())
     }
 }
 
-fn disassemble<A: Architecture>(init: A::Configuration, starts: Vec<u64>, region: &Region,
+fn disassemble<A, Statement>(init: A::Configuration, starts: Vec<u64>, region: &Region,
                                 mnemonics: &mut Vec<(Mnemonic,Vec<Statement>)>,
                                 by_source: &mut HashMap<u64,Vec<(Value,Guard)>>,
                                 by_destination: &mut HashMap<u64,Vec<(Value,Guard)>>) -> Result<()>
+    where A: Architecture,
+          Statement: From<core::Statement>,
 {
     let mut todo = HashSet::<u64>::from_iter(starts.into_iter());
 
@@ -712,11 +976,11 @@ fn disassemble<A: Architecture>(init: A::Configuration, starts: Vec<u64>, region
                                 let this_mne = Mnemonic{
                                     area: mne.area.start..mne.area.end,
                                     opcode: mne.opcode.into(),
-                                    operands: mne.operands.iter().map(|x| x.clone().into()).collect(),
+                                    operands: mne.operands,
                                     format_string: mne.format_string,
                                     statements: 0..0,
                                 };
-                                let stmts = mne.instructions.iter().map(|s| to_statement(s)).collect::<Vec<_>>();
+                                let stmts = mne.instructions.into_iter().map(|s| s.into()).collect::<Vec<Statement>>();
                                 mnemonics.insert(pos,(this_mne,stmts));
                             }
                         }
@@ -747,104 +1011,6 @@ fn disassemble<A: Architecture>(init: A::Configuration, starts: Vec<u64>, region
         }
     }
 
-    Ok(())
-}
-
-fn assemble_function(function: &mut Function, entry: u64, mut mnemonics: Vec<(Mnemonic,Vec<Statement>)>,
-                     by_source: HashMap<u64,Vec<(Value,Guard)>>,
-                     by_destination: HashMap<u64,Vec<(Value,Guard)>>) -> Result<()> {
-
-    let mut basic_blocks = Vec::<BasicBlock>::new();
-    let mut idx = 0;
-
-    // Partition mnemonics into basic blocks
-    while idx < mnemonics.len() {
-        if mnemonics.len() - idx > 1 {
-            let next_bb = mnemonics
-                .as_slice()[idx..].windows(2)
-                .position(|x| is_basic_block_boundary(&x[0].0,&x[1].0,entry,&by_source,&by_destination))
-                .map(|x| x + 1 + idx)
-                .unwrap_or(mnemonics.len());
-            let bb = BasicBlock{
-                mnemonics: MnemonicIndex::new(idx)..MnemonicIndex::new(next_bb),
-                area: mnemonics[idx].0.area.start..mnemonics[next_bb - 1].0.area.end,
-                node: NodeIndex::new(0),
-            };
-
-            basic_blocks.push(bb);
-            idx = next_bb;
-        } else {
-            let bb = BasicBlock{
-                mnemonics: MnemonicIndex::new(idx)..MnemonicIndex::new(mnemonics.len()),
-                area: mnemonics[idx].0.area.start..mnemonics[idx].0.area.end,
-                node: NodeIndex::new(0),
-            };
-
-            basic_blocks.push(bb);
-            break;
-        }
-    }
-
-    // Build control flow graph
-    let mut cfg = Graph::<CfgNode,Guard>::with_capacity(basic_blocks.len(),3*basic_blocks.len() / 2);
-
-    for (i,bb) in basic_blocks.iter_mut().enumerate() {
-        bb.node = cfg.add_node(CfgNode::BasicBlock(BasicBlockIndex::new(i)));
-    }
-
-    for bb in basic_blocks.iter() {
-        let last_mne = &mnemonics[bb.mnemonics.end.index() - 1].0;
-        if let Some(ct) = by_source.get(&last_mne.area.start) {
-            for &(ref val,ref guard) in ct.iter() {
-                match val {
-                    &Value::Constant(Constant{ value,.. }) => {
-                        if let Ok(pos) = basic_blocks.binary_search_by_key(&value,|bb| bb.area.start) {
-                            cfg.update_edge(bb.node,basic_blocks[pos].node,guard.clone());
-                        } else {
-                            let n = cfg.add_node(CfgNode::Value(val.clone()));
-                            cfg.update_edge(bb.node,n,guard.clone());
-                        }
-                    }
-                    val => {
-                        let n = cfg.add_node(CfgNode::Value(val.clone()));
-                        cfg.update_edge(bb.node,n,guard.clone());
-                    }
-                }
-            }
-        }
-    }
-
-    let entry_idx = basic_blocks
-        .iter().position(|x| x.area.start == entry)
-        .ok_or("Internal error: no basic block at the entry point")?;
-
-    // Generate bitcode
-    let postorder = DfsPostOrder::new(&cfg,basic_blocks[entry_idx].node).iter(&cfg).collect::<Vec<_>>();
-    let mut bitcode = Bitcode::default();
-    let mut statement_ranges = vec![0..0; mnemonics.len()];
-
-    for &n in postorder.iter() {
-        if let Some(&CfgNode::BasicBlock(idx)) = cfg.node_weight(n) {
-            let bb = &basic_blocks[idx.index()];
-            let sl = bb.mnemonics.start.index()..bb.mnemonics.end.index();
-            for (off,&mut (_,ref mut instr)) in mnemonics.as_mut_slice()[sl].iter_mut().enumerate() {
-                let rgn = bitcode.append(instr.drain(..))?;
-
-                statement_ranges[bb.mnemonics.start.index() + off] = rgn;
-            }
-        }
-    }
-
-    function.bitcode = bitcode;
-    function.basic_blocks = basic_blocks;
-    function.mnemonics = mnemonics.into_iter().enumerate().map(|(idx,(mut mne,_))| {
-        mne.statements = statement_ranges[idx].clone();
-        mne
-    }).collect();
-    function.cflow_graph = cfg;
-    function.entry_point = BasicBlockIndex::new(entry_idx);
-    // we erase the functions name this way; need to keep track of whether we actually have a name or not
-    //if entry != function.start_address() { function.name = format!("func_{:x}",entry).into() };
     Ok(())
 }
 
@@ -882,7 +1048,7 @@ fn is_basic_block_boundary(a: &Mnemonic, b: &Mnemonic, entry: u64,
     new_bb
 }
 
-fn to_statement(stmt: &core::Statement) -> Statement {
+pub(crate) fn to_statement(stmt: &core::Statement) -> Statement {
     match stmt {
         &core::Statement{ op: core::Operation::Add(ref a,ref b), assignee: Lvalue::Variable{ ref name, ref subscript, size } } => {
             Statement::Expression{ op: Operation::Add(a.clone().into(),b.clone().into()), result: Variable::new(name.clone(),size,subscript.clone()).unwrap() }
