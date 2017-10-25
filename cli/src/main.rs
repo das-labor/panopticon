@@ -181,7 +181,7 @@ fn disassemble<Function: Fun + DataFlow + Send>(binary: &str) -> Result<Program<
     }?)
 }
 
-fn app_logic<'a, Function: Fun + DataFlow + PrintableFunction + PrintableStatements<'a>>(fmt: &mut termcolor::Buffer, program: &mut Program<Function>, args: Args) -> Result<()> {
+fn app_logic<'a, Function: Fun + DataFlow + PrintableFunction + PrintableStatements>(fmt: &mut termcolor::Buffer, program: &mut Program<Function>, args: Args) -> Result<()> {
     let filter = Filter { name: args.function_filter, addr: args.address_filter.map(|addr| u64::from_str_radix(&addr, 16).unwrap()) };
 
     debug!("Program.imports: {:#?}", program.imports);
@@ -223,7 +223,7 @@ fn app_logic<'a, Function: Fun + DataFlow + PrintableFunction + PrintableStateme
         // move this into pretty_print
         writeln!(fmt, "Aliases: {:?}", function.aliases())?;
 //        if args.dump_il {
-//            function.pretty_print_il::<,_>(&mut fmt)?;
+//            function.pretty_print_il::<_,_>(&mut fmt)?;
 //        }
     }
     Ok(())
@@ -252,7 +252,6 @@ fn run(args: Args) -> Result<()> {
                 function.pretty_print_il::<Statement,_>(&mut fmt)?;
             }
         }
-
     }
     writer.print(&fmt)?;
     Ok(())

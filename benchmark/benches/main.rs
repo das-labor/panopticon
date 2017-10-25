@@ -5,7 +5,7 @@ extern crate panopticon_data_flow;
 extern crate panopticon_core;
 
 mod core;
-mod data_flow;
+//mod data_flow;
 
 
-benchmark_main!(core::disassemble, data_flow::ssa);
+benchmark_main!(core::disassemble);

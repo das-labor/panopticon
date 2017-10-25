@@ -25,8 +25,8 @@ pub trait PrintableFunction: Sized {
     fn pretty_print<W: WriteColor + Write>(&self, fmt: &mut W, program: &Program<Self>) -> Result<()>;
 }
 
-pub trait PrintableStatements<'a>: Sized {
-    fn pretty_print_il<IL: PrintableIL, W: WriteColor + Write> (&'a self, fmt: &mut W) -> Result<()>;
+pub trait PrintableStatements: Sized {
+    fn pretty_print_il<IL: PrintableIL, W: WriteColor + Write> (&self, fmt: &mut W) -> Result<()>;
 }
 
 pub trait PrintableIL {
@@ -41,8 +41,8 @@ impl PrintableFunction for Function {
     }
 }
 
-impl<'a> PrintableStatements<'a> for Function {
-    fn pretty_print_il<IL: PrintableIL, W: WriteColor + Write>(&'a self, fmt: &mut W) -> Result<()> {
+impl PrintableStatements for Function {
+    fn pretty_print_il<IL: PrintableIL, W: WriteColor + Write>(&self, fmt: &mut W) -> Result<()> {
         color_bold!(fmt, White, "RREIL")?;
         writeln!(fmt, ":")?;
         for bb in self.basic_blocks() {
@@ -57,18 +57,19 @@ impl<'a> PrintableStatements<'a> for Function {
     }
 }
 
-impl<'a, IL: neo::Language<'a> + Default> PrintableStatements<'a> for neo::Function<IL>
+impl<IL: neo::Language> PrintableStatements for neo::Function<IL>
     where
+        for<'a> &'a neo::Function<IL>: neo::StatementIterator<IL>,
         IL::Statement: PrintableIL + Clone,
-        Self: Fun
+        Self: Fun,
 {
-    fn pretty_print_il<ILL: PrintableIL, W: WriteColor + Write>(&'a self, fmt: &mut W) -> Result<()> {
+    fn pretty_print_il<ILL: PrintableIL, W: WriteColor + Write>(&self, fmt: &mut W) -> Result<()> {
         color_bold!(fmt, White, "IL")?;
         writeln!(fmt, ":")?;
         for bb in self.into_iter() {
-            for mnemonic in bb {
-                print_address_and_mnemonic::<Self, &neo::Mnemonic, W>(fmt, &mnemonic.mnemonic)?;
-                for statement in mnemonic {
+            for (mnemonic, statements) in bb {
+                print_address_and_mnemonic::<Self, &neo::Mnemonic, W>(fmt, &mnemonic)?;
+                for statement in statements {
                     <IL::Statement as PrintableIL>::pretty_print(&statement, fmt)?;
                 }
             }
@@ -159,10 +160,10 @@ struct NeoFunctionAndBasicBlock<'a, IL: 'a> {
     bb: &'a neo::BasicBlock,
 }
 
-impl<'a, IL: neo::Language<'a> + Default> PrintableBlock<&'a neo::Mnemonic> for NeoFunctionAndBasicBlock<'a, IL> {
+impl<'a, IL: neo::Language> PrintableBlock<&'a neo::Mnemonic> for NeoFunctionAndBasicBlock<'a, IL> {
     type Iter = Box<Iterator<Item = &'a neo::Mnemonic> + 'a>;
     fn mnemonics(&self) -> Self::Iter {
-        Box::new(self.function.mnemonics_for(self.bb).map(|(_, m)| m))
+        Box::new(self.function.mnemonics(self.bb).map(|(_, m)| m))
     }
 }
 

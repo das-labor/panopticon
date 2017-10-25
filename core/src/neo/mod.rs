@@ -23,16 +23,4 @@ pub use self::function::{Function, CfgNode, Mnemonic, MnemonicIndex, BasicBlock,
 use std::borrow::Cow;
 pub type Str = Cow<'static,str>;
 
-impl<'a> From<&'a super::Statement> for Statement {
-    fn from(statement: &'a super::Statement) -> Self {
-        function::to_statement(statement)
-    }
-}
-
-impl From<super::Statement> for Statement {
-    fn from(statement: super::Statement) -> Self {
-        function::to_statement(&statement)
-    }
-}
-
-pub use self::function::Language;
+pub use self::function::{Language, StatementIterator};

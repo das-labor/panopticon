@@ -71,7 +71,6 @@
 //! Von-Neumann machines two on Harvard architectures. Other uses for `Region`s are
 //! applying functions to `Cell` array where the result is not equal in size to the
 //! input (for example uncompressing parts of the executable image).
-
 #![recursion_limit = "1024"]
 //#![warn(missing_docs)]
 

@@ -7,7 +7,7 @@ fn ssa_convertion_new(b: &mut Bencher) {
     use panopticon_core::{loader,neo,CallTarget,Rvalue};
     use std::path::Path;
 
-    let (proj,_) = loader::load::<neo::Function>(Path::new("../test-data/static")).unwrap();
+    let (proj,_) = loader::load::<neo::Function<neo::Bitcode>>(Path::new("../test-data/static")).unwrap();
     let entries = proj.code[0].iter_callgraph().filter_map(|vx| if let &CallTarget::Todo(Rvalue::Constant{ value,.. },_,_) = vx { Some (value) } else { None }).collect::<Vec<_>>();
     let reg = proj.region();
     let mut funcs = vec![];
