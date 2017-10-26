@@ -1,5 +1,5 @@
 use std::marker::PhantomData;
-use panopticon_core::neo::{Function,Operation,Statement,Variable,Value,Result,CfgNode};
+use panopticon_core::neo::{self, RREIL, Function,Operation,Statement,Variable,Value,Result,CfgNode};
 use panopticon_core::{Guard,Rvalue};
 use bit_set::BitSet;
 use petgraph::Direction;
@@ -15,6 +15,52 @@ pub struct Liveness<'a> {
 }
 
 impl<'a> Liveness<'a> {
+    pub fn new_rreil(func: &'a Function<RREIL>) -> Result<Liveness<'a>> {
+        use panopticon_core::{Operation, Statement, Rvalue};
+        use std::borrow::{Cow, Borrow};
+        let num_bb = func.basic_blocks().len();
+        let mut ret = Liveness{
+            variables: vec![],
+            var_kill: vec![BitSet::default(); num_bb],
+            ue_var: vec![BitSet::default(); num_bb],
+            phantom: PhantomData::default(),
+        };
+        let cfg = func.cflow_graph();
+
+        for (idx, bb )in func.basic_blocks() {
+            for (mne, _) in func.mnemonics(bb) {
+                for statement in func.statements_(mne) {
+                    match statement {
+                        Statement { assignee, op: Operation::Phi(_) } => { /* skip */ },
+                        Statement { assignee, op } => {
+                            for value in op.operands() {
+                                match value {
+                                    &Rvalue::Variable { ref name, ref subscript, size, .. } => {
+                                        let var = Variable::new(Cow::Owned(name.to_string()), size, subscript.clone())?;
+                                        ret.record_read(idx.index(), &var)?;
+                                    },
+                                    _ => ()
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            for e in cfg.edges_directed(bb.node, Direction::Outgoing) {
+                match e.weight() {
+                    &Guard::Predicate { flag: Rvalue::Variable { ref name, size, .. }, .. } => {
+                        ret.record_read(idx.index(), &Variable::new(name.clone(), size, None)?)?;
+                    }
+                    _ => { /* skip */ }
+                }
+            }
+        }
+
+        Self::propagate(func,&mut ret);
+
+        Ok(ret)
+    }
     pub fn new(func: &'a Function) -> Result<Liveness<'a>> {
         let num_bb = func.basic_blocks().len();
         let mut ret = Liveness{
@@ -67,7 +113,7 @@ impl<'a> Liveness<'a> {
         Ok(ret)
     }
 
-    fn propagate(func: &Function, liveness_sets: &mut Self) {
+    fn propagate<IL: neo::Language>(func: &Function<IL>, liveness_sets: &mut Self) {
         let cfg = func.cflow_graph();
         let mut fixedpoint = false;
 
@@ -142,7 +188,7 @@ pub struct Globals<'a> {
 }
 
 impl<'a> Globals<'a> {
-    pub fn new(func: &'a Function, liveness: &Liveness<'a>) -> Result<Globals<'a>> {
+    pub fn new<IL: neo::Language>(func: &'a Function<IL>, liveness: &Liveness<'a>) -> Result<Globals<'a>> {
         let num_bb = func.basic_blocks().len();
         let mut ret = Globals{
             variables: liveness.variables.clone(),

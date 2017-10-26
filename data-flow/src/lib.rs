@@ -148,7 +148,9 @@ impl DataFlow for panopticon_core::neo::Function {
 
 impl DataFlow for panopticon_core::neo::Function<panopticon_core::neo::RREIL> {
     fn ssa_conversion(&mut self) -> Result<()> {
-        Ok(())
+        neo::rewrite_to_ssa_rreil(self).map_err(|e| {
+            format!("{}", e).into()
+        })
     }
     fn entry_point_mut(&mut self) -> &mut BasicBlock {
         unimplemented!()

@@ -8,4 +8,4 @@ mod core;
 mod data_flow;
 
 
-benchmark_main!(core::disassemble);
+benchmark_main!(core::disassemble, data_flow::ssa);

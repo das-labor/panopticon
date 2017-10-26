@@ -196,9 +196,9 @@ fn app_logic2<IL: neo::Language>(fmt: &mut termcolor::Buffer, program: &mut Prog
     let filter = Filter { name: args.function_filter, addr: args.address_filter.map(|addr| u64::from_str_radix(&addr, 16).unwrap()) };
 
     debug!("Program.imports: {:#?}", program.imports);
-//    if args.reverse_deps && filter.filtering() {
-//        return print_reverse_deps(fmt, &program, &filter);
-//    }
+    if args.reverse_deps && filter.filtering() {
+        return print_reverse_deps(fmt, &program, &filter);
+    }
     let mut functions = {
         // we iterate twice because rust ownership system sucks sometimes
         for f in program.functions_mut() {
@@ -243,9 +243,6 @@ fn app_logic<'a, Function: Fun + DataFlow>(fmt: &mut termcolor::Buffer, program:
     let filter = Filter { name: args.function_filter, addr: args.address_filter.map(|addr| u64::from_str_radix(&addr, 16).unwrap()) };
 
     debug!("Program.imports: {:#?}", program.imports);
-    if args.reverse_deps && filter.filtering() {
-        return print_reverse_deps(fmt, &program, &filter);
-    }
     let mut functions = {
         // we iterate twice because rust ownership system sucks sometimes
         for f in program.functions_mut() {

@@ -565,6 +565,7 @@ pub fn print_mnemonic<IL, M: PrintableMnemonic, W: Write + WriteColor>(fmt: &mut
                             } else { c };
                         if is_code {
                             if let Some(program) = program {
+                                //FIXME: renable after old function + Fun trait is removed
 //                                if let Some(function) = program.find_function_by(|f| { f.start() == val }) {
 //                                    color!(fmt, Red, format!("{:x}",val))?;
 //                                    write!(fmt, " <", )?;

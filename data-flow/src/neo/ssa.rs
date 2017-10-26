@@ -7,11 +7,11 @@ use bit_set::BitSet;
 use smallvec::SmallVec;
 
 use panopticon_core::neo::{self, Function, Result, CfgNode, Statement, Operation, Mnemonic, BasicBlockIndex, Value, Variable};
-use panopticon_core::Guard;
+use panopticon_core::{self, Guard};
 
 use neo::Globals;
 
-pub fn phi_functions<'a>(func: &'a Function, globals: &Globals<'a>, domfronts: &Vec<BitSet>) -> Result<Vec<BitSet>> {
+pub fn phi_functions<'a, IL: neo::Language>(func: &'a Function<IL>, globals: &Globals<'a>, domfronts: &Vec<BitSet>) -> Result<Vec<BitSet>> {
     let mut ret = vec![BitSet::with_capacity(globals.variables.len()); func.basic_blocks().len()];
 
     for g_idx in globals.globals.iter() {
@@ -33,7 +33,7 @@ pub fn phi_functions<'a>(func: &'a Function, globals: &Globals<'a>, domfronts: &
     Ok(ret)
 }
 
-fn dominance_frontiers(func: &Function, doms: &Dominators<NodeIndex>) -> Result<Vec<BitSet>> {
+fn dominance_frontiers<IL: neo::Language>(func: &Function<IL>, doms: &Dominators<NodeIndex>) -> Result<Vec<BitSet>> {
     let cfg = func.cflow_graph();
     let num_bb = func.basic_blocks().len();
     let mut ret = vec![BitSet::with_capacity(num_bb); num_bb];
@@ -74,6 +74,31 @@ fn fix_uninitialized_variables(basic_block: &mut Vec<(Mnemonic,Vec<Statement>)>,
             op: Operation::Initialize(var.name.clone(),var.bits),
             result: var.clone()
         }];
+
+        basic_block.insert(0,(mne,stmts));
+    }
+}
+
+fn fix_uninitialized_variables_rreil(basic_block: &mut Vec<(Mnemonic,Vec<panopticon_core::Statement>)>, uninit: BitSet, variables: &Vec<Variable>) {
+    basic_block.retain(|&(ref mne,_)| mne.opcode != "__init");
+
+    let start = basic_block[0].0.area.start;
+    for bit in uninit.iter() {
+        let var = &variables[bit];
+        let mne = Mnemonic::new(start..start,"__init");
+        let stmts : Vec<panopticon_core::Statement> = vec![
+            // FIXME: insert init operation,
+            /*
+                                    Statement {
+                            op: Operation::Move(Rvalue::Undefined),
+                            assignee: Lvalue::Variable { size: *len, name: nam.clone(), subscript: None },
+                        }
+
+            */
+//            Statement::Expression{
+//            op: Operation::Initialize(var.name.clone(),var.bits),
+//            result: var.clone()}
+        ];
 
         basic_block.insert(0,(mne,stmts));
     }
@@ -137,6 +162,49 @@ fn insert_phi_operations(basic_blocks: &mut [Vec<(Mnemonic,Vec<Statement>)>], ph
 
         bb.retain(|&(ref mne,_)| mne.opcode != "__phi");
     }
+    debug!("Phi sets: {:?}", phis);
+    for ev in dom_events {
+        match ev {
+            &DomTreeEvent::Enter{ index: bb_idx, start, num_in_edges,.. } => {
+                // Insert new Phi functions
+                for var_idx in phis[bb_idx.index()].iter() {
+                    let &Variable{ ref name, bits,.. } = &variables[var_idx];
+                    let mne = Mnemonic::new(start..start,"__phi");
+                    let num_phis = if num_in_edges <= 3 { 1 } else { (num_in_edges + 1) / 2 };
+                    let mut stmts = Vec::with_capacity(num_phis);
+
+                    for i in 0..num_phis {
+                        let prev = if i > 0 {
+                            Value::var(name.clone(),bits,None)?
+                        } else {
+                            Value::undef()
+                        };
+                        let phi = Statement::Expression{
+                            op: Operation::Phi(prev,Value::undef(),Value::undef()),
+                            result: Variable::new(name.clone(),bits,None)?,
+                        };
+                        debug!("Inserting phi: {:?}", phi);
+                        stmts.push(phi);
+                    }
+
+                    basic_blocks[bb_idx.index()].insert(0,(mne,stmts));
+                }
+            }
+            &DomTreeEvent::Leave(_) => { /* skip */ }
+        }
+    }
+
+    Ok(())
+}
+
+fn insert_phi_operations_rreil(basic_blocks: &mut [Vec<(Mnemonic,Vec<panopticon_core::Statement>)>], phis: Vec<BitSet>,
+                         dom_events: &Vec<DomTreeEvent>, variables: &Vec<Variable>) -> Result<()> {
+    // Remove all Phi functions
+    for (bb_idx,vars) in phis.iter().enumerate() {
+        let bb = &mut basic_blocks[bb_idx];
+
+        bb.retain(|&(ref mne,_)| mne.opcode != "__phi");
+    }
 
     for ev in dom_events {
         match ev {
@@ -155,10 +223,12 @@ fn insert_phi_operations(basic_blocks: &mut [Vec<(Mnemonic,Vec<Statement>)>], ph
                             Value::undef()
                         };
 
-                        stmts.push(Statement::Expression{
-                            op: Operation::Phi(prev,Value::undef(),Value::undef()),
-                            result: Variable::new(name.clone(),bits,None)?,
-                        });
+                        // FIXME: insert phi operation
+//                        stmts.push(
+//                            Statement::Expression{
+//                            op: Operation::Phi(prev,Value::undef(),Value::undef()),
+//                            result: Variable::new(name.clone(),bits,None)?,}
+//                        );
                     }
 
                     basic_blocks[bb_idx.index()].insert(0,(mne,stmts));
@@ -282,7 +352,7 @@ fn assign_subscripts(basic_blocks: &mut [Vec<(Mnemonic,Vec<Statement>)>],
     Ok(())
 }
 
-fn dominator_tree(func: &Function, doms: &Dominators<NodeIndex>) -> Result<Vec<DomTreeEvent>> {
+fn dominator_tree<IL: neo::Language>(func: &Function<IL>, doms: &Dominators<NodeIndex>) -> Result<Vec<DomTreeEvent>> {
     let num_bb = func.basic_blocks().len();
     let cfg = func.cflow_graph();
     let mut tree = vec![BitSet::with_capacity(num_bb); num_bb];
@@ -383,6 +453,32 @@ pub fn rewrite_to_ssa(func: &mut Function) -> Result<()> {
         fix_uninitialized_variables(&mut basic_blocks[entry.index()],uninit,&variables);
         insert_phi_operations(basic_blocks,phis,&dom_events,&variables)?;
         assign_subscripts(basic_blocks,dom_events,&variables)
+    })
+}
+
+pub fn rewrite_to_ssa_rreil(func: &mut Function<neo::RREIL>) -> Result<()> {
+    use neo::{Liveness,Globals};
+
+    let entry = func.entry_point();
+    let doms = dominators::simple_fast(func.cflow_graph(),func.basic_block(entry).node);
+    let dom_events = dominator_tree(func,&doms)?;
+    let (phis,uninit,variables) = {
+        let live = Liveness::new_rreil(&func).unwrap();
+        let globals = Globals::new(&func,&live).unwrap();
+        let df = dominance_frontiers(&func,&doms).unwrap();
+        let phis = phi_functions(&func,&globals,&df).unwrap();
+        let mut uninit = live.ue_var[entry.index()].clone();
+
+        uninit.union_with(&globals.globals.difference(&live.var_kill[entry.index()]).collect());
+        (phis,uninit,live.variables.clone())
+    };
+    let fst_addr = func.first_address();
+
+    func.rewrite(|basic_blocks| {
+        fix_uninitialized_variables_rreil(&mut basic_blocks[entry.index()],uninit,&variables);
+        insert_phi_operations_rreil(basic_blocks,phis,&dom_events,&variables)?;
+        //assign_subscripts(basic_blocks,dom_events,&variables)
+        Ok(())
     })
 }
 
