@@ -23,4 +23,4 @@ pub use self::function::{Function, CfgNode, Mnemonic, MnemonicIndex, BasicBlock,
 use std::borrow::Cow;
 pub type Str = Cow<'static,str>;
 
-pub use self::function::{Language, StatementIterator};
+pub use self::function::{Language, StatementIterator, RREIL};

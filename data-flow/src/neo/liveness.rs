@@ -26,7 +26,7 @@ impl<'a> Liveness<'a> {
         let cfg = func.cflow_graph();
 
         for (idx,bb) in func.basic_blocks() {
-            for stmt in func.statements(bb) {
+            for stmt in func.statements_(bb) {
                 match stmt {
                     Statement::Expression{ op: Operation::Phi(_,_,_),.. } => { /* skip */ }
                     Statement::Expression{ op, result } => {

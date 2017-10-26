@@ -1,13 +1,12 @@
-use std::iter::FromIterator;
+//use std::iter::FromIterator;
 
-use petgraph::{Direction,Graph};
-use petgraph::graph::{NodeIndex};
+use petgraph::prelude::*;
 use petgraph::algo::dominators;
 use petgraph::algo::dominators::Dominators;
 use bit_set::BitSet;
 use smallvec::SmallVec;
 
-use panopticon_core::neo::{Function, Result, CfgNode, Statement, Operation, Mnemonic, BasicBlock, BasicBlockIndex, Value, Variable};
+use panopticon_core::neo::{self, Function, Result, CfgNode, Statement, Operation, Mnemonic, BasicBlockIndex, Value, Variable};
 use panopticon_core::Guard;
 
 use neo::Globals;
@@ -185,7 +184,7 @@ fn assign_subscripts(basic_blocks: &mut [Vec<(Mnemonic,Vec<Statement>)>],
         match ev {
             DomTreeEvent::Enter{ index: bb_idx, start, successors, num_in_edges } => {
                 // Rewrite operations
-                for &mut (_,ref mut stmts) in basic_blocks[bb_idx.index()].iter_mut() {
+                for &mut (ref mut mnemonic,ref mut stmts) in basic_blocks[bb_idx.index()].iter_mut() {
                     for stmt in stmts.iter_mut() {
                         use panopticon_core::neo::Statement::*;
 

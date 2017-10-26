@@ -121,6 +121,34 @@ pub trait Fun: Sized {
     }
 }
 
+#[derive(Clone)]
+pub struct NoopStatement(());
+
+#[derive(Default)]
+pub struct Noop {}
+
+impl From<Statement> for NoopStatement {
+    fn from(_: Statement) -> Self {
+        NoopStatement(())
+    }
+}
+
+impl neo::Language for Noop {
+    type Statement = NoopStatement;
+
+    fn push(&mut self, statement: Self::Statement) -> ::neo::Result<usize> {
+        Ok(0)
+    }
+
+    fn append(&mut self, statements: Vec<Self::Statement>) -> ::neo::Result<::std::ops::Range<usize>> {
+        Ok(0..0)
+    }
+
+    fn len(&self) -> usize {
+        0
+    }
+}
+
 // core
 pub mod disassembler;
 pub use disassembler::{Architecture, Disassembler, Match, State, TestArch};

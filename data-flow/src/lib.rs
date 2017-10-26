@@ -102,13 +102,33 @@ impl DataFlow for Function {
     }
 }
 
-impl<S> DataFlow for panopticon_core::neo::Function<S> {
-    // @flanfly: can technically implement it for neo by calling its specific functions in `neo::*` here, as it mutates self
+impl DataFlow for panopticon_core::neo::Function<panopticon_core::Noop> {
+    fn entry_point_mut(&mut self) -> &mut BasicBlock {
+        unimplemented!()
+    }
+
+    fn entry_point_ref(&self) -> ControlFlowRef {
+        unimplemented!()
+    }
+
+    fn cfg(&self) -> &Graph<ControlFlowTarget, Guard> {
+        unimplemented!()
+    }
+
+    fn cfg_mut(&mut self) -> &mut Graph<ControlFlowTarget, Guard> {
+        unimplemented!()
+    }
     fn ssa_conversion(&mut self) -> Result<()> {
         Ok(())
-//        neo::rewrite_to_ssa(self).map_err(|e| {
-//            format!("{}", e).into()
-//        })
+    }
+}
+
+impl DataFlow for panopticon_core::neo::Function {
+    // @flanfly: can technically implement it for neo by calling its specific functions in `neo::*` here, as it mutates self
+    fn ssa_conversion(&mut self) -> Result<()> {
+        neo::rewrite_to_ssa(self).map_err(|e| {
+            format!("{}", e).into()
+        })
     }
     fn entry_point_mut(&mut self) -> &mut BasicBlock {
         unimplemented!()
@@ -126,7 +146,80 @@ impl<S> DataFlow for panopticon_core::neo::Function<S> {
     }
 }
 
+impl DataFlow for panopticon_core::neo::Function<panopticon_core::neo::RREIL> {
+    fn ssa_conversion(&mut self) -> Result<()> {
+        Ok(())
+    }
+    fn entry_point_mut(&mut self) -> &mut BasicBlock {
+        unimplemented!()
+    }
+
+    fn entry_point_ref(&self) -> ControlFlowRef {
+        unimplemented!()
+    }
+
+    fn cfg(&self) -> &Graph<ControlFlowTarget, Guard> {
+        unimplemented!()
+    }
+
+    fn cfg_mut(&mut self) -> &mut Graph<ControlFlowTarget, Guard> {
+        unimplemented!()
+    }
+}
+
 mod liveness;
 mod ssa;
 
-//pub mod neo;
+use std::borrow::Borrow;
+
+pub trait DataFlowOperand {
+    fn is_variable(&self) -> bool;
+    fn name(&self) -> Option<&str>;
+}
+//
+//pub trait DataFlowLvalue {
+//    fn name(&self) -> &str;
+//}
+//
+//pub trait DataFlowRvalue {
+//    type Operand: DataFlowOperand;
+//    fn operands(&self) -> Vec<&Self::Operand>;
+//}
+//
+//pub trait DataFlowLanguage {
+//    type Lvalue: DataFlowLvalue;
+//    type Rvalue: DataFlowRvalue;
+//    fn is_phi(&self) -> bool;
+//    fn rvalue(&self) -> Option<&Self::Rvalue>;
+//    fn lvalue(&self) -> Option<&Self::Lvalue>;
+//}
+
+impl DataFlowOperand for panopticon_core::neo::Value {
+    fn is_variable(&self) -> bool {
+        match self {
+            &panopticon_core::neo::Value::Variable(..) => true,
+            _ => false
+        }
+    }
+
+    fn name(&self) -> Option<&str> {
+        match self {
+            &panopticon_core::neo::Value::Variable( panopticon_core::neo::Variable { ref name, ..}) => Some(name.borrow()),
+            _ => None
+        }
+    }
+}
+//
+//
+//pub trait DF {
+//    fn liveness_(&self) -> (HashMap<ControlFlowRef, HashSet<Cow<'static, str>>>, HashMap<ControlFlowRef, HashSet<Cow<'static, str>>>);
+//}
+//
+//impl<IL: neo::Language> DF for panopticon_core::neo::Function<IL> where IL::Statement: DataFlowLanguage {
+//    fn liveness_(&self) -> (HashMap<ControlFlowRef, HashSet<Cow<'static, str>>>, HashMap<ControlFlowRef, HashSet<Cow<'static, str>>>) {
+//        unimplemented!()
+//        //liveness_sets_neo(self)
+//    }
+//}
+
+pub mod neo;

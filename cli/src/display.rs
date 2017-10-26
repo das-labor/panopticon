@@ -26,30 +26,30 @@ pub trait PrintableFunction: Sized {
 }
 
 pub trait PrintableStatements: Sized {
-    fn pretty_print_il<IL: PrintableIL, W: WriteColor + Write> (&self, fmt: &mut W) -> Result<()>;
+    fn pretty_print_il<W: WriteColor + Write> (&self, fmt: &mut W) -> Result<()>;
 }
 
 pub trait PrintableIL {
     fn pretty_print<W: WriteColor + Write>(&self, fmt: &mut W) -> Result<()>;
 }
 
-impl PrintableFunction for Function {
-    fn pretty_print<W: WriteColor + Write>(&self, fmt: &mut W, program: &Program<Function>) -> Result<()> {
-        let mut bbs = self.basic_blocks().collect::<Vec<_>>();
-        bbs.sort_by(|bb1, bb2| bb1.area.start.cmp(&bb2.area.start));
-        print_function(fmt, self, &bbs, program)
-    }
-}
+//impl PrintableFunction for Function {
+//    fn pretty_print<W: WriteColor + Write>(&self, fmt: &mut W, program: &Program<Function>) -> Result<()> {
+//        let mut bbs = self.basic_blocks().collect::<Vec<_>>();
+//        bbs.sort_by(|bb1, bb2| bb1.area.start.cmp(&bb2.area.start));
+//        print_function(fmt, self, &bbs, program)
+//    }
+//}
 
 impl PrintableStatements for Function {
-    fn pretty_print_il<IL: PrintableIL, W: WriteColor + Write>(&self, fmt: &mut W) -> Result<()> {
+    fn pretty_print_il<W: WriteColor + Write>(&self, fmt: &mut W) -> Result<()> {
         color_bold!(fmt, White, "RREIL")?;
         writeln!(fmt, ":")?;
         for bb in self.basic_blocks() {
             for mnemonic in bb.mnemonics() {
                 print_address_and_mnemonic::<Self, &Mnemonic, _>(fmt, &mnemonic)?;
                 for statement in &mnemonic.instructions {
-                    <Statement as PrintableIL>::pretty_print(statement, fmt)?;
+                    statement.pretty_print(fmt)?;
                 }
             }
         }
@@ -63,7 +63,7 @@ impl<IL: neo::Language> PrintableStatements for neo::Function<IL>
         IL::Statement: PrintableIL + Clone,
         Self: Fun,
 {
-    fn pretty_print_il<ILL: PrintableIL, W: WriteColor + Write>(&self, fmt: &mut W) -> Result<()> {
+    fn pretty_print_il<W: WriteColor + Write>(&self, fmt: &mut W) -> Result<()> {
         color_bold!(fmt, White, "IL")?;
         writeln!(fmt, ":")?;
         for bb in self.into_iter() {
@@ -103,7 +103,7 @@ impl<IL: neo::Language> PrintableStatements for neo::Function<IL>
 //    }
 //}
 
-impl PrintableFunction for neo::Function<Vec<Statement>> {
+impl<IL: neo::Language> PrintableFunction for neo::Function<IL> {
     fn pretty_print<W: WriteColor + Write>(&self, fmt: &mut W, program: &Program<Self>) -> Result<()> {
         let mut bbs = self.basic_blocks().map(|(_, bb)| NeoFunctionAndBasicBlock { function: self, bb} ).collect::<Vec<_>>();
         bbs.sort_by(|f1, f2| f1.bb.area.start.cmp(&f2.bb.area.start));
@@ -112,14 +112,23 @@ impl PrintableFunction for neo::Function<Vec<Statement>> {
     }
 }
 
-impl PrintableFunction for neo::Function<neo::Bitcode> {
-    fn pretty_print<W: WriteColor + Write>(&self, fmt: &mut W, program: &Program<neo::Function<neo::Bitcode>>) -> Result<()> {
-        let mut bbs = self.basic_blocks().map(|(_, bb)| NeoFunctionAndBasicBlock { function: self, bb} ).collect::<Vec<_>>();
-        bbs.sort_by(|f1, f2| f1.bb.area.start.cmp(&f2.bb.area.start));
-        print_function(fmt, self, &bbs, program)?;
-        Ok(())
-    }
-}
+//impl<IL> PrintableFunction for neo::Function<Vec<Statement>> {
+//    fn pretty_print<W: WriteColor + Write>(&self, fmt: &mut W, program: &Program<Self>) -> Result<()> {
+//        let mut bbs = self.basic_blocks().map(|(_, bb)| NeoFunctionAndBasicBlock { function: self, bb} ).collect::<Vec<_>>();
+//        bbs.sort_by(|f1, f2| f1.bb.area.start.cmp(&f2.bb.area.start));
+//        print_function(fmt, self, &bbs, program)?;
+//        Ok(())
+//    }
+//}
+//
+//impl PrintableFunction for neo::Function<neo::Bitcode> {
+//    fn pretty_print<W: WriteColor + Write>(&self, fmt: &mut W, program: &Program<neo::Function<neo::Bitcode>>) -> Result<()> {
+//        let mut bbs = self.basic_blocks().map(|(_, bb)| NeoFunctionAndBasicBlock { function: self, bb} ).collect::<Vec<_>>();
+//        bbs.sort_by(|f1, f2| f1.bb.area.start.cmp(&f2.bb.area.start));
+//        print_function(fmt, self, &bbs, program)?;
+//        Ok(())
+//    }
+//}
 
 pub trait PrintableMnemonic {
     fn opcode(&self) -> &str;
@@ -199,10 +208,10 @@ impl<'a> PrintableMnemonic for &'a neo::Mnemonic {
 // }
 
 /// Prints an address and its corresponding mnemonic at that address
-pub fn print_address_and_mnemonic<F: Fun, M: PrintableMnemonic, W: Write + WriteColor>(fmt: &mut W, mnemonic: &M) -> Result<()> {
+pub fn print_address_and_mnemonic<IL, M: PrintableMnemonic, W: Write + WriteColor>(fmt: &mut W, mnemonic: &M) -> Result<()> {
     color_bold!(fmt, White, format!("{:8x}", mnemonic.area().start as usize))?;
     write!(fmt, ": (")?;
-    print_mnemonic(fmt, mnemonic, None::<&Program<F>>)?;
+    print_mnemonic(fmt, mnemonic, None::<&Program<neo::Function<IL>>>)?;
     writeln!(fmt, ")")?;
     Ok(())
 }
@@ -489,8 +498,8 @@ impl PrintableIL for Statement {
 }
 
 /// Prints the function in a human readable format, using `program`, with colors
-pub fn print_function<Function: Fun, M: PrintableMnemonic, B: PrintableBlock<M>, W: Write + WriteColor>(fmt: &mut W, function: &Function, bbs: &[B], program: &Program<Function>) -> Result<()> {
-    write!(fmt, "{:0>8x} <", function.start())?;
+pub fn print_function<IL, M: PrintableMnemonic, B: PrintableBlock<M>, W: Write + WriteColor>(fmt: &mut W, function: &neo::Function<IL>, bbs: &[B], program: &Program<neo::Function<IL>>) -> Result<()> {
+    write!(fmt, "{:0>8x} <", function.first_address())?;
     color_bold!(fmt, Yellow, function.name())?;
     writeln!(fmt, ">:")?;
     for bb in bbs {
@@ -500,7 +509,7 @@ pub fn print_function<Function: Fun, M: PrintableMnemonic, B: PrintableBlock<M>,
 }
 
 /// Prints the basic block into `fmt`, in disassembly order, in human readable form, and looks up any functions calls in `program`
-pub fn print_basic_block<Function: Fun, M: PrintableMnemonic, B: PrintableBlock<M>, W: Write + WriteColor>(fmt: &mut W, basic_block: &B, program: &Program<Function>) -> Result<()> {
+pub fn print_basic_block<IL, M: PrintableMnemonic, B: PrintableBlock<M>, W: Write + WriteColor>(fmt: &mut W, basic_block: &B, program: &Program<neo::Function<IL>>) -> Result<()> {
     for mnemonic in basic_block.mnemonics() {
         if !mnemonic.opcode().starts_with("__") {
             write!(fmt, "{:8x}: ", mnemonic.area().start)?;
@@ -512,7 +521,7 @@ pub fn print_basic_block<Function: Fun, M: PrintableMnemonic, B: PrintableBlock<
 }
 
 /// Prints the mnemonic into `fmt`, in human readable form, and looks up any functions calls in `program`
-pub fn print_mnemonic<Function: Fun, M: PrintableMnemonic, W: Write + WriteColor>(fmt: &mut W, mnemonic: &M, program: Option<&Program<Function>>) -> Result<()> {
+pub fn print_mnemonic<IL, M: PrintableMnemonic, W: Write + WriteColor>(fmt: &mut W, mnemonic: &M, program: Option<&Program<neo::Function<IL>>>) -> Result<()> {
     let ops = mnemonic.operands();
     let mut ops = ops.iter();
     color_bold!(fmt, Blue, mnemonic.opcode())?;
@@ -537,7 +546,8 @@ pub fn print_mnemonic<Function: Fun, M: PrintableMnemonic, W: Write + WriteColor
                             color!(fmt, White, format!("{:x}", (val as i64).wrapping_neg()))?;
                         }
                     },
-                    Some(&Rvalue::Variable{ ref name, subscript: Some(ref _subscript),.. }) => {
+                    //Some(variable @ &Rvalue::Variable{ ref name, ref subscript, bits }) => {
+                    Some(&Rvalue::Variable{ ref name, .. }) => {
                         color_bold!(fmt, White, &name.to_lowercase())?;
                     },
                     _ => {
@@ -555,14 +565,14 @@ pub fn print_mnemonic<Function: Fun, M: PrintableMnemonic, W: Write + WriteColor
                             } else { c };
                         if is_code {
                             if let Some(program) = program {
-                                if let Some(function) = program.find_function_by(|f| { f.start() == val }) {
-                                    color!(fmt, Red, format!("{:x}",val))?;
-                                    write!(fmt, " <", )?;
-                                    color_bold!(fmt, Yellow, function.name())?;
-                                    write!(fmt, ">")?;
-                                } else {
-                                    color_bold!(fmt, Magenta, format!("{:x}",val))?;
-                                }
+//                                if let Some(function) = program.find_function_by(|f| { f.start() == val }) {
+//                                    color!(fmt, Red, format!("{:x}",val))?;
+//                                    write!(fmt, " <", )?;
+//                                    color_bold!(fmt, Yellow, function.name())?;
+//                                    write!(fmt, ">")?;
+//                                } else {
+//                                    color_bold!(fmt, Magenta, format!("{:x}",val))?;
+//                                }
                             } else {
                                 write!(fmt, "{}", format!("{:#x}",val))?;
                             }
@@ -589,27 +599,28 @@ pub fn print_mnemonic<Function: Fun, M: PrintableMnemonic, W: Write + WriteColor
     Ok(())
 }
 
-fn pp_variable<W: WriteColor + Write>(fmt: &mut W, variable: &neo::Variable) -> Result<()> {
-    color!(fmt, White, format!("{}", variable.name))?;
-    if let Some(mut subscript ) = variable.subscript {
-        while subscript >= 0 {
+fn pp_variable<W: WriteColor + Write>(fmt: &mut W, name: &str, subscript: &Option<usize>, bits: usize) -> Result<()> {
+    color!(fmt, White, format!("{}", name))?;
+    if let &Some(ref subscript ) = subscript {
+        let mut subscript = *subscript;
+        while subscript > 0 {
             match subscript % 10 {
-                0 => { color_bold!(fmt, White, "₀")?; },
-                1 => { color_bold!(fmt, White, "₁")?; },
-                2 => { color_bold!(fmt, White, "₂")?; },
-                3 => { color_bold!(fmt, White, "₃")?; },
-                4 => { color_bold!(fmt, White, "₄")?; },
-                5 => { color_bold!(fmt, White, "₅")?; },
-                6 => { color_bold!(fmt, White, "₆")?; },
-                7 => { color_bold!(fmt, White, "₇")?; },
-                8 => { color_bold!(fmt, White, "₈")?; },
-                9 => { color_bold!(fmt, White, "₉")?; },
+                0 => { color!(fmt, Yellow, "₀")?; },
+                1 => { color!(fmt, Yellow, "₁")?; },
+                2 => { color!(fmt, Yellow, "₂")?; },
+                3 => { color!(fmt, Yellow, "₃")?; },
+                4 => { color!(fmt, Yellow, "₄")?; },
+                5 => { color!(fmt, Yellow, "₅")?; },
+                6 => { color!(fmt, Yellow, "₆")?; },
+                7 => { color!(fmt, Yellow, "₇")?; },
+                8 => { color!(fmt, Yellow, "₈")?; },
+                9 => { color!(fmt, Yellow, "₉")?; },
                 _ => unreachable!()
             }
             subscript /= 10;
         }
     }
-    write!(fmt, ":{}", variable.bits)?;
+    write!(fmt, ":{}", bits)?;
     Ok(())
 }
 
@@ -626,7 +637,7 @@ fn pp_value<W: WriteColor + Write>(fmt: &mut W, variable: &neo::Value) -> Result
             color_bold!(fmt, Red, "undef")?;
         },
         &Variable(ref variable) => {
-            pp_variable(fmt, variable)?;
+            pp_variable(fmt, &variable.name, &variable.subscript, variable.bits)?;
         },
         &Constant(ref constant) => {
             pp_constant(fmt, constant)?;
@@ -640,12 +651,13 @@ macro_rules! pp_op {
                         color_bold!($fmt, White, $name)?;
                         color_bold!($fmt, White, $format)?;
                         write!($fmt, " ")?;
-                        pp_variable($fmt, $result)
+                        pp_variable($fmt, &$result.name, &$result.subscript, $result.bits)
         });
     ($fmt:ident, $name:expr, $result:expr) => ({
                         color_bold!($fmt, White, $name)?;
                         write!($fmt, " ")?;
-                        pp_variable($fmt, $result)
+                        pp_variable($fmt, &$result.name, &$result.subscript, $result.bits)
+//                        pp_variable($fmt, $result)
         });
 
 }
@@ -696,7 +708,7 @@ impl PrintableIL for neo::Statement {
                 }
             },
             &Call { ref function } => {
-                color_bold!(fmt, White, "call")?;
+                color_bold!(fmt, Blue, "call")?;
                 //                color_bold!(fmt, White, "call")?;
 //                write!(fmt, " ")?;
 //                pp_variable(fmt, &result)?;
@@ -734,266 +746,9 @@ impl PrintableIL for neo::Statement {
     }
 }
 
-
-/*
-                    op @ Operation::Add( .. ) => {
-                        pp_op!("add")?;
-                        pp_operands!(op);
-                          //color!(fmt, White, a)?;
-//                        color_bold!(fmt, Green, ",")?;
-//                        write!(fmt, " ")?;
-//                        color!(fmt, White, b)?;
-                    },
-                    Operation::Subtract( a,  b) => {
-                        color_bold!(fmt, White, "sub")?;
-                        write!(fmt, " ")?;
-                        pp_variable(fmt, &result)?;
-                        color_bold!(fmt, Green, ",")?;
-                        write!(fmt, " ")?;
-                        color!(fmt, White, a)?;
-                        color_bold!(fmt, Green, ",")?;
-                        write!(fmt, " ")?;
-                        color!(fmt, White, b)?;
-                    },
-                    Operation::Multiply( a,  b) => {
-                        color_bold!(fmt, White, "mul")?;
-                        write!(fmt, " ")?;
-                        pp_variable(fmt, &result)?;
-                        color_bold!(fmt, Green, ",")?;
-                        write!(fmt, " ")?;
-                        color!(fmt, White, a)?;
-                        color_bold!(fmt, Green, ",")?;
-                        write!(fmt, " ")?;
-                        color!(fmt, White, b)?;
-                    },
-                    Operation::DivideUnsigned( a,  b) => {
-                        color_bold!(fmt, White, "divu")?;
-                        write!(fmt, " ")?;
-                        pp_variable(fmt, &result)?;
-                        color_bold!(fmt, Green, ",")?;
-                        write!(fmt, " ")?;
-                        color!(fmt, White, a)?;
-                        color_bold!(fmt, Green, ",")?;
-                        write!(fmt, " ")?;
-                        color!(fmt, White, b)?;
-                    },
-                    Operation::DivideSigned( a,  b) => {
-                        color_bold!(fmt, White, "divs")?;
-                        write!(fmt, " ")?;
-                        pp_variable(fmt, &result)?;
-                        color_bold!(fmt, Green, ",")?;
-                        write!(fmt, " ")?;
-                        color!(fmt, White, a)?;
-                        color_bold!(fmt, Green, ",")?;
-                        write!(fmt, " ")?;
-                        color!(fmt, White, b)?;
-                    },
-                    Operation::ShiftLeft( a,  b) => {
-                        color_bold!(fmt, White, "shl")?;
-                        write!(fmt, " ")?;
-                        pp_variable(fmt, &result)?;
-                        color_bold!(fmt, Green, ",")?;
-                        write!(fmt, " ")?;
-                        color!(fmt, White, a)?;
-                        color_bold!(fmt, Green, ",")?;
-                        write!(fmt, " ")?;
-                        color!(fmt, White, b)?;
-                    },
-                    Operation::ShiftRightUnsigned( a,  b) => {
-                        color_bold!(fmt, White, "shru")?;
-                        write!(fmt, " ")?;
-                        pp_variable(fmt, &result)?;
-                        color_bold!(fmt, Green, ",")?;
-                        write!(fmt, " ")?;
-                        color!(fmt, White, a)?;
-                        color_bold!(fmt, Green, ",")?;
-                        write!(fmt, " ")?;
-                        color!(fmt, White, b)?;
-                    },
-                    Operation::ShiftRightSigned( a,  b) => {
-                        color_bold!(fmt, White, "shrs")?;
-                        write!(fmt, " ")?;
-                        pp_variable(fmt, &result)?;
-                        color_bold!(fmt, Green, ",")?;
-                        write!(fmt, " ")?;
-                        color!(fmt, White, a)?;
-                        color_bold!(fmt, Green, ",")?;
-                        write!(fmt, " ")?;
-                        color!(fmt, White, b)?;
-                    },
-                    Operation::Modulo( a,  b) => {
-                        color_bold!(fmt, White, "mod")?;
-                        write!(fmt, " ")?;
-                        pp_variable(fmt, &result)?;
-                        color_bold!(fmt, Green, ",")?;
-                        write!(fmt, " ")?;
-                        color!(fmt, White, a)?;
-                        color_bold!(fmt, Green, ",")?;
-                        write!(fmt, " ")?;
-                        color!(fmt, White, b)?;
-                    },
-                    Operation::And( a,  b) => {
-                        color_bold!(fmt, White, "and")?;
-                        write!(fmt, " ")?;
-                        pp_variable(fmt, &result)?;
-                        color_bold!(fmt, Green, ",")?;
-                        write!(fmt, " ")?;
-                        color!(fmt, White, a)?;
-                        color_bold!(fmt, Green, ",")?;
-                        write!(fmt, " ")?;
-                        color!(fmt, White, b)?;
-                    },
-                    Operation::InclusiveOr( a,  b) => {
-                        color_bold!(fmt, White, "or")?;
-                        write!(fmt, " ")?;
-                        pp_variable(fmt, &result)?;
-                        color_bold!(fmt, Green, ",")?;
-                        write!(fmt, " ")?;
-                        color!(fmt, White, a)?;
-                        color_bold!(fmt, Green, ",")?;
-                        write!(fmt, " ")?;
-                        color!(fmt, White, b)?;
-                    },
-                    Operation::ExclusiveOr( a,  b) => {
-                        color_bold!(fmt, White, "xor")?;
-                        write!(fmt, " ")?;
-                        pp_variable(fmt, &result)?;
-                        color_bold!(fmt, Green, ",")?;
-                        write!(fmt, " ")?;
-                        color!(fmt, White, a)?;
-                        color_bold!(fmt, Green, ",")?;
-                        write!(fmt, " ")?;
-                        color!(fmt, White, b)?;
-                    },
-                    Operation::Equal( a,  b) => {
-                        color_bold!(fmt, White, "cmpeq")?;
-                        write!(fmt, " ")?;
-                        pp_variable(fmt, &result)?;
-                        color_bold!(fmt, Green, ",")?;
-                        write!(fmt, " ")?;
-                        color!(fmt, White, a)?;
-                        color_bold!(fmt, Green, ",")?;
-                        write!(fmt, " ")?;
-                        color!(fmt, White, b)?;
-                    },
-                    Operation::LessOrEqualUnsigned( a,  b) => {
-                        color_bold!(fmt, White, "cmpleu")?;
-                        write!(fmt, " ")?;
-                        pp_variable(fmt, &result)?;
-                        color_bold!(fmt, Green, ",")?;
-                        write!(fmt, " ")?;
-                        color!(fmt, White, a)?;
-                        color_bold!(fmt, Green, ",")?;
-                        write!(fmt, " ")?;
-                        color!(fmt, White, b)?;
-                    },
-                    Operation::LessOrEqualSigned( a,  b) => {
-                        color_bold!(fmt, White, "cmples")?;
-                        write!(fmt, " ")?;
-                        pp_variable(fmt, &result)?;
-                        color_bold!(fmt, Green, ",")?;
-                        write!(fmt, " ")?;
-                        color!(fmt, White, a)?;
-                        color_bold!(fmt, Green, ",")?;
-                        write!(fmt, " ")?;
-                        color!(fmt, White, b)?;
-                    },
-                    Operation::LessUnsigned( a,  b) => {
-                        color_bold!(fmt, White, "cmplu")?;
-                        write!(fmt, " ")?;
-                        pp_variable(fmt, &result)?;
-                        color_bold!(fmt, Green, ",")?;
-                        write!(fmt, " ")?;
-                        color!(fmt, White, a)?;
-                        color_bold!(fmt, Green, ",")?;
-                        write!(fmt, " ")?;
-                        color!(fmt, White, b)?;
-                    },
-                    Operation::LessSigned( a,  b) => {
-                        color_bold!(fmt, White, "cmpls")?;
-                        write!(fmt, " ")?;
-                        pp_variable(fmt, &result)?;
-                        color_bold!(fmt, Green, ",")?;
-                        write!(fmt, " ")?;
-                        color!(fmt, White, a)?;
-                        color_bold!(fmt, Green, ",")?;
-                        write!(fmt, " ")?;
-                        color!(fmt, White, b)?;
-                    },
-                    Operation::Move( a) => {
-                        color_bold!(fmt, White, "mov")?;
-                        write!(fmt, " ")?;
-                        pp_variable(fmt, &result)?;
-                        color_bold!(fmt, Green, ",")?;
-                        write!(fmt, " ")?;
-                        color!(fmt, White, a)?;
-                    },
-                    Operation::ZeroExtend(s,  a) => {
-                        color_bold!(fmt, White, format!("convert_{}", s))?;
-                        write!(fmt, " ")?;
-                        pp_variable(fmt, &result)?;
-                        color_bold!(fmt, Green, ",")?;
-                        write!(fmt, " ")?;
-                        color!(fmt, White, a)?;
-                    },
-                    Operation::SignExtend(s,  a) => {
-                        color_bold!(fmt, White, format!("sign-extend_{}", s))?;
-                        write!(fmt, " ")?;
-                        pp_variable(fmt, &result)?;
-                        color_bold!(fmt, Green, ",")?;
-                        write!(fmt, " ")?;
-                        color!(fmt, White, a)?;
-                    },
-                    Operation::Select(s,  a,  b) => {
-                        color_bold!(fmt, White, format!("select_{}", s))?;
-                        write!(fmt, " ")?;
-                        pp_variable(fmt, &result)?;
-                        color_bold!(fmt, Green, ",")?;
-                        write!(fmt, " ")?;
-                        color!(fmt, White, a)?;
-                        color_bold!(fmt, Green, ",")?;
-                        write!(fmt, " ")?;
-                        color!(fmt, White, b)?;
-                    },
-                    Operation::Initialize( r, sz) => {
-                        color_bold!(fmt, White, "init")?;
-                        write!(fmt, " ")?;
-                        pp_variable(fmt, &result)?;
-                        color_bold!(fmt, Green, ",")?;
-                        write!(fmt, " ")?;
-                        color!(fmt, White, r)?;
-                        color_bold!(fmt, Green, ",")?;
-                        write!(fmt, " ")?;
-                        color!(fmt, White, sz)?;
-                    },
-                    Operation::Load( r, e, sz,  b) => {
-                        color_bold!(fmt, White, format!("load/{}/{}/{}", r, e, sz))?;
-                        write!(fmt, " ")?;
-                        pp_variable(fmt, &result)?;
-                        color_bold!(fmt, Green, ",")?;
-                        write!(fmt, " ")?;
-                        color!(fmt, White, b)?;
-                    },
-//                    Operation::Store( r, e, sz,  a,  b) => {
-//                        color_bold!(fmt, White, format!("store/{}/{}/{}", r, e, sz))?;
-//                        write!(fmt, " ")?;
-//                        pp_variable(fmt, &result)?;
-//                        color_bold!(fmt, Green, ",")?;
-//                        write!(fmt, " ")?;
-//                        color!(fmt, White, a)?;
-//                        write!(fmt, " ")?;
-//                        color!(fmt, White, b)?;
-//                    },
-                    phi @ Operation::Phi(..) => {
-                        color_bold!(fmt, White, format!("phi"))?;
-                        write!(fmt, " ")?;
-                        for (i, x) in phi.reads().enumerate() {
-                            color!(fmt, White, format!("{}", x))?;
-                            if i < 2 {
-                                color_bold!(fmt, Green, ",")?;
-                                write!(fmt, " ")?;
-                            }
-                        }
-                    }
-
-*/
+impl PrintableIL for ::NoopStatement {
+    fn pretty_print<W: WriteColor + Write>(&self, fmt: &mut W) -> Result<()> {
+        writeln!(fmt, "")?;
+        Ok(())
+    }
+}
