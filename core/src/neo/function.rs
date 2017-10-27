@@ -764,7 +764,15 @@ impl Fun for Function<::Noop> {
 // Generic Function construction
 ////////////////////////////////////
 impl<IL: Language + Default> Function<IL> {
-    // disassembly
+    /// New function starting at `start`, with name `name`,
+    /// inside memory region `region` and UUID `uuid`.
+    pub fn with_uuid<A: Architecture>(start: u64, uuid: &Uuid, region: &Region, name: Option<Str>, init: A::Configuration) -> Result<Function> {
+        let mut f = Function::new::<A>(init, start, region, name)?;
+        f.uuid = uuid.clone();
+        Ok(f)
+    }
+    /// Create and start disassembling a new function with `name`,
+    /// inside memory `region`, starting at entry point `start`, with a random UUID.
     pub fn new<A: Architecture>(init: A::Configuration, start: u64, region: &Region, name: Option<Str>) -> Result<Self>
     {
         let mut mnemonics: Vec<(Mnemonic, Vec<IL::Statement>)> = Vec::new();
@@ -1053,12 +1061,6 @@ impl<IL: Language + Default> Function<IL> {
             }
             blocks
         };
-//        let mut blocks: Vec<Vec<(Mnemonic,Vec<IL::Statement>)>> = self.basic_blocks.iter().map(|bb| {
-//            self.mnemonics(bb.mnemonics.clone()).map(|(_,mne)| {
-//                let statements = self.statements_mut(mne.statements.clone()).collect();
-//                (mne.clone(), statements)
-//            }).collect()
-//        }).collect();
 
         f(blocks.as_mut_slice())?;
 
@@ -1156,24 +1158,27 @@ impl<IL: Language + Default> Function<IL> {
 // and the language it contains
 ////////////////////////////////////////
 impl<IL> Function<IL> {
-    pub fn aliases(&self) -> &[String] {
-        self.aliases.as_slice()
-    }
-    pub fn kind(&self) -> &FunctionKind {
-        &self.kind
-    }
+    /// Adds the alias `name` to this functions known aliases
     pub fn add_alias(&mut self, name: String) {
         self.aliases.push(name)
     }
+    /// Gets the name of this functino
     pub fn name(&self) -> &str {
         &self.name
     }
+    /// Gets the uuid of this function
     pub fn uuid(&self) -> &Uuid {
         &self.uuid
     }
+    /// Sets this functions uuid
     pub fn set_uuid(&mut self, uuid: Uuid) {
         self.uuid = uuid;
     }
+
+    /// Sets this function's plt stub entry at `plt_address`, as `name`.
+    ///
+    /// **Note** This will alter the function's kind from `Regular` to `Stub`,
+    /// and will also change move its canonical name into aliases.
     pub fn set_plt(&mut self, name: &str, plt_address: u64) {
         let old_name = self.name.clone().to_string();
         self.aliases.push(old_name);
@@ -1181,42 +1186,81 @@ impl<IL> Function<IL> {
         self.kind = FunctionKind::Stub { name: name.to_string(), plt_address };
     }
 
-    // getter
+    /// Returns the lowest address contained in this function
+    pub fn first_address(&self) -> u64 {
+        self.basic_blocks[0].area().start
+    }
+
+    /// Returns the end address of the highest basic block in this function
+    pub fn last_address(&self) -> u64 {
+        let mut end = self.basic_blocks[0].area().end;
+        for (_, bb) in self.basic_blocks() {
+            end = ::std::cmp::max(bb.area().end, end);
+        }
+        end
+    }
+
+    /// Whether the given address is contained within this function
+    pub fn contains(&self, address: u64) -> bool {
+        for (_, bb) in self.basic_blocks() {
+            if bb.area.start >= address && address < bb.area.end {
+                return true
+            }
+        }
+        false
+    }
+
+    /// Returns this functions FunctionKind
+    pub fn kind(&self) -> &FunctionKind {
+        &self.kind
+    }
+
+    /// Returns this functions known name aliases (names pointing to the same start address)
+    pub fn aliases(&self) -> &[String] {
+        self.aliases.as_slice()
+    }
+
+    /// Returns the functions basic block graph in graphivz's DOT format. Useful for debugging.
+    pub fn to_dot(&self) -> String {
+        use petgraph::dot::Dot;
+        format!("{:?}", Dot::new(&self.cflow_graph))
+    }
+
+    /// Gets the index of the entry point of this function
     pub fn entry_point(&self) -> BasicBlockIndex { self.entry_point }
-    pub fn entry_point_mut(&mut self) -> &mut BasicBlock { &mut self.basic_blocks[self.entry_point.index()] }
-    pub fn entry_point_ref(&self) -> NodeIndex { self.basic_blocks[self.entry_point.index()].node }
 
     //    pub fn bitcode_size(&self) -> usize {
     //        self.bitcode.num_bytes()
     //    }
 
+    /// Get the control flow graph of this function
     pub fn cflow_graph(&self) -> &Graph<CfgNode, Guard> {
         &self.cflow_graph
     }
+    // @flanfly due to the way new function works, it bookkeeps internal state w.r.t.
+    // graph + mnemonic + basic block vectors; hence mutating the cflow graph directly should be banned completely
+    /// Get a mutable reference to thsi functions control flow graph
     pub fn cflow_graph_mut(&mut self) -> &mut Graph<CfgNode, Guard> {
         &mut self.cflow_graph
     }
-    //fn entry_point_mut(&mut self) -> &mut BasicBlock;
-    //fn entry_point_ref(&self) -> ControlFlowRef;
 
-    // aux
-    pub fn first_address(&self) -> u64 {
-        self.basic_blocks[0].area().start
-    }
-
+    /// Returns the address of this functions entry point
     pub fn entry_address(&self) -> u64 {
         let e = self.entry_point().index();
         self.basic_blocks[e].area().start
     }
 
+    /// Gets the basic block at the given index
     pub fn basic_block(&self, idx: BasicBlockIndex) -> &BasicBlock {
         &self.basic_blocks[idx.index]
     }
 
+    /// Gets the mnemonic at this given index
     pub fn mnemonic(&self, idx: MnemonicIndex) -> &Mnemonic {
         &self.mnemonics[idx.index]
     }
 
+    /// Returns an iterator over this functions mnemonics, using `idx`
     pub fn mnemonics<'a, Idx: IntoMnemonicRange<'a, IL> + Sized>(&'a self, idx: Idx) -> MnemonicIterator<'a, IL> {
         let idx = idx.into_mnemonic_range(self);
         MnemonicIterator {
@@ -1226,6 +1270,7 @@ impl<IL> Function<IL> {
         }
     }
 
+    /// Returns an iterator over every basic block in this function, in post order
     pub fn basic_blocks(&self) -> BasicBlockIterator<IL> {
         BasicBlockIterator {
             function: self,
@@ -1258,7 +1303,7 @@ impl<IL> Function<IL> {
 }
 
 ////////////////////////////////
-// conversions to standard RREIL
+// conversions from standard RREIL
 ////////////////////////////////
 
 impl<'a> From<&'a core::Statement> for Statement {
