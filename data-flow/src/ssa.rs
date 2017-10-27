@@ -17,8 +17,9 @@
  */
 
 use liveness;
-use panopticon_core::{ControlFlowGraph, ControlFlowTarget, ControlFlowRef, ControlFlowEdge, Guard, Lvalue, Mnemonic, Operation, Result, Rvalue, Statement};
-use petgraph::{Direction};
+use panopticon_core::{neo, ControlFlowGraph, ControlFlowTarget, ControlFlowRef, ControlFlowEdge, Guard, Lvalue, Mnemonic, Operation, Result, Rvalue, Statement};
+use panopticon_core::neo::CfgNode;
+use petgraph::prelude::*;
 use petgraph::algo::dominators::{self, Dominators};
 use petgraph::visit::EdgeRef;
 
@@ -340,31 +341,28 @@ pub(crate) fn rename_variables<Function: DataFlow>(func: &mut Function, globals:
 
 /// Computes for every control flow guard the dependent RREIL operation via reverse data flow
 /// analysis.
-pub(crate) fn flag_operations<Function: DataFlow>(func: &Function) -> HashMap<ControlFlowEdge, Operation<Rvalue>> {
+pub fn flag_operations(func: &neo::Function<neo::RREIL>) -> HashMap<EdgeIndex, Operation<Rvalue>> {
     let mut ret = HashMap::new();
-    let cfg = func.cfg();
+    let cfg = func.cflow_graph();
     for e in cfg.edge_references() {
         if !ret.contains_key(&e.id()) {
             if let &Guard::Predicate { ref flag, .. } = e.weight() {
-                let maybe_bb = func.cfg().node_weight(e.source());
-                if let Some(&ControlFlowTarget::Resolved(ref bb)) = maybe_bb {
+                let maybe_bb = cfg.node_weight(e.source());
+                if let Some(&CfgNode::BasicBlock(ref bb)) = maybe_bb {
                     let mut maybe_stmt = None;
-                    bb.execute(
-                        |s| {
-                            let a: Rvalue = s.assignee.clone().into();
-                            if a == *flag {
-                                match s.op {
-                                    Operation::Equal(_, _) |
-                                    Operation::LessOrEqualUnsigned(_, _) |
-                                    Operation::LessOrEqualSigned(_, _) |
-                                    Operation::LessUnsigned(_, _) |
-                                    Operation::LessSigned(_, _) => maybe_stmt = Some(s.op.clone()),
-                                    _ => {}
-                                }
+                    for statement in func.statements_(*bb) {
+                        let assignee: Rvalue = statement.assignee.into();
+                        if assignee == *flag {
+                            match statement.op {
+                                Operation::Equal(_, _) |
+                                Operation::LessOrEqualUnsigned(_, _) |
+                                Operation::LessOrEqualSigned(_, _) |
+                                Operation::LessUnsigned(_, _) |
+                                Operation::LessSigned(_, _) => maybe_stmt = Some(statement.op.clone()),
+                                _ => {}
                             }
                         }
-                    );
-
+                    }
                     if maybe_stmt.is_some() {
                         ret.insert(e.id(), maybe_stmt.unwrap());
                     }
@@ -372,7 +370,6 @@ pub(crate) fn flag_operations<Function: DataFlow>(func: &Function) -> HashMap<Co
             }
         }
     }
-
     ret
 }
 

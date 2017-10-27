@@ -36,7 +36,7 @@ impl Architecture for Mos {
         let mut ret = vec![];
 
         for v in iv {
-            let mut j = reg.iter(v.1);
+            let mut j = reg.iter(v.1)?;
             let maybe_lo = j.next();
             let maybe_hi = j.next();
             if let (Some(hi), Some(lo)) = (maybe_hi, maybe_lo) {
@@ -53,7 +53,7 @@ impl Architecture for Mos {
         info!("disass @ {:x}", addr);
         let disass = syntax::disassembler();
 
-        if let Some(st) = disass.next_match(&mut reg.iter(addr), addr, cfg.clone()) {
+        if let Some(st) = disass.next_match(&mut reg.iter(addr)?, addr, cfg.clone()) {
             info!("    res: {:?}", st);
             Ok(st.into())
         } else {

@@ -1208,9 +1208,6 @@ impl<IL> Function<IL> {
         let e = self.entry_point().index();
         self.basic_blocks[e].area().start
     }
-}
-
-impl<IL: Language> Function<IL> {
 
     pub fn basic_block(&self, idx: BasicBlockIndex) -> &BasicBlock {
         &self.basic_blocks[idx.index]
@@ -1219,7 +1216,6 @@ impl<IL: Language> Function<IL> {
     pub fn mnemonic(&self, idx: MnemonicIndex) -> &Mnemonic {
         &self.mnemonics[idx.index]
     }
-
 
     pub fn mnemonics<'a, Idx: IntoMnemonicRange<'a, IL> + Sized>(&'a self, idx: Idx) -> MnemonicIterator<'a, IL> {
         let idx = idx.into_mnemonic_range(self);

@@ -7,6 +7,7 @@ authors = ["seu <seu@panopticon.re>"]
 panopticon-core = { path = "../core" }
 panopticon-data-flow = { path = "../data-flow" }
 panopticon-graph-algos = { path = "../graph-algos" }
+petgraph = { version = "0.4.10", features = ["serde-1"], git = "https://github.com/m4b/petgraph", branch = "dominance_frontiers" }
 log = "0.3.6"
 quickcheck = "0.4.1"
 env_logger = "0.3"

@@ -451,6 +451,7 @@ dependencies = [
  "panopticon-core 0.16.0",
  "panopticon-data-flow 0.16.0",
  "panopticon-graph-algos 0.11.0",
+ "petgraph 0.4.10 (git+https://github.com/m4b/petgraph?branch=dominance_frontiers)",
  "quickcheck 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.15 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_derive 1.0.15 (registry+https://github.com/rust-lang/crates.io-index)",

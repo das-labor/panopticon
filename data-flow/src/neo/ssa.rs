@@ -80,24 +80,22 @@ fn fix_uninitialized_variables(basic_block: &mut Vec<(Mnemonic,Vec<Statement>)>,
 }
 
 fn fix_uninitialized_variables_rreil(basic_block: &mut Vec<(Mnemonic,Vec<panopticon_core::Statement>)>, uninit: BitSet, variables: &Vec<Variable>) {
+    use panopticon_core::{Statement, Rvalue, Lvalue, Operation};
     basic_block.retain(|&(ref mne,_)| mne.opcode != "__init");
-
     let start = basic_block[0].0.area.start;
     for bit in uninit.iter() {
         let var = &variables[bit];
         let mne = Mnemonic::new(start..start,"__init");
+        // FIXME: rreil seems better suited to use Operation::Move here
+        //        Statement {
+        //            op: Operation::Move(Rvalue::Undefined),
+        //            assignee: Lvalue::Variable { size: *len, name: nam.clone(), subscript: None },
+        //        }
         let stmts : Vec<panopticon_core::Statement> = vec![
-            // FIXME: insert init operation,
-            /*
-                                    Statement {
-                            op: Operation::Move(Rvalue::Undefined),
-                            assignee: Lvalue::Variable { size: *len, name: nam.clone(), subscript: None },
-                        }
-
-            */
-//            Statement::Expression{
-//            op: Operation::Initialize(var.name.clone(),var.bits),
-//            result: var.clone()}
+            Statement {
+                assignee: Lvalue::Variable { name: var.name.clone(), subscript: None, size: var.bits },
+                op: Operation::Initialize(var.name.clone(), var.bits)
+            }
         ];
 
         basic_block.insert(0,(mne,stmts));
@@ -199,6 +197,7 @@ fn insert_phi_operations(basic_blocks: &mut [Vec<(Mnemonic,Vec<Statement>)>], ph
 
 fn insert_phi_operations_rreil(basic_blocks: &mut [Vec<(Mnemonic,Vec<panopticon_core::Statement>)>], phis: Vec<BitSet>,
                          dom_events: &Vec<DomTreeEvent>, variables: &Vec<Variable>) -> Result<()> {
+    use panopticon_core::{Lvalue, Rvalue, Operation, Statement};
     // Remove all Phi functions
     for (bb_idx,vars) in phis.iter().enumerate() {
         let bb = &mut basic_blocks[bb_idx];
@@ -218,17 +217,16 @@ fn insert_phi_operations_rreil(basic_blocks: &mut [Vec<(Mnemonic,Vec<panopticon_
 
                     for i in 0..num_phis {
                         let prev = if i > 0 {
-                            Value::var(name.clone(),bits,None)?
+                            Rvalue::Variable { name: name.clone(), size: bits, subscript: None, offset: 0}
                         } else {
-                            Value::undef()
+                            Rvalue::Undefined
                         };
-
-                        // FIXME: insert phi operation
-//                        stmts.push(
-//                            Statement::Expression{
-//                            op: Operation::Phi(prev,Value::undef(),Value::undef()),
-//                            result: Variable::new(name.clone(),bits,None)?,}
-//                        );
+                        stmts.push(
+                            Statement {
+                                assignee: Lvalue::Variable { name: name.clone(), subscript: None, size: bits },
+                                op: Operation::Phi(vec![prev])
+                            }
+                        );
                     }
 
                     basic_blocks[bb_idx.index()].insert(0,(mne,stmts));

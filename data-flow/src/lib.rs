@@ -71,7 +71,8 @@ pub trait DataFlow: Sized {
     /// Computes for every control flow guard the dependent RREIL operation via reverse data flow
     /// analysis.
     fn flag_operations(&self) -> HashMap<ControlFlowEdge, Operation<Rvalue>> {
-        ssa::flag_operations(self)
+        unimplemented!()
+        //ssa::flag_operations(self)
     }
     /// Computes for each basic block in `func` the set of live variables using simple fixed point
     /// iteration.
@@ -225,3 +226,4 @@ impl DataFlowOperand for panopticon_core::neo::Value {
 //}
 
 pub mod neo;
+pub use ssa::flag_operations;
