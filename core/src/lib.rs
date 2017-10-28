@@ -136,16 +136,23 @@ impl From<Statement> for NoopStatement {
 impl neo::Language for Noop {
     type Statement = NoopStatement;
 
-    fn push(&mut self, statement: Self::Statement) -> ::neo::Result<usize> {
+    fn push(&mut self, _statement: Self::Statement) -> ::neo::Result<usize> {
         Ok(0)
     }
 
-    fn append(&mut self, statements: Vec<Self::Statement>) -> ::neo::Result<::std::ops::Range<usize>> {
+    fn append(&mut self, _statements: Vec<Self::Statement>) -> ::neo::Result<::std::ops::Range<usize>> {
         Ok(0..0)
     }
 
     fn len(&self) -> usize {
         0
+    }
+}
+
+impl<'a> neo::StatementIterator<NoopStatement> for &'a Noop {
+    type IntoIter = ::std::iter::Cloned<::std::slice::Iter<'a, NoopStatement>>;
+    fn iter_statements(self, _range: ::std::ops::Range<usize>) -> Self::IntoIter {
+        [].iter().cloned()
     }
 }
 

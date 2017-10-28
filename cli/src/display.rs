@@ -59,7 +59,7 @@ impl PrintableStatements for Function {
 
 impl<IL: neo::Language> PrintableStatements for neo::Function<IL>
     where
-        for<'a> &'a neo::Function<IL>: neo::StatementIterator<IL>,
+        for<'a> &'a IL: neo::StatementIterator<IL::Statement>,
         IL::Statement: PrintableIL + Clone,
         Self: Fun,
 {
