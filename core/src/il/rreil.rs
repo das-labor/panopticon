@@ -119,6 +119,12 @@ use std::result;
 use std::str::{FromStr, SplitWhitespace};
 use std::u64;
 
+use Endianness;
+
+/// Standard Panopticon RREIL is used by the disassembler to lift machine code; it can also act as an
+/// IL
+pub type RREIL = Vec<Statement>;
+
 /// A readable RREIL value.
 #[derive(Clone,PartialEq,Eq,Debug,Serialize,Deserialize,Hash,PartialOrd,Ord)]
 pub enum Rvalue {
@@ -397,24 +403,6 @@ impl Display for Guard {
     }
 }
 
-/// Endianess of a memory operation.
-#[derive(Debug,Clone,Copy,PartialEq,Eq,Serialize,Deserialize)]
-pub enum Endianess {
-    /// Least significant byte first
-    Little,
-    /// Most significant byte first
-    Big,
-}
-
-impl Display for Endianess {
-    fn fmt(&self, f: &mut Formatter) -> result::Result<(), Error> {
-        match self {
-            &Endianess::Little => f.write_str("le"),
-            &Endianess::Big => f.write_str("be"),
-        }
-    }
-}
-
 /// A RREIL operation.
 #[derive(Clone,PartialEq,Eq,Debug,Serialize,Deserialize)]
 #[serde(bound(deserialize = "V: Serialize + for<'a> Deserialize<'a> + Clone + PartialEq + Eq + Debug"))]
@@ -475,9 +463,9 @@ pub enum Operation<V>
     Select(usize, V, V),
 
     /// Reads a memory cell
-    Load(Cow<'static,str>,Endianess,usize,V),
+    Load(Cow<'static,str>,Endianness,usize,V),
     /// Writes a memory cell pointed by 1st V w/ 2nd V, returns Undef
-    Store(Cow<'static,str>,Endianess,usize,V,V),
+    Store(Cow<'static,str>,Endianness,usize,V,V),
 
     /// SSA Phi function
     Phi(Vec<V>),
@@ -1203,10 +1191,10 @@ impl Display for Statement {
 
             Operation::Initialize(ref name,ref size) => f.write_fmt(format_args!("init {}, {}:{}",self.assignee,name,size)),
 
-            Operation::Load(ref r,Endianess::Little,ref sz,ref b) => f.write_fmt(format_args!("load_{}/le/{} {}, {}",r,sz,self.assignee,b)),
-            Operation::Load(ref r,Endianess::Big,ref sz,ref b) => f.write_fmt(format_args!("load_{}/be/{} {}, {}",r,sz,self.assignee,b)),
-            Operation::Store(ref r,Endianess::Little,ref sz,ref a, ref b) => f.write_fmt(format_args!("store_{}/le/{} {}, {}, {}",r,sz,self.assignee,a,b)),
-            Operation::Store(ref r,Endianess::Big,ref sz,ref a, ref b) => f.write_fmt(format_args!("store_{}/be/{} {}, {}, {}",r,sz,self.assignee,a,b)),
+            Operation::Load(ref r,Endianness::Little,ref sz,ref b) => f.write_fmt(format_args!("load_{}/le/{} {}, {}",r,sz,self.assignee,b)),
+            Operation::Load(ref r,Endianness::Big,ref sz,ref b) => f.write_fmt(format_args!("load_{}/be/{} {}, {}",r,sz,self.assignee,b)),
+            Operation::Store(ref r,Endianness::Little,ref sz,ref a, ref b) => f.write_fmt(format_args!("store_{}/le/{} {}, {}, {}",r,sz,self.assignee,a,b)),
+            Operation::Store(ref r,Endianness::Big,ref sz,ref a, ref b) => f.write_fmt(format_args!("store_{}/be/{} {}, {}, {}",r,sz,self.assignee,a,b)),
 
             Operation::Phi(ref vec) => {
                 f.write_fmt(format_args!("phi {}", self.assignee))?;
@@ -1285,8 +1273,8 @@ impl Arbitrary for Operation<Rvalue> {
 
             20 => Operation::Select(g.gen(), Rvalue::arbitrary(g), Rvalue::arbitrary(g)),
 
-            21 => Operation::Load(g.gen_ascii_chars().take(1).collect(), Endianess::arbitrary(g), g.gen(), Rvalue::arbitrary(g)),
-            22 => Operation::Store(g.gen_ascii_chars().take(1).collect(), Endianess::arbitrary(g), g.gen(), Rvalue::arbitrary(g), Rvalue::arbitrary(g)),
+            21 => Operation::Load(g.gen_ascii_chars().take(1).collect(), Endianness::arbitrary(g), g.gen(), Rvalue::arbitrary(g)),
+            22 => Operation::Store(g.gen_ascii_chars().take(1).collect(), Endianness::arbitrary(g), g.gen(), Rvalue::arbitrary(g), Rvalue::arbitrary(g)),
 
             23 => {
                 let cnt = g.gen_range(1, 6);
@@ -1349,11 +1337,11 @@ impl Arbitrary for Operation<Rvalue> {
     }
 }
 
-impl Arbitrary for Endianess {
+impl Arbitrary for Endianness {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
         match g.gen_range(0, 1) {
-            0 => Endianess::Little,
-            1 => Endianess::Big,
+            0 => Endianness::Little,
+            1 => Endianness::Big,
             _ => unreachable!(),
         }
     }
@@ -1614,11 +1602,11 @@ mod tests {
             },
 
             Statement {
-                op: Operation::Load(Cow::Borrowed("ram"), Endianess::Little, 8, Rvalue::Undefined),
+                op: Operation::Load(Cow::Borrowed("ram"), Endianness::Little, 8, Rvalue::Undefined),
                 assignee: Lvalue::Undefined,
             },
             Statement {
-                op: Operation::Store(Cow::Borrowed("ram"), Endianess::Little, 8, Rvalue::Undefined, Rvalue::Undefined),
+                op: Operation::Store(Cow::Borrowed("ram"), Endianness::Little, 8, Rvalue::Undefined, Rvalue::Undefined),
                 assignee: Lvalue::Undefined,
             },
 

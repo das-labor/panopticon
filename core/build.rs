@@ -196,7 +196,7 @@ macro_rules! rreil_memop {
         let mut stmt = vec![$crate::Statement{{
             op: $crate::Operation::Load(
                 ::std::borrow::Cow::Borrowed(stringify!($bank)),
-                $crate::Endianess::Little,
+                $crate::Endianness::Little,
                 rreil_imm!($sz),
                 rreil_rvalue!({})
             ),
@@ -216,7 +216,7 @@ macro_rules! rreil_memop {
         let mut stmt = vec![$crate::Statement{{
             op: $crate::Operation::Load(
                 ::std::borrow::Cow::Borrowed(stringify!($bank)),
-                $crate::Endianess::Big,
+                $crate::Endianness::Big,
                 rreil_imm!($sz),
                 rreil_rvalue!({})
             ),
@@ -240,7 +240,7 @@ macro_rules! rreil_memop {
         let mut stmt = vec![$crate::Statement{{
             op: $crate::Operation::Store(
                 ::std::borrow::Cow::Borrowed(stringify!($bank)),
-                $crate::Endianess::Little,
+                $crate::Endianness::Little,
                 rreil_imm!($sz),
                 rreil_rvalue!({}),
                 rreil_rvalue!({})
@@ -261,7 +261,7 @@ macro_rules! rreil_memop {
         let mut stmt = vec![$crate::Statement{{
             op: $crate::Operation::Store(
                 ::std::borrow::Cow::Borrowed(stringify!($bank)),
-                $crate::Endianess::Big,
+                $crate::Endianness::Big,
                 rreil_imm!($sz),
                 rreil_rvalue!({}),
                 rreil_rvalue!({})

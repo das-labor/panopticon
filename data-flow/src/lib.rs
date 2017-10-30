@@ -31,149 +31,71 @@ extern crate log;
 #[cfg(test)]
 extern crate env_logger;
 
-use panopticon_core::{Function, BasicBlock, Result, Guard, ControlFlowTarget, ControlFlowEdge, ControlFlowRef, Operation, Rvalue};
-use std::collections::{HashMap, HashSet};
-use std::borrow::Cow;
-
-use petgraph::Graph;
+use panopticon_core::{Function, Result, Variable, Value, il};
+use std::borrow::{Borrow};
 
 pub trait DataFlow: Sized {
     /// Convert `func` into semi-pruned SSA form.
-    fn ssa_conversion(&mut self) -> Result<()> {
-        let (globals, usage) = self.global_names();
-        self.phi_functions(&globals, &usage)?;
-        self.rename_variables(&globals)
-    }
-    /// Computes the set of global variables in `func` and their points of usage. Globals are
-    /// variables that are used in multiple basic blocks. Returns (Globals,Usage).
-    fn global_names(&self) -> (ssa::Globals, ssa::Usage) {
-        ssa::global_names(self)
-    }
-
-    /// Does a simple sanity check on all RREIL statements in `func`, returns every variable name
-    /// found and its maximal size in bits.
-    fn type_check(&self) -> Result<HashMap<Cow<'static, str>, usize>> {
-        ssa::type_check(self)
-    }
-
-    /// Inserts SSA Phi functions at junction points in the control flow graph of `func`. The
-    /// algorithm produces the semi-pruned SSA form found in Cooper, Torczon: "Engineering a Compiler".
-    fn phi_functions(&mut self, globals: &ssa::Globals, usage: &ssa::Usage) -> Result<()> {
-        ssa::phi_functions(self, globals, usage)
-    }
-
-    /// Sets the SSA subscripts of all variables in `func`. Follows the algorithm outlined
-    /// Cooper, Torczon: "Engineering a Compiler". The function expects that Phi functions to be
-    /// already inserted.
-    fn rename_variables(&mut self, globals: &ssa::Globals) -> Result<()> {
-        ssa::rename_variables(self, globals)
-    }
-    /// Computes for every control flow guard the dependent RREIL operation via reverse data flow
-    /// analysis.
-    fn flag_operations(&self) -> HashMap<ControlFlowEdge, Operation<Rvalue>> {
-        unimplemented!()
-        //ssa::flag_operations(self)
-    }
-    /// Computes for each basic block in `func` the set of live variables using simple fixed point
-    /// iteration.
-    fn liveness<Function: DataFlow>(&self) -> HashMap<ControlFlowRef, HashSet<Cow<'static, str>>> {
-        liveness::liveness(self)
-    }
-
-    fn entry_point_mut(&mut self) -> &mut BasicBlock;
-    fn entry_point_ref(&self) -> ControlFlowRef;
-    fn cfg(&self) -> &Graph<ControlFlowTarget, Guard>;
-    fn cfg_mut(&mut self) -> &mut Graph<ControlFlowTarget, Guard>;
+    fn ssa_conversion(&mut self) -> Result<()>;
+//        let (globals, usage) = self.global_names();
+//        self.phi_functions(&globals, &usage)?;
+//        self.rename_variables(&globals)
+//    }
+//    /// Computes the set of global variables in `func` and their points of usage. Globals are
+//    /// variables that are used in multiple basic blocks. Returns (Globals,Usage).
+//    fn global_names(&self) -> (ssa::Globals, ssa::Usage) {
+//        ssa::global_names(self)
+//    }
+//
+//    /// Does a simple sanity check on all RREIL statements in `func`, returns every variable name
+//    /// found and its maximal size in bits.
+//    fn type_check(&self) -> Result<HashMap<Cow<'static, str>, usize>> {
+//        ssa::type_check(self)
+//    }
+//
+//    /// Inserts SSA Phi functions at junction points in the control flow graph of `func`. The
+//    /// algorithm produces the semi-pruned SSA form found in Cooper, Torczon: "Engineering a Compiler".
+//    fn phi_functions(&mut self, globals: &ssa::Globals, usage: &ssa::Usage) -> Result<()> {
+//        ssa::phi_functions(self, globals, usage)
+//    }
+//
+//    /// Sets the SSA subscripts of all variables in `func`. Follows the algorithm outlined
+//    /// Cooper, Torczon: "Engineering a Compiler". The function expects that Phi functions to be
+//    /// already inserted.
+//    fn rename_variables(&mut self, globals: &ssa::Globals) -> Result<()> {
+//        ssa::rename_variables(self, globals)
+//    }
+//    /// Computes for every control flow guard the dependent RREIL operation via reverse data flow
+//    /// analysis.
+//    fn flag_operations(&self) -> HashMap<ControlFlowEdge, Operation<Rvalue>> {
+//        unimplemented!()
+//        //ssa::flag_operations(self)
+//    }
+//    /// Computes for each basic block in `func` the set of live variables using simple fixed point
+//    /// iteration.
+//    fn liveness<Function: DataFlow>(&self) -> HashMap<ControlFlowRef, HashSet<Cow<'static, str>>> {
+//        liveness::liveness(self)
+//    }
 }
 
-impl DataFlow for Function {
-    fn entry_point_mut(&mut self) -> &mut BasicBlock {
-        Function::entry_point_mut(self)
-    }
-    fn entry_point_ref(&self) -> ControlFlowRef {
-        Function::entry_point_ref(self)
-    }
-
-    fn cfg(&self) -> &Graph<ControlFlowTarget, Guard> {
-        Function::cfg(self)
-    }
-
-    fn cfg_mut(&mut self) -> &mut Graph<ControlFlowTarget, Guard> {
-        Function::cfg_mut(self)
-    }
-}
-
-impl DataFlow for panopticon_core::neo::Function<panopticon_core::Noop> {
-    fn entry_point_mut(&mut self) -> &mut BasicBlock {
-        unimplemented!()
-    }
-
-    fn entry_point_ref(&self) -> ControlFlowRef {
-        unimplemented!()
-    }
-
-    fn cfg(&self) -> &Graph<ControlFlowTarget, Guard> {
-        unimplemented!()
-    }
-
-    fn cfg_mut(&mut self) -> &mut Graph<ControlFlowTarget, Guard> {
-        unimplemented!()
-    }
+impl DataFlow for Function<il::noop::Noop> {
     fn ssa_conversion(&mut self) -> Result<()> {
         Ok(())
     }
 }
 
-impl DataFlow for panopticon_core::neo::Function {
+impl DataFlow for Function {
     // @flanfly: can technically implement it for neo by calling its specific functions in `neo::*` here, as it mutates self
     fn ssa_conversion(&mut self) -> Result<()> {
-        neo::rewrite_to_ssa(self).map_err(|e| {
-            format!("{}", e).into()
-        })
-    }
-    fn entry_point_mut(&mut self) -> &mut BasicBlock {
-        unimplemented!()
-    }
-    fn entry_point_ref(&self) -> ControlFlowRef {
-        unimplemented!()
-    }
-
-    fn cfg(&self) -> &Graph<ControlFlowTarget, Guard> {
-        unimplemented!()
-    }
-
-    fn cfg_mut(&mut self) -> &mut Graph<ControlFlowTarget, Guard> {
-        unimplemented!()
+        rewrite_to_ssa(self)
     }
 }
 
-impl DataFlow for panopticon_core::neo::Function<panopticon_core::neo::RREIL> {
+impl DataFlow for Function<il::RREIL> {
     fn ssa_conversion(&mut self) -> Result<()> {
-        neo::rewrite_to_ssa_rreil(self).map_err(|e| {
-            format!("{}", e).into()
-        })
-    }
-    fn entry_point_mut(&mut self) -> &mut BasicBlock {
-        unimplemented!()
-    }
-
-    fn entry_point_ref(&self) -> ControlFlowRef {
-        unimplemented!()
-    }
-
-    fn cfg(&self) -> &Graph<ControlFlowTarget, Guard> {
-        unimplemented!()
-    }
-
-    fn cfg_mut(&mut self) -> &mut Graph<ControlFlowTarget, Guard> {
-        unimplemented!()
+        rewrite_to_ssa_rreil(self)
     }
 }
-
-mod liveness;
-mod ssa;
-
-use std::borrow::Borrow;
 
 pub trait DataFlowOperand {
     fn is_variable(&self) -> bool;
@@ -197,17 +119,17 @@ pub trait DataFlowOperand {
 //    fn lvalue(&self) -> Option<&Self::Lvalue>;
 //}
 
-impl DataFlowOperand for panopticon_core::neo::Value {
+impl DataFlowOperand for Value {
     fn is_variable(&self) -> bool {
         match self {
-            &panopticon_core::neo::Value::Variable(..) => true,
+            &Value::Variable(..) => true,
             _ => false
         }
     }
 
     fn name(&self) -> Option<&str> {
         match self {
-            &panopticon_core::neo::Value::Variable( panopticon_core::neo::Variable { ref name, ..}) => Some(name.borrow()),
+            &Value::Variable( Variable { ref name, ..}) => Some(name.borrow()),
             _ => None
         }
     }
@@ -225,5 +147,8 @@ impl DataFlowOperand for panopticon_core::neo::Value {
 //    }
 //}
 
-pub mod neo;
-pub use ssa::flag_operations;
+mod liveness;
+pub use liveness::{Liveness,Globals};
+
+mod ssa;
+pub use ssa::{rewrite_to_ssa, rewrite_to_ssa_rreil};

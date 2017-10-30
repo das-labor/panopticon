@@ -1,5 +1,4 @@
-use neo::{Result,Str};
-use {Rvalue,Lvalue};
+use {Rvalue,Lvalue,Result,Str};
 
 #[derive(Clone,PartialEq,Eq,Debug,Serialize,Deserialize)]
 pub struct Variable {

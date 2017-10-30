@@ -2,15 +2,40 @@ use std::io::{Write,Cursor,Read};
 use std::ops::{Range};
 use leb128;
 use uuid::Uuid;
-use neo::il::{Statement,Endianess,CallTarget,Operation};
-use neo::value::{Constant,Variable,Value};
-use neo::{Str,Result};
+use {Str, Result, Constant, Variable, Value, Endianness};
+use il::neo::{Statement, CallTarget, Operation};
+use il::{Language, StatementIterator};
 
 #[derive(Clone,Debug)]
 pub struct Bitcode {
     data: Vec<u8>,
     strings: Vec<Str>,
 }
+
+impl Language for Bitcode {
+    type Statement = Statement;
+    fn push(&mut self, statement: Self::Statement) -> Result<usize> {
+        Bitcode::push(self, statement)
+    }
+    fn append(&mut self, statements: Vec<Self::Statement>) -> Result<Range<usize>> {
+        Bitcode::append(self, statements)
+    }
+    fn len(&self) -> usize {
+        self.num_bytes()
+    }
+    fn number_of_strings(&self) -> Option<usize> {
+        Some(self.num_strings())
+    }
+}
+
+impl<'a> StatementIterator<Statement> for &'a Bitcode {
+    type IntoIter = BitcodeIter<'a>;
+
+    fn iter_statements(self, range: Range<usize>) -> Self::IntoIter {
+        self.iter_range(range)
+    }
+}
+
 // const: <len, pow2><leb128 value>
 // var: <name, leb128 str idx>, <subscript, leb128 + 1>, <offset, leb128>, <len, pow2><leb128 value>
 
@@ -207,8 +232,8 @@ impl Bitcode {
     }
 
     fn encode_statement<W: Write>(stmt: Statement, data: &mut W, strtbl: &mut Vec<Str>) -> Result<()> {
-        use neo::il::Operation::*;
-        use neo::value::Value::*;
+        use il::neo::Operation::*;
+        use Value::*;
 
         match stmt {
             // Add: 0b00000---
@@ -529,28 +554,28 @@ impl Bitcode {
             }
 
             // Load: 0b100101e- <region, leb128> <size, leb128> <a>
-            Statement::Expression{ op: Load(region,Endianess::Little,bytes,Constant(addr)), result } => {
+            Statement::Expression{ op: Load(region, Endianness::Little, bytes, Constant(addr)), result } => {
                 data.write(&[0b10010100])?;
                 leb128::write::unsigned(data,Self::encode_str(region,strtbl))?;
                 leb128::write::unsigned(data,bytes as u64)?;
                 Self::encode_constant(addr,data)?;
                 Self::encode_variable(result,data,strtbl)?;
             }
-            Statement::Expression{ op: Load(region,Endianess::Big,bytes,Constant(addr)), result } => {
+            Statement::Expression{ op: Load(region, Endianness::Big, bytes, Constant(addr)), result } => {
                 data.write(&[0b10010110])?;
                 leb128::write::unsigned(data,Self::encode_str(region,strtbl))?;
                 leb128::write::unsigned(data,bytes as u64)?;
                 Self::encode_constant(addr,data)?;
                 Self::encode_variable(result,data,strtbl)?;
             }
-            Statement::Expression{ op: Load(region,Endianess::Little,bytes,Variable(addr)), result } => {
+            Statement::Expression{ op: Load(region, Endianness::Little, bytes, Variable(addr)), result } => {
                 data.write(&[0b10010101])?;
                 leb128::write::unsigned(data,Self::encode_str(region,strtbl))?;
                 leb128::write::unsigned(data,bytes as u64)?;
                 Self::encode_variable(addr,data,strtbl)?;
                 Self::encode_variable(result,data,strtbl)?;
             }
-            Statement::Expression{ op: Load(region,Endianess::Big,bytes,Variable(addr)), result } => {
+            Statement::Expression{ op: Load(region, Endianness::Big, bytes, Variable(addr)), result } => {
                 data.write(&[0b10010111])?;
                 leb128::write::unsigned(data,Self::encode_str(region,strtbl))?;
                 leb128::write::unsigned(data,bytes as u64)?;
@@ -609,54 +634,54 @@ impl Bitcode {
             }
 
             // Store: 0b1010e--- <region, leb128> <size, leb128> <addr> <val>
-            Statement::Store{ region, bytes, endianess, address: Constant(addr), value: Constant(value) } => {
-                data.write(&[0b10100000 | if endianess == Endianess::Little { 0 } else { 0b1000 }])?;
+            Statement::Store{ region, bytes, endianness, address: Constant(addr), value: Constant(value) } => {
+                data.write(&[0b10100000 | if endianness == Endianness::Little { 0 } else { 0b1000 }])?;
                 leb128::write::unsigned(data,Self::encode_str(region,strtbl))?;
                 leb128::write::unsigned(data,bytes as u64)?;
                 Self::encode_constant(addr,data)?;
                 Self::encode_constant(value,data)?;
             }
-            Statement::Store{ region, bytes, endianess, address: Constant(addr), value: Variable(value) } => {
-                data.write(&[0b10100001 | if endianess == Endianess::Little { 0 } else { 0b1000 }])?;
+            Statement::Store{ region, bytes, endianness, address: Constant(addr), value: Variable(value) } => {
+                data.write(&[0b10100001 | if endianness == Endianness::Little { 0 } else { 0b1000 }])?;
                 leb128::write::unsigned(data,Self::encode_str(region,strtbl))?;
                 leb128::write::unsigned(data,bytes as u64)?;
                 Self::encode_constant(addr,data)?;
                 Self::encode_variable(value,data,strtbl)?;
             }
-            Statement::Store{ region, bytes, endianess, address: Constant(addr), value: Undefined } => {
-                data.write(&[0b10100010 | if endianess == Endianess::Little { 0 } else { 0b1000 }])?;
+            Statement::Store{ region, bytes, endianness, address: Constant(addr), value: Undefined } => {
+                data.write(&[0b10100010 | if endianness == Endianness::Little { 0 } else { 0b1000 }])?;
                 leb128::write::unsigned(data,Self::encode_str(region,strtbl))?;
                 leb128::write::unsigned(data,bytes as u64)?;
                 Self::encode_constant(addr,data)?;
             }
-            Statement::Store{ region, bytes, endianess, address: Variable(addr), value: Constant(value) } => {
-                data.write(&[0b10100011 | if endianess == Endianess::Little { 0 } else { 0b1000 }])?;
+            Statement::Store{ region, bytes, endianness, address: Variable(addr), value: Constant(value) } => {
+                data.write(&[0b10100011 | if endianness == Endianness::Little { 0 } else { 0b1000 }])?;
                 leb128::write::unsigned(data,Self::encode_str(region,strtbl))?;
                 leb128::write::unsigned(data,bytes as u64)?;
                 Self::encode_variable(addr,data,strtbl)?;
                 Self::encode_constant(value,data)?;
             }
-            Statement::Store{ region, bytes, endianess, address: Variable(addr), value: Variable(value) } => {
-                data.write(&[0b10100100 | if endianess == Endianess::Little { 0 } else { 0b1000 }])?;
+            Statement::Store{ region, bytes, endianness, address: Variable(addr), value: Variable(value) } => {
+                data.write(&[0b10100100 | if endianness == Endianness::Little { 0 } else { 0b1000 }])?;
                 leb128::write::unsigned(data,Self::encode_str(region,strtbl))?;
                 leb128::write::unsigned(data,bytes as u64)?;
                 Self::encode_variable(addr,data,strtbl)?;
                 Self::encode_variable(value,data,strtbl)?;
             }
-            Statement::Store{ region, bytes, endianess, address: Variable(addr), value: Undefined } => {
-                data.write(&[0b10100101 | if endianess == Endianess::Little { 0 } else { 0b1000 }])?;
+            Statement::Store{ region, bytes, endianness, address: Variable(addr), value: Undefined } => {
+                data.write(&[0b10100101 | if endianness == Endianness::Little { 0 } else { 0b1000 }])?;
                 leb128::write::unsigned(data,Self::encode_str(region,strtbl))?;
                 leb128::write::unsigned(data,bytes as u64)?;
                 Self::encode_variable(addr,data,strtbl)?;
             }
-            Statement::Store{ region, bytes, endianess, address: Undefined, value: Constant(value) } => {
-                data.write(&[0b10100110 | if endianess == Endianess::Little { 0 } else { 0b1000 }])?;
+            Statement::Store{ region, bytes, endianness, address: Undefined, value: Constant(value) } => {
+                data.write(&[0b10100110 | if endianness == Endianness::Little { 0 } else { 0b1000 }])?;
                 leb128::write::unsigned(data,Self::encode_str(region,strtbl))?;
                 leb128::write::unsigned(data,bytes as u64)?;
                 Self::encode_constant(value,data)?;
             }
-            Statement::Store{ region, bytes, endianess, address: Undefined, value: Variable(value) } => {
-                data.write(&[0b10100111 | if endianess == Endianess::Little { 0 } else { 0b1000 }])?;
+            Statement::Store{ region, bytes, endianness, address: Undefined, value: Variable(value) } => {
+                data.write(&[0b10100111 | if endianness == Endianness::Little { 0 } else { 0b1000 }])?;
                 leb128::write::unsigned(data,Self::encode_str(region,strtbl))?;
                 leb128::write::unsigned(data,bytes as u64)?;
                 Self::encode_variable(value,data,strtbl)?;
@@ -669,8 +694,8 @@ impl Bitcode {
             }
 
             // Load Undefined: 0b1011 001e <region, leb128> <size, leb128>
-            Statement::Expression{ op: Load(region,endianess,bytes,Undefined), result } => {
-                data.write(&[0b1011_0010 | if endianess == Endianess::Little { 0 } else { 0b1 }])?;
+            Statement::Expression{ op: Load(region,endianness,bytes,Undefined), result } => {
+                data.write(&[0b1011_0010 | if endianness == Endianness::Little { 0 } else { 0b1 }])?;
                 leb128::write::unsigned(data,Self::encode_str(region,strtbl))?;
                 leb128::write::unsigned(data,bytes as u64)?;
                 Self::encode_variable(result,data,strtbl)?;
@@ -921,14 +946,14 @@ impl Bitcode {
                 } else {
                     Value::Variable(self.decode_variable(data)?)
                 };
-                let endianess = if opcode[0] & 0b10 == 0 {
-                    Endianess::Little
+                let endianness = if opcode[0] & 0b10 == 0 {
+                    Endianness::Little
                 } else {
-                    Endianess::Big
+                    Endianness::Big
                 };
                 let res = self.decode_variable(data)?;
                 let stmt = Statement::Expression{
-                    op: Operation::Load(self.strings[reg].clone(),endianess,sz,val),
+                    op: Operation::Load(self.strings[reg].clone(),endianness,sz,val),
                     result: res
                 };
 
@@ -1003,15 +1028,15 @@ impl Bitcode {
                 let reg = leb128::read::unsigned(data)? as usize;
                 let sz = leb128::read::unsigned(data)? as usize;
                 let (addr,val) = self.decode_arguments(opcode[0] & 0b111,data)?;
-                let endianess = if opcode[0] & 0b1000 == 0 {
-                    Endianess::Little
+                let endianness = if opcode[0] & 0b1000 == 0 {
+                    Endianness::Little
                 } else {
-                    Endianess::Big
+                    Endianness::Big
                 };
                 let stmt = Statement::Store{
                     region: self.strings[reg].clone(),
                     bytes: sz,
-                    endianess: endianess,
+                    endianness: endianness,
                     address: addr,
                     value: val,
                 };
@@ -1030,14 +1055,14 @@ impl Bitcode {
             0b1011_0010 | 0b1011_0011 => {
                 let reg = leb128::read::unsigned(data)? as usize;
                 let sz = leb128::read::unsigned(data)? as usize;
-                let endianess = if opcode[0] & 1 == 0 {
-                    Endianess::Little
+                let endianness = if opcode[0] & 1 == 0 {
+                    Endianness::Little
                 } else {
-                    Endianess::Big
+                    Endianness::Big
                 };
                 let res = self.decode_variable(data)?;
                 let stmt = Statement::Expression{
-                    op: Operation::Load(self.strings[reg].clone(),endianess,sz,Value::Undefined),
+                    op: Operation::Load(self.strings[reg].clone(),endianness,sz,Value::Undefined),
                     result: res
                 };
 

@@ -21,7 +21,7 @@
 //! Projects are a set of `Program`s, associated memory `Region`s and comments.
 
 
-use {CallGraphRef, Program, Region, Result, World};
+use {CallGraphRef, Function, Program, Region, Result, World};
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use flate2::Compression;
 use flate2::read::ZlibDecoder;
@@ -35,9 +35,6 @@ use std::io::{Read, Write};
 use std::path::Path;
 
 use uuid::Uuid;
-
-//FIXMEremove and use regular function
-pub use neo::Function as Function;
 
 /// Complete Panopticon session
 #[derive(Serialize,Deserialize,Debug)]

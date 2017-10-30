@@ -86,7 +86,7 @@
 #![macro_use]
 
 
-use {Guard, Mnemonic, Region, Result, Rvalue, Statement};
+use {Guard, MnemonicRaw, Region, Result, Rvalue, Statement};
 
 use num::traits::{NumCast, One, Zero};
 use petgraph::prelude::*;
@@ -120,7 +120,7 @@ pub trait Architecture: Clone {
 #[derive(Debug,Clone)]
 pub struct Match<A: Architecture> {
     /// Recognized mnemonics
-    pub mnemonics: Vec<Mnemonic>,
+    pub mnemonics: Vec<MnemonicRaw>,
     /// Jumps/branches originating from the recovered mnemonics
     pub jumps: Vec<(u64, Rvalue, Guard)>,
 
@@ -157,7 +157,7 @@ pub struct State<A: Architecture> {
 
     // out
     /// Mnemonics recognized in the token sequence
-    pub mnemonics: Vec<Mnemonic>,
+    pub mnemonics: Vec<MnemonicRaw>,
     /// Jumps/branches originating from the recognized mnemonics
     pub jumps: Vec<(u64, Rvalue, Guard)>,
 
@@ -226,7 +226,7 @@ impl<A: Architecture> State<A> {
 
         self.mnemonics
             .push(
-                Mnemonic::new(
+                MnemonicRaw::new(
                     self.mnemonic_origin..(self.mnemonic_origin + (len as u64)),
                     n.to_string(),
                     fmt.to_string(),
@@ -815,7 +815,7 @@ impl Architecture for TestArch {
                             assignee: var,
                             op: Operation::Move(val)
                         };
-                        let mne = Mnemonic::new(start..entry, "mov".to_string(), "{u}, {u}".to_string(), ops.iter(), vec![instr].iter())?;
+                        let mne = MnemonicRaw::new(start..entry, "mov".to_string(), "{u}, {u}".to_string(), ops.iter(), vec![instr].iter())?;
 
                         Ok(Match {
                             //tokens: reg.iter().cut(&(start..entry)).map(|x| x.unwrap()).collect(),
@@ -833,7 +833,7 @@ impl Architecture for TestArch {
                             assignee: var,
                             op: Operation::Add(val1, val2)
                         };
-                        let mne = Mnemonic::new(start..entry, "add".to_string(), "{u}, {u}, {u}".to_string(), ops.iter(), vec![instr].iter())?;
+                        let mne = MnemonicRaw::new(start..entry, "add".to_string(), "{u}, {u}, {u}".to_string(), ops.iter(), vec![instr].iter())?;
 
                         Ok(Match {
                             //tokens: reg.iter().cut(&(start..entry)).map(|x| x.unwrap()).collect(),
@@ -851,7 +851,7 @@ impl Architecture for TestArch {
                             assignee: var,
                             op: Operation::LessOrEqualUnsigned(val1, val2)
                         };
-                        let mne = Mnemonic::new(start..entry, "leq".to_string(), "{u}, {u}, {u}".to_string(), ops.iter(), vec![instr].iter())?;
+                        let mne = MnemonicRaw::new(start..entry, "leq".to_string(), "{u}, {u}, {u}".to_string(), ops.iter(), vec![instr].iter())?;
 
                         Ok(Match {
                             //tokens: reg.iter().cut(&(start..entry)).map(|x| x.unwrap()).collect(),
@@ -864,7 +864,7 @@ impl Architecture for TestArch {
                         let bit = read_rvalue(reg, &mut entry, 1)?;
                         let brtgt = read_address(reg, &mut entry)?;
                         let ops = vec![bit.clone(), Rvalue::new_u32(brtgt as u32)];
-                        let mne = Mnemonic::new(start..entry, "br".to_string(), "{u}, {u}".to_string(), ops.iter(), iter::empty())?;
+                        let mne = MnemonicRaw::new(start..entry, "br".to_string(), "{u}, {u}".to_string(), ops.iter(), iter::empty())?;
                         let guard = Guard::from_flag(&bit)?;
 
                         Ok(Match {
@@ -879,7 +879,7 @@ impl Architecture for TestArch {
                     b'J' => {
                         let jtgt = read_address(reg, &mut entry)?;
                         let ops = vec![Rvalue::new_u32(jtgt as u32)];
-                        let mne = Mnemonic::new(start..entry, "jmp".to_string(), "{u}".to_string(), ops.iter(), iter::empty())?;
+                        let mne = MnemonicRaw::new(start..entry, "jmp".to_string(), "{u}".to_string(), ops.iter(), iter::empty())?;
 
                         Ok(Match {
                             //tokens: reg.iter().cut(&(start..entry)).map(|x| x.unwrap()).collect(),
@@ -889,7 +889,7 @@ impl Architecture for TestArch {
                         })
                     },
                     b'R' => {
-                        let mne = Mnemonic::new(start..entry, "ret".to_string(), "".to_string(), iter::empty(), iter::empty())?;
+                        let mne = MnemonicRaw::new(start..entry, "ret".to_string(), "".to_string(), iter::empty(), iter::empty())?;
 
                         Ok(Match {
                             //tokens: reg.iter().cut(&(start..entry)).map(|x| x.unwrap()).collect(),

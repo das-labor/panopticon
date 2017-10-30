@@ -20,7 +20,8 @@ extern crate atty;
 use panopticon_amd64 as amd64;
 use panopticon_analysis::analyze;
 use panopticon_avr as avr;
-use panopticon_core::{Machine, Function, FunctionKind, Program, Result, loader, neo};
+use panopticon_core::{Machine, Bitcode, RREIL, Function, FunctionKind, Language, Program, Result, loader, il};
+use panopticon_core::il::noop::{Noop, NoopStatement};
 use panopticon_data_flow::{DataFlow};
 
 use std::path::Path;
@@ -89,7 +90,7 @@ impl Filter {
     pub fn filtering(&self) -> bool {
         self.name.is_some() || self.addr.is_some()
     }
-    pub fn is_match<IL>(&self, func: &neo::Function<IL>) -> bool {
+    pub fn is_match<IL>(&self, func: &Function<IL>) -> bool {
         if let Some(ref name) = self.name {
             if name == &func.name() || func.aliases().contains(name){ return true }
         }
@@ -174,7 +175,7 @@ fn print_reverse_deps<IL, W: Write + WriteColor>(mut fmt: W, program: &Program<I
     Ok(())
 }
 
-fn disassemble<IL: neo::Language + Default + Send>(binary: &str) -> Result<Program<IL>> {
+fn disassemble<IL: Language + Default + Send>(binary: &str) -> Result<Program<IL>> {
     let (mut proj, machine) = loader::load(Path::new(&binary))?;
     let program = proj.code.pop().unwrap();
     let reg = proj.region();
@@ -186,13 +187,9 @@ fn disassemble<IL: neo::Language + Default + Send>(binary: &str) -> Result<Progr
     }
 }
 
-pub use panopticon_core::NoopStatement;
-pub use panopticon_core::Noop;
-
-
 //fn app_logic<'a, Function: Fun + DataFlow + PrintableFunction + PrintableStatements>(fmt: &mut termcolor::Buffer, program: &mut Program<Function>, args: Args) -> Result<()> {
-fn app_logic<IL: neo::Language>(fmt: &mut termcolor::Buffer, program: &mut Program<IL>, args: Args) -> Result<()>
-    where neo::Function<IL>: DataFlow + PrintableFunction<IL> + PrintableStatements,
+fn app_logic<IL: Language>(fmt: &mut termcolor::Buffer, program: &mut Program<IL>, args: Args) -> Result<()>
+    where Function<IL>: DataFlow + PrintableFunction<IL> + PrintableStatements,
 {
     let filter = Filter { name: args.function_filter, addr: args.address_filter.map(|addr| u64::from_str_radix(&addr, 16).unwrap()) };
 
@@ -252,10 +249,10 @@ fn run(args: Args) -> Result<()> {
         app_logic(&mut fmt, &mut program, args)?;
     } else {
         if args.neo {
-            let mut program = disassemble::<neo::Bitcode>(&args.binary)?;
+            let mut program = disassemble::<Bitcode>(&args.binary)?;
             app_logic(&mut fmt, &mut program, args)?;
         } else {
-            let mut program = disassemble::<neo::RREIL>(&args.binary)?;
+            let mut program = disassemble::<RREIL>(&args.binary)?;
             app_logic(&mut fmt, &mut program, args)?;
         }
     }

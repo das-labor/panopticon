@@ -96,57 +96,19 @@ extern crate smallvec;
 extern crate env_logger;
 #[cfg(test)]
 #[macro_use] extern crate quickcheck;
+use std::borrow::Cow;
 
-#[derive(Clone)]
-pub struct NoopStatement(());
-
-#[derive(Default)]
-pub struct Noop {}
-
-impl From<Statement> for NoopStatement {
-    fn from(_: Statement) -> Self {
-        NoopStatement(())
-    }
-}
-
-impl neo::Language for Noop {
-    type Statement = NoopStatement;
-
-    fn push(&mut self, _statement: Self::Statement) -> ::neo::Result<usize> {
-        Ok(0)
-    }
-
-    fn append(&mut self, _statements: Vec<Self::Statement>) -> ::neo::Result<::std::ops::Range<usize>> {
-        Ok(0..0)
-    }
-
-    fn len(&self) -> usize {
-        0
-    }
-}
-
-impl<'a> neo::StatementIterator<NoopStatement> for &'a Noop {
-    type IntoIter = ::std::iter::Cloned<::std::slice::Iter<'a, NoopStatement>>;
-    fn iter_statements(self, _range: ::std::ops::Range<usize>) -> Self::IntoIter {
-        [].iter().cloned()
-    }
-}
+pub type Str = Cow<'static,str>;
 
 // core
 pub mod disassembler;
 pub use disassembler::{Architecture, Disassembler, Match, State, TestArch};
 
-#[macro_use]
-pub mod il;
-pub use il::{Guard, Lvalue, Operation, Rvalue, Statement, execute, Endianess};
-
 pub mod mnemonic;
-pub use mnemonic::{Mnemonic, MnemonicFormatToken};
-pub mod basic_block;
-pub use basic_block::BasicBlock;
+pub use mnemonic::{MnemonicRaw, MnemonicFormatToken};
 
 pub mod function;
-pub use function::{ControlFlowEdge, ControlFlowGraph, ControlFlowRef, ControlFlowTarget, Function, FunctionKind};
+pub use function::{CfgNode, BasicBlock, BasicBlockIndex, MnemonicIndex, Mnemonic, ControlFlowEdge, ControlFlowGraph, ControlFlowRef, Function, FunctionKind};
 
 pub mod program;
 pub use program::{CallGraph, CallGraphRef, CallTarget, Program};
@@ -167,4 +129,8 @@ pub use result::{Error, Result};
 pub mod loader;
 pub use loader::{Machine, load};
 
-pub mod neo;
+#[macro_use]
+pub mod il;
+pub use il::{Endianness, Constant, Variable, Value, RREIL, Bitcode, Language, StatementIterator};
+pub use il::{Guard, Lvalue, Operation, Rvalue, Statement, execute};
+pub use il::neo as neo;

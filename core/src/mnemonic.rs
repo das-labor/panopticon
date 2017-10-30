@@ -117,7 +117,7 @@ impl MnemonicFormatToken {
 
 /// A single Mnemonic.
 #[derive(Clone,PartialEq,Eq,Debug,Serialize,Deserialize)]
-pub struct Mnemonic {
+pub struct MnemonicRaw {
     /// Range of bytes the mnemonic occupies
     pub area: Bound,
     /// Opcode part
@@ -130,15 +130,15 @@ pub struct Mnemonic {
     pub format_string: Vec<MnemonicFormatToken>,
 }
 
-impl Mnemonic {
+impl MnemonicRaw {
     /// Create a new mnemonic `code`.
-    pub fn new<'a, I1, I2>(a: Range<u64>, code: String, fmt: String, ops: I1, instr: I2) -> Result<Mnemonic>
+    pub fn new<'a, I1, I2>(a: Range<u64>, code: String, fmt: String, ops: I1, instr: I2) -> Result<MnemonicRaw>
     where
         I1: Iterator<Item = &'a Rvalue>,
         I2: Iterator<Item = &'a Statement>,
     {
         Ok(
-            Mnemonic {
+            MnemonicRaw {
                 area: Bound::new(a.start, a.end),
                 opcode: code,
                 operands: ops.cloned().collect(),
@@ -155,8 +155,8 @@ impl Mnemonic {
 
     /// For testing only
     #[cfg(test)]
-    pub fn dummy(a: Range<u64>) -> Mnemonic {
-        Mnemonic {
+    pub fn dummy(a: Range<u64>) -> MnemonicRaw {
+        MnemonicRaw {
             area: Bound::new(a.start, a.end),
             opcode: "dummy".to_string(),
             operands: vec![],
@@ -264,7 +264,7 @@ mod tests {
                 assignee: Lvalue::Variable { name: Cow::Borrowed("a"), size: 8, subscript: Some(3) },
             },
         ];
-        let mne1 = Mnemonic::new(
+        let mne1 = MnemonicRaw::new(
             0..10,
             "op1".to_string(),
             "{s} nog".to_string(),

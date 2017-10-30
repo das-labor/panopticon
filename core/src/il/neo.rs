@@ -2,14 +2,8 @@ use std::fmt::Debug;
 use uuid::Uuid;
 use smallvec::SmallVec;
 
-use neo::value::{Value,Variable};
-use neo::Str;
-
-#[derive(Debug,Clone,Copy,PartialEq,Eq)]
-pub enum Endianess {
-    Little,
-    Big,
-}
+use il::{Value,Variable,Endianness};
+use Str;
 
 /// A RREIL operation.
 #[derive(Clone,PartialEq,Eq,Debug)]
@@ -68,7 +62,7 @@ pub enum Operation<V>
     Select(usize, V, V),
 
     /// Reads a memory cell
-    Load(Str,Endianess,usize,V),
+    Load(Str, Endianness, usize, V),
 
     /// SSA Phi function
     Phi(V,V,V),
@@ -215,7 +209,7 @@ pub enum Statement {
     /// Writes a memory cell
     Store {
         region: Str,
-        endianess: Endianess,
+        endianness: Endianness,
         bytes: usize,
         address: Value,
         value: Value,
@@ -227,11 +221,11 @@ mod tests {
     use super::*;
     use quickcheck::{Arbitrary,Gen};
 
-    impl Arbitrary for Endianess {
+    impl Arbitrary for Endianness {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
             match g.gen_range(0, 1) {
-                0 => Endianess::Little,
-                1 => Endianess::Big,
+                0 => Endianness::Little,
+                1 => Endianness::Big,
                 _ => unreachable!(),
             }
         }
@@ -268,7 +262,7 @@ mod tests {
 
                     21 => Operation::Select(g.gen(), Value::arbitrary(g), Value::arbitrary(g)),
 
-                    22 => Operation::Load(g.gen_ascii_chars().take(1).collect(), Endianess::arbitrary(g), g.gen(), Value::arbitrary(g)),
+                    22 => Operation::Load(g.gen_ascii_chars().take(1).collect(), Endianness::arbitrary(g), g.gen(), Value::arbitrary(g)),
 
                     23 => {
                         // XXX: make sizes equal?
@@ -400,7 +394,7 @@ mod tests {
 
                     Statement::Store{
                         region: g.gen_ascii_chars().take(1).collect::<String>().into(),
-                        endianess: Endianess::arbitrary(g),
+                        endianness: Endianness::arbitrary(g),
                         bytes: g.gen_range(1,11),
                         address: addr,
                         value: val,

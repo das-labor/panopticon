@@ -28,7 +28,7 @@
 //! function fails, it will still be added to the call graph. The function will only have a single
 //! error node.
 
-use {Statement, Operation, Rvalue};
+use {Function, Statement, Operation, Rvalue};
 use petgraph::visit::{IntoNodeReferences};
 // use stable when API is at parity with Graph
 //use petgraph::stable_graph::{NodeIndex, StableGraph};
@@ -36,8 +36,6 @@ use petgraph::graph::{NodeIndex, Graph};
 use uuid::Uuid;
 
 use std::collections::HashMap;
-
-pub use neo::Function as Function;
 
 /// An iterator over every Function in this Program
 pub struct FunctionIterator<'a, IL: 'a> {
@@ -348,7 +346,7 @@ impl<IL> Program<IL> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use {BasicBlock, ControlFlowTarget, Function, Lvalue, Mnemonic, Operation, Region, Rvalue, Statement};
+    use {BasicBlock, ControlFlowTarget, Function, Lvalue, MnemonicRaw, Operation, Region, Rvalue, Statement};
     use panopticon_graph_algos::{AdjacencyMatrixGraphTrait, EdgeListGraphTrait, GraphTrait, MutableGraphTrait, VertexListGraphTrait};
     use uuid::Uuid;
 
@@ -357,14 +355,14 @@ mod tests {
         let mut prog = Program::new("prog_test");
         let mut func = Function::undefined(0, None, &Region::undefined("ram".to_owned(), 100), Some("test".to_owned()));
 
-        let bb0 = BasicBlock::from_vec(vec![Mnemonic::dummy(0..10)]);
+        let bb0 = BasicBlock::from_vec(vec![MnemonicRaw::dummy(0..10)]);
         let vx = func.cfg_mut().add_vertex(ControlFlowTarget::Resolved(bb0));
         func.set_entry_point_ref(vx);
 
         let func2_start = 0xdeadbeef;
         // technically passing func2_start is useless here since we overwrite it with bb below
         let mut func2 = Function::undefined(func2_start, None, &Region::undefined("ram".to_owned(), 100), Some("test2".to_owned()));
-        let bb1 = BasicBlock::from_vec(vec![Mnemonic::dummy(func2_start..5)]);
+        let bb1 = BasicBlock::from_vec(vec![MnemonicRaw::dummy(func2_start..5)]);
         let vx = func2.cfg_mut().add_vertex(ControlFlowTarget::Resolved(bb1));
         func2.set_entry_point_ref(vx);
 
@@ -389,7 +387,7 @@ mod tests {
         let e2 = prog.call_graph.add_edge((), vx1, tvx);
 
         let mut func = Function::undefined(0, Some(uu.clone()), &Region::undefined("ram".to_owned(), 100), Some("test3".to_owned()));
-        let bb0 = BasicBlock::from_vec(vec![Mnemonic::dummy(12..20)]);
+        let bb0 = BasicBlock::from_vec(vec![MnemonicRaw::dummy(12..20)]);
         let vx = func.cfg_mut().add_vertex(ControlFlowTarget::Resolved(bb0));
         func.set_entry_point_ref(vx);
         let uuf = func.uuid().clone();
@@ -427,7 +425,7 @@ mod tests {
                 assignee: Lvalue::Undefined,
             },
         ];
-        let mne1 = Mnemonic::new(
+        let mne1 = MnemonicRaw::new(
             0..10,
             "call".to_string(),
             "12".to_string(),

@@ -449,7 +449,7 @@ pub fn lift<A, B, F>(op: &Operation<B>, m: &F) -> Operation<A>
 #[cfg(test)]
 mod tests {
     use super::*;
-    use panopticon_core::{BasicBlock, Bound, ControlFlowGraph, ControlFlowTarget, Function, Guard, Lvalue, Mnemonic, Operation, Region, Rvalue, Statement};
+    use panopticon_core::{BasicBlock, Bound, ControlFlowGraph, ControlFlowTarget, Function, Guard, Lvalue, MnemonicRaw, Operation, Region, Rvalue, Statement};
     use panopticon_data_flow::ssa_convertion;
     use panopticon_graph_algos::MutableGraphTrait;
     use std::borrow::Cow;
@@ -647,7 +647,7 @@ mod tests {
         let flag = Lvalue::Variable { name: Cow::Borrowed("flag"), size: 1, subscript: None };
         let bb0 = BasicBlock::from_vec(
             vec![
-                Mnemonic::new(
+                MnemonicRaw::new(
                     0..1,
                     "assign x".to_string(),
                     "".to_string(),
@@ -662,7 +662,7 @@ mod tests {
                 )
                         .ok()
                         .unwrap(),
-                Mnemonic::new(
+                MnemonicRaw::new(
                     1..2,
                     "assign n".to_string(),
                     "".to_string(),
@@ -677,7 +677,7 @@ mod tests {
                 )
                         .ok()
                         .unwrap(),
-                Mnemonic::new(
+                MnemonicRaw::new(
                     2..3,
                     "cmp n".to_string(),
                     "".to_string(),
@@ -696,7 +696,7 @@ mod tests {
         );
         let bb1 = BasicBlock::from_vec(
             vec![
-                Mnemonic::new(
+                MnemonicRaw::new(
                     3..4,
                     "add x and n".to_string(),
                     "".to_string(),
@@ -711,7 +711,7 @@ mod tests {
                 )
                         .ok()
                         .unwrap(),
-                Mnemonic::new(
+                MnemonicRaw::new(
                     4..5,
                     "inc n".to_string(),
                     "".to_string(),
@@ -726,7 +726,7 @@ mod tests {
                 )
                         .ok()
                         .unwrap(),
-                Mnemonic::new(
+                MnemonicRaw::new(
                     5..6,
                     "cmp n".to_string(),
                     "".to_string(),
@@ -787,7 +787,7 @@ mod tests {
         let flag = Lvalue::Variable { name: Cow::Borrowed("flag"), size: 1, subscript: None };
         let bb0 = BasicBlock::from_vec(
             vec![
-                Mnemonic::new(
+                MnemonicRaw::new(
                     0..1,
                     "assign a".to_string(),
                     "".to_string(),
@@ -802,7 +802,7 @@ mod tests {
                 )
                         .ok()
                         .unwrap(),
-                Mnemonic::new(
+                MnemonicRaw::new(
                     1..2,
                     "assign b".to_string(),
                     "".to_string(),
@@ -817,7 +817,7 @@ mod tests {
                 )
                         .ok()
                         .unwrap(),
-                Mnemonic::new(
+                MnemonicRaw::new(
                     2..3,
                     "cmp a".to_string(),
                     "".to_string(),
@@ -836,7 +836,7 @@ mod tests {
         );
         let bb1 = BasicBlock::from_vec(
             vec![
-                Mnemonic::new(
+                MnemonicRaw::new(
                     3..4,
                     "inc a".to_string(),
                     "".to_string(),
@@ -851,7 +851,7 @@ mod tests {
                 )
                         .ok()
                         .unwrap(),
-                Mnemonic::new(
+                MnemonicRaw::new(
                     4..5,
                     "mul a".to_string(),
                     "".to_string(),
@@ -866,7 +866,7 @@ mod tests {
                 )
                         .ok()
                         .unwrap(),
-                Mnemonic::new(
+                MnemonicRaw::new(
                     5..6,
                     "cmp a".to_string(),
                     "".to_string(),
@@ -885,7 +885,7 @@ mod tests {
         );
         let bb2 = BasicBlock::from_vec(
             vec![
-                Mnemonic::new(
+                MnemonicRaw::new(
                     6..7,
                     "use a".to_string(),
                     "".to_string(),
@@ -900,7 +900,7 @@ mod tests {
                 )
                         .ok()
                         .unwrap(),
-                Mnemonic::new(
+                MnemonicRaw::new(
                     7..8,
                     "use b".to_string(),
                     "".to_string(),

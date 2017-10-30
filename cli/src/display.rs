@@ -3,7 +3,10 @@ use termcolor::WriteColor;
 use termcolor::Color::*;
 use std::ops::Range;
 
-use panopticon_core::{Function, BasicBlock, Mnemonic, MnemonicFormatToken, Operation, Program, Rvalue, Result, Statement, neo};
+use panopticon_core::{il, Language, Function, BasicBlock, MnemonicRaw, MnemonicFormatToken, Operation,
+                      Program, Rvalue, Result, Statement, StatementIterator,
+                      Mnemonic,
+                      Value, Constant};
 
 macro_rules! color_bold {
     ($fmt:ident, $color:ident, $str:expr) => ({
@@ -33,25 +36,9 @@ pub trait PrintableIL {
     fn pretty_print<W: WriteColor + Write>(&self, fmt: &mut W) -> Result<()>;
 }
 
-impl PrintableStatements for Function {
-    fn pretty_print_il<W: WriteColor + Write>(&self, fmt: &mut W) -> Result<()> {
-        color_bold!(fmt, White, "RREIL")?;
-        writeln!(fmt, ":")?;
-        for bb in self.basic_blocks() {
-            for mnemonic in bb.mnemonics() {
-                print_address_and_mnemonic::<Self, &Mnemonic, _>(fmt, &mnemonic)?;
-                for statement in &mnemonic.instructions {
-                    statement.pretty_print(fmt)?;
-                }
-            }
-        }
-        Ok(())
-    }
-}
-
-impl<IL: neo::Language> PrintableStatements for neo::Function<IL>
+impl<IL: Language> PrintableStatements for Function<IL>
     where
-        for<'a> &'a IL: neo::StatementIterator<IL::Statement>,
+        for<'a> &'a IL: StatementIterator<IL::Statement>,
         IL::Statement: PrintableIL + Clone,
 {
     fn pretty_print_il<W: WriteColor + Write>(&self, fmt: &mut W) -> Result<()> {
@@ -59,7 +46,7 @@ impl<IL: neo::Language> PrintableStatements for neo::Function<IL>
         writeln!(fmt, ":")?;
         for bb in self.into_iter() {
             for (mnemonic, statements) in bb {
-                print_address_and_mnemonic::<Self, &neo::Mnemonic, W>(fmt, &mnemonic)?;
+                print_address_and_mnemonic::<Self, &Mnemonic, W>(fmt, &mnemonic)?;
                 for statement in statements {
                     <IL::Statement as PrintableIL>::pretty_print(&statement, fmt)?;
                 }
@@ -67,9 +54,9 @@ impl<IL: neo::Language> PrintableStatements for neo::Function<IL>
         }
 //        for bb in self.basic_blocks() {
 //            for (idx, ref mnemonic) in self.mnemonics(bb) {
-//                print_address_and_mnemonic::<Self, &neo::Mnemonic, W>(fmt, mnemonic)?;
-//                for statement in neo::Function::statements(self,idx) {
-//                    let statement: &<IL as neo::Language<'a>>::Statement = ::std::mem::transmute(&statement);
+//                print_address_and_mnemonic::<Self, &Mnemonic, W>(fmt, mnemonic)?;
+//                for statement in Function::statements(self,idx) {
+//                    let statement: &<IL as Language<'a>>::Statement = ::std::mem::transmute(&statement);
 //                    <IL::Statement as PrintableIL>::pretty_print(statement, fmt)?;
 //                }
 //            }
@@ -78,7 +65,7 @@ impl<IL: neo::Language> PrintableStatements for neo::Function<IL>
     }
 }
 
-//impl PrintableStatements for neo::Function<neo::Bitcode> {
+//impl PrintableStatements for Function<Bitcode> {
 //    fn pretty_print_il<IL: PrintableIL, W: WriteColor + Write>(&self, fmt: &mut W) -> Result<()> {
 //        color_bold!(fmt, White, "Bitcode")?;
 //        writeln!(fmt, ":")?;
@@ -86,7 +73,7 @@ impl<IL: neo::Language> PrintableStatements for neo::Function<IL>
 //            for mnemonic in bb {
 //                //print_address_and_mnemonic::<Self, &Mnemonic, _>(fmt, &mnemonic)?;
 //                for statement in mnemonic {
-//                    <neo::Statement as PrintableIL>::pretty_print(&statement, fmt)?;
+//                    <Statement as PrintableIL>::pretty_print(&statement, fmt)?;
 //                }
 //            }
 //        }
@@ -94,7 +81,7 @@ impl<IL: neo::Language> PrintableStatements for neo::Function<IL>
 //    }
 //}
 
-impl<IL: neo::Language> PrintableFunction<IL> for neo::Function<IL> {
+impl<IL: Language> PrintableFunction<IL> for Function<IL> {
     fn pretty_print<W: WriteColor + Write>(&self, fmt: &mut W, program: &Program<IL>) -> Result<()> {
         let mut bbs = self.basic_blocks().map(|(_, bb)| NeoFunctionAndBasicBlock { function: self, bb} ).collect::<Vec<_>>();
         bbs.sort_by(|f1, f2| f1.bb.area.start.cmp(&f2.bb.area.start));
@@ -103,7 +90,7 @@ impl<IL: neo::Language> PrintableFunction<IL> for neo::Function<IL> {
     }
 }
 
-//impl<IL> PrintableFunction for neo::Function<Vec<Statement>> {
+//impl<IL> PrintableFunction for Function<Vec<Statement>> {
 //    fn pretty_print<W: WriteColor + Write>(&self, fmt: &mut W, program: &Program<Self>) -> Result<()> {
 //        let mut bbs = self.basic_blocks().map(|(_, bb)| NeoFunctionAndBasicBlock { function: self, bb} ).collect::<Vec<_>>();
 //        bbs.sort_by(|f1, f2| f1.bb.area.start.cmp(&f2.bb.area.start));
@@ -112,8 +99,8 @@ impl<IL: neo::Language> PrintableFunction<IL> for neo::Function<IL> {
 //    }
 //}
 //
-//impl PrintableFunction for neo::Function<neo::Bitcode> {
-//    fn pretty_print<W: WriteColor + Write>(&self, fmt: &mut W, program: &Program<neo::Function<neo::Bitcode>>) -> Result<()> {
+//impl PrintableFunction for Function<Bitcode> {
+//    fn pretty_print<W: WriteColor + Write>(&self, fmt: &mut W, program: &Program<Bitcode>) -> Result<()> {
 //        let mut bbs = self.basic_blocks().map(|(_, bb)| NeoFunctionAndBasicBlock { function: self, bb} ).collect::<Vec<_>>();
 //        bbs.sort_by(|f1, f2| f1.bb.area.start.cmp(&f2.bb.area.start));
 //        print_function(fmt, self, &bbs, program)?;
@@ -128,7 +115,7 @@ pub trait PrintableMnemonic {
     fn area(&self) -> Range<u64>;
 }
 
-impl<'a> PrintableMnemonic for &'a Mnemonic {
+impl<'a> PrintableMnemonic for &'a MnemonicRaw {
     fn opcode(&self) -> &str {
         self.opcode.as_str()
     }
@@ -148,26 +135,19 @@ pub trait PrintableBlock<M: PrintableMnemonic> {
     fn mnemonics(&self) -> Self::Iter;
 }
 
-impl<'a> PrintableBlock<&'a Mnemonic> for &'a BasicBlock {
-    type Iter = ::std::slice::Iter<'a, Mnemonic>;
-    fn mnemonics(&self) -> Self::Iter {
-        self.mnemonics.as_slice().iter()
-    }
-}
-
 struct NeoFunctionAndBasicBlock<'a, IL: 'a> {
-    function: &'a neo::Function<IL>,
-    bb: &'a neo::BasicBlock,
+    function: &'a Function<IL>,
+    bb: &'a BasicBlock,
 }
 
-impl<'a, IL: neo::Language> PrintableBlock<&'a neo::Mnemonic> for NeoFunctionAndBasicBlock<'a, IL> {
-    type Iter = Box<Iterator<Item = &'a neo::Mnemonic> + 'a>;
+impl<'a, IL: Language> PrintableBlock<&'a Mnemonic> for NeoFunctionAndBasicBlock<'a, IL> {
+    type Iter = Box<Iterator<Item = &'a Mnemonic> + 'a>;
     fn mnemonics(&self) -> Self::Iter {
         Box::new(self.function.mnemonics(self.bb).map(|(_, m)| m))
     }
 }
 
-impl<'a> PrintableMnemonic for &'a neo::Mnemonic {
+impl<'a> PrintableMnemonic for &'a Mnemonic {
     fn opcode(&self) -> &str {
         use std::borrow::Borrow;
         self.opcode.borrow()
@@ -202,7 +182,7 @@ impl<'a> PrintableMnemonic for &'a neo::Mnemonic {
 pub fn print_address_and_mnemonic<IL, M: PrintableMnemonic, W: Write + WriteColor>(fmt: &mut W, mnemonic: &M) -> Result<()> {
     color_bold!(fmt, White, format!("{:8x}", mnemonic.area().start as usize))?;
     write!(fmt, ": (")?;
-    print_mnemonic(fmt, mnemonic, None::<&Program<neo::Function<IL>>>)?;
+    print_mnemonic(fmt, mnemonic, None::<&Program<Function<IL>>>)?;
     writeln!(fmt, ")")?;
     Ok(())
 }
@@ -489,7 +469,7 @@ impl PrintableIL for Statement {
 }
 
 /// Prints the function in a human readable format, using `program`, with colors
-pub fn print_function<IL, M: PrintableMnemonic, B: PrintableBlock<M>, W: Write + WriteColor>(fmt: &mut W, function: &neo::Function<IL>, bbs: &[B], program: &Program<IL>) -> Result<()> {
+pub fn print_function<IL, M: PrintableMnemonic, B: PrintableBlock<M>, W: Write + WriteColor>(fmt: &mut W, function: &Function<IL>, bbs: &[B], program: &Program<IL>) -> Result<()> {
     write!(fmt, "{:0>8x} <", function.first_address())?;
     color_bold!(fmt, Yellow, function.name())?;
     writeln!(fmt, ">:")?;
@@ -616,15 +596,15 @@ fn pp_variable<W: WriteColor + Write>(fmt: &mut W, name: &str, subscript: &Optio
     Ok(())
 }
 
-fn pp_constant<W: WriteColor + Write>(fmt: &mut W, constant: &neo::Constant) -> Result<()> {
+fn pp_constant<W: WriteColor + Write>(fmt: &mut W, constant: &Constant) -> Result<()> {
     color_bold!(fmt, Magenta, format!("{:#x}", constant.value))?;
     write!(fmt, ":{}", constant.bits)?;
     Ok(())
 }
 
-fn pp_value<W: WriteColor + Write>(fmt: &mut W, variable: &neo::Value) -> Result<()> {
-    use neo::Value::*;
-    match variable {
+fn pp_value<W: WriteColor + Write>(fmt: &mut W, value: &Value) -> Result<()> {
+    use panopticon_core::Value::*;
+    match value {
         &Undefined => {
             color_bold!(fmt, Red, "undef")?;
         },
@@ -664,10 +644,10 @@ macro_rules! pp_operands {
     });
 }
 
-impl PrintableIL for neo::Statement {
+impl PrintableIL for il::neo::Statement {
     fn pretty_print<W: WriteColor + Write>(&self, fmt: &mut W) -> Result<()> {
-        use neo::Statement::*;
-        use neo::Operation::*;
+        use il::neo::Statement::*;
+        use il::neo::Operation::*;
         write!(fmt, "{: <8}  ", "")?;
         match self {
             &Expression { ref result, ref op } => {
@@ -690,7 +670,7 @@ impl PrintableIL for neo::Statement {
                         pp_operands!(fmt, operands);
                     },
                     &Load(ref name, ref endianess, size, _) => {
-                        pp_op!(fmt, op.name(), result, format!("/{}/{}/{}", name, if endianess == &neo::Endianess::Little { "le"} else { "big"}, size))?;
+                        pp_op!(fmt, op.name(), result, format!("/{}/{}/{}", name, endianess, size))?;
                         pp_operands!(fmt, operands);
                     },
                     _ => {
@@ -719,12 +699,12 @@ impl PrintableIL for neo::Statement {
             },
             &Store {
                 ref region,
-                ref endianess,
+                ref endianness,
                 ref bytes,
                 ref address,
                 ref value,
             } => {
-                color_bold!(fmt, White, format!("store/{}/{}/{}", region, if endianess == &neo::Endianess::Little { "le"} else { "big"}, bytes))?;
+                color_bold!(fmt, White, format!("store/{}/{}/{}", region, endianness, bytes))?;
                 write!(fmt, " ")?;
                 pp_value(fmt, address)?;
                 color_bold!(fmt, Green, ",")?;

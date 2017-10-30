@@ -18,7 +18,7 @@
 
 use futures::{Future, Sink, Stream, stream};
 use futures::sync::mpsc;
-use panopticon_core::{neo, Architecture, CallTarget, Error, Program, Result, Region, Rvalue};
+use panopticon_core::{il, Language, Function, Architecture, CallTarget, Error, Program, Result, Region, Rvalue};
 use panopticon_data_flow::DataFlow;
 use std::collections::HashSet;
 use std::fmt::Debug;
@@ -27,7 +27,6 @@ use std::sync::Arc;
 use uuid::Uuid;
 use std::result;
 use parking_lot::{Mutex, RwLock};
-use panopticon_core::neo::Function as Function;
 
 pub fn analyze<A: Architecture + Debug + Sync + 'static, IL>(
     program: Program<IL>,
@@ -36,7 +35,7 @@ pub fn analyze<A: Architecture + Debug + Sync + 'static, IL>(
 ) -> Result<Program<IL>>
 where
     A::Configuration: Debug + Sync,
-    IL: Send + Default + neo::Language,
+    IL: Send + Default + Language,
 {
     use rayon::prelude::*;
     use chashmap::CHashMap;
