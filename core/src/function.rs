@@ -36,16 +36,8 @@ use uuid::Uuid;
 use petgraph::prelude::*;
 use petgraph::graph::NodeIndices;
 use petgraph::visit::{Walker,DfsPostOrder};
-use {Architecture,Guard,Region,MnemonicFormatToken,Rvalue,Lvalue,Result,Constant,Value,Variable,Str};
-use il::{self, Bitcode,Language,StatementIterator};
-use il::neo::{Statement,Operation};
-
-mod core {
-    pub use ::mnemonic::MnemonicRaw;
-    pub use ::il::Operation;
-    pub use ::il::Statement;
-    pub use ::program::CallTarget;
-}
+use {Architecture,Guard,Region,MnemonicFormatToken,Rvalue,Result,Constant,Value,Variable,Str,Statement};
+use il::{self,Bitcode,Language,StatementIterator};
 
 /// Graph of basic blocks and jumps
 pub type ControlFlowGraph = Graph<CfgNode, Guard>;
@@ -730,12 +722,12 @@ impl<IL: Language + Default> Function<IL> {
     } // end assemble
 } // end Function
 
-fn disassemble<A, Statement>(init: A::Configuration, starts: Vec<u64>, region: &Region,
-                             mnemonics: &mut Vec<(Mnemonic,Vec<Statement>)>,
-                             by_source: &mut HashMap<u64,Vec<(Value,Guard)>>,
-                             by_destination: &mut HashMap<u64,Vec<(Value,Guard)>>) -> Result<()>
+fn disassemble<A, S>(init: A::Configuration, starts: Vec<u64>, region: &Region,
+                     mnemonics: &mut Vec<(Mnemonic,Vec<S>)>,
+                     by_source: &mut HashMap<u64,Vec<(Value,Guard)>>,
+                     by_destination: &mut HashMap<u64,Vec<(Value,Guard)>>) -> Result<()>
     where A: Architecture,
-          Statement: From<core::Statement>,
+          S: From<Statement>,
 {
     let mut todo = HashSet::<u64>::from_iter(starts.into_iter());
 
@@ -775,7 +767,7 @@ fn disassemble<A, Statement>(init: A::Configuration, starts: Vec<u64>, region: &
                                     format_string: mne.format_string,
                                     statements: 0..0,
                                 };
-                                let stmts = mne.instructions.into_iter().map(|s| s.into()).collect::<Vec<Statement>>();
+                                let stmts = mne.instructions.into_iter().map(|s| s.into()).collect::<Vec<S>>();
                                 mnemonics.insert(pos,(this_mne,stmts));
                             }
                         }
@@ -863,13 +855,13 @@ impl<IL: Language> Function<IL> {
 
 impl Function<il::RREIL> {
     pub fn collect_calls(&self) -> Vec<Rvalue> {
-        use self::core::Operation;
+        use {Statement, Operation};
         let mut ret = Vec::new();
         for bb in self.into_iter() {
             for (_, statements) in bb {
                 for statement in statements {
                     match statement {
-                        core::Statement { op: Operation::Call(t), .. } => ret.push(t.clone()),
+                        Statement { op: Operation::Call(t), .. } => ret.push(t.clone()),
                         _ => ()
                     }
                 }
@@ -882,6 +874,7 @@ impl Function<il::RREIL> {
 
 impl Function {
     pub fn collect_calls(&self) -> Vec<Rvalue> {
+        use il::neo::Statement;
         let mut ret = Vec::new();
         for bb in self.into_iter() {
             for (_bb, statements) in bb {
@@ -1051,115 +1044,6 @@ impl<IL> Function<IL> {
             }
         }
         false
-    }
-}
-
-////////////////////////////////
-// conversions from standard RREIL
-////////////////////////////////
-
-impl<'a> From<&'a core::Statement> for Statement {
-    fn from(statement: &'a core::Statement) -> Self {
-        to_statement(statement)
-    }
-}
-
-impl From<core::Statement> for Statement {
-    fn from(statement: core::Statement) -> Self {
-        to_statement(&statement)
-    }
-}
-
-fn to_statement(stmt: &core::Statement) -> Statement {
-    match stmt {
-        &core::Statement{ op: core::Operation::Add(ref a,ref b), assignee: Lvalue::Variable{ ref name, ref subscript, size } } => {
-            Statement::Expression{ op: Operation::Add(a.clone().into(),b.clone().into()), result: Variable::new(name.clone(),size,subscript.clone()).unwrap() }
-        }
-        &core::Statement{ op: core::Operation::Subtract(ref a,ref b), assignee: Lvalue::Variable{ ref name, ref subscript, size } } => {
-            Statement::Expression{ op: Operation::Subtract(a.clone().into(),b.clone().into()), result: Variable::new(name.clone(),size,subscript.clone()).unwrap() }
-        }
-        &core::Statement{ op: core::Operation::Multiply(ref a,ref b), assignee: Lvalue::Variable{ ref name, ref subscript, size } } => {
-            Statement::Expression{ op: Operation::Multiply(a.clone().into(),b.clone().into()), result: Variable::new(name.clone(),size,subscript.clone()).unwrap() }
-        }
-        &core::Statement{ op: core::Operation::DivideUnsigned(ref a,ref b), assignee: Lvalue::Variable{ ref name, ref subscript, size } } => {
-            Statement::Expression{ op: Operation::DivideUnsigned(a.clone().into(),b.clone().into()), result: Variable::new(name.clone(),size,subscript.clone()).unwrap() }
-        }
-        &core::Statement{ op: core::Operation::DivideSigned(ref a,ref b), assignee: Lvalue::Variable{ ref name, ref subscript, size } } => {
-            Statement::Expression{ op: Operation::DivideSigned(a.clone().into(),b.clone().into()), result: Variable::new(name.clone(),size,subscript.clone()).unwrap() }
-        }
-        &core::Statement{ op: core::Operation::Modulo(ref a,ref b), assignee: Lvalue::Variable{ ref name, ref subscript, size } } => {
-            Statement::Expression{ op: Operation::Modulo(a.clone().into(),b.clone().into()), result: Variable::new(name.clone(),size,subscript.clone()).unwrap() }
-        }
-        &core::Statement{ op: core::Operation::ShiftLeft(ref a,ref b), assignee: Lvalue::Variable{ ref name, ref subscript, size } } => {
-            Statement::Expression{ op: Operation::ShiftLeft(a.clone().into(),b.clone().into()), result: Variable::new(name.clone(),size,subscript.clone()).unwrap() }
-        }
-        &core::Statement{ op: core::Operation::ShiftRightUnsigned(ref a,ref b), assignee: Lvalue::Variable{ ref name, ref subscript, size } } => {
-            Statement::Expression{ op: Operation::ShiftRightUnsigned(a.clone().into(),b.clone().into()), result: Variable::new(name.clone(),size,subscript.clone()).unwrap() }
-        }
-        &core::Statement{ op: core::Operation::ShiftRightSigned(ref a,ref b), assignee: Lvalue::Variable{ ref name, ref subscript, size } } => {
-            Statement::Expression{ op: Operation::ShiftRightSigned(a.clone().into(),b.clone().into()), result: Variable::new(name.clone(),size,subscript.clone()).unwrap() }
-        }
-        &core::Statement{ op: core::Operation::InclusiveOr(ref a,ref b), assignee: Lvalue::Variable{ ref name, ref subscript, size } } => {
-            Statement::Expression{ op: Operation::InclusiveOr(a.clone().into(),b.clone().into()), result: Variable::new(name.clone(),size,subscript.clone()).unwrap() }
-        }
-        &core::Statement{ op: core::Operation::And(ref a,ref b), assignee: Lvalue::Variable{ ref name, ref subscript, size } } => {
-            Statement::Expression{ op: Operation::And(a.clone().into(),b.clone().into()), result: Variable::new(name.clone(),size,subscript.clone()).unwrap() }
-        }
-        &core::Statement{ op: core::Operation::ExclusiveOr(ref a,ref b), assignee: Lvalue::Variable{ ref name, ref subscript, size } } => {
-            Statement::Expression{ op: Operation::ExclusiveOr(a.clone().into(),b.clone().into()), result: Variable::new(name.clone(),size,subscript.clone()).unwrap() }
-        }
-        &core::Statement{ op: core::Operation::Equal(ref a,ref b), assignee: Lvalue::Variable{ ref name, ref subscript, size } } => {
-            Statement::Expression{ op: Operation::Equal(a.clone().into(),b.clone().into()), result: Variable::new(name.clone(),size,subscript.clone()).unwrap() }
-        }
-        &core::Statement{ op: core::Operation::LessOrEqualUnsigned(ref a,ref b), assignee: Lvalue::Variable{ ref name, ref subscript, size } } => {
-            Statement::Expression{ op: Operation::LessOrEqualUnsigned(a.clone().into(),b.clone().into()), result: Variable::new(name.clone(),size,subscript.clone()).unwrap() }
-        }
-        &core::Statement{ op: core::Operation::LessOrEqualSigned(ref a,ref b), assignee: Lvalue::Variable{ ref name, ref subscript, size } } => {
-            Statement::Expression{ op: Operation::LessOrEqualSigned(a.clone().into(),b.clone().into()), result: Variable::new(name.clone(),size,subscript.clone()).unwrap() }
-        }
-        &core::Statement{ op: core::Operation::LessUnsigned(ref a,ref b), assignee: Lvalue::Variable{ ref name, ref subscript, size } } => {
-            Statement::Expression{ op: Operation::LessUnsigned(a.clone().into(),b.clone().into()), result: Variable::new(name.clone(),size,subscript.clone()).unwrap() }
-        }
-        &core::Statement{ op: core::Operation::LessSigned(ref a,ref b), assignee: Lvalue::Variable{ ref name, ref subscript, size } } => {
-            Statement::Expression{ op: Operation::LessSigned(a.clone().into(),b.clone().into()), result: Variable::new(name.clone(),size,subscript.clone()).unwrap() }
-        }
-        &core::Statement{ op: core::Operation::SignExtend(sz,ref a), assignee: Lvalue::Variable{ ref name, ref subscript, size } } => {
-            Statement::Expression{ op: Operation::SignExtend(sz,a.clone().into()), result: Variable::new(name.clone(),size,subscript.clone()).unwrap() }
-        }
-        &core::Statement{ op: core::Operation::ZeroExtend(sz,ref a), assignee: Lvalue::Variable{ ref name, ref subscript, size } } => {
-            Statement::Expression{ op: Operation::ZeroExtend(sz,a.clone().into()), result: Variable::new(name.clone(),size,subscript.clone()).unwrap() }
-        }
-        &core::Statement{ op: core::Operation::Move(ref a), assignee: Lvalue::Variable{ ref name, ref subscript, size } } => {
-            Statement::Expression{ op: Operation::Move(a.clone().into()), result: Variable::new(name.clone(),size,subscript.clone()).unwrap() }
-        }
-        &core::Statement{ op: core::Operation::Initialize(ref s,ref a), assignee: Lvalue::Variable{ ref name, ref subscript, size } } => {
-            Statement::Expression{ op: Operation::Initialize(s.clone(),a.clone().into()), result: Variable::new(name.clone(),size,subscript.clone()).unwrap() }
-        }
-        &core::Statement{ op: core::Operation::Select(sz,ref a,ref b), assignee: Lvalue::Variable{ ref name, ref subscript, size } } => {
-            Statement::Expression{ op: Operation::Select(sz,a.clone().into(),b.clone().into()), result: Variable::new(name.clone(),size,subscript.clone()).unwrap() }
-        }
-        &core::Statement{ op: core::Operation::Load(ref s,endianness,b,ref a), assignee: Lvalue::Variable{ ref name, ref subscript, size } } => {
-            Statement::Expression{ op: Operation::Load(s.clone(),endianness.clone(),b,a.clone().into()), result: Variable::new(name.clone(),size,subscript.clone()).unwrap() }
-        }
-        &core::Statement{ op: core::Operation::Store(ref s,endianness,by,ref a,ref b),.. } => {
-            Statement::Store{
-                region: s.clone(),
-                endianness: endianness.clone(),
-                bytes: by,
-                address: a.clone().into(),
-                value: b.clone().into(),
-            }
-        }
-        //Phi(Vec<V>),
-        &core::Statement{ op: core::Operation::Call(ref a),.. } => {
-            Statement::IndirectCall{
-                target: a.clone().into(),
-            }
-        }
-        _ => {
-            error!("Not implemented {:?}", stmt);
-            unimplemented!();
-        }
     }
 }
 

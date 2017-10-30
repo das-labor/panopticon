@@ -3,7 +3,9 @@ use uuid::Uuid;
 use smallvec::SmallVec;
 
 use il::{Value,Variable,Endianness};
-use Str;
+use Statement as RREILStatement;
+use Operation as RREILOperation;
+use {Lvalue, Str};
 
 /// A RREIL operation.
 #[derive(Clone,PartialEq,Eq,Debug)]
@@ -402,6 +404,115 @@ mod tests {
                 }
                 _ => unreachable!(),
             }
+        }
+    }
+}
+
+//////////////////////////////////
+// conversions from standard RREIL
+//////////////////////////////////
+
+impl<'a> From<&'a RREILStatement> for Statement {
+    fn from(statement: &'a RREILStatement) -> Self {
+        to_rreil(statement)
+    }
+}
+
+impl From<RREILStatement> for Statement {
+    fn from(statement: RREILStatement) -> Self {
+        to_rreil(&statement)
+    }
+}
+
+fn to_rreil(stmt: &RREILStatement) -> Statement {
+    match stmt {
+        &RREILStatement{ op: RREILOperation::Add(ref a,ref b), assignee: Lvalue::Variable{ ref name, ref subscript, size } } => {
+            Statement::Expression{ op: Operation::Add(a.clone().into(),b.clone().into()), result: Variable::new(name.clone(),size,subscript.clone()).unwrap() }
+        }
+        &RREILStatement{ op: RREILOperation::Subtract(ref a,ref b), assignee: Lvalue::Variable{ ref name, ref subscript, size } } => {
+            Statement::Expression{ op: Operation::Subtract(a.clone().into(),b.clone().into()), result: Variable::new(name.clone(),size,subscript.clone()).unwrap() }
+        }
+        &RREILStatement{ op: RREILOperation::Multiply(ref a,ref b), assignee: Lvalue::Variable{ ref name, ref subscript, size } } => {
+            Statement::Expression{ op: Operation::Multiply(a.clone().into(),b.clone().into()), result: Variable::new(name.clone(),size,subscript.clone()).unwrap() }
+        }
+        &RREILStatement{ op: RREILOperation::DivideUnsigned(ref a,ref b), assignee: Lvalue::Variable{ ref name, ref subscript, size } } => {
+            Statement::Expression{ op: Operation::DivideUnsigned(a.clone().into(),b.clone().into()), result: Variable::new(name.clone(),size,subscript.clone()).unwrap() }
+        }
+        &RREILStatement{ op: RREILOperation::DivideSigned(ref a,ref b), assignee: Lvalue::Variable{ ref name, ref subscript, size } } => {
+            Statement::Expression{ op: Operation::DivideSigned(a.clone().into(),b.clone().into()), result: Variable::new(name.clone(),size,subscript.clone()).unwrap() }
+        }
+        &RREILStatement{ op: RREILOperation::Modulo(ref a,ref b), assignee: Lvalue::Variable{ ref name, ref subscript, size } } => {
+            Statement::Expression{ op: Operation::Modulo(a.clone().into(),b.clone().into()), result: Variable::new(name.clone(),size,subscript.clone()).unwrap() }
+        }
+        &RREILStatement{ op: RREILOperation::ShiftLeft(ref a,ref b), assignee: Lvalue::Variable{ ref name, ref subscript, size } } => {
+            Statement::Expression{ op: Operation::ShiftLeft(a.clone().into(),b.clone().into()), result: Variable::new(name.clone(),size,subscript.clone()).unwrap() }
+        }
+        &RREILStatement{ op: RREILOperation::ShiftRightUnsigned(ref a,ref b), assignee: Lvalue::Variable{ ref name, ref subscript, size } } => {
+            Statement::Expression{ op: Operation::ShiftRightUnsigned(a.clone().into(),b.clone().into()), result: Variable::new(name.clone(),size,subscript.clone()).unwrap() }
+        }
+        &RREILStatement{ op: RREILOperation::ShiftRightSigned(ref a,ref b), assignee: Lvalue::Variable{ ref name, ref subscript, size } } => {
+            Statement::Expression{ op: Operation::ShiftRightSigned(a.clone().into(),b.clone().into()), result: Variable::new(name.clone(),size,subscript.clone()).unwrap() }
+        }
+        &RREILStatement{ op: RREILOperation::InclusiveOr(ref a,ref b), assignee: Lvalue::Variable{ ref name, ref subscript, size } } => {
+            Statement::Expression{ op: Operation::InclusiveOr(a.clone().into(),b.clone().into()), result: Variable::new(name.clone(),size,subscript.clone()).unwrap() }
+        }
+        &RREILStatement{ op: RREILOperation::And(ref a,ref b), assignee: Lvalue::Variable{ ref name, ref subscript, size } } => {
+            Statement::Expression{ op: Operation::And(a.clone().into(),b.clone().into()), result: Variable::new(name.clone(),size,subscript.clone()).unwrap() }
+        }
+        &RREILStatement{ op: RREILOperation::ExclusiveOr(ref a,ref b), assignee: Lvalue::Variable{ ref name, ref subscript, size } } => {
+            Statement::Expression{ op: Operation::ExclusiveOr(a.clone().into(),b.clone().into()), result: Variable::new(name.clone(),size,subscript.clone()).unwrap() }
+        }
+        &RREILStatement{ op: RREILOperation::Equal(ref a,ref b), assignee: Lvalue::Variable{ ref name, ref subscript, size } } => {
+            Statement::Expression{ op: Operation::Equal(a.clone().into(),b.clone().into()), result: Variable::new(name.clone(),size,subscript.clone()).unwrap() }
+        }
+        &RREILStatement{ op: RREILOperation::LessOrEqualUnsigned(ref a,ref b), assignee: Lvalue::Variable{ ref name, ref subscript, size } } => {
+            Statement::Expression{ op: Operation::LessOrEqualUnsigned(a.clone().into(),b.clone().into()), result: Variable::new(name.clone(),size,subscript.clone()).unwrap() }
+        }
+        &RREILStatement{ op: RREILOperation::LessOrEqualSigned(ref a,ref b), assignee: Lvalue::Variable{ ref name, ref subscript, size } } => {
+            Statement::Expression{ op: Operation::LessOrEqualSigned(a.clone().into(),b.clone().into()), result: Variable::new(name.clone(),size,subscript.clone()).unwrap() }
+        }
+        &RREILStatement{ op: RREILOperation::LessUnsigned(ref a,ref b), assignee: Lvalue::Variable{ ref name, ref subscript, size } } => {
+            Statement::Expression{ op: Operation::LessUnsigned(a.clone().into(),b.clone().into()), result: Variable::new(name.clone(),size,subscript.clone()).unwrap() }
+        }
+        &RREILStatement{ op: RREILOperation::LessSigned(ref a,ref b), assignee: Lvalue::Variable{ ref name, ref subscript, size } } => {
+            Statement::Expression{ op: Operation::LessSigned(a.clone().into(),b.clone().into()), result: Variable::new(name.clone(),size,subscript.clone()).unwrap() }
+        }
+        &RREILStatement{ op: RREILOperation::SignExtend(sz,ref a), assignee: Lvalue::Variable{ ref name, ref subscript, size } } => {
+            Statement::Expression{ op: Operation::SignExtend(sz,a.clone().into()), result: Variable::new(name.clone(),size,subscript.clone()).unwrap() }
+        }
+        &RREILStatement{ op: RREILOperation::ZeroExtend(sz,ref a), assignee: Lvalue::Variable{ ref name, ref subscript, size } } => {
+            Statement::Expression{ op: Operation::ZeroExtend(sz,a.clone().into()), result: Variable::new(name.clone(),size,subscript.clone()).unwrap() }
+        }
+        &RREILStatement{ op: RREILOperation::Move(ref a), assignee: Lvalue::Variable{ ref name, ref subscript, size } } => {
+            Statement::Expression{ op: Operation::Move(a.clone().into()), result: Variable::new(name.clone(),size,subscript.clone()).unwrap() }
+        }
+        &RREILStatement{ op: RREILOperation::Initialize(ref s,ref a), assignee: Lvalue::Variable{ ref name, ref subscript, size } } => {
+            Statement::Expression{ op: Operation::Initialize(s.clone(),a.clone().into()), result: Variable::new(name.clone(),size,subscript.clone()).unwrap() }
+        }
+        &RREILStatement{ op: RREILOperation::Select(sz,ref a,ref b), assignee: Lvalue::Variable{ ref name, ref subscript, size } } => {
+            Statement::Expression{ op: Operation::Select(sz,a.clone().into(),b.clone().into()), result: Variable::new(name.clone(),size,subscript.clone()).unwrap() }
+        }
+        &RREILStatement{ op: RREILOperation::Load(ref s,endianness,b,ref a), assignee: Lvalue::Variable{ ref name, ref subscript, size } } => {
+            Statement::Expression{ op: Operation::Load(s.clone(),endianness.clone(),b,a.clone().into()), result: Variable::new(name.clone(),size,subscript.clone()).unwrap() }
+        }
+        &RREILStatement{ op: RREILOperation::Store(ref s,endianness,by,ref a,ref b),.. } => {
+            Statement::Store{
+                region: s.clone(),
+                endianness: endianness.clone(),
+                bytes: by,
+                address: a.clone().into(),
+                value: b.clone().into(),
+            }
+        }
+        //Phi(Vec<V>),
+        &RREILStatement{ op: RREILOperation::Call(ref a),.. } => {
+            Statement::IndirectCall{
+                target: a.clone().into(),
+            }
+        }
+        _ => {
+            error!("Conversion from RREIL not implemented for {:?}", stmt);
+            unimplemented!();
         }
     }
 }
