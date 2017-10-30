@@ -21,7 +21,7 @@
 //! Projects are a set of `Program`s, associated memory `Region`s and comments.
 
 
-use {CallGraphRef, Fun, Program, Region, Result, World};
+use {CallGraphRef, Program, Region, Result, World};
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use flate2::Compression;
 use flate2::read::ZlibDecoder;
@@ -36,20 +36,23 @@ use std::path::Path;
 
 use uuid::Uuid;
 
+//FIXMEremove and use regular function
+pub use neo::Function as Function;
+
 /// Complete Panopticon session
 #[derive(Serialize,Deserialize,Debug)]
-pub struct Project<F> {
+pub struct Project<IL> {
     /// Human-readable name
     pub name: String,
     /// Recognized code
-    pub code: Vec<Program<F>>,
+    pub code: Vec<Program<IL>>,
     /// Memory regions
     pub data: World,
     /// Comments
     pub comments: HashMap<(String, u64), String>,
 }
 
-impl<'de, F: Fun + Deserialize<'de> + Serialize> Project<F> {
+impl<'de, IL: Deserialize<'de> + Serialize> Project<IL> {
     /// Reads a serialized project from disk.
     pub fn open(p: &Path) -> Result<Self> {
         let mut fd = match File::open(p) {
@@ -95,7 +98,7 @@ impl<'de, F: Fun + Deserialize<'de> + Serialize> Project<F> {
 
 }
 
-impl<F> Project<F> {
+impl<IL> Project<IL> {
     /// Returns a new `Project` named `s` from memory `Region` `r`.
     pub fn new(s: String, r: Region) -> Self {
         Project {
@@ -114,19 +117,19 @@ impl<F> Project<F> {
 }
 
 
-impl<F: Fun> Project<F> {
+impl<IL> Project<IL> {
     /// Returns the program with UUID `uu`
-    pub fn find_program_by_uuid(&self, uu: &Uuid) -> Option<&Program<F>> {
+    pub fn find_program_by_uuid(&self, uu: &Uuid) -> Option<&Program<IL>> {
         self.code.iter().find(|x| x.uuid == *uu)
     }
 
     /// Returns the program with UUID `uu`
-    pub fn find_program_by_uuid_mut(&mut self, uu: &Uuid) -> Option<&mut Program<F>> {
+    pub fn find_program_by_uuid_mut(&mut self, uu: &Uuid) -> Option<&mut Program<IL>> {
         self.code.iter_mut().find(|x| x.uuid == *uu)
     }
 
     /// Returns function and enclosing program with UUID `uu`
-    pub fn find_function_by_uuid<'a>(&'a self, uu: &Uuid) -> Option<&'a F> {
+    pub fn find_function_by_uuid<'a>(&'a self, uu: &Uuid) -> Option<&'a Function<IL>> {
         for p in self.code.iter() {
             if let Some(f) = p.find_function_by_uuid(uu) {
                 return Some(f);
@@ -137,7 +140,7 @@ impl<F: Fun> Project<F> {
     }
 
     /// Returns function and enclosing program with UUID `uu`
-    pub fn find_function_by_uuid_mut<'a>(&'a mut self, uu: &Uuid) -> Option<&'a mut F> {
+    pub fn find_function_by_uuid_mut<'a>(&'a mut self, uu: &Uuid) -> Option<&'a mut Function<IL>> {
         for p in self.code.iter_mut() {
             if let Some(f) = p.find_function_by_uuid_mut(uu) {
                 return Some(f);
@@ -148,7 +151,7 @@ impl<F: Fun> Project<F> {
     }
 
     /// Returns function/reference and enclosing program with UUID `uu`
-    pub fn find_call_target_by_uuid<'a>(&'a self, uu: &Uuid) -> Option<(CallGraphRef, &'a Program<F>)> {
+    pub fn find_call_target_by_uuid<'a>(&'a self, uu: &Uuid) -> Option<(CallGraphRef, &'a Program<IL>)> {
         for p in self.code.iter() {
             if let Some(ct) = p.find_call_target_by_uuid(uu) {
                 return Some((ct, p));
@@ -159,7 +162,7 @@ impl<F: Fun> Project<F> {
     }
 
     /// Returns function/reference and enclosing program with UUID `uu`
-    pub fn find_call_target_by_uuid_mut<'a>(&'a mut self, uu: &Uuid) -> Option<(CallGraphRef, &'a mut Program<F>)> {
+    pub fn find_call_target_by_uuid_mut<'a>(&'a mut self, uu: &Uuid) -> Option<(CallGraphRef, &'a mut Program<IL>)> {
         for p in self.code.iter_mut() {
             if let Some(ct) = p.find_call_target_by_uuid(uu) {
                 return Some((ct, p));

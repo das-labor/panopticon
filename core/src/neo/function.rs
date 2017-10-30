@@ -5,7 +5,7 @@ use uuid::Uuid;
 use petgraph::prelude::*;
 use petgraph::graph::NodeIndices;
 use petgraph::visit::{Walker,DfsPostOrder};
-use {Fun,FunctionKind,Architecture,Guard,Region,MnemonicFormatToken,Rvalue,Lvalue};
+use {FunctionKind,Architecture,Guard,Region,MnemonicFormatToken,Rvalue,Lvalue};
 pub use Result as CResult;
 pub use BasicBlock as CBasicBlock;
 use neo::{Str,Result,Statement,Bitcode,Value,BitcodeIter,Constant,Operation,Variable,Endianess};
@@ -20,7 +20,7 @@ mod core {
 
 use std::collections::{HashSet,HashMap};
 
-#[derive(Debug)]
+#[derive(Debug,Serialize,Deserialize)]
 pub struct BasicBlock {
     pub mnemonics: Range<MnemonicIndex>,
     pub node: NodeIndex,
@@ -31,7 +31,7 @@ impl BasicBlock {
     pub fn area(&self) -> Range<u64> { self.area.clone() }
 }
 
-#[derive(Clone,Debug)]
+#[derive(Clone,Debug,Serialize,Deserialize)]
 pub struct Mnemonic {
     pub area: Range<u64>,
     pub opcode: Str,
@@ -124,7 +124,7 @@ impl Argument {
 // indexes, never constructable
 // outside of function
 ///////////////////////////////
-#[derive(Clone,Copy,Debug,PartialOrd,Ord,PartialEq,Eq)]
+#[derive(Clone,Copy,Debug,PartialOrd,Ord,PartialEq,Eq,Serialize, Deserialize)]
 pub struct BasicBlockIndex {
     index: usize
 }
@@ -134,7 +134,7 @@ impl BasicBlockIndex {
     pub fn index(&self) -> usize { self.index }
 }
 
-#[derive(Clone,Copy,Debug,PartialOrd,Ord,PartialEq,Eq)]
+#[derive(Clone,Copy,Debug,PartialOrd,Ord,PartialEq,Eq,Serialize,Deserialize)]
 pub struct MnemonicIndex {
     index: usize
 }
@@ -200,7 +200,6 @@ impl<'a, IL: Language> Iterator for EasyMnemonicIterator<'a, IL>
             Some(idx) => {
                 let mnemonic = &self.function.mnemonics[idx];
                 let statements = <&'a IL as StatementIterator<IL::Statement>>::iter_statements(&self.function.code, mnemonic.statements.clone());
-                //let statements = self.function.statements_(mnemonic.statements.clone());
                 Some((mnemonic, statements))
             },
             None => None
@@ -425,7 +424,7 @@ impl<'a> Iterator for IndirectJumps<'a> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub enum CfgNode {
     BasicBlock(BasicBlockIndex),
     Value(Value),
@@ -487,7 +486,7 @@ impl<S: Clone + From<core::Statement>> Language for Vec<S> {
 }
 
 /// A function is a generic container for an Intermediate Language lifted from raw machine code
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Function<IL = Bitcode> {
     /// The name of this function
     pub name: Str,
@@ -504,209 +503,9 @@ pub struct Function<IL = Bitcode> {
     aliases: Vec<String>,
 }
 
-impl Fun for Function<Bitcode> {
-    fn aliases(&self) -> &[String] {
-        self.aliases.as_slice()
-    }
-    fn kind(&self) -> &FunctionKind {
-        &self.kind
-    }
-    fn add_alias(&mut self, name: String) {
-        self.aliases.push(name)
-    }
-    fn name(&self) -> &str {
-        &self.name
-    }
-    fn uuid(&self) -> &Uuid {
-        &self.uuid
-    }
-    fn set_uuid(&mut self, uuid: Uuid) {
-        self.uuid = uuid;
-    }
-    fn start(&self) -> u64 {
-        self.entry_address()
-    }
-    fn collect_call_addresses(&self) -> Vec<u64> {
-        self.collect_calls().into_iter().filter_map(|addr| {
-            if let Rvalue::Constant { value, .. } = addr {
-                Some(value)
-            } else {
-                None
-            }
-        }).collect()
-    }
-    fn collect_calls(&self) -> Vec<Rvalue> {
-        let mut ret = Vec::new();
-        for bb in self.into_iter() {
-            for (_bb, statements) in bb {
-                for statement in statements {
-                    match statement {
-                        Statement::IndirectCall { target: Value::Constant(Constant { value, bits }) } => {
-                            ret.push(Rvalue::Constant { value, size: bits })
-                        },
-                        _ => ()
-                    }
-                }
-            }
-        }
-        debug!("collected calls: {:?}", ret);
-        ret
-    }
-    fn statements<'a>(&'a self) -> Box<Iterator<Item=&'a core::Statement> + 'a> {
-        Box::new(vec![].into_iter())
-    }
-    fn set_plt(&mut self, name: &str, plt_address: u64) {
-        let old_name = self.name.clone().to_string();
-        self.aliases.push(old_name);
-        self.name = format!("{}@plt", name).into();
-        self.kind = FunctionKind::Stub { name: name.to_string(), plt_address };
-    }
-    fn new<A: Architecture>(start: u64, region: &Region, name: Option<String>, init: A::Configuration) -> CResult<Self> {
-        let name_ = name.clone();
-        let name = name.map(|name| ::std::borrow::Cow::Owned(name));
-        match Self::new::<A>(init, start, region, name) {
-            Ok(f) => Ok(f),
-            Err(e) => {
-                let msg = format!("Error disassembling: {:?} with {}", name_, e);
-                warn!("{}", msg);
-                Err(msg.into())
-            }
-        }
-    }
-}
-
 /// Standard Panopticon RREIL is used by the disassembler to lift machine code; it can also act as an
 /// IL
 pub type RREIL = Vec<core::Statement>;
-
-impl Fun for Function<RREIL> where RREIL: Language {
-    fn aliases(&self) -> &[String] {
-        self.aliases.as_slice()
-    }
-    fn kind(&self) -> &FunctionKind {
-        &self.kind
-    }
-    fn add_alias(&mut self, name: String) {
-        self.aliases.push(name)
-    }
-    fn name(&self) -> &str {
-        &self.name
-    }
-    fn uuid(&self) -> &Uuid {
-        &self.uuid
-    }
-    fn set_uuid(&mut self, uuid: Uuid) {
-        self.uuid = uuid;
-    }
-    fn start(&self) -> u64 {
-        self.entry_address()
-    }
-    fn collect_call_addresses(&self) -> Vec<u64> {
-        self.collect_calls().into_iter().filter_map(|addr| {
-            if let Rvalue::Constant { value, .. } = addr {
-                Some(value)
-            } else {
-                None
-            }
-        }).collect()
-    }
-    fn collect_calls(&self) -> Vec<Rvalue> {
-        use self::core::Operation;
-        let mut ret = Vec::new();
-        for bb in self.into_iter() {
-            for (_, statements) in bb {
-                for statement in statements {
-                    match statement {
-                        core::Statement { op: Operation::Call(t), .. } => ret.push(t.clone()),
-                        _ => ()
-                    }
-                }
-            }
-        }
-        debug!("collected calls: {:?}", ret);
-        ret
-    }
-    fn statements<'a>(&'a self) -> Box<Iterator<Item=&'a core::Statement> + 'a> {
-        Box::new(vec![].into_iter())
-    }
-    fn set_plt(&mut self, name: &str, plt_address: u64) {
-        let old_name = self.name.clone().to_string();
-        self.aliases.push(old_name);
-        self.name = format!("{}@plt", name).into();
-        self.kind = FunctionKind::Stub { name: name.to_string(), plt_address };
-    }
-    fn new<A: Architecture>(start: u64, region: &Region, name: Option<String>, init: A::Configuration) -> CResult<Self> {
-        let name_ = name.clone();
-        let name = name.map(|name| ::std::borrow::Cow::Owned(name));
-        match Self::new::<A>(init, start, region, name) {
-            Ok(f) => Ok(f),
-            Err(e) => {
-                let msg = format!("Error disassembling: {:?} with {}", name_, e);
-                warn!("{}", msg);
-                Err(msg.into())
-            }
-        }
-    }
-}
-
-impl Fun for Function<::Noop> {
-    fn aliases(&self) -> &[String] {
-        self.aliases.as_slice()
-    }
-    fn kind(&self) -> &FunctionKind {
-        &self.kind
-    }
-    fn add_alias(&mut self, name: String) {
-        self.aliases.push(name)
-    }
-    fn name(&self) -> &str {
-        &self.name
-    }
-    fn uuid(&self) -> &Uuid {
-        &self.uuid
-    }
-    fn set_uuid(&mut self, uuid: Uuid) {
-        self.uuid = uuid;
-    }
-    fn start(&self) -> u64 {
-        self.entry_address()
-    }
-    fn collect_call_addresses(&self) -> Vec<u64> {
-        self.collect_calls().into_iter().filter_map(|addr| {
-            if let Rvalue::Constant { value, .. } = addr {
-                Some(value)
-            } else {
-                None
-            }
-        }).collect()
-    }
-    fn collect_calls(&self) -> Vec<Rvalue> {
-        let mut ret = Vec::new();
-        debug!("collected calls: {:?}", ret);
-        ret
-    }
-    fn statements<'a>(&'a self) -> Box<Iterator<Item=&'a core::Statement> + 'a> {
-        Box::new(vec![].into_iter())
-    }
-    fn set_plt(&mut self, name: &str, plt_address: u64) {
-        let old_name = self.name.clone().to_string();
-        self.aliases.push(old_name);
-        self.name = format!("{}@plt", name).into();
-        self.kind = FunctionKind::Stub { name: name.to_string(), plt_address };
-    }
-    fn new<A: Architecture>(start: u64, region: &Region, name: Option<String>, init: A::Configuration) -> CResult<Self> {
-        let name_ = name.clone();
-        let name = name.map(|name| ::std::borrow::Cow::Owned(name));
-        match Self::new::<A>(init, start, region, name) {
-            Ok(f) => Ok(f),
-            Err(e) => {
-                let msg = format!("Error disassembling: {:?} with {}", name_, e);
-                warn!("{}", msg);
-                Err(msg.into())
-            }
-        }
-    }
-}
 
 ////////////////////////////////////
 // Generic Function construction
@@ -714,8 +513,8 @@ impl Fun for Function<::Noop> {
 impl<IL: Language + Default> Function<IL> {
     /// New function starting at `start`, with name `name`,
     /// inside memory region `region` and UUID `uuid`.
-    pub fn with_uuid<A: Architecture>(start: u64, uuid: &Uuid, region: &Region, name: Option<Str>, init: A::Configuration) -> Result<Function> {
-        let mut f = Function::new::<A>(init, start, region, name)?;
+    pub fn with_uuid<A: Architecture>(start: u64, uuid: &Uuid, region: &Region, name: Option<String>, init: A::Configuration) -> Result<Function<IL>> {
+        let mut f = Function::<IL>::new::<A>(init, start, region, name.map(|name| ::std::borrow::Cow::Owned(name)))?;
         f.uuid = uuid.clone();
         Ok(f)
     }
@@ -810,7 +609,7 @@ impl<IL: Language + Default> Function<IL> {
         where for<'b> &'b IL: StatementIterator<IL::Statement>
     {
         let mut mnemonics = self.mnemonics.iter().map(|mne| {
-            let stmts = self.statements_(mne.statements.clone()).collect::<Vec<_>>();
+            let stmts = self.statements(mne.statements.clone()).collect::<Vec<_>>();
             (mne.clone(),stmts)
         }).collect::<Vec<_>>();
         let mut by_source = HashMap::new();
@@ -1085,7 +884,7 @@ fn is_basic_block_boundary(a: &Mnemonic, b: &Mnemonic, entry: u64,
 
 impl<IL: Language> Function<IL> {
     /// Iterate every IL statement in the given `range`
-    pub fn statements_<'a, Idx: IntoStatementRange<IL> + Sized>(&'a self, range: Idx) -> <&'a IL as StatementIterator<IL::Statement>>::IntoIter where &'a IL: StatementIterator<IL::Statement> {
+    pub fn statements<'a, Idx: IntoStatementRange<IL> + Sized>(&'a self, range: Idx) -> <&'a IL as StatementIterator<IL::Statement>>::IntoIter where &'a IL: StatementIterator<IL::Statement> {
         let rgn = range.into_statement_range(self);
         self.code.iter_statements(rgn)
     }
@@ -1096,7 +895,7 @@ impl<IL: Language> Function<IL> {
 ////////////////////////////////////////
 
 impl Function<RREIL> {
-    fn collect_calls(&self) -> Vec<Rvalue> {
+    pub fn collect_calls(&self) -> Vec<Rvalue> {
         use self::core::Operation;
         let mut ret = Vec::new();
         for bb in self.into_iter() {
@@ -1115,7 +914,7 @@ impl Function<RREIL> {
 }
 
 impl Function {
-    fn collect_calls(&self) -> Vec<Rvalue> {
+    pub fn collect_calls(&self) -> Vec<Rvalue> {
         let mut ret = Vec::new();
         for bb in self.into_iter() {
             for (_bb, statements) in bb {

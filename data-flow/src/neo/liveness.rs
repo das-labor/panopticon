@@ -29,7 +29,7 @@ impl<'a> Liveness<'a> {
 
         for (idx, bb )in func.basic_blocks() {
             for (mne, _) in func.mnemonics(bb) {
-                for statement in func.statements_(mne) {
+                for statement in func.statements(mne) {
                     match statement {
                         Statement { assignee, op: Operation::Phi(_) } => { /* skip */ },
                         Statement { assignee, op } => {
@@ -72,7 +72,7 @@ impl<'a> Liveness<'a> {
         let cfg = func.cflow_graph();
 
         for (idx,bb) in func.basic_blocks() {
-            for stmt in func.statements_(bb) {
+            for stmt in func.statements(bb) {
                 match stmt {
                     Statement::Expression{ op: Operation::Phi(_,_,_),.. } => { /* skip */ }
                     Statement::Expression{ op, result } => {

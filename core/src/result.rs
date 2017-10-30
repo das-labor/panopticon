@@ -21,22 +21,32 @@
 //! The error type is simply a string.
 
 
-use goblin;
-
 use std::borrow::Cow;
 use std::convert::From;
 use std::error;
 use std::fmt;
 use std::io;
-use std::result;
 use std::sync::PoisonError;
 use serde_cbor;
+use goblin;
+
+// Error chain is effectively a broken crate until something like this lands:
+// https://github.com/rust-lang-nursery/error-chain/pull/163
+//error_chain!{
+//        foreign_links {
+//            Fmt(::std::fmt::Error);
+//            Io(::std::io::Error);
+//            Leb128(::leb128::read::Error);
+//            Goblin(::goblin::error::Error);
+//            Serde(::serde_cbor::Error);
+//        }
+//    }
 
 /// Panopticon error type
 #[derive(Debug)]
 pub struct Error(pub Cow<'static, str>);
 /// Panopticon result type
-pub type Result<T> = result::Result<T, Error>;
+pub type Result<T> = ::std::result::Result<T, Error>;
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -65,9 +75,9 @@ impl From<&'static str> for Error {
     }
 }
 
-impl From<Cow<'static, str>> for Error {
+impl From<Cow<'static,str>> for Error {
     fn from(s: Cow<'static, str>) -> Error {
-        Error(s)
+        Error(s.into())
     }
 }
 
@@ -92,5 +102,11 @@ impl From<goblin::error::Error> for Error {
 impl From<serde_cbor::Error> for Error {
     fn from(e: serde_cbor::Error) -> Error {
         Error(Cow::Owned(format!("Serde error: {}", e)))
+    }
+}
+
+impl From<::leb128::read::Error> for Error {
+    fn from(e: ::leb128::read::Error) -> Error {
+        Error(Cow::Owned(format!("Leb128 error: {}", e)))
     }
 }

@@ -350,7 +350,7 @@ pub fn flag_operations(func: &neo::Function<neo::RREIL>) -> HashMap<EdgeIndex, O
                 let maybe_bb = cfg.node_weight(e.source());
                 if let Some(&CfgNode::BasicBlock(ref bb)) = maybe_bb {
                     let mut maybe_stmt = None;
-                    for statement in func.statements_(*bb) {
+                    for statement in func.statements(*bb) {
                         let assignee: Rvalue = statement.assignee.into();
                         if assignee == *flag {
                             match statement.op {

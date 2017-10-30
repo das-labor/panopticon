@@ -3,7 +3,7 @@ use termcolor::WriteColor;
 use termcolor::Color::*;
 use std::ops::Range;
 
-use panopticon_core::{Fun, Function, BasicBlock, Mnemonic, MnemonicFormatToken, Operation, Program, Rvalue, Result, Statement, neo};
+use panopticon_core::{Function, BasicBlock, Mnemonic, MnemonicFormatToken, Operation, Program, Rvalue, Result, Statement, neo};
 
 macro_rules! color_bold {
     ($fmt:ident, $color:ident, $str:expr) => ({
@@ -21,8 +21,8 @@ macro_rules! color {
     })
 }
 
-pub trait PrintableFunction: Sized {
-    fn pretty_print<W: WriteColor + Write>(&self, fmt: &mut W, program: &Program<Self>) -> Result<()>;
+pub trait PrintableFunction<IL>: Sized {
+    fn pretty_print<W: WriteColor + Write>(&self, fmt: &mut W, program: &Program<IL>) -> Result<()>;
 }
 
 pub trait PrintableStatements: Sized {
@@ -32,14 +32,6 @@ pub trait PrintableStatements: Sized {
 pub trait PrintableIL {
     fn pretty_print<W: WriteColor + Write>(&self, fmt: &mut W) -> Result<()>;
 }
-
-//impl PrintableFunction for Function {
-//    fn pretty_print<W: WriteColor + Write>(&self, fmt: &mut W, program: &Program<Function>) -> Result<()> {
-//        let mut bbs = self.basic_blocks().collect::<Vec<_>>();
-//        bbs.sort_by(|bb1, bb2| bb1.area.start.cmp(&bb2.area.start));
-//        print_function(fmt, self, &bbs, program)
-//    }
-//}
 
 impl PrintableStatements for Function {
     fn pretty_print_il<W: WriteColor + Write>(&self, fmt: &mut W) -> Result<()> {
@@ -61,7 +53,6 @@ impl<IL: neo::Language> PrintableStatements for neo::Function<IL>
     where
         for<'a> &'a IL: neo::StatementIterator<IL::Statement>,
         IL::Statement: PrintableIL + Clone,
-        Self: Fun,
 {
     fn pretty_print_il<W: WriteColor + Write>(&self, fmt: &mut W) -> Result<()> {
         color_bold!(fmt, White, "IL")?;
@@ -103,8 +94,8 @@ impl<IL: neo::Language> PrintableStatements for neo::Function<IL>
 //    }
 //}
 
-impl<IL: neo::Language> PrintableFunction for neo::Function<IL> {
-    fn pretty_print<W: WriteColor + Write>(&self, fmt: &mut W, program: &Program<Self>) -> Result<()> {
+impl<IL: neo::Language> PrintableFunction<IL> for neo::Function<IL> {
+    fn pretty_print<W: WriteColor + Write>(&self, fmt: &mut W, program: &Program<IL>) -> Result<()> {
         let mut bbs = self.basic_blocks().map(|(_, bb)| NeoFunctionAndBasicBlock { function: self, bb} ).collect::<Vec<_>>();
         bbs.sort_by(|f1, f2| f1.bb.area.start.cmp(&f2.bb.area.start));
         print_function(fmt, self, &bbs, program)?;
@@ -498,7 +489,7 @@ impl PrintableIL for Statement {
 }
 
 /// Prints the function in a human readable format, using `program`, with colors
-pub fn print_function<IL, M: PrintableMnemonic, B: PrintableBlock<M>, W: Write + WriteColor>(fmt: &mut W, function: &neo::Function<IL>, bbs: &[B], program: &Program<neo::Function<IL>>) -> Result<()> {
+pub fn print_function<IL, M: PrintableMnemonic, B: PrintableBlock<M>, W: Write + WriteColor>(fmt: &mut W, function: &neo::Function<IL>, bbs: &[B], program: &Program<IL>) -> Result<()> {
     write!(fmt, "{:0>8x} <", function.first_address())?;
     color_bold!(fmt, Yellow, function.name())?;
     writeln!(fmt, ">:")?;
@@ -509,7 +500,7 @@ pub fn print_function<IL, M: PrintableMnemonic, B: PrintableBlock<M>, W: Write +
 }
 
 /// Prints the basic block into `fmt`, in disassembly order, in human readable form, and looks up any functions calls in `program`
-pub fn print_basic_block<IL, M: PrintableMnemonic, B: PrintableBlock<M>, W: Write + WriteColor>(fmt: &mut W, basic_block: &B, program: &Program<neo::Function<IL>>) -> Result<()> {
+pub fn print_basic_block<IL, M: PrintableMnemonic, B: PrintableBlock<M>, W: Write + WriteColor>(fmt: &mut W, basic_block: &B, program: &Program<IL>) -> Result<()> {
     for mnemonic in basic_block.mnemonics() {
         if !mnemonic.opcode().starts_with("__") {
             write!(fmt, "{:8x}: ", mnemonic.area().start)?;
@@ -521,7 +512,7 @@ pub fn print_basic_block<IL, M: PrintableMnemonic, B: PrintableBlock<M>, W: Writ
 }
 
 /// Prints the mnemonic into `fmt`, in human readable form, and looks up any functions calls in `program`
-pub fn print_mnemonic<IL, M: PrintableMnemonic, W: Write + WriteColor>(fmt: &mut W, mnemonic: &M, program: Option<&Program<neo::Function<IL>>>) -> Result<()> {
+pub fn print_mnemonic<IL, M: PrintableMnemonic, W: Write + WriteColor>(fmt: &mut W, mnemonic: &M, program: Option<&Program<IL>>) -> Result<()> {
     let ops = mnemonic.operands();
     let mut ops = ops.iter();
     color_bold!(fmt, Blue, mnemonic.opcode())?;

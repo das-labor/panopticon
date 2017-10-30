@@ -28,7 +28,7 @@
 //! function fails, it will still be added to the call graph. The function will only have a single
 //! error node.
 
-use {Fun, Statement, Operation, Rvalue};
+use {Statement, Operation, Rvalue};
 use petgraph::visit::{IntoNodeReferences};
 // use stable when API is at parity with Graph
 //use petgraph::stable_graph::{NodeIndex, StableGraph};
@@ -37,14 +37,16 @@ use uuid::Uuid;
 
 use std::collections::HashMap;
 
+pub use neo::Function as Function;
+
 /// An iterator over every Function in this Program
-pub struct FunctionIterator<'a, F: 'a> {
-    iter: Box<Iterator<Item = &'a CallTarget<F>> + 'a>
+pub struct FunctionIterator<'a, IL: 'a> {
+    iter: Box<Iterator<Item = &'a CallTarget<IL>> + 'a>
 }
 
-impl<'a, F> FunctionIterator<'a, F> {
+impl<'a, IL> FunctionIterator<'a, IL> {
     /// Create a new function iterator from the `cfg`
-    pub fn new(cfg: &'a CallGraph<F>) -> Self {
+    pub fn new(cfg: &'a CallGraph<IL>) -> Self {
         let iter = Box::new(cfg.node_indices().filter_map(move |idx| cfg.node_weight(idx)));
         FunctionIterator {
             iter
@@ -52,8 +54,8 @@ impl<'a, F> FunctionIterator<'a, F> {
     }
 }
 
-impl<'a, F> Iterator for FunctionIterator<'a, F> {
-    type Item = &'a F;
+impl<'a, IL> Iterator for FunctionIterator<'a, IL> {
+    type Item = &'a Function<IL>;
     fn next(&mut self) ->  Option<Self::Item> {
         loop {
             match self.iter.next() {
@@ -66,13 +68,13 @@ impl<'a, F> Iterator for FunctionIterator<'a, F> {
 }
 
 /// An iterator over every Function in this Program
-pub struct FunctionMutIterator<'a, F: 'a> {
-    iter: Box<Iterator<Item = &'a mut CallTarget<F>> + 'a>
+pub struct FunctionMutIterator<'a, IL: 'a> {
+    iter: Box<Iterator<Item = &'a mut CallTarget<IL>> + 'a>
 }
 
-impl<'a, F> FunctionMutIterator<'a, F> {
+impl<'a, IL> FunctionMutIterator<'a, IL> {
     /// Create a new function iterator from the `cfg`
-    pub fn new(cfg: &'a mut CallGraph<F>) -> Self {
+    pub fn new(cfg: &'a mut CallGraph<IL>) -> Self {
         let iter = Box::new(cfg.node_weights_mut());
         FunctionMutIterator {
             iter
@@ -80,8 +82,8 @@ impl<'a, F> FunctionMutIterator<'a, F> {
     }
 }
 
-impl<'a, F> Iterator for FunctionMutIterator<'a, F> {
-    type Item = &'a mut F;
+impl<'a, IL> Iterator for FunctionMutIterator<'a, IL> {
+    type Item = &'a mut Function<IL>;
     fn next(&mut self) ->  Option<Self::Item> {
         loop {
             match self.iter.next() {
@@ -95,16 +97,16 @@ impl<'a, F> Iterator for FunctionMutIterator<'a, F> {
 
 /// Node of the program call graph.
 #[derive(Serialize,Deserialize,Debug)]
-pub enum CallTarget<F> {
+pub enum CallTarget<IL> {
     /// Resolved and disassembled function.
-    Concrete(F),
+    Concrete(Function<IL>),
     /// Reference to an external symbol.
     Symbolic(String, Uuid),
     /// Resolved but not yet disassembled function.
     Todo(Rvalue, Option<String>, Uuid),
 }
 
-impl<F: Fun> CallTarget<F> {
+impl<IL> CallTarget<IL> {
     /// Returns the UUID of the call graph node.
     pub fn uuid(&self) -> &Uuid {
         match self {
@@ -116,32 +118,32 @@ impl<F: Fun> CallTarget<F> {
 }
 
 /// Graph of functions/symbolic references
-pub type CallGraph<F> = Graph<CallTarget<F>, ()>;
+pub type CallGraph<IL> = Graph<CallTarget<IL>, ()>;
 /// Stable reference to a call graph node
 pub type CallGraphRef = NodeIndex<u32>;
 
 /// A collection of functions calling each other.
 #[derive(Serialize,Deserialize,Debug)]
-pub struct Program<F> {
+pub struct Program<IL> {
     /// Unique, immutable identifier
     pub uuid: Uuid,
     /// Human-readable name
     pub name: String,
     /// Graph of functions
-    pub call_graph: CallGraph<F>,
+    pub call_graph: CallGraph<IL>,
     /// Symbolic References (Imports)
     pub imports: HashMap<u64, String>,
 }
 
-impl<'a, F> IntoIterator for &'a Program<F> {
-    type Item = &'a F;
-    type IntoIter = FunctionIterator<'a, F>;
+impl<'a, IL> IntoIterator for &'a Program<IL> {
+    type Item = &'a Function<IL>;
+    type IntoIter = FunctionIterator<'a, IL>;
     fn into_iter(self) -> Self::IntoIter {
         FunctionIterator::new(&self.call_graph)
     }
 }
 
-impl<F: Fun> Program<F> {
+impl<IL> Program<IL> {
     /// Create a new, empty `Program` named `n`.
     pub fn new(n: &str) -> Self {
         Program {
@@ -153,7 +155,7 @@ impl<F: Fun> Program<F> {
     }
 
     /// Returns a function if it matches the condition in the `filter` closure.
-    pub fn find_function_by<'a, Filter: (Fn(&F) -> bool)>(&'a self, filter: Filter) -> Option<&'a F> {
+    pub fn find_function_by<'a, Filter: (Fn(&Function<IL>) -> bool)>(&'a self, filter: Filter) -> Option<&'a Function<IL>> {
         for (_, node) in self.call_graph.node_references() {
             match node {
                 &CallTarget::Concrete(ref function) => if filter(function) { return Some(function) },
@@ -164,7 +166,7 @@ impl<F: Fun> Program<F> {
     }
 
     /// Returns a mutable reference to the first function that matches the condition in the `filter` closure.
-    pub fn find_function_mut<'a, Filter: (Fn(&F) -> bool)>(&'a mut self, filter: Filter) -> Option<&'a mut F> {
+    pub fn find_function_mut<'a, Filter: (Fn(&Function<IL>) -> bool)>(&'a mut self, filter: Filter) -> Option<&'a mut Function<IL>> {
         let mut idx = None;
         for (nidx, node) in self.call_graph.node_references() {
             match node {
@@ -191,7 +193,7 @@ impl<F: Fun> Program<F> {
             .find(
                 |&x| match self.call_graph.node_weight(x) {
                     Some(&CallTarget::Concrete(ref s)) => {
-                        s.start() == start
+                        s.entry_address() == start
                     }
                     _ => false,
                 }
@@ -199,7 +201,7 @@ impl<F: Fun> Program<F> {
     }
 
     /// Returns the function with UUID `a`.
-    pub fn find_function_by_uuid<'a>(&'a self, a: &Uuid) -> Option<&'a F> {
+    pub fn find_function_by_uuid<'a>(&'a self, a: &Uuid) -> Option<&'a Function<IL>> {
         for (_, node) in self.call_graph.node_references() {
             match node {
                 &CallTarget::Concrete(ref function) => if function.uuid() == a { return Some(function) },
@@ -210,7 +212,7 @@ impl<F: Fun> Program<F> {
     }
 
     /// Returns the function with UUID `a`.
-    pub fn find_function_by_uuid_mut<'a>(&'a mut self, a: &Uuid) -> Option<&'a mut F> {
+    pub fn find_function_by_uuid_mut<'a>(&'a mut self, a: &Uuid) -> Option<&'a mut Function<IL>> {
         for ct in self.call_graph.node_weights_mut() {
             match ct {
                 &mut CallTarget::Concrete(ref mut s) => if s.uuid() == a { return Some(s) },
@@ -222,10 +224,12 @@ impl<F: Fun> Program<F> {
 
     /// Puts `function` into the call graph, returning the UUIDs of all _new_ `Todo`s
     /// that are called by `function`
-    pub fn insert(&mut self, function: F) -> Vec<Uuid> {
+    pub fn insert(&mut self, function: Function<IL>) -> Vec<Uuid> {
         let maybe_vx = self.call_graph.node_indices().find(|ct| self.call_graph.node_weight(*ct).unwrap().uuid() == function.uuid());
 
-        let calls = function.collect_calls();
+        // FIXME: add collect calls
+        //let calls = function.collect_calls();
+        let calls = vec![];
         let new_vx = if let Some(vx) = maybe_vx {
             *self.call_graph.node_weight_mut(vx).unwrap() = CallTarget::Concrete(function);
             vx
@@ -243,7 +247,7 @@ impl<F: Fun> Program<F> {
                 match self.call_graph.node_weight(w) {
                     Some(&CallTarget::Concrete(ref function)) => {
                         if let Rvalue::Constant { ref value, .. } = a {
-                            if *value == function.start() {
+                            if *value == function.entry_address() {
                                 other_funs.push(w);
                                 break;
                             }
@@ -278,7 +282,7 @@ impl<F: Fun> Program<F> {
     }
 
     /// Returns the function, todo item or symbolic reference with UUID `uu`.
-    pub fn find_call_target_by_uuid<'a>(&'a self, uu: &Uuid) -> Option<CallGraphRef> {
+    pub fn find_call_target_by_uuid(&self, uu: &Uuid) -> Option<CallGraphRef> {
         for (id, node) in self.call_graph.node_references() {
             if node.uuid() == uu {
                 return Some(id);
@@ -288,12 +292,12 @@ impl<F: Fun> Program<F> {
     }
 
     /// Returns an iterator over every Function in this program
-    pub fn functions(&self) -> FunctionIterator<F> {
+    pub fn functions(&self) -> FunctionIterator<IL> {
         FunctionIterator::new(&self.call_graph)
     }
 
     /// Returns a mutable iterator over every Function in this program
-    pub fn functions_mut(&mut self) -> FunctionMutIterator<F> {
+    pub fn functions_mut(&mut self) -> FunctionMutIterator<IL> {
         FunctionMutIterator::new(&mut self.call_graph)
     }
     /// Calls [Function::set_plt](../function/struct.Function.html#method.set_plt) on all matching functions
@@ -304,11 +308,15 @@ impl<F: Fun> Program<F> {
                     let address = {
                         let mut last = None;
                         let mut count = 0;
-                        for statement in function.statements() {
-                            count += 1;
-                            last = Some(statement);
+                        for bb in function.basic_blocks() {
+                            // FIXME: add statements back
+//                            for statement in function.statements(bb) {
+//                                count += 1;
+//                                last = Some(statement);
+//                            }
                         }
                         if count == 2 {
+                            // FIXME: needs language Load trait :/
                             if let Some( &Statement { op: Operation::Load(_, _, _, Rvalue::Constant { value, .. }), .. }) = last {
                                 Some(value)
                             } else {
@@ -332,7 +340,7 @@ impl<F: Fun> Program<F> {
         }
     }
 
-    pub fn iter_callgraph<'a>(&'a self) -> Box<Iterator<Item = &'a CallTarget<F>> + 'a> {
+    pub fn iter_callgraph<'a>(&'a self) -> Box<Iterator<Item = &'a CallTarget<IL>> + 'a> {
         Box::new(self.call_graph.node_references().map(|(_, node)| node))
     }
 }

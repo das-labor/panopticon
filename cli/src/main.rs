@@ -20,7 +20,7 @@ extern crate atty;
 use panopticon_amd64 as amd64;
 use panopticon_analysis::analyze;
 use panopticon_avr as avr;
-use panopticon_core::{Machine, Fun, Function, FunctionKind, Program, Result, loader, neo};
+use panopticon_core::{Machine, Function, FunctionKind, Program, Result, loader, neo};
 use panopticon_data_flow::{DataFlow};
 
 use std::path::Path;
@@ -89,12 +89,12 @@ impl Filter {
     pub fn filtering(&self) -> bool {
         self.name.is_some() || self.addr.is_some()
     }
-    pub fn is_match<Function: Fun>(&self, func: &Function) -> bool {
+    pub fn is_match<IL>(&self, func: &neo::Function<IL>) -> bool {
         if let Some(ref name) = self.name {
             if name == &func.name() || func.aliases().contains(name){ return true }
         }
         if let Some(ref addr) = self.addr {
-            return *addr == func.start()
+            return *addr == func.entry_address()
         }
         !self.filtering()
     }
@@ -109,10 +109,10 @@ impl Filter {
     }
 }
 
-fn print_reverse_deps<Function: Fun, W: Write + WriteColor>(mut fmt: W, program: &Program<Function>, filter: &Filter) -> Result<()> {
+fn print_reverse_deps<IL, W: Write + WriteColor>(mut fmt: W, program: &Program<IL>, filter: &Filter) -> Result<()> {
     let name_and_address: Option<(u64, &str)> = {
-        if let Some(f) = program.find_function_by(|f| filter.is_match_with(&f.name(), f.start())) {
-            Some((f.start(), f.name()))
+        if let Some(f) = program.find_function_by(|f| filter.is_match_with(&f.name(), f.entry_address())) {
+            Some((f.entry_address(), f.name()))
         } else {
             // not a function, so we search imports
             let mut name_and_address = None;
@@ -128,20 +128,21 @@ fn print_reverse_deps<Function: Fun, W: Write + WriteColor>(mut fmt: W, program:
     match name_and_address {
         Some((addr, name)) => {
             let mut reverse_deps: Vec<_> = program.functions().filter_map(|f| {
-                let call_addresses = f.collect_call_addresses();
+                //let call_addresses = f.collect_call_addresses();
+                let call_addresses = vec![];
                 debug!("Total call addresses for {}: {}", f.name(), call_addresses.len());
                 if call_addresses.contains(&addr) {
-                    Some((f.start(), f.name().to_string()))
+                    Some((f.entry_address(), f.name().to_string()))
                 } else {
                     for call_address in call_addresses {
-                        let function = program.find_function_by(|f| f.start() == call_address).expect(&format!("{} has a call address {:#x}, but there isn't a function with that address in the program object", f.name(), call_address));
+                        let function = program.find_function_by(|f| f.entry_address() == call_address).expect(&format!("{} has a call address {:#x}, but there isn't a function with that address in the program object", f.name(), call_address));
                         debug!("Checking function {} with call address {:#x} for plt stub", function.name(), call_address);
                         match function.kind() {
                             &FunctionKind::Stub { ref plt_address, ref name } => {
                                 debug!("Function {} is a plt stub for {}", function.name(), name);
                                 if *plt_address == addr {
                                     debug!("Function {} plt address {:#x} matches reverse dep address {:#x}, returning", f.name(), plt_address, addr);
-                                    return Some((f.start(), f.name().to_string()))
+                                    return Some((f.entry_address(), f.name().to_string()))
                                 }
                             },
                             _ => ()
@@ -173,16 +174,16 @@ fn print_reverse_deps<Function: Fun, W: Write + WriteColor>(mut fmt: W, program:
     Ok(())
 }
 
-fn disassemble<Function: Fun + DataFlow + Send>(binary: &str) -> Result<Program<Function>> {
+fn disassemble<IL: neo::Language + Default + Send>(binary: &str) -> Result<Program<IL>> {
     let (mut proj, machine) = loader::load(Path::new(&binary))?;
     let program = proj.code.pop().unwrap();
     let reg = proj.region();
     info!("disassembly thread started");
-    Ok(match machine {
-        Machine::Avr => analyze::<avr::Avr, Function>(program, reg, avr::Mcu::atmega103()),
-        Machine::Ia32 => analyze::<amd64::Amd64, Function>(program, reg, amd64::Mode::Protected),
-        Machine::Amd64 => analyze::<amd64::Amd64, Function>(program, reg, amd64::Mode::Long),
-    }?)
+    match machine {
+        Machine::Avr =>   analyze::<avr::Avr, IL>(program, reg, avr::Mcu::atmega103()),
+        Machine::Ia32 =>  analyze::<amd64::Amd64, IL>(program, reg, amd64::Mode::Protected),
+        Machine::Amd64 => analyze::<amd64::Amd64, IL>(program, reg, amd64::Mode::Long),
+    }
 }
 
 pub use panopticon_core::NoopStatement;
@@ -190,8 +191,8 @@ pub use panopticon_core::Noop;
 
 
 //fn app_logic<'a, Function: Fun + DataFlow + PrintableFunction + PrintableStatements>(fmt: &mut termcolor::Buffer, program: &mut Program<Function>, args: Args) -> Result<()> {
-fn app_logic2<IL: neo::Language>(fmt: &mut termcolor::Buffer, program: &mut Program<neo::Function<IL>>, args: Args) -> Result<()>
-    where neo::Function<IL>: Fun + DataFlow + PrintableFunction + PrintableStatements,
+fn app_logic<IL: neo::Language>(fmt: &mut termcolor::Buffer, program: &mut Program<IL>, args: Args) -> Result<()>
+    where neo::Function<IL>: DataFlow + PrintableFunction<IL> + PrintableStatements,
 {
     let filter = Filter { name: args.function_filter, addr: args.address_filter.map(|addr| u64::from_str_radix(&addr, 16).unwrap()) };
 
@@ -214,22 +215,23 @@ fn app_logic2<IL: neo::Language>(fmt: &mut termcolor::Buffer, program: &mut Prog
     info!("disassembly thread finished with {} functions", functions.len());
 
     functions.sort_by(|f1, f2| {
-        let entry1 = f1.start();
-        let entry2 = f2.start();
+        let entry1 = f1.first_address();
+        let entry2 = f2.first_address();
         entry1.cmp(&entry2)
     });
 
     for function in functions {
         function.pretty_print(fmt, &program)?;
         if args.calls {
-            let calls = function.collect_call_addresses();
-            write!(fmt, "Calls (")?;
-            color!(fmt, Green, calls.len().to_string())?;
-            writeln!(fmt, "):")?;
-            for addr in calls {
-                color_bold!(fmt, Red, format!("{:>8x}", addr))?;
-                writeln!(fmt, "")?;
-            }
+            // FIXME: add collect_call_addresses
+//            let calls = function.collect_call_addresses();
+//            write!(fmt, "Calls (")?;
+//            color!(fmt, Green, calls.len().to_string())?;
+//            writeln!(fmt, "):")?;
+//            for addr in calls {
+//                color_bold!(fmt, Red, format!("{:>8x}", addr))?;
+//                writeln!(fmt, "")?;
+//            }
         }
         // move this into pretty_print
         writeln!(fmt, "Aliases: {:?}", function.aliases())?;
@@ -239,71 +241,22 @@ fn app_logic2<IL: neo::Language>(fmt: &mut termcolor::Buffer, program: &mut Prog
     }
     Ok(())
 }
-fn app_logic<'a, Function: Fun + DataFlow>(fmt: &mut termcolor::Buffer, program: &mut Program<Function>, args: Args) -> Result<()> {
-    let filter = Filter { name: args.function_filter, addr: args.address_filter.map(|addr| u64::from_str_radix(&addr, 16).unwrap()) };
-
-    debug!("Program.imports: {:#?}", program.imports);
-    let mut functions = {
-        // we iterate twice because rust ownership system sucks sometimes
-        for f in program.functions_mut() {
-            if filter.is_match(f) {
-                // we use less memory and take less time if we perform the ssa conversion _only_ on functions
-                // we want to examine (e.g., ones that match our filter)
-                f.ssa_conversion()?;
-            }
-        }
-        program.functions().filter_map(|f| if filter.is_match(f) { Some(f.clone()) } else { None }).collect::<Vec<&Function>>()
-    };
-
-    info!("disassembly thread finished with {} functions", functions.len());
-
-    functions.sort_by(|f1, f2| {
-        let entry1 = f1.start();
-        let entry2 = f2.start();
-        entry1.cmp(&entry2)
-    });
-
-//    for function in functions {
-//        function.pretty_print(fmt, &program)?;
-//        if args.calls {
-//            let calls = function.collect_call_addresses();
-//            write!(fmt, "Calls (")?;
-//            color!(fmt, Green, calls.len().to_string())?;
-//            writeln!(fmt, "):")?;
-//            for addr in calls {
-//                color_bold!(fmt, Red, format!("{:>8x}", addr))?;
-//                writeln!(fmt, "")?;
-//            }
-//        }
-//        // move this into pretty_print
-//        writeln!(fmt, "Aliases: {:?}", function.aliases())?;
-//        if args.dump_il {
-//            function.pretty_print_il(fmt)?;
-//        }
-//    }
-    Ok(())
-}
 
 fn run(args: Args) -> Result<()> {
     exists_path_val(&args.binary)?;
     let cc = if args.color || atty::is(atty::Stream::Stdout) { ColorChoice::Auto } else { ColorChoice::Never };
     let writer = BufferWriter::stdout(cc);
     let mut fmt = writer.buffer();
-    if args.old {
-        let mut program = disassemble::<Function>(&args.binary)?;
+    if args.noop {
+        let mut program = disassemble::<Noop>(&args.binary)?;
         app_logic(&mut fmt, &mut program, args)?;
     } else {
-        if args.noop {
-            let mut program = disassemble::<neo::Function<Noop>>(&args.binary)?;
-            app_logic2(&mut fmt, &mut program, args)?;
+        if args.neo {
+            let mut program = disassemble::<neo::Bitcode>(&args.binary)?;
+            app_logic(&mut fmt, &mut program, args)?;
         } else {
-            if args.neo {
-                let mut program = disassemble::<neo::Function<neo::Bitcode>>(&args.binary)?;
-                app_logic2(&mut fmt, &mut program, args)?;
-            } else {
-                let mut program = disassemble::<neo::Function<neo::RREIL>>(&args.binary)?;
-                app_logic2(&mut fmt, &mut program, args)?;
-            }
+            let mut program = disassemble::<neo::RREIL>(&args.binary)?;
+            app_logic(&mut fmt, &mut program, args)?;
         }
     }
     writer.print(&fmt)?;
