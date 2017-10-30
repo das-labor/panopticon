@@ -71,8 +71,7 @@ where
         attempts.upsert(entry,
                         || {
                             // FIXME cow bullshit
-                            match Function::<IL>::with_uuid::<A>(entry, &uuid, &region, None, config.clone()) {
-                            //match Function::<IL>::with_uuid::<A>(entry, &uuid, &region,  Some(::std::borrow::Cow::Owned(name.clone())), config.clone()) {
+                            match Function::<IL>::with_uuid::<A>(entry, &uuid, &region, name.clone(), config.clone()) {
                                 Ok(f) => {
                                     // FIXME fix call addresses
 //                                    for address in f.collect_call_addresses() {
@@ -156,7 +155,6 @@ where
                 match ct {
                     &CallTarget::Todo(Rvalue::Constant { value: entry, .. }, ref maybe_name, ref uuid) => {
                         finished_functions.insert(entry);
-                        // FIXME cow bullshit
                         match Function::with_uuid::<A>(entry, uuid, &region, maybe_name.clone(), config.clone()) {
                             Ok(mut f) => {
                                 // FIXME: fix
