@@ -9,6 +9,7 @@ panopticon-data-flow = { path = "../data-flow" }
 panopticon-amd64 = { path = "../amd64" }
 panopticon-graph-algos = { path = "../graph-algos" }
 bencher = "0.1.4"
+env_logger = "0.3"
 
 [[bench]]
 name = "panopticon_benchmark"

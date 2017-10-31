@@ -193,6 +193,7 @@ pub enum Statement<V> where V: Clone + PartialEq + Eq + Debug {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use neo::{Value};
     use quickcheck::{Arbitrary,Gen};
 
     impl Arbitrary for Endianess {
@@ -278,7 +279,6 @@ mod tests {
                     Operation::Select(_, _, Value::Undefined) => {}
                     Operation::Phi(Value::Undefined, _, _) => {}
                     Operation::Phi(_, Value::Undefined, _) => {}
-                    Operation::Phi(Value::Constant(_), _, _) => {}
                     Operation::Phi(_, Value::Constant(_), _) => {}
                     Operation::Phi(_, _, Value::Constant(_)) => {}
 
@@ -347,7 +347,7 @@ mod tests {
         }
     }
 
-    impl Arbitrary for Statement {
+    impl Arbitrary for Statement<Value> {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
             match g.gen_range(0, 5) {
                 0 => Statement::Expression{

@@ -1,4 +1,5 @@
 use bencher::Bencher;
+use env_logger;
 use panopticon_amd64 as amd64;
 use panopticon_core::neo;
 use panopticon_data_flow::neo::rewrite_to_ssa;
@@ -9,6 +10,7 @@ fn ssa_convertion_new(b: &mut Bencher) {
     use panopticon_graph_algos::{VertexListGraphTrait,GraphTrait};
     use std::path::Path;
 
+    let _ = env_logger::init();
     let (proj,_) = loader::load(Path::new("../test-data/static")).unwrap();
     let entries = proj.code[0].call_graph.vertices().filter_map(|vx| if let Some(&CallTarget::Todo(Rvalue::Constant{ value,.. },_,_)) = proj.code[0].call_graph.vertex_label(vx) { Some(value) } else { None }).collect::<Vec<_>>();
     let reg = proj.data.dependencies.vertex_label(proj.data.root).unwrap();
