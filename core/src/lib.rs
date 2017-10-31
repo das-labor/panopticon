@@ -119,9 +119,6 @@ pub use project::Project;
 pub mod region;
 pub use region::{Bound, Region, World};
 
-pub mod layer;
-pub use layer::{Layer, LayerIter, OpaqueLayer};
-
 pub mod result;
 pub use result::{Error, Result};
 
@@ -131,6 +128,6 @@ pub use loader::{Machine, load};
 
 #[macro_use]
 pub mod il;
-pub use il::{Endianness, Constant, Variable, Value, RREIL, Bitcode, Language, StatementIterator};
+pub use il::{Endianness, Constant, Variable, Value, RREIL, Bitcode, Language, StatementIterator, CallIterator, LoadStatement};
 pub use il::{Guard, Lvalue, Operation, Rvalue, Statement, execute};
 pub use il::neo as neo;

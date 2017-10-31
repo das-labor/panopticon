@@ -18,7 +18,7 @@
 
 use futures::{Future, Sink, Stream, stream};
 use futures::sync::mpsc;
-use panopticon_core::{il, Language, Function, Architecture, CallTarget, Error, Program, Result, Region, Rvalue};
+use panopticon_core::{CallIterator, LoadStatement, StatementIterator, Language, Function, Architecture, CallTarget, Error, Program, Result, Region, Rvalue};
 use panopticon_data_flow::DataFlow;
 use std::collections::HashSet;
 use std::fmt::Debug;
@@ -36,6 +36,8 @@ pub fn analyze<A: Architecture + Debug + Sync + 'static, IL>(
 where
     A::Configuration: Debug + Sync,
     IL: Send + Default + Language,
+    IL::Statement: LoadStatement,
+    for<'a> &'a IL: CallIterator + StatementIterator<IL::Statement>,
 {
     use rayon::prelude::*;
     use chashmap::CHashMap;
@@ -70,13 +72,11 @@ where
         let name = &name;
         attempts.upsert(entry,
                         || {
-                            // FIXME cow bullshit
                             match Function::<IL>::with_uuid::<A>(entry, &uuid, &region, name.clone(), config.clone()) {
                                 Ok(f) => {
-                                    // FIXME fix call addresses
-//                                    for address in f.collect_call_addresses() {
-//                                        targets.upsert(address, || { true }, |_| ());
-//                                    }
+                                    for address in f.iter_calls() {
+                                        targets.upsert(address, || { true }, |_| ());
+                                    }
                                     {
                                         let mut program = program.lock();
                                         let _ = program.insert(f);
@@ -110,10 +110,9 @@ where
             attempts.upsert(address, || {
                 match Function::<IL>::new::<A>(config.clone(),address, &region, None) {
                     Ok(f) => {
-                        // FIXME: fix
-//                        for address in f.collect_call_addresses() {
-//                            new_targets.upsert(address, || { true }, |_| ());
-//                        }
+                        for address in f.iter_calls() {
+                            new_targets.upsert(address, || { true }, |_| ());
+                        }
                         {
                             let mut program = program.lock();
                             let _ = program.insert(f);
@@ -157,9 +156,7 @@ where
                         finished_functions.insert(entry);
                         match Function::with_uuid::<A>(entry, uuid, &region, maybe_name.clone(), config.clone()) {
                             Ok(mut f) => {
-                                // FIXME: fix
-//                                let addresses = f.collect_call_addresses();
-//                                targets.extend_from_slice(&addresses);
+                                targets.extend(f.iter_calls());
                                 let _ = f.ssa_conversion();
                                 let tx = tx.clone();
                                 tx.send_all(stream::iter_ok(vec![f])).wait().unwrap().0;
@@ -181,9 +178,7 @@ where
                         info!("adding func_0x{:x}", address);
                         match Function::new::<A>(config.clone(), address, &region, None) {
                             Ok(mut f) => {
-                                // FIXME: restore
-//                                let addresses = f.collect_call_addresses();
-//                                new_targets.extend_from_slice(&addresses);
+                                new_targets.extend(f.iter_calls());
                                 let _ = f.ssa_conversion();
                                 {
                                     let tx = tx.clone();

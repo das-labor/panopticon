@@ -18,12 +18,12 @@
 
 extern crate panopticon_core;
 
-use panopticon_core::Project;
+use panopticon_core::{Project, Bitcode};
 use std::path::Path;
 
 #[test]
 fn project_open() {
-    let maybe_project = Project::open(Path::new("../test-data/save.panop"));
+    let maybe_project = Project::<Bitcode>::open(Path::new("../test-data/save.panop"));
 
     assert!(maybe_project.ok().is_some());
 }

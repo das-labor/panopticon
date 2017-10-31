@@ -18,15 +18,15 @@
 
 extern crate panopticon_core;
 
-use panopticon_core::loader;
+use panopticon_core::{Bitcode, loader};
 use std::path::Path;
 
 #[test]
 fn elf_load_static() {
-    match loader::load(Path::new("../test-data/static")) {
+    match loader::load::<Bitcode>(Path::new("../test-data/static")) {
         Ok((proj, _)) => {
             println!("{:?}", proj);
-            assert_eq!(proj.imports.len(), 0);
+            assert_eq!(proj.code[0].imports.len(), 0);
         }
         Err(error) => {
             println!("{:?}", error);
@@ -37,12 +37,12 @@ fn elf_load_static() {
 
 #[test]
 fn elf_load_dynamic() {
-    match loader::load(Path::new("../test-data/libfoo.so")) {
+    match loader::load::<Bitcode>(Path::new("../test-data/libfoo.so")) {
         Ok((proj, _)) => {
             println!("{:?}", &proj);
             assert_eq!(proj.name, "libfoo.so");
             assert_eq!(proj.code.len(), 1);
-            assert_eq!(proj.imports.len(), 6);
+            assert_eq!(proj.code[0].imports.len(), 6);
         }
         Err(error) => {
             println!("{:?}", error);
@@ -53,10 +53,10 @@ fn elf_load_dynamic() {
 
 #[test]
 fn mach_load_lib() {
-    match loader::load(Path::new("../test-data/libbeef.dylib")) {
+    match loader::load::<Bitcode>(Path::new("../test-data/libbeef.dylib")) {
         Ok((proj, _)) => {
             println!("{:?}", &proj);
-            assert_eq!(proj.imports.len(), 0);
+            assert_eq!(proj.code[0].imports.len(), 0);
         }
         Err(error) => {
             println!("{:?}", error);
@@ -67,10 +67,10 @@ fn mach_load_lib() {
 
 #[test]
 fn mach_load_exe() {
-    match loader::load(Path::new("../test-data/deadbeef.mach")) {
+    match loader::load::<Bitcode>(Path::new("../test-data/deadbeef.mach")) {
         Ok((proj, _)) => {
             println!("{:?}", &proj);
-            assert_eq!(proj.imports.len(), 2);
+            assert_eq!(proj.code[0].imports.len(), 2);
         }
         Err(error) => {
             println!("{:?}", error);
@@ -89,10 +89,10 @@ fn mach_load_bytes() {
         fd.read_to_end(&mut v).unwrap();
         v
     };
-    match loader::load_mach(&bytes, 0, "../test-data/deadbeef.mach".to_owned()) {
+    match loader::load_mach::<Bitcode>(&bytes, 0, "../test-data/deadbeef.mach".to_owned()) {
         Ok((proj, _)) => {
             println!("{}", proj.name);
-            assert_eq!(proj.imports.len(), 2);
+            assert_eq!(proj.code[0].imports.len(), 2);
         }
         Err(error) => {
             println!("{:?}", error);
@@ -105,11 +105,11 @@ fn mach_load_bytes() {
 
 #[test]
 fn load_pe32() {
-    let project = loader::load(Path::new("../test-data/test.exe"));
+    let project = loader::load::<Bitcode>(Path::new("../test-data/test.exe"));
     match project {
         Ok((proj, _)) => {
             println!("{:?}", proj);
-            assert_eq!(proj.imports.len(), 0);
+            assert_eq!(proj.code[0].imports.len(), 0);
         }
         Err(error) => {
             println!("{:?}", error);
@@ -120,11 +120,11 @@ fn load_pe32() {
 
 #[test]
 fn load_pe32_dll() {
-    let project = loader::load(Path::new("../test-data/libbeef.dll"));
+    let project = loader::load::<Bitcode>(Path::new("../test-data/libbeef.dll"));
     match project {
         Ok((proj, _)) => {
             println!("{:?}", proj);
-            assert_eq!(proj.imports.len(), 0);
+            assert_eq!(proj.code[0].imports.len(), 0);
         }
         Err(error) => {
             println!("{:?}", error);

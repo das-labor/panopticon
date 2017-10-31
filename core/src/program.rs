@@ -28,7 +28,7 @@
 //! function fails, it will still be added to the call graph. The function will only have a single
 //! error node.
 
-use {Function, Statement, Operation, Rvalue};
+use {Language, Function, CallIterator, StatementIterator, Rvalue, LoadStatement, Constant, Value};
 use petgraph::visit::{IntoNodeReferences};
 // use stable when API is at parity with Graph
 //use petgraph::stable_graph::{NodeIndex, StableGraph};
@@ -153,7 +153,7 @@ impl<IL> Program<IL> {
     }
 
     /// Returns a function if it matches the condition in the `filter` closure.
-    pub fn find_function_by<'a, Filter: (Fn(&Function<IL>) -> bool)>(&'a self, filter: Filter) -> Option<&'a Function<IL>> {
+    pub fn find_function_by<'a, Filter: Fn(&Function<IL>) -> bool> (&'a self, filter: Filter) -> Option <&'a Function<IL>> {
         for (_, node) in self.call_graph.node_references() {
             match node {
                 &CallTarget::Concrete(ref function) => if filter(function) { return Some(function) },
@@ -164,7 +164,7 @@ impl<IL> Program<IL> {
     }
 
     /// Returns a mutable reference to the first function that matches the condition in the `filter` closure.
-    pub fn find_function_mut<'a, Filter: (Fn(&Function<IL>) -> bool)>(&'a mut self, filter: Filter) -> Option<&'a mut Function<IL>> {
+    pub fn find_function_mut<'a, Filter: Fn(&Function<IL>) -> bool> (&'a mut self, filter: Filter) -> Option <&'a mut Function<IL>> {
         let mut idx = None;
         for (nidx, node) in self.call_graph.node_references() {
             match node {
@@ -220,65 +220,6 @@ impl<IL> Program<IL> {
         None
     }
 
-    /// Puts `function` into the call graph, returning the UUIDs of all _new_ `Todo`s
-    /// that are called by `function`
-    pub fn insert(&mut self, function: Function<IL>) -> Vec<Uuid> {
-        let maybe_vx = self.call_graph.node_indices().find(|ct| self.call_graph.node_weight(*ct).unwrap().uuid() == function.uuid());
-
-        // FIXME: add collect calls
-        //let calls = function.collect_calls();
-        let calls = vec![];
-        let new_vx = if let Some(vx) = maybe_vx {
-            *self.call_graph.node_weight_mut(vx).unwrap() = CallTarget::Concrete(function);
-            vx
-        } else {
-            self.call_graph.add_node(CallTarget::Concrete(function))
-        };
-
-        let mut other_funs = Vec::new();
-        let mut todos = Vec::new();
-
-        for a in calls {
-            let l = other_funs.len();
-
-            for w in self.call_graph.node_indices() {
-                match self.call_graph.node_weight(w) {
-                    Some(&CallTarget::Concrete(ref function)) => {
-                        if let Rvalue::Constant { ref value, .. } = a {
-                            if *value == function.entry_address() {
-                                other_funs.push(w);
-                                break;
-                            }
-                        }
-                    }
-                    Some(&CallTarget::Todo(ref _a, _, _)) => {
-                        if *_a == a {
-                            other_funs.push(w);
-                            break;
-                        }
-                    }
-                    _ => {}
-                }
-            }
-
-            if l == other_funs.len() {
-                let uu = Uuid::new_v4();
-                let v = self.call_graph.add_node(CallTarget::Todo(a, None, uu));
-
-                self.call_graph.add_edge(new_vx, v, ());
-                todos.push(uu);
-            }
-        }
-
-        for other_fun in other_funs {
-            if self.call_graph.find_edge(new_vx, other_fun) == None {
-                self.call_graph.add_edge(new_vx, other_fun, ());
-            }
-        }
-
-        todos
-    }
-
     /// Returns the function, todo item or symbolic reference with UUID `uu`.
     pub fn find_call_target_by_uuid(&self, uu: &Uuid) -> Option<CallGraphRef> {
         for (id, node) in self.call_graph.node_references() {
@@ -298,38 +239,100 @@ impl<IL> Program<IL> {
     pub fn functions_mut(&mut self) -> FunctionMutIterator<IL> {
         FunctionMutIterator::new(&mut self.call_graph)
     }
-    /// Calls [Function::set_plt](../function/struct.Function.html#method.set_plt) on all matching functions
+
+    pub fn iter_callgraph<'a>(&'a self) -> Box<Iterator<Item = &'a CallTarget<IL>> + 'a> {
+        Box::new(self.call_graph.node_references().map(|(_, node)| node))
+    }
+}
+
+impl<IL> Program<IL> where for<'a> &'a IL: CallIterator {
+    /// Puts `function` into the call graph, returning the UUIDs of all _new_ `Todo`s
+    /// that are called by `function`
+    pub fn insert(&mut self, function: Function<IL>) -> Vec<Uuid> {
+        let maybe_vx = self.call_graph.node_indices().find(|ct| self.call_graph.node_weight(*ct).unwrap().uuid() == function.uuid());
+
+        // FIXME: don't allocate here, will be a large source of slowdown
+        let calls = function.iter_calls().collect::<Vec<_>>();
+        let new_vx = if let Some(vx) = maybe_vx {
+            *self.call_graph.node_weight_mut(vx).unwrap() = CallTarget::Concrete(function);
+            vx
+        } else {
+            self.call_graph.add_node(CallTarget::Concrete(function))
+        };
+
+        let mut other_funs = Vec::new();
+        let mut todos = Vec::new();
+
+        for call_address in calls {
+            let l = other_funs.len();
+
+            for w in self.call_graph.node_indices() {
+                match self.call_graph.node_weight(w) {
+                    Some(&CallTarget::Concrete(ref function)) => {
+                        if call_address == function.entry_address() {
+                            other_funs.push(w);
+                            break;
+                        }
+                    }
+                    Some(&CallTarget::Todo(Rvalue::Constant { value, .. }, _, _)) => {
+                        if value == call_address {
+                            other_funs.push(w);
+                            break;
+                        }
+                    }
+                    _ => {}
+                }
+            }
+
+            if l == other_funs.len() {
+                let uu = Uuid::new_v4();
+                let v = self.call_graph.add_node(CallTarget::Todo(Rvalue::Constant { value: call_address, size: 8 }, None, uu));
+
+                self.call_graph.add_edge(new_vx, v, ());
+                todos.push(uu);
+            }
+        }
+
+        for other_fun in other_funs {
+            if self.call_graph.find_edge(new_vx, other_fun) == None {
+                self.call_graph.add_edge(new_vx, other_fun, ());
+            }
+        }
+
+        todos
+    }
+}
+impl<IL: Language> Program<IL> where for<'a> &'a IL: StatementIterator<IL::Statement>, IL::Statement: LoadStatement {
+    /// Calls [Function::set_plt](../function/struct.Function.html#method.set_plt) on all matching functions.
+    /// Requires the underlying IL to implement Language, StatementIterator, and Load
     pub fn update_plt(&mut self) {
         for ct in self.call_graph.node_indices() {
             match self.call_graph.node_weight_mut(ct).unwrap() {
                 &mut CallTarget::Concrete(ref mut function) => {
-                    let address = {
-                        let mut last = None;
-                        let mut count = 0;
-                        for bb in function.basic_blocks() {
-                            // FIXME: add statements back
-//                            for statement in function.statements(bb) {
-//                                count += 1;
-//                                last = Some(statement);
-//                            }
+                    let mut last: Option<IL::Statement> = None;
+                    let mut count = 0;
+                    for (bb, _) in function.basic_blocks() {
+                        for statement in function.statements(bb) {
+                            count += 1;
+                            last = Some(statement);
                         }
-                        if count == 2 {
-                            // FIXME: needs language Load trait :/
-                            if let Some( &Statement { op: Operation::Load(_, _, _, Rvalue::Constant { value, .. }), .. }) = last {
-                                Some(value)
-                            } else {
-                                None
+                    }
+                    if count == 2 {
+                        if let Some(statement) = last {
+                            match statement.value() {
+                                Some(Value::Constant(Constant { value, .. })) => {
+                                    match self.imports.get(&value) {
+                                        Some(import) => {
+                                            function.set_plt(import, value);
+                                        },
+                                        None => (),
+                                    }
+                                },
+                                None => (),
+                                value => {
+                                    warn!("PLT statement is not loading from a constant: {:?}", value);
+                                }
                             }
-                        } else {
-                            None
-                        }
-                    };
-                    if let Some(address) = address {
-                        match self.imports.get(&address) {
-                            Some(import) => {
-                                function.set_plt(import, address);
-                            },
-                            None => (),
                         }
                     }
                 },
@@ -337,117 +340,113 @@ impl<IL> Program<IL> {
             }
         }
     }
-
-    pub fn iter_callgraph<'a>(&'a self) -> Box<Iterator<Item = &'a CallTarget<IL>> + 'a> {
-        Box::new(self.call_graph.node_references().map(|(_, node)| node))
-    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use {BasicBlock, ControlFlowTarget, Function, Lvalue, MnemonicRaw, Operation, Region, Rvalue, Statement};
-    use panopticon_graph_algos::{AdjacencyMatrixGraphTrait, EdgeListGraphTrait, GraphTrait, MutableGraphTrait, VertexListGraphTrait};
+    use {BasicBlock, Function, Lvalue, MnemonicRaw, Operation, Region, Rvalue, Statement};
+    use petgraph::prelude::*;
     use uuid::Uuid;
-
-    #[test]
-    fn find_by_entry() {
-        let mut prog = Program::new("prog_test");
-        let mut func = Function::undefined(0, None, &Region::undefined("ram".to_owned(), 100), Some("test".to_owned()));
-
-        let bb0 = BasicBlock::from_vec(vec![MnemonicRaw::dummy(0..10)]);
-        let vx = func.cfg_mut().add_vertex(ControlFlowTarget::Resolved(bb0));
-        func.set_entry_point_ref(vx);
-
-        let func2_start = 0xdeadbeef;
-        // technically passing func2_start is useless here since we overwrite it with bb below
-        let mut func2 = Function::undefined(func2_start, None, &Region::undefined("ram".to_owned(), 100), Some("test2".to_owned()));
-        let bb1 = BasicBlock::from_vec(vec![MnemonicRaw::dummy(func2_start..5)]);
-        let vx = func2.cfg_mut().add_vertex(ControlFlowTarget::Resolved(bb1));
-        func2.set_entry_point_ref(vx);
-
-        let vx1 = prog.call_graph.add_vertex(CallTarget::Concrete(func));
-        let vx2 = prog.call_graph.add_vertex(CallTarget::Concrete(func2));
-
-        assert_eq!(prog.find_function_by_entry(0), Some(vx1));
-        assert_eq!(prog.find_function_by_entry(func2_start), Some(vx2));
-        assert_eq!(prog.find_function_by_entry(2), None);
-    }
-
-    #[test]
-    fn insert_replaces_todo() {
-        let uu = Uuid::new_v4();
-        let mut prog = Program::new("prog_test");
-
-        let tvx = prog.call_graph.add_vertex(CallTarget::Todo(Rvalue::new_u64(12), None, uu));
-        let vx0 = prog.call_graph.add_vertex(CallTarget::Concrete(Function::undefined(0, None, &Region::undefined("ram".to_owned(), 100), Some("test".to_owned()))));
-        let vx1 = prog.call_graph.add_vertex(CallTarget::Concrete(Function::undefined(0, None, &Region::undefined("ram".to_owned(), 100), Some("test2".to_owned()))));
-
-        let e1 = prog.call_graph.add_edge((), tvx, vx0);
-        let e2 = prog.call_graph.add_edge((), vx1, tvx);
-
-        let mut func = Function::undefined(0, Some(uu.clone()), &Region::undefined("ram".to_owned(), 100), Some("test3".to_owned()));
-        let bb0 = BasicBlock::from_vec(vec![MnemonicRaw::dummy(12..20)]);
-        let vx = func.cfg_mut().add_vertex(ControlFlowTarget::Resolved(bb0));
-        func.set_entry_point_ref(vx);
-        let uuf = func.uuid().clone();
-
-        let new = prog.insert(func);
-
-        assert_eq!(new, vec![]);
-
-        if let Some(&CallTarget::Concrete(ref f)) = prog.call_graph.vertex_label(tvx) {
-            assert_eq!(f.uuid(), &uuf);
-        } else {
-            unreachable!();
-        }
-        assert!(prog.call_graph.vertex_label(vx0).is_some());
-        assert!(prog.call_graph.vertex_label(vx1).is_some());
-        assert_eq!(prog.call_graph.edge(tvx, vx0), e1);
-        assert_eq!(prog.call_graph.edge(vx1, tvx), e2);
-        assert_eq!(prog.call_graph.num_edges(), 2);
-        assert_eq!(prog.call_graph.num_vertices(), 3);
-    }
-
-    #[test]
-    fn insert_ignores_new_todo() {
-        let uu1 = Uuid::new_v4();
-        let uu2 = Uuid::new_v4();
-        let mut prog = Program::new("prog_test");
-
-        let tvx = prog.call_graph.add_vertex(CallTarget::Todo(Rvalue::new_u64(12), None, uu1));
-
-        let mut func = Function::undefined(0, Some(uu2.clone()), &Region::undefined("ram".to_owned(), 100), Some("test3".to_owned()));
-        let ops1 = vec![];
-        let i1 = vec![
-            Statement {
-                op: Operation::Call(Rvalue::new_u64(12)),
-                assignee: Lvalue::Undefined,
-            },
-        ];
-        let mne1 = MnemonicRaw::new(
-            0..10,
-            "call".to_string(),
-            "12".to_string(),
-            ops1.iter(),
-            i1.iter(),
-        )
-                .ok()
-                .unwrap();
-        let bb0 = BasicBlock::from_vec(vec![mne1]);
-        let vx = func.cfg_mut().add_vertex(ControlFlowTarget::Resolved(bb0));
-        func.set_entry_point_ref(vx);
-        let uuf = func.uuid().clone();
-
-        let new = prog.insert(func);
-
-        assert_eq!(new, vec![]);
-
-        if let Some(&CallTarget::Concrete(ref f)) = prog.call_graph.vertex_label(tvx) {
-            assert_eq!(f.uuid(), &uuf);
-        }
-        assert!(prog.call_graph.vertex_label(tvx).is_some());
-        assert_eq!(prog.call_graph.num_edges(), 1);
-        assert_eq!(prog.call_graph.num_vertices(), 2);
-    }
+//
+//    #[test]
+//    fn find_by_entry() {
+//        let mut prog = Program::new("prog_test");
+//        let mut func = Function::undefined(0, None, &Region::undefined("ram".to_owned(), 100), Some("test".to_owned()));
+//
+//        let bb0 = BasicBlock::from_vec(vec![MnemonicRaw::dummy(0..10)]);
+//        let vx = func.cfg_mut().add_vertex(ControlFlowTarget::Resolved(bb0));
+//        func.set_entry_point_ref(vx);
+//
+//        let func2_start = 0xdeadbeef;
+//        // technically passing func2_start is useless here since we overwrite it with bb below
+//        let mut func2 = Function::undefined(func2_start, None, &Region::undefined("ram".to_owned(), 100), Some("test2".to_owned()));
+//        let bb1 = BasicBlock::from_vec(vec![MnemonicRaw::dummy(func2_start..5)]);
+//        let vx = func2.cfg_mut().add_vertex(ControlFlowTarget::Resolved(bb1));
+//        func2.set_entry_point_ref(vx);
+//
+//        let vx1 = prog.call_graph.add_vertex(CallTarget::Concrete(func));
+//        let vx2 = prog.call_graph.add_vertex(CallTarget::Concrete(func2));
+//
+//        assert_eq!(prog.find_function_by_entry(0), Some(vx1));
+//        assert_eq!(prog.find_function_by_entry(func2_start), Some(vx2));
+//        assert_eq!(prog.find_function_by_entry(2), None);
+//    }
+//
+//    #[test]
+//    fn insert_replaces_todo() {
+//        let uu = Uuid::new_v4();
+//        let mut prog = Program::new("prog_test");
+//
+//        let tvx = prog.call_graph.add_vertex(CallTarget::Todo(Rvalue::new_u64(12), None, uu));
+//        let vx0 = prog.call_graph.add_vertex(CallTarget::Concrete(Function::undefined(0, None, &Region::undefined("ram".to_owned(), 100), Some("test".to_owned()))));
+//        let vx1 = prog.call_graph.add_vertex(CallTarget::Concrete(Function::undefined(0, None, &Region::undefined("ram".to_owned(), 100), Some("test2".to_owned()))));
+//
+//        let e1 = prog.call_graph.add_edge((), tvx, vx0);
+//        let e2 = prog.call_graph.add_edge((), vx1, tvx);
+//
+//        let mut func = Function::undefined(0, Some(uu.clone()), &Region::undefined("ram".to_owned(), 100), Some("test3".to_owned()));
+//        let bb0 = BasicBlock::from_vec(vec![MnemonicRaw::dummy(12..20)]);
+//        let vx = func.cfg_mut().add_vertex(ControlFlowTarget::Resolved(bb0));
+//        func.set_entry_point_ref(vx);
+//        let uuf = func.uuid().clone();
+//
+//        let new = prog.insert(func);
+//
+//        assert_eq!(new, vec![]);
+//
+//        if let Some(&CallTarget::Concrete(ref f)) = prog.call_graph.vertex_label(tvx) {
+//            assert_eq!(f.uuid(), &uuf);
+//        } else {
+//            unreachable!();
+//        }
+//        assert!(prog.call_graph.vertex_label(vx0).is_some());
+//        assert!(prog.call_graph.vertex_label(vx1).is_some());
+//        assert_eq!(prog.call_graph.edge(tvx, vx0), e1);
+//        assert_eq!(prog.call_graph.edge(vx1, tvx), e2);
+//        assert_eq!(prog.call_graph.num_edges(), 2);
+//        assert_eq!(prog.call_graph.num_vertices(), 3);
+//    }
+//
+//    #[test]
+//    fn insert_ignores_new_todo() {
+//        let uu1 = Uuid::new_v4();
+//        let uu2 = Uuid::new_v4();
+//        let mut prog = Program::new("prog_test");
+//
+//        let tvx = prog.call_graph.add_vertex(CallTarget::Todo(Rvalue::new_u64(12), None, uu1));
+//
+//        let mut func = Function::undefined(0, Some(uu2.clone()), &Region::undefined("ram".to_owned(), 100), Some("test3".to_owned()));
+//        let ops1 = vec![];
+//        let i1 = vec![
+//            Statement {
+//                op: Operation::Call(Rvalue::new_u64(12)),
+//                assignee: Lvalue::Undefined,
+//            },
+//        ];
+//        let mne1 = MnemonicRaw::new(
+//            0..10,
+//            "call".to_string(),
+//            "12".to_string(),
+//            ops1.iter(),
+//            i1.iter(),
+//        )
+//                .ok()
+//                .unwrap();
+//        let bb0 = BasicBlock::from_vec(vec![mne1]);
+//        let vx = func.cfg_mut().add_vertex(ControlFlowTarget::Resolved(bb0));
+//        func.set_entry_point_ref(vx);
+//        let uuf = func.uuid().clone();
+//
+//        let new = prog.insert(func);
+//
+//        assert_eq!(new, vec![]);
+//
+//        if let Some(&CallTarget::Concrete(ref f)) = prog.call_graph.vertex_label(tvx) {
+//            assert_eq!(f.uuid(), &uuf);
+//        }
+//        assert!(prog.call_graph.vertex_label(tvx).is_some());
+//        assert_eq!(prog.call_graph.num_edges(), 1);
+//        assert_eq!(prog.call_graph.num_vertices(), 2);
+//    }
 }

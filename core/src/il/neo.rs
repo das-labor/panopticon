@@ -5,7 +5,7 @@ use smallvec::SmallVec;
 use il::{Value,Variable,Endianness};
 use Statement as RREILStatement;
 use Operation as RREILOperation;
-use {Lvalue, Str};
+use {Lvalue, Str, LoadStatement};
 
 /// A RREIL operation.
 #[derive(Clone,PartialEq,Eq,Debug)]
@@ -218,20 +218,30 @@ pub enum Statement {
     }
 }
 
+impl LoadStatement for Statement {
+    fn is_load(&self) -> bool {
+        use self::Statement::*;
+        use self::Operation::*;
+        match self {
+            &Expression { op: Load(_,_,_, _), ..} => true,
+            _ => false
+        }
+    }
+
+    fn value(&self) -> Option<Value> {
+        use self::Statement::*;
+        use self::Operation::*;
+        match self {
+            &Expression { op: Load(_,_,_, ref value), ..} => Some(value.clone()),
+            _ => None,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use quickcheck::{Arbitrary,Gen};
-
-    impl Arbitrary for Endianness {
-        fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            match g.gen_range(0, 1) {
-                0 => Endianness::Little,
-                1 => Endianness::Big,
-                _ => unreachable!(),
-            }
-        }
-    }
 
     impl Arbitrary for Operation<Value> {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {

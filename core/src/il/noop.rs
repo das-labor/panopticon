@@ -1,7 +1,7 @@
 use std::ops::Range;
 
 use Result;
-use il::{Language, Statement, StatementIterator};
+use il::{Language, CallIterator, Statement, StatementIterator, LoadStatement};
 
 #[derive(Clone)]
 pub struct NoopStatement(());
@@ -37,3 +37,13 @@ impl<'a> StatementIterator<NoopStatement> for &'a Noop {
         [].iter().cloned()
     }
 }
+
+impl<'a> CallIterator for &'a Noop {
+    type Iter = ::std::iter::Cloned<::std::slice::Iter<'a, u64>>;
+
+    fn iter_calls(self) -> Self::Iter {
+        [].iter().cloned()
+    }
+}
+
+impl LoadStatement for NoopStatement {}

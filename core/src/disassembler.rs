@@ -911,7 +911,7 @@ impl Architecture for TestArch {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use {Bound, Guard, OpaqueLayer, Region, Result, Rvalue};
+    use {Bound, Guard, Region, Result, Rvalue};
     use std::sync::Arc;
 
     #[derive(Clone,Debug)]
@@ -957,10 +957,10 @@ mod tests {
 
         main.to_dot();
         sub.to_dot();
-        let src = OpaqueLayer::wrap(vec![3, 1, 3, 2, 2]);
+        let mut src = vec![3, 1, 3, 2, 2];
 
         {
-            let maybe_res = main.next_match(&mut src.iter(), 0, ());
+            let maybe_res = main.next_match(&mut (src.iter()), 0, ());
 
             assert!(maybe_res.is_some());
             let res = maybe_res.unwrap();
@@ -975,7 +975,7 @@ mod tests {
         }
 
         {
-            let maybe_res = main.next_match(&mut src.iter().seek(2), 2, ());
+            let maybe_res = main.next_match(&mut (src[2..].iter()), 2, ());
 
             assert!(maybe_res.is_some());
             let res = maybe_res.unwrap();
@@ -1004,7 +1004,7 @@ mod tests {
         );
     }
 
-    fn fixture() -> (Arc<Disassembler<TestArchShort>>, Arc<Disassembler<TestArchShort>>, Arc<Disassembler<TestArchShort>>, OpaqueLayer) {
+    fn fixture() -> (Arc<Disassembler<TestArchShort>>, Arc<Disassembler<TestArchShort>>, Arc<Disassembler<TestArchShort>>, Vec<u8>) {
         let sub = new_disassembler!(TestArchShort =>
             [ 2 ] = |st: &mut State<TestArchShort>| {
                 let next = st.address;
@@ -1037,12 +1037,12 @@ mod tests {
             }
 		);
 
-        (sub, sub2, main, OpaqueLayer::wrap(vec![1, 1, 2, 1, 0b10111, 8, 1, 8]))
+        (sub, sub2, main, vec![1, 1, 2, 1, 0b10111, 8, 1, 8])
     }
 
     #[test]
     fn single_decoder() {
-        let (_, _, main, def) = fixture();
+        let (_, _, main, mut def) = fixture();
         let maybe_res = main.next_match(&mut def.iter(), 0, ());
 
         assert!(maybe_res.is_some());
@@ -1067,8 +1067,9 @@ mod tests {
 
     #[test]
     fn sub_decoder() {
-        let (_, _, main, def) = fixture();
-        let maybe_res = main.next_match(&mut def.iter().cut(&(1..def.len())), 1, ());
+        let (_, _, main, mut def) = fixture();
+        let def_len = def.len();
+        let maybe_res = main.next_match(&mut (def[1..def_len].iter()), 1, ());
 
         assert!(maybe_res.is_some());
         let res = maybe_res.unwrap();
@@ -1093,16 +1094,18 @@ mod tests {
 
     #[test]
     fn semantic_false() {
-        let (_, sub2, _, def) = fixture();
-        let maybe_res = sub2.next_match(&mut def.iter().cut(&(7..def.len())), 7, ());
+        let (_, sub2, _, mut def) = fixture();
+        let def_len = def.len();
+        let maybe_res = sub2.next_match(&mut (def[7..def_len].iter()), 7, ());
 
         assert!(maybe_res.is_none());
     }
 
     #[test]
     fn default_pattern() {
-        let (_, _, main, def) = fixture();
-        let maybe_res = main.next_match(&mut def.iter().cut(&(7..def.len())), 7, ());
+        let (_, _, main, mut def) = fixture();
+        let def_len = def.len();
+        let maybe_res = main.next_match(&mut (def[7..def_len].iter()), 7, ());
 
         assert!(maybe_res.is_some());
         let res = maybe_res.unwrap();
@@ -1126,8 +1129,8 @@ mod tests {
 
     #[test]
     fn slice() {
-        let (_, _, main, def) = fixture();
-        let maybe_res = main.next_match(&mut def.iter().cut(&(1..2)), 1, ());
+        let (_, _, main, mut def) = fixture();
+        let maybe_res = main.next_match(&mut (def[1..2].iter()), 1, ());
 
         assert!(maybe_res.is_some());
         let res = maybe_res.unwrap();
@@ -1151,16 +1154,17 @@ mod tests {
 
     #[test]
     fn empty() {
-        let (_, _, main, def) = fixture();
-        let maybe_res = main.next_match(&mut def.iter().cut(&(0..0)), 0, ());
+        let (_, _, main, mut def) = fixture();
+        let maybe_res = main.next_match(&mut (def[0..0].iter()), 0, ());
 
         assert!(maybe_res.is_none());
     }
 
     #[test]
     fn capture_group() {
-        let (_, _, main, def) = fixture();
-        let maybe_res = main.next_match(&mut def.iter().cut(&(4..def.len())), 4, ());
+        let (_, _, main, mut def) = fixture();
+        let def_len = def.len();
+        let maybe_res = main.next_match(&mut (def[4..def_len].iter()), 4, ());
 
         assert!(maybe_res.is_some());
         let res = maybe_res.unwrap();
@@ -1185,14 +1189,14 @@ mod tests {
 
     #[test]
     fn empty_capture_group() {
-        let def = OpaqueLayer::wrap(vec![127]);
+        let mut def = vec![127];
         let dec = new_disassembler!(TestArchShort =>
             ["01 a@.. 1 b@ c@..."] = |st: &mut State<TestArchShort>| {
                 st.mnemonic(1, "1","",vec!(),&|_| { Ok(vec![]) }).unwrap();
                 true
             }
         );
-        let maybe_res = dec.next_match(&mut def.iter(), 0, ());
+        let maybe_res = dec.next_match(&mut (def.iter()), 0, ());
 
         assert!(maybe_res.is_some());
         let res = maybe_res.unwrap();
@@ -1240,7 +1244,7 @@ mod tests {
 
     #[test]
     fn wide_token() {
-        let def = OpaqueLayer::wrap(vec![0x11, 0x22, 0x33, 0x44, 0x55, 0x44]);
+        let mut def = vec![0x11, 0x22, 0x33, 0x44, 0x55, 0x44];
         let dec = new_disassembler!(TestArchWide =>
             [0x2211] = |s: &mut State<TestArchWide>|
             {
@@ -1266,7 +1270,7 @@ mod tests {
             }
         );
 
-        let maybe_res = dec.next_match(&mut def.iter(), 0, ());
+        let maybe_res = dec.next_match(&mut (def.iter()), 0, ());
 
         assert!(maybe_res.is_some());
         let res = maybe_res.unwrap();
@@ -1283,7 +1287,7 @@ mod tests {
 
     #[test]
     fn optional() {
-        let def = OpaqueLayer::wrap(vec![127, 126, 125, 127, 125]);
+        let mut def = vec![127, 126, 125, 127, 125];
         let dec = new_disassembler!(TestArchShort =>
             [127, opt!(126), 125] = |st: &mut State<TestArchShort>|
             {
@@ -1296,7 +1300,7 @@ mod tests {
         dec.to_dot();
 
         {
-            let maybe_res = dec.next_match(&mut def.iter(), 0, ());
+            let maybe_res = dec.next_match(&mut (def.iter()), 0, ());
 
             assert!(maybe_res.is_some());
             let res = maybe_res.unwrap();
@@ -1312,7 +1316,7 @@ mod tests {
         }
 
         {
-            let maybe_res = dec.next_match(&mut def.iter().cut(&(3..5)), 3, ());
+            let maybe_res = dec.next_match(&mut (def[3..5].iter()), 3, ());
 
             assert!(maybe_res.is_some());
             let res = maybe_res.unwrap();
@@ -1330,7 +1334,7 @@ mod tests {
 
     #[test]
     fn optional_group() {
-        let def = OpaqueLayer::wrap(vec![127, 126]);
+        let mut def = vec![127, 126];
         let dec = new_disassembler!(TestArchShort =>
             [opt!("011 a@. 1111"), "0111111 b@.", "011 c@. 1110"] = |st: &mut State<TestArchShort>|
             {
@@ -1344,7 +1348,7 @@ mod tests {
         );
 
         {
-            let maybe_res = dec.next_match(&mut def.iter(), 0, ());
+            let maybe_res = dec.next_match(&mut (def.iter()), 0, ());
 
             assert!(maybe_res.is_some());
             let res = maybe_res.unwrap();
@@ -1362,7 +1366,7 @@ mod tests {
 
     #[test]
     fn fixed_capture_group_contents() {
-        let def = OpaqueLayer::wrap(vec![127, 255]);
+        let mut def = vec![127, 255];
         let dec = new_disassembler!(TestArchShort =>
             [ "01111111", "a@11111111" ] = |st: &mut State<TestArchShort>|
             {
@@ -1372,7 +1376,7 @@ mod tests {
             }
         );
 
-        let maybe_res = dec.next_match(&mut def.iter(), 0, ());
+        let maybe_res = dec.next_match(&mut (def.iter()), 0, ());
 
         assert!(maybe_res.is_some());
         let res = maybe_res.unwrap();
@@ -1390,10 +1394,10 @@ mod tests {
 
     #[test]
     fn test_arch() {
-        use neo::Function;
+        use {Function, Bitcode};
 
-        let data = OpaqueLayer::wrap(b"Mi1MiiAiiiAi1iAii1Ai11CiiiCi1iCii1Ci11Bi0R".to_vec());
-        let reg = Region::new("".to_string(), data);
-        let _ = Function::new::<TestArch>((), 0, &reg, None).unwrap();
+        let data = b"Mi1MiiAiiiAi1iAii1Ai11CiiiCi1iCii1Ci11Bi0R".to_vec();
+        let reg = Region::with("".to_string(), data);
+        let _: Function<Bitcode> = Function::new::<TestArch>((), 0, &reg, None).unwrap();
     }
 }

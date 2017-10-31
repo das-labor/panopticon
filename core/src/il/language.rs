@@ -1,6 +1,8 @@
 use std::ops::Range;
+use std::iter::Cloned;
+use std::slice::Iter;
 
-use Result;
+use {Result, Value};
 use il::rreil::Statement;
 
 /// A sequence of statements in an Intermediate Language. Implement this for your new IL
@@ -50,10 +52,26 @@ pub trait StatementIterator<Item> {
 }
 
 impl<'a, S: Clone + From<Statement>> StatementIterator<S> for &'a Vec<S> {
-    type IntoIter = ::std::iter::Cloned<::std::slice::Iter<'a, S>>;
+    type IntoIter = Cloned<Iter<'a, S>>;
 
     fn iter_statements(self, range: Range<usize>) -> Self::IntoIter {
         let i = self[range].iter().cloned();
         i
+    }
+}
+
+pub trait CallIterator {
+    type Iter: Iterator<Item = u64>;
+    fn iter_calls(self) -> Self::Iter;
+}
+
+/// A shim trait to allow accessing statements that Load at an address, generically, before proper
+/// IL trait is introduced
+pub trait LoadStatement {
+    fn is_load(&self) -> bool {
+        false
+    }
+    fn value(&self) -> Option<Value> {
+        None
     }
 }

@@ -20,7 +20,7 @@ extern crate atty;
 use panopticon_amd64 as amd64;
 use panopticon_analysis::analyze;
 use panopticon_avr as avr;
-use panopticon_core::{Machine, Bitcode, RREIL, Function, FunctionKind, Language, Program, Result, loader, il};
+use panopticon_core::{LoadStatement,StatementIterator, CallIterator, Machine, Bitcode, RREIL, Function, FunctionKind, Language, Program, Result, loader, il};
 use panopticon_core::il::noop::{Noop, NoopStatement};
 use panopticon_data_flow::{DataFlow};
 
@@ -33,7 +33,7 @@ use termcolor::Color::*;
 
 #[macro_use]
 mod display;
-use display::{PrintableStatements, PrintableFunction, PrintableIL};
+use display::{PrintableStatements, PrintableFunction};
 
 mod errors {
     error_chain! {
@@ -48,8 +48,6 @@ mod errors {
 struct Args {
     #[structopt(long = "noop", help = "Nope")]
     noop: bool,
-    #[structopt(long = "old", help = "Use the old, deprecated format")]
-    old: bool,
     #[structopt(long = "neo", help = "Use the new bincode")]
     neo: bool,
     #[structopt(long = "reverse-deps", help = "Print every function that calls the function in -f")]
@@ -175,7 +173,12 @@ fn print_reverse_deps<IL, W: Write + WriteColor>(mut fmt: W, program: &Program<I
     Ok(())
 }
 
-fn disassemble<IL: Language + Default + Send>(binary: &str) -> Result<Program<IL>> {
+fn disassemble<IL>(binary: &str) -> Result<Program<IL>>
+where
+        IL: Language + Default + Send,
+        IL::Statement: LoadStatement,
+        for<'a> &'a IL: CallIterator + StatementIterator<IL::Statement>,
+{
     let (mut proj, machine) = loader::load(Path::new(&binary))?;
     let program = proj.code.pop().unwrap();
     let reg = proj.region();
@@ -187,9 +190,10 @@ fn disassemble<IL: Language + Default + Send>(binary: &str) -> Result<Program<IL
     }
 }
 
-//fn app_logic<'a, Function: Fun + DataFlow + PrintableFunction + PrintableStatements>(fmt: &mut termcolor::Buffer, program: &mut Program<Function>, args: Args) -> Result<()> {
 fn app_logic<IL: Language>(fmt: &mut termcolor::Buffer, program: &mut Program<IL>, args: Args) -> Result<()>
-    where Function<IL>: DataFlow + PrintableFunction<IL> + PrintableStatements,
+    where
+        Function<IL>: DataFlow + PrintableFunction<IL> + PrintableStatements,
+        for<'a> &'a IL: CallIterator
 {
     let filter = Filter { name: args.function_filter, addr: args.address_filter.map(|addr| u64::from_str_radix(&addr, 16).unwrap()) };
 
@@ -220,15 +224,14 @@ fn app_logic<IL: Language>(fmt: &mut termcolor::Buffer, program: &mut Program<IL
     for function in functions {
         function.pretty_print(fmt, &program)?;
         if args.calls {
-            // FIXME: add collect_call_addresses
-//            let calls = function.collect_call_addresses();
-//            write!(fmt, "Calls (")?;
-//            color!(fmt, Green, calls.len().to_string())?;
-//            writeln!(fmt, "):")?;
-//            for addr in calls {
-//                color_bold!(fmt, Red, format!("{:>8x}", addr))?;
-//                writeln!(fmt, "")?;
-//            }
+            let calls: Vec<u64> = function.iter_calls().collect();
+            write!(fmt, "Calls (")?;
+            color!(fmt, Green, calls.len().to_string())?;
+            writeln!(fmt, "):")?;
+            for addr in calls {
+                color_bold!(fmt, Red, format!("{:>8x}", addr))?;
+                writeln!(fmt, "")?;
+            }
         }
         // move this into pretty_print
         writeln!(fmt, "Aliases: {:?}", function.aliases())?;

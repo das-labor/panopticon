@@ -106,7 +106,6 @@
 //! # }
 //! ```
 
-use Result;
 use quickcheck::{Arbitrary, Gen};
 use serde::{Serialize,Deserialize};
 
@@ -119,11 +118,25 @@ use std::result;
 use std::str::{FromStr, SplitWhitespace};
 use std::u64;
 
-use Endianness;
+use {LoadStatement, CallIterator, Endianness, Result, Value};
 
 /// Standard Panopticon RREIL is used by the disassembler to lift machine code; it can also act as an
 /// IL
 pub type RREIL = Vec<Statement>;
+
+impl<'a> CallIterator for &'a RREIL {
+    type Iter = Box<Iterator<Item = u64> + 'a>;
+
+    fn iter_calls(self) -> Self::Iter {
+        use Operation::*;
+        Box::new(self.iter().filter_map(move |statement| {
+            match statement {
+                &Statement { op: Call(Rvalue::Constant { value, ..}), .. } => Some(value),
+                _ => None
+            }
+        }))
+    }
+}
 
 /// A readable RREIL value.
 #[derive(Clone,PartialEq,Eq,Debug,Serialize,Deserialize,Hash,PartialOrd,Ord)]
@@ -478,6 +491,24 @@ pub struct Statement {
     pub assignee: Lvalue,
     /// Operation and its arguments
     pub op: Operation<Rvalue>,
+}
+
+impl LoadStatement for Statement {
+    fn is_load(&self) -> bool {
+        use self::Operation::*;
+        match self {
+            &Statement { op: Load(_,_,_, _), ..} => true,
+            _ => false
+        }
+    }
+
+    fn value(&self) -> Option<Value> {
+        use self::Operation::*;
+        match self {
+            &Statement { op: Load(_,_,_, ref value), ..} => Some(value.clone().into()),
+            _ => None,
+        }
+    }
 }
 
 impl Statement {
@@ -1334,16 +1365,6 @@ impl Arbitrary for Operation<Rvalue> {
         }
 
         op
-    }
-}
-
-impl Arbitrary for Endianness {
-    fn arbitrary<G: Gen>(g: &mut G) -> Self {
-        match g.gen_range(0, 1) {
-            0 => Endianness::Little,
-            1 => Endianness::Big,
-            _ => unreachable!(),
-        }
     }
 }
 

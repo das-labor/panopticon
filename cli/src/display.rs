@@ -3,7 +3,7 @@ use termcolor::WriteColor;
 use termcolor::Color::*;
 use std::ops::Range;
 
-use panopticon_core::{il, Language, Function, BasicBlock, MnemonicRaw, MnemonicFormatToken, Operation,
+use panopticon_core::{il, Language, Function, BasicBlock, MnemonicFormatToken, Operation,
                       Program, Rvalue, Result, Statement, StatementIterator,
                       Mnemonic,
                       Value, Constant};
@@ -115,21 +115,6 @@ pub trait PrintableMnemonic {
     fn area(&self) -> Range<u64>;
 }
 
-impl<'a> PrintableMnemonic for &'a MnemonicRaw {
-    fn opcode(&self) -> &str {
-        self.opcode.as_str()
-    }
-    fn operands(&self) -> Vec<Rvalue> {
-        self.operands.clone()
-    }
-    fn format_tokens(&self) -> &[MnemonicFormatToken] {
-        &self.format_string
-    }
-    fn area(&self) -> Range<u64> {
-        self.area.start..self.area.end
-    }
-}
-
 pub trait PrintableBlock<M: PrintableMnemonic> {
     type Iter: Iterator<Item = M>;
     fn mnemonics(&self) -> Self::Iter;
@@ -162,21 +147,6 @@ impl<'a> PrintableMnemonic for &'a Mnemonic {
         self.area.start..self.area.end
     }
 }
-
-///// Prints a sorted-by-start list of the RREIL implementing each mnemonic in a basic block, as well as phi functions and init code
-// pub fn print_il<IL: PrintableIL, M: PrintableMnemonic, B: PrintableBlock<M>, W: Write + WriteColor>(fmt: &mut W, bbs: &[&B]) -> Result<()> {
-//     color_bold!(fmt, White, "RREIL")?;
-//     writeln!(fmt, ":")?;
-//     for bb in bbs {
-//         for mnemonic in bb.mnemonics() {
-//             print_address_and_mnemonic(fmt, mnemonic)?;
-//             for statement in mnemonic.instructions() {
-//                 statement.pretty_print(fmt)?;
-//             }
-//         }
-//     }
-//     Ok(())
-// }
 
 /// Prints an address and its corresponding mnemonic at that address
 pub fn print_address_and_mnemonic<IL, M: PrintableMnemonic, W: Write + WriteColor>(fmt: &mut W, mnemonic: &M) -> Result<()> {
@@ -536,15 +506,14 @@ pub fn print_mnemonic<IL, M: PrintableMnemonic, W: Write + WriteColor>(fmt: &mut
                             } else { c };
                         if is_code {
                             if let Some(program) = program {
-                                //FIXME: renable after old function + Fun trait is removed
-//                                if let Some(function) = program.find_function_by(|f| { f.start() == val }) {
-//                                    color!(fmt, Red, format!("{:x}",val))?;
-//                                    write!(fmt, " <", )?;
-//                                    color_bold!(fmt, Yellow, function.name())?;
-//                                    write!(fmt, ">")?;
-//                                } else {
-//                                    color_bold!(fmt, Magenta, format!("{:x}",val))?;
-//                                }
+                                if let Some(function) = program.find_function_by(|f| { f.entry_address() == val }) {
+                                    color!(fmt, Red, format!("{:x}",val))?;
+                                    write!(fmt, " <", )?;
+                                    color_bold!(fmt, Yellow, function.name())?;
+                                    write!(fmt, ">")?;
+                                } else {
+                                    color_bold!(fmt, Magenta, format!("{:x}",val))?;
+                                }
                             } else {
                                 write!(fmt, "{}", format!("{:#x}",val))?;
                             }
@@ -679,7 +648,7 @@ impl PrintableIL for il::neo::Statement {
                     }
                 }
             },
-            &Call { ref function } => {
+            &Call { function: _ } => {
                 color_bold!(fmt, Blue, "call")?;
                 //                color_bold!(fmt, White, "call")?;
 //                write!(fmt, " ")?;

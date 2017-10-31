@@ -4,9 +4,9 @@ use leb128;
 use uuid::Uuid;
 use {Str, Result, Constant, Variable, Value, Endianness};
 use il::neo::{Statement, CallTarget, Operation};
-use il::{Language, StatementIterator};
+use il::{Language, StatementIterator, CallIterator};
 
-#[derive(Clone,Debug)]
+#[derive(Clone,Debug,Serialize,Deserialize)]
 pub struct Bitcode {
     data: Vec<u8>,
     strings: Vec<Str>,
@@ -33,6 +33,19 @@ impl<'a> StatementIterator<Statement> for &'a Bitcode {
 
     fn iter_statements(self, range: Range<usize>) -> Self::IntoIter {
         self.iter_range(range)
+    }
+}
+
+impl<'a> CallIterator for &'a Bitcode {
+    type Iter = Box<Iterator<Item = u64> + 'a>;
+
+    fn iter_calls(self) -> Self::Iter {
+        Box::new(self.iter().filter_map(|statement| {
+            match statement {
+                Statement::IndirectCall { target: Value::Constant( Constant { value, ..})} => Some(value),
+                _ => None
+            }
+        }))
     }
 }
 

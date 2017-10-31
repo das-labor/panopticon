@@ -21,7 +21,7 @@
 //! Projects are a set of `Program`s, associated memory `Region`s and comments.
 
 
-use {CallGraphRef, Function, Program, Region, Result, World};
+use {CallGraphRef, Bitcode, Function, Program, Region, Result, World};
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use flate2::Compression;
 use flate2::read::ZlibDecoder;
@@ -38,7 +38,7 @@ use uuid::Uuid;
 
 /// Complete Panopticon session
 #[derive(Serialize,Deserialize,Debug)]
-pub struct Project<IL> {
+pub struct Project<IL = Bitcode> {
     /// Human-readable name
     pub name: String,
     /// Recognized code
@@ -173,11 +173,12 @@ impl<IL> Project<IL> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use Bitcode;
     use region::Region;
 
     #[test]
     fn new() {
-        let p = Project::new(
+        let p: Project<Bitcode> = Project::new(
             "test".to_string(),
             Region::undefined("base".to_string(), 128),
         );
