@@ -1,4 +1,5 @@
 use bencher::Bencher;
+use env_logger;
 use panopticon_amd64 as amd64;
 use panopticon_data_flow::DataFlow;
 use panopticon_data_flow::neo::rewrite_to_ssa;
@@ -7,6 +8,7 @@ fn ssa_convertion_new(b: &mut Bencher) {
     use panopticon_core::{loader,neo,CallTarget,Rvalue};
     use std::path::Path;
 
+    let _ = env_logger::init();
     let (proj,_) = loader::load::<neo::Function>(Path::new("../test-data/static")).unwrap();
     let entries = proj.code[0].iter_callgraph().filter_map(|vx| if let &CallTarget::Todo(Rvalue::Constant{ value,.. },_,_) = vx { Some (value) } else { None }).collect::<Vec<_>>();
     let reg = proj.region();

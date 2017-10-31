@@ -73,7 +73,7 @@
 //! input (for example uncompressing parts of the executable image).
 
 #![recursion_limit = "1024"]
-//#![warn(missing_docs)]
+#![warn(missing_docs)]
 
 #[macro_use]
 extern crate log;

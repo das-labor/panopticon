@@ -9,6 +9,7 @@ panopticon-data-flow = { path = "../data-flow" }
 panopticon-amd64 = { path = "../amd64" }
 petgraph = { version = "0.4.10", features = ["serde-1"], git = "https://github.com/m4b/petgraph", branch = "dominance_frontiers" }
 bencher = "0.1.4"
+env_logger = "0.3"
 
 [[bench]]
 name = "panopticon_benchmark"

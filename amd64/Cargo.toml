@@ -5,6 +5,8 @@ authors = ["seu <seu@panopticon.re>"]
 
 [dependencies]
 panopticon-core = { path = "../core" }
+panopticon-data-flow = { path = "../data-flow" }
+panopticon-graph-algos = { path = "../graph-algos" }
 log = "0.3.6"
 byteorder = "1"
 env_logger = "0.3"

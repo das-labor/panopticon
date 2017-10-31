@@ -56,7 +56,7 @@ pub struct Bitcode {
     strings: Strings,
 }
 // const: <len, pow2><leb128 value>
-// var: <name, leb128 str idx>, <subscript, leb128 + 1>, <offset, leb128>, <len, pow2><leb128 value>
+// var: <name, leb128 str idx>, <subscript, leb128 + 1>, <len, value>
 
 //  1\2  c   v   u
 //   c|000 001 010
@@ -90,17 +90,18 @@ pub struct Bitcode {
 // init   10001111 <name, leb128> <size, leb128>
 // sel    100100-- <size, leb128> <start> <a>
 // load   100101e- <region, leb128> <size, leb128> <a>
-// phi2   10011000 <a, var> <b, var>
+// phi2   10011000 <a, var> <b, var> 3 0x0
 // phi3   10011001 <a, var> <b, var> <c, var>
 // call   10011010 <stub, leb128>
 // call   10011011 <uuid, leb128>
 // icall  1001110- <a>
 // ucall  10011110
-//        10011111
+// phi0   10011111 3*3 0x0
 // store  1010e--- <region, leb128> <size, leb128> <addr> <val>
 // ret    10110000
 //        10110001
 // loadu  1011001e <region, leb128> <size, leb128>
+// phi1   10110100 <a> 2*3 0x0
 
 macro_rules! encoding_rule {
     ( $val:tt [ c , c ] => $a:expr, $b:expr, $res:expr, $data:expr, $strtbl:expr ) => {{
@@ -239,6 +240,88 @@ impl Bitcode {
             strings: Strings::with_capacity(strs),
             data: Vec::with_capacity(bytes),
         }
+    }
+
+    pub fn rewrite<F: FnMut(&mut Statement<Value>) -> Result<()> + Sized>(&mut self, range: Range<usize>, mut func: F) -> Result<Range<usize>> {
+        debug!("rewrite bitcode in {:?}",range);
+        let mut read_pos = range.start;
+        let mut range_pos = range.start;
+        let mut write_pos = range.start;
+        let mut tmp = Vec::with_capacity(10);
+
+        while range_pos < range.end {
+            let mut stmt = {
+                debug!("read from {:?}",read_pos);
+                let mut read = Cursor::new(&self.data[read_pos..]);
+                let stmt = self.decode_statement(&mut read)?;
+
+                read_pos += read.position() as usize;
+                range_pos += read.position() as usize;
+                debug!("read to {:?}",read_pos);
+                stmt
+            };
+
+            debug!("map {:?}",stmt);
+            func(&mut stmt)?;
+            debug!("  to {:?}",stmt);
+
+            {
+                let mut write = Cursor::new(tmp);
+
+                Self::encode_statement(stmt, &mut write, &mut self.strings)?;
+                tmp = write.into_inner();
+
+                if read_pos - write_pos < tmp.len() {
+                    let diff = tmp.len() - (read_pos - write_pos);
+                    debug!("make space for {} more bytes",diff);
+
+                    self.data.reserve(diff);
+                    // XXX
+                    for _ in 0..diff { self.data.insert(write_pos,42); }
+                    read_pos += diff;
+                }
+            }
+
+            //debug!("data: {:?}",self.data);
+            debug!("write {:?} at {}",tmp,write_pos);
+
+            {
+                let mut write = Cursor::new(&mut self.data[write_pos..]);
+                write_pos += write.write(&tmp)?;
+                tmp.clear();
+            }
+
+            //debug!("data: {:?}",self.data);
+        }
+
+        if read_pos > write_pos {
+            debug!("remove {:?}",write_pos..read_pos);
+            self.data.drain(write_pos..read_pos);
+        }
+
+        Ok(range.start..write_pos)
+    }
+
+    pub fn remove(&mut self, range: Range<usize>) {
+        self.data.drain(range);
+    }
+
+    pub fn insert(&mut self, pos: usize, stmts: Vec<Statement<Value>>) -> Result<Range<usize>> {
+        let data = Vec::with_capacity(stmts.len() * 10);
+        let mut cur = Cursor::new(data);
+
+        for stmt in stmts {
+            Self::encode_statement(stmt, &mut cur, &mut self.strings)?;
+        }
+
+        let buf = cur.into_inner();
+        let len = buf.len();
+
+        for b in buf.into_iter().rev() {
+            self.data.insert(pos,b);
+        }
+            //        self.data.splice(pos..pos,buf.into_iter());
+        Ok(pos..(pos + len))
     }
 
     fn encode_statement<W: Write>(stmt: Statement<Value>, data: &mut W, strtbl: &mut Strings) -> Result<()> {
@@ -601,6 +684,7 @@ impl Bitcode {
                 Self::encode_variable(a,data,strtbl)?;
                 Self::encode_variable(b,data,strtbl)?;
                 Self::encode_variable(result,data,strtbl)?;
+                data.write(&[0,0,0])?;
             }
 
             // Phi3: 0b10011001 <a> <b> <c>
@@ -610,10 +694,6 @@ impl Bitcode {
                 Self::encode_variable(b,data,strtbl)?;
                 Self::encode_variable(c,data,strtbl)?;
                 Self::encode_variable(result,data,strtbl)?;
-            }
-
-            Statement::Expression{ op: Phi(_,_,_),.. } => {
-                return Err(format!("Internal error: invalid Phi expression {:?}",stmt).into());
             }
 
             // Call: 0b10011010 <stub, leb128>
@@ -641,6 +721,13 @@ impl Bitcode {
             // IndirectCall Undefined: 0b10011110
             Statement::IndirectCall{ target: Undefined } => {
                 data.write(&[0b10011110])?;
+            }
+
+            // Phi0: 0b10011111
+            Statement::Expression{ op: Phi(Undefined,Undefined,Undefined), result } => {
+                data.write(&[0b10011111])?;
+                Self::encode_variable(result,data,strtbl)?;
+                data.write(&[0,0,0,0,0,0,0,0,0])?;
             }
 
             // Store: 0b1010e--- <region, leb128> <size, leb128> <addr> <val>
@@ -709,6 +796,18 @@ impl Bitcode {
                 leb128::write::unsigned(data,Self::encode_str(region,strtbl))?;
                 leb128::write::unsigned(data,bytes as u64)?;
                 Self::encode_variable(result,data,strtbl)?;
+            }
+
+            // Phi1: 0b10110100 <a>
+            Statement::Expression{ op: Phi(Variable(a),Undefined,Undefined), result } => {
+                data.write(&[0b10110100])?;
+                Self::encode_variable(a,data,strtbl)?;
+                Self::encode_variable(result,data,strtbl)?;
+                data.write(&[0,0,0,0,0,0])?;
+            }
+
+            Statement::Expression{ op: Phi(_,_,_),.. } => {
+                return Err(format!("Internal error: invalid Phi expression {:?}",stmt).into());
             }
         }
 
@@ -965,7 +1064,7 @@ impl Bitcode {
                 Ok(stmt)
             }
 
-            // phi2  1001 1000 <a, var> <b, var>
+            // phi2  1001 1000 <a, var> <b, var> 0x000000
             0b1001_1000 => {
                 let a = Value::Variable(self.decode_variable(data)?);
                 let b = Value::Variable(self.decode_variable(data)?);
@@ -975,6 +1074,7 @@ impl Bitcode {
                     result: res
                 };
 
+                data.read(&mut [0;3])?;
                 Ok(stmt)
             }
 
@@ -1028,6 +1128,18 @@ impl Bitcode {
                 Ok(stmt)
             }
 
+            // phi0  1001 1111
+            0b1001_1111 => {
+                let res = self.decode_variable(data)?;
+                let stmt = Statement::Expression{
+                    op: Operation::Phi(Value::undef(),Value::undef(),Value::undef()),
+                    result: res
+                };
+
+                data.read(&mut [0;9])?;
+                Ok(stmt)
+            }
+
             // store 1010 e--- <region, leb128> <size, leb128> <addr> <val>
             0b1010_0000...0b1010_1111 => {
                 let reg = leb128::read::unsigned(data)? as usize;
@@ -1071,6 +1183,19 @@ impl Bitcode {
                     result: res
                 };
 
+                Ok(stmt)
+            }
+
+            // phi1: 0b10110100 <a>
+            0b10110100 => {
+                let a = Value::Variable(self.decode_variable(data)?);
+                let res = self.decode_variable(data)?;
+                let stmt = Statement::Expression{
+                    op: Operation::Phi(a,Value::undef(),Value::undef()),
+                    result: res
+                };
+
+                data.read(&mut [0;6])?;
                 Ok(stmt)
             }
 
@@ -1201,6 +1326,238 @@ mod tests {
                     debug!("err: {}",s);
                     false
                 }
+            }
+        }
+    }
+
+    #[test]
+    fn rewrite_equal_size() {
+        use neo::Operation::Add;
+        let s1 = Statement::Expression{
+            op: Add(Value::val(42,32).unwrap(),Value::var("i",32,None).unwrap()),
+            result: Variable::new("i",32,None).unwrap()
+        };
+        let s2 = Statement::Expression{
+            op: Add(Value::val(42,32).unwrap(),Value::var("i",32,None).unwrap()),
+            result: Variable::new("i",32,None).unwrap()
+        };
+        let s3 = Statement::Expression{
+            op: Add(Value::val(42,32).unwrap(),Value::var("i",32,None).unwrap()),
+            result: Variable::new("i",32,None).unwrap()
+        };
+        let mut bitcode = Bitcode::default();
+
+        let _ = bitcode.append(vec![s1]).unwrap();
+        let rgn = bitcode.append(vec![s2]).unwrap();
+        let _ = bitcode.append(vec![s3]).unwrap();
+
+        let new_rgn = bitcode.rewrite(rgn.clone(), |stmt| {
+            match stmt {
+                &mut Statement::Expression{ op: Add(Value::Constant(ref mut a),Value::Variable(ref mut b)), ref mut result } => {
+                    *a = Constant::new(43,32).unwrap();
+                    *b = Variable::new("i",32,Some(1)).unwrap();
+                    *result = Variable::new("i",32,Some(2)).unwrap();
+                }
+                _ => { unreachable!() }
+            }
+
+            Ok(())
+        }).unwrap();
+
+        assert_eq!(rgn, new_rgn);
+        for (idx,stmt) in bitcode.iter().enumerate() {
+            match stmt {
+                Statement::Expression{ op: Add(Value::Constant(a),Value::Variable(b)), result } => {
+                    if idx == 0 || idx == 2 {
+                        assert_eq!(a, Constant::new(42,32).unwrap());
+                        assert_eq!(b, Variable::new("i",32,None).unwrap());
+                        assert_eq!(result, Variable::new("i",32,None).unwrap());
+                    } else if idx == 1 {
+                        assert_eq!(a, Constant::new(43,32).unwrap());
+                        assert_eq!(b, Variable::new("i",32,Some(1)).unwrap());
+                        assert_eq!(result, Variable::new("i",32,Some(2)).unwrap());
+                    } else {
+                        unreachable!()
+                    }
+                }
+                _ => { unreachable!() }
+            }
+        }
+    }
+
+    #[test]
+    fn rewrite_smaller_size() {
+        use neo::Operation::Add;
+        let s1 = Statement::Expression{
+            op: Add(Value::val(42,32).unwrap(),Value::var("i",32,None).unwrap()),
+            result: Variable::new("i",32,None).unwrap()
+        };
+        let s2 = Statement::Expression{
+            op: Add(Value::val(42,32).unwrap(),Value::var("i",32,None).unwrap()),
+            result: Variable::new("i",32,None).unwrap()
+        };
+        let s3 = Statement::Expression{
+            op: Add(Value::val(42,32).unwrap(),Value::var("i",32,None).unwrap()),
+            result: Variable::new("i",32,None).unwrap()
+        };
+        let mut bitcode = Bitcode::default();
+
+        let _ = bitcode.append(vec![s1]).unwrap();
+        let rgn = bitcode.append(vec![s2]).unwrap();
+        let _ = bitcode.append(vec![s3]).unwrap();
+
+        let new_rgn = bitcode.rewrite(rgn.clone(), |stmt| {
+            *stmt = Statement::Return;
+
+            Ok(())
+        }).unwrap();
+
+        assert_eq!(rgn.start, new_rgn.start);
+        assert!(rgn.end > new_rgn.end);
+        for (idx,stmt) in bitcode.iter().enumerate() {
+            match stmt {
+                Statement::Expression{ op: Add(Value::Constant(a),Value::Variable(b)), result } => {
+                    assert_eq!(a, Constant::new(42,32).unwrap());
+                    assert_eq!(b, Variable::new("i",32,None).unwrap());
+                    assert_eq!(result, Variable::new("i",32,None).unwrap());
+                    assert!(idx == 0 || idx == 2);
+                }
+                Statement::Return => {
+                    assert_eq!(idx, 1);
+                }
+                _ => { unreachable!() }
+            }
+        }
+    }
+
+    #[test]
+    fn rewrite_larger_size() {
+        use neo::Operation::Add;
+        let s1 = Statement::Expression{
+            op: Add(Value::val(42,32).unwrap(),Value::var("i",32,None).unwrap()),
+            result: Variable::new("i",32,None).unwrap()
+        };
+        let s2 = Statement::Return;
+        let s3 = Statement::Expression{
+            op: Add(Value::val(42,32).unwrap(),Value::var("i",32,None).unwrap()),
+            result: Variable::new("i",32,None).unwrap()
+        };
+        let mut bitcode = Bitcode::default();
+
+        let _ = bitcode.append(vec![s1]).unwrap();
+        let rgn = bitcode.append(vec![s2]).unwrap();
+        let _ = bitcode.append(vec![s3]).unwrap();
+
+        let new_rgn = bitcode.rewrite(rgn.clone(), |stmt| {
+            *stmt = Statement::Expression{
+                op: Add(Value::val(42,32).unwrap(),Value::var("i",32,None).unwrap()),
+                result: Variable::new("i",32,None).unwrap()
+            };
+
+            Ok(())
+        }).unwrap();
+
+        assert_eq!(rgn.start, new_rgn.start);
+        assert!(rgn.end < new_rgn.end);
+        for (idx,stmt) in bitcode.iter().enumerate() {
+            match stmt {
+                Statement::Expression{ op: Add(Value::Constant(a),Value::Variable(b)), result } => {
+                    assert_eq!(a, Constant::new(42,32).unwrap());
+                    assert_eq!(b, Variable::new("i",32,None).unwrap());
+                    assert_eq!(result, Variable::new("i",32,None).unwrap());
+                }
+                _ => { unreachable!() }
+            }
+        }
+    }
+
+    #[test]
+    fn insert_mid() {
+        use neo::Operation::Add;
+        let s1 = Statement::Expression{
+            op: Add(Value::val(42,32).unwrap(),Value::var("i",32,None).unwrap()),
+            result: Variable::new("i",32,None).unwrap()
+        };
+        let s2 = Statement::Expression{
+            op: Add(Value::val(42,32).unwrap(),Value::var("i",32,None).unwrap()),
+            result: Variable::new("i",32,None).unwrap()
+        };
+        let mut bitcode = Bitcode::default();
+
+        bitcode.append(vec![s1]);
+        let rgn = bitcode.append(vec![s2]).unwrap();
+
+        let new_rgn = bitcode.insert(rgn.start,vec![Statement::Return]).unwrap();
+
+        assert_eq!(rgn.start, new_rgn.start);
+        for (idx,stmt) in bitcode.iter().enumerate() {
+            match stmt {
+                Statement::Expression{ op: Add(Value::Constant(a),Value::Variable(b)), result } => {
+                    assert_eq!(a, Constant::new(42,32).unwrap());
+                    assert_eq!(b, Variable::new("i",32,None).unwrap());
+                    assert_eq!(result, Variable::new("i",32,None).unwrap());
+                    assert!(idx == 0 || idx == 2);
+                }
+                Statement::Return => {
+                    assert_eq!(idx, 1);
+                }
+                _ => { unreachable!() }
+            }
+        }
+    }
+
+    #[test]
+    fn insert_start() {
+        use neo::Operation::Add;
+        let s1 = Statement::Expression{
+            op: Add(Value::val(42,32).unwrap(),Value::var("i",32,None).unwrap()),
+            result: Variable::new("i",32,None).unwrap()
+        };
+        let mut bitcode = Bitcode::default();
+        let rgn = bitcode.append(vec![s1]).unwrap();
+        let new_rgn = bitcode.insert(rgn.start,vec![Statement::Return]).unwrap();
+
+        assert_eq!(rgn.start, new_rgn.start);
+        for (idx,stmt) in bitcode.iter().enumerate() {
+            match stmt {
+                Statement::Expression{ op: Add(Value::Constant(a),Value::Variable(b)), result } => {
+                    assert_eq!(a, Constant::new(42,32).unwrap());
+                    assert_eq!(b, Variable::new("i",32,None).unwrap());
+                    assert_eq!(result, Variable::new("i",32,None).unwrap());
+                    assert_eq!(idx, 1);
+                }
+                Statement::Return => {
+                    assert_eq!(idx, 0);
+                }
+                _ => { unreachable!() }
+            }
+        }
+    }
+
+    #[test]
+    fn insert_end() {
+        use neo::Operation::Add;
+        let s1 = Statement::Expression{
+            op: Add(Value::val(42,32).unwrap(),Value::var("i",32,None).unwrap()),
+            result: Variable::new("i",32,None).unwrap()
+        };
+        let mut bitcode = Bitcode::default();
+        let rgn = bitcode.append(vec![s1]).unwrap();
+        let new_rgn = bitcode.insert(rgn.end,vec![Statement::Return]).unwrap();
+
+        assert_eq!(rgn.end, new_rgn.start);
+        for (idx,stmt) in bitcode.iter().enumerate() {
+            match stmt {
+                Statement::Expression{ op: Add(Value::Constant(a),Value::Variable(b)), result } => {
+                    assert_eq!(a, Constant::new(42,32).unwrap());
+                    assert_eq!(b, Variable::new("i",32,None).unwrap());
+                    assert_eq!(result, Variable::new("i",32,None).unwrap());
+                    assert_eq!(idx, 0);
+                }
+                Statement::Return => {
+                    assert_eq!(idx, 1);
+                }
+                _ => { unreachable!() }
             }
         }
     }
