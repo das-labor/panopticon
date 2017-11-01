@@ -1,15 +1,16 @@
 [package]
-name = "panopticon-analysis"
+name = "panopticon-benchmark"
 version = "0.16.0"
 authors = ["seu <seu@panopticon.re>"]
 
 [dependencies]
-log = "0.3.6"
-futures = "0.1.16"
-rayon = "0.8"
-chashmap = "2.2.0"
-uuid = "0.5"
-parking_lot = "0.4"
 panopticon-core = { path = "../core" }
 panopticon-data-flow = { path = "../data-flow" }
+panopticon-amd64 = { path = "../amd64" }
 panopticon-graph-algos = { path = "../graph-algos" }
+bencher = "0.1.4"
+env_logger = "0.3"
+
+[[bench]]
+name = "panopticon_benchmark"
+harness = false

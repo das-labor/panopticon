@@ -8,7 +8,7 @@ panopticon-core = { path = "../core" }
 panopticon-data-flow = { path = "../data-flow" }
 panopticon-graph-algos = { path = "../graph-algos" }
 log = "0.3.6"
-quickcheck = "0.3"
+quickcheck = "0.4.1"
 env_logger = "0.3"
 serde = "1.0"
 serde_derive = "1.0"

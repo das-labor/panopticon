@@ -18,6 +18,8 @@
 
 extern crate panopticon_core;
 extern crate panopticon_amd64;
+extern crate panopticon_graph_algos;
+extern crate panopticon_data_flow;
 
 extern crate env_logger;
 

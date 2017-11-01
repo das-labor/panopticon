@@ -59,20 +59,18 @@ use std::cmp::max;
 /// Sets the adjust flag AF after an addition. Assumes res := a + ?.
 fn set_adj_flag(res: &Lvalue, a: &Rvalue) -> Result<Vec<Statement>> {
     rreil!{
-        //cmpeq af1:1, (res.extract(4,0).unwrap()), (a.extract(4,0).unwrap());
-        cmpltu AF:1, (res.extract(4,0).unwrap()), (a.extract(4,0).unwrap());
-        and af1:1, af1:1, AF:1;
-        //or AF:1, af1:1, af2:1;
+        mov nibble_res:4, (res);
+        mov nibble_a:4, (a);
+        cmpltu AF:1, nibble_res:4, nibble_a:4;
     }
 }
 
 /// Sets the adjust flag AF after a subtraction. Assumes res := a - ?.
 fn set_sub_adj_flag(res: &Lvalue, a: &Rvalue) -> Result<Vec<Statement>> {
     rreil!{
-        //cmpeq af1:1, (res.extract(4,0).unwrap()), (a.extract(4,0).unwrap());
-        cmpltu AF:1, (a.extract(4,0).unwrap()), (res.extract(4,0).unwrap());
-        //and af1:1, af1:1, AF:1;
-        //or AF:1, af1:1, af2:1;
+        mov nibble_res:4, (res);
+        mov nibble_a:4, (a);
+        cmpltu AF:1, nibble_a:4, nibble_res:4;
     }
 }
 

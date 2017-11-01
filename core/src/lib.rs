@@ -72,7 +72,7 @@
 //! applying functions to `Cell` array where the result is not equal in size to the
 //! input (for example uncompressing parts of the executable image).
 
-#![recursion_limit="100"]
+#![recursion_limit = "1024"]
 #![warn(missing_docs)]
 
 #[macro_use]
@@ -84,17 +84,24 @@ extern crate panopticon_graph_algos;
 extern crate uuid;
 extern crate byteorder;
 extern crate goblin;
+#[cfg(not(test))]
 extern crate quickcheck;
 extern crate serde;
 #[macro_use] extern crate serde_derive;
 extern crate serde_cbor;
+#[macro_use] extern crate error_chain;
+extern crate leb128;
+extern crate petgraph;
+extern crate smallvec;
 
 #[cfg(test)]
 extern crate env_logger;
+#[cfg(test)]
+#[macro_use] extern crate quickcheck;
 
 // core
 pub mod disassembler;
-pub use disassembler::{Architecture, Disassembler, Match, State};
+pub use disassembler::{Architecture, Disassembler, Match, State, TestArch};
 
 #[macro_use]
 pub mod il;
@@ -126,3 +133,5 @@ pub use result::{Error, Result};
 // file formats
 pub mod loader;
 pub use loader::{Machine, load};
+
+pub mod neo;

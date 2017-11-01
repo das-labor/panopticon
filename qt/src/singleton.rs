@@ -70,11 +70,11 @@ pub struct Panopticon {
     pub undo_stack: Vec<Action>,
     pub undo_stack_top: usize,
 
-    pub layout_task: Option<future::BoxFuture<ControlFlowLayout, Error>>,
+    pub layout_task: Option<Box<future::Future<Item=ControlFlowLayout, Error=Error> + Send + 'static>>,
 }
 
 impl Panopticon {
-    pub fn layout_function_async(&mut self, uuid: &Uuid) -> future::BoxFuture<(Vec<NodePosition>, Vec<EdgePosition>), Error> {
+    pub fn layout_function_async(&mut self, uuid: &Uuid) -> Box<future::Future<Item=(Vec<NodePosition>, Vec<EdgePosition>), Error=Error> + Send + 'static> {
         if !self.control_flow_layouts.contains_key(&uuid) {
             let func = self.functions.get(&uuid).unwrap();
             let cmnts = &self.control_flow_comments;
@@ -82,7 +82,7 @@ impl Panopticon {
             let funcs = &self.functions;
             let uuid2 = uuid.clone();
 
-            ControlFlowLayout::new_async(func, cmnts, values, funcs, 8, 3, 8, 26, 17, 150)
+            Box::new(ControlFlowLayout::new_async(func, cmnts, values, funcs, 8, 3, 8, 26, 17, 150)
                 .and_then(
                     move |cfl| {
                         let uuid = uuid2;
@@ -92,14 +92,13 @@ impl Panopticon {
                         PANOPTICON.lock().control_flow_layouts.insert(uuid, cfl);
                         future::ok((nodes, edges))
                     }
-                )
-                .boxed()
+                ))
         } else {
             let cfl = &self.control_flow_layouts.get(uuid).unwrap();
             let nodes = cfl.get_all_nodes();
             let edges = cfl.get_all_edges();
 
-            future::ok((nodes, edges)).boxed()
+            Box::new(future::ok((nodes, edges)))
         }
     }
 

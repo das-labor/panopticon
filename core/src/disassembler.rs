@@ -673,7 +673,7 @@ pub struct OptionalRule<A: Architecture>(pub Rule<A>);
 impl<A: Architecture> AddToRuleGen<A> for OptionalRule<A> {
     fn push(&self, rules: &mut Vec<Vec<Rule<A>>>) {
         let mut copy = rules.clone();
-        for mut c in copy.iter_mut() {
+        for c in copy.iter_mut() {
             c.push(self.0.clone());
         }
 
@@ -683,7 +683,7 @@ impl<A: Architecture> AddToRuleGen<A> for OptionalRule<A> {
 
 impl<A: Architecture, T: Into<Rule<A>> + Clone> AddToRuleGen<A> for T {
     fn push(&self, rules: &mut Vec<Vec<Rule<A>>>) {
-        for mut c in rules.iter_mut() {
+        for c in rules.iter_mut() {
             let s: Self = self.clone();
             c.push(s.into());
         }
@@ -757,6 +757,197 @@ macro_rules! new_disassembler {
             ::std::sync::Arc::<$crate::disassembler::Disassembler<$ty>>::new(dis)
         }
     };
+}
+
+/// ISA used for testing.
+/// Single digits are interpreted as 32 bit constants, lower case letters as 32 bit registers or 1
+/// bit flags depending on the context. First argument is the result. Upper case letters are
+/// opcodes.
+///
+/// # Instructions
+///
+/// 'A' <x> <y> <z>: <x> := <y> + <z>
+/// 'M' <x> <y>: <x> := <y>
+/// 'C' <x> <y> <z>: <x> := <y> == <z> ? 1 : 0 # <x> is a 1 bit flag
+/// 'B' <x> <y>: branch to <y> if flag <y> is 1, fall-thru otherwise
+/// 'J' <x>: jump to
+/// 'R': return
+#[derive(Debug,Clone)]
+pub struct TestArch;
+
+impl Architecture for TestArch {
+    type Token = u8;
+    type Configuration = ();
+
+    fn prepare(_: &Region, _: &()) -> Result<Vec<(&'static str, u64, &'static str)>> {
+        Ok(vec![])
+    }
+
+    fn decode(reg: &Region, mut entry: u64, _: &()) -> Result<Match<Self>> {
+        use {Statement,Operation,Rvalue,Lvalue};
+        use std::iter;
+
+        fn read_rvalue(reg: &Region, entry: &mut u64, len: usize) -> Result<Rvalue> {
+            let b = reg.iter().seek(*entry).next();
+
+            match b {
+                Some(Some(b)) => match b {
+                    b'a'...b'z' => {
+                        *entry += 1;
+                        Ok(Rvalue::Variable{ name: format!("{}",char::from(b)).into(), size: len, offset: 0, subscript: None })
+                    }
+                    b'0'...b'9' => {
+                        *entry += 1;
+                        Ok(Rvalue::Constant{ value: (b - b'0') as u64, size: len })
+                    }
+                    _ => Err(format!("'{}' is nor a variable name neither a constant",b).into())
+                }
+                Some(None) => Err(format!("Undefined cell at {}",*entry - 1).into()),
+                None => Err(format!("Premature end while decoding rvalue at {}",*entry).into())
+            }
+        }
+        fn read_lvalue(reg: &Region, entry: &mut u64, len: usize) -> Result<Lvalue> {
+            let b = reg.iter().seek(*entry).next();
+
+            match b {
+                Some(Some(b)) => match b {
+                    b'a'...b'z' => {
+                        *entry += 1;
+                        Ok(Lvalue::Variable{ name: format!("{}",char::from(b)).into(), size: len, subscript: None })
+                    }
+                    _ => Err(format!("'{}' is not a variable name",b).into())
+                }
+                Some(None) => Err(format!("Undefined cell at {}",*entry - 1).into()),
+                None => Err(format!("Premature end while decoding lvalue at {}",*entry).into())
+            }
+        }
+
+        fn read_address(reg: &Region, entry: &mut u64) -> Result<i64> {
+            let b = reg.iter().seek(*entry).next();
+
+            match b {
+                Some(Some(b@b'0'...b'9')) => {
+                    let value = (b - b'0') as i64;
+
+                    *entry += 1;
+                    match read_address(reg,entry) {
+                        Ok(x) => Ok(value * 10 + x),
+                        Err(_) => Ok(value)
+                    }
+                }
+                Some(Some(b)) => Err(format!("'{}' is not a number",b).into()),
+                Some(None) => Err(format!("Undefined cell at {}",*entry - 1).into()),
+                None => Err(format!("Premature end while decoding address at {}",*entry).into())
+            }
+        }
+
+        let start = entry;
+        let opcode = reg.iter().seek(entry).next();
+        entry += 1;
+
+        match opcode {
+            Some(Some(b'M')) => {
+                let var = read_lvalue(reg, &mut entry, 32)?;
+                let val = read_rvalue(reg, &mut entry, 32)?;
+                let ops = vec![var.clone().into(),val.clone()];
+                let instr = Statement{
+                    assignee: var,
+                    op: Operation::Move(val)
+                };
+                let mne = Mnemonic::new(start..entry, "mov".to_string(), "{u}, {u}".to_string(), ops.iter(), vec![instr].iter())?;
+
+                Ok(Match{
+                    tokens: reg.iter().cut(&(start..entry)).map(|x| x.unwrap()).collect(),
+                    mnemonics: vec![mne],
+                    jumps: vec![(start,Rvalue::new_u32(entry as u32),Guard::always())],
+                    configuration: (),
+                })
+            }
+            Some(Some(b'A')) => {
+                let var = read_lvalue(reg, &mut entry, 32)?;
+                let val1 = read_rvalue(reg, &mut entry, 32)?;
+                let val2 = read_rvalue(reg, &mut entry, 32)?;
+                let ops = vec![var.clone().into(),val1.clone(),val2.clone()];
+                let instr = Statement{
+                    assignee: var,
+                    op: Operation::Add(val1,val2)
+                };
+                let mne = Mnemonic::new(start..entry, "add".to_string(), "{u}, {u}, {u}".to_string(), ops.iter(), vec![instr].iter())?;
+
+                Ok(Match{
+                    tokens: reg.iter().cut(&(start..entry)).map(|x| x.unwrap()).collect(),
+                    mnemonics: vec![mne],
+                    jumps: vec![(start,Rvalue::new_u32(entry as u32),Guard::always())],
+                    configuration: (),
+                })
+            }
+            Some(Some(b'C')) => {
+                let var = read_lvalue(reg, &mut entry, 1)?;
+                let val1 = read_rvalue(reg, &mut entry, 32)?;
+                let val2 = read_rvalue(reg, &mut entry, 32)?;
+                let ops = vec![var.clone().into(),val1.clone(),val2.clone()];
+                let instr = Statement{
+                    assignee: var,
+                    op: Operation::LessOrEqualUnsigned(val1,val2)
+                };
+                let mne = Mnemonic::new(start..entry, "leq".to_string(), "{u}, {u}, {u}".to_string(), ops.iter(), vec![instr].iter())?;
+
+                Ok(Match{
+                    tokens: reg.iter().cut(&(start..entry)).map(|x| x.unwrap()).collect(),
+                    mnemonics: vec![mne],
+                    jumps: vec![(start,Rvalue::new_u32(entry as u32),Guard::always())],
+                    configuration: (),
+                })
+            }
+            Some(Some(b'B')) => {
+                let bit = read_rvalue(reg, &mut entry, 1)?;
+                let brtgt = read_address(reg, &mut entry)?;
+                let ops = vec![bit.clone(),Rvalue::new_u32(brtgt as u32)];
+                let mne = Mnemonic::new(start..entry, "br".to_string(), "{u}, {u}".to_string(), ops.iter(), iter::empty())?;
+                let guard = Guard::from_flag(&bit)?;
+
+                Ok(Match{
+                    tokens: reg.iter().cut(&(start..entry)).map(|x| x.unwrap()).collect(),
+                    mnemonics: vec![mne],
+                    jumps: vec![
+                        (start,Rvalue::new_u32(entry as u32),guard.negation()),
+                        (start,Rvalue::new_u32(brtgt as u32),guard)],
+                    configuration: (),
+                })
+            }
+            Some(Some(b'J')) => {
+                let jtgt = read_address(reg, &mut entry)?;
+                let ops = vec![Rvalue::new_u32(jtgt as u32)];
+                let mne = Mnemonic::new(start..entry, "jmp".to_string(), "{u}".to_string(), ops.iter(), iter::empty())?;
+
+                Ok(Match{
+                    tokens: reg.iter().cut(&(start..entry)).map(|x| x.unwrap()).collect(),
+                    mnemonics: vec![mne],
+                    jumps: vec![(start,Rvalue::new_u32(jtgt as u32),Guard::always())],
+                    configuration: (),
+                })
+            }
+            Some(Some(b'R')) => {
+                let mne = Mnemonic::new(start..entry, "ret".to_string(), "".to_string(), iter::empty(), iter::empty())?;
+
+                Ok(Match{
+                    tokens: reg.iter().cut(&(start..entry)).map(|x| x.unwrap()).collect(),
+                    mnemonics: vec![mne],
+                    jumps: vec![],
+                    configuration: (),
+                })
+            }
+            Some(Some(o)) => {
+                Err(format!("Unknown opcode '{}' at {}",o,start).into())
+            }
+            Some(None) => {
+                Err(format!("Undefined cell at {}",start).into())
+            }
+            None => {
+                Err(format!("Premature end while decoding opcode {}",start).into())
+            }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -1237,5 +1428,14 @@ mod tests {
         assert_eq!(res.mnemonics[0].area, Bound::new(0, 2));
         assert_eq!(res.mnemonics[0].instructions.len(), 0);
         assert_eq!(res.jumps.len(), 0);
+    }
+
+    #[test]
+    fn test_arch() {
+        use neo::Function;
+
+        let data = OpaqueLayer::wrap(b"Mi1MiiAiiiAi1iAii1Ai11CiiiCi1iCii1Ci11Bi0R".to_vec());
+        let reg = Region::new("".to_string(), data);
+        let _ = Function::new::<TestArch>((), 0, &reg, None).unwrap();
     }
 }

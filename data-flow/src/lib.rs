@@ -23,9 +23,19 @@
 
 extern crate panopticon_core;
 extern crate panopticon_graph_algos;
+extern crate bit_set;
+extern crate petgraph;
+extern crate smallvec;
+#[macro_use]
+extern crate log;
+
+#[cfg(test)]
+extern crate env_logger;
 
 mod liveness;
 pub use liveness::{liveness, liveness_sets};
 
 mod ssa;
 pub use ssa::{flag_operations, ssa_convertion, type_check};
+
+pub mod neo;
