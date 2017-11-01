@@ -5,11 +5,12 @@ authors = ["seu <seu@panopticon.re>"]
 
 [[bin]]
 name = "panop"
+path = "src/main.rs"
 
 [dependencies]
 structopt = "0.0.5"
 structopt-derive = "0.0.5"
-error-chain = "0.8"
+error-chain = "0.11.0"
 futures = "0.1"
 panopticon-core = { path = "../core" }
 panopticon-data-flow = { path = "../data-flow" }

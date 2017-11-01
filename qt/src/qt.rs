@@ -28,8 +28,8 @@ use std::ffi::CString;
 use uuid::Uuid;
 
 lazy_static! {
-    pub static ref LAYOUT_TASK: Mutex<future::BoxFuture<(),Error>> = {
-        Mutex::new(future::ok(()).boxed())
+    pub static ref LAYOUT_TASK: Mutex<Box<future::Future<Item=(),Error=Error> + Send + 'static>> = {
+        Mutex::new(Box::new(future::ok(())))
     };
 
     pub static ref THREAD_POOL: Mutex<CpuPool> = {
@@ -205,45 +205,41 @@ fn transform_edges(edges: Vec<EdgePosition>) -> (Vec<u32>, Vec<CString>, Vec<CSt
     (ids, labels, kinds, head_xs, head_ys, tail_xs, tail_ys, CString::new(svg.as_bytes()).unwrap())
 }
 
-fn transform_and_send_function(uuid: &Uuid, only_entry: bool, do_nodes: bool, do_edges: bool) -> future::BoxFuture<(), Error> {
+fn transform_and_send_function(uuid: &Uuid, only_entry: bool, do_nodes: bool, do_edges: bool) -> Box<future::Future<Item=(), Error=Error> + Send + 'static> {
     let uuid = uuid.clone();
+    let ret = PANOPTICON.lock().layout_function_async(&uuid);
 
-    PANOPTICON
-        .lock()
-        .layout_function_async(&uuid)
-        .and_then(
-            move |(nodes, edges)| {
-                let uuid = uuid;
-                let uuid = CString::new(uuid.clone().to_string().as_bytes()).unwrap();
+    Box::new(ret.and_then(
+        move |(nodes, edges)| {
+            let uuid = uuid;
+            let uuid = CString::new(uuid.clone().to_string().as_bytes()).unwrap();
 
-                if do_nodes {
-                    let nodes = transform_nodes(only_entry, nodes);
+            if do_nodes {
+                let nodes = transform_nodes(only_entry, nodes);
 
-                    for (id, x, y, is_entry, bbl) in nodes {
-                        Qt::send_function_node(uuid.clone(), id, x, y, is_entry, bbl.as_slice()).unwrap();
-                    }
+                for (id, x, y, is_entry, bbl) in nodes {
+                    Qt::send_function_node(uuid.clone(), id, x, y, is_entry, bbl.as_slice()).unwrap();
                 }
-
-                if do_edges {
-                    let (ids, labels, kinds, head_xs, head_ys, tail_xs, tail_ys, svg) = transform_edges(edges);
-                    Qt::send_function_edges(
-                        uuid,
-                        ids.as_slice(),
-                        labels.as_slice(),
-                        kinds.as_slice(),
-                        head_xs.as_slice(),
-                        head_ys.as_slice(),
-                        tail_xs.as_slice(),
-                        tail_ys.as_slice(),
-                        svg,
-                    )
-                            .unwrap();
-                }
-
-                future::ok(())
             }
-        )
-        .boxed()
+
+            if do_edges {
+                let (ids, labels, kinds, head_xs, head_ys, tail_xs, tail_ys, svg) = transform_edges(edges);
+                Qt::send_function_edges(
+                    uuid,
+                    ids.as_slice(),
+                    labels.as_slice(),
+                    kinds.as_slice(),
+                    head_xs.as_slice(),
+                    head_ys.as_slice(),
+                    tail_xs.as_slice(),
+                    tail_ys.as_slice(),
+                    svg,
+                    )
+                    .unwrap();
+            }
+
+            future::ok(())
+        }))
 }
 
 pub struct Qt;
@@ -263,7 +259,7 @@ impl Glue for Qt {
         let task = {
             THREAD_POOL.lock().spawn(task)
         };
-        *LAYOUT_TASK.lock() = task.boxed();
+        *LAYOUT_TASK.lock() = Box::new(task);
 
         Ok(())
     }

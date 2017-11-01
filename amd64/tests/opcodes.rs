@@ -22,13 +22,9 @@ extern crate panopticon_graph_algos;
 extern crate panopticon_data_flow;
 
 extern crate env_logger;
-#[macro_use] extern crate log;
 
 use panopticon_amd64 as amd64;
 use panopticon_core::{Architecture, Region};
-use panopticon_core::neo;
-use panopticon_data_flow::neo::rewrite_to_ssa;
-use panopticon_data_flow::ssa_convertion;
 use std::path::Path;
 
 #[test]
@@ -80,46 +76,5 @@ fn ia32_opcodes() {
         } else {
             break;
         }
-    }
-}
-#[test]
-fn disassemble_static_new() {
-    use panopticon_core::{loader,neo,CallTarget,Rvalue};
-    use panopticon_graph_algos::{VertexListGraphTrait,GraphTrait};
-    use std::path::Path;
-
-    let _ = env_logger::init();
-    let (proj,_) = loader::load(Path::new("../test-data/static")).unwrap();
-    let entries = proj.code[0].call_graph.vertices().filter_map(|vx| if let Some(&CallTarget::Todo(Rvalue::Constant{ value,.. },_,_)) = proj.code[0].call_graph.vertex_label(vx) { Some(value) } else { None }).collect::<Vec<_>>();
-    let reg = proj.data.dependencies.vertex_label(proj.data.root).unwrap();
-    let mut funcs = vec![];
-
-    for &ep in entries.iter() {
-        println!("start {:#x}",ep);
-        let mut func = neo::Function::new::<amd64::Amd64>(amd64::Mode::Long,ep,&reg,Some("".into())).unwrap();
-        println!("convert {} to ssa",func.name);
-        rewrite_to_ssa(&mut func).unwrap();
-        funcs.push(func);
-    }
-}
-
-#[test]
-fn disassemble_static_old() {
-    use panopticon_core::{loader,neo,CallTarget,Rvalue,Function};
-    use panopticon_graph_algos::{VertexListGraphTrait,GraphTrait};
-    use std::path::Path;
-
-    let _ = env_logger::init();
-    let (proj,_) = loader::load(Path::new("../test-data/static")).unwrap();
-    let entries = proj.code[0].call_graph.vertices().filter_map(|vx| if let Some(&CallTarget::Todo(Rvalue::Constant{ value,.. },_,_)) = proj.code[0].call_graph.vertex_label(vx) { Some(value) } else { None }).collect::<Vec<_>>();
-    let reg = proj.data.dependencies.vertex_label(proj.data.root).unwrap();
-    let mut funcs = vec![];
-
-    for &ep in entries.iter() {
-        println!("start {:#x}",ep);
-        let mut func = Function::new::<amd64::Amd64>(ep,&reg,Some("".to_string()),amd64::Mode::Long).unwrap();
-        println!("convert {} to ssa",func.name);
-        ssa_convertion(&mut func).unwrap();
-        funcs.push(func);
     }
 }

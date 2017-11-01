@@ -12,6 +12,6 @@ pkg-config = "0.3.9"
 panopticon-core = { path = "../core" }
 panopticon-graph-algos = { path = "../graph-algos" }
 log = "0.3.6"
-error-chain = "0.8.1"
+error-chain = "0.11.0"
 uuid = { version = "0.5", features = ["v4"]}
 futures = "0.1.13"

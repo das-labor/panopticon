@@ -731,6 +731,19 @@ macro_rules! new_disassembler {
     };
 }
 
+/// ISA used for testing.
+/// Single digits are interpreted as 32 bit constants, lower case letters as 32 bit registers or 1
+/// bit flags depending on the context. First argument is the result. Upper case letters are
+/// opcodes.
+///
+/// # Instructions
+///
+/// 'A' <x> <y> <z>: <x> := <y> + <z>
+/// 'M' <x> <y>: <x> := <y>
+/// 'C' <x> <y> <z>: <x> := <y> == <z> ? 1 : 0 # <x> is a 1 bit flag
+/// 'B' <x> <y>: branch to <y> if flag <y> is 1, fall-thru otherwise
+/// 'J' <x>: jump to
+/// 'R': return
 #[derive(Debug,Clone)]
 pub struct TestArch;
 

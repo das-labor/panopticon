@@ -175,11 +175,8 @@ impl<'a> Globals<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use panopticon_core::{Guard, OpaqueLayer, Region, TestArch};
+    use panopticon_core::{OpaqueLayer, Region, TestArch};
     use panopticon_core::neo::{Function};
-    use ssa::{phi_functions, rename_variables};
-    use std::borrow::Cow;
-    use std::collections::HashSet;
     use std::iter::FromIterator;
     use env_logger;
 
