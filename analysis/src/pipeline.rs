@@ -160,7 +160,7 @@ where
                                 targets.extend_from_slice(&addresses);
                                 let _ = ssa_convertion(&mut f);
                                 let tx = tx.clone();
-                                tx.send_all(stream::iter(vec![Ok(f)])).wait().unwrap().0;
+                                tx.send_all(stream::iter_ok(vec![f])).wait().unwrap().0;
                             },
                             Err(e) => { failures.push((entry, e)); },
                         }
@@ -184,7 +184,7 @@ where
                                 let _ = ssa_convertion(&mut f);
                                 {
                                     let tx = tx.clone();
-                                    tx.send_all(stream::iter(vec![Ok(f)])).wait().unwrap().0;
+                                    tx.send_all(stream::iter_ok(vec![f])).wait().unwrap().0;
                                 }
                             },
                             Err(e) => failures.push((address, e)),

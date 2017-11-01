@@ -1459,7 +1459,7 @@ mod tests {
 
         assert_eq!(rgn.start, new_rgn.start);
         assert!(rgn.end < new_rgn.end);
-        for (idx,stmt) in bitcode.iter().enumerate() {
+        for stmt in bitcode.iter() {
             match stmt {
                 Statement::Expression{ op: Add(Value::Constant(a),Value::Variable(b)), result } => {
                     assert_eq!(a, Constant::new(42,32).unwrap());
@@ -1484,7 +1484,7 @@ mod tests {
         };
         let mut bitcode = Bitcode::default();
 
-        bitcode.append(vec![s1]);
+        let _ = bitcode.append(vec![s1]).unwrap();
         let rgn = bitcode.append(vec![s2]).unwrap();
 
         let new_rgn = bitcode.insert(rgn.start,vec![Statement::Return]).unwrap();

@@ -53,6 +53,7 @@ impl Mnemonic {
     }
 }
 
+/*
 /// Internal to `Mnemonic`
 #[derive(Clone,Debug)]
 pub enum Argument {
@@ -74,7 +75,7 @@ pub enum Argument {
         /// Internal to `Mnemonic`
         address: Value,
     },
-}
+}*/
 
 /*macro_rules! arg {
     ( { u : $val:expr } $cdr:tt ) => {
@@ -576,7 +577,6 @@ impl Function {
         };
 
         let mne_idx = self.basic_blocks[basic_block.index()].mnemonics.start;
-        let stmt_idx = stmt_rgn.start;
 
         self.shift_mnemonics(mne_idx,1);
         self.shift_statements(BasicBlockIndex::new(basic_block.index() + 1),(stmt_rgn.end - stmt_rgn.start) as isize);
@@ -600,19 +600,18 @@ impl Function {
     }
 
     pub fn remove_mnemonic(&mut self, basic_block: BasicBlockIndex) -> Result<()> {
-        let (stmt_idx,move_by) = {
+        let move_by = {
             let bb = &self.basic_blocks[basic_block.index()];
 
             if bb.mnemonics.end == bb.mnemonics.start {
                 return Err("Internal error: empty basic block".into());
             }
 
-            let addr = bb.area.start;
             let stmt_rgn = bb.statements.start..(bb.statements.start + self.mnemonics[bb.mnemonics.start.index()].num_statements);
 
             self.bitcode.remove(stmt_rgn.clone());
             self.mnemonics.remove(bb.mnemonics.start.index());
-            (stmt_rgn.start,stmt_rgn.end - stmt_rgn.start)
+            stmt_rgn.end - stmt_rgn.start
         };
 
         let mne_idx = self.basic_blocks[basic_block.index()].mnemonics.start;
@@ -818,7 +817,7 @@ fn assemble_function(function: &mut Function, entry: u64, mut mnemonics: Vec<(Mn
 
             bb.statements = usize::MAX..usize::MIN;
 
-            for (off,&mut (ref mut mne,ref mut instr)) in mnemonics.as_mut_slice()[sl].iter_mut().enumerate() {
+            for &mut (ref mut mne,ref mut instr) in mnemonics.as_mut_slice()[sl].iter_mut() {
                 let rgn = bitcode.append(instr.drain(..))?;
 
                 mne.num_statements = rgn.end - rgn.start;
@@ -849,12 +848,6 @@ fn assemble_function(function: &mut Function, entry: u64, mut mnemonics: Vec<(Mn
     function.mnemonics = mnemonics.into_iter().map(|(mne,_)| mne).collect();
     function.cflow_graph = cfg;
     function.entry_point = BasicBlockIndex::new(0);
-
-    //debug!("{:?}",function.entry_point);
-    //debug!("{:?}",function.basic_blocks);
-
-    use petgraph::dot::Dot;
-    //debug!("{:?}",Dot::new(&function.cflow_graph));
 
     Ok(())
 }
@@ -1003,7 +996,6 @@ mod tests {
     use super::*;
     use {Architecture, Disassembler, Guard, Match, OpaqueLayer, Region, Result, Rvalue, State, TestArch};
     use std::sync::Arc;
-    use petgraph::dot::Dot;
     use env_logger;
 
     #[derive(Clone,Debug)]
@@ -1070,7 +1062,7 @@ mod tests {
         assert_eq!(bb.area(), 0..1);
         assert_eq!(func.mnemonics(bb_idx).len(), 1);
 
-        let (mne_idx,mne) = func.mnemonics(bb_idx).next().unwrap();
+        let (_,mne) = func.mnemonics(bb_idx).next().unwrap();
         assert_eq!(mne.opcode, "A");
 
     }
@@ -1326,7 +1318,6 @@ mod tests {
                 true
             },
             [ 1 ] = |st: &mut State<TestArchShort>| {
-                let next = st.address;
                 st.mnemonic(1,"test1","",vec!(),&|_| { Ok(vec![]) }).unwrap();
                 st.jump(Rvalue::Variable{ name: "A".into(), subscript: None, size: 1, offset: 0 },Guard::always()).unwrap();
                 true
@@ -1398,7 +1389,6 @@ mod tests {
                 true
             },
             [ 1 ] = |st: &mut State<TestArchShort>| {
-                let next = st.address;
                 st.mnemonic(1,"test1","",vec!(),&|_| { Ok(vec![]) }).unwrap();
                 st.jump(Rvalue::Variable{ name: "A".into(), subscript: None, size: 1, offset: 0 },Guard::always()).unwrap();
                 true
@@ -1735,17 +1725,6 @@ mod tests {
         }
 
         assert!(b0_idx.is_some() && b1_idx.is_some() && b2_idx.is_some() && b3_idx.is_some());
-
-        fn f(stmt: &mut Statement<Value>) -> ::neo::Result<()> {
-            match stmt {
-                &mut Statement::Expression{ result: Variable{ ref mut name,.. },.. } => {
-                    *name = name.to_string().to_uppercase().into();
-                }
-                _ => {}
-            }
-
-            Ok(())
-        }
 
         let _ = func.rewrite_mnemonics(b2_idx.unwrap(),|stmt| {
             match stmt {

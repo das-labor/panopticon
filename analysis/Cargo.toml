@@ -5,7 +5,7 @@ authors = ["seu <seu@panopticon.re>"]
 
 [dependencies]
 log = "0.3.6"
-futures = "0.1.13"
+futures = "0.1.16"
 rayon = "0.8"
 chashmap = "2.2.0"
 uuid = "0.5"

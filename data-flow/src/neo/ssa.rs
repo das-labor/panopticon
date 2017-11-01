@@ -1,14 +1,11 @@
-use std::iter::FromIterator;
-
-use petgraph::{Direction,Graph};
+use petgraph::Direction;
 use petgraph::graph::{NodeIndex};
 use petgraph::algo::dominators;
 use petgraph::algo::dominators::Dominators;
 use bit_set::BitSet;
 use smallvec::SmallVec;
 
-use panopticon_core::neo::{Function, Result, CfgNode, Statement, Operation, Mnemonic, BasicBlock, BasicBlockIndex, Value, Variable};
-use panopticon_core::Guard;
+use panopticon_core::neo::{Function, Result, CfgNode, Statement, Operation, BasicBlockIndex, Value, Variable};
 
 use neo::Globals;
 
@@ -146,7 +143,7 @@ fn insert_phi_operations(func: &mut Function, phis: Vec<BitSet>,
             };
 
             if remove {
-                func.remove_mnemonic(idx);
+                func.remove_mnemonic(idx)?;
             } else {
                 break;
             }
@@ -155,7 +152,7 @@ fn insert_phi_operations(func: &mut Function, phis: Vec<BitSet>,
 
     for ev in dom_events {
         match ev {
-            &DomTreeEvent::Enter{ index: bb_idx, start, num_in_edges,.. } => {
+            &DomTreeEvent::Enter{ index: bb_idx, num_in_edges,.. } => {
                 // Insert new Phi functions
                 for var_idx in phis[bb_idx.index()].iter() {
                     let &Variable{ ref name, bits,.. } = &variables[var_idx];
@@ -196,7 +193,7 @@ fn assign_subscripts(func: &mut Function,
 
     for ev in dom_events {
         match ev {
-            DomTreeEvent::Enter{ index: bb_idx, start, successors, num_in_edges } => {
+            DomTreeEvent::Enter{ index: bb_idx, successors,.. } => {
                 // Rewrite operations
                 func.rewrite_mnemonics(bb_idx,|stmt| {
                     use panopticon_core::neo::Statement::*;
@@ -272,7 +269,7 @@ fn assign_subscripts(func: &mut Function,
                     match stmt {
                         &mut Expression{ ref mut result,.. } => {
                             let var_idx = find_variable(&*result)?;
-                            name_stack.pop(var_idx);
+                            name_stack.pop(var_idx)?;
                         }
                         &mut Call{ .. } => { /* skip */ }
                         &mut IndirectCall{ .. } => { /* skip */ }
@@ -281,7 +278,7 @@ fn assign_subscripts(func: &mut Function,
                     }
 
                     Ok(())
-                });
+                })?;
             }
         }
     }
@@ -384,8 +381,6 @@ pub fn rewrite_to_ssa(func: &mut Function) -> Result<()> {
         uninit.union_with(&globals.globals.difference(&live.var_kill[entry.index()]).collect());
         (phis,uninit,live.variables.clone())
     };
-    let fst_addr = func.first_address();
-
     fix_uninitialized_variables(func,uninit,&variables)?;
     insert_phi_operations(func,phis,&dom_events,&variables)?;
     assign_subscripts(func,dom_events,&variables)
@@ -394,12 +389,12 @@ pub fn rewrite_to_ssa(func: &mut Function) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use panopticon_core::{Guard, OpaqueLayer, Region, TestArch};
+    use panopticon_core::{OpaqueLayer, Region, TestArch};
     use panopticon_core::neo::{Function,Variable};
     use neo::{Liveness,Globals};
     use env_logger;
-    use petgraph::dot::Dot;
     use std::iter;
+    use std::iter::FromIterator;
 
     /*
      * (B0)
@@ -831,7 +826,7 @@ mod tests {
                 }
                 &DomTreeEvent::Leave(ref index) => {
                     debug!("leave {}",index.index());
-                    assert!(index.index() <= 8 && index.index() >= 0);
+                    assert!(index.index() <= 8);
                     assert!(ctx.remove(index.index()));
                 }
             }
