@@ -1,0 +1,8 @@
+[Desktop Entry]
+Exec=/usr/bin/panopticon
+Type=Application
+Terminal=false
+Icon=panopticon
+Categories=Development;
+Name=Panopticon
+GenericName=Disassembler
