@@ -89,8 +89,7 @@
 use {Guard, Mnemonic, Region, Result, Rvalue, Statement};
 
 use num::traits::{NumCast, One, Zero};
-use panopticon_graph_algos::{AdjacencyList, EdgeListGraphTrait, GraphTrait, IncidenceGraphTrait, MutableGraphTrait, VertexListGraphTrait};
-use panopticon_graph_algos::adjacency_list::AdjacencyListVertexDescriptor;
+use petgraph::prelude::*;
 use std::collections::HashMap;
 use std::fmt;
 use std::fmt::Debug;
@@ -263,7 +262,7 @@ impl<A: Architecture> State<A> {
 }
 
 /// Single matching rule.
-#[derive(Clone)]
+#[derive(Debug,Clone)]
 pub enum Rule<A: Architecture> {
     /// Matches a fixed set of bits of a single token
     Terminal {
@@ -289,58 +288,33 @@ impl<A: Architecture> PartialEq for Rule<A> {
     }
 }
 
+type DisassemblerRef = NodeIndex<u32>;
+
 /// Ready made disassembler for simple instruction sets.
 ///
 /// Disassembler instances are creates using the `new_disassembler!` macro. The resulting
 /// disassembler can then be used to produce `Match`es.
 pub struct Disassembler<A: Architecture> {
-    graph: AdjacencyList<(), Rule<A>>,
-    start: AdjacencyListVertexDescriptor,
-    end: HashMap<AdjacencyListVertexDescriptor, Arc<Action<A>>>,
+    graph: Graph<(), Rule<A>>,
+    start: DisassemblerRef,
+    end: HashMap<DisassemblerRef, Arc<Action<A>>>,
     default: Option<Action<A>>,
 }
 
-impl<A: Architecture> Disassembler<A> {
+impl<A: Architecture + Debug> Disassembler<A> {
     /// Creates a new, empty, disassembler instance. You probably want to use `new_disassembler!`
     /// instead.
     pub fn new() -> Disassembler<A> {
-        let mut g = AdjacencyList::new();
-        let s = g.add_vertex(());
+        let mut g = Graph::new();
+        let s = g.add_node(());
 
         Disassembler { graph: g, start: s, end: HashMap::new(), default: None }
     }
     /// Converts to a dot file; useful for debugging
-    pub fn to_dot(&self) {
-        println!("digraph G {{");
-        for v in self.graph.vertices() {
-            let lb = self.graph.vertex_label(v).unwrap();
-
-            if self.end.contains_key(&v) {
-                println!(
-                    "{} [label=\"{}, prio: {:?}\",shape=doublecircle]",
-                    v.0,
-                    v.0,
-                    lb
-                );
-            } else {
-                println!("{} [label=\"{}, prio: {:?}\",shape=circle]", v.0, v.0, lb);
-            }
-        }
-        for e in self.graph.edges() {
-            let lb = match self.graph.edge_label(e) {
-                Some(&Rule::Sub(_)) => "SUB".to_string(),
-                Some(&Rule::Terminal::<A> { ref pattern, ref mask, .. }) => format!("{:?}/{:?}", pattern, mask),
-                None => "".to_string(),
-            };
-            println!(
-                "{} -> {} [label={:?}]",
-                self.graph.source(e).0,
-                self.graph.target(e).0,
-                lb
-            );
-        }
-        println!("}}");
-    }
+   pub fn to_dot(&self) {
+       use petgraph::dot::Dot;
+       println!("{:?}", Dot::new(&self.graph));
+   }
 
     /// Adds the matching rule and associated semantic action.
     /// Panics if a is empty.
@@ -351,19 +325,18 @@ impl<A: Architecture> Disassembler<A> {
         for r in a.iter() {
             let mut found = false;
 
-            for out in self.graph.out_edges(v) {
-                if let Some(ref t) = self.graph.edge_label(out) {
-                    if **t == *r {
-                        v = self.graph.target(out);
-                        found = true;
-                        break;
-                    }
+            for out in self.graph.edges_directed(v, Direction::Outgoing) {
+                let t = out.weight();
+                if t == r {
+                    v = out.target();
+                    found = true;
+                    break;
                 }
             }
 
             if !found {
-                let tmp = self.graph.add_vertex(());
-                self.graph.add_edge(r.clone(), v, tmp);
+                let tmp = self.graph.add_node(());
+                self.graph.add_edge(v, tmp, r.clone());
                 v = tmp;
             }
         }
@@ -445,7 +418,7 @@ impl<A: Architecture> Disassembler<A> {
         Iter: Iterator<Item = Option<u8>> + Clone,
         A::Configuration: Clone,
     {
-        let mut states = Vec::<(Vec<&()>, State<A>, AdjacencyListVertexDescriptor, Iter)>::new();
+        let mut states = Vec::<(Vec<&()>, State<A>, DisassemblerRef, Iter)>::new();
         let mut ret = vec![];
 
         states.push((vec![], initial_state.clone(), self.start, i.clone()));
@@ -459,14 +432,14 @@ impl<A: Architecture> Disassembler<A> {
                 }
             }
 
-            let mut new_states = Vec::<(Vec<&()>, State<A>, AdjacencyListVertexDescriptor, Iter)>::new();
+            let mut new_states = Vec::<(Vec<&()>, State<A>, DisassemblerRef, Iter)>::new();
 
 
             for &(ref pats, ref state, ref vx, ref iter) in states.iter() {
-                if let Some(a) = self.graph.vertex_label(*vx) {
-                    for e in self.graph.out_edges(*vx) {
-                        match self.graph.edge_label(e) {
-                            Some(&Rule::Terminal { ref mask, ref pattern, capture_group: ref capture }) => {
+                if let Some(a) = self.graph.node_weight(*vx) {
+                    for e in self.graph.edges_directed(*vx, Direction::Outgoing) {
+                        match e.weight() {
+                            &Rule::Terminal { ref mask, ref pattern, capture_group: ref capture } => {
                                 let mut i = iter.clone();
                                 if let Some(tok) = Self::read_token(&mut i) {
                                     if mask.clone() & tok.clone() == *pattern {
@@ -509,17 +482,16 @@ impl<A: Architecture> Disassembler<A> {
 
                                         p.push(a);
                                         st.tokens.push(tok);
-                                        new_states.push((p, st, self.graph.target(e), i));
+                                        new_states.push((p, st, e.target(), i));
                                     }
                                 }
                             }
-                            Some(&Rule::Sub(ref sub)) => {
+                            &Rule::Sub(ref sub) => {
                                 let i = iter.clone();
                                 let mut v = sub.find(i.clone(), state);
 
-                                new_states.extend(v.drain(..).map(|(a, b, i)| (a, b, self.graph.target(e), i.clone())));
+                                new_states.extend(v.drain(..).map(|(a, b, i)| (a, b, e.target(), i.clone())));
                             }
-                            None => {}
                         };
                     }
                 }
@@ -673,7 +645,7 @@ pub struct OptionalRule<A: Architecture>(pub Rule<A>);
 impl<A: Architecture> AddToRuleGen<A> for OptionalRule<A> {
     fn push(&self, rules: &mut Vec<Vec<Rule<A>>>) {
         let mut copy = rules.clone();
-        for mut c in copy.iter_mut() {
+        for c in copy.iter_mut() {
             c.push(self.0.clone());
         }
 
@@ -683,7 +655,7 @@ impl<A: Architecture> AddToRuleGen<A> for OptionalRule<A> {
 
 impl<A: Architecture, T: Into<Rule<A>> + Clone> AddToRuleGen<A> for T {
     fn push(&self, rules: &mut Vec<Vec<Rule<A>>>) {
-        for mut c in rules.iter_mut() {
+        for c in rules.iter_mut() {
             let s: Self = self.clone();
             c.push(s.into());
         }
@@ -757,6 +729,197 @@ macro_rules! new_disassembler {
             ::std::sync::Arc::<$crate::disassembler::Disassembler<$ty>>::new(dis)
         }
     };
+}
+
+/// ISA used for testing.
+/// Single digits are interpreted as 32 bit constants, lower case letters as 32 bit registers or 1
+/// bit flags depending on the context. First argument is the result. Upper case letters are
+/// opcodes.
+///
+/// # Instructions
+///
+/// 'A' <x> <y> <z>: <x> := <y> + <z>
+/// 'M' <x> <y>: <x> := <y>
+/// 'C' <x> <y> <z>: <x> := <y> == <z> ? 1 : 0 # <x> is a 1 bit flag
+/// 'B' <x> <y>: branch to <y> if flag <y> is 1, fall-thru otherwise
+/// 'J' <x>: jump to
+/// 'R': return
+#[derive(Debug,Clone)]
+pub struct TestArch;
+
+impl Architecture for TestArch {
+    type Token = u8;
+    type Configuration = ();
+
+    fn prepare(_: &Region, _: &()) -> Result<Vec<(&'static str, u64, &'static str)>> {
+        Ok(vec![])
+    }
+
+    fn decode(reg: &Region, mut entry: u64, _: &()) -> Result<Match<Self>> {
+        use {Statement,Operation,Rvalue,Lvalue};
+        use std::iter;
+
+        fn read_rvalue(reg: &Region, entry: &mut u64, len: usize) -> Result<Rvalue> {
+            let b = reg.iter().seek(*entry).next();
+
+            match b {
+                Some(Some(b)) => match b {
+                    b'a'...b'z' => {
+                        *entry += 1;
+                        Ok(Rvalue::Variable{ name: format!("{}",char::from(b)).into(), size: len, offset: 0, subscript: None })
+                    }
+                    b'0'...b'9' => {
+                        *entry += 1;
+                        Ok(Rvalue::Constant{ value: (b - b'0') as u64, size: len })
+                    }
+                    _ => Err(format!("'{}' is nor a variable name neither a constant",b).into())
+                },
+                Some(None) => Err(format!("Undefined cell at {}",*entry - 1).into()),
+                None => Err(format!("Premature end while decoding rvalue at {}",*entry).into())
+            }
+        }
+        fn read_lvalue(reg: &Region, entry: &mut u64, len: usize) -> Result<Lvalue> {
+            let b = reg.iter().seek(*entry).next();
+
+            match b {
+                Some(Some(b)) => match b {
+                    b'a'...b'z' => {
+                        *entry += 1;
+                        Ok(Lvalue::Variable{ name: format!("{}",char::from(b)).into(), size: len, subscript: None })
+                    }
+                    _ => Err(format!("'{}' is not a variable name",b).into())
+                },
+                Some(None) => Err(format!("Undefined cell at {}",*entry - 1).into()),
+                None => Err(format!("Premature end while decoding lvalue at {}",*entry).into())
+            }
+        }
+
+        fn read_address(reg: &Region, entry: &mut u64) -> Result<i64> {
+            let b = reg.iter().seek(*entry).next();
+
+            match b {
+                Some(Some(b@b'0'...b'9')) => {
+                    let value = (b - b'0') as i64;
+
+                    *entry += 1;
+                    match read_address(reg,entry) {
+                        Ok(x) => Ok(value * 10 + x),
+                        Err(_) => Ok(value)
+                    }
+                }
+                Some(Some(b)) => Err(format!("'{}' is not a number",b).into()),
+                Some(None) => Err(format!("Undefined cell at {}",*entry - 1).into()),
+                None => Err(format!("Premature end while decoding address at {}",*entry).into())
+            }
+        }
+
+        let start = entry;
+        let opcode = reg.iter().seek(entry).next();
+        entry += 1;
+
+        match opcode {
+            Some(Some(b'M')) => {
+                let var = read_lvalue(reg, &mut entry, 32)?;
+                let val = read_rvalue(reg, &mut entry, 32)?;
+                let ops = vec![var.clone().into(),val.clone()];
+                let instr = Statement{
+                    assignee: var,
+                    op: Operation::Move(val)
+                };
+                let mne = Mnemonic::new(start..entry, "mov".to_string(), "{u}, {u}".to_string(), ops.iter(), vec![instr].iter())?;
+
+                Ok(Match{
+                    tokens: reg.iter().cut(&(start..entry)).map(|x| x.unwrap()).collect(),
+                    mnemonics: vec![mne],
+                    jumps: vec![(start,Rvalue::new_u32(entry as u32),Guard::always())],
+                    configuration: (),
+                })
+            }
+            Some(Some(b'A')) => {
+                let var = read_lvalue(reg, &mut entry, 32)?;
+                let val1 = read_rvalue(reg, &mut entry, 32)?;
+                let val2 = read_rvalue(reg, &mut entry, 32)?;
+                let ops = vec![var.clone().into(),val1.clone(),val2.clone()];
+                let instr = Statement{
+                    assignee: var,
+                    op: Operation::Add(val1,val2)
+                };
+                let mne = Mnemonic::new(start..entry, "add".to_string(), "{u}, {u}, {u}".to_string(), ops.iter(), vec![instr].iter())?;
+
+                Ok(Match{
+                    tokens: reg.iter().cut(&(start..entry)).map(|x| x.unwrap()).collect(),
+                    mnemonics: vec![mne],
+                    jumps: vec![(start,Rvalue::new_u32(entry as u32),Guard::always())],
+                    configuration: (),
+                })
+            }
+            Some(Some(b'C')) => {
+                let var = read_lvalue(reg, &mut entry, 1)?;
+                let val1 = read_rvalue(reg, &mut entry, 32)?;
+                let val2 = read_rvalue(reg, &mut entry, 32)?;
+                let ops = vec![var.clone().into(),val1.clone(),val2.clone()];
+                let instr = Statement{
+                    assignee: var,
+                    op: Operation::LessOrEqualUnsigned(val1,val2)
+                };
+                let mne = Mnemonic::new(start..entry, "leq".to_string(), "{u}, {u}, {u}".to_string(), ops.iter(), vec![instr].iter())?;
+
+                Ok(Match{
+                    tokens: reg.iter().cut(&(start..entry)).map(|x| x.unwrap()).collect(),
+                    mnemonics: vec![mne],
+                    jumps: vec![(start,Rvalue::new_u32(entry as u32),Guard::always())],
+                    configuration: (),
+                })
+            }
+            Some(Some(b'B')) => {
+                let bit = read_rvalue(reg, &mut entry, 1)?;
+                let brtgt = read_address(reg, &mut entry)?;
+                let ops = vec![bit.clone(),Rvalue::new_u32(brtgt as u32)];
+                let mne = Mnemonic::new(start..entry, "br".to_string(), "{u}, {u}".to_string(), ops.iter(), iter::empty())?;
+                let guard = Guard::from_flag(&bit)?;
+
+                Ok(Match{
+                    tokens: reg.iter().cut(&(start..entry)).map(|x| x.unwrap()).collect(),
+                    mnemonics: vec![mne],
+                    jumps: vec![
+                        (start,Rvalue::new_u32(entry as u32),guard.negation()),
+                        (start,Rvalue::new_u32(brtgt as u32),guard)],
+                    configuration: (),
+                })
+            }
+            Some(Some(b'J')) => {
+                let jtgt = read_address(reg, &mut entry)?;
+                let ops = vec![Rvalue::new_u32(jtgt as u32)];
+                let mne = Mnemonic::new(start..entry, "jmp".to_string(), "{u}".to_string(), ops.iter(), iter::empty())?;
+
+                Ok(Match{
+                    tokens: reg.iter().cut(&(start..entry)).map(|x| x.unwrap()).collect(),
+                    mnemonics: vec![mne],
+                    jumps: vec![(start,Rvalue::new_u32(jtgt as u32),Guard::always())],
+                    configuration: (),
+                })
+            }
+            Some(Some(b'R')) => {
+                let mne = Mnemonic::new(start..entry, "ret".to_string(), "".to_string(), iter::empty(), iter::empty())?;
+
+                Ok(Match{
+                    tokens: reg.iter().cut(&(start..entry)).map(|x| x.unwrap()).collect(),
+                    mnemonics: vec![mne],
+                    jumps: vec![],
+                    configuration: (),
+                })
+            }
+            Some(Some(o)) => {
+                Err(format!("Unknown opcode '{}' at {}",o,start).into())
+            }
+            Some(None) => {
+                Err(format!("Undefined cell at {}",start).into())
+            }
+            None => {
+                Err(format!("Premature end while decoding opcode {}",start).into())
+            }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -1237,5 +1400,14 @@ mod tests {
         assert_eq!(res.mnemonics[0].area, Bound::new(0, 2));
         assert_eq!(res.mnemonics[0].instructions.len(), 0);
         assert_eq!(res.jumps.len(), 0);
+    }
+
+    #[test]
+    fn test_arch() {
+        use neo::Function;
+
+        let data = OpaqueLayer::wrap(b"Mi1MiiAiiiAi1iAii1Ai11CiiiCi1iCii1Ci11Bi0R".to_vec());
+        let reg = Region::new("".to_string(), data);
+        let _ = Function::new::<TestArch>((), 0, &reg, None).unwrap();
     }
 }

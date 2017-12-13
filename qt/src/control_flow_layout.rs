@@ -69,7 +69,7 @@ impl ControlFlowLayout {
         col_padding: usize,
         line_height: usize,
         cmnt_width: usize,
-    ) -> future::BoxFuture<ControlFlowLayout, Error> {
+    ) -> Box<future::Future<Item=ControlFlowLayout, Error=Error> + Send + 'static> {
         use std::f32;
 
         let (vertices, edges, edges_rev) = Self::flatten_cflow_graph(func);
@@ -113,13 +113,13 @@ impl ControlFlowLayout {
             cmnt_width,
         );
         if dims.is_err() {
-            return future::err(dims.err().unwrap()).boxed();
+            return Box::new(future::err(dims.err().unwrap()));
         }
         let dims = dims.unwrap();
         let vx_vec = vertices.iter().map(|&vx| vx).collect::<Vec<_>>();
         let edges2 = edges.clone();
 
-        future::lazy(
+        Box::new(future::lazy(
             move || -> Result<_> {
                 let vx_vec = vx_vec;
                 let edges = edges2;
@@ -237,8 +237,7 @@ impl ControlFlowLayout {
                             }
                         )
                     }
-                )
-                .boxed()
+                ))
     }
 
     pub fn new(

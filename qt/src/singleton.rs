@@ -65,16 +65,16 @@ pub struct Panopticon {
     pub unresolved_calls: MultiMap<Option<u64>, (Uuid, u64)>,
     pub resolved_calls: MultiMap<Uuid, (Uuid, u64)>, // callee -> caller
     pub region: Option<Region>,
-    pub project: Option<Project>,
+    pub project: Option<Project<Function>>,
 
     pub undo_stack: Vec<Action>,
     pub undo_stack_top: usize,
 
-    pub layout_task: Option<future::BoxFuture<ControlFlowLayout, Error>>,
+    pub layout_task: Option<Box<future::Future<Item=ControlFlowLayout, Error=Error> + Send + 'static>>,
 }
 
 impl Panopticon {
-    pub fn layout_function_async(&mut self, uuid: &Uuid) -> future::BoxFuture<(Vec<NodePosition>, Vec<EdgePosition>), Error> {
+    pub fn layout_function_async(&mut self, uuid: &Uuid) -> Box<future::Future<Item=(Vec<NodePosition>, Vec<EdgePosition>), Error=Error> + Send + 'static> {
         if !self.control_flow_layouts.contains_key(&uuid) {
             let func = self.functions.get(&uuid).unwrap();
             let cmnts = &self.control_flow_comments;
@@ -82,7 +82,7 @@ impl Panopticon {
             let funcs = &self.functions;
             let uuid2 = uuid.clone();
 
-            ControlFlowLayout::new_async(func, cmnts, values, funcs, 8, 3, 8, 26, 17, 150)
+            Box::new(ControlFlowLayout::new_async(func, cmnts, values, funcs, 8, 3, 8, 26, 17, 150)
                 .and_then(
                     move |cfl| {
                         let uuid = uuid2;
@@ -92,14 +92,13 @@ impl Panopticon {
                         PANOPTICON.lock().control_flow_layouts.insert(uuid, cfl);
                         future::ok((nodes, edges))
                     }
-                )
-                .boxed()
+                ))
         } else {
             let cfl = &self.control_flow_layouts.get(uuid).unwrap();
             let nodes = cfl.get_all_nodes();
             let edges = cfl.get_all_edges();
 
-            future::ok((nodes, edges)).boxed()
+            Box::new(future::ok((nodes, edges)))
         }
     }
 
@@ -126,7 +125,7 @@ impl Panopticon {
 
     pub fn open_program(&mut self, path: String) -> Result<()> {
         use std::path::Path;
-        use panopticon_core::{CallTarget, Machine};
+        use panopticon_core::{Function, CallTarget, Machine};
         use panopticon_amd64 as amd64;
         use panopticon_avr as avr;
         use panopticon_analysis::pipeline;
@@ -135,7 +134,7 @@ impl Panopticon {
 
         debug!("open_program() path={}", path);
 
-        if let Ok(proj) = Project::open(&Path::new(&path)) {
+        if let Ok(proj) = <Project<Function>>::open(&Path::new(&path)) {
             if !proj.code.is_empty() {
                 {
                     let cg = &proj.code[0].call_graph;

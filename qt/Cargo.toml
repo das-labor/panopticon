@@ -28,7 +28,7 @@ futures = "0.1.13"
 futures-cpupool = "0.1"
 parking_lot = "0.4"
 multimap = "0.3"
-error-chain = "0.8"
+error-chain = "0.11.0"
 lazy_static = "0.1"
 libc = "0.2"
 hamt = "0.2"
@@ -36,7 +36,7 @@ num = "0.1"
 
 [dev-dependencies]
 regex = "0.1"
-quickcheck = "0.3"
+quickcheck = "0.4"
 
 [target.i686-unknown-linux-gnu.dependencies]
 xdg = "^2.0"

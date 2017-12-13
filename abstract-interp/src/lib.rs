@@ -54,3 +54,5 @@ pub use kset::Kset;
 
 mod widening;
 pub use widening::Widening;
+
+pub mod neo;
