@@ -22,6 +22,8 @@ import QtGraphicalEffects 1.0
 import QtQuick.Layouts 1.1
 import Panopticon 1.0
 
+import "."
+
 MouseArea {
 	property string functionUuid: ""
 

@@ -23,6 +23,8 @@ import QtQuick.Layouts 1.1
 import QtGraphicalEffects 1.0
 import Panopticon 1.0
 
+import "."
+
 Item {
 	id: basicBlock
 
