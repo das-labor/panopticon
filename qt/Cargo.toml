@@ -2,6 +2,7 @@
 name = "panopticon"
 version = "0.16.0"
 authors = ["seu <seu@panopticon.re>", "m4b <m4b.github.io@gmail.com>"]
+edition = "2018"
 
 [[bin]]
 name = "panopticon"
