@@ -756,7 +756,7 @@ pub fn execute(op: Operation<Rvalue>) -> Rvalue {
             } else {
                 let mask = if s < 64 { (1u64 << s) - 1 } else { u64::MAX };
                 Rvalue::Constant {
-                    value: ((a >> cmp::min(cmp::min(64, s), (b as usize))) & mask),
+                    value: ((a >> cmp::min(cmp::min(64, s), b as usize)) & mask),
                     size: s,
                 }
             }

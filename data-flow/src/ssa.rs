@@ -148,7 +148,7 @@ pub fn phi_functions(func: &mut Function) -> Result<()> {
 
     let df = dominance_frontiers(&idom, func.cfg());
     let mut phis = HashSet::<(&Cow<'static, str>, ControlFlowRef)>::new();
-    let mut cfg = &mut func.cfg_mut();
+    let cfg = &mut func.cfg_mut();
 
     for v in globals.iter() {
         let mut worklist = if let Some(wl) = usage.get(v) {

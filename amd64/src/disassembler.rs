@@ -2852,7 +2852,7 @@ pub fn read(mode: Mode, buf: &[u8], addr: u64) -> Result<(u64, Mnemonic, Vec<(Rv
                 let mne = match ops.len() {
                     0 => {
                         Mnemonic::new(
-                            (addr..addr + len),
+                            addr..addr + len,
                             format!("{}", s),
                             "".to_string(),
                             ops.iter(),
@@ -2861,7 +2861,7 @@ pub fn read(mode: Mode, buf: &[u8], addr: u64) -> Result<(u64, Mnemonic, Vec<(Rv
                     }
                     1 => {
                         Mnemonic::new(
-                            (addr..addr + len),
+                            addr..addr + len,
                             format!("{}", s),
                             fmt.to_string(),
                             ops.iter(),
@@ -2870,7 +2870,7 @@ pub fn read(mode: Mode, buf: &[u8], addr: u64) -> Result<(u64, Mnemonic, Vec<(Rv
                     }
                     2 => {
                         Mnemonic::new(
-                            (addr..addr + len),
+                            addr..addr + len,
                             format!("{}", s),
                             "{u}, {u}".to_string(),
                             ops.iter(),
@@ -2879,7 +2879,7 @@ pub fn read(mode: Mode, buf: &[u8], addr: u64) -> Result<(u64, Mnemonic, Vec<(Rv
                     }
                     3 => {
                         Mnemonic::new(
-                            (addr..addr + len),
+                            addr..addr + len,
                             format!("{}", s),
                             "{u}, {u}, {u}".to_string(),
                             ops.iter(),
@@ -2888,7 +2888,7 @@ pub fn read(mode: Mode, buf: &[u8], addr: u64) -> Result<(u64, Mnemonic, Vec<(Rv
                     }
                     4 => {
                         Mnemonic::new(
-                            (addr..addr + len),
+                            addr..addr + len,
                             format!("{}", s),
                             "{u}, {u}, {u}, {u}".to_string(),
                             ops.iter(),
