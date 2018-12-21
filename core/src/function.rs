@@ -28,7 +28,7 @@
 //! on the front-end.
 
 
-use {Architecture, BasicBlock, Guard, Mnemonic, Operation, Region, Result, Rvalue, Statement};
+use crate::{Architecture, BasicBlock, Guard, Mnemonic, Operation, Region, Result, Rvalue, Statement};
 
 use panopticon_graph_algos::{AdjacencyList, EdgeListGraphTrait, GraphTrait, MutableGraphTrait, VertexListGraphTrait};
 use panopticon_graph_algos::adjacency_list::{AdjacencyListEdgeDescriptor, AdjacencyListVertexDescriptor, VertexLabelIterator};
@@ -747,7 +747,7 @@ impl Function {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use {Architecture, BasicBlock, Bound, Disassembler, Guard, Match, Mnemonic, OpaqueLayer, Region, Result, Rvalue, State};
+    use crate::{Architecture, BasicBlock, Bound, Disassembler, Guard, Match, Mnemonic, OpaqueLayer, Region, Result, Rvalue, State};
     use panopticon_graph_algos::{AdjacencyMatrixGraphTrait, EdgeListGraphTrait, VertexListGraphTrait};
     use panopticon_graph_algos::{GraphTrait, MutableGraphTrait};
     use std::borrow::Cow;

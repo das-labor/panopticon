@@ -19,7 +19,7 @@
 use panopticon_core::{Architecture, Guard, Lvalue, Match, Region, Result, Rvalue, State, Statement};
 use std::borrow::Cow;
 use std::convert::Into;
-use syntax;
+use crate::syntax;
 
 #[derive(Clone,Debug)]
 pub enum Avr {}

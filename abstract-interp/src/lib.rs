@@ -44,13 +44,13 @@ extern crate serde;
 #[macro_use] extern crate serde_derive;
 
 mod interpreter;
-pub use interpreter::{Avalue, Constraint, ProgramPoint, approximate, results, lift};
+pub use crate::interpreter::{Avalue, Constraint, ProgramPoint, approximate, results, lift};
 
 mod bounded_addr_track;
-pub use bounded_addr_track::BoundedAddrTrack;
+pub use crate::bounded_addr_track::BoundedAddrTrack;
 
 pub mod kset;
-pub use kset::Kset;
+pub use crate::kset::Kset;
 
 mod widening;
-pub use widening::Widening;
+pub use crate::widening::Widening;

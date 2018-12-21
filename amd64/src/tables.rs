@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-use disassembler::{AddressingMethod, MnemonicSpec, Opcode, OpcodeOption, OperandSpec, OperandType};
-use semantic;
+use crate::disassembler::{AddressingMethod, MnemonicSpec, Opcode, OpcodeOption, OperandSpec, OperandType};
+use crate::semantic;
 
 macro_rules! opcode {
   ($mne:ident ; ; $opt:ident) => {

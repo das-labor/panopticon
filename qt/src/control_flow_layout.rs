@@ -19,16 +19,16 @@
 // Qt uses camelCase
 #![allow(non_snake_case)]
 
-use errors::*;
+use crate::errors::*;
 use futures::{Future, future};
 use panopticon_abstract_interp::Kset;
 use panopticon_core::{ControlFlowTarget, Function, Guard, Mnemonic, Rvalue};
 use panopticon_graph_algos::{EdgeListGraphTrait, GraphTrait, IncidenceGraphTrait, VertexListGraphTrait};
 use panopticon_graph_algos::adjacency_list::{AdjacencyListEdgeDescriptor, AdjacencyListVertexDescriptor};
-use singleton::{AbstractInterpretation, VarName};
+use crate::singleton::{AbstractInterpretation, VarName};
 use std::collections::{HashMap, HashSet};
 use std::iter::FromIterator;
-use sugiyama;
+use crate::sugiyama;
 use uuid::Uuid;
 
 #[derive(Clone)]

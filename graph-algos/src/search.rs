@@ -17,7 +17,7 @@
  */
 
 use std::collections::{HashMap, HashSet};
-use traits::{BidirectionalGraph, Graph, IncidenceGraph, VertexListGraph};
+use crate::traits::{BidirectionalGraph, Graph, IncidenceGraph, VertexListGraph};
 
 #[derive(Clone,Copy,PartialEq)]
 pub enum TraversalOrder {
@@ -206,9 +206,9 @@ pub fn depth_first_visit<'a, V: 'a, E, G: 'a + Graph<'a, V, E> + IncidenceGraph<
 #[cfg(test)]
 mod tests {
     use super::*;
-    use adjacency_list::{AdjacencyList, AdjacencyListVertexDescriptor};
+    use crate::adjacency_list::{AdjacencyList, AdjacencyListVertexDescriptor};
     use std::collections::HashMap;
-    use traits::{Graph, MutableGraph};
+    use crate::traits::{Graph, MutableGraph};
 
     #[test]
     fn dfs_connected() {

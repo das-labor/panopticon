@@ -138,7 +138,7 @@ mod tests {
     use super::*;
     use panopticon_core::{BasicBlock, ControlFlowGraph, ControlFlowTarget, Function, Guard, Lvalue, Mnemonic, Operation, Rvalue, Statement, Region};
     use panopticon_graph_algos::{GraphTrait, MutableGraphTrait, VertexListGraphTrait};
-    use ssa::{phi_functions, rename_variables};
+    use crate::ssa::{phi_functions, rename_variables};
     use std::borrow::Cow;
     use std::collections::HashSet;
     use std::iter::FromIterator;

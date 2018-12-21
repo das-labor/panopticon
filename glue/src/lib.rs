@@ -37,12 +37,12 @@ mod errors {
         }
     }
 }
-pub use errors::{Error, ErrorKind, Result};
+pub use crate::errors::{Error, ErrorKind, Result};
 
 mod ffi;
 
 mod glue;
-pub use glue::Glue;
+pub use crate::glue::Glue;
 
 mod types;
-pub use types::{CBasicBlockLine, CBasicBlockOperand};
+pub use crate::types::{CBasicBlockLine, CBasicBlockOperand};

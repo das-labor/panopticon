@@ -47,7 +47,7 @@ pub mod tables;
 pub mod semantic;
 
 mod disassembler;
-pub use disassembler::{AddressingMethod, JumpSpec, MnemonicSpec, Opcode, Operand, OperandSpec, OperandType, read_spec_register};
+pub use crate::disassembler::{AddressingMethod, JumpSpec, MnemonicSpec, Opcode, Operand, OperandSpec, OperandType, read_spec_register};
 
 mod architecture;
-pub use architecture::{Amd64, Mode};
+pub use crate::architecture::{Amd64, Mode};

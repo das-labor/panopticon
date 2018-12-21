@@ -30,10 +30,10 @@
 //! value. Other formattings are `{d:<region>}` for data pointer into <region> and `{s}` for
 //! signed values.
 
-use Result;
+use crate::Result;
 
-use Rvalue;
-use Statement;
+use crate::Rvalue;
+use crate::Statement;
 use std::ops::Range;
 use std::str::Chars;
 
@@ -190,7 +190,7 @@ impl Mnemonic {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use {Lvalue, Operation, Rvalue, Statement};
+    use crate::{Lvalue, Operation, Rvalue, Statement};
     use std::borrow::Cow;
 
     #[test]

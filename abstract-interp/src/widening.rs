@@ -16,7 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-use {Avalue, Constraint, ProgramPoint, lift};
+use crate::{Avalue, Constraint, ProgramPoint, lift};
 use serde::{Serialize,Deserialize};
 use panopticon_core::{Rvalue, Operation};
 

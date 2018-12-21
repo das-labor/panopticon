@@ -29,7 +29,7 @@
 //! error node.
 
 
-use {Function, Statement, Operation, Rvalue};
+use crate::{Function, Statement, Operation, Rvalue};
 use panopticon_graph_algos::{AdjacencyList, AdjacencyMatrixGraphTrait, GraphTrait, MutableGraphTrait, VertexListGraphTrait};
 use panopticon_graph_algos::adjacency_list::{AdjacencyListVertexDescriptor, VertexLabelIterator, VertexLabelMutIterator};
 use uuid::Uuid;
@@ -326,7 +326,7 @@ impl Program {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use {BasicBlock, ControlFlowTarget, Function, Lvalue, Mnemonic, Operation, Region, Rvalue, Statement};
+    use crate::{BasicBlock, ControlFlowTarget, Function, Lvalue, Mnemonic, Operation, Region, Rvalue, Statement};
     use panopticon_graph_algos::{AdjacencyMatrixGraphTrait, EdgeListGraphTrait, GraphTrait, MutableGraphTrait, VertexListGraphTrait};
     use uuid::Uuid;
 

@@ -21,7 +21,7 @@
 //! Projects are a set of `Program`s, associated memory `Region`s and comments.
 
 
-use {CallGraphRef, Function, Program, Region, Result, World};
+use crate::{CallGraphRef, Function, Program, Region, Result, World};
 use panopticon_graph_algos::GraphTrait;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use flate2::Compression;
@@ -171,7 +171,7 @@ impl Project {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use region::Region;
+    use crate::region::Region;
 
     #[test]
     fn new() {

@@ -20,7 +20,7 @@ use std;
 use std::clone::Clone;
 use std::collections::HashMap;
 
-use traits::*;
+use crate::traits::*;
 
 #[derive(PartialEq,Eq,Hash,Copy,Clone,Debug,PartialOrd,Ord,Serialize,Deserialize)]
 pub struct AdjacencyListVertexDescriptor(pub usize);

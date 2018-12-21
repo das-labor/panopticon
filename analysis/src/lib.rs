@@ -31,5 +31,5 @@ extern crate uuid;
 extern crate parking_lot;
 
 mod pipeline;
-pub use pipeline::pipeline;
-pub use pipeline::analyze;
+pub use crate::pipeline::pipeline;
+pub use crate::pipeline::analyze;

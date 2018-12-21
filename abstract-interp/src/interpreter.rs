@@ -53,18 +53,18 @@ pub struct ProgramPoint {
 /// Abstract Domain. Models both under- and over-approximation.
 pub trait Avalue: Clone + PartialEq + Eq + Hash + Debug + Serialize + for<'a> Deserialize<'a> {
     /// Alpha function. Returns domain element that approximates the concrete value the best
-    fn abstract_value(&Rvalue) -> Self;
+    fn abstract_value(_: &Rvalue) -> Self;
     /// Alpha function. Returns domain element that approximates the concrete value that fullfil
     /// the constraint the best.
-    fn abstract_constraint(&Constraint) -> Self;
+    fn abstract_constraint(_: &Constraint) -> Self;
     /// Execute the abstract version of the operation, yielding the result.
-    fn execute(&ProgramPoint, &Operation<Self>) -> Self;
+    fn execute(_: &ProgramPoint, _: &Operation<Self>) -> Self;
     /// Narrows `self` with the argument.
-    fn narrow(&self, &Self) -> Self;
+    fn narrow(&self, _: &Self) -> Self;
     /// Widens `self` with the argument.
     fn widen(&self, other: &Self) -> Self;
     /// Computes the lowest upper bound of self and the argument.
-    fn combine(&self, &Self) -> Self;
+    fn combine(&self, _: &Self) -> Self;
     /// Returns true if `self` <= `other`.
     fn more_exact(&self, other: &Self) -> bool;
     /// Returns the meet of the domain

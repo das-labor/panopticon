@@ -106,7 +106,7 @@
 //! # }
 //! ```
 
-use Result;
+use crate::Result;
 use quickcheck::{Arbitrary, Gen};
 use serde::{Serialize,Deserialize};
 
@@ -1445,7 +1445,7 @@ macro_rules! rreil_imm {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use {Architecture, Match, Region, Result};
+    use crate::{Architecture, Match, Region, Result};
     use std::borrow::Cow;
 
     #[derive(Clone)]

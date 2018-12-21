@@ -40,7 +40,7 @@
 //! Loading a Windows COM file.
 
 
-use Result;
+use crate::Result;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::Read;

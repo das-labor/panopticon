@@ -16,7 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-use disassembler::{Avr, Mcu, optional_skip, reg, resolv};
+use crate::disassembler::{Avr, Mcu, optional_skip, reg, resolv};
 
 use panopticon_core::{Guard, Lvalue, Result, Rvalue, State, Statement};
 use std::borrow::Cow;
@@ -474,7 +474,7 @@ pub fn elpm(rd: Lvalue, off: usize, st: &mut State<Avr>) -> bool {
 
     let arg = if rd == rreil_lvalue!{ R0:8 } { vec![] } else { vec![zreg.clone().into()] };
     st.mnemonic(2,"elpm","{p:sram}",arg,&|_: &mut Mcu| {
-        let mut stmts = try!(rreil!{
+        let mut stmts = r#try!(rreil!{
             load/sram/be/24 ptr:24, (zreg);
             load/flash/be/8 (rd), ptr:24;
         });
@@ -770,7 +770,7 @@ pub fn lpm(rd: Lvalue, off: usize, st: &mut State<Avr>) -> bool {
 
     let arg = if rd == rreil_lvalue!{ R0:8 } { vec![] } else { vec![zreg.clone().into()] };
     st.mnemonic(2,"lpm","{p:sram}",arg,&|_: &mut Mcu| {
-        let mut stmts = try!(rreil!{
+        let mut stmts = r#try!(rreil!{
             load/sram/be/16 ptr:16, (zreg);
             load/flash/be/8 (rd), ptr:16;
         });
@@ -1155,7 +1155,7 @@ pub fn spm(rd: Lvalue, off: usize, st: &mut State<Avr>) -> bool {
 
     let arg = if off == 0 { vec![] } else { vec![zreg.clone().into()] };
     st.mnemonic(len,"spm","{p:sram}",arg,&|_: &mut Mcu| {
-        let mut stmts = try!(rreil!{
+        let mut stmts = r#try!(rreil!{
             load/sram/be/16 ptr:16, (zreg);
             load/flash/be/8 (rd), ptr:16;
         });

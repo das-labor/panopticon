@@ -18,7 +18,7 @@
 
 use panopticon_core::{Architecture, Guard, Lvalue, Match, Region, Result, Rvalue, State, Statement};
 use std::borrow::Cow;
-use syntax;
+use crate::syntax;
 
 #[derive(Clone,Debug)]
 pub enum Mos {}

@@ -16,10 +16,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-use disassembler::*;
+use crate::disassembler::*;
 
 use panopticon_core::{Disassembler, State};
-use semantic::*;
+use crate::semantic::*;
 use std::sync::Arc;
 
 pub fn disassembler() -> Arc<Disassembler<Avr>> {

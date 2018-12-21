@@ -69,7 +69,7 @@ impl Architecture for Amd64 {
 
         debug!("disass @ {:#x}: {:?}", p, buf);
 
-        let ret = ::disassembler::read(*cfg, &buf, p).and_then(
+        let ret = crate::disassembler::read(*cfg, &buf, p).and_then(
             |(len, mne, mut jmp)| {
                 Ok(
                     Match::<Amd64> {

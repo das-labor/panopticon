@@ -94,35 +94,35 @@ extern crate env_logger;
 
 // core
 pub mod disassembler;
-pub use disassembler::{Architecture, Disassembler, Match, State};
+pub use crate::disassembler::{Architecture, Disassembler, Match, State};
 
 #[macro_use]
 pub mod il;
-pub use il::{Guard, Lvalue, Operation, Rvalue, Statement, execute, Endianess};
+pub use crate::il::{Guard, Lvalue, Operation, Rvalue, Statement, execute, Endianess};
 
 pub mod mnemonic;
-pub use mnemonic::{Bound, Mnemonic, MnemonicFormatToken};
+pub use crate::mnemonic::{Bound, Mnemonic, MnemonicFormatToken};
 pub mod basic_block;
-pub use basic_block::BasicBlock;
+pub use crate::basic_block::BasicBlock;
 
 pub mod function;
-pub use function::{ControlFlowEdge, ControlFlowGraph, ControlFlowRef, ControlFlowTarget, Function, FunctionKind};
+pub use crate::function::{ControlFlowEdge, ControlFlowGraph, ControlFlowRef, ControlFlowTarget, Function, FunctionKind};
 
 pub mod program;
-pub use program::{CallGraph, CallGraphRef, CallTarget, Program};
+pub use crate::program::{CallGraph, CallGraphRef, CallTarget, Program};
 
 pub mod project;
-pub use project::Project;
+pub use crate::project::Project;
 
 pub mod region;
-pub use region::{Region, World};
+pub use crate::region::{Region, World};
 
 pub mod layer;
-pub use layer::{Layer, LayerIter, OpaqueLayer};
+pub use crate::layer::{Layer, LayerIter, OpaqueLayer};
 
 pub mod result;
-pub use result::{Error, Result};
+pub use crate::result::{Error, Result};
 
 // file formats
 pub mod loader;
-pub use loader::{Machine, load};
+pub use crate::loader::{Machine, load};

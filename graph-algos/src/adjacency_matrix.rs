@@ -17,7 +17,7 @@
  */
 
 use std::ops::Range;
-use traits::*;
+use crate::traits::*;
 
 #[derive(Eq,Hash,PartialEq,Clone,Debug,Copy)]
 pub struct AdjacencyMatrixEdgeDescriptor {

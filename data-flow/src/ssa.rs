@@ -16,7 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-use liveness_sets;
+use crate::liveness_sets;
 use panopticon_core::{ControlFlowEdge, ControlFlowGraph, ControlFlowRef, ControlFlowTarget, Function, Guard, Lvalue, Mnemonic, Operation, Result, Rvalue,
                       Statement};
 use panopticon_graph_algos::{BidirectionalGraphTrait, EdgeListGraphTrait, GraphTrait, IncidenceGraphTrait, MutableGraphTrait, VertexListGraphTrait};
