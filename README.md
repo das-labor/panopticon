@@ -59,7 +59,7 @@ cargo build --all --release
 Install the [Qt 5.4 SDK](http://download.qt.io/official_releases/online_installers/qt-unified-windows-x86-online.exe),
 the [Rust toolchain](https://static.rust-lang.org/rustup/dist/x86_64-pc-windows-msvc/rustup-init.exe)
 and [CMake](https://cmake.org/files/v3.6/cmake-3.6.1-win64-x64.msi).
-Panopticon can be build using ``cargo build --all --release``.
+Panopticon can be built using ``cargo build --all --release``.
 
 **OS X**
 
@@ -81,7 +81,7 @@ After installation start the ``panopticon`` binary. If you build it from
 source you can type:
 
 ```bash
-cargo run -p panopticon-qt --release
+cargo run --bin panopticon --release
 ```
 
 For detailed usage information see the
