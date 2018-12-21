@@ -5,6 +5,7 @@ authors = ["seu <seu@panopticon.re>"]
 
 [[bin]]
 name = "panop"
+path = "src/main.rs"
 
 [dependencies]
 structopt = "0.0.5"

@@ -5,6 +5,7 @@ authors = ["seu <seu@panopticon.re>", "m4b <m4b.github.io@gmail.com>"]
 
 [[bin]]
 name = "panopticon"
+path = "src/main.rs"
 
 [dependencies]
 panopticon-core = { path = "../core" }
