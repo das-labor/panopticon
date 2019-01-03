@@ -1,5 +1,9 @@
 [![Gitter](https://badges.gitter.im/das-labor/panopticon.svg)](https://gitter.im/das-labor/panopticon) [![Build Status](https://travis-ci.org/das-labor/panopticon.svg?branch=master)](https://travis-ci.org/das-labor/panopticon) [![Build status](https://ci.appveyor.com/api/projects/status/ht1wnf4qc0iocoar?svg=true)](https://ci.appveyor.com/project/flanfly/panopticon) [![Coverage Status](https://coveralls.io/repos/das-labor/panopticon/badge.svg?branch=master&service=github)](https://coveralls.io/github/das-labor/panopticon?branch=master)
 
+# DEPRECATED
+
+**The Panopticon project moved to [Gitlab](https://gitlab.com/p8n/panopticon) and was restructed into multiple crates. The Qt GUI was replaced with [Verso](https://gitlab.com/p8n/verso).** I will merge PRs but won't do any substantial work on this version. Most links below are dead.
+
 ![Panopticon](https://raw.githubusercontent.com/das-labor/panopticon/master/logo.png)
 
 # Panopticon - A Libre Cross Platform Disassembler
