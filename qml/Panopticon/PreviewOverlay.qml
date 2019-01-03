@@ -4,6 +4,8 @@ import QtQuick.Layouts 1.1
 import QtQuick.Controls.Styles 1.2
 import Panopticon 1.0
 
+import "."
+
 MouseArea {
 	id: overlay
 

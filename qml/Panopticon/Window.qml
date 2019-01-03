@@ -5,6 +5,8 @@ import QtQuick.Dialogs 1.0
 import QtGraphicalEffects 1.0
 import Panopticon 1.0
 
+import "."
+
 Ctrl.ApplicationWindow {
 	id: mainWindow
 
