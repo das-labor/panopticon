@@ -86,7 +86,7 @@
 #![macro_use]
 
 
-use {Guard, Mnemonic, Region, Result, Rvalue, Statement};
+use crate::{Guard, Mnemonic, Region, Result, Rvalue, Statement};
 
 use num::traits::{NumCast, One, Zero};
 use panopticon_graph_algos::{AdjacencyList, EdgeListGraphTrait, GraphTrait, IncidenceGraphTrait, MutableGraphTrait, VertexListGraphTrait};
@@ -111,10 +111,10 @@ pub trait Architecture: Clone {
     /// Given a memory image and a configuration the functions extracts a set of entry points.
     /// # Return
     /// Tuples of entry point name, offset form the start of the region and optional comment.
-    fn prepare(&Region, &Self::Configuration) -> Result<Vec<(&'static str, u64, &'static str)>>;
+    fn prepare(_: &Region, _: &Self::Configuration) -> Result<Vec<(&'static str, u64, &'static str)>>;
 
     /// Start to disassemble a single Opcode inside a given region at a given address.
-    fn decode(&Region, u64, &Self::Configuration) -> Result<Match<Self>>;
+    fn decode(_: &Region, _: u64, _: &Self::Configuration) -> Result<Match<Self>>;
 }
 
 /// Result of a single disassembly operation.
@@ -663,7 +663,7 @@ impl<'a, A: Architecture> Into<Rule<A>> for &'a str {
 /// Internal to `new_disassembler!`
 pub trait AddToRuleGen<A: Architecture> {
     /// Internal to `new_disassembler!`
-    fn push(&self, &mut Vec<Vec<Rule<A>>>);
+    fn push(&self, _: &mut Vec<Vec<Rule<A>>>);
 }
 
 #[derive(Clone)]
@@ -710,7 +710,7 @@ impl<A: Architecture> RuleGen<A> {
 
 #[macro_export]
 macro_rules! opt {
-    ($e:expr) => { { ::disassembler::OptionalRule($e.clone().into()) } };
+    ($e:expr) => { { crate::disassembler::OptionalRule($e.clone().into()) } };
 }
 
 #[macro_export]
@@ -762,7 +762,7 @@ macro_rules! new_disassembler {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use {Bound, Guard, OpaqueLayer, Region, Result, Rvalue};
+    use crate::{Bound, Guard, OpaqueLayer, Region, Result, Rvalue};
     use std::sync::Arc;
 
     #[derive(Clone,Debug)]

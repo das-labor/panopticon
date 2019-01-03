@@ -16,7 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-use types::{CBasicBlockLine, CRecentSession, CSidebarItem};
+use crate::types::{CBasicBlockLine, CRecentSession, CSidebarItem};
 
 extern "C" {
     pub fn start_gui_loop(

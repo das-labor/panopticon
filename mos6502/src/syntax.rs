@@ -16,10 +16,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-use disassembler::*;
+use crate::disassembler::*;
 
 use panopticon_core::{Disassembler, Rvalue, State};
-use semantic::*;
+use crate::semantic::*;
 
 use std::sync::Arc;
 

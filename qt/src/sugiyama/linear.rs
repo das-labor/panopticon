@@ -16,7 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-use errors::Error;
+use crate::errors::Error;
 
 use panopticon_graph_algos::{AdjacencyList, BidirectionalGraphTrait, EdgeListGraphTrait, GraphTrait, IncidenceGraphTrait, MutableGraphTrait,
                              VertexListGraphTrait};
@@ -28,9 +28,9 @@ use std::cmp::{Ordering, max, min};
 use std::collections::{HashMap, HashSet};
 use std::iter::FromIterator;
 
-use sugiyama::order::{crossings, initial_ordering, optimize_ordering_once};
+use crate::sugiyama::order::{crossings, initial_ordering, optimize_ordering_once};
 
-use sugiyama::rank::{add_virtual_vertices, compute_ranking, ensure_single_entry, normalize_rank, remove_cycles, remove_loops, remove_parallel_edges};
+use crate::sugiyama::rank::{add_virtual_vertices, compute_ranking, ensure_single_entry, normalize_rank, remove_cycles, remove_loops, remove_parallel_edges};
 
 fn partial_max(a: f32, b: f32) -> f32 {
     if a < b { b } else { a }

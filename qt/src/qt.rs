@@ -16,13 +16,13 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-use errors::*;
+use crate::errors::*;
 use futures::{Future, future};
 use futures_cpupool::CpuPool;
 use panopticon_glue as glue;
 use panopticon_glue::{CBasicBlockLine, CBasicBlockOperand, Glue};
 use parking_lot::Mutex;
-use singleton::{EdgePosition, NodePosition, PANOPTICON};
+use crate::singleton::{EdgePosition, NodePosition, PANOPTICON};
 use std::collections::HashSet;
 use std::ffi::CString;
 use uuid::Uuid;

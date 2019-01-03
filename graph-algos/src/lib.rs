@@ -30,14 +30,14 @@ extern crate bit_set;
 #[cfg(test)]
 extern crate rmp_serde;
 
-pub use adjacency_list::AdjacencyList;
-pub use adjacency_matrix::AdjacencyMatrix;
-pub use traits::AdjacencyGraph as AdjacencyGraphTrait;
-pub use traits::AdjacencyMatrixGraph as AdjacencyMatrixGraphTrait;
-pub use traits::BidirectionalGraph as BidirectionalGraphTrait;
-pub use traits::EdgeListGraph as EdgeListGraphTrait;
+pub use crate::adjacency_list::AdjacencyList;
+pub use crate::adjacency_matrix::AdjacencyMatrix;
+pub use crate::traits::AdjacencyGraph as AdjacencyGraphTrait;
+pub use crate::traits::AdjacencyMatrixGraph as AdjacencyMatrixGraphTrait;
+pub use crate::traits::BidirectionalGraph as BidirectionalGraphTrait;
+pub use crate::traits::EdgeListGraph as EdgeListGraphTrait;
 
-pub use traits::Graph as GraphTrait;
-pub use traits::IncidenceGraph as IncidenceGraphTrait;
-pub use traits::MutableGraph as MutableGraphTrait;
-pub use traits::VertexListGraph as VertexListGraphTrait;
+pub use crate::traits::Graph as GraphTrait;
+pub use crate::traits::IncidenceGraph as IncidenceGraphTrait;
+pub use crate::traits::MutableGraph as MutableGraphTrait;
+pub use crate::traits::VertexListGraph as VertexListGraphTrait;

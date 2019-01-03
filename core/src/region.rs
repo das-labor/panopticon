@@ -50,7 +50,7 @@
 //! This region is named "undef" and is just 4k of undefined cells
 
 
-use {Bound, Layer, LayerIter, OpaqueLayer, Result};
+use crate::{Bound, Layer, LayerIter, OpaqueLayer, Result};
 use panopticon_graph_algos::{AdjacencyList, GraphTrait, IncidenceGraphTrait, MutableGraphTrait, VertexListGraphTrait};
 use panopticon_graph_algos::adjacency_list::{AdjacencyListEdgeDescriptor, AdjacencyListVertexDescriptor};
 use std::collections::HashSet;
@@ -284,8 +284,8 @@ impl World {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use layer::Layer;
-    use mnemonic::Bound;
+    use crate::layer::Layer;
+    use crate::mnemonic::Bound;
     use panopticon_graph_algos::MutableGraphTrait;
 
     fn fixture<'a>() -> (RegionRef, RegionRef, RegionRef, World) {

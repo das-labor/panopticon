@@ -16,7 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-use disassembler::*;
+use crate::disassembler::*;
 use panopticon_core::{Guard, Lvalue, Result, Rvalue, State, Statement};
 use std::convert::Into;
 

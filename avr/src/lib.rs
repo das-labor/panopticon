@@ -34,4 +34,4 @@ mod syntax;
 mod semantic;
 
 mod disassembler;
-pub use disassembler::{Avr, Mcu};
+pub use crate::disassembler::{Avr, Mcu};

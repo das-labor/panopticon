@@ -71,15 +71,15 @@ mod errors {
     }
 }
 use clap::{App, Arg};
-use errors::*;
-use qt::Qt;
+use crate::errors::*;
+use crate::qt::Qt;
 
 use std::path::{Path, PathBuf};
 use std::result;
 
 fn main() {
     use std::env;
-    use paths::find_data_file;
+    use crate::paths::find_data_file;
     use panopticon_glue::Glue;
 
     env_logger::init().unwrap();

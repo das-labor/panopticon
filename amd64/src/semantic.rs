@@ -51,7 +51,7 @@
 
 #![allow(dead_code)]
 
-use disassembler::{Condition, JumpSpec};
+use crate::disassembler::{Condition, JumpSpec};
 
 use panopticon_core::{Guard, Lvalue, Result, Rvalue, Statement};
 use std::cmp::max;

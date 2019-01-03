@@ -16,13 +16,13 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-use errors::*;
-use ffi::{start_gui_loop, update_current_session, update_function_edges, update_function_node, update_layout_task, update_sidebar_items, update_undo_redo};
+use crate::errors::*;
+use crate::ffi::{start_gui_loop, update_current_session, update_function_edges, update_function_node, update_layout_task, update_sidebar_items, update_undo_redo};
 use panopticon_core::Function;
 use std::ffi::{CStr, CString};
 use std::path::{Path, PathBuf};
 use std::ptr;
-use types::{CBasicBlockLine, CRecentSession, CSidebarItem};
+use crate::types::{CBasicBlockLine, CRecentSession, CSidebarItem};
 
 use uuid::Uuid;
 

@@ -29,8 +29,8 @@ mod tests {
     use std::{f32, isize, usize};
     use std::collections::{HashMap, HashSet};
     use std::iter::FromIterator;
-    use sugiyama::linear::{compute_x_coordinates, linear_layout};
-    use sugiyama::rank::{add_virtual_vertices, ensure_single_entry, remove_cycles, remove_loops};
+    use crate::sugiyama::linear::{compute_x_coordinates, linear_layout};
+    use crate::sugiyama::rank::{add_virtual_vertices, ensure_single_entry, remove_cycles, remove_loops};
 
     #[test]
     fn test_remove_loops() {

@@ -17,10 +17,10 @@
  */
 
 use bit_set::BitSet;
-use search::{TraversalOrder, TreeIterator};
+use crate::search::{TraversalOrder, TreeIterator};
 use std::collections::HashMap;
 use std::iter::FromIterator;
-use traits::{BidirectionalGraph, Graph, VertexListGraph};
+use crate::traits::{BidirectionalGraph, Graph, VertexListGraph};
 
 pub fn dominators<'a, V: 'a, E, G: 'a + Graph<'a, V, E> + BidirectionalGraph<'a, V, E> + VertexListGraph<'a, V, E>>(
     start: G::Vertex,
@@ -178,8 +178,8 @@ pub fn immediate_dominator<'a, V: 'a, E, G: 'a + Graph<'a, V, E> + Bidirectional
 #[cfg(test)]
 mod tests {
     use super::*;
-    use adjacency_list::AdjacencyList;
-    use traits::MutableGraph;
+    use crate::adjacency_list::AdjacencyList;
+    use crate::traits::MutableGraph;
 
     #[test]
     fn dom() {

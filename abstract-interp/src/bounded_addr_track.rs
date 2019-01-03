@@ -33,7 +33,7 @@
 //! `and rsp, 0xffff0000`.
 
 
-use {Avalue, Constraint, ProgramPoint};
+use crate::{Avalue, Constraint, ProgramPoint};
 
 use panopticon_core::{Operation, Rvalue, il};
 use std::borrow::Cow;
@@ -556,7 +556,7 @@ impl Avalue for BoundedAddrTrack {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use lift;
+    use crate::lift;
     use quickcheck::{Arbitrary, Gen, TestResult};
 
     impl Arbitrary for BoundedAddrTrack {

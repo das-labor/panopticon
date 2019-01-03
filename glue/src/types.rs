@@ -16,7 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-use errors::*;
+use crate::errors::*;
 use panopticon_core::Function;
 use std::ffi::CString;
 use std::path::Path;

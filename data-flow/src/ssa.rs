@@ -16,7 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-use liveness_sets;
+use crate::liveness_sets;
 use panopticon_core::{ControlFlowEdge, ControlFlowGraph, ControlFlowRef, ControlFlowTarget, Function, Guard, Lvalue, Mnemonic, Operation, Result, Rvalue,
                       Statement};
 use panopticon_graph_algos::{BidirectionalGraphTrait, EdgeListGraphTrait, GraphTrait, IncidenceGraphTrait, MutableGraphTrait, VertexListGraphTrait};
@@ -148,7 +148,7 @@ pub fn phi_functions(func: &mut Function) -> Result<()> {
 
     let df = dominance_frontiers(&idom, func.cfg());
     let mut phis = HashSet::<(&Cow<'static, str>, ControlFlowRef)>::new();
-    let mut cfg = &mut func.cfg_mut();
+    let cfg = &mut func.cfg_mut();
 
     for v in globals.iter() {
         let mut worklist = if let Some(wl) = usage.get(v) {

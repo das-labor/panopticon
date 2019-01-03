@@ -106,7 +106,7 @@
 //! # }
 //! ```
 
-use Result;
+use crate::Result;
 use quickcheck::{Arbitrary, Gen};
 use serde::{Serialize,Deserialize};
 
@@ -756,7 +756,7 @@ pub fn execute(op: Operation<Rvalue>) -> Rvalue {
             } else {
                 let mask = if s < 64 { (1u64 << s) - 1 } else { u64::MAX };
                 Rvalue::Constant {
-                    value: ((a >> cmp::min(cmp::min(64, s), (b as usize))) & mask),
+                    value: ((a >> cmp::min(cmp::min(64, s), b as usize)) & mask),
                     size: s,
                 }
             }
@@ -1445,7 +1445,7 @@ macro_rules! rreil_imm {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use {Architecture, Match, Region, Result};
+    use crate::{Architecture, Match, Region, Result};
     use std::borrow::Cow;
 
     #[derive(Clone)]

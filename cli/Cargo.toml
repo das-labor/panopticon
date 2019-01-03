@@ -2,9 +2,11 @@
 name = "panopticon-cli"
 version = "0.16.0"
 authors = ["seu <seu@panopticon.re>"]
+edition = "2018"
 
 [[bin]]
 name = "panop"
+path = "src/main.rs"
 
 [dependencies]
 structopt = "0.0.5"

@@ -16,9 +16,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-use action::Action;
-use control_flow_layout::{BasicBlockLine, ControlFlowLayout};
-use errors::*;
+use crate::action::Action;
+use crate::control_flow_layout::{BasicBlockLine, ControlFlowLayout};
+use crate::errors::*;
 use futures::{Future, future};
 use multimap::MultiMap;
 use panopticon_abstract_interp::Kset;
@@ -26,8 +26,8 @@ use panopticon_core::{Function, Program, Project, Region, loader};
 use panopticon_glue::Glue;
 use panopticon_graph_algos::{GraphTrait, VertexListGraphTrait};
 use parking_lot::Mutex;
-use qt;
-use qt::Qt;
+use crate::qt;
+use crate::qt::Qt;
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::thread;
@@ -181,7 +181,7 @@ impl Panopticon {
                     }
                 );
 
-                use paths::session_directory;
+                use crate::paths::session_directory;
                 use tempdir::TempDir;
 
                 let dir = session_directory().unwrap();

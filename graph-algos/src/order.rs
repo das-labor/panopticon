@@ -20,7 +20,7 @@ use std::collections::HashMap;
 use std::fmt::Debug;
 use std::iter::FromIterator;
 use std::usize;
-use traits::{Graph, IncidenceGraph, VertexListGraph};
+use crate::traits::{Graph, IncidenceGraph, VertexListGraph};
 
 #[derive(PartialEq,Debug)]
 pub enum HierarchicalOrdering<T: Clone> {
@@ -124,8 +124,8 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use adjacency_list::AdjacencyList;
-    use traits::MutableGraph;
+    use crate::adjacency_list::AdjacencyList;
+    use crate::traits::MutableGraph;
 
     #[test]
     fn wto_double_loop() {

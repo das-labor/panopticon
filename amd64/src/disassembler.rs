@@ -16,7 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-use Mode;
+use crate::Mode;
 use byteorder::{LittleEndian, ReadBytesExt};
 
 use panopticon_core::{Guard, Lvalue, Mnemonic, Result, Rvalue, Statement};
@@ -2140,7 +2140,7 @@ impl<'a> Tail<'a> {
 }
 
 fn select_opcode_ext(grp: isize, opc: usize, modrm: usize, pfx: SimdPrefix, mode: Mode, vexxop_present: bool) -> Result<Opcode> {
-    use tables::*;
+    use crate::tables::*;
 
     let reg = (modrm & 0b00111000) >> 3;
     let mo = (modrm & 0b11000000) >> 6;
@@ -2327,7 +2327,7 @@ fn select_opcode_ext(grp: isize, opc: usize, modrm: usize, pfx: SimdPrefix, mode
 }
 
 pub fn read(mode: Mode, buf: &[u8], addr: u64) -> Result<(u64, Mnemonic, Vec<(Rvalue, Guard)>)> {
-    use tables::*;
+    use crate::tables::*;
 
     let mut i = 0;
     let mut prefix = Prefix::default();
@@ -2659,7 +2659,7 @@ pub fn read(mode: Mode, buf: &[u8], addr: u64) -> Result<(u64, Mnemonic, Vec<(Rv
                 Opcode::Binary(
                     MnemonicSpec::Single("movsxd"),
                     OpcodeOption::Only64,
-                    ::semantic::movsxd,
+                    crate::semantic::movsxd,
                     OperandSpec(AddressingMethod::G, OperandType::v),
                     OperandSpec(AddressingMethod::E, OperandType::z),
                 )
@@ -2852,7 +2852,7 @@ pub fn read(mode: Mode, buf: &[u8], addr: u64) -> Result<(u64, Mnemonic, Vec<(Rv
                 let mne = match ops.len() {
                     0 => {
                         Mnemonic::new(
-                            (addr..addr + len),
+                            addr..addr + len,
                             format!("{}", s),
                             "".to_string(),
                             ops.iter(),
@@ -2861,7 +2861,7 @@ pub fn read(mode: Mode, buf: &[u8], addr: u64) -> Result<(u64, Mnemonic, Vec<(Rv
                     }
                     1 => {
                         Mnemonic::new(
-                            (addr..addr + len),
+                            addr..addr + len,
                             format!("{}", s),
                             fmt.to_string(),
                             ops.iter(),
@@ -2870,7 +2870,7 @@ pub fn read(mode: Mode, buf: &[u8], addr: u64) -> Result<(u64, Mnemonic, Vec<(Rv
                     }
                     2 => {
                         Mnemonic::new(
-                            (addr..addr + len),
+                            addr..addr + len,
                             format!("{}", s),
                             "{u}, {u}".to_string(),
                             ops.iter(),
@@ -2879,7 +2879,7 @@ pub fn read(mode: Mode, buf: &[u8], addr: u64) -> Result<(u64, Mnemonic, Vec<(Rv
                     }
                     3 => {
                         Mnemonic::new(
-                            (addr..addr + len),
+                            addr..addr + len,
                             format!("{}", s),
                             "{u}, {u}, {u}".to_string(),
                             ops.iter(),
@@ -2888,7 +2888,7 @@ pub fn read(mode: Mode, buf: &[u8], addr: u64) -> Result<(u64, Mnemonic, Vec<(Rv
                     }
                     4 => {
                         Mnemonic::new(
-                            (addr..addr + len),
+                            addr..addr + len,
                             format!("{}", s),
                             "{u}, {u}, {u}, {u}".to_string(),
                             ops.iter(),

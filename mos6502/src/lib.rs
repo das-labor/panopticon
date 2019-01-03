@@ -35,4 +35,4 @@ mod syntax;
 mod semantic;
 
 mod disassembler;
-pub use disassembler::{Mos, Variant};
+pub use crate::disassembler::{Mos, Variant};

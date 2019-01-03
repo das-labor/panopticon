@@ -20,7 +20,7 @@
 //!
 //! TODO
 
-use {Avalue, Constraint, ProgramPoint};
+use crate::{Avalue, Constraint, ProgramPoint};
 
 use panopticon_core::{Operation, Rvalue, execute};
 use std::collections::HashSet;
@@ -276,7 +276,7 @@ impl Avalue for Kset {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use interpreter::{approximate, results};
+    use crate::interpreter::{approximate, results};
     use panopticon_core::{BasicBlock, ControlFlowGraph, ControlFlowTarget, Function, Guard, Lvalue, Mnemonic, Operation, Region, Rvalue, Statement};
     use panopticon_data_flow::ssa_convertion;
     use panopticon_graph_algos::MutableGraphTrait;

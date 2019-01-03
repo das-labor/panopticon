@@ -19,7 +19,7 @@
 //! Loader for 32 and 64-bit ELF, PE, and Mach-o files.
 
 
-use {Bound, CallTarget, Layer, Program, Project, Region, Result, Rvalue};
+use crate::{Bound, CallTarget, Layer, Program, Project, Region, Result, Rvalue};
 use goblin::{self, Hint, archive, elf, mach, pe};
 use goblin::elf::program_header;
 

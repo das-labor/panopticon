@@ -22,7 +22,7 @@
 //! Basic blocks always occupy a continuous byte range.
 
 
-use {Bound, Mnemonic, Statement};
+use crate::{Bound, Mnemonic, Statement};
 use std::cmp::{max, min};
 use std::slice::Iter;
 
@@ -160,7 +160,7 @@ impl BasicBlock {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use {Bound, Lvalue, Mnemonic, Operation, Rvalue, Statement};
+    use crate::{Bound, Lvalue, Mnemonic, Operation, Rvalue, Statement};
     use std::borrow::Cow;
 
     #[test]

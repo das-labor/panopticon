@@ -25,7 +25,7 @@ extern crate panopticon_core;
 extern crate panopticon_graph_algos;
 
 mod liveness;
-pub use liveness::{liveness, liveness_sets};
+pub use crate::liveness::{liveness, liveness_sets};
 
 mod ssa;
-pub use ssa::{flag_operations, ssa_convertion, type_check};
+pub use crate::ssa::{flag_operations, ssa_convertion, type_check};
